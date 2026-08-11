@@ -1,0 +1,13 @@
+{
+	"admin/equipe-dashboard": {
+		"title": "ARK Router",
+		"order": 0,
+		"action": {
+			"type": "view",
+			"path": "equipe-dashboard/overview"
+		},
+		"depends": {
+			"acl": [ "luci-app-equipe-dashboard" ]
+		}
+	}
+}

@@ -1,0 +1,438 @@
+#!/bin/sh
+
+action="$1"
+
+bool() { [ "$1" = 1 ] && printf true || printf false; }
+json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+valid_mac() { printf '%s' "$1" | grep -Eq '^([0-9A-F]{2}:){5}[0-9A-F]{2}$'; }
+device_suffix() { printf '%s' "$1" | tr -d ':' | tr 'A-F' 'a-f'; }
+find_dhcp_host() {
+	uci -q show dhcp 2>/dev/null | awk -F= -v wanted="$1" '
+		/\.mac=/ {
+			value=$2; gsub(/^\047|\047$/, "", value)
+			if (toupper(value) == wanted) {
+				key=$1; sub(/^dhcp\./, "", key); sub(/\.mac$/, "", key); print key; exit
+			}
+		}'
+}
+valid_ipv4() {
+	printf '%s\n' "$1" | awk -F. 'NF == 4 { for (i=1;i<=4;i++) if ($i !~ /^[0-9]+$/ || $i < 0 || $i > 255) exit 1; exit 0 } { exit 1 }'
+}
+same_managed_subnet() {
+	candidate="$1"
+	for managed in lan guest; do
+		managed_ip="$(ubus call "network.interface.$managed" status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].address')"
+		prefix="$(ubus call "network.interface.$managed" status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].mask')"
+		[ -n "$managed_ip" ] && [ -n "$prefix" ] || continue
+		[ "$candidate" != "$managed_ip" ] || return 1
+		command -v ipcalc.sh >/dev/null 2>&1 || return 0
+		network="$(ipcalc.sh "$managed_ip/$prefix" 2>/dev/null | sed -n 's/^NETWORK=//p')"
+		candidate_network="$(ipcalc.sh "$candidate/$prefix" 2>/dev/null | sed -n 's/^NETWORK=//p')"
+		[ -n "$network" ] && [ "$network" = "$candidate_network" ] && return 0
+	done
+	return 1
+}
+installed() {
+	if command -v apk >/dev/null 2>&1; then apk info -e "$1" >/dev/null 2>&1
+	else opkg status "$1" 2>/dev/null | grep -q '^Status:.* installed$'
+	fi
+}
+hidden() { [ "$(uci -q get equipe_dashboard.$1.hidden)" = 1 ]; }
+running() { [ -x "/etc/init.d/$1" ] && "/etc/init.d/$1" running >/dev/null 2>&1; }
+feature_package() {
+	case "$1" in
+		sqm) printf luci-app-sqm ;;
+		mwan3) printf luci-app-mwan3 ;;
+		nlbwmon) printf luci-app-nlbwmon ;;
+		upnp) printf luci-app-upnp ;;
+		argon) printf luci-theme-argon ;;
+		uhttpd) printf luci-app-uhttpd ;;
+		speedtest) printf speedtest-go ;;
+		*) return 1 ;;
+	esac
+}
+feature_active() {
+	case "$1" in
+		sqm) uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'" ;;
+		mwan3) running mwan3 ;;
+		nlbwmon) running nlbwmon ;;
+		upnp) running miniupnpd ;;
+		argon) installed luci-theme-argon && [ "$(uci -q get luci.main.mediaurlbase)" = /luci-static/argon ] ;;
+		uhttpd) installed luci-app-uhttpd ;;
+		wifi) wifi status 2>/dev/null | grep -q '"up": true' ;;
+		history) [ -x /usr/sbin/equipe-traffic-history ] ;;
+		temperature) [ -r /sys/class/thermal/thermal_zone0/temp ] ;;
+		custom_qos) [ -s /etc/config/qos_equipe ] ;;
+		speedtest) command -v speedtest-go >/dev/null 2>&1 || [ -x /tmp/ark-speedtest/speedtest-go ] ;;
+		*) return 1 ;;
+	esac
+}
+feature_json() {
+	key="$1" package="$2" installable="$3"
+	if [ "$key" = speedtest ]; then feature_active "$key"; present=$?
+	elif [ -n "$package" ]; then installed "$package"; present=$?; else feature_active "$key"; present=$?; fi
+	feature_active "$key"; enabled=$?
+	hidden "$key"; concealed=$?
+	printf '"%s":{"installed":%s,"active":%s,"hidden":%s,"installable":%s' \
+		"$key" "$(bool $((present == 0)))" "$(bool $((enabled == 0)))" "$(bool $((concealed == 0)))" "$installable"
+	[ -n "$package" ] && printf ',"package":"%s"' "$package"
+	[ "$key" = speedtest ] && printf ',"temporary":true'
+	printf '}'
+}
+prepare_speedtest() {
+	command -v speedtest-go >/dev/null 2>&1 && return 0
+	[ -x /tmp/ark-speedtest/speedtest-go ] && return 0
+	command -v apk >/dev/null 2>&1 || return 1
+	# OpenWrt keeps APK indexes in volatile storage. They disappear on reboot,
+	# so refresh them before trying to fetch the temporary speed-test package.
+	apk update || return 1
+	stage=/tmp/ark-speedtest-download
+	rm -rf "$stage" && mkdir -p "$stage/root" /tmp/ark-speedtest || return 1
+	if command -v wget >/dev/null 2>&1; then
+		version="$(apk policy speedtest-go 2>/dev/null | awk '/^[[:space:]]+[0-9]/{gsub(/:$/, "", $1); print $1; exit}')"
+		repo="$(apk policy speedtest-go 2>/dev/null | awk '/^[[:space:]]+https?:\/\//{gsub(/^\[|\]$/, "", $1); sub(/\/packages\.adb$/, "", $1); print $1; exit}')"
+		if [ -n "$version" ] && [ -n "$repo" ]; then
+			wget -O "$stage/speedtest-go-$version.apk" "$repo/speedtest-go-$version.apk" >/dev/null 2>&1 || {
+				rm -rf "$stage"
+				return 1
+			}
+		else
+			apk fetch --output "$stage" speedtest-go || { rm -rf "$stage"; return 1; }
+		fi
+	else
+		apk fetch --output "$stage" speedtest-go || { rm -rf "$stage"; return 1; }
+	fi
+	set -- "$stage"/*.apk; package_file="$1"
+	[ -f "$package_file" ] || { rm -rf "$stage"; return 1; }
+	apk --allow-untrusted extract --destination "$stage/root" "$package_file" || { rm -rf "$stage"; return 1; }
+	[ -x "$stage/root/usr/bin/speedtest-go" ] || { rm -rf "$stage"; return 1; }
+	cp "$stage/root/usr/bin/speedtest-go" /tmp/ark-speedtest/speedtest-go && chmod 755 /tmp/ark-speedtest/speedtest-go || { rm -rf "$stage"; return 1; }
+	rm -rf "$stage"
+}
+
+case "$action" in
+	features)
+		manager=none
+		command -v apk >/dev/null 2>&1 && manager=apk
+		[ "$manager" = none ] && command -v opkg >/dev/null 2>&1 && manager=opkg
+		speedtest_installable=false; [ "$manager" = apk ] && speedtest_installable=true
+		appearance="$(uci -q get equipe_dashboard.main.appearance || printf auto)"
+		primary="$(uci -q get equipe_dashboard.main.primary || printf '#3b82f6')"
+		secondary="$(uci -q get equipe_dashboard.main.secondary || printf '#8b5cf6')"
+		title="$(uci -q get equipe_dashboard.main.title || printf 'ARK Router')"
+		https_available=false
+		cert="$(uci -q get uhttpd.main.cert)"; key="$(uci -q get uhttpd.main.key)"
+		[ -n "$(uci -q get uhttpd.main.listen_https)" ] && [ -r "$cert" ] && [ -r "$key" ] && https_available=true
+		https_redirect="$(uci -q get uhttpd.main.redirect_https || printf 0)"
+		ca_available=false; ca_fingerprint=''
+		if [ -r /etc/ark-router/ark-router-ca.crt ] && [ -r /www/ark-router/ark-router-ca.crt ]; then ca_available=true; ca_fingerprint="$(sha256sum /etc/ark-router/ark-router-ca.crt | awk '{print $1}')"; fi
+		printf '{"language":"%s","title":"%s","package_manager":"%s","appearance":{"mode":"%s","primary":"%s","secondary":"%s"},"features":{' "$(uci -q get equipe_dashboard.main.language || printf pt-br)" "$(json_escape "$title")" "$manager" "$appearance" "$primary" "$secondary"
+		feature_json sqm luci-app-sqm true; printf ','
+		feature_json mwan3 luci-app-mwan3 true; printf ','
+		feature_json nlbwmon luci-app-nlbwmon true; printf ','
+		feature_json upnp luci-app-upnp true; printf ','
+		feature_json argon luci-theme-argon true; printf ','
+		feature_json uhttpd luci-app-uhttpd true; printf ','
+		feature_json wifi '' false; printf ','
+		feature_json history '' false; printf ','
+		feature_json temperature '' false; printf ','
+		feature_json custom_qos '' false
+		printf ','; feature_json speedtest speedtest-go "$speedtest_installable"
+		printf '},"https":{"available":%s,"redirect":%s,"certificate":"local","ca_available":%s,"ca_fingerprint":"%s","ca_download":"/ark-router/ark-router-ca.crt"}}\n' "$https_available" "$(bool "$https_redirect")" "$ca_available" "$ca_fingerprint"
+		;;
+	language)
+		case "$2" in pt-br|en) ;; *) echo 'Idioma invalido' >&2; exit 2 ;; esac
+		uci -q set equipe_dashboard.main=settings
+		uci -q set "equipe_dashboard.main.language=$2"
+		uci commit equipe_dashboard
+		echo ok
+		;;
+	title)
+		title="$2"
+		[ -n "$title" ] && [ "${#title}" -le 40 ] || { echo 'O nome deve ter entre 1 e 40 caracteres' >&2; exit 2; }
+		printf '%s' "$title" | grep -q '[[:cntrl:]]' && { echo 'O nome contem caracteres de controle invalidos' >&2; exit 2; }
+		uci -q set equipe_dashboard.main=settings
+		uci -q set "equipe_dashboard.main.title=$title"
+		uci commit equipe_dashboard
+		echo ok
+		;;
+	appearance)
+		case "$2" in auto|equipe|custom) ;; *) echo 'Modo de aparencia invalido' >&2; exit 2 ;; esac
+		primary="${3:-#3b82f6}"; secondary="${4:-#8b5cf6}"
+		printf '%s' "$primary" | grep -Eq '^#[0-9A-Fa-f]{6}$' || { echo 'Cor primaria invalida' >&2; exit 2; }
+		printf '%s' "$secondary" | grep -Eq '^#[0-9A-Fa-f]{6}$' || { echo 'Cor secundaria invalida' >&2; exit 2; }
+		uci -q set equipe_dashboard.main=settings
+		uci -q set "equipe_dashboard.main.appearance=$2"
+		uci -q set "equipe_dashboard.main.primary=$primary"
+		uci -q set "equipe_dashboard.main.secondary=$secondary"
+		uci commit equipe_dashboard
+		echo ok
+		;;
+	https-redirect)
+		case "$2" in 0|1) ;; *) echo 'Preferencia HTTPS invalida' >&2; exit 2 ;; esac
+		if [ "$2" = 1 ]; then
+			cert="$(uci -q get uhttpd.main.cert)"; key="$(uci -q get uhttpd.main.key)"
+			[ -n "$(uci -q get uhttpd.main.listen_https)" ] && [ -r "$cert" ] && [ -r "$key" ] || { echo 'HTTPS ou certificado indisponivel' >&2; exit 3; }
+		fi
+		uci -q set "uhttpd.main.redirect_https=$2"; uci commit uhttpd
+		(sleep 1; /etc/init.d/uhttpd restart) >/dev/null 2>&1 &
+		echo ok
+		;;
+	feature-hide)
+		feature_package "$2" >/dev/null || { echo 'Recurso invalido' >&2; exit 2; }
+		case "$3" in 0|1) ;; *) echo 'Preferencia invalida' >&2; exit 2 ;; esac
+		uci -q set "equipe_dashboard.$2=feature"
+		uci -q set "equipe_dashboard.$2.hidden=$3"
+		uci commit equipe_dashboard
+		echo ok
+		;;
+	feature-install)
+		key="$2"; package="$(feature_package "$key")" || { echo 'Recurso invalido' >&2; exit 2; }
+		status="/tmp/equipe-dashboard-install-$key.status"; log="/tmp/equipe-dashboard-install-$key.log"
+		if [ "$key" = speedtest ]; then feature_active "$key" && { echo done >"$status"; echo installed; exit 0; }
+		else installed "$package" && { echo done >"$status"; echo installed; exit 0; }; fi
+		[ "$(cat "$status" 2>/dev/null)" != running ] || { echo running; exit 0; }
+		command -v apk >/dev/null 2>&1 || command -v opkg >/dev/null 2>&1 || { echo 'Gerenciador de pacotes indisponivel' >&2; exit 3; }
+		echo running >"$status"
+		(
+			if [ "$key" = speedtest ]; then prepare_speedtest
+			elif command -v apk >/dev/null 2>&1; then apk update && apk add "$package"
+			else opkg update && opkg install "$package"
+			fi
+			if [ $? -eq 0 ]; then echo done >"$status"; else echo error >"$status"; fi
+		) >"$log" 2>&1 &
+		echo started
+		;;
+	feature-install-status)
+		feature_package "$2" >/dev/null || { echo 'Recurso invalido' >&2; exit 2; }
+		cat "/tmp/equipe-dashboard-install-$2.status" 2>/dev/null || echo idle
+		;;
+	feature-install-log)
+		feature_package "$2" >/dev/null || { echo 'Recurso invalido' >&2; exit 2; }
+		cat "/tmp/equipe-dashboard-install-$2.log" 2>/dev/null
+		;;
+	theme)
+		[ "$2" = argon ] || { echo 'Tema invalido' >&2; exit 2; }
+		installed luci-theme-argon || { echo 'Tema Argon nao instalado' >&2; exit 3; }
+		uci -q set luci.main.mediaurlbase='/luci-static/argon'
+		uci commit luci
+		rm -f /tmp/luci-indexcache
+		rm -f /tmp/luci-modulecache/* 2>/dev/null
+		echo ok
+		;;
+	speedtest-start)
+		case "$2" in wan) network=wan; device=wan; sqm_section=wan1 ;; wan2) network=wan2; device=lan1; sqm_section=wan2 ;; *) echo 'WAN invalida' >&2; exit 2 ;; esac
+		selected_wan="$2"
+		feature_active speedtest || { echo 'Medidor indisponivel' >&2; exit 3; }
+		status="/tmp/ark-speedtest-$2.status"; result="/tmp/ark-speedtest-$2.json"; log="/tmp/ark-speedtest-$2.log"
+		[ "$(cat "$status" 2>/dev/null)" != running ] || { echo running; exit 0; }
+		source_ip="$(ubus call "network.interface.$network" status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].address')"
+		[ -n "$source_ip" ] || { echo 'A interface nao possui IPv4 ativo' >&2; exit 3; }
+		[ "$(cat "/sys/class/net/$device/carrier" 2>/dev/null)" = 1 ] || { echo 'A interface esta sem link fisico' >&2; exit 3; }
+		echo running >"$status"; rm -f "$result"
+		(
+			bin="$(command -v speedtest-go 2>/dev/null || printf /tmp/ark-speedtest/speedtest-go)"
+			restore_sqm() { uci -q revert "sqm.$sqm_section.enabled"; /etc/init.d/sqm restart >/dev/null 2>&1; }
+			trap restore_sqm EXIT INT TERM
+			uci -q set "sqm.$sqm_section.enabled=0"; /etc/init.d/sqm restart >/dev/null 2>&1; sleep 2
+			ok=0; uploads=''; download=0; latency=0; run=1
+			while [ "$run" -le 3 ]; do
+				file="/tmp/ark-speedtest-$2-run$run.json"
+				if [ "$run" = 1 ]; then "$bin" --json --multi --thread 8 --source "$source_ip" >"$file" 2>>"$log"
+				else "$bin" --json --no-download --multi --thread 8 --source "$source_ip" >"$file" 2>>"$log"; fi
+				if [ $? -eq 0 ]; then
+					u="$(jsonfilter -i "$file" -e '@.servers[0].ul_speed' 2>/dev/null)"; d="$(jsonfilter -i "$file" -e '@.servers[0].dl_speed' 2>/dev/null)"; l="$(jsonfilter -i "$file" -e '@.servers[0].latency' 2>/dev/null)"
+					case "$u" in ''|*[!0-9.]*) ;; *) uploads="$uploads $u"; ok=$((ok+1));; esac
+					[ "$run" = 1 ] && download="${d:-0}" && latency="${l:-0}"
+				fi
+				run=$((run+1))
+			done
+			if [ "$ok" -lt 2 ]; then restore_sqm; trap - EXIT INT TERM; echo error >"$status"; exit 1; fi
+			set -- $uploads; u1="$1"; u2="$2"; u3="${3:-$2}"
+			metrics="$(awk -v d="$download" -v l="$latency" -v a="$u1" -v b="$u2" -v c="$u3" 'BEGIN{m=a;if(b<m)m=b;if(c<m)m=c;printf "%.2f %.2f %.2f %.2f %.2f %d %d %d",d*8/1000000,a*8/1000000,b*8/1000000,c*8/1000000,l/1000000,m*8/1000*.85,m*8/1000*.90,m*8/1000*.95}')"
+			set -- $metrics
+			printf '{"wan":"%s","download_mbps":%s,"upload_runs_mbps":[%s,%s,%s],"latency_ms":%s,"suggested_kbps":{"conservative":%s,"balanced":%s,"aggressive":%s}}\n' "$selected_wan" "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" >"$result"
+			restore_sqm; trap - EXIT INT TERM
+			echo done >"$status"
+		) >"$log" 2>&1 &
+		echo started
+		;;
+	speedtest-status)
+		case "$2" in wan|wan2) ;; *) echo 'WAN invalida' >&2; exit 2 ;; esac
+		cat "/tmp/ark-speedtest-$2.status" 2>/dev/null || echo idle
+		;;
+	speedtest-result)
+		case "$2" in wan|wan2) ;; *) echo 'WAN invalida' >&2; exit 2 ;; esac
+		[ -s "/tmp/ark-speedtest-$2.json" ] || { echo '{}' ; exit 0; }
+		cat "/tmp/ark-speedtest-$2.json"
+		;;
+	speedtest-apply)
+		case "$2" in wan) sqm_section=wan1 ;; wan2) sqm_section=wan2 ;; *) echo 'WAN invalida' >&2; exit 2 ;; esac
+		printf '%s' "$3" | grep -Eq '^[0-9]{3,7}$' || { echo 'Velocidade invalida' >&2; exit 2; }
+		[ "$3" -ge 100 ] && [ "$3" -le 1000000 ] || { echo 'Velocidade fora do intervalo' >&2; exit 2; }
+		uci -q set "sqm.$sqm_section.upload=$3"; uci -q set "sqm.$sqm_section.enabled=1"; uci commit sqm; /etc/init.d/sqm restart
+		echo ok
+		;;
+	mwan)
+		case "$2" in
+			failover) policy='wan_then_wan2' ;;
+			balanced) policy='balanced' ;;
+			wan1) policy='wan_only' ;;
+			wan2) policy='wan2_only' ;;
+			*) echo 'Modo invalido' >&2; exit 2 ;;
+		esac
+		uci set mwan3.https.use_policy="$policy"
+		uci set mwan3.default_rule_v4.use_policy="$policy"
+		uci commit mwan3
+		/etc/init.d/mwan3 restart
+		echo "$2"
+		;;
+	rename)
+		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"
+		name="$3"
+		printf '%s' "$mac" | grep -Eq '^([0-9A-F]{2}:){5}[0-9A-F]{2}$' || { echo 'MAC invalido' >&2; exit 2; }
+		[ "${#name}" -le 48 ] || { echo 'Nome muito longo' >&2; exit 2; }
+		section="device_$(printf '%s' "$mac" | tr -d ':')"
+		if [ -z "$name" ]; then
+			uci -q delete "equipe_devices.$section"
+		else
+			uci -q set "equipe_devices.$section=device"
+			uci -q set "equipe_devices.$section.mac=$mac"
+			uci -q set "equipe_devices.$section.name=$name"
+		fi
+		uci commit equipe_devices
+		echo 'ok'
+		;;
+	device-status)
+		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"
+		valid_mac "$mac" || { echo 'MAC invalido' >&2; exit 2; }
+		suffix="$(device_suffix "$mac")"; host="$(find_dhcp_host "$mac")"; reserved=false; ip=''
+		if [ -n "$host" ]; then reserved=true; ip="$(uci -q get "dhcp.$host.ip")"; fi
+		priority=false
+		[ "$(uci -q get "firewall.ark_priority_$suffix.enabled")" = 1 ] && priority=true
+		printf '{"reserved":%s,"ip":"%s","priority":%s,"qos_active":%s}\n' "$reserved" "$(json_escape "$ip")" "$priority" "$(feature_active sqm && bool 1 || bool 0)"
+		;;
+	device-save)
+		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"; name="$3"; mode="$4"; ip="$5"; priority="$6"
+		valid_mac "$mac" || { echo 'MAC invalido' >&2; exit 2; }
+		[ "${#name}" -le 48 ] || { echo 'Nome muito longo' >&2; exit 2; }
+		case "$mode" in automatic|reserved) ;; *) echo 'Modo de IP invalido' >&2; exit 2 ;; esac
+		case "$priority" in 0|1|keep) ;; *) echo 'Prioridade invalida' >&2; exit 2 ;; esac
+		if [ "$mode" = reserved ]; then
+			valid_ipv4 "$ip" && same_managed_subnet "$ip" || { echo 'Use um IPv4 valido de uma rede local, diferente do endereco do roteador' >&2; exit 2; }
+			duplicate="$(uci -q show dhcp 2>/dev/null | grep -F ".ip='$ip'" | head -n1)"
+			host="$(find_dhcp_host "$mac")"
+			[ -z "$duplicate" ] || printf '%s\n' "$duplicate" | grep -q "^dhcp\.$host\.ip=" || { echo 'Esse IP ja esta reservado para outro dispositivo' >&2; exit 2; }
+		fi
+		[ "$priority" != 1 ] || { feature_active sqm && [ -s /etc/config/qos_equipe ]; } || { echo 'Ative o SQM antes de priorizar o dispositivo' >&2; exit 3; }
+		suffix="$(device_suffix "$mac")"; name_section="device_$(printf '%s' "$mac" | tr -d ':')"
+		if [ -z "$name" ]; then uci -q delete "equipe_devices.$name_section"
+		else
+			uci -q set "equipe_devices.$name_section=device"
+			uci -q set "equipe_devices.$name_section.mac=$mac"
+			uci -q set "equipe_devices.$name_section.name=$name"
+		fi
+		host="$(find_dhcp_host "$mac")"
+		if [ "$mode" = reserved ]; then
+			[ -n "$host" ] || host="ark_$suffix"
+			uci -q set "dhcp.$host=host"
+			uci -q set "dhcp.$host.name=${name:-ark-$suffix}"
+			uci -q set "dhcp.$host.mac=$mac"
+			uci -q set "dhcp.$host.ip=$ip"
+		else
+			[ -z "$host" ] || uci -q delete "dhcp.$host"
+		fi
+		priority_section="ark_priority_$suffix"
+		if [ "$priority" = 1 ]; then
+			uci -q set "firewall.$priority_section=rule"
+			uci -q set "firewall.$priority_section.name=ARK-Priority-$mac"
+			uci -q set "firewall.$priority_section.src=lan"
+			uci -q set "firewall.$priority_section.dest=wan"
+			uci -q set "firewall.$priority_section.family=ipv4"
+			uci -q set "firewall.$priority_section.proto=all"
+			uci -q set "firewall.$priority_section.src_mac=$mac"
+			uci -q set "firewall.$priority_section.target=DSCP"
+			uci -q set "firewall.$priority_section.set_dscp=AF41"
+			uci -q set "firewall.$priority_section.enabled=1"
+		elif [ "$priority" = 0 ]; then uci -q delete "firewall.$priority_section"
+		fi
+		uci commit equipe_devices; uci commit dhcp; uci commit firewall
+		/etc/init.d/dnsmasq reload >/dev/null 2>&1
+		/etc/init.d/firewall restart >/dev/null 2>&1
+		echo ok
+		;;
+	reboot-prepare)
+		token="$(dd if=/dev/urandom bs=16 count=1 2>/dev/null | hexdump -v -e '/1 "%02x"' 2>/dev/null)"
+		[ -n "$token" ] || token="$(printf '%s' "$(date +%s)-$$-$RANDOM" | cksum | awk '{print $1}')"
+		created="$(date +%s)"
+		umask 077
+		printf '%s %s\n' "$created" "$token" > /tmp/ark-router-reboot-token
+		printf '%s\n' "$token"
+		;;
+	reboot-confirm)
+		provided="$2"
+		printf '%s' "$provided" | grep -Eq '^[0-9a-f]{8,64}$' || { echo 'Confirmacao de reinicio invalida' >&2; exit 2; }
+		[ -r /tmp/ark-router-reboot-token ] || { echo 'A confirmacao expirou; tente novamente' >&2; exit 3; }
+		read created expected < /tmp/ark-router-reboot-token
+		now="$(date +%s)"; ready=$((created + 2)); expires=$((created + 60))
+		[ "$provided" = "$expected" ] || { echo 'Confirmacao de reinicio invalida' >&2; exit 3; }
+		[ "$now" -ge "$ready" ] || { echo 'Aguarde os 2 segundos de seguranca' >&2; exit 3; }
+		[ "$now" -le "$expires" ] || { rm -f /tmp/ark-router-reboot-token; echo 'A confirmacao expirou; tente novamente' >&2; exit 3; }
+		rm -f /tmp/ark-router-reboot-token
+		sync
+		(sleep 1; /sbin/reboot) >/dev/null 2>&1 &
+		echo restarting
+		;;
+	wifi)
+		case "$2" in
+			main) sections='default_radio0 default_radio1' ;;
+			guest) sections='guest_radio0 guest_radio1' ;;
+			*) echo 'Rede invalida' >&2; exit 2 ;;
+		esac
+		password="$3"
+		length="${#password}"
+		[ "$length" -ge 8 ] && [ "$length" -le 63 ] || { echo 'A senha deve ter entre 8 e 63 caracteres' >&2; exit 2; }
+		printf '%s' "$password" | grep -q '[[:cntrl:]]' && { echo 'A senha contem caracteres de controle invalidos' >&2; exit 2; }
+		for section in $sections; do
+			uci -q set "wireless.$section.key=$password"
+		done
+		uci commit wireless
+		(sleep 2; wifi reload) >/dev/null 2>&1 &
+		echo 'ok'
+		;;
+	channels)
+		case "$2" in
+			fixed)
+				channel2="$3"
+				channel5="$4"
+				case "$channel2" in 1|6|11) ;; *) echo 'Canal 2,4 GHz invalido' >&2; exit 2 ;; esac
+				case "$channel5" in 36|40|44|48|149|153|157|161) ;; *) echo 'Canal 5 GHz invalido' >&2; exit 2 ;; esac
+				uci set wireless.radio0.channel="$channel2"
+				uci set wireless.radio1.channel="$channel5"
+				;;
+			auto)
+				uci set wireless.radio0.channel='auto'
+				uci set wireless.radio1.channel='auto'
+				;;
+			*) echo 'Modo de canal invalido' >&2; exit 2 ;;
+		esac
+		uci commit wireless
+		(sleep 2; wifi reload) >/dev/null 2>&1 &
+		echo 'ok'
+		;;
+	country)
+		country="$(printf '%s' "$2" | tr 'a-z' 'A-Z')"
+		printf '%s' "$country" | grep -Eq '^([A-Z]{2}|00)$' || { echo 'Codigo de pais invalido' >&2; exit 2; }
+		uci set wireless.radio0.country="$country"
+		uci set wireless.radio1.country="$country"
+		uci set wireless.radio0.channel='auto'
+		uci set wireless.radio1.channel='auto'
+		uci commit wireless
+		(sleep 2; wifi reload) >/dev/null 2>&1 &
+		echo 'ok'
+		;;
+	*)
+		echo 'Uso: equipe-dashboard-control {features|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|theme argon|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|country ISO2}' >&2
+		exit 2
+		;;
+esac

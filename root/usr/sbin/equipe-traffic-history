@@ -1,0 +1,41 @@
+#!/bin/sh
+
+history='/tmp/equipe-traffic-history.csv'
+persist='/etc/equipe-traffic-history.csv'
+state='/tmp/equipe-traffic-history.state'
+
+read_counter() {
+	local device="$1" direction="$2" value
+	value="$(cat "/sys/class/net/$device/statistics/${direction}_bytes" 2>/dev/null)"
+	printf '%s' "${value:-0}"
+}
+
+sample() {
+	local now rx tx previous prev_time prev_rx prev_tx elapsed down up lines
+	now="$(date +%s)"
+	rx=$(( $(read_counter wan rx) + $(read_counter lan1 rx) ))
+	tx=$(( $(read_counter wan tx) + $(read_counter lan1 tx) ))
+
+	if [ -s "$state" ]; then
+		previous="$(cat "$state")"
+		IFS=',' read -r prev_time prev_rx prev_tx <<-EOF
+		$previous
+		EOF
+		elapsed=$((now - prev_time))
+		if [ "$elapsed" -gt 0 ] && [ "$rx" -ge "$prev_rx" ] && [ "$tx" -ge "$prev_tx" ]; then
+			down=$(((rx - prev_rx) * 8 / elapsed))
+			up=$(((tx - prev_tx) * 8 / elapsed))
+			printf '%s,%s,%s\n' "$now" "$down" "$up" >> "$history"
+			tail -n 1440 "$history" > "$history.new" && mv "$history.new" "$history"
+			lines="$(wc -l < "$history")"
+			[ $((lines % 60)) -eq 0 ] && cp "$history" "$persist"
+		fi
+	fi
+	printf '%s,%s,%s\n' "$now" "$rx" "$tx" > "$state"
+}
+
+[ -s "$history" ] || { [ -s "$persist" ] && cp "$persist" "$history" || : > "$history"; }
+while true; do
+	sample
+	sleep 60
+done

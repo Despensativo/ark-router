@@ -1,0 +1,18 @@
+config settings 'main'
+	option language 'pt-br'
+	option title 'ARK Router'
+	option appearance 'auto'
+	option primary '#3b82f6'
+	option secondary '#8b5cf6'
+
+config feature 'sqm'
+	option hidden '0'
+
+config feature 'mwan3'
+	option hidden '0'
+
+config feature 'nlbwmon'
+	option hidden '0'
+
+config feature 'upnp'
+	option hidden '0'

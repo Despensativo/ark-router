@@ -1,0 +1,9 @@
+*.ipk
+*.apk
+*.tar.gz
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+build/
+dist/

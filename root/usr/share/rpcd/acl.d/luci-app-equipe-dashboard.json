@@ -1,0 +1,31 @@
+{
+	"luci-app-equipe-dashboard": {
+		"description": "Painel operacional ARK Router",
+		"read": {
+			"file": {
+				"/bin/ping": [ "exec" ],
+				"/usr/libexec/nlbwmon-action": [ "exec" ],
+				"/tmp/equipe-traffic-history.csv": [ "read" ],
+				"/sys/class/thermal/thermal_zone0/temp": [ "read" ]
+			},
+			"ubus": {
+				"file": [ "exec", "read" ],
+				"iwinfo": [ "assoclist", "survey", "scan", "freqlist", "countrylist" ],
+				"luci-rpc": [ "getDHCPLeases" ],
+				"mwan3": [ "status" ],
+				"network.device": [ "status" ],
+				"network.interface": [ "dump" ],
+				"system": [ "board", "info" ]
+			},
+			"uci": [ "equipe_devices", "mwan3", "qos_equipe", "sqm", "wireless" ]
+		},
+		"write": {
+			"file": {
+				"/usr/sbin/equipe-dashboard-control": [ "exec" ]
+			},
+			"ubus": {
+				"file": [ "exec" ]
+			}
+		}
+	}
+}
