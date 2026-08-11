@@ -1,0 +1,14 @@
+* text=auto eol=lf
+
+*.md text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+Makefile text eol=lf
+VERSION text eol=lf
+LICENSE text eol=lf
+
+root/usr/sbin/* text eol=lf
+root/etc/init.d/* text eol=lf
+root/etc/config/* text eol=lf
+root/www/luci-static/resources/view/equipe-dashboard/*.js text eol=lf
+root/www/luci-static/resources/view/equipe-dashboard/*.css text eol=lf
