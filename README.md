@@ -26,16 +26,15 @@ Keywords: OpenWrt dashboard, LuCI dashboard, router panel, router management, Mu
 
 ## Screenshots
 
-Screenshots are stored in [`docs/screenshots`](docs/screenshots). The first public release should include:
+Preview screenshots are stored in [`docs/screenshots`](docs/screenshots). These public previews use sanitized sample data, so they do not expose private IPs, MAC addresses, Wi-Fi passwords or customer/event names.
 
-- Dashboard overview.
-- Wi-Fi cards and password controls.
-- Multi-WAN mode selector.
-- Device configuration dialog.
-- Speed-test calibration result.
-- Mobile layout.
+| Dashboard overview | Ark - Setup |
+| --- | --- |
+| ![Dashboard overview](docs/screenshots/dashboard-overview.svg) | ![Ark Setup](docs/screenshots/ark-setup.svg) |
 
-Real screenshots should be captured from a sanitized demo router. Do not publish private IPs, MAC addresses, Wi-Fi passwords or customer/event names.
+| WAN/SQM controls | Mobile layout |
+| --- | --- |
+| ![WAN and SQM controls](docs/screenshots/wan-sqm-controls.svg) | ![Mobile overview](docs/screenshots/mobile-overview.svg) |
 
 ## Tested Device
 

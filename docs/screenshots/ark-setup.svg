@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760" role="img" aria-label="Ark Setup guided setup preview">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#101827"/><stop offset="1" stop-color="#111132"/></linearGradient>
+    <linearGradient id="a" x1="0" x2="1"><stop offset="0" stop-color="#06b6d4"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient>
+    <style>
+      text{font-family:Inter,Segoe UI,Arial,sans-serif}
+      .title{fill:#f8fafc;font-size:44px;font-weight:800}.sub{fill:#94a3b8;font-size:20px}.card{fill:#172033;stroke:#27364f;stroke-width:1.5}.label{fill:#e2e8f0;font-size:23px;font-weight:700}.small{fill:#94a3b8;font-size:17px}.field{fill:#0f172a;stroke:#334155;stroke-width:1}.chip{fill:#1e293b;stroke:#334155}.on{fill:#22c55e}.off{fill:#334155}
+    </style>
+  </defs>
+  <rect width="1280" height="760" fill="url(#bg)"/>
+  <rect x="58" y="48" width="1164" height="664" rx="34" fill="#0b1120" stroke="#1e293b"/>
+  <text x="100" y="112" class="title">Ark - Setup</text>
+  <text x="100" y="148" class="sub">Assistente guiado com progresso salvo e confirmação final</text>
+  <rect x="962" y="84" width="190" height="44" rx="22" fill="url(#a)"/>
+  <text x="1005" y="112" fill="#fff" font-size="18" font-weight="800">Aplicar setup</text>
+
+  <rect x="100" y="190" width="320" height="416" rx="26" class="card"/>
+  <text x="132" y="238" class="label">1. Internet</text>
+  <rect x="132" y="266" width="232" height="40" rx="20" class="chip"/><text x="158" y="292" class="small">Uma WAN</text><circle cx="334" cy="286" r="10" class="off"/>
+  <rect x="132" y="322" width="232" height="40" rx="20" fill="#123047" stroke="#2563eb"/><text x="158" y="348" fill="#dbeafe" font-size="17">Duas WAN failover</text><circle cx="334" cy="342" r="10" class="on"/>
+  <rect x="132" y="378" width="232" height="40" rx="20" class="chip"/><text x="158" y="404" class="small">Balanceamento</text><circle cx="334" cy="398" r="10" class="off"/>
+  <text x="132" y="468" class="small">WAN2 pode usar LAN1 e voltar para LAN depois.</text>
+
+  <rect x="460" y="190" width="320" height="416" rx="26" class="card"/>
+  <text x="492" y="238" class="label">2. Wi‑Fi</text>
+  <text x="492" y="282" class="small">Rede principal</text><rect x="492" y="298" width="230" height="42" rx="12" class="field"/><text x="514" y="325" fill="#e5e7eb" font-size="17">ARK Router</text>
+  <text x="492" y="374" class="small">Rede visitante</text><rect x="492" y="390" width="230" height="42" rx="12" class="field"/><text x="514" y="417" fill="#e5e7eb" font-size="17">ARK Visitantes</text>
+  <rect x="492" y="468" width="110" height="36" rx="18" fill="#064e3b"/><text x="520" y="492" fill="#bbf7d0" font-size="15" font-weight="700">Unificada</text>
+  <rect x="612" y="468" width="110" height="36" rx="18" class="chip"/><text x="644" y="492" class="small">Split</text>
+
+  <rect x="820" y="190" width="320" height="416" rx="26" class="card"/>
+  <text x="852" y="238" class="label">3. Recursos</text>
+  <text x="852" y="284" class="small">SQM / CAKE</text><rect x="1040" y="262" width="64" height="32" rx="16" fill="#16a34a"/><circle cx="1088" cy="278" r="12" fill="#fff"/>
+  <text x="852" y="340" class="small">Multi‑WAN</text><rect x="1040" y="318" width="64" height="32" rx="16" fill="#16a34a"/><circle cx="1088" cy="334" r="12" fill="#fff"/>
+  <text x="852" y="396" class="small">Argon theme</text><rect x="1040" y="374" width="64" height="32" rx="16" fill="#1e293b"/><circle cx="1056" cy="390" r="12" fill="#94a3b8"/>
+  <text x="852" y="468" class="small">Módulos já instalados aparecem como prontos, sem reinstalar.</text>
+</svg>

@@ -2,7 +2,14 @@
 
 Public screenshots should be captured from a sanitized router/demo environment before the first release announcement.
 
-Recommended files:
+Included preview files:
+
+- `dashboard-overview.svg`
+- `ark-setup.svg`
+- `wan-sqm-controls.svg`
+- `mobile-overview.svg`
+
+Recommended real screenshot files for a future sanitized demo router:
 
 - `dashboard-overview.png`
 - `wifi-controls.png`
