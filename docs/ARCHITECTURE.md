@@ -42,6 +42,10 @@ The tested pilot SQM values were manually chosen for the local Starlink/event sc
 
 The dashboard exposes a confirmed SQM/CAKE toggle and a small limit editor. The shell helper validates WAN1/WAN2 rates, writes UCI values under `sqm.wan1` and `sqm.wan2`, and restarts only the SQM service. A rate of `0` is accepted to mean no limit for that direction.
 
+## WAN controls
+
+The dashboard exposes confirmed WAN editors for common internet settings. WAN1 edits protocol and DNS while keeping the physical `wan` port. WAN2 can assign `lan1`, `lan2` or `lan3` as a second internet port, or return the selected port to the LAN bridge. The backend creates a `/tmp/ark-router-ezsetup-backup-*.tar.gz` backup before changing network UCI and reloads network services afterward.
+
 ## Device controls
 
 The device dialog stores friendly names in `equipe_devices`, creates or updates a DHCP host reservation keyed by MAC address, and can create a deterministic `firewall.ark_priority_*` DSCP rule. Priority uses AF41 so CAKE `diffserv4` places that device's uploads in its video class while `dual-srchost` continues to provide per-source fairness. The UI exposes priority only for main-network clients while a WAN SQM queue is active.

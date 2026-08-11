@@ -35,6 +35,8 @@ Screenshots are stored in [`docs/screenshots`](docs/screenshots). The first publ
 - Speed-test calibration result.
 - Mobile layout.
 
+Real screenshots should be captured from a sanitized demo router. Do not publish private IPs, MAC addresses, Wi-Fi passwords or customer/event names.
+
 ## Tested Device
 
 The current pilot has been tested on:
@@ -81,11 +83,12 @@ The package manager adapter supports both `apk` and `opkg` for optional package 
 | Traffic | Real-time download/upload counters and 24-hour history |
 | Health | Temperature, memory, storage and load strip |
 | WAN | WAN1/WAN2 status and Multi-WAN mode controls |
+| Internet setup | Dashboard WAN editors for DHCP, PPPoE, static IPv4, DNS and WAN2-to-LAN role changes |
 | LAN | Wired LAN port status |
 | Wi-Fi | Main and guest cards, password visibility, password editing, country selection and channel analysis |
 | Devices | Friendly names, per-device traffic when available and DHCP reservation by MAC |
 | QoS | Optional CAKE priority marking for selected main-network devices |
-| SQM | SQM/CAKE toggle and editable WAN/guest limits; `0` means unlimited for that direction |
+| SQM | SQM/CAKE toggle and editable WAN/guest download/upload limits; `0` means unlimited for that direction |
 | HTTPS | Redirect control and local CA download guidance |
 | System | Router restart button with two confirmations and a backend-enforced delay |
 | Modules | Optional feature center with install/hide suggestions |
@@ -118,7 +121,7 @@ Ark - Setup asks for the common first-run choices:
 - language;
 - unified or split 2.4/5 GHz Wi-Fi names;
 - main Wi-Fi SSID and password;
-- optional guest Wi-Fi with optional upload cap;
+- optional guest Wi-Fi with download and upload caps; `0` keeps a direction unlimited;
 - one WAN, WAN2 on LAN1 with failover, WAN2 on LAN1 with balancing or custom internet mode;
 - SQM strategy and optional manual speed limits;
 - DNS mode with separate DNS 1, DNS 2 and DNS 3 fields;
@@ -169,6 +172,8 @@ wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/
 ```
 
 The installer detects `apk` or `opkg`, downloads the latest compatible release package and restarts `rpcd`. Until a release package exists for your firmware family, build the package with the OpenWrt SDK:
+
+ARK Router is not an `.iso` image. It is a LuCI package installed on an existing OpenWrt router. See [`docs/RELEASES.md`](docs/RELEASES.md) for the GitHub Actions release flow.
 
 ```sh
 apk add ./luci-app-ark-router-*.apk

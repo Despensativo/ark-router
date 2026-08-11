@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.3
+
+- Added dashboard WAN editors for WAN1 and WAN2.
+- WAN1 can edit DHCP, PPPoE, static IPv4 and DNS while keeping the physical WAN port.
+- WAN2 can use LAN1/LAN2/LAN3 as a DHCP/PPPoE/static internet port or return the selected port to LAN.
+- Added automatic safety backup before WAN/port changes.
+- Added guest download-limit editing alongside guest upload-limit editing.
+- Cleaned Ark - Setup optional modules so already-installed resources show as installed instead of selectable.
+- Added GitHub Actions package build workflow and release documentation.
+
 ## 0.9.2
 
 - Improved Ark - Setup visibility with a stronger dashboard button.

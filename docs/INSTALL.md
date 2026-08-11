@@ -22,6 +22,13 @@ wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/
 
 The script detects `apk` or `opkg`, downloads the latest package from GitHub Releases and restarts `rpcd`. This only works after a matching release asset has been published.
 
+ARK Router is not installed with an `.iso`. The router downloads or receives a package file built for OpenWrt:
+
+- `.apk` on newer APK-based OpenWrt builds.
+- `.ipk` on older OPKG-based OpenWrt builds.
+
+See [`RELEASES.md`](RELEASES.md) for the GitHub Actions release flow.
+
 ## Build With OpenWrt SDK
 
 Copy this package into a package feed, refresh feeds if needed, then select it under LuCI applications.
@@ -72,6 +79,8 @@ The dashboard can help apply common actions, but it is intentionally not a blind
 ## Optional Modules
 
 Optional cards appear when the corresponding module is available. The dashboard can suggest supported optional packages, but every installation requires confirmation.
+
+When a supported module is already installed, Ark - Setup and the feature center show it as installed instead of offering a checkbox to install it again.
 
 ## Uninstall
 

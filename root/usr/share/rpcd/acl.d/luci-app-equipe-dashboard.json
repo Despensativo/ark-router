@@ -17,7 +17,7 @@
 				"network.interface": [ "dump" ],
 				"system": [ "board", "info" ]
 			},
-			"uci": [ "equipe_devices", "mwan3", "qos_equipe", "sqm", "wireless" ]
+			"uci": [ "equipe_devices", "mwan3", "network", "qos_equipe", "sqm", "wireless" ]
 		},
 		"write": {
 			"file": {

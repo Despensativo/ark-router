@@ -198,16 +198,64 @@ ez_apply_guest_network() {
 	fi
 }
 ez_apply_guest_limit() {
-	enabled="$1"; upload="$2"
+	enabled="$1"; upload="$2"; download="${3:-0}"
 	if [ "$enabled" = 1 ]; then
 		valid_uint_range "$upload" 128 100000 || return 1
+		valid_uint_range "$download" 0 100000 || return 1
 		uci -q set qos_equipe.guest=guest_limit
 		uci -q set qos_equipe.guest.enabled=1
 		uci -q set "qos_equipe.guest.upload_kbps=$upload"
+		uci -q set "qos_equipe.guest.download_kbps=$download"
 	else
 		uci -q set qos_equipe.guest=guest_limit
 		uci -q set qos_equipe.guest.enabled=0
 	fi
+}
+lan_bridge_section() {
+	uci -q show network | awk -F= '/\.name=.br-lan./ { key=$1; sub(/^network\./, "", key); sub(/\.name$/, "", key); print key; exit }'
+}
+bridge_has_port() {
+	br="$1"; port="$2"
+	uci -q get "network.$br.ports" 2>/dev/null | tr ' ' '\n' | grep -qx "$port"
+}
+add_lan_port() {
+	port="$1"; br="$(lan_bridge_section)"
+	[ -n "$br" ] || return 0
+	bridge_has_port "$br" "$port" || uci -q add_list "network.$br.ports=$port"
+}
+remove_lan_port() {
+	port="$1"; br="$(lan_bridge_section)"
+	[ -n "$br" ] || return 0
+	uci -q del_list "network.$br.ports=$port" 2>/dev/null || true
+}
+apply_wan_proto() {
+	iface="$1"; proto="$2"; username="$3"; password="$4"; ipaddr="$5"; netmask="$6"; gateway="$7"; dns="$8"
+	case "$proto" in dhcp|pppoe|static) ;; *) echo 'Protocolo WAN invalido' >&2; return 2 ;; esac
+	uci -q set "network.$iface=interface"
+	uci -q set "network.$iface.proto=$proto"
+	uci -q delete "network.$iface.username"
+	uci -q delete "network.$iface.password"
+	uci -q delete "network.$iface.ipaddr"
+	uci -q delete "network.$iface.netmask"
+	uci -q delete "network.$iface.gateway"
+	if [ "$proto" = pppoe ]; then
+		[ -n "$username" ] || { echo 'Usuario PPPoE obrigatorio' >&2; return 2; }
+		uci -q set "network.$iface.username=$username"
+		uci -q set "network.$iface.password=$password"
+	elif [ "$proto" = static ]; then
+		valid_ipv4 "$ipaddr" && valid_ipv4 "$netmask" || { echo 'IPv4 estatico invalido' >&2; return 2; }
+		[ -z "$gateway" ] || valid_ipv4 "$gateway" || { echo 'Gateway invalido' >&2; return 2; }
+		uci -q set "network.$iface.ipaddr=$ipaddr"
+		uci -q set "network.$iface.netmask=$netmask"
+		[ -z "$gateway" ] || uci -q set "network.$iface.gateway=$gateway"
+	fi
+	uci -q set "network.$iface.peerdns=0"
+	uci -q delete "network.$iface.dns"
+	if [ -n "$dns" ]; then
+		for server in $dns; do valid_ipv4 "$server" || { echo 'DNS WAN invalido' >&2; return 2; }; uci -q add_list "network.$iface.dns=$server"; done
+	fi
+	uci -q set "network.$iface.delegate=0"
+	uci -q set "network.$iface.ipv6=0"
 }
 feature_json() {
 	key="$1" package="$2" installable="$3"
@@ -658,7 +706,7 @@ case "$action" in
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
 				wan1_enabled|wan2_enabled) case "$value" in 0|1) ;; *) echo 'Estado SQM invalido' >&2; exit 2 ;; esac ;;
-				wan1_download|wan1_upload|wan2_download|wan2_upload|guest_upload) valid_sqm_rate "$value" || { echo 'Velocidade SQM invalida' >&2; exit 2; } ;;
+				wan1_download|wan1_upload|wan2_download|wan2_upload|guest_download|guest_upload) valid_sqm_rate "$value" || { echo 'Velocidade SQM invalida' >&2; exit 2; } ;;
 				*) echo "Campo SQM invalido: $key" >&2; exit 2 ;;
 			esac
 		done
@@ -678,11 +726,63 @@ case "$action" in
 					uci -q set qos_equipe.guest.enabled=1
 					uci -q set "qos_equipe.guest.upload_kbps=$value"
 					;;
+				guest_download)
+					uci -q set qos_equipe.guest=guest_limit
+					uci -q set qos_equipe.guest.enabled=1
+					uci -q set "qos_equipe.guest.download_kbps=$value"
+					;;
 			esac
 		done
 		uci commit sqm
 		uci commit qos_equipe 2>/dev/null || true
 		/etc/init.d/sqm restart
+		echo ok
+		;;
+	wan-save)
+		iface='' mode='wan' device='' proto='dhcp' username='' password='' ipaddr='' netmask='' gateway='' dns=''
+		shift
+		for pair in "$@"; do
+			key="${pair%%=*}"; value="${pair#*=}"
+			case "$key" in
+				iface) case "$value" in wan|wan2) iface="$value" ;; *) echo 'WAN invalida' >&2; exit 2 ;; esac ;;
+				mode) case "$value" in wan|lan) mode="$value" ;; *) echo 'Modo da porta invalido' >&2; exit 2 ;; esac ;;
+				device) case "$value" in wan|lan1|lan2|lan3) device="$value" ;; *) echo 'Porta fisica invalida' >&2; exit 2 ;; esac ;;
+				proto) case "$value" in dhcp|pppoe|static) proto="$value" ;; *) echo 'Protocolo invalido' >&2; exit 2 ;; esac ;;
+				username) valid_plain "$value" 96 || { echo 'Usuario PPPoE invalido' >&2; exit 2; }; username="$value" ;;
+				password) valid_plain "$value" 128 || { echo 'Senha PPPoE invalida' >&2; exit 2; }; password="$value" ;;
+				ipaddr) [ -z "$value" ] || valid_ipv4 "$value" || { echo 'IP estatico invalido' >&2; exit 2; }; ipaddr="$value" ;;
+				netmask) [ -z "$value" ] || valid_ipv4 "$value" || { echo 'Mascara invalida' >&2; exit 2; }; netmask="$value" ;;
+				gateway) [ -z "$value" ] || valid_ipv4 "$value" || { echo 'Gateway invalido' >&2; exit 2; }; gateway="$value" ;;
+				dns) valid_plain "$value" 120 || { echo 'DNS invalido' >&2; exit 2; }; dns="$value"; for server in $dns; do valid_ipv4 "$server" || { echo 'DNS WAN invalido' >&2; exit 2; }; done ;;
+				*) echo "Campo WAN invalido: $key" >&2; exit 2 ;;
+			esac
+		done
+		[ -n "$iface" ] || { echo 'WAN ausente' >&2; exit 2; }
+		[ -n "$device" ] || device="$(uci -q get "network.$iface.device")"
+		[ "$iface" = wan2 ] || [ "$mode" = wan ] || { echo 'A WAN1 fisica nao pode virar LAN por este atalho' >&2; exit 2; }
+		ez_backup >/dev/null || { echo 'Falha ao criar backup antes da alteracao WAN' >&2; exit 3; }
+		if [ "$iface" = wan2 ] && [ "$mode" = lan ]; then
+			old="$(uci -q get network.wan2.device)"
+			[ -n "$old" ] && add_lan_port "$old"
+			uci -q set network.wan2=interface
+			uci -q set network.wan2.proto=none
+			uci -q delete network.wan2.device
+			uci commit network
+			/etc/init.d/network reload >/dev/null 2>&1 || true
+			[ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 || true
+			echo ok
+			exit 0
+		fi
+		old="$(uci -q get "network.$iface.device")"
+		[ "$iface" = wan2 ] && [ -n "$old" ] && [ "$old" != "$device" ] && add_lan_port "$old"
+		[ "$device" != wan ] && remove_lan_port "$device"
+		uci -q set "network.$iface.device=$device"
+		apply_wan_proto "$iface" "$proto" "$username" "$password" "$ipaddr" "$netmask" "$gateway" "$dns" || exit $?
+		[ "$iface" = wan2 ] && uci -q set network.wan2.metric=20
+		[ "$iface" = wan ] && uci -q set network.wan.metric=10
+		uci commit network
+		/etc/init.d/network reload >/dev/null 2>&1 || true
+		[ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 || true
 		echo ok
 		;;
 	mwan)
@@ -844,7 +944,7 @@ case "$action" in
 		echo 'ok'
 		;;
 	*)
-		echo 'Uso: equipe-dashboard-control {features|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|ez-setup-install-modules|ez-setup-install-status|ez-setup-install-log|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|theme argon|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|sqm-toggle 0|1|sqm-save chave=valor...|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|country ISO2}' >&2
+		echo 'Uso: equipe-dashboard-control {features|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|ez-setup-install-modules|ez-setup-install-status|ez-setup-install-log|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|theme argon|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|sqm-toggle 0|1|sqm-save chave=valor...|wan-save chave=valor...|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|country ISO2}' >&2
 		exit 2
 		;;
 esac

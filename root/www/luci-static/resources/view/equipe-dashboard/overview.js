@@ -188,7 +188,7 @@ return view.extend({
 			safe(callMwanStatus(), {}), safe(callDHCPLeases(), { dhcp_leases: [] }),
 			safe(callAssocList('phy0-ap0'), { results: [] }), safe(callAssocList('phy1-ap0'), { results: [] }), safe(callAssocList('phy0-ap1'), { results: [] }), safe(callAssocList('phy1-ap1'), { results: [] }),
 			safe(callSurvey('phy0-ap0'), { results: [] }), safe(callSurvey('phy1-ap0'), { results: [] }),
-			safe(callUciGet('sqm'), { values: {} }), safe(callUciGet('qos_equipe'), { values: {} }), safe(callUciGet('wireless'), { values: {} }), safe(callUciGet('mwan3'), { values: {} }), safe(callUciGet('equipe_devices'), { values: {} }),
+			safe(callUciGet('sqm'), { values: {} }), safe(callUciGet('qos_equipe'), { values: {} }), safe(callUciGet('wireless'), { values: {} }), safe(callUciGet('mwan3'), { values: {} }), safe(callUciGet('equipe_devices'), { values: {} }), safe(callUciGet('network'), { values: {} }),
 			safe(fs.read('/sys/class/thermal/thermal_zone0/temp'), '0'),
 			safe(fs.exec('/bin/ping', [ '-c', '1', '-W', '1', '-I', 'wan', '1.1.1.1' ]), {}), safe(fs.exec('/bin/ping', [ '-c', '1', '-W', '1', '-I', 'lan1', '1.1.1.1' ]), {}),
 			safe(fs.exec_direct('/usr/libexec/nlbwmon-action', [ 'download', '-g', 'family,mac,ip', '-o', '-rx_bytes,-tx_bytes' ], 'json'), { columns: [], data: [] }),
@@ -196,7 +196,7 @@ return view.extend({
 			safe(callDeviceStatus('lan2'), {}), safe(callDeviceStatus('lan3'), {})
 		]).then(function(r) { return {
 			system:r[0], interfaces:r[1], wanDevice:r[2], wan2Device:r[3], mwan:r[4], leases:r[5], mainAssoc:[r[6],r[7]], guestAssoc:[r[8],r[9]],
-			survey2:r[10], survey5:r[11], sqm:r[12], qos:r[13], wireless:r[14], mwanConfig:r[15], names:r[16], temperature:r[17], pingWan:r[18], pingWan2:r[19], traffic:r[20], history:r[21], lan2Device:r[22], lan3Device:r[23], timestamp:Date.now()
+			survey2:r[10], survey5:r[11], sqm:r[12], qos:r[13], wireless:r[14], mwanConfig:r[15], names:r[16], networkConfig:r[17], temperature:r[18], pingWan:r[19], pingWan2:r[20], traffic:r[21], history:r[22], lan2Device:r[23], lan3Device:r[24], timestamp:Date.now()
 		}; });
 	},
 	calculateRates: function(data) {
@@ -303,7 +303,7 @@ return view.extend({
 		const qe=!!((sqm.wan1&&sqm.wan1.enabled==='1')||(sqm.wan2&&sqm.wan2.enabled==='1')), qosToggle=document.getElementById('ex-qos-toggle'), qosToggleState=document.getElementById('ex-qos-toggle-state');
 		setPill('ex-qos-status',qe?'online':'standby',qe?'ATIVO':'DESLIGADO'); if(qosToggle){qosToggle.checked=qe;qosToggle.disabled=false;} if(qosToggleState)qosToggleState.textContent=qe?'Ligado':'Desligado';
 		const fmtLimit=function(v){v=Number(v)||0;return v>0?(v/1000).toFixed(1)+' Mbps':'Ilimitado';};
-		text('ex-qos-wan','↓ '+fmtLimit(sqm.wan1&&sqm.wan1.download)+'  •  ↑ '+fmtLimit(sqm.wan1&&sqm.wan1.upload)); text('ex-qos-guest',fmtLimit(qos.guest_upload_kbps)+' visitantes'); text('ex-dns',(wan['dns-server']||['1.1.1.1','8.8.8.8']).join('  •  '));
+		text('ex-qos-wan','↓ '+fmtLimit(sqm.wan1&&sqm.wan1.download)+'  •  ↑ '+fmtLimit(sqm.wan1&&sqm.wan1.upload)); text('ex-qos-guest','↓ '+fmtLimit(qos.guest_download_kbps)+'  •  ↑ '+fmtLimit(qos.guest_upload_kbps)); text('ex-dns',(wan['dns-server']||['1.1.1.1','8.8.8.8']).join('  •  '));
 		this.updateWifi(data); this.updateMwanMode(data); this.updateHistory(data.history); this.renderDevices(data,dr); text('ex-clock',new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
 	},
 	togglePassword: function(id, button) { const n=document.getElementById(id), hidden=n.dataset.hidden!=='0'; n.dataset.hidden=hidden?'0':'1'; n.style.filter=hidden?'none':'blur(5px)'; button.textContent=hidden?'Ocultar senha':'Ver senha'; },
@@ -347,12 +347,36 @@ return view.extend({
 		const data=this.currentData||{}, sqm=values(data.sqm), qos=values(data.qos).main||{};
 		const field=function(label,value,hint){const node=E('input',{type:'number',class:'cbi-input-text',min:0,max:1000000,value:String(Number(value)||0)});return {node:node,row:E('label',{class:'ex-qos-edit-field'},[E('span',{},[label]),node,E('small',{class:'ex-muted'},[hint||'Kbps • 0 = ilimitado / sem limite'])])};};
 		const wan1Enabled=E('input',{type:'checkbox'}), wan2Enabled=E('input',{type:'checkbox'});wan1Enabled.checked=!(sqm.wan1&&sqm.wan1.enabled==='0');wan2Enabled.checked=!!(sqm.wan2&&sqm.wan2.enabled==='1');
-		const w1d=field('WAN1 download',sqm.wan1&&sqm.wan1.download), w1u=field('WAN1 upload',sqm.wan1&&sqm.wan1.upload), w2d=field('WAN2 download',sqm.wan2&&sqm.wan2.download), w2u=field('WAN2 upload',sqm.wan2&&sqm.wan2.upload), guest=field('Visitantes upload total',qos.guest_upload_kbps,'Kbps • 1500 = 1,5 Mbps • 0 = ilimitado');
+		const w1d=field('WAN1 download',sqm.wan1&&sqm.wan1.download), w1u=field('WAN1 upload',sqm.wan1&&sqm.wan1.upload), w2d=field('WAN2 download',sqm.wan2&&sqm.wan2.download), w2u=field('WAN2 upload',sqm.wan2&&sqm.wan2.upload), guestDown=field('Visitantes download total',qos.guest_download_kbps,'Kbps • 0 = ilimitado'), guestUp=field('Visitantes upload total',qos.guest_upload_kbps,'Kbps • 1500 = 1,5 Mbps • 0 = ilimitado');
 		ui.showModal('Editar SQM / CAKE',[E('p',{class:'ex-muted'},['Defina os limites em Kbps. Use 0 quando não quiser limitar aquela direção. Em links variáveis como Starlink, upload conservador costuma manter a latência melhor.']),E('div',{class:'ex-qos-edit-grid'},[
 			E('section',{},[E('h3',{},['WAN1']),E('label',{class:'ex-qos-edit-toggle'},[wan1Enabled,E('span',{},['Ativar fila WAN1'])]),w1d.row,w1u.row]),
 			E('section',{},[E('h3',{},['WAN2']),E('label',{class:'ex-qos-edit-toggle'},[wan2Enabled,E('span',{},['Ativar fila WAN2'])]),w2d.row,w2u.row]),
-			E('section',{},[E('h3',{},['Visitantes']),guest.row])
-		]),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const args=['sqm-save','wan1_enabled='+(wan1Enabled.checked?'1':'0'),'wan2_enabled='+(wan2Enabled.checked?'1':'0'),'wan1_download='+w1d.node.value,'wan1_upload='+w1u.node.value,'wan2_download='+w2d.node.value,'wan2_upload='+w2u.node.value,'guest_upload='+guest.node.value];return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar limites');ui.hideModal();ui.addNotification(null,E('p',{},['Limites do SQM salvos.']));return this.fetchData().then(L.bind(this.update,this));},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Salvar e reiniciar SQM'])])]);
+			E('section',{},[E('h3',{},['Visitantes']),guestDown.row,guestUp.row])
+		]),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const args=['sqm-save','wan1_enabled='+(wan1Enabled.checked?'1':'0'),'wan2_enabled='+(wan2Enabled.checked?'1':'0'),'wan1_download='+w1d.node.value,'wan1_upload='+w1u.node.value,'wan2_download='+w2d.node.value,'wan2_upload='+w2u.node.value,'guest_download='+guestDown.node.value,'guest_upload='+guestUp.node.value];return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar limites');ui.hideModal();ui.addNotification(null,E('p',{},['Limites do SQM salvos.']));return this.fetchData().then(L.bind(this.update,this));},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Salvar e reiniciar SQM'])])]);
+	},
+	editWan: function(which){
+		const net=values((this.currentData||{}).networkConfig), cfg=net[which==='wan2'?'wan2':'wan']||{}, isWan2=which==='wan2';
+		const makeSelect=function(value,items){const s=E('select',{class:'cbi-input-select'},items.map(function(i){return E('option',{value:i[0]},[i[1]]);}));s.value=value;return s;};
+		const role=makeSelect((isWan2&&cfg.proto==='none')?'lan':'wan',isWan2?[['wan','Usar como internet / WAN2'],['lan','Voltar porta para LAN']]:[['wan','Usar como internet / WAN1']]);
+		const device=makeSelect(cfg.device||(isWan2?'lan1':'wan'),isWan2?[['lan1','LAN1'],['lan2','LAN2'],['lan3','LAN3']]:[['wan','WAN física']]);
+		const proto=makeSelect(cfg.proto==='pppoe'?'pppoe':(cfg.proto==='static'?'static':'dhcp'),[['dhcp','DHCP automático'],['pppoe','PPPoE'],['static','IP fixo / estático']]);
+		const username=E('input',{class:'cbi-input-text',value:cfg.username||'',placeholder:'usuário PPPoE'});
+		const password=E('input',{type:'password',class:'cbi-input-text',value:'',placeholder:'senha PPPoE'});
+		const ipaddr=E('input',{class:'cbi-input-text',value:cfg.ipaddr||'',placeholder:'192.0.2.10'});
+		const netmask=E('input',{class:'cbi-input-text',value:cfg.netmask||'255.255.255.0',placeholder:'255.255.255.0'});
+		const gateway=E('input',{class:'cbi-input-text',value:cfg.gateway||'',placeholder:'192.0.2.1'});
+		const dnsList=Array.isArray(cfg.dns)?cfg.dns:String(cfg.dns||'1.1.1.1 8.8.8.8').split(/\s+/);
+		const dns1=E('input',{class:'cbi-input-text',value:dnsList[0]||'1.1.1.1'}), dns2=E('input',{class:'cbi-input-text',value:dnsList[1]||'8.8.8.8'}), dns3=E('input',{class:'cbi-input-text',value:dnsList[2]||'',placeholder:'opcional'});
+		const field=function(label,node,hint){return E('label',{class:'ex-wan-edit-field'},[E('span',{},[label]),node,hint?E('small',{class:'ex-muted'},[hint]):'']);};
+		const pppoeBlock=E('div',{class:'ex-wan-proto-block'},[field('Usuário PPPoE',username),field('Senha PPPoE',password,'Deixe vazio para manter/definir vazia conforme operadora')]);
+		const staticBlock=E('div',{class:'ex-wan-proto-block'},[field('IPv4',ipaddr),field('Máscara',netmask),field('Gateway',gateway)]);
+		const sync=function(){const lanMode=isWan2&&role.value==='lan';device.disabled=lanMode;proto.disabled=lanMode;pppoeBlock.style.display=(!lanMode&&proto.value==='pppoe')?'grid':'none';staticBlock.style.display=(!lanMode&&proto.value==='static')?'grid':'none';};
+		role.addEventListener('change',sync);proto.addEventListener('change',sync);sync();
+		ui.showModal('Editar '+(isWan2?'WAN2':'WAN1'),[
+			E('p',{class:'alert-message warning'},['Alterar internet/porta pode derrubar o painel por alguns segundos. O ARK cria um backup em /tmp antes de aplicar.']),
+			E('div',{class:'ex-wan-edit-grid'},[field('Função',role),field('Porta física',device),field('Tipo de conexão',proto),pppoeBlock,staticBlock,field('DNS 1',dns1),field('DNS 2',dns2),field('DNS 3',dns3,'Opcional')]),
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const dns=[dns1.value.trim(),dns2.value.trim(),dns3.value.trim()].filter(Boolean).join(' '), args=['wan-save','iface='+(isWan2?'wan2':'wan'),'mode='+role.value,'device='+device.value,'proto='+proto.value,'username='+username.value,'password='+password.value,'ipaddr='+ipaddr.value,'netmask='+netmask.value,'gateway='+gateway.value,'dns='+dns];return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar WAN');ui.hideModal();ui.addNotification(null,E('p',{},['Configuração de internet salva. A rede pode levar alguns segundos para estabilizar.']));window.setTimeout(L.bind(function(){return this.fetchData().then(L.bind(this.update,this));},this),2500);},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar alteração'])])
+		]);
 	},
 	changeWifiPassword: function(kind, ssid) {
 		const first=E('input',{type:'password',class:'cbi-input-text',placeholder:'Nova senha',maxlength:63,autocomplete:'new-password',style:'width:100%'});
@@ -594,7 +618,7 @@ return view.extend({
 				ui.showModal('Instalar módulos do Ark - Setup',[E('p',{class:'alert-message warning'},['A lista de pacotes será atualizada e os módulos selecionados serão instalados um por um. Nenhuma configuração de rede será aplicada automaticamente.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['ez-setup-install-modules']).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao iniciar instalação');ui.hideModal();ui.addNotification(null,E('p',{},['Instalação dos módulos iniciada.']));pollSetupModules(0);},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar instalação'])])]);
 			},this));},this);
 			const reset=L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['ez-setup-reset']).then(function(){ui.hideModal();ui.addNotification(null,E('p',{},['Rascunho do Ark - Setup apagado.']));}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this);
-			const moduleList=E('div',{class:'ex-ez-module-grid'},Object.keys(moduleBoxes).map(L.bind(function(k){const f=this.feature(k), state=f.installed?'Já instalado':'Opcional';return E('label',{class:f.installed?'is-installed':''},[moduleBoxes[k],E('span',{},[moduleNames[k]||k,E('small',{},[state])])]);},this)));
+			const moduleList=E('div',{class:'ex-ez-module-grid'},Object.keys(moduleBoxes).map(L.bind(function(k){const f=this.feature(k);if(f.installed)return E('div',{class:'ex-ez-module-installed'},[E('b',{},['✓']),E('span',{},[moduleNames[k]||k,E('small',{},['Já instalado'])])]);return E('label',{},[moduleBoxes[k],E('span',{},[moduleNames[k]||k,E('small',{},['Opcional'])])]);},this)));
 			ui.showModal('Ark - Setup',[E('div',{class:'ex-ez-setup'},[
 				progress,
 				E('section',{class:'ex-ez-section'},[E('h3',{},['1. Idioma, nome e país']),E('div',{class:'ex-ez-grid ex-ez-grid-3'},[this.ezField('Idioma',language),this.ezField('Nome do painel',routerName),this.ezField('País regulatório',country,'Escolha onde o equipamento está sendo usado.')])]),
@@ -641,8 +665,8 @@ return view.extend({
 			E('div',{class:'ex-grid ex-grid-2 ex-history-grid'},[historyCard('down','Download ao longo do dia','#3b82f6'),historyCard('up','Upload ao longo do dia','#a855f7')]),
 			E('p',{id:'ex-history-samples',class:'ex-history-caption'},['A primeira amostra aparecerá em até 1 minuto']),
 			E('div',{class:'ex-grid ex-grid-2'},[
-				E('section',{class:'ex-card ex-wan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},['WAN1']),E('span',{id:'ex-wan1-status',class:'ex-pill standby'},['—'])]),infoRow('Endereço IPv4','ex-wan1-ip'),infoRow('Link físico','ex-wan1-link'),infoRow('Latência','ex-wan1-latency'),infoRow('Tempo online','ex-wan1-uptime')]),
-				E('section',{class:'ex-card ex-wan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},['WAN2']),E('span',{id:'ex-wan2-status',class:'ex-pill standby'},['—'])]),infoRow('Endereço IPv4','ex-wan2-ip'),infoRow('Link físico','ex-wan2-link'),infoRow('Latência','ex-wan2-latency'),infoRow('Tempo online','ex-wan2-uptime')])
+				E('section',{class:'ex-card ex-wan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},['WAN1']),E('span',{id:'ex-wan1-status',class:'ex-pill standby'},['—'])]),infoRow('Endereço IPv4','ex-wan1-ip'),infoRow('Link físico','ex-wan1-link'),infoRow('Latência','ex-wan1-latency'),infoRow('Tempo online','ex-wan1-uptime'),E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(this.editWan,this,'wan')},['Editar internet'])]),
+				E('section',{class:'ex-card ex-wan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},['WAN2']),E('span',{id:'ex-wan2-status',class:'ex-pill standby'},['—'])]),infoRow('Endereço IPv4','ex-wan2-ip'),infoRow('Link físico','ex-wan2-link'),infoRow('Latência','ex-wan2-latency'),infoRow('Tempo online','ex-wan2-uptime'),E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(this.editWan,this,'wan2')},['Editar porta / internet'])])
 			]),
 			E('div',{class:'ex-lan-block'},[E('div',{class:'ex-lan-title'},[E('div',{},[E('span',{class:'ex-kicker'},['PORTAS CABEADAS']),E('h3',{},['LAN disponíveis'])]),E('small',{class:'ex-muted'},['A LAN1 está configurada como WAN2'])]),E('div',{class:'ex-grid ex-grid-2'},[
 				E('section',{class:'ex-card ex-lan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},['LAN2']),E('span',{id:'ex-lan2-status',class:'ex-pill standby'},['—'])]),infoRow('Velocidade','ex-lan2-speed'),infoRow('Modo','ex-lan2-duplex'),infoRow('Recebido','ex-lan2-rx'),infoRow('Enviado','ex-lan2-tx')]),
