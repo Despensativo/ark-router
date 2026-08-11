@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-REPO="${ARC_ROUTER_REPO:-Despensativo/ark-router}"
+REPO="${ARK_ROUTER_REPO:-${ARC_ROUTER_REPO:-Despensativo/ark-router}}"
 BASE_URL="https://github.com/$REPO/releases/latest/download"
 TMP_DIR="${TMPDIR:-/tmp}"
 DRY_RUN="${DRY_RUN:-0}"
@@ -19,7 +19,7 @@ else
 	exit 1
 fi
 
-echo "Downloading ARC Router package from $PKG_URL"
+echo "Downloading ARK Router package from $PKG_URL"
 if [ "$DRY_RUN" = 1 ]; then
 	echo "DRY_RUN=1: would download $PKG_URL to $PKG_FILE"
 else
@@ -27,7 +27,7 @@ else
 	wget -O "$PKG_FILE" "$PKG_URL"
 fi
 
-echo "Installing ARC Router"
+echo "Installing ARK Router"
 if [ "$DRY_RUN" = 1 ]; then
 	echo "DRY_RUN=1: would run: $INSTALL_CMD $PKG_FILE"
 else
@@ -42,5 +42,5 @@ fi
 if [ "$DRY_RUN" = 1 ]; then
 	echo "Dry run complete. No changes were made."
 else
-	echo "ARC Router installed. Open LuCI and look for ARC Router in the menu."
+	echo "ARK Router installed. Open LuCI and look for ARK Router in the menu."
 fi

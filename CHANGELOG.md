@@ -1,19 +1,25 @@
 # Changelog
 
+## 0.8.6
+
+- Corrected the public brand back to `ARK Router`.
+- Updated uninstall backup names from `arc-router-*` to `ark-router-*`.
+- Kept legacy `ARC_ROUTER_*` script variables as compatibility fallbacks.
+
 ## 0.8.5
 
-- Added automatic uninstall-time backup for ARC Router preferences and friendly device names.
+- Added automatic uninstall-time backup for ARK Router preferences and friendly device names.
 - Documented how to download and restore the uninstall backup before rebooting the router.
 
 ## 0.8.4
 
 - Added a conservative uninstall script with `DRY_RUN=1` preview and `PURGE=1` preference removal mode.
 - Documented install, uninstall and optional-package retention behavior.
-- Clarified that optional packages installed through or alongside ARC Router are not removed by the uninstaller.
+- Clarified that optional packages installed through or alongside ARK Router are not removed by the uninstaller.
 
 ## 0.8.3
 
-- Renamed the public-facing brand to `ARC Router` while keeping the existing package slug for compatibility.
+- Renamed the public-facing brand to `ARK Router` while keeping the existing package slug for compatibility.
 - Added OpenWrt/LuCI/search-oriented keywords to the README for better discovery.
 - Added a simple GitHub Releases installer script for future `.apk` and `.ipk` release assets.
 

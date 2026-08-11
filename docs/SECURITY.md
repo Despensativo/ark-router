@@ -2,7 +2,7 @@
 
 All state-changing dashboard actions call `/usr/sbin/equipe-dashboard-control`. The helper validates action names and arguments before invoking UCI, service scripts or a package manager.
 
-Installing ARC Router only adds the package files and LuCI menu entry. It does not automatically change WAN, LAN, Wi-Fi, firewall, DHCP, SQM or Multi-WAN configuration.
+Installing ARK Router only adds the package files and LuCI menu entry. It does not automatically change WAN, LAN, Wi-Fi, firewall, DHCP, SQM or Multi-WAN configuration.
 
 Important properties:
 
@@ -17,7 +17,7 @@ Important properties:
 - Applying a measured SQM value is separate from testing and requires confirmation.
 - Package upgrades preserve the two UCI configuration files declared as `conffiles`.
 - The standalone uninstaller creates a small preference backup under `/tmp` before removing files.
-- The standalone uninstaller removes only ARC Router files by default and preserves optional packages and saved preferences unless `PURGE=1` is explicitly set.
+- The standalone uninstaller removes only ARK Router files by default and preserves optional packages and saved preferences unless `PURGE=1` is explicitly set.
 - HTTPS redirection accepts only `0` or `1`, verifies the HTTPS listener and certificate files before enabling, and requires UI confirmation.
 - When a local CA is prepared by the administrator, the dashboard exposes only its public certificate for download. The uHTTPd private key is never returned by the dashboard or included in the source package.
 - No credentials are stored in the source tree.

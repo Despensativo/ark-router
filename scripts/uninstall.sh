@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-PKG_NAME="${ARC_ROUTER_PACKAGE:-luci-app-ark-router}"
+PKG_NAME="${ARK_ROUTER_PACKAGE:-${ARC_ROUTER_PACKAGE:-luci-app-ark-router}}"
 PURGE="${PURGE:-0}"
 DRY_RUN="${DRY_RUN:-0}"
 BACKUP_DIR="${BACKUP_DIR:-/tmp}"
@@ -17,10 +17,10 @@ run() {
 
 create_backup() {
 	stamp="$(date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)"
-	workdir="/tmp/arc-router-uninstall-backup-$stamp"
-	BACKUP_FILE="$BACKUP_DIR/arc-router-config-backup-$stamp.tar.gz"
+	workdir="/tmp/ark-router-uninstall-backup-$stamp"
+	BACKUP_FILE="$BACKUP_DIR/ark-router-config-backup-$stamp.tar.gz"
 	if [ "$DRY_RUN" = 1 ]; then
-		echo "DRY_RUN=1: would create $BACKUP_FILE with ARC Router preferences and metadata"
+		echo "DRY_RUN=1: would create $BACKUP_FILE with ARK Router preferences and metadata"
 		return 0
 	fi
 	rm -rf "$workdir"
@@ -28,7 +28,7 @@ create_backup() {
 	[ -f /etc/config/equipe_dashboard ] && cp /etc/config/equipe_dashboard "$workdir/etc/config/equipe_dashboard"
 	[ -f /etc/config/equipe_devices ] && cp /etc/config/equipe_devices "$workdir/etc/config/equipe_devices"
 	{
-		echo "ARC Router uninstall backup"
+		echo "ARK Router uninstall backup"
 		echo "Created: $(date 2>/dev/null || true)"
 		echo "Package: $PKG_NAME"
 		echo "Purge requested: $PURGE"
@@ -48,17 +48,17 @@ if command -v apk >/dev/null 2>&1; then
 		echo "Removing $PKG_NAME with apk"
 		run apk del "$PKG_NAME"
 	else
-		echo "$PKG_NAME is not registered in apk. Removing ARC Router files directly."
+		echo "$PKG_NAME is not registered in apk. Removing ARK Router files directly."
 	fi
 elif command -v opkg >/dev/null 2>&1; then
 	if opkg status "$PKG_NAME" 2>/dev/null | grep -q '^Status:.* installed$'; then
 		echo "Removing $PKG_NAME with opkg"
 		run opkg remove "$PKG_NAME"
 	else
-		echo "$PKG_NAME is not registered in opkg. Removing ARC Router files directly."
+		echo "$PKG_NAME is not registered in opkg. Removing ARK Router files directly."
 	fi
 else
-	echo "No supported OpenWrt package manager found. Removing ARC Router files directly."
+	echo "No supported OpenWrt package manager found. Removing ARK Router files directly."
 fi
 
 run rm -f /usr/sbin/equipe-dashboard-control
@@ -75,7 +75,7 @@ run rm -f /tmp/luci-indexcache
 run rm -rf /tmp/luci-modulecache 2>/dev/null || true
 
 if [ "$PURGE" = 1 ]; then
-	echo "Purging ARC Router saved preferences"
+	echo "Purging ARK Router saved preferences"
 	[ -n "$BACKUP_FILE" ] && echo "Saved preferences were backed up before purge: $BACKUP_FILE"
 	run rm -f /etc/config/equipe_dashboard
 	run rm -f /etc/config/equipe_devices
@@ -89,7 +89,7 @@ if [ "$DRY_RUN" != 1 ] && [ -x /etc/init.d/rpcd ]; then
 	/etc/init.d/rpcd restart
 fi
 
-echo "ARC Router removal complete."
+echo "ARK Router removal complete."
 if [ -n "$BACKUP_FILE" ]; then
 	echo "Backup available until the next reboot: $BACKUP_FILE"
 	echo "Download it with: scp root@ROUTER_IP:$BACKUP_FILE ."
