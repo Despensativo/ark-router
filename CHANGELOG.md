@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.1
+
+- Fixed connected-device network labels so Wi-Fi clients are no longer shown as wired clients.
+- Main Wi-Fi clients now show `Equipe-X / Wi-Fi`, guest Wi-Fi clients show `Visitantes / Wi-Fi`, DHCP-only clients show `Cabo / LAN`, and unknown main clients show `Rede principal`.
+
 ## 0.8.0
 
 - Prepared the project for public GitHub publication.
