@@ -1,6 +1,6 @@
 # Installation Guide
 
-ARK Router is distributed as an OpenWrt LuCI package. It should be built with the OpenWrt SDK or buildroot that matches the target firmware.
+ARC Router is distributed as an OpenWrt LuCI package. It should be built with the OpenWrt SDK or buildroot that matches the target firmware.
 
 ## Requirements
 
@@ -11,6 +11,16 @@ ARK Router is distributed as an OpenWrt LuCI package. It should be built with th
 - Enough free RAM in `/tmp` if temporary speed-test calibration is used.
 
 The pilot installation was tested on Cudy WR3000 v1 with OpenWrt 25.12.5 and the Argon theme.
+
+## Quick Install From GitHub Releases
+
+When release packages are available, use:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | sh
+```
+
+The script detects `apk` or `opkg`, downloads the latest package from GitHub Releases and restarts `rpcd`. This only works after a matching release asset has been published.
 
 ## Build With OpenWrt SDK
 
@@ -39,7 +49,7 @@ opkg install ./luci-app-ark-router_*.ipk
 
 ## After Installation
 
-Open LuCI and choose ARK Router from the menu. Installing the package only adds its files and menu entry. It does not change WAN, LAN, Wi-Fi, firewall, DHCP, SQM or Multi-WAN settings automatically.
+Open LuCI and choose ARC Router from the menu. Installing the package only adds its files and menu entry. It does not change WAN, LAN, Wi-Fi, firewall, DHCP, SQM or Multi-WAN settings automatically.
 
 ## Optional Modules
 

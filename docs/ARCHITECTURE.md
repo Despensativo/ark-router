@@ -1,6 +1,6 @@
 # Architecture
 
-ARK Router is composed of a LuCI JavaScript view, a scoped CSS file, an RPC ACL, a menu entry and small BusyBox shell helpers.
+ARC Router is composed of a LuCI JavaScript view, a scoped CSS file, an RPC ACL, a menu entry and small BusyBox shell helpers.
 
 ## Main components
 
@@ -22,7 +22,7 @@ The control helper reports each capability as installed, active, hidden and inst
 
 ## Link calibration
 
-`speedtest-go` is too large for the flash of some target routers. ARK Router therefore supports refreshing the volatile APK indexes, fetching its official OpenWrt package into `/tmp`, extracting only the main executable and discarding the archive and auxiliary binaries. The runtime is recreated after reboot only when requested.
+`speedtest-go` is too large for the flash of some target routers. ARC Router therefore supports refreshing the volatile APK indexes, fetching its official OpenWrt package into `/tmp`, extracting only the main executable and discarding the archive and auxiliary binaries. The runtime is recreated after reboot only when requested.
 
 Each calibration binds to the selected WAN source address, temporarily disables the matching SQM section without committing that temporary state, performs three measurements, restores SQM and then writes a JSON result under `/tmp`. Applying a suggestion is a separate validated action.
 

@@ -1,6 +1,6 @@
 {
 	"admin/equipe-dashboard": {
-		"title": "ARK Router",
+		"title": "ARC Router",
 		"order": 0,
 		"action": {
 			"type": "view",

@@ -2,7 +2,7 @@
 
 All state-changing dashboard actions call `/usr/sbin/equipe-dashboard-control`. The helper validates action names and arguments before invoking UCI, service scripts or a package manager.
 
-Installing ARK Router only adds the package files and LuCI menu entry. It does not automatically change WAN, LAN, Wi-Fi, firewall, DHCP, SQM or Multi-WAN configuration.
+Installing ARC Router only adds the package files and LuCI menu entry. It does not automatically change WAN, LAN, Wi-Fi, firewall, DHCP, SQM or Multi-WAN configuration.
 
 Important properties:
 

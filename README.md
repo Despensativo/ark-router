@@ -1,13 +1,15 @@
-# ARK Router
+# ARC Router
 
 ![OpenWrt](https://img.shields.io/badge/OpenWrt-LuCI-00B5E2?logo=openwrt&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![Language](https://img.shields.io/badge/UI-PT--BR%20%2F%20EN-blue)
 ![Status](https://img.shields.io/badge/status-pilot%20release-orange)
 
-ARK Router is a responsive, bilingual and modular operational dashboard for OpenWrt/LuCI. It was created to make event and field routers easier to operate when the network has multiple WAN links, Starlink or mobile links, guest Wi-Fi limits, SQM/CAKE and non-technical people checking the router during the day.
+ARC Router is a responsive, bilingual and modular operational dashboard for OpenWrt/LuCI. It was created to make event and field routers easier to operate when the network has multiple WAN links, Starlink or mobile links, guest Wi-Fi limits, SQM/CAKE and non-technical people checking the router during the day.
 
 The project does not replace LuCI. It adds a cleaner operations home screen on top of LuCI, with safer shortcuts for common actions.
+
+Keywords: OpenWrt dashboard, LuCI dashboard, router panel, router management, Multi-WAN, mwan3, SQM, CAKE QoS, Wi-Fi channel analyzer, Starlink router, guest Wi-Fi, bandwidth management, OpenWrt monitoring, OpenWrt UI, OpenWrt plugin.
 
 ## Why Use It
 
@@ -19,7 +21,7 @@ The project does not replace LuCI. It adds a cleaner operations home screen on t
 - **SQM calibration:** Run per-WAN speed tests and generate SQM upload suggestions at 85%, 90% and 95%.
 - **Small-flash friendly:** Avoid filling router flash by loading `speedtest-go` into temporary RAM.
 - **Bilingual UI:** Use Portuguese (Brazil) or English.
-- **Theme aware:** Follow the active LuCI theme automatically, use ARK Router colors or choose custom colors.
+- **Theme aware:** Follow the active LuCI theme automatically, use ARC Router colors or choose custom colors.
 
 ## Screenshots
 
@@ -46,7 +48,7 @@ The current pilot has been tested on:
 | Main SSID used in the pilot | `Equipe-X` |
 | Guest SSID used in the pilot | `Equipe-X-Visitantes` |
 
-The SSIDs above are not requirements. They document the pilot environment only. ARK Router reads and manages whichever Wi-Fi names are configured on the router. Pilot passwords, private IPs, backups and router-specific secrets are intentionally not included in this repository.
+The SSIDs above are not requirements. They document the pilot environment only. ARC Router reads and manages whichever Wi-Fi names are configured on the router. Pilot passwords, private IPs, backups and router-specific secrets are intentionally not included in this repository.
 
 ## Compatibility
 
@@ -71,7 +73,7 @@ The package manager adapter supports both `apk` and `opkg` for optional package 
 
 ## Features
 
-| Area | What ARK Router Adds |
+| Area | What ARC Router Adds |
 | --- | --- |
 | Dashboard | Responsive overview for desktop, tablet and mobile |
 | Traffic | Real-time download/upload counters and 24-hour history |
@@ -102,11 +104,11 @@ Optional packages are not hard dependencies. Cards are displayed only when the c
 
 ## Wi-Fi Names And QoS
 
-ARK Router does not require the pilot SSID names. It can be used with the administrator's own Wi-Fi names. The main/guest split is useful when the operator wants a more open trusted network and a limited guest network, but QoS/SQM and device priority remain optional. If SQM or the custom QoS rules are not present, those controls are hidden instead of forcing a configuration.
+ARC Router does not require the pilot SSID names. It can be used with the administrator's own Wi-Fi names. The main/guest split is useful when the operator wants a more open trusted network and a limited guest network, but QoS/SQM and device priority remain optional. If SQM or the custom QoS rules are not present, those controls are hidden instead of forcing a configuration.
 
 ## Safety Model
 
-Installing ARK Router does not automatically change WAN, LAN, Wi-Fi, firewall, DHCP, SQM or Multi-WAN settings. Monitoring and dashboard views are read-only. Network changes happen only after an administrator uses a confirmed action, such as changing Wi-Fi passwords, applying channel suggestions, changing Multi-WAN mode, applying SQM speed suggestions or restarting the router.
+Installing ARC Router does not automatically change WAN, LAN, Wi-Fi, firewall, DHCP, SQM or Multi-WAN settings. Monitoring and dashboard views are read-only. Network changes happen only after an administrator uses a confirmed action, such as changing Wi-Fi passwords, applying channel suggestions, changing Multi-WAN mode, applying SQM speed suggestions or restarting the router.
 
 See [`docs/SECURITY.md`](docs/SECURITY.md) for the command validation model.
 
@@ -122,7 +124,15 @@ make package/luci-app-ark-router/compile V=s
 
 ## Installation
 
-Install the generated package using the package manager appropriate for the OpenWrt release. After installation, clear the LuCI cache or restart `rpcd`, then open ARK Router in the LuCI menu.
+Install the generated package using the package manager appropriate for the OpenWrt release. After installation, clear the LuCI cache or restart `rpcd`, then open ARC Router in the LuCI menu.
+
+When release packages are available, the simplest path is the installer script:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | sh
+```
+
+The installer detects `apk` or `opkg`, downloads the latest compatible release package and restarts `rpcd`. Until a release package exists for your firmware family, build the package with the OpenWrt SDK:
 
 ```sh
 apk add ./luci-app-ark-router-*.apk
@@ -133,7 +143,7 @@ On `opkg` based releases, install the generated `.ipk` instead.
 
 ## Project Status
 
-Version 0.8.2 is a tested pilot release. It is ready to publish as an early public project, with the current compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
+Version 0.8.3 is a tested pilot release. It is ready to publish as an early public project, with the current compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
 
 ## License
 

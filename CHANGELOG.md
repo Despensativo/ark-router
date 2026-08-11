@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.3
+
+- Renamed the public-facing brand to `ARC Router` while keeping the existing package slug for compatibility.
+- Added OpenWrt/LuCI/search-oriented keywords to the README for better discovery.
+- Added a simple GitHub Releases installer script for future `.apk` and `.ipk` release assets.
+
 ## 0.8.2
 
 - Improved the public README with badges, clearer feature grouping and a dedicated note explaining that pilot Wi-Fi names are examples, not requirements.

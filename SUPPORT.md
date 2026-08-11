@@ -6,7 +6,7 @@ Include:
 
 - Router model.
 - OpenWrt version.
-- ARK Router version.
+- ARC Router version.
 - Package manager: `apk` or `opkg`.
 - LuCI theme.
 - Optional modules installed.

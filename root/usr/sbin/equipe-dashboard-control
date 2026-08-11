@@ -119,7 +119,7 @@ case "$action" in
 		appearance="$(uci -q get equipe_dashboard.main.appearance || printf auto)"
 		primary="$(uci -q get equipe_dashboard.main.primary || printf '#3b82f6')"
 		secondary="$(uci -q get equipe_dashboard.main.secondary || printf '#8b5cf6')"
-		title="$(uci -q get equipe_dashboard.main.title || printf 'ARK Router')"
+		title="$(uci -q get equipe_dashboard.main.title || printf 'ARC Router')"
 		https_available=false
 		cert="$(uci -q get uhttpd.main.cert)"; key="$(uci -q get uhttpd.main.key)"
 		[ -n "$(uci -q get uhttpd.main.listen_https)" ] && [ -r "$cert" ] && [ -r "$key" ] && https_available=true

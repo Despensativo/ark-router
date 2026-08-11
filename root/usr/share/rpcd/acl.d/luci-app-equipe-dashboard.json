@@ -1,6 +1,6 @@
 {
 	"luci-app-equipe-dashboard": {
-		"description": "Painel operacional ARK Router",
+		"description": "Painel operacional ARC Router",
 		"read": {
 			"file": {
 				"/bin/ping": [ "exec" ],
