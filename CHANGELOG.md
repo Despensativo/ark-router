@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.5
+
+- Fixed release artifact collection so the generic installer asset points to the ARK Router package itself.
+- Publish only ARK Router package artifacts and build logs instead of every dependency package.
+
 ## 0.9.4
 
 - Fixed the GitHub Actions OpenWrt package build workflow.

@@ -45,14 +45,20 @@ jobs:
         shell: bash
         run: |
           mkdir -p release-artifacts
-          find bin/packages -type f \( -name '*.apk' -o -name '*.ipk' \) -print -exec cp {} release-artifacts/ \;
-          first_apk="$(find bin/packages -type f -name '*.apk' | head -n1 || true)"
-          first_ipk="$(find bin/packages -type f -name '*.ipk' | head -n1 || true)"
-          if [ -n "$first_apk" ]; then
-            cp "$first_apk" release-artifacts/luci-app-ark-router.apk
+          ark_apk="$(find bin/packages -type f -name 'luci-app-ark-router-*.apk' | head -n1 || true)"
+          ark_ipk="$(find bin/packages -type f -name 'luci-app-ark-router_*.ipk' | head -n1 || true)"
+          if [ -n "$ark_apk" ]; then
+            cp "$ark_apk" release-artifacts/
+            cp "$ark_apk" release-artifacts/luci-app-ark-router.apk
           fi
-          if [ -n "$first_ipk" ]; then
-            cp "$first_ipk" release-artifacts/luci-app-ark-router.ipk
+          if [ -n "$ark_ipk" ]; then
+            cp "$ark_ipk" release-artifacts/
+            cp "$ark_ipk" release-artifacts/luci-app-ark-router.ipk
+          fi
+          if [ -z "$ark_apk" ] && [ -z "$ark_ipk" ]; then
+            echo "ARK Router package artifact was not found." >&2
+            find bin/packages -type f \( -name '*.apk' -o -name '*.ipk' \) -print >&2
+            exit 1
           fi
           if [ -f logs/package/luci-app-ark-router/compile.txt ]; then
             cp logs/package/luci-app-ark-router/compile.txt "release-artifacts/build-log-${{ matrix.artifact_name }}.txt"
