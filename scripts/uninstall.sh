@@ -4,6 +4,8 @@ set -eu
 PKG_NAME="${ARC_ROUTER_PACKAGE:-luci-app-ark-router}"
 PURGE="${PURGE:-0}"
 DRY_RUN="${DRY_RUN:-0}"
+BACKUP_DIR="${BACKUP_DIR:-/tmp}"
+BACKUP_FILE=""
 
 run() {
 	if [ "$DRY_RUN" = 1 ]; then
@@ -12,6 +14,34 @@ run() {
 		"$@"
 	fi
 }
+
+create_backup() {
+	stamp="$(date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)"
+	workdir="/tmp/arc-router-uninstall-backup-$stamp"
+	BACKUP_FILE="$BACKUP_DIR/arc-router-config-backup-$stamp.tar.gz"
+	if [ "$DRY_RUN" = 1 ]; then
+		echo "DRY_RUN=1: would create $BACKUP_FILE with ARC Router preferences and metadata"
+		return 0
+	fi
+	rm -rf "$workdir"
+	mkdir -p "$workdir/etc/config" "$workdir/metadata"
+	[ -f /etc/config/equipe_dashboard ] && cp /etc/config/equipe_dashboard "$workdir/etc/config/equipe_dashboard"
+	[ -f /etc/config/equipe_devices ] && cp /etc/config/equipe_devices "$workdir/etc/config/equipe_devices"
+	{
+		echo "ARC Router uninstall backup"
+		echo "Created: $(date 2>/dev/null || true)"
+		echo "Package: $PKG_NAME"
+		echo "Purge requested: $PURGE"
+		echo "Restore command:"
+		echo "  tar -xzf $BACKUP_FILE -C /"
+		echo "  /etc/init.d/rpcd restart"
+	} > "$workdir/metadata/README.txt"
+	tar -czf "$BACKUP_FILE" -C "$workdir" .
+	rm -rf "$workdir"
+	echo "Backup created: $BACKUP_FILE"
+}
+
+create_backup
 
 if command -v apk >/dev/null 2>&1; then
 	if apk info -e "$PKG_NAME" >/dev/null 2>&1; then
@@ -46,6 +76,7 @@ run rm -rf /tmp/luci-modulecache 2>/dev/null || true
 
 if [ "$PURGE" = 1 ]; then
 	echo "Purging ARC Router saved preferences"
+	[ -n "$BACKUP_FILE" ] && echo "Saved preferences were backed up before purge: $BACKUP_FILE"
 	run rm -f /etc/config/equipe_dashboard
 	run rm -f /etc/config/equipe_devices
 else
@@ -59,4 +90,8 @@ if [ "$DRY_RUN" != 1 ] && [ -x /etc/init.d/rpcd ]; then
 fi
 
 echo "ARC Router removal complete."
+if [ -n "$BACKUP_FILE" ]; then
+	echo "Backup available until the next reboot: $BACKUP_FILE"
+	echo "Download it with: scp root@ROUTER_IP:$BACKUP_FILE ."
+fi
 echo "Optional packages such as SQM, mwan3, nlbwmon, UPnP, Argon, uHTTPd and speedtest-go were not removed."

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.5
+
+- Added automatic uninstall-time backup for ARC Router preferences and friendly device names.
+- Documented how to download and restore the uninstall backup before rebooting the router.
+
 ## 0.8.4
 
 - Added a conservative uninstall script with `DRY_RUN=1` preview and `PURGE=1` preference removal mode.

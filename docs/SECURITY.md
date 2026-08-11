@@ -16,6 +16,7 @@ Important properties:
 - SQM is restored before a speed-test result is marked complete or failed.
 - Applying a measured SQM value is separate from testing and requires confirmation.
 - Package upgrades preserve the two UCI configuration files declared as `conffiles`.
+- The standalone uninstaller creates a small preference backup under `/tmp` before removing files.
 - The standalone uninstaller removes only ARC Router files by default and preserves optional packages and saved preferences unless `PURGE=1` is explicitly set.
 - HTTPS redirection accepts only `0` or `1`, verifies the HTTPS listener and certificate files before enabling, and requires UI confirmation.
 - When a local CA is prepared by the administrator, the dashboard exposes only its public certificate for download. The uHTTPd private key is never returned by the dashboard or included in the source package.

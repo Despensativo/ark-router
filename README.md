@@ -151,15 +151,28 @@ wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/
 
 By default it removes only ARC Router files and temporary runtime files. It does not remove optional packages that may have been installed or used with the dashboard, such as SQM, Multi-WAN, nlbwmon, UPnP, Argon, uHTTPd or `speedtest-go`.
 
+Before removing anything, the script creates a small backup in `/tmp` with ARC Router preferences and friendly device names. Download it before rebooting the router if you want to keep a copy:
+
+```sh
+scp root@ROUTER_IP:/tmp/arc-router-config-backup-*.tar.gz .
+```
+
 Saved dashboard preferences and friendly device names are kept by default. To remove those too:
 
 ```sh
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/uninstall.sh | PURGE=1 sh
 ```
 
+To restore a saved ARC Router preference backup:
+
+```sh
+tar -xzf /tmp/arc-router-config-backup-YYYYMMDD-HHMMSS.tar.gz -C /
+/etc/init.d/rpcd restart
+```
+
 ## Project Status
 
-Version 0.8.4 is a tested pilot release. It is ready to publish as an early public project, with the current compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
+Version 0.8.5 is a tested pilot release. It is ready to publish as an early public project, with the current compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
 
 ## License
 

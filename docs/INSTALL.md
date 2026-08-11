@@ -73,6 +73,24 @@ This removes ARC Router files, menu entries, helper scripts and temporary runtim
 - `luci-app-uhttpd`
 - `speedtest-go`
 
+Before removing files, the script creates a small backup in `/tmp`:
+
+```text
+/tmp/arc-router-config-backup-YYYYMMDD-HHMMSS.tar.gz
+```
+
+It includes:
+
+- `/etc/config/equipe_dashboard`
+- `/etc/config/equipe_devices`
+- backup metadata and restore notes
+
+Download it before rebooting if you want a local copy:
+
+```sh
+scp root@ROUTER_IP:/tmp/arc-router-config-backup-*.tar.gz .
+```
+
 Saved dashboard preferences and friendly device names are preserved:
 
 - `/etc/config/equipe_dashboard`
@@ -82,6 +100,13 @@ To remove those saved ARC Router preferences too:
 
 ```sh
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/uninstall.sh | PURGE=1 sh
+```
+
+To restore a backup:
+
+```sh
+tar -xzf /tmp/arc-router-config-backup-YYYYMMDD-HHMMSS.tar.gz -C /
+/etc/init.d/rpcd restart
 ```
 
 To preview what would happen without changing the router:
