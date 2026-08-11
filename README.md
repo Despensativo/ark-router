@@ -115,12 +115,13 @@ Ark - Setup asks for the common first-run choices:
 - scenario/profile;
 - router and panel name;
 - regulatory country;
+- language;
 - unified or split 2.4/5 GHz Wi-Fi names;
 - main Wi-Fi SSID and password;
 - optional guest Wi-Fi with optional upload cap;
-- WAN2 on LAN1 as DHCP, failover or balancing intent;
+- one WAN, WAN2 on LAN1 with failover, WAN2 on LAN1 with balancing or custom internet mode;
 - SQM strategy and optional manual speed limits;
-- DNS mode;
+- DNS mode with separate DNS 1, DNS 2 and DNS 3 fields;
 - IPv6 and WPS preferences;
 - optional modules that the administrator may install separately.
 - confirmed installation of selected optional modules, with progress tracking.

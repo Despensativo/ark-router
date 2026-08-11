@@ -528,9 +528,17 @@ return view.extend({
 			const input=function(type,value,attrs){attrs=attrs||{};attrs.type=type;attrs.value=value||'';attrs.class=attrs.class||'cbi-input-text';return E('input',attrs);};
 			const select=function(value,items){const node=E('select',{class:'cbi-input-select'},items.map(function(item){return E('option',{value:item[0]},[item[1]]);}));node.value=value;return node;};
 			const checkbox=function(value){const node=E('input',{type:'checkbox'});node.checked=!!value;return node;};
-			const profile=select(saved.profile||'event',[['event','Evento / equipe enviando mídia'],['starlink','Starlink ou link móvel'],['dualwan','Duas internet / failover'],['home','Casa ou escritório simples'],['custom','Personalizado']]);
+			const language=select(this.capabilities.language||dashboardLanguage||'pt-br',[['pt-br','Português (Brasil)'],['en','English']]);
+			const savedProfile=({event:'internet_failover',starlink:'internet_single',dualwan:'internet_failover',home:'internet_single'})[saved.profile]||saved.profile||'internet_failover';
+			const profile=select(savedProfile,[['internet_single','Uma internet — usar apenas WAN1'],['internet_failover','Duas internet — WAN1 principal e WAN2 reserva'],['internet_balance','Duas internet — balancear conexões'],['custom','Personalizado — eu ajusto manualmente']]);
+			const profileHelp=E('p',{class:'ex-ez-profile-help ex-muted'},['WAN2 usa a porta LAN1 como segunda internet por DHCP. Failover troca para WAN2 quando WAN1 cair; balanceamento distribui conexões, mas não soma a velocidade de um único envio.']);
 			const routerName=input('text',saved.router_name||'ARK Router',{maxlength:40});
-			const country=input('text',saved.country||'BR',{maxlength:2});
+			const country=select(saved.country||'BR',[]);
+			const preferredCountries=[['BR','Brasil'],['US','Estados Unidos'],['PT','Portugal'],['AR','Argentina'],['CL','Chile'],['UY','Uruguai'],['PY','Paraguai'],['MX','México'],['CA','Canadá'],['GB','Reino Unido'],['DE','Alemanha'],['ES','Espanha'],['FR','França'],['IT','Itália'],['JP','Japão'],['AU','Austrália'],['00','Mundo / driver padrão']];
+			const seenCountries={};
+			preferredCountries.forEach(function(item){seenCountries[item[0]]=1;country.appendChild(E('option',{value:item[0]},[item[1]+' ('+item[0]+')']));});
+			(this.countries||[]).slice().sort(function(a,b){return String(a.country||a.code).localeCompare(String(b.country||b.code));}).forEach(function(item){const code=String(item.code||item.iso3166||'').toUpperCase();if(!code||seenCountries[code])return;seenCountries[code]=1;country.appendChild(E('option',{value:code},[(item.country||code)+' ('+code+')']));});
+			country.value=saved.country||'BR';
 			const wifiMode=select(saved.wifi_mode||'unified',[['unified','Unificar 2,4 GHz e 5 GHz'],['split','Separar com sufixos -2G e -5G']]);
 			const mainSsid=input('text',saved.main_ssid||'Equipe-X',{maxlength:32});
 			const mainKey=input('password','',{placeholder:'mínimo 8 caracteres'});
@@ -541,6 +549,12 @@ return view.extend({
 			const guestUpload=input('number',saved.guest_upload_kbps||'1500',{min:128,max:100000});
 			const wan2Enabled=checkbox(saved.wan2_enabled!==false);
 			const wanMode=select(saved.wan_mode||'failover',[['single','Somente WAN1'],['failover','Failover WAN1 → WAN2'],['balanced','Balanceamento'],['wan1','Forçar WAN1'],['wan2','Forçar WAN2']]);
+			const syncInternetProfile=function(){
+				if(profile.value==='internet_single'){wan2Enabled.checked=false;wanMode.value='single';}
+				else if(profile.value==='internet_failover'){wan2Enabled.checked=true;wanMode.value='failover';}
+				else if(profile.value==='internet_balance'){wan2Enabled.checked=true;wanMode.value='balanced';}
+			};
+			profile.addEventListener('change',syncInternetProfile);
 			const sqmEnabled=checkbox(!!saved.sqm_enabled);
 			const sqmStrategy=select(saved.sqm_strategy||'manual',[['manual','Definir limites manualmente'],['calibrate_later','Medir depois pelo painel'],['off','Não configurar SQM agora']]);
 			const sqmWanUp=input('number',saved.sqm_wan_upload||'',{placeholder:'ex.: 15000'});
@@ -548,21 +562,24 @@ return view.extend({
 			const sqmWan2Up=input('number',saved.sqm_wan2_upload||'',{placeholder:'opcional'});
 			const sqmWan2Down=input('number',saved.sqm_wan2_download||'',{placeholder:'opcional'});
 			const dnsMode=select(saved.dns_mode||'recommended',[['recommended','DNS recomendado'],['operator','DNS da operadora'],['custom','DNS personalizado']]);
-			const dnsServers=input('text',saved.dns_servers||'1.1.1.1 1.0.0.1 8.8.8.8',{placeholder:'1.1.1.1 8.8.8.8'});
+			const savedDns=String(saved.dns_servers||'1.1.1.1 1.0.0.1 8.8.8.8').split(/\s+/);
+			const dns1=input('text',savedDns[0]||'1.1.1.1',{placeholder:'DNS 1'}), dns2=input('text',savedDns[1]||'1.0.0.1',{placeholder:'DNS 2'}), dns3=input('text',savedDns[2]||'8.8.8.8',{placeholder:'DNS 3 opcional'});
 			const disableIpv6=checkbox(saved.disable_ipv6!==false), disableWps=checkbox(saved.disable_wps!==false), useArgon=checkbox(saved.use_argon!==false);
 			const modules=(saved.install_modules||'argon sqm mwan3 nlbwmon').split(/\s+/), moduleBoxes={};
-			['argon','sqm','mwan3','nlbwmon','upnp','uhttpd','speedtest'].forEach(function(key){moduleBoxes[key]=checkbox(modules.indexOf(key)>=0);});
+			const moduleNames={argon:'Tema Argon',sqm:'SQM / CAKE',mwan3:'Multi‑WAN',nlbwmon:'Consumo por dispositivo',upnp:'UPnP / NAT‑PMP',uhttpd:'HTTPS/uHTTPd',speedtest:'Medidor de internet'};
+			['argon','sqm','mwan3','nlbwmon','upnp','uhttpd','speedtest'].forEach(L.bind(function(key){const installed=this.feature(key).installed;moduleBoxes[key]=checkbox(installed||modules.indexOf(key)>=0);moduleBoxes[key].disabled=installed;},this));
 			const progress=E('div',{class:'ex-ez-progress'},[E('strong',{},['Progresso salvo: etapa ',String(saved.applied_step||0),'/7']),E('small',{class:'ex-muted'},[saved.state==='applied'?'Configuração já aplicada.':(saved.last_step?'Última etapa: '+saved.last_step:'Rascunho pronto para editar.')]),saved.backup?E('code',{},[saved.backup]):'']);
 			const collect=L.bind(function(){
-				const selectedModules=Object.keys(moduleBoxes).filter(function(k){return moduleBoxes[k].checked;}).join(' ');
+				const selectedModules=Object.keys(moduleBoxes).filter(function(k){return moduleBoxes[k].checked&&!moduleBoxes[k].disabled;}).join(' ');
+				const dnsServers=[dns1.value.trim(),dns2.value.trim(),dns3.value.trim()].filter(Boolean).join(' ');
 				const args=['ez-setup-save',
-					'profile='+profile.value,'router_name='+routerName.value,'country='+country.value,'wifi_mode='+wifiMode.value,
+					'language='+language.value,'profile='+profile.value,'router_name='+routerName.value,'country='+country.value,'wifi_mode='+wifiMode.value,
 					'main_ssid='+mainSsid.value,'guest_enabled='+(guestEnabled.checked?'1':'0'),'guest_ssid='+guestSsid.value,
 					'guest_limit_enabled='+(guestLimitEnabled.checked?'1':'0'),'guest_upload_kbps='+guestUpload.value,
 					'wan2_enabled='+(wan2Enabled.checked?'1':'0'),'wan_mode='+wanMode.value,
 					'sqm_enabled='+(sqmEnabled.checked?'1':'0'),'sqm_strategy='+sqmStrategy.value,
 					'sqm_wan_upload='+sqmWanUp.value,'sqm_wan_download='+sqmWanDown.value,'sqm_wan2_upload='+sqmWan2Up.value,'sqm_wan2_download='+sqmWan2Down.value,
-					'dns_mode='+dnsMode.value,'dns_servers='+dnsServers.value,'disable_ipv6='+(disableIpv6.checked?'1':'0'),'disable_wps='+(disableWps.checked?'1':'0'),'use_argon='+(useArgon.checked?'1':'0'),'install_modules='+selectedModules
+					'dns_mode='+dnsMode.value,'dns_servers='+dnsServers,'disable_ipv6='+(disableIpv6.checked?'1':'0'),'disable_wps='+(disableWps.checked?'1':'0'),'use_argon='+(useArgon.checked?'1':'0'),'install_modules='+selectedModules
 				];
 				if(mainKey.value)args.push('main_key='+mainKey.value);
 				if(guestKey.value)args.push('guest_key='+guestKey.value);
@@ -577,16 +594,16 @@ return view.extend({
 				ui.showModal('Instalar módulos do Ark - Setup',[E('p',{class:'alert-message warning'},['A lista de pacotes será atualizada e os módulos selecionados serão instalados um por um. Nenhuma configuração de rede será aplicada automaticamente.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['ez-setup-install-modules']).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao iniciar instalação');ui.hideModal();ui.addNotification(null,E('p',{},['Instalação dos módulos iniciada.']));pollSetupModules(0);},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar instalação'])])]);
 			},this));},this);
 			const reset=L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['ez-setup-reset']).then(function(){ui.hideModal();ui.addNotification(null,E('p',{},['Rascunho do Ark - Setup apagado.']));}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this);
-			const moduleList=E('div',{class:'ex-ez-module-grid'},Object.keys(moduleBoxes).map(function(k){return E('label',{},[moduleBoxes[k],E('span',{},[k])]);}));
+			const moduleList=E('div',{class:'ex-ez-module-grid'},Object.keys(moduleBoxes).map(L.bind(function(k){const f=this.feature(k), state=f.installed?'Já instalado':'Opcional';return E('label',{class:f.installed?'is-installed':''},[moduleBoxes[k],E('span',{},[moduleNames[k]||k,E('small',{},[state])])]);},this)));
 			ui.showModal('Ark - Setup',[E('div',{class:'ex-ez-setup'},[
 				progress,
-				E('section',{},[E('h3',{},['1. Perfil e identidade']),E('div',{class:'ex-ez-grid'},[this.ezField('Cenário',profile),this.ezField('Nome do roteador/painel',routerName),this.ezField('País regulatório',country,'BR para Brasil')])]),
-				E('section',{},[E('h3',{},['2. Wi‑Fi principal']),E('div',{class:'ex-ez-grid'},[this.ezField('Modo das bandas',wifiMode),this.ezField('Nome da rede principal',mainSsid),this.ezField('Senha principal',mainKey,'Deixe vazio para manter senha salva no rascunho')])]),
-				E('section',{},[E('h3',{},['3. Rede visitante']),E('div',{class:'ex-ez-grid'},[this.ezField('Habilitar visitante',guestEnabled),this.ezField('Nome da rede visitante',guestSsid),this.ezField('Senha visitante',guestKey,'Deixe vazio para manter senha salva no rascunho'),this.ezField('Limitar upload visitante',guestLimitEnabled),this.ezField('Upload total visitante em Kbps',guestUpload,'1500 = 1,5 Mbps')])]),
-				E('section',{},[E('h3',{},['4. WAN e Multi‑WAN']),E('div',{class:'ex-ez-grid'},[this.ezField('Usar LAN1 como WAN2 DHCP',wan2Enabled),this.ezField('Modo desejado',wanMode,'Balanceamento não soma um único envio; distribui conexões')])]),
-				E('section',{},[E('h3',{},['5. SQM / CAKE']),E('div',{class:'ex-ez-grid'},[this.ezField('Configurar SQM',sqmEnabled),this.ezField('Estratégia',sqmStrategy),this.ezField('WAN1 upload Kbps',sqmWanUp),this.ezField('WAN1 download Kbps',sqmWanDown),this.ezField('WAN2 upload Kbps',sqmWan2Up),this.ezField('WAN2 download Kbps',sqmWan2Down)])]),
-				E('section',{},[E('h3',{},['6. DNS e segurança']),E('div',{class:'ex-ez-grid'},[this.ezField('DNS',dnsMode),this.ezField('Servidores DNS',dnsServers),this.ezField('Desativar IPv6',disableIpv6),this.ezField('Desativar WPS',disableWps),this.ezField('Usar Argon se instalado',useArgon)])]),
-				E('section',{},[E('h3',{},['7. Recursos sugeridos']),E('p',{class:'ex-muted'},['Selecione o que deseja preparar. A instalação exige confirmação e não aplica configuração de rede automaticamente.']),moduleList,E('button',{class:'ex-mini-button ex-ez-install-modules','click':installModules},['Instalar módulos selecionados'])]),
+				E('section',{class:'ex-ez-section'},[E('h3',{},['1. Idioma, nome e país']),E('div',{class:'ex-ez-grid ex-ez-grid-3'},[this.ezField('Idioma',language),this.ezField('Nome do painel',routerName),this.ezField('País regulatório',country,'Escolha onde o equipamento está sendo usado.')])]),
+				E('section',{class:'ex-ez-section ex-ez-primary'},[E('h3',{},['2. Como a internet entra no roteador?']),E('div',{class:'ex-ez-wide'},[this.ezField('Modo de internet',profile,profileHelp.textContent),this.ezField('Modo Multi‑WAN',wanMode,'Usado quando há duas internet.'),this.ezField('Usar LAN1 como WAN2 DHCP',wan2Enabled,'Ativa a segunda entrada de internet na porta LAN1.')])]),
+				E('section',{class:'ex-ez-section'},[E('h3',{},['3. Wi‑Fi principal']),E('div',{class:'ex-ez-grid'},[this.ezField('Nome da rede principal',mainSsid),this.ezField('Senha principal',mainKey,'Mínimo 8 caracteres.'),this.ezField('2,4 GHz e 5 GHz',wifiMode)])]),
+				E('section',{class:'ex-ez-section'},[E('h3',{},['4. Rede visitante']),E('div',{class:'ex-ez-grid'},[this.ezField('Habilitar visitante',guestEnabled),this.ezField('Nome da rede visitante',guestSsid),this.ezField('Senha visitante',guestKey,'Mínimo 8 caracteres.'),this.ezField('Limitar upload visitante',guestLimitEnabled),this.ezField('Upload total visitante em Kbps',guestUpload,'1500 = 1,5 Mbps. Use 0 para ilimitado.')])]),
+				E('section',{class:'ex-ez-section'},[E('h3',{},['5. SQM / CAKE']),E('p',{class:'ex-muted'},['Ajuda a manter latência estável quando o link está cheio. Em Starlink/link móvel, prefira upload conservador.']),E('div',{class:'ex-ez-grid'},[this.ezField('Configurar SQM',sqmEnabled),this.ezField('Estratégia',sqmStrategy),this.ezField('WAN1 upload Kbps',sqmWanUp),this.ezField('WAN1 download Kbps',sqmWanDown),this.ezField('WAN2 upload Kbps',sqmWan2Up),this.ezField('WAN2 download Kbps',sqmWan2Down)])]),
+				E('section',{class:'ex-ez-section'},[E('h3',{},['6. DNS e segurança']),E('div',{class:'ex-ez-grid'},[this.ezField('Modo DNS',dnsMode),this.ezField('DNS 1',dns1),this.ezField('DNS 2',dns2),this.ezField('DNS 3',dns3,'Opcional'),this.ezField('Desativar IPv6',disableIpv6),this.ezField('Desativar WPS',disableWps),this.ezField('Usar Argon se instalado',useArgon)])]),
+				E('section',{class:'ex-ez-section'},[E('h3',{},['7. Recursos opcionais']),E('p',{class:'ex-muted'},['Marcados como “já instalado” já existem no roteador. Os demais são opcionais e só serão instalados se você confirmar.']),moduleList,E('button',{class:'ex-mini-button ex-ez-install-modules','click':installModules},['Instalar módulos selecionados'])]),
 				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Fechar']),' ',E('button',{class:'btn cbi-button cbi-button-neutral','click':reset},['Apagar rascunho']),' ',E('button',{class:'btn cbi-button cbi-button-action','click':saveDraft},['Salvar rascunho']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':applySetup},['Salvar e aplicar'])])
 			])]);
 		},this));

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.2
+
+- Improved Ark - Setup visibility with a stronger dashboard button.
+- Reworked the first setup screen to start with language, router name and country.
+- Replaced unclear scenario profiles with explicit internet modes: single WAN, dual-WAN failover, dual-WAN balancing and custom.
+- Changed regulatory country entry from free text to a selectable list.
+- Split DNS configuration into separate DNS 1, DNS 2 and DNS 3 fields.
+- Improved optional-module cards with installed/optional status to reduce confusion.
+- Improved Ark - Setup layout on desktop and mobile.
+
 ## 0.9.1
 
 - Replaced the old QoS shortcut with useful SQM controls on the dashboard.

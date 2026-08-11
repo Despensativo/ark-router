@@ -269,7 +269,12 @@ case "$action" in
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
 				profile)
-					case "$value" in event|home|starlink|dualwan|custom) ;; *) echo 'Perfil invalido' >&2; exit 2 ;; esac ;;
+					case "$value" in event|home|starlink|dualwan|internet_single|internet_failover|internet_balance|custom) ;; *) echo 'Perfil invalido' >&2; exit 2 ;; esac ;;
+				language)
+					case "$value" in pt-br|en) ;; *) echo 'Idioma invalido' >&2; exit 2 ;; esac
+					uci -q set equipe_dashboard.main=settings
+					uci -q set "equipe_dashboard.main.language=$value"
+					;;
 				router_name)
 					valid_plain "$value" 40 && [ -n "$value" ] || { echo 'Nome do roteador invalido' >&2; exit 2; } ;;
 				country)
