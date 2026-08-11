@@ -3,7 +3,7 @@
 ## Short Term
 
 - Add public screenshots for desktop and mobile layouts.
-- Add a guided first-configuration assistant for WAN, Wi-Fi, SQM and guest limits.
+- Turn Ark - Setup into a multi-page wizard with richer scenario presets and inline validation hints.
 - Test on at least one `opkg` based OpenWrt release.
 - Add a release package build workflow after repository publication.
 - Publish `.apk` and `.ipk` assets in GitHub Releases so the quick installer can install without a local SDK.

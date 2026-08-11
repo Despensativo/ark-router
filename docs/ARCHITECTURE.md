@@ -22,6 +22,14 @@ The control helper reports each capability as installed, active, hidden and inst
 
 Installing an optional package makes its card available, but the package is not configured automatically. Network-impacting changes remain separate confirmed commands.
 
+## Ark - Setup
+
+Ark - Setup is the guided first-configuration assistant. It stores its draft in `equipe_dashboard.setup`, validates every field in the shell helper and applies the final plan in numbered checkpoints.
+
+The apply flow creates a backup in `/tmp`, then applies identity, Wi-Fi, guest network, WAN/Multi-WAN intent, SQM values, guest limit preferences and service reloads. The `applied_step` option lets the interface resume after a browser disconnect or Wi-Fi reload.
+
+Optional module selections are stored as intent. Package installation remains a separate confirmed operation in the feature center so a first-run setup cannot silently install packages or consume flash.
+
 ## Link calibration
 
 `speedtest-go` is too large for the flash of some target routers. ARK Router therefore supports refreshing the volatile APK indexes, fetching its official OpenWrt package into `/tmp`, extracting only the main executable and discarding the archive and auxiliary binaries. The runtime is recreated after reboot only when requested.

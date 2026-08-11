@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0
+
+- Added `Ark - Setup`, a guided first-configuration assistant for common OpenWrt scenarios.
+- Added resumable setup drafts stored in UCI, with applied-step checkpoints.
+- Added safe final application flow with an automatic `/tmp/ark-router-ezsetup-backup-*.tar.gz` backup before network changes.
+- Added guided choices for router name, regulatory country, unified or split 2.4/5 GHz Wi-Fi, guest network, guest upload limit, WAN2, Multi-WAN mode, SQM strategy, DNS, IPv6, WPS and suggested modules.
+- Corrected remaining default ARK Router branding in package configuration and RPC ACL.
+
 ## 0.8.6
 
 - Corrected the public brand back to `ARK Router`.

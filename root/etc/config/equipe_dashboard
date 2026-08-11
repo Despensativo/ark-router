@@ -1,6 +1,6 @@
 config settings 'main'
 	option language 'pt-br'
-	option title 'ARC Router'
+	option title 'ARK Router'
 	option appearance 'auto'
 	option primary '#3b82f6'
 	option secondary '#8b5cf6'

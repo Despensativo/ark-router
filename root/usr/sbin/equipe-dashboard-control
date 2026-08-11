@@ -4,6 +4,7 @@ action="$1"
 
 bool() { [ "$1" = 1 ] && printf true || printf false; }
 json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+json_bool_value() { [ "$1" = 1 ] || [ "$1" = true ] || [ "$1" = yes ] || [ "$1" = on ] && printf true || printf false; }
 valid_mac() { printf '%s' "$1" | grep -Eq '^([0-9A-F]{2}:){5}[0-9A-F]{2}$'; }
 device_suffix() { printf '%s' "$1" | tr -d ':' | tr 'A-F' 'a-f'; }
 find_dhcp_host() {
@@ -67,6 +68,137 @@ feature_active() {
 		*) return 1 ;;
 	esac
 }
+valid_plain() {
+	value="$1"; max="$2"
+	[ "${#value}" -le "$max" ] || return 1
+	! printf '%s' "$value" | grep -q '[[:cntrl:]]'
+}
+valid_wifi_password() {
+	length="${#1}"
+	[ "$length" -ge 8 ] && [ "$length" -le 63 ] && valid_plain "$1" 63
+}
+valid_uint_range() {
+	printf '%s' "$1" | grep -Eq '^[0-9]+$' || return 1
+	[ "$1" -ge "$2" ] && [ "$1" -le "$3" ]
+}
+ez_get() { uci -q get "equipe_dashboard.setup.$1" 2>/dev/null || printf '%s' "$2"; }
+ez_set() { uci -q set equipe_dashboard.setup=ezsetup; uci -q set "equipe_dashboard.setup.$1=$2"; }
+ez_bool() { case "$1" in 1|true|yes|on) printf 1 ;; *) printf 0 ;; esac; }
+ez_backup() {
+	stamp="$(date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)"
+	file="/tmp/ark-router-ezsetup-backup-$stamp.tar.gz"
+	stage="/tmp/ark-router-ezsetup-backup-$stamp"
+	rm -rf "$stage"
+	mkdir -p "$stage/etc/config" "$stage/metadata" || return 1
+	for cfg in network wireless dhcp firewall sqm mwan3 uhttpd luci equipe_dashboard equipe_devices qos_equipe; do
+		[ -f "/etc/config/$cfg" ] && cp "/etc/config/$cfg" "$stage/etc/config/$cfg"
+	done
+	{
+		echo "ARK Router EZ Setup backup"
+		echo "Created: $(date 2>/dev/null || true)"
+		echo "Restore command:"
+		echo "  tar -xzf $file -C /"
+		echo "  /etc/init.d/network reload"
+		echo "  /etc/init.d/dnsmasq restart"
+		echo "  /etc/init.d/firewall restart"
+	} > "$stage/metadata/README.txt"
+	tar -czf "$file" -C "$stage" . || return 1
+	rm -rf "$stage"
+	ez_set backup "$file"
+	printf '%s' "$file"
+}
+ez_progress() { ez_set applied_step "$1"; ez_set last_step "$2"; uci commit equipe_dashboard; }
+ez_json() {
+	printf '{"state":"%s","applied_step":%s,"last_step":"%s","backup":"%s","profile":"%s","router_name":"%s","country":"%s","wifi_mode":"%s","main_ssid":"%s","guest_enabled":%s,"guest_ssid":"%s","guest_limit_enabled":%s,"guest_upload_kbps":"%s","wan_mode":"%s","wan2_enabled":%s,"sqm_enabled":%s,"sqm_strategy":"%s","sqm_wan_upload":"%s","sqm_wan_download":"%s","sqm_wan2_upload":"%s","sqm_wan2_download":"%s","dns_mode":"%s","dns_servers":"%s","disable_ipv6":%s,"disable_wps":%s,"use_argon":%s,"install_modules":"%s"}\n' \
+		"$(json_escape "$(ez_get state draft)")" \
+		"$(ez_get applied_step 0)" \
+		"$(json_escape "$(ez_get last_step '')")" \
+		"$(json_escape "$(ez_get backup '')")" \
+		"$(json_escape "$(ez_get profile event)")" \
+		"$(json_escape "$(ez_get router_name 'ARK Router')")" \
+		"$(json_escape "$(ez_get country BR)")" \
+		"$(json_escape "$(ez_get wifi_mode unified)")" \
+		"$(json_escape "$(ez_get main_ssid 'Equipe-X')")" \
+		"$(json_bool_value "$(ez_get guest_enabled 1)")" \
+		"$(json_escape "$(ez_get guest_ssid 'Equipe-X-Visitantes')")" \
+		"$(json_bool_value "$(ez_get guest_limit_enabled 1)")" \
+		"$(json_escape "$(ez_get guest_upload_kbps 1500)")" \
+		"$(json_escape "$(ez_get wan_mode failover)")" \
+		"$(json_bool_value "$(ez_get wan2_enabled 1)")" \
+		"$(json_bool_value "$(ez_get sqm_enabled 0)")" \
+		"$(json_escape "$(ez_get sqm_strategy manual)")" \
+		"$(json_escape "$(ez_get sqm_wan_upload '')")" \
+		"$(json_escape "$(ez_get sqm_wan_download '')")" \
+		"$(json_escape "$(ez_get sqm_wan2_upload '')")" \
+		"$(json_escape "$(ez_get sqm_wan2_download '')")" \
+		"$(json_escape "$(ez_get dns_mode recommended)")" \
+		"$(json_escape "$(ez_get dns_servers '1.1.1.1 1.0.0.1 8.8.8.8')")" \
+		"$(json_bool_value "$(ez_get disable_ipv6 1)")" \
+		"$(json_bool_value "$(ez_get disable_wps 1)")" \
+		"$(json_bool_value "$(ez_get use_argon 1)")" \
+		"$(json_escape "$(ez_get install_modules 'argon sqm mwan3 nlbwmon')")"
+}
+ez_apply_wifi_iface() {
+	section="$1"; device="$2"; network="$3"; ssid="$4"; key="$5"; disabled="$6"
+	uci -q get "wireless.$section" >/dev/null 2>&1 || uci -q set "wireless.$section=wifi-iface"
+	uci -q set "wireless.$section.device=$device"
+	uci -q set "wireless.$section.mode=ap"
+	uci -q set "wireless.$section.network=$network"
+	uci -q set "wireless.$section.ssid=$ssid"
+	uci -q set "wireless.$section.encryption=psk2"
+	uci -q set "wireless.$section.key=$key"
+	uci -q set "wireless.$section.disabled=$disabled"
+}
+ez_apply_guest_network() {
+	enabled="$1"
+	if [ "$enabled" = 1 ]; then
+		uci -q set network.guest=interface
+		uci -q set network.guest.proto=static
+		uci -q set network.guest.ipaddr="${2:-192.168.20.1}"
+		uci -q set network.guest.netmask=255.255.255.0
+		uci -q set dhcp.guest=dhcp
+		uci -q set dhcp.guest.interface=guest
+		uci -q set dhcp.guest.start=100
+		uci -q set dhcp.guest.limit=150
+		uci -q set dhcp.guest.leasetime=12h
+		uci -q set firewall.guest=zone
+		uci -q set firewall.guest.name=guest
+		uci -q set firewall.guest.network=guest
+		uci -q set firewall.guest.input=REJECT
+		uci -q set firewall.guest.output=ACCEPT
+		uci -q set firewall.guest.forward=REJECT
+		uci -q set firewall.guest.masq=1
+		uci -q set firewall.guest_forwarding=forwarding
+		uci -q set firewall.guest_forwarding.src=guest
+		uci -q set firewall.guest_forwarding.dest=wan
+		uci -q set firewall.guest_dhcp=rule
+		uci -q set firewall.guest_dhcp.name='Allow-Guest-DHCP'
+		uci -q set firewall.guest_dhcp.src=guest
+		uci -q set firewall.guest_dhcp.proto=udp
+		uci -q set firewall.guest_dhcp.dest_port=67
+		uci -q set firewall.guest_dhcp.target=ACCEPT
+		uci -q set firewall.guest_dns=rule
+		uci -q set firewall.guest_dns.name='Allow-Guest-DNS'
+		uci -q set firewall.guest_dns.src=guest
+		uci -q set firewall.guest_dns.proto='tcp udp'
+		uci -q set firewall.guest_dns.dest_port=53
+		uci -q set firewall.guest_dns.target=ACCEPT
+	else
+		uci -q set dhcp.guest.ignore=1
+	fi
+}
+ez_apply_guest_limit() {
+	enabled="$1"; upload="$2"
+	if [ "$enabled" = 1 ]; then
+		valid_uint_range "$upload" 128 100000 || return 1
+		uci -q set qos_equipe.guest=guest_limit
+		uci -q set qos_equipe.guest.enabled=1
+		uci -q set "qos_equipe.guest.upload_kbps=$upload"
+	else
+		uci -q set qos_equipe.guest=guest_limit
+		uci -q set qos_equipe.guest.enabled=0
+	fi
+}
 feature_json() {
 	key="$1" package="$2" installable="$3"
 	if [ "$key" = speedtest ]; then feature_active "$key"; present=$?
@@ -111,6 +243,198 @@ prepare_speedtest() {
 }
 
 case "$action" in
+	ez-setup-status)
+		ez_json
+		;;
+	ez-setup-reset)
+		uci -q delete equipe_dashboard.setup
+		uci commit equipe_dashboard
+		echo ok
+		;;
+	ez-setup-save)
+		shift
+		uci -q set equipe_dashboard.setup=ezsetup
+		uci -q set equipe_dashboard.setup.state=draft
+		for pair in "$@"; do
+			key="${pair%%=*}"; value="${pair#*=}"
+			case "$key" in
+				profile)
+					case "$value" in event|home|starlink|dualwan|custom) ;; *) echo 'Perfil invalido' >&2; exit 2 ;; esac ;;
+				router_name)
+					valid_plain "$value" 40 && [ -n "$value" ] || { echo 'Nome do roteador invalido' >&2; exit 2; } ;;
+				country)
+					value="$(printf '%s' "$value" | tr 'a-z' 'A-Z')"; printf '%s' "$value" | grep -Eq '^([A-Z]{2}|00)$' || { echo 'Pais invalido' >&2; exit 2; } ;;
+				wifi_mode)
+					case "$value" in unified|split) ;; *) echo 'Modo Wi-Fi invalido' >&2; exit 2 ;; esac ;;
+				main_ssid|guest_ssid)
+					valid_plain "$value" 32 && [ -n "$value" ] || { echo 'SSID invalido' >&2; exit 2; } ;;
+				main_key|guest_key)
+					valid_wifi_password "$value" || { echo 'Senha Wi-Fi invalida' >&2; exit 2; } ;;
+				guest_enabled|guest_limit_enabled|wan2_enabled|sqm_enabled|disable_ipv6|disable_wps|use_argon)
+					value="$(ez_bool "$value")" ;;
+				guest_upload_kbps)
+					valid_uint_range "$value" 128 100000 || { echo 'Limite visitante invalido' >&2; exit 2; } ;;
+				wan_mode)
+					case "$value" in single|failover|balanced|wan1|wan2) ;; *) echo 'Modo WAN invalido' >&2; exit 2 ;; esac ;;
+				sqm_strategy)
+					case "$value" in off|manual|calibrate_later) ;; *) echo 'Estrategia SQM invalida' >&2; exit 2 ;; esac ;;
+				sqm_wan_upload|sqm_wan_download|sqm_wan2_upload|sqm_wan2_download)
+					[ -z "$value" ] || valid_uint_range "$value" 100 1000000 || { echo 'Velocidade SQM invalida' >&2; exit 2; } ;;
+				dns_mode)
+					case "$value" in operator|recommended|custom) ;; *) echo 'Modo DNS invalido' >&2; exit 2 ;; esac ;;
+				dns_servers)
+					valid_plain "$value" 120 || { echo 'DNS invalido' >&2; exit 2; }
+					for server in $value; do valid_ipv4 "$server" || { echo 'DNS deve conter IPv4 validos' >&2; exit 2; }; done ;;
+				install_modules)
+					valid_plain "$value" 120 || { echo 'Lista de modulos invalida' >&2; exit 2; }
+					for module in $value; do feature_package "$module" >/dev/null || { echo "Modulo invalido: $module" >&2; exit 2; }; done ;;
+				*) echo "Campo invalido: $key" >&2; exit 2 ;;
+			esac
+			ez_set "$key" "$value"
+		done
+		uci commit equipe_dashboard
+		ez_json
+		;;
+	ez-setup-apply)
+		state="$(ez_get state draft)"
+		[ "$state" != applied ] || { ez_json; exit 0; }
+		start="$(ez_get applied_step 0)"
+		if [ "$start" -lt 1 ]; then
+			backup="$(ez_backup)" || { echo 'Falha ao criar backup de seguranca' >&2; exit 3; }
+			ez_progress 1 "backup:$backup"
+		fi
+		if [ "$(ez_get applied_step 0)" -lt 2 ]; then
+			title="$(ez_get router_name 'ARK Router')"; country="$(ez_get country BR)"
+			uci -q set equipe_dashboard.main=settings
+			uci -q set "equipe_dashboard.main.title=$title"
+			if [ "$(ez_get use_argon 1)" = 1 ] && installed luci-theme-argon; then
+				uci -q set luci.main.mediaurlbase='/luci-static/argon'
+				uci commit luci
+			fi
+			if [ "$(ez_get disable_wps 1)" = 1 ]; then
+				uci -q show wireless 2>/dev/null | sed -n "s/^\(wireless\.[^.]*\)\.wps_pushbutton=.*/\1/p" | while read -r section; do uci -q set "$section.wps_pushbutton=0"; done
+				uci -q show wireless 2>/dev/null | sed -n "s/^\(wireless\.[^.]*\)\.wps_label=.*/\1/p" | while read -r section; do uci -q set "$section.wps_label=0"; done
+			fi
+			uci -q set "wireless.radio0.country=$country"
+			uci -q set "wireless.radio1.country=$country"
+			uci commit equipe_dashboard
+			uci commit wireless
+			ez_progress 2 identity
+		fi
+		if [ "$(ez_get applied_step 0)" -lt 3 ]; then
+			if [ "$(ez_get disable_ipv6 1)" = 1 ]; then
+				uci -q set network.lan.ip6assign=''
+				uci -q set dhcp.lan.dhcpv6=disabled
+				uci -q set dhcp.lan.ra=disabled
+				uci -q set dhcp.lan.ndp=disabled
+				uci -q set dhcp.odhcpd=odhcpd
+				uci -q set dhcp.odhcpd.maindhcp=0
+				uci -q set dhcp.odhcpd.leasefile=/tmp/hosts/odhcpd
+				uci -q set dhcp.odhcpd.leasetrigger=/usr/sbin/odhcpd-update
+				uci -q set dhcp.odhcpd.loglevel=4
+			fi
+			dns_mode="$(ez_get dns_mode recommended)"
+			if [ "$dns_mode" != operator ]; then
+				servers="$(ez_get dns_servers '1.1.1.1 1.0.0.1 8.8.8.8')"
+				uci -q set dhcp.@dnsmasq[0].noresolv=1
+				uci -q delete dhcp.@dnsmasq[0].server
+				for server in $servers; do uci -q add_list "dhcp.@dnsmasq[0].server=$server"; done
+			else
+				uci -q delete dhcp.@dnsmasq[0].noresolv
+				uci -q delete dhcp.@dnsmasq[0].server
+			fi
+			uci commit network
+			uci commit dhcp
+			ez_progress 3 network_basics
+		fi
+		if [ "$(ez_get applied_step 0)" -lt 4 ]; then
+			main_ssid="$(ez_get main_ssid 'Equipe-X')"; main_key="$(ez_get main_key '')"
+			guest_ssid="$(ez_get guest_ssid 'Equipe-X-Visitantes')"; guest_key="$(ez_get guest_key '')"
+			mode="$(ez_get wifi_mode unified)"
+			[ -n "$main_key" ] && valid_wifi_password "$main_key" || { echo 'Senha da rede principal ausente ou invalida' >&2; exit 2; }
+			[ "$(ez_get guest_enabled 1)" = 0 ] || { [ -n "$guest_key" ] && valid_wifi_password "$guest_key"; } || { echo 'Senha da rede visitante ausente ou invalida' >&2; exit 2; }
+			if [ "$mode" = split ]; then
+				main2="${main_ssid}-2G"; main5="${main_ssid}-5G"; guest2="${guest_ssid}-2G"; guest5="${guest_ssid}-5G"
+			else
+				main2="$main_ssid"; main5="$main_ssid"; guest2="$guest_ssid"; guest5="$guest_ssid"
+			fi
+			ez_apply_wifi_iface default_radio0 radio0 lan "$main2" "$main_key" 0
+			ez_apply_wifi_iface default_radio1 radio1 lan "$main5" "$main_key" 0
+			guest_enabled="$(ez_get guest_enabled 1)"
+			if [ "$guest_enabled" = 1 ]; then
+				ez_apply_guest_network 1
+				ez_apply_wifi_iface guest_radio0 radio0 guest "$guest2" "$guest_key" 0
+				ez_apply_wifi_iface guest_radio1 radio1 guest "$guest5" "$guest_key" 0
+			else
+				ez_apply_wifi_iface guest_radio0 radio0 guest "$guest2" "${guest_key:-$main_key}" 1
+				ez_apply_wifi_iface guest_radio1 radio1 guest "$guest5" "${guest_key:-$main_key}" 1
+				ez_apply_guest_network 0
+			fi
+			uci commit wireless
+			uci commit network
+			uci commit dhcp
+			uci commit firewall
+			ez_progress 4 wifi
+		fi
+		if [ "$(ez_get applied_step 0)" -lt 5 ]; then
+			if [ "$(ez_get wan2_enabled 1)" = 1 ]; then
+				uci -q set network.wan2=interface
+				uci -q set network.wan2.proto=dhcp
+				uci -q set network.wan2.device=lan1
+			fi
+			if installed luci-app-mwan3 || [ -f /etc/config/mwan3 ]; then
+				case "$(ez_get wan_mode failover)" in
+					balanced) policy=balanced ;;
+					wan1|single) policy=wan_only ;;
+					wan2) policy=wan2_only ;;
+					*) policy=wan_then_wan2 ;;
+				esac
+				uci -q set mwan3.https.use_policy="$policy"
+				uci -q set mwan3.default_rule_v4.use_policy="$policy"
+				uci commit mwan3
+			fi
+			uci commit network
+			ez_progress 5 wan
+		fi
+		if [ "$(ez_get applied_step 0)" -lt 6 ]; then
+			if [ "$(ez_get sqm_enabled 0)" = 1 ] && [ "$(ez_get sqm_strategy manual)" = manual ]; then
+				if [ -f /etc/config/sqm ]; then
+					for item in wan:wan1 wan2:wan2; do
+						iface="${item%%:*}"; section="${item#*:}"
+						upload="$(ez_get "sqm_${iface}_upload" '')"; download="$(ez_get "sqm_${iface}_download" '')"
+						if [ -n "$upload" ] || [ -n "$download" ]; then
+							uci -q set "sqm.$section=queue"
+							uci -q set "sqm.$section.interface=$([ "$iface" = wan2 ] && printf lan1 || printf wan)"
+							uci -q set "sqm.$section.qdisc=cake"
+							uci -q set "sqm.$section.script=piece_of_cake.qos"
+							uci -q set "sqm.$section.qdisc_advanced=1"
+							uci -q set "sqm.$section.linklayer=none"
+							uci -q set "sqm.$section.enabled=1"
+							[ -n "$upload" ] && uci -q set "sqm.$section.upload=$upload"
+							[ -n "$download" ] && uci -q set "sqm.$section.download=$download"
+						fi
+					done
+					uci commit sqm
+				fi
+			fi
+			if [ "$(ez_get guest_limit_enabled 1)" = 1 ]; then ez_apply_guest_limit 1 "$(ez_get guest_upload_kbps 1500)" || { echo 'Falha ao aplicar limite visitante' >&2; exit 2; }
+			else ez_apply_guest_limit 0 0; fi
+			uci commit qos_equipe
+			ez_progress 6 qos
+		fi
+		if [ "$(ez_get applied_step 0)" -lt 7 ]; then
+			/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+			/etc/init.d/firewall restart >/dev/null 2>&1 || true
+			/etc/init.d/network reload >/dev/null 2>&1 || true
+			[ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
+			[ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 || true
+			(sleep 2; wifi reload) >/dev/null 2>&1 &
+			ez_progress 7 services
+		fi
+		ez_set state applied
+		uci commit equipe_dashboard
+		ez_json
+		;;
 	features)
 		manager=none
 		command -v apk >/dev/null 2>&1 && manager=apk
@@ -119,7 +443,7 @@ case "$action" in
 		appearance="$(uci -q get equipe_dashboard.main.appearance || printf auto)"
 		primary="$(uci -q get equipe_dashboard.main.primary || printf '#3b82f6')"
 		secondary="$(uci -q get equipe_dashboard.main.secondary || printf '#8b5cf6')"
-		title="$(uci -q get equipe_dashboard.main.title || printf 'ARC Router')"
+		title="$(uci -q get equipe_dashboard.main.title || printf 'ARK Router')"
 		https_available=false
 		cert="$(uci -q get uhttpd.main.cert)"; key="$(uci -q get uhttpd.main.key)"
 		[ -n "$(uci -q get uhttpd.main.listen_https)" ] && [ -r "$cert" ] && [ -r "$key" ] && https_available=true
@@ -432,7 +756,7 @@ case "$action" in
 		echo 'ok'
 		;;
 	*)
-		echo 'Uso: equipe-dashboard-control {features|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|theme argon|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|country ISO2}' >&2
+		echo 'Uso: equipe-dashboard-control {features|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|theme argon|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|country ISO2}' >&2
 		exit 2
 		;;
 esac

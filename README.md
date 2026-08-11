@@ -17,6 +17,7 @@ Keywords: OpenWrt dashboard, LuCI dashboard, router panel, router management, Mu
 - **Modular cards:** Keep Multi-WAN, SQM/CAKE, UPnP, per-device usage and speed calibration visible only when those modules exist.
 - **Device handling:** Rename connected devices, reserve DHCP addresses by MAC and prioritize selected main-network devices.
 - **Wi-Fi control:** Manage a main network and a guest network from a simpler screen. The SSID names are fully configurable; the pilot names are only examples.
+- **Ark - Setup:** Guided first-configuration assistant with saved progress and final confirmation.
 - **Channel planning:** Analyze Wi-Fi channels manually, apply suggested channels with confirmation or return to automatic channel selection.
 - **SQM calibration:** Run per-WAN speed tests and generate SQM upload suggestions at 85%, 90% and 95%.
 - **Small-flash friendly:** Avoid filling router flash by loading `speedtest-go` into temporary RAM.
@@ -76,6 +77,7 @@ The package manager adapter supports both `apk` and `opkg` for optional package 
 | Area | What ARK Router Adds |
 | --- | --- |
 | Dashboard | Responsive overview for desktop, tablet and mobile |
+| Ark - Setup | Guided first setup with resumable draft, checkpoints and safety backup |
 | Traffic | Real-time download/upload counters and 24-hour history |
 | Health | Temperature, memory, storage and load strip |
 | WAN | WAN1/WAN2 status and Multi-WAN mode controls |
@@ -106,7 +108,25 @@ Optional packages are not hard dependencies. Cards are displayed only when the c
 
 Installing ARK Router only adds the dashboard and helper files. It does not automatically create WAN2, guest Wi-Fi limits, SQM queues, Multi-WAN policies or firewall priority rules.
 
-Those changes require administrator action inside LuCI/ARK Router. The intended flow is:
+Those changes require administrator action inside LuCI/ARK Router. The easiest path is the **Ark - Setup** button at the top of the dashboard.
+
+Ark - Setup asks for the common first-run choices:
+
+- scenario/profile;
+- router and panel name;
+- regulatory country;
+- unified or split 2.4/5 GHz Wi-Fi names;
+- main Wi-Fi SSID and password;
+- optional guest Wi-Fi with optional upload cap;
+- WAN2 on LAN1 as DHCP, failover or balancing intent;
+- SQM strategy and optional manual speed limits;
+- DNS mode;
+- IPv6 and WPS preferences;
+- optional modules that the administrator may install separately.
+
+The assistant saves a draft in UCI and stores the last applied checkpoint. If the browser disconnects while Wi-Fi or network services reload, the administrator can reconnect and continue from the saved state. Before applying network changes, it creates a backup under `/tmp/ark-router-ezsetup-backup-*.tar.gz`.
+
+The manual flow remains:
 
 1. Install the dashboard.
 2. Install only the optional modules you want, such as SQM, Multi-WAN or per-device usage.
@@ -186,7 +206,7 @@ tar -xzf /tmp/ark-router-config-backup-YYYYMMDD-HHMMSS.tar.gz -C /
 
 ## Project Status
 
-Version 0.8.6 is a tested pilot release. It is ready to publish as an early public project, with the current compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
+Version 0.9.0 is a tested pilot release. It is ready to publish as an early public project, with the current compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
 
 ## License
 

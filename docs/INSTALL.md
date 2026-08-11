@@ -51,13 +51,21 @@ opkg install ./luci-app-ark-router_*.ipk
 
 Open LuCI and choose ARK Router from the menu. Installing the package only adds its files and menu entry. It does not change WAN, LAN, Wi-Fi, firewall, DHCP, SQM or Multi-WAN settings automatically.
 
-For a new router, configure in this order:
+For a new router, use **Ark - Setup** from the dashboard or configure manually in this order:
 
 1. Confirm that the router is reachable and LuCI is working normally.
 2. Install only the optional modules needed for the scenario, such as SQM, Multi-WAN, nlbwmon or Argon.
 3. Configure WAN, LAN and Wi-Fi according to the site plan.
 4. If SQM is used, run speed calibration or manually set conservative upload/download values.
 5. Apply guest limits, device priority, Wi-Fi channel suggestions or Multi-WAN mode only after reviewing the confirmation prompts.
+
+Ark - Setup stores a draft, applies changes only after confirmation and keeps a checkpoint of the last completed step. It also creates a safety backup before applying network changes:
+
+```text
+/tmp/ark-router-ezsetup-backup-YYYYMMDD-HHMMSS.tar.gz
+```
+
+Download that backup before rebooting if you want a local copy.
 
 The dashboard can help apply common actions, but it is intentionally not a blind first-boot configurator.
 
