@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.1
+
+- Replaced the old QoS shortcut with useful SQM controls on the dashboard.
+- Added a SQM/CAKE on/off switch with confirmation.
+- Added a visual editor for WAN1/WAN2 download and upload limits, where `0` means unlimited/no limit for that direction.
+- Added guest upload-limit editing from the same SQM card.
+
 ## 0.9.0
 
 - Added `Ark - Setup`, a guided first-configuration assistant for common OpenWrt scenarios.

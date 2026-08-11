@@ -39,6 +39,17 @@
 .ex-health-bar i { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--health-color); transition: width .4s ease; }
 .ex-health-steady { overflow: hidden; opacity: .45; font-size: .62rem; text-overflow: ellipsis; white-space: nowrap; }
 .ex-qos-card { margin-bottom: 16px; }
+.ex-qos-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: -4px 0 13px; padding: 12px 14px; border: 1px solid color-mix(in srgb,var(--ex-primary-safe) 18%,transparent); border-radius: 12px; background: color-mix(in srgb,var(--ex-primary-safe) 7%,transparent); }
+.ex-qos-toggle-row > div:first-child { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.ex-qos-edit-button { border: 0; cursor: pointer; }
+.ex-qos-edit-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin: 12px 0 16px; }
+.ex-qos-edit-grid section { padding: 13px; border: 1px solid rgba(127,127,127,.14); border-radius: 13px; background: rgba(127,127,127,.055); }
+.ex-qos-edit-grid h3 { margin: 0 0 10px !important; font-size: .98rem; }
+.ex-qos-edit-field { display: flex; flex-direction: column; gap: 5px; margin: 9px 0; font-weight: 750; }
+.ex-qos-edit-field > span { font-size: .74rem; opacity: .72; text-transform: uppercase; letter-spacing: .04em; }
+.ex-qos-edit-field input { width: 100%; }
+.ex-qos-edit-toggle { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 750; }
+.ex-qos-edit-toggle input { width: 18px; height: 18px; }
 .ex-speedtest-card { margin-bottom: 16px; }
 .ex-speedtest-card > p { margin: -5px 0 14px; }
 .ex-speedtest-grid { margin-bottom: 0; }
@@ -243,6 +254,7 @@
 	.ex-health-items { grid-template-columns: repeat(2,minmax(0,1fr)); }
 	.ex-health-items.compact-3 { grid-template-columns: repeat(3,minmax(0,1fr)); }
 	.ex-qos-grid { grid-template-columns: 1fr; }
+	.ex-qos-edit-grid { grid-template-columns: 1fr; }
 	.ex-speedtest-grid { grid-template-columns: 1fr; }
 	.ex-ez-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
 	.ex-ez-module-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }

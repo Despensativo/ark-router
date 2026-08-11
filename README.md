@@ -85,7 +85,7 @@ The package manager adapter supports both `apk` and `opkg` for optional package 
 | Wi-Fi | Main and guest cards, password visibility, password editing, country selection and channel analysis |
 | Devices | Friendly names, per-device traffic when available and DHCP reservation by MAC |
 | QoS | Optional CAKE priority marking for selected main-network devices |
-| SQM | SQM/CAKE overview and guest upload limit visibility |
+| SQM | SQM/CAKE toggle and editable WAN/guest limits; `0` means unlimited for that direction |
 | HTTPS | Redirect control and local CA download guidance |
 | System | Router restart button with two confirmations and a backend-enforced delay |
 | Modules | Optional feature center with install/hide suggestions |

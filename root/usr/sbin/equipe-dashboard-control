@@ -81,6 +81,16 @@ valid_uint_range() {
 	printf '%s' "$1" | grep -Eq '^[0-9]+$' || return 1
 	[ "$1" -ge "$2" ] && [ "$1" -le "$3" ]
 }
+valid_sqm_rate() { valid_uint_range "$1" 0 1000000; }
+ensure_sqm_section() {
+	section="$1"; device="$2"
+	uci -q get "sqm.$section" >/dev/null 2>&1 || uci -q set "sqm.$section=queue"
+	uci -q set "sqm.$section.interface=$device"
+	uci -q set "sqm.$section.qdisc=cake"
+	uci -q set "sqm.$section.script=piece_of_cake.qos"
+	uci -q set "sqm.$section.qdisc_advanced=1"
+	uci -q set "sqm.$section.linklayer=none"
+}
 ez_get() { uci -q get "equipe_dashboard.setup.$1" 2>/dev/null || printf '%s' "$2"; }
 ez_set() { uci -q set equipe_dashboard.setup=ezsetup; uci -q set "equipe_dashboard.setup.$1=$2"; }
 ez_bool() { case "$1" in 1|true|yes|on) printf 1 ;; *) printf 0 ;; esac; }
@@ -403,12 +413,7 @@ case "$action" in
 						iface="${item%%:*}"; section="${item#*:}"
 						upload="$(ez_get "sqm_${iface}_upload" '')"; download="$(ez_get "sqm_${iface}_download" '')"
 						if [ -n "$upload" ] || [ -n "$download" ]; then
-							uci -q set "sqm.$section=queue"
-							uci -q set "sqm.$section.interface=$([ "$iface" = wan2 ] && printf lan1 || printf wan)"
-							uci -q set "sqm.$section.qdisc=cake"
-							uci -q set "sqm.$section.script=piece_of_cake.qos"
-							uci -q set "sqm.$section.qdisc_advanced=1"
-							uci -q set "sqm.$section.linklayer=none"
+							ensure_sqm_section "$section" "$([ "$iface" = wan2 ] && printf lan1 || printf wan)"
 							uci -q set "sqm.$section.enabled=1"
 							[ -n "$upload" ] && uci -q set "sqm.$section.upload=$upload"
 							[ -n "$download" ] && uci -q set "sqm.$section.download=$download"
@@ -630,6 +635,51 @@ case "$action" in
 		uci -q set "sqm.$sqm_section.upload=$3"; uci -q set "sqm.$sqm_section.enabled=1"; uci commit sqm; /etc/init.d/sqm restart
 		echo ok
 		;;
+	sqm-toggle)
+		case "$2" in 0|1) ;; *) echo 'Estado SQM invalido' >&2; exit 2 ;; esac
+		[ -f /etc/config/sqm ] || { echo 'SQM nao instalado' >&2; exit 3; }
+		ensure_sqm_section wan1 wan
+		[ "$(uci -q get network.wan2.proto)" = dhcp ] && ensure_sqm_section wan2 lan1
+		uci -q set "sqm.wan1.enabled=$2"
+		uci -q get sqm.wan2 >/dev/null 2>&1 && uci -q set "sqm.wan2.enabled=$2"
+		uci commit sqm
+		/etc/init.d/sqm restart
+		echo ok
+		;;
+	sqm-save)
+		[ -f /etc/config/sqm ] || { echo 'SQM nao instalado' >&2; exit 3; }
+		shift
+		for pair in "$@"; do
+			key="${pair%%=*}"; value="${pair#*=}"
+			case "$key" in
+				wan1_enabled|wan2_enabled) case "$value" in 0|1) ;; *) echo 'Estado SQM invalido' >&2; exit 2 ;; esac ;;
+				wan1_download|wan1_upload|wan2_download|wan2_upload|guest_upload) valid_sqm_rate "$value" || { echo 'Velocidade SQM invalida' >&2; exit 2; } ;;
+				*) echo "Campo SQM invalido: $key" >&2; exit 2 ;;
+			esac
+		done
+		ensure_sqm_section wan1 wan
+		ensure_sqm_section wan2 lan1
+		for pair in "$@"; do
+			key="${pair%%=*}"; value="${pair#*=}"
+			case "$key" in
+				wan1_enabled) uci -q set "sqm.wan1.enabled=$value" ;;
+				wan2_enabled) uci -q set "sqm.wan2.enabled=$value" ;;
+				wan1_download) uci -q set "sqm.wan1.download=$value" ;;
+				wan1_upload) uci -q set "sqm.wan1.upload=$value" ;;
+				wan2_download) uci -q set "sqm.wan2.download=$value" ;;
+				wan2_upload) uci -q set "sqm.wan2.upload=$value" ;;
+				guest_upload)
+					uci -q set qos_equipe.guest=guest_limit
+					uci -q set qos_equipe.guest.enabled=1
+					uci -q set "qos_equipe.guest.upload_kbps=$value"
+					;;
+			esac
+		done
+		uci commit sqm
+		uci commit qos_equipe 2>/dev/null || true
+		/etc/init.d/sqm restart
+		echo ok
+		;;
 	mwan)
 		case "$2" in
 			failover) policy='wan_then_wan2' ;;
@@ -789,7 +839,7 @@ case "$action" in
 		echo 'ok'
 		;;
 	*)
-		echo 'Uso: equipe-dashboard-control {features|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|ez-setup-install-modules|ez-setup-install-status|ez-setup-install-log|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|theme argon|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|country ISO2}' >&2
+		echo 'Uso: equipe-dashboard-control {features|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|ez-setup-install-modules|ez-setup-install-status|ez-setup-install-log|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|theme argon|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|sqm-toggle 0|1|sqm-save chave=valor...|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|country ISO2}' >&2
 		exit 2
 		;;
 esac
