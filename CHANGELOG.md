@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.6
+
+- Fixed guest SQM editor reload values so guest download/upload limits are read from the `qos_equipe.guest` section that the dashboard saves.
+- Added guest download limit support to Ark - Setup drafts and apply flow.
+
 ## 0.9.5
 
 - Fixed release artifact collection so the generic installer asset points to the ARK Router package itself.

@@ -119,7 +119,7 @@ ez_backup() {
 }
 ez_progress() { ez_set applied_step "$1"; ez_set last_step "$2"; uci commit equipe_dashboard; }
 ez_json() {
-	printf '{"state":"%s","applied_step":%s,"last_step":"%s","backup":"%s","profile":"%s","router_name":"%s","country":"%s","wifi_mode":"%s","main_ssid":"%s","guest_enabled":%s,"guest_ssid":"%s","guest_limit_enabled":%s,"guest_upload_kbps":"%s","wan_mode":"%s","wan2_enabled":%s,"sqm_enabled":%s,"sqm_strategy":"%s","sqm_wan_upload":"%s","sqm_wan_download":"%s","sqm_wan2_upload":"%s","sqm_wan2_download":"%s","dns_mode":"%s","dns_servers":"%s","disable_ipv6":%s,"disable_wps":%s,"use_argon":%s,"install_modules":"%s"}\n' \
+	printf '{"state":"%s","applied_step":%s,"last_step":"%s","backup":"%s","profile":"%s","router_name":"%s","country":"%s","wifi_mode":"%s","main_ssid":"%s","guest_enabled":%s,"guest_ssid":"%s","guest_limit_enabled":%s,"guest_download_kbps":"%s","guest_upload_kbps":"%s","wan_mode":"%s","wan2_enabled":%s,"sqm_enabled":%s,"sqm_strategy":"%s","sqm_wan_upload":"%s","sqm_wan_download":"%s","sqm_wan2_upload":"%s","sqm_wan2_download":"%s","dns_mode":"%s","dns_servers":"%s","disable_ipv6":%s,"disable_wps":%s,"use_argon":%s,"install_modules":"%s"}\n' \
 		"$(json_escape "$(ez_get state draft)")" \
 		"$(ez_get applied_step 0)" \
 		"$(json_escape "$(ez_get last_step '')")" \
@@ -132,6 +132,7 @@ ez_json() {
 		"$(json_bool_value "$(ez_get guest_enabled 1)")" \
 		"$(json_escape "$(ez_get guest_ssid 'Equipe-X-Visitantes')")" \
 		"$(json_bool_value "$(ez_get guest_limit_enabled 1)")" \
+		"$(json_escape "$(ez_get guest_download_kbps 0)")" \
 		"$(json_escape "$(ez_get guest_upload_kbps 1500)")" \
 		"$(json_escape "$(ez_get wan_mode failover)")" \
 		"$(json_bool_value "$(ez_get wan2_enabled 1)")" \
@@ -335,8 +336,8 @@ case "$action" in
 					valid_wifi_password "$value" || { echo 'Senha Wi-Fi invalida' >&2; exit 2; } ;;
 				guest_enabled|guest_limit_enabled|wan2_enabled|sqm_enabled|disable_ipv6|disable_wps|use_argon)
 					value="$(ez_bool "$value")" ;;
-				guest_upload_kbps)
-					valid_uint_range "$value" 128 100000 || { echo 'Limite visitante invalido' >&2; exit 2; } ;;
+				guest_download_kbps|guest_upload_kbps)
+					valid_uint_range "$value" 0 100000 || { echo 'Limite visitante invalido' >&2; exit 2; } ;;
 				wan_mode)
 					case "$value" in single|failover|balanced|wan1|wan2) ;; *) echo 'Modo WAN invalido' >&2; exit 2 ;; esac ;;
 				sqm_strategy)
@@ -475,7 +476,7 @@ case "$action" in
 					uci commit sqm
 				fi
 			fi
-			if [ "$(ez_get guest_limit_enabled 1)" = 1 ]; then ez_apply_guest_limit 1 "$(ez_get guest_upload_kbps 1500)" || { echo 'Falha ao aplicar limite visitante' >&2; exit 2; }
+			if [ "$(ez_get guest_limit_enabled 1)" = 1 ]; then ez_apply_guest_limit 1 "$(ez_get guest_upload_kbps 1500)" "$(ez_get guest_download_kbps 0)" || { echo 'Falha ao aplicar limite visitante' >&2; exit 2; }
 			else ez_apply_guest_limit 0 0; fi
 			uci commit qos_equipe
 			ez_progress 6 qos
