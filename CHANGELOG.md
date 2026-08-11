@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.2
+
+- Improved the public README with badges, clearer feature grouping and a dedicated note explaining that pilot Wi-Fi names are examples, not requirements.
+- Clarified that QoS/SQM and device-priority features are optional and hidden when their modules are unavailable.
+
 ## 0.8.1
 
 - Fixed connected-device network labels so Wi-Fi clients are no longer shown as wired clients.
