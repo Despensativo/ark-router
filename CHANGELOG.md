@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.4
+
+- Fixed the GitHub Actions OpenWrt package build workflow.
+- Use the generic `aarch64_cortex-a53` SDK image instead of a firmware-specific SDK tag.
+- Prepare a standard OpenWrt feed layout before calling the SDK action.
+
 ## 0.9.3
 
 - Added dashboard WAN editors for WAN1 and WAN2.

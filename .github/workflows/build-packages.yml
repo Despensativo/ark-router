@@ -17,18 +17,29 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - arch: aarch64_cortex-a53-25.12.5
+          - arch: aarch64_cortex-a53
             artifact_name: openwrt-aarch64-cortex-a53
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare OpenWrt feed layout
+        shell: bash
+        run: |
+          mkdir -p .openwrt-feed/luci-app-ark-router
+          rsync -a \
+            --exclude '.git' \
+            --exclude '.openwrt-feed' \
+            ./ .openwrt-feed/luci-app-ark-router/
+
       - name: Build with OpenWrt SDK
         uses: openwrt/gh-action-sdk@main
         env:
           ARCH: ${{ matrix.arch }}
           PACKAGES: luci-app-ark-router
+          FEED_DIR: ${{ github.workspace }}/.openwrt-feed
+          V: s
 
       - name: Collect package artifacts
         shell: bash
