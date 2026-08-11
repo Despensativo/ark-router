@@ -54,3 +54,38 @@ Open LuCI and choose ARC Router from the menu. Installing the package only adds 
 ## Optional Modules
 
 Optional cards appear when the corresponding module is available. The dashboard can suggest supported optional packages, but every installation requires confirmation.
+
+## Uninstall
+
+Use the conservative uninstaller:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/uninstall.sh | sh
+```
+
+This removes ARC Router files, menu entries, helper scripts and temporary runtime files. It does not remove optional packages such as:
+
+- `luci-app-sqm`
+- `luci-app-mwan3`
+- `luci-app-nlbwmon`
+- `luci-app-upnp`
+- `luci-theme-argon`
+- `luci-app-uhttpd`
+- `speedtest-go`
+
+Saved dashboard preferences and friendly device names are preserved:
+
+- `/etc/config/equipe_dashboard`
+- `/etc/config/equipe_devices`
+
+To remove those saved ARC Router preferences too:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/uninstall.sh | PURGE=1 sh
+```
+
+To preview what would happen without changing the router:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/uninstall.sh | DRY_RUN=1 sh
+```

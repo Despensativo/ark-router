@@ -141,9 +141,25 @@ apk add ./luci-app-ark-router-*.apk
 
 On `opkg` based releases, install the generated `.ipk` instead.
 
+## Uninstall
+
+ARC Router includes a conservative uninstaller:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/uninstall.sh | sh
+```
+
+By default it removes only ARC Router files and temporary runtime files. It does not remove optional packages that may have been installed or used with the dashboard, such as SQM, Multi-WAN, nlbwmon, UPnP, Argon, uHTTPd or `speedtest-go`.
+
+Saved dashboard preferences and friendly device names are kept by default. To remove those too:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/uninstall.sh | PURGE=1 sh
+```
+
 ## Project Status
 
-Version 0.8.3 is a tested pilot release. It is ready to publish as an early public project, with the current compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
+Version 0.8.4 is a tested pilot release. It is ready to publish as an early public project, with the current compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
 
 ## License
 

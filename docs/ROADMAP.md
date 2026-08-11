@@ -5,6 +5,7 @@
 - Add public screenshots for desktop and mobile layouts.
 - Test on at least one `opkg` based OpenWrt release.
 - Add a release package build workflow after repository publication.
+- Publish `.apk` and `.ipk` assets in GitHub Releases so the quick installer can install without a local SDK.
 - Add optional advanced `iperf3` calibration with a user-provided server.
 
 ## Medium Term

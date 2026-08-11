@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.4
+
+- Added a conservative uninstall script with `DRY_RUN=1` preview and `PURGE=1` preference removal mode.
+- Documented install, uninstall and optional-package retention behavior.
+- Clarified that optional packages installed through or alongside ARC Router are not removed by the uninstaller.
+
 ## 0.8.3
 
 - Renamed the public-facing brand to `ARC Router` while keeping the existing package slug for compatibility.

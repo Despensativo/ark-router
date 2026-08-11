@@ -4,6 +4,7 @@ set -eu
 REPO="${ARC_ROUTER_REPO:-Despensativo/ark-router}"
 BASE_URL="https://github.com/$REPO/releases/latest/download"
 TMP_DIR="${TMPDIR:-/tmp}"
+DRY_RUN="${DRY_RUN:-0}"
 
 if command -v apk >/dev/null 2>&1; then
 	PKG_URL="$BASE_URL/luci-app-ark-router.apk"
@@ -19,15 +20,27 @@ else
 fi
 
 echo "Downloading ARC Router package from $PKG_URL"
-rm -f "$PKG_FILE"
-wget -O "$PKG_FILE" "$PKG_URL"
+if [ "$DRY_RUN" = 1 ]; then
+	echo "DRY_RUN=1: would download $PKG_URL to $PKG_FILE"
+else
+	rm -f "$PKG_FILE"
+	wget -O "$PKG_FILE" "$PKG_URL"
+fi
 
 echo "Installing ARC Router"
-$INSTALL_CMD "$PKG_FILE"
+if [ "$DRY_RUN" = 1 ]; then
+	echo "DRY_RUN=1: would run: $INSTALL_CMD $PKG_FILE"
+else
+	$INSTALL_CMD "$PKG_FILE"
+fi
 
-if [ -x /etc/init.d/rpcd ]; then
+if [ "$DRY_RUN" != 1 ] && [ -x /etc/init.d/rpcd ]; then
 	echo "Restarting rpcd"
 	/etc/init.d/rpcd restart
 fi
 
-echo "ARC Router installed. Open LuCI and look for ARC Router in the menu."
+if [ "$DRY_RUN" = 1 ]; then
+	echo "Dry run complete. No changes were made."
+else
+	echo "ARC Router installed. Open LuCI and look for ARC Router in the menu."
+fi
