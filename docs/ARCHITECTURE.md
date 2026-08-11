@@ -20,11 +20,15 @@ The legacy `equipe-dashboard` route and `equipe_dashboard` UCI configuration are
 
 The control helper reports each capability as installed, active, hidden and installable. The UI removes unsupported sections and offers a confirmed installation only for packages in the backend allowlist.
 
+Installing an optional package makes its card available, but the package is not configured automatically. Network-impacting changes remain separate confirmed commands.
+
 ## Link calibration
 
 `speedtest-go` is too large for the flash of some target routers. ARK Router therefore supports refreshing the volatile APK indexes, fetching its official OpenWrt package into `/tmp`, extracting only the main executable and discarding the archive and auxiliary binaries. The runtime is recreated after reboot only when requested.
 
 Each calibration binds to the selected WAN source address, temporarily disables the matching SQM section without committing that temporary state, performs three measurements, restores SQM and then writes a JSON result under `/tmp`. Applying a suggestion is a separate validated action.
+
+The tested pilot SQM values were manually chosen for the local Starlink/event scenario. Public users should either run calibration or apply their own conservative limits.
 
 ## Device controls
 

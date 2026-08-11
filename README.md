@@ -102,6 +102,20 @@ The package manager adapter supports both `apk` and `opkg` for optional package 
 
 Optional packages are not hard dependencies. Cards are displayed only when the corresponding capability exists. The dashboard asks for confirmation before installing an optional package. Package installation does not automatically alter network configuration.
 
+## First Configuration
+
+Installing ARK Router only adds the dashboard and helper files. It does not automatically create WAN2, guest Wi-Fi limits, SQM queues, Multi-WAN policies or firewall priority rules.
+
+Those changes require administrator action inside LuCI/ARK Router. The intended flow is:
+
+1. Install the dashboard.
+2. Install only the optional modules you want, such as SQM, Multi-WAN or per-device usage.
+3. Review the current router state in the dashboard.
+4. Run speed calibration if SQM limits are needed.
+5. Apply confirmed changes, such as guest upload limits, WAN mode, Wi-Fi channel suggestions or device priority.
+
+This keeps public installations safe while still allowing a guided setup similar to the tested pilot scenario.
+
 ## Wi-Fi Names And QoS
 
 ARK Router does not require the pilot SSID names. It can be used with the administrator's own Wi-Fi names. The main/guest split is useful when the operator wants a more open trusted network and a limited guest network, but QoS/SQM and device priority remain optional. If SQM or the custom QoS rules are not present, those controls are hidden instead of forcing a configuration.
@@ -172,7 +186,7 @@ tar -xzf /tmp/ark-router-config-backup-YYYYMMDD-HHMMSS.tar.gz -C /
 
 ## Project Status
 
-Version 0.8.5 is a tested pilot release. It is ready to publish as an early public project, with the current compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
+Version 0.8.6 is a tested pilot release. It is ready to publish as an early public project, with the current compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
 
 ## License
 

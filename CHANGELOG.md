@@ -5,6 +5,7 @@
 - Corrected the public brand back to `ARK Router`.
 - Updated uninstall backup names from `arc-router-*` to `ark-router-*`.
 - Kept legacy `ARC_ROUTER_*` script variables as compatibility fallbacks.
+- Clarified first-configuration and SQM behavior in the project documentation.
 
 ## 0.8.5
 
