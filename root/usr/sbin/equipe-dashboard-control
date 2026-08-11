@@ -435,6 +435,39 @@ case "$action" in
 		uci commit equipe_dashboard
 		ez_json
 		;;
+	ez-setup-install-modules)
+		status="/tmp/ark-ezsetup-modules.status"; log="/tmp/ark-ezsetup-modules.log"
+		[ "$(cat "$status" 2>/dev/null)" != running ] || { echo running; exit 0; }
+		modules="$(ez_get install_modules '')"
+		[ -n "$modules" ] || { echo done >"$status"; echo installed; exit 0; }
+		command -v apk >/dev/null 2>&1 || command -v opkg >/dev/null 2>&1 || { echo 'Gerenciador de pacotes indisponivel' >&2; exit 3; }
+		echo running >"$status"
+		(
+			ok=1
+			if command -v apk >/dev/null 2>&1; then apk update || ok=0
+			else opkg update || ok=0
+			fi
+			for key in $modules; do
+				package="$(feature_package "$key" 2>/dev/null)" || { echo "Modulo invalido: $key"; ok=0; continue; }
+				if [ "$key" = speedtest ]; then
+					feature_active speedtest || prepare_speedtest || ok=0
+					continue
+				fi
+				installed "$package" && continue
+				if command -v apk >/dev/null 2>&1; then apk add "$package" || ok=0
+				else opkg install "$package" || ok=0
+				fi
+			done
+			[ "$ok" = 1 ] && echo done >"$status" || echo error >"$status"
+		) >"$log" 2>&1 &
+		echo started
+		;;
+	ez-setup-install-status)
+		cat /tmp/ark-ezsetup-modules.status 2>/dev/null || echo idle
+		;;
+	ez-setup-install-log)
+		cat /tmp/ark-ezsetup-modules.log 2>/dev/null
+		;;
 	features)
 		manager=none
 		command -v apk >/dev/null 2>&1 && manager=apk
@@ -756,7 +789,7 @@ case "$action" in
 		echo 'ok'
 		;;
 	*)
-		echo 'Uso: equipe-dashboard-control {features|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|theme argon|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|country ISO2}' >&2
+		echo 'Uso: equipe-dashboard-control {features|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|ez-setup-install-modules|ez-setup-install-status|ez-setup-install-log|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|theme argon|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|country ISO2}' >&2
 		exit 2
 		;;
 esac

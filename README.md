@@ -123,8 +123,9 @@ Ark - Setup asks for the common first-run choices:
 - DNS mode;
 - IPv6 and WPS preferences;
 - optional modules that the administrator may install separately.
+- confirmed installation of selected optional modules, with progress tracking.
 
-The assistant saves a draft in UCI and stores the last applied checkpoint. If the browser disconnects while Wi-Fi or network services reload, the administrator can reconnect and continue from the saved state. Before applying network changes, it creates a backup under `/tmp/ark-router-ezsetup-backup-*.tar.gz`.
+The assistant saves a draft in UCI and stores the last applied checkpoint. If the browser disconnects while Wi-Fi or network services reload, the administrator can reconnect and continue from the saved state. Optional modules can be installed from inside Ark - Setup, but only after confirmation. Before applying network changes, it creates a backup under `/tmp/ark-router-ezsetup-backup-*.tar.gz`.
 
 The manual flow remains:
 

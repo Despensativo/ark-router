@@ -28,7 +28,7 @@ Ark - Setup is the guided first-configuration assistant. It stores its draft in 
 
 The apply flow creates a backup in `/tmp`, then applies identity, Wi-Fi, guest network, WAN/Multi-WAN intent, SQM values, guest limit preferences and service reloads. The `applied_step` option lets the interface resume after a browser disconnect or Wi-Fi reload.
 
-Optional module selections are stored as intent. Package installation remains a separate confirmed operation in the feature center so a first-run setup cannot silently install packages or consume flash.
+Optional module selections are stored as setup intent. The assistant can install the selected modules through a separate confirmed background operation, with status and logs in `/tmp/ark-ezsetup-modules.*`. Network configuration is still applied only by the final setup action.
 
 ## Link calibration
 
