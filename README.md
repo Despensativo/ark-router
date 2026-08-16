@@ -172,7 +172,22 @@ When release packages are available, the simplest path is the installer script:
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | sh
 ```
 
-The installer detects `apk` or `opkg`, downloads the latest compatible release package and restarts `rpcd`. Until a release package exists for your firmware family, build the package with the OpenWrt SDK:
+The same command can be re-run later to update an existing installation from the latest release package.
+The installer detects `apk` or `opkg`, downloads the latest compatible package and restarts LuCI services.
+
+If a release package has not been published yet, install or update directly from the GitHub source tree:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_INSTALL_MODE=source sh
+```
+
+For a friendly first-run command that tries the package first and falls back to source if the release asset is missing:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_INSTALL_MODE=auto sh
+```
+
+The source mode creates a temporary backup under `/tmp/ark-router-install-backup-*.tar.gz`, preserves existing ARK Router configuration files and then copies ARK Router files into the router. It restarts LuCI services, but it does not register an `apk`/`opkg` package. For public/stable installs, publishing a release package is still preferred. Until a release package exists for your firmware family, you can also build the package with the OpenWrt SDK:
 
 ARK Router is not an `.iso` image. It is a LuCI package installed on an existing OpenWrt router. See [`docs/RELEASES.md`](docs/RELEASES.md) for the GitHub Actions release flow.
 
@@ -182,6 +197,16 @@ apk add ./luci-app-ark-router-*.apk
 ```
 
 On `opkg` based releases, install the generated `.ipk` instead.
+
+## Updating from ARK Router
+
+After ARK Router is installed, open **ARK Router → Recursos → Atualização do ARK Router**.
+The dashboard can check the latest GitHub Release and, after administrator confirmation, download and install the matching package:
+
+- `luci-app-ark-router.apk` on APK-based OpenWrt builds.
+- `luci-app-ark-router.ipk` on OPKG-based OpenWrt builds.
+
+The updater creates a temporary configuration backup in `/tmp` before installing and restarts LuCI services afterward. It does not change WAN, LAN, Wi-Fi, firewall, DHCP, SQM or Multi-WAN settings. The updater requires published GitHub Release assets with the names above.
 
 ## Uninstall
 
@@ -219,3 +244,5 @@ Version 0.9.0 is a tested pilot release. It is ready to publish as an early publ
 ## License
 
 This project is released under the MIT License. See [`LICENSE`](LICENSE).
+
+

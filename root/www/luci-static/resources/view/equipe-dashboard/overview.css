@@ -76,7 +76,7 @@
 .ex-row:last-child { border-bottom: 0; }
 .ex-row span { opacity: .66; }
 .ex-row strong { text-align: right; font-variant-numeric: tabular-nums; }
-.ex-lan-block { margin-bottom: 16px; }
+.ex-lan-config-card, .ex-lan-block { margin-bottom: 16px; }
 .ex-lan-block > .ex-grid { margin-bottom: 0; }
 .ex-lan-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin: 2px 3px 10px; }
 .ex-lan-title h3 { margin: 2px 0 0; font-size: 1.08rem; }
@@ -161,6 +161,9 @@
 .ex-feature-state { display: flex; align-items: flex-end; flex-direction: column; gap: 7px; }
 .ex-feature-link { padding: 5px 3px; border: 0; color: #64748b; background: transparent; cursor: pointer; font-size: .75rem; }
 .ex-feature-link:hover { color: var(--ex-primary-safe); text-decoration: underline; }
+.ex-update-panel { border-color: color-mix(in srgb,var(--ex-primary-safe) 22%,transparent); }
+.ex-update-result { margin-top: 10px; }
+.ex-update-result-row { margin-top: 0; }
 .ex-language-row, .ex-brand-row { display: grid; grid-template-columns: minmax(130px,1fr) minmax(170px,1fr) auto; align-items: center; gap: 10px; margin-bottom: 10px; padding: 12px 13px; border-radius: 12px; background: color-mix(in srgb,var(--ex-primary-safe) 8%,transparent); }
 .ex-language-row label, .ex-brand-row label { font-weight: 750; }
 .ex-brand-row input { width: 100%; min-width: 0; }
@@ -200,16 +203,18 @@
 .ex-color-fields.is-disabled { opacity: .4; }
 .ex-save-appearance { align-self: end; justify-self: end; }
 .ex-package-name { padding: 9px 11px; border-radius: 9px; background: rgba(127,127,127,.08); }
-.ex-ez-setup { display: flex; flex-direction: column; gap: 15px; width: min(1040px, calc(100vw - 56px)); max-width: 1040px; }
-.ex-ez-section { padding: 16px; border: 1px solid rgba(127,127,127,.14); border-radius: 15px; background: rgba(127,127,127,.055); }
+.ex-ez-setup { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: min(1040px, calc(100vw - 56px)); box-sizing: border-box; overflow: hidden; }
+.modal .ex-ez-setup, .modal.cbi-modal .ex-ez-setup { max-width: 100%; }
+.ex-ez-setup, .ex-ez-setup * { box-sizing: border-box; min-width: 0; }
+.ex-ez-section { width: 100%; max-width: 100%; overflow: hidden; padding: 16px; border: 1px solid rgba(127,127,127,.14); border-radius: 15px; background: rgba(127,127,127,.055); }
 .ex-ez-section.ex-ez-primary { border-color: color-mix(in srgb,var(--ex-primary-safe) 24%,transparent); background: linear-gradient(135deg,color-mix(in srgb,var(--ex-primary-safe) 9%,transparent),color-mix(in srgb,var(--ex-secondary-safe) 7%,transparent)); }
 .ex-ez-setup h3 { margin: 0 0 12px !important; font-size: 1.02rem; }
-.ex-ez-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; align-items: start; }
+.ex-ez-grid { display: grid; width: 100%; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; align-items: start; }
 .ex-ez-grid-3 { grid-template-columns: repeat(3,minmax(0,1fr)); }
-.ex-ez-wide { display: grid; grid-template-columns: 1.35fr 1fr 1fr; gap: 12px; align-items: start; }
-.ex-ez-field { display: flex; min-width: 0; flex-direction: column; gap: 6px; padding: 10px 11px; border-radius: 11px; background: rgba(127,127,127,.055); font-weight: 750; }
+.ex-ez-wide { display: grid; width: 100%; grid-template-columns: minmax(0,1.35fr) minmax(0,1fr) minmax(0,1fr); gap: 12px; align-items: start; }
+.ex-ez-field { display: flex; min-width: 0; max-width: 100%; flex-direction: column; gap: 6px; padding: 10px 11px; border-radius: 11px; background: rgba(127,127,127,.055); font-weight: 750; overflow-wrap: anywhere; }
 .ex-ez-field > span { font-size: .74rem; opacity: .72; text-transform: uppercase; letter-spacing: .04em; }
-.ex-ez-field input:not([type="checkbox"]), .ex-ez-field select { width: 100%; min-width: 0; box-sizing: border-box; }
+.ex-ez-field input:not([type="checkbox"]), .ex-ez-field select { width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; }
 .ex-ez-field input[type="checkbox"] { width: 20px; height: 20px; margin-top: 5px; }
 .ex-ez-field small { font-weight: 500; line-height: 1.25; }
 .ex-ez-progress { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 13px; background: linear-gradient(135deg,color-mix(in srgb,var(--ex-primary-safe) 11%,transparent),color-mix(in srgb,var(--ex-secondary-safe) 9%,transparent)); }

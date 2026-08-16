@@ -6,6 +6,7 @@
 Makefile text eol=lf
 VERSION text eol=lf
 LICENSE text eol=lf
+*.sh text eol=lf
 
 root/usr/sbin/* text eol=lf
 root/etc/init.d/* text eol=lf

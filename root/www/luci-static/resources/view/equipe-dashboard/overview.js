@@ -111,6 +111,18 @@ function formatUptime(seconds) {
 }
 function text(id, value) { const n = document.getElementById(id); if (n) n.textContent = value == null ? '—' : String(value); }
 function setPill(id, state, label) { const n = document.getElementById(id); if (n) { n.className = 'ex-pill ' + state; n.textContent = label; } }
+function reloadSoon(message, delay) { ui.addNotification(null, E('p', {}, [ message || 'Aplicado. Recarregando o painel…' ])); window.setTimeout(function() { window.location.reload(); }, delay || 1800); }
+function closeModal(ev) {
+	if (ev && ev.preventDefault) ev.preventDefault();
+	if (ev && ev.stopPropagation) ev.stopPropagation();
+	try { ui.hideModal(); } catch (e) {}
+	document.body.classList.remove('modal-open');
+}
+function redirectToRouter(ip, message, delay) {
+	const path = window.location.pathname || '/cgi-bin/luci/admin/equipe-dashboard';
+	ui.addNotification(null, E('p', {}, [ message || ('Abrindo novo endereço: ' + ip) ]));
+	window.setTimeout(function() { window.location.href = window.location.protocol + '//' + ip + path; }, delay || 2200);
+}
 function iface(dump, name) { return ((dump && dump.interface) || []).find(function(x) { return x.interface === name; }) || {}; }
 function values(config) { return config && config.values || {}; }
 function parsePing(r) { const m = ((r && r.stdout) || '').match(/time[=<]([0-9.]+)/); return r && r.code === 0 && m ? Number(m[1]) : null; }
@@ -156,6 +168,12 @@ function surveyInfo(s) {
 	else if (mhz >= 5000 && mhz <= 5900) channel = Math.round((mhz - 5000) / 5);
 	return { noise: noise > 127 ? noise - 256 : noise, busy: time > 0 ? busy * 100 / time : 0, channel: channel };
 }
+function prefix24(ip) {
+	const m = String(ip || '').match(/^(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}$/);
+	return m ? m[1] + '.' : '';
+}
+function dhcpStartSuggestion(ip) { const p=prefix24(ip); return p ? p + '10' : ''; }
+function dhcpEndSuggestion(ip) { const p=prefix24(ip); return p ? p + '254' : ''; }
 
 return view.extend({
 	board: {}, countries: [], capabilities: {features:{}}, previous: {}, trafficPrevious: {}, trafficAt: 0, currentData: null, recommendedChannels: null, speedResults: {},
@@ -189,6 +207,7 @@ return view.extend({
 			safe(callAssocList('phy0-ap0'), { results: [] }), safe(callAssocList('phy1-ap0'), { results: [] }), safe(callAssocList('phy0-ap1'), { results: [] }), safe(callAssocList('phy1-ap1'), { results: [] }),
 			safe(callSurvey('phy0-ap0'), { results: [] }), safe(callSurvey('phy1-ap0'), { results: [] }),
 			safe(callUciGet('sqm'), { values: {} }), safe(callUciGet('qos_equipe'), { values: {} }), safe(callUciGet('wireless'), { values: {} }), safe(callUciGet('mwan3'), { values: {} }), safe(callUciGet('equipe_devices'), { values: {} }), safe(callUciGet('network'), { values: {} }),
+			safe(fs.exec('/usr/sbin/equipe-dashboard-control', [ 'lan-status' ]), {}),
 			safe(fs.read('/sys/class/thermal/thermal_zone0/temp'), '0'),
 			safe(fs.exec('/bin/ping', [ '-c', '1', '-W', '1', '-I', 'wan', '1.1.1.1' ]), {}), safe(fs.exec('/bin/ping', [ '-c', '1', '-W', '1', '-I', 'lan1', '1.1.1.1' ]), {}),
 			safe(fs.exec_direct('/usr/libexec/nlbwmon-action', [ 'download', '-g', 'family,mac,ip', '-o', '-rx_bytes,-tx_bytes' ], 'json'), { columns: [], data: [] }),
@@ -196,7 +215,7 @@ return view.extend({
 			safe(callDeviceStatus('lan2'), {}), safe(callDeviceStatus('lan3'), {})
 		]).then(function(r) { return {
 			system:r[0], interfaces:r[1], wanDevice:r[2], wan2Device:r[3], mwan:r[4], leases:r[5], mainAssoc:[r[6],r[7]], guestAssoc:[r[8],r[9]],
-			survey2:r[10], survey5:r[11], sqm:r[12], qos:r[13], wireless:r[14], mwanConfig:r[15], names:r[16], networkConfig:r[17], temperature:r[18], pingWan:r[19], pingWan2:r[20], traffic:r[21], history:r[22], lan2Device:r[23], lan3Device:r[24], timestamp:Date.now()
+			survey2:r[10], survey5:r[11], sqm:r[12], qos:r[13], wireless:r[14], mwanConfig:r[15], names:r[16], networkConfig:r[17], lanStatus:r[18], temperature:r[19], pingWan:r[20], pingWan2:r[21], traffic:r[22], history:r[23], lan2Device:r[24], lan3Device:r[25], timestamp:Date.now()
 		}; });
 	},
 	calculateRates: function(data) {
@@ -226,6 +245,8 @@ return view.extend({
 		const w=wifiConfig(data.wireless), s2=surveyInfo(data.survey2), s5=surveyInfo(data.survey5);
 		text('ex-main-ssid',w.main.ssid||'Equipe-X'); text('ex-guest-ssid',w.guest.ssid||'Equipe-X-Visitantes');
 		text('ex-main-key',w.main.key||'sem senha'); text('ex-guest-key',w.guest.key||'sem senha');
+		setPill('ex-main-wifi-status',String(w.main.disabled||'0')==='1'?'standby':'online',String(w.main.disabled||'0')==='1'?'DESLIGADA':'ATIVA');
+		setPill('ex-guest-wifi-status',String(w.guest.disabled||'0')==='1'?'standby':'online',String(w.guest.disabled||'0')==='1'?'DESLIGADA':'ATIVA');
 		const auto2=String(w.r0.channel||'auto')==='auto', auto5=String(w.r1.channel||'auto')==='auto';
 		const country=String(w.r0.country||w.r1.country||'00').toUpperCase(), countryInfo=this.countries.find(function(x){return String(x.code||x.iso3166).toUpperCase()===country;}); text('ex-country-current',(countryInfo&&countryInfo.country?countryInfo.country:'País')+' ('+country+')');
 		const allAuto=auto2&&auto5, mixed=auto2!==auto5, toggle=document.getElementById('ex-channel-auto-toggle');
@@ -270,16 +291,18 @@ return view.extend({
 	renderDevices: function(data, rates) {
 		const body=document.getElementById('ex-device-body'); if(!body)return;
 		const leases=data.leases.dhcp_leases||[], main=assocMap(data.mainAssoc), guest=assocMap(data.guestAssoc), names=friendlyMap(data.names), seen={};
+		let lanStatus={};try{lanStatus=JSON.parse((data.lanStatus&&data.lanStatus.stdout)||'{}');}catch(e){}
+		const lanPrefix=prefix24(lanStatus.ipaddr), guestPrefix=prefix24(((values(data.networkConfig).guest)||{}).ipaddr);
 		const networkLabel=function(mac,ip,hasLease){
 			if(guest[mac])return 'Visitantes / Wi-Fi';
 			if(main[mac])return 'Equipe-X / Wi-Fi';
 			if(hasLease)return 'Cabo / LAN';
-			if(/^192\.168\.30\./.test(ip||''))return 'Visitantes';
-			if(/^192\.168\.10\./.test(ip||''))return 'Rede principal';
+			if(guestPrefix&&String(ip||'').indexOf(guestPrefix)===0)return 'Visitantes';
+			if(lanPrefix&&String(ip||'').indexOf(lanPrefix)===0)return 'Rede principal';
 			return 'Rede principal';
 		};
 		const devices=[];
-		leases.forEach(function(l) { const mac=String(l.macaddr||'').toUpperCase(); if(!mac||seen[mac])return; seen[mac]=1; const a=main[mac]||guest[mac], isGuest=!!guest[mac]||/^192\.168\.30\./.test(l.ipaddr||''); devices.push({mac:mac,ip:l.ipaddr||'—',name:names[mac]||l.hostname||'Dispositivo sem nome',network:networkLabel(mac,l.ipaddr,true),guest:isGuest,signal:a&&a.signal,rate:rates[mac]||{rx:0,tx:0,totalRx:0,totalTx:0}}); });
+		leases.forEach(function(l) { const mac=String(l.macaddr||'').toUpperCase(); if(!mac||seen[mac])return; seen[mac]=1; const a=main[mac]||guest[mac], isGuest=!!guest[mac]||(guestPrefix&&String(l.ipaddr||'').indexOf(guestPrefix)===0); devices.push({mac:mac,ip:l.ipaddr||'—',name:names[mac]||l.hostname||'Dispositivo sem nome',network:networkLabel(mac,l.ipaddr,true),guest:isGuest,signal:a&&a.signal,rate:rates[mac]||{rx:0,tx:0,totalRx:0,totalTx:0}}); });
 		Object.keys(main).concat(Object.keys(guest)).forEach(function(mac) { if(seen[mac])return; seen[mac]=1; const a=main[mac]||guest[mac], isGuest=!!guest[mac]; devices.push({mac:mac,ip:'—',name:names[mac]||'Dispositivo sem nome',network:networkLabel(mac,'',false),guest:isGuest,signal:a.signal,rate:rates[mac]||{rx:0,tx:0,totalRx:0,totalTx:0}}); });
 		devices.sort(function(a,b){return (b.rate.rx+b.rate.tx)-(a.rate.rx+a.rate.tx);}); body.replaceChildren();
 		devices.forEach(L.bind(function(d) { const tr=E('tr',{},[
@@ -293,10 +316,13 @@ return view.extend({
 	},
 	update: function(data) {
 		this.currentData=data; const r=this.calculateRates(data), dr=this.deviceRates(data), wan=iface(data.interfaces,'wan'), wan2=iface(data.interfaces,'wan2'), mi=data.mwan.interfaces||{}, sqm=values(data.sqm), qosValues=values(data.qos), qos=qosValues.main||{}, qosGuest=qosValues.guest||{};
+		let lanStatus={};try{lanStatus=JSON.parse((data.lanStatus&&data.lanStatus.stdout)||'{}');}catch(e){}
 		text('ex-download',formatRate(r.down)); text('ex-upload',formatRate(r.up)); text('ex-down-total','Total recebido: '+formatBytes(r.rx)); text('ex-up-total','Total enviado: '+formatBytes(r.tx));
 		this.updateWan('ex-wan1',wan,data.wanDevice,mi.wan||{},parsePing(data.pingWan)); this.updateWan('ex-wan2',wan2,data.wan2Device,mi.wan2||{},parsePing(data.pingWan2)); this.updateLan('ex-lan2',data.lan2Device); this.updateLan('ex-lan3',data.lan3Device);
 		const hasMwan=this.feature('mwan3').installed, active=hasMwan?(mi.wan&&mi.wan.status==='online'?'WAN1':(mi.wan2&&mi.wan2.status==='online'?'WAN2':'SEM INTERNET')):(wan.up?'WAN1':(wan2.up?'WAN2':'SEM INTERNET')); setPill('ex-global-status',active==='SEM INTERNET'?'offline':'online',active+' ATIVA');
-		const leases=data.leases.dhcp_leases||[], main=assocMap(data.mainAssoc), guest=assocMap(data.guestAssoc); text('ex-main-clients',leases.filter(function(l){return /^192\.168\.10\./.test(l.ipaddr||'');}).length); text('ex-main-wifi',Object.keys(main).length+' no Wi-Fi'); text('ex-guest-clients',leases.filter(function(l){return /^192\.168\.30\./.test(l.ipaddr||'');}).length); text('ex-guest-wifi',Object.keys(guest).length+' no Wi-Fi');
+		text('ex-lan-ip',lanStatus.ipaddr||'—'); text('ex-lan-dhcp',(lanStatus.dhcp_start&&lanStatus.dhcp_end)?lanStatus.dhcp_start+' → '+lanStatus.dhcp_end:'—'); text('ex-lan-mask',lanStatus.netmask||'—');
+		const lanPrefix=prefix24(lanStatus.ipaddr), guestPrefix=prefix24(((values(data.networkConfig).guest)||{}).ipaddr);
+		const leases=data.leases.dhcp_leases||[], main=assocMap(data.mainAssoc), guest=assocMap(data.guestAssoc); text('ex-main-clients',leases.filter(function(l){return lanPrefix&&String(l.ipaddr||'').indexOf(lanPrefix)===0;}).length); text('ex-main-wifi',Object.keys(main).length+' no Wi-Fi'); text('ex-guest-clients',leases.filter(function(l){return guestPrefix&&String(l.ipaddr||'').indexOf(guestPrefix)===0;}).length); text('ex-guest-wifi',Object.keys(guest).length+' no Wi-Fi');
 		const mem=data.system.memory||{}, root=data.system.root||{}, mu=mem.total?100*(mem.total-(mem.available||mem.free||0))/mem.total:0, du=root.total?100*root.used/root.total:0, load=data.system.load&&data.system.load[0]!=null?data.system.load[0]/65535:0, temp=parseInt(data.temperature,10)/1000;
 		text('ex-uptime',formatUptime(data.system.uptime)); text('ex-temperature',isFinite(temp)?temp.toFixed(0)+' °C':'—'); text('ex-memory',mu.toFixed(0)+'%'); text('ex-load',load.toFixed(2)); text('ex-storage',du.toFixed(0)+'%'); const mb=document.getElementById('ex-memory-bar'),db=document.getElementById('ex-storage-bar'); if(mb)mb.style.width=Math.min(100,mu)+'%'; if(db)db.style.width=Math.min(100,du)+'%';
 		const healthWarning=(isFinite(temp)&&temp>=85)||mu>=85||du>=85||load>=1.5; setPill('ex-health-status',healthWarning?'standby':'online',healthWarning?'ATENÇÃO':'NORMAL');
@@ -330,7 +356,7 @@ return view.extend({
 				priority.addEventListener('change',function(){priorityState.textContent=priority.checked?'Ligada':'Desligada';});
 				sections.push(E('div',{class:'ex-device-config-block'},[E('div',{class:'ex-device-config-heading'},[E('div',{},[E('strong',{},['Prioridade no SQM']),E('small',{class:'ex-muted'},['Priorizar os envios deste dispositivo'])]),E('div',{class:'ex-device-switch-control'},[priorityState,E('label',{class:'ex-switch'},[priority,E('span',{class:'ex-switch-slider'})])])]),E('small',{class:'ex-muted'},['Usa a classe de vídeo do CAKE (AF41), mantendo a divisão justa com os demais aparelhos prioritários.'])]));
 			}else sections.push(E('small',{class:'ex-muted ex-device-priority-note'},['A prioridade aparece somente na rede principal quando o SQM está ativo.']));
-			sections.push(E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+			sections.push(E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
 				const args=['device-save',device.mac,name.value.trim(),reserve.checked?'reserved':'automatic',reserve.checked?ip.value.trim():'',priority?(priority.checked?'1':'0'):'keep'];
 				return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar');ui.hideModal();ui.addNotification(null,E('p',{},['Configurações do dispositivo salvas.']));return this.fetchData().then(L.bind(this.update,this));},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});
 			},this)},['Salvar configurações'])]));
@@ -338,11 +364,11 @@ return view.extend({
 		},this)).catch(function(e){ui.hideModal();ui.addNotification(null,E('p',{},[e.message]),'danger');});
 	},
 	setMwanMode: function(mode,label) {
-		ui.showModal('Alterar o Multi‑WAN',[E('p',{},['Aplicar “'+label+'”? A internet pode pausar por alguns segundos.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['mwan',mode]).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao aplicar');ui.hideModal();ui.addNotification(null,E('p',{},['Modo Multi‑WAN alterado para '+label+'.']));return this.fetchData().then(L.bind(this.update,this));},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]));});},this)},['Aplicar'])])]);
+		ui.showModal('Alterar o Multi‑WAN',[E('p',{},['Aplicar “'+label+'”? A internet pode pausar por alguns segundos.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['mwan',mode]).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao aplicar');ui.hideModal();ui.addNotification(null,E('p',{},['Modo Multi‑WAN alterado para '+label+'.']));return this.fetchData().then(L.bind(this.update,this));},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]));});},this)},['Aplicar'])])]);
 	},
 	toggleSqm: function(input){
 		const desired=!!input.checked;input.checked=!desired;
-		ui.showModal(desired?'Ativar SQM / CAKE':'Desativar SQM / CAKE',[E('p',{class:'alert-message warning'},[desired?'O SQM será ligado nas filas configuradas e o serviço será reiniciado.':'O SQM será desligado e o serviço será reiniciado. A internet pode pausar por alguns segundos.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['sqm-toggle',desired?'1':'0']).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar o SQM');ui.hideModal();ui.addNotification(null,E('p',{},[desired?'SQM ativado.':'SQM desativado.']));return this.fetchData().then(L.bind(this.update,this));},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar'])])]);
+		ui.showModal(desired?'Ativar SQM / CAKE':'Desativar SQM / CAKE',[E('p',{class:'alert-message warning'},[desired?'O SQM será ligado nas filas configuradas e o serviço será reiniciado.':'O SQM será desligado e o serviço será reiniciado. A internet pode pausar por alguns segundos.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['sqm-toggle',desired?'1':'0']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar o SQM');ui.hideModal();reloadSoon(desired?'SQM ativado. Recarregando para atualizar o estado…':'SQM desativado. Recarregando para atualizar o estado…',2200);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar'])])]);
 	},
 	editSqmLimits: function(){
 		const data=this.currentData||{}, sqm=values(data.sqm), qosValues=values(data.qos), qos=qosValues.main||{}, qosGuest=qosValues.guest||{};
@@ -354,7 +380,7 @@ return view.extend({
 			E('section',{},[E('h3',{},['WAN1']),E('label',{class:'ex-qos-edit-toggle'},[wan1Enabled,E('span',{},['Ativar fila WAN1'])]),w1d.row,w1u.row]),
 			E('section',{},[E('h3',{},['WAN2']),E('label',{class:'ex-qos-edit-toggle'},[wan2Enabled,E('span',{},['Ativar fila WAN2'])]),w2d.row,w2u.row]),
 			E('section',{},[E('h3',{},['Visitantes']),guestDown.row,guestUp.row])
-		]),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const args=['sqm-save','wan1_enabled='+(wan1Enabled.checked?'1':'0'),'wan2_enabled='+(wan2Enabled.checked?'1':'0'),'wan1_download='+w1d.node.value,'wan1_upload='+w1u.node.value,'wan2_download='+w2d.node.value,'wan2_upload='+w2u.node.value,'guest_download='+guestDown.node.value,'guest_upload='+guestUp.node.value];return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar limites');ui.hideModal();ui.addNotification(null,E('p',{},['Limites do SQM salvos.']));return this.fetchData().then(L.bind(this.update,this));},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Salvar e reiniciar SQM'])])]);
+		]),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const args=['sqm-save','wan1_enabled='+(wan1Enabled.checked?'1':'0'),'wan2_enabled='+(wan2Enabled.checked?'1':'0'),'wan1_download='+w1d.node.value,'wan1_upload='+w1u.node.value,'wan2_download='+w2d.node.value,'wan2_upload='+w2u.node.value,'guest_download='+guestDown.node.value,'guest_upload='+guestUp.node.value];return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar limites');ui.hideModal();reloadSoon('Limites do SQM salvos. Recarregando para exibir os valores aplicados…',2400);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Salvar e reiniciar SQM'])])]);
 	},
 	editWan: function(which){
 		const net=values((this.currentData||{}).networkConfig), cfg=net[which==='wan2'?'wan2':'wan']||{}, isWan2=which==='wan2';
@@ -377,7 +403,47 @@ return view.extend({
 		ui.showModal('Editar '+(isWan2?'WAN2':'WAN1'),[
 			E('p',{class:'alert-message warning'},['Alterar internet/porta pode derrubar o painel por alguns segundos. O ARK cria um backup em /tmp antes de aplicar.']),
 			E('div',{class:'ex-wan-edit-grid'},[field('Função',role),field('Porta física',device),field('Tipo de conexão',proto),pppoeBlock,staticBlock,field('DNS 1',dns1),field('DNS 2',dns2),field('DNS 3',dns3,'Opcional')]),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const dns=[dns1.value.trim(),dns2.value.trim(),dns3.value.trim()].filter(Boolean).join(' '), args=['wan-save','iface='+(isWan2?'wan2':'wan'),'mode='+role.value,'device='+device.value,'proto='+proto.value,'username='+username.value,'password='+password.value,'ipaddr='+ipaddr.value,'netmask='+netmask.value,'gateway='+gateway.value,'dns='+dns];return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar WAN');ui.hideModal();ui.addNotification(null,E('p',{},['Configuração de internet salva. A rede pode levar alguns segundos para estabilizar.']));window.setTimeout(L.bind(function(){return this.fetchData().then(L.bind(this.update,this));},this),2500);},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar alteração'])])
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const dns=[dns1.value.trim(),dns2.value.trim(),dns3.value.trim()].filter(Boolean).join(' '), args=['wan-save','iface='+(isWan2?'wan2':'wan'),'mode='+role.value,'device='+device.value,'proto='+proto.value,'username='+username.value,'password='+password.value,'ipaddr='+ipaddr.value,'netmask='+netmask.value,'gateway='+gateway.value,'dns='+dns];return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar WAN');ui.hideModal();reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…',3500);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar alteração'])])
+		]);
+	},
+	editLan: function(){
+		let state={};try{state=JSON.parse(((this.currentData||{}).lanStatus&&this.currentData.lanStatus.stdout)||'{}');}catch(e){}
+		const makeSelect=function(value,items){const s=E('select',{class:'cbi-input-select'},items.map(function(i){return E('option',{value:i[0]},[i[1]]);}));s.value=value;return s;};
+		const mode=makeSelect(state.preset==='10'?'preset10':(state.preset==='192'?'preset192':'manual'),[['preset192','Padrão 192.168.x.x'],['preset10','Padrão 10.0.x.x'],['manual','Informar manualmente']]);
+		const routerIp=E('input',{class:'cbi-input-text',value:state.ipaddr||'192.168.1.1',placeholder:'192.168.1.1',inputmode:'decimal'});
+		const netmask=E('input',{class:'cbi-input-text',value:state.netmask||'255.255.255.0',placeholder:'255.255.255.0',inputmode:'decimal'});
+		const dhcpStart=E('input',{class:'cbi-input-text',value:state.dhcp_start||'192.168.1.100',placeholder:'192.168.1.100',inputmode:'decimal'});
+		const dhcpEnd=E('input',{class:'cbi-input-text',value:state.dhcp_end||'192.168.1.249',placeholder:'192.168.1.249',inputmode:'decimal'});
+		const field=function(label,node,hint){return E('label',{class:'ex-wan-edit-field'},[E('span',{},[label]),node,hint?E('small',{class:'ex-muted'},[hint]):'']);};
+		let dhcpTouched=false;
+		const suggestDhcp=function(force){
+			const start=dhcpStartSuggestion(routerIp.value), end=dhcpEndSuggestion(routerIp.value);
+			if(!start||!end)return;
+			if(force||!dhcpTouched){dhcpStart.value=start;dhcpEnd.value=end;}
+			dhcpStart.placeholder=start;dhcpEnd.placeholder=end;
+		};
+		const applyPreset=function(changed){
+			if(changed&&mode.value==='preset192'){routerIp.value='192.168.1.1';netmask.value='255.255.255.0';dhcpStart.value='192.168.1.10';dhcpEnd.value='192.168.1.254';dhcpTouched=false;}
+			else if(changed&&mode.value==='preset10'){routerIp.value='10.0.0.1';netmask.value='255.255.255.0';dhcpStart.value='10.0.0.10';dhcpEnd.value='10.0.0.254';dhcpTouched=false;}
+			const manual=mode.value==='manual';routerIp.disabled=netmask.disabled=dhcpStart.disabled=dhcpEnd.disabled=!manual;
+			if(manual)suggestDhcp(false);else suggestDhcp(changed);
+		};
+		dhcpStart.addEventListener('input',function(){dhcpTouched=true;});
+		dhcpEnd.addEventListener('input',function(){dhcpTouched=true;});
+		routerIp.addEventListener('input',function(){if(mode.value==='manual')suggestDhcp(false);});
+		routerIp.addEventListener('blur',function(){if(mode.value==='manual')suggestDhcp(false);});
+		mode.addEventListener('change',function(){applyPreset(true);});applyPreset(false);
+		ui.showModal('Editar rede principal / DHCP',[
+			E('p',{class:'alert-message warning'},['Alterar o IP principal muda o endereço de acesso do painel e pode desconectar dispositivos. O ARK cria um backup em /tmp antes de aplicar.']),
+			E('div',{class:'ex-wan-edit-grid'},[field('Modelo de rede',mode),field('IP do roteador',routerIp,'Endereço usado para abrir o painel'),field('Máscara',netmask,'Nesta versão, use /24: 255.255.255.0'),field('DHCP começa em',dhcpStart),field('DHCP termina em',dhcpEnd)]),
+			E('p',{class:'ex-muted'},['Exemplo: roteador 192.168.25.1 sugere automaticamente DHCP 192.168.25.10 até 192.168.25.254. Depois você pode ajustar só o final. O DHCP não pode incluir o IP do roteador.']),
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+				const next={mode:mode.value,routerIp:routerIp.value.trim(),netmask:netmask.value.trim(),startIp:dhcpStart.value.trim(),endIp:dhcpEnd.value.trim(),oldIp:state.ipaddr||''};
+				ui.showModal('Confirmar alteração da LAN',[E('p',{class:'alert-message warning'},['Essa alteração reinicia a rede/portas LAN e DHCP. O painel pode cair por alguns segundos e os dispositivos podem precisar renovar IP.']),E('div',{class:'ex-qos-edit-grid'},[E('section',{},[E('h3',{},['Novo acesso']),E('p',{},['Roteador: ',E('strong',{},[next.routerIp])]),E('p',{},['Máscara: ',E('strong',{},[next.netmask])])]),E('section',{},[E('h3',{},['Nova faixa DHCP']),E('p',{},[next.startIp,' → ',next.endIp])])]),E('p',{class:'ex-muted'},['O ARK cria backup em /tmp antes de aplicar. Se o IP principal mudar, tentarei abrir automaticamente o painel no novo endereço.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Voltar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+					const args=['lan-save','mode='+next.mode,'router_ip='+next.routerIp,'netmask='+next.netmask,'start_ip='+next.startIp,'end_ip='+next.endIp];
+					return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar LAN');let out={};try{out=JSON.parse(r.stdout||'{}');}catch(e){}ui.hideModal();if((out.new_ip||next.routerIp)!==(out.old_ip||next.oldIp))redirectToRouter(out.new_ip||next.routerIp,'LAN salva. Tentando abrir o painel no novo IP '+(out.new_ip||next.routerIp)+'…',2600);else reloadSoon('Faixa DHCP salva. Recarregando o painel…',2200);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});
+				},this)},['Aplicar agora'])])]);
+			},this)},['Continuar'])])
 		]);
 	},
 	changeWifiPassword: function(kind, ssid) {
@@ -391,7 +457,7 @@ return view.extend({
 			E('label',{class:'ex-show-password'},[show,E('span',{},['Mostrar senha digitada'])]),
 			E('p',{class:'alert-message warning'},['Ao salvar, o Wi‑Fi reiniciará e os aparelhos serão desconectados. Depois, será necessário conectar novamente usando a nova senha.']),
 			E('div',{class:'right'},[
-				E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',
+				E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',
 				E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
 					const password=first.value;
 					if(password.length<8||password.length>63){ui.addNotification(null,E('p',{},['A senha precisa ter entre 8 e 63 caracteres.']));return;}
@@ -404,6 +470,32 @@ return view.extend({
 			])
 		]);
 		first.focus();
+	},
+	editWifiNetwork: function(kind, current) {
+		current=current||{};
+		const isGuest=kind==='guest', enabled=E('input', { type:'checkbox' });
+		enabled.checked=String(current.disabled||'0')!=='1';
+		const ssid=E('input',{class:'cbi-input-text',value:current.ssid||'',placeholder:isGuest?'Equipe-X-Visitantes':'Equipe-X',maxlength:32,style:'width:100%'});
+		const password=E('input',{type:'password',class:'cbi-input-text',value:'',placeholder:'deixe vazio para manter a senha atual',maxlength:63,autocomplete:'new-password',style:'width:100%'});
+		const password2=E('input',{type:'password',class:'cbi-input-text',value:'',placeholder:'repita a nova senha se preencher',maxlength:63,autocomplete:'new-password',style:'width:100%'});
+		const show=E('input',{type:'checkbox'});
+		show.addEventListener('change',function(){password.type=password2.type=show.checked?'text':'password';});
+		const rows=[E('label',{class:'ex-device-config-block'},[E('strong',{},['Nome da rede Wi‑Fi']),ssid,E('small',{class:'ex-muted'},['Aplicado ao 2,4 GHz e ao 5 GHz.'])])];
+		if(isGuest)rows.push(E('div',{class:'ex-device-config-block'},[E('div',{class:'ex-device-config-heading'},[E('div',{},[E('strong',{},['Rede visitante']),E('small',{class:'ex-muted'},['Liga ou desliga o SSID visitante sem apagar a configuração.'])]),E('div',{class:'ex-device-switch-control'},[E('strong',{class:'ex-device-switch-state'},[enabled.checked?'Ligada':'Desligada']),E('label',{class:'ex-switch'},[enabled,E('span',{class:'ex-switch-slider'})])])])]));
+		rows.push(E('label',{class:'ex-device-config-block'},[E('strong',{},['Nova senha']),password,E('small',{class:'ex-muted'},['Opcional. Se preencher, use entre 8 e 63 caracteres.'])]));
+		rows.push(E('label',{class:'ex-device-config-block'},[E('strong',{},['Confirmar nova senha']),password2]));
+		rows.push(E('label',{class:'ex-show-password'},[show,E('span',{},['Mostrar senha digitada'])]));
+		rows.push(E('p',{class:'alert-message warning'},['Ao salvar, o Wi‑Fi reiniciará e aparelhos dessa rede poderão precisar reconectar.']));
+		rows.push(E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+			const name=ssid.value.trim(), pass=password.value;
+			if(!name||name.length>32){ui.addNotification(null,E('p',{},['O nome da rede precisa ter entre 1 e 32 caracteres.']),'danger');return;}
+			if(pass||password2.value){if(pass.length<8||pass.length>63){ui.addNotification(null,E('p',{},['A senha precisa ter entre 8 e 63 caracteres.']),'danger');return;}if(pass!==password2.value){ui.addNotification(null,E('p',{},['As duas senhas digitadas não são iguais.']),'danger');return;}}
+			const args=['wifi-settings',kind,'ssid='+name,'enabled='+(isGuest?(enabled.checked?'1':'0'):'keep')]; if(pass)args.push('password='+pass);
+			return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar Wi‑Fi');ui.hideModal();reloadSoon('Configuração do Wi‑Fi salva. Recarregando após reiniciar o rádio…',4200);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});
+		},this)},['Salvar Wi‑Fi'])]));
+		ui.showModal((isGuest?'Editar rede visitante':'Editar rede principal'),rows);
+		ssid.focus();
+		if(isGuest){enabled.addEventListener('change',function(){const st=enabled.closest('.ex-device-config-block').querySelector('.ex-device-switch-state');if(st)st.textContent=enabled.checked?'Ligada':'Desligada';});}
 	},
 	analyzeChannels: function(button) {
 		const apply=document.getElementById('ex-apply-channels'); button.disabled=true; if(apply)apply.disabled=true; button.textContent='Analisando…'; text('ex-scan-result','O Wi‑Fi permanece ativo durante a análise.');
@@ -432,7 +524,7 @@ return view.extend({
 		ui.showModal(fixed?'Aplicar canais sugeridos':'Voltar ao modo automático',[
 			E('p',{},[description]),
 			E('p',{class:'alert-message warning'},['A alteração reiniciará as duas bandas do Wi‑Fi e desconectará temporariamente todos os aparelhos das redes Equipe-X e Visitantes.']),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const args=['channels',mode];if(fixed)args.push(suggested.two,suggested.five);return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao aplicar os canais');ui.hideModal();ui.addNotification(null,E('p',{},[fixed?'Canais sugeridos salvos. A seleção automática foi desligada e o Wi‑Fi reiniciará em alguns segundos.':'Seleção automática ligada. O Wi‑Fi reiniciará em alguns segundos.']));return this.fetchData().then(L.bind(this.update,this));},this)).catch(L.bind(function(e){this.updateWifi(this.currentData);ui.addNotification(null,E('p',{},[e.message]));},this));},this)},[fixed?'Confirmar e aplicar':'Confirmar modo automático'])])
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const args=['channels',mode];if(fixed)args.push(suggested.two,suggested.five);return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao aplicar os canais');ui.hideModal();reloadSoon(fixed?'Canais sugeridos salvos. Recarregando após reiniciar o Wi‑Fi…':'Seleção automática ligada. Recarregando após reiniciar o Wi‑Fi…',4200);}).catch(L.bind(function(e){this.updateWifi(this.currentData);ui.addNotification(null,E('p',{},[e.message]));},this));},this)},[fixed?'Confirmar e aplicar':'Confirmar modo automático'])])
 		]);
 	},
 	changeCountry: function() {
@@ -442,7 +534,7 @@ return view.extend({
 		ui.showModal('País e domínio regulatório',[
 			E('p',{},['Escolha o país onde o roteador está sendo utilizado. Isso controla legalmente canais e potências disponíveis.']),select,
 			E('p',{class:'alert-message warning'},['Ao alterar o país, as duas bandas voltarão ao modo automático e o Wi‑Fi será reiniciado. Selecione somente o país onde o equipamento está fisicamente instalado.']),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const code=select.value,name=select.options[select.selectedIndex].text;return fs.exec('/usr/sbin/equipe-dashboard-control',['country',code]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar o país');ui.hideModal();ui.addNotification(null,E('p',{},['País alterado para '+name+'. O Wi‑Fi reiniciará em alguns segundos.']));}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]));});},this)},['Confirmar país'])])
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const code=select.value,name=select.options[select.selectedIndex].text;return fs.exec('/usr/sbin/equipe-dashboard-control',['country',code]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar o país');ui.hideModal();reloadSoon('País alterado para '+name+'. Recarregando após reiniciar o Wi‑Fi…',4200);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]));});},this)},['Confirmar país'])])
 		]);
 	},
 	setDashboardLanguage: function(language){
@@ -456,17 +548,92 @@ return view.extend({
 	},
 	changeHttpsRedirect: function(input){
 		const desired=!!input.checked;input.checked=!desired;
-		ui.showModal(desired?'Ativar redirecionamento HTTPS':'Desativar redirecionamento HTTPS',[E('p',{},[desired?'Depois de ativar, o navegador abrirá o painel em HTTPS e poderá exibir um aviso sobre o certificado local.':'O HTTP continuará disponível sem redirecionamento. O HTTPS permanecerá funcionando.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['https-redirect',desired?'1':'0']).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar o HTTPS');input.checked=desired;input.setAttribute('aria-checked',desired?'true':'false');this.capabilities.https=this.capabilities.https||{};this.capabilities.https.redirect=desired;const panel=input.closest('.ex-https-panel'),summary=panel&&panel.querySelector('.ex-https-summary'),state=panel&&panel.querySelector('.ex-https-switch-state');if(panel)panel.classList.toggle('is-enabled',desired);if(summary)summary.textContent=desired?'Ligado • todo acesso HTTP vai para HTTPS':'Desligado • HTTP e HTTPS disponíveis';if(state){state.textContent=desired?'ATIVO':'DESLIGADO';state.className='ex-https-switch-state '+(desired?'online':'standby');}ui.hideModal();ui.addNotification(null,E('p',{},[desired?'Redirecionamento HTTPS ativado.':'Redirecionamento HTTPS desativado.']));if(desired&&window.location.protocol!=='https:')window.setTimeout(function(){window.location.href='https://'+window.location.hostname+window.location.pathname;},1600);},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]));});},this)},['Confirmar alteração'])])]);
+		ui.showModal(desired?'Ativar redirecionamento HTTPS':'Desativar redirecionamento HTTPS',[E('p',{},[desired?'Depois de ativar, o navegador abrirá o painel em HTTPS e poderá exibir um aviso sobre o certificado local.':'O HTTP continuará disponível sem redirecionamento. O HTTPS permanecerá funcionando.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['https-redirect',desired?'1':'0']).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar o HTTPS');input.checked=desired;input.setAttribute('aria-checked',desired?'true':'false');this.capabilities.https=this.capabilities.https||{};this.capabilities.https.redirect=desired;const panel=input.closest('.ex-https-panel'),summary=panel&&panel.querySelector('.ex-https-summary'),state=panel&&panel.querySelector('.ex-https-switch-state');if(panel)panel.classList.toggle('is-enabled',desired);if(summary)summary.textContent=desired?'Ligado • todo acesso HTTP vai para HTTPS':'Desligado • HTTP e HTTPS disponíveis';if(state){state.textContent=desired?'ATIVO':'DESLIGADO';state.className='ex-https-switch-state '+(desired?'online':'standby');}ui.hideModal();ui.addNotification(null,E('p',{},[desired?'Redirecionamento HTTPS ativado.':'Redirecionamento HTTPS desativado.']));if(desired&&window.location.protocol!=='https:')window.setTimeout(function(){window.location.href='https://'+window.location.hostname+window.location.pathname;},1600);},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]));});},this)},['Confirmar alteração'])])]);
 	},
 	showCertificateHelp: function(){
 		const https=this.capabilities.https||{}, fingerprint=String(https.ca_fingerprint||'').replace(/(.{4})/g,'$1 ').trim();
-		ui.showModal('INSTALAÇÃO DO CERTIFICADO',[E('p',{class:'alert-message warning'},['Instale apenas em aparelhos administrativos nos quais você confia. Nunca é necessário instalar a chave privada.']),E('ol',{class:'ex-cert-steps'},[E('li',{},['Windows: abra o arquivo e instale-o em Autoridades de Certificação Raiz Confiáveis.']),E('li',{},['Android: em Segurança, procure Instalar certificado de CA e selecione o arquivo.']),E('li',{},['iPhone/iPad: instale o perfil baixado e depois habilite confiança total nos Ajustes de Certificados.']),E('li',{},['Depois da instalação, feche e abra novamente o navegador e acesse novamente o endereço HTTPS do roteador.'])]),fingerprint?E('p',{class:'ex-cert-fingerprint'},[E('span',{},['Impressão digital SHA-256']),E('code',{},[fingerprint])]):'',E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Fechar'])])]);
+		ui.showModal('INSTALAÇÃO DO CERTIFICADO',[E('p',{class:'alert-message warning'},['Instale apenas em aparelhos administrativos nos quais você confia. Nunca é necessário instalar a chave privada.']),E('ol',{class:'ex-cert-steps'},[E('li',{},['Windows: abra o arquivo e instale-o em Autoridades de Certificação Raiz Confiáveis.']),E('li',{},['Android: em Segurança, procure Instalar certificado de CA e selecione o arquivo.']),E('li',{},['iPhone/iPad: instale o perfil baixado e depois habilite confiança total nos Ajustes de Certificados.']),E('li',{},['Depois da instalação, feche e abra novamente o navegador e acesse novamente o endereço HTTPS do roteador.'])]),fingerprint?E('p',{class:'ex-cert-fingerprint'},[E('span',{},['Impressão digital SHA-256']),E('code',{},[fingerprint])]):'',E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])]);
 	},
 	setFeatureHidden: function(key,hidden){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-hide',key,hidden?'1':'0']).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar a preferência');return this.fetchCapabilities().then(function(c){this.capabilities=c;window.location.reload();}.bind(this));},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]));});
 	},
 	loadFeatureInstallLog: function(key){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-install-log',key]).then(function(r){return String(r.stdout||'').trim();}).catch(function(){return '';});
+	},
+	renderSelfUpdateResult: function(info){
+		const node=document.getElementById('ex-self-update-result'); if(!node)return;
+		info=info||{};
+		const current=info.current||(this.capabilities.update&&this.capabilities.update.current)||'—', latest=info.latest||'—';
+		const state=info.error?('Erro: '+info.error):(info.available?'Atualização disponível':'Sem atualização mais nova');
+		const stateClass=info.error?'offline':(info.available?'online':'standby');
+		const actions=[];
+		if(info.available)actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.startSelfUpdate,this,info)},['Atualizar agora']));
+		node.replaceChildren(E('div',{class:'ex-feature-row ex-update-result-row'},[
+			E('div',{class:'ex-feature-copy'},[
+				E('div',{class:'ex-feature-name-row'},[E('strong',{},[state]),E('span',{class:'ex-pill '+stateClass},[latest])]),
+				E('small',{class:'ex-muted'},['Instalada: ',current,' • Repositório: ',info.repo||((this.capabilities.update||{}).repo||'—')]),
+				info.asset?E('code',{},[info.asset]):''
+			]),
+			E('div',{class:'ex-feature-state'},[E('div',{class:'ex-feature-actions'},actions)])
+		])); translateTree(node);
+	},
+	checkSelfUpdate: function(button){
+		if(button){button.disabled=true;button.textContent='Verificando…';}
+		const node=document.getElementById('ex-self-update-result'); if(node)node.replaceChildren(E('small',{class:'ex-muted'},['Consultando GitHub Releases…']));
+		return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-check']).then(L.bind(function(r){
+			if(r.code)throw new Error(r.stderr||'Falha ao verificar atualização');
+			let info={}; try{info=JSON.parse(r.stdout||'{}');}catch(e){throw new Error('Resposta de atualização inválida');}
+			this.renderSelfUpdateResult(info);
+		},this)).catch(function(e){if(node)node.replaceChildren(E('p',{class:'alert-message warning'},[e.message]));}).finally(function(){if(button){button.disabled=false;button.textContent='Verificar atualização';}});
+	},
+	pollSelfUpdate: function(attempt){
+		return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-status']).then(L.bind(function(r){
+			const state=String(r.stdout||'').trim(), node=document.getElementById('ex-self-update-result');
+			if(state==='done'){
+				ui.addNotification(null,E('p',{},['ARK Router atualizado. Recarregando o painel…']));
+				window.setTimeout(function(){window.location.reload();},1800);
+				return;
+			}
+			if(state==='error'||attempt>180){
+				return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-log']).then(function(log){
+					const lines=String(log.stdout||'').split(/\r?\n/).map(function(line){return line.trim();}).filter(Boolean);
+					const detail=lines.length?lines.slice(-5).join(' | '):'A atualização não foi concluída.';
+					if(node)node.replaceChildren(E('p',{class:'alert-message warning'},[detail]));
+					ui.addNotification(null,E('p',{},[detail]),'danger');
+				});
+			}
+			if(node)node.replaceChildren(E('small',{class:'ex-muted'},['Atualização em andamento…']));
+			window.setTimeout(L.bind(this.pollSelfUpdate,this,attempt+1),2000);
+		},this));
+	},
+	startSelfUpdate: function(info){
+		info=info||{};
+		ui.showModal('Atualizar ARK Router',[
+			E('p',{},['Instalada: ',E('strong',{},[info.current||'—']),' • Nova: ',E('strong',{},[info.latest||'—'])]),
+			E('p',{class:'alert-message warning'},['O pacote será baixado do GitHub Releases e instalado com o gerenciador de pacotes do OpenWrt. O painel pode reiniciar por alguns segundos. Configurações de rede não serão alteradas.']),
+			E('p',{class:'ex-package-name'},['Arquivo: ',E('code',{},[info.asset||'luci-app-ark-router'])]),
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+				return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-start']).then(L.bind(function(r){
+					if(r.code)throw new Error(r.stderr||'Falha ao iniciar atualização');
+					ui.hideModal(); ui.addNotification(null,E('p',{},['Atualização iniciada. O painel avisará quando terminar.']));
+					this.pollSelfUpdate(0);
+				},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});
+			},this)},['Confirmar atualização'])])
+		]);
+	},
+	selfUpdatePanel: function(){
+		const update=this.capabilities.update||{}, manager=update.manager||this.capabilities.package_manager||'—';
+		return E('section',{class:'ex-appearance-panel ex-update-panel'},[
+			E('div',{class:'ex-appearance-heading'},[
+				E('div',{},[E('strong',{},['Atualização do ARK Router']),E('small',{class:'ex-muted'},['Verifica o GitHub Releases e instala somente após confirmação.'])]),
+				E('span',{class:'ex-pill '+(manager==='none'?'offline':'online')},[manager])
+			]),
+			E('div',{class:'ex-feature-row'},[
+				E('div',{class:'ex-feature-copy'},[E('strong',{},['Versão instalada: ',update.current||'—']),E('small',{class:'ex-muted'},['Repositório: ',update.repo||'Despensativo/ark-router'])]),
+				E('div',{class:'ex-feature-actions'},[E('button',{class:'ex-mini-button','click':L.bind(function(ev){this.checkSelfUpdate(ev.currentTarget);},this)},['Verificar atualização'])])
+			]),
+			E('div',{id:'ex-self-update-result',class:'ex-update-result'},[E('small',{class:'ex-muted'},['Nenhuma verificação executada nesta sessão.'])])
+		]);
 	},
 	pollFeatureInstall: function(key,attempt){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-install-status',key]).then(L.bind(function(r){
@@ -492,7 +659,7 @@ return view.extend({
 			E('p',{},[(meta&&meta.name)||key,' — ',(meta&&meta.description)||'']),
 			E('p',{class:'ex-package-name'},['Pacote: ',E('code',{},[feature.package||'—'])]),
 			E('p',{class:'alert-message warning'},[key==='speedtest'?'O executável oficial será baixado para a memória temporária. Ele não ocupará a flash e desaparecerá ao reiniciar.':'Essa ação atualizará a lista de pacotes e instalará somente o pacote indicado e suas dependências. Nenhuma configuração de rede será alterada automaticamente.']),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
 				return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-install',key]).then(L.bind(function(r){
 					const state=String(r.stdout||'').trim();
 					if(r.code)throw new Error(r.stderr||'Falha ao iniciar a instalação');
@@ -514,10 +681,10 @@ return view.extend({
 	},
 	useTheme: function(key){
 		if(key!=='argon')return;
-		ui.showModal('Usar tema',[E('p',{},['Tema Argon']),E('p',{class:'alert-message warning'},['O tema visual do LuCI será alterado. As configurações de rede não serão modificadas.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['theme',key]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao selecionar o tema');ui.hideModal();window.location.reload();}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]));});},this)},['Usar tema'])])]);
+		ui.showModal('Usar tema',[E('p',{},['Tema Argon']),E('p',{class:'alert-message warning'},['O tema visual do LuCI será alterado. As configurações de rede não serão modificadas.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['theme',key]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao selecionar o tema');ui.hideModal();window.location.reload();}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]));});},this)},['Usar tema'])])]);
 	},
 	startSpeedtest: function(wan,label){
-		ui.showModal('Iniciar teste',[E('p',{},[label]),E('p',{class:'alert-message warning'},['O teste faz uma medição completa e mais duas de upload. O SQM desta WAN será pausado e restaurado automaticamente. Durante o teste, o link ficará ocupado.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['speedtest-start',wan]).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao iniciar o teste');ui.hideModal();const n=document.getElementById('ex-speedtest-'+wan+'-result');if(n)n.replaceChildren(E('span',{class:'ex-muted'},['Teste em andamento…']));this.pollSpeedtest(wan,0);},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]));});},this)},['Iniciar teste'])])]);
+		ui.showModal('Iniciar teste',[E('p',{},[label]),E('p',{class:'alert-message warning'},['O teste faz uma medição completa e mais duas de upload. O SQM desta WAN será pausado e restaurado automaticamente. Durante o teste, o link ficará ocupado.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['speedtest-start',wan]).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao iniciar o teste');ui.hideModal();const n=document.getElementById('ex-speedtest-'+wan+'-result');if(n)n.replaceChildren(E('span',{class:'ex-muted'},['Teste em andamento…']));this.pollSpeedtest(wan,0);},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]));});},this)},['Iniciar teste'])])]);
 	},
 	pollSpeedtest: function(wan,attempt){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['speedtest-status',wan]).then(L.bind(function(r){const state=String(r.stdout||'').trim();if(state==='done')return this.loadSpeedtestResult(wan).then(function(){ui.addNotification(null,E('p',{},['Teste concluído.']));});if(state==='error'||attempt>300){ui.addNotification(null,E('p',{},['O teste não foi concluído. O SQM já foi restaurado.']));return;}window.setTimeout(L.bind(this.pollSpeedtest,this,wan,attempt+1),2000);},this));
@@ -530,10 +697,10 @@ return view.extend({
 		node.replaceChildren(E('div',{class:'ex-speedtest-metrics'},[E('div',{},[E('span',{},['Medições de upload']),E('strong',{},[runs||'—'])]),E('div',{},[E('span',{},['Download medido']),E('strong',{},[Number(data.download_mbps||0).toFixed(2)+' Mbps'])]),E('div',{},[E('span',{},['Latência']),E('strong',{},[Number(data.latency_ms||0).toFixed(1)+' ms'])])]),E('div',{class:'ex-speedtest-suggestion'},[E('span',{},['Sugestão conservadora']),E('strong',{},[formatRate(Number(suggestions.conservative||0)*1000)]),E('div',{},[['conservative','Aplicar 85%'],['balanced','Aplicar 90%'],['aggressive','Aplicar 95%']].map(L.bind(function(item){return E('button',{class:'ex-mini-button','click':L.bind(this.applySpeedtestSuggestion,this,wan,suggestions[item[0]])},[item[1]]);},this))) ]));translateTree(node);
 	},
 	applySpeedtestSuggestion: function(wan,kbps){
-		kbps=Math.round(Number(kbps)||0);if(!kbps)return;ui.showModal('Aplicar sugestão ao SQM',[E('p',{},[(wan==='wan'?'WAN1':'WAN2')+': '+formatRate(kbps*1000)]),E('p',{class:'alert-message warning'},['O novo limite será salvo e o SQM será reiniciado.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['speedtest-apply',wan,String(kbps)]).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao aplicar');ui.hideModal();return this.fetchData().then(L.bind(this.update,this));},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]));});},this)},['Aplicar'])])]);
+		kbps=Math.round(Number(kbps)||0);if(!kbps)return;ui.showModal('Aplicar sugestão ao SQM',[E('p',{},[(wan==='wan'?'WAN1':'WAN2')+': '+formatRate(kbps*1000)]),E('p',{class:'alert-message warning'},['O novo limite será salvo e o SQM será reiniciado.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['speedtest-apply',wan,String(kbps)]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao aplicar');ui.hideModal();reloadSoon('Sugestão aplicada ao SQM. Recarregando para atualizar os limites…',2400);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]));});},this)},['Aplicar'])])]);
 	},
 	requestReboot: function(){
-		ui.showModal('Primeira confirmação',[E('p',{},['Deseja preparar o reinício do roteador? Nenhuma configuração será apagada.']),E('p',{class:'alert-message warning'},['A internet e o painel ficarão indisponíveis por alguns minutos.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+		ui.showModal('Primeira confirmação',[E('p',{},['Deseja preparar o reinício do roteador? Nenhuma configuração será apagada.']),E('p',{class:'alert-message warning'},['A internet e o painel ficarão indisponíveis por alguns minutos.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
 			return fs.exec('/usr/sbin/equipe-dashboard-control',['reboot-prepare']).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao preparar o reinício');const token=String(r.stdout||'').trim();if(!/^[0-9a-f]{8,64}$/.test(token))throw new Error('Confirmação inválida recebida do roteador');this.showRebootConfirmation(token);},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});
 		},this)},['Continuar'])])]);
 	},
@@ -614,11 +781,11 @@ return view.extend({
 			},this);
 			const saveDraft=L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',collect()).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar o Ark - Setup');ui.addNotification(null,E('p',{},['Rascunho do Ark - Setup salvo.']));}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this);
 			const applySetup=L.bind(function(){return saveDraft().then(L.bind(function(){
-				ui.showModal('Aplicar Ark - Setup',[E('p',{class:'alert-message warning'},['O roteador criará um backup em /tmp e aplicará as etapas salvas. Wi‑Fi, DNS, firewall, WAN ou SQM podem reiniciar durante o processo.']),E('p',{},['Se o painel cair, reconecte na nova rede e abra o ARK Router novamente; o progresso fica salvo.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['ez-setup-apply']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao aplicar o Ark - Setup');let out={};try{out=JSON.parse(r.stdout||'{}');}catch(e){}ui.hideModal();ui.addNotification(null,E('p',{},['Ark - Setup aplicado. Backup: ',out.backup||'/tmp/ark-router-ezsetup-backup-*.tar.gz']));window.setTimeout(function(){window.location.reload();},1800);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar e aplicar'])])]);
+				ui.showModal('Aplicar Ark - Setup',[E('p',{class:'alert-message warning'},['O roteador criará um backup em /tmp e aplicará as etapas salvas. Wi‑Fi, DNS, firewall, WAN ou SQM podem reiniciar durante o processo.']),E('p',{},['Se o painel cair, reconecte na nova rede e abra o ARK Router novamente; o progresso fica salvo.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['ez-setup-apply']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao aplicar o Ark - Setup');let out={};try{out=JSON.parse(r.stdout||'{}');}catch(e){}ui.hideModal();ui.addNotification(null,E('p',{},['Ark - Setup aplicado. Backup: ',out.backup||'/tmp/ark-router-ezsetup-backup-*.tar.gz']));window.setTimeout(function(){window.location.reload();},1800);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar e aplicar'])])]);
 			},this));},this);
 			const pollSetupModules=L.bind(function(attempt){return fs.exec('/usr/sbin/equipe-dashboard-control',['ez-setup-install-status']).then(L.bind(function(r){const state=String(r.stdout||'').trim();if(state==='done'){ui.addNotification(null,E('p',{},['Módulos do Ark - Setup instalados. Recarregando…']));window.setTimeout(function(){window.location.reload();},1200);return;}if(state==='error'||attempt>180){return fs.exec('/usr/sbin/equipe-dashboard-control',['ez-setup-install-log']).then(function(log){const lines=String(log.stdout||'').split(/\r?\n/).filter(Boolean);ui.addNotification(null,E('p',{},[lines.slice(-4).join(' | ')||'Falha ao instalar módulos.']),'danger');});}window.setTimeout(function(){pollSetupModules(attempt+1);},2000);},this));},this);
 			const installModules=L.bind(function(){return saveDraft().then(L.bind(function(){
-				ui.showModal('Instalar módulos do Ark - Setup',[E('p',{class:'alert-message warning'},['A lista de pacotes será atualizada e os módulos selecionados serão instalados um por um. Nenhuma configuração de rede será aplicada automaticamente.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['ez-setup-install-modules']).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao iniciar instalação');ui.hideModal();ui.addNotification(null,E('p',{},['Instalação dos módulos iniciada.']));pollSetupModules(0);},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar instalação'])])]);
+				ui.showModal('Instalar módulos do Ark - Setup',[E('p',{class:'alert-message warning'},['A lista de pacotes será atualizada e os módulos selecionados serão instalados um por um. Nenhuma configuração de rede será aplicada automaticamente.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['ez-setup-install-modules']).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao iniciar instalação');ui.hideModal();ui.addNotification(null,E('p',{},['Instalação dos módulos iniciada.']));pollSetupModules(0);},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar instalação'])])]);
 			},this));},this);
 			const reset=L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['ez-setup-reset']).then(function(){ui.hideModal();ui.addNotification(null,E('p',{},['Rascunho do Ark - Setup apagado.']));}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this);
 			const moduleList=E('div',{class:'ex-ez-module-grid'},Object.keys(moduleBoxes).map(L.bind(function(k){const f=this.feature(k);if(f.installed)return E('div',{class:'ex-ez-module-installed'},[E('b',{},['✓']),E('span',{},[moduleNames[k]||k,E('small',{},['Já instalado'])])]);return E('label',{},[moduleBoxes[k],E('span',{},[moduleNames[k]||k,E('small',{},['Opcional'])])]);},this)));
@@ -631,7 +798,7 @@ return view.extend({
 				E('section',{class:'ex-ez-section'},[E('h3',{},['5. SQM / CAKE']),E('p',{class:'ex-muted'},['Ajuda a manter latência estável quando o link está cheio. Em Starlink/link móvel, prefira upload conservador.']),E('div',{class:'ex-ez-grid'},[this.ezField('Configurar SQM',sqmEnabled),this.ezField('Estratégia',sqmStrategy),this.ezField('WAN1 upload Kbps',sqmWanUp),this.ezField('WAN1 download Kbps',sqmWanDown),this.ezField('WAN2 upload Kbps',sqmWan2Up),this.ezField('WAN2 download Kbps',sqmWan2Down)])]),
 				E('section',{class:'ex-ez-section'},[E('h3',{},['6. DNS e segurança']),E('div',{class:'ex-ez-grid'},[this.ezField('Modo DNS',dnsMode),this.ezField('DNS 1',dns1),this.ezField('DNS 2',dns2),this.ezField('DNS 3',dns3,'Opcional'),this.ezField('Desativar IPv6',disableIpv6),this.ezField('Desativar WPS',disableWps),this.ezField('Usar Argon se instalado',useArgon)])]),
 				E('section',{class:'ex-ez-section'},[E('h3',{},['7. Recursos opcionais']),E('p',{class:'ex-muted'},['Marcados como “já instalado” já existem no roteador. Os demais são opcionais e só serão instalados se você confirmar.']),moduleList,E('button',{class:'ex-mini-button ex-ez-install-modules','click':installModules},['Instalar módulos selecionados'])]),
-				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Fechar']),' ',E('button',{class:'btn cbi-button cbi-button-neutral','click':reset},['Apagar rascunho']),' ',E('button',{class:'btn cbi-button cbi-button-action','click':saveDraft},['Salvar rascunho']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':applySetup},['Salvar e aplicar'])])
+				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar']),' ',E('button',{class:'btn cbi-button cbi-button-neutral','click':reset},['Apagar rascunho']),' ',E('button',{class:'btn cbi-button cbi-button-action','click':saveDraft},['Salvar rascunho']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':applySetup},['Salvar e aplicar'])])
 			])]);
 		},this));
 	},
@@ -649,14 +816,14 @@ return view.extend({
 			if(key==='argon'&&f.installed&&!f.active)actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.useTheme,this,key)},['Usar tema']));
 			return E('div',{class:'ex-feature-row'},[E('div',{class:'ex-feature-copy'},[E('div',{class:'ex-feature-name-row'},[E('strong',{},[meta.name]),meta.recommended?E('span',{class:'ex-recommended-badge'},['RECOMENDADO']):'']),E('small',{class:'ex-muted'},[meta.description]),f.package?E('code',{},[f.package]):'']),E('div',{class:'ex-feature-state'},[E('span',{class:'ex-pill '+(f.installed?(f.active?'online':'standby'):(f.hidden?'standby':'offline'))},[state]),E('div',{class:'ex-feature-actions'},actions)])]);
 		},this));
-		ui.showModal('RECURSOS E COMPATIBILIDADE',[E('div',{class:'ex-brand-row'},[E('label',{},['Nome do painel']),brandName,E('button',{class:'ex-mini-button','click':L.bind(function(){this.setDashboardTitle(brandName.value);},this)},['Salvar nome'])]),E('div',{class:'ex-language-row'},[E('label',{},['Idioma do painel']),language,E('button',{class:'ex-mini-button','click':L.bind(function(){this.setDashboardLanguage(language.value);},this)},['Salvar idioma'])]),httpsPanel,E('section',{class:'ex-appearance-panel'},[E('div',{class:'ex-appearance-heading'},[E('div',{},[E('strong',{},['Aparência']),E('small',{class:'ex-muted'},['No modo automático, o painel acompanha as cores e o modo claro ou escuro do tema LuCI.'])]),appearanceMode]),appearanceColors,E('button',{class:'ex-mini-button ex-save-appearance','click':L.bind(function(){this.setAppearance(appearanceMode.value,primary.value,secondary.value);},this)},['Salvar aparência'])]),E('div',{class:'ex-feature-list'},rows),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':ui.hideModal},['Fechar'])])]);
+		ui.showModal('RECURSOS E COMPATIBILIDADE',[E('div',{class:'ex-brand-row'},[E('label',{},['Nome do painel']),brandName,E('button',{class:'ex-mini-button','click':L.bind(function(){this.setDashboardTitle(brandName.value);},this)},['Salvar nome'])]),E('div',{class:'ex-language-row'},[E('label',{},['Idioma do painel']),language,E('button',{class:'ex-mini-button','click':L.bind(function(){this.setDashboardLanguage(language.value);},this)},['Salvar idioma'])]),this.selfUpdatePanel(),httpsPanel,E('section',{class:'ex-appearance-panel'},[E('div',{class:'ex-appearance-heading'},[E('div',{},[E('strong',{},['Aparência']),E('small',{class:'ex-muted'},['No modo automático, o painel acompanha as cores e o modo claro ou escuro do tema LuCI.'])]),appearanceMode]),appearanceColors,E('button',{class:'ex-mini-button ex-save-appearance','click':L.bind(function(){this.setAppearance(appearanceMode.value,primary.value,secondary.value);},this)},['Salvar aparência'])]),E('div',{class:'ex-feature-list'},rows),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])]);
 	},
 	featureSuggestionCard: function(keys){
 		return E('section',{class:'ex-card ex-feature-suggestions'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['RECURSOS OPCIONAIS']),E('h3',{},['Amplie o painel'])]),E('button',{class:'ex-mini-button','click':L.bind(this.showFeatureCenter,this)},['Recursos'])]),E('div',{class:'ex-suggestion-list'},keys.map(L.bind(function(key){const meta=FEATURE_META[key];return E('div',{class:'ex-suggestion-row'},[E('div',{},[E('div',{class:'ex-feature-name-row'},[E('strong',{},[meta.name]),meta.recommended?E('span',{class:'ex-recommended-badge'},['RECOMENDADO']):'']),E('small',{class:'ex-muted'},[meta.description])]),E('div',{},[E('button',{class:'ex-mini-button','click':L.bind(this.installFeature,this,key)},['Instalar']),E('button',{class:'ex-feature-link','click':L.bind(this.setFeatureHidden,this,key,true)},['Não mostrar'])])]);},this)))]);
 	},
 	render: function(loaded) {
 		this.board=loaded[0]||{}; this.countries=(loaded[1]&&loaded[1].results)||[]; this.capabilities=loaded[2]||{features:{}}; dashboardLanguage=this.capabilities.language||'pt-br';this.applyAppearance();this.applyBrand(this.capabilities.title);enableTranslation(); const data=loaded[3], w=wifiConfig(data.wireless), release=((this.board.release||{}).description||'').split(' ').slice(0,2).join(' '), panelTitle=this.capabilities.title||'ARK Router';
-		const wifiCard=L.bind(function(kind,title,ssid,key){const keyId='ex-'+kind+'-key';return E('section',{class:'ex-card ex-wifi-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['REDE WI‑FI']),E('h3',{id:'ex-'+kind+'-ssid'},[ssid])]),E('span',{class:'ex-pill online'},['ATIVA'])]),E('div',{class:'ex-secret'},[E('code',{id:keyId,'data-hidden':'1',style:'filter:blur(5px)'},[key]),E('button',{class:'ex-mini-button','click':function(ev){this.togglePassword(keyId,ev.currentTarget);}.bind(this)},['Ver senha'])]),E('small',{class:'ex-muted'},[title+' • disponível em 2,4 e 5 GHz']),E('button',{class:'ex-text-button','click':L.bind(this.changeWifiPassword,this,kind,ssid)},['Alterar senha nesta tela →'])]);},this);
+		const wifiCard=L.bind(function(kind,title,cfg){const ssid=cfg.ssid||(kind==='guest'?'Equipe-X-Visitantes':'Equipe-X'),key=cfg.key||'',active=String(cfg.disabled||'0')!=='1',keyId='ex-'+kind+'-key';return E('section',{class:'ex-card ex-wifi-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['REDE WI‑FI']),E('h3',{id:'ex-'+kind+'-ssid'},[ssid])]),E('span',{id:'ex-'+kind+'-wifi-status',class:'ex-pill '+(active?'online':'standby')},[active?'ATIVA':'DESLIGADA'])]),E('div',{class:'ex-secret'},[E('code',{id:keyId,'data-hidden':'1',style:'filter:blur(5px)'},[key||'sem senha']),E('button',{class:'ex-mini-button','click':function(ev){this.togglePassword(keyId,ev.currentTarget);}.bind(this)},['Ver senha'])]),E('small',{class:'ex-muted'},[title+' • disponível em 2,4 e 5 GHz']),E('button',{class:'ex-text-button','click':L.bind(function(){this.editWifiNetwork(kind,cfg);},this)},['Configurar nome, senha e status →'])]);},this);
 		const modeButton=L.bind(function(mode,label){return E('button',{id:'ex-mode-'+mode,class:'ex-mode-button','click':L.bind(this.setMwanMode,this,mode,label)},[label]);},this);
 		const historyCard=function(kind,title,color){return E('section',{class:'ex-card ex-history-card','style':'--history-color:'+color},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['HISTÓRICO 24 HORAS']),E('h3',{},[title])]),E('strong',{id:'ex-history-'+kind+'-peak',class:'ex-history-peak'},['Coletando…'])]),E('canvas',{id:'ex-history-'+kind,class:'ex-history-chart',width:600,height:126})]);};
 		const healthItem=function(icon,label,valueId,barId,color){return E('div',{class:'ex-health-item','style':'--health-color:'+color},[E('span',{class:'ex-health-icon'},[icon]),E('div',{class:'ex-health-copy'},[E('span',{class:'ex-label'},[label]),E('strong',{id:valueId},['—']),barId?E('div',{class:'ex-health-bar'},[E('i',{id:barId})]):E('small',{class:'ex-health-steady'},['atividade do sistema'])])]);};
@@ -668,22 +835,23 @@ return view.extend({
 			E('div',{class:'ex-grid ex-grid-2 ex-history-grid'},[historyCard('down','Download ao longo do dia','#3b82f6'),historyCard('up','Upload ao longo do dia','#a855f7')]),
 			E('p',{id:'ex-history-samples',class:'ex-history-caption'},['A primeira amostra aparecerá em até 1 minuto']),
 			E('div',{class:'ex-grid ex-grid-2'},[
-				E('section',{class:'ex-card ex-wan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},['WAN1']),E('span',{id:'ex-wan1-status',class:'ex-pill standby'},['—'])]),infoRow('Endereço IPv4','ex-wan1-ip'),infoRow('Link físico','ex-wan1-link'),infoRow('Latência','ex-wan1-latency'),infoRow('Tempo online','ex-wan1-uptime'),E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(this.editWan,this,'wan')},['Editar internet'])]),
-				E('section',{class:'ex-card ex-wan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},['WAN2']),E('span',{id:'ex-wan2-status',class:'ex-pill standby'},['—'])]),infoRow('Endereço IPv4','ex-wan2-ip'),infoRow('Link físico','ex-wan2-link'),infoRow('Latência','ex-wan2-latency'),infoRow('Tempo online','ex-wan2-uptime'),E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(this.editWan,this,'wan2')},['Editar porta / internet'])])
+				E('section',{class:'ex-card ex-wan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},['WAN1']),E('span',{id:'ex-wan1-status',class:'ex-pill standby'},['—'])]),infoRow('Endereço IPv4','ex-wan1-ip'),infoRow('Link físico','ex-wan1-link'),infoRow('Latência','ex-wan1-latency'),infoRow('Tempo online','ex-wan1-uptime'),E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(function(){this.editWan('wan');},this)},['Editar internet'])]),
+				E('section',{class:'ex-card ex-wan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},['WAN2']),E('span',{id:'ex-wan2-status',class:'ex-pill standby'},['—'])]),infoRow('Endereço IPv4','ex-wan2-ip'),infoRow('Link físico','ex-wan2-link'),infoRow('Latência','ex-wan2-latency'),infoRow('Tempo online','ex-wan2-uptime'),E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(function(){this.editWan('wan2');},this)},['Editar porta / internet'])])
 			]),
+			E('section',{class:'ex-card ex-lan-config-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['REDE PRINCIPAL']),E('h3',{},['LAN / DHCP'])]),E('button',{class:'ex-mini-button','click':L.bind(function(){this.editLan();},this)},['Editar IP e DHCP'])]),E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},[infoRow('IP do roteador','ex-lan-ip'),infoRow('Faixa DHCP','ex-lan-dhcp'),infoRow('Máscara','ex-lan-mask')]),E('p',{class:'ex-muted'},['Use para trocar entre redes 192.168.x.x, 10.0.x.x ou definir manualmente a faixa que os dispositivos recebem.'])]),
 			E('div',{class:'ex-lan-block'},[E('div',{class:'ex-lan-title'},[E('div',{},[E('span',{class:'ex-kicker'},['PORTAS CABEADAS']),E('h3',{},['LAN disponíveis'])]),E('small',{class:'ex-muted'},['A LAN1 está configurada como WAN2'])]),E('div',{class:'ex-grid ex-grid-2'},[
 				E('section',{class:'ex-card ex-lan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},['LAN2']),E('span',{id:'ex-lan2-status',class:'ex-pill standby'},['—'])]),infoRow('Velocidade','ex-lan2-speed'),infoRow('Modo','ex-lan2-duplex'),infoRow('Recebido','ex-lan2-rx'),infoRow('Enviado','ex-lan2-tx')]),
 				E('section',{class:'ex-card ex-lan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},['LAN3']),E('span',{id:'ex-lan3-status',class:'ex-pill standby'},['—'])]),infoRow('Velocidade','ex-lan3-speed'),infoRow('Modo','ex-lan3-duplex'),infoRow('Recebido','ex-lan3-rx'),infoRow('Enviado','ex-lan3-tx')])
 			])]),
-			E('div',{class:'ex-grid ex-grid-2 ex-wifi-grid'},[wifiCard('main','Acesso principal',w.main.ssid||'Equipe-X',w.main.key||''),wifiCard('guest','Visitantes com upload limitado',w.guest.ssid||'Equipe-X-Visitantes',w.guest.key||'')]),
-			E('section',{class:'ex-card ex-channel-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['AMBIENTE WI‑FI']),E('h3',{},['Canais e interferência'])]),E('button',{class:'ex-button ex-inline-button','click':L.bind(function(ev){this.analyzeChannels(ev.currentTarget);},this)},['Analisar canais agora'])]),E('div',{class:'ex-country-control'},[E('div',{},[E('span',{class:'ex-label'},['PAÍS / DOMÍNIO REGULATÓRIO']),E('strong',{id:'ex-country-current'},['—'])]),E('button',{class:'ex-mini-button','click':L.bind(this.changeCountry,this)},['Alterar país'])]),E('div',{class:'ex-channel-mode-control'},[E('div',{},[E('strong',{},['Seleção automática de canais']),E('small',{id:'ex-channel-mode-summary',class:'ex-muted'},['Verificando…'])]),E('label',{class:'ex-switch'},[E('input',{id:'ex-channel-auto-toggle',type:'checkbox','aria-label':translateText('Seleção automática de canais'),'change':L.bind(function(ev){this.toggleAutoChannels(ev.currentTarget);},this)}),E('span',{class:'ex-switch-slider'})])]),E('div',{class:'ex-grid ex-grid-2 ex-channel-grid'},[E('div',{},[E('div',{class:'ex-channel-band-head'},[E('b',{},['2,4 GHz']),E('span',{id:'ex-wifi-2-mode',class:'ex-pill standby'},['—'])]),E('span',{id:'ex-wifi-2'},['—'])]),E('div',{},[E('div',{class:'ex-channel-band-head'},[E('b',{},['5 GHz']),E('span',{id:'ex-wifi-5-mode',class:'ex-pill standby'},['—'])]),E('span',{id:'ex-wifi-5'},['—'])])]),E('p',{id:'ex-wifi-noise',class:'ex-muted'},['—']),E('p',{id:'ex-scan-result',class:'ex-scan-result'},['A análise é manual e apenas recomenda canais; não interrompe os usuários.']),E('div',{class:'ex-channel-actions'},[E('button',{id:'ex-apply-channels',class:'ex-channel-action primary',disabled:true,'click':L.bind(this.changeChannels,this,'fixed')},['Analisar antes de aplicar'])])]),
+			E('div',{class:'ex-grid ex-grid-2 ex-wifi-grid'},[wifiCard('main','Acesso principal',w.main),wifiCard('guest','Visitantes com upload limitado',w.guest)]),
+			E('section',{class:'ex-card ex-channel-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['AMBIENTE WI‑FI']),E('h3',{},['Canais e interferência'])]),E('button',{class:'ex-button ex-inline-button','click':L.bind(function(ev){this.analyzeChannels(ev.currentTarget);},this)},['Analisar canais agora'])]),E('div',{class:'ex-country-control'},[E('div',{},[E('span',{class:'ex-label'},['PAÍS / DOMÍNIO REGULATÓRIO']),E('strong',{id:'ex-country-current'},['—'])]),E('button',{class:'ex-mini-button','click':L.bind(function(){this.changeCountry();},this)},['Alterar país'])]),E('div',{class:'ex-channel-mode-control'},[E('div',{},[E('strong',{},['Seleção automática de canais']),E('small',{id:'ex-channel-mode-summary',class:'ex-muted'},['Verificando…'])]),E('label',{class:'ex-switch'},[E('input',{id:'ex-channel-auto-toggle',type:'checkbox','aria-label':translateText('Seleção automática de canais'),'change':L.bind(function(ev){this.toggleAutoChannels(ev.currentTarget);},this)}),E('span',{class:'ex-switch-slider'})])]),E('div',{class:'ex-grid ex-grid-2 ex-channel-grid'},[E('div',{},[E('div',{class:'ex-channel-band-head'},[E('b',{},['2,4 GHz']),E('span',{id:'ex-wifi-2-mode',class:'ex-pill standby'},['—'])]),E('span',{id:'ex-wifi-2'},['—'])]),E('div',{},[E('div',{class:'ex-channel-band-head'},[E('b',{},['5 GHz']),E('span',{id:'ex-wifi-5-mode',class:'ex-pill standby'},['—'])]),E('span',{id:'ex-wifi-5'},['—'])])]),E('p',{id:'ex-wifi-noise',class:'ex-muted'},['—']),E('p',{id:'ex-scan-result',class:'ex-scan-result'},['A análise é manual e apenas recomenda canais; não interrompe os usuários.']),E('div',{class:'ex-channel-actions'},[E('button',{id:'ex-apply-channels',class:'ex-channel-action primary',disabled:true,'click':L.bind(function(){this.changeChannels('fixed');},this)},['Analisar antes de aplicar'])])]),
 			E('section',{class:'ex-card ex-devices'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['DISPOSITIVOS']),E('h3',{},['Quem está conectado'])]),E('span',{id:'ex-device-count',class:'ex-pill online'},['0 conectados'])]),E('details',{},[E('summary',{},['Expandir lista e ver tráfego individual']),E('div',{class:'ex-table-wrap'},[E('table',{class:'ex-device-table'},[E('thead',{},[E('tr',{},[E('th',{},['Dispositivo']),E('th',{class:'ex-hide-mobile'},['Rede / sinal']),E('th',{},['Agora']),E('th',{},[''])])]),E('tbody',{id:'ex-device-body'}),E('tbody',{id:'ex-device-empty'},[E('tr',{},[E('td',{colspan:4},['Nenhum dispositivo conectado.'])])])])]),E('p',{class:'ex-muted ex-table-note'},['A velocidade é estimada pelos contadores do roteador e atualizada a cada 3 segundos. Em Configurar, você pode renomear, reservar o IP e priorizar o aparelho.'])])]),
 			E('div',{class:'ex-grid ex-grid-2'},[
 				E('section',{class:'ex-card ex-center-card'},[E('span',{class:'ex-big-icon'},['★']),E('span',{class:'ex-label'},['Equipe-X']),E('strong',{id:'ex-main-clients',class:'ex-number'},['0']),E('small',{id:'ex-main-wifi',class:'ex-muted'},['0 no Wi-Fi'])]),
 				E('section',{class:'ex-card ex-center-card'},[E('span',{class:'ex-big-icon'},['♟']),E('span',{class:'ex-label'},['Visitantes']),E('strong',{id:'ex-guest-clients',class:'ex-number'},['0']),E('small',{id:'ex-guest-wifi',class:'ex-muted'},['0 no Wi-Fi'])])
 			]),
 			E('section',{class:'ex-card ex-speedtest-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['TESTE DE LINK']),E('h3',{},['Calibração do upload'])]),E('span',{class:'ex-pill online'},['Pronto na memória'])]),E('p',{class:'ex-muted'},['O teste faz uma medição completa e mais duas de upload. O SQM desta WAN será pausado e restaurado automaticamente. Durante o teste, o link ficará ocupado.']),E('div',{class:'ex-grid ex-grid-2 ex-speedtest-grid'},[speedWanCard('wan','WAN1',!!iface(data.interfaces,'wan').up),speedWanCard('wan2','WAN2',!!iface(data.interfaces,'wan2').up)])]),
-			E('section',{class:'ex-card ex-qos-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['CONTROLE DE FILAS']),E('h3',{},['CAKE / SQM'])]),E('span',{id:'ex-qos-status',class:'ex-pill standby'},['—'])]),E('div',{class:'ex-qos-toggle-row'},[E('div',{},[E('strong',{},['SQM / CAKE']),E('small',{class:'ex-muted'},['Liga ou desliga as filas configuradas'])]),E('div',{class:'ex-device-switch-control'},[E('strong',{id:'ex-qos-toggle-state',class:'ex-device-switch-state'},['—']),E('label',{class:'ex-switch'},[E('input',{id:'ex-qos-toggle',type:'checkbox','change':L.bind(function(ev){this.toggleSqm(ev.currentTarget);},this)}),E('span',{class:'ex-switch-slider'})])])]),E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},[infoRow('WAN1 limites','ex-qos-wan'),infoRow('Rede visitante','ex-qos-guest'),infoRow('DNS do roteador','ex-dns')]),E('button',{class:'ex-button ex-qos-edit-button','click':L.bind(this.editSqmLimits,this)},['Editar limites'])]),
+			E('section',{class:'ex-card ex-qos-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['CONTROLE DE FILAS']),E('h3',{},['CAKE / SQM'])]),E('span',{id:'ex-qos-status',class:'ex-pill standby'},['—'])]),E('div',{class:'ex-qos-toggle-row'},[E('div',{},[E('strong',{},['SQM / CAKE']),E('small',{class:'ex-muted'},['Liga ou desliga as filas configuradas'])]),E('div',{class:'ex-device-switch-control'},[E('strong',{id:'ex-qos-toggle-state',class:'ex-device-switch-state'},['—']),E('label',{class:'ex-switch'},[E('input',{id:'ex-qos-toggle',type:'checkbox','change':L.bind(function(ev){this.toggleSqm(ev.currentTarget);},this)}),E('span',{class:'ex-switch-slider'})])])]),E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},[infoRow('WAN1 limites','ex-qos-wan'),infoRow('Rede visitante','ex-qos-guest'),infoRow('DNS do roteador','ex-dns')]),E('button',{class:'ex-button ex-qos-edit-button','click':L.bind(function(){try{this.editSqmLimits();}catch(e){ui.addNotification(null,E('p',{},[e.message||String(e)]),'danger');}},this)},['Editar limites'])]),
 			E('section',{class:'ex-card ex-mwan-control'},[
 				E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['MULTI‑WAN']),E('h3',{},['Modo atual: ',E('span',{id:'ex-mwan-mode'},['Failover WAN1 → WAN2'])])]),E('a',{class:'ex-text-link',href:L.url('admin/status/mwan3/overview')},['Ver detalhes →'])]),
 				E('details',{class:'ex-mwan-editor'},[
@@ -692,7 +860,7 @@ return view.extend({
 				])
 			]),
 			E('section',{class:'ex-shortcuts'},[E('a',{'data-feature':'mwan3',href:L.url('admin/status/mwan3/overview')},[E('b',{},['⇄']),E('span',{},['MultiWAN',E('small',{},['estado detalhado'])])]),E('a',{'data-feature':'nlbwmon',href:L.url('admin/services/nlbw/display')},[E('b',{},['▥']),E('span',{},['Consumo',E('small',{},['histórico completo'])])]),E('a',{href:L.url('admin/status/realtime/bandwidth')},[E('b',{},['⌁']),E('span',{},['Gráficos',E('small',{},['interfaces em tempo real'])])]),E('a',{href:L.url('admin/network/dhcp')},[E('b',{},['⌘']),E('span',{},['IPs fixos',E('small',{},['reservas DHCP'])])])]),
-			E('section',{class:'ex-card ex-reboot-card'},[E('div',{},[E('span',{class:'ex-kicker'},['SISTEMA']),E('h3',{},['Reiniciar o roteador']),E('p',{class:'ex-muted'},['Interrompe a internet por alguns minutos e encerra as sessões abertas.'])]),E('button',{class:'ex-reboot-button','click':L.bind(this.requestReboot,this)},['Reiniciar…'])])
+			E('section',{class:'ex-card ex-reboot-card'},[E('div',{},[E('span',{class:'ex-kicker'},['SISTEMA']),E('h3',{},['Reiniciar o roteador']),E('p',{class:'ex-muted'},['Interrompe a internet por alguns minutos e encerra as sessões abertas.'])]),E('button',{class:'ex-reboot-button','click':L.bind(function(){this.requestReboot();},this)},['Reiniciar…'])])
 		]);
 		if(!this.feature('history').installed){const h=root.querySelector('.ex-history-grid'),c=root.querySelector('.ex-history-caption');if(h)h.remove();if(c)c.remove();}
 		if(!this.feature('wifi').installed){const g=root.querySelector('.ex-wifi-grid'),c=root.querySelector('.ex-channel-card');if(g)g.remove();if(c)c.remove();}

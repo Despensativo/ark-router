@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ark-router
-PKG_VERSION:=0.9.6
+PKG_VERSION:=0.9.16
 PKG_RELEASE:=1
 PKG_MAINTAINER:=ARK Router contributors
 PKG_LICENSE:=MIT
@@ -35,3 +35,4 @@ define Package/luci-app-ark-router/install
 endef
 
 $(eval $(call BuildPackage,luci-app-ark-router))
+

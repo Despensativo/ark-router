@@ -1,5 +1,73 @@
 # Changelog
 
+## 0.9.16
+
+- Improved the SSH installer with `release`, `source` and `auto` modes.
+- Added source-based install/update for cases where GitHub Release package assets have not been generated yet.
+- The same installer can now be re-run over SSH to update an existing ARK Router installation.
+- Added root, `wget`, `tar` and LuCI preflight checks for safer first-time installs.
+- Documented simple one-line install/update commands for stable users and development/source installs.
+## 0.9.15
+
+- Added ARK Router self-update support through GitHub Releases.
+- The feature center now shows the installed ARK Router version and repository.
+- Administrators can check for a newer release and install it only after confirmation.
+- Self-update downloads `luci-app-ark-router.apk` or `.ipk` according to the router package manager.
+- Before installing an update, ARK Router creates a temporary configuration backup in `/tmp`.
+- The update flow restarts LuCI services and reloads the dashboard without changing network, Wi-Fi, firewall, DHCP, SQM or Multi-WAN settings.
+
+## 0.9.14
+
+- Fixed modal cancel/close behavior without removing LuCI's persistent `#modal_overlay`.
+- Fixed internal dashboard action buttons after closing a modal, including WAN, LAN/DHCP, Wi-Fi, SQM, channel and reboot controls.
+- Fixed LAN/DHCP editor opening on `192.168.x.x` networks: it now preserves the current subnet, such as `192.168.21.1`, instead of resetting to `192.168.1.1`.
+- Validated SQM/CAKE guest download changes through the web interface and confirmed persistence in UCI.
+- Validated LAN/DHCP no-op apply flow through the web interface and confirmed persistence in UCI.
+- Documented a follow-up: guest bandwidth values are saved and displayed, but the actual per-guest traffic shaper still needs an explicit runtime enforcement layer.
+
+## 0.9.13
+
+- Added a second confirmation step before applying main LAN/DHCP changes.
+- The confirmation explains that LAN ports, DHCP and the panel session may restart.
+- When the router IP changes, ARK Router now tries to open the dashboard at the new router address automatically.
+- Reduced LAN/DHCP post-apply waiting time for range-only changes.
+
+## 0.9.12
+
+- Improved the manual LAN/DHCP editor: changing the router IP now suggests matching DHCP start/end addresses automatically.
+- Updated LAN presets to suggest DHCP ranges from `.10` to `.254`.
+- Manual DHCP suggestions stop overwriting values after the administrator edits start/end fields.
+
+## 0.9.11
+
+- Reload the dashboard after actions that restart SQM, network or Wi-Fi services.
+- Make SQM/CAKE limit changes visibly refresh after saving so WAN and guest download/upload values are not shown stale.
+- Reload after applying speed-test SQM suggestions, WAN/LAN edits, Wi-Fi edits, channel changes and country changes.
+
+## 0.9.10
+
+- Added Wi-Fi network settings directly in the dashboard cards.
+- Main and guest SSIDs can now be renamed from ARK Router, applied to both 2.4 GHz and 5 GHz.
+- Guest Wi-Fi can now be enabled or disabled without deleting its saved configuration.
+- Wi-Fi password changes remain optional in the same editor.
+
+## 0.9.9
+
+- Added a dashboard LAN/DHCP editor for the main network.
+- Added selectable presets for `192.168.x.x` and `10.0.x.x`, plus a manual mode for router IP and DHCP start/end addresses.
+- Added backend validation and an automatic safety backup before changing the main LAN IP or DHCP range.
+- Updated device counts and network labeling to follow the configured LAN/guest prefixes instead of fixed pilot subnets.
+
+## 0.9.8
+
+- Fixed Ark - Setup modal overflow on the default OpenWrt/LuCI theme by constraining setup content to the actual modal width.
+- Added safer sizing for setup grids, fields, selects and inputs so the layout does not depend on the Argon theme modal behavior.
+
+## 0.9.7
+
+- Fixed Argon optional installation on OpenWrt `apk` builds where `luci-theme-argon` is not present in the official package feed.
+- Added a fallback installer that downloads Argon and Argon Config from the upstream Argon GitHub release and enables the theme after installation.
+
 ## 0.9.6
 
 - Fixed guest SQM editor reload values so guest download/upload limits are read from the `qos_equipe.guest` section that the dashboard saves.
@@ -174,3 +242,4 @@
 - Added modular capability detection and optional package suggestions.
 - Added Multi-WAN, SQM, Wi-Fi, device, LAN/WAN and 24-hour traffic views.
 - Added safe controls for Wi-Fi channels, country, passwords, device names and Multi-WAN policy.
+

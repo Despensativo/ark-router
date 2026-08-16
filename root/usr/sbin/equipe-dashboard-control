@@ -1,6 +1,8 @@
 #!/bin/sh
 
 action="$1"
+ARK_ROUTER_VERSION="0.9.16"
+ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() { [ "$1" = 1 ] && printf true || printf false; }
 json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
@@ -18,6 +20,22 @@ find_dhcp_host() {
 }
 valid_ipv4() {
 	printf '%s\n' "$1" | awk -F. 'NF == 4 { for (i=1;i<=4;i++) if ($i !~ /^[0-9]+$/ || $i < 0 || $i > 255) exit 1; exit 0 } { exit 1 }'
+}
+ipv4_prefix24() { printf '%s\n' "$1" | awk -F. 'NF == 4 { printf "%s.%s.%s", $1, $2, $3 }'; }
+ipv4_host() { printf '%s\n' "$1" | awk -F. 'NF == 4 { print $4 }'; }
+valid_lan_dhcp_range() {
+	router_ip="$1"; netmask="$2"; start_ip="$3"; end_ip="$4"
+	valid_ipv4 "$router_ip" && valid_ipv4 "$netmask" && valid_ipv4 "$start_ip" && valid_ipv4 "$end_ip" || return 1
+	[ "$netmask" = 255.255.255.0 ] || return 1
+	router_prefix="$(ipv4_prefix24 "$router_ip")"; start_prefix="$(ipv4_prefix24 "$start_ip")"; end_prefix="$(ipv4_prefix24 "$end_ip")"
+	[ "$router_prefix" = "$start_prefix" ] && [ "$router_prefix" = "$end_prefix" ] || return 1
+	router_host="$(ipv4_host "$router_ip")"; start_host="$(ipv4_host "$start_ip")"; end_host="$(ipv4_host "$end_ip")"
+	[ "$router_host" -ge 1 ] && [ "$router_host" -le 254 ] || return 1
+	[ "$start_host" -ge 2 ] && [ "$start_host" -le 254 ] || return 1
+	[ "$end_host" -ge 2 ] && [ "$end_host" -le 254 ] || return 1
+	[ "$start_host" -le "$end_host" ] || return 1
+	[ "$router_host" -lt "$start_host" ] || [ "$router_host" -gt "$end_host" ] || return 1
+	return 0
 }
 same_managed_subnet() {
 	candidate="$1"
@@ -52,6 +70,31 @@ feature_package() {
 		*) return 1 ;;
 	esac
 }
+install_argon_release() {
+	version="${ARK_ARGON_VERSION:-2.4.6}"
+	release="v$version"
+	tmp="${TMPDIR:-/tmp}/ark-router-argon"
+	rm -rf "$tmp" && mkdir -p "$tmp" || return 1
+	if command -v apk >/dev/null 2>&1; then
+		theme="$tmp/luci-theme-argon-$version-r1.apk"
+		config="$tmp/luci-app-argon-config-$version-r1.apk"
+		wget -O "$theme" "https://github.com/jerrykuku/luci-theme-argon/releases/download/$release/luci-theme-argon-$version-r1.apk" || return 1
+		wget -O "$config" "https://github.com/jerrykuku/luci-theme-argon/releases/download/$release/luci-app-argon-config-$version-r1.apk" || return 1
+		apk add --allow-untrusted "$theme" "$config" || return 1
+	else
+		theme="$tmp/luci-theme-argon_$version-1_all.ipk"
+		config="$tmp/luci-app-argon-config_$version-1_all.ipk"
+		wget -O "$theme" "https://github.com/jerrykuku/luci-theme-argon/releases/download/$release/luci-theme-argon_$version-1_all.ipk" || return 1
+		wget -O "$config" "https://github.com/jerrykuku/luci-theme-argon/releases/download/$release/luci-app-argon-config_$version-1_all.ipk" || return 1
+		opkg install "$theme" "$config" || return 1
+	fi
+	uci -q set luci.main.mediaurlbase='/luci-static/argon'
+	uci commit luci
+	rm -f /tmp/luci-indexcache
+	rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
+	[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
+	return 0
+}
 feature_active() {
 	case "$1" in
 		sqm) uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'" ;;
@@ -77,11 +120,62 @@ valid_wifi_password() {
 	length="${#1}"
 	[ "$length" -ge 8 ] && [ "$length" -le 63 ] && valid_plain "$1" 63
 }
+valid_ssid() {
+	length="${#1}"
+	[ "$length" -ge 1 ] && [ "$length" -le 32 ] && valid_plain "$1" 32
+}
 valid_uint_range() {
 	printf '%s' "$1" | grep -Eq '^[0-9]+$' || return 1
 	[ "$1" -ge "$2" ] && [ "$1" -le "$3" ]
 }
 valid_sqm_rate() { valid_uint_range "$1" 0 1000000; }
+ark_current_version() { cat /usr/share/ark-router/VERSION 2>/dev/null || printf '%s' "$ARK_ROUTER_VERSION"; }
+ark_update_repo() { uci -q get equipe_dashboard.update.repo 2>/dev/null || printf '%s' "$ARK_UPDATE_REPO_DEFAULT"; }
+normalize_version() { printf '%s' "$1" | sed 's/^v//; s/[^0-9.].*$//'; }
+version_gt() {
+	awk -v a="$(normalize_version "$1")" -v b="$(normalize_version "$2")" 'BEGIN {
+		split(a, A, "."); split(b, B, ".");
+		for (i = 1; i <= 4; i++) {
+			aa = A[i] + 0; bb = B[i] + 0;
+			if (aa > bb) exit 0;
+			if (aa < bb) exit 1;
+		}
+		exit 1;
+	}'
+}
+ark_package_manager() {
+	if command -v apk >/dev/null 2>&1; then printf apk
+	elif command -v opkg >/dev/null 2>&1; then printf opkg
+	else printf none
+	fi
+}
+ark_update_asset_name() {
+	case "$(ark_package_manager)" in
+		apk) printf luci-app-ark-router.apk ;;
+		opkg) printf luci-app-ark-router.ipk ;;
+		*) return 1 ;;
+	esac
+}
+ark_latest_release() {
+	repo="$(ark_update_repo)"
+	wget -qO- "https://api.github.com/repos/$repo/releases/latest" 2>/dev/null | jsonfilter -e '@.tag_name' 2>/dev/null | head -n 1
+}
+ark_update_json() {
+	current="$(ark_current_version)"
+	repo="$(ark_update_repo)"
+	manager="$(ark_package_manager)"
+	asset="$(ark_update_asset_name 2>/dev/null || true)"
+	latest="$(ark_latest_release)"
+	available=false; error=""
+	if [ "$manager" = none ]; then error="Gerenciador de pacotes indisponivel"
+	elif [ -z "$asset" ]; then error="Tipo de pacote indisponivel"
+	elif [ -z "$latest" ]; then error="Nao foi possivel consultar o GitHub Releases"
+	elif version_gt "$latest" "$current"; then available=true
+	fi
+	if [ -n "$asset" ]; then url="https://github.com/$repo/releases/latest/download/$asset"; else url=""; fi
+	printf '{"current":"%s","repo":"%s","manager":"%s","latest":"%s","asset":"%s","url":"%s","available":%s,"error":"%s"}\n' \
+		"$(json_escape "$current")" "$(json_escape "$repo")" "$(json_escape "$manager")" "$(json_escape "$latest")" "$(json_escape "$asset")" "$(json_escape "$url")" "$available" "$(json_escape "$error")"
+}
 ensure_sqm_section() {
 	section="$1"; device="$2"
 	uci -q get "sqm.$section" >/dev/null 2>&1 || uci -q set "sqm.$section=queue"
@@ -528,9 +622,7 @@ case "$action" in
 		cat /tmp/ark-ezsetup-modules.log 2>/dev/null
 		;;
 	features)
-		manager=none
-		command -v apk >/dev/null 2>&1 && manager=apk
-		[ "$manager" = none ] && command -v opkg >/dev/null 2>&1 && manager=opkg
+		manager="$(ark_package_manager)"
 		speedtest_installable=false; [ "$manager" = apk ] && speedtest_installable=true
 		appearance="$(uci -q get equipe_dashboard.main.appearance || printf auto)"
 		primary="$(uci -q get equipe_dashboard.main.primary || printf '#3b82f6')"
@@ -554,7 +646,52 @@ case "$action" in
 		feature_json temperature '' false; printf ','
 		feature_json custom_qos '' false
 		printf ','; feature_json speedtest speedtest-go "$speedtest_installable"
-		printf '},"https":{"available":%s,"redirect":%s,"certificate":"local","ca_available":%s,"ca_fingerprint":"%s","ca_download":"/ark-router/ark-router-ca.crt"}}\n' "$https_available" "$(bool "$https_redirect")" "$ca_available" "$ca_fingerprint"
+		current_version="$(ark_current_version)"
+		update_repo="$(ark_update_repo)"
+		printf '},"https":{"available":%s,"redirect":%s,"certificate":"local","ca_available":%s,"ca_fingerprint":"%s","ca_download":"/ark-router/ark-router-ca.crt"},"update":{"current":"%s","repo":"%s","manager":"%s"}}\n' "$https_available" "$(bool "$https_redirect")" "$ca_available" "$ca_fingerprint" "$(json_escape "$current_version")" "$(json_escape "$update_repo")" "$(json_escape "$manager")"
+		;;
+	self-update-check)
+		ark_update_json
+		;;
+	self-update-status)
+		cat /tmp/ark-router-self-update.status 2>/dev/null || echo idle
+		;;
+	self-update-log)
+		cat /tmp/ark-router-self-update.log 2>/dev/null
+		;;
+	self-update-start)
+		status=/tmp/ark-router-self-update.status
+		log=/tmp/ark-router-self-update.log
+		[ "$(cat "$status" 2>/dev/null)" != running ] || { echo running; exit 0; }
+		info="$(ark_update_json)"
+		available="$(printf '%s' "$info" | jsonfilter -e '@.available' 2>/dev/null)"
+		url="$(printf '%s' "$info" | jsonfilter -e '@.url' 2>/dev/null)"
+		asset="$(printf '%s' "$info" | jsonfilter -e '@.asset' 2>/dev/null)"
+		manager="$(printf '%s' "$info" | jsonfilter -e '@.manager' 2>/dev/null)"
+		[ "$available" = true ] || { echo 'Nenhuma atualizacao mais nova disponivel' >&2; exit 3; }
+		[ -n "$url" ] && [ -n "$asset" ] || { echo 'Arquivo de atualizacao indisponivel' >&2; exit 3; }
+		echo running >"$status"
+		(
+			set -e
+			tmp=/tmp/ark-router-self-update
+			rm -rf "$tmp"; mkdir -p "$tmp"
+			backup="/tmp/ark-router-before-self-update-$(date +%Y%m%d-%H%M%S).tar.gz"
+			if command -v sysupgrade >/dev/null 2>&1; then sysupgrade -b "$backup" || true; fi
+			echo "Backup: $backup"
+			echo "Downloading: $url"
+			wget -O "$tmp/$asset" "$url"
+			case "$manager" in
+				apk) apk add --allow-untrusted "$tmp/$asset" ;;
+				opkg) opkg install "$tmp/$asset" ;;
+				*) echo 'Gerenciador de pacotes indisponivel' >&2; exit 3 ;;
+			esac
+			rm -f /tmp/luci-indexcache
+			rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
+			[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
+			[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+			echo done >"$status"
+		) >"$log" 2>&1 || echo error >"$status" &
+		echo started
 		;;
 	language)
 		case "$2" in pt-br|en) ;; *) echo 'Idioma invalido' >&2; exit 2 ;; esac
@@ -609,12 +746,13 @@ case "$action" in
 		else installed "$package" && { echo done >"$status"; echo installed; exit 0; }; fi
 		[ "$(cat "$status" 2>/dev/null)" != running ] || { echo running; exit 0; }
 		command -v apk >/dev/null 2>&1 || command -v opkg >/dev/null 2>&1 || { echo 'Gerenciador de pacotes indisponivel' >&2; exit 3; }
-		echo running >"$status"
-		(
-			if [ "$key" = speedtest ]; then prepare_speedtest
-			elif command -v apk >/dev/null 2>&1; then apk update && apk add "$package"
-			else opkg update && opkg install "$package"
-			fi
+	echo running >"$status"
+	(
+		if [ "$key" = speedtest ]; then prepare_speedtest
+		elif [ "$key" = argon ] && command -v apk >/dev/null 2>&1 && ! apk search luci-theme-argon 2>/dev/null | grep -qx 'luci-theme-argon.*'; then install_argon_release
+		elif command -v apk >/dev/null 2>&1; then apk update && apk add "$package"
+		else opkg update && opkg install "$package"
+		fi
 			if [ $? -eq 0 ]; then echo done >"$status"; else echo error >"$status"; fi
 		) >"$log" 2>&1 &
 		echo started
@@ -786,6 +924,66 @@ case "$action" in
 		[ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 || true
 		echo ok
 		;;
+	lan-status)
+		lan_ip="$(uci -q get network.lan.ipaddr || printf 192.168.1.1)"
+		netmask="$(uci -q get network.lan.netmask || printf 255.255.255.0)"
+		start="$(uci -q get dhcp.lan.start || printf 100)"
+		limit="$(uci -q get dhcp.lan.limit || printf 150)"
+		prefix="$(ipv4_prefix24 "$lan_ip")"
+		start_host="$start"
+		end_host=$((start + limit - 1))
+		[ "$end_host" -le 254 ] || end_host=254
+		printf '{"ipaddr":"%s","netmask":"%s","dhcp_start":"%s.%s","dhcp_end":"%s.%s","start":"%s","limit":"%s","preset":"%s","supported":%s}\n' \
+			"$(json_escape "$lan_ip")" "$(json_escape "$netmask")" "$prefix" "$start_host" "$prefix" "$end_host" "$start" "$limit" \
+			"$(case "$lan_ip" in 192.168.*) printf 192 ;; 10.0.*) printf 10 ;; *) printf manual ;; esac)" \
+			"$( [ "$netmask" = 255.255.255.0 ] && printf true || printf false )"
+		;;
+	lan-save)
+		mode='manual'; router_ip=''; start_ip=''; end_ip=''; netmask='255.255.255.0'
+		shift
+		for pair in "$@"; do
+			key="${pair%%=*}"; value="${pair#*=}"
+			case "$key" in
+				mode) case "$value" in preset192|preset10|manual) mode="$value" ;; *) echo 'Modo LAN invalido' >&2; exit 2 ;; esac ;;
+				router_ip) router_ip="$value" ;;
+				start_ip) start_ip="$value" ;;
+				end_ip) end_ip="$value" ;;
+				netmask) netmask="$value" ;;
+				*) echo "Campo LAN invalido: $key" >&2; exit 2 ;;
+			esac
+		done
+		case "$mode" in
+			preset192)
+				[ -n "$router_ip" ] || router_ip='192.168.1.1'
+				[ -n "$start_ip" ] || start_ip='192.168.1.10'
+				[ -n "$end_ip" ] || end_ip='192.168.1.254'
+				;;
+			preset10)
+				[ -n "$router_ip" ] || router_ip='10.0.0.1'
+				[ -n "$start_ip" ] || start_ip='10.0.0.10'
+				[ -n "$end_ip" ] || end_ip='10.0.0.254'
+				;;
+		esac
+		valid_lan_dhcp_range "$router_ip" "$netmask" "$start_ip" "$end_ip" || { echo 'Use IPs validos na mesma rede /24. O DHCP deve comecar antes de terminar e nao pode incluir o IP do roteador.' >&2; exit 2; }
+		if [ -n "$(uci -q get network.guest.ipaddr)" ] && [ "$(ipv4_prefix24 "$(uci -q get network.guest.ipaddr)")" = "$(ipv4_prefix24 "$router_ip")" ]; then
+			echo 'A LAN principal nao pode usar a mesma rede da visitante.' >&2
+			exit 2
+		fi
+		ez_backup >/dev/null || { echo 'Falha ao criar backup antes da alteracao da LAN' >&2; exit 3; }
+		start_host="$(ipv4_host "$start_ip")"; end_host="$(ipv4_host "$end_ip")"; limit=$((end_host - start_host + 1))
+		old_ip="$(uci -q get network.lan.ipaddr || true)"
+		uci -q set network.lan.ipaddr="$router_ip"
+		uci -q set network.lan.netmask="$netmask"
+		uci -q set dhcp.lan=dhcp
+		uci -q set dhcp.lan.interface=lan
+		uci -q set dhcp.lan.start="$start_host"
+		uci -q set dhcp.lan.limit="$limit"
+		uci -q set dhcp.lan.leasetime="${DHCP_LEASETIME:-12h}"
+		uci commit network
+		uci commit dhcp
+		(sleep 2; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/network reload >/dev/null 2>&1 || true) &
+		printf '{"old_ip":"%s","new_ip":"%s","url":"http://%s/cgi-bin/luci/admin/equipe-dashboard"}\n' "$(json_escape "$old_ip")" "$(json_escape "$router_ip")" "$(json_escape "$router_ip")"
+		;;
 	mwan)
 		case "$2" in
 			failover) policy='wan_then_wan2' ;;
@@ -913,6 +1111,47 @@ case "$action" in
 		(sleep 2; wifi reload) >/dev/null 2>&1 &
 		echo 'ok'
 		;;
+	wifi-settings)
+		wifi_kind="$2"
+		case "$2" in
+			main) sections='default_radio0 default_radio1'; allow_toggle=0 ;;
+			guest) sections='guest_radio0 guest_radio1'; allow_toggle=1 ;;
+			*) echo 'Rede invalida' >&2; exit 2 ;;
+		esac
+		ssid=''; password=''; enabled='keep'
+		shift 2
+		for pair in "$@"; do
+			key="${pair%%=*}"; value="${pair#*=}"
+			case "$key" in
+				ssid) ssid="$value" ;;
+				password) password="$value" ;;
+				enabled) case "$value" in 0|1|keep) enabled="$value" ;; *) echo 'Estado da rede invalido' >&2; exit 2 ;; esac ;;
+				*) echo "Campo Wi-Fi invalido: $key" >&2; exit 2 ;;
+			esac
+		done
+		valid_ssid "$ssid" || { echo 'O nome da rede deve ter entre 1 e 32 caracteres' >&2; exit 2; }
+		[ -z "$password" ] || valid_wifi_password "$password" || { echo 'A senha deve ter entre 8 e 63 caracteres' >&2; exit 2; }
+		[ "$allow_toggle" = 1 ] || [ "$enabled" = keep ] || { echo 'A rede principal nao pode ser desligada por este atalho' >&2; exit 2; }
+		ez_backup >/dev/null || { echo 'Falha ao criar backup antes da alteracao do Wi-Fi' >&2; exit 3; }
+		if [ "$wifi_kind" = guest ]; then
+			ez_apply_guest_network 1
+		fi
+		for section in $sections; do
+			uci -q set "wireless.$section.ssid=$ssid"
+			[ -z "$password" ] || uci -q set "wireless.$section.key=$password"
+			if [ "$enabled" != keep ]; then
+				if [ "$enabled" = 1 ]; then uci -q set "wireless.$section.disabled=0"; else uci -q set "wireless.$section.disabled=1"; fi
+			fi
+		done
+		uci commit wireless
+		uci commit network 2>/dev/null || true
+		uci commit dhcp 2>/dev/null || true
+		uci commit firewall 2>/dev/null || true
+		[ "$allow_toggle" = 1 ] && [ "$enabled" = 0 ] && uci -q set dhcp.guest.ignore=1 && uci commit dhcp
+		[ "$allow_toggle" = 1 ] && [ "$enabled" = 1 ] && uci -q delete dhcp.guest.ignore && uci commit dhcp
+		(sleep 2; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/firewall restart >/dev/null 2>&1 || true; wifi reload >/dev/null 2>&1 || true) &
+		echo 'ok'
+		;;
 	channels)
 		case "$2" in
 			fixed)
@@ -945,7 +1184,8 @@ case "$action" in
 		echo 'ok'
 		;;
 	*)
-		echo 'Uso: equipe-dashboard-control {features|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|ez-setup-install-modules|ez-setup-install-status|ez-setup-install-log|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|theme argon|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|sqm-toggle 0|1|sqm-save chave=valor...|wan-save chave=valor...|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|country ISO2}' >&2
+		echo 'Uso: equipe-dashboard-control {features|self-update-check|self-update-start|self-update-status|self-update-log|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|ez-setup-install-modules|ez-setup-install-status|ez-setup-install-log|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|theme argon|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|sqm-toggle 0|1|sqm-save chave=valor...|wan-save chave=valor...|lan-status|lan-save chave=valor...|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|country ISO2}' >&2
 		exit 2
 		;;
 esac
+

@@ -20,7 +20,21 @@ When release packages are available, use:
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | sh
 ```
 
-The script detects `apk` or `opkg`, downloads the latest package from GitHub Releases and restarts `rpcd`. This only works after a matching release asset has been published.
+The script detects `apk` or `opkg`, downloads the latest package from GitHub Releases and restarts LuCI services. Re-running the same command updates ARK Router from the latest published release.
+
+If the release asset has not been generated yet, install or update from source:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_INSTALL_MODE=source sh
+```
+
+Or try release first and automatically fall back to source:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_INSTALL_MODE=auto sh
+```
+
+Source mode creates a temporary backup under `/tmp/ark-router-install-backup-*.tar.gz`, preserves existing `/etc/config/equipe_dashboard`, `/etc/config/equipe_devices` and `/etc/config/qos_equipe`, copies the repository `root/` files into the router and restarts LuCI services. It is useful for development and early testing, but it does not register an `apk`/`opkg` package. For public/stable installs, prefer published package assets.
 
 ARK Router is not installed with an `.iso`. The router downloads or receives a package file built for OpenWrt:
 
@@ -53,6 +67,19 @@ For `opkg` based releases:
 opkg install ./luci-app-ark-router_*.ipk
 /etc/init.d/rpcd restart
 ```
+
+## Update From The Dashboard
+
+Open **ARK Router → Recursos → Atualização do ARK Router** and click **Verificar atualização**.
+If the GitHub Release version is newer than the installed version, ARK Router offers **Atualizar agora**.
+
+The updater downloads from:
+
+- `https://github.com/Despensativo/ark-router/releases/latest/download/luci-app-ark-router.apk`
+- `https://github.com/Despensativo/ark-router/releases/latest/download/luci-app-ark-router.ipk`
+
+Before installing, it saves a temporary backup under `/tmp/ark-router-before-self-update-*.tar.gz`.
+The update restarts `rpcd`/`uhttpd` and reloads the panel, but it does not alter router network configuration.
 
 ## After Installation
 
@@ -141,3 +168,5 @@ To preview what would happen without changing the router:
 ```sh
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/uninstall.sh | DRY_RUN=1 sh
 ```
+
+
