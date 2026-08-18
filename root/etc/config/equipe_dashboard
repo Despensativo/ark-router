@@ -4,6 +4,7 @@ config settings 'main'
 	option appearance 'auto'
 	option primary '#3b82f6'
 	option secondary '#8b5cf6'
+	option operation_profile 'standard'
 
 config feature 'sqm'
 	option hidden '0'

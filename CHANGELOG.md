@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.17
+
+- Added Operational Profiles system: Standard/Controlled mode vs Gamer Mode with low-latency optimizations.
+- Added dynamic Gamer Red visual theme (`#ef4444` / `#dc2626`) activated automatically when Gamer Mode is enabled.
+- Added 1-click Gamer Mode toggle button and low-latency status indicator directly in the dashboard Hero section.
+- Optimized SQM/CAKE queue parameters with `ack-filter` and `diffserv4` for zero-bufferbloat and minimal jitter in online gaming.
+- Added real-time DSCP `EF` (Expedited Forwarding) priority support in device configuration for mobile/PC gaming (PUBG Mobile, Free Fire, etc.).
+- Added automatic configuration snapshot backup (`/etc/config/ark_last_profile_backup.tar.gz`) before applying profile changes.
+- Added smart storage detection for speedtest-go: installs permanently into flash when >= 20% free space remains; runs safely in volatile RAM (/tmp) on small-flash devices.
+- Preserved standard fair-share traffic policies when returning to Standard Mode.
+
 ## 0.9.16
 
 - Improved the SSH installer with `release`, `source` and `auto` modes.

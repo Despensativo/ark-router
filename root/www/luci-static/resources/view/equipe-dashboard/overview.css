@@ -321,3 +321,47 @@
 	.ex-ez-section { padding: 13px; }
 	.ex-wan-edit-grid { grid-template-columns: 1fr; }
 }
+
+/* ==========================================================================
+   Gamer Profile & Low Latency Red Theme
+   ========================================================================== */
+.ex-hero.ex-hero-gamer {
+	background: linear-gradient(125deg, #450a0a 0%, #991b1b 45%, #dc2626 100%) !important;
+	box-shadow: 0 18px 46px rgba(220, 38, 38, 0.38) !important;
+}
+.ex-hero-gamer-btn {
+	border-color: rgba(255, 255, 255, 0.45) !important;
+	background: rgba(239, 68, 68, 0.25) !important;
+	color: #fff !important;
+}
+.ex-hero-gamer-btn:hover {
+	background: rgba(239, 68, 68, 0.5) !important;
+}
+.ex-hero-gamer-active {
+	border-color: rgba(255, 255, 255, 0.85) !important;
+	background: #dc2626 !important;
+	color: #fff !important;
+	box-shadow: 0 0 16px rgba(239, 68, 68, 0.75) !important;
+	animation: ex-gamer-glow 2.2s ease-in-out infinite;
+	font-weight: 850 !important;
+}
+@keyframes ex-gamer-glow {
+	0%, 100% {
+		box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+	}
+	50% {
+		box-shadow: 0 0 22px rgba(239, 68, 68, 0.95);
+	}
+}
+[data-ex-profile="gamer"] .ex-eyebrow {
+	color: #fecaca;
+	font-weight: 900;
+	letter-spacing: .15em;
+}
+[data-ex-profile="gamer"] .ex-card {
+	border-color: rgba(239, 68, 68, 0.22);
+}
+[data-ex-profile="gamer"] .ex-qos-toggle-row {
+	border-color: rgba(239, 68, 68, 0.28);
+	background: rgba(239, 68, 68, 0.08);
+}

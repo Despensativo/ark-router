@@ -28,6 +28,13 @@ const EN={
 	'Fechar aviso':'Close notification',
 	'Gerenciador HTTPS':'HTTPS manager','Interface leve para administrar o uHTTPd e seus certificados.':'Lightweight interface for managing uHTTPd and its certificates.','Certificado ARK preparado para este endereço. Instale a autoridade somente nos dispositivos administrativos.':'ARC certificate prepared for this address. Install the authority only on administrator devices.','Baixar certificado confiável':'Download trusted certificate','Como instalar':'How to install','INSTALAÇÃO DO CERTIFICADO':'CERTIFICATE INSTALLATION','Instale apenas em aparelhos administrativos nos quais você confia. Nunca é necessário instalar a chave privada.':'Install only on trusted administrator devices. The private key never needs to be installed.','Windows: abra o arquivo e instale-o em Autoridades de Certificação Raiz Confiáveis.':'Windows: open the file and install it under Trusted Root Certification Authorities.','Android: em Segurança, procure Instalar certificado de CA e selecione o arquivo.':'Android: under Security, choose Install CA certificate and select the file.','iPhone/iPad: instale o perfil baixado e depois habilite confiança total nos Ajustes de Certificados.':'iPhone/iPad: install the downloaded profile, then enable full trust under Certificate Trust Settings.','Depois da instalação, feche e abra novamente o navegador e acesse novamente o endereço HTTPS do roteador.':'After installation, close and reopen the browser, then access the router HTTPS address again.','Impressão digital SHA-256':'SHA-256 fingerprint',
 	'ARK Router':'ARK Router','CENTRAL DE OPERAÇÕES':'OPERATIONS CENTER','VERIFICANDO':'CHECKING','sessão de 12 horas • atualização a cada 3 segundos':'12-hour session • updates every 3 seconds',
+	'🎮 MODO GAMER • BAIXA LATÊNCIA':'🎮 GAMER MODE • LOW LATENCY','🎮 GAMER ATIVO':'🎮 GAMER ACTIVE','🎮 Modo Gamer':'🎮 Gamer Mode','Ativar Modo Gamer':'Enable Gamer Mode','Voltar ao Modo Padrão':'Switch to Standard Mode',
+	'Ativar o Modo Gamer (Baixa Latência)?':'Enable Gamer Mode (Low Latency)?','Voltar ao Modo Padrão / Controlado?':'Switch back to Standard / Controlled Mode?','Confirmar e Ativar Gamer':'Confirm & Enable Gamer',
+	'O ARK Router ativará o tema Vermelho Gamer, aplicará otimizações de baixa latência e anti-bufferbloat (CAKE ack-filter) e priorizará pacotes de jogos em tempo real (DSCP EF).':'ARK Router will activate the Gamer Red theme, apply low latency and anti-bufferbloat optimizations (CAKE ack-filter), and prioritize real-time gaming packets (DSCP EF).',
+	'O ARK Router retornará ao tema visual padrão e aplicará o equilíbrio padrão de tráfego.':'ARK Router will return to the default visual theme and apply standard traffic balancing.',
+	'Modo Gamer ativado com sucesso! Carregando tema Vermelho Gamer…':'Gamer Mode enabled successfully! Loading Gamer Red theme…','Modo Padrão restaurado. Recarregando…':'Standard Mode restored. Reloading…',
+	'Fila Gamer / PUBG Mobile (DSCP EF - Tempo Real)':'Gamer / PUBG Mobile Queue (DSCP EF - Real-Time)','Fila Normal (DSCP AF41 - Vídeo)':'Standard Queue (DSCP AF41 - Video)',
+	'No modo Gamer (EF), pacotes do dispositivo passam à frente de downloads e streams. No modo Normal (AF41), usa a classe de vídeo.':'In Gamer mode (EF), device packets bypass downloads and streams. In Standard mode (AF41), uses video class.',
 	'SAÚDE DO ROTEADOR':'ROUTER HEALTH','Ligado há ':'Up for ','Temperatura':'Temperature','Memória':'Memory','Armazenamento':'Storage','Carga':'Load','atividade do sistema':'system activity','NORMAL':'NORMAL','ATENÇÃO':'ATTENTION',
 	'Download agora':'Download now','Upload agora':'Upload now','aguardando leitura':'waiting for data','HISTÓRICO 24 HORAS':'24-HOUR HISTORY','Download ao longo do dia':'Download throughout the day','Upload ao longo do dia':'Upload throughout the day','Coletando…':'Collecting…','A primeira amostra aparecerá em até 1 minuto':'The first sample will appear within 1 minute',
 	'Endereço IPv4':'IPv4 address','Link físico':'Physical link','Latência':'Latency','Tempo online':'Uptime','ONLINE':'ONLINE','OFFLINE':'OFFLINE','SEM CABO':'UNPLUGGED','conectado':'connected','sem link':'no link','CONECTADA':'CONNECTED','Full duplex':'Full duplex','Automático':'Automatic',
@@ -186,14 +193,41 @@ return view.extend({
 	},
 	applyAppearance: function(){
 		const appearance=this.capabilities.appearance||{}, mode=/^(auto|equipe|custom)$/.test(appearance.mode)?appearance.mode:'auto';
+		const profile=this.capabilities.operation_profile||'standard';
 		let primary='#3b82f6',secondary='#8b5cf6';
-		if(mode==='custom'){primary=appearance.primary||primary;secondary=appearance.secondary||secondary;}
-		else if(mode==='auto'){
+		if(profile==='gamer'){
+			primary='#ef4444';
+			secondary='#dc2626';
+		} else if(mode==='custom'){
+			primary=appearance.primary||primary;
+			secondary=appearance.secondary||secondary;
+		} else if(mode==='auto'){
 			primary=this.themeColor(['--primary','--primary-color','--main-color','--brand-primary','--accent-color'],'#5e72e4');
 			secondary=this.themeColor(['--secondary','--secondary-color','--accent-color','--brand-secondary'],primary);
 		}
-		document.documentElement.style.setProperty('--ex-primary',primary);document.documentElement.style.setProperty('--ex-secondary',secondary);
+		document.documentElement.style.setProperty('--ex-primary',primary);
+		document.documentElement.style.setProperty('--ex-secondary',secondary);
 		document.documentElement.setAttribute('data-ex-appearance',mode);
+		document.documentElement.setAttribute('data-ex-profile',profile);
+	},
+	switchProfile: function(targetMode){
+		const isGamer = targetMode === 'gamer';
+		ui.showModal(isGamer ? 'Ativar Modo Gamer' : 'Voltar ao Modo Padrão', [
+			E('p', {}, [isGamer ? 'Ativar o Modo Gamer (Baixa Latência)?' : 'Voltar ao Modo Padrão / Controlado?']),
+			E('p', {class: 'alert-message warning'}, [isGamer ? 'O ARK Router ativará o tema Vermelho Gamer, aplicará otimizações de baixa latência e anti-bufferbloat (CAKE ack-filter) e priorizará pacotes de jogos em tempo real (DSCP EF).' : 'O ARK Router retornará ao tema visual padrão e aplicará o equilíbrio padrão de tráfego.']),
+			E('div', {class: 'right'}, [
+				E('button', {class: 'btn cbi-button cbi-button-neutral', 'click': closeModal}, ['Cancelar']), ' ',
+				E('button', {class: 'btn cbi-button ' + (isGamer ? 'cbi-button-negative' : 'cbi-button-positive'), 'click': L.bind(function(){
+					return fs.exec('/usr/sbin/equipe-dashboard-control', ['profile', targetMode]).then(L.bind(function(r){
+						if(r.code) throw new Error(r.stderr || 'Falha ao alterar perfil operacional');
+						ui.hideModal();
+						reloadSoon(isGamer ? 'Modo Gamer ativado com sucesso! Carregando tema Vermelho Gamer…' : 'Modo Padrão restaurado. Recarregando…', 2200);
+					}, this)).catch(function(e){
+						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+					});
+				}, this)}, [isGamer ? 'Confirmar e Ativar Gamer' : 'Confirmar'])
+			])
+		]);
 	},
 	applyBrand: function(title){
 		title=String(title||'ARK Router');document.title=title+' · OpenWrt';
@@ -349,15 +383,29 @@ return view.extend({
 				E('div',{class:'ex-device-config-block'},[E('div',{class:'ex-device-config-heading'},[E('div',{},[E('strong',{},['Endereço IP']),E('small',{class:'ex-muted'},['Automático pelo DHCP'])]),E('div',{class:'ex-device-switch-control'},[reserveState,E('label',{class:'ex-switch'},[reserve,E('span',{class:'ex-switch-slider'})])])]),ip,E('small',{class:'ex-muted'},['Reservar este IP pelo MAC. O aparelho poderá precisar reconectar para receber um IP reservado diferente.'])])
 			];
 			const sqm=values((this.currentData||{}).sqm), qosActive=!!((sqm.wan1&&sqm.wan1.enabled==='1')||(sqm.wan2&&sqm.wan2.enabled==='1'));
-			let priority=null;
+			let priority=null, dscpSelect=null;
 			if(qosActive&&this.feature('custom_qos').installed&&!device.guest){
 				priority=E('input',state.priority?{type:'checkbox',checked:'checked'}:{type:'checkbox'});
 				const priorityState=E('strong',{class:'ex-device-switch-state'},[state.priority?'Ligada':'Desligada']);
-				priority.addEventListener('change',function(){priorityState.textContent=priority.checked?'Ligada':'Desligada';});
-				sections.push(E('div',{class:'ex-device-config-block'},[E('div',{class:'ex-device-config-heading'},[E('div',{},[E('strong',{},['Prioridade no SQM']),E('small',{class:'ex-muted'},['Priorizar os envios deste dispositivo'])]),E('div',{class:'ex-device-switch-control'},[priorityState,E('label',{class:'ex-switch'},[priority,E('span',{class:'ex-switch-slider'})])])]),E('small',{class:'ex-muted'},['Usa a classe de vídeo do CAKE (AF41), mantendo a divisão justa com os demais aparelhos prioritários.'])]));
+				dscpSelect=E('select',{class:'cbi-input-select',style:'margin-top:8px;width:100%'},[
+					E('option',{value:'EF'},['Fila Gamer / PUBG Mobile (DSCP EF - Tempo Real)']),
+					E('option',{value:'AF41'},['Fila Normal (DSCP AF41 - Vídeo)'])
+				]);
+				dscpSelect.value=state.dscp||(this.capabilities.operation_profile==='gamer'?'EF':'AF41');
+				const syncPriorityMode=function(){dscpSelect.disabled=!priority.checked;priorityState.textContent=priority.checked?'Ligada':'Desligada';};
+				priority.addEventListener('change',syncPriorityMode);
+				syncPriorityMode();
+				sections.push(E('div',{class:'ex-device-config-block'},[
+					E('div',{class:'ex-device-config-heading'},[
+						E('div',{},[E('strong',{},['Prioridade no SQM / QoS']),E('small',{class:'ex-muted'},['Priorizar os envios deste dispositivo'])]),
+						E('div',{class:'ex-device-switch-control'},[priorityState,E('label',{class:'ex-switch'},[priority,E('span',{class:'ex-switch-slider'})])])
+					]),
+					dscpSelect,
+					E('small',{class:'ex-muted'},['No modo Gamer (EF), pacotes do dispositivo passam à frente de downloads e streams. No modo Normal (AF41), usa a classe de vídeo.'])
+				]));
 			}else sections.push(E('small',{class:'ex-muted ex-device-priority-note'},['A prioridade aparece somente na rede principal quando o SQM está ativo.']));
 			sections.push(E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
-				const args=['device-save',device.mac,name.value.trim(),reserve.checked?'reserved':'automatic',reserve.checked?ip.value.trim():'',priority?(priority.checked?'1':'0'):'keep'];
+				const args=['device-save',device.mac,name.value.trim(),reserve.checked?'reserved':'automatic',reserve.checked?ip.value.trim():'',priority?(priority.checked?'1':'0'):'keep',priority?(dscpSelect?dscpSelect.value:'EF'):''];
 				return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar');ui.hideModal();ui.addNotification(null,E('p',{},['Configurações do dispositivo salvas.']));return this.fetchData().then(L.bind(this.update,this));},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});
 			},this)},['Salvar configurações'])]));
 			ui.showModal('Configurar dispositivo',sections);name.focus();
@@ -816,20 +864,45 @@ return view.extend({
 			if(key==='argon'&&f.installed&&!f.active)actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.useTheme,this,key)},['Usar tema']));
 			return E('div',{class:'ex-feature-row'},[E('div',{class:'ex-feature-copy'},[E('div',{class:'ex-feature-name-row'},[E('strong',{},[meta.name]),meta.recommended?E('span',{class:'ex-recommended-badge'},['RECOMENDADO']):'']),E('small',{class:'ex-muted'},[meta.description]),f.package?E('code',{},[f.package]):'']),E('div',{class:'ex-feature-state'},[E('span',{class:'ex-pill '+(f.installed?(f.active?'online':'standby'):(f.hidden?'standby':'offline'))},[state]),E('div',{class:'ex-feature-actions'},actions)])]);
 		},this));
-		ui.showModal('RECURSOS E COMPATIBILIDADE',[E('div',{class:'ex-brand-row'},[E('label',{},['Nome do painel']),brandName,E('button',{class:'ex-mini-button','click':L.bind(function(){this.setDashboardTitle(brandName.value);},this)},['Salvar nome'])]),E('div',{class:'ex-language-row'},[E('label',{},['Idioma do painel']),language,E('button',{class:'ex-mini-button','click':L.bind(function(){this.setDashboardLanguage(language.value);},this)},['Salvar idioma'])]),this.selfUpdatePanel(),httpsPanel,E('section',{class:'ex-appearance-panel'},[E('div',{class:'ex-appearance-heading'},[E('div',{},[E('strong',{},['Aparência']),E('small',{class:'ex-muted'},['No modo automático, o painel acompanha as cores e o modo claro ou escuro do tema LuCI.'])]),appearanceMode]),appearanceColors,E('button',{class:'ex-mini-button ex-save-appearance','click':L.bind(function(){this.setAppearance(appearanceMode.value,primary.value,secondary.value);},this)},['Salvar aparência'])]),E('div',{class:'ex-feature-list'},rows),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])]);
+		const profileSelect=E('select',{class:'cbi-input-select'},[
+			E('option',{value:'standard'},['Modo Padrão / Equilibrado']),
+			E('option',{value:'gamer'},['Modo Gamer (Baixa Latência & PUBG Mobile)'])
+		]);
+		profileSelect.value=this.capabilities.operation_profile||'standard';
+		const profilePanel=E('div',{class:'ex-brand-row'},[
+			E('label',{},['Perfil operacional']),
+			profileSelect,
+			E('button',{class:'ex-mini-button','click':L.bind(function(){
+				closeModal();
+				this.switchProfile(profileSelect.value);
+			},this)},['Aplicar perfil'])
+		]);
+		ui.showModal('RECURSOS E COMPATIBILIDADE',[
+			profilePanel,
+			E('div',{class:'ex-brand-row'},[E('label',{},['Nome do painel']),brandName,E('button',{class:'ex-mini-button','click':L.bind(function(){this.setDashboardTitle(brandName.value);},this)},['Salvar nome'])]),
+			E('div',{class:'ex-language-row'},[E('label',{},['Idioma do painel']),language,E('button',{class:'ex-mini-button','click':L.bind(function(){this.setDashboardLanguage(language.value);},this)},['Salvar idioma'])]),
+			this.selfUpdatePanel(),
+			httpsPanel,
+			E('section',{class:'ex-appearance-panel'},[E('div',{class:'ex-appearance-heading'},[E('div',{},[E('strong',{},['Aparência']),E('small',{class:'ex-muted'},['No modo automático, o painel acompanha as cores e o modo claro ou escuro do tema LuCI.'])]),appearanceMode]),appearanceColors,E('button',{class:'ex-mini-button ex-save-appearance','click':L.bind(function(){this.setAppearance(appearanceMode.value,primary.value,secondary.value);},this)},['Salvar aparência'])]),
+			E('div',{class:'ex-feature-list'},rows),
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])
+		]);
 	},
 	featureSuggestionCard: function(keys){
 		return E('section',{class:'ex-card ex-feature-suggestions'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['RECURSOS OPCIONAIS']),E('h3',{},['Amplie o painel'])]),E('button',{class:'ex-mini-button','click':L.bind(this.showFeatureCenter,this)},['Recursos'])]),E('div',{class:'ex-suggestion-list'},keys.map(L.bind(function(key){const meta=FEATURE_META[key];return E('div',{class:'ex-suggestion-row'},[E('div',{},[E('div',{class:'ex-feature-name-row'},[E('strong',{},[meta.name]),meta.recommended?E('span',{class:'ex-recommended-badge'},['RECOMENDADO']):'']),E('small',{class:'ex-muted'},[meta.description])]),E('div',{},[E('button',{class:'ex-mini-button','click':L.bind(this.installFeature,this,key)},['Instalar']),E('button',{class:'ex-feature-link','click':L.bind(this.setFeatureHidden,this,key,true)},['Não mostrar'])])]);},this)))]);
 	},
 	render: function(loaded) {
 		this.board=loaded[0]||{}; this.countries=(loaded[1]&&loaded[1].results)||[]; this.capabilities=loaded[2]||{features:{}}; dashboardLanguage=this.capabilities.language||'pt-br';this.applyAppearance();this.applyBrand(this.capabilities.title);enableTranslation(); const data=loaded[3], w=wifiConfig(data.wireless), release=((this.board.release||{}).description||'').split(' ').slice(0,2).join(' '), panelTitle=this.capabilities.title||'ARK Router';
+		const isGamer=(this.capabilities&&this.capabilities.operation_profile)==='gamer';
+		const heroEyebrow=isGamer?'🎮 MODO GAMER • BAIXA LATÊNCIA':'CENTRAL DE OPERAÇÕES';
+		const gamerButton=E('button',{class:'ex-hero-feature-button '+(isGamer?'ex-hero-gamer-active':'ex-hero-gamer-btn'),'click':L.bind(this.switchProfile,this,isGamer?'standard':'gamer')},[isGamer?'🎮 GAMER ATIVO':'🎮 Modo Gamer']);
 		const wifiCard=L.bind(function(kind,title,cfg){const ssid=cfg.ssid||(kind==='guest'?'Equipe-X-Visitantes':'Equipe-X'),key=cfg.key||'',active=String(cfg.disabled||'0')!=='1',keyId='ex-'+kind+'-key';return E('section',{class:'ex-card ex-wifi-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['REDE WI‑FI']),E('h3',{id:'ex-'+kind+'-ssid'},[ssid])]),E('span',{id:'ex-'+kind+'-wifi-status',class:'ex-pill '+(active?'online':'standby')},[active?'ATIVA':'DESLIGADA'])]),E('div',{class:'ex-secret'},[E('code',{id:keyId,'data-hidden':'1',style:'filter:blur(5px)'},[key||'sem senha']),E('button',{class:'ex-mini-button','click':function(ev){this.togglePassword(keyId,ev.currentTarget);}.bind(this)},['Ver senha'])]),E('small',{class:'ex-muted'},[title+' • disponível em 2,4 e 5 GHz']),E('button',{class:'ex-text-button','click':L.bind(function(){this.editWifiNetwork(kind,cfg);},this)},['Configurar nome, senha e status →'])]);},this);
 		const modeButton=L.bind(function(mode,label){return E('button',{id:'ex-mode-'+mode,class:'ex-mode-button','click':L.bind(this.setMwanMode,this,mode,label)},[label]);},this);
 		const historyCard=function(kind,title,color){return E('section',{class:'ex-card ex-history-card','style':'--history-color:'+color},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['HISTÓRICO 24 HORAS']),E('h3',{},[title])]),E('strong',{id:'ex-history-'+kind+'-peak',class:'ex-history-peak'},['Coletando…'])]),E('canvas',{id:'ex-history-'+kind,class:'ex-history-chart',width:600,height:126})]);};
 		const healthItem=function(icon,label,valueId,barId,color){return E('div',{class:'ex-health-item','style':'--health-color:'+color},[E('span',{class:'ex-health-icon'},[icon]),E('div',{class:'ex-health-copy'},[E('span',{class:'ex-label'},[label]),E('strong',{id:valueId},['—']),barId?E('div',{class:'ex-health-bar'},[E('i',{id:barId})]):E('small',{class:'ex-health-steady'},['atividade do sistema'])])]);};
 		const speedWanCard=L.bind(function(wan,label,available){const attrs={class:'ex-mini-button','click':L.bind(this.startSpeedtest,this,wan,label)};if(!available)attrs.disabled=true;return E('div',{class:'ex-speedtest-wan'},[E('div',{class:'ex-card-title'},[E('h3',{},[label]),E('button',attrs,['Executar teste'])]),E('div',{id:'ex-speedtest-'+wan+'-result',class:'ex-speedtest-result'},[E('span',{class:'ex-muted'},[available?'Sem resultado nesta sessão.':'SEM CABO'])])]);},this);
 		const root=E('div',{class:'ex-dashboard'},[
-			E('section',{class:'ex-hero'},[E('div',{},[E('span',{class:'ex-eyebrow'},['CENTRAL DE OPERAÇÕES']),E('h2',{},[panelTitle]),E('p',{},[this.board.model||'OpenWrt','  •  ',release])]),E('div',{class:'ex-hero-status'},[E('span',{id:'ex-global-status',class:'ex-pill standby'},['VERIFICANDO']),E('strong',{id:'ex-clock'},['--:--:--']),E('small',{},['sessão de 12 horas • atualização a cada 3 segundos']),E('div',{class:'ex-hero-actions'},[E('button',{class:'ex-hero-feature-button ex-hero-setup-button','click':L.bind(this.showEzSetup,this)},['Ark - Setup']),E('button',{class:'ex-hero-feature-button','click':L.bind(this.showFeatureCenter,this)},['Recursos'])])])]),
+			E('section',{class:'ex-hero'+(isGamer?' ex-hero-gamer':'')},[E('div',{},[E('span',{class:'ex-eyebrow'},[heroEyebrow]),E('h2',{},[panelTitle]),E('p',{},[this.board.model||'OpenWrt','  •  ',release])]),E('div',{class:'ex-hero-status'},[E('span',{id:'ex-global-status',class:'ex-pill standby'},['VERIFICANDO']),E('strong',{id:'ex-clock'},['--:--:--']),E('small',{},['sessão de 12 horas • atualização a cada 3 segundos']),E('div',{class:'ex-hero-actions'},[gamerButton,E('button',{class:'ex-hero-feature-button ex-hero-setup-button','click':L.bind(this.showEzSetup,this)},['Ark - Setup']),E('button',{class:'ex-hero-feature-button','click':L.bind(this.showFeatureCenter,this)},['Recursos'])])])]),
 			E('section',{class:'ex-card ex-health-strip'},[E('div',{class:'ex-health-head'},[E('div',{},[E('span',{class:'ex-kicker'},['SAÚDE DO ROTEADOR']),E('small',{},['Ligado há ',E('strong',{id:'ex-uptime'},['—'])])]),E('span',{id:'ex-health-status',class:'ex-pill standby'},['VERIFICANDO'])]),E('div',{class:'ex-health-items'},[healthItem('℃','Temperatura','ex-temperature',null,'#f59e0b'),healthItem('▦','Memória','ex-memory','ex-memory-bar','#3b82f6'),healthItem('▣','Armazenamento','ex-storage','ex-storage-bar','#8b5cf6'),healthItem('⌁','Carga','ex-load',null,'#10b981')])]),
 			E('div',{class:'ex-grid ex-grid-2'},[metricCard('↓','Download agora','ex-download','ex-down-total','#3b82f6'),metricCard('↑','Upload agora','ex-upload','ex-up-total','#a855f7')]),
 			E('div',{class:'ex-grid ex-grid-2 ex-history-grid'},[historyCard('down','Download ao longo do dia','#3b82f6'),historyCard('up','Upload ao longo do dia','#a855f7')]),

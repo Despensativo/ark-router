@@ -57,9 +57,15 @@ The dashboard exposes a confirmed SQM/CAKE toggle and a small limit editor. The 
 
 The dashboard exposes confirmed WAN editors for common internet settings. WAN1 edits protocol and DNS while keeping the physical `wan` port. WAN2 can assign `lan1`, `lan2` or `lan3` as a second internet port, or return the selected port to the LAN bridge. The backend creates a `/tmp/ark-router-ezsetup-backup-*.tar.gz` backup before changing network UCI and reloads network services afterward.
 
-## Device controls
+## Device controls and prioritization
 
-The device dialog stores friendly names in `equipe_devices`, creates or updates a DHCP host reservation keyed by MAC address, and can create a deterministic `firewall.ark_priority_*` DSCP rule. Priority uses AF41 so CAKE `diffserv4` places that device's uploads in its video class while `dual-srchost` continues to provide per-source fairness. The UI exposes priority only for main-network clients while a WAN SQM queue is active.
+The device dialog stores friendly names in `equipe_devices`, creates or updates a DHCP host reservation keyed by MAC address, and can create a deterministic `firewall.ark_priority_*` DSCP rule. In standard mode, priority uses `AF41` so CAKE `diffserv4` places that device's uploads in its video class. In Gamer mode, priority uses `EF` (Expedited Forwarding) so gaming UDP packets (such as PUBG Mobile, Free Fire, CoD) jump directly to the real-time queue.
+
+## Operational profiles and Gamer mode
+
+ARK Router supports switching between two operational profiles:
+- **Standard / Controlled mode**: Balances traffic fairly across devices, applies moderate SQM queues and preserves the theme chosen in LuCI.
+- **Gamer mode**: Focuses on lowest latency, minimal jitter and zero bufferbloat. It enables `ack-filter` in CAKE queues, applies DSCP `EF` for prioritized gamer devices, and activates the dynamic **Gamer Red** theme (`#ef4444` / `#dc2626`) across the dashboard.
 
 ## HTTPS
 
