@@ -7,6 +7,8 @@
 - The same installer can now be re-run over SSH to update an existing ARK Router installation.
 - Added root, `wget`, `tar` and LuCI preflight checks for safer first-time installs.
 - Documented simple one-line install/update commands for stable users and development/source installs.
+- Added maintainer publishing documentation covering GitHub tags, GitHub Actions, Release assets, self-update and local offline copies.
+
 ## 0.9.15
 
 - Added ARK Router self-update support through GitHub Releases.

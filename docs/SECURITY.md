@@ -16,6 +16,8 @@ Important properties:
 - SQM is restored before a speed-test result is marked complete or failed.
 - Applying a measured SQM value is separate from testing and requires confirmation.
 - Package upgrades preserve the two UCI configuration files declared as `conffiles`.
+- The SSH source installer creates a temporary backup and preserves existing ARK Router UCI configuration files before copying source files into place.
+- Dashboard self-update downloads only the package asset that matches the detected package manager and runs only after administrator confirmation.
 - The standalone uninstaller creates a small preference backup under `/tmp` before removing files.
 - The standalone uninstaller removes only ARK Router files by default and preserves optional packages and saved preferences unless `PURGE=1` is explicitly set.
 - HTTPS redirection accepts only `0` or `1`, verifies the HTTPS listener and certificate files before enabling, and requires UI confirmation.

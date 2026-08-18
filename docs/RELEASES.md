@@ -2,6 +2,8 @@
 
 ARK Router is a LuCI/OpenWrt package. It is not installed with an ISO image.
 
+For the complete maintainer publishing checklist, see [`PUBLISHING.md`](PUBLISHING.md).
+
 The easiest public distribution path is:
 
 1. Push the source code to GitHub.
@@ -30,6 +32,7 @@ For a beginner-friendly command that tries the package first and falls back to s
 ```sh
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_INSTALL_MODE=auto sh
 ```
+
 The installer detects the router package manager:
 
 - `apk` based OpenWrt releases download `luci-app-ark-router.apk`.
@@ -65,4 +68,3 @@ Before a public announcement, capture sanitized screenshots without private IPs,
 - Wi-Fi controls;
 - device dialog;
 - mobile layout.
-

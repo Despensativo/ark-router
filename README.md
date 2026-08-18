@@ -127,7 +127,7 @@ Ark - Setup asks for the common first-run choices:
 - SQM strategy and optional manual speed limits;
 - DNS mode with separate DNS 1, DNS 2 and DNS 3 fields;
 - IPv6 and WPS preferences;
-- optional modules that the administrator may install separately.
+- optional modules that the administrator may install separately;
 - confirmed installation of selected optional modules, with progress tracking.
 
 The assistant saves a draft in UCI and stores the last applied checkpoint. If the browser disconnects while Wi-Fi or network services reload, the administrator can reconnect and continue from the saved state. Optional modules can be installed from inside Ark - Setup, but only after confirmation. Before applying network changes, it creates a backup under `/tmp/ark-router-ezsetup-backup-*.tar.gz`.
@@ -162,6 +162,8 @@ LuCI -> Applications -> luci-app-ark-router
 make package/luci-app-ark-router/compile V=s
 ```
 
+For public releases, this repository already includes a GitHub Actions workflow that builds the OpenWrt package when a version tag such as `v0.9.16` is pushed. See [`docs/PUBLISHING.md`](docs/PUBLISHING.md) for the full GitHub publishing flow.
+
 ## Installation
 
 Install the generated package using the package manager appropriate for the OpenWrt release. After installation, clear the LuCI cache or restart `rpcd`, then open ARK Router in the LuCI menu.
@@ -187,9 +189,11 @@ For a friendly first-run command that tries the package first and falls back to 
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_INSTALL_MODE=auto sh
 ```
 
-The source mode creates a temporary backup under `/tmp/ark-router-install-backup-*.tar.gz`, preserves existing ARK Router configuration files and then copies ARK Router files into the router. It restarts LuCI services, but it does not register an `apk`/`opkg` package. For public/stable installs, publishing a release package is still preferred. Until a release package exists for your firmware family, you can also build the package with the OpenWrt SDK:
+The source mode creates a temporary backup under `/tmp/ark-router-install-backup-*.tar.gz`, preserves existing ARK Router configuration files and then copies ARK Router files into the router. It restarts LuCI services, but it does not register an `apk`/`opkg` package. For public/stable installs, publishing a release package is still preferred.
 
 ARK Router is not an `.iso` image. It is a LuCI package installed on an existing OpenWrt router. See [`docs/RELEASES.md`](docs/RELEASES.md) for the GitHub Actions release flow.
+
+Manual install with a generated package:
 
 ```sh
 apk add ./luci-app-ark-router-*.apk
@@ -239,7 +243,7 @@ tar -xzf /tmp/ark-router-config-backup-YYYYMMDD-HHMMSS.tar.gz -C /
 
 ## Project Status
 
-Version 0.9.0 is a tested pilot release. It is ready to publish as an early public project, with the current compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
+Version 0.9.16 is a tested pilot release with GitHub Release package publishing, SSH install/update commands and dashboard self-update support. It is suitable for early public testing, with the compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
 
 ## License
 

@@ -14,5 +14,7 @@ Before submitting a change:
 4. Confirm the page remains useful when each optional package is absent.
 5. Validate desktop and narrow-screen layouts.
 6. Exercise invalid backend inputs and confirm they are rejected.
+7. If shell scripts were changed, validate them with BusyBox `ash` on OpenWrt or an equivalent environment.
+8. If packaging or version files changed, review `docs/PUBLISHING.md` before tagging a release.
 
 When reporting compatibility, include the router model, OpenWrt version, package manager, LuCI theme and installed optional modules.

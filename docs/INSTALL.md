@@ -42,6 +42,7 @@ ARK Router is not installed with an `.iso`. The router downloads or receives a p
 - `.ipk` on older OPKG-based OpenWrt builds.
 
 See [`RELEASES.md`](RELEASES.md) for the GitHub Actions release flow.
+Maintainers should also read [`PUBLISHING.md`](PUBLISHING.md) before publishing a new GitHub Release.
 
 ## Build With OpenWrt SDK
 
@@ -51,6 +52,8 @@ Copy this package into a package feed, refresh feeds if needed, then select it u
 make menuconfig
 make package/luci-app-ark-router/compile V=s
 ```
+
+For normal public distribution, prefer the repository GitHub Actions workflow instead of building manually on a desktop. The workflow builds the package with the OpenWrt SDK when a `v*` tag is pushed and attaches the resulting package assets to the GitHub Release.
 
 ## Install On The Router
 

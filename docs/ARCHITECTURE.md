@@ -11,6 +11,9 @@ ARK Router is composed of a LuCI JavaScript view, a scoped CSS file, an RPC ACL,
 - `root/etc/init.d/equipe-traffic-history`: collector service.
 - `root/etc/config/equipe_dashboard`: dashboard preferences.
 - `root/etc/config/equipe_devices`: administrator-assigned device names.
+- `root/usr/share/ark-router/VERSION`: installed version marker used by the dashboard updater.
+- `scripts/install.sh`: SSH installer/updater for release, source and automatic fallback modes.
+- `scripts/uninstall.sh`: conservative uninstaller with optional preference purge.
 
 ## Compatibility identifiers
 
@@ -21,6 +24,14 @@ The legacy `equipe-dashboard` route and `equipe_dashboard` UCI configuration are
 The control helper reports each capability as installed, active, hidden and installable. The UI removes unsupported sections and offers a confirmed installation only for packages in the backend allowlist.
 
 Installing an optional package makes its card available, but the package is not configured automatically. Network-impacting changes remain separate confirmed commands.
+
+## Installation and update flow
+
+The preferred public path is a GitHub Release package. The SSH installer detects `apk` or `opkg`, downloads `luci-app-ark-router.apk` or `luci-app-ark-router.ipk` from the latest Release and restarts LuCI services.
+
+When a package asset is not available, source mode downloads the GitHub source archive, creates a temporary backup under `/tmp/ark-router-install-backup-*.tar.gz`, preserves existing ARK Router UCI config files and copies the project `root/` tree into place. Source mode is a fallback for early testing and emergency updates; it does not register an OpenWrt package.
+
+The dashboard self-updater uses GitHub Releases only. It checks the latest tag, compares it with the installed version marker and installs only after administrator confirmation.
 
 ## Ark - Setup
 
