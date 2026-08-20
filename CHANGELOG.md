@@ -1,14 +1,22 @@
 # Changelog
 
-## 0.9.17
+## 0.9.18
 
+- Added live Speedify power control separate from reboot auto-recovery.
+- Added Speedify runtime recovery that can restore the saved mode after reboot without running the heavy official internal installer automatically.
+- Added visible Speedify account/connection state, active mode and tunnel IP in the dashboard.
+- Added Fast.com/manual speed-test fallback that remains available even when `speedtest-go` is not suitable for weak routers.
+- Improved speed-test storage detection with RAM-aware recommendations for small devices.
+- Fixed LAN/uHTTPd binding so HTTP/HTTPS follows the selected LAN router IP instead of staying tied to a fixed development address.
+- Replaced pilot-specific default Wi-Fi labels with generic ARK Router names while still reading the real SSIDs from each router.
+- Sanitized development test/deploy scripts so router passwords are supplied through environment variables instead of being committed.
 - Added Operational Profiles system: Standard/Controlled mode vs Gamer Mode with low-latency optimizations.
 - Added dynamic Gamer Red visual theme (`#ef4444` / `#dc2626`) activated automatically when Gamer Mode is enabled.
 - Added 1-click Gamer Mode toggle button and low-latency status indicator directly in the dashboard Hero section.
 - Optimized SQM/CAKE queue parameters with `ack-filter` and `diffserv4` for zero-bufferbloat and minimal jitter in online gaming.
 - Added real-time DSCP `EF` (Expedited Forwarding) priority support in device configuration for mobile/PC gaming (PUBG Mobile, Free Fire, etc.).
 - Added automatic configuration snapshot backup (`/etc/config/ark_last_profile_backup.tar.gz`) before applying profile changes.
-- Added smart storage detection for speedtest-go: installs permanently into flash when >= 20% free space remains; runs safely in volatile RAM (/tmp) on small-flash devices.
+- Added smart storage detection for speedtest-go: installs permanently into flash only when safe; otherwise uses volatile RAM or manual fallback on small-flash devices.
 - Preserved standard fair-share traffic policies when returning to Standard Mode.
 
 ## 0.9.16
@@ -33,7 +41,7 @@
 
 - Fixed modal cancel/close behavior without removing LuCI's persistent `#modal_overlay`.
 - Fixed internal dashboard action buttons after closing a modal, including WAN, LAN/DHCP, Wi-Fi, SQM, channel and reboot controls.
-- Fixed LAN/DHCP editor opening on `192.168.x.x` networks: it now preserves the current subnet, such as `192.168.21.1`, instead of resetting to `192.168.1.1`.
+- Fixed LAN/DHCP editor opening on custom `192.168.x.x` networks: it now preserves the current subnet instead of resetting to `192.168.1.1`.
 - Validated SQM/CAKE guest download changes through the web interface and confirmed persistence in UCI.
 - Validated LAN/DHCP no-op apply flow through the web interface and confirmed persistence in UCI.
 - Documented a follow-up: guest bandwidth values are saved and displayed, but the actual per-guest traffic shaper still needs an explicit runtime enforcement layer.
@@ -165,14 +173,14 @@
 ## 0.8.1
 
 - Fixed connected-device network labels so Wi-Fi clients are no longer shown as wired clients.
-- Main Wi-Fi clients now show `Equipe-X / Wi-Fi`, guest Wi-Fi clients show `Visitantes / Wi-Fi`, DHCP-only clients show `Cabo / LAN`, and unknown main clients show `Rede principal`.
+- Main Wi-Fi clients now show the active main SSID, guest Wi-Fi clients show the active guest SSID, DHCP-only clients show `Cabo / LAN`, and unknown main clients show `Rede principal`.
 
 ## 0.8.0
 
 - Prepared the project for public GitHub publication.
 - Added MIT license, public README, install guide, roadmap, support guide and screenshot guidance.
 - Added issue templates, pull request template and GitHub Actions syntax check.
-- Documented the tested router, firmware, package manager, LuCI theme and pilot SSIDs without exposing passwords.
+- Documented the tested router, firmware, package manager and LuCI theme without exposing passwords.
 
 ## 0.7.4
 
@@ -255,4 +263,3 @@
 - Added modular capability detection and optional package suggestions.
 - Added Multi-WAN, SQM, Wi-Fi, device, LAN/WAN and 24-hour traffic views.
 - Added safe controls for Wi-Fi channels, country, passwords, device names and Multi-WAN policy.
-

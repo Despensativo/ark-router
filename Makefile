@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ark-router
-PKG_VERSION:=0.9.17
+PKG_VERSION:=0.9.18
 PKG_RELEASE:=1
 PKG_MAINTAINER:=ARK Router contributors
 PKG_LICENSE:=MIT
@@ -19,7 +19,9 @@ endef
 
 define Package/luci-app-ark-router/description
   Responsive and modular LuCI dashboard for OpenWrt, with Multi-WAN,
-  SQM, Wi-Fi, device and traffic integrations when available.
+  SQM, Wi-Fi, device and traffic integrations when available. The ARK
+  Router UI ships its own English fallback and selected runtime language;
+  luci-i18n-* packages are optional and are not required by this package.
 endef
 
 define Package/luci-app-ark-router/conffiles

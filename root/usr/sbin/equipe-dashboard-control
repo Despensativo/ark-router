@@ -1,7 +1,7 @@
 #!/bin/sh
 
 action="$1"
-ARK_ROUTER_VERSION="0.9.17"
+ARK_ROUTER_VERSION="0.9.18"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() { [ "$1" = 1 ] && printf true || printf false; }
@@ -58,6 +58,31 @@ installed() {
 }
 hidden() { [ "$(uci -q get equipe_dashboard.$1.hidden)" = 1 ]; }
 running() { [ -x "/etc/init.d/$1" ] && "/etc/init.d/$1" running >/dev/null 2>&1; }
+ark_kill_package_fetchers() {
+	ps w 2>/dev/null | awk '/downloads\.openwrt\.org|packages\.adb|APKINDEX|apk update|apk fetch/ && !/awk/ {print $1}' | while read -r pid; do
+		[ -n "$pid" ] && kill "$pid" 2>/dev/null || true
+	done
+}
+ark_run_limited() {
+	seconds="$1"; shift
+	"$@" &
+	pid="$!"
+	i=0
+	while kill -0 "$pid" 2>/dev/null; do
+		[ "$i" -ge "$seconds" ] && {
+			kill "$pid" 2>/dev/null || true
+			ark_kill_package_fetchers
+			sleep 2
+			kill -9 "$pid" 2>/dev/null || true
+			ark_kill_package_fetchers
+			wait "$pid" 2>/dev/null
+			return 124
+		}
+		sleep 1
+		i=$((i+1))
+	done
+	wait "$pid"
+}
 feature_package() {
 	case "$1" in
 		sqm) printf luci-app-sqm ;;
@@ -67,8 +92,134 @@ feature_package() {
 		argon) printf luci-theme-argon ;;
 		uhttpd) printf luci-app-uhttpd ;;
 		speedtest) printf speedtest-go ;;
+		speedify) printf speedify ;;
 		*) return 1 ;;
 	esac
+}
+cleanup_packages() {
+	case "$1" in
+		updater) printf 'luci-app-attendedsysupgrade attendedsysupgrade-common owut' ;;
+		package_manager) printf 'luci-app-package-manager' ;;
+		ipv6) printf 'luci-proto-ipv6 odhcp6c odhcpd-ipv6only' ;;
+		translations) printf 'luci-i18n-mwan3-pt-br luci-i18n-nlbwmon-pt-br luci-i18n-sqm-pt-br luci-i18n-upnp-pt-br' ;;
+		upnp) printf 'luci-app-upnp miniupnpd-nftables' ;;
+		speedify_residue) printf '' ;;
+		*) return 1 ;;
+	esac
+}
+cleanup_label() {
+	case "$1" in
+		updater) printf 'Atualizador de firmware via LuCI' ;;
+		package_manager) printf 'Gerenciador LuCI de pacotes' ;;
+		ipv6) printf 'IPv6 cliente/servidor' ;;
+		translations) printf 'Traduções dos apps LuCI extras' ;;
+		upnp) printf 'UPnP / NAT-PMP' ;;
+		speedify_residue) printf 'Resíduos de instalações incompletas' ;;
+		*) printf '%s' "$1" ;;
+	esac
+}
+cleanup_desc() {
+	case "$1" in
+		updater) printf 'Dispensável quando o ARK Router controla atualização/backup.' ;;
+		package_manager) printf 'Neste firmware fica preso à coleção LuCI; não é seguro remover sem remover o LuCI base.' ;;
+		ipv6) printf 'Remove cliente/servidor IPv6 quando presentes. O protocolo LuCI pode ficar protegido pela coleção LuCI base.' ;;
+		translations) printf 'Opcional. O ARK Router mantém inglês fixo como fallback e usa seu próprio idioma selecionado.' ;;
+		upnp) printf 'Opcional. Remova somente se não precisa abrir portas automaticamente para consoles/apps.' ;;
+		speedify_residue) printf 'Remove restos conhecidos de Speedify/Nginx/OpenSSL quando uma instalação falha.' ;;
+		*) printf '' ;;
+	esac
+}
+cleanup_recommended() {
+	case "$1" in updater|package_manager|ipv6|translations|speedify_residue) return 0 ;; *) return 1 ;; esac
+}
+cleanup_removable() {
+	case "$1" in
+		package_manager) return 1 ;;
+		ipv6)
+			# odhcp6c/odhcpd are removable; luci-proto-ipv6 alone is tied to the LuCI collection on this firmware.
+			installed odhcp6c || installed odhcpd-ipv6only
+			return $?
+			;;
+		*) return 0 ;;
+	esac
+}
+cleanup_installed_count() {
+	count=0
+	for pkg in $(cleanup_packages "$1"); do installed "$pkg" && count=$((count+1)); done
+	if [ "$1" = speedify_residue ]; then
+		for f in /overlay/upper/usr/lib/libcrypto.so.3 /overlay/upper/usr/lib/libssl.so.3 /overlay/upper/usr/lib/libstdc++.so.6.0.33 /overlay/upper/usr/lib/libpcre2-8.so.0.15.0 /overlay/upper/etc/nginx /overlay/upper/usr/lib/nginx; do
+			[ -e "$f" ] && count=$((count+1))
+		done
+	fi
+	printf '%s' "$count"
+}
+cleanup_status_json() {
+	overlay_avail="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"; [ -n "$overlay_avail" ] || overlay_avail=0
+	overlay_total="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $2}')"; [ -n "$overlay_total" ] || overlay_total=0
+	backup="$(uci -q get equipe_dashboard.cleanup.last_backup || true)"
+	printf '{"overlay_avail_kb":%s,"overlay_total_kb":%s,"last_backup":"%s","items":[' "$overlay_avail" "$overlay_total" "$(json_escape "$backup")"
+	first=1
+	for key in updater package_manager ipv6 translations upnp speedify_residue; do
+		count="$(cleanup_installed_count "$key")"
+		[ "$count" -gt 0 ] || continue
+		[ "$first" = 1 ] || printf ','
+		first=0
+		cleanup_recommended "$key"; rec=$?
+		cleanup_removable "$key"; rem=$?
+		[ "$rem" = 0 ] || rec=1
+		printf '{"key":"%s","label":"%s","description":"%s","installed_count":%s,"recommended":%s,"removable":%s}' \
+			"$key" "$(json_escape "$(cleanup_label "$key")")" "$(json_escape "$(cleanup_desc "$key")")" "$count" "$(bool $((rec == 0)))" "$(bool $((rem == 0)))"
+	done
+	printf ']}\n'
+}
+cleanup_backup() {
+	stamp="$(date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)"
+	file="/tmp/ark-router-before-cleanup-$stamp.tar.gz"
+	if command -v sysupgrade >/dev/null 2>&1; then sysupgrade -b "$file" >/dev/null 2>&1 || return 1
+	else ez_backup >/dev/null || return 1; file="$(ez_get backup '')"
+	fi
+	uci -q set equipe_dashboard.cleanup=cleanup
+	uci -q set equipe_dashboard.cleanup.last_backup="$file"
+	uci commit equipe_dashboard
+	printf '%s' "$file"
+}
+cleanup_speedify_residue() {
+	for f in \
+		/overlay/upper/usr/lib/libcrypto.so.3 /overlay/upper/usr/lib/libssl.so.3 \
+		/overlay/upper/usr/lib/libstdc++.so.6 /overlay/upper/usr/lib/libstdc++.so.6.0.33 \
+		/overlay/upper/usr/lib/libpcre2-8.so /overlay/upper/usr/lib/libpcre2-8.so.0 /overlay/upper/usr/lib/libpcre2-8.so.0.15.0 \
+		/overlay/upper/usr/lib/libpcre2-posix.so /overlay/upper/usr/lib/libpcre2-posix.so.3 /overlay/upper/usr/lib/libpcre2-posix.so.3.0.7 \
+		/overlay/upper/usr/lib/libcap.so /overlay/upper/usr/lib/libcap.so.2 /overlay/upper/usr/lib/libcap.so.2.69 \
+		/overlay/upper/usr/lib/libbz2.so.1.0 /overlay/upper/usr/lib/libbz2.so.1.0.8 \
+		/overlay/upper/usr/lib/libkeyutils.so.1 /overlay/upper/usr/lib/libkeyutils.so.1.10 \
+		/overlay/upper/usr/lib/nginx /overlay/upper/etc/nginx /overlay/upper/etc/config/nginx /overlay/upper/usr/bin/nginx-util \
+		/overlay/upper/etc/sysctl.d/99-speedify-tcp-cca.conf; do
+		rm -rf "$f"
+	done
+	for p in nginx-* luci-nginx.* libxml2.* luci-app-speedify.* speedify.* libopenssl3.* libstdcpp6.* libpcre2.* libcap.list libbz2-1.0.list libkeyutils1.list; do
+		rm -f /overlay/upper/lib/apk/packages/$p 2>/dev/null || true
+	done
+}
+cleanup_apply_keys() {
+	[ $# -gt 0 ] || { echo 'Nenhum item selecionado' >&2; return 2; }
+	backup="$(cleanup_backup)" || { echo 'Falha ao criar backup antes da limpeza' >&2; return 3; }
+	echo "Backup: $backup"
+	for key in "$@"; do
+		cleanup_packages "$key" >/dev/null || { echo "Item invalido: $key" >&2; return 2; }
+		cleanup_removable "$key" || { echo "Item protegido ou vinculado a dependencia base: $key" >&2; continue; }
+		if [ "$key" = speedify_residue ]; then cleanup_speedify_residue; continue; fi
+		pkgs="$(cleanup_packages "$key")"
+		if command -v apk >/dev/null 2>&1; then
+			for pkg in $pkgs; do installed "$pkg" && apk del "$pkg" || true; done
+		elif command -v opkg >/dev/null 2>&1; then
+			for pkg in $pkgs; do installed "$pkg" && opkg remove "$pkg" || true; done
+		fi
+	done
+	rm -rf /tmp/luci-indexcache /tmp/luci-modulecache 2>/dev/null || true
+	[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
+	[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd enable >/dev/null 2>&1 && /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+	sync
+	echo ok
 }
 install_argon_release() {
 	version="${ARK_ARGON_VERSION:-2.4.6}"
@@ -95,6 +246,346 @@ install_argon_release() {
 	[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
 	return 0
 }
+install_speedify_official() {
+	speedify_supported || { echo 'Arquitetura nao suportada pelo Speedify. Requer aarch64 ou x86_64.' >&2; return 3; }
+	command -v wget >/dev/null 2>&1 || { echo 'wget nao encontrado' >&2; return 3; }
+	overlay_avail="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"; [ -n "$overlay_avail" ] || overlay_avail=0
+	need_internal="${ARK_SPEEDIFY_INTERNAL_MIN_KB:-45000}"
+	[ "$overlay_avail" -ge "$need_internal" ] || { echo "Espaco interno insuficiente para Speedify. Livre: ${overlay_avail} KB; recomendado: ${need_internal} KB. Use armazenamento externo/extroot ou modo RAM experimental." >&2; return 3; }
+	tmp="${TMPDIR:-/tmp}/ark-router-speedify-install.sh"
+	rm -f "$tmp"
+	wget -q https://get.speedify.com -O "$tmp" || return 1
+	sh "$tmp" || return 1
+	rm -f /tmp/luci-indexcache
+	rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
+	[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
+	[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+	return 0
+}
+speedify_save_config() {
+	mkdir -p /etc/ark-router/speedify
+	for src in /etc/speedify /usr/share/speedify/settings /usr/share/speedify/*.conf; do
+		[ -e "$src" ] || continue
+		name="$(basename "$src")"
+		if [ -d "$src" ]; then tar -czf "/etc/ark-router/speedify/$name.tar.gz" -C "$(dirname "$src")" "$name" 2>/dev/null || true
+		else cp "$src" "/etc/ark-router/speedify/$name" 2>/dev/null || true
+		fi
+	done
+	uci -q set equipe_dashboard.speedify=feature
+	uci -q set equipe_dashboard.speedify.saved_config=1
+	uci commit equipe_dashboard
+	echo saved
+}
+speedify_write_cli_wrapper() {
+	wrapper="$1"; r="$2"
+	mkdir -p "$(dirname "$wrapper")"
+	cat >"$wrapper" <<EOF
+#!/bin/sh
+R="$r"
+exec "\$R/lib/ld-linux-aarch64.so.1" --library-path "\$R/lib:\$R/lib/aarch64-linux-gnu" "\$R/speedify_cli" "\$@"
+EOF
+	chmod +x "$wrapper"
+}
+speedify_start_extracted() {
+	root="$1"; wrapper="$2"
+	r="$root/usr/share/speedify"
+	[ -x "$r/speedify" ] && [ -x "$r/speedify_cli" ] && [ -x "$r/lib/ld-linux-aarch64.so.1" ] || { echo "Runtime Speedify invalido em $root." >&2; return 3; }
+	chmod +x "$r/speedify" "$r/speedify_cli" "$r/lib/ld-linux-aarch64.so.1" 2>/dev/null || true
+	mkdir -p /lib /etc/ark-router/speedify/runtime /etc/ark-router/speedify/keys /tmp/speedify-logs
+	[ -e /lib/aarch64-linux-gnu ] || ln -s "$r/lib/aarch64-linux-gnu" /lib/aarch64-linux-gnu
+	[ -e /lib/ld-linux-aarch64.so.1 ] || ln -s "$r/lib/ld-linux-aarch64.so.1" /lib/ld-linux-aarch64.so.1
+	speedify_write_cli_wrapper "$wrapper" "$r"
+	speedify_prepare_runtime_network || return 1
+	pkill -f '/speedify -d /etc/ark-router/speedify/runtime' 2>/dev/null || true
+	pkill -f "$r/speedify" 2>/dev/null || true
+	"$r/lib/ld-linux-aarch64.so.1" --library-path "$r/lib:$r/lib/aarch64-linux-gnu" "$r/speedify" -d /etc/ark-router/speedify/runtime -r "$r" -g /tmp/speedify-logs -k /etc/ark-router/speedify/keys >/tmp/ark-speedify-daemon.log 2>&1 &
+	echo $! >/tmp/ark-speedify.pid
+	sleep 6
+	"$wrapper" version >/tmp/ark-speedify-version.log 2>&1 || { cat /tmp/ark-speedify-daemon.log /tmp/ark-speedify-version.log 2>/dev/null >&2; return 1; }
+	uci -q set equipe_dashboard.speedify=feature
+	uci -q set equipe_dashboard.speedify.saved_config='1'
+	uci -q set equipe_dashboard.speedify.prepared='1'
+	uci commit equipe_dashboard
+	return 0
+}
+speedify_install_external() {
+	speedify_supported || { echo 'Arquitetura nao suportada pelo Speedify.' >&2; return 3; }
+	command -v wget >/dev/null 2>&1 || { echo 'wget nao encontrado' >&2; return 3; }
+	command -v apk >/dev/null 2>&1 || { echo 'apk nao encontrado' >&2; return 3; }
+	target="${ARK_SPEEDIFY_EXTERNAL_TARGET:-$(speedify_external_target)}"
+	[ -n "$target" ] && [ -d "$target" ] || { echo "Armazenamento externo nao encontrado. Monte um pendrive em /mnt/sda1, /mnt/usb ou configure ARK_SPEEDIFY_EXTERNAL_TARGET." >&2; return 3; }
+	avail="$(df -k "$target" 2>/dev/null | awk 'NR==2{print $4}')"; [ -n "$avail" ] || avail=0
+	need_internal="${ARK_SPEEDIFY_INTERNAL_MIN_KB:-45000}"
+	[ "$avail" -ge "$need_internal" ] || { echo "Espaco externo insuficiente em $target." >&2; return 3; }
+	root="$target/ark-router/speedify-root"
+	pkg="/tmp/ark-speedify-cache/speedify.apk"
+	mkdir -p /tmp/ark-speedify-cache "$target/ark-router"
+	rm -f "$pkg"
+	wget -q https://downloads.speedify.com/speedify_aarch64_cortex-a53.apk -O "$pkg" || { echo 'Falha ao baixar pacote Speedify.' >&2; return 1; }
+	rm -rf "$root"
+	mkdir -p "$root"
+	apk --allow-untrusted extract --destination "$root" "$pkg" >/tmp/ark-speedify-extract.log 2>&1 || { cat /tmp/ark-speedify-extract.log >&2; return 1; }
+	rm -f "$pkg"
+	speedify_start_extracted "$root" /etc/ark-router/speedify-cli || return 1
+	uci -q set equipe_dashboard.speedify.install_mode='external'
+	uci -q set equipe_dashboard.speedify.external_target="$target"
+	uci commit equipe_dashboard
+	echo "Speedify instalado no armazenamento externo em $root."
+	return 0
+}
+speedify_start_external_saved() {
+	target="$(uci -q get equipe_dashboard.speedify.external_target || true)"
+	[ -n "$target" ] || target="$(speedify_external_target || true)"
+	[ -n "$target" ] || { echo 'Armazenamento externo salvo nao encontrado.' >&2; return 3; }
+	root="$target/ark-router/speedify-root"
+	speedify_start_extracted "$root" /etc/ark-router/speedify-cli
+}
+speedify_install_ram() {
+	speedify_supported || { echo 'Arquitetura nao suportada pelo Speedify.' >&2; return 3; }
+	command -v wget >/dev/null 2>&1 || { echo 'wget nao encontrado' >&2; return 3; }
+	command -v apk >/dev/null 2>&1 || { echo 'apk nao encontrado' >&2; return 3; }
+	tmp_avail="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"; [ -n "$tmp_avail" ] || tmp_avail=0
+	need_ram="${ARK_SPEEDIFY_RAM_MIN_KB:-80000}"
+	[ "$tmp_avail" -ge "$need_ram" ] || { echo "RAM /tmp insuficiente para Speedify temporario." >&2; return 3; }
+	pkg="/tmp/ark-speedify-cache/speedify.apk"
+	root="/tmp/ark-speedify-root"
+	mkdir -p /tmp/ark-speedify-cache
+	rm -f "$pkg"
+	wget -q https://downloads.speedify.com/speedify_aarch64_cortex-a53.apk -O "$pkg" || { echo 'Falha ao baixar pacote Speedify.' >&2; return 1; }
+	rm -rf "$root"
+	mkdir -p "$root"
+	apk --allow-untrusted extract --destination "$root" "$pkg" >/tmp/ark-speedify-extract.log 2>&1 || { cat /tmp/ark-speedify-extract.log >&2; return 1; }
+	rm -f "$pkg"
+	speedify_start_extracted "$root" /tmp/ark-speedify-cli || return 1
+	uci -q set equipe_dashboard.speedify.install_mode='ram'
+	uci commit equipe_dashboard
+	echo 'Speedify iniciado em RAM. A config fica salva; com auto recuperacao ligada ele sera recarregado apos reiniciar se houver internet e RAM suficiente.'
+	return 0
+}
+speedify_prepare_runtime_network() {
+	uci -q batch <<'EOI'
+set network.speedify=interface
+set network.speedify.proto=none
+set network.speedify.device=connectify0
+set network.speedify.defaultroute=0
+add_list network.speedify.dns=10.202.0.1
+EOI
+	if ! uci -q show network 2>/dev/null | grep -q "device.*name='connectify0'"; then
+		uci -q batch <<'EOI'
+add network device
+set network.@device[-1].name=connectify0
+set network.@device[-1].acceptlocal=1
+EOI
+	fi
+	if ! uci -q show firewall 2>/dev/null | grep -q "\.name='speedify'"; then
+		uci -q batch <<'EOI'
+add firewall zone
+set firewall.@zone[-1].name=speedify
+set firewall.@zone[-1].input=ACCEPT
+set firewall.@zone[-1].output=ACCEPT
+set firewall.@zone[-1].forward=ACCEPT
+add_list firewall.@zone[-1].device=connectify0
+add_list firewall.@zone[-1].network=speedify
+add firewall forwarding
+set firewall.@forwarding[-1].src=speedify
+set firewall.@forwarding[-1].dest=lan
+add firewall forwarding
+set firewall.@forwarding[-1].src=lan
+set firewall.@forwarding[-1].dest=speedify
+EOI
+	fi
+	uci commit network
+	uci commit firewall
+	/etc/init.d/firewall reload >/dev/null 2>&1 || true
+	/etc/init.d/network reload >/dev/null 2>&1 || true
+	return 0
+}
+firewall_wan_zone_section() {
+	uci -q show firewall 2>/dev/null | awk -F= '
+		/\.name='\''wan'\''$/ { s=$1; sub(/^firewall\./, "", s); sub(/\.name$/, "", s); print s; exit }
+	'
+}
+firewall_zone_has_network() {
+	section="$1"; network="$2"
+	uci -q get "firewall.$section.network" 2>/dev/null | tr ' ' '\n' | grep -qx "$network"
+}
+lan_bridge_port_count() {
+	br="$(lan_bridge_section)"
+	[ -n "$br" ] || { printf 0; return 0; }
+	uci -q get "network.$br.ports" 2>/dev/null | wc -w
+}
+speedify_auto_prepare_wan2() {
+	[ -n "$(uci -q get network.wan2.proto)" ] && return 0
+	[ -e /sys/class/net/lan1 ] || { echo 'WAN2 nao configurada e porta LAN1 nao encontrada.' >&2; return 3; }
+	count="$(lan_bridge_port_count)"
+	[ "$count" -ge 3 ] || { echo 'WAN2 nao configurada. Este roteador nao tem portas LAN sobrando suficientes para converter LAN1 automaticamente.' >&2; return 3; }
+	remove_lan_port lan1
+	uci -q set network.wan2=interface
+	uci -q set network.wan2.device=lan1
+	uci -q set network.wan2.proto=dhcp
+	uci -q set network.wan2.metric="${ARK_SPEEDIFY_WAN2_METRIC:-20}"
+	uci -q set network.wan2.peerdns=0
+	uci -q add_list network.wan2.dns='1.1.1.1'
+	uci -q add_list network.wan2.dns='8.8.8.8'
+	uci -q set network.wan2.delegate=0
+	uci -q set network.wan2.ipv6=0
+	echo 'WAN2 criada automaticamente na porta LAN1 por DHCP.' >&2
+	return 0
+}
+speedify_prepare_wans() {
+	speedify_supported || { echo 'Este roteador nao esta em arquitetura Speedify suportada.' >&2; return 3; }
+	[ -n "$(uci -q get network.wan.proto)" ] || { echo 'WAN1 nao configurada.' >&2; return 3; }
+	ez_backup >/dev/null || { echo 'Falha ao criar backup antes da preparacao Speedify.' >&2; return 3; }
+	speedify_auto_prepare_wan2 || return $?
+	uci -q set network.wan.metric="${ARK_SPEEDIFY_WAN_METRIC:-10}"
+	uci -q set network.wan2.metric="${ARK_SPEEDIFY_WAN2_METRIC:-20}"
+	zone="$(firewall_wan_zone_section)"
+	if [ -n "$zone" ]; then
+		firewall_zone_has_network "$zone" wan || uci -q add_list "firewall.$zone.network=wan"
+		firewall_zone_has_network "$zone" wan2 || uci -q add_list "firewall.$zone.network=wan2"
+		uci commit firewall
+	fi
+	uci commit network
+	uci -q set equipe_dashboard.speedify=feature
+	uci -q set equipe_dashboard.speedify.prepared=1
+	uci -q set equipe_dashboard.speedify.mode='optional'
+	uci commit equipe_dashboard
+	( sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall restart >/dev/null 2>&1 || true ) >/dev/null 2>&1 &
+	echo prepared
+}
+speedify_status_json() {
+	cli="$(speedify_cli_path)"
+	present=false; ([ -x "$cli" ] || installed speedify) && present=true
+	luci=false; installed luci-app-speedify && luci=true
+	supported=false; speedify_supported && supported=true
+	prepared="$(uci -q get equipe_dashboard.speedify.prepared || printf 0)"
+	mode="$(uci -q get equipe_dashboard.speedify.install_mode || printf auto)"
+	saved="$(uci -q get equipe_dashboard.speedify.saved_config || printf 0)"
+	autostart="$(uci -q get equipe_dashboard.speedify.autostart || printf 0)"
+	desired="$(uci -q get equipe_dashboard.speedify.desired_state || printf manual)"
+	bonding_mode="$(uci -q get equipe_dashboard.speedify.bonding_mode || printf speed)"
+	last_autostart="$(cat /tmp/ark-speedify-autostart.status 2>/dev/null || true)"
+	state="$(speedify_state_value)"
+	version=''; [ -n "$cli" ] && version="$("$cli" -s version 2>/dev/null | tr '\n' ' ' | sed 's/[[:space:]]\+/ /g' || true)"
+	adapters=''; [ -n "$cli" ] && adapters="$("$cli" -s show adapters 2>/dev/null | tr '\n' ' ' | sed 's/[[:space:]]\+/ /g' || true)"
+	settings=''; [ -n "$cli" ] && settings="$("$cli" -s show settings 2>/dev/null || true)"
+	runtime_mode="$(printf '%s' "$settings" | jsonfilter -e '@.bondingMode' 2>/dev/null || true)"
+	[ -n "$runtime_mode" ] || runtime_mode="$bonding_mode"
+	tunnel_ip="$(ip -4 addr show connectify0 2>/dev/null | awk '/inet /{print $2; exit}' | cut -d/ -f1)"
+	user_email=''; user_masked=''; licensed=false; logged=false
+	if [ -n "$cli" ]; then
+		user_out="$("$cli" show user 2>/dev/null || true)"
+		user_email="$(printf '%s' "$user_out" | jsonfilter -e '@.email' 2>/dev/null || true)"
+		bytes_available="$(printf '%s' "$user_out" | jsonfilter -e '@.bytesAvailable' 2>/dev/null || true)"
+		[ -n "$user_email" ] && { logged=true; user_masked="$(speedify_mask_email "$user_email")"; }
+		[ "$bytes_available" = -1 ] && licensed=true
+	fi
+	printf '{"installed":%s,"luci":%s,"supported":%s,"prepared":%s,"state":"%s","cli":"%s","version_raw":"%s","adapters_raw":"%s","wan_metric":"%s","wan2_metric":"%s","install_mode":"%s","saved_config":%s,"autostart":%s,"desired_state":"%s","bonding_mode":"%s","runtime_mode":"%s","tunnel_ip":"%s","last_autostart":"%s","account_logged_in":%s,"account_licensed":%s,"account_email_masked":"%s",' \
+		"$present" "$luci" "$supported" "$(bool "$prepared")" "$(json_escape "$state")" "$(json_escape "$cli")" "$(json_escape "$version")" "$(json_escape "$adapters")" "$(json_escape "$(uci -q get network.wan.metric || true)")" "$(json_escape "$(uci -q get network.wan2.metric || true)")" "$(json_escape "$mode")" "$(bool "$saved")" "$(bool "$autostart")" "$(json_escape "$desired")" "$(json_escape "$bonding_mode")" "$(json_escape "$runtime_mode")" "$(json_escape "$tunnel_ip")" "$(json_escape "$last_autostart")" "$logged" "$licensed" "$(json_escape "$user_masked")"
+	speedify_storage_json
+	printf '}\n'
+}
+speedify_cli_action() {
+	cli="$(speedify_cli_path)"
+	[ -n "$cli" ] || { echo 'Speedify CLI nao encontrado. Instale e faca login no Speedify primeiro.' >&2; return 3; }
+	case "$1" in
+		connect) "$cli" mode "$(uci -q get equipe_dashboard.speedify.bonding_mode || printf speed)" >/dev/null 2>&1 || true; "$cli" connect; rc=$?; [ "$rc" -eq 0 ] && { uci -q set equipe_dashboard.speedify=feature; uci -q set equipe_dashboard.speedify.desired_state='connected'; uci commit equipe_dashboard; }; return "$rc" ;;
+		disconnect) "$cli" disconnect; rc=$?; [ "$rc" -eq 0 ] && { uci -q set equipe_dashboard.speedify=feature; uci -q set equipe_dashboard.speedify.desired_state='disconnected'; uci commit equipe_dashboard; }; return "$rc" ;;
+		mode-speed) "$cli" mode speed; rc=$?; [ "$rc" -eq 0 ] && { uci -q set equipe_dashboard.speedify=feature; uci -q set equipe_dashboard.speedify.bonding_mode='speed'; uci commit equipe_dashboard; }; return "$rc" ;;
+		mode-streaming) "$cli" mode streaming; rc=$?; [ "$rc" -eq 0 ] && { uci -q set equipe_dashboard.speedify=feature; uci -q set equipe_dashboard.speedify.bonding_mode='streaming'; uci commit equipe_dashboard; }; return "$rc" ;;
+		mode-redundant) "$cli" mode redundant; rc=$?; [ "$rc" -eq 0 ] && { uci -q set equipe_dashboard.speedify=feature; uci -q set equipe_dashboard.speedify.bonding_mode='redundant'; uci commit equipe_dashboard; }; return "$rc" ;;
+		router-role) "$cli" devicerole router ;;
+		*) echo 'Acao Speedify invalida' >&2; return 2 ;;
+	esac
+}
+speedify_mask_email() {
+	email="$1"
+	case "$email" in
+		*@*)
+			localpart="${email%@*}"; domain="${email#*@}"
+			first="$(printf '%s' "$localpart" | cut -c1)"
+			printf '%s***@%s' "$first" "$domain"
+			;;
+		*) printf '%s' "$email" ;;
+	esac
+}
+speedify_pairing_json() {
+	cli="$(speedify_cli_path)"
+	[ -n "$cli" ] || { echo 'Speedify CLI nao encontrado. Inicie o Speedify primeiro.' >&2; return 3; }
+	out="$("$cli" activationcode 2>/tmp/ark-speedify-activation.log)" || { cat /tmp/ark-speedify-activation.log >&2; return 1; }
+	code="$(printf '%s' "$out" | jsonfilter -e '@.activationCode' 2>/dev/null || true)"
+	url="$(printf '%s' "$out" | jsonfilter -e '@.activationUrl' 2>/dev/null || true)"
+	[ -n "$url" ] || { echo 'Speedify nao retornou URL de ativacao.' >&2; return 1; }
+	printf '{"activationCode":"%s","activationUrl":"%s"}\n' "$(json_escape "$code")" "$(json_escape "$url")"
+}
+speedify_user_json() {
+	cli="$(speedify_cli_path)"
+	[ -n "$cli" ] || { echo 'Speedify CLI nao encontrado. Inicie o Speedify primeiro.' >&2; return 3; }
+	out="$("$cli" show user 2>/tmp/ark-speedify-user.log)" || { cat /tmp/ark-speedify-user.log >&2; return 1; }
+	email="$(printf '%s' "$out" | jsonfilter -e '@.email' 2>/dev/null || true)"
+	bytes_available="$(printf '%s' "$out" | jsonfilter -e '@.bytesAvailable' 2>/dev/null || true)"
+	payment="$(printf '%s' "$out" | jsonfilter -e '@.paymentType' 2>/dev/null || true)"
+	is_team="$(printf '%s' "$out" | jsonfilter -e '@.isTeam' 2>/dev/null || true)"
+	logged=false; [ -n "$email" ] && logged=true
+	licensed=false; [ "$bytes_available" = -1 ] && licensed=true
+	printf '{"logged_in":%s,"licensed":%s,"email":"%s","email_masked":"%s","bytesAvailable":"%s","paymentType":"%s","isTeam":"%s"}\n' \
+		"$logged" "$licensed" "$(json_escape "$email")" "$(json_escape "$(speedify_mask_email "$email")")" "$(json_escape "$bytes_available")" "$(json_escape "$payment")" "$(json_escape "$is_team")"
+}
+speedify_autostart_set() {
+	case "$1" in 1|on|true|enabled) value=1 ;; 0|off|false|disabled) value=0 ;; *) echo 'Valor invalido para auto recuperacao Speedify' >&2; return 2 ;; esac
+	uci -q set equipe_dashboard.speedify=feature
+	uci -q set equipe_dashboard.speedify.autostart="$value"
+	uci commit equipe_dashboard
+	if [ -x /etc/init.d/ark-speedify ]; then
+		[ "$value" = 1 ] && /etc/init.d/ark-speedify enable >/dev/null 2>&1 || /etc/init.d/ark-speedify disable >/dev/null 2>&1
+	fi
+	[ "$value" = 1 ] && speedify_autostart_run >/tmp/ark-speedify-autostart-now.log 2>&1 &
+	echo "$value"
+}
+speedify_recover_runtime() {
+	speedify_supported || { echo unsupported >/tmp/ark-speedify-autostart.status; return 1; }
+	echo running >/tmp/ark-speedify-autostart.status
+	for _try in 1 2 3; do
+		if ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1 || ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then break; fi
+		sleep 10
+	done
+	cli="$(speedify_cli_path)"
+	if [ -n "$cli" ] && "$cli" version >/dev/null 2>&1; then
+		echo already-running >/tmp/ark-speedify-autostart.status
+	else
+		mode="$(uci -q get equipe_dashboard.speedify.install_mode || printf ram)"
+		case "$mode" in
+			external) speedify_start_external_saved || { echo external-failed >/tmp/ark-speedify-autostart.status; return 1; } ;;
+			internal|auto) [ -x /etc/init.d/speedify ] && /etc/init.d/speedify start >/dev/null 2>&1 || { echo internal-service-missing >/tmp/ark-speedify-autostart.status; return 1; } ;;
+			ram|*) speedify_install_ram || { echo ram-failed >/tmp/ark-speedify-autostart.status; return 1; } ;;
+		esac
+	fi
+	echo ok >/tmp/ark-speedify-autostart.status
+	return 0
+}
+speedify_power_set() {
+	case "$1" in 1|on|true|enabled) value=1 ;; 0|off|false|disabled) value=0 ;; *) echo 'Valor invalido para Speedify' >&2; return 2 ;; esac
+	if [ "$value" = 1 ]; then
+		uci -q set equipe_dashboard.speedify=feature
+		uci -q set equipe_dashboard.speedify.desired_state='connected'
+		uci commit equipe_dashboard
+		cli="$(speedify_cli_path)"
+		if [ -z "$cli" ] || ! "$cli" version >/dev/null 2>&1; then
+			speedify_recover_runtime || return $?
+		fi
+		speedify_cli_action connect
+	else
+		speedify_cli_action disconnect
+	fi
+}
+speedify_autostart_run() {
+	[ "$(uci -q get equipe_dashboard.speedify.autostart || printf 0)" = 1 ] || { echo disabled >/tmp/ark-speedify-autostart.status; return 0; }
+	speedify_recover_runtime || return $?
+	if [ "$(uci -q get equipe_dashboard.speedify.desired_state || true)" = connected ]; then
+		speedify_cli_action connect >/tmp/ark-speedify-autoconnect.log 2>&1 || true
+	fi
+	return 0
+}
 feature_active() {
 	case "$1" in
 		sqm) uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'" ;;
@@ -108,6 +599,7 @@ feature_active() {
 		temperature) [ -r /sys/class/thermal/thermal_zone0/temp ] ;;
 		custom_qos) [ -s /etc/config/qos_equipe ] ;;
 		speedtest) command -v speedtest-go >/dev/null 2>&1 || [ -x /tmp/ark-speedtest/speedtest-go ] ;;
+		speedify) [ -x /usr/share/speedify/speedify_cli ] || installed speedify ;;
 		*) return 1 ;;
 	esac
 }
@@ -132,6 +624,113 @@ valid_sqm_rate() { valid_uint_range "$1" 0 1000000; }
 ark_current_version() { cat /usr/share/ark-router/VERSION 2>/dev/null || printf '%s' "$ARK_ROUTER_VERSION"; }
 ark_update_repo() { uci -q get equipe_dashboard.update.repo 2>/dev/null || printf '%s' "$ARK_UPDATE_REPO_DEFAULT"; }
 normalize_version() { printf '%s' "$1" | sed 's/^v//; s/[^0-9.].*$//'; }
+speedify_cli_path() {
+	if [ -x /usr/share/speedify/speedify_cli ]; then printf /usr/share/speedify/speedify_cli; return 0; fi
+	if [ -x /etc/ark-router/speedify-cli ]; then printf /etc/ark-router/speedify-cli; return 0; fi
+	if [ -x /tmp/ark-speedify-cli ]; then printf /tmp/ark-speedify-cli; return 0; fi
+}
+speedify_supported() { case "$(uname -m 2>/dev/null)" in aarch64|x86_64) return 0 ;; *) return 1 ;; esac; }
+speedify_external_target() {
+	need="${ARK_SPEEDIFY_INTERNAL_MIN_KB:-45000}"
+	for mp in /opt /mnt/sda1 /mnt/usb /mnt/sdb1 /mnt/mmcblk0p1; do
+		[ -d "$mp" ] || continue
+		[ "$mp" = /overlay ] && continue
+		avail="$(df -k "$mp" 2>/dev/null | awk 'NR==2{print $4}')"
+		[ -n "$avail" ] && [ "$avail" -ge "$need" ] && { printf '%s' "$mp"; return 0; }
+	done
+	return 1
+}
+speedify_storage_json() {
+	overlay_avail="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"
+	overlay_total="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $2}')"
+	tmp_avail="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"
+	tmp_total="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $2}')"
+	[ -n "$overlay_avail" ] || overlay_avail=0; [ -n "$overlay_total" ] || overlay_total=0
+	[ -n "$tmp_avail" ] || tmp_avail=0; [ -n "$tmp_total" ] || tmp_total=0
+	need_internal="${ARK_SPEEDIFY_INTERNAL_MIN_KB:-45000}"
+	need_ram="${ARK_SPEEDIFY_RAM_MIN_KB:-80000}"
+	internal=false; [ "$overlay_avail" -ge "$need_internal" ] && internal=true
+	ram=false; [ "$tmp_avail" -ge "$need_ram" ] && ram=true
+	external=false
+	external_path="$(speedify_external_target || true)"
+	[ -n "$external_path" ] && external=true
+	recommend=none
+	$internal && recommend=internal
+	[ "$recommend" = none ] && $external && recommend=external
+	[ "$recommend" = none ] && $ram && recommend=ram
+	printf '"storage":{"overlay_avail_kb":%s,"overlay_total_kb":%s,"tmp_avail_kb":%s,"tmp_total_kb":%s,"need_internal_kb":%s,"need_ram_kb":%s,"internal_ok":%s,"external_ok":%s,"ram_ok":%s,"recommended":"%s","external_path":"%s"}' \
+		"$overlay_avail" "$overlay_total" "$tmp_avail" "$tmp_total" "$need_internal" "$need_ram" "$internal" "$external" "$ram" "$recommend" "$(json_escape "$external_path")"
+}
+speedify_state_value() {
+	cli="$(speedify_cli_path)"
+	[ -n "$cli" ] || { printf unavailable; return 0; }
+	out="$("$cli" -s state 2>/dev/null || true)"
+	state="$(printf '%s' "$out" | jsonfilter -e '@.state' 2>/dev/null || true)"
+	[ -n "$state" ] && printf '%s' "$state" || printf unknown
+}
+speedtest_history_file() {
+	case "$1" in wan|wan2) ;; *) return 1 ;; esac
+	mkdir -p /etc/ark-router/speedtest-history
+	printf '/etc/ark-router/speedtest-history/%s.jsonl' "$1"
+}
+speedtest_history_append() {
+	wan="$1"; result="$2"
+	file="$(speedtest_history_file "$wan")" || return 0
+	stamp="$(date +%Y-%m-%dT%H:%M:%S%z 2>/dev/null || date)"
+	download="$(jsonfilter -i "$result" -e '@.download_mbps' 2>/dev/null || printf 0)"
+	latency="$(jsonfilter -i "$result" -e '@.latency_ms' 2>/dev/null || printf 0)"
+	upload="$(jsonfilter -i "$result" -e '@.suggested_kbps.balanced' 2>/dev/null || printf 0)"
+	conservative="$(jsonfilter -i "$result" -e '@.suggested_kbps.conservative' 2>/dev/null || printf 0)"
+	aggressive="$(jsonfilter -i "$result" -e '@.suggested_kbps.aggressive' 2>/dev/null || printf 0)"
+	source_ip="$(jsonfilter -i "$result" -e '@.source_ip' 2>/dev/null || true)"
+	printf '{"time":"%s","wan":"%s","source_ip":"%s","download_mbps":%s,"latency_ms":%s,"suggested_kbps":{"conservative":%s,"balanced":%s,"aggressive":%s}}\n' \
+		"$(json_escape "$stamp")" "$wan" "$(json_escape "$source_ip")" "$download" "$latency" "$conservative" "$upload" "$aggressive" >>"$file"
+	tail -n 12 "$file" >"$file.tmp" && mv "$file.tmp" "$file"
+}
+speedtest_history_json() {
+	wan="$1"; file="$(speedtest_history_file "$wan")" || { printf '{"items":[],"average":{}}'; return 0; }
+	[ -s "$file" ] || { printf '{"items":[],"average":{}}'; return 0; }
+	last="$(tail -n 3 "$file")"
+	printf '{"items":['
+	first=1
+	printf '%s\n' "$last" | while IFS= read -r line; do
+		[ -n "$line" ] || continue
+		[ "$first" = 1 ] || printf ','
+		first=0
+		printf '%s' "$line"
+	done
+	printf '],"average":'
+	awk '
+		BEGIN{n=0; d=0; l=0; c=0; b=0; a=0}
+		{
+			if (match($0, /"download_mbps":[0-9.]+/)) { v=substr($0,RSTART+16,RLENGTH-16); d+=v }
+			if (match($0, /"latency_ms":[0-9.]+/)) { v=substr($0,RSTART+13,RLENGTH-13); l+=v }
+			if (match($0, /"conservative":[0-9]+/)) { v=substr($0,RSTART+15,RLENGTH-15); c+=v }
+			if (match($0, /"balanced":[0-9]+/)) { v=substr($0,RSTART+11,RLENGTH-11); b+=v }
+			if (match($0, /"aggressive":[0-9]+/)) { v=substr($0,RSTART+12,RLENGTH-12); a+=v }
+			n++
+		}
+		END{
+			if(n<1){printf "{}"; exit}
+			printf "{\"count\":%d,\"download_mbps\":%.2f,\"latency_ms\":%.2f,\"suggested_kbps\":{\"conservative\":%d,\"balanced\":%d,\"aggressive\":%d}}", n, d/n, l/n, c/n, b/n, a/n
+		}' <<EOF
+$last
+EOF
+	printf '}'
+}
+speedtest_schedule_weak_cleanup() {
+	command -v speedtest-go >/dev/null 2>&1 && return 0
+	[ -x /tmp/ark-speedtest/speedtest-go ] || return 0
+	tmp_total="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $2}')"; [ -n "$tmp_total" ] || tmp_total=0
+	[ "$tmp_total" -le "${ARK_SPEEDTEST_WEAK_TMP_KB:-160000}" ] || return 0
+	(
+		sleep "${ARK_SPEEDTEST_CLEANUP_DELAY:-300}"
+		[ "$(cat /tmp/ark-speedtest-wan.status 2>/dev/null)" = running ] && exit 0
+		[ "$(cat /tmp/ark-speedtest-wan2.status 2>/dev/null)" = running ] && exit 0
+		rm -rf /tmp/ark-speedtest /tmp/ark-speedtest-download
+		echo cleaned >/tmp/ark-speedtest-cleanup.status
+	) >/dev/null 2>&1 &
+}
 version_gt() {
 	awk -v a="$(normalize_version "$1")" -v b="$(normalize_version "$2")" 'BEGIN {
 		split(a, A, "."); split(b, B, ".");
@@ -284,9 +883,9 @@ ez_json() {
 		"$(json_escape "$(ez_get router_name 'ARK Router')")" \
 		"$(json_escape "$(ez_get country BR)")" \
 		"$(json_escape "$(ez_get wifi_mode unified)")" \
-		"$(json_escape "$(ez_get main_ssid 'Equipe-X')")" \
+		"$(json_escape "$(ez_get main_ssid 'ARK Router')")" \
 		"$(json_bool_value "$(ez_get guest_enabled 1)")" \
-		"$(json_escape "$(ez_get guest_ssid 'Equipe-X-Visitantes')")" \
+		"$(json_escape "$(ez_get guest_ssid 'ARK Router Visitantes')")" \
 		"$(json_bool_value "$(ez_get guest_limit_enabled 1)")" \
 		"$(json_escape "$(ez_get guest_download_kbps 0)")" \
 		"$(json_escape "$(ez_get guest_upload_kbps 1500)")" \
@@ -414,6 +1013,16 @@ apply_wan_proto() {
 	uci -q set "network.$iface.delegate=0"
 	uci -q set "network.$iface.ipv6=0"
 }
+bind_uhttpd_to_lan_ip() {
+	lan_ip="$1"
+	valid_ipv4 "$lan_ip" || return 2
+	uci -q delete uhttpd.main.listen_http
+	uci -q delete uhttpd.main.listen_https
+	uci -q add_list "uhttpd.main.listen_http=$lan_ip:80"
+	uci -q add_list "uhttpd.main.listen_https=$lan_ip:443"
+	uci commit uhttpd
+	return 0
+}
 can_install_speedtest_flash() {
 	avail_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"
 	total_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $2}')"
@@ -429,19 +1038,78 @@ can_install_speedtest_flash() {
 	fi
 	return 1
 }
+speedtest_storage_json() {
+	tmp_avail="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"
+	tmp_total="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $2}')"
+	overlay_avail="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"
+	[ -n "$tmp_avail" ] || tmp_avail=0
+	[ -n "$tmp_total" ] || tmp_total=0
+	[ -n "$overlay_avail" ] || overlay_avail=0
+	min_kb="${ARK_SPEEDTEST_RAM_MIN_KB:-25600}"
+	weak=false
+	[ "$tmp_avail" -lt "$min_kb" ] && weak=true
+	recommended=auto
+	$weak && recommended=fast_manual
+	printf '"storage":{"tmp_avail_kb":%s,"tmp_total_kb":%s,"overlay_avail_kb":%s,"need_ram_kb":%s,"weak_router":%s,"recommended":"%s"}' \
+		"$tmp_avail" "$tmp_total" "$overlay_avail" "$min_kb" "$weak" "$recommended"
+}
 feature_json() {
 	key="$1" package="$2" installable="$3"
 	if [ "$key" = speedtest ]; then
 		if [ -x /usr/bin/speedtest-go ]; then
-			printf '"speedtest":{"installed":true,"active":true,"hidden":false,"installable":true,"package":"speedtest-go","temporary":false}'
+			printf '"speedtest":{"installed":true,"active":true,"hidden":false,"installable":true,"package":"speedtest-go","temporary":false,'
+			speedtest_storage_json
+			printf '}'
 			return 0
 		elif [ -x /tmp/ark-speedtest/speedtest-go ]; then
-			printf '"speedtest":{"installed":true,"active":true,"hidden":false,"installable":true,"package":"speedtest-go","temporary":true}'
+			printf '"speedtest":{"installed":true,"active":true,"hidden":false,"installable":true,"package":"speedtest-go","temporary":true,'
+			speedtest_storage_json
+			printf '}'
 			return 0
 		else
-			printf '"speedtest":{"installed":false,"active":false,"hidden":false,"installable":true,"package":"speedtest-go","temporary":true}'
+			tmp_avail="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"; [ -n "$tmp_avail" ] || tmp_avail=0
+			min_kb="${ARK_SPEEDTEST_RAM_MIN_KB:-25600}"
+			installable=true; [ "$tmp_avail" -lt "$min_kb" ] && installable=false
+			printf '"speedtest":{"installed":false,"active":false,"hidden":false,"installable":%s,"package":"speedtest-go","temporary":true,' "$installable"
+			speedtest_storage_json
+			printf '}'
 			return 0
 		fi
+	fi
+	if [ "$key" = speedify ]; then
+		supported=false; speedify_supported && supported=true
+		cli="$(speedify_cli_path)"
+		present=false; ([ -n "$cli" ] || installed speedify) && present=true
+		luci=false; installed luci-app-speedify && luci=true
+		active=false; state="$(speedify_state_value)"; case "$state" in CONNECTED|CONNECTING|LOGGED_IN) active=true ;; esac
+		prepared="$(uci -q get equipe_dashboard.speedify.prepared || printf 0)"
+		mode="$(uci -q get equipe_dashboard.speedify.install_mode || printf auto)"
+		saved="$(uci -q get equipe_dashboard.speedify.saved_config || printf 0)"
+		autostart="$(uci -q get equipe_dashboard.speedify.autostart || printf 0)"
+		desired="$(uci -q get equipe_dashboard.speedify.desired_state || printf manual)"
+		bonding_mode="$(uci -q get equipe_dashboard.speedify.bonding_mode || printf speed)"
+		runtime_mode="$bonding_mode"
+		tunnel_ip="$(ip -4 addr show connectify0 2>/dev/null | awk '/inet /{print $2; exit}' | cut -d/ -f1)"
+		if [ -n "$cli" ]; then
+			settings_out="$("$cli" -s show settings 2>/dev/null || true)"
+			settings_mode="$(printf '%s' "$settings_out" | jsonfilter -e '@.bondingMode' 2>/dev/null || true)"
+			[ -n "$settings_mode" ] && runtime_mode="$settings_mode"
+		fi
+		last_autostart="$(cat /tmp/ark-speedify-autostart.status 2>/dev/null || true)"
+		account_logged=false; account_licensed=false; account_masked=''
+		if [ -n "$cli" ]; then
+			user_out="$("$cli" show user 2>/dev/null || true)"
+			account_email="$(printf '%s' "$user_out" | jsonfilter -e '@.email' 2>/dev/null || true)"
+			account_bytes="$(printf '%s' "$user_out" | jsonfilter -e '@.bytesAvailable' 2>/dev/null || true)"
+			[ -n "$account_email" ] && { account_logged=true; account_masked="$(speedify_mask_email "$account_email")"; }
+			[ "$account_bytes" = -1 ] && account_licensed=true
+		fi
+		hidden "$key"; concealed=$?
+		printf '"speedify":{"installed":%s,"active":%s,"hidden":%s,"installable":%s,"package":"speedify + luci-app-speedify","luci":%s,"state":"%s","supported":%s,"prepared":%s,"install_mode":"%s","saved_config":%s,"autostart":%s,"desired_state":"%s","bonding_mode":"%s","runtime_mode":"%s","tunnel_ip":"%s","last_autostart":"%s","account_logged_in":%s,"account_licensed":%s,"account_email_masked":"%s",' \
+			"$present" "$active" "$(bool $((concealed == 0)))" "$supported" "$luci" "$(json_escape "$state")" "$supported" "$(bool "$prepared")" "$(json_escape "$mode")" "$(bool "$saved")" "$(bool "$autostart")" "$(json_escape "$desired")" "$(json_escape "$bonding_mode")" "$(json_escape "$runtime_mode")" "$(json_escape "$tunnel_ip")" "$(json_escape "$last_autostart")" "$account_logged" "$account_licensed" "$(json_escape "$account_masked")"
+		speedify_storage_json
+		printf '}'
+		return 0
 	fi
 	if [ -n "$package" ]; then installed "$package"; present=$?; else feature_active "$key"; present=$?; fi
 	feature_active "$key"; enabled=$?
@@ -454,10 +1122,13 @@ feature_json() {
 prepare_speedtest() {
 	command -v speedtest-go >/dev/null 2>&1 && return 0
 	[ -x /tmp/ark-speedtest/speedtest-go ] && return 0
+	tmp_avail="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"; [ -n "$tmp_avail" ] || tmp_avail=0
+	min_kb="${ARK_SPEEDTEST_RAM_MIN_KB:-25600}"
+	[ "$tmp_avail" -ge "$min_kb" ] || { echo "RAM /tmp insuficiente para medidor automatico. Use Fast.com/manual." >&2; return 3; }
 	if can_install_speedtest_flash; then
 		pm="$(ark_package_manager)"
 		if [ "$pm" = apk ]; then
-			apk update >/dev/null 2>&1 && apk add speedtest-go >/dev/null 2>&1
+			ark_run_limited 90 apk update >/dev/null 2>&1 && ark_run_limited 120 apk add speedtest-go >/dev/null 2>&1
 			command -v speedtest-go >/dev/null 2>&1 && return 0
 		elif [ "$pm" = opkg ]; then
 			opkg update >/dev/null 2>&1 && opkg install speedtest-go >/dev/null 2>&1
@@ -467,22 +1138,22 @@ prepare_speedtest() {
 	command -v apk >/dev/null 2>&1 || return 1
 	# OpenWrt keeps APK indexes in volatile storage. They disappear on reboot,
 	# so refresh them before trying to fetch the temporary speed-test package.
-	apk update || return 1
+	ark_run_limited 90 apk update || return 1
 	stage=/tmp/ark-speedtest-download
 	rm -rf "$stage" && mkdir -p "$stage/root" /tmp/ark-speedtest || return 1
 	if command -v wget >/dev/null 2>&1; then
 		version="$(apk policy speedtest-go 2>/dev/null | awk '/^[[:space:]]+[0-9]/{gsub(/:$/, "", $1); print $1; exit}')"
 		repo="$(apk policy speedtest-go 2>/dev/null | awk '/^[[:space:]]+https?:\/\//{gsub(/^\[|\]$/, "", $1); sub(/\/packages\.adb$/, "", $1); print $1; exit}')"
 		if [ -n "$version" ] && [ -n "$repo" ]; then
-			wget -O "$stage/speedtest-go-$version.apk" "$repo/speedtest-go-$version.apk" >/dev/null 2>&1 || {
+			wget -T 45 -O "$stage/speedtest-go-$version.apk" "$repo/speedtest-go-$version.apk" >/dev/null 2>&1 || {
 				rm -rf "$stage"
 				return 1
 			}
 		else
-			apk fetch --output "$stage" speedtest-go || { rm -rf "$stage"; return 1; }
+			ark_run_limited 120 apk fetch --output "$stage" speedtest-go || { rm -rf "$stage"; return 1; }
 		fi
 	else
-		apk fetch --output "$stage" speedtest-go || { rm -rf "$stage"; return 1; }
+		ark_run_limited 120 apk fetch --output "$stage" speedtest-go || { rm -rf "$stage"; return 1; }
 	fi
 	set -- "$stage"/*.apk; package_file="$1"
 	[ -f "$package_file" ] || { rm -rf "$stage"; return 1; }
@@ -603,8 +1274,8 @@ case "$action" in
 			ez_progress 3 network_basics
 		fi
 		if [ "$(ez_get applied_step 0)" -lt 4 ]; then
-			main_ssid="$(ez_get main_ssid 'Equipe-X')"; main_key="$(ez_get main_key '')"
-			guest_ssid="$(ez_get guest_ssid 'Equipe-X-Visitantes')"; guest_key="$(ez_get guest_key '')"
+			main_ssid="$(ez_get main_ssid 'ARK Router')"; main_key="$(ez_get main_key '')"
+			guest_ssid="$(ez_get guest_ssid 'ARK Router Visitantes')"; guest_key="$(ez_get guest_key '')"
 			mode="$(ez_get wifi_mode unified)"
 			[ -n "$main_key" ] && valid_wifi_password "$main_key" || { echo 'Senha da rede principal ausente ou invalida' >&2; exit 2; }
 			[ "$(ez_get guest_enabled 1)" = 0 ] || { [ -n "$guest_key" ] && valid_wifi_password "$guest_key"; } || { echo 'Senha da rede visitante ausente ou invalida' >&2; exit 2; }
@@ -742,7 +1413,8 @@ case "$action" in
 		feature_json wifi '' false; printf ','
 		feature_json history '' false; printf ','
 		feature_json temperature '' false; printf ','
-		feature_json custom_qos '' false
+		feature_json custom_qos '' false; printf ','
+		feature_json speedify speedify true
 		printf ','; feature_json speedtest speedtest-go "$speedtest_installable"
 		current_version="$(ark_current_version)"
 		update_repo="$(ark_update_repo)"
@@ -862,12 +1534,14 @@ case "$action" in
 		key="$2"; package="$(feature_package "$key")" || { echo 'Recurso invalido' >&2; exit 2; }
 		status="/tmp/equipe-dashboard-install-$key.status"; log="/tmp/equipe-dashboard-install-$key.log"
 		if [ "$key" = speedtest ]; then feature_active "$key" && { echo done >"$status"; echo installed; exit 0; }
+		elif [ "$key" = speedify ]; then feature_active "$key" && { echo done >"$status"; echo installed; exit 0; }
 		else installed "$package" && { echo done >"$status"; echo installed; exit 0; }; fi
 		[ "$(cat "$status" 2>/dev/null)" != running ] || { echo running; exit 0; }
 		command -v apk >/dev/null 2>&1 || command -v opkg >/dev/null 2>&1 || { echo 'Gerenciador de pacotes indisponivel' >&2; exit 3; }
 	echo running >"$status"
 	(
 		if [ "$key" = speedtest ]; then prepare_speedtest
+		elif [ "$key" = speedify ]; then install_speedify_official
 		elif [ "$key" = argon ] && command -v apk >/dev/null 2>&1 && ! apk search luci-theme-argon 2>/dev/null | grep -qx 'luci-theme-argon.*'; then install_argon_release
 		elif command -v apk >/dev/null 2>&1; then apk update && apk add "$package"
 		else opkg update && opkg install "$package"
@@ -878,11 +1552,24 @@ case "$action" in
 		;;
 	feature-install-status)
 		feature_package "$2" >/dev/null || { echo 'Recurso invalido' >&2; exit 2; }
-		cat "/tmp/equipe-dashboard-install-$2.status" 2>/dev/null || echo idle
+		status="/tmp/equipe-dashboard-install-$2.status"
+		if [ "$(cat "$status" 2>/dev/null)" = running ]; then
+			ps w 2>/dev/null | grep -E "equipe-dashboard-control feature-install $2|apk|opkg|wget" | grep -vq grep || {
+				echo error >"$status"
+			}
+		fi
+		cat "$status" 2>/dev/null || echo idle
 		;;
 	feature-install-log)
 		feature_package "$2" >/dev/null || { echo 'Recurso invalido' >&2; exit 2; }
 		cat "/tmp/equipe-dashboard-install-$2.log" 2>/dev/null
+		;;
+	cleanup-status)
+		cleanup_status_json
+		;;
+	cleanup-apply)
+		shift
+		cleanup_apply_keys "$@"
 		;;
 	theme)
 		[ "$2" = argon ] || { echo 'Tema invalido' >&2; exit 2; }
@@ -902,17 +1589,18 @@ case "$action" in
 		source_ip="$(ubus call "network.interface.$network" status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].address')"
 		[ -n "$source_ip" ] || { echo 'A interface nao possui IPv4 ativo' >&2; exit 3; }
 		[ "$(cat "/sys/class/net/$device/carrier" 2>/dev/null)" = 1 ] || { echo 'A interface esta sem link fisico' >&2; exit 3; }
-		echo running >"$status"; rm -f "$result"
+		echo 'running|5|Preparando teste' >"$status"; rm -f "$result"
 		(
 			bin="$(command -v speedtest-go 2>/dev/null || printf /tmp/ark-speedtest/speedtest-go)"
 			restore_sqm() { uci -q revert "sqm.$sqm_section.enabled"; /etc/init.d/sqm restart >/dev/null 2>&1; }
 			trap restore_sqm EXIT INT TERM
+			echo 'running|10|Pausando SQM' >"$status"
 			uci -q set "sqm.$sqm_section.enabled=0"; /etc/init.d/sqm restart >/dev/null 2>&1; sleep 2
 			ok=0; uploads=''; download=0; latency=0; run=1
 			while [ "$run" -le 3 ]; do
 				file="/tmp/ark-speedtest-$2-run$run.json"
-				if [ "$run" = 1 ]; then "$bin" --json --multi --thread 8 --source "$source_ip" >"$file" 2>>"$log"
-				else "$bin" --json --no-download --multi --thread 8 --source "$source_ip" >"$file" 2>>"$log"; fi
+				if [ "$run" = 1 ]; then echo 'running|25|Medindo download e upload' >"$status"; "$bin" --json --multi --thread 8 --source "$source_ip" >"$file" 2>>"$log"
+				else [ "$run" = 2 ] && echo 'running|55|Medindo upload 2/3' >"$status" || echo 'running|75|Medindo upload 3/3' >"$status"; "$bin" --json --no-download --multi --thread 8 --source "$source_ip" >"$file" 2>>"$log"; fi
 				if [ $? -eq 0 ]; then
 					u="$(jsonfilter -i "$file" -e '@.servers[0].ul_speed' 2>/dev/null)"; d="$(jsonfilter -i "$file" -e '@.servers[0].dl_speed' 2>/dev/null)"; l="$(jsonfilter -i "$file" -e '@.servers[0].latency' 2>/dev/null)"
 					case "$u" in ''|*[!0-9.]*) ;; *) uploads="$uploads $u"; ok=$((ok+1));; esac
@@ -921,10 +1609,18 @@ case "$action" in
 				run=$((run+1))
 			done
 			if [ "$ok" -lt 2 ]; then restore_sqm; trap - EXIT INT TERM; echo error >"$status"; exit 1; fi
+			echo 'running|90|Calculando médias' >"$status"
 			set -- $uploads; u1="$1"; u2="$2"; u3="${3:-$2}"
 			metrics="$(awk -v d="$download" -v l="$latency" -v a="$u1" -v b="$u2" -v c="$u3" 'BEGIN{m=a;if(b<m)m=b;if(c<m)m=c;printf "%.2f %.2f %.2f %.2f %.2f %d %d %d",d*8/1000000,a*8/1000000,b*8/1000000,c*8/1000000,l/1000000,m*8/1000*.85,m*8/1000*.90,m*8/1000*.95}')"
 			set -- $metrics
-			printf '{"wan":"%s","download_mbps":%s,"upload_runs_mbps":[%s,%s,%s],"latency_ms":%s,"suggested_kbps":{"conservative":%s,"balanced":%s,"aggressive":%s}}\n' "$selected_wan" "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" >"$result"
+			speedify_state="$(speedify_state_value)"
+			base="/tmp/ark-speedtest-$selected_wan-base.json"
+			printf '{"wan":"%s","source_ip":"%s","speedify_state":"%s","download_mbps":%s,"upload_runs_mbps":[%s,%s,%s],"latency_ms":%s,"suggested_kbps":{"conservative":%s,"balanced":%s,"aggressive":%s}}\n' "$selected_wan" "$(json_escape "$source_ip")" "$(json_escape "$speedify_state")" "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" >"$base"
+			speedtest_history_append "$selected_wan" "$base"
+			history="$(speedtest_history_json "$selected_wan")"
+			printf '{"wan":"%s","source_ip":"%s","speedify_state":"%s","download_mbps":%s,"upload_runs_mbps":[%s,%s,%s],"latency_ms":%s,"suggested_kbps":{"conservative":%s,"balanced":%s,"aggressive":%s},"history":%s}\n' "$selected_wan" "$(json_escape "$source_ip")" "$(json_escape "$speedify_state")" "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$history" >"$result"
+			speedtest_schedule_weak_cleanup
+			echo 'running|98|Restaurando SQM' >"$status"
 			restore_sqm; trap - EXIT INT TERM
 			echo done >"$status"
 		) >"$log" 2>&1 &
@@ -936,7 +1632,10 @@ case "$action" in
 		;;
 	speedtest-result)
 		case "$2" in wan|wan2) ;; *) echo 'WAN invalida' >&2; exit 2 ;; esac
-		[ -s "/tmp/ark-speedtest-$2.json" ] || { echo '{}' ; exit 0; }
+		if [ ! -s "/tmp/ark-speedtest-$2.json" ]; then
+			printf '{"wan":"%s","history":%s}\n' "$2" "$(speedtest_history_json "$2")"
+			exit 0
+		fi
 		cat "/tmp/ark-speedtest-$2.json"
 		;;
 	speedtest-apply)
@@ -1098,9 +1797,10 @@ case "$action" in
 		uci -q set dhcp.lan.start="$start_host"
 		uci -q set dhcp.lan.limit="$limit"
 		uci -q set dhcp.lan.leasetime="${DHCP_LEASETIME:-12h}"
+		bind_uhttpd_to_lan_ip "$router_ip" || { echo 'Falha ao ajustar uHTTPd para o novo IP LAN' >&2; exit 3; }
 		uci commit network
 		uci commit dhcp
-		(sleep 2; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/network reload >/dev/null 2>&1 || true) &
+		(sleep 2; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/uhttpd restart >/dev/null 2>&1 || true) &
 		printf '{"old_ip":"%s","new_ip":"%s","url":"http://%s/cgi-bin/luci/admin/equipe-dashboard"}\n' "$(json_escape "$old_ip")" "$(json_escape "$router_ip")" "$(json_escape "$router_ip")"
 		;;
 	mwan)
@@ -1116,6 +1816,56 @@ case "$action" in
 		uci commit mwan3
 		/etc/init.d/mwan3 restart
 		echo "$2"
+		;;
+	speedify-status)
+		speedify_status_json
+		;;
+	speedify-install)
+		status="/tmp/equipe-dashboard-install-speedify.status"; log="/tmp/equipe-dashboard-install-speedify.log"
+		[ "$(cat "$status" 2>/dev/null)" != running ] || { echo running; exit 0; }
+		echo running >"$status"
+		( install_speedify_official; if [ $? -eq 0 ]; then echo done >"$status"; else echo error >"$status"; fi ) >"$log" 2>&1 &
+		echo started
+		;;
+	speedify-install-mode)
+		mode="$2"
+		case "$mode" in internal|external|ram) ;; *) echo 'Modo Speedify invalido' >&2; exit 2 ;; esac
+		status="/tmp/equipe-dashboard-install-speedify.status"; log="/tmp/equipe-dashboard-install-speedify.log"
+		[ "$(cat "$status" 2>/dev/null)" != running ] || { echo running; exit 0; }
+		echo running >"$status"
+		(
+			case "$mode" in
+				internal) install_speedify_official ;;
+				external) speedify_install_external ;;
+				ram) speedify_install_ram ;;
+			esac
+			if [ $? -eq 0 ]; then echo done >"$status"; else echo error >"$status"; fi
+		) >"$log" 2>&1 &
+		echo started
+		;;
+	speedify-save-config)
+		speedify_save_config
+		;;
+	speedify-prepare)
+		speedify_prepare_wans
+		;;
+	speedify-autostart)
+		speedify_autostart_set "$2"
+		;;
+	speedify-power)
+		speedify_power_set "$2"
+		;;
+	speedify-autostart-run)
+		speedify_autostart_run
+		;;
+	speedify-pairing)
+		speedify_pairing_json
+		;;
+	speedify-user)
+		speedify_user_json
+		;;
+	speedify)
+		speedify_cli_action "$2"
 		;;
 	rename)
 		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"
@@ -1310,8 +2060,7 @@ case "$action" in
 		echo 'ok'
 		;;
 	*)
-		echo 'Uso: equipe-dashboard-control {features|profile [standard|gamer]|self-update-check|self-update-start|self-update-status|self-update-log|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|ez-setup-install-modules|ez-setup-install-status|ez-setup-install-log|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|theme argon|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|sqm-toggle 0|1|sqm-save chave=valor...|wan-save chave=valor...|lan-status|lan-save chave=valor...|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE [DSCP]|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|country ISO2}' >&2
+		echo 'Uso: equipe-dashboard-control {features|cleanup-status|cleanup-apply ITEM...|profile [standard|gamer]|self-update-check|self-update-start|self-update-status|self-update-log|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|ez-setup-install-modules|ez-setup-install-status|ez-setup-install-log|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|theme argon|speedify-power 0|1|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|sqm-toggle 0|1|sqm-save chave=valor...|wan-save chave=valor...|lan-status|lan-save chave=valor...|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE [DSCP]|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|country ISO2}' >&2
 		exit 2
 		;;
 esac
-

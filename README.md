@@ -19,8 +19,9 @@ Keywords: OpenWrt dashboard, LuCI dashboard, router panel, router management, Mu
 - **Wi-Fi control:** Manage a main network and a guest network from a simpler screen. The SSID names are fully configurable; the pilot names are only examples.
 - **Ark - Setup:** Guided first-configuration assistant with saved progress and final confirmation.
 - **Channel planning:** Analyze Wi-Fi channels manually, apply suggested channels with confirmation or return to automatic channel selection.
-- **SQM calibration:** Run per-WAN speed tests and generate SQM upload suggestions at 85%, 90% and 95%.
-- **Small-flash friendly:** Avoid filling router flash by loading `speedtest-go` into temporary RAM.
+- **SQM calibration:** Run per-WAN speed tests and generate SQM upload suggestions at 85%, 90% and 95%; on weak routers the panel keeps a Fast.com/manual fallback visible.
+- **Small-flash friendly:** Avoid filling router flash by loading `speedtest-go` into temporary RAM when enough space exists.
+- **Optional Speedify recovery:** When Speedify is used in RAM or external storage mode, ARK Router can remember the chosen mode and try to reload it automatically after reboot.
 - **Bilingual UI:** Use Portuguese (Brazil) or English.
 - **Theme aware:** Follow the active LuCI theme automatically, use ARK Router colors or choose custom colors.
 
@@ -49,10 +50,9 @@ The current pilot has been tested on:
 | Target | `mediatek/filogic` |
 | Package manager | `apk` |
 | LuCI theme used during testing | Argon |
-| Main SSID used in the pilot | `Equipe-X` |
-| Guest SSID used in the pilot | `Equipe-X-Visitantes` |
+| Wi-Fi names used in the pilot | Custom, router-local names; not project defaults |
 
-The SSIDs above are not requirements. They document the pilot environment only. ARK Router reads and manages whichever Wi-Fi names are configured on the router. Pilot passwords, private IPs, backups and router-specific secrets are intentionally not included in this repository.
+The Wi-Fi names above are not requirements. They document the pilot environment only. ARK Router reads and manages whichever Wi-Fi names are configured on the router. Pilot passwords, private IPs, backups and router-specific secrets are intentionally not included in this repository.
 
 ## Compatibility
 
@@ -105,8 +105,27 @@ The package manager adapter supports both `apk` and `opkg` for optional package 
 | Argon theme | `luci-theme-argon` |
 | uHTTPd LuCI manager | `luci-app-uhttpd` |
 | Link testing | `speedtest-go`, loaded into temporary memory |
+| Real bonding | Speedify Router runtime, optional; can be loaded internally, from external storage or temporarily in RAM when supported |
 
 Optional packages are not hard dependencies. Cards are displayed only when the corresponding capability exists. The dashboard asks for confirmation before installing an optional package. Package installation does not automatically alter network configuration.
+
+### Speedify
+
+Speedify is optional and is used only when the administrator wants real WAN bonding through a Speedify Router license. ARK Router can prepare WAN metrics, start the Speedify runtime, generate the official router activation link and expose basic CLI actions, but it does not include a license and does not force traffic through Speedify automatically.
+
+Router sign-in uses Speedify's activation-code flow. The dashboard calls `speedify_cli activationcode`, shows the generated URL and lets the administrator complete login in Speedify's own portal. ARK Router does not ask for, store or publish the Speedify account password. After activation, Speedify stores its router token locally on the router.
+
+On small-flash routers, ARK Router can run Speedify from RAM or from external storage. RAM mode is temporary: after a reboot the executable disappears, but the ARK Router configuration remains. If **auto recovery after reboot** is enabled, `/etc/init.d/ark-speedify` waits for boot/network readiness and attempts to reload the saved Speedify mode. External storage mode starts the already extracted runtime when the mount is available; RAM mode downloads and extracts the runtime again if enough `/tmp` space exists.
+
+The live **Speedify active now** switch controls the current daemon state separately from reboot recovery. Turning it on tries to recover the saved runtime mode first, then connects when possible. Turning it off disconnects/stops Speedify without deleting the saved configuration.
+
+If the last desired state was connected, ARK Router also tries `speedify_cli connect` after recovery. If the account is not logged in or licensed, Speedify may remain `LOGGED_OUT`; this is expected and must be resolved in Speedify itself.
+
+### Language packs
+
+ARK Router does not require OpenWrt `luci-i18n-*` packages. The dashboard keeps its own English fallback and the administrator-selected runtime language. If a selected translation is incomplete or unavailable, ARK Router falls back to English.
+
+For small-flash routers, LuCI application translations such as `luci-i18n-sqm-pt-br`, `luci-i18n-mwan3-pt-br`, `luci-i18n-nlbwmon-pt-br` and `luci-i18n-upnp-pt-br` can be treated as optional. Removing them may make the original LuCI module pages appear in English, but ARK Router remains usable in its selected language.
 
 ## First Configuration
 
@@ -150,6 +169,8 @@ ARK Router does not require the pilot SSID names. It can be used with the admini
 
 Installing ARK Router does not automatically change WAN, LAN, Wi-Fi, firewall, DHCP, SQM or Multi-WAN settings. Monitoring and dashboard views are read-only. Network changes happen only after an administrator uses a confirmed action, such as changing Wi-Fi passwords, applying channel suggestions, changing Multi-WAN mode, applying SQM speed suggestions or restarting the router.
 
+When the LAN router IP is changed from the dashboard, ARK Router also rewrites LuCI/uHTTPd listeners to the new LAN IP instead of leaving HTTP/HTTPS on a stale fixed address. This avoids a project-specific `192.168.x.x` assumption and keeps the behavior portable across routers.
+
 See [`docs/SECURITY.md`](docs/SECURITY.md) for the command validation model.
 
 ## Building
@@ -162,7 +183,7 @@ LuCI -> Applications -> luci-app-ark-router
 make package/luci-app-ark-router/compile V=s
 ```
 
-For public releases, this repository already includes a GitHub Actions workflow that builds the OpenWrt package when a version tag such as `v0.9.16` is pushed. See [`docs/PUBLISHING.md`](docs/PUBLISHING.md) for the full GitHub publishing flow.
+For public releases, this repository already includes a GitHub Actions workflow that builds the OpenWrt package when a version tag such as `v0.9.18` is pushed. See [`docs/PUBLISHING.md`](docs/PUBLISHING.md) for the full GitHub publishing flow.
 
 ## Installation
 
@@ -243,10 +264,8 @@ tar -xzf /tmp/ark-router-config-backup-YYYYMMDD-HHMMSS.tar.gz -C /
 
 ## Project Status
 
-Version 0.9.16 is a tested pilot release with GitHub Release package publishing, SSH install/update commands and dashboard self-update support. It is suitable for early public testing, with the compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
+Version 0.9.18 is a tested pilot release with GitHub Release package publishing, SSH install/update commands, dashboard self-update support, Speedify runtime controls and safer LAN/uHTTPd binding. It is suitable for early public testing, with the compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
 
 ## License
 
 This project is released under the MIT License. See [`LICENSE`](LICENSE).
-
-

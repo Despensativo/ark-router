@@ -112,6 +112,24 @@ Optional cards appear when the corresponding module is available. The dashboard 
 
 When a supported module is already installed, Ark - Setup and the feature center show it as installed instead of offering a checkbox to install it again.
 
+OpenWrt `luci-i18n-*` language packages are optional. ARK Router ships an English fallback and uses its own selected runtime language, so the dashboard does not depend on LuCI translation packages. On space-constrained routers, keeping only the selected ARK language plus English is the recommended model; original LuCI module pages may remain in English when their `luci-i18n-*` packages are not installed.
+
+### Optional Speedify recovery
+
+If Speedify is used, enable **auto recovery after reboot** only after choosing and testing a supported mode. On small routers the usual safe mode is RAM, which does not occupy flash but must be reloaded after every reboot. With auto recovery enabled, ARK Router enables `/etc/init.d/ark-speedify` and tries to reload the saved mode during boot.
+
+Recovery behavior:
+
+- internal mode starts the existing official Speedify service only; it does not run the official installer automatically;
+- external mode starts the extracted runtime from the saved external mount;
+- RAM mode downloads/extracts the runtime again into `/tmp` when there is enough free RAM and the router has network access.
+
+If Speedify is not logged in or licensed, recovery can start the daemon but the state may remain `LOGGED_OUT`.
+
+The dashboard also has a live **Speedify active now** switch. It starts or stops the current Speedify runtime without changing the auto-recovery choice. If the runtime disappeared after reboot and a saved mode exists, turning the switch on attempts to recover that mode first.
+
+To sign in, use the dashboard button **Parear / login**. It generates the official Speedify router activation URL through `speedify_cli activationcode`. Open that URL in a browser, sign in on Speedify's portal and then return to ARK Router to use **Verificar conta**. Do not enter Speedify account passwords in ARK Router; the dashboard intentionally does not store them.
+
 ## Uninstall
 
 Use the conservative uninstaller:
@@ -171,5 +189,3 @@ To preview what would happen without changing the router:
 ```sh
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/uninstall.sh | DRY_RUN=1 sh
 ```
-
-

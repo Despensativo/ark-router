@@ -1,12 +1,17 @@
 import os
+import sys
 import time
 import paramiko
 
-ROUTER_IP = '192.168.21.1'
-USERNAME = 'root'
-PASSWORD = 'admin0100'
+ROUTER_IP = os.environ.get('ARK_ROUTER_IP', '192.168.1.1')
+USERNAME = os.environ.get('ARK_ROUTER_USER', 'root')
+PASSWORD = os.environ.get('ARK_ROUTER_PASSWORD')
 
-repo_dir = r'c:\Users\User\Desktop\ARK Router\GitHub\luci-app-ark-router'
+if not PASSWORD:
+    print("Set ARK_ROUTER_PASSWORD before running direct deploy.", file=sys.stderr)
+    sys.exit(2)
+
+repo_dir = os.environ.get('ARK_ROUTER_REPO_DIR', os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 files_to_upload = [
     (os.path.join(repo_dir, 'root', 'usr', 'sbin', 'equipe-dashboard-control'), '/usr/sbin/equipe-dashboard-control'),

@@ -1,9 +1,15 @@
 import json
+import os
+import sys
 import paramiko
 
-ROUTER_IP = '192.168.21.1'
-USERNAME = 'root'
-PASSWORD = 'admin0100'
+ROUTER_IP = os.environ.get('ARK_ROUTER_IP', '192.168.1.1')
+USERNAME = os.environ.get('ARK_ROUTER_USER', 'root')
+PASSWORD = os.environ.get('ARK_ROUTER_PASSWORD')
+
+if not PASSWORD:
+    print("Set ARK_ROUTER_PASSWORD before running this router test.", file=sys.stderr)
+    sys.exit(2)
 
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())

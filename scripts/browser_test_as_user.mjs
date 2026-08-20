@@ -4,9 +4,14 @@ import fs from 'node:fs';
 
 const CHROME_PATH = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const PORT = 9333;
-const ROUTER_URL = "http://192.168.21.1/cgi-bin/luci/admin/equipe-dashboard";
-const USER = "root";
-const PASS = "admin0100";
+const ROUTER_URL = process.env.ARK_ROUTER_URL || "http://192.168.1.1/cgi-bin/luci/admin/equipe-dashboard";
+const USER = process.env.ARK_ROUTER_USER || "root";
+const PASS = process.env.ARK_ROUTER_PASSWORD;
+
+if (!PASS) {
+  console.error("Set ARK_ROUTER_PASSWORD before running this browser test.");
+  process.exit(2);
+}
 
 let id = 0;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -100,7 +105,7 @@ try {
   // Navega para o dashboard
   if (!currentUrl.includes('equipe-dashboard')) {
     console.log("3. Navegando para o painel equipe-dashboard...");
-    await send('Page.navigate', { url: 'http://192.168.21.1/cgi-bin/luci/admin/equipe-dashboard' });
+    await send('Page.navigate', { url: ROUTER_URL });
     await sleep(4000);
   }
 

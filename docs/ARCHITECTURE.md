@@ -25,6 +25,8 @@ The control helper reports each capability as installed, active, hidden and inst
 
 Installing an optional package makes its card available, but the package is not configured automatically. Network-impacting changes remain separate confirmed commands.
 
+LuCI `luci-i18n-*` language packages are not part of ARK Router's dependency model. The ARK interface owns its runtime strings, always keeps English as a fallback and uses the administrator-selected language when available. This allows ARK Router to behave like a firmware-style front end while keeping OpenWrt/LuCI translations optional.
+
 ## Installation and update flow
 
 The preferred public path is a GitHub Release package. The SSH installer detects `apk` or `opkg`, downloads `luci-app-ark-router.apk` or `luci-app-ark-router.ipk` from the latest Release and restarts LuCI services.
@@ -49,6 +51,22 @@ Each calibration binds to the selected WAN source address, temporarily disables 
 
 The tested pilot SQM values were manually chosen for the local Starlink/event scenario. Public users should either run calibration or apply their own conservative limits.
 
+When the helper detects a weak router or too little free `/tmp` space for the speed-test runtime, the UI keeps a manual Fast.com path available instead of forcing package installation. The administrator can run Fast.com from a client, enter the measured values manually and still apply conservative SQM suggestions.
+
+## Speedify runtime recovery
+
+Speedify is treated as an optional runtime, not a core ARK Router dependency. The helper supports three modes:
+
+- internal official install, only when overlay space is sufficient and the administrator explicitly starts installation;
+- external storage runtime, extracted under `<mount>/ark-router/speedify-root`;
+- temporary RAM runtime under `/tmp/ark-speedify-root`.
+
+The `ark-speedify` init script is enabled only when `equipe_dashboard.speedify.autostart=1`. On boot it waits briefly, then calls `equipe-dashboard-control speedify-autostart-run`. The recovery path never runs the heavy official internal installer automatically. It either starts the existing official service, starts the already extracted external runtime, or reloads the RAM runtime if enough `/tmp` space and network access are available.
+
+The helper persists the selected mode, saved-config flag and desired connection state in UCI. Runtime files in `/tmp` are intentionally disposable; configuration remains under `/etc/ark-router/speedify`.
+
+Manual power control is separate from boot recovery. `speedify-power 1` attempts to recover the saved runtime mode if needed, then connects. `speedify-power 0` disconnects/stops the runtime but leaves saved configuration untouched.
+
 ## SQM controls
 
 The dashboard exposes a confirmed SQM/CAKE toggle and a small limit editor. The shell helper validates WAN1/WAN2 rates, writes UCI values under `sqm.wan1` and `sqm.wan2`, and restarts only the SQM service. A rate of `0` is accepted to mean no limit for that direction.
@@ -70,6 +88,8 @@ ARK Router supports switching between two operational profiles:
 ## HTTPS
 
 The capability response reports whether uHTTPd has an HTTPS listener, readable certificate and key, plus the current redirect state. Changing HTTP redirection is a separate validated command. The UI never enables redirection during installation and warns about the browser transition before applying it.
+
+When the LAN editor changes the router IP, the helper rewrites uHTTPd `listen_http` and `listen_https` to the new LAN IP before restarting the web server. This keeps LuCI limited to LAN while avoiding a hardcoded pilot address.
 
 ## Restart safety
 

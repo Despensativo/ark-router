@@ -1,0 +1,20 @@
+#!/bin/sh /etc/rc.common
+
+START=98
+STOP=10
+
+start() {
+	[ "$(uci -q get equipe_dashboard.speedify.autostart || printf 0)" = 1 ] || return 0
+	(
+		sleep 25
+		/usr/sbin/equipe-dashboard-control speedify-autostart-run
+	) >/tmp/ark-speedify-autostart.log 2>&1 &
+}
+
+stop() {
+	pid="$(cat /tmp/ark-speedify.pid 2>/dev/null || true)"
+	if [ -n "$pid" ]; then
+		kill "$pid" >/dev/null 2>&1 || true
+	fi
+	pkill -f '/speedify -d /etc/ark-router/speedify/runtime' >/dev/null 2>&1 || true
+}
