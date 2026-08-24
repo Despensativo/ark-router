@@ -20,6 +20,7 @@ pkg_version="${version}-${PKG_RELEASE}"
 work_dir="$(mktemp -d)"
 pkg_root="$work_dir/root"
 post_install="$work_dir/post-install"
+sign_key="${ARK_APK_SIGN_KEY:-$SDK_LINK/private-key.pem}"
 out_dir="$SRC_DIR/dist/sdk"
 out_file="$out_dir/${PKG_NAME}-${pkg_version}.apk"
 
@@ -30,6 +31,15 @@ trap cleanup EXIT
 
 mkdir -p "$pkg_root" "$out_dir"
 cp -a "$SRC_DIR/root/." "$pkg_root/"
+
+if [ ! -s "$sign_key" ]; then
+	sign_key="$work_dir/ark-router-apk-private-key.pem"
+	if [ ! -x "$SDK_LINK/staging_dir/host/bin/openssl" ]; then
+		echo "OpenSSL tool not found in SDK; cannot create temporary APK signing key." >&2
+		exit 2
+	fi
+	"$SDK_LINK/staging_dir/host/bin/openssl" genrsa -out "$sign_key" 2048 >/dev/null 2>&1
+fi
 
 find "$pkg_root" -type d -exec chmod 0755 {} +
 find "$pkg_root" -type f -exec chmod 0644 {} +
@@ -78,7 +88,7 @@ EOF
 	--script "post-install:${post_install}" \
 	--script "post-upgrade:${post_install}" \
 	--files "$pkg_root" \
-	--sign-key "$SDK_LINK/private-key.pem" \
+	--sign-key "$sign_key" \
 	--output "$out_file"
 
 cp -f "$out_file" "$out_dir/${PKG_NAME}.apk"
