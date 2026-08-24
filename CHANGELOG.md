@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.23
+
+- Added a one-click **Install missing features** action in the Resources modal for clean-router setup.
+- The bulk installer installs only lightweight supported missing modules: Argon, SQM, Multi-WAN, nlbwmon, UPnP, uHTTPd and speed test when compatible.
+- Speedify/BONDING REAL is intentionally excluded from the bulk installer because it requires licensing, architecture checks and storage-mode selection.
+
 ## 0.9.22
 
 - Added DHCP DNS editing to the LAN/DHCP modal, allowing up to three IPv4 DNS servers to be sent to clients through DHCP option 6.

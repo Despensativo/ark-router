@@ -751,6 +751,47 @@ return view.extend({
 			window.setTimeout(L.bind(this.pollFeatureInstall,this,key,attempt+1),2000);
 		},this));
 	},
+	loadMissingInstallLog: function(){
+		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-install-missing-log']).then(function(r){return String(r.stdout||'').trim();}).catch(function(){return '';});
+	},
+	pollMissingInstall: function(attempt){
+		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-install-missing-status']).then(L.bind(function(r){
+			const state=String(r.stdout||'').trim();
+			if(state==='done'){
+				ui.addNotification(null,E('p',{},['Recursos faltantes instalados. Recarregando o painel…']));
+				window.setTimeout(function(){window.location.reload();},1400);
+				return;
+			}
+			if(state==='error'||attempt>240){
+				return this.loadMissingInstallLog().then(function(log){
+					const lines=(log||'').split(/\r?\n/).map(function(line){return line.trim();}).filter(Boolean);
+					const detail=lines.length?lines.slice(-6).join(' | '):'A instalação em lote não foi concluída.';
+					ui.addNotification(null,E('p',{},[detail]),'danger');
+				});
+			}
+			window.setTimeout(L.bind(this.pollMissingInstall,this,attempt+1),2500);
+		},this));
+	},
+	installMissingFeatures: function(keys){
+		keys=keys||[];
+		if(!keys.length){ui.addNotification(null,E('p',{},['Não há recursos leves faltando para instalar.']));return;}
+		const names=keys.map(function(k){return (FEATURE_META[k]&&FEATURE_META[k].name)||k;}).join(' • ');
+		ui.showModal('Instalar recursos faltantes',[
+			E('p',{},['Serão instalados somente os recursos leves/suportados que ainda faltam: ',E('strong',{},[names])]),
+			E('p',{class:'alert-message warning'},['O ARK Router atualizará a lista de pacotes e instalará os módulos em sequência. Nenhuma configuração de WAN, LAN, Wi‑Fi, SQM ou Multi‑WAN será aplicada automaticamente.']),
+			E('p',{class:'ex-muted'},['BONDING REAL / Speedify não entra neste botão porque depende de licença, arquitetura e escolha de armazenamento. Use a seção própria dele.']),
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+				return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-install-missing']).then(L.bind(function(r){
+					const state=String(r.stdout||'').trim();
+					if(r.code)throw new Error(r.stderr||'Falha ao iniciar instalação em lote');
+					ui.hideModal();
+					if(state==='installed'){ui.addNotification(null,E('p',{},['Todos os recursos leves já estavam instalados.']));window.setTimeout(function(){window.location.reload();},900);return;}
+					ui.addNotification(null,E('p',{},[state==='running'?'A instalação em lote já está em andamento.':'Instalação em lote iniciada. O painel avisará quando terminar.']));
+					this.pollMissingInstall(0);
+				},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});
+			},this)},['Confirmar instalação'])])
+		]);
+	},
 	openFastCom: function(){
 		window.open('https://fast.com/', '_blank', 'noopener');
 		ui.addNotification(null,E('p',{},['Fast.com aberto em nova aba. Use o resultado manualmente para ajustar o SQM; em roteadores fracos isso evita ocupar RAM com medidor interno.']));
@@ -1250,6 +1291,8 @@ return view.extend({
 			if(key==='argon'&&f.installed&&!f.active)actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.useTheme,this,key)},['Usar tema']));
 			return E('div',{class:'ex-feature-row'},[E('div',{class:'ex-feature-copy'},[E('div',{class:'ex-feature-name-row'},[E('strong',{},[meta.name]),fastFallback?E('span',{class:'ex-recommended-badge'},['MODO LEVE']):(meta.recommended?E('span',{class:'ex-recommended-badge'},['RECOMENDADO']):'')]),E('small',{class:'ex-muted'},[fastFallback?'Abaixo de 25 MB livres em /tmp, o ARK Router recomenda Fast.com/manual para evitar travar roteadores fracos.':meta.description]),f.package?E('code',{},[f.package]):'']),E('div',{class:'ex-feature-state'},[E('span',{class:'ex-pill '+(f.installed?(f.active?'online':'standby'):(f.hidden?'standby':(fastFallback?'standby':'offline')))},[state]),E('div',{class:'ex-feature-actions'},actions)])]);
 		},this));
+		const bulkKeys=['argon','sqm','mwan3','nlbwmon','upnp','uhttpd','speedtest'].filter(L.bind(function(key){const f=this.feature(key), fastFallback=key==='speedtest'&&f.storage&&f.storage.recommended==='fast_manual';return !f.installed&&!fastFallback&&f.installable;},this));
+		const bulkPanel=E('section',{class:'ex-cleanup-entry'},[E('div',{},[E('strong',{},['Instalação rápida']),E('small',{class:'ex-muted'},[bulkKeys.length?('Instala todos os recursos leves faltantes: '+bulkKeys.map(function(k){return (FEATURE_META[k]&&FEATURE_META[k].name)||k;}).join(', ')):'Todos os recursos leves compatíveis já estão instalados ou indisponíveis neste roteador.'])]),E('button',{class:'ex-mini-button','click':L.bind(this.installMissingFeatures,this,bulkKeys),disabled:!bulkKeys.length},['Instalar faltantes'])]);
 		const profileSelect=E('select',{class:'cbi-input-select'},[
 			E('option',{value:'standard'},['Modo Padrão / Equilibrado']),
 			E('option',{value:'gamer'},['Modo Gamer (Baixa Latência & PUBG Mobile)'])
@@ -1268,6 +1311,7 @@ return view.extend({
 			E('div',{class:'ex-brand-row'},[E('label',{},['Nome do painel']),brandName,E('button',{class:'ex-mini-button','click':L.bind(function(){this.setDashboardTitle(brandName.value);},this)},['Salvar nome'])]),
 			E('div',{class:'ex-language-row'},[E('label',{},['Idioma do painel']),language,E('button',{class:'ex-mini-button','click':L.bind(function(){this.setDashboardLanguage(language.value);},this)},['Salvar idioma'])]),
 			this.selfUpdatePanel(),
+			bulkPanel,
 			E('section',{class:'ex-cleanup-entry'},[E('div',{},[E('strong',{},['Otimização modo ARK']),E('small',{class:'ex-muted'},['Remove painéis e serviços dispensáveis para manter o OpenWrt enxuto. Sempre cria backup antes de remover.'])]),E('button',{class:'ex-mini-button','click':L.bind(this.showArkCleanup,this)},['Analisar e limpar'])]),
 			httpsPanel,
 			E('section',{class:'ex-appearance-panel'},[E('div',{class:'ex-appearance-heading'},[E('div',{},[E('strong',{},['Aparência']),E('small',{class:'ex-muted'},['No modo automático, o painel acompanha as cores e o modo claro ou escuro do tema LuCI.'])]),appearanceMode]),appearanceColors,E('button',{class:'ex-mini-button ex-save-appearance','click':L.bind(function(){this.setAppearance(appearanceMode.value,primary.value,secondary.value);},this)},['Salvar aparência'])]),

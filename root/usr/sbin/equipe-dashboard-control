@@ -1,7 +1,7 @@
 #!/bin/sh
 
 action="$1"
-ARK_ROUTER_VERSION="0.9.22"
+ARK_ROUTER_VERSION="0.9.23"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() { [ "$1" = 1 ] && printf true || printf false; }
@@ -132,6 +132,25 @@ feature_package() {
 		speedtest) printf speedtest-go ;;
 		speedify) printf speedify ;;
 		*) return 1 ;;
+	esac
+}
+bulk_feature_keys() {
+	printf 'argon sqm mwan3 nlbwmon upnp uhttpd speedtest'
+}
+feature_missing_installable() {
+	key="$1"; package="$(feature_package "$key" 2>/dev/null)" || return 1
+	case "$key" in
+		speedify) return 1 ;;
+		speedtest)
+			feature_active speedtest && return 1
+			tmp_avail="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"; [ -n "$tmp_avail" ] || tmp_avail=0
+			[ "$tmp_avail" -ge "${ARK_SPEEDTEST_RAM_MIN_KB:-25600}" ] || return 1
+			return 0
+			;;
+		*)
+			installed "$package" && return 1
+			return 0
+			;;
 	esac
 }
 cleanup_packages() {
@@ -1712,6 +1731,49 @@ case "$action" in
 		feature_package "$2" >/dev/null || { echo 'Recurso invalido' >&2; exit 2; }
 		cat "/tmp/equipe-dashboard-install-$2.log" 2>/dev/null
 		;;
+	feature-install-missing)
+		status="/tmp/equipe-dashboard-install-missing.status"; log="/tmp/equipe-dashboard-install-missing.log"
+		[ "$(cat "$status" 2>/dev/null)" != running ] || { echo running; exit 0; }
+		command -v apk >/dev/null 2>&1 || command -v opkg >/dev/null 2>&1 || { echo 'Gerenciador de pacotes indisponivel' >&2; exit 3; }
+		keys=''
+		for key in $(bulk_feature_keys); do
+			feature_missing_installable "$key" && keys="$keys $key"
+		done
+		[ -n "$keys" ] || { echo done >"$status"; echo installed; exit 0; }
+		echo running >"$status"
+		(
+			ok=1
+			echo "Instalando recursos faltantes:$keys"
+			if command -v apk >/dev/null 2>&1; then apk update || ok=0
+			else opkg update || ok=0
+			fi
+			for key in $keys; do
+				package="$(feature_package "$key")" || { echo "Recurso invalido: $key"; ok=0; continue; }
+				echo "==> $key ($package)"
+				if [ "$key" = speedtest ]; then
+					prepare_speedtest || ok=0
+				elif [ "$key" = argon ] && command -v apk >/dev/null 2>&1 && ! apk search luci-theme-argon 2>/dev/null | grep -qx 'luci-theme-argon.*'; then
+					install_argon_release || ok=0
+				elif command -v apk >/dev/null 2>&1; then
+					installed "$package" || apk add "$package" || ok=0
+				else
+					installed "$package" || opkg install "$package" || ok=0
+				fi
+			done
+			[ "$ok" = 1 ] && echo done >"$status" || echo error >"$status"
+		) >"$log" 2>&1 &
+		echo started
+		;;
+	feature-install-missing-status)
+		status="/tmp/equipe-dashboard-install-missing.status"
+		if [ "$(cat "$status" 2>/dev/null)" = running ]; then
+			ps w 2>/dev/null | grep -E "feature-install-missing|apk|opkg|wget" | grep -vq grep || echo error >"$status"
+		fi
+		cat "$status" 2>/dev/null || echo idle
+		;;
+	feature-install-missing-log)
+		cat "/tmp/equipe-dashboard-install-missing.log" 2>/dev/null
+		;;
 	cleanup-status)
 		cleanup_status_json
 		;;
@@ -2222,7 +2284,7 @@ case "$action" in
 		echo 'ok'
 		;;
 	*)
-		echo 'Uso: equipe-dashboard-control {features|cleanup-status|cleanup-apply ITEM...|profile [standard|gamer]|self-update-check|self-update-start|self-update-status|self-update-log|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|ez-setup-install-modules|ez-setup-install-status|ez-setup-install-log|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|theme argon|speedify-power 0|1|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|sqm-toggle 0|1|sqm-save chave=valor...|wan-save chave=valor...|lan-status|lan-save chave=valor...|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE [DSCP]|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|country ISO2}' >&2
+		echo 'Uso: equipe-dashboard-control {features|cleanup-status|cleanup-apply ITEM...|profile [standard|gamer]|self-update-check|self-update-start|self-update-status|self-update-log|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|ez-setup-install-modules|ez-setup-install-status|ez-setup-install-log|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|feature-install-missing|feature-install-missing-status|feature-install-missing-log|theme argon|speedify-power 0|1|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|sqm-toggle 0|1|sqm-save chave=valor...|wan-save chave=valor...|lan-status|lan-save chave=valor...|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE [DSCP]|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|country ISO2}' >&2
 		exit 2
 		;;
 esac
