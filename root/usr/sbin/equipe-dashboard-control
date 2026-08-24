@@ -1,7 +1,7 @@
 #!/bin/sh
 
 action="$1"
-ARK_ROUTER_VERSION="0.9.27"
+ARK_ROUTER_VERSION="0.9.28"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() { [ "$1" = 1 ] && printf true || printf false; }
@@ -66,6 +66,35 @@ apply_lan_dhcp_dns() {
 		esac
 	done
 	[ -n "$dns" ] && uci -q add_list dhcp.lan.dhcp_option="6,$(printf '%s' "$dns" | tr ' ' ',')"
+}
+wifi_radio_by_band() {
+	wanted="$1"
+	uci -q show wireless 2>/dev/null | awk -F= -v wanted="$wanted" '
+		/^[^.]+\.[^.]+=wifi-device/ { section=$1; sub(/^wireless\./, "", section); radios[section]=1 }
+		/\.band=/ {
+			section=$1; sub(/^wireless\./, "", section); sub(/\.band$/, "", section)
+			value=$2; gsub(/^\047|\047$/, "", value)
+			band[section]=value
+		}
+		/\.hwmode=/ {
+			section=$1; sub(/^wireless\./, "", section); sub(/\.hwmode$/, "", section)
+			value=$2; gsub(/^\047|\047$/, "", value)
+			hwmode[section]=value
+		}
+		END {
+			for (r in radios) {
+				b=band[r]
+				if (wanted=="2g" && (b ~ /^2/ || hwmode[r]=="11g")) { print r; exit }
+				if (wanted=="5g" && (b ~ /^5/ || hwmode[r]=="11a")) { print r; exit }
+			}
+		}'
+}
+wifi_radio_2g() { wifi_radio_by_band 2g; }
+wifi_radio_5g() { wifi_radio_by_band 5g; }
+wifi_known_radios() {
+	r2="$(wifi_radio_2g)"; r5="$(wifi_radio_5g)"
+	[ -n "$r2" ] && printf '%s\n' "$r2"
+	[ -n "$r5" ] && [ "$r5" != "$r2" ] && printf '%s\n' "$r5"
 }
 same_managed_subnet() {
 	candidate="$1"
@@ -295,6 +324,7 @@ disable_ipv6_full() {
 	uci -q set dhcp.lan.dhcpv6=disabled
 	uci -q set dhcp.lan.ra=disabled
 	uci -q set dhcp.lan.ndp=disabled
+	uci -q set dhcp.@dnsmasq[0].filter_aaaa=1
 	uci -q delete dhcp.lan.ra_slaac
 	uci -q delete dhcp.lan.ra_flags
 	uci -q delete dhcp.lan.ra_management
@@ -790,6 +820,12 @@ valid_wifi_password() {
 	length="${#1}"
 	[ "$length" -ge 8 ] && [ "$length" -le 63 ] && valid_plain "$1" 63
 }
+valid_net_device() {
+	case "$1" in
+		''|*/*|*..*|*[!A-Za-z0-9_.:-]*) return 1 ;;
+	esac
+	[ "$1" = wan ] || [ -d "/sys/class/net/$1" ]
+}
 valid_ssid() {
 	length="${#1}"
 	[ "$length" -ge 1 ] && [ "$length" -le 32 ] && valid_plain "$1" 32
@@ -852,15 +888,15 @@ speedtest_history_file() {
 	printf '/etc/ark-router/speedtest-history/%s.jsonl' "$1"
 }
 speedtest_history_append() {
-	wan="$1"; result="$2"
+	wan="$1"; result_file="$2"
 	file="$(speedtest_history_file "$wan")" || return 0
 	stamp="$(date +%Y-%m-%dT%H:%M:%S%z 2>/dev/null || date)"
-	download="$(jsonfilter -i "$result" -e '@.download_mbps' 2>/dev/null || printf 0)"
-	latency="$(jsonfilter -i "$result" -e '@.latency_ms' 2>/dev/null || printf 0)"
-	upload="$(jsonfilter -i "$result" -e '@.suggested_kbps.balanced' 2>/dev/null || printf 0)"
-	conservative="$(jsonfilter -i "$result" -e '@.suggested_kbps.conservative' 2>/dev/null || printf 0)"
-	aggressive="$(jsonfilter -i "$result" -e '@.suggested_kbps.aggressive' 2>/dev/null || printf 0)"
-	source_ip="$(jsonfilter -i "$result" -e '@.source_ip' 2>/dev/null || true)"
+	download="$(jsonfilter -i "$result_file" -e '@.download_mbps' 2>/dev/null || printf 0)"
+	latency="$(jsonfilter -i "$result_file" -e '@.latency_ms' 2>/dev/null || printf 0)"
+	upload="$(jsonfilter -i "$result_file" -e '@.suggested_kbps.balanced' 2>/dev/null || printf 0)"
+	conservative="$(jsonfilter -i "$result_file" -e '@.suggested_kbps.conservative' 2>/dev/null || printf 0)"
+	aggressive="$(jsonfilter -i "$result_file" -e '@.suggested_kbps.aggressive' 2>/dev/null || printf 0)"
+	source_ip="$(jsonfilter -i "$result_file" -e '@.source_ip' 2>/dev/null || true)"
 	printf '{"time":"%s","wan":"%s","source_ip":"%s","download_mbps":%s,"latency_ms":%s,"suggested_kbps":{"conservative":%s,"balanced":%s,"aggressive":%s}}\n' \
 		"$(json_escape "$stamp")" "$wan" "$(json_escape "$source_ip")" "$download" "$latency" "$conservative" "$upload" "$aggressive" >>"$file"
 	tail -n 12 "$file" >"$file.tmp" && mv "$file.tmp" "$file"
@@ -879,18 +915,18 @@ speedtest_history_json() {
 	done
 	printf '],"average":'
 	awk '
-		BEGIN{n=0; d=0; l=0; c=0; b=0; a=0}
+		BEGIN{n=0; dn=0; d=0; l=0; c=0; b=0; a=0}
 		{
-			if (match($0, /"download_mbps":[0-9.]+/)) { v=substr($0,RSTART+16,RLENGTH-16); d+=v }
+			if (match($0, /"download_mbps":[0-9.]+/)) { v=substr($0,RSTART+16,RLENGTH-16); if (v+0 > 0) { d+=v; dn++ } }
 			if (match($0, /"latency_ms":[0-9.]+/)) { v=substr($0,RSTART+13,RLENGTH-13); l+=v }
 			if (match($0, /"conservative":[0-9]+/)) { v=substr($0,RSTART+15,RLENGTH-15); c+=v }
 			if (match($0, /"balanced":[0-9]+/)) { v=substr($0,RSTART+11,RLENGTH-11); b+=v }
-			if (match($0, /"aggressive":[0-9]+/)) { v=substr($0,RSTART+12,RLENGTH-12); a+=v }
+			if (match($0, /"aggressive":[0-9]+/)) { v=substr($0,RSTART+13,RLENGTH-13); a+=v }
 			n++
 		}
 		END{
 			if(n<1){printf "{}"; exit}
-			printf "{\"count\":%d,\"download_mbps\":%.2f,\"latency_ms\":%.2f,\"suggested_kbps\":{\"conservative\":%d,\"balanced\":%d,\"aggressive\":%d}}", n, d/n, l/n, c/n, b/n, a/n
+			printf "{\"count\":%d,\"download_mbps\":%.2f,\"latency_ms\":%.2f,\"suggested_kbps\":{\"conservative\":%d,\"balanced\":%d,\"aggressive\":%d}}", n, (dn ? d/dn : 0), l/n, c/n, b/n, a/n
 		}' <<EOF
 $last
 EOF
@@ -908,6 +944,33 @@ speedtest_schedule_weak_cleanup() {
 		rm -rf /tmp/ark-speedtest /tmp/ark-speedtest-download
 		echo cleaned >/tmp/ark-speedtest-cleanup.status
 	) >/dev/null 2>&1 &
+}
+
+speedtest_download_fallback_mbps() {
+	tmp="/tmp/ark-speedtest-download-fallback.$$"
+	for item in \
+		"50000000|https://speed.cloudflare.com/__down?bytes=50000000" \
+		"31625365|http://speedtest.linqtelecom.com.br:8080/speedtest/random4000x4000.jpg" \
+		"31625365|http://speedtest.vettatelecom.com.br:8080/speedtest/random4000x4000.jpg"
+	do
+		bytes="${item%%|*}"
+		url="${item#*|}"
+		start="$(awk '{print $1}' /proc/uptime 2>/dev/null)"
+		if wget -T 25 -O /dev/null "$url" >"$tmp" 2>&1; then
+			end="$(awk '{print $1}' /proc/uptime 2>/dev/null)"
+			rm -f "$tmp"
+			awk -v b="$bytes" -v s="$start" -v e="$end" 'BEGIN{
+				dt=e-s
+				if (dt < 0.2) dt=0.2
+				mbps=b*8/dt/1000000
+				if (mbps > 0) printf "%.2f", mbps
+				else printf "0"
+			}'
+			return 0
+		fi
+	done
+	rm -f "$tmp"
+	printf '0'
 }
 version_gt() {
 	awk -v a="$(normalize_version "$1")" -v b="$(normalize_version "$2")" 'BEGIN {
@@ -1462,8 +1525,7 @@ case "$action" in
 				uci -q show wireless 2>/dev/null | sed -n "s/^\(wireless\.[^.]*\)\.wps_pushbutton=.*/\1/p" | while read -r section; do uci -q set "$section.wps_pushbutton=0"; done
 				uci -q show wireless 2>/dev/null | sed -n "s/^\(wireless\.[^.]*\)\.wps_label=.*/\1/p" | while read -r section; do uci -q set "$section.wps_label=0"; done
 			fi
-			uci -q set "wireless.radio0.country=$country"
-			uci -q set "wireless.radio1.country=$country"
+			for radio in $(wifi_known_radios); do uci -q set "wireless.$radio.country=$country"; done
 			uci commit equipe_dashboard
 			uci commit wireless
 			ez_progress 2 identity
@@ -1497,16 +1559,19 @@ case "$action" in
 			else
 				main2="$main_ssid"; main5="$main_ssid"; guest2="$guest_ssid"; guest5="$guest_ssid"
 			fi
-			ez_apply_wifi_iface default_radio0 radio0 lan "$main2" "$main_key" 0
-			ez_apply_wifi_iface default_radio1 radio1 lan "$main5" "$main_key" 0
+			radio2="$(wifi_radio_2g)"; radio5="$(wifi_radio_5g)"
+			[ -n "$radio2" ] || { echo 'Radio 2,4 GHz nao encontrado' >&2; exit 3; }
+			[ -n "$radio5" ] || radio5="$radio2"
+			ez_apply_wifi_iface default_radio0 "$radio2" lan "$main2" "$main_key" 0
+			ez_apply_wifi_iface default_radio1 "$radio5" lan "$main5" "$main_key" 0
 			guest_enabled="$(ez_get guest_enabled 1)"
 			if [ "$guest_enabled" = 1 ]; then
 				ez_apply_guest_network 1
-				ez_apply_wifi_iface guest_radio0 radio0 guest "$guest2" "$guest_key" 0
-				ez_apply_wifi_iface guest_radio1 radio1 guest "$guest5" "$guest_key" 0
+				ez_apply_wifi_iface guest_radio0 "$radio2" guest "$guest2" "$guest_key" 0
+				ez_apply_wifi_iface guest_radio1 "$radio5" guest "$guest5" "$guest_key" 0
 			else
-				ez_apply_wifi_iface guest_radio0 radio0 guest "$guest2" "${guest_key:-$main_key}" 1
-				ez_apply_wifi_iface guest_radio1 radio1 guest "$guest5" "${guest_key:-$main_key}" 1
+				ez_apply_wifi_iface guest_radio0 "$radio2" guest "$guest2" "${guest_key:-$main_key}" 1
+				ez_apply_wifi_iface guest_radio1 "$radio5" guest "$guest5" "${guest_key:-$main_key}" 1
 				ez_apply_guest_network 0
 			fi
 			uci commit wireless
@@ -1844,14 +1909,19 @@ case "$action" in
 		echo ok
 		;;
 	speedtest-start)
-		case "$2" in wan) network=wan; device=wan; sqm_section=wan1 ;; wan2) network=wan2; device=lan1; sqm_section=wan2 ;; *) echo 'WAN invalida' >&2; exit 2 ;; esac
+		case "$2" in wan) network=wan; sqm_section=wan1 ;; wan2) network=wan2; sqm_section=wan2 ;; *) echo 'WAN invalida' >&2; exit 2 ;; esac
 		selected_wan="$2"
 		feature_active speedtest || { echo 'Medidor indisponivel' >&2; exit 3; }
 		status="/tmp/ark-speedtest-$2.status"; result="/tmp/ark-speedtest-$2.json"; log="/tmp/ark-speedtest-$2.log"
 		[ "$(cat "$status" 2>/dev/null)" != running ] || { echo running; exit 0; }
-		source_ip="$(ubus call "network.interface.$network" status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].address')"
+		ifstatus_json="$(ubus call "network.interface.$network" status 2>/dev/null)"
+		source_ip="$(printf '%s\n' "$ifstatus_json" | jsonfilter -e '@["ipv4-address"][0].address')"
 		[ -n "$source_ip" ] || { echo 'A interface nao possui IPv4 ativo' >&2; exit 3; }
-		[ "$(cat "/sys/class/net/$device/carrier" 2>/dev/null)" = 1 ] || { echo 'A interface esta sem link fisico' >&2; exit 3; }
+		device="$(printf '%s\n' "$ifstatus_json" | jsonfilter -e '@.l3_device' 2>/dev/null)"
+		[ -n "$device" ] || device="$(printf '%s\n' "$ifstatus_json" | jsonfilter -e '@.device' 2>/dev/null)"
+		if [ -n "$device" ] && [ -r "/sys/class/net/$device/carrier" ]; then
+			[ "$(cat "/sys/class/net/$device/carrier" 2>/dev/null)" = 1 ] || { echo 'A interface esta sem link fisico' >&2; exit 3; }
+		fi
 		echo 'running|5|Preparando teste' >"$status"; rm -f "$result"
 		(
 			bin="$(command -v speedtest-go 2>/dev/null || printf /tmp/ark-speedtest/speedtest-go)"
@@ -1862,8 +1932,8 @@ case "$action" in
 			ok=0; uploads=''; download=0; latency=0; run=1
 			while [ "$run" -le 3 ]; do
 				file="/tmp/ark-speedtest-$2-run$run.json"
-				if [ "$run" = 1 ]; then echo 'running|25|Medindo download e upload' >"$status"; "$bin" --json --multi --thread 8 --source "$source_ip" >"$file" 2>>"$log"
-				else [ "$run" = 2 ] && echo 'running|55|Medindo upload 2/3' >"$status" || echo 'running|75|Medindo upload 3/3' >"$status"; "$bin" --json --no-download --multi --thread 8 --source "$source_ip" >"$file" 2>>"$log"; fi
+				if [ "$run" = 1 ]; then echo 'running|25|Medindo download e upload' >"$status"; ark_run_limited 45 "$bin" --json --multi --thread 8 --source "$source_ip" >"$file" 2>>"$log"
+				else [ "$run" = 2 ] && echo 'running|55|Medindo upload 2/3' >"$status" || echo 'running|75|Medindo upload 3/3' >"$status"; ark_run_limited 35 "$bin" --json --no-download --multi --thread 8 --source "$source_ip" >"$file" 2>>"$log"; fi
 				if [ $? -eq 0 ]; then
 					u="$(jsonfilter -i "$file" -e '@.servers[0].ul_speed' 2>/dev/null)"; d="$(jsonfilter -i "$file" -e '@.servers[0].dl_speed' 2>/dev/null)"; l="$(jsonfilter -i "$file" -e '@.servers[0].latency' 2>/dev/null)"
 					case "$u" in ''|*[!0-9.]*) ;; *) uploads="$uploads $u"; ok=$((ok+1));; esac
@@ -1872,6 +1942,17 @@ case "$action" in
 				run=$((run+1))
 			done
 			if [ "$ok" -lt 2 ]; then restore_sqm; trap - EXIT INT TERM; echo error >"$status"; exit 1; fi
+			if ! awk -v v="$download" 'BEGIN{exit !((v + 0) > 0)}'; then
+				echo 'running|86|Download invalido; usando fallback real' >"$status"
+				fallback_mbps="$(speedtest_download_fallback_mbps)"
+				if awk -v v="$fallback_mbps" 'BEGIN{exit !((v + 0) > 0)}'; then
+					download="$(awk -v v="$fallback_mbps" 'BEGIN{printf "%.2f", v*1000000/8}')"
+					echo "download_fallback_mbps=$fallback_mbps" >>"$log"
+				else
+					echo "download_fallback_failed" >>"$log"
+					download=0
+				fi
+			fi
 			echo 'running|90|Calculando médias' >"$status"
 			set -- $uploads; u1="$1"; u2="$2"; u3="${3:-$2}"
 			metrics="$(awk -v d="$download" -v l="$latency" -v a="$u1" -v b="$u2" -v c="$u3" 'BEGIN{m=a;if(b<m)m=b;if(c<m)m=c;printf "%.2f %.2f %.2f %.2f %.2f %d %d %d",d*8/1000000,a*8/1000000,b*8/1000000,c*8/1000000,l/1000000,m*8/1000*.85,m*8/1000*.90,m*8/1000*.95}')"
@@ -1912,7 +1993,8 @@ case "$action" in
 		case "$2" in 0|1) ;; *) echo 'Estado SQM invalido' >&2; exit 2 ;; esac
 		[ -f /etc/config/sqm ] || { echo 'SQM nao instalado' >&2; exit 3; }
 		ensure_sqm_section wan1 wan
-		[ "$(uci -q get network.wan2.proto)" = dhcp ] && ensure_sqm_section wan2 lan1
+		wan2_dev="$(uci -q get network.wan2.device || printf lan1)"
+		[ "$(uci -q get network.wan2.proto)" = dhcp ] && ensure_sqm_section wan2 "$wan2_dev"
 		uci -q set "sqm.wan1.enabled=$2"
 		uci -q get sqm.wan2 >/dev/null 2>&1 && uci -q set "sqm.wan2.enabled=$2"
 		uci commit sqm
@@ -1931,7 +2013,8 @@ case "$action" in
 			esac
 		done
 		ensure_sqm_section wan1 wan
-		ensure_sqm_section wan2 lan1
+		wan2_dev="$(uci -q get network.wan2.device || printf lan1)"
+		ensure_sqm_section wan2 "$wan2_dev"
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
@@ -1968,7 +2051,7 @@ case "$action" in
 			case "$key" in
 				iface) case "$value" in wan|wan2) iface="$value" ;; *) echo 'WAN invalida' >&2; exit 2 ;; esac ;;
 				mode) case "$value" in wan|lan) mode="$value" ;; *) echo 'Modo da porta invalido' >&2; exit 2 ;; esac ;;
-				device) case "$value" in wan|lan1|lan2|lan3) device="$value" ;; *) echo 'Porta fisica invalida' >&2; exit 2 ;; esac ;;
+				device) valid_net_device "$value" || { echo 'Porta fisica invalida' >&2; exit 2; }; device="$value" ;;
 				proto) case "$value" in dhcp|pppoe|static) proto="$value" ;; *) echo 'Protocolo invalido' >&2; exit 2 ;; esac ;;
 				username) valid_plain "$value" 96 || { echo 'Usuario PPPoE invalido' >&2; exit 2; }; username="$value" ;;
 				password) valid_plain "$value" 128 || { echo 'Senha PPPoE invalida' >&2; exit 2; }; password="$value" ;;
@@ -1990,8 +2073,11 @@ case "$action" in
 			uci -q set network.wan2=interface
 			uci -q set network.wan2.proto=none
 			uci -q delete network.wan2.device
+			uci -q set sqm.wan2.enabled=0 2>/dev/null || true
 			uci commit network
+			uci commit sqm 2>/dev/null || true
 			/etc/init.d/network reload >/dev/null 2>&1 || true
+			[ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
 			[ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 || true
 			echo ok
 			exit 0
@@ -2000,6 +2086,7 @@ case "$action" in
 		[ "$iface" = wan2 ] && [ -n "$old" ] && [ "$old" != "$device" ] && add_lan_port "$old"
 		[ "$device" != wan ] && remove_lan_port "$device"
 		uci -q set "network.$iface.device=$device"
+		[ "$iface" = wan2 ] && uci -q set sqm.wan2.interface="$device" 2>/dev/null || true
 		apply_wan_proto "$iface" "$proto" "$username" "$password" "$ipaddr" "$netmask" "$gateway" "$dns" "$macaddr" || exit $?
 		[ "$iface" = wan2 ] && uci -q set network.wan2.metric=20
 		[ "$iface" = wan ] && uci -q set network.wan.metric=10
@@ -2297,15 +2384,18 @@ case "$action" in
 		[ -z "$password" ] || valid_wifi_password "$password" || { echo 'A senha deve ter entre 8 e 63 caracteres' >&2; exit 2; }
 		[ "$allow_toggle" = 1 ] || [ "$enabled" = keep ] || { echo 'A rede principal nao pode ser desligada por este atalho' >&2; exit 2; }
 		ez_backup >/dev/null || { echo 'Falha ao criar backup antes da alteracao do Wi-Fi' >&2; exit 3; }
+		radio2="$(wifi_radio_2g)"; radio5="$(wifi_radio_5g)"
+		[ -n "$radio2" ] || radio2='radio0'
+		[ -n "$radio5" ] || radio5="$radio2"
 		if [ "$wifi_kind" = guest ]; then
 			ez_apply_guest_network 1
 		fi
 		for section in $sections; do
 			uci -q get "wireless.$section" >/dev/null 2>&1 && continue
 			case "$section" in
-				*radio0) device='radio0'; section_ssid="$ssid2" ;;
-				*radio1) device='radio1'; section_ssid="$ssid5" ;;
-				*) device='radio0'; section_ssid="$ssid" ;;
+				*radio0) device="$radio2"; section_ssid="$ssid2" ;;
+				*radio1) device="$radio5"; section_ssid="$ssid5" ;;
+				*) device="$radio2"; section_ssid="$ssid" ;;
 			esac
 			network='lan'; [ "$wifi_kind" = guest ] && network='guest'
 			section_key="$password"
@@ -2339,18 +2429,21 @@ case "$action" in
 		echo 'ok'
 		;;
 	channels)
+		radio2="$(wifi_radio_2g)"; radio5="$(wifi_radio_5g)"
+		[ -n "$radio2" ] || { echo 'Radio 2,4 GHz nao encontrado' >&2; exit 3; }
+		[ -n "$radio5" ] || radio5="$radio2"
 		case "$2" in
 			fixed)
 				channel2="$3"
 				channel5="$4"
 				case "$channel2" in 1|6|11) ;; *) echo 'Canal 2,4 GHz invalido' >&2; exit 2 ;; esac
 				case "$channel5" in 36|40|44|48|149|153|157|161) ;; *) echo 'Canal 5 GHz invalido' >&2; exit 2 ;; esac
-				uci set wireless.radio0.channel="$channel2"
-				uci set wireless.radio1.channel="$channel5"
+				uci set "wireless.$radio2.channel=$channel2"
+				uci set "wireless.$radio5.channel=$channel5"
 				;;
 			auto)
-				uci set wireless.radio0.channel='auto'
-				uci set wireless.radio1.channel='auto'
+				uci set "wireless.$radio2.channel=auto"
+				uci set "wireless.$radio5.channel=auto"
 				;;
 			*) echo 'Modo de canal invalido' >&2; exit 2 ;;
 		esac
@@ -2358,19 +2451,32 @@ case "$action" in
 		(sleep 2; wifi reload) >/dev/null 2>&1 &
 		echo 'ok'
 		;;
+	wifi-width)
+		radio2="$(wifi_radio_2g)"; radio5="$(wifi_radio_5g)"
+		[ -n "$radio2" ] || { echo 'Radio 2,4 GHz nao encontrado' >&2; exit 3; }
+		[ -n "$radio5" ] || radio5="$radio2"
+		width2="$2"; width5="$3"
+		case "$width2" in 20) ht2=HE20 ;; 40) ht2=HE40 ;; *) echo 'Largura 2,4 GHz invalida' >&2; exit 2 ;; esac
+		case "$width5" in 80) ht5=HE80 ;; 160) ht5=HE160 ;; *) echo 'Largura 5 GHz invalida' >&2; exit 2 ;; esac
+		uci set "wireless.$radio2.htmode=$ht2"
+		uci set "wireless.$radio5.htmode=$ht5"
+		uci commit wireless
+		(sleep 2; wifi reload) >/dev/null 2>&1 &
+		echo 'ok'
+		;;
 	country)
 		country="$(printf '%s' "$2" | tr 'a-z' 'A-Z')"
 		printf '%s' "$country" | grep -Eq '^([A-Z]{2}|00)$' || { echo 'Codigo de pais invalido' >&2; exit 2; }
-		uci set wireless.radio0.country="$country"
-		uci set wireless.radio1.country="$country"
-		uci set wireless.radio0.channel='auto'
-		uci set wireless.radio1.channel='auto'
+		for radio in $(wifi_known_radios); do
+			uci set "wireless.$radio.country=$country"
+			uci set "wireless.$radio.channel=auto"
+		done
 		uci commit wireless
 		(sleep 2; wifi reload) >/dev/null 2>&1 &
 		echo 'ok'
 		;;
 	*)
-		echo 'Uso: equipe-dashboard-control {features|cleanup-status|cleanup-apply ITEM...|ipv6-disable-full|profile [standard|gamer]|self-update-check|self-update-start|self-update-status|self-update-log|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|ez-setup-install-modules|ez-setup-install-status|ez-setup-install-log|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|feature-install-missing|feature-install-missing-status|feature-install-missing-log|theme argon|speedify-power 0|1|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|sqm-toggle 0|1|sqm-save chave=valor...|wan-save chave=valor...|lan-status|lan-save chave=valor...|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE [DSCP]|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|country ISO2}' >&2
+		echo 'Uso: equipe-dashboard-control {features|cleanup-status|cleanup-apply ITEM...|ipv6-disable-full|profile [standard|gamer]|self-update-check|self-update-start|self-update-status|self-update-log|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|ez-setup-install-modules|ez-setup-install-status|ez-setup-install-log|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|feature-install-missing|feature-install-missing-status|feature-install-missing-log|theme argon|speedify-power 0|1|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|sqm-toggle 0|1|sqm-save chave=valor...|wan-save chave=valor...|lan-status|lan-save chave=valor...|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE [DSCP]|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|wifi-width 20|40 80|160|country ISO2}' >&2
 		exit 2
 		;;
 esac

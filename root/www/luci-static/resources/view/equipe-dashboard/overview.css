@@ -132,6 +132,9 @@
 .ex-wan-edit-field { display: flex; min-width: 0; flex-direction: column; gap: 6px; padding: 10px 11px; border-radius: 11px; background: rgba(127,127,127,.055); font-weight: 750; }
 .ex-wan-edit-field > span { font-size: .74rem; opacity: .72; text-transform: uppercase; letter-spacing: .04em; }
 .ex-wan-edit-field input, .ex-wan-edit-field select { width: 100%; min-width: 0; box-sizing: border-box; }
+.ex-wan-mac-control { display: flex; align-items: stretch; gap: 8px; }
+.ex-wan-mac-control input { flex: 1 1 auto; }
+.ex-wan-mac-control .ex-feature-link { flex: 0 0 auto; padding: 0 9px; border: 1px solid color-mix(in srgb,var(--ex-primary-safe) 20%,transparent); border-radius: 8px; background: color-mix(in srgb,var(--ex-primary-safe) 7%,transparent); white-space: nowrap; }
 .ex-wan-proto-block { display: contents; }
 .ex-pill { display: inline-flex; align-items: center; justify-content: center; min-height: 25px; padding: 4px 10px; border-radius: 999px; font-size: .66rem; font-weight: 850; letter-spacing: .06em; }
 .ex-pill:before { content: ''; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 4px currentColor; opacity: .72; }
@@ -286,6 +289,9 @@
 .ex-ez-module-grid small { opacity: .6; font-size: .68rem; font-weight: 600; }
 .ex-ez-install-modules { margin-top: 2px; }
 .ex-devices details summary { padding: 12px 14px; border-radius: 11px; background: color-mix(in srgb,var(--ex-primary-safe) 9%,transparent); cursor: pointer; color: var(--ex-primary-safe); font-weight: 750; }
+.ex-device-title-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
+.ex-device-sort-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ex-device-sort-select { width: auto; min-width: 112px; max-width: 145px; padding: 6px 30px 6px 9px; border-radius: 9px; font-size: .82rem; }
 .ex-table-wrap { overflow-x: auto; margin-top: 12px; }
 .ex-device-table { width: 100%; border-collapse: collapse; }
 .ex-device-table th { padding: 10px 8px; border-bottom: 1px solid rgba(127,127,127,.18); text-align: left; opacity: .6; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; }
@@ -330,6 +336,7 @@
 	.ex-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	.ex-mode-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
 	.ex-card-title { align-items: flex-start; }
+	.ex-device-title-actions { justify-content: flex-start; width: 100%; }
 	.ex-health-items { grid-template-columns: repeat(2,minmax(0,1fr)); }
 	.ex-health-items.compact-3 { grid-template-columns: repeat(3,minmax(0,1fr)); }
 	.ex-qos-grid { grid-template-columns: 1fr; }
@@ -368,6 +375,8 @@
 	.ex-save-appearance { width: 100%; justify-self: stretch; }
 	.ex-health-items.compact-3 { grid-template-columns: 1fr; }
 	.ex-hide-mobile { display: none; }
+	.ex-device-sort-controls { width: 100%; }
+	.ex-device-sort-select { flex: 1; min-width: 0; }
 	.ex-device-table th, .ex-device-table td { padding: 9px 5px; }
 	.ex-device-meta { max-width: 130px; overflow: hidden; text-overflow: ellipsis; }
 	.ex-history-chart { height: 116px; }
@@ -382,6 +391,8 @@
 	.ex-ez-setup { width: calc(100vw - 20px); }
 	.ex-ez-section { padding: 13px; }
 	.ex-wan-edit-grid { grid-template-columns: 1fr; }
+	.ex-wan-mac-control { flex-direction: column; }
+	.ex-wan-mac-control .ex-feature-link { min-height: 34px; }
 }
 
 /* ==========================================================================

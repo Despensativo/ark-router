@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+- No unreleased changes yet.
+
+## 0.9.28
+
+- Fixed WAN speed test startup on routers where the logical WAN interface uses a different physical device name, such as `wan` using `eth1`.
+- Fixed speed test result persistence after appending history, so the dashboard receives the complete latest result instead of only historical data.
+- Fixed aggressive speed test average calculation.
+- Full IPv6 disable now also enables dnsmasq AAAA filtering, preventing IPv6 DNS answers from being sent to clients in IPv4-only mode.
+- Channel analysis now detects when the suggested 2.4/5 GHz channels are already applied and disables the redundant apply action.
+- Device list now supports sorting by name, current traffic or accumulated total, with a largest/smallest toggle.
+- Apply actions now treat expected XHR/timeout disconnects during service restarts as "command sent" and reload the panel instead of showing a false failure.
+- Speed test calibration now limits each `speedtest-go` run and falls back to a real HTTP/HTTPS download when the selected test server returns invalid download values.
+- Speed test history averages now ignore invalid zero-download samples while still showing the original historical entries.
+- Fixed the built-in 24-hour traffic collector deployment and WAN counter detection, avoiding fixed interface names and ensuring the dashboard history card becomes available after installation.
+- WAN/LAN cards are now rendered from the actual bridge ports: when WAN2 is in LAN mode it appears under wired LAN ports, and any available LAN port can be selected as WAN2.
+- WAN2 SQM now follows the selected physical port instead of assuming LAN1, and is disabled automatically when WAN2 returns to LAN mode.
+- Added Wi-Fi channel-width controls to the dashboard: 2.4 GHz can be switched between 20/40 MHz and 5 GHz between 80/160 MHz.
+
 ## 0.9.27
 
 - WAN1/WAN2 cards now show received gateway, IPv4 netmask and DNS servers from the active OpenWrt interface status.

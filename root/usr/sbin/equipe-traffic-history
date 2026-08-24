@@ -6,15 +6,47 @@ state='/tmp/equipe-traffic-history.state'
 
 read_counter() {
 	local device="$1" direction="$2" value
+	[ -n "$device" ] || { printf 0; return 0; }
 	value="$(cat "/sys/class/net/$device/statistics/${direction}_bytes" 2>/dev/null)"
 	printf '%s' "${value:-0}"
+}
+
+interface_device() {
+	local iface="$1" status device
+	status="$(ifstatus "$iface" 2>/dev/null)"
+	device="$(printf '%s\n' "$status" | jsonfilter -e '@.l3_device' 2>/dev/null)"
+	[ -n "$device" ] || device="$(printf '%s\n' "$status" | jsonfilter -e '@.device' 2>/dev/null)"
+	[ -n "$device" ] && [ -d "/sys/class/net/$device" ] && printf '%s' "$device"
+}
+
+wan_devices() {
+	local wan wan2
+	wan="$(interface_device wan)"
+	wan2="$(interface_device wan2)"
+	[ -n "$wan" ] && printf '%s\n' "$wan"
+	[ -n "$wan2" ] && [ "$wan2" != "$wan" ] && printf '%s\n' "$wan2"
+}
+
+sum_counters() {
+	local direction total device
+	direction="$1"
+	total=0
+	for device in $(wan_devices); do
+		total=$((total + $(read_counter "$device" "$direction")))
+	done
+	if [ "$total" -eq 0 ]; then
+		for device in $(ip route show default 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1)}' | sort -u); do
+			total=$((total + $(read_counter "$device" "$direction")))
+		done
+	fi
+	printf '%s' "$total"
 }
 
 sample() {
 	local now rx tx previous prev_time prev_rx prev_tx elapsed down up lines
 	now="$(date +%s)"
-	rx=$(( $(read_counter wan rx) + $(read_counter lan1 rx) ))
-	tx=$(( $(read_counter wan tx) + $(read_counter lan1 tx) ))
+	rx="$(sum_counters rx)"
+	tx="$(sum_counters tx)"
 
 	if [ -s "$state" ]; then
 		previous="$(cat "$state")"
