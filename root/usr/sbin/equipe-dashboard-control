@@ -1,7 +1,7 @@
 #!/bin/sh
 
 action="$1"
-ARK_ROUTER_VERSION="0.9.29"
+ARK_ROUTER_VERSION="0.9.31"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() { [ "$1" = 1 ] && printf true || printf false; }
@@ -560,6 +560,27 @@ speedify_install_ram() {
 	uci commit equipe_dashboard
 	echo 'Speedify iniciado em RAM. A config fica salva; com auto recuperacao ligada ele sera recarregado apos reiniciar se houver internet e RAM suficiente.'
 	return 0
+}
+speedify_install_auto_safe() {
+	speedify_supported || { echo 'Arquitetura nao suportada pelo Speedify. Requer aarch64 ou x86_64.' >&2; return 3; }
+	overlay_avail="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"; [ -n "$overlay_avail" ] || overlay_avail=0
+	tmp_avail="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"; [ -n "$tmp_avail" ] || tmp_avail=0
+	need_internal="${ARK_SPEEDIFY_INTERNAL_MIN_KB:-45000}"
+	need_ram="${ARK_SPEEDIFY_RAM_MIN_KB:-80000}"
+	external_path="$(speedify_external_target || true)"
+	if [ "$overlay_avail" -ge "$need_internal" ]; then
+		echo "Modo automatico Speedify: usando instalacao interna; livre ${overlay_avail} KB."
+		install_speedify_official
+	elif [ -n "$external_path" ]; then
+		echo "Modo automatico Speedify: usando armazenamento externo em $external_path."
+		speedify_install_external
+	elif [ "$tmp_avail" -ge "$need_ram" ]; then
+		echo "Modo automatico Speedify: usando RAM temporaria; livre ${tmp_avail} KB."
+		speedify_install_ram
+	else
+		echo "Sem espaco suficiente para Speedify. Interno livre: ${overlay_avail} KB, precisa ${need_internal} KB. /tmp livre: ${tmp_avail} KB, precisa ${need_ram} KB. Use armazenamento externo/extroot ou libere espaco." >&2
+		return 3
+	fi
 }
 speedify_prepare_runtime_network() {
 	tunnel_dev="$(speedify_tunnel_device)"
@@ -1234,10 +1255,40 @@ ark_package_manager() {
 	else printf none
 	fi
 }
+ark_mem_total_kb() {
+	v="$(awk '/^MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || true)"
+	[ -n "$v" ] && printf '%s' "$v" || printf 0
+}
+ark_overlay_avail_kb() {
+	v="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4; exit}' || true)"
+	[ -n "$v" ] && printf '%s' "$v" || printf 0
+}
+ark_best_profile() {
+	ram="$(ark_mem_total_kb)"; [ -n "$ram" ] || ram=0
+	overlay="$(ark_overlay_avail_kb)"; [ -n "$overlay" ] || overlay=0
+	min_ram="${ARK_ROUTER_FULL_MIN_RAM_KB:-480000}"
+	min_overlay="${ARK_ROUTER_FULL_MIN_OVERLAY_KB:-64000}"
+	if [ "$ram" -ge "$min_ram" ] && [ "$overlay" -ge "$min_overlay" ]; then printf full; else printf lite; fi
+}
+ark_actual_profile() {
+	if command -v apk >/dev/null 2>&1 && apk info -e luci-app-ark-router-full >/dev/null 2>&1; then printf full; return 0; fi
+	if command -v apk >/dev/null 2>&1 && apk info -e luci-app-ark-router >/dev/null 2>&1; then printf lite; return 0; fi
+	if command -v opkg >/dev/null 2>&1 && opkg status luci-app-ark-router-full 2>/dev/null | grep -q '^Status:.* installed'; then printf full; return 0; fi
+	if command -v opkg >/dev/null 2>&1 && opkg status luci-app-ark-router 2>/dev/null | grep -q '^Status:.* installed'; then printf lite; return 0; fi
+	printf source
+}
+ark_installed_profile() {
+	actual="$(ark_actual_profile)"
+	[ "$actual" = full ] && { printf full; return 0; }
+	ark_best_profile
+}
 ark_update_asset_name() {
-	case "$(ark_package_manager)" in
-		apk) printf luci-app-ark-router.apk ;;
-		opkg) printf luci-app-ark-router.ipk ;;
+	profile="$(ark_installed_profile)"
+	case "$(ark_package_manager):$profile" in
+		apk:full) printf luci-app-ark-router-full.apk ;;
+		apk:*) printf luci-app-ark-router.apk ;;
+		opkg:full) printf luci-app-ark-router-full.ipk ;;
+		opkg:*) printf luci-app-ark-router.ipk ;;
 		*) return 1 ;;
 	esac
 }
@@ -1249,6 +1300,11 @@ ark_update_json() {
 	current="$(ark_current_version)"
 	repo="$(ark_update_repo)"
 	manager="$(ark_package_manager)"
+	actual_profile="$(ark_actual_profile)"
+	profile="$(ark_installed_profile)"
+	best_profile="$(ark_best_profile)"
+	ram_kb="$(ark_mem_total_kb)"; [ -n "$ram_kb" ] || ram_kb=0
+	overlay_kb="$(ark_overlay_avail_kb)"; [ -n "$overlay_kb" ] || overlay_kb=0
 	asset="$(ark_update_asset_name 2>/dev/null || true)"
 	latest="$(ark_latest_release)"
 	available=false; error=""
@@ -1256,10 +1312,11 @@ ark_update_json() {
 	elif [ -z "$asset" ]; then error="Tipo de pacote indisponivel"
 	elif [ -z "$latest" ]; then error="Nao foi possivel consultar o GitHub Releases"
 	elif version_gt "$latest" "$current"; then available=true
+	elif [ "$profile" = full ] && [ "$actual_profile" != full ]; then available=true
 	fi
 	if [ -n "$asset" ]; then url="https://github.com/$repo/releases/latest/download/$asset"; else url=""; fi
-	printf '{"current":"%s","repo":"%s","manager":"%s","latest":"%s","asset":"%s","url":"%s","available":%s,"error":"%s"}\n' \
-		"$(json_escape "$current")" "$(json_escape "$repo")" "$(json_escape "$manager")" "$(json_escape "$latest")" "$(json_escape "$asset")" "$(json_escape "$url")" "$available" "$(json_escape "$error")"
+	printf '{"current":"%s","repo":"%s","manager":"%s","profile":"%s","actual_profile":"%s","best_profile":"%s","ram_kb":%s,"overlay_free_kb":%s,"latest":"%s","asset":"%s","url":"%s","available":%s,"error":"%s"}\n' \
+		"$(json_escape "$current")" "$(json_escape "$repo")" "$(json_escape "$manager")" "$(json_escape "$profile")" "$(json_escape "$actual_profile")" "$(json_escape "$best_profile")" "$ram_kb" "$overlay_kb" "$(json_escape "$latest")" "$(json_escape "$asset")" "$(json_escape "$url")" "$available" "$(json_escape "$error")"
 }
 ensure_sqm_section() {
 	section="$1"; device="$2"
@@ -1667,7 +1724,7 @@ feature_json() {
 			[ "$account_bytes" = -1 ] && account_licensed=true
 		fi
 		hidden "$key"; concealed=$?
-		printf '"speedify":{"installed":%s,"active":%s,"hidden":%s,"installable":%s,"package":"speedify + luci-app-speedify","luci":%s,"state":"%s","supported":%s,"prepared":%s,"install_mode":"%s","saved_config":%s,"autostart":%s,"desired_state":"%s","bonding_mode":"%s","runtime_mode":"%s","tunnel_ip":"%s","last_autostart":"%s","account_logged_in":%s,"account_licensed":%s,"account_email_masked":"%s",' \
+		printf '"speedify":{"installed":%s,"active":%s,"hidden":%s,"installable":%s,"package":"Runtime Speedify opcional: interno, externo ou RAM","luci":%s,"state":"%s","supported":%s,"prepared":%s,"install_mode":"%s","saved_config":%s,"autostart":%s,"desired_state":"%s","bonding_mode":"%s","runtime_mode":"%s","tunnel_ip":"%s","last_autostart":"%s","account_logged_in":%s,"account_licensed":%s,"account_email_masked":"%s",' \
 			"$present" "$active" "$(bool $((concealed == 0)))" "$supported" "$luci" "$(json_escape "$state")" "$supported" "$(bool "$prepared")" "$(json_escape "$mode")" "$(bool "$saved")" "$(bool "$autostart")" "$(json_escape "$desired")" "$(json_escape "$bonding_mode")" "$(json_escape "$runtime_mode")" "$(json_escape "$tunnel_ip")" "$(json_escape "$last_autostart")" "$account_logged" "$account_licensed" "$(json_escape "$account_masked")"
 		speedify_storage_json
 		printf '}'
@@ -2029,6 +2086,7 @@ case "$action" in
 		url="$(printf '%s' "$info" | jsonfilter -e '@.url' 2>/dev/null)"
 		asset="$(printf '%s' "$info" | jsonfilter -e '@.asset' 2>/dev/null)"
 		manager="$(printf '%s' "$info" | jsonfilter -e '@.manager' 2>/dev/null)"
+		latest="$(printf '%s' "$info" | jsonfilter -e '@.latest' 2>/dev/null)"
 		[ "$available" = true ] || { echo 'Nenhuma atualizacao mais nova disponivel' >&2; exit 3; }
 		[ -n "$url" ] && [ -n "$asset" ] || { echo 'Arquivo de atualizacao indisponivel' >&2; exit 3; }
 		echo running >"$status"
@@ -2140,7 +2198,7 @@ case "$action" in
 	echo running >"$status"
 	(
 		if [ "$key" = speedtest ]; then prepare_speedtest
-		elif [ "$key" = speedify ]; then install_speedify_official
+		elif [ "$key" = speedify ]; then speedify_install_auto_safe
 		elif [ "$key" = tailscale ]; then tailscale_install
 		elif [ "$key" = zerotier ]; then zerotier_enable
 		elif [ "$key" = argon ] && command -v apk >/dev/null 2>&1 && ! apk search luci-theme-argon 2>/dev/null | grep -qx 'luci-theme-argon.*'; then install_argon_release
@@ -2512,7 +2570,7 @@ case "$action" in
 		status="/tmp/equipe-dashboard-install-speedify.status"; log="/tmp/equipe-dashboard-install-speedify.log"
 		[ "$(cat "$status" 2>/dev/null)" != running ] || { echo running; exit 0; }
 		echo running >"$status"
-		( install_speedify_official; if [ $? -eq 0 ]; then echo done >"$status"; else echo error >"$status"; fi ) >"$log" 2>&1 &
+		( speedify_install_auto_safe; if [ $? -eq 0 ]; then echo done >"$status"; else echo error >"$status"; fi ) >"$log" 2>&1 &
 		echo started
 		;;
 	speedify-install-mode)

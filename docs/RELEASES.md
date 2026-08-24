@@ -21,6 +21,18 @@ If a package asset exists, use release mode:
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | sh
 ```
 
+The default command auto-selects Lite or Full from RAM and free overlay space. Full is selected only when RAM is at least 480000 KB and `/overlay` has at least 64000 KB free. To force Lite:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_PROFILE=lite sh
+```
+
+To force Full from the same GitHub Release:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_PROFILE=full sh
+```
+
 If GitHub Actions has not produced the package yet, use source mode:
 
 ```sh
@@ -35,14 +47,14 @@ wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/
 
 The installer detects the router package manager:
 
-- `apk` based OpenWrt releases download `luci-app-ark-router.apk`.
-- `opkg` based OpenWrt releases download `luci-app-ark-router.ipk`.
+- `apk` based OpenWrt releases download `luci-app-ark-router.apk` for Lite or `luci-app-ark-router-full.apk` for Full.
+- `opkg` based OpenWrt releases download `luci-app-ark-router.ipk` for Lite or `luci-app-ark-router-full.ipk` for Full when those assets are published.
 
 ## Local Build Note
 
 This repository does not normally commit generated package binaries. For local APK-based testing, run `scripts/build-apk-wsl.sh`; it uses the matching OpenWrt SDK `apk mkpkg` tool to create a `noarch` LuCI package without compiling a full firmware target.
 
-The pilot router uses OpenWrt with APK v3 packages, so a normal `.tar.gz` archive is not a valid installable package. Release assets must include a real `luci-app-ark-router.apk` package.
+The pilot router uses OpenWrt with APK v3 packages, so a normal `.tar.gz` archive is not a valid installable package. Release assets must include real APK packages, at minimum `luci-app-ark-router.apk` for Lite and optionally `luci-app-ark-router-full.apk` for Full.
 
 ## Tested Baseline
 

@@ -3,7 +3,7 @@ set -euo pipefail
 
 SDK_LINK="${SDK_LINK:-$HOME/openwrt-sdk-filogic}"
 SRC_DIR="${SRC_DIR:-$HOME/ark-router-work/luci-app-ark-router}"
-PKG_NAME="luci-app-ark-router"
+PKG_BASE_NAME="luci-app-ark-router"
 PKG_RELEASE="${PKG_RELEASE:-r1}"
 
 if [ ! -x "$SDK_LINK/staging_dir/host/bin/apk" ]; then
@@ -22,7 +22,6 @@ pkg_root="$work_dir/root"
 post_install="$work_dir/post-install"
 sign_key="${ARK_APK_SIGN_KEY:-$SDK_LINK/private-key.pem}"
 out_dir="$SRC_DIR/dist/sdk"
-out_file="$out_dir/${PKG_NAME}-${pkg_version}.apk"
 
 cleanup() {
 	rm -rf "$work_dir"
@@ -31,6 +30,7 @@ trap cleanup EXIT
 
 mkdir -p "$pkg_root" "$out_dir"
 cp -a "$SRC_DIR/root/." "$pkg_root/"
+rm -rf "$pkg_root/etc/etc" "$pkg_root/usr/usr" "$pkg_root/www/www"
 
 if [ ! -s "$sign_key" ]; then
 	sign_key="$work_dir/ark-router-apk-private-key.pem"
@@ -49,13 +49,6 @@ chmod 0755 "$pkg_root/etc/init.d/equipe-traffic-history" 2>/dev/null || true
 chmod 0755 "$pkg_root/etc/init.d/ark-speedify" 2>/dev/null || true
 
 mkdir -p "$pkg_root/lib/apk/packages"
-cat > "$pkg_root/lib/apk/packages/${PKG_NAME}.conffiles" <<'EOF'
-/etc/config/equipe_dashboard
-/etc/config/equipe_devices
-/etc/config/qos_equipe
-EOF
-
-( cd "$pkg_root" && find . -type f,l -printf "/%P\n" | sort ) > "$pkg_root/lib/apk/packages/${PKG_NAME}.list"
 
 cat > "$post_install" <<'EOF'
 #!/bin/sh
@@ -73,24 +66,48 @@ rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 exit 0
 EOF
 
-"$SDK_LINK/staging_dir/host/bin/apk" mkpkg \
-	--info "name:${PKG_NAME}" \
-	--info "version:${pkg_version}" \
-	--info "arch:noarch" \
-	--info "license:MIT" \
-	--info "origin:/feed/${PKG_NAME}" \
-	--info "url:https://github.com/Despensativo/ark-router" \
-	--info "maintainer:ARK Router contributors" \
-	--info "description:Responsive LuCI dashboard for OpenWrt with ARK setup, Wi-Fi, Multi-WAN, SQM, traffic, ZeroTier and optional Speedify integrations." \
-	--info "depends:kmod-sched-act-police luci-base nlbwmon rpcd tc-full" \
-	--info "provides:${PKG_NAME}-any" \
-	--info "tags:openwrt:section=luci" \
-	--script "post-install:${post_install}" \
-	--script "post-upgrade:${post_install}" \
-	--files "$pkg_root" \
-	--sign-key "$sign_key" \
-	--output "$out_file"
+build_variant() {
+	pkg_name="$1"
+	depends="$2"
+	description="$3"
+	out_file="$out_dir/${pkg_name}-${pkg_version}.apk"
 
-cp -f "$out_file" "$out_dir/${PKG_NAME}.apk"
-echo "Built manual package:"
-ls -lh "$out_file" "$out_dir/${PKG_NAME}.apk"
+	rm -f "$pkg_root/lib/apk/packages"/luci-app-ark-router*.conffiles
+	rm -f "$pkg_root/lib/apk/packages"/luci-app-ark-router*.list
+	cat > "$pkg_root/lib/apk/packages/${pkg_name}.conffiles" <<'EOF'
+/etc/config/equipe_dashboard
+/etc/config/equipe_devices
+/etc/config/qos_equipe
+EOF
+	( cd "$pkg_root" && find . -type f,l -printf "/%P\n" | sort ) > "$pkg_root/lib/apk/packages/${pkg_name}.list"
+
+	"$SDK_LINK/staging_dir/host/bin/apk" mkpkg \
+		--info "name:${pkg_name}" \
+		--info "version:${pkg_version}" \
+		--info "arch:noarch" \
+		--info "license:MIT" \
+		--info "origin:/feed/${pkg_name}" \
+		--info "url:https://github.com/Despensativo/ark-router" \
+		--info "maintainer:ARK Router contributors" \
+		--info "description:${description}" \
+		--info "depends:${depends}" \
+		--info "provides:${PKG_BASE_NAME}-any" \
+		--info "tags:openwrt:section=luci" \
+		--script "post-install:${post_install}" \
+		--script "post-upgrade:${post_install}" \
+		--files "$pkg_root" \
+		--sign-key "$sign_key" \
+		--output "$out_file"
+	cp -f "$out_file" "$out_dir/${pkg_name}.apk"
+}
+
+lite_depends="attendedsysupgrade-common iwinfo kmod-ifb kmod-sched-act-police kmod-sched-cake kmod-tun luci-app-attendedsysupgrade luci-app-mwan3 luci-app-nlbwmon luci-app-package-manager luci-app-sqm luci-app-uhttpd luci-app-upnp luci-base luci-i18n-mwan3-pt-br luci-i18n-nlbwmon-pt-br luci-i18n-sqm-pt-br luci-i18n-uhttpd-pt-br luci-i18n-upnp-pt-br miniupnpd-nftables nlbwmon owut rpcd tc-full"
+full_depends="attendedsysupgrade-common iwinfo kmod-ifb kmod-sched-act-police kmod-sched-cake kmod-tun luci-app-attendedsysupgrade luci-app-mwan3 luci-app-nlbwmon luci-app-package-manager luci-app-sqm luci-app-uhttpd luci-app-upnp luci-base luci-i18n-mwan3-pt-br luci-i18n-nlbwmon-pt-br luci-i18n-sqm-pt-br luci-i18n-uhttpd-pt-br luci-i18n-upnp-pt-br miniupnpd-nftables nlbwmon owut rpcd speedtest-go tc-full zerotier"
+
+build_variant "${PKG_BASE_NAME}" "$lite_depends" "ARK Router Lite dashboard for OpenWrt with per-device traffic and complete guest upload/download limiting. Heavy modules remain optional from the panel."
+build_variant "${PKG_BASE_NAME}-full" "$full_depends" "ARK Router Full dashboard for OpenWrt with traffic, guest limiting, SQM/CAKE, Multi-WAN, UPnP, uHTTPd, ZeroTier, speed testing and VPN tunnel support."
+
+cp -f "$out_dir/${PKG_BASE_NAME}-${pkg_version}.apk" "$out_dir/${PKG_BASE_NAME}-lite-${pkg_version}.apk"
+cp -f "$out_dir/${PKG_BASE_NAME}.apk" "$out_dir/${PKG_BASE_NAME}-lite.apk"
+echo "Built manual packages:"
+ls -lh "$out_dir"/*.apk

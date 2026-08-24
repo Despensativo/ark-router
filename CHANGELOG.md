@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Split release packaging into Lite and Full profiles. Lite keeps the canonical `luci-app-ark-router` package name for compatibility, while Full publishes `luci-app-ark-router-full`.
+- The SSH installer and dashboard self-updater can auto-select Lite or Full from detected RAM and free overlay space, with `ARK_ROUTER_PROFILE=lite|full` available for forced installs.
+- Lite now also includes every measured sub-1 MB operational module from the Full profile, including SQM/CAKE, Multi-WAN, UPnP, uHTTPd management, Wi-Fi info, tunnel support, the LuCI package manager, OpenWrt update helpers and supported PT-BR LuCI translations.
+- The Full profile pulls SQM/CAKE, Multi-WAN, UPnP, ZeroTier, speed testing, package manager, attended upgrade tooling, tunnel support, Wi-Fi info and supported PT-BR LuCI translations.
+- Added package profile documentation with measured flash and service RAM impact from the tested APK firmware.
+
 ## 0.9.30
 
 - Added `tc-full` and `kmod-sched-act-police` as default package dependencies so guest/visitor networks can enforce both download and upload limits.

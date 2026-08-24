@@ -4,8 +4,11 @@ set -eu
 REPO="${ARK_ROUTER_REPO:-${ARC_ROUTER_REPO:-Despensativo/ark-router}}"
 BRANCH="${ARK_ROUTER_BRANCH:-main}"
 MODE="${ARK_ROUTER_INSTALL_MODE:-${INSTALL_MODE:-auto}}"
+PROFILE="${ARK_ROUTER_PROFILE:-auto}"
 TMP_DIR="${TMPDIR:-/tmp}"
 DRY_RUN="${DRY_RUN:-0}"
+FULL_MIN_RAM_KB="${ARK_ROUTER_FULL_MIN_RAM_KB:-480000}"
+FULL_MIN_OVERLAY_KB="${ARK_ROUTER_FULL_MIN_OVERLAY_KB:-64000}"
 BASE_URL="https://github.com/$REPO/releases/latest/download"
 SOURCE_URL="https://github.com/$REPO/archive/refs/heads/$BRANCH.tar.gz"
 
@@ -23,10 +26,48 @@ run() {
 }
 
 manager() {
+	case "${ARK_ROUTER_PACKAGE_MANAGER:-}" in
+		apk|opkg) echo "$ARK_ROUTER_PACKAGE_MANAGER"; return 0 ;;
+		"") ;;
+		*) echo "Invalid ARK_ROUTER_PACKAGE_MANAGER: $ARK_ROUTER_PACKAGE_MANAGER. Use apk or opkg." >&2; return 2 ;;
+	esac
 	if command -v apk >/dev/null 2>&1; then echo apk
 	elif command -v opkg >/dev/null 2>&1; then echo opkg
 	else echo none
 	fi
+}
+
+mem_total_kb() {
+	v="$(awk '/^MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || true)"
+	[ -n "$v" ] && echo "$v" || echo 0
+}
+
+overlay_avail_kb() {
+	v="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4; exit}' || true)"
+	[ -n "$v" ] && echo "$v" || echo 0
+}
+
+best_profile() {
+	ram="$(mem_total_kb)"; [ -n "$ram" ] || ram=0
+	overlay="$(overlay_avail_kb)"; [ -n "$overlay" ] || overlay=0
+	if [ "$ram" -ge "$FULL_MIN_RAM_KB" ] && [ "$overlay" -ge "$FULL_MIN_OVERLAY_KB" ]; then
+		echo full
+	else
+		echo lite
+	fi
+}
+
+installed_profile() {
+	pm="$(manager)"
+	case "$pm" in
+		apk)
+			apk info -e luci-app-ark-router-full >/dev/null 2>&1 && { echo full; return 0; }
+			;;
+		opkg)
+			opkg status luci-app-ark-router-full 2>/dev/null | grep -q '^Status:.* installed' && { echo full; return 0; }
+			;;
+	esac
+	return 1
 }
 
 restart_luci() {
@@ -41,15 +82,25 @@ restart_luci() {
 
 install_release() {
 	pm="$(manager)"
+	case "$PROFILE" in
+		lite|default|"") pkg_base="luci-app-ark-router"; PROFILE=lite ;;
+		full) pkg_base="luci-app-ark-router-full" ;;
+		auto)
+			PROFILE="$(installed_profile 2>/dev/null || best_profile)"
+			if [ "$PROFILE" = full ]; then pkg_base="luci-app-ark-router-full"; else pkg_base="luci-app-ark-router"; fi
+			echo "Auto profile selected: $PROFILE (Full is preserved when already installed; otherwise hardware decides. RAM $(mem_total_kb) KB, overlay free $(overlay_avail_kb) KB)"
+			;;
+		*) echo "Invalid ARK_ROUTER_PROFILE: $PROFILE. Use auto, lite or full." >&2; return 2 ;;
+	esac
 	case "$pm" in
 		apk)
-			pkg_url="$BASE_URL/luci-app-ark-router.apk"
-			pkg_file="$TMP_DIR/luci-app-ark-router.apk"
-			install_cmd="apk add --allow-untrusted"
+			pkg_url="$BASE_URL/$pkg_base.apk"
+			pkg_file="$TMP_DIR/$pkg_base.apk"
+			install_cmd="apk add --allow-untrusted --force-overwrite"
 			;;
 		opkg)
-			pkg_url="$BASE_URL/luci-app-ark-router.ipk"
-			pkg_file="$TMP_DIR/luci-app-ark-router.ipk"
+			pkg_url="$BASE_URL/$pkg_base.ipk"
+			pkg_file="$TMP_DIR/$pkg_base.ipk"
 			install_cmd="opkg install"
 			;;
 		*)
@@ -58,7 +109,7 @@ install_release() {
 			;;
 	esac
 
-	echo "Downloading ARK Router package from $pkg_url"
+	echo "Downloading ARK Router $PROFILE package from $pkg_url"
 	if [ "$DRY_RUN" = 1 ]; then
 		echo "DRY_RUN=1: would download $pkg_url to $pkg_file"
 	else
@@ -66,7 +117,7 @@ install_release() {
 		wget -O "$pkg_file" "$pkg_url" || return 1
 	fi
 
-	echo "Installing ARK Router package"
+	echo "Installing ARK Router $PROFILE package"
 	if [ "$DRY_RUN" = 1 ]; then
 		echo "DRY_RUN=1: would run: $install_cmd $pkg_file"
 	else

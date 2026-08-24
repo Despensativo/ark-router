@@ -15,7 +15,10 @@ Use GitHub Releases as the public distribution channel:
 5. Let GitHub Actions build the OpenWrt package.
 6. Confirm that the Release contains:
    - `luci-app-ark-router.apk`
-   - versioned `.apk`, such as `luci-app-ark-router-0.9.29-r1.apk`
+   - `luci-app-ark-router-lite.apk`
+   - `luci-app-ark-router-full.apk`
+   - versioned `.apk`, such as `luci-app-ark-router-0.9.31-r1.apk`
+   - versioned Full `.apk`, such as `luci-app-ark-router-full-0.9.31-r1.apk`
    - `.ipk` assets when the workflow/build target produces them.
 7. Test the SSH installer from a router.
 
@@ -100,6 +103,20 @@ Stable/recommended install from Release package:
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | sh
 ```
 
+The default command auto-selects Lite or Full. It chooses Full only when RAM is at least 480000 KB and `/overlay` has at least 64000 KB free; otherwise it chooses Lite.
+
+Force Lite:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_PROFILE=lite sh
+```
+
+Force Full from the same Release:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_PROFILE=full sh
+```
+
 Beginner-friendly mode that tries the Release package first and falls back to source:
 
 ```sh
@@ -122,10 +139,11 @@ After ARK Router is installed, users can update from:
 ARK Router -> Recursos -> Atualizacao do ARK Router
 ```
 
-The updater checks the latest GitHub Release and downloads the package matching the router package manager:
+The updater checks the latest GitHub Release and downloads the package matching the router package manager and selected profile:
 
-- `luci-app-ark-router.apk` for APK-based OpenWrt;
-- `luci-app-ark-router.ipk` for OPKG-based OpenWrt.
+- automatic Lite APK updates from `luci-app-ark-router.apk`;
+- automatic/installed Full APK updates from `luci-app-ark-router-full.apk`;
+- OPKG installs use `luci-app-ark-router.ipk` or `luci-app-ark-router-full.ipk` when those assets are published.
 
 Before installing, it creates a temporary backup under:
 

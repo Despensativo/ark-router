@@ -114,6 +114,8 @@ The package manager adapter supports both `apk` and `opkg` for optional package 
 
 Most optional packages are not hard dependencies. Cards are displayed only when the corresponding capability exists. The dashboard asks for confirmation before installing an optional package. Package installation does not automatically alter network configuration.
 
+See [`docs/PACKAGE_PROFILES.md`](docs/PACKAGE_PROFILES.md) for the Lite and Full package profiles, including measured package sizes, service RAM notes and the tested addon version baseline.
+
 ### Tailscale remote access
 
 Tailscale is the recommended free personal remote-access option for ARK Router. It is useful on Starlink, mobile links and CGNAT because it does not require inbound WAN ports. ARK Router can install Tailscale, start the service, generate the login flow through `tailscale up`, show the Tailscale IP and advertise the current LAN subnet route.
@@ -135,6 +137,8 @@ Speedify is optional and is used only when the administrator wants real WAN bond
 Router sign-in uses Speedify's activation-code flow. The dashboard calls `speedify_cli activationcode`, shows the generated URL and lets the administrator complete login in Speedify's own portal. ARK Router does not ask for, store or publish the Speedify account password. After activation, Speedify stores its router token locally on the router.
 
 On small-flash routers, ARK Router can run Speedify from RAM or from external storage. RAM mode is temporary: after a reboot the executable disappears, but the ARK Router configuration remains. If **auto recovery after reboot** is enabled, `/etc/init.d/ark-speedify` waits for boot/network readiness and attempts to reload the saved Speedify mode. External storage mode starts the already extracted runtime when the mount is available; RAM mode downloads and extracts the runtime again if enough `/tmp` space exists.
+
+Generic Speedify install actions use the same safe order as the dashboard recommendation: internal only when there is enough overlay space, then external storage, then RAM. This prevents the Lite profile from attempting the heavy official internal install on routers where it will not fit.
 
 The live **Speedify active now** switch controls the current daemon state separately from reboot recovery. Turning it on tries to recover the saved runtime mode first, then connects when possible. Turning it off disconnects/stops Speedify without deleting the saved configuration.
 
@@ -206,8 +210,12 @@ It downloads/extracts the matching OpenWrt SDK if needed and writes:
 
 - `dist/sdk/luci-app-ark-router.apk`
 - `dist/sdk/luci-app-ark-router-<version>-r1.apk`
+- `dist/sdk/luci-app-ark-router-lite.apk`
+- `dist/sdk/luci-app-ark-router-lite-<version>-r1.apk`
+- `dist/sdk/luci-app-ark-router-full.apk`
+- `dist/sdk/luci-app-ark-router-full-<version>-r1.apk`
 
-The generated package is `noarch`, preserves `/etc/config/equipe_dashboard`, `/etc/config/equipe_devices` and `/etc/config/qos_equipe`, and depends on `luci-base`, `rpcd`, `nlbwmon`, `tc-full` and `kmod-sched-act-police`. Speedify still installs/checks `kmod-tun` only when the optional bonding runtime is used.
+The generated packages are `noarch` and preserve `/etc/config/equipe_dashboard`, `/etc/config/equipe_devices` and `/etc/config/qos_equipe`. The canonical `luci-app-ark-router.apk` is the Lite profile and keeps the original internal package name for updater compatibility. The Full profile is published as `luci-app-ark-router-full.apk`. Speedify remains an optional external runtime and is not bundled.
 
 For public releases, this repository already includes a GitHub Actions workflow that builds the OpenWrt package when a version tag such as `v0.9.29` is pushed. See [`docs/PUBLISHING.md`](docs/PUBLISHING.md) for the full GitHub publishing flow.
 
@@ -222,6 +230,20 @@ wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/
 ```
 
 The same command can be re-run later to update an existing installation. By default the installer uses `auto` mode: it detects `apk` or `opkg`, tries the latest compatible Release package first, and falls back to source installation if the router cannot resolve package dependencies while offline.
+
+By default, the installer auto-selects the profile. It chooses Full when RAM is at least 480000 KB and `/overlay` has at least 64000 KB free; otherwise it chooses Lite. To force Lite:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_PROFILE=lite sh
+```
+
+To force Full on larger routers:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_PROFILE=full sh
+```
+
+Lite uses `luci-app-ark-router.apk`. Full uses `luci-app-ark-router-full.apk`. The dashboard self-updater uses the same hardware check and keeps Full when Full is already installed.
 
 If a release package has not been published yet, install or update directly from the GitHub source tree:
 
@@ -253,10 +275,11 @@ On `opkg` based releases, install the generated `.ipk` instead.
 After ARK Router is installed, open **ARK Router → Recursos → Atualização do ARK Router**.
 The dashboard can check the latest GitHub Release and, after administrator confirmation, download and install the matching package:
 
-- `luci-app-ark-router.apk` on APK-based OpenWrt builds.
-- `luci-app-ark-router.ipk` on OPKG-based OpenWrt builds.
+- Lite APK: `luci-app-ark-router.apk`.
+- Full APK: `luci-app-ark-router-full.apk`.
+- OPKG equivalents when published: `luci-app-ark-router.ipk` or `luci-app-ark-router-full.ipk`.
 
-The updater creates a temporary configuration backup in `/tmp` before installing and restarts LuCI services afterward. It does not change WAN, LAN, Wi-Fi, firewall, DHCP, SQM or Multi-WAN settings. The updater requires published GitHub Release assets with the names above.
+The updater creates a temporary configuration backup in `/tmp` before installing and restarts LuCI services afterward. It does not change WAN, LAN, Wi-Fi, firewall, DHCP, SQM or Multi-WAN settings. The updater requires published GitHub Release assets with the names above. It auto-selects Lite/Full from router resources and keeps Full when Full is already installed.
 
 ## Uninstall
 

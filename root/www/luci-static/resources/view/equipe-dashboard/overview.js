@@ -826,14 +826,16 @@ return view.extend({
 		const node=document.getElementById('ex-self-update-result'); if(!node)return;
 		info=info||{};
 		const current=info.current||(this.capabilities.update&&this.capabilities.update.current)||'—', latest=info.latest||'—';
-		const state=info.error?('Erro: '+info.error):(info.available?'Atualização disponível':'Sem atualização mais nova');
+		const profileUpgrade=!!info.available&&info.profile==='full'&&info.actual_profile!=='full'&&current===latest;
+		const state=info.error?('Erro: '+info.error):(info.available?(profileUpgrade?'Upgrade para Full disponível':'Atualização disponível'):'Sem atualização mais nova');
 		const stateClass=info.error?'offline':(info.available?'online':'standby');
 		const actions=[];
 		if(info.available)actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.startSelfUpdate,this,info)},['Atualizar agora']));
 		node.replaceChildren(E('div',{class:'ex-feature-row ex-update-result-row'},[
 			E('div',{class:'ex-feature-copy'},[
 				E('div',{class:'ex-feature-name-row'},[E('strong',{},[state]),E('span',{class:'ex-pill '+stateClass},[latest])]),
-				E('small',{class:'ex-muted'},['Instalada: ',current,' • Repositório: ',info.repo||((this.capabilities.update||{}).repo||'—')]),
+				E('small',{class:'ex-muted'},['Instalada: ',current,' • Perfil: ',info.actual_profile||'—',' → ',info.profile||'—']),
+				E('small',{class:'ex-muted'},['Repo: ',info.repo||((this.capabilities.update||{}).repo||'—')]),
 				info.asset?E('code',{},[info.asset]):''
 			]),
 			E('div',{class:'ex-feature-state'},[E('div',{class:'ex-feature-actions'},actions)])
@@ -870,8 +872,9 @@ return view.extend({
 	},
 	startSelfUpdate: function(info){
 		info=info||{};
+		const profileUpgrade=!!info.available&&info.profile==='full'&&info.actual_profile!=='full'&&(info.current||'')===(info.latest||'');
 		ui.showModal('Atualizar ARK Router',[
-			E('p',{},['Instalada: ',E('strong',{},[info.current||'—']),' • Nova: ',E('strong',{},[info.latest||'—'])]),
+			E('p',{},[profileUpgrade?'Upgrade de perfil: ':'Instalada: ',E('strong',{},[info.current||'—']),' • ',profileUpgrade?'Destino: ':'Nova: ',E('strong',{},[profileUpgrade?'Full':(info.latest||'—')])]),
 			E('p',{class:'alert-message warning'},['O pacote será baixado do GitHub Releases e instalado com o gerenciador de pacotes do OpenWrt. O painel pode reiniciar por alguns segundos. Configurações de rede não serão alteradas.']),
 			E('p',{class:'ex-package-name'},['Arquivo: ',E('code',{},[info.asset||'luci-app-ark-router'])]),
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){

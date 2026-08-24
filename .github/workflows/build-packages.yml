@@ -38,14 +38,12 @@ jobs:
         shell: bash
         run: |
           mkdir -p release-artifacts
-          ark_apk="$(find dist/sdk -type f -name 'luci-app-ark-router-*.apk' | head -n1 || true)"
-          if [ -z "$ark_apk" ]; then
+          if ! find dist/sdk -type f -name 'luci-app-ark-router*.apk' | grep -q .; then
             echo "ARK Router package artifact was not found." >&2
             find dist -type f -print >&2 || true
             exit 1
           fi
-          cp "$ark_apk" release-artifacts/
-          cp dist/sdk/luci-app-ark-router.apk release-artifacts/luci-app-ark-router.apk
+          cp dist/sdk/luci-app-ark-router*.apk release-artifacts/
           ls -lh release-artifacts
 
       - name: Upload build artifact

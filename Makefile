@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ark-router
-PKG_VERSION:=0.9.29
+PKG_VERSION:=0.9.31
 PKG_RELEASE:=1
 PKG_MAINTAINER:=ARK Router contributors
 PKG_LICENSE:=MIT
@@ -12,19 +12,44 @@ define Package/luci-app-ark-router
   SECTION:=luci
   CATEGORY:=LuCI
   SUBMENU:=3. Applications
-  TITLE:=ARK Router operational dashboard
+  TITLE:=ARK Router Lite operational dashboard
   PKGARCH:=all
-  DEPENDS:=+luci-base +rpcd +nlbwmon +tc-full +kmod-sched-act-police
+  DEPENDS:=+luci-base +rpcd +nlbwmon +luci-app-nlbwmon +tc-full +kmod-sched-act-police +luci-app-package-manager +luci-app-attendedsysupgrade +attendedsysupgrade-common +owut +luci-app-sqm +kmod-ifb +kmod-sched-cake +luci-app-mwan3 +luci-app-upnp +miniupnpd-nftables +luci-app-uhttpd +kmod-tun +iwinfo +luci-i18n-mwan3-pt-br +luci-i18n-nlbwmon-pt-br +luci-i18n-sqm-pt-br +luci-i18n-upnp-pt-br +luci-i18n-uhttpd-pt-br
 endef
 
 define Package/luci-app-ark-router/description
-  Responsive and modular LuCI dashboard for OpenWrt, with Multi-WAN,
-  SQM, Wi-Fi, device and traffic integrations when available. The ARK
-  Router UI ships its own English fallback and selected runtime language;
-  luci-i18n-* packages are optional and are not required by this package.
+  Lightweight ARK Router package for routers with less than 256 MB RAM.
+  It includes the dashboard, per-device accounting and complete guest
+  upload/download limiting, package management, OpenWrt update helpers
+  and sub-1 MB operational modules such as SQM/CAKE, Multi-WAN, UPnP,
+  uHTTPd management, Wi-Fi info, tunnel support and supported PT-BR
+  LuCI translations. Heavier modules such as ZeroTier and speed testing
+  remain installable from the panel.
+endef
+
+define Package/luci-app-ark-router-full
+  SECTION:=luci
+  CATEGORY:=LuCI
+  SUBMENU:=3. Applications
+  TITLE:=ARK Router Full operational dashboard
+  PKGARCH:=all
+  DEPENDS:=+luci-base +rpcd +nlbwmon +luci-app-nlbwmon +tc-full +kmod-sched-act-police +luci-app-sqm +kmod-ifb +kmod-sched-cake +luci-app-mwan3 +luci-app-upnp +miniupnpd-nftables +luci-app-uhttpd +zerotier +speedtest-go +kmod-tun +iwinfo +luci-app-package-manager +luci-app-attendedsysupgrade +attendedsysupgrade-common +owut +luci-i18n-mwan3-pt-br +luci-i18n-nlbwmon-pt-br +luci-i18n-sqm-pt-br +luci-i18n-upnp-pt-br +luci-i18n-uhttpd-pt-br
+endef
+
+define Package/luci-app-ark-router-full/description
+  Full ARK Router package for routers with 512 MB RAM or more. It pulls
+  the dashboard plus the common operational modules used by ARK Router:
+  traffic accounting, guest limiting, SQM/CAKE, Multi-WAN, UPnP,
+  uHTTPd management, ZeroTier, speed testing and VPN tunnel support.
 endef
 
 define Package/luci-app-ark-router/conffiles
+/etc/config/equipe_dashboard
+/etc/config/equipe_devices
+/etc/config/qos_equipe
+endef
+
+define Package/luci-app-ark-router-full/conffiles
 /etc/config/equipe_dashboard
 /etc/config/equipe_devices
 /etc/config/qos_equipe
@@ -37,4 +62,9 @@ define Package/luci-app-ark-router/install
 	$(CP) ./root/* $(1)/
 endef
 
+define Package/luci-app-ark-router-full/install
+	$(CP) ./root/* $(1)/
+endef
+
 $(eval $(call BuildPackage,luci-app-ark-router))
+$(eval $(call BuildPackage,luci-app-ark-router-full))

@@ -29,11 +29,11 @@ LuCI `luci-i18n-*` language packages are not part of ARK Router's dependency mod
 
 ## Installation and update flow
 
-The preferred public path is a GitHub Release package. The SSH installer detects `apk` or `opkg`, downloads `luci-app-ark-router.apk` or `luci-app-ark-router.ipk` from the latest Release and restarts LuCI services.
+The preferred public path is a GitHub Release package. The SSH installer detects `apk` or `opkg`, auto-selects the profile from router resources and restarts LuCI services. The automatic selector chooses Full when RAM is at least 480000 KB and `/overlay` has at least 64000 KB free; otherwise it chooses Lite. `ARK_ROUTER_PROFILE=lite` or `ARK_ROUTER_PROFILE=full` can force a profile. Lite uses `luci-app-ark-router.apk` / `.ipk`; Full uses `luci-app-ark-router-full.apk` / `.ipk`.
 
 When a package asset is not available, source mode downloads the GitHub source archive, creates a temporary backup under `/tmp/ark-router-install-backup-*.tar.gz`, preserves existing ARK Router UCI config files and copies the project `root/` tree into place. Source mode is a fallback for early testing and emergency updates; it does not register an OpenWrt package.
 
-The dashboard self-updater uses GitHub Releases only. It checks the latest tag, compares it with the installed version marker and installs only after administrator confirmation.
+The dashboard self-updater uses GitHub Releases only. It checks the latest tag, compares it with the installed version marker and installs only after administrator confirmation. It uses the same hardware selector. If Full is already installed, the updater keeps Full; otherwise it chooses Lite or Full from current RAM/overlay resources.
 
 ## Ark - Setup
 
@@ -60,6 +60,8 @@ Speedify is treated as an optional runtime, not a core ARK Router dependency. Th
 - internal official install, only when overlay space is sufficient and the administrator explicitly starts installation;
 - external storage runtime, extracted under `<mount>/ark-router/speedify-root`;
 - temporary RAM runtime under `/tmp/ark-speedify-root`.
+
+Generic Speedify install actions use a safe automatic selector: internal only when the overlay has the configured minimum free space, then external storage when available, then RAM when `/tmp` has enough free space. They do not force the heavy internal installer on small-flash routers.
 
 The `ark-speedify` init script is enabled only when `equipe_dashboard.speedify.autostart=1`. On boot it waits briefly, then calls `equipe-dashboard-control speedify-autostart-run`. The recovery path never runs the heavy official internal installer automatically. It either starts the existing official service, starts the already extracted external runtime, or reloads the RAM runtime if enough `/tmp` space and network access are available.
 

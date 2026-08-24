@@ -23,7 +23,35 @@ When release packages are available, use:
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | sh
 ```
 
-The script defaults to `auto` mode: it detects `apk` or `opkg`, tries the latest package from GitHub Releases and falls back to source installation if the package manager cannot resolve dependencies while offline. Re-running the same command updates ARK Router from the latest published release/source.
+This installs the automatically selected profile by default. The script defaults to `auto` mode: it detects `apk` or `opkg`, checks router RAM and free overlay space, tries the latest matching package from GitHub Releases and falls back to source installation if the package manager cannot resolve dependencies while offline. Re-running the same command updates ARK Router from the latest published release/source.
+
+Automatic profile selection:
+
+| Detected router resources | Selected profile |
+| --- | --- |
+| RAM >= 480000 KB and `/overlay` free >= 64000 KB | Full |
+| Anything below that | Lite |
+
+The thresholds can be overridden by maintainers with `ARK_ROUTER_FULL_MIN_RAM_KB` and `ARK_ROUTER_FULL_MIN_OVERLAY_KB`.
+
+To force Lite:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_PROFILE=lite sh
+```
+
+To install the Full profile on a router with enough flash/RAM:
+
+```sh
+wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_PROFILE=full sh
+```
+
+Release assets used by the installer:
+
+| Profile | APK asset | Use case |
+| --- | --- | --- |
+| Lite | `luci-app-ark-router.apk` | default install; all sub-1 MB modules included; no ZeroTier/speedtest-go |
+| Full | `luci-app-ark-router-full.apk` | larger routers; Lite plus ZeroTier and speedtest-go |
 
 If the release asset has not been generated yet, install or update from source:
 
@@ -55,7 +83,7 @@ ARK Router is a LuCI/files package, so the local tested path uses the OpenWrt SD
 scripts/build-apk-wsl.sh
 ```
 
-The script creates `dist/sdk/luci-app-ark-router.apk` and a versioned APK. It uses `scripts/build-apk-manual-wsl.sh` internally and requires the matching OpenWrt SDK only for the `apk` packaging tool/signing key.
+The script creates Lite and Full APK assets in `dist/sdk/`, including `luci-app-ark-router.apk`, `luci-app-ark-router-lite.apk` and `luci-app-ark-router-full.apk`. It uses `scripts/build-apk-manual-wsl.sh` internally and requires the matching OpenWrt SDK only for the `apk` packaging tool/signing key.
 
 For normal public distribution, prefer the repository GitHub Actions workflow instead of building manually on a desktop. The workflow should attach the generated package assets to the GitHub Release.
 
@@ -82,8 +110,13 @@ If the GitHub Release version is newer than the installed version, ARK Router of
 
 The updater downloads from:
 
-- `https://github.com/Despensativo/ark-router/releases/latest/download/luci-app-ark-router.apk`
-- `https://github.com/Despensativo/ark-router/releases/latest/download/luci-app-ark-router.ipk`
+- Lite APK: `https://github.com/Despensativo/ark-router/releases/latest/download/luci-app-ark-router.apk`
+- Full APK: `https://github.com/Despensativo/ark-router/releases/latest/download/luci-app-ark-router-full.apk`
+- OPKG equivalents when published: `luci-app-ark-router.ipk` or `luci-app-ark-router-full.ipk`
+
+The dashboard updater also checks RAM and free overlay space. If Full is already installed, it keeps Full. Otherwise it chooses the best profile using the same thresholds and downloads the matching asset.
+
+Older ARK Router installs from before the Lite/Full split are handled as automatic-profile installs. If the router meets the Full thresholds, the updater can offer an upgrade to the Full asset; if not, it stays on the Lite asset.
 
 Before installing, it saves a temporary backup under `/tmp/ark-router-before-self-update-*.tar.gz`.
 The update restarts `rpcd`/`uhttpd` and reloads the panel, but it does not alter router network configuration.
@@ -135,6 +168,8 @@ OpenWrt `luci-i18n-*` language packages are optional. ARK Router ships an Englis
 ### Optional Speedify recovery
 
 If Speedify is used, enable **auto recovery after reboot** only after choosing and testing a supported mode. On small routers the usual safe mode is RAM, which does not occupy flash but must be reloaded after every reboot. With auto recovery enabled, ARK Router enables `/etc/init.d/ark-speedify` and tries to reload the saved mode during boot.
+
+When the administrator uses a generic Speedify install action, ARK Router chooses a safe mode automatically: internal only if the overlay has enough free space, otherwise external storage if available, otherwise RAM if `/tmp` has enough free space. It does not force the large internal install on routers where it does not fit.
 
 Recovery behavior:
 
