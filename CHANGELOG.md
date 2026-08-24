@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.27
+
+- WAN1/WAN2 cards now show received gateway, IPv4 netmask and DNS servers from the active OpenWrt interface status.
+- Improved WAN link wording so an online DHCP interface is not shown as "sem link" just because the physical device probe is unavailable.
+
 ## 0.9.26
 
 - Added a confirmed **Disable IPv6 completely** action in Resources.

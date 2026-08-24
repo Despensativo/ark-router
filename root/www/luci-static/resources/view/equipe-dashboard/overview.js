@@ -37,7 +37,7 @@ const EN={
 	'No modo Gamer (EF), pacotes do dispositivo passam à frente de downloads e streams. No modo Normal (AF41), usa a classe de vídeo.':'In Gamer mode (EF), device packets bypass downloads and streams. In Standard mode (AF41), uses video class.',
 	'SAÚDE DO ROTEADOR':'ROUTER HEALTH','Ligado há ':'Up for ','Temperatura':'Temperature','Memória':'Memory','Armazenamento':'Storage','Carga':'Load','atividade do sistema':'system activity','NORMAL':'NORMAL','ATENÇÃO':'ATTENTION',
 	'Download agora':'Download now','Upload agora':'Upload now','aguardando leitura':'waiting for data','HISTÓRICO 24 HORAS':'24-HOUR HISTORY','Download ao longo do dia':'Download throughout the day','Upload ao longo do dia':'Upload throughout the day','Coletando…':'Collecting…','A primeira amostra aparecerá em até 1 minuto':'The first sample will appear within 1 minute',
-	'Endereço IPv4':'IPv4 address','Link físico':'Physical link','Latência':'Latency','Tempo online':'Uptime','ONLINE':'ONLINE','OFFLINE':'OFFLINE','SEM CABO':'UNPLUGGED','conectado':'connected','sem link':'no link','CONECTADA':'CONNECTED','Full duplex':'Full duplex','Automático':'Automatic',
+	'Endereço IPv4':'IPv4 address','Gateway':'Gateway','Máscara':'Netmask','DNS recebidos':'Received DNS','Link físico':'Physical link','Latência':'Latency','Tempo online':'Uptime','ONLINE':'ONLINE','OFFLINE':'OFFLINE','SEM CABO':'UNPLUGGED','conectado':'connected','interface ativa':'interface active','sem link':'no link','CONECTADA':'CONNECTED','Full duplex':'Full duplex','Automático':'Automatic',
 	'PORTAS CABEADAS':'WIRED PORTS','LAN disponíveis':'Available LAN ports','A LAN1 está configurada como WAN2':'LAN1 is configured as WAN2','Velocidade':'Speed','Modo':'Mode','Recebido':'Received','Enviado':'Sent',
 	'REDE WI‑FI':'WI-FI NETWORK','ATIVA':'ACTIVE','Ver senha':'Show password','Ocultar senha':'Hide password','Acesso principal':'Main access','Visitantes com upload limitado':'Guests with limited upload','Acesso principal • disponível em 2,4 e 5 GHz':'Main access • available on 2.4 and 5 GHz','Visitantes com upload limitado • disponível em 2,4 e 5 GHz':'Guests with limited upload • available on 2.4 and 5 GHz','Alterar senha nesta tela →':'Change password here →',
 	'AMBIENTE WI‑FI':'WI-FI ENVIRONMENT','Canais e interferência':'Channels and interference','Analisar canais agora':'Analyze channels now','PAÍS / DOMÍNIO REGULATÓRIO':'COUNTRY / REGULATORY DOMAIN','Alterar país':'Change country','Seleção automática de canais':'Automatic channel selection','Verificando…':'Checking…','Desligado • canais definidos manualmente':'Off • manually selected channels','Ligado • o roteador escolhe os canais':'On • the router selects channels','Configuração mista entre as bandas':'Mixed configuration between bands','AUTO':'AUTO','MANUAL':'MANUAL',
@@ -135,6 +135,27 @@ function iface(dump, name) { return ((dump && dump.interface) || []).find(functi
 function values(config) { return config && config.values || {}; }
 function parsePing(r) { const m = ((r && r.stdout) || '').match(/time[=<]([0-9.]+)/); return r && r.code === 0 && m ? Number(m[1]) : null; }
 function infoRow(label, id) { return E('div', { 'class': 'ex-row' }, [ E('span', {}, [ label ]), E('strong', { 'id': id }, [ '—' ]) ]); }
+function cidrMask(bits) {
+	bits = Number(bits);
+	if (!(bits >= 0 && bits <= 32)) return '—';
+	const out = [];
+	for (let i = 0; i < 4; i++) {
+		const used = Math.max(0, Math.min(8, bits - (i * 8)));
+		out.push(used === 0 ? 0 : (256 - Math.pow(2, 8 - used)));
+	}
+	return out.join('.');
+}
+function wanGateway(i) {
+	const routes = Array.isArray(i && i.route) ? i.route : [];
+	const def = routes.find(function(r) { return r && (r.target === '0.0.0.0' || Number(r.mask) === 0) && r.nexthop; }) ||
+		routes.find(function(r) { return r && r.nexthop; });
+	return def && def.nexthop ? def.nexthop : '—';
+}
+function wanDns(i) {
+	const inactive = (i && i.inactive && (i.inactive['dns-server'] || i.inactive.dns_server)) || [];
+	const dns = Array.isArray(inactive) && inactive.length ? inactive : ((i && (i['dns-server'] || i.dns_server)) || []);
+	return Array.isArray(dns) && dns.length ? dns.join(' • ') : '—';
+}
 function metricCard(icon, label, valueId, hintId, color) {
 	return E('div', { 'class': 'ex-card ex-metric', 'style': '--accent:' + color }, [
 		E('div', { 'class': 'ex-metric-icon' }, [ icon ]),
@@ -300,7 +321,8 @@ return view.extend({
 	updateWan: function(prefix, i, d, m, ping) {
 		const hasMwan=this.feature('mwan3').installed, online=!!i.up&&(!hasMwan||(m&&m.status==='online')), disabled=!d.carrier||(hasMwan&&m&&m.status==='disabled');
 		setPill(prefix+'-status',online?'online':(disabled?'standby':'offline'),online?'ONLINE':(disabled?'SEM CABO':'OFFLINE'));
-		const a=i['ipv4-address']&&i['ipv4-address'][0], speed=String(d.speed||'').match(/[0-9]+/); text(prefix+'-ip',a?a.address:'—'); text(prefix+'-link',d.carrier?(speed?speed[0]+' Mbps':'conectado'):'sem link'); text(prefix+'-uptime',i.up?formatUptime(i.uptime):'—'); text(prefix+'-latency',ping==null?'—':ping.toFixed(0)+' ms');
+		const a=i['ipv4-address']&&i['ipv4-address'][0], speed=String(d.speed||'').match(/[0-9]+/), link=d.carrier?(speed?speed[0]+' Mbps':'conectado'):(i.up?'interface ativa':'sem link');
+		text(prefix+'-ip',a?a.address:'—'); text(prefix+'-gateway',wanGateway(i)); text(prefix+'-mask',a?cidrMask(a.mask):'—'); text(prefix+'-dns',wanDns(i)); text(prefix+'-link',link); text(prefix+'-uptime',i.up?formatUptime(i.uptime):'—'); text(prefix+'-latency',ping==null?'—':ping.toFixed(0)+' ms');
 	},
 	updateLan: function(prefix, device) {
 		const connected=!!device.carrier, speed=String(device.speed||'').match(/[0-9]+/), stats=device.statistics||{}, full=String(device.speed||'').toUpperCase().indexOf('F')>=0;
@@ -1369,8 +1391,8 @@ return view.extend({
 			E('div',{class:'ex-grid ex-grid-2 ex-history-grid'},[historyCard('down','Download ao longo do dia','#3b82f6'),historyCard('up','Upload ao longo do dia','#a855f7')]),
 			E('p',{id:'ex-history-samples',class:'ex-history-caption'},['A primeira amostra aparecerá em até 1 minuto']),
 			E('div',{class:'ex-grid ex-grid-2'},[
-				E('section',{class:'ex-card ex-wan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},['WAN1']),E('span',{id:'ex-wan1-status',class:'ex-pill standby'},['—'])]),infoRow('Endereço IPv4','ex-wan1-ip'),infoRow('Link físico','ex-wan1-link'),infoRow('Latência','ex-wan1-latency'),infoRow('Tempo online','ex-wan1-uptime'),E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(function(){this.editWan('wan');},this)},['Editar internet'])]),
-				E('section',{class:'ex-card ex-wan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},['WAN2']),E('span',{id:'ex-wan2-status',class:'ex-pill standby'},['—'])]),infoRow('Endereço IPv4','ex-wan2-ip'),infoRow('Link físico','ex-wan2-link'),infoRow('Latência','ex-wan2-latency'),infoRow('Tempo online','ex-wan2-uptime'),E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(function(){this.editWan('wan2');},this)},['Editar porta / internet'])])
+				E('section',{class:'ex-card ex-wan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},['WAN1']),E('span',{id:'ex-wan1-status',class:'ex-pill standby'},['—'])]),infoRow('Endereço IPv4','ex-wan1-ip'),infoRow('Gateway','ex-wan1-gateway'),infoRow('Máscara','ex-wan1-mask'),infoRow('DNS recebidos','ex-wan1-dns'),infoRow('Link físico','ex-wan1-link'),infoRow('Latência','ex-wan1-latency'),infoRow('Tempo online','ex-wan1-uptime'),E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(function(){this.editWan('wan');},this)},['Editar internet'])]),
+				E('section',{class:'ex-card ex-wan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},['WAN2']),E('span',{id:'ex-wan2-status',class:'ex-pill standby'},['—'])]),infoRow('Endereço IPv4','ex-wan2-ip'),infoRow('Gateway','ex-wan2-gateway'),infoRow('Máscara','ex-wan2-mask'),infoRow('DNS recebidos','ex-wan2-dns'),infoRow('Link físico','ex-wan2-link'),infoRow('Latência','ex-wan2-latency'),infoRow('Tempo online','ex-wan2-uptime'),E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(function(){this.editWan('wan2');},this)},['Editar porta / internet'])])
 			]),
 			E('section',{class:'ex-card ex-lan-config-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['REDE PRINCIPAL']),E('h3',{},['LAN / DHCP'])]),E('button',{class:'ex-mini-button','click':L.bind(function(){this.editLan();},this)},['Editar IP, DHCP e DNS'])]),E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},[infoRow('IP do roteador','ex-lan-ip'),infoRow('Faixa DHCP','ex-lan-dhcp'),infoRow('Máscara','ex-lan-mask'),infoRow('DNS enviado','ex-lan-dns')]),E('p',{class:'ex-muted'},['Use para trocar entre redes 192.168.x.x, 10.0.x.x ou definir manualmente a faixa e os DNS que os dispositivos recebem.'])]),
 			E('div',{class:'ex-lan-block'},[E('div',{class:'ex-lan-title'},[E('div',{},[E('span',{class:'ex-kicker'},['PORTAS CABEADAS']),E('h3',{},['LAN disponíveis'])]),E('small',{class:'ex-muted'},['A LAN1 está configurada como WAN2'])]),E('div',{class:'ex-grid ex-grid-2'},[
