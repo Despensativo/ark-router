@@ -29,7 +29,7 @@ LuCI `luci-i18n-*` language packages are not part of ARK Router's dependency mod
 
 ## Installation and update flow
 
-The preferred public path is a GitHub Release package. The SSH installer detects `apk` or `opkg`, auto-selects the profile from router resources and restarts LuCI services. The automatic selector chooses Full when RAM is at least 480000 KB and `/overlay` has at least 64000 KB free; otherwise it chooses Lite. `ARK_ROUTER_PROFILE=lite` or `ARK_ROUTER_PROFILE=full` can force a profile. Lite uses `luci-app-ark-router.apk` / `.ipk`; Full uses `luci-app-ark-router-full.apk` / `.ipk`.
+The preferred public path is a GitHub Release package. The SSH installer detects `apk` or `opkg`, auto-selects the profile from router resources and restarts LuCI services. The automatic selector chooses Full when RAM is at least 480000 KB and `/overlay` has at least 35000 KB free; otherwise it chooses Lite. `ARK_ROUTER_PROFILE=lite` or `ARK_ROUTER_PROFILE=full` can force a profile. Lite uses `luci-app-ark-router.apk` / `.ipk`; Full uses `luci-app-ark-router-full.apk` / `.ipk`.
 
 When a package asset is not available, source mode downloads the GitHub source archive, creates a temporary backup under `/tmp/ark-router-install-backup-*.tar.gz`, preserves existing ARK Router UCI config files and copies the project `root/` tree into place. Source mode is a fallback for early testing and emergency updates; it does not register an OpenWrt package.
 

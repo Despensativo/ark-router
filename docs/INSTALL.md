@@ -29,7 +29,7 @@ Automatic profile selection:
 
 | Detected router resources | Selected profile |
 | --- | --- |
-| RAM >= 480000 KB and `/overlay` free >= 64000 KB | Full |
+| RAM >= 480000 KB and `/overlay` free >= 35000 KB | Full |
 | Anything below that | Lite |
 
 The thresholds can be overridden by maintainers with `ARK_ROUTER_FULL_MIN_RAM_KB` and `ARK_ROUTER_FULL_MIN_OVERLAY_KB`.

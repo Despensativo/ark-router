@@ -21,7 +21,7 @@ If a package asset exists, use release mode:
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | sh
 ```
 
-The default command auto-selects Lite or Full from RAM and free overlay space. Full is selected only when RAM is at least 480000 KB and `/overlay` has at least 64000 KB free. To force Lite:
+The default command auto-selects Lite or Full from RAM and free overlay space. Full is selected only when RAM is at least 480000 KB and `/overlay` has at least 35000 KB free. To force Lite:
 
 ```sh
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_PROFILE=lite sh

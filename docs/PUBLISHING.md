@@ -17,8 +17,8 @@ Use GitHub Releases as the public distribution channel:
    - `luci-app-ark-router.apk`
    - `luci-app-ark-router-lite.apk`
    - `luci-app-ark-router-full.apk`
-   - versioned `.apk`, such as `luci-app-ark-router-0.9.31-r1.apk`
-   - versioned Full `.apk`, such as `luci-app-ark-router-full-0.9.31-r1.apk`
+   - versioned `.apk`, such as `luci-app-ark-router-0.9.32-r1.apk`
+   - versioned Full `.apk`, such as `luci-app-ark-router-full-0.9.32-r1.apk`
    - `.ipk` assets when the workflow/build target produces them.
 7. Test the SSH installer from a router.
 
@@ -103,7 +103,7 @@ Stable/recommended install from Release package:
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | sh
 ```
 
-The default command auto-selects Lite or Full. It chooses Full only when RAM is at least 480000 KB and `/overlay` has at least 64000 KB free; otherwise it chooses Lite.
+The default command auto-selects Lite or Full. It chooses Full only when RAM is at least 480000 KB and `/overlay` has at least 35000 KB free; otherwise it chooses Lite.
 
 Force Lite:
 

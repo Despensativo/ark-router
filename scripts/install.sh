@@ -8,7 +8,7 @@ PROFILE="${ARK_ROUTER_PROFILE:-auto}"
 TMP_DIR="${TMPDIR:-/tmp}"
 DRY_RUN="${DRY_RUN:-0}"
 FULL_MIN_RAM_KB="${ARK_ROUTER_FULL_MIN_RAM_KB:-480000}"
-FULL_MIN_OVERLAY_KB="${ARK_ROUTER_FULL_MIN_OVERLAY_KB:-64000}"
+FULL_MIN_OVERLAY_KB="${ARK_ROUTER_FULL_MIN_OVERLAY_KB:-35000}"
 BASE_URL="https://github.com/$REPO/releases/latest/download"
 SOURCE_URL="https://github.com/$REPO/archive/refs/heads/$BRANCH.tar.gz"
 

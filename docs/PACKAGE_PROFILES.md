@@ -6,7 +6,7 @@ Automatic install/update profile selection:
 
 | Router resources | Selected profile |
 | --- | --- |
-| RAM >= 480000 KB and `/overlay` free >= 64000 KB | Full |
+| RAM >= 480000 KB and `/overlay` free >= 35000 KB | Full |
 | Anything below that | Lite |
 
 The SSH installer accepts `ARK_ROUTER_PROFILE=auto|lite|full`; `auto` is the default. The dashboard self-updater uses the same check and keeps Full when Full is already installed. Older pre-profile installs can move to Full automatically when the router meets the Full thresholds; otherwise they update to Lite.

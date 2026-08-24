@@ -231,7 +231,7 @@ wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/
 
 The same command can be re-run later to update an existing installation. By default the installer uses `auto` mode: it detects `apk` or `opkg`, tries the latest compatible Release package first, and falls back to source installation if the router cannot resolve package dependencies while offline.
 
-By default, the installer auto-selects the profile. It chooses Full when RAM is at least 480000 KB and `/overlay` has at least 64000 KB free; otherwise it chooses Lite. To force Lite:
+By default, the installer auto-selects the profile. It chooses Full when RAM is at least 480000 KB and `/overlay` has at least 35000 KB free; otherwise it chooses Lite. To force Lite:
 
 ```sh
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_PROFILE=lite sh
