@@ -1289,6 +1289,21 @@ return view.extend({
 			]);
 		},this)).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});
 	},
+	disableIpv6Full: function(){
+		ui.showModal('Desativar IPv6 totalmente',[
+			E('p',{class:'alert-message warning'},['Essa ação cria backup e remove/desativa WAN6, ULA, anúncios RA, DHCPv6/NDP, regras IPv6 do firewall e serviços odhcp6c/odhcpd quando presentes.']),
+			E('p',{class:'ex-muted'},['Use quando o roteador deve operar somente em IPv4. A internet IPv4, Wi‑Fi e DHCP IPv4 continuam funcionando.']),
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-negative','click':function(){
+				return fs.exec('/usr/sbin/equipe-dashboard-control',['ipv6-disable-full']).then(function(r){
+					if(r.code)throw new Error(r.stderr||'Falha ao desativar IPv6');
+					let out={};try{out=JSON.parse(r.stdout||'{}');}catch(e){}
+					ui.hideModal();
+					ui.addNotification(null,E('p',{},['IPv6 desativado. Backup: ',out.backup||'/tmp/ark-router-before-cleanup-*.tar.gz']));
+					window.setTimeout(function(){window.location.reload();},2500);
+				}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});
+			}},['Criar backup e desativar IPv6'])])
+		]);
+	},
 	showFeatureCenter: function(){
 		const language=E('select',{class:'cbi-input-select'},[E('option',{value:'pt-br'},['Português (Brasil)']),E('option',{value:'en'},['Inglês'])]);language.value=this.capabilities.language||'pt-br';
 		const brandName=E('input',{class:'cbi-input-text',type:'text',maxlength:40,value:this.capabilities.title||'ARK Router','aria-label':translateText('Nome do painel')});
@@ -1305,6 +1320,7 @@ return view.extend({
 		},this));
 		const bulkKeys=['argon','sqm','mwan3','nlbwmon','upnp','uhttpd','speedtest'].filter(L.bind(function(key){const f=this.feature(key), fastFallback=key==='speedtest'&&f.storage&&f.storage.recommended==='fast_manual';return !f.installed&&!fastFallback&&f.installable;},this));
 		const bulkPanel=E('section',{class:'ex-cleanup-entry'},[E('div',{},[E('strong',{},['Instalação rápida']),E('small',{class:'ex-muted'},[bulkKeys.length?('Instala todos os recursos leves faltantes: '+bulkKeys.map(function(k){return (FEATURE_META[k]&&FEATURE_META[k].name)||k;}).join(', ')):'Todos os recursos leves compatíveis já estão instalados ou indisponíveis neste roteador.'])]),E('button',{class:'ex-mini-button','click':L.bind(this.installMissingFeatures,this,bulkKeys),disabled:!bulkKeys.length},['Instalar faltantes'])]);
+		const ipv6Panel=E('section',{class:'ex-cleanup-entry'},[E('div',{},[E('strong',{},['IPv6 totalmente desligado']),E('small',{class:'ex-muted'},['Remove WAN6, ULA, RA/DHCPv6/NDP e regras IPv6. Cria backup antes de aplicar.'])]),E('button',{class:'ex-mini-button','click':L.bind(this.disableIpv6Full,this)},['Desativar IPv6'])]);
 		const profileSelect=E('select',{class:'cbi-input-select'},[
 			E('option',{value:'standard'},['Modo Padrão / Equilibrado']),
 			E('option',{value:'gamer'},['Modo Gamer (Baixa Latência & PUBG Mobile)'])
@@ -1324,6 +1340,7 @@ return view.extend({
 			E('div',{class:'ex-language-row'},[E('label',{},['Idioma do painel']),language,E('button',{class:'ex-mini-button','click':L.bind(function(){this.setDashboardLanguage(language.value);},this)},['Salvar idioma'])]),
 			this.selfUpdatePanel(),
 			bulkPanel,
+			ipv6Panel,
 			E('section',{class:'ex-cleanup-entry'},[E('div',{},[E('strong',{},['Otimização modo ARK']),E('small',{class:'ex-muted'},['Remove painéis e serviços dispensáveis para manter o OpenWrt enxuto. Sempre cria backup antes de remover.'])]),E('button',{class:'ex-mini-button','click':L.bind(this.showArkCleanup,this)},['Analisar e limpar'])]),
 			httpsPanel,
 			E('section',{class:'ex-appearance-panel'},[E('div',{class:'ex-appearance-heading'},[E('div',{},[E('strong',{},['Aparência']),E('small',{class:'ex-muted'},['No modo automático, o painel acompanha as cores e o modo claro ou escuro do tema LuCI.'])]),appearanceMode]),appearanceColors,E('button',{class:'ex-mini-button ex-save-appearance','click':L.bind(function(){this.setAppearance(appearanceMode.value,primary.value,secondary.value);},this)},['Salvar aparência'])]),

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.26
+
+- Added a confirmed **Disable IPv6 completely** action in Resources.
+- The action backs up the router, removes WAN6/ULA/LAN IPv6 assignment, disables RA/DHCPv6/NDP, removes IPv6 firewall rules and persists kernel-level IPv6 disablement with sysctl.
+- Ark Setup now uses the same full IPv6 disable routine instead of only partially disabling LAN IPv6.
+
 ## 0.9.25
 
 - Hardened Wi-Fi editing on routers where one band-specific SSID section is missing, creating only the missing section before saving.

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 action="$1"
-ARK_ROUTER_VERSION="0.9.25"
+ARK_ROUTER_VERSION="0.9.26"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() { [ "$1" = 1 ] && printf true || printf false; }
@@ -278,6 +278,58 @@ cleanup_apply_keys() {
 	[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd enable >/dev/null 2>&1 && /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
 	sync
 	echo ok
+}
+disable_ipv6_full() {
+	uci -q delete network.globals.ula_prefix
+	uci -q delete network.lan.ip6assign
+	uci -q delete network.lan.ip6hint
+	uci -q delete network.lan.ip6ifaceid
+	uci -q delete network.lan.delegate
+	for iface in wan wan2; do
+		uci -q set "network.$iface.delegate=0"
+		uci -q set "network.$iface.ipv6=0"
+	done
+	uci -q delete network.wan6
+	uci -q delete network.wan_6
+	uci -q delete network.wan2_6
+	uci -q set dhcp.lan.dhcpv6=disabled
+	uci -q set dhcp.lan.ra=disabled
+	uci -q set dhcp.lan.ndp=disabled
+	uci -q delete dhcp.lan.ra_slaac
+	uci -q delete dhcp.lan.ra_flags
+	uci -q delete dhcp.lan.ra_management
+	uci -q show dhcp 2>/dev/null | sed -n "s/^\(dhcp\.[^.]*\)\.\(dhcpv6\|ra\|ndp\|ra_slaac\|ra_flags\|ra_management\)=.*/\1.\2/p" | while read -r opt; do
+		case "$opt" in
+			*.dhcpv6|*.ra|*.ndp) uci -q set "$opt=disabled" ;;
+			*) uci -q delete "$opt" ;;
+		esac
+	done
+	zone="$(firewall_wan_zone_section)"
+	[ -n "$zone" ] && uci -q del_list "firewall.$zone.network=wan6" 2>/dev/null || true
+	while :; do
+		sec="$(uci -q show firewall 2>/dev/null | awk -F= '/\.family='\''ipv6'\''/ { s=$1; sub(/^firewall\./, "", s); sub(/\.family$/, "", s); print s; exit } /\.name=.*ICMPv6/ { s=$1; sub(/^firewall\./, "", s); sub(/\.name$/, "", s); print s; exit }')"
+		[ -n "$sec" ] || break
+		uci -q delete "firewall.$sec"
+	done
+	uci commit network
+	uci commit dhcp
+	uci commit firewall
+	[ -x /etc/init.d/odhcp6c ] && /etc/init.d/odhcp6c disable >/dev/null 2>&1 || true
+	[ -x /etc/init.d/odhcp6c ] && /etc/init.d/odhcp6c stop >/dev/null 2>&1 || true
+	[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd disable >/dev/null 2>&1 || true
+	[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd stop >/dev/null 2>&1 || true
+	killall odhcp6c >/dev/null 2>&1 || true
+	mkdir -p /etc/sysctl.d
+	cat >/etc/sysctl.d/99-ark-router-disable-ipv6.conf <<'EOF'
+net.ipv6.conf.all.disable_ipv6=1
+net.ipv6.conf.default.disable_ipv6=1
+net.ipv6.conf.lo.disable_ipv6=1
+EOF
+	sysctl -w net.ipv6.conf.all.disable_ipv6=1 >/dev/null 2>&1 || true
+	sysctl -w net.ipv6.conf.default.disable_ipv6=1 >/dev/null 2>&1 || true
+	sysctl -w net.ipv6.conf.lo.disable_ipv6=1 >/dev/null 2>&1 || true
+	ip -6 addr flush dev br-lan scope global >/dev/null 2>&1 || true
+	ip -6 route flush dev br-lan >/dev/null 2>&1 || true
 }
 install_argon_release() {
 	version="${ARK_ARGON_VERSION:-2.4.6}"
@@ -1418,15 +1470,7 @@ case "$action" in
 		fi
 		if [ "$(ez_get applied_step 0)" -lt 3 ]; then
 			if [ "$(ez_get disable_ipv6 1)" = 1 ]; then
-				uci -q set network.lan.ip6assign=''
-				uci -q set dhcp.lan.dhcpv6=disabled
-				uci -q set dhcp.lan.ra=disabled
-				uci -q set dhcp.lan.ndp=disabled
-				uci -q set dhcp.odhcpd=odhcpd
-				uci -q set dhcp.odhcpd.maindhcp=0
-				uci -q set dhcp.odhcpd.leasefile=/tmp/hosts/odhcpd
-				uci -q set dhcp.odhcpd.leasetrigger=/usr/sbin/odhcpd-update
-				uci -q set dhcp.odhcpd.loglevel=4
+				disable_ipv6_full
 			fi
 			dns_mode="$(ez_get dns_mode recommended)"
 			if [ "$dns_mode" != operator ]; then
@@ -1783,6 +1827,12 @@ case "$action" in
 	cleanup-apply)
 		shift
 		cleanup_apply_keys "$@"
+		;;
+	ipv6-disable-full)
+		backup="$(cleanup_backup)" || { echo 'Falha ao criar backup antes de desativar IPv6' >&2; exit 3; }
+		disable_ipv6_full
+		(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall restart >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) &
+		printf '{"status":"ok","backup":"%s"}\n' "$(json_escape "$backup")"
 		;;
 	theme)
 		[ "$2" = argon ] || { echo 'Tema invalido' >&2; exit 2; }
@@ -2320,7 +2370,7 @@ case "$action" in
 		echo 'ok'
 		;;
 	*)
-		echo 'Uso: equipe-dashboard-control {features|cleanup-status|cleanup-apply ITEM...|profile [standard|gamer]|self-update-check|self-update-start|self-update-status|self-update-log|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|ez-setup-install-modules|ez-setup-install-status|ez-setup-install-log|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|feature-install-missing|feature-install-missing-status|feature-install-missing-log|theme argon|speedify-power 0|1|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|sqm-toggle 0|1|sqm-save chave=valor...|wan-save chave=valor...|lan-status|lan-save chave=valor...|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE [DSCP]|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|country ISO2}' >&2
+		echo 'Uso: equipe-dashboard-control {features|cleanup-status|cleanup-apply ITEM...|ipv6-disable-full|profile [standard|gamer]|self-update-check|self-update-start|self-update-status|self-update-log|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|ez-setup-install-modules|ez-setup-install-status|ez-setup-install-log|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|feature-install-missing|feature-install-missing-status|feature-install-missing-log|theme argon|speedify-power 0|1|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|sqm-toggle 0|1|sqm-save chave=valor...|wan-save chave=valor...|lan-status|lan-save chave=valor...|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE [DSCP]|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|country ISO2}' >&2
 		exit 2
 		;;
 esac
