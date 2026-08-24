@@ -8,6 +8,7 @@ ARK Router is distributed as an OpenWrt LuCI package. It should be built with th
 - `rpcd`.
 - `kmod-tun` for Speedify/VPN tunnel support. It is optional for the dashboard itself and is installed/verified only when Speedify/VPN tunneling is used.
 - `nlbwmon` for per-device traffic accounting. Release package installs pull it as a dependency when the package manager can resolve it.
+- `tc-full` and `kmod-sched-act-police` for complete guest/visitor bandwidth limits. They allow ARK Router to enforce both download and upload limits on the guest Wi-Fi interface.
 - `iwinfo` is recommended for Wi-Fi intelligence features, but it is not a hard package dependency.
 - BusyBox `ash`.
 - Enough free RAM in `/tmp` if temporary speed-test calibration is used.

@@ -995,8 +995,9 @@ tailscale_down() {
 	tailscale down
 }
 zerotier_firewall_prepare() {
-	ztdev="$(zerotier-cli listnetworks 2>/dev/null | awk 'NR>1 {print $8; exit}')"
-	[ -n "$ztdev" ] || ztdev='zt+'
+	ztdev="$(ip -o link show 2>/dev/null | awk -F': ' '/: zt/{print $2; exit}' | cut -d@ -f1)"
+	[ -n "$ztdev" ] || ztdev="$(zerotier-cli listnetworks 2>/dev/null | awk 'NR>1 {for(i=1;i<=NF;i++) if($i ~ /^zt/) {print $i; exit}}')"
+	case "$ztdev" in ''|'-') ztdev='' ;; esac
 	uci -q delete network.zerotier
 	uci commit network
 	uci -q set firewall.zerotier=zone
@@ -1006,7 +1007,7 @@ zerotier_firewall_prepare() {
 	uci -q set firewall.zerotier.forward=ACCEPT
 	uci -q delete firewall.zerotier.device
 	uci -q delete firewall.zerotier.network
-	uci -q add_list "firewall.zerotier.device=$ztdev"
+	[ -n "$ztdev" ] && uci -q add_list "firewall.zerotier.device=$ztdev"
 	uci -q set firewall.zt_to_lan=forwarding
 	uci -q set firewall.zt_to_lan.src=zerotier
 	uci -q set firewall.zt_to_lan.dest=lan
@@ -1452,6 +1453,8 @@ ez_apply_guest_network() {
 		uci -q set dhcp.guest.start=100
 		uci -q set dhcp.guest.limit=150
 		uci -q set dhcp.guest.leasetime=12h
+		uci -q set dhcp.guest.dhcpv4=server
+		uci -q delete dhcp.guest.ignore 2>/dev/null || true
 		uci -q set firewall.guest=zone
 		uci -q set firewall.guest.name=guest
 		uci -q set firewall.guest.network=guest
@@ -1466,6 +1469,7 @@ ez_apply_guest_network() {
 		uci -q set firewall.guest_dhcp.name='Allow-Guest-DHCP'
 		uci -q set firewall.guest_dhcp.src=guest
 		uci -q set firewall.guest_dhcp.proto=udp
+		uci -q set firewall.guest_dhcp.src_port=68
 		uci -q set firewall.guest_dhcp.dest_port=67
 		uci -q set firewall.guest_dhcp.target=ACCEPT
 		uci -q set firewall.guest_dns=rule
@@ -1492,6 +1496,36 @@ ez_apply_guest_limit() {
 		uci -q set qos_equipe.guest=guest_limit
 		uci -q set qos_equipe.guest.enabled=0
 	fi
+}
+guest_l3_device() {
+	dev="$(ubus call network.interface.guest status 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null || true)"
+	[ -n "$dev" ] || dev="$(ubus call network.interface.guest status 2>/dev/null | jsonfilter -e '@.device' 2>/dev/null || true)"
+	valid_net_device "$dev" && printf '%s' "$dev"
+}
+apply_guest_tc_limit() {
+	dev="$(guest_l3_device || true)"
+	[ -n "$dev" ] || { echo 'Interface da rede visitante nao encontrada para aplicar limite.' >&2; return 1; }
+	tc qdisc del dev "$dev" root 2>/dev/null || true
+	tc qdisc del dev "$dev" ingress 2>/dev/null || true
+	[ "$(uci -q get qos_equipe.guest.enabled || printf 0)" = 1 ] || return 0
+	upload="$(uci -q get qos_equipe.guest.upload_kbps || printf 0)"
+	download="$(uci -q get qos_equipe.guest.download_kbps || printf 0)"
+	valid_sqm_rate "$upload" || upload=0
+	valid_sqm_rate "$download" || download=0
+	if [ "$download" -gt 0 ]; then
+		tc qdisc replace dev "$dev" root tbf rate "${download}kbit" burst 64kbit latency 400ms 2>/tmp/ark-guest-tc-download.log || {
+			cat /tmp/ark-guest-tc-download.log >&2
+			return 1
+		}
+	fi
+	if [ "$upload" -gt 0 ]; then
+		tc qdisc add dev "$dev" ingress 2>/dev/null || true
+		tc filter add dev "$dev" parent ffff: protocol ip u32 match ip src 0.0.0.0/0 police rate "${upload}kbit" burst 64kbit drop flowid :1 2>/tmp/ark-guest-tc-upload.log || {
+			cat /tmp/ark-guest-tc-upload.log >&2
+			return 1
+		}
+	fi
+	echo "guest-limit-applied dev=$dev download=${download}kbit upload=${upload}kbit"
 }
 lan_bridge_section() {
 	uci -q show network | awk -F= '/\.name=.br-lan./ { key=$1; sub(/^network\./, "", key); sub(/\.name$/, "", key); print key; exit }'
@@ -1895,6 +1929,7 @@ case "$action" in
 			if [ "$(ez_get guest_limit_enabled 1)" = 1 ]; then ez_apply_guest_limit 1 "$(ez_get guest_upload_kbps 1500)" "$(ez_get guest_download_kbps 0)" || { echo 'Falha ao aplicar limite visitante' >&2; exit 2; }
 			else ez_apply_guest_limit 0 0; fi
 			uci commit qos_equipe
+			apply_guest_tc_limit >/dev/null 2>&1 || true
 			ez_progress 6 qos
 		fi
 		if [ "$(ez_get applied_step 0)" -lt 7 ]; then
@@ -2328,6 +2363,7 @@ case "$action" in
 		uci commit sqm
 		uci commit qos_equipe 2>/dev/null || true
 		/etc/init.d/sqm restart
+		apply_guest_tc_limit >/dev/null 2>&1 || true
 		echo ok
 		;;
 	wan-save)

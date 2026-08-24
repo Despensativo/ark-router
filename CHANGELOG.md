@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.9.30
+
+- Added `tc-full` and `kmod-sched-act-police` as default package dependencies so guest/visitor networks can enforce both download and upload limits.
+- Fixed guest/visitor DHCP firewall handling and prevented ZeroTier firewall preparation from writing an invalid `device='-'` entry.
+- Added runtime application of guest/visitor bandwidth limits through `tc` on the actual guest Wi-Fi interface.
+
 ## 0.9.29
 
 - Added optional ZeroTier remote access integration as a lighter alternative for routers with limited flash/RAM.

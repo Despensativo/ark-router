@@ -82,7 +82,7 @@ EOF
 	--info "url:https://github.com/Despensativo/ark-router" \
 	--info "maintainer:ARK Router contributors" \
 	--info "description:Responsive LuCI dashboard for OpenWrt with ARK setup, Wi-Fi, Multi-WAN, SQM, traffic, ZeroTier and optional Speedify integrations." \
-	--info "depends:luci-base nlbwmon rpcd" \
+	--info "depends:kmod-sched-act-police luci-base nlbwmon rpcd tc-full" \
 	--info "provides:${PKG_NAME}-any" \
 	--info "tags:openwrt:section=luci" \
 	--script "post-install:${post_install}" \

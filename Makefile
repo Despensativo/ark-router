@@ -14,7 +14,7 @@ define Package/luci-app-ark-router
   SUBMENU:=3. Applications
   TITLE:=ARK Router operational dashboard
   PKGARCH:=all
-  DEPENDS:=+luci-base +rpcd +nlbwmon
+  DEPENDS:=+luci-base +rpcd +nlbwmon +tc-full +kmod-sched-act-police
 endef
 
 define Package/luci-app-ark-router/description
