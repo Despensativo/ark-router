@@ -80,6 +80,36 @@ restart_luci() {
 	[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
 }
 
+remove_opposite_profile() {
+	pm="$1"
+	pkg_base="$2"
+	case "$pkg_base" in
+		luci-app-ark-router-full) old_pkg="luci-app-ark-router" ;;
+		luci-app-ark-router) old_pkg="luci-app-ark-router-full" ;;
+		*) return 0 ;;
+	esac
+	case "$pm" in
+		apk) apk info -e "$old_pkg" >/dev/null 2>&1 || return 0 ;;
+		opkg) opkg status "$old_pkg" 2>/dev/null | grep -q '^Status:.* installed' || return 0 ;;
+		*) return 0 ;;
+	esac
+	echo "Switching ARK Router profile: removing old package $old_pkg before installing $pkg_base"
+	backup_dir="$TMP_DIR/ark-router-profile-switch-backup"
+	rm -rf "$backup_dir"
+	mkdir -p "$backup_dir/etc/config"
+	for cfg in equipe_dashboard equipe_devices qos_equipe; do
+		[ -f "/etc/config/$cfg" ] && cp "/etc/config/$cfg" "$backup_dir/etc/config/$cfg" || true
+	done
+	case "$pm" in
+		apk) apk del "$old_pkg" || return 1 ;;
+		opkg) opkg remove "$old_pkg" || return 1 ;;
+	esac
+	for cfg in equipe_dashboard equipe_devices qos_equipe; do
+		[ -f "$backup_dir/etc/config/$cfg" ] && cp "$backup_dir/etc/config/$cfg" "/etc/config/$cfg" || true
+	done
+	rm -rf "$backup_dir"
+}
+
 install_release() {
 	pm="$(manager)"
 	case "$PROFILE" in
@@ -119,8 +149,10 @@ install_release() {
 
 	echo "Installing ARK Router $PROFILE package"
 	if [ "$DRY_RUN" = 1 ]; then
+		echo "DRY_RUN=1: would remove opposite ARK Router profile if installed"
 		echo "DRY_RUN=1: would run: $install_cmd $pkg_file"
 	else
+		remove_opposite_profile "$pm" "$pkg_base" || return 1
 		# shellcheck disable=SC2086
 		$install_cmd "$pkg_file" || return 1
 	fi

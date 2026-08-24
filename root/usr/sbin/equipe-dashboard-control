@@ -1,7 +1,7 @@
 #!/bin/sh
 
 action="$1"
-ARK_ROUTER_VERSION="0.9.32"
+ARK_ROUTER_VERSION="0.9.33"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() { [ "$1" = 1 ] && printf true || printf false; }
@@ -1292,6 +1292,35 @@ ark_update_asset_name() {
 		*) return 1 ;;
 	esac
 }
+ark_remove_opposite_profile() {
+	asset="$1"
+	manager="$2"
+	case "$asset" in
+		*luci-app-ark-router-full*) old_pkg="luci-app-ark-router" ;;
+		*luci-app-ark-router.apk|*luci-app-ark-router.ipk) old_pkg="luci-app-ark-router-full" ;;
+		*) return 0 ;;
+	esac
+	case "$manager" in
+		apk) apk info -e "$old_pkg" >/dev/null 2>&1 || return 0 ;;
+		opkg) opkg status "$old_pkg" 2>/dev/null | grep -q '^Status:.* installed' || return 0 ;;
+		*) return 0 ;;
+	esac
+	echo "Switching ARK Router profile: removing old package $old_pkg before installing $asset"
+	backup_dir="/tmp/ark-router-profile-switch-backup"
+	rm -rf "$backup_dir"
+	mkdir -p "$backup_dir/etc/config"
+	for cfg in equipe_dashboard equipe_devices qos_equipe; do
+		[ -f "/etc/config/$cfg" ] && cp "/etc/config/$cfg" "$backup_dir/etc/config/$cfg" || true
+	done
+	case "$manager" in
+		apk) apk del "$old_pkg" ;;
+		opkg) opkg remove "$old_pkg" ;;
+	esac
+	for cfg in equipe_dashboard equipe_devices qos_equipe; do
+		[ -f "$backup_dir/etc/config/$cfg" ] && cp "$backup_dir/etc/config/$cfg" "/etc/config/$cfg" || true
+	done
+	rm -rf "$backup_dir"
+}
 ark_latest_release() {
 	repo="$(ark_update_repo)"
 	wget -qO- "https://api.github.com/repos/$repo/releases/latest" 2>/dev/null | jsonfilter -e '@.tag_name' 2>/dev/null | head -n 1
@@ -2100,8 +2129,8 @@ case "$action" in
 			echo "Downloading: $url"
 			wget -O "$tmp/$asset" "$url"
 			case "$manager" in
-				apk) apk add --allow-untrusted --force-overwrite "$tmp/$asset" ;;
-				opkg) opkg install "$tmp/$asset" ;;
+				apk) ark_remove_opposite_profile "$asset" "$manager"; apk add --allow-untrusted --force-overwrite "$tmp/$asset" ;;
+				opkg) ark_remove_opposite_profile "$asset" "$manager"; opkg install "$tmp/$asset" ;;
 				*) echo 'Gerenciador de pacotes indisponivel' >&2; exit 3 ;;
 			esac
 			installed_after="$(ark_current_version)"
