@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.21
+
+- Improved the Speedify section wording to show BONDING REAL as the user-facing feature name.
+- The BONDING REAL toggle now offers to install Speedify in the recommended mode when it is not installed yet, preparing WAN1/WAN2 before starting the install flow.
+
 ## 0.9.20
 
 - Fixed clean-install behavior for guest QoS limits by shipping and preserving `/etc/config/qos_equipe`.

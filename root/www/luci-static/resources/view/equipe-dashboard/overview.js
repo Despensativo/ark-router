@@ -862,10 +862,40 @@ return view.extend({
 	},
 	toggleSpeedifyPower: function(input){
 		const desired=input.checked?'1':'0';
+		const f=this.feature('speedify')||{}, storage=f.storage||{}, rec=storage.recommended||'none';
+		if(desired==='1'&&!f.installed){
+			input.checked=false;
+			if(!f.supported){ui.addNotification(null,E('p',{},['Este roteador não suporta Speedify. Requer aarch64 ou x86_64.']),'danger');return;}
+			if(!/^(internal|external|ram)$/.test(rec)){ui.addNotification(null,E('p',{},['Sem espaço suficiente para instalar o BONDING REAL / Speedify agora.']),'danger');return;}
+			const label=rec==='internal'?'interno':(rec==='external'?'externo':'RAM experimental');
+			ui.showModal('Instalar e ativar BONDING REAL',[
+				E('p',{},['O Speedify ainda não está instalado. O ARK Router pode instalar no modo recomendado: '+label+'.']),
+				E('p',{class:'alert-message warning'},['Depois da instalação, ainda pode ser necessário parear/login na conta Speedify Router. Se já estiver pareado, o ARK Router tentará conectar automaticamente.']),
+				E('div',{class:'right'},[
+					E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',
+					E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+						input.disabled=true;
+						return fs.exec('/usr/sbin/equipe-dashboard-control',['speedify-prepare']).then(L.bind(function(r){
+							if(r.code)throw new Error(r.stderr||'Falha ao preparar WANs');
+							return fs.exec('/usr/sbin/equipe-dashboard-control',['speedify-install-mode',rec]);
+						},this)).then(L.bind(function(r){
+							if(r.code)throw new Error(r.stderr||'Falha ao iniciar instalação do Speedify');
+							ui.hideModal();
+							ui.addNotification(null,E('p',{},['Instalação do BONDING REAL iniciada. Ao terminar, o painel tentará atualizar o estado.']));
+							this.pollFeatureInstall('speedify',0);
+						},this)).catch(function(e){
+							input.disabled=false;
+							ui.addNotification(null,E('p',{},[e.message]),'danger');
+						});
+					},this)},['Instalar BONDING REAL'])
+				])
+			]);
+			return;
+		}
 		input.disabled=true;
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['speedify-power',desired]).then(function(r){
 			if(r.code)throw new Error(r.stderr||'Falha ao alterar Speedify');
-			ui.addNotification(null,E('p',{},[desired==='1'?'Speedify conectado.':'Speedify desconectado; a internet volta pelo roteamento normal.']));
+			ui.addNotification(null,E('p',{},[desired==='1'?'BONDING REAL / Speedify conectado.':'BONDING REAL desligado; a internet volta pelo roteamento normal.']));
 			window.setTimeout(function(){window.location.reload();},1800);
 		}).catch(function(e){
 			input.checked=!input.checked;
@@ -893,7 +923,7 @@ return view.extend({
 		];
 		const powerInput=E('input',{type:'checkbox','aria-label':'Ligar Speedify agora','change':L.bind(function(ev){this.toggleSpeedifyPower(ev.currentTarget);},this)});
 		powerInput.checked=state==='CONNECTED'||state==='CONNECTING';
-		if(!installed||!supported)powerInput.disabled=true;
+		if(!supported)powerInput.disabled=true;
 		const autoInput=E('input',{type:'checkbox','aria-label':'Auto recuperar Speedify após reboot','change':L.bind(function(ev){this.toggleSpeedifyAutostart(ev.currentTarget);},this)});
 		autoInput.checked=!!f.autostart;
 		if(!supported)autoInput.disabled=true;
@@ -942,11 +972,11 @@ return view.extend({
 			]),
 			E('div',{class:'ex-speedify-autostart ex-speedify-power'},[
 				E('div',{},[
-					E('strong',{},['Speedify ativo agora']),
+					E('strong',{},['BONDING REAL ativo agora']),
 					E('small',{class:'ex-muted'},[
 						powerInput.checked
 							? 'Ligado. O tráfego sai pelo túnel Speedify quando a rota estiver ativa.'
-							: 'Desligado. A internet usa WAN/Multi‑WAN normal sem túnel Speedify.'
+							: (installed?'Desligado. A internet usa WAN/Multi‑WAN normal sem túnel Speedify.':'Speedify ainda não instalado. Ao ligar, o ARK Router oferece instalar no modo recomendado.')
 					])
 				]),
 				E('div',{class:'ex-device-switch-control'},[
