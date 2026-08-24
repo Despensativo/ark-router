@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ark-router
-PKG_VERSION:=0.9.28
+PKG_VERSION:=0.9.29
 PKG_RELEASE:=1
 PKG_MAINTAINER:=ARK Router contributors
 PKG_LICENSE:=MIT
@@ -14,7 +14,7 @@ define Package/luci-app-ark-router
   SUBMENU:=3. Applications
   TITLE:=ARK Router operational dashboard
   PKGARCH:=all
-  DEPENDS:=+luci-base +rpcd +kmod-tun +nlbwmon
+  DEPENDS:=+luci-base +rpcd +nlbwmon
 endef
 
 define Package/luci-app-ark-router/description

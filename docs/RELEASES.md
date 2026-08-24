@@ -40,9 +40,9 @@ The installer detects the router package manager:
 
 ## Local Build Note
 
-This repository does not contain a generated package binary. A real OpenWrt package must be produced by the matching OpenWrt SDK or buildroot for the target release.
+This repository does not normally commit generated package binaries. For local APK-based testing, run `scripts/build-apk-wsl.sh`; it uses the matching OpenWrt SDK `apk mkpkg` tool to create a `noarch` LuCI package without compiling a full firmware target.
 
-The pilot router uses OpenWrt with APK v3 packages, so a normal `.tar.gz` archive is not a valid installable package. The GitHub workflow uses the official OpenWrt SDK action to build proper package artifacts.
+The pilot router uses OpenWrt with APK v3 packages, so a normal `.tar.gz` archive is not a valid installable package. Release assets must include a real `luci-app-ark-router.apk` package.
 
 ## Tested Baseline
 

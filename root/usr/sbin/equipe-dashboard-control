@@ -1,7 +1,7 @@
 #!/bin/sh
 
 action="$1"
-ARK_ROUTER_VERSION="0.9.28"
+ARK_ROUTER_VERSION="0.9.29"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() { [ "$1" = 1 ] && printf true || printf false; }
@@ -161,6 +161,8 @@ feature_package() {
 		uhttpd) printf luci-app-uhttpd ;;
 		speedtest) printf speedtest-go ;;
 		speedify) printf speedify ;;
+		tailscale) printf tailscale ;;
+		zerotier) printf zerotier ;;
 		*) return 1 ;;
 	esac
 }
@@ -170,7 +172,7 @@ bulk_feature_keys() {
 feature_missing_installable() {
 	key="$1"; package="$(feature_package "$key" 2>/dev/null)" || return 1
 	case "$key" in
-		speedify) return 1 ;;
+		speedify|tailscale|zerotier) return 1 ;;
 		speedtest)
 			feature_active speedtest && return 1
 			tmp_avail="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"; [ -n "$tmp_avail" ] || tmp_avail=0
@@ -808,6 +810,8 @@ feature_active() {
 		custom_qos) [ -s /etc/config/qos_equipe ] ;;
 		speedtest) command -v speedtest-go >/dev/null 2>&1 || [ -x /tmp/ark-speedtest/speedtest-go ] ;;
 		speedify) [ -x /usr/share/speedify/speedify_cli ] || installed speedify ;;
+		tailscale) command -v tailscale >/dev/null 2>&1 ;;
+		zerotier) command -v zerotier-cli >/dev/null 2>&1 ;;
 		*) return 1 ;;
 	esac
 }
@@ -881,6 +885,246 @@ speedify_state_value() {
 	out="$("$cli" -s state 2>/dev/null || true)"
 	state="$(printf '%s' "$out" | jsonfilter -e '@.state' 2>/dev/null || true)"
 	[ -n "$state" ] && printf '%s' "$state" || printf unknown
+}
+tailscale_lan_cidr() {
+	ipaddr="$(uci -q get network.lan.ipaddr || true)"
+	netmask="$(uci -q get network.lan.netmask || printf 255.255.255.0)"
+	[ -n "$ipaddr" ] || return 1
+	if command -v ipcalc.sh >/dev/null 2>&1; then
+		eval "$(ipcalc.sh "$ipaddr" "$netmask" 2>/dev/null)"
+		[ -n "$NETWORK" ] && [ -n "$PREFIX" ] && { printf '%s/%s' "$NETWORK" "$PREFIX"; return 0; }
+	fi
+	case "$netmask" in
+		255.255.255.0) prefix=24 ;;
+		255.255.0.0) prefix=16 ;;
+		255.0.0.0) prefix=8 ;;
+		255.255.255.128) prefix=25 ;;
+		255.255.255.192) prefix=26 ;;
+		255.255.255.224) prefix=27 ;;
+		255.255.255.240) prefix=28 ;;
+		*) prefix=24 ;;
+	esac
+	network="$(printf '%s' "$ipaddr" | awk -F. -v p="$prefix" '{
+		if(p==8) printf "%s.0.0.0",$1;
+		else if(p==16) printf "%s.%s.0.0",$1,$2;
+		else printf "%s.%s.%s.0",$1,$2,$3;
+	}')"
+	printf '%s/%s' "$network" "$prefix"
+}
+tailscale_state_json() {
+	if ! command -v tailscale >/dev/null 2>&1; then
+		printf '{"installed":false,"active":false,"logged_in":false,"ip":"—","hostname":"—","lan_cidr":"%s"}\n' "$(json_escape "$(tailscale_lan_cidr 2>/dev/null || true)")"
+		return 0
+	fi
+	active=false; logged=false; ip=''; hostname=''
+	status="$(tailscale status --json 2>/dev/null || true)"
+	backend="$(printf '%s' "$status" | jsonfilter -e '@.BackendState' 2>/dev/null || true)"
+	ip="$(printf '%s' "$status" | jsonfilter -e '@.Self.TailscaleIPs[0]' 2>/dev/null || true)"
+	hostname="$(printf '%s' "$status" | jsonfilter -e '@.Self.HostName' 2>/dev/null || true)"
+	case "$backend" in Running) active=true; logged=true ;; Stopped|NeedsLogin|NoState|Starting|'') active=false ;; *) active=true ;; esac
+	[ -n "$ip" ] && logged=true
+		printf '{"installed":true,"active":%s,"logged_in":%s,"backend":"%s","ip":"%s","hostname":"%s","lan_cidr":"%s"}\n' \
+		"$active" "$logged" "$(json_escape "$backend")" "$(json_escape "${ip:-—}")" "$(json_escape "${hostname:-—}")" "$(json_escape "$(tailscale_lan_cidr 2>/dev/null || true)")"
+}
+tailscale_firewall_prepare() {
+	zone="$(uci -q show firewall 2>/dev/null | awk -F= "/\\.name='tailscale'/{s=\$1; sub(/^firewall\\./,\"\",s); sub(/\\.name$/, \"\", s); print s; exit}")"
+	if [ -z "$zone" ]; then
+		zone="$(uci -q add firewall zone)"
+		uci -q set "firewall.$zone.name=tailscale"
+	fi
+	uci -q set "firewall.$zone.input=ACCEPT"
+	uci -q set "firewall.$zone.output=ACCEPT"
+	uci -q set "firewall.$zone.forward=ACCEPT"
+	uci -q delete "firewall.$zone.network"
+	uci -q delete "firewall.$zone.device"
+	uci -q add_list "firewall.$zone.device=tailscale0"
+	if ! speedify_firewall_forwarding_exists tailscale lan; then
+		fwd="$(uci -q add firewall forwarding)"
+		uci -q set "firewall.$fwd.src=tailscale"
+		uci -q set "firewall.$fwd.dest=lan"
+	fi
+	uci commit firewall
+	/etc/init.d/firewall restart >/dev/null 2>&1 || true
+}
+tailscale_install() {
+	command -v tailscale >/dev/null 2>&1 && return 0
+	command -v apk >/dev/null 2>&1 || command -v opkg >/dev/null 2>&1 || { echo 'Gerenciador de pacotes indisponivel' >&2; return 3; }
+	if command -v apk >/dev/null 2>&1; then
+		apk update && apk add tailscale
+	else
+		opkg update && opkg install tailscale
+	fi
+	command -v tailscale >/dev/null 2>&1 || { echo 'Tailscale instalado parcialmente ou indisponivel neste firmware.' >&2; return 1; }
+	[ -x /etc/init.d/tailscale ] && { /etc/init.d/tailscale enable >/dev/null 2>&1 || true; /etc/init.d/tailscale start >/dev/null 2>&1 || true; }
+	tailscale_firewall_prepare
+	return 0
+}
+tailscale_up_lan() {
+	command -v tailscale >/dev/null 2>&1 || { echo 'Tailscale nao instalado' >&2; return 3; }
+	[ -x /etc/init.d/tailscale ] && { /etc/init.d/tailscale enable >/dev/null 2>&1 || true; /etc/init.d/tailscale start >/dev/null 2>&1 || true; }
+	tailscale_firewall_prepare
+	cidr="$(tailscale_lan_cidr)" || { echo 'LAN sem IP valido para anunciar rota' >&2; return 3; }
+	tmp="/tmp/ark-tailscale-up.$$"
+	tailscale up --advertise-routes="$cidr" --accept-dns=false >"$tmp" 2>&1 &
+	pid="$!"
+	i=0
+	while kill -0 "$pid" 2>/dev/null; do
+		grep -Eq 'https://(login\.)?tailscale\.com/a/[^[:space:]]+' "$tmp" 2>/dev/null && break
+		[ "$i" -ge 25 ] && break
+		sleep 1
+		i=$((i+1))
+	done
+	if kill -0 "$pid" 2>/dev/null; then
+		kill "$pid" 2>/dev/null || true
+		wait "$pid" 2>/dev/null
+		rc=124
+	else
+		wait "$pid"; rc=$?
+	fi
+	out="$(cat "$tmp" 2>/dev/null || true)"
+	rm -f "$tmp"
+	uci -q set equipe_dashboard.tailscale=feature
+	uci -q set equipe_dashboard.tailscale.lan_cidr="$cidr"
+	uci commit equipe_dashboard
+	url="$(printf '%s' "$out" | grep -Eo 'https://(login\.)?tailscale\.com/a/[^[:space:]]+' | head -n1)"
+	[ "$rc" -eq 0 ] || [ "$rc" -eq 124 ] || [ -n "$url" ] || { printf '%s\n' "$out" >&2; return "$rc"; }
+	printf '{"ok":%s,"lan_cidr":"%s","login_url":"%s","message":"%s"}\n' "$(bool $((rc == 0)))" "$(json_escape "$cidr")" "$(json_escape "$url")" "$(json_escape "$out")"
+}
+tailscale_down() {
+	command -v tailscale >/dev/null 2>&1 || return 0
+	tailscale down
+}
+zerotier_firewall_prepare() {
+	ztdev="$(zerotier-cli listnetworks 2>/dev/null | awk 'NR>1 {print $8; exit}')"
+	[ -n "$ztdev" ] || ztdev='zt+'
+	uci -q delete network.zerotier
+	uci commit network
+	uci -q set firewall.zerotier=zone
+	uci -q set firewall.zerotier.name=zerotier
+	uci -q set firewall.zerotier.input=ACCEPT
+	uci -q set firewall.zerotier.output=ACCEPT
+	uci -q set firewall.zerotier.forward=ACCEPT
+	uci -q delete firewall.zerotier.device
+	uci -q delete firewall.zerotier.network
+	uci -q add_list "firewall.zerotier.device=$ztdev"
+	uci -q set firewall.zt_to_lan=forwarding
+	uci -q set firewall.zt_to_lan.src=zerotier
+	uci -q set firewall.zt_to_lan.dest=lan
+	uci -q set firewall.zt_http=rule
+	uci -q set firewall.zt_http.name='Allow-ZeroTier-ARK-HTTP'
+	uci -q set firewall.zt_http.src=zerotier
+	uci -q set firewall.zt_http.proto=tcp
+	uci -q set firewall.zt_http.dest_port='80 443'
+	uci -q set firewall.zt_http.target=ACCEPT
+	uci commit firewall
+	/etc/init.d/firewall restart >/dev/null 2>&1 || true
+}
+zerotier_current_ip() {
+	zerotier-cli listnetworks 2>/dev/null | awk 'NR>1 {for(i=1;i<=NF;i++) if($i ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\/[0-9]+$/) {split($i,a,"/"); print a[1]; exit}}'
+}
+zerotier_bind_uhttpd() {
+	ztip="$(zerotier_current_ip)"
+	[ -n "$ztip" ] || return 0
+	lan_ip="$(uci -q get network.lan.ipaddr || true)"
+	[ -n "$lan_ip" ] || lan_ip='192.168.1.1'
+	uci -q delete uhttpd.main.listen_http
+	uci -q delete uhttpd.main.listen_https
+	uci -q add_list "uhttpd.main.listen_http=$lan_ip:80"
+	uci -q add_list "uhttpd.main.listen_https=$lan_ip:443"
+	uci -q add_list "uhttpd.main.listen_http=$ztip:80"
+	uci -q add_list "uhttpd.main.listen_https=$ztip:443"
+	uci -q set uhttpd.main.rfc1918_filter=0
+	uci commit uhttpd
+	/etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+}
+zerotier_late_bind_uhttpd() {
+	(
+		for delay in 3 8 15 30; do
+			sleep "$delay"
+			zerotier_firewall_prepare >/dev/null 2>&1 || true
+			zerotier_bind_uhttpd >/dev/null 2>&1 || true
+		done
+	) >/dev/null 2>&1 &
+}
+zerotier_install() {
+	command -v zerotier-cli >/dev/null 2>&1 && return 0
+	command -v apk >/dev/null 2>&1 || command -v opkg >/dev/null 2>&1 || { echo 'Gerenciador de pacotes indisponivel' >&2; return 3; }
+	if command -v apk >/dev/null 2>&1; then
+		apk update && apk add zerotier
+	else
+		opkg update && opkg install zerotier
+	fi
+	command -v zerotier-cli >/dev/null 2>&1 || { echo 'ZeroTier indisponivel neste firmware.' >&2; return 1; }
+}
+zerotier_enable() {
+	zerotier_install || return $?
+	uci -q set zerotier.global.enabled=1
+	uci -q delete zerotier.earth
+	uci commit zerotier
+	zerotier_firewall_prepare
+	[ -x /etc/init.d/zerotier ] && { /etc/init.d/zerotier enable >/dev/null 2>&1 || true; /etc/init.d/zerotier restart >/dev/null 2>&1 || true; }
+}
+valid_zerotier_network_id() { printf '%s' "$1" | grep -Eq '^[0-9a-fA-F]{16}$'; }
+zerotier_join_network() {
+	netid="$1"
+	valid_zerotier_network_id "$netid" || { echo 'Network ID ZeroTier invalido. Use 16 caracteres hexadecimais.' >&2; return 2; }
+	zerotier_enable || return $?
+	uci -q set zerotier.ark=network
+	uci -q set "zerotier.ark.id=$netid"
+	uci -q set zerotier.ark.allow_managed=1
+	uci -q set zerotier.ark.allow_global=0
+	uci -q set zerotier.ark.allow_default=0
+	uci -q set zerotier.ark.allow_dns=0
+	uci commit zerotier
+	[ -x /etc/init.d/zerotier ] && /etc/init.d/zerotier restart >/dev/null 2>&1 || true
+	i=0
+	while [ "$i" -lt 15 ]; do
+		zerotier_current_ip >/dev/null 2>&1 && [ -n "$(zerotier_current_ip)" ] && break
+		sleep 1
+		i=$((i+1))
+	done
+	zerotier_firewall_prepare
+	zerotier_bind_uhttpd
+	zerotier_late_bind_uhttpd
+	out="$(zerotier-cli listnetworks 2>&1 || true)"
+	rc=0
+	uci -q set equipe_dashboard.zerotier=feature
+	uci -q set "equipe_dashboard.zerotier.network_id=$netid"
+	uci commit equipe_dashboard
+	[ "$rc" -eq 0 ] || { printf '%s\n' "$out" >&2; return "$rc"; }
+	printf '{"network_id":"%s","message":"%s"}\n' "$(json_escape "$netid")" "$(json_escape "$out")"
+}
+zerotier_leave_network() {
+	netid="$1"
+	[ -n "$netid" ] || netid="$(uci -q get equipe_dashboard.zerotier.network_id || true)"
+	valid_zerotier_network_id "$netid" || { echo 'Network ID ZeroTier invalido ou ausente.' >&2; return 2; }
+	uci -q delete zerotier.ark
+	uci commit zerotier
+	command -v zerotier-cli >/dev/null 2>&1 && zerotier-cli leave "$netid" >/dev/null 2>&1 || true
+	[ -x /etc/init.d/zerotier ] && /etc/init.d/zerotier restart >/dev/null 2>&1 || true
+	uci -q delete equipe_dashboard.zerotier.network_id
+	uci commit equipe_dashboard
+}
+zerotier_status_json() {
+	if ! command -v zerotier-cli >/dev/null 2>&1; then
+		printf '{"installed":false,"active":false,"online":false,"node_id":"—","network_id":"","network_status":"—","ip":"—"}\n'
+		return 0
+	fi
+	info="$(zerotier-cli info 2>/dev/null || true)"
+	node="$(printf '%s' "$info" | awk '{print $3}')"
+	online=false; printf '%s' "$info" | grep -q 'ONLINE' && online=true
+	active=false; pidof zerotier-one >/dev/null 2>&1 && active=true
+	netid="$(uci -q get equipe_dashboard.zerotier.network_id || true)"
+	line=''
+	[ -n "$netid" ] && line="$(zerotier-cli listnetworks 2>/dev/null | awk -v n="$netid" '$3==n {print; exit}')"
+	[ -z "$line" ] && line="$(zerotier-cli listnetworks 2>/dev/null | awk 'NR>1 {print; exit}')"
+	[ -n "$line" ] && {
+		netid="$(printf '%s' "$line" | awk '{print $3}')"
+		nstatus="$(printf '%s' "$line" | awk '{for(i=1;i<=NF;i++) if($i=="OK"||$i=="ACCESS_DENIED"||$i=="NOT_FOUND"||$i=="REQUESTING_CONFIGURATION"||$i=="PORT_ERROR") {print $i; exit}}')"
+		ip="$(printf '%s' "$line" | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]+' | head -n1)"
+	} || { nstatus='—'; ip='—'; }
+	printf '{"installed":true,"active":%s,"online":%s,"node_id":"%s","network_id":"%s","network_status":"%s","ip":"%s","lan_cidr":"%s"}\n' \
+		"$active" "$online" "$(json_escape "${node:-—}")" "$(json_escape "$netid")" "$(json_escape "$nstatus")" "$(json_escape "${ip:-—}")" "$(json_escape "$(tailscale_lan_cidr 2>/dev/null || true)")"
 }
 speedtest_history_file() {
 	case "$1" in wan|wan2) ;; *) return 1 ;; esac
@@ -1395,6 +1639,37 @@ feature_json() {
 		printf '}'
 		return 0
 	fi
+	if [ "$key" = tailscale ]; then
+		installed_ts=false; command -v tailscale >/dev/null 2>&1 && installed_ts=true
+		active_ts=false; logged_ts=false; backend=''; ip=''; hostname=''
+		if $installed_ts; then
+			status="$(tailscale status --json 2>/dev/null || true)"
+			backend="$(printf '%s' "$status" | jsonfilter -e '@.BackendState' 2>/dev/null || true)"
+			ip="$(printf '%s' "$status" | jsonfilter -e '@.Self.TailscaleIPs[0]' 2>/dev/null || true)"
+			hostname="$(printf '%s' "$status" | jsonfilter -e '@.Self.HostName' 2>/dev/null || true)"
+			case "$backend" in Running) active_ts=true; logged_ts=true ;; Starting) active_ts=true ;; esac
+			[ -n "$ip" ] && logged_ts=true
+		fi
+		hidden "$key"; concealed=$?
+		route="$(tailscale_lan_cidr 2>/dev/null || true)"
+		printf '"tailscale":{"installed":%s,"active":%s,"hidden":%s,"installable":true,"package":"tailscale","logged_in":%s,"backend":"%s","ip":"%s","hostname":"%s","lan_cidr":"%s"}' \
+			"$installed_ts" "$active_ts" "$(bool $((concealed == 0)))" "$logged_ts" "$(json_escape "$backend")" "$(json_escape "${ip:-—}")" "$(json_escape "${hostname:-—}")" "$(json_escape "$route")"
+		return 0
+	fi
+	if [ "$key" = zerotier ]; then
+		hidden "$key"; concealed=$?
+		state="$(zerotier_status_json 2>/dev/null || printf '{}')"
+		installed_zt=false; command -v zerotier-cli >/dev/null 2>&1 && installed_zt=true
+		active_zt=false; pidof zerotier-one >/dev/null 2>&1 && active_zt=true
+		node="$(printf '%s' "$state" | jsonfilter -e '@.node_id' 2>/dev/null || true)"
+		netid="$(printf '%s' "$state" | jsonfilter -e '@.network_id' 2>/dev/null || true)"
+		nstatus="$(printf '%s' "$state" | jsonfilter -e '@.network_status' 2>/dev/null || true)"
+		ip="$(printf '%s' "$state" | jsonfilter -e '@.ip' 2>/dev/null || true)"
+		lan_cidr="$(printf '%s' "$state" | jsonfilter -e '@.lan_cidr' 2>/dev/null || tailscale_lan_cidr 2>/dev/null || true)"
+		printf '"zerotier":{"installed":%s,"active":%s,"hidden":%s,"installable":true,"package":"zerotier","node_id":"%s","network_id":"%s","network_status":"%s","ip":"%s","lan_cidr":"%s"}' \
+			"$installed_zt" "$active_zt" "$(bool $((concealed == 0)))" "$(json_escape "${node:-—}")" "$(json_escape "$netid")" "$(json_escape "${nstatus:-—}")" "$(json_escape "${ip:-—}")" "$(json_escape "$lan_cidr")"
+		return 0
+	fi
 	if [ -n "$package" ]; then installed "$package"; present=$?; else feature_active "$key"; present=$?; fi
 	feature_active "$key"; enabled=$?
 	hidden "$key"; concealed=$?
@@ -1693,7 +1968,9 @@ case "$action" in
 		feature_json history '' false; printf ','
 		feature_json temperature '' false; printf ','
 		feature_json custom_qos '' false; printf ','
-		feature_json speedify speedify true
+		feature_json speedify speedify true; printf ','
+		feature_json tailscale tailscale true; printf ','
+		feature_json zerotier zerotier true
 		printf ','; feature_json speedtest speedtest-go "$speedtest_installable"
 		current_version="$(ark_current_version)"
 		update_repo="$(ark_update_repo)"
@@ -1730,10 +2007,17 @@ case "$action" in
 			echo "Downloading: $url"
 			wget -O "$tmp/$asset" "$url"
 			case "$manager" in
-				apk) apk add --allow-untrusted "$tmp/$asset" ;;
+				apk) apk add --allow-untrusted --force-overwrite "$tmp/$asset" ;;
 				opkg) opkg install "$tmp/$asset" ;;
 				*) echo 'Gerenciador de pacotes indisponivel' >&2; exit 3 ;;
 			esac
+			installed_after="$(ark_current_version)"
+			echo "Installed version after update: $installed_after"
+			if version_gt "$latest" "$installed_after"; then
+				echo "Atualizacao baixada, mas a versao instalada continua antiga ($installed_after < $latest)." >&2
+				echo "Isso normalmente indica asset de release antigo/incompleto ou pacote rejeitado pelo gerenciador." >&2
+				exit 4
+			fi
 			rm -f /tmp/luci-indexcache
 			rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 			[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
@@ -1814,6 +2098,7 @@ case "$action" in
 		status="/tmp/equipe-dashboard-install-$key.status"; log="/tmp/equipe-dashboard-install-$key.log"
 		if [ "$key" = speedtest ]; then feature_active "$key" && { echo done >"$status"; echo installed; exit 0; }
 		elif [ "$key" = speedify ]; then feature_active "$key" && { echo done >"$status"; echo installed; exit 0; }
+		elif [ "$key" = tailscale ]; then feature_active "$key" && { echo done >"$status"; echo installed; exit 0; }
 		else installed "$package" && { echo done >"$status"; echo installed; exit 0; }; fi
 		[ "$(cat "$status" 2>/dev/null)" != running ] || { echo running; exit 0; }
 		command -v apk >/dev/null 2>&1 || command -v opkg >/dev/null 2>&1 || { echo 'Gerenciador de pacotes indisponivel' >&2; exit 3; }
@@ -1821,6 +2106,8 @@ case "$action" in
 	(
 		if [ "$key" = speedtest ]; then prepare_speedtest
 		elif [ "$key" = speedify ]; then install_speedify_official
+		elif [ "$key" = tailscale ]; then tailscale_install
+		elif [ "$key" = zerotier ]; then zerotier_enable
 		elif [ "$key" = argon ] && command -v apk >/dev/null 2>&1 && ! apk search luci-theme-argon 2>/dev/null | grep -qx 'luci-theme-argon.*'; then install_argon_release
 		elif command -v apk >/dev/null 2>&1; then apk update && apk add "$package"
 		else opkg update && opkg install "$package"
@@ -2232,6 +2519,24 @@ case "$action" in
 	speedify)
 		speedify_cli_action "$2"
 		;;
+	tailscale-status)
+		tailscale_state_json
+		;;
+	tailscale-up)
+		tailscale_up_lan
+		;;
+	tailscale-down)
+		tailscale_down
+		;;
+	zerotier-status)
+		zerotier_status_json
+		;;
+	zerotier-join)
+		zerotier_join_network "$2"
+		;;
+	zerotier-leave)
+		zerotier_leave_network "$2"
+		;;
 	rename)
 		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"
 		name="$3"
@@ -2476,7 +2781,7 @@ case "$action" in
 		echo 'ok'
 		;;
 	*)
-		echo 'Uso: equipe-dashboard-control {features|cleanup-status|cleanup-apply ITEM...|ipv6-disable-full|profile [standard|gamer]|self-update-check|self-update-start|self-update-status|self-update-log|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|ez-setup-install-modules|ez-setup-install-status|ez-setup-install-log|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|feature-install-missing|feature-install-missing-status|feature-install-missing-log|theme argon|speedify-power 0|1|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|sqm-toggle 0|1|sqm-save chave=valor...|wan-save chave=valor...|lan-status|lan-save chave=valor...|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE [DSCP]|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|wifi-width 20|40 80|160|country ISO2}' >&2
+		echo 'Uso: equipe-dashboard-control {features|cleanup-status|cleanup-apply ITEM...|ipv6-disable-full|profile [standard|gamer]|self-update-check|self-update-start|self-update-status|self-update-log|ez-setup-status|ez-setup-save chave=valor...|ez-setup-apply|ez-setup-reset|ez-setup-install-modules|ez-setup-install-status|ez-setup-install-log|language IDIOMA|title NOME|appearance MODO [PRIMARIA SECUNDARIA]|https-redirect 0|1|feature-hide RECURSO 0|1|feature-install RECURSO|feature-install-status RECURSO|feature-install-log RECURSO|feature-install-missing|feature-install-missing-status|feature-install-missing-log|theme argon|speedify-power 0|1|tailscale-status|tailscale-up|tailscale-down|speedtest-start WAN|speedtest-status WAN|speedtest-result WAN|speedtest-apply WAN KBPS|sqm-toggle 0|1|sqm-save chave=valor...|wan-save chave=valor...|lan-status|lan-save chave=valor...|mwan MODO|rename MAC NOME|device-status MAC|device-save MAC NOME MODO IP PRIORIDADE [DSCP]|reboot-prepare|reboot-confirm TOKEN|wifi REDE SENHA|channels MODO [2G 5G]|wifi-width 20|40 80|160|country ISO2}' >&2
 		exit 2
 		;;
 esac

@@ -6,7 +6,7 @@ ARK Router is distributed as an OpenWrt LuCI package. It should be built with th
 
 - OpenWrt with LuCI.
 - `rpcd`.
-- `kmod-tun` for Speedify/VPN tunnel support. Release package installs pull it as a dependency when the package manager can resolve it.
+- `kmod-tun` for Speedify/VPN tunnel support. It is optional for the dashboard itself and is installed/verified only when Speedify/VPN tunneling is used.
 - `nlbwmon` for per-device traffic accounting. Release package installs pull it as a dependency when the package manager can resolve it.
 - `iwinfo` is recommended for Wi-Fi intelligence features, but it is not a hard package dependency.
 - BusyBox `ash`.
@@ -46,16 +46,17 @@ ARK Router is not installed with an `.iso`. The router downloads or receives a p
 See [`RELEASES.md`](RELEASES.md) for the GitHub Actions release flow.
 Maintainers should also read [`PUBLISHING.md`](PUBLISHING.md) before publishing a new GitHub Release.
 
-## Build With OpenWrt SDK
+## Build Local APK With OpenWrt SDK
 
-Copy this package into a package feed, refresh feeds if needed, then select it under LuCI applications.
+ARK Router is a LuCI/files package, so the local tested path uses the OpenWrt SDK `apk mkpkg` tool and does not compile firmware or kernel modules.
 
 ```sh
-make menuconfig
-make package/luci-app-ark-router/compile V=s
+scripts/build-apk-wsl.sh
 ```
 
-For normal public distribution, prefer the repository GitHub Actions workflow instead of building manually on a desktop. The workflow builds the package with the OpenWrt SDK when a `v*` tag is pushed and attaches the resulting package assets to the GitHub Release.
+The script creates `dist/sdk/luci-app-ark-router.apk` and a versioned APK. It uses `scripts/build-apk-manual-wsl.sh` internally and requires the matching OpenWrt SDK only for the `apk` packaging tool/signing key.
+
+For normal public distribution, prefer the repository GitHub Actions workflow instead of building manually on a desktop. The workflow should attach the generated package assets to the GitHub Release.
 
 ## Install On The Router
 
@@ -113,6 +114,20 @@ The dashboard can help apply common actions, but it is intentionally not a blind
 Optional cards appear when the corresponding module is available. The dashboard can suggest supported optional packages, but every installation requires confirmation.
 
 When a supported module is already installed, Ark - Setup and the feature center show it as installed instead of offering a checkbox to install it again.
+
+### Optional Tailscale remote access
+
+Use **ARK Router → Recursos → Tailscale remoto** when remote administration is needed from iOS, Windows or another network.
+
+The flow is:
+
+1. Install Tailscale from the dashboard.
+2. Click **Parear / anunciar LAN**.
+3. Open the generated login URL.
+4. Approve the router in Tailscale.
+5. Approve the advertised subnet route in the Tailscale admin panel.
+
+ARK Router does not open LuCI or SSH on the WAN. It advertises the current LAN subnet through Tailscale so administrators can access the router LAN over the private Tailscale network.
 
 OpenWrt `luci-i18n-*` language packages are optional. ARK Router ships an English fallback and uses its own selected runtime language, so the dashboard does not depend on LuCI translation packages. On space-constrained routers, keeping only the selected ARK language plus English is the recommended model; original LuCI module pages may remain in English when their `luci-i18n-*` packages are not installed.
 

@@ -2,7 +2,16 @@
 
 ## Unreleased
 
-- No unreleased changes yet.
+## 0.9.29
+
+- Added optional ZeroTier remote access integration as a lighter alternative for routers with limited flash/RAM.
+- ZeroTier support can install/enable the service, join/leave a Network ID, show node/network/IP status and open the ARK Router directly through the ZeroTier IP.
+- Fixed ZeroTier firewall/uHTTPd preparation to avoid creating a conflicting OpenWrt network interface and to keep the virtual IP assigned by ZeroTier itself.
+- Removed Tailscale from the visible dashboard flow so the lightweight remote-access path focuses on ZeroTier.
+- Improved visual spacing and per-section color accents in the dashboard, independent of the active LuCI theme.
+- Fixed the Wi-Fi channel-width action button contrast on dark/default themes.
+- Self-update now validates the installed version after package installation and reports an explicit error if the release asset does not actually advance the router version.
+- Added a local WSL/OpenWrt SDK APK builder that uses `apk mkpkg` to generate the `noarch` LuCI package directly, avoiding full firmware/kernel-module compilation for ARK Router.
 
 ## 0.9.28
 
@@ -71,7 +80,7 @@
 
 - Made the one-line installer default to `auto`: it tries the Release package first and falls back to source install if the router package database cannot resolve dependencies while offline.
 - Removed `iwinfo` as a hard package dependency. ARK Router still uses `iwinfo` when available, but package installation no longer fails on images where the binary exists without an APK database record.
-- Added `kmod-tun` as an APK package dependency because Speedify/VPN tunneling needs `/dev/net/tun`; source installs still verify it at runtime.
+- Kept `kmod-tun` as a Speedify/VPN runtime requirement, but removed it from the mandatory ARK Router package dependency list so the dashboard APK stays lightweight and does not force kernel module builds on every target.
 - Added `nlbwmon` as an APK package dependency so ARK Router can expose per-device live and accumulated traffic by default.
 - Fixed Speedify RAM/external runtime setup to reuse `/tmp/ark-speedify-cache/speedify.apk` instead of deleting a preloaded package before download.
 - Added `kmod-tun`/`/dev/net/tun` verification before starting the reduced Speedify runtime.

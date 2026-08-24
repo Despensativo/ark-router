@@ -11,63 +11,47 @@ permissions:
 
 jobs:
   build:
-    name: Build package
+    name: Build APK package
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: aarch64_cortex-a53
-            artifact_name: openwrt-aarch64-cortex-a53
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare OpenWrt feed layout
+      - name: Install host tools
         shell: bash
         run: |
-          mkdir -p .openwrt-feed/luci-app-ark-router
-          rsync -a \
-            --exclude '.git' \
-            --exclude '.openwrt-feed' \
-            ./ .openwrt-feed/luci-app-ark-router/
+          sudo apt-get update
+          sudo apt-get install -y zstd
 
-      - name: Build with OpenWrt SDK
-        uses: openwrt/gh-action-sdk@main
+      - name: Build APK with OpenWrt SDK packaging tool
+        shell: bash
         env:
-          ARCH: ${{ matrix.arch }}
-          PACKAGES: luci-app-ark-router
-          FEED_DIR: ${{ github.workspace }}/.openwrt-feed
-          V: s
+          SRC_DIR: ${{ github.workspace }}
+          WORK_ROOT: ${{ github.workspace }}/.openwrt-build
+          SDK_LINK: ${{ github.workspace }}/.openwrt-sdk-filogic
+        run: |
+          chmod +x scripts/build-apk-wsl.sh scripts/build-apk-manual-wsl.sh
+          scripts/build-apk-wsl.sh
 
       - name: Collect package artifacts
         shell: bash
         run: |
           mkdir -p release-artifacts
-          ark_apk="$(find bin/packages -type f -name 'luci-app-ark-router-*.apk' | head -n1 || true)"
-          ark_ipk="$(find bin/packages -type f -name 'luci-app-ark-router_*.ipk' | head -n1 || true)"
-          if [ -n "$ark_apk" ]; then
-            cp "$ark_apk" release-artifacts/
-            cp "$ark_apk" release-artifacts/luci-app-ark-router.apk
-          fi
-          if [ -n "$ark_ipk" ]; then
-            cp "$ark_ipk" release-artifacts/
-            cp "$ark_ipk" release-artifacts/luci-app-ark-router.ipk
-          fi
-          if [ -z "$ark_apk" ] && [ -z "$ark_ipk" ]; then
+          ark_apk="$(find dist/sdk -type f -name 'luci-app-ark-router-*.apk' | head -n1 || true)"
+          if [ -z "$ark_apk" ]; then
             echo "ARK Router package artifact was not found." >&2
-            find bin/packages -type f \( -name '*.apk' -o -name '*.ipk' \) -print >&2
+            find dist -type f -print >&2 || true
             exit 1
           fi
-          if [ -f logs/package/luci-app-ark-router/compile.txt ]; then
-            cp logs/package/luci-app-ark-router/compile.txt "release-artifacts/build-log-${{ matrix.artifact_name }}.txt"
-          fi
+          cp "$ark_apk" release-artifacts/
+          cp dist/sdk/luci-app-ark-router.apk release-artifacts/luci-app-ark-router.apk
+          ls -lh release-artifacts
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ark-router-${{ matrix.artifact_name }}
+          name: ark-router-openwrt-apk
           path: release-artifacts/*
           if-no-files-found: error
 

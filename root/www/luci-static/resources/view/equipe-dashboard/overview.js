@@ -70,6 +70,7 @@ const FEATURE_META={
 	custom_qos:{name:'Limites personalizados',description:'Integra as regras específicas de prioridade e visitantes.'}
 	,speedtest:{name:'Teste e calibração',description:'Mede cada WAN e sugere limites seguros para o SQM.'}
 	,speedify:{name:'Speedify Bonding',description:'Integra o Speedify para somar links de internet de verdade usando licença Speedify Router.',recommended:true}
+	,zerotier:{name:'ZeroTier remoto leve',description:'Acesso remoto leve por rede virtual. Melhor para roteadores com pouca flash/RAM.',recommended:true}
 };
 function installDashboardNotifications(){
 	if(ui._arkNotificationOriginal)return;
@@ -997,6 +998,82 @@ return view.extend({
 		if(key!=='argon')return;
 		ui.showModal('Usar tema',[E('p',{},['Tema Argon']),E('p',{class:'alert-message warning'},['O tema visual do LuCI será alterado. As configurações de rede não serão modificadas.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['theme',key]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao selecionar o tema');ui.hideModal();window.location.reload();}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]));});},this)},['Usar tema'])])]);
 	},
+	pairTailscale: function(){
+		const f=this.feature('tailscale')||{};
+		if(!f.installed){this.installFeature('tailscale');return;}
+		ui.showModal('Parear Tailscale',[E('p',{},['Preparando Tailscale e anunciando a rede LAN atual…'])]);
+		return fs.exec('/usr/sbin/equipe-dashboard-control',['tailscale-up']).then(function(r){
+			if(r.code)throw new Error(r.stderr||'Falha ao iniciar Tailscale');
+			let data={};try{data=JSON.parse(r.stdout||'{}');}catch(e){}
+			const url=data.login_url||'', cidr=data.lan_cidr||f.lan_cidr||'—';
+			ui.showModal('Parear Tailscale',[
+				E('p',{},['Rota LAN anunciada: ',E('strong',{},[cidr])]),
+				url?E('p',{},['Abra o link abaixo, faça login e autorize este roteador:']):E('p',{},['Tailscale respondeu sem pedir novo login. Se a rota ainda não aparecer nos dispositivos, aprove a Subnet Route no painel Tailscale.']),
+				url?E('p',{},[E('a',{class:'ex-text-link',href:url,target:'_blank',rel:'noopener noreferrer'},[url])]):'',
+				E('p',{class:'alert-message warning'},['No painel Tailscale, aprove a rota anunciada para acessar IPs da LAN de fora. Não abra LuCI/SSH direto na WAN.']),
+				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar']),' ',url?E('button',{class:'btn cbi-button cbi-button-positive','click':function(){window.open(url,'_blank','noopener');}},['Abrir login']):''])
+			]);
+		}).catch(function(e){ui.showModal('Parear Tailscale',[E('p',{class:'alert-message warning'},[e.message]),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])]);});
+	},
+	disconnectTailscale: function(){
+		ui.showModal('Desligar Tailscale',[E('p',{},['Desligar o Tailscale neste roteador? O acesso remoto pela VPN vai parar, mas a configuração/login local permanecem.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-negative','click':function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['tailscale-down']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao desligar Tailscale');ui.hideModal();reloadSoon('Tailscale desligado. Recarregando…',1200);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});}},['Desligar'])])]);
+	},
+	tailscaleCard: function(){
+		const f=this.feature('tailscale')||{}, installed=!!f.installed, active=!!f.active, logged=!!f.logged_in;
+		return E('section',{class:'ex-card ex-remote-card'},[
+			E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['ACESSO REMOTO SEGURO']),E('h3',{},['Tailscale'])]),E('span',{class:'ex-pill '+(active?'online':(installed?'standby':'offline'))},[active?'ATIVO':(installed?'INSTALADO':'OPCIONAL')])]),
+			E('p',{class:'ex-muted'},['Acesso remoto gratuito para uso pessoal, sem abrir portas na WAN. Ideal para iPhone, Windows e redes com Starlink/CGNAT.']),
+			E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},[
+				E('div',{class:'ex-row'},[E('span',{},['Login']),E('strong',{},[logged?'Logado':'Não logado'])]),
+				E('div',{class:'ex-row'},[E('span',{},['IP Tailscale']),E('strong',{},[f.ip||'—'])]),
+				E('div',{class:'ex-row'},[E('span',{},['Rota LAN']),E('strong',{},[f.lan_cidr||'—'])])
+			]),
+			E('div',{class:'ex-speedify-actions'},[
+				installed?'':E('button',{class:'ex-mini-button','click':L.bind(this.installFeature,this,'tailscale')},['Instalar Tailscale']),
+				E('button',{class:'ex-mini-button','click':L.bind(this.pairTailscale,this)},[installed?'Parear / anunciar LAN':'Instalar e parear']),
+				installed?E('button',{class:'ex-feature-link','click':L.bind(this.disconnectTailscale,this)},['Desligar']):'',
+				E('a',{class:'ex-text-link',href:'https://login.tailscale.com/admin/machines',target:'_blank',rel:'noopener noreferrer'},['Painel Tailscale →'])
+			]),
+			E('small',{class:'ex-muted'},['Depois do pareamento, aprove a Subnet Route no painel Tailscale. Use faixas LAN diferentes em cada roteador para evitar conflito.'])
+		]);
+	},
+	joinZerotier: function(){
+		const f=this.feature('zerotier')||{}, current=f.network_id||'';
+		const input=E('input',{class:'cbi-input-text',type:'text',value:current,placeholder:'ex.: 8056c2e21c000001',maxlength:16});
+		ui.showModal('Entrar na rede ZeroTier',[
+			E('p',{},['Cole o Network ID criado no ZeroTier Central. O roteador será autorizado no painel online do ZeroTier depois do join.']),
+			E('p',{class:'alert-message warning'},['No plano grátis atual, use o IP ZeroTier para acessar o roteador. Rotas gerenciadas para a LAN inteira podem exigir plano pago.']),
+			E('label',{class:'ex-field'},[E('span',{},['Network ID']),input]),
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+				const id=String(input.value||'').trim();
+				return fs.exec('/usr/sbin/equipe-dashboard-control',['zerotier-join',id]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao entrar na rede ZeroTier');ui.hideModal();reloadSoon('ZeroTier configurado. Autorize o roteador no ZeroTier Central…',1600);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});
+			},this)},['Entrar'])])
+		]);
+	},
+	leaveZerotier: function(){
+		const f=this.feature('zerotier')||{}, id=f.network_id||'';
+		ui.showModal('Sair da rede ZeroTier',[E('p',{},['Remover este roteador da rede ZeroTier atual?']),E('p',{class:'ex-muted'},[id||'Nenhuma rede detectada.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-negative','click':function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['zerotier-leave',id]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao sair da rede');ui.hideModal();reloadSoon('ZeroTier removido da rede. Recarregando…',1200);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});}},['Sair'])])]);
+	},
+	zerotierCard: function(){
+		const f=this.feature('zerotier')||{}, installed=!!f.installed, active=!!f.active;
+		return E('section',{class:'ex-card ex-remote-card'},[
+			E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['ACESSO REMOTO LEVE']),E('h3',{},['ZeroTier'])]),E('span',{class:'ex-pill '+(active?'online':(installed?'standby':'offline'))},[active?'ATIVO':(installed?'INSTALADO':'OPCIONAL')])]),
+			E('p',{class:'ex-muted'},['Acesso remoto leve para iOS e Windows sem abrir portas na WAN. Use o IP ZeroTier abaixo para abrir o ARK Router remotamente.']),
+			E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},[
+				E('div',{class:'ex-row'},[E('span',{},['Node ID']),E('strong',{},[f.node_id||'—'])]),
+				E('div',{class:'ex-row'},[E('span',{},['Network ID']),E('strong',{},[f.network_id||'—'])]),
+				E('div',{class:'ex-row'},[E('span',{},['IP ZeroTier']),E('strong',{},[(f.ip||'—').replace(/\/.*$/,'')])])
+			]),
+			E('div',{class:'ex-speedify-actions'},[
+				installed?'':E('button',{class:'ex-mini-button','click':L.bind(this.installFeature,this,'zerotier')},['Instalar ZeroTier']),
+				E('button',{class:'ex-mini-button','click':L.bind(this.joinZerotier,this)},[installed?'Entrar / trocar rede':'Instalar e configurar']),
+				(f.ip&&f.ip!=='—')?E('a',{class:'ex-mini-button',href:'http://'+String(f.ip).replace(/\/.*$/,''),target:'_blank',rel:'noopener noreferrer'},['Abrir ARK remoto']):'',
+				installed?E('button',{class:'ex-feature-link','click':L.bind(this.leaveZerotier,this)},['Sair da rede']):'',
+				E('a',{class:'ex-text-link',href:'https://my.zerotier.com/network',target:'_blank',rel:'noopener noreferrer'},['ZeroTier Central →'])
+			]),
+			E('small',{class:'ex-muted'},['Depois de entrar, autorize o roteador no ZeroTier Central. Se o IP aparecer, o ARK Router também libera HTTP/HTTPS nesse IP automaticamente.'])
+		]);
+	},
 	prepareSpeedifyWans: function(){
 		ui.showModal('Preparar WANs para Speedify',[
 			E('p',{},['Essa ação cria backup, ajusta métricas de WAN1/WAN2 e garante que as duas interfaces estejam na zona de firewall WAN. Se WAN2 ainda não existir e o roteador tiver portas LAN suficientes, a LAN1 será convertida em WAN2 DHCP automaticamente.']),
@@ -1550,6 +1627,7 @@ return view.extend({
 					E('div',{class:'ex-mwan-editor-body'},[E('p',{class:'ex-muted'},['Escolha um modo abaixo. Depois do clique, ainda será necessário confirmar antes que qualquer alteração seja aplicada.']),E('div',{class:'ex-mode-grid'},[modeButton('failover','Failover'),modeButton('balanced','Balancear'),modeButton('wan1','Só WAN1'),modeButton('wan2','Só WAN2')]),E('small',{class:'ex-muted'},['Balanceamento distribui conexões entre os links; não soma a velocidade de um único envio.'])])
 				])
 			]),
+			this.zerotierCard(),
 			this.speedifyCard(),
 			E('section',{class:'ex-shortcuts'},[E('a',{'data-feature':'mwan3',href:L.url('admin/status/mwan3/overview')},[E('b',{},['⇄']),E('span',{},['MultiWAN',E('small',{},['estado detalhado'])])]),E('a',{'data-feature':'nlbwmon',href:L.url('admin/services/nlbw/display')},[E('b',{},['▥']),E('span',{},['Consumo',E('small',{},['histórico completo'])])]),E('a',{href:L.url('admin/status/realtime/bandwidth')},[E('b',{},['⌁']),E('span',{},['Gráficos',E('small',{},['interfaces em tempo real'])])]),E('a',{href:L.url('admin/network/dhcp')},[E('b',{},['⌘']),E('span',{},['IPs fixos',E('small',{},['reservas DHCP'])])])]),
 			E('section',{class:'ex-card ex-reboot-card'},[E('div',{},[E('span',{class:'ex-kicker'},['SISTEMA']),E('h3',{},['Reiniciar o roteador']),E('p',{class:'ex-muted'},['Interrompe a internet por alguns minutos e encerra as sessões abertas.'])]),E('button',{class:'ex-reboot-button','click':L.bind(function(){this.requestReboot();},this)},['Reiniciar…'])])
@@ -1562,7 +1640,7 @@ return view.extend({
 		if(!this.feature('speedtest').installed){const s=root.querySelector('.ex-speedtest-card');if(s)s.remove();}
 		if(!this.feature('mwan3').installed){const m=root.querySelector('.ex-mwan-control'),s=root.querySelector('[data-feature="mwan3"]');if(m)m.remove();if(s)s.remove();}
 		if(!this.feature('nlbwmon').installed){const s=root.querySelector('[data-feature="nlbwmon"]');if(s)s.remove();const note=root.querySelector('.ex-table-note');if(note)note.textContent='O monitor de consumo não está instalado; a lista de dispositivos continua disponível, sem velocidade individual.';}
-		const missing=['argon','speedify','uhttpd','sqm','mwan3','nlbwmon','upnp','speedtest'].filter(L.bind(function(k){const f=this.feature(k), fastFallback=k==='speedtest'&&f.storage&&f.storage.recommended==='fast_manual';return !f.installed&&!f.hidden&&(f.installable||fastFallback||k==='speedtest');},this));if(missing.length){const anchor=root.querySelector('.ex-devices');root.insertBefore(this.featureSuggestionCard(missing),anchor);}
+		const missing=['argon','zerotier','speedify','uhttpd','sqm','mwan3','nlbwmon','upnp','speedtest'].filter(L.bind(function(k){const f=this.feature(k), fastFallback=k==='speedtest'&&f.storage&&f.storage.recommended==='fast_manual';return !f.installed&&!f.hidden&&(f.installable||fastFallback||k==='speedtest');},this));if(missing.length){const anchor=root.querySelector('.ex-devices');root.insertBefore(this.featureSuggestionCard(missing),anchor);}
 		translateTree(root);
 		this.dashboardRoot=root;
 		const deviceDetails=root.querySelector('#ex-device-details');
