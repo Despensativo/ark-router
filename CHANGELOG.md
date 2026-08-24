@@ -1,7 +1,23 @@
 # Changelog
 
-## 0.9.18
+## 0.9.20
 
+- Fixed clean-install behavior for guest QoS limits by shipping and preserving `/etc/config/qos_equipe`.
+- Hardened `sqm-save` and Ark Setup guest-limit writes so they create `qos_equipe` when missing.
+- Validated local clean reinstall on Cudy WR3000 v1 / OpenWrt 25.12.5 without resetting LAN/WAN access.
+- Fixed SQM/CAKE advanced option persistence by writing `eqdisc_opts`/`iqdisc_opts`, so CAKE actually starts with `diffserv4`, NAT awareness and `ack-filter`.
+- Normalized Multi-WAN setup on clean installs by removing inherited `wanb`/IPv6 defaults and rebuilding ARK policies with proper UCI list values.
+
+## 0.9.19
+
+- Made the one-line installer default to `auto`: it tries the Release package first and falls back to source install if the router package database cannot resolve dependencies while offline.
+- Removed `iwinfo` as a hard package dependency. ARK Router still uses `iwinfo` when available, but package installation no longer fails on images where the binary exists without an APK database record.
+- Added `kmod-tun` as an APK package dependency because Speedify/VPN tunneling needs `/dev/net/tun`; source installs still verify it at runtime.
+- Added `nlbwmon` as an APK package dependency so ARK Router can expose per-device live and accumulated traffic by default.
+- Fixed Speedify RAM/external runtime setup to reuse `/tmp/ark-speedify-cache/speedify.apk` instead of deleting a preloaded package before download.
+- Added `kmod-tun`/`/dev/net/tun` verification before starting the reduced Speedify runtime.
+- Reinforced the Speedify firewall zone with NAT masquerading and MTU fix every time the runtime network is prepared.
+- Made Speedify tunnel preparation re-check the active `connectify*` device after daemon start, reducing the risk of clients losing Internet if the tunnel interface is recreated.
 - Added live Speedify power control separate from reboot auto-recovery.
 - Added Speedify runtime recovery that can restore the saved mode after reboot without running the heavy official internal installer automatically.
 - Added visible Speedify account/connection state, active mode and tunnel IP in the dashboard.

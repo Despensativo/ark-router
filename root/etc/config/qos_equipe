@@ -1,0 +1,5 @@
+config guest_limit 'guest'
+	option enabled '1'
+	option upload_kbps '1500'
+	option download_kbps '0'
+

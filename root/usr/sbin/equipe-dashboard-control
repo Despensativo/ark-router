@@ -1,7 +1,7 @@
 #!/bin/sh
 
 action="$1"
-ARK_ROUTER_VERSION="0.9.18"
+ARK_ROUTER_VERSION="0.9.20"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() { [ "$1" = 1 ] && printf true || printf false; }
@@ -58,6 +58,15 @@ installed() {
 }
 hidden() { [ "$(uci -q get equipe_dashboard.$1.hidden)" = 1 ]; }
 running() { [ -x "/etc/init.d/$1" ] && "/etc/init.d/$1" running >/dev/null 2>&1; }
+ensure_qos_equipe() {
+	[ -f /etc/config/qos_equipe ] && return 0
+	{
+		echo "config guest_limit 'guest'"
+		echo "	option enabled '1'"
+		echo "	option upload_kbps '1500'"
+		echo "	option download_kbps '0'"
+	} >/etc/config/qos_equipe
+}
 ark_kill_package_fetchers() {
 	ps w 2>/dev/null | awk '/downloads\.openwrt\.org|packages\.adb|APKINDEX|apk update|apk fetch/ && !/awk/ {print $1}' | while read -r pid; do
 		[ -n "$pid" ] && kill "$pid" 2>/dev/null || true
@@ -286,11 +295,71 @@ exec "\$R/lib/ld-linux-aarch64.so.1" --library-path "\$R/lib:\$R/lib/aarch64-lin
 EOF
 	chmod +x "$wrapper"
 }
+speedify_package_url() {
+	case "$(uname -m 2>/dev/null)" in
+		aarch64) printf 'https://downloads.speedify.com/speedify_aarch64_cortex-a53.apk' ;;
+		x86_64) printf 'https://downloads.speedify.com/speedify_x86_64.apk' ;;
+		*) return 1 ;;
+	esac
+}
+speedify_fetch_package() {
+	pkg="$1"
+	url="$(speedify_package_url)" || { echo 'Arquitetura Speedify sem pacote conhecido.' >&2; return 3; }
+	mkdir -p "$(dirname "$pkg")"
+	if [ -s "$pkg" ]; then
+		echo "Usando pacote Speedify em cache: $pkg" >&2
+		return 0
+	fi
+	command -v wget >/dev/null 2>&1 || { echo 'wget nao encontrado' >&2; return 3; }
+	tmp="$pkg.download.$$"
+	rm -f "$tmp"
+	wget -q "$url" -O "$tmp" || { rm -f "$tmp"; echo 'Falha ao baixar pacote Speedify. Se o roteador estiver sem Internet, envie o pacote para /tmp/ark-speedify-cache/speedify.apk e tente novamente.' >&2; return 1; }
+	[ -s "$tmp" ] || { rm -f "$tmp"; echo 'Download Speedify vazio ou invalido.' >&2; return 1; }
+	mv "$tmp" "$pkg"
+	return 0
+}
+speedify_ensure_tun() {
+	[ -c /dev/net/tun ] && return 0
+	mkdir -p /dev/net 2>/dev/null || true
+	modprobe tun >/dev/null 2>&1 || true
+	[ -c /dev/net/tun ] && return 0
+	if command -v apk >/dev/null 2>&1; then
+		ark_run_limited 90 apk update >/tmp/ark-speedify-kmod-tun.log 2>&1 || true
+		ark_run_limited 120 apk add kmod-tun >>/tmp/ark-speedify-kmod-tun.log 2>&1 || { cat /tmp/ark-speedify-kmod-tun.log >&2; echo 'Falha ao instalar kmod-tun. O Speedify precisa de /dev/net/tun.' >&2; return 3; }
+	elif command -v opkg >/dev/null 2>&1; then
+		opkg update >/tmp/ark-speedify-kmod-tun.log 2>&1 || true
+		opkg install kmod-tun >>/tmp/ark-speedify-kmod-tun.log 2>&1 || { cat /tmp/ark-speedify-kmod-tun.log >&2; echo 'Falha ao instalar kmod-tun. O Speedify precisa de /dev/net/tun.' >&2; return 3; }
+	else
+		echo 'Gerenciador de pacotes nao encontrado para instalar kmod-tun. Instale kmod-tun manualmente.' >&2
+		return 3
+	fi
+	modprobe tun >/dev/null 2>&1 || true
+	[ -c /dev/net/tun ] || { echo 'kmod-tun instalado/verificado, mas /dev/net/tun ainda nao existe.' >&2; return 3; }
+	return 0
+}
+speedify_tunnel_device() {
+	dev="$(ip -o link show 2>/dev/null | awk -F': ' '/: connectify[0-9]*:/{print $2; exit}' | cut -d@ -f1)"
+	[ -n "$dev" ] && printf '%s' "$dev" || printf connectify0
+}
+speedify_firewall_zone_section() {
+	uci -q show firewall 2>/dev/null | awk -F= '
+		/\.name='\''speedify'\''$/ { s=$1; sub(/^firewall\./, "", s); sub(/\.name$/, "", s); print s; exit }
+	'
+}
+speedify_firewall_forwarding_exists() {
+	src="$1"; dest="$2"
+	uci -q show firewall 2>/dev/null | awk -F= -v src="$src" -v dest="$dest" '
+		/\.src=/ { s=$1; sub(/^firewall\./, "", s); sub(/\.src$/, "", s); v=$2; gsub(/\047/, "", v); if (v==src) a[s]=1 }
+		/\.dest=/ { s=$1; sub(/^firewall\./, "", s); sub(/\.dest$/, "", s); v=$2; gsub(/\047/, "", v); if (v==dest) b[s]=1 }
+		END { for (s in a) if (b[s]) { found=1; break } exit found ? 0 : 1 }
+	'
+}
 speedify_start_extracted() {
 	root="$1"; wrapper="$2"
 	r="$root/usr/share/speedify"
 	[ -x "$r/speedify" ] && [ -x "$r/speedify_cli" ] && [ -x "$r/lib/ld-linux-aarch64.so.1" ] || { echo "Runtime Speedify invalido em $root." >&2; return 3; }
 	chmod +x "$r/speedify" "$r/speedify_cli" "$r/lib/ld-linux-aarch64.so.1" 2>/dev/null || true
+	speedify_ensure_tun || return 1
 	mkdir -p /lib /etc/ark-router/speedify/runtime /etc/ark-router/speedify/keys /tmp/speedify-logs
 	[ -e /lib/aarch64-linux-gnu ] || ln -s "$r/lib/aarch64-linux-gnu" /lib/aarch64-linux-gnu
 	[ -e /lib/ld-linux-aarch64.so.1 ] || ln -s "$r/lib/ld-linux-aarch64.so.1" /lib/ld-linux-aarch64.so.1
@@ -301,6 +370,7 @@ speedify_start_extracted() {
 	"$r/lib/ld-linux-aarch64.so.1" --library-path "$r/lib:$r/lib/aarch64-linux-gnu" "$r/speedify" -d /etc/ark-router/speedify/runtime -r "$r" -g /tmp/speedify-logs -k /etc/ark-router/speedify/keys >/tmp/ark-speedify-daemon.log 2>&1 &
 	echo $! >/tmp/ark-speedify.pid
 	sleep 6
+	speedify_prepare_runtime_network >/dev/null 2>&1 || true
 	"$wrapper" version >/tmp/ark-speedify-version.log 2>&1 || { cat /tmp/ark-speedify-daemon.log /tmp/ark-speedify-version.log 2>/dev/null >&2; return 1; }
 	uci -q set equipe_dashboard.speedify=feature
 	uci -q set equipe_dashboard.speedify.saved_config='1'
@@ -320,12 +390,10 @@ speedify_install_external() {
 	root="$target/ark-router/speedify-root"
 	pkg="/tmp/ark-speedify-cache/speedify.apk"
 	mkdir -p /tmp/ark-speedify-cache "$target/ark-router"
-	rm -f "$pkg"
-	wget -q https://downloads.speedify.com/speedify_aarch64_cortex-a53.apk -O "$pkg" || { echo 'Falha ao baixar pacote Speedify.' >&2; return 1; }
+	speedify_fetch_package "$pkg" || return $?
 	rm -rf "$root"
 	mkdir -p "$root"
 	apk --allow-untrusted extract --destination "$root" "$pkg" >/tmp/ark-speedify-extract.log 2>&1 || { cat /tmp/ark-speedify-extract.log >&2; return 1; }
-	rm -f "$pkg"
 	speedify_start_extracted "$root" /etc/ark-router/speedify-cli || return 1
 	uci -q set equipe_dashboard.speedify.install_mode='external'
 	uci -q set equipe_dashboard.speedify.external_target="$target"
@@ -350,12 +418,10 @@ speedify_install_ram() {
 	pkg="/tmp/ark-speedify-cache/speedify.apk"
 	root="/tmp/ark-speedify-root"
 	mkdir -p /tmp/ark-speedify-cache
-	rm -f "$pkg"
-	wget -q https://downloads.speedify.com/speedify_aarch64_cortex-a53.apk -O "$pkg" || { echo 'Falha ao baixar pacote Speedify.' >&2; return 1; }
+	speedify_fetch_package "$pkg" || return $?
 	rm -rf "$root"
 	mkdir -p "$root"
 	apk --allow-untrusted extract --destination "$root" "$pkg" >/tmp/ark-speedify-extract.log 2>&1 || { cat /tmp/ark-speedify-extract.log >&2; return 1; }
-	rm -f "$pkg"
 	speedify_start_extracted "$root" /tmp/ark-speedify-cli || return 1
 	uci -q set equipe_dashboard.speedify.install_mode='ram'
 	uci commit equipe_dashboard
@@ -363,19 +429,20 @@ speedify_install_ram() {
 	return 0
 }
 speedify_prepare_runtime_network() {
+	tunnel_dev="$(speedify_tunnel_device)"
 	uci -q batch <<'EOI'
 set network.speedify=interface
 set network.speedify.proto=none
-set network.speedify.device=connectify0
 set network.speedify.defaultroute=0
 add_list network.speedify.dns=10.202.0.1
 EOI
-	if ! uci -q show network 2>/dev/null | grep -q "device.*name='connectify0'"; then
+	uci -q set "network.speedify.device=$tunnel_dev"
+	if ! uci -q show network 2>/dev/null | grep -q "device.*name='$tunnel_dev'"; then
 		uci -q batch <<'EOI'
 add network device
-set network.@device[-1].name=connectify0
 set network.@device[-1].acceptlocal=1
 EOI
+		uci -q set "network.@device[-1].name=$tunnel_dev"
 	fi
 	if ! uci -q show firewall 2>/dev/null | grep -q "\.name='speedify'"; then
 		uci -q batch <<'EOI'
@@ -384,15 +451,25 @@ set firewall.@zone[-1].name=speedify
 set firewall.@zone[-1].input=ACCEPT
 set firewall.@zone[-1].output=ACCEPT
 set firewall.@zone[-1].forward=ACCEPT
-add_list firewall.@zone[-1].device=connectify0
 add_list firewall.@zone[-1].network=speedify
-add firewall forwarding
-set firewall.@forwarding[-1].src=speedify
-set firewall.@forwarding[-1].dest=lan
-add firewall forwarding
-set firewall.@forwarding[-1].src=lan
-set firewall.@forwarding[-1].dest=speedify
 EOI
+	fi
+	zone="$(speedify_firewall_zone_section)"
+	if [ -n "$zone" ]; then
+		uci -q set "firewall.$zone.masq=1"
+		uci -q set "firewall.$zone.mtu_fix=1"
+		uci -q get "firewall.$zone.network" 2>/dev/null | tr ' ' '\n' | grep -qx speedify || uci -q add_list "firewall.$zone.network=speedify"
+		uci -q get "firewall.$zone.device" 2>/dev/null | tr ' ' '\n' | grep -qx "$tunnel_dev" || uci -q add_list "firewall.$zone.device=$tunnel_dev"
+	fi
+	if ! speedify_firewall_forwarding_exists speedify lan; then
+		uci -q add firewall forwarding
+		uci -q set firewall.@forwarding[-1].src=speedify
+		uci -q set firewall.@forwarding[-1].dest=lan
+	fi
+	if ! speedify_firewall_forwarding_exists lan speedify; then
+		uci -q add firewall forwarding
+		uci -q set firewall.@forwarding[-1].src=lan
+		uci -q set firewall.@forwarding[-1].dest=speedify
 	fi
 	uci commit network
 	uci commit firewall
@@ -782,7 +859,44 @@ ensure_sqm_section() {
 	uci -q set "sqm.$section.qdisc=cake"
 	uci -q set "sqm.$section.script=piece_of_cake.qos"
 	uci -q set "sqm.$section.qdisc_advanced=1"
+	uci -q set "sqm.$section.eqdisc_opts=diffserv4 nat dual-srchost ack-filter"
+	uci -q set "sqm.$section.iqdisc_opts=diffserv4 nat dual-dsthost ingress"
 	uci -q set "sqm.$section.linklayer=none"
+}
+ensure_mwan3_ark_config() {
+	[ -f /etc/config/mwan3 ] || return 0
+	for sec in wan6 wanb wanb6 wanb_m1_w2 wanb_m1_w3 wanb_m2_w2 wan6_m1_w3 wan6_m2_w3 wanb6_m1_w2 wanb6_m1_w3 wanb6_m2_w2 wanb_only wan_wanb wanb_wan default_rule_v6; do
+		uci -q delete "mwan3.$sec" 2>/dev/null || true
+	done
+	uci -q set mwan3.wan=interface
+	uci -q set mwan3.wan.enabled=1
+	uci -q set mwan3.wan.family=ipv4
+	uci -q set mwan3.wan.reliability=1
+	uci -q delete mwan3.wan.track_ip 2>/dev/null || true
+	for ip in 1.0.0.1 1.1.1.1 8.8.8.8 9.9.9.9; do uci -q add_list mwan3.wan.track_ip="$ip"; done
+	uci -q set mwan3.wan2=interface
+	uci -q set mwan3.wan2.enabled=1
+	uci -q set mwan3.wan2.family=ipv4
+	uci -q set mwan3.wan2.reliability=1
+	uci -q delete mwan3.wan2.track_ip 2>/dev/null || true
+	for ip in 1.0.0.1 1.1.1.1 8.8.8.8 9.9.9.9; do uci -q add_list mwan3.wan2.track_ip="$ip"; done
+	uci -q set mwan3.wan_m1_w3=member; uci -q set mwan3.wan_m1_w3.interface=wan; uci -q set mwan3.wan_m1_w3.metric=1; uci -q set mwan3.wan_m1_w3.weight=3
+	uci -q set mwan3.wan_m2_w3=member; uci -q set mwan3.wan_m2_w3.interface=wan; uci -q set mwan3.wan_m2_w3.metric=2; uci -q set mwan3.wan_m2_w3.weight=3
+	uci -q set mwan3.wan2_m1_w3=member; uci -q set mwan3.wan2_m1_w3.interface=wan2; uci -q set mwan3.wan2_m1_w3.metric=1; uci -q set mwan3.wan2_m1_w3.weight=3
+	uci -q set mwan3.wan2_m2_w2=member; uci -q set mwan3.wan2_m2_w2.interface=wan2; uci -q set mwan3.wan2_m2_w2.metric=2; uci -q set mwan3.wan2_m2_w2.weight=2
+	for p in wan_only wan2_only balanced wan_then_wan2; do uci -q delete "mwan3.$p.use_member" 2>/dev/null || true; done
+	uci -q set mwan3.wan_only=policy; uci -q add_list mwan3.wan_only.use_member=wan_m1_w3
+	uci -q set mwan3.wan2_only=policy; uci -q add_list mwan3.wan2_only.use_member=wan2_m1_w3
+	uci -q set mwan3.balanced=policy; uci -q add_list mwan3.balanced.use_member=wan_m1_w3; uci -q add_list mwan3.balanced.use_member=wan2_m1_w3
+	uci -q set mwan3.wan_then_wan2=policy; uci -q add_list mwan3.wan_then_wan2.use_member=wan_m1_w3; uci -q add_list mwan3.wan_then_wan2.use_member=wan2_m2_w2
+	uci -q set mwan3.https=rule
+	uci -q set mwan3.https.family=ipv4
+	uci -q set mwan3.https.sticky=1
+	uci -q set mwan3.https.dest_port=443
+	uci -q set mwan3.https.proto=tcp
+	uci -q set mwan3.default_rule_v4=rule
+	uci -q set mwan3.default_rule_v4.dest_ip='0.0.0.0/0'
+	uci -q set mwan3.default_rule_v4.family=ipv4
 }
 ark_operation_profile() { uci -q get equipe_dashboard.main.operation_profile 2>/dev/null || printf 'standard'; }
 apply_operation_profile() {
@@ -822,7 +936,8 @@ apply_operation_profile() {
 				if [ -n "$(uci -q get "sqm.$sec" 2>/dev/null)" ]; then
 					uci -q set "sqm.$sec.qdisc=cake"
 					uci -q set "sqm.$sec.script=piece_of_cake.qos"
-					uci -q set "sqm.$sec.opts=$cake_opts"
+					uci -q set "sqm.$sec.eqdisc_opts=$cake_opts"
+					uci -q set "sqm.$sec.iqdisc_opts=diffserv4 nat dual-dsthost ingress"
 				fi
 			done
 		fi
@@ -834,7 +949,9 @@ apply_operation_profile() {
 		if [ -f /etc/config/sqm ]; then
 			for sec in wan1 wan2; do
 				if [ -n "$(uci -q get "sqm.$sec" 2>/dev/null)" ]; then
-					uci -q delete "sqm.$sec.opts"
+					uci -q delete "sqm.$sec.opts" 2>/dev/null || true
+					uci -q set "sqm.$sec.eqdisc_opts=diffserv4 nat dual-srchost ack-filter"
+					uci -q set "sqm.$sec.iqdisc_opts=diffserv4 nat dual-dsthost ingress"
 				fi
 			done
 		fi
@@ -954,6 +1071,7 @@ ez_apply_guest_network() {
 	fi
 }
 ez_apply_guest_limit() {
+	ensure_qos_equipe
 	enabled="$1"; upload="$2"; download="${3:-0}"
 	if [ "$enabled" = 1 ]; then
 		valid_uint_range "$upload" 128 100000 || return 1
@@ -1309,6 +1427,7 @@ case "$action" in
 				uci -q set network.wan2.device=lan1
 			fi
 			if installed luci-app-mwan3 || [ -f /etc/config/mwan3 ]; then
+				ensure_mwan3_ark_config
 				case "$(ez_get wan_mode failover)" in
 					balanced) policy=balanced ;;
 					wan1|single) policy=wan_only ;;
@@ -1679,11 +1798,13 @@ case "$action" in
 				wan2_download) uci -q set "sqm.wan2.download=$value" ;;
 				wan2_upload) uci -q set "sqm.wan2.upload=$value" ;;
 				guest_upload)
+					ensure_qos_equipe
 					uci -q set qos_equipe.guest=guest_limit
 					uci -q set qos_equipe.guest.enabled=1
 					uci -q set "qos_equipe.guest.upload_kbps=$value"
 					;;
 				guest_download)
+					ensure_qos_equipe
 					uci -q set qos_equipe.guest=guest_limit
 					uci -q set qos_equipe.guest.enabled=1
 					uci -q set "qos_equipe.guest.download_kbps=$value"
@@ -1811,6 +1932,7 @@ case "$action" in
 			wan2) policy='wan2_only' ;;
 			*) echo 'Modo invalido' >&2; exit 2 ;;
 		esac
+		ensure_mwan3_ark_config
 		uci set mwan3.https.use_policy="$policy"
 		uci set mwan3.default_rule_v4.use_policy="$policy"
 		uci commit mwan3

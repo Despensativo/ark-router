@@ -67,6 +67,10 @@ The helper persists the selected mode, saved-config flag and desired connection 
 
 Manual power control is separate from boot recovery. `speedify-power 1` attempts to recover the saved runtime mode if needed, then connects. `speedify-power 0` disconnects/stops the runtime but leaves saved configuration untouched.
 
+The RAM/external installer first checks `/tmp/ark-speedify-cache/speedify.apk`. If the file exists and is not empty, it is used as the Speedify package source. This supports field installs where the router has no working Internet before bonding is ready. The helper only downloads from Speedify when that cache is missing.
+
+Before the daemon starts, ARK Router verifies `/dev/net/tun` and attempts to install `kmod-tun` when a package manager is available. The runtime network preparation always sets the `speedify` firewall zone with `masq=1` and `mtu_fix=1`, keeps LAN-to-Speedify and Speedify-to-LAN forwarding present, and re-runs after daemon start to catch recreated `connectify*` tunnel devices.
+
 ## SQM controls
 
 The dashboard exposes a confirmed SQM/CAKE toggle and a small limit editor. The shell helper validates WAN1/WAN2 rates, writes UCI values under `sqm.wan1` and `sqm.wan2`, and restarts only the SQM service. A rate of `0` is accepted to mean no limit for that direction.

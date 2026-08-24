@@ -6,7 +6,9 @@ ARK Router is distributed as an OpenWrt LuCI package. It should be built with th
 
 - OpenWrt with LuCI.
 - `rpcd`.
-- `iwinfo`.
+- `kmod-tun` for Speedify/VPN tunnel support. Release package installs pull it as a dependency when the package manager can resolve it.
+- `nlbwmon` for per-device traffic accounting. Release package installs pull it as a dependency when the package manager can resolve it.
+- `iwinfo` is recommended for Wi-Fi intelligence features, but it is not a hard package dependency.
 - BusyBox `ash`.
 - Enough free RAM in `/tmp` if temporary speed-test calibration is used.
 
@@ -20,7 +22,7 @@ When release packages are available, use:
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | sh
 ```
 
-The script detects `apk` or `opkg`, downloads the latest package from GitHub Releases and restarts LuCI services. Re-running the same command updates ARK Router from the latest published release.
+The script defaults to `auto` mode: it detects `apk` or `opkg`, tries the latest package from GitHub Releases and falls back to source installation if the package manager cannot resolve dependencies while offline. Re-running the same command updates ARK Router from the latest published release/source.
 
 If the release asset has not been generated yet, install or update from source:
 
@@ -125,6 +127,8 @@ Recovery behavior:
 - RAM mode downloads/extracts the runtime again into `/tmp` when there is enough free RAM and the router has network access.
 
 If Speedify is not logged in or licensed, recovery can start the daemon but the state may remain `LOGGED_OUT`.
+
+For offline-assisted setup, preload the official Speedify package at `/tmp/ark-speedify-cache/speedify.apk`. ARK Router reuses that file if present instead of deleting it before download. The runtime start also checks `/dev/net/tun`; when possible it installs `kmod-tun`, otherwise it reports a clear error. The Speedify firewall zone is always reinforced with masquerading and MTU fix so LAN clients can navigate through the tunnel.
 
 The dashboard also has a live **Speedify active now** switch. It starts or stops the current Speedify runtime without changing the auto-recovery choice. If the runtime disappeared after reboot and a saved mode exists, turning the switch on attempts to recover that mode first.
 

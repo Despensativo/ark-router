@@ -3,7 +3,7 @@ set -eu
 
 REPO="${ARK_ROUTER_REPO:-${ARC_ROUTER_REPO:-Despensativo/ark-router}}"
 BRANCH="${ARK_ROUTER_BRANCH:-main}"
-MODE="${ARK_ROUTER_INSTALL_MODE:-${INSTALL_MODE:-release}}"
+MODE="${ARK_ROUTER_INSTALL_MODE:-${INSTALL_MODE:-auto}}"
 TMP_DIR="${TMPDIR:-/tmp}"
 DRY_RUN="${DRY_RUN:-0}"
 BASE_URL="https://github.com/$REPO/releases/latest/download"
@@ -145,6 +145,7 @@ install_source() {
 	chmod +x /usr/sbin/equipe-dashboard-control 2>/dev/null || true
 	chmod +x /usr/sbin/equipe-traffic-history 2>/dev/null || true
 	chmod +x /etc/init.d/equipe-traffic-history 2>/dev/null || true
+	chmod +x /etc/init.d/ark-speedify 2>/dev/null || true
 	if [ -f "$rootdir/VERSION" ]; then
 		mkdir -p /usr/share/ark-router
 		cp "$rootdir/VERSION" /usr/share/ark-router/VERSION
@@ -176,4 +177,3 @@ if [ "$DRY_RUN" = 1 ]; then
 else
 	echo "ARK Router installed/updated. Open LuCI and look for ARK Router in the menu."
 fi
-

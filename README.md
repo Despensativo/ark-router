@@ -58,7 +58,8 @@ The Wi-Fi names above are not requirements. They document the pilot environment 
 
 Known-good baseline:
 
-- OpenWrt 25.12.x with LuCI, `rpcd` and `iwinfo`.
+- OpenWrt 25.12.x with LuCI and `rpcd`.
+- `iwinfo` is recommended for Wi-Fi association, scan and channel analysis. If it is missing, those Wi-Fi intelligence features degrade, but the package is no longer blocked from installing.
 - BusyBox `ash`.
 - Standard LuCI JavaScript view environment.
 
@@ -100,14 +101,17 @@ The package manager adapter supports both `apk` and `opkg` for optional package 
 | --- | --- |
 | SQM / CAKE | `luci-app-sqm` |
 | Multi-WAN | `luci-app-mwan3` |
-| Per-device usage | `luci-app-nlbwmon` |
+| Per-device usage | `nlbwmon`; `luci-app-nlbwmon` is optional if the original LuCI report page is desired |
 | UPnP / NAT-PMP | `luci-app-upnp` |
 | Argon theme | `luci-theme-argon` |
 | uHTTPd LuCI manager | `luci-app-uhttpd` |
 | Link testing | `speedtest-go`, loaded into temporary memory |
+| Tunnel support | `kmod-tun`, required for Speedify/VPN tunnel interfaces |
 | Real bonding | Speedify Router runtime, optional; can be loaded internally, from external storage or temporarily in RAM when supported |
 
-Optional packages are not hard dependencies. Cards are displayed only when the corresponding capability exists. The dashboard asks for confirmation before installing an optional package. Package installation does not automatically alter network configuration.
+Most optional packages are not hard dependencies. Cards are displayed only when the corresponding capability exists. The dashboard asks for confirmation before installing an optional package. Package installation does not automatically alter network configuration.
+
+`kmod-tun` and `nlbwmon` are the intentional small dependencies in Release package installs. `kmod-tun` is required for Speedify/VPN tunnel interfaces. `nlbwmon` provides per-device traffic accounting. In source/fallback installs, ARK Router still detects both at runtime and degrades gracefully if one is missing.
 
 ### Speedify
 
@@ -120,6 +124,8 @@ On small-flash routers, ARK Router can run Speedify from RAM or from external st
 The live **Speedify active now** switch controls the current daemon state separately from reboot recovery. Turning it on tries to recover the saved runtime mode first, then connects when possible. Turning it off disconnects/stops Speedify without deleting the saved configuration.
 
 If the last desired state was connected, ARK Router also tries `speedify_cli connect` after recovery. If the account is not logged in or licensed, Speedify may remain `LOGGED_OUT`; this is expected and must be resolved in Speedify itself.
+
+For zero-touch or offline-assisted routers, the reduced Speedify runtime can reuse a preloaded package at `/tmp/ark-speedify-cache/speedify.apk`. ARK Router also verifies `/dev/net/tun`/`kmod-tun` and reinforces NAT/MTU on the Speedify firewall zone so LAN clients keep Internet access through the tunnel.
 
 ### Language packs
 
@@ -183,7 +189,7 @@ LuCI -> Applications -> luci-app-ark-router
 make package/luci-app-ark-router/compile V=s
 ```
 
-For public releases, this repository already includes a GitHub Actions workflow that builds the OpenWrt package when a version tag such as `v0.9.18` is pushed. See [`docs/PUBLISHING.md`](docs/PUBLISHING.md) for the full GitHub publishing flow.
+For public releases, this repository already includes a GitHub Actions workflow that builds the OpenWrt package when a version tag such as `v0.9.20` is pushed. See [`docs/PUBLISHING.md`](docs/PUBLISHING.md) for the full GitHub publishing flow.
 
 ## Installation
 
@@ -195,8 +201,7 @@ When release packages are available, the simplest path is the installer script:
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | sh
 ```
 
-The same command can be re-run later to update an existing installation from the latest release package.
-The installer detects `apk` or `opkg`, downloads the latest compatible package and restarts LuCI services.
+The same command can be re-run later to update an existing installation. By default the installer uses `auto` mode: it detects `apk` or `opkg`, tries the latest compatible Release package first, and falls back to source installation if the router cannot resolve package dependencies while offline.
 
 If a release package has not been published yet, install or update directly from the GitHub source tree:
 
@@ -264,7 +269,7 @@ tar -xzf /tmp/ark-router-config-backup-YYYYMMDD-HHMMSS.tar.gz -C /
 
 ## Project Status
 
-Version 0.9.18 is a tested pilot release with GitHub Release package publishing, SSH install/update commands, dashboard self-update support, Speedify runtime controls and safer LAN/uHTTPd binding. It is suitable for early public testing, with the compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
+Version 0.9.20 is a tested pilot release with GitHub Release package publishing, SSH install/update commands, dashboard self-update support, Speedify runtime controls and safer LAN/uHTTPd binding. It is suitable for early public testing, with the compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
 
 ## License
 
