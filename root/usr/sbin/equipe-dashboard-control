@@ -1,7 +1,7 @@
 #!/bin/sh
 
 action="$1"
-ARK_ROUTER_VERSION="0.9.24"
+ARK_ROUTER_VERSION="0.9.25"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() { [ "$1" = 1 ] && printf true || printf false; }
@@ -2250,6 +2250,24 @@ case "$action" in
 		if [ "$wifi_kind" = guest ]; then
 			ez_apply_guest_network 1
 		fi
+		for section in $sections; do
+			uci -q get "wireless.$section" >/dev/null 2>&1 && continue
+			case "$section" in
+				*radio0) device='radio0'; section_ssid="$ssid2" ;;
+				*radio1) device='radio1'; section_ssid="$ssid5" ;;
+				*) device='radio0'; section_ssid="$ssid" ;;
+			esac
+			network='lan'; [ "$wifi_kind" = guest ] && network='guest'
+			section_key="$password"
+			[ -n "$section_key" ] || section_key="$(uci -q get wireless.guest_radio0.key)"
+			[ -n "$section_key" ] || section_key="$(uci -q get wireless.guest_radio1.key)"
+			[ -n "$section_key" ] || section_key="$(uci -q get wireless.default_radio0.key)"
+			[ -n "$section_key" ] || section_key="$(uci -q get wireless.default_radio1.key)"
+			[ -n "$section_key" ] || section_key='arkrouter0100'
+			section_disabled='0'
+			[ "$enabled" = 0 ] && section_disabled='1'
+			ez_apply_wifi_iface "$section" "$device" "$network" "$section_ssid" "$section_key" "$section_disabled"
+		done
 		for section in $sections; do
 			case "$section" in
 				*radio0) uci -q set "wireless.$section.ssid=$ssid2" ;;

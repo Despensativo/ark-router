@@ -601,7 +601,7 @@ return view.extend({
 			if((!isSplit&&(!name||name.length>32))||(isSplit&&(!name2||name2.length>32||!name5||name5.length>32))){ui.addNotification(null,E('p',{},['O nome da rede precisa ter entre 1 e 32 caracteres.']),'danger');return;}
 			if(pass||password2.value){if(pass.length<8||pass.length>63){ui.addNotification(null,E('p',{},['A senha precisa ter entre 8 e 63 caracteres.']),'danger');return;}if(pass!==password2.value){ui.addNotification(null,E('p',{},['As duas senhas digitadas não são iguais.']),'danger');return;}}
 			const args=['wifi-settings',kind,'split='+(isSplit?'1':'0'),'ssid='+name,'ssid2='+name2,'ssid5='+name5,'enabled='+(isGuest?(enabled.checked?'1':'0'):'keep')]; if(pass)args.push('password='+pass);
-			return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar Wi‑Fi');ui.hideModal();reloadSoon('Configuração do Wi‑Fi salva. Recarregando após reiniciar o rádio…',4200);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});
+			return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar Wi‑Fi');ui.hideModal();reloadSoon('Configuração do Wi‑Fi salva. Recarregando após reiniciar o rádio…',4200);}).catch(function(e){const msg=String(e&&e.message||e||'');if(/xhr|timeout|timed out|network/i.test(msg)){ui.hideModal();reloadSoon('Wi‑Fi reiniciando. Se a alteração foi aplicada, reconecte na rede nova e recarregue o painel…',5200);return;}ui.addNotification(null,E('p',{},[msg]),'danger');});
 		},this)},['Salvar Wi‑Fi'])]));
 		ui.showModal((isGuest?'Editar rede visitante':'Editar rede principal'),rows);
 		ssid.focus();

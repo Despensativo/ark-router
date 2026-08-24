@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.25
+
+- Hardened Wi-Fi editing on routers where one band-specific SSID section is missing, creating only the missing section before saving.
+- Improved Wi-Fi save UX when the browser loses the XHR because the radio reloads during the change.
+
 ## 0.9.24
 
 - Added optional WAN MAC clone editing to WAN1/WAN2. Leaving the field empty removes the override and uses the physical router MAC.
