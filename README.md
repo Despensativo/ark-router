@@ -189,7 +189,7 @@ LuCI -> Applications -> luci-app-ark-router
 make package/luci-app-ark-router/compile V=s
 ```
 
-For public releases, this repository already includes a GitHub Actions workflow that builds the OpenWrt package when a version tag such as `v0.9.21` is pushed. See [`docs/PUBLISHING.md`](docs/PUBLISHING.md) for the full GitHub publishing flow.
+For public releases, this repository already includes a GitHub Actions workflow that builds the OpenWrt package when a version tag such as `v0.9.22` is pushed. See [`docs/PUBLISHING.md`](docs/PUBLISHING.md) for the full GitHub publishing flow.
 
 ## Installation
 
@@ -269,7 +269,7 @@ tar -xzf /tmp/ark-router-config-backup-YYYYMMDD-HHMMSS.tar.gz -C /
 
 ## Project Status
 
-Version 0.9.21 is a tested pilot release with GitHub Release package publishing, SSH install/update commands, dashboard self-update support, Speedify runtime controls and safer LAN/uHTTPd binding. It is suitable for early public testing, with the compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
+Version 0.9.22 is a tested pilot release with GitHub Release package publishing, SSH install/update commands, dashboard self-update support, Speedify runtime controls, safer LAN/uHTTPd binding and LAN DHCP DNS editing. It is suitable for early public testing, with the compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
 
 ## License
 

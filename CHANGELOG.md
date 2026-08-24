@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.22
+
+- Added DHCP DNS editing to the LAN/DHCP modal, allowing up to three IPv4 DNS servers to be sent to clients through DHCP option 6.
+- LAN/DHCP status now reports and displays the DNS servers currently being advertised by the router.
+- LAN/DHCP save now preserves non-DNS DHCP options while replacing only the DNS option.
+
 ## 0.9.21
 
 - Improved the Speedify section wording to show BONDING REAL as the user-facing feature name.

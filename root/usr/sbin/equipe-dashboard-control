@@ -1,7 +1,7 @@
 #!/bin/sh
 
 action="$1"
-ARK_ROUTER_VERSION="0.9.21"
+ARK_ROUTER_VERSION="0.9.22"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() { [ "$1" = 1 ] && printf true || printf false; }
@@ -36,6 +36,35 @@ valid_lan_dhcp_range() {
 	[ "$start_host" -le "$end_host" ] || return 1
 	[ "$router_host" -lt "$start_host" ] || [ "$router_host" -gt "$end_host" ] || return 1
 	return 0
+}
+lan_dhcp_dns_values() {
+	for opt in $(uci -q get dhcp.lan.dhcp_option 2>/dev/null); do
+		case "$opt" in
+			6,*) printf '%s\n' "$opt" | cut -d, -f2- | tr ',' '\n' ;;
+		esac
+	done
+}
+validate_dns_list() {
+	count=0
+	for server in $1; do
+		valid_ipv4 "$server" || return 1
+		count=$((count + 1))
+		[ "$count" -le 3 ] || return 1
+	done
+	return 0
+}
+apply_lan_dhcp_dns() {
+	dns="$1"
+	old_options="$(uci -q get dhcp.lan.dhcp_option 2>/dev/null || true)"
+	uci -q delete dhcp.lan.dhcp_option
+	for opt in $old_options; do
+		[ -n "$opt" ] || continue
+		case "$opt" in
+			6,*) ;;
+			*) uci -q add_list dhcp.lan.dhcp_option="$opt" ;;
+		esac
+	done
+	[ -n "$dns" ] && uci -q add_list dhcp.lan.dhcp_option="6,$(printf '%s' "$dns" | tr ' ' ',')"
 }
 same_managed_subnet() {
 	candidate="$1"
@@ -1872,13 +1901,21 @@ case "$action" in
 		start_host="$start"
 		end_host=$((start + limit - 1))
 		[ "$end_host" -le 254 ] || end_host=254
-		printf '{"ipaddr":"%s","netmask":"%s","dhcp_start":"%s.%s","dhcp_end":"%s.%s","start":"%s","limit":"%s","preset":"%s","supported":%s}\n' \
+		dns_values="$(lan_dhcp_dns_values | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
+		printf '{"ipaddr":"%s","netmask":"%s","dhcp_start":"%s.%s","dhcp_end":"%s.%s","start":"%s","limit":"%s","preset":"%s","supported":%s,"dns":[' \
 			"$(json_escape "$lan_ip")" "$(json_escape "$netmask")" "$prefix" "$start_host" "$prefix" "$end_host" "$start" "$limit" \
 			"$(case "$lan_ip" in 192.168.*) printf 192 ;; 10.0.*) printf 10 ;; *) printf manual ;; esac)" \
 			"$( [ "$netmask" = 255.255.255.0 ] && printf true || printf false )"
+		first=1
+		for server in $dns_values; do
+			[ "$first" = 1 ] || printf ','
+			first=0
+			printf '"%s"' "$(json_escape "$server")"
+		done
+		printf ']}\n'
 		;;
 	lan-save)
-		mode='manual'; router_ip=''; start_ip=''; end_ip=''; netmask='255.255.255.0'
+		mode='manual'; router_ip=''; start_ip=''; end_ip=''; netmask='255.255.255.0'; dns=''
 		shift
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
@@ -1888,6 +1925,7 @@ case "$action" in
 				start_ip) start_ip="$value" ;;
 				end_ip) end_ip="$value" ;;
 				netmask) netmask="$value" ;;
+				dns) dns="$(printf '%s' "$value" | tr ',' ' ')" ;;
 				*) echo "Campo LAN invalido: $key" >&2; exit 2 ;;
 			esac
 		done
@@ -1904,6 +1942,7 @@ case "$action" in
 				;;
 		esac
 		valid_lan_dhcp_range "$router_ip" "$netmask" "$start_ip" "$end_ip" || { echo 'Use IPs validos na mesma rede /24. O DHCP deve comecar antes de terminar e nao pode incluir o IP do roteador.' >&2; exit 2; }
+		validate_dns_list "$dns" || { echo 'DNS DHCP invalido. Use ate 3 enderecos IPv4 validos ou deixe vazio para nao enviar DNS fixo.' >&2; exit 2; }
 		if [ -n "$(uci -q get network.guest.ipaddr)" ] && [ "$(ipv4_prefix24 "$(uci -q get network.guest.ipaddr)")" = "$(ipv4_prefix24 "$router_ip")" ]; then
 			echo 'A LAN principal nao pode usar a mesma rede da visitante.' >&2
 			exit 2
@@ -1918,6 +1957,7 @@ case "$action" in
 		uci -q set dhcp.lan.start="$start_host"
 		uci -q set dhcp.lan.limit="$limit"
 		uci -q set dhcp.lan.leasetime="${DHCP_LEASETIME:-12h}"
+		apply_lan_dhcp_dns "$dns"
 		bind_uhttpd_to_lan_ip "$router_ip" || { echo 'Falha ao ajustar uHTTPd para o novo IP LAN' >&2; exit 3; }
 		uci commit network
 		uci commit dhcp
