@@ -1,13 +1,14 @@
 #!/bin/sh
 
 action="$1"
-ARK_ROUTER_VERSION="0.9.23"
+ARK_ROUTER_VERSION="0.9.24"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() { [ "$1" = 1 ] && printf true || printf false; }
 json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
 json_bool_value() { [ "$1" = 1 ] || [ "$1" = true ] || [ "$1" = yes ] || [ "$1" = on ] && printf true || printf false; }
 valid_mac() { printf '%s' "$1" | grep -Eq '^([0-9A-F]{2}:){5}[0-9A-F]{2}$'; }
+valid_mac_anycase() { printf '%s' "$1" | grep -Eq '^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$'; }
 device_suffix() { printf '%s' "$1" | tr -d ':' | tr 'A-F' 'a-f'; }
 find_dhcp_host() {
 	uci -q show dhcp 2>/dev/null | awk -F= -v wanted="$1" '
@@ -1151,10 +1152,11 @@ remove_lan_port() {
 	uci -q del_list "network.$br.ports=$port" 2>/dev/null || true
 }
 apply_wan_proto() {
-	iface="$1"; proto="$2"; username="$3"; password="$4"; ipaddr="$5"; netmask="$6"; gateway="$7"; dns="$8"
+	iface="$1"; proto="$2"; username="$3"; password="$4"; ipaddr="$5"; netmask="$6"; gateway="$7"; dns="$8"; macaddr="$9"
 	case "$proto" in dhcp|pppoe|static) ;; *) echo 'Protocolo WAN invalido' >&2; return 2 ;; esac
 	uci -q set "network.$iface=interface"
 	uci -q set "network.$iface.proto=$proto"
+	uci -q delete "network.$iface.macaddr"
 	uci -q delete "network.$iface.username"
 	uci -q delete "network.$iface.password"
 	uci -q delete "network.$iface.ipaddr"
@@ -1176,6 +1178,7 @@ apply_wan_proto() {
 	if [ -n "$dns" ]; then
 		for server in $dns; do valid_ipv4 "$server" || { echo 'DNS WAN invalido' >&2; return 2; }; uci -q add_list "network.$iface.dns=$server"; done
 	fi
+	[ -z "$macaddr" ] || uci -q set "network.$iface.macaddr=$macaddr"
 	uci -q set "network.$iface.delegate=0"
 	uci -q set "network.$iface.ipv6=0"
 }
@@ -1908,7 +1911,7 @@ case "$action" in
 		echo ok
 		;;
 	wan-save)
-		iface='' mode='wan' device='' proto='dhcp' username='' password='' ipaddr='' netmask='' gateway='' dns=''
+		iface='' mode='wan' device='' proto='dhcp' username='' password='' ipaddr='' netmask='' gateway='' dns='' macaddr=''
 		shift
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
@@ -1923,6 +1926,7 @@ case "$action" in
 				netmask) [ -z "$value" ] || valid_ipv4 "$value" || { echo 'Mascara invalida' >&2; exit 2; }; netmask="$value" ;;
 				gateway) [ -z "$value" ] || valid_ipv4 "$value" || { echo 'Gateway invalido' >&2; exit 2; }; gateway="$value" ;;
 				dns) valid_plain "$value" 120 || { echo 'DNS invalido' >&2; exit 2; }; dns="$value"; for server in $dns; do valid_ipv4 "$server" || { echo 'DNS WAN invalido' >&2; exit 2; }; done ;;
+				macaddr) [ -z "$value" ] || valid_mac_anycase "$value" || { echo 'MAC WAN invalido' >&2; exit 2; }; macaddr="$(printf '%s' "$value" | tr 'a-f' 'A-F')" ;;
 				*) echo "Campo WAN invalido: $key" >&2; exit 2 ;;
 			esac
 		done
@@ -1946,7 +1950,7 @@ case "$action" in
 		[ "$iface" = wan2 ] && [ -n "$old" ] && [ "$old" != "$device" ] && add_lan_port "$old"
 		[ "$device" != wan ] && remove_lan_port "$device"
 		uci -q set "network.$iface.device=$device"
-		apply_wan_proto "$iface" "$proto" "$username" "$password" "$ipaddr" "$netmask" "$gateway" "$dns" || exit $?
+		apply_wan_proto "$iface" "$proto" "$username" "$password" "$ipaddr" "$netmask" "$gateway" "$dns" "$macaddr" || exit $?
 		[ "$iface" = wan2 ] && uci -q set network.wan2.metric=20
 		[ "$iface" = wan ] && uci -q set network.wan.metric=10
 		uci commit network
@@ -2218,18 +2222,28 @@ case "$action" in
 			guest) sections='guest_radio0 guest_radio1'; allow_toggle=1 ;;
 			*) echo 'Rede invalida' >&2; exit 2 ;;
 		esac
-		ssid=''; password=''; enabled='keep'
+		ssid=''; ssid2=''; ssid5=''; password=''; enabled='keep'; split='0'
 		shift 2
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
 				ssid) ssid="$value" ;;
+				ssid2) ssid2="$value" ;;
+				ssid5) ssid5="$value" ;;
 				password) password="$value" ;;
 				enabled) case "$value" in 0|1|keep) enabled="$value" ;; *) echo 'Estado da rede invalido' >&2; exit 2 ;; esac ;;
+				split) case "$value" in 0|1) split="$value" ;; *) echo 'Modo Wi-Fi invalido' >&2; exit 2 ;; esac ;;
 				*) echo "Campo Wi-Fi invalido: $key" >&2; exit 2 ;;
 			esac
 		done
-		valid_ssid "$ssid" || { echo 'O nome da rede deve ter entre 1 e 32 caracteres' >&2; exit 2; }
+		if [ "$split" = 1 ]; then
+			[ -n "$ssid2" ] || ssid2="$ssid"
+			[ -n "$ssid5" ] || ssid5="$ssid"
+			valid_ssid "$ssid2" && valid_ssid "$ssid5" || { echo 'Os nomes das redes 2,4 GHz e 5 GHz devem ter entre 1 e 32 caracteres' >&2; exit 2; }
+		else
+			valid_ssid "$ssid" || { echo 'O nome da rede deve ter entre 1 e 32 caracteres' >&2; exit 2; }
+			ssid2="$ssid"; ssid5="$ssid"
+		fi
 		[ -z "$password" ] || valid_wifi_password "$password" || { echo 'A senha deve ter entre 8 e 63 caracteres' >&2; exit 2; }
 		[ "$allow_toggle" = 1 ] || [ "$enabled" = keep ] || { echo 'A rede principal nao pode ser desligada por este atalho' >&2; exit 2; }
 		ez_backup >/dev/null || { echo 'Falha ao criar backup antes da alteracao do Wi-Fi' >&2; exit 3; }
@@ -2237,7 +2251,11 @@ case "$action" in
 			ez_apply_guest_network 1
 		fi
 		for section in $sections; do
-			uci -q set "wireless.$section.ssid=$ssid"
+			case "$section" in
+				*radio0) uci -q set "wireless.$section.ssid=$ssid2" ;;
+				*radio1) uci -q set "wireless.$section.ssid=$ssid5" ;;
+				*) uci -q set "wireless.$section.ssid=$ssid" ;;
+			esac
 			[ -z "$password" ] || uci -q set "wireless.$section.key=$password"
 			if [ "$enabled" != keep ]; then
 				if [ "$enabled" = 1 ]; then uci -q set "wireless.$section.disabled=0"; else uci -q set "wireless.$section.disabled=1"; fi

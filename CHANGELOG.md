@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.24
+
+- Added optional WAN MAC clone editing to WAN1/WAN2. Leaving the field empty removes the override and uses the physical router MAC.
+- Added Wi-Fi split mode in the network editor so 2.4 GHz and 5 GHz can use either the same SSID or separate SSIDs.
+- Wi-Fi cards now show per-band names when the SSIDs are split.
+
 ## 0.9.23
 
 - Added a one-click **Install missing features** action in the Resources modal for clean-router setup.
