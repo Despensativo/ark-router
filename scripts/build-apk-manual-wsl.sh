@@ -76,6 +76,17 @@ build_variant() {
 	depends="$2"
 	description="$3"
 	out_file="$out_dir/${pkg_name}-${pkg_version}.apk"
+	# The persistent Starlink client is a Full-only payload. Lite keeps the
+	# helper and downloads the ~1.4 MiB client to /tmp on first use.
+	if [ "$pkg_name" = "$PKG_BASE_NAME" ]; then
+		rm -f "$pkg_root/usr/bin/starlink-dish"
+	else
+		if [ -f "$SRC_DIR/root/usr/bin/starlink-dish" ]; then
+			mkdir -p "$pkg_root/usr/bin"
+			cp -f "$SRC_DIR/root/usr/bin/starlink-dish" "$pkg_root/usr/bin/starlink-dish"
+			chmod 0755 "$pkg_root/usr/bin/starlink-dish"
+		fi
+	fi
 
 	rm -f "$pkg_root/lib/apk/packages"/luci-app-ark-router*.conffiles
 	rm -f "$pkg_root/lib/apk/packages"/luci-app-ark-router*.list

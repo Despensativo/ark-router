@@ -60,6 +60,9 @@ endef
 
 define Package/luci-app-ark-router/install
 	$(CP) ./root/* $(1)/
+	# Lite downloads the optional telemetry client on first use into /tmp.
+	# Keep the persistent binary out of the small-flash package.
+	rm -f $(1)/usr/bin/starlink-dish
 	$(INSTALL_DIR) $(1)/usr/libexec
 	$(INSTALL_BIN) ./root/usr/libexec/ark-starlink-telemetry $(1)/usr/libexec/ark-starlink-telemetry
 	$(INSTALL_DIR) $(1)/www/cgi-bin
@@ -68,6 +71,9 @@ endef
 
 define Package/luci-app-ark-router-full/install
 	$(CP) ./root/* $(1)/
+	# Full carries the architecture-specific Starlink client persistently.
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) ./root/usr/bin/starlink-dish $(1)/usr/bin/starlink-dish
 	$(INSTALL_DIR) $(1)/usr/libexec
 	$(INSTALL_BIN) ./root/usr/libexec/ark-starlink-telemetry $(1)/usr/libexec/ark-starlink-telemetry
 	$(INSTALL_DIR) $(1)/www/cgi-bin

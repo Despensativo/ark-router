@@ -117,7 +117,7 @@ The package manager adapter supports both `apk` and `opkg` for optional package 
 | --- | --- |
 | SQM / CAKE | `luci-app-sqm` |
 | Multi-WAN | `luci-app-mwan3` |
-| Starlink telemetry | Dedicated ARK module embedded in Lite and Full; the small architecture-specific telemetry client is loaded into `/tmp` only when needed |
+| Starlink telemetry | Dedicated ARK module embedded in Lite and Full; Lite loads the small architecture-specific client into `/tmp` on demand, while Full keeps it persistently in `/usr/bin` |
 | Per-device usage | `nlbwmon`; `luci-app-nlbwmon` is optional if the original LuCI report page is desired |
 | Guest network full rate limit | `tc-full` and `kmod-sched-act-police`; pulled by Release package installs |
 | IRQ balance | `irqbalance` |
