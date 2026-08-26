@@ -2,7 +2,8 @@
 set -euo pipefail
 
 SDK_LINK="${SDK_LINK:-$HOME/openwrt-sdk-filogic}"
-SRC_DIR="${SRC_DIR:-$HOME/ark-router-work/luci-app-ark-router}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SRC_DIR="${SRC_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 PKG_BASE_NAME="luci-app-ark-router"
 PKG_RELEASE="${PKG_RELEASE:-r1}"
 

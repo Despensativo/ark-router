@@ -3,7 +3,8 @@ set -euo pipefail
 
 SDK_URL="${SDK_URL:-https://downloads.openwrt.org/snapshots/targets/mediatek/filogic/openwrt-sdk-mediatek-filogic_gcc-14.4.0_musl.Linux-x86_64.tar.zst}"
 WORK_ROOT="${WORK_ROOT:-$HOME/openwrt-build}"
-SRC_DIR="${SRC_DIR:-$HOME/ark-router-work/luci-app-ark-router}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SRC_DIR="${SRC_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 SDK_LINK="${SDK_LINK:-$HOME/openwrt-sdk-filogic}"
 
 mkdir -p "$WORK_ROOT" "$(dirname "$SRC_DIR")"

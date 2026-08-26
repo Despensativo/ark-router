@@ -1,9 +1,18 @@
 # Changelog
 
-## Unreleased
+## 0.9.34
+
+- Fixed WAN status when `mwan3` is installed but stopped: the dashboard now falls back to the physical OpenWrt interface instead of incorrectly showing `SEM INTERNET ATIVA`.
+- WAN1/WAN2 cards now detect the real physical device dynamically for latency tests instead of assuming fixed interface names.
+- WAN cards now show connection mode, active gateway, IPv4 netmask, received DNS, latency and individual received/sent totals.
+- Fixed active DNS selection so current DNS servers take precedence over inactive historical interface data.
+- Lowered the Speedify internal-install safety threshold consistently to 35000 KB and changed installed cards to show the actual storage mode instead of a misleading new-install recommendation.
+- Reduced Speedify idle overhead by avoiding CLI calls while its daemon is stopped, while preserving saved configuration and reboot recovery behavior.
+- Fixed the local WSL APK builder to compile the current repository checkout by default instead of reusing a stale copy under the WSL home directory.
 
 - Lowered the automatic Full profile overlay threshold from 64000 KB to 35000 KB so routers with enough RAM and moderate free flash can receive the Full package.
 - Fixed Lite/Full profile switching so the installer removes the opposite ARK Router package while preserving local UCI configuration files before installing the selected profile.
+- Added `irqbalance` to the managed optional resources and Lite profile documentation because it is small enough for multicore routers like the Cudy WR3000 class.
 - Split release packaging into Lite and Full profiles. Lite keeps the canonical `luci-app-ark-router` package name for compatibility, while Full publishes `luci-app-ark-router-full`.
 - The SSH installer and dashboard self-updater can auto-select Lite or Full from detected RAM and free overlay space, with `ARK_ROUTER_PROFILE=lite|full` available for forced installs.
 - Lite now also includes every measured sub-1 MB operational module from the Full profile, including SQM/CAKE, Multi-WAN, UPnP, uHTTPd management, Wi-Fi info, tunnel support, the LuCI package manager, OpenWrt update helpers and supported PT-BR LuCI translations.

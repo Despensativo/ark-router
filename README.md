@@ -103,6 +103,7 @@ The package manager adapter supports both `apk` and `opkg` for optional package 
 | Multi-WAN | `luci-app-mwan3` |
 | Per-device usage | `nlbwmon`; `luci-app-nlbwmon` is optional if the original LuCI report page is desired |
 | Guest network full rate limit | `tc-full` and `kmod-sched-act-police`; pulled by Release package installs |
+| IRQ balance | `irqbalance` |
 | UPnP / NAT-PMP | `luci-app-upnp` |
 | Argon theme | `luci-theme-argon` |
 | uHTTPd LuCI manager | `luci-app-uhttpd` |
@@ -128,7 +129,7 @@ ZeroTier is the lightweight remote-access alternative for routers where Tailscal
 
 After joining, authorize the router in ZeroTier Central. To access the LAN behind the router, configure a managed route in ZeroTier Central for the router LAN subnet through the router's ZeroTier IP.
 
-`nlbwmon`, `tc-full` and `kmod-sched-act-police` are intentional Release package dependencies. `nlbwmon` provides per-device traffic accounting, while `tc-full` plus `kmod-sched-act-police` allow the guest/visitor network to enforce both download and upload limits. `kmod-tun` is not a mandatory ARK Router dependency; it is checked and installed only when Speedify/VPN tunnel features are used. In source/fallback installs, ARK Router still detects runtime capabilities and degrades gracefully if one is missing.
+`nlbwmon`, `tc-full`, `kmod-sched-act-police` and `irqbalance` are intentional Release package dependencies. `nlbwmon` provides per-device traffic accounting, while `tc-full` plus `kmod-sched-act-police` allow the guest/visitor network to enforce both download and upload limits. `irqbalance` helps multicore routers spread interrupt load. `kmod-tun` is not a mandatory ARK Router dependency; it is checked and installed only when Speedify/VPN tunnel features are used. In source/fallback installs, ARK Router still detects runtime capabilities and degrades gracefully if one is missing.
 
 ### Speedify
 
@@ -312,7 +313,7 @@ tar -xzf /tmp/ark-router-config-backup-YYYYMMDD-HHMMSS.tar.gz -C /
 
 ## Project Status
 
-Version 0.9.30 is a tested pilot release with GitHub Release package publishing, SSH install/update commands, dashboard self-update validation, ZeroTier lightweight remote access, Speedify runtime controls, dynamic WAN/LAN port handling, Wi-Fi channel-width controls, dynamic Wi-Fi radio detection, safer LAN/uHTTPd binding, LAN DHCP DNS editing, one-click installation of missing lightweight modules, per-device traffic accounting, full guest network rate limiting and clearer WAN status with gateway, netmask and received DNS. It is suitable for early public testing, with the compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
+Version 0.9.34 is a tested pilot release with GitHub Release package publishing, SSH install/update commands, dashboard self-update validation, ZeroTier lightweight remote access, Speedify runtime controls, dynamic WAN/LAN port handling, Wi-Fi channel-width controls, dynamic Wi-Fi radio detection, safer LAN/uHTTPd binding, LAN DHCP DNS editing, one-click installation of missing lightweight modules, per-device traffic accounting, full guest network rate limiting and detailed WAN status with protocol, gateway, netmask, DNS, latency and individual traffic totals. It is suitable for early public testing, with the compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
 
 ## License
 

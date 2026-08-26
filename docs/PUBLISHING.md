@@ -17,8 +17,8 @@ Use GitHub Releases as the public distribution channel:
    - `luci-app-ark-router.apk`
    - `luci-app-ark-router-lite.apk`
    - `luci-app-ark-router-full.apk`
-   - versioned `.apk`, such as `luci-app-ark-router-0.9.33-r1.apk`
-   - versioned Full `.apk`, such as `luci-app-ark-router-full-0.9.33-r1.apk`
+   - versioned `.apk`, such as `luci-app-ark-router-0.9.34-r1.apk`
+   - versioned Full `.apk`, such as `luci-app-ark-router-full-0.9.34-r1.apk`
    - `.ipk` assets when the workflow/build target produces them.
 7. Test the SSH installer from a router.
 

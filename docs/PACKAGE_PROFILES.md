@@ -48,10 +48,11 @@ Default dependencies:
 | `miniupnpd-nftables` | UPnP/NAT-PMP daemon | 185 KiB |
 | `luci-app-uhttpd` | LuCI web server manager | 9103 B |
 | `kmod-tun` | VPN/tunnel support | 64 KiB |
+| `irqbalance` | distributes interrupts across CPU cores | 114 KiB |
 | `iwinfo` / `libiwinfo-data` | Wi-Fi analysis/status | 1 B / 17 KiB on tested firmware |
 | `luci-i18n-*-pt-br` supported modules | Portuguese labels for installed LuCI modules | about 30 KiB total |
 
-Expected extra installed footprint beyond LuCI base: about 1.9 MB, depending on what is already present in the firmware.
+Expected extra installed footprint beyond LuCI base: about 2.0 MB, depending on what is already present in the firmware.
 
 Runtime notes:
 
@@ -82,6 +83,7 @@ Runtime notes:
 
 - `zerotier-one` measured around 8 MB RSS on the tested router.
 - `mwan3` monitors measured several small shell processes, roughly 1.5 MB RSS each on the tested router.
+- `irqbalance` is tiny and fits comfortably on multicore routers such as the Cudy WR3000 class.
 - `miniupnpd` measured around 1.2 MB RSS.
 - `speedtest-go` is large on flash and should be avoided in Lite.
 - Speedify is not bundled. It is a licensed external runtime and remains managed by ARK Router as an optional RAM/internal/external install.
@@ -115,6 +117,7 @@ Baseline collected from the active APK-based OpenWrt test router on 2026-08-24. 
 | `miniupnpd-nftables` | Lite + Full | `2.3.9-r1` | installed |
 | `luci-app-uhttpd` | Lite + Full | `26.234.21967~42d72f7` | installed |
 | `kmod-tun` | Lite + Full | `6.12.87-r1` | installed |
+| `irqbalance` | Lite + Full | `1.9.5-r1` | installed |
 | `iwinfo` | Lite + Full | `2026.01.14~f5dd57a8-r1` | available in feed |
 | `libiwinfo-data` | Lite + Full, pulled by Wi-Fi info | `2026.01.14~f5dd57a8-r1` | installed |
 | `luci-i18n-mwan3-pt-br` | Lite + Full | `26.234.21967~42d72f7` | available in feed |
@@ -128,7 +131,7 @@ Baseline collected from the active APK-based OpenWrt test router on 2026-08-24. 
 Refresh command for maintainers:
 
 ```sh
-for p in luci-base rpcd nlbwmon tc-full kmod-sched-act-police libbpf1 libelf1 luci-app-package-manager luci-app-attendedsysupgrade attendedsysupgrade-common owut luci-app-nlbwmon luci-app-sqm sqm-scripts kmod-ifb kmod-sched-cake luci-app-mwan3 mwan3 luci-app-upnp miniupnpd-nftables luci-app-uhttpd kmod-tun iwinfo libiwinfo-data luci-i18n-mwan3-pt-br luci-i18n-nlbwmon-pt-br luci-i18n-sqm-pt-br luci-i18n-uhttpd-pt-br luci-i18n-upnp-pt-br zerotier speedtest-go; do
+for p in luci-base rpcd nlbwmon tc-full kmod-sched-act-police libbpf1 libelf1 luci-app-package-manager luci-app-attendedsysupgrade attendedsysupgrade-common owut luci-app-nlbwmon luci-app-sqm sqm-scripts kmod-ifb kmod-sched-cake luci-app-mwan3 mwan3 luci-app-upnp miniupnpd-nftables luci-app-uhttpd kmod-tun irqbalance iwinfo libiwinfo-data luci-i18n-mwan3-pt-br luci-i18n-nlbwmon-pt-br luci-i18n-sqm-pt-br luci-i18n-uhttpd-pt-br luci-i18n-upnp-pt-br zerotier speedtest-go; do
   line="$(apk list --installed "$p" 2>/dev/null | head -n1)"
   state=installed
   if [ -z "$line" ]; then state=available; line="$(apk list "$p" 2>/dev/null | head -n1)"; fi
