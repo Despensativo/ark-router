@@ -125,16 +125,16 @@ The package manager adapter supports both `apk` and `opkg` for optional package 
 | Link testing | `speedtest-go`, loaded into temporary memory |
 | Tunnel support | `kmod-tun`, required only when Speedify/VPN tunnel interfaces are enabled |
 | Real bonding | Speedify Router runtime, optional; can be loaded internally, from external storage or temporarily in RAM when supported |
-| Remote access | ZeroTier is integrated; Tailscale can be installed manually when desired. Both use private overlay access without exposing LuCI/SSH on the WAN |
+| Remote access | Tailscale and ZeroTier optional overlays; ARK Router can install/configure them without exposing LuCI/SSH on the WAN |
 | Lightweight remote access | ZeroTier, optional; smaller remote-access alternative for constrained routers |
 
 Most optional packages are not hard dependencies. Cards are displayed only when the corresponding capability exists. The dashboard asks for confirmation before installing an optional package. Package installation does not automatically alter network configuration.
 
 See [`docs/PACKAGE_PROFILES.md`](docs/PACKAGE_PROFILES.md) for the Lite and Full package profiles, including measured package sizes, service RAM notes and the tested addon version baseline.
 
-### Tailscale remote access (manual integration)
+### Tailscale remote access
 
-Tailscale is a supported optional overlay for Starlink, mobile links and CGNAT, but it is not currently an ARK Router-managed dashboard module. Install and pair it using the official Tailscale/OpenWrt instructions, then keep LuCI/SSH bound to LAN or the private overlay. ARK Router's integrated remote-access flow is ZeroTier.
+Tailscale is an optional free personal remote-access overlay for Starlink, mobile links and CGNAT. ARK Router can install the package, start the service, generate the `tailscale up` login flow, show the Tailscale IP and advertise the current LAN subnet route from the dashboard.
 
 If subnet routing is used, approve the route in the Tailscale admin panel. Keep each router LAN on a different subnet, such as `192.168.10.0/24`, `192.168.20.0/24` and `192.168.73.0/24`, to avoid route conflicts. Do not expose LuCI or SSH directly to the WAN.
 
