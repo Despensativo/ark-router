@@ -4,7 +4,12 @@ action="$1"
 ARK_ROUTER_VERSION="0.9.36"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
-bool() { [ "$1" = 1 ] && printf true || printf false; }
+bool() {
+	case "${1:-}" in
+		1|true|yes|on) printf true ;;
+		*) printf false ;;
+	esac
+}
 json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
 json_bool_value() { [ "$1" = 1 ] || [ "$1" = true ] || [ "$1" = yes ] || [ "$1" = on ] && printf true || printf false; }
 valid_mac() { printf '%s' "$1" | grep -Eq '^([0-9A-F]{2}:){5}[0-9A-F]{2}$'; }
