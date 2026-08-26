@@ -49,9 +49,11 @@ Real screenshots are stored in [`docs/screenshots`](docs/screenshots). The publi
 | --- | --- |
 | ![WAN editor](docs/screenshots/wan-editor.png) | ![Mobile overview](docs/screenshots/mobile-overview.png) |
 
-Additional real screenshot: [SQM editor](docs/screenshots/sqm-editor.png).
+| SQM editor | Starlink telemetry and alignment |
+| --- | --- |
+| ![SQM editor](docs/screenshots/sqm-editor.png) | ![Starlink telemetry and alignment](docs/screenshots/starlink-telemetry-real.png) |
 
-Latest real module capture: [Starlink telemetry and alignment](docs/screenshots/starlink-telemetry-real.png). It was captured from the live Cudy/OpenWrt test router; no generated mock image is used.
+The Starlink image above is a real capture from the live Cudy/OpenWrt test environment; no generated mock image is used. GitHub will render it inline after the repository page refreshes.
 
 ## Tested Device
 
@@ -59,11 +61,11 @@ The current pilot has been tested on:
 
 | Item | Value |
 | --- | --- |
-| Router | Cudy WR3000 v1 |
-| Firmware | OpenWrt 25.12.5 r33051-f5dae5ece4 |
-| Target | `mediatek/filogic` |
+| Router | Cudy WR3000 v1; Acer Predator Connect W6x |
+| Firmware | OpenWrt 25.12.5 r33051-f5dae5ece4 (pilot builds) |
+| Target | `mediatek/filogic` on Cudy; target-specific build on Acer |
 | Package manager | `apk` |
-| LuCI theme used during testing | Argon |
+| LuCI theme used during testing | Argon and stock LuCI layout |
 | Wi-Fi names used in the pilot | Custom, router-local names; not project defaults |
 
 The Wi-Fi names above are not requirements. They document the pilot environment only. ARK Router reads and manages whichever Wi-Fi names are configured on the router. Pilot passwords, private IPs, backups and router-specific secrets are intentionally not included in this repository.

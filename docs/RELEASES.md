@@ -60,12 +60,12 @@ The pilot router uses OpenWrt with APK v3 packages, so a normal `.tar.gz` archiv
 
 | Item | Value |
 | --- | --- |
-| Router | Cudy WR3000 v1 |
+| Router | Cudy WR3000 v1; Acer Predator Connect W6x |
 | Firmware | OpenWrt 25.12.5 r33051-f5dae5ece4 |
 | Target | `mediatek/filogic` |
 | CPU/package arch | `aarch64_cortex-a53` |
 | Package manager | `apk` |
-| Theme used in pilot | Argon |
+| Theme used in pilot | Argon and stock LuCI layout |
 
 The package is expected to work on recent OpenWrt/LuCI versions, but public releases should collect test reports by device and firmware before calling it stable.
 
