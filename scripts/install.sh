@@ -225,6 +225,13 @@ install_source() {
 	preserve_existing_configs "$rootdir/root"
 
 	copy_tree "$rootdir/root" /
+	# Source installs follow the same hardware profile policy as releases.
+	# Keep the ~1.4 MiB client only on Full; Lite downloads it on demand.
+	source_profile="$PROFILE"
+	[ "$source_profile" = auto ] && source_profile="$(best_profile)"
+	if [ "$source_profile" != full ]; then
+		rm -f /usr/bin/starlink-dish 2>/dev/null || true
+	fi
 	chmod +x /usr/sbin/equipe-dashboard-control 2>/dev/null || true
 	chmod +x /usr/sbin/equipe-traffic-history 2>/dev/null || true
 	chmod +x /etc/init.d/equipe-traffic-history 2>/dev/null || true
