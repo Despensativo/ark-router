@@ -46,6 +46,8 @@ find "$pkg_root" -type d -exec chmod 0755 {} +
 find "$pkg_root" -type f -exec chmod 0644 {} +
 chmod 0755 "$pkg_root/usr/sbin/equipe-dashboard-control" 2>/dev/null || true
 chmod 0755 "$pkg_root/usr/sbin/equipe-traffic-history" 2>/dev/null || true
+chmod 0755 "$pkg_root/usr/libexec/ark-starlink-telemetry" 2>/dev/null || true
+chmod 0755 "$pkg_root/www/cgi-bin/ark-starlink-telemetry" 2>/dev/null || true
 chmod 0755 "$pkg_root/etc/init.d/equipe-traffic-history" 2>/dev/null || true
 chmod 0755 "$pkg_root/etc/init.d/ark-speedify" 2>/dev/null || true
 
@@ -56,6 +58,8 @@ cat > "$post_install" <<'EOF'
 [ "${IPKG_NO_SCRIPT}" = "1" ] && exit 0
 chmod +x /usr/sbin/equipe-dashboard-control 2>/dev/null || true
 chmod +x /usr/sbin/equipe-traffic-history 2>/dev/null || true
+chmod +x /usr/libexec/ark-starlink-telemetry 2>/dev/null || true
+chmod +x /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
 chmod +x /etc/init.d/equipe-traffic-history 2>/dev/null || true
 chmod +x /etc/init.d/ark-speedify 2>/dev/null || true
 rm -f /tmp/luci-indexcache 2>/dev/null || true
@@ -102,8 +106,8 @@ EOF
 	cp -f "$out_file" "$out_dir/${pkg_name}.apk"
 }
 
-lite_depends="attendedsysupgrade-common iwinfo kmod-ifb kmod-sched-act-police kmod-sched-cake kmod-tun luci-app-attendedsysupgrade luci-app-mwan3 luci-app-nlbwmon luci-app-package-manager luci-app-sqm luci-app-uhttpd luci-app-upnp luci-base luci-i18n-mwan3-pt-br luci-i18n-nlbwmon-pt-br luci-i18n-sqm-pt-br luci-i18n-uhttpd-pt-br luci-i18n-upnp-pt-br miniupnpd-nftables nlbwmon owut rpcd tc-full"
-full_depends="attendedsysupgrade-common iwinfo kmod-ifb kmod-sched-act-police kmod-sched-cake kmod-tun luci-app-attendedsysupgrade luci-app-mwan3 luci-app-nlbwmon luci-app-package-manager luci-app-sqm luci-app-uhttpd luci-app-upnp luci-base luci-i18n-mwan3-pt-br luci-i18n-nlbwmon-pt-br luci-i18n-sqm-pt-br luci-i18n-uhttpd-pt-br luci-i18n-upnp-pt-br miniupnpd-nftables nlbwmon owut rpcd speedtest-go tc-full zerotier"
+lite_depends="attendedsysupgrade-common irqbalance iwinfo kmod-ifb kmod-sched-act-police kmod-sched-cake kmod-tun luci-app-attendedsysupgrade luci-app-mwan3 luci-app-nlbwmon luci-app-package-manager luci-app-sqm luci-app-uhttpd luci-app-upnp luci-base luci-i18n-mwan3-pt-br luci-i18n-nlbwmon-pt-br luci-i18n-sqm-pt-br luci-i18n-uhttpd-pt-br luci-i18n-upnp-pt-br miniupnpd-nftables nlbwmon owut rpcd tc-full"
+full_depends="attendedsysupgrade-common irqbalance iwinfo kmod-ifb kmod-sched-act-police kmod-sched-cake kmod-tun luci-app-attendedsysupgrade luci-app-mwan3 luci-app-nlbwmon luci-app-package-manager luci-app-sqm luci-app-uhttpd luci-app-upnp luci-base luci-i18n-mwan3-pt-br luci-i18n-nlbwmon-pt-br luci-i18n-sqm-pt-br luci-i18n-uhttpd-pt-br luci-i18n-upnp-pt-br miniupnpd-nftables nlbwmon owut rpcd speedtest-go tc-full zerotier"
 
 build_variant "${PKG_BASE_NAME}" "$lite_depends" "ARK Router Lite dashboard for OpenWrt with per-device traffic and complete guest upload/download limiting. Heavy modules remain optional from the panel."
 build_variant "${PKG_BASE_NAME}-full" "$full_depends" "ARK Router Full dashboard for OpenWrt with traffic, guest limiting, SQM/CAKE, Multi-WAN, UPnP, uHTTPd, ZeroTier, speed testing and VPN tunnel support."

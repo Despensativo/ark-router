@@ -1,0 +1,153 @@
+#!/bin/sh
+
+# ARK Router multi-Starlink telemetry helper.
+# Queries one logical WAN at a time because every dish uses 192.168.100.1.
+# Only a host route to the dish management address is changed; default routes,
+# mwan3 policies and Speedify routes are left untouched.
+
+set -u
+
+DISH_IP="192.168.100.1"
+DISH_ROUTE="${DISH_IP}/32"
+LOCK_DIR="/tmp/ark-starlink-telemetry.lock"
+CLIENT_RAM="/tmp/starlink-dish"
+CLIENT_FLASH="/usr/bin/starlink-dish"
+CLIENT_URL="https://github.com/bigmalloy/starlink-panel/releases/latest/download/starlink-dish"
+QUERY_TIMEOUT=10
+ROUTE_BACKUP=""
+CLIENT_PID=""
+WATCHDOG_PID=""
+RESULT_FILE=""
+ERROR_FILE=""
+TIMEOUT_FILE=""
+
+valid_name() {
+	printf '%s' "$1" | grep -Eq '^[A-Za-z0-9_.:-]+$'
+}
+
+release_lock() {
+	[ -n "$ROUTE_BACKUP" ] && rm -f "$ROUTE_BACKUP" 2>/dev/null || true
+	rmdir "$LOCK_DIR" 2>/dev/null || true
+}
+
+cleanup_starlink() {
+	[ -n "$WATCHDOG_PID" ] && kill "$WATCHDOG_PID" 2>/dev/null || true
+	[ -n "$CLIENT_PID" ] && kill "$CLIENT_PID" 2>/dev/null || true
+	[ -n "$RESULT_FILE" ] && rm -f "$RESULT_FILE" "$ERROR_FILE" "$TIMEOUT_FILE" 2>/dev/null || true
+	[ -n "$ROUTE_BACKUP" ] && route_restore
+	release_lock
+}
+
+acquire_lock() {
+	waited=0
+	while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+		[ "$waited" -lt 12 ] || { echo 'Outra antena está sendo consultada. Tente novamente.' >&2; return 1; }
+		sleep 1
+		waited=$((waited + 1))
+	done
+	trap cleanup_starlink EXIT INT TERM HUP
+}
+
+ensure_client() {
+	[ -x "$CLIENT_RAM" ] && { printf '%s' "$CLIENT_RAM"; return 0; }
+	[ -x "$CLIENT_FLASH" ] && { printf '%s' "$CLIENT_FLASH"; return 0; }
+	case "$(uname -m 2>/dev/null)" in
+		aarch64|arm64) ;;
+		*) echo 'Telemetria Starlink automática disponível somente em aarch64 neste momento.' >&2; return 1 ;;
+	esac
+	command -v wget >/dev/null 2>&1 || { echo 'wget não está disponível para preparar a telemetria.' >&2; return 1; }
+	free_kb="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"
+	[ "${free_kb:-0}" -ge 4096 ] || { echo 'RAM temporária insuficiente para o cliente Starlink.' >&2; return 1; }
+	wget -q -O "${CLIENT_RAM}.new" "$CLIENT_URL" || { rm -f "${CLIENT_RAM}.new"; echo 'Não foi possível baixar o cliente Starlink para a RAM.' >&2; return 1; }
+	chmod 755 "${CLIENT_RAM}.new" || { rm -f "${CLIENT_RAM}.new"; return 1; }
+	mv -f "${CLIENT_RAM}.new" "$CLIENT_RAM"
+	printf '%s' "$CLIENT_RAM"
+}
+
+interface_status() {
+	ubus call "network.interface.$1" status 2>/dev/null
+}
+
+route_restore() {
+	ip -4 route del "$DISH_ROUTE" >/dev/null 2>&1 || true
+	if [ -s "$ROUTE_BACKUP" ]; then
+		while IFS= read -r saved_route; do
+			[ -n "$saved_route" ] || continue
+			# Route text originates from the local kernel, not from user input.
+			# shellcheck disable=SC2086
+			ip -4 route add $saved_route >/dev/null 2>&1 || true
+		done <"$ROUTE_BACKUP"
+	fi
+}
+
+query_wan() {
+	logical="$1"
+	valid_name "$logical" || { echo 'Interface WAN inválida.' >&2; return 2; }
+	status_json="$(interface_status "$logical")"
+	[ -n "$status_json" ] || { echo "Interface $logical não encontrada." >&2; return 1; }
+	up="$(printf '%s' "$status_json" | jsonfilter -e '@.up' 2>/dev/null)"
+	[ "$up" = true ] || { echo "Interface $logical está offline." >&2; return 1; }
+	device="$(printf '%s' "$status_json" | jsonfilter -e '@.l3_device' 2>/dev/null)"
+	[ -n "$device" ] || device="$(printf '%s' "$status_json" | jsonfilter -e '@.device' 2>/dev/null)"
+	valid_name "$device" || { echo "Dispositivo físico de $logical não identificado." >&2; return 1; }
+	gateway="$(printf '%s' "$status_json" | jsonfilter -e '@.route[@.target="0.0.0.0"].nexthop' 2>/dev/null | head -n 1)"
+	valid_name "$gateway" || gateway=""
+	client="$(ensure_client)" || return 1
+	acquire_lock || return 1
+	ROUTE_BACKUP="/tmp/ark-starlink-route.$$.bak"
+	ip -4 route show exact "$DISH_ROUTE" >"$ROUTE_BACKUP" 2>/dev/null || true
+	if [ -n "$gateway" ]; then
+		ip -4 route replace "$DISH_ROUTE" via "$gateway" dev "$device" metric 1 >/dev/null 2>&1 || {
+			echo "Não foi possível preparar a rota Starlink pela $logical." >&2
+			return 1
+		}
+	else
+		ip -4 route replace "$DISH_ROUTE" dev "$device" metric 1 >/dev/null 2>&1 || {
+			echo "Não foi possível preparar a rota Starlink pela $logical." >&2
+			return 1
+		}
+	fi
+	RESULT_FILE="/tmp/ark-starlink-result.$$"
+	ERROR_FILE="/tmp/ark-starlink-error.$$"
+	TIMEOUT_FILE="/tmp/ark-starlink-timeout.$$"
+	"$client" dish -d "http://${DISH_IP}:9200" >"$RESULT_FILE" 2>"$ERROR_FILE" &
+	CLIENT_PID=$!
+	(
+		sleep "$QUERY_TIMEOUT"
+		: >"$TIMEOUT_FILE"
+		kill "$CLIENT_PID" 2>/dev/null || true
+	) >/dev/null 2>&1 &
+	WATCHDOG_PID=$!
+	if wait "$CLIENT_PID" 2>/dev/null; then
+		code=0
+	else
+		code=$?
+	fi
+	CLIENT_PID=""
+	kill "$WATCHDOG_PID" 2>/dev/null || true
+	wait "$WATCHDOG_PID" 2>/dev/null || true
+	WATCHDOG_PID=""
+	route_restore
+	rm -f "$ROUTE_BACKUP" 2>/dev/null || true
+	ROUTE_BACKUP=""
+	if [ -e "$TIMEOUT_FILE" ]; then
+		echo "A antena não respondeu pela WAN $logical em ${QUERY_TIMEOUT}s." >&2
+		return 1
+	fi
+	if [ "$code" -ne 0 ]; then
+		cat "$ERROR_FILE" >&2 2>/dev/null || true
+		return "$code"
+	fi
+	cat "$RESULT_FILE"
+}
+
+case "${1:-}" in
+	query) query_wan "${2:-wan}" ;;
+	client-status)
+		if [ -x "$CLIENT_RAM" ]; then echo ram
+		elif [ -x "$CLIENT_FLASH" ]; then echo internal
+		else echo missing
+		fi
+		;;
+	*) echo 'Uso: ark-starlink-telemetry query <interface-wan>' >&2; exit 2 ;;
+esac

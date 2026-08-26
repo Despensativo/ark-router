@@ -56,6 +56,8 @@ Expected extra installed footprint beyond LuCI base: about 2.0 MB, depending on 
 
 Runtime notes:
 
+- The dedicated multi-Starlink orchestration module is embedded in both profiles. Its shell/UI footprint is small; on supported AArch64 routers the approximately 1.4 MB telemetry client is downloaded to `/tmp` only on first use and is not written to flash.
+- Each dish is queried sequentially through a temporary `192.168.100.1/32` route bound to its selected WAN. A lock prevents two panels from changing that host route simultaneously, and the previous route is restored after success, failure or interruption.
 - `nlbwmon` measured around 1 MB RSS on the tested router.
 - Guest download limits use `tbf`.
 - Guest upload limits use `tc police`, which requires `tc-full` and `kmod-sched-act-police`.

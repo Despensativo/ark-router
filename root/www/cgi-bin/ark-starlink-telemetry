@@ -1,0 +1,60 @@
+#!/bin/sh
+
+# Unauthenticated, read-only Starlink telemetry endpoint.
+# It is disabled by default and exposes no configuration actions.
+
+enabled="$(uci -q get equipe_dashboard.starlink.public_view 2>/dev/null || printf 0)"
+
+reply_error() {
+	status="$1"; message="$2"
+	printf 'Status: %s\r\nContent-Type: application/json; charset=utf-8\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\n\r\n' "$status"
+	printf '{"ok":false,"error":"%s"}\n' "$(printf '%s' "$message" | sed 's/[\\"]/\\&/g')"
+	exit 0
+}
+
+client_is_lan() {
+	remote="${REMOTE_ADDR:-}"
+	[ "$remote" = 127.0.0.1 ] && return 0
+	case "$remote" in *:*) return 1 ;; esac
+	lan_json="$(ubus call network.interface.lan status 2>/dev/null)"
+	lan_ip="$(printf '%s' "$lan_json" | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null)"
+	lan_mask="$(printf '%s' "$lan_json" | jsonfilter -e '@["ipv4-address"][0].mask' 2>/dev/null)"
+	[ -n "$remote" ] && [ -n "$lan_ip" ] && [ -n "$lan_mask" ] || return 1
+	awk -v client="$remote" -v lan="$lan_ip" -v bits="$lan_mask" '
+		function ipnum(ip, p) { split(ip,p,"."); return (((p[1]*256+p[2])*256+p[3])*256+p[4]) }
+		BEGIN {
+			if (bits < 0 || bits > 32) exit 1
+			block = 2 ^ (32-bits)
+			exit (int(ipnum(client)/block) == int(ipnum(lan)/block)) ? 0 : 1
+		}'
+}
+
+[ "$enabled" = 1 ] || reply_error '403 Forbidden' 'Visualização pública Starlink desativada.'
+[ "${REQUEST_METHOD:-GET}" = GET ] || reply_error '405 Method Not Allowed' 'Somente leitura GET.'
+client_is_lan || reply_error '403 Forbidden' 'Visualização disponível somente na rede LAN.'
+
+query_value() {
+	printf '%s' "${QUERY_STRING:-}" | tr '&' '\n' | sed -n "s/^$1=//p" | head -n 1
+}
+
+action="$(query_value action)"
+printf 'Content-Type: application/json; charset=utf-8\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\n\r\n'
+
+case "$action" in
+	list|'')
+		exec /usr/sbin/equipe-dashboard-control starlink-public-list
+		;;
+	query)
+		wan="$(query_value wan)"
+		case "$wan" in wan|wan[0-9]*) ;; *) printf '{"ok":false,"error":"WAN inválida."}\n'; exit 0 ;; esac
+		[ "$(uci -q get "network.$wan")" = interface ] || { printf '{"ok":false,"error":"WAN não configurada."}\n'; exit 0; }
+		case "$(uci -q get "network.$wan.proto")" in dhcp|pppoe|static) ;; *) printf '{"ok":false,"error":"WAN não está ativa."}\n'; exit 0 ;; esac
+		if output="$(/usr/sbin/equipe-dashboard-control starlink-telemetry "$wan" 2>/tmp/ark-starlink-public.err)"; then
+			printf '{"ok":true,"wan":"%s","telemetry":%s}\n' "$wan" "$output"
+		else
+			error="$(cat /tmp/ark-starlink-public.err 2>/dev/null)"
+			printf '{"ok":false,"wan":"%s","error":"%s"}\n' "$wan" "$(printf '%s' "$error" | sed 's/[\\"]/\\&/g; s/[[:cntrl:]]/ /g')"
+		fi
+		;;
+	*) printf '{"ok":false,"error":"Ação inválida."}\n' ;;
+esac

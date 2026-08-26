@@ -164,6 +164,16 @@ function wan2IsLan(data) {
 	const cfg=(values((data||{}).networkConfig).wan2)||{}, i=iface((data||{}).interfaces,'wan2');
 	return !i.up&&(cfg.proto==='none'||!cfg.proto||!cfg.device);
 }
+function sqmWanProfiles(data) {
+	const net=values((data||{}).networkConfig), dump=(data||{}).interfaces||{}, result=[], seen={};
+	Object.keys(net).filter(function(name){return /^wan(?:[0-9]+)?$/i.test(name);}).sort(function(a,b){if(a==='wan')return -1;if(b==='wan')return 1;return Number(a.replace(/\D/g,''))-Number(b.replace(/\D/g,''));}).forEach(function(name){
+		const cfg=net[name]||{}, live=iface(dump,name), proto=String(cfg.proto||''), hasIpv4=Array.isArray(live['ipv4-address'])&&live['ipv4-address'].length>0;
+		if(proto==='none'||proto==='dhcpv6'||(!/^(dhcp|pppoe|static)$/i.test(proto)&&!hasIpv4))return;
+		const section=name==='wan'?'wan1':name.toLowerCase();if(seen[section])return;seen[section]=1;
+		result.push({network:name,section:section,label:name==='wan'?'WAN1':name.toUpperCase(),device:String(live.l3_device||live.device||cfg.device||name),online:!!live.up});
+	});
+	return result;
+}
 function parsePing(r) { const m = ((r && r.stdout) || '').match(/time[=<]([0-9.]+)/); return r && r.code === 0 && m ? Number(m[1]) : null; }
 function infoRow(label, id) { return E('div', { 'class': 'ex-row' }, [ E('span', {}, [ label ]), E('strong', { 'id': id }, [ '—' ]) ]); }
 function cidrMask(bits) {
@@ -280,7 +290,7 @@ function currentChannelValue(configured, survey) {
 }
 
 return view.extend({
-	board: {}, countries: [], capabilities: {features:{}}, previous: {}, trafficPrevious: {}, trafficAt: 0, currentData: null, recommendedChannels: null, speedResults: {}, refreshTimer: null, dashboardRoot: null, deviceSortKey: 'now', deviceSortDir: 'desc',
+	board: {}, countries: [], capabilities: {features:{}}, previous: {}, trafficPrevious: {}, trafficAt: 0, currentData: null, recommendedChannels: null, speedResults: {}, refreshTimer: null, dashboardRoot: null, deviceSortKey: 'now', deviceSortDir: 'desc', starlinkTelemetryTimer: null, starlinkTelemetryStopTimer: null, starlinkTelemetryActive: false, starlinkTelemetryWan: null, starlinkWanOrder: [], starlinkResults: {},
 	fetchCapabilities: function(){return safe(fs.exec('/usr/sbin/equipe-dashboard-control',['features']),{}).then(function(r){try{return JSON.parse((r&&r.stdout)||'{}');}catch(e){return {language:'pt-br',package_manager:'none',features:{}};}});},
 	feature: function(key){return (this.capabilities.features&&this.capabilities.features[key])||{installed:false,active:false,hidden:false,installable:false};},
 	themeColor: function(names,fallback){
@@ -545,11 +555,11 @@ return view.extend({
 		const mem=data.system.memory||{}, root=data.system.root||{}, memFree=mem.available||mem.free||0, memUsed=Math.max(0,(mem.total||0)-memFree), rootTotalBytes=(Number(root.total)||0)*1024, rootUsedBytes=(Number(root.used)||0)*1024, mu=mem.total?100*memUsed/mem.total:0, du=root.total?100*root.used/root.total:0, load=data.system.load&&data.system.load[0]!=null?data.system.load[0]/65535:0, temp=parseInt(data.temperature,10)/1000;
 		text('ex-uptime',formatUptime(data.system.uptime)); text('ex-temperature',isFinite(temp)?temp.toFixed(0)+' °C':'—'); text('ex-memory',mu.toFixed(0)+'%'); text('ex-memory-detail','livre '+formatBytes(memFree)+' / total '+formatBytes(mem.total||0)); text('ex-load',load.toFixed(2)); text('ex-storage',du.toFixed(0)+'%'); text('ex-storage-detail','livre '+formatBytes(Math.max(0,rootTotalBytes-rootUsedBytes))+' / total '+formatBytes(rootTotalBytes)); const mb=document.getElementById('ex-memory-bar'),db=document.getElementById('ex-storage-bar'); if(mb)mb.style.width=Math.min(100,mu)+'%'; if(db)db.style.width=Math.min(100,du)+'%';
 		const healthWarning=(isFinite(temp)&&temp>=85)||mu>=85||du>=85||load>=1.5; setPill('ex-health-status',healthWarning?'standby':'online',healthWarning?'ATENÇÃO':'NORMAL');
-		const qe=!!((sqm.wan1&&sqm.wan1.enabled==='1')||(sqm.wan2&&sqm.wan2.enabled==='1')), qosToggle=document.getElementById('ex-qos-toggle'), qosToggleState=document.getElementById('ex-qos-toggle-state');
+		const qosWanProfiles=sqmWanProfiles(data), qe=qosWanProfiles.some(function(profile){return !!(sqm[profile.section]&&sqm[profile.section].enabled==='1');}), qosToggle=document.getElementById('ex-qos-toggle'), qosToggleState=document.getElementById('ex-qos-toggle-state');
 		setPill('ex-qos-status',qe?'online':'standby',qe?'ATIVO':'DESLIGADO'); if(qosToggle){qosToggle.checked=qe;qosToggle.disabled=false;} if(qosToggleState)qosToggleState.textContent=qe?'Ligado':'Desligado';
 		const fmtLimit=function(v){v=Number(v)||0;return v>0?(v/1000).toFixed(1)+' Mbps':'Ilimitado';};
 		const guestDownloadLimit=qosGuest.download_kbps||qos.guest_download_kbps||0, guestUploadLimit=qosGuest.upload_kbps||qos.guest_upload_kbps||0;
-		text('ex-qos-wan','↓ '+fmtLimit(sqm.wan1&&sqm.wan1.download)+'  •  ↑ '+fmtLimit(sqm.wan1&&sqm.wan1.upload)); text('ex-qos-guest','↓ '+fmtLimit(guestDownloadLimit)+'  •  ↑ '+fmtLimit(guestUploadLimit)); text('ex-dns',(wan['dns-server']||['1.1.1.1','8.8.8.8']).join('  •  '));
+		qosWanProfiles.forEach(function(profile){const queue=sqm[profile.section]||{};text('ex-qos-wan-'+portDomId(profile.network),'↓ '+fmtLimit(queue.download)+'  •  ↑ '+fmtLimit(queue.upload)+(queue.enabled==='1'?'':'  •  fila desligada'));}); text('ex-qos-guest','↓ '+fmtLimit(guestDownloadLimit)+'  •  ↑ '+fmtLimit(guestUploadLimit)); text('ex-dns',(wan['dns-server']||['1.1.1.1','8.8.8.8']).join('  •  '));
 		this.updateWifi(data); this.updateMwanMode(data); this.updateHistory(data.history); this.renderDevices(data,dr); text('ex-clock',new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
 	},
 	togglePassword: function(id, button) { const n=document.getElementById(id), hidden=n.dataset.hidden!=='0'; n.dataset.hidden=hidden?'0':'1'; n.style.filter=hidden?'none':'blur(5px)'; button.textContent=hidden?'Ocultar senha':'Ver senha'; },
@@ -567,7 +577,7 @@ return view.extend({
 				E('div',{class:'ex-device-config-block'},[E('label',{},['Nome neste roteador']),name,E('small',{class:'ex-muted'},[device.mac])]),
 				E('div',{class:'ex-device-config-block'},[E('div',{class:'ex-device-config-heading'},[E('div',{},[E('strong',{},['Endereço IP']),E('small',{class:'ex-muted'},['Automático pelo DHCP'])]),E('div',{class:'ex-device-switch-control'},[reserveState,E('label',{class:'ex-switch'},[reserve,E('span',{class:'ex-switch-slider'})])])]),ip,E('small',{class:'ex-muted'},['Reservar este IP pelo MAC. O aparelho poderá precisar reconectar para receber um IP reservado diferente.'])])
 			];
-			const sqm=values((this.currentData||{}).sqm), qosActive=!!((sqm.wan1&&sqm.wan1.enabled==='1')||(sqm.wan2&&sqm.wan2.enabled==='1'));
+			const sqm=values((this.currentData||{}).sqm), qosActive=sqmWanProfiles(this.currentData||{}).some(function(profile){return !!(sqm[profile.section]&&sqm[profile.section].enabled==='1');});
 			let priority=null, dscpSelect=null;
 			if(qosActive&&this.feature('custom_qos').installed&&!device.guest){
 				priority=E('input',state.priority?{type:'checkbox',checked:'checked'}:{type:'checkbox'});
@@ -614,14 +624,11 @@ return view.extend({
 	editSqmLimits: function(){
 		const data=this.currentData||{}, sqm=values(data.sqm), qosValues=values(data.qos), qos=qosValues.main||{}, qosGuest=qosValues.guest||{};
 		const field=function(label,value,hint){const node=E('input',{type:'number',class:'cbi-input-text',min:0,max:1000000,value:String(Number(value)||0)});return {node:node,row:E('label',{class:'ex-qos-edit-field'},[E('span',{},[label]),node,E('small',{class:'ex-muted'},[hint||'Kbps • 0 = ilimitado / sem limite'])])};};
-		const wan1Enabled=E('input',{type:'checkbox'}), wan2Enabled=E('input',{type:'checkbox'});wan1Enabled.checked=!(sqm.wan1&&sqm.wan1.enabled==='0');wan2Enabled.checked=!!(sqm.wan2&&sqm.wan2.enabled==='1');
+		const profiles=sqmWanProfiles(data);if(!profiles.length)throw new Error('Nenhuma interface configurada como WAN foi encontrada.');
 		const guestDownloadLimit=qosGuest.download_kbps||qos.guest_download_kbps||0, guestUploadLimit=qosGuest.upload_kbps||qos.guest_upload_kbps||0;
-		const w1d=field('WAN1 download',sqm.wan1&&sqm.wan1.download), w1u=field('WAN1 upload',sqm.wan1&&sqm.wan1.upload), w2d=field('WAN2 download',sqm.wan2&&sqm.wan2.download), w2u=field('WAN2 upload',sqm.wan2&&sqm.wan2.upload), guestDown=field('Visitantes download total',guestDownloadLimit,'Kbps • 0 = ilimitado'), guestUp=field('Visitantes upload total',guestUploadLimit,'Kbps • 1500 = 1,5 Mbps • 0 = ilimitado');
-		ui.showModal('Editar SQM / CAKE',[E('p',{class:'ex-muted'},['Defina os limites em Kbps. Use 0 quando não quiser limitar aquela direção. Em links variáveis como Starlink, upload conservador costuma manter a latência melhor.']),E('div',{class:'ex-qos-edit-grid'},[
-			E('section',{},[E('h3',{},['WAN1']),E('label',{class:'ex-qos-edit-toggle'},[wan1Enabled,E('span',{},['Ativar fila WAN1'])]),w1d.row,w1u.row]),
-			E('section',{},[E('h3',{},['WAN2']),E('label',{class:'ex-qos-edit-toggle'},[wan2Enabled,E('span',{},['Ativar fila WAN2'])]),w2d.row,w2u.row]),
-			E('section',{},[E('h3',{},['Visitantes']),guestDown.row,guestUp.row])
-		]),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const args=['sqm-save','wan1_enabled='+(wan1Enabled.checked?'1':'0'),'wan2_enabled='+(wan2Enabled.checked?'1':'0'),'wan1_download='+w1d.node.value,'wan1_upload='+w1u.node.value,'wan2_download='+w2d.node.value,'wan2_upload='+w2u.node.value,'guest_download='+guestDown.node.value,'guest_upload='+guestUp.node.value];return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar limites');ui.hideModal();reloadSoon('Limites do SQM salvos. Recarregando para exibir os valores aplicados…',2400);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Salvar e reiniciar SQM'])])]);
+		const editors=profiles.map(function(profile){const queue=sqm[profile.section]||{},enabled=E('input',{type:'checkbox'}),download=field(profile.label+' download',queue.download),upload=field(profile.label+' upload',queue.upload);enabled.checked=queue.enabled==='1';return {profile:profile,enabled:enabled,download:download,upload:upload,section:E('section',{},[E('h3',{},[profile.label]),E('small',{class:'ex-muted'},['Interface '+profile.network+' • dispositivo '+profile.device+(profile.online?' • online':' • sem link')]),E('label',{class:'ex-qos-edit-toggle'},[enabled,E('span',{},['Ativar fila '+profile.label])]),download.row,upload.row])};});
+		const guestDown=field('Visitantes download total',guestDownloadLimit,'Kbps • 0 = ilimitado'), guestUp=field('Visitantes upload total',guestUploadLimit,'Kbps • 1500 = 1,5 Mbps • 0 = ilimitado');
+		ui.showModal('Editar SQM / CAKE',[E('p',{class:'ex-muted'},['O ARK detectou as interfaces atualmente configuradas como WAN. Defina os limites em Kbps; use 0 quando não quiser limitar aquela direção.']),E('div',{class:'ex-qos-edit-grid'},editors.map(function(editor){return editor.section;}).concat([E('section',{},[E('h3',{},['Visitantes']),guestDown.row,guestUp.row])])),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const args=['sqm-save-v2'];editors.forEach(function(editor){const profile=editor.profile;args.push('wan='+[profile.section,profile.network,profile.device,editor.enabled.checked?'1':'0',editor.download.node.value,editor.upload.node.value].join('|'));});args.push('guest_download='+guestDown.node.value,'guest_upload='+guestUp.node.value);return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar limites');ui.hideModal();reloadSoon('Limites das WANs salvos. Recarregando para exibir os valores aplicados…',2400);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Salvar e reiniciar SQM'])])]);
 	},
 	editWan: function(which, preferredDevice){
 		const net=values((this.currentData||{}).networkConfig), cfg=net[which==='wan2'?'wan2':'wan']||{}, isWan2=which==='wan2';
@@ -1244,7 +1251,55 @@ return view.extend({
 	saveSpeedifyAdapterRate: function(id, down, up){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['speedify-adapter-rate',id,down||'unlimited',up||'unlimited']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar limites');ui.addNotification(null,E('p',{},['Limites de '+id+' salvos.']));}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});
 	},
-	speedifyCard: function(){
+	activateStarlinkPanel: function(wanName,panel){
+		if(!panel||!panel.open)return;document.querySelectorAll('.ex-starlink-wan').forEach(function(other){if(other!==panel)other.open=false;});if(this.starlinkTelemetryActive&&this.starlinkTelemetryWan!==wanName)this.stopStarlinkAlignment();
+	},
+	toggleStarlinkPublic: function(input){
+		const desired=!!input.checked;input.disabled=true;
+		return fs.exec('/usr/sbin/equipe-dashboard-control',['starlink-public-toggle',desired?'1':'0']).then(L.bind(function(r){
+			if(r.code)throw new Error(r.stderr||'Falha ao alterar o acesso sem login');
+			const feature=(this.capabilities.features&&this.capabilities.features.starlink_public)||{};
+			feature.enabled=desired;
+			if(this.capabilities.features)this.capabilities.features.starlink_public=feature;
+			const state=document.getElementById('ex-starlink-public-state'),link=document.getElementById('ex-starlink-public-link');
+			if(state)state.textContent=desired?'LIGADO':'DESLIGADO';
+			if(link)link.hidden=!desired;
+			ui.addNotification(null,E('p',{},[desired?'Página /starlink/ liberada somente para dispositivos da LAN.':'Página /starlink/ bloqueada.']));
+		},this)).catch(function(e){input.checked=!desired;ui.addNotification(null,E('p',{},[e.message]),'danger');}).finally(function(){input.disabled=false;});
+	},
+	stopStarlinkAlignment: function(){
+		const oldWan=this.starlinkTelemetryWan, oldId=portDomId(oldWan||'wan');this.starlinkTelemetryActive=false;this.starlinkTelemetryWan=null;if(this.starlinkTelemetryTimer)window.clearTimeout(this.starlinkTelemetryTimer);if(this.starlinkTelemetryStopTimer)window.clearTimeout(this.starlinkTelemetryStopTimer);this.starlinkTelemetryTimer=null;this.starlinkTelemetryStopTimer=null;const b=document.getElementById('ex-starlink-live-'+oldId);if(b)b.textContent='Ajuste ao vivo (1 s)';
+	},
+	startStarlinkAlignment: function(wanName){
+		wanName=String(wanName||'wan');this.stopStarlinkAlignment();this.starlinkTelemetryActive=true;this.starlinkTelemetryWan=wanName;if(!this._starlinkVisibilityBound){this._starlinkVisibilityBound=true;document.addEventListener('visibilitychange',L.bind(function(){if(document.hidden)this.stopStarlinkAlignment();},this));window.addEventListener('pagehide',L.bind(this.stopStarlinkAlignment,this));}const b=document.getElementById('ex-starlink-live-'+portDomId(wanName));if(b)b.textContent='Finalizar ajuste';this.starlinkTelemetryStopTimer=window.setTimeout(L.bind(this.stopStarlinkAlignment,this),300000);this.readStarlinkTelemetry(wanName);
+	},
+	finishStarlinkAndNext: function(wanName){
+		wanName=String(wanName||this.starlinkTelemetryWan||'wan');this.stopStarlinkAlignment();const current=document.getElementById('ex-starlink-wan-'+portDomId(wanName));if(current)current.open=false;const order=this.starlinkWanOrder||[],index=order.indexOf(wanName);let next=null;for(let offset=1;offset<=order.length;offset++){const candidate=order[(Math.max(index,0)+offset)%order.length],result=this.starlinkResults[candidate];if(candidate!==wanName&&(!result||!result.aligned)){next=candidate;break;}}if(next){const panel=document.getElementById('ex-starlink-wan-'+portDomId(next));if(panel)panel.open=true;this.startStarlinkAlignment(next);}else ui.addNotification(null,E('p',{},['Todas as antenas detectadas foram verificadas.']));
+	},
+	readStarlinkTelemetry: function(wanName){
+		wanName=String(wanName||this.starlinkTelemetryWan||'wan');const wanId=portDomId(wanName),box=document.getElementById('ex-starlink-telemetry-'+wanId);
+		if(box && !this.starlinkTelemetryActive)box.textContent='Consultando a antena…';
+		/* cgi-exec avoids the rpcd command timeout on routers where the dish query briefly waits for 192.168.100.1. */
+		return fs.exec_direct('/usr/sbin/equipe-dashboard-control',['starlink-telemetry',wanName],'json',false,true).then(L.bind(function(r){
+			if(r.code)throw new Error(r.stderr||'A antena não respondeu');
+			let d={};try{if(r&&r.stdout)d=JSON.parse(r.stdout);else d=(r&&r.telemetry)||r||{};}catch(e){throw new Error('Resposta de telemetria inválida');}
+			const azTolerance=10, elTolerance=8, pct=(Number(d.fraction_obstructed||0)*100).toFixed(1), down=(Number(d.downlink_bps||0)/1000000).toFixed(1), up=(Number(d.uplink_bps||0)/1000000).toFixed(1), azValue=Number(d.bore_azimuth_deg||0), azTargetValue=Number(d.desired_azimuth_deg||0), elValue=Number(d.elevation_deg||0), elTargetValue=Number(d.desired_elevation_deg||0), az=(((azValue%360)+360)%360).toFixed(1), azTarget=(((azTargetValue%360)+360)%360).toFixed(1), el=elValue.toFixed(1), elTarget=elTargetValue.toFixed(1), tilt=Number(d.tilt_angle_deg||0).toFixed(1), attitude=String(d.attitude||'—').replace(/_/g,' '), azDiff=Math.abs(((azValue-azTargetValue+540)%360)-180), elDiff=Math.abs(elValue-elTargetValue), alignmentHint=(azDiff<=azTolerance&&elDiff<=elTolerance)?'ALINHADA • dentro da margem':'AJUSTE RECOMENDADO';
+			if(box)box.innerHTML='Obstrução <strong>'+pct+'%</strong>  •  Latência <strong>'+Number(d.latency_ms||0).toFixed(0)+' ms</strong>  •  ↓ '+down+' Mbps  •  ↑ '+up+' Mbps  •  GPS '+(d.gps_sats||0)+' satélites  •  Atitude <strong>'+attitude+'</strong>  •  <strong>'+alignmentHint+'</strong>  •  Azimute '+az+'° (alvo '+azTarget+'°)  •  Elevação '+el+'° (alvo '+elTarget+'°)  •  Inclinação '+tilt+'°  •  Firmware '+(d.software||'—');
+			const orientation=document.getElementById('ex-starlink-orientation-'+wanId);
+			if(orientation){
+				const norm=function(v){return ((v%360)+360)%360;}, current=norm(azValue), target=norm(azTargetValue), turn=((target-current+540)%360)-180, turnDeg=Math.round(Math.abs(turn)), verticalDeg=Math.round(elDiff), horizontalOk=azDiff<=azTolerance, verticalOk=elDiff<=elTolerance, allOk=horizontalOk&&verticalOk;
+				const sector=function(cx,cy,r,centerDeg,spanDeg){const rad=Math.PI/180,start=(centerDeg-spanDeg/2)*rad,end=(centerDeg+spanDeg/2)*rad,x1=cx+r*Math.cos(start),y1=cy+r*Math.sin(start),x2=cx+r*Math.cos(end),y2=cy+r*Math.sin(end);return 'M'+cx+','+cy+' L'+x1.toFixed(2)+','+y1.toFixed(2)+' A'+r+','+r+' 0 '+(spanDeg>180?1:0)+' 1 '+x2.toFixed(2)+','+y2.toFixed(2)+' Z';};
+				let rotationDots='',tiltDots='';for(let i=0;i<72;i++){const pos=i%18;if(pos!==0&&pos!==1&&pos!==17){const a=(i*5-90)*Math.PI/180;rotationDots+='<circle cx="'+(100+78*Math.cos(a)).toFixed(2)+'" cy="'+(100+78*Math.sin(a)).toFixed(2)+'" r="1.4"/>';}}for(let i=0;i<=18;i++){const a=i*5*Math.PI/180;tiltDots+='<circle cx="'+(34+132*Math.cos(a)).toFixed(2)+'" cy="'+(166-132*Math.sin(a)).toFixed(2)+'" r="1.4"/>';}
+				const direction=horizontalOk?'Dentro da faixa — não gire':(turn>0?'Gire a base para a DIREITA':'Gire a base para a ESQUERDA'), vertical=verticalOk?'Dentro da faixa — não incline':(elValue>elTargetValue?'ABAIXE a borda da frente':'LEVANTE a borda da frente'), finish=allOk?'Tudo certo: alinhamento dentro da margem aceita pelo aplicativo':'Ajuste somente o mostrador vermelho e consulte novamente';
+				orientation.innerHTML='<div class="ex-alignment-head"><strong>'+alignmentHint+'</strong><small>Faixa sombreada = posição aceita • agulha laranja = posição atual</small></div><div class="ex-alignment-dials"><section class="ex-alignment-dial '+(horizontalOk?'ok':'bad')+'"><div class="ex-dial-head"><b>1. ROTAÇÃO HORIZONTAL</b><span>'+(horizontalOk?'ALINHADA':'AJUSTAR')+'</span></div><svg viewBox="0 0 200 200" role="img" aria-label="Mostrador de rotação horizontal">'+rotationDots+'<path class="ex-dial-wedge" d="'+sector(100,100,77,target-90,azTolerance*2)+'"/><text x="100" y="16">N</text><text x="184" y="104">L</text><text x="100" y="193">S</text><text x="16" y="104">O</text><g class="ex-dial-pointer" transform="rotate('+current+' 100 100)"><rect x="83" y="77" width="34" height="46" rx="3"/><line x1="100" y1="100" x2="100" y2="24"/></g><circle class="ex-dial-pivot" cx="100" cy="100" r="5"/></svg><em>'+direction+(horizontalOk?'':' • ~'+turnDeg+'°')+'</em><small>Atual '+az+'° • faixa aceita '+(target-azTolerance).toFixed(0)+'° a '+(target+azTolerance).toFixed(0)+'°</small></section><section class="ex-alignment-dial '+(verticalOk?'ok':'bad')+'"><div class="ex-dial-head"><b>2. INCLINAÇÃO VERTICAL</b><span>'+(verticalOk?'ALINHADA':'AJUSTAR')+'</span></div><svg viewBox="0 0 200 200" role="img" aria-label="Vista lateral da inclinação da antena">'+tiltDots+'<path class="ex-dial-wedge" d="'+sector(34,166,130,-elTargetValue,elTolerance*2)+'"/><text x="28" y="190">HORIZONTE 0°</text><text x="157" y="32">CÉU 90°</text><line class="ex-dial-ground" x1="8" y1="183" x2="82" y2="183"/><line class="ex-dial-mast" x1="34" y1="183" x2="34" y2="166"/><g class="ex-dial-pointer" transform="rotate('+(-elValue)+' 34 166)"><line x1="34" y1="166" x2="166" y2="166"/></g><g class="ex-dial-dish" transform="rotate('+(90-elValue)+' 34 166)"><rect x="0" y="159" width="68" height="14" rx="4"/></g><circle class="ex-dial-pivot" cx="34" cy="166" r="5"/></svg><em>'+vertical+(verticalOk?'':' • ~'+verticalDeg+'°')+'</em><small>A placa branca inclina; a agulha laranja mostra para onde ela aponta</small><small>Atual '+el+'° • faixa aceita '+Math.max(0,elTargetValue-elTolerance).toFixed(0)+'° a '+Math.min(90,elTargetValue+elTolerance).toFixed(0)+'°</small></section></div><small class="ex-align-finish">3. '+finish+'</small>';
+				const dropRate=Number(d.drop_rate),obstructionNow=String(d.currently_obstructed||'').toLowerCase()==='true',uptime=Number(d.uptime||0),obDur=Number(d.avg_obstruction_dur),snr=String(d.snr_above_noise||'').toLowerCase()==='true',eth=Number(d.eth_speed_mbps),alerts=['al_heating','al_motors','al_psu_throttle','al_throttle','al_slow_eth','al_unexpected_location'].filter(function(k){return String(d[k]||'').toLowerCase()==='true';});
+				if(box){const old=box.querySelector('.ex-starlink-diagnostics');if(old)old.remove();const fmtUp=uptime?Math.floor(uptime/3600)+' h '+Math.floor((uptime%3600)/60)+' min':'—',fmtDur=Number.isFinite(obDur)&&obDur?obDur.toFixed(1)+' s':'—',fmtDrop=Number.isFinite(dropRate)?dropRate.toFixed(2)+'%':'—';box.insertAdjacentHTML('beforeend','<div class="ex-starlink-diagnostics"><strong>Diagnóstico</strong><span>Perda <b>'+fmtDrop+'</b></span><span>Obstruída agora <b>'+(obstructionNow?'sim':'não')+'</b></span><span>Tempo obstrução <b>'+fmtDur+'</b></span><span>Uptime <b>'+fmtUp+'</b></span><span>SNR <b>'+(snr?'normal':'baixo/não informado')+'</b></span><span>Ethernet <b>'+(eth?eth+' Mbps':'—')+'</b></span><span>Alertas <b>'+(alerts.length?alerts.join(', '):'nenhum')+'</b></span></div>');}
+			}
+			this.starlinkResults[wanName]={aligned:azDiff<=azTolerance&&elDiff<=elTolerance,at:Date.now(),obstruction:pct};const statusPill=document.getElementById('ex-starlink-result-'+wanId);if(statusPill){statusPill.className='ex-pill '+(this.starlinkResults[wanName].aligned?'online':'offline');statusPill.textContent=this.starlinkResults[wanName].aligned?'ALINHADA':'AJUSTAR';}if(this.starlinkTelemetryActive&&this.starlinkTelemetryWan===wanName)this.starlinkTelemetryTimer=window.setTimeout(L.bind(this.readStarlinkTelemetry,this,wanName),1000);
+		},this)).catch(function(e){if(box)box.textContent='Telemetria indisponível: '+e.message;ui.addNotification(null,E('p',{},[e.message]),'danger');});
+	},
+	speedifyCard: function(data){
+		const detectionData=data||this.currentData||{};
 		const f=this.feature('speedify'), installed=!!f.installed, supported=f.supported!==false, prepared=!!f.prepared, state=(f.state||'unavailable'), luci=!!f.luci, storage=f.storage||{}, rec=storage.recommended||'none', installedMode=String(f.install_mode||'');
 		const storageMode=installed&&/^(internal|external|ram)$/.test(installedMode)?installedMode:rec;
 		const accountLabel=f.account_logged_in?(f.account_licensed?'LOGADO / LICENCIADO':'LOGADO'):'NÃO LOGADO';
@@ -1276,28 +1331,40 @@ return view.extend({
 		const starlinkAdapters=adapters.filter(function(a){
 			return /starlink|spacex/i.test([a.isp,a.ispType,a.description,a.name,a.connectedNetworkName].join(' '));
 		});
-		const starlinkOnline=starlinkAdapters.filter(function(a){return !a.offline&&String(a.state||'').toLowerCase()==='connected';});
-		const starlinkDetected=starlinkAdapters.length>0;
-		const starlinkProblem=starlinkDetected&&starlinkOnline.length===0;
+		const allNetworkInterfaces=((detectionData.interfaces&&detectionData.interfaces.interface)||[]), wanCandidates=allNetworkInterfaces.filter(function(i){const routes=Array.isArray(i.route)?i.route:[],hasDefault=routes.some(function(r){return r&&(r.target==='0.0.0.0'||Number(r.mask)===0);}),name=String(i.interface||'');return !!i.up&&hasDefault&&Array.isArray(i['ipv4-address'])&&i['ipv4-address'].length>0&&!/^(lan|loopback|guest|wg|zerotier|tailscale)/i.test(name);}).map(function(i){const name=String(i.interface||''),address=String(i['ipv4-address'][0].address||''),gateway=wanGateway(i),dns=(i['dns-server']||i.dns_server||[]),ipParts=address.split('.').map(Number),gwParts=String(gateway).split('.').map(Number),cgnatIp=ipParts.length===4&&ipParts[0]===100&&ipParts[1]>=64&&ipParts[1]<=127,cgnatGw=gwParts.length===4&&gwParts[0]===100&&gwParts[1]>=64&&gwParts[1]<=127,starlinkDns=Array.isArray(dns)&&dns.some(function(server){return /^198\.54\.100\./.test(String(server));}),device=String(i.l3_device||i.device||'');return {name:name,label:name.toUpperCase(),address:address,gateway:gateway,dns:dns,device:device,likely:cgnatIp||cgnatGw||starlinkDns,strong:starlinkDns||(cgnatIp&&cgnatGw)};});
+		let starlinkWans=wanCandidates.filter(function(w){if(w.likely)return true;return starlinkAdapters.some(function(a){const haystack=[a.adapterID,a.name,a.description,a.connectedNetworkName].join(' ').toLowerCase();return haystack.indexOf(w.name.toLowerCase())>=0||(w.device&&haystack.indexOf(w.device.toLowerCase())>=0);});});
+		if(!starlinkWans.length&&starlinkAdapters.length)starlinkWans=wanCandidates.slice(0,Math.max(1,starlinkAdapters.length));
+		const starlinkDetected=starlinkWans.length>0,starlinkProblem=starlinkAdapters.length>0&&!starlinkAdapters.some(function(a){return !a.offline&&String(a.state||'').toLowerCase()==='connected';});this.starlinkWanOrder=starlinkWans.map(function(w){return w.name;});
+		const starlinkPublic=(this.capabilities.features&&this.capabilities.features.starlink_public)||{},starlinkPublicInput=E('input',{type:'checkbox','aria-label':'Permitir visualização Starlink sem login','change':L.bind(function(ev){this.toggleStarlinkPublic(ev.currentTarget);},this)});starlinkPublicInput.checked=!!starlinkPublic.enabled;
+		const starlinkWanCards=starlinkWans.map(L.bind(function(w,index){const wanId=portDomId(w.name),saved=this.starlinkResults[w.name],resultClass=saved?(saved.aligned?'online':'offline'):'standby',resultLabel=saved?(saved.aligned?'ALINHADA':'AJUSTAR'):(w.strong?'DETECTADA':'PROVÁVEL');let panel=null;panel=E('details',{id:'ex-starlink-wan-'+wanId,class:'ex-starlink-wan','toggle':L.bind(function(){this.activateStarlinkPanel(w.name,panel);},this)},[
+			E('summary',{},[E('span',{},[E('strong',{},['Starlink '+(index+1)+' • '+w.label]),E('small',{class:'ex-muted'},['IP '+w.address+' • gateway '+w.gateway+' • interface '+(w.device||'—')])]),E('span',{id:'ex-starlink-result-'+wanId,class:'ex-pill '+resultClass},[resultLabel])]),
+			E('div',{class:'ex-starlink-wan-body'},[
+				E('div',{class:'ex-starlink-telemetry-actions'},[E('button',{class:'ex-mini-button','click':L.bind(this.readStarlinkTelemetry,this,w.name)},['Consultar esta antena']),E('button',{id:'ex-starlink-live-'+wanId,class:'ex-mini-button','click':L.bind(function(){this.starlinkTelemetryActive&&this.starlinkTelemetryWan===w.name?this.stopStarlinkAlignment():this.startStarlinkAlignment(w.name);},this)},['Ajuste ao vivo (1 s)']),E('button',{class:'ex-mini-button','click':L.bind(this.finishStarlinkAndNext,this,w.name)},['Finalizar e ir para próxima'])]),
+				E('small',{id:'ex-starlink-telemetry-'+wanId,class:'ex-muted ex-starlink-telemetry-copy'},['Leitura isolada pela '+w.label+' • não altera a rota padrão']),
+				E('div',{id:'ex-starlink-orientation-'+wanId,class:'ex-starlink-orientation'},['Os mostradores aparecerão após consultar esta antena.'])
+			])
+		]);return panel;},this));
 		const starlinkPanel=E('details',{class:'ex-starlink-panel '+(starlinkProblem?'problem':(starlinkDetected?'detected':'idle'))},[
 			E('summary',{},[
 				E('span',{class:'ex-starlink-summary-main'},[
 					E('span',{class:'ex-starlink-icon'},['◉']),
-					E('span',{},[E('strong',{},['Starlink']),E('small',{class:'ex-muted'},[starlinkDetected?(starlinkAdapters.length+' antena'+(starlinkAdapters.length===1?'':'s')+' detectada'+(starlinkAdapters.length===1?'':'s')):'Nenhuma antena detectada'])])
+					E('span',{},[E('strong',{},['Starlink']),E('small',{class:'ex-muted'},[starlinkDetected?(starlinkWans.length+' entrada'+(starlinkWans.length===1?'':'s')+' Starlink detectada'+(starlinkWans.length===1?'':'s')+' • ajuste sequencial'):'Nenhuma entrada Starlink detectada'])])
 				]),
 				E('span',{class:'ex-pill '+(starlinkProblem?'offline':(starlinkDetected?'online':'standby'))},[starlinkProblem?'SEM CONEXÃO':(starlinkDetected?'DETECTADA':'AGUARDANDO')])
 			]),
 			E('div',{class:'ex-starlink-body'},[
-				starlinkDetected?E('div',{class:'ex-starlink-list'},starlinkAdapters.map(function(a){
-					const online=!a.offline&&String(a.state||'').toLowerCase()==='connected';
-					return E('div',{class:'ex-starlink-item'},[
-						E('div',{},[E('strong',{},[a.description||a.name||a.adapterID||'Starlink']),E('small',{class:'ex-muted'},[a.isp||a.ispType||'Starlink'])]),
-						E('div',{},[E('span',{class:'ex-pill '+(online?'online':'offline')},[online?'ONLINE':'OFFLINE']),E('small',{class:'ex-muted'},['Prioridade: '+(a.workingPriority||a.priority||'automática')])])
-					]);
-				})):E('p',{class:'ex-muted'},['Quando o Speedify identificar uma conexão Starlink, este card mudará de cor e mostrará aqui a antena, o estado e a prioridade. Ele pode permanecer aberto mesmo sem antena.']),
+				starlinkWans.length>=2?E('div',{class:'ex-starlink-multi-warning'},[
+					E('strong',{},['Duas ou mais Starlink detectadas']),
+					E('span',{},['Se possível, instale as antenas afastadas e aponte-as para lados diferentes. Não é uma disputa direta por satélite, mas essa separação reduz obstruções compartilhadas e possível interferência, melhorando a diversidade dos enlaces.'])
+				]):'',
+				starlinkDetected?E('div',{class:'ex-starlink-list ex-starlink-wan-list'},starlinkWanCards):E('p',{class:'ex-muted'},['Quando uma WAN compatível for detectada, o ARK criará um card independente para consultar e alinhar cada antena.']),
+				E('div',{class:'ex-starlink-public'},[
+					E('div',{},[E('strong',{},['Visualização sem login']),E('small',{class:'ex-muted'},['Libera apenas telemetria e alinhamento em /starlink/ para dispositivos da LAN. Não permite alterar nenhuma configuração.']),E('a',{id:'ex-starlink-public-link',class:'ex-text-link',href:'/starlink/',target:'_blank',rel:'noopener noreferrer',hidden:!starlinkPublic.enabled},['Abrir painel somente leitura →'])]),
+					E('div',{class:'ex-device-switch-control'},[E('strong',{id:'ex-starlink-public-state',class:'ex-device-switch-state'},[starlinkPublic.enabled?'LIGADO':'DESLIGADO']),E('label',{class:'ex-switch'},[starlinkPublicInput,E('span',{class:'ex-switch-slider'})])])
+				]),
 				E('div',{class:'ex-starlink-note'},[
-					E('strong',{},[luci?'Recursos avançados • Full':'Monitoramento básico • Lite']),
-					E('small',{class:'ex-muted'},[luci?'Obstrução, orientação, plataforma móvel e alinhamento de duas antenas ficam disponíveis na Central Starlink oficial quando uma antena for reconhecida.':'A versão Lite mantém este card próprio com detecção, estado e prioridade, sem instalar os componentes pesados da interface oficial.']),
+					E('strong',{},['Módulo Starlink dedicado • Lite e Full']),
+					E('small',{class:'ex-muted'},['Uma antena é consultada por vez através de uma rota temporária exclusiva para 192.168.100.1. Internet, mwan3 e Speedify permanecem inalterados.']),
 					luci&&f.active?E('a',{class:'ex-text-link',href:L.url('admin/speedify'),target:'_blank',rel:'noopener noreferrer'},['Abrir Central Starlink / Speedify →']):(luci?E('small',{class:'ex-muted'},['Ligue o BONDING REAL para iniciar a Central Starlink oficial.']):'')
 				])
 			])
@@ -1363,6 +1430,7 @@ return view.extend({
 				actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.saveSpeedifyConfig,this)},['Salvar config']));
 			}
 		}
+		this._starlinkPanel=starlinkPanel;
 		return E('section',{class:'ex-card ex-speedify-card'},[
 			E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['BONDING REAL']),E('h3',{},['Speedify'])]),E('span',{class:'ex-pill '+(installed?(f.active?'online':'standby'):'offline')},[installed?(f.active?'ATIVO':'INSTALADO'):(supported?'OPCIONAL':'INDISPONÍVEL')])]),
 			E('p',{class:'ex-muted'},['Opcional. Permite somar WAN1/WAN2 usando a licença Speedify Router. Sem ele, o ARK Router continua usando failover/balanceamento normal.']),
@@ -1424,7 +1492,6 @@ return view.extend({
 					]);
 				},this)))
 			]):'',
-			starlinkPanel,
 			bypassPanel,
 			speedifyAdvanced,
 			E('div',{class:'ex-speedify-actions'},actions),
@@ -1718,10 +1785,12 @@ return view.extend({
 		const arkVersion=((this.capabilities.update||{}).current)||'—';
 		const irqbalance=this.feature('irqbalance');
 		const irqbalanceInput=E('input',{type:'checkbox','aria-label':'Ativar IRQ Balance','change':L.bind(function(ev){const input=ev.currentTarget,desired=!!input.checked;return fs.exec('/usr/sbin/equipe-dashboard-control',['irqbalance-toggle',desired?'1':'0']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar IRQ Balance');reloadSoon(desired?'IRQ Balance ativado. Recarregando o painel…':'IRQ Balance desativado. Recarregando o painel…',900);}).catch(function(e){input.checked=!desired;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)});irqbalanceInput.checked=!!irqbalance.active;irqbalanceInput.disabled=!irqbalance.installed;
+		const irqbalanceControl=irqbalance.installed?E('div',{class:'ex-device-switch-control'},[E('strong',{class:'ex-device-switch-state'},[irqbalance.active?'LIGADA':'DESLIGADA']),E('label',{class:'ex-switch'},[irqbalanceInput,E('span',{class:'ex-switch-slider'})])]):E('button',{class:'ex-mini-button','click':L.bind(this.installFeature,this,'irqbalance')},['Instalar IRQ Balance']);
 		const mwanInterfaces=(data.mwan&&data.mwan.interfaces)||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;});
 		const speedifyFeature=this.feature('speedify'), mwanPaused=String(speedifyFeature.desired_state||'')==='connected'&&!mwanRunning;
 		const mwanInput=E('input',{id:'ex-mwan-toggle',type:'checkbox','aria-label':'Ativar Multi-WAN','change':L.bind(function(ev){this.toggleMwan3(ev.currentTarget);},this)});mwanInput.checked=mwanRunning;mwanInput.disabled=mwanPaused;
 		const wan2Lan=wan2IsLan(data);
+		const qosWanProfiles=sqmWanProfiles(data), qosWanRows=qosWanProfiles.map(function(profile){return infoRow(profile.label+' limites','ex-qos-wan-'+portDomId(profile.network));});
 		const wanCards=[
 			E('section',{class:'ex-card ex-wan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},['WAN1']),E('span',{id:'ex-wan1-status',class:'ex-pill standby'},['—'])]),infoRow('Modo de conexão','ex-wan1-mode'),infoRow('Endereço IPv4','ex-wan1-ip'),infoRow('Gateway','ex-wan1-gateway'),infoRow('Máscara','ex-wan1-mask'),infoRow('DNS recebidos','ex-wan1-dns'),infoRow('Link físico','ex-wan1-link'),infoRow('Latência','ex-wan1-latency'),infoRow('Recebido','ex-wan1-rx'),infoRow('Enviado','ex-wan1-tx'),infoRow('Tempo online','ex-wan1-uptime'),E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(function(){this.editWan('wan');},this)},['Editar internet'])])
 		];
@@ -1731,13 +1800,15 @@ return view.extend({
 			const id='ex-lan-'+portDomId(port), label=portLabel(port);
 			return E('section',{class:'ex-card ex-lan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},[label]),E('span',{id:id+'-status',class:'ex-pill standby'},['—'])]),infoRow('Velocidade',id+'-speed'),infoRow('Modo',id+'-duplex'),infoRow('Recebido',id+'-rx'),infoRow('Enviado',id+'-tx'),E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(function(){this.editWan('wan2',port);},this)},['Usar como WAN2'])]);
 		},this));
+		const speedifySection=this.speedifyCard(data), starlinkSection=this._starlinkPanel;
 		const root=E('div',{class:'ex-dashboard'},[
 			E('section',{class:'ex-hero'+(isGamer?' ex-hero-gamer':'')},[E('div',{},[E('span',{class:'ex-eyebrow'},[heroEyebrow]),E('h2',{},[panelTitle]),E('p',{},[this.board.model||'OpenWrt','  •  ',release,'  •  ARK Router ',arkVersion]),E('div',{id:'ex-speedify-top',class:'ex-hero-speedify standby',style:'display:none'},[E('span',{},['Speedify']),E('strong',{},['—']),E('small',{},['—'])])]),E('div',{class:'ex-hero-status'},[E('span',{id:'ex-global-status',class:'ex-pill standby'},['VERIFICANDO']),E('strong',{id:'ex-clock'},['--:--:--']),E('small',{id:'ex-refresh-summary'},['sessão de 12 horas • atualização a cada 3 segundos']),E('div',{class:'ex-hero-actions'},[gamerButton,E('button',{class:'ex-hero-feature-button ex-hero-setup-button','click':L.bind(this.showEzSetup,this)},['Ark - Setup']),E('button',{class:'ex-hero-feature-button','click':L.bind(this.showFeatureCenter,this)},['Recursos'])])])]),
 			E('section',{class:'ex-card ex-health-strip'},[E('div',{class:'ex-health-head'},[E('div',{},[E('span',{class:'ex-kicker'},['SAÚDE DO ROTEADOR']),E('small',{},['Ligado há ',E('strong',{id:'ex-uptime'},['—'])])]),E('span',{id:'ex-health-status',class:'ex-pill standby'},['VERIFICANDO'])]),E('div',{class:'ex-health-items'},[healthItem('℃','Temperatura','ex-temperature',null,'#f59e0b'),healthItem('▦','Memória','ex-memory','ex-memory-bar','#3b82f6','ex-memory-detail'),healthItem('▣','Armazenamento','ex-storage','ex-storage-bar','#8b5cf6','ex-storage-detail'),healthItem('⌁','Carga','ex-load',null,'#10b981')])]),
-			E('section',{class:'ex-card ex-qos-card ex-irqbalance-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['DESEMPENHO DO SISTEMA']),E('h3',{},['IRQ Balance'])]),E('span',{class:'ex-pill '+(irqbalance.active?'online':'standby')},[irqbalance.active?'ATIVO':'DESLIGADO'])]),E('div',{class:'ex-qos-toggle-row'},[E('div',{},[E('strong',{},['Distribuição de interrupções']),E('small',{class:'ex-muted'},[irqbalance.installed?'Equilibra Wi‑Fi, Ethernet e demais interrupções entre os núcleos da CPU.':'Instale o pacote irqbalance para habilitar este controle.'])]),E('div',{class:'ex-device-switch-control'},[E('strong',{class:'ex-device-switch-state'},[irqbalance.active?'LIGADA':'DESLIGADA']),E('label',{class:'ex-switch'},[irqbalanceInput,E('span',{class:'ex-switch-slider'})])])])]),
+			E('section',{class:'ex-card ex-qos-card ex-irqbalance-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['DESEMPENHO DO SISTEMA']),E('h3',{},['IRQ Balance'])]),E('span',{class:'ex-pill '+(irqbalance.installed?(irqbalance.active?'online':'standby'):'offline')},[irqbalance.installed?(irqbalance.active?'ATIVO':'DESLIGADO'):'NÃO INSTALADO'])]),E('div',{class:'ex-qos-toggle-row'},[E('div',{},[E('strong',{},['Distribuição de interrupções']),E('small',{class:'ex-muted'},[irqbalance.installed?'Equilibra Wi‑Fi, Ethernet e demais interrupções entre os núcleos da CPU.':'O pacote ainda não está instalado. Instale-o para habilitar este controle.'])]),irqbalanceControl])]),
 			E('div',{class:'ex-grid ex-grid-2'},[metricCard('↓','Download agora','ex-download','ex-down-total','#3b82f6'),metricCard('↑','Upload agora','ex-upload','ex-up-total','#a855f7')]),
 			E('div',{class:'ex-grid ex-grid-2 ex-history-grid'},[historyCard('down','Download ao longo do dia','#3b82f6'),historyCard('up','Upload ao longo do dia','#a855f7')]),
 			E('p',{id:'ex-history-samples',class:'ex-history-caption'},['A primeira amostra aparecerá em até 1 minuto']),
+			starlinkSection,
 			E('div',{class:'ex-grid ex-grid-2'},wanCards),
 			E('section',{class:'ex-card ex-lan-config-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['REDE PRINCIPAL']),E('h3',{},['LAN / DHCP'])]),E('button',{class:'ex-mini-button','click':L.bind(function(){this.editLan();},this)},['Editar IP, DHCP e DNS'])]),E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},[infoRow('IP do roteador','ex-lan-ip'),infoRow('Faixa DHCP','ex-lan-dhcp'),infoRow('Máscara','ex-lan-mask'),infoRow('DNS enviado','ex-lan-dns')]),E('p',{class:'ex-muted'},['Use para trocar entre redes 192.168.x.x, 10.0.x.x ou definir manualmente a faixa e os DNS que os dispositivos recebem.'])]),
 			E('div',{class:'ex-lan-block'},[E('div',{class:'ex-lan-title'},[E('div',{},[E('span',{class:'ex-kicker'},['PORTAS CABEADAS']),E('h3',{},['LAN disponíveis'])]),E('small',{class:'ex-muted'},[wan2Lan?'WAN2 está em modo LAN. Escolha uma porta abaixo se quiser transformá-la em WAN2.':'Portas em modo LAN aparecem aqui; a porta usada pela WAN2 sai desta lista.'])]),E('div',{class:'ex-grid ex-grid-2'},lanCards.length?lanCards:[E('section',{class:'ex-card ex-lan-card ex-center-card'},[E('strong',{},['Nenhuma porta LAN disponível']),E('small',{class:'ex-muted'},['Todas as portas cabeadas livres estão em uso como WAN ou não foram detectadas.'])])])]),
@@ -1749,7 +1820,7 @@ return view.extend({
 				E('section',{class:'ex-card ex-center-card'},[E('span',{class:'ex-big-icon'},['♟']),E('span',{class:'ex-label'},[w.guest.ssid||'Visitantes']),E('strong',{id:'ex-guest-clients',class:'ex-number'},['0']),E('small',{id:'ex-guest-wifi',class:'ex-muted'},['0 no Wi-Fi'])])
 			]),
 			E('section',{class:'ex-card ex-speedtest-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['TESTE DE LINK']),E('h3',{},['Calibração do upload'])]),E('div',{class:'ex-speedtest-head-actions'},[E('span',{class:'ex-pill online'},['Pronto na memória']),E('button',{class:'ex-mini-button','click':L.bind(this.openFastCom,this)},['Abrir Fast.com']),E('button',{class:'ex-mini-button','click':L.bind(this.startConnectedSpeedtests,this)},['Testar WANs conectadas'])])]),E('p',{class:'ex-muted'},['O teste automático mede pelo roteador. Fast.com é a alternativa manual leve para aparelhos com pouca RAM ou quando você quiser apenas uma referência rápida pelo navegador.']),E('p',{class:'ex-muted'},['O teste faz uma medição completa e mais duas de upload. O SQM desta WAN será pausado e restaurado automaticamente. Durante o teste, o link ficará ocupado. O histórico guarda os últimos testes por WAN e calcula a média dos últimos 3.']),E('div',{class:'ex-grid ex-grid-2 ex-speedtest-grid'},[speedWanCard('wan','WAN1',!!iface(data.interfaces,'wan').up),speedWanCard('wan2','WAN2',!!iface(data.interfaces,'wan2').up)])]),
-			E('section',{class:'ex-card ex-qos-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['CONTROLE DE FILAS']),E('h3',{},['CAKE / SQM'])]),E('span',{id:'ex-qos-status',class:'ex-pill standby'},['—'])]),E('div',{class:'ex-qos-toggle-row'},[E('div',{},[E('strong',{},['SQM / CAKE']),E('small',{class:'ex-muted'},['Liga ou desliga as filas configuradas'])]),E('div',{class:'ex-device-switch-control'},[E('strong',{id:'ex-qos-toggle-state',class:'ex-device-switch-state'},['—']),E('label',{class:'ex-switch'},[E('input',{id:'ex-qos-toggle',type:'checkbox','change':L.bind(function(ev){this.toggleSqm(ev.currentTarget);},this)}),E('span',{class:'ex-switch-slider'})])])]),E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},[infoRow('WAN1 limites','ex-qos-wan'),infoRow('Rede visitante','ex-qos-guest'),infoRow('DNS do roteador','ex-dns')]),E('button',{class:'ex-button ex-qos-edit-button','click':L.bind(function(){try{this.editSqmLimits();}catch(e){ui.addNotification(null,E('p',{},[e.message||String(e)]),'danger');}},this)},['Editar limites'])]),
+			E('section',{class:'ex-card ex-qos-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['CONTROLE DE FILAS']),E('h3',{},['CAKE / SQM'])]),E('span',{id:'ex-qos-status',class:'ex-pill standby'},['—'])]),E('div',{class:'ex-qos-toggle-row'},[E('div',{},[E('strong',{},['SQM / CAKE']),E('small',{class:'ex-muted'},['Liga ou desliga as filas configuradas'])]),E('div',{class:'ex-device-switch-control'},[E('strong',{id:'ex-qos-toggle-state',class:'ex-device-switch-state'},['—']),E('label',{class:'ex-switch'},[E('input',{id:'ex-qos-toggle',type:'checkbox','change':L.bind(function(ev){this.toggleSqm(ev.currentTarget);},this)}),E('span',{class:'ex-switch-slider'})])])]),E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},qosWanRows.concat([infoRow('Rede visitante','ex-qos-guest'),infoRow('DNS do roteador','ex-dns')])),E('button',{class:'ex-button ex-qos-edit-button','click':L.bind(function(){try{this.editSqmLimits();}catch(e){ui.addNotification(null,E('p',{},[e.message||String(e)]),'danger');}},this)},['Editar limites'])]),
 			E('section',{class:'ex-card ex-mwan-control'},[
 				E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['MULTI‑WAN']),E('h3',{},['Modo atual: ',E('span',{id:'ex-mwan-mode'},['Failover WAN1 → WAN2'])])]),E('span',{id:'ex-mwan-status',class:'ex-pill '+(mwanRunning?'online':(mwanPaused?'standby':'offline'))},[mwanPaused?'PAUSADO':(mwanRunning?'ATIVO':'DESLIGADO')])]),
 				E('div',{class:'ex-qos-toggle-row ex-mwan-toggle-row'},[E('div',{},[E('strong',{},['Serviço Multi-WAN']),E('small',{class:'ex-muted'},[mwanPaused?'Pausado automaticamente enquanto o Speedify controla as rotas.':'Liga failover/balanceamento sem alterar o modo escolhido.'])]),E('div',{class:'ex-device-switch-control'},[E('strong',{id:'ex-mwan-toggle-state',class:'ex-device-switch-state'},[mwanPaused?'PAUSADO PELO SPEEDIFY':(mwanRunning?'LIGADO':'DESLIGADO')]),E('label',{class:'ex-switch'},[mwanInput,E('span',{class:'ex-switch-slider'})])])]),
@@ -1760,7 +1831,7 @@ return view.extend({
 				])
 			]),
 			this.zerotierCard(),
-			this.speedifyCard(),
+			speedifySection,
 			E('section',{class:'ex-shortcuts'},[E('a',{'data-feature':'mwan3',href:L.url('admin/status/mwan3/overview')},[E('b',{},['⇄']),E('span',{},['MultiWAN',E('small',{},['estado detalhado'])])]),E('a',{'data-feature':'nlbwmon',href:L.url('admin/services/nlbw/display')},[E('b',{},['▥']),E('span',{},['Consumo',E('small',{},['histórico completo'])])]),E('a',{href:L.url('admin/status/realtime/bandwidth')},[E('b',{},['⌁']),E('span',{},['Gráficos',E('small',{},['interfaces em tempo real'])])]),E('a',{href:L.url('admin/network/dhcp')},[E('b',{},['⌘']),E('span',{},['IPs fixos',E('small',{},['reservas DHCP'])])])]),
 			E('section',{class:'ex-card ex-reboot-card'},[E('div',{},[E('span',{class:'ex-kicker'},['SISTEMA']),E('h3',{},['Reiniciar o roteador']),E('p',{class:'ex-muted'},['Interrompe a internet por alguns minutos e encerra as sessões abertas.'])]),E('button',{class:'ex-reboot-button','click':L.bind(function(){this.requestReboot();},this)},['Reiniciar…'])])
 		]);

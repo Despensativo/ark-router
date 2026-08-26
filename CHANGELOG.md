@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.9.36
+
+- Added real Starlink diagnostic cards to the authenticated dashboard and the read-only `/starlink/` page: packet loss, current obstruction, uptime, average obstruction duration, SNR state, negotiated Ethernet speed and hardware alerts.
+- Added automatic first-WAN telemetry loading and retry so the read-only page no longer opens with empty telemetry fields.
+- The Starlink-only viewer now hides non-Starlink WANs, while normal WAN2/Multi-WAN operation remains unchanged.
+- Alignment bands now change between green (inside accepted margin) and red (outside margin) in both panels.
+
+## 0.9.35
+
+- Added an optional unauthenticated Starlink viewer at `/starlink/`. It is disabled by default, can be enabled from the Starlink card, accepts GET requests only, exposes telemetry/alignment without configuration controls and enforces the current LAN subnet at the CGI boundary.
+- Fixed Starlink telemetry queries through LuCI RPC: the watchdog no longer keeps the response open, and the dashboard accepts both direct JSON and `stdout` response formats.
+- Added a visible multi-antenna advisory when two or more Starlink WANs are detected, recommending physical separation and different viewing directions to reduce shared obstructions/interference.
+- Made the CAKE/SQM summary and limit editor enumerate every IPv4 interface currently configured with a WAN role. Each detected WAN now has its own visible limits, enable switch and persistent SQM queue instead of the summary being fixed to WAN1.
+- Added the dedicated multi-Starlink telemetry module to both Lite and Full profiles. It detects each eligible WAN independently, serializes access to the shared dish address, installs a temporary host route only during the reading and restores the previous route afterward.
+- Added one collapsible card per detected Starlink, with isolated telemetry, live one-second alignment mode and a `Finalizar e ir para próxima` workflow for aligning multiple antennas sequentially without changing the Internet default route, MWAN3 or Speedify.
+- Added `irqbalance` to the actual Lite and Full APK dependency metadata, matching the documented package profiles.
+- Replaced the disabled IRQ Balance switch on routers without the package with an explicit `Não instalado` state and installation button.
+
 ## 0.9.34
 
 - Fixed WAN status when `mwan3` is installed but stopped: the dashboard now falls back to the physical OpenWrt interface instead of incorrectly showing `SEM INTERNET ATIVA`.

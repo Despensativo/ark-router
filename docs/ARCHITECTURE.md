@@ -81,6 +81,14 @@ The dashboard exposes a confirmed SQM/CAKE toggle and a small limit editor. The 
 
 The dashboard exposes confirmed WAN editors for common internet settings. WAN1 edits protocol and DNS while keeping the physical `wan` port. WAN2 can assign `lan1`, `lan2` or `lan3` as a second internet port, or return the selected port to the LAN bridge. The backend creates a `/tmp/ark-router-ezsetup-backup-*.tar.gz` backup before changing network UCI and reloads network services afterward.
 
+## Dedicated multi-Starlink telemetry
+
+Lite and Full contain the same ARK telemetry orchestrator. The dashboard identifies every eligible Starlink WAN dynamically and creates an independent collapsible card for it. Only one live alignment session can run at a time. When the operator finishes an antenna, the panel closes it and advances to the next unverified antenna.
+
+The Starlink card also has an optional **Visualização sem login** switch. When enabled, `/starlink/` serves a standalone read-only alignment page for devices on the active LAN subnet. The CGI validates the source subnet, permits only GET/list/query operations and never exposes UCI changes, credentials or Speedify controls. It is disabled by default and is independent of the authenticated LuCI session.
+
+The dish management address is shared (`192.168.100.1`), so the backend serializes requests with a lock. For each read it resolves the chosen logical WAN and physical device, saves any existing host route, installs a temporary `192.168.100.1/32` route through that WAN, performs the telemetry call and restores the prior route under a shell trap. It never changes the default route and therefore does not reconfigure MWAN3, Speedify or normal Internet forwarding.
+
 ## Device controls and prioritization
 
 The device dialog stores friendly names in `equipe_devices`, creates or updates a DHCP host reservation keyed by MAC address, and can create a deterministic `firewall.ark_priority_*` DSCP rule. In standard mode, priority uses `AF41` so CAKE `diffserv4` places that device's uploads in its video class. In Gamer mode, priority uses `EF` (Expedited Forwarding) so gaming UDP packets (such as PUBG Mobile, Free Fire, CoD) jump directly to the real-time queue.

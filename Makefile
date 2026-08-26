@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ark-router
-PKG_VERSION:=0.9.34
+PKG_VERSION:=0.9.36
 PKG_RELEASE:=1
 PKG_MAINTAINER:=ARK Router contributors
 PKG_LICENSE:=MIT
@@ -14,7 +14,7 @@ define Package/luci-app-ark-router
   SUBMENU:=3. Applications
   TITLE:=ARK Router Lite operational dashboard
   PKGARCH:=all
-  DEPENDS:=+luci-base +rpcd +nlbwmon +luci-app-nlbwmon +tc-full +kmod-sched-act-police +luci-app-package-manager +luci-app-attendedsysupgrade +attendedsysupgrade-common +owut +luci-app-sqm +kmod-ifb +kmod-sched-cake +luci-app-mwan3 +luci-app-upnp +miniupnpd-nftables +luci-app-uhttpd +kmod-tun +iwinfo +luci-i18n-mwan3-pt-br +luci-i18n-nlbwmon-pt-br +luci-i18n-sqm-pt-br +luci-i18n-upnp-pt-br +luci-i18n-uhttpd-pt-br
+  DEPENDS:=+luci-base +rpcd +nlbwmon +luci-app-nlbwmon +tc-full +kmod-sched-act-police +irqbalance +luci-app-package-manager +luci-app-attendedsysupgrade +attendedsysupgrade-common +owut +luci-app-sqm +kmod-ifb +kmod-sched-cake +luci-app-mwan3 +luci-app-upnp +miniupnpd-nftables +luci-app-uhttpd +kmod-tun +iwinfo +luci-i18n-mwan3-pt-br +luci-i18n-nlbwmon-pt-br +luci-i18n-sqm-pt-br +luci-i18n-upnp-pt-br +luci-i18n-uhttpd-pt-br
 endef
 
 define Package/luci-app-ark-router/description
@@ -33,7 +33,7 @@ define Package/luci-app-ark-router-full
   SUBMENU:=3. Applications
   TITLE:=ARK Router Full operational dashboard
   PKGARCH:=all
-  DEPENDS:=+luci-base +rpcd +nlbwmon +luci-app-nlbwmon +tc-full +kmod-sched-act-police +luci-app-sqm +kmod-ifb +kmod-sched-cake +luci-app-mwan3 +luci-app-upnp +miniupnpd-nftables +luci-app-uhttpd +zerotier +speedtest-go +kmod-tun +iwinfo +luci-app-package-manager +luci-app-attendedsysupgrade +attendedsysupgrade-common +owut +luci-i18n-mwan3-pt-br +luci-i18n-nlbwmon-pt-br +luci-i18n-sqm-pt-br +luci-i18n-upnp-pt-br +luci-i18n-uhttpd-pt-br
+  DEPENDS:=+luci-base +rpcd +nlbwmon +luci-app-nlbwmon +tc-full +kmod-sched-act-police +irqbalance +luci-app-sqm +kmod-ifb +kmod-sched-cake +luci-app-mwan3 +luci-app-upnp +miniupnpd-nftables +luci-app-uhttpd +zerotier +speedtest-go +kmod-tun +iwinfo +luci-app-package-manager +luci-app-attendedsysupgrade +attendedsysupgrade-common +owut +luci-i18n-mwan3-pt-br +luci-i18n-nlbwmon-pt-br +luci-i18n-sqm-pt-br +luci-i18n-upnp-pt-br +luci-i18n-uhttpd-pt-br
 endef
 
 define Package/luci-app-ark-router-full/description
@@ -60,10 +60,18 @@ endef
 
 define Package/luci-app-ark-router/install
 	$(CP) ./root/* $(1)/
+	$(INSTALL_DIR) $(1)/usr/libexec
+	$(INSTALL_BIN) ./root/usr/libexec/ark-starlink-telemetry $(1)/usr/libexec/ark-starlink-telemetry
+	$(INSTALL_DIR) $(1)/www/cgi-bin
+	$(INSTALL_BIN) ./root/www/cgi-bin/ark-starlink-telemetry $(1)/www/cgi-bin/ark-starlink-telemetry
 endef
 
 define Package/luci-app-ark-router-full/install
 	$(CP) ./root/* $(1)/
+	$(INSTALL_DIR) $(1)/usr/libexec
+	$(INSTALL_BIN) ./root/usr/libexec/ark-starlink-telemetry $(1)/usr/libexec/ark-starlink-telemetry
+	$(INSTALL_DIR) $(1)/www/cgi-bin
+	$(INSTALL_BIN) ./root/www/cgi-bin/ark-starlink-telemetry $(1)/www/cgi-bin/ark-starlink-telemetry
 endef
 
 $(eval $(call BuildPackage,luci-app-ark-router))

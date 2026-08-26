@@ -20,6 +20,9 @@ Keywords: OpenWrt dashboard, LuCI dashboard, router panel, router management, Mu
 - **Ark - Setup:** Guided first-configuration assistant with saved progress and final confirmation.
 - **Channel planning:** Analyze Wi-Fi channels manually, apply suggested channels with confirmation or return to automatic channel selection.
 - **SQM calibration:** Run per-WAN speed tests and generate SQM upload suggestions at 85%, 90% and 95%; on weak routers the panel keeps a Fast.com/manual fallback visible.
+- **Multi-Starlink telemetry:** Detect compatible WANs separately, inspect obstruction/GPS/alignment for each antenna and move through them one at a time with temporary isolated routes that do not replace the router default route.
+- **Optional read-only Starlink page:** The administrator can enable `/starlink/` from the Starlink card for LAN-only, no-login telemetry and alignment. It is GET-only and cannot change router settings; it remains disabled by default.
+- **Starlink diagnostics:** Both panels organize packet loss, current obstruction, uptime, obstruction duration, SNR, Ethernet negotiation and hardware alerts when the dish firmware exposes them. The read-only page automatically loads the first detected Starlink and retries transient queries.
 - **Small-flash friendly:** Avoid filling router flash by loading `speedtest-go` into temporary RAM when enough space exists.
 - **Optional Speedify recovery:** When Speedify is used in RAM or external storage mode, ARK Router can remember the chosen mode and try to reload it automatically after reboot.
 - **Bilingual UI:** Use Portuguese (Brazil) or English.
@@ -38,6 +41,8 @@ Real screenshots are stored in [`docs/screenshots`](docs/screenshots). The publi
 | ![WAN editor](docs/screenshots/wan-editor.png) | ![Mobile overview](docs/screenshots/mobile-overview.png) |
 
 Additional real screenshot: [SQM editor](docs/screenshots/sqm-editor.png).
+
+Latest real module capture: [Starlink telemetry and alignment](docs/screenshots/starlink-telemetry-real.png). It was captured from the live Cudy/OpenWrt test router; no generated mock image is used.
 
 ## Tested Device
 
@@ -90,7 +95,7 @@ The package manager adapter supports both `apk` and `opkg` for optional package 
 | Wi-Fi | Main and guest cards, password visibility, password editing, country selection and channel analysis |
 | Devices | Friendly names, per-device traffic when available and DHCP reservation by MAC |
 | QoS | Optional CAKE priority marking for selected main-network devices |
-| SQM | SQM/CAKE toggle and editable WAN/guest download/upload limits; `0` means unlimited for that direction |
+| SQM | Dynamic SQM/CAKE controls for every interface configured as an IPv4 WAN, plus guest download/upload limits; `0` means unlimited for that direction |
 | HTTPS | Redirect control and local CA download guidance |
 | System | Router restart button with two confirmations and a backend-enforced delay |
 | Modules | Optional feature center with install/hide suggestions |
@@ -101,6 +106,7 @@ The package manager adapter supports both `apk` and `opkg` for optional package 
 | --- | --- |
 | SQM / CAKE | `luci-app-sqm` |
 | Multi-WAN | `luci-app-mwan3` |
+| Starlink telemetry | Dedicated ARK module embedded in Lite and Full; the small architecture-specific telemetry client is loaded into `/tmp` only when needed |
 | Per-device usage | `nlbwmon`; `luci-app-nlbwmon` is optional if the original LuCI report page is desired |
 | Guest network full rate limit | `tc-full` and `kmod-sched-act-police`; pulled by Release package installs |
 | IRQ balance | `irqbalance` |
@@ -313,7 +319,7 @@ tar -xzf /tmp/ark-router-config-backup-YYYYMMDD-HHMMSS.tar.gz -C /
 
 ## Project Status
 
-Version 0.9.34 is a tested pilot release with GitHub Release package publishing, SSH install/update commands, dashboard self-update validation, ZeroTier lightweight remote access, Speedify runtime controls, dynamic WAN/LAN port handling, Wi-Fi channel-width controls, dynamic Wi-Fi radio detection, safer LAN/uHTTPd binding, LAN DHCP DNS editing, one-click installation of missing lightweight modules, per-device traffic accounting, full guest network rate limiting and detailed WAN status with protocol, gateway, netmask, DNS, latency and individual traffic totals. It is suitable for early public testing, with the compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
+Version 0.9.35 is the current local pilot build, with dedicated multi-Starlink telemetry in both package profiles in addition to GitHub Release packaging, SSH install/update commands, dashboard self-update validation, ZeroTier lightweight remote access, Speedify runtime controls, dynamic WAN/LAN port handling, Wi-Fi channel-width controls, dynamic Wi-Fi radio detection, safer LAN/uHTTPd binding, LAN DHCP DNS editing, one-click installation of missing lightweight modules, per-device traffic accounting, full guest network rate limiting and detailed WAN status with protocol, gateway, netmask, DNS, latency and individual traffic totals. It is suitable for early public testing, with the compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
 
 ## License
 

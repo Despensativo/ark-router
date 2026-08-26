@@ -1,7 +1,7 @@
 #!/bin/sh
 
 action="$1"
-ARK_ROUTER_VERSION="0.9.34"
+ARK_ROUTER_VERSION="0.9.36"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() { [ "$1" = 1 ] && printf true || printf false; }
@@ -1567,6 +1567,47 @@ ensure_sqm_section() {
 	uci -q set "sqm.$section.iqdisc_opts=diffserv4 nat dual-dsthost ingress"
 	uci -q set "sqm.$section.linklayer=none"
 }
+active_wan_networks() {
+	uci -q show network 2>/dev/null | sed -n 's/^network\.\(wan[0-9]*\)=interface$/\1/p' | while IFS= read -r network_section; do
+		proto="$(uci -q get "network.$network_section.proto")"
+		case "$proto" in dhcp|pppoe|static) printf '%s\n' "$network_section" ;; esac
+	done
+}
+sqm_section_for_network() {
+	case "$1" in wan) printf wan1 ;; wan[0-9]*) printf '%s' "$1" ;; *) return 1 ;; esac
+}
+sqm_device_for_network() {
+	network_section="$1"
+	device="$(ubus call "network.interface.$network_section" status 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null)"
+	[ -n "$device" ] || device="$(uci -q get "network.$network_section.device")"
+	[ -n "$device" ] || device="$network_section"
+	printf '%s' "$device"
+}
+starlink_cgnat_ipv4() {
+	printf '%s' "$1" | awk -F. 'NF==4 && $1==100 && $2>=64 && $2<=127 {ok=1} END{exit !ok}'
+}
+starlink_public_list_json() {
+	printf '{"ok":true,"enabled":true,"wans":['
+	first=1
+	for network_section in $(active_wan_networks); do
+		status_json="$(ubus call "network.interface.$network_section" status 2>/dev/null)"
+		[ -n "$status_json" ] || continue
+		up="$(printf '%s' "$status_json" | jsonfilter -e '@.up' 2>/dev/null)"
+		ipaddr="$(printf '%s' "$status_json" | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null)"
+		gateway="$(printf '%s' "$status_json" | jsonfilter -e '@.route[@.target="0.0.0.0"].nexthop' 2>/dev/null | head -n 1)"
+		dns="$(printf '%s' "$status_json" | jsonfilter -e '@["dns-server"][@]' 2>/dev/null | tr '\n' ' ')"
+		device="$(sqm_device_for_network "$network_section")"
+		likely=false
+		starlink_cgnat_ipv4 "$ipaddr" && likely=true
+		starlink_cgnat_ipv4 "$gateway" && likely=true
+		printf '%s' "$dns" | grep -Eq '(^|[[:space:]])198\.54\.100\.' && likely=true
+		[ "$first" = 1 ] || printf ','; first=0
+		if [ "$network_section" = wan ]; then label=WAN1; else label="WAN${network_section#wan}"; fi
+		printf '{"name":"%s","label":"%s","device":"%s","up":%s,"ip":"%s","gateway":"%s","likely_starlink":%s}' \
+			"$(json_escape "$network_section")" "$(json_escape "$label")" "$(json_escape "$device")" "$(bool "$up")" "$(json_escape "$ipaddr")" "$(json_escape "$gateway")" "$likely"
+	done
+	printf ']}\n'
+}
 ensure_mwan3_ark_config() {
 	[ -f /etc/config/mwan3 ] || return 0
 	for sec in wan6 wanb wanb6 wanb_m1_w2 wanb_m1_w3 wanb_m2_w2 wan6_m1_w3 wan6_m2_w3 wanb6_m1_w2 wanb6_m1_w3 wanb6_m2_w2 wanb_only wan_wanb wanb_wan default_rule_v6; do
@@ -2310,6 +2351,8 @@ case "$action" in
 		printf ','; feature_json speedtest speedtest-go "$speedtest_installable"
 		bypass='{}'; speedify_runtime_running && command -v speedify_cli >/dev/null 2>&1 && bypass="$(speedify_cli -s show streamingbypass 2>/dev/null || printf '{}')"
 		printf ',"speedify_bypass":%s' "$bypass"
+		starlink_public=false; [ "$(uci -q get equipe_dashboard.starlink.public_view || printf 0)" = 1 ] && starlink_public=true
+		printf ',"starlink_public":{"enabled":%s,"url":"/starlink/","read_only":true}' "$starlink_public"
 		current_version="$(ark_current_version)"
 		update_repo="$(ark_update_repo)"
 		printf '},"https":{"available":%s,"redirect":%s,"certificate":"local","ca_available":%s,"ca_fingerprint":"%s","ca_download":"/ark-router/ark-router-ca.crt"},"update":{"current":"%s","repo":"%s","manager":"%s"}}\n' "$https_available" "$(bool "$https_redirect")" "$ca_available" "$ca_fingerprint" "$(json_escape "$current_version")" "$(json_escape "$update_repo")" "$(json_escape "$manager")"
@@ -2618,11 +2661,16 @@ case "$action" in
 	sqm-toggle)
 		case "$2" in 0|1) ;; *) echo 'Estado SQM invalido' >&2; exit 2 ;; esac
 		[ -f /etc/config/sqm ] || { echo 'SQM nao instalado' >&2; exit 3; }
-		ensure_sqm_section wan1 wan
-		wan2_dev="$(uci -q get network.wan2.device || printf lan1)"
-		[ "$(uci -q get network.wan2.proto)" = dhcp ] && ensure_sqm_section wan2 "$wan2_dev"
-		uci -q set "sqm.wan1.enabled=$2"
-		uci -q get sqm.wan2 >/dev/null 2>&1 && uci -q set "sqm.wan2.enabled=$2"
+		wan_count=0
+		for network_section in $(active_wan_networks); do
+			sqm_section="$(sqm_section_for_network "$network_section")" || continue
+			wan_device="$(sqm_device_for_network "$network_section")"
+			valid_net_device "$wan_device" || { echo "Dispositivo SQM invalido para $network_section" >&2; exit 2; }
+			ensure_sqm_section "$sqm_section" "$wan_device"
+			uci -q set "sqm.$sqm_section.enabled=$2"
+			wan_count=$((wan_count + 1))
+		done
+		[ "$wan_count" -gt 0 ] || { echo 'Nenhuma WAN ativa encontrada' >&2; exit 3; }
 		uci commit sqm
 		/etc/init.d/sqm restart
 		echo ok
@@ -2663,6 +2711,57 @@ case "$action" in
 		speedify_adapter_valid "$2" || { echo 'Adaptador invalido' >&2; exit 2; }
 		for rate in "$3" "$4"; do case "$rate" in unlimited|[0-9]*) ;; *) echo 'Limite invalido' >&2; exit 2 ;; esac; done
 		"$(speedify_cli_path)" adapter ratelimit "$2" "$3" "$4" >/dev/null 2>&1 || { echo 'Falha ao salvar limite' >&2; exit 3; }
+		echo ok
+		;;
+	sqm-save-v2)
+		[ -f /etc/config/sqm ] || { echo 'SQM nao instalado' >&2; exit 3; }
+		shift
+		wan_count=0
+		for pair in "$@"; do
+			key="${pair%%=*}"; value="${pair#*=}"
+			case "$key" in
+				wan)
+					[ "$(printf '%s' "$value" | awk -F'|' '{print NF}')" = 6 ] || { echo 'Perfil WAN SQM invalido' >&2; exit 2; }
+					section="$(printf '%s' "$value" | cut -d '|' -f1)"; network_section="$(printf '%s' "$value" | cut -d '|' -f2)"; device="$(printf '%s' "$value" | cut -d '|' -f3)"; enabled="$(printf '%s' "$value" | cut -d '|' -f4)"; download="$(printf '%s' "$value" | cut -d '|' -f5)"; upload="$(printf '%s' "$value" | cut -d '|' -f6)"
+					case "$section" in wan[0-9]*) ;; *) echo 'Secao SQM WAN invalida' >&2; exit 2 ;; esac
+					case "$network_section" in wan|wan[0-9]*) ;; *) echo 'Interface logica WAN invalida' >&2; exit 2 ;; esac
+					expected_section="$(sqm_section_for_network "$network_section")" || { echo 'Mapeamento SQM invalido' >&2; exit 2; }
+					[ "$section" = "$expected_section" ] || { echo 'Secao SQM nao corresponde a WAN' >&2; exit 2; }
+					[ "$(uci -q get "network.$network_section")" = interface ] || { echo "WAN $network_section nao configurada" >&2; exit 2; }
+					case "$(uci -q get "network.$network_section.proto")" in dhcp|pppoe|static) ;; *) echo "WAN $network_section inativa" >&2; exit 2 ;; esac
+					valid_net_device "$device" || { echo "Dispositivo SQM invalido para $network_section" >&2; exit 2; }
+					expected_device="$(sqm_device_for_network "$network_section")"; [ "$device" = "$expected_device" ] || { echo "Dispositivo SQM nao corresponde a $network_section" >&2; exit 2; }
+					case "$enabled" in 0|1) ;; *) echo 'Estado SQM invalido' >&2; exit 2 ;; esac
+					valid_sqm_rate "$download" && valid_sqm_rate "$upload" || { echo 'Velocidade SQM invalida' >&2; exit 2; }
+					wan_count=$((wan_count + 1))
+					;;
+				guest_download|guest_upload) valid_sqm_rate "$value" || { echo 'Velocidade visitante invalida' >&2; exit 2; } ;;
+				*) echo "Campo SQM invalido: $key" >&2; exit 2 ;;
+			esac
+		done
+		[ "$wan_count" -gt 0 ] || { echo 'Nenhuma WAN enviada para o SQM' >&2; exit 2; }
+		for pair in "$@"; do
+			key="${pair%%=*}"; value="${pair#*=}"
+			case "$key" in
+				wan)
+					section="$(printf '%s' "$value" | cut -d '|' -f1)"; device="$(printf '%s' "$value" | cut -d '|' -f3)"; enabled="$(printf '%s' "$value" | cut -d '|' -f4)"; download="$(printf '%s' "$value" | cut -d '|' -f5)"; upload="$(printf '%s' "$value" | cut -d '|' -f6)"
+					ensure_sqm_section "$section" "$device"
+					uci -q set "sqm.$section.enabled=$enabled"
+					uci -q set "sqm.$section.download=$download"
+					uci -q set "sqm.$section.upload=$upload"
+					;;
+				guest_upload)
+					ensure_qos_equipe; uci -q set qos_equipe.guest=guest_limit; uci -q set qos_equipe.guest.enabled=1; uci -q set "qos_equipe.guest.upload_kbps=$value"
+					;;
+				guest_download)
+					ensure_qos_equipe; uci -q set qos_equipe.guest=guest_limit; uci -q set qos_equipe.guest.enabled=1; uci -q set "qos_equipe.guest.download_kbps=$value"
+					;;
+			esac
+		done
+		uci commit sqm
+		uci commit qos_equipe 2>/dev/null || true
+		/etc/init.d/sqm restart
+		apply_guest_tc_limit >/dev/null 2>&1 || true
 		echo ok
 		;;
 	sqm-save)
@@ -2852,6 +2951,20 @@ case "$action" in
 		;;
 	speedify-status)
 		speedify_status_json
+		;;
+	starlink-telemetry)
+		[ -x /usr/libexec/ark-starlink-telemetry ] || { echo 'Módulo Starlink do ARK não instalado.' >&2; exit 1; }
+		exec /usr/libexec/ark-starlink-telemetry query "${2:-wan}"
+		;;
+	starlink-public-list)
+		starlink_public_list_json
+		;;
+	starlink-public-toggle)
+		case "$2" in 0|1) ;; *) echo 'Estado da visualização Starlink inválido' >&2; exit 2 ;; esac
+		uci -q set equipe_dashboard.starlink=starlink
+		uci -q set "equipe_dashboard.starlink.public_view=$2"
+		uci commit equipe_dashboard
+		echo ok
 		;;
 	speedify-install)
 		status="/tmp/equipe-dashboard-install-speedify.status"; log="/tmp/equipe-dashboard-install-speedify.log"
