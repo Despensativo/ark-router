@@ -89,6 +89,8 @@ The Starlink card also has an optional **Visualização sem login** switch. When
 
 The dish management address is shared (`192.168.100.1`), so the backend serializes requests with a lock. For each read it resolves the chosen logical WAN and physical device, saves any existing host route, installs a temporary `192.168.100.1/32` route through that WAN, performs the telemetry call and restores the prior route under a shell trap. It never changes the default route and therefore does not reconfigure MWAN3, Speedify or normal Internet forwarding.
 
+Telemetry is read-only and reports the fields exposed by the dish: obstruction percentage, current obstruction state, packet loss, latency, uptime, average obstruction duration, SNR, Ethernet link, GPS/satellite count, firmware, alerts, azimuth, elevation, inclination and alignment status. The authenticated dashboard and the optional LAN-only `/starlink/` viewer use the same backend. A one-second live session expires after five minutes without interaction and is stopped when the page is left.
+
 ## Device controls and prioritization
 
 The device dialog stores friendly names in `equipe_devices`, creates or updates a DHCP host reservation keyed by MAC address, and can create a deterministic `firewall.ark_priority_*` DSCP rule. In standard mode, priority uses `AF41` so CAKE `diffserv4` places that device's uploads in its video class. In Gamer mode, priority uses `EF` (Expedited Forwarding) so gaming UDP packets (such as PUBG Mobile, Free Fire, CoD) jump directly to the real-time queue.

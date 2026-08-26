@@ -57,6 +57,7 @@ Expected extra installed footprint beyond LuCI base: about 2.0 MB, depending on 
 Runtime notes:
 
 - The dedicated multi-Starlink orchestration module is embedded in both profiles. Its shell/UI footprint is small; on supported AArch64 routers the approximately 1.4 MB telemetry client is downloaded to `/tmp` only on first use and is not written to flash.
+- Starlink diagnostics and alignment visualization are part of that embedded module; no separate LuCI Starlink package or cloud account is required. The optional `/starlink/` page is LAN-only, read-only and disabled by default.
 - Each dish is queried sequentially through a temporary `192.168.100.1/32` route bound to its selected WAN. A lock prevents two panels from changing that host route simultaneously, and the previous route is restored after success, failure or interruption.
 - `nlbwmon` measured around 1 MB RSS on the tested router.
 - Guest download limits use `tbf`.

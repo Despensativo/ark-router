@@ -5,11 +5,13 @@
 ![Language](https://img.shields.io/badge/UI-PT--BR%20%2F%20EN-blue)
 ![Status](https://img.shields.io/badge/status-pilot%20release-orange)
 
-ARK Router is a responsive, bilingual and modular operational dashboard for OpenWrt/LuCI. It was created to make event and field routers easier to operate when the network has multiple WAN links, Starlink or mobile links, guest Wi-Fi limits, SQM/CAKE and non-technical people checking the router during the day.
+ARK Router is a responsive, bilingual and modular operational dashboard for OpenWrt/LuCI. It turns the LuCI home screen into a practical control center for home, office, event, field and mobile routers with multiple WAN links, Starlink, guest Wi-Fi limits and SQM/CAKE QoS.
 
 The project does not replace LuCI. It adds a cleaner operations home screen on top of LuCI, with safer shortcuts for common actions.
 
-Keywords: OpenWrt dashboard, LuCI dashboard, router panel, router management, Multi-WAN, mwan3, SQM, CAKE QoS, Wi-Fi channel analyzer, Starlink router, guest Wi-Fi, bandwidth management, OpenWrt monitoring, OpenWrt UI, OpenWrt plugin.
+Keywords: ARK Router, OpenWrt dashboard, LuCI dashboard, OpenWrt plugin, router management, router monitoring, Multi-WAN, mwan3, failover, load balancing, SQM, CAKE QoS, upload shaping, guest Wi-Fi, bandwidth control, per-device traffic, Wi-Fi channel analyzer, Starlink router, Starlink telemetry, Starlink alignment, obstruction monitoring, ZeroTier, Speedify Router, OpenWrt UI, embedded router setup.
+
+The current release is **0.9.36**. ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
 
 ## Why Use It
 
@@ -27,6 +29,13 @@ Keywords: OpenWrt dashboard, LuCI dashboard, router panel, router management, Mu
 - **Optional Speedify recovery:** When Speedify is used in RAM or external storage mode, ARK Router can remember the chosen mode and try to reload it automatically after reboot.
 - **Bilingual UI:** Use Portuguese (Brazil) or English.
 - **Theme aware:** Follow the active LuCI theme automatically, use ARK Router colors or choose custom colors.
+- **Safe by design:** Installation writes only ARK Router files; network changes happen only after an administrator confirms an action. Backups, resumable setup checkpoints and rollback-oriented helpers are included.
+
+### What is included in the ARK Router panel
+
+The dashboard covers the operational tasks that are otherwise scattered across LuCI: WAN protocol and port-role editing (DHCP, PPPoE, static IPv4 and MAC clone), per-WAN gateway/mask/DNS/latency/link details, failover or load-balancing controls, LAN port status, main/guest Wi-Fi names/passwords, 2.4/5 GHz separation and channel width, country/channel analysis, IPv6 and WPS switches, CAKE/SQM master and per-WAN limits, guest download/upload caps, device naming/reservation/priority, live and 24-hour traffic, health (load/temperature/RAM/flash), HTTPS redirect/certificate guidance, optional modules, backups and safe restart.
+
+The Starlink module adds dynamic detection of only Starlink-capable WANs, one card per antenna, read-only telemetry/alignment, multi-antenna sequencing, obstruction/alignment diagnostics and a LAN-only `/starlink/` viewer. ZeroTier is the integrated remote-access option; Speedify is an optional licensed bonding runtime and is never silently enabled or bundled with credentials.
 
 ## Screenshots
 
@@ -116,18 +125,18 @@ The package manager adapter supports both `apk` and `opkg` for optional package 
 | Link testing | `speedtest-go`, loaded into temporary memory |
 | Tunnel support | `kmod-tun`, required only when Speedify/VPN tunnel interfaces are enabled |
 | Real bonding | Speedify Router runtime, optional; can be loaded internally, from external storage or temporarily in RAM when supported |
-| Remote access | Tailscale, optional; secure access to LuCI/SSH/LAN without exposing WAN ports |
+| Remote access | ZeroTier is integrated; Tailscale can be installed manually when desired. Both use private overlay access without exposing LuCI/SSH on the WAN |
 | Lightweight remote access | ZeroTier, optional; smaller remote-access alternative for constrained routers |
 
 Most optional packages are not hard dependencies. Cards are displayed only when the corresponding capability exists. The dashboard asks for confirmation before installing an optional package. Package installation does not automatically alter network configuration.
 
 See [`docs/PACKAGE_PROFILES.md`](docs/PACKAGE_PROFILES.md) for the Lite and Full package profiles, including measured package sizes, service RAM notes and the tested addon version baseline.
 
-### Tailscale remote access
+### Tailscale remote access (manual integration)
 
-Tailscale is the recommended free personal remote-access option for ARK Router. It is useful on Starlink, mobile links and CGNAT because it does not require inbound WAN ports. ARK Router can install Tailscale, start the service, generate the login flow through `tailscale up`, show the Tailscale IP and advertise the current LAN subnet route.
+Tailscale is a supported optional overlay for Starlink, mobile links and CGNAT, but it is not currently an ARK Router-managed dashboard module. Install and pair it using the official Tailscale/OpenWrt instructions, then keep LuCI/SSH bound to LAN or the private overlay. ARK Router's integrated remote-access flow is ZeroTier.
 
-After pairing, approve the advertised subnet route in the Tailscale admin panel. Keep each router LAN on a different subnet, such as `192.168.10.0/24`, `192.168.20.0/24` and `192.168.73.0/24`, to avoid route conflicts. Do not expose LuCI or SSH directly to the WAN.
+If subnet routing is used, approve the route in the Tailscale admin panel. Keep each router LAN on a different subnet, such as `192.168.10.0/24`, `192.168.20.0/24` and `192.168.73.0/24`, to avoid route conflicts. Do not expose LuCI or SSH directly to the WAN.
 
 ### ZeroTier remote access
 
@@ -224,7 +233,7 @@ It downloads/extracts the matching OpenWrt SDK if needed and writes:
 
 The generated packages are `noarch` and preserve `/etc/config/equipe_dashboard`, `/etc/config/equipe_devices` and `/etc/config/qos_equipe`. The canonical `luci-app-ark-router.apk` is the Lite profile and keeps the original internal package name for updater compatibility. The Full profile is published as `luci-app-ark-router-full.apk`. Speedify remains an optional external runtime and is not bundled.
 
-For public releases, this repository already includes a GitHub Actions workflow that builds the OpenWrt package when a version tag such as `v0.9.29` is pushed. See [`docs/PUBLISHING.md`](docs/PUBLISHING.md) for the full GitHub publishing flow.
+For public releases, this repository already includes a GitHub Actions workflow that builds the OpenWrt package when a version tag such as `v0.9.36` is pushed. See [`docs/PUBLISHING.md`](docs/PUBLISHING.md) for the full GitHub publishing flow.
 
 ## Installation
 
@@ -319,7 +328,7 @@ tar -xzf /tmp/ark-router-config-backup-YYYYMMDD-HHMMSS.tar.gz -C /
 
 ## Project Status
 
-Version 0.9.35 is the current local pilot build, with dedicated multi-Starlink telemetry in both package profiles in addition to GitHub Release packaging, SSH install/update commands, dashboard self-update validation, ZeroTier lightweight remote access, Speedify runtime controls, dynamic WAN/LAN port handling, Wi-Fi channel-width controls, dynamic Wi-Fi radio detection, safer LAN/uHTTPd binding, LAN DHCP DNS editing, one-click installation of missing lightweight modules, per-device traffic accounting, full guest network rate limiting and detailed WAN status with protocol, gateway, netmask, DNS, latency and individual traffic totals. It is suitable for early public testing, with the compatibility limits documented above. Additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
+Version 0.9.36 is the current pilot release. It includes dedicated multi-Starlink telemetry in Lite and Full, automatic first-WAN loading/retry, Starlink-only filtering in the read-only viewer, green/red alignment bands and diagnostic cards (loss, obstruction, uptime, SNR, Ethernet and alerts), in addition to GitHub Release packaging, SSH install/update commands, dashboard self-update validation, ZeroTier remote access, optional Speedify controls, dynamic WAN/LAN port handling, Wi-Fi channel-width/country controls, safer LAN/uHTTPd binding, DHCP DNS editing, one-click lightweight-module installation, per-device traffic accounting, guest rate limiting and detailed WAN protocol/gateway/netmask/DNS/latency/traffic totals. It is suitable for early public testing; additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
 
 ## License
 

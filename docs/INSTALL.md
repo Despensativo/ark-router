@@ -151,12 +151,12 @@ When a supported module is already installed, Ark - Setup and the feature center
 
 ### Optional Tailscale remote access
 
-Use **ARK Router → Recursos → Tailscale remoto** when remote administration is needed from iOS, Windows or another network.
+Tailscale is an optional manual overlay. The integrated ARK Router remote-access flow is ZeroTier; this package does not currently create a Tailscale menu or manage its login.
 
 The flow is:
 
-1. Install Tailscale from the dashboard.
-2. Click **Parear / anunciar LAN**.
+1. Install Tailscale using the official OpenWrt/Tailscale instructions.
+2. Pair the router with `tailscale up` and the official login flow.
 3. Open the generated login URL.
 4. Approve the router in Tailscale.
 5. Approve the advertised subnet route in the Tailscale admin panel.

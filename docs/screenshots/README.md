@@ -9,6 +9,7 @@ Included real screenshot files:
 - `wan-editor.png`
 - `sqm-editor.png`
 - `mobile-overview.png`
+- `starlink-telemetry-real.png` (real live capture from the Cudy/OpenWrt pilot; values are test-network values)
 
 Optional future screenshot files:
 

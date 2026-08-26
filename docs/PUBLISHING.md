@@ -11,7 +11,7 @@ Use GitHub Releases as the public distribution channel:
 1. Keep source code on the `main` branch.
 2. Update `VERSION`, `Makefile`, `CHANGELOG.md` and runtime version files.
 3. Commit and push to GitHub.
-4. Create and push a version tag such as `v0.9.29`.
+4. Create and push a version tag matching `VERSION`, such as `v0.9.36`.
 5. Let GitHub Actions build the OpenWrt package.
 6. Confirm that the Release contains:
    - `luci-app-ark-router.apk`
@@ -73,10 +73,10 @@ Typical release flow:
 ```sh
 git status
 git add .
-git commit -m "Release ARK Router v0.9.29"
+git commit -m "Release ARK Router v0.9.36"
 git push origin main
-git tag -a v0.9.29 -m "ARK Router v0.9.29"
-git push origin v0.9.29
+git tag -a v0.9.36 -m "ARK Router v0.9.36"
+git push origin v0.9.36
 ```
 
 After the tag is pushed, open:
@@ -90,7 +90,7 @@ Confirm that **Build OpenWrt package** finishes successfully.
 Then open:
 
 ```text
-https://github.com/Despensativo/ark-router/releases/tag/v0.9.29
+https://github.com/Despensativo/ark-router/releases/tag/v0.9.36
 ```
 
 Confirm that package assets were attached.

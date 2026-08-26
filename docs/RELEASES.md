@@ -7,7 +7,7 @@ For the complete maintainer publishing checklist, see [`PUBLISHING.md`](PUBLISHI
 The easiest public distribution path is:
 
 1. Push the source code to GitHub.
-2. Create a version tag, for example `v0.9.27`.
+2. Create a version tag matching `VERSION`, for example `v0.9.36`.
 3. Let GitHub Actions build the package with the OpenWrt SDK.
 4. Publish the generated `.apk` or `.ipk` files as GitHub Release assets.
 5. Install or update from the router with the SSH one-liner in `scripts/install.sh`.
@@ -52,7 +52,7 @@ The installer detects the router package manager:
 
 ## Local Build Note
 
-This repository does not normally commit generated package binaries. For local APK-based testing, run `scripts/build-apk-wsl.sh`; it uses the matching OpenWrt SDK `apk mkpkg` tool to create a `noarch` LuCI package without compiling a full firmware target.
+Release APK assets are kept under `dist/sdk` for the tested build, while local intermediate artifacts remain ignored. For local APK-based testing, run `scripts/build-apk-wsl.sh`; it uses the matching OpenWrt SDK `apk mkpkg` tool to create a `noarch` LuCI package without compiling a full firmware target.
 
 The pilot router uses OpenWrt with APK v3 packages, so a normal `.tar.gz` archive is not a valid installable package. Release assets must include real APK packages, at minimum `luci-app-ark-router.apk` for Lite and optionally `luci-app-ark-router-full.apk` for Full.
 
