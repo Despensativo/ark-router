@@ -2722,6 +2722,7 @@ case "$action" in
 		[ -f /etc/config/sqm ] || { echo 'SQM nao instalado' >&2; exit 3; }
 		shift
 		wan_count=0
+		submitted_sections=' '
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
@@ -2739,12 +2740,24 @@ case "$action" in
 					case "$enabled" in 0|1) ;; *) echo 'Estado SQM invalido' >&2; exit 2 ;; esac
 					valid_sqm_rate "$download" && valid_sqm_rate "$upload" || { echo 'Velocidade SQM invalida' >&2; exit 2; }
 					wan_count=$((wan_count + 1))
+					case "$submitted_sections" in
+						*" $section "*) ;;
+						*) submitted_sections="${submitted_sections}${section} " ;;
+					esac
 					;;
 				guest_download|guest_upload) valid_sqm_rate "$value" || { echo 'Velocidade visitante invalida' >&2; exit 2; } ;;
 				*) echo "Campo SQM invalido: $key" >&2; exit 2 ;;
 			esac
 		done
 		[ "$wan_count" -gt 0 ] || { echo 'Nenhuma WAN enviada para o SQM' >&2; exit 2; }
+		# Disable stale queues that belonged to WANs removed or converted back
+		# to LAN. Otherwise SQM could keep shaping an old physical LAN device.
+		for existing_section in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\(wan[0-9]*\)=queue$/\1/p'); do
+			case "$submitted_sections" in
+				*" $existing_section "*) ;;
+				*) uci -q set "sqm.$existing_section.enabled=0" ;;
+			esac
+		done
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
