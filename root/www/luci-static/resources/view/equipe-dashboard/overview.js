@@ -109,6 +109,18 @@ function formatRate(bits) {
 	if (bits >= 1000) return (bits / 1000).toFixed(1) + ' Kbps';
 	return bits.toFixed(0) + ' bps';
 }
+function kbpsToMbpsInput(kbps) {
+	if (kbps == null || String(kbps).trim() === '') return '';
+	const value = Number(kbps);
+	if (!isFinite(value) || value <= 0) return '0';
+	return String(Math.round(value) / 1000);
+}
+function mbpsToKbps(value) {
+	if (value == null || String(value).trim() === '') return '';
+	const rate = Number(value);
+	if (!isFinite(rate) || rate < 0) return null;
+	return String(Math.round(rate * 1000));
+}
 function formatBytes(bytes) {
 	bytes = Number(bytes) || 0;
 	const units = [ 'B', 'KB', 'MB', 'GB', 'TB' ]; let unit = 0;
@@ -624,12 +636,12 @@ return view.extend({
 	},
 	editSqmLimits: function(){
 		const data=this.currentData||{}, sqm=values(data.sqm), qosValues=values(data.qos), qos=qosValues.main||{}, qosGuest=qosValues.guest||{};
-		const field=function(label,value,hint){const node=E('input',{type:'number',class:'cbi-input-text',min:0,max:1000000,value:String(Number(value)||0)});return {node:node,row:E('label',{class:'ex-qos-edit-field'},[E('span',{},[label]),node,E('small',{class:'ex-muted'},[hint||'Kbps • 0 = ilimitado / sem limite'])])};};
+		const field=function(label,value,hint){const node=E('input',{type:'number',class:'cbi-input-text',min:0,max:100000,step:'0.1',value:kbpsToMbpsInput(value)});return {node:node,row:E('label',{class:'ex-qos-edit-field'},[E('span',{},[label+' (Mbps)']),node,E('small',{class:'ex-muted'},[hint||'Mbps • 0 = ilimitado / sem limite'])])};};
 		const profiles=sqmWanProfiles(data);if(!profiles.length)throw new Error('Nenhuma interface configurada como WAN foi encontrada.');
 		const guestDownloadLimit=qosGuest.download_kbps||qos.guest_download_kbps||0, guestUploadLimit=qosGuest.upload_kbps||qos.guest_upload_kbps||0;
 		const editors=profiles.map(function(profile){const queue=sqm[profile.section]||{},enabled=E('input',{type:'checkbox'}),download=field(profile.label+' download',queue.download),upload=field(profile.label+' upload',queue.upload);enabled.checked=queue.enabled==='1';return {profile:profile,enabled:enabled,download:download,upload:upload,section:E('section',{},[E('h3',{},[profile.label]),E('small',{class:'ex-muted'},['Interface '+profile.network+' • dispositivo '+profile.device+(profile.online?' • online':' • sem link')]),E('label',{class:'ex-qos-edit-toggle'},[enabled,E('span',{},['Ativar fila '+profile.label])]),download.row,upload.row])};});
-		const guestDown=field('Visitantes download total',guestDownloadLimit,'Kbps • 0 = ilimitado'), guestUp=field('Visitantes upload total',guestUploadLimit,'Kbps • 1500 = 1,5 Mbps • 0 = ilimitado');
-		ui.showModal('Editar SQM / CAKE',[E('p',{class:'ex-muted'},['O ARK detectou as interfaces atualmente configuradas como WAN. Defina os limites em Kbps; use 0 quando não quiser limitar aquela direção.']),E('div',{class:'ex-qos-edit-grid'},editors.map(function(editor){return editor.section;}).concat([E('section',{},[E('h3',{},['Visitantes']),guestDown.row,guestUp.row])])),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const args=['sqm-save-v2'];editors.forEach(function(editor){const profile=editor.profile;args.push('wan='+[profile.section,profile.network,profile.device,editor.enabled.checked?'1':'0',editor.download.node.value,editor.upload.node.value].join('|'));});args.push('guest_download='+guestDown.node.value,'guest_upload='+guestUp.node.value);return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar limites');ui.hideModal();reloadSoon('Limites das WANs salvos. Recarregando para exibir os valores aplicados…',2400);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Salvar e reiniciar SQM'])])]);
+		const guestDown=field('Visitantes download total',guestDownloadLimit,'Mbps • 0 = ilimitado'), guestUp=field('Visitantes upload total',guestUploadLimit,'Mbps • exemplo: 1,5 • 0 = ilimitado');
+		ui.showModal('Editar SQM / CAKE',[E('p',{class:'ex-muted'},['Defina os limites em Mbps. Exemplo: 1,2 Gbps = 1200 Mbps. Use 0 quando não quiser limitar aquela direção.']),E('div',{class:'ex-qos-edit-grid'},editors.map(function(editor){return editor.section;}).concat([E('section',{},[E('h3',{},['Visitantes']),guestDown.row,guestUp.row])])),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const args=['sqm-save-v2'];let invalid=false;editors.forEach(function(editor){const profile=editor.profile,download=mbpsToKbps(editor.download.node.value),upload=mbpsToKbps(editor.upload.node.value);if(download==null||upload==null)invalid=true;args.push('wan='+[profile.section,profile.network,profile.device,editor.enabled.checked?'1':'0',download,upload].join('|'));});const guestDownload=mbpsToKbps(guestDown.node.value),guestUpload=mbpsToKbps(guestUp.node.value);if(invalid||guestDownload==null||guestUpload==null){ui.addNotification(null,E('p',{},['Informe velocidades válidas em Mbps.']),'danger');return;}args.push('guest_download='+guestDownload,'guest_upload='+guestUpload);return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar limites');ui.hideModal();reloadSoon('Limites das WANs salvos. Recarregando para exibir os valores aplicados…',2400);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Salvar e reiniciar SQM'])])]);
 	},
 	editWan: function(which, preferredDevice){
 		const net=values((this.currentData||{}).networkConfig), cfg=net[which==='wan2'?'wan2':'wan']||{}, isWan2=which==='wan2';
@@ -1596,8 +1608,8 @@ return view.extend({
 			const guestSsid=input('text',saved.guest_ssid||'ARK Router Visitantes',{maxlength:32});
 			const guestKey=input('password','',{placeholder:'mínimo 8 caracteres'});
 			const guestLimitEnabled=checkbox(saved.guest_limit_enabled!==false);
-			const guestDownload=input('number',saved.guest_download_kbps||'0',{min:0,max:100000});
-			const guestUpload=input('number',saved.guest_upload_kbps||'1500',{min:0,max:100000});
+			const guestDownload=input('number',kbpsToMbpsInput(saved.guest_download_kbps||'0'),{min:0,max:100000,step:'0.1'});
+			const guestUpload=input('number',kbpsToMbpsInput(saved.guest_upload_kbps||'1500'),{min:0,max:100000,step:'0.1'});
 			const wan2Enabled=checkbox(saved.wan2_enabled!==false);
 			const wanMode=select(saved.wan_mode||'failover',[['single','Somente WAN1'],['failover','Failover WAN1 → WAN2'],['balanced','Balanceamento'],['wan1','Forçar WAN1'],['wan2','Forçar WAN2']]);
 			const syncInternetProfile=function(){
@@ -1608,10 +1620,10 @@ return view.extend({
 			profile.addEventListener('change',syncInternetProfile);
 			const sqmEnabled=checkbox(!!saved.sqm_enabled);
 			const sqmStrategy=select(saved.sqm_strategy||'manual',[['manual','Definir limites manualmente'],['calibrate_later','Medir depois pelo painel'],['off','Não configurar SQM agora']]);
-			const sqmWanUp=input('number',saved.sqm_wan_upload||'',{placeholder:'ex.: 15000'});
-			const sqmWanDown=input('number',saved.sqm_wan_download||'',{placeholder:'ex.: 200000'});
-			const sqmWan2Up=input('number',saved.sqm_wan2_upload||'',{placeholder:'opcional'});
-			const sqmWan2Down=input('number',saved.sqm_wan2_download||'',{placeholder:'opcional'});
+			const sqmWanUp=input('number',kbpsToMbpsInput(saved.sqm_wan_upload),{placeholder:'ex.: 15',min:0,max:100000,step:'0.1'});
+			const sqmWanDown=input('number',kbpsToMbpsInput(saved.sqm_wan_download),{placeholder:'ex.: 1200',min:0,max:100000,step:'0.1'});
+			const sqmWan2Up=input('number',kbpsToMbpsInput(saved.sqm_wan2_upload),{placeholder:'opcional',min:0,max:100000,step:'0.1'});
+			const sqmWan2Down=input('number',kbpsToMbpsInput(saved.sqm_wan2_download),{placeholder:'opcional',min:0,max:100000,step:'0.1'});
 			const dnsMode=select(saved.dns_mode||'recommended',[['recommended','DNS recomendado'],['operator','DNS da operadora'],['custom','DNS personalizado']]);
 			const savedDns=String(saved.dns_servers||'1.1.1.1 1.0.0.1 8.8.8.8').split(/\s+/);
 			const dns1=input('text',savedDns[0]||'1.1.1.1',{placeholder:'DNS 1'}), dns2=input('text',savedDns[1]||'1.0.0.1',{placeholder:'DNS 2'}), dns3=input('text',savedDns[2]||'8.8.8.8',{placeholder:'DNS 3 opcional'});
@@ -1626,10 +1638,10 @@ return view.extend({
 				const args=['ez-setup-save',
 					'language='+language.value,'profile='+profile.value,'router_name='+routerName.value,'country='+country.value,'wifi_mode='+wifiMode.value,
 					'main_ssid='+mainSsid.value,'guest_enabled='+(guestEnabled.checked?'1':'0'),'guest_ssid='+guestSsid.value,
-					'guest_limit_enabled='+(guestLimitEnabled.checked?'1':'0'),'guest_download_kbps='+guestDownload.value,'guest_upload_kbps='+guestUpload.value,
+					'guest_limit_enabled='+(guestLimitEnabled.checked?'1':'0'),'guest_download_kbps='+mbpsToKbps(guestDownload.value),'guest_upload_kbps='+mbpsToKbps(guestUpload.value),
 					'wan2_enabled='+(wan2Enabled.checked?'1':'0'),'wan_mode='+wanMode.value,
 					'sqm_enabled='+(sqmEnabled.checked?'1':'0'),'sqm_strategy='+sqmStrategy.value,
-					'sqm_wan_upload='+sqmWanUp.value,'sqm_wan_download='+sqmWanDown.value,'sqm_wan2_upload='+sqmWan2Up.value,'sqm_wan2_download='+sqmWan2Down.value,
+					'sqm_wan_upload='+mbpsToKbps(sqmWanUp.value),'sqm_wan_download='+mbpsToKbps(sqmWanDown.value),'sqm_wan2_upload='+mbpsToKbps(sqmWan2Up.value),'sqm_wan2_download='+mbpsToKbps(sqmWan2Down.value),
 					'dns_mode='+dnsMode.value,'dns_servers='+dnsServers,'disable_ipv6='+(disableIpv6.checked?'1':'0'),'disable_wps='+(disableWps.checked?'1':'0'),'use_argon='+(useArgon.checked?'1':'0'),'install_modules='+selectedModules
 				];
 				if(mainKey.value)args.push('main_key='+mainKey.value);
@@ -1651,8 +1663,8 @@ return view.extend({
 				E('section',{class:'ex-ez-section'},[E('h3',{},['1. Idioma, nome e país']),E('div',{class:'ex-ez-grid ex-ez-grid-3'},[this.ezField('Idioma',language),this.ezField('Nome do painel',routerName),this.ezField('País regulatório',country,'Escolha onde o equipamento está sendo usado.')])]),
 				E('section',{class:'ex-ez-section ex-ez-primary'},[E('h3',{},['2. Como a internet entra no roteador?']),E('div',{class:'ex-ez-wide'},[this.ezField('Modo de internet',profile,profileHelp.textContent),this.ezField('Modo Multi‑WAN',wanMode,'Usado quando há duas internet.'),this.ezField('Usar LAN1 como WAN2 DHCP',wan2Enabled,'Ativa a segunda entrada de internet na porta LAN1.')])]),
 				E('section',{class:'ex-ez-section'},[E('h3',{},['3. Wi‑Fi principal']),E('div',{class:'ex-ez-grid'},[this.ezField('Nome da rede principal',mainSsid),this.ezField('Senha principal',mainKey,'Mínimo 8 caracteres.'),this.ezField('2,4 GHz e 5 GHz',wifiMode)])]),
-				E('section',{class:'ex-ez-section'},[E('h3',{},['4. Rede visitante']),E('div',{class:'ex-ez-grid'},[this.ezField('Habilitar visitante',guestEnabled),this.ezField('Nome da rede visitante',guestSsid),this.ezField('Senha visitante',guestKey,'Mínimo 8 caracteres.'),this.ezField('Limitar visitante',guestLimitEnabled),this.ezField('Download total visitante em Kbps',guestDownload,'0 = ilimitado.'),this.ezField('Upload total visitante em Kbps',guestUpload,'1500 = 1,5 Mbps. Use 0 para ilimitado.')])]),
-				E('section',{class:'ex-ez-section'},[E('h3',{},['5. SQM / CAKE']),E('p',{class:'ex-muted'},['Ajuda a manter latência estável quando o link está cheio. Em Starlink/link móvel, prefira upload conservador.']),E('div',{class:'ex-ez-grid'},[this.ezField('Configurar SQM',sqmEnabled),this.ezField('Estratégia',sqmStrategy),this.ezField('WAN1 upload Kbps',sqmWanUp),this.ezField('WAN1 download Kbps',sqmWanDown),this.ezField('WAN2 upload Kbps',sqmWan2Up),this.ezField('WAN2 download Kbps',sqmWan2Down)])]),
+				E('section',{class:'ex-ez-section'},[E('h3',{},['4. Rede visitante']),E('div',{class:'ex-ez-grid'},[this.ezField('Habilitar visitante',guestEnabled),this.ezField('Nome da rede visitante',guestSsid),this.ezField('Senha visitante',guestKey,'Mínimo 8 caracteres.'),this.ezField('Limitar visitante',guestLimitEnabled),this.ezField('Download total visitante em Mbps',guestDownload,'0 = ilimitado.'),this.ezField('Upload total visitante em Mbps',guestUpload,'Exemplo: 1,5 Mbps. Use 0 para ilimitado.')])]),
+				E('section',{class:'ex-ez-section'},[E('h3',{},['5. SQM / CAKE']),E('p',{class:'ex-muted'},['Ajuda a manter latência estável quando o link está cheio. Informe as velocidades em Mbps; 1,2 Gbps = 1200 Mbps.']),E('div',{class:'ex-ez-grid'},[this.ezField('Configurar SQM',sqmEnabled),this.ezField('Estratégia',sqmStrategy),this.ezField('WAN1 upload Mbps',sqmWanUp),this.ezField('WAN1 download Mbps',sqmWanDown),this.ezField('WAN2 upload Mbps',sqmWan2Up),this.ezField('WAN2 download Mbps',sqmWan2Down)])]),
 				E('section',{class:'ex-ez-section'},[E('h3',{},['6. DNS e segurança']),E('div',{class:'ex-ez-grid'},[this.ezField('Modo DNS',dnsMode),this.ezField('DNS 1',dns1),this.ezField('DNS 2',dns2),this.ezField('DNS 3',dns3,'Opcional'),this.ezField('Desativar IPv6',disableIpv6),this.ezField('Desativar WPS',disableWps),this.ezField('Usar Argon se instalado',useArgon)])]),
 				E('section',{class:'ex-ez-section'},[E('h3',{},['7. Recursos opcionais']),E('p',{class:'ex-muted'},['Marcados como “já instalado” já existem no roteador. Os demais são opcionais e só serão instalados se você confirmar.']),moduleList,E('button',{class:'ex-mini-button ex-ez-install-modules','click':installModules},['Instalar módulos selecionados'])]),
 				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar']),' ',E('button',{class:'btn cbi-button cbi-button-neutral','click':reset},['Apagar rascunho']),' ',E('button',{class:'btn cbi-button cbi-button-action','click':saveDraft},['Salvar rascunho']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':applySetup},['Salvar e aplicar'])])
