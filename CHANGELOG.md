@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.37
+
+- **Progressive Multi-WAN addition**: LAN ports now dynamically calculate the next available WAN slot (`WAN3`, `WAN4`, etc.) instead of showing a static "Usar como WAN2" label.
+- **Dynamic Multi-WAN lifecycle**: Creating a new WAN (`wan3`, `wan4`...) dynamically isolates the physical port from `br-lan`, assigns monotonic routing metrics (`N * 10`), includes the interface in the firewall WAN zone, and registers balancing and failover rules in `mwan3`.
+- **Dynamic LAN restoration**: Any secondary WAN can be reverted back to LAN (`mode=lan`), cleanly deleting the interface, restoring the physical port to `br-lan`, and removing entries from firewall and `mwan3`.
+- **Dynamic WAN dashboard rendering**: The dashboard now renders real-time metric cards, ping latency, and speedtest triggers for all active WAN interfaces.
+- **Strict Starlink detection**: Prevents regular CGNAT or private WAN connections from being falsely recognized as Starlink dishes.
+- **RAM-conscious Speedtest & CAKE direct editing**: Added Fast.com browser fallback for low-RAM devices and direct SQM/CAKE limit editing in Mbps.
+
 ## 0.9.36
 
 - Added real Starlink diagnostic cards to the authenticated dashboard and the read-only `/starlink/` page: packet loss, current obstruction, uptime, average obstruction duration, SNR state, negotiated Ethernet speed and hardware alerts.

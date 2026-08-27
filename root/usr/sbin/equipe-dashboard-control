@@ -1,7 +1,7 @@
 #!/bin/sh
 
 action="$1"
-ARK_ROUTER_VERSION="0.9.36"
+ARK_ROUTER_VERSION="0.9.37"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() {
@@ -1619,27 +1619,48 @@ ensure_mwan3_ark_config() {
 	for sec in wan6 wanb wanb6 wanb_m1_w2 wanb_m1_w3 wanb_m2_w2 wan6_m1_w3 wan6_m2_w3 wanb6_m1_w2 wanb6_m1_w3 wanb6_m2_w2 wanb_only wan_wanb wanb_wan default_rule_v6; do
 		uci -q delete "mwan3.$sec" 2>/dev/null || true
 	done
-	uci -q set mwan3.wan=interface
-	uci -q set mwan3.wan.enabled=1
-	uci -q set mwan3.wan.family=ipv4
-	uci -q set mwan3.wan.reliability=1
-	uci -q delete mwan3.wan.track_ip 2>/dev/null || true
-	for ip in 1.0.0.1 1.1.1.1 8.8.8.8 9.9.9.9; do uci -q add_list mwan3.wan.track_ip="$ip"; done
-	uci -q set mwan3.wan2=interface
-	uci -q set mwan3.wan2.enabled=1
-	uci -q set mwan3.wan2.family=ipv4
-	uci -q set mwan3.wan2.reliability=1
-	uci -q delete mwan3.wan2.track_ip 2>/dev/null || true
-	for ip in 1.0.0.1 1.1.1.1 8.8.8.8 9.9.9.9; do uci -q add_list mwan3.wan2.track_ip="$ip"; done
-	uci -q set mwan3.wan_m1_w3=member; uci -q set mwan3.wan_m1_w3.interface=wan; uci -q set mwan3.wan_m1_w3.metric=1; uci -q set mwan3.wan_m1_w3.weight=3
-	uci -q set mwan3.wan_m2_w3=member; uci -q set mwan3.wan_m2_w3.interface=wan; uci -q set mwan3.wan_m2_w3.metric=2; uci -q set mwan3.wan_m2_w3.weight=3
-	uci -q set mwan3.wan2_m1_w3=member; uci -q set mwan3.wan2_m1_w3.interface=wan2; uci -q set mwan3.wan2_m1_w3.metric=1; uci -q set mwan3.wan2_m1_w3.weight=3
-	uci -q set mwan3.wan2_m2_w2=member; uci -q set mwan3.wan2_m2_w2.interface=wan2; uci -q set mwan3.wan2_m2_w2.metric=2; uci -q set mwan3.wan2_m2_w2.weight=2
-	for p in wan_only wan2_only balanced wan_then_wan2; do uci -q delete "mwan3.$p.use_member" 2>/dev/null || true; done
-	uci -q set mwan3.wan_only=policy; uci -q add_list mwan3.wan_only.use_member=wan_m1_w3
-	uci -q set mwan3.wan2_only=policy; uci -q add_list mwan3.wan2_only.use_member=wan2_m1_w3
-	uci -q set mwan3.balanced=policy; uci -q add_list mwan3.balanced.use_member=wan_m1_w3; uci -q add_list mwan3.balanced.use_member=wan2_m1_w3
-	uci -q set mwan3.wan_then_wan2=policy; uci -q add_list mwan3.wan_then_wan2.use_member=wan_m1_w3; uci -q add_list mwan3.wan_then_wan2.use_member=wan2_m2_w2
+	active_wans=""
+	for w in $(uci -q show network | grep '=interface' | cut -d. -f2 | cut -d= -f1 | grep -E '^wan([0-9]+)?$'); do
+		p="$(uci -q get "network.$w.proto" || printf 'none')"
+		d="$(uci -q get "network.$w.device" || printf '')"
+		if [ "$p" != "none" ] && [ -n "$d" ]; then
+			active_wans="$active_wans $w"
+		fi
+	done
+	[ -n "$active_wans" ] || active_wans="wan wan2"
+	for p in wan_only wan2_only wan3_only wan4_only balanced wan_then_wan2; do
+		uci -q delete "mwan3.$p.use_member" 2>/dev/null || true
+	done
+	wan_idx=1
+	for w in $active_wans; do
+		uci -q set "mwan3.$w=interface"
+		uci -q set "mwan3.$w.enabled=1"
+		uci -q set "mwan3.$w.family=ipv4"
+		uci -q set "mwan3.$w.reliability=1"
+		uci -q delete "mwan3.$w.track_ip" 2>/dev/null || true
+		for ip in 1.0.0.1 1.1.1.1 8.8.8.8 9.9.9.9; do uci -q add_list "mwan3.$w.track_ip=$ip"; done
+
+		uci -q set "mwan3.${w}_m1_w3=member"
+		uci -q set "mwan3.${w}_m1_w3.interface=$w"
+		uci -q set "mwan3.${w}_m1_w3.metric=1"
+		uci -q set "mwan3.${w}_m1_w3.weight=3"
+
+		uci -q set "mwan3.${w}_m${wan_idx}_w3=member"
+		uci -q set "mwan3.${w}_m${wan_idx}_w3.interface=$w"
+		uci -q set "mwan3.${w}_m${wan_idx}_w3.metric=$wan_idx"
+		uci -q set "mwan3.${w}_m${wan_idx}_w3.weight=3"
+
+		uci -q set "mwan3.${w}_only=policy"
+		uci -q add_list "mwan3.${w}_only.use_member=${w}_m1_w3"
+
+		uci -q set mwan3.balanced=policy
+		uci -q add_list "mwan3.balanced.use_member=${w}_m1_w3"
+
+		uci -q set mwan3.wan_then_wan2=policy
+		uci -q add_list "mwan3.wan_then_wan2.use_member=${w}_m${wan_idx}_w3"
+
+		wan_idx=$((wan_idx + 1))
+	done
 	uci -q set mwan3.https=rule
 	uci -q set mwan3.https.family=ipv4
 	uci -q set mwan3.https.sticky=1
@@ -2832,7 +2853,7 @@ case "$action" in
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
-				iface) case "$value" in wan|wan2) iface="$value" ;; *) echo 'WAN invalida' >&2; exit 2 ;; esac ;;
+				iface) case "$value" in wan|wan[2-9]|wan[1-9][0-9]) iface="$value" ;; *) echo 'WAN invalida' >&2; exit 2 ;; esac ;;
 				mode) case "$value" in wan|lan) mode="$value" ;; *) echo 'Modo da porta invalido' >&2; exit 2 ;; esac ;;
 				device) valid_net_device "$value" || { echo 'Porta fisica invalida' >&2; exit 2; }; device="$value" ;;
 				proto) case "$value" in dhcp|pppoe|static) proto="$value" ;; *) echo 'Protocolo invalido' >&2; exit 2 ;; esac ;;
@@ -2848,33 +2869,58 @@ case "$action" in
 		done
 		[ -n "$iface" ] || { echo 'WAN ausente' >&2; exit 2; }
 		[ -n "$device" ] || device="$(uci -q get "network.$iface.device")"
-		[ "$iface" = wan2 ] || [ "$mode" = wan ] || { echo 'A WAN1 fisica nao pode virar LAN por este atalho' >&2; exit 2; }
+		[ "$iface" != wan ] || [ "$mode" = wan ] || { echo 'A WAN1 fisica nao pode virar LAN por este atalho' >&2; exit 2; }
 		ez_backup >/dev/null || { echo 'Falha ao criar backup antes da alteracao WAN' >&2; exit 3; }
-		if [ "$iface" = wan2 ] && [ "$mode" = lan ]; then
-			old="$(uci -q get network.wan2.device)"
-			[ -n "$old" ] && add_lan_port "$old"
-			uci -q set network.wan2=interface
-			uci -q set network.wan2.proto=none
-			uci -q delete network.wan2.device
-			uci -q set sqm.wan2.enabled=0 2>/dev/null || true
+		if [ "$iface" != wan ] && [ "$mode" = lan ]; then
+			old="$(uci -q get "network.$iface.device")"
+			[ -n "$old" ] && [ "$old" != wan ] && add_lan_port "$old"
+			uci -q delete "network.$iface"
+			uci -q set "sqm.$iface.enabled=0" 2>/dev/null || true
+			uci -q delete "sqm.$iface" 2>/dev/null || true
+			zone="$(firewall_wan_zone_section)"
+			[ -n "$zone" ] && uci -q del_list "firewall.$zone.network=$iface" 2>/dev/null || true
+			[ -f /etc/config/mwan3 ] && {
+				uci -q delete "mwan3.$iface" 2>/dev/null || true
+				ensure_mwan3_ark_config
+			}
 			uci commit network
+			uci commit firewall 2>/dev/null || true
 			uci commit sqm 2>/dev/null || true
+			uci commit mwan3 2>/dev/null || true
 			/etc/init.d/network reload >/dev/null 2>&1 || true
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
 			[ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
 			[ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 || true
 			echo ok
 			exit 0
 		fi
 		old="$(uci -q get "network.$iface.device")"
-		[ "$iface" = wan2 ] && [ -n "$old" ] && [ "$old" != "$device" ] && add_lan_port "$old"
+		[ "$iface" != wan ] && [ -n "$old" ] && [ "$old" != "$device" ] && [ "$old" != wan ] && add_lan_port "$old"
 		[ "$device" != wan ] && remove_lan_port "$device"
+		uci -q set "network.$iface=interface"
 		uci -q set "network.$iface.device=$device"
-		[ "$iface" = wan2 ] && uci -q set sqm.wan2.interface="$device" 2>/dev/null || true
+		if [ "$iface" != wan ]; then
+			idx="$(printf '%s' "$iface" | sed 's/[^0-9]//g')"
+			[ -n "$idx" ] || idx=2
+			metric=$((idx * 10))
+			uci -q set "network.$iface.metric=$metric"
+			uci -q set "sqm.$iface.interface=$device" 2>/dev/null || true
+		else
+			uci -q set network.wan.metric=10
+		fi
 		apply_wan_proto "$iface" "$proto" "$username" "$password" "$ipaddr" "$netmask" "$gateway" "$dns" "$macaddr" || exit $?
-		[ "$iface" = wan2 ] && uci -q set network.wan2.metric=20
-		[ "$iface" = wan ] && uci -q set network.wan.metric=10
+		zone="$(firewall_wan_zone_section)"
+		if [ -n "$zone" ]; then
+			firewall_zone_has_network "$zone" "$iface" || uci -q add_list "firewall.$zone.network=$iface"
+			uci commit firewall
+		fi
+		[ -f /etc/config/mwan3 ] && {
+			ensure_mwan3_ark_config
+			uci commit mwan3
+		}
 		uci commit network
 		/etc/init.d/network reload >/dev/null 2>&1 || true
+		/etc/init.d/firewall reload >/dev/null 2>&1 || true
 		[ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 || true
 		echo ok
 		;;

@@ -172,6 +172,39 @@ function portLabel(port) {
 	return m?'LAN'+m[1]:String(port||'porta').toUpperCase();
 }
 function portDomId(port) { return String(port||'port').replace(/[^A-Za-z0-9_-]/g,'_'); }
+function getActiveWanList(data) {
+	const net=values((data||{}).networkConfig), dump=(data||{}).interfaces||{}, list=[], seen={};
+	list.push({iface:'wan', label:'WAN1', domId:'wan1', isPrimary:true, device:(net.wan||{}).device||'wan'});
+	seen.wan=1;
+	Object.keys(net).filter(function(k){ return /^wan([0-9]+)$/i.test(k); })
+		.sort(function(a,b){ return Number(a.replace(/\D/g,'')) - Number(b.replace(/\D/g,'')); })
+		.forEach(function(name){
+			const cfg=net[name]||{}, live=iface(dump,name);
+			const proto=String(cfg.proto||''), dev=String(cfg.device||live.l3_device||live.device||'');
+			if(proto==='none' || !proto || !dev) return;
+			const num=name.replace(/\D/g,'');
+			const ifaceKey=name.toLowerCase();
+			if(!seen[ifaceKey]){
+				seen[ifaceKey]=1;
+				list.push({iface:ifaceKey, label:'WAN'+num, domId:'wan'+num, isPrimary:false, device:dev});
+			}
+		});
+	return list;
+}
+function getNextAvailableWan(data) {
+	const net=values((data||{}).networkConfig);
+	let n = 2;
+	while (true) {
+		const name = 'wan' + n;
+		const cfg = net[name] || {};
+		const proto = String(cfg.proto || '');
+		const dev = String(cfg.device || '');
+		if (proto === 'none' || !proto || !dev) {
+			return { iface: name, label: 'WAN' + n, num: n };
+		}
+		n++;
+	}
+}
 function wan2IsLan(data) {
 	const cfg=(values((data||{}).networkConfig).wan2)||{}, i=iface((data||{}).interfaces,'wan2');
 	return !i.up&&(cfg.proto==='none'||!cfg.proto||!cfg.device);
@@ -365,11 +398,24 @@ return view.extend({
 			safe(fs.read('/tmp/equipe-traffic-history.csv'), ''),
 			safe(callWirelessStatus(), {})
 		]).then(function(r) {
-			const interfaces=r[1], wan=iface(interfaces,'wan'), wan2=iface(interfaces,'wan2'), topology=wifiTopology(r[16]), networkConfig=r[9], networkValues=values(networkConfig), wanCfg=networkValues.wan||{}, wan2Cfg=networkValues.wan2||{};
-			const wanDev=wan.l3_device||wan.device||'wan', wan2Dev=(wan2.up||wan2Cfg.device)?(wan2.l3_device||wan2.device||wan2Cfg.device):'', wanPhysicalDev=wanCfg.device||wan.device||wanDev, wan2PhysicalDev=wan2Cfg.device||wan2.device||wan2Dev, lanPorts=lanPortsFromNetwork(networkConfig);
+			const interfaces=r[1], networkConfig=r[9], networkValues=values(networkConfig), topology=wifiTopology(r[16]), lanPorts=lanPortsFromNetwork(networkConfig);
+			const activeWans=getActiveWanList({networkConfig:networkConfig, interfaces:interfaces});
+			const wanDevicesMap={}, wanPhysicalDevicesMap={}, wanPingsMap={};
+			const wanPromises=[];
+			activeWans.forEach(function(w){
+				const live=iface(interfaces,w.iface), cfg=networkValues[w.iface]||{};
+				const logicalDev=live.l3_device||live.device||cfg.device||w.iface;
+				const physicalDev=cfg.device||live.device||logicalDev;
+				wanPromises.push(safe(callDeviceStatus(logicalDev),{}).then(function(s){wanDevicesMap[w.iface]=s;}));
+				wanPromises.push(safe(callDeviceStatus(physicalDev),{}).then(function(s){wanPhysicalDevicesMap[w.iface]=s;}));
+				if(live.up && logicalDev){
+					wanPromises.push(safe(fs.exec('/bin/ping',['-c','1','-W','1','-I',logicalDev,'1.1.1.1']),{}).then(function(p){wanPingsMap[w.iface]=p;}));
+				}
+			});
+			const wan=iface(interfaces,'wan'), wan2=iface(interfaces,'wan2'), wanCfg=networkValues.wan||{}, wan2Cfg=networkValues.wan2||{};
+			const wanDev=wan.l3_device||wan.device||'wan', wan2Dev=(wan2.up||wan2Cfg.device)?(wan2.l3_device||wan2.device||wan2Cfg.device):'', wanPhysicalDev=wanCfg.device||wan.device||wanDev, wan2PhysicalDev=wan2Cfg.device||wan2.device||wan2Dev;
 			return Promise.all([
-				safe(callDeviceStatus(wanDev), {}), wan2Dev?safe(callDeviceStatus(wan2Dev), {}):Promise.resolve({}),
-				wanPhysicalDev?safe(callDeviceStatus(wanPhysicalDev), {}):Promise.resolve({}), wan2PhysicalDev?safe(callDeviceStatus(wan2PhysicalDev), {}):Promise.resolve({}),
+				Promise.all(wanPromises),
 				Promise.all(topology.mainIfnames.map(function(n){ return safe(callAssocList(n), { results: [] }); })),
 				Promise.all(topology.guestIfnames.map(function(n){ return safe(callAssocList(n), { results: [] }); })),
 				safe(callSurvey(topology.survey2), { results: [] }), safe(callSurvey(topology.survey5), { results: [] }),
@@ -377,8 +423,10 @@ return view.extend({
 				wan.up&&wanDev?safe(fs.exec('/bin/ping', [ '-c', '1', '-W', '1', '-I', wanDev, '1.1.1.1' ]), {}):Promise.resolve({}),
 				wan2.up&&wan2Dev?safe(fs.exec('/bin/ping', [ '-c', '1', '-W', '1', '-I', wan2Dev, '1.1.1.1' ]), {}):Promise.resolve({})
 			]).then(function(x) { return {
-				system:r[0], interfaces:interfaces, wanDevice:x[0], wan2Device:x[1], wanPhysicalDevice:x[2], wan2PhysicalDevice:x[3], mwan:r[2], leases:r[3], mainAssoc:x[4], guestAssoc:x[5],
-				survey2:x[6], survey5:x[7], sqm:r[4], qos:r[5], wireless:r[6], mwanConfig:r[7], names:r[8], networkConfig:r[9], lanStatus:r[10], temperature:r[11], pingWan:x[9], pingWan2:x[10], traffic:r[14], history:r[15], wirelessStatus:r[16], wifiTopology:topology, lanPorts:lanPorts, lanDevices:x[8], timestamp:Date.now()
+				system:r[0], interfaces:interfaces, wanDevice:wanDevicesMap.wan||{}, wan2Device:wanDevicesMap.wan2||{}, wanPhysicalDevice:wanPhysicalDevicesMap.wan||{}, wan2PhysicalDevice:wanPhysicalDevicesMap.wan2||{},
+				wanDevicesMap:wanDevicesMap, wanPhysicalDevicesMap:wanPhysicalDevicesMap, wanPingsMap:wanPingsMap,
+				mwan:r[2], leases:r[3], mainAssoc:x[1], guestAssoc:x[2],
+				survey2:x[3], survey5:x[4], sqm:r[4], qos:r[5], wireless:r[6], mwanConfig:r[7], names:r[8], networkConfig:r[9], lanStatus:r[10], temperature:r[11], pingWan:wanPingsMap.wan||x[5], pingWan2:wanPingsMap.wan2||x[6], traffic:r[14], history:r[15], wirelessStatus:r[16], wifiTopology:topology, lanPorts:lanPorts, lanDevices:x[4], timestamp:Date.now()
 			}; });
 		});
 	},
@@ -390,8 +438,14 @@ return view.extend({
 		},this));
 	},
 	calculateRates: function(data) {
-		const a = data.wanDevice.statistics || {}, b = data.wan2Device.statistics || {}; let down = 0, up = 0;
-		const rx = (Number(a.rx_bytes)||0)+(Number(b.rx_bytes)||0), tx = (Number(a.tx_bytes)||0)+(Number(b.tx_bytes)||0);
+		const activeWans = getActiveWanList(data);
+		let rx = 0, tx = 0, down = 0, up = 0;
+		activeWans.forEach(function(w){
+			const dev = (data.wanDevicesMap && data.wanDevicesMap[w.iface]) || (w.iface==='wan'?data.wanDevice:(w.iface==='wan2'?data.wan2Device:{})) || {};
+			const stats = dev.statistics || {};
+			rx += Number(stats.rx_bytes) || 0;
+			tx += Number(stats.tx_bytes) || 0;
+		});
 		if (this.previous.timestamp && data.timestamp > this.previous.timestamp) { const e=(data.timestamp-this.previous.timestamp)/1000; down=Math.max(0,(rx-this.previous.rx)*8/e); up=Math.max(0,(tx-this.previous.tx)*8/e); }
 		this.previous={timestamp:data.timestamp,rx:rx,tx:tx}; return {down:down,up:up,rx:rx,tx:tx};
 	},
@@ -545,12 +599,30 @@ return view.extend({
 		if(this.currentData)this.renderDevices(this.currentData,this.deviceRates(this.currentData));
 	},
 	update: function(data) {
-		this.currentData=data; this.updateRefreshSummary(data); const r=this.calculateRates(data), dr=this.deviceRates(data), wan=iface(data.interfaces,'wan'), wan2=iface(data.interfaces,'wan2'), mi=data.mwan.interfaces||{}, sqm=values(data.sqm), qosValues=values(data.qos), qos=qosValues.main||{}, qosGuest=qosValues.guest||{}, wan2Lan=wan2IsLan(data);
+		this.currentData=data; this.updateRefreshSummary(data); const r=this.calculateRates(data), dr=this.deviceRates(data), wan=iface(data.interfaces,'wan'), mi=data.mwan.interfaces||{}, sqm=values(data.sqm), qosValues=values(data.qos), qos=qosValues.main||{}, qosGuest=qosValues.guest||{};
 		let lanStatus={};try{lanStatus=JSON.parse((data.lanStatus&&data.lanStatus.stdout)||'{}');}catch(e){}
 		text('ex-download',formatRate(r.down)); text('ex-upload',formatRate(r.up)); text('ex-down-total','Total recebido: '+formatBytes(r.rx)); text('ex-up-total','Total enviado: '+formatBytes(r.tx));
-		this.updateWan('ex-wan1',wan,data.wanDevice,data.wanPhysicalDevice,mi.wan||{},parsePing(data.pingWan),(values(data.networkConfig).wan)||{}); if(!wan2Lan)this.updateWan('ex-wan2',wan2,data.wan2Device,data.wan2PhysicalDevice,mi.wan2||{},parsePing(data.pingWan2),(values(data.networkConfig).wan2)||{});
+		const activeWans=getActiveWanList(data);
+		activeWans.forEach(L.bind(function(w){
+			const i = iface(data.interfaces, w.iface);
+			const d = (data.wanDevicesMap && data.wanDevicesMap[w.iface]) || (w.iface==='wan'?data.wanDevice:(w.iface==='wan2'?data.wan2Device:{})) || {};
+			const phy = (data.wanPhysicalDevicesMap && data.wanPhysicalDevicesMap[w.iface]) || (w.iface==='wan'?data.wanPhysicalDevice:(w.iface==='wan2'?data.wan2PhysicalDevice:d)) || d;
+			const m = (data.mwan && data.mwan.interfaces && data.mwan.interfaces[w.iface]) || {};
+			const ping = (data.wanPingsMap && data.wanPingsMap[w.iface] !== undefined) ? parsePing(data.wanPingsMap[w.iface]) : (w.iface==='wan'?parsePing(data.pingWan):(w.iface==='wan2'?parsePing(data.pingWan2):null));
+			const cfg = (values(data.networkConfig)[w.iface]) || {};
+			this.updateWan('ex-' + w.domId, i, d, phy, m, ping, cfg);
+		}, this));
 		(data.lanPorts||[]).forEach(L.bind(function(port,idx){this.updateLan('ex-lan-'+portDomId(port),(data.lanDevices||[])[idx]||{});},this));
-		const mwanRunning=Object.keys(mi).some(function(k){return !!mi[k].running;}), active=mwanRunning?(mi.wan&&mi.wan.status==='online'?'WAN1':(!wan2Lan&&mi.wan2&&mi.wan2.status==='online'?'WAN2':'SEM INTERNET')):(wan.up?'WAN1':(!wan2Lan&&wan2.up?'WAN2':'SEM INTERNET')); setPill('ex-global-status',active==='SEM INTERNET'?'offline':'online',active+' ATIVA');
+		const mwanRunning=Object.keys(mi).some(function(k){return !!mi[k].running;});
+		const activeWanLabels=[];
+		activeWans.forEach(function(w){
+			const i = iface(data.interfaces, w.iface);
+			const m = mi[w.iface];
+			const isOnline = mwanRunning ? (m && m.status === 'online') : !!i.up;
+			if (isOnline) activeWanLabels.push(w.label);
+		});
+		const active = activeWanLabels.length ? activeWanLabels.join(' + ') : 'SEM INTERNET';
+		setPill('ex-global-status',active==='SEM INTERNET'?'offline':'online',active+' ATIVA');
 		const sf=this.feature('speedify'), sfTop=document.getElementById('ex-speedify-top');
 		if(sfTop){
 			const sfConnected=sf.state==='CONNECTED'||sf.state==='CONNECTING';
@@ -644,17 +716,21 @@ return view.extend({
 		ui.showModal('Editar SQM / CAKE',[E('p',{class:'ex-muted'},['Defina os limites em Mbps. Exemplo: 1,2 Gbps = 1200 Mbps. Use 0 quando não quiser limitar aquela direção.']),E('div',{class:'ex-qos-edit-grid'},editors.map(function(editor){return editor.section;}).concat([E('section',{},[E('h3',{},['Visitantes']),guestDown.row,guestUp.row])])),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const args=['sqm-save-v2'];let invalid=false;editors.forEach(function(editor){const profile=editor.profile,download=mbpsToKbps(editor.download.node.value),upload=mbpsToKbps(editor.upload.node.value);if(download==null||upload==null)invalid=true;args.push('wan='+[profile.section,profile.network,profile.device,editor.enabled.checked?'1':'0',download,upload].join('|'));});const guestDownload=mbpsToKbps(guestDown.node.value),guestUpload=mbpsToKbps(guestUp.node.value);if(invalid||guestDownload==null||guestUpload==null){ui.addNotification(null,E('p',{},['Informe velocidades válidas em Mbps.']),'danger');return;}args.push('guest_download='+guestDownload,'guest_upload='+guestUpload);return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar limites');ui.hideModal();reloadSoon('Limites das WANs salvos. Recarregando para exibir os valores aplicados…',2400);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Salvar e reiniciar SQM'])])]);
 	},
 	editWan: function(which, preferredDevice){
-		const net=values((this.currentData||{}).networkConfig), cfg=net[which==='wan2'?'wan2':'wan']||{}, isWan2=which==='wan2';
+		const isPrimary = (which === 'wan' || which === 'wan1');
+		const net = values((this.currentData||{}).networkConfig);
+		const cfg = net[which] || {};
+		const whichNum = which.replace(/\D/g,'') || '1';
+		const whichLabel = 'WAN' + whichNum;
 		const makeSelect=function(value,items){const s=E('select',{class:'cbi-input-select'},items.map(function(i){return E('option',{value:i[0]},[i[1]]);}));s.value=value;return s;};
 		const addOption=function(list,value,label){if(!value)return;for(let i=0;i<list.length;i++)if(list[i][0]===value)return;list.push([value,label||value]);};
-		const detectedDev=cfg.device||((iface((this.currentData||{}).interfaces,which==='wan2'?'wan2':'wan')||{}).l3_device)||((iface((this.currentData||{}).interfaces,which==='wan2'?'wan2':'wan')||{}).device)||'';
+		const detectedDev=cfg.device||((iface((this.currentData||{}).interfaces,which)||{}).l3_device)||((iface((this.currentData||{}).interfaces,which)||{}).device)||'';
 		const lanPorts=lanPortsFromNetwork((this.currentData||{}).networkConfig);
-		const wan1Dev=(isWan2&&preferredDevice)?preferredDevice:detectedDev;
-		const wanPorts=isWan2?lanPorts.map(function(port){return [port,portLabel(port)];}):[];
-		if(isWan2) addOption(wanPorts,wan1Dev,wan1Dev.toUpperCase());
-		else { addOption(wanPorts,wan1Dev,wan1Dev==='eth1'?'WAN física / eth1':wan1Dev.toUpperCase()); addOption(wanPorts,'wan','WAN lógica'); addOption(wanPorts,'eth1','WAN física / eth1'); }
-		const role=makeSelect((isWan2&&cfg.proto==='none'&&!preferredDevice)?'lan':'wan',isWan2?[['wan','Usar como internet / WAN2'],['lan','Voltar porta para LAN']]:[['wan','Usar como internet / WAN1']]);
-		const device=makeSelect(wan1Dev||(isWan2?'lan1':'eth1'),wanPorts);
+		const targetDev=(!isPrimary&&preferredDevice)?preferredDevice:detectedDev;
+		const wanPorts=!isPrimary?lanPorts.map(function(port){return [port,portLabel(port)];}):[];
+		if(!isPrimary) addOption(wanPorts,targetDev,targetDev.toUpperCase());
+		else { addOption(wanPorts,targetDev,targetDev==='eth1'?'WAN física / eth1':targetDev.toUpperCase()); addOption(wanPorts,'wan','WAN lógica'); addOption(wanPorts,'eth1','WAN física / eth1'); }
+		const role=makeSelect((!isPrimary&&cfg.proto==='none'&&!preferredDevice)?'lan':'wan',!isPrimary?[['wan','Usar como internet / '+whichLabel],['lan','Voltar porta para LAN']]:[['wan','Usar como internet / WAN1']]);
+		const device=makeSelect(targetDev||(!isPrimary?'lan1':'eth1'),wanPorts);
 		const proto=makeSelect(cfg.proto==='pppoe'?'pppoe':(cfg.proto==='static'?'static':'dhcp'),[['dhcp','DHCP automático'],['pppoe','PPPoE'],['static','IP fixo / estático']]);
 		const username=E('input',{class:'cbi-input-text',value:cfg.username||'',placeholder:'usuário PPPoE'});
 		const password=E('input',{type:'password',class:'cbi-input-text',value:'',placeholder:'senha PPPoE'});
@@ -668,12 +744,12 @@ return view.extend({
 		const field=function(label,node,hint){return E('label',{class:'ex-wan-edit-field'},[E('span',{},[label]),node,hint?E('small',{class:'ex-muted'},[hint]):'']);};
 		const pppoeBlock=E('div',{class:'ex-wan-proto-block'},[field('Usuário PPPoE',username),field('Senha PPPoE',password,'Deixe vazio para manter/definir vazia conforme operadora')]);
 		const staticBlock=E('div',{class:'ex-wan-proto-block'},[field('IPv4',ipaddr),field('Máscara',netmask),field('Gateway',gateway)]);
-		const sync=function(){const lanMode=isWan2&&role.value==='lan';device.disabled=lanMode;proto.disabled=lanMode;pppoeBlock.style.display=(!lanMode&&proto.value==='pppoe')?'grid':'none';staticBlock.style.display=(!lanMode&&proto.value==='static')?'grid':'none';};
+		const sync=function(){const lanMode=!isPrimary&&role.value==='lan';device.disabled=lanMode;proto.disabled=lanMode;pppoeBlock.style.display=(!lanMode&&proto.value==='pppoe')?'grid':'none';staticBlock.style.display=(!lanMode&&proto.value==='static')?'grid':'none';};
 		role.addEventListener('change',sync);proto.addEventListener('change',sync);sync();
-		ui.showModal('Editar '+(isWan2?'WAN2':'WAN1'),[
-			E('p',{class:'alert-message warning'},['Alterar internet/porta pode derrubar o painel por alguns segundos. O ARK cria um backup em /tmp antes de aplicar.']),
+		ui.showModal('Editar '+whichLabel,[
+			E('p',{class:'alert-message warning'},['Alterar internet/porta pode derrubar o painel por alguns segundos. O ARK cria um backup antes de aplicar.']),
 			E('div',{class:'ex-wan-edit-grid'},[field('Função',role),field('Porta física',device),field('Tipo de conexão',proto),pppoeBlock,staticBlock,field('DNS 1',dns1),field('DNS 2',dns2),field('DNS 3',dns3,'Opcional'),field('Clonar MAC da WAN',E('div',{class:'ex-wan-mac-control'},[macaddr,macClear]),clonedMac?'MAC clonado atual. Apague para voltar ao físico.':'Sem clone: usa o MAC físico da porta.')]),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const dns=[dns1.value.trim(),dns2.value.trim(),dns3.value.trim()].filter(Boolean).join(' '), args=['wan-save','iface='+(isWan2?'wan2':'wan'),'mode='+role.value,'device='+device.value,'proto='+proto.value,'username='+username.value,'password='+password.value,'ipaddr='+ipaddr.value,'netmask='+netmask.value,'gateway='+gateway.value,'dns='+dns,'macaddr='+macaddr.value.trim()];return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar WAN');ui.hideModal();reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…',3500);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar alteração'])])
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const dns=[dns1.value.trim(),dns2.value.trim(),dns3.value.trim()].filter(Boolean).join(' '), args=['wan-save','iface='+which,'mode='+role.value,'device='+device.value,'proto='+proto.value,'username='+username.value,'password='+password.value,'ipaddr='+ipaddr.value,'netmask='+netmask.value,'gateway='+gateway.value,'dns='+dns,'macaddr='+macaddr.value.trim()];return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar WAN');ui.hideModal();reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…',3500);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar alteração'])])
 		]);
 	},
 	editLan: function(){
@@ -1802,16 +1878,37 @@ return view.extend({
 		const mwanInterfaces=(data.mwan&&data.mwan.interfaces)||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;});
 		const speedifyFeature=this.feature('speedify'), mwanPaused=String(speedifyFeature.desired_state||'')==='connected'&&!mwanRunning;
 		const mwanInput=E('input',{id:'ex-mwan-toggle',type:'checkbox','aria-label':'Ativar Multi-WAN','change':L.bind(function(ev){this.toggleMwan3(ev.currentTarget);},this)});mwanInput.checked=mwanRunning;mwanInput.disabled=mwanPaused;
-		const wan2Lan=wan2IsLan(data);
+		const activeWans=getActiveWanList(data);
+		const nextWan=getNextAvailableWan(data);
 		const qosWanProfiles=sqmWanProfiles(data), qosWanRows=qosWanProfiles.map(function(profile){return infoRow(profile.label+' limites','ex-qos-wan-'+portDomId(profile.network));});
-		const wanCards=[
-			E('section',{class:'ex-card ex-wan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},['WAN1']),E('span',{id:'ex-wan1-status',class:'ex-pill standby'},['—'])]),infoRow('Modo de conexão','ex-wan1-mode'),infoRow('Endereço IPv4','ex-wan1-ip'),infoRow('Gateway','ex-wan1-gateway'),infoRow('Máscara','ex-wan1-mask'),infoRow('DNS recebidos','ex-wan1-dns'),infoRow('Link físico','ex-wan1-link'),infoRow('Latência','ex-wan1-latency'),infoRow('Recebido','ex-wan1-rx'),infoRow('Enviado','ex-wan1-tx'),infoRow('Tempo online','ex-wan1-uptime'),E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(function(){this.editWan('wan');},this)},['Editar internet'])])
-		];
-		if(!wan2Lan)wanCards.push(E('section',{class:'ex-card ex-wan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},['WAN2']),E('span',{id:'ex-wan2-status',class:'ex-pill standby'},['—'])]),infoRow('Modo de conexão','ex-wan2-mode'),infoRow('Endereço IPv4','ex-wan2-ip'),infoRow('Gateway','ex-wan2-gateway'),infoRow('Máscara','ex-wan2-mask'),infoRow('DNS recebidos','ex-wan2-dns'),infoRow('Link físico','ex-wan2-link'),infoRow('Latência','ex-wan2-latency'),infoRow('Recebido','ex-wan2-rx'),infoRow('Enviado','ex-wan2-tx'),infoRow('Tempo online','ex-wan2-uptime'),E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(function(){this.editWan('wan2');},this)},['Editar porta / internet'])]));
+		const wanCards=activeWans.map(L.bind(function(w){
+			const id='ex-'+w.domId;
+			return E('section',{class:'ex-card ex-wan-card'},[
+				E('div',{class:'ex-card-title'},[E('h3',{},[w.label]),E('span',{id:id+'-status',class:'ex-pill standby'},['—'])]),
+				infoRow('Modo de conexão',id+'-mode'),
+				infoRow('Endereço IPv4',id+'-ip'),
+				infoRow('Gateway',id+'-gateway'),
+				infoRow('Máscara',id+'-mask'),
+				infoRow('DNS recebidos',id+'-dns'),
+				infoRow('Link físico',id+'-link'),
+				infoRow('Latência',id+'-latency'),
+				infoRow('Recebido',id+'-rx'),
+				infoRow('Enviado',id+'-tx'),
+				infoRow('Tempo online',id+'-uptime'),
+				E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(function(){this.editWan(w.iface);},this)},[w.isPrimary?'Editar internet':'Editar porta / internet'])
+			]);
+		},this));
 		const lanPorts=(data.lanPorts&&data.lanPorts.length)?data.lanPorts:lanPortsFromNetwork(data.networkConfig);
 		const lanCards=lanPorts.map(L.bind(function(port){
 			const id='ex-lan-'+portDomId(port), label=portLabel(port);
-			return E('section',{class:'ex-card ex-lan-card'},[E('div',{class:'ex-card-title'},[E('h3',{},[label]),E('span',{id:id+'-status',class:'ex-pill standby'},['—'])]),infoRow('Velocidade',id+'-speed'),infoRow('Modo',id+'-duplex'),infoRow('Recebido',id+'-rx'),infoRow('Enviado',id+'-tx'),E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(function(){this.editWan('wan2',port);},this)},['Usar como WAN2'])]);
+			return E('section',{class:'ex-card ex-lan-card'},[
+				E('div',{class:'ex-card-title'},[E('h3',{},[label]),E('span',{id:id+'-status',class:'ex-pill standby'},['—'])]),
+				infoRow('Velocidade',id+'-speed'),
+				infoRow('Modo',id+'-duplex'),
+				infoRow('Recebido',id+'-rx'),
+				infoRow('Enviado',id+'-tx'),
+				E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(function(){this.editWan(nextWan.iface,port);},this)},['Usar como '+nextWan.label])
+			]);
 		},this));
 		const speedifySection=this.speedifyCard(data), starlinkSection=this._starlinkPanel;
 		const root=E('div',{class:'ex-dashboard'},[
@@ -1824,7 +1921,7 @@ return view.extend({
 			starlinkSection,
 			E('div',{class:'ex-grid ex-grid-2'},wanCards),
 			E('section',{class:'ex-card ex-lan-config-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['REDE PRINCIPAL']),E('h3',{},['LAN / DHCP'])]),E('button',{class:'ex-mini-button','click':L.bind(function(){this.editLan();},this)},['Editar IP, DHCP e DNS'])]),E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},[infoRow('IP do roteador','ex-lan-ip'),infoRow('Faixa DHCP','ex-lan-dhcp'),infoRow('Máscara','ex-lan-mask'),infoRow('DNS enviado','ex-lan-dns')]),E('p',{class:'ex-muted'},['Use para trocar entre redes 192.168.x.x, 10.0.x.x ou definir manualmente a faixa e os DNS que os dispositivos recebem.'])]),
-			E('div',{class:'ex-lan-block'},[E('div',{class:'ex-lan-title'},[E('div',{},[E('span',{class:'ex-kicker'},['PORTAS CABEADAS']),E('h3',{},['LAN disponíveis'])]),E('small',{class:'ex-muted'},[wan2Lan?'WAN2 está em modo LAN. Escolha uma porta abaixo se quiser transformá-la em WAN2.':'Portas em modo LAN aparecem aqui; a porta usada pela WAN2 sai desta lista.'])]),E('div',{class:'ex-grid ex-grid-2'},lanCards.length?lanCards:[E('section',{class:'ex-card ex-lan-card ex-center-card'},[E('strong',{},['Nenhuma porta LAN disponível']),E('small',{class:'ex-muted'},['Todas as portas cabeadas livres estão em uso como WAN ou não foram detectadas.'])])])]),
+			E('div',{class:'ex-lan-block'},[E('div',{class:'ex-lan-title'},[E('div',{},[E('span',{class:'ex-kicker'},['PORTAS CABEADAS']),E('h3',{},['LAN disponíveis'])]),E('small',{class:'ex-muted'},['Portas em modo LAN aparecem aqui; ao converter uma porta em '+nextWan.label+', ela sai desta lista e vira uma nova conexão de internet.'])]),E('div',{class:'ex-grid ex-grid-2'},lanCards.length?lanCards:[E('section',{class:'ex-card ex-lan-card ex-center-card'},[E('strong',{},['Nenhuma porta LAN disponível']),E('small',{class:'ex-muted'},['Todas as portas cabeadas livres estão em uso como WAN ou não foram detectadas.'])])])]),
 			E('div',{class:'ex-grid ex-grid-2 ex-wifi-grid'},[wifiCard('main','Acesso principal',w.main),wifiCard('guest','Visitantes com upload limitado',w.guest)]),
 			E('section',{class:'ex-card ex-channel-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['AMBIENTE WI‑FI']),E('h3',{},['Canais e interferência'])]),E('button',{class:'ex-button ex-inline-button','click':L.bind(function(ev){this.analyzeChannels(ev.currentTarget);},this)},['Analisar canais agora'])]),E('div',{class:'ex-country-control'},[E('div',{},[E('span',{class:'ex-label'},['PAÍS / DOMÍNIO REGULATÓRIO']),E('strong',{id:'ex-country-current'},['—'])]),E('button',{class:'ex-mini-button','click':L.bind(function(){this.changeCountry();},this)},['Alterar país'])]),E('div',{class:'ex-channel-mode-control'},[E('div',{},[E('strong',{},['Seleção automática de canais']),E('small',{id:'ex-channel-mode-summary',class:'ex-muted'},['Verificando…'])]),E('label',{class:'ex-switch'},[E('input',{id:'ex-channel-auto-toggle',type:'checkbox','aria-label':translateText('Seleção automática de canais'),'change':L.bind(function(ev){this.toggleAutoChannels(ev.currentTarget);},this)}),E('span',{class:'ex-switch-slider'})])]),E('div',{class:'ex-grid ex-grid-2 ex-channel-grid'},[E('div',{},[E('div',{class:'ex-channel-band-head'},[E('b',{},['2,4 GHz']),E('span',{id:'ex-wifi-2-mode',class:'ex-pill standby'},['—'])]),E('span',{id:'ex-wifi-2'},['—'])]),E('div',{},[E('div',{class:'ex-channel-band-head'},[E('b',{},['5 GHz']),E('span',{id:'ex-wifi-5-mode',class:'ex-pill standby'},['—'])]),E('span',{id:'ex-wifi-5'},['—'])])]),E('p',{id:'ex-wifi-noise',class:'ex-muted'},['—']),E('p',{id:'ex-scan-result',class:'ex-scan-result'},['A análise é manual e apenas recomenda canais; não interrompe os usuários.']),E('div',{class:'ex-channel-actions'},[E('button',{id:'ex-apply-channels',class:'ex-channel-action primary',disabled:true,'click':L.bind(function(){this.changeChannels('fixed');},this)},['Analisar antes de aplicar']),E('button',{class:'ex-channel-action','click':L.bind(function(){this.changeWifiWidth();},this)},['Largura / desempenho'])])]),
 			E('section',{class:'ex-card ex-devices'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['DISPOSITIVOS']),E('h3',{},['Quem está conectado'])]),E('div',{class:'ex-device-title-actions'},[deviceSortControls,E('span',{id:'ex-device-count',class:'ex-pill online'},['0 conectados'])])]),E('details',{id:'ex-device-details'},[E('summary',{},['Expandir lista e ver tráfego individual']),E('div',{class:'ex-table-wrap'},[E('table',{class:'ex-device-table'},[E('thead',{},[E('tr',{},[E('th',{},['Dispositivo']),E('th',{class:'ex-hide-mobile'},['Rede / sinal']),E('th',{},['Agora']),E('th',{},['Total']),E('th',{},[''])])]),E('tbody',{id:'ex-device-body'}),E('tbody',{id:'ex-device-empty'},[E('tr',{},[E('td',{colspan:5},['Nenhum dispositivo conectado.'])])])])]),E('p',{class:'ex-muted ex-table-note'},['A velocidade instantânea vem dos contadores do roteador; o total acumulado vem do nlbwmon. Quando esta lista está aberta, o ARK Router acelera a atualização automaticamente conforme a RAM disponível.'])])]),
@@ -1832,7 +1929,7 @@ return view.extend({
 				E('section',{class:'ex-card ex-center-card'},[E('span',{class:'ex-big-icon'},['★']),E('span',{class:'ex-label'},[w.main.ssid||'Rede principal']),E('strong',{id:'ex-main-clients',class:'ex-number'},['0']),E('small',{id:'ex-main-wifi',class:'ex-muted'},['0 no Wi-Fi'])]),
 				E('section',{class:'ex-card ex-center-card'},[E('span',{class:'ex-big-icon'},['♟']),E('span',{class:'ex-label'},[w.guest.ssid||'Visitantes']),E('strong',{id:'ex-guest-clients',class:'ex-number'},['0']),E('small',{id:'ex-guest-wifi',class:'ex-muted'},['0 no Wi-Fi'])])
 			]),
-			E('section',{class:'ex-card ex-speedtest-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['TESTE DE LINK']),E('h3',{},['Calibração do upload'])]),E('div',{class:'ex-speedtest-head-actions'},[E('span',{class:'ex-pill online'},['Pronto na memória']),E('button',{class:'ex-mini-button','click':L.bind(this.openFastCom,this)},['Abrir Fast.com']),E('button',{class:'ex-mini-button','click':L.bind(this.startConnectedSpeedtests,this)},['Testar WANs conectadas'])])]),E('p',{class:'ex-muted'},['O teste automático mede pelo roteador. Fast.com é a alternativa manual leve para aparelhos com pouca RAM ou quando você quiser apenas uma referência rápida pelo navegador.']),E('p',{class:'ex-muted'},['O teste faz uma medição completa e mais duas de upload. O SQM desta WAN será pausado e restaurado automaticamente. Durante o teste, o link ficará ocupado. O histórico guarda os últimos testes por WAN e calcula a média dos últimos 3.']),E('div',{class:'ex-grid ex-grid-2 ex-speedtest-grid'},[speedWanCard('wan','WAN1',!!iface(data.interfaces,'wan').up),speedWanCard('wan2','WAN2',!!iface(data.interfaces,'wan2').up)])]),
+			E('section',{class:'ex-card ex-speedtest-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['TESTE DE LINK']),E('h3',{},['Calibração do upload'])]),E('div',{class:'ex-speedtest-head-actions'},[E('span',{class:'ex-pill online'},['Pronto na memória']),E('button',{class:'ex-mini-button','click':L.bind(this.openFastCom,this)},['Abrir Fast.com']),E('button',{class:'ex-mini-button','click':L.bind(this.startConnectedSpeedtests,this)},['Testar WANs conectadas'])])]),E('p',{class:'ex-muted'},['O teste automático mede pelo roteador. Fast.com é a alternativa manual leve para aparelhos com pouca RAM ou quando você quiser apenas uma referência rápida pelo navegador.']),E('p',{class:'ex-muted'},['O teste faz uma medição completa e mais duas de upload. O SQM desta WAN será pausado e restaurado automaticamente. Durante o teste, o link ficará ocupado. O histórico guarda os últimos testes por WAN e calcula a média dos últimos 3.']),E('div',{class:'ex-grid ex-grid-2 ex-speedtest-grid'},activeWans.map(function(w){return speedWanCard(w.iface,w.label,!!iface(data.interfaces,w.iface).up);}))]),
 			E('section',{class:'ex-card ex-qos-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['CONTROLE DE FILAS']),E('h3',{},['CAKE / SQM'])]),E('span',{id:'ex-qos-status',class:'ex-pill standby'},['—'])]),E('div',{class:'ex-qos-toggle-row'},[E('div',{},[E('strong',{},['SQM / CAKE']),E('small',{class:'ex-muted'},['Liga ou desliga as filas configuradas'])]),E('div',{class:'ex-device-switch-control'},[E('strong',{id:'ex-qos-toggle-state',class:'ex-device-switch-state'},['—']),E('label',{class:'ex-switch'},[E('input',{id:'ex-qos-toggle',type:'checkbox','change':L.bind(function(ev){this.toggleSqm(ev.currentTarget);},this)}),E('span',{class:'ex-switch-slider'})])])]),E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},qosWanRows.concat([infoRow('Rede visitante','ex-qos-guest'),infoRow('DNS do roteador','ex-dns')])),E('button',{class:'ex-button ex-qos-edit-button','click':L.bind(function(){try{this.editSqmLimits();}catch(e){ui.addNotification(null,E('p',{},[e.message||String(e)]),'danger');}},this)},['Editar limites'])]),
 			E('section',{class:'ex-card ex-mwan-control'},[
 				E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['MULTI‑WAN']),E('h3',{},['Modo atual: ',E('span',{id:'ex-mwan-mode'},['Failover WAN1 → WAN2'])])]),E('span',{id:'ex-mwan-status',class:'ex-pill '+(mwanRunning?'online':(mwanPaused?'standby':'offline'))},[mwanPaused?'PAUSADO':(mwanRunning?'ATIVO':'DESLIGADO')])]),
