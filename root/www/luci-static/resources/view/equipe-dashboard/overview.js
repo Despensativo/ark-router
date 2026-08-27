@@ -353,10 +353,11 @@ return view.extend({
 			safe(fs.read('/tmp/equipe-traffic-history.csv'), ''),
 			safe(callWirelessStatus(), {})
 		]).then(function(r) {
-			const interfaces=r[1], wan=iface(interfaces,'wan'), wan2=iface(interfaces,'wan2'), topology=wifiTopology(r[16]), networkConfig=r[9], wan2Cfg=(values(networkConfig).wan2)||{};
-			const wanDev=wan.l3_device||wan.device||'wan', wan2Dev=(wan2.up||wan2Cfg.device)?(wan2.l3_device||wan2.device||wan2Cfg.device):'', lanPorts=lanPortsFromNetwork(networkConfig);
+			const interfaces=r[1], wan=iface(interfaces,'wan'), wan2=iface(interfaces,'wan2'), topology=wifiTopology(r[16]), networkConfig=r[9], networkValues=values(networkConfig), wanCfg=networkValues.wan||{}, wan2Cfg=networkValues.wan2||{};
+			const wanDev=wan.l3_device||wan.device||'wan', wan2Dev=(wan2.up||wan2Cfg.device)?(wan2.l3_device||wan2.device||wan2Cfg.device):'', wanPhysicalDev=wanCfg.device||wan.device||wanDev, wan2PhysicalDev=wan2Cfg.device||wan2.device||wan2Dev, lanPorts=lanPortsFromNetwork(networkConfig);
 			return Promise.all([
 				safe(callDeviceStatus(wanDev), {}), wan2Dev?safe(callDeviceStatus(wan2Dev), {}):Promise.resolve({}),
+				wanPhysicalDev?safe(callDeviceStatus(wanPhysicalDev), {}):Promise.resolve({}), wan2PhysicalDev?safe(callDeviceStatus(wan2PhysicalDev), {}):Promise.resolve({}),
 				Promise.all(topology.mainIfnames.map(function(n){ return safe(callAssocList(n), { results: [] }); })),
 				Promise.all(topology.guestIfnames.map(function(n){ return safe(callAssocList(n), { results: [] }); })),
 				safe(callSurvey(topology.survey2), { results: [] }), safe(callSurvey(topology.survey5), { results: [] }),
@@ -364,8 +365,8 @@ return view.extend({
 				wan.up&&wanDev?safe(fs.exec('/bin/ping', [ '-c', '1', '-W', '1', '-I', wanDev, '1.1.1.1' ]), {}):Promise.resolve({}),
 				wan2.up&&wan2Dev?safe(fs.exec('/bin/ping', [ '-c', '1', '-W', '1', '-I', wan2Dev, '1.1.1.1' ]), {}):Promise.resolve({})
 			]).then(function(x) { return {
-				system:r[0], interfaces:interfaces, wanDevice:x[0], wan2Device:x[1], mwan:r[2], leases:r[3], mainAssoc:x[2], guestAssoc:x[3],
-				survey2:x[4], survey5:x[5], sqm:r[4], qos:r[5], wireless:r[6], mwanConfig:r[7], names:r[8], networkConfig:r[9], lanStatus:r[10], temperature:r[11], pingWan:x[7], pingWan2:x[8], traffic:r[14], history:r[15], wirelessStatus:r[16], wifiTopology:topology, lanPorts:lanPorts, lanDevices:x[6], timestamp:Date.now()
+				system:r[0], interfaces:interfaces, wanDevice:x[0], wan2Device:x[1], wanPhysicalDevice:x[2], wan2PhysicalDevice:x[3], mwan:r[2], leases:r[3], mainAssoc:x[4], guestAssoc:x[5],
+				survey2:x[6], survey5:x[7], sqm:r[4], qos:r[5], wireless:r[6], mwanConfig:r[7], names:r[8], networkConfig:r[9], lanStatus:r[10], temperature:r[11], pingWan:x[9], pingWan2:x[10], traffic:r[14], history:r[15], wirelessStatus:r[16], wifiTopology:topology, lanPorts:lanPorts, lanDevices:x[8], timestamp:Date.now()
 			}; });
 		});
 	},
@@ -409,10 +410,10 @@ return view.extend({
 			this.fetchDataTimed(9000).then(L.bind(function(data){this.update(data);this.scheduleAdaptiveRefresh();},this)).catch(L.bind(function(){this.scheduleAdaptiveRefresh(3000);},this));
 		},this),Math.max(250,wait));
 	},
-	updateWan: function(prefix, i, d, m, ping, cfg) {
-		const mwanInterfaces=((this.currentData||{}).mwan||{}).interfaces||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;}), online=!!i.up&&(!mwanRunning||(m&&m.status==='online')), disabled=!d.carrier||(mwanRunning&&m&&m.status==='disabled');
+	updateWan: function(prefix, i, d, physical, m, ping, cfg) {
+		const phy=(physical&&Object.keys(physical).length)?physical:d, mwanInterfaces=((this.currentData||{}).mwan||{}).interfaces||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;}), online=!!i.up&&(!mwanRunning||(m&&m.status==='online')), disabled=!phy.carrier||(mwanRunning&&m&&m.status==='disabled');
 		setPill(prefix+'-status',online?'online':(disabled?'standby':'offline'),online?'ONLINE':(disabled?'SEM CABO':'OFFLINE'));
-		const a=i['ipv4-address']&&i['ipv4-address'][0], speed=String(d.speed||'').match(/[0-9]+/), link=d.carrier?(speed?speed[0]+' Mbps':'conectado'):(i.up?'interface ativa':'sem link'), stats=d.statistics||{};
+		const a=i['ipv4-address']&&i['ipv4-address'][0], speed=String(phy.speed||'').match(/[0-9]+/), full=String(phy.speed||'').toUpperCase().indexOf('F')>=0, link=phy.carrier?(speed?speed[0]+' Mbps'+(full?' • Full duplex':''):'conectado'):(i.up?'interface ativa':'sem link'), stats=d.statistics||{};
 		text(prefix+'-mode',wanProtoLabel(i,cfg)); text(prefix+'-ip',a?a.address:'—'); text(prefix+'-gateway',wanGateway(i)); text(prefix+'-mask',a?cidrMask(a.mask):'—'); text(prefix+'-dns',wanDns(i)); text(prefix+'-link',link); text(prefix+'-latency',ping==null?'—':ping.toFixed(0)+' ms'); text(prefix+'-rx',formatBytes(Number(stats.rx_bytes)||0)); text(prefix+'-tx',formatBytes(Number(stats.tx_bytes)||0)); text(prefix+'-uptime',i.up?formatUptime(i.uptime):'—');
 	},
 	updateLan: function(prefix, device) {
@@ -535,7 +536,7 @@ return view.extend({
 		this.currentData=data; this.updateRefreshSummary(data); const r=this.calculateRates(data), dr=this.deviceRates(data), wan=iface(data.interfaces,'wan'), wan2=iface(data.interfaces,'wan2'), mi=data.mwan.interfaces||{}, sqm=values(data.sqm), qosValues=values(data.qos), qos=qosValues.main||{}, qosGuest=qosValues.guest||{}, wan2Lan=wan2IsLan(data);
 		let lanStatus={};try{lanStatus=JSON.parse((data.lanStatus&&data.lanStatus.stdout)||'{}');}catch(e){}
 		text('ex-download',formatRate(r.down)); text('ex-upload',formatRate(r.up)); text('ex-down-total','Total recebido: '+formatBytes(r.rx)); text('ex-up-total','Total enviado: '+formatBytes(r.tx));
-		this.updateWan('ex-wan1',wan,data.wanDevice,mi.wan||{},parsePing(data.pingWan),(values(data.networkConfig).wan)||{}); if(!wan2Lan)this.updateWan('ex-wan2',wan2,data.wan2Device,mi.wan2||{},parsePing(data.pingWan2),(values(data.networkConfig).wan2)||{});
+		this.updateWan('ex-wan1',wan,data.wanDevice,data.wanPhysicalDevice,mi.wan||{},parsePing(data.pingWan),(values(data.networkConfig).wan)||{}); if(!wan2Lan)this.updateWan('ex-wan2',wan2,data.wan2Device,data.wan2PhysicalDevice,mi.wan2||{},parsePing(data.pingWan2),(values(data.networkConfig).wan2)||{});
 		(data.lanPorts||[]).forEach(L.bind(function(port,idx){this.updateLan('ex-lan-'+portDomId(port),(data.lanDevices||[])[idx]||{});},this));
 		const mwanRunning=Object.keys(mi).some(function(k){return !!mi[k].running;}), active=mwanRunning?(mi.wan&&mi.wan.status==='online'?'WAN1':(!wan2Lan&&mi.wan2&&mi.wan2.status==='online'?'WAN2':'SEM INTERNET')):(wan.up?'WAN1':(!wan2Lan&&wan2.up?'WAN2':'SEM INTERNET')); setPill('ex-global-status',active==='SEM INTERNET'?'offline':'online',active+' ATIVA');
 		const sf=this.feature('speedify'), sfTop=document.getElementById('ex-speedify-top');
@@ -1331,7 +1332,7 @@ return view.extend({
 		const starlinkAdapters=adapters.filter(function(a){
 			return /starlink|spacex/i.test([a.isp,a.ispType,a.description,a.name,a.connectedNetworkName].join(' '));
 		});
-		const allNetworkInterfaces=((detectionData.interfaces&&detectionData.interfaces.interface)||[]), wanCandidates=allNetworkInterfaces.filter(function(i){const routes=Array.isArray(i.route)?i.route:[],hasDefault=routes.some(function(r){return r&&(r.target==='0.0.0.0'||Number(r.mask)===0);}),name=String(i.interface||'');return !!i.up&&hasDefault&&Array.isArray(i['ipv4-address'])&&i['ipv4-address'].length>0&&!/^(lan|loopback|guest|wg|zerotier|tailscale)/i.test(name);}).map(function(i){const name=String(i.interface||''),address=String(i['ipv4-address'][0].address||''),gateway=wanGateway(i),dns=(i['dns-server']||i.dns_server||[]),ipParts=address.split('.').map(Number),gwParts=String(gateway).split('.').map(Number),cgnatIp=ipParts.length===4&&ipParts[0]===100&&ipParts[1]>=64&&ipParts[1]<=127,cgnatGw=gwParts.length===4&&gwParts[0]===100&&gwParts[1]>=64&&gwParts[1]<=127,starlinkDns=Array.isArray(dns)&&dns.some(function(server){return /^198\.54\.100\./.test(String(server));}),device=String(i.l3_device||i.device||'');return {name:name,label:name.toUpperCase(),address:address,gateway:gateway,dns:dns,device:device,likely:cgnatIp||cgnatGw||starlinkDns,strong:starlinkDns||(cgnatIp&&cgnatGw)};});
+		const allNetworkInterfaces=((detectionData.interfaces&&detectionData.interfaces.interface)||[]), wanCandidates=allNetworkInterfaces.filter(function(i){const routes=Array.isArray(i.route)?i.route:[],hasDefault=routes.some(function(r){return r&&(r.target==='0.0.0.0'||Number(r.mask)===0);}),name=String(i.interface||'');return !!i.up&&hasDefault&&Array.isArray(i['ipv4-address'])&&i['ipv4-address'].length>0&&!/^(lan|loopback|guest|wg|zerotier|tailscale)/i.test(name);}).map(function(i){const name=String(i.interface||''),address=String(i['ipv4-address'][0].address||''),gateway=wanGateway(i),dns=(i['dns-server']||i.dns_server||[]),ipParts=address.split('.').map(Number),cgnatIp=ipParts.length===4&&ipParts[0]===100&&ipParts[1]>=64&&ipParts[1]<=127,starlinkGateway=String(gateway)==='100.64.0.1',starlinkDns=Array.isArray(dns)&&dns.some(function(server){return /^198\.54\.100\./.test(String(server));}),device=String(i.l3_device||i.device||''),confirmed=starlinkDns||(cgnatIp&&starlinkGateway);return {name:name,label:name.toUpperCase(),address:address,gateway:gateway,dns:dns,device:device,likely:confirmed,strong:confirmed};});
 		let starlinkWans=wanCandidates.filter(function(w){if(w.likely)return true;return starlinkAdapters.some(function(a){const haystack=[a.adapterID,a.name,a.description,a.connectedNetworkName].join(' ').toLowerCase();return haystack.indexOf(w.name.toLowerCase())>=0||(w.device&&haystack.indexOf(w.device.toLowerCase())>=0);});});
 		if(!starlinkWans.length&&starlinkAdapters.length)starlinkWans=wanCandidates.slice(0,Math.max(1,starlinkAdapters.length));
 		const starlinkDetected=starlinkWans.length>0,starlinkProblem=starlinkAdapters.length>0&&!starlinkAdapters.some(function(a){return !a.offline&&String(a.state||'').toLowerCase()==='connected';});this.starlinkWanOrder=starlinkWans.map(function(w){return w.name;});

@@ -1603,8 +1603,9 @@ starlink_public_list_json() {
 		dns="$(printf '%s' "$status_json" | jsonfilter -e '@["dns-server"][@]' 2>/dev/null | tr '\n' ' ')"
 		device="$(sqm_device_for_network "$network_section")"
 		likely=false
-		starlink_cgnat_ipv4 "$ipaddr" && likely=true
-		starlink_cgnat_ipv4 "$gateway" && likely=true
+		cgnat_ip=false
+		starlink_cgnat_ipv4 "$ipaddr" && cgnat_ip=true
+		[ "$cgnat_ip" = true ] && [ "$gateway" = 100.64.0.1 ] && likely=true
 		printf '%s' "$dns" | grep -Eq '(^|[[:space:]])198\.54\.100\.' && likely=true
 		[ "$first" = 1 ] || printf ','; first=0
 		if [ "$network_section" = wan ]; then label=WAN1; else label="WAN${network_section#wan}"; fi
