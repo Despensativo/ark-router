@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.40
+
+- **Seleção Dinâmica de Porta WAN2 no Ark - Setup**: O assistente inicial agora permite escolher qualquer porta LAN disponível no equipamento (ex: LAN1, LAN2, LAN3) para operar como a segunda interface de internet (WAN2 DHCP), com isolamento dinâmico de `br-lan` e associação correta ao firewall e ao SQM.
+- **Aviso Informativo de Portas Físicas**: Adicionada dica visual clara no Ark - Setup orientando o usuário a conferir a numeração impressa na carcaça do roteador para plugar o cabo do segundo modem/Starlink na porta correta.
+- **Badge Inteligente de Status do Speedify**: O badge do Speedify no topo do painel agora é exibido apenas quando o serviço estiver ativo/em execução (`CONNECTING`, `CONNECTED`, `STARTING`), permanecendo 100% oculto quando o serviço estiver parado (`STOPPED`).
+- **Validação e Sincronização em Tempo Real**: Bloqueio/desbloqueio automático dos controles de porta física de acordo com o perfil de internet selecionado (1 ou 2 conexões).
+
 ## 0.9.39
 
 - Added per-WAN optimization profiles: automatic detection of PPPoE, PPPoE+VLAN, DHCP/IPoE, mobile/Starlink and static links, with changes scoped to the selected WAN.

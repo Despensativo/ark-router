@@ -1,7 +1,7 @@
 #!/bin/sh
 
 action="$1"
-ARK_ROUTER_VERSION="0.9.39"
+ARK_ROUTER_VERSION="0.9.40"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() {
