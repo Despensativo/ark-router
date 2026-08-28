@@ -39,7 +39,7 @@ const EN={
 	'SAÚDE DO ROTEADOR':'ROUTER HEALTH','Ligado há ':'Up for ','Temperatura':'Temperature','Memória':'Memory','Armazenamento':'Storage','Carga':'Load','atividade do sistema':'system activity','NORMAL':'NORMAL','ATENÇÃO':'ATTENTION',
 	'Download agora':'Download now','Upload agora':'Upload now','aguardando leitura':'waiting for data','HISTÓRICO 24 HORAS':'24-HOUR HISTORY','Download ao longo do dia':'Download throughout the day','Upload ao longo do dia':'Upload throughout the day','Coletando…':'Collecting…','A primeira amostra aparecerá em até 1 minuto':'The first sample will appear within 1 minute',
 	'Modo de conexão':'Connection mode','DHCP automático':'Automatic DHCP','IP fixo / estático':'Static IP','Modem móvel (QMI)':'Mobile modem (QMI)','Modem móvel (MBIM)':'Mobile modem (MBIM)','Modem móvel (NCM)':'Mobile modem (NCM)','Wi-Fi como internet':'Wi-Fi as internet','Desativada':'Disabled','Endereço IPv4':'IPv4 address','Gateway':'Gateway','Máscara':'Netmask','DNS recebidos':'Received DNS','Link físico':'Physical link','Latência':'Latency','Tempo online':'Uptime','ONLINE':'ONLINE','OFFLINE':'OFFLINE','SEM CABO':'UNPLUGGED','conectado':'connected','interface ativa':'interface active','sem link':'no link','CONECTADA':'CONNECTED','Full duplex':'Full duplex','Automático':'Automatic',
-	'PORTAS CABEADAS':'WIRED PORTS','LAN disponíveis':'Available LAN ports','A LAN1 está configurada como WAN2':'LAN1 is configured as WAN2','Velocidade':'Speed','Modo':'Mode','Recebido':'Received','Enviado':'Sent',
+	'PORTAS CABEADAS':'WIRED PORTS','LAN disponíveis':'Available LAN ports','A LAN1 está configurada como WAN2':'LAN1 is configured as WAN2','Velocidade':'Speed','Modo':'Mode','Recebido':'Received','Enviado':'Sent','Recebido hoje':'Received today','Enviado hoje':'Sent today','Sessão atual':'Current session',
 	'REDE WI‑FI':'WI-FI NETWORK','ATIVA':'ACTIVE','Ver senha':'Show password','Ocultar senha':'Hide password','Acesso principal':'Main access','Visitantes com upload limitado':'Guests with limited upload','Acesso principal • disponível em 2,4 e 5 GHz':'Main access • available on 2.4 and 5 GHz','Visitantes com upload limitado • disponível em 2,4 e 5 GHz':'Guests with limited upload • available on 2.4 and 5 GHz','Alterar senha nesta tela →':'Change password here →',
 	'AMBIENTE WI‑FI':'WI-FI ENVIRONMENT','Canais e interferência':'Channels and interference','Analisar canais agora':'Analyze channels now','PAÍS / DOMÍNIO REGULATÓRIO':'COUNTRY / REGULATORY DOMAIN','Alterar país':'Change country','Seleção automática de canais':'Automatic channel selection','Verificando…':'Checking…','Desligado • canais definidos manualmente':'Off • manually selected channels','Ligado • o roteador escolhe os canais':'On • the router selects channels','Configuração mista entre as bandas':'Mixed configuration between bands','AUTO':'AUTO','MANUAL':'MANUAL',
 	'A análise é manual e apenas recomenda canais; não interrompe os usuários.':'Analysis is manual and only recommends channels; it does not interrupt users.','Analisar antes de aplicar':'Analyze before applying',
@@ -105,6 +105,7 @@ function enableTranslation(){translateTree(document.body);if(translationObserver
 function safe(promise, fallback) { return L.resolveDefault(promise, fallback); }
 function formatRate(bits) {
 	bits = Number(bits) || 0;
+	if (bits >= 1000000000) return (bits / 1000000000).toFixed(bits >= 10000000000 ? 1 : 2) + ' Gbps';
 	if (bits >= 1000000) return (bits / 1000000).toFixed(bits >= 10000000 ? 1 : 2) + ' Mbps';
 	if (bits >= 1000) return (bits / 1000).toFixed(1) + ' Kbps';
 	return bits.toFixed(0) + ' bps';
@@ -450,7 +451,8 @@ return view.extend({
 			safe(fs.read('/tmp/equipe-traffic-history.csv'), ''),
 			safe(callWirelessStatus(), {}),
 			safe(callUciGet('dhcp'), { values: {} }),
-			safe(callUciGet('firewall'), { values: {} })
+			safe(callUciGet('firewall'), { values: {} }),
+			safe(fs.read('/tmp/equipe-wan-daily.csv'), '')
 		]).then(function(r) {
 			const interfaces=r[1], networkConfig=r[9], networkValues=values(networkConfig), topology=wifiTopology(r[16]), lanPorts=lanPortsFromNetwork(networkConfig);
 			const activeWans=getActiveWanList({networkConfig:networkConfig, interfaces:interfaces});
@@ -478,7 +480,7 @@ return view.extend({
 				wanDevicesMap:wanDevicesMap, wanPhysicalDevicesMap:wanPhysicalDevicesMap, wanPingsMap:wanPingsMap,
 				mwan:r[2], leases:r[3], mainAssoc:x[1], guestAssoc:x[2],
 				survey2:x[3], survey5:x[4], sqm:r[4], qos:r[5], wireless:r[6], mwanConfig:r[7], names:r[8], networkConfig:r[9], lanStatus:r[10], temperature:r[11], pingWan:wanPingsMap.wan||null, pingWan2:wanPingsMap.wan2||null, traffic:r[14], history:r[15], wirelessStatus:r[16], wifiTopology:topology, lanPorts:lanPorts, lanDevices:x[5]||[],
-				dhcpConfig: r[17], firewallConfig: r[18],
+				dhcpConfig: r[17], firewallConfig: r[18], wanDaily: r[19],
 				timestamp:Date.now()
 			}; });
 		});
@@ -529,11 +531,11 @@ return view.extend({
 			this.fetchDataTimed(9000).then(L.bind(function(data){this.update(data);this.scheduleAdaptiveRefresh();},this)).catch(L.bind(function(){this.scheduleAdaptiveRefresh(3000);},this));
 		},this),Math.max(250,wait));
 	},
-	updateWan: function(prefix, i, d, physical, m, ping, cfg) {
+	updateWan: function(prefix, i, d, physical, m, ping, cfg, daily) {
 		const phy=(physical&&Object.keys(physical).length)?physical:d, mwanInterfaces=((this.currentData||{}).mwan||{}).interfaces||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;}), online=!!i.up&&(!mwanRunning||(m&&m.status==='online')), disabled=!phy.carrier||(mwanRunning&&m&&m.status==='disabled');
 		setPill(prefix+'-status',online?'online':(disabled?'standby':'offline'),online?'ONLINE':(disabled?'SEM CABO':'OFFLINE'));
 		const a=i['ipv4-address']&&i['ipv4-address'][0], speed=String(phy.speed||'').match(/[0-9]+/), full=String(phy.speed||'').toUpperCase().indexOf('F')>=0, link=phy.carrier?(speed?speed[0]+' Mbps'+(full?' • Full duplex':''):'conectado'):(i.up?'interface ativa':'sem link'), stats=d.statistics||{};
-		text(prefix+'-mode',wanProtoLabel(i,cfg)); text(prefix+'-ip',a?a.address:'—'); text(prefix+'-gateway',wanGateway(i)); text(prefix+'-mask',a?cidrMask(a.mask):'—'); text(prefix+'-dns',wanDns(i)); text(prefix+'-link',link); text(prefix+'-latency',(online&&ping!=null)?ping.toFixed(0)+' ms':'—'); text(prefix+'-rx',formatBytes(Number(stats.rx_bytes)||0)); text(prefix+'-tx',formatBytes(Number(stats.tx_bytes)||0)); text(prefix+'-uptime',i.up?formatUptime(i.uptime):'—');
+		text(prefix+'-mode',wanProtoLabel(i,cfg)); text(prefix+'-ip',a?a.address:'—'); text(prefix+'-gateway',wanGateway(i)); text(prefix+'-mask',a?cidrMask(a.mask):'—'); text(prefix+'-dns',wanDns(i)); text(prefix+'-link',link); text(prefix+'-latency',(online&&ping!=null)?ping.toFixed(0)+' ms':'—'); text(prefix+'-rx-day',daily?formatBytes(daily.rx):'Coletando…'); text(prefix+'-tx-day',daily?formatBytes(daily.tx):'Coletando…'); text(prefix+'-session','↓ '+formatBytes(Number(stats.rx_bytes)||0)+'  •  ↑ '+formatBytes(Number(stats.tx_bytes)||0)); text(prefix+'-uptime',i.up?formatUptime(i.uptime):'—');
 	},
 	updateLan: function(prefix, device) {
 		const connected=!!device.carrier, speed=String(device.speed||'').match(/[0-9]+/), stats=device.statistics||{}, full=String(device.speed||'').toUpperCase().indexOf('F')>=0;
@@ -602,10 +604,12 @@ return view.extend({
 			const values=rows.map(function(x){return x[kind];}), peak=values.length?Math.max.apply(null,values):0, magnitude=peak>0?Math.pow(10,Math.floor(Math.log(peak)/Math.LN10)):1, normalized=peak/magnitude, nice=normalized<=1?1:(normalized<=2?2:(normalized<=5?5:10)), max=Math.max(1000,nice*magnitude), canvas=document.getElementById('ex-history-'+kind);
 			text('ex-history-'+kind+'-peak',values.length?'Pico '+formatRate(peak):'Coletando…');
 			if(!canvas||!canvas.getContext)return;
-			const width=Math.max(280,Math.floor(canvas.clientWidth||600)),height=126,dpr=Math.min(window.devicePixelRatio||1,2),ctx=canvas.getContext('2d'),left=56,right=7,top=9,bottom=22,usable=height-top-bottom,plotWidth=width-left-right;
+			const width=Math.max(280,Math.floor(canvas.clientWidth||600)),height=126,dpr=Math.min(window.devicePixelRatio||1,2),ctx=canvas.getContext('2d'),right=7,top=9,bottom=22,usable=height-top-bottom;
 			if(canvas.width!==Math.floor(width*dpr)||canvas.height!==Math.floor(height*dpr)){canvas.width=Math.floor(width*dpr);canvas.height=Math.floor(height*dpr);}
 			ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,width,height);
-			ctx.strokeStyle='rgba(148,163,184,.18)';ctx.lineWidth=1;ctx.fillStyle='rgba(148,163,184,.72)';ctx.font='9px sans-serif';ctx.textBaseline='middle';ctx.textAlign='right';
+			ctx.font='9px sans-serif';
+			const axisLabels=[formatRate(max),formatRate(max/2),formatRate(0)],left=Math.max(56,Math.ceil(Math.max.apply(null,axisLabels.map(function(label){return ctx.measureText(label).width;})))+12),plotWidth=width-left-right;
+			ctx.strokeStyle='rgba(148,163,184,.18)';ctx.lineWidth=1;ctx.fillStyle='rgba(148,163,184,.72)';ctx.textBaseline='middle';ctx.textAlign='right';
 			[ {y:top,value:max},{y:top+usable/2,value:max/2},{y:top+usable,value:0} ].forEach(function(mark){ctx.beginPath();ctx.moveTo(left,mark.y+.5);ctx.lineTo(width-right,mark.y+.5);ctx.stroke();ctx.fillText(formatRate(mark.value),left-7,mark.y);});
 			ctx.textBaseline='bottom';ctx.textAlign='left';ctx.fillText(rows.length?new Date(rows[0].time*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'24h atrás',left,height);
 			ctx.textAlign='right';ctx.fillText('agora',width-right,height);ctx.textAlign='left';
@@ -725,6 +729,8 @@ return view.extend({
 		let lanStatus={};try{lanStatus=JSON.parse((data.lanStatus&&data.lanStatus.stdout)||'{}');}catch(e){}
 		text('ex-download',formatRate(r.down)); text('ex-upload',formatRate(r.up)); text('ex-down-total','Total recebido: '+formatBytes(r.rx)); text('ex-up-total','Total enviado: '+formatBytes(r.tx));
 		const activeWans=getActiveWanList(data);
+		const wanDaily={};
+		String(data.wanDaily||'').trim().split(/\n/).forEach(function(line){const p=line.split(',');if(p.length<4)return;const rx=Number(p[2]),tx=Number(p[3]);if(!p[1]||!isFinite(rx)||!isFinite(tx))return;wanDaily[p[1]]={rx:rx,tx:tx,date:p[0]};});
 		activeWans.forEach(L.bind(function(w){
 			const i = iface(data.interfaces, w.iface);
 			const d = (data.wanDevicesMap && data.wanDevicesMap[w.iface]) || (w.iface==='wan'?data.wanDevice:(w.iface==='wan2'?data.wan2Device:{})) || {};
@@ -732,7 +738,7 @@ return view.extend({
 			const m = (data.mwan && data.mwan.interfaces && data.mwan.interfaces[w.iface]) || {};
 			const ping = (i.up && data.wanPingsMap && data.wanPingsMap[w.iface]) ? parsePing(data.wanPingsMap[w.iface]) : null;
 			const cfg = (values(data.networkConfig)[w.iface]) || {};
-			this.updateWan('ex-' + w.domId, i, d, phy, m, ping, cfg);
+			this.updateWan('ex-' + w.domId, i, d, phy, m, ping, cfg, wanDaily[w.iface]||null);
 		}, this));
 		(data.lanPorts||[]).forEach(L.bind(function(port,idx){this.updateLan('ex-lan-'+portDomId(port),(data.lanDevices||[])[idx]||{});},this));
 		const mwanRunning=Object.keys(mi).some(function(k){return !!mi[k].running;});
@@ -1044,10 +1050,10 @@ return view.extend({
 		const dns1=E('input',{class:'cbi-input-text',value:dnsList[0]||'1.1.1.1'}), dns2=E('input',{class:'cbi-input-text',value:dnsList[1]||'8.8.8.8'}), dns3=E('input',{class:'cbi-input-text',value:dnsList[2]||'',placeholder:'opcional'});
 		const clonedMac=cfg.macaddr||'', macaddr=E('input',{class:'cbi-input-text',value:clonedMac,placeholder:'vazio = MAC físico do roteador'});
 		const macClear=E('button',{class:'ex-feature-link',type:'button','click':function(){macaddr.value='';}},['Usar MAC físico']);
-		const field=function(label,node,hint){return E('label',{class:'ex-wan-edit-field'},[E('span',{},[label]),node,hint?E('small',{class:'ex-muted'},[hint]):'']);};
-		const pppoeBlock=E('div',{class:'ex-wan-proto-block'},[field('Usuário PPPoE',username),field('Senha PPPoE',passWrap,'Deixe vazio para manter/definir vazia conforme operadora')]);
+		const field=function(label,node,hint,extraClass){return E('label',{class:'ex-wan-edit-field'+(extraClass?(' '+extraClass):'')},[E('span',{},[label]),node,hint?E('small',{class:'ex-muted'},[hint]):'']);};
+		const pppoeBlock=E('div',{class:'ex-wan-proto-block'},[field('Usuário PPPoE',username),field('Senha PPPoE',passWrap,'Deixe vazio para manter/definir vazia conforme operadora','ex-wan-field-wide')]);
 		const staticBlock=E('div',{class:'ex-wan-proto-block'},[field('IPv4',ipaddr),field('Máscara',netmask),field('Gateway',gateway)]);
-		const sync=function(){const lanMode=!isPrimary&&role.value==='lan';proto.disabled=lanMode;pppoeBlock.style.display=(!lanMode&&proto.value==='pppoe')?'grid':'none';staticBlock.style.display=(!lanMode&&proto.value==='static')?'grid':'none';};
+		const sync=function(){const lanMode=!isPrimary&&role.value==='lan';proto.disabled=lanMode;pppoeBlock.style.display=(!lanMode&&proto.value==='pppoe')?'contents':'none';staticBlock.style.display=(!lanMode&&proto.value==='static')?'contents':'none';};
 		role.addEventListener('change',sync);proto.addEventListener('change',sync);sync();
 		const optButton = E('div', { style: 'grid-column: 1 / -1; margin-top: 6px; padding-top: 10px; border-top: 1px solid rgba(127,127,127,.15);' }, [
 			E('button', {
@@ -1056,40 +1062,45 @@ return view.extend({
 				style: 'width:100%;justify-content:center;font-weight:700;padding:8px;',
 				click: L.bind(function() {
 					closeModal();
-					this.showWanOptimizationsModal();
+					this.showWanOptimizationsModal(which);
 				}, this)
 			}, ['⚡ Aceleração de Internet, XPON & Perfis WAN →'])
 		]);
 		const modalTitle = (preferredDevice && (!cfg.proto || cfg.proto === 'none')) ? ('Configurar ' + chosenPortLabel + ' como ' + whichLabel) : ('Editar ' + whichLabel + ' (' + chosenPortLabel + ')');
 		ui.showModal(modalTitle,[
 			E('p',{class:'alert-message warning'},['Alterar internet/porta pode derrubar o painel por alguns segundos. O ARK cria um backup antes de aplicar.']),
-			E('div',{class:'ex-wan-edit-grid'},[field('Função',role),field('Porta física',device,'Porta vinculada ao card selecionado'),field('Tipo de conexão',proto),pppoeBlock,staticBlock,field('DNS 1',dns1),field('DNS 2',dns2),field('DNS 3',dns3,'Opcional'),field('Clonar MAC da WAN',E('div',{class:'ex-wan-mac-control'},[macaddr,macClear]),clonedMac?'MAC clonado atual. Apague para voltar ao físico.':'Sem clone: usa o MAC físico da porta.'),optButton]),
+			E('div',{class:'ex-wan-edit-grid'},[field('Função',role),field('Porta física',device,'Porta vinculada ao card selecionado'),field('Tipo de conexão',proto),pppoeBlock,staticBlock,field('DNS 1',dns1),field('DNS 2',dns2),field('DNS 3',dns3,'Opcional'),field('Clonar MAC da WAN',E('div',{class:'ex-wan-mac-control'},[macaddr,macClear]),clonedMac?'MAC clonado atual. Apague para voltar ao físico.':'Sem clone: usa o MAC físico da porta.','ex-wan-field-wide'),optButton]),
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const dns=[dns1.value.trim(),dns2.value.trim(),dns3.value.trim()].filter(Boolean).join(' '), args=['wan-save','iface='+which,'mode='+role.value,'device='+device.value,'proto='+proto.value,'username='+username.value,'password='+password.value,'ipaddr='+ipaddr.value,'netmask='+netmask.value,'gateway='+gateway.value,'dns='+dns,'macaddr='+macaddr.value.trim()];return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar WAN');ui.hideModal();reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…',3500);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar alteração'])])
 		]);
 	},
-	showWanOptimizationsModal: function() {
-		return fs.exec('/usr/sbin/equipe-dashboard-control', ['wan-optimize-status']).then(L.bind(function(r) {
+	showWanOptimizationsModal: function(iface) {
+		iface = /^wan([0-9]+)?$/.test(String(iface || '')) ? String(iface) : 'wan';
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['wan-optimize-status', 'iface=' + iface]).then(L.bind(function(r) {
 			let opt = {};
 			try { opt = JSON.parse(r.stdout || '{}'); } catch(e) {}
-			let selectedPreset = '';
+			if (!opt.iface) throw new Error(r.stderr || 'A WAN selecionada não foi encontrada');
+			let selectedPreset = opt.saved_profile || 'auto';
 			let tcpTurbo = !!opt.tcp_turbo;
 			let flowOffload = !!opt.flow_offloading;
 			let linklayerProfile = opt.linklayer_profile || 'none';
 			let babyJumbo = !!opt.baby_jumbo;
+			let irqBalance = !!opt.irqbalance_active;
+			const sqmInstalled = !!opt.sqm_installed;
+			const sqmActive = !!opt.sqm_active;
+			const sqmAnyActive = !!opt.sqm_any_active;
+			const self = this;
 
 			const presets = [
-				{ id: 'xpon_bridge', label: '⚡ Fibra XPON Bridge', tag: 'FIBRA BRIDGE PURA', desc: 'PPPoE Puro • Overhead 28B • Buffers 8MB • MTU 1500 (RFC 4638)', ll: 'pppoe_28', tcp: true, flow: false, jumbo: true },
-				{ id: 'xpon_vlan', label: '🏷️ XPON com VLAN', tag: 'VIVO / OI / CLARO', desc: 'PPPoE c/ VLAN • Overhead 34B • Buffers 8MB • MTU 1500', ll: 'vlan_34', tcp: true, flow: false, jumbo: true },
-				{ id: 'dhcp_cable', label: '🌐 Modem Roteado / DHCP', tag: 'CLARO CABO / DMZ', desc: 'Modem em modo roteador • Overhead 0B • Buffers 8MB', ll: 'none', tcp: true, flow: false, jumbo: false },
-				{ id: 'mobile_starlink', label: '📱 4G / 5G / Starlink', tag: 'MÓVEL / SATÉLITE', desc: 'Overhead 0B • Foco em Upload • ACK Filter Anti-Saturação', ll: 'none', tcp: false, flow: false, jumbo: false },
-				{ id: 'dedicated_static', label: '🚀 Ultra Banda (> 1 Gbps) / IP Fixo', tag: 'PLANOS 1G A 2.5 Gbps', desc: 'Para quem tem mais de 1 Gbps ou IP Fixo • Ativa Software Flow Offloading (Fastpath) para alívio total da CPU.', ll: 'none', tcp: true, flow: true, jumbo: false }
+				{ id: 'auto', label: '✨ Automático', tag: 'RECOMENDADO', desc: 'Detecta o protocolo e aplica somente os ajustes compatíveis com esta WAN.' },
+				{ id: 'xpon_bridge', label: '⚡ Fibra PPPoE', tag: 'BRIDGE / XPON', desc: 'PPPoE sem VLAN • overhead 28 B • MTU 1500 quando suportado.', ll: 'pppoe_28', jumbo: true },
+				{ id: 'xpon_vlan', label: '🏷️ Fibra PPPoE + VLAN', tag: 'VLAN DA OPERADORA', desc: 'PPPoE encapsulado em VLAN • overhead 34 B • MTU 1500.', ll: 'vlan_34', jumbo: true },
+				{ id: 'dhcp_cable', label: '🌐 Fibra/Modem DHCP', tag: 'DHCP / IPOE', desc: 'Internet entregue automaticamente, sem overhead PPPoE.', ll: 'none', jumbo: false },
+				{ id: 'mobile_starlink', label: '📡 Starlink / Link móvel', tag: 'SATÉLITE / 4G / 5G', desc: 'Sem overhead fixo; preserva ajustes adequados a links variáveis.', ll: 'none', jumbo: false },
+				{ id: 'dedicated_static', label: '🚀 IP fixo / link dedicado', tag: 'ESTÁTICO / ALTA BANDA', desc: 'IP estático ou link dedicado, sem impor overhead PPPoE.', ll: 'none', jumbo: false },
+				{ id: 'custom', label: '🛠️ Personalizado', tag: 'AVANÇADO', desc: 'Mantém os valores escolhidos manualmente para esta WAN.' }
 			];
-
-			if (tcpTurbo && babyJumbo && linklayerProfile === 'pppoe_28' && !flowOffload) selectedPreset = 'xpon_bridge';
-			else if (tcpTurbo && babyJumbo && linklayerProfile === 'vlan_34' && !flowOffload) selectedPreset = 'xpon_vlan';
-			else if (tcpTurbo && !babyJumbo && linklayerProfile === 'none' && !flowOffload) selectedPreset = 'dhcp_cable';
-			else if (!tcpTurbo && !babyJumbo && linklayerProfile === 'none' && !flowOffload) selectedPreset = 'mobile_starlink';
-			else if (flowOffload && linklayerProfile === 'none') selectedPreset = 'dedicated_static';
+			const profileById = function(id) { return presets.find(function(p) { return p.id === id; }) || presets[0]; };
+			const effectiveProfile = function() { return selectedPreset === 'auto' ? profileById(opt.detected_profile) : profileById(selectedPreset); };
 
 			const chips = [
 				{ id: 'none', label: '⚪ Padrão / DHCP (0B)' },
@@ -1104,6 +1115,35 @@ return view.extend({
 			const tcpInput = E('input', { type: 'checkbox' });
 			const flowInput = E('input', { type: 'checkbox' });
 			const jumboInput = E('input', { type: 'checkbox' });
+			const irqInput = E('input', { type: 'checkbox' });
+			const enableSqmInput = E('input', { type: 'checkbox', checked: true });
+			const sqmDependency = E('div', { class: 'ex-opt-sqm-dependency' });
+			const selectedSummary = E('div', { class: 'ex-opt-selected-summary' });
+			const globalWarning = E('small', { class: 'ex-muted' });
+			let saveButton = null;
+
+			const updateSqmDependency = function() {
+				const required = linklayerProfile !== 'none';
+				sqmDependency.style.display = required ? 'flex' : 'none';
+				sqmDependency.className = 'ex-opt-sqm-dependency' + (sqmActive ? ' active' : (!sqmInstalled ? ' missing' : ' warning'));
+				while (sqmDependency.firstChild) sqmDependency.removeChild(sqmDependency.firstChild);
+				if (!required) {
+					if (saveButton) saveButton.textContent = 'Aplicar perfil nesta WAN';
+					return;
+				}
+				if (sqmActive) {
+					sqmDependency.appendChild(E('div', {}, [E('strong', {}, ['✅ SQM / CAKE ativo em ' + opt.label]), E('p', {}, ['O overhead será alterado somente na fila ' + (opt.sqm_section || opt.label) + '.'])]));
+					if (saveButton) saveButton.textContent = 'Aplicar perfil em ' + opt.label;
+				} else if (sqmInstalled) {
+					sqmDependency.appendChild(E('div', {}, [E('strong', {}, ['💡 Este perfil utiliza SQM / CAKE']), E('p', {}, ['A fila será ativada somente para ' + opt.label + '. As outras WANs não serão modificadas.'])]));
+					sqmDependency.appendChild(E('label', { class: 'ex-opt-sqm-enable' }, [enableSqmInput, E('span', {}, ['Ativar CAKE em ' + opt.label]) ]));
+					if (saveButton) saveButton.textContent = enableSqmInput.checked ? 'Ativar CAKE e aplicar tudo' : 'Salvar perfil para depois';
+				} else {
+					sqmDependency.appendChild(E('div', {}, [E('strong', {}, ['⚠️ SQM / CAKE ainda não está instalado']), E('p', {}, ['Instale o módulo para ativar filas, limites, prioridades e o perfil de overhead.'])]));
+					sqmDependency.appendChild(E('button', { type: 'button', class: 'ex-mini-button', click: function() { self.installFeature('sqm'); } }, ['Instalar SQM / CAKE']));
+					if (saveButton) saveButton.textContent = 'Instalar SQM para continuar';
+				}
+			};
 
 			const updateUI = function() {
 				presetBtns.forEach(function(item) {
@@ -1115,16 +1155,24 @@ return view.extend({
 				tcpInput.checked = tcpTurbo;
 				flowInput.checked = flowOffload;
 				jumboInput.checked = babyJumbo;
+				irqInput.checked = irqBalance;
+				irqInput.disabled = !opt.irqbalance_installed;
+				flowInput.disabled = sqmAnyActive && !flowOffload;
+				const effective = effectiveProfile();
+				while (selectedSummary.firstChild) selectedSummary.removeChild(selectedSummary.firstChild);
+				selectedSummary.appendChild(E('strong', {}, [(selectedPreset === 'auto' ? 'Automático → ' : '') + effective.label]));
+				selectedSummary.appendChild(E('span', {}, [opt.label + ': overhead ' + (linklayerProfile === 'none' ? 'padrão' : linklayerProfile.replace('_', ' ')) + ' • MTU físico ' + (babyJumbo ? '1508' : '1500')]));
+				globalWarning.textContent = sqmAnyActive ? 'Fastpath fica bloqueado enquanto qualquer fila SQM/CAKE estiver ativa, evitando que o tráfego contorne o controle de filas.' : 'Estas opções são globais e afetam todas as WANs do roteador.';
+				updateSqmDependency();
 			};
 
 			const applyPreset = function(presetId) {
 				selectedPreset = presetId;
 				const p = presets.find(function(x) { return x.id === presetId; });
-				if (p) {
-					linklayerProfile = p.ll;
-					tcpTurbo = p.tcp;
-					flowOffload = p.flow;
-					babyJumbo = p.jumbo;
+				const effective = presetId === 'auto' ? profileById(opt.detected_profile) : p;
+				if (effective && presetId !== 'custom') {
+					linklayerProfile = effective.ll || 'none';
+					babyJumbo = !!effective.jumbo;
 				}
 				updateUI();
 			};
@@ -1149,41 +1197,47 @@ return view.extend({
 				const b = E('button', {
 					type: 'button',
 					class: 'ex-opt-chip',
-					click: function() { selectedPreset = ''; linklayerProfile = c.id; updateUI(); }
+					click: function() { selectedPreset = 'custom'; linklayerProfile = c.id; updateUI(); }
 				}, [c.label]);
 				chipBtns.push({ id: c.id, btn: b });
 				chipGrid.appendChild(b);
 			});
 
-			tcpInput.addEventListener('change', function() { selectedPreset = ''; tcpTurbo = tcpInput.checked; });
-			flowInput.addEventListener('change', function() { selectedPreset = ''; flowOffload = flowInput.checked; });
-			jumboInput.addEventListener('change', function() { selectedPreset = ''; babyJumbo = jumboInput.checked; });
+			tcpInput.addEventListener('change', function() { tcpTurbo = tcpInput.checked; updateUI(); });
+			flowInput.addEventListener('change', function() { flowOffload = flowInput.checked; updateUI(); });
+			jumboInput.addEventListener('change', function() { selectedPreset = 'custom'; babyJumbo = jumboInput.checked; updateUI(); });
+			irqInput.addEventListener('change', function() { irqBalance = irqInput.checked; updateUI(); });
+			enableSqmInput.addEventListener('change', updateSqmDependency);
+			applyPreset(selectedPreset);
 
-			updateUI();
+			const protoNames = { pppoe: 'PPPoE', dhcp: 'DHCP automático', static: 'IP estático' };
+			const speedText = Number(opt.link_speed_mbps || 0) > 0 ? (Number(opt.link_speed_mbps) + ' Mbps' + (opt.duplex ? ' • ' + opt.duplex : '')) : 'velocidade física não informada';
+			const detected = profileById(opt.detected_profile);
 
 			const content = [
-				E('p', { class: 'ex-muted', style: 'margin-bottom:12px;' }, [
-					'Escolha um preset pronto de 1 clique ou ajuste os módulos individuais abaixo de acordo com a sua conexão:'
+				E('div', { class: 'ex-opt-detected' }, [
+					E('div', {}, [E('span', { class: 'ex-kicker' }, ['CONEXÃO DETECTADA']), E('strong', {}, [(protoNames[opt.proto] || String(opt.proto || '').toUpperCase()) + ' em ' + (opt.wan_dev || opt.label)]), E('small', { class: 'ex-muted' }, [speedText + (opt.starlink ? ' • telemetria Starlink confirmada' : '')])]),
+					E('span', { class: 'ex-pill online' }, ['SUGESTÃO: ' + detected.label.replace(/^[^A-Za-zÀ-ÿ]+/, '')])
 				]),
 				E('div', { class: 'ex-opt-section' }, [
 					E('div', { class: 'ex-opt-section-head' }, [
-						E('h4', {}, ['1. PRESETS PRONTOS (1 CLIQUE)'])
+						E('h4', {}, ['1. PERFIL DE ' + opt.label])
 					]),
-					presetGrid
+					presetGrid,
+					selectedSummary,
+					E('details', { class: 'ex-opt-advanced' }, [
+						E('summary', {}, ['Ver configurações avançadas desta WAN']),
+						E('p', { class: 'ex-muted' }, ['Ajustes abaixo afetam somente ' + opt.label + '.']),
+						E('strong', {}, ['Perfil de overhead no SQM / CAKE']), chipGrid,
+						E('div', { class: 'ex-opt-module-card' }, [E('div', { class: 'ex-opt-module-info' }, [E('strong', {}, ['Baby Jumbo / PPPoE MTU 1500']), E('p', {}, ['Usa MTU 1508 na porta física desta WAN para tentar transportar MTU 1500 no PPPoE.'])]), E('label', { class: 'ex-switch' }, [jumboInput, E('span', { class: 'ex-switch-slider' })])]),
+						sqmDependency
+					])
 				]),
 				E('div', { class: 'ex-opt-section' }, [
 					E('div', { class: 'ex-opt-section-head' }, [
-						E('h4', {}, ['2. PERFIL DE OVERHEAD NO SQM / CAKE'])
+						E('h4', {}, ['2. OTIMIZAÇÃO GERAL DO ROTEADOR']), E('span', { class: 'ex-pill standby' }, ['TODAS AS WANs'])
 					]),
-					E('p', { class: 'ex-muted', style: 'font-size:0.78rem;margin:0 0 8px;' }, [
-						'Informa ao algoritmo CAKE o tamanho real dos envelopes físicos de rede para garantir jitter/lag zero:'
-					]),
-					chipGrid
-				]),
-				E('div', { class: 'ex-opt-section' }, [
-					E('div', { class: 'ex-opt-section-head' }, [
-						E('h4', {}, ['3. MÓDULOS DE PERFORMANCE DO SISTEMA'])
-					]),
+					globalWarning,
 					E('div', { class: 'ex-opt-module-grid' }, [
 						E('div', { class: 'ex-opt-module-card' }, [
 							E('div', { class: 'ex-opt-module-info' }, [
@@ -1194,49 +1248,59 @@ return view.extend({
 						]),
 						E('div', { class: 'ex-opt-module-card' }, [
 							E('div', { class: 'ex-opt-module-info' }, [
-								E('strong', {}, ['⚡ Baby Jumbo Frames (PPPoE MTU 1500)']),
-								E('p', {}, ['Configura MTU 1508 na porta física para tentar negociar MTU 1500 cheio no PPPoE (RFC 4638), eliminando fragmentação e MSS Clamping.'])
-							]),
-							E('label', { class: 'ex-switch' }, [ jumboInput, E('span', { class: 'ex-switch-slider' }) ])
-						]),
-						E('div', { class: 'ex-opt-module-card' }, [
-							E('div', { class: 'ex-opt-module-info' }, [
 								E('strong', {}, ['🚀 Software Flow Offloading (Fastpath)']),
-								E('p', {}, ['Aceleração de roteamento direto na tabela de fluxos do kernel. Recomendado para links acima de 1 Gbps (reduz uso de CPU).'])
+								E('p', {}, ['Aceleração de roteamento direto na tabela de fluxos do kernel. Recomendado para links acima de 1 Gbps (reduz uso de CPU).']),
+								E('small', { class: 'ex-opt-requirement' + (sqmAnyActive ? ' blocked' : ' ready') }, [sqmAnyActive ? '⚠ Requer SQM / CAKE desligado em todas as WANs.' : '✓ SQM / CAKE desligado: Fastpath pode ser ativado.'])
 							]),
 							E('label', { class: 'ex-switch' }, [ flowInput, E('span', { class: 'ex-switch-slider' }) ])
+						]),
+						E('div', { class: 'ex-opt-module-card' }, [
+							E('div', { class: 'ex-opt-module-info' }, [E('strong', {}, ['⚙️ IRQ Balance']), E('p', {}, [opt.irqbalance_installed ? 'Distribui interrupções de rede entre os núcleos disponíveis.' : 'Módulo não instalado neste roteador.'])]),
+							E('label', { class: 'ex-switch' }, [irqInput, E('span', { class: 'ex-switch-slider' })])
 						])
 					])
 				]),
 				E('div', { class: 'right', style: 'margin-top:14px;' }, [
 					E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Cancelar']),
 					' ',
-					E('button', { class: 'btn cbi-button cbi-button-positive', click: L.bind(function(ev) {
+					(saveButton = E('button', { class: 'btn cbi-button cbi-button-positive', click: L.bind(function(ev) {
 						const btn = ev.currentTarget;
+						const requiresSqm = linklayerProfile !== 'none';
+						if (requiresSqm && !sqmInstalled) {
+							this.installFeature('sqm');
+							return;
+						}
+						const activateSqm = requiresSqm && !sqmActive && enableSqmInput.checked;
+						if (flowOffload && sqmAnyActive) { ui.addNotification(null, E('p', {}, ['Desative as filas SQM / CAKE antes de ligar o Fastpath.']), 'danger'); return; }
 						btn.disabled = true;
-						btn.textContent = 'Aplicando otimizações…';
+						btn.textContent = activateSqm ? 'Ativando CAKE e aplicando…' : 'Aplicando otimizações…';
 						const args = [
 							'wan-optimize-set',
+							'iface=' + opt.iface,
+							'preset=' + selectedPreset,
 							'tcp_turbo=' + (tcpTurbo ? '1' : '0'),
 							'flow_offload=' + (flowOffload ? '1' : '0'),
 							'linklayer_profile=' + linklayerProfile,
-							'baby_jumbo=' + (babyJumbo ? '1' : '0')
+							'baby_jumbo=' + (babyJumbo ? '1' : '0'),
+							'enable_sqm=' + (activateSqm ? '1' : '0'),
+							'irqbalance=' + (irqBalance ? '1' : '0')
 						];
 						return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(res) {
 							if (res.code) throw new Error(res.stderr || 'Falha ao aplicar otimizações');
 							ui.hideModal();
-							reloadSoon('Otimizações de internet aplicadas com sucesso. Recarregando…', 2200);
+							reloadSoon(activateSqm ? 'SQM / CAKE ativado e otimizações aplicadas. Recarregando…' : 'Otimizações de internet aplicadas com sucesso. Recarregando…', 2200);
 						}).catch(function(err) {
 							btn.disabled = false;
-							btn.textContent = 'Salvar e aplicar';
+							btn.textContent = 'Aplicar perfil nesta WAN';
 							if (reloadAfterExpectedDisconnect(err, 'Otimizações enviadas. O roteador está reiniciando serviços…', 4200)) return;
 							ui.addNotification(null, E('p', {}, [err.message]), 'danger');
 						});
-					}, this) }, ['Salvar e aplicar'])
+					}, this) }, ['Salvar e aplicar']))
 				])
 			];
+			updateSqmDependency();
 
-			ui.showModal('Otimizações de Desempenho WAN & Fibra', content);
+			ui.showModal('Otimizar ' + opt.label + ' — ' + (protoNames[opt.proto] || String(opt.proto || '').toUpperCase()), content);
 		}, this)).catch(function(e) {
 			ui.addNotification(null, E('p', {}, ['Falha ao carregar estado: ' + e.message]), 'danger');
 		});
@@ -2689,8 +2753,9 @@ return view.extend({
 				infoRow('DNS recebidos',id+'-dns'),
 				infoRow('Link físico',id+'-link'),
 				infoRow('Latência',id+'-latency'),
-				infoRow('Recebido',id+'-rx'),
-				infoRow('Enviado',id+'-tx'),
+				infoRow('Recebido hoje',id+'-rx-day'),
+				infoRow('Enviado hoje',id+'-tx-day'),
+				infoRow('Sessão atual',id+'-session'),
 				infoRow('Tempo online',id+'-uptime'),
 				E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(function(){this.editWan(w.iface);},this)},[w.isPrimary?'Editar internet':'Editar porta / internet'])
 			]);

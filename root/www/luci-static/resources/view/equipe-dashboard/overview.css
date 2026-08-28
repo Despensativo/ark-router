@@ -152,11 +152,12 @@
 .ex-wan-edit-field { display: flex; min-width: 0; flex-direction: column; gap: 6px; padding: 10px 11px; border-radius: 11px; background: rgba(127,127,127,.055); font-weight: 750; }
 .ex-wan-edit-field > span { font-size: .74rem; opacity: .72; text-transform: uppercase; letter-spacing: .04em; }
 .ex-wan-edit-field input, .ex-wan-edit-field select { width: 100%; min-width: 0; box-sizing: border-box; }
+.ex-wan-field-wide { grid-column: span 2; }
 .ex-wan-pass-wrap { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; box-sizing: border-box; }
 .ex-wan-pass-wrap input { flex: 1 1 auto !important; min-width: 0 !important; width: 100% !important; }
 .ex-wan-pass-wrap .ex-mini-button { flex: 0 0 auto !important; padding: 7px 11px !important; font-size: 0.8rem !important; white-space: nowrap !important; }
 .ex-wan-mac-control { display: flex; align-items: stretch; gap: 8px; }
-.ex-wan-mac-control input { flex: 1 1 auto; }
+.ex-wan-mac-control input { flex: 1 1 auto; min-width: 12rem; font-family: ui-monospace,SFMono-Regular,Consolas,monospace; letter-spacing: .025em; }
 .ex-wan-mac-control .ex-feature-link { flex: 0 0 auto; padding: 0 9px; border: 1px solid color-mix(in srgb,var(--ex-primary-safe) 20%,transparent); border-radius: 8px; background: color-mix(in srgb,var(--ex-primary-safe) 7%,transparent); white-space: nowrap; }
 .ex-wan-proto-block { display: contents; }
 .ex-pill { display: inline-flex; align-items: center; justify-content: center; min-height: 25px; padding: 4px 10px; border-radius: 999px; font-size: .66rem; font-weight: 850; letter-spacing: .06em; }
@@ -449,6 +450,7 @@
 	.ex-ez-setup { width: calc(100vw - 20px); }
 	.ex-ez-section { padding: 13px; }
 	.ex-wan-edit-grid { grid-template-columns: 1fr; }
+	.ex-wan-field-wide { grid-column: auto; }
 	.ex-wan-mac-control { flex-direction: column; }
 	.ex-wan-mac-control .ex-feature-link { min-height: 34px; }
 }
@@ -603,6 +605,34 @@
 @media (max-width:600px){.ex-starlink-compass{align-items:flex-start;flex-direction:column}.ex-starlink-compass svg{align-self:center}}
 
 /* ARK WAN & Fiber Optimization Modules */
+.ex-opt-detected {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 13px 15px;
+	border: 1px solid color-mix(in srgb,var(--ex-primary-safe) 32%,transparent);
+	border-radius: 12px;
+	background: color-mix(in srgb,var(--ex-primary-safe) 8%,transparent);
+}
+.ex-opt-detected > div { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.ex-opt-detected strong { font-size: .94rem; }
+.ex-opt-selected-summary {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-top: 2px;
+	padding: 10px 12px;
+	border-radius: 10px;
+	background: rgba(16,185,129,.09);
+	border: 1px solid rgba(16,185,129,.24);
+}
+.ex-opt-selected-summary span { text-align: right; opacity: .72; font-size: .76rem; }
+.ex-opt-advanced { margin-top: 10px; padding: 0 12px 12px; border: 1px solid rgba(127,127,127,.16); border-radius: 10px; background: rgba(127,127,127,.035); }
+.ex-opt-advanced summary { margin: 0 -12px; padding: 11px 12px; cursor: pointer; color: var(--ex-primary-safe); font-weight: 750; }
+.ex-opt-advanced[open] summary { margin-bottom: 10px; border-bottom: 1px solid rgba(127,127,127,.13); }
+.ex-opt-advanced > .ex-opt-module-card { margin-top: 12px; }
 .ex-opt-section {
 	margin-top: 14px;
 	padding: 14px;
@@ -714,6 +744,9 @@
 	line-height: 1.35 !important;
 	color: #94a3b8 !important;
 }
+.ex-opt-requirement { display: block; margin-top: 6px; font-size: .72rem; font-weight: 750; }
+.ex-opt-requirement.blocked { color: #f59e0b; }
+.ex-opt-requirement.ready { color: #10b981; }
 .ex-opt-chip-grid {
 	display: flex !important;
 	flex-wrap: wrap !important;
@@ -743,6 +776,29 @@
 	background: #2563eb !important;
 	color: #fff !important;
 	box-shadow: 0 4px 10px rgba(37,99,235,.35) !important;
+}
+.ex-opt-sqm-dependency {
+	display: none;
+	align-items: center;
+	justify-content: space-between;
+	gap: 14px;
+	margin-top: 12px;
+	padding: 12px 14px;
+	border: 1px solid rgba(245,158,11,.4);
+	border-radius: 10px;
+	background: rgba(245,158,11,.1);
+}
+.ex-opt-sqm-dependency.active { border-color: rgba(16,185,129,.42); background: rgba(16,185,129,.1); }
+.ex-opt-sqm-dependency.missing { border-color: rgba(239,68,68,.42); background: rgba(239,68,68,.09); }
+.ex-opt-sqm-dependency strong { display:block; margin-bottom:3px; }
+.ex-opt-sqm-dependency p { margin:0; font-size:.78rem; opacity:.78; }
+.ex-opt-sqm-enable { display:flex; align-items:center; gap:8px; flex:0 0 auto; font-weight:750; cursor:pointer; }
+.ex-opt-sqm-enable input { width:18px; height:18px; }
+@media (max-width:700px) {
+	.ex-opt-detected, .ex-opt-selected-summary { align-items: flex-start; flex-direction: column; }
+	.ex-opt-selected-summary span { text-align: left; }
+	.ex-opt-sqm-dependency { align-items:stretch; flex-direction:column; }
+	.ex-opt-sqm-enable { padding-top:4px; }
 }
 
 /* Blindagem do componente de Switch / Toggle no Modal */

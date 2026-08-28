@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.39
+
+- Added per-WAN optimization profiles: automatic detection of PPPoE, PPPoE+VLAN, DHCP/IPoE, mobile/Starlink and static links, with changes scoped to the selected WAN.
+- SQM/CAKE editing and summaries now follow every active IPv4 WAN dynamically; guest download/upload policing remains independent.
+- Fastpath/Flow Offloading is clearly blocked while any SQM queue is active, avoiding accidental bypass of CAKE; global TCP and IRQ controls are separated from per-WAN settings.
+- Improved WAN editor readability for PPPoE password reveal and MAC cloning, plus dynamic WAN/LAN port handling.
+- Added current-day per-WAN traffic totals and more faithful 24-hour rate history, including Gbps formatting and adaptive chart axis labels.
+- Updated Lite/Full packaging metadata and documentation for persistent Starlink telemetry in Full, on-demand RAM telemetry in Lite, optional modules and configuration preservation.
+
 ## 0.9.38
 
 - **Central Modular de Otimizações de Desempenho WAN & Fibra**: Nova central didática acessível via Recursos e no modal de edição de qualquer WAN com Presets de 1 Clique (`[ FIBRA BRIDGE PURA ]`, `[ VIVO / OI / CLARO ]`, `[ CLARO CABO / DMZ ]`, `[ MÓVEL / SATÉLITE ]`, `[ PLANOS 1G A 2.5 Gbps ]`).

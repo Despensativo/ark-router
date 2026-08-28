@@ -3,6 +3,8 @@
 history='/tmp/equipe-traffic-history.csv'
 persist='/etc/equipe-traffic-history.csv'
 state='/tmp/equipe-traffic-history.state'
+wan_daily='/tmp/equipe-wan-daily.csv'
+wan_daily_persist='/etc/equipe-wan-daily.csv'
 
 read_counter() {
 	local device="$1" direction="$2" value
@@ -11,34 +13,52 @@ read_counter() {
 	printf '%s' "${value:-0}"
 }
 
-wan_devices() {
-	local w status dev seen
-	seen=""
+wan_interfaces() {
+	local w status dev
 	for w in $(uci -q show network | grep '=interface' | cut -d. -f2 | cut -d= -f1 | grep -E '^wan([0-9]+)?$'); do
 		[ "$(uci -q get "network.$w.proto")" != "none" ] || continue
-		dev="$(uci -q get "network.$w.device")"
-		[ -n "$dev" ] && [ -d "/sys/class/net/$dev" ] || {
-			status="$(ifstatus "$w" 2>/dev/null)"
-			dev="$(printf '%s\n' "$status" | jsonfilter -e '@.l3_device' 2>/dev/null)"
-			[ -n "$dev" ] && [ -d "/sys/class/net/$dev" ] || dev="$(printf '%s\n' "$status" | jsonfilter -e '@.device' 2>/dev/null)"
-		}
-		if [ -n "$dev" ] && [ -d "/sys/class/net/$dev" ]; then
-			case " $seen " in
-				*" $dev "*) ;;
-				*) seen="$seen $dev"; printf '%s\n' "$dev" ;;
-			esac
-		fi
+		status="$(ifstatus "$w" 2>/dev/null)"
+		dev="$(printf '%s\n' "$status" | jsonfilter -e '@.l3_device' 2>/dev/null)"
+		[ -n "$dev" ] && [ -d "/sys/class/net/$dev" ] || dev="$(printf '%s\n' "$status" | jsonfilter -e '@.device' 2>/dev/null)"
+		[ -n "$dev" ] && [ -d "/sys/class/net/$dev" ] || dev="$(uci -q get "network.$w.device")"
+		[ -n "$dev" ] && [ -d "/sys/class/net/$dev" ] && printf '%s,%s\n' "$w" "$dev"
 	done
-	if [ -z "$seen" ]; then
-		for dev in $(ip route show default 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1)}' | sort -u); do
-			[ -d "/sys/class/net/$dev" ] && printf '%s\n' "$dev"
-		done
+}
+
+record_history_peak() {
+	local now="$1" down="$2" up="$3" minute last last_time last_minute last_down last_up new_minute lines
+	minute=$((now / 60))
+	last="$(tail -n 1 "$history" 2>/dev/null)"
+	last_time="$(printf '%s' "$last" | cut -d',' -f1)"
+	last_down="$(printf '%s' "$last" | cut -d',' -f2)"
+	last_up="$(printf '%s' "$last" | cut -d',' -f3)"
+	case "$last_time" in ''|*[!0-9]*) last_time=0 ;; esac
+	case "$last_down" in ''|*[!0-9]*) last_down=0 ;; esac
+	case "$last_up" in ''|*[!0-9]*) last_up=0 ;; esac
+	last_minute=$((last_time / 60))
+	new_minute=1
+	if [ "$last_minute" -eq "$minute" ] 2>/dev/null; then
+		new_minute=0
+		[ "$last_down" -gt "$down" ] 2>/dev/null && down="$last_down"
+		[ "$last_up" -gt "$up" ] 2>/dev/null && up="$last_up"
+		sed '$d' "$history" > "$history.new" 2>/dev/null || : > "$history.new"
+		mv "$history.new" "$history"
+	fi
+	printf '%s,%s,%s\n' "$((minute * 60))" "$down" "$up" >> "$history"
+	tail -n 1440 "$history" > "$history.new" && mv "$history.new" "$history"
+	if [ "$new_minute" = 1 ]; then
+		lines="$(wc -l < "$history")"
+		if [ $((lines % 60)) -eq 0 ]; then
+			cp "$history" "$persist"
+			cp "$wan_daily" "$wan_daily_persist"
+		fi
 	fi
 }
 
 sample() {
-	local now prev_time elapsed total_down total_up dev cur_rx cur_tx prev_line prev_rx prev_tx delta_rx delta_tx max_bytes lines new_state
+	local now today prev_time elapsed total_down total_up entry iface dev cur_rx cur_tx prev_line prev_rx prev_tx delta_rx delta_tx max_bytes new_state daily_line daily_rx daily_tx new_daily
 	now="$(date +%s)"
+	today="$(date +%F)"
 	prev_time=0
 	[ -s "$state" ] && prev_time="$(head -n 1 "$state" 2>/dev/null | cut -d',' -f1)"
 	elapsed=0
@@ -47,18 +67,28 @@ sample() {
 	total_down=0
 	total_up=0
 	new_state="$now"
+	new_daily=''
 
-	for dev in $(wan_devices); do
+	for entry in $(wan_interfaces); do
+		iface="${entry%%,*}"
+		dev="${entry#*,}"
 		cur_rx="$(read_counter "$dev" rx)"
 		cur_tx="$(read_counter "$dev" tx)"
 		new_state="$new_state
-$dev,$cur_rx,$cur_tx"
+$iface,$dev,$cur_rx,$cur_tx"
+		daily_line="$(grep "^$today,$iface," "$wan_daily" 2>/dev/null | tail -n 1)"
+		daily_rx="$(printf '%s' "$daily_line" | cut -d',' -f3)"
+		daily_tx="$(printf '%s' "$daily_line" | cut -d',' -f4)"
+		case "$daily_rx" in ''|*[!0-9]*) daily_rx=0 ;; esac
+		case "$daily_tx" in ''|*[!0-9]*) daily_tx=0 ;; esac
+		delta_rx=0
+		delta_tx=0
 
-		if [ "$elapsed" -ge 30 ] && [ "$elapsed" -le 300 ]; then
-			prev_line="$(grep "^$dev," "$state" 2>/dev/null)"
+		if [ "$elapsed" -ge 2 ] && [ "$elapsed" -le 30 ]; then
+			prev_line="$(grep "^$iface,$dev," "$state" 2>/dev/null)"
 			if [ -n "$prev_line" ]; then
-				prev_rx="$(printf '%s' "$prev_line" | cut -d',' -f2)"
-				prev_tx="$(printf '%s' "$prev_line" | cut -d',' -f3)"
+				prev_rx="$(printf '%s' "$prev_line" | cut -d',' -f3)"
+				prev_tx="$(printf '%s' "$prev_line" | cut -d',' -f4)"
 				if [ -n "$prev_rx" ] && [ -n "$prev_tx" ] && [ "$cur_rx" -ge "$prev_rx" ] 2>/dev/null && [ "$cur_tx" -ge "$prev_tx" ] 2>/dev/null; then
 					delta_rx=$((cur_rx - prev_rx))
 					delta_tx=$((cur_tx - prev_tx))
@@ -70,22 +100,25 @@ $dev,$cur_rx,$cur_tx"
 				fi
 			fi
 		fi
+		daily_rx=$((daily_rx + delta_rx))
+		daily_tx=$((daily_tx + delta_tx))
+		new_daily="${new_daily}${new_daily:+
+}$today,$iface,$daily_rx,$daily_tx"
 	done
 
 	printf '%s\n' "$new_state" > "$state"
+	printf '%s\n' "$new_daily" > "$wan_daily.new" && mv "$wan_daily.new" "$wan_daily"
 
-	if [ "$elapsed" -ge 30 ] && [ "$elapsed" -le 300 ]; then
+	if [ "$elapsed" -ge 2 ] && [ "$elapsed" -le 30 ]; then
 		[ "$total_down" -le 5000000000 ] || total_down=0
 		[ "$total_up" -le 5000000000 ] || total_up=0
-		printf '%s,%s,%s\n' "$now" "$total_down" "$total_up" >> "$history"
-		tail -n 1440 "$history" > "$history.new" && mv "$history.new" "$history"
-		lines="$(wc -l < "$history")"
-		[ $((lines % 60)) -eq 0 ] && cp "$history" "$persist"
+		record_history_peak "$now" "$total_down" "$total_up"
 	fi
 }
 
 [ -s "$history" ] || { [ -s "$persist" ] && cp "$persist" "$history" || : > "$history"; }
+[ -s "$wan_daily" ] || { [ -s "$wan_daily_persist" ] && cp "$wan_daily_persist" "$wan_daily" || : > "$wan_daily"; }
 while true; do
 	sample
-	sleep 60
+	sleep 5
 done

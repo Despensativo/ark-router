@@ -75,11 +75,15 @@ Before the daemon starts, ARK Router verifies `/dev/net/tun` and attempts to ins
 
 ## SQM controls
 
-The dashboard exposes a confirmed SQM/CAKE toggle and a small limit editor. The shell helper validates WAN1/WAN2 rates, writes UCI values under `sqm.wan1` and `sqm.wan2`, and restarts only the SQM service. A rate of `0` is accepted to mean no limit for that direction.
+The dashboard exposes a confirmed SQM/CAKE toggle and a small limit editor. It enumerates every currently configured IPv4 WAN and keeps a separate queue, enable state and download/upload rates for each interface; a rate of `0` means unlimited for that direction. Guest download/upload policing is independent of WAN SQM. Flow Offloading is offered only when no SQM queue is active, because Fastpath would bypass CAKE classification.
+
+## Per-WAN optimization profiles
+
+Each WAN has its own automatic profile (PPPoE, PPPoE+VLAN, DHCP/IPoE, mobile/Starlink or static). Applying a profile changes only that WAN's overhead, MTU/link-layer settings and SQM queue, after confirmation. It does not overwrite another WAN's profile or the router's default route. TCP tuning, Flow Offloading and IRQ Balance are explicitly global controls and are shown separately; Flow Offloading and active SQM are mutually exclusive. WAN names and physical ports are discovered from UCI/network status rather than hard-coded to `wan1`/`wan2`.
 
 ## WAN controls
 
-The dashboard exposes confirmed WAN editors for common internet settings. WAN1 edits protocol and DNS while keeping the physical `wan` port. WAN2 can assign `lan1`, `lan2` or `lan3` as a second internet port, or return the selected port to the LAN bridge. The backend creates a `/tmp/ark-router-ezsetup-backup-*.tar.gz` backup before changing network UCI and reloads network services afterward.
+The dashboard exposes confirmed WAN editors for common internet settings. Any existing WAN can edit DHCP, PPPoE or static IPv4, DNS and optional MAC clone. A free LAN port can be promoted to a WAN and a WAN can be returned to the LAN bridge; the available ports are read dynamically, including WAN3/WAN4 on hardware that exposes them. The backend creates a `/tmp/ark-router-ezsetup-backup-*.tar.gz` backup before changing network UCI and reloads network services afterward.
 
 ## Dedicated multi-Starlink telemetry
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 action="$1"
-ARK_ROUTER_VERSION="0.9.38"
+ARK_ROUTER_VERSION="0.9.39"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() {
@@ -3446,12 +3446,54 @@ case "$action" in
 		echo 'ok'
 		;;
 	wan-optimize-status)
+		shift
+		iface='wan'
+		for pair in "$@"; do
+			key="${pair%%=*}"; value="${pair#*=}"
+			[ "$key" = iface ] && iface="$value"
+		done
+		printf '%s' "$iface" | grep -Eq '^wan([0-9]+)?$' || { echo 'Interface WAN invalida' >&2; exit 2; }
+		[ "$(uci -q get "network.$iface")" = interface ] || { echo 'Interface WAN nao encontrada' >&2; exit 3; }
+		if [ "$iface" = wan ]; then wan_label='WAN1'; else wan_label="WAN${iface#wan}"; fi
+		proto="$(uci -q get "network.$iface.proto")"
+		wan_dev="$(uci -q get "network.$iface.device")"
+		wan_l3_dev="$(sqm_device_for_network "$iface")"
+		[ -n "$wan_dev" ] || wan_dev="$wan_l3_dev"
+		status_json="$(ubus call "network.interface.$iface" status 2>/dev/null || true)"
+		wan_ip="$(printf '%s' "$status_json" | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null)"
+		wan_gateway="$(printf '%s' "$status_json" | jsonfilter -e '@.route[@.target="0.0.0.0"].nexthop' 2>/dev/null | head -n 1)"
+		wan_dns="$(printf '%s' "$status_json" | jsonfilter -e '@["dns-server"][@]' 2>/dev/null | tr '\n' ' ')"
+		starlink=false
+		starlink_cgnat_ipv4 "$wan_ip" && [ "$wan_gateway" = 100.64.0.1 ] && starlink=true
+		printf '%s' "$wan_dns" | grep -Eq '(^|[[:space:]])198\.54\.100\.' && starlink=true
+		case "$proto" in
+			pppoe) case "$wan_dev" in *.*) detected_profile='xpon_vlan' ;; *) detected_profile='xpon_bridge' ;; esac ;;
+			dhcp) [ "$starlink" = true ] && detected_profile='mobile_starlink' || detected_profile='dhcp_cable' ;;
+			static) detected_profile='dedicated_static' ;;
+			*) detected_profile='custom' ;;
+		esac
+		saved_profile="$(uci -q get "equipe_dashboard.wan_profiles.$iface")"
+		case "$saved_profile" in auto|xpon_bridge|xpon_vlan|dhcp_cable|mobile_starlink|dedicated_static|custom) ;; *) saved_profile='auto' ;; esac
 		tcp_turbo=0
 		[ -f /etc/sysctl.d/99-ark-performance.conf ] && [ "$(sysctl -n net.core.rmem_max 2>/dev/null)" -ge 4194304 ] 2>/dev/null && tcp_turbo=1
 		flow_offload=0
 		[ "$(uci -q get firewall.@defaults[0].flow_offloading)" = "1" ] && flow_offload=1
-		sqm_ll="$(uci -q get sqm.wan1.linklayer)"
-		sqm_ov="$(uci -q get sqm.wan1.overhead)"
+		sqm_installed=0
+		sqm_active=0
+		sqm_any_active=0
+		sqm_wan_count=0
+		sqm_section="$(sqm_section_for_network "$iface")"
+		if [ -f /etc/config/sqm ] && [ -x /etc/init.d/sqm ]; then
+			sqm_installed=1
+			for network_section in $(active_wan_networks); do
+				check_section="$(sqm_section_for_network "$network_section")" || continue
+				sqm_wan_count=$((sqm_wan_count + 1))
+				[ "$(uci -q get "sqm.$check_section.enabled")" = 1 ] && sqm_any_active=1
+			done
+			[ "$(uci -q get "sqm.$sqm_section.enabled")" = 1 ] && sqm_active=1
+		fi
+		sqm_ll="$(uci -q get "sqm.$sqm_section.linklayer")"
+		sqm_ov="$(uci -q get "sqm.$sqm_section.overhead")"
 		case "$sqm_ll" in
 			ethernet)
 				case "$sqm_ov" in
@@ -3464,36 +3506,75 @@ case "$action" in
 			atm) linklayer_profile='atm' ;;
 			*) linklayer_profile='none' ;;
 		esac
-		wan_dev="$(uci -q get network.wan.device)"
-		[ -n "$wan_dev" ] || wan_dev='eth1'
 		baby_jumbo=0
 		cur_mtu="$(cat /sys/class/net/$wan_dev/mtu 2>/dev/null || echo 1500)"
+		cur_speed="$(cat /sys/class/net/$wan_dev/speed 2>/dev/null || echo 0)"
+		cur_duplex="$(cat /sys/class/net/$wan_dev/duplex 2>/dev/null || true)"
+		printf '%s' "$cur_speed" | grep -Eq '^[0-9]+$' || cur_speed=0
 		[ "$cur_mtu" -ge 1508 ] 2>/dev/null && baby_jumbo=1
-		printf '{"tcp_turbo":%s,"flow_offloading":%s,"linklayer_profile":"%s","baby_jumbo":%s,"current_mtu":%s,"wan_dev":"%s"}\n' \
-			"$tcp_turbo" "$flow_offload" "$linklayer_profile" "$baby_jumbo" "$cur_mtu" "$wan_dev"
+		irq_installed=0; irq_active=0
+		[ -x /etc/init.d/irqbalance ] && irq_installed=1
+		[ "$irq_installed" = 1 ] && /etc/init.d/irqbalance running >/dev/null 2>&1 && irq_active=1
+		printf '{"iface":"%s","label":"%s","proto":"%s","wan_dev":"%s","l3_device":"%s","link_speed_mbps":%s,"duplex":"%s","ip":"%s","gateway":"%s","starlink":%s,"detected_profile":"%s","saved_profile":"%s","tcp_turbo":%s,"flow_offloading":%s,"linklayer_profile":"%s","baby_jumbo":%s,"current_mtu":%s,"sqm_section":"%s","sqm_installed":%s,"sqm_active":%s,"sqm_any_active":%s,"sqm_wan_count":%s,"irqbalance_installed":%s,"irqbalance_active":%s}\n' \
+			"$(json_escape "$iface")" "$(json_escape "$wan_label")" "$(json_escape "$proto")" "$(json_escape "$wan_dev")" "$(json_escape "$wan_l3_dev")" "$cur_speed" "$(json_escape "$cur_duplex")" "$(json_escape "$wan_ip")" "$(json_escape "$wan_gateway")" "$starlink" "$(json_escape "$detected_profile")" "$(json_escape "$saved_profile")" "$tcp_turbo" "$flow_offload" "$linklayer_profile" "$baby_jumbo" "$cur_mtu" "$(json_escape "$sqm_section")" "$sqm_installed" "$sqm_active" "$sqm_any_active" "$sqm_wan_count" "$irq_installed" "$irq_active"
 		;;
 	wan-optimize-set)
 		shift
-		preset='' tcp_turbo='' flow_offload='' linklayer_profile='' baby_jumbo=''
+		iface='wan' preset='' tcp_turbo='' flow_offload='' linklayer_profile='' baby_jumbo='' enable_sqm='' irqbalance=''
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
+				iface) iface="$value" ;;
 				preset) preset="$value" ;;
 				tcp_turbo) tcp_turbo="$value" ;;
 				flow_offload) flow_offload="$value" ;;
 				linklayer_profile) linklayer_profile="$value" ;;
 				baby_jumbo) baby_jumbo="$value" ;;
+				enable_sqm) enable_sqm="$value" ;;
+				irqbalance) irqbalance="$value" ;;
 			esac
 		done
+		printf '%s' "$iface" | grep -Eq '^wan([0-9]+)?$' || { echo 'Interface WAN invalida' >&2; exit 2; }
+		[ "$(uci -q get "network.$iface")" = interface ] || { echo 'Interface WAN nao encontrada' >&2; exit 3; }
+		case "$enable_sqm" in ''|0|1) ;; *) echo 'Estado SQM invalido' >&2; exit 2 ;; esac
+		case "$irqbalance" in ''|0|1) ;; *) echo 'Estado IRQ Balance invalido' >&2; exit 2 ;; esac
 		if [ -n "$preset" ]; then
-			case "$preset" in
-				xpon_bridge) tcp_turbo=1; flow_offload=0; linklayer_profile='pppoe_28'; baby_jumbo=1 ;;
-				xpon_vlan) tcp_turbo=1; flow_offload=0; linklayer_profile='vlan_34'; baby_jumbo=1 ;;
-				dhcp_cable) tcp_turbo=1; flow_offload=0; linklayer_profile='none'; baby_jumbo=0 ;;
-				mobile_starlink) tcp_turbo=0; flow_offload=0; linklayer_profile='none'; baby_jumbo=0 ;;
-				dedicated_static) tcp_turbo=1; flow_offload=1; linklayer_profile='none'; baby_jumbo=0 ;;
+			if [ "$preset" = auto ]; then
+				proto="$(uci -q get "network.$iface.proto")"
+				wan_dev="$(uci -q get "network.$iface.device")"
+				status_json="$(ubus call "network.interface.$iface" status 2>/dev/null || true)"
+				wan_ip="$(printf '%s' "$status_json" | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null)"
+				wan_gateway="$(printf '%s' "$status_json" | jsonfilter -e '@.route[@.target="0.0.0.0"].nexthop' 2>/dev/null | head -n 1)"
+				wan_dns="$(printf '%s' "$status_json" | jsonfilter -e '@["dns-server"][@]' 2>/dev/null | tr '\n' ' ')"
+				starlink=false
+				starlink_cgnat_ipv4 "$wan_ip" && [ "$wan_gateway" = 100.64.0.1 ] && starlink=true
+				printf '%s' "$wan_dns" | grep -Eq '(^|[[:space:]])198\.54\.100\.' && starlink=true
+				case "$proto" in
+					pppoe) case "$wan_dev" in *.*) effective_preset='xpon_vlan' ;; *) effective_preset='xpon_bridge' ;; esac ;;
+					dhcp) [ "$starlink" = true ] && effective_preset='mobile_starlink' || effective_preset='dhcp_cable' ;;
+					static) effective_preset='dedicated_static' ;;
+					*) effective_preset='custom' ;;
+				esac
+			else
+				effective_preset="$preset"
+			fi
+			case "$effective_preset" in
+				xpon_bridge) linklayer_profile='pppoe_28'; baby_jumbo=1 ;;
+				xpon_vlan) linklayer_profile='vlan_34'; baby_jumbo=1 ;;
+				dhcp_cable|mobile_starlink|dedicated_static) linklayer_profile='none'; baby_jumbo=0 ;;
+				custom) ;;
 				*) echo 'Preset invalido' >&2; exit 2 ;;
 			esac
+		fi
+		case "$linklayer_profile" in
+			pppoe_28|vlan_34|vdsl_44|atm)
+				[ -f /etc/config/sqm ] && [ -x /etc/init.d/sqm ] || { echo 'SQM / CAKE nao instalado. Instale o recurso antes de aplicar o perfil de overhead.' >&2; exit 3; }
+				;;
+		esac
+		[ "$enable_sqm" != 1 ] || { [ -f /etc/config/sqm ] && [ -x /etc/init.d/sqm ]; } || { echo 'SQM / CAKE nao instalado' >&2; exit 3; }
+		if [ "$flow_offload" = 1 ] && uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
+			echo 'Software Flow Offloading e SQM / CAKE ativo podem entrar em conflito. Desative o SQM antes de ligar o Fastpath.' >&2
+			exit 3
 		fi
 		if [ "$tcp_turbo" = 1 ]; then
 			mkdir -p /etc/sysctl.d
@@ -3521,8 +3602,25 @@ EOF
 			uci commit firewall
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
 		fi
+		if [ "$irqbalance" = 1 ]; then
+			[ -x /etc/init.d/irqbalance ] || { echo 'IRQ Balance nao instalado' >&2; exit 3; }
+			/etc/init.d/irqbalance enable >/dev/null 2>&1 || true
+			/etc/init.d/irqbalance start >/dev/null 2>&1 || { echo 'Nao foi possivel iniciar IRQ Balance' >&2; exit 3; }
+		elif [ "$irqbalance" = 0 ]; then
+			[ ! -x /etc/init.d/irqbalance ] || { /etc/init.d/irqbalance stop >/dev/null 2>&1 || true; /etc/init.d/irqbalance disable >/dev/null 2>&1 || true; }
+		fi
+		sqm_changed=0
+		sqm_section="$(sqm_section_for_network "$iface")" || { echo 'Mapeamento SQM invalido' >&2; exit 2; }
+		wan_device="$(sqm_device_for_network "$iface")"
+		valid_net_device "$wan_device" || { echo "Dispositivo SQM invalido para $iface" >&2; exit 2; }
+		if [ "$enable_sqm" = 1 ]; then
+			ensure_sqm_section "$sqm_section" "$wan_device"
+			uci -q set "sqm.$sqm_section.enabled=1"
+			sqm_changed=1
+		fi
 		if [ -n "$linklayer_profile" ]; then
-			for s in $(uci -q show sqm | grep -E "=queue$" | cut -d. -f2 | cut -d= -f1); do
+			if uci -q get "sqm.$sqm_section" >/dev/null 2>&1; then
+				s="$sqm_section"
 				case "$linklayer_profile" in
 					none)
 						uci -q set "sqm.$s.linklayer=none"
@@ -3549,25 +3647,30 @@ EOF
 						uci -q set "sqm.$s.overhead=44"
 						;;
 				esac
-			done
-			uci commit sqm
-			[ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
+			fi
+			sqm_changed=1
 		fi
+		if [ "$sqm_changed" = 1 ]; then
+			uci commit sqm
+			/etc/init.d/sqm restart >/dev/null 2>&1 || true
+		fi
+		wan_dev="$(uci -q get "network.$iface.device")"
+		[ -n "$wan_dev" ] || wan_dev="$(sqm_device_for_network "$iface")"
+		valid_net_device "$wan_dev" || { echo "Dispositivo fisico invalido para $iface" >&2; exit 2; }
 		if [ "$baby_jumbo" = 1 ]; then
-			wan_dev="$(uci -q get network.wan.device)"
-			[ -n "$wan_dev" ] || wan_dev='eth1'
 			ip link set "$wan_dev" mtu 1508 >/dev/null 2>&1 || true
-			uci -q set network.wan.mtu=1500
-			uci -q set network.wan.device_mtu=1508
+			uci -q set "network.$iface.mtu=1500"
+			uci -q set "network.$iface.device_mtu=1508"
 			uci commit network
 		elif [ "$baby_jumbo" = 0 ]; then
-			wan_dev="$(uci -q get network.wan.device)"
-			[ -n "$wan_dev" ] || wan_dev='eth1'
 			ip link set "$wan_dev" mtu 1500 >/dev/null 2>&1 || true
-			uci -q set network.wan.mtu=1492
-			uci -q delete network.wan.device_mtu
+			[ "$(uci -q get "network.$iface.proto")" = pppoe ] && uci -q set "network.$iface.mtu=1492" || uci -q delete "network.$iface.mtu"
+			uci -q delete "network.$iface.device_mtu"
 			uci commit network
 		fi
+		uci -q get equipe_dashboard.wan_profiles >/dev/null 2>&1 || uci -q set equipe_dashboard.wan_profiles=wan_profiles
+		[ -n "$preset" ] && uci -q set "equipe_dashboard.wan_profiles.$iface=$preset"
+		uci commit equipe_dashboard
 		echo 'ok'
 		;;
 	*)
