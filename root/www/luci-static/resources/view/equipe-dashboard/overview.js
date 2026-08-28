@@ -1024,61 +1024,186 @@ return view.extend({
 		},this)},['Salvar e reiniciar SQM'])])]);
 	},
 	editWan: function(which, preferredDevice){
-		const isPrimary = (which === 'wan' || which === 'wan1');
-		const net = values((this.currentData||{}).networkConfig);
-		const cfg = net[which] || {};
-		const whichNum = which.replace(/\D/g,'') || '1';
-		const whichLabel = 'WAN' + whichNum;
-		const makeSelect=function(value,items){const s=E('select',{class:'cbi-input-select'},items.map(function(i){return E('option',{value:i[0]},[i[1]]);}));s.value=value;return s;};
-		const detectedDev=cfg.device||((iface((this.currentData||{}).interfaces,which)||{}).l3_device)||((iface((this.currentData||{}).interfaces,which)||{}).device)||'';
-		const targetDev=(!isPrimary&&preferredDevice)?preferredDevice:detectedDev;
-		const chosenPortLabel = portLabel(targetDev || (!isPrimary ? 'lan1' : 'eth1'));
-		const wanPorts = [[targetDev || (!isPrimary ? 'lan1' : 'eth1'), chosenPortLabel]];
-		const role=makeSelect((!isPrimary&&cfg.proto==='none'&&!preferredDevice)?'lan':'wan',!isPrimary?[['wan','Usar como internet / '+whichLabel],['lan','Voltar porta para LAN']]:[['wan','Usar como internet / WAN1']]);
-		const device=makeSelect(targetDev||(!isPrimary?'lan1':'eth1'),wanPorts);
-		device.disabled=true;
-		const proto=makeSelect(cfg.proto==='pppoe'?'pppoe':(cfg.proto==='static'?'static':'dhcp'),[['dhcp','DHCP automático'],['pppoe','PPPoE'],['static','IP fixo / estático']]);
-		const username=E('input',{class:'cbi-input-text',value:cfg.username||'',placeholder:'usuário PPPoE'});
-		const password=E('input',{type:'password',class:'cbi-input-text',value:cfg.password||'',placeholder:'senha PPPoE'});
-		const passToggleBtn=E('button',{
-			type:'button',
-			class:'ex-mini-button',
-			click:function(){
-				const isPass = password.type === 'password';
-				password.type = isPass ? 'text' : 'password';
-				passToggleBtn.textContent = isPass ? '👁️ Ocultar' : '👁️ Ver senha';
-			}
-		},['👁️ Ver senha']);
-		const passWrap=E('div',{class:'ex-wan-pass-wrap'},[password,passToggleBtn]);
-		const ipaddr=E('input',{class:'cbi-input-text',value:cfg.ipaddr||'',placeholder:'192.0.2.10'});
-		const netmask=E('input',{class:'cbi-input-text',value:cfg.netmask||'255.255.255.0',placeholder:'255.255.255.0'});
-		const gateway=E('input',{class:'cbi-input-text',value:cfg.gateway||'',placeholder:'192.0.2.1'});
-		const dnsList=Array.isArray(cfg.dns)?cfg.dns:String(cfg.dns||'1.1.1.1 8.8.8.8').split(/\s+/);
-		const dns1=E('input',{class:'cbi-input-text',value:dnsList[0]||'1.1.1.1'}), dns2=E('input',{class:'cbi-input-text',value:dnsList[1]||'8.8.8.8'}), dns3=E('input',{class:'cbi-input-text',value:dnsList[2]||'',placeholder:'opcional'});
-		const clonedMac=cfg.macaddr||'', macaddr=E('input',{class:'cbi-input-text',value:clonedMac,placeholder:'vazio = MAC físico do roteador'});
-		const macClear=E('button',{class:'ex-feature-link',type:'button','click':function(){macaddr.value='';}},['Usar MAC físico']);
-		const field=function(label,node,hint,extraClass){return E('label',{class:'ex-wan-edit-field'+(extraClass?(' '+extraClass):'')},[E('span',{},[label]),node,hint?E('small',{class:'ex-muted'},[hint]):'']);};
-		const pppoeBlock=E('div',{class:'ex-wan-proto-block'},[field('Usuário PPPoE',username),field('Senha PPPoE',passWrap,'Deixe vazio para manter/definir vazia conforme operadora','ex-wan-field-wide')]);
-		const staticBlock=E('div',{class:'ex-wan-proto-block'},[field('IPv4',ipaddr),field('Máscara',netmask),field('Gateway',gateway)]);
-		const sync=function(){const lanMode=!isPrimary&&role.value==='lan';proto.disabled=lanMode;pppoeBlock.style.display=(!lanMode&&proto.value==='pppoe')?'contents':'none';staticBlock.style.display=(!lanMode&&proto.value==='static')?'contents':'none';};
-		role.addEventListener('change',sync);proto.addEventListener('change',sync);sync();
-		const optButton = E('div', { style: 'grid-column: 1 / -1; margin-top: 6px; padding-top: 10px; border-top: 1px solid rgba(127,127,127,.15);' }, [
-			E('button', {
-				class: 'ex-mini-button',
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['pppoe-profiles-list']).then(L.bind(function(profRes){
+			let profData = { profiles: [] };
+			try { profData = JSON.parse(profRes.stdout || '{}'); } catch(e) {}
+			let savedProfiles = profData.profiles || [];
+			const isPrimary = (which === 'wan' || which === 'wan1');
+			const net = values((this.currentData||{}).networkConfig);
+			const cfg = net[which] || {};
+			const whichNum = which.replace(/\D/g,'') || '1';
+			const whichLabel = 'WAN' + whichNum;
+			const makeSelect=function(value,items){const s=E('select',{class:'cbi-input-select'},items.map(function(i){return E('option',{value:i[0]},[i[1]]);}));s.value=value;return s;};
+			const detectedDev=cfg.device||((iface((this.currentData||{}).interfaces,which)||{}).l3_device)||((iface((this.currentData||{}).interfaces,which)||{}).device)||'';
+			const targetDev=(!isPrimary&&preferredDevice)?preferredDevice:detectedDev;
+			const chosenPortLabel = portLabel(targetDev || (!isPrimary ? 'lan1' : 'eth1'));
+			const wanPorts = [[targetDev || (!isPrimary ? 'lan1' : 'eth1'), chosenPortLabel]];
+			const role=makeSelect((!isPrimary&&cfg.proto==='none'&&!preferredDevice)?'lan':'wan',!isPrimary?[['wan','Usar como internet / '+whichLabel],['lan','Voltar porta para LAN']]:[['wan','Usar como internet / WAN1']]);
+			const device=makeSelect(targetDev||(!isPrimary?'lan1':'eth1'),wanPorts);
+			device.disabled=true;
+			const proto=makeSelect(cfg.proto==='pppoe'?'pppoe':(cfg.proto==='static'?'static':'dhcp'),[['dhcp','DHCP automático'],['pppoe','PPPoE'],['static','IP fixo / estático']]);
+			const username=E('input',{class:'cbi-input-text',value:cfg.username||'',placeholder:'usuário PPPoE'});
+			const password=E('input',{type:'password',class:'cbi-input-text',value:cfg.password||'',placeholder:'senha PPPoE'});
+			const passToggleBtn=E('button',{
+				type:'button',
+				class:'ex-mini-button',
+				click:function(){
+					const isPass = password.type === 'password';
+					password.type = isPass ? 'text' : 'password';
+					passToggleBtn.textContent = isPass ? '👁️ Ocultar' : '👁️ Ver senha';
+				}
+			},['👁️ Ver senha']);
+			const passWrap=E('div',{class:'ex-wan-pass-wrap'},[password,passToggleBtn]);
+			const ipaddr=E('input',{class:'cbi-input-text',value:cfg.ipaddr||'',placeholder:'192.0.2.10'});
+			const netmask=E('input',{class:'cbi-input-text',value:cfg.netmask||'255.255.255.0',placeholder:'255.255.255.0'});
+			const gateway=E('input',{class:'cbi-input-text',value:cfg.gateway||'',placeholder:'192.0.2.1'});
+			const dnsList=Array.isArray(cfg.dns)?cfg.dns:String(cfg.dns||'1.1.1.1 8.8.8.8').split(/\s+/);
+			const dns1=E('input',{class:'cbi-input-text',value:dnsList[0]||'1.1.1.1'}), dns2=E('input',{class:'cbi-input-text',value:dnsList[1]||'8.8.8.8'}), dns3=E('input',{class:'cbi-input-text',value:dnsList[2]||'',placeholder:'opcional'});
+			const clonedMac=cfg.macaddr||'', macaddr=E('input',{class:'cbi-input-text',value:clonedMac,placeholder:'vazio = MAC físico do roteador'});
+			const macClear=E('button',{class:'ex-feature-link',type:'button','click':function(){macaddr.value='';}},['Usar MAC físico']);
+
+			const pppoeProfileSelect = E('select', { class: 'cbi-input-select', style: 'flex:1;' }, [
+				E('option', { value: '' }, ['-- Escolher perfil PPPoE salvo --'])
+			]);
+			const profileStatus = E('span', { class: 'ex-pill online', style: 'display:none;font-size:0.75rem;' }, ['']);
+			const deleteProfileBtn = E('button', {
 				type: 'button',
-				style: 'width:100%;justify-content:center;font-weight:700;padding:8px;',
-				click: L.bind(function() {
-					closeModal();
-					this.showWanOptimizationsModal(which);
-				}, this)
-			}, ['⚡ Aceleração de Internet, XPON & Perfis WAN →'])
-		]);
-		const modalTitle = (preferredDevice && (!cfg.proto || cfg.proto === 'none')) ? ('Configurar ' + chosenPortLabel + ' como ' + whichLabel) : ('Editar ' + whichLabel + ' (' + chosenPortLabel + ')');
-		ui.showModal(modalTitle,[
-			E('p',{class:'alert-message warning'},['Alterar internet/porta pode derrubar o painel por alguns segundos. O ARK cria um backup antes de aplicar.']),
-			E('div',{class:'ex-wan-edit-grid'},[field('Função',role),field('Porta física',device,'Porta vinculada ao card selecionado'),field('Tipo de conexão',proto),pppoeBlock,staticBlock,field('DNS 1',dns1),field('DNS 2',dns2),field('DNS 3',dns3,'Opcional'),field('Clonar MAC da WAN',E('div',{class:'ex-wan-mac-control'},[macaddr,macClear]),clonedMac?'MAC clonado atual. Apague para voltar ao físico.':'Sem clone: usa o MAC físico da porta.','ex-wan-field-wide'),optButton]),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const dns=[dns1.value.trim(),dns2.value.trim(),dns3.value.trim()].filter(Boolean).join(' '), args=['wan-save','iface='+which,'mode='+role.value,'device='+device.value,'proto='+proto.value,'username='+username.value,'password='+password.value,'ipaddr='+ipaddr.value,'netmask='+netmask.value,'gateway='+gateway.value,'dns='+dns,'macaddr='+macaddr.value.trim()];return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar WAN');ui.hideModal();reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…',3500);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar alteração'])])
-		]);
+				class: 'ex-mini-button',
+				disabled: true,
+				title: 'Excluir perfil salvo',
+				click: function() {
+					const selId = pppoeProfileSelect.value;
+					const found = savedProfiles.find(function(p){ return p.id === selId; });
+					if (!found) return;
+					deleteProfileBtn.disabled = true;
+					deleteProfileBtn.textContent = 'Excluindo…';
+					fs.exec('/usr/sbin/equipe-dashboard-control', ['pppoe-profile-delete', found.id]).then(function(r){
+						let data = {}; try { data = JSON.parse(r.stdout || '{}'); } catch(e) {}
+						savedProfiles = data.profiles || [];
+						renderProfileOptions();
+						profileStatus.style.display = 'none';
+						ui.addNotification(null, E('p', {}, ['Perfil PPPoE excluído.']));
+					}).catch(function(e){
+						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+					}).finally(function(){
+						deleteProfileBtn.textContent = '🗑️ Excluir';
+					});
+				}
+			}, ['🗑️ Excluir']);
+
+			const renderProfileOptions = function(selectIdToPick) {
+				pppoeProfileSelect.replaceChildren(
+					E('option', { value: '' }, ['-- Escolher perfil PPPoE salvo (' + savedProfiles.length + ') --'])
+				);
+				savedProfiles.forEach(function(p){
+					const optLabel = p.name + ' (' + (p.username || 'sem usuário') + (p.macaddr ? ' • MAC ' + p.macaddr : '') + ')';
+					pppoeProfileSelect.appendChild(E('option', { value: p.id }, [optLabel]));
+				});
+				if (selectIdToPick) {
+					pppoeProfileSelect.value = selectIdToPick;
+					deleteProfileBtn.disabled = false;
+				} else {
+					pppoeProfileSelect.value = '';
+					deleteProfileBtn.disabled = true;
+				}
+			};
+			renderProfileOptions();
+
+			pppoeProfileSelect.addEventListener('change', function(){
+				const selId = pppoeProfileSelect.value;
+				const found = savedProfiles.find(function(p){ return p.id === selId; });
+				if (found) {
+					username.value = found.username || '';
+					password.value = found.password || '';
+					macaddr.value = found.macaddr || '';
+					deleteProfileBtn.disabled = false;
+					profileStatus.textContent = '✓ ' + found.name + ' aplicado';
+					profileStatus.style.display = 'inline-block';
+				} else {
+					deleteProfileBtn.disabled = true;
+					profileStatus.style.display = 'none';
+				}
+			});
+
+			const saveProfileBtn = E('button', {
+				type: 'button',
+				class: 'ex-mini-button',
+				click: function(){
+					const u = username.value.trim();
+					const p = password.value;
+					const m = macaddr.value.trim();
+					if (!u) {
+						ui.addNotification(null, E('p', {}, ['Preencha ao menos o Usuário PPPoE antes de salvar o perfil.']), 'warning');
+						return;
+					}
+					const profName = window.prompt('Nome para este perfil PPPoE (ex: Fibra Vivo, Fibra Claro, Provedor X):', u.split('@')[0] || 'Novo Perfil');
+					if (!profName || !profName.trim()) return;
+					saveProfileBtn.disabled = true;
+					saveProfileBtn.textContent = 'Salvando…';
+					fs.exec('/usr/sbin/equipe-dashboard-control', [
+						'pppoe-profile-save',
+						'name=' + profName.trim(),
+						'username=' + u,
+						'password=' + p,
+						'macaddr=' + m
+					]).then(function(r){
+						if (r.code) throw new Error(r.stderr || 'Falha ao salvar perfil');
+						let data = {}; try { data = JSON.parse(r.stdout || '{}'); } catch(e) {}
+						savedProfiles = data.profiles || [];
+						const newly = savedProfiles.find(function(item){ return item.name === profName.trim(); });
+						renderProfileOptions(newly ? newly.id : '');
+						profileStatus.textContent = '✓ ' + profName.trim() + ' salvo';
+						profileStatus.style.display = 'inline-block';
+						ui.addNotification(null, E('p', {}, ['Perfil PPPoE "' + profName.trim() + '" salvo com sucesso!']));
+					}).catch(function(e){
+						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+					}).finally(function(){
+						saveProfileBtn.disabled = false;
+						saveProfileBtn.textContent = '💾 Salvar perfil';
+					});
+				}
+			}, ['💾 Salvar perfil']);
+
+			const pppoeProfileBar = E('div', { class: 'ex-pppoe-profile-bar', style: 'grid-column: 1 / -1; margin-bottom: 8px; padding: 10px; background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.2); border-radius: 8px;' }, [
+				E('div', { style: 'display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;' }, [
+					E('div', { style: 'display:flex; align-items:center; gap:8px;' }, [
+						E('strong', { style: 'font-size:0.85rem;' }, ['🏷️ Perfis PPPoE Salvos']),
+						profileStatus
+					]),
+					E('div', { style: 'display:flex; gap:6px;' }, [
+						saveProfileBtn,
+						deleteProfileBtn
+					])
+				]),
+				E('div', { style: 'display:flex; gap:8px; align-items:center;' }, [
+					pppoeProfileSelect
+				]),
+				E('small', { class: 'ex-muted', style: 'margin-top:4px; display:block;' }, ['Salva e preenche Usuário, Senha e MAC Clonado em 1 clique para qualquer WAN.'])
+			]);
+
+			const field=function(label,node,hint,extraClass){return E('label',{class:'ex-wan-edit-field'+(extraClass?(' '+extraClass):'')},[E('span',{},[label]),node,hint?E('small',{class:'ex-muted'},[hint]):'']);};
+			const pppoeBlock=E('div',{class:'ex-wan-proto-block'},[pppoeProfileBar,field('Usuário PPPoE',username),field('Senha PPPoE',passWrap,'Deixe vazio para manter/definir vazia conforme operadora','ex-wan-field-wide')]);
+			const staticBlock=E('div',{class:'ex-wan-proto-block'},[field('IPv4',ipaddr),field('Máscara',netmask),field('Gateway',gateway)]);
+			const sync=function(){const lanMode=!isPrimary&&role.value==='lan';proto.disabled=lanMode;pppoeBlock.style.display=(!lanMode&&proto.value==='pppoe')?'contents':'none';staticBlock.style.display=(!lanMode&&proto.value==='static')?'contents':'none';};
+			role.addEventListener('change',sync);proto.addEventListener('change',sync);sync();
+			const optButton = E('div', { style: 'grid-column: 1 / -1; margin-top: 6px; padding-top: 10px; border-top: 1px solid rgba(127,127,127,.15);' }, [
+				E('button', {
+					class: 'ex-mini-button',
+					type: 'button',
+					style: 'width:100%;justify-content:center;font-weight:700;padding:8px;',
+					click: L.bind(function() {
+						closeModal();
+						this.showWanOptimizationsModal(which);
+					}, this)
+				}, ['⚡ Aceleração de Internet, XPON & Perfis WAN →'])
+			]);
+			const modalTitle = (preferredDevice && (!cfg.proto || cfg.proto === 'none')) ? ('Configurar ' + chosenPortLabel + ' como ' + whichLabel) : ('Editar ' + whichLabel + ' (' + chosenPortLabel + ')');
+			ui.showModal(modalTitle,[
+				E('p',{class:'alert-message warning'},['Alterar internet/porta pode derrubar o painel por alguns segundos. O ARK cria um backup antes de aplicar.']),
+				E('div',{class:'ex-wan-edit-grid'},[field('Função',role),field('Porta física',device,'Porta vinculada ao card selecionado'),field('Tipo de conexão',proto),pppoeBlock,staticBlock,field('DNS 1',dns1),field('DNS 2',dns2),field('DNS 3',dns3,'Opcional'),field('Clonar MAC da WAN',E('div',{class:'ex-wan-mac-control'},[macaddr,macClear]),clonedMac?'MAC clonado atual. Apague para voltar ao físico.':'Sem clone: usa o MAC físico da porta.','ex-wan-field-wide'),optButton]),
+				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const dns=[dns1.value.trim(),dns2.value.trim(),dns3.value.trim()].filter(Boolean).join(' '), args=['wan-save','iface='+which,'mode='+role.value,'device='+device.value,'proto='+proto.value,'username='+username.value,'password='+password.value,'ipaddr='+ipaddr.value,'netmask='+netmask.value,'gateway='+gateway.value,'dns='+dns,'macaddr='+macaddr.value.trim()];return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar WAN');ui.hideModal();reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…',3500);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar alteração'])])
+			]);
+		}, this));
 	},
 	showWanOptimizationsModal: function(iface) {
 		iface = /^wan([0-9]+)?$/.test(String(iface || '')) ? String(iface) : 'wan';

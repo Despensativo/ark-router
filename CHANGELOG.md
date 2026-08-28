@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.42
+
+- **Gerenciador de Perfis PPPoE (PPPoE Vault)**: Adicionada central de perfis PPPoE salvos no modal de edição de qualquer WAN. Permite salvar e carregar Usuário, Senha e MAC Clonado em 1 clique.
+- **Armazenamento e Gestão no UCI**: Suporte a salvamento, listagem e exclusão de perfis PPPoE personalizados com preenchimento automático e instantâneo dos formulários.
+- **Correção da Latência na WAN2**: Bind da sonda ICMP ping direcionado ao endereço IPv4 próprio de cada interface WAN, garantindo medição precisa de latência em cenários Multi-WAN / DHCP.
+
 ## 0.9.41
 
 - **Failover Direcional (WAN1 ou WAN2 Principal)**: O controle Multi-WAN agora permite escolher diretamente qual link é o principal (`Failover WAN1 → WAN2` ou `Failover WAN2 → WAN1`), gerando as métricas de membro e rotas do mwan3 em tempo real sem necessidade de reboot.

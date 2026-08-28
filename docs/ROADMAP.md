@@ -2,7 +2,7 @@
 
 ## Short Term
 
-- Test the published `v0.9.41` package on more clean router installs, not only on the pilot router.
+- Test the published `v0.9.42` package on more clean router installs, not only on the pilot router.
 - Test on at least one `opkg` based OpenWrt release.
 - Add a compatibility table populated by real router reports.
 - Add optional advanced `iperf3` calibration with a user-provided server.

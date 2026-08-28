@@ -1,7 +1,7 @@
 #!/bin/sh
 
 action="$1"
-ARK_ROUTER_VERSION="0.9.41"
+ARK_ROUTER_VERSION="0.9.42"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() {
@@ -3699,6 +3699,77 @@ EOF
 		[ -n "$preset" ] && uci -q set "equipe_dashboard.wan_profiles.$iface=$preset"
 		uci commit equipe_dashboard
 		echo 'ok'
+		;;
+	pppoe-profiles-list)
+		printf '{"profiles":['
+		first=1
+		for sec in $(uci -q show equipe_dashboard 2>/dev/null | grep '=pppoe_profile$' | cut -d. -f2 | cut -d= -f1); do
+			pname="$(uci -q get "equipe_dashboard.$sec.name" || printf '%s' "$sec")"
+			puser="$(uci -q get "equipe_dashboard.$sec.username" || printf '')"
+			ppass="$(uci -q get "equipe_dashboard.$sec.password" || printf '')"
+			pmac="$(uci -q get "equipe_dashboard.$sec.macaddr" || printf '')"
+			[ "$first" = 1 ] && first=0 || printf ','
+			printf '{"id":"%s","name":"%s","username":"%s","password":"%s","macaddr":"%s"}' \
+				"$(json_escape "$sec")" "$(json_escape "$pname")" "$(json_escape "$puser")" "$(json_escape "$ppass")" "$(json_escape "$pmac")"
+		done
+		printf ']}\n'
+		;;
+	pppoe-profile-save)
+		shift
+		pname=""; puser=""; ppass=""; pmac=""
+		for pair in "$@"; do
+			key="${pair%%=*}"; value="${pair#*=}"
+			case "$key" in
+				name) pname="$value" ;;
+				username) puser="$value" ;;
+				password) ppass="$value" ;;
+				macaddr) pmac="$value" ;;
+			esac
+		done
+		[ -n "$pname" ] || { echo 'Nome do perfil obrigatorio' >&2; exit 2; }
+		sec_id="$(printf '%s' "$pname" | tr -c 'a-zA-Z0-9_' '_' | tr 'A-Z' 'a-z' | sed 's/^_//; s/_$//')"
+		[ -n "$sec_id" ] || sec_id="pppoe_$(date +%s)"
+		sec_id="prof_$sec_id"
+		uci -q set "equipe_dashboard.$sec_id=pppoe_profile"
+		uci -q set "equipe_dashboard.$sec_id.name=$pname"
+		uci -q set "equipe_dashboard.$sec_id.username=$puser"
+		uci -q set "equipe_dashboard.$sec_id.password=$ppass"
+		if [ -n "$pmac" ]; then
+			uci -q set "equipe_dashboard.$sec_id.macaddr=$pmac"
+		else
+			uci -q delete "equipe_dashboard.$sec_id.macaddr"
+		fi
+		uci commit equipe_dashboard
+		printf '{"profiles":['
+		first=1
+		for sec in $(uci -q show equipe_dashboard 2>/dev/null | grep '=pppoe_profile$' | cut -d. -f2 | cut -d= -f1); do
+			pn="$(uci -q get "equipe_dashboard.$sec.name" || printf '%s' "$sec")"
+			pu="$(uci -q get "equipe_dashboard.$sec.username" || printf '')"
+			pp="$(uci -q get "equipe_dashboard.$sec.password" || printf '')"
+			pm="$(uci -q get "equipe_dashboard.$sec.macaddr" || printf '')"
+			[ "$first" = 1 ] && first=0 || printf ','
+			printf '{"id":"%s","name":"%s","username":"%s","password":"%s","macaddr":"%s"}' \
+				"$(json_escape "$sec")" "$(json_escape "$pn")" "$(json_escape "$pu")" "$(json_escape "$pp")" "$(json_escape "$pm")"
+		done
+		printf ']}\n'
+		;;
+	pppoe-profile-delete)
+		sec_id="$2"
+		[ -n "$sec_id" ] || { echo 'ID do perfil obrigatorio' >&2; exit 2; }
+		uci -q delete "equipe_dashboard.$sec_id"
+		uci commit equipe_dashboard
+		printf '{"profiles":['
+		first=1
+		for sec in $(uci -q show equipe_dashboard 2>/dev/null | grep '=pppoe_profile$' | cut -d. -f2 | cut -d= -f1); do
+			pn="$(uci -q get "equipe_dashboard.$sec.name" || printf '%s' "$sec")"
+			pu="$(uci -q get "equipe_dashboard.$sec.username" || printf '')"
+			pp="$(uci -q get "equipe_dashboard.$sec.password" || printf '')"
+			pm="$(uci -q get "equipe_dashboard.$sec.macaddr" || printf '')"
+			[ "$first" = 1 ] && first=0 || printf ','
+			printf '{"id":"%s","name":"%s","username":"%s","password":"%s","macaddr":"%s"}' \
+				"$(json_escape "$sec")" "$(json_escape "$pn")" "$(json_escape "$pu")" "$(json_escape "$pp")" "$(json_escape "$pm")"
+		done
+		printf ']}\n'
 		;;
 	*)
 		echo 'Uso: equipe-dashboard-control {features|...|irqbalance-toggle 0|1|...}' >&2

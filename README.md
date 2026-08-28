@@ -11,7 +11,7 @@ The project does not replace LuCI. It adds a cleaner operations home screen on t
 
 Keywords: ARK Router, OpenWrt dashboard, LuCI dashboard, OpenWrt plugin, router management, router monitoring, Multi-WAN, mwan3, failover, load balancing, SQM, CAKE QoS, upload shaping, guest Wi-Fi, bandwidth control, per-device traffic, Wi-Fi channel analyzer, Starlink router, Starlink telemetry, Starlink alignment, obstruction monitoring, ZeroTier, Speedify Router, OpenWrt UI, embedded router setup.
 
-The current release is **0.9.41**. ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
+The current release is **0.9.42**. ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
 
 ## Why Use It
 
