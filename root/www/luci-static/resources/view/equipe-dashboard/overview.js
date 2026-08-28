@@ -2497,14 +2497,19 @@ return view.extend({
 			const guestLimitEnabled=checkbox(saved.guest_limit_enabled!==false);
 			const guestDownload=input('number',kbpsToMbpsInput(saved.guest_download_kbps||'0'),{min:0,max:100000,step:'0.1'});
 			const guestUpload=input('number',kbpsToMbpsInput(saved.guest_upload_kbps||'1500'),{min:0,max:100000,step:'0.1'});
+			const availableLanPorts = (this.currentData && this.currentData.lanPorts && this.currentData.lanPorts.length) ? this.currentData.lanPorts : ['lan1', 'lan2', 'lan3'];
+			const portOptions = availableLanPorts.map(function(p) { return [p, portLabel(p) + ' (porta física ' + p + ')']; });
+			const wan2Port=select(saved.wan2_port||'lan1', portOptions);
 			const wan2Enabled=checkbox(saved.wan2_enabled!==false);
 			const wanMode=select(saved.wan_mode||'failover',[['single','Somente WAN1'],['failover','Failover WAN1 → WAN2'],['balanced','Balanceamento'],['wan1','Forçar WAN1'],['wan2','Forçar WAN2']]);
 			const syncInternetProfile=function(){
-				if(profile.value==='internet_single'){wan2Enabled.checked=false;wanMode.value='single';}
-				else if(profile.value==='internet_failover'){wan2Enabled.checked=true;wanMode.value='failover';}
-				else if(profile.value==='internet_balance'){wan2Enabled.checked=true;wanMode.value='balanced';}
+				if(profile.value==='internet_single'){wan2Enabled.checked=false;wanMode.value='single';wan2Port.disabled=true;}
+				else if(profile.value==='internet_failover'){wan2Enabled.checked=true;wanMode.value='failover';wan2Port.disabled=false;}
+				else if(profile.value==='internet_balance'){wan2Enabled.checked=true;wanMode.value='balanced';wan2Port.disabled=false;}
 			};
 			profile.addEventListener('change',syncInternetProfile);
+			wan2Enabled.addEventListener('change',function(){wan2Port.disabled=!wan2Enabled.checked;});
+			syncInternetProfile();
 			const sqmEnabled=checkbox(!!saved.sqm_enabled);
 			const sqmStrategy=select(saved.sqm_strategy||'manual',[['manual','Definir limites manualmente'],['calibrate_later','Medir depois pelo painel'],['off','Não configurar SQM agora']]);
 			const sqmWanUp=input('number',kbpsToMbpsInput(saved.sqm_wan_upload),{placeholder:'ex.: 15',min:0,max:100000,step:'0.1'});
@@ -2526,7 +2531,7 @@ return view.extend({
 					'language='+language.value,'profile='+profile.value,'router_name='+routerName.value,'country='+country.value,'wifi_mode='+wifiMode.value,
 					'main_ssid='+mainSsid.value,'guest_enabled='+(guestEnabled.checked?'1':'0'),'guest_ssid='+guestSsid.value,
 					'guest_limit_enabled='+(guestLimitEnabled.checked?'1':'0'),'guest_download_kbps='+mbpsToKbps(guestDownload.value),'guest_upload_kbps='+mbpsToKbps(guestUpload.value),
-					'wan2_enabled='+(wan2Enabled.checked?'1':'0'),'wan_mode='+wanMode.value,
+					'wan2_enabled='+(wan2Enabled.checked?'1':'0'),'wan2_port='+wan2Port.value,'wan_mode='+wanMode.value,
 					'sqm_enabled='+(sqmEnabled.checked?'1':'0'),'sqm_strategy='+sqmStrategy.value,
 					'sqm_wan_upload='+mbpsToKbps(sqmWanUp.value),'sqm_wan_download='+mbpsToKbps(sqmWanDown.value),'sqm_wan2_upload='+mbpsToKbps(sqmWan2Up.value),'sqm_wan2_download='+mbpsToKbps(sqmWan2Down.value),
 					'dns_mode='+dnsMode.value,'dns_servers='+dnsServers,'disable_ipv6='+(disableIpv6.checked?'1':'0'),'disable_wps='+(disableWps.checked?'1':'0'),'use_argon='+(useArgon.checked?'1':'0'),'install_modules='+selectedModules
@@ -2548,7 +2553,22 @@ return view.extend({
 			ui.showModal('Ark - Setup',[E('div',{class:'ex-ez-setup'},[
 				progress,
 				E('section',{class:'ex-ez-section'},[E('h3',{},['1. Idioma, nome e país']),E('div',{class:'ex-ez-grid ex-ez-grid-3'},[this.ezField('Idioma',language),this.ezField('Nome do painel',routerName),this.ezField('País regulatório',country,'Escolha onde o equipamento está sendo usado.')])]),
-				E('section',{class:'ex-ez-section ex-ez-primary'},[E('h3',{},['2. Como a internet entra no roteador?']),E('div',{class:'ex-ez-wide'},[this.ezField('Modo de internet',profile,profileHelp.textContent),this.ezField('Modo Multi‑WAN',wanMode,'Usado quando há duas internet.'),this.ezField('Usar LAN1 como WAN2 DHCP',wan2Enabled,'Ativa a segunda entrada de internet na porta LAN1.')])]),
+				E('section',{class:'ex-ez-section ex-ez-primary'},[
+					E('h3',{},['2. Como a internet entra no roteador?']),
+					E('div',{class:'ex-ez-grid ex-ez-grid-3'},[
+						this.ezField('Modo de internet',profile,profileHelp.textContent),
+						this.ezField('Modo Multi‑WAN',wanMode,'Usado quando há duas conexões ativas.'),
+						this.ezField('Habilitar segunda internet (WAN2)',wan2Enabled,'Ativa a segunda entrada de internet.')
+					]),
+					E('div',{class:'ex-ez-grid ex-ez-grid-2',style:'margin-top:12px;'},[
+						this.ezField('Porta física para WAN2',wan2Port,'Selecione qual porta do aparelho receberá a segunda internet.'),
+						this.ezField('Protocolo da WAN2',E('span',{class:'ex-muted',style:'display:block;padding:8px 0;font-size:0.85rem;'},['DHCP Automático (Starlink, 4G/5G ou segundo modem)']))
+					]),
+					E('div',{class:'alert-message info',style:'margin-top:12px;font-size:0.8rem;line-height:1.45;'},[
+						E('strong',{},['📌 Dica: ']),
+						'Confira a numeração das portas físicas gravada na carcaça do seu aparelho (ex: LAN1, LAN2, LAN3) caso tenha dúvida de onde conectar o cabo da segunda internet.'
+					])
+				]),
 				E('section',{class:'ex-ez-section'},[E('h3',{},['3. Wi‑Fi principal']),E('div',{class:'ex-ez-grid'},[this.ezField('Nome da rede principal',mainSsid),this.ezField('Senha principal',mainKey,'Mínimo 8 caracteres.'),this.ezField('2,4 GHz e 5 GHz',wifiMode)])]),
 				E('section',{class:'ex-ez-section'},[E('h3',{},['4. Rede visitante']),E('div',{class:'ex-ez-grid'},[this.ezField('Habilitar visitante',guestEnabled),this.ezField('Nome da rede visitante',guestSsid),this.ezField('Senha visitante',guestKey,'Mínimo 8 caracteres.'),this.ezField('Limitar visitante',guestLimitEnabled),this.ezField('Download total visitante em Mbps',guestDownload,'0 = ilimitado.'),this.ezField('Upload total visitante em Mbps',guestUpload,'Exemplo: 1,5 Mbps. Use 0 para ilimitado.')])]),
 				E('section',{class:'ex-ez-section'},[E('h3',{},['5. SQM / CAKE']),E('p',{class:'ex-muted'},['Ajuda a manter latência estável quando o link está cheio. Informe as velocidades em Mbps; 1,2 Gbps = 1200 Mbps.']),E('div',{class:'ex-ez-grid'},[this.ezField('Configurar SQM',sqmEnabled),this.ezField('Estratégia',sqmStrategy),this.ezField('WAN1 upload Mbps',sqmWanUp),this.ezField('WAN1 download Mbps',sqmWanDown),this.ezField('WAN2 upload Mbps',sqmWan2Up),this.ezField('WAN2 download Mbps',sqmWan2Down)])]),

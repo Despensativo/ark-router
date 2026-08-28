@@ -1767,7 +1767,7 @@ ez_backup() {
 }
 ez_progress() { ez_set applied_step "$1"; ez_set last_step "$2"; uci commit equipe_dashboard; }
 ez_json() {
-	printf '{"state":"%s","applied_step":%s,"last_step":"%s","backup":"%s","profile":"%s","router_name":"%s","country":"%s","wifi_mode":"%s","main_ssid":"%s","guest_enabled":%s,"guest_ssid":"%s","guest_limit_enabled":%s,"guest_download_kbps":"%s","guest_upload_kbps":"%s","wan_mode":"%s","wan2_enabled":%s,"sqm_enabled":%s,"sqm_strategy":"%s","sqm_wan_upload":"%s","sqm_wan_download":"%s","sqm_wan2_upload":"%s","sqm_wan2_download":"%s","dns_mode":"%s","dns_servers":"%s","disable_ipv6":%s,"disable_wps":%s,"use_argon":%s,"install_modules":"%s"}\n' \
+	printf '{"state":"%s","applied_step":%s,"last_step":"%s","backup":"%s","profile":"%s","router_name":"%s","country":"%s","wifi_mode":"%s","main_ssid":"%s","guest_enabled":%s,"guest_ssid":"%s","guest_limit_enabled":%s,"guest_download_kbps":"%s","guest_upload_kbps":"%s","wan_mode":"%s","wan2_enabled":%s,"wan2_port":"%s","sqm_enabled":%s,"sqm_strategy":"%s","sqm_wan_upload":"%s","sqm_wan_download":"%s","sqm_wan2_upload":"%s","sqm_wan2_download":"%s","dns_mode":"%s","dns_servers":"%s","disable_ipv6":%s,"disable_wps":%s,"use_argon":%s,"install_modules":"%s"}\n' \
 		"$(json_escape "$(ez_get state draft)")" \
 		"$(ez_get applied_step 0)" \
 		"$(json_escape "$(ez_get last_step '')")" \
@@ -1784,6 +1784,7 @@ ez_json() {
 		"$(json_escape "$(ez_get guest_upload_kbps 1500)")" \
 		"$(json_escape "$(ez_get wan_mode failover)")" \
 		"$(json_bool_value "$(ez_get wan2_enabled 1)")" \
+		"$(json_escape "$(ez_get wan2_port 'lan1')")" \
 		"$(json_bool_value "$(ez_get sqm_enabled 0)")" \
 		"$(json_escape "$(ez_get sqm_strategy manual)")" \
 		"$(json_escape "$(ez_get sqm_wan_upload '')")" \
@@ -2167,6 +2168,8 @@ case "$action" in
 					valid_sqm_rate "$value" || { echo 'Limite visitante invalido' >&2; exit 2; } ;;
 				wan_mode)
 					case "$value" in single|failover|balanced|wan1|wan2) ;; *) echo 'Modo WAN invalido' >&2; exit 2 ;; esac ;;
+				wan2_port)
+					case "$value" in lan[0-9]*|eth[0-9]*) ;; *) echo 'Porta WAN2 invalida' >&2; exit 2 ;; esac ;;
 				sqm_strategy)
 					case "$value" in off|manual|calibrate_later) ;; *) echo 'Estrategia SQM invalida' >&2; exit 2 ;; esac ;;
 				sqm_wan_upload|sqm_wan_download|sqm_wan2_upload|sqm_wan2_download)
@@ -2263,9 +2266,20 @@ case "$action" in
 		fi
 		if [ "$(ez_get applied_step 0)" -lt 5 ]; then
 			if [ "$(ez_get wan2_enabled 1)" = 1 ]; then
+				wan2_port="$(ez_get wan2_port lan1)"
+				ports="$(uci -q get network.@device[0].ports 2>/dev/null)"
+				if [ -n "$ports" ]; then
+					new_ports=""
+					for p in $ports; do
+						[ "$p" = "$wan2_port" ] || new_ports="${new_ports:+${new_ports} }$p"
+					done
+					uci -q set network.@device[0].ports="$new_ports"
+				fi
 				uci -q set network.wan2=interface
 				uci -q set network.wan2.proto=dhcp
-				uci -q set network.wan2.device=lan1
+				uci -q set "network.wan2.device=$wan2_port"
+				uci -q set network.wan2.metric=20
+				uci -q add_list firewall.@zone[1].network=wan2
 			fi
 			if installed luci-app-mwan3 || [ -f /etc/config/mwan3 ]; then
 				ensure_mwan3_ark_config
@@ -2289,7 +2303,7 @@ case "$action" in
 						iface="${item%%:*}"; section="${item#*:}"
 						upload="$(ez_get "sqm_${iface}_upload" '')"; download="$(ez_get "sqm_${iface}_download" '')"
 						if [ -n "$upload" ] || [ -n "$download" ]; then
-							ensure_sqm_section "$section" "$([ "$iface" = wan2 ] && printf lan1 || printf wan)"
+							ensure_sqm_section "$section" "$([ "$iface" = wan2 ] && printf '%s' "$(ez_get wan2_port lan1)" || printf wan)"
 							uci -q set "sqm.$section.enabled=1"
 							[ -n "$upload" ] && uci -q set "sqm.$section.upload=$upload"
 							[ -n "$download" ] && uci -q set "sqm.$section.download=$download"
