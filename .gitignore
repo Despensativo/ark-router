@@ -8,3 +8,5 @@ Thumbs.db
 build/
 dist/
 docs/screenshots/_test-*.png
+.tmp_*
+

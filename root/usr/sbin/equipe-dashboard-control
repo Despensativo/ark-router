@@ -1,7 +1,7 @@
 #!/bin/sh
 
 action="$1"
-ARK_ROUTER_VERSION="0.9.37"
+ARK_ROUTER_VERSION="0.9.38"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() {
@@ -1704,7 +1704,9 @@ apply_operation_profile() {
 			uci -q set "firewall.$sec.set_dscp=EF"
 		done
 		if [ -f /etc/config/sqm ]; then
-			for sec in wan1 wan2; do
+			sqm_queues="$(uci -q show sqm | grep '=queue' | cut -d. -f2 | cut -d= -f1)"
+			[ -n "$sqm_queues" ] || sqm_queues="wan1 wan2"
+			for sec in $sqm_queues; do
 				if [ -n "$(uci -q get "sqm.$sec" 2>/dev/null)" ]; then
 					uci -q set "sqm.$sec.qdisc=cake"
 					uci -q set "sqm.$sec.script=piece_of_cake.qos"
@@ -1719,7 +1721,9 @@ apply_operation_profile() {
 			uci -q set "firewall.$sec.set_dscp=AF41"
 		done
 		if [ -f /etc/config/sqm ]; then
-			for sec in wan1 wan2; do
+			sqm_queues="$(uci -q show sqm | grep '=queue' | cut -d. -f2 | cut -d= -f1)"
+			[ -n "$sqm_queues" ] || sqm_queues="wan1 wan2"
+			for sec in $sqm_queues; do
 				if [ -n "$(uci -q get "sqm.$sec" 2>/dev/null)" ]; then
 					uci -q delete "sqm.$sec.opts" 2>/dev/null || true
 					uci -q set "sqm.$sec.eqdisc_opts=diffserv4 nat dual-srchost ack-filter"
@@ -2758,7 +2762,9 @@ case "$action" in
 					[ "$(uci -q get "network.$network_section")" = interface ] || { echo "WAN $network_section nao configurada" >&2; exit 2; }
 					case "$(uci -q get "network.$network_section.proto")" in dhcp|pppoe|static) ;; *) echo "WAN $network_section inativa" >&2; exit 2 ;; esac
 					valid_net_device "$device" || { echo "Dispositivo SQM invalido para $network_section" >&2; exit 2; }
-					expected_device="$(sqm_device_for_network "$network_section")"; [ "$device" = "$expected_device" ] || { echo "Dispositivo SQM nao corresponde a $network_section" >&2; exit 2; }
+					expected_device="$(sqm_device_for_network "$network_section")"
+					network_device="$(uci -q get "network.$network_section.device")"
+					[ "$device" = "$expected_device" ] || [ "$device" = "$network_device" ] || [ "$device" = "$network_section" ] || { echo "Dispositivo SQM nao corresponde a $network_section" >&2; exit 2; }
 					case "$enabled" in 0|1) ;; *) echo 'Estado SQM invalido' >&2; exit 2 ;; esac
 					valid_sqm_rate "$download" && valid_sqm_rate "$upload" || { echo 'Velocidade SQM invalida' >&2; exit 2; }
 					wan_count=$((wan_count + 1))
@@ -3000,8 +3006,11 @@ case "$action" in
 		case "$2" in
 			failover) policy='wan_then_wan2' ;;
 			balanced) policy='balanced' ;;
-			wan1) policy='wan_only' ;;
+			wan1|wan) policy='wan_only' ;;
 			wan2) policy='wan2_only' ;;
+			wan3) policy='wan3_only' ;;
+			wan4) policy='wan4_only' ;;
+			wan[0-9]*) policy="${2}_only" ;;
 			*) echo 'Modo invalido' >&2; exit 2 ;;
 		esac
 		ensure_mwan3_ark_config
@@ -3221,9 +3230,14 @@ case "$action" in
 		case "$2" in
 			main) sections='default_radio0 default_radio1'; allow_toggle=0 ;;
 			guest) sections='guest_radio0 guest_radio1'; allow_toggle=1 ;;
-			*) echo 'Rede invalida' >&2; exit 2 ;;
+			*)
+				clean_prefix="$(printf '%s' "$wifi_kind" | sed 's/^extra_//')"
+				sections="$(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1 | grep -E "^(extra_)?${clean_prefix}")"
+				[ -n "$sections" ] || { echo 'Rede adicional nao encontrada' >&2; exit 2; }
+				allow_toggle=1
+				;;
 		esac
-		ssid=''; ssid2=''; ssid5=''; password=''; enabled='keep'; split='0'
+		ssid=''; ssid2=''; ssid5=''; password=''; enabled='keep'; split='0'; guest_download=''; guest_upload=''; encryption=''
 		shift 2
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
@@ -3232,8 +3246,11 @@ case "$action" in
 				ssid2) ssid2="$value" ;;
 				ssid5) ssid5="$value" ;;
 				password) password="$value" ;;
+				encryption) case "$value" in psk2|sae-mixed|sae|none) encryption="$value" ;; esac ;;
 				enabled) case "$value" in 0|1|keep) enabled="$value" ;; *) echo 'Estado da rede invalido' >&2; exit 2 ;; esac ;;
 				split) case "$value" in 0|1) split="$value" ;; *) echo 'Modo Wi-Fi invalido' >&2; exit 2 ;; esac ;;
+				guest_download) guest_download="$value" ;;
+				guest_upload) guest_upload="$value" ;;
 				*) echo "Campo Wi-Fi invalido: $key" >&2; exit 2 ;;
 			esac
 		done
@@ -3245,7 +3262,9 @@ case "$action" in
 			valid_ssid "$ssid" || { echo 'O nome da rede deve ter entre 1 e 32 caracteres' >&2; exit 2; }
 			ssid2="$ssid"; ssid5="$ssid"
 		fi
-		[ -z "$password" ] || valid_wifi_password "$password" || { echo 'A senha deve ter entre 8 e 63 caracteres' >&2; exit 2; }
+		if [ "$encryption" != none ] && [ -n "$password" ]; then
+			valid_wifi_password "$password" || { echo 'A senha deve ter entre 8 e 63 caracteres' >&2; exit 2; }
+		fi
 		[ "$allow_toggle" = 1 ] || [ "$enabled" = keep ] || { echo 'A rede principal nao pode ser desligada por este atalho' >&2; exit 2; }
 		ez_backup >/dev/null || { echo 'Falha ao criar backup antes da alteracao do Wi-Fi' >&2; exit 3; }
 		radio2="$(wifi_radio_2g)"; radio5="$(wifi_radio_5g)"
@@ -3278,7 +3297,15 @@ case "$action" in
 				*radio1) uci -q set "wireless.$section.ssid=$ssid5" ;;
 				*) uci -q set "wireless.$section.ssid=$ssid" ;;
 			esac
-			[ -z "$password" ] || uci -q set "wireless.$section.key=$password"
+			if [ "$encryption" = none ]; then
+				uci -q set "wireless.$section.encryption=none"
+				uci -q delete "wireless.$section.key"
+			elif [ -n "$encryption" ]; then
+				uci -q set "wireless.$section.encryption=$encryption"
+				[ -n "$password" ] && uci -q set "wireless.$section.key=$password"
+			elif [ -n "$password" ]; then
+				uci -q set "wireless.$section.key=$password"
+			fi
 			if [ "$enabled" != keep ]; then
 				if [ "$enabled" = 1 ]; then uci -q set "wireless.$section.disabled=0"; else uci -q set "wireless.$section.disabled=1"; fi
 			fi
@@ -3289,7 +3316,80 @@ case "$action" in
 		uci commit firewall 2>/dev/null || true
 		[ "$allow_toggle" = 1 ] && [ "$enabled" = 0 ] && uci -q set dhcp.guest.ignore=1 && uci commit dhcp
 		[ "$allow_toggle" = 1 ] && [ "$enabled" = 1 ] && uci -q delete dhcp.guest.ignore && uci commit dhcp
+		if [ "$wifi_kind" = guest ] && { [ -n "$guest_download" ] || [ -n "$guest_upload" ]; }; then
+			ez_apply_guest_limit 1 "${guest_upload:-0}" "${guest_download:-0}"
+			uci commit qos_equipe 2>/dev/null || true
+			apply_guest_tc_limit >/dev/null 2>&1 || true
+		fi
 		(sleep 2; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/firewall restart >/dev/null 2>&1 || true; wifi reload >/dev/null 2>&1 || true) &
+		echo 'ok'
+		;;
+	wifi-add)
+		new_ssid="$2"; new_password="$3"; target_network="${4:-lan}"; band_mode="${5:-both}"; new_encryption="${6:-sae-mixed}"
+		valid_ssid "$new_ssid" || { echo 'O nome da rede deve ter entre 1 e 32 caracteres' >&2; exit 2; }
+		[ "$new_encryption" = none ] || [ -z "$new_password" ] || valid_wifi_password "$new_password" || { echo 'A senha deve ter entre 8 e 63 caracteres' >&2; exit 2; }
+		case "$target_network" in lan|guest) ;; *) target_network='lan' ;; esac
+		case "$band_mode" in both|2g|5g) ;; *) band_mode='both' ;; esac
+		case "$new_encryption" in psk2|sae-mixed|sae|none) ;; *) new_encryption='sae-mixed' ;; esac
+		radio2="$(wifi_radio_2g)"; radio5="$(wifi_radio_5g)"
+		[ -n "$radio2" ] || radio2='radio0'
+		[ -n "$radio5" ] || radio5="$radio2"
+		id="$(printf '%s' "$new_ssid" | tr -dc '0-9a-zA-Z' | head -c 8 | tr 'A-Z' 'a-z')"
+		[ -n "$id" ] || id="$(date +%s | head -c 8)"
+		[ "$target_network" = guest ] && ez_apply_guest_network 1
+		if [ "$band_mode" = both ] || [ "$band_mode" = 2g ]; then
+			sec="extra_${id}_r0"
+			uci -q set "wireless.$sec=wifi-iface"
+			uci -q set "wireless.$sec.device=$radio2"
+			uci -q set "wireless.$sec.network=$target_network"
+			uci -q set "wireless.$sec.mode=ap"
+			uci -q set "wireless.$sec.ssid=$new_ssid"
+			if [ "$new_encryption" = none ]; then
+				uci -q set "wireless.$sec.encryption=none"
+				uci -q delete "wireless.$sec.key"
+			else
+				uci -q set "wireless.$sec.encryption=$new_encryption"
+				[ -n "$new_password" ] && uci -q set "wireless.$sec.key=$new_password"
+			fi
+			[ "$target_network" = guest ] && uci -q set "wireless.$sec.isolate=1"
+			uci -q set "wireless.$sec.disabled=0"
+		fi
+		if [ "$band_mode" = both ] || [ "$band_mode" = 5g ]; then
+			if [ -n "$radio5" ] && { [ "$band_mode" = 5g ] || [ "$radio5" != "$radio2" ]; }; then
+				sec="extra_${id}_r1"
+				uci -q set "wireless.$sec=wifi-iface"
+				uci -q set "wireless.$sec.device=$radio5"
+				uci -q set "wireless.$sec.network=$target_network"
+				uci -q set "wireless.$sec.mode=ap"
+				uci -q set "wireless.$sec.ssid=$new_ssid"
+				if [ "$new_encryption" = none ]; then
+					uci -q set "wireless.$sec.encryption=none"
+					uci -q delete "wireless.$sec.key"
+				else
+					uci -q set "wireless.$sec.encryption=$new_encryption"
+					[ -n "$new_password" ] && uci -q set "wireless.$sec.key=$new_password"
+				fi
+				[ "$target_network" = guest ] && uci -q set "wireless.$sec.isolate=1"
+				uci -q set "wireless.$sec.disabled=0"
+			fi
+		fi
+		uci commit wireless
+		uci commit network 2>/dev/null || true
+		uci commit firewall 2>/dev/null || true
+		(sleep 2; wifi reload >/dev/null 2>&1 || true) &
+		echo 'ok'
+		;;
+	wifi-delete)
+		sec_prefix="$2"
+		[ -n "$sec_prefix" ] || { echo 'Identificador invalido' >&2; exit 2; }
+		clean_prefix="$(printf '%s' "$sec_prefix" | sed 's/^extra_//')"
+		for s in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
+			case "$s" in
+				${sec_prefix}*|extra_${sec_prefix}*|extra_${clean_prefix}*) uci -q delete "wireless.$s" ;;
+			esac
+		done
+		uci commit wireless
+		(sleep 2; wifi reload >/dev/null 2>&1 || true) &
 		echo 'ok'
 		;;
 	channels)
@@ -3297,22 +3397,28 @@ case "$action" in
 		[ -n "$radio2" ] || { echo 'Radio 2,4 GHz nao encontrado' >&2; exit 3; }
 		[ -n "$radio5" ] || radio5="$radio2"
 		case "$2" in
-			fixed)
+			fixed|set)
 				channel2="$3"
 				channel5="$4"
-				case "$channel2" in 1|6|11) ;; *) echo 'Canal 2,4 GHz invalido' >&2; exit 2 ;; esac
-				case "$channel5" in 36|40|44|48|149|153|157|161) ;; *) echo 'Canal 5 GHz invalido' >&2; exit 2 ;; esac
-				uci set "wireless.$radio2.channel=$channel2"
-				uci set "wireless.$radio5.channel=$channel5"
+				if [ "$channel2" = auto ]; then
+					uci -q set "wireless.$radio2.channel=auto"
+				elif [ -n "$channel2" ]; then
+					uci -q set "wireless.$radio2.channel=$channel2"
+				fi
+				if [ "$channel5" = auto ]; then
+					uci -q set "wireless.$radio5.channel=auto"
+				elif [ -n "$channel5" ]; then
+					uci -q set "wireless.$radio5.channel=$channel5"
+				fi
 				;;
 			auto)
-				uci set "wireless.$radio2.channel=auto"
-				uci set "wireless.$radio5.channel=auto"
+				uci -q set "wireless.$radio2.channel=auto"
+				uci -q set "wireless.$radio5.channel=auto"
 				;;
 			*) echo 'Modo de canal invalido' >&2; exit 2 ;;
 		esac
 		uci commit wireless
-		(sleep 2; wifi reload) >/dev/null 2>&1 &
+		(sleep 2; wifi reload >/dev/null 2>&1 || true) &
 		echo 'ok'
 		;;
 	wifi-width)
@@ -3337,6 +3443,131 @@ case "$action" in
 		done
 		uci commit wireless
 		(sleep 2; wifi reload) >/dev/null 2>&1 &
+		echo 'ok'
+		;;
+	wan-optimize-status)
+		tcp_turbo=0
+		[ -f /etc/sysctl.d/99-ark-performance.conf ] && [ "$(sysctl -n net.core.rmem_max 2>/dev/null)" -ge 4194304 ] 2>/dev/null && tcp_turbo=1
+		flow_offload=0
+		[ "$(uci -q get firewall.@defaults[0].flow_offloading)" = "1" ] && flow_offload=1
+		sqm_ll="$(uci -q get sqm.wan1.linklayer)"
+		sqm_ov="$(uci -q get sqm.wan1.overhead)"
+		case "$sqm_ll" in
+			ethernet)
+				case "$sqm_ov" in
+					28) linklayer_profile='pppoe_28' ;;
+					34) linklayer_profile='vlan_34' ;;
+					44|40) linklayer_profile='vdsl_44' ;;
+					*) linklayer_profile="ethernet_${sqm_ov}" ;;
+				esac
+				;;
+			atm) linklayer_profile='atm' ;;
+			*) linklayer_profile='none' ;;
+		esac
+		wan_dev="$(uci -q get network.wan.device)"
+		[ -n "$wan_dev" ] || wan_dev='eth1'
+		baby_jumbo=0
+		cur_mtu="$(cat /sys/class/net/$wan_dev/mtu 2>/dev/null || echo 1500)"
+		[ "$cur_mtu" -ge 1508 ] 2>/dev/null && baby_jumbo=1
+		printf '{"tcp_turbo":%s,"flow_offloading":%s,"linklayer_profile":"%s","baby_jumbo":%s,"current_mtu":%s,"wan_dev":"%s"}\n' \
+			"$tcp_turbo" "$flow_offload" "$linklayer_profile" "$baby_jumbo" "$cur_mtu" "$wan_dev"
+		;;
+	wan-optimize-set)
+		shift
+		preset='' tcp_turbo='' flow_offload='' linklayer_profile='' baby_jumbo=''
+		for pair in "$@"; do
+			key="${pair%%=*}"; value="${pair#*=}"
+			case "$key" in
+				preset) preset="$value" ;;
+				tcp_turbo) tcp_turbo="$value" ;;
+				flow_offload) flow_offload="$value" ;;
+				linklayer_profile) linklayer_profile="$value" ;;
+				baby_jumbo) baby_jumbo="$value" ;;
+			esac
+		done
+		if [ -n "$preset" ]; then
+			case "$preset" in
+				xpon_bridge) tcp_turbo=1; flow_offload=0; linklayer_profile='pppoe_28'; baby_jumbo=1 ;;
+				xpon_vlan) tcp_turbo=1; flow_offload=0; linklayer_profile='vlan_34'; baby_jumbo=1 ;;
+				dhcp_cable) tcp_turbo=1; flow_offload=0; linklayer_profile='none'; baby_jumbo=0 ;;
+				mobile_starlink) tcp_turbo=0; flow_offload=0; linklayer_profile='none'; baby_jumbo=0 ;;
+				dedicated_static) tcp_turbo=1; flow_offload=1; linklayer_profile='none'; baby_jumbo=0 ;;
+				*) echo 'Preset invalido' >&2; exit 2 ;;
+			esac
+		fi
+		if [ "$tcp_turbo" = 1 ]; then
+			mkdir -p /etc/sysctl.d
+			cat <<'EOF' > /etc/sysctl.d/99-ark-performance.conf
+net.core.rmem_max=8388608
+net.core.wmem_max=8388608
+net.ipv4.tcp_rmem=4096 87380 8388608
+net.ipv4.tcp_wmem=4096 65536 8388608
+net.core.netdev_max_backlog=5000
+net.ipv4.tcp_congestion_control=cubic
+EOF
+			sysctl -p /etc/sysctl.d/99-ark-performance.conf >/dev/null 2>&1 || true
+		elif [ "$tcp_turbo" = 0 ]; then
+			rm -f /etc/sysctl.d/99-ark-performance.conf
+			sysctl -w net.core.rmem_max=212992 >/dev/null 2>&1 || true
+			sysctl -w net.core.wmem_max=212992 >/dev/null 2>&1 || true
+			sysctl -w net.core.netdev_max_backlog=1000 >/dev/null 2>&1 || true
+		fi
+		if [ "$flow_offload" = 1 ]; then
+			uci -q set firewall.@defaults[0].flow_offloading=1
+			uci commit firewall
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+		elif [ "$flow_offload" = 0 ]; then
+			uci -q set firewall.@defaults[0].flow_offloading=0
+			uci commit firewall
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+		fi
+		if [ -n "$linklayer_profile" ]; then
+			for s in $(uci -q show sqm | grep -E "=queue$" | cut -d. -f2 | cut -d= -f1); do
+				case "$linklayer_profile" in
+					none)
+						uci -q set "sqm.$s.linklayer=none"
+						uci -q delete "sqm.$s.overhead"
+						uci -q delete "sqm.$s.mpu"
+						;;
+					pppoe_28)
+						uci -q set "sqm.$s.linklayer=ethernet"
+						uci -q set "sqm.$s.overhead=28"
+						uci -q set "sqm.$s.mpu=64"
+						;;
+					vlan_34)
+						uci -q set "sqm.$s.linklayer=ethernet"
+						uci -q set "sqm.$s.overhead=34"
+						uci -q set "sqm.$s.mpu=64"
+						;;
+					vdsl_44)
+						uci -q set "sqm.$s.linklayer=ethernet"
+						uci -q set "sqm.$s.overhead=44"
+						uci -q set "sqm.$s.mpu=64"
+						;;
+					atm)
+						uci -q set "sqm.$s.linklayer=atm"
+						uci -q set "sqm.$s.overhead=44"
+						;;
+				esac
+			done
+			uci commit sqm
+			[ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
+		fi
+		if [ "$baby_jumbo" = 1 ]; then
+			wan_dev="$(uci -q get network.wan.device)"
+			[ -n "$wan_dev" ] || wan_dev='eth1'
+			ip link set "$wan_dev" mtu 1508 >/dev/null 2>&1 || true
+			uci -q set network.wan.mtu=1500
+			uci -q set network.wan.device_mtu=1508
+			uci commit network
+		elif [ "$baby_jumbo" = 0 ]; then
+			wan_dev="$(uci -q get network.wan.device)"
+			[ -n "$wan_dev" ] || wan_dev='eth1'
+			ip link set "$wan_dev" mtu 1500 >/dev/null 2>&1 || true
+			uci -q set network.wan.mtu=1492
+			uci -q delete network.wan.device_mtu
+			uci commit network
+		fi
 		echo 'ok'
 		;;
 	*)

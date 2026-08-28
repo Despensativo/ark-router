@@ -11,59 +11,77 @@ read_counter() {
 	printf '%s' "${value:-0}"
 }
 
-interface_device() {
-	local iface="$1" status device
-	status="$(ifstatus "$iface" 2>/dev/null)"
-	device="$(printf '%s\n' "$status" | jsonfilter -e '@.l3_device' 2>/dev/null)"
-	[ -n "$device" ] || device="$(printf '%s\n' "$status" | jsonfilter -e '@.device' 2>/dev/null)"
-	[ -n "$device" ] && [ -d "/sys/class/net/$device" ] && printf '%s' "$device"
-}
-
 wan_devices() {
-	local wan wan2
-	wan="$(interface_device wan)"
-	wan2="$(interface_device wan2)"
-	[ -n "$wan" ] && printf '%s\n' "$wan"
-	[ -n "$wan2" ] && [ "$wan2" != "$wan" ] && printf '%s\n' "$wan2"
-}
-
-sum_counters() {
-	local direction total device
-	direction="$1"
-	total=0
-	for device in $(wan_devices); do
-		total=$((total + $(read_counter "$device" "$direction")))
+	local w status dev seen
+	seen=""
+	for w in $(uci -q show network | grep '=interface' | cut -d. -f2 | cut -d= -f1 | grep -E '^wan([0-9]+)?$'); do
+		[ "$(uci -q get "network.$w.proto")" != "none" ] || continue
+		dev="$(uci -q get "network.$w.device")"
+		[ -n "$dev" ] && [ -d "/sys/class/net/$dev" ] || {
+			status="$(ifstatus "$w" 2>/dev/null)"
+			dev="$(printf '%s\n' "$status" | jsonfilter -e '@.l3_device' 2>/dev/null)"
+			[ -n "$dev" ] && [ -d "/sys/class/net/$dev" ] || dev="$(printf '%s\n' "$status" | jsonfilter -e '@.device' 2>/dev/null)"
+		}
+		if [ -n "$dev" ] && [ -d "/sys/class/net/$dev" ]; then
+			case " $seen " in
+				*" $dev "*) ;;
+				*) seen="$seen $dev"; printf '%s\n' "$dev" ;;
+			esac
+		fi
 	done
-	if [ "$total" -eq 0 ]; then
-		for device in $(ip route show default 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1)}' | sort -u); do
-			total=$((total + $(read_counter "$device" "$direction")))
+	if [ -z "$seen" ]; then
+		for dev in $(ip route show default 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1)}' | sort -u); do
+			[ -d "/sys/class/net/$dev" ] && printf '%s\n' "$dev"
 		done
 	fi
-	printf '%s' "$total"
 }
 
 sample() {
-	local now rx tx previous prev_time prev_rx prev_tx elapsed down up lines
+	local now prev_time elapsed total_down total_up dev cur_rx cur_tx prev_line prev_rx prev_tx delta_rx delta_tx max_bytes lines new_state
 	now="$(date +%s)"
-	rx="$(sum_counters rx)"
-	tx="$(sum_counters tx)"
+	prev_time=0
+	[ -s "$state" ] && prev_time="$(head -n 1 "$state" 2>/dev/null | cut -d',' -f1)"
+	elapsed=0
+	[ -n "$prev_time" ] && [ "$prev_time" -gt 0 ] 2>/dev/null && elapsed=$((now - prev_time))
 
-	if [ -s "$state" ]; then
-		previous="$(cat "$state")"
-		IFS=',' read -r prev_time prev_rx prev_tx <<-EOF
-		$previous
-		EOF
-		elapsed=$((now - prev_time))
-		if [ "$elapsed" -gt 0 ] && [ "$rx" -ge "$prev_rx" ] && [ "$tx" -ge "$prev_tx" ]; then
-			down=$(((rx - prev_rx) * 8 / elapsed))
-			up=$(((tx - prev_tx) * 8 / elapsed))
-			printf '%s,%s,%s\n' "$now" "$down" "$up" >> "$history"
-			tail -n 1440 "$history" > "$history.new" && mv "$history.new" "$history"
-			lines="$(wc -l < "$history")"
-			[ $((lines % 60)) -eq 0 ] && cp "$history" "$persist"
+	total_down=0
+	total_up=0
+	new_state="$now"
+
+	for dev in $(wan_devices); do
+		cur_rx="$(read_counter "$dev" rx)"
+		cur_tx="$(read_counter "$dev" tx)"
+		new_state="$new_state
+$dev,$cur_rx,$cur_tx"
+
+		if [ "$elapsed" -ge 30 ] && [ "$elapsed" -le 300 ]; then
+			prev_line="$(grep "^$dev," "$state" 2>/dev/null)"
+			if [ -n "$prev_line" ]; then
+				prev_rx="$(printf '%s' "$prev_line" | cut -d',' -f2)"
+				prev_tx="$(printf '%s' "$prev_line" | cut -d',' -f3)"
+				if [ -n "$prev_rx" ] && [ -n "$prev_tx" ] && [ "$cur_rx" -ge "$prev_rx" ] 2>/dev/null && [ "$cur_tx" -ge "$prev_tx" ] 2>/dev/null; then
+					delta_rx=$((cur_rx - prev_rx))
+					delta_tx=$((cur_tx - prev_tx))
+					max_bytes=$((312500000 * elapsed))
+					[ "$delta_rx" -le "$max_bytes" ] || delta_rx=0
+					[ "$delta_tx" -le "$max_bytes" ] || delta_tx=0
+					total_down=$((total_down + (delta_rx * 8 / elapsed)))
+					total_up=$((total_up + (delta_tx * 8 / elapsed)))
+				fi
+			fi
 		fi
+	done
+
+	printf '%s\n' "$new_state" > "$state"
+
+	if [ "$elapsed" -ge 30 ] && [ "$elapsed" -le 300 ]; then
+		[ "$total_down" -le 5000000000 ] || total_down=0
+		[ "$total_up" -le 5000000000 ] || total_up=0
+		printf '%s,%s,%s\n' "$now" "$total_down" "$total_up" >> "$history"
+		tail -n 1440 "$history" > "$history.new" && mv "$history.new" "$history"
+		lines="$(wc -l < "$history")"
+		[ $((lines % 60)) -eq 0 ] && cp "$history" "$persist"
 	fi
-	printf '%s,%s,%s\n' "$now" "$rx" "$tx" > "$state"
 }
 
 [ -s "$history" ] || { [ -s "$persist" ] && cp "$persist" "$history" || : > "$history"; }

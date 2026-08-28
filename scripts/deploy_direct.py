@@ -15,8 +15,12 @@ repo_dir = os.environ.get('ARK_ROUTER_REPO_DIR', os.path.abspath(os.path.join(os
 
 files_to_upload = [
     (os.path.join(repo_dir, 'root', 'usr', 'sbin', 'equipe-dashboard-control'), '/usr/sbin/equipe-dashboard-control'),
+    (os.path.join(repo_dir, 'root', 'usr', 'sbin', 'equipe-traffic-history'), '/usr/sbin/equipe-traffic-history'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'resources', 'view', 'equipe-dashboard', 'overview.js'), '/www/luci-static/resources/view/equipe-dashboard/overview.js'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'resources', 'view', 'equipe-dashboard', 'overview.css'), '/www/luci-static/resources/view/equipe-dashboard/overview.css'),
+    (os.path.join(repo_dir, 'root', 'usr', 'share', 'rpcd', 'acl.d', 'luci-app-equipe-dashboard.json'), '/usr/share/rpcd/acl.d/luci-app-equipe-dashboard.json'),
+    (os.path.join(repo_dir, 'root', 'usr', 'libexec', 'ark-starlink-telemetry'), '/usr/libexec/ark-starlink-telemetry'),
+    (os.path.join(repo_dir, 'root', 'www', 'cgi-bin', 'ark-starlink-telemetry'), '/www/cgi-bin/ark-starlink-telemetry'),
 ]
 
 print(f"Conectando ao roteador {ROUTER_IP} via SSH...")
@@ -42,7 +46,10 @@ for local_path, remote_path in files_to_upload:
         print(f"  -> {os.path.basename(local_path)} gravado com sucesso.")
 
 cmds = [
-    'chmod +x /usr/sbin/equipe-dashboard-control',
+    'chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry',
+    'killall equipe-traffic-history 2>/dev/null || true',
+    'rm -f /tmp/equipe-traffic-history.state',
+    '/usr/sbin/equipe-traffic-history &',
     'uci -q get equipe_dashboard.main.operation_profile >/dev/null || uci set equipe_dashboard.main.operation_profile="standard"',
     'uci commit equipe_dashboard',
     'rm -rf /tmp/luci-*',
@@ -52,16 +59,16 @@ cmds = [
     '/usr/sbin/equipe-dashboard-control profile status'
 ]
 
-full_cmd = ' && '.join(cmds)
 print("\nAplicando permissões, limpando cache e reiniciando LuCI...")
-stdin, stdout, stderr = ssh.exec_command(full_cmd)
-out = stdout.read().decode()
-err = stderr.read().decode()
-
-print("\n--- RESPOSTA DO ROTEADOR ---")
-print(out)
-if err:
-    print("Stderr:", err)
+for cmd in cmds:
+    stdin, stdout, stderr = ssh.exec_command(cmd)
+    stdout.channel.recv_exit_status()
+    out = stdout.read().decode().strip()
+    err = stderr.read().decode().strip()
+    if out:
+        print(out)
+    if err and 'syntax error' in err:
+        print(f"Erro no comando '{cmd}': {err}")
 
 ssh.close()
 print("\n[OK] DEPLOY REALIZADO COM SUCESSO NO ROTEADOR!")

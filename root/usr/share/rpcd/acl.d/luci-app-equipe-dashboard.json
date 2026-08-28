@@ -15,9 +15,10 @@
 				"mwan3": [ "status" ],
 				"network.device": [ "status" ],
 				"network.interface": [ "dump" ],
+				"network.wireless": [ "status" ],
 				"system": [ "board", "info" ]
 			},
-			"uci": [ "equipe_devices", "mwan3", "network", "qos_equipe", "sqm", "wireless" ]
+			"uci": [ "dhcp", "equipe_devices", "firewall", "mwan3", "network", "qos_equipe", "sqm", "wireless" ]
 		},
 		"write": {
 			"file": {

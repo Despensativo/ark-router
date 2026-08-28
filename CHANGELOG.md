@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9.38
+
+- **Central Modular de Otimizações de Desempenho WAN & Fibra**: Nova central didática acessível via Recursos e no modal de edição de qualquer WAN com Presets de 1 Clique (`[ FIBRA BRIDGE PURA ]`, `[ VIVO / OI / CLARO ]`, `[ CLARO CABO / DMZ ]`, `[ MÓVEL / SATÉLITE ]`, `[ PLANOS 1G A 2.5 Gbps ]`).
+- **Acelerações de Kernel e Rede**:
+  - **Buffers TCP Turbo (BDP 8 MB)**: Otimização automática de `rmem_max`, `wmem_max` e `netdev_max_backlog` em `/etc/sysctl.d/99-ark-performance.conf` para máxima taxa em downloads pesados.
+  - **Baby Jumbo Frames (MTU 1500)**: Configuração de MTU 1508 na porta física WAN (`eth1`) para suporte nativo a RFC 4638 sem fragmentação em conexões PPPoE.
+  - **Software Flow Offloading (Fastpath)**: Fastpath via `fw4` reduzindo o consumo de CPU em planos acima de 1 Gbps (de ~25% para ~3% em conexões de 1.1G a 2.5 Gbps).
+  - **Overhead CAKE Calibrado**: Mapeamento preciso de overhead de linha física (`pppoe_28`, `vlan_34`, `vdsl_44`, `none`) para latência zero e estabilidade máxima de jitter.
+- **Visualização e Pré-carregamento de Senha PPPoE**: O modal de edição da WAN agora carrega a senha salva e inclui botão inline `👁️ Ver senha` / `👁️ Ocultar` com largura total no grid.
+- **Gestão Visual de Dispositivos e Eliminação de Popups Nativos**:
+  - Badges visuais de `🔒 IP Fixo` e filas de prioridade (`🎮 Gamer`, `📺 Vídeo`) na tabela de clientes conectados.
+  - Exclusão de redes Wi-Fi adicionais refatorada com confirmação inline em 2 etapas (eliminando `window.confirm()` que causava congelamento de interface).
+  - Blindagem de layout e componentes de switch/toggle em modais.
+
 ## 0.9.37
 
 - **Progressive Multi-WAN addition**: LAN ports now dynamically calculate the next available WAN slot (`WAN3`, `WAN4`, etc.) instead of showing a static "Usar como WAN2" label.

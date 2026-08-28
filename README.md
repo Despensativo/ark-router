@@ -11,7 +11,7 @@ The project does not replace LuCI. It adds a cleaner operations home screen on t
 
 Keywords: ARK Router, OpenWrt dashboard, LuCI dashboard, OpenWrt plugin, router management, router monitoring, Multi-WAN, mwan3, failover, load balancing, SQM, CAKE QoS, upload shaping, guest Wi-Fi, bandwidth control, per-device traffic, Wi-Fi channel analyzer, Starlink router, Starlink telemetry, Starlink alignment, obstruction monitoring, ZeroTier, Speedify Router, OpenWrt UI, embedded router setup.
 
-The current release is **0.9.37**. ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
+The current release is **0.9.38**. ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
 
 ## Why Use It
 
@@ -330,7 +330,7 @@ tar -xzf /tmp/ark-router-config-backup-YYYYMMDD-HHMMSS.tar.gz -C /
 
 ## Project Status
 
-Version 0.9.37 is the current pilot release. It includes progressive dynamic Multi-WAN addition (WAN3, WAN4...), strict Starlink validation avoiding false positives on standard CGNAT links, CAKE SQM limits directly in Mbps, RAM-conscious speed testing with Fast.com, in addition to dedicated multi-Starlink telemetry in Lite and Full, automatic first-WAN loading/retry, Starlink-only filtering in the read-only viewer, green/red alignment bands and diagnostic cards (loss, obstruction, uptime, SNR, Ethernet and alerts), GitHub Release packaging, SSH install/update commands, dashboard self-update validation, ZeroTier remote access, optional Speedify controls, dynamic WAN/LAN port handling, Wi-Fi channel-width/country controls, safer LAN/uHTTPd binding, DHCP DNS editing, one-click lightweight-module installation, per-device traffic accounting, guest rate limiting and detailed WAN protocol/gateway/netmask/DNS/latency/traffic totals. It is suitable for early public testing; additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
+Version 0.9.38 is the current pilot release. It includes the modular WAN & Fiber Performance Optimization center (TCP Turbo 8MB, Baby Jumbo MTU 1500, Software Flow Offloading and calibrated CAKE line-layer overhead), PPPoE password reveal and preloading, visual device badges for IP reservations and Gamer/Video queues, non-blocking Wi-Fi deletion confirmations, in addition to progressive dynamic Multi-WAN addition (WAN3, WAN4...), strict Starlink validation avoiding false positives on standard CGNAT links, CAKE SQM limits directly in Mbps, RAM-conscious speed testing with Fast.com, dedicated multi-Starlink telemetry in Lite and Full, automatic first-WAN loading/retry, Starlink-only filtering in the read-only viewer, green/red alignment bands and diagnostic cards, GitHub Release packaging, SSH install/update commands, dashboard self-update validation, ZeroTier remote access, optional Speedify controls, dynamic WAN/LAN port handling, Wi-Fi channel-width/country controls, safer LAN/uHTTPd binding, DHCP DNS editing, one-click lightweight-module installation, per-device traffic accounting, guest rate limiting and detailed WAN protocol/gateway/netmask/DNS/latency/traffic totals. It is suitable for early public testing; additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
 
 ## License
 

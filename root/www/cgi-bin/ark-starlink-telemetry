@@ -49,10 +49,13 @@ case "$action" in
 		case "$wan" in wan|wan[0-9]*) ;; *) printf '{"ok":false,"error":"WAN inválida."}\n'; exit 0 ;; esac
 		[ "$(uci -q get "network.$wan")" = interface ] || { printf '{"ok":false,"error":"WAN não configurada."}\n'; exit 0; }
 		case "$(uci -q get "network.$wan.proto")" in dhcp|pppoe|static) ;; *) printf '{"ok":false,"error":"WAN não está ativa."}\n'; exit 0 ;; esac
-		if output="$(/usr/sbin/equipe-dashboard-control starlink-telemetry "$wan" 2>/tmp/ark-starlink-public.err)"; then
+		err_file="/tmp/ark-starlink-public.$$.err"
+		if output="$(/usr/sbin/equipe-dashboard-control starlink-telemetry "$wan" 2>"$err_file")"; then
+			rm -f "$err_file" 2>/dev/null || true
 			printf '{"ok":true,"wan":"%s","telemetry":%s}\n' "$wan" "$output"
 		else
-			error="$(cat /tmp/ark-starlink-public.err 2>/dev/null)"
+			error="$(cat "$err_file" 2>/dev/null)"
+			rm -f "$err_file" 2>/dev/null || true
 			printf '{"ok":false,"wan":"%s","error":"%s"}\n' "$wan" "$(printf '%s' "$error" | sed 's/[\\"]/\\&/g; s/[[:cntrl:]]/ /g')"
 		fi
 		;;
