@@ -465,7 +465,9 @@ return view.extend({
 				wanPromises.push(safe(callDeviceStatus(logicalDev),{}).then(function(s){wanDevicesMap[w.iface]=s;}));
 				wanPromises.push(safe(callDeviceStatus(physicalDev),{}).then(function(s){wanPhysicalDevicesMap[w.iface]=s;}));
 				if(live.up && logicalDev){
-					wanPromises.push(safe(fs.exec('/bin/ping',['-c','1','-W','1','-I',logicalDev,'1.1.1.1']),{}).then(function(p){wanPingsMap[w.iface]=p;}));
+					const ip = (live['ipv4-address'] && live['ipv4-address'][0] && live['ipv4-address'][0].address) || '';
+					const bindTarget = ip || logicalDev;
+					wanPromises.push(safe(fs.exec('/bin/ping',['-c','1','-W','1','-I',bindTarget,'1.1.1.1']),{}).then(function(p){wanPingsMap[w.iface]=p;}));
 				}
 			});
 			return Promise.all([
