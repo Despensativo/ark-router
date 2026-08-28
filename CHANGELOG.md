@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.41
+
+- **Failover Direcional (WAN1 ou WAN2 Principal)**: O controle Multi-WAN agora permite escolher diretamente qual link é o principal (`Failover WAN1 → WAN2` ou `Failover WAN2 → WAN1`), gerando as métricas de membro e rotas do mwan3 em tempo real sem necessidade de reboot.
+- **Identificação Visual de Prioridade Multi-WAN**: Status dinâmico da rota ativa exibindo no card `Failover (WAN1 principal)` ou `Failover (WAN2 principal)` e botões dedicados de troca rápida com 1 clique.
+
 ## 0.9.40
 
 - **Seleção Dinâmica de Porta WAN2 no Ark - Setup**: O assistente inicial agora permite escolher qualquer porta LAN disponível no equipamento (ex: LAN1, LAN2, LAN3) para operar como a segunda interface de internet (WAN2 DHCP), com isolamento dinâmico de `br-lan` e associação correta ao firewall e ao SQM.
