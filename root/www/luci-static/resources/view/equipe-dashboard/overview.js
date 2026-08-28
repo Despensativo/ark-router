@@ -753,12 +753,13 @@ return view.extend({
 		setPill('ex-global-status',active==='SEM INTERNET'?'offline':'online',active+' ATIVA');
 		const sf=this.feature('speedify'), sfTop=document.getElementById('ex-speedify-top');
 		if(sfTop){
+			const sfRunning=!!(sf.runtime_running || sf.state==='CONNECTED' || sf.state==='CONNECTING' || sf.state==='STARTING' || sf.state==='LOGGED_IN');
 			const sfConnected=sf.state==='CONNECTED'||sf.state==='CONNECTING';
-			sfTop.style.display=(sf.installed||sfConnected)?'flex':'none';
+			sfTop.style.display=sfRunning?'flex':'none';
 			sfTop.className='ex-hero-speedify '+(sfConnected?'online':'standby');
 			sfTop.replaceChildren(
 				E('span',{},['Speedify']),
-				E('strong',{},[sfConnected?'CONECTADO':(sf.state||'INSTALADO')]),
+				E('strong',{},[sfConnected?'CONECTADO':(sf.state||'INICIANDO')]),
 				E('small',{},[speedifyModeLabel(sf.runtime_mode||sf.bonding_mode)+' • IP '+(sf.tunnel_ip||'—')])
 			);
 		}
