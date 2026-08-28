@@ -1628,7 +1628,7 @@ ensure_mwan3_ark_config() {
 		fi
 	done
 	[ -n "$active_wans" ] || active_wans="wan wan2"
-	for p in wan_only wan2_only wan3_only wan4_only balanced wan_then_wan2; do
+	for p in wan_only wan2_only wan3_only wan4_only balanced wan_then_wan2 wan2_then_wan; do
 		uci -q delete "mwan3.$p.use_member" 2>/dev/null || true
 	done
 	wan_idx=1
@@ -1661,6 +1661,18 @@ ensure_mwan3_ark_config() {
 
 		wan_idx=$((wan_idx + 1))
 	done
+	# Politica especifica de Failover com WAN2 como principal e WAN1 como reserva
+	uci -q set "mwan3.wan2_m1_w3=member"
+	uci -q set "mwan3.wan2_m1_w3.interface=wan2"
+	uci -q set "mwan3.wan2_m1_w3.metric=1"
+	uci -q set "mwan3.wan2_m1_w3.weight=3"
+	uci -q set "mwan3.wan_m2_w3=member"
+	uci -q set "mwan3.wan_m2_w3.interface=wan"
+	uci -q set "mwan3.wan_m2_w3.metric=2"
+	uci -q set "mwan3.wan_m2_w3.weight=3"
+	uci -q set mwan3.wan2_then_wan=policy
+	uci -q add_list "mwan3.wan2_then_wan.use_member=wan2_m1_w3"
+	uci -q add_list "mwan3.wan2_then_wan.use_member=wan_m2_w3"
 	uci -q set mwan3.https=rule
 	uci -q set mwan3.https.family=ipv4
 	uci -q set mwan3.https.sticky=1
@@ -3018,7 +3030,8 @@ case "$action" in
 		;;
 	mwan)
 		case "$2" in
-			failover) policy='wan_then_wan2' ;;
+			failover|wan_then_wan2) policy='wan_then_wan2' ;;
+			failover_wan2|wan2_then_wan) policy='wan2_then_wan' ;;
 			balanced) policy='balanced' ;;
 			wan1|wan) policy='wan_only' ;;
 			wan2) policy='wan2_only' ;;

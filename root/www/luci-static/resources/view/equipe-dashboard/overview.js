@@ -566,26 +566,30 @@ return view.extend({
 		return { two: currentChannelValue(w.r0.channel, s2), five: currentChannelValue(w.r1.channel, s5), auto2: String(w.r0.channel||'auto')==='auto', auto5: String(w.r1.channel||'auto')==='auto' };
 	},
 	updateMwanMode: function(data) {
-		const v=values(data.mwanConfig), p=(v.default_rule_v4||{}).use_policy||'wan_then_wan2';
+		const v=values(data.mwanConfig), p=(v.default_rule_v4||{}).use_policy||(v.https||{}).use_policy||'wan_then_wan2';
 		const activeWans = getActiveWanList(data);
 		let mode = 'failover';
 		if (p === 'balanced') {
 			mode = 'balanced';
+		} else if (p === 'wan2_then_wan' || p === 'failover_wan2') {
+			mode = 'failover_wan2';
+		} else if (p === 'wan_then_wan2' || p === 'failover') {
+			mode = 'failover';
 		} else if (p.indexOf('_only') > 0) {
 			mode = p.replace('_only', '');
 			if (mode === 'wan') mode = 'wan1';
-		} else if (p === 'wan_then_wan2') {
-			mode = 'failover';
 		}
 		const allModeButtons = document.querySelectorAll('.ex-mode-button');
 		allModeButtons.forEach(function(b) {
 			b.classList.toggle('active', b.id === ('ex-mode-' + mode));
 		});
-		let modeLabel = 'Failover';
+		let modeLabel = 'Failover (WAN1 → WAN2)';
 		if (mode === 'balanced') {
 			modeLabel = 'Balanceamento';
 		} else if (mode === 'failover') {
-			modeLabel = activeWans.length > 1 ? ('Failover ' + activeWans.map(function(w){return w.label;}).join(' → ')) : 'Failover';
+			modeLabel = activeWans.length > 1 ? ('Failover (' + activeWans.map(function(w){return w.label;}).join(' → ') + ')') : 'Failover (WAN1 → WAN2)';
+		} else if (mode === 'failover_wan2') {
+			modeLabel = 'Failover (WAN2 → WAN1)';
 		} else {
 			const matched = activeWans.find(function(w){return w.domId === mode || w.iface === mode;});
 			modeLabel = matched ? ('Somente ' + matched.label) : ('Somente ' + mode.toUpperCase());
@@ -2795,7 +2799,8 @@ return view.extend({
 		},this));
 		const mwanModeButtons = [];
 		if (activeWans.length >= 2) {
-			mwanModeButtons.push(modeButton('failover', 'Failover'));
+			mwanModeButtons.push(modeButton('failover', 'Failover (WAN1 principal)'));
+			mwanModeButtons.push(modeButton('failover_wan2', 'Failover (WAN2 principal)'));
 			mwanModeButtons.push(modeButton('balanced', 'Balancear'));
 		}
 		activeWans.forEach(function(w) {
