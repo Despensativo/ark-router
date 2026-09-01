@@ -2908,6 +2908,17 @@ case "$action" in
 		uci commit equipe_dashboard
 		echo ok
 		;;
+	fast-targets)
+		count="${2:-8}"
+		token="YXNkZmFzZGxmbnNkYWZoYXNkZmhrYWxm"
+		fast_meta="$(wget -T 4 -qO- "https://api.fast.com/netflix/speedtest/v2?https=true&token=${token}&urlCount=${count}" 2>/dev/null)"
+		if [ -n "$fast_meta" ]; then
+			printf '%s\n' "$fast_meta"
+		else
+			printf '{"client":{},"targets":[]}\n'
+		fi
+		exit 0
+		;;
 	https-redirect)
 		case "$2" in 0|1) ;; *) echo 'Preferencia HTTPS invalida' >&2; exit 2 ;; esac
 		if [ "$2" = 1 ]; then

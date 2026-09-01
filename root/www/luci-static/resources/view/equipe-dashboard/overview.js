@@ -2328,14 +2328,11 @@ return view.extend({
 			activeAbort = abortCtrl;
 			
 			try {
-				const token = 'YXNkZmFzZGxmbnNkYWZoYXNkZmhrYWxm';
-				const metaReq = await fetch('https://api.fast.com/netflix/speedtest/v2?https=true&token=' + token + '&urlCount=8', {
-					signal: abortCtrl.signal,
-					cache: 'no-store'
-				});
-				const metaData = await metaReq.json();
+				const metaRes = await fs.exec('/usr/sbin/equipe-dashboard-control', ['fast-targets', '8']);
+				let metaData = {};
+				try { metaData = JSON.parse(metaRes.stdout || '{}'); } catch(e) {}
 				const targets = (metaData.targets || []).map(function(t){ return t.url; });
-				if (!targets.length) throw new Error('Nenhum servidor Netflix OCA retornado.');
+				if (!targets.length) throw new Error('Não foi possível obter servidores Netflix OCA no momento.');
 				
 				if (metaData.client) {
 					clientInfo.textContent = (metaData.client.ip || '') + ' (' + (metaData.client.asn ? 'AS' + metaData.client.asn : '') + (metaData.client.location && metaData.client.location.city ? ' • ' + metaData.client.location.city : '') + ')';
