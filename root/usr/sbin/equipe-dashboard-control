@@ -1098,7 +1098,7 @@ speedify_cli_path() {
 	if [ -x /etc/ark-router/speedify-cli ]; then printf /etc/ark-router/speedify-cli; return 0; fi
 	if [ -x /tmp/ark-speedify-cli ]; then printf /tmp/ark-speedify-cli; return 0; fi
 }
-speedify_runtime_running() { pidof speedify >/dev/null 2>&1 || pgrep -f 'speedify' >/dev/null 2>&1; }
+speedify_runtime_running() { pgrep -f '/speedify -d' >/dev/null 2>&1 || pgrep -x 'speedify' >/dev/null 2>&1; }
 speedify_supported() { case "$(uname -m 2>/dev/null)" in aarch64|x86_64) return 0 ;; *) return 1 ;; esac; }
 speedify_external_target() {
 	need="${ARK_SPEEDIFY_INTERNAL_MIN_KB:-35000}"
