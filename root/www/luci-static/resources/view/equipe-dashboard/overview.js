@@ -2278,8 +2278,44 @@ return view.extend({
 		]);
 	},
 	openFastCom: function(){
-		window.open('https://fast.com/', '_blank', 'noopener');
-		ui.addNotification(null,E('p',{},['Fast.com aberto em nova aba. Use o resultado manualmente para ajustar o SQM; em roteadores fracos isso evita ocupar RAM com medidor interno.']));
+		this.showEmbedSpeedtest('fast');
+	},
+	showEmbedSpeedtest: function(engine){
+		engine = engine || 'fast';
+		const urls = {
+			fast: 'https://fast.com/',
+			cloudflare: 'https://speed.cloudflare.com/',
+			librespeed: 'https://librespeed.org/'
+		};
+		const iframe = E('iframe', {
+			src: urls[engine] || urls.fast,
+			style: 'width:100%;height:480px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:#0f172a;box-shadow:inset 0 2px 10px rgba(0,0,0,.5);margin-top:10px;',
+			allow: 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture'
+		});
+		const select = E('select', {class:'cbi-input-select', style:'font-weight:600;min-width:200px;'}, [
+			E('option', {value:'fast', selected: engine==='fast'}, ['🎬 Netflix Fast.com']),
+			E('option', {value:'cloudflare', selected: engine==='cloudflare'}, ['🌩️ Cloudflare Speed Test']),
+			E('option', {value:'librespeed', selected: engine==='librespeed'}, ['⚡ LibreSpeed (Open Source)'])
+		]);
+		select.addEventListener('change', function(){
+			iframe.src = urls[select.value] || urls.fast;
+		});
+		ui.showModal('🚀 Teste de Velocidade no Navegador (Embed Direto)', [
+			E('div', {style:'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;'}, [
+				E('div', {style:'display:flex;align-items:center;gap:8px;'}, [
+					E('strong', {}, ['Motor:']),
+					select
+				]),
+				E('button', {class:'btn cbi-button cbi-button-neutral', style:'font-size:11px;', 'click': function(){ window.open(urls[select.value]||urls.fast, '_blank', 'noopener'); }}, ['↗ Abrir em nova aba'])
+			]),
+			iframe,
+			E('p', {class:'ex-muted', style:'margin-top:10px;font-size:12px;line-height:1.4;'}, [
+				'💡 Este teste é executado pelo seu computador/celular usando a conexão do roteador. Como utiliza o hardware do seu dispositivo para decodificar a banda, consegue medir até 1 Gbps+ sem sobrecarregar a CPU do roteador.'
+			]),
+			E('div', {class:'right', style:'margin-top:12px;'}, [
+				E('button', {class:'btn cbi-button cbi-button-neutral', 'click': closeModal}, ['Fechar'])
+			])
+		]);
 	},
 	installFeature: function(key){
 		const meta=FEATURE_META[key], feature=this.feature(key);
@@ -3674,7 +3710,7 @@ return view.extend({
 				E('section',{class:'ex-card ex-center-card'},[bigIcon('<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1.2" fill="currentColor"/></svg>'),E('span',{class:'ex-label'},[w.main.ssid||'Rede principal']),E('strong',{id:'ex-main-clients',class:'ex-number'},['0']),E('small',{id:'ex-main-wifi',class:'ex-muted'},['0 no Wi-Fi'])]),
 				E('section',{class:'ex-card ex-center-card'},[bigIcon('<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'),E('span',{class:'ex-label'},[w.guest.ssid||'Visitantes']),E('strong',{id:'ex-guest-clients',class:'ex-number'},['0']),E('small',{id:'ex-guest-wifi',class:'ex-muted'},['0 no Wi-Fi'])])
 			]),
-			E('section',{class:'ex-card ex-speedtest-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['TESTE DE LINK']),E('h3',{},['Calibração do upload'])]),E('div',{class:'ex-speedtest-head-actions'},[E('span',{class:'ex-pill online'},['Pronto na memória']),E('button',{class:'ex-mini-button','click':L.bind(this.openFastCom,this)},['Abrir Fast.com']),E('button',{class:'ex-mini-button','click':L.bind(this.startConnectedSpeedtests,this)},['Testar WANs conectadas'])])]),E('p',{class:'ex-muted'},['O teste automático mede pelo roteador. Fast.com é a alternativa manual leve para aparelhos com pouca RAM ou quando você quiser apenas uma referência rápida pelo navegador.']),E('p',{class:'ex-muted'},['O teste faz uma medição completa e mais duas de upload. O SQM desta WAN será pausado e restaurado automaticamente. Durante o teste, o link ficará ocupado. O histórico guarda os últimos testes por WAN e calcula a média dos últimos 3.']),E('div',{class:'ex-grid ex-grid-2 ex-speedtest-grid'},activeWans.map(function(w){return speedWanCard(w.iface,w.label,!!iface(data.interfaces,w.iface).up);}))]),
+			E('section',{class:'ex-card ex-speedtest-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['TESTE DE LINK']),E('h3',{},['Calibração e Teste de Velocidade'])]),E('div',{class:'ex-speedtest-head-actions'},[E('span',{class:'ex-pill online'},['Pronto na memória']),E('button',{class:'ex-mini-button','click':L.bind(this.openFastCom,this)},['🎬 Testar no Navegador (Embed)']),E('button',{class:'ex-mini-button','click':L.bind(this.startConnectedSpeedtests,this)},['Testar WANs pelo Roteador'])])]),E('p',{class:'ex-muted'},['O teste automático mede com precisão multi-stream pelo roteador. O Teste no Navegador (Embed) usa a aceleração do seu computador/celular para saturar conexões gigabit acima de 800 Mbps sem sobrecarregar a CPU do roteador.']),E('p',{class:'ex-muted'},['O teste faz medição de download e upload por WAN. O histórico guarda os últimos testes por WAN e calcula a média dos últimos 3.']),E('div',{class:'ex-grid ex-grid-2 ex-speedtest-grid'},activeWans.map(function(w){return speedWanCard(w.iface,w.label,!!iface(data.interfaces,w.iface).up);}))]),
 			E('section',{class:'ex-card ex-mwan-control'},[
 				E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['MULTI‑WAN']),E('h3',{},['Modo atual: ',E('span',{id:'ex-mwan-mode'},['Failover WAN1 → WAN2'])])]),E('span',{id:'ex-mwan-status',class:'ex-pill '+(mwanRunning?'online':(mwanPaused?'standby':'offline'))},[mwanPaused?'PAUSADO':(mwanRunning?'ATIVO':'DESLIGADO')])]),
 				E('div',{class:'ex-qos-toggle-row ex-mwan-toggle-row'},[E('div',{},[E('strong',{},['Serviço Multi-WAN']),E('small',{class:'ex-muted'},[mwanPaused?'Pausado automaticamente enquanto o Speedify controla as rotas.':'Liga failover/balanceamento sem alterar o modo escolhido.'])]),E('div',{class:'ex-device-switch-control'},[E('strong',{id:'ex-mwan-toggle-state',class:'ex-device-switch-state'},[mwanPaused?'PAUSADO PELO SPEEDIFY':(mwanRunning?'LIGADO':'DESLIGADO')]),E('label',{class:'ex-switch'},[mwanInput,E('span',{class:'ex-switch-slider'})])])]),

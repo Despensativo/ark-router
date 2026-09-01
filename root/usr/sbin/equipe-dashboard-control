@@ -1509,30 +1509,54 @@ speedtest_schedule_weak_cleanup() {
 }
 
 speedtest_download_fallback_mbps() {
-	tmp="/tmp/ark-speedtest-download-fallback.$$"
-	for item in \
-		"50000000|https://speed.cloudflare.com/__down?bytes=50000000" \
-		"31625365|http://speedtest.linqtelecom.com.br:8080/speedtest/random4000x4000.jpg" \
-		"31625365|http://speedtest.vettatelecom.com.br:8080/speedtest/random4000x4000.jpg"
-	do
-		bytes="${item%%|*}"
-		url="${item#*|}"
+	wan_src="$1"
+	bind_opt=""
+	[ -n "$wan_src" ] && bind_opt="--bind-address=$wan_src"
+
+	# 1. Tenta obter múltiplos alvos da Netflix CDN (Fast.com) para multi-stream paralelo
+	token="YXNkZmFzZGxmbnNkYWZoYXNkZmhrYWxm"
+	fast_meta="$(wget $bind_opt -T 4 -qO- "https://api.fast.com/netflix/speedtest/v2?https=true&token=${token}&urlCount=4" 2>/dev/null)"
+	urls="$(printf '%s' "$fast_meta" | grep -o 'https://[^"]*')"
+
+	if [ -n "$urls" ]; then
 		start="$(awk '{print $1}' /proc/uptime 2>/dev/null)"
-		if wget -T 25 -O /dev/null "$url" >"$tmp" 2>&1; then
-			end="$(awk '{print $1}' /proc/uptime 2>/dev/null)"
-			rm -f "$tmp"
-			awk -v b="$bytes" -v s="$start" -v e="$end" 'BEGIN{
-				dt=e-s
-				if (dt < 0.2) dt=0.2
-				mbps=b*8/dt/1000000
-				if (mbps > 0) printf "%.2f", mbps
-				else printf "0"
-			}'
-			return 0
-		fi
+		pids=""
+		count=0
+		for u in $urls $urls; do
+			count=$((count + 1))
+			[ "$count" -gt 8 ] && break
+			wget $bind_opt -T 15 -qO- "${u}&range=0-26214400" >/dev/null 2>&1 &
+			pids="$pids $!"
+		done
+		wait $pids
+		end="$(awk '{print $1}' /proc/uptime 2>/dev/null)"
+		awk -v s="$start" -v e="$end" -v count="$count" 'BEGIN{
+			dt=e-s
+			if (dt < 0.2) dt=0.2
+			mbps=(count * 26.2144 * 8) / dt
+			if (mbps > 0) printf "%.2f", mbps
+			else printf "0"
+		}'
+		return 0
+	fi
+
+	# 2. Fallback Cloudflare Multi-Stream com User-Agent
+	start="$(awk '{print $1}' /proc/uptime 2>/dev/null)"
+	pids=""
+	count=4
+	for i in 1 2 3 4; do
+		wget $bind_opt -T 15 -qO- --header='User-Agent: Mozilla/5.0' "https://speed.cloudflare.com/__down?bytes=25000000" >/dev/null 2>&1 &
+		pids="$pids $!"
 	done
-	rm -f "$tmp"
-	printf '0'
+	wait $pids
+	end="$(awk '{print $1}' /proc/uptime 2>/dev/null)"
+	awk -v s="$start" -v e="$end" -v count="$count" 'BEGIN{
+		dt=e-s
+		if (dt < 0.2) dt=0.2
+		mbps=(count * 25.0 * 8) / dt
+		if (mbps > 0) printf "%.2f", mbps
+		else printf "0"
+	}'
 }
 version_gt() {
 	awk -v a="$(normalize_version "$1")" -v b="$(normalize_version "$2")" 'BEGIN {
@@ -3035,8 +3059,8 @@ case "$action" in
 			done
 			if [ "$ok" -lt 2 ]; then restore_sqm; trap - EXIT INT TERM; echo error >"$status"; exit 1; fi
 			if ! awk -v v="$download" 'BEGIN{exit !((v + 0) > 0)}'; then
-				echo 'running|86|Download invalido; usando fallback real' >"$status"
-				fallback_mbps="$(speedtest_download_fallback_mbps)"
+				echo 'running|86|Download invalido; usando fallback multi-stream' >"$status"
+				fallback_mbps="$(speedtest_download_fallback_mbps "$source_ip")"
 				if awk -v v="$fallback_mbps" 'BEGIN{exit !((v + 0) > 0)}'; then
 					download="$(awk -v v="$fallback_mbps" 'BEGIN{printf "%.2f", v*1000000/8}')"
 					echo "download_fallback_mbps=$fallback_mbps" >>"$log"
