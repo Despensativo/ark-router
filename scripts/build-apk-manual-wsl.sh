@@ -29,8 +29,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-mkdir -p "$pkg_root" "$out_dir"
+mkdir -p "$pkg_root" "$out_dir" "$pkg_root/usr/share/ark-router"
 cp -a "$SRC_DIR/root/." "$pkg_root/"
+printf '%s\n' "$version" > "$pkg_root/usr/share/ark-router/VERSION"
+printf '%s\n' "$version" > "$SRC_DIR/root/usr/share/ark-router/VERSION"
 rm -rf "$pkg_root/etc/etc" "$pkg_root/usr/usr" "$pkg_root/www/www"
 
 if [ ! -s "$sign_key" ]; then
