@@ -1,12 +1,11 @@
 *.ipk
-*.apk
 *.tar.gz
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 build/
-dist/
 docs/screenshots/_test-*.png
 .tmp_*
+!dist/sdk/*.apk
 
