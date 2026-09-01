@@ -8,7 +8,16 @@ boot() {
 }
 
 start() {
-	if [ -f /etc/ark-router/zerotier-libs.tar.gz ]; then
+	if [ -f /etc/ark-router/zerotier-pkg.tar.gz ]; then
+		mkdir -p /tmp
+		if [ ! -f /tmp/usr/lib/libstdc++.so.6.0.33 ] || [ ! -f /tmp/usr/bin/zerotier-one ]; then
+			tar -xzf /etc/ark-router/zerotier-pkg.tar.gz -C /tmp/ 2>/dev/null
+		fi
+		[ -e /usr/lib/libstdc++.so.6.0.33 ] || ln -sf /tmp/usr/lib/libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6.0.33
+		[ -e /usr/lib/libstdc++.so.6 ] || ln -sf libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6
+		[ -e /usr/bin/zerotier-one ] || ln -sf /tmp/usr/bin/zerotier-one /usr/bin/zerotier-one
+		chmod +x /tmp/usr/bin/zerotier-one 2>/dev/null || true
+	elif [ -f /etc/ark-router/zerotier-libs.tar.gz ]; then
 		mkdir -p /tmp/lib
 		if [ ! -f /tmp/lib/libstdc++.so.6.0.33 ]; then
 			tar -xzf /etc/ark-router/zerotier-libs.tar.gz -C /tmp/lib 2>/dev/null
