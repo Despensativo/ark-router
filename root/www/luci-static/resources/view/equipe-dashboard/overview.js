@@ -2299,12 +2299,15 @@ return view.extend({
 			iframe.src = urls[select.value] || urls.speedtest;
 		});
 		ui.showModal('🚀 Teste de Velocidade no Navegador (Embed Direto)', [
-			E('div', {style:'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;'}, [
+			E('div', {style:'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;'}, [
 				E('div', {style:'display:flex;align-items:center;gap:8px;'}, [
-					E('strong', {}, ['Motor:']),
+					E('strong', {}, ['Motor no Painel:']),
 					select
 				]),
-				E('button', {class:'btn cbi-button cbi-button-neutral', style:'font-size:11px;', 'click': function(){ window.open(urls[select.value]||urls.speedtest, '_blank', 'noopener'); }}, ['↗ Abrir em nova aba'])
+				E('div', {style:'display:flex;gap:6px;'}, [
+					E('button', {class:'btn cbi-button cbi-button-action', style:'font-size:11px;font-weight:650;', 'click': function(){ window.open('https://www.speedtest.net/', '_blank', 'noopener'); }}, ['🌐 Abrir Speedtest.net (Ookla)']),
+					E('button', {class:'btn cbi-button cbi-button-neutral', style:'font-size:11px;', 'click': function(){ window.open(urls[select.value]||urls.speedtest, '_blank', 'noopener'); }}, ['↗ Abrir motor atual'])
+				])
 			]),
 			iframe,
 			E('p', {class:'ex-muted', style:'margin-top:10px;font-size:12px;line-height:1.4;'}, [
