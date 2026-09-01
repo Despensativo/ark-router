@@ -3638,6 +3638,19 @@ return view.extend({
 			E('p',{id:'ex-history-samples',class:'ex-history-caption'},['A primeira amostra aparecerá em até 1 minuto']),
 			starlinkSection,
 			E('div',{class:'ex-grid ex-grid-2'},wanCards),
+			E('section',{class:'ex-card ex-mwan-control'},[
+				E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['MULTI‑WAN']),E('h3',{},['Modo atual: ',E('span',{id:'ex-mwan-mode'},['Failover WAN1 → WAN2'])])]),E('span',{id:'ex-mwan-status',class:'ex-pill '+(mwanRunning?'online':(mwanPaused?'standby':'offline'))},[mwanPaused?'PAUSADO':(mwanRunning?'ATIVO':'DESLIGADO')])]),
+				E('div',{class:'ex-qos-toggle-row ex-mwan-toggle-row'},[E('div',{},[E('strong',{},['Serviço Multi-WAN']),E('small',{class:'ex-muted'},[mwanPaused?'Pausado automaticamente enquanto o Speedify controla as rotas.':'Liga failover/balanceamento sem alterar o modo escolhido.'])]),E('div',{class:'ex-device-switch-control'},[E('strong',{id:'ex-mwan-toggle-state',class:'ex-device-switch-state'},[mwanPaused?'PAUSADO PELO SPEEDIFY':(mwanRunning?'LIGADO':'DESLIGADO')]),E('label',{class:'ex-switch'},[mwanInput,E('span',{class:'ex-switch-slider'})])])]),
+				E('a',{class:'ex-text-link',href:L.url('admin/status/mwan3/overview')},['Ver detalhes →']),
+				E('details',{class:'ex-mwan-editor'},[
+					E('summary',{},['Editar modo do Multi‑WAN']),
+					E('div',{class:'ex-mwan-editor-body'},[
+						E('p',{class:'ex-muted'},[activeWans.length>=2?'Escolha um modo abaixo. Depois do clique, ainda será necessário confirmar antes que qualquer alteração seja aplicada.':'Quando houver 2 ou mais conexões WAN ativas, você poderá alternar entre Failover e Balanceamento.']),
+						E('div',{class:'ex-mode-grid'},mwanModeButtons),
+						E('small',{class:'ex-muted'},['Balanceamento distribui conexões entre os links; não soma a velocidade de um único envio.'])
+					])
+				])
+			]),
 			E('section',{class:'ex-card ex-qos-card'},[
 				E('div',{class:'ex-card-title'},[
 					E('div',{},[E('span',{class:'ex-kicker'},['CONTROLE DE FILAS']),E('h3',{},['CAKE / SQM'])]),
@@ -3706,19 +3719,6 @@ return view.extend({
 						])
 					]),
 					E('p',{class:'ex-muted ex-table-note'},['A velocidade instantânea vem dos contadores do roteador; o total acumulado vem do nlbwmon. Quando esta lista está aberta, o ARK Router acelera a atualização automaticamente conforme a RAM disponível.'])
-				])
-			]),
-			E('section',{class:'ex-card ex-mwan-control'},[
-				E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['MULTI‑WAN']),E('h3',{},['Modo atual: ',E('span',{id:'ex-mwan-mode'},['Failover WAN1 → WAN2'])])]),E('span',{id:'ex-mwan-status',class:'ex-pill '+(mwanRunning?'online':(mwanPaused?'standby':'offline'))},[mwanPaused?'PAUSADO':(mwanRunning?'ATIVO':'DESLIGADO')])]),
-				E('div',{class:'ex-qos-toggle-row ex-mwan-toggle-row'},[E('div',{},[E('strong',{},['Serviço Multi-WAN']),E('small',{class:'ex-muted'},[mwanPaused?'Pausado automaticamente enquanto o Speedify controla as rotas.':'Liga failover/balanceamento sem alterar o modo escolhido.'])]),E('div',{class:'ex-device-switch-control'},[E('strong',{id:'ex-mwan-toggle-state',class:'ex-device-switch-state'},[mwanPaused?'PAUSADO PELO SPEEDIFY':(mwanRunning?'LIGADO':'DESLIGADO')]),E('label',{class:'ex-switch'},[mwanInput,E('span',{class:'ex-switch-slider'})])])]),
-				E('a',{class:'ex-text-link',href:L.url('admin/status/mwan3/overview')},['Ver detalhes →']),
-				E('details',{class:'ex-mwan-editor'},[
-					E('summary',{},['Editar modo do Multi‑WAN']),
-					E('div',{class:'ex-mwan-editor-body'},[
-						E('p',{class:'ex-muted'},[activeWans.length>=2?'Escolha um modo abaixo. Depois do clique, ainda será necessário confirmar antes que qualquer alteração seja aplicada.':'Quando houver 2 ou mais conexões WAN ativas, você poderá alternar entre Failover e Balanceamento.']),
-						E('div',{class:'ex-mode-grid'},mwanModeButtons),
-						E('small',{class:'ex-muted'},['Balanceamento distribui conexões entre os links; não soma a velocidade de um único envio.'])
-					])
 				])
 			]),
 			this.zerotierCard(),
