@@ -1335,13 +1335,24 @@ zerotier_ram_compress() {
 	overlay_total="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $2}')"
 	case "$overlay_total" in ''|*[!0-9]*) overlay_total=65536 ;; esac
 	if [ "$overlay_total" -le 16384 ]; then
-		if [ -f /usr/lib/libstdc++.so.6.0.33 ] && [ ! -L /usr/lib/libstdc++.so.6.0.33 ]; then
-			mkdir -p /etc/ark-router /tmp/lib
-			tar -czf /etc/ark-router/zerotier-libs.tar.gz -C /usr/lib libstdc++.so.6.0.33 2>/dev/null
-			tar -xzf /etc/ark-router/zerotier-libs.tar.gz -C /tmp/lib 2>/dev/null
-			rm -f /usr/lib/libstdc++.so.6.0.33
-			ln -sf /tmp/lib/libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6.0.33
+		if [ -f /etc/ark-router/zerotier-pkg.tar.gz ]; then
+			if [ ! -f /tmp/usr/lib/libstdc++.so.6.0.33 ] || [ ! -f /tmp/usr/bin/zerotier-one ]; then
+				mkdir -p /tmp
+				tar -xzf /etc/ark-router/zerotier-pkg.tar.gz -C /tmp/ 2>/dev/null
+			fi
+			[ -e /usr/lib/libstdc++.so.6.0.33 ] || ln -sf /tmp/usr/lib/libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6.0.33
 			[ -e /usr/lib/libstdc++.so.6 ] || ln -sf libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6
+			[ -e /usr/bin/zerotier-one ] || ln -sf /tmp/usr/bin/zerotier-one /usr/bin/zerotier-one
+			chmod +x /tmp/usr/bin/zerotier-one 2>/dev/null || true
+		elif [ -f /usr/lib/libstdc++.so.6.0.33 ] && [ ! -L /usr/lib/libstdc++.so.6.0.33 ]; then
+			mkdir -p /etc/ark-router /tmp
+			tar -czf /etc/ark-router/zerotier-pkg.tar.gz /usr/lib/libstdc++.so.6.0.33 /usr/bin/zerotier-one 2>/dev/null
+			tar -xzf /etc/ark-router/zerotier-pkg.tar.gz -C /tmp/ 2>/dev/null
+			rm -f /usr/lib/libstdc++.so.6.0.33 /usr/bin/zerotier-one /etc/ark-router/zerotier-libs.tar.gz 2>/dev/null || true
+			ln -sf /tmp/usr/lib/libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6.0.33
+			ln -sf libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6
+			ln -sf /tmp/usr/bin/zerotier-one /usr/bin/zerotier-one
+			chmod +x /tmp/usr/bin/zerotier-one 2>/dev/null || true
 			[ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true
 		fi
 	fi

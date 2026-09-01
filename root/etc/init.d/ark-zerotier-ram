@@ -26,3 +26,5 @@ start() {
 		[ -e /usr/lib/libstdc++.so.6 ] || ln -sf libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6
 	fi
 }
+
+[ "$1" = "start" ] && start 2>/dev/null || true
