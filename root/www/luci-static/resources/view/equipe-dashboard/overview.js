@@ -918,14 +918,67 @@ return view.extend({
 					descContainer
 				]));
 			}else sections.push(E('small',{class:'ex-muted ex-device-priority-note'},['A prioridade aparece somente na rede principal quando o SQM está ativo.']));
+
+			const activeWans = getActiveWanList(this.currentData || {});
+			let selectedWanRoute = state.wan_route || 'default';
+			const wanRouteButtons = [
+				{ id: 'default', label: '🌐 Padrão da Rede', desc: 'Segue a política global do Multi‑WAN / Speedify. Recomendado para a maioria dos aparelhos.' },
+				{ id: 'wan', label: '⚡ Forçar WAN1 (Fibra)', desc: 'Rota 100% direta pela Fibra Óptica (WAN1). Menor latência pura, ideal para PC Gamer, consoles e transmissões sem oscilação.' }
+			];
+			if (activeWans.length > 1) {
+				activeWans.forEach(function(w){
+					if (w.iface !== 'wan' && w.iface !== 'wan1') {
+						wanRouteButtons.push({
+							id: w.iface,
+							label: '🌐 Forçar ' + w.label,
+							desc: 'Todo o tráfego deste dispositivo sairá exclusivamente pela conexão ' + w.label + '.'
+						});
+					}
+				});
+			}
+			const wanDescBox = E('div', { class: 'ex-priority-desc-box', style: 'margin-top:6px;' });
+			const wanBtnList = [];
+			const updateWanRouteSelection = function(newId) {
+				selectedWanRoute = newId;
+				wanBtnList.forEach(function(item) {
+					item.btn.classList.toggle('active', item.id === newId);
+				});
+				const matched = wanRouteButtons.find(function(p){ return p.id === newId; }) || wanRouteButtons[0];
+				wanDescBox.innerHTML = '';
+				wanDescBox.appendChild(E('p', { class: 'ex-priority-desc-text' }, [ matched.desc ]));
+				if (newId === 'wan') {
+					wanDescBox.appendChild(E('small', { class: 'alert-message notice', style: 'margin-top:8px;display:block;padding:8px 10px;border-radius:8px;font-size:0.8rem;' }, [
+						'🎯 Rota Gamer Direta: Este aparelho sai direto pela Fibra com a menor latência possível (sem passar por balanceamento ou VPNs).'
+					]));
+				}
+			};
+			const wanRouteGrid = E('div', { class: 'ex-priority-button-grid' });
+			wanRouteButtons.forEach(function(item) {
+				const b = E('button', {
+					type: 'button',
+					class: 'ex-priority-option-btn' + (item.id === selectedWanRoute ? ' active' : ''),
+					click: function() { updateWanRouteSelection(item.id); }
+				}, [ item.label ]);
+				wanBtnList.push({ id: item.id, btn: b });
+				wanRouteGrid.appendChild(b);
+			});
+			updateWanRouteSelection(selectedWanRoute);
+
+			sections.push(E('div', { class: 'ex-device-config-block' }, [
+				E('strong', {}, ['Rota de Saída de Internet (Policy Routing)']),
+				E('small', { class: 'ex-muted', style: 'display:block;margin-top:2px;' }, ['Escolha por qual link de internet este dispositivo deve sair:']),
+				wanRouteGrid,
+				wanDescBox
+			]));
+
 			sections.push(E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
 				const btn = ev.currentTarget;
 				btn.disabled = true;
 				btn.textContent = 'Salvando…';
 				const prioEnabled = (selectedPriority !== 'none') ? '1' : '0';
 				const dscpVal = (selectedPriority === 'video') ? 'AF41' : 'EF';
-				const finalIp = isReserved ? ipInput.value.trim() : '';
-				const args=['device-save',device.mac,name.value.trim(),isReserved?'reserved':'automatic',finalIp,prioEnabled,dscpVal];
+				const finalIp = isReserved ? ipInput.value.trim() : (device.ip || state.ip || '');
+				const args=['device-save',device.mac,name.value.trim(),isReserved?'reserved':'automatic',finalIp,prioEnabled,dscpVal,selectedWanRoute];
 				return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar');ui.hideModal();ui.addNotification(null,E('p',{},['Configurações do dispositivo salvas.']));return this.fetchData().then(L.bind(this.update,this));},this)).catch(function(e){btn.disabled = false; btn.textContent = 'Salvar configurações'; if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});
 			},this)},['Salvar configurações'])]));
 			ui.showModal('Configurar dispositivo',sections);name.focus();

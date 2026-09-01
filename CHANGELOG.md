@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.43
+
+- **Policy Routing por Dispositivo (Rota de Saída Dedicada)**: Adicionado seletor de rota de internet no modal de configuração de cada aparelho. Permite forçar o tráfego de um PC Gamer, console ou dispositivo específico diretamente pela WAN1 (Fibra de menor latência) ou WAN2, contornando o balanceamento Multi-WAN ou túneis.
+- **Prioridade Dinâmica de Regras no MWAN3**: Regras de política por dispositivo são automaticamente reordenadas no topo (`mwan3.ark_dev_*=0`) para aplicação imediata sem necessidade de reboot.
+
 ## 0.9.42
 
 - **Gerenciador de Perfis PPPoE (PPPoE Vault)**: Adicionada central de perfis PPPoE salvos no modal de edição de qualquer WAN. Permite salvar e carregar Usuário, Senha e MAC Clonado em 1 clique.

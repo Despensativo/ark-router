@@ -1,7 +1,7 @@
 #!/bin/sh
 
 action="$1"
-ARK_ROUTER_VERSION="0.9.42"
+ARK_ROUTER_VERSION="0.9.43"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() {
@@ -3157,15 +3157,18 @@ case "$action" in
 		dscp="$(uci -q get "firewall.ark_priority_$suffix.set_dscp")"
 		[ -n "$dscp" ] || dscp="AF41"
 		[ "$(uci -q get "firewall.ark_priority_$suffix.enabled")" = 1 ] && priority=true
-		printf '{"reserved":%s,"ip":"%s","priority":%s,"dscp":"%s","operation_profile":"%s","qos_active":%s}\n' \
-			"$reserved" "$(json_escape "$ip")" "$priority" "$(json_escape "$dscp")" "$(ark_operation_profile)" "$(feature_active sqm && bool 1 || bool 0)"
+		wan_route="$(uci -q get "equipe_devices.device_$(printf '%s' "$mac" | tr -d ':').wan_route" || printf 'default')"
+		[ -n "$wan_route" ] || wan_route="default"
+		printf '{"reserved":%s,"ip":"%s","priority":%s,"dscp":"%s","wan_route":"%s","operation_profile":"%s","qos_active":%s}\n' \
+			"$reserved" "$(json_escape "$ip")" "$priority" "$(json_escape "$dscp")" "$(json_escape "$wan_route")" "$(ark_operation_profile)" "$(feature_active sqm && bool 1 || bool 0)"
 		;;
 	device-save)
-		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"; name="$3"; mode="$4"; ip="$5"; priority="$6"; target_dscp="$7"
+		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"; name="$3"; mode="$4"; ip="$5"; priority="$6"; target_dscp="$7"; wan_route="${8:-default}"
 		valid_mac "$mac" || { echo 'MAC invalido' >&2; exit 2; }
 		[ "${#name}" -le 48 ] || { echo 'Nome muito longo' >&2; exit 2; }
 		case "$mode" in automatic|reserved) ;; *) echo 'Modo de IP invalido' >&2; exit 2 ;; esac
 		case "$priority" in 0|1|keep) ;; *) echo 'Prioridade invalida' >&2; exit 2 ;; esac
+		case "$wan_route" in default|wan|wan1|wan2|wan3|wan4|wan[0-9]*) ;; *) wan_route='default' ;; esac
 		if [ "$mode" = reserved ]; then
 			valid_ipv4 "$ip" && same_managed_subnet "$ip" || { echo 'Use um IPv4 valido de uma rede local, diferente do endereco do roteador' >&2; exit 2; }
 			duplicate="$(uci -q show dhcp 2>/dev/null | grep -F ".ip='$ip'" | head -n1)"
@@ -3208,9 +3211,32 @@ case "$action" in
 			uci -q set "firewall.$priority_section.enabled=1"
 		elif [ "$priority" = 0 ]; then uci -q delete "firewall.$priority_section"
 		fi
+		mwan3_changed=0
+		mwan3_rule="ark_dev_$suffix"
+		if [ "$wan_route" != default ]; then
+			uci -q set "equipe_devices.$name_section.wan_route=$wan_route"
+			policy="${wan_route}_only"
+			[ "$policy" = "wan1_only" ] && policy="wan_only"
+			uci -q set "mwan3.$mwan3_rule=rule"
+			uci -q set "mwan3.$mwan3_rule.family=ipv4"
+			uci -q set "mwan3.$mwan3_rule.proto=all"
+			uci -q set "mwan3.$mwan3_rule.dest_ip=0.0.0.0/0"
+			[ -n "$ip" ] && uci -q set "mwan3.$mwan3_rule.src_ip=$ip"
+			uci -q set "mwan3.$mwan3_rule.use_policy=$policy"
+			uci -q reorder "mwan3.$mwan3_rule=0" 2>/dev/null || true
+			mwan3_changed=1
+		else
+			uci -q delete "equipe_devices.$name_section.wan_route" 2>/dev/null || true
+			if [ -n "$(uci -q get "mwan3.$mwan3_rule" 2>/dev/null)" ]; then
+				uci -q delete "mwan3.$mwan3_rule"
+				mwan3_changed=1
+			fi
+		fi
 		uci commit equipe_devices; uci commit dhcp; uci commit firewall
+		[ "$mwan3_changed" = 1 ] && uci commit mwan3 2>/dev/null || true
 		/etc/init.d/dnsmasq reload >/dev/null 2>&1
 		/etc/init.d/firewall restart >/dev/null 2>&1
+		[ "$mwan3_changed" = 1 ] && (sleep 1; /etc/init.d/mwan3 restart >/dev/null 2>&1) &
 		echo ok
 		;;
 	reboot-prepare)
