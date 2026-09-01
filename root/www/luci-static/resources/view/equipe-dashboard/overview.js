@@ -2278,27 +2278,25 @@ return view.extend({
 		]);
 	},
 	openFastCom: function(){
-		this.showEmbedSpeedtest('fast');
+		this.showEmbedSpeedtest('speedtest');
 	},
 	showEmbedSpeedtest: function(engine){
-		engine = engine || 'fast';
+		engine = engine || 'speedtest';
 		const urls = {
-			fast: 'https://fast.com/',
-			cloudflare: 'https://speed.cloudflare.com/',
-			librespeed: 'https://librespeed.org/'
+			speedtest: 'https://openspeedtest.com/Get-widget.php',
+			fast: 'https://fast.com/'
 		};
 		const iframe = E('iframe', {
-			src: urls[engine] || urls.fast,
-			style: 'width:100%;height:480px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:#0f172a;box-shadow:inset 0 2px 10px rgba(0,0,0,.5);margin-top:10px;',
+			src: urls[engine] || urls.speedtest,
+			style: 'width:100%;height:520px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:#0f172a;box-shadow:inset 0 2px 10px rgba(0,0,0,.5);margin-top:10px;',
 			allow: 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture'
 		});
-		const select = E('select', {class:'cbi-input-select', style:'font-weight:600;min-width:200px;'}, [
-			E('option', {value:'fast', selected: engine==='fast'}, ['🎬 Netflix Fast.com']),
-			E('option', {value:'cloudflare', selected: engine==='cloudflare'}, ['🌩️ Cloudflare Speed Test']),
-			E('option', {value:'librespeed', selected: engine==='librespeed'}, ['⚡ LibreSpeed (Open Source)'])
+		const select = E('select', {class:'cbi-input-select', style:'font-weight:600;min-width:240px;'}, [
+			E('option', {value:'speedtest', selected: engine==='speedtest'}, ['⚡ SpeedTest (Download + Upload + Ping)']),
+			E('option', {value:'fast', selected: engine==='fast'}, ['🎬 Netflix Fast.com'])
 		]);
 		select.addEventListener('change', function(){
-			iframe.src = urls[select.value] || urls.fast;
+			iframe.src = urls[select.value] || urls.speedtest;
 		});
 		ui.showModal('🚀 Teste de Velocidade no Navegador (Embed Direto)', [
 			E('div', {style:'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;'}, [
@@ -2306,11 +2304,11 @@ return view.extend({
 					E('strong', {}, ['Motor:']),
 					select
 				]),
-				E('button', {class:'btn cbi-button cbi-button-neutral', style:'font-size:11px;', 'click': function(){ window.open(urls[select.value]||urls.fast, '_blank', 'noopener'); }}, ['↗ Abrir em nova aba'])
+				E('button', {class:'btn cbi-button cbi-button-neutral', style:'font-size:11px;', 'click': function(){ window.open(urls[select.value]||urls.speedtest, '_blank', 'noopener'); }}, ['↗ Abrir em nova aba'])
 			]),
 			iframe,
 			E('p', {class:'ex-muted', style:'margin-top:10px;font-size:12px;line-height:1.4;'}, [
-				'💡 Este teste é executado pelo seu computador/celular usando a conexão do roteador. Como utiliza o hardware do seu dispositivo para decodificar a banda, consegue medir até 1 Gbps+ sem sobrecarregar a CPU do roteador.'
+				'💡 Este teste roda com aceleração de hardware pelo seu navegador através da conexão ativa do roteador, medindo a velocidade máxima real (até 1 Gbps+) de Download, Upload e Ping sem sobrecarregar o processador do roteador.'
 			]),
 			E('div', {class:'right', style:'margin-top:12px;'}, [
 				E('button', {class:'btn cbi-button cbi-button-neutral', 'click': closeModal}, ['Fechar'])
