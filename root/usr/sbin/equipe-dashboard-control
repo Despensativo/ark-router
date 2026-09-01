@@ -1641,7 +1641,7 @@ ark_update_json() {
 	elif version_gt "$latest" "$current"; then available=true
 	elif [ "$profile" = full ] && [ "$actual_profile" != full ]; then available=true
 	fi
-	if [ -n "$asset" ]; then url="https://github.com/$repo/releases/latest/download/$asset"; else url=""; fi
+	if [ -n "$asset" ]; then url="https://raw.githubusercontent.com/$repo/main/dist/sdk/$asset"; else url=""; fi
 	printf '{"current":"%s","repo":"%s","manager":"%s","profile":"%s","actual_profile":"%s","best_profile":"%s","ram_kb":%s,"overlay_free_kb":%s,"latest":"%s","asset":"%s","url":"%s","available":%s,"error":"%s"}\n' \
 		"$(json_escape "$current")" "$(json_escape "$repo")" "$(json_escape "$manager")" "$(json_escape "$profile")" "$(json_escape "$actual_profile")" "$(json_escape "$best_profile")" "$ram_kb" "$overlay_kb" "$(json_escape "$latest")" "$(json_escape "$asset")" "$(json_escape "$url")" "$available" "$(json_escape "$error")"
 }
@@ -2805,7 +2805,10 @@ case "$action" in
 			echo "Backup: $backup"
 			echo '{"state":"running","percent":45,"message":"2/4 Baixando pacote '"$asset"' do GitHub..."}' >"$status"
 			echo "Downloading: $url"
-			wget -O "$tmp/$asset" "$url"
+			if ! wget -T 25 -O "$tmp/$asset" "$url" || [ ! -s "$tmp/$asset" ]; then
+				echo "Fallback downloading from releases/latest..."
+				wget -T 25 -O "$tmp/$asset" "https://github.com/$repo/releases/latest/download/$asset" || true
+			fi
 			echo '{"state":"running","percent":75,"message":"3/4 Instalando nova versão '"$latest"'..."}' >"$status"
 			case "$manager" in
 				apk) ark_remove_opposite_profile "$asset" "$manager"; apk add --allow-untrusted --force-overwrite "$tmp/$asset" ;;
