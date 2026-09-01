@@ -520,6 +520,9 @@ speedify_start_extracted() {
 	chmod +x "$r/speedify" "$r/speedify_cli" "$r/lib/ld-linux-aarch64.so.1" 2>/dev/null || true
 	speedify_ensure_tun || return 1
 	mkdir -p /lib /etc/ark-router/speedify/runtime /etc/ark-router/speedify/keys /tmp/speedify-logs
+	rm -f /etc/ark-router/speedify/runtime/*.lastGood* 2>/dev/null || true
+	ln -sf /tmp/speedify-lastGoodRead /etc/ark-router/speedify/runtime/settings.txt.lastGoodRead 2>/dev/null || true
+	ln -sf /tmp/speedify-lastGoodWrite /etc/ark-router/speedify/runtime/settings.txt.lastGoodWrite 2>/dev/null || true
 	[ -e /lib/aarch64-linux-gnu ] || ln -s "$r/lib/aarch64-linux-gnu" /lib/aarch64-linux-gnu
 	[ -e /lib/ld-linux-aarch64.so.1 ] || ln -s "$r/lib/ld-linux-aarch64.so.1" /lib/ld-linux-aarch64.so.1
 	speedify_write_cli_wrapper "$wrapper" "$r"

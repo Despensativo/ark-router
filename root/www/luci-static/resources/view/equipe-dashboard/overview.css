@@ -47,7 +47,7 @@
 .ex-metric { display: flex; align-items: center; gap: 17px; border-top: 3px solid var(--accent); }
 .ex-metric-icon { display: grid; place-items: center; flex: 0 0 52px; height: 52px; border-radius: 16px; color: #fff; background: var(--accent); font-size: 1.55rem; font-weight: 900; box-shadow: 0 9px 22px color-mix(in srgb, var(--accent) 32%, transparent); }
 .ex-metric-copy { display: flex; min-width: 0; flex-direction: column; }
-.ex-label { font-size: .78rem; font-weight: 700; opacity: .68; text-transform: uppercase; letter-spacing: .06em; }
+.ex-label { font-size: .70rem; font-weight: 750; opacity: .68; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ex-value { margin: 3px 0 1px; font-size: clamp(1.55rem, 3vw, 2.3rem); line-height: 1.05; font-variant-numeric: tabular-nums; }
 .ex-muted { opacity: .61; }
 .ex-health-strip { margin-bottom: 16px; padding: 14px 17px; }
