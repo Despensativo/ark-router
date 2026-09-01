@@ -4091,13 +4091,18 @@ case "$action" in
 		fi
 		if [ "$tcp_turbo" = 1 ]; then
 			mkdir -p /etc/sysctl.d
-			cat <<'EOF' > /etc/sysctl.d/99-ark-performance.conf
+			cca="cubic"
+			grep -qw bbr /proc/sys/net/ipv4/tcp_available_congestion_control 2>/dev/null && cca="bbr"
+			cat <<EOF > /etc/sysctl.d/99-ark-performance.conf
 net.core.rmem_max=8388608
 net.core.wmem_max=8388608
 net.ipv4.tcp_rmem=4096 87380 8388608
 net.ipv4.tcp_wmem=4096 65536 8388608
 net.core.netdev_max_backlog=5000
-net.ipv4.tcp_congestion_control=cubic
+net.ipv4.tcp_congestion_control=$cca
+net.ipv4.tcp_mtu_probing=1
+net.ipv4.tcp_slow_start_after_idle=0
+net.ipv4.tcp_fastopen=3
 EOF
 			sysctl -p /etc/sysctl.d/99-ark-performance.conf >/dev/null 2>&1 || true
 		elif [ "$tcp_turbo" = 0 ]; then
@@ -4105,6 +4110,8 @@ EOF
 			sysctl -w net.core.rmem_max=212992 >/dev/null 2>&1 || true
 			sysctl -w net.core.wmem_max=212992 >/dev/null 2>&1 || true
 			sysctl -w net.core.netdev_max_backlog=1000 >/dev/null 2>&1 || true
+			sysctl -w net.ipv4.tcp_congestion_control=cubic >/dev/null 2>&1 || true
+			sysctl -w net.ipv4.tcp_mtu_probing=0 >/dev/null 2>&1 || true
 		fi
 		if [ "$flow_offload" = 1 ]; then
 			uci -q set firewall.@defaults[0].flow_offloading=1
