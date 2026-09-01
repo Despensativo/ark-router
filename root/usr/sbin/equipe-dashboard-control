@@ -1641,7 +1641,7 @@ ark_update_json() {
 	elif version_gt "$latest" "$current"; then available=true
 	elif [ "$profile" = full ] && [ "$actual_profile" != full ]; then available=true
 	fi
-	if [ -n "$asset" ]; then url="https://raw.githubusercontent.com/$repo/main/dist/sdk/$asset"; else url=""; fi
+	if [ -n "$asset" ]; then url="https://github.com/$repo/raw/main/dist/sdk/$asset"; else url=""; fi
 	printf '{"current":"%s","repo":"%s","manager":"%s","profile":"%s","actual_profile":"%s","best_profile":"%s","ram_kb":%s,"overlay_free_kb":%s,"latest":"%s","asset":"%s","url":"%s","available":%s,"error":"%s"}\n' \
 		"$(json_escape "$current")" "$(json_escape "$repo")" "$(json_escape "$manager")" "$(json_escape "$profile")" "$(json_escape "$actual_profile")" "$(json_escape "$best_profile")" "$ram_kb" "$overlay_kb" "$(json_escape "$latest")" "$(json_escape "$asset")" "$(json_escape "$url")" "$available" "$(json_escape "$error")"
 }
