@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.45
+
+- **🚀 Sistema de Auto-Atualização Inteligente com Barra de Progresso em Tempo Real**:
+  - **Barra de Progresso Dinâmica com Porcentagem**: Acompanhamento visual de todas as etapas (1/4 Backup do sistema, 2/4 Download do GitHub Releases, 3/4 Instalação pelo gerenciador APK/OPKG, 4/4 Limpeza de cache e reinicialização de serviços).
+  - **Contagem Regressiva de Recarregamento**: Ao concluir com sucesso, exibe uma contagem regressiva suave (3.. 2.. 1..) antes de recarregar a página sem travar o navegador.
+  - **Relatórios Detalhados em Caso de Falha**: Exibição dos logs de erro amigáveis direto no painel caso o download ou a instalação falhem.
+- **🛡️ Blindagem de Flash do Speedify & Tipografia Aprimorada**:
+  - Redirecionamento permanente das cópias temporárias `.lastGood*` do Speedify para a RAM (`/tmp`), mantendo a partição Flash permanentemente desobstruída.
+  - Ajuste de tipografia em rótulos de métricas (`.ex-label`) eliminando overflow de texto em qualquer resolução de tela.
+
 ## 0.9.44
 
 - **⚡ Otimização do Speedify em RAM para Roteadores Compactos ($\le 16\text{MB}$ Flash / $\le 256\text{MB}$ RAM)**:

@@ -2134,23 +2134,59 @@ return view.extend({
 	},
 	pollSelfUpdate: function(attempt){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-status']).then(L.bind(function(r){
-			const state=String(r.stdout||'').trim(), node=document.getElementById('ex-self-update-result');
-			if(state==='done'){
-				ui.addNotification(null,E('p',{},['ARK Router atualizado. Recarregando o painel…']));
-				window.setTimeout(function(){window.location.reload();},1800);
+			let raw = String(r.stdout || '').trim();
+			let data = { state: raw, percent: 30, message: 'Atualização em andamento…' };
+			if (raw.startsWith('{')) {
+				try { data = JSON.parse(raw); } catch(e){}
+			}
+			const node = document.getElementById('ex-self-update-result');
+			if (data.state === 'done') {
+				if (node) {
+					node.replaceChildren(E('div', { class: 'ex-update-progress-wrap' }, [
+						E('div', { class: 'ex-update-progress-bar' }, [
+							E('div', { class: 'ex-update-progress-fill', style: 'width: 100%; background: #10b981;' })
+						]),
+						E('div', { style: 'margin-top: 10px; text-align: center;' }, [
+							E('strong', { style: 'color: #10b981; font-size: 0.95rem; display: block;' }, ['✅ ' + (data.message || 'Atualização concluída com sucesso!')]),
+							E('small', { id: 'ex-update-countdown', class: 'ex-muted', style: 'display: block; margin-top: 4px;' }, ['Recarregando a página em 3 segundos…'])
+						])
+					]));
+				}
+				let seconds = 3;
+				const timer = window.setInterval(function(){
+					seconds--;
+					const el = document.getElementById('ex-update-countdown');
+					if (el) el.textContent = 'Recarregando a página em ' + seconds + ' segundo' + (seconds === 1 ? '' : 's') + '…';
+					if (seconds <= 0) {
+						window.clearInterval(timer);
+						window.location.reload();
+					}
+				}, 1000);
 				return;
 			}
-			if(state==='error'||attempt>180){
+			if (data.state === 'error' || attempt > 180) {
 				return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-log']).then(function(log){
-					const lines=String(log.stdout||'').split(/\r?\n/).map(function(line){return line.trim();}).filter(Boolean);
-					const detail=lines.length?lines.slice(-5).join(' | '):'A atualização não foi concluída.';
-					if(node)node.replaceChildren(E('p',{class:'alert-message warning'},[detail]));
-					ui.addNotification(null,E('p',{},[detail]),'danger');
+					const lines = String(log.stdout||'').split(/\r?\n/).map(function(line){return line.trim();}).filter(Boolean);
+					const detail = lines.length ? lines.slice(-5).join(' | ') : 'A atualização não foi concluída.';
+					if (node) node.replaceChildren(E('p',{class:'alert-message warning'},[detail]));
+					ui.addNotification(null, E('p',{},[detail]), 'danger');
 				});
 			}
-			if(node)node.replaceChildren(E('small',{class:'ex-muted'},['Atualização em andamento…']));
-			window.setTimeout(L.bind(this.pollSelfUpdate,this,attempt+1),2000);
-		},this));
+			if (node) {
+				const pct = data.percent || Math.min(15 + attempt * 2, 90);
+				const msg = data.message || 'Atualização em andamento…';
+				node.replaceChildren(E('div', { class: 'ex-update-progress-wrap' }, [
+					E('div', { class: 'ex-update-progress-bar' }, [
+						E('div', { class: 'ex-update-progress-fill', style: 'width: ' + pct + '%;' })
+					]),
+					E('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-top: 8px;' }, [
+						E('small', { style: 'font-weight: 650;' }, [msg]),
+						E('small', { class: 'ex-muted', style: 'font-variant-numeric: tabular-nums; font-weight: 700;' }, [pct + '%'])
+					])
+				]));
+			}
+			window.setTimeout(L.bind(this.pollSelfUpdate, this, attempt + 1), 1500);
+		}, this));
 	},
 	startSelfUpdate: function(info){
 		info=info||{};
