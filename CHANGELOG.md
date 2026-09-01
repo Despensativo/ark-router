@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.44
+
+- **⚡ Otimização do Speedify em RAM para Roteadores Compactos ($\le 16\text{MB}$ Flash / $\le 256\text{MB}$ RAM)**:
+  - **Eliminação Imediata do APK da RAM**: O instalador em RAM (`speedify_install_ram`) agora remove o arquivo bruto `.apk` imediatamente após a extração, liberando **14 MB de RAM instantaneamente**.
+  - **Poda de Componentes Desnecessários em RAM**: Remoção automática de manuais, documentações e locales (`doc`, `man`, `locale`) do runtime em RAM, economizando mais **3 a 5 MB de RAM**.
+  - **Limpeza de Logs e Caches**: Remoção automática de arquivos redundantes de debug `.lastGood*` do Speedify.
+- **🧹 Limpeza e Otimização de Flash Atualizada**:
+  - `[ 💾 Otimizar Espaço Flash ]`: Integra limpeza profunda e segura para roteadores compactos mantendo as credenciais de login do Speedify descompactadas e acessíveis de forma transparente.
+
 ## 0.9.43
 
 - **⚡ Painel de Desempenho & Blindagem de Memória**:

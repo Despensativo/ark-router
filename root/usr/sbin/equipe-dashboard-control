@@ -1,7 +1,6 @@
 #!/bin/sh
-
-action="$1"
-ARK_ROUTER_VERSION="0.9.43"
+# Controle backend unificado do LuCI App ARK Router / Equipe Dashboard
+ARK_ROUTER_VERSION="0.9.44"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() {
@@ -581,6 +580,8 @@ speedify_install_ram() {
 	rm -rf "$root"
 	mkdir -p "$root"
 	apk --allow-untrusted extract --destination "$root" "$pkg" >/tmp/ark-speedify-extract.log 2>&1 || { cat /tmp/ark-speedify-extract.log >&2; return 1; }
+	rm -rf /tmp/ark-speedify-cache "$pkg" /tmp/ark-speedify-extract.log 2>/dev/null || true
+	rm -rf "$root/usr/share/doc" "$root/usr/share/man" "$root/usr/share/locale" 2>/dev/null || true
 	speedify_start_extracted "$root" /tmp/ark-speedify-cli || return 1
 	uci -q set equipe_dashboard.speedify.install_mode='ram'
 	uci commit equipe_dashboard
@@ -2236,10 +2237,6 @@ system_storage_purge() {
 	zerotier_ram_compress >/dev/null 2>&1 || true
 	if [ -d /etc/ark-router/speedify/runtime ]; then
 		rm -f /etc/ark-router/speedify/runtime/*.lastGood* 2>/dev/null || true
-		if [ -f /etc/ark-router/speedify/runtime/settings.txt ]; then
-			tar -czf /etc/ark-router/speedify/runtime/speedify-config.tar.gz -C /etc/ark-router/speedify/runtime settings.txt sql.db 2>/dev/null || true
-			rm -f /etc/ark-router/speedify/runtime/settings.txt /etc/ark-router/speedify/runtime/sql.db 2>/dev/null || true
-		fi
 	fi
 	overlay_total="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $2}')"
 	case "$overlay_total" in ''|*[!0-9]*) overlay_total=65536 ;; esac
