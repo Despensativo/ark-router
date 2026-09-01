@@ -534,6 +534,7 @@ speedify_start_extracted() {
 	sleep 6
 	speedify_prepare_runtime_network >/dev/null 2>&1 || true
 	"$wrapper" version >/tmp/ark-speedify-version.log 2>&1 || { cat /tmp/ark-speedify-daemon.log /tmp/ark-speedify-version.log 2>/dev/null >&2; return 1; }
+	"$wrapper" streamingbypass domains add api.github.com github.com raw.githubusercontent.com objects.githubusercontent.com >/dev/null 2>&1 || true
 	uci -q set equipe_dashboard.speedify=feature
 	uci -q set equipe_dashboard.speedify.saved_config='1'
 	uci -q set equipe_dashboard.speedify.prepared='1'
