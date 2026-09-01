@@ -1,5 +1,6 @@
 #!/bin/sh
 # Controle backend unificado do LuCI App ARK Router / Equipe Dashboard
+action="$1"
 ARK_ROUTER_VERSION="0.9.44"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
