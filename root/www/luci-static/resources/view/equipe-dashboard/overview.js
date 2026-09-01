@@ -2906,7 +2906,7 @@ return view.extend({
 			]);
 			return panel;
 		},this));
-		const starlinkPanel=E('details',{id:'ex-starlink-global-panel',class:'ex-starlink-panel '+(starlinkProblem?'problem':(starlinkDetected?'detected':'idle')),style:(starlinkDetected||starlinkPublic.enabled)?'':'display:none;'},[
+		const starlinkPanel=E('details',{id:'ex-starlink-global-panel',class:'ex-starlink-panel '+(starlinkProblem?'problem':(starlinkDetected?'detected':'idle')),style:starlinkDetected?'':'display:none;'},[
 			E('summary',{},[
 				E('span',{class:'ex-starlink-summary-main'},[
 					E('span',{class:'ex-starlink-icon'},['◉']),
