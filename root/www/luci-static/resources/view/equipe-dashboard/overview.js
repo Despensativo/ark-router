@@ -2278,172 +2278,30 @@ return view.extend({
 		]);
 	},
 	openFastCom: function(){
-		this.showEmbedSpeedtest('ark_turbo');
+		this.showEmbedSpeedtest();
 	},
-	showEmbedSpeedtest: function(engine){
-		engine = engine || 'ark_turbo';
-		const urls = {
-			speedtest: 'https://openspeedtest.com/Get-widget.php',
-			fast: 'https://fast.com/'
-		};
-
-		const turboContainer = E('div', {style:'background:#0f172a;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px;text-align:center;box-shadow:inset 0 2px 10px rgba(0,0,0,.5);margin-top:10px;'});
-		const statusText = E('div', {style:'font-size:14px;color:#94a3b8;margin-bottom:8px;font-weight:600;'}, ['Pronto para iniciar medição multi-stream']);
-		const mainGauge = E('div', {style:'font-size:42px;font-weight:800;color:#38bdf8;font-family:monospace;letter-spacing:-1px;margin:12px 0;'}, ['0.00 ', E('span', {style:'font-size:18px;color:#94a3b8;font-weight:500;'}, ['Mbps'])]);
-		
-		const gridMetrics = E('div', {style:'display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:16px 0;padding:12px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.05);'}, [
-			E('div', {}, [E('small', {class:'ex-muted', style:'display:block;font-size:11px;'}, ['DOWNLOAD']), E('strong', {id:'ex-turbo-dl', style:'font-size:18px;color:#38bdf8;'}, ['--'])]),
-			E('div', {}, [E('small', {class:'ex-muted', style:'display:block;font-size:11px;'}, ['UPLOAD']), E('strong', {id:'ex-turbo-ul', style:'font-size:18px;color:#a855f7;'}, ['--'])]),
-			E('div', {}, [E('small', {class:'ex-muted', style:'display:block;font-size:11px;'}, ['LATÊNCIA (PING)']), E('strong', {id:'ex-turbo-ping', style:'font-size:18px;color:#22c55e;'}, ['--'])])
-		]);
-
-		const progBar = E('div', {style:'background:#1e293b;border-radius:6px;height:8px;overflow:hidden;margin:14px 0;border:1px solid rgba(255,255,255,.05);'}, [
-			E('div', {id:'ex-turbo-prog', style:'background:linear-gradient(90deg,#38bdf8,#a855f7);height:100%;width:0%;transition:width 0.15s;'})
-		]);
-
-		const startBtn = E('button', {class:'btn cbi-button cbi-button-positive', style:'font-size:14px;padding:8px 24px;font-weight:700;margin-top:4px;'}, ['🚀 Iniciar Teste Automático (Multi-Stream)']);
-
-		turboContainer.replaceChildren(statusText, mainGauge, gridMetrics, progBar, startBtn);
-
+	showEmbedSpeedtest: function(){
 		const iframe = E('iframe', {
-			src: urls.fast,
-			style: 'width:100%;height:520px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:#0f172a;box-shadow:inset 0 2px 10px rgba(0,0,0,.5);margin-top:10px;display:none;',
+			src: 'https://fast.com/',
+			style: 'width:100%;height:560px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:#0f172a;box-shadow:inset 0 2px 10px rgba(0,0,0,.5);margin-top:10px;',
 			allow: 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture'
 		});
 
-		const select = E('select', {class:'cbi-input-select', style:'font-weight:600;min-width:240px;'}, [
-			E('option', {value:'ark_turbo', selected: engine==='ark_turbo'}, ['🚀 ARK Turbo (Nativo Automático: Down+Up+Ping)']),
-			E('option', {value:'fast', selected: engine==='fast'}, ['🎬 Netflix Fast.com (Embed)']),
-			E('option', {value:'speedtest', selected: engine==='speedtest'}, ['⚡ OpenSpeedTest (Embed)'])
-		]);
-
-		const updateEngineView = function(){
-			if(select.value === 'ark_turbo'){
-				turboContainer.style.display = 'block';
-				iframe.style.display = 'none';
-			} else {
-				turboContainer.style.display = 'none';
-				iframe.style.display = 'block';
-				iframe.src = urls[select.value] || urls.fast;
-			}
-		};
-		select.addEventListener('change', updateEngineView);
-
-		// Motor de teste nativo JavaScript
-		startBtn.addEventListener('click', async function(){
-			startBtn.disabled = true;
-			const prog = document.getElementById('ex-turbo-prog');
-			const dlEl = document.getElementById('ex-turbo-dl');
-			const ulEl = document.getElementById('ex-turbo-ul');
-			const pingEl = document.getElementById('ex-turbo-ping');
-			
-			// 1. Latência / Ping
-			statusText.textContent = '⏱️ Medindo latência e jitter...';
-			if(prog) prog.style.width = '15%';
-			const pings = [];
-			for(let i=0; i<6; i++){
-				const t0 = performance.now();
-				try {
-					await fetch('https://speed.cloudflare.com/cdn-cgi/trace?r=' + Math.random(), { cache: 'no-store' });
-					pings.push(performance.now() - t0);
-				} catch(e){}
-			}
-			const avgPing = pings.length ? (pings.reduce((a,b)=>a+b, 0) / pings.length).toFixed(1) : '15.0';
-			if(pingEl) pingEl.textContent = avgPing + ' ms';
-
-			// 2. Download Multi-Stream (8 conexões)
-			statusText.textContent = '⬇️ Medindo velocidade de Download (Multi-Stream)...';
-			if(prog) prog.style.width = '50%';
-			let dlBytes = 0;
-			const dlStart = performance.now();
-			const dlTimer = setInterval(function(){
-				const elapsed = (performance.now() - dlStart) / 1000;
-				if(elapsed > 0.2){
-					const mbps = ((dlBytes * 8) / (elapsed * 1000000)).toFixed(2);
-					mainGauge.innerHTML = mbps + ' <span style="font-size:18px;color:#94a3b8;font-weight:500;">Mbps</span>';
-					if(dlEl) dlEl.textContent = mbps + ' Mbps';
-				}
-			}, 100);
-
-			const dlStreams = [];
-			for(let i=0; i<8; i++){
-				dlStreams.push((async function(){
-					try {
-						const resp = await fetch('https://speed.cloudflare.com/__down?bytes=25000000&r=' + Math.random());
-						const reader = resp.body.getReader();
-						while(true){
-							const res = await reader.read();
-							if(res.done) break;
-							dlBytes += (res.value ? res.value.length : 0);
-						}
-					} catch(e){}
-				})());
-			}
-			await Promise.all(dlStreams);
-			clearInterval(dlTimer);
-			const dlTotalTime = Math.max(0.2, (performance.now() - dlStart) / 1000);
-			const finalDl = ((dlBytes * 8) / (dlTotalTime * 1000000)).toFixed(2);
-			if(dlEl) dlEl.textContent = finalDl + ' Mbps';
-
-			// 3. Upload Multi-Stream
-			statusText.textContent = '⬆️ Medindo velocidade de Upload (Multi-Stream)...';
-			if(prog) prog.style.width = '85%';
-			let ulBytes = 0;
-			const ulStart = performance.now();
-			const chunk = new Uint8Array(2 * 1024 * 1024);
-			const ulTimer = setInterval(function(){
-				const elapsed = (performance.now() - ulStart) / 1000;
-				if(elapsed > 0.2){
-					const mbps = ((ulBytes * 8) / (elapsed * 1000000)).toFixed(2);
-					mainGauge.innerHTML = mbps + ' <span style="font-size:18px;color:#94a3b8;font-weight:500;">Mbps</span>';
-					if(ulEl) ulEl.textContent = mbps + ' Mbps';
-				}
-			}, 100);
-
-			const ulStreams = [];
-			for(let i=0; i<4; i++){
-				ulStreams.push((async function(){
-					for(let j=0; j<4; j++){
-						try {
-							await fetch('https://speed.cloudflare.com/__up', {
-								method: 'POST',
-								body: chunk,
-								cache: 'no-store'
-							});
-							ulBytes += chunk.length;
-						} catch(e){}
-					}
-				})());
-			}
-			await Promise.all(ulStreams);
-			clearInterval(ulTimer);
-			const ulTotalTime = Math.max(0.2, (performance.now() - ulStart) / 1000);
-			const finalUl = ((ulBytes * 8) / (ulTotalTime * 1000000)).toFixed(2);
-			if(ulEl) ulEl.textContent = finalUl + ' Mbps';
-
-			// 4. Conclusão
-			if(prog) prog.style.width = '100%';
-			statusText.textContent = '✅ Teste concluído com sucesso!';
-			mainGauge.innerHTML = finalDl + ' <span style="font-size:18px;color:#94a3b8;font-weight:500;">Mbps ↓</span> / ' + finalUl + ' <span style="font-size:18px;color:#94a3b8;font-weight:500;">Mbps ↑</span>';
-			startBtn.disabled = false;
-			startBtn.textContent = '🔄 Repetir Teste Automático';
-		});
-
-		ui.showModal('🚀 Teste de Velocidade no Navegador', [
+		ui.showModal('🎬 Teste de Velocidade Fast.com (Netflix CDN)', [
 			E('div', {style:'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;'}, [
-				E('div', {style:'display:flex;align-items:center;gap:8px;'}, [
-					E('strong', {}, ['Modo de Teste:']),
-					select
+				E('div', {}, [
+					E('strong', {style:'color:#e2e8f0;font-size:14px;'}, ['Servidor CDN Netflix OCA']),
+					E('span', {class:'ex-pill online', style:'margin-left:8px;'}, ['Alta Precisão 800M+'])
 				]),
 				E('div', {style:'display:flex;gap:6px;'}, [
-					E('button', {class:'btn cbi-button cbi-button-action', style:'font-size:11px;font-weight:650;', 'click': function(){ window.open('https://www.speedtest.net/', '_blank', 'noopener'); }}, ['🌐 Abrir Speedtest.net (Ookla)']),
-					E('button', {class:'btn cbi-button cbi-button-neutral', style:'font-size:11px;', 'click': function(){ window.open(urls[select.value]||urls.fast, '_blank', 'noopener'); }}, ['↗ Abrir em nova aba'])
+					E('button', {class:'btn cbi-button cbi-button-action', style:'font-size:11px;font-weight:650;', 'click': function(){ window.open('https://fast.com/', '_blank', 'noopener'); }}, ['↗ Abrir Fast.com em nova aba']),
+					E('button', {class:'btn cbi-button cbi-button-neutral', style:'font-size:11px;', 'click': function(){ window.open('https://www.speedtest.net/', '_blank', 'noopener'); }}, ['🌐 Ookla Speedtest'])
 				])
 			]),
-			turboContainer,
 			iframe,
 			E('p', {class:'ex-muted', style:'margin-top:10px;font-size:12px;line-height:1.4;'}, [
-				'💡 O modo ', E('strong', {}, ['ARK Turbo']), ' executa Download, Upload e Ping 100% automáticos com aceleração de hardware pelo seu navegador, alcançando até 1 Gbps+ sem sobrecarregar a CPU do roteador.'
+				'💡 ', E('strong', {}, ['Como medir Upload automático: ']),
+				'Quando o download terminar, clique em ', E('em', {}, ['"Mostrar mais informações"']), ' ➔ ', E('em', {}, ['"Configurações"']), ' ➔ Marque ', E('em', {}, ['"Sempre mostrar todas as métricas"']), ' e clique em Salvar. O navegador guardará essa preferência e fará Download e Upload direto nas próximas vezes!'
 			]),
 			E('div', {class:'right', style:'margin-top:12px;'}, [
 				E('button', {class:'btn cbi-button cbi-button-neutral', 'click': closeModal}, ['Fechar'])
