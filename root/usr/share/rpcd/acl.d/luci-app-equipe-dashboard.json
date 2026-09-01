@@ -4,6 +4,7 @@
 		"read": {
 			"file": {
 				"/bin/ping": [ "exec" ],
+				"/usr/sbin/equipe-dashboard-control": [ "exec" ],
 				"/usr/libexec/nlbwmon-action": [ "exec" ],
 				"/tmp/equipe-traffic-history.csv": [ "read" ],
 				"/sys/class/thermal/thermal_zone0/temp": [ "read" ]
@@ -18,7 +19,7 @@
 				"network.wireless": [ "status" ],
 				"system": [ "board", "info" ]
 			},
-			"uci": [ "dhcp", "equipe_devices", "firewall", "mwan3", "network", "qos_equipe", "sqm", "wireless" ]
+			"uci": [ "dhcp", "equipe_devices", "equipe_perf", "firewall", "mwan3", "network", "qos_equipe", "sqm", "wireless" ]
 		},
 		"write": {
 			"file": {

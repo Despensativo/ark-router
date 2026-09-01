@@ -116,6 +116,19 @@ same_managed_subnet() {
 	return 1
 }
 installed() {
+	case "$1" in
+		luci-app-sqm) [ -f /etc/config/sqm ] || [ -f /usr/share/luci/menu.d/luci-app-sqm.json ] && return 0 ;;
+		luci-app-mwan3) [ -f /etc/config/mwan3 ] || [ -f /usr/share/luci/menu.d/luci-app-mwan3.json ] && return 0 ;;
+		luci-app-nlbwmon) [ -f /etc/config/nlbwmon ] || [ -f /usr/share/luci/menu.d/luci-app-nlbwmon.json ] && return 0 ;;
+		luci-app-upnp) [ -f /etc/config/upnpd ] || [ -f /usr/share/luci/menu.d/luci-app-upnp.json ] && return 0 ;;
+		luci-theme-argon) [ -d /www/luci-static/argon ] && return 0 ;;
+		luci-app-uhttpd) [ -f /usr/share/luci/menu.d/luci-app-uhttpd.json ] && return 0 ;;
+		tailscale) [ -x /usr/sbin/tailscale ] && return 0 ;;
+		zerotier) ([ -x /usr/sbin/zerotier-one ] || [ -f /etc/init.d/zerotier ]) && return 0 ;;
+		irqbalance) ([ -x /usr/sbin/irqbalance ] || [ -f /etc/init.d/irqbalance ]) && return 0 ;;
+		speedify) ([ -x /usr/share/speedify/speedify ] || [ -x /usr/bin/speedify ] || [ -x /tmp/speedify/speedify ]) && return 0 ;;
+		luci-app-speedify) ([ -f /usr/share/luci/menu.d/luci-app-speedify.json ] || [ -f /usr/lib/lua/luci/controller/speedify.lua ]) && return 0 ;;
+	esac
 	if command -v apk >/dev/null 2>&1; then apk info -e "$1" >/dev/null 2>&1
 	else opkg status "$1" 2>/dev/null | grep -q '^Status:.* installed$'
 	fi
@@ -1034,9 +1047,9 @@ feature_active() {
 		mwan3) running mwan3 ;;
 		nlbwmon) running nlbwmon ;;
 		upnp) running miniupnpd ;;
-		argon) installed luci-theme-argon && [ "$(uci -q get luci.main.mediaurlbase)" = /luci-static/argon ] ;;
-		uhttpd) installed luci-app-uhttpd ;;
-		wifi) wifi status 2>/dev/null | grep -q '"up": true' ;;
+		argon) [ -d /www/luci-static/argon ] && [ "$(uci -q get luci.main.mediaurlbase)" = /luci-static/argon ] ;;
+		uhttpd) [ -f /usr/share/luci/menu.d/luci-app-uhttpd.json ] ;;
+		wifi) [ -f /etc/config/wireless ] ;;
 		history) [ -x /usr/sbin/equipe-traffic-history ] ;;
 		temperature) [ -r /sys/class/thermal/thermal_zone0/temp ] ;;
 		custom_qos) [ -s /etc/config/qos_equipe ] ;;
@@ -1229,15 +1242,27 @@ tailscale_down() {
 	command -v tailscale >/dev/null 2>&1 || return 0
 	tailscale down
 }
-zerotier_firewall_prepare() {
-	ztdev="$(ip -o link show 2>/dev/null | awk -F': ' '/: zt/{print $2; exit}' | cut -d@ -f1)"
-	[ -n "$ztdev" ] || ztdev="$(zerotier-cli listnetworks 2>/dev/null | awk 'NR>1 {for(i=1;i<=NF;i++) if($i ~ /^zt/) {print $i; exit}}')"
+zerotier_device_name() {
+	ztdev=""
+	if command -v zerotier-cli >/dev/null 2>&1; then
+		ztdev="$(zerotier-cli -j listnetworks 2>/dev/null | jsonfilter -e '@[0].portDeviceName' 2>/dev/null)"
+	fi
+	if [ -z "$ztdev" ] || [ "$ztdev" = "-" ]; then
+		ztdev="$(ip -o link show 2>/dev/null | awk -F': ' '/: zt/{print $2; exit}' | cut -d@ -f1)"
+	fi
+	if [ -z "$ztdev" ] || [ "$ztdev" = "-" ]; then
+		ztdev="$(zerotier-cli listnetworks 2>/dev/null | awk 'NR>1 {for(i=1;i<=NF;i++) if($i ~ /^zt/) {print $i; exit}}')"
+	fi
 	case "$ztdev" in ''|'-') ztdev='' ;; esac
+	printf '%s' "$ztdev"
+}
+zerotier_firewall_prepare() {
+	ztdev="$(zerotier_device_name)"
 	uci -q delete network.zerotier
 	uci commit network
 	uci -q set firewall.zerotier=zone
 	uci -q set firewall.zerotier.name=zerotier
-	uci -q set firewall.zerotier.input=ACCEPT
+	uci -q set firewall.zerotier.input=REJECT
 	uci -q set firewall.zerotier.output=ACCEPT
 	uci -q set firewall.zerotier.forward=ACCEPT
 	uci -q delete firewall.zerotier.device
@@ -1246,39 +1271,60 @@ zerotier_firewall_prepare() {
 	uci -q set firewall.zt_to_lan=forwarding
 	uci -q set firewall.zt_to_lan.src=zerotier
 	uci -q set firewall.zt_to_lan.dest=lan
+
+	uci -q set firewall.zt_ssh=rule
+	uci -q set firewall.zt_ssh.name='Allow-ZeroTier-SSH'
+	uci -q set firewall.zt_ssh.src=zerotier
+	uci -q set firewall.zt_ssh.proto=tcp
+	uci -q set firewall.zt_ssh.dest_port='22'
+	uci -q set firewall.zt_ssh.target=ACCEPT
+
 	uci -q set firewall.zt_http=rule
-	uci -q set firewall.zt_http.name='Allow-ZeroTier-ARK-HTTP'
+	uci -q set firewall.zt_http.name='Allow-ZeroTier-HTTP-HTTPS'
 	uci -q set firewall.zt_http.src=zerotier
 	uci -q set firewall.zt_http.proto=tcp
 	uci -q set firewall.zt_http.dest_port='80 443'
 	uci -q set firewall.zt_http.target=ACCEPT
+
+	uci -q set firewall.zt_ping=rule
+	uci -q set firewall.zt_ping.name='Allow-ZeroTier-Ping'
+	uci -q set firewall.zt_ping.src=zerotier
+	uci -q set firewall.zt_ping.proto=icmp
+	uci -q set firewall.zt_ping.target=ACCEPT
+
 	uci commit firewall
 	/etc/init.d/firewall restart >/dev/null 2>&1 || true
 }
 zerotier_current_ip() {
 	zerotier-cli listnetworks 2>/dev/null | awk 'NR>1 {for(i=1;i<=NF;i++) if($i ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\/[0-9]+$/) {split($i,a,"/"); print a[1]; exit}}'
 }
-zerotier_bind_uhttpd() {
-	ztip="$(zerotier_current_ip)"
-	[ -n "$ztip" ] || return 0
-	lan_ip="$(uci -q get network.lan.ipaddr || true)"
-	[ -n "$lan_ip" ] || lan_ip='192.168.1.1'
+configure_uhttpd_listeners() {
 	uci -q delete uhttpd.main.listen_http
 	uci -q delete uhttpd.main.listen_https
-	uci -q add_list "uhttpd.main.listen_http=$lan_ip:80"
-	uci -q add_list "uhttpd.main.listen_https=$lan_ip:443"
-	uci -q add_list "uhttpd.main.listen_http=$ztip:80"
-	uci -q add_list "uhttpd.main.listen_https=$ztip:443"
+	uci -q add_list "uhttpd.main.listen_http=0.0.0.0:80"
+	uci -q add_list "uhttpd.main.listen_https=0.0.0.0:443"
+	uci -q add_list "uhttpd.main.listen_http=[::]:80" 2>/dev/null || true
+	uci -q add_list "uhttpd.main.listen_https=[::]:443" 2>/dev/null || true
 	uci -q set uhttpd.main.rfc1918_filter=0
 	uci commit uhttpd
+}
+zerotier_configure_access() {
+	configure_uhttpd_listeners
+	for sec in $(uci -q show dropbear 2>/dev/null | grep '=dropbear$' | cut -d. -f2 | cut -d= -f1); do
+		uci -q delete "dropbear.$sec.Interface" 2>/dev/null || true
+	done
+	uci commit dropbear 2>/dev/null || true
+	/etc/init.d/dropbear restart >/dev/null 2>&1 || true
 	/etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+}
+zerotier_bind_uhttpd() {
+	zerotier_configure_access
 }
 zerotier_late_bind_uhttpd() {
 	(
-		for delay in 3 8 15 30; do
+		for delay in 3 8 15; do
 			sleep "$delay"
 			zerotier_firewall_prepare >/dev/null 2>&1 || true
-			zerotier_bind_uhttpd >/dev/null 2>&1 || true
 		done
 	) >/dev/null 2>&1 &
 }
@@ -1320,7 +1366,7 @@ zerotier_join_network() {
 		i=$((i+1))
 	done
 	zerotier_firewall_prepare
-	zerotier_bind_uhttpd
+	zerotier_configure_access
 	zerotier_late_bind_uhttpd
 	out="$(zerotier-cli listnetworks 2>&1 || true)"
 	rc=0
@@ -1591,8 +1637,51 @@ sqm_device_for_network() {
 starlink_cgnat_ipv4() {
 	printf '%s' "$1" | awk -F. 'NF==4 && $1==100 && $2>=64 && $2<=127 {ok=1} END{exit !ok}'
 }
+starlink_active_wan_get() {
+	active="$(uci -q get equipe_dashboard.starlink.active_wan || true)"
+	if [ -z "$active" ]; then
+		cur_dev="$(ip -4 route show exact 192.168.100.1/32 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1)}' || true)"
+		if [ -n "$cur_dev" ]; then
+			for w in $(active_wan_networks); do
+				dev="$(sqm_device_for_network "$w")"
+				if [ "$dev" = "$cur_dev" ]; then
+					active="$w"
+					break
+				fi
+			done
+		fi
+	fi
+	[ -n "$active" ] || active="wan"
+	printf '%s' "$active"
+}
+
+starlink_active_wan_set() {
+	wan="$1"
+	printf '%s' "$wan" | grep -Eq '^wan([0-9]+)?$' || { echo 'WAN invalida' >&2; exit 2; }
+	[ "$(uci -q get "network.$wan")" = interface ] || { echo 'WAN nao encontrada' >&2; exit 3; }
+	uci -q set equipe_dashboard.starlink=starlink
+	uci -q set "equipe_dashboard.starlink.active_wan=$wan"
+	uci commit equipe_dashboard
+
+	status_json="$(ubus call "network.interface.$wan" status 2>/dev/null)"
+	device="$(printf '%s' "$status_json" | jsonfilter -e '@.l3_device' 2>/dev/null)"
+	[ -n "$device" ] || device="$(uci -q get "network.$wan.device")"
+	[ -n "$device" ] || device="$wan"
+	gateway="$(printf '%s' "$status_json" | jsonfilter -e '@.route[@.target="0.0.0.0"].nexthop' 2>/dev/null | head -n 1)"
+
+	if [ -n "$device" ]; then
+		if [ -n "$gateway" ]; then
+			ip -4 route replace 192.168.100.1/32 via "$gateway" dev "$device" metric 1 2>/dev/null || true
+		else
+			ip -4 route replace 192.168.100.1/32 dev "$device" metric 1 2>/dev/null || true
+		fi
+	fi
+	echo ok
+}
+
 starlink_public_list_json() {
-	printf '{"ok":true,"enabled":true,"wans":['
+	active_wan="$(starlink_active_wan_get)"
+	printf '{"ok":true,"enabled":true,"active_wan":"%s","wans":[' "$(json_escape "$active_wan")"
 	first=1
 	for network_section in $(active_wan_networks); do
 		status_json="$(ubus call "network.interface.$network_section" status 2>/dev/null)"
@@ -1609,8 +1698,8 @@ starlink_public_list_json() {
 		printf '%s' "$dns" | grep -Eq '(^|[[:space:]])198\.54\.100\.' && likely=true
 		[ "$first" = 1 ] || printf ','; first=0
 		if [ "$network_section" = wan ]; then label=WAN1; else label="WAN${network_section#wan}"; fi
-		printf '{"name":"%s","label":"%s","device":"%s","up":%s,"ip":"%s","gateway":"%s","likely_starlink":%s}' \
-			"$(json_escape "$network_section")" "$(json_escape "$label")" "$(json_escape "$device")" "$(bool "$up")" "$(json_escape "$ipaddr")" "$(json_escape "$gateway")" "$likely"
+		printf '{"name":"%s","label":"%s","device":"%s","up":%s,"ip":"%s","gateway":"%s","likely_starlink":%s,"is_active_route":%s}' \
+			"$(json_escape "$network_section")" "$(json_escape "$label")" "$(json_escape "$device")" "$(bool "$up")" "$(json_escape "$ipaddr")" "$(json_escape "$gateway")" "$likely" "$([ "$network_section" = "$active_wan" ] && printf true || printf false)"
 	done
 	printf ']}\n'
 }
@@ -1907,6 +1996,220 @@ apply_guest_tc_limit() {
 	fi
 	echo "guest-limit-applied dev=$dev download=${download}kbit upload=${upload}kbit"
 }
+device_limits_json() {
+	[ -f /etc/config/equipe_devices ] || { printf '{}\n'; return 0; }
+	first=1
+	printf '{'
+	for sec in $(uci -q show equipe_devices 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1); do
+		enabled="$(uci -q get "equipe_devices.$sec.limit_enabled" || printf 0)"
+		down="$(uci -q get "equipe_devices.$sec.limit_down" || printf 0)"
+		up="$(uci -q get "equipe_devices.$sec.limit_up" || printf 0)"
+		dev_mac="$(uci -q get "equipe_devices.$sec.mac" | tr 'a-f' 'A-F')"
+		[ -n "$dev_mac" ] || continue
+		[ "$first" = 1 ] || printf ','
+		first=0
+		printf '"%s":{"enabled":%s,"down":%d,"up":%d}' "$dev_mac" "$( [ "$enabled" = 1 ] && printf true || printf false )" "$down" "$up"
+	done
+	printf '}\n'
+}
+apply_device_bandwidth_limits() {
+	[ -f /etc/config/equipe_devices ] || return 0
+	nft_file="/etc/nftables.d/ark_device_limits.nft"
+	tmp_nft="/tmp/ark_device_limits.nft.$$"
+	has_rules=0
+
+	printf 'table inet ark_device_limits {\n\tchain forward_limits {\n\t\ttype filter hook forward priority filter - 5; policy accept;\n' > "$tmp_nft"
+
+	for sec in $(uci -q show equipe_devices 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1); do
+		enabled="$(uci -q get "equipe_devices.$sec.limit_enabled" || printf 0)"
+		[ "$enabled" = 1 ] || continue
+		down_mbps="$(uci -q get "equipe_devices.$sec.limit_down" || printf 0)"
+		up_mbps="$(uci -q get "equipe_devices.$sec.limit_up" || printf 0)"
+		[ "$down_mbps" -gt 0 ] || [ "$up_mbps" -gt 0 ] || continue
+		dev_mac="$(uci -q get "equipe_devices.$sec.mac" | tr 'A-F' 'a-f')"
+		[ -n "$dev_mac" ] || continue
+
+		dev_ip=""
+		for hsec in $(uci -q show dhcp 2>/dev/null | grep '=host$' | cut -d. -f2 | cut -d= -f1); do
+			if [ "$(uci -q get "dhcp.$hsec.mac" | tr 'A-F' 'a-f')" = "$dev_mac" ]; then
+				dev_ip="$(uci -q get "dhcp.$hsec.ip")"
+				break
+			fi
+		done
+		if [ -z "$dev_ip" ] && [ -f /tmp/dhcp.leases ]; then
+			dev_ip="$(awk -v m="$dev_mac" '$2==m {print $3; exit}' /tmp/dhcp.leases)"
+		fi
+		if [ -z "$dev_ip" ]; then
+			dev_ip="$(ip neigh show 2>/dev/null | awk -v m="$dev_mac" '$5==m {print $1; exit}')"
+		fi
+
+		if [ -n "$dev_ip" ]; then
+			if [ "$down_mbps" -gt 0 ]; then
+				down_kbps=$((down_mbps * 125))
+				printf '\t\tip daddr %s limit rate over %d kbytes/second drop\n' "$dev_ip" "$down_kbps" >> "$tmp_nft"
+				has_rules=1
+			fi
+			if [ "$up_mbps" -gt 0 ]; then
+				up_kbps=$((up_mbps * 125))
+				printf '\t\tip saddr %s limit rate over %d kbytes/second drop\n' "$dev_ip" "$up_kbps" >> "$tmp_nft"
+				has_rules=1
+			fi
+		else
+			if [ "$up_mbps" -gt 0 ]; then
+				up_kbps=$((up_mbps * 125))
+				printf '\t\tether saddr %s limit rate over %d kbytes/second drop\n' "$dev_mac" "$up_kbps" >> "$tmp_nft"
+				has_rules=1
+			fi
+		fi
+	done
+
+	printf '\t}\n}\n' >> "$tmp_nft"
+
+	if [ "$has_rules" = 1 ]; then
+		mkdir -p /etc/nftables.d
+		mv -f "$tmp_nft" "$nft_file"
+		nft -f "$nft_file" 2>/dev/null || true
+		uci -q set firewall.ark_limits=include
+		uci -q set firewall.ark_limits.type=nftables
+		uci -q set "firewall.ark_limits.path=$nft_file"
+		uci commit firewall
+	else
+		rm -f "$tmp_nft" "$nft_file" 2>/dev/null || true
+		nft delete table inet ark_device_limits 2>/dev/null || true
+		uci -q delete firewall.ark_limits 2>/dev/null || true
+		uci commit firewall
+	fi
+}
+
+system_perf_status_json() {
+	conntrack_recycle=false
+	if [ "$(uci -q get equipe_perf.settings.conntrack_recycle || printf 0)" = 1 ]; then
+		conntrack_recycle=true
+	elif [ -f /etc/sysctl.d/99-ark-conntrack.conf ]; then
+		conntrack_recycle=true
+	fi
+
+	ram_autopurge=false
+	if [ "$(uci -q get equipe_perf.settings.ram_autopurge || printf 0)" = 1 ]; then
+		ram_autopurge=true
+	elif [ -f /etc/sysctl.d/99-ark-memory.conf ]; then
+		ram_autopurge=true
+	fi
+
+	speedify_encryption=true
+	speedify_installed=false
+	if speedify_supported && [ -n "$(speedify_cli_path)" ]; then
+		speedify_installed=true
+		if speedify_runtime_running; then
+			enc="$(speedify_cli -s show settings 2>/dev/null | jsonfilter -e '@.encryption' 2>/dev/null || true)"
+			[ "$enc" = "false" ] && speedify_encryption=false
+		else
+			[ "$(uci -q get equipe_perf.settings.speedify_encryption || printf 1)" = 0 ] && speedify_encryption=false
+		fi
+	else
+		[ "$(uci -q get equipe_perf.settings.speedify_encryption || printf 1)" = 0 ] && speedify_encryption=false
+	fi
+
+	speedify_log_cap=false
+	[ "$(uci -q get equipe_perf.settings.speedify_log_cap || printf 0)" = 1 ] && speedify_log_cap=true
+
+	nlbwmon_lite=false
+	[ "$(uci -q get equipe_perf.settings.nlbwmon_lite || printf 0)" = 1 ] && nlbwmon_lite=true
+
+	irq_installed=false; irq_active=false
+	[ -x /etc/init.d/irqbalance ] && irq_installed=true
+	[ "$irq_installed" = true ] && /etc/init.d/irqbalance running >/dev/null 2>&1 && irq_active=true
+
+	conntrack_count="$(cat /proc/sys/net/netfilter/nf_conntrack_count 2>/dev/null || echo 0)"
+	conntrack_max="$(cat /proc/sys/net/netfilter/nf_conntrack_max 2>/dev/null || echo 0)"
+
+	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+	mem_avail_kb="$(awk '/MemAvailable:/ {print $2; exit}' /proc/meminfo 2>/dev/null || awk '/MemFree:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+
+	printf '{"conntrack_recycle":%s,"ram_autopurge":%s,"speedify_encryption":%s,"speedify_installed":%s,"speedify_log_cap":%s,"nlbwmon_lite":%s,"irqbalance_installed":%s,"irqbalance_active":%s,"conntrack_count":%s,"conntrack_max":%s,"mem_total_kb":%s,"mem_avail_kb":%s}\n' \
+		"$conntrack_recycle" "$ram_autopurge" "$speedify_encryption" "$speedify_installed" "$speedify_log_cap" "$nlbwmon_lite" "$irq_installed" "$irq_active" "$conntrack_count" "$conntrack_max" "$mem_total_kb" "$mem_avail_kb"
+}
+
+system_perf_save() {
+	conntrack_recycle="${1:-0}"
+	ram_autopurge="${2:-0}"
+	speedify_encryption="${3:-1}"
+	speedify_log_cap="${4:-0}"
+	nlbwmon_lite="${5:-0}"
+
+	case "$conntrack_recycle" in 1|true) conntrack_recycle=1 ;; *) conntrack_recycle=0 ;; esac
+	case "$ram_autopurge" in 1|true) ram_autopurge=1 ;; *) ram_autopurge=0 ;; esac
+	case "$speedify_encryption" in 0|false) speedify_encryption=0 ;; *) speedify_encryption=1 ;; esac
+	case "$speedify_log_cap" in 1|true) speedify_log_cap=1 ;; *) speedify_log_cap=0 ;; esac
+	case "$nlbwmon_lite" in 1|true) nlbwmon_lite=1 ;; *) nlbwmon_lite=0 ;; esac
+
+	mkdir -p /etc/config
+	[ -f /etc/config/equipe_perf ] || touch /etc/config/equipe_perf
+	uci -q set equipe_perf.settings=performance
+	uci -q set "equipe_perf.settings.conntrack_recycle=$conntrack_recycle"
+	uci -q set "equipe_perf.settings.ram_autopurge=$ram_autopurge"
+	uci -q set "equipe_perf.settings.speedify_encryption=$speedify_encryption"
+	uci -q set "equipe_perf.settings.speedify_log_cap=$speedify_log_cap"
+	uci -q set "equipe_perf.settings.nlbwmon_lite=$nlbwmon_lite"
+	uci commit equipe_perf
+
+	mkdir -p /etc/sysctl.d
+	if [ "$conntrack_recycle" = 1 ]; then
+		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_established=1800 2>/dev/null || true
+		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_close_wait=30 2>/dev/null || true
+		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_fin_wait=30 2>/dev/null || true
+		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_time_wait=30 2>/dev/null || true
+		printf 'net.netfilter.nf_conntrack_tcp_timeout_established=1800\nnet.netfilter.nf_conntrack_tcp_timeout_close_wait=30\nnet.netfilter.nf_conntrack_tcp_timeout_fin_wait=30\nnet.netfilter.nf_conntrack_tcp_timeout_time_wait=30\n' > /etc/sysctl.d/99-ark-conntrack.conf
+	else
+		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_established=432000 2>/dev/null || true
+		rm -f /etc/sysctl.d/99-ark-conntrack.conf 2>/dev/null || true
+	fi
+
+	if [ "$ram_autopurge" = 1 ]; then
+		sysctl -w vm.vfs_cache_pressure=150 2>/dev/null || true
+		sysctl -w vm.min_free_kbytes=8192 2>/dev/null || true
+		printf 'vm.vfs_cache_pressure=150\nvm.min_free_kbytes=8192\n' > /etc/sysctl.d/99-ark-memory.conf
+	else
+		sysctl -w vm.vfs_cache_pressure=100 2>/dev/null || true
+		rm -f /etc/sysctl.d/99-ark-memory.conf 2>/dev/null || true
+	fi
+
+	if command -v speedify_cli >/dev/null 2>&1; then
+		if [ "$speedify_encryption" = 0 ]; then
+			speedify_cli encryption off >/dev/null 2>&1 || true
+		else
+			speedify_cli encryption on >/dev/null 2>&1 || true
+		fi
+	fi
+
+	if [ "$speedify_log_cap" = 1 ]; then
+		for logf in /tmp/speedify*.log /var/log/speedify*.log /usr/share/speedify/logs/*.log; do
+			[ -f "$logf" ] && [ "$(stat -c%s "$logf" 2>/dev/null || echo 0)" -gt 2097152 ] && : > "$logf"
+		done
+	fi
+
+	if [ -f /etc/config/nlbwmon ]; then
+		if [ "$nlbwmon_lite" = 1 ]; then
+			uci -q set nlbwmon.@nlbwmon[0].compress_interval=1h
+			uci -q set nlbwmon.@nlbwmon[0].database_limit=2000
+		else
+			uci -q delete nlbwmon.@nlbwmon[0].database_limit
+		fi
+		uci commit nlbwmon
+		/etc/init.d/nlbwmon restart >/dev/null 2>&1 || true
+	fi
+
+	echo ok
+}
+
+system_memory_purge() {
+	sync
+	echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
+	rm -f /tmp/speedify*.log.1 /tmp/*.tmp /tmp/ark-router-*.log 2>/dev/null || true
+	free_kb="$(awk '/MemAvailable:/ {print $2; exit}' /proc/meminfo 2>/dev/null || awk '/MemFree:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+	printf '{"ok":true,"mem_available_kb":%s}\n' "$free_kb"
+}
+
 lan_bridge_section() {
 	uci -q show network | awk -F= '/\.name=.br-lan./ { key=$1; sub(/^network\./, "", key); sub(/\.name$/, "", key); print key; exit }'
 }
@@ -1956,13 +2259,7 @@ apply_wan_proto() {
 	uci -q set "network.$iface.ipv6=0"
 }
 bind_uhttpd_to_lan_ip() {
-	lan_ip="$1"
-	valid_ipv4 "$lan_ip" || return 2
-	uci -q delete uhttpd.main.listen_http
-	uci -q delete uhttpd.main.listen_https
-	uci -q add_list "uhttpd.main.listen_http=$lan_ip:80"
-	uci -q add_list "uhttpd.main.listen_https=$lan_ip:443"
-	uci commit uhttpd
+	configure_uhttpd_listeners
 	return 0
 }
 can_install_speedtest_flash() {
@@ -2061,7 +2358,7 @@ feature_json() {
 	if [ "$key" = tailscale ]; then
 		installed_ts=false; command -v tailscale >/dev/null 2>&1 && installed_ts=true
 		active_ts=false; logged_ts=false; backend=''; ip=''; hostname=''
-		if $installed_ts; then
+		if $installed_ts && pidof tailscaled >/dev/null 2>&1; then
 			status="$(tailscale status --json 2>/dev/null || true)"
 			backend="$(printf '%s' "$status" | jsonfilter -e '@.BackendState' 2>/dev/null || true)"
 			ip="$(printf '%s' "$status" | jsonfilter -e '@.Self.TailscaleIPs[0]' 2>/dev/null || true)"
@@ -2077,9 +2374,12 @@ feature_json() {
 	fi
 	if [ "$key" = zerotier ]; then
 		hidden "$key"; concealed=$?
-		state="$(zerotier_status_json 2>/dev/null || printf '{}')"
-		installed_zt=false; command -v zerotier-cli >/dev/null 2>&1 && installed_zt=true
+		installed_zt=false; [ -x /usr/sbin/zerotier-one ] || command -v zerotier-cli >/dev/null 2>&1 && installed_zt=true
 		active_zt=false; pidof zerotier-one >/dev/null 2>&1 && active_zt=true
+		state='{}'
+		if $active_zt; then
+			state="$(zerotier_status_json 2>/dev/null || printf '{}')"
+		fi
 		node="$(printf '%s' "$state" | jsonfilter -e '@.node_id' 2>/dev/null || true)"
 		netid="$(printf '%s' "$state" | jsonfilter -e '@.network_id' 2>/dev/null || true)"
 		nstatus="$(printf '%s' "$state" | jsonfilter -e '@.network_status' 2>/dev/null || true)"
@@ -2409,7 +2709,7 @@ case "$action" in
 		bypass='{}'; speedify_runtime_running && command -v speedify_cli >/dev/null 2>&1 && bypass="$(speedify_cli -s show streamingbypass 2>/dev/null || printf '{}')"
 		printf ',"speedify_bypass":%s' "$bypass"
 		starlink_public=false; [ "$(uci -q get equipe_dashboard.starlink.public_view || printf 0)" = 1 ] && starlink_public=true
-		printf ',"starlink_public":{"enabled":%s,"url":"/starlink/","read_only":true}' "$starlink_public"
+		printf ',"starlink_public":{"enabled":%s,"url":"/starlink/","read_only":true,"active_wan":"%s"}' "$starlink_public" "$(starlink_active_wan_get)"
 		current_version="$(ark_current_version)"
 		update_repo="$(ark_update_repo)"
 		printf '},"https":{"available":%s,"redirect":%s,"certificate":"local","ca_available":%s,"ca_fingerprint":"%s","ca_download":"/ark-router/ark-router-ca.crt"},"update":{"current":"%s","repo":"%s","manager":"%s"}}\n' "$https_available" "$(bool "$https_redirect")" "$ca_available" "$ca_fingerprint" "$(json_escape "$current_version")" "$(json_escape "$update_repo")" "$(json_escape "$manager")"
@@ -3060,6 +3360,12 @@ case "$action" in
 	starlink-public-list)
 		starlink_public_list_json
 		;;
+	starlink-active-wan-get)
+		starlink_active_wan_get
+		;;
+	starlink-active-wan-set)
+		starlink_active_wan_set "$2"
+		;;
 	starlink-public-toggle)
 		case "$2" in 0|1) ;; *) echo 'Estado da visualização Starlink inválido' >&2; exit 2 ;; esac
 		uci -q set equipe_dashboard.starlink=starlink
@@ -3126,6 +3432,14 @@ case "$action" in
 	zerotier-status)
 		zerotier_status_json
 		;;
+	zerotier-prepare-firewall)
+		zerotier_firewall_prepare
+		echo ok
+		;;
+	zerotier-configure-access)
+		zerotier_configure_access
+		echo ok
+		;;
 	zerotier-join)
 		zerotier_join_network "$2"
 		;;
@@ -3157,18 +3471,46 @@ case "$action" in
 		dscp="$(uci -q get "firewall.ark_priority_$suffix.set_dscp")"
 		[ -n "$dscp" ] || dscp="AF41"
 		[ "$(uci -q get "firewall.ark_priority_$suffix.enabled")" = 1 ] && priority=true
-		wan_route="$(uci -q get "equipe_devices.device_$(printf '%s' "$mac" | tr -d ':').wan_route" || printf 'default')"
-		[ -n "$wan_route" ] || wan_route="default"
-		printf '{"reserved":%s,"ip":"%s","priority":%s,"dscp":"%s","wan_route":"%s","operation_profile":"%s","qos_active":%s}\n' \
-			"$reserved" "$(json_escape "$ip")" "$priority" "$(json_escape "$dscp")" "$(json_escape "$wan_route")" "$(ark_operation_profile)" "$(feature_active sqm && bool 1 || bool 0)"
+		wan_route="default"; limit_enabled=false; limit_down=0; limit_up=0
+		if [ -f /etc/config/equipe_devices ]; then
+			name_section="device_$(printf '%s' "$mac" | tr -d ':')"
+			saved_wan="$(uci -q get "equipe_devices.$name_section.wan_route" || true)"
+			[ -n "$saved_wan" ] && wan_route="$saved_wan"
+			saved_lim="$(uci -q get "equipe_devices.$name_section.limit_enabled" || printf 0)"
+			[ "$saved_lim" = 1 ] && limit_enabled=true
+			limit_down="$(uci -q get "equipe_devices.$name_section.limit_down" || printf 0)"
+			limit_up="$(uci -q get "equipe_devices.$name_section.limit_up" || printf 0)"
+		fi
+		printf '{"reserved":%s,"ip":"%s","priority":%s,"dscp":"%s","wan_route":"%s","limit_enabled":%s,"limit_down":%d,"limit_up":%d,"operation_profile":"%s","qos_active":%s}\n' \
+			"$reserved" "$(json_escape "$ip")" "$priority" "$(json_escape "$dscp")" "$(json_escape "$wan_route")" "$limit_enabled" "$limit_down" "$limit_up" "$(ark_operation_profile)" "$(feature_active sqm && bool 1 || bool 0)"
+		;;
+	device-limits-list)
+		device_limits_json
+		;;
+	device-limits-apply)
+		apply_device_bandwidth_limits
+		echo ok
+		;;
+	system-perf-status)
+		system_perf_status_json
+		;;
+	system-perf-save)
+		shift
+		system_perf_save "$@"
+		;;
+	system-memory-purge)
+		system_memory_purge
 		;;
 	device-save)
-		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"; name="$3"; mode="$4"; ip="$5"; priority="$6"; target_dscp="$7"; wan_route="${8:-default}"
+		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"; name="$3"; mode="$4"; ip="$5"; priority="$6"; target_dscp="$7"; wan_route="${8:-default}"; limit_enabled="${9:-0}"; limit_down="${10:-0}"; limit_up="${11:-0}"
 		valid_mac "$mac" || { echo 'MAC invalido' >&2; exit 2; }
 		[ "${#name}" -le 48 ] || { echo 'Nome muito longo' >&2; exit 2; }
 		case "$mode" in automatic|reserved) ;; *) echo 'Modo de IP invalido' >&2; exit 2 ;; esac
 		case "$priority" in 0|1|keep) ;; *) echo 'Prioridade invalida' >&2; exit 2 ;; esac
 		case "$wan_route" in default|wan|wan1|wan2|wan3|wan4|wan[0-9]*) ;; *) wan_route='default' ;; esac
+		case "$limit_enabled" in 1|true) limit_enabled=1 ;; *) limit_enabled=0 ;; esac
+		case "$limit_down" in ''|*[!0-9]*) limit_down=0 ;; esac
+		case "$limit_up" in ''|*[!0-9]*) limit_up=0 ;; esac
 		if [ "$mode" = reserved ]; then
 			valid_ipv4 "$ip" && same_managed_subnet "$ip" || { echo 'Use um IPv4 valido de uma rede local, diferente do endereco do roteador' >&2; exit 2; }
 			duplicate="$(uci -q show dhcp 2>/dev/null | grep -F ".ip='$ip'" | head -n1)"
@@ -3232,8 +3574,18 @@ case "$action" in
 				mwan3_changed=1
 			fi
 		fi
+		if [ "$limit_enabled" = 1 ] && { [ "$limit_down" -gt 0 ] || [ "$limit_up" -gt 0 ]; }; then
+			uci -q set "equipe_devices.$name_section.limit_enabled=1"
+			uci -q set "equipe_devices.$name_section.limit_down=$limit_down"
+			uci -q set "equipe_devices.$name_section.limit_up=$limit_up"
+		else
+			uci -q delete "equipe_devices.$name_section.limit_enabled" 2>/dev/null || true
+			uci -q delete "equipe_devices.$name_section.limit_down" 2>/dev/null || true
+			uci -q delete "equipe_devices.$name_section.limit_up" 2>/dev/null || true
+		fi
 		uci commit equipe_devices; uci commit dhcp; uci commit firewall
 		[ "$mwan3_changed" = 1 ] && uci commit mwan3 2>/dev/null || true
+		apply_device_bandwidth_limits
 		/etc/init.d/dnsmasq reload >/dev/null 2>&1
 		/etc/init.d/firewall restart >/dev/null 2>&1
 		[ "$mwan3_changed" = 1 ] && (sleep 1; /etc/init.d/mwan3 restart >/dev/null 2>&1) &

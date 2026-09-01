@@ -7,7 +7,7 @@
 
 document.querySelector('head').appendChild(E('link', {
 	'rel': 'stylesheet', 'type': 'text/css',
-	'href': L.resource('view/equipe-dashboard/overview.css')
+	'href': L.resource('view/equipe-dashboard/overview.css') + '?v=' + Date.now()
 }));
 
 const callSystemBoard = rpc.declare({ object: 'system', method: 'board' });
@@ -266,6 +266,21 @@ function friendlyMap(config) {
 	Object.keys(values(config)).forEach(function(k) { const x = values(config)[k]; if (x.mac && x.name) out[x.mac.toUpperCase()] = x.name; });
 	return out;
 }
+function deviceLimitsMap(config) {
+	const out = {};
+	const v = values(config);
+	Object.keys(v).forEach(function(k) {
+		const x = v[k];
+		if (x && x.mac) {
+			const mac = String(x.mac).toUpperCase();
+			const enabled = String(x.limit_enabled) === '1';
+			const down = Number(x.limit_down) || 0;
+			const up = Number(x.limit_up) || 0;
+			out[mac] = { enabled: enabled, down: down, up: up };
+		}
+	});
+	return out;
+}
 function wifiConfig(config) {
 	const v = values(config);
 	const bandOfSection=function(section){const radio=v[section.device]||{}, band=String(radio.band||'').toLowerCase(), ht=String(radio.htmode||'').toLowerCase(), hw=String(radio.hwmode||'').toLowerCase();if(band.indexOf('2')===0||hw==='11g')return '2g';if(band.indexOf('5')===0||hw==='11a'||ht.indexOf('80')>=0||ht.indexOf('160')>=0)return '5g';return '';};
@@ -438,15 +453,22 @@ return view.extend({
 		title=String(title||'ARK Router');document.title=title+' · OpenWrt';
 		window.setTimeout(function(){const link=document.querySelector('a[href$="/admin/equipe-dashboard"],a[href$="/admin/equipe-dashboard/"]');if(!link)return;for(let i=0;i<link.childNodes.length;i++){const node=link.childNodes[i];if(node.nodeType!==Node.TEXT_NODE||!node.nodeValue.trim())continue;const leading=(node.nodeValue.match(/^\s*/)||[''])[0],icon=(node.nodeValue.match(/[\uE000-\uF8FF]/)||[])[0]||'';node.nodeValue=leading+(icon?icon+' ':'')+title;break;}},0);
 	},
-	load: function() { return Promise.all([ safe(callSystemBoard(), {}), safe(callCountryList('phy0-ap0'), {results:[]}), this.fetchCapabilities(), this.fetchData() ]); },
-	fetchData: function() {
+	load: function() {
+		return Promise.all([
+			safe(callSystemBoard(), {}),
+			Promise.resolve({ results: [] }),
+			this.fetchCapabilities(),
+			this.fetchData(true)
+		]);
+	},
+	fetchData: function(isInitial) {
 		return Promise.all([
 			safe(callSystemInfo(), {}), safe(callInterfaceDump(), { interface: [] }),
 			safe(callMwanStatus(), {}), safe(callDHCPLeases(), { dhcp_leases: [] }),
 			safe(callUciGet('sqm'), { values: {} }), safe(callUciGet('qos_equipe'), { values: {} }), safe(callUciGet('wireless'), { values: {} }), safe(callUciGet('mwan3'), { values: {} }), safe(callUciGet('equipe_devices'), { values: {} }), safe(callUciGet('network'), { values: {} }),
 			safe(fs.exec('/usr/sbin/equipe-dashboard-control', [ 'lan-status' ]), {}),
 			safe(fs.read('/sys/class/thermal/thermal_zone0/temp'), '0'),
-			Promise.resolve({}), Promise.resolve({}),
+			safe(fs.exec('/usr/sbin/equipe-dashboard-control', [ 'system-perf-status' ]), {}),
 			safe(fs.exec_direct('/usr/libexec/nlbwmon-action', [ 'download', '-g', 'family,mac,ip', '-o', '-rx_bytes,-tx_bytes' ], 'json'), { columns: [], data: [] }),
 			safe(fs.read('/tmp/equipe-traffic-history.csv'), ''),
 			safe(callWirelessStatus(), {}),
@@ -464,7 +486,7 @@ return view.extend({
 				const physicalDev=cfg.device||live.device||logicalDev;
 				wanPromises.push(safe(callDeviceStatus(logicalDev),{}).then(function(s){wanDevicesMap[w.iface]=s;}));
 				wanPromises.push(safe(callDeviceStatus(physicalDev),{}).then(function(s){wanPhysicalDevicesMap[w.iface]=s;}));
-				if(live.up && logicalDev){
+				if(!isInitial && live.up && logicalDev){
 					const ip = (live['ipv4-address'] && live['ipv4-address'][0] && live['ipv4-address'][0].address) || '';
 					const bindTarget = ip || logicalDev;
 					wanPromises.push(safe(fs.exec('/bin/ping',['-c','1','-W','1','-I',bindTarget,'1.1.1.1']),{}).then(function(p){wanPingsMap[w.iface]=p;}));
@@ -474,15 +496,17 @@ return view.extend({
 				Promise.all(wanPromises),
 				Promise.all(topology.mainIfnames.map(function(n){ return safe(callAssocList(n), { results: [] }); })),
 				Promise.all(topology.guestIfnames.map(function(n){ return safe(callAssocList(n), { results: [] }); })),
-				safe(callSurvey(topology.survey2), { results: [] }),
-				safe(callSurvey(topology.survey5), { results: [] }),
+				isInitial ? Promise.resolve({ results: [] }) : safe(callSurvey(topology.survey2), { results: [] }),
+				isInitial ? Promise.resolve({ results: [] }) : safe(callSurvey(topology.survey5), { results: [] }),
 				Promise.all(lanPorts.map(function(port){ return safe(callDeviceStatus(port), {}); }))
 			]).then(function(x) { return {
 				system:r[0], interfaces:interfaces, wanDevice:wanDevicesMap.wan||{}, wan2Device:wanDevicesMap.wan2||{}, wanPhysicalDevice:wanPhysicalDevicesMap.wan||{}, wan2PhysicalDevice:wanPhysicalDevicesMap.wan2||{},
 				wanDevicesMap:wanDevicesMap, wanPhysicalDevicesMap:wanPhysicalDevicesMap, wanPingsMap:wanPingsMap,
 				mwan:r[2], leases:r[3], mainAssoc:x[1], guestAssoc:x[2],
-				survey2:x[3], survey5:x[4], sqm:r[4], qos:r[5], wireless:r[6], mwanConfig:r[7], names:r[8], networkConfig:r[9], lanStatus:r[10], temperature:r[11], pingWan:wanPingsMap.wan||null, pingWan2:wanPingsMap.wan2||null, traffic:r[14], history:r[15], wirelessStatus:r[16], wifiTopology:topology, lanPorts:lanPorts, lanDevices:x[5]||[],
-				dhcpConfig: r[17], firewallConfig: r[18], wanDaily: r[19],
+				survey2:x[3], survey5:x[4], sqm:r[4], qos:r[5], wireless:r[6], mwanConfig:r[7], names:r[8], networkConfig:r[9], lanStatus:r[10], temperature:r[11], pingWan:wanPingsMap.wan||null, pingWan2:wanPingsMap.wan2||null,
+				perfStatus: (function(){ try { return JSON.parse((r[12] && r[12].stdout) || '{}'); } catch(e){ return {}; } })(),
+				traffic:r[13], history:r[14], wirelessStatus:r[15], wifiTopology:topology, lanPorts:lanPorts, lanDevices:x[5]||[],
+				dhcpConfig: r[16], firewallConfig: r[17], wanDaily: r[18],
 				timestamp:Date.now()
 			}; });
 		});
@@ -661,6 +685,8 @@ return view.extend({
 			}
 		});
 
+		const limitsMap = deviceLimitsMap(data.names);
+
 		const networkLabel=function(mac,ip,hasLease){
 			if(guest[mac])return guestName+' / Wi-Fi';
 			if(main[mac])return mainName+' / Wi-Fi';
@@ -677,6 +703,7 @@ return view.extend({
 		devices.forEach(L.bind(function(d) {
 			const reservedIp = reservedMap[d.mac];
 			const prioDscp = priorityMap[d.mac];
+			const lim = limitsMap[d.mac];
 			const badges = [];
 			if (reservedIp) {
 				badges.push(E('span', { class: 'ex-device-badge badge-reserved', title: 'IP Fixo Reservado no DHCP: ' + reservedIp }, [ '🔒 IP Fixo' ]));
@@ -685,6 +712,12 @@ return view.extend({
 				badges.push(E('span', { class: 'ex-device-badge badge-gamer', title: 'Fila Gamer / Prioridade Máxima (EF)' }, [ '🎮 Gamer' ]));
 			} else if (prioDscp === 'AF41') {
 				badges.push(E('span', { class: 'ex-device-badge badge-video', title: 'Fila de Vídeo / Multimídia (AF41)' }, [ '📺 Vídeo' ]));
+			}
+			if (lim && lim.enabled && (lim.down > 0 || lim.up > 0)) {
+				const downStr = lim.down > 0 ? lim.down + 'M↓' : '';
+				const upStr = lim.up > 0 ? lim.up + 'M↑' : '';
+				const limText = [downStr, upStr].filter(Boolean).join(' / ');
+				badges.push(E('span', { class: 'ex-device-badge badge-limited', title: 'Limite de Banda Ativo: ' + limText }, [ '🛑 ' + limText ]));
 			}
 
 			const nameRow = E('div', { class: 'ex-device-name-row' }, [
@@ -697,8 +730,10 @@ return view.extend({
 				E('td',{},[nameRow, E('small',{class:'ex-device-meta'},[metaText])]),
 				E('td',{'class':'ex-hide-mobile'},[d.network+(d.signal!=null?' • '+d.signal+' dBm':'')]),
 				E('td',{'class':'ex-rate-cell'},[E('span',{class:'down'},['↓ '+formatRate(d.rate.rx)]),E('span',{class:'up'},['↑ '+formatRate(d.rate.tx)])]),
-				E('td',{'class':'ex-rate-cell ex-total-cell'},[E('span',{class:'down'},['↓ '+formatBytes(d.rate.totalRx||0)]),E('span',{class:'up'},['↑ '+formatBytes(d.rate.totalTx||0)])]),
-				E('td',{'class':'ex-device-action'},[E('button',{'class':'ex-mini-button','click':L.bind(this.configureDevice,this,d)},['Configurar'])])
+				E('td',{'class':'ex-device-action'},[E('button',{'class':'ex-mini-button','title':'Configurar dispositivo','click':L.bind(this.configureDevice,this,d)},[
+					E('span',{'class':'ex-hide-mobile'},['Configurar']),
+					E('span',{'class':'ex-show-mobile'},['⚙️'])
+				])])
 			]);
 			body.appendChild(tr);
 		},this));
@@ -971,6 +1006,117 @@ return view.extend({
 				wanDescBox
 			]));
 
+			let limitEnabled = !!state.limit_enabled;
+			let limitDown = Number(state.limit_down) || 0;
+			let limitUp = Number(state.limit_up) || 0;
+
+			const downInput = E('input', {
+				type: 'number',
+				min: '0',
+				max: '1000',
+				step: '1',
+				value: limitDown ? String(limitDown) : '',
+				placeholder: '0 = Ilimitado',
+				class: 'cbi-input-text',
+				style: 'width: 100%; box-sizing: border-box;'
+			});
+
+			const upInput = E('input', {
+				type: 'number',
+				min: '0',
+				max: '1000',
+				step: '1',
+				value: limitUp ? String(limitUp) : '',
+				placeholder: '0 = Ilimitado',
+				class: 'cbi-input-text',
+				style: 'width: 100%; box-sizing: border-box;'
+			});
+
+			const limitToggle = E('input', {
+				type: 'checkbox',
+				checked: limitEnabled,
+				style: 'width: 20px; height: 20px; cursor: pointer;'
+			});
+
+			const limitPresets = [
+				{ label: '♾️ Ilimitado', down: 0, up: 0 },
+				{ label: '📱 10M / 2M', down: 10, up: 2 },
+				{ label: '📺 25M / 5M', down: 25, up: 5 },
+				{ label: '🚀 50M / 10M', down: 50, up: 10 },
+				{ label: '⚡ 100M / 20M', down: 100, up: 20 }
+			];
+
+			const limitFieldsRow = E('div', {
+				class: 'ex-grid ex-grid-2',
+				style: 'margin-top: 10px; gap: 10px; display: ' + (limitEnabled ? 'grid' : 'none') + ';'
+			}, [
+				E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600;' }, [
+					E('span', {}, ['↓ Limite Download (Mbps):']),
+					downInput
+				]),
+				E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600;' }, [
+					E('span', {}, ['↑ Limite Upload (Mbps):']),
+					upInput
+				])
+			]);
+
+			const presetBtnList = [];
+			const updatePresetActive = function() {
+				const curDown = Number(downInput.value) || 0;
+				const curUp = Number(upInput.value) || 0;
+				const isOff = !limitToggle.checked || (curDown === 0 && curUp === 0);
+				presetBtnList.forEach(function(p) {
+					if (p.preset.down === 0 && p.preset.up === 0) {
+						p.btn.classList.toggle('active', isOff);
+					} else {
+						p.btn.classList.toggle('active', !isOff && p.preset.down === curDown && p.preset.up === curUp);
+					}
+				});
+				limitFieldsRow.style.display = limitToggle.checked ? 'grid' : 'none';
+			};
+
+			const limitPresetGrid = E('div', { class: 'ex-priority-button-grid', style: 'margin-top: 8px;' });
+			limitPresets.forEach(function(preset) {
+				const b = E('button', {
+					type: 'button',
+					class: 'ex-priority-option-btn',
+					click: function() {
+						if (preset.down === 0 && preset.up === 0) {
+							limitToggle.checked = false;
+							downInput.value = '';
+							upInput.value = '';
+						} else {
+							limitToggle.checked = true;
+							downInput.value = preset.down;
+							upInput.value = preset.up;
+						}
+						updatePresetActive();
+					}
+				}, [ preset.label ]);
+				presetBtnList.push({ preset: preset, btn: b });
+				limitPresetGrid.appendChild(b);
+			});
+
+			limitToggle.addEventListener('change', updatePresetActive);
+			downInput.addEventListener('input', updatePresetActive);
+			upInput.addEventListener('input', updatePresetActive);
+			updatePresetActive();
+
+			sections.push(E('div', { class: 'ex-device-config-block' }, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between;' }, [
+					E('div', {}, [
+						E('strong', {}, ['Limite de Banda Individual']),
+						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Restrinja a velocidade máxima de download e upload deste aparelho:'])
+					]),
+					E('label', { class: 'ex-switch' }, [
+						limitToggle,
+						E('span', { class: 'ex-switch-slider' })
+					])
+				]),
+				limitPresetGrid,
+				limitFieldsRow
+			]));
+
 			sections.push(E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
 				const btn = ev.currentTarget;
 				btn.disabled = true;
@@ -978,7 +1124,10 @@ return view.extend({
 				const prioEnabled = (selectedPriority !== 'none') ? '1' : '0';
 				const dscpVal = (selectedPriority === 'video') ? 'AF41' : 'EF';
 				const finalIp = isReserved ? ipInput.value.trim() : (device.ip || state.ip || '');
-				const args=['device-save',device.mac,name.value.trim(),isReserved?'reserved':'automatic',finalIp,prioEnabled,dscpVal,selectedWanRoute];
+				const limEnabled = limitToggle.checked ? '1' : '0';
+				const limDown = limitToggle.checked ? (Number(downInput.value) || 0) : 0;
+				const limUp = limitToggle.checked ? (Number(upInput.value) || 0) : 0;
+				const args=['device-save',device.mac,name.value.trim(),isReserved?'reserved':'automatic',finalIp,prioEnabled,dscpVal,selectedWanRoute,limEnabled,String(limDown),String(limUp)];
 				return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar');ui.hideModal();ui.addNotification(null,E('p',{},['Configurações do dispositivo salvas.']));return this.fetchData().then(L.bind(this.update,this));},this)).catch(function(e){btn.disabled = false; btn.textContent = 'Salvar configurações'; if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});
 			},this)},['Salvar configurações'])]));
 			ui.showModal('Configurar dispositivo',sections);name.focus();
@@ -1905,7 +2054,27 @@ return view.extend({
 	changeCountry: function() {
 		const current=String((wifiConfig(this.currentData.wireless).r0.country)||'00').toUpperCase();
 		const select=E('select',{class:'cbi-input-select',style:'width:100%'});
-		this.countries.slice().sort(function(a,b){return String(a.country).localeCompare(String(b.country));}).forEach(function(item){const code=String(item.code||item.iso3166).toUpperCase();select.appendChild(E('option',{value:code},[(item.country||code)+' ('+code+')']));}); select.value=current;
+		const populate = function(list) {
+			select.innerHTML = '';
+			const seen = {};
+			list.slice().sort(function(a,b){return String(a.country||a.code).localeCompare(String(b.country||b.code));}).forEach(function(item){
+				const code=String(item.code||item.iso3166||'').toUpperCase();
+				if(!code || seen[code]) return;
+				seen[code] = 1;
+				select.appendChild(E('option',{value:code},[(item.country||code)+' ('+code+')']));
+			});
+			select.value=current;
+		};
+		const preferred = [['BR','Brasil'],['US','Estados Unidos'],['PT','Portugal'],['AR','Argentina'],['CL','Chile'],['UY','Uruguai'],['PY','Paraguai'],['MX','México'],['CA','Canadá'],['GB','Reino Unido'],['DE','Alemanha'],['ES','Espanha'],['FR','França'],['IT','Itália'],['JP','Japão'],['AU','Austrália'],['00','Mundo / driver padrão']].map(function(p){ return {code:p[0], country:p[1]}; });
+		populate(this.countries && this.countries.length ? this.countries : preferred);
+		if(!this.countries || !this.countries.length) {
+			safe(callCountryList('phy0-ap0'), {results:[]}).then(L.bind(function(res){
+				if(res && res.results && res.results.length) {
+					this.countries = res.results;
+					populate(res.results);
+				}
+			}, this));
+		}
 		ui.showModal('País e domínio regulatório',[
 			E('p',{},['Escolha o país onde o roteador está sendo utilizado. Isso controla legalmente canais e potências disponíveis.']),select,
 			E('p',{class:'alert-message warning'},['Ao alterar o país, as duas bandas voltarão ao modo automático e o Wi‑Fi será reiniciado. Selecione somente o país onde o equipamento está fisicamente instalado.']),
@@ -2419,15 +2588,48 @@ return view.extend({
 		let starlinkWans=wanCandidates.filter(function(w){if(w.likely)return true;return starlinkAdapters.some(function(a){const haystack=[a.adapterID,a.name,a.description,a.connectedNetworkName].join(' ').toLowerCase();return haystack.indexOf(w.name.toLowerCase())>=0||(w.device&&haystack.indexOf(w.device.toLowerCase())>=0);});});
 		if(!starlinkWans.length&&starlinkAdapters.length)starlinkWans=wanCandidates.slice(0,Math.max(1,starlinkAdapters.length));
 		const starlinkDetected=starlinkWans.length>0,starlinkProblem=starlinkAdapters.length>0&&!starlinkAdapters.some(function(a){return !a.offline&&String(a.state||'').toLowerCase()==='connected';});this.starlinkWanOrder=starlinkWans.map(function(w){return w.name;});
-		const starlinkPublic=(this.capabilities.features&&this.capabilities.features.starlink_public)||{},starlinkPublicInput=E('input',{type:'checkbox','aria-label':'Permitir visualização Starlink sem login','change':L.bind(function(ev){this.toggleStarlinkPublic(ev.currentTarget);},this)});starlinkPublicInput.checked=!!starlinkPublic.enabled;
-		const starlinkWanCards=starlinkWans.map(L.bind(function(w,index){const wanId=portDomId(w.name),saved=this.starlinkResults[w.name],resultClass=saved?(saved.aligned?'online':'offline'):'standby',resultLabel=saved?(saved.aligned?'ALINHADA':'AJUSTAR'):(w.strong?'DETECTADA':'PROVÁVEL');let panel=null;panel=E('details',{id:'ex-starlink-wan-'+wanId,class:'ex-starlink-wan','toggle':L.bind(function(){this.activateStarlinkPanel(w.name,panel);},this)},[
-			E('summary',{},[E('span',{},[E('strong',{},['Starlink '+(index+1)+' • '+w.label]),E('small',{class:'ex-muted'},['IP '+w.address+' • gateway '+w.gateway+' • interface '+(w.device||'—')])]),E('span',{id:'ex-starlink-result-'+wanId,class:'ex-pill '+resultClass},[resultLabel])]),
-			E('div',{class:'ex-starlink-wan-body'},[
-				E('div',{class:'ex-starlink-telemetry-actions'},[E('button',{class:'ex-mini-button','click':L.bind(this.readStarlinkTelemetry,this,w.name)},['Consultar esta antena']),E('button',{id:'ex-starlink-live-'+wanId,class:'ex-mini-button','click':L.bind(function(){this.starlinkTelemetryActive&&this.starlinkTelemetryWan===w.name?this.stopStarlinkAlignment():this.startStarlinkAlignment(w.name);},this)},['Ajuste ao vivo (1 s)']),E('button',{class:'ex-mini-button','click':L.bind(this.finishStarlinkAndNext,this,w.name)},['Finalizar e ir para próxima'])]),
-				E('small',{id:'ex-starlink-telemetry-'+wanId,class:'ex-muted ex-starlink-telemetry-copy'},['Leitura isolada pela '+w.label+' • não altera a rota padrão']),
-				E('div',{id:'ex-starlink-orientation-'+wanId,class:'ex-starlink-orientation'},['Os mostradores aparecerão após consultar esta antena.'])
-			])
-		]);return panel;},this));
+		const starlinkPublic = (this.capabilities.features && this.capabilities.features.starlink_public) || {}, starlinkPublicInput = E('input', { type: 'checkbox', 'aria-label': 'Permitir visualização Starlink sem login', 'change': L.bind(function(ev) { this.toggleStarlinkPublic(ev.currentTarget); }, this) }); starlinkPublicInput.checked = !!starlinkPublic.enabled;
+		const activeStarlinkWan = (starlinkPublic.active_wan) || (starlinkWans[0] && starlinkWans[0].name) || 'wan';
+		const starlinkWanCards=starlinkWans.map(L.bind(function(w,index){
+			const wanId=portDomId(w.name),saved=this.starlinkResults[w.name],resultClass=saved?(saved.aligned?'online':'offline'):'standby',resultLabel=saved?(saved.aligned?'ALINHADA':'AJUSTAR'):(w.strong?'DETECTADA':'PROVÁVEL');
+			const isActiveRoute = (w.name === activeStarlinkWan);
+			let panel=null;
+			const actions = [
+				E('button',{class:'ex-mini-button','click':L.bind(this.readStarlinkTelemetry,this,w.name)},['Consultar esta antena']),
+				E('button',{id:'ex-starlink-live-'+wanId,class:'ex-mini-button','click':L.bind(function(){this.starlinkTelemetryActive&&this.starlinkTelemetryWan===w.name?this.stopStarlinkAlignment():this.startStarlinkAlignment(w.name);},this)},['Ajuste ao vivo (1 s)']),
+				E('button',{class:'ex-mini-button','click':L.bind(this.finishStarlinkAndNext,this,w.name)},['Finalizar e ir para próxima'])
+			];
+			if (!isActiveRoute) {
+				actions.push(E('button', {
+					class: 'ex-mini-button',
+					style: 'border-color: rgba(56, 189, 248, 0.45); color: #38bdf8;',
+					click: L.bind(function() {
+						fs.exec('/usr/sbin/equipe-dashboard-control', ['starlink-active-wan-set', w.name]).then(function(r) {
+							if (r.code) throw new Error(r.stderr || 'Falha ao ativar rota');
+							reloadSoon('Rota 192.168.100.1 e App Starlink apontados para ' + w.label + '! Recarregando…', 900);
+						}).catch(function(e) {
+							ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+						});
+					}, this)
+				}, ['🎯 Definir como Antena Ativa']));
+			}
+			panel=E('details',{id:'ex-starlink-wan-'+wanId,class:'ex-starlink-wan','toggle':L.bind(function(){this.activateStarlinkPanel(w.name,panel);},this)},[
+				E('summary',{},[
+					E('span',{},[
+						E('strong',{},['Starlink '+(index+1)+' • '+w.label]),
+						isActiveRoute ? E('span', { class: 'ex-perf-badge badge-green', style: 'margin-left: 8px;' }, ['🎯 ROTA ATIVA (192.168.100.1)']) : '',
+						E('small',{class:'ex-muted'},['IP '+w.address+' • gateway '+w.gateway+' • interface '+(w.device||'—')])
+					]),
+					E('span',{id:'ex-starlink-result-'+wanId,class:'ex-pill '+resultClass},[resultLabel])
+				]),
+				E('div',{class:'ex-starlink-wan-body'},[
+					E('div',{class:'ex-starlink-telemetry-actions'}, actions),
+					E('small',{id:'ex-starlink-telemetry-'+wanId,class:'ex-muted ex-starlink-telemetry-copy'},[isActiveRoute ? ('Esta antena é a rota ativa para o App Starlink e 192.168.100.1.') : ('Leitura isolada pela '+w.label+' • clique em "Definir como Antena Ativa" para usar no App oficial.')]),
+					E('div',{id:'ex-starlink-orientation-'+wanId,class:'ex-starlink-orientation'},['Os mostradores aparecerão após consultar esta antena.'])
+				])
+			]);
+			return panel;
+		},this));
 		const starlinkPanel=E('details',{id:'ex-starlink-global-panel',class:'ex-starlink-panel '+(starlinkProblem?'problem':(starlinkDetected?'detected':'idle')),style:(starlinkDetected||starlinkPublic.enabled)?'':'display:none;'},[
 			E('summary',{},[
 				E('span',{class:'ex-starlink-summary-main'},[
@@ -2882,8 +3084,327 @@ return view.extend({
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])
 		]);
 	},
-	featureSuggestionCard: function(keys){
-		return E('section',{class:'ex-card ex-feature-suggestions'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['RECURSOS OPCIONAIS']),E('h3',{},['Amplie o painel'])]),E('button',{class:'ex-mini-button','click':L.bind(this.showFeatureCenter,this)},['Recursos'])]),E('div',{class:'ex-suggestion-list'},keys.map(L.bind(function(key){const meta=FEATURE_META[key], f=this.feature(key), fastFallback=key==='speedtest'&&f.storage&&f.storage.recommended==='fast_manual', speedtest=key==='speedtest', desc=fastFallback?'Roteador com pouca RAM: use Fast.com como medição manual leve, sem instalar binário temporário.':(speedtest?'Use Fast.com como teste manual leve ou instale o medidor automático quando houver RAM suficiente.':meta.description);return E('div',{class:'ex-suggestion-row'},[E('div',{},[E('div',{class:'ex-feature-name-row'},[E('strong',{},[fastFallback?'Fast.com / calibração manual':meta.name]),fastFallback?E('span',{class:'ex-recommended-badge'},['MODO LEVE']):(meta.recommended?E('span',{class:'ex-recommended-badge'},['RECOMENDADO']):'')]),E('small',{class:'ex-muted'},[desc])]),E('div',{},speedtest?[E('button',{class:'ex-mini-button','click':L.bind(this.openFastCom,this)},['Abrir Fast.com']),f.installable&&!fastFallback?E('button',{class:'ex-feature-link','click':L.bind(this.installFeature,this,key)},['Instalar medidor']):'',E('button',{class:'ex-feature-link','click':L.bind(this.setFeatureHidden,this,key,true)},['Não mostrar'])]:[E('button',{class:'ex-mini-button','click':L.bind(this.installFeature,this,key)},['Instalar']),E('button',{class:'ex-feature-link','click':L.bind(this.setFeatureHidden,this,key,true)},['Não mostrar'])])]);},this)))]);
+	systemPerfCard: function(data) {
+		const self = this;
+		this.perfState = Object.assign({
+			conntrack_recycle: false,
+			ram_autopurge: false,
+			speedify_encryption: true,
+			speedify_installed: false,
+			speedify_log_cap: false,
+			nlbwmon_lite: false
+		}, data.perfStatus || {});
+
+		const irqbalance = this.feature('irqbalance');
+		const conntrackCount = this.perfState.conntrack_count || 0;
+		const conntrackMax = this.perfState.conntrack_max || 16384;
+		const conntrackPercent = conntrackMax > 0 ? Math.min(100, Math.round((conntrackCount / conntrackMax) * 100)) : 0;
+
+		const countActive = function() {
+			let c = 0;
+			if (self.perfState.conntrack_recycle) c++;
+			if (self.perfState.ram_autopurge) c++;
+			if (self.perfState.speedify_installed && !self.perfState.speedify_encryption) c++;
+			if (self.perfState.speedify_log_cap) c++;
+			if (self.perfState.nlbwmon_lite) c++;
+			if (irqbalance.installed && irqbalance.active) c++;
+			return c;
+		};
+
+		const updateBadges = function() {
+			const c = countActive();
+			const badgeEl = document.getElementById('ex-perf-active-badge');
+			const subEl = document.getElementById('ex-perf-summary-sub');
+			if (badgeEl) {
+				badgeEl.textContent = c > 0 ? (c + ' ATIVAS') : 'PADRÃO';
+				badgeEl.className = 'ex-pill ' + (c > 0 ? 'online' : 'standby');
+			}
+			if (subEl) {
+				subEl.textContent = c > 0 ? (c + ' otimizaç' + (c === 1 ? 'ão ativa' : 'ões ativas') + ' • toque para configurar') : 'Controles de estabilidade e memória para eventos • toque para configurar';
+			}
+		};
+
+		const purgeRamBtn = E('button', {
+			class: 'ex-mini-button ex-perf-purge-btn',
+			type: 'button',
+			style: 'padding: 9px 16px; font-size: 0.85rem; font-weight: 750;',
+			title: 'Libera caches de memória RAM e arquivos temporários órfãos em /tmp',
+			click: function(ev) {
+				const btn = ev.currentTarget;
+				btn.disabled = true;
+				btn.textContent = 'Limpando memória…';
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['system-memory-purge']).then(function(r) {
+					ui.addNotification(null, E('p', {}, ['Memória RAM reciclada e buffers temporários limpos com sucesso!']));
+				}).catch(function(e) {
+					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+				}).finally(function() {
+					btn.disabled = false;
+					btn.textContent = '🧹 Liberar Memória RAM Agora';
+				});
+			}
+		}, ['🧹 Liberar Memória RAM Agora']);
+
+		const savePerf = function(key, val, inputEl, pillEl) {
+			self.perfState[key] = val;
+			updateBadges();
+			const args = [
+				'system-perf-save',
+				self.perfState.conntrack_recycle ? '1' : '0',
+				self.perfState.ram_autopurge ? '1' : '0',
+				self.perfState.speedify_encryption ? '1' : '0',
+				self.perfState.speedify_log_cap ? '1' : '0',
+				self.perfState.nlbwmon_lite ? '1' : '0'
+			];
+			console.log('[PERF_SAVE] Iniciando:', key, '=', val, 'args:', args);
+			return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
+				console.log('[PERF_SAVE] Resposta r:', r);
+				if (r.code) throw new Error(r.stderr || 'Falha ao salvar ajustes de desempenho');
+				ui.addNotification(null, E('p', {}, ['Ajuste de desempenho aplicado!']));
+			}).catch(function(e) {
+				console.error('[PERF_SAVE] Erro no salvamento:', e);
+				self.perfState[key] = !val;
+				if (inputEl) inputEl.checked = !val;
+				if (pillEl) {
+					pillEl.textContent = (inputEl && inputEl.checked) ? 'LIGADA' : 'DESLIGADA';
+				}
+				updateBadges();
+				ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+			});
+		};
+
+		const makePerfRow = function(icon, title, badgeText, badgeClass, desc, hwAdvice, isChecked, isEnabled, onChangeKey, isNegated) {
+			const statePill = E('strong', {
+				class: 'ex-device-switch-state',
+				style: 'margin-right: 12px;'
+			}, [isChecked ? 'LIGADA' : 'DESLIGADA']);
+
+			const toggleInput = E('input', {
+				type: 'checkbox',
+				'aria-label': title,
+				change: function(ev) {
+					const desired = !!ev.currentTarget.checked;
+					const finalVal = isNegated ? !desired : desired;
+					statePill.textContent = desired ? 'LIGADA' : 'DESLIGADA';
+					savePerf(onChangeKey, finalVal, ev.currentTarget, statePill);
+				}
+			});
+			toggleInput.checked = !!isChecked;
+			if (!isEnabled) toggleInput.disabled = true;
+
+			const switchControl = E('div', {
+				class: 'ex-device-switch-control',
+				style: isEnabled ? 'cursor: pointer; user-select: none;' : 'opacity: 0.6;',
+				click: function(ev) {
+					console.log('[PERF_CLICK] Clicou no controle:', onChangeKey, 'isEnabled:', isEnabled, 'disabled:', toggleInput.disabled);
+					ev.preventDefault();
+					ev.stopPropagation();
+					if (!isEnabled || toggleInput.disabled) return;
+					toggleInput.checked = !toggleInput.checked;
+					console.log('[PERF_CLICK] Novo valor de checked:', toggleInput.checked);
+					toggleInput.dispatchEvent(new Event('change', { bubbles: true }));
+				}
+			}, [
+				statePill,
+				E('label', { class: 'ex-switch', style: 'pointer-events: none;' }, [
+					toggleInput,
+					E('span', { class: 'ex-switch-slider' })
+				])
+			]);
+
+			return E('div', { class: 'ex-perf-item' }, [
+				E('div', { class: 'ex-perf-item-content' }, [
+					E('div', { class: 'ex-perf-item-head' }, [
+						E('span', { class: 'ex-perf-icon' }, [icon]),
+						E('strong', {}, [title]),
+						badgeText ? E('span', { class: 'ex-perf-badge ' + badgeClass }, [badgeText]) : ''
+					]),
+					E('p', { class: 'ex-perf-desc' }, [desc]),
+					hwAdvice ? E('small', { class: 'ex-perf-hw-advice' }, ['💡 ' + hwAdvice]) : ''
+				]),
+				switchControl
+			]);
+		};
+
+		const irqStatePill = E('strong', {
+			class: 'ex-device-switch-state',
+			style: 'margin-right: 12px;'
+		}, [irqbalance.active ? 'LIGADA' : 'DESLIGADA']);
+
+		const irqInput = E('input', {
+			type: 'checkbox',
+			'aria-label': 'Distribuição de Interrupções Multicore (IRQ Balance)',
+			change: function(ev) {
+				const input = ev.currentTarget;
+				const desired = !!input.checked;
+				irqStatePill.textContent = desired ? 'LIGADA' : 'DESLIGADA';
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['irqbalance-toggle', desired ? '1' : '0']).then(function(r) {
+					if (r.code) throw new Error(r.stderr || 'Falha ao alterar IRQ Balance');
+					reloadSoon(desired ? 'IRQ Balance ativado. Recarregando…' : 'IRQ Balance desativado. Recarregando…', 900);
+				}).catch(function(e) {
+					input.checked = !desired;
+					irqStatePill.textContent = !desired ? 'LIGADA' : 'DESLIGADA';
+					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+				});
+			}
+		});
+		irqInput.checked = !!irqbalance.active;
+		if (!irqbalance.installed) irqInput.disabled = true;
+
+		const irqControl = irqbalance.installed ? E('div', {
+			class: 'ex-device-switch-control',
+			style: 'cursor: pointer; user-select: none;',
+			click: function(ev) {
+				ev.preventDefault();
+				ev.stopPropagation();
+				if (!irqbalance.installed || irqInput.disabled) return;
+				irqInput.checked = !irqInput.checked;
+				irqInput.dispatchEvent(new Event('change', { bubbles: true }));
+			}
+		}, [
+			irqStatePill,
+			E('label', { class: 'ex-switch', style: 'pointer-events: none;' }, [
+				irqInput,
+				E('span', { class: 'ex-switch-slider' })
+			])
+		]) : E('button', { class: 'ex-mini-button', click: L.bind(this.installFeature, this, 'irqbalance') }, ['Instalar']);
+
+		const irqRow = E('div', { class: 'ex-perf-item' }, [
+			E('div', { class: 'ex-perf-item-content' }, [
+				E('div', { class: 'ex-perf-item-head' }, [
+					E('span', { class: 'ex-perf-icon' }, ['⚖️']),
+					E('strong', {}, ['Distribuição de Interrupções Multicore (IRQ Balance)']),
+					E('span', { class: 'ex-perf-badge badge-blue' }, ['DUAL-CORE / QUAD-CORE'])
+				]),
+				E('p', { class: 'ex-perf-desc' }, ['Equilibra o processamento dos pacotes Wi-Fi, Ethernet e placa de rede entre os núcleos da CPU.']),
+				E('small', { class: 'ex-perf-hw-advice' }, ['💡 ' + (irqbalance.installed ? 'Recomendado para processadores Dual-Core e Quad-Core (Filogic 820/830, MediaTek, x86).' : 'Instale o pacote IRQ Balance na Central de Recursos para habilitar.')])
+			]),
+			irqControl
+		]);
+
+		const conntrackStateText = conntrackCount > 0 ? (conntrackCount + ' conexões ativas no NAT • ' + conntrackPercent + '% da tabela') : 'Tabela de conexões NAT';
+
+		const rows = [
+			E('div', { class: 'ex-perf-item', style: 'background: color-mix(in srgb, #10b981 8%, rgba(127,127,127,.055)); border-color: rgba(16,185,129,.25);' }, [
+				E('div', { class: 'ex-perf-item-content' }, [
+					E('div', { class: 'ex-perf-item-head' }, [
+						E('span', { class: 'ex-perf-icon' }, ['🧹']),
+						E('strong', {}, ['Reciclagem Rápida de Memória']),
+						E('span', { class: 'ex-perf-badge badge-green' }, ['AÇÃO IMEDIATA'])
+					]),
+					E('p', { class: 'ex-perf-desc' }, ['Descarte buffers inativos do kernel e apague arquivos temporários órfãos em /tmp para recuperar memória livre instantaneamente.'])
+				]),
+				purgeRamBtn
+			]),
+			makePerfRow(
+				'🛡️',
+				'Reciclador de Conexões Conntrack (Modo Eventos)',
+				'RECOMENDADO PARA EVENTOS',
+				'badge-green',
+				'Reduz o tempo de retenção de conexões inativas de 5 dias para 30 minutos. Impede que milhares de conexões mortas de Instagram, TikTok e streaming fiquem presas na memória RAM do roteador. (' + conntrackStateText + ')',
+				'Altamente recomendado para eventos, comércio, escritórios ou redes com mais de 10 pessoas conectadas.',
+				!!this.perfState.conntrack_recycle,
+				true,
+				'conntrack_recycle',
+				false
+			),
+			makePerfRow(
+				'🧹',
+				'Auto-Purge de Memória RAM & Caches do Kernel',
+				'RECOMENDADO PARA 256MB/512MB RAM',
+				'badge-green',
+				'Ajusta o descarte contínuo de buffers (vfs_cache_pressure) e executa reciclagem de temporários em /tmp, mantendo margem segura de RAM livre.',
+				'Essencial para roteadores com 256MB ou 512MB de RAM (ex: Cudy WR3000) para evitar esgotamento em uso contínuo de várias horas.',
+				!!this.perfState.ram_autopurge,
+				true,
+				'ram_autopurge',
+				false
+			),
+			makePerfRow(
+				'🚀',
+				'Modo Turbo Speedify (Desligar Criptografia Interna)',
+				'PARA CPUS DUAL-CORE / MÁXIMA VELOCIDADE',
+				'badge-yellow',
+				'Desativa a camada extra de criptografia no Speedify. Como 99% da internet já usa HTTPS/TLS e jogos usam pacotes próprios, desligar isso corta o uso de CPU e RAM pela metade e aumenta a velocidade máxima.',
+				'Recomendado para roteadores com CPUs modestas (Dual-Core) que queiram agregar internet com menor aquecimento e menor consumo de RAM.',
+				!this.perfState.speedify_encryption,
+				true,
+				'speedify_encryption',
+				true
+			),
+			makePerfRow(
+				'🔒',
+				'Trava de Logs do Speedify (Capping 2MB)',
+				'BLINDAGEM DE MEMÓRIA',
+				'badge-blue',
+				'Limita os arquivos de log de telemetria do Speedify a 2MB com rotação automática, impedindo que horas de tráfego intenso encham a partição /tmp (RAM).',
+				'Recomendado sempre que o Speedify estiver instalado.',
+				!!this.perfState.speedify_log_cap,
+				true,
+				'speedify_log_cap',
+				false
+			),
+			makePerfRow(
+				'📊',
+				'Modo Leve do Monitor de Tráfego (nlbwmon Lite)',
+				'ECONOMIA EM EVENTOS',
+				'badge-blue',
+				'Agrupa métricas apenas por dispositivo (MAC/IP local), sem salvar o histórico detalhado de cada IP externo remoto da internet na memória.',
+				'Recomendado em eventos e redes públicas para evitar crescimento do banco de dados na RAM.',
+				!!this.perfState.nlbwmon_lite,
+				true,
+				'nlbwmon_lite',
+				false
+			),
+			irqRow
+		];
+
+		const initialActive = countActive();
+		const summarySubtitle = initialActive > 0 ? (initialActive + ' otimizaç' + (initialActive === 1 ? 'ão ativa' : 'ões ativas') + ' • toque para configurar') : 'Controles de estabilidade e memória para eventos • toque para configurar';
+
+		const bodyEl = E('div', { class: 'ex-perf-body', style: 'display: none;' }, [
+			E('div', { class: 'ex-perf-grid' }, rows)
+		]);
+
+		const expandBtn = E('button', {
+			class: 'ex-mini-button ex-perf-expand-btn',
+			type: 'button',
+			click: function(ev) {
+				ev.preventDefault();
+				ev.stopPropagation();
+				const isHidden = bodyEl.style.display === 'none';
+				bodyEl.style.display = isHidden ? 'block' : 'none';
+				expandBtn.textContent = isHidden ? 'Recolher ▴' : 'Expandir ▾';
+			}
+		}, ['Expandir ▾']);
+
+		const summaryHead = E('div', {
+			class: 'ex-perf-summary',
+			click: function(ev) {
+				const isHidden = bodyEl.style.display === 'none';
+				bodyEl.style.display = isHidden ? 'block' : 'none';
+				expandBtn.textContent = isHidden ? 'Recolher ▴' : 'Expandir ▾';
+			}
+		}, [
+			E('div', { class: 'ex-perf-summary-left' }, [
+				E('span', { class: 'ex-perf-summary-icon' }, ['⚡']),
+				E('div', {}, [
+					E('div', { class: 'ex-perf-summary-title-row' }, [
+						E('strong', {}, ['Desempenho & Blindagem de Memória']),
+						E('span', { id: 'ex-perf-active-badge', class: 'ex-pill ' + (initialActive > 0 ? 'online' : 'standby') }, [initialActive > 0 ? (initialActive + ' ATIVAS') : 'PADRÃO'])
+					]),
+					E('small', { id: 'ex-perf-summary-sub', class: 'ex-muted' }, [summarySubtitle])
+				])
+			]),
+			expandBtn
+		]);
+
+		return E('section', {
+			class: 'ex-card ex-qos-card ex-perf-opt-card',
+			style: 'margin: 16px 0;'
+		}, [
+			summaryHead,
+			bodyEl
+		]);
 	},
 	render: function(loaded) {
 		this.board=loaded[0]||{}; this.countries=(loaded[1]&&loaded[1].results)||[]; this.capabilities=loaded[2]||{features:{}}; dashboardLanguage=this.capabilities.language||'pt-br';this.applyAppearance();this.applyBrand(this.capabilities.title);enableTranslation(); const data=loaded[3], w=wifiConfig(data.wireless), release=((this.board.release||{}).description||'').split(' ').slice(0,2).join(' '), panelTitle=this.capabilities.title||'ARK Router';
@@ -3010,7 +3531,7 @@ return view.extend({
 		const root=E('div',{class:'ex-dashboard'},[
 			E('section',{class:'ex-hero'+(isGamer?' ex-hero-gamer':'')},[E('div',{},[E('span',{class:'ex-eyebrow'},[heroEyebrow]),E('h2',{},[panelTitle]),E('p',{},[this.board.model||'OpenWrt','  •  ',release,'  •  ARK Router ',arkVersion]),E('div',{id:'ex-speedify-top',class:'ex-hero-speedify standby',style:'display:none'},[E('span',{},['Speedify']),E('strong',{},['—']),E('small',{},['—'])])]),E('div',{class:'ex-hero-status'},[E('span',{id:'ex-global-status',class:'ex-pill standby'},['VERIFICANDO']),E('strong',{id:'ex-clock'},['--:--:--']),E('small',{id:'ex-refresh-summary'},['sessão de 12 horas • atualização a cada 3 segundos']),E('div',{class:'ex-hero-actions'},[gamerButton,E('button',{class:'ex-hero-feature-button ex-hero-setup-button','click':L.bind(this.showEzSetup,this)},['Ark - Setup']),E('button',{class:'ex-hero-feature-button','click':L.bind(this.showFeatureCenter,this)},['Recursos'])])])]),
 			E('section',{class:'ex-card ex-health-strip'},[E('div',{class:'ex-health-head'},[E('div',{},[E('span',{class:'ex-kicker'},['SAÚDE DO ROTEADOR']),E('small',{},['Ligado há ',E('strong',{id:'ex-uptime'},['—'])])]),E('span',{id:'ex-health-status',class:'ex-pill standby'},['VERIFICANDO'])]),E('div',{class:'ex-health-items'},[healthItem('℃','Temperatura','ex-temperature',null,'#f59e0b'),healthItem('▦','Memória','ex-memory','ex-memory-bar','#3b82f6','ex-memory-detail'),healthItem('▣','Armazenamento','ex-storage','ex-storage-bar','#8b5cf6','ex-storage-detail'),healthItem('⌁','Carga','ex-load',null,'#10b981')])]),
-			E('section',{class:'ex-card ex-qos-card ex-irqbalance-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['DESEMPENHO DO SISTEMA']),E('h3',{},['IRQ Balance'])]),E('span',{class:'ex-pill '+(irqbalance.installed?(irqbalance.active?'online':'standby'):'offline')},[irqbalance.installed?(irqbalance.active?'ATIVO':'DESLIGADO'):'NÃO INSTALADO'])]),E('div',{class:'ex-qos-toggle-row'},[E('div',{},[E('strong',{},['Distribuição de interrupções']),E('small',{class:'ex-muted'},[irqbalance.installed?'Equilibra Wi‑Fi, Ethernet e demais interrupções entre os núcleos da CPU.':'O pacote ainda não está instalado. Instale-o para habilitar este controle.'])]),irqbalanceControl])]),
+			this.systemPerfCard(data),
 			E('div',{class:'ex-grid ex-grid-2'},[metricCard('↓','Download agora','ex-download','ex-down-total','#3b82f6'),metricCard('↑','Upload agora','ex-upload','ex-up-total','#a855f7')]),
 			E('div',{class:'ex-grid ex-grid-2 ex-history-grid'},[historyCard('down','Download ao longo do dia','#3b82f6'),historyCard('up','Upload ao longo do dia','#a855f7')]),
 			E('p',{id:'ex-history-samples',class:'ex-history-caption'},['A primeira amostra aparecerá em até 1 minuto']),
@@ -3038,7 +3559,47 @@ return view.extend({
 			E('div',{class:'ex-lan-block'},[E('div',{class:'ex-lan-title'},[E('div',{},[E('span',{class:'ex-kicker'},['PORTAS CABEADAS']),E('h3',{},['LAN disponíveis'])]),E('small',{class:'ex-muted'},['Portas em modo LAN aparecem aqui; ao converter uma porta em '+nextWan.label+', ela sai desta lista e vira uma nova conexão de internet.'])]),E('div',{class:'ex-grid ex-grid-2'},lanCards.length?lanCards:[E('section',{class:'ex-card ex-lan-card ex-center-card'},[E('strong',{},['Nenhuma porta LAN disponível']),E('small',{class:'ex-muted'},['Todas as portas cabeadas livres estão em uso como WAN ou não foram detectadas.'])])])]),
 			wifiBlock,
 			E('section',{class:'ex-card ex-channel-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['AMBIENTE WI‑FI']),E('h3',{},['Canais e interferência'])]),E('button',{class:'ex-button ex-inline-button','click':L.bind(function(ev){this.analyzeChannels(ev.currentTarget);},this)},['Analisar canais agora'])]),E('div',{class:'ex-country-control'},[E('div',{},[E('span',{class:'ex-label'},['PAÍS / DOMÍNIO REGULATÓRIO']),E('strong',{id:'ex-country-current'},['—'])]),E('button',{class:'ex-mini-button','click':L.bind(function(){this.changeCountry();},this)},['Alterar país'])]),E('div',{class:'ex-channel-mode-control'},[E('div',{},[E('strong',{},['Seleção automática de canais']),E('small',{id:'ex-channel-mode-summary',class:'ex-muted'},['Verificando…'])]),E('label',{class:'ex-switch'},[E('input',{id:'ex-channel-auto-toggle',type:'checkbox','aria-label':translateText('Seleção automática de canais'),'change':L.bind(function(ev){this.toggleAutoChannels(ev.currentTarget);},this)}),E('span',{class:'ex-switch-slider'})])]),E('div',{class:'ex-grid ex-grid-2 ex-channel-grid'},[E('div',{},[E('div',{class:'ex-channel-band-head'},[E('b',{},['2,4 GHz']),E('span',{id:'ex-wifi-2-mode',class:'ex-pill standby'},['—'])]),E('span',{id:'ex-wifi-2'},['—'])]),E('div',{},[E('div',{class:'ex-channel-band-head'},[E('b',{},['5 GHz']),E('span',{id:'ex-wifi-5-mode',class:'ex-pill standby'},['—'])]),E('span',{id:'ex-wifi-5'},['—'])])]),E('p',{id:'ex-wifi-noise',class:'ex-muted'},['—']),E('p',{id:'ex-scan-result',class:'ex-scan-result'},['A análise é manual e apenas recomenda canais; não interrompe os usuários.']),E('div',{class:'ex-channel-actions'},[E('button',{class:'ex-channel-action','click':L.bind(this.showManualChannelsModal,this)},['Escolher canais']),E('button',{id:'ex-apply-channels',class:'ex-channel-action primary',disabled:true,'click':L.bind(function(){this.changeChannels('fixed');},this)},['Analisar antes de aplicar']),E('button',{class:'ex-channel-action','click':L.bind(function(){this.changeWifiWidth();},this)},['Largura / desempenho'])])]),
-			E('section',{class:'ex-card ex-devices'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['DISPOSITIVOS']),E('h3',{},['Quem está conectado'])]),E('div',{class:'ex-device-title-actions'},[deviceSortControls,E('span',{id:'ex-device-count',class:'ex-pill online'},['0 conectados'])])]),E('details',{id:'ex-device-details'},[E('summary',{},['Expandir lista e ver tráfego individual']),E('div',{class:'ex-table-wrap'},[E('table',{class:'ex-device-table'},[E('thead',{},[E('tr',{},[E('th',{},['Dispositivo']),E('th',{class:'ex-hide-mobile'},['Rede / sinal']),E('th',{},['Agora']),E('th',{},['Total']),E('th',{},[''])])]),E('tbody',{id:'ex-device-body'}),E('tbody',{id:'ex-device-empty'},[E('tr',{},[E('td',{colspan:5},['Nenhum dispositivo conectado.'])])])])]),E('p',{class:'ex-muted ex-table-note'},['A velocidade instantânea vem dos contadores do roteador; o total acumulado vem do nlbwmon. Quando esta lista está aberta, o ARK Router acelera a atualização automaticamente conforme a RAM disponível.'])])]),
+			E('section',{class:'ex-card ex-devices'},[
+				E('div',{class:'ex-card-title'},[
+					E('div',{},[
+						E('span',{class:'ex-kicker'},['DISPOSITIVOS']),
+						E('h3',{},['Quem está conectado'])
+					]),
+					E('div',{class:'ex-device-title-actions'},[
+						deviceSortControls,
+						E('span',{id:'ex-device-count',class:'ex-pill online'},['0 conectados'])
+					])
+				]),
+				E('details',{id:'ex-device-details',open:true},[
+					E('summary',{},[
+						E('div',{class:'ex-devices-summary-content'},[
+							E('span',{class:'ex-devices-summary-icon'},['📱']),
+							E('span',{},['Dispositivos conectados e tráfego em tempo real'])
+						]),
+						E('span',{class:'ex-devices-summary-arrow'},['▼'])
+					]),
+					E('div',{class:'ex-table-wrap'},[
+						E('table',{class:'ex-device-table'},[
+							E('thead',{},[
+								E('tr',{},[
+									E('th',{},['Dispositivo']),
+									E('th',{class:'ex-hide-mobile'},['Rede / sinal']),
+									E('th',{},['Agora']),
+									E('th',{},['Total']),
+									E('th',{},[''])
+								])
+							]),
+							E('tbody',{id:'ex-device-body'}),
+							E('tbody',{id:'ex-device-empty'},[
+								E('tr',{},[
+									E('td',{colspan:5},['Nenhum dispositivo conectado.'])
+								])
+							])
+						])
+					]),
+					E('p',{class:'ex-muted ex-table-note'},['A velocidade instantânea vem dos contadores do roteador; o total acumulado vem do nlbwmon. Quando esta lista está aberta, o ARK Router acelera a atualização automaticamente conforme a RAM disponível.'])
+				])
+			]),
 			E('div',{class:'ex-grid ex-grid-2'},[
 				E('section',{class:'ex-card ex-center-card'},[bigIcon('<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1.2" fill="currentColor"/></svg>'),E('span',{class:'ex-label'},[w.main.ssid||'Rede principal']),E('strong',{id:'ex-main-clients',class:'ex-number'},['0']),E('small',{id:'ex-main-wifi',class:'ex-muted'},['0 no Wi-Fi'])]),
 				E('section',{class:'ex-card ex-center-card'},[bigIcon('<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'),E('span',{class:'ex-label'},[w.guest.ssid||'Visitantes']),E('strong',{id:'ex-guest-clients',class:'ex-number'},['0']),E('small',{id:'ex-guest-wifi',class:'ex-muted'},['0 no Wi-Fi'])])

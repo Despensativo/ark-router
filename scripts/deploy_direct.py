@@ -21,6 +21,7 @@ files_to_upload = [
     (os.path.join(repo_dir, 'root', 'usr', 'share', 'rpcd', 'acl.d', 'luci-app-equipe-dashboard.json'), '/usr/share/rpcd/acl.d/luci-app-equipe-dashboard.json'),
     (os.path.join(repo_dir, 'root', 'usr', 'libexec', 'ark-starlink-telemetry'), '/usr/libexec/ark-starlink-telemetry'),
     (os.path.join(repo_dir, 'root', 'www', 'cgi-bin', 'ark-starlink-telemetry'), '/www/cgi-bin/ark-starlink-telemetry'),
+    (os.path.join(repo_dir, 'root', 'www', 'starlink', 'index.html'), '/www/starlink/index.html'),
 ]
 
 print(f"Conectando ao roteador {ROUTER_IP} via SSH...")

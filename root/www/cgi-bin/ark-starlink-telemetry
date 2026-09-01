@@ -27,11 +27,45 @@ client_is_lan() {
 			block = 2 ^ (32-bits)
 			exit (int(ipnum(client)/block) == int(ipnum(lan)/block)) ? 0 : 1
 		}'
+client_is_zerotier() {
+	remote="${REMOTE_ADDR:-}"
+	[ -n "$remote" ] || return 1
+	if command -v zerotier-cli >/dev/null 2>&1; then
+		for zt_cidr in $(zerotier-cli -j listnetworks 2>/dev/null | jsonfilter -e '@[*].assignedAddresses[*]' 2>/dev/null); do
+			zt_ip="${zt_cidr%%/*}"
+			zt_mask="${zt_cidr##*/}"
+			[ -n "$zt_ip" ] && [ -n "$zt_mask" ] || continue
+			if awk -v client="$remote" -v lan="$zt_ip" -v bits="$zt_mask" '
+				function ipnum(ip, p) { split(ip,p,"."); return (((p[1]*256+p[2])*256+p[3])*256+p[4]) }
+				BEGIN {
+					if (bits < 0 || bits > 32) exit 1
+					block = 2 ^ (32-bits)
+					exit (int(ipnum(client)/block) == int(ipnum(lan)/block)) ? 0 : 1
+				}'; then
+				return 0
+			fi
+		done
+	fi
+	for zt_cidr in $(ip -4 -o addr show 2>/dev/null | awk '/: zt/{print $4}'); do
+		zt_ip="${zt_cidr%%/*}"
+		zt_mask="${zt_cidr##*/}"
+		[ -n "$zt_ip" ] && [ -n "$zt_mask" ] || continue
+		if awk -v client="$remote" -v lan="$zt_ip" -v bits="$zt_mask" '
+			function ipnum(ip, p) { split(ip,p,"."); return (((p[1]*256+p[2])*256+p[3])*256+p[4]) }
+			BEGIN {
+				if (bits < 0 || bits > 32) exit 1
+				block = 2 ^ (32-bits)
+				exit (int(ipnum(client)/block) == int(ipnum(lan)/block)) ? 0 : 1
+			}'; then
+			return 0
+		fi
+	done
+	return 1
 }
 
 [ "$enabled" = 1 ] || reply_error '403 Forbidden' 'Visualização pública Starlink desativada.'
 [ "${REQUEST_METHOD:-GET}" = GET ] || reply_error '405 Method Not Allowed' 'Somente leitura GET.'
-client_is_lan || reply_error '403 Forbidden' 'Visualização disponível somente na rede LAN.'
+client_is_lan || client_is_zerotier || reply_error '403 Forbidden' 'Visualização disponível somente na rede LAN ou ZeroTier autorizada.'
 
 query_value() {
 	printf '%s' "${QUERY_STRING:-}" | tr '&' '\n' | sed -n "s/^$1=//p" | head -n 1
@@ -58,6 +92,12 @@ case "$action" in
 			rm -f "$err_file" 2>/dev/null || true
 			printf '{"ok":false,"wan":"%s","error":"%s"}\n' "$wan" "$(printf '%s' "$error" | sed 's/[\\"]/\\&/g; s/[[:cntrl:]]/ /g')"
 		fi
+		;;
+	set_active)
+		wan="$(query_value wan)"
+		case "$wan" in wan|wan[0-9]*) ;; *) printf '{"ok":false,"error":"WAN inválida."}\n'; exit 0 ;; esac
+		/usr/sbin/equipe-dashboard-control starlink-active-wan-set "$wan" >/dev/null 2>&1
+		printf '{"ok":true,"active_wan":"%s"}\n' "$wan"
 		;;
 	*) printf '{"ok":false,"error":"Ação inválida."}\n' ;;
 esac

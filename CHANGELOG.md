@@ -2,8 +2,29 @@
 
 ## 0.9.43
 
-- **Policy Routing por Dispositivo (Rota de Saída Dedicada)**: Adicionado seletor de rota de internet no modal de configuração de cada aparelho. Permite forçar o tráfego de um PC Gamer, console ou dispositivo específico diretamente pela WAN1 (Fibra de menor latência) ou WAN2, contornando o balanceamento Multi-WAN ou túneis.
-- **Prioridade Dinâmica de Regras no MWAN3**: Regras de política por dispositivo são automaticamente reordenadas no topo (`mwan3.ark_dev_*=0`) para aplicação imediata sem necessidade de reboot.
+- **⚡ Painel de Desempenho & Blindagem de Memória**:
+  - Nova central retrátil no topo do painel com 5 controles de otimização de kernel e memória para eventos e roteadores com 256MB/512MB de RAM:
+    - **Reciclador de Conexões Conntrack**: Reduz tempo de conexões inativas de 5 dias para 30 minutos, impedindo acúmulo de conexões mortas de redes sociais na RAM.
+    - **Auto-Purge de Memória RAM & Caches**: Calibração contínua de `vfs_cache_pressure=150` e margem de segurança de RAM livre no kernel.
+    - **Modo Turbo Speedify**: Desativa criptografia interna para cortar consumo de CPU e RAM pela metade em CPUs Dual-Core / Quad-Core.
+    - **Trava de Logs do Speedify (2MB)**: Rotação e capping automático de logs para não esgotar a partição `/tmp` (RAM).
+    - **Modo Leve do Monitor de Tráfego (nlbwmon Lite)**: Agrupamento de métricas apenas por dispositivo local (MAC), economizando banco de dados em RAM durante eventos públicos.
+  - Botão de Ação Imediata `[ 🧹 Liberar Memória RAM Agora ]` descartando buffers inativos e arquivos temporários órfãos instantaneamente.
+  - Persistência total e automática via `/etc/config/equipe_perf` e `/etc/sysctl.d/` carregada na inicialização do roteador.
+- **🛠️ Refatoração de Switches & Compatibilidade Total com Firefox**:
+  - Conversão da estrutura do card para `<section>` padrão LuCI, eliminando conflitos de renderização e propagação de eventos causados pelo Shadow DOM de `<details>/<summary>` no Firefox.
+  - Correção da emissão indevida do atributo `disabled` gerado pelo helper `E()` do LuCI que desabilitava o clique de mouse nos navegadores.
+  - Feedback visual imediato com badges de estado `[ LIGADA ]` / `[ DESLIGADA ]`, animação de slider e atualização reativa do contador `[ X ATIVAS ]`.
+  - Cache-busting automático de folhas de estilo e recursos JavaScript.
+- **🚀 Otimização do Tempo de Inicialização do Painel ("Loading view…")**:
+  - Carregamento até 40x mais rápido (redução de 5.650 ms para ~140 ms) eliminando chamadas síncronas bloqueantes de socket do Speedify quando o serviço estiver parado.
+  - Otimização da checagem de pacotes instalados e fast-path de renderização inicial no `load()`.
+- **🛰️ Seletor Interativo de Rota de Telemetria Starlink (/starlink/)**:
+  - Seletor dinâmico para definir qual antena Starlink conectada (WAN1, WAN2, etc.) é a ativa na rota estática `192.168.100.1` tanto no painel autenticado quanto na página `/starlink/`.
+  - Tratamento defensivo garantindo carregamento limpo quando nenhuma antena Starlink estiver conectada.
+- **🎯 Policy Routing por Dispositivo (Rota de Saída Dedicada)**:
+  - Adicionado seletor de rota de internet no modal de configuração de cada aparelho (WAN1, WAN2 ou Balanceamento padrão).
+  - Regras com prioridade dinâmica no MWAN3 (`mwan3.ark_dev_*=0`) para aplicação imediata sem necessidade de reboot.
 
 ## 0.9.42
 
