@@ -2126,7 +2126,7 @@ return view.extend({
 	checkSelfUpdate: function(button){
 		if(button){button.disabled=true;button.textContent='Verificando…';}
 		const node=document.getElementById('ex-self-update-result'); if(node)node.replaceChildren(E('small',{class:'ex-muted'},['Consultando GitHub Releases…']));
-		return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-check']).then(L.bind(function(r){
+		return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-check'],20000).then(L.bind(function(r){
 			if(r.code)throw new Error(r.stderr||'Falha ao verificar atualização');
 			let info={}; try{info=JSON.parse(r.stdout||'{}');}catch(e){throw new Error('Resposta de atualização inválida');}
 			this.renderSelfUpdateResult(info);

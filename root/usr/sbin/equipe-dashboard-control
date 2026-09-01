@@ -1618,7 +1618,9 @@ ark_remove_opposite_profile() {
 }
 ark_latest_release() {
 	repo="$(ark_update_repo)"
-	wget -qO- "https://api.github.com/repos/$repo/releases/latest" 2>/dev/null | jsonfilter -e '@.tag_name' 2>/dev/null | head -n 1
+	tag="$(wget -T 3 -qO- --header='User-Agent: ARK-Router' "https://api.github.com/repos/$repo/tags" 2>/dev/null | jsonfilter -e '@[0].name' 2>/dev/null | head -n 1)"
+	[ -n "$tag" ] || tag="$(wget -T 3 -qO- --header='User-Agent: ARK-Router' "https://api.github.com/repos/$repo/releases/latest" 2>/dev/null | jsonfilter -e '@.tag_name' 2>/dev/null | head -n 1)"
+	printf '%s' "$tag"
 }
 ark_update_json() {
 	current="$(ark_current_version)"
@@ -2761,7 +2763,8 @@ case "$action" in
 		feature_json zerotier zerotier true
 		printf ','; feature_json irqbalance irqbalance true
 		printf ','; feature_json speedtest speedtest-go "$speedtest_installable"
-		bypass='{}'; speedify_runtime_running && command -v speedify_cli >/dev/null 2>&1 && bypass="$(speedify_cli -s show streamingbypass 2>/dev/null || printf '{}')"
+		cli="$(speedify_cli_path)"
+		bypass='{}'; speedify_runtime_running && [ -n "$cli" ] && bypass="$("$cli" -s show streamingbypass 2>/dev/null || printf '{}')"
 		printf ',"speedify_bypass":%s' "$bypass"
 		starlink_public=false; [ "$(uci -q get equipe_dashboard.starlink.public_view || printf 0)" = 1 ] && starlink_public=true
 		printf ',"starlink_public":{"enabled":%s,"url":"/starlink/","read_only":true,"active_wan":"%s"}' "$starlink_public" "$(starlink_active_wan_get)"
