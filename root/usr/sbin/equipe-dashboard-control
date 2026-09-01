@@ -186,7 +186,7 @@ feature_package() {
 	esac
 }
 bulk_feature_keys() {
-	printf 'argon sqm mwan3 nlbwmon upnp uhttpd speedtest'
+	printf 'argon sqm mwan3 nlbwmon upnp uhttpd'
 }
 feature_missing_installable() {
 	key="$1"; package="$(feature_package "$key" 2>/dev/null)" || return 1
@@ -2787,7 +2787,6 @@ case "$action" in
 		feature_json tailscale tailscale true; printf ','
 		feature_json zerotier zerotier true
 		printf ','; feature_json irqbalance irqbalance true
-		printf ','; feature_json speedtest speedtest-go "$speedtest_installable"
 		cli="$(speedify_cli_path)"
 		bypass='{}'; speedify_runtime_running && [ -n "$cli" ] && bypass="$("$cli" -s show streamingbypass 2>/dev/null || printf '{}')"
 		printf ',"speedify_bypass":%s' "$bypass"
@@ -2847,6 +2846,11 @@ case "$action" in
 				exit 4
 			fi
 			echo '{"state":"running","percent":90,"message":"4/4 Limpando caches e recarregando serviços web..."}' >"$status"
+			# Limpa pacotes legados de speedtest se existirem
+			if command -v apk >/dev/null 2>&1 && apk info -e speedtest-go >/dev/null 2>&1; then
+				apk del speedtest-go >/dev/null 2>&1 || true
+			fi
+			rm -rf /tmp/ark-speedtest /tmp/ark-speedtest-download
 			rm -f /tmp/luci-indexcache
 			rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 			[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
