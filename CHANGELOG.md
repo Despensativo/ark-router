@@ -9,7 +9,9 @@
     - **Modo Turbo Speedify**: Desativa criptografia interna para cortar consumo de CPU e RAM pela metade em CPUs Dual-Core / Quad-Core.
     - **Trava de Logs do Speedify (2MB)**: Rotação e capping automático de logs para não esgotar a partição `/tmp` (RAM).
     - **Modo Leve do Monitor de Tráfego (nlbwmon Lite)**: Agrupamento de métricas apenas por dispositivo local (MAC), economizando banco de dados em RAM durante eventos públicos.
-  - Botão de Ação Imediata `[ 🧹 Liberar Memória RAM Agora ]` descartando buffers inativos e arquivos temporários órfãos instantaneamente.
+  - **Ações Imediatas no Painel**:
+    - Botão `[ 🧹 Liberar Memória RAM Agora ]`: Descarte instantâneo de buffers inativos e arquivos temporários órfãos em `/tmp`.
+    - Botão `[ 💾 Otimizar Espaço Flash ]`: Compactação automática de pacotes grandes (ZeroTier) na Flash com descompressão em RAM no boot, limpeza de caches do APK e remoção de redundâncias em roteadores compactos ($\le 16\text{MB}$).
   - Persistência total e automática via `/etc/config/equipe_perf` e `/etc/sysctl.d/` carregada na inicialização do roteador.
 - **🛠️ Refatoração de Switches & Compatibilidade Total com Firefox**:
   - Conversão da estrutura do card para `<section>` padrão LuCI, eliminando conflitos de renderização e propagação de eventos causados pelo Shadow DOM de `<details>/<summary>` no Firefox.

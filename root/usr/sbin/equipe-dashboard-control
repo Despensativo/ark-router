@@ -2229,6 +2229,30 @@ system_memory_purge() {
 	printf '{"ok":true,"mem_available_kb":%s}\n' "$free_kb"
 }
 
+system_storage_purge() {
+	local overlay_total overlay_free
+	sync
+	rm -rf /var/cache/apk/* /tmp/apk* /tmp/opkg-lists/* /tmp/luci-modulecache/* 2>/dev/null || true
+	zerotier_ram_compress >/dev/null 2>&1 || true
+	if [ -d /etc/ark-router/speedify/runtime ]; then
+		rm -f /etc/ark-router/speedify/runtime/*.lastGood* 2>/dev/null || true
+		if [ -f /etc/ark-router/speedify/runtime/settings.txt ]; then
+			tar -czf /etc/ark-router/speedify/runtime/speedify-config.tar.gz -C /etc/ark-router/speedify/runtime settings.txt sql.db 2>/dev/null || true
+			rm -f /etc/ark-router/speedify/runtime/settings.txt /etc/ark-router/speedify/runtime/sql.db 2>/dev/null || true
+		fi
+	fi
+	overlay_total="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $2}')"
+	case "$overlay_total" in ''|*[!0-9]*) overlay_total=65536 ;; esac
+	if [ "$overlay_total" -le 16384 ]; then
+		rm -f /www/luci-static/argon/img/bg1.jpg 2>/dev/null || true
+	fi
+	rm -f /tmp/*.tmp /tmp/*.log.1 2>/dev/null || true
+	sync
+	overlay_free="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"
+	case "$overlay_free" in ''|*[!0-9]*) overlay_free=0 ;; esac
+	printf '{"ok":true,"overlay_free_kb":%s,"overlay_total_kb":%s}\n' "$overlay_free" "$overlay_total"
+}
+
 lan_bridge_section() {
 	uci -q show network | awk -F= '/\.name=.br-lan./ { key=$1; sub(/^network\./, "", key); sub(/\.name$/, "", key); print key; exit }'
 }
@@ -3519,6 +3543,9 @@ case "$action" in
 		;;
 	system-memory-purge)
 		system_memory_purge
+		;;
+	system-storage-purge)
+		system_storage_purge
 		;;
 	device-save)
 		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"; name="$3"; mode="$4"; ip="$5"; priority="$6"; target_dscp="$7"; wan_route="${8:-default}"; limit_enabled="${9:-0}"; limit_down="${10:-0}"; limit_up="${11:-0}"

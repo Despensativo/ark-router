@@ -3144,6 +3144,29 @@ return view.extend({
 			}
 		}, ['🧹 Liberar Memória RAM Agora']);
 
+		const purgeStorageBtn = E('button', {
+			class: 'ex-mini-button',
+			type: 'button',
+			style: 'padding: 9px 16px; font-size: 0.85rem; font-weight: 750;',
+			title: 'Compacta bibliotecas pesadas em RAM, limpa caches e remove redundâncias na partição Flash',
+			click: function(ev) {
+				const btn = ev.currentTarget;
+				btn.disabled = true;
+				btn.textContent = 'Otimizando…';
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['system-storage-purge']).then(function(r) {
+					let info = {};
+					try { info = JSON.parse(r.stdout || '{}'); } catch(e){}
+					const freeMb = info.overlay_free_kb ? (info.overlay_free_kb / 1024).toFixed(1) : null;
+					ui.addNotification(null, E('p', {}, ['Armazenamento interno otimizado com sucesso!' + (freeMb ? ' (' + freeMb + ' MB livres na Flash)' : '')]));
+				}).catch(function(e) {
+					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+				}).finally(function() {
+					btn.disabled = false;
+					btn.textContent = '💾 Otimizar Espaço Flash';
+				});
+			}
+		}, ['💾 Otimizar Espaço Flash']);
+
 		const savePerf = function(key, val, inputEl, pillEl) {
 			self.perfState[key] = val;
 			updateBadges();
@@ -3288,12 +3311,23 @@ return view.extend({
 				E('div', { class: 'ex-perf-item-content' }, [
 					E('div', { class: 'ex-perf-item-head' }, [
 						E('span', { class: 'ex-perf-icon' }, ['🧹']),
-						E('strong', {}, ['Reciclagem Rápida de Memória']),
+						E('strong', {}, ['Reciclagem Rápida de Memória RAM']),
 						E('span', { class: 'ex-perf-badge badge-green' }, ['AÇÃO IMEDIATA'])
 					]),
 					E('p', { class: 'ex-perf-desc' }, ['Descarte buffers inativos do kernel e apague arquivos temporários órfãos em /tmp para recuperar memória livre instantaneamente.'])
 				]),
 				purgeRamBtn
+			]),
+			E('div', { class: 'ex-perf-item', style: 'background: color-mix(in srgb, #3b82f6 8%, rgba(127,127,127,.055)); border-color: rgba(59,130,246,.25);' }, [
+				E('div', { class: 'ex-perf-item-content' }, [
+					E('div', { class: 'ex-perf-item-head' }, [
+						E('span', { class: 'ex-perf-icon' }, ['💾']),
+						E('strong', {}, ['Otimização de Armazenamento Flash']),
+						E('span', { class: 'ex-perf-badge badge-blue' }, ['ROTEADORES <= 16MB'])
+					]),
+					E('p', { class: 'ex-perf-desc' }, ['Compacta pacotes pesados (ZeroTier) para descompressão em RAM no boot, limpa caches do APK e remove redundâncias na partição Flash.'])
+				]),
+				purgeStorageBtn
 			]),
 			makePerfRow(
 				'🛡️',
