@@ -22,6 +22,7 @@ files_to_upload = [
     (os.path.join(repo_dir, 'root', 'usr', 'libexec', 'ark-starlink-telemetry'), '/usr/libexec/ark-starlink-telemetry'),
     (os.path.join(repo_dir, 'root', 'www', 'cgi-bin', 'ark-starlink-telemetry'), '/www/cgi-bin/ark-starlink-telemetry'),
     (os.path.join(repo_dir, 'root', 'www', 'starlink', 'index.html'), '/www/starlink/index.html'),
+    (os.path.join(repo_dir, 'root', 'etc', 'init.d', 'ark-zerotier-ram'), '/etc/init.d/ark-zerotier-ram'),
 ]
 
 print(f"Conectando ao roteador {ROUTER_IP} via SSH...")
@@ -47,7 +48,7 @@ for local_path, remote_path in files_to_upload:
         print(f"  -> {os.path.basename(local_path)} gravado com sucesso.")
 
 cmds = [
-    'chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry',
+    'chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry /etc/init.d/ark-zerotier-ram',
     'killall equipe-traffic-history 2>/dev/null || true',
     'rm -f /tmp/equipe-traffic-history.state',
     '/usr/sbin/equipe-traffic-history &',

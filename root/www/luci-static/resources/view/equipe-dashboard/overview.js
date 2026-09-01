@@ -3631,7 +3631,6 @@ return view.extend({
 		if(!this.feature('speedtest').installed){const s=root.querySelector('.ex-speedtest-card');if(s)s.remove();}
 		if(!this.feature('mwan3').installed){const m=root.querySelector('.ex-mwan-control'),s=root.querySelector('[data-feature="mwan3"]');if(m)m.remove();if(s)s.remove();}
 		if(!this.feature('nlbwmon').installed){const s=root.querySelector('[data-feature="nlbwmon"]');if(s)s.remove();const note=root.querySelector('.ex-table-note');if(note)note.textContent='O monitor de consumo não está instalado; a lista de dispositivos continua disponível, sem velocidade individual.';}
-		const missing=['argon','zerotier','speedify','uhttpd','sqm','mwan3','nlbwmon','upnp','speedtest'].filter(L.bind(function(k){const f=this.feature(k), fastFallback=k==='speedtest'&&f.storage&&f.storage.recommended==='fast_manual';return !f.installed&&!f.hidden&&(f.installable||fastFallback||k==='speedtest');},this));if(missing.length){const anchor=root.querySelector('.ex-devices');root.insertBefore(this.featureSuggestionCard(missing),anchor);}
 		translateTree(root);
 		this.dashboardRoot=root;
 		const deviceDetails=root.querySelector('#ex-device-details');

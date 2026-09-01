@@ -1,0 +1,19 @@
+#!/bin/sh /etc/rc.common
+
+START=19
+USE_PROCD=0
+
+boot() {
+	start
+}
+
+start() {
+	if [ -f /etc/ark-router/zerotier-libs.tar.gz ]; then
+		mkdir -p /tmp/lib
+		if [ ! -f /tmp/lib/libstdc++.so.6.0.33 ]; then
+			tar -xzf /etc/ark-router/zerotier-libs.tar.gz -C /tmp/lib 2>/dev/null
+		fi
+		[ -e /usr/lib/libstdc++.so.6.0.33 ] || ln -sf /tmp/lib/libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6.0.33
+		[ -e /usr/lib/libstdc++.so.6 ] || ln -sf libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6
+	fi
+}

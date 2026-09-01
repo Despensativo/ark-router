@@ -1328,22 +1328,41 @@ zerotier_late_bind_uhttpd() {
 		done
 	) >/dev/null 2>&1 &
 }
+zerotier_ram_compress() {
+	local overlay_total
+	overlay_total="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $2}')"
+	case "$overlay_total" in ''|*[!0-9]*) overlay_total=65536 ;; esac
+	if [ "$overlay_total" -le 16384 ]; then
+		if [ -f /usr/lib/libstdc++.so.6.0.33 ] && [ ! -L /usr/lib/libstdc++.so.6.0.33 ]; then
+			mkdir -p /etc/ark-router /tmp/lib
+			tar -czf /etc/ark-router/zerotier-libs.tar.gz -C /usr/lib libstdc++.so.6.0.33 2>/dev/null
+			tar -xzf /etc/ark-router/zerotier-libs.tar.gz -C /tmp/lib 2>/dev/null
+			rm -f /usr/lib/libstdc++.so.6.0.33
+			ln -sf /tmp/lib/libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6.0.33
+			[ -e /usr/lib/libstdc++.so.6 ] || ln -sf libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6
+			[ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true
+		fi
+	fi
+}
 zerotier_install() {
-	command -v zerotier-cli >/dev/null 2>&1 && return 0
+	command -v zerotier-cli >/dev/null 2>&1 && { zerotier_ram_compress; return 0; }
 	command -v apk >/dev/null 2>&1 || command -v opkg >/dev/null 2>&1 || { echo 'Gerenciador de pacotes indisponivel' >&2; return 3; }
 	if command -v apk >/dev/null 2>&1; then
 		apk update && apk add zerotier
 	else
 		opkg update && opkg install zerotier
 	fi
+	zerotier_ram_compress
 	command -v zerotier-cli >/dev/null 2>&1 || { echo 'ZeroTier indisponivel neste firmware.' >&2; return 1; }
 }
 zerotier_enable() {
 	zerotier_install || return $?
+	zerotier_ram_compress
 	uci -q set zerotier.global.enabled=1
 	uci -q delete zerotier.earth
 	uci commit zerotier
 	zerotier_firewall_prepare
+	[ -x /etc/init.d/ark-zerotier-ram ] && { /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true; /etc/init.d/ark-zerotier-ram start >/dev/null 2>&1 || true; }
 	[ -x /etc/init.d/zerotier ] && { /etc/init.d/zerotier enable >/dev/null 2>&1 || true; /etc/init.d/zerotier restart >/dev/null 2>&1 || true; }
 }
 valid_zerotier_network_id() { printf '%s' "$1" | grep -Eq '^[0-9a-fA-F]{16}$'; }
