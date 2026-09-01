@@ -2311,7 +2311,9 @@ return view.extend({
 			]),
 			iframe,
 			E('p', {class:'ex-muted', style:'margin-top:10px;font-size:12px;line-height:1.4;'}, [
-				'💡 Este teste roda com aceleração de hardware pelo seu navegador através da conexão ativa do roteador, medindo a velocidade máxima real (até 1 Gbps+) de Download, Upload e Ping sem sobrecarregar o processador do roteador.'
+				'💡 Este teste roda com aceleração de hardware pelo seu navegador através da conexão ativa do roteador, medindo a velocidade máxima real (até 1 Gbps+) de Download, Upload e Ping sem sobrecarregar o roteador. ',
+				E('br'),
+				'📌 ', E('strong', {}, ['Dica Fast.com: ']), 'Clique em ', E('em', {}, ['"Mostrar mais informações"']), ' ➔ ', E('em', {}, ['"Configurações"']), ' ➔ Marque ', E('em', {}, ['"Sempre mostrar todas as métricas"']), ' e Salve. Assim o Fast.com medirá Download e Upload direto automaticamente!'
 			]),
 			E('div', {class:'right', style:'margin-top:12px;'}, [
 				E('button', {class:'btn cbi-button cbi-button-neutral', 'click': closeModal}, ['Fechar'])
