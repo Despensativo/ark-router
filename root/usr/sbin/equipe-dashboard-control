@@ -1062,7 +1062,7 @@ feature_active() {
 		speedtest) command -v speedtest-go >/dev/null 2>&1 || [ -x /tmp/ark-speedtest/speedtest-go ] ;;
 		speedify) [ -x /usr/share/speedify/speedify_cli ] || installed speedify ;;
 		tailscale) command -v tailscale >/dev/null 2>&1 ;;
-		zerotier) command -v zerotier-cli >/dev/null 2>&1 ;;
+		zerotier) pidof zerotier-one >/dev/null 2>&1 && [ "$(uci -q get zerotier.global.enabled)" = 1 ] ;;
 		irqbalance) running irqbalance ;;
 		*) return 1 ;;
 	esac
@@ -1381,6 +1381,27 @@ zerotier_enable() {
 	zerotier_firewall_prepare
 	[ -x /etc/init.d/ark-zerotier-ram ] && { /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true; /etc/init.d/ark-zerotier-ram start >/dev/null 2>&1 || true; }
 	[ -x /etc/init.d/zerotier ] && { /etc/init.d/zerotier enable >/dev/null 2>&1 || true; /etc/init.d/zerotier restart >/dev/null 2>&1 || true; }
+	i=0
+	while [ "$i" -lt 8 ]; do
+		pidof zerotier-one >/dev/null 2>&1 && break
+		sleep 1
+		i=$((i+1))
+	done
+	zerotier_late_bind_uhttpd
+	echo ok
+}
+zerotier_disable() {
+	uci -q set zerotier.global.enabled=0
+	uci commit zerotier
+	[ -x /etc/init.d/zerotier ] && {
+		/etc/init.d/zerotier stop >/dev/null 2>&1 || true
+		/etc/init.d/zerotier disable >/dev/null 2>&1 || true
+	}
+	killall -9 zerotier-one 2>/dev/null || true
+	[ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram disable >/dev/null 2>&1 || true
+	ztdev="$(zerotier_device_name 2>/dev/null || true)"
+	[ -n "$ztdev" ] && ip link set "$ztdev" down 2>/dev/null || true
+	echo ok
 }
 valid_zerotier_network_id() { printf '%s' "$1" | grep -Eq '^[0-9a-fA-F]{16}$'; }
 zerotier_join_network() {
@@ -1424,25 +1445,36 @@ zerotier_leave_network() {
 	uci commit equipe_dashboard
 }
 zerotier_status_json() {
-	if ! command -v zerotier-cli >/dev/null 2>&1; then
-		printf '{"installed":false,"active":false,"online":false,"node_id":"—","network_id":"","network_status":"—","ip":"—"}\n'
+	installed_zt=false; [ -x /usr/sbin/zerotier-one ] || [ -x /usr/bin/zerotier-one ] || command -v zerotier-cli >/dev/null 2>&1 && installed_zt=true
+	if ! $installed_zt; then
+		printf '{"installed":false,"active":false,"online":false,"node_id":"—","network_id":"","network_status":"—","ip":"—","lan_cidr":"—"}\n'
 		return 0
 	fi
-	info="$(zerotier-cli info 2>/dev/null || true)"
-	node="$(printf '%s' "$info" | awk '{print $3}')"
-	online=false; printf '%s' "$info" | grep -q 'ONLINE' && online=true
-	active=false; pidof zerotier-one >/dev/null 2>&1 && active=true
-	netid="$(uci -q get equipe_dashboard.zerotier.network_id || true)"
+	active=false; pidof zerotier-one >/dev/null 2>&1 && [ "$(uci -q get zerotier.global.enabled)" = 1 ] && active=true
+	node="$(uci -q get zerotier.global.secret | cut -d: -f1 2>/dev/null || true)"
+	online=false
+	if $active && command -v zerotier-cli >/dev/null 2>&1; then
+		info="$(zerotier-cli info 2>/dev/null || true)"
+		cli_node="$(printf '%s' "$info" | awk '{print $3}')"
+		[ -n "$cli_node" ] && node="$cli_node"
+		printf '%s' "$info" | grep -q 'ONLINE' && online=true
+	fi
+	netid="$(uci -q get equipe_dashboard.zerotier.network_id || uci -q get zerotier.ark.id || true)"
 	line=''
-	[ -n "$netid" ] && line="$(zerotier-cli listnetworks 2>/dev/null | awk -v n="$netid" '$3==n {print; exit}')"
-	[ -z "$line" ] && line="$(zerotier-cli listnetworks 2>/dev/null | awk 'NR>1 {print; exit}')"
-	[ -n "$line" ] && {
+	if $active && command -v zerotier-cli >/dev/null 2>&1; then
+		[ -n "$netid" ] && line="$(zerotier-cli listnetworks 2>/dev/null | awk -v n="$netid" '$3==n {print; exit}')"
+		[ -z "$line" ] && line="$(zerotier-cli listnetworks 2>/dev/null | awk 'NR>1 {print; exit}')"
+	fi
+	if [ -n "$line" ]; then
 		netid="$(printf '%s' "$line" | awk '{print $3}')"
 		nstatus="$(printf '%s' "$line" | awk '{for(i=1;i<=NF;i++) if($i=="OK"||$i=="ACCESS_DENIED"||$i=="NOT_FOUND"||$i=="REQUESTING_CONFIGURATION"||$i=="PORT_ERROR") {print $i; exit}}')"
 		ip="$(printf '%s' "$line" | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]+' | head -n1)"
-	} || { nstatus='—'; ip='—'; }
+	else
+		if $active; then nstatus='CONECTANDO'; else nstatus='DESLIGADO'; fi
+		ip='—'
+	fi
 	printf '{"installed":true,"active":%s,"online":%s,"node_id":"%s","network_id":"%s","network_status":"%s","ip":"%s","lan_cidr":"%s"}\n' \
-		"$active" "$online" "$(json_escape "${node:-—}")" "$(json_escape "$netid")" "$(json_escape "$nstatus")" "$(json_escape "${ip:-—}")" "$(json_escape "$(tailscale_lan_cidr 2>/dev/null || true)")"
+		"$active" "$online" "$(json_escape "${node:-—}")" "$(json_escape "$netid")" "$(json_escape "${nstatus:-—}")" "$(json_escape "${ip:-—}")" "$(json_escape "$(tailscale_lan_cidr 2>/dev/null || true)")"
 }
 speedtest_history_file() {
 	case "$1" in wan|wan2) ;; *) return 1 ;; esac
@@ -1828,10 +1860,11 @@ ensure_mwan3_ark_config() {
 	uci -q set mwan3.https.family=ipv4
 	uci -q set mwan3.https.sticky=1
 	uci -q set mwan3.https.dest_port=443
-	uci -q set mwan3.https.proto=tcp
+	uci -q set mwan3.https.proto=all
 	uci -q set mwan3.default_rule_v4=rule
 	uci -q set mwan3.default_rule_v4.dest_ip='0.0.0.0/0'
 	uci -q set mwan3.default_rule_v4.family=ipv4
+	uci -q set mwan3.default_rule_v4.sticky=1
 }
 ark_operation_profile() { uci -q get equipe_dashboard.main.operation_profile 2>/dev/null || printf 'standard'; }
 apply_operation_profile() {
@@ -1864,7 +1897,7 @@ apply_operation_profile() {
 	if [ "$mode" = gamer ]; then
 		uci -q show firewall 2>/dev/null | grep -E '^firewall\.ark_priority_.*\.set_dscp=' | while read -r line; do
 			sec="$(printf '%s' "$line" | awk -F. '{print $2}')"
-			uci -q set "firewall.$sec.set_dscp=EF"
+			uci -q set "firewall.$sec.set_dscp=AF41"
 		done
 		if [ -f /etc/config/sqm ]; then
 			sqm_queues="$(uci -q show sqm | grep '=queue' | cut -d. -f2 | cut -d= -f1)"
@@ -3537,6 +3570,12 @@ case "$action" in
 	zerotier-status)
 		zerotier_status_json
 		;;
+	zerotier-enable)
+		zerotier_enable
+		;;
+	zerotier-disable)
+		zerotier_disable
+		;;
 	zerotier-prepare-firewall)
 		zerotier_firewall_prepare
 		echo ok
@@ -3627,9 +3666,9 @@ case "$action" in
 		fi
 		[ "$priority" != 1 ] || { feature_active sqm && [ -s /etc/config/qos_equipe ]; } || { echo 'Ative o SQM antes de priorizar o dispositivo' >&2; exit 3; }
 		if [ -z "$target_dscp" ]; then
-			if [ "$(ark_operation_profile)" = gamer ]; then target_dscp="EF"; else target_dscp="AF41"; fi
+			target_dscp="AF41"
 		fi
-		case "$target_dscp" in EF|AF41|CS6) ;; *) target_dscp="AF41" ;; esac
+		case "$target_dscp" in EF|AF41|AF31|CS4|CS6) ;; *) target_dscp="AF41" ;; esac
 		suffix="$(device_suffix "$mac")"; name_section="device_$(printf '%s' "$mac" | tr -d ':')"
 		if [ -z "$name" ]; then uci -q delete "equipe_devices.$name_section"
 		else

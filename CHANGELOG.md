@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.46
+
+- **🎮 Otimização de Prioridade Gamer & Compatibilidade com Apple Store / CDNs**:
+  - **Classificação DSCP Segura (`AF41` / `AF31`)**: Atualização do Modo Gamer de `EF` para `AF41` (Classe 4 - Interativo/Jogos) e Fila de Vídeo para `AF31`. Elimina o descarte de pacotes por CDNs (Akamai, Fastly, Apple) e serviços bancários enquanto mantém latência ultra-baixa no SQM (Cake).
+  - **Persistência de Sessão no Multi-WAN (MWAN3)**: Regra HTTPS atualizada para cobrir todos os protocolos (`proto='all'`) com `sticky='1'`, garantindo que requisições HTTP/3 (QUIC / UDP 443) da App Store e navegadores permaneçam sincronizadas na mesma WAN.
+  - **Prevenção de Buraco Negro IPv6**: Validação para não entregar respostas AAAA quando a WAN não possui rota IPv6 ativa, eliminando esperas de conexão no iOS e navegadores.
+  - **Suporte a STUN no UPnP (`miniupnpd`)**: Resolução de NAT Estrito/Fechado em conexões com CGNAT (100.64.0.0/10) para consoles e jogos de PC.
+- **🎛️ Controle Total de Acesso Remoto ZeroTier**:
+  - **Botões de Ligar e Desligar no Painel**: Adicionado botão `[ ▶ Ativar ZeroTier ]` e `[ ⏹ Desligar ]` no card de Acesso Remoto.
+  - **Zero CPU e RAM em Standby**: Ao desligar, o daemon `zerotier-one` é completamente finalizado e a inicialização no boot é suspensa até reativação.
+
 ## 0.9.45
 
 - **🚀 Sistema de Auto-Atualização Inteligente com Barra de Progresso em Tempo Real**:

@@ -488,7 +488,9 @@ return view.extend({
 				if(!isInitial && live.up && logicalDev){
 					const ip = (live['ipv4-address'] && live['ipv4-address'][0] && live['ipv4-address'][0].address) || '';
 					const bindTarget = ip || logicalDev;
-					wanPromises.push(safe(fs.exec('/bin/ping',['-c','1','-W','1','-I',bindTarget,'1.1.1.1']),{}).then(function(p){wanPingsMap[w.iface]=p;}));
+					const dnsList = (live['dns-server'] || cfg.dns || []);
+					const pingTarget = (Array.isArray(dnsList) && dnsList.length && dnsList[0] && dnsList[0] !== '0.0.0.0') ? dnsList[0] : '8.8.8.8';
+					wanPromises.push(safe(fs.exec('/bin/ping',['-c','1','-W','2','-I',bindTarget,pingTarget]),{}).then(function(p){wanPingsMap[w.iface]=p;}));
 				}
 			});
 			return Promise.all([
@@ -557,7 +559,7 @@ return view.extend({
 		},this),Math.max(250,wait));
 	},
 	updateWan: function(prefix, i, d, physical, m, ping, cfg, daily) {
-		const phy=(physical&&Object.keys(physical).length)?physical:d, mwanInterfaces=((this.currentData||{}).mwan||{}).interfaces||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;}), online=!!i.up&&(!mwanRunning||(m&&m.status==='online')), disabled=!phy.carrier||(mwanRunning&&m&&m.status==='disabled');
+		const phy=(physical&&Object.keys(physical).length)?physical:d, mwanInterfaces=((this.currentData||{}).mwan||{}).interfaces||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;}), online=!!i.up&&(!mwanRunning||(m&&(m.status==='online'||m.status==='unknown'||!m.running))), disabled=!phy.carrier||(mwanRunning&&m&&m.status==='disabled');
 		setPill(prefix+'-status',online?'online':(disabled?'standby':'offline'),online?'ONLINE':(disabled?'SEM CABO':'OFFLINE'));
 		const a=i['ipv4-address']&&i['ipv4-address'][0], speed=String(phy.speed||'').match(/[0-9]+/), full=String(phy.speed||'').toUpperCase().indexOf('F')>=0, link=phy.carrier?(speed?speed[0]+' Mbps'+(full?' • Full duplex':''):'conectado'):(i.up?'interface ativa':'sem link'), stats=d.statistics||{};
 		text(prefix+'-mode',wanProtoLabel(i,cfg)); text(prefix+'-ip',a?a.address:'—'); text(prefix+'-gateway',wanGateway(i)); text(prefix+'-mask',a?cidrMask(a.mask):'—'); text(prefix+'-dns',wanDns(i)); text(prefix+'-link',link); text(prefix+'-latency',(online&&ping!=null)?ping.toFixed(0)+' ms':'—'); text(prefix+'-rx-day',daily?formatBytes(daily.rx):'Coletando…'); text(prefix+'-tx-day',daily?formatBytes(daily.tx):'Coletando…'); text(prefix+'-session','↓ '+formatBytes(Number(stats.rx_bytes)||0)+'  •  ↑ '+formatBytes(Number(stats.tx_bytes)||0)); text(prefix+'-uptime',i.up?formatUptime(i.uptime):'—');
@@ -909,13 +911,13 @@ return view.extend({
 					reserveDescBox
 				])
 			];
-			let selectedPriority = !state.priority ? 'none' : (state.dscp === 'AF41' ? 'video' : 'gamer');
+			let selectedPriority = !state.priority ? 'none' : (state.dscp === 'AF31' ? 'video' : 'gamer');
 			const hasQosFeature = this.feature('sqm').installed || this.feature('custom_qos').installed;
 			if(hasQosFeature && !device.guest){
 				const priorityButtons = [
 					{ id: 'none', label: '⚪ Sem Prioridade', desc: 'Fila padrão justa (CS0). O SQM divide a banda igualmente entre os aparelhos. Recomendado para a maioria dos dispositivos (TVs, celulares e IoT).' },
-					{ id: 'gamer', label: '🎮 Fila Gamer', desc: 'Prioridade máxima em tempo real (EF). Os pacotes deste aparelho furam a fila de downloads e streams. Ative no seu PC Gamer ou celular de jogos.' },
-					{ id: 'video', label: '📺 Fila de Vídeo', desc: 'Alta prioridade multimídia (AF41). Recomendado para chamadas de vídeo (Zoom, Meet, Teams) e transmissões ao vivo.' }
+					{ id: 'gamer', label: '🎮 Fila Gamer', desc: 'Prioridade máxima interativa (AF41 / Fila de Jogos). Os pacotes deste aparelho têm ultra-baixa latência e furam filas de downloads com total compatibilidade com jogos, web e Apple Store.' },
+					{ id: 'video', label: '📺 Fila de Vídeo', desc: 'Alta prioridade multimídia (AF31 / Fila de Vídeo). Recomendado para chamadas de vídeo (Zoom, Meet, Teams) e transmissões ao vivo.' }
 				];
 				const descContainer = E('div', { class: 'ex-priority-desc-box' });
 				const btnList = [];
@@ -1121,7 +1123,7 @@ return view.extend({
 				btn.disabled = true;
 				btn.textContent = 'Salvando…';
 				const prioEnabled = (selectedPriority !== 'none') ? '1' : '0';
-				const dscpVal = (selectedPriority === 'video') ? 'AF41' : 'EF';
+				const dscpVal = (selectedPriority === 'video') ? 'AF31' : 'AF41';
 				const finalIp = isReserved ? ipInput.value.trim() : (device.ip || state.ip || '');
 				const limEnabled = limitToggle.checked ? '1' : '0';
 				const limDown = limitToggle.checked ? (Number(downInput.value) || 0) : 0;
@@ -2598,6 +2600,34 @@ return view.extend({
 			E('small',{class:'ex-muted'},['Depois do pareamento, aprove a Subnet Route no painel Tailscale. Use faixas LAN diferentes em cada roteador para evitar conflito.'])
 		]);
 	},
+	enableZerotier: function(){
+		ui.showModal('Ativar ZeroTier',[E('p',{},['Iniciando serviço ZeroTier e conectando à rede virtual…'])]);
+		return fs.exec('/usr/sbin/equipe-dashboard-control',['zerotier-enable']).then(function(r){
+			if(r.code)throw new Error(r.stderr||'Falha ao iniciar ZeroTier');
+			ui.hideModal();
+			reloadSoon('ZeroTier ativado com sucesso. Recarregando…',1500);
+		}).catch(function(e){
+			ui.showModal('Ativar ZeroTier',[E('p',{class:'alert-message warning'},[e.message]),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])]);
+		});
+	},
+	disableZerotier: function(){
+		ui.showModal('Desligar ZeroTier',[
+			E('p',{},['Desligar o ZeroTier neste roteador? O serviço será totalmente encerrado para economizar CPU e memória RAM. O acesso remoto pela VPN ficará pausado até você reativar.']),
+			E('div',{class:'right'},[
+				E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),
+				' ',
+				E('button',{class:'btn cbi-button cbi-button-negative','click':function(){
+					return fs.exec('/usr/sbin/equipe-dashboard-control',['zerotier-disable']).then(function(r){
+						if(r.code)throw new Error(r.stderr||'Falha ao desligar ZeroTier');
+						ui.hideModal();
+						reloadSoon('ZeroTier desligado com sucesso. Recarregando…',1200);
+					}).catch(function(e){
+						ui.addNotification(null,E('p',{},[e.message]),'danger');
+					});
+				}},['Desligar'])
+			])
+		]);
+	},
 	joinZerotier: function(){
 		const f=this.feature('zerotier')||{}, current=f.network_id||'';
 		const input=E('input',{class:'cbi-input-text',type:'text',value:current,placeholder:'ex.: 8056c2e21c000001',maxlength:16});
@@ -2618,21 +2648,29 @@ return view.extend({
 	zerotierCard: function(){
 		const f=this.feature('zerotier')||{}, installed=!!f.installed, active=!!f.active;
 		return E('section',{class:'ex-card ex-remote-card'},[
-			E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['ACESSO REMOTO LEVE']),E('h3',{},['ZeroTier'])]),E('span',{class:'ex-pill '+(active?'online':(installed?'standby':'offline'))},[active?'ATIVO':(installed?'INSTALADO':'OPCIONAL')])]),
-			E('p',{class:'ex-muted'},['Acesso remoto leve para iOS e Windows sem abrir portas na WAN. Use o IP ZeroTier abaixo para abrir o ARK Router remotamente.']),
+			E('div',{class:'ex-card-title'},[
+				E('div',{},[
+					E('span',{class:'ex-kicker'},['ACESSO REMOTO LEVE']),
+					E('h3',{},['ZeroTier'])
+				]),
+				E('span',{class:'ex-pill '+(active?'online':(installed?'standby':'offline'))},[active?'ATIVO':(installed?'DESLIGADO':'OPCIONAL')])
+			]),
+			E('p',{class:'ex-muted'},['Acesso remoto leve para iOS e Windows sem abrir portas na WAN. Quando desligado, o serviço não roda e não consome recursos.']),
 			E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},[
 				E('div',{class:'ex-row'},[E('span',{},['Node ID']),E('strong',{},[f.node_id||'—'])]),
 				E('div',{class:'ex-row'},[E('span',{},['Network ID']),E('strong',{},[f.network_id||'—'])]),
-				E('div',{class:'ex-row'},[E('span',{},['IP ZeroTier']),E('strong',{},[(f.ip||'—').replace(/\/.*$/,'')])])
+				E('div',{class:'ex-row'},[E('span',{},['IP ZeroTier']),E('strong',{},[active?((f.ip||'—').replace(/\/.*$/,'')):'—'])])
 			]),
 			E('div',{class:'ex-speedify-actions'},[
 				installed?'':E('button',{class:'ex-mini-button','click':L.bind(this.installFeature,this,'zerotier')},['Instalar ZeroTier']),
-				E('button',{class:'ex-mini-button','click':L.bind(this.joinZerotier,this)},[installed?'Entrar / trocar rede':'Instalar e configurar']),
-				(f.ip&&f.ip!=='—')?E('a',{class:'ex-mini-button',href:'http://'+String(f.ip).replace(/\/.*$/,''),target:'_blank',rel:'noopener noreferrer'},['Abrir ARK remoto']):'',
-				installed?E('button',{class:'ex-feature-link','click':L.bind(this.leaveZerotier,this)},['Sair da rede']):'',
+				installed && !active ? E('button',{class:'ex-mini-button','click':L.bind(this.enableZerotier,this)},['▶ Ativar ZeroTier']) : '',
+				installed && active ? E('button',{class:'ex-mini-button','click':L.bind(this.joinZerotier,this)},['Entrar / trocar rede']) : '',
+				(active && f.ip && f.ip!=='—') ? E('a',{class:'ex-mini-button',href:'http://'+String(f.ip).replace(/\/.*$/,''),target:'_blank',rel:'noopener noreferrer'},['Abrir ARK remoto']) : '',
+				installed && active ? E('button',{class:'ex-feature-link','click':L.bind(this.disableZerotier,this)},['⏹ Desligar']) : '',
+				installed ? E('button',{class:'ex-feature-link','click':L.bind(this.leaveZerotier,this)},['Sair da rede']) : '',
 				E('a',{class:'ex-text-link',href:'https://my.zerotier.com/network',target:'_blank',rel:'noopener noreferrer'},['ZeroTier Central →'])
 			]),
-			E('small',{class:'ex-muted'},['Depois de entrar, autorize o roteador no ZeroTier Central. Se o IP aparecer, o ARK Router também libera HTTP/HTTPS nesse IP automaticamente.'])
+			E('small',{class:'ex-muted'},[active ? 'ZeroTier ativo. Use o IP acima para acessar o roteador remotamente.' : 'ZeroTier desligado (processo finalizado, zero uso de CPU e RAM). Clique em Ativar para conectar.'])
 		]);
 	},
 	prepareSpeedifyWans: function(){

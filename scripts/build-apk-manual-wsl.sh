@@ -53,6 +53,7 @@ chmod 0755 "$pkg_root/www/cgi-bin/ark-starlink-telemetry" 2>/dev/null || true
 chmod 0755 "$pkg_root/etc/init.d/equipe-traffic-history" 2>/dev/null || true
 chmod 0755 "$pkg_root/etc/init.d/ark-speedify" 2>/dev/null || true
 chmod 0755 "$pkg_root/etc/init.d/ark-zerotier-ram" 2>/dev/null || true
+chmod 0755 "$pkg_root/etc/uci-defaults/99-ark-router-upnp" 2>/dev/null || true
 
 mkdir -p "$pkg_root/lib/apk/packages"
 
