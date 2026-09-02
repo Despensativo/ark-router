@@ -3435,10 +3435,30 @@ return view.extend({
 			};
 
 			const presetBtns = [
-				E('button', { type: 'button', class: 'ex-mini-button', click: function(){ applyPreset(['1.1.1.1', '8.8.8.8', '1.0.0.1', '8.8.4.4']); } }, ['🚀 Cloudflare + Google (4x)']),
-				E('button', { type: 'button', class: 'ex-mini-button', click: function(){ applyPreset(['1.1.1.1', '8.8.8.8', '', '']); } }, ['⚡ Apenas 2 Principais']),
-				E('button', { type: 'button', class: 'ex-mini-button', click: function(){ applyPreset(['1.1.1.2', '9.9.9.9', '1.0.0.2', '149.112.112.112']); } }, ['🛡️ Segurança (Anti-Malware)']),
-				E('button', { type: 'button', class: 'ex-mini-button', click: function(){ applyPreset(['94.140.14.14', '94.140.15.15', '76.76.2.0', '76.76.10.0']); } }, ['🚫 Bloqueio de Anúncios'])
+				E('button', {
+					type: 'button',
+					class: 'ex-priority-option-btn',
+					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
+					click: function(){ applyPreset(['1.1.1.1', '8.8.8.8', '1.0.0.1', '8.8.4.4']); }
+				}, ['🚀 Cloudflare + Google (4x)']),
+				E('button', {
+					type: 'button',
+					class: 'ex-priority-option-btn',
+					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
+					click: function(){ applyPreset(['1.1.1.1', '8.8.8.8', '', '']); }
+				}, ['⚡ Apenas 2 Principais']),
+				E('button', {
+					type: 'button',
+					class: 'ex-priority-option-btn',
+					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
+					click: function(){ applyPreset(['1.1.1.2', '9.9.9.9', '1.0.0.2', '149.112.112.112']); }
+				}, ['🛡️ Segurança (Anti-Malware)']),
+				E('button', {
+					type: 'button',
+					class: 'ex-priority-option-btn',
+					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
+					click: function(){ applyPreset(['94.140.14.14', '94.140.15.15', '76.76.2.0', '76.76.10.0']); }
+				}, ['🚫 Bloqueio de Anúncios'])
 			];
 
 			const testBtn = E('button', {
@@ -3515,7 +3535,7 @@ return view.extend({
 				E('div', { class: 'ex-device-config-block' }, [
 					E('strong', {}, ['Predefinições Rápidas']),
 					E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Selecione uma combinação pronta ou digite seus próprios IPs:']),
-					E('div', { class: 'ex-priority-button-grid', style: 'margin-top: 8px; gap: 6px;' }, presetBtns)
+					E('div', { class: 'ex-grid ex-grid-2', style: 'margin-top: 8px; gap: 8px;' }, presetBtns)
 				]),
 				E('div', { class: 'ex-device-config-block' }, [
 					E('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;' }, [
