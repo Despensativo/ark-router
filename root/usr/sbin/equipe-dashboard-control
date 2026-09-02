@@ -3527,7 +3527,11 @@ case "$action" in
 		uci -q set dhcp.lan.start="$start_host"
 		uci -q set dhcp.lan.limit="$limit"
 		uci -q set dhcp.lan.leasetime="${DHCP_LEASETIME:-12h}"
-		apply_lan_dhcp_dns "$dns"
+		if [ -z "$dns" ] && [ "$(uci -q get dhcp.@dnsmasq[0].allservers)" = 1 ]; then
+			apply_lan_dhcp_dns "$router_ip"
+		else
+			apply_lan_dhcp_dns "$dns"
+		fi
 		bind_uhttpd_to_lan_ip "$router_ip" || { echo 'Falha ao ajustar uHTTPd para o novo IP LAN' >&2; exit 3; }
 		uci commit network
 		uci commit dhcp
