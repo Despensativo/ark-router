@@ -2265,6 +2265,10 @@ dns_turbo_save() {
 	fi
 	uci -q set dhcp.@dnsmasq[0].noresolv='0'
 	uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'
+	if [ "$allservers" = 1 ]; then
+		lan_ip="$(uci -q get network.lan.ipaddr || echo 192.168.73.1)"
+		apply_lan_dhcp_dns "$lan_ip"
+	fi
 	uci commit dhcp
 	/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 	echo ok
@@ -2305,6 +2309,8 @@ system_perf_save() {
 				uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.1'
 				uci -q add_list dhcp.@dnsmasq[0].server='8.8.4.4'
 			fi
+			lan_ip="$(uci -q get network.lan.ipaddr || echo 192.168.73.1)"
+			apply_lan_dhcp_dns "$lan_ip"
 		fi
 		uci commit dhcp
 		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
