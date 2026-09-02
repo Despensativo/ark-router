@@ -3398,6 +3398,168 @@ return view.extend({
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])
 		]);
 	},
+	openDnsTurboModal: function() {
+		const self = this;
+		ui.showModal('Carregando DNS Turbo…', [ E('p', {}, ['Consultando servidores e configurações atuais…']) ]);
+		fs.exec('/usr/sbin/equipe-dashboard-control', ['dns-turbo-status']).then(function(r) {
+			let status = { allservers: true, servers: '1.1.1.1 8.8.8.8 1.0.0.1 8.8.4.4' };
+			try { status = JSON.parse(r.stdout || '{}'); } catch(e){}
+			const serverList = (status.servers || '1.1.1.1 8.8.8.8 1.0.0.1 8.8.4.4').split(' ').filter(function(s){ return !!s; });
+
+			const allserversToggle = E('input', {
+				type: 'checkbox',
+				checked: !!status.allservers,
+				style: 'width: 20px; height: 20px; cursor: pointer;'
+			});
+
+			const ipInputs = [
+				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[0] || '1.1.1.1', placeholder: 'ex: 1.1.1.1', style: 'width: 100%; box-sizing: border-box;' }),
+				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[1] || '8.8.8.8', placeholder: 'ex: 8.8.8.8', style: 'width: 100%; box-sizing: border-box;' }),
+				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[2] || '1.0.0.1', placeholder: 'ex: 1.0.0.1 (opcional)', style: 'width: 100%; box-sizing: border-box;' }),
+				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[3] || '8.8.4.4', placeholder: 'ex: 8.8.4.4 (opcional)', style: 'width: 100%; box-sizing: border-box;' })
+			];
+
+			const latBadges = [
+				E('span', { class: 'ex-pill standby', style: 'font-size:0.75rem;' }, ['— ms']),
+				E('span', { class: 'ex-pill standby', style: 'font-size:0.75rem;' }, ['— ms']),
+				E('span', { class: 'ex-pill standby', style: 'font-size:0.75rem;' }, ['— ms']),
+				E('span', { class: 'ex-pill standby', style: 'font-size:0.75rem;' }, ['— ms'])
+			];
+
+			const applyPreset = function(arr) {
+				for (let i = 0; i < 4; i++) {
+					ipInputs[i].value = arr[i] || '';
+					latBadges[i].textContent = '— ms';
+					latBadges[i].className = 'ex-pill standby';
+				}
+			};
+
+			const presetBtns = [
+				E('button', { type: 'button', class: 'ex-mini-button', click: function(){ applyPreset(['1.1.1.1', '8.8.8.8', '1.0.0.1', '8.8.4.4']); } }, ['🚀 Cloudflare + Google (4x)']),
+				E('button', { type: 'button', class: 'ex-mini-button', click: function(){ applyPreset(['1.1.1.1', '8.8.8.8', '', '']); } }, ['⚡ Apenas 2 Principais']),
+				E('button', { type: 'button', class: 'ex-mini-button', click: function(){ applyPreset(['1.1.1.2', '9.9.9.9', '1.0.0.2', '149.112.112.112']); } }, ['🛡️ Segurança (Anti-Malware)']),
+				E('button', { type: 'button', class: 'ex-mini-button', click: function(){ applyPreset(['94.140.14.14', '94.140.15.15', '76.76.2.0', '76.76.10.0']); } }, ['🚫 Bloqueio de Anúncios'])
+			];
+
+			const testBtn = E('button', {
+				class: 'ex-mini-button',
+				type: 'button',
+				style: 'padding: 8px 14px; font-weight: 750;',
+				click: function(ev) {
+					const btn = ev.currentTarget;
+					btn.disabled = true;
+					btn.textContent = 'Testando latências…';
+					const promises = ipInputs.map(function(inp, idx) {
+						const ip = inp.value.trim();
+						if (!ip) {
+							latBadges[idx].textContent = 'Vazio';
+							latBadges[idx].className = 'ex-pill offline';
+							return Promise.resolve();
+						}
+						latBadges[idx].textContent = 'Medindo…';
+						latBadges[idx].className = 'ex-pill standby';
+						return fs.exec('/bin/ping', ['-c', '1', '-W', '2', ip]).then(function(res) {
+							const m = String(res.stdout || '').match(/time=([0-9.]+)\s*ms/);
+							if (m && m[1]) {
+								const ms = parseFloat(m[1]).toFixed(1);
+								latBadges[idx].textContent = ms + ' ms';
+								latBadges[idx].className = parseFloat(ms) < 20 ? 'ex-pill online' : 'ex-pill standby';
+							} else {
+								latBadges[idx].textContent = 'Sem ping';
+								latBadges[idx].className = 'ex-pill offline';
+							}
+						}).catch(function() {
+							latBadges[idx].textContent = 'Falha';
+							latBadges[idx].className = 'ex-pill offline';
+						});
+					});
+					Promise.all(promises).finally(function() {
+						btn.disabled = false;
+						btn.textContent = '🧪 Testar Latência dos Servidores';
+					});
+				}
+			}, ['🧪 Testar Latência dos Servidores']);
+
+			const formGrid = E('div', { class: 'ex-grid ex-grid-2', style: 'gap: 12px; margin-top: 10px;' }, [
+				E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600;' }, [
+					E('div', { style: 'display: flex; justify-content: space-between; align-items: center;' }, [ E('span', {}, ['DNS 1 (Principal):']), latBadges[0] ]),
+					ipInputs[0]
+				]),
+				E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600;' }, [
+					E('div', { style: 'display: flex; justify-content: space-between; align-items: center;' }, [ E('span', {}, ['DNS 2 (Secundário):']), latBadges[1] ]),
+					ipInputs[1]
+				]),
+				E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600;' }, [
+					E('div', { style: 'display: flex; justify-content: space-between; align-items: center;' }, [ E('span', {}, ['DNS 3 (Opcional):']), latBadges[2] ]),
+					ipInputs[2]
+				]),
+				E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600;' }, [
+					E('div', { style: 'display: flex; justify-content: space-between; align-items: center;' }, [ E('span', {}, ['DNS 4 (Opcional):']), latBadges[3] ]),
+					ipInputs[3]
+				])
+			]);
+
+			const content = [
+				E('div', { class: 'ex-device-config-block' }, [
+					E('div', { style: 'display: flex; align-items: center; justify-content: space-between;' }, [
+						E('div', {}, [
+							E('strong', {}, ['Consulta Paralela All-Servers (0ms)']),
+							E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Dispara para todos os servidores ao mesmo tempo. O primeiro que responder entrega a página sem esperar filas.'])
+						]),
+						E('label', { class: 'ex-switch' }, [
+							allserversToggle,
+							E('span', { class: 'ex-switch-slider' })
+						])
+					])
+				]),
+				E('div', { class: 'ex-device-config-block' }, [
+					E('strong', {}, ['Predefinições Rápidas']),
+					E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Selecione uma combinação pronta ou digite seus próprios IPs:']),
+					E('div', { class: 'ex-priority-button-grid', style: 'margin-top: 8px; gap: 6px;' }, presetBtns)
+				]),
+				E('div', { class: 'ex-device-config-block' }, [
+					E('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;' }, [
+						E('strong', {}, ['Servidores DNS Ativos (2 a 4)']),
+						testBtn
+					]),
+					formGrid,
+					E('small', { class: 'ex-muted', style: 'display: block; margin-top: 8px;' }, ['Você pode preencher de 1 a 4 servidores. Campos vazios serão desconsiderados.'])
+				]),
+				E('div', { class: 'right' }, [
+					E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Cancelar']),
+					' ',
+					E('button', {
+						class: 'btn cbi-button cbi-button-positive',
+						click: function(ev) {
+							const btn = ev.currentTarget;
+							btn.disabled = true;
+							btn.textContent = 'Salvando…';
+							const s1 = ipInputs[0].value.trim();
+							const s2 = ipInputs[1].value.trim();
+							const s3 = ipInputs[2].value.trim();
+							const s4 = ipInputs[3].value.trim();
+							const alls = allserversToggle.checked ? '1' : '0';
+							const args = ['dns-turbo-save', alls, s1, s2, s3, s4];
+							return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
+								if (r.code) throw new Error(r.stderr || 'Falha ao salvar DNS');
+								ui.hideModal();
+								ui.addNotification(null, E('p', {}, ['Configurações de DNS Turbo salvas e aplicadas com sucesso!']));
+								return self.fetchData().then(L.bind(self.update, self));
+							}).catch(function(e) {
+								btn.disabled = false;
+								btn.textContent = 'Salvar configurações';
+								ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+							});
+						}
+					}, ['Salvar configurações'])
+				])
+			];
+
+			ui.showModal('⚡ Configurar DNS Turbo Paralelo', content);
+		}).catch(function(e) {
+			ui.showModal('Configurar DNS Turbo', [ E('p', { class: 'alert-message warning' }, [ e.message ]), E('div', { class: 'right' }, [ E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Fechar']) ]) ]);
+		});
+	},
 	systemPerfCard: function(data) {
 		const self = this;
 		this.perfState = Object.assign({
@@ -3406,7 +3568,9 @@ return view.extend({
 			speedify_encryption: true,
 			speedify_installed: false,
 			speedify_log_cap: false,
-			nlbwmon_lite: false
+			nlbwmon_lite: false,
+			dns_allservers: false,
+			dns_servers: '1.1.1.1 8.8.8.8 1.0.0.1 8.8.4.4'
 		}, data.perfStatus || {});
 
 		const irqbalance = this.feature('irqbalance');
@@ -3421,6 +3585,7 @@ return view.extend({
 			if (self.perfState.speedify_installed && !self.perfState.speedify_encryption) c++;
 			if (self.perfState.speedify_log_cap) c++;
 			if (self.perfState.nlbwmon_lite) c++;
+			if (self.perfState.dns_allservers) c++;
 			if (irqbalance.installed && irqbalance.active) c++;
 			return c;
 		};
@@ -3490,7 +3655,8 @@ return view.extend({
 				self.perfState.ram_autopurge ? '1' : '0',
 				self.perfState.speedify_encryption ? '1' : '0',
 				self.perfState.speedify_log_cap ? '1' : '0',
-				self.perfState.nlbwmon_lite ? '1' : '0'
+				self.perfState.nlbwmon_lite ? '1' : '0',
+				self.perfState.dns_allservers ? '1' : '0'
 			];
 			console.log('[PERF_SAVE] Iniciando:', key, '=', val, 'args:', args);
 			return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
@@ -3509,7 +3675,7 @@ return view.extend({
 			});
 		};
 
-		const makePerfRow = function(icon, title, badgeText, badgeClass, desc, hwAdvice, isChecked, isEnabled, onChangeKey, isNegated) {
+		const makePerfRow = function(icon, title, badgeText, badgeClass, desc, hwAdvice, isChecked, isEnabled, onChangeKey, isNegated, extraBtn) {
 			const statePill = E('strong', {
 				class: 'ex-device-switch-state',
 				style: 'margin-right: 12px;'
@@ -3548,6 +3714,11 @@ return view.extend({
 				])
 			]);
 
+			const rightWrap = E('div', { style: 'display: flex; align-items: center; gap: 10px;' }, [
+				extraBtn || '',
+				switchControl
+			]);
+
 			return E('div', { class: 'ex-perf-item' }, [
 				E('div', { class: 'ex-perf-item-content' }, [
 					E('div', { class: 'ex-perf-item-head' }, [
@@ -3558,7 +3729,7 @@ return view.extend({
 					E('p', { class: 'ex-perf-desc' }, [desc]),
 					hwAdvice ? E('small', { class: 'ex-perf-hw-advice' }, ['💡 ' + hwAdvice]) : ''
 				]),
-				switchControl
+				rightWrap
 			]);
 		};
 
@@ -3620,7 +3791,32 @@ return view.extend({
 
 		const conntrackStateText = conntrackCount > 0 ? (conntrackCount + ' conexões ativas no NAT • ' + conntrackPercent + '% da tabela') : 'Tabela de conexões NAT';
 
+		const dnsTurboBtn = E('button', {
+			class: 'ex-mini-button',
+			type: 'button',
+			style: 'padding: 8px 12px; font-size: 0.8rem; font-weight: 700;',
+			title: 'Escolha até 4 servidores DNS e teste a latência de cada um em tempo real',
+			click: function(ev) {
+				ev.preventDefault();
+				ev.stopPropagation();
+				self.openDnsTurboModal();
+			}
+		}, ['⚙️ Servidores']);
+
 		const rows = [
+			makePerfRow(
+				'⚡',
+				'DNS Turbo Paralelo (All-Servers)',
+				'RESPOSTA EM 0ms',
+				'badge-green',
+				'Dispara consultas simultaneamente para 2 a 4 servidores em paralelo (Cloudflare, Google, etc.). O primeiro que responder entrega a página sem fila nem atraso de rota.',
+				'Elimina engasgos na abertura de sites e downloads. Toque em “Servidores” para testar e escolher até 4 DNS.',
+				!!this.perfState.dns_allservers,
+				true,
+				'dns_allservers',
+				false,
+				dnsTurboBtn
+			),
 			E('div', { class: 'ex-perf-item', style: 'background: color-mix(in srgb, #10b981 8%, rgba(127,127,127,.055)); border-color: rgba(16,185,129,.25);' }, [
 				E('div', { class: 'ex-perf-item-content' }, [
 					E('div', { class: 'ex-perf-item-head' }, [

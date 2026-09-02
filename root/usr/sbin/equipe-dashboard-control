@@ -2221,8 +2221,53 @@ system_perf_status_json() {
 	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
 	mem_avail_kb="$(awk '/MemAvailable:/ {print $2; exit}' /proc/meminfo 2>/dev/null || awk '/MemFree:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
 
-	printf '{"conntrack_recycle":%s,"ram_autopurge":%s,"speedify_encryption":%s,"speedify_installed":%s,"speedify_log_cap":%s,"nlbwmon_lite":%s,"irqbalance_installed":%s,"irqbalance_active":%s,"conntrack_count":%s,"conntrack_max":%s,"mem_total_kb":%s,"mem_avail_kb":%s}\n' \
-		"$conntrack_recycle" "$ram_autopurge" "$speedify_encryption" "$speedify_installed" "$speedify_log_cap" "$nlbwmon_lite" "$irq_installed" "$irq_active" "$conntrack_count" "$conntrack_max" "$mem_total_kb" "$mem_avail_kb"
+	dns_allservers=false
+	[ "$(uci -q get dhcp.@dnsmasq[0].allservers)" = 1 ] && dns_allservers=true
+	dns_servers="$(uci -q get dhcp.@dnsmasq[0].server 2>/dev/null | tr '\n' ' ' | sed 's/  */ /g; s/ $//' || true)"
+	[ -n "$dns_servers" ] || dns_servers="1.1.1.1 8.8.8.8 1.0.0.1 8.8.4.4"
+
+	printf '{"conntrack_recycle":%s,"ram_autopurge":%s,"speedify_encryption":%s,"speedify_installed":%s,"speedify_log_cap":%s,"nlbwmon_lite":%s,"irqbalance_installed":%s,"irqbalance_active":%s,"conntrack_count":%s,"conntrack_max":%s,"mem_total_kb":%s,"mem_avail_kb":%s,"dns_allservers":%s,"dns_servers":"%s"}\n' \
+		"$conntrack_recycle" "$ram_autopurge" "$speedify_encryption" "$speedify_installed" "$speedify_log_cap" "$nlbwmon_lite" "$irq_installed" "$irq_active" "$conntrack_count" "$conntrack_max" "$mem_total_kb" "$mem_avail_kb" "$dns_allservers" "$(json_escape "$dns_servers")"
+}
+
+dns_turbo_status_json() {
+	allservers=false
+	[ "$(uci -q get dhcp.@dnsmasq[0].allservers)" = 1 ] && allservers=true
+	servers="$(uci -q get dhcp.@dnsmasq[0].server 2>/dev/null | tr '\n' ' ' | sed 's/  */ /g; s/ $//' || true)"
+	[ -n "$servers" ] || servers="1.1.1.1 8.8.8.8 1.0.0.1 8.8.4.4"
+	filter_aaaa=false
+	[ "$(uci -q get dhcp.@dnsmasq[0].filter_aaaa)" = 1 ] && filter_aaaa=true
+	printf '{"allservers":%s,"servers":"%s","filter_aaaa":%s}\n' \
+		"$allservers" "$(json_escape "$servers")" "$filter_aaaa"
+}
+
+dns_turbo_save() {
+	allservers="${1:-1}"
+	dns1="$2"
+	dns2="$3"
+	dns3="$4"
+	dns4="$5"
+	case "$allservers" in 1|true) allservers=1 ;; *) allservers=0 ;; esac
+	uci -q set "dhcp.@dnsmasq[0].allservers=$allservers"
+	uci -q delete dhcp.@dnsmasq[0].server
+	count=0
+	for ip in "$dns1" "$dns2" "$dns3" "$dns4"; do
+		[ -n "$ip" ] || continue
+		valid_ipv4 "$ip" || continue
+		uci -q add_list "dhcp.@dnsmasq[0].server=$ip"
+		count=$((count+1))
+	done
+	if [ "$count" -eq 0 ]; then
+		uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.1'
+		uci -q add_list dhcp.@dnsmasq[0].server='8.8.8.8'
+		uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.1'
+		uci -q add_list dhcp.@dnsmasq[0].server='8.8.4.4'
+	fi
+	uci -q set dhcp.@dnsmasq[0].noresolv='0'
+	uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'
+	uci commit dhcp
+	/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+	echo ok
 }
 
 system_perf_save() {
@@ -2231,12 +2276,14 @@ system_perf_save() {
 	speedify_encryption="${3:-1}"
 	speedify_log_cap="${4:-0}"
 	nlbwmon_lite="${5:-0}"
+	dns_allservers="${6:-0}"
 
 	case "$conntrack_recycle" in 1|true) conntrack_recycle=1 ;; *) conntrack_recycle=0 ;; esac
 	case "$ram_autopurge" in 1|true) ram_autopurge=1 ;; *) ram_autopurge=0 ;; esac
 	case "$speedify_encryption" in 0|false) speedify_encryption=0 ;; *) speedify_encryption=1 ;; esac
 	case "$speedify_log_cap" in 1|true) speedify_log_cap=1 ;; *) speedify_log_cap=0 ;; esac
 	case "$nlbwmon_lite" in 1|true) nlbwmon_lite=1 ;; *) nlbwmon_lite=0 ;; esac
+	case "$dns_allservers" in 1|true) dns_allservers=1 ;; *) dns_allservers=0 ;; esac
 
 	mkdir -p /etc/config
 	[ -f /etc/config/equipe_perf ] || touch /etc/config/equipe_perf
@@ -2247,6 +2294,21 @@ system_perf_save() {
 	uci -q set "equipe_perf.settings.speedify_log_cap=$speedify_log_cap"
 	uci -q set "equipe_perf.settings.nlbwmon_lite=$nlbwmon_lite"
 	uci commit equipe_perf
+
+	# DNS All-Servers
+	if [ "$(uci -q get dhcp.@dnsmasq[0].allservers)" != "$dns_allservers" ]; then
+		uci -q set "dhcp.@dnsmasq[0].allservers=$dns_allservers"
+		if [ "$dns_allservers" = 1 ]; then
+			if [ -z "$(uci -q get dhcp.@dnsmasq[0].server)" ]; then
+				uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.1'
+				uci -q add_list dhcp.@dnsmasq[0].server='8.8.8.8'
+				uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.1'
+				uci -q add_list dhcp.@dnsmasq[0].server='8.8.4.4'
+			fi
+		fi
+		uci commit dhcp
+		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+	fi
 
 	mkdir -p /etc/sysctl.d
 	if [ "$conntrack_recycle" = 1 ]; then
@@ -3641,6 +3703,13 @@ case "$action" in
 	system-perf-save)
 		shift
 		system_perf_save "$@"
+		;;
+	dns-turbo-status)
+		dns_turbo_status_json
+		;;
+	dns-turbo-save)
+		shift
+		dns_turbo_save "$@"
 		;;
 	system-memory-purge)
 		system_memory_purge

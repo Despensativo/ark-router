@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.47
+
+- **⚡ DNS Turbo Paralelo (`all-servers`) com Seleção Flexível de 2 a 4 Servidores**:
+  - **Modo Paralelo com Latência Mínima (0ms)**: Envia requisições DNS simultaneamente para todos os servidores cadastrados; quem responder primeiro entrega a página instantaneamente.
+  - **Painel Interativo de Configuração de Servidores**: Permite preencher de 1 a 4 servidores DNS customizados com suporte a presets rápidos (🚀 Cloudflare + Google, ⚡ Apenas 2 Principais, 🛡️ Segurança, 🚫 Bloqueio de Anúncios).
+  - **Teste de Latência em Tempo Real**: Botão integrado `[ 🧪 Testar Latência dos Servidores ]` para medir o tempo de resposta em milissegundos ($ms$) de cada IP antes de salvar.
+  - **Chave de Liga/Desliga no Painel de Desempenho**: Permite alternar entre o modo sequencial e o modo paralelo com 1 clique.
+
 ## 0.9.46
 
 - **🎮 Otimização de Prioridade Gamer & Compatibilidade com Apple Store / CDNs**:
