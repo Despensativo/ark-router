@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.9.68
+
+- **🧪 Suíte Automatizada de QA Visual Multi-Navegador e Multi-Resolução**:
+  - Implementado test runner automatizado (`scripts/qa_visual_matrix.py`) executando 8 ambientes emulados e nativos em paralelo:
+    1. Google Chrome Desktop Full HD (1920×1080);
+    2. Google Chrome Laptop (1366×768);
+    3. Mozilla Firefox Desktop Full HD (1920×1080 - Motor Gecko);
+    4. Microsoft Edge Desktop Full HD (1920×1080 - Motor Chromium);
+    5. Chrome Mobile iPhone 14/15/16 (390×844 - Viewport WebKit iOS com touch);
+    6. Chrome Mobile Android Galaxy (412×915 - Viewport High-DPI Android com touch);
+    7. Chrome Mobile Compact (360×740 - Smartphones de Entrada);
+    8. Chrome Tablet / iPad (768×1024 - Modo Tablet).
+  - Verificação automatizada de ausência de vazamento horizontal (`hasDocOverflow == false` e `hasMrOverflow == false`), contenção de caixas/cartões, fluidez de rolagem e auditoria com capturas de tela salvas em `docs/qa_screenshots/`.
+- **📐 Diretrizes Oficiais de Design System e Prevenção de Falhas de Layout (`docs/UI_DESIGN_SYSTEM_AND_QA.md`)**:
+  - Documentado o padrão arquitetural de rolagem do LuCI (Tema Argon/Bootstrap com `.main-right`), contenção estrita de submenus e modais, alvos de toque mínimos de 40px no mobile e regras contra transbordamento em Flex/Grid (`min-width: 0`).
+  - Isolamento definitivo do `#modal_overlay` condicionado a `body.modal-overlay-active`, garantindo que o overlay permaneça inativo e fora da tela quando fechado.
+
 ## 0.9.67
 
 - **📱 Eliminação de Scroll de Fundo e Travamento no iPhone / iOS Safari (Modal & Submenus)**:

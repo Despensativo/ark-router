@@ -142,3 +142,18 @@ When the LAN editor changes the router IP, the helper rewrites uHTTPd `listen_ht
 ## Restart safety
 
 The restart flow has two UI confirmations. After the first confirmation, the backend creates a private, short-lived token under `/tmp`. The final action is rejected until two seconds have elapsed and expires after 60 seconds, so the delay cannot be bypassed by an accidental repeated click.
+
+## UI Design System and Cross-Browser QA Automation
+
+To guarantee visual containment, zero layout breaking, and cross-browser stability across all devices:
+- **Design System Standards**: Codified in [`docs/UI_DESIGN_SYSTEM_AND_QA.md`](file:///c:/Users/User/Desktop/ARK%20Router/GitHub/luci-app-ark-router/docs/UI_DESIGN_SYSTEM_AND_QA.md), enforcing strict box-sizing, fluid min/max containment, 40px minimum touch targets, and LuCI-specific scroll container isolation (`.main-right` scroll locking during mobile menu and modal states).
+- **Automated QA Matrix (`scripts/qa_visual_matrix.py`)**: Runs automated headless test runs across 8 environments and viewports:
+  1. Google Chrome (Blink) Desktop Full HD (1920×1080);
+  2. Google Chrome Laptop (1366×768);
+  3. Mozilla Firefox (Gecko) Desktop Full HD (1920×1080);
+  4. Microsoft Edge (Chromium) Desktop Full HD (1920×1080);
+  5. Chrome Mobile iPhone Viewport (390×844) with WebKit touch emulation;
+  6. Chrome Mobile Android Galaxy Viewport (412×915);
+  7. Compact Mobile Viewport (360×740);
+  8. Tablet Viewport (768×1024).
+- **Automated Assertions**: Validates horizontal overflow absence (`hasDocOverflow == false`), element containment, scroll fluidity, side-menu background locking/unlocking, and saves high-resolution audit screenshots under `docs/qa_screenshots/`.
