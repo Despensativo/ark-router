@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.53
+
+- **⚡ Ordenação Instantânea sem Bloqueio de Hover (Nome e Total)**:
+  - **Reordenação Imediata em 0ms**: Corrigido bloqueio indevido de `:hover` que impedia o DOM de atualizar ao trocar as opções no menu suspenso de ordenação.
+  - **Ordenação Inteligente A → Z**: Ao selecionar "Nome do aparelho", a ordenação padrão passa a ser alfabética direta (A → Z) e o botão passa a exibir dinamicamente `[A → Z]` / `[Z → A]`.
+  - **Preservação de Métricas**: Ao alternar a ordenação manualmente, os dados mais recentes de tráfego são mantidos sem reiniciar artificialmente a contagem de tempo.
+
 ## 0.9.52
 
 - **📊 Monitoramento de Tráfego por Dispositivo - Tempo Real, Estabilidade e Coluna Total**:

@@ -766,23 +766,20 @@ return view.extend({
 		this.sortDevices(devices);
 		const existingRows = body.querySelectorAll('tr[data-mac]');
 		const nowTime = Date.now();
-		let isHovered = false;
-		try {
-			const card = body.closest('.ex-devices');
-			isHovered = !!(card && card.matches(':hover'));
-		} catch(e) {}
+		const force = !!this.forceDeviceReorder;
+		this.forceDeviceReorder = false;
 
 		const newOrder = devices.map(function(d){ return d.mac; }).join(',');
 		const currentOrder = Array.prototype.map.call(existingRows, function(r){ return r.getAttribute('data-mac'); }).join(',');
 		const orderChanged = (newOrder !== currentOrder);
 
-		// Para 'Nome' e 'Total': se a ordem mudar, a troca é imediata (zero delay).
-		// Se a ordem não mudou, apenas atualiza os números in-place sem mexer no DOM.
-		// Somente em 'Agora' é que aplicamos o delay de amortecimento (5s) para evitar que pacotinhos façam a lista dançar.
-		const shouldKeepInPlace = existingRows.length > 0 && existingRows.length === devices.length && (
+		// Se o usuário ordenou manualmente (force), reordena imediatamente.
+		// Em 'Nome' e 'Total', se a ordem mudou, reordena imediatamente (zero delay).
+		// Se a ordem física não mudou, apenas atualiza os números in-place para desempenho.
+		// Somente em 'Agora' (velocidade) seguramos 4 segundos para amortecer oscilações de pacotinhos.
+		const shouldKeepInPlace = !force && existingRows.length > 0 && existingRows.length === devices.length && (
 			!orderChanged ||
-			isHovered ||
-			(this.deviceSortKey === 'now' && (nowTime - (this.lastDeviceReorderTime || 0)) < 5000)
+			(this.deviceSortKey === 'now' && (nowTime - (this.lastDeviceReorderTime || 0)) < 4000)
 		);
 
 		if (shouldKeepInPlace) {
@@ -865,18 +862,39 @@ return view.extend({
 		});
 	},
 	setDeviceSort: function(key) {
-		this.deviceSortKey=key||'total';
-		this.lastDeviceReorderTime=0;
-		if(this.currentData)this.renderDevices(this.currentData,this.deviceRates(this.currentData));
+		this.deviceSortKey = key || 'total';
+		if (this.deviceSortKey === 'name') {
+			this.deviceSortDir = 'asc';
+		} else {
+			this.deviceSortDir = 'desc';
+		}
+		const dirBtn = document.getElementById('ex-device-sort-dir');
+		if (dirBtn) {
+			if (this.deviceSortKey === 'name') {
+				dirBtn.textContent = this.deviceSortDir === 'asc' ? 'A → Z' : 'Z → A';
+			} else {
+				dirBtn.textContent = this.deviceSortDir === 'desc' ? 'Maior primeiro' : 'Menor primeiro';
+			}
+		}
+		this.forceDeviceReorder = true;
+		this.lastDeviceReorderTime = 0;
+		if (this.currentData) this.renderDevices(this.currentData, this.lastDeviceRates || this.deviceRates(this.currentData));
 	},
 	toggleDeviceSortDirection: function(button) {
-		this.deviceSortDir=this.deviceSortDir==='asc'?'desc':'asc';
-		this.lastDeviceReorderTime=0;
-		if(button)button.textContent=this.deviceSortDir==='desc'?'Maior primeiro':'Menor primeiro';
-		if(this.currentData)this.renderDevices(this.currentData,this.deviceRates(this.currentData));
+		this.deviceSortDir = this.deviceSortDir === 'asc' ? 'desc' : 'asc';
+		if (button) {
+			if (this.deviceSortKey === 'name') {
+				button.textContent = this.deviceSortDir === 'asc' ? 'A → Z' : 'Z → A';
+			} else {
+				button.textContent = this.deviceSortDir === 'desc' ? 'Maior primeiro' : 'Menor primeiro';
+			}
+		}
+		this.forceDeviceReorder = true;
+		this.lastDeviceReorderTime = 0;
+		if (this.currentData) this.renderDevices(this.currentData, this.lastDeviceRates || this.deviceRates(this.currentData));
 	},
 	update: function(data) {
-		this.currentData=data; this.updateRefreshSummary(data); const r=this.calculateRates(data), dr=this.deviceRates(data), wan=iface(data.interfaces,'wan'), mi=data.mwan.interfaces||{}, sqm=values(data.sqm), qosValues=values(data.qos), qos=qosValues.main||{}, qosGuest=qosValues.guest||{};
+		this.currentData=data; this.updateRefreshSummary(data); const r=this.calculateRates(data), dr=this.deviceRates(data); this.lastDeviceRates=dr; const wan=iface(data.interfaces,'wan'), mi=data.mwan.interfaces||{}, sqm=values(data.sqm), qosValues=values(data.qos), qos=qosValues.main||{}, qosGuest=qosValues.guest||{};
 		let lanStatus={};try{lanStatus=JSON.parse((data.lanStatus&&data.lanStatus.stdout)||'{}');}catch(e){}
 		text('ex-download',formatRate(r.down)); text('ex-upload',formatRate(r.up)); text('ex-down-total','Total recebido: '+formatBytes(r.rx)); text('ex-up-total','Total enviado: '+formatBytes(r.tx));
 		const activeWans=getActiveWanList(data);
@@ -4178,7 +4196,7 @@ return view.extend({
 		const healthItem=function(icon,label,valueId,barId,color,detailId){return E('div',{class:'ex-health-item','style':'--health-color:'+color},[E('span',{class:'ex-health-icon'},[icon]),E('div',{class:'ex-health-copy'},[E('span',{class:'ex-label'},[label]),E('strong',{id:valueId},['—']),barId?E('div',{class:'ex-health-bar'},[E('i',{id:barId})]):E('small',{class:'ex-health-steady'},['atividade do sistema']),detailId?E('small',{id:detailId,class:'ex-health-detail'},['—']):''])]);};
 		const speedWanCard=L.bind(function(wan,label,available){const attrs={class:'ex-mini-button','click':L.bind(this.startSpeedtest,this,wan,label)};if(!available)attrs.disabled=true;return E('div',{class:'ex-speedtest-wan'},[E('div',{class:'ex-card-title'},[E('h3',{},[label]),E('button',attrs,['Executar teste'])]),E('div',{id:'ex-speedtest-'+wan+'-result',class:'ex-speedtest-result'},[E('span',{class:'ex-muted'},[available?'Sem resultado nesta sessão.':'SEM CABO'])])]);},this);
 		const sortSelect=E('select',{id:'ex-device-sort-key',class:'cbi-input-select ex-device-sort-select','change':L.bind(function(ev){this.setDeviceSort(ev.currentTarget.value);},this)},[E('option',{value:'total'},['Total consumido']),E('option',{value:'now'},['Agora (velocidade)']),E('option',{value:'name'},['Nome do aparelho'])]);sortSelect.value=this.deviceSortKey||'total';
-		const deviceSortControls=E('div',{class:'ex-device-sort-controls'},[E('span',{class:'ex-muted'},['Ordenar']),sortSelect,E('button',{id:'ex-device-sort-dir',class:'ex-mini-button','click':L.bind(function(ev){this.toggleDeviceSortDirection(ev.currentTarget);},this)},[this.deviceSortDir==='desc'?'Maior primeiro':'Menor primeiro'])]);
+		const deviceSortControls=E('div',{class:'ex-device-sort-controls'},[E('span',{class:'ex-muted'},['Ordenar']),sortSelect,E('button',{id:'ex-device-sort-dir',class:'ex-mini-button','click':L.bind(function(ev){this.toggleDeviceSortDirection(ev.currentTarget);},this)},[this.deviceSortKey==='name'?(this.deviceSortDir==='asc'?'A → Z':'Z → A'):(this.deviceSortDir==='desc'?'Maior primeiro':'Menor primeiro')])]);
 		const arkVersion=((this.capabilities.update||{}).current)||'—';
 		const irqbalance=this.feature('irqbalance');
 		const irqbalanceInput=E('input',{type:'checkbox','aria-label':'Ativar IRQ Balance','change':L.bind(function(ev){const input=ev.currentTarget,desired=!!input.checked;return fs.exec('/usr/sbin/equipe-dashboard-control',['irqbalance-toggle',desired?'1':'0']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar IRQ Balance');reloadSoon(desired?'IRQ Balance ativado. Recarregando o painel…':'IRQ Balance desativado. Recarregando o painel…',900);}).catch(function(e){input.checked=!desired;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)});irqbalanceInput.checked=!!irqbalance.active;irqbalanceInput.disabled=!irqbalance.installed;
