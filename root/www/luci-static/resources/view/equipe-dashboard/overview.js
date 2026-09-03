@@ -3561,11 +3561,14 @@ return view.extend({
 			let status = { allservers: true, servers: '1.1.1.1 8.8.8.8 1.0.0.1 8.8.4.4' };
 			try { status = JSON.parse(r.stdout || '{}'); } catch(e){}
 			const serverList = (status.servers || '1.1.1.1 8.8.8.8 1.0.0.1 8.8.4.4').split(' ').filter(function(s){ return !!s; });
+			const hasDnsBlocker = !!status.dns_blocker_active;
+			const blockerName = status.dns_blocker_name || 'AdGuard Home';
 
 			const allserversToggle = E('input', {
 				type: 'checkbox',
-				checked: !!status.allservers,
-				style: 'width: 20px; height: 20px; cursor: pointer;'
+				checked: hasDnsBlocker ? false : !!status.allservers,
+				disabled: hasDnsBlocker,
+				style: 'width: 20px; height: 20px; cursor: ' + (hasDnsBlocker ? 'not-allowed' : 'pointer') + ';'
 			});
 
 			const fallbackToggle = E('input', {
@@ -3619,8 +3622,14 @@ return view.extend({
 					type: 'button',
 					class: 'ex-priority-option-btn',
 					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
-					click: function(){ applyPreset(['94.140.14.14', '94.140.15.15', '76.76.2.0', '76.76.10.0']); }
-				}, ['🚫 Bloqueio de Anúncios'])
+					click: function(){ applyPreset(['94.140.14.14', '94.140.15.15', '', '']); }
+				}, ['🚫 AdGuard DNS']),
+				E('button', {
+					type: 'button',
+					class: 'ex-priority-option-btn',
+					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
+					click: function(){ applyPreset(['208.67.222.222', '208.67.220.220', '', '']); }
+				}, ['🌐 Cisco OpenDNS'])
 			];
 
 			const testBtn = E('button', {
@@ -3682,13 +3691,23 @@ return view.extend({
 			]);
 
 			const content = [
+				hasDnsBlocker ? E('div', { class: 'alert-message warning', style: 'margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px; padding: 12px; border-radius: 6px;' }, [
+					E('span', { style: 'font-size: 1.3rem;' }, ['🛡️']),
+					E('div', {}, [
+						E('strong', {}, ['Bloqueador de DNS Detectado (' + blockerName + ')']),
+						E('p', { style: 'margin: 4px 0 0 0; font-size: 0.83rem; line-height: 1.4;' }, [
+							'O modo All-Servers (Consulta Paralela) foi bloqueado automaticamente para a sua proteção. Se ele ficasse ligado, o roteador enviaria as consultas para servidores externos simultaneamente, vazando e anulando o bloqueio de anúncios e rastreadores.'
+						])
+					])
+				]) : '',
 				E('div', { class: 'ex-device-config-block' }, [
 					E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 12px;' }, [
 						E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
 							E('strong', {}, ['Consulta Paralela All-Servers (0ms)']),
-							E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Dispara para todos os servidores ao mesmo tempo. O primeiro que responder entrega a página sem esperar filas.'])
+							E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Dispara para todos os servidores ao mesmo tempo. O primeiro que responder entrega a página sem esperar filas.']),
+							hasDnsBlocker ? E('small', { style: 'display: block; margin-top: 4px; color: #f59e0b; font-weight: 600;' }, ['🔒 Desativado para proteger o ' + blockerName + ' (All-Servers anularia o bloqueio de anúncios).']) : ''
 						]),
-						E('label', { class: 'ex-switch', style: 'flex: 0 0 auto;' }, [
+						E('label', { class: 'ex-switch', style: 'flex: 0 0 auto;' + (hasDnsBlocker ? ' opacity: 0.5; cursor: not-allowed;' : '') }, [
 							allserversToggle,
 							E('span', { class: 'ex-switch-slider' })
 						])
@@ -3998,16 +4017,19 @@ return view.extend({
 			}
 		}, ['⚙️ Servidores']);
 
+		const hasDnsBlocker = !!this.perfState.dns_blocker_active;
+		const blockerName = this.perfState.dns_blocker_name || 'AdGuard Home';
+
 		const rows = [
 			makePerfRow(
 				'⚡',
 				'DNS Turbo Paralelo (All-Servers)',
-				'RESPOSTA EM 0ms',
-				'badge-green',
+				hasDnsBlocker ? 'BLOQUEADOR ATIVO' : 'RESPOSTA EM 0ms',
+				hasDnsBlocker ? 'badge-blue' : 'badge-green',
 				'Dispara consultas simultaneamente para 2 a 4 servidores em paralelo (Cloudflare, Google, etc.). O primeiro que responder entrega a página sem fila nem atraso de rota.',
-				'Elimina engasgos na abertura de sites e downloads. Toque em “Servidores” para testar e escolher até 4 DNS.',
-				!!this.perfState.dns_allservers,
-				true,
+				hasDnsBlocker ? ('🔒 Desativado para proteger o ' + blockerName + '. Em modo All-Servers, consultas paralelas contornariam o bloqueador e os anúncios voltariam.') : 'Elimina engasgos na abertura de sites e downloads. Toque em “Servidores” para testar e escolher até 4 DNS.',
+				hasDnsBlocker ? false : !!this.perfState.dns_allservers,
+				!hasDnsBlocker,
 				'dns_allservers',
 				false,
 				dnsTurboBtn

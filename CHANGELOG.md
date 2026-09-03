@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.54
+
+- **🛡️ Detecção Inteligente de Bloqueadores de DNS e Proteção de All-Servers**:
+  - **Prevenção de Vazamento de Anúncios**: Quando o sistema detecta um bloqueador de DNS ativo (como AdGuard Home, Pi-hole ou Adblock), a opção "Consulta Paralela All-Servers" é automaticamente desativada e bloqueada no painel.
+  - **Aviso Explicativo Visual**: Modais do DNS Turbo e de Desempenho exibem aviso informando que a consulta paralela anularia o bloqueio de anúncios ao consultar servidores públicos simultaneamente.
+  - **Preservação de Upstream Seguro**: Ao salvar novos servidores no DNS Turbo, o endereço do bloqueador local (`127.0.0.1#5335`) é mantido automaticamente no topo da lista.
+
 ## 0.9.53
 
 - **⚡ Ordenação Instantânea sem Bloqueio de Hover (Nome e Total)**:

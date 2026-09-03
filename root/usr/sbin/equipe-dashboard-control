@@ -2221,34 +2221,43 @@ apply_device_bandwidth_limits() {
 	fi
 }
 
+detect_dns_blocker() {
+	if pgrep -f 'AdGuardHome' >/dev/null 2>&1 || pgrep -f 'adguardhome' >/dev/null 2>&1; then
+		echo "AdGuard Home"
+		return 0
+	fi
+	if uci -q get dhcp.@dnsmasq[0].server 2>/dev/null | grep -qE '127\.0\.0\.1#(5335|5353)'; then
+		echo "AdGuard Home"
+		return 0
+	fi
+	if [ -f /etc/init.d/adblock-fast ] && /etc/init.d/adblock-fast status >/dev/null 2>&1; then
+		echo "Adblock Fast"
+		return 0
+	fi
+	if [ -f /etc/init.d/adblock ] && /etc/init.d/adblock status >/dev/null 2>&1; then
+		echo "Adblock"
+		return 0
+	fi
+	if pgrep -f 'pihole-FTL' >/dev/null 2>&1; then
+		echo "Pi-hole"
+		return 0
+	fi
+	return 1
+}
+
 system_perf_status_json() {
 	conntrack_recycle=false
-	if [ "$(uci -q get equipe_perf.settings.conntrack_recycle || printf 0)" = 1 ]; then
-		conntrack_recycle=true
-	elif [ -f /etc/sysctl.d/99-ark-conntrack.conf ]; then
-		conntrack_recycle=true
-	fi
+	[ "$(uci -q get equipe_perf.settings.conntrack_recycle || printf 0)" = 1 ] && conntrack_recycle=true
 
 	ram_autopurge=false
-	if [ "$(uci -q get equipe_perf.settings.ram_autopurge || printf 0)" = 1 ]; then
-		ram_autopurge=true
-	elif [ -f /etc/sysctl.d/99-ark-memory.conf ]; then
-		ram_autopurge=true
-	fi
+	[ "$(uci -q get equipe_perf.settings.ram_autopurge || printf 0)" = 1 ] && ram_autopurge=true
 
 	speedify_encryption=true
+	[ "$(uci -q get equipe_perf.settings.speedify_encryption || printf 1)" = 0 ] && speedify_encryption=false
+
 	speedify_installed=false
-	if speedify_supported && [ -n "$(speedify_cli_path)" ]; then
-		speedify_installed=true
-		if speedify_runtime_running; then
-			enc="$(speedify_cli -s show settings 2>/dev/null | jsonfilter -e '@.encryption' 2>/dev/null || true)"
-			[ "$enc" = "false" ] && speedify_encryption=false
-		else
-			[ "$(uci -q get equipe_perf.settings.speedify_encryption || printf 1)" = 0 ] && speedify_encryption=false
-		fi
-	else
-		[ "$(uci -q get equipe_perf.settings.speedify_encryption || printf 1)" = 0 ] && speedify_encryption=false
-	fi
+	speedify_cli_bin="$(which speedify_cli 2>/dev/null || echo '')"
+	[ -n "$speedify_cli_bin" ] && speedify_installed=true
 
 	speedify_log_cap=false
 	[ "$(uci -q get equipe_perf.settings.speedify_log_cap || printf 0)" = 1 ] && speedify_log_cap=true
@@ -2271,8 +2280,12 @@ system_perf_status_json() {
 	dns_servers="$(uci -q get dhcp.@dnsmasq[0].server 2>/dev/null | tr '\n' ' ' | sed 's/  */ /g; s/ $//' || true)"
 	[ -n "$dns_servers" ] || dns_servers="1.1.1.1 8.8.8.8 1.0.0.1 8.8.4.4"
 
-	printf '{"conntrack_recycle":%s,"ram_autopurge":%s,"speedify_encryption":%s,"speedify_installed":%s,"speedify_log_cap":%s,"nlbwmon_lite":%s,"irqbalance_installed":%s,"irqbalance_active":%s,"conntrack_count":%s,"conntrack_max":%s,"mem_total_kb":%s,"mem_avail_kb":%s,"dns_allservers":%s,"dns_servers":"%s"}\n' \
-		"$conntrack_recycle" "$ram_autopurge" "$speedify_encryption" "$speedify_installed" "$speedify_log_cap" "$nlbwmon_lite" "$irq_installed" "$irq_active" "$conntrack_count" "$conntrack_max" "$mem_total_kb" "$mem_avail_kb" "$dns_allservers" "$(json_escape "$dns_servers")"
+	blocker_name="$(detect_dns_blocker 2>/dev/null || true)"
+	dns_blocker_active=false
+	[ -n "$blocker_name" ] && dns_blocker_active=true
+
+	printf '{"conntrack_recycle":%s,"ram_autopurge":%s,"speedify_encryption":%s,"speedify_installed":%s,"speedify_log_cap":%s,"nlbwmon_lite":%s,"irqbalance_installed":%s,"irqbalance_active":%s,"conntrack_count":%s,"conntrack_max":%s,"mem_total_kb":%s,"mem_avail_kb":%s,"dns_allservers":%s,"dns_servers":"%s","dns_blocker_active":%s,"dns_blocker_name":"%s"}\n' \
+		"$conntrack_recycle" "$ram_autopurge" "$speedify_encryption" "$speedify_installed" "$speedify_log_cap" "$nlbwmon_lite" "$irq_installed" "$irq_active" "$conntrack_count" "$conntrack_max" "$mem_total_kb" "$mem_avail_kb" "$dns_allservers" "$(json_escape "$dns_servers")" "$dns_blocker_active" "$(json_escape "$blocker_name")"
 }
 
 dns_turbo_status_json() {
@@ -2286,8 +2299,11 @@ dns_turbo_status_json() {
 	case "$(uci -q get dhcp.lan.dhcp_option || true)" in
 		*1.1.1.1*) dhcp_fallback=true ;;
 	esac
-	printf '{"allservers":%s,"servers":"%s","filter_aaaa":%s,"dhcp_fallback":%s}\n' \
-		"$allservers" "$(json_escape "$servers")" "$filter_aaaa" "$dhcp_fallback"
+	blocker_name="$(detect_dns_blocker 2>/dev/null || true)"
+	dns_blocker_active=false
+	[ -n "$blocker_name" ] && dns_blocker_active=true
+	printf '{"allservers":%s,"servers":"%s","filter_aaaa":%s,"dhcp_fallback":%s,"dns_blocker_active":%s,"dns_blocker_name":"%s"}\n' \
+		"$allservers" "$(json_escape "$servers")" "$filter_aaaa" "$dhcp_fallback" "$dns_blocker_active" "$(json_escape "$blocker_name")"
 }
 
 dns_turbo_save() {
@@ -2299,8 +2315,19 @@ dns_turbo_save() {
 	fallback="${6:-0}"
 	case "$allservers" in 1|true) allservers=1 ;; *) allservers=0 ;; esac
 	case "$fallback" in 1|true) fallback=1 ;; *) fallback=0 ;; esac
+
+	blocker_name="$(detect_dns_blocker 2>/dev/null || true)"
+	if [ -n "$blocker_name" ]; then
+		allservers=0
+	fi
+
 	uci -q set "dhcp.@dnsmasq[0].allservers=$allservers"
 	uci -q delete dhcp.@dnsmasq[0].server
+
+	if [ -n "$blocker_name" ]; then
+		uci -q add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
+	fi
+
 	count=0
 	for ip in "$dns1" "$dns2" "$dns3" "$dns4"; do
 		[ -n "$ip" ] || continue
@@ -2308,13 +2335,19 @@ dns_turbo_save() {
 		uci -q add_list "dhcp.@dnsmasq[0].server=$ip"
 		count=$((count+1))
 	done
-	if [ "$count" -eq 0 ]; then
+	if [ "$count" -eq 0 ] && [ -z "$blocker_name" ]; then
 		uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.1'
 		uci -q add_list dhcp.@dnsmasq[0].server='8.8.8.8'
 		uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.1'
 		uci -q add_list dhcp.@dnsmasq[0].server='8.8.4.4'
+	elif [ "$count" -eq 0 ] && [ -n "$blocker_name" ]; then
+		uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.1'
 	fi
-	uci -q set dhcp.@dnsmasq[0].noresolv='0'
+	if [ -n "$blocker_name" ]; then
+		uci -q set dhcp.@dnsmasq[0].noresolv='1'
+	else
+		uci -q set dhcp.@dnsmasq[0].noresolv='0'
+	fi
 	uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'
 	lan_ip="$(uci -q get network.lan.ipaddr || echo 192.168.73.1)"
 	if [ "$fallback" = 1 ]; then
@@ -2342,6 +2375,11 @@ system_perf_save() {
 	case "$speedify_log_cap" in 1|true) speedify_log_cap=1 ;; *) speedify_log_cap=0 ;; esac
 	case "$nlbwmon_lite" in 1|true) nlbwmon_lite=1 ;; *) nlbwmon_lite=0 ;; esac
 	case "$dns_allservers" in 1|true) dns_allservers=1 ;; *) dns_allservers=0 ;; esac
+
+	blocker_name="$(detect_dns_blocker 2>/dev/null || true)"
+	if [ -n "$blocker_name" ]; then
+		dns_allservers=0
+	fi
 
 	mkdir -p /etc/config
 	[ -f /etc/config/equipe_perf ] || touch /etc/config/equipe_perf
