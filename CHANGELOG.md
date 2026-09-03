@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.9.57
+## 0.9.58
+
+- **🎯 Correção de Seleção do Modo Atual no Modal do Bloqueador**:
+  - Corrigido problema em que atributos booleanos de rádio causavam a seleção incorreta do modo Nuvem ao abrir as opções em roteadores rodando o AdGuard Home local.
+  - Adicionada badge visual clara `[ATIVO NO ROTEADOR]` na opção que estiver atualmente em execução para eliminar qualquer ambiguidade.
+  - Atribuição direta da propriedade `.checked` e proteção contra cliques acidentais em campos de seleção e switches.
 
 - **🛡️ Ajuste Dinâmico de RAM de Cache e Opções Essenciais do Bloqueador (AdGuard Home)**:
   - **Quebras Inteligentes por Hardware**: Seletor de memória RAM para cache com presets (8MB, 16MB, 32MB, 64MB e 128MB) e recomendação automática calculada para o roteador (256MB/300MB, 512MB ou 1GB+).

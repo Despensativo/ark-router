@@ -2992,8 +2992,15 @@ return view.extend({
 		let chosenMode = f.mode && f.mode !== 'none' ? f.mode : (isFull ? 'local' : 'cloud');
 		let chosenProvider = f.cloud_provider || 'adguard_dns';
 
-		const localRadio = E('input', { type: 'radio', name: 'adblock_mode', value: 'local', checked: chosenMode === 'local' });
-		const cloudRadio = E('input', { type: 'radio', name: 'adblock_mode', value: 'cloud', checked: chosenMode === 'cloud' });
+		const localRadio = E('input', { type: 'radio', name: 'adblock_mode', value: 'local' });
+		const cloudRadio = E('input', { type: 'radio', name: 'adblock_mode', value: 'cloud' });
+		if (chosenMode === 'local') {
+			localRadio.checked = true;
+			cloudRadio.checked = false;
+		} else {
+			cloudRadio.checked = true;
+			localRadio.checked = false;
+		}
 
 		// Cache em RAM do AdGuard Home Local
 		const recCache = f.recommended_cache_mb || (f.mem_total_mb >= 700 ? 64 : (f.mem_total_mb >= 380 ? 32 : 16));
@@ -3009,7 +3016,8 @@ return view.extend({
 
 		// Helper para criar Toggles visuais modernos
 		const makeToggleRow = function(title, desc, checked) {
-			const input = E('input', { type: 'checkbox', checked: !!checked });
+			const input = E('input', { type: 'checkbox' });
+			input.checked = !!checked;
 			const label = E('label', { class: 'ex-switch', style: 'flex: 0 0 auto;' }, [
 				input,
 				E('span', { class: 'ex-switch-slider' })
@@ -3088,11 +3096,23 @@ return view.extend({
 
 		const modalContent = [
 			E('p', {}, [active ? 'Ajuste a memória RAM alocada e as proteções do bloqueador de anúncios:' : 'Escolha como deseja ativar o bloqueio de anúncios e rastreadores neste roteador:']),
-			isFull ? E('div', { class: 'ex-device-config-block', style: 'margin-bottom: 10px; cursor: pointer;', click: function(){ localRadio.checked = true; updateVisibility(); } }, [
+			isFull ? E('div', {
+				class: 'ex-device-config-block',
+				style: 'margin-bottom: 10px; cursor: pointer;',
+				click: function(ev){
+					if (ev.target && (ev.target.tagName === 'SELECT' || ev.target.tagName === 'INPUT' || ev.target.closest('label.ex-switch'))) return;
+					localRadio.checked = true;
+					cloudRadio.checked = false;
+					updateVisibility();
+				}
+			}, [
 				E('div', { style: 'display: flex; align-items: flex-start; gap: 10px;' }, [
 					localRadio,
 					E('div', {}, [
-						E('strong', {}, ['🏋️ Motor Local (AdGuard Home) — Recomendado']),
+						E('strong', {}, [
+							'🏋️ Motor Local (AdGuard Home) — Recomendado',
+							(active && f.mode === 'local') ? E('span', { class: 'ex-pill online', style: 'margin-left: 8px; font-size: 0.72rem; vertical-align: middle;' }, ['ATIVO NO ROTEADOR']) : ''
+						]),
 						E('p', { style: 'margin: 4px 0 0 0; font-size: 0.83rem; line-height: 1.4;' }, [
 							'Roda 100% dentro da memória RAM do seu roteador. Mais de 100.000 regras ativas, cache local em 0ms, DoH criptografado e painel avançado.'
 						])
@@ -3100,11 +3120,23 @@ return view.extend({
 				]),
 				localConfigWrap
 			]) : '',
-			E('div', { class: 'ex-device-config-block', style: 'cursor: pointer;', click: function(){ cloudRadio.checked = true; updateVisibility(); } }, [
+			E('div', {
+				class: 'ex-device-config-block',
+				style: 'cursor: pointer;',
+				click: function(ev){
+					if (ev.target && (ev.target.tagName === 'SELECT' || ev.target.tagName === 'INPUT' || ev.target.closest('label.ex-switch'))) return;
+					cloudRadio.checked = true;
+					localRadio.checked = false;
+					updateVisibility();
+				}
+			}, [
 				E('div', { style: 'display: flex; align-items: flex-start; gap: 10px;' }, [
 					cloudRadio,
 					E('div', {}, [
-						E('strong', {}, ['🪶 Proteção em Nuvem (Anycast Brasil)']),
+						E('strong', {}, [
+							'🪶 Proteção em Nuvem (Anycast Brasil)',
+							(active && f.mode === 'cloud') ? E('span', { class: 'ex-pill online', style: 'margin-left: 8px; font-size: 0.72rem; vertical-align: middle;' }, ['ATIVO NO ROTEADOR']) : ''
+						]),
 						E('p', { style: 'margin: 4px 0 0 0; font-size: 0.83rem; line-height: 1.4;' }, [
 							'Ultraleve, consome zero espaço flash. Utiliza servidores seguros no Brasil em conjunto com o super-cache em RAM do dnsmasq.'
 						])
