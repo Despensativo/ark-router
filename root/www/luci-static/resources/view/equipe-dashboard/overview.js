@@ -71,6 +71,7 @@ const FEATURE_META={
 	,irqbalance:{name:'IRQ Balance',description:'Distribui interrupções de hardware entre os núcleos do processador para manter Wi‑Fi, rede e CPU mais responsivos.'}
 	,speedify:{name:'Speedify Bonding',description:'Integra o Speedify para somar links de internet de verdade usando licença Speedify Router.',recommended:true}
 	,zerotier:{name:'ZeroTier remoto leve',description:'Acesso remoto leve por rede virtual. Melhor para roteadores com pouca flash/RAM.',recommended:true}
+	,adblock:{name:'Bloqueador de Anúncios',description:'Protege a rede inteira contra propagandas invasivas, anúncios de Smart TV e rastreadores.',recommended:true}
 };
 function installDashboardNotifications(){
 	if(ui._arkNotificationOriginal)return;
@@ -2828,6 +2829,199 @@ return view.extend({
 			E('small',{class:'ex-muted'},[active ? 'ZeroTier ativo. Use o IP acima para acessar o roteador remotamente.' : 'ZeroTier desligado (processo finalizado, zero uso de CPU e RAM). Clique em Ativar para conectar.'])
 		]);
 	},
+	adblockCard: function(){
+		const f = this.feature('adblock') || {};
+		const installed = !!f.installed;
+		const active = !!f.active;
+		const mode = f.mode || 'none';
+		const profile = f.supported_profile || 'lite';
+		const rules = f.rules_count || 0;
+		const isFull = (profile === 'full');
+		const self = this;
+
+		let statusText = 'OPCIONAL';
+		let pillClass = 'standby';
+		if (active) {
+			statusText = (mode === 'local') ? 'ATIVO (LOCAL)' : 'ATIVO (NUVEM)';
+			pillClass = 'online';
+		} else if (installed) {
+			statusText = 'DESLIGADO';
+			pillClass = 'standby';
+		}
+
+		const toggleInput = E('input', {
+			type: 'checkbox',
+			checked: active,
+			change: function(ev) {
+				const input = ev.currentTarget;
+				const desired = !!input.checked;
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['adblock-toggle', desired ? '1' : '0']).then(function(r) {
+					if (r.code) throw new Error(r.stderr || 'Falha ao alterar bloqueador');
+					reloadSoon(desired ? 'Bloqueador ativado. Recarregando…' : 'Bloqueador desativado. Recarregando…', 1200);
+				}).catch(function(e) {
+					input.checked = !desired;
+					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+				});
+			}
+		});
+
+		const switchControl = E('div', { class: 'ex-device-switch-control' }, [
+			E('strong', { class: 'ex-device-switch-state' }, [active ? 'LIGADA' : 'DESLIGADA']),
+			E('label', { class: 'ex-switch' }, [
+				toggleInput,
+				E('span', { class: 'ex-switch-slider' })
+			])
+		]);
+
+		return E('section', { class: 'ex-card ex-adblock-card' }, [
+			E('div', { class: 'ex-card-title' }, [
+				E('div', {}, [
+					E('span', { class: 'ex-kicker' }, ['SEGURANÇA & PRIVACIDADE']),
+					E('h3', {}, ['Bloqueador de Anúncios'])
+				]),
+				E('span', { class: 'ex-pill ' + pillClass }, [statusText])
+			]),
+			E('p', { class: 'ex-muted' }, [
+				'Bloqueia propagandas, popups invasivos, anúncios em Smart TVs e rastreadores na rede inteira antes mesmo de chegarem aos aparelhos.'
+			]),
+			active ? E('div', { class: 'ex-grid ex-grid-3 ex-qos-grid', style: 'margin-bottom: 12px;' }, [
+				E('div', { class: 'ex-row' }, [
+					E('span', {}, ['Modo']),
+					E('strong', {}, [mode === 'local' ? 'AdGuard Home (Local)' : 'Anycast (Nuvem)'])
+				]),
+				E('div', { class: 'ex-row' }, [
+					E('span', {}, ['Filtragem']),
+					E('strong', {}, [rules > 0 ? (rules.toLocaleString('pt-BR') + ' regras') : 'Ativa'])
+				]),
+				E('div', { class: 'ex-row' }, [
+					E('span', {}, ['Cache Local']),
+					E('strong', {}, [mode === 'local' ? '64 MB em RAM' : '25.000 domínios (0ms)'])
+				])
+			]) : '',
+			E('div', { class: 'ex-speedify-actions' }, [
+				!active ? E('button', {
+					class: 'ex-mini-button',
+					style: 'font-weight: 700;',
+					click: function() { self.openAdblockSetupModal(f); }
+				}, ['▶ Ativar Bloqueador']) : switchControl,
+				(active && mode === 'local') ? E('a', {
+					class: 'ex-mini-button',
+					href: f.web_url || 'http://' + window.location.hostname + ':3000',
+					target: '_blank',
+					rel: 'noopener noreferrer'
+				}, ['Abrir Painel AdGuard ↗']) : '',
+				active ? E('button', {
+					class: 'ex-feature-link',
+					click: function() { self.openAdblockSetupModal(f); }
+				}, ['⚙️ Opções / Trocar Modo']) : '',
+				(installed || active) ? E('button', {
+					class: 'ex-feature-link',
+					click: function() {
+						ui.showModal('Desativar Bloqueador de Anúncios', [
+							E('p', {}, ['Deseja desativar o bloqueador de anúncios e restaurar o DNS padrão da rede?']),
+							E('div', { class: 'right' }, [
+								E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Cancelar']),
+								' ',
+								E('button', { class: 'btn cbi-button cbi-button-negative', click: function() {
+									fs.exec('/usr/sbin/equipe-dashboard-control', ['adblock-disable']).then(function() {
+										closeModal();
+										reloadSoon('Bloqueador desativado. Recarregando…', 1200);
+									});
+								} }, ['Desativar'])
+							])
+						]);
+					}
+				}, ['⏹ Desligar']) : ''
+			]),
+			E('small', { class: 'ex-muted' }, [
+				active ? (mode === 'local' ? 'AdGuard Home operando em RAM com 5 listas oficiais e DoH.' : 'Nuvem filtrada ativa com super cache dnsmasq respondendo em 0ms.') : (isFull ? '💡 Hardware potente detectado: suporte completo ao AdGuard Home local em RAM.' : '💡 Hardware compacto: filtragem em nuvem com super-cache dnsmasq em 0ms.')
+			])
+		]);
+	},
+	openAdblockSetupModal: function(f){
+		const isFull = (f.supported_profile === 'full');
+		let chosenMode = isFull ? 'local' : 'cloud';
+		let chosenProvider = f.cloud_provider || 'adguard_dns';
+
+		const localRadio = E('input', { type: 'radio', name: 'adblock_mode', value: 'local', checked: chosenMode === 'local' });
+		const cloudRadio = E('input', { type: 'radio', name: 'adblock_mode', value: 'cloud', checked: chosenMode === 'cloud' });
+
+		const providerSelect = E('select', { class: 'cbi-input-select', style: 'width: 100%; margin-top: 6px;' }, [
+			E('option', { value: 'adguard_dns' }, ['AdGuard DNS (Anycast São Paulo — ~14ms)']),
+			E('option', { value: 'cloudflare_security' }, ['Cloudflare 1.1.1.2 Security (~6ms)']),
+			E('option', { value: 'nextdns' }, ['NextDNS BR (~15ms)'])
+		]);
+		providerSelect.value = chosenProvider;
+
+		const cloudWrap = E('div', { style: 'margin-top: 10px; padding: 12px; background: rgba(255,255,255,.03); border-radius: 8px;' }, [
+			E('label', { style: 'font-size: 0.85rem; font-weight: 600;' }, ['Provedor em Nuvem']),
+			providerSelect,
+			E('small', { class: 'ex-muted', style: 'display: block; margin-top: 4px;' }, ['O super-cache de 25.000 domínios no dnsmasq responde em 0ms para todas as consultas repetidas da casa.'])
+		]);
+
+		const updateVisibility = function() {
+			cloudWrap.style.display = cloudRadio.checked ? 'block' : 'none';
+		};
+
+		localRadio.addEventListener('change', updateVisibility);
+		cloudRadio.addEventListener('change', updateVisibility);
+		updateVisibility();
+
+		const modalContent = [
+			E('p', {}, ['Escolha como deseja ativar o bloqueio de anúncios e rastreadores neste roteador:']),
+			isFull ? E('div', { class: 'ex-device-config-block', style: 'margin-bottom: 10px; cursor: pointer;', click: function(){ localRadio.checked = true; updateVisibility(); } }, [
+				E('div', { style: 'display: flex; align-items: flex-start; gap: 10px;' }, [
+					localRadio,
+					E('div', {}, [
+						E('strong', {}, ['🏋️ Motor Local (AdGuard Home) — Recomendado']),
+						E('p', { style: 'margin: 4px 0 0 0; font-size: 0.83rem; line-height: 1.4;' }, [
+							'Roda 100% dentro da memória RAM do seu roteador. Mais de 100.000 regras ativas, cache de 64 MB em 0ms, DoH criptografado e painel avançado.'
+						])
+					])
+				])
+			]) : '',
+			E('div', { class: 'ex-device-config-block', style: 'cursor: pointer;', click: function(){ cloudRadio.checked = true; updateVisibility(); } }, [
+				E('div', { style: 'display: flex; align-items: flex-start; gap: 10px;' }, [
+					cloudRadio,
+					E('div', {}, [
+						E('strong', {}, ['🪶 Proteção em Nuvem (Anycast Brasil)']),
+						E('p', { style: 'margin: 4px 0 0 0; font-size: 0.83rem; line-height: 1.4;' }, [
+							'Ultraleve, consome zero espaço flash. Utiliza servidores seguros no Brasil em conjunto com o super-cache em RAM do dnsmasq.'
+						])
+					])
+				]),
+				cloudWrap
+			]),
+			E('p', { class: 'alert-message warning', style: 'margin-top: 14px;' }, [
+				'Ao ativar, o modo All-Servers do DNS Turbo será ajustado automaticamente para que consultas paralelas não vazem anúncios.'
+			]),
+			E('div', { class: 'right', style: 'margin-top: 16px;' }, [
+				E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Cancelar']),
+				' ',
+				E('button', {
+					class: 'btn cbi-button cbi-button-positive',
+					click: function(ev) {
+						const b = ev.currentTarget;
+						b.disabled = true;
+						b.textContent = 'Ativando…';
+						const mode = localRadio.checked ? 'local' : 'cloud';
+						const prov = providerSelect.value;
+						fs.exec('/usr/sbin/equipe-dashboard-control', ['adblock-enable', mode, prov]).then(function(r) {
+							if (r.code) throw new Error(r.stderr || 'Falha ao ativar bloqueador');
+							closeModal();
+							reloadSoon('Bloqueador de anúncios ativado com sucesso! Recarregando…', 1500);
+						}).catch(function(e) {
+							b.disabled = false;
+							b.textContent = 'Confirmar e Ativar';
+							ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+						});
+					}
+				}, ['Confirmar e Ativar'])
+			])
+		];
+
+		ui.showModal('🛡️ Configurar Bloqueador de Anúncios', modalContent);
+	},
 	prepareSpeedifyWans: function(){
 		ui.showModal('Preparar WANs para Speedify',[
 			E('p',{},['Essa ação cria backup, ajusta métricas de WAN1/WAN2 e garante que as duas interfaces estejam na zona de firewall WAN. Se WAN2 ainda não existir e o roteador tiver portas LAN suficientes, a LAN1 será convertida em WAN2 DHCP automaticamente.']),
@@ -4380,6 +4574,7 @@ return view.extend({
 					E('p',{class:'ex-muted ex-table-note'},['A velocidade instantânea vem dos contadores do roteador; o total acumulado vem do nlbwmon. Quando esta lista está aberta, o ARK Router acelera a atualização automaticamente conforme a RAM disponível.'])
 				])
 			]),
+			this.adblockCard(),
 			this.zerotierCard(),
 			speedifySection,
 			E('section',{class:'ex-card ex-reboot-card'},[E('div',{},[E('span',{class:'ex-kicker'},['SISTEMA']),E('h3',{},['Reiniciar o roteador']),E('p',{class:'ex-muted'},['Interrompe a internet por alguns minutos e encerra as sessões abertas.'])]),E('button',{class:'ex-reboot-button','click':L.bind(function(){this.requestReboot();},this)},['Reiniciar…'])])

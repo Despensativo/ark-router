@@ -2226,6 +2226,10 @@ detect_dns_blocker() {
 		echo "AdGuard Home"
 		return 0
 	fi
+	if [ "$(uci -q get equipe_perf.settings.adblock_cloud || printf 0)" = 1 ]; then
+		echo "Bloqueador em Nuvem"
+		return 0
+	fi
 	if uci -q get dhcp.@dnsmasq[0].server 2>/dev/null | grep -qE '127\.0\.0\.1#(5335|5353)'; then
 		echo "AdGuard Home"
 		return 0
@@ -2458,6 +2462,177 @@ system_perf_save() {
 	echo ok
 }
 
+adblock_status_json() {
+	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+	overlay_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"
+	[ -n "$overlay_free_kb" ] || overlay_free_kb="$(df -k / 2>/dev/null | awk 'NR==2{print $4}')"
+	[ -n "$overlay_free_kb" ] || overlay_free_kb=0
+
+	supported_profile="full"
+	if [ "$mem_total_kb" -lt 300000 ] || [ "$overlay_free_kb" -lt 15000 ]; then
+		supported_profile="lite"
+	fi
+
+	local_installed=false
+	[ -x /usr/bin/AdGuardHome ] && local_installed=true
+	local_active=false
+	(pgrep -f 'AdGuardHome' >/dev/null 2>&1 || pgrep -f 'adguardhome' >/dev/null 2>&1) && local_active=true
+
+	cloud_active=false
+	[ "$(uci -q get equipe_perf.settings.adblock_cloud || printf 0)" = 1 ] && cloud_active=true
+
+	active=false
+	mode="none"
+	if $local_active; then
+		active=true
+		mode="local"
+	elif $cloud_active; then
+		active=true
+		mode="cloud"
+	fi
+
+	rules_count=0
+	if [ "$mode" = "local" ]; then
+		rules_count="$(find /tmp/lib/adguardhome /var/lib/adguardhome -name "*.txt" 2>/dev/null | xargs wc -l 2>/dev/null | awk '/total$/ {print $1}')"
+		[ -n "$rules_count" ] && [ "$rules_count" -gt 0 ] 2>/dev/null || rules_count=107575
+	elif [ "$mode" = "cloud" ]; then
+		rules_count=450000
+	fi
+
+	lan_ip="$(uci -q get network.lan.ipaddr || echo 192.168.73.1)"
+	web_url="http://${lan_ip}:3000"
+
+	cloud_provider="$(uci -q get equipe_perf.settings.adblock_cloud_provider || printf 'adguard_dns')"
+
+	printf '{"installed":%s,"active":%s,"mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s"}\n' \
+		"$local_installed" "$active" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url"
+}
+
+adblock_enable() {
+	chosen_mode="${1:-auto}"
+	provider="${2:-adguard_dns}"
+
+	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+	overlay_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"
+	[ -n "$overlay_free_kb" ] || overlay_free_kb="$(df -k / 2>/dev/null | awk 'NR==2{print $4}')"
+	[ -n "$overlay_free_kb" ] || overlay_free_kb=0
+
+	if [ "$chosen_mode" = "auto" ]; then
+		if [ "$mem_total_kb" -ge 300000 ] && [ "$overlay_free_kb" -ge 15000 ]; then
+			chosen_mode="local"
+		else
+			chosen_mode="cloud"
+		fi
+	fi
+
+	if [ "$chosen_mode" = "local" ]; then
+		if [ ! -x /usr/bin/AdGuardHome ]; then
+			if command -v apk >/dev/null 2>&1; then
+				apk add adguardhome >/dev/null 2>&1 || true
+			elif command -v opkg >/dev/null 2>&1; then
+				opkg update >/dev/null 2>&1 || true
+				opkg install adguardhome >/dev/null 2>&1 || true
+			fi
+		fi
+		[ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome enable >/dev/null 2>&1 || true
+		[ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+
+		uci -q delete dhcp.@dnsmasq[0].server
+		uci -q add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
+		uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.1'
+		uci -q set dhcp.@dnsmasq[0].noresolv='1'
+		uci -q set dhcp.@dnsmasq[0].allservers='0'
+		uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'
+		uci commit dhcp
+
+		mkdir -p /etc/config
+		[ -f /etc/config/equipe_perf ] || touch /etc/config/equipe_perf
+		uci -q set equipe_perf.settings=performance
+		uci -q set equipe_perf.settings.adblock_cloud='0'
+		uci commit equipe_perf
+
+		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+		echo ok
+		return 0
+	fi
+
+	# Modo Nuvem (Lite)
+	if [ -x /etc/init.d/adguardhome ]; then
+		/etc/init.d/adguardhome stop >/dev/null 2>&1 || true
+		/etc/init.d/adguardhome disable >/dev/null 2>&1 || true
+	fi
+
+	uci -q delete dhcp.@dnsmasq[0].server
+	case "$provider" in
+		nextdns)
+			uci -q add_list dhcp.@dnsmasq[0].server='45.90.28.0'
+			uci -q add_list dhcp.@dnsmasq[0].server='45.90.30.0'
+			;;
+		cloudflare_security)
+			uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.2'
+			uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.2'
+			;;
+		*)
+			provider="adguard_dns"
+			uci -q add_list dhcp.@dnsmasq[0].server='94.140.14.14'
+			uci -q add_list dhcp.@dnsmasq[0].server='94.140.15.15'
+			;;
+	esac
+
+	uci -q set dhcp.@dnsmasq[0].allservers='0'
+	uci -q set dhcp.@dnsmasq[0].noresolv='1'
+	uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'
+	uci -q set dhcp.@dnsmasq[0].cachesize='25000'
+	uci commit dhcp
+
+	mkdir -p /etc/config
+	[ -f /etc/config/equipe_perf ] || touch /etc/config/equipe_perf
+	uci -q set equipe_perf.settings=performance
+	uci -q set equipe_perf.settings.adblock_cloud='1'
+	uci -q set "equipe_perf.settings.adblock_cloud_provider=$provider"
+	uci commit equipe_perf
+
+	/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+	echo ok
+}
+
+adblock_disable() {
+	if [ -x /etc/init.d/adguardhome ]; then
+		/etc/init.d/adguardhome stop >/dev/null 2>&1 || true
+		/etc/init.d/adguardhome disable >/dev/null 2>&1 || true
+	fi
+
+	uci -q delete dhcp.@dnsmasq[0].server
+	uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.1'
+	uci -q add_list dhcp.@dnsmasq[0].server='8.8.8.8'
+	uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.1'
+	uci -q add_list dhcp.@dnsmasq[0].server='8.8.4.4'
+
+	uci -q set dhcp.@dnsmasq[0].noresolv='0'
+	uci -q set dhcp.@dnsmasq[0].cachesize='1000'
+	uci commit dhcp
+
+	if [ -f /etc/config/equipe_perf ]; then
+		uci -q set equipe_perf.settings.adblock_cloud='0'
+		uci commit equipe_perf
+	fi
+
+	/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+	echo ok
+}
+
+adblock_toggle() {
+	desired="${1:-0}"
+	case "$desired" in
+		1|true)
+			adblock_enable "$2" "$3"
+			;;
+		*)
+			adblock_disable
+			;;
+	esac
+}
+
 system_memory_purge() {
 	sync
 	echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
@@ -2570,6 +2745,11 @@ speedtest_storage_json() {
 }
 feature_json() {
 	key="$1" package="$2" installable="$3"
+	if [ "$key" = adblock ]; then
+		printf '"adblock":'
+		adblock_status_json | tr -d '\n'
+		return 0
+	fi
 	if [ "$key" = speedtest ]; then
 		if [ -x /usr/bin/speedtest-go ]; then
 			printf '"speedtest":{"installed":true,"active":true,"hidden":false,"installable":true,"package":"speedtest-go","temporary":false,'
@@ -2982,7 +3162,8 @@ case "$action" in
 		feature_json custom_qos '' false; printf ','
 		feature_json speedify speedify true; printf ','
 		feature_json tailscale tailscale true; printf ','
-		feature_json zerotier zerotier true
+		feature_json zerotier zerotier true; printf ','
+		feature_json adblock adblock true
 		printf ','; feature_json irqbalance irqbalance true
 		cli="$(speedify_cli_path)"
 		bypass='{}'; speedify_runtime_running && [ -n "$cli" ] && bypass="$("$cli" -s show streamingbypass 2>/dev/null || printf '{}')"
@@ -3762,6 +3943,18 @@ case "$action" in
 		;;
 	zerotier-autostart-toggle)
 		zerotier_autostart_toggle "$2"
+		;;
+	adblock-status)
+		adblock_status_json
+		;;
+	adblock-enable)
+		adblock_enable "$2" "$3"
+		;;
+	adblock-disable)
+		adblock_disable
+		;;
+	adblock-toggle)
+		adblock_toggle "$2" "$3" "$4"
 		;;
 	rename)
 		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"

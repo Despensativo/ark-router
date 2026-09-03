@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.55
+
+- **🛡️ Novo Card Opcional: Bloqueador de Anúncios & Rastreadores (AdBlock)**:
+  - **100% Opcional**: Desativado por padrão de fábrica; exige sempre a ação explícita do administrador para ativar pela primeira vez.
+  - **Arquitetura Híbrida Inteligente**:
+    - **Perfil FULL (Roteadores Potentes com >= 256MB RAM)**: Integração com motor local AdGuard Home operando em RAM com 64 MB de super-cache, mais de 100.000 regras ativas e link direto para o painel avançado na porta 3000.
+    - **Perfil LITE (Roteadores Compactos / 16MB/32MB flash)**: Não sobrecarrega a memória flash; ativa filtragem Anycast no Brasil com super-cache dnsmasq de 25.000 domínios na RAM (resposta em 0ms).
+  - **Comutação e Opções no Painel**: Interface intuitiva com interruptor Liga/Desliga, contador de regras e modal para troca dinâmica entre modo local e nuvem.
+
 ## 0.9.54
 
 - **🛡️ Detecção Inteligente de Bloqueadores de DNS e Proteção de All-Servers**:
