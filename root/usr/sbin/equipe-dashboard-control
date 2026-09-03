@@ -2293,13 +2293,11 @@ dns_turbo_save() {
 	fi
 	uci -q set dhcp.@dnsmasq[0].noresolv='0'
 	uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'
-	if [ "$allservers" = 1 ]; then
-		lan_ip="$(uci -q get network.lan.ipaddr || echo 192.168.73.1)"
-		if [ "$fallback" = 1 ]; then
-			apply_lan_dhcp_dns "$lan_ip 1.1.1.1"
-		else
-			apply_lan_dhcp_dns "$lan_ip"
-		fi
+	lan_ip="$(uci -q get network.lan.ipaddr || echo 192.168.73.1)"
+	if [ "$fallback" = 1 ]; then
+		apply_lan_dhcp_dns "$lan_ip 1.1.1.1"
+	else
+		apply_lan_dhcp_dns "$lan_ip"
 	fi
 	sanitize_dhcp_hostnames
 	uci commit dhcp
