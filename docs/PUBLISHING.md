@@ -11,14 +11,14 @@ Use GitHub Releases as the public distribution channel:
 1. Keep source code on the `main` branch.
 2. Update `VERSION`, `Makefile`, `CHANGELOG.md` and runtime version files.
 3. Commit and push to GitHub.
-4. Create and push a version tag matching `VERSION`, such as `v0.9.43`.
+4. Create and push a version tag matching `VERSION`, such as `v0.9.66`.
 5. Let GitHub Actions build the OpenWrt package.
 6. Confirm that the Release contains:
    - `luci-app-ark-router.apk`
    - `luci-app-ark-router-lite.apk`
    - `luci-app-ark-router-full.apk`
-   - versioned `.apk`, such as `luci-app-ark-router-0.9.34-r1.apk`
-   - versioned Full `.apk`, such as `luci-app-ark-router-full-0.9.34-r1.apk`
+   - versioned `.apk`, such as `luci-app-ark-router-lite-0.9.66-r1.apk`
+   - versioned Full `.apk`, such as `luci-app-ark-router-full-0.9.66-r1.apk`
    - `.ipk` assets when the workflow/build target produces them.
 7. Test the SSH installer from a router.
 
@@ -73,10 +73,10 @@ Typical release flow:
 ```sh
 git status
 git add .
-git commit -m "Release ARK Router v0.9.43"
+git commit -m "Release ARK Router v0.9.66"
 git push origin main
-git tag -a v0.9.43 -m "ARK Router v0.9.43"
-git push origin v0.9.43
+git tag -a v0.9.66 -m "ARK Router v0.9.66"
+git push origin v0.9.66
 ```
 
 After the tag is pushed, open:
@@ -90,7 +90,7 @@ Confirm that **Build OpenWrt package** finishes successfully.
 Then open:
 
 ```text
-https://github.com/Despensativo/ark-router/releases/tag/v0.9.43
+https://github.com/Despensativo/ark-router/releases/tag/v0.9.66
 ```
 
 Confirm that package assets were attached.

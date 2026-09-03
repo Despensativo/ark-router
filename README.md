@@ -1,18 +1,18 @@
 # ARK Router
 
 ![OpenWrt](https://img.shields.io/badge/OpenWrt-24.x%20%2F%2025.x-00B5E2?logo=openwrt&logoColor=white)
-![Release](https://img.shields.io/badge/release-v0.9.53-blue.svg)
+![Release](https://img.shields.io/badge/release-v0.9.66-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![Language](https://img.shields.io/badge/UI-PT--BR%20%2F%20EN-blue)
 ![Platform](https://img.shields.io/badge/arch-all%20%2F%20noarch-orange)
 
-ARK Router is a modern, responsive, bilingual, modular operational dashboard and control center for **OpenWrt / LuCI**. It turns the default LuCI home screen into a powerful, clean, executive control center for home, gaming, office, event, field, Starlink and mobile multi-WAN routers with SQM/CAKE QoS, real-time per-device bandwidth monitoring, DNS Turbo benchmark, ZeroTier remote access and automated system tuning.
+ARK Router is a modern, responsive, bilingual, modular operational dashboard and control center for **OpenWrt / LuCI**. It turns the default LuCI home screen into a powerful, clean, executive control center for home, gaming, office, event, field, Starlink and mobile multi-WAN routers with SQM/CAKE QoS, real-time per-device bandwidth monitoring, per-device rate limiting with local LAN bypass, AdBlock/Parental Control (AdGuard Home in RAM + Anycast Cloud), DNS Turbo benchmark, ZeroTier remote access and automated system tuning.
 
 The project does not replace OpenWrt or LuCI — it operates on top of LuCI as an advanced operations suite (`luci-app-ark-router`) with safer shortcuts, real-time telemetry and zero-bloat architecture.
 
-> **Keywords / SEO**: ARK Router, OpenWrt dashboard, LuCI dashboard, OpenWrt moderno, monitorar tráfego por dispositivo, per-device bandwidth monitor, OpenWrt Starlink telemetry, ZeroTier OpenWrt autostart, DNS benchmark router, SQM CAKE bufferbloat QoS, Multi-WAN failover load balancing, Speedify OpenWrt bonding, OpenWrt mobile UI, painel roteador OpenWrt, network bandwidth limiter, real-time router monitoring.
+> **Keywords / SEO**: ARK Router, OpenWrt dashboard, LuCI dashboard, OpenWrt moderno, monitorar tráfego por dispositivo, per-device bandwidth monitor, OpenWrt Starlink telemetry, ZeroTier OpenWrt autostart, DNS benchmark router, SQM CAKE bufferbloat QoS, Multi-WAN failover load balancing, Speedify OpenWrt bonding, OpenWrt mobile UI, painel roteador OpenWrt, network bandwidth limiter, real-time router monitoring, adguard home openwrt ram, dns blacklist openwrt.
 
-The current official release is **v0.9.53**. ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
+The current official release is **v0.9.66**. ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
 
 ---
 
@@ -21,29 +21,44 @@ The current official release is **v0.9.53**. ARK Router is an add-on package (`l
 O **ARK Router** transforma roteadores com **OpenWrt** em verdadeiras centrais de comando profissionais, substituindo a interface estática tradicional por um painel executivo moderno, ultrarrápido e 100% responsivo para smartphones e computadores.
 
 ### 🌟 Destaques Principais:
-1. **📊 Tráfego por Dispositivo em Tempo Real (Hardware DMA & Anti-Jitter)**:
+1. **🛡️ Bloqueador de Anúncios & Controle Parental Híbrido (Local RAM / Nuvem)**:
+   - **Roteadores Full (512MB+ RAM)**: Motor AdGuard Home completo rodando direto na memória RAM (`/tmp/adguardhome`) na porta 3000, com mais de 1 milhão de regras locais, zero desgaste da flash e super-cache em RAM.
+   - **Roteadores Lite (128MB-256MB RAM)**: Modo Nuvem ultraleve via `dnsmasq` com 9 provedores Anycast especializados (Cloudflare Família 1.1.1.3, Quad9 Segurança 9.9.9.9, OpenDNS FamilyShield, CleanBrowsing Adult/Family, Control D Full Blocker e NextDNS com ID personalizado).
+2. **🚫 Lista Negra de Sites da Casa ("X ou Y") em 0ms**:
+   - Bloqueio imediato de domínios específicos (apostas, cassinos, sites indesejados) diretamente no painel. Responde `0.0.0.0` em 0ms com **zero bytes de consumo de RAM** no `dnsmasq` e regras `||dominio^` no AdGuard Home para toda a rede.
+3. **⚡ Limite de Banda Individual com Bypass Automático da LAN (RFC 1918)**:
+   - Controle individual de download e upload por dispositivo.
+   - **Bypass de Rede Local**: O limite se aplica com precisão cirúrgica apenas à Internet. Cópias para NAS, servidores locais (Plex/Emby), impressoras e outros PCs da casa continuam em velocidade máxima nativa (Gigabit, 2.5 Gbps ou Wi-Fi 6 a 1200+ Mbps).
+4. **🛑 Filtro Parental e SafeSearch Individual por Dispositivo**:
+   - Bloqueio de conteúdo adulto e imposição de SafeSearch (Google, Bing, YouTube) configurável por dispositivo (ex: celulares das crianças).
+   - Bloqueio rápido com feedback visual inconfundível para redes sociais e jogos (TikTok, Instagram, YouTube, Roblox, etc.).
+5. **📊 Tráfego por Dispositivo em Tempo Real (Hardware DMA & Anti-Jitter)**:
    - Medição instantânea via contadores diretos do rádio Wi-Fi (`iwinfo`), sem atrasos e sem travar em 0 bps.
    - Filtro inteligente de decaimento suave (EMA) que mantém a leitura estável na tela entre rajadas.
    - Coluna de **Total Consumido** (MB/GB) e ordenação estável por Nome, Total ou Velocidade Atual sem fazer a lista pular debaixo do cursor.
-2. **🚀 DNS Turbo & Benchmark Mundial Integrado**:
+6. **🚀 DNS Turbo & Benchmark Mundial Integrado**:
    - Teste de latência em tempo real comparando os principais provedores de DNS do mundo (Cloudflare, Google, Quad9, OpenDNS, AdGuard).
    - Aplicação instantânea com 1 clique e auto-recuperação segura no roteador e nos clientes DHCP da rede.
-3. **🌐 Acesso Remoto ZeroTier Inteligente**:
+7. **🌐 Acesso Remoto ZeroTier Inteligente**:
    - Chave seletora no painel para ligar ou desligar o início automático com o sistema (Boot).
    - Arquitetura híbrida: executa nativamente em roteadores com muita memória flash (eMMC/NAND) e auto-extrai na RAM (`/tmp`) em apenas 0.3s em aparelhos compactos de 16MB/32MB.
-4. **🛰️ Central Multi-Starlink (Telemetria & Alinhamento)**:
+8. **🛰️ Central Multi-Starlink (Telemetria & Alinhamento)**:
    - Diagnóstico em tempo real de múltiplas antenas Starlink: bússola de alinhamento 3D, obstruções, perda de pacotes, SNR e alertas de hardware.
    - Página `/starlink/` de leitura rápida e segura para a rede local sem necessidade de login administrativo.
-5. **⚡ Otimizador de Desempenho & Memória (Kernel & RAM Tuning)**:
+9. **⚡ Otimizador de Desempenho & Memória (Kernel & RAM Tuning)**:
    - Auto-purga periódica de caches de memória RAM, reciclagem agressiva de conexões conntrack TCP/UDP, balanceamento de interrupções de CPU multithread (`irqbalance`) e aceleração do `nlbwmon` para 2 segundos.
-6. **📱 100% Otimizado para Celular (Mobile-First)**:
-   - Layout fluido com botões grandes de toque (48px) para iPhones e Androids, sem rolagem horizontal ou quebras visuais.
+10. **📱 100% Otimizado para Celular (Mobile-First)**:
+    - Layout fluido com botões grandes de toque (48px) para iPhones e Androids, sem rolagem horizontal ou quebras visuais.
 
 ---
 
 ## Why Use It
 
 - **Operations view:** See WAN, LAN, Wi-Fi, device, traffic and router-health information on one screen.
+- **Hybrid AdBlock & Parental Control:** Built-in AdGuard Home running in RAM on Full profile (512MB+ RAM) with 1M+ local rules, plus lightweight Cloud Anycast mode on Lite profile (128MB-256MB RAM) with 9 specialized Anycast DNS providers (Cloudflare Family, Quad9, OpenDNS FamilyShield, CleanBrowsing, Control D, NextDNS).
+- **Network Custom Domain Blacklist:** Instant domain/subdomain blocking (gambling, betting, unwanted sites) in 0ms with zero extra RAM consumption.
+- **Per-Device Rate Limiting with Local LAN Bypass:** Set download and upload speed caps strictly for Internet traffic, while local LAN transfers (NAS, Plex, printers, PC file sharing) remain at full native speed (Gigabit / Wi-Fi 6) via RFC 1918 bypass rules.
+- **Per-Device Parental & SafeSearch:** Enforce SafeSearch and adult content filters individually for selected client devices (e.g. kids' tablets/phones).
 - **Modular cards:** Keep Multi-WAN, SQM/CAKE, UPnP, per-device usage and speed calibration visible only when those modules exist.
 - **Device handling:** Rename connected devices, reserve DHCP addresses by MAC and prioritize selected main-network devices.
 - **Wi-Fi control:** Manage a main network and a guest network from a simpler screen. The SSID names are fully configurable; the pilot names are only examples.

@@ -99,6 +99,34 @@ Telemetry is read-only and reports the fields exposed by the dish: obstruction p
 
 The device dialog stores friendly names in `equipe_devices`, creates or updates a DHCP host reservation keyed by MAC address, and can create a deterministic `firewall.ark_priority_*` DSCP rule. In standard mode, priority uses `AF41` so CAKE `diffserv4` places that device's uploads in its video class. In Gamer mode, priority uses `EF` (Expedited Forwarding) so gaming UDP packets (such as PUBG Mobile, Free Fire, CoD) jump directly to the real-time queue.
 
+## Per-device bandwidth limits and LAN bypass (RFC 1918)
+
+ARK Router manages per-device bandwidth rates directly via `nftables` in the `forward` chain (`table inet ark_device_limits`). Rate limiting is strictly applied to Internet ingress and egress, with explicit automatic bypass for local network communication:
+
+- **LAN Bypass Rules**: Packets where both source and destination belong to private subnets (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16` and IPv6 ULA/link-local) are matched at the top of the chain and accepted immediately. Internal transfers (NAS, local Plex/Emby media servers, network printers, AirPlay/Chromecast, PC file sharing) run at full wire and Wi-Fi speed (Gigabit / 2.5G / Wi-Fi 6).
+- **Internet Rate Limiting**: Traffic to or from public IP addresses falls through the bypass rule and is rate-limited according to the administrator's chosen upload and download caps (`limit_down` and `limit_up` in Mbps), dropping excess packets cleanly.
+
+## AdBlock and Parental Control (AdGuard Home RAM engine & Cloud Anycast)
+
+The ad blocking and parental subsystem uses a dual-engine architecture:
+
+- **Full Profile (AdGuard Home in RAM)**: On routers with 512 MB+ RAM, AdGuard Home runs with its binary, database, and working directory mounted entirely in volatile RAM (`/tmp/adguardhome`) listening on port 3000. It supports over 1,000,000 rules, parent-level blocking, per-device rules, SafeSearch enforcement, and query logging with zero flash memory wear.
+- **Lite Profile (Cloud Anycast with Super-Cache)**: On routers with 128 MB to 256 MB RAM, blocking is offloaded to upstream Anycast DNS servers with ultra-low latency in Brazil, backed by an optimized 10,000-entry `dnsmasq` memory cache:
+  - *Cloudflare Security (1.1.1.2)* & *Cloudflare Family (1.1.1.3)* (~6ms);
+  - *Quad9 Security (9.9.9.9)* (~8ms);
+  - *OpenDNS FamilyShield (208.67.222.123)* (~12ms);
+  - *CleanBrowsing Adult & Family Filters* (~18ms);
+  - *Control D Full Blocker* (~15ms);
+  - *NextDNS with dynamic profile ID* (~12ms).
+- **Per-Device Parental Filters**: When AdGuard Home is active, individual client profiles can enforce or exempt parental control, adult blocking, SafeSearch, and quick blocking chips for high-bandwidth apps (TikTok, YouTube, Instagram, Netflix, Roblox, etc.).
+
+## Custom domain blacklist ("X or Y")
+
+The custom blacklist feature allows administrators to block arbitrary domain names (gambling, betting, custom distractions) network-wide with zero extra memory overhead:
+- Input strings are sanitized to strip protocols (`https://`), paths, and ports.
+- In `dnsmasq`, domains are registered as native address overrides (`address=/domain.com/0.0.0.0`), resolving both the domain and all subdomains to `0.0.0.0` in 0ms.
+- In AdGuard Home, corresponding `||domain.com^` rules are synchronized into `user_rules:` in `adguardhome.yaml`.
+
 ## Operational profiles and Gamer mode
 
 ARK Router supports switching between two operational profiles:
