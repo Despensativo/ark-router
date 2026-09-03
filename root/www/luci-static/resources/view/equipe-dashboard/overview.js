@@ -803,10 +803,10 @@ return view.extend({
 					if (reservedIp) {
 						badges.push(E('span', { class: 'ex-device-badge badge-reserved', title: 'IP Fixo Reservado no DHCP: ' + reservedIp }, [ '🔒 IP Fixo' ]));
 					}
-					if (prioDscp === 'EF') {
-						badges.push(E('span', { class: 'ex-device-badge badge-gamer', title: 'Fila Gamer / Prioridade Máxima (EF)' }, [ '🎮 Gamer' ]));
-					} else if (prioDscp === 'AF41') {
-						badges.push(E('span', { class: 'ex-device-badge badge-video', title: 'Fila de Vídeo / Multimídia (AF41)' }, [ '📺 Vídeo' ]));
+					if (prioDscp === 'EF' || prioDscp === 'AF41') {
+						badges.push(E('span', { class: 'ex-device-badge badge-gamer', title: 'Fila Gamer / Prioridade Máxima (AF41)' }, [ '🎮 Gamer' ]));
+					} else if (prioDscp === 'AF31' || prioDscp === 'AF42') {
+						badges.push(E('span', { class: 'ex-device-badge badge-video', title: 'Fila de Vídeo / Multimídia (AF31)' }, [ '📺 Vídeo' ]));
 					}
 					if (lim && lim.enabled && (lim.down > 0 || lim.up > 0)) {
 						const downStr = lim.down > 0 ? lim.down + 'M↓' : '';
@@ -838,10 +838,10 @@ return view.extend({
 			if (reservedIp) {
 				badges.push(E('span', { class: 'ex-device-badge badge-reserved', title: 'IP Fixo Reservado no DHCP: ' + reservedIp }, [ '🔒 IP Fixo' ]));
 			}
-			if (prioDscp === 'EF') {
-				badges.push(E('span', { class: 'ex-device-badge badge-gamer', title: 'Fila Gamer / Prioridade Máxima (EF)' }, [ '🎮 Gamer' ]));
-			} else if (prioDscp === 'AF41') {
-				badges.push(E('span', { class: 'ex-device-badge badge-video', title: 'Fila de Vídeo / Multimídia (AF41)' }, [ '📺 Vídeo' ]));
+			if (prioDscp === 'EF' || prioDscp === 'AF41') {
+				badges.push(E('span', { class: 'ex-device-badge badge-gamer', title: 'Fila Gamer / Prioridade Máxima (AF41)' }, [ '🎮 Gamer' ]));
+			} else if (prioDscp === 'AF31' || prioDscp === 'AF42') {
+				badges.push(E('span', { class: 'ex-device-badge badge-video', title: 'Fila de Vídeo / Multimídia (AF31)' }, [ '📺 Vídeo' ]));
 			}
 			if (lim && lim.enabled && (lim.down > 0 || lim.up > 0)) {
 				const downStr = lim.down > 0 ? lim.down + 'M↓' : '';
@@ -860,7 +860,11 @@ return view.extend({
 			const tr=E('tr',{'data-mac':d.mac},[
 				E('td',{},[nameRow, E('small',{class:'ex-device-meta'},[metaText])]),
 				E('td',{'class':'ex-hide-mobile'},[d.network+(d.signal!=null?' • '+d.signal+' dBm':'')]),
-				E('td',{'class':'ex-rate-cell'},[E('span',{class:'down'},['↓ '+formatRate(d.rate.rx)]),E('span',{class:'up'},['↑ '+formatRate(d.rate.tx)])]),
+				E('td',{'class':'ex-rate-cell'},[
+					E('span',{class:'down'},['↓ '+formatRate(d.rate.rx)]),
+					E('span',{class:'up'},['↑ '+formatRate(d.rate.tx)]),
+					totalBytes > 0 ? E('span',{class:'ex-rate-total ex-show-mobile'},['Σ ' + formatBytes(totalBytes)]) : ''
+				]),
 				E('td',{'class':'ex-total-cell ex-hide-mobile',style:'font-weight:600;font-variant-numeric:tabular-nums;'},[totalBytes > 0 ? formatBytes(totalBytes) : '—']),
 				E('td',{'class':'ex-device-action'},[E('button',{'class':'ex-mini-button','title':'Configurar dispositivo','click':L.bind(this.configureDevice,this,d)},[
 					E('span',{'class':'ex-hide-mobile'},['Configurar']),
@@ -1065,7 +1069,7 @@ return view.extend({
 					reserveDescBox
 				])
 			];
-			let selectedPriority = !state.priority ? 'none' : (state.dscp === 'AF31' ? 'video' : 'gamer');
+			let selectedPriority = !state.priority ? 'none' : ((state.dscp === 'AF31' || state.dscp === 'AF42') ? 'video' : 'gamer');
 			const hasQosFeature = this.feature('sqm').installed || this.feature('custom_qos').installed;
 			if(hasQosFeature && !device.guest){
 				const priorityButtons = [
@@ -4713,7 +4717,7 @@ return view.extend({
 		const healthItem=function(icon,label,valueId,barId,color,detailId){return E('div',{class:'ex-health-item','style':'--health-color:'+color},[E('span',{class:'ex-health-icon'},[icon]),E('div',{class:'ex-health-copy'},[E('span',{class:'ex-label'},[label]),E('strong',{id:valueId},['—']),barId?E('div',{class:'ex-health-bar'},[E('i',{id:barId})]):E('small',{class:'ex-health-steady'},['atividade do sistema']),detailId?E('small',{id:detailId,class:'ex-health-detail'},['—']):''])]);};
 		const speedWanCard=L.bind(function(wan,label,available){const attrs={class:'ex-mini-button','click':L.bind(this.startSpeedtest,this,wan,label)};if(!available)attrs.disabled=true;return E('div',{class:'ex-speedtest-wan'},[E('div',{class:'ex-card-title'},[E('h3',{},[label]),E('button',attrs,['Executar teste'])]),E('div',{id:'ex-speedtest-'+wan+'-result',class:'ex-speedtest-result'},[E('span',{class:'ex-muted'},[available?'Sem resultado nesta sessão.':'SEM CABO'])])]);},this);
 		const sortSelect=E('select',{id:'ex-device-sort-key',class:'cbi-input-select ex-device-sort-select','change':L.bind(function(ev){this.setDeviceSort(ev.currentTarget.value);},this)},[E('option',{value:'total'},['Total consumido']),E('option',{value:'now'},['Agora (velocidade)']),E('option',{value:'name'},['Nome do aparelho'])]);sortSelect.value=this.deviceSortKey||'total';
-		const deviceSortControls=E('div',{class:'ex-device-sort-controls'},[E('span',{class:'ex-muted'},['Ordenar']),sortSelect,E('button',{id:'ex-device-sort-dir',class:'ex-mini-button','click':L.bind(function(ev){this.toggleDeviceSortDirection(ev.currentTarget);},this)},[this.deviceSortKey==='name'?(this.deviceSortDir==='asc'?'A → Z':'Z → A'):(this.deviceSortDir==='desc'?'Maior primeiro':'Menor primeiro')])]);
+		const deviceSortControls=E('div',{class:'ex-device-sort-controls'},[E('span',{class:'ex-muted ex-device-sort-label'},['Ordenar']),sortSelect,E('button',{id:'ex-device-sort-dir',class:'ex-mini-button','click':L.bind(function(ev){this.toggleDeviceSortDirection(ev.currentTarget);},this)},[this.deviceSortKey==='name'?(this.deviceSortDir==='asc'?'A → Z':'Z → A'):(this.deviceSortDir==='desc'?'Maior primeiro':'Menor primeiro')])]);
 		const arkVersion=((this.capabilities.update||{}).current)||'—';
 		const irqbalance=this.feature('irqbalance');
 		const irqbalanceInput=E('input',{type:'checkbox','aria-label':'Ativar IRQ Balance','change':L.bind(function(ev){const input=ev.currentTarget,desired=!!input.checked;return fs.exec('/usr/sbin/equipe-dashboard-control',['irqbalance-toggle',desired?'1':'0']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar IRQ Balance');reloadSoon(desired?'IRQ Balance ativado. Recarregando o painel…':'IRQ Balance desativado. Recarregando o painel…',900);}).catch(function(e){input.checked=!desired;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)});irqbalanceInput.checked=!!irqbalance.active;irqbalanceInput.disabled=!irqbalance.installed;
@@ -4859,9 +4863,9 @@ return view.extend({
 								E('tr',{},[
 									E('th',{},['Dispositivo']),
 									E('th',{class:'ex-hide-mobile'},['Rede / sinal']),
-									E('th',{},['Agora']),
-									E('th',{},['Total']),
-									E('th',{},[''])
+									E('th',{},['Tráfego']),
+									E('th',{class:'ex-hide-mobile'},['Total']),
+									E('th',{class:'ex-device-action-th'},[''])
 								])
 							]),
 							E('tbody',{id:'ex-device-body'}),

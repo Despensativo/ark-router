@@ -2817,15 +2817,15 @@ device_apply_parental() {
 		if [ "$agh_active" = "1" ]; then
 			if command -v python3 >/dev/null 2>&1; then
 				python3 -c "
-import re
+import sys, re
 
 yaml_path = '/etc/adguardhome/adguardhome.yaml'
-mac = '$p_mac'
-ip = '$p_ip'
-name = '''$p_name''' or mac
-p_block = ('$p_block' == '1')
-s_safe = ('$p_safe' == '1')
-services = [s.strip() for s in '$p_services'.split(',') if s.strip()]
+mac = sys.argv[1]
+ip = sys.argv[2]
+name = sys.argv[3] or mac
+p_block = (sys.argv[4] == '1')
+s_safe = (sys.argv[5] == '1')
+services = [s.strip() for s in sys.argv[6].split(',') if s.strip()]
 
 try:
     with open(yaml_path, 'r', encoding='utf-8') as f:
@@ -2861,7 +2861,7 @@ try:
         name_clean = name.lower()
         for block in client_blocks:
             b_clean = block.lower().replace(':', '')
-            if (mac_clean and mac_clean in b_clean) or (ip and ip in block) or (name_clean and ('name: "' + name_clean + '"' in b_clean or 'name: ' + name_clean in b_clean)):
+            if (mac_clean and mac_clean in b_clean) or (ip and ip in block) or (name_clean and ('name: \"' + name_clean + '\"' in b_clean or 'name: ' + name_clean in b_clean)):
                 continue
             filtered_blocks.append(block)
 
@@ -2877,8 +2877,9 @@ try:
 
         p_str = 'true' if p_block else 'false'
         s_str = 'true' if s_safe else 'false'
+        name_clean = name.replace('\"', '\\\\\"')
 
-        new_client = f'''    - name: \"{name}\"
+        new_client = f'''    - name: \"{name_clean}\"
       ids:
 {ids_lines}
       use_global_settings: false
@@ -2908,7 +2909,7 @@ try:
             f.write(new_content)
 except Exception:
     pass
-"
+" "$p_mac" "$p_ip" "$p_name" "$p_block" "$p_safe" "$p_services"
 				/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
 			fi
 		else
@@ -2934,11 +2935,11 @@ except Exception:
 		if [ "$agh_active" = "1" ]; then
 			if command -v python3 >/dev/null 2>&1; then
 				python3 -c "
-import re
+import sys, re
 yaml_path = '/etc/adguardhome/adguardhome.yaml'
-mac = '$p_mac'
-ip = '$p_ip'
-name = '''$p_name''' or mac
+mac = sys.argv[1]
+ip = sys.argv[2]
+name = sys.argv[3] or mac
 try:
     with open(yaml_path, 'r', encoding='utf-8') as f:
         content = f.read()
@@ -2969,7 +2970,7 @@ try:
         name_clean = name.lower()
         for block in client_blocks:
             b_clean = block.lower().replace(':', '')
-            if (mac_clean and mac_clean in b_clean) or (ip and ip in block) or (name_clean and ('name: "' + name_clean + '"' in b_clean or 'name: ' + name_clean in b_clean)):
+            if (mac_clean and mac_clean in b_clean) or (ip and ip in block) or (name_clean and ('name: \"' + name_clean + '\"' in b_clean or 'name: ' + name_clean in b_clean)):
                 continue
             filtered_blocks.append(block)
 
@@ -2983,7 +2984,7 @@ try:
             f.write(new_content)
 except Exception:
     pass
-"
+" "$p_mac" "$p_ip" "$p_name"
 				/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
 			fi
 		fi
@@ -4363,7 +4364,7 @@ case "$action" in
 			blocked_services="$(uci -q get "equipe_devices.$name_section.blocked_services" || true)"
 		fi
 		adguard_installed=false
-		[ -x /usr/bin/AdGuardHome ] && adguard_installed=true
+		[ -x /usr/bin/AdGuardHome ] && [ "$(uci -q get equipe_perf.settings.adblock_cloud || echo 0)" != "1" ] && adguard_installed=true
 		printf '{"reserved":%s,"ip":"%s","priority":%s,"dscp":"%s","wan_route":"%s","limit_enabled":%s,"limit_down":%d,"limit_up":%d,"operation_profile":"%s","qos_active":%s,"parental_mode":"%s","parental_block":%s,"safesearch":%s,"blocked_services":"%s","adguard_installed":%s}\n' \
 			"$reserved" "$(json_escape "$ip")" "$priority" "$(json_escape "$dscp")" "$(json_escape "$wan_route")" "$limit_enabled" "$limit_down" "$limit_up" "$(ark_operation_profile)" "$(feature_active sqm && bool 1 || bool 0)" \
 			"$(json_escape "$parental_mode")" "$parental_block" "$safesearch" "$(json_escape "$blocked_services")" "$adguard_installed"

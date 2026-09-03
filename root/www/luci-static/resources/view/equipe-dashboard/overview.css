@@ -456,7 +456,7 @@ details.ex-perf-opt-card, section.ex-perf-opt-card { border-color: color-mix(in 
 	.ex-shortcuts { grid-template-columns: 1fr; }
 	.ex-reboot-card { align-items: stretch; flex-direction: column; }
 	.ex-reboot-button { width: 100%; }
-	.ex-card { padding: 17px; }
+	.ex-card { padding: 14px 12px; }
 	.ex-channel-card .ex-card-title { flex-direction: column; }
 	.ex-inline-button { width: 100%; }
 	.ex-channel-actions { flex-direction: column; }
@@ -477,15 +477,24 @@ details.ex-perf-opt-card, section.ex-perf-opt-card { border-color: color-mix(in 
 	.ex-hide-mobile { display: none !important; }
 	.ex-show-mobile { display: inline !important; }
 	.ex-devices .ex-card-title { flex-direction: column; align-items: stretch; gap: 10px; }
-	.ex-device-title-actions { flex-direction: column; align-items: stretch; gap: 8px; width: 100%; }
-	.ex-device-sort-controls { width: 100%; justify-content: space-between; gap: 6px; }
-	.ex-device-sort-select { flex: 1 1 auto; min-width: 0; max-width: none; }
-	.ex-device-table th, .ex-device-table td { padding: 8px 4px; font-size: 0.78rem; }
-	.ex-device-name-row strong { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
-	.ex-device-meta { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.68rem; }
-	.ex-rate-cell { font-size: 0.74rem; line-height: 1.25; }
-	.ex-rate-cell span { font-size: 0.74rem; }
-	.ex-device-action .ex-mini-button { padding: 5px 8px; }
+	.ex-device-title-actions { flex-direction: column; align-items: stretch; gap: 8px; width: 100%; max-width: 100%; box-sizing: border-box; }
+	.ex-device-sort-controls { width: 100% !important; display: flex !important; align-items: center !important; gap: 6px !important; }
+	.ex-device-sort-label { display: none !important; }
+	.ex-device-sort-select { flex: 1 1 auto !important; min-width: 0 !important; max-width: none !important; width: 100% !important; font-size: 0.8rem !important; padding: 6px 22px 6px 8px !important; }
+	#ex-device-sort-dir { flex: 0 0 auto !important; font-size: 0.8rem !important; padding: 6px 10px !important; white-space: nowrap !important; }
+	.ex-table-wrap { width: 100% !important; max-width: 100% !important; padding: 0 2px 8px !important; overflow-x: hidden !important; box-sizing: border-box !important; }
+	.ex-device-table { width: 100% !important; min-width: 0 !important; table-layout: fixed !important; border-collapse: collapse !important; }
+	.ex-device-table th, .ex-device-table td { padding: 7px 3px !important; vertical-align: middle !important; }
+	.ex-device-table th:first-child, .ex-device-table td:first-child { width: 55% !important; max-width: 55% !important; overflow: hidden !important; }
+	.ex-device-table th:nth-child(3), .ex-device-table td:nth-child(3) { width: 33% !important; max-width: 33% !important; text-align: right !important; }
+	.ex-device-table th:last-child, .ex-device-table td:last-child { width: 12% !important; max-width: 12% !important; text-align: right !important; padding-right: 0 !important; }
+	.ex-device-name-row { gap: 3px !important; }
+	.ex-device-name-row strong { max-width: 100% !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; display: block !important; font-size: 0.82rem !important; }
+	.ex-device-meta { max-width: 100% !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; font-size: 0.66rem !important; display: block !important; }
+	.ex-rate-cell { font-size: 0.71rem !important; line-height: 1.22 !important; text-align: right !important; }
+	.ex-rate-cell span { font-size: 0.71rem !important; text-align: right !important; }
+	.ex-rate-total { display: block !important; margin-top: 2px !important; font-size: 0.67rem !important; font-weight: 700 !important; color: #94a3b8 !important; font-variant-numeric: tabular-nums !important; }
+	.ex-device-action .ex-mini-button { padding: 5px 6px !important; min-width: 32px !important; text-align: center !important; font-size: 0.85rem !important; }
 	.ex-priority-button-grid, .ex-reserve-button-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 6px; }
 	.ex-priority-button-grid > .ex-priority-option-btn:last-child:nth-child(odd) { grid-column: span 2; }
 	.ex-priority-option-btn { padding: 8px 6px; font-size: 0.78rem; min-height: 38px; line-height: 1.2; }

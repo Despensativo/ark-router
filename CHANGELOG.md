@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9.63
+
+- **📱 Responsividade Mobile Perfeita & Eliminação de Quebras Visuais**:
+  - **Correção no Seletor de Ordenação de Dispositivos**: O botão `[ Maior primeiro ]` não transborda mais a tela em smartphones (~360px a 414px). O rótulo "Ordenar" é recolhido em telas estreitas, permitindo que o `<select>` e o botão de direção ocupem 100% da largura útil sem transbordar 1 pixel sequer.
+  - **Alinhamento e Layout Perfeito da Tabela de Dispositivos**:
+    - Corrigido desalinhamento de colunas onde o cabeçalho `TOTAL` era exibido enquanto a célula de dados estava oculta, o que empurrava o botão de engrenagem `⚙️` para baixo da coluna de Total e provocava corte lateral no mobile.
+    - Implementado layout responsivo elegante de 3 colunas no mobile (`Dispositivo`, `Tráfego`, `Ações`), exibindo tanto a velocidade instantânea (download/upload) quanto o total acumulado (`Σ 1.2 GB`) no mesmo espaço, com o botão `⚙️` perfeitamente alinhado na extremidade direita.
+    - Aplicação de `table-layout: fixed; width: 100%;` eliminando qualquer barra de rolagem horizontal ou corte nos cartões.
+  - **Otimização de Espaçamento nos Cards Mobile**: Redução sutil do padding lateral dos cards para 12px em telas `<= 480px`, oferecendo mais área de toque e visualização confortável.
+- **🔍 Correção Lógica e Auditoria de Código**:
+  - **Correção nos Badges de Prioridade SQM (Gamer vs Vídeo)**: Corrigida correspondência de códigos DSCP (`AF41` e `EF` agora identificam corretamente a `Fila Gamer`, enquanto `AF31` e `AF42` identificam a `Fila de Vídeo`). Anteriormente, aparelhos configurados como Gamer salvavam `AF41` mas recebiam o selo de Vídeo na lista.
+  - **Passagem Segura de Argumentos no Backend**: Substituída interpolação direta em strings Python por argumentos posicionais (`sys.argv`), protegendo completamente contra nomes de aparelhos com aspas, apóstrofos ou caracteres especiais.
+  - **Detecção Precisa de AdGuard Home**: A verificação `adguard_installed` agora checa se o modo Nuvem não está forçado, garantindo consistência com o perfil ativo.
+
 ## 0.9.62
 
 - **🛡️ Controle Parental e Filtros Individuais por Dispositivo**:
