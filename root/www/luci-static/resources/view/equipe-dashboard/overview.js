@@ -382,6 +382,56 @@ function currentChannelValue(configured, survey) {
 	return survey && survey.channel ? String(survey.channel) : c;
 }
 
+// Previne rolagem do fundo (background scroll) e travamento no iPhone / iOS Safari quando em modais e submenus
+(function setupModalScrollLock() {
+	let savedScrollY = 0;
+	let isLocked = false;
+
+	const handleModalState = function() {
+		if (typeof document === 'undefined' || !document.body) return;
+		const isActive = document.body.classList.contains('modal-overlay-active');
+		if (isActive && !isLocked) {
+			savedScrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+			document.body.style.position = 'fixed';
+			document.body.style.top = '-' + savedScrollY + 'px';
+			document.body.style.left = '0';
+			document.body.style.right = '0';
+			document.body.style.width = '100%';
+			document.body.style.overflow = 'hidden';
+			isLocked = true;
+		} else if (!isActive && isLocked) {
+			document.body.style.position = '';
+			document.body.style.top = '';
+			document.body.style.left = '';
+			document.body.style.right = '';
+			document.body.style.width = '';
+			document.body.style.overflow = '';
+			window.scrollTo(0, savedScrollY);
+			isLocked = false;
+		}
+	};
+
+	if (typeof MutationObserver !== 'undefined') {
+		const attachObserver = function() {
+			if (!document.body) return;
+			const observer = new MutationObserver(handleModalState);
+			observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+		};
+		if (document.body) attachObserver();
+		else document.addEventListener('DOMContentLoaded', attachObserver);
+	}
+
+	if (typeof document !== 'undefined') {
+		document.addEventListener('touchmove', function(e) {
+			if (document.body && document.body.classList.contains('modal-overlay-active')) {
+				if (e.target && e.target.id === 'modal_overlay') {
+					e.preventDefault();
+				}
+			}
+		}, { passive: false });
+	}
+})();
+
 return view.extend({
 	board: {}, countries: [], capabilities: {features:{}}, previous: {}, trafficPrevious: {}, trafficAt: 0, currentData: null, recommendedChannels: null, speedResults: {}, refreshTimer: null, dashboardRoot: null, deviceSortKey: 'total', deviceSortDir: 'desc', starlinkTelemetryTimer: null, starlinkTelemetryStopTimer: null, starlinkTelemetryActive: false, starlinkTelemetryWan: null, starlinkWanOrder: [], starlinkResults: {},
 	fetchCapabilities: function(){return safe(fs.exec('/usr/sbin/equipe-dashboard-control',['features']),{}).then(function(r){try{return JSON.parse((r&&r.stdout)||'{}');}catch(e){return {language:'pt-br',package_manager:'none',features:{}};}});},

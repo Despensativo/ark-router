@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.67
+
+- **📱 Eliminação de Scroll de Fundo e Travamento no iPhone / iOS Safari (Modal & Submenus)**:
+  - **Correção da Geometria do Overlay de Modais (`#modal_overlay`)**:
+    - O `#modal_overlay` foi desacoplado do seletor que forçava margens e larguras estreitas no mobile. Agora cobre 100% da tela física (`position: fixed; inset: 0; width: 100vw; height: 100dvh`), eliminando frestas laterais onde o toque caía diretamente no fundo da página.
+    - Habilitada rolagem fluida e isolada no overlay com `-webkit-overflow-scrolling: touch` e `overscroll-behavior: contain`.
+  - **Trava Ativa de Rolagem do Fundo (`MutationObserver` + Touch Isolation)**:
+    - Implementada trava reativa em JavaScript que detecta instantaneamente quando qualquer modal ou submenu LuCI é aberto (`modal-overlay-active`).
+    - Fixa a página de fundo (`position: fixed; top: -scrollY`) enquanto o modal está ativo, impedindo fisicamente que o Safari encadeie gestos (rubber-banding / scroll chaining) para a página subjacente.
+    - Restaura a posição exata da tela com 0ms de atraso ao fechar o modal.
+    - Intercepta e cancela eventos `touchmove` no backdrop escuro, impedindo congelamento de toques ou perda de resposta no iOS.
+
 ## 0.9.66
 
 - **⚡ Bypass Expresso de Rede Local (LAN) no Limitador de Banda de Dispositivos**:
