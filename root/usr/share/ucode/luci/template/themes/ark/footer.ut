@@ -1,0 +1,19 @@
+{#
+ Copyright 2026 ARK Router Project
+ Licensed under the Apache License 2.0.
+-#}
+
+{% const ver = require("luci.version"); %}
+
+   <footer class="ark-footer">
+    <div class="ark-footer-wrap">
+     <span>ARK Router OS &bull; LuCI {{ ver.distversion ?? '' }}</span>
+     <ul class="breadcrumb pull-right" id="modemenu" style="display:none"></ul>
+    </div>
+   </footer>
+  </div>
+  {% if (dispatcher.context.authsession): %}
+  <script type="text/javascript">L.require('menu-bootstrap')</script>
+  {% endif %}
+ </body>
+</html>

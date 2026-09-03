@@ -1,0 +1,613 @@
+/* ==========================================================================
+   ARK Theme — Modern Dark Theme for OpenWrt LuCI (Inspired by Argon)
+   Compatible with OpenWrt 19.07, 21.02, 22.03, 23.05, 24.10, 25.x
+   ========================================================================== */
+
+:root {
+	--ark-bg: #0b1120;
+	--ark-surface-1: #111c30;
+	--ark-surface-2: #192742;
+	--ark-surface-3: #223455;
+	--ark-border: rgba(255, 255, 255, 0.09);
+	--ark-border-hover: rgba(255, 255, 255, 0.18);
+	--ark-text-main: #f8fafc;
+	--ark-text-muted: #94a3b8;
+	--ark-text-dim: #64748b;
+	--ark-primary: #3b82f6;
+	--ark-primary-glow: rgba(59, 130, 246, 0.25);
+	--ark-secondary: #8b5cf6;
+	--ark-cyan: #06b6d4;
+	--ark-success: #10b981;
+	--ark-warning: #f59e0b;
+	--ark-danger: #ef4444;
+	--ark-radius: 10px;
+	--ark-radius-lg: 14px;
+	--ark-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+	--ark-shadow-lg: 0 12px 35px rgba(0, 0, 0, 0.5);
+}
+
+/* Global Reset & Base */
+html, body {
+	background-color: var(--ark-bg) !important;
+	color: var(--ark-text-main) !important;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+	font-size: 14px;
+	line-height: 1.5;
+	margin: 0;
+	padding: 0;
+	min-height: 100vh;
+	-webkit-font-smoothing: antialiased;
+}
+
+a {
+	color: var(--ark-primary);
+	text-decoration: none;
+	transition: color 0.15s ease;
+}
+a:hover {
+	color: var(--ark-cyan);
+	text-decoration: none;
+}
+
+/* Header & Navigation Bar */
+header.ark-header, header {
+	background: rgba(11, 17, 32, 0.85) !important;
+	backdrop-filter: blur(16px);
+	-webkit-backdrop-filter: blur(16px);
+	border-bottom: 1px solid var(--ark-border) !important;
+	position: sticky;
+	top: 0;
+	z-index: 1000;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+header .fill {
+	background: transparent !important;
+	padding: 8px 0;
+}
+
+.container {
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: 0 16px;
+	box-sizing: border-box;
+}
+
+/* Brand styling */
+.brand.ark-brand, .brand {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 18px;
+	font-weight: 800;
+	color: #fff !important;
+	letter-spacing: -0.02em;
+	padding: 6px 12px;
+	border-radius: 8px;
+	transition: opacity 0.2s;
+	text-decoration: none !important;
+}
+.brand.ark-brand:hover, .brand:hover {
+	opacity: 0.9;
+}
+.ark-brand-icon {
+	color: #38bdf8;
+	font-size: 20px;
+}
+.ark-brand-accent {
+	background: linear-gradient(135deg, #38bdf8, #818cf8);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+}
+
+header .fill .container {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+/* Navigation Links */
+ul.nav, .nav {
+	display: flex !important;
+	align-items: center;
+	gap: 4px;
+	margin: 0 !important;
+	padding: 0 !important;
+	list-style: none !important;
+}
+ul.nav > li, .nav > li {
+	position: relative !important;
+	list-style: none !important;
+	margin: 0 !important;
+	padding: 0 !important;
+}
+ul.nav > li > a, .nav > li > a {
+	display: block !important;
+	color: var(--ark-text-muted) !important;
+	font-weight: 600;
+	font-size: 13px;
+	padding: 8px 14px;
+	border-radius: 8px;
+	transition: all 0.15s ease;
+	text-decoration: none !important;
+}
+ul.nav > li > a:hover, ul.nav > li.active > a, .nav > li.active > a, ul.nav > li:hover > a {
+	color: #fff !important;
+	background: var(--ark-surface-2) !important;
+}
+
+/* Dropdown menus */
+.dropdown-menu, .menu-dropdown, ul.dropdown {
+	display: none !important;
+	position: absolute !important;
+	top: 100% !important;
+	left: 0 !important;
+	z-index: 1000 !important;
+	min-width: 190px !important;
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius) !important;
+	box-shadow: var(--ark-shadow-lg) !important;
+	padding: 6px !important;
+	margin: 4px 0 0 0 !important;
+	list-style: none !important;
+	backdrop-filter: blur(20px);
+}
+.nav > li:hover > .dropdown-menu,
+.nav > li.open > .dropdown-menu,
+.dropdown:hover > .dropdown-menu,
+.dropdown.open > .dropdown-menu,
+li.dropdown:hover > ul {
+	display: block !important;
+}
+.dropdown-menu > li, .menu-dropdown > li {
+	list-style: none !important;
+	margin: 0 !important;
+	padding: 0 !important;
+}
+.dropdown-menu > li > a, .menu-dropdown > li > a, .dropdown > li > a {
+	display: block !important;
+	color: var(--ark-text-muted) !important;
+	padding: 8px 12px !important;
+	border-radius: 6px !important;
+	font-size: 13px !important;
+	font-weight: 500 !important;
+	white-space: nowrap !important;
+	text-decoration: none !important;
+	transition: all 0.15s ease !important;
+}
+.dropdown-menu > li > a:hover, .menu-dropdown > li > a:hover, .dropdown > li > a:hover {
+	background: var(--ark-surface-2) !important;
+	color: #fff !important;
+}
+
+/* Tabs */
+#tabmenu, .tabs {
+	display: flex;
+	gap: 6px;
+	list-style: none !important;
+	padding: 0 0 12px 0 !important;
+	margin: 0 0 16px 0 !important;
+	border-bottom: 1px solid var(--ark-border);
+}
+#tabmenu li, .tabs li {
+	list-style: none !important;
+}
+#tabmenu a, .tabs a {
+	display: inline-block;
+	padding: 6px 14px;
+	border-radius: 8px;
+	background: var(--ark-surface-2);
+	color: var(--ark-text-muted) !important;
+	font-weight: 600;
+	font-size: 12px;
+	text-decoration: none !important;
+}
+#tabmenu li.active a, .tabs li.active a, #tabmenu a:hover, .tabs a:hover {
+	background: var(--ark-primary);
+	color: #fff !important;
+}
+
+/* Network Interface Badges */
+.ifacebadge {
+	display: inline-flex;
+	flex-direction: column;
+	background: var(--ark-surface-2) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: 10px;
+	padding: 8px 12px;
+	margin: 4px;
+	color: var(--ark-text-main) !important;
+	min-width: 140px;
+}
+.ifacebox {
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: 12px;
+	margin-bottom: 16px;
+	padding: 16px;
+}
+.ifacebox-head {
+	padding: 8px 12px;
+	border-radius: 8px;
+	background: var(--ark-surface-2);
+	font-weight: 700;
+	margin-bottom: 10px;
+}
+
+/* Main Content Area */
+#maincontent {
+	padding: 24px 16px 48px;
+	min-height: calc(100vh - 140px);
+}
+
+/* Cards & Containers */
+.cbi-map, .cbi-section, .table, fieldset {
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius-lg) !important;
+	padding: 20px !important;
+	margin-bottom: 20px !important;
+	box-shadow: var(--ark-shadow);
+}
+
+h2, h3, h4, legend {
+	color: #fff !important;
+	font-weight: 700 !important;
+	letter-spacing: -0.01em;
+	border-bottom: 1px solid var(--ark-border) !important;
+	padding-bottom: 8px;
+	margin-top: 0;
+}
+.cbi-map-descr, .cbi-section-descr {
+	color: var(--ark-text-muted);
+	font-size: 13px;
+	margin-bottom: 16px;
+}
+
+/* Form Fields */
+.cbi-value {
+	padding: 12px 0;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+}
+.cbi-value:last-child {
+	border-bottom: none;
+}
+.cbi-value-title {
+	width: 240px;
+	color: var(--ark-text-main);
+	font-weight: 600;
+	font-size: 13px;
+}
+.cbi-value-field {
+	flex: 1;
+	min-width: 250px;
+}
+.cbi-value-description {
+	color: var(--ark-text-dim);
+	font-size: 12px;
+	margin-top: 4px;
+}
+
+/* Inputs & Controls */
+input.cbi-input-text, input[type="text"], input[type="password"], textarea, select.cbi-input-select, select {
+	background: var(--ark-surface-2) !important;
+	color: var(--ark-text-main) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: 8px !important;
+	padding: 8px 12px !important;
+	font-size: 13px !important;
+	outline: none !important;
+	transition: all 0.15s ease !important;
+	box-sizing: border-box;
+}
+input.cbi-input-text:focus, input[type="text"]:focus, input[type="password"]:focus, textarea:focus, select:focus {
+	border-color: var(--ark-primary) !important;
+	box-shadow: 0 0 0 3px var(--ark-primary-glow) !important;
+}
+
+/* Buttons */
+.btn, .cbi-button {
+	background: var(--ark-surface-2) !important;
+	color: var(--ark-text-main) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: 8px !important;
+	padding: 8px 16px !important;
+	font-size: 13px !important;
+	font-weight: 600 !important;
+	cursor: pointer !important;
+	transition: all 0.15s ease !important;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	text-decoration: none !important;
+}
+.btn:hover, .cbi-button:hover {
+	background: var(--ark-surface-3) !important;
+	border-color: var(--ark-border-hover) !important;
+	color: #fff !important;
+}
+
+.btn-primary, .cbi-button-apply, .cbi-button-positive {
+	background: linear-gradient(135deg, #3b82f6, #6366f1) !important;
+	border-color: #3b82f6 !important;
+	color: #fff !important;
+	box-shadow: 0 2px 10px rgba(59, 130, 246, 0.35) !important;
+}
+.btn-primary:hover, .cbi-button-apply:hover, .cbi-button-positive:hover {
+	background: linear-gradient(135deg, #2563eb, #4f46e5) !important;
+	box-shadow: 0 4px 15px rgba(59, 130, 246, 0.5) !important;
+}
+
+.cbi-button-reset, .cbi-button-neutral {
+	background: var(--ark-surface-2) !important;
+	color: var(--ark-text-muted) !important;
+}
+.cbi-button-reset:hover, .cbi-button-neutral:hover {
+	background: var(--ark-surface-3) !important;
+	color: #fff !important;
+}
+
+.cbi-button-remove, .cbi-button-negative {
+	background: rgba(239, 68, 68, 0.15) !important;
+	border-color: rgba(239, 68, 68, 0.35) !important;
+	color: #fca5a5 !important;
+}
+.cbi-button-remove:hover, .cbi-button-negative:hover {
+	background: #ef4444 !important;
+	color: #fff !important;
+}
+
+/* Tables */
+table.cbi-section-table, table.table {
+	width: 100% !important;
+	border-collapse: collapse !important;
+	margin: 12px 0 !important;
+}
+table.cbi-section-table th, table.table th {
+	background: var(--ark-surface-2) !important;
+	color: var(--ark-text-muted) !important;
+	font-size: 11px !important;
+	font-weight: 700 !important;
+	text-transform: uppercase !important;
+	letter-spacing: 0.05em !important;
+	padding: 10px 12px !important;
+	border-bottom: 1px solid var(--ark-border) !important;
+	text-align: left;
+}
+table.cbi-section-table td, table.table td {
+	padding: 12px !important;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+	color: var(--ark-text-main) !important;
+	font-size: 13px !important;
+}
+table.cbi-section-table tr:hover td, table.table tr:hover td {
+	background: rgba(255, 255, 255, 0.02) !important;
+}
+
+/* Alerts & Notices */
+.alert-message {
+	padding: 12px 16px;
+	border-radius: var(--ark-radius);
+	margin-bottom: 16px;
+	border-left: 4px solid var(--ark-primary);
+	background: var(--ark-surface-2);
+}
+.alert-message.warning {
+	border-left-color: var(--ark-warning);
+	background: rgba(245, 158, 11, 0.1);
+}
+.alert-message.danger, .alert-message.error {
+	border-left-color: var(--ark-danger);
+	background: rgba(239, 68, 68, 0.1);
+}
+.alert-message.success, .alert-message.info {
+	border-left-color: var(--ark-success);
+	background: rgba(16, 185, 129, 0.1);
+}
+.alert-message h4 {
+	margin: 0 0 4px 0;
+	border-bottom: none !important;
+	font-size: 14px;
+}
+.alert-message p {
+	margin: 0;
+	font-size: 13px;
+	color: var(--ark-text-muted);
+}
+
+/* ==========================================================================
+   MODERN LOGIN SCREEN (SYSAUTH) — Argon Concept Refined
+   ========================================================================== */
+body:not([data-page]) #maincontent,
+body[data-page=""] #maincontent,
+.cbi-map:has(input[name="luci_password"]) {
+	max-width: 440px !important;
+	margin: 80px auto !important;
+}
+
+form[action=""] .cbi-map,
+form[method="post"] .cbi-map:has(input[name="luci_password"]),
+#maincontent:has(input[name="luci_password"]) {
+	background: rgba(19, 29, 49, 0.85) !important;
+	backdrop-filter: blur(20px) !important;
+	-webkit-backdrop-filter: blur(20px) !important;
+	border: 1px solid rgba(255, 255, 255, 0.12) !important;
+	border-radius: 18px !important;
+	box-shadow: 0 24px 50px rgba(0, 0, 0, 0.6), 0 0 40px rgba(59, 130, 246, 0.18) !important;
+	padding: 32px 28px !important;
+}
+
+form[action=""] .cbi-map h2,
+#maincontent:has(input[name="luci_password"]) h2 {
+	text-align: center;
+	border-bottom: none !important;
+	font-size: 20px;
+	font-weight: 800;
+	margin-bottom: 4px;
+	background: linear-gradient(135deg, #ffffff, #94a3b8);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+}
+form[action=""] .cbi-map .cbi-map-descr,
+#maincontent:has(input[name="luci_password"]) .cbi-map-descr {
+	text-align: center;
+	color: var(--ark-text-dim);
+	margin-bottom: 24px;
+	font-size: 13px;
+}
+
+form[action=""] .cbi-value,
+form:has(input[name="luci_password"]) .cbi-value {
+	flex-direction: column !important;
+	align-items: flex-start !important;
+	border-bottom: none !important;
+	padding: 8px 0 !important;
+}
+form[action=""] .cbi-value-title,
+form:has(input[name="luci_password"]) .cbi-value-title {
+	width: 100% !important;
+	margin-bottom: 6px;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--ark-text-muted);
+}
+form[action=""] .cbi-value-field,
+form:has(input[name="luci_password"]) .cbi-value-field {
+	width: 100% !important;
+}
+form[action=""] input.cbi-input-text,
+form:has(input[name="luci_password"]) input.cbi-input-text {
+	width: 100% !important;
+	padding: 12px 14px !important;
+	font-size: 14px !important;
+	border-radius: 10px !important;
+	background: rgba(11, 17, 32, 0.8) !important;
+}
+
+.cbi-page-actions {
+	border-top: none !important;
+	padding-top: 16px !important;
+	display: flex;
+	gap: 10px;
+	justify-content: center;
+}
+form:has(input[name="luci_password"]) .cbi-page-actions input[type="submit"] {
+	width: 100% !important;
+	padding: 12px 20px !important;
+	font-size: 15px !important;
+	font-weight: 700 !important;
+	border-radius: 10px !important;
+	background: linear-gradient(135deg, #3b82f6, #8b5cf6) !important;
+	border: none !important;
+	color: #fff !important;
+	cursor: pointer;
+	box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4) !important;
+	transition: all 0.2s ease;
+}
+form:has(input[name="luci_password"]) .cbi-page-actions input[type="submit"]:hover {
+	background: linear-gradient(135deg, #2563eb, #7c3aed) !important;
+	box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6) !important;
+}
+form:has(input[name="luci_password"]) .cbi-page-actions input[type="reset"] {
+	display: none !important;
+}
+
+/* Footer */
+footer.ark-footer, footer {
+	border-top: 1px solid var(--ark-border) !important;
+	padding: 16px 0 !important;
+	margin-top: 40px !important;
+	font-size: 12px !important;
+	color: var(--ark-text-dim) !important;
+	text-align: center;
+}
+.ark-footer-wrap {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: 0 16px;
+}
+
+/* ==========================================================================
+   Modals & Overlays (ui.showModal)
+   ========================================================================== */
+#modal_overlay {
+	visibility: hidden;
+	position: fixed;
+	top: 0;
+	bottom: 0;
+	left: -10000px;
+	right: 10000px;
+	background: rgba(11, 17, 32, 0.82) !important;
+	backdrop-filter: blur(8px);
+	z-index: 9999;
+	overflow-y: scroll;
+	-webkit-overflow-scrolling: touch;
+	transition: opacity .15s ease-in;
+	opacity: 0;
+}
+body.modal-overlay-active {
+	overflow: hidden;
+	height: 100vh;
+}
+body.modal-overlay-active #modal_overlay {
+	visibility: visible;
+	left: 0;
+	right: 0;
+	opacity: 1;
+}
+.modal, #modal_overlay > .modal {
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius-lg) !important;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(56, 189, 248, 0.1) !important;
+	color: var(--ark-text-main) !important;
+	max-width: 720px;
+	min-height: 32px;
+	min-width: 280px;
+	width: 90%;
+	margin: 4em auto;
+	padding: 24px;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	box-sizing: border-box;
+}
+#modal_overlay > .modal.uci-dialog, #modal_overlay > .modal.cbi-modal {
+	max-width: 900px;
+}
+.modal > * {
+	flex-basis: 100%;
+	line-height: normal;
+	margin-bottom: 0.75em;
+	max-width: 100%;
+}
+.modal h4, .modal h3 {
+	font-size: 18px;
+	font-weight: 700;
+	color: #fff;
+	margin-bottom: 16px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid var(--ark-border);
+}
+.modal .right {
+	text-align: right;
+	margin-top: 16px;
+	margin-bottom: 0;
+}
+.modal > pre, .modal > textarea, #modal_overlay .modal > pre, #modal_overlay .modal > textarea {
+	overflow: auto;
+	white-space: pre-wrap;
+	background: var(--ark-bg);
+	border: 1px solid var(--ark-border);
+	border-radius: 8px;
+	padding: 12px;
+	color: var(--ark-text-muted);
+}

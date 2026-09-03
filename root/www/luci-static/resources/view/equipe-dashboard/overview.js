@@ -58,8 +58,9 @@ const EN={
 	,'SISTEMA':'SYSTEM','Reiniciar o roteador':'Restart router','Interrompe a internet por alguns minutos e encerra as sessões abertas.':'Internet access will stop for a few minutes and open sessions will end.','Reiniciar…':'Restart…','Primeira confirmação':'First confirmation','Deseja preparar o reinício do roteador? Nenhuma configuração será apagada.':'Prepare to restart the router? No configuration will be erased.','A internet e o painel ficarão indisponíveis por alguns minutos.':'The internet and dashboard will be unavailable for a few minutes.','Continuar':'Continue','Confirmação final':'Final confirmation','O roteador será reiniciado imediatamente. Aguarde a rede voltar antes de abrir o painel novamente.':'The router will restart immediately. Wait for the network to return before reopening the dashboard.','Aguarde 2 s':'Wait 2 s','Aguarde 1 s':'Wait 1 s','Reiniciar agora':'Restart now','Reiniciando…':'Restarting…','Roteador reiniciando. A conexão será interrompida.':'Router restarting. The connection will be interrupted.'
 };
 const FEATURE_META={
+	ark:{name:'Tema ARK (Nativo)',description:'Tema visual moderno estilo Argon embutido no ARK Router, com Dark Mode refinado e tela de login elegante.',recommended:true},
 	uhttpd:{name:'Gerenciador HTTPS',description:'Interface leve para administrar o uHTTPd e seus certificados.'},
-	argon:{name:'Tema Argon',description:'Tema visual recomendado para a melhor experiência com o ARK Router.',recommended:true},
+	argon:{name:'Tema Argon',description:'Tema visual externo do LuCI.',recommended:false},
 	sqm:{name:'SQM / CAKE',description:'Organiza as filas e reduz a latência quando o link está ocupado.'},
 	mwan3:{name:'Multi‑WAN',description:'Adiciona failover e balanceamento entre dois ou mais links.'},
 	nlbwmon:{name:'Consumo por dispositivo',description:'Adiciona tráfego individual e histórico detalhado de consumo.'},
@@ -2893,8 +2894,26 @@ return view.extend({
 		]);
 	},
 	useTheme: function(key){
-		if(key!=='argon')return;
-		ui.showModal('Usar tema',[E('p',{},['Tema Argon']),E('p',{class:'alert-message warning'},['O tema visual do LuCI será alterado. As configurações de rede não serão modificadas.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['theme',key]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao selecionar o tema');ui.hideModal();window.location.reload();}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]));});},this)},['Usar tema'])])]);
+		const names = { ark: 'Tema ARK (Nativo)', bootstrap: 'Tema Bootstrap (Padrão)', argon: 'Tema Argon' };
+		const name = names[key] || key;
+		ui.showModal('Usar tema',[
+			E('p',{},[name]),
+			E('p',{class:'alert-message warning'},['O tema visual do LuCI será alterado para '+name+'. Nenhuma configuração de rede será modificada.']),
+			E('div',{class:'right'},[
+				E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),
+				' ',
+				E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+					return fs.exec('/usr/sbin/equipe-dashboard-control',['theme',key]).then(function(r){
+						if(r.code)throw new Error(r.stderr||'Falha ao selecionar o tema');
+						ui.hideModal();
+						reloadSoon('Tema '+name+' ativado. Recarregando…',2200);
+					}).catch(function(e){
+						if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
+						ui.addNotification(null,E('p',{},[e.message]),'danger');
+					});
+				},this)},['Usar tema'])
+			])
+		]);
 	},
 	pairTailscale: function(){
 		const f=this.feature('tailscale')||{};
@@ -4110,10 +4129,36 @@ return view.extend({
 		const httpsPanel=E('section',{class:'ex-https-panel'+(https.redirect?' is-enabled':'')},[E('div',{class:'ex-https-heading'},[E('div',{},[E('strong',{},['HTTPS e segurança']),E('small',{class:'ex-muted ex-https-summary'},[https.redirect?'Ligado • todo acesso HTTP vai para HTTPS':'Desligado • HTTP e HTTPS disponíveis'])]),E('span',{class:'ex-pill '+(https.available?'online':'offline')},[https.available?'Disponível':'Indisponível'])]),E('div',{class:'ex-https-toggle-row'},[E('div',{},[E('strong',{},['Redirecionar HTTP para HTTPS']),E('small',{class:'ex-muted'},[https.ca_available?'Certificado ARK preparado para este endereço. Instale a autoridade somente nos dispositivos administrativos.':'Certificado local/autossinado: a conexão é criptografada, mas navegadores não confiam nele automaticamente.'])]),E('div',{class:'ex-https-switch-wrap'},[E('span',{class:'ex-https-switch-state '+(https.redirect?'online':'standby')},[https.redirect?'ATIVO':'DESLIGADO']),E('label',{class:'ex-switch'},[httpsInput,E('span',{class:'ex-switch-slider'})])])]),certificateActions,https.available?E('a',{class:'ex-text-link',href:'https://'+window.location.hostname+window.location.pathname,target:'_blank',rel:'noopener'},['Abrir endereço HTTPS']):'']);
 		const appearance=this.capabilities.appearance||{mode:'auto',primary:'#3b82f6',secondary:'#8b5cf6'}, appearanceMode=E('select',{class:'cbi-input-select'},[E('option',{value:'auto'},['Automático (seguir o tema)']),E('option',{value:'equipe'},['ARK Router']),E('option',{value:'custom'},['Personalizado'])]), primary=E('input',{type:'color',value:appearance.primary||'#3b82f6','aria-label':translateText('Cor principal')}), secondary=E('input',{type:'color',value:appearance.secondary||'#8b5cf6','aria-label':translateText('Cor secundária')}); appearanceMode.value=appearance.mode||'auto';
 		const appearanceColors=E('div',{class:'ex-color-fields'},[E('label',{},[E('span',{},['Cor principal']),primary]),E('label',{},[E('span',{},['Cor secundária']),secondary])]);
-		const updateAppearanceControls=function(){const custom=appearanceMode.value==='custom';appearanceColors.classList.toggle('is-disabled',!custom);primary.disabled=!custom;secondary.disabled=!custom;};appearanceMode.addEventListener('change',updateAppearanceControls);updateAppearanceControls();
-		const rows=Object.keys(FEATURE_META).map(L.bind(function(key){const meta=FEATURE_META[key],f=this.feature(key)||{};let state=f.installed?(f.temporary?'Pronto na memória':(f.active?(key==='argon'?'Tema ativo':'Instalado e ativo'):(key==='argon'?'Instalado, mas não selecionado':'Instalado, mas inativo'))):(f.installable?'Não instalado':'Não disponível');if(!f.installed&&f.hidden)state='Sugestão oculta';const actions=[];
-			if(!f.installed&&f.installable){if(f.hidden)actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.setFeatureHidden,this,key,false)},['Mostrar sugestão']));else{if(key!=='speedtest')actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.installFeature,this,key)},['Instalar']));actions.push(E('button',{class:'ex-feature-link','click':L.bind(this.setFeatureHidden,this,key,true)},['Ocultar sugestão']));}}
-			if(key==='argon'&&f.installed&&!f.active)actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.useTheme,this,key)},['Usar tema']));
+		const currentTheme = this.capabilities.current_theme || 'bootstrap';
+		const themeSelect = E('select',{class:'cbi-input-select'},[
+			E('option',{value:'ark'},['⚡ Tema ARK (Nativo / Estilo Argon)']),
+			E('option',{value:'bootstrap'},['Tema Bootstrap (Padrão clássico)'])
+		]);
+		if (this.feature('argon') && this.feature('argon').installed) {
+			themeSelect.appendChild(E('option',{value:'argon'},['Tema Argon (Externo)']));
+		}
+		themeSelect.value = currentTheme;
+		const themeRow = E('div',{class:'ex-brand-row',style:'margin-top:12px;padding-top:12px;border-top:1px solid rgba(127,127,127,0.14);'},[
+			E('label',{},['Tema do LuCI']),
+			themeSelect,
+			E('button',{class:'ex-mini-button','click':L.bind(function(){
+				this.useTheme(themeSelect.value);
+			},this)},['Aplicar tema'])
+		]);
+
+		const rows=Object.keys(FEATURE_META).map(L.bind(function(key){
+			const meta=FEATURE_META[key],f=this.feature(key)||{};
+			let state=f.installed?(f.temporary?'Pronto na memória':(f.active?(key==='argon'||key==='ark'?'Tema ativo':'Instalado e ativo'):(key==='argon'||key==='ark'?'Instalado, mas não selecionado':'Instalado, mas inativo'))):(f.installable?'Não instalado':'Não disponível');
+			if(!f.installed&&f.hidden)state='Sugestão oculta';
+			const actions=[];
+			if(!f.installed&&f.installable){
+				if(f.hidden)actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.setFeatureHidden,this,key,false)},['Mostrar sugestão']));
+				else{
+					if(key!=='speedtest')actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.installFeature,this,key)},['Instalar']));
+					actions.push(E('button',{class:'ex-feature-link','click':L.bind(this.setFeatureHidden,this,key,true)},['Ocultar sugestão']));
+				}
+			}
+			if((key==='argon'||key==='ark')&&f.installed&&!f.active)actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.useTheme,this,key)},['Usar tema']));
 			if(key==='irqbalance'&&f.installed)actions.push(E('button',{class:'ex-mini-button','click':L.bind(function(){const desired=!f.active;return fs.exec('/usr/sbin/equipe-dashboard-control',['irqbalance-toggle',desired?'1':'0']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar IRQ Balance');ui.addNotification(null,E('p',{},[desired?'IRQ Balance ativado.':'IRQ Balance desativado.']));window.setTimeout(function(){window.location.reload();},900);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},[f.active?'Desativar':'Ativar']));
 			return E('div',{class:'ex-feature-row'},[E('div',{class:'ex-feature-copy'},[E('div',{class:'ex-feature-name-row'},[E('strong',{},[meta.name]),(meta.recommended?E('span',{class:'ex-recommended-badge'},['RECOMENDADO']):'')]),E('small',{class:'ex-muted'},[meta.description]),f.package?E('code',{},[f.package]):'',(!f.installed&&f.reason)?E('small',{class:'ex-feature-reason',style:'color:#ef4444;font-weight:600;display:block;margin-top:4px;'},['⚠️ '+f.reason]):'']),E('div',{class:'ex-feature-state'},[E('span',{class:'ex-pill '+(f.installed?(f.active?'online':'standby'):(f.hidden?'standby':'offline'))},[state]),E('div',{class:'ex-feature-actions'},actions)])]);
 		},this));
@@ -4153,7 +4198,7 @@ return view.extend({
 			ipv6Panel,
 			E('section',{class:'ex-cleanup-entry'},[E('div',{},[E('strong',{},['Otimização modo ARK']),E('small',{class:'ex-muted'},['Remove painéis e serviços dispensáveis para manter o OpenWrt enxuto. Sempre cria backup antes de remover.'])]),E('button',{class:'ex-mini-button','click':L.bind(this.showArkCleanup,this)},['Analisar e limpar'])]),
 			httpsPanel,
-			E('section',{class:'ex-appearance-panel'},[E('div',{class:'ex-appearance-heading'},[E('div',{},[E('strong',{},['Aparência']),E('small',{class:'ex-muted'},['No modo automático, o painel acompanha as cores e o modo claro ou escuro do tema LuCI.'])]),appearanceMode]),appearanceColors,E('button',{class:'ex-mini-button ex-save-appearance','click':L.bind(function(){this.setAppearance(appearanceMode.value,primary.value,secondary.value);},this)},['Salvar aparência'])]),
+			E('section',{class:'ex-appearance-panel'},[E('div',{class:'ex-appearance-heading'},[E('div',{},[E('strong',{},['Aparência']),E('small',{class:'ex-muted'},['No modo automático, o painel acompanha as cores e o modo claro ou escuro do tema LuCI.'])]),appearanceMode]),appearanceColors,E('button',{class:'ex-mini-button ex-save-appearance','click':L.bind(function(){this.setAppearance(appearanceMode.value,primary.value,secondary.value);},this)},['Salvar aparência']),themeRow]),
 			E('div',{class:'ex-feature-list'},rows),
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])
 		]);

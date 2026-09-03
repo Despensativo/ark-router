@@ -1,0 +1,89 @@
+/* ==========================================================================
+   ARK Theme — Mobile Responsive Styles
+   ========================================================================== */
+
+@media only screen and (max-width: 854px) {
+	.container {
+		padding: 0 12px;
+	}
+
+	header .fill {
+		padding: 6px 0;
+	}
+
+	header .fill .container {
+		flex-direction: column !important;
+		align-items: flex-start !important;
+		gap: 6px !important;
+	}
+
+	.brand.ark-brand, .brand {
+		font-size: 16px;
+		padding: 4px 8px !important;
+	}
+
+	ul.nav, .nav {
+		width: 100% !important;
+		overflow-x: auto !important;
+		white-space: nowrap !important;
+		-webkit-overflow-scrolling: touch !important;
+		padding: 4px 0 !important;
+		display: flex !important;
+		scrollbar-width: none !important;
+	}
+	ul.nav::-webkit-scrollbar, .nav::-webkit-scrollbar {
+		display: none !important;
+	}
+
+	ul.nav > li > a, .nav > li > a {
+		padding: 6px 10px !important;
+		font-size: 12px !important;
+	}
+
+	#maincontent {
+		padding: 16px 8px 32px;
+	}
+
+	.cbi-map, .cbi-section, fieldset {
+		padding: 14px !important;
+		border-radius: 12px !important;
+	}
+
+	.cbi-value {
+		flex-direction: column !important;
+		align-items: flex-start !important;
+		gap: 6px;
+	}
+
+	.cbi-value-title {
+		width: 100% !important;
+	}
+
+	.cbi-value-field {
+		width: 100% !important;
+		min-width: 0 !important;
+	}
+
+	input.cbi-input-text, input[type="text"], input[type="password"], textarea, select {
+		width: 100% !important;
+	}
+
+	table.cbi-section-table, table.table {
+		display: block;
+		overflow-x: auto;
+		-webkit-overflow-scrolling: touch;
+	}
+
+	body:not([data-page]) #maincontent,
+	body[data-page=""] #maincontent,
+	.cbi-map:has(input[name="luci_password"]) {
+		margin: 30px auto !important;
+		padding: 20px 16px !important;
+	}
+
+	.ark-footer-wrap {
+		flex-direction: column;
+		gap: 8px;
+		text-align: center;
+	}
+}

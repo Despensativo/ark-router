@@ -1,0 +1,6 @@
+#!/bin/sh
+uci -q get luci.themes.ARK >/dev/null || {
+	uci -q set luci.themes.ARK='/luci-static/ark'
+	uci commit luci
+}
+exit 0

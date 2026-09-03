@@ -1067,6 +1067,7 @@ feature_active() {
 		mwan3) running mwan3 ;;
 		nlbwmon) running nlbwmon ;;
 		upnp) running miniupnpd ;;
+		ark) [ -d /www/luci-static/ark ] && [ "$(uci -q get luci.main.mediaurlbase)" = /luci-static/ark ] ;;
 		argon) [ -d /www/luci-static/argon ] && [ "$(uci -q get luci.main.mediaurlbase)" = /luci-static/argon ] ;;
 		uhttpd) [ -f /usr/share/luci/menu.d/luci-app-uhttpd.json ] ;;
 		wifi) [ -f /etc/config/wireless ] ;;
@@ -3248,6 +3249,13 @@ speedtest_storage_json() {
 }
 feature_json() {
 	key="$1" package="$2" installable="$3" reason="$4"
+	if [ "$key" = ark ]; then
+		feature_active ark; enabled=$?
+		hidden ark; concealed=$?
+		printf '"ark":{"installed":true,"active":%s,"hidden":%s,"installable":true,"package":"luci-theme-ark"}' \
+			"$(bool $((enabled == 0)))" "$(bool $((concealed == 0)))"
+		return 0
+	fi
 	if [ "$key" = adblock ]; then
 		printf '"adblock":'
 		adblock_status_json | tr -d '\n'
@@ -3679,7 +3687,11 @@ case "$action" in
 			irq_reason='Requer processador multi-core (este roteador possui 1 núcleo).'
 		fi
 
-		printf '{"language":"%s","title":"%s","operation_profile":"%s","package_manager":"%s","appearance":{"mode":"%s","primary":"%s","secondary":"%s"},"features":{' "$(uci -q get equipe_dashboard.main.language || printf pt-br)" "$(json_escape "$title")" "$(json_escape "$operation_profile")" "$manager" "$appearance" "$primary" "$secondary"
+		current_theme="$(uci -q get luci.main.mediaurlbase | sed 's|/luci-static/||')"
+		[ -n "$current_theme" ] || current_theme="bootstrap"
+
+		printf '{"language":"%s","title":"%s","operation_profile":"%s","package_manager":"%s","current_theme":"%s","appearance":{"mode":"%s","primary":"%s","secondary":"%s"},"features":{' "$(uci -q get equipe_dashboard.main.language || printf pt-br)" "$(json_escape "$title")" "$(json_escape "$operation_profile")" "$manager" "$current_theme" "$appearance" "$primary" "$secondary"
+		feature_json ark '' true; printf ','
 		feature_json sqm luci-app-sqm true; printf ','
 		feature_json mwan3 luci-app-mwan3 true; printf ','
 		feature_json nlbwmon luci-app-nlbwmon true; printf ','
@@ -3940,13 +3952,37 @@ case "$action" in
 		printf '{"status":"ok","backup":"%s"}\n' "$(json_escape "$backup")"
 		;;
 	theme)
-		[ "$2" = argon ] || { echo 'Tema invalido' >&2; exit 2; }
-		installed luci-theme-argon || { echo 'Tema Argon nao instalado' >&2; exit 3; }
-		uci -q set luci.main.mediaurlbase='/luci-static/argon'
-		uci commit luci
-		rm -f /tmp/luci-indexcache
-		rm -f /tmp/luci-modulecache/* 2>/dev/null
-		echo ok
+		target="$2"
+		case "$target" in
+			ark)
+				[ -d /www/luci-static/ark ] || { echo 'Tema ARK nao encontrado' >&2; exit 3; }
+				uci -q set luci.main.mediaurlbase='/luci-static/ark'
+				uci -q set luci.themes.ARK='/luci-static/ark'
+				uci commit luci
+				rm -f /tmp/luci-indexcache
+				rm -rf /tmp/luci-modulecache/* 2>/dev/null
+				echo ok
+				;;
+			bootstrap)
+				[ -d /www/luci-static/bootstrap ] || { echo 'Tema Bootstrap nao encontrado' >&2; exit 3; }
+				uci -q set luci.main.mediaurlbase='/luci-static/bootstrap'
+				uci commit luci
+				rm -f /tmp/luci-indexcache
+				rm -rf /tmp/luci-modulecache/* 2>/dev/null
+				echo ok
+				;;
+			argon)
+				[ -d /www/luci-static/argon ] || { echo 'Tema Argon nao instalado' >&2; exit 3; }
+				uci -q set luci.main.mediaurlbase='/luci-static/argon'
+				uci commit luci
+				rm -f /tmp/luci-indexcache
+				rm -rf /tmp/luci-modulecache/* 2>/dev/null
+				echo ok
+				;;
+			*)
+				echo 'Tema invalido' >&2; exit 2
+				;;
+		esac
 		;;
 	speedtest-start)
 		case "$2" in wan) network=wan; sqm_section=wan1 ;; wan2) network=wan2; sqm_section=wan2 ;; *) echo 'WAN invalida' >&2; exit 2 ;; esac
