@@ -2158,6 +2158,8 @@ apply_device_bandwidth_limits() {
 	has_rules=0
 
 	printf 'table inet ark_device_limits\ndelete table inet ark_device_limits\ntable inet ark_device_limits {\n\tchain forward_limits {\n\t\ttype filter hook forward priority filter - 5; policy accept;\n' > "$tmp_nft"
+	printf '\t\tip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } accept\n' >> "$tmp_nft"
+	printf '\t\tip6 saddr { fc00::/7, fe80::/10 } ip6 daddr { fc00::/7, fe80::/10 } accept\n' >> "$tmp_nft"
 
 	for sec in $(uci -q show equipe_devices 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1); do
 		enabled="$(uci -q get "equipe_devices.$sec.limit_enabled" || printf 0)"

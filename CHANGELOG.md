@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.66
+
+- **⚡ Bypass Expresso de Rede Local (LAN) no Limitador de Banda de Dispositivos**:
+  - **Isolamento entre Tráfego Internet e Tráfego Interno**:
+    - Adicionadas regras automáticas no topo da tabela `nftables` (`ark_device_limits`) para conceder `accept` instantâneo em qualquer pacote onde tanto a origem quanto o destino sejam endereços IP privados (`192.168.0.0/16`, `10.0.0.0/8`, `172.16.0.0/12` e IPv6 local).
+    - Garante que transferências para NAS, servidores locais (Plex/Emby), impressoras, computadores e Smart TVs na LAN mantenham a **velocidade máxima nativa (Gigabit / Wi-Fi 6)**, sem sofrer qualquer corte.
+    - O limitador de download e upload atua com precisão cirúrgica **apenas quando o tráfego se comunica com a Internet pública**.
+  - **Transparência e Feedback Visual no Modal**:
+    - O bloco de configuração de limite de velocidade em `overview.js` agora exibe uma nota explicativa com selo `⚡ Bypass de Rede Local`, esclarecendo que a restrição afeta apenas links externos de internet.
+
 ## 0.9.65
 
 - **🌐 Provedores de DNS em Nuvem Especializados (Modo Nuvem / Anycast Brasil)**:

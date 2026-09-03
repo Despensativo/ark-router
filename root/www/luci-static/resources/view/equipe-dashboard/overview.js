@@ -1219,6 +1219,13 @@ return view.extend({
 				])
 			]);
 
+			const limitLanBypassNote = E('div', {
+				style: 'margin-top: 8px; padding: 6px 10px; background: rgba(56,189,248,.08); border-radius: 8px; border: 1px solid rgba(56,189,248,.2); font-size: 0.77rem; color: #cbd5e1; line-height: 1.35; display: ' + (limitEnabled ? 'block' : 'none') + ';'
+			}, [
+				E('strong', { style: 'color: #38bdf8;' }, ['⚡ Bypass de Rede Local: ']),
+				'O limite se aplica estritamente à Internet. Transferências para NAS, impressoras, servidores locais e outros PCs da casa continuam em velocidade máxima da LAN (Gigabit / Wi-Fi 6).'
+			]);
+
 			const presetBtnList = [];
 			const updatePresetActive = function() {
 				const curDown = Number(downInput.value) || 0;
@@ -1232,6 +1239,7 @@ return view.extend({
 					}
 				});
 				limitFieldsRow.style.display = limitToggle.checked ? 'grid' : 'none';
+				limitLanBypassNote.style.display = limitToggle.checked ? 'block' : 'none';
 			};
 
 			const limitPresetGrid = E('div', { class: 'ex-priority-button-grid', style: 'margin-top: 8px;' });
@@ -1275,7 +1283,8 @@ return view.extend({
 					])
 				]),
 				limitPresetGrid,
-				limitFieldsRow
+				limitFieldsRow,
+				limitLanBypassNote
 			]));
 
 			// --- Seção: Controle Parental & Filtros Deste Aparelho ---
