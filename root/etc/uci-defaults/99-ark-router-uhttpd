@@ -1,0 +1,26 @@
+#!/bin/sh
+# Assegura que uhttpd tenha suporte ubus e CORS habilitado para comunicação LuCI / JSON-RPC
+
+if [ -f /etc/config/uhttpd ]; then
+	changed=0
+	if [ -f /usr/lib/uhttpd_ubus.so ]; then
+		if [ "$(uci -q get uhttpd.main.ubus_prefix)" != "/ubus" ]; then
+			uci -q set uhttpd.main.ubus_prefix='/ubus'
+			changed=1
+		fi
+		if [ "$(uci -q get uhttpd.main.ubus_socket)" != "/var/run/ubus.sock" ]; then
+			uci -q set uhttpd.main.ubus_socket='/var/run/ubus.sock'
+			changed=1
+		fi
+		if [ "$(uci -q get uhttpd.main.ubus_cors)" != "1" ]; then
+			uci -q set uhttpd.main.ubus_cors='1'
+			changed=1
+		fi
+	fi
+	if [ "$changed" = 1 ]; then
+		uci commit uhttpd
+		/etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+	fi
+fi
+
+exit 0
