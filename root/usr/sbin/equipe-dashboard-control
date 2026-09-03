@@ -2550,9 +2550,113 @@ adblock_status_json() {
 	fi
 
 	cloud_provider="$(uci -q get equipe_perf.settings.adblock_cloud_provider || printf 'adguard_dns')"
+	custom_blacklist="$(uci -q get equipe_perf.settings.custom_blacklist || true)"
+	nextdns_id="$(uci -q get equipe_perf.settings.nextdns_id || true)"
 
-	printf '{"installed":%s,"active":%s,"mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s","mem_total_mb":%d,"cache_size_mb":%d,"recommended_cache_mb":%d,"parental_enabled":%s,"protection_enabled":%s,"safesearch_enabled":%s,"cloud_cache":%s,"web_port":%d,"zerotier_access":%s,"zt_web_url":"%s"}\n' \
-		"$local_installed" "$active" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url" "$mem_total_mb" "$cache_size_mb" "$recommended_cache_mb" "$parental_enabled" "$protection_enabled" "$safesearch_enabled" "$cloud_cache" "$web_port" "$zt_access" "$zt_web_url"
+	printf '{"installed":%s,"active":%s,"mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s","mem_total_mb":%d,"cache_size_mb":%d,"recommended_cache_mb":%d,"parental_enabled":%s,"protection_enabled":%s,"safesearch_enabled":%s,"cloud_cache":%s,"web_port":%d,"zerotier_access":%s,"zt_web_url":"%s","custom_blacklist":"%s","nextdns_id":"%s"}\n' \
+		"$local_installed" "$active" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url" "$mem_total_mb" "$cache_size_mb" "$recommended_cache_mb" "$parental_enabled" "$protection_enabled" "$safesearch_enabled" "$cloud_cache" "$web_port" "$zt_access" "$zt_web_url" "$(json_escape "$custom_blacklist")" "$(json_escape "$nextdns_id")"
+}
+
+adblock_apply_blacklist() {
+	raw_domains="$1"
+	mkdir -p /etc/config
+	[ -f /etc/config/equipe_perf ] || touch /etc/config/equipe_perf
+	uci -q set equipe_perf.settings=performance
+
+	# 1. Limpar endereços antigos que terminam em /0.0.0.0 do UCI dhcp
+	old_addrs="$(uci -q get dhcp.@dnsmasq[0].address || true)"
+	for a in $old_addrs; do
+		case "$a" in
+			*/0.0.0.0) uci -q del_list "dhcp.@dnsmasq[0].address=$a" ;;
+		esac
+	done
+
+	# 2. Sanitizar e adicionar os novos domínios ao UCI dhcp
+	clean_domains=""
+	for item in $(printf '%s' "$raw_domains" | tr ',;\n\r\t' ' '); do
+		dom="$(printf '%s' "$item" | sed -E 's|^https?://||; s|/.*$||' | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9.-')"
+		if printf '%s' "$dom" | grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$'; then
+			case " $clean_domains " in
+				*" $dom "*) ;;
+				*)
+					if [ -z "$clean_domains" ]; then
+						clean_domains="$dom"
+					else
+						clean_domains="$clean_domains,$dom"
+					fi
+					uci -q add_list "dhcp.@dnsmasq[0].address=/$dom/0.0.0.0"
+					;;
+			esac
+		fi
+	done
+
+	uci -q set "equipe_perf.settings.custom_blacklist=$clean_domains"
+	uci commit equipe_perf
+	uci commit dhcp
+
+	# 3. Se AdGuard Home estiver instalado com yaml, sincronizar user_rules
+	if [ -f /etc/adguardhome/adguardhome.yaml ] && command -v python3 >/dev/null 2>&1; then
+		python3 -c "
+import sys, re
+
+yaml_path = '/etc/adguardhome/adguardhome.yaml'
+raw_domains = sys.argv[1] if len(sys.argv) > 1 else ''
+domains = [d.strip() for d in raw_domains.split(',') if d.strip()]
+
+try:
+    with open(yaml_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    lines = content.splitlines()
+    idx_ur = -1
+    for i, l in enumerate(lines):
+        if re.match(r'^user_rules:', l):
+            idx_ur = i
+            break
+
+    if idx_ur != -1:
+        cur_line = lines[idx_ur]
+        end_idx = len(lines)
+        for j in range(idx_ur + 1, len(lines)):
+            if re.match(r'^[a-z0-9_-]+:', lines[j]):
+                end_idx = j
+                break
+
+        existing_rules = []
+        if not cur_line.strip().endswith('[]'):
+            for l in lines[idx_ur + 1:end_idx]:
+                s = l.strip()
+                if s.startswith('- \"# ARK-') or s.startswith('# ARK-'):
+                    continue
+                if s.startswith('- \"||') and s.endswith('^\"'):
+                    continue
+                if s.startswith('- ||') and s.endswith('^'):
+                    continue
+                if s:
+                    existing_rules.append(l)
+
+        new_rule_lines = []
+        for d in domains:
+            new_rule_lines.append(f'  - \"||{d}^\"')
+
+        all_rule_lines = new_rule_lines + existing_rules
+        if all_rule_lines:
+            new_block = ['user_rules:'] + all_rule_lines
+        else:
+            new_block = ['user_rules: []']
+
+        res = lines[:idx_ur] + new_block + lines[end_idx:]
+        new_content = '\n'.join(res) + '\n'
+
+        with open(yaml_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+except Exception:
+    pass
+" "$clean_domains"
+		/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+	fi
+
+	/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 }
 
 adblock_configure() {
@@ -2565,6 +2669,8 @@ adblock_configure() {
 	cloud_cache="${7:-25000}"
 	web_port="${8:-3000}"
 	zt_access="${9:-1}"
+	custom_blacklist="${10:-}"
+	nextdns_id="${11:-}"
 
 	case "$cache_mb" in ''|*[!0-9]*) cache_mb=64 ;; esac
 	[ "$cache_mb" -lt 4 ] && cache_mb=4
@@ -2633,6 +2739,7 @@ adblock_configure() {
 			/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
 			/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 		fi
+		adblock_apply_blacklist "$custom_blacklist"
 		echo ok
 		return 0
 	elif [ "$mode" = "cloud" ]; then
@@ -2644,37 +2751,58 @@ adblock_configure() {
 		uci commit equipe_perf
 
 		uci -q delete dhcp.@dnsmasq[0].server
-		if [ "$parental_bool" = "true" ]; then
-			case "$provider" in
-				cloudflare*|cloudflare_family)
-					uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.3'
-					uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.3'
-					;;
-				*)
+		case "$provider" in
+			cloudflare_family)
+				uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.3'
+				uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.3'
+				;;
+			cloudflare_security)
+				uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.2'
+				uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.2'
+				;;
+			quad9)
+				uci -q add_list dhcp.@dnsmasq[0].server='9.9.9.9'
+				uci -q add_list dhcp.@dnsmasq[0].server='149.112.112.112'
+				;;
+			opendns_family)
+				uci -q add_list dhcp.@dnsmasq[0].server='208.67.222.123'
+				uci -q add_list dhcp.@dnsmasq[0].server='208.67.220.123'
+				;;
+			cleanbrowsing_adult)
+				uci -q add_list dhcp.@dnsmasq[0].server='185.228.168.10'
+				uci -q add_list dhcp.@dnsmasq[0].server='185.228.169.11'
+				;;
+			cleanbrowsing_family)
+				uci -q add_list dhcp.@dnsmasq[0].server='185.228.168.168'
+				uci -q add_list dhcp.@dnsmasq[0].server='185.228.169.168'
+				;;
+			controld_full)
+				uci -q add_list dhcp.@dnsmasq[0].server='76.76.2.2'
+				uci -q add_list dhcp.@dnsmasq[0].server='76.76.10.2'
+				;;
+			nextdns)
+				if [ -n "$nextdns_id" ]; then
+					uci -q set "equipe_perf.settings.nextdns_id=$nextdns_id"
+					uci commit equipe_perf
+				fi
+				uci -q add_list dhcp.@dnsmasq[0].server='45.90.28.0'
+				uci -q add_list dhcp.@dnsmasq[0].server='45.90.30.0'
+				;;
+			adguard_dns|*)
+				if [ "$parental_bool" = "true" ]; then
 					uci -q add_list dhcp.@dnsmasq[0].server='94.140.14.15'
 					uci -q add_list dhcp.@dnsmasq[0].server='94.140.15.16'
-					;;
-			esac
-		else
-			case "$provider" in
-				nextdns)
-					uci -q add_list dhcp.@dnsmasq[0].server='45.90.28.0'
-					uci -q add_list dhcp.@dnsmasq[0].server='45.90.30.0'
-					;;
-				cloudflare*)
-					uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.2'
-					uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.2'
-					;;
-				*)
+				else
 					uci -q add_list dhcp.@dnsmasq[0].server='94.140.14.14'
 					uci -q add_list dhcp.@dnsmasq[0].server='94.140.15.15'
-					;;
-			esac
-		fi
+				fi
+				;;
+		esac
 
 		uci -q set "dhcp.@dnsmasq[0].cachesize=$cloud_cache"
 		uci commit dhcp
 		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+		adblock_apply_blacklist "$custom_blacklist"
 		echo ok
 		return 0
 	fi
@@ -2693,6 +2821,8 @@ adblock_enable() {
 	cloud_cache="${7:-25000}"
 	web_port="${8:-3000}"
 	zt_access="${9:-1}"
+	custom_blacklist="${10:-}"
+	nextdns_id="${11:-}"
 
 	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
 	overlay_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"
@@ -2732,7 +2862,7 @@ adblock_enable() {
 		uci -q set equipe_perf.settings.adblock_cloud='0'
 		uci commit equipe_perf
 
-		adblock_configure local "$cache_mb" "$protection" "$parental" "$safesearch" "$provider" "$cloud_cache" "$web_port" "$zt_access" >/dev/null 2>&1 || true
+		adblock_configure local "$cache_mb" "$protection" "$parental" "$safesearch" "$provider" "$cloud_cache" "$web_port" "$zt_access" "$custom_blacklist" "$nextdns_id" >/dev/null 2>&1 || true
 
 		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 		echo ok
@@ -2757,7 +2887,7 @@ adblock_enable() {
 	uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'
 	uci commit dhcp
 
-	adblock_configure cloud "$cache_mb" "$protection" "$parental" "$safesearch" "$provider" "$cloud_cache"
+	adblock_configure cloud "$cache_mb" "$protection" "$parental" "$safesearch" "$provider" "$cloud_cache" "$web_port" "$zt_access" "$custom_blacklist" "$nextdns_id"
 	return 0
 }
 
@@ -4311,10 +4441,18 @@ case "$action" in
 		adblock_status_json
 		;;
 	adblock-enable)
-		adblock_enable "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}"
+		adblock_enable "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}"
 		;;
 	adblock-configure)
-		adblock_configure "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}"
+		adblock_configure "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}"
+		;;
+	adblock-blacklist)
+		if [ "$#" -ge 2 ]; then
+			adblock_apply_blacklist "$2"
+			echo ok
+		else
+			uci -q get equipe_perf.settings.custom_blacklist || true
+		fi
 		;;
 	adblock-disable)
 		adblock_disable

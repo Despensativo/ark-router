@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.65
+
+- **🌐 Provedores de DNS em Nuvem Especializados (Modo Nuvem / Anycast Brasil)**:
+  - **Expansão de Provedores com Foco Específico**:
+    - **Cloudflare 1.1.1.3 Família**: Malware + Pornografia/Conteúdo Adulto (~6ms Anycast BR).
+    - **Quad9 9.9.9.9 Segurança**: Proteção contra malware, phishing, ransomware e golpes com feeds de +20 órgãos de cibersegurança global (~8ms).
+    - **OpenDNS FamilyShield (Cisco)**: Bloqueio mundial pioneiro de conteúdo adulto e phishing sem necessidade de conta (~12ms).
+    - **CleanBrowsing Adult Filter**: Bloqueio estrito de pornografia e conteúdo explícito (~18ms).
+    - **CleanBrowsing Family Filter**: Pornografia + Casas de Apostas/Bets + SafeSearch forçado (~18ms).
+    - **Control D Full Blocker**: Anúncios + Rastreadores + Pornografia + Apostas/Cassinos (~15ms).
+    - **NextDNS Personalizado**: Integração dinâmica com perfil próprio via ID de configuração com servidores Anycast de baixíssima latência no Brasil (~12ms em SP, RJ, Fortaleza e Curitiba).
+- **🚫 Bloqueio Universal de Sites Específicos (Lista Negra da Rede)**:
+  - **Campo Prático no Modal AdBlock**: Permite digitar domínios específicos (ex: `bet365.com, blaze.com, tigrinho.vip, site.com`) separados por vírgula, espaço ou nova linha.
+  - **Bloqueio em 0ms com 0 Bytes de RAM Extra**: Configura regras nativas no `dnsmasq` (`address=/dominio/0.0.0.0`) e regras no AdGuard Home (`||dominio^`), derrubando o domínio e todos os seus subdomínios instantaneamente para toda a residência em ambos os perfis (Full e Lite).
+  - **Sanitização Automática**: Limpa URLs completas (`https://...`), barras e portas, mantendo apenas domínios válidos e persistidos com segurança no UCI.
+
 ## 0.9.64
 
 - **🎨 Feedback Visual Inconfundível no Bloqueio de Apps e Serviços**:

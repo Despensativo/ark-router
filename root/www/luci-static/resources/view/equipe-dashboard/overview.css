@@ -228,6 +228,8 @@ details.ex-perf-opt-card, section.ex-perf-opt-card { border-color: color-mix(in 
 .ex-service-chip.active { background: #dc2626 !important; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important; border-color: #f87171 !important; color: #ffffff !important; font-weight: 800 !important; box-shadow: 0 4px 14px rgba(239,68,68,.45) !important; transform: translateY(-1px); }
 .ex-service-chip.active:hover { background: linear-gradient(135deg, #f87171 0%, #ef4444 100%) !important; }
 .ex-service-chip .ex-chip-status { display: inline-block; background: rgba(0,0,0,.32); padding: 2px 7px; border-radius: 6px; font-size: 0.67rem; font-weight: 850; letter-spacing: 0.04em; color: #fff; text-transform: uppercase; }
+.ex-blacklist-input { transition: border-color .18s ease, box-shadow .18s ease; }
+.ex-blacklist-input:focus { outline: none; border-color: #ef4444 !important; box-shadow: 0 0 0 3px rgba(239,68,68,.25) !important; }
 .ex-priority-desc-box, .ex-reserve-box { padding: 10px 12px; border-radius: 10px; background: rgba(127,127,127,.06); border: 1px solid rgba(127,127,127,.12); margin-top: 8px; }
 .ex-priority-desc-text { margin: 0; font-size: 0.83rem; color: #cbd5e1; line-height: 1.4; }
 .ex-secret { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; margin: 9px 0; padding: 8px 10px 8px 14px; border-radius: 12px; background: rgba(127,127,127,.10); }

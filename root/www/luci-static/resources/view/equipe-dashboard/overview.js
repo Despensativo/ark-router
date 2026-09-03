@@ -3222,11 +3222,43 @@ return view.extend({
 
 		// Nuvem (Lite)
 		const providerSelect = E('select', { class: 'cbi-input-select', style: 'width: 100%; margin-top: 6px;' }, [
-			E('option', { value: 'adguard_dns' }, ['AdGuard DNS (Anycast São Paulo — ~14ms)']),
-			E('option', { value: 'cloudflare_security' }, ['Cloudflare 1.1.1.2 Security (~6ms)']),
-			E('option', { value: 'nextdns' }, ['NextDNS BR (~15ms)'])
+			E('option', { value: 'adguard_dns' }, ['AdGuard DNS (Anúncios + Rastreadores — Anycast SP ~14ms)']),
+			E('option', { value: 'cloudflare_security' }, ['Cloudflare 1.1.1.2 Segurança (Malware & Phishing — ~6ms)']),
+			E('option', { value: 'cloudflare_family' }, ['Cloudflare 1.1.1.3 Família (Malware + Pornografia/Adulto — ~6ms)']),
+			E('option', { value: 'quad9' }, ['Quad9 9.9.9.9 Segurança (Cibersegurança +20 Órgãos Globais — ~8ms)']),
+			E('option', { value: 'opendns_family' }, ['OpenDNS FamilyShield (Cisco Anycast Adulto + Phishing — ~12ms)']),
+			E('option', { value: 'cleanbrowsing_adult' }, ['CleanBrowsing Adult Filter (Pornografia e Explícito — ~18ms)']),
+			E('option', { value: 'cleanbrowsing_family' }, ['CleanBrowsing Family Filter (Adulto + Apostas/Bets + SafeSearch — ~18ms)']),
+			E('option', { value: 'controld_full' }, ['Control D Full Blocker (Anúncios + Pornografia + Cassinos/Apostas — ~15ms)']),
+			E('option', { value: 'nextdns' }, ['NextDNS Personalizado (Seu Perfil com ID — Anycast BR ~12ms)'])
 		]);
 		providerSelect.value = chosenProvider;
+
+		const nextdnsIdInput = E('input', {
+			type: 'text',
+			class: 'cbi-input-text',
+			style: 'width: 100%; margin-top: 6px; font-family: monospace; font-weight: 700;',
+			placeholder: 'Ex: a1b2c3',
+			value: f.nextdns_id || ''
+		});
+
+		const nextdnsWrap = E('div', {
+			style: 'margin-top: 10px; padding: 10px 12px; background: rgba(59,130,246,.08); border-radius: 8px; border: 1px solid rgba(59,130,246,.25);'
+		}, [
+			E('label', { style: 'font-size: 0.82rem; font-weight: 700; color: var(--ex-primary-safe, #3b82f6);' }, ['ID de Configuração do NextDNS']),
+			nextdnsIdInput,
+			E('small', { class: 'ex-muted', style: 'display: block; margin-top: 5px; font-size: 0.78rem; line-height: 1.35;' }, [
+				'💡 O NextDNS opera com servidores Anycast de baixíssima latência no Brasil (SP, RJ, Fortaleza e Curitiba — ~12ms). Requer criar uma conta gratuita no site ',
+				E('a', { href: 'https://nextdns.io', target: '_blank', rel: 'noopener noreferrer', style: 'font-weight: 700; text-decoration: underline;' }, ['nextdns.io']),
+				' para gerar o seu ID de perfil personalizado.'
+			])
+		]);
+
+		const updateNextDnsVisibility = function() {
+			nextdnsWrap.style.display = (providerSelect.value === 'nextdns') ? 'block' : 'none';
+		};
+		providerSelect.addEventListener('change', updateNextDnsVisibility);
+		updateNextDnsVisibility();
 
 		const cloudCacheSelect = E('select', { class: 'cbi-input-select', style: 'width: 100%; margin-top: 6px;' }, [
 			E('option', { value: '10000' }, ['10.000 domínios (~1 MB RAM — Roteadores de 128MB)']),
@@ -3238,6 +3270,7 @@ return view.extend({
 		const cloudWrap = E('div', { style: 'margin-top: 10px; padding: 12px; background: rgba(255,255,255,.03); border-radius: 8px;' }, [
 			E('label', { style: 'font-size: 0.85rem; font-weight: 600;' }, ['Provedor em Nuvem']),
 			providerSelect,
+			nextdnsWrap,
 			E('label', { style: 'font-size: 0.85rem; font-weight: 600; display: block; margin-top: 10px;' }, ['Super-Cache dnsmasq em RAM']),
 			cloudCacheSelect,
 			E('small', { class: 'ex-muted', style: 'display: block; margin-top: 4px;' }, ['O super-cache no dnsmasq responde em 0ms para todas as consultas repetidas da casa.'])
@@ -3251,6 +3284,27 @@ return view.extend({
 		localRadio.addEventListener('change', updateVisibility);
 		cloudRadio.addEventListener('change', updateVisibility);
 		updateVisibility();
+
+		const blacklistTextarea = E('textarea', {
+			class: 'ex-blacklist-input',
+			rows: 3,
+			style: 'width: 100%; box-sizing: border-box; margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,.25); border: 1px solid rgba(148,163,184,.25); color: #f8fafc; font-family: monospace; font-size: 0.82rem; resize: vertical; line-height: 1.4;',
+			placeholder: 'Ex: bet365.com, blaze.com, tigrinho.vip, tiktok.com',
+			value: (f.custom_blacklist || '').replace(/,/g, ', ')
+		});
+
+		const blacklistBlock = E('div', {
+			class: 'ex-device-config-block',
+			style: 'margin-top: 12px; padding: 12px; border-radius: 10px; background: rgba(239,68,68,.05); border: 1px solid rgba(239,68,68,.22);'
+		}, [
+			E('div', { style: 'display: flex; align-items: center; gap: 8px; margin-bottom: 4px;' }, [
+				E('strong', { style: 'font-size: 0.88rem; color: #ef4444;' }, ['🚫 Bloquear Sites Específicos (Lista Negra da Rede)'])
+			]),
+			E('p', { class: 'ex-muted', style: 'margin: 0 0 6px 0; font-size: 0.81rem; line-height: 1.35;' }, [
+				'Corta o domínio principal e todos os seus subdomínios instantaneamente em 0ms para todos os aparelhos da casa. Separe múltiplos domínios por vírgula ou espaço:'
+			]),
+			blacklistTextarea
+		]);
 
 		const modalContent = [
 			E('p', {}, [active ? 'Ajuste a memória RAM alocada e as proteções do bloqueador de anúncios:' : 'Escolha como deseja ativar o bloqueio de anúncios e rastreadores neste roteador:']),
@@ -3302,6 +3356,7 @@ return view.extend({
 				]),
 				cloudWrap
 			]),
+			blacklistBlock,
 			E('p', { class: 'alert-message warning', style: 'margin-top: 14px;' }, [
 				'O modo All-Servers do DNS Turbo permanece protegido para que consultas paralelas não vazem requisições não filtradas.'
 			]),
@@ -3323,9 +3378,11 @@ return view.extend({
 						const cCache = cloudCacheSelect.value;
 						const webPort = parseInt(portInput.value, 10) || 3000;
 						const ztAcc = protZeroTier.input.checked ? '1' : '0';
+						const rawBlacklist = blacklistTextarea.value.trim();
+						const nextdnsId = nextdnsIdInput.value.trim();
 
 						const cmd = active ? 'adblock-configure' : 'adblock-enable';
-						const args = [cmd, mode, (mode === 'local' ? cacheMb : prov), prot, par, ss, prov, cCache, String(webPort), ztAcc];
+						const args = [cmd, mode, (mode === 'local' ? cacheMb : prov), prot, par, ss, prov, cCache, String(webPort), ztAcc, rawBlacklist, nextdnsId];
 
 						fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 							if (r.code) throw new Error(r.stderr || 'Falha ao configurar bloqueador');
