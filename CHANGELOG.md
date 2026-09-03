@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.57
+
+- **🛡️ Ajuste Dinâmico de RAM de Cache e Opções Essenciais do Bloqueador (AdGuard Home)**:
+  - **Quebras Inteligentes por Hardware**: Seletor de memória RAM para cache com presets (8MB, 16MB, 32MB, 64MB e 128MB) e recomendação automática calculada para o roteador (256MB/300MB, 512MB ou 1GB+).
+  - **Proteções Essenciais Integradas no ARK Router**: Toggles visuais modernos para:
+    - 🛡️ **Navegação Segura (Anti-Malware & Phishing)**
+    - 👨‍👩‍👧 **Controle Parental (Bloqueio Adulto na Rede Toda)**
+    - 🔍 **Busca Segura Forçada (SafeSearch Google, Bing, YouTube e DuckDuckGo)**
+  - **Métricas Expandidas no Card**: Exibição da memória em RAM alocada e resumo das proteções ativas na rede.
+
 ## 0.9.56
 
 - **⚡ Correção na Atualização em Tempo Real de Limites de Banda e Badges de Dispositivos**:

@@ -2468,6 +2468,14 @@ adblock_status_json() {
 	[ -n "$overlay_free_kb" ] || overlay_free_kb="$(df -k / 2>/dev/null | awk 'NR==2{print $4}')"
 	[ -n "$overlay_free_kb" ] || overlay_free_kb=0
 
+	mem_total_mb=$((mem_total_kb / 1024))
+	recommended_cache_mb=16
+	if [ "$mem_total_mb" -ge 700 ]; then
+		recommended_cache_mb=64
+	elif [ "$mem_total_mb" -ge 380 ]; then
+		recommended_cache_mb=32
+	fi
+
 	supported_profile="full"
 	if [ "$mem_total_kb" -lt 300000 ] || [ "$overlay_free_kb" -lt 15000 ]; then
 		supported_profile="lite"
@@ -2492,9 +2500,27 @@ adblock_status_json() {
 	fi
 
 	rules_count=0
-	if [ "$mode" = "local" ]; then
-		rules_count="$(find /tmp/lib/adguardhome /var/lib/adguardhome -name "*.txt" 2>/dev/null | xargs wc -l 2>/dev/null | awk '/total$/ {print $1}')"
-		[ -n "$rules_count" ] && [ "$rules_count" -gt 0 ] 2>/dev/null || rules_count=107575
+	cache_size_mb="$recommended_cache_mb"
+	parental_enabled=false
+	protection_enabled=true
+	safesearch_enabled=false
+	cloud_cache="$(uci -q get dhcp.@dnsmasq[0].cachesize || printf 25000)"
+	[ "$cloud_cache" -gt 0 ] 2>/dev/null || cloud_cache=25000
+
+	if [ -f /etc/adguardhome/adguardhome.yaml ]; then
+		if [ "$mode" = "local" ]; then
+			rules_count="$(find /tmp/lib/adguardhome /var/lib/adguardhome -name "*.txt" 2>/dev/null | xargs wc -l 2>/dev/null | awk '/total$/ {print $1}')"
+			[ -n "$rules_count" ] && [ "$rules_count" -gt 0 ] 2>/dev/null || rules_count=107575
+		fi
+
+		raw_bytes="$(awk '/^  cache_size:/ {print $2; exit}' /etc/adguardhome/adguardhome.yaml 2>/dev/null)"
+		if [ -n "$raw_bytes" ] && [ "$raw_bytes" -gt 0 ] 2>/dev/null; then
+			cache_size_mb=$((raw_bytes / 1048576))
+		fi
+
+		[ "$(awk '/^  parental_enabled:/ {print $2; exit}' /etc/adguardhome/adguardhome.yaml 2>/dev/null)" = "true" ] && parental_enabled=true
+		[ "$(awk '/^  safebrowsing_enabled:/ {print $2; exit}' /etc/adguardhome/adguardhome.yaml 2>/dev/null)" = "false" ] && protection_enabled=false
+		[ "$(awk '/^  safe_search:/ {getline; if ($1=="enabled:" && $2=="true") print "true"}' /etc/adguardhome/adguardhome.yaml 2>/dev/null)" = "true" ] && safesearch_enabled=true
 	elif [ "$mode" = "cloud" ]; then
 		rules_count=450000
 	fi
@@ -2504,13 +2530,104 @@ adblock_status_json() {
 
 	cloud_provider="$(uci -q get equipe_perf.settings.adblock_cloud_provider || printf 'adguard_dns')"
 
-	printf '{"installed":%s,"active":%s,"mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s"}\n' \
-		"$local_installed" "$active" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url"
+	printf '{"installed":%s,"active":%s,"mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s","mem_total_mb":%d,"cache_size_mb":%d,"recommended_cache_mb":%d,"parental_enabled":%s,"protection_enabled":%s,"safesearch_enabled":%s,"cloud_cache":%s}\n' \
+		"$local_installed" "$active" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url" "$mem_total_mb" "$cache_size_mb" "$recommended_cache_mb" "$parental_enabled" "$protection_enabled" "$safesearch_enabled" "$cloud_cache"
+}
+
+adblock_configure() {
+	mode="${1:-local}"
+	cache_mb="${2:-64}"
+	protection="${3:-1}"
+	parental="${4:-0}"
+	safesearch="${5:-0}"
+	provider="${6:-adguard_dns}"
+	cloud_cache="${7:-25000}"
+
+	case "$cache_mb" in ''|*[!0-9]*) cache_mb=64 ;; esac
+	[ "$cache_mb" -lt 4 ] && cache_mb=4
+	[ "$cache_mb" -gt 256 ] && cache_mb=256
+
+	case "$protection" in 1|true) protection_bool="true" ;; *) protection_bool="false" ;; esac
+	case "$parental" in 1|true) parental_bool="true" ;; *) parental_bool="false" ;; esac
+	case "$safesearch" in 1|true) safesearch_bool="true" ;; *) safesearch_bool="false" ;; esac
+
+	if [ "$mode" = "local" ]; then
+		cache_bytes=$((cache_mb * 1048576))
+		yaml="/etc/adguardhome/adguardhome.yaml"
+		if [ -f "$yaml" ]; then
+			sed -i "s/^  cache_size: .*/  cache_size: $cache_bytes/" "$yaml"
+			sed -i "s/^  safebrowsing_cache_size: .*/  safebrowsing_cache_size: $cache_bytes/" "$yaml"
+			sed -i "s/^  safesearch_cache_size: .*/  safesearch_cache_size: $cache_bytes/" "$yaml"
+			sed -i "s/^  parental_cache_size: .*/  parental_cache_size: $cache_bytes/" "$yaml"
+			sed -i "s/^  safebrowsing_enabled: .*/  safebrowsing_enabled: $protection_bool/" "$yaml"
+			sed -i "s/^  parental_enabled: .*/  parental_enabled: $parental_bool/" "$yaml"
+
+			awk -v val="$safesearch_bool" '
+			/^  safe_search:/ { in_ss=1; print; next }
+			in_ss && /^    enabled:/ { print "    enabled: " val; in_ss=0; next }
+			{ print }
+			' "$yaml" > "${yaml}.tmp" && mv -f "${yaml}.tmp" "$yaml"
+
+			/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+		fi
+		echo ok
+		return 0
+	elif [ "$mode" = "cloud" ]; then
+		case "$cloud_cache" in ''|*[!0-9]*) cloud_cache=25000 ;; esac
+		[ "$cloud_cache" -lt 1000 ] && cloud_cache=1000
+		[ "$cloud_cache" -gt 100000 ] && cloud_cache=100000
+
+		uci -q set "equipe_perf.settings.adblock_cloud_provider=$provider"
+		uci commit equipe_perf
+
+		uci -q delete dhcp.@dnsmasq[0].server
+		if [ "$parental_bool" = "true" ]; then
+			case "$provider" in
+				cloudflare*|cloudflare_family)
+					uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.3'
+					uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.3'
+					;;
+				*)
+					uci -q add_list dhcp.@dnsmasq[0].server='94.140.14.15'
+					uci -q add_list dhcp.@dnsmasq[0].server='94.140.15.16'
+					;;
+			esac
+		else
+			case "$provider" in
+				nextdns)
+					uci -q add_list dhcp.@dnsmasq[0].server='45.90.28.0'
+					uci -q add_list dhcp.@dnsmasq[0].server='45.90.30.0'
+					;;
+				cloudflare*)
+					uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.2'
+					uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.2'
+					;;
+				*)
+					uci -q add_list dhcp.@dnsmasq[0].server='94.140.14.14'
+					uci -q add_list dhcp.@dnsmasq[0].server='94.140.15.15'
+					;;
+			esac
+		fi
+
+		uci -q set "dhcp.@dnsmasq[0].cachesize=$cloud_cache"
+		uci commit dhcp
+		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+		echo ok
+		return 0
+	fi
+
+	echo "Modo invalido" >&2
+	exit 2
 }
 
 adblock_enable() {
 	chosen_mode="${1:-auto}"
 	provider="${2:-adguard_dns}"
+	cache_mb="${3:-64}"
+	protection="${4:-1}"
+	parental="${5:-0}"
+	safesearch="${6:-0}"
+	cloud_cache="${7:-25000}"
 
 	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
 	overlay_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"
@@ -2551,6 +2668,8 @@ adblock_enable() {
 		uci -q set equipe_perf.settings.adblock_cloud='0'
 		uci commit equipe_perf
 
+		adblock_configure local "$cache_mb" "$protection" "$parental" "$safesearch" >/dev/null 2>&1 || true
+
 		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 		echo ok
 		return 0
@@ -2562,29 +2681,6 @@ adblock_enable() {
 		/etc/init.d/adguardhome disable >/dev/null 2>&1 || true
 	fi
 
-	uci -q delete dhcp.@dnsmasq[0].server
-	case "$provider" in
-		nextdns)
-			uci -q add_list dhcp.@dnsmasq[0].server='45.90.28.0'
-			uci -q add_list dhcp.@dnsmasq[0].server='45.90.30.0'
-			;;
-		cloudflare_security)
-			uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.2'
-			uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.2'
-			;;
-		*)
-			provider="adguard_dns"
-			uci -q add_list dhcp.@dnsmasq[0].server='94.140.14.14'
-			uci -q add_list dhcp.@dnsmasq[0].server='94.140.15.15'
-			;;
-	esac
-
-	uci -q set dhcp.@dnsmasq[0].allservers='0'
-	uci -q set dhcp.@dnsmasq[0].noresolv='1'
-	uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'
-	uci -q set dhcp.@dnsmasq[0].cachesize='25000'
-	uci commit dhcp
-
 	mkdir -p /etc/config
 	[ -f /etc/config/equipe_perf ] || touch /etc/config/equipe_perf
 	uci -q set equipe_perf.settings=performance
@@ -2592,8 +2688,13 @@ adblock_enable() {
 	uci -q set "equipe_perf.settings.adblock_cloud_provider=$provider"
 	uci commit equipe_perf
 
-	/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
-	echo ok
+	uci -q set dhcp.@dnsmasq[0].allservers='0'
+	uci -q set dhcp.@dnsmasq[0].noresolv='1'
+	uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'
+	uci commit dhcp
+
+	adblock_configure cloud "$cache_mb" "$protection" "$parental" "$safesearch" "$provider" "$cloud_cache"
+	return 0
 }
 
 adblock_disable() {
@@ -3948,7 +4049,10 @@ case "$action" in
 		adblock_status_json
 		;;
 	adblock-enable)
-		adblock_enable "$2" "$3"
+		adblock_enable "$2" "$3" "$4" "$5" "$6" "$7" "$8"
+		;;
+	adblock-configure)
+		adblock_configure "$2" "$3" "$4" "$5" "$6" "$7" "$8"
 		;;
 	adblock-disable)
 		adblock_disable

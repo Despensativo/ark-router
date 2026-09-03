@@ -23,6 +23,7 @@
 .ex-grid { display: grid; gap: 16px; margin-bottom: 16px; }
 .ex-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .ex-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ex-grid-4 { grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); }
 .ex-card { --section-accent: var(--ex-primary-safe); position: relative; overflow: hidden; padding: 21px; border: 1px solid color-mix(in srgb,var(--section-accent) 24%,rgba(127,127,127,.17)); border-radius: 18px; background: linear-gradient(135deg,color-mix(in srgb,var(--section-accent) 6%,transparent),rgba(127,127,127,.07) 38%,rgba(127,127,127,.055)); box-shadow: 0 8px 26px rgba(0,0,0,.055); backdrop-filter: blur(12px); }
 .ex-card:before { content: ''; position: absolute; inset: 0 0 auto; height: 3px; background: linear-gradient(90deg,var(--section-accent),color-mix(in srgb,var(--section-accent) 18%,transparent)); opacity: .9; }
 .ex-card > * { position: relative; z-index: 1; }
