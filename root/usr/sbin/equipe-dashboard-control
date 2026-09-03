@@ -2625,7 +2625,13 @@ adblock_configure() {
 			uci commit firewall
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
 
+			uci -q delete dhcp.@dnsmasq[0].server
+			uci -q add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
+			uci -q set dhcp.@dnsmasq[0].noresolv='1'
+			uci commit dhcp
+
 			/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+			/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 		fi
 		echo ok
 		return 0
@@ -2715,7 +2721,6 @@ adblock_enable() {
 
 		uci -q delete dhcp.@dnsmasq[0].server
 		uci -q add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
-		uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.1'
 		uci -q set dhcp.@dnsmasq[0].noresolv='1'
 		uci -q set dhcp.@dnsmasq[0].allservers='0'
 		uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'

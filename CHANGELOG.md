@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.61
+
+- **🛡️ Blindagem de DNS e Eliminação de Bypass no Bloqueio Adulto / SafeSearch**:
+  - Removido upstream de bypass `1.1.1.1` do dnsmasq no modo local, garantindo que 100% das consultas de todos os dispositivos passem estritamente pelo AdGuard Home.
+  - Flush e reinício imediato do cache do dnsmasq ao alterar configurações de proteção, impedindo que respostas sem bloqueio fiquem retidas em cache.
+
 ## 0.9.60
 
 - **✨ Simplificação e Clareza no Controle do Bloqueador**:
