@@ -503,6 +503,7 @@ details.ex-perf-opt-card, section.ex-perf-opt-card { border-color: color-mix(in 
 	.ex-wan-field-wide { grid-column: auto; }
 	.ex-wan-mac-control { flex-direction: column; }
 	.ex-wan-mac-control .ex-feature-link { min-height: 34px; }
+	.ex-dns-test-btn { width: 100% !important; text-align: center !important; justify-content: center !important; margin-left: 0 !important; margin-top: 4px !important; }
 }
 
 @media (max-width: 600px) {
@@ -621,6 +622,13 @@ details.ex-perf-opt-card, section.ex-perf-opt-card { border-color: color-mix(in 
 		width: 100% !important;
 		text-align: center !important;
 		justify-content: center !important;
+	}
+	.ex-perf-item-actions {
+		width: 100% !important;
+		display: flex !important;
+		align-items: center !important;
+		justify-content: space-between !important;
+		gap: 10px !important;
 	}
 	.ex-perf-purge-btn {
 		flex: 1 1 auto !important;

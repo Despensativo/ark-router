@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.50
+
+- **📱 Otimização e Refinamento Responsivo Mobile**:
+  - **Ajuste Fino de Layouts Flex e Modais**: Adicionadas proteções contra esmagamento de switches e quebras de linha responsivas (`gap: 12px`, `flex: 1 1 auto`, `min-width: 0`) nos modais de limite de banda e de DNS Turbo.
+  - **Distribuição Touch em Telas Estreitas**: No Painel de Desempenho, a barra de ações (`.ex-perf-item-actions`) agora expande ocupando 100% da largura em smartphones, separando o botão de configuração e o toggle liga/desliga com alinhamento equilibrado.
+  - **Botão de Teste de Latência DNS**: Otimizado com classe `.ex-dns-test-btn`, passando a ocupar largura completa em telas menores que 480px para toque facilitado.
+  - **Grid de Predefinições Rápidas**: Padronizado com `.ex-priority-button-grid` para renderização perfeita em 2 colunas ou 1 coluna adaptável em qualquer tamanho de tela mobile.
+
 ## 0.9.49
 
 - **🛡️ Auditoria Geral de Resiliência e Blindagem de Sistema**:

@@ -1104,12 +1104,12 @@ return view.extend({
 			updatePresetActive();
 
 			sections.push(E('div', { class: 'ex-device-config-block' }, [
-				E('div', { style: 'display: flex; align-items: center; justify-content: space-between;' }, [
-					E('div', {}, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 12px;' }, [
+					E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
 						E('strong', {}, ['Limite de Banda Individual']),
 						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Restrinja a velocidade máxima de download e upload deste aparelho:'])
 					]),
-					E('label', { class: 'ex-switch' }, [
+					E('label', { class: 'ex-switch', style: 'flex: 0 0 auto;' }, [
 						limitToggle,
 						E('span', { class: 'ex-switch-slider' })
 					])
@@ -3469,7 +3469,7 @@ return view.extend({
 			];
 
 			const testBtn = E('button', {
-				class: 'ex-mini-button',
+				class: 'ex-mini-button ex-dns-test-btn',
 				type: 'button',
 				style: 'padding: 8px 14px; font-weight: 750;',
 				click: function(ev) {
@@ -3528,24 +3528,24 @@ return view.extend({
 
 			const content = [
 				E('div', { class: 'ex-device-config-block' }, [
-					E('div', { style: 'display: flex; align-items: center; justify-content: space-between;' }, [
-						E('div', {}, [
+					E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 12px;' }, [
+						E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
 							E('strong', {}, ['Consulta Paralela All-Servers (0ms)']),
 							E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Dispara para todos os servidores ao mesmo tempo. O primeiro que responder entrega a página sem esperar filas.'])
 						]),
-						E('label', { class: 'ex-switch' }, [
+						E('label', { class: 'ex-switch', style: 'flex: 0 0 auto;' }, [
 							allserversToggle,
 							E('span', { class: 'ex-switch-slider' })
 						])
 					])
 				]),
 				E('div', { class: 'ex-device-config-block' }, [
-					E('div', { style: 'display: flex; align-items: center; justify-content: space-between;' }, [
-						E('div', {}, [
+					E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 12px;' }, [
+						E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
 							E('strong', {}, ['Redundância de Fallback no DHCP (1.1.1.1)']),
 							E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Envia 1.1.1.1 como DNS secundário no DHCP. Se o roteador reiniciar, os aparelhos continuam navegando sem interrupção.'])
 						]),
-						E('label', { class: 'ex-switch' }, [
+						E('label', { class: 'ex-switch', style: 'flex: 0 0 auto;' }, [
 							fallbackToggle,
 							E('span', { class: 'ex-switch-slider' })
 						])
@@ -3554,10 +3554,10 @@ return view.extend({
 				E('div', { class: 'ex-device-config-block' }, [
 					E('strong', {}, ['Predefinições Rápidas']),
 					E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Selecione uma combinação pronta ou digite seus próprios IPs:']),
-					E('div', { class: 'ex-grid ex-grid-2', style: 'margin-top: 8px; gap: 8px;' }, presetBtns)
+					E('div', { class: 'ex-priority-button-grid', style: 'margin-top: 8px; gap: 8px;' }, presetBtns)
 				]),
 				E('div', { class: 'ex-device-config-block' }, [
-					E('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;' }, [
+					E('div', { style: 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;' }, [
 						E('strong', {}, ['Servidores DNS Ativos (2 a 4)']),
 						testBtn
 					]),
@@ -3754,7 +3754,7 @@ return view.extend({
 				])
 			]);
 
-			const rightWrap = E('div', { style: 'display: flex; align-items: center; gap: 10px;' }, [
+			const rightWrap = E('div', { class: 'ex-perf-item-actions', style: 'display: flex; align-items: center; gap: 10px;' }, [
 				extraBtn || '',
 				switchControl
 			]);
