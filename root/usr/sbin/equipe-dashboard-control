@@ -3758,8 +3758,10 @@ case "$action" in
 		host="$(find_dhcp_host "$mac")"
 		if [ "$mode" = reserved ]; then
 			[ -n "$host" ] || host="ark_$suffix"
+			dns_host_name="$(printf '%s' "${name:-ark-$suffix}" | sed 's/[^a-zA-Z0-9_-]/-/g; s/-\{2,\}/-/g; s/^-//; s/-$//')"
+			[ -n "$dns_host_name" ] || dns_host_name="ark-$suffix"
 			uci -q set "dhcp.$host=host"
-			uci -q set "dhcp.$host.name=${name:-ark-$suffix}"
+			uci -q set "dhcp.$host.name=$dns_host_name"
 			uci -q set "dhcp.$host.mac=$mac"
 			uci -q set "dhcp.$host.ip=$ip"
 		else

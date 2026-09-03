@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.48
+
+- **🛡️ Sanitização Automática de Nomes de Dispositivos para o DNS (RFC 1123)**:
+  - **Correção de Crash do `dnsmasq`**: Nomes com espaços (ex: `"TV SALA PLACA DE REDE"`) agora são sanitizados automaticamente como `"TV-SALA-PLACA-DE-REDE"` no backend do `dnsmasq`, impedindo que o serviço DNS caia ao salvar limites de velocidade ou reservas de IP.
+  - **Preservação do Nome Visual no Painel**: O painel LuCI continua exibindo o nome original com espaços e emojis normalmente via `equipe_devices`.
+
 ## 0.9.47
 
 - **⚡ DNS Turbo Paralelo (`all-servers`) com Seleção Flexível de 2 a 4 Servidores**:
