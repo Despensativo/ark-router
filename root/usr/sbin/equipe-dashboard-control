@@ -1115,7 +1115,15 @@ speedify_cli_path() {
 	if [ -x /tmp/ark-speedify-cli ]; then printf /tmp/ark-speedify-cli; return 0; fi
 }
 speedify_runtime_running() { pgrep -f '/speedify -d' >/dev/null 2>&1 || pgrep -x 'speedify' >/dev/null 2>&1; }
-speedify_supported() { case "$(uname -m 2>/dev/null)" in aarch64|x86_64) return 0 ;; *) return 1 ;; esac; }
+speedify_supported() {
+	case "$(uname -m 2>/dev/null)" in
+		aarch64|x86_64) ;;
+		*) return 1 ;;
+	esac
+	local mem_kb="$(awk '/MemTotal:/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
+	[ "$mem_kb" -ge 400000 ] || return 1
+	return 0
+}
 speedify_external_target() {
 	need="${ARK_SPEEDIFY_INTERNAL_MIN_KB:-35000}"
 	for mp in /opt /mnt/sda1 /mnt/usb /mnt/sdb1 /mnt/mmcblk0p1; do
@@ -1390,11 +1398,18 @@ zerotier_install() {
 zerotier_enable() {
 	zerotier_install || return $?
 	zerotier_ram_compress
-	uci -q set zerotier.global.enabled=1
-	uci -q delete zerotier.earth
+	sec="$(uci -q show zerotier | grep '=zerotier' | head -n1 | cut -d. -f2 | cut -d= -f1)"
+	[ -n "$sec" ] || sec="sample_config"
+	for s in $(uci -q show zerotier | grep '=zerotier' | cut -d. -f2 | cut -d= -f1); do
+		[ "$s" = "$sec" ] || uci -q delete "zerotier.$s"
+	done
+	uci -q set "zerotier.$sec=zerotier"
+	uci -q set "zerotier.$sec.enabled=1"
+	uci -q delete "zerotier.$sec.join" 2>/dev/null || true
 	uci commit zerotier
 	zerotier_firewall_prepare
 	[ -x /etc/init.d/ark-zerotier-ram ] && { /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true; /etc/init.d/ark-zerotier-ram start >/dev/null 2>&1 || true; }
+	killall -9 zerotier-one 2>/dev/null || true
 	[ -x /etc/init.d/zerotier ] && { /etc/init.d/zerotier enable >/dev/null 2>&1 || true; /etc/init.d/zerotier restart >/dev/null 2>&1 || true; }
 	i=0
 	while [ "$i" -lt 8 ]; do
@@ -1406,7 +1421,9 @@ zerotier_enable() {
 	echo ok
 }
 zerotier_disable() {
-	uci -q set zerotier.global.enabled=0
+	sec="$(uci -q show zerotier | grep '=zerotier' | head -n1 | cut -d. -f2 | cut -d= -f1)"
+	[ -n "$sec" ] || sec="sample_config"
+	uci -q set "zerotier.$sec.enabled=0"
 	uci commit zerotier
 	[ -x /etc/init.d/zerotier ] && {
 		/etc/init.d/zerotier stop >/dev/null 2>&1 || true
@@ -1423,6 +1440,9 @@ zerotier_join_network() {
 	netid="$1"
 	valid_zerotier_network_id "$netid" || { echo 'Network ID ZeroTier invalido. Use 16 caracteres hexadecimais.' >&2; return 2; }
 	zerotier_enable || return $?
+	sec="$(uci -q show zerotier | grep '=zerotier' | head -n1 | cut -d. -f2 | cut -d= -f1)"
+	[ -n "$sec" ] || sec="sample_config"
+	uci -q add_list "zerotier.$sec.join=$netid"
 	uci -q set zerotier.ark=network
 	uci -q set "zerotier.ark.id=$netid"
 	uci -q set zerotier.ark.allow_managed=1
@@ -1430,6 +1450,11 @@ zerotier_join_network() {
 	uci -q set zerotier.ark.allow_default=0
 	uci -q set zerotier.ark.allow_dns=0
 	uci commit zerotier
+	if command -v zerotier-cli >/dev/null 2>&1; then
+		zerotier-cli join "$netid" >/dev/null 2>&1 || true
+	fi
+	mkdir -p /var/lib/zerotier-one/networks.d 2>/dev/null || true
+	touch "/var/lib/zerotier-one/networks.d/$netid.conf" 2>/dev/null || true
 	[ -x /etc/init.d/zerotier ] && /etc/init.d/zerotier restart >/dev/null 2>&1 || true
 	i=0
 	while [ "$i" -lt 15 ]; do
@@ -1452,12 +1477,17 @@ zerotier_leave_network() {
 	netid="$1"
 	[ -n "$netid" ] || netid="$(uci -q get equipe_dashboard.zerotier.network_id || true)"
 	valid_zerotier_network_id "$netid" || { echo 'Network ID ZeroTier invalido ou ausente.' >&2; return 2; }
+	sec="$(uci -q show zerotier | grep '=zerotier' | head -n1 | cut -d. -f2 | cut -d= -f1)"
+	[ -n "$sec" ] || sec="sample_config"
+	uci -q del_list "zerotier.$sec.join=$netid" 2>/dev/null || true
 	uci -q delete zerotier.ark
 	uci commit zerotier
 	command -v zerotier-cli >/dev/null 2>&1 && zerotier-cli leave "$netid" >/dev/null 2>&1 || true
+	rm -f "/var/lib/zerotier-one/networks.d/$netid.conf" 2>/dev/null || true
 	[ -x /etc/init.d/zerotier ] && /etc/init.d/zerotier restart >/dev/null 2>&1 || true
 	uci -q delete equipe_dashboard.zerotier.network_id
 	uci commit equipe_dashboard
+	echo ok
 }
 zerotier_status_json() {
 	installed_zt=false; [ -x /usr/sbin/zerotier-one ] || [ -x /usr/bin/zerotier-one ] || command -v zerotier-cli >/dev/null 2>&1 && installed_zt=true
@@ -1467,15 +1497,29 @@ zerotier_status_json() {
 		printf '{"installed":false,"active":false,"online":false,"autostart":false,"node_id":"—","network_id":"","network_status":"—","ip":"—","lan_cidr":"—"}\n'
 		return 0
 	fi
-	active=false; pidof zerotier-one >/dev/null 2>&1 && [ "$(uci -q get zerotier.global.enabled)" = 1 ] && active=true
-	node="$(uci -q get zerotier.global.secret | cut -d: -f1 2>/dev/null || true)"
+	active=false
+	pidof zerotier-one >/dev/null 2>&1 && active=true
+	node=""
 	online=false
-	if $active && command -v zerotier-cli >/dev/null 2>&1; then
+	if command -v zerotier-cli >/dev/null 2>&1; then
 		info="$(zerotier-cli info 2>/dev/null || true)"
 		cli_node="$(printf '%s' "$info" | awk '{print $3}')"
-		[ -n "$cli_node" ] && node="$cli_node"
+		[ -n "$cli_node" ] && [ "$cli_node" != "—" ] && [ "$cli_node" != "{}" ] && node="$cli_node"
 		printf '%s' "$info" | grep -q 'ONLINE' && online=true
 	fi
+	if [ -z "$node" ] || [ "$node" = "{}" ]; then
+		for idf in /var/lib/zerotier-one/identity.public /var/lib/zerotier-one_*/identity.public /var/lib/zerotier-one/identity.secret /var/lib/zerotier-one_*/identity.secret; do
+			[ -f "$idf" ] || continue
+			node="$(cat "$idf" 2>/dev/null | cut -d: -f1)"
+			[ -n "$node" ] && [ "$node" != "{}" ] && break
+		done
+	fi
+	if [ -z "$node" ] || [ "$node" = "{}" ]; then
+		sec="$(uci -q show zerotier | grep '=zerotier' | head -n1 | cut -d. -f2 | cut -d= -f1)"
+		[ -n "$sec" ] && node="$(uci -q get "zerotier.$sec.secret" | cut -d: -f1 2>/dev/null || true)"
+		[ -z "$node" ] && node="$(uci -q get zerotier.global.secret | cut -d: -f1 2>/dev/null || true)"
+	fi
+	[ -n "$node" ] && [ "$node" != "{}" ] || node="—"
 	netid="$(uci -q get equipe_dashboard.zerotier.network_id || uci -q get zerotier.ark.id || true)"
 	line=''
 	if $active && command -v zerotier-cli >/dev/null 2>&1; then
@@ -1487,7 +1531,7 @@ zerotier_status_json() {
 		nstatus="$(printf '%s' "$line" | awk '{for(i=1;i<=NF;i++) if($i=="OK"||$i=="ACCESS_DENIED"||$i=="NOT_FOUND"||$i=="REQUESTING_CONFIGURATION"||$i=="PORT_ERROR") {print $i; exit}}')"
 		ip="$(printf '%s' "$line" | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]+' | head -n1)"
 	else
-		if $active; then nstatus='CONECTANDO'; else nstatus='DESLIGADO'; fi
+		if $active; then nstatus='ONLINE (SEM REDE)'; else nstatus='DESLIGADO'; fi
 		ip='—'
 	fi
 	printf '{"installed":true,"active":%s,"online":%s,"autostart":%s,"node_id":"%s","network_id":"%s","network_status":"%s","ip":"%s","lan_cidr":"%s"}\n' \
@@ -3316,8 +3360,19 @@ feature_json() {
 			[ "$account_bytes" = -1 ] && account_licensed=true
 		fi
 		hidden "$key"; concealed=$?
-		printf '"speedify":{"installed":%s,"active":%s,"runtime_running":%s,"hidden":%s,"installable":%s,"package":"Runtime Speedify opcional: interno, externo ou RAM","luci":%s,"state":"%s","supported":%s,"prepared":%s,"install_mode":"%s","saved_config":%s,"autostart":%s,"desired_state":"%s","bonding_mode":"%s","runtime_mode":"%s","tunnel_ip":"%s","last_autostart":"%s","account_logged_in":%s,"account_licensed":%s,"account_email_masked":"%s","adapters":%s,"settings":%s,' \
-			"$present" "$active" "$runtime" "$(bool $((concealed == 0)))" "$supported" "$luci" "$(json_escape "$state")" "$supported" "$(bool "$prepared")" "$(json_escape "$mode")" "$(bool "$saved")" "$(bool "$autostart")" "$(json_escape "$desired")" "$(json_escape "$bonding_mode")" "$(json_escape "$runtime_mode")" "$(json_escape "$tunnel_ip")" "$(json_escape "$last_autostart")" "$account_logged" "$account_licensed" "$(json_escape "$account_masked")" "$adapters_json" "$settings_json"
+		reason=''
+		if ! $supported; then
+			case "$(uname -m 2>/dev/null)" in
+				aarch64|x86_64)
+					reason='Memoria RAM insuficiente. Requer no minimo 512 MB de RAM para somar links.'
+					;;
+				*)
+					reason='Incompativel: Speedify requer arquitetura 64-bit (ARM64/x86_64) e no minimo 512 MB de RAM (este hardware possui MIPS 32-bit e 128 MB RAM).'
+					;;
+			esac
+		fi
+		printf '"speedify":{"installed":%s,"active":%s,"runtime_running":%s,"hidden":%s,"installable":%s,"reason":"%s","package":"Runtime Speedify opcional: interno, externo ou RAM","luci":%s,"state":"%s","supported":%s,"prepared":%s,"install_mode":"%s","saved_config":%s,"autostart":%s,"desired_state":"%s","bonding_mode":"%s","runtime_mode":"%s","tunnel_ip":"%s","last_autostart":"%s","account_logged_in":%s,"account_licensed":%s,"account_email_masked":"%s","adapters":%s,"settings":%s,' \
+			"$present" "$active" "$runtime" "$(bool $((concealed == 0)))" "$supported" "$(json_escape "$reason")" "$luci" "$(json_escape "$state")" "$supported" "$(bool "$prepared")" "$(json_escape "$mode")" "$(bool "$saved")" "$(bool "$autostart")" "$(json_escape "$desired")" "$(json_escape "$bonding_mode")" "$(json_escape "$runtime_mode")" "$(json_escape "$tunnel_ip")" "$(json_escape "$last_autostart")" "$account_logged" "$account_licensed" "$(json_escape "$account_masked")" "$adapters_json" "$settings_json"
 		speedify_storage_json
 		printf '}'
 		return 0

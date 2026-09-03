@@ -3010,9 +3010,10 @@ return view.extend({
 				E('span',{class:'ex-pill '+(active?'online':(installed?'standby':'offline'))},[active?'ATIVO':(installed?'DESLIGADO':'OPCIONAL')])
 			]),
 			E('p',{class:'ex-muted'},['Acesso remoto leve para iOS e Windows sem abrir portas na WAN. Quando desligado, o serviço não roda e não consome recursos.']),
-			E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},[
+			E('div',{class:'ex-grid ex-grid-4 ex-qos-grid'},[
 				E('div',{class:'ex-row'},[E('span',{},['Node ID']),E('strong',{},[f.node_id||'—'])]),
 				E('div',{class:'ex-row'},[E('span',{},['Network ID']),E('strong',{},[f.network_id||'—'])]),
+				E('div',{class:'ex-row'},[E('span',{},['Status da Rede']),E('strong',{},[f.network_status||(active?'Online':'Desligado')])]),
 				E('div',{class:'ex-row'},[E('span',{},['IP ZeroTier']),E('strong',{},[active?((f.ip||'—').replace(/\/.*$/,'')):'—'])])
 			]),
 			installed ? E('div', { class: 'ex-device-config-block', style: 'margin-top: 10px; margin-bottom: 8px;' }, [
@@ -3647,6 +3648,39 @@ return view.extend({
 	speedifyCard: function(data){
 		const detectionData=data||this.currentData||{};
 		const f=this.feature('speedify'), installed=!!f.installed, supported=f.supported!==false, prepared=!!f.prepared, state=(f.state||'unavailable'), luci=!!f.luci, storage=f.storage||{}, rec=storage.recommended||'none', installedMode=String(f.install_mode||'');
+		if(f.hidden) return '';
+		const isWeakOrUnsupported = !installed && (!supported || (this.capabilities.hardware && this.capabilities.hardware.mem_total_mb < 300));
+		if (isWeakOrUnsupported) {
+			const memMb = (this.capabilities.hardware && this.capabilities.hardware.mem_total_mb) || 128;
+			return E('section', { class: 'ex-card ex-speedify-card is-unsupported' }, [
+				E('div', { class: 'ex-card-title' }, [
+					E('div', {}, [
+						E('span', { class: 'ex-kicker' }, ['BONDING REAL (SPEEDIFY)']),
+						E('h3', {}, ['Hardware Incompatível'])
+					]),
+					E('div', { style: 'display:flex;align-items:center;gap:8px;' }, [
+						E('span', { class: 'ex-pill offline' }, ['NÃO SUPORTADO']),
+						E('button', {
+							class: 'ex-mini-button',
+							style: 'padding:3px 8px;font-size:11px;',
+							click: L.bind(function() { this.setFeatureHidden('speedify', true); }, this)
+						}, ['Ocultar'])
+					])
+				]),
+				E('div', { style: 'background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.22);border-radius:14px;padding:14px 16px;margin-top:10px;' }, [
+					E('p', { style: 'margin:0 0 6px;font-weight:700;color:#f87171;font-size:13px;' }, [
+						'⚠️ Este roteador não atende aos requisitos mínimos para Bonding Real (Speedify).'
+					]),
+					E('p', { class: 'ex-muted', style: 'margin:0;font-size:12.5px;line-height:1.5;' }, [
+						'O motor Speedify Router é um serviço comercial 64-bit pesado que exige processador ARM64/x86_64 e no mínimo 512 MB de RAM para criptografia e agregação de pacotes. Este roteador opera com arquitetura MIPS (32-bit) e apenas ' + memMb + ' MB de RAM (onde o Speedify esgotaria a memória imediatamente).',
+						E('br'),
+						'A redundância e distribuição de tráfego neste hardware é gerenciada nativamente com altíssima eficiência pelo ',
+						E('strong', { style: 'color:#38bdf8;' }, ['Multi-WAN leve (mwan3)']),
+						' (Failover automático e Balanceamento inteligente).'
+					])
+				])
+			]);
+		}
 		const storageMode=installed&&/^(internal|external|ram)$/.test(installedMode)?installedMode:rec;
 		const accountLabel=f.account_logged_in?(f.account_licensed?'LOGADO / LICENCIADO':'LOGADO'):'NÃO LOGADO';
 		const accountClass=f.account_logged_in?'online':'standby';
