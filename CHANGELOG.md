@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.64
+
+- **🎨 Feedback Visual Inconfundível no Bloqueio de Apps e Serviços**:
+  - **Identificação Imediata de Estado (Ativo / Bloqueado vs Liberado)**:
+    - O estado bloqueado agora exibe gradiente vibrante vermelho (`#ef4444` → `#dc2626`), borda em vermelho brilhante, brilho de sombra avermelhada (`box-shadow`), ícone `🚫` e selo de status em caixa alta `BLOQUEADO`.
+    - O estado liberado (inativo) mantém aspecto sutil e discreto em cinza-ardósia (`rgba(148,163,184,.08)`).
+    - Diferenciação visual 100% clara, impossível de confundir à primeira vista.
+  - **Propagação Global de Variáveis de Tema para Modais (`overview.css`)**:
+    - As variáveis de cores do tema (`--ex-primary-safe`, `--ex-secondary-safe`) foram movidas para o escopo global (`:root, body, .modal, .cbi-modal, #modal_overlay`), garantindo que todos os botões e gradientes dentro de qualquer pop-up ou modal recebam as cores corretas com fallbacks sólidos.
+
 ## 0.9.63
 
 - **📱 Responsividade Mobile Perfeita & Eliminação de Quebras Visuais**:

@@ -1291,11 +1291,11 @@ return view.extend({
 			const selectedServices = new Set(initialBlocked);
 
 			const serviceOptions = [
-				{ id: 'tiktok', label: '🎵 TikTok' },
-				{ id: 'instagram', label: '📸 Instagram' },
-				{ id: 'youtube', label: '▶️ YouTube' },
-				{ id: 'discord', label: '💬 Discord' },
-				{ id: 'roblox', label: '🎮 Roblox' }
+				{ id: 'tiktok', name: 'TikTok', icon: '🎵' },
+				{ id: 'instagram', name: 'Instagram', icon: '📸' },
+				{ id: 'youtube', name: 'YouTube', icon: '▶️' },
+				{ id: 'discord', name: 'Discord', icon: '💬' },
+				{ id: 'roblox', name: 'Roblox', icon: '🎮' }
 			];
 
 			const parModeDefaultBtn = E('button', {
@@ -1337,26 +1337,42 @@ return view.extend({
 				safeSearchToggle
 			);
 
-			const servicesWrap = E('div', { style: 'margin-top: 10px; padding: 10px; background: rgba(255,255,255,.02); border-radius: 8px;' });
-			servicesWrap.appendChild(E('strong', { style: 'font-size: 0.83rem; display: block; margin-bottom: 6px;' }, ['🚫 Bloqueio de Apps e Serviços:']));
-			const chipsRow = E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' });
+			const servicesWrap = E('div', { style: 'margin-top: 10px; padding: 12px; background: rgba(255,255,255,.025); border-radius: 9px; border: 1px solid rgba(127,127,127,.12);' });
+			servicesWrap.appendChild(E('strong', { style: 'font-size: 0.85rem; display: block; margin-bottom: 8px;' }, ['🚫 Bloqueio de Apps e Serviços:']));
+			const chipsRow = E('div', { style: 'display: flex; flex-wrap: wrap; gap: 8px;' });
 
 			serviceOptions.forEach(function(opt) {
 				const isChecked = selectedServices.has(opt.id);
+				const renderChip = function(btn, checked) {
+					btn.replaceChildren();
+					if (checked) {
+						btn.appendChild(E('span', { class: 'ex-chip-icon' }, ['🚫']));
+						btn.appendChild(E('span', { class: 'ex-chip-name' }, [opt.name]));
+						btn.appendChild(E('span', { class: 'ex-chip-status' }, ['BLOQUEADO']));
+					} else {
+						btn.appendChild(E('span', { class: 'ex-chip-icon' }, [opt.icon]));
+						btn.appendChild(E('span', { class: 'ex-chip-name' }, [opt.name]));
+					}
+				};
 				const chip = E('button', {
 					type: 'button',
-					class: 'ex-priority-option-btn' + (isChecked ? ' active' : ''),
-					style: 'padding: 5px 10px; font-size: 0.8rem;',
+					class: 'ex-service-chip' + (isChecked ? ' active' : ''),
+					title: isChecked ? 'Clique para liberar o ' + opt.name : 'Clique para bloquear o ' + opt.name,
 					click: function() {
-						if (selectedServices.has(opt.id)) {
-							selectedServices.delete(opt.id);
-							chip.classList.remove('active');
-						} else {
+						const nowChecked = !selectedServices.has(opt.id);
+						if (nowChecked) {
 							selectedServices.add(opt.id);
 							chip.classList.add('active');
+							chip.title = 'Clique para liberar o ' + opt.name;
+						} else {
+							selectedServices.delete(opt.id);
+							chip.classList.remove('active');
+							chip.title = 'Clique para bloquear o ' + opt.name;
 						}
+						renderChip(chip, nowChecked);
 					}
-				}, [ opt.label ]);
+				});
+				renderChip(chip, isChecked);
 				chipsRow.appendChild(chip);
 			});
 			servicesWrap.appendChild(chipsRow);
