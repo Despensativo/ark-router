@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# Sanitiza todos os nomes de host no dhcp para evitar crashes do dnsmasq (RFC 1123)
+changed=0
+for h in $(uci -q show dhcp 2>/dev/null | grep -E '\.name=' | cut -d. -f2 | cut -d= -f1 | sort -u); do
+	cur_name="$(uci -q get "dhcp.$h.name" || true)"
+	[ -n "$cur_name" ] || continue
+	clean_name="$(printf '%s' "$cur_name" | sed 's/[^a-zA-Z0-9_-]/-/g; s/-\{2,\}/-/g; s/^-//; s/-$//')"
+	[ -n "$clean_name" ] || clean_name="ark-$h"
+	if [ "$cur_name" != "$clean_name" ]; then
+		uci -q set "dhcp.$h.name=$clean_name"
+		changed=1
+	fi
+done
+[ "$changed" = 1 ] && uci commit dhcp || true
+
+exit 0

@@ -2707,7 +2707,8 @@ return view.extend({
 		]);
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['speedify-pairing']).then(function(r){
 			if(r.code)throw new Error(r.stderr||'Falha ao gerar pareamento');
-			const data=JSON.parse(r.stdout||'{}'), url=data.activationUrl||'', code=data.activationCode||'';
+			let data={}; try{ data=JSON.parse(r.stdout||'{}'); }catch(e){}
+			const url=data.activationUrl||'', code=data.activationCode||'';
 			ui.showModal('Parear Speedify Router',[
 				E('p',{},['Abra o link abaixo em qualquer navegador, faça login na sua conta Speedify e conclua a ativação. O token fica salvo localmente no roteador.']),
 				code?E('div',{class:'ex-row'},[E('span',{},['Código']),E('strong',{},[code])]):'',
@@ -2720,7 +2721,7 @@ return view.extend({
 	checkSpeedifyUser: function(){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['speedify-user']).then(function(r){
 			if(r.code)throw new Error(r.stderr||'Falha ao verificar login');
-			const data=JSON.parse(r.stdout||'{}');
+			let data={}; try{ data=JSON.parse(r.stdout||'{}'); }catch(e){}
 			ui.showModal('Conta Speedify',[
 				E('div',{class:'ex-grid ex-grid-2 ex-qos-grid'},[
 					E('div',{class:'ex-row'},[E('span',{},['Login']),E('strong',{},[data.logged_in?'Conectado':'Não conectado'])]),
@@ -3412,6 +3413,12 @@ return view.extend({
 				style: 'width: 20px; height: 20px; cursor: pointer;'
 			});
 
+			const fallbackToggle = E('input', {
+				type: 'checkbox',
+				checked: !!status.dhcp_fallback,
+				style: 'width: 20px; height: 20px; cursor: pointer;'
+			});
+
 			const ipInputs = [
 				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[0] || '1.1.1.1', placeholder: 'ex: 1.1.1.1', style: 'width: 100%; box-sizing: border-box;' }),
 				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[1] || '8.8.8.8', placeholder: 'ex: 8.8.8.8', style: 'width: 100%; box-sizing: border-box;' }),
@@ -3533,6 +3540,18 @@ return view.extend({
 					])
 				]),
 				E('div', { class: 'ex-device-config-block' }, [
+					E('div', { style: 'display: flex; align-items: center; justify-content: space-between;' }, [
+						E('div', {}, [
+							E('strong', {}, ['Redundância de Fallback no DHCP (1.1.1.1)']),
+							E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Envia 1.1.1.1 como DNS secundário no DHCP. Se o roteador reiniciar, os aparelhos continuam navegando sem interrupção.'])
+						]),
+						E('label', { class: 'ex-switch' }, [
+							fallbackToggle,
+							E('span', { class: 'ex-switch-slider' })
+						])
+					])
+				]),
+				E('div', { class: 'ex-device-config-block' }, [
 					E('strong', {}, ['Predefinições Rápidas']),
 					E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Selecione uma combinação pronta ou digite seus próprios IPs:']),
 					E('div', { class: 'ex-grid ex-grid-2', style: 'margin-top: 8px; gap: 8px;' }, presetBtns)
@@ -3559,7 +3578,8 @@ return view.extend({
 							const s3 = ipInputs[2].value.trim();
 							const s4 = ipInputs[3].value.trim();
 							const alls = allserversToggle.checked ? '1' : '0';
-							const args = ['dns-turbo-save', alls, s1, s2, s3, s4];
+							const fallback = fallbackToggle.checked ? '1' : '0';
+							const args = ['dns-turbo-save', alls, s1, s2, s3, s4, fallback];
 							return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 								if (r.code) throw new Error(r.stderr || 'Falha ao salvar DNS');
 								ui.hideModal();

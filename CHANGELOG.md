@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.49
+
+- **🛡️ Auditoria Geral de Resiliência e Blindagem de Sistema**:
+  - **Auto-Cura Global de Hostnames DHCP (`sanitize_dhcp_hostnames`)**: Script de inicialização (`99-ark-router-dhcp-sanitize`) e sanitização automática antes de recarregar o `dnsmasq`, garantindo que nenhum nome de host (mesmo criado manualmente no OpenWrt) cause travamento de DNS.
+  - **Correção da Regra HTTPS / HTTP/3 QUIC no MWAN3**: Separadas as regras de porta 443 em TCP (`https`) e UDP (`https_quic`), eliminando o aviso do OpenWrt que ignorava a porta 443 ao usar `proto=all`.
+  - **Blindagem de Limites por Dispositivo (NFTables)**: Correção na recriação da tabela `ark_device_limits`, evitando acúmulo de regras duplicadas a cada salvamento de dispositivo.
+  - **Opção de Redundância Fallback no DHCP (1.1.1.1)**: Adicionada chave no modal de DNS Turbo permitindo enviar `1.1.1.1` como DNS secundário no DHCP caso o usuário deseje tolerância a falhas na rede.
+  - **Tratamento de Exceções no Painel**: Protegidas rotinas de parse JSON em modais para evitar falhas silenciosas na interface.
+
 ## 0.9.48
 
 - **🛡️ Sanitização Automática de Nomes de Dispositivos para o DNS (RFC 1123)**:
