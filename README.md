@@ -1,17 +1,45 @@
 # ARK Router
 
-![OpenWrt](https://img.shields.io/badge/OpenWrt-LuCI-00B5E2?logo=openwrt&logoColor=white)
+![OpenWrt](https://img.shields.io/badge/OpenWrt-24.x%20%2F%2025.x-00B5E2?logo=openwrt&logoColor=white)
+![Release](https://img.shields.io/badge/release-v0.9.53-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![Language](https://img.shields.io/badge/UI-PT--BR%20%2F%20EN-blue)
-![Status](https://img.shields.io/badge/status-pilot%20release-orange)
+![Platform](https://img.shields.io/badge/arch-all%20%2F%20noarch-orange)
 
-ARK Router is a responsive, bilingual and modular operational dashboard for OpenWrt/LuCI. It turns the LuCI home screen into a practical control center for home, office, event, field and mobile routers with multiple WAN links, Starlink, guest Wi-Fi limits and SQM/CAKE QoS.
+ARK Router is a modern, responsive, bilingual, modular operational dashboard and control center for **OpenWrt / LuCI**. It turns the default LuCI home screen into a powerful, clean, executive control center for home, gaming, office, event, field, Starlink and mobile multi-WAN routers with SQM/CAKE QoS, real-time per-device bandwidth monitoring, DNS Turbo benchmark, ZeroTier remote access and automated system tuning.
 
-The project does not replace LuCI. It adds a cleaner operations home screen on top of LuCI, with safer shortcuts for common actions.
+The project does not replace OpenWrt or LuCI — it operates on top of LuCI as an advanced operations suite (`luci-app-ark-router`) with safer shortcuts, real-time telemetry and zero-bloat architecture.
 
-Keywords: ARK Router, OpenWrt dashboard, LuCI dashboard, OpenWrt plugin, router management, router monitoring, Multi-WAN, mwan3, failover, load balancing, SQM, CAKE QoS, upload shaping, guest Wi-Fi, bandwidth control, per-device traffic, Wi-Fi channel analyzer, Starlink router, Starlink telemetry, Starlink alignment, obstruction monitoring, ZeroTier, Speedify Router, OpenWrt UI, embedded router setup.
+> **Keywords / SEO**: ARK Router, OpenWrt dashboard, LuCI dashboard, OpenWrt moderno, monitorar tráfego por dispositivo, per-device bandwidth monitor, OpenWrt Starlink telemetry, ZeroTier OpenWrt autostart, DNS benchmark router, SQM CAKE bufferbloat QoS, Multi-WAN failover load balancing, Speedify OpenWrt bonding, OpenWrt mobile UI, painel roteador OpenWrt, network bandwidth limiter, real-time router monitoring.
 
-The current release is **0.9.43**. ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
+The current official release is **v0.9.53**. ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
+
+---
+
+## 🇧🇷 Visão Geral (Português do Brasil)
+
+O **ARK Router** transforma roteadores com **OpenWrt** em verdadeiras centrais de comando profissionais, substituindo a interface estática tradicional por um painel executivo moderno, ultrarrápido e 100% responsivo para smartphones e computadores.
+
+### 🌟 Destaques Principais:
+1. **📊 Tráfego por Dispositivo em Tempo Real (Hardware DMA & Anti-Jitter)**:
+   - Medição instantânea via contadores diretos do rádio Wi-Fi (`iwinfo`), sem atrasos e sem travar em 0 bps.
+   - Filtro inteligente de decaimento suave (EMA) que mantém a leitura estável na tela entre rajadas.
+   - Coluna de **Total Consumido** (MB/GB) e ordenação estável por Nome, Total ou Velocidade Atual sem fazer a lista pular debaixo do cursor.
+2. **🚀 DNS Turbo & Benchmark Mundial Integrado**:
+   - Teste de latência em tempo real comparando os principais provedores de DNS do mundo (Cloudflare, Google, Quad9, OpenDNS, AdGuard).
+   - Aplicação instantânea com 1 clique e auto-recuperação segura no roteador e nos clientes DHCP da rede.
+3. **🌐 Acesso Remoto ZeroTier Inteligente**:
+   - Chave seletora no painel para ligar ou desligar o início automático com o sistema (Boot).
+   - Arquitetura híbrida: executa nativamente em roteadores com muita memória flash (eMMC/NAND) e auto-extrai na RAM (`/tmp`) em apenas 0.3s em aparelhos compactos de 16MB/32MB.
+4. **🛰️ Central Multi-Starlink (Telemetria & Alinhamento)**:
+   - Diagnóstico em tempo real de múltiplas antenas Starlink: bússola de alinhamento 3D, obstruções, perda de pacotes, SNR e alertas de hardware.
+   - Página `/starlink/` de leitura rápida e segura para a rede local sem necessidade de login administrativo.
+5. **⚡ Otimizador de Desempenho & Memória (Kernel & RAM Tuning)**:
+   - Auto-purga periódica de caches de memória RAM, reciclagem agressiva de conexões conntrack TCP/UDP, balanceamento de interrupções de CPU multithread (`irqbalance`) e aceleração do `nlbwmon` para 2 segundos.
+6. **📱 100% Otimizado para Celular (Mobile-First)**:
+   - Layout fluido com botões grandes de toque (48px) para iPhones e Androids, sem rolagem horizontal ou quebras visuais.
+
+---
 
 ## Why Use It
 
@@ -104,7 +132,11 @@ The package manager adapter supports both `apk` and `opkg` for optional package 
 | Internet setup | Dashboard WAN editors for DHCP, PPPoE, static IPv4, DNS and WAN2-to-LAN role changes |
 | LAN | Wired LAN port status |
 | Wi-Fi | Main and guest cards, password visibility, password editing, country selection and channel analysis |
-| Devices | Friendly names, per-device traffic when available and DHCP reservation by MAC |
+| Devices | Friendly names, per-device real-time rates (Wi-Fi DMA), smooth decay, total usage column and DHCP reservation by MAC |
+| DNS Turbo | Global DNS provider benchmark (Cloudflare, Google, Quad9, OpenDNS, AdGuard) with 1-click apply and zero-downtime safety |
+| Performance Center | Conntrack table recycling, automated RAM cache purging, IRQ balance multithreading and nlbwmon 2s acceleration |
+| ZeroTier | Hybrid architecture (direct flash execution or 0.3s RAM loader) with interactive boot autostart toggle |
+| Mobile UX | Native touch responsiveness for iOS and Android with 48px touch targets and zero horizontal scroll |
 | QoS | Optional CAKE priority marking for selected main-network devices |
 | SQM | Dynamic SQM/CAKE controls for every interface configured as an IPv4 WAN, plus guest download/upload limits; `0` means unlimited for that direction |
 | HTTPS | Redirect control and local CA download guidance |
@@ -330,7 +362,7 @@ tar -xzf /tmp/ark-router-config-backup-YYYYMMDD-HHMMSS.tar.gz -C /
 
 ## Project Status
 
-Version 0.9.40 is the current pilot release. It includes dynamic selection of WAN2 physical LAN ports and port verification advisories in Ark - Setup, smart top-badge visibility for Speedify, modular WAN & Fiber Performance Optimization center (TCP Turbo 8MB, Baby Jumbo MTU 1500, Software Flow Offloading and calibrated CAKE line-layer overhead), PPPoE password reveal and preloading, visual device badges for IP reservations and Gamer/Video queues, non-blocking Wi-Fi deletion confirmations, in addition to progressive dynamic Multi-WAN addition (WAN3, WAN4...), strict Starlink validation avoiding false positives on standard CGNAT links, CAKE SQM limits directly in Mbps, RAM-conscious speed testing with Fast.com, dedicated multi-Starlink telemetry in Lite and Full, automatic first-WAN loading/retry, Starlink-only filtering in the read-only viewer, green/red alignment bands and diagnostic cards, GitHub Release packaging, SSH install/update commands, dashboard self-update validation, ZeroTier remote access, optional Speedify controls, dynamic WAN/LAN port handling, Wi-Fi channel-width/country controls, safer LAN/uHTTPd binding, DHCP DNS editing, one-click lightweight-module installation, per-device traffic accounting, guest rate limiting and detailed WAN protocol/gateway/netmask/DNS/latency/traffic totals. It is suitable for early public testing; additional router models and OpenWrt releases should be tracked through GitHub issues before calling it broadly stable.
+Version 0.9.53 is the current official release. It brings real-time per-device hardware rates (Wi-Fi DMA), exponential decay smoothing (anti-dropping to 0 bps), an in-place anti-jitter update engine with an integrated Total consumed column (MB/GB), a built-in multi-provider DNS Turbo benchmark (Cloudflare, Google, Quad9, OpenDNS, AdGuard), a ZeroTier remote-access module with hybrid flash/RAM execution and interactive boot autostart switch, a System Performance and Stability center (RAM autopurge, conntrack connection recycling, IRQ Balance, nlbwmon 2s acceleration), full mobile touch responsiveness (iOS/Android) with 48px touch targets, dynamic WAN2-WAN4 Multi-WAN failover/balancing, multi-Starlink telemetry and alignment with LAN-only `/starlink/` viewer, CAKE/SQM upload and download queue management, guest rate limits, and safe rollback checkpoints. Suitable for home, office, mobile, event and production OpenWrt 24.x/25.x setups.
 
 ## License
 
