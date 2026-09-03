@@ -2290,8 +2290,16 @@ system_perf_status_json() {
 	dns_blocker_active=false
 	[ -n "$blocker_name" ] && dns_blocker_active=true
 
-	printf '{"conntrack_recycle":%s,"ram_autopurge":%s,"speedify_encryption":%s,"speedify_installed":%s,"speedify_log_cap":%s,"nlbwmon_lite":%s,"irqbalance_installed":%s,"irqbalance_active":%s,"conntrack_count":%s,"conntrack_max":%s,"mem_total_kb":%s,"mem_avail_kb":%s,"dns_allservers":%s,"dns_servers":"%s","dns_blocker_active":%s,"dns_blocker_name":"%s"}\n' \
-		"$conntrack_recycle" "$ram_autopurge" "$speedify_encryption" "$speedify_installed" "$speedify_log_cap" "$nlbwmon_lite" "$irq_installed" "$irq_active" "$conntrack_count" "$conntrack_max" "$mem_total_kb" "$mem_avail_kb" "$dns_allservers" "$(json_escape "$dns_servers")" "$dns_blocker_active" "$(json_escape "$blocker_name")"
+	root_df="$(df -k / 2>/dev/null | awk 'NR==2{print $2,$3,$4}')"
+	root_total_kb="$(printf '%s' "$root_df" | awk '{print $1}')"
+	root_used_kb="$(printf '%s' "$root_df" | awk '{print $2}')"
+	root_avail_kb="$(printf '%s' "$root_df" | awk '{print $3}')"
+	[ -n "$root_total_kb" ] || root_total_kb=0
+	[ -n "$root_used_kb" ] || root_used_kb=0
+	[ -n "$root_avail_kb" ] || root_avail_kb=0
+
+	printf '{"conntrack_recycle":%s,"ram_autopurge":%s,"speedify_encryption":%s,"speedify_installed":%s,"speedify_log_cap":%s,"nlbwmon_lite":%s,"irqbalance_installed":%s,"irqbalance_active":%s,"conntrack_count":%s,"conntrack_max":%s,"mem_total_kb":%s,"mem_avail_kb":%s,"root_total_kb":%s,"root_used_kb":%s,"root_avail_kb":%s,"dns_allservers":%s,"dns_servers":"%s","dns_blocker_active":%s,"dns_blocker_name":"%s"}\n' \
+		"$conntrack_recycle" "$ram_autopurge" "$speedify_encryption" "$speedify_installed" "$speedify_log_cap" "$nlbwmon_lite" "$irq_installed" "$irq_active" "$conntrack_count" "$conntrack_max" "$mem_total_kb" "$mem_avail_kb" "$root_total_kb" "$root_used_kb" "$root_avail_kb" "$dns_allservers" "$(json_escape "$dns_servers")" "$dns_blocker_active" "$(json_escape "$blocker_name")"
 }
 
 dns_turbo_status_json() {
