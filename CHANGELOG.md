@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.56
+
+- **⚡ Correção na Atualização em Tempo Real de Limites de Banda e Badges de Dispositivos**:
+  - **Atualização Instantânea**: Corrigido o fluxo do renderizador in-place da lista de dispositivos para atualizar imediatamente as badges de limites (`🛑 100M↓ / 100M↑`), IP fixo, prioridade e nome ao salvar ou quando valores forem alterados manualmente nos campos.
+  - **Reordenação e Rebuild Forçado**: Adicionado `forceDeviceReorder` ao confirmar o modal de configuração do dispositivo para garantir rebuild visual imediato no DOM sem necessidade de recarregar a página (F5).
+  - **Sincronização de Eventos**: Suporte a eventos de `change` e `input` nos controles numéricos do modal de limites individuais.
+
 ## 0.9.55
 
 - **🛡️ Novo Card Opcional: Bloqueador de Anúncios & Rastreadores (AdBlock)**:

@@ -784,7 +784,7 @@ return view.extend({
 		);
 
 		if (shouldKeepInPlace) {
-			devices.forEach(function(d) {
+			devices.forEach(L.bind(function(d) {
 				const row = body.querySelector('tr[data-mac="' + d.mac + '"]');
 				if (row) {
 					const downEl = row.querySelector('.ex-rate-cell .down');
@@ -796,8 +796,34 @@ return view.extend({
 						const tot = (Number(d.rate.totalRx) || 0) + (Number(d.rate.totalTx) || 0);
 						totEl.textContent = tot > 0 ? formatBytes(tot) : '—';
 					}
+					const reservedIp = reservedMap[d.mac];
+					const prioDscp = priorityMap[d.mac];
+					const lim = limitsMap[d.mac];
+					const badges = [];
+					if (reservedIp) {
+						badges.push(E('span', { class: 'ex-device-badge badge-reserved', title: 'IP Fixo Reservado no DHCP: ' + reservedIp }, [ '🔒 IP Fixo' ]));
+					}
+					if (prioDscp === 'EF') {
+						badges.push(E('span', { class: 'ex-device-badge badge-gamer', title: 'Fila Gamer / Prioridade Máxima (EF)' }, [ '🎮 Gamer' ]));
+					} else if (prioDscp === 'AF41') {
+						badges.push(E('span', { class: 'ex-device-badge badge-video', title: 'Fila de Vídeo / Multimídia (AF41)' }, [ '📺 Vídeo' ]));
+					}
+					if (lim && lim.enabled && (lim.down > 0 || lim.up > 0)) {
+						const downStr = lim.down > 0 ? lim.down + 'M↓' : '';
+						const upStr = lim.up > 0 ? lim.up + 'M↑' : '';
+						const limText = [downStr, upStr].filter(Boolean).join(' / ');
+						badges.push(E('span', { class: 'ex-device-badge badge-limited', title: 'Limite de Banda Ativo: ' + limText }, [ '🛑 ' + limText ]));
+					}
+					const nameRowEl = row.querySelector('.ex-device-name-row');
+					if (nameRowEl) {
+						nameRowEl.replaceChildren.apply(nameRowEl, [ E('strong', {}, [d.name]) ].concat(badges));
+					}
+					const metaEl = row.querySelector('.ex-device-meta');
+					if (metaEl) {
+						metaEl.textContent = d.ip + ' • ' + d.mac + (reservedIp && reservedIp !== d.ip ? ' (Fixo: ' + reservedIp + ')' : '');
+					}
 				}
-			});
+			}, this));
 			text('ex-device-count', devices.length + ' conectado' + (devices.length === 1 ? '' : 's'));
 			return;
 		}
@@ -1228,7 +1254,9 @@ return view.extend({
 
 			limitToggle.addEventListener('change', updatePresetActive);
 			downInput.addEventListener('input', updatePresetActive);
+			downInput.addEventListener('change', updatePresetActive);
 			upInput.addEventListener('input', updatePresetActive);
+			upInput.addEventListener('change', updatePresetActive);
 			updatePresetActive();
 
 			sections.push(E('div', { class: 'ex-device-config-block' }, [
@@ -1254,10 +1282,16 @@ return view.extend({
 				const dscpVal = (selectedPriority === 'video') ? 'AF31' : 'AF41';
 				const finalIp = isReserved ? ipInput.value.trim() : (device.ip || state.ip || '');
 				const limEnabled = limitToggle.checked ? '1' : '0';
-				const limDown = limitToggle.checked ? (Number(downInput.value) || 0) : 0;
-				const limUp = limitToggle.checked ? (Number(upInput.value) || 0) : 0;
+				const limDown = limitToggle.checked ? (Math.round(Number(downInput.value)) || 0) : 0;
+				const limUp = limitToggle.checked ? (Math.round(Number(upInput.value)) || 0) : 0;
 				const args=['device-save',device.mac,name.value.trim(),isReserved?'reserved':'automatic',finalIp,prioEnabled,dscpVal,selectedWanRoute,limEnabled,String(limDown),String(limUp)];
-				return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar');ui.hideModal();ui.addNotification(null,E('p',{},['Configurações do dispositivo salvas.']));return this.fetchData().then(L.bind(this.update,this));},this)).catch(function(e){btn.disabled = false; btn.textContent = 'Salvar configurações'; if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});
+				return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){
+					if(r.code)throw new Error(r.stderr||'Falha ao salvar');
+					ui.hideModal();
+					ui.addNotification(null,E('p',{},['Configurações do dispositivo salvas.']));
+					this.forceDeviceReorder = true;
+					return this.fetchData().then(L.bind(this.update,this));
+				},this)).catch(function(e){btn.disabled = false; btn.textContent = 'Salvar configurações'; if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});
 			},this)},['Salvar configurações'])]));
 			ui.showModal('Configurar dispositivo',sections);name.focus();
 		},this)).catch(function(e){ui.hideModal();ui.addNotification(null,E('p',{},[e.message]),'danger');});
