@@ -763,6 +763,7 @@ return view.extend({
 		const devices=[];
 		leases.forEach(function(l) { const mac=String(l.macaddr||'').toUpperCase(); if(!mac||seen[mac])return; seen[mac]=1; const a=main[mac]||guest[mac], isGuest=!!guest[mac]||(guestPrefix&&String(l.ipaddr||'').indexOf(guestPrefix)===0); devices.push({mac:mac,ip:l.ipaddr||'—',name:names[mac]||l.hostname||'Dispositivo sem nome',network:networkLabel(mac,l.ipaddr,true),guest:isGuest,signal:a&&a.signal,rate:rates[mac]||{rx:0,tx:0,totalRx:0,totalTx:0}}); });
 		Object.keys(main).concat(Object.keys(guest)).forEach(function(mac) { if(seen[mac])return; seen[mac]=1; const a=main[mac]||guest[mac], isGuest=!!guest[mac]; devices.push({mac:mac,ip:'—',name:names[mac]||'Dispositivo sem nome',network:networkLabel(mac,'',false),guest:isGuest,signal:a.signal,rate:rates[mac]||{rx:0,tx:0,totalRx:0,totalTx:0}}); });
+		this.sortDevices(devices);
 		const existingRows = body.querySelectorAll('tr[data-mac]');
 		const nowTime = Date.now();
 		let isHovered = false;
@@ -771,12 +772,20 @@ return view.extend({
 			isHovered = !!(card && card.matches(':hover'));
 		} catch(e) {}
 
-		// Atualização no lugar (In-place) se a lista já estiver montada:
-		// Se o usuário estiver interagindo (hover) ou se for ordenação por 'now' e passaram menos de 6s:
-		// Atualiza apenas os números de velocidade e total sem mexer na posição das linhas!
-		const canUpdateInPlace = existingRows.length > 0 && existingRows.length === devices.length && (isHovered || (this.deviceSortKey === 'now' && (nowTime - (this.lastDeviceReorderTime || 0)) < 6000));
+		const newOrder = devices.map(function(d){ return d.mac; }).join(',');
+		const currentOrder = Array.prototype.map.call(existingRows, function(r){ return r.getAttribute('data-mac'); }).join(',');
+		const orderChanged = (newOrder !== currentOrder);
 
-		if (canUpdateInPlace) {
+		// Para 'Nome' e 'Total': se a ordem mudar, a troca é imediata (zero delay).
+		// Se a ordem não mudou, apenas atualiza os números in-place sem mexer no DOM.
+		// Somente em 'Agora' é que aplicamos o delay de amortecimento (5s) para evitar que pacotinhos façam a lista dançar.
+		const shouldKeepInPlace = existingRows.length > 0 && existingRows.length === devices.length && (
+			!orderChanged ||
+			isHovered ||
+			(this.deviceSortKey === 'now' && (nowTime - (this.lastDeviceReorderTime || 0)) < 5000)
+		);
+
+		if (shouldKeepInPlace) {
 			devices.forEach(function(d) {
 				const row = body.querySelector('tr[data-mac="' + d.mac + '"]');
 				if (row) {
@@ -796,7 +805,6 @@ return view.extend({
 		}
 
 		this.lastDeviceReorderTime = nowTime;
-		this.sortDevices(devices);
 		body.replaceChildren();
 		devices.forEach(L.bind(function(d) {
 			const reservedIp = reservedMap[d.mac];
