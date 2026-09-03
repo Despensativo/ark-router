@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.62
+
+- **🛡️ Controle Parental e Filtros Individuais por Dispositivo**:
+  - **Proteção Sob Medida no Modal do Aparelho**: Adicionada a seção *"Controle Parental & Filtros Deste Aparelho"* no modal de configuração individual de cada dispositivo (`overview.js`).
+  - **Opção "Padrão da Rede" vs "Filtro Individual"**: O dispositivo pode herdar a proteção geral da rede ou receber regras personalizadas exclusivas.
+  - **Filtros Granulares**: Alternadores para *Bloquear Conteúdo Adulto / Pornografia* e *Forçar Busca Segura (SafeSearch)* diretamente para o aparelho escolhido.
+  - **Bloqueio de Apps e Jogos (Perfil Full / AdGuard Home)**: Seleção rápida em chips para bloquear TikTok, Instagram, YouTube, Discord e Roblox individualmente.
+  - **Isolamento e Segurança Multi-Modelo**:
+    - Em roteadores com AdGuard Home local (Perfil Full), as regras são sincronizadas nativamente na lista de clientes persistentes (`clients.persistent`) do AdGuard Home.
+    - Em roteadores Lite ou sem AdGuard Home, as regras utilizam redirecionamento DNAT nativo no firewall OpenWrt para Anycast Familiar, com zero consumo de RAM e sem dependência de binários externos.
+    - Se o usuário escolher "Padrão da Rede", nenhuma regra residual é mantida.
+
 ## 0.9.61
 
 - **🛡️ Blindagem de DNS e Eliminação de Bypass no Bloqueio Adulto / SafeSearch**:

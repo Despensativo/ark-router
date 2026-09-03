@@ -1274,6 +1274,124 @@ return view.extend({
 				limitFieldsRow
 			]));
 
+			// --- Seção: Controle Parental & Filtros Deste Aparelho ---
+			let parentalMode = state.parental_mode || 'default';
+			const parBlockToggle = E('input', { type: 'checkbox' });
+			parBlockToggle.checked = !!state.parental_block;
+
+			const safeSearchToggle = E('input', { type: 'checkbox' });
+			safeSearchToggle.checked = !!state.safesearch;
+
+			const hasAgh = !!state.adguard_installed;
+			const initialBlocked = (state.blocked_services || '').split(',').map(function(s){ return s.trim().toLowerCase(); }).filter(Boolean);
+			const selectedServices = new Set(initialBlocked);
+
+			const serviceOptions = [
+				{ id: 'tiktok', label: '🎵 TikTok' },
+				{ id: 'instagram', label: '📸 Instagram' },
+				{ id: 'youtube', label: '▶️ YouTube' },
+				{ id: 'discord', label: '💬 Discord' },
+				{ id: 'roblox', label: '🎮 Roblox' }
+			];
+
+			const parModeDefaultBtn = E('button', {
+				type: 'button',
+				class: 'ex-priority-option-btn' + (parentalMode !== 'custom' ? ' active' : ''),
+				click: function() { updateParentalModeUI('default'); }
+			}, [ '🌐 Padrão da Rede' ]);
+
+			const parModeCustomBtn = E('button', {
+				type: 'button',
+				class: 'ex-priority-option-btn' + (parentalMode === 'custom' ? ' active' : ''),
+				click: function() { updateParentalModeUI('custom'); }
+			}, [ '🛡️ Filtro Individual' ]);
+
+			const parDetailContainer = E('div', { style: 'margin-top: 10px;' });
+
+			const makeSimpleToggleRow = function(title, desc, input) {
+				return E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; background: rgba(255,255,255,.025); border-radius: 8px; margin-top: 6px;' }, [
+					E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
+						E('strong', { style: 'font-size: 0.85rem; display: block;' }, [title]),
+						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px; line-height: 1.3;' }, [desc])
+					]),
+					E('label', { class: 'ex-switch', style: 'flex: 0 0 auto;' }, [
+						input,
+						E('span', { class: 'ex-switch-slider' })
+					])
+				]);
+			};
+
+			const rowParBlock = makeSimpleToggleRow(
+				'🔞 Bloquear Conteúdo Adulto / Pornografia',
+				'Bloqueia sites pornográficos e explícitos exclusivamente para este aparelho.',
+				parBlockToggle
+			);
+
+			const rowSafeSearch = makeSimpleToggleRow(
+				'🔍 Forçar Busca Segura (SafeSearch)',
+				'Obriga o filtro de família no Google, Bing e YouTube para proteger crianças.',
+				safeSearchToggle
+			);
+
+			const servicesWrap = E('div', { style: 'margin-top: 10px; padding: 10px; background: rgba(255,255,255,.02); border-radius: 8px;' });
+			servicesWrap.appendChild(E('strong', { style: 'font-size: 0.83rem; display: block; margin-bottom: 6px;' }, ['🚫 Bloqueio de Apps e Serviços:']));
+			const chipsRow = E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' });
+
+			serviceOptions.forEach(function(opt) {
+				const isChecked = selectedServices.has(opt.id);
+				const chip = E('button', {
+					type: 'button',
+					class: 'ex-priority-option-btn' + (isChecked ? ' active' : ''),
+					style: 'padding: 5px 10px; font-size: 0.8rem;',
+					click: function() {
+						if (selectedServices.has(opt.id)) {
+							selectedServices.delete(opt.id);
+							chip.classList.remove('active');
+						} else {
+							selectedServices.add(opt.id);
+							chip.classList.add('active');
+						}
+					}
+				}, [ opt.label ]);
+				chipsRow.appendChild(chip);
+			});
+			servicesWrap.appendChild(chipsRow);
+
+			const updateParentalModeUI = function(mode) {
+				parentalMode = mode;
+				parModeDefaultBtn.classList.toggle('active', parentalMode !== 'custom');
+				parModeCustomBtn.classList.toggle('active', parentalMode === 'custom');
+				parDetailContainer.innerHTML = '';
+
+				if (parentalMode === 'custom') {
+					parDetailContainer.appendChild(rowParBlock);
+					parDetailContainer.appendChild(rowSafeSearch);
+					if (hasAgh) {
+						parDetailContainer.appendChild(servicesWrap);
+					}
+				} else {
+					parDetailContainer.appendChild(E('p', { class: 'ex-muted', style: 'margin: 6px 0 0; font-size: 0.82rem; line-height: 1.4;' }, [
+						'Este aparelho segue as proteções gerais configuradas no painel principal do roteador. Nenhuma restrição ou filtro exclusivo será imposto a ele.'
+					]));
+				}
+			};
+
+			updateParentalModeUI(parentalMode);
+
+			sections.push(E('div', { class: 'ex-device-config-block' }, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px;' }, [
+					E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
+						E('strong', {}, ['🛡️ Controle Parental & Filtros Deste Aparelho']),
+						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Defina regras individuais de proteção e restrição para este dispositivo:'])
+					])
+				]),
+				E('div', { class: 'ex-priority-button-grid' }, [
+					parModeDefaultBtn,
+					parModeCustomBtn
+				]),
+				parDetailContainer
+			]));
+
 			sections.push(E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
 				const btn = ev.currentTarget;
 				btn.disabled = true;
@@ -1284,7 +1402,10 @@ return view.extend({
 				const limEnabled = limitToggle.checked ? '1' : '0';
 				const limDown = limitToggle.checked ? (Math.round(Number(downInput.value)) || 0) : 0;
 				const limUp = limitToggle.checked ? (Math.round(Number(upInput.value)) || 0) : 0;
-				const args=['device-save',device.mac,name.value.trim(),isReserved?'reserved':'automatic',finalIp,prioEnabled,dscpVal,selectedWanRoute,limEnabled,String(limDown),String(limUp)];
+				const parBlockVal = (parentalMode === 'custom' && parBlockToggle.checked) ? '1' : '0';
+				const safeSearchVal = (parentalMode === 'custom' && safeSearchToggle.checked) ? '1' : '0';
+				const servList = (parentalMode === 'custom' && hasAgh) ? Array.from(selectedServices).join(',') : '';
+				const args=['device-save',device.mac,name.value.trim(),isReserved?'reserved':'automatic',finalIp,prioEnabled,dscpVal,selectedWanRoute,limEnabled,String(limDown),String(limUp),parentalMode,parBlockVal,safeSearchVal,servList];
 				return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){
 					if(r.code)throw new Error(r.stderr||'Falha ao salvar');
 					ui.hideModal();

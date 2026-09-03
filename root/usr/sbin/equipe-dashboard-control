@@ -2798,6 +2798,203 @@ adblock_toggle() {
 	esac
 }
 
+device_apply_parental() {
+	p_mac="$1"
+	p_ip="$2"
+	p_name="$3"
+	p_mode="${4:-default}"
+	p_block="${5:-0}"
+	p_safe="${6:-0}"
+	p_services="${7:-}"
+	p_suffix="$(device_suffix "$p_mac")"
+
+	agh_active=0
+	if [ -x /usr/bin/AdGuardHome ] && [ "$(uci -q get equipe_perf.settings.adblock_cloud || echo 0)" != "1" ] && [ -f /etc/adguardhome/adguardhome.yaml ]; then
+		agh_active=1
+	fi
+
+	if [ "$p_mode" = "custom" ]; then
+		if [ "$agh_active" = "1" ]; then
+			if command -v python3 >/dev/null 2>&1; then
+				python3 -c "
+import re
+
+yaml_path = '/etc/adguardhome/adguardhome.yaml'
+mac = '$p_mac'
+ip = '$p_ip'
+name = '''$p_name''' or mac
+p_block = ('$p_block' == '1')
+s_safe = ('$p_safe' == '1')
+services = [s.strip() for s in '$p_services'.split(',') if s.strip()]
+
+try:
+    with open(yaml_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    idx_p = content.find('  persistent:')
+    if idx_p != -1:
+        eol_p = content.find('\\n', idx_p)
+        if eol_p == -1: eol_p = len(content)
+        idx_log = content.find('\\nlog:\\n', idx_p)
+        if idx_log == -1:
+            idx_log = content.find('\\nlog:', idx_p)
+        if idx_log == -1:
+            idx_log = len(content)
+
+        before = content[:idx_p] + '  persistent:'
+        after = content[idx_log:]
+        mid = content[eol_p:idx_log]
+
+        client_blocks = []
+        current = []
+        for line in mid.splitlines(True):
+            if line.startswith('    - '):
+                if current and any(c.strip() for c in current):
+                    client_blocks.append(''.join(current))
+                    current = []
+            current.append(line)
+        if current and any(c.strip() for c in current):
+            client_blocks.append(''.join(current))
+
+        filtered_blocks = []
+        mac_clean = mac.lower().replace(':', '')
+        name_clean = name.lower()
+        for block in client_blocks:
+            b_clean = block.lower().replace(':', '')
+            if (mac_clean and mac_clean in b_clean) or (ip and ip in block) or (name_clean and ('name: "' + name_clean + '"' in b_clean or 'name: ' + name_clean in b_clean)):
+                continue
+            filtered_blocks.append(block)
+
+        if services:
+            s_lines = '\\n'.join(['          - ' + s for s in services])
+            services_block = '      blocked_services:\\n        schedule:\\n          time_zone: UTC\\n        ids:\\n' + s_lines
+        else:
+            services_block = '      blocked_services:\\n        schedule:\\n          time_zone: UTC\\n        ids: []'
+
+        ids_lines = ('        - \"' + ip + '\"\\n') if ip else ''
+        if mac:
+            ids_lines += '        - \"' + mac.lower() + '\"'
+
+        p_str = 'true' if p_block else 'false'
+        s_str = 'true' if s_safe else 'false'
+
+        new_client = f'''    - name: \"{name}\"
+      ids:
+{ids_lines}
+      use_global_settings: false
+      filtering_enabled: true
+      parental_enabled: {p_str}
+      safesearch_enabled: {s_str}
+      safe_search:
+        enabled: {s_str}
+        bing: {s_str}
+        duckduckgo: {s_str}
+        ecosia: {s_str}
+        google: {s_str}
+        pixabay: {s_str}
+        yandex: {s_str}
+        youtube: {s_str}
+      use_global_blocked_services: false
+{services_block}'''
+        filtered_blocks.append(new_client)
+
+        if filtered_blocks:
+            new_mid = '\\n' + '\\n'.join([b.strip('\\n') for b in filtered_blocks]) + '\\n'
+            new_content = before + new_mid + '\\n' + after.lstrip('\\n')
+        else:
+            new_mid = ' []\\n'
+            new_content = before + new_mid + after.lstrip('\\n')
+        with open(yaml_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+except Exception:
+    pass
+"
+				/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+			fi
+		else
+			if [ "$p_block" = "1" ] || [ "$p_safe" = "1" ]; then
+				uci -q set "firewall.ark_par_$p_suffix=redirect"
+				uci -q set "firewall.ark_par_$p_suffix.name=ARK-Parental-$p_mac"
+				uci -q set "firewall.ark_par_$p_suffix.src=lan"
+				uci -q set "firewall.ark_par_$p_suffix.proto=tcp udp"
+				uci -q set "firewall.ark_par_$p_suffix.src_dport=53"
+				uci -q set "firewall.ark_par_$p_suffix.dest_ip=94.140.14.15"
+				uci -q set "firewall.ark_par_$p_suffix.dest_port=53"
+				uci -q set "firewall.ark_par_$p_suffix.target=DNAT"
+				[ -n "$p_mac" ] && uci -q set "firewall.ark_par_$p_suffix.src_mac=$p_mac"
+				[ -n "$p_ip" ] && uci -q set "firewall.ark_par_$p_suffix.src_ip=$p_ip"
+				uci -q set "firewall.ark_par_$p_suffix.enabled=1"
+			else
+				uci -q delete "firewall.ark_par_$p_suffix"
+			fi
+			uci commit firewall
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+		fi
+	else
+		if [ "$agh_active" = "1" ]; then
+			if command -v python3 >/dev/null 2>&1; then
+				python3 -c "
+import re
+yaml_path = '/etc/adguardhome/adguardhome.yaml'
+mac = '$p_mac'
+ip = '$p_ip'
+name = '''$p_name''' or mac
+try:
+    with open(yaml_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    idx_p = content.find('  persistent:')
+    if idx_p != -1:
+        eol_p = content.find('\\n', idx_p)
+        if eol_p == -1: eol_p = len(content)
+        idx_log = content.find('\\nlog:\\n', idx_p)
+        if idx_log == -1: idx_log = content.find('\\nlog:', idx_p)
+        if idx_log == -1: idx_log = len(content)
+        before = content[:idx_p] + '  persistent:'
+        after = content[idx_log:]
+        mid = content[eol_p:idx_log]
+
+        client_blocks = []
+        current = []
+        for line in mid.splitlines(True):
+            if line.startswith('    - '):
+                if current and any(c.strip() for c in current):
+                    client_blocks.append(''.join(current))
+                    current = []
+            current.append(line)
+        if current and any(c.strip() for c in current):
+            client_blocks.append(''.join(current))
+
+        filtered_blocks = []
+        mac_clean = mac.lower().replace(':', '')
+        name_clean = name.lower()
+        for block in client_blocks:
+            b_clean = block.lower().replace(':', '')
+            if (mac_clean and mac_clean in b_clean) or (ip and ip in block) or (name_clean and ('name: "' + name_clean + '"' in b_clean or 'name: ' + name_clean in b_clean)):
+                continue
+            filtered_blocks.append(block)
+
+        if filtered_blocks:
+            new_mid = '\\n' + '\\n'.join([b.strip('\\n') for b in filtered_blocks]) + '\\n'
+            new_content = before + new_mid + '\\n' + after.lstrip('\\n')
+        else:
+            new_mid = ' []\\n'
+            new_content = before + new_mid + after.lstrip('\\n')
+        with open(yaml_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+except Exception:
+    pass
+"
+				/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+			fi
+		fi
+		if [ -n "$(uci -q get "firewall.ark_par_$p_suffix" 2>/dev/null)" ]; then
+			uci -q delete "firewall.ark_par_$p_suffix"
+			uci commit firewall
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+		fi
+	fi
+}
+
 system_memory_purge() {
 	sync
 	echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
@@ -4150,6 +4347,7 @@ case "$action" in
 		[ -n "$dscp" ] || dscp="AF41"
 		[ "$(uci -q get "firewall.ark_priority_$suffix.enabled")" = 1 ] && priority=true
 		wan_route="default"; limit_enabled=false; limit_down=0; limit_up=0
+		parental_mode="default"; parental_block=false; safesearch=false; blocked_services=""
 		if [ -f /etc/config/equipe_devices ]; then
 			name_section="device_$(printf '%s' "$mac" | tr -d ':')"
 			saved_wan="$(uci -q get "equipe_devices.$name_section.wan_route" || true)"
@@ -4158,9 +4356,17 @@ case "$action" in
 			[ "$saved_lim" = 1 ] && limit_enabled=true
 			limit_down="$(uci -q get "equipe_devices.$name_section.limit_down" || printf 0)"
 			limit_up="$(uci -q get "equipe_devices.$name_section.limit_up" || printf 0)"
+			saved_pm="$(uci -q get "equipe_devices.$name_section.parental_mode" || printf 'default')"
+			[ -n "$saved_pm" ] && parental_mode="$saved_pm"
+			[ "$(uci -q get "equipe_devices.$name_section.parental_block" || printf 0)" = 1 ] && parental_block=true
+			[ "$(uci -q get "equipe_devices.$name_section.safesearch" || printf 0)" = 1 ] && safesearch=true
+			blocked_services="$(uci -q get "equipe_devices.$name_section.blocked_services" || true)"
 		fi
-		printf '{"reserved":%s,"ip":"%s","priority":%s,"dscp":"%s","wan_route":"%s","limit_enabled":%s,"limit_down":%d,"limit_up":%d,"operation_profile":"%s","qos_active":%s}\n' \
-			"$reserved" "$(json_escape "$ip")" "$priority" "$(json_escape "$dscp")" "$(json_escape "$wan_route")" "$limit_enabled" "$limit_down" "$limit_up" "$(ark_operation_profile)" "$(feature_active sqm && bool 1 || bool 0)"
+		adguard_installed=false
+		[ -x /usr/bin/AdGuardHome ] && adguard_installed=true
+		printf '{"reserved":%s,"ip":"%s","priority":%s,"dscp":"%s","wan_route":"%s","limit_enabled":%s,"limit_down":%d,"limit_up":%d,"operation_profile":"%s","qos_active":%s,"parental_mode":"%s","parental_block":%s,"safesearch":%s,"blocked_services":"%s","adguard_installed":%s}\n' \
+			"$reserved" "$(json_escape "$ip")" "$priority" "$(json_escape "$dscp")" "$(json_escape "$wan_route")" "$limit_enabled" "$limit_down" "$limit_up" "$(ark_operation_profile)" "$(feature_active sqm && bool 1 || bool 0)" \
+			"$(json_escape "$parental_mode")" "$parental_block" "$safesearch" "$(json_escape "$blocked_services")" "$adguard_installed"
 		;;
 	device-limits-list)
 		device_limits_json
@@ -4190,7 +4396,7 @@ case "$action" in
 		system_storage_purge
 		;;
 	device-save)
-		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"; name="$3"; mode="$4"; ip="$5"; priority="$6"; target_dscp="$7"; wan_route="${8:-default}"; limit_enabled="${9:-0}"; limit_down="${10:-0}"; limit_up="${11:-0}"
+		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"; name="$3"; mode="$4"; ip="$5"; priority="$6"; target_dscp="$7"; wan_route="${8:-default}"; limit_enabled="${9:-0}"; limit_down="${10:-0}"; limit_up="${11:-0}"; parental_mode="${12:-default}"; parental_block="${13:-0}"; safesearch="${14:-0}"; blocked_services="${15:-}"
 		valid_mac "$mac" || { echo 'MAC invalido' >&2; exit 2; }
 		[ "${#name}" -le 48 ] || { echo 'Nome muito longo' >&2; exit 2; }
 		case "$mode" in automatic|reserved) ;; *) echo 'Modo de IP invalido' >&2; exit 2 ;; esac
@@ -4199,6 +4405,9 @@ case "$action" in
 		case "$limit_enabled" in 1|true) limit_enabled=1 ;; *) limit_enabled=0 ;; esac
 		case "$limit_down" in ''|*[!0-9]*) limit_down=0 ;; esac
 		case "$limit_up" in ''|*[!0-9]*) limit_up=0 ;; esac
+		case "$parental_mode" in custom|default) ;; *) parental_mode='default' ;; esac
+		case "$parental_block" in 1|true) parental_block=1 ;; *) parental_block=0 ;; esac
+		case "$safesearch" in 1|true) safesearch=1 ;; *) safesearch=0 ;; esac
 		if [ "$mode" = reserved ]; then
 			valid_ipv4 "$ip" && same_managed_subnet "$ip" || { echo 'Use um IPv4 valido de uma rede local, diferente do endereco do roteador' >&2; exit 2; }
 			duplicate="$(uci -q show dhcp 2>/dev/null | grep -F ".ip='$ip'" | head -n1)"
@@ -4273,10 +4482,22 @@ case "$action" in
 			uci -q delete "equipe_devices.$name_section.limit_down" 2>/dev/null || true
 			uci -q delete "equipe_devices.$name_section.limit_up" 2>/dev/null || true
 		fi
+		if [ "$parental_mode" = "custom" ]; then
+			uci -q set "equipe_devices.$name_section.parental_mode=custom"
+			uci -q set "equipe_devices.$name_section.parental_block=$parental_block"
+			uci -q set "equipe_devices.$name_section.safesearch=$safesearch"
+			uci -q set "equipe_devices.$name_section.blocked_services=$blocked_services"
+		else
+			uci -q delete "equipe_devices.$name_section.parental_mode" 2>/dev/null || true
+			uci -q delete "equipe_devices.$name_section.parental_block" 2>/dev/null || true
+			uci -q delete "equipe_devices.$name_section.safesearch" 2>/dev/null || true
+			uci -q delete "equipe_devices.$name_section.blocked_services" 2>/dev/null || true
+		fi
 		uci commit equipe_devices; uci commit dhcp; uci commit firewall
 		[ "$mwan3_changed" = 1 ] && uci commit mwan3 2>/dev/null || true
 		apply_device_bandwidth_limits
 		sanitize_dhcp_hostnames
+		device_apply_parental "$mac" "$ip" "$name" "$parental_mode" "$parental_block" "$safesearch" "$blocked_services"
 		/etc/init.d/dnsmasq reload >/dev/null 2>&1
 		/etc/init.d/firewall restart >/dev/null 2>&1
 		[ "$mwan3_changed" = 1 ] && (sleep 1; /etc/init.d/mwan3 restart >/dev/null 2>&1) &
