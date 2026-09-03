@@ -1807,8 +1807,10 @@ return view.extend({
 				tcpInput.checked = tcpTurbo;
 				flowInput.checked = flowOffload;
 				jumboInput.checked = babyJumbo;
-				irqInput.checked = irqBalance;
-				irqInput.disabled = !opt.irqbalance_installed;
+				const hw = (self.capabilities && self.capabilities.hardware) || {};
+				const isSingleCore = hw.cpu_cores <= 1;
+				irqInput.checked = !isSingleCore && irqBalance;
+				irqInput.disabled = isSingleCore || !opt.irqbalance_installed;
 				flowInput.disabled = sqmAnyActive && !flowOffload;
 				const effective = effectiveProfile();
 				while (selectedSummary.firstChild) selectedSummary.removeChild(selectedSummary.firstChild);
@@ -1829,16 +1831,17 @@ return view.extend({
 				updateUI();
 			};
 
-			const presetGrid = E('div', { class: 'ex-opt-preset-grid' });
+			const presetGrid = E('div', { class: 'ex-opt-preset-grid', style: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-bottom:12px;' });
 			presets.forEach(function(p) {
 				const b = E('button', {
 					type: 'button',
 					class: 'ex-opt-preset-btn',
+					style: 'display:flex;flex-direction:column;align-items:flex-start;text-align:left;width:100%;padding:10px 12px;border-radius:10px;box-sizing:border-box;',
 					click: function() { applyPreset(p.id); }
 				}, [
-					E('span', { class: 'ex-opt-preset-tag' }, [p.tag]),
-					E('strong', {}, [p.label]),
-					E('small', {}, [p.desc])
+					E('span', { class: 'ex-opt-preset-tag', style: 'display:block;font-size:10px;font-weight:700;margin-bottom:3px;' }, [p.tag]),
+					E('strong', { style: 'display:block;font-size:13px;font-weight:700;margin-bottom:2px;' }, [p.label]),
+					E('small', { style: 'display:block;font-size:11px;line-height:1.35;opacity:0.8;' }, [p.desc])
 				]);
 				presetBtns.push({ id: p.id, btn: b });
 				presetGrid.appendChild(b);
@@ -1867,8 +1870,12 @@ return view.extend({
 			const detected = profileById(opt.detected_profile);
 
 			const content = [
-				E('div', { class: 'ex-opt-detected' }, [
-					E('div', {}, [E('span', { class: 'ex-kicker' }, ['CONEXÃO DETECTADA']), E('strong', {}, [(protoNames[opt.proto] || String(opt.proto || '').toUpperCase()) + ' em ' + (opt.wan_dev || opt.label)]), E('small', { class: 'ex-muted' }, [speedText + (opt.starlink ? ' • telemetria Starlink confirmada' : '')])]),
+				E('div', { class: 'ex-opt-detected', style: 'display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:12px;margin-bottom:14px;gap:12px;' }, [
+					E('div', {}, [
+						E('span', { class: 'ex-kicker', style: 'display:block;font-size:11px;font-weight:700;margin-bottom:2px;' }, ['CONEXÃO DETECTADA']),
+						E('strong', { style: 'display:block;font-size:14px;margin-bottom:2px;' }, [(protoNames[opt.proto] || String(opt.proto || '').toUpperCase()) + ' em ' + (opt.wan_dev || opt.label)]),
+						E('small', { class: 'ex-muted', style: 'display:block;' }, [speedText + (opt.starlink ? ' • telemetria Starlink confirmada' : '')])
+					]),
 					E('span', { class: 'ex-pill online' }, ['SUGESTÃO: ' + detected.label.replace(/^[^A-Za-zÀ-ÿ]+/, '')])
 				]),
 				E('div', { class: 'ex-opt-section' }, [
@@ -1894,7 +1901,8 @@ return view.extend({
 						E('div', { class: 'ex-opt-module-card' }, [
 							E('div', { class: 'ex-opt-module-info' }, [
 								E('strong', {}, ['🧠 Buffers TCP Turbo (BDP 8 MB)']),
-								E('p', {}, ['Aumenta rmem/wmem para 8 MB e backlog para 5000. Mantém velocidade máxima contínua em downloads pesados (Steam, torrents, streams 4K).'])
+								E('p', {}, ['Aumenta rmem/wmem para 8 MB e backlog para 5000. Mantém velocidade máxima contínua em downloads pesados (Steam, torrents, streams 4K).']),
+								(self.capabilities && self.capabilities.hardware && self.capabilities.hardware.mem_total_mb < 256) ? E('small', { style: 'color:#f59e0b;font-weight:600;display:block;margin-top:4px;' }, ['⚠️ Memória baixa (' + self.capabilities.hardware.mem_total_mb + ' MB RAM): recomendado manter buffers padrão do sistema para preservar memória.']) : ''
 							]),
 							E('label', { class: 'ex-switch' }, [ tcpInput, E('span', { class: 'ex-switch-slider' }) ])
 						]),
@@ -1907,7 +1915,12 @@ return view.extend({
 							E('label', { class: 'ex-switch' }, [ flowInput, E('span', { class: 'ex-switch-slider' }) ])
 						]),
 						E('div', { class: 'ex-opt-module-card' }, [
-							E('div', { class: 'ex-opt-module-info' }, [E('strong', {}, ['⚙️ IRQ Balance']), E('p', {}, [opt.irqbalance_installed ? 'Distribui interrupções de rede entre os núcleos disponíveis.' : 'Módulo não instalado neste roteador.'])]),
+							E('div', { class: 'ex-opt-module-info' }, [
+								E('strong', {}, ['⚙️ IRQ Balance']),
+								E('p', {}, [
+									(self.capabilities && self.capabilities.hardware && self.capabilities.hardware.cpu_cores <= 1) ? '⚠️ Indisponível: CPU de 1 núcleo. O balanceamento de IRQ requer processador multi-core (2+ núcleos).' : (opt.irqbalance_installed ? 'Distribui interrupções de rede entre os núcleos disponíveis.' : 'Módulo não instalado neste roteador.')
+								])
+							]),
 							E('label', { class: 'ex-switch' }, [irqInput, E('span', { class: 'ex-switch-slider' })])
 						])
 					])
@@ -2354,16 +2367,26 @@ return view.extend({
 	},
 	changeWifiWidth: function() {
 		const w=wifiConfig(this.currentData.wireless);
+		const radio2 = (w.r0.hwmode === '11g' || String(w.r0.band||'').indexOf('2') === 0) ? w.r0 : w.r1;
+		const radio5 = (radio2 === w.r0) ? w.r1 : w.r0;
 		const widthFrom=function(ht){const m=String(ht||'').match(/(20|40|80|160)/);return m?m[1]:'';};
 		const select=function(value,items){const s=E('select',{class:'cbi-input-select'},items.map(function(i){return E('option',{value:i[0]},[i[1]]);}));s.value=value;return s;};
-		const w2=select(widthFrom(w.r0.htmode)||'20',[['20','20 MHz — mais alcance/estabilidade'],['40','40 MHz — mais rápido, mais interferência']]);
-		const w5=select(widthFrom(w.r1.htmode)||'160',[['80','80 MHz — mais compatível/estável'],['160','160 MHz — velocidade máxima perto do roteador']]);
+		const w2=select(widthFrom(radio2.htmode)||'20',[['20','20 MHz — mais alcance/estabilidade'],['40','40 MHz — mais rápido, mais interferência']]);
+		
+		const hw = this.capabilities.hardware || {};
+		const has160 = !!hw.wifi_160_supported;
+		const items5 = [['80','80 MHz — mais compatível/estável']];
+		if (has160) {
+			items5.push(['160','160 MHz — velocidade máxima perto do roteador']);
+		}
+		const default5 = (has160 && widthFrom(radio5.htmode) === '160') ? '160' : '80';
+		const w5=select(widthFrom(radio5.htmode)||default5, items5);
 		const field=function(label,node,hint){return E('label',{class:'ex-wan-edit-field'},[E('span',{},[label]),node,E('small',{class:'ex-muted'},[hint])]);};
 		ui.showModal('Largura e desempenho do Wi‑Fi',[
 			E('p',{class:'ex-muted'},['A largura maior aumenta velocidade máxima, mas também aumenta interferência e pode reduzir alcance estável. Alterar reinicia o Wi‑Fi.']),
 			E('div',{class:'ex-wan-edit-grid'},[
 				field('2,4 GHz',w2,'Recomendado: 20 MHz para maior alcance e menos interferência.'),
-				field('5 GHz',w5,'80 MHz é mais estável; 160 MHz é o máximo desempenho perto do roteador.')
+				field('5 GHz',w5, has160 ? '80 MHz é mais estável; 160 MHz é o máximo desempenho perto do roteador.' : '80 MHz é a largura máxima suportada pelo hardware deste roteador (VHT80).')
 			]),
 			E('p',{class:'alert-message warning'},['A alteração derruba temporariamente todos os aparelhos conectados ao Wi‑Fi.']),
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['wifi-width',w2.value,w5.value]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar largura do Wi‑Fi');ui.hideModal();reloadSoon('Largura do Wi‑Fi salva. Recarregando após reiniciar os rádios…',4200);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Wi‑Fi reiniciando. Recarregando o painel…',5200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Salvar e reiniciar Wi‑Fi'])])
@@ -4092,7 +4115,7 @@ return view.extend({
 			if(!f.installed&&f.installable){if(f.hidden)actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.setFeatureHidden,this,key,false)},['Mostrar sugestão']));else{if(key!=='speedtest')actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.installFeature,this,key)},['Instalar']));actions.push(E('button',{class:'ex-feature-link','click':L.bind(this.setFeatureHidden,this,key,true)},['Ocultar sugestão']));}}
 			if(key==='argon'&&f.installed&&!f.active)actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.useTheme,this,key)},['Usar tema']));
 			if(key==='irqbalance'&&f.installed)actions.push(E('button',{class:'ex-mini-button','click':L.bind(function(){const desired=!f.active;return fs.exec('/usr/sbin/equipe-dashboard-control',['irqbalance-toggle',desired?'1':'0']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar IRQ Balance');ui.addNotification(null,E('p',{},[desired?'IRQ Balance ativado.':'IRQ Balance desativado.']));window.setTimeout(function(){window.location.reload();},900);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},[f.active?'Desativar':'Ativar']));
-			return E('div',{class:'ex-feature-row'},[E('div',{class:'ex-feature-copy'},[E('div',{class:'ex-feature-name-row'},[E('strong',{},[meta.name]),(meta.recommended?E('span',{class:'ex-recommended-badge'},['RECOMENDADO']):'')]),E('small',{class:'ex-muted'},[meta.description]),f.package?E('code',{},[f.package]):'']),E('div',{class:'ex-feature-state'},[E('span',{class:'ex-pill '+(f.installed?(f.active?'online':'standby'):(f.hidden?'standby':'offline'))},[state]),E('div',{class:'ex-feature-actions'},actions)])]);
+			return E('div',{class:'ex-feature-row'},[E('div',{class:'ex-feature-copy'},[E('div',{class:'ex-feature-name-row'},[E('strong',{},[meta.name]),(meta.recommended?E('span',{class:'ex-recommended-badge'},['RECOMENDADO']):'')]),E('small',{class:'ex-muted'},[meta.description]),f.package?E('code',{},[f.package]):'',(!f.installed&&f.reason)?E('small',{class:'ex-feature-reason',style:'color:#ef4444;font-weight:600;display:block;margin-top:4px;'},['⚠️ '+f.reason]):'']),E('div',{class:'ex-feature-state'},[E('span',{class:'ex-pill '+(f.installed?(f.active?'online':'standby'):(f.hidden?'standby':'offline'))},[state]),E('div',{class:'ex-feature-actions'},actions)])]);
 		},this));
 		const bulkKeys=['argon','sqm','mwan3','nlbwmon','upnp','uhttpd'].filter(L.bind(function(key){const f=this.feature(key)||{};return !f.installed&&f.installable;},this));
 		const bulkPanel=E('section',{class:'ex-cleanup-entry'},[E('div',{},[E('strong',{},['Instalação rápida']),E('small',{class:'ex-muted'},[bulkKeys.length?('Instala todos os recursos leves faltantes: '+bulkKeys.map(function(k){return (FEATURE_META[k]&&FEATURE_META[k].name)||k;}).join(', ')):'Todos os recursos leves compatíveis já estão instalados ou indisponíveis neste roteador.'])]),E('button',{class:'ex-mini-button','click':L.bind(this.installMissingFeatures,this,bulkKeys),disabled:!bulkKeys.length},['Instalar faltantes'])]);

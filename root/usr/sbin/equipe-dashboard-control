@@ -3247,7 +3247,7 @@ speedtest_storage_json() {
 		"$tmp_avail" "$tmp_total" "$overlay_avail" "$min_kb" "$weak" "$recommended"
 }
 feature_json() {
-	key="$1" package="$2" installable="$3"
+	key="$1" package="$2" installable="$3" reason="$4"
 	if [ "$key" = adblock ]; then
 		printf '"adblock":'
 		adblock_status_json | tr -d '\n'
@@ -3356,6 +3356,7 @@ feature_json() {
 	printf '"%s":{"installed":%s,"active":%s,"hidden":%s,"installable":%s' \
 		"$key" "$(bool $((present == 0)))" "$(bool $((enabled == 0)))" "$(bool $((concealed == 0)))" "$installable"
 	[ -n "$package" ] && printf ',"package":"%s"' "$package"
+	[ -n "$reason" ] && printf ',"reason":"%s"' "$(json_escape "$reason")"
 	printf '}'
 }
 prepare_speedtest() {
@@ -3652,12 +3653,38 @@ case "$action" in
 		https_redirect="$(uci -q get uhttpd.main.redirect_https || printf 0)"
 		ca_available=false; ca_fingerprint=''
 		if [ -r /etc/ark-router/ark-router-ca.crt ] && [ -r /www/ark-router/ark-router-ca.crt ]; then ca_available=true; ca_fingerprint="$(sha256sum /etc/ark-router/ark-router-ca.crt | awk '{print $1}')"; fi
+		cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
+		[ "$cpu_cores" -ge 1 ] 2>/dev/null || cpu_cores=1
+		mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+		mem_total_mb=$((mem_total_kb / 1024))
+		wifi_160=false
+		if iw list 2>/dev/null | grep -q '160 MHz'; then
+			wifi_160=true
+		fi
+		owrt_ver="$(grep 'DISTRIB_RELEASE' /etc/openwrt_release 2>/dev/null | cut -d"'" -f2 || echo '')"
+		is_legacy_owrt=false
+		case "$owrt_ver" in
+			19.*|18.*) is_legacy_owrt=true ;;
+		esac
+
+		argon_installable=true; argon_reason=''
+		if $is_legacy_owrt; then
+			argon_installable=false
+			argon_reason='Incompatível com OpenWrt 19.07 (o ARK Router já possui visual moderno nativo).'
+		fi
+
+		irq_installable=true; irq_reason=''
+		if [ "$cpu_cores" -le 1 ]; then
+			irq_installable=false
+			irq_reason='Requer processador multi-core (este roteador possui 1 núcleo).'
+		fi
+
 		printf '{"language":"%s","title":"%s","operation_profile":"%s","package_manager":"%s","appearance":{"mode":"%s","primary":"%s","secondary":"%s"},"features":{' "$(uci -q get equipe_dashboard.main.language || printf pt-br)" "$(json_escape "$title")" "$(json_escape "$operation_profile")" "$manager" "$appearance" "$primary" "$secondary"
 		feature_json sqm luci-app-sqm true; printf ','
 		feature_json mwan3 luci-app-mwan3 true; printf ','
 		feature_json nlbwmon luci-app-nlbwmon true; printf ','
 		feature_json upnp luci-app-upnp true; printf ','
-		feature_json argon luci-theme-argon true; printf ','
+		feature_json argon luci-theme-argon "$argon_installable" "$argon_reason"; printf ','
 		feature_json uhttpd luci-app-uhttpd true; printf ','
 		feature_json wifi '' false; printf ','
 		feature_json history '' false; printf ','
@@ -3667,7 +3694,7 @@ case "$action" in
 		feature_json tailscale tailscale true; printf ','
 		feature_json zerotier zerotier true; printf ','
 		feature_json adblock adblock true
-		printf ','; feature_json irqbalance irqbalance true
+		printf ','; feature_json irqbalance irqbalance "$irq_installable" "$irq_reason"
 		cli="$(speedify_cli_path)"
 		bypass='{}'; speedify_runtime_running && [ -n "$cli" ] && bypass="$("$cli" -s show streamingbypass 2>/dev/null || printf '{}')"
 		printf ',"speedify_bypass":%s' "$bypass"
@@ -3675,7 +3702,8 @@ case "$action" in
 		printf ',"starlink_public":{"enabled":%s,"url":"/starlink/","read_only":true,"active_wan":"%s"}' "$starlink_public" "$(starlink_active_wan_get)"
 		current_version="$(ark_current_version)"
 		update_repo="$(ark_update_repo)"
-		printf '},"https":{"available":%s,"redirect":%s,"certificate":"local","ca_available":%s,"ca_fingerprint":"%s","ca_download":"/ark-router/ark-router-ca.crt"},"update":{"current":"%s","repo":"%s","manager":"%s"}}\n' "$https_available" "$(bool "$https_redirect")" "$ca_available" "$ca_fingerprint" "$(json_escape "$current_version")" "$(json_escape "$update_repo")" "$(json_escape "$manager")"
+		printf '},"hardware":{"cpu_cores":%s,"mem_total_mb":%s,"wifi_160_supported":%s,"is_legacy_owrt":%s},"https":{"available":%s,"redirect":%s,"certificate":"local","ca_available":%s,"ca_fingerprint":"%s","ca_download":"/ark-router/ark-router-ca.crt"},"update":{"current":"%s","repo":"%s","manager":"%s"}}\n' \
+			"$cpu_cores" "$mem_total_mb" "$wifi_160" "$is_legacy_owrt" "$https_available" "$(bool "$https_redirect")" "$ca_available" "$ca_fingerprint" "$(json_escape "$current_version")" "$(json_escape "$update_repo")" "$(json_escape "$manager")"
 		;;
 	self-update-check)
 		ark_update_json
@@ -4892,8 +4920,20 @@ case "$action" in
 		[ -n "$radio2" ] || { echo 'Radio 2,4 GHz nao encontrado' >&2; exit 3; }
 		[ -n "$radio5" ] || radio5="$radio2"
 		width2="$2"; width5="$3"
-		case "$width2" in 20) ht2=HE20 ;; 40) ht2=HE40 ;; *) echo 'Largura 2,4 GHz invalida' >&2; exit 2 ;; esac
-		case "$width5" in 80) ht5=HE80 ;; 160) ht5=HE160 ;; *) echo 'Largura 5 GHz invalida' >&2; exit 2 ;; esac
+		current_ht2="$(uci -q get "wireless.$radio2.htmode" || echo HT20)"
+		current_ht5="$(uci -q get "wireless.$radio5.htmode" || echo VHT80)"
+		case "$current_ht2" in
+			HE*) pfx2="HE" ;;
+			VHT*) pfx2="VHT" ;;
+			*) pfx2="HT" ;;
+		esac
+		case "$current_ht5" in
+			HE*) pfx5="HE" ;;
+			VHT*) pfx5="VHT" ;;
+			*) pfx5="HT" ;;
+		esac
+		case "$width2" in 20|40) ht2="${pfx2}${width2}" ;; *) echo 'Largura 2,4 GHz invalida' >&2; exit 2 ;; esac
+		case "$width5" in 20|40|80|160) ht5="${pfx5}${width5}" ;; *) echo 'Largura 5 GHz invalida' >&2; exit 2 ;; esac
 		uci set "wireless.$radio2.htmode=$ht2"
 		uci set "wireless.$radio5.htmode=$ht5"
 		uci commit wireless
