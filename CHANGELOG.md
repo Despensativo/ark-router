@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.52
+
+- **📊 Monitoramento de Tráfego por Dispositivo - Tempo Real, Estabilidade e Coluna Total**:
+  - **Coluna "Total" Consumido Implementada**: Adicionada célula da coluna Total acumulado por dispositivo (`ex-total-cell`) alinhando os cabeçalhos e exibindo o consumo total em GB/MB.
+  - **Fim da Lista Dançante / Anti-Jitter**: A ordenação padrão agora é por **Total Consumido** (maior consumidor primeiro, estável e sólido). Em atualizações em tempo real, as velocidades são atualizadas *in-place* no DOM sem destruir ou reordenar os elementos quando o usuário estiver com o mouse na tabela ou lendo.
+  - **Taxa "Agora" Ultrarrápida e Sem Ficar em 0**: Integrados os contadores de hardware Wi-Fi (`iwinfo.assoclist`) para leitura instantânea pacote a pacote e aplicado filtro de decaimento suave (EMA) para impedir que a velocidade desabe seco para 0 bps entre rajadas.
+  - **Otimização do Daemon nlbwmon**: Intervalo de atualização reduzido de 30s de fábrica para 2s via UCI defaults e painel de desempenho.
+
 ## 0.9.51
 
 - **🌐 Acesso Remoto ZeroTier - Chave Seletora de Boot & Suporte Híbrido**:

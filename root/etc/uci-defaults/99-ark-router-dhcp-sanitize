@@ -14,4 +14,13 @@ for h in $(uci -q show dhcp 2>/dev/null | grep -E '\.name=' | cut -d. -f2 | cut 
 done
 [ "$changed" = 1 ] && uci commit dhcp || true
 
+# Otimizacao de leitura de trafego em tempo real no nlbwmon (de 30s para 2s)
+if [ -f /etc/config/nlbwmon ]; then
+	if [ "$(uci -q get nlbwmon.@nlbwmon[0].refresh_interval)" != "2s" ]; then
+		uci -q set nlbwmon.@nlbwmon[0].refresh_interval='2s'
+		uci commit nlbwmon
+		/etc/init.d/nlbwmon restart >/dev/null 2>&1 || true
+	fi
+fi
+
 exit 0

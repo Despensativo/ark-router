@@ -382,7 +382,7 @@ function currentChannelValue(configured, survey) {
 }
 
 return view.extend({
-	board: {}, countries: [], capabilities: {features:{}}, previous: {}, trafficPrevious: {}, trafficAt: 0, currentData: null, recommendedChannels: null, speedResults: {}, refreshTimer: null, dashboardRoot: null, deviceSortKey: 'now', deviceSortDir: 'desc', starlinkTelemetryTimer: null, starlinkTelemetryStopTimer: null, starlinkTelemetryActive: false, starlinkTelemetryWan: null, starlinkWanOrder: [], starlinkResults: {},
+	board: {}, countries: [], capabilities: {features:{}}, previous: {}, trafficPrevious: {}, trafficAt: 0, currentData: null, recommendedChannels: null, speedResults: {}, refreshTimer: null, dashboardRoot: null, deviceSortKey: 'total', deviceSortDir: 'desc', starlinkTelemetryTimer: null, starlinkTelemetryStopTimer: null, starlinkTelemetryActive: false, starlinkTelemetryWan: null, starlinkWanOrder: [], starlinkResults: {},
 	fetchCapabilities: function(){return safe(fs.exec('/usr/sbin/equipe-dashboard-control',['features']),{}).then(function(r){try{return JSON.parse((r&&r.stdout)||'{}');}catch(e){return {language:'pt-br',package_manager:'none',features:{}};}});},
 	feature: function(key){return (this.capabilities.features&&this.capabilities.features[key])||{installed:false,active:false,hidden:false,installable:false};},
 	themeColor: function(names,fallback){
@@ -532,9 +532,73 @@ return view.extend({
 		this.previous={timestamp:data.timestamp,rx:rx,tx:tx}; return {down:down,up:up,rx:rx,tx:tx};
 	},
 	deviceRates: function(data) {
-		const now = trafficMap(data.traffic), out = {}, elapsed = this.trafficAt ? (data.timestamp-this.trafficAt)/1000 : 0;
-		Object.keys(now).forEach(L.bind(function(mac) { const p=this.trafficPrevious[mac]; out[mac]={rx:p&&elapsed>0?Math.max(0,(now[mac].rx-p.rx)*8/elapsed):0,tx:p&&elapsed>0?Math.max(0,(now[mac].tx-p.tx)*8/elapsed):0,totalRx:now[mac].rx,totalTx:now[mac].tx}; },this));
-		this.trafficPrevious=now; this.trafficAt=data.timestamp; return out;
+		const now = trafficMap(data.traffic), out = {}, elapsed = this.trafficAt ? (data.timestamp - this.trafficAt) / 1000 : 0;
+		const mainAssoc = assocMap(data.mainAssoc || []), guestAssoc = assocMap(data.guestAssoc || []);
+		const wifiAssoc = Object.assign({}, mainAssoc, guestAssoc);
+
+		if (!this.deviceRatesSmoothed) this.deviceRatesSmoothed = {};
+		if (!this.wifiPrevious) this.wifiPrevious = {};
+
+		const allMacs = Object.keys(now);
+		Object.keys(wifiAssoc).forEach(function(m) {
+			if (allMacs.indexOf(m) < 0) allMacs.push(m);
+		});
+
+		allMacs.forEach(L.bind(function(mac) {
+			const p = this.trafficPrevious[mac];
+			const w = wifiAssoc[mac];
+			const pw = this.wifiPrevious[mac];
+
+			let instantRx = 0, instantTx = 0;
+
+			// Wi-Fi: AP TX = download do cliente, AP RX = upload do cliente
+			if (w && w.rx && w.tx && elapsed > 0) {
+				const curWifiRx = Number(w.tx.bytes) || 0;
+				const curWifiTx = Number(w.rx.bytes) || 0;
+				if (pw) {
+					const dRx = Math.max(0, curWifiRx - pw.rx);
+					const dTx = Math.max(0, curWifiTx - pw.tx);
+					instantRx = (dRx * 8) / elapsed;
+					instantTx = (dTx * 8) / elapsed;
+				}
+				this.wifiPrevious[mac] = { rx: curWifiRx, tx: curWifiTx };
+			} else if (now[mac] && p && elapsed > 0) {
+				instantRx = Math.max(0, (now[mac].rx - p.rx) * 8 / elapsed);
+				instantTx = Math.max(0, (now[mac].tx - p.tx) * 8 / elapsed);
+			}
+
+			// Suavização anti-piscamento (mantém a leitura estável na tela)
+			const prevSmooth = this.deviceRatesSmoothed[mac] || { rx: 0, tx: 0 };
+			let smoothRx = 0, smoothTx = 0;
+
+			if (instantRx > 0) {
+				smoothRx = prevSmooth.rx > 0 ? (prevSmooth.rx * 0.35 + instantRx * 0.65) : instantRx;
+			} else {
+				smoothRx = prevSmooth.rx > 10000 ? prevSmooth.rx * 0.45 : 0;
+			}
+
+			if (instantTx > 0) {
+				smoothTx = prevSmooth.tx > 0 ? (prevSmooth.tx * 0.35 + instantTx * 0.65) : instantTx;
+			} else {
+				smoothTx = prevSmooth.tx > 10000 ? prevSmooth.tx * 0.45 : 0;
+			}
+
+			this.deviceRatesSmoothed[mac] = { rx: smoothRx, tx: smoothTx };
+
+			const totRx = (now[mac] ? now[mac].rx : 0) || (w && w.tx ? w.tx.bytes : 0);
+			const totTx = (now[mac] ? now[mac].tx : 0) || (w && w.rx ? w.rx.bytes : 0);
+
+			out[mac] = {
+				rx: smoothRx,
+				tx: smoothTx,
+				totalRx: totRx,
+				totalTx: totTx
+			};
+		}, this));
+
+		this.trafficPrevious = now;
+		this.trafficAt = data.timestamp;
+		return out;
 	},
 	devicesExpanded: function() {
 		const details=document.getElementById('ex-device-details');
@@ -699,6 +763,39 @@ return view.extend({
 		const devices=[];
 		leases.forEach(function(l) { const mac=String(l.macaddr||'').toUpperCase(); if(!mac||seen[mac])return; seen[mac]=1; const a=main[mac]||guest[mac], isGuest=!!guest[mac]||(guestPrefix&&String(l.ipaddr||'').indexOf(guestPrefix)===0); devices.push({mac:mac,ip:l.ipaddr||'—',name:names[mac]||l.hostname||'Dispositivo sem nome',network:networkLabel(mac,l.ipaddr,true),guest:isGuest,signal:a&&a.signal,rate:rates[mac]||{rx:0,tx:0,totalRx:0,totalTx:0}}); });
 		Object.keys(main).concat(Object.keys(guest)).forEach(function(mac) { if(seen[mac])return; seen[mac]=1; const a=main[mac]||guest[mac], isGuest=!!guest[mac]; devices.push({mac:mac,ip:'—',name:names[mac]||'Dispositivo sem nome',network:networkLabel(mac,'',false),guest:isGuest,signal:a.signal,rate:rates[mac]||{rx:0,tx:0,totalRx:0,totalTx:0}}); });
+		const existingRows = body.querySelectorAll('tr[data-mac]');
+		const nowTime = Date.now();
+		let isHovered = false;
+		try {
+			const card = body.closest('.ex-devices');
+			isHovered = !!(card && card.matches(':hover'));
+		} catch(e) {}
+
+		// Atualização no lugar (In-place) se a lista já estiver montada:
+		// Se o usuário estiver interagindo (hover) ou se for ordenação por 'now' e passaram menos de 6s:
+		// Atualiza apenas os números de velocidade e total sem mexer na posição das linhas!
+		const canUpdateInPlace = existingRows.length > 0 && existingRows.length === devices.length && (isHovered || (this.deviceSortKey === 'now' && (nowTime - (this.lastDeviceReorderTime || 0)) < 6000));
+
+		if (canUpdateInPlace) {
+			devices.forEach(function(d) {
+				const row = body.querySelector('tr[data-mac="' + d.mac + '"]');
+				if (row) {
+					const downEl = row.querySelector('.ex-rate-cell .down');
+					if (downEl) downEl.textContent = '↓ ' + formatRate(d.rate.rx);
+					const upEl = row.querySelector('.ex-rate-cell .up');
+					if (upEl) upEl.textContent = '↑ ' + formatRate(d.rate.tx);
+					const totEl = row.querySelector('.ex-total-cell');
+					if (totEl) {
+						const tot = (Number(d.rate.totalRx) || 0) + (Number(d.rate.totalTx) || 0);
+						totEl.textContent = tot > 0 ? formatBytes(tot) : '—';
+					}
+				}
+			});
+			text('ex-device-count', devices.length + ' conectado' + (devices.length === 1 ? '' : 's'));
+			return;
+		}
+
+		this.lastDeviceReorderTime = nowTime;
 		this.sortDevices(devices);
 		body.replaceChildren();
 		devices.forEach(L.bind(function(d) {
@@ -726,11 +823,13 @@ return view.extend({
 			].concat(badges));
 
 			const metaText = d.ip + ' • ' + d.mac + (reservedIp && reservedIp !== d.ip ? ' (Fixo: ' + reservedIp + ')' : '');
+			const totalBytes = (Number(d.rate.totalRx) || 0) + (Number(d.rate.totalTx) || 0);
 
-			const tr=E('tr',{},[
+			const tr=E('tr',{'data-mac':d.mac},[
 				E('td',{},[nameRow, E('small',{class:'ex-device-meta'},[metaText])]),
 				E('td',{'class':'ex-hide-mobile'},[d.network+(d.signal!=null?' • '+d.signal+' dBm':'')]),
 				E('td',{'class':'ex-rate-cell'},[E('span',{class:'down'},['↓ '+formatRate(d.rate.rx)]),E('span',{class:'up'},['↑ '+formatRate(d.rate.tx)])]),
+				E('td',{'class':'ex-total-cell ex-hide-mobile',style:'font-weight:600;font-variant-numeric:tabular-nums;'},[totalBytes > 0 ? formatBytes(totalBytes) : '—']),
 				E('td',{'class':'ex-device-action'},[E('button',{'class':'ex-mini-button','title':'Configurar dispositivo','click':L.bind(this.configureDevice,this,d)},[
 					E('span',{'class':'ex-hide-mobile'},['Configurar']),
 					E('span',{'class':'ex-show-mobile'},['⚙️'])
@@ -742,7 +841,7 @@ return view.extend({
 		const empty=document.getElementById('ex-device-empty'); if(empty)empty.style.display=devices.length?'none':'';
 	},
 	sortDevices: function(devices) {
-		const key=this.deviceSortKey||'now', dir=this.deviceSortDir||'desc', factor=dir==='asc'?1:-1;
+		const key=this.deviceSortKey||'total', dir=this.deviceSortDir||'desc', factor=dir==='asc'?1:-1;
 		const metric=function(d){
 			if(key==='name')return String(d.name||'').toLocaleLowerCase();
 			if(key==='total')return (Number(d.rate.totalRx)||0)+(Number(d.rate.totalTx)||0);
@@ -758,11 +857,13 @@ return view.extend({
 		});
 	},
 	setDeviceSort: function(key) {
-		this.deviceSortKey=key||'now';
+		this.deviceSortKey=key||'total';
+		this.lastDeviceReorderTime=0;
 		if(this.currentData)this.renderDevices(this.currentData,this.deviceRates(this.currentData));
 	},
 	toggleDeviceSortDirection: function(button) {
 		this.deviceSortDir=this.deviceSortDir==='asc'?'desc':'asc';
+		this.lastDeviceReorderTime=0;
 		if(button)button.textContent=this.deviceSortDir==='desc'?'Maior primeiro':'Menor primeiro';
 		if(this.currentData)this.renderDevices(this.currentData,this.deviceRates(this.currentData));
 	},
@@ -4068,7 +4169,7 @@ return view.extend({
 		const historyCard=function(kind,title,color){return E('section',{class:'ex-card ex-history-card','style':'--history-color:'+color},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['HISTÓRICO 24 HORAS']),E('h3',{},[title])]),E('strong',{id:'ex-history-'+kind+'-peak',class:'ex-history-peak'},['Coletando…'])]),E('canvas',{id:'ex-history-'+kind,class:'ex-history-chart',width:600,height:126})]);};
 		const healthItem=function(icon,label,valueId,barId,color,detailId){return E('div',{class:'ex-health-item','style':'--health-color:'+color},[E('span',{class:'ex-health-icon'},[icon]),E('div',{class:'ex-health-copy'},[E('span',{class:'ex-label'},[label]),E('strong',{id:valueId},['—']),barId?E('div',{class:'ex-health-bar'},[E('i',{id:barId})]):E('small',{class:'ex-health-steady'},['atividade do sistema']),detailId?E('small',{id:detailId,class:'ex-health-detail'},['—']):''])]);};
 		const speedWanCard=L.bind(function(wan,label,available){const attrs={class:'ex-mini-button','click':L.bind(this.startSpeedtest,this,wan,label)};if(!available)attrs.disabled=true;return E('div',{class:'ex-speedtest-wan'},[E('div',{class:'ex-card-title'},[E('h3',{},[label]),E('button',attrs,['Executar teste'])]),E('div',{id:'ex-speedtest-'+wan+'-result',class:'ex-speedtest-result'},[E('span',{class:'ex-muted'},[available?'Sem resultado nesta sessão.':'SEM CABO'])])]);},this);
-		const sortSelect=E('select',{id:'ex-device-sort-key',class:'cbi-input-select ex-device-sort-select','change':L.bind(function(ev){this.setDeviceSort(ev.currentTarget.value);},this)},[E('option',{value:'name'},['Nome']),E('option',{value:'now'},['Agora']),E('option',{value:'total'},['Total'])]);sortSelect.value=this.deviceSortKey||'now';
+		const sortSelect=E('select',{id:'ex-device-sort-key',class:'cbi-input-select ex-device-sort-select','change':L.bind(function(ev){this.setDeviceSort(ev.currentTarget.value);},this)},[E('option',{value:'total'},['Total consumido']),E('option',{value:'now'},['Agora (velocidade)']),E('option',{value:'name'},['Nome do aparelho'])]);sortSelect.value=this.deviceSortKey||'total';
 		const deviceSortControls=E('div',{class:'ex-device-sort-controls'},[E('span',{class:'ex-muted'},['Ordenar']),sortSelect,E('button',{id:'ex-device-sort-dir',class:'ex-mini-button','click':L.bind(function(ev){this.toggleDeviceSortDirection(ev.currentTarget);},this)},[this.deviceSortDir==='desc'?'Maior primeiro':'Menor primeiro'])]);
 		const arkVersion=((this.capabilities.update||{}).current)||'—';
 		const irqbalance=this.feature('irqbalance');

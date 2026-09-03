@@ -374,7 +374,7 @@ details.ex-perf-opt-card, section.ex-perf-opt-card { border-color: color-mix(in 
 .ex-devices details[open] .ex-devices-summary-arrow { transform: rotate(180deg); }
 .ex-device-title-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
 .ex-device-sort-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.ex-device-sort-select { width: auto; min-width: 112px; max-width: 145px; padding: 6px 30px 6px 9px; border-radius: 9px; font-size: .82rem; }
+.ex-device-sort-select { width: auto; min-width: 130px; max-width: 180px; padding: 6px 30px 6px 9px; border-radius: 9px; font-size: .82rem; }
 .ex-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; max-width: 100%; padding: 0 10px 10px; }
 .ex-device-table { width: 100%; border-collapse: collapse; min-width: 100%; }
 .ex-device-table th { padding: 10px 8px; border-bottom: 1px solid rgba(127,127,127,.18); text-align: left; opacity: .6; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; }
@@ -388,6 +388,7 @@ details.ex-perf-opt-card, section.ex-perf-opt-card { border-color: color-mix(in 
 .ex-rate-cell span { display: block; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .ex-rate-cell .down { color: #3b82f6; }
 .ex-rate-cell .up { color: #a855f7; }
+.ex-total-cell { font-variant-numeric: tabular-nums; font-size: .82rem; white-space: nowrap; font-weight: 600; opacity: .88; }
 .ex-device-action { text-align: right; }
 .ex-show-mobile { display: none !important; }
 .ex-table-note { margin: 11px 2px 0; }

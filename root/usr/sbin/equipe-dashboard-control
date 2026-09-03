@@ -2412,6 +2412,7 @@ system_perf_save() {
 		else
 			uci -q delete nlbwmon.@nlbwmon[0].database_limit
 		fi
+		uci -q set nlbwmon.@nlbwmon[0].refresh_interval='2s'
 		uci commit nlbwmon
 		/etc/init.d/nlbwmon restart >/dev/null 2>&1 || true
 	fi
