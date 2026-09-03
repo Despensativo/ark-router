@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.51
+
+- **🌐 Acesso Remoto ZeroTier - Chave Seletora de Boot & Suporte Híbrido**:
+  - **Chave Seletora de Auto-Início no Boot**: Adicionado switch interativo (`.ex-switch`) no card do ZeroTier para ligar ou desligar o início automático ao ligar o roteador.
+  - **Diferenciação Inteligente de Hardware (Roteadores Fortes vs Fracos)**:
+    - **Roteadores Fortes (Muita Flash)**: Detecta binário real em flash (`! -L`) e inicia nativamente via procd sem qualquer extração em RAM ou overhead.
+    - **Roteadores Fracos (Pouca Flash)**: Auto-extrai pacote compactado em `/tmp` (RAM) em 0.3s através de `start_service()` e gancho com auto-recuperação no `/etc/init.d/zerotier`.
+  - **Correção Crítica no Boot do OpenWrt 25.x**: Adequação do ciclo de vida em `ark-zerotier-ram` para respeitar chamadas `boot()` e `start_service()` do gerenciador procd.
+
 ## 0.9.50
 
 - **📱 Otimização e Refinamento Responsivo Mobile**:

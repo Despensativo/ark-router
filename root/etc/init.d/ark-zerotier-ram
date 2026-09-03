@@ -4,10 +4,20 @@ START=19
 USE_PROCD=0
 
 boot() {
-	start
+	start_service
 }
 
 start() {
+	start_service
+}
+
+start_service() {
+	# Roteador forte: binario real em flash (nao symlink), nao precisa extrair em RAM
+	if [ -x /usr/bin/zerotier-one ] && [ ! -L /usr/bin/zerotier-one ]; then
+		return 0
+	fi
+
+	# Roteador fraco: extrai pacote compactado em /tmp (RAM)
 	if [ -f /etc/ark-router/zerotier-pkg.tar.gz ]; then
 		mkdir -p /tmp
 		if [ ! -f /tmp/usr/lib/libstdc++.so.6.0.33 ] || [ ! -f /tmp/usr/bin/zerotier-one ]; then
@@ -27,4 +37,10 @@ start() {
 	fi
 }
 
-[ "$1" = "start" ] && start 2>/dev/null || true
+stop() {
+	return 0
+}
+
+case "$1" in
+	start|boot) start_service 2>/dev/null || true ;;
+esac

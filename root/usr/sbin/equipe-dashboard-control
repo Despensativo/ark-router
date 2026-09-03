@@ -1460,8 +1460,10 @@ zerotier_leave_network() {
 }
 zerotier_status_json() {
 	installed_zt=false; [ -x /usr/sbin/zerotier-one ] || [ -x /usr/bin/zerotier-one ] || command -v zerotier-cli >/dev/null 2>&1 && installed_zt=true
+	autostart=false
+	[ -x /etc/init.d/zerotier ] && /etc/init.d/zerotier enabled >/dev/null 2>&1 && autostart=true
 	if ! $installed_zt; then
-		printf '{"installed":false,"active":false,"online":false,"node_id":"—","network_id":"","network_status":"—","ip":"—","lan_cidr":"—"}\n'
+		printf '{"installed":false,"active":false,"online":false,"autostart":false,"node_id":"—","network_id":"","network_status":"—","ip":"—","lan_cidr":"—"}\n'
 		return 0
 	fi
 	active=false; pidof zerotier-one >/dev/null 2>&1 && [ "$(uci -q get zerotier.global.enabled)" = 1 ] && active=true
@@ -1487,8 +1489,29 @@ zerotier_status_json() {
 		if $active; then nstatus='CONECTANDO'; else nstatus='DESLIGADO'; fi
 		ip='—'
 	fi
-	printf '{"installed":true,"active":%s,"online":%s,"node_id":"%s","network_id":"%s","network_status":"%s","ip":"%s","lan_cidr":"%s"}\n' \
-		"$active" "$online" "$(json_escape "${node:-—}")" "$(json_escape "$netid")" "$(json_escape "${nstatus:-—}")" "$(json_escape "${ip:-—}")" "$(json_escape "$(tailscale_lan_cidr 2>/dev/null || true)")"
+	printf '{"installed":true,"active":%s,"online":%s,"autostart":%s,"node_id":"%s","network_id":"%s","network_status":"%s","ip":"%s","lan_cidr":"%s"}\n' \
+		"$active" "$online" "$autostart" "$(json_escape "${node:-—}")" "$(json_escape "$netid")" "$(json_escape "${nstatus:-—}")" "$(json_escape "${ip:-—}")" "$(json_escape "$(tailscale_lan_cidr 2>/dev/null || true)")"
+}
+zerotier_autostart_toggle() {
+	val="${1:-1}"
+	case "$val" in
+		1|true|on)
+			[ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true
+			[ -x /etc/init.d/zerotier ] && /etc/init.d/zerotier enable >/dev/null 2>&1 || true
+			uci -q set equipe_dashboard.zerotier=feature
+			uci -q set equipe_dashboard.zerotier.autostart='1'
+			uci commit equipe_dashboard
+			echo ok
+			;;
+		0|false|off)
+			[ -x /etc/init.d/zerotier ] && /etc/init.d/zerotier disable >/dev/null 2>&1 || true
+			[ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram disable >/dev/null 2>&1 || true
+			uci -q set equipe_dashboard.zerotier=feature
+			uci -q set equipe_dashboard.zerotier.autostart='0'
+			uci commit equipe_dashboard
+			echo ok
+			;;
+	esac
 }
 speedtest_history_file() {
 	case "$1" in wan|wan2) ;; *) return 1 ;; esac
@@ -2590,6 +2613,8 @@ feature_json() {
 		hidden "$key"; concealed=$?
 		installed_zt=false; [ -x /usr/sbin/zerotier-one ] || command -v zerotier-cli >/dev/null 2>&1 && installed_zt=true
 		active_zt=false; pidof zerotier-one >/dev/null 2>&1 && active_zt=true
+		autostart_zt=false
+		[ -x /etc/init.d/zerotier ] && /etc/init.d/zerotier enabled >/dev/null 2>&1 && autostart_zt=true
 		state='{}'
 		if $active_zt; then
 			state="$(zerotier_status_json 2>/dev/null || printf '{}')"
@@ -2599,8 +2624,8 @@ feature_json() {
 		nstatus="$(printf '%s' "$state" | jsonfilter -e '@.network_status' 2>/dev/null || true)"
 		ip="$(printf '%s' "$state" | jsonfilter -e '@.ip' 2>/dev/null || true)"
 		lan_cidr="$(printf '%s' "$state" | jsonfilter -e '@.lan_cidr' 2>/dev/null || tailscale_lan_cidr 2>/dev/null || true)"
-		printf '"zerotier":{"installed":%s,"active":%s,"hidden":%s,"installable":true,"package":"zerotier","node_id":"%s","network_id":"%s","network_status":"%s","ip":"%s","lan_cidr":"%s"}' \
-			"$installed_zt" "$active_zt" "$(bool $((concealed == 0)))" "$(json_escape "${node:-—}")" "$(json_escape "$netid")" "$(json_escape "${nstatus:-—}")" "$(json_escape "${ip:-—}")" "$(json_escape "$lan_cidr")"
+		printf '"zerotier":{"installed":%s,"active":%s,"autostart":%s,"hidden":%s,"installable":true,"package":"zerotier","node_id":"%s","network_id":"%s","network_status":"%s","ip":"%s","lan_cidr":"%s"}' \
+			"$installed_zt" "$active_zt" "$autostart_zt" "$(bool $((concealed == 0)))" "$(json_escape "${node:-—}")" "$(json_escape "$netid")" "$(json_escape "${nstatus:-—}")" "$(json_escape "${ip:-—}")" "$(json_escape "$lan_cidr")"
 		return 0
 	fi
 	if [ -n "$package" ]; then installed "$package"; present=$?; else feature_active "$key"; present=$?; fi
@@ -3695,6 +3720,9 @@ case "$action" in
 		;;
 	zerotier-leave)
 		zerotier_leave_network "$2"
+		;;
+	zerotier-autostart-toggle)
+		zerotier_autostart_toggle "$2"
 		;;
 	rename)
 		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"

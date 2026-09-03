@@ -2661,6 +2661,34 @@ return view.extend({
 				E('div',{class:'ex-row'},[E('span',{},['Network ID']),E('strong',{},[f.network_id||'—'])]),
 				E('div',{class:'ex-row'},[E('span',{},['IP ZeroTier']),E('strong',{},[active?((f.ip||'—').replace(/\/.*$/,'')):'—'])])
 			]),
+			installed ? E('div', { class: 'ex-device-config-block', style: 'margin-top: 10px; margin-bottom: 8px;' }, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 12px;' }, [
+					E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
+						E('strong', {}, ['Auto-iniciar no boot']),
+						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, [
+							'Inicia o ZeroTier automaticamente ao ligar o roteador. Em aparelhos compactos, prepara o binário na RAM sem ocupar a flash.'
+						])
+					]),
+					E('label', { class: 'ex-switch', style: 'flex: 0 0 auto;' }, [
+						E('input', {
+							type: 'checkbox',
+							checked: !!f.autostart,
+							change: function(ev) {
+								const input = ev.currentTarget;
+								const val = input.checked ? '1' : '0';
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['zerotier-autostart-toggle', val]).then(function(r) {
+									if (r.code) throw new Error(r.stderr || 'Falha ao alterar inicialização');
+									ui.addNotification(null, E('p', {}, [val === '1' ? 'ZeroTier configurado para iniciar automaticamente no boot.' : 'ZeroTier não irá mais iniciar sozinho no boot.']), 'info');
+								}).catch(function(e) {
+									input.checked = !input.checked;
+									ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+								});
+							}
+						}),
+						E('span', { class: 'ex-switch-slider' })
+					])
+				])
+			]) : '',
 			E('div',{class:'ex-speedify-actions'},[
 				installed?'':E('button',{class:'ex-mini-button','click':L.bind(this.installFeature,this,'zerotier')},['Instalar ZeroTier']),
 				installed && !active ? E('button',{class:'ex-mini-button','click':L.bind(this.enableZerotier,this)},['▶ Ativar ZeroTier']) : '',
