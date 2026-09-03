@@ -67,7 +67,8 @@ header .fill {
 }
 
 .container {
-	max-width: 1200px;
+	max-width: 1400px;
+	width: 100%;
 	margin: 0 auto;
 	padding: 0 16px;
 	box-sizing: border-box;
@@ -142,22 +143,33 @@ ul.nav > li > a:hover, ul.nav > li.active > a, .nav > li.active > a, ul.nav > li
 	position: absolute !important;
 	top: 100% !important;
 	left: 0 !important;
-	z-index: 1000 !important;
-	min-width: 190px !important;
+	z-index: 9999 !important;
+	min-width: 200px !important;
 	background: var(--ark-surface-1) !important;
 	border: 1px solid var(--ark-border) !important;
 	border-radius: var(--ark-radius) !important;
-	box-shadow: var(--ark-shadow-lg) !important;
+	box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6) !important;
 	padding: 6px !important;
-	margin: 4px 0 0 0 !important;
+	margin: 0 !important;
 	list-style: none !important;
 	backdrop-filter: blur(20px);
+	-webkit-backdrop-filter: blur(20px);
+}
+/* Invisible hover bridge to prevent hover loss when moving cursor */
+.dropdown-menu::before, .menu-dropdown::before, ul.dropdown::before {
+	content: '';
+	position: absolute;
+	top: -12px;
+	left: 0;
+	right: 0;
+	height: 12px;
 }
 .nav > li:hover > .dropdown-menu,
 .nav > li.open > .dropdown-menu,
 .dropdown:hover > .dropdown-menu,
 .dropdown.open > .dropdown-menu,
-li.dropdown:hover > ul {
+li.dropdown:hover > ul,
+li.dropdown.open > ul {
 	display: block !important;
 }
 .dropdown-menu > li, .menu-dropdown > li {
@@ -168,13 +180,15 @@ li.dropdown:hover > ul {
 .dropdown-menu > li > a, .menu-dropdown > li > a, .dropdown > li > a {
 	display: block !important;
 	color: var(--ark-text-muted) !important;
-	padding: 8px 12px !important;
+	padding: 9px 14px !important;
 	border-radius: 6px !important;
 	font-size: 13px !important;
 	font-weight: 500 !important;
 	white-space: nowrap !important;
 	text-decoration: none !important;
 	transition: all 0.15s ease !important;
+	cursor: pointer !important;
+	pointer-events: auto !important;
 }
 .dropdown-menu > li > a:hover, .menu-dropdown > li > a:hover, .dropdown > li > a:hover {
 	background: var(--ark-surface-2) !important;
@@ -237,7 +251,11 @@ li.dropdown:hover > ul {
 
 /* Main Content Area */
 #maincontent {
-	padding: 24px 16px 48px;
+	width: 100% !important;
+	max-width: 1400px !important;
+	margin: 0 auto !important;
+	padding: 24px 16px 48px !important;
+	box-sizing: border-box !important;
 	min-height: calc(100vh - 140px);
 }
 
@@ -422,16 +440,17 @@ table.cbi-section-table tr:hover td, table.table tr:hover td {
 /* ==========================================================================
    MODERN LOGIN SCREEN (SYSAUTH) — Argon Concept Refined
    ========================================================================== */
-body:not([data-page]) #maincontent,
-body[data-page=""] #maincontent,
-.cbi-map:has(input[name="luci_password"]) {
-	max-width: 440px !important;
+body.ark-login-page #maincontent,
+#maincontent:has(input[name="luci_password"]) {
+	max-width: 460px !important;
 	margin: 80px auto !important;
+	padding: 0 16px !important;
 }
 
+body.ark-login-page .cbi-map,
+.cbi-map:has(input[name="luci_password"]),
 form[action=""] .cbi-map,
-form[method="post"] .cbi-map:has(input[name="luci_password"]),
-#maincontent:has(input[name="luci_password"]) {
+form[method="post"] .cbi-map:has(input[name="luci_password"]) {
 	background: rgba(19, 29, 49, 0.85) !important;
 	backdrop-filter: blur(20px) !important;
 	-webkit-backdrop-filter: blur(20px) !important;

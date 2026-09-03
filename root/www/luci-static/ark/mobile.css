@@ -74,8 +74,8 @@
 		-webkit-overflow-scrolling: touch;
 	}
 
-	body:not([data-page]) #maincontent,
-	body[data-page=""] #maincontent,
+	body.ark-login-page #maincontent,
+	#maincontent:has(input[name="luci_password"]),
 	.cbi-map:has(input[name="luci_password"]) {
 		margin: 30px auto !important;
 		padding: 20px 16px !important;

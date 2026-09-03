@@ -28,8 +28,8 @@
 		<script src="{{ dispatcher.build_url('admin/translations', dispatcher.lang) }}"></script>
 		<script src="{{ resource }}/cbi.js?v=ark-1.0"></script>
 	</head>
-
-	<body class="lang_{{ dispatcher.lang }} {{ entityencode(striptags(node?.title ?? ''), true) }} ark-theme" data-page="{{ entityencode(join('-', ctx.request_path), true) }}">
+	{% let is_login = !dispatcher.context.authsession; %}
+	<body class="lang_{{ dispatcher.lang }} {{ entityencode(striptags(node?.title ?? ''), true) }} {{ is_login ? 'ark-login-page' : 'ark-app-page' }} ark-theme" data-page="{{ entityencode(join('-', ctx.request_path), true) }}">
 		{% if (!blank_page): %}
 		<header class="ark-header">
 			<a class="brand ark-brand" href="{{ dispatcher.build_url('admin/equipe-dashboard') }}">

@@ -11,6 +11,7 @@
 
 	local boardinfo = util.ubus("system", "board")
 	local node = disp.context.dispatched
+	local is_login = not disp.context.authsession
 
 	http.prepare_content("text/html")
 -%>
@@ -34,7 +35,7 @@
 		<script src="<%=resource%>/cbi.js?v=ark-1.0"></script>
 	</head>
 
-	<body class="lang_<%=luci.i18n.context.lang%> <% if node then %><%= striptags( node.title ) %><%- end %> ark-theme" data-page="<%= pcdata(table.concat(disp.context.requestpath, "-")) %>">
+	<body class="lang_<%=luci.i18n.context.lang%> <% if node then %><%= striptags( node.title ) %><%- end %> <%= is_login and 'ark-login-page' or 'ark-app-page' %> ark-theme" data-page="<%= pcdata(table.concat(disp.context.requestpath, "-")) %>">
 		<header class="ark-header">
 			<div class="fill">
 				<div class="container">

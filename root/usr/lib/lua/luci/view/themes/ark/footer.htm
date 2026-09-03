@@ -13,7 +13,33 @@
    </footer>
   </div>
   <% if luci.dispatcher.context.authsession then %>
-  <script type="text/javascript">L.require('menu-bootstrap')</script>
+  <script type="text/javascript">
+    L.require('menu-bootstrap');
+    (function() {
+      document.addEventListener('click', function(e) {
+        var menuLink = e.target.closest('#topmenu li.dropdown > a.menu');
+        if (menuLink) {
+          e.preventDefault();
+          e.stopPropagation();
+          var parentLi = menuLink.parentElement;
+          var wasOpen = parentLi.classList.contains('open');
+          document.querySelectorAll('#topmenu li.dropdown').forEach(function(li) {
+            li.classList.remove('open');
+          });
+          if (!wasOpen) {
+            parentLi.classList.add('open');
+          }
+          return;
+        }
+        if (e.target.closest('#topmenu .dropdown-menu a')) {
+          return;
+        }
+        document.querySelectorAll('#topmenu li.dropdown.open').forEach(function(li) {
+          li.classList.remove('open');
+        });
+      });
+    })();
+  </script>
   <% end %>
  </body>
 </html>
