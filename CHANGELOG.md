@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.9.69
+
+- **📡 Correção da Inversão de Frequências Wi-Fi (2.4 GHz vs 5 GHz)**:
+  - Implementada detecção dinâmica robusta de banda por rádio no backend e frontend (`overview.js` e `equipe-dashboard-control`), inspecionando `hwmode`, `htmode` e `band` em vez de presumir ordem numérica de dispositivo (`radio0`/`radio1`).
+  - Corrigida a inversão onde roteadores Qualcomm/Atheros (ex: D-Link DGL-5500) exibiam Canal 36 VHT80 em 2,4 GHz e Canal 11 HT20 em 5 GHz. Agora ambos exibem canais, modos de largura e status corretos.
+- **📶 Otimização e Agrupamento da Seleção Manual de Canais Wi-Fi**:
+  - Removidos os canais 12 e 13 da listagem de 2,4 GHz em conformidade com o domínio regulatório e capacidade física do hardware.
+  - Agrupados os canais de 5 GHz em categorias claras no menu seletor: *Padrão / Doméstico (UNII-1)*, *Potência Alta (UNII-3)* e *Canais DFS / Radar*.
+  - Corrigido o modal de canais manuais para iniciar com os canais atualmente ativos pré-selecionados em vez de campos em branco.
+- **🔘 Aprimoramento Visual dos Botões de Ação (Wi-Fi e AdBlock)**:
+  - O link textual discreto "Configurar nome, senha e status →" foi transformado em um botão de ação destacado (`⚙ Configurar Wi‑Fi (Nome, Senha e Status)`), facilitando a identificação imediata como elemento clicável.
+  - O link discreto de opções do AdBlock foi convertido no botão estilizado `⚙️ Configurar Bloqueio`.
+- **⌨️ Suporte Global ao Fechamento de Modais com a Tecla `Esc` (Escape)**:
+  - Adicionado listener global de teclado (`Escape` / keycode 27) no dashboard e nos footers de tema do LuCI (`footer.htm` e `footer.ut`), permitindo fechar subjanelas, modais CBI e diálogos de confirmação instantaneamente sem necessidade de clicar no botão "Fechar" ou fora da janela.
+- **🌐 Esclarecimento e Ajuste do Modal de Otimização de WAN**:
+  - Inserido banner explicativo destacando que a calibração de MTU e filas de pacotes não altera credenciais de operadora, discagem PPPoE nem causa perda de conexão.
+  - Corrigida a colisão e quebra de texto dos perfis predefinidos.
+  - Ocultada a opção de *IRQ Balance* em processadores single-core (1 CPU) para evitar confusão.
+  - Clarificada a recomendação de desativar os *Buffers TCP Turbo* em roteadores com 128 MB de RAM para máxima estabilidade operacional.
+
 ## 0.9.68
 
 - **🧪 Suíte Automatizada de QA Visual Multi-Navegador e Multi-Resolução**:

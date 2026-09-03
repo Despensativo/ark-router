@@ -1,7 +1,7 @@
 # ARK Router
 
 ![OpenWrt](https://img.shields.io/badge/OpenWrt-24.x%20%2F%2025.x-00B5E2?logo=openwrt&logoColor=white)
-![Release](https://img.shields.io/badge/release-v0.9.68-blue.svg)
+![Release](https://img.shields.io/badge/release-v0.9.69-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![Language](https://img.shields.io/badge/UI-PT--BR%20%2F%20EN-blue)
 ![Platform](https://img.shields.io/badge/arch-all%20%2F%20noarch-orange)
@@ -12,7 +12,7 @@ The project does not replace OpenWrt or LuCI — it operates on top of LuCI as a
 
 > **Keywords / SEO**: ARK Router, OpenWrt dashboard, LuCI dashboard, OpenWrt moderno, monitorar tráfego por dispositivo, per-device bandwidth monitor, OpenWrt Starlink telemetry, ZeroTier OpenWrt autostart, DNS benchmark router, SQM CAKE bufferbloat QoS, Multi-WAN failover load balancing, Speedify OpenWrt bonding, OpenWrt mobile UI, painel roteador OpenWrt, network bandwidth limiter, real-time router monitoring, adguard home openwrt ram, dns blacklist openwrt, cross-browser responsive openwrt.
 
-The current official release is **v0.9.68**. ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
+The current official release is **v0.9.69**. ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
 
 ---
 

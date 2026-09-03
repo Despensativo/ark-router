@@ -4877,11 +4877,18 @@ case "$action" in
 			ez_apply_wifi_iface "$section" "$device" "$network" "$section_ssid" "$section_key" "$section_disabled"
 		done
 		for section in $sections; do
-			case "$section" in
-				*radio0) uci -q set "wireless.$section.ssid=$ssid2" ;;
-				*radio1) uci -q set "wireless.$section.ssid=$ssid5" ;;
-				*) uci -q set "wireless.$section.ssid=$ssid" ;;
-			esac
+			sec_dev="$(uci -q get "wireless.$section.device")"
+			if [ "$sec_dev" = "$radio2" ]; then
+				uci -q set "wireless.$section.ssid=$ssid2"
+			elif [ "$sec_dev" = "$radio5" ]; then
+				uci -q set "wireless.$section.ssid=$ssid5"
+			else
+				case "$section" in
+					*radio0) uci -q set "wireless.$section.ssid=$ssid2" ;;
+					*radio1) uci -q set "wireless.$section.ssid=$ssid5" ;;
+					*) uci -q set "wireless.$section.ssid=$ssid" ;;
+				esac
+			fi
 			if [ "$encryption" = none ]; then
 				uci -q set "wireless.$section.encryption=none"
 				uci -q delete "wireless.$section.key"

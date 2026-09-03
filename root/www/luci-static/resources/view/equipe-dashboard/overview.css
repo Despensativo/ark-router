@@ -203,8 +203,8 @@ details.ex-perf-opt-card, section.ex-perf-opt-card { border-color: color-mix(in 
 .ex-inline-button { width: auto; margin: 0; border: 0; cursor: pointer; }
 .ex-inline-button:disabled { opacity: .55; cursor: wait; }
 .ex-text-link { color: var(--ex-primary-safe) !important; text-decoration: none !important; font-weight: 750; }
-.ex-text-button { display: inline; margin: 8px 0 0; padding: 0; border: 0; color: var(--ex-primary-safe); background: transparent; cursor: pointer; text-align: left; font: inherit; font-weight: 750; }
-.ex-text-button:hover { text-decoration: underline; }
+.ex-text-button { display: inline-flex; align-items: center; justify-content: center; margin: 8px 0 0; padding: 7px 12px; border: 1px solid color-mix(in srgb, var(--ex-primary-safe) 28%, transparent); border-radius: 9px; color: var(--ex-primary-safe); background: color-mix(in srgb, var(--ex-primary-safe) 9%, transparent); cursor: pointer; text-align: center; font: inherit; font-weight: 750; transition: background 0.2s ease, border-color 0.2s ease; }
+.ex-text-button:hover { background: color-mix(in srgb, var(--ex-primary-safe) 18%, transparent); border-color: var(--ex-primary-safe); text-decoration: none; }
 .ex-show-password { display: flex; align-items: center; gap: 8px; margin: 12px 0; cursor: pointer; }
 .ex-wifi-card small { display: block; margin-top: 9px; }
 .ex-wifi-subtitle { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-top: 9px; line-height: 1.4; }
@@ -287,8 +287,8 @@ details.ex-perf-opt-card, section.ex-perf-opt-card { border-color: color-mix(in 
 .ex-feature-name-row { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
 .ex-recommended-badge { padding: 3px 7px; border-radius: 999px; color: #047857; background: rgba(16,185,129,.15); font-size: .58rem; font-weight: 850; letter-spacing: .05em; }
 .ex-feature-state { display: flex; align-items: flex-end; flex-direction: column; gap: 7px; }
-.ex-feature-link { padding: 5px 3px; border: 0; color: #64748b; background: transparent; cursor: pointer; font-size: .75rem; }
-.ex-feature-link:hover { color: var(--ex-primary-safe); text-decoration: underline; }
+.ex-feature-link { display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; border: 1px solid rgba(127,127,127,.2); border-radius: 8px; color: inherit; background: rgba(127,127,127,.08); cursor: pointer; font-size: .78rem; font-weight: 700; transition: all .18s ease; }
+.ex-feature-link:hover { color: var(--ex-primary-safe); border-color: var(--ex-primary-safe); background: color-mix(in srgb,var(--ex-primary-safe) 12%,transparent); text-decoration: none; }
 .ex-cleanup-entry { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 10px 0; padding: 13px 14px; border: 1px solid rgba(127,127,127,.14); border-radius: 14px; background: rgba(127,127,127,.055); }
 .ex-cleanup-entry > div { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
 .ex-cleanup-panel { width: 100%; max-width: 720px; min-width: 0; box-sizing: border-box; }

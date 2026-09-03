@@ -284,9 +284,72 @@ function deviceLimitsMap(config) {
 }
 function wifiConfig(config) {
 	const v = values(config);
-	const bandOfSection=function(section){const radio=v[section.device]||{}, band=String(radio.band||'').toLowerCase(), ht=String(radio.htmode||'').toLowerCase(), hw=String(radio.hwmode||'').toLowerCase();if(band.indexOf('2')===0||hw==='11g')return '2g';if(band.indexOf('5')===0||hw==='11a'||ht.indexOf('80')>=0||ht.indexOf('160')>=0)return '5g';return '';};
-	const pick=function(network, band, preferred){if(v[preferred])return v[preferred];let found={};Object.keys(v).some(function(k){const s=v[k]||{};if(s['.type']!=='wifi-iface'&&!(s.mode==='ap'&&s.ssid))return false;const nets=String(s.network||'').split(/\s+/);if(nets.indexOf(network)<0)return false;if(band&&bandOfSection(s)!==band)return false;found=s;return true;});return found;};
-	const main2 = pick('lan','2g','default_radio0'), main5 = pick('lan','5g','default_radio1'), guest2 = pick('guest','2g','guest_radio0'), guest5 = pick('guest','5g','guest_radio1');
+	const bandOfSection=function(section){
+		const radio=v[section.device]||{}, band=String(radio.band||'').toLowerCase(), ht=String(radio.htmode||'').toLowerCase(), hw=String(radio.hwmode||'').toLowerCase(), dev=String(section.device||'').toLowerCase();
+		if(band.indexOf('2')===0||hw==='11g'||hw==='11b'||ht.indexOf('g')>=0||dev.indexOf('2g')>=0)return '2g';
+		if(band.indexOf('5')===0||hw==='11a'||ht.indexOf('80')>=0||ht.indexOf('160')>=0||dev.indexOf('5g')>=0)return '5g';
+		return '';
+	};
+
+	let dev2g = null, dev5g = null;
+	const devList = Object.keys(v).filter(function(k){ return v[k] && v[k]['.type'] === 'wifi-device'; });
+	devList.forEach(function(k){
+		const s = v[k] || {};
+		const band = String(s.band || '').toLowerCase();
+		const hw = String(s.hwmode || '').toLowerCase();
+		const ht = String(s.htmode || '').toLowerCase();
+		const name = String(k).toLowerCase();
+		if (band.indexOf('2') === 0 || hw === '11g' || hw === '11b' || ht.indexOf('g') >= 0 || name.indexOf('2g') >= 0) {
+			if (!dev2g) dev2g = k;
+		} else if (band.indexOf('5') === 0 || hw === '11a' || ht.indexOf('80') >= 0 || ht.indexOf('160') >= 0 || name.indexOf('5g') >= 0) {
+			if (!dev5g) dev5g = k;
+		}
+	});
+	if (!dev2g && !dev5g) {
+		dev2g = devList[0] || 'radio0';
+		dev5g = devList[1] || 'radio1';
+	} else if (!dev2g) {
+		dev2g = devList.find(function(k){ return k !== dev5g; }) || 'radio0';
+	} else if (!dev5g) {
+		dev5g = devList.find(function(k){ return k !== dev2g; }) || 'radio1';
+	}
+
+	const pick=function(network, targetDevice, targetBand){
+		let found = null;
+		if (targetDevice) {
+			Object.keys(v).some(function(k){
+				const s = v[k] || {};
+				if (s['.type'] !== 'wifi-iface' || s.mode !== 'ap' || !s.ssid) return false;
+				const nets = String(s.network || '').split(/\s+/);
+				if (nets.indexOf(network) < 0) return false;
+				if (s.device === targetDevice) {
+					found = s;
+					return true;
+				}
+				return false;
+			});
+		}
+		if (!found && targetBand) {
+			Object.keys(v).some(function(k){
+				const s = v[k] || {};
+				if (s['.type'] !== 'wifi-iface' || s.mode !== 'ap' || !s.ssid) return false;
+				const nets = String(s.network || '').split(/\s+/);
+				if (nets.indexOf(network) < 0) return false;
+				if (bandOfSection(s) === targetBand) {
+					found = s;
+					return true;
+				}
+				return false;
+			});
+		}
+		if (!found) {
+			const prefKey = (network === 'guest' ? 'guest_' : 'default_') + (targetDevice || 'radio0');
+			if (v[prefKey] && v[prefKey].mode === 'ap' && v[prefKey].ssid) found = v[prefKey];
+		}
+		return found || {};
+	};
+
+	const main2 = pick('lan', dev2g, '2g'), main5 = pick('lan', dev5g, '5g'), guest2 = pick('guest', dev2g, '2g'), guest5 = pick('guest', dev5g, '5g');
 	const mergeWifi=function(a,b,id,kindLabel){
 		const out=Object.assign({}, b || {}, a || {});
 		out.id = id;
@@ -303,23 +366,42 @@ function wifiConfig(config) {
 		out.has5g=!!(b&&b.ssid);
 		return out;
 	};
-	const hasRadios = Object.keys(v).some(function(k){ return v[k]['.type'] === 'wifi-device'; });
+	const hasRadios = devList.length > 0;
 	const extrasMap = {};
 	Object.keys(v).forEach(function(k){
 		const s = v[k] || {};
 		if(s['.type'] !== 'wifi-iface' || s.mode !== 'ap' || !s.ssid) return;
-		if(k === 'default_radio0' || k === 'default_radio1' || k === 'guest_radio0' || k === 'guest_radio1') return;
+		if(k === 'default_radio0' || k === 'default_radio1' || k === 'guest_radio0' || k === 'guest_radio1' ||
+		   (dev2g && (k === 'default_' + dev2g || k === 'guest_' + dev2g)) ||
+		   (dev5g && (k === 'default_' + dev5g || k === 'guest_' + dev5g))) return;
 		const groupKey = k.replace(/_r[01]$/, '').replace(/_radio[01]$/, '');
 		if(!extrasMap[groupKey]) extrasMap[groupKey] = { r0: null, r1: null, name: groupKey };
 		const band = bandOfSection(s);
-		if(band === '2g') extrasMap[groupKey].r0 = s;
+		if(band === '2g' || s.device === dev2g) extrasMap[groupKey].r0 = s;
 		else extrasMap[groupKey].r1 = s;
 	});
 	const extras = Object.keys(extrasMap).map(function(gk){
 		const g = extrasMap[gk];
 		return mergeWifi(g.r0, g.r1, gk, 'extra');
 	});
-	return { hasRadios: hasRadios, main: mergeWifi(main2, main5, 'main', 'main'), guest: mergeWifi(guest2, guest5, 'guest', 'guest'), extras: extras, r0: v.radio0 || {}, r1: v.radio1 || {} };
+	const radio2g = v[dev2g] || {};
+	const radio5g = v[dev5g] || {};
+	return {
+		hasRadios: hasRadios,
+		main: mergeWifi(main2, main5, 'main', 'main'),
+		guest: mergeWifi(guest2, guest5, 'guest', 'guest'),
+		extras: extras,
+		dev2g: dev2g,
+		dev5g: dev5g,
+		device2g: dev2g,
+		device5g: dev5g,
+		r2g: radio2g,
+		r5g: radio5g,
+		r0: radio2g,
+		r1: radio5g,
+		rawRadio0: v.radio0 || {},
+		rawRadio1: v.radio1 || {}
+	};
 }
 function wifiBand(radioName, radio) {
 	const c=(radio&&radio.config)||{}, band=String(c.band||'').toLowerCase(), ht=String(c.htmode||'').toLowerCase(), hw=String(c.hwmode||'').toLowerCase(), name=String(radioName||'').toLowerCase();
@@ -1745,11 +1827,11 @@ return view.extend({
 
 			const presets = [
 				{ id: 'auto', label: '✨ Automático', tag: 'RECOMENDADO', desc: 'Detecta o protocolo e aplica somente os ajustes compatíveis com esta WAN.' },
-				{ id: 'xpon_bridge', label: '⚡ Fibra PPPoE', tag: 'BRIDGE / XPON', desc: 'PPPoE sem VLAN • overhead 28 B • MTU 1500 quando suportado.', ll: 'pppoe_28', jumbo: true },
-				{ id: 'xpon_vlan', label: '🏷️ Fibra PPPoE + VLAN', tag: 'VLAN DA OPERADORA', desc: 'PPPoE encapsulado em VLAN • overhead 34 B • MTU 1500.', ll: 'vlan_34', jumbo: true },
-				{ id: 'dhcp_cable', label: '🌐 Fibra/Modem DHCP', tag: 'DHCP / IPOE', desc: 'Internet entregue automaticamente, sem overhead PPPoE.', ll: 'none', jumbo: false },
-				{ id: 'mobile_starlink', label: '📡 Starlink / Link móvel', tag: 'SATÉLITE / 4G / 5G', desc: 'Sem overhead fixo; preserva ajustes adequados a links variáveis.', ll: 'none', jumbo: false },
-				{ id: 'dedicated_static', label: '🚀 IP fixo / link dedicado', tag: 'ESTÁTICO / ALTA BANDA', desc: 'IP estático ou link dedicado, sem impor overhead PPPoE.', ll: 'none', jumbo: false },
+				{ id: 'xpon_bridge', label: '⚡ Perfil Fibra PPPoE', tag: 'CALIBRAÇÃO MTU', desc: 'Calibração para PPPoE sem VLAN • overhead 28 B • MTU 1500 quando suportado.', ll: 'pppoe_28', jumbo: true },
+				{ id: 'xpon_vlan', label: '🏷️ Perfil Fibra + VLAN', tag: 'VLAN OPERADORA', desc: 'Calibração para PPPoE encapsulado em VLAN • overhead 34 B • MTU 1500.', ll: 'vlan_34', jumbo: true },
+				{ id: 'dhcp_cable', label: '🌐 Perfil Modem / DHCP', tag: 'DHCP / IPOE', desc: 'Internet entregue automaticamente pelo modem da operadora, sem overhead PPPoE.', ll: 'none', jumbo: false },
+				{ id: 'mobile_starlink', label: '📡 Perfil Satélite / 4G', tag: 'SATÉLITE / MÓVEL', desc: 'Sem overhead fixo; preserva ajustes adequados a links de latência variável.', ll: 'none', jumbo: false },
+				{ id: 'dedicated_static', label: '🚀 Perfil IP Fixo / Dedicado', tag: 'ALTA BANDA', desc: 'IP estático ou link dedicado corporativo, sem impor overhead PPPoE.', ll: 'none', jumbo: false },
 				{ id: 'custom', label: '🛠️ Personalizado', tag: 'AVANÇADO', desc: 'Mantém os valores escolhidos manualmente para esta WAN.' }
 			];
 			const profileById = function(id) { return presets.find(function(p) { return p.id === id; }) || presets[0]; };
@@ -1815,8 +1897,8 @@ return view.extend({
 				flowInput.disabled = sqmAnyActive && !flowOffload;
 				const effective = effectiveProfile();
 				while (selectedSummary.firstChild) selectedSummary.removeChild(selectedSummary.firstChild);
-				selectedSummary.appendChild(E('strong', {}, [(selectedPreset === 'auto' ? 'Automático → ' : '') + effective.label]));
-				selectedSummary.appendChild(E('span', {}, [opt.label + ': overhead ' + (linklayerProfile === 'none' ? 'padrão' : linklayerProfile.replace('_', ' ')) + ' • MTU físico ' + (babyJumbo ? '1508' : '1500')]));
+				selectedSummary.appendChild(E('strong', { style: 'display:block;margin-bottom:3px;font-size:13px;color:var(--ex-primary-safe);' }, [(selectedPreset === 'auto' ? 'Automático → ' : '') + effective.label]));
+				selectedSummary.appendChild(E('span', { style: 'display:block;font-size:12px;opacity:0.85;' }, [opt.label + ': overhead ' + (linklayerProfile === 'none' ? 'padrão (0B)' : linklayerProfile.replace('_', ' ').toUpperCase() + 'B') + ' • MTU físico ' + (babyJumbo ? '1508' : '1500')]));
 				globalWarning.textContent = sqmAnyActive ? 'Fastpath fica bloqueado enquanto qualquer fila SQM/CAKE estiver ativa, evitando que o tráfego contorne o controle de filas.' : 'Estas opções são globais e afetam todas as WANs do roteador.';
 				updateSqmDependency();
 			};
@@ -1869,8 +1951,16 @@ return view.extend({
 			const protoNames = { pppoe: 'PPPoE', dhcp: 'DHCP automático', static: 'IP estático' };
 			const speedText = Number(opt.link_speed_mbps || 0) > 0 ? (Number(opt.link_speed_mbps) + ' Mbps' + (opt.duplex ? ' • ' + opt.duplex : '')) : 'velocidade física não informada';
 			const detected = profileById(opt.detected_profile);
+			const hw = (self.capabilities && self.capabilities.hardware) || {};
+			const isSingleCore = hw.cpu_cores <= 1;
 
 			const content = [
+				E('div', { class: 'alert-message info', style: 'margin-bottom:14px;font-size:13px;line-height:1.45;' }, [
+					E('strong', { style: 'display:block;margin-bottom:4px;font-size:13.5px;' }, ['💡 Calibração de Desempenho e Filas de Internet']),
+					'Esta tela calibra o tamanho dos pacotes (MTU) e as filas de tráfego para obter o menor ping e máximo desempenho da sua conexão. ',
+					E('b', {}, ['Ela NÃO altera seu tipo de discagem (PPPoE/DHCP) nem suas senhas de operadora.']),
+					' Seu provedor continua conectado normalmente.'
+				]),
 				E('div', { class: 'ex-opt-detected', style: 'display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:12px;margin-bottom:14px;gap:12px;' }, [
 					E('div', {}, [
 						E('span', { class: 'ex-kicker', style: 'display:block;font-size:11px;font-weight:700;margin-bottom:2px;' }, ['CONEXÃO DETECTADA']),
@@ -1881,7 +1971,7 @@ return view.extend({
 				]),
 				E('div', { class: 'ex-opt-section' }, [
 					E('div', { class: 'ex-opt-section-head' }, [
-						E('h4', {}, ['1. PERFIL DE ' + opt.label])
+						E('h4', {}, ['1. PERFIL DE CALIBRAÇÃO DE PACOTES (' + opt.label + ')'])
 					]),
 					presetGrid,
 					selectedSummary,
@@ -1903,7 +1993,7 @@ return view.extend({
 							E('div', { class: 'ex-opt-module-info' }, [
 								E('strong', {}, ['🧠 Buffers TCP Turbo (BDP 8 MB)']),
 								E('p', {}, ['Aumenta rmem/wmem para 8 MB e backlog para 5000. Mantém velocidade máxima contínua em downloads pesados (Steam, torrents, streams 4K).']),
-								(self.capabilities && self.capabilities.hardware && self.capabilities.hardware.mem_total_mb < 256) ? E('small', { style: 'color:#f59e0b;font-weight:600;display:block;margin-top:4px;' }, ['⚠️ Memória baixa (' + self.capabilities.hardware.mem_total_mb + ' MB RAM): recomendado manter buffers padrão do sistema para preservar memória.']) : ''
+								(hw.mem_total_mb < 256) ? E('small', { style: 'color:#f59e0b;font-weight:600;display:block;margin-top:4px;' }, ['⚠️ Memória de 128 MB RAM: manter desativado preserva a memória livre e garante estabilidade do sistema.']) : ''
 							]),
 							E('label', { class: 'ex-switch' }, [ tcpInput, E('span', { class: 'ex-switch-slider' }) ])
 						]),
@@ -1915,15 +2005,13 @@ return view.extend({
 							]),
 							E('label', { class: 'ex-switch' }, [ flowInput, E('span', { class: 'ex-switch-slider' }) ])
 						]),
-						E('div', { class: 'ex-opt-module-card' }, [
+						(!isSingleCore) ? E('div', { class: 'ex-opt-module-card' }, [
 							E('div', { class: 'ex-opt-module-info' }, [
 								E('strong', {}, ['⚙️ IRQ Balance']),
-								E('p', {}, [
-									(self.capabilities && self.capabilities.hardware && self.capabilities.hardware.cpu_cores <= 1) ? '⚠️ Indisponível: CPU de 1 núcleo. O balanceamento de IRQ requer processador multi-core (2+ núcleos).' : (opt.irqbalance_installed ? 'Distribui interrupções de rede entre os núcleos disponíveis.' : 'Módulo não instalado neste roteador.')
-								])
+								E('p', {}, [opt.irqbalance_installed ? 'Distribui interrupções de rede entre os núcleos disponíveis.' : 'Módulo não instalado neste roteador.'])
 							]),
 							E('label', { class: 'ex-switch' }, [irqInput, E('span', { class: 'ex-switch-slider' })])
-						])
+						]) : ''
 					])
 				]),
 				E('div', { class: 'right', style: 'margin-top:14px;' }, [
@@ -2254,49 +2342,53 @@ return view.extend({
 		const cur = this.currentWifiChannels();
 		const ch2Select = E('select', { class: 'cbi-input-select', style: 'width:100%' }, [
 			E('option', { value: 'auto' }, ['Automático (Auto)']),
-			E('option', { value: '1' }, ['Canal 1 (2412 MHz — Recomendado)']),
+			E('option', { value: '1' }, ['Canal 1 (2412 MHz — Recomendado / Sem sobreposição)']),
 			E('option', { value: '2' }, ['Canal 2 (2417 MHz)']),
 			E('option', { value: '3' }, ['Canal 3 (2422 MHz)']),
 			E('option', { value: '4' }, ['Canal 4 (2427 MHz)']),
 			E('option', { value: '5' }, ['Canal 5 (2432 MHz)']),
-			E('option', { value: '6' }, ['Canal 6 (2437 MHz — Recomendado)']),
+			E('option', { value: '6' }, ['Canal 6 (2437 MHz — Recomendado / Sem sobreposição)']),
 			E('option', { value: '7' }, ['Canal 7 (2442 MHz)']),
 			E('option', { value: '8' }, ['Canal 8 (2447 MHz)']),
 			E('option', { value: '9' }, ['Canal 9 (2452 MHz)']),
 			E('option', { value: '10' }, ['Canal 10 (2457 MHz)']),
-			E('option', { value: '11' }, ['Canal 11 (2462 MHz — Recomendado)']),
-			E('option', { value: '12' }, ['Canal 12 (2467 MHz)']),
-			E('option', { value: '13' }, ['Canal 13 (2472 MHz)'])
+			E('option', { value: '11' }, ['Canal 11 (2462 MHz — Recomendado / Sem sobreposição)'])
 		]);
 		ch2Select.value = cur.two || 'auto';
 
 		const ch5Select = E('select', { class: 'cbi-input-select', style: 'width:100%' }, [
 			E('option', { value: 'auto' }, ['Automático (Auto)']),
-			E('option', { value: '36' }, ['Canal 36 (5180 MHz — Recomendado)']),
-			E('option', { value: '40' }, ['Canal 40 (5200 MHz)']),
-			E('option', { value: '44' }, ['Canal 44 (5220 MHz)']),
-			E('option', { value: '48' }, ['Canal 48 (5240 MHz)']),
-			E('option', { value: '52' }, ['Canal 52 (5260 MHz — DFS)']),
-			E('option', { value: '56' }, ['Canal 56 (5280 MHz — DFS)']),
-			E('option', { value: '60' }, ['Canal 60 (5300 MHz — DFS)']),
-			E('option', { value: '64' }, ['Canal 64 (5320 MHz — DFS)']),
-			E('option', { value: '100' }, ['Canal 100 (5500 MHz — DFS)']),
-			E('option', { value: '104' }, ['Canal 104 (5520 MHz — DFS)']),
-			E('option', { value: '108' }, ['Canal 108 (5540 MHz — DFS)']),
-			E('option', { value: '112' }, ['Canal 112 (5560 MHz — DFS)']),
-			E('option', { value: '116' }, ['Canal 116 (5580 MHz — DFS)']),
-			E('option', { value: '120' }, ['Canal 120 (5600 MHz — DFS)']),
-			E('option', { value: '124' }, ['Canal 124 (5620 MHz — DFS)']),
-			E('option', { value: '128' }, ['Canal 128 (5640 MHz — DFS)']),
-			E('option', { value: '132' }, ['Canal 132 (5660 MHz — DFS)']),
-			E('option', { value: '136' }, ['Canal 136 (5680 MHz — DFS)']),
-			E('option', { value: '140' }, ['Canal 140 (5700 MHz — DFS)']),
-			E('option', { value: '144' }, ['Canal 144 (5720 MHz — DFS)']),
-			E('option', { value: '149' }, ['Canal 149 (5745 MHz — Recomendado)']),
-			E('option', { value: '153' }, ['Canal 153 (5765 MHz)']),
-			E('option', { value: '157' }, ['Canal 157 (5785 MHz)']),
-			E('option', { value: '161' }, ['Canal 161 (5805 MHz)']),
-			E('option', { value: '165' }, ['Canal 165 (5825 MHz)'])
+			E('optgroup', { label: 'Padrão UNII-1 (Sem DFS / Sem Radar — Recomendado)' }, [
+				E('option', { value: '36' }, ['Canal 36 (5180 MHz — Recomendado)']),
+				E('option', { value: '40' }, ['Canal 40 (5200 MHz)']),
+				E('option', { value: '44' }, ['Canal 44 (5220 MHz)']),
+				E('option', { value: '48' }, ['Canal 48 (5240 MHz)'])
+			]),
+			E('optgroup', { label: 'UNII-3 Alta Potência (Sem DFS / Sem Radar — Recomendado)' }, [
+				E('option', { value: '149' }, ['Canal 149 (5745 MHz — Recomendado)']),
+				E('option', { value: '153' }, ['Canal 153 (5765 MHz)']),
+				E('option', { value: '157' }, ['Canal 157 (5785 MHz)']),
+				E('option', { value: '161' }, ['Canal 161 (5805 MHz)']),
+				E('option', { value: '165' }, ['Canal 165 (5825 MHz)'])
+			]),
+			E('optgroup', { label: 'Canais DFS (Sujeitos a verificação de radar meteorológico)' }, [
+				E('option', { value: '52' }, ['Canal 52 (5260 MHz — DFS)']),
+				E('option', { value: '56' }, ['Canal 56 (5280 MHz — DFS)']),
+				E('option', { value: '60' }, ['Canal 60 (5300 MHz — DFS)']),
+				E('option', { value: '64' }, ['Canal 64 (5320 MHz — DFS)']),
+				E('option', { value: '100' }, ['Canal 100 (5500 MHz — DFS)']),
+				E('option', { value: '104' }, ['Canal 104 (5520 MHz — DFS)']),
+				E('option', { value: '108' }, ['Canal 108 (5540 MHz — DFS)']),
+				E('option', { value: '112' }, ['Canal 112 (5560 MHz — DFS)']),
+				E('option', { value: '116' }, ['Canal 116 (5580 MHz — DFS)']),
+				E('option', { value: '120' }, ['Canal 120 (5600 MHz — DFS)']),
+				E('option', { value: '124' }, ['Canal 124 (5620 MHz — DFS)']),
+				E('option', { value: '128' }, ['Canal 128 (5640 MHz — DFS)']),
+				E('option', { value: '132' }, ['Canal 132 (5660 MHz — DFS)']),
+				E('option', { value: '136' }, ['Canal 136 (5680 MHz — DFS)']),
+				E('option', { value: '140' }, ['Canal 140 (5700 MHz — DFS)']),
+				E('option', { value: '144' }, ['Canal 144 (5720 MHz — DFS)'])
+			])
 		]);
 		ch5Select.value = cur.five || 'auto';
 
@@ -3159,9 +3251,10 @@ return view.extend({
 					rel: 'noopener noreferrer'
 				}, ['Abrir via ZeroTier ↗']) : '',
 				active ? E('button', {
-					class: 'ex-feature-link',
+					class: 'ex-mini-button',
+					style: 'font-weight: 750; padding: 7px 12px; margin-left: 6px;',
 					click: function() { self.openAdblockSetupModal(f); }
-				}, ['⚙️ Opções']) : ''
+				}, ['⚙️ Configurar Bloqueio']) : ''
 			]),
 			E('small', { class: 'ex-muted' }, [
 				active ? (mode === 'local' ? ('AdGuard Home operando em RAM com cache de ' + (f.cache_size_mb || 64) + ' MB e DoH.') : ('Nuvem filtrada ativa com super cache dnsmasq respondendo em 0ms.')) : (isFull ? ('💡 Hardware potente (' + (f.mem_total_mb || '1024') + ' MB RAM): suporte completo ao AdGuard Home local em RAM.') : '💡 Hardware compacto: filtragem em nuvem com super-cache dnsmasq em 0ms.')
@@ -4851,6 +4944,23 @@ return view.extend({
 		]);
 	},
 	render: function(loaded) {
+		if (!window._arkEscModalAttached) {
+			window._arkEscModalAttached = true;
+			document.addEventListener('keydown', function(ev) {
+				if (ev.key === 'Escape' || ev.keyCode === 27) {
+					var modal = document.querySelector('.modal, .cbi-modal, #modal_overlay, div[class*="modal"]');
+					if (modal) {
+						ev.preventDefault();
+						if (window.L && L.ui && typeof L.ui.hideModal === 'function') {
+							L.ui.hideModal();
+						} else {
+							var btn = modal.querySelector('button.cbi-button-neutral, button.btn-neutral, .close');
+							if (btn) btn.click();
+						}
+					}
+				}
+			});
+		}
 		this.board=loaded[0]||{}; this.countries=(loaded[1]&&loaded[1].results)||[]; this.capabilities=loaded[2]||{features:{}}; dashboardLanguage=this.capabilities.language||'pt-br';this.applyAppearance();this.applyBrand(this.capabilities.title);enableTranslation(); const data=loaded[3], w=wifiConfig(data.wireless), release=((this.board.release||{}).description||'').split(' ').slice(0,2).join(' '), panelTitle=this.capabilities.title||'ARK Router';
 		const isGamer=(this.capabilities&&this.capabilities.operation_profile)==='gamer';
 		const heroEyebrow=isGamer?'🎮 MODO GAMER • BAIXA LATÊNCIA':'CENTRAL DE OPERAÇÕES';
@@ -4893,7 +5003,7 @@ return view.extend({
 				]),
 				bandContent,
 				extraGuestRow,
-				E('button',{class:'ex-text-button','click':L.bind(function(){this.editWifiNetwork(kind,cfg);},this)},['Configurar nome, senha e status →'])
+				E('button',{class:'ex-mini-button ex-wifi-config-button',style:'margin-top:12px;width:100%;justify-content:center;font-weight:750;padding:8px 12px;display:flex;align-items:center;gap:6px;font-size:13px;','click':L.bind(function(){this.editWifiNetwork(kind,cfg);},this)},['⚙ Configurar Wi‑Fi (Nome, Senha e Status)'])
 			]);
 		},this);
 		const modeButton=L.bind(function(mode,label){return E('button',{id:'ex-mode-'+mode,class:'ex-mode-button','click':L.bind(this.setMwanMode,this,mode,label)},[label]);},this);
