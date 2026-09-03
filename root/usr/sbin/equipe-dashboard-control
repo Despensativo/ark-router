@@ -2506,6 +2506,7 @@ adblock_status_json() {
 	safesearch_enabled=false
 	cloud_cache="$(uci -q get dhcp.@dnsmasq[0].cachesize || printf 25000)"
 	[ "$cloud_cache" -gt 0 ] 2>/dev/null || cloud_cache=25000
+	web_port=3000
 
 	if [ -f /etc/adguardhome/adguardhome.yaml ]; then
 		if [ "$mode" = "local" ]; then
@@ -2518,6 +2519,12 @@ adblock_status_json() {
 			cache_size_mb=$((raw_bytes / 1048576))
 		fi
 
+		raw_port="$(awk -F: '/address: [0-9.]*:/ {print $NF; exit}' /etc/adguardhome/adguardhome.yaml 2>/dev/null | tr -d ' ')"
+		case "$raw_port" in
+			''|*[!0-9]*) ;;
+			*) [ "$raw_port" -ge 1 ] && [ "$raw_port" -le 65535 ] && web_port="$raw_port" ;;
+		esac
+
 		[ "$(awk '/^  parental_enabled:/ {print $2; exit}' /etc/adguardhome/adguardhome.yaml 2>/dev/null)" = "true" ] && parental_enabled=true
 		[ "$(awk '/^  safebrowsing_enabled:/ {print $2; exit}' /etc/adguardhome/adguardhome.yaml 2>/dev/null)" = "false" ] && protection_enabled=false
 		[ "$(awk '/^  safe_search:/ {getline; if ($1=="enabled:" && $2=="true") print "true"}' /etc/adguardhome/adguardhome.yaml 2>/dev/null)" = "true" ] && safesearch_enabled=true
@@ -2526,12 +2533,26 @@ adblock_status_json() {
 	fi
 
 	lan_ip="$(uci -q get network.lan.ipaddr || echo 192.168.73.1)"
-	web_url="http://${lan_ip}:3000"
+	web_url="http://${lan_ip}:${web_port}"
+
+	zt_access=true
+	if [ "$(uci -q get equipe_perf.settings.adblock_zerotier_access)" = "0" ]; then
+		zt_access=false
+	fi
+
+	zt_web_url=""
+	zt_dev="$(uci -q get firewall.zerotier.device || echo ztxoohdno4)"
+	if [ -n "$zt_dev" ]; then
+		zt_ip="$(ip -4 addr show dev "$zt_dev" 2>/dev/null | awk '/inet / {split($2,a,"/"); print a[1]; exit}')"
+		if [ -n "$zt_ip" ] && [ "$zt_access" = "true" ]; then
+			zt_web_url="http://${zt_ip}:${web_port}"
+		fi
+	fi
 
 	cloud_provider="$(uci -q get equipe_perf.settings.adblock_cloud_provider || printf 'adguard_dns')"
 
-	printf '{"installed":%s,"active":%s,"mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s","mem_total_mb":%d,"cache_size_mb":%d,"recommended_cache_mb":%d,"parental_enabled":%s,"protection_enabled":%s,"safesearch_enabled":%s,"cloud_cache":%s}\n' \
-		"$local_installed" "$active" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url" "$mem_total_mb" "$cache_size_mb" "$recommended_cache_mb" "$parental_enabled" "$protection_enabled" "$safesearch_enabled" "$cloud_cache"
+	printf '{"installed":%s,"active":%s,"mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s","mem_total_mb":%d,"cache_size_mb":%d,"recommended_cache_mb":%d,"parental_enabled":%s,"protection_enabled":%s,"safesearch_enabled":%s,"cloud_cache":%s,"web_port":%d,"zerotier_access":%s,"zt_web_url":"%s"}\n' \
+		"$local_installed" "$active" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url" "$mem_total_mb" "$cache_size_mb" "$recommended_cache_mb" "$parental_enabled" "$protection_enabled" "$safesearch_enabled" "$cloud_cache" "$web_port" "$zt_access" "$zt_web_url"
 }
 
 adblock_configure() {
@@ -2542,14 +2563,21 @@ adblock_configure() {
 	safesearch="${5:-0}"
 	provider="${6:-adguard_dns}"
 	cloud_cache="${7:-25000}"
+	web_port="${8:-3000}"
+	zt_access="${9:-1}"
 
 	case "$cache_mb" in ''|*[!0-9]*) cache_mb=64 ;; esac
 	[ "$cache_mb" -lt 4 ] && cache_mb=4
 	[ "$cache_mb" -gt 256 ] && cache_mb=256
 
+	case "$web_port" in ''|*[!0-9]*) web_port=3000 ;; esac
+	[ "$web_port" -lt 80 ] && web_port=3000
+	[ "$web_port" -gt 65535 ] && web_port=3000
+
 	case "$protection" in 1|true) protection_bool="true" ;; *) protection_bool="false" ;; esac
 	case "$parental" in 1|true) parental_bool="true" ;; *) parental_bool="false" ;; esac
 	case "$safesearch" in 1|true) safesearch_bool="true" ;; *) safesearch_bool="false" ;; esac
+	case "$zt_access" in 0|false) zt_access_val="0" ;; *) zt_access_val="1" ;; esac
 
 	if [ "$mode" = "local" ]; then
 		cache_bytes=$((cache_mb * 1048576))
@@ -2561,12 +2589,41 @@ adblock_configure() {
 			sed -i "s/^  parental_cache_size: .*/  parental_cache_size: $cache_bytes/" "$yaml"
 			sed -i "s/^  safebrowsing_enabled: .*/  safebrowsing_enabled: $protection_bool/" "$yaml"
 			sed -i "s/^  parental_enabled: .*/  parental_enabled: $parental_bool/" "$yaml"
+			sed -i "s/^  address: .*/  address: 0.0.0.0:$web_port/" "$yaml"
 
 			awk -v val="$safesearch_bool" '
 			/^  safe_search:/ { in_ss=1; print; next }
 			in_ss && /^    enabled:/ { print "    enabled: " val; in_ss=0; next }
 			{ print }
 			' "$yaml" > "${yaml}.tmp" && mv -f "${yaml}.tmp" "$yaml"
+
+			# Gerenciamento de Firewall ZeroTier para porta do AdGuard
+			cur_zt_http="$(uci -q get firewall.zt_http.dest_port || echo '80 443')"
+			new_zt_http="$(printf '%s' "$cur_zt_http" | sed -E 's/\b(3000|[0-9]{4,5})\b//g' | tr -s ' ' | sed 's/^ //;s/ $//')"
+			[ -n "$new_zt_http" ] || new_zt_http="80 443"
+			uci -q set "firewall.zt_http.dest_port=$new_zt_http"
+
+			mkdir -p /etc/config
+			[ -f /etc/config/equipe_perf ] || touch /etc/config/equipe_perf
+			uci -q set equipe_perf.settings=performance
+			uci -q set "equipe_perf.settings.adblock_zerotier_access=$zt_access_val"
+			uci commit equipe_perf
+
+			if [ "$zt_access_val" = "1" ]; then
+				uci -q set firewall.zt_adguard=rule
+				uci -q set firewall.zt_adguard.name='Allow-ZeroTier-AdGuard'
+				uci -q set firewall.zt_adguard.src='zerotier'
+				uci -q set firewall.zt_adguard.proto='tcp'
+				uci -q set "firewall.zt_adguard.dest_port=$web_port"
+				uci -q set firewall.zt_adguard.target='ACCEPT'
+				uci -q set firewall.zt_adguard.enabled='1'
+			else
+				uci -q set firewall.zt_adguard=rule
+				uci -q set firewall.zt_adguard.name='Allow-ZeroTier-AdGuard'
+				uci -q set firewall.zt_adguard.enabled='0'
+			fi
+			uci commit firewall
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
 
 			/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
 		fi
@@ -2628,6 +2685,8 @@ adblock_enable() {
 	parental="${5:-0}"
 	safesearch="${6:-0}"
 	cloud_cache="${7:-25000}"
+	web_port="${8:-3000}"
+	zt_access="${9:-1}"
 
 	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
 	overlay_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"
@@ -2668,7 +2727,7 @@ adblock_enable() {
 		uci -q set equipe_perf.settings.adblock_cloud='0'
 		uci commit equipe_perf
 
-		adblock_configure local "$cache_mb" "$protection" "$parental" "$safesearch" >/dev/null 2>&1 || true
+		adblock_configure local "$cache_mb" "$protection" "$parental" "$safesearch" "$provider" "$cloud_cache" "$web_port" "$zt_access" >/dev/null 2>&1 || true
 
 		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 		echo ok
@@ -4049,10 +4108,10 @@ case "$action" in
 		adblock_status_json
 		;;
 	adblock-enable)
-		adblock_enable "$2" "$3" "$4" "$5" "$6" "$7" "$8"
+		adblock_enable "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}"
 		;;
 	adblock-configure)
-		adblock_configure "$2" "$3" "$4" "$5" "$6" "$7" "$8"
+		adblock_configure "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}"
 		;;
 	adblock-disable)
 		adblock_disable

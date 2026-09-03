@@ -2954,10 +2954,17 @@ return view.extend({
 				}, ['▶ Ativar Bloqueador']) : switchControl,
 				(active && mode === 'local') ? E('a', {
 					class: 'ex-mini-button',
-					href: f.web_url || 'http://' + window.location.hostname + ':3000',
+					href: f.web_url || ('http://' + window.location.hostname + ':' + (f.web_port || 3000)),
 					target: '_blank',
 					rel: 'noopener noreferrer'
 				}, ['Abrir Painel AdGuard ↗']) : '',
+				(active && mode === 'local' && f.zt_web_url) ? E('a', {
+					class: 'ex-mini-button',
+					style: 'background: rgba(16, 185, 129, 0.18); border-color: rgba(16, 185, 129, 0.4);',
+					href: f.zt_web_url,
+					target: '_blank',
+					rel: 'noopener noreferrer'
+				}, ['Abrir via ZeroTier ↗']) : '',
 				active ? E('button', {
 					class: 'ex-feature-link',
 					click: function() { self.openAdblockSetupModal(f); }
@@ -3050,13 +3057,41 @@ return view.extend({
 			!!f.safesearch_enabled
 		);
 
+		const portInput = E('input', {
+			type: 'number',
+			class: 'cbi-input-text',
+			style: 'width: 110px; text-align: center; font-weight: 600;',
+			min: '80',
+			max: '65535',
+			value: String(f.web_port || 3000)
+		});
+
+		const portRow = E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; padding: 10px 12px; background: rgba(255,255,255,.03); border-radius: 8px;' }, [
+			E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
+				E('strong', { style: 'font-size: 0.88rem; display: block;' }, ['🔌 Porta Web do AdGuard']),
+				E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px; line-height: 1.35;' }, [
+					'Porta usada para acessar a interface administrativa local (padrão: 3000).'
+				])
+			]),
+			portInput
+		]);
+
+		const protZeroTier = makeToggleRow(
+			'🌐 Permitir Acesso Remoto via ZeroTier',
+			'Abre a porta do AdGuard no firewall para conexões vindas da sua rede virtual ZeroTier. Quando desativado, apenas a rede local (LAN) consegue abrir o painel.',
+			f.zerotier_access !== false
+		);
+
 		const localConfigWrap = E('div', { style: 'margin-top: 10px; padding: 12px; background: rgba(255,255,255,.02); border-radius: 8px;' }, [
 			E('label', { style: 'font-size: 0.85rem; font-weight: 600;' }, ['Tamanho do Cache DNS em RAM']),
 			cacheSelect,
 			E('small', { class: 'ex-muted', style: 'display: block; margin-top: 4px;' }, [
 				'💡 Hardware: ' + (f.mem_total_mb ? f.mem_total_mb + ' MB de RAM total detectada. ' : '') + 'Recomendado para este modelo: ' + recCache + ' MB.'
 			]),
-			E('div', { style: 'margin-top: 12px; font-size: 0.85rem; font-weight: 600;' }, ['Proteções Essenciais']),
+			E('div', { style: 'margin-top: 14px; font-size: 0.85rem; font-weight: 600;' }, ['Acesso & Rede']),
+			portRow,
+			protZeroTier.row,
+			E('div', { style: 'margin-top: 14px; font-size: 0.85rem; font-weight: 600;' }, ['Proteções Essenciais']),
 			protMalware.row,
 			protParental.row,
 			protSafeSearch.row
@@ -3163,9 +3198,11 @@ return view.extend({
 						const ss = protSafeSearch.input.checked ? '1' : '0';
 						const prov = providerSelect.value;
 						const cCache = cloudCacheSelect.value;
+						const webPort = parseInt(portInput.value, 10) || 3000;
+						const ztAcc = protZeroTier.input.checked ? '1' : '0';
 
 						const cmd = active ? 'adblock-configure' : 'adblock-enable';
-						const args = [cmd, mode, (mode === 'local' ? cacheMb : prov), prot, par, ss, prov, cCache];
+						const args = [cmd, mode, (mode === 'local' ? cacheMb : prov), prot, par, ss, prov, cCache, String(webPort), ztAcc];
 
 						fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 							if (r.code) throw new Error(r.stderr || 'Falha ao configurar bloqueador');

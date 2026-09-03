@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.59
+
+- **🔌 Porta Personalizada e Acesso ZeroTier para o AdGuard Home (Exclusivo Perfil Full)**:
+  - **Porta Web Customizável**: Permite alterar a porta local do painel administrativo do AdGuard Home (padrão: `3000`).
+  - **Acesso Remoto via ZeroTier**: Interruptor para liberar ou bloquear no firewall as conexões vindas da rede virtual ZeroTier na porta do AdGuard.
+  - **Botão Direto com IP ZeroTier**: Quando ativo e conectado à rede virtual, o card exibe o botão `[Abrir via ZeroTier ↗]` apontando diretamente para o IP virtual do roteador.
+  - **Isolamento Completo**: Opções exclusivas do Perfil Full; o Perfil Lite permanece 100% leve e sem poluição visual.
+
 ## 0.9.58
 
 - **🎯 Correção de Seleção do Modo Atual no Modal do Bloqueador**:
