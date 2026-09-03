@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.60
+
+- **✨ Simplificação e Clareza no Controle do Bloqueador**:
+  - Removido botão redundante `[Desligar]`, unificando todo o controle de ligar e desligar no interruptor visual `LIGADA / DESLIGADA`.
+  - Exibição de atalho dinâmico para o painel via IP ZeroTier quando a permissão remota e o serviço estiverem ativos.
+
 ## 0.9.59
 
 - **🔌 Porta Personalizada e Acesso ZeroTier para o AdGuard Home (Exclusivo Perfil Full)**:

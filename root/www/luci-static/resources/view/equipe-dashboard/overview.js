@@ -2968,25 +2968,7 @@ return view.extend({
 				active ? E('button', {
 					class: 'ex-feature-link',
 					click: function() { self.openAdblockSetupModal(f); }
-				}, ['⚙️ Opções / Ajustar Cache']) : '',
-				(installed || active) ? E('button', {
-					class: 'ex-feature-link',
-					click: function() {
-						ui.showModal('Desativar Bloqueador de Anúncios', [
-							E('p', {}, ['Deseja desativar o bloqueador de anúncios e restaurar o DNS padrão da rede?']),
-							E('div', { class: 'right' }, [
-								E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Cancelar']),
-								' ',
-								E('button', { class: 'btn cbi-button cbi-button-negative', click: function() {
-									fs.exec('/usr/sbin/equipe-dashboard-control', ['adblock-disable']).then(function() {
-										closeModal();
-										reloadSoon('Bloqueador desativado. Recarregando…', 1200);
-									});
-								} }, ['Desativar'])
-							])
-						]);
-					}
-				}, ['⏹ Desligar']) : ''
+				}, ['⚙️ Opções']) : ''
 			]),
 			E('small', { class: 'ex-muted' }, [
 				active ? (mode === 'local' ? ('AdGuard Home operando em RAM com cache de ' + (f.cache_size_mb || 64) + ' MB e DoH.') : ('Nuvem filtrada ativa com super cache dnsmasq respondendo em 0ms.')) : (isFull ? ('💡 Hardware potente (' + (f.mem_total_mb || '1024') + ' MB RAM): suporte completo ao AdGuard Home local em RAM.') : '💡 Hardware compacto: filtragem em nuvem com super-cache dnsmasq em 0ms.')
