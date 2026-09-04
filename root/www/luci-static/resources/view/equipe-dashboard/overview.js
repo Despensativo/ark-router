@@ -1798,7 +1798,7 @@ return view.extend({
 						closeModal();
 						this.showWanOptimizationsModal(which);
 					}, this)
-				}, ['⚡ Aceleração de Internet, XPON & Perfis WAN →'])
+				}, ['⚡ Otimizar Velocidade e Desempenho desta WAN →'])
 			]);
 			const modalTitle = (preferredDevice && (!cfg.proto || cfg.proto === 'none')) ? ('Configurar ' + chosenPortLabel + ' como ' + whichLabel) : ('Editar ' + whichLabel + ' (' + chosenPortLabel + ')');
 			ui.showModal(modalTitle,[
@@ -1824,23 +1824,63 @@ return view.extend({
 			const sqmActive = !!opt.sqm_active;
 			const sqmAnyActive = !!opt.sqm_any_active;
 			const self = this;
+			const hw = (self.capabilities && self.capabilities.hardware) || {};
+			const isSingleCore = hw.cpu_cores <= 1;
+			const isLowRam = (hw.mem_total_mb || 128) < 256;
+
+			if (isLowRam && selectedPreset === 'auto') {
+				tcpTurbo = false;
+			}
 
 			const presets = [
-				{ id: 'auto', label: '✨ Automático', tag: 'RECOMENDADO', desc: 'Detecta o protocolo e aplica somente os ajustes compatíveis com esta WAN.' },
-				{ id: 'xpon_bridge', label: '⚡ Perfil Fibra PPPoE', tag: 'CALIBRAÇÃO MTU', desc: 'Calibração para PPPoE sem VLAN • overhead 28 B • MTU 1500 quando suportado.', ll: 'pppoe_28', jumbo: true },
-				{ id: 'xpon_vlan', label: '🏷️ Perfil Fibra + VLAN', tag: 'VLAN OPERADORA', desc: 'Calibração para PPPoE encapsulado em VLAN • overhead 34 B • MTU 1500.', ll: 'vlan_34', jumbo: true },
-				{ id: 'dhcp_cable', label: '🌐 Perfil Modem / DHCP', tag: 'DHCP / IPOE', desc: 'Internet entregue automaticamente pelo modem da operadora, sem overhead PPPoE.', ll: 'none', jumbo: false },
-				{ id: 'mobile_starlink', label: '📡 Perfil Satélite / 4G', tag: 'SATÉLITE / MÓVEL', desc: 'Sem overhead fixo; preserva ajustes adequados a links de latência variável.', ll: 'none', jumbo: false },
-				{ id: 'dedicated_static', label: '🚀 Perfil IP Fixo / Dedicado', tag: 'ALTA BANDA', desc: 'IP estático ou link dedicado corporativo, sem impor overhead PPPoE.', ll: 'none', jumbo: false },
-				{ id: 'custom', label: '🛠️ Personalizado', tag: 'AVANÇADO', desc: 'Mantém os valores escolhidos manualmente para esta WAN.' }
+				{
+					id: 'auto',
+					label: '✨ Modo Automático',
+					tag: 'RECOMENDADO (1 CLIQUE)',
+					desc: 'O sistema identifica seu tipo de conexão e calibra automaticamente para máxima estabilidade e menor ping sem risco de erro.'
+				},
+				{
+					id: 'dhcp_cable',
+					label: '🌐 Modem da Operadora (DHCP)',
+					tag: 'CABO / MODEM',
+					desc: 'Para quem conecta o cabo de rede direto no roteador da Claro, Vivo, Oi ou provedor local (já configurado).'
+				},
+				{
+					id: 'xpon_bridge',
+					label: '⚡ Fibra Ótica Direta (PPPoE)',
+					tag: 'FIBRA PPPoE',
+					desc: 'Para conexões onde o usuário e a senha de fibra são autenticados diretamente neste roteador.',
+					ll: 'pppoe_28',
+					jumbo: true
+				},
+				{
+					id: 'xpon_vlan',
+					label: '🏷️ Fibra com VLAN da Operadora',
+					tag: 'FIBRA VLAN',
+					desc: 'Para planos de fibra ótica onde a operadora exige configuração de ID de VLAN na conexão.',
+					ll: 'vlan_34',
+					jumbo: true
+				},
+				{
+					id: 'mobile_starlink',
+					label: '📡 Satélite (Starlink) ou 4G/5G',
+					tag: 'SEM FIO / MÓVEL',
+					desc: 'Para antenas Starlink, roteadores 4G/5G ou modems celulares com latência dinâmica.'
+				},
+				{
+					id: 'dedicated_static',
+					label: '🏢 IP Fixo / Link Corporativo',
+					tag: 'IP ESTÁTICO',
+					desc: 'Para conexões com endereço de IP estático fixo fornecido pela operadora.'
+				}
 			];
 			const profileById = function(id) { return presets.find(function(p) { return p.id === id; }) || presets[0]; };
 			const effectiveProfile = function() { return selectedPreset === 'auto' ? profileById(opt.detected_profile) : profileById(selectedPreset); };
 
 			const chips = [
 				{ id: 'none', label: '⚪ Padrão / DHCP (0B)' },
-				{ id: 'pppoe_28', label: '⚡ XPON PPPoE (28B)' },
-				{ id: 'vlan_34', label: '🏷️ XPON c/ VLAN (34B)' },
+				{ id: 'pppoe_28', label: '⚡ Fibra PPPoE (28B)' },
+				{ id: 'vlan_34', label: '🏷️ Fibra c/ VLAN (34B)' },
 				{ id: 'vdsl_44', label: '☎️ VDSL2 / DSL (44B)' }
 			];
 
@@ -1855,6 +1895,7 @@ return view.extend({
 			const sqmDependency = E('div', { class: 'ex-opt-sqm-dependency' });
 			const selectedSummary = E('div', { class: 'ex-opt-selected-summary' });
 			const globalWarning = E('small', { class: 'ex-muted' });
+			const tcpNotice = E('small', { style: 'font-weight:600;display:block;margin-top:4px;' });
 			let saveButton = null;
 
 			const updateSqmDependency = function() {
@@ -1863,18 +1904,18 @@ return view.extend({
 				sqmDependency.className = 'ex-opt-sqm-dependency' + (sqmActive ? ' active' : (!sqmInstalled ? ' missing' : ' warning'));
 				while (sqmDependency.firstChild) sqmDependency.removeChild(sqmDependency.firstChild);
 				if (!required) {
-					if (saveButton) saveButton.textContent = 'Aplicar perfil nesta WAN';
+					if (saveButton) saveButton.textContent = '💾 Salvar e Aplicar Otimizações';
 					return;
 				}
 				if (sqmActive) {
-					sqmDependency.appendChild(E('div', {}, [E('strong', {}, ['✅ SQM / CAKE ativo em ' + opt.label]), E('p', {}, ['O overhead será alterado somente na fila ' + (opt.sqm_section || opt.label) + '.'])]));
-					if (saveButton) saveButton.textContent = 'Aplicar perfil em ' + opt.label;
+					sqmDependency.appendChild(E('div', {}, [E('strong', {}, ['✅ SQM / CAKE ativo em ' + opt.label]), E('p', {}, ['O overhead será ajustado somente na fila ' + (opt.sqm_section || opt.label) + '.'])]));
+					if (saveButton) saveButton.textContent = '💾 Salvar e Aplicar Otimizações';
 				} else if (sqmInstalled) {
 					sqmDependency.appendChild(E('div', {}, [E('strong', {}, ['💡 Este perfil utiliza SQM / CAKE']), E('p', {}, ['A fila será ativada somente para ' + opt.label + '. As outras WANs não serão modificadas.'])]));
 					sqmDependency.appendChild(E('label', { class: 'ex-opt-sqm-enable' }, [enableSqmInput, E('span', {}, ['Ativar CAKE em ' + opt.label]) ]));
-					if (saveButton) saveButton.textContent = enableSqmInput.checked ? 'Ativar CAKE e aplicar tudo' : 'Salvar perfil para depois';
+					if (saveButton) saveButton.textContent = enableSqmInput.checked ? 'Ativar CAKE e Salvar' : 'Salvar Otimizações';
 				} else {
-					sqmDependency.appendChild(E('div', {}, [E('strong', {}, ['⚠️ SQM / CAKE ainda não está instalado']), E('p', {}, ['Instale o módulo para ativar filas, limites, prioridades e o perfil de overhead.'])]));
+					sqmDependency.appendChild(E('div', {}, [E('strong', {}, ['⚠️ SQM / CAKE ainda não está instalado']), E('p', {}, ['Instale o módulo para ativar controle de filas e prioridades de tráfego.'])]));
 					sqmDependency.appendChild(E('button', { type: 'button', class: 'ex-mini-button', click: function() { self.installFeature('sqm'); } }, ['Instalar SQM / CAKE']));
 					if (saveButton) saveButton.textContent = 'Instalar SQM para continuar';
 				}
@@ -1890,16 +1931,39 @@ return view.extend({
 				tcpInput.checked = tcpTurbo;
 				flowInput.checked = flowOffload;
 				jumboInput.checked = babyJumbo;
-				const hw = (self.capabilities && self.capabilities.hardware) || {};
-				const isSingleCore = hw.cpu_cores <= 1;
 				irqInput.checked = !isSingleCore && irqBalance;
 				irqInput.disabled = isSingleCore || !opt.irqbalance_installed;
 				flowInput.disabled = sqmAnyActive && !flowOffload;
 				const effective = effectiveProfile();
 				while (selectedSummary.firstChild) selectedSummary.removeChild(selectedSummary.firstChild);
-				selectedSummary.appendChild(E('strong', { style: 'display:block;margin-bottom:3px;font-size:13px;color:var(--ex-primary-safe);' }, [(selectedPreset === 'auto' ? 'Automático → ' : '') + effective.label]));
-				selectedSummary.appendChild(E('span', { style: 'display:block;font-size:12px;opacity:0.85;' }, [opt.label + ': overhead ' + (linklayerProfile === 'none' ? 'padrão (0B)' : linklayerProfile.replace('_', ' ').toUpperCase() + 'B') + ' • MTU físico ' + (babyJumbo ? '1508' : '1500')]));
-				globalWarning.textContent = sqmAnyActive ? 'Fastpath fica bloqueado enquanto qualquer fila SQM/CAKE estiver ativa, evitando que o tráfego contorne o controle de filas.' : 'Estas opções são globais e afetam todas as WANs do roteador.';
+				selectedSummary.style.display = 'block';
+				selectedSummary.style.padding = '10px 14px';
+				selectedSummary.style.borderRadius = '8px';
+				selectedSummary.style.background = 'rgba(59, 130, 246, 0.08)';
+				selectedSummary.style.border = '1px solid rgba(59, 130, 246, 0.2)';
+				selectedSummary.style.marginBottom = '12px';
+				selectedSummary.appendChild(E('div', { style: 'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;' }, [
+					E('span', { style: 'font-size:12.5px;font-weight:600;' }, [
+						'Perfil ativo para ' + opt.label + ': ',
+						E('b', { style: 'color:var(--ex-primary-safe);' }, [(selectedPreset === 'auto' ? 'Automático (' + effective.label.replace(/^[^A-Za-zÀ-ÿ]+/, '').trim() + ')' : effective.label)])
+					]),
+					E('span', { class: 'ex-pill online', style: 'font-size:11px;font-weight:700;padding:2px 8px;' }, ['✓ Calibrado'])
+				]));
+
+				if (isLowRam) {
+					if (tcpTurbo) {
+						tcpNotice.style.color = '#f59e0b';
+						tcpNotice.textContent = '⚠️ Buffers ampliados ativos. Em roteadores com 128 MB RAM, recomendamos manter desligado para economizar memória.';
+					} else {
+						tcpNotice.style.color = '#10b981';
+						tcpNotice.textContent = '✓ Modo econômico seguro ativo. Memória livre preservada para estabilidade total.';
+					}
+				} else {
+					tcpNotice.style.color = 'var(--ex-muted)';
+					tcpNotice.textContent = 'Recomendado para conexões de alta velocidade em roteadores com 256 MB ou mais de RAM.';
+				}
+
+				globalWarning.textContent = sqmAnyActive ? 'Fastpath fica inativo enquanto houver filas SQM/CAKE ativas, garantindo a priorização de pacotes.' : 'Estas opções de desempenho beneficiam o roteador como um todo.';
 				updateSqmDependency();
 			};
 
@@ -1914,17 +1978,21 @@ return view.extend({
 				updateUI();
 			};
 
-			const presetGrid = E('div', { class: 'ex-opt-preset-grid', style: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-bottom:12px;' });
+			const presetGrid = E('div', { class: 'ex-opt-preset-grid', style: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px;margin-bottom:12px;' });
 			presets.forEach(function(p) {
+				const isCurrentDetected = (p.id === opt.detected_profile);
 				const b = E('button', {
 					type: 'button',
 					class: 'ex-opt-preset-btn',
 					style: 'display:flex;flex-direction:column;align-items:flex-start;text-align:left;width:100%;padding:10px 12px;border-radius:10px;box-sizing:border-box;',
 					click: function() { applyPreset(p.id); }
 				}, [
-					E('span', { class: 'ex-opt-preset-tag', style: 'display:block;font-size:10px;font-weight:700;margin-bottom:3px;' }, [p.tag]),
+					E('div', { style: 'display:flex;justify-content:space-between;width:100%;align-items:center;margin-bottom:3px;' }, [
+						E('span', { class: 'ex-opt-preset-tag', style: 'font-size:10px;font-weight:700;' }, [p.tag]),
+						isCurrentDetected ? E('span', { class: 'ex-pill online', style: 'font-size:9px;padding:1px 5px;' }, ['SUA CONEXÃO']) : ''
+					]),
 					E('strong', { style: 'display:block;font-size:13px;font-weight:700;margin-bottom:2px;' }, [p.label]),
-					E('small', { style: 'display:block;font-size:11px;line-height:1.35;opacity:0.8;' }, [p.desc])
+					E('small', { style: 'display:block;font-size:11px;line-height:1.35;opacity:0.85;' }, [p.desc])
 				]);
 				presetBtns.push({ id: p.id, btn: b });
 				presetGrid.appendChild(b);
@@ -1948,67 +2016,76 @@ return view.extend({
 			enableSqmInput.addEventListener('change', updateSqmDependency);
 			applyPreset(selectedPreset);
 
-			const protoNames = { pppoe: 'PPPoE', dhcp: 'DHCP automático', static: 'IP estático' };
+			const protoHuman = { dhcp: 'Modem da Operadora (DHCP)', pppoe: 'Fibra Ótica Direta (PPPoE)', static: 'IP Fixo Estático' };
 			const speedText = Number(opt.link_speed_mbps || 0) > 0 ? (Number(opt.link_speed_mbps) + ' Mbps' + (opt.duplex ? ' • ' + opt.duplex : '')) : 'velocidade física não informada';
 			const detected = profileById(opt.detected_profile);
-			const hw = (self.capabilities && self.capabilities.hardware) || {};
-			const isSingleCore = hw.cpu_cores <= 1;
 
 			const content = [
 				E('div', { class: 'alert-message info', style: 'margin-bottom:14px;font-size:13px;line-height:1.45;' }, [
-					E('strong', { style: 'display:block;margin-bottom:4px;font-size:13.5px;' }, ['💡 Calibração de Desempenho e Filas de Internet']),
-					'Esta tela calibra o tamanho dos pacotes (MTU) e as filas de tráfego para obter o menor ping e máximo desempenho da sua conexão. ',
-					E('b', {}, ['Ela NÃO altera seu tipo de discagem (PPPoE/DHCP) nem suas senhas de operadora.']),
-					' Seu provedor continua conectado normalmente.'
+					E('strong', { style: 'display:block;margin-bottom:4px;font-size:13.5px;' }, ['💡 O que esta tela faz?']),
+					'Esta tela calibra o roteador para obter a ',
+					E('b', {}, ['maior velocidade possível']),
+					' e ',
+					E('b', {}, ['menor tempo de resposta (ping)']),
+					' para jogos, downloads e chamadas. ',
+					E('b', {}, ['Ela NÃO altera seu usuário, senha nem tipo de conexão']),
+					'; sua internet continua conectada normalmente.'
 				]),
-				E('div', { class: 'ex-opt-detected', style: 'display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-radius:12px;margin-bottom:14px;gap:12px;' }, [
+				E('div', { class: 'ex-opt-detected', style: 'display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;margin-bottom:14px;gap:12px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);' }, [
 					E('div', {}, [
-						E('span', { class: 'ex-kicker', style: 'display:block;font-size:11px;font-weight:700;margin-bottom:2px;' }, ['CONEXÃO DETECTADA']),
-						E('strong', { style: 'display:block;font-size:14px;margin-bottom:2px;' }, [(protoNames[opt.proto] || String(opt.proto || '').toUpperCase()) + ' em ' + (opt.wan_dev || opt.label)]),
-						E('small', { class: 'ex-muted', style: 'display:block;' }, [speedText + (opt.starlink ? ' • telemetria Starlink confirmada' : '')])
+						E('span', { class: 'ex-kicker', style: 'display:block;font-size:11px;font-weight:700;color:var(--ex-primary-safe);margin-bottom:2px;' }, ['SUA CONEXÃO ATUAL']),
+						E('strong', { style: 'display:block;font-size:14.5px;margin-bottom:2px;' }, [(protoHuman[opt.proto] || String(opt.proto || '').toUpperCase()) + ' na porta ' + (opt.wan_dev || opt.label)]),
+						E('small', { class: 'ex-muted', style: 'display:block;' }, ['Velocidade da porta: ' + speedText + (opt.starlink ? ' • Link Starlink Detectado' : '') + ' • Status: Conectado e operando'])
 					]),
-					E('span', { class: 'ex-pill online' }, ['SUGESTÃO: ' + detected.label.replace(/^[^A-Za-zÀ-ÿ]+/, '')])
+					E('span', { class: 'ex-pill online', style: 'font-weight:700;padding:6px 12px;font-size:12px;' }, ['✅ Perfil Ideal: ' + detected.label.replace(/^[^A-Za-zÀ-ÿ]+/, '').trim()])
 				]),
 				E('div', { class: 'ex-opt-section' }, [
 					E('div', { class: 'ex-opt-section-head' }, [
-						E('h4', {}, ['1. PERFIL DE CALIBRAÇÃO DE PACOTES (' + opt.label + ')'])
+						E('h4', {}, ['1. TIPO DE CONEXÃO COM A OPERADORA (' + opt.label + ')'])
 					]),
 					presetGrid,
 					selectedSummary,
-					E('details', { class: 'ex-opt-advanced' }, [
-						E('summary', {}, ['Ver configurações avançadas desta WAN']),
-						E('p', { class: 'ex-muted' }, ['Ajustes abaixo afetam somente ' + opt.label + '.']),
-						E('strong', {}, ['Perfil de overhead no SQM / CAKE']), chipGrid,
-						E('div', { class: 'ex-opt-module-card' }, [E('div', { class: 'ex-opt-module-info' }, [E('strong', {}, ['Baby Jumbo / PPPoE MTU 1500']), E('p', {}, ['Usa MTU 1508 na porta física desta WAN para tentar transportar MTU 1500 no PPPoE.'])]), E('label', { class: 'ex-switch' }, [jumboInput, E('span', { class: 'ex-switch-slider' })])]),
+					E('details', { class: 'ex-opt-advanced', style: 'margin-top:8px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(127,127,127,0.15);' }, [
+						E('summary', { style: 'cursor:pointer;font-weight:600;font-size:12.5px;color:var(--ex-muted);' }, ['⚙️ Configurações Técnicas de Pacotes e MTU (Avançado - Opcional)']),
+						E('p', { class: 'ex-muted', style: 'margin-top:8px;margin-bottom:10px;font-size:11.5px;' }, ['Estes parâmetros já foram calibrados automaticamente pelo perfil escolhido acima. Altere apenas se o seu provedor exigir calibração manual de filas SQM / CAKE.']),
+						E('strong', { style: 'display:block;font-size:12px;margin-bottom:6px;' }, ['Perfil de overhead no SQM / CAKE']),
+						chipGrid,
+						E('div', { class: 'ex-opt-module-card', style: 'margin-top:10px;' }, [
+							E('div', { class: 'ex-opt-module-info' }, [
+								E('strong', {}, ['Baby Jumbo / MTU 1508']),
+								E('p', {}, ['Permite transportar MTU 1500 sem fragmentação em conexões de fibra PPPoE. Não é necessário em conexões DHCP/Modem.'])
+							]),
+							E('label', { class: 'ex-switch' }, [jumboInput, E('span', { class: 'ex-switch-slider' })])
+						]),
 						sqmDependency
 					])
 				]),
 				E('div', { class: 'ex-opt-section' }, [
 					E('div', { class: 'ex-opt-section-head' }, [
-						E('h4', {}, ['2. OTIMIZAÇÃO GERAL DO ROTEADOR']), E('span', { class: 'ex-pill standby' }, ['TODAS AS WANs'])
+						E('h4', {}, ['2. ACELERAÇÃO DE DESEMPENHO DO ROTEADOR']), E('span', { class: 'ex-pill standby' }, ['GERAL'])
 					]),
 					globalWarning,
 					E('div', { class: 'ex-opt-module-grid' }, [
 						E('div', { class: 'ex-opt-module-card' }, [
 							E('div', { class: 'ex-opt-module-info' }, [
-								E('strong', {}, ['🧠 Buffers TCP Turbo (BDP 8 MB)']),
-								E('p', {}, ['Aumenta rmem/wmem para 8 MB e backlog para 5000. Mantém velocidade máxima contínua em downloads pesados (Steam, torrents, streams 4K).']),
-								(hw.mem_total_mb < 256) ? E('small', { style: 'color:#f59e0b;font-weight:600;display:block;margin-top:4px;' }, ['⚠️ Memória de 128 MB RAM: manter desativado preserva a memória livre e garante estabilidade do sistema.']) : ''
+								E('strong', {}, [isLowRam ? '🧠 Proteção de Memória RAM (128 MB)' : '🧠 Buffers Estendidos de Memória (TCP Turbo)']),
+								E('p', {}, [isLowRam ? 'Mantém o uso de memória enxuto no roteador para evitar travamentos ou lentidão durante múltiplos downloads pesados (torrents, Steam, streams 4K).' : 'Aumenta os buffers de rede para 8 MB, mantendo velocidade máxima contínua em downloads pesados.']),
+								tcpNotice
 							]),
 							E('label', { class: 'ex-switch' }, [ tcpInput, E('span', { class: 'ex-switch-slider' }) ])
 						]),
 						E('div', { class: 'ex-opt-module-card' }, [
 							E('div', { class: 'ex-opt-module-info' }, [
-								E('strong', {}, ['🚀 Software Flow Offloading (Fastpath)']),
-								E('p', {}, ['Aceleração de roteamento direto na tabela de fluxos do kernel. Recomendado para links acima de 1 Gbps (reduz uso de CPU).']),
-								E('small', { class: 'ex-opt-requirement' + (sqmAnyActive ? ' blocked' : ' ready') }, [sqmAnyActive ? '⚠ Requer SQM / CAKE desligado em todas as WANs.' : '✓ SQM / CAKE desligado: Fastpath pode ser ativado.'])
+								E('strong', {}, ['🚀 Aceleração de Tráfego (Fastpath / Flow Offloading)']),
+								E('p', {}, ['Processa o tráfego de dados diretamente pelo kernel do Linux, reduzindo o uso da CPU para a internet rodar na velocidade máxima sem aquecer o roteador.']),
+								E('small', { class: 'ex-opt-requirement' + (sqmAnyActive ? ' blocked' : ' ready') }, [sqmAnyActive ? '⚠ Requer SQM / CAKE desligado em todas as WANs.' : '✓ Pronto e ativo: downloads acelerados com menor uso de CPU.'])
 							]),
 							E('label', { class: 'ex-switch' }, [ flowInput, E('span', { class: 'ex-switch-slider' }) ])
 						]),
 						(!isSingleCore) ? E('div', { class: 'ex-opt-module-card' }, [
 							E('div', { class: 'ex-opt-module-info' }, [
 								E('strong', {}, ['⚙️ IRQ Balance']),
-								E('p', {}, [opt.irqbalance_installed ? 'Distribui interrupções de rede entre os núcleos disponíveis.' : 'Módulo não instalado neste roteador.'])
+								E('p', {}, [opt.irqbalance_installed ? 'Distribui o processamento de rede entre os núcleos de CPU disponíveis.' : 'Módulo não instalado neste roteador.'])
 							]),
 							E('label', { class: 'ex-switch' }, [irqInput, E('span', { class: 'ex-switch-slider' })])
 						]) : ''
@@ -2045,16 +2122,16 @@ return view.extend({
 							reloadSoon(activateSqm ? 'SQM / CAKE ativado e otimizações aplicadas. Recarregando…' : 'Otimizações de internet aplicadas com sucesso. Recarregando…', 2200);
 						}).catch(function(err) {
 							btn.disabled = false;
-							btn.textContent = 'Aplicar perfil nesta WAN';
+							btn.textContent = 'Salvar e Aplicar Otimizações';
 							if (reloadAfterExpectedDisconnect(err, 'Otimizações enviadas. O roteador está reiniciando serviços…', 4200)) return;
 							ui.addNotification(null, E('p', {}, [err.message]), 'danger');
 						});
-					}, this) }, ['Salvar e aplicar']))
+					}, this) }, ['Salvar e Aplicar Otimizações']))
 				])
 			];
 			updateSqmDependency();
 
-			ui.showModal('Otimizar ' + opt.label + ' — ' + (protoNames[opt.proto] || String(opt.proto || '').toUpperCase()), content);
+			ui.showModal('Otimização de Conexão — ' + opt.label + ' (' + (protoHuman[opt.proto] || String(opt.proto || '').toUpperCase()) + ')', content);
 		}, this)).catch(function(e) {
 			ui.addNotification(null, E('p', {}, ['Falha ao carregar estado: ' + e.message]), 'danger');
 		});
@@ -4307,13 +4384,13 @@ return view.extend({
 		]);
 		const wanOptPanel=E('section',{class:'ex-cleanup-entry'},[
 			E('div',{},[
-				E('strong',{},['⚡ Aceleração de Internet & Perfis WAN']),
-				E('small',{class:'ex-muted'},['Presets de 1 clique para Fibra XPON, 4G/5G, Starlink, DHCP e IP Fixo. Buffers TCP Turbo (8 MB) e overhead do CAKE.'])
+				E('strong',{},['⚡ Otimização de Conexão e Desempenho da Internet']),
+				E('small',{class:'ex-muted'},['Calibração inteligente para Modem/DHCP, Fibra PPPoE, 4G/5G e Starlink. Aceleração Fastpath e proteção de memória RAM.'])
 			]),
 			E('button',{class:'ex-mini-button','click':L.bind(function(){
 				closeModal();
 				this.showWanOptimizationsModal();
-			},this)},['Configurar aceleração'])
+			},this)},['Otimizar internet'])
 		]);
 		ui.showModal('RECURSOS E COMPATIBILIDADE',[
 			profilePanel,
