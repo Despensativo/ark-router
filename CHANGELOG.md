@@ -1,6 +1,27 @@
 # Changelog
 
-## 0.9.70
+## 0.9.72
+
+- **⚡ Redesign e Otimização da Tabela de Processos (`admin/status/processes`)**:
+  - **Alinhamento e Hierarquia dos Botões de Ação**: Substituído o empilhamento desordenado dos botões por um grupo horizontal inline (`.ark-proc-actions-group`) com cores semânticas distintas e ícones intuitivos:
+    - `🔄 Suspender` (SIGHUP): Azul ciano (`#38bdf8`), recarrega configurações sem encerrar o processo.
+    - `⚠️ Terminar` (SIGTERM): Âmbar/Aviso (`#fbbf24`), encerramento suave e seguro.
+    - `🛑 Matar` (SIGKILL): Vermelho perigo (`#fca5a5`), encerramento forçado imediato pelo kernel.
+  - **Indicador de Status em Tempo Real**: Adicionado chip de status visual em cada linha de processo:
+    - `🟢 Ativo`: Identifica daemons e serviços do sistema operacional em execução na memória RAM.
+    - `⚡ Kernel`: Identifica threads e workers internos do Kernel Linux (processos entre colchetes como `[kthreadd]`, `[ksoftirqd/0]`).
+  - **Barra de Navegação Rápida para Serviços**: Inserido banner de ação no topo da página conectando diretamente ao gerenciador de inicialização (`admin/system/startup`) com o botão `⚙️ Gerenciar Serviços (Iniciar / Parar / Reiniciar)`.
+  - **Guia Educacional Integrado**: Adicionado bloco explicativo esclarecendo a diferença entre processos em RAM (`ps` onde todos já estão executando) e o ciclo de vida de serviços do sistema (iniciar/parar/reiniciar/boot).
+- **📦 Contenção e Responsividade de Tabelas CBI (`admin/services/upnp` e afins)**:
+  - Corrigido o transbordamento horizontal da tabela de regras/ACLs que quebrava as bordas dos cards no MiniUPnP e seções CBI. Adicionado `overflow-x: auto` e agrupamento horizontal para os botões de ação de linha (`Acima`, `Abaixo`, `Apagar`).
+  - Adicionado Guia Educacional em Português para Plug & Play Universal (UPnP / NAT-PMP) com orientações específicas para jogos online e consoles.
+
+## 0.9.71
+
+- **📋 Melhorias na Visualização de Logs e Firewall**:
+  - Implementado fallback de cópia com `document.execCommand` para ambientes HTTP sem SSL em `/admin/status/syslog` e `/admin/status/dmesg`.
+  - Adicionado botão nativo `📥 Baixar (.txt)` com geração automática de arquivo nomeado por timestamp.
+  - Otimizados badges de interface (`.ifacebadge`) e corrigido espaçamento de abas em `/admin/status/iptables`.
 
 - **✨ Redesign Completo do Sistema ARK Router & OpenWrt LuCI**:
   - **Motor Client-Side (`ark-theme.js`)**:

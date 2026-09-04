@@ -1741,4 +1741,201 @@ body[data-page="admin-status-iptables"] ul.cbi-tabmenu {
 	margin-bottom: 20px !important;
 }
 
+/* 15. Process Table & Service Navigation (admin/status/processes) */
+.ark-proc-top-bar {
+	display: flex !important;
+	flex-wrap: wrap !important;
+	align-items: center !important;
+	justify-content: space-between !important;
+	gap: 14px !important;
+	margin: 14px 0 !important;
+	padding: 14px 18px !important;
+	background: var(--ark-surface-2) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius) !important;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+}
+
+.ark-proc-top-left {
+	display: flex !important;
+	align-items: center !important;
+	gap: 14px !important;
+	flex: 1 1 340px !important;
+}
+
+.ark-proc-top-icon {
+	font-size: 24px !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	width: 44px !important;
+	height: 44px !important;
+	background: rgba(59, 130, 246, 0.15) !important;
+	border: 1px solid rgba(59, 130, 246, 0.3) !important;
+	border-radius: 10px !important;
+	flex-shrink: 0 !important;
+}
+
+.ark-proc-top-text strong {
+	display: block !important;
+	font-size: 15px !important;
+	font-weight: 700 !important;
+	color: #fff !important;
+	margin-bottom: 2px !important;
+}
+
+.ark-proc-top-text span {
+	font-size: 12px !important;
+	color: var(--ark-text-muted) !important;
+	line-height: 1.4 !important;
+}
+
+.ark-proc-srv-btn {
+	padding: 9px 18px !important;
+	font-size: 13px !important;
+	font-weight: 700 !important;
+	border-radius: 8px !important;
+	white-space: nowrap !important;
+	text-decoration: none !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 8px !important;
+	box-shadow: 0 2px 10px rgba(59, 130, 246, 0.35) !important;
+}
+
+/* Process Live Status Badges */
+.ark-proc-status {
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 4px !important;
+	font-size: 11px !important;
+	font-weight: 700 !important;
+	padding: 3px 8px !important;
+	border-radius: 12px !important;
+	margin-right: 8px !important;
+	text-transform: uppercase !important;
+	letter-spacing: 0.04em !important;
+	vertical-align: middle !important;
+}
+
+.ark-proc-status.active {
+	background: rgba(16, 185, 129, 0.15) !important;
+	border: 1px solid rgba(16, 185, 129, 0.35) !important;
+	color: #34d399 !important;
+}
+
+.ark-proc-status.kernel {
+	background: rgba(14, 165, 233, 0.15) !important;
+	border: 1px solid rgba(14, 165, 233, 0.35) !important;
+	color: #38bdf8 !important;
+}
+
+/* Horizontal Action Buttons Group in Process Row */
+.ark-proc-actions-group,
+.cbi-section-actions > div {
+	display: inline-flex !important;
+	flex-direction: row !important;
+	flex-wrap: nowrap !important;
+	align-items: center !important;
+	justify-content: flex-end !important;
+	gap: 6px !important;
+	white-space: nowrap !important;
+}
+
+.ark-proc-btn {
+	padding: 5px 10px !important;
+	font-size: 11px !important;
+	font-weight: 600 !important;
+	border-radius: 6px !important;
+	margin: 0 !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 4px !important;
+	transition: all 0.15s ease !important;
+	cursor: pointer !important;
+	white-space: nowrap !important;
+}
+
+.ark-proc-btn .ark-btn-icon {
+	font-size: 12px !important;
+	display: inline-block !important;
+	line-height: 1 !important;
+}
+
+/* Distinct Semantic Colors for Process Signals */
+.ark-btn-hup {
+	background: rgba(14, 165, 233, 0.12) !important;
+	border: 1px solid rgba(14, 165, 233, 0.35) !important;
+	color: #38bdf8 !important;
+}
+.ark-btn-hup:hover {
+	background: #0ea5e9 !important;
+	color: #fff !important;
+	border-color: #0ea5e9 !important;
+}
+
+.ark-btn-term {
+	background: rgba(245, 158, 11, 0.12) !important;
+	border: 1px solid rgba(245, 158, 11, 0.35) !important;
+	color: #fbbf24 !important;
+}
+.ark-btn-term:hover {
+	background: #f59e0b !important;
+	color: #1e293b !important;
+	border-color: #f59e0b !important;
+}
+
+.ark-btn-kill {
+	background: rgba(239, 68, 68, 0.15) !important;
+	border: 1px solid rgba(239, 68, 68, 0.4) !important;
+	color: #fca5a5 !important;
+}
+.ark-btn-kill:hover {
+	background: #ef4444 !important;
+	color: #fff !important;
+	border-color: #ef4444 !important;
+}
+
+/* 16. CBI Section Tables & Containment (ACLs, Rules, Port Forwarding) */
+.cbi-section,
+.cbi-section-node {
+	max-width: 100% !important;
+	overflow-x: auto !important;
+}
+
+.cbi-section-table {
+	max-width: 100% !important;
+}
+
+.cbi-section-actions input.cbi-button-up,
+.cbi-section-actions input.cbi-button-down,
+.cbi-section-actions input.cbi-button-remove {
+	padding: 4px 8px !important;
+	font-size: 11px !important;
+	margin: 0 !important;
+	border-radius: 5px !important;
+	white-space: nowrap !important;
+}
+
+.cbi-section-actions input.cbi-button-up,
+.cbi-section-actions input.cbi-button-down {
+	background: var(--ark-surface-2) !important;
+	border-color: var(--ark-border) !important;
+	color: var(--ark-text-muted) !important;
+}
+
+.cbi-section-actions input.cbi-button-up:hover,
+.cbi-section-actions input.cbi-button-down:hover {
+	background: var(--ark-surface-3) !important;
+	color: #fff !important;
+}
+
+.cbi-section-table .cbi-value-field input[type="text"],
+.cbi-section-table .cbi-value-field select {
+	min-width: 70px !important;
+	max-width: 100% !important;
+	box-sizing: border-box !important;
+}
+
+
 

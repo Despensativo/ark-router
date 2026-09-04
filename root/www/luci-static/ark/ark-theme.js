@@ -138,10 +138,10 @@
         };
       } else if (path.indexOf('/status/processes') !== -1) {
         guide = {
-          title: 'Guia de Processos em Execução',
-          serve: 'Mostra todos os programas e serviços ativos na memória do roteador, com seus identificadores de processo (PID), uso de CPU e memória.',
-          fazer: 'Se o roteador apresentar lentidão incomum, verifique se algum processo trava a CPU próximo de 100% ou consome memória em excesso.',
-          rec: 'Nunca finalize processos vitais como procd, ubusd, netifd ou uhttpd para evitar travamento ou perda de conexão.'
+          title: 'Guia de Processos em Execução (Memória RAM)',
+          serve: 'Lista em tempo real os processos ativos na memória RAM do roteador (comando ps). Todos os itens listados já estão em execução, por isso não há opção de "Iniciar" direto nesta tabela.',
+          fazer: 'Monitore o consumo de CPU e memória. Use "Suspender" (SIGHUP) para recarregar configurações sem descarregar da memória, "Terminar" (SIGTERM) para encerrar suavemente ou "Matar" (SIGKILL) caso o processo trave. Para INICIAR ou PARAR serviços do sistema, utilize o atalho no topo para "Sistema -> Inicialização".',
+          rec: 'Nunca finalize processos essenciais do sistema operacional (como procd, ubusd, netifd ou uhttpd), pois eles mantêm o roteador e este painel funcionando.'
         };
       } else if (path.indexOf('/status/syslog') !== -1 || path.indexOf('/status/dmesg') !== -1) {
         guide = {
@@ -163,6 +163,13 @@
           serve: 'Painel de telemetria em tempo real mostrando as correntes de regras do Kernel Linux, contadores de pacotes transmitidos e tráfego em KBytes/MBytes. Esta tela é apenas para exibição e monitoramento.',
           fazer: 'Para criar regras de redirecionamento de portas ou liberar acessos, utilize o menu Rede -> Firewall (ou o botão de atalho direto abaixo).',
           rec: 'Não é necessário reiniciar o firewall a menos que tenha adicionado regras personalizadas via terminal SSH.'
+        };
+      } else if (path.indexOf('/services/upnp') !== -1) {
+        guide = {
+          title: 'Guia de UPnP e NAT-PMP (Abertura Automática de Portas)',
+          serve: 'Permite que consoles (PlayStation, Xbox, Switch) e aplicativos (torrents, games de PC) abram automaticamente portas de comunicação temporárias no roteador para obter NAT Aberto.',
+          fazer: 'Se você joga online no videogame ou PC, mantenha o UPnP ativado para garantir conexões rápidas e bate-papo por voz sem bloqueios. Caso prefira segurança total e controle manual, desmarque e crie regras manuais no Firewall.',
+          rec: 'Mantenha "Dispare os serviços de UPnP e NAT-PMP" ativado em residências com gamers. O ARK Router gerencia a limpeza automática das concessões inativas.'
         };
       }
 
@@ -793,8 +800,97 @@
         this.transformSystemAdmin();
       } else if (path.indexOf('/status/iptables') !== -1) {
         this.transformStatusIptables();
+      } else if (path.indexOf('/status/processes') !== -1) {
+        this.transformStatusProcesses();
       }
       this.hideRedundantOverviewSections();
+    },
+
+    transformStatusProcesses: function() {
+      var view = document.getElementById('view') || document.getElementById('maincontent');
+      if (!view) return;
+
+      // 1. Top shortcut banner for System Services
+      if (!document.getElementById('ark-proc-top-bar')) {
+        var bar = document.createElement('div');
+        bar.id = 'ark-proc-top-bar';
+        bar.className = 'ark-proc-top-bar';
+        bar.innerHTML = '' +
+          '<div class="ark-proc-top-left">' +
+            '<span class="ark-proc-top-icon">⚡</span>' +
+            '<div class="ark-proc-top-text">' +
+              '<strong>Processos Ativos na Memória RAM</strong>' +
+              '<span>Estes programas já estão rodando na memória. Para iniciar novos serviços ou gerenciar o boot:</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="ark-proc-top-right">' +
+            '<a href="/cgi-bin/luci/admin/system/startup" class="cbi-button cbi-button-apply ark-proc-srv-btn">' +
+              '⚙️ Gerenciar Serviços (Iniciar / Parar / Reiniciar)' +
+            '</a>' +
+          '</div>';
+
+        var guide = document.getElementById('ark-feature-guide');
+        if (guide && guide.nextSibling) {
+          guide.parentNode.insertBefore(bar, guide.nextSibling);
+        } else {
+          var target = view.querySelector('.table, table, .cbi-map') || view.firstChild;
+          if (target && target.parentNode) {
+            target.parentNode.insertBefore(bar, target);
+          }
+        }
+      }
+
+      // 2. Format process rows (status badge + horizontal button group)
+      var rows = view.querySelectorAll('.table .tr:not(.table-titles):not(.placeholder), table.cbi-section-table tr:not(.table-titles)');
+      rows.forEach(function(row) {
+        var cells = row.querySelectorAll('.td, td');
+        if (cells.length < 6) return;
+
+        var cmdCell = cells[2];
+        var actionCell = cells[5];
+
+        // Add Status Badge to Command Cell if not present
+        if (!cmdCell.querySelector('.ark-proc-status')) {
+          var rawCmd = cmdCell.textContent.trim();
+          var isKernel = rawCmd.indexOf('[') === 0 && rawCmd.lastIndexOf(']') === rawCmd.length - 1;
+          var badge = document.createElement('span');
+          badge.className = 'ark-proc-status ' + (isKernel ? 'kernel' : 'active');
+          badge.title = isKernel ? 'Thread interna do Kernel Linux' : 'Processo ativo e em execução na memória RAM';
+          badge.innerHTML = isKernel ? '⚡ Kernel' : '🟢 Ativo';
+          cmdCell.insertBefore(badge, cmdCell.firstChild);
+        }
+
+        // Style the action buttons in a clean horizontal group
+        var btnWrap = actionCell.querySelector('div') || actionCell;
+        btnWrap.classList.add('ark-proc-actions-group');
+
+        var btns = btnWrap.querySelectorAll('button, input[type="submit"]');
+        btns.forEach(function(btn) {
+          var text = (btn.textContent || btn.value || '').trim();
+          var lower = text.toLowerCase();
+          btn.classList.add('ark-proc-btn');
+
+          if (lower.indexOf('suspender') !== -1 || lower.indexOf('hangup') !== -1 || lower.indexOf('hup') !== -1) {
+            btn.classList.add('ark-btn-hup');
+            btn.title = 'Suspender / Recarregar configurações do processo (SIGHUP)';
+            if (!btn.querySelector('.ark-btn-icon')) {
+              btn.innerHTML = '<span class="ark-btn-icon">🔄</span> ' + text;
+            }
+          } else if (lower.indexOf('terminar') !== -1 || lower.indexOf('term') !== -1) {
+            btn.classList.add('ark-btn-term');
+            btn.title = 'Encerrar com segurança permitindo salvar dados (SIGTERM)';
+            if (!btn.querySelector('.ark-btn-icon')) {
+              btn.innerHTML = '<span class="ark-btn-icon">⚠️</span> ' + text;
+            }
+          } else if (lower.indexOf('matar') !== -1 || lower.indexOf('kill') !== -1) {
+            btn.classList.add('ark-btn-kill');
+            btn.title = 'Forçar finalização imediata pelo kernel (SIGKILL)';
+            if (!btn.querySelector('.ark-btn-icon')) {
+              btn.innerHTML = '<span class="ark-btn-icon">🛑</span> ' + text;
+            }
+          }
+        });
+      });
     },
 
     transformStatusIptables: function() {
