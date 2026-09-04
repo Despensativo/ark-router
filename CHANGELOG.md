@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.75
+
+- **📝 Redimensionamento Proporcional do Campo de Anotações (`Sistema ➔ Propriedades do Sistema`)**:
+  - **Fim do Bloco Desproporcional**: O campo de texto `<textarea>` de *Anotações* (`notes`), que estava esticado desnecessariamente em 480px de altura e 1044px de largura ocupando quase a tela inteira, foi readequado para dimensões proporcionais (`height: 80px`, `max-height: 220px`, `max-width: 480px`).
+  - **Harmonização do Formulário**: O campo agora se integra de forma equilibrada aos inputs vizinhos (*Nome do equipamento*, *Descrição* e *Fuso horário*), permitindo visualizar todo o conteúdo da aba e os botões de ação sem rolagem excessiva.
+  - **Redimensionamento Vertical Flexível**: Mantido o controle `resize: vertical`, permitindo expandir manualmente a caixa caso o usuário queira colar anotações ou documentações mais longas.
+  - **Isolamento de Terminais e Logs**: Removido o seletor genérico `#view textarea.cbi-input-textarea` da regra de terminais de log, garantindo que apenas visualizadores de logs reais (`#syslog`, `dmesg`, crontab, firewall rules) utilizem a exibição em tela cheia com tipografia monospace, mantendo formulários padrão limpos e compactos.
+
 ## 0.9.74
 
 - **🔘 Correção Crítica do Sistema de Abas CBI (`Sistema ➔ Propriedades do Sistema` e afins)**:
