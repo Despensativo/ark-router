@@ -2593,3 +2593,108 @@ span.jump:hover {
 	border-bottom-style: solid !important;
 }
 
+/* ==========================================================================
+   LuCI CBI Section Actions & Form Controls Fixes
+   ========================================================================== */
+
+/* 1. Suppress LuCI hidden submit inputs (eliminates loose buttons at top) */
+.hidden,
+input.hidden,
+input[type="submit"].hidden,
+input[type="button"].hidden,
+button.hidden {
+	display: none !important;
+	visibility: hidden !important;
+	opacity: 0 !important;
+	position: absolute !important;
+	left: -99999px !important;
+	pointer-events: none !important;
+}
+
+/* 2. Named Section Remove Button (Aligned in header with red danger tint) */
+.cbi-section-remove {
+	float: right;
+	margin-top: 0;
+	margin-bottom: 12px;
+}
+.cbi-section-remove input[type="submit"],
+.cbi-section-remove button {
+	background: rgba(239, 68, 68, 0.12) !important;
+	border: 1px solid rgba(239, 68, 68, 0.3) !important;
+	color: #fca5a5 !important;
+	border-radius: 6px !important;
+	padding: 5px 12px !important;
+	font-size: 12px !important;
+	font-weight: 600 !important;
+	cursor: pointer !important;
+	transition: all 0.2s ease !important;
+}
+.cbi-section-remove input[type="submit"]:hover,
+.cbi-section-remove button:hover {
+	background: #ef4444 !important;
+	border-color: #ef4444 !important;
+	color: #fff !important;
+	box-shadow: 0 2px 10px rgba(239, 68, 68, 0.4) !important;
+}
+
+/* 3. Section Create Container (Cleanly separated at bottom) */
+.cbi-section-create {
+	clear: both !important;
+	margin-top: 24px !important;
+	padding: 16px 20px !important;
+	background: var(--ark-surface-2) !important;
+	border: 1px dashed var(--ark-border) !important;
+	border-radius: var(--ark-radius) !important;
+	display: flex !important;
+	align-items: center !important;
+	gap: 12px !important;
+	flex-wrap: wrap !important;
+}
+.cbi-section-create::before {
+	content: "➕ Criar nova instância:";
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--ark-text-muted);
+	width: 100%;
+	margin-bottom: 4px;
+	display: block;
+}
+.cbi-section-create div {
+	margin: 0 !important;
+}
+.cbi-section-create input[type="text"],
+.cbi-section-create input.cbi-section-create-name {
+	min-width: 220px !important;
+	padding: 8px 12px !important;
+}
+.cbi-section-create input[type="submit"],
+.cbi-section-create .cbi-button-add {
+	padding: 8px 18px !important;
+	font-size: 13px !important;
+	font-weight: 600 !important;
+}
+
+/* 4. CBI Page Actions (Bottom Bar & Revert Button) */
+.cbi-page-actions {
+	border-top: 1px solid var(--ark-border) !important;
+	margin-top: 24px !important;
+	padding-top: 18px !important;
+	display: flex !important;
+	align-items: center !important;
+	gap: 12px !important;
+	flex-wrap: wrap !important;
+}
+.cbi-button-reset {
+	background: rgba(148, 163, 184, 0.12) !important;
+	border: 1px solid rgba(148, 163, 184, 0.25) !important;
+	color: #cbd5e1 !important;
+	font-weight: 600 !important;
+	transition: all 0.2s ease !important;
+}
+.cbi-button-reset:hover {
+	background: rgba(148, 163, 184, 0.25) !important;
+	color: #fff !important;
+	border-color: rgba(148, 163, 184, 0.45) !important;
+}
+
+

@@ -166,6 +166,13 @@
           fazer: 'Escolha um dos perfis rápidos no topo (Internet Inteligente, Modo Noturno, Alerta de Queda) para ajustar automaticamente todos os LEDs com 1 clique.',
           rec: 'Em dormitórios, ative o "Modo Noturno" para desligar as luzes e garantir um ambiente 100% escuro sem claridade.'
         };
+      } else if (path.indexOf('/services/uhttpd') !== -1) {
+        guide = {
+          title: 'Guia do Servidor Web uHTTPd',
+          serve: 'O uHTTPd é o servidor web HTTP e HTTPS interno do roteador, responsável por exibir este painel de controle LuCI e permitir a administração pelo navegador.',
+          fazer: 'Ajuste portas de escuta (padrão 80 e 443) ou parâmetros de certificados. NUNCA apague a instância principal "main", pois ela mantém esta interface gráfica ativa.',
+          rec: 'Mantenha "Ignore endereços IP privados na interface pública" marcado (RFC1918) para proteger o acesso administrativo contra ameaças externas da internet.'
+        };
       } else if (path.indexOf('/status/syslog') !== -1 || path.indexOf('/status/dmesg') !== -1) {
         guide = {
           title: 'Guia de Registros de Eventos do Sistema (Logs)',
@@ -384,8 +391,26 @@
 
       var btns = document.querySelectorAll('button, input[type="submit"], input[type="button"], a.btn, a.cbi-button');
       btns.forEach(function(b) {
-        var t = b.textContent.trim();
-        if (dict[t]) b.textContent = dict[t];
+        if (b.tagName === 'INPUT') {
+          var val = (b.value || '').trim();
+          if (val === 'Limpar' || val === 'Reset') {
+            b.value = '↩️ Desfazer Alterações';
+            b.title = 'Descarta as alterações não salvas nesta tela e recarrega os dados originais salvos no roteador';
+          } else if (val === 'Apagar' && b.closest('.cbi-section-remove')) {
+            b.value = '🗑️ Apagar Instância';
+            b.title = 'Exclui esta instância de serviço';
+          } else if (dict[val]) {
+            b.value = dict[val];
+          }
+        } else {
+          var t = b.textContent.trim();
+          if (t === 'Limpar' || t === 'Reset') {
+            b.textContent = '↩️ Desfazer Alterações';
+            b.title = 'Descarta as alterações não salvas nesta tela e recarrega os dados originais salvos no roteador';
+          } else if (dict[t]) {
+            b.textContent = dict[t];
+          }
+        }
       });
 
       var headings = document.querySelectorAll('h2, h3, legend, .cbi-value-title, th, .th, .cbi-tab a');
@@ -398,6 +423,43 @@
       placeholders.forEach(function(p) {
         var t = p.textContent.trim();
         if (dict[t]) p.textContent = dict[t];
+      });
+
+      // 4. Empty Section Revert Warning Banner (e.g. if an instance was deleted by mistake)
+      var emptyNotices = document.querySelectorAll('.cbi-section-empty, .cbi-section-node-empty, em');
+      emptyNotices.forEach(function(em) {
+        var txt = (em.textContent || '').trim().toLowerCase();
+        if (txt.indexOf('não possui nenhum valor') !== -1 || txt.indexOf('no values yet') !== -1) {
+          var secNode = em.closest('.cbi-section');
+          if (secNode && !secNode.querySelector('.ark-revert-banner')) {
+            var banner = document.createElement('div');
+            banner.className = 'alert-message warning ark-revert-banner';
+            banner.style.marginTop = '12px';
+            banner.style.marginBottom = '16px';
+            banner.style.display = 'flex';
+            banner.style.alignItems = 'center';
+            banner.style.justifyContent = 'space-between';
+            banner.style.gap = '12px';
+            banner.style.flexWrap = 'wrap';
+            banner.innerHTML = '' +
+              '<div>' +
+                '<strong>⚠️ Atenção: Nenhuma instância configurada nesta seção!</strong><br>' +
+                '<span style="font-size:12.5px;">Se você apagou por engano, você pode recuperar os dados originais salvos no roteador antes de salvar:</span>' +
+              '</div>' +
+              '<button type="button" class="btn btn-primary" style="padding:6px 14px;font-weight:600;">' +
+                '↩️ Desfazer e Restaurar' +
+              '</button>';
+            banner.querySelector('button').addEventListener('click', function() {
+              var resetBtn = document.querySelector('.cbi-button-reset, input[name*="reset"], button[name*="reset"]');
+              if (resetBtn) {
+                resetBtn.click();
+              } else {
+                location.reload();
+              }
+            });
+            em.parentNode.insertBefore(banner, em);
+          }
+        }
       });
     },
 
@@ -795,6 +857,60 @@
           }, true);
         });
       }
+
+      // 3. Destructive Deletion & Removal Buttons Across All CBI Forms (e.g. uHTTPd, Interfaces, Firewall)
+      var deleteBtns = document.querySelectorAll(
+        '.cbi-section-remove input, .cbi-section-remove button, ' +
+        'input.cbi-button-remove, button.cbi-button-remove, ' +
+        'input[name^="cbi.rts."], button[name^="cbi.rts."], ' +
+        'input[name*="remove_conf"], input[name*="remove_old"]'
+      );
+      deleteBtns.forEach(function(btn) {
+        if (btn.getAttribute('data-ark-safe') === 'true') return;
+        if (btn.closest('#ark-flash-grid')) return;
+        btn.setAttribute('data-ark-safe', 'true');
+
+        btn.addEventListener('click', function(e) {
+          if (btn.getAttribute('data-confirmed') === 'true') {
+            btn.removeAttribute('data-confirmed');
+            return;
+          }
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+
+          var actionName = btn.value || btn.textContent || 'este item';
+          var sec = btn.closest('.cbi-section') || btn.closest('.cbi-value');
+          var secTitle = sec ? (sec.querySelector('h3, legend, .cbi-value-title') ? sec.querySelector('h3, legend, .cbi-value-title').textContent.trim() : '') : '';
+
+          var isUhttpdMain = (btn.name && btn.name.indexOf('uhttpd.main') !== -1) ||
+                             (location.pathname.indexOf('uhttpd') !== -1 && (secTitle === 'MAIN' || (btn.name && btn.name.indexOf('main') !== -1)));
+
+          var msg = 'Tem certeza de que deseja executar a remoção?<br><br>' +
+                    'Ação: <strong>' + actionName + '</strong>';
+          if (secTitle) {
+            msg += '<br>Seção afetada: <strong>' + secTitle + '</strong>';
+          }
+          if (isUhttpdMain) {
+            msg += '<br><br><span style="color:#ef4444;font-weight:700;">⚠️ ALERTA CRÍTICO:</span> ' +
+                   'A instância <strong>main</strong> do uHTTPd é o servidor web ativo que exibe este painel de controle. ' +
+                   'Se você apagá-la e salvar, você perderá o acesso à interface web pelo navegador!';
+          }
+          msg += '<br><br><em>Dica: Se você apagar por engano, utilize o botão <strong>↩️ Desfazer Alterações</strong> no rodapé antes de salvar para recuperar os dados originais.</em>';
+
+          self.showSafetyDialog({
+            title: isUhttpdMain ? '⚠️ Confirmar Exclusão de Instância Crítica' : 'Confirmar Remoção / Exclusão',
+            icon: '🗑️',
+            type: 'danger',
+            message: msg,
+            confirmText: 'Sim, Desejo Apagar',
+            onConfirm: function() {
+              btn.setAttribute('data-confirmed', 'true');
+              btn.click();
+            }
+          });
+        }, true);
+      });
     },
 
     showSafetyDialog: function(opts) {
