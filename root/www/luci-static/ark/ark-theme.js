@@ -183,9 +183,9 @@
       } else if (path.indexOf('/status/iptables') !== -1) {
         guide = {
           title: 'Guia de Condição e Fluxo do Firewall (iptables)',
-          serve: 'Painel de telemetria em tempo real mostrando as correntes de regras do Kernel Linux, contadores de pacotes transmitidos e tráfego em KBytes/MBytes. Esta tela é apenas para exibição e monitoramento.',
-          fazer: 'Para criar regras de redirecionamento de portas ou liberar acessos, utilize o menu Rede -> Firewall (ou o botão de atalho direto abaixo).',
-          rec: 'Não é necessário reiniciar o firewall a menos que tenha adicionado regras personalizadas via terminal SSH.'
+          serve: 'Painel de telemetria em tempo real do Kernel Linux Netfilter. Mostra o fluxo exato de pacotes e bytes aceitos, bloqueados ou redirecionados entre sua rede local e a internet.',
+          fazer: 'As correntes vazias vêm ocultadas por padrão para facilitar a leitura. Use a barra de busca no topo para pesquisar regras por IP, porta ou protocolo. Para adicionar ou modificar regras de segurança, clique no botão "⚙️ Editar Regras de Firewall (Rede ➔ Firewall)".',
+          rec: 'A corrente FORWARD deve sempre manter a política padrão em DROP (Bloquear), garantindo que conexões externas não autorizadas nunca alcancem seus computadores e celulares.'
         };
       } else if (path.indexOf('/services/upnp') !== -1) {
         guide = {
@@ -535,7 +535,7 @@
       var tables = document.querySelectorAll('table.cbi-section-table, table.table, div.table');
       tables.forEach(function(tbl) {
         if (tbl.getAttribute('data-ark-filtered') === 'true') return;
-        if (tbl.closest('.ark-guide-box, #ark-overview-dashboard, .ark-action-card, .ark-admin-card')) return;
+        if (tbl.closest('.ark-guide-box, #ark-overview-dashboard, .ark-action-card, .ark-admin-card, [data-chain], [data-table], #ark-iptables-bar') || location.pathname.indexOf('/status/iptables') !== -1) return;
 
         var rows = tbl.querySelectorAll('tbody > tr, div.tr:not(.table-titles)');
         if (rows.length < 6) return;
@@ -1145,44 +1145,215 @@
 
     transformStatusIptables: function() {
       var view = document.getElementById('view') || document.getElementById('maincontent');
-      if (!view || document.getElementById('ark-iptables-bar')) return;
+      if (!view) return;
 
-      var right = view.querySelector('div.right');
-      var tabmenu = view.querySelector('.cbi-tabmenu');
-      if (!right || !tabmenu) return;
+      var bar = document.getElementById('ark-iptables-bar');
+      if (!bar) {
+        var right = view.querySelector('div.right');
+        var tabmenu = view.querySelector('.cbi-tabmenu');
+        if (!right || !tabmenu) return;
 
-      right.style.marginBottom = '0';
-      right.style.float = 'none';
+        right.style.marginBottom = '0';
+        right.style.float = 'none';
 
-      var bar = document.createElement('div');
-      bar.id = 'ark-iptables-bar';
-      bar.className = 'ark-iptables-top-bar';
-      bar.style.display = 'flex';
-      bar.style.flexWrap = 'wrap';
-      bar.style.alignItems = 'center';
-      bar.style.justifyContent = 'space-between';
-      bar.style.gap = '12px';
-      bar.style.margin = '14px 0';
-      bar.style.padding = '12px 16px';
-      bar.style.background = 'var(--ark-surface-2)';
-      bar.style.borderRadius = 'var(--ark-radius)';
-      bar.style.border = '1px solid var(--ark-border)';
+        bar = document.createElement('div');
+        bar.id = 'ark-iptables-bar';
+        bar.className = 'ark-iptables-top-bar';
+        bar.style.display = 'flex';
+        bar.style.flexWrap = 'wrap';
+        bar.style.alignItems = 'center';
+        bar.style.justifyContent = 'space-between';
+        bar.style.gap = '12px';
+        bar.style.margin = '14px 0';
+        bar.style.padding = '12px 16px';
+        bar.style.background = 'var(--ark-surface-2)';
+        bar.style.borderRadius = 'var(--ark-radius)';
+        bar.style.border = '1px solid var(--ark-border)';
 
-      var link = document.createElement('a');
-      link.href = '/cgi-bin/luci/admin/network/firewall';
-      link.className = 'cbi-button cbi-button-apply';
-      link.textContent = '⚙️ Editar Regras de Firewall (Rede -> Firewall)';
-      link.style.textDecoration = 'none';
-      link.style.display = 'inline-flex';
-      link.style.alignItems = 'center';
-      link.style.gap = '6px';
-      bar.appendChild(link);
+        var link = document.createElement('a');
+        link.href = '/cgi-bin/luci/admin/network/firewall';
+        link.className = 'cbi-button cbi-button-apply';
+        link.textContent = '⚙️ Editar Regras de Firewall (Rede -> Firewall)';
+        link.style.textDecoration = 'none';
+        link.style.display = 'inline-flex';
+        link.style.alignItems = 'center';
+        link.style.gap = '6px';
+        bar.appendChild(link);
 
-      bar.appendChild(right);
-      right.style.display = 'inline-flex';
-      right.style.gap = '8px';
+        // Search Filter in Top Bar
+        var searchWrap = document.createElement('div');
+        searchWrap.className = 'ark-iptables-filter-wrap';
+        searchWrap.style.display = 'flex';
+        searchWrap.style.alignItems = 'center';
+        searchWrap.style.flex = '1';
+        searchWrap.style.minWidth = '240px';
+        searchWrap.style.maxWidth = '380px';
+        searchWrap.innerHTML = '<div class="ark-table-search-bar" style="margin: 0; width: 100%;"><span class="ark-search-icon">🔍</span><input type="text" class="ark-search-input ark-iptables-search" placeholder="Filtrar regras (IP, porta, protocolo ou ação)..." /></div>';
+        bar.appendChild(searchWrap);
 
-      tabmenu.parentNode.insertBefore(bar, tabmenu);
+        bar.appendChild(right);
+        right.style.display = 'inline-flex';
+        right.style.alignItems = 'center';
+        right.style.gap = '8px';
+
+        tabmenu.parentNode.insertBefore(bar, tabmenu);
+
+        var searchInput = searchWrap.querySelector('.ark-iptables-search');
+        searchInput.addEventListener('input', function() {
+          var q = searchInput.value.toLowerCase().trim();
+          var hideBtn = bar.querySelector('button[data-hide-empty]');
+          var isHiddenMode = hideBtn && (hideBtn.getAttribute('data-hide-empty') === 'true');
+
+          document.querySelectorAll('[data-chain]').forEach(function(cdiv) {
+            var isInitiallyEmpty = (cdiv.getAttribute('data-empty') === 'true');
+            if (isInitiallyEmpty && isHiddenMode) {
+              cdiv.style.display = 'none';
+              return;
+            }
+            var rows = cdiv.querySelectorAll('.tr:not(.table-titles)');
+            if (rows.length === 0) return;
+            var matches = 0;
+            rows.forEach(function(r) {
+              var t = r.textContent.toLowerCase();
+              if (!q || t.indexOf(q) !== -1) {
+                r.style.display = '';
+                matches++;
+              } else {
+                r.style.display = 'none';
+              }
+            });
+            if (q && matches === 0) {
+              cdiv.style.display = 'none';
+            } else if (!q && isInitiallyEmpty && isHiddenMode) {
+              cdiv.style.display = 'none';
+            } else {
+              cdiv.style.display = '';
+            }
+          });
+        });
+      }
+
+      // Hide empty chains by default and update toggle button
+      var hideBtn = bar.querySelector('button[data-hide-empty]');
+      if (hideBtn) {
+        if (hideBtn.getAttribute('data-hide-empty') === 'false' && !hideBtn.getAttribute('data-ark-init')) {
+          hideBtn.setAttribute('data-ark-init', 'true');
+          hideBtn.click();
+        }
+        hideBtn.className = 'cbi-button cbi-button-neutral';
+        hideBtn.style.display = 'inline-flex';
+        hideBtn.style.alignItems = 'center';
+        hideBtn.style.gap = '6px';
+        var isHidden = (hideBtn.getAttribute('data-hide-empty') === 'true');
+        hideBtn.innerHTML = isHidden ? '👁️ Mostrar Correntes Vazias' : '👁️ Ocultar Correntes Vazias';
+      }
+
+      // Style action buttons
+      var btns = bar.querySelectorAll('button');
+      btns.forEach(function(b) {
+        var txt = b.textContent.trim().toLowerCase();
+        if (txt.indexOf('reset') !== -1 || txt.indexOf('zerar') !== -1 || txt.indexOf('reinicie os contadores') !== -1) {
+          b.className = 'cbi-button cbi-button-neutral';
+          b.innerHTML = '🧹 Zerar Contadores';
+        } else if (txt.indexOf('restart') !== -1 || txt.indexOf('reiniciar firewall') !== -1) {
+          b.className = 'cbi-button cbi-button-action';
+          b.innerHTML = '🔄 Reiniciar Firewall';
+        }
+      });
+
+      // Chain Descriptions Dictionary
+      var chainDescs = {
+        'INPUT': '📥 <strong>Tráfego Destinado ao Roteador</strong> — Regras que controlam acessos diretos aos serviços locais do ARK OS (Painel Web LuCI na porta 80/443, SSH porta 22, DNS porta 53). Conexões externas da WAN são bloqueadas por segurança.',
+        'FORWARD': '🔀 <strong>Tráfego de Passagem entre Redes</strong> — Escudo principal de proteção. Filtra dados trafegando entre a internet e seus dispositivos. A política padrão <code>DROP</code> impede invasões não autorizadas.',
+        'OUTPUT': '📤 <strong>Tráfego Emitido pelo Roteador</strong> — Pacotes gerados pelo próprio ARK OS para a rede ou internet (sincronização de horário NTP, testes de rota e atualizações).',
+        'zone_lan_input': '🏠 <strong>Entrada da Rede Local (LAN)</strong> — Conexões originadas pelos dispositivos da sua casa (cabo ou Wi-Fi) em direção ao roteador.',
+        'zone_wan_input': '⚡ <strong>Entrada da Internet (WAN)</strong> — Tentativas de conexões diretas vindas de fora da internet para o roteador. Bloqueadas por padrão para proteção.',
+        'zone_lan_forward': '🏠 ➔ 🌐 <strong>Navegação dos Clientes (LAN ➔ Internet)</strong> — Tráfego de navegação dos computadores e celulares locais saindo para a internet (permitidos).',
+        'zone_wan_forward': '🌐 ➔ 🏠 <strong>Acesso Externo para Clientes (WAN ➔ LAN)</strong> — Bloqueado por padrão. Liberado apenas se você configurar Redirecionamento de Portas (Port Forward).',
+        'syn_flood': '🛡️ <strong>Proteção Anti-DDoS / SYN Flood</strong> — Limita rajadas anômalas de abertura TCP para impedir que ataques saturem o processador do roteador.',
+        'input_rule': '⚙️ <strong>Regras Personalizadas de Entrada</strong> — Regras manuais configuradas pelo administrador em <em>Rede ➔ Firewall</em>.',
+        'forwarding_rule': '⚙️ <strong>Regras Personalizadas de Encaminhamento</strong> — Regras manuais de tráfego configuradas pelo administrador em <em>Rede ➔ Firewall</em>.',
+        'output_rule': '⚙️ <strong>Regras Personalizadas de Saída</strong> — Regras manuais para pacotes gerados pelo próprio roteador configuradas em <em>Rede ➔ Firewall</em>.'
+      };
+
+      var colTooltips = [
+        { title: 'PACOTES', tip: 'Total de pacotes processados por esta regra desde a última inicialização.' },
+        { title: 'TRÁFEGO', tip: 'Volume acumulado de dados em Bytes, KB ou MB transferidos.' },
+        { title: 'AÇÃO (ALVO)', tip: 'Ação executada pelo firewall: ACCEPT (Permitir), DROP (Bloquear/Descartar) ou desvio para sub-corrente de regras.' },
+        { title: 'PROTOCOLO', tip: 'Tipo de protocolo: TCP, UDP, ICMP ou ALL (todos).' },
+        { title: 'ENTRADA', tip: 'Interface de rede por onde o pacote entrou (ex: br-lan, eth0.2, lo).' },
+        { title: 'SAÍDA', tip: 'Interface de rede por onde o pacote vai sair.' },
+        { title: 'IP ORIGEM', tip: 'Endereço IP de quem enviou os dados (0.0.0.0/0 significa qualquer IP).' },
+        { title: 'IP DESTINO', tip: 'Endereço IP de destino do pacote.' },
+        { title: 'CONDIÇÃO / ESTADO', tip: 'Condições especiais (ex: RELATED,ESTABLISHED = conexões já autorizadas e ativas).' },
+        { title: 'DESCRIÇÃO', tip: 'Comentário ou identificador descritivo da regra no sistema.' }
+      ];
+
+      // Format each chain
+      document.querySelectorAll('[data-chain]').forEach(function(cdiv) {
+        // Remove any misplaced search bar inside individual chain
+        cdiv.querySelectorAll('.ark-table-search-bar').forEach(function(sb) { sb.remove(); });
+
+        var chain = cdiv.getAttribute('data-chain');
+        var h = cdiv.querySelector('h4, h3');
+        if (!h) return;
+
+        // Policy badge formatting
+        var hHtml = h.innerHTML;
+        if (hHtml.indexOf('ark-chip') === -1) {
+          hHtml = hHtml.replace(/Política:\s*<em>ACCEPT<\/em>/i, 'Política: <span class="ark-chip online" style="font-size:10px;padding:2px 8px;">ACCEPT (Permitir)</span>');
+          hHtml = hHtml.replace(/Política:\s*<em>DROP<\/em>/i, 'Política: <span class="ark-chip danger" style="font-size:10px;padding:2px 8px;">DROP (Bloquear)</span>');
+          hHtml = hHtml.replace(/Política:\s*<em>REJECT<\/em>/i, 'Política: <span class="ark-chip warning" style="font-size:10px;padding:2px 8px;">REJECT (Rejeitar)</span>');
+          h.innerHTML = hHtml;
+        }
+
+        // Clean up references small badge
+        var refSmall = cdiv.querySelector('.references small');
+        if (refSmall) {
+          refSmall.classList.remove('ifacebadge');
+        }
+
+        // Descriptive subtitle banner
+        if (chainDescs[chain] && !cdiv.querySelector('.ark-chain-desc')) {
+          var desc = document.createElement('div');
+          desc.className = 'ark-chain-desc';
+          desc.innerHTML = chainDescs[chain];
+          h.parentNode.insertBefore(desc, h.nextSibling);
+        }
+
+        // Action chips in rows
+        cdiv.querySelectorAll('.target').forEach(function(tgt) {
+          var txt = tgt.textContent.trim();
+          if (txt === 'ACCEPT') {
+            tgt.className = 'ark-chip online';
+            tgt.style.fontSize = '11px';
+            tgt.textContent = '✅ ACCEPT';
+          } else if (txt === 'DROP') {
+            tgt.className = 'ark-chip danger';
+            tgt.style.fontSize = '11px';
+            tgt.textContent = '🛑 DROP';
+          } else if (txt === 'REJECT') {
+            tgt.className = 'ark-chip warning';
+            tgt.style.fontSize = '11px';
+            tgt.textContent = '⚠️ REJECT';
+          } else if (txt === 'syn_flood') {
+            tgt.className = 'ark-chip primary';
+            tgt.style.fontSize = '11px';
+            tgt.textContent = '🛡️ syn_flood';
+          }
+        });
+
+        // Format and clarify table header columns (eliminating duplicate "Destino")
+        var ths = cdiv.querySelectorAll('.tr.table-titles .th, thead th');
+        if (ths.length === 10) {
+          for (var i = 0; i < 10; i++) {
+            ths[i].textContent = colTooltips[i].title;
+            ths[i].title = colTooltips[i].tip;
+            ths[i].style.cursor = 'help';
+            ths[i].style.letterSpacing = '0.03em';
+          }
+        }
+      });
     },
 
     hideRedundantOverviewSections: function() {

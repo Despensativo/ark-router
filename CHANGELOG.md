@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.9.78
+
+- **🛡️ Redesenho e Clareza Total da Telemetria do Firewall (`Condição Geral ➔ Firewall` / `/status/iptables`)**:
+  - **Eliminação de Caixas de Busca "no Meio do Nada"**: Excluídas as tabelas do iptables do injetor genérico de filtros, removendo os grandes campos de busca individuais que apareciam de forma desajeitada entre o cabeçalho e as regras de cada corrente.
+  - **Barra de Busca Unificada no Topo**: Integrado um campo de busca moderno e limpo na barra superior (`ark-iptables-bar`) que filtra em tempo real todas as regras ativas por endereço IP, número de porta, protocolo ou ação executada.
+  - **Ocultação Automática de Correntes Vazias por Padrão**: As mais de 80 correntes vazias do sistema agora são recolhidas automaticamente na abertura da página, deixando a tela focada exclusivamente nas regras ativas (`INPUT`, `FORWARD`, `OUTPUT`, etc.). O botão superior permite alternar para *👁️ Mostrar Correntes Vazias* com 1 clique.
+  - **Subtítulos Didáticos e Explicativos em Cada Corrente**:
+    - `INPUT`: Explicação clara sobre tráfego direto para os serviços do roteador (Web LuCI, SSH, DNS).
+    - `FORWARD`: Explicação de barreira de proteção de passagem entre internet e computadores/celulares com política `DROP`.
+    - `OUTPUT`: Explicação sobre pacotes emitidos pelo próprio ARK OS para a rede e internet.
+    - `zone_lan_*` e `zone_wan_*`: Identificação didática de entradas/saídas locais e da operadora externa.
+    - `syn_flood`: Explicação de proteção ativa contra ataques de negação de serviço (DoS).
+  - **Fim da Ambiguidade de Colunas Duplicadas ("Destino")**:
+    - Diferenciação clara entre a coluna de **AÇÃO (ALVO)** (ACCEPT, DROP, REJECT) e a coluna de **IP DESTINO**, além de tooltips didáticos de auxílio em todas as 10 colunas da tabela.
+  - **Badges Semânticos e Chips Coloridos**:
+    - Destaque visual com chips `✅ ACCEPT` (verde), `🛑 DROP` (vermelho), `⚠️ REJECT` (laranja) e `🛡️ syn_flood` (azul).
+    - Destaque visual da política padrão no título de cada corrente (`ACCEPT (Permitir)` e `DROP (Bloquear)`).
+  - **Cards Estruturados e Limpeza de Tooltips**: Correntes agora utilizam cards com bordas arredondadas e sombra suave, e os badges de referência (`references`) foram harmonizados.
+
 ## 0.9.77
 
 - **🔘 Correção e Estilização Global de Dropdowns e Ações de Página (`.cbi-dropdown` e `.cbi-page-actions`)**:
