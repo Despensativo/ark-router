@@ -157,6 +157,13 @@
           fazer: 'Você pode iniciar, reiniciar ou parar serviços individuais caso precise reiniciar uma função específica da rede sem reiniciar o aparelho inteiro.',
           rec: 'Mantenha habilitados apenas os serviços necessários para maximizar a memória RAM livre do equipamento.'
         };
+      } else if (path.indexOf('/status/iptables') !== -1) {
+        guide = {
+          title: 'Guia de Condição e Fluxo do Firewall (iptables)',
+          serve: 'Painel de telemetria em tempo real mostrando as correntes de regras do Kernel Linux, contadores de pacotes transmitidos e tráfego em KBytes/MBytes. Esta tela é apenas para exibição e monitoramento.',
+          fazer: 'Para criar regras de redirecionamento de portas ou liberar acessos, utilize o menu Rede -> Firewall (ou o botão de atalho direto abaixo).',
+          rec: 'Não é necessário reiniciar o firewall a menos que tenha adicionado regras personalizadas via terminal SSH.'
+        };
       }
 
       if (!guide) return;
@@ -681,8 +688,52 @@
         this.transformNetworkInterfaces();
       } else if (path.indexOf('/system/admin') !== -1) {
         this.transformSystemAdmin();
+      } else if (path.indexOf('/status/iptables') !== -1) {
+        this.transformStatusIptables();
       }
       this.hideRedundantOverviewSections();
+    },
+
+    transformStatusIptables: function() {
+      var view = document.getElementById('view') || document.getElementById('maincontent');
+      if (!view || document.getElementById('ark-iptables-bar')) return;
+
+      var right = view.querySelector('div.right');
+      var tabmenu = view.querySelector('.cbi-tabmenu');
+      if (!right || !tabmenu) return;
+
+      right.style.marginBottom = '0';
+      right.style.float = 'none';
+
+      var bar = document.createElement('div');
+      bar.id = 'ark-iptables-bar';
+      bar.className = 'ark-iptables-top-bar';
+      bar.style.display = 'flex';
+      bar.style.flexWrap = 'wrap';
+      bar.style.alignItems = 'center';
+      bar.style.justifyContent = 'space-between';
+      bar.style.gap = '12px';
+      bar.style.margin = '14px 0';
+      bar.style.padding = '12px 16px';
+      bar.style.background = 'var(--ark-surface-2)';
+      bar.style.borderRadius = 'var(--ark-radius)';
+      bar.style.border = '1px solid var(--ark-border)';
+
+      var link = document.createElement('a');
+      link.href = '/cgi-bin/luci/admin/network/firewall';
+      link.className = 'cbi-button cbi-button-apply';
+      link.textContent = '⚙️ Editar Regras de Firewall (Rede -> Firewall)';
+      link.style.textDecoration = 'none';
+      link.style.display = 'inline-flex';
+      link.style.alignItems = 'center';
+      link.style.gap = '6px';
+      bar.appendChild(link);
+
+      bar.appendChild(right);
+      right.style.display = 'inline-flex';
+      right.style.gap = '8px';
+
+      tabmenu.parentNode.insertBefore(bar, tabmenu);
     },
 
     hideRedundantOverviewSections: function() {
