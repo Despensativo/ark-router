@@ -504,6 +504,22 @@ input.cbi-input-text:focus, input[type="text"]:focus, input[type="password"]:foc
 	box-shadow: 0 4px 15px rgba(59, 130, 246, 0.5) !important;
 }
 
+.cbi-button-save {
+	background: rgba(59, 130, 246, 0.12) !important;
+	border: 1px solid rgba(59, 130, 246, 0.35) !important;
+	color: #93c5fd !important;
+	border-radius: 8px !important;
+	padding: 8px 18px !important;
+	font-weight: 600 !important;
+	transition: all 0.2s ease !important;
+}
+.cbi-button-save:hover {
+	background: #2563eb !important;
+	border-color: #2563eb !important;
+	color: #fff !important;
+	box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+}
+
 .cbi-button-reset, .cbi-button-neutral {
 	background: var(--ark-surface-2) !important;
 	color: var(--ark-text-muted) !important;
@@ -521,6 +537,35 @@ input.cbi-input-text:focus, input[type="text"]:focus, input[type="password"]:foc
 .cbi-button-remove:hover, .cbi-button-negative:hover {
 	background: #ef4444 !important;
 	color: #fff !important;
+}
+
+/* Aggressively suppress hidden inputs and LuCI Enter-key traps */
+.hidden,
+input.hidden,
+input[type="submit"].hidden,
+input[type="button"].hidden,
+button.hidden,
+form > div > input[type="submit"].hidden,
+form > input[type="submit"].hidden {
+	display: none !important;
+	visibility: hidden !important;
+	opacity: 0 !important;
+	position: absolute !important;
+	left: -99999px !important;
+	top: -99999px !important;
+	width: 0 !important;
+	height: 0 !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	border: 0 !important;
+	pointer-events: none !important;
+}
+
+/* Suppress legacy LuCI password toggle buttons (*) when ARK eye toggle exists */
+.ark-pwd-wrap + button.cbi-button-neutral,
+div[id*="password"] > button.cbi-button-neutral,
+div[id*="pw"] > button.cbi-button-neutral {
+	display: none !important;
 }
 
 /* Tables (Both traditional <table> and modern LuCI <div class="table">) */
@@ -2803,15 +2848,33 @@ button.hidden {
 	font-weight: 600 !important;
 }
 
-/* 4. CBI Page Actions (Bottom Bar & Revert Button) */
+/* 4. CBI Page Actions (Bottom Bar & Action Buttons) */
 .cbi-page-actions {
 	border-top: 1px solid var(--ark-border) !important;
-	margin-top: 24px !important;
-	padding-top: 18px !important;
+	margin-top: 28px !important;
+	padding-top: 20px !important;
+	margin-bottom: 24px !important;
 	display: flex !important;
 	align-items: center !important;
 	gap: 12px !important;
 	flex-wrap: wrap !important;
+}
+.cbi-page-actions .cbi-button,
+.cbi-page-actions input[type="submit"],
+.cbi-page-actions input[type="button"],
+.cbi-page-actions input[type="reset"] {
+	height: 42px !important;
+	min-width: 90px !important;
+	padding: 0 20px !important;
+	font-size: 13px !important;
+	font-weight: 600 !important;
+	border-radius: 8px !important;
+	cursor: pointer !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	box-sizing: border-box !important;
+	transition: all 0.2s ease !important;
 }
 .cbi-button-reset {
 	background: rgba(148, 163, 184, 0.12) !important;
@@ -2825,5 +2888,6 @@ button.hidden {
 	color: #fff !important;
 	border-color: rgba(148, 163, 184, 0.45) !important;
 }
+
 
 

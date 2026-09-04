@@ -15,6 +15,7 @@
     mode: 'basic',
 
     init: function() {
+      this.cleanupButtons();
       this.enhancePasswordFields();
       this.enhanceTablesAndLogs();
       this.enhanceTabs();
@@ -471,12 +472,12 @@
     },
 
     enhancePasswordFields: function() {
-      // 1. Transform any legacy LuCI reveal button (*) into a modern eye icon
-      var legacyToggles = document.querySelectorAll('button[title*="Reveal/hide password"], button[title*="password"]');
+      // 1. Suppress legacy LuCI reveal button (*) so only ARK eye toggle is shown
+      var legacyToggles = document.querySelectorAll('button[title*="Reveal/hide password"], button[title*="password"], button[title*="senha"], button[title*="Revele"], button[title*="oculte"], button[aria-label*="senha"], button[aria-label*="password"]');
       legacyToggles.forEach(function(btn) {
-        if (btn.textContent.trim() === '∗' || btn.textContent.trim() === '*' || btn.textContent.trim() === '') {
-          btn.innerHTML = '👁️';
-          btn.classList.add('ark-pwd-styled');
+        var txt = btn.textContent.trim();
+        if (txt === '∗' || txt === '*' || txt === '') {
+          btn.style.setProperty('display', 'none', 'important');
         }
       });
 
@@ -496,9 +497,18 @@
         input.setAttribute('data-ark-eye', 'true');
 
         var parent = input.parentElement;
-        var existingBtn = parent ? parent.querySelector('button[title*="Reveal/hide password"], button[title*="password"], .ark-pwd-toggle') : null;
+        var existingBtn = parent ? parent.querySelector('.ark-pwd-toggle') : null;
 
         if (!existingBtn && parent) {
+          // Hide any legacy reveal button in parent
+          var legacyInParent = parent.querySelectorAll('button.cbi-button-neutral, button[title*="senha"], button[title*="password"], button[title*="Revele"]');
+          legacyInParent.forEach(function(lb) {
+            var ltxt = lb.textContent.trim();
+            if (ltxt === '∗' || ltxt === '*' || ltxt === '') {
+              lb.style.setProperty('display', 'none', 'important');
+            }
+          });
+
           var wrap = document.createElement('div');
           wrap.className = 'ark-pwd-wrap';
           parent.insertBefore(wrap, input);
@@ -2445,12 +2455,54 @@
       }
     },
 
+    cleanupButtons: function() {
+      // 1. Permanently suppress orphan/hidden submit buttons injected by LuCI headers (Enter-key traps)
+      var hiddenSubmits = document.querySelectorAll('form input[type="submit"].hidden, form > div > input[type="submit"].hidden, input[type="submit"].hidden');
+      hiddenSubmits.forEach(function(b) {
+        b.style.setProperty('display', 'none', 'important');
+        b.style.setProperty('visibility', 'hidden', 'important');
+        b.style.setProperty('position', 'absolute', 'important');
+        b.style.setProperty('left', '-99999px', 'important');
+        b.style.setProperty('width', '0', 'important');
+        b.style.setProperty('height', '0', 'important');
+        b.setAttribute('aria-hidden', 'true');
+        b.tabIndex = -1;
+      });
+
+      // 2. Suppress duplicate legacy LuCI password toggle buttons (*) when ARK eye toggle exists
+      var legacyPassToggles = document.querySelectorAll('button[title*="Revele"], button[title*="oculte"], button[title*="senha"], button[title*="Reveal"], button[aria-label*="senha"]');
+      legacyPassToggles.forEach(function(b) {
+        var txt = (b.textContent || '').trim();
+        if (txt === '∗' || txt === '*' || txt === '') {
+          b.style.setProperty('display', 'none', 'important');
+        }
+      });
+
+      // 3. Modernize any raw unstyled submit buttons across any page
+      var rawSubmits = document.querySelectorAll('input[type="submit"]:not(.cbi-button):not(.btn):not(.hidden), input[type="button"]:not(.cbi-button):not(.btn):not(.hidden), button:not(.cbi-button):not(.btn):not(.ark-pwd-toggle):not(.ark-modal-close)');
+      rawSubmits.forEach(function(b) {
+        var val = (b.value || b.textContent || '').trim().toLowerCase();
+        if (val.indexOf('salvar') !== -1 || val.indexOf('save') !== -1) {
+          b.classList.add('cbi-button', 'cbi-button-save');
+        } else if (val.indexOf('adicionar') !== -1 || val.indexOf('add') !== -1 || val.indexOf('criar') !== -1) {
+          b.classList.add('cbi-button', 'cbi-button-add');
+        } else if (val.indexOf('apagar') !== -1 || val.indexOf('delete') !== -1 || val.indexOf('remover') !== -1) {
+          b.classList.add('cbi-button', 'cbi-button-remove');
+        } else if (val.indexOf('editar') !== -1 || val.indexOf('edit') !== -1) {
+          b.classList.add('cbi-button', 'cbi-button-action');
+        } else {
+          b.classList.add('cbi-button', 'cbi-button-neutral');
+        }
+      });
+    },
+
     observeDOM: function() {
       var self = this;
       var timeout = null;
       var observer = new MutationObserver(function() {
         clearTimeout(timeout);
         timeout = setTimeout(function() {
+          self.cleanupButtons();
           self.enhancePasswordFields();
           self.enhanceTablesAndLogs();
           self.enhanceTabs();
