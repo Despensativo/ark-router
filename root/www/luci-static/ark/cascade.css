@@ -1047,3 +1047,604 @@ body.ark-mode-basic .cbi-tab[data-tab*="expert"] {
 	to { transform: scale(1); opacity: 1; }
 }
 
+/* ==========================================================================
+   ARK Structural Layout Engine (Hero Banners, Metrics Grid & Action Cards)
+   ========================================================================== */
+
+/* 1. Hero Banner */
+.ark-hero-banner {
+	background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(17, 28, 48, 0.95) 50%, rgba(139, 92, 246, 0.08) 100%) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius-lg, 16px) !important;
+	padding: 22px 26px !important;
+	margin-bottom: 20px !important;
+	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3) !important;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+}
+.ark-hero-left {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+}
+.ark-hero-badge-icon {
+	width: 52px;
+	height: 52px;
+	border-radius: 14px;
+	background: linear-gradient(135deg, #2563eb, #3b82f6);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 26px;
+	box-shadow: 0 4px 16px rgba(37, 99, 235, 0.4);
+	color: #fff;
+}
+.ark-hero-details h2 {
+	margin: 0 0 4px !important;
+	font-size: 20px !important;
+	font-weight: 700 !important;
+	color: #fff !important;
+}
+.ark-hero-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 6px;
+}
+.ark-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 3px 10px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 600;
+	background: rgba(255, 255, 255, 0.08);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	color: var(--ark-text-muted);
+}
+.ark-chip.online {
+	background: rgba(16, 185, 129, 0.15);
+	border-color: rgba(16, 185, 129, 0.35);
+	color: #34d399;
+}
+.ark-chip.primary {
+	background: rgba(59, 130, 246, 0.15);
+	border-color: rgba(59, 130, 246, 0.35);
+	color: #60a5fa;
+}
+
+/* 2. Metrics Grid (CPU, RAM, Flash) */
+.ark-metrics-grid {
+	display: grid !important;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important;
+	gap: 16px !important;
+	margin-bottom: 22px !important;
+}
+.ark-metric-tile {
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius, 12px) !important;
+	padding: 18px 20px !important;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.ark-metric-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+.ark-metric-title {
+	font-size: 12px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--ark-text-muted);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.ark-metric-value {
+	font-size: 18px;
+	font-weight: 800;
+	color: #fff;
+	font-variant-numeric: tabular-nums;
+}
+.ark-meter-bar-lg {
+	height: 8px;
+	background: rgba(255, 255, 255, 0.08);
+	border-radius: 999px;
+	overflow: hidden;
+}
+.ark-meter-bar-fill {
+	height: 100%;
+	border-radius: 999px;
+	transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.ark-meter-bar-fill.green {
+	background: linear-gradient(90deg, #10b981, #34d399);
+}
+.ark-meter-bar-fill.blue {
+	background: linear-gradient(90deg, #2563eb, #38bdf8);
+}
+.ark-meter-bar-fill.amber {
+	background: linear-gradient(90deg, #d97706, #fbbf24);
+}
+.ark-meter-bar-fill.red {
+	background: linear-gradient(90deg, #dc2626, #f87171);
+}
+.ark-metric-subtext {
+	font-size: 11px;
+	color: var(--ark-text-dim);
+	display: flex;
+	justify-content: space-between;
+}
+
+/* 3. Action Cards Grid (Backup, Restore, Flash, Reset) */
+.ark-action-grid {
+	display: grid !important;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+	gap: 18px !important;
+	margin: 20px 0 !important;
+}
+.ark-action-card {
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius-lg, 14px) !important;
+	padding: 22px !important;
+	display: flex !important;
+	flex-direction: column !important;
+	justify-content: space-between !important;
+	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25) !important;
+	position: relative !important;
+	overflow: hidden !important;
+	transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.ark-action-card:hover {
+	transform: translateY(-2px);
+	border-color: var(--ark-border-hover);
+}
+.ark-action-card:before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 3px;
+}
+.ark-action-card.primary:before { background: linear-gradient(90deg, #2563eb, #38bdf8); }
+.ark-action-card.success:before { background: linear-gradient(90deg, #059669, #34d399); }
+.ark-action-card.purple:before { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
+.ark-action-card.danger:before { background: linear-gradient(90deg, #dc2626, #f87171); }
+
+.ark-action-header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 12px;
+}
+.ark-action-icon {
+	font-size: 24px;
+	width: 44px;
+	height: 44px;
+	border-radius: 10px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(255, 255, 255, 0.06);
+}
+.ark-action-card.primary .ark-action-icon { background: rgba(37, 99, 235, 0.15); color: #60a5fa; }
+.ark-action-card.success .ark-action-icon { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.ark-action-card.purple .ark-action-icon { background: rgba(139, 92, 246, 0.15); color: #c084fc; }
+.ark-action-card.danger .ark-action-icon { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+.ark-action-header h3 {
+	margin: 0 !important;
+	font-size: 15px !important;
+	font-weight: 700 !important;
+	color: #fff !important;
+}
+.ark-action-desc {
+	font-size: 12px;
+	color: var(--ark-text-muted);
+	line-height: 1.5;
+	margin-bottom: 16px;
+	flex: 1;
+}
+.ark-action-btn-wrap {
+	margin-top: auto;
+}
+.ark-action-btn-wrap button, 
+.ark-action-btn-wrap input[type="submit"] {
+	width: 100% !important;
+	min-height: 42px !important;
+	justify-content: center !important;
+	font-weight: 600 !important;
+	border-radius: 8px !important;
+}
+
+/* 4. Diagnostics Presets */
+.ark-preset-pills {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 10px 0 14px;
+}
+.ark-preset-btn {
+	background: rgba(255, 255, 255, 0.08) !important;
+	border: 1px solid rgba(255, 255, 255, 0.14) !important;
+	color: #e2e8f0 !important;
+	font-size: 12px !important;
+	padding: 5px 12px !important;
+	border-radius: 8px !important;
+	cursor: pointer !important;
+	transition: all 0.15s ease !important;
+}
+.ark-preset-btn:hover {
+	background: rgba(59, 130, 246, 0.2) !important;
+	border-color: #3b82f6 !important;
+	color: #fff !important;
+}
+
+/* 5. Clean Card Splitting (Form Grid) */
+.ark-grid-2 {
+	display: grid !important;
+	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) !important;
+	gap: 16px !important;
+}
+
+/* 6. Wireless Dual-Band Command Center */
+.ark-wireless-grid {
+	display: grid !important;
+	grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)) !important;
+	gap: 20px !important;
+	margin: 20px 0 !important;
+}
+.ark-radio-card {
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius-lg, 16px) !important;
+	padding: 24px !important;
+	display: flex !important;
+	flex-direction: column !important;
+	gap: 16px !important;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+	position: relative !important;
+	overflow: hidden !important;
+}
+.ark-radio-card.radio-5g {
+	border-top: 3px solid #8b5cf6 !important;
+}
+.ark-radio-card.radio-2g {
+	border-top: 3px solid #3b82f6 !important;
+}
+.ark-radio-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+	padding-bottom: 14px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.ark-radio-title-wrap h3 {
+	margin: 0 0 4px !important;
+	font-size: 17px !important;
+	font-weight: 700 !important;
+	color: #fff !important;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.ark-radio-meta {
+	font-size: 12px;
+	color: var(--ark-text-muted);
+}
+.ark-radio-badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 8px;
+}
+.ark-radio-actions {
+	display: flex;
+	gap: 6px;
+}
+.ark-radio-actions button {
+	font-size: 11px !important;
+	padding: 6px 12px !important;
+	height: 34px !important;
+}
+.ark-ssid-list {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.ark-ssid-card {
+	background: rgba(255, 255, 255, 0.03) !important;
+	border: 1px solid rgba(255, 255, 255, 0.08) !important;
+	border-radius: 12px !important;
+	padding: 14px 16px !important;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	transition: background 0.15s ease, border-color 0.15s ease;
+}
+.ark-ssid-card:hover {
+	background: rgba(255, 255, 255, 0.05) !important;
+	border-color: rgba(255, 255, 255, 0.14) !important;
+}
+.ark-ssid-info {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+.ark-ssid-icon {
+	width: 36px;
+	height: 36px;
+	border-radius: 10px;
+	background: rgba(59, 130, 246, 0.15);
+	color: #60a5fa;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 18px;
+}
+.ark-radio-card.radio-5g .ark-ssid-icon {
+	background: rgba(139, 92, 246, 0.15);
+	color: #c084fc;
+}
+.ark-ssid-details strong {
+	font-size: 14px;
+	color: #fff;
+	display: block;
+}
+.ark-ssid-details span {
+	font-size: 11px;
+	color: var(--ark-text-dim);
+}
+.ark-ssid-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.ark-ssid-actions button {
+	padding: 4px 10px !important;
+	font-size: 11px !important;
+	height: 30px !important;
+}
+
+/* 7. Interfaces Command Grid */
+.ark-iface-grid {
+	display: grid !important;
+	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) !important;
+	gap: 18px !important;
+	margin: 20px 0 !important;
+}
+.ark-iface-card {
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius-lg, 16px) !important;
+	padding: 22px !important;
+	display: flex !important;
+	flex-direction: column !important;
+	gap: 14px !important;
+	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22) !important;
+	position: relative !important;
+	overflow: hidden !important;
+}
+.ark-iface-card.lan { border-top: 3px solid #10b981 !important; }
+.ark-iface-card.wan { border-top: 3px solid #3b82f6 !important; }
+.ark-iface-card.wan6 { border-top: 3px solid #8b5cf6 !important; }
+
+.ark-iface-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+.ark-iface-name {
+	font-size: 17px;
+	font-weight: 700;
+	color: #fff;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.ark-iface-device {
+	font-size: 11px;
+	padding: 2px 8px;
+	border-radius: 6px;
+	background: rgba(255, 255, 255, 0.08);
+	color: var(--ark-text-muted);
+	font-family: monospace;
+}
+.ark-iface-stats {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 10px;
+	background: rgba(255, 255, 255, 0.02);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	border-radius: 10px;
+	padding: 12px;
+}
+.ark-iface-stat-tile {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+.ark-iface-stat-tile .label {
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--ark-text-dim);
+}
+.ark-iface-stat-tile .val {
+	font-size: 13px;
+	font-weight: 600;
+	color: #f1f5f9;
+	font-family: monospace;
+	word-break: break-all;
+}
+.ark-iface-actions {
+	display: flex;
+	gap: 8px;
+	margin-top: auto;
+}
+.ark-iface-actions button {
+	flex: 1 !important;
+	justify-content: center !important;
+	font-size: 11px !important;
+	height: 34px !important;
+}
+
+/* 8. Diagnostics 3-Card Grid */
+.ark-diag-grid {
+	display: grid !important;
+	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+	gap: 18px !important;
+	margin: 20px 0 !important;
+}
+.ark-diag-card {
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius-lg, 14px) !important;
+	padding: 20px !important;
+	display: flex !important;
+	flex-direction: column !important;
+	gap: 12px !important;
+	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22) !important;
+}
+.ark-diag-card-title {
+	font-size: 15px;
+	font-weight: 700;
+	color: #fff;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0;
+}
+.ark-diag-card-desc {
+	font-size: 11px;
+	color: var(--ark-text-muted);
+	margin: 0;
+}
+
+/* 9. System Administration Password Card */
+.ark-admin-card {
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius-lg, 16px) !important;
+	padding: 24px !important;
+	margin: 20px 0 !important;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+}
+.ark-admin-card-head {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	margin-bottom: 20px;
+	padding-bottom: 14px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.ark-admin-card-head .icon {
+	width: 44px;
+	height: 44px;
+	border-radius: 12px;
+	background: rgba(37, 99, 235, 0.15);
+	color: #60a5fa;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 22px;
+}
+.ark-admin-card-head h3 {
+	margin: 0 0 2px !important;
+	font-size: 17px !important;
+	font-weight: 700 !important;
+	color: #fff !important;
+}
+.ark-admin-card-head p {
+	margin: 0 !important;
+	font-size: 12px !important;
+	color: var(--ark-text-muted) !important;
+}
+
+.ark-admin-card .cbi-value {
+	display: flex !important;
+	flex-direction: column !important;
+	align-items: flex-start !important;
+	gap: 6px !important;
+	width: 100% !important;
+	border: none !important;
+	padding: 8px 0 !important;
+}
+.ark-admin-card .cbi-value-title {
+	text-align: left !important;
+	font-weight: 700 !important;
+	color: #e2e8f0 !important;
+	width: 100% !important;
+	margin-bottom: 4px !important;
+	font-size: 13px !important;
+}
+.ark-admin-card .cbi-value-field {
+	width: 100% !important;
+}
+.ark-admin-card .cbi-input-password {
+	width: 100% !important;
+	min-width: 0 !important;
+}
+
+/* 10. Hacker Terminal & Full-Width Log Viewer */
+#syslog, textarea[name="syslog"], pre.command-output, pre.syslog, #view pre, #view textarea.cbi-input-textarea {
+	width: 100% !important;
+	min-height: 480px !important;
+	max-width: 100% !important;
+	box-sizing: border-box !important;
+	background: #080d1a !important;
+	color: #a5f3fc !important;
+	border: 1px solid rgba(255, 255, 255, 0.1) !important;
+	border-radius: var(--ark-radius, 12px) !important;
+	padding: 18px 20px !important;
+	font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace !important;
+	font-size: 12px !important;
+	line-height: 1.65 !important;
+	white-space: pre-wrap !important;
+	word-break: break-all !important;
+	overflow-x: auto !important;
+	box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* 11. Mobile Breakpoint Adjustments */
+@media (max-width: 768px) {
+	.ark-wireless-grid,
+	.ark-action-grid,
+	.ark-iface-grid,
+	.ark-diag-grid,
+	.ark-metrics-grid,
+	.ark-grid-2 {
+		grid-template-columns: 1fr !important;
+	}
+	.ark-hero-banner {
+		flex-direction: column !important;
+		align-items: flex-start !important;
+	}
+	.ark-radio-header {
+		flex-direction: column !important;
+	}
+	.ark-ssid-card {
+		flex-direction: column !important;
+		align-items: flex-start !important;
+	}
+	.ark-ssid-actions {
+		width: 100% !important;
+		justify-content: flex-end !important;
+	}
+}
+
+

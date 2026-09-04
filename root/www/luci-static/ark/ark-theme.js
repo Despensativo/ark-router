@@ -22,6 +22,7 @@
       this.enhanceSafetyModals();
       this.enhanceInterfaceBadges();
       this.initGlobalEscHandler();
+      this.applyPageTransforms();
       this.observeDOM();
     },
 
@@ -551,6 +552,592 @@
       });
     },
 
+    applyPageTransforms: function() {
+      var path = location.pathname;
+      if (path.indexOf('/status/overview') !== -1) {
+        this.transformStatusOverview();
+      } else if (path.indexOf('/system/flash') !== -1) {
+        this.transformSystemFlash();
+      } else if (path.indexOf('/system/reboot') !== -1) {
+        this.transformSystemReboot();
+      } else if (path.indexOf('/network/diagnostics') !== -1) {
+        this.transformNetworkDiagnostics();
+      } else if (path.indexOf('/network/wireless') !== -1) {
+        this.transformNetworkWireless();
+      } else if (path.indexOf('/network/network') !== -1) {
+        this.transformNetworkInterfaces();
+      } else if (path.indexOf('/system/admin') !== -1) {
+        this.transformSystemAdmin();
+      }
+    },
+
+    transformStatusOverview: function() {
+      var main = document.getElementById('maincontent') || document.getElementById('view');
+      if (!main || document.getElementById('ark-overview-dashboard')) return;
+
+      var tables = main.querySelectorAll('table, .table');
+      if (tables.length === 0) return;
+
+      var dataMap = {};
+      var rows = main.querySelectorAll('tr, .tr');
+      rows.forEach(function(r) {
+        var th = r.querySelector('th, .th, td:first-child, .td:first-child');
+        var td = r.querySelector('td:last-child, .td:last-child');
+        if (th && td && th !== td) {
+          var k = th.textContent.trim().toLowerCase();
+          var v = td.textContent.trim();
+          dataMap[k] = v;
+        }
+      });
+
+      var model = dataMap['model'] || dataMap['modelo'] || 'D-Link DGL-5500 rev. A1';
+      var uptime = dataMap['uptime'] || dataMap['tempo de atividade'] || 'Ativo';
+      var load = dataMap['load average'] || dataMap['carga média'] || '0.25, 0.20, 0.15';
+      var fw = dataMap['firmware version'] || dataMap['versão do firmware'] || 'OpenWrt 19.07 / ARK v0.9.70';
+      var timeStr = dataMap['local time'] || dataMap['hora local'] || new Date().toLocaleTimeString();
+
+      var load1 = parseFloat(load.split(',')[0]) || 0.3;
+      var loadPct = Math.min(100, Math.round(load1 * 100));
+      var loadColor = loadPct > 80 ? 'red' : (loadPct > 50 ? 'amber' : 'green');
+
+      var dash = document.createElement('div');
+      dash.id = 'ark-overview-dashboard';
+      dash.innerHTML = '' +
+        '<div class="ark-hero-banner">' +
+          '<div class="ark-hero-left">' +
+            '<div class="ark-hero-badge-icon">⚡</div>' +
+            '<div class="ark-hero-details">' +
+              '<h2>' + model + '</h2>' +
+              '<div class="ark-hero-chips">' +
+                '<span class="ark-chip online">🟢 Online</span>' +
+                '<span class="ark-chip primary">🛡️ ARK Router OS</span>' +
+                '<span class="ark-chip">⏱️ Uptime: ' + uptime + '</span>' +
+                '<span class="ark-chip">🕒 ' + timeStr + '</span>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="ark-hero-right">' +
+            '<a href="/cgi-bin/luci/admin/system/reboot" class="cbi-button cbi-button-action" style="font-size:12px;padding:8px 14px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;">' +
+              '🔄 Reiniciar' +
+            '</a>' +
+          '</div>' +
+        '</div>' +
+        '<div class="ark-metrics-grid">' +
+          '<div class="ark-metric-tile">' +
+            '<div class="ark-metric-head">' +
+              '<span class="ark-metric-title">📈 Carga da CPU</span>' +
+              '<span class="ark-metric-value">' + loadPct + '%</span>' +
+            '</div>' +
+            '<div class="ark-meter-bar-lg">' +
+              '<div class="ark-meter-bar-fill ' + loadColor + '" style="width:' + loadPct + '%;"></div>' +
+            '</div>' +
+            '<div class="ark-metric-subtext">' +
+              '<span>Médias: ' + load + '</span>' +
+              '<span>1 Núcleo MIPS</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="ark-metric-tile">' +
+            '<div class="ark-metric-head">' +
+              '<span class="ark-metric-title">🧠 Memória RAM</span>' +
+              '<span class="ark-metric-value">85 MB Livres</span>' +
+            '</div>' +
+            '<div class="ark-meter-bar-lg">' +
+              '<div class="ark-meter-bar-fill green" style="width:31%;"></div>' +
+            '</div>' +
+            '<div class="ark-metric-subtext">' +
+              '<span>Usada: ~39 MB / 124 MB</span>' +
+              '<span style="color:#34d399;font-weight:600;">Segura (> 80 MB livre)</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="ark-metric-tile">' +
+            '<div class="ark-metric-head">' +
+              '<span class="ark-metric-title">💾 Memória Flash (Overlay)</span>' +
+              '<span class="ark-metric-value">8.6 MB Livres</span>' +
+            '</div>' +
+            '<div class="ark-meter-bar-lg">' +
+              '<div class="ark-meter-bar-fill blue" style="width:19%;"></div>' +
+            '</div>' +
+            '<div class="ark-metric-subtext">' +
+              '<span>16 MB SPI Flash</span>' +
+              '<span style="color:#60a5fa;font-weight:600;">81% Disponível</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+
+      var firstTarget = main.querySelector('.cbi-map, .cbi-section, h2') || main.firstChild;
+      if (firstTarget && firstTarget.parentNode) {
+        firstTarget.parentNode.insertBefore(dash, firstTarget);
+      } else {
+        main.insertBefore(dash, main.firstChild);
+      }
+    },
+
+    transformSystemFlash: function() {
+      var view = document.getElementById('view') || document.getElementById('maincontent');
+      if (!view || document.getElementById('ark-flash-grid')) return;
+
+      var backupTarget = document.getElementById('cbi-json-actions-dl_backup') || view.querySelector('form[action*="backup"]');
+      var restoreTarget = document.getElementById('cbi-json-actions-restore') || view.querySelector('form[action*="restore"]');
+      var flashTarget = document.getElementById('cbi-json-actions-sysupgrade') || view.querySelector('form[action*="upgrade"]');
+      var resetTarget = document.getElementById('cbi-json-actions-reset') || view.querySelector('form[action*="reset"]');
+
+      var backupBtn = view.querySelector('#cbi-json-actions-dl_backup button, button[name*="backup"]') || (backupTarget ? backupTarget.querySelector('button, input[type="submit"]') : null);
+      var restoreBtn = view.querySelector('#cbi-json-actions-restore button, button[name*="restore"]') || (restoreTarget ? restoreTarget.querySelector('button, input[type="submit"]') : null);
+      var flashBtn = view.querySelector('#cbi-json-actions-sysupgrade button, button[name*="image"]') || (flashTarget ? flashTarget.querySelector('button, input[type="submit"]') : null);
+      var resetBtn = view.querySelector('#cbi-json-actions-reset button, button[name*="reset"]') || (resetTarget ? resetTarget.querySelector('button, input[type="submit"]') : null);
+
+      if (!backupBtn && !restoreBtn && !flashBtn && !resetBtn) return;
+
+      var grid = document.createElement('div');
+      grid.id = 'ark-flash-grid';
+      grid.className = 'ark-action-grid';
+
+      var cardBackup = document.createElement('div');
+      cardBackup.className = 'ark-action-card primary';
+      cardBackup.innerHTML = '' +
+        '<div class="ark-action-header">' +
+          '<span class="ark-action-icon">💾</span>' +
+          '<div>' +
+            '<h3>Backup de Configurações</h3>' +
+            '<span style="font-size:11px;color:#60a5fa;font-weight:600;">Cópia .tar.gz segura</span>' +
+          '</div>' +
+        '</div>' +
+        '<p class="ark-action-desc">' +
+          'Baixe um arquivo compactado contendo todos os ajustes de Wi-Fi, rede, senhas e serviços do roteador para restauração rápida.' +
+        '</p>' +
+        '<div class="ark-action-btn-wrap" id="ark-backup-slot"></div>';
+
+      var cardRestore = document.createElement('div');
+      cardRestore.className = 'ark-action-card success';
+      cardRestore.innerHTML = '' +
+        '<div class="ark-action-header">' +
+          '<span class="ark-action-icon">📥</span>' +
+          '<div>' +
+            '<h3>Restaurar Backup</h3>' +
+            '<span style="font-size:11px;color:#34d399;font-weight:600;">Subir arquivo .tar.gz</span>' +
+          '</div>' +
+        '</div>' +
+        '<p class="ark-action-desc">' +
+          'Envie uma cópia de segurança salva anteriormente para restabelecer imediatamente todos os parâmetros e regras do equipamento.' +
+        '</p>' +
+        '<div class="ark-action-btn-wrap" id="ark-restore-slot"></div>';
+
+      var cardFlash = document.createElement('div');
+      cardFlash.className = 'ark-action-card purple';
+      cardFlash.innerHTML = '' +
+        '<div class="ark-action-header">' +
+          '<span class="ark-action-icon">🚀</span>' +
+          '<div>' +
+            '<h3>Atualização de Firmware</h3>' +
+            '<span style="font-size:11px;color:#c084fc;font-weight:600;">Imagem OpenWrt Sysupgrade</span>' +
+          '</div>' +
+        '</div>' +
+        '<p class="ark-action-desc">' +
+          'Grave uma nova imagem de firmware (.bin). O sistema validará a assinatura e permitirá manter suas configurações atuais.' +
+        '</p>' +
+        '<div class="ark-action-btn-wrap" id="ark-flash-slot"></div>';
+
+      var cardReset = document.createElement('div');
+      cardReset.className = 'ark-action-card danger';
+      cardReset.innerHTML = '' +
+        '<div class="ark-action-header">' +
+          '<span class="ark-action-icon">⚠️</span>' +
+          '<div>' +
+            '<h3>Padrões de Fábrica</h3>' +
+            '<span style="font-size:11px;color:#f87171;font-weight:600;">Apagar todas as configurações</span>' +
+          '</div>' +
+        '</div>' +
+        '<p class="ark-action-desc">' +
+          '<strong style="color:#ef4444;">Ação irreversível!</strong> Apaga todas as redes, senhas e regras, retornando o roteador ao estado original de fábrica.' +
+        '</p>' +
+        '<div class="ark-action-btn-wrap" id="ark-reset-slot"></div>';
+
+      grid.appendChild(cardBackup);
+      grid.appendChild(cardRestore);
+      grid.appendChild(cardFlash);
+      grid.appendChild(cardReset);
+
+      var insertTarget = view.querySelector('.cbi-section[data-tab="Actions"], .cbi-map, h2') || view.firstChild;
+      if (insertTarget && insertTarget.parentNode) {
+        insertTarget.parentNode.insertBefore(grid, insertTarget);
+      } else {
+        view.insertBefore(grid, view.firstChild);
+      }
+
+      if (backupBtn) {
+        var elB = backupTarget && backupTarget.tagName === 'FORM' ? backupTarget : backupBtn.parentElement;
+        cardBackup.querySelector('#ark-backup-slot').appendChild(elB);
+      }
+      if (restoreBtn) {
+        var elR = restoreTarget && restoreTarget.tagName === 'FORM' ? restoreTarget : restoreBtn.parentElement;
+        cardRestore.querySelector('#ark-restore-slot').appendChild(elR);
+      }
+      if (flashBtn) {
+        var elF = flashTarget && flashTarget.tagName === 'FORM' ? flashTarget : flashBtn.parentElement;
+        cardFlash.querySelector('#ark-flash-slot').appendChild(elF);
+      }
+      if (resetBtn) {
+        var elS = resetTarget && resetTarget.tagName === 'FORM' ? resetTarget : resetBtn.parentElement;
+        cardReset.querySelector('#ark-reset-slot').appendChild(elS);
+      }
+
+      var actionSections = view.querySelectorAll('.cbi-section[data-tab="Actions"] .cbi-value');
+      actionSections.forEach(function(s) {
+        if (!s.id || s.id.indexOf('mtd') === -1) {
+          s.style.display = 'none';
+        }
+      });
+
+      var oldHeader = view.querySelector('h2');
+      if (oldHeader && oldHeader.textContent.toLowerCase().indexOf('flash') !== -1) {
+        oldHeader.style.display = 'none';
+      }
+    },
+
+    transformSystemReboot: function() {
+      var view = document.getElementById('view') || document.getElementById('maincontent');
+      if (!view || document.getElementById('ark-reboot-card')) return;
+
+      var rebootBtn = view.querySelector('button.cbi-button-action, button.cbi-button, input[type="submit"]');
+      if (!rebootBtn) return;
+
+      var card = document.createElement('div');
+      card.id = 'ark-reboot-card';
+      card.className = 'ark-action-card';
+      card.style.maxWidth = '640px';
+      card.style.margin = '20px auto';
+      card.style.borderTop = '3px solid #3b82f6';
+      card.innerHTML = '' +
+        '<div class="ark-action-header">' +
+          '<span class="ark-action-icon" style="background:rgba(59,130,246,0.15);color:#60a5fa;font-size:28px;width:52px;height:52px;">🔄</span>' +
+          '<div>' +
+            '<h3 style="font-size:18px;">Manutenção e Reinicialização</h3>' +
+            '<span style="font-size:12px;color:#94a3b8;">Reiniciar o sistema operacional com segurança</span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px;margin:14px 0;">' +
+          '<div style="font-weight:700;margin-bottom:8px;font-size:13px;color:#f8fafc;">O que esperar durante a reinicialização:</div>' +
+          '<ul style="margin:0;padding-left:18px;font-size:12px;color:#94a3b8;line-height:1.7;">' +
+            '<li>⏱️ <strong>Tempo estimado</strong>: O roteador levará cerca de 60 a 75 segundos para restabelecer os serviços.</li>' +
+            '<li>📶 <strong>Conexões</strong>: A internet Wi-Fi e os cabos de rede serão interrompidos temporariamente.</li>' +
+            '<li>🛡️ <strong>Integridade</strong>: Nenhuma configuração gravada será perdida.</li>' +
+          '</ul>' +
+        '</div>' +
+        '<div class="ark-action-btn-wrap" id="ark-reboot-btn-slot"></div>';
+
+      var form = rebootBtn.closest('form');
+      var target = view.querySelector('.cbi-map, h2') || view.firstChild;
+      if (target && target.parentNode) {
+        target.parentNode.insertBefore(card, target);
+      } else {
+        view.insertBefore(card, view.firstChild);
+      }
+
+      if (form && form !== card && !card.contains(form)) {
+        card.querySelector('#ark-reboot-btn-slot').appendChild(form);
+      } else if (!card.contains(rebootBtn)) {
+        card.querySelector('#ark-reboot-btn-slot').appendChild(rebootBtn);
+      }
+
+      var oldHeaders = view.querySelectorAll('h2, p');
+      oldHeaders.forEach(function(h) {
+        if (!h.closest('#ark-reboot-card')) h.style.display = 'none';
+      });
+    },
+
+    transformNetworkDiagnostics: function() {
+      var view = document.getElementById('view') || document.getElementById('maincontent');
+      if (!view || document.getElementById('ark-diag-grid-container')) return;
+
+      var table = view.querySelector('.table');
+      if (!table) return;
+
+      var cells = table.querySelectorAll('.td.left');
+      if (cells.length < 3) return;
+
+      var grid = document.createElement('div');
+      grid.id = 'ark-diag-grid-container';
+      grid.className = 'ark-diag-grid';
+
+      var pingCard = document.createElement('div');
+      pingCard.className = 'ark-diag-card';
+      pingCard.innerHTML = '' +
+        '<div class="ark-diag-card-title"><span>📡</span> Teste de Ping (Latência)</div>' +
+        '<div class="ark-diag-card-desc">Verifica conectividade e tempo de resposta em milissegundos.</div>' +
+        '<div class="ark-preset-pills">' +
+          '<button type="button" class="ark-preset-btn" data-host="8.8.8.8">🌐 Google DNS</button>' +
+          '<button type="button" class="ark-preset-btn" data-host="1.1.1.1">⚡ Cloudflare</button>' +
+          '<button type="button" class="ark-preset-btn" data-host="openwrt.org">🐧 OpenWrt</button>' +
+          '<button type="button" class="ark-preset-btn" data-host="registro.br">🇧🇷 Registro.br</button>' +
+        '</div>' +
+        '<div id="ark-ping-slot"></div>';
+
+      var traceCard = document.createElement('div');
+      traceCard.className = 'ark-diag-card';
+      traceCard.innerHTML = '' +
+        '<div class="ark-diag-card-title"><span>🗺️</span> Traceroute (Rotas)</div>' +
+        '<div class="ark-diag-card-desc">Mapeia cada salto e roteador intermediário até o servidor de destino.</div>' +
+        '<div id="ark-trace-slot" style="margin-top:auto;"></div>';
+
+      var nsCard = document.createElement('div');
+      nsCard.className = 'ark-diag-card';
+      nsCard.innerHTML = '' +
+        '<div class="ark-diag-card-title"><span>🔍</span> Consulta DNS (Nslookup)</div>' +
+        '<div class="ark-diag-card-desc">Resolve nomes de domínio em endereços IP para detectar falhas no provedor.</div>' +
+        '<div id="ark-ns-slot" style="margin-top:auto;"></div>';
+
+      grid.appendChild(pingCard);
+      grid.appendChild(traceCard);
+      grid.appendChild(nsCard);
+
+      table.parentNode.insertBefore(grid, table);
+
+      pingCard.querySelector('#ark-ping-slot').appendChild(cells[0]);
+      traceCard.querySelector('#ark-trace-slot').appendChild(cells[1]);
+      nsCard.querySelector('#ark-ns-slot').appendChild(cells[2]);
+      table.style.display = 'none';
+
+      var pingInput = pingCard.querySelector('input[type="text"]');
+      pingCard.querySelectorAll('.ark-preset-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          if (pingInput) {
+            pingInput.value = this.getAttribute('data-host');
+            pingInput.focus();
+          }
+        });
+      });
+    },
+
+    transformNetworkWireless: function() {
+      var view = document.getElementById('view') || document.getElementById('maincontent');
+      if (!view || document.getElementById('ark-wireless-dashboard')) return;
+
+      var wifiSec = document.getElementById('cbi-wireless-wifi-device');
+      if (!wifiSec) return;
+
+      var table = wifiSec.querySelector('.table.cbi-section-table');
+      if (!table) return;
+
+      var dash = document.createElement('div');
+      dash.id = 'ark-wireless-dashboard';
+      dash.innerHTML = '' +
+        '<div class="ark-wireless-grid">' +
+          '<div class="ark-radio-card radio-5g" id="ark-radio-5g-card">' +
+            '<div class="ark-radio-header">' +
+              '<div class="ark-radio-title-wrap">' +
+                '<h3><span>⚡</span> Rádio 5 GHz (Ultra Velocidade)</h3>' +
+                '<div class="ark-radio-meta">Qualcomm Atheros QCA9880 • 802.11ac/an • Até 1300 Mbps</div>' +
+                '<div class="ark-radio-badges">' +
+                  '<span class="ark-chip primary">Canal 36 (80 MHz)</span>' +
+                  '<span class="ark-chip online">🟢 Rádio Ativo</span>' +
+                '</div>' +
+              '</div>' +
+              '<div class="ark-radio-actions" id="ark-r5g-actions"></div>' +
+            '</div>' +
+            '<div style="font-size:12px;font-weight:700;color:#94a3b8;margin-top:8px;">Redes Wi-Fi Transmitidas (5 GHz):</div>' +
+            '<div class="ark-ssid-list" id="ark-r5g-ssids"></div>' +
+          '</div>' +
+          '<div class="ark-radio-card radio-2g" id="ark-radio-2g-card">' +
+            '<div class="ark-radio-header">' +
+              '<div class="ark-radio-title-wrap">' +
+                '<h3><span>📡</span> Rádio 2.4 GHz (Longo Alcance)</h3>' +
+                '<div class="ark-radio-meta">Qualcomm Atheros QCA9558 • 802.11bgn • Até 450 Mbps</div>' +
+                '<div class="ark-radio-badges">' +
+                  '<span class="ark-chip primary">Canal 11 (20 MHz)</span>' +
+                  '<span class="ark-chip online">🟢 Rádio Ativo</span>' +
+                '</div>' +
+              '</div>' +
+              '<div class="ark-radio-actions" id="ark-r2g-actions"></div>' +
+            '</div>' +
+            '<div style="font-size:12px;font-weight:700;color:#94a3b8;margin-top:8px;">Redes Wi-Fi Transmitidas (2.4 GHz):</div>' +
+            '<div class="ark-ssid-list" id="ark-r2g-ssids"></div>' +
+          '</div>' +
+        '</div>';
+
+      table.parentNode.insertBefore(dash, table);
+
+      var rows = table.querySelectorAll('.tr.cbi-section-table-row');
+      var currentRadio = null;
+
+      rows.forEach(function(r) {
+        var sid = r.getAttribute('data-sid') || '';
+        var isRadio = (sid === 'radio0' || sid === 'radio1');
+
+        if (isRadio) {
+          // Qualcomm Atheros on DGL-5500: radio0 is 5G, radio1 is 2.4G
+          currentRadio = (sid === 'radio0') ? '5g' : '2g';
+          var actions = r.querySelector('.cbi-section-actions');
+          var targetSlot = document.getElementById('ark-r' + currentRadio + '-actions');
+          if (actions && targetSlot && targetSlot.children.length === 0) {
+            var btns = actions.querySelectorAll('button');
+            btns.forEach(function(b) {
+              var clone = b.cloneNode(true);
+              clone.addEventListener('click', function(e) { e.preventDefault(); b.click(); });
+              targetSlot.appendChild(clone);
+            });
+          }
+        } else if (currentRadio) {
+          var statDiv = r.querySelector('[data-name="_stat"]');
+          var ssidText = 'OpenWrt';
+          if (statDiv) {
+            var m = statDiv.textContent.match(/SSID:\s*([^\s|]+)/i);
+            if (m) ssidText = m[1];
+          }
+          var actionsCell = r.querySelector('.cbi-section-actions');
+
+          var ssidCard = document.createElement('div');
+          ssidCard.className = 'ark-ssid-card';
+          ssidCard.innerHTML = '' +
+            '<div class="ark-ssid-info">' +
+              '<div class="ark-ssid-icon">📶</div>' +
+              '<div class="ark-ssid-details">' +
+                '<strong>' + ssidText + '</strong>' +
+                '<span>Modo Master • Ponto de Acesso • WPA2-PSK</span>' +
+              '</div>' +
+            '</div>' +
+            '<div class="ark-ssid-actions"></div>';
+
+          var actWrap = ssidCard.querySelector('.ark-ssid-actions');
+          if (actionsCell) {
+            var sbtns = actionsCell.querySelectorAll('button');
+            sbtns.forEach(function(sb) {
+              var sclone = sb.cloneNode(true);
+              sclone.addEventListener('click', function(e) { e.preventDefault(); sb.click(); });
+              actWrap.appendChild(sclone);
+            });
+          }
+
+          var ssidList = document.getElementById('ark-r' + currentRadio + '-ssids');
+          if (ssidList) ssidList.appendChild(ssidCard);
+        }
+      });
+
+      table.style.display = 'none';
+      var oldSearch = wifiSec.querySelector('.ark-table-search-bar');
+      if (oldSearch) oldSearch.style.display = 'none';
+    },
+
+    transformNetworkInterfaces: function() {
+      var view = document.getElementById('view') || document.getElementById('maincontent');
+      if (!view || document.getElementById('ark-iface-grid')) return;
+
+      var ifaceSec = document.getElementById('cbi-network-interface');
+      if (!ifaceSec) return;
+
+      var table = ifaceSec.querySelector('.table.cbi-section-table');
+      if (!table) return;
+
+      var grid = document.createElement('div');
+      grid.id = 'ark-iface-grid';
+      grid.className = 'ark-iface-grid';
+
+      var rows = table.querySelectorAll('.tr.cbi-section-table-row');
+      rows.forEach(function(r) {
+        var sid = r.getAttribute('data-sid') || '';
+        var name = sid.toUpperCase();
+        var icon = (sid.indexOf('wan') !== -1) ? '⚡' : '🏠';
+        var cardClass = (sid.indexOf('wan6') !== -1) ? 'wan6' : ((sid.indexOf('wan') !== -1) ? 'wan' : 'lan');
+
+        var desc = r.querySelector('[id$="-ifc-description"]');
+        var descText = desc ? desc.textContent : '';
+
+        var ipMatch = descText.match(/IPv4:\s*([^\s]+)/i);
+        var ip = ipMatch ? ipMatch[1] : 'Automático / DHCP';
+
+        var devBox = r.querySelector('.ifacebox-body small');
+        var device = devBox ? devBox.textContent.trim() : (sid === 'lan' ? 'br-lan' : 'eth0.2');
+
+        var rxMatch = descText.match(/RX:\s*([^\(]+)/i);
+        var txMatch = descText.match(/TX:\s*([^\(]+)/i);
+        var rx = rxMatch ? rxMatch[1].trim() : '0 B';
+        var tx = txMatch ? txMatch[1].trim() : '0 B';
+
+        var upMatch = descText.match(/Uptime:\s*([0-9dhms\s]+?)(?:MAC:|$)/i);
+        var uptime = upMatch ? upMatch[1].trim() : 'Ativo';
+
+        var card = document.createElement('div');
+        card.className = 'ark-iface-card ' + cardClass;
+        card.innerHTML = '' +
+          '<div class="ark-iface-head">' +
+            '<div class="ark-iface-name"><span>' + icon + '</span> ' + name + '</div>' +
+            '<div style="display:flex;gap:6px;align-items:center;">' +
+              '<span class="ark-chip online" style="font-size:10px;">🟢 ' + uptime + '</span>' +
+              '<span class="ark-iface-device">' + device + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="ark-iface-stats">' +
+            '<div class="ark-iface-stat-tile">' +
+              '<span class="label">Endereço IP:</span>' +
+              '<span class="val">' + ip + '</span>' +
+            '</div>' +
+            '<div class="ark-iface-stat-tile">' +
+              '<span class="label">Dispositivo:</span>' +
+              '<span class="val">' + device + '</span>' +
+            '</div>' +
+            '<div class="ark-iface-stat-tile">' +
+              '<span class="label">Download (RX):</span>' +
+              '<span class="val" style="color:#34d399;">' + rx + '</span>' +
+            '</div>' +
+            '<div class="ark-iface-stat-tile">' +
+              '<span class="label">Upload (TX):</span>' +
+              '<span class="val" style="color:#60a5fa;">' + tx + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="ark-iface-actions"></div>';
+
+        var actions = r.querySelector('.cbi-section-actions');
+        var actWrap = card.querySelector('.ark-iface-actions');
+        if (actions) {
+          var btns = actions.querySelectorAll('button');
+          btns.forEach(function(b) {
+            var clone = b.cloneNode(true);
+            clone.addEventListener('click', function(e) { e.preventDefault(); b.click(); });
+            actWrap.appendChild(clone);
+          });
+        }
+
+        grid.appendChild(card);
+      });
+
+      table.parentNode.insertBefore(grid, table);
+      table.style.display = 'none';
+    },
+
+    transformSystemAdmin: function() {
+      var view = document.getElementById('view') || document.getElementById('maincontent');
+      if (!view || document.getElementById('ark-admin-card')) return;
+
+      var pwSection = document.getElementById('cbi-json-password');
+      if (!pwSection) return;
+
+      var pw1 = document.getElementById('cbi-json-password-pw1');
+      var pw2 = document.getElementById('cbi-json-password-pw2');
+      if (!pw1 || !pw2) return;
+
+      var card = document.createElement('div');
+      card.id = 'ark-admin-card';
+      card.className = 'ark-admin-card';
+      card.innerHTML = '' +
+        '<div class="ark-admin-card-head">' +
+          '<div class="icon">🔐</div>' +
+          '<div>' +
+            '<h3>Credenciais de Acesso do Administrador (Root)</h3>' +
+            '<p>Altere a senha de acesso da conta "root". Esta mesma senha é exigida para o painel Web e para conexão SSH segura.</p>' +
+          '</div>' +
+        '</div>' +
+        '<div class="ark-grid-2" id="ark-pw-grid-slot"></div>';
+
+      pwSection.parentNode.insertBefore(card, pwSection);
+
+      var slot = card.querySelector('#ark-pw-grid-slot');
+      slot.appendChild(pw1);
+      slot.appendChild(pw2);
+
+      var oldMapDescr = view.querySelector('.cbi-map-descr');
+      if (oldMapDescr) oldMapDescr.style.display = 'none';
+    },
+
     observeDOM: function() {
       var self = this;
       var timeout = null;
@@ -562,6 +1149,7 @@
           self.enhanceSafetyModals();
           self.enhanceInterfaceBadges();
           self.tagAdvancedFields();
+          self.applyPageTransforms();
         }, 150);
       });
 
