@@ -472,44 +472,147 @@
       });
 
       // 2. Preformatted Logs (Syslog & Dmesg)
-      var pre = document.querySelector('#syslog, #dmesg, pre.log, pre');
-      if (pre && !pre.getAttribute('data-ark-enhanced') && pre.textContent.length > 300) {
-        pre.setAttribute('data-ark-enhanced', 'true');
-        
-        var logActions = document.createElement('div');
-        logActions.className = 'ark-log-header-bar';
-        logActions.innerHTML = '' +
-          '<div class="ark-table-search-bar" style="margin-bottom: 0; flex: 1;">' +
-            '<span class="ark-search-icon">🔍</span>' +
-            '<input type="text" class="ark-search-input ark-log-filter" placeholder="Filtrar mensagens de log em tempo real..." />' +
-          '</div>' +
-          '<button type="button" class="cbi-button cbi-button-neutral ark-copy-log-btn">📋 Copiar Log</button>';
+      var logEl = document.querySelector('#syslog, #dmesg, textarea[name="syslog"], pre.log, pre');
+      if (logEl && !logEl.getAttribute('data-ark-enhanced')) {
+        var rawContent = logEl.value !== undefined ? logEl.value : logEl.textContent;
+        if (rawContent && rawContent.length > 200) {
+          logEl.setAttribute('data-ark-enhanced', 'true');
 
-        pre.parentNode.insertBefore(logActions, pre);
+          var logActions = document.createElement('div');
+          logActions.className = 'ark-log-header-bar';
+          logActions.style.display = 'flex';
+          logActions.style.flexWrap = 'wrap';
+          logActions.style.gap = '10px';
+          logActions.style.alignItems = 'center';
+          logActions.style.marginBottom = '12px';
 
-        var rawLogLines = pre.textContent.split('\n');
-        var logInput = logActions.querySelector('.ark-log-filter');
-        var copyBtn = logActions.querySelector('.ark-copy-log-btn');
+          logActions.innerHTML = '' +
+            '<div class="ark-table-search-bar" style="margin-bottom: 0; flex: 1; min-width: 260px;">' +
+              '<span class="ark-search-icon">🔍</span>' +
+              '<input type="text" class="ark-search-input ark-log-filter" placeholder="Filtrar mensagens de log em tempo real..." />' +
+              '<span class="ark-search-count ark-log-counter"></span>' +
+            '</div>' +
+            '<div class="ark-log-btn-group" style="display: flex; gap: 8px;">' +
+              '<button type="button" class="cbi-button cbi-button-neutral ark-copy-log-btn" style="display:inline-flex;align-items:center;gap:6px;">📋 Copiar Log</button>' +
+              '<button type="button" class="cbi-button cbi-button-action ark-download-log-btn" style="display:inline-flex;align-items:center;gap:6px;">📥 Baixar (.txt)</button>' +
+            '</div>';
 
-        logInput.addEventListener('input', function() {
-          var q = logInput.value.toLowerCase().trim();
-          if (!q) {
-            pre.textContent = rawLogLines.join('\n');
-          } else {
-            var filtered = rawLogLines.filter(function(line) {
-              return line.toLowerCase().indexOf(q) !== -1;
-            });
-            pre.textContent = filtered.join('\n');
+          logEl.parentNode.insertBefore(logActions, logEl);
+
+          var rawLogLines = rawContent.split('\n');
+          var logInput = logActions.querySelector('.ark-log-filter');
+          var logCounter = logActions.querySelector('.ark-log-counter');
+          var copyBtn = logActions.querySelector('.ark-copy-log-btn');
+          var dlBtn = logActions.querySelector('.ark-download-log-btn');
+
+          if (logCounter) logCounter.textContent = rawLogLines.length + ' linhas';
+
+          function setLogText(text) {
+            if (logEl.value !== undefined) {
+              logEl.value = text;
+            } else {
+              logEl.textContent = text;
+            }
           }
-        });
 
-        copyBtn.addEventListener('click', function() {
-          navigator.clipboard.writeText(pre.textContent).then(function() {
-            var orig = copyBtn.textContent;
-            copyBtn.textContent = '✅ Copiado!';
-            setTimeout(function() { copyBtn.textContent = orig; }, 2000);
+          function getLogText() {
+            return logEl.value !== undefined ? logEl.value : logEl.textContent;
+          }
+
+          logInput.addEventListener('input', function() {
+            var q = logInput.value.toLowerCase().trim();
+            if (!q) {
+              setLogText(rawLogLines.join('\n'));
+              if (logCounter) logCounter.textContent = rawLogLines.length + ' linhas';
+            } else {
+              var filtered = rawLogLines.filter(function(line) {
+                return line.toLowerCase().indexOf(q) !== -1;
+              });
+              setLogText(filtered.join('\n'));
+              if (logCounter) logCounter.textContent = filtered.length + ' de ' + rawLogLines.length;
+            }
           });
-        });
+
+          // Universal Copy with HTTP fallback
+          copyBtn.addEventListener('click', function() {
+            var textToCopy = getLogText();
+            var success = false;
+
+            if (navigator.clipboard && window.isSecureContext) {
+              navigator.clipboard.writeText(textToCopy).then(function() {
+                showCopiedFeedback();
+              }).catch(function() {
+                fallbackCopy();
+              });
+            } else {
+              fallbackCopy();
+            }
+
+            function fallbackCopy() {
+              try {
+                var ta = document.createElement('textarea');
+                ta.value = textToCopy;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                ta.style.top = '0';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                success = document.execCommand('copy');
+                document.body.removeChild(ta);
+                if (success) {
+                  showCopiedFeedback();
+                } else {
+                  copyBtn.textContent = '❌ Erro ao copiar';
+                  setTimeout(function() { copyBtn.textContent = '📋 Copiar Log'; }, 2500);
+                }
+              } catch (err) {
+                copyBtn.textContent = '❌ Erro ao copiar';
+                setTimeout(function() { copyBtn.textContent = '📋 Copiar Log'; }, 2500);
+              }
+            }
+
+            function showCopiedFeedback() {
+              copyBtn.textContent = '✅ Copiado!';
+              copyBtn.style.background = '#10b981';
+              copyBtn.style.color = '#fff';
+              setTimeout(function() {
+                copyBtn.textContent = '📋 Copiar Log';
+                copyBtn.style.background = '';
+                copyBtn.style.color = '';
+              }, 2000);
+            }
+          });
+
+          // Download as .txt file
+          dlBtn.addEventListener('click', function() {
+            var textToSave = getLogText();
+            var logType = location.pathname.indexOf('dmesg') !== -1 ? 'dmesg' : 'syslog';
+            var now = new Date();
+            var y = now.getFullYear();
+            var m = String(now.getMonth() + 1).padStart(2, '0');
+            var d = String(now.getDate()).padStart(2, '0');
+            var hh = String(now.getHours()).padStart(2, '0');
+            var mm = String(now.getMinutes()).padStart(2, '0');
+            var filename = 'ark-router-' + logType + '-' + y + '-' + m + '-' + d + '_' + hh + 'h' + mm + '.txt';
+
+            var blob = new Blob([textToSave], { type: 'text/plain;charset=utf-8' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            dlBtn.textContent = '✅ Baixando...';
+            setTimeout(function() {
+              dlBtn.textContent = '📥 Baixar (.txt)';
+            }, 2000);
+          });
+        }
       }
     },
 
