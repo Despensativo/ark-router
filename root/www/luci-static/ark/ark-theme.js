@@ -21,7 +21,40 @@
       this.enhanceTablesAndLogs();
       this.enhanceSafetyModals();
       this.enhanceInterfaceBadges();
+      this.initGlobalEscHandler();
       this.observeDOM();
+    },
+
+    initGlobalEscHandler: function() {
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' || e.keyCode === 27) {
+          // 1. Close ARK Safety Modal
+          var safety = document.getElementById('ark-safety-modal');
+          if (safety) {
+            safety.remove();
+            return;
+          }
+
+          // 2. Close native LuCI modal dialogs
+          if (window.ui && typeof window.ui.hideModal === 'function') {
+            try { window.ui.hideModal(); } catch (err) {}
+          }
+
+          // 3. Close open modals or overlays in DOM
+          var overlays = document.querySelectorAll('.modal, .cbi-modal, #modal_overlay, .modal-overlay, .ex-modal-overlay, [class*="modal_overlay"]');
+          overlays.forEach(function(el) {
+            if (el && el.parentNode) {
+              el.remove();
+            }
+          });
+
+          // 4. Close any open details or dropdown menus
+          var openDropdowns = document.querySelectorAll('.dropdown.open, .open > .dropdown-menu');
+          openDropdowns.forEach(function(d) {
+            d.classList.remove('open');
+          });
+        }
+      });
     },
 
     initMode: function() {
@@ -307,7 +340,13 @@
               row.style.display = 'none';
             }
           });
-          searchCount.textContent = query ? (visible + ' de ' + rows.length + ' itens') : (rows.length + ' itens');
+          if (visible === 0 && query) {
+            searchCount.textContent = 'Nenhum resultado';
+            searchCount.style.color = '#f87171';
+          } else {
+            searchCount.style.color = '';
+            searchCount.textContent = query ? (visible + ' de ' + rows.length + ' itens') : (rows.length + ' itens');
+          }
         });
       });
 

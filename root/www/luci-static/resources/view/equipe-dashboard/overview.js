@@ -720,25 +720,35 @@ return view.extend({
 		text(prefix+'-rx',connected?formatBytes(stats.rx_bytes):'—'); text(prefix+'-tx',connected?formatBytes(stats.tx_bytes):'—');
 	},
 	updateWifi: function(data) {
-		const w=wifiConfig(data.wireless), s2=surveyInfo(data.survey2), s5=surveyInfo(data.survey5);
+		const w=wifiConfig(data.wireless);
+		let s2=surveyInfo(data.survey2), s5=surveyInfo(data.survey5);
+		if (s2.channel && Number(s2.channel) >= 36 && (!s5.channel || Number(s5.channel) <= 14)) {
+			const tmp = s2; s2 = s5; s5 = tmp;
+		}
 		text('ex-main-ssid',w.main.ssid||'Rede principal');
 		text('ex-guest-ssid',w.guest.ssid||'Visitantes');
 		text('ex-main-key',w.main.key||'sem senha'); text('ex-guest-key',w.guest.key||'sem senha');
 		setPill('ex-main-wifi-status',String(w.main.disabled||'0')==='1'?'standby':'online',String(w.main.disabled||'0')==='1'?'DESLIGADA':'ATIVA');
 		setPill('ex-guest-wifi-status',String(w.guest.disabled||'0')==='1'?'standby':'online',String(w.guest.disabled||'0')==='1'?'DESLIGADA':'ATIVA');
-		const auto2=String(w.r0.channel||'auto')==='auto', auto5=String(w.r1.channel||'auto')==='auto';
-		const country=String(w.r0.country||w.r1.country||'00').toUpperCase(), countryInfo=this.countries.find(function(x){return String(x.code||x.iso3166).toUpperCase()===country;}); text('ex-country-current',(countryInfo&&countryInfo.country?countryInfo.country:'País')+' ('+country+')');
+		const r2 = w.r2g || w.r0 || {}, r5 = w.r5g || w.r1 || {};
+		const auto2=String(r2.channel||'auto')==='auto', auto5=String(r5.channel||'auto')==='auto';
+		const country=String(r2.country||r5.country||'00').toUpperCase(), countryInfo=this.countries.find(function(x){return String(x.code||x.iso3166).toUpperCase()===country;}); text('ex-country-current',(countryInfo&&countryInfo.country?countryInfo.country:'País')+' ('+country+')');
 		const allAuto=auto2&&auto5, mixed=auto2!==auto5, toggle=document.getElementById('ex-channel-auto-toggle');
 		if(toggle){toggle.checked=allAuto;toggle.indeterminate=mixed;toggle.setAttribute('aria-checked',mixed?'mixed':String(allAuto));}
 		text('ex-channel-mode-summary',mixed?'Configuração mista entre as bandas':(allAuto?'Ligado • o roteador escolhe os canais':'Desligado • canais definidos manualmente'));
 		setPill('ex-wifi-2-mode',auto2?'online':'standby',auto2?'AUTO':'MANUAL'); setPill('ex-wifi-5-mode',auto5?'online':'standby',auto5?'AUTO':'MANUAL');
-		text('ex-wifi-2','Canal '+(auto2?(s2.channel||'em seleção'):(w.r0.channel||'—'))+' • '+(auto2?'automático':'manual')+' • '+(w.r0.htmode||'')+' • ocupação '+s2.busy.toFixed(0)+'%');
-		text('ex-wifi-5','Canal '+(auto5?(s5.channel||'em seleção'):(w.r1.channel||'—'))+' • '+(auto5?'automático':'manual')+' • '+(w.r1.htmode||'')+' • ocupação '+s5.busy.toFixed(0)+'%');
+		text('ex-wifi-2','Canal '+(auto2?(s2.channel||'em seleção'):(r2.channel||'—'))+' • '+(auto2?'automático':'manual')+' • '+(r2.htmode||'')+' • ocupação '+s2.busy.toFixed(0)+'%');
+		text('ex-wifi-5','Canal '+(auto5?(s5.channel||'em seleção'):(r5.channel||'—'))+' • '+(auto5?'automático':'manual')+' • '+(r5.htmode||'')+' • ocupação '+s5.busy.toFixed(0)+'%');
 		text('ex-wifi-noise','Ruído: 2,4 GHz '+(isFinite(s2.noise)?s2.noise+' dBm':'—')+' • 5 GHz '+(isFinite(s5.noise)?s5.noise+' dBm':'—'));
 	},
 	currentWifiChannels: function() {
-		const data=this.currentData||{}, w=wifiConfig(data.wireless), s2=surveyInfo(data.survey2), s5=surveyInfo(data.survey5);
-		return { two: currentChannelValue(w.r0.channel, s2), five: currentChannelValue(w.r1.channel, s5), auto2: String(w.r0.channel||'auto')==='auto', auto5: String(w.r1.channel||'auto')==='auto' };
+		const data=this.currentData||{}, w=wifiConfig(data.wireless);
+		let s2=surveyInfo(data.survey2), s5=surveyInfo(data.survey5);
+		if (s2.channel && Number(s2.channel) >= 36 && (!s5.channel || Number(s5.channel) <= 14)) {
+			const tmp = s2; s2 = s5; s5 = tmp;
+		}
+		const r2 = w.r2g || w.r0 || {}, r5 = w.r5g || w.r1 || {};
+		return { two: currentChannelValue(r2.channel, s2), five: currentChannelValue(r5.channel, s5), auto2: String(r2.channel||'auto')==='auto', auto5: String(r5.channel||'auto')==='auto' };
 	},
 	updateMwanMode: function(data) {
 		const v=values(data.mwanConfig), p=(v.default_rule_v4||{}).use_policy||(v.https||{}).use_policy||'wan_then_wan2';
