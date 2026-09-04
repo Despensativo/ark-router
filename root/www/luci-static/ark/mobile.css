@@ -68,10 +68,54 @@
 		width: 100% !important;
 	}
 
-	table.cbi-section-table, table.table {
-		display: block;
-		overflow-x: auto;
-		-webkit-overflow-scrolling: touch;
+	html, body {
+		overflow-x: hidden !important;
+		max-width: 100vw !important;
+	}
+
+	.table, table.cbi-section-table, table.table {
+		display: block !important;
+		overflow-x: auto !important;
+		-webkit-overflow-scrolling: touch !important;
+		max-width: 100% !important;
+		box-sizing: border-box !important;
+	}
+
+	/* Touch Targets (44px Minimum for Accessibility) */
+	.cbi-button, input[type="submit"], input[type="reset"], input[type="button"], button.btn {
+		min-height: 42px !important;
+		padding: 10px 16px !important;
+	}
+
+	.ark-mode-bar {
+		flex-direction: column !important;
+		align-items: stretch !important;
+		padding: 14px !important;
+	}
+	.ark-mode-toggle-group {
+		width: 100% !important;
+		display: flex !important;
+	}
+	.ark-mode-pill {
+		flex: 1 !important;
+		justify-content: center !important;
+		padding: 10px !important;
+	}
+
+	.ark-pwd-wrap {
+		max-width: 100% !important;
+	}
+
+	.ark-modal-box {
+		padding: 18px !important;
+		width: 95% !important;
+	}
+	.ark-modal-actions {
+		flex-direction: column !important;
+		gap: 8px !important;
+	}
+	.ark-modal-actions button {
+		width: 100% !important;
 	}
 
 	body.ark-login-page #maincontent,
@@ -87,3 +131,4 @@
 		text-align: center;
 	}
 }
+

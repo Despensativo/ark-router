@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.9.70
+
+- **✨ Redesign Completo do Sistema ARK Router & OpenWrt LuCI**:
+  - **Motor Client-Side (`ark-theme.js`)**:
+    - **Dualidade de Públicos (Modo Básico vs Modo Avançado)**: Alternador no topo de formulários e seções. O *Modo Básico* oculta opções técnicas criptográficas e parâmetros obscuros de socket/MTU, enquanto o *Modo Avançado* expõe controles granulares e chaves UCI.
+    - **Visualizador de Senha (`👁️`) & Medidor de Força**: Adicionado toggle para mostrar/ocultar senha em todos os campos de senha e medidor visual interativo de complexidade (Fraca, Média, Boa, Excelente ARK Shield) na tela de administração.
+    - **Filtro de Busca em Tempo Real**: Adicionado campo de busca instantânea em tabelas longas (Processos, Logs do Sistema, Rotas, Leases DHCP) e no log pré-formatado do kernel com botão de cópia com 1 clique (`📋 Copiar Log`).
+    - **Modais de Confirmação Segura**: Diálogos pré-ação para eventos críticos (Reinicialização, Restauração de Fábrica e Sysupgrade), com impacto no serviço, tempo estimado e tela com contagem regressiva e barra de progresso.
+  - **Design System Global (`cascade.css`)**:
+    - Padronização em paleta Obsidian Space (`#0b1120`), Electric Blue (`#3b82f6`) e Cyber Violet (`#8b5cf6`).
+    - Suporte nativo completo para tabelas em grid do LuCI moderno (`.table`, `.tr`, `.th`, `.td`) e tabelas clássicas HTML.
+    - Modernização de abas CBI (`ul.cbi-tabmenu`) em botões pill interativos com iluminação ativa.
+    - Modernização de badges de interface de rede (`.ifacebadge`), substituindo bitmaps de 1995 por cartões limpos e ícones modernos.
+  - **Responsividade Total Mobile (`mobile.css`)**:
+    - Alvos de toque acessíveis de no mínimo 42px.
+    - Eliminação completa de transbordamento horizontal (`overflow-x: hidden` e `max-width: 100vw`).
+    - Adaptação vertical automática de tabelas, menus e modais de confirmação.
+
 ## 0.9.69
 
 - **📡 Correção da Inversão de Frequências Wi-Fi (2.4 GHz vs 5 GHz)**:
