@@ -87,19 +87,15 @@
 		padding: 10px 16px !important;
 	}
 
-	.ark-mode-bar {
-		flex-direction: column !important;
-		align-items: stretch !important;
+	.ark-guide-box {
 		padding: 14px !important;
+		margin-bottom: 16px !important;
 	}
-	.ark-mode-toggle-group {
-		width: 100% !important;
-		display: flex !important;
+	.ark-guide-title {
+		font-size: 14px !important;
 	}
-	.ark-mode-pill {
-		flex: 1 !important;
-		justify-content: center !important;
-		padding: 10px !important;
+	.ark-guide-item {
+		font-size: 12.5px !important;
 	}
 
 	.ark-pwd-wrap {

@@ -15,14 +15,14 @@
     mode: 'basic',
 
     init: function() {
-      this.initMode();
-      this.injectModeSwitcher();
       this.enhancePasswordFields();
       this.enhanceTablesAndLogs();
       this.enhanceSafetyModals();
       this.enhanceInterfaceBadges();
       this.initGlobalEscHandler();
       this.applyPageTransforms();
+      this.injectFeatureGuides();
+      this.translateRemainingUI();
       this.observeDOM();
     },
 
@@ -58,123 +58,226 @@
       });
     },
 
-    initMode: function() {
-      var saved = localStorage.getItem('ark_ui_mode');
-      if (saved === 'advanced' || saved === 'basic') {
-        this.mode = saved;
-      } else {
-        this.mode = 'basic';
+    injectFeatureGuides: function() {
+      var view = document.getElementById('view') || document.getElementById('maincontent');
+      if (!view || document.getElementById('ark-feature-guide')) return;
+
+      var path = location.pathname;
+      var guide = null;
+
+      if (path.indexOf('/network/wireless') !== -1) {
+        guide = {
+          title: 'Guia de Redes Wi-Fi (Dual-Band)',
+          serve: 'Controla a transmissão sem fio nas faixas de 5 GHz (máxima velocidade para vídeos e jogos) e 2.4 GHz (maior alcance através de paredes e compatibilidade com dispositivos inteligentes).',
+          fazer: 'Defina nomes (SSID) fáceis de reconhecer e senhas fortes. Se o sinal estiver instável por interferência de vizinhos, troque o canal nas configurações do rádio.',
+          rec: 'Mantenha o rádio 5 GHz no Canal 36 (80 MHz) e o 2.4 GHz no Canal 11 (20 MHz) com segurança WPA2-PSK (AES).'
+        };
+      } else if (path.indexOf('/network/network') !== -1) {
+        guide = {
+          title: 'Guia de Conexão: WAN (Internet) e LAN (Rede Local)',
+          serve: 'A interface WAN recebe o sinal de internet do modem ou fibra da operadora. A interface LAN distribui essa conexão aos aparelhos conectados por cabo e Wi-Fi.',
+          fazer: 'Se a internet cair, use o botão "Reiniciar" na interface WAN para restabelecer a conexão com a operadora. Para mudar a faixa de IP dos seus aparelhos, edite a interface LAN.',
+          rec: 'Mantenha o roteador no IP 192.168.12.1 para nunca conflitar com modems de operadoras (que costumam usar 192.168.1.1 ou 192.168.0.1).'
+        };
+      } else if (path.indexOf('/system/flash') !== -1) {
+        guide = {
+          title: 'Guia de Backup, Restauração e Firmware',
+          serve: 'Central de segurança do sistema para criar cópias de backup de todos os ajustes de rede e Wi-Fi, restaurar backups anteriores ou atualizar o sistema operacional OpenWrt.',
+          fazer: 'Gere um arquivo de backup antes de fazer qualquer alteração técnica. Para voltar ao estado original de fábrica, use o botão "Restaurar de Fábrica".',
+          rec: 'Sempre baixe um backup (.tar.gz) para o seu computador antes de instalar atualizações. Nunca desligue o aparelho da tomada durante uma gravação de firmware.'
+        };
+      } else if (path.indexOf('/system/admin') !== -1) {
+        guide = {
+          title: 'Guia de Senhas e Segurança Administrativa',
+          serve: 'Define a senha da conta mestra "root", necessária para entrar neste painel de controle web e para conexões seguras de terminal SSH.',
+          fazer: 'Digite a nova senha nos dois campos abaixo e acompanhe as 4 regras no medidor de força para garantir proteção máxima.',
+          rec: 'Crie uma senha de pelo menos 8 dígitos combinando letras maiúsculas, minúsculas, números e um símbolo especial (@, #, $).'
+        };
+      } else if (path.indexOf('/network/diagnostics') !== -1) {
+        guide = {
+          title: 'Guia de Diagnósticos de Rede',
+          serve: 'Testa a saúde da sua internet medindo latência (ping), rastreando a rota até o servidor de destino (traceroute) e testando a resolução de nomes (DNS).',
+          fazer: 'Clique nos botões rápidos (Google DNS ou Cloudflare) para testar sua conexão com 1 clique sem precisar digitar comandos.',
+          rec: 'Latência abaixo de 30 ms é ideal para chamadas de voz e jogos online. Se o Ping responder mas os sites não abrirem, seus servidores DNS estão fora do ar.'
+        };
+      } else if (path.indexOf('/system/reboot') !== -1) {
+        guide = {
+          title: 'Guia de Reinicialização Segura',
+          serve: 'Reinicia o sistema operacional do roteador de forma segura, descarregando processos zumbis e liberando memória RAM sem perda de configurações.',
+          fazer: 'Use esta opção se a internet estiver lenta após semanas ligada direto. O processo leva cerca de 60 a 75 segundos.',
+          rec: 'Evite desligar puxando o cabo de energia da tomada para não corromper a memória flash SPI do equipamento.'
+        };
+      } else if (path.indexOf('/network/firewall') !== -1) {
+        guide = {
+          title: 'Guia do Firewall e Portas',
+          serve: 'Barreira de proteção que bloqueia conexões não autorizadas vindas da internet para seus computadores e celulares.',
+          fazer: 'Se precisar hospedar um servidor local ou obter NAT Aberto em jogos, crie regras de redirecionamento de portas (Port Forwarding) apenas para os IPs necessários.',
+          rec: 'Mantenha a política de entrada da WAN como "Rejeitar" (Drop) para manter a rede doméstica invisível a invasores externos.'
+        };
+      } else if (path.indexOf('/network/dhcp') !== -1) {
+        guide = {
+          title: 'Guia de Servidor DHCP e DNS',
+          serve: 'O DHCP atribui automaticamente endereços IP para cada novo dispositivo que entra no Wi-Fi ou cabo. O DNS converte nomes de sites em números IP de acesso.',
+          fazer: 'Para fixar o IP de impressoras ou câmeras IP, role até "Leases Estáticos" e vincule o IP desejado ao endereço MAC do aparelho.',
+          rec: 'Utilize tempo de concessão de 12 horas e configure servidores DNS rápidos como 1.1.1.1 (Cloudflare) ou 8.8.8.8 (Google).'
+        };
+      } else if (path.indexOf('/status/overview') !== -1) {
+        guide = {
+          title: 'Guia da Visão Geral do Sistema',
+          serve: 'Painel de telemetria mostrando o estado de funcionamento do roteador, uso de processamento, memória RAM e dispositivos conectados.',
+          fazer: 'Monitore os medidores de CPU e RAM no topo. Se a RAM livre ficar abaixo de 40 MB de forma contínua, faça uma reinicialização de manutenção.',
+          rec: 'No DGL-5500, o ARK Router mantém mais de 80 MB de RAM livre em condições normais de uso.'
+        };
+      } else if (path.indexOf('/system/system') !== -1) {
+        guide = {
+          title: 'Guia de Configurações Gerais e Sincronização de Horário',
+          serve: 'Define o nome identificador do roteador (hostname) na rede e sincroniza automaticamente o relógio com servidores NTP oficiais da internet.',
+          fazer: 'Mantenha a sincronização NTP ativa para que os registros de log, agendamentos do firewall e relatórios de tráfego tenham horários precisos.',
+          rec: 'Utilize o servidor pool.ntp.br e o fuso horário America/Sao_Paulo (UTC-3) para precisão no Brasil.'
+        };
+      } else if (path.indexOf('/status/processes') !== -1) {
+        guide = {
+          title: 'Guia de Processos em Execução',
+          serve: 'Mostra todos os programas e serviços ativos na memória do roteador, com seus identificadores de processo (PID), uso de CPU e memória.',
+          fazer: 'Se o roteador apresentar lentidão incomum, verifique se algum processo trava a CPU próximo de 100% ou consome memória em excesso.',
+          rec: 'Nunca finalize processos vitais como procd, ubusd, netifd ou uhttpd para evitar travamento ou perda de conexão.'
+        };
+      } else if (path.indexOf('/status/syslog') !== -1 || path.indexOf('/status/dmesg') !== -1) {
+        guide = {
+          title: 'Guia de Registros de Eventos do Sistema (Logs)',
+          serve: 'Registra em tempo real todos os acontecimentos operacionais do roteador, como conexões de aparelhos Wi-Fi, renovação de IP na operadora e avisos de segurança.',
+          fazer: 'Utilize o campo de busca no topo para pesquisar termos como wifi, pppoe ou error e diagnosticar problemas rapidamente.',
+          rec: 'Em caso de instabilidade com sua operadora, copie as linhas recentes que mencionem wan ou daemon para compartilhar com o suporte técnico.'
+        };
+      } else if (path.indexOf('/system/startup') !== -1) {
+        guide = {
+          title: 'Guia de Inicialização e Serviços',
+          serve: 'Controla quais serviços do sistema são carregados automaticamente quando o roteador é ligado na tomada.',
+          fazer: 'Você pode iniciar, reiniciar ou parar serviços individuais caso precise reiniciar uma função específica da rede sem reiniciar o aparelho inteiro.',
+          rec: 'Mantenha habilitados apenas os serviços necessários para maximizar a memória RAM livre do equipamento.'
+        };
       }
-      this.applyMode(this.mode);
+
+      if (!guide) return;
+
+      var box = document.createElement('div');
+      box.id = 'ark-feature-guide';
+      box.className = 'ark-guide-box';
+      box.innerHTML = '' +
+        '<div class="ark-guide-title">📘 ' + guide.title + '</div>' +
+        '<div class="ark-guide-item"><strong>📌 Para que serve:</strong> <span>' + guide.serve + '</span></div>' +
+        '<div class="ark-guide-item"><strong>🛠️ O que fazer:</strong> <span>' + guide.fazer + '</span></div>' +
+        '<div class="ark-guide-item rec"><strong>💡 Recomendação ARK:</strong> <span>' + guide.rec + '</span></div>';
+
+      var target = view.querySelector('.ark-hero-banner, .ark-action-grid, .ark-wireless-grid, .ark-iface-grid, .ark-admin-card, .ark-diag-grid, .cbi-map, h2') || view.firstChild;
+      if (target && target.parentNode) {
+        target.parentNode.insertBefore(box, target);
+      } else {
+        view.insertBefore(box, view.firstChild);
+      }
     },
 
-    applyMode: function(mode) {
-      this.mode = mode;
-      localStorage.setItem('ark_ui_mode', mode);
-      var b = document.body;
-      if (!b) return;
+    translateRemainingUI: function() {
+      var dict = {
+        'Save & Apply': 'Salvar e Aplicar',
+        'Apply unchecked': 'Aplicar sem verificar',
+        'Save': 'Salvar Ajustes',
+        'Reset': 'Redefinir Padrões',
+        'Restart': 'Reiniciar',
+        'Stop': 'Parar',
+        'Edit': 'Editar',
+        'Delete': 'Excluir',
+        'Remove': 'Remover',
+        'Scan': 'Escanear Redes',
+        'Add': 'Adicionar',
+        'Add new interface...': 'Adicionar Nova Interface...',
+        'Generate archive': 'Gerar Cópia de Segurança',
+        'Perform reset': 'Restaurar de Fábrica',
+        'Upload archive...': 'Enviar Cópia...',
+        'Flash image...': 'Gravar Imagem...',
+        'Save mtdblock': 'Salvar Bloco MTD',
+        'Open list...': 'Abrir Lista...',
+        'Enable': 'Ativar',
+        'Disable': 'Desativar',
+        'Back': 'Voltar',
+        'Dismiss': 'Fechar',
+        'Cancel': 'Cancelar',
+        'Confirm': 'Confirmar',
+        'Wireless Overview': 'Centro de Comando Wi-Fi',
+        'Associated Stations': 'Dispositivos Conectados no Wi-Fi',
+        'Active DHCP Leases': 'Dispositivos Conectados na Rede Local (DHCP)',
+        'Active DHCPv6 Leases': 'Dispositivos Conectados via IPv6',
+        'Network Utilities': 'Utilitários e Diagnósticos de Rede',
+        'Router Password': 'Senha do Administrador',
+        'SSH Access': 'Acesso Remoto SSH',
+        'SSH-Keys': 'Chaves Públicas SSH',
+        'General Settings': 'Configurações Gerais',
+        'Time Synchronization': 'Sincronização de Data e Hora',
+        'Download backup': 'Baixar Cópia de Segurança',
+        'Reset to defaults': 'Restaurar Padrões de Fábrica',
+        'Restore backup': 'Restaurar Cópia de Segurança',
+        'Flash new firmware image': 'Gravar Nova Imagem de Firmware',
+        'Actions': 'Ações Principais',
+        'Configuration': 'Ajustes Salvos',
+        'Global network options': 'Opções Globais de Rede',
+        'Interfaces': 'Interfaces de Rede',
+        'Hostname': 'Nome do Roteador',
+        'Model': 'Modelo',
+        'Architecture': 'Processador / Arquitetura',
+        'Firmware Version': 'Versão do Sistema',
+        'Kernel Version': 'Versão do Kernel',
+        'Local Time': 'Hora Local',
+        'Uptime': 'Tempo de Atividade',
+        'Load Average': 'Carga da CPU',
+        'MAC-Address': 'Endereço MAC',
+        'Network': 'Rede',
+        'Signal / Noise': 'Sinal / Ruído',
+        'RX Rate / TX Rate': 'Download / Upload',
+        'No information available': 'Nenhum dispositivo conectado no momento.',
+        'Auto Refresh': 'Atualização Automática',
+        'Collecting data...': 'Coletando informações...',
+        'System log': 'Registros de Mensagens do Sistema',
+        'Kernel Log': 'Registros de Eventos do Kernel',
+        'Processes': 'Processos em Execução',
+        'Routing Table': 'Tabela de Rotas',
+        'Firewall - Zone Settings': 'Firewall - Zonas de Segurança',
+        'Port Forwards': 'Redirecionamento de Portas',
+        'Traffic Rules': 'Regras de Tráfego',
+        'Custom Rules': 'Regras Personalizadas',
+        'Diagnostics': 'Diagnósticos de Rede',
+        'Reboot': 'Reinicialização do Sistema',
+        'Backup / Flash Firmware': 'Backup e Gravação de Firmware',
+        'Administration': 'Administração e Senhas',
+        'DHCP and DNS': 'Servidor DHCP e DNS',
+        'Static Leases': 'Endereços IP Fixos (Leases Estáticos)',
+        'IP Address': 'Endereço IP',
+        'IP address': 'Endereço IP',
+        'Netmask': 'Máscara de Rede',
+        'Gateway': 'Gateway Padrão',
+        'DNS server': 'Servidor DNS',
+        'DNS servers': 'Servidores DNS',
+        'IPv6-Address': 'Endereço IPv6',
+        'Transfer': 'Tráfego',
+        'Transmit': 'Enviados (TX)',
+        'Receive': 'Recebidos (RX)'
+      };
 
-      if (mode === 'basic') {
-        b.classList.add('ark-mode-basic');
-        b.classList.remove('ark-mode-advanced');
-      } else {
-        b.classList.add('ark-mode-advanced');
-        b.classList.remove('ark-mode-basic');
-      }
-
-      var switcher = document.getElementById('ark-mode-switcher');
-      if (switcher) {
-        var btns = switcher.querySelectorAll('.ark-mode-pill');
-        btns.forEach(function(btn) {
-          if (btn.getAttribute('data-mode') === mode) {
-            btn.classList.add('active');
-          } else {
-            btn.classList.remove('active');
-          }
-        });
-      }
-
-      this.tagAdvancedFields();
-    },
-
-    tagAdvancedFields: function() {
-      var advancedKeywords = [
-        'mtu', 'metric', 'igmp', 'multicast', 'txpower', 'beacon', 'dtim',
-        'rts', 'frag', 'distance', 'wmm', 'isolation', 'stbc', 'ldpc',
-        'vlan', 'dscp', 'mssfix', 'synflood', 'conntrack', 'keepalive',
-        'cryptographic', 'cipher', 'gateway metric', 'dns metric', 'ttl'
-      ];
-
-      var values = document.querySelectorAll('.cbi-value');
-      values.forEach(function(val) {
-        if (val.classList.contains('ark-tagged')) return;
-        var titleElem = val.querySelector('.cbi-value-title');
-        var text = (titleElem ? titleElem.textContent : '').toLowerCase();
-        
-        var isAdv = advancedKeywords.some(function(kw) {
-          return text.indexOf(kw) !== -1;
-        });
-
-        if (isAdv) {
-          val.classList.add('ark-advanced-field');
-        }
-        val.classList.add('ark-tagged');
+      var btns = document.querySelectorAll('button, input[type="submit"], input[type="button"], a.btn, a.cbi-button');
+      btns.forEach(function(b) {
+        var t = b.textContent.trim();
+        if (dict[t]) b.textContent = dict[t];
       });
-    },
 
-    injectModeSwitcher: function() {
-      if (document.body.classList.contains('ark-login-page')) return;
-      if (document.getElementById('ark-mode-switcher')) return;
+      var headings = document.querySelectorAll('h2, h3, legend, .cbi-value-title, th, .th, .cbi-tab a');
+      headings.forEach(function(h) {
+        var t = h.textContent.trim();
+        if (dict[t]) h.textContent = dict[t];
+      });
 
-      var main = document.getElementById('maincontent');
-      if (!main) return;
-
-      var hasCbi = document.querySelector('.cbi-map, .cbi-section, form, table, .table');
-      if (!hasCbi && !location.pathname.includes('/system/') && !location.pathname.includes('/network/')) {
-        return;
-      }
-
-      var wrap = document.createElement('div');
-      wrap.id = 'ark-mode-switcher';
-      wrap.className = 'ark-mode-bar';
-      wrap.innerHTML = '' +
-        '<div class="ark-mode-info">' +
-          '<span class="ark-mode-title">Modo de Configuração</span>' +
-          '<span class="ark-mode-desc">' +
-            (this.mode === 'basic' 
-              ? 'Exibindo controles essenciais com linguagem simples, segura e intuitiva.' 
-              : 'Exibindo todos os parâmetros avançados, opções de socket e chaves UCI.') +
-          '</span>' +
-        '</div>' +
-        '<div class="ark-mode-toggle-group">' +
-          '<button type="button" class="ark-mode-pill ' + (this.mode === 'basic' ? 'active' : '') + '" data-mode="basic">' +
-            '<span class="ark-mode-icon">🌱</span> Modo Básico' +
-          '</button>' +
-          '<button type="button" class="ark-mode-pill ' + (this.mode === 'advanced' ? 'active' : '') + '" data-mode="advanced">' +
-            '<span class="ark-mode-icon">⚡</span> Modo Avançado' +
-          '</button>' +
-        '</div>';
-
-      var target = main.querySelector('.cbi-map, .cbi-section, h2, #tabmenu') || main.firstChild;
-      if (target) {
-        main.insertBefore(wrap, target);
-      } else {
-        main.prepend(wrap);
-      }
-
-      var self = this;
-      wrap.querySelectorAll('.ark-mode-pill').forEach(function(pill) {
-        pill.addEventListener('click', function(e) {
-          e.preventDefault();
-          var m = this.getAttribute('data-mode');
-          self.applyMode(m);
-          var desc = wrap.querySelector('.ark-mode-desc');
-          if (desc) {
-            desc.textContent = (m === 'basic')
-              ? 'Exibindo controles essenciais com linguagem simples, segura e intuitiva.'
-              : 'Exibindo todos os parâmetros avançados, opções de socket e chaves UCI.';
-          }
-        });
+      var placeholders = document.querySelectorAll('.tr.placeholder td, .tr.placeholder .td, em');
+      placeholders.forEach(function(p) {
+        var t = p.textContent.trim();
+        if (dict[t]) p.textContent = dict[t];
       });
     },
 
@@ -1148,7 +1251,8 @@
           self.enhanceTablesAndLogs();
           self.enhanceSafetyModals();
           self.enhanceInterfaceBadges();
-          self.tagAdvancedFields();
+          self.injectFeatureGuides();
+          self.translateRemainingUI();
           self.applyPageTransforms();
         }, 150);
       });

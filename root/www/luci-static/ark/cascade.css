@@ -715,75 +715,51 @@ body.modal-overlay-active #modal_overlay {
 }
 
 /* ==========================================================================
-   ARK Mode Switcher (Basic / Advanced)
+   ARK Feature Guide System (Para que serve • O que fazer • Recomendações)
    ========================================================================== */
-.ark-mode-bar {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	background: var(--ark-surface-1);
-	border: 1px solid var(--ark-border);
-	border-radius: var(--ark-radius);
-	padding: 12px 18px;
-	margin-bottom: 20px;
-	box-shadow: var(--ark-shadow);
-	flex-wrap: wrap;
-	gap: 12px;
+.ark-guide-box {
+	background: linear-gradient(135deg, rgba(30, 41, 59, 0.75) 0%, rgba(15, 23, 42, 0.95) 100%) !important;
+	border: 1px solid rgba(59, 130, 246, 0.25) !important;
+	border-left: 4px solid #3b82f6 !important;
+	border-radius: var(--ark-radius, 12px) !important;
+	padding: 16px 20px !important;
+	margin: 16px 0 22px !important;
+	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25) !important;
+	display: flex !important;
+	flex-direction: column !important;
+	gap: 10px !important;
 }
-.ark-mode-info {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
+.ark-guide-title {
+	font-size: 14px !important;
+	font-weight: 700 !important;
+	color: #fff !important;
+	display: flex !important;
+	align-items: center !important;
+	gap: 8px !important;
+	margin: 0 0 4px 0 !important;
 }
-.ark-mode-title {
-	font-size: 13px;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	color: var(--ark-primary);
+.ark-guide-item {
+	font-size: 12px !important;
+	line-height: 1.6 !important;
+	color: var(--ark-text-muted) !important;
+	display: flex !important;
+	align-items: flex-start !important;
+	gap: 8px !important;
 }
-.ark-mode-desc {
-	font-size: 12px;
-	color: var(--ark-text-muted);
+.ark-guide-item strong {
+	color: #f1f5f9 !important;
+	white-space: nowrap !important;
 }
-.ark-mode-toggle-group {
-	display: inline-flex;
-	background: var(--ark-surface-2);
-	padding: 4px;
-	border-radius: 10px;
-	border: 1px solid var(--ark-border);
-	gap: 4px;
+.ark-guide-item.rec {
+	background: rgba(16, 185, 129, 0.1) !important;
+	border: 1px solid rgba(16, 185, 129, 0.25) !important;
+	border-radius: 8px !important;
+	padding: 8px 12px !important;
+	color: #a7f3d0 !important;
+	margin-top: 4px !important;
 }
-.ark-mode-pill {
-	background: transparent;
-	border: none;
-	color: var(--ark-text-muted);
-	padding: 6px 14px;
-	border-radius: 8px;
-	font-size: 13px;
-	font-weight: 600;
-	cursor: pointer;
-	transition: all 0.2s ease;
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-}
-.ark-mode-pill:hover {
-	color: #fff;
-	background: var(--ark-surface-3);
-}
-.ark-mode-pill.active {
-	background: linear-gradient(135deg, #3b82f6, #6366f1);
-	color: #fff;
-	box-shadow: 0 2px 10px rgba(59, 130, 246, 0.4);
-}
-/* Basic Mode field hiding */
-body.ark-mode-basic .cbi-value.ark-advanced-field {
-	display: none !important;
-}
-body.ark-mode-basic .cbi-tab[data-tab*="advanced"],
-body.ark-mode-basic .cbi-tab[data-tab*="expert"] {
-	display: none !important;
+.ark-guide-item.rec strong {
+	color: #34d399 !important;
 }
 
 /* ==========================================================================
@@ -1645,6 +1621,78 @@ body.ark-mode-basic .cbi-tab[data-tab*="expert"] {
 		width: 100% !important;
 		justify-content: flex-end !important;
 	}
+}
+
+/* 12. Educational Feature Guides & Recommendations (PT-BR) */
+.ark-guide-box {
+	background: linear-gradient(135deg, rgba(17, 28, 48, 0.95) 0%, rgba(11, 17, 32, 0.98) 100%) !important;
+	border: 1px solid rgba(56, 189, 248, 0.25) !important;
+	border-radius: var(--ark-radius-lg, 14px) !important;
+	padding: 16px 20px !important;
+	margin: 0 0 20px 0 !important;
+	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+	display: flex !important;
+	flex-direction: column !important;
+	gap: 10px !important;
+	position: relative !important;
+	overflow: hidden !important;
+}
+
+.ark-guide-box::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 4px;
+	height: 100%;
+	background: linear-gradient(to bottom, #38bdf8, #3b82f6);
+}
+
+.ark-guide-title {
+	font-size: 15px !important;
+	font-weight: 700 !important;
+	color: #38bdf8 !important;
+	display: flex !important;
+	align-items: center !important;
+	gap: 8px !important;
+	margin: 0 0 4px 0 !important;
+	padding-bottom: 8px !important;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+	letter-spacing: -0.01em !important;
+}
+
+.ark-guide-item {
+	font-size: 13px !important;
+	line-height: 1.6 !important;
+	color: #cbd5e1 !important;
+	display: flex !important;
+	flex-direction: column !important;
+	gap: 2px !important;
+}
+
+.ark-guide-item strong {
+	color: #f1f5f9 !important;
+	font-weight: 600 !important;
+}
+
+.ark-guide-item span {
+	color: #94a3b8 !important;
+}
+
+.ark-guide-item.rec {
+	background: rgba(16, 185, 129, 0.08) !important;
+	border: 1px solid rgba(16, 185, 129, 0.25) !important;
+	border-radius: var(--ark-radius, 10px) !important;
+	padding: 10px 14px !important;
+	margin-top: 4px !important;
+}
+
+.ark-guide-item.rec strong {
+	color: #34d399 !important;
+}
+
+.ark-guide-item.rec span {
+	color: #a7f3d0 !important;
 }
 
 
