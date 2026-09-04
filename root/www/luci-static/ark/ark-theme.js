@@ -124,6 +124,13 @@
           fazer: 'Para fixar o IP de impressoras ou câmeras IP, role até "Leases Estáticos" e vincule o IP desejado ao endereço MAC do aparelho.',
           rec: 'Utilize tempo de concessão de 12 horas e configure servidores DNS rápidos como 1.1.1.1 (Cloudflare) ou 8.8.8.8 (Google).'
         };
+      } else if (path.indexOf('/network/mwan') !== -1) {
+        guide = {
+          title: 'Guia do MWAN3 (Balanceamento e Redundância de Internet)',
+          serve: 'Monitora links de internet (Multi-WAN) e detecta quedas automaticamente para alternar rotas ou somar conexões de operadoras diferentes.',
+          fazer: 'O "Intervalo de Ping" (ex: 5 segundos) é a frequência com que o roteador testa se a internet está viva. Se o teste falhar 3 vezes seguidas, a rota é declarada inoperante. Clique no botão "Editar" de cada interface para alterar os segundos do intervalo ou os IPs de teste.',
+          rec: 'Se você utiliza apenas 1 cabo de operadora (WAN única), o MWAN3 opera em modo padrão e os avisos amarelos no topo (wan6/wanb não encontrada) são normais e inofensivos.'
+        };
       } else if (path.indexOf('/status/overview') !== -1) {
         guide = {
           title: 'Guia da Visão Geral do Sistema',

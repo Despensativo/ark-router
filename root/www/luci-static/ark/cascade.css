@@ -576,6 +576,43 @@ input.cbi-input-text:focus, input[type="text"]:focus, input[type="password"]:foc
 	border-bottom: none !important;
 }
 
+/* LuCI Named Table Sections (Row Titles / Names, e.g. MWAN3 Interfaces, Members, Policies) */
+.tr.named::before,
+.tr[data-title]::before {
+	display: table-cell !important;
+	content: attr(data-title) !important;
+	vertical-align: middle !important;
+	padding: 12px 14px !important;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+	font-weight: 700 !important;
+	color: #60a5fa !important;
+	font-family: monospace !important;
+	font-size: 13px !important;
+	white-space: nowrap !important;
+}
+
+.tr.cbi-section-table-titles.named::before,
+.tr.cbi-section-table-titles[data-title]::before {
+	background: var(--ark-surface-2) !important;
+	color: var(--ark-text-muted) !important;
+	font-size: 11px !important;
+	text-transform: uppercase !important;
+	letter-spacing: 0.06em !important;
+	font-family: inherit !important;
+	border-bottom: 1px solid var(--ark-border) !important;
+}
+
+/* Ensure wide tables scroll smoothly horizontally instead of clipping action buttons */
+.cbi-section, .cbi-tblsection, .cbi-section-node {
+	overflow-x: auto !important;
+	-webkit-overflow-scrolling: touch !important;
+}
+
+/* Hide LuCI form dummy/hidden submit inputs that float as orphaned buttons */
+input.hidden, .hidden {
+	display: none !important;
+}
+
 /* Alerts & Notices */
 .alert-message {
 	padding: 12px 16px;
