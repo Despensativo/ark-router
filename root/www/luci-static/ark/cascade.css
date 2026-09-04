@@ -425,6 +425,14 @@ h2, h3, h4, legend {
 	flex: 1;
 	min-width: 250px;
 }
+/* Ensure table cells inheriting .cbi-value-field do not blow up table width */
+.td.cbi-value-field,
+.th.cbi-value-field,
+.table .cbi-value-field,
+.cbi-section-table .cbi-value-field {
+	min-width: 0 !important;
+	flex: none !important;
+}
 .cbi-value-description {
 	color: var(--ark-text-dim);
 	font-size: 12px;
@@ -1998,13 +2006,30 @@ body[data-page="admin-status-iptables"] ul.cbi-tabmenu {
 	max-width: 100% !important;
 }
 
+/* Actions column in CBI tables: stay compact, single line, no wrapping */
+.cbi-section-table .cbi-section-actions,
+.table .cbi-section-actions,
+.cbi-tblsection .cbi-section-actions {
+	width: 1% !important;
+	white-space: nowrap !important;
+	text-align: right !important;
+}
+.cbi-section-actions > div {
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: flex-end !important;
+	gap: 4px !important;
+	flex-wrap: nowrap !important;
+}
+
 .cbi-section-actions input.cbi-button-up,
 .cbi-section-actions input.cbi-button-down,
-.cbi-section-actions input.cbi-button-remove {
-	padding: 4px 8px !important;
-	font-size: 11px !important;
+.cbi-section-actions input.cbi-button-remove,
+.cbi-section-actions input.cbi-button-edit {
+	padding: 5px 12px !important;
+	font-size: 12px !important;
 	margin: 0 !important;
-	border-radius: 5px !important;
+	border-radius: 6px !important;
 	white-space: nowrap !important;
 }
 
@@ -2339,10 +2364,14 @@ strong[style*="rgb(255, 170, 0)"], strong[style*="yellow"] {
 	max-width: 100% !important;
 	box-sizing: border-box !important;
 }
-.cbi-section-table, .table {
+.cbi-section.cbi-tblsection {
 	overflow-x: auto !important;
 	-webkit-overflow-scrolling: touch !important;
 	max-width: 100% !important;
+}
+.cbi-section-table, .table {
+	max-width: 100% !important;
+	box-sizing: border-box !important;
 }
 .cbi-section-table .td input[type="text"],
 .table .td input[type="text"] {
