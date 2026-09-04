@@ -219,6 +219,7 @@ ul.cbi-tabmenu > li::before, .cbi-tabmenu > li::before, #tabmenu > li::before, u
 	display: none !important;
 }
 
+/* Tab Items Base */
 ul.cbi-tabmenu > li > a, .cbi-tabmenu > li > a, #tabmenu > li > a, ul.tabs > li > a, .tabs > li > a,
 #tabmenu a, .tabs a {
 	display: inline-flex !important;
@@ -232,6 +233,7 @@ ul.cbi-tabmenu > li > a, .cbi-tabmenu > li > a, #tabmenu > li > a, ul.tabs > li 
 	border-radius: 8px !important;
 	text-decoration: none !important;
 	transition: all 0.2s ease !important;
+	cursor: pointer !important;
 }
 
 ul.cbi-tabmenu > li > a:hover, .cbi-tabmenu > li > a:hover, #tabmenu > li > a:hover, ul.tabs > li > a:hover, .tabs > li > a:hover,
@@ -241,6 +243,9 @@ ul.cbi-tabmenu > li > a:hover, .cbi-tabmenu > li > a:hover, #tabmenu > li > a:ho
 	border-color: var(--ark-border-hover) !important;
 }
 
+/* Active Tab (LuCI CBI uses .cbi-tab for active and .cbi-tab-disabled for inactive) */
+ul.cbi-tabmenu > li.cbi-tab:not(.cbi-tab-disabled) > a, 
+.cbi-tabmenu > li.cbi-tab:not(.cbi-tab-disabled) > a, 
 ul.cbi-tabmenu > li.cbi-tab-active > a, 
 .cbi-tabmenu > li.cbi-tab-active > a, 
 #tabmenu > li.active > a, 
@@ -250,6 +255,40 @@ ul.tabs > li.active > a,
 	color: #fff !important;
 	border-color: #3b82f6 !important;
 	box-shadow: 0 2px 10px rgba(59, 130, 246, 0.4) !important;
+}
+
+/* Inactive Tab */
+ul.cbi-tabmenu > li.cbi-tab-disabled > a,
+.cbi-tabmenu > li.cbi-tab-disabled > a,
+ul.tabs > li:not(.active) > a,
+.tabs > li:not(.active) > a {
+	background: var(--ark-surface-2) !important;
+	color: var(--ark-text-muted) !important;
+	border-color: var(--ark-border) !important;
+	box-shadow: none !important;
+	opacity: 0.85 !important;
+}
+
+/* Tab Content Visibility (Hide Inactive Tab Panes, Show Active Pane) */
+[data-tab-title]:not([data-tab-active="true"]) {
+	display: none !important;
+	height: 0 !important;
+	opacity: 0 !important;
+	overflow: hidden !important;
+}
+
+[data-tab-title][data-tab-active="true"],
+[data-tab-active="true"] {
+	display: block !important;
+	height: auto !important;
+	opacity: 1 !important;
+	overflow: visible !important;
+	animation: arkTabFade 0.2s ease-in-out;
+}
+
+@keyframes arkTabFade {
+	from { opacity: 0; transform: translateY(4px); }
+	to { opacity: 1; transform: translateY(0); }
 }
 
 /* Modern Network Interface & Wireless Badges (Compact & Proportional) */

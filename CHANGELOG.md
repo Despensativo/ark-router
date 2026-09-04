@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.9.73
+## 0.9.74
+
+- **🔘 Correção Crítica do Sistema de Abas CBI (`Sistema ➔ Propriedades do Sistema` e afins)**:
+  - **Destaque Visual da Aba Ativa**: Corrigido o seletor CSS de abas ativas para `.cbi-tab:not(.cbi-tab-disabled)`. A aba selecionada agora brilha com o gradiente elétrico (Electric Blue / Cyber Violet), eliminando a impressão de botões inativos.
+  - **Ocultação de Painéis Inativos (`[data-tab-title]`)**: Implementada a regra estrita de contenção que oculta os conteúdos das abas inativas (`display: none !important`), exibindo apenas os campos correspondentes à aba clicada com animação suave de transição (`arkTabFade`).
+  - **Navegação Funcional Completa**: Todas as abas de formulários CBI (*Configurações gerais*, *Registrando os eventos*, *Sincronização de horário*, *Idioma e Estilo*) agora alternam seus respectivos campos instantaneamente ao clique.
 
 - **📈 Dark Theme Nativo para Gráficos em Tempo Real (`admin/status/realtime/*`)**:
   - **Eliminação do Fundo Branco**: Removido o canvas branco ofuscante (`#ffffff`) dos gráficos SVG em todas as 4 abas de telemetria em tempo real: *Carga*, *Tráfego*, *Rede sem fio* e *Conexões*.
