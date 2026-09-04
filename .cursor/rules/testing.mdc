@@ -1,0 +1,115 @@
+---
+description: Testing Standards with React Testing Library
+globs:
+  - "**/*.test.tsx"
+  - "**/*.test.ts"
+  - "**/*.spec.tsx"
+  - "**/*.spec.ts"
+alwaysApply: false
+---
+
+# Testing Standards
+
+## Testing Library
+- Use React Testing Library
+- Use @testing-library/user-event for interactions
+- Use Jest as test runner
+
+## Testing Principles
+
+### Test User Behavior, Not Implementation
+```typescript
+// ❌ Bad - testing implementation
+expect(component.state.count).toBe(1);
+
+// ✅ Good - testing user-visible behavior
+expect(screen.getByText(/count: 1/i)).toBeInTheDocument();
+```
+
+### Use Accessible Queries
+Priority order:
+1. `getByRole` - Accessibility-first
+2. `getByLabelText` - Forms
+3. `getByText` - User-visible text
+4. `getByTestId` - Last resort
+
+### Example Test Pattern:
+```typescript
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+
+describe('LoginForm', () => {
+  it('submits form with valid credentials', async () => {
+    const user = userEvent.setup();
+    const mockSubmit = jest.fn();
+    
+    render(<LoginForm onSubmit={mockSubmit} />);
+    
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+    await user.type(screen.getByLabelText(/password/i), 'password123');
+    await user.click(screen.getByRole('button', { name: /log in/i }));
+    
+    await waitFor(() => {
+      expect(mockSubmit).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        password: 'password123',
+      });
+    });
+  });
+});
+```
+
+## What to Test
+
+### Components:
+- Rendering with different props
+- User interactions (click, type, etc.)
+- Loading and error states
+- Accessibility
+
+### Hooks:
+- Initial state
+- All actions/methods
+- Edge cases
+- Cleanup
+
+### Integration:
+- Complete user flows
+- API interactions (mocked)
+- State updates
+- Navigation
+
+## Mocking
+
+### Mock External Dependencies:
+```typescript
+jest.mock('next/navigation', () => ({
+  useRouter: jest.fn(),
+}));
+
+jest.mock('@/lib/api', () => ({
+  fetchUser: jest.fn(),
+}));
+```
+
+### Mock API Calls:
+```typescript
+global.fetch = jest.fn(() =>
+  Promise.resolve({
+    ok: true,
+    json: async () => ({ data: 'test' }),
+  })
+) as jest.Mock;
+```
+
+## Code Generation Preferences
+
+When generating tests:
+1. Use React Testing Library
+2. Use userEvent for interactions
+3. Test user behavior, not implementation
+4. Include accessibility tests
+5. Mock external dependencies appropriately
+6. Add descriptive test names
+7. Organize with describe blocks
+8. Test happy path and edge cases

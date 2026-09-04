@@ -1,0 +1,172 @@
+---
+description: Next.js 14 App Router patterns and templates
+globs:
+  - "app/**/*.tsx"
+  - "app/**/*.ts"
+alwaysApply: false
+---
+
+# Next.js App Router Patterns
+
+## Pattern: Server Component Page
+
+```typescript
+import { Suspense } from 'react';
+import { notFound } from 'next/navigation';
+
+export async function generateMetadata({ params }: { params: { id: string } }) {
+  const data = await fetchData(params.id);
+  return {
+    title: data.title,
+    description: data.description,
+  };
+}
+
+export default async function Page({ params }: { params: { id: string } }) {
+  const data = await fetchData(params.id);
+
+  if (!data) notFound();
+
+  return (
+    <div>
+      <h1>{data.title}</h1>
+      <Suspense fallback={<LoadingSkeleton />}>
+        <AsyncContent id={params.id} />
+      </Suspense>
+    </div>
+  );
+}
+
+export const revalidate = 3600; // ISR
+```
+
+## Pattern: Client Component for Interactivity
+
+```typescript
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+export function InteractiveComponent({ initialData }: { initialData: Data }) {
+  const router = useRouter();
+  const [data, setData] = useState(initialData);
+
+  const handleAction = async () => {
+    // Client-side logic
+    router.refresh(); // Refresh server data
+  };
+
+  return <div onClick={handleAction}>{data.title}</div>;
+}
+```
+
+## Pattern: Server Action
+
+```typescript
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+import { db } from '@/lib/db';
+
+const schema = z.object({
+  name: z.string().min(1),
+});
+
+export async function createItem(formData: FormData) {
+  try {
+    const validated = schema.parse({
+      name: formData.get('name'),
+    });
+
+    const item = await db.item.create({
+      data: validated,
+    });
+
+    revalidatePath('/items');
+    return { success: true, data: item };
+  } catch (error) {
+    return { success: false, error: 'Failed to create item' };
+  }
+}
+```
+
+## Pattern: API Route Handler
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
+const schema = z.object({
+  name: z.string(),
+});
+
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const query = searchParams.get('q');
+  
+  const items = await db.item.findMany({
+    where: { name: { contains: query } },
+  });
+
+  return NextResponse.json(items);
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const validated = schema.parse(body);
+
+    const item = await db.item.create({ data: validated });
+
+    return NextResponse.json(item, { status: 201 });
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Invalid request' },
+      { status: 400 }
+    );
+  }
+}
+```
+
+## Pattern: Loading UI
+
+```typescript
+// app/[route]/loading.tsx
+export default function Loading() {
+  return (
+    <div className="animate-pulse space-y-4">
+      <div className="h-8 bg-gray-200 rounded w-1/4" />
+      <div className="h-64 bg-gray-200 rounded" />
+    </div>
+  );
+}
+```
+
+## Pattern: Error Boundary
+
+```typescript
+// app/[route]/error.tsx
+'use client';
+
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error;
+  reset: () => void;
+}) {
+  return (
+    <div className="text-center p-6">
+      <h2 className="text-2xl font-bold mb-4">Something went wrong!</h2>
+      <button onClick={reset} className="btn-primary">
+        Try again
+      </button>
+    </div>
+  );
+}
+```
+
+@file ../next.config.js
+@file ../app/layout.tsx

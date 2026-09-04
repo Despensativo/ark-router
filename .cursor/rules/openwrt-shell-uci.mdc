@@ -1,0 +1,37 @@
+---
+description: OpenWrt POSIX Shell, UCI & Hardware Standards
+globs: 
+  - "**/*.sh"
+  - "root/etc/**/*.sh"
+  - "root/usr/**/*.sh"
+  - "root/etc/init.d/*"
+  - "root/etc/config/*"
+  - "scripts/**/*"
+alwaysApply: false
+---
+
+# OpenWrt POSIX Shell, UCI & Embedded Device Standards
+
+## Hardware & Environment Constraints
+- **Target Device**: D-Link DGL-5500 (Qualcomm Atheros QCA9558 MIPS 720 MHz).
+- **RAM**: 128 MB total (Free RAM target: > 80 MB under normal operation).
+- **Flash**: 16 MB SPI NOR Flash (Free overlay space target: > 3 MB).
+- **Shell**: BusyBox ash (`/bin/sh`).
+  - NEVER use bash-isms (`[[ ]]`, `${var//search/replace}`, arrays `arr=(...)`, `function foo()`).
+  - Always write clean, strictly POSIX compliant `/bin/sh` syntax (`[ "$x" = "y" ]`, `test`, `case`).
+
+## UCI (Unified Configuration Interface) Best Practices
+- Always quote config sections and options: `uci get "network.lan.ipaddr"`.
+- Batch UCI writes using `uci batch <<EOF` or commit once at the end of scripts: `uci commit network`.
+- Check exit codes before restarting network or firewall:
+  ```sh
+  if uci commit ark; then
+    /etc/init.d/ark-service reload
+  fi
+  ```
+- Backups: Before modifying critical system configs (`/etc/config/network`, `/etc/config/wireless`), generate a quick rollback snapshot.
+
+## Daemon & Script Optimization
+- Use lightweight utilities: prefer `awk`, `sed`, `grep -F` over python/perl.
+- Never write infinite sleep loops without proper signal trapping (`trap 'exit 0' SIGTERM SIGINT`).
+- For cron jobs or background health checkers, avoid spawning expensive subshells every second; throttle to 30s or 60s intervals.

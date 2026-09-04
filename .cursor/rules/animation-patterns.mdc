@@ -1,0 +1,190 @@
+---
+description: Animation patterns with Framer Motion and Tailwind
+globs:
+  - "**/*.tsx"
+alwaysApply: false
+---
+
+# Animation Patterns
+
+## Framer Motion Patterns
+
+### Basic Animation
+```typescript
+import { motion } from 'framer-motion';
+
+<motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.3 }}
+>
+  Content
+</motion.div>
+```
+
+### Hover and Tap
+```typescript
+<motion.button
+  whileHover={{ scale: 1.05 }}
+  whileTap={{ scale: 0.95 }}
+  className="px-4 py-2 bg-blue-600 text-white rounded"
+>
+  Click me
+</motion.button>
+```
+
+### Stagger Children
+```typescript
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+};
+
+<motion.div variants={container} initial="hidden" animate="show">
+  {items.map((item) => (
+    <motion.div key={item.id} variants={item}>
+      {item.name}
+    </motion.div>
+  ))}
+</motion.div>
+```
+
+### Page Transitions
+```typescript
+<motion.div
+  key={router.pathname}
+  initial={{ opacity: 0, x: -20 }}
+  animate={{ opacity: 1, x: 0 }}
+  exit={{ opacity: 0, x: 20 }}
+  transition={{ duration: 0.2 }}
+>
+  {children}
+</motion.div>
+```
+
+### Modal Animation
+```typescript
+<motion.div
+  initial={{ opacity: 0, scale: 0.95 }}
+  animate={{ opacity: 1, scale: 1 }}
+  exit={{ opacity: 0, scale: 0.95 }}
+  transition={{ duration: 0.2 }}
+  className="bg-white rounded-lg p-6"
+>
+  Modal content
+</motion.div>
+```
+
+## Tailwind CSS Animations
+
+### Transitions
+```typescript
+<button className="transition-colors duration-200 hover:bg-blue-700">
+  Hover me
+</button>
+
+<div className="transition-all duration-300 ease-in-out hover:scale-105">
+  Transform on hover
+</div>
+```
+
+### Built-in Animations
+```typescript
+// Spin
+<div className="animate-spin">Loading...</div>
+
+// Ping
+<span className="animate-ping">Notification</span>
+
+// Pulse
+<div className="animate-pulse">Loading skeleton</div>
+
+// Bounce
+<div className="animate-bounce">Arrow down</div>
+```
+
+### Custom Animations
+```javascript
+// tailwind.config.js
+module.exports = {
+  theme: {
+    extend: {
+      animation: {
+        'fade-in': 'fadeIn 0.5s ease-in',
+        'slide-up': 'slideUp 0.3s ease-out',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideUp: {
+          '0%': { transform: 'translateY(20px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+      },
+    },
+  },
+};
+```
+
+## Performance Considerations
+
+### Use transform and opacity
+```typescript
+// ✅ Good - GPU accelerated
+<motion.div
+  animate={{ opacity: 0.5, scale: 1.1 }}
+/>
+
+// ❌ Avoid - triggers layout
+<motion.div
+  animate={{ width: 200, height: 200 }}
+/>
+```
+
+### Reduce Motion Preference
+```typescript
+import { useReducedMotion } from 'framer-motion';
+
+function Component() {
+  const shouldReduceMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      animate={{
+        x: shouldReduceMotion ? 0 : 100,
+      }}
+    >
+      Content
+    </motion.div>
+  );
+}
+
+// Or with Tailwind
+<div className="motion-reduce:transition-none motion-reduce:animate-none">
+  Content
+</div>
+```
+
+## Animation Checklist
+
+- [ ] Animations enhance UX (not distract)
+- [ ] Duration < 300ms for interactions
+- [ ] Use transform/opacity for performance
+- [ ] Respect prefers-reduced-motion
+- [ ] Loading states animated
+- [ ] Smooth transitions between states
+- [ ] Consistent timing across app
+
+@file ../tailwind.config.js

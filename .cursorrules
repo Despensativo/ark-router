@@ -1,0 +1,128 @@
+# Cursor Rules for React + Next.js Development
+
+## Core Principles
+- Write clean, maintainable, and performant code
+- Follow React and Next.js best practices
+- Prioritize type safety with TypeScript
+- Focus on component reusability and composition
+- Optimize for both developer experience and user experience
+
+## Code Style & Formatting
+- Use functional components with hooks
+- Prefer named exports over default exports
+- Use 2 spaces for indentation
+- Use single quotes for strings
+- Add trailing commas in objects and arrays
+- Use const for variables that don't change
+- Destructure props and state when possible
+
+## TypeScript Guidelines
+- Always use TypeScript for new files
+- Define interfaces for all component props
+- Use type inference where obvious
+- Avoid 'any' type - use 'unknown' if type is truly unknown
+- Export types that might be used by other components
+- Use enums for fixed sets of values
+
+## Component Structure
+- Order: imports, types, component, exports
+- Keep components small and focused (< 200 lines)
+- Extract complex logic into custom hooks
+- Use composition over prop drilling
+- Implement proper error boundaries
+
+## Naming Conventions
+- Components: PascalCase (UserProfile.tsx)
+- Hooks: camelCase with 'use' prefix (useUserData.ts)
+- Utilities: camelCase (formatDate.ts)
+- Constants: UPPER_SNAKE_CASE (API_BASE_URL)
+- Types/Interfaces: PascalCase (UserProfile, ApiResponse)
+
+## File Organization
+```
+src/
+├── app/                 # Next.js app directory
+├── components/
+│   ├── ui/             # Reusable UI components
+│   └── features/       # Feature-specific components
+├── hooks/              # Custom React hooks
+├── lib/                # Utilities and helpers
+├── types/              # Shared TypeScript types
+└── styles/             # Global styles
+```
+
+## React Best Practices
+- Use React Server Components by default (Next.js 13+)
+- Add 'use client' only when necessary
+- Implement proper loading and error states
+- Use Suspense for async operations
+- Memoize expensive calculations with useMemo
+- Optimize re-renders with useCallback when passing functions as props
+- Use React.lazy for code splitting large components
+
+## Next.js Specific
+- Use App Router for new projects
+- Implement proper metadata for SEO
+- Use Server Actions for mutations
+- Optimize images with next/image
+- Use dynamic imports for client-heavy components
+- Implement proper caching strategies
+
+## State Management
+- Use local state (useState) for component-specific state
+- Use Context for theme, auth, and app-wide state
+- Consider Zustand or Jotai for complex state
+- Avoid prop drilling beyond 2-3 levels
+
+## Error Handling
+- Implement error boundaries for component errors
+- Use try-catch for async operations
+- Provide meaningful error messages to users
+- Log errors appropriately (don't expose sensitive data)
+
+## Performance
+- Lazy load components not needed immediately
+- Use React.memo for expensive pure components
+- Implement virtualization for long lists
+- Optimize images (WebP, proper sizing)
+- Use proper cache headers
+
+## Testing
+- Write tests for business logic and critical paths
+- Use React Testing Library for component tests
+- Test user interactions, not implementation details
+- Aim for meaningful test coverage, not 100%
+
+## Accessibility
+- Use semantic HTML elements
+- Add ARIA labels where needed
+- Ensure keyboard navigation works
+- Test with screen readers
+- Maintain proper color contrast
+
+## Comments & Documentation
+- Write self-documenting code with clear names
+- Add JSDoc comments for public APIs
+- Explain "why" not "what" in comments
+- Document complex algorithms or business logic
+
+---
+
+# ARK Router & OpenWrt LuCI Guidelines
+
+## Core Principles
+- The ARK Router project operates in an embedded Linux environment (D-Link DGL-5500, Atheros MIPS, 128 MB RAM, 16 MB SPI Flash).
+- Free RAM must be preserved (> 80 MB free under normal operation). Free flash overlay must remain > 3 MB.
+- Never add heavy npm packages or large JavaScript runtimes directly into router builds. Keep theme JS/CSS under 60 KB combined.
+
+## LuCI Client-Side JavaScript
+- Use performant vanilla JavaScript with zero external frameworks for LuCI views.
+- Render and traverse tables supporting both `<table>` elements and LuCI div tables (`.table > .tr > .td`).
+- Critical actions (Reboot, Reset, Flash, Backup Restore) must always be intercepted with capture-phase safety confirmation modals.
+- Respect Basic vs. Advanced mode via `localStorage.getItem('ark_interface_mode')`.
+- Suppress LuCI dummy hidden inputs (`position === 'absolute'`).
+
+## OpenWrt & POSIX Shell
+- All shell scripts in `root/etc`, `root/usr`, and `scripts` must be strictly POSIX `/bin/sh` compliant for BusyBox ash.
+- Always quote UCI variables and commit configuration changes reliably.
+- Maintain atomic rollback backups before altering critical network configurations.

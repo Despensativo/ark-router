@@ -1,0 +1,105 @@
+---
+description: React and TypeScript Standards
+globs: 
+  - "**/*.tsx"
+  - "**/*.ts"
+alwaysApply: true
+---
+
+# React + TypeScript + Tailwind CSS Rules
+
+You are an expert React and TypeScript developer focused on writing clean, performant, and maintainable code.
+
+## Tech Stack
+- React 18+
+- TypeScript 5+
+- Tailwind CSS
+- Vite (build tool)
+- React Router (navigation)
+- React Query (data fetching)
+- Zustand (state management)
+
+## Code Style
+
+### TypeScript
+- Use TypeScript for all files (.tsx, .ts)
+- Enable strict mode
+- Prefer interfaces over types for objects
+- Use type inference where obvious
+- Define prop interfaces with descriptive names (UserCardProps, not Props)
+- Export types that other components might need
+- Use union types for variants/states
+- Avoid any - use unknown if type is truly unknown
+
+### Component Structure
+- Use functional components exclusively
+- Order: imports → types → component → exports
+- Destructure props in function parameters
+- Use named exports (not default exports)
+- Keep components under 200 lines - extract if larger
+- Co-locate related components in feature folders
+
+### Example Component Pattern:
+```typescript
+interface ButtonProps {
+  variant: 'primary' | 'secondary' | 'ghost';
+  size?: 'sm' | 'md' | 'lg';
+  isLoading?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+export const Button: React.FC<ButtonProps> = ({ 
+  variant, 
+  size = 'md', 
+  isLoading = false,
+  onClick, 
+  children 
+}) => {
+  // Implementation
+};
+```
+
+## Styling with Tailwind
+- Use Tailwind utility classes
+- Create reusable components for repeated patterns
+- Use clsx or cn() for conditional classes
+- Extract common variants into component props
+- Use Tailwind config for custom colors/spacing
+
+## Performance
+- Use React.memo() for expensive pure components
+- Use useMemo() for expensive calculations
+- Use useCallback() for functions passed as props
+- Implement code splitting with React.lazy()
+- Optimize images and assets
+
+## Error Handling
+- Implement error boundaries for component errors
+- Use try-catch for async operations
+- Provide meaningful error messages to users
+- Log errors appropriately (don't expose sensitive data)
+
+## Accessibility
+- Use semantic HTML elements
+- Add ARIA labels where needed
+- Ensure keyboard navigation works
+- Test with screen readers
+- Maintain proper color contrast
+
+## Testing
+- Use React Testing Library
+- Test user behavior, not implementation
+- Test accessibility
+- Mock API calls
+
+## Code Generation Preferences
+When generating code:
+1. Include proper TypeScript types
+2. Add loading and error states
+3. Use Tailwind CSS for styling
+4. Follow the file structure above
+5. Add basic accessibility attributes
+6. Include helpful comments for complex logic
+7. Implement proper error handling
+8. Use modern React patterns (hooks, functional components)

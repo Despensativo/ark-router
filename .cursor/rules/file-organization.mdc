@@ -1,0 +1,187 @@
+---
+description: File Structure and Organization Standards
+globs: "**/*"
+alwaysApply: true
+---
+
+# File Organization Standards
+
+## Project Structure
+
+```
+src/
+├── app/                 # Next.js app directory
+│   ├── (auth)/         # Route group
+│   ├── (dashboard)/    # Route group
+│   ├── api/            # API routes
+│   ├── layout.tsx
+│   └── page.tsx
+├── components/
+│   ├── ui/             # Reusable UI components
+│   │   ├── Button.tsx
+│   │   ├── Input.tsx
+│   │   └── Card.tsx
+│   └── features/       # Feature-specific components
+│       ├── auth/
+│       └── dashboard/
+├── hooks/              # Custom React hooks
+│   ├── useAuth.ts
+│   └── useDebounce.ts
+├── lib/                # Utilities and helpers
+│   ├── api.ts
+│   ├── utils.ts
+│   └── constants.ts
+├── server/             # Server-side code
+│   ├── db.ts
+│   └── actions/
+├── types/              # Shared TypeScript types
+│   └── index.ts
+└── styles/             # Global styles
+    └── globals.css
+```
+
+## Naming Conventions
+
+### Files
+- **Components**: PascalCase - `UserProfile.tsx`, `Button.tsx`
+- **Hooks**: camelCase with 'use' prefix - `useAuth.ts`, `useDebounce.ts`
+- **Utilities**: camelCase - `formatDate.ts`, `api.ts`
+- **Types**: camelCase or PascalCase - `types.ts`, `User.types.ts`
+- **Tests**: Match source file - `Button.test.tsx`
+
+### Variables and Functions
+- **Components**: PascalCase - `UserProfile`, `Button`
+- **Functions**: camelCase - `fetchUser`, `formatDate`
+- **Hooks**: camelCase with 'use' - `useAuth`, `useDebounce`
+- **Constants**: UPPER_SNAKE_CASE - `API_BASE_URL`, `MAX_RETRY_COUNT`
+- **Types/Interfaces**: PascalCase - `User`, `UserProfile`, `ApiResponse`
+
+## Component File Structure
+
+### Single Component File:
+```typescript
+// 1. Imports - React, Next.js, external, internal
+import { useState } from 'react';
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/Button';
+
+// 2. Types/Interfaces
+interface UserCardProps {
+  user: User;
+  onEdit?: () => void;
+}
+
+// 3. Component
+export function UserCard({ user, onEdit }: UserCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  return (
+    <div>
+      {/* JSX */}
+    </div>
+  );
+}
+
+// 4. Sub-components (if small)
+function UserAvatar({ src }: { src: string }) {
+  return <img src={src} alt="Avatar" />;
+}
+```
+
+### Multiple Related Components (Index Pattern):
+```
+components/
+└── UserCard/
+    ├── index.tsx         # Main component + exports
+    ├── UserAvatar.tsx    # Sub-component
+    ├── UserBio.tsx       # Sub-component
+    ├── types.ts          # Local types
+    └── UserCard.test.tsx # Tests
+```
+
+## Import Organization
+
+### Order:
+1. React and Next.js
+2. Third-party libraries
+3. Internal modules (@/...)
+4. Relative imports
+5. Types (import type)
+6. Styles
+
+### Example:
+```typescript
+// React/Next.js
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+// Third-party
+import { z } from 'zod';
+import { cn } from 'clsx';
+
+// Internal
+import { Button } from '@/components/ui/Button';
+import { fetchUser } from '@/lib/api';
+
+// Relative
+import { UserAvatar } from './UserAvatar';
+
+// Types
+import type { User } from '@/types';
+
+// Styles
+import './styles.css';
+```
+
+## Feature-Based Organization (for larger projects)
+
+```
+features/
+├── authentication/
+│   ├── components/
+│   │   ├── LoginForm.tsx
+│   │   └── RegisterForm.tsx
+│   ├── hooks/
+│   │   └── useAuth.ts
+│   ├── api/
+│   │   └── authApi.ts
+│   ├── types/
+│   │   └── auth.types.ts
+│   └── tests/
+│       └── LoginForm.test.tsx
+└── user-profile/
+    ├── components/
+    ├── hooks/
+    ├── api/
+    └── types/
+```
+
+## Exports
+
+### Use Named Exports:
+```typescript
+// ✅ Good
+export function Button() {}
+export const UserCard = () => {};
+
+// ❌ Avoid
+export default Button;
+```
+
+### Exception - Next.js Pages:
+```typescript
+// app/page.tsx - default export required
+export default function HomePage() {}
+```
+
+## Code Generation Preferences
+
+When generating files:
+1. Follow the project structure above
+2. Use named exports (except Next.js pages)
+3. Organize imports in the specified order
+4. Use proper naming conventions
+5. Co-locate related files
+6. Keep components under 200 lines
+7. Extract sub-components when needed

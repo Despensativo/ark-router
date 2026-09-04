@@ -1,0 +1,232 @@
+---
+description: Form patterns with React Hook Form and Zod
+globs:
+  - "**/*Form.tsx"
+  - "**/*form.tsx"
+alwaysApply: false
+---
+
+# Form Patterns
+
+## React Hook Form + Zod
+
+### Basic Form
+```typescript
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+const schema = z.object({
+  email: z.string().email('Invalid email'),
+  password: z.string().min(8, 'Min 8 characters'),
+});
+
+type FormData = z.infer<typeof schema>;
+
+export function LoginForm() {
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
+    resolver: zodResolver(schema),
+  });
+
+  const onSubmit = async (data: FormData) => {
+    await login(data);
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <label htmlFor="email">Email</label>
+        <input {...register('email')} id="email" type="email" />
+        {errors.email && <p className="text-red-600">{errors.email.message}</p>}
+      </div>
+
+      <div>
+        <label htmlFor="password">Password</label>
+        <input {...register('password')} id="password" type="password" />
+        {errors.password && <p className="text-red-600">{errors.password.message}</p>}
+      </div>
+
+      <button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? 'Logging in...' : 'Log In'}
+      </button>
+    </form>
+  );
+}
+```
+
+### Multi-Step Form
+```typescript
+const [step, setStep] = useState(1);
+
+const schema = z.object({
+  // Step 1
+  personal: z.object({
+    name: z.string().min(1),
+    email: z.string().email(),
+  }),
+  // Step 2
+  address: z.object({
+    street: z.string().min(1),
+    city: z.string().min(1),
+  }),
+});
+
+// Validate current step only
+const stepSchemas = {
+  1: schema.pick({ personal: true }),
+  2: schema.pick({ address: true }),
+};
+
+const nextStep = async () => {
+  const isValid = await trigger(); // Validate current step
+  if (isValid) setStep(step + 1);
+};
+```
+
+### Form with Server Action
+```typescript
+'use client';
+
+import { useFormState, useFormStatus } from 'react-dom';
+import { createPost } from './actions';
+
+export function PostForm() {
+  const [state, formAction] = useFormState(createPost, null);
+
+  return (
+    <form action={formAction} className="space-y-4">
+      <div>
+        <label htmlFor="title">Title</label>
+        <input name="title" id="title" required />
+        {state?.errors?.title && (
+          <p className="text-red-600">{state.errors.title}</p>
+        )}
+      </div>
+
+      <SubmitButton />
+    </form>
+  );
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button type="submit" disabled={pending}>
+      {pending ? 'Creating...' : 'Create Post'}
+    </button>
+  );
+}
+```
+
+## Form Validation Patterns
+
+### Custom Validations
+```typescript
+const schema = z.object({
+  password: z.string().min(8),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'],
+});
+```
+
+### Async Validation
+```typescript
+email: z.string().email().refine(async (email) => {
+  const exists = await checkEmailExists(email);
+  return !exists;
+}, 'Email already in use'),
+```
+
+### Conditional Fields
+```typescript
+const schema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('individual'),
+    name: z.string(),
+  }),
+  z.object({
+    type: z.literal('company'),
+    companyName: z.string(),
+    taxId: z.string(),
+  }),
+]);
+```
+
+## Error Display Patterns
+
+### Inline Errors
+```typescript
+{errors.email && (
+  <p role="alert" className="text-sm text-red-600 mt-1">
+    {errors.email.message}
+  </p>
+)}
+```
+
+### Error Summary
+```typescript
+{Object.keys(errors).length > 0 && (
+  <div role="alert" className="p-4 bg-red-50 text-red-700 rounded">
+    <h3 className="font-semibold">Please fix the following errors:</h3>
+    <ul className="list-disc list-inside mt-2">
+      {Object.entries(errors).map(([key, error]) => (
+        <li key={key}>{error?.message}</li>
+      ))}
+    </ul>
+  </div>
+)}
+```
+
+## Form Accessibility
+
+### Labels
+```typescript
+// ✅ Associated label
+<label htmlFor="email">Email</label>
+<input id="email" {...register('email')} />
+
+// ✅ Wrapped label
+<label>
+  Email
+  <input {...register('email')} />
+</label>
+```
+
+### ARIA Attributes
+```typescript
+<input
+  {...register('email')}
+  aria-invalid={!!errors.email}
+  aria-describedby={errors.email ? 'email-error' : undefined}
+/>
+{errors.email && (
+  <p id="email-error" role="alert">
+    {errors.email.message}
+  </p>
+)}
+```
+
+### Required Fields
+```typescript
+<label>
+  Email <span aria-label="required">*</span>
+</label>
+<input {...register('email')} aria-required="true" />
+```
+
+## Form Checklist
+
+- [ ] Validation schema defined
+- [ ] Error messages user-friendly
+- [ ] Loading state during submission
+- [ ] Disabled state during submission
+- [ ] Success feedback shown
+- [ ] Labels associated with inputs
+- [ ] ARIA attributes for errors
+- [ ] Required fields indicated
+- [ ] Form accessible via keyboard
+
+@file ../tsconfig.json

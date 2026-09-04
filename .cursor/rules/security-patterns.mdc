@@ -1,0 +1,224 @@
+---
+description: Security best practices and patterns
+globs:
+  - "**/*.tsx"
+  - "**/*.ts"
+alwaysApply: true
+---
+
+# Security Patterns
+
+## Input Validation
+
+**Always validate user input:**
+```typescript
+import { z } from 'zod';
+
+const schema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+// Validate before using
+const result = schema.safeParse(userInput);
+if (!result.success) {
+  throw new Error('Invalid input');
+}
+```
+
+## XSS Prevention
+
+**Escape user-generated content:**
+```typescript
+// ✅ React escapes by default
+<div>{userInput}</div>
+
+// ❌ Dangerous - only use with trusted content
+<div dangerouslySetInnerHTML={{ __html: userInput }} />
+
+// ✅ If you must use HTML, sanitize first
+import DOMPurify from 'isomorphic-dompurify';
+<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(userInput) }} />
+```
+
+## Authentication
+
+**Server-side auth checks:**
+```typescript
+// ✅ Check on server
+export default async function ProtectedPage() {
+  const session = await getServerSession();
+  if (!session) redirect('/login');
+  return <div>Protected content</div>;
+}
+
+// ❌ Don't rely only on client
+'use client';
+export function Page() {
+  if (!user) return <LoginPrompt />; // Can be bypassed
+}
+```
+
+## API Security
+
+**Validate and authenticate API routes:**
+```typescript
+export async function POST(request: Request) {
+  // 1. Authenticate
+  const session = await getServerSession();
+  if (!session) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // 2. Validate input
+  const body = await request.json();
+  const validated = schema.parse(body);
+
+  // 3. Authorize (check permissions)
+  if (!canUserPerformAction(session.user, validated)) {
+    return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  // 4. Process request
+  const result = await processRequest(validated);
+  return Response.json(result);
+}
+```
+
+## Sensitive Data
+
+**Never expose secrets:**
+```typescript
+// ❌ Never
+const API_KEY = 'sk_live_12345';
+console.log(process.env.SECRET_KEY);
+
+// ✅ Use server-only variables
+// Server Component or API Route only
+const apiKey = process.env.SECRET_KEY;
+```
+
+## CSRF Protection
+
+**Use CSRF tokens for mutations:**
+```typescript
+// Next.js middleware
+import { csrf } from 'next-csrf';
+
+export const middleware = csrf({
+  secret: process.env.CSRF_SECRET,
+});
+```
+
+## Rate Limiting
+
+**Implement rate limiting:**
+```typescript
+import { Ratelimit } from '@upstash/ratelimit';
+
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(10, '10 s'),
+});
+
+export async function POST(request: Request) {
+  const ip = request.headers.get('x-forwarded-for') ?? 'unknown';
+  const { success } = await ratelimit.limit(ip);
+  
+  if (!success) {
+    return Response.json({ error: 'Too many requests' }, { status: 429 });
+  }
+  
+  // Process request
+}
+```
+
+## SQL Injection Prevention
+
+**Use parameterized queries:**
+```typescript
+// ✅ Safe - using Prisma
+const user = await db.user.findUnique({
+  where: { email: userEmail }
+});
+
+// ❌ Dangerous - raw SQL with user input
+const user = await db.$queryRaw`SELECT * FROM users WHERE email = ${userEmail}`;
+
+// ✅ If you must use raw SQL, use parameters
+const user = await db.$queryRaw`SELECT * FROM users WHERE email = ${Prisma.sql`${userEmail}`}`;
+```
+
+## Content Security Policy
+
+```typescript
+// middleware.ts
+const cspHeader = `
+  default-src 'self';
+  script-src 'self' 'nonce-${nonce}' 'strict-dynamic';
+  style-src 'self' 'nonce-${nonce}';
+  img-src 'self' blob: data: https:;
+  font-src 'self';
+  object-src 'none';
+  base-uri 'self';
+  form-action 'self';
+  frame-ancestors 'none';
+  upgrade-insecure-requests;
+`;
+```
+
+## Security Headers
+
+```typescript
+// next.config.js
+async headers() {
+  return [{
+    source: '/:path*',
+    headers: [
+      {
+        key: 'X-Frame-Options',
+        value: 'SAMEORIGIN',
+      },
+      {
+        key: 'X-Content-Type-Options',
+        value: 'nosniff',
+      },
+      {
+        key: 'X-XSS-Protection',
+        value: '1; mode=block',
+      },
+      {
+        key: 'Strict-Transport-Security',
+        value: 'max-age=63072000; includeSubDomains; preload',
+      },
+    ],
+  }];
+}
+```
+
+## Security Checklist
+
+- [ ] All user input validated
+- [ ] XSS prevention (escape or sanitize)
+- [ ] Authentication on server
+- [ ] Authorization checks enforced
+- [ ] No secrets in client code
+- [ ] HTTPS enforced
+- [ ] Security headers configured
+- [ ] Rate limiting implemented
+- [ ] CSRF protection enabled
+- [ ] SQL injection prevented
+- [ ] Dependencies updated
+- [ ] Error messages don't leak info
+
+## Common Vulnerabilities to Avoid
+
+1. **Don't trust client-side validation only**
+2. **Don't expose API keys in client code**
+3. **Don't use `eval()` or `Function()` with user input**
+4. **Don't store sensitive data in localStorage**
+5. **Don't log sensitive information**
+6. **Don't disable security features**
+
+@file ../middleware.ts
+@file ../next.config.js

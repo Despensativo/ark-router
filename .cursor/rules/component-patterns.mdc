@@ -1,0 +1,198 @@
+---
+description: Reusable patterns for creating React components efficiently
+globs:
+  - "components/**/*.tsx"
+  - "app/**/*.tsx"
+alwaysApply: false
+---
+
+# Component Creation Patterns
+
+Reusable templates for generating React components following project standards.
+
+## Pattern: Basic Component
+
+```typescript
+interface [ComponentName]Props {
+  children?: React.ReactNode;
+  className?: string;
+}
+
+export function [ComponentName]({ children, className }: [ComponentName]Props) {
+  return (
+    <div className={cn('[base-classes]', className)}>
+      {children}
+    </div>
+  );
+}
+```
+
+## Pattern: Component with Variants (CVA)
+
+```typescript
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '@/lib/utils';
+
+const [componentName]Variants = cva(
+  '[base-classes]',
+  {
+    variants: {
+      variant: {
+        primary: '[primary-classes]',
+        secondary: '[secondary-classes]',
+      },
+      size: {
+        sm: '[sm-classes]',
+        md: '[md-classes]',
+        lg: '[lg-classes]',
+      },
+    },
+    defaultVariants: {
+      variant: 'primary',
+      size: 'md',
+    },
+  }
+);
+
+interface [ComponentName]Props 
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof [componentName]Variants> {}
+
+export function [ComponentName]({ 
+  className, 
+  variant, 
+  size,
+  ...props 
+}: [ComponentName]Props) {
+  return (
+    <div
+      className={cn([componentName]Variants({ variant, size }), className)}
+      {...props}
+    />
+  );
+}
+```
+
+## Pattern: Form Component with React Hook Form + Zod
+
+```typescript
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+const schema = z.object({
+  email: z.string().email('Invalid email'),
+  password: z.string().min(8, 'Min 8 characters'),
+});
+
+type FormData = z.infer<typeof schema>;
+
+export function [FormName]({ onSubmit }: { onSubmit: (data: FormData) => Promise<void> }) {
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
+    resolver: zodResolver(schema),
+  });
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <label htmlFor="email">Email</label>
+        <input {...register('email')} id="email" type="email" />
+        {errors.email && <p className="text-red-600">{errors.email.message}</p>}
+      </div>
+      
+      <button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? 'Submitting...' : 'Submit'}
+      </button>
+    </form>
+  );
+}
+```
+
+## Pattern: Data Display with Loading/Error/Empty States
+
+```typescript
+interface [ComponentName]Props {
+  data: Item[];
+  isLoading?: boolean;
+  error?: Error;
+}
+
+export function [ComponentName]({ data, isLoading, error }: [ComponentName]Props) {
+  if (isLoading) {
+    return <LoadingSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="text-red-600" role="alert">
+        Error: {error.message}
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
+    return <EmptyState message="No items found" />;
+  }
+
+  return (
+    <div className="space-y-2">
+      {data.map(item => (
+        <ItemCard key={item.id} item={item} />
+      ))}
+    </div>
+  );
+}
+```
+
+## Pattern: Modal/Dialog Component
+
+```typescript
+'use client';
+
+import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
+
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}
+
+export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      const handleEscape = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') onClose();
+      };
+      document.addEventListener('keydown', handleEscape);
+      return () => {
+        document.body.style.overflow = 'unset';
+        document.removeEventListener('keydown', handleEscape);
+      };
+    }
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div 
+        className="relative z-10 bg-white rounded-lg p-6 max-w-lg w-full"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
+        <h2 className="text-xl font-bold mb-4">{title}</h2>
+        {children}
+      </div>
+    </div>,
+    document.body
+  );
+}
+```
+
+@file ../tsconfig.json
+@file ../tailwind.config.js

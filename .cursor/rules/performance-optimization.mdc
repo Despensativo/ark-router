@@ -1,0 +1,151 @@
+---
+description: Performance optimization patterns and best practices
+globs:
+  - "**/*.tsx"
+  - "**/*.ts"
+alwaysApply: false
+---
+
+# Performance Optimization Patterns
+
+## React Performance Rules
+
+### 1. Memoization
+
+**Use React.memo() for expensive pure components:**
+```typescript
+export const ExpensiveComponent = memo<Props>(({ data }) => {
+  return <div>{/* expensive rendering */}</div>;
+});
+```
+
+**Use useMemo() for expensive calculations:**
+```typescript
+const sortedData = useMemo(() => {
+  return data.sort((a, b) => a.value - b.value);
+}, [data]);
+```
+
+**Use useCallback() for function props:**
+```typescript
+const handleClick = useCallback((id: string) => {
+  // handler logic
+}, []);
+```
+
+### 2. Code Splitting
+
+**Use React.lazy() for route-based splitting:**
+```typescript
+const Dashboard = lazy(() => import('@/components/Dashboard'));
+
+<Suspense fallback={<Loading />}>
+  <Dashboard />
+</Suspense>
+```
+
+**Use dynamic imports for large libraries:**
+```typescript
+// Only load when needed
+const loadChart = async () => {
+  const Chart = await import('chart.js');
+  return Chart;
+};
+```
+
+### 3. List Optimization
+
+**Always use stable keys:**
+```typescript
+// ✅ Good - stable ID
+{items.map(item => <Item key={item.id} {...item} />)}
+
+// ❌ Bad - index as key
+{items.map((item, i) => <Item key={i} {...item} />)}
+```
+
+**Virtualize long lists:**
+```typescript
+import { useVirtualizer } from '@tanstack/react-virtual';
+
+const virtualizer = useVirtualizer({
+  count: items.length,
+  getScrollElement: () => parentRef.current,
+  estimateSize: () => 50,
+});
+```
+
+## Next.js Specific Optimizations
+
+### Image Optimization
+```typescript
+import Image from 'next/image';
+
+// Use priority for above-the-fold images
+<Image src="/hero.jpg" alt="Hero" width={1200} height={600} priority />
+
+// Lazy load below-the-fold
+<Image src="/product.jpg" alt="Product" width={400} height={400} loading="lazy" />
+```
+
+### Font Optimization
+```typescript
+import { Inter } from 'next/font/google';
+
+const inter = Inter({ subsets: ['latin'], display: 'swap' });
+
+<main className={inter.className}>{children}</main>
+```
+
+### Caching Strategies
+```typescript
+// Static Generation with revalidation
+export const revalidate = 3600; // 1 hour
+
+// Fetch with caching
+fetch(url, {
+  next: { revalidate: 3600, tags: ['posts'] }
+});
+```
+
+## Bundle Size Optimization
+
+### Tree Shaking
+```typescript
+// ✅ Import only what you need
+import { Button } from '@/components/ui/Button';
+
+// ❌ Avoid barrel imports in large libraries
+import { Button } from '@/components'; // May import everything
+```
+
+### Remove Unused Code
+```typescript
+// Remove console.logs in production
+// next.config.js
+compiler: {
+  removeConsole: process.env.NODE_ENV === 'production',
+}
+```
+
+## Performance Checklist
+
+- [ ] Components memoized where beneficial
+- [ ] Expensive calculations use useMemo
+- [ ] Function props use useCallback
+- [ ] Code splitting implemented
+- [ ] Images optimized (next/image)
+- [ ] Fonts optimized (next/font)
+- [ ] Long lists virtualized
+- [ ] Bundle size monitored
+- [ ] Lazy loading for below-fold content
+- [ ] No unnecessary re-renders
+
+## When NOT to Optimize
+
+- Don't memo everything (has overhead)
+- Don't optimize before measuring
+- Don't sacrifice readability for minimal gains
+- Profile first, then optimize
+
+@file ../next.config.js

@@ -1,0 +1,207 @@
+---
+description: SEO best practices and meta tags
+globs:
+  - "app/**/page.tsx"
+  - "app/**/layout.tsx"
+alwaysApply: false
+---
+
+# SEO Patterns
+
+## Metadata (Next.js App Router)
+
+### Static Metadata
+```typescript
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Page Title',
+  description: 'Page description for search engines',
+  keywords: ['keyword1', 'keyword2'],
+  authors: [{ name: 'Author Name' }],
+  creator: 'Creator Name',
+  openGraph: {
+    title: 'OG Title',
+    description: 'OG Description',
+    url: 'https://example.com',
+    siteName: 'Site Name',
+    images: [{
+      url: 'https://example.com/og-image.jpg',
+      width: 1200,
+      height: 630,
+    }],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Twitter Title',
+    description: 'Twitter Description',
+    images: ['https://example.com/twitter-image.jpg'],
+  },
+};
+```
+
+### Dynamic Metadata
+```typescript
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const post = await getPost(params.slug);
+
+  return {
+    title: post.title,
+    description: post.excerpt,
+    openGraph: {
+      title: post.title,
+      description: post.excerpt,
+      images: [{ url: post.coverImage }],
+    },
+  };
+}
+```
+
+## Structured Data (JSON-LD)
+
+### Article
+```typescript
+export default function BlogPost({ post }: Props) {
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: post.title,
+    image: post.coverImage,
+    author: {
+      '@type': 'Person',
+      name: post.author.name,
+    },
+    datePublished: post.publishedAt,
+    dateModified: post.updatedAt,
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <article>{/* content */}</article>
+    </>
+  );
+}
+```
+
+### Organization
+```typescript
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'Company Name',
+  url: 'https://example.com',
+  logo: 'https://example.com/logo.png',
+  sameAs: [
+    'https://twitter.com/company',
+    'https://linkedin.com/company/name',
+  ],
+};
+```
+
+## Sitemap
+
+```typescript
+// app/sitemap.ts
+import { MetadataRoute } from 'next';
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const posts = await getPosts();
+
+  const postUrls = posts.map((post) => ({
+    url: `https://example.com/blog/${post.slug}`,
+    lastModified: post.updatedAt,
+    changeFrequency: 'weekly' as const,
+    priority: 0.8,
+  }));
+
+  return [
+    {
+      url: 'https://example.com',
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 1,
+    },
+    {
+      url: 'https://example.com/about',
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    ...postUrls,
+  ];
+}
+```
+
+## Robots.txt
+
+```typescript
+// app/robots.ts
+import { MetadataRoute } from 'next';
+
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: {
+      userAgent: '*',
+      allow: '/',
+      disallow: ['/admin/', '/api/'],
+    },
+    sitemap: 'https://example.com/sitemap.xml',
+  };
+}
+```
+
+## Canonical URLs
+
+```typescript
+export const metadata: Metadata = {
+  alternates: {
+    canonical: 'https://example.com/page',
+  },
+};
+```
+
+## SEO Checklist
+
+- [ ] Unique title (50-60 chars)
+- [ ] Meta description (150-160 chars)
+- [ ] OpenGraph tags
+- [ ] Twitter Card tags
+- [ ] Canonical URL
+- [ ] Sitemap.xml
+- [ ] Robots.txt
+- [ ] JSON-LD structured data
+- [ ] Semantic HTML (h1, h2, etc.)
+- [ ] Alt text on images
+- [ ] Fast page load (<3s)
+- [ ] Mobile-friendly
+- [ ] HTTPS enabled
+
+## Best Practices
+
+### Title Format
+```typescript
+title: {
+  template: '%s | Site Name',
+  default: 'Site Name',
+}
+```
+
+### Avoid Duplicate Content
+- Use canonical URLs
+- Use proper redirects
+- Don't index dev/staging sites
+
+### Page Speed
+- Optimize images
+- Minimize JavaScript
+- Use caching
+- Enable compression
+
+@file ../app/layout.tsx
+@file ../next.config.js

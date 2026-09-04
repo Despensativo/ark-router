@@ -1,0 +1,36 @@
+---
+description: ARK Router CSS & Theme Design System
+globs: 
+  - "root/www/luci-static/ark/**/*.css"
+  - "root/www/luci-static/resources/**/*.css"
+  - "**/*.css"
+alwaysApply: false
+---
+
+# ARK Router Theme & Design Standards
+
+## Color Palette & Visual Identity
+- **Dark Tech Theme**:
+  - Background primary: `#0b0f19` (main background)
+  - Background card: `#111827` (card / table row)
+  - Background card hover: `#1f2937`
+  - Border color: `#1f2937` or `#374151`
+  - Primary Accent: `#3b82f6` (blue / cyan gradient highlights `#06b6d4`)
+  - Success: `#10b981` (emerald green)
+  - Warning: `#f59e0b` (amber)
+  - Danger: `#ef4444` (ruby red)
+  - Text primary: `#f9fafb`
+  - Text secondary: `#9ca3af`
+  - Text muted: `#6b7280`
+
+## Responsive & Mobile Guidelines
+- **Mobile First Viewport**: Tested down to 360px width.
+- **Horizontal Overflow Zero Tolerance**:
+  - `html, body { max-width: 100vw; overflow-x: hidden; }`
+  - Tables and logs must be wrapped or have `overflow-x: auto; max-width: 100%;` to prevent layout breaking.
+- **Touch Targets**:
+  - Minimum touch target for buttons, inputs, and tab pills: 42px height, 10px 16px padding.
+- **Components**:
+  - **Tabs**: Render as rounded pill buttons (`.cbi-tabmenu`) with active highlight gradient.
+  - **Cards**: Modern rounded corners (`border-radius: 12px`), subtle box shadow (`0 4px 6px -1px rgba(0,0,0,0.4)`), thin border (`1px solid #1f2937`).
+  - **Badges / Chips**: Inline pills with subtle background and colored text (e.g. `bg-green-950 text-green-400`).

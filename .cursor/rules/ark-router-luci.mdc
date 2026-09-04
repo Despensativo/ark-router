@@ -1,0 +1,30 @@
+---
+description: ARK Router LuCI JavaScript and View Standards
+globs: 
+  - "root/www/**/*.js"
+  - "root/usr/lib/lua/luci/**/*.lua"
+  - "root/usr/share/luci/**/*.ut"
+  - "root/usr/share/luci/**/*.htm"
+  - "root/www/luci-static/ark/**/*.js"
+  - "**/*luci*.js"
+alwaysApply: false
+---
+
+# ARK Router LuCI JavaScript & Frontend Standards
+
+## LuCI Client-Side Architecture
+- **Vanilla JS & Zero Heavy Dependencies**: The target router (D-Link DGL-5500) has only 128 MB RAM and 16 MB flash. Never introduce heavy client libraries (no React/Vue runtime embedded in OpenWrt flash, no bundled webpack blobs > 50 KB). Use clean, performant vanilla JavaScript.
+- **Modern LuCI DOM Compatibility**: OpenWrt 19.07+ and LuCI modern themes render data tables as div structures:
+  `<div class="table"><div class="tr"><div class="th">...</div></div><div class="tr"><div class="td">...</div></div></div>`.
+  Always support both traditional `<table>` elements and `.table` / `.tr` / `.td` div hierarchies.
+- **Dynamic DOM & Event Interception**:
+  - For critical system actions (e.g. reboot, factory reset, flash backup restore), use capture-phase event listeners (`element.addEventListener('click', handler, true)`) so LuCI's direct click callbacks cannot bypass safety confirmations.
+  - LuCI hidden dummy inputs: LuCI frequently adds dummy hidden inputs (`position: absolute; left: -100000px`) for password manager workarounds. Always ignore inputs where `position === 'absolute'`, `aria-hidden === 'true'`, or `tabIndex === -1`.
+  - Native password toggles: If LuCI creates an asterisk toggle button (`*`), modernize it smoothly into an emoji/icon (`👁️`) and update its state dynamically without breaking LuCI CBI forms.
+- **Dual Mode Support (Básico vs. Avançado)**:
+  - Persist mode state in `localStorage.getItem('ark_interface_mode') || 'basic'`.
+  - Automatically tag advanced UCI option wrappers: `.cbi-value:not(.cbi-value-basic)` or by option ID regex (e.g. `mtu`, `metric`, `proto_v6`, `bssid`, `wmm`, `isolate`).
+  - Keep toggles intuitive and non-destructive.
+- **Memory & Polling**:
+  - Always clean up intervals and mutation observers when views unmount or change.
+  - LuCI's `L.Poll` or `XHR.poll` should be preferred over raw `setInterval` where applicable.

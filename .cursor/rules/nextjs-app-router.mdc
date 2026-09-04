@@ -1,0 +1,214 @@
+---
+description: Next.js 14+ App Router Standards
+globs:
+  - "app/**/*.tsx"
+  - "app/**/*.ts"
+alwaysApply: true
+---
+
+# Next.js 14+ with App Router, TypeScript, and Tailwind CSS
+
+You are an expert Next.js developer specializing in the App Router, Server Components, and modern React patterns.
+
+## Tech Stack
+- Next.js 14+ (App Router)
+- React 18+ (Server Components)
+- TypeScript 5+
+- Tailwind CSS
+- Server Actions
+- Prisma (database ORM)
+- NextAuth.js (authentication)
+
+## Core Principles
+
+### Server Components by Default
+- All components in app/ are Server Components by default
+- Only add 'use client' when you need:
+  - useState, useEffect, or other React hooks
+  - Event handlers (onClick, onChange, etc.)
+  - Browser APIs (window, localStorage, etc.)
+  - Third-party libraries that use client features
+
+### Example Pattern:
+```typescript
+// ✅ Server Component (default) - NO 'use client'
+export default async function UserProfile({ userId }: { userId: string }) {
+  const user = await db.user.findUnique({ where: { id: userId } });
+  
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <UserActions user={user} /> {/* Client Component */}
+    </div>
+  );
+}
+
+// ✅ Client Component (only when needed)
+'use client';
+
+export function UserActions({ user }: { user: User }) {
+  const [isFollowing, setIsFollowing] = useState(user.isFollowing);
+  
+  return (
+    <button onClick={() => setIsFollowing(!isFollowing)}>
+      {isFollowing ? 'Unfollow' : 'Follow'}
+    </button>
+  );
+}
+```
+
+## Data Fetching
+
+### Server Components (Preferred):
+```typescript
+// app/users/[id]/page.tsx
+export default async function UserPage({ params }: { params: { id: string } }) {
+  // Fetch directly in component
+  const user = await db.user.findUnique({
+    where: { id: params.id },
+    include: { posts: true }
+  });
+
+  if (!user) notFound();
+
+  return <UserProfile user={user} />;
+}
+
+// Enable ISR
+export const revalidate = 3600; // Revalidate every hour
+```
+
+## Server Actions (Mutations)
+```typescript
+// lib/actions/user.ts
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { db } from '@/lib/db';
+
+export async function updateUserProfile(userId: string, data: ProfileData) {
+  const user = await db.user.update({
+    where: { id: userId },
+    data: {
+      name: data.name,
+      bio: data.bio,
+    },
+  });
+
+  // Revalidate affected pages
+  revalidatePath(`/users/${userId}`);
+  
+  return { success: true, user };
+}
+```
+
+## File Structure
+```
+app/
+├── (auth)/              # Route group for auth pages
+│   ├── login/
+│   └── register/
+├── (dashboard)/         # Route group for dashboard
+│   ├── layout.tsx
+│   └── page.tsx
+├── api/
+│   └── [...]/route.ts   # API routes
+├── layout.tsx           # Root layout
+├── page.tsx             # Homepage
+├── loading.tsx          # Loading UI
+├── error.tsx            # Error handling
+└── not-found.tsx        # 404 page
+```
+
+## Metadata & SEO
+
+### Static Metadata:
+```typescript
+export const metadata: Metadata = {
+  title: 'My App',
+  description: 'App description',
+};
+```
+
+### Dynamic Metadata:
+```typescript
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const post = await getPost(params.slug);
+  
+  return {
+    title: post.title,
+    description: post.excerpt,
+    openGraph: {
+      title: post.title,
+      description: post.excerpt,
+      images: [{ url: post.image }],
+    },
+  };
+}
+```
+
+## Performance Optimization
+
+### Image Optimization:
+```typescript
+import Image from 'next/image';
+
+<Image
+  src="/hero.jpg"
+  alt="Hero image"
+  width={1200}
+  height={600}
+  priority // For above-the-fold images
+  placeholder="blur"
+/>
+```
+
+### Streaming with Suspense:
+```typescript
+import { Suspense } from 'react';
+
+export default function Dashboard() {
+  return (
+    <div>
+      <Header />
+      <Suspense fallback={<LoadingSkeleton />}>
+        <DataTable /> {/* Async Server Component */}
+      </Suspense>
+    </div>
+  );
+}
+```
+
+## Caching Strategies
+
+```typescript
+// No caching (always fresh)
+export const dynamic = 'force-dynamic';
+
+// ISR - Revalidate every hour
+export const revalidate = 3600;
+
+// Cache fetch requests
+fetch('https://api.example.com/data', {
+  next: { revalidate: 3600 }
+});
+
+// Tag-based revalidation
+fetch('https://api.example.com/data', {
+  next: { tags: ['user-data'] }
+});
+```
+
+## Code Generation Preferences
+
+When generating Next.js code:
+1. Use Server Components by default
+2. Add 'use client' only when necessary
+3. Implement proper loading and error states
+4. Use Server Actions for mutations
+5. Include proper TypeScript types
+6. Optimize images with next/image
+7. Implement proper caching strategies
+8. Add metadata for SEO
+9. Use Suspense for async operations
+10. Follow the App Router file structure
