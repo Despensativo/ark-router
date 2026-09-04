@@ -2035,7 +2035,7 @@
       grid.id = 'ark-iface-grid';
       grid.className = 'ark-iface-grid';
 
-      var rows = table.querySelectorAll('.tr.cbi-section-table-row');
+      var rows = table.querySelectorAll('.tr.cbi-section-table-row, tr.cbi-section-table-row');
       rows.forEach(function(r) {
         var sid = r.getAttribute('data-sid') || '';
         var name = sid.toUpperCase();
@@ -2043,49 +2043,123 @@
         var cardClass = (sid.indexOf('wan6') !== -1) ? 'wan6' : ((sid.indexOf('wan') !== -1) ? 'wan' : 'lan');
 
         var desc = r.querySelector('[id$="-ifc-description"]');
-        var descText = desc ? desc.textContent : '';
+        var descHTML = desc ? desc.innerHTML : '';
 
-        var ipMatch = descText.match(/IPv4:\s*([^\s]+)/i);
-        var ip = ipMatch ? ipMatch[1] : 'Automático / DHCP';
+        // Extract metadata cleanly via HTML tags
+        var protoMatch = descHTML.match(/<strong>Protocolo:\s*<\/strong>\s*([^<]+)/i);
+        var proto = protoMatch ? protoMatch[1].trim() : (sid.indexOf('wan') !== -1 ? 'Cliente DHCP' : 'Endereço Estático');
+
+        var ipMatch = descHTML.match(/<strong>IPv4:\s*<\/strong>\s*([^<]+)/i);
+        var ip = ipMatch ? ipMatch[1].trim() : 'Automático / DHCP';
+
+        var macMatch = descHTML.match(/<strong>MAC:\s*<\/strong>\s*([0-9a-f:]{17})/i);
+        var mac = macMatch ? macMatch[1].toUpperCase() : '';
 
         var devBox = r.querySelector('.ifacebox-body small');
         var device = devBox ? devBox.textContent.trim() : (sid === 'lan' ? 'br-lan' : 'eth0.2');
 
-        var rxMatch = descText.match(/RX:\s*([^\(]+)/i);
-        var txMatch = descText.match(/TX:\s*([^\(]+)/i);
-        var rx = rxMatch ? rxMatch[1].trim() : '0 B';
-        var tx = txMatch ? txMatch[1].trim() : '0 B';
+        var rxMatch = descHTML.match(/<strong>RX:\s*<\/strong>\s*([^<]+)/i);
+        var txMatch = descHTML.match(/<strong>TX:\s*<\/strong>\s*([^<]+)/i);
+        var rx = rxMatch ? rxMatch[1].trim().replace(/\([^\)]+\)/, '').trim() : '0 B';
+        var tx = txMatch ? txMatch[1].trim().replace(/\([^\)]+\)/, '').trim() : '0 B';
 
-        var upMatch = descText.match(/Uptime:\s*([0-9dhms\s]+?)(?:MAC:|$)/i);
+        var upMatch = descHTML.match(/<strong>(?:Tempo de atividade|Uptime):\s*<\/strong>\s*([^<]+)/i);
         var uptime = upMatch ? upMatch[1].trim() : 'Ativo';
+
+        // Extract member devices cleanly from tooltip containers
+        var ifaceBody = r.querySelector('.ifacebox-body');
+        var memberBadgesHTML = '';
+        if (ifaceBody) {
+          var ttList = ifaceBody.querySelectorAll('.cbi-tooltip-container');
+          ttList.forEach(function(tt) {
+            var th = tt.innerHTML;
+            var tm = th.match(/<strong>Tipo:\s*<\/strong>\s*([^<]+)/i);
+            var dm = th.match(/<strong>Dispositivo:\s*<\/strong>\s*([^<]+)/i);
+            var cm = th.match(/<strong>Conectado:\s*<\/strong>\s*([^<]+)/i);
+            var mm = th.match(/<strong>MAC:\s*<\/strong>\s*([0-9a-f:]{17})/i);
+
+            var devName = dm ? dm[1].trim() : '';
+            var devType = tm ? tm[1].trim() : '';
+            var isConnected = cm ? (cm[1].trim().toLowerCase() === 'sim') : false;
+            var subMac = mm ? mm[1].trim() : '';
+
+            if (devName) {
+              var devIcon = '🔌';
+              var friendlyName = devName;
+              if (devName.indexOf('radio0') !== -1) {
+                devIcon = '📶';
+                friendlyName = 'Wi-Fi 2.4 GHz';
+              } else if (devName.indexOf('radio1') !== -1) {
+                devIcon = '📶';
+                friendlyName = 'Wi-Fi 5 GHz';
+              } else if (devName.indexOf('eth0.1') !== -1) {
+                devIcon = '🔌';
+                friendlyName = 'Portas LAN (Cabo)';
+              } else if (devName.indexOf('eth0.2') !== -1) {
+                devIcon = '🌐';
+                friendlyName = 'Porta WAN (Internet)';
+              } else if (devType.toLowerCase().indexOf('ponte') !== -1) {
+                devIcon = '🌉';
+                friendlyName = 'Ponte de Rede (' + devName + ')';
+              }
+
+              var dotClass = isConnected ? 'online' : 'offline';
+              var dotText = isConnected ? '● Conectado' : '○ Standby';
+              var badgeActive = isConnected ? 'active' : '';
+
+              memberBadgesHTML += '' +
+                '<span class="ark-member-badge ' + badgeActive + '" title="' + devName + ' (' + devType + ')' + (subMac ? ' - MAC: ' + subMac : '') + '">' +
+                  '<span class="icon">' + devIcon + '</span>' +
+                  '<span class="name"><strong>' + friendlyName + '</strong></span>' +
+                  '<span class="dot ' + dotClass + '">' + dotText + '</span>' +
+                '</span>';
+            }
+          });
+        }
+
+        // If no subdevices extracted, provide default chip
+        if (!memberBadgesHTML) {
+          var defIcon = (sid.indexOf('wan') !== -1) ? '🌐' : '🔌';
+          var defLabel = (sid.indexOf('wan') !== -1) ? 'Porta WAN Física (eth0.2)' : 'Porta LAN Física (eth0.1)';
+          memberBadgesHTML = '' +
+            '<span class="ark-member-badge active">' +
+              '<span class="icon">' + defIcon + '</span>' +
+              '<span class="name"><strong>' + defLabel + '</strong></span>' +
+              '<span class="dot online">● Conectado</span>' +
+            '</span>';
+        }
 
         var card = document.createElement('div');
         card.className = 'ark-iface-card ' + cardClass;
         card.innerHTML = '' +
           '<div class="ark-iface-head">' +
             '<div class="ark-iface-name"><span>' + icon + '</span> ' + name + '</div>' +
-            '<div style="display:flex;gap:6px;align-items:center;">' +
-              '<span class="ark-chip online" style="font-size:10px;">🟢 ' + uptime + '</span>' +
-              '<span class="ark-iface-device">' + device + '</span>' +
+            '<div class="ark-iface-chips">' +
+              '<span class="ark-chip online" style="font-size:11px;">🟢 ' + uptime + '</span>' +
+              '<span class="ark-chip proto">🏷️ ' + proto + '</span>' +
             '</div>' +
           '</div>' +
           '<div class="ark-iface-stats">' +
             '<div class="ark-iface-stat-tile">' +
-              '<span class="label">Endereço IP:</span>' +
-              '<span class="val">' + ip + '</span>' +
+              '<span class="label">Endereço IPv4:</span>' +
+              '<span class="val" style="color:#60a5fa;font-size:14px;">' + ip + '</span>' +
             '</div>' +
             '<div class="ark-iface-stat-tile">' +
-              '<span class="label">Dispositivo:</span>' +
-              '<span class="val">' + device + '</span>' +
+              '<span class="label">Dispositivo Principal / MAC:</span>' +
+              '<span class="val">' + device + (mac ? ' <span style="font-size:10px;color:var(--ark-text-dim);">(' + mac + ')</span>' : '') + '</span>' +
             '</div>' +
             '<div class="ark-iface-stat-tile">' +
-              '<span class="label">Download (RX):</span>' +
-              '<span class="val" style="color:#34d399;">' + rx + '</span>' +
+              '<span class="label">Download Total (RX):</span>' +
+              '<span class="val" style="color:#34d399;">⬇️ ' + rx + '</span>' +
             '</div>' +
             '<div class="ark-iface-stat-tile">' +
-              '<span class="label">Upload (TX):</span>' +
-              '<span class="val" style="color:#60a5fa;">' + tx + '</span>' +
+              '<span class="label">Upload Total (TX):</span>' +
+              '<span class="val" style="color:#a78bfa;">⬆️ ' + tx + '</span>' +
             '</div>' +
+          '</div>' +
+          '<div class="ark-iface-members">' +
+            '<div class="ark-iface-members-title">Portas e Dispositivos Físicos Vinculados:</div>' +
+            '<div class="ark-iface-member-list">' + memberBadgesHTML + '</div>' +
           '</div>' +
           '<div class="ark-iface-actions"></div>';
 
@@ -2123,6 +2197,14 @@
           // 2. Other action buttons (Reinicie, Parar, Apagar)
           otherBtns.forEach(function(b) {
             var clone = b.cloneNode(true);
+            var bText = (b.textContent || '').trim().toLowerCase();
+            if (bText.indexOf('reinicie') !== -1 || bText.indexOf('restart') !== -1) {
+              clone.innerHTML = '🔄 Reiniciar';
+            } else if (bText.indexOf('parar') !== -1 || bText.indexOf('stop') !== -1) {
+              clone.innerHTML = '⏹️ Parar';
+            } else if (bText.indexOf('apagar') !== -1 || bText.indexOf('delete') !== -1) {
+              clone.innerHTML = '🗑️ Apagar';
+            }
             clone.addEventListener('click', function(e) {
               e.preventDefault();
               b.click();
@@ -2135,7 +2217,9 @@
       });
 
       table.parentNode.insertBefore(grid, table);
-      table.style.display = 'none';
+      table.style.setProperty('display', 'none', 'important');
+      table.classList.add('ark-hidden-table');
+
       if (table.parentElement) {
         var oldHeader = table.parentElement.querySelector('h3, legend');
         if (oldHeader && oldHeader.textContent.toLowerCase().indexOf('interface') !== -1) {

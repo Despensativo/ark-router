@@ -337,6 +337,21 @@ table .ifacebadge,
 	margin: 0 !important;
 }
 
+/* Prevent tooltip popups from rendering inline and breaking interface cells */
+.cbi-tooltip.ifacebadge {
+	display: none !important;
+}
+.cbi-tooltip-container:hover .cbi-tooltip.ifacebadge {
+	display: block !important;
+	position: absolute !important;
+	z-index: 1000 !important;
+	background: #0f172a !important;
+	border: 1px solid #334155 !important;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+	padding: 10px 14px !important;
+	border-radius: 8px !important;
+}
+
 .ifacebox {
 	background: var(--ark-surface-1) !important;
 	border: 1px solid var(--ark-border) !important;
@@ -1549,6 +1564,83 @@ body.modal-overlay-active #modal_overlay {
 	justify-content: center !important;
 	font-size: 11px !important;
 	height: 34px !important;
+}
+
+/* Interface Header Chips & Metadata */
+.ark-iface-chips {
+	display: flex !important;
+	gap: 6px !important;
+	align-items: center !important;
+	flex-wrap: wrap !important;
+}
+.ark-chip.proto {
+	background: rgba(59, 130, 246, 0.12) !important;
+	color: #93c5fd !important;
+	border: 1px solid rgba(59, 130, 246, 0.25) !important;
+	font-size: 11px !important;
+	font-weight: 600 !important;
+	padding: 2px 8px !important;
+	border-radius: 6px !important;
+}
+
+/* Sub-devices and physical member ports */
+.ark-iface-members {
+	background: rgba(0, 0, 0, 0.22) !important;
+	border: 1px solid rgba(255, 255, 255, 0.06) !important;
+	border-radius: 10px !important;
+	padding: 12px 14px !important;
+	display: flex !important;
+	flex-direction: column !important;
+	gap: 8px !important;
+}
+.ark-iface-members-title {
+	font-size: 11px !important;
+	font-weight: 700 !important;
+	text-transform: uppercase !important;
+	letter-spacing: 0.04em !important;
+	color: var(--ark-text-dim) !important;
+}
+.ark-iface-member-list {
+	display: flex !important;
+	flex-wrap: wrap !important;
+	gap: 8px !important;
+}
+.ark-member-badge {
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 6px !important;
+	background: var(--ark-surface-2) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: 6px !important;
+	padding: 4px 10px !important;
+	font-size: 11px !important;
+	color: #e2e8f0 !important;
+	transition: all 0.2s ease !important;
+}
+.ark-member-badge.active {
+	border-color: rgba(16, 185, 129, 0.4) !important;
+	background: rgba(16, 185, 129, 0.08) !important;
+}
+.ark-member-badge .dot {
+	font-size: 9px !important;
+	font-weight: 700 !important;
+	padding: 1px 6px !important;
+	border-radius: 4px !important;
+}
+.ark-member-badge .dot.online {
+	color: #34d399 !important;
+	background: rgba(16, 185, 129, 0.2) !important;
+}
+.ark-member-badge .dot.offline {
+	color: #94a3b8 !important;
+	background: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Hide raw LuCI interface table when transformed to ARK cards */
+#cbi-network-interface .table.cbi-section-table,
+#cbi-network-interface .cbi-section-table,
+.ark-hidden-table {
+	display: none !important;
 }
 
 /* 8. Diagnostics 3-Card Grid */
