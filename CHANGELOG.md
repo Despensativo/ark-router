@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.76
+
+- **🔘 Otimização e Ativação dos Botões de Iniciação (`Sistema ➔ Iniciação`)**:
+  - **Invalidação Automática de Cache HTTP (`?v=0.9.76`)**: Atualizados os cabeçalhos de importação em `header.htm` e `header.ut` de `?v=ark-1.0` para a versão atual. Isso força navegadores (Chrome, Edge, Safari) a baixar os novos arquivos CSS/JS imediatamente, eliminando o problema de estilos antigos armazenados em cache que mantinham os botões com aparência desativada.
+  - **Identificação Visual Clara com Ícones**:
+    - `⚙️ Scripts de Iniciação`: Indicador da lista de serviços do sistema com tooltip descritivo.
+    - `📜 Iniciação Local (/etc/rc.local)`: Atalho direto para comandos personalizados com tooltip descritivo.
+  - **Destaque Visual e Feedback Tátil**: O botão ativo brilha no gradiente Electric Blue com sombra suave; caso o usuário clique no botão já selecionado, ele recebe uma leve animação de pulso tátil confirmando que já está naquela visão.
+  - **Alternador Delegado de Fallback (`enhanceTabs`)**: Adicionado controle em `ark-theme.js` que garante a exibição do painel correspondente e ocultação do painel inativo mesmo em condições atípicas de renderização do LuCI.
+
 ## 0.9.75
 
 - **📝 Redimensionamento Proporcional do Campo de Anotações (`Sistema ➔ Propriedades do Sistema`)**:

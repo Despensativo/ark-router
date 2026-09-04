@@ -250,7 +250,9 @@ ul.cbi-tabmenu > li.cbi-tab-active > a,
 .cbi-tabmenu > li.cbi-tab-active > a, 
 #tabmenu > li.active > a, 
 ul.tabs > li.active > a,
-.tabs > li.active > a {
+.tabs > li.active > a,
+li[data-tab].cbi-tab > a,
+li[data-tab]:not(.cbi-tab-disabled) > a {
 	background: linear-gradient(135deg, #3b82f6, #6366f1) !important;
 	color: #fff !important;
 	border-color: #3b82f6 !important;
@@ -261,7 +263,8 @@ ul.tabs > li.active > a,
 ul.cbi-tabmenu > li.cbi-tab-disabled > a,
 .cbi-tabmenu > li.cbi-tab-disabled > a,
 ul.tabs > li:not(.active) > a,
-.tabs > li:not(.active) > a {
+.tabs > li:not(.active) > a,
+li[data-tab].cbi-tab-disabled > a {
 	background: var(--ark-surface-2) !important;
 	color: var(--ark-text-muted) !important;
 	border-color: var(--ark-border) !important;
@@ -270,7 +273,8 @@ ul.tabs > li:not(.active) > a,
 }
 
 /* Tab Content Visibility (Hide Inactive Tab Panes, Show Active Pane) */
-[data-tab-title]:not([data-tab-active="true"]) {
+[data-tab-title]:not([data-tab-active="true"]):not(li),
+div[data-tab]:not([data-tab-active="true"]):not(li) {
 	display: none !important;
 	height: 0 !important;
 	opacity: 0 !important;
@@ -278,7 +282,8 @@ ul.tabs > li:not(.active) > a,
 }
 
 [data-tab-title][data-tab-active="true"],
-[data-tab-active="true"] {
+div[data-tab][data-tab-active="true"]:not(li),
+[data-tab-active="true"]:not(li) {
 	display: block !important;
 	height: auto !important;
 	opacity: 1 !important;

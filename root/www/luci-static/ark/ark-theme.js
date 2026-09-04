@@ -17,6 +17,7 @@
     init: function() {
       this.enhancePasswordFields();
       this.enhanceTablesAndLogs();
+      this.enhanceTabs();
       this.enhanceSafetyModals();
       this.enhanceInterfaceBadges();
       this.initGlobalEscHandler();
@@ -197,6 +198,81 @@
       } else {
         view.insertBefore(box, view.firstChild);
       }
+    },
+
+    enhanceTabs: function() {
+      var tabmenus = document.querySelectorAll('ul.cbi-tabmenu, ul.tabs, #tabmenu');
+      tabmenus.forEach(function(menu) {
+        // Enhance individual tab items
+        var items = menu.querySelectorAll('li');
+        items.forEach(function(li) {
+          var a = li.querySelector('a');
+          if (!a) return;
+
+          var txt = a.textContent.trim();
+
+          // Startup tab icons & tooltips
+          if (txt === 'Scripts de iniciação' || txt === 'Initscripts') {
+            a.innerHTML = '<span style="margin-right:6px;">⚙️</span> Scripts de Iniciação';
+            a.title = 'Ativar, desativar, reiniciar ou parar serviços instalados no sistema';
+          } else if (txt === 'Iniciação local' || txt === 'Local Startup') {
+            a.innerHTML = '<span style="margin-right:6px;">📜</span> Iniciação Local (/etc/rc.local)';
+            a.title = 'Comandos e scripts personalizados executados na inicialização';
+          }
+
+          // Active tab tactile feedback if clicked again
+          if (!a.getAttribute('data-ark-click-bound')) {
+            a.setAttribute('data-ark-click-bound', 'true');
+            a.addEventListener('click', function() {
+              if (!li.classList.contains('cbi-tab-disabled')) {
+                a.style.transform = 'scale(0.96)';
+                setTimeout(function() { a.style.transform = ''; }, 150);
+              }
+            });
+          }
+        });
+
+        // Fail-safe delegated switcher for UI tabs
+        if (!menu.getAttribute('data-ark-tab-delegated')) {
+          menu.setAttribute('data-ark-tab-delegated', 'true');
+          menu.addEventListener('click', function(ev) {
+            var targetA = ev.target.closest('a');
+            if (!targetA) return;
+            var targetLi = targetA.closest('li[data-tab]');
+            if (!targetLi) return;
+
+            var tabName = targetLi.getAttribute('data-tab');
+            if (!tabName) return;
+
+            // Update tab button classes immediately
+            menu.querySelectorAll('li[data-tab]').forEach(function(item) {
+              if (item.getAttribute('data-tab') === tabName) {
+                item.classList.add('cbi-tab');
+                item.classList.remove('cbi-tab-disabled');
+              } else {
+                item.classList.remove('cbi-tab');
+                item.classList.add('cbi-tab-disabled');
+              }
+            });
+
+            // Find the sibling group container and enforce display styles
+            var group = menu.nextElementSibling;
+            if (group) {
+              var panes = group.querySelectorAll('[data-tab]');
+              panes.forEach(function(p) {
+                if (p.tagName === 'LI') return;
+                if (p.getAttribute('data-tab') === tabName) {
+                  p.setAttribute('data-tab-active', 'true');
+                  p.style.display = 'block';
+                } else {
+                  p.setAttribute('data-tab-active', 'false');
+                  p.style.display = 'none';
+                }
+              });
+            }
+          });
+        }
+      });
     },
 
     translateRemainingUI: function() {
@@ -1565,6 +1641,7 @@
         timeout = setTimeout(function() {
           self.enhancePasswordFields();
           self.enhanceTablesAndLogs();
+          self.enhanceTabs();
           self.enhanceSafetyModals();
           self.enhanceInterfaceBadges();
           self.injectFeatureGuides();
