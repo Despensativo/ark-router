@@ -1695,4 +1695,10 @@ body.modal-overlay-active #modal_overlay {
 	color: #a7f3d0 !important;
 }
 
+/* 13. Overview Page Streamlining */
+body[data-page="admin-status-overview"] #maincontent > h2,
+body[data-page="admin-status-overview"] #view > h2 {
+	display: none !important;
+}
+
 

@@ -23,6 +23,7 @@
       this.applyPageTransforms();
       this.injectFeatureGuides();
       this.translateRemainingUI();
+      this.hideRedundantOverviewSections();
       this.observeDOM();
     },
 
@@ -415,8 +416,17 @@
       var tables = document.querySelectorAll('table.cbi-section-table, table.table, div.table');
       tables.forEach(function(tbl) {
         if (tbl.getAttribute('data-ark-filtered') === 'true') return;
+        if (tbl.closest('.ark-guide-box, #ark-overview-dashboard, .ark-action-card, .ark-admin-card')) return;
+
         var rows = tbl.querySelectorAll('tbody > tr, div.tr:not(.table-titles)');
-        if (rows.length < 3) return;
+        if (rows.length < 6) return;
+
+        // Skip key-value tables with 2 or fewer columns (e.g. Memory, System info)
+        var firstRow = rows[0];
+        if (firstRow) {
+          var cells = firstRow.querySelectorAll('td, th, .td, .th');
+          if (cells.length <= 2) return;
+        }
 
         tbl.setAttribute('data-ark-filtered', 'true');
 
@@ -672,6 +682,19 @@
       } else if (path.indexOf('/system/admin') !== -1) {
         this.transformSystemAdmin();
       }
+      this.hideRedundantOverviewSections();
+    },
+
+    hideRedundantOverviewSections: function() {
+      if (location.pathname.indexOf('/status/overview') === -1) return;
+      var h3s = document.querySelectorAll('h3, legend');
+      h3s.forEach(function(h) {
+        var txt = h.textContent.trim().toLowerCase();
+        if (txt === 'sistema' || txt.indexOf('mem') === 0 || (txt.indexOf('rede') === 0 && txt.indexOf('sem fio') === -1 && txt.indexOf('wireless') === -1)) {
+          var sec = h.closest('.cbi-section') || h.parentElement;
+          if (sec) sec.style.display = 'none';
+        }
+      });
     },
 
     transformStatusOverview: function() {
@@ -773,6 +796,17 @@
       } else {
         main.insertBefore(dash, main.firstChild);
       }
+
+      // Hide redundant read-only tables already fully covered by the ARK Hero Banner
+      var sections = main.querySelectorAll('.cbi-section');
+      sections.forEach(function(sec) {
+        var h = sec.querySelector('h3, legend');
+        if (!h) return;
+        var txt = h.textContent.trim().toLowerCase();
+        if (txt === 'sistema' || txt.indexOf('memór') !== -1 || txt.indexOf('memor') !== -1 || txt === 'rede' || txt === 'memory' || txt === 'system' || txt === 'network') {
+          sec.style.display = 'none';
+        }
+      });
     },
 
     transformSystemFlash: function() {
@@ -1253,6 +1287,7 @@
           self.enhanceInterfaceBadges();
           self.injectFeatureGuides();
           self.translateRemainingUI();
+          self.hideRedundantOverviewSections();
           self.applyPageTransforms();
         }, 150);
       });
