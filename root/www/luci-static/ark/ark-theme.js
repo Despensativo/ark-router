@@ -1589,23 +1589,88 @@
         cardReset.querySelector('#ark-reset-slot').appendChild(elS);
       }
 
-      var actionSections = view.querySelectorAll('.cbi-section[data-tab="Actions"] .cbi-value');
-      actionSections.forEach(function(s) {
-        if (!s.id || s.id.indexOf('mtd') === -1) {
-          s.style.display = 'none';
-        }
-      });
+      // Tab titles enhancement
+      var tabActions = view.querySelector('.cbi-tabmenu li:nth-child(1) a');
+      var tabConfig = view.querySelector('.cbi-tabmenu li:nth-child(2) a');
+      if (tabActions) tabActions.innerHTML = '💾 Partições MTD (U-Boot, ART)';
+      if (tabConfig) tabConfig.innerHTML = '⚙️ Arquivos Preservados (sysupgrade.conf)';
 
-      // Permanently hide redundant sections (backup, restore, flash image) outside the 4 cards
+      // Extract and style MTD partition backup into an advanced dedicated card
+      var actionSec = view.querySelector('.cbi-section[data-tab="Ações"], .cbi-section[data-tab="actions"], .cbi-section[data-tab="Actions"]');
+      var mtdSelect = view.querySelector('[data-name="mtdselect"] select, select[name="mtdselect"]');
+      var mtdBtn = view.querySelector('#cbi-json-actions-mtddownload button, button[name*="mtddownload"]');
+
+      if (actionSec && mtdSelect && mtdBtn && !document.getElementById('ark-mtd-card')) {
+        actionSec.innerHTML = '';
+        actionSec.style.background = 'transparent';
+        actionSec.style.border = 'none';
+        actionSec.style.padding = '0';
+        actionSec.style.margin = '0';
+
+        var card = document.createElement('div');
+        card.id = 'ark-mtd-card';
+        card.className = 'ark-action-card';
+        card.style.background = 'var(--ark-surface-1, #111c35)';
+        card.style.border = '1px solid var(--ark-border, #223455)';
+        card.style.borderRadius = '10px';
+        card.style.padding = '20px 24px';
+        card.style.marginTop = '12px';
+
+        card.innerHTML = '' +
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">' +
+            '<div style="max-width:680px;">' +
+              '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+                '<span style="font-size:22px;">💾</span>' +
+                '<h3 style="margin:0;font-size:16px;font-weight:700;color:#fff;">Cópia de Segurança de Partições de Baixo Nível (MTD)</h3>' +
+                '<span style="background:rgba(234,179,8,0.15);color:#facc15;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;border:1px solid rgba(234,179,8,0.3);">Recurso Avançado</span>' +
+              '</div>' +
+              '<p style="margin:0 0 10px 0;font-size:13px;color:var(--ark-text-muted, #94a3b8);line-height:1.5;">' +
+                'Permite extrair a imagem binária (.bin) bruta diretamente do chip de memória Flash (16 MB) do roteador.' +
+              '</p>' +
+              '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px;font-size:12px;background:rgba(0,0,0,0.25);padding:10px 14px;border-radius:8px;border-left:3px solid #3b82f6;">' +
+                '<div><strong style="color:#60a5fa;">u-boot (mtd0):</strong> O bootloader ("BIOS") do aparelho. Essencial para recuperar roteadores inoperantes (unbrick).</div>' +
+                '<div><strong style="color:#34d399;">art (mtd9):</strong> Atheros Radio Test. Calibração analógica de fábrica dos rádios Wi-Fi. Guarde como segurança!</div>' +
+              '</div>' +
+            '</div>' +
+            '<div id="ark-mtd-slot" style="display:flex;flex-direction:column;gap:8px;min-width:220px;">' +
+              '<label style="font-size:12px;font-weight:600;color:#cbd5e1;">Selecione a partição MTD:</label>' +
+            '</div>' +
+          '</div>';
+
+        actionSec.appendChild(card);
+        var slot = card.querySelector('#ark-mtd-slot');
+
+        // Wrap select in container with data-name="mtdselect" so handleBlock querySelector succeeds
+        var mtdWrap = document.createElement('div');
+        mtdWrap.setAttribute('data-name', 'mtdselect');
+        mtdSelect.style.width = '100%';
+        mtdSelect.style.padding = '8px 12px';
+        mtdSelect.style.borderRadius = '6px';
+        mtdSelect.style.background = 'var(--ark-surface-2, #1e293b)';
+        mtdSelect.style.color = '#fff';
+        mtdSelect.style.border = '1px solid var(--ark-border, #334155)';
+        mtdWrap.appendChild(mtdSelect);
+        slot.appendChild(mtdWrap);
+
+        mtdBtn.className = 'cbi-button cbi-button-action';
+        mtdBtn.style.width = '100%';
+        mtdBtn.style.padding = '8px 16px';
+        mtdBtn.style.fontWeight = '600';
+        mtdBtn.innerHTML = '⬇️ Baixar Partição (.bin)';
+        slot.appendChild(mtdBtn);
+      } else if (actionSec && !mtdSelect) {
+        actionSec.style.display = 'none';
+      }
+
+      // Hide redundant raw sections outside the cards and tabs
       var duplicateSections = view.querySelectorAll('.cbi-section, fieldset');
       duplicateSections.forEach(function(sec) {
-        if (sec.closest('#ark-flash-grid') || sec.id === 'ark-flash-grid') return;
+        if (sec.closest('#ark-flash-grid') || sec.id === 'ark-flash-grid' || sec === actionSec) return;
         var h = sec.querySelector('h2, h3, legend');
         if (!h) return;
         var txt = h.textContent.trim().toLowerCase();
-        if (txt.indexOf('cópia') !== -1 || txt.indexOf('backup') !== -1 ||
-            txt.indexOf('restaur') !== -1 || txt.indexOf('restore') !== -1 ||
-            txt.indexOf('gravar') !== -1 || txt.indexOf('flash') !== -1) {
+        if (txt.indexOf('cópia de segurança') !== -1 || txt.indexOf('restauração') !== -1 ||
+            txt.indexOf('gravar uma nova') !== -1 || txt.indexOf('salve o conteúdo') !== -1) {
           sec.style.display = 'none';
         }
       });
@@ -1613,17 +1678,6 @@
       var oldHeader = view.querySelector('h2');
       if (oldHeader && oldHeader.textContent.toLowerCase().indexOf('flash') !== -1) {
         oldHeader.style.display = 'none';
-      }
-
-      var mode = localStorage.getItem('ark_interface_mode') || 'basic';
-      if (mode !== 'advanced') {
-        var mtd = view.querySelector('[id*="mtd"], [name*="mtd"]');
-        if (mtd) {
-          var mtdSec = mtd.closest('.cbi-section') || mtd.closest('.cbi-value');
-          if (mtdSec) mtdSec.style.display = 'none';
-        }
-        var flashTabs = view.querySelector('.cbi-tabmenu');
-        if (flashTabs) flashTabs.style.display = 'none';
       }
     },
 
