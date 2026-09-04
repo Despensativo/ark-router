@@ -1,6 +1,17 @@
 # Changelog
 
-## 0.9.72
+## 0.9.73
+
+- **📈 Dark Theme Nativo para Gráficos em Tempo Real (`admin/status/realtime/*`)**:
+  - **Eliminação do Fundo Branco**: Removido o canvas branco ofuscante (`#ffffff`) dos gráficos SVG em todas as 4 abas de telemetria em tempo real: *Carga*, *Tráfego*, *Rede sem fio* e *Conexões*.
+  - **Canvas Obsidian e Linhas Suaves**: O fundo foi unificado à paleta escura do ARK Router (`#111c35`), com grade sutil (`rgba(255, 255, 255, 0.08)`) e marcações de tempo e valores em tipografia legível (`#94a3b8`).
+  - **Curvas Neon de Alta Visibilidade**:
+    - Conexões UDP: Azul ciano elétrico (`#38bdf8`) com preenchimento translúcido.
+    - Conexões TCP / Download (TX): Verde esmeralda neon (`#34d399`).
+    - Upload (RX) / Sinal Wi-Fi (RSSI): Azul cobalto vibrante (`#60a5fa`).
+    - Picos de Carga / Ruído (Noise): Coral avermelhado / Crimson (`#fb7185`).
+  - **Cartões de Legenda e Métricas**: Tabelas de resumo de pico/média estilizadas em cartões escuros com cores coordenadas com as curvas dos gráficos.
+  - **Guia Educacional de Telemetria**: Adicionado bloco explicativo orientando o diagnóstico de gargalos de rede, perda de pacotes e uso do SQM Cake.
 
 - **⚡ Redesign e Otimização da Tabela de Processos (`admin/status/processes`)**:
   - **Alinhamento e Hierarquia dos Botões de Ação**: Substituído o empilhamento desordenado dos botões por um grupo horizontal inline (`.ark-proc-actions-group`) com cores semânticas distintas e ícones intuitivos:

@@ -171,6 +171,13 @@
           fazer: 'Se você joga online no videogame ou PC, mantenha o UPnP ativado para garantir conexões rápidas e bate-papo por voz sem bloqueios. Caso prefira segurança total e controle manual, desmarque e crie regras manuais no Firewall.',
           rec: 'Mantenha "Dispare os serviços de UPnP e NAT-PMP" ativado em residências com gamers. O ARK Router gerencia a limpeza automática das concessões inativas.'
         };
+      } else if (path.indexOf('/status/realtime') !== -1) {
+        guide = {
+          title: 'Guia de Gráficos em Tempo Real (Largura de Banda e Carga)',
+          serve: 'Painel com atualização dinâmica a cada 3 segundos exibindo carga da CPU, velocidade de download/upload, ruído do sinal Wi-Fi e sessões ativas (TCP/UDP).',
+          fazer: 'Alterne entre as abas superiores para diagnosticar picos de consumo ou lentidão na rede. Se o tráfego atingir 100% da sua conexão, ative o Smart Queue Management (SQM Cake) no ARK Router para evitar lag em jogos.',
+          rec: 'Para menor latência e jogos online fluidos, conexões UDP devem se manter estáveis e a Carga da CPU não deve ultrapassar 1.50.'
+        };
       }
 
       if (!guide) return;
@@ -802,8 +809,33 @@
         this.transformStatusIptables();
       } else if (path.indexOf('/status/processes') !== -1) {
         this.transformStatusProcesses();
+      } else if (path.indexOf('/status/realtime') !== -1) {
+        this.transformStatusRealtime();
       }
       this.hideRedundantOverviewSections();
+    },
+
+    transformStatusRealtime: function() {
+      var svgs = document.querySelectorAll('svg');
+      svgs.forEach(function(svg) {
+        var parent = svg.parentElement;
+        if (parent) {
+          parent.classList.add('ark-realtime-chart-card');
+          parent.style.background = 'var(--ark-surface-1, #111c35)';
+          parent.style.borderColor = 'var(--ark-border, #223455)';
+          parent.style.borderRadius = 'var(--ark-radius, 10px)';
+          parent.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.4)';
+          parent.style.overflow = 'hidden';
+        }
+        var lines = svg.querySelectorAll('line');
+        lines.forEach(function(l) {
+          l.style.stroke = 'rgba(255, 255, 255, 0.08)';
+        });
+        var texts = svg.querySelectorAll('text');
+        texts.forEach(function(t) {
+          t.style.fill = '#94a3b8';
+        });
+      });
     },
 
     transformStatusProcesses: function() {

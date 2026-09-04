@@ -1937,5 +1937,144 @@ body[data-page="admin-status-iptables"] ul.cbi-tabmenu {
 	box-sizing: border-box !important;
 }
 
+/* 17. Real-Time SVG Graphs & Dark Mode Canvas (admin/status/realtime/*) */
+div[style*="height: 300px"],
+div[style*="height:300px"],
+div[style*="height: 250px"],
+div[style*="height:250px"],
+div[style*="background: rgb(255, 255, 255)"],
+div[style*="background: rgb(255,255,255)"],
+div[style*="background: #ffffff"],
+div[style*="background:#ffffff"],
+div[style*="background: white"],
+div[style*="background:#fff"],
+.ark-realtime-chart-card {
+	background: var(--ark-surface-1, #111c35) !important;
+	border: 1px solid var(--ark-border, #223455) !important;
+	border-radius: var(--ark-radius, 10px) !important;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+	overflow: hidden !important;
+	margin: 16px 0 !important;
+}
+
+svg {
+	background: transparent !important;
+}
+
+/* Subtle Grid Lines */
+svg line {
+	stroke: rgba(255, 255, 255, 0.08) !important;
+	stroke-width: 1px !important;
+}
+
+/* Axis Labels & Time Indicators */
+svg text {
+	fill: var(--ark-text-muted, #94a3b8) !important;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+	font-size: 11px !important;
+	font-weight: 600 !important;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Vibrant Neon Polylines (Dark Theme Visual Clarity) */
+#udp, polyline[style*="blue"], path[style*="blue"] {
+	fill: #0ea5e9 !important;
+	fill-opacity: 0.3 !important;
+	stroke: #38bdf8 !important;
+	stroke-width: 2px !important;
+}
+
+#tcp, polyline[style*="green"], path[style*="green"] {
+	fill: #10b981 !important;
+	fill-opacity: 0.3 !important;
+	stroke: #34d399 !important;
+	stroke-width: 2px !important;
+}
+
+#other, #noise, polyline[style*="red"], path[style*="red"] {
+	fill: #f43f5e !important;
+	fill-opacity: 0.3 !important;
+	stroke: #fb7185 !important;
+	stroke-width: 2px !important;
+}
+
+#load01 {
+	fill: #f43f5e !important;
+	fill-opacity: 0.35 !important;
+	stroke: #fb7185 !important;
+	stroke-width: 2px !important;
+}
+#load05 {
+	fill: #f97316 !important;
+	fill-opacity: 0.35 !important;
+	stroke: #fb923c !important;
+	stroke-width: 2px !important;
+}
+#load15 {
+	fill: #eab308 !important;
+	fill-opacity: 0.35 !important;
+	stroke: #facc15 !important;
+	stroke-width: 2px !important;
+}
+
+#rx {
+	fill: #3b82f6 !important;
+	fill-opacity: 0.35 !important;
+	stroke: #60a5fa !important;
+	stroke-width: 2px !important;
+}
+#tx {
+	fill: #10b981 !important;
+	fill-opacity: 0.35 !important;
+	stroke: #34d399 !important;
+	stroke-width: 2px !important;
+}
+#rssi {
+	fill: #3b82f6 !important;
+	fill-opacity: 0.35 !important;
+	stroke: #60a5fa !important;
+	stroke-width: 2px !important;
+}
+
+/* Metric Legend Cards under Real-time Graphs */
+div[style*="table-layout:fixed"],
+.table[style*="table-layout:fixed"] {
+	background: var(--ark-surface-2, #16223f) !important;
+	border: 1px solid var(--ark-border, #223455) !important;
+	border-radius: var(--ark-radius, 10px) !important;
+	padding: 8px 14px !important;
+	margin-top: 14px !important;
+}
+
+div[style*="table-layout:fixed"] .td,
+.table[style*="table-layout:fixed"] .td {
+	font-size: 13px !important;
+	color: var(--ark-text-main, #e2e8f0) !important;
+	border: none !important;
+}
+
+/* Colored Metric Labels Matching Graph Curves */
+strong[style*="blue"] {
+	border-bottom: 2px solid #38bdf8 !important;
+	color: #38bdf8 !important;
+}
+strong[style*="green"] {
+	border-bottom: 2px solid #34d399 !important;
+	color: #34d399 !important;
+}
+strong[style*="red"] {
+	border-bottom: 2px solid #fb7185 !important;
+	color: #fb7185 !important;
+}
+strong[style*="rgb(255, 102, 0)"], strong[style*="orange"] {
+	border-bottom: 2px solid #fb923c !important;
+	color: #fb923c !important;
+}
+strong[style*="rgb(255, 170, 0)"], strong[style*="yellow"] {
+	border-bottom: 2px solid #facc15 !important;
+	color: #facc15 !important;
+}
+
+
 
 
