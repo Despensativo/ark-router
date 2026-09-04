@@ -2090,27 +2090,43 @@
           '<div class="ark-iface-actions"></div>';
 
         var actWrap = card.querySelector('.ark-iface-actions');
-
-        var editLink = document.createElement('a');
-        editLink.href = '/cgi-bin/luci/admin/network/network/' + sid;
-        editLink.className = 'cbi-button cbi-button-apply';
-        editLink.innerHTML = '✏️ Editar';
-        editLink.style.textDecoration = 'none';
-        editLink.style.display = 'inline-flex';
-        editLink.style.alignItems = 'center';
-        editLink.style.justifyContent = 'center';
-        actWrap.appendChild(editLink);
-
         var actions = r.querySelector('.cbi-section-actions');
         if (actions) {
           var btns = actions.querySelectorAll('button');
+          var editBtn = null;
+          var otherBtns = [];
+
           btns.forEach(function(b) {
             var bText = (b.textContent || '').trim().toLowerCase();
-            if (bText.indexOf('edit') !== -1 || bText.indexOf('editar') !== -1) {
-              return;
+            if (bText.indexOf('edit') !== -1 || bText.indexOf('editar') !== -1 || b.classList.contains('cbi-button-edit')) {
+              editBtn = b;
+            } else {
+              otherBtns.push(b);
             }
+          });
+
+          // 1. Edit button first (styled with cbi-button-apply, triggers native LuCI modal editor)
+          if (editBtn) {
+            var cloneEdit = document.createElement('button');
+            cloneEdit.type = 'button';
+            cloneEdit.className = 'cbi-button cbi-button-apply';
+            cloneEdit.innerHTML = '✏️ Editar';
+            cloneEdit.title = 'Configurar interface ' + name;
+            cloneEdit.addEventListener('click', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              editBtn.click();
+            });
+            actWrap.appendChild(cloneEdit);
+          }
+
+          // 2. Other action buttons (Reinicie, Parar, Apagar)
+          otherBtns.forEach(function(b) {
             var clone = b.cloneNode(true);
-            clone.addEventListener('click', function(e) { e.preventDefault(); b.click(); });
+            clone.addEventListener('click', function(e) {
+              e.preventDefault();
+              b.click();
+            });
             actWrap.appendChild(clone);
           });
         }
