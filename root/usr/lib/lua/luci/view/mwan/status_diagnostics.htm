@@ -1,0 +1,379 @@
+<%#
+ Copyright 2014 Aedan Renner <chipdankly@gmail.com>
+ Copyright 2018 Florian Eckert <fe@dev.tdt.de>
+ Copyright 2026 ARK Router Modern Web Team
+ Licensed to the public under the GNU General Public License v2.
+-%>
+
+<%+header%>
+
+<ul class="cbi-tabmenu">
+	<li class="cbi-tab-disabled"><a href="<%=luci.dispatcher.build_url("admin/status/mwan/overview")%>"><%:Interface%></a></li>
+	<li class="cbi-tab-disabled"><a href="<%=luci.dispatcher.build_url("admin/status/mwan/detail")%>"><%:Detail%></a></li>
+	<li class="cbi-tab"><a href="<%=luci.dispatcher.build_url("admin/status/mwan/diagnostics")%>"><%:Diagnostics%></a></li>
+	<li class="cbi-tab-disabled"><a href="<%=luci.dispatcher.build_url("admin/status/mwan/troubleshooting")%>"><%:Troubleshooting%></a></li>
+</ul>
+
+<%
+	local uci = require "luci.model.uci"
+
+	local iface = {}
+
+	uci.cursor():foreach("mwan3", "interface",
+		function (section)
+			table.insert(iface, section[".name"])
+		end
+	)
+%>
+
+<style>
+.ark-diag-card {
+	background: var(--ark-card-bg, rgba(255, 255, 255, 0.04));
+	border: 1px solid var(--ark-card-border, rgba(255, 255, 255, 0.08));
+	border-radius: 10px;
+	padding: 16px 20px;
+	margin-bottom: 20px;
+}
+.ark-diag-header {
+	margin-bottom: 16px;
+}
+.ark-diag-header h2 {
+	margin: 0 0 6px 0;
+	font-size: 1.25rem;
+	font-weight: 600;
+	color: var(--ark-text-primary, #f8fafc);
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.ark-diag-header p {
+	margin: 0;
+	font-size: 0.875rem;
+	color: var(--ark-text-muted, #94a3b8);
+	line-height: 1.45;
+}
+.ark-presets-container {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	margin-top: 8px;
+}
+.ark-preset-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	background: var(--ark-pill-bg, rgba(255, 255, 255, 0.07));
+	border: 1px solid var(--ark-pill-border, rgba(255, 255, 255, 0.14));
+	color: var(--ark-text-primary, #e2e8f0);
+	padding: 4px 11px;
+	border-radius: 9999px;
+	font-size: 11.5px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	user-select: none;
+}
+.ark-preset-pill:hover {
+	background: var(--ark-accent-hover, #0284c7);
+	border-color: var(--ark-accent, #38bdf8);
+	color: #fff;
+	transform: translateY(-1px);
+}
+.ark-preset-pill.active {
+	background: var(--ark-accent, #0ea5e9);
+	border-color: #38bdf8;
+	color: #ffffff;
+	font-weight: 600;
+}
+.ark-task-desc-box {
+	margin-top: 6px;
+	padding: 8px 12px;
+	background: rgba(15, 23, 42, 0.45);
+	border-left: 3px solid var(--ark-accent, #38bdf8);
+	border-radius: 4px;
+	font-size: 12px;
+	color: var(--ark-text-muted, #cbd5e1);
+	line-height: 1.4;
+}
+.ark-output-wrapper {
+	margin-top: 18px;
+	background: #090d16;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 8px;
+	overflow: hidden;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+.ark-output-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background: rgba(255, 255, 255, 0.04);
+	padding: 8px 14px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+	font-size: 12px;
+	font-weight: 600;
+	color: #94a3b8;
+}
+.ark-output-pre {
+	margin: 0;
+	padding: 14px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+	font-size: 12.5px;
+	line-height: 1.55;
+	color: #e2e8f0;
+	white-space: pre-wrap;
+	word-break: break-all;
+	max-height: 420px;
+	overflow-y: auto;
+}
+</style>
+
+<script type="text/javascript">//<![CDATA[
+	var stxhr = new XHR();
+
+	var taskDescriptions = {
+		'ping_custom': '<%:Envia 5 pacotes ICMP através da interface selecionada para medir latência e integridade da rota até o host informado.%>',
+		'ping_gateway': '<%:Envia 5 pacotes ICMP diretamente para o gateway (salto padrão) configurado nesta interface.%>',
+		'ping_trackips': '<%:Testa a conexão contra os IPs de rastreamento (tracking hosts) definidos na configuração do MWAN3.%>',
+		'traceroute_custom': '<%:Mapeia os saltos intermediários de rede até o host de destino para isolar gargalos e perdas.%>',
+		'check_rules': '<%:Verifica as regras de roteamento baseadas em políticas (ip rule / fwmark) associadas a esta interface.%>',
+		'check_routes': '<%:Exibe a tabela de rotas do kernel associada especificamente à interface selecionada.%>',
+		'hotplug_ifup': '<%:Simula um evento de hotplug ifup no daemon do MWAN3 para forçar o reconhecimento da interface ativa.%>',
+		'hotplug_ifdown': '<%:Simula um evento de hotplug ifdown no daemon do MWAN3 para forçar failover caso necessário.%>'
+	};
+
+	function set_target(val) {
+		var input = document.getElementById('custom_target');
+		if (input) {
+			input.value = val;
+			input.focus();
+		}
+		var pills = document.querySelectorAll('.ark-preset-pill');
+		for (var i = 0; i < pills.length; i++) {
+			if (pills[i].getAttribute('data-target') === val) {
+				pills[i].classList.add('active');
+			} else {
+				pills[i].classList.remove('active');
+			}
+		}
+	}
+
+	function on_target_input(e) {
+		var pills = document.querySelectorAll('.ark-preset-pill');
+		var val = (e.target.value || '').trim();
+		for (var i = 0; i < pills.length; i++) {
+			if (pills[i].getAttribute('data-target') === val) {
+				pills[i].classList.add('active');
+			} else {
+				pills[i].classList.remove('active');
+			}
+		}
+	}
+
+	function on_task_change(taskVal) {
+		var targetSec = document.getElementById('custom_target_section');
+		var descBox = document.getElementById('task_desc_box');
+		var isHostTask = (taskVal === 'ping_custom' || taskVal === 'traceroute_custom');
+
+		if (targetSec) {
+			targetSec.style.display = isHostTask ? 'block' : 'none';
+		}
+		if (descBox && taskDescriptions[taskVal]) {
+			descBox.innerHTML = taskDescriptions[taskVal];
+		}
+	}
+
+	function copy_output() {
+		var pre = document.getElementById('diag-rc-output-pre');
+		if (!pre) return;
+		var text = pre.innerText || pre.textContent;
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			navigator.clipboard.writeText(text).then(function() {
+				var btn = document.getElementById('btn-copy-diag');
+				if (btn) {
+					var orig = btn.innerHTML;
+					btn.innerHTML = '✓ <%:Copiado!%>';
+					setTimeout(function() { btn.innerHTML = orig; }, 2000);
+				}
+			});
+		} else {
+			var ta = document.createElement('textarea');
+			ta.value = text;
+			document.body.appendChild(ta);
+			ta.select();
+			document.execCommand('copy');
+			document.body.removeChild(ta);
+			var btn = document.getElementById('btn-copy-diag');
+			if (btn) {
+				var orig = btn.innerHTML;
+				btn.innerHTML = '✓ <%:Copiado!%>';
+				setTimeout(function() { btn.innerHTML = orig; }, 2000);
+			}
+		}
+	}
+
+	function update_status(iface, task)
+	{
+		var outputContainer = document.getElementById('diag-output-container');
+		var outputPre = document.getElementById('diag-rc-output-pre');
+		var statusBanner = document.getElementById('diag-status-indicator');
+		var targetInput = document.getElementById('custom_target');
+		var target = (targetInput && targetInput.value) ? targetInput.value.trim() : '1.1.1.1';
+
+		if (task === 'ping_custom' || task === 'traceroute_custom') {
+			if (!target) {
+				target = '1.1.1.1';
+				if (targetInput) targetInput.value = '1.1.1.1';
+			}
+		}
+
+		if (outputContainer) outputContainer.style.display = 'block';
+		if (statusBanner) {
+			statusBanner.innerHTML = '<span style="display:inline-flex; align-items:center; gap:6px; color:#38bdf8;">' +
+				'<img src="<%=resource%>/icons/loading.gif" alt="<%:Loading%>" style="vertical-align: middle; width:14px; height:14px;" /> ' +
+				'<%:Executando teste através de %> ' + String.format('<strong>%h</strong>...', iface) +
+				'</span>';
+		}
+		if (outputPre) {
+			outputPre.innerHTML = '<span style="color:#94a3b8;"><%:Aguardando resposta do roteador...%></span>';
+		}
+
+		var endpoint = '<%=url("admin/status/mwan")%>/diagnostics_display/' + encodeURIComponent(iface) + '/' + encodeURIComponent(task) + '/' + encodeURIComponent(target);
+
+		stxhr.post(endpoint, { token: '<%=token%>', custom_target: target },
+			function(x)
+			{
+				if (statusBanner) {
+					statusBanner.innerHTML = '<span style="color:#22c55e;">✓ <%:Concluído com sucesso%></span>';
+				}
+				if (outputPre) {
+					outputPre.innerHTML = String.format('%h', x.responseText || '<%:Nenhuma resposta recebida.%>');
+				}
+			}
+		);
+	}
+
+	window.addEventListener('DOMContentLoaded', function() {
+		var taskSel = document.querySelector('select[name="task"]');
+		if (taskSel) {
+			on_task_change(taskSel.value);
+		}
+		var targetInput = document.getElementById('custom_target');
+		if (targetInput) {
+			targetInput.addEventListener('keydown', function(ev) {
+				if (ev.key === 'Enter') {
+					ev.preventDefault();
+					var ifaceSel = document.querySelector('select[name="iface"]');
+					var taskSel = document.querySelector('select[name="task"]');
+					if (ifaceSel && taskSel) {
+						update_status(ifaceSel.value, taskSel.value);
+					}
+				}
+			});
+			targetInput.addEventListener('input', on_target_input);
+		}
+	});
+//]]></script>
+
+<form method="post" action="<%=url("admin/network/diagnostics")%>" onsubmit="return false;">
+	<div class="cbi-map">
+		<div class="ark-diag-card">
+			<div class="ark-diag-header">
+				<h2>📡 <%:MWAN Status - Diagnostics%></h2>
+				<p><%:Execute testes direcionados através de uma interface de rede específica (WAN, WWAN, etc.) para verificar roteamento, gateway e conectividade externa com ping em tempo real e resolução DNS.%></p>
+			</div>
+
+			<%if not require("luci.sys").init.enabled("mwan3") then%>
+			<div class="alert-message warning" style="margin-bottom: 14px;">
+				<strong><%:INFO: O serviço MWAN3 não está em execução ou ativo no momento.%></strong>
+			</div>
+			<%end%>
+
+			<div class="cbi-section">
+				<!-- Seleção da Interface -->
+				<div class="cbi-section-node">
+					<div class="cbi-value">
+						<label class="cbi-value-title"><%:Interface de Origem%></label>
+						<div class="cbi-value-field">
+							<select class="cbi-input-select" name="iface" style="min-width: 220px;">
+								<% for _, z in ipairs(iface) do -%>
+								<option value="<%=z%>"><%=z%></option>
+								<%- end %>
+							</select>
+							<div class="cbi-value-description">
+								<%:O comando será forçado a sair exclusivamente pela porta física desta interface (-I device).%>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Seleção da Tarefa -->
+				<div class="cbi-section-node">
+					<div class="cbi-value">
+						<label class="cbi-value-title"><%:Tipo de Teste / Diagnóstico%></label>
+						<div class="cbi-value-field">
+							<select class="cbi-input-select" name="task" onchange="on_task_change(this.value)" style="min-width: 260px;">
+								<option value="ping_custom" selected="selected">📡 <%:Ping em IP ou Site Personalizado%></option>
+								<option value="traceroute_custom">🗺️ <%:Traceroute para IP ou Site%></option>
+								<option value="ping_gateway">🚪 <%:Ping no Gateway Padrão%></option>
+								<option value="ping_trackips">🎯 <%:Ping nos IPs de Rastreamento (MWAN)%></option>
+								<option value="check_rules">⚖️ <%:Verificar Regras de IP (ip rule)%></option>
+								<option value="check_routes">🛣️ <%:Verificar Tabela de Rotas (ip route)%></option>
+								<option value="hotplug_ifup">🔌 <%:Simular Hotplug ifup%></option>
+								<option value="hotplug_ifdown">🛑 <%:Simular Hotplug ifdown%></option>
+							</select>
+							<div class="ark-task-desc-box" id="task_desc_box">
+								<%:Envia 5 pacotes ICMP através da interface selecionada para medir latência e integridade da rota até o host informado.%>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Entrada de IP/Site Personalizado com Presets -->
+				<div class="cbi-section-node" id="custom_target_section" style="display: block;">
+					<div class="cbi-value">
+						<label class="cbi-value-title" for="custom_target"><%:Host de Destino (IP ou Site)%></label>
+						<div class="cbi-value-field">
+							<div style="display: flex; gap: 8px; align-items: center; max-width: 480px;">
+								<input type="text" class="cbi-input-text" name="custom_target" id="custom_target" value="1.1.1.1" placeholder="Ex: 1.1.1.1 ou google.com" style="flex: 1; padding: 6px 12px; font-family: monospace;" />
+							</div>
+
+							<!-- Predefinições Rápidas (1.1.1.1 e google.com em destaque conforme solicitado) -->
+							<div class="ark-presets-container">
+								<span style="font-size: 11px; color: var(--ark-text-muted, #94a3b8); margin-right: 2px;"><%:Predefinições rápidas:%></span>
+								<button type="button" class="ark-preset-pill active" data-target="1.1.1.1" onclick="set_target('1.1.1.1')">⚡ 1.1.1.1 (Cloudflare)</button>
+								<button type="button" class="ark-preset-pill" data-target="google.com" onclick="set_target('google.com')">🌐 google.com (Google)</button>
+								<button type="button" class="ark-preset-pill" data-target="8.8.8.8" onclick="set_target('8.8.8.8')">🔍 8.8.8.8</button>
+								<button type="button" class="ark-preset-pill" data-target="registro.br" onclick="set_target('registro.br')">🇧🇷 registro.br</button>
+								<button type="button" class="ark-preset-pill" data-target="1.0.0.1" onclick="set_target('1.0.0.1')">⏱️ 1.0.0.1</button>
+							</div>
+
+							<div class="cbi-value-description" style="margin-top: 6px;">
+								<%:Informe qualquer endereço IP ou site (ex: 1.1.1.1 ou google.com). Clique nas predefinições rápidas para preencher instantaneamente. Pressione Enter ou clique em Executar para iniciar o teste.%>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Botão de Execução -->
+			<div class="cbi-section-create" style="margin-top: 14px;">
+				<button type="button" class="btn cbi-button cbi-button-apply" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600; padding: 8px 22px; font-size: 13.5px; border-radius: 6px; cursor: pointer;" onclick="update_status(this.form.iface.value, this.form.task.value)">
+					<span>▶</span> <%:Executar Diagnóstico%>
+				</button>
+			</div>
+
+			<!-- Terminal de Saída do Comando -->
+			<div id="diag-output-container" class="ark-output-wrapper" style="display:none;">
+				<div class="ark-output-header">
+					<div id="diag-status-indicator"><%:Resultado da Execução%></div>
+					<button type="button" id="btn-copy-diag" class="btn cbi-button" onclick="copy_output()" style="padding: 2px 10px; font-size: 11px; border-radius: 4px; cursor: pointer;">📋 <%:Copiar Saída%></button>
+				</div>
+				<pre id="diag-rc-output-pre" class="ark-output-pre"></pre>
+			</div>
+		</div>
+	</div>
+</form>
+
+<%+footer%>
