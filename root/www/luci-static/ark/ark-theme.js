@@ -21,6 +21,7 @@
       this.enhanceSafetyModals();
       this.enhanceInterfaceBadges();
       this.initGlobalEscHandler();
+      this.enhanceNetlinkCharts();
       this.applyPageTransforms();
       this.injectFeatureGuides();
       this.translateRemainingUI();
@@ -141,8 +142,29 @@
         guide = {
           title: 'Guia de Processos em Execução (Memória RAM)',
           serve: 'Lista em tempo real os processos ativos na memória RAM do roteador (comando ps). Todos os itens listados já estão em execução, por isso não há opção de "Iniciar" direto nesta tabela.',
-          fazer: 'Monitore o consumo de CPU e memória. Use "Suspender" (SIGHUP) para recarregar configurações sem descarregar da memória, "Terminar" (SIGTERM) para encerrar suavemente ou "Matar" (SIGKILL) caso o processo trave. Para INICIAR ou PARAR serviços do sistema, utilize o atalho no topo para "Sistema -> Inicialização".',
+          fazer: 'Monitore o consumo de CPU e memória. Clique nos títulos das colunas (CPU, Memória, Comando ou PID) para ordenar a lista instantaneamente. Use "🔄 Recarregar" (SIGHUP) para recarregar configurações sem reiniciar nem descarregar da memória, "Terminar" (SIGTERM) para encerrar suavemente ou "Matar" (SIGKILL) caso o processo trave. Para INICIAR ou PARAR serviços do sistema, utilize o atalho no topo para "Sistema -> Inicialização".',
           rec: 'Nunca finalize processos essenciais do sistema operacional (como procd, ubusd, netifd ou uhttpd), pois eles mantêm o roteador e este painel funcionando.'
+        };
+      } else if (path.indexOf('/network/switch') !== -1 || path.indexOf('/network/vlan') !== -1) {
+        guide = {
+          title: 'Guia de Switch e VLANs (Portas de Rede Físicas)',
+          serve: 'Configura o comutador de hardware interno (Switch Gigabit) dividindo as portas físicas traseiras em redes lógicas isoladas (VLANs).',
+          fazer: 'Mantenha as portas 1 a 4 marcadas como "untagged" (U) na VLAN 1 para a rede local (LAN). A porta WAN conecta-se na VLAN 2.',
+          rec: 'NUNCA desmarque nem altere a porta de CPU (eth0), pois ela é a ponte vital de comunicação entre o processador e as portas do roteador. Se quiser criar uma rede de visitantes isolada, utilize a interface Wi-Fi Guest em vez de alterar as VLANs físicas.'
+        };
+      } else if (path.indexOf('/nlbw/display') !== -1) {
+        guide = {
+          title: 'Guia do Monitor de Largura de Banda (Netlink)',
+          serve: 'Monitora e registra em gráficos interativos o consumo de dados de cada computador, videogame e celular da sua casa em tempo real e por períodos acumulados.',
+          fazer: 'Use o gráfico de rosca (donut) e a tabela de clientes abaixo para descobrir quais aparelhos ou protocolos estão usando a maior parte da sua franquia de dados ou banda de internet.',
+          rec: 'Se sua internet estiver lenta durante downloads pesados de algum aparelho, utilize o Smart Queue Management (SQM Cake) no ARK Router para priorizar chamadas de voz e jogos.'
+        };
+      } else if (path.indexOf('/system/leds') !== -1) {
+        guide = {
+          title: 'Guia de Iluminação e LEDs de Status',
+          serve: 'Controla os LEDs luminosos frontais do roteador (Power, Internet Planet, Wi-Fi 2.4 GHz e Wi-Fi 5 GHz) para indicar status de rede, quedas ou atividade.',
+          fazer: 'Escolha um dos perfis rápidos no topo (Internet Inteligente, Modo Noturno, Alerta de Queda) para ajustar automaticamente todos os LEDs com 1 clique.',
+          rec: 'Em dormitórios, ative o "Modo Noturno" para desligar as luzes e garantir um ambiente 100% escuro sem claridade.'
         };
       } else if (path.indexOf('/status/syslog') !== -1 || path.indexOf('/status/dmesg') !== -1) {
         guide = {
@@ -887,8 +909,63 @@
         this.transformStatusProcesses();
       } else if (path.indexOf('/status/realtime') !== -1) {
         this.transformStatusRealtime();
+      } else if (path.indexOf('/system/leds') !== -1) {
+        this.transformSystemLeds();
+      } else if (path.indexOf('/nlbw/display') !== -1) {
+        this.enhanceNetlinkCharts();
       }
       this.hideRedundantOverviewSections();
+    },
+
+    enhanceNetlinkCharts: function() {
+      if (location.pathname.indexOf('/nlbw/display') === -1) return;
+
+      var cyberpunkPalette = [
+        '#38bdf8', '#818cf8', '#34d399', '#fbbf24', 
+        '#f472b6', '#a78bfa', '#2dd4bf', '#fb923c',
+        '#60a5fa', '#c084fc', '#4ade80', '#e879f9'
+      ];
+
+      var hookChart = function() {
+        if (window.Chart && window.Chart.prototype && !window.Chart.prototype._arkHooked) {
+          window.Chart.prototype._arkHooked = true;
+          var origDoughnut = window.Chart.prototype.Doughnut;
+          window.Chart.prototype.Doughnut = function(data, opts) {
+            opts = opts || {};
+            opts.segmentStrokeColor = '#111c35';
+            opts.segmentStrokeWidth = 2;
+            opts.percentageInnerCutout = 45;
+            if (Array.isArray(data)) {
+              data.forEach(function(seg, i) {
+                if (seg.color === '#cccccc' || (data.length === 1 && seg.value === 1)) {
+                  seg.color = '#223455';
+                } else {
+                  seg.color = cyberpunkPalette[i % cyberpunkPalette.length];
+                }
+              });
+            }
+            return origDoughnut.call(this, data, opts);
+          };
+
+          if (window.Chart.defaults && window.Chart.defaults.global) {
+            window.Chart.defaults.global.tooltipFillColor = 'rgba(15, 23, 42, 0.94)';
+            window.Chart.defaults.global.tooltipFontFamily = 'system-ui, -apple-system, sans-serif';
+            window.Chart.defaults.global.tooltipFontSize = 11;
+            window.Chart.defaults.global.tooltipCornerRadius = 6;
+          }
+        }
+      };
+
+      hookChart();
+      if (!window.Chart) {
+        var checkInterval = setInterval(function() {
+          if (window.Chart) {
+            hookChart();
+            clearInterval(checkInterval);
+          }
+        }, 100);
+        setTimeout(function() { clearInterval(checkInterval); }, 5000);
+      }
     },
 
     transformStatusRealtime: function() {
@@ -978,12 +1055,10 @@
           var lower = text.toLowerCase();
           btn.classList.add('ark-proc-btn');
 
-          if (lower.indexOf('suspender') !== -1 || lower.indexOf('hangup') !== -1 || lower.indexOf('hup') !== -1) {
+          if (lower.indexOf('suspender') !== -1 || lower.indexOf('hangup') !== -1 || lower.indexOf('hup') !== -1 || lower.indexOf('recarregar') !== -1) {
             btn.classList.add('ark-btn-hup');
-            btn.title = 'Suspender / Recarregar configurações do processo (SIGHUP)';
-            if (!btn.querySelector('.ark-btn-icon')) {
-              btn.innerHTML = '<span class="ark-btn-icon">🔄</span> ' + text;
-            }
+            btn.title = 'Recarregar configurações do serviço (SIGHUP) sem reiniciar nem descarregar da memória';
+            btn.innerHTML = '<span class="ark-btn-icon">🔄</span> Recarregar';
           } else if (lower.indexOf('terminar') !== -1 || lower.indexOf('term') !== -1) {
             btn.classList.add('ark-btn-term');
             btn.title = 'Encerrar com segurança permitindo salvar dados (SIGTERM)';
@@ -997,6 +1072,73 @@
               btn.innerHTML = '<span class="ark-btn-icon">🛑</span> ' + text;
             }
           }
+        });
+      });
+
+      // 3. Make Process table dynamically sortable
+      this.makeProcessesTableSortable(view);
+    },
+
+    makeProcessesTableSortable: function(view) {
+      var table = view.querySelector('.table, table.cbi-section-table');
+      if (!table || table.getAttribute('data-ark-sortable') === 'true') return;
+      table.setAttribute('data-ark-sortable', 'true');
+
+      var headerRow = table.querySelector('.tr.table-titles, thead tr, tr.table-titles');
+      if (!headerRow) return;
+
+      var ths = headerRow.querySelectorAll('.th, th');
+      if (ths.length < 5) return;
+
+      var sortState = { col: -1, asc: true };
+      var sortableCols = [0, 2, 3, 4]; // PID, COMANDO, CPU, MEMORIA
+
+      sortableCols.forEach(function(colIdx) {
+        var th = ths[colIdx];
+        if (!th) return;
+
+        th.classList.add('ark-sortable-th');
+        th.title = 'Clique para alternar a ordenação por esta coluna';
+        var icon = document.createElement('span');
+        icon.className = 'ark-sort-icon';
+        icon.textContent = ' ↕';
+        th.appendChild(icon);
+
+        th.addEventListener('click', function() {
+          var isCurrent = (sortState.col === colIdx);
+          var asc = isCurrent ? !sortState.asc : (colIdx === 3 || colIdx === 4 ? false : true);
+          sortState = { col: colIdx, asc: asc };
+
+          headerRow.querySelectorAll('.ark-sort-icon').forEach(function(ic) {
+            ic.textContent = ' ↕';
+            ic.classList.remove('active');
+          });
+          icon.textContent = asc ? ' ▲' : ' ▼';
+          icon.classList.add('active');
+
+          var tbody = table.querySelector('tbody') || table;
+          var rows = Array.from(table.querySelectorAll('.tr:not(.table-titles):not(.placeholder), tbody > tr:not(.table-titles)'));
+
+          rows.sort(function(rowA, rowB) {
+            var cellsA = rowA.querySelectorAll('.td, td');
+            var cellsB = rowB.querySelectorAll('.td, td');
+            if (!cellsA[colIdx] || !cellsB[colIdx]) return 0;
+
+            var valA = cellsA[colIdx].textContent.trim();
+            var valB = cellsB[colIdx].textContent.trim();
+
+            if (colIdx === 0 || colIdx === 3 || colIdx === 4) {
+              var numA = parseFloat(valA.replace(/[^0-9.-]/g, '')) || 0;
+              var numB = parseFloat(valB.replace(/[^0-9.-]/g, '')) || 0;
+              return asc ? (numA - numB) : (numB - numA);
+            } else {
+              return asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            }
+          });
+
+          rows.forEach(function(r) {
+            tbody.appendChild(r);
+          });
         });
       });
     },
@@ -1283,9 +1425,34 @@
         }
       });
 
+      // Permanently hide redundant sections (backup, restore, flash image) outside the 4 cards
+      var duplicateSections = view.querySelectorAll('.cbi-section, fieldset');
+      duplicateSections.forEach(function(sec) {
+        if (sec.closest('#ark-flash-grid') || sec.id === 'ark-flash-grid') return;
+        var h = sec.querySelector('h2, h3, legend');
+        if (!h) return;
+        var txt = h.textContent.trim().toLowerCase();
+        if (txt.indexOf('cópia') !== -1 || txt.indexOf('backup') !== -1 ||
+            txt.indexOf('restaur') !== -1 || txt.indexOf('restore') !== -1 ||
+            txt.indexOf('gravar') !== -1 || txt.indexOf('flash') !== -1) {
+          sec.style.display = 'none';
+        }
+      });
+
       var oldHeader = view.querySelector('h2');
       if (oldHeader && oldHeader.textContent.toLowerCase().indexOf('flash') !== -1) {
         oldHeader.style.display = 'none';
+      }
+
+      var mode = localStorage.getItem('ark_interface_mode') || 'basic';
+      if (mode !== 'advanced') {
+        var mtd = view.querySelector('[id*="mtd"], [name*="mtd"]');
+        if (mtd) {
+          var mtdSec = mtd.closest('.cbi-section') || mtd.closest('.cbi-value');
+          if (mtdSec) mtdSec.style.display = 'none';
+        }
+        var flashTabs = view.querySelector('.cbi-tabmenu');
+        if (flashTabs) flashTabs.style.display = 'none';
       }
     },
 
@@ -1581,11 +1748,26 @@
           '</div>' +
           '<div class="ark-iface-actions"></div>';
 
-        var actions = r.querySelector('.cbi-section-actions');
         var actWrap = card.querySelector('.ark-iface-actions');
+
+        var editLink = document.createElement('a');
+        editLink.href = '/cgi-bin/luci/admin/network/network/' + sid;
+        editLink.className = 'cbi-button cbi-button-apply';
+        editLink.innerHTML = '✏️ Editar';
+        editLink.style.textDecoration = 'none';
+        editLink.style.display = 'inline-flex';
+        editLink.style.alignItems = 'center';
+        editLink.style.justifyContent = 'center';
+        actWrap.appendChild(editLink);
+
+        var actions = r.querySelector('.cbi-section-actions');
         if (actions) {
           var btns = actions.querySelectorAll('button');
           btns.forEach(function(b) {
+            var bText = (b.textContent || '').trim().toLowerCase();
+            if (bText.indexOf('edit') !== -1 || bText.indexOf('editar') !== -1) {
+              return;
+            }
             var clone = b.cloneNode(true);
             clone.addEventListener('click', function(e) { e.preventDefault(); b.click(); });
             actWrap.appendChild(clone);
@@ -1597,6 +1779,12 @@
 
       table.parentNode.insertBefore(grid, table);
       table.style.display = 'none';
+      if (table.parentElement) {
+        var oldHeader = table.parentElement.querySelector('h3, legend');
+        if (oldHeader && oldHeader.textContent.toLowerCase().indexOf('interface') !== -1) {
+          oldHeader.style.display = 'none';
+        }
+      }
     },
 
     transformSystemAdmin: function() {
@@ -1633,6 +1821,182 @@
       if (oldMapDescr) oldMapDescr.style.display = 'none';
     },
 
+    transformSystemLeds: function() {
+      var view = document.getElementById('view') || document.getElementById('maincontent');
+      if (!view || document.getElementById('ark-led-control-center')) return;
+
+      var table = view.querySelector('.table, table.cbi-section-table');
+      if (!table) return;
+
+      var container = document.createElement('div');
+      container.id = 'ark-led-control-center';
+      container.innerHTML = '' +
+        '<div class="ark-presets-box">' +
+          '<div style="display:flex;align-items:center;gap:10px;">' +
+            '<span style="font-size:24px;">💡</span>' +
+            '<div>' +
+              '<h3 style="margin:0;font-size:16px;color:#fff;">Perfis Rápidos de Iluminação (1 Clique)</h3>' +
+              '<p style="margin:2px 0 0;font-size:12px;color:var(--ark-text-muted);">Configure os LEDs do painel frontal instantaneamente para diferentes momentos e necessidades.</p>' +
+            '</div>' +
+          '</div>' +
+          '<div class="ark-preset-cards">' +
+            '<button type="button" class="ark-preset-tile" data-led-preset="smart">' +
+              '<div class="ark-preset-tile-title">🌐 Internet Inteligente</div>' +
+              '<div class="ark-preset-tile-desc">Power verde fixo; LED Internet verde monitorando link WAN (pisca em alerta se a internet cair); Wi-Fi com tráfego.</div>' +
+            '</button>' +
+            '<button type="button" class="ark-preset-tile" data-led-preset="night">' +
+              '<div class="ark-preset-tile-title">🌙 Modo Noturno (Quarto)</div>' +
+              '<div class="ark-preset-tile-desc">Desliga todos os LEDs frontais para quem dorme no mesmo ambiente. Roteador 100% escuro sem claridade.</div>' +
+            '</button>' +
+            '<button type="button" class="ark-preset-tile" data-led-preset="alert">' +
+              '<div class="ark-preset-tile-title">🚨 Alerta Visual de Queda</div>' +
+              '<div class="ark-preset-tile-desc">Power verde e LED Internet em Laranja intermitente para sinalizar falha na conexão de internet à distância.</div>' +
+            '</button>' +
+            '<button type="button" class="ark-preset-tile" data-led-preset="max">' +
+              '<div class="ark-preset-tile-title">⚡ Desempenho Total</div>' +
+              '<div class="ark-preset-tile-desc">Todos os LEDs ativos com pulso de alta frequência nas faixas 2.4 GHz e 5 GHz durante downloads e jogos.</div>' +
+            '</button>' +
+          '</div>' +
+          '<div id="ark-led-feedback" style="display:none;margin-top:12px;font-size:12px;font-weight:600;padding:8px 12px;border-radius:6px;"></div>' +
+        '</div>' +
+        '<div style="margin:20px 0 10px;font-size:14px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;">' +
+          '<span>🎛️</span> Painel Frontal dos LEDs Físicos (D-Link DGL-5500):' +
+        '</div>' +
+        '<div class="ark-led-grid" id="ark-led-tiles">' +
+          '<div class="ark-led-card" id="tile-power">' +
+            '<div class="ark-led-header">' +
+              '<span class="ark-led-indicator green" id="ind-power"></span>' +
+              '<div>' +
+                '<div class="ark-led-title">Power (Alimentação)</div>' +
+                '<div class="ark-led-sub">LED Bicolor Verde / Laranja</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="font-size:12px;color:var(--ark-text-muted);">' +
+              'Indica status do roteador ligado na tomada e carregamento do sistema ARK OS.' +
+            '</div>' +
+          '</div>' +
+          '<div class="ark-led-card" id="tile-internet">' +
+            '<div class="ark-led-header">' +
+              '<span class="ark-led-indicator green" id="ind-internet"></span>' +
+              '<div>' +
+                '<div class="ark-led-title">Internet (Planet)</div>' +
+                '<div class="ark-led-sub">LED Bicolor Verde / Laranja</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="font-size:12px;color:var(--ark-text-muted);">' +
+              'Conectividade com o modem da operadora na porta WAN (eth0.2).' +
+            '</div>' +
+          '</div>' +
+          '<div class="ark-led-card" id="tile-wifi5g">' +
+            '<div class="ark-led-header">' +
+              '<span class="ark-led-indicator blue" id="ind-wifi5g"></span>' +
+              '<div>' +
+                '<div class="ark-led-title">Wi-Fi 5 GHz (Ultra Rápido)</div>' +
+                '<div class="ark-led-sub">Qualcomm Atheros QCA9880</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="font-size:12px;color:var(--ark-text-muted);">' +
+              'Pisca na velocidade dos pacotes de alta velocidade (802.11ac).' +
+            '</div>' +
+          '</div>' +
+          '<div class="ark-led-card" id="tile-wifi2g">' +
+            '<div class="ark-led-header">' +
+              '<span class="ark-led-indicator green" id="ind-wifi2g"></span>' +
+              '<div>' +
+                '<div class="ark-led-title">Wi-Fi 2.4 GHz (Longo Alcance)</div>' +
+                '<div class="ark-led-sub">Qualcomm Atheros QCA9558</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="font-size:12px;color:var(--ark-text-muted);">' +
+              'Pisca na atividade de aparelhos móveis e automação residencial.' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+
+      table.parentNode.insertBefore(container, table);
+
+      var applyPreset = function(presetName) {
+        var fb = document.getElementById('ark-led-feedback');
+        if (fb) {
+          fb.style.display = 'block';
+          fb.style.background = 'rgba(59, 130, 246, 0.15)';
+          fb.style.color = '#60a5fa';
+          fb.textContent = '⏳ Aplicando perfil de LED "' + presetName + '" no roteador...';
+        }
+
+        try {
+          var callExec = (window.L && window.L.rpc) ? window.L.rpc.declare({
+            object: 'file',
+            method: 'exec',
+            params: ['command', 'params']
+          }) : null;
+
+          if (callExec) {
+            callExec('/usr/sbin/equipe-dashboard-control', ['set-led-preset', presetName]).then(function() {
+              if (fb) {
+                fb.style.background = 'rgba(16, 185, 129, 0.2)';
+                fb.style.color = '#34d399';
+                fb.textContent = '✅ Perfil de iluminação aplicado com sucesso!';
+                setTimeout(function() { fb.style.display = 'none'; }, 3000);
+              }
+              updateIndicators(presetName);
+            }).catch(function(err) {
+              if (fb) {
+                fb.style.background = 'rgba(239, 68, 68, 0.2)';
+                fb.style.color = '#f87171';
+                fb.textContent = '⚠️ Erro ao aplicar: ' + err;
+              }
+            });
+          }
+        } catch(e) {
+          console.error(e);
+        }
+      };
+
+      function updateIndicators(preset) {
+        var indPower = document.getElementById('ind-power');
+        var indInternet = document.getElementById('ind-internet');
+        var indWifi5g = document.getElementById('ind-wifi5g');
+        var indWifi2g = document.getElementById('ind-wifi2g');
+
+        if (preset === 'night') {
+          if (indPower) indPower.className = 'ark-led-indicator off';
+          if (indInternet) indInternet.className = 'ark-led-indicator off';
+          if (indWifi5g) indWifi5g.className = 'ark-led-indicator off';
+          if (indWifi2g) indWifi2g.className = 'ark-led-indicator off';
+        } else if (preset === 'alert') {
+          if (indPower) indPower.className = 'ark-led-indicator green';
+          if (indInternet) indInternet.className = 'ark-led-indicator orange blink';
+          if (indWifi5g) indWifi5g.className = 'ark-led-indicator blue';
+          if (indWifi2g) indWifi2g.className = 'ark-led-indicator green';
+        } else if (preset === 'max') {
+          if (indPower) indPower.className = 'ark-led-indicator green';
+          if (indInternet) indInternet.className = 'ark-led-indicator green blink';
+          if (indWifi5g) indWifi5g.className = 'ark-led-indicator blue blink';
+          if (indWifi2g) indWifi2g.className = 'ark-led-indicator green blink';
+        } else {
+          if (indPower) indPower.className = 'ark-led-indicator green';
+          if (indInternet) indInternet.className = 'ark-led-indicator green';
+          if (indWifi5g) indWifi5g.className = 'ark-led-indicator blue';
+          if (indWifi2g) indWifi2g.className = 'ark-led-indicator green';
+        }
+      }
+
+      container.querySelectorAll('.ark-preset-tile').forEach(function(tile) {
+        tile.addEventListener('click', function() {
+          var p = this.getAttribute('data-led-preset');
+          applyPreset(p);
+        });
+      });
+
+      var mode = localStorage.getItem('ark_interface_mode') || 'basic';
+      if (mode !== 'advanced') {
+        table.style.display = 'none';
+        var addBtn = view.querySelector('.cbi-section-create');
+        if (addBtn) addBtn.style.display = 'none';
+      }
+    },
+
     observeDOM: function() {
       var self = this;
       var timeout = null;
@@ -1644,6 +2008,7 @@
           self.enhanceTabs();
           self.enhanceSafetyModals();
           self.enhanceInterfaceBadges();
+          self.enhanceNetlinkCharts();
           self.injectFeatureGuides();
           self.translateRemainingUI();
           self.hideRedundantOverviewSections();

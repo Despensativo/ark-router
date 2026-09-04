@@ -2166,6 +2166,333 @@ strong[style*="rgb(255, 170, 0)"], strong[style*="yellow"] {
 	color: #facc15 !important;
 }
 
+/* 18. LuCI UI Dropdowns (.cbi-dropdown) — Modern Obsidian Styling */
+.cbi-dropdown {
+	display: inline-flex !important;
+	cursor: pointer !important;
+	height: auto !important;
+	min-height: 34px !important;
+	position: relative !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	background: var(--ark-surface-2) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: 8px !important;
+	color: var(--ark-text-main) !important;
+	box-sizing: border-box !important;
+	user-select: none !important;
+	vertical-align: middle !important;
+	font-size: 13px !important;
+}
+.cbi-dropdown:hover {
+	border-color: var(--ark-border-hover) !important;
+}
+.cbi-dropdown:focus {
+	outline: none !important;
+	border-color: var(--ark-primary) !important;
+	box-shadow: 0 0 0 2px var(--ark-primary-glow) !important;
+}
+.cbi-dropdown > ul {
+	list-style: none !important;
+	overflow-x: hidden !important;
+	overflow-y: auto !important;
+	display: flex !important;
+	width: 100% !important;
+	margin: 0 !important;
+	padding: 0 !important;
+}
+.cbi-dropdown > ul > li {
+	display: none !important;
+	list-style: none !important;
+	white-space: nowrap !important;
+	overflow: hidden !important;
+	text-overflow: ellipsis !important;
+	flex-shrink: 1 !important;
+	flex-grow: 1 !important;
+	align-items: center !important;
+	align-self: center !important;
+	color: inherit !important;
+	padding: 6px 12px !important;
+	font-size: 13px !important;
+	line-height: 20px !important;
+}
+.cbi-dropdown > ul > li[display] {
+	display: flex !important;
+	align-items: center !important;
+	gap: 6px !important;
+}
+.cbi-dropdown > .open,
+.cbi-dropdown > .more {
+	flex-grow: 0 !important;
+	flex-shrink: 0 !important;
+	display: flex !important;
+	flex-direction: column !important;
+	justify-content: center !important;
+	text-align: center !important;
+	padding: 0 10px !important;
+	color: var(--ark-text-muted) !important;
+	font-size: 11px !important;
+	border-left: 1px solid var(--ark-border) !important;
+}
+.cbi-dropdown > .open::after {
+	content: "▾" !important;
+	font-size: 12px !important;
+}
+.cbi-dropdown.btn,
+.cbi-dropdown.cbi-button {
+	background: var(--ark-surface-2) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: 8px !important;
+	color: var(--ark-text-main) !important;
+}
+.cbi-dropdown.cbi-button-apply,
+.cbi-dropdown.btn-primary {
+	background: linear-gradient(135deg, #3b82f6, #6366f1) !important;
+	border-color: #3b82f6 !important;
+	color: #fff !important;
+	box-shadow: 0 2px 10px rgba(59, 130, 246, 0.35) !important;
+}
+.cbi-dropdown.cbi-button-apply > .open,
+.cbi-dropdown.btn-primary > .open {
+	color: #fff !important;
+	border-left-color: rgba(255, 255, 255, 0.25) !important;
+}
+/* Floating Dropdown Menu when Open */
+.cbi-dropdown[open] > ul.dropdown {
+	display: block !important;
+	background: var(--ark-surface-2, #192742) !important;
+	border: 1px solid var(--ark-border, rgba(255, 255, 255, 0.15)) !important;
+	border-radius: 8px !important;
+	box-shadow: var(--ark-shadow-lg, 0 12px 35px rgba(0, 0, 0, 0.5)) !important;
+	position: absolute !important;
+	top: calc(100% + 4px) !important;
+	left: 0 !important;
+	z-index: 1100 !important;
+	min-width: 100% !important;
+	width: max-content !important;
+	max-height: 280px !important;
+	overflow-y: auto !important;
+	padding: 4px 0 !important;
+}
+.cbi-dropdown[open] > ul.dropdown > li {
+	display: flex !important;
+	align-items: center !important;
+	padding: 8px 14px !important;
+	color: var(--ark-text-main, #f8fafc) !important;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+	cursor: pointer !important;
+	transition: background 0.12s ease !important;
+}
+.cbi-dropdown[open] > ul.dropdown > li:last-child {
+	border-bottom: none !important;
+}
+.cbi-dropdown[open] > ul.dropdown > li:hover,
+.cbi-dropdown[open] > ul.dropdown > li.focus {
+	background: var(--ark-surface-3, #223455) !important;
+	color: #fff !important;
+}
+.cbi-dropdown[open] > ul.dropdown > li[selected] {
+	background: rgba(59, 130, 246, 0.25) !important;
+	color: #60a5fa !important;
+	font-weight: 600 !important;
+}
 
+/* 19. LuCI Bottom Action Bar (.cbi-page-actions) */
+.cbi-page-actions, .actions {
+	display: flex !important;
+	flex-wrap: wrap !important;
+	align-items: center !important;
+	justify-content: flex-end !important;
+	gap: 10px !important;
+	background: var(--ark-surface-1, #111c30) !important;
+	border: 1px solid var(--ark-border, rgba(255, 255, 255, 0.09)) !important;
+	border-radius: var(--ark-radius, 10px) !important;
+	padding: 14px 18px !important;
+	margin: 24px 0 !important;
+	box-shadow: var(--ark-shadow, 0 4px 20px rgba(0, 0, 0, 0.35)) !important;
+}
+.cbi-page-actions form, .actions form {
+	display: inline-flex !important;
+	margin: 0 !important;
+}
+.cbi-page-actions button, .cbi-page-actions .btn, .cbi-page-actions .cbi-button,
+.cbi-page-actions input[type="submit"], .cbi-page-actions input[type="button"],
+.actions button, .actions .btn, .actions .cbi-button {
+	height: 36px !important;
+	padding: 0 16px !important;
+	font-size: 13px !important;
+	font-weight: 600 !important;
+	border-radius: 8px !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	gap: 6px !important;
+	box-sizing: border-box !important;
+}
+.cbi-page-actions .cbi-dropdown {
+	height: 36px !important;
+	min-height: 36px !important;
+}
 
+/* 20. Anti-Leak & Global Table Containment */
+.cbi-map, .cbi-section, fieldset, .table, table {
+	max-width: 100% !important;
+	box-sizing: border-box !important;
+}
+.cbi-section-table, .table {
+	overflow-x: auto !important;
+	-webkit-overflow-scrolling: touch !important;
+	max-width: 100% !important;
+}
+.cbi-section-table .td input[type="text"],
+.table .td input[type="text"] {
+	max-width: 160px !important;
+	min-width: 50px !important;
+	box-sizing: border-box !important;
+}
+[data-page="admin-services-upnp"] .table,
+[data-page="admin-services-upnp"] table,
+[data-page="admin-services-upnp"] .cbi-section {
+	overflow-x: auto !important;
+	max-width: 100% !important;
+}
+[data-page="admin-services-upnp"] .cbi-value-field input[type="text"] {
+	max-width: 100% !important;
+}
 
+/* 21. Netlink Bandwidth Monitor Dark Cyberpunk Theme */
+path[fill="#ff0000"], polygon[fill="#ff0000"] { fill: #38bdf8 !important; }
+path[fill="#00ff00"], polygon[fill="#00ff00"] { fill: #818cf8 !important; }
+path[fill="#0000ff"], polygon[fill="#0000ff"] { fill: #34d399 !important; }
+path[fill="#ffff00"], polygon[fill="#ffff00"] { fill: #f59e0b !important; }
+path[fill="#ff00ff"], polygon[fill="#ff00ff"] { fill: #ec4899 !important; }
+path[fill="#00ffff"], polygon[fill="#00ffff"] { fill: #06b6d4 !important; }
+
+/* 22. Interactive Process Table Sorting */
+.ark-sortable-th {
+	cursor: pointer !important;
+	user-select: none !important;
+	transition: background 0.15s ease, color 0.15s ease !important;
+}
+.ark-sortable-th:hover {
+	background: var(--ark-surface-3) !important;
+	color: #fff !important;
+}
+.ark-sort-icon {
+	margin-left: 6px !important;
+	font-size: 11px !important;
+	opacity: 0.6 !important;
+}
+.ark-sort-icon.active {
+	opacity: 1 !important;
+	color: var(--ark-primary) !important;
+}
+
+/* 23. ARK LED Control Center */
+.ark-led-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: 16px;
+	margin: 18px 0;
+}
+.ark-led-card {
+	background: var(--ark-surface-1);
+	border: 1px solid var(--ark-border);
+	border-radius: var(--ark-radius-lg);
+	padding: 18px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	box-shadow: var(--ark-shadow);
+	transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.ark-led-card:hover {
+	border-color: var(--ark-border-hover);
+	transform: translateY(-2px);
+}
+.ark-led-header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+.ark-led-indicator {
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	display: inline-block;
+	box-shadow: 0 0 10px currentColor;
+}
+.ark-led-indicator.green {
+	background: #10b981;
+	color: #10b981;
+}
+.ark-led-indicator.orange {
+	background: #f59e0b;
+	color: #f59e0b;
+}
+.ark-led-indicator.blue {
+	background: #3b82f6;
+	color: #3b82f6;
+}
+.ark-led-indicator.off {
+	background: #334155;
+	color: transparent;
+	box-shadow: none;
+}
+.ark-led-indicator.blink {
+	animation: ledPulse 1.2s infinite ease-in-out;
+}
+@keyframes ledPulse {
+	0%, 100% { opacity: 1; transform: scale(1); }
+	50% { opacity: 0.35; transform: scale(0.9); }
+}
+.ark-led-title {
+	font-weight: 700;
+	font-size: 14px;
+	color: #fff;
+}
+.ark-led-sub {
+	font-size: 11px;
+	color: var(--ark-text-muted);
+}
+.ark-presets-box {
+	background: var(--ark-surface-1);
+	border: 1px solid var(--ark-border);
+	border-radius: var(--ark-radius-lg);
+	padding: 20px;
+	margin-bottom: 20px;
+}
+.ark-preset-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 12px;
+	margin-top: 14px;
+}
+.ark-preset-tile {
+	background: var(--ark-surface-2);
+	border: 1px solid var(--ark-border);
+	border-radius: 10px;
+	padding: 14px;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	text-align: left;
+}
+.ark-preset-tile:hover {
+	background: var(--ark-surface-3);
+	border-color: var(--ark-primary);
+	transform: translateY(-2px);
+}
+.ark-preset-tile-title {
+	font-weight: 700;
+	font-size: 13px;
+	color: #fff;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-bottom: 4px;
+}
+.ark-preset-tile-desc {
+	font-size: 11px;
+	color: var(--ark-text-muted);
+	line-height: 1.4;
+}

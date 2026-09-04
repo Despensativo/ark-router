@@ -1,6 +1,41 @@
 # Changelog
 
-## 0.9.76
+## 0.9.77
+
+- **🔘 Correção e Estilização Global de Dropdowns e Ações de Página (`.cbi-dropdown` e `.cbi-page-actions`)**:
+  - **Fim dos Marcadores de Lista (`•`)**: Implementadas regras completas para componentes `.cbi-dropdown`, ocultando os itens não selecionados e exibindo apenas a opção ativa com ícone discreto (`▾`), eliminando o bug visual onde todas as opções apareciam em listas com marcadores simultaneamente.
+  - **Menu Flutuante Moderno**: Quando aberto, o menu de opções aparece em painel flutuante escuro com bordas arredondadas e sombra suave (`z-index: 1100`).
+  - **Barra de Ações Compacta e Elegante**: A barra inferior de salvar/aplicar (`.cbi-page-actions`) foi compactada com alinhamento à direita, botões de 36px e visual escuro harmonizado.
+  - **Botões de Diagnóstico**: Botões de Ping e Traceroute agora exibem seletores IPv4/IPv6 de forma limpa e compacta.
+
+- **💡 Central Intuitiva de LEDs (`/admin/system/leds`)**:
+  - **Perfis Rápidos de 1 Clique**:
+    - 🌐 **Internet Inteligente**: Power verde fixo; LED Internet (Planet) verde monitorando link WAN (pisca em alerta caso a conexão caia); Wi-Fi piscando com tráfego de dados.
+    - 🌙 **Modo Noturno (Quarto)**: Desliga todos os LEDs frontais para uso em dormitórios, deixando o equipamento 100% escuro.
+    - 🚨 **Alerta Visual de Queda**: LED Planet em Laranja intermitente para sinalizar visualmente à distância que a internet da operadora caiu.
+    - ⚡ **Desempenho Total**: Pulsação de alta frequência em todos os LEDs conforme tráfego Wi-Fi 2.4 GHz e 5 GHz.
+  - **Painel Frontal Visual (D-Link DGL-5500)**: Cards dedicados com indicadores luminosos brilhantes representando os LEDs reais do hardware: *Power* (verde/laranja), *Internet* (verde/laranja), *Wi-Fi 5 GHz* (QCA9880) e *Wi-Fi 2.4 GHz* (QCA9558).
+  - **Aplicação Instantânea sem Reload**: Integração com rpcd (`equipe-dashboard-control set-led-preset`) aplicando as configurações de UCI e reiniciando o driver em milissegundos com feedback visual.
+
+- **🧹 Fim da Duplicação de Seções em Backup / Firmware (`/admin/system/flash`)**:
+  - **Ocultação dos Formulários Redundantes**: Removidas as seções brutas duplicadas (*Cópia de Segurança*, *Restauração*, *Gravar nova imagem*) que apareciam abaixo dos 4 cards de ação do ARK Router, deixando a tela limpa e focada.
+
+- **🛡️ Confinamento Estrito de Tabelas e Fim de "Janelas Vazando" (`cascade.css`)**:
+  - **Overflow Horizontal Confinado**: Todas as tabelas e seções agora possuem `max-width: 100%` e `overflow-x: auto` com rolagem suave ao toque.
+  - **Correção no UPnP ACL**: Redimensionamento proporcional das caixas de texto na tabela de ACL em `/admin/services/upnp`, impedindo que a tabela transborde a tela em desktops e telas compactas.
+
+- **✏️ Correção do Botão "Editar" em Interfaces de Rede (`/admin/network/network`)**:
+  - **Navegação Direta e Estável**: Substituído o gatilho de clique clonado (que gerava o erro `TypeError: dlg is null`) por um link nativo direto para a tela de edição da interface (`/cgi-bin/luci/admin/network/network/<sid>`).
+  - **Remoção da Tabela Crua Repetida**: Ocultada a tabela repetida abaixo dos cards modernos de rede.
+
+- **🔄 Recarregar e Ordenação Dinâmica de Processos (`/admin/status/processes`)**:
+  - **Ajuste de Nomenclatura**: Renomeado o botão "Suspender" para "**🔄 Recarregar**" com tooltip didático explicando que se trata de SIGHUP (recarrega configurações sem encerrar o serviço).
+  - **Ordenação Interativa nos Cabeçalhos**: Ao clicar em `CPU (%)`, `MEMÓRIA (%)`, `COMANDO` ou `PID`, a tabela é reordenada instantaneamente com indicadores visuais de direção (`▲` / `▼`).
+
+- **📘 Novos Guias Didáticos Educacionais**:
+  - **Switch e VLANs (`/admin/network/switch`)**: Explicação clara sobre portas físicas, tráfego untagged/tagged e alerta de proteção para nunca desmarcar a porta de CPU (eth0).
+  - **Monitor de Largura de Banda Netlink (`/admin/nlbw/display`)**: Explicação de como identificar aparelhos consumidores de banda e estilização dark cyberpunk da paleta de gráficos de rosca (donut) via hook de Chart.js Canvas.
+
 
 - **🔘 Otimização e Ativação dos Botões de Iniciação (`Sistema ➔ Iniciação`)**:
   - **Invalidação Automática de Cache HTTP (`?v=0.9.76`)**: Atualizados os cabeçalhos de importação em `header.htm` e `header.ut` de `?v=ark-1.0` para a versão atual. Isso força navegadores (Chrome, Edge, Safari) a baixar os novos arquivos CSS/JS imediatamente, eliminando o problema de estilos antigos armazenados em cache que mantinham os botões com aparência desativada.

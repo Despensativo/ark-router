@@ -5355,6 +5355,94 @@ EOF
 		done
 		printf ']}\n'
 		;;
+	set-led-preset)
+		preset="${2:-smart}"
+		# Ensure base entries exist
+		[ -n "$(uci -q get system.led_power)" ] || uci -q set system.led_power=led
+		[ -n "$(uci -q get system.led_internet)" ] || uci -q set system.led_internet=led
+		[ -n "$(uci -q get system.led_wifi5g)" ] || uci -q set system.led_wifi5g=led
+		[ -n "$(uci -q get system.led_wifi2g)" ] || uci -q set system.led_wifi2g=led
+		case "$preset" in
+			night)
+				for l in power internet wifi5g wifi2g; do
+					uci -q set "system.led_$l.trigger=none"
+					uci -q set "system.led_$l.default=0"
+				done
+				;;
+			alert)
+				uci -q set "system.led_power.name=Power (Alimentação)"
+				uci -q set "system.led_power.sysfs=d-link:green:power"
+				uci -q set "system.led_power.trigger=default-on"
+				uci -q set "system.led_power.default=1"
+				uci -q set "system.led_internet.name=Internet (Planet Alerta)"
+				uci -q set "system.led_internet.sysfs=d-link:orange:planet"
+				uci -q set "system.led_internet.trigger=timer"
+				uci -q set "system.led_internet.delayon=500"
+				uci -q set "system.led_internet.delayoff=500"
+				uci -q set "system.led_internet.default=1"
+				uci -q set "system.led_wifi5g.name=Wi-Fi 5 GHz (Ultra Rápido)"
+				uci -q set "system.led_wifi5g.sysfs=ath10k-phy0"
+				uci -q set "system.led_wifi5g.trigger=phy0tpt"
+				uci -q set "system.led_wifi5g.default=1"
+				uci -q set "system.led_wifi2g.name=Wi-Fi 2.4 GHz (Longo Alcance)"
+				uci -q set "system.led_wifi2g.sysfs=ath9k-phy1"
+				uci -q set "system.led_wifi2g.trigger=phy1tpt"
+				uci -q set "system.led_wifi2g.default=1"
+				;;
+			max)
+				uci -q set "system.led_power.name=Power (Alimentação)"
+				uci -q set "system.led_power.sysfs=d-link:green:power"
+				uci -q set "system.led_power.trigger=default-on"
+				uci -q set "system.led_power.default=1"
+				uci -q set "system.led_internet.name=Internet (Planet)"
+				uci -q set "system.led_internet.sysfs=d-link:green:planet"
+				uci -q set "system.led_internet.trigger=netdev"
+				uci -q set "system.led_internet.dev=eth0.2"
+				uci -q set "system.led_internet.mode=link tx rx"
+				uci -q set "system.led_internet.default=1"
+				uci -q set "system.led_wifi5g.name=Wi-Fi 5 GHz (Ultra Rápido)"
+				uci -q set "system.led_wifi5g.sysfs=ath10k-phy0"
+				uci -q set "system.led_wifi5g.trigger=phy0tpt"
+				uci -q set "system.led_wifi5g.default=1"
+				uci -q set "system.led_wifi2g.name=Wi-Fi 2.4 GHz (Longo Alcance)"
+				uci -q set "system.led_wifi2g.sysfs=ath9k-phy1"
+				uci -q set "system.led_wifi2g.trigger=phy1tpt"
+				uci -q set "system.led_wifi2g.default=1"
+				;;
+			smart|*)
+				uci -q set "system.led_power.name=Power (Alimentação)"
+				uci -q set "system.led_power.sysfs=d-link:green:power"
+				uci -q set "system.led_power.trigger=default-on"
+				uci -q set "system.led_power.default=1"
+				uci -q set "system.led_internet.name=Internet (Planet)"
+				uci -q set "system.led_internet.sysfs=d-link:green:planet"
+				uci -q set "system.led_internet.trigger=netdev"
+				uci -q set "system.led_internet.dev=eth0.2"
+				uci -q set "system.led_internet.mode=link tx rx"
+				uci -q set "system.led_internet.default=1"
+				uci -q set "system.led_wifi5g.name=Wi-Fi 5 GHz (Ultra Rápido)"
+				uci -q set "system.led_wifi5g.sysfs=ath10k-phy0"
+				uci -q set "system.led_wifi5g.trigger=phy0tpt"
+				uci -q set "system.led_wifi5g.default=1"
+				uci -q set "system.led_wifi2g.name=Wi-Fi 2.4 GHz (Longo Alcance)"
+				uci -q set "system.led_wifi2g.sysfs=ath9k-phy1"
+				uci -q set "system.led_wifi2g.trigger=phy1tpt"
+				uci -q set "system.led_wifi2g.default=1"
+				;;
+		esac
+		uci commit system
+		/etc/init.d/led restart >/dev/null 2>&1
+		printf '{"success":true,"preset":"%s"}\n' "$preset"
+		;;
+	get-led-status)
+		p_trig="$(uci -q get system.led_power.trigger || printf 'default-on')"
+		i_sysfs="$(uci -q get system.led_internet.sysfs || printf 'd-link:green:planet')"
+		i_trig="$(uci -q get system.led_internet.trigger || printf 'netdev')"
+		w5_trig="$(uci -q get system.led_wifi5g.trigger || printf 'phy0tpt')"
+		w2_trig="$(uci -q get system.led_wifi2g.trigger || printf 'phy1tpt')"
+		printf '{"power":{"trigger":"%s"},"internet":{"sysfs":"%s","trigger":"%s"},"wifi5g":{"trigger":"%s"},"wifi2g":{"trigger":"%s"}}\n' \
+			"$(json_escape "$p_trig")" "$(json_escape "$i_sysfs")" "$(json_escape "$i_trig")" "$(json_escape "$w5_trig")" "$(json_escape "$w2_trig")"
+		;;
 	*)
 		echo 'Uso: equipe-dashboard-control {features|...|irqbalance-toggle 0|1|...}' >&2
 		exit 2
