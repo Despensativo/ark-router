@@ -237,7 +237,7 @@
           title: 'Guia da Visão Geral do Sistema',
           serve: 'Painel de telemetria mostrando o estado de funcionamento do roteador, uso de processamento, memória RAM e dispositivos conectados.',
           fazer: 'Monitore os medidores de CPU e RAM no topo. Se a RAM livre ficar abaixo de 40 MB de forma contínua, faça uma reinicialização de manutenção.',
-          rec: 'No DGL-5500, o ARK Router mantém mais de 80 MB de RAM livre em condições normais de uso.'
+          rec: 'Mantenha margem segura de RAM livre para garantir estabilidade e máxima fluidez de tráfego.'
         };
       } else if (path.indexOf('/system/system') !== -1) {
         guide = {
@@ -1620,10 +1620,10 @@
         }
       });
 
-      var model = dataMap['model'] || dataMap['modelo'] || 'D-Link DGL-5500 rev. A1';
+      var model = dataMap['model'] || dataMap['modelo'] || 'ARK Router';
       var uptime = dataMap['uptime'] || dataMap['tempo de atividade'] || 'Ativo';
       var load = dataMap['load average'] || dataMap['carga média'] || '0.25, 0.20, 0.15';
-      var fw = dataMap['firmware version'] || dataMap['versão do firmware'] || 'OpenWrt 19.07 / ARK v0.9.70';
+      var fw = dataMap['firmware version'] || dataMap['versão do firmware'] || 'OpenWrt';
       var timeStr = dataMap['local time'] || dataMap['hora local'] || new Date().toLocaleTimeString();
 
       var load1 = parseFloat(load.split(',')[0]) || 0.3;
@@ -1637,7 +1637,7 @@
           '<div class="ark-hero-left">' +
             '<div class="ark-hero-badge-icon">⚡</div>' +
             '<div class="ark-hero-details">' +
-              '<h2>' + model + '</h2>' +
+              '<h2 id="ark-dash-model">' + model + '</h2>' +
               '<div class="ark-hero-chips">' +
                 '<span class="ark-chip online">🟢 Online</span>' +
                 '<span class="ark-chip primary">🛡️ ARK Router OS</span>' +
@@ -1646,50 +1646,53 @@
               '</div>' +
             '</div>' +
           '</div>' +
-          '<div class="ark-hero-right">' +
+          '<div class="ark-hero-right" style="display:flex;align-items:center;gap:8px;">' +
+            '<a href="/cgi-bin/luci/admin/equipe-dashboard" class="cbi-button cbi-button-neutral" style="font-size:12px;padding:8px 14px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);">' +
+              '📊 Painel ARK' +
+            '</a>' +
             '<a href="/cgi-bin/luci/admin/system/reboot" class="cbi-button cbi-button-action" style="font-size:12px;padding:8px 14px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;">' +
               '🔄 Reiniciar' +
             '</a>' +
           '</div>' +
         '</div>' +
-        '<div class="ark-metrics-grid">' +
+        '<div class="ark-metrics-grid" id="ark-metrics-grid">' +
           '<div class="ark-metric-tile">' +
             '<div class="ark-metric-head">' +
               '<span class="ark-metric-title">📈 Carga da CPU</span>' +
-              '<span class="ark-metric-value">' + loadPct + '%</span>' +
+              '<span class="ark-metric-value" id="ark-dash-cpu-val">' + loadPct + '%</span>' +
             '</div>' +
             '<div class="ark-meter-bar-lg">' +
-              '<div class="ark-meter-bar-fill ' + loadColor + '" style="width:' + loadPct + '%;"></div>' +
+              '<div class="ark-meter-bar-fill ' + loadColor + '" id="ark-dash-cpu-bar" style="width:' + loadPct + '%;"></div>' +
             '</div>' +
             '<div class="ark-metric-subtext">' +
               '<span>Médias: ' + load + '</span>' +
-              '<span>1 Núcleo MIPS</span>' +
+              '<span id="ark-dash-cpu-desc">Processador</span>' +
             '</div>' +
           '</div>' +
           '<div class="ark-metric-tile">' +
             '<div class="ark-metric-head">' +
               '<span class="ark-metric-title">🧠 Memória RAM</span>' +
-              '<span class="ark-metric-value">85 MB Livres</span>' +
+              '<span class="ark-metric-value" id="ark-dash-mem-val">Verificando…</span>' +
             '</div>' +
             '<div class="ark-meter-bar-lg">' +
-              '<div class="ark-meter-bar-fill green" style="width:31%;"></div>' +
+              '<div class="ark-meter-bar-fill green" id="ark-dash-mem-bar" style="width:30%;"></div>' +
             '</div>' +
             '<div class="ark-metric-subtext">' +
-              '<span>Usada: ~39 MB / 124 MB</span>' +
-              '<span style="color:#34d399;font-weight:600;">Segura (> 80 MB livre)</span>' +
+              '<span id="ark-dash-mem-used">Memória RAM</span>' +
+              '<span id="ark-dash-mem-status" style="color:#34d399;font-weight:600;">Estável</span>' +
             '</div>' +
           '</div>' +
           '<div class="ark-metric-tile">' +
             '<div class="ark-metric-head">' +
               '<span class="ark-metric-title">💾 Memória Flash (Overlay)</span>' +
-              '<span class="ark-metric-value">8.6 MB Livres</span>' +
+              '<span class="ark-metric-value" id="ark-dash-flash-val">Verificando…</span>' +
             '</div>' +
             '<div class="ark-meter-bar-lg">' +
-              '<div class="ark-meter-bar-fill blue" style="width:19%;"></div>' +
+              '<div class="ark-meter-bar-fill blue" id="ark-dash-flash-bar" style="width:20%;"></div>' +
             '</div>' +
             '<div class="ark-metric-subtext">' +
-              '<span>16 MB SPI Flash</span>' +
-              '<span style="color:#60a5fa;font-weight:600;">81% Disponível</span>' +
+              '<span id="ark-dash-flash-type">Memória Flash</span>' +
+              '<span id="ark-dash-flash-pct" style="color:#60a5fa;font-weight:600;">Disponível</span>' +
             '</div>' +
           '</div>' +
         '</div>';
@@ -1699,6 +1702,93 @@
         firstTarget.parentNode.insertBefore(dash, firstTarget);
       } else {
         main.insertBefore(dash, main.firstChild);
+      }
+
+      var callExec = (window.L && window.L.rpc) ? window.L.rpc.declare({
+        object: 'file',
+        method: 'exec',
+        params: ['command', 'params']
+      }) : null;
+
+      if (callExec) {
+        callExec('/usr/sbin/equipe-dashboard-control', ['system-hardware-info']).then(function(res) {
+          try {
+            var hw = JSON.parse(res.stdout || '{}');
+            if (hw.model) {
+              var elModel = document.getElementById('ark-dash-model');
+              if (elModel) elModel.textContent = hw.model;
+            }
+            if (hw.cpu) {
+              var cpu = hw.cpu;
+              var usage = (cpu.usage_pct != null) ? cpu.usage_pct : loadPct;
+              var cVal = document.getElementById('ark-dash-cpu-val');
+              var cBar = document.getElementById('ark-dash-cpu-bar');
+              var cDesc = document.getElementById('ark-dash-cpu-desc');
+              if (cVal) cVal.textContent = usage + '%';
+              if (cBar) cBar.style.width = Math.min(100, Math.max(2, usage)) + '%';
+              if (cDesc) {
+                var descStr = (cpu.freq_str ? cpu.freq_str + ' • ' : '') + (cpu.cores || 1) + 'c' + (cpu.arch_desc ? ' ' + cpu.arch_desc : '');
+                cDesc.textContent = descStr;
+              }
+            }
+            if (hw.memory) {
+              var mem = hw.memory;
+              var mVal = document.getElementById('ark-dash-mem-val');
+              var mBar = document.getElementById('ark-dash-mem-bar');
+              var mUsed = document.getElementById('ark-dash-mem-used');
+              var mStatus = document.getElementById('ark-dash-mem-status');
+              var usedMb = Math.max(0, (mem.total_mb || 0) - (mem.avail_mb || mem.free_mb || 0));
+              var usedPct = mem.total_mb ? Math.round(usedMb * 100 / mem.total_mb) : 30;
+              if (mVal) mVal.textContent = (mem.avail_mb || 0) + ' MB Livres';
+              if (mBar) mBar.style.width = Math.min(100, usedPct) + '%';
+              if (mUsed) mUsed.textContent = 'Usada: ~' + usedMb + ' MB / ' + (mem.total_mb || 0) + ' MB';
+              if (mStatus) {
+                var safeThreshold = (mem.total_mb > 256) ? 120 : 40;
+                var isSafe = (mem.avail_mb || 0) >= safeThreshold;
+                mStatus.textContent = isSafe ? ('Segura (> ' + safeThreshold + ' MB livre)') : 'Atenção: RAM baixa';
+                mStatus.style.color = isSafe ? '#34d399' : '#f87171';
+              }
+            }
+            if (hw.storage) {
+              var st = hw.storage;
+              var fVal = document.getElementById('ark-dash-flash-val');
+              var fBar = document.getElementById('ark-dash-flash-bar');
+              var fType = document.getElementById('ark-dash-flash-type');
+              var fPct = document.getElementById('ark-dash-flash-pct');
+              var fUsedPct = st.overlay_total_kb ? Math.round((st.overlay_total_kb - st.overlay_avail_kb) * 100 / st.overlay_total_kb) : 20;
+              var fFreePct = st.overlay_total_kb ? Math.round(st.overlay_avail_kb * 100 / st.overlay_total_kb) : 80;
+              if (fVal) fVal.textContent = (st.overlay_avail_mb || 0) + ' MB Livres';
+              if (fBar) fBar.style.width = Math.min(100, fUsedPct) + '%';
+              if (fType) fType.textContent = st.flash_type || 'Flash Interna';
+              if (fPct) fPct.textContent = fFreePct + '% Disponível';
+            }
+            if (hw.thermal_sensors && hw.thermal_sensors.length > 0) {
+              var grid = document.getElementById('ark-metrics-grid');
+              if (grid && !document.getElementById('ark-dash-thermal-tile')) {
+                var s0 = hw.thermal_sensors[0];
+                var tTile = document.createElement('div');
+                tTile.className = 'ark-metric-tile';
+                tTile.id = 'ark-dash-thermal-tile';
+                var tColor = s0.temp_c >= 80 ? 'red' : (s0.temp_c >= 65 ? 'amber' : 'green');
+                tTile.innerHTML = '' +
+                  '<div class="ark-metric-head">' +
+                    '<span class="ark-metric-title">🌡️ Temperatura</span>' +
+                    '<span class="ark-metric-value" style="color:' + (s0.temp_c >= 70 ? '#f59e0b' : '#34d399') + ';">' + s0.temp_c + ' °C</span>' +
+                  '</div>' +
+                  '<div class="ark-meter-bar-lg">' +
+                    '<div class="ark-meter-bar-fill ' + tColor + '" style="width:' + Math.min(100, s0.temp_c) + '%;"></div>' +
+                  '</div>' +
+                  '<div class="ark-metric-subtext">' +
+                    '<span>' + s0.name + '</span>' +
+                    '<span style="color:#60a5fa;font-weight:600;">' + (hw.thermal_sensors.length > 1 ? (hw.thermal_sensors.length + ' sensores') : 'CPU') + '</span>' +
+                  '</div>';
+                grid.appendChild(tTile);
+              }
+            }
+          } catch(e) {
+            console.error('Error rendering dynamic hardware info in ark overview:', e);
+          }
+        });
       }
 
       // Hide redundant read-only tables already fully covered by the ARK Hero Banner
@@ -2085,8 +2175,14 @@
         var isRadio = (sid === 'radio0' || sid === 'radio1');
 
         if (isRadio) {
-          // Qualcomm Atheros on DGL-5500: radio0 is 5G, radio1 is 2.4G
-          currentRadio = (sid === 'radio0') ? '5g' : '2g';
+          var rowText = (r.textContent || '').toLowerCase();
+          if (rowText.indexOf('5ghz') !== -1 || rowText.indexOf('5 ghz') !== -1 || rowText.indexOf('802.11a') !== -1 || rowText.indexOf('802.11ac') !== -1 || rowText.indexOf('802.11ax') !== -1) {
+            currentRadio = '5g';
+          } else if (rowText.indexOf('2.4ghz') !== -1 || rowText.indexOf('2.4 ghz') !== -1 || rowText.indexOf('802.11b') !== -1 || rowText.indexOf('802.11g') !== -1) {
+            currentRadio = '2g';
+          } else {
+            currentRadio = (sid === 'radio0') ? '5g' : '2g';
+          }
           var actions = r.querySelector('.cbi-section-actions');
           var targetSlot = document.getElementById('ark-r' + currentRadio + '-actions');
           if (actions && targetSlot && targetSlot.children.length === 0) {

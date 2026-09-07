@@ -57,9 +57,17 @@
 .ex-health-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 11px; }
 .ex-health-head > div { display: flex; align-items: baseline; gap: 10px; }
 .ex-health-head small { opacity: .58; }
-.ex-health-items { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 9px; }
-.ex-health-items.compact-3 { grid-template-columns: repeat(3,minmax(0,1fr)); }
-.ex-health-item { display: flex; align-items: center; min-width: 0; gap: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(127,127,127,.075); }
+.ex-health-items { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 9px; }
+.ex-health-items.compact-3 { grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); }
+.ex-health-item { display: flex; align-items: center; min-width: 0; gap: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(127,127,127,.075); transition: background .15s ease, transform .15s ease; }
+.ex-health-item.clickable { cursor: pointer; }
+.ex-health-item.clickable:hover { background: rgba(127,127,127,.14); transform: translateY(-1px); }
+.ex-health-specs-btn { padding: 4px 10px; font-size: 0.75rem; cursor: pointer; background: rgba(59,130,246,0.12); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); border-radius: 6px; font-weight: 700; transition: all .15s ease; }
+.ex-health-specs-btn:hover { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+.ex-port-badge { font-size: 0.68rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.02em; }
+.ex-port-badge.speed-2500, .ex-port-badge.speed-2-5g { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+.ex-port-badge.speed-1000, .ex-port-badge.speed-1g { background: rgba(16, 185, 129, 0.16); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); }
+.ex-port-badge.speed-100 { background: rgba(245, 158, 11, 0.16); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); }
 .ex-health-icon { display: grid; place-items: center; flex: 0 0 34px; height: 34px; border-radius: 10px; color: var(--health-color); background: color-mix(in srgb,var(--health-color) 14%,transparent); font-size: 1rem; font-weight: 900; }
 .ex-health-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; }
 .ex-health-copy strong { margin: 1px 0 3px; font-size: 1.05rem; font-variant-numeric: tabular-nums; }

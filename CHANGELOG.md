@@ -2,6 +2,21 @@
 
 ## 0.9.80
 
+- **🔍 Detecção Inteligente e Visualização Completa de Hardware (CPU, Múltiplos Sensores, RAM, Flash e Portas 2.5G/1G)**:
+  - **Frequência Real de Clock e Uso da CPU**: Detecção dinâmica da frequência real do processador (ex: `2.0 GHz` no Filogic 830 / Cortex-A53, `720 MHz` no QCA9558 MIPS), quantidade de núcleos físicos (`4c`), arquitetura precisa (`ARMv8 64-bit`, `MIPS 74Kc`, `x86_64`) e medição instantânea do percentual de uso via delta de `/proc/stat`.
+  - **Detecção Abrangente de Sensores Térmicos**: Mapeamento dinâmico de todos os sensores físicos do equipamento em `/sys/class/thermal/` e `/sys/class/hwmon/` (CPU, Switch Ethernet MDIO, Wi-Fi 2.4 GHz e Wi-Fi 5 GHz). Roteadores sem sensor exposto (ex: MIPS legados) exibem aviso elegante sem poluir a interface nem quebrar o layout.
+  - **Identificação da Mídia Flash e Partição Overlay**: Reconhecimento automático do tipo de armazenamento persistente (`NAND Flash (UBI)`, `SPI NOR Flash`, `eMMC`, `SSD`) e separação clara entre espaço livre persistente (Overlay) e memória volátil em RAM (`/tmp`).
+  - **Memória RAM Dinâmica e Universal**: Coleta adaptativa para OpenWrt moderno (`MemAvailable`) e legado (`MemFree + Cached + Buffers`), eliminando qualquer número ou capacidade pré-fixada.
+  - **Badges de Velocidade Máxima de Portas Físicas (WAN e LAN)**: Detecção automática da capacidade física do link via DSA e swconfig, renderizando badges destacados nos cards de conexão (ex: badge azul `2.5G` na porta WAN 2.5 Gbps `eth1` do Acer Predator W6x e badges verdes `1G` nas portas LAN Gigabit).
+  - **Faixa de Saúde de 5 Itens e Modais Técnicos Completos**:
+    - Nova faixa de saúde do roteador contendo 5 cartões interativos e responsivos: **Processador**, **Temperatura**, **Memória**, **Armazenamento** e **Carga**.
+    - Novo botão **🔍 Especificações** na barra de saúde que abre o modal abrangente de diagnóstico com todos os detalhes de Identificação, CPU, Sensores Térmicos, RAM, Armazenamento, Portas Ethernet e Wi-Fi (padrões ax/ac/n e largura 160 MHz).
+    - Modal interativo de **Sensores Térmicos do Hardware** acessível com 1 clique no card de Temperatura, exibindo o status térmico de cada componente físico individual.
+  - **Fim dos Textos e Métricas Hardcoded no Tema LuCI (`ark-theme.js`)**:
+    - O tema visual do LuCI agora consome dinamicamente os dados reais do hardware, eliminando todas as strings antigas pré-fixadas (como "1 Núcleo MIPS", "124 MB", "16 MB SPI Flash" e "No DGL-5500").
+    - O banner do LuCI agora exibe a CPU real, a memória RAM livre exata, a tecnologia correta da Flash, a temperatura do processador e um atalho direto `📊 Painel ARK` para o dashboard principal.
+
+
 - **💡 Detecção Inteligente e Isolamento de LEDs por Hardware (Fim da Mistura de Modelos)**:
   - **Identificação Dinâmica do Roteador**: O painel de LEDs (`/admin/system/leds`) agora detecta dinamicamente a placa e modelo do equipamento (ex: `Acer Predator Connect W6x (Stock Layout)` vs. `D-Link DGL-5500` vs. genéricos) e exibe apenas os LEDs físicos que realmente existem em `/sys/class/leds/`.
   - **Limpeza Automática de LEDs Órfãos e Fantasmas**: Criada rotina `cleanup_orphan_leds` no backend (`equipe-dashboard-control`) que remove do `/etc/config/system` e da tabela do LuCI seções de hardware de outros roteadores (ex: `d-link:green:power`, `d-link:green:planet`, `ath10k-phy0`, `ath9k-phy1`) e deduplica entradas redundantes.

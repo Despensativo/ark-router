@@ -561,7 +561,8 @@ return view.extend({
 			safe(callUciGet('firewall'), { values: {} }),
 			safe(fs.read('/tmp/equipe-wan-daily.csv'), ''),
 			safe(callHostHints(), {}),
-			safe(fs.read('/proc/net/arp'), '')
+			safe(fs.read('/proc/net/arp'), ''),
+			safe(fs.exec('/usr/sbin/equipe-dashboard-control', [ 'system-hardware-info' ]), {})
 		]).then(function(r) {
 			const interfaces=r[1], networkConfig=r[9], networkValues=values(networkConfig), topology=wifiTopology(r[15]), lanPorts=lanPortsFromNetwork(networkConfig);
 			const activeWans=getActiveWanList({networkConfig:networkConfig, interfaces:interfaces});
@@ -597,6 +598,7 @@ return view.extend({
 				traffic:r[13], history:r[14], wirelessStatus:r[15], wifiTopology:topology, lanPorts:lanPorts, lanDevices:x[5]||[],
 				dhcpConfig: r[16], firewallConfig: r[17], wanDaily: r[18],
 				hostHints: r[19] || {}, arpTable: r[20] || '',
+				hardwareInfo: (function(){ try { return JSON.parse((r[21] && r[21].stdout) || '{}'); } catch(e){ return {}; } })(),
 				timestamp:Date.now()
 			}; });
 		});
@@ -1145,9 +1147,34 @@ return view.extend({
 		text('ex-lan-ip',lanStatus.ipaddr||'—'); text('ex-lan-dhcp',(lanStatus.dhcp_start&&lanStatus.dhcp_end)?lanStatus.dhcp_start+' → '+lanStatus.dhcp_end:'—'); text('ex-lan-mask',lanStatus.netmask||'—'); text('ex-lan-dns',Array.isArray(lanStatus.dns)&&lanStatus.dns.length?lanStatus.dns.join('  •  '):'Sem DNS fixo');
 		const lanPrefix=prefix24(lanStatus.ipaddr), guestPrefix=prefix24(((values(data.networkConfig).guest)||{}).ipaddr);
 		const leases=data.leases.dhcp_leases||[], main=assocMap(data.mainAssoc), guest=assocMap(data.guestAssoc); text('ex-main-clients',leases.filter(function(l){return lanPrefix&&String(l.ipaddr||'').indexOf(lanPrefix)===0;}).length); text('ex-main-wifi',Object.keys(main).length+' no Wi-Fi'); text('ex-guest-clients',leases.filter(function(l){return guestPrefix&&String(l.ipaddr||'').indexOf(guestPrefix)===0;}).length); text('ex-guest-wifi',Object.keys(guest).length+' no Wi-Fi');
-		const mem=data.system.memory||{}, perf=data.perfStatus||{}, root=(data.system.root&&Number(data.system.root.total)>0)?data.system.root:{total:perf.root_total_kb||0,used:perf.root_used_kb||0,free:perf.root_avail_kb||0}, memFree=mem.available||mem.free||0, memUsed=Math.max(0,(mem.total||0)-memFree), rootTotalBytes=(Number(root.total)||0)*1024, rootUsedBytes=(Number(root.used)||0)*1024, mu=mem.total?100*memUsed/mem.total:0, du=root.total?100*root.used/root.total:0, load=data.system.load&&data.system.load[0]!=null?data.system.load[0]/65535:0, temp=parseInt(data.temperature,10)/1000;
-		text('ex-uptime',formatUptime(data.system.uptime)); text('ex-temperature',isFinite(temp)?temp.toFixed(0)+' °C':'—'); text('ex-memory',mu.toFixed(0)+'%'); text('ex-memory-detail','livre '+formatBytes(memFree)+' / total '+formatBytes(mem.total||0)); text('ex-load',load.toFixed(2)); text('ex-storage',du.toFixed(0)+'%'); text('ex-storage-detail','livre '+formatBytes(Math.max(0,rootTotalBytes-rootUsedBytes))+' / total '+formatBytes(rootTotalBytes)); const mb=document.getElementById('ex-memory-bar'),db=document.getElementById('ex-storage-bar'); if(mb)mb.style.width=Math.min(100,mu)+'%'; if(db)db.style.width=Math.min(100,du)+'%';
-		const healthWarning=(isFinite(temp)&&temp>=85)||mu>=85||du>=85||load>=1.5; setPill('ex-health-status',healthWarning?'standby':'online',healthWarning?'ATENÇÃO':'NORMAL');
+		const hwInfo=data.hardwareInfo||{}, cpuInfo=hwInfo.cpu||{}, thermalSensors=hwInfo.thermal_sensors||[], storageInfo=hwInfo.storage||{};
+		const mem=data.system.memory||{}, perf=data.perfStatus||{}, root=(data.system.root&&Number(data.system.root.total)>0)?data.system.root:{total:perf.root_total_kb||0,used:perf.root_used_kb||0,free:perf.root_avail_kb||0}, memFree=mem.available||mem.free||0, memUsed=Math.max(0,(mem.total||0)-memFree), rootTotalBytes=(Number(root.total)||0)*1024, rootUsedBytes=(Number(root.used)||0)*1024, mu=mem.total?100*memUsed/mem.total:0, du=root.total?100*root.used/root.total:0, load=data.system.load&&data.system.load[0]!=null?data.system.load[0]/65535:0;
+		let temp=parseInt(data.temperature,10)/1000;
+		if((!isFinite(temp)||temp<=0)&&thermalSensors.length>0){temp=thermalSensors[0].temp_c;}
+		const cpuFreqStr=cpuInfo.freq_str||((this.capabilities&&this.capabilities.hardware&&this.capabilities.hardware.cpu_freq_str)||'');
+		const cpuCores=cpuInfo.cores||((this.capabilities&&this.capabilities.hardware&&this.capabilities.hardware.cpu_cores)||1);
+		const cpuUsage=(cpuInfo.usage_pct!=null)?cpuInfo.usage_pct:0;
+		text('ex-cpu',cpuFreqStr?(cpuFreqStr+' ('+cpuCores+'c)'):(cpuCores+' Núcleos'));
+		text('ex-cpu-detail',cpuUsage+'% em uso • '+(cpuInfo.arch_desc||'CPU'));
+		const cb=document.getElementById('ex-cpu-bar');if(cb)cb.style.width=Math.min(100,Math.max(2,cpuUsage))+'%';
+		text('ex-uptime',formatUptime(data.system.uptime));
+		text('ex-temperature',isFinite(temp)?temp.toFixed(0)+' °C':(thermalSensors.length?thermalSensors[0].temp_c+' °C':'—'));
+		if(thermalSensors.length>1){text('ex-temperature-detail',thermalSensors.length+' sensores • ver todos');}
+		else if(isFinite(temp)){text('ex-temperature-detail','Sensor de CPU');}
+		else{text('ex-temperature-detail','Sem sensor térmico');}
+		text('ex-memory',mu.toFixed(0)+'%');
+		text('ex-memory-detail','livre '+formatBytes(memFree)+' / total '+formatBytes(mem.total||0));
+		text('ex-load',load.toFixed(2));
+		const loadDetail=(data.system.load&&data.system.load.length>=3)?('1m: '+(data.system.load[0]/65535).toFixed(2)+'  5m: '+(data.system.load[1]/65535).toFixed(2)+'  15m: '+(data.system.load[2]/65535).toFixed(2)):'estabilidade do sistema';
+		text('ex-load-detail',loadDetail);
+		const flashLabel=storageInfo.flash_type||'Flash Interna';
+		text('ex-storage',du.toFixed(0)+'%');
+		text('ex-storage-detail',flashLabel+' • livre '+formatBytes(Math.max(0,rootTotalBytes-rootUsedBytes)));
+		const mb=document.getElementById('ex-memory-bar'),db=document.getElementById('ex-storage-bar');
+		if(mb)mb.style.width=Math.min(100,mu)+'%';
+		if(db)db.style.width=Math.min(100,du)+'%';
+		const healthWarning=(isFinite(temp)&&temp>=85)||mu>=85||du>=85||load>=1.5;
+		setPill('ex-health-status',healthWarning?'standby':'online',healthWarning?'ATENÇÃO':'NORMAL');
 		const qosWanProfiles=sqmWanProfiles(data), qe=qosWanProfiles.some(function(profile){return !!(sqm[profile.section]&&sqm[profile.section].enabled==='1');}), qosToggle=document.getElementById('ex-qos-toggle'), qosToggleState=document.getElementById('ex-qos-toggle-state');
 		setPill('ex-qos-status',qe?'online':'standby',qe?'ATIVO':'DESLIGADO'); if(qosToggle){qosToggle.checked=qe;qosToggle.disabled=false;} if(qosToggleState)qosToggleState.textContent=qe?'Ligado':'Desligado';
 		const fmtLimit=function(v){v=Number(v)||0;return v>0?(v/1000).toFixed(1)+' Mbps':'Ilimitado';};
@@ -4558,6 +4585,141 @@ return view.extend({
 			}},['Criar backup e desativar IPv6'])])
 		]);
 	},
+	showThermalModal: function() {
+		const hwInfo = (this.currentData && this.currentData.hardwareInfo) || {};
+		const sensors = hwInfo.thermal_sensors || [];
+		if (!sensors.length) {
+			ui.showModal('Sensores Térmicos', [
+				E('p', { class: 'ex-muted' }, ['Este roteador não possui sensores térmicos expostos pelo hardware ou kernel.']),
+				E('div', { class: 'right', style: 'margin-top: 20px;' }, [
+					E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': ui.hideModal }, ['Fechar'])
+				])
+			]);
+			return;
+		}
+		const sensorCards = sensors.map(function(s) {
+			const temp = s.temp_c || 0;
+			const color = temp >= 80 ? '#ef4444' : (temp >= 65 ? '#f59e0b' : '#10b981');
+			const statusText = temp >= 80 ? 'Temperatura crítica' : (temp >= 65 ? 'Temperatura elevada' : 'Temperatura ideal / estável');
+			return E('div', {
+				class: 'ex-card',
+				style: 'padding:14px 16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;'
+			}, [
+				E('div', {}, [
+					E('strong', { style: 'display:block;font-size:0.95rem;color:#fff;' }, [s.name]),
+					E('small', { style: 'color:var(--ark-text-muted, #94a3b8);' }, ['Tipo: ' + (s.type || 'genérico') + ' • ' + statusText])
+				]),
+				E('div', { style: 'text-align:right;' }, [
+					E('span', { style: 'font-size:1.45rem;font-weight:800;color:' + color + ';' }, [temp + ' °C'])
+				])
+			]);
+		});
+
+		ui.showModal('Sensores Térmicos do Hardware', [
+			E('p', { class: 'ex-muted' }, ['Leituras térmicas em tempo real coletadas diretamente dos sensores físicos da placa do roteador.']),
+			E('div', { style: 'display:flex;flex-direction:column;gap:6px;margin:16px 0;' }, sensorCards),
+			E('div', { class: 'right', style: 'margin-top: 15px;' }, [
+				E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': ui.hideModal }, ['Fechar'])
+			])
+		]);
+	},
+	showHardwareModal: function() {
+		const hwInfo = (this.currentData && this.currentData.hardwareInfo) || {};
+		const cpu = hwInfo.cpu || {};
+		const mem = hwInfo.memory || {};
+		const st = hwInfo.storage || {};
+		const wf = hwInfo.wifi || {};
+		const ports = hwInfo.ports || {};
+		const sensors = hwInfo.thermal_sensors || [];
+
+		const sectionBlock = function(title, icon, rows) {
+			return E('div', {
+				class: 'ex-card',
+				style: 'margin-bottom:14px;padding:14px 16px;background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.08);border-radius:10px;'
+			}, [
+				E('div', { style: 'display:flex;align-items:center;gap:8px;margin-bottom:12px;' }, [
+					E('span', { style: 'font-size:1.2rem;' }, [icon]),
+					E('strong', { style: 'font-size:0.95rem;color:#fff;' }, [title])
+				]),
+				E('div', { style: 'display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px;' }, rows)
+			]);
+		};
+
+		const infoItem = function(label, value, badge) {
+			return E('div', { style: 'background:rgba(127,127,127,0.06);padding:8px 12px;border-radius:6px;' }, [
+				E('span', { class: 'ex-label', style: 'display:block;margin-bottom:2px;' }, [label]),
+				E('div', { style: 'display:flex;align-items:center;gap:6px;' }, [
+					E('strong', { style: 'font-size:0.95rem;color:#fff;' }, [value || '—']),
+					badge ? E('span', { style: 'font-size:0.68rem;padding:2px 6px;border-radius:4px;font-weight:700;background:rgba(59,130,246,0.18);color:#60a5fa;' }, [badge]) : ''
+				])
+			]);
+		};
+
+		const sysRows = [
+			infoItem('Modelo do Equipamento', hwInfo.model || this.board.model || 'ARK Router'),
+			infoItem('Placa / Target', (hwInfo.board || this.board.board_name || '') + ' (' + (hwInfo.target || '') + ')'),
+			infoItem('Sistema Operacional', hwInfo.release || 'OpenWrt'),
+			infoItem('Versão do Kernel', hwInfo.kernel || this.board.kernel || 'Linux')
+		];
+
+		const cpuRows = [
+			infoItem('Processador', cpu.model || 'ARM Cortex / MIPS'),
+			infoItem('Frequência de Clock', cpu.freq_str || 'Padrão', (cpu.freq_mhz > 0 ? (cpu.freq_mhz + ' MHz') : null)),
+			infoItem('Núcleos Físicos', (cpu.cores || 1) + ' Núcleo(s)'),
+			infoItem('Arquitetura', cpu.arch_desc || cpu.arch || '64-bit'),
+			infoItem('Uso Instantâneo', (cpu.usage_pct != null ? cpu.usage_pct : 0) + '%'),
+			infoItem('Carga Média (Load)', (this.currentData && this.currentData.system && this.currentData.system.load && this.currentData.system.load.length >= 3) ? ((this.currentData.system.load[0]/65535).toFixed(2) + ' • ' + (this.currentData.system.load[1]/65535).toFixed(2) + ' • ' + (this.currentData.system.load[2]/65535).toFixed(2)) : '—')
+		];
+
+		const memRows = [
+			infoItem('RAM Total', (mem.total_mb || 0) + ' MB (' + formatBytes((mem.total_kb || 0) * 1024) + ')'),
+			infoItem('RAM Disponível', (mem.avail_mb || 0) + ' MB (' + formatBytes((mem.avail_kb || 0) * 1024) + ')'),
+			infoItem('RAM Livre', formatBytes((mem.free_kb || 0) * 1024)),
+			infoItem('Cache & Buffers', formatBytes(((mem.cached_kb || 0) + (mem.buffers_kb || 0)) * 1024))
+		];
+
+		const stRows = [
+			infoItem('Mídia da Flash', st.flash_type || 'Flash Interna'),
+			infoItem('Espaço Flash Overlay (Livre)', (st.overlay_avail_mb || 0) + ' MB livres de ' + (Math.round((st.overlay_total_kb || 0)/1024)) + ' MB'),
+			infoItem('Memória Volátil (/tmp RAM)', (st.tmp_avail_mb || 0) + ' MB livres de ' + (Math.round((st.tmp_total_kb || 0)/1024)) + ' MB')
+		];
+
+		const thermalRows = sensors.length ? sensors.map(function(s) {
+			const temp = s.temp_c || 0;
+			const badge = temp >= 80 ? 'CRÍTICO' : (temp >= 65 ? 'ELEVADO' : 'NORMAL');
+			return infoItem(s.name, temp + ' °C', badge);
+		}) : [ infoItem('Sensores Térmicos', 'Nenhum sensor físico integrado neste modelo') ];
+
+		const portNames = Object.keys(ports);
+		const portRows = portNames.length ? portNames.map(function(p) {
+			const info = ports[p];
+			const isUp = !!info.carrier;
+			const speedText = isUp ? ((info.speed ? info.speed + ' Mbps ' : 'Conectada ') + (info.duplex || '')) : 'Sem cabo conectado';
+			return infoItem(p.toUpperCase(), speedText, 'Suporta ' + (info.max_speed || '1G'));
+		}) : [ infoItem('Portas de Rede', 'Detectadas automaticamente pela bridge LAN') ];
+
+		const wifiRows = [
+			infoItem('Padrões Suportados', (wf.wifi_ax ? 'Wi-Fi 6 (ax) • ' : '') + (wf.wifi_ac ? 'Wi-Fi 5 (ac) • ' : '') + (wf.wifi_n ? 'Wi-Fi 4 (n)' : 'Wi-Fi')),
+			infoItem('Largura Máxima 5 GHz', wf.wifi_160 ? '160 MHz (Ultra Rápido)' : '80 MHz (VHT80)'),
+			infoItem('Bandas Simultâneas', '2.4 GHz + 5.0 GHz (Dual-Band)')
+		];
+
+		ui.showModal('Especificações Técnicas do Hardware', [
+			E('p', { class: 'ex-muted' }, ['Diagnóstico abrangente e dinâmico dos componentes físicos, sensores térmicos e capacidades do seu roteador.']),
+			E('div', { style: 'max-height: 72vh; overflow-y: auto; padding-right: 4px;' }, [
+				sectionBlock('Identificação do Equipamento', '💻', sysRows),
+				sectionBlock('Processador e Desempenho', '⚡', cpuRows),
+				sectionBlock('Sensores Térmicos ao Vivo', '🌡️', thermalRows),
+				sectionBlock('Memória RAM', '💾', memRows),
+				sectionBlock('Armazenamento Flash & RAM', '💽', stRows),
+				sectionBlock('Portas Físicas Ethernet', '🌐', portRows),
+				sectionBlock('Recursos de Rede Sem Fio (Wi-Fi)', '📶', wifiRows)
+			]),
+			E('div', { class: 'right', style: 'margin-top: 14px;' }, [
+				E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': ui.hideModal }, ['Fechar'])
+			])
+		]);
+	},
 	showFeatureCenter: function(){
 		const language=E('select',{class:'cbi-input-select'},[E('option',{value:'pt-br'},['Português (Brasil)']),E('option',{value:'en'},['Inglês'])]);language.value=this.capabilities.language||'pt-br';
 		const brandName=E('input',{class:'cbi-input-text',type:'text',maxlength:40,value:this.capabilities.title||'ARK Router','aria-label':translateText('Nome do painel')});
@@ -5487,7 +5649,19 @@ return view.extend({
 		},this);
 		const modeButton=L.bind(function(mode,label){return E('button',{id:'ex-mode-'+mode,class:'ex-mode-button','click':L.bind(this.setMwanMode,this,mode,label)},[label]);},this);
 		const historyCard=function(kind,title,color){return E('section',{class:'ex-card ex-history-card','style':'--history-color:'+color},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['HISTÓRICO 24 HORAS']),E('h3',{},[title])]),E('strong',{id:'ex-history-'+kind+'-peak',class:'ex-history-peak'},['Coletando…'])]),E('canvas',{id:'ex-history-'+kind,class:'ex-history-chart',width:600,height:126})]);};
-		const healthItem=function(icon,label,valueId,barId,color,detailId){return E('div',{class:'ex-health-item','style':'--health-color:'+color},[E('span',{class:'ex-health-icon'},[icon]),E('div',{class:'ex-health-copy'},[E('span',{class:'ex-label'},[label]),E('strong',{id:valueId},['—']),barId?E('div',{class:'ex-health-bar'},[E('i',{id:barId})]):E('small',{class:'ex-health-steady'},['atividade do sistema']),detailId?E('small',{id:detailId,class:'ex-health-detail'},['—']):''])]);};
+		const healthItem=function(icon,label,valueId,barId,color,detailId,onClick){
+			const attrs={class:'ex-health-item'+(onClick?' clickable':''),style:'--health-color:'+color};
+			if(onClick){attrs.click=onClick;attrs.role='button';attrs.tabindex='0';}
+			return E('div',attrs,[
+				E('span',{class:'ex-health-icon'},[icon]),
+				E('div',{class:'ex-health-copy'},[
+					E('span',{class:'ex-label'},[label]),
+					E('strong',{id:valueId},['—']),
+					barId?E('div',{class:'ex-health-bar'},[E('i',{id:barId})]):E('small',{class:'ex-health-steady'},['atividade do sistema']),
+					detailId?E('small',{id:detailId,class:'ex-health-detail'},['—']):''
+				])
+			]);
+		};
 		const speedWanCard=L.bind(function(wan,label,available){const attrs={class:'ex-mini-button','click':L.bind(this.startSpeedtest,this,wan,label)};if(!available)attrs.disabled=true;return E('div',{class:'ex-speedtest-wan'},[E('div',{class:'ex-card-title'},[E('h3',{},[label]),E('button',attrs,['Executar teste'])]),E('div',{id:'ex-speedtest-'+wan+'-result',class:'ex-speedtest-result'},[E('span',{class:'ex-muted'},[available?'Sem resultado nesta sessão.':'SEM CABO'])])]);},this);
 		const sortSelect=E('select',{id:'ex-device-sort-key',class:'cbi-input-select ex-device-sort-select','change':L.bind(function(ev){this.setDeviceSort(ev.currentTarget.value);},this)},[E('option',{value:'total'},['Total consumido']),E('option',{value:'now'},['Agora (velocidade)']),E('option',{value:'name'},['Nome do aparelho'])]);sortSelect.value=this.deviceSortKey||'total';
 		const deviceSortControls=E('div',{class:'ex-device-sort-controls'},[E('span',{class:'ex-muted ex-device-sort-label'},['Ordenar']),sortSelect,E('button',{id:'ex-device-sort-dir',class:'ex-mini-button','click':L.bind(function(ev){this.toggleDeviceSortDirection(ev.currentTarget);},this)},[this.deviceSortKey==='name'?(this.deviceSortDir==='asc'?'A → Z':'Z → A'):(this.deviceSortDir==='desc'?'Maior primeiro':'Menor primeiro')])]);
@@ -5501,10 +5675,29 @@ return view.extend({
 		const activeWans=getActiveWanList(data);
 		const nextWan=getNextAvailableWan(data);
 		const qosWanProfiles=sqmWanProfiles(data), qosWanRows=qosWanProfiles.map(function(profile){return infoRow(profile.label+' limites','ex-qos-wan-'+portDomId(profile.network));});
+		const portsInfo=(data.hardwareInfo&&data.hardwareInfo.ports)||{};
+		const getPortBadge=function(device,isLan){
+			if(!device)return null;
+			let p=portsInfo[device];
+			if(!p&&(device==='wan'||device==='wan1')&&portsInfo['eth1'])p=portsInfo['eth1'];
+			if(!p){
+				const clean=String(device).replace(/@.+/,'');
+				if(portsInfo[clean])p=portsInfo[clean];
+			}
+			const maxSpeed=(p&&p.max_speed)||((device==='eth1'||String(device).indexOf('2.5')>=0)?'2.5G':'1G');
+			const cls=maxSpeed==='2.5G'?'speed-2500':'speed-1000';
+			return E('span',{class:'ex-port-badge '+cls},[maxSpeed]);
+		};
 		const wanCards=activeWans.map(L.bind(function(w){
 			const id='ex-'+w.domId;
 			return E('section',{class:'ex-card ex-wan-card'},[
-				E('div',{class:'ex-card-title'},[E('h3',{},[w.label]),E('span',{id:id+'-status',class:'ex-pill standby'},['—'])]),
+				E('div',{class:'ex-card-title'},[
+					E('div',{style:'display:flex;align-items:center;gap:6px;'},[
+						E('h3',{},[w.label]),
+						getPortBadge(w.device,false)||''
+					]),
+					E('span',{id:id+'-status',class:'ex-pill standby'},['—'])
+				]),
 				infoRow('Modo de conexão',id+'-mode'),
 				infoRow('Endereço IPv4',id+'-ip'),
 				infoRow('Gateway',id+'-gateway'),
@@ -5523,7 +5716,13 @@ return view.extend({
 		const lanCards=lanPorts.map(L.bind(function(port){
 			const id='ex-lan-'+portDomId(port), label=portLabel(port);
 			return E('section',{class:'ex-card ex-lan-card'},[
-				E('div',{class:'ex-card-title'},[E('h3',{},[label]),E('span',{id:id+'-status',class:'ex-pill standby'},['—'])]),
+				E('div',{class:'ex-card-title'},[
+					E('div',{style:'display:flex;align-items:center;gap:6px;'},[
+						E('h3',{},[label]),
+						getPortBadge(port,true)||''
+					]),
+					E('span',{id:id+'-status',class:'ex-pill standby'},['—'])
+				]),
 				infoRow('Velocidade',id+'-speed'),
 				infoRow('Modo',id+'-duplex'),
 				infoRow('Recebido',id+'-rx'),
@@ -5563,7 +5762,25 @@ return view.extend({
 
 		const root=E('div',{class:'ex-dashboard'},[
 			E('section',{class:'ex-hero'+(isGamer?' ex-hero-gamer':'')},[E('div',{},[E('span',{class:'ex-eyebrow'},[heroEyebrow]),E('h2',{},[panelTitle]),E('p',{},[this.board.model||'OpenWrt','  •  ',release,'  •  ARK Router ',arkVersion]),E('div',{id:'ex-speedify-top',class:'ex-hero-speedify standby',style:'display:none'},[E('span',{},['Speedify']),E('strong',{},['—']),E('small',{},['—'])])]),E('div',{class:'ex-hero-status'},[E('span',{id:'ex-global-status',class:'ex-pill standby'},['VERIFICANDO']),E('strong',{id:'ex-clock'},['--:--:--']),E('small',{id:'ex-refresh-summary'},['sessão de 12 horas • atualização a cada 3 segundos']),E('div',{class:'ex-hero-actions'},[gamerButton,E('button',{class:'ex-hero-feature-button ex-hero-setup-button','click':L.bind(this.showEzSetup,this)},['Ark - Setup']),E('button',{class:'ex-hero-feature-button','click':L.bind(this.showFeatureCenter,this)},['Recursos'])])])]),
-			E('section',{class:'ex-card ex-health-strip'},[E('div',{class:'ex-health-head'},[E('div',{},[E('span',{class:'ex-kicker'},['SAÚDE DO ROTEADOR']),E('small',{},['Ligado há ',E('strong',{id:'ex-uptime'},['—'])])]),E('span',{id:'ex-health-status',class:'ex-pill standby'},['VERIFICANDO'])]),E('div',{class:'ex-health-items'},[healthItem('℃','Temperatura','ex-temperature',null,'#f59e0b'),healthItem('▦','Memória','ex-memory','ex-memory-bar','#3b82f6','ex-memory-detail'),healthItem('▣','Armazenamento','ex-storage','ex-storage-bar','#8b5cf6','ex-storage-detail'),healthItem('⌁','Carga','ex-load',null,'#10b981')])]),
+			E('section',{class:'ex-card ex-health-strip'},[
+				E('div',{class:'ex-health-head'},[
+					E('div',{},[
+						E('span',{class:'ex-kicker'},['SAÚDE DO ROTEADOR']),
+						E('small',{},['Ligado há ',E('strong',{id:'ex-uptime'},['—'])])
+					]),
+					E('div',{style:'display:flex;align-items:center;gap:10px;'},[
+						E('button',{class:'ex-health-specs-btn','click':L.bind(this.showHardwareModal,this),title:'Ver especificações técnicas completas do hardware'},['🔍 Especificações']),
+						E('span',{id:'ex-health-status',class:'ex-pill standby'},['VERIFICANDO'])
+					])
+				]),
+				E('div',{class:'ex-health-items'},[
+					healthItem('⚡','Processador','ex-cpu','ex-cpu-bar','#10b981','ex-cpu-detail',L.bind(this.showHardwareModal,this)),
+					healthItem('℃','Temperatura','ex-temperature',null,'#f59e0b','ex-temperature-detail',L.bind(this.showThermalModal,this)),
+					healthItem('▦','Memória','ex-memory','ex-memory-bar','#3b82f6','ex-memory-detail',L.bind(this.showHardwareModal,this)),
+					healthItem('▣','Armazenamento','ex-storage','ex-storage-bar','#8b5cf6','ex-storage-detail',L.bind(this.showHardwareModal,this)),
+					healthItem('⌁','Carga','ex-load',null,'#6366f1','ex-load-detail')
+				])
+			]),
 			this.systemPerfCard(data),
 			E('div',{class:'ex-grid ex-grid-2'},[metricCard('↓','Download agora','ex-download','ex-down-total','#3b82f6'),metricCard('↑','Upload agora','ex-upload','ex-up-total','#a855f7')]),
 			E('div',{class:'ex-grid ex-grid-2 ex-history-grid'},[historyCard('down','Download ao longo do dia','#3b82f6'),historyCard('up','Upload ao longo do dia','#a855f7')]),

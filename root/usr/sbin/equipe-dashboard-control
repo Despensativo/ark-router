@@ -1071,9 +1071,11 @@ feature_active() {
 		argon) [ -d /www/luci-static/argon ] && [ "$(uci -q get luci.main.mediaurlbase)" = /luci-static/argon ] ;;
 		uhttpd) [ -f /usr/share/luci/menu.d/luci-app-uhttpd.json ] ;;
 		wifi) [ -f /etc/config/wireless ] ;;
-		history) [ -x /usr/sbin/equipe-traffic-history ] ;;
-		temperature) [ -r /sys/class/thermal/thermal_zone0/temp ] ;;
-		custom_qos) [ -s /etc/config/qos_equipe ] ;;
+		temperature)
+			[ -r /sys/class/thermal/thermal_zone0/temp ] || \
+			ls /sys/class/thermal/thermal_zone*/temp >/dev/null 2>&1 || \
+			ls /sys/class/hwmon/hwmon*/temp*_input >/dev/null 2>&1
+			;;
 		speedtest) command -v speedtest-go >/dev/null 2>&1 || [ -x /tmp/ark-speedtest/speedtest-go ] ;;
 		speedify) [ -x /usr/share/speedify/speedify_cli ] || installed speedify ;;
 		tailscale) command -v tailscale >/dev/null 2>&1 ;;
@@ -3934,6 +3936,213 @@ get_led_status() {
 	printf '}\n'
 }
 
+get_system_hardware_info() {
+	model="$(cat /tmp/sysinfo/model 2>/dev/null || cat /proc/cpuinfo 2>/dev/null | awk -F': ' '/model name|machine|Hardware/{print $2; exit}' || echo 'ARK Router')"
+	board="$(cat /tmp/sysinfo/board_name 2>/dev/null || echo 'generic')"
+	target="$(grep 'DISTRIB_TARGET' /etc/openwrt_release 2>/dev/null | cut -d"'" -f2 || echo '')"
+	release="$(grep 'DISTRIB_DESCRIPTION' /etc/openwrt_release 2>/dev/null | cut -d"'" -f2 || echo 'OpenWrt')"
+	kernel="$(uname -r 2>/dev/null || echo '')"
+
+	# CPU Cores, Architecture and Model
+	cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
+	[ "$cpu_cores" -ge 1 ] 2>/dev/null || cpu_cores=1
+	cpu_model="$(awk -F': ' '/model name|machine|Hardware|Processor/{print $2; exit}' /proc/cpuinfo 2>/dev/null || true)"
+	[ -n "$cpu_model" ] || cpu_model="$(cat /proc/device-tree/model 2>/dev/null | tr -d '\0' || true)"
+	[ -n "$cpu_model" ] || cpu_model="$model"
+	cpu_arch="$(uname -m 2>/dev/null || echo 'generic')"
+	case "$cpu_arch" in
+		aarch64*|arm64*) cpu_arch_desc="ARMv8 (64-bit)" ;;
+		armv7*|armv6*|arm*) cpu_arch_desc="ARM (32-bit)" ;;
+		mips64*) cpu_arch_desc="MIPS (64-bit)" ;;
+		mips*) cpu_arch_desc="MIPS (32-bit)" ;;
+		x86_64*) cpu_arch_desc="x86 (64-bit)" ;;
+		i386*|i686*) cpu_arch_desc="x86 (32-bit)" ;;
+		*) cpu_arch_desc="$cpu_arch" ;;
+	esac
+
+	# CPU Clock Frequency (MHz)
+	cpu_freq_mhz=0
+	if [ -r /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq ]; then
+		f_khz="$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0)"
+		[ "$f_khz" -gt 0 ] 2>/dev/null && cpu_freq_mhz=$((f_khz / 1000))
+	elif [ -r /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq ]; then
+		f_khz="$(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq 2>/dev/null || echo 0)"
+		[ "$f_khz" -gt 0 ] 2>/dev/null && cpu_freq_mhz=$((f_khz / 1000))
+	fi
+	if [ "$cpu_freq_mhz" -le 0 ] && [ -r /sys/kernel/debug/clk/clk_summary ]; then
+		armpll_hz="$(grep -E 'armpll|cpu_clk|arm_clk' /sys/kernel/debug/clk/clk_summary 2>/dev/null | awk '{print $4}' | head -n 1)"
+		if [ -n "$armpll_hz" ] && [ "$armpll_hz" -gt 1000000 ] 2>/dev/null; then
+			cpu_freq_mhz=$((armpll_hz / 1000000))
+		fi
+	fi
+	if [ "$cpu_freq_mhz" -le 0 ]; then
+		proc_mhz="$(awk -F': ' '/cpu MHz/{print int($2); exit}' /proc/cpuinfo 2>/dev/null || echo 0)"
+		[ "$proc_mhz" -gt 0 ] 2>/dev/null && cpu_freq_mhz="$proc_mhz"
+	fi
+	if [ "$cpu_freq_mhz" -le 0 ]; then
+		case "$board" in
+			*mt7986*|*filogic-830*|*predator-w6x*) cpu_freq_mhz=2000 ;;
+			*mt7981*|*filogic-820*) cpu_freq_mhz=1300 ;;
+			*mt7622*) cpu_freq_mhz=1350 ;;
+			*mt7621*) cpu_freq_mhz=880 ;;
+			*qca9558*|*dgl-5500*|*archer-c7*) cpu_freq_mhz=720 ;;
+			*qca9563*) cpu_freq_mhz=775 ;;
+			*ipq4019*|*ipq4018*) cpu_freq_mhz=717 ;;
+			*ipq807*) cpu_freq_mhz=2200 ;;
+		esac
+	fi
+	if [ "$cpu_freq_mhz" -ge 1000 ]; then
+		cpu_freq_str="$(awk -v f="$cpu_freq_mhz" 'BEGIN { printf "%.1f GHz", f/1000 }')"
+	elif [ "$cpu_freq_mhz" -gt 0 ]; then
+		cpu_freq_str="${cpu_freq_mhz} MHz"
+	else
+		cpu_freq_str="Padrão"
+	fi
+
+	# Real-time CPU Usage % via /proc/stat
+	cpu_usage_pct=0
+	stat_file="/tmp/ark-cpu-usage.prev"
+	curr_stat="$(awk '/^cpu / {print $2+$3+$4+$5+$6+$7+$8, $5}' /proc/stat 2>/dev/null || echo '0 0')"
+	curr_total="${curr_stat%% *}"; curr_idle="${curr_stat#* }"
+	if [ -f "$stat_file" ]; then
+		prev_stat="$(cat "$stat_file" 2>/dev/null || echo '0 0')"
+		prev_total="${prev_stat%% *}"; prev_idle="${prev_stat#* }"
+		diff_total=$((curr_total - prev_total))
+		diff_idle=$((curr_idle - prev_idle))
+		if [ "$diff_total" -gt 0 ]; then
+			diff_used=$((diff_total - diff_idle))
+			[ "$diff_used" -lt 0 ] && diff_used=0
+			cpu_usage_pct=$(( (diff_used * 100) / diff_total ))
+		fi
+	fi
+	echo "$curr_stat" > "$stat_file"
+
+	# RAM
+	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+	mem_free_kb="$(awk '/MemFree:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+	mem_avail_kb="$(awk '/MemAvailable:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+	mem_cached_kb="$(awk '/^Cached:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+	mem_buffers_kb="$(awk '/^Buffers:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+	[ "$mem_avail_kb" -gt 0 ] 2>/dev/null || mem_avail_kb=$((mem_free_kb + mem_cached_kb + mem_buffers_kb))
+
+	# Storage / Flash
+	flash_type="Flash Interna"
+	root_dev="$(df -k /overlay 2>/dev/null | awk 'NR==2 {print $1}')"
+	case "$root_dev" in
+		*ubi*) flash_type="NAND Flash (UBI)" ;;
+		*mtdblock*|*spi*) flash_type="SPI Flash (NOR)" ;;
+		*mmcblk*) flash_type="eMMC / MicroSD" ;;
+		*sd*|*nvme*) flash_type="SSD / Disco" ;;
+		*overlayfs*) flash_type="Flash Overlay" ;;
+	esac
+	overlay_total_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2 {print $2}' || echo 0)"
+	overlay_avail_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2 {print $4}' || echo 0)"
+	tmp_total_kb="$(df -k /tmp 2>/dev/null | awk 'NR==2 {print $2}' || echo 0)"
+	tmp_avail_kb="$(df -k /tmp 2>/dev/null | awk 'NR==2 {print $4}' || echo 0)"
+
+	# Wi-Fi Capabilities
+	wifi_ax=false; wifi_ac=false; wifi_n=false; wifi_160=false
+	if iw list 2>/dev/null | grep -q 'HE Iftypes'; then wifi_ax=true; fi
+	if iw list 2>/dev/null | grep -q 'VHT Capabilities'; then wifi_ac=true; fi
+	if iw list 2>/dev/null | grep -q 'HT20/HT40'; then wifi_n=true; fi
+	if iw list 2>/dev/null | grep -q '160 MHz'; then wifi_160=true; fi
+
+	# Start JSON
+	printf '{"model":"%s","board":"%s","target":"%s","release":"%s","kernel":"%s",' \
+		"$(json_escape "$model")" "$(json_escape "$board")" "$(json_escape "$target")" \
+		"$(json_escape "$release")" "$(json_escape "$kernel")"
+
+	printf '"cpu":{"cores":%s,"arch":"%s","arch_desc":"%s","model":"%s","freq_mhz":%s,"freq_str":"%s","usage_pct":%s},' \
+		"$cpu_cores" "$(json_escape "$cpu_arch")" "$(json_escape "$cpu_arch_desc")" \
+		"$(json_escape "$cpu_model")" "$cpu_freq_mhz" "$(json_escape "$cpu_freq_str")" "$cpu_usage_pct"
+
+	printf '"memory":{"total_kb":%s,"free_kb":%s,"avail_kb":%s,"cached_kb":%s,"buffers_kb":%s,"total_mb":%s,"avail_mb":%s},' \
+		"$mem_total_kb" "$mem_free_kb" "$mem_avail_kb" "$mem_cached_kb" "$mem_buffers_kb" \
+		$((mem_total_kb / 1024)) $((mem_avail_kb / 1024))
+
+	printf '"storage":{"flash_type":"%s","overlay_total_kb":%s,"overlay_avail_kb":%s,"overlay_avail_mb":%s,"tmp_total_kb":%s,"tmp_avail_kb":%s,"tmp_avail_mb":%s},' \
+		"$(json_escape "$flash_type")" "$overlay_total_kb" "$overlay_avail_kb" $((overlay_avail_kb / 1024)) \
+		"$tmp_total_kb" "$tmp_avail_kb" $((tmp_avail_kb / 1024))
+
+	printf '"wifi":{"wifi_ax":%s,"wifi_ac":%s,"wifi_n":%s,"wifi_160":%s},' \
+		"$wifi_ax" "$wifi_ac" "$wifi_n" "$wifi_160"
+
+	# Thermal Sensors List
+	first_t=1
+	printf '"thermal_sensors":['
+	for z in /sys/class/thermal/thermal_zone*; do
+		[ -d "$z" ] || continue
+		ztype="$(cat "$z/type" 2>/dev/null || echo 'cpu')"
+		ztemp="$(cat "$z/temp" 2>/dev/null || echo 0)"
+		[ "$ztemp" -gt 0 ] 2>/dev/null || continue
+		[ "$ztemp" -gt 1000 ] && ztemp_c=$((ztemp / 1000)) || ztemp_c="$ztemp"
+		label="Processador (CPU)"
+		case "$ztype" in
+			*cpu*) label="Processador (CPU)" ;;
+			*wifi*|*wlan*) label="Wi-Fi" ;;
+			*switch*|*phy*|*mdio*) label="Switch de Rede" ;;
+			*) label="$ztype" ;;
+		esac
+		[ "$first_t" = 1 ] && first_t=0 || printf ','
+		printf '{"name":"%s","type":"%s","temp_c":%s}' \
+			"$(json_escape "$label")" "$(json_escape "$ztype")" "$ztemp_c"
+	done
+	for h in /sys/class/hwmon/hwmon*; do
+		[ -d "$h" ] || continue
+		hname="$(cat "$h/name" 2>/dev/null || echo '')"
+		for tf in "$h"/temp*_input; do
+			[ -r "$tf" ] || continue
+			htemp="$(cat "$tf" 2>/dev/null || echo 0)"
+			[ "$htemp" -gt 0 ] 2>/dev/null || continue
+			[ "$htemp" -gt 1000 ] && htemp_c=$((htemp / 1000)) || htemp_c="$htemp"
+			hlabel="Sensor"
+			case "$hname" in
+				*cpu*) hlabel="Processador (CPU)"; htype="cpu" ;;
+				*mt7915_phy0*|*phy0*|*wifi2*) hlabel="Wi-Fi 2.4 GHz"; htype="wifi2g" ;;
+				*mt7915_phy1*|*phy1*|*wifi5*) hlabel="Wi-Fi 5 GHz"; htype="wifi5g" ;;
+				*mdio*|*switch*|*phy*) hlabel="Switch Ethernet"; htype="switch" ;;
+				*) hlabel="$hname"; htype="generic" ;;
+			esac
+			if [ "$htype" = "cpu" ]; then
+				continue
+			fi
+			[ "$first_t" = 1 ] && first_t=0 || printf ','
+			printf '{"name":"%s","type":"%s","temp_c":%s}' \
+				"$(json_escape "$hlabel")" "$(json_escape "$htype")" "$htemp_c"
+		done
+	done
+	printf '],'
+
+	# Network Port Capabilities (Max Supported Speed)
+	first_p=1
+	printf '"ports":{'
+	for ppath in /sys/class/net/*; do
+		[ -d "$ppath" ] || continue
+		pname="$(basename "$ppath")"
+		case "$pname" in
+			lan*|eth*|wan*)
+				speed="$(cat "$ppath/speed" 2>/dev/null || echo '')"
+				carrier="$(cat "$ppath/carrier" 2>/dev/null || echo 0)"
+				duplex="$(cat "$ppath/duplex" 2>/dev/null || echo '')"
+				max_speed="1G"
+				dev_status="$(ubus call network.device status "{\"name\":\"$pname\"}" 2>/dev/null || true)"
+				case "$dev_status" in
+					*2500base*|*2500F*) max_speed="2.5G" ;;
+					*10000base*) max_speed="10G" ;;
+					*1000base*|*1000F*) max_speed="1G" ;;
+					*100base*|*100F*) max_speed="100M" ;;
+					*) [ "$speed" = 2500 ] && max_speed="2.5G" ;;
+				esac
+				[ "$first_p" = 1 ] && first_p=0 || printf ','
+				printf '"%s":{"speed":"%s","carrier":%s,"duplex":"%s","max_speed":"%s"}' \
+					"$(json_escape "$pname")" "$(json_escape "$speed")" "$carrier" \
+					"$(json_escape "$duplex")" "$(json_escape "$max_speed")"
+				;;
+		esac
+	done
+	printf '}}\n'
+}
+
 case "$action" in
 	ez-setup-status)
 		ez_json
@@ -4184,8 +4393,58 @@ case "$action" in
 		https_redirect="$(uci -q get uhttpd.main.redirect_https || printf 0)"
 		ca_available=false; ca_fingerprint=''
 		if [ -r /etc/ark-router/ark-router-ca.crt ] && [ -r /www/ark-router/ark-router-ca.crt ]; then ca_available=true; ca_fingerprint="$(sha256sum /etc/ark-router/ark-router-ca.crt | awk '{print $1}')"; fi
+		board="$(cat /tmp/sysinfo/board_name 2>/dev/null || echo 'generic')"
 		cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
 		[ "$cpu_cores" -ge 1 ] 2>/dev/null || cpu_cores=1
+		cpu_arch="$(uname -m 2>/dev/null || echo 'generic')"
+		cpu_freq_mhz=0
+		if [ -r /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq ]; then
+			f_khz="$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null || echo 0)"
+			[ "$f_khz" -gt 0 ] 2>/dev/null && cpu_freq_mhz=$((f_khz / 1000))
+		elif [ -r /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq ]; then
+			f_khz="$(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq 2>/dev/null || echo 0)"
+			[ "$f_khz" -gt 0 ] 2>/dev/null && cpu_freq_mhz=$((f_khz / 1000))
+		fi
+		if [ "$cpu_freq_mhz" -le 0 ] && [ -r /sys/kernel/debug/clk/clk_summary ]; then
+			armpll_hz="$(grep -E 'armpll|cpu_clk|arm_clk' /sys/kernel/debug/clk/clk_summary 2>/dev/null | awk '{print $4}' | head -n 1)"
+			if [ -n "$armpll_hz" ] && [ "$armpll_hz" -gt 1000000 ] 2>/dev/null; then
+				cpu_freq_mhz=$((armpll_hz / 1000000))
+			fi
+		fi
+		if [ "$cpu_freq_mhz" -le 0 ]; then
+			proc_mhz="$(awk -F': ' '/cpu MHz/{print int($2); exit}' /proc/cpuinfo 2>/dev/null || echo 0)"
+			[ "$proc_mhz" -gt 0 ] 2>/dev/null && cpu_freq_mhz="$proc_mhz"
+		fi
+		if [ "$cpu_freq_mhz" -le 0 ]; then
+			case "$board" in
+				*mt7986*|*filogic-830*|*predator-w6x*) cpu_freq_mhz=2000 ;;
+				*mt7981*|*filogic-820*) cpu_freq_mhz=1300 ;;
+				*mt7622*) cpu_freq_mhz=1350 ;;
+				*mt7621*) cpu_freq_mhz=880 ;;
+				*qca9558*|*dgl-5500*|*archer-c7*) cpu_freq_mhz=720 ;;
+				*qca9563*) cpu_freq_mhz=775 ;;
+				*ipq4019*|*ipq4018*) cpu_freq_mhz=717 ;;
+				*ipq807*) cpu_freq_mhz=2200 ;;
+			esac
+		fi
+		if [ "$cpu_freq_mhz" -ge 1000 ]; then
+			cpu_freq_str="$(awk -v f="$cpu_freq_mhz" 'BEGIN { printf "%.1f GHz", f/1000 }')"
+		elif [ "$cpu_freq_mhz" -gt 0 ]; then
+			cpu_freq_str="${cpu_freq_mhz} MHz"
+		else
+			cpu_freq_str="Padrão"
+		fi
+
+		flash_type="Flash Interna"
+		root_dev="$(df -k /overlay 2>/dev/null | awk 'NR==2 {print $1}')"
+		case "$root_dev" in
+			*ubi*) flash_type="NAND Flash (UBI)" ;;
+			*mtdblock*|*spi*) flash_type="SPI Flash (NOR)" ;;
+			*mmcblk*) flash_type="eMMC / MicroSD" ;;
+			*sd*|*nvme*) flash_type="SSD / Disco" ;;
+			*overlayfs*) flash_type="Flash Overlay" ;;
+		esac
+
 		mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
 		mem_total_mb=$((mem_total_kb / 1024))
 		wifi_160=false
@@ -4237,8 +4496,8 @@ case "$action" in
 		printf ',"starlink_public":{"enabled":%s,"url":"/starlink/","read_only":true,"active_wan":"%s"}' "$starlink_public" "$(starlink_active_wan_get)"
 		current_version="$(ark_current_version)"
 		update_repo="$(ark_update_repo)"
-		printf '},"hardware":{"cpu_cores":%s,"mem_total_mb":%s,"wifi_160_supported":%s,"is_legacy_owrt":%s},"https":{"available":%s,"redirect":%s,"certificate":"local","ca_available":%s,"ca_fingerprint":"%s","ca_download":"/ark-router/ark-router-ca.crt"},"update":{"current":"%s","repo":"%s","manager":"%s"}}\n' \
-			"$cpu_cores" "$mem_total_mb" "$wifi_160" "$is_legacy_owrt" "$https_available" "$(bool "$https_redirect")" "$ca_available" "$ca_fingerprint" "$(json_escape "$current_version")" "$(json_escape "$update_repo")" "$(json_escape "$manager")"
+		printf '},"hardware":{"cpu_cores":%s,"cpu_freq_mhz":%s,"cpu_freq_str":"%s","cpu_arch":"%s","mem_total_mb":%s,"flash_type":"%s","wifi_160_supported":%s,"is_legacy_owrt":%s},"https":{"available":%s,"redirect":%s,"certificate":"local","ca_available":%s,"ca_fingerprint":"%s","ca_download":"/ark-router/ark-router-ca.crt"},"update":{"current":"%s","repo":"%s","manager":"%s"}}\n' \
+			"$cpu_cores" "$cpu_freq_mhz" "$(json_escape "$cpu_freq_str")" "$(json_escape "$cpu_arch")" "$mem_total_mb" "$(json_escape "$flash_type")" "$wifi_160" "$is_legacy_owrt" "$https_available" "$(bool "$https_redirect")" "$ca_available" "$ca_fingerprint" "$(json_escape "$current_version")" "$(json_escape "$update_repo")" "$(json_escape "$manager")"
 		;;
 	self-update-check)
 		ark_update_json
@@ -5852,6 +6111,9 @@ EOF
 		;;
 	get-led-status)
 		get_led_status
+		;;
+	system-hardware-info)
+		get_system_hardware_info
 		;;
 	*)
 		echo 'Uso: equipe-dashboard-control {features|...|irqbalance-toggle 0|1|...}' >&2
