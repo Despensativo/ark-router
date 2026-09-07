@@ -29,7 +29,7 @@
 		<script src="{{ resource }}/cbi.js?v=0.9.78"></script>
 		<script src="{{ media }}/ark-theme.js?v=0.9.78"></script>
 	</head>
-	{% let is_login = !dispatcher.context.authsession; %}
+	{% let is_login = !(ctx?.authsession || dispatcher?.context?.authsession); %}
 	<body class="lang_{{ dispatcher.lang }} {{ entityencode(striptags(node?.title ?? ''), true) }} {{ is_login ? 'ark-login-page' : 'ark-app-page' }} ark-theme" data-page="{{ entityencode(join('-', ctx.request_path), true) }}">
 		{% if (!blank_page): %}
 		<header class="ark-header">
