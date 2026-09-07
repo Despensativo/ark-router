@@ -49,21 +49,99 @@ a:hover {
 	text-decoration: none;
 }
 
-/* Header & Navigation Bar */
-header.ark-header, header {
-	background: rgba(11, 17, 32, 0.85) !important;
-	backdrop-filter: blur(16px);
-	-webkit-backdrop-filter: blur(16px);
-	border-bottom: 1px solid var(--ark-border) !important;
-	position: sticky;
-	top: 0;
-	z-index: 1000;
-	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+/* Left Sidebar Navigation (Desktop) */
+.ark-mobile-bar {
+	display: none !important;
+}
+.ark-sidebar-backdrop {
+	display: none;
 }
 
-header .fill {
-	background: transparent !important;
-	padding: 8px 0;
+aside.ark-sidebar {
+	position: fixed !important;
+	top: 0 !important;
+	left: 0 !important;
+	bottom: 0 !important;
+	width: 230px !important;
+	background: #0f172a !important;
+	background: rgba(15, 23, 42, 0.96) !important;
+	backdrop-filter: blur(20px) !important;
+	-webkit-backdrop-filter: blur(20px) !important;
+	border-right: 1px solid var(--ark-border) !important;
+	display: flex !important;
+	flex-direction: column !important;
+	z-index: 1050 !important;
+	box-shadow: 2px 0 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+.ark-sidebar-header {
+	padding: 18px 16px !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: space-between !important;
+	border-bottom: 1px solid var(--ark-border) !important;
+}
+
+.ark-sidebar-close {
+	display: none !important;
+}
+
+.ark-sidebar-nav {
+	flex: 1 1 auto !important;
+	overflow: visible !important;
+	padding: 12px 8px !important;
+}
+
+.ark-sidebar-nav ul.nav,
+.ark-sidebar-nav .nav {
+	display: flex !important;
+	flex-direction: column !important;
+	gap: 4px !important;
+	width: 100% !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	list-style: none !important;
+}
+
+.ark-sidebar-nav ul.nav > li,
+.ark-sidebar-nav .nav > li {
+	position: relative !important;
+	width: 100% !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	list-style: none !important;
+}
+
+.ark-sidebar-nav ul.nav > li > a,
+.ark-sidebar-nav .nav > li > a {
+	display: flex !important;
+	align-items: center !important;
+	justify-content: space-between !important;
+	color: var(--ark-text-muted) !important;
+	font-weight: 600 !important;
+	font-size: 13.5px !important;
+	padding: 10px 14px !important;
+	border-radius: 8px !important;
+	transition: all 0.18s ease !important;
+	text-decoration: none !important;
+}
+
+.ark-sidebar-nav ul.nav > li > a:hover,
+.ark-sidebar-nav ul.nav > li.active > a,
+.ark-sidebar-nav .nav > li.active > a,
+.ark-sidebar-nav ul.nav > li.open > a,
+.ark-sidebar-nav .nav > li.open > a {
+	color: #fff !important;
+	background: var(--ark-surface-2) !important;
+	box-shadow: inset 3px 0 0 var(--ark-primary) !important;
+}
+
+.ark-sidebar-footer {
+	padding: 12px 14px !important;
+	border-top: 1px solid var(--ark-border) !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: space-between !important;
 }
 
 .container {
@@ -83,7 +161,7 @@ header .fill {
 	font-weight: 800;
 	color: #fff !important;
 	letter-spacing: -0.02em;
-	padding: 6px 12px;
+	padding: 4px 8px;
 	border-radius: 8px;
 	transition: opacity 0.2s;
 	text-decoration: none !important;
@@ -101,48 +179,28 @@ header .fill {
 	-webkit-text-fill-color: transparent;
 }
 
-header .fill .container {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
+/* Main Content with Left Sidebar Offset */
+#maincontent.ark-main-container,
+.ark-app-page #maincontent,
+body.ark-theme:not(.ark-login-page) #maincontent,
+body.ark-theme:not(.ark-login-page) .main {
+	margin-left: 230px !important;
+	max-width: calc(100vw - 230px) !important;
+	padding: 24px 32px !important;
+	box-sizing: border-box !important;
+	transition: margin-left 0.25s ease !important;
+}
+body.ark-login-page #maincontent {
+	margin-left: 0 !important;
+	max-width: 100% !important;
 }
 
-/* Navigation Links */
-ul.nav, .nav {
-	display: flex !important;
-	align-items: center;
-	gap: 4px;
-	margin: 0 !important;
-	padding: 0 !important;
-	list-style: none !important;
-}
-ul.nav > li, .nav > li {
-	position: relative !important;
-	list-style: none !important;
-	margin: 0 !important;
-	padding: 0 !important;
-}
-ul.nav > li > a, .nav > li > a {
-	display: block !important;
-	color: var(--ark-text-muted) !important;
-	font-weight: 600;
-	font-size: 13px;
-	padding: 8px 14px;
-	border-radius: 8px;
-	transition: all 0.15s ease;
-	text-decoration: none !important;
-}
-ul.nav > li > a:hover, ul.nav > li.active > a, .nav > li.active > a, ul.nav > li:hover > a {
-	color: #fff !important;
-	background: var(--ark-surface-2) !important;
-}
-
-/* Dropdown menus */
+/* Dropdown menus (Flyout to right of sidebar) */
 .dropdown-menu, .menu-dropdown, ul.dropdown {
 	display: none !important;
 	position: absolute !important;
-	top: 100% !important;
-	left: 0 !important;
+	top: 0 !important;
+	left: 100% !important;
 	z-index: 9999 !important;
 	min-width: 200px !important;
 	background: var(--ark-surface-1) !important;
@@ -150,7 +208,7 @@ ul.nav > li > a:hover, ul.nav > li.active > a, .nav > li.active > a, ul.nav > li
 	border-radius: var(--ark-radius) !important;
 	box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6) !important;
 	padding: 6px !important;
-	margin: 0 !important;
+	margin: 0 0 0 6px !important;
 	list-style: none !important;
 	backdrop-filter: blur(20px);
 	-webkit-backdrop-filter: blur(20px);

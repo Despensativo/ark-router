@@ -32,16 +32,38 @@
 	{% let is_login = !(ctx?.authsession || dispatcher?.context?.authsession); %}
 	<body class="lang_{{ dispatcher.lang }} {{ entityencode(striptags(node?.title ?? ''), true) }} {{ is_login ? 'ark-login-page' : 'ark-app-page' }} ark-theme" data-page="{{ entityencode(join('-', ctx.request_path), true) }}">
 		{% if (!blank_page): %}
-		<header class="ark-header">
+		<div class="ark-mobile-bar">
+			<button type="button" class="ark-menu-toggle" id="ark-menu-toggle" aria-label="Menu">
+				<span class="ark-burger-line"></span>
+				<span class="ark-burger-line"></span>
+				<span class="ark-burger-line"></span>
+			</button>
 			<a class="brand ark-brand" href="{{ dispatcher.build_url('admin/equipe-dashboard') }}">
 				<span class="ark-brand-icon">⚡</span>
 				<span class="ark-brand-name">ARK <span class="ark-brand-accent">Router</span></span>
 			</a>
-			<ul class="nav" id="topmenu" style="display:none"></ul>
-			<div id="indicators" class="pull-right"></div>
-		</header>
+			<div class="ark-mobile-spacer"></div>
+		</div>
 
-		<div id="maincontent" class="container">
+		<div class="ark-sidebar-backdrop" id="ark-sidebar-backdrop"></div>
+
+		<aside class="ark-sidebar" id="ark-sidebar">
+			<div class="ark-sidebar-header">
+				<a class="brand ark-brand" href="{{ dispatcher.build_url('admin/equipe-dashboard') }}">
+					<span class="ark-brand-icon">⚡</span>
+					<span class="ark-brand-name">ARK <span class="ark-brand-accent">Router</span></span>
+				</a>
+				<button type="button" class="ark-sidebar-close" id="ark-sidebar-close" aria-label="Fechar">&times;</button>
+			</div>
+			<div class="ark-sidebar-nav">
+				<ul class="nav" id="topmenu" style="display:none"></ul>
+			</div>
+			<div class="ark-sidebar-footer">
+				<div id="indicators" class="ark-indicators"></div>
+			</div>
+		</aside>
+
+		<div id="maincontent" class="container ark-main-container">
 			{% if (getuid() == 0 && getspnam('root')?.pwdp === ''): %}
 				<div class="alert-message warning">
 					<h4>{{ _('No password set!') }}</h4>

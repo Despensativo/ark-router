@@ -37,20 +37,38 @@
 	</head>
 
 	<body class="lang_<%=luci.i18n.context.lang%> <% if node then %><%= striptags( node.title ) %><%- end %> <%= is_login and 'ark-login-page' or 'ark-app-page' %> ark-theme" data-page="<%= pcdata(table.concat(disp.context.requestpath, "-")) %>">
-		<header class="ark-header">
-			<div class="fill">
-				<div class="container">
-					<a class="brand ark-brand" href="<%=url('admin/equipe-dashboard')%>">
-						<span class="ark-brand-icon">⚡</span>
-						<span class="ark-brand-name">ARK <span class="ark-brand-accent">Router</span></span>
-					</a>
-					<ul class="nav" id="topmenu" style="display:none"></ul>
-					<div id="indicators" class="pull-right"></div>
-				</div>
-			</div>
-		</header>
+		<div class="ark-mobile-bar">
+			<button type="button" class="ark-menu-toggle" id="ark-menu-toggle" aria-label="Menu">
+				<span class="ark-burger-line"></span>
+				<span class="ark-burger-line"></span>
+				<span class="ark-burger-line"></span>
+			</button>
+			<a class="brand ark-brand" href="<%=url('admin/equipe-dashboard')%>">
+				<span class="ark-brand-icon">⚡</span>
+				<span class="ark-brand-name">ARK <span class="ark-brand-accent">Router</span></span>
+			</a>
+			<div class="ark-mobile-spacer"></div>
+		</div>
 
-		<div id="maincontent" class="container">
+		<div class="ark-sidebar-backdrop" id="ark-sidebar-backdrop"></div>
+
+		<aside class="ark-sidebar" id="ark-sidebar">
+			<div class="ark-sidebar-header">
+				<a class="brand ark-brand" href="<%=url('admin/equipe-dashboard')%>">
+					<span class="ark-brand-icon">⚡</span>
+					<span class="ark-brand-name">ARK <span class="ark-brand-accent">Router</span></span>
+				</a>
+				<button type="button" class="ark-sidebar-close" id="ark-sidebar-close" aria-label="Fechar">&times;</button>
+			</div>
+			<div class="ark-sidebar-nav">
+				<ul class="nav" id="topmenu" style="display:none"></ul>
+			</div>
+			<div class="ark-sidebar-footer">
+				<div id="indicators" class="ark-indicators"></div>
+			</div>
+		</aside>
+
+		<div id="maincontent" class="container ark-main-container">
 			<%- if luci.sys.process.info("uid") == 0 and luci.sys.user.getuser("root") and not luci.sys.user.getpasswd("root") then -%>
 				<div class="alert-message warning">
 					<h4><%:No password set!%></h4>

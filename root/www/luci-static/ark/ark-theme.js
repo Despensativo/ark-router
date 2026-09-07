@@ -15,6 +15,7 @@
     mode: 'basic',
 
     init: function() {
+      this.initSidebarNavigation();
       this.cleanupButtons();
       this.enhancePasswordFields();
       this.enhanceTablesAndLogs();
@@ -28,6 +29,50 @@
       this.translateRemainingUI();
       this.hideRedundantOverviewSections();
       this.observeDOM();
+    },
+
+    initSidebarNavigation: function() {
+      var toggle = document.getElementById('ark-menu-toggle');
+      var closeBtn = document.getElementById('ark-sidebar-close');
+      var backdrop = document.getElementById('ark-sidebar-backdrop');
+
+      function setOpen(open) {
+        if (open) {
+          document.body.classList.add('ark-sidebar-open');
+        } else {
+          document.body.classList.remove('ark-sidebar-open');
+        }
+      }
+
+      if (toggle) {
+        toggle.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen(!document.body.classList.contains('ark-sidebar-open'));
+        });
+      }
+
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          setOpen(false);
+        });
+      }
+
+      if (backdrop) {
+        backdrop.addEventListener('click', function(e) {
+          e.preventDefault();
+          setOpen(false);
+        });
+      }
+
+      document.addEventListener('click', function(e) {
+        // Close sidebar on mobile when navigating
+        var navLink = e.target.closest('.ark-sidebar-nav a:not(.menu)');
+        if (navLink && window.innerWidth <= 854) {
+          setOpen(false);
+        }
+      });
     },
 
     initGlobalEscHandler: function() {
