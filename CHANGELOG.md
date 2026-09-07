@@ -11,6 +11,10 @@
   - **Alinhamento e Centralização Perfeitos**: O formulário de login passa a ocupar o centro exato da tela tanto no Desktop quanto no Mobile, eliminando o deslocamento e a faixa escura vazia à esquerda.
   - **Identidade Visual no Card**: Incorporado o logotipo estilizado `⚡ ARK Router` com degradê vibrante no topo do cartão de login.
 
+- **⚠️ Alerta Crítico e Confirmação de Segurança ao Converter LAN em WAN**:
+  - **Banner de Atenção no Modal de Configuração**: Ao clicar para usar uma porta LAN como WAN (ex: LAN1, LAN2, LAN3), um alerta em destaque avisa imediatamente que a porta deixará de ser uma rede local.
+  - **Modal Dedicado de Confirmação de Segurança**: Ao clicar em "Confirmar alteração", o sistema abre um diálogo de segurança obrigatório alertando o administrador a verificar em qual porta seu computador está conectado (recomendando usar Wi-Fi ou outra LAN livre) para evitar perda inadvertida de acesso ao roteador.
+
 - **📡 Multi-Starlink: Separação Automática por Portas e Alinhamento Simultâneo Lado a Lado**:
   - **Portas Dedicadas por Antena via Policy Routing**:
     - **Porta 9201**: Encaminhada diretamente para a **Starlink 1 (WAN1)** via Tabela 5101 e `fwmark 0x5101`.

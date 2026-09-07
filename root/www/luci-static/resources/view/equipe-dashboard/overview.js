@@ -1916,10 +1916,79 @@ return view.extend({
 				field('Clonar MAC da WAN',E('div',{class:'ex-wan-mac-control'},[macaddr,macClear]),clonedMac?'MAC clonado atual. Apague para voltar ao físico.':'Sem clone: usa o MAC físico da porta.','ex-wan-field-wide'),
 				optButton
 			].filter(Boolean);
+			const warningNotice = isNewWan ? E('div', { class: 'alert-message warning', style: 'border-left: 4px solid #f59e0b; margin-bottom: 12px;' }, [
+				E('strong', {}, ['⚠️ Atenção: A porta ' + chosenPortLabel + ' deixará de ser LAN e virará ' + whichLabel + '. ']),
+				'Fique atento à escolha para não perder o acesso ao roteador (conecte-se via Wi-Fi ou por outra porta LAN).'
+			]) : E('p', { class: 'alert-message warning' }, ['Alterar internet/porta pode derrubar o painel por alguns segundos. O ARK cria um backup antes de aplicar.']);
+
 			ui.showModal(modalTitle,[
-				E('p',{class:'alert-message warning'},['Alterar internet/porta pode derrubar o painel por alguns segundos. O ARK cria um backup antes de aplicar.']),
+				warningNotice,
 				E('div',{class:'ex-wan-edit-grid'},gridChildren),
-				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const dns=[dns1.value.trim(),dns2.value.trim(),dns3.value.trim()].filter(Boolean).join(' '), args=['wan-save','iface='+which,'mode='+role.value,'device='+device.value,'proto='+proto.value,'username='+username.value,'password='+password.value,'ipaddr='+ipaddr.value,'netmask='+netmask.value,'gateway='+gateway.value,'dns='+dns,'macaddr='+macaddr.value.trim()];return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar WAN');ui.hideModal();reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…',3500);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar alteração'])])
+				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+					const isConvertingToWan = (role.value === 'wan') && (isNewWan || preferredDevice);
+					const doApply = function() {
+						const dns = [dns1.value.trim(), dns2.value.trim(), dns3.value.trim()].filter(Boolean).join(' ');
+						const args = ['wan-save', 'iface=' + which, 'mode=' + role.value, 'device=' + device.value, 'proto=' + proto.value, 'username=' + username.value, 'password=' + password.value, 'ipaddr=' + ipaddr.value, 'netmask=' + netmask.value, 'gateway=' + gateway.value, 'dns=' + dns, 'macaddr=' + macaddr.value.trim()];
+						return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
+							if (r.code) throw new Error(r.stderr || 'Falha ao salvar WAN');
+							ui.hideModal();
+							reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…', 3500);
+						}).catch(function(e) {
+							if (reloadAfterExpectedDisconnect(e, 'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…', 4200)) return;
+							ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+						});
+					};
+
+					if (isConvertingToWan) {
+						ui.showModal('⚠️ Confirmar Conversão da Porta ' + chosenPortLabel, [
+							E('div', { class: 'alert-message warning', style: 'border-left: 4px solid #f59e0b; background: rgba(245, 158, 11, 0.14); padding: 14px 16px; border-radius: 10px; margin-bottom: 16px;' }, [
+								E('h4', { style: 'margin: 0 0 8px 0; color: #f59e0b; font-size: 1.05rem; font-weight: 700;' }, [
+									'⚠️ A porta deixará de ser LAN e virará WAN!'
+								]),
+								E('p', { style: 'margin: 0 0 10px 0; line-height: 1.5; font-size: 0.95rem;' }, [
+									'A porta ', E('strong', {}, [chosenPortLabel]), ' deixará de fornecer rede local (LAN) e passará a funcionar como entrada de internet (', E('strong', {}, [whichLabel]), ').'
+								]),
+								E('p', { style: 'margin: 0; line-height: 1.5; font-size: 0.95rem; color: #fef08a;' }, [
+									'🛑 ', E('strong', {}, ['Fique atento para não perder o acesso ao roteador:']),
+									' Certifique-se de que o computador ou aparelho que você está usando para gerenciar o roteador ',
+									E('strong', { style: 'text-decoration: underline;' }, ['NÃO está conectado nesta porta ' + chosenPortLabel]),
+									'. Para não perder o acesso ao painel, conecte-se através do ',
+									E('strong', {}, ['Wi-Fi']),
+									' ou de ',
+									E('strong', {}, ['outra porta LAN']),
+									'.'
+								])
+							]),
+							E('div', { class: 'ex-qos-edit-grid', style: 'margin-bottom: 14px;' }, [
+								E('section', {}, [
+									E('h3', {}, ['Porta que será convertida']),
+									E('p', {}, [E('strong', { style: 'color: #38bdf8;' }, [chosenPortLabel])])
+								]),
+								E('section', {}, [
+									E('h3', {}, ['Nova função']),
+									E('p', {}, [E('strong', { style: 'color: #34d399;' }, [whichLabel + ' (' + (proto.value === 'pppoe' ? 'PPPoE' : (proto.value === 'static' ? 'IP Estático' : 'DHCP Automático')) + ')'])])
+								]),
+								E('section', {}, [
+									E('h3', {}, ['Acesso local (LAN)']),
+									E('p', {}, ['Permanece ativo no Wi-Fi e nas demais portas LAN'])
+								])
+							]),
+							E('p', { class: 'ex-muted' }, [
+								'O ARK Router cria um backup automático antes de aplicar. Deseja prosseguir com a conversão desta porta em WAN?'
+							]),
+							E('div', { class: 'right' }, [
+								E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': L.bind(function() {
+									this.editWan(which, preferredDevice);
+								}, this) }, ['Voltar e revisar']),
+								' ',
+								E('button', { class: 'btn cbi-button cbi-button-positive', style: 'background: #2563eb !important; font-weight: 700;', 'click': doApply }, ['Entendi, converter para WAN'])
+							])
+						]);
+						return;
+					}
+
+					return doApply();
+				},this)},['Confirmar alteração'])])
 			]);
 		}, this));
 	},
