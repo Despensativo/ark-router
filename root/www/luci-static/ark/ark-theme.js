@@ -270,7 +270,7 @@
       } else if (path.indexOf('/system/leds') !== -1) {
         guide = {
           title: 'Guia de Iluminação e LEDs de Status',
-          serve: 'Controla os LEDs luminosos frontais do roteador (Power, Internet Planet, Wi-Fi 2.4 GHz e Wi-Fi 5 GHz) para indicar status de rede, quedas ou atividade.',
+          serve: 'Controla os LEDs luminosos frontais do roteador (Status/Power, Internet, Wi-Fi 2.4 GHz e Wi-Fi 5 GHz) para indicar status de rede, quedas ou atividade física do seu aparelho.',
           fazer: 'Escolha um dos perfis rápidos no topo (Internet Inteligente, Modo Noturno, Alerta de Queda) para ajustar automaticamente todos os LEDs com 1 clique.',
           rec: 'Em dormitórios, ative o "Modo Noturno" para desligar as luzes e garantir um ambiente 100% escuro sem claridade.'
         };
@@ -2400,7 +2400,7 @@
           '<div class="ark-preset-cards">' +
             '<button type="button" class="ark-preset-tile" data-led-preset="smart">' +
               '<div class="ark-preset-tile-title">🌐 Internet Inteligente</div>' +
-              '<div class="ark-preset-tile-desc">Power verde fixo; LED Internet verde monitorando link WAN (pisca em alerta se a internet cair); Wi-Fi com tráfego.</div>' +
+              '<div class="ark-preset-tile-desc">Status/Power ativo; LED Internet monitorando link WAN; Wi-Fi sinalizando tráfego.</div>' +
             '</button>' +
             '<button type="button" class="ark-preset-tile" data-led-preset="night">' +
               '<div class="ark-preset-tile-title">🌙 Modo Noturno (Quarto)</div>' +
@@ -2408,70 +2408,113 @@
             '</button>' +
             '<button type="button" class="ark-preset-tile" data-led-preset="alert">' +
               '<div class="ark-preset-tile-title">🚨 Alerta Visual de Queda</div>' +
-              '<div class="ark-preset-tile-desc">Power verde e LED Internet em Laranja intermitente para sinalizar falha na conexão de internet à distância.</div>' +
+              '<div class="ark-preset-tile-desc">LED em Laranja/Piscar intermitente para sinalizar falha na conexão de internet à distância.</div>' +
             '</button>' +
             '<button type="button" class="ark-preset-tile" data-led-preset="max">' +
               '<div class="ark-preset-tile-title">⚡ Desempenho Total</div>' +
-              '<div class="ark-preset-tile-desc">Todos os LEDs ativos com pulso de alta frequência nas faixas 2.4 GHz e 5 GHz durante downloads e jogos.</div>' +
+              '<div class="ark-preset-tile-desc">Todos os LEDs ativos com pulso nas faixas 2.4 GHz e 5 GHz durante downloads e jogos.</div>' +
             '</button>' +
           '</div>' +
           '<div id="ark-led-feedback" style="display:none;margin-top:12px;font-size:12px;font-weight:600;padding:8px 12px;border-radius:6px;"></div>' +
         '</div>' +
-        '<div style="margin:20px 0 10px;font-size:14px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;">' +
-          '<span>🎛️</span> Painel Frontal dos LEDs Físicos (D-Link DGL-5500):' +
+        '<div id="ark-led-hardware-header" style="margin:20px 0 10px;font-size:14px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;">' +
+          '<span>🎛️</span> <span id="ark-led-hardware-title">Painel Frontal dos LEDs Físicos:</span>' +
         '</div>' +
-        '<div class="ark-led-grid" id="ark-led-tiles">' +
-          '<div class="ark-led-card" id="tile-power">' +
-            '<div class="ark-led-header">' +
-              '<span class="ark-led-indicator green" id="ind-power"></span>' +
-              '<div>' +
-                '<div class="ark-led-title">Power (Alimentação)</div>' +
-                '<div class="ark-led-sub">LED Bicolor Verde / Laranja</div>' +
-              '</div>' +
-            '</div>' +
-            '<div style="font-size:12px;color:var(--ark-text-muted);">' +
-              'Indica status do roteador ligado na tomada e carregamento do sistema ARK OS.' +
-            '</div>' +
-          '</div>' +
-          '<div class="ark-led-card" id="tile-internet">' +
-            '<div class="ark-led-header">' +
-              '<span class="ark-led-indicator green" id="ind-internet"></span>' +
-              '<div>' +
-                '<div class="ark-led-title">Internet (Planet)</div>' +
-                '<div class="ark-led-sub">LED Bicolor Verde / Laranja</div>' +
-              '</div>' +
-            '</div>' +
-            '<div style="font-size:12px;color:var(--ark-text-muted);">' +
-              'Conectividade com o modem da operadora na porta WAN (eth0.2).' +
-            '</div>' +
-          '</div>' +
-          '<div class="ark-led-card" id="tile-wifi5g">' +
-            '<div class="ark-led-header">' +
-              '<span class="ark-led-indicator blue" id="ind-wifi5g"></span>' +
-              '<div>' +
-                '<div class="ark-led-title">Wi-Fi 5 GHz (Ultra Rápido)</div>' +
-                '<div class="ark-led-sub">Qualcomm Atheros QCA9880</div>' +
-              '</div>' +
-            '</div>' +
-            '<div style="font-size:12px;color:var(--ark-text-muted);">' +
-              'Pisca na velocidade dos pacotes de alta velocidade (802.11ac).' +
-            '</div>' +
-          '</div>' +
-          '<div class="ark-led-card" id="tile-wifi2g">' +
-            '<div class="ark-led-header">' +
-              '<span class="ark-led-indicator green" id="ind-wifi2g"></span>' +
-              '<div>' +
-                '<div class="ark-led-title">Wi-Fi 2.4 GHz (Longo Alcance)</div>' +
-                '<div class="ark-led-sub">Qualcomm Atheros QCA9558</div>' +
-              '</div>' +
-            '</div>' +
-            '<div style="font-size:12px;color:var(--ark-text-muted);">' +
-              'Pisca na atividade de aparelhos móveis e automação residencial.' +
-            '</div>' +
-          '</div>' +
-        '</div>';
+        '<div class="ark-led-grid" id="ark-led-tiles"></div>';
 
       table.parentNode.insertBefore(container, table);
+
+      var hardwareInfo = null;
+
+      var callExec = (window.L && window.L.rpc) ? window.L.rpc.declare({
+        object: 'file',
+        method: 'exec',
+        params: ['command', 'params']
+      }) : null;
+
+      function sanitizeTableRows(validLeds) {
+        if (!validLeds || !validLeds.length) return;
+        var validSet = {};
+        validLeds.forEach(function(l) { validSet[l.sysfs] = true; });
+
+        var rows = table.querySelectorAll('tr.tr, tr');
+        rows.forEach(function(row) {
+          var cells = row.querySelectorAll('td, .td');
+          if (!cells || cells.length < 2) return;
+          var sysfsText = '';
+          for (var i = 0; i < cells.length; i++) {
+            var txt = (cells[i].innerText || cells[i].textContent || '').trim();
+            if (txt && (validSet[txt] || txt.indexOf('d-link') >= 0 || txt.indexOf('ath10k') >= 0 || txt.indexOf('ath9k') >= 0 || txt.indexOf('mt76') >= 0 || txt.indexOf('rgb:') >= 0)) {
+              sysfsText = txt;
+              break;
+            }
+          }
+          if (sysfsText && !validSet[sysfsText]) {
+            row.style.display = 'none';
+          }
+        });
+      }
+
+      function renderHardwareCards(info) {
+        hardwareInfo = info;
+        var titleEl = document.getElementById('ark-led-hardware-title');
+        if (titleEl && info.model) {
+          titleEl.textContent = 'Painel Frontal dos LEDs Físicos (' + info.model + '):';
+        }
+
+        var grid = document.getElementById('ark-led-tiles');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        (info.leds || []).forEach(function(l) {
+          var domId = l.sysfs.replace(/[^a-zA-Z0-9_-]/g, '_');
+          var card = document.createElement('div');
+          card.className = 'ark-led-card';
+          card.id = 'tile-' + domId;
+
+          var indClass = 'ark-led-indicator ' + (l.color || 'green');
+          if (l.trigger === 'none' && l.brightness === 0) indClass = 'ark-led-indicator off';
+
+          card.innerHTML = '' +
+            '<div class="ark-led-header">' +
+              '<span class="' + indClass + '" id="ind-' + domId + '"></span>' +
+              '<div>' +
+                '<div class="ark-led-title">' + l.name + '</div>' +
+                '<div class="ark-led-sub">' + l.sub + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="font-size:12px;color:var(--ark-text-muted);">' +
+              'Gatilho ativo: <code style="color:var(--ark-text);">' + (l.trigger || 'padrão') + '</code>' +
+            '</div>';
+
+          grid.appendChild(card);
+        });
+
+        sanitizeTableRows(info.leds);
+      }
+
+      function updateIndicators(preset) {
+        if (!hardwareInfo || !hardwareInfo.leds) return;
+        hardwareInfo.leds.forEach(function(l) {
+          var domId = l.sysfs.replace(/[^a-zA-Z0-9_-]/g, '_');
+          var el = document.getElementById('ind-' + domId);
+          if (!el) return;
+
+          if (preset === 'night') {
+            el.className = 'ark-led-indicator off';
+          } else if (preset === 'alert') {
+            if (l.type === 'status_rgb' || l.type === 'internet' || l.type === 'power') {
+              el.className = 'ark-led-indicator orange blink';
+            } else {
+              el.className = 'ark-led-indicator ' + (l.color || 'green');
+            }
+          } else if (preset === 'max') {
+            el.className = 'ark-led-indicator ' + (l.color || 'green') + ' blink';
+          } else { // smart
+            el.className = 'ark-led-indicator ' + (l.color || 'green');
+          }
+        });
+      }
 
       var applyPreset = function(presetName) {
         var fb = document.getElementById('ark-led-feedback');
@@ -2482,63 +2525,32 @@
           fb.textContent = '⏳ Aplicando perfil de LED "' + presetName + '" no roteador...';
         }
 
-        try {
-          var callExec = (window.L && window.L.rpc) ? window.L.rpc.declare({
-            object: 'file',
-            method: 'exec',
-            params: ['command', 'params']
-          }) : null;
-
-          if (callExec) {
-            callExec('/usr/sbin/equipe-dashboard-control', ['set-led-preset', presetName]).then(function() {
-              if (fb) {
-                fb.style.background = 'rgba(16, 185, 129, 0.2)';
-                fb.style.color = '#34d399';
-                fb.textContent = '✅ Perfil de iluminação aplicado com sucesso!';
-                setTimeout(function() { fb.style.display = 'none'; }, 3000);
-              }
-              updateIndicators(presetName);
-            }).catch(function(err) {
-              if (fb) {
-                fb.style.background = 'rgba(239, 68, 68, 0.2)';
-                fb.style.color = '#f87171';
-                fb.textContent = '⚠️ Erro ao aplicar: ' + err;
-              }
-            });
-          }
-        } catch(e) {
-          console.error(e);
+        if (callExec) {
+          callExec('/usr/sbin/equipe-dashboard-control', ['set-led-preset', presetName]).then(function() {
+            if (fb) {
+              fb.style.background = 'rgba(16, 185, 129, 0.2)';
+              fb.style.color = '#34d399';
+              fb.textContent = '✅ Perfil de iluminação aplicado com sucesso!';
+              setTimeout(function() { fb.style.display = 'none'; }, 3000);
+            }
+            updateIndicators(presetName);
+            if (callExec) {
+              callExec('/usr/sbin/equipe-dashboard-control', ['get-led-hardware-info']).then(function(res) {
+                try {
+                  var data = JSON.parse(res.stdout || '{}');
+                  if (data && data.leds) renderHardwareCards(data);
+                } catch(e){}
+              });
+            }
+          }).catch(function(err) {
+            if (fb) {
+              fb.style.background = 'rgba(239, 68, 68, 0.2)';
+              fb.style.color = '#f87171';
+              fb.textContent = '⚠️ Erro ao aplicar: ' + err;
+            }
+          });
         }
       };
-
-      function updateIndicators(preset) {
-        var indPower = document.getElementById('ind-power');
-        var indInternet = document.getElementById('ind-internet');
-        var indWifi5g = document.getElementById('ind-wifi5g');
-        var indWifi2g = document.getElementById('ind-wifi2g');
-
-        if (preset === 'night') {
-          if (indPower) indPower.className = 'ark-led-indicator off';
-          if (indInternet) indInternet.className = 'ark-led-indicator off';
-          if (indWifi5g) indWifi5g.className = 'ark-led-indicator off';
-          if (indWifi2g) indWifi2g.className = 'ark-led-indicator off';
-        } else if (preset === 'alert') {
-          if (indPower) indPower.className = 'ark-led-indicator green';
-          if (indInternet) indInternet.className = 'ark-led-indicator orange blink';
-          if (indWifi5g) indWifi5g.className = 'ark-led-indicator blue';
-          if (indWifi2g) indWifi2g.className = 'ark-led-indicator green';
-        } else if (preset === 'max') {
-          if (indPower) indPower.className = 'ark-led-indicator green';
-          if (indInternet) indInternet.className = 'ark-led-indicator green blink';
-          if (indWifi5g) indWifi5g.className = 'ark-led-indicator blue blink';
-          if (indWifi2g) indWifi2g.className = 'ark-led-indicator green blink';
-        } else {
-          if (indPower) indPower.className = 'ark-led-indicator green';
-          if (indInternet) indInternet.className = 'ark-led-indicator green';
-          if (indWifi5g) indWifi5g.className = 'ark-led-indicator blue';
-          if (indWifi2g) indWifi2g.className = 'ark-led-indicator green';
-        }
-      }
 
       container.querySelectorAll('.ark-preset-tile').forEach(function(tile) {
         tile.addEventListener('click', function() {
@@ -2546,6 +2558,21 @@
           applyPreset(p);
         });
       });
+
+      if (callExec) {
+        callExec('/usr/sbin/equipe-dashboard-control', ['get-led-hardware-info']).then(function(res) {
+          try {
+            var data = JSON.parse(res.stdout || '{}');
+            if (data && data.leds) {
+              renderHardwareCards(data);
+            }
+          } catch(e) {
+            console.error('Error parsing led hardware info:', e);
+          }
+        }).catch(function(err) {
+          console.error('Error fetching led hardware info:', err);
+        });
+      }
 
       var mode = localStorage.getItem('ark_interface_mode') || 'basic';
       if (mode !== 'advanced') {
