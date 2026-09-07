@@ -1797,9 +1797,9 @@ return view.extend({
 			const field=function(label,node,hint,extraClass){return E('label',{class:'ex-wan-edit-field'+(extraClass?(' '+extraClass):'')},[E('span',{},[label]),node,hint?E('small',{class:'ex-muted'},[hint]):'']);};
 			const pppoeBlock=E('div',{class:'ex-wan-proto-block'},[pppoeProfileBar,field('Usuário PPPoE',username),field('Senha PPPoE',passWrap,'Deixe vazio para manter/definir vazia conforme operadora','ex-wan-field-wide')]);
 			const staticBlock=E('div',{class:'ex-wan-proto-block'},[field('IPv4',ipaddr),field('Máscara',netmask),field('Gateway',gateway)]);
-			const sync=function(){const lanMode=!isPrimary&&role.value==='lan';proto.disabled=lanMode;pppoeBlock.style.display=(!lanMode&&proto.value==='pppoe')?'contents':'none';staticBlock.style.display=(!lanMode&&proto.value==='static')?'contents':'none';};
-			role.addEventListener('change',sync);proto.addEventListener('change',sync);sync();
-			const optButton = E('div', { style: 'grid-column: 1 / -1; margin-top: 6px; padding-top: 10px; border-top: 1px solid rgba(127,127,127,.15);' }, [
+			const isNewWan = !!(preferredDevice && (!cfg.proto || cfg.proto === 'none'));
+			const isExistingWan = !isNewWan && !!(cfg.proto && cfg.proto !== 'none');
+			const optButton = isExistingWan ? E('div', { class: 'ex-wan-opt-wrap', style: 'grid-column: 1 / -1; margin-top: 6px; padding-top: 10px; border-top: 1px solid rgba(127,127,127,.15);' }, [
 				E('button', {
 					class: 'ex-mini-button',
 					type: 'button',
@@ -1809,11 +1809,32 @@ return view.extend({
 						this.showWanOptimizationsModal(which);
 					}, this)
 				}, ['⚡ Otimizar Velocidade e Desempenho desta WAN →'])
-			]);
-			const modalTitle = (preferredDevice && (!cfg.proto || cfg.proto === 'none')) ? ('Configurar ' + chosenPortLabel + ' como ' + whichLabel) : ('Editar ' + whichLabel + ' (' + chosenPortLabel + ')');
+			]) : null;
+			const sync=function(){
+				const lanMode=!isPrimary&&role.value==='lan';
+				proto.disabled=lanMode;
+				pppoeBlock.style.display=(!lanMode&&proto.value==='pppoe')?'contents':'none';
+				staticBlock.style.display=(!lanMode&&proto.value==='static')?'contents':'none';
+				const optWrap = document.querySelector('.ex-wan-opt-wrap');
+				if (optWrap) optWrap.style.display = lanMode ? 'none' : 'block';
+			};
+			role.addEventListener('change',sync);proto.addEventListener('change',sync);sync();
+			const modalTitle = isNewWan ? ('Configurar ' + chosenPortLabel + ' como ' + whichLabel) : ('Editar ' + whichLabel + ' (' + chosenPortLabel + ')');
+			const gridChildren = [
+				field('Função',role),
+				field('Porta física',device,'Porta vinculada ao card selecionado'),
+				field('Tipo de conexão',proto),
+				pppoeBlock,
+				staticBlock,
+				field('DNS 1',dns1),
+				field('DNS 2',dns2),
+				field('DNS 3',dns3,'Opcional'),
+				field('Clonar MAC da WAN',E('div',{class:'ex-wan-mac-control'},[macaddr,macClear]),clonedMac?'MAC clonado atual. Apague para voltar ao físico.':'Sem clone: usa o MAC físico da porta.','ex-wan-field-wide'),
+				optButton
+			].filter(Boolean);
 			ui.showModal(modalTitle,[
 				E('p',{class:'alert-message warning'},['Alterar internet/porta pode derrubar o painel por alguns segundos. O ARK cria um backup antes de aplicar.']),
-				E('div',{class:'ex-wan-edit-grid'},[field('Função',role),field('Porta física',device,'Porta vinculada ao card selecionado'),field('Tipo de conexão',proto),pppoeBlock,staticBlock,field('DNS 1',dns1),field('DNS 2',dns2),field('DNS 3',dns3,'Opcional'),field('Clonar MAC da WAN',E('div',{class:'ex-wan-mac-control'},[macaddr,macClear]),clonedMac?'MAC clonado atual. Apague para voltar ao físico.':'Sem clone: usa o MAC físico da porta.','ex-wan-field-wide'),optButton]),
+				E('div',{class:'ex-wan-edit-grid'},gridChildren),
 				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const dns=[dns1.value.trim(),dns2.value.trim(),dns3.value.trim()].filter(Boolean).join(' '), args=['wan-save','iface='+which,'mode='+role.value,'device='+device.value,'proto='+proto.value,'username='+username.value,'password='+password.value,'ipaddr='+ipaddr.value,'netmask='+netmask.value,'gateway='+gateway.value,'dns='+dns,'macaddr='+macaddr.value.trim()];return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar WAN');ui.hideModal();reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…',3500);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar alteração'])])
 			]);
 		}, this));
