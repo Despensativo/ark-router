@@ -240,9 +240,46 @@ details.ex-perf-opt-card, section.ex-perf-opt-card { border-color: color-mix(in 
 .ex-mwan-editor-body { padding: 12px 2px 0; }
 .ex-mwan-editor-body p { margin: 0 0 11px; }
 .ex-mode-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 9px; margin-bottom: 11px; }
-.ex-mode-button { min-height: 42px; padding: 8px; border: 1px solid rgba(127,127,127,.2); border-radius: 11px; color: inherit; background: rgba(127,127,127,.07); cursor: pointer; font-weight: 750; }
-.ex-mode-button:hover { background: color-mix(in srgb,var(--ex-primary-safe) 12%,transparent); }
-.ex-mode-button.active { border-color: var(--ex-primary-safe); color: #fff; background: linear-gradient(120deg,var(--ex-primary-safe),var(--ex-secondary-safe)); box-shadow: 0 7px 18px color-mix(in srgb,var(--ex-primary-safe) 20%,transparent); }
+.ex-mode-button,
+button.ex-mode-button,
+.cbi-button.ex-mode-button {
+	min-height: 44px !important;
+	padding: 8px 14px !important;
+	border: 1px solid rgba(255, 255, 255, 0.14) !important;
+	border-radius: 11px !important;
+	color: #94a3b8 !important;
+	background: rgba(15, 23, 42, 0.6) !important;
+	cursor: pointer !important;
+	font-weight: 650 !important;
+	box-shadow: none !important;
+	transition: all 0.18s ease !important;
+}
+.ex-mode-button:hover,
+button.ex-mode-button:hover,
+.cbi-button.ex-mode-button:hover {
+	background: rgba(255, 255, 255, 0.12) !important;
+	border-color: rgba(255, 255, 255, 0.35) !important;
+	color: #ffffff !important;
+}
+.ex-mode-button.active,
+button.ex-mode-button.active,
+.cbi-button.ex-mode-button.active,
+.cbi-button-neutral.ex-mode-button.active {
+	background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+	border: 2px solid #38bdf8 !important;
+	color: #ffffff !important;
+	font-weight: 800 !important;
+	box-shadow: 0 0 20px rgba(56, 189, 248, 0.6), 0 4px 14px rgba(2, 132, 199, 0.45) !important;
+	transform: translateY(-1px) !important;
+}
+.ex-mode-button.active::before,
+button.ex-mode-button.active::before,
+.cbi-button.ex-mode-button.active::before {
+	content: '✓ ' !important;
+	color: #a5f3fc !important;
+	font-weight: 900 !important;
+	margin-right: 5px !important;
+}
 .ex-channel-grid { margin: 0 0 8px; }
 .ex-channel-grid > div { display: flex; flex-direction: column; gap: 4px; padding: 13px 15px; border-radius: 12px; background: rgba(127,127,127,.08); }
 .ex-country-control { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 0 0 12px; padding: 11px 13px; border: 1px solid rgba(127,127,127,.14); border-radius: 12px; background: rgba(127,127,127,.055); }

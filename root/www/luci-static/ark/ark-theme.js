@@ -2567,7 +2567,7 @@
       });
 
       // 3. Modernize any raw unstyled submit buttons across any page
-      var rawSubmits = document.querySelectorAll('input[type="submit"]:not(.cbi-button):not(.btn):not(.hidden), input[type="button"]:not(.cbi-button):not(.btn):not(.hidden), button:not(.cbi-button):not(.btn):not(.ark-pwd-toggle):not(.ark-modal-close)');
+      var rawSubmits = document.querySelectorAll('input[type="submit"]:not(.cbi-button):not(.btn):not(.hidden), input[type="button"]:not(.cbi-button):not(.btn):not(.hidden), button:not(.cbi-button):not(.btn):not(.ark-pwd-toggle):not(.ark-modal-close):not([class*="ex-"])');
       rawSubmits.forEach(function(b) {
         var val = (b.value || b.textContent || '').trim().toLowerCase();
         if (val.indexOf('salvar') !== -1 || val.indexOf('save') !== -1) {

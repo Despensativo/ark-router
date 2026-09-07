@@ -680,6 +680,48 @@ input.cbi-input-text:focus, input[type="text"]:focus, input[type="password"]:foc
 	box-shadow: 0 0 12px rgba(56, 189, 248, 0.4) !important;
 }
 
+/* Multi-WAN and Mode Selection Buttons - High Contrast Active / Inactive States */
+.ex-mode-button,
+button.ex-mode-button,
+.cbi-button.ex-mode-button {
+	min-height: 44px !important;
+	padding: 8px 14px !important;
+	border: 1px solid rgba(255, 255, 255, 0.14) !important;
+	border-radius: 11px !important;
+	color: #94a3b8 !important;
+	background: rgba(15, 23, 42, 0.6) !important;
+	cursor: pointer !important;
+	font-weight: 650 !important;
+	box-shadow: none !important;
+	transition: all 0.18s ease !important;
+}
+.ex-mode-button:hover,
+button.ex-mode-button:hover,
+.cbi-button.ex-mode-button:hover {
+	background: rgba(255, 255, 255, 0.12) !important;
+	border-color: rgba(255, 255, 255, 0.35) !important;
+	color: #ffffff !important;
+}
+.ex-mode-button.active,
+button.ex-mode-button.active,
+.cbi-button.ex-mode-button.active,
+.cbi-button-neutral.ex-mode-button.active {
+	background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+	border: 2px solid #38bdf8 !important;
+	color: #ffffff !important;
+	font-weight: 800 !important;
+	box-shadow: 0 0 20px rgba(56, 189, 248, 0.6), 0 4px 14px rgba(2, 132, 199, 0.45) !important;
+	transform: translateY(-1px) !important;
+}
+.ex-mode-button.active::before,
+button.ex-mode-button.active::before,
+.cbi-button.ex-mode-button.active::before {
+	content: '✓ ' !important;
+	color: #a5f3fc !important;
+	font-weight: 900 !important;
+	margin-right: 5px !important;
+}
+
 /* Modal Top-Right Close Button */
 .modal, #modal_overlay > .modal {
 	position: relative !important;
