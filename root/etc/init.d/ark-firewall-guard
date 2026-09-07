@@ -1,0 +1,30 @@
+#!/bin/sh /etc/rc.common
+
+START=22
+USE_PROCD=1
+
+boot() {
+	# Verify that firewall table inet fw4 actually loaded
+	if ! /usr/sbin/nft list table inet fw4 >/dev/null 2>&1; then
+		logger -t ark-firewall-guard "CRITICO: table inet fw4 nao carregada! Iniciando auto-recuperacao do firewall..."
+		
+		# Quarantine any rogue .nft files in /etc/nftables.d/ that broke fw4
+		mkdir -p /etc/nftables.d/quarantine
+		for f in /etc/nftables.d/*.nft; do
+			[ -f "$f" ] || continue
+			logger -t ark-firewall-guard "Isolando arquivo suspeito: $f"
+			mv "$f" /etc/nftables.d/quarantine/
+		done
+		
+		# Restart firewall
+		/sbin/fw4 restart
+		
+		if /usr/sbin/nft list table inet fw4 >/dev/null 2>&1; then
+			logger -t ark-firewall-guard "SUCESSO: Firewall auto-recuperado! NAT e Internet restaurados."
+		fi
+	fi
+}
+
+start_service() {
+	boot
+}

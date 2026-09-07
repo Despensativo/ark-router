@@ -53,6 +53,7 @@ chmod 0755 "$pkg_root/www/cgi-bin/ark-starlink-telemetry" 2>/dev/null || true
 chmod 0755 "$pkg_root/etc/init.d/equipe-traffic-history" 2>/dev/null || true
 chmod 0755 "$pkg_root/etc/init.d/ark-speedify" 2>/dev/null || true
 chmod 0755 "$pkg_root/etc/init.d/ark-zerotier-ram" 2>/dev/null || true
+chmod 0755 "$pkg_root/etc/init.d/ark-firewall-guard" 2>/dev/null || true
 chmod 0755 "$pkg_root/etc/uci-defaults/"* 2>/dev/null || true
 
 mkdir -p "$pkg_root/lib/apk/packages"
@@ -67,8 +68,11 @@ chmod +x /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
 chmod +x /etc/init.d/equipe-traffic-history 2>/dev/null || true
 chmod +x /etc/init.d/ark-speedify 2>/dev/null || true
 chmod +x /etc/init.d/ark-zerotier-ram 2>/dev/null || true
+chmod +x /etc/init.d/ark-firewall-guard 2>/dev/null || true
 [ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true
 [ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram start >/dev/null 2>&1 || true
+[ -x /etc/init.d/ark-firewall-guard ] && /etc/init.d/ark-firewall-guard enable >/dev/null 2>&1 || true
+[ -x /etc/init.d/ark-firewall-guard ] && /etc/init.d/ark-firewall-guard start >/dev/null 2>&1 || true
 rm -f /tmp/luci-indexcache 2>/dev/null || true
 rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 [ -x /etc/init.d/equipe-traffic-history ] && /etc/init.d/equipe-traffic-history enable >/dev/null 2>&1 || true

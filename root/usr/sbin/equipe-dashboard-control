@@ -1887,7 +1887,7 @@ ensure_mwan3_ark_config() {
 	active_wans=""
 	for w in $(uci -q show network | grep '=interface' | cut -d. -f2 | cut -d= -f1 | grep -E '^wan([0-9]+)?$'); do
 		p="$(uci -q get "network.$w.proto" || printf 'none')"
-		d="$(uci -q get "network.$w.device" || printf '')"
+		d="$(uci -q get "network.$w.device" || uci -q get "network.$w.ifname" || printf '')"
 		if [ "$p" != "none" ] && [ -n "$d" ]; then
 			active_wans="$active_wans $w"
 		fi
@@ -1901,9 +1901,14 @@ ensure_mwan3_ark_config() {
 		uci -q set "mwan3.$w=interface"
 		uci -q set "mwan3.$w.enabled=1"
 		uci -q set "mwan3.$w.family=ipv4"
-		uci -q set "mwan3.$w.reliability=1"
+		uci -q set "mwan3.$w.reliability=2"
+		uci -q set "mwan3.$w.count=1"
+		uci -q set "mwan3.$w.timeout=2"
+		uci -q set "mwan3.$w.interval=5"
+		uci -q set "mwan3.$w.down=3"
+		uci -q set "mwan3.$w.up=3"
 		uci -q delete "mwan3.$w.track_ip" 2>/dev/null || true
-		for ip in 1.0.0.1 1.1.1.1 8.8.8.8 9.9.9.9; do uci -q add_list "mwan3.$w.track_ip=$ip"; done
+		for ip in 1.1.1.1 8.8.8.8 9.9.9.9 208.67.222.222; do uci -q add_list "mwan3.$w.track_ip=$ip"; done
 
 		uci -q set "mwan3.${w}_m1_w3=member"
 		uci -q set "mwan3.${w}_m1_w3.interface=$w"
@@ -2198,9 +2203,14 @@ device_limits_json() {
 }
 apply_device_bandwidth_limits() {
 	[ -f /etc/config/equipe_devices ] || return 0
-	nft_file="/etc/nftables.d/ark_device_limits.nft"
+	mkdir -p /etc/ark
+	nft_file="/etc/ark/ark_device_limits.nft"
+	apply_sh="/etc/ark/apply_limits.sh"
 	tmp_nft="/tmp/ark_device_limits.nft.$$"
 	has_rules=0
+
+	# Clean up any legacy file that might break fw4
+	rm -f /etc/nftables.d/ark_device_limits.nft 2>/dev/null || true
 
 	printf 'table inet ark_device_limits\ndelete table inet ark_device_limits\ntable inet ark_device_limits {\n\tchain forward_limits {\n\t\ttype filter hook forward priority filter - 5; policy accept;\n' > "$tmp_nft"
 	printf '\t\tip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } accept\n' >> "$tmp_nft"
@@ -2252,16 +2262,25 @@ apply_device_bandwidth_limits() {
 	printf '\t}\n}\n' >> "$tmp_nft"
 
 	if [ "$has_rules" = 1 ]; then
-		mkdir -p /etc/nftables.d
+		if ! /usr/sbin/nft -c -f "$tmp_nft" 2>/dev/null; then
+			rm -f "$tmp_nft"
+			echo "Erro de sintaxe nftables no arquivo de limites" >&2
+			return 1
+		fi
 		mv -f "$tmp_nft" "$nft_file"
+		cat << 'EOF' > "$apply_sh"
+#!/bin/sh
+[ -f /etc/ark/ark_device_limits.nft ] && /usr/sbin/nft -f /etc/ark/ark_device_limits.nft 2>/dev/null || true
+EOF
+		chmod +x "$apply_sh"
 		nft delete table inet ark_device_limits 2>/dev/null || true
 		nft -f "$nft_file" 2>/dev/null || true
 		uci -q set firewall.ark_limits=include
-		uci -q set firewall.ark_limits.type=nftables
-		uci -q set "firewall.ark_limits.path=$nft_file"
+		uci -q set firewall.ark_limits.type=script
+		uci -q set "firewall.ark_limits.path=$apply_sh"
 		uci commit firewall
 	else
-		rm -f "$tmp_nft" "$nft_file" 2>/dev/null || true
+		rm -f "$tmp_nft" "$nft_file" "$apply_sh" 2>/dev/null || true
 		nft delete table inet ark_device_limits 2>/dev/null || true
 		uci -q delete firewall.ark_limits 2>/dev/null || true
 		uci commit firewall
@@ -2420,6 +2439,62 @@ dns_turbo_save() {
 	echo ok
 }
 
+network_capacity_status_json() {
+	conntrack_max="$(cat /proc/sys/net/netfilter/nf_conntrack_max 2>/dev/null || echo 65536)"
+	conntrack_count="$(cat /proc/sys/net/netfilter/nf_conntrack_count 2>/dev/null || echo 0)"
+	conntrack_tcp_timeout="$(cat /proc/sys/net/netfilter/nf_conntrack_tcp_timeout_established 2>/dev/null || echo 432000)"
+	dns_forward_max="$(uci -q get dhcp.@dnsmasq[0].dns_forward_max || echo 150)"
+	cachesize="$(uci -q get dhcp.@dnsmasq[0].cachesize || echo 150)"
+	dhcp_leasetime="$(uci -q get dhcp.lan.leasetime || echo 12h)"
+	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+	mem_total_mb=$((mem_total_kb / 1024))
+	printf '{"conntrack_max":%s,"conntrack_count":%s,"conntrack_tcp_timeout":%s,"dns_forward_max":%s,"cachesize":%s,"dhcp_leasetime":"%s","mem_total_mb":%s}\n' \
+		"$conntrack_max" "$conntrack_count" "$conntrack_tcp_timeout" "$dns_forward_max" "$cachesize" "$dhcp_leasetime" "$mem_total_mb"
+}
+
+network_capacity_save() {
+	ct_max="${1:-131072}"
+	fwd_max="${2:-2000}"
+	cache_sz="${3:-10000}"
+	lease_time="${4:-2h}"
+	tcp_timeout="${5:-432000}"
+
+	case "$ct_max" in ''|*[!0-9]*) ct_max=131072 ;; esac
+	case "$fwd_max" in ''|*[!0-9]*) fwd_max=2000 ;; esac
+	case "$cache_sz" in ''|*[!0-9]*) cache_sz=10000 ;; esac
+	case "$tcp_timeout" in ''|*[!0-9]*) tcp_timeout=432000 ;; esac
+	[ -n "$lease_time" ] || lease_time="2h"
+
+	mkdir -p /etc/sysctl.d
+	sysctl -w "net.netfilter.nf_conntrack_max=$ct_max" 2>/dev/null || true
+	sysctl -w "net.netfilter.nf_conntrack_tcp_timeout_established=$tcp_timeout" 2>/dev/null || true
+	printf 'net.netfilter.nf_conntrack_max=%s\n' "$ct_max" > /etc/sysctl.d/99-ark-conntrack-max.conf
+
+	if [ "$tcp_timeout" -le 7200 ]; then
+		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_close_wait=30 2>/dev/null || true
+		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_fin_wait=30 2>/dev/null || true
+		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_time_wait=30 2>/dev/null || true
+		printf 'net.netfilter.nf_conntrack_tcp_timeout_established=%s\nnet.netfilter.nf_conntrack_tcp_timeout_close_wait=30\nnet.netfilter.nf_conntrack_tcp_timeout_fin_wait=30\nnet.netfilter.nf_conntrack_tcp_timeout_time_wait=30\n' "$tcp_timeout" > /etc/sysctl.d/99-ark-conntrack.conf
+		[ -f /etc/config/equipe_perf ] || touch /etc/config/equipe_perf
+		uci -q set equipe_perf.settings=performance
+		uci -q set equipe_perf.settings.conntrack_recycle='1'
+	else
+		rm -f /etc/sysctl.d/99-ark-conntrack.conf 2>/dev/null || true
+		[ -f /etc/config/equipe_perf ] || touch /etc/config/equipe_perf
+		uci -q set equipe_perf.settings=performance
+		uci -q set equipe_perf.settings.conntrack_recycle='0'
+	fi
+	uci commit equipe_perf
+
+	uci -q set "dhcp.@dnsmasq[0].dns_forward_max=$fwd_max"
+	uci -q set "dhcp.@dnsmasq[0].cachesize=$cache_sz"
+	uci -q set "dhcp.lan.leasetime=$lease_time"
+	uci commit dhcp
+	/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+
+	echo ok
+}
+
 system_perf_save() {
 	conntrack_recycle="${1:-0}"
 	ram_autopurge="${2:-0}"
@@ -2469,11 +2544,11 @@ system_perf_save() {
 
 	mkdir -p /etc/sysctl.d
 	if [ "$conntrack_recycle" = 1 ]; then
-		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_established=1800 2>/dev/null || true
+		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_established=3600 2>/dev/null || true
 		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_close_wait=30 2>/dev/null || true
 		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_fin_wait=30 2>/dev/null || true
 		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_time_wait=30 2>/dev/null || true
-		printf 'net.netfilter.nf_conntrack_tcp_timeout_established=1800\nnet.netfilter.nf_conntrack_tcp_timeout_close_wait=30\nnet.netfilter.nf_conntrack_tcp_timeout_fin_wait=30\nnet.netfilter.nf_conntrack_tcp_timeout_time_wait=30\n' > /etc/sysctl.d/99-ark-conntrack.conf
+		printf 'net.netfilter.nf_conntrack_tcp_timeout_established=3600\nnet.netfilter.nf_conntrack_tcp_timeout_close_wait=30\nnet.netfilter.nf_conntrack_tcp_timeout_fin_wait=30\nnet.netfilter.nf_conntrack_tcp_timeout_time_wait=30\n' > /etc/sysctl.d/99-ark-conntrack.conf
 	else
 		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_established=432000 2>/dev/null || true
 		rm -f /etc/sysctl.d/99-ark-conntrack.conf 2>/dev/null || true
@@ -4656,6 +4731,13 @@ case "$action" in
 	dns-turbo-save)
 		shift
 		dns_turbo_save "$@"
+		;;
+	network-capacity-status)
+		network_capacity_status_json
+		;;
+	network-capacity-save)
+		shift
+		network_capacity_save "$@"
 		;;
 	system-memory-purge)
 		system_memory_purge

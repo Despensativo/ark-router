@@ -27,6 +27,8 @@ client_is_lan() {
 			block = 2 ^ (32-bits)
 			exit (int(ipnum(client)/block) == int(ipnum(lan)/block)) ? 0 : 1
 		}'
+}
+
 client_is_zerotier() {
 	remote="${REMOTE_ADDR:-}"
 	[ -n "$remote" ] || return 1

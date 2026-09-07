@@ -552,6 +552,8 @@ body.modal-overlay-active .main {
 	pointer-events: none !important;
 	touch-action: none !important;
 	overscroll-behavior: none !important;
+}
+
 /* Quando NÃO há modal aberto, o overlay DEVE ficar fora da tela e sem interceptar toques */
 body:not(.modal-overlay-active) #modal_overlay {
 	pointer-events: none !important;

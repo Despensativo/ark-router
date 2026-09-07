@@ -4637,6 +4637,162 @@ return view.extend({
 			ui.showModal('Configurar DNS Turbo', [ E('p', { class: 'alert-message warning' }, [ e.message ]), E('div', { class: 'right' }, [ E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Fechar']) ]) ]);
 		});
 	},
+	openNetworkCapacityModal: function() {
+		const self = this;
+		const closeModal = function() { ui.hideModal(); };
+		ui.showModal('Carregando Capacidade da Rede…', [ E('p', {}, ['Consultando limites de conexões e buffers…']) ]);
+		fs.exec('/usr/sbin/equipe-dashboard-control', ['network-capacity-status']).then(function(r) {
+			let status = { conntrack_max: 131072, conntrack_count: 0, dns_forward_max: 2000, cachesize: 10000, dhcp_leasetime: '2h', mem_total_mb: 1024 };
+			try { status = JSON.parse(r.stdout || '{}'); } catch(e){}
+
+			const ctInput = E('input', { class: 'cbi-input-text', type: 'number', value: status.conntrack_max || 131072, min: 16384, max: 524288, step: 4096, style: 'width: 100%; box-sizing: border-box;' });
+			const fwdInput = E('input', { class: 'cbi-input-text', type: 'number', value: status.dns_forward_max || 2000, min: 150, max: 10000, step: 100, style: 'width: 100%; box-sizing: border-box;' });
+			const cacheInput = E('input', { class: 'cbi-input-text', type: 'number', value: status.cachesize || 10000, min: 150, max: 50000, step: 500, style: 'width: 100%; box-sizing: border-box;' });
+
+			const leaseSelect = E('select', { class: 'cbi-input-select', style: 'width: 100%; box-sizing: border-box;' }, [
+				E('option', { value: '1h', selected: status.dhcp_leasetime === '1h' }, ['1 hora (Alta Rotatividade / Eventos / 250+ clientes)']),
+				E('option', { value: '2h', selected: status.dhcp_leasetime === '2h' || (!['1h','6h','12h','24h'].includes(status.dhcp_leasetime)) }, ['2 horas (Recomendado para Escritórios / Comércio)']),
+				E('option', { value: '6h', selected: status.dhcp_leasetime === '6h' }, ['6 horas (Misto)']),
+				E('option', { value: '12h', selected: status.dhcp_leasetime === '12h' }, ['12 horas (Padrão Residencial - pouca rotatividade)']),
+				E('option', { value: '24h', selected: status.dhcp_leasetime === '24h' }, ['24 horas (Apenas redes estáticas com poucos aparelhos)'])
+			]);
+
+			const timeoutSelect = E('select', { class: 'cbi-input-select', style: 'width: 100%; box-sizing: border-box;' }, [
+				E('option', { value: '1800', selected: Number(status.conntrack_tcp_timeout) === 1800 }, ['30 minutos (Modo Eventos / Alta Rotatividade)']),
+				E('option', { value: '3600', selected: Number(status.conntrack_tcp_timeout) === 3600 }, ['1 hora (Equilibrado para Escritórios / 100-250 usuários)']),
+				E('option', { value: '7200', selected: Number(status.conntrack_tcp_timeout) === 7200 }, ['2 horas (Seguro para Redes Médias)']),
+				E('option', { value: '432000', selected: Number(status.conntrack_tcp_timeout) > 7200 || !status.conntrack_tcp_timeout }, ['5 dias (Padrão Linux / Residencial - sem descarte precoce)'])
+			]);
+
+			const applyPreset = function(ct, fwd, cache, lease, timeout) {
+				ctInput.value = ct;
+				fwdInput.value = fwd;
+				cacheInput.value = cache;
+				leaseSelect.value = lease;
+				if (timeout) timeoutSelect.value = timeout;
+			};
+
+			const presetBtns = [
+				E('button', {
+					type: 'button',
+					class: 'ex-priority-option-btn',
+					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
+					click: function(){ applyPreset(131072, 2000, 10000, '2h', '3600'); }
+				}, ['🏢 Alta Densidade (250+ disp / 512MB-1GB)']),
+				E('button', {
+					type: 'button',
+					class: 'ex-priority-option-btn',
+					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
+					click: function(){ applyPreset(262144, 3000, 20000, '1h', '1800'); }
+				}, ['🚀 Extremo / Eventos (500+ disp / 1GB RAM)']),
+				E('button', {
+					type: 'button',
+					class: 'ex-priority-option-btn',
+					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
+					click: function(){ applyPreset(65536, 1000, 5000, '12h', '432000'); }
+				}, ['🏠 Residencial (até 50 disp / 256MB-512MB)'])
+			];
+
+			const content = [
+				E('div', { class: 'ex-device-config-block', style: 'background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.25); border-radius: 8px; padding: 12px; margin-bottom: 12px;' }, [
+					E('div', { style: 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;' }, [
+						E('div', {}, [
+							E('strong', { style: 'color: #3b82f6; font-size: 0.95rem;' }, ['Hardware Detectado: ' + (status.mem_total_mb || 1024) + ' MB RAM']),
+							E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, [
+								'Conexões NAT ativas no momento: ',
+								E('span', { style: 'font-weight: 700; color: #10b981;' }, [String(status.conntrack_count || 0)]),
+								' / ' + (status.conntrack_max || 131072)
+							])
+						]),
+						E('span', { class: 'ex-perf-badge badge-green' }, [(status.mem_total_mb >= 700 ? 'CLASSE 1 GB' : (status.mem_total_mb >= 380 ? 'CLASSE 512 MB' : 'CLASSE 256 MB'))])
+					])
+				]),
+
+				E('div', { class: 'ex-device-config-block' }, [
+					E('strong', {}, ['Predefinições Rápidas por Cenário']),
+					E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Clique em um perfil para pré-preencher os limites recomendados:']),
+					E('div', { class: 'ex-priority-button-grid', style: 'margin-top: 8px; gap: 8px;' }, presetBtns)
+				]),
+
+				E('div', { class: 'ex-device-config-block' }, [
+					E('strong', {}, ['Parâmetros Personalizados (Ajuste Manual)']),
+					E('div', { class: 'ex-grid ex-grid-2', style: 'gap: 12px; margin-top: 10px;' }, [
+						E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600;' }, [
+							E('span', {}, ['Tabela Conntrack NAT (Máx Conexões):']),
+							ctInput,
+							E('small', { class: 'ex-muted' }, ['Padrão 512M/1G: 131.072 (evita queda em torrent/p2p)'])
+						]),
+						E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600;' }, [
+							E('span', {}, ['Tempo de Expiração TCP (Inatividade):']),
+							timeoutSelect,
+							E('small', { class: 'ex-muted' }, ['Só conta em silêncio total; downloads/uploads ativos nunca caem'])
+						]),
+						E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600;' }, [
+							E('span', {}, ['Rajada de Consultas DNS (dns_forward_max):']),
+							fwdInput,
+							E('small', { class: 'ex-muted' }, ['Padrão 512M/1G: 2.000 consultas simultâneas no boot'])
+						]),
+						E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600;' }, [
+							E('span', {}, ['Tamanho do Cache DNS (cachesize):']),
+							cacheInput,
+							E('small', { class: 'ex-muted' }, ['Padrão 512M/1G: 10.000 entradas (~1 MB de RAM)'])
+						]),
+						E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600; grid-column: 1 / -1;' }, [
+							E('span', {}, ['Tempo de Concessão DHCP (leasetime):']),
+							leaseSelect,
+							E('small', { class: 'ex-muted' }, ['Tempo de retenção de IP antes de reciclar o pool de IPs locais'])
+						])
+					])
+				]),
+
+				E('div', { class: 'alert-message info', style: 'margin-top: 12px; display: flex; align-items: flex-start; gap: 10px; padding: 12px; border-radius: 6px;' }, [
+					E('span', { style: 'font-size: 1.3rem;' }, ['💡']),
+					E('div', {}, [
+						E('strong', {}, ['Quando aumentar esses limites?']),
+						E('ul', { style: 'margin: 6px 0 0 16px; padding: 0; font-size: 0.83rem; line-height: 1.5;' }, [
+							E('li', {}, ['Redes com mais de 50 a 254 dispositivos ativos (comércio, clínicas, eventos, escolas).']),
+							E('li', {}, ['Após quedas de energia, quando dezenas de smart TVs, assistentes e celulares ligam no mesmo segundo.']),
+							E('li', {}, ['Uso intenso de P2P / Torrents ou gamers, que abrem centenas de portas de conexão ao mesmo tempo.']),
+							E('li', {}, ['Dispositivos móveis com MAC randômico (Android/iOS) que trocam de endereço e esgotam o pool DHCP rapidamente.'])
+						])
+					])
+				]),
+
+				E('div', { class: 'right', style: 'margin-top: 16px;' }, [
+					E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Cancelar']),
+					' ',
+					E('button', {
+						class: 'btn cbi-button cbi-button-positive',
+						click: function(ev) {
+							const btn = ev.currentTarget;
+							btn.disabled = true;
+							btn.textContent = 'Aplicando…';
+							const ctVal = ctInput.value.trim() || '131072';
+							const fwdVal = fwdInput.value.trim() || '2000';
+							const cacheVal = cacheInput.value.trim() || '10000';
+							const leaseVal = leaseSelect.value || '2h';
+							const timeoutVal = timeoutSelect.value || '432000';
+							const args = ['network-capacity-save', ctVal, fwdVal, cacheVal, leaseVal, timeoutVal];
+							return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
+								if (r.code) throw new Error(r.stderr || 'Falha ao salvar limites');
+								ui.hideModal();
+								ui.addNotification(null, E('p', {}, ['Limites de capacidade aplicados e persistidos com sucesso!']));
+								return self.fetchData().then(L.bind(self.update, self));
+							}).catch(function(e) {
+								btn.disabled = false;
+								btn.textContent = 'Salvar configurações';
+								ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+							});
+						}
+					}, ['Salvar Limites'])
+				])
+			];
+
+			ui.showModal('🌐 Dimensionamento de Rede & Conexões (512MB / 1GB)', content);
+		}).catch(function(e) {
+			ui.showModal('Dimensionamento de Rede', [ E('p', { class: 'alert-message warning' }, [ e.message ]), E('div', { class: 'right' }, [ E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Fechar']) ]) ]);
+		});
+	},
 	systemPerfCard: function(data) {
 		const self = this;
 		this.perfState = Object.assign({
@@ -4883,6 +5039,18 @@ return view.extend({
 		const hasDnsBlocker = !!this.perfState.dns_blocker_active;
 		const blockerName = this.perfState.dns_blocker_name || 'AdGuard Home';
 
+		const capacityBtn = E('button', {
+			class: 'ex-mini-button',
+			type: 'button',
+			style: 'padding: 8px 12px; font-size: 0.8rem; font-weight: 700;',
+			title: 'Ajuste os limites de conexões simultâneas, cache e rajada de DNS para roteadores fortes (512MB / 1GB)',
+			click: function(ev) {
+				ev.preventDefault();
+				ev.stopPropagation();
+				self.openNetworkCapacityModal();
+			}
+		}, ['⚙️ Limites']);
+
 		const rows = [
 			makePerfRow(
 				'⚡',
@@ -4921,15 +5089,16 @@ return view.extend({
 			]),
 			makePerfRow(
 				'🛡️',
-				'Reciclador de Conexões Conntrack (Modo Eventos)',
-				'RECOMENDADO PARA EVENTOS',
+				'Capacidade & Conexões NAT (Conntrack)',
+				'512MB / 1GB RAM',
 				'badge-green',
-				'Reduz o tempo de retenção de conexões inativas de 5 dias para 30 minutos. Impede que milhares de conexões mortas de Instagram, TikTok e streaming fiquem presas na memória RAM do roteador. (' + conntrackStateText + ')',
-				'Altamente recomendado para eventos, comércio, escritórios ou redes com mais de 10 pessoas conectadas.',
+				'Controla a tabela de conexões ativas do firewall e a reciclagem de conexões mortas (padrão de 1 hora ativo). Expande a tabela para 131.072 conexões simultâneas. (' + conntrackStateText + ')',
+				'Padrão ativo em 1 hora (ideal para 100 a 250 clientes). Toque em “Limites” para dimensionar conexões NAT, rajada e pool DHCP.',
 				!!this.perfState.conntrack_recycle,
 				true,
 				'conntrack_recycle',
-				false
+				false,
+				capacityBtn
 			),
 			makePerfRow(
 				'🧹',

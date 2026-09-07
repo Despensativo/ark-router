@@ -50,6 +50,7 @@ build_ipk_variant() {
 	chmod 0755 "$data_dir/etc/init.d/equipe-traffic-history" 2>/dev/null || true
 	chmod 0755 "$data_dir/etc/init.d/ark-speedify" 2>/dev/null || true
 	chmod 0755 "$data_dir/etc/init.d/ark-zerotier-ram" 2>/dev/null || true
+	chmod 0755 "$data_dir/etc/init.d/ark-firewall-guard" 2>/dev/null || true
 	chmod 0755 "$data_dir/etc/uci-defaults/"* 2>/dev/null || true
 
 	# Pack data.tar.gz
@@ -83,8 +84,11 @@ chmod +x /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
 chmod +x /etc/init.d/equipe-traffic-history 2>/dev/null || true
 chmod +x /etc/init.d/ark-speedify 2>/dev/null || true
 chmod +x /etc/init.d/ark-zerotier-ram 2>/dev/null || true
+chmod +x /etc/init.d/ark-firewall-guard 2>/dev/null || true
 [ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true
 [ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram start >/dev/null 2>&1 || true
+[ -x /etc/init.d/ark-firewall-guard ] && /etc/init.d/ark-firewall-guard enable >/dev/null 2>&1 || true
+[ -x /etc/init.d/ark-firewall-guard ] && /etc/init.d/ark-firewall-guard start >/dev/null 2>&1 || true
 [ -f /etc/uci-defaults/99-ark-router-uhttpd ] && /bin/sh /etc/uci-defaults/99-ark-router-uhttpd >/dev/null 2>&1 || true
 [ -f /etc/uci-defaults/99-ark-router-dhcp-sanitize ] && /bin/sh /etc/uci-defaults/99-ark-router-dhcp-sanitize >/dev/null 2>&1 || true
 rm -f /tmp/luci-indexcache 2>/dev/null || true
