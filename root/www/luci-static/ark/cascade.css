@@ -2929,6 +2929,8 @@ path[fill="#00ffff"], polygon[fill="#00ffff"] { fill: #06b6d4 !important; }
 	margin-top: 14px;
 }
 .ark-preset-tile {
+	display: flex;
+	flex-direction: column;
 	background: var(--ark-surface-2);
 	border: 1px solid var(--ark-border);
 	border-radius: 10px;

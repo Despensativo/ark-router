@@ -2495,20 +2495,20 @@
           '</div>' +
           '<div class="ark-preset-cards">' +
             '<button type="button" class="ark-preset-tile" data-led-preset="smart">' +
-              '<div class="ark-preset-tile-title">🌐 Internet Inteligente</div>' +
-              '<div class="ark-preset-tile-desc">Status/Power ativo; LED Internet monitorando link WAN; Wi-Fi sinalizando tráfego.</div>' +
+              '<div class="ark-preset-tile-title">🟢 Internet Conectada (Verde Fixo)</div>' +
+              '<div class="ark-preset-tile-desc">LED frontal verde contínuo e estável quando conectado; sem piscar com tráfego de pacotes ou Wi-Fi.</div>' +
             '</button>' +
             '<button type="button" class="ark-preset-tile" data-led-preset="night">' +
-              '<div class="ark-preset-tile-title">🌙 Modo Noturno (Quarto)</div>' +
-              '<div class="ark-preset-tile-desc">Desliga todos os LEDs frontais para quem dorme no mesmo ambiente. Roteador 100% escuro sem claridade.</div>' +
+              '<div class="ark-preset-tile-title">🌙 Modo Noturno (Tudo Desligado)</div>' +
+              '<div class="ark-preset-tile-desc">Desliga todos os LEDs frontais para quartos e ambientes de descanso. Roteador 100% escuro sem claridade.</div>' +
             '</button>' +
             '<button type="button" class="ark-preset-tile" data-led-preset="alert">' +
-              '<div class="ark-preset-tile-title">🚨 Alerta Visual de Queda</div>' +
-              '<div class="ark-preset-tile-desc">LED em Laranja/Piscar intermitente para sinalizar falha na conexão de internet à distância.</div>' +
+              '<div class="ark-preset-tile-title">🛡️ Alerta de Queda (Silencioso)</div>' +
+              '<div class="ark-preset-tile-desc">LEDs apagados em uso normal; acende ou pisca em alerta visual somente se a conexão cair.</div>' +
             '</button>' +
-            '<button type="button" class="ark-preset-tile" data-led-preset="max">' +
-              '<div class="ark-preset-tile-title">⚡ Desempenho Total</div>' +
-              '<div class="ark-preset-tile-desc">Todos os LEDs ativos com pulso nas faixas 2.4 GHz e 5 GHz durante downloads e jogos.</div>' +
+            '<button type="button" class="ark-preset-tile" data-led-preset="default">' +
+              '<div class="ark-preset-tile-title">↺ Restaurar Padrão de Fábrica</div>' +
+              '<div class="ark-preset-tile-desc">Restaura a iluminação original e gatilhos padrão de fábrica do seu roteador com 1 clique.</div>' +
             '</button>' +
           '</div>' +
           '<div id="ark-led-feedback" style="display:none;margin-top:12px;font-size:12px;font-weight:600;padding:8px 12px;border-radius:6px;"></div>' +
@@ -2596,17 +2596,9 @@
           var el = document.getElementById('ind-' + domId);
           if (!el) return;
 
-          if (preset === 'night') {
+          if (preset === 'night' || preset === 'alert') {
             el.className = 'ark-led-indicator off';
-          } else if (preset === 'alert') {
-            if (l.type === 'status_rgb' || l.type === 'internet' || l.type === 'power') {
-              el.className = 'ark-led-indicator orange blink';
-            } else {
-              el.className = 'ark-led-indicator ' + (l.color || 'green');
-            }
-          } else if (preset === 'max') {
-            el.className = 'ark-led-indicator ' + (l.color || 'green') + ' blink';
-          } else { // smart
+          } else { // smart ou default
             el.className = 'ark-led-indicator ' + (l.color || 'green');
           }
         });
@@ -2614,11 +2606,18 @@
 
       var applyPreset = function(presetName) {
         var fb = document.getElementById('ark-led-feedback');
+        var labels = {
+          smart: '🟢 Internet Conectada (Verde Fixo)',
+          night: '🌙 Modo Noturno',
+          alert: '🛡️ Alerta de Queda Silencioso',
+          'default': '↺ Restaurar Padrão de Fábrica'
+        };
+        var label = labels[presetName] || presetName;
         if (fb) {
           fb.style.display = 'block';
           fb.style.background = 'rgba(59, 130, 246, 0.15)';
           fb.style.color = '#60a5fa';
-          fb.textContent = '⏳ Aplicando perfil de LED "' + presetName + '" no roteador...';
+          fb.textContent = '⏳ Aplicando "' + label + '" no roteador...';
         }
 
         if (callExec) {
@@ -2626,8 +2625,16 @@
             if (fb) {
               fb.style.background = 'rgba(16, 185, 129, 0.2)';
               fb.style.color = '#34d399';
-              fb.textContent = '✅ Perfil de iluminação aplicado com sucesso!';
-              setTimeout(function() { fb.style.display = 'none'; }, 3000);
+              if (presetName === 'default') {
+                fb.textContent = '✅ Configurações de iluminação restauradas para o padrão de fábrica!';
+              } else if (presetName === 'night') {
+                fb.textContent = '✅ Modo Noturno ativado: todos os LEDs foram apagados!';
+              } else if (presetName === 'alert') {
+                fb.textContent = '✅ Alerta Silencioso ativado: LEDs apagados em uso normal, acionando alerta se a conexão cair.';
+              } else {
+                fb.textContent = '✅ Perfil Internet Conectada aplicado: LED verde contínuo e estável!';
+              }
+              setTimeout(function() { fb.style.display = 'none'; }, 4000);
             }
             updateIndicators(presetName);
             if (callExec) {

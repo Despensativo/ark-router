@@ -3793,6 +3793,47 @@ get_led_hardware_info() {
 	printf ']}\n'
 }
 
+update_led_alert() {
+	[ -f /etc/config/ark_led_alert_mode ] || return 0
+	wan_dev="$(uci -q get network.wan.device || true)"
+	[ -n "$wan_dev" ] || wan_dev="$(uci -q get network.wan1.device || echo 'eth1')"
+
+	carrier="$(cat "/sys/class/net/$wan_dev/carrier" 2>/dev/null || echo '0')"
+	wan_status="$(ubus call network.interface.wan status 2>/dev/null || true)"
+	wan_up=0
+	echo "$wan_status" | grep -q '"up": true' && wan_up=1
+
+	# Se a conexao estiver saudavel (carrier=1 e wan_up=1): LED fica silencioso / 100% desligado
+	if [ "$carrier" = "1" ] && [ "$wan_up" = "1" ]; then
+		if [ -e /sys/class/leds/rgb:status ]; then
+			echo none > /sys/class/leds/rgb:status/trigger 2>/dev/null || true
+			echo 0 > /sys/class/leds/rgb:status/brightness 2>/dev/null || true
+		fi
+		if [ -e /sys/class/leds/d-link:orange:planet ]; then
+			echo 0 > /sys/class/leds/d-link:orange:planet/brightness 2>/dev/null || true
+		fi
+		if [ -e /sys/class/leds/d-link:green:planet ]; then
+			echo 0 > /sys/class/leds/d-link:green:planet/brightness 2>/dev/null || true
+		fi
+	else
+		# Falha na conexao / cabo desconectado / sem IP: Alerta visual piscante (vermelho ou laranja)
+		if [ -e /sys/class/leds/rgb:status ]; then
+			echo 255 0 0 > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
+			echo timer > /sys/class/leds/rgb:status/trigger 2>/dev/null || true
+			echo 500 > /sys/class/leds/rgb:status/delay_on 2>/dev/null || true
+			echo 500 > /sys/class/leds/rgb:status/delay_off 2>/dev/null || true
+			echo 255 > /sys/class/leds/rgb:status/brightness 2>/dev/null || true
+		fi
+		if [ -e /sys/class/leds/d-link:orange:planet ]; then
+			echo timer > /sys/class/leds/d-link:orange:planet/trigger 2>/dev/null || true
+			echo 500 > /sys/class/leds/d-link:orange:planet/delay_on 2>/dev/null || true
+			echo 500 > /sys/class/leds/d-link:orange:planet/delay_off 2>/dev/null || true
+			echo 255 > /sys/class/leds/d-link:orange:planet/brightness 2>/dev/null || true
+			echo 0 > /sys/class/leds/d-link:green:planet/brightness 2>/dev/null || true
+		fi
+	fi
+}
+
 set_led_preset() {
 	preset="${1:-smart}"
 	cleanup_orphan_leds
@@ -3800,125 +3841,196 @@ set_led_preset() {
 	wan_dev="$(uci -q get network.wan.device || true)"
 	[ -n "$wan_dev" ] || wan_dev="$(uci -q get network.wan1.device || echo 'eth1')"
 
-	# Check if rgb:status is present (Acer Predator Connect W6x, etc.)
-	if [ -e /sys/class/leds/rgb:status ]; then
-		[ -n "$(uci -q get system.led_status)" ] || uci -q set system.led_status=led
-		uci -q set "system.led_status.name=Status / Conexão (RGB)"
-		uci -q set "system.led_status.sysfs=rgb:status"
-		case "$preset" in
-			night)
-				uci -q set "system.led_status.trigger=none"
-				uci -q set "system.led_status.default=0"
-				;;
-			alert)
-				uci -q set "system.led_status.trigger=timer"
-				uci -q set "system.led_status.delayon=500"
-				uci -q set "system.led_status.delayoff=500"
-				uci -q set "system.led_status.default=1"
-				;;
-			max|smart|*)
+	case "$preset" in
+		night)
+			rm -f /etc/config/ark_led_alert_mode /etc/hotplug.d/iface/99-ark-led-alert /etc/hotplug.d/net/99-ark-led-alert
+			for sec in $(uci -q show system 2>/dev/null | grep '=led$' | cut -d. -f2 | cut -d= -f1); do
+				uci -q set "system.$sec.trigger=none"
+				uci -q set "system.$sec.default=0"
+			done
+			uci commit system
+			/etc/init.d/led restart >/dev/null 2>&1 || true
+			for led in $(ls /sys/class/leds/ 2>/dev/null); do
+				echo 0 > "/sys/class/leds/$led/brightness" 2>/dev/null || true
+			done
+			;;
+		alert)
+			mkdir -p /etc/config /etc/hotplug.d/iface /etc/hotplug.d/net
+			touch /etc/config/ark_led_alert_mode
+			cat << 'EOF' > /etc/hotplug.d/iface/99-ark-led-alert
+#!/bin/sh
+[ -f /etc/config/ark_led_alert_mode ] || exit 0
+/usr/sbin/equipe-dashboard-control update-led-alert >/dev/null 2>&1 &
+EOF
+			chmod +x /etc/hotplug.d/iface/99-ark-led-alert
+
+			cat << 'EOF' > /etc/hotplug.d/net/99-ark-led-alert
+#!/bin/sh
+[ -f /etc/config/ark_led_alert_mode ] || exit 0
+/usr/sbin/equipe-dashboard-control update-led-alert >/dev/null 2>&1 &
+EOF
+			chmod +x /etc/hotplug.d/net/99-ark-led-alert
+
+			# LEDs Wi-Fi ficam discretos/apagados no modo alerta silencioso
+			if [ -e /sys/class/leds/mt76-phy0 ]; then
+				uci -q set system.led_wifi5g.trigger=none
+				uci -q set system.led_wifi5g.default=0
+				echo 0 > /sys/class/leds/mt76-phy0/brightness 2>/dev/null || true
+			fi
+			if [ -e /sys/class/leds/mt76-phy1 ]; then
+				uci -q set system.led_wifi2g.trigger=none
+				uci -q set system.led_wifi2g.default=0
+				echo 0 > /sys/class/leds/mt76-phy1/brightness 2>/dev/null || true
+			fi
+			uci commit system 2>/dev/null || true
+			update_led_alert
+			;;
+		default)
+			rm -f /etc/config/ark_led_alert_mode /etc/hotplug.d/iface/99-ark-led-alert /etc/hotplug.d/net/99-ark-led-alert
+			# Purga todas as secoes de led customizadas e recria o padrao limpo do hardware ativo
+			for sec in $(uci -q show system 2>/dev/null | grep '=led$' | cut -d. -f2 | cut -d= -f1); do
+				uci -q delete "system.$sec"
+			done
+
+			if [ -e /sys/class/leds/rgb:status ]; then
+				uci -q set system.led_status=led
+				uci -q set "system.led_status.name=Status / Conexão (RGB)"
+				uci -q set "system.led_status.sysfs=rgb:status"
 				uci -q set "system.led_status.trigger=netdev"
 				uci -q set "system.led_status.dev=$wan_dev"
-				uci -q set "system.led_status.mode=link tx rx"
+				uci -q set "system.led_status.mode=link"
+				uci -q set "system.led_status.color_red=0"
+				uci -q set "system.led_status.color_green=255"
+				uci -q set "system.led_status.color_blue=0"
 				uci -q set "system.led_status.default=1"
-				;;
-		esac
-	fi
+			fi
+			if [ -e /sys/class/leds/mt76-phy0 ]; then
+				uci -q set system.led_wifi5g=led
+				uci -q set "system.led_wifi5g.name=Wi-Fi 5 GHz (Ultra Rápido)"
+				uci -q set "system.led_wifi5g.sysfs=mt76-phy0"
+				uci -q set "system.led_wifi5g.trigger=default-on"
+				uci -q set "system.led_wifi5g.default=1"
+			elif [ -e /sys/class/leds/ath10k-phy0 ]; then
+				uci -q set system.led_wifi5g=led
+				uci -q set "system.led_wifi5g.name=Wi-Fi 5 GHz (Ultra Rápido)"
+				uci -q set "system.led_wifi5g.sysfs=ath10k-phy0"
+				uci -q set "system.led_wifi5g.trigger=default-on"
+				uci -q set "system.led_wifi5g.default=1"
+			fi
+			if [ -e /sys/class/leds/mt76-phy1 ]; then
+				uci -q set system.led_wifi2g=led
+				uci -q set "system.led_wifi2g.name=Wi-Fi 2.4 GHz (Longo Alcance)"
+				uci -q set "system.led_wifi2g.sysfs=mt76-phy1"
+				uci -q set "system.led_wifi2g.trigger=default-on"
+				uci -q set "system.led_wifi2g.default=1"
+			elif [ -e /sys/class/leds/ath9k-phy1 ]; then
+				uci -q set system.led_wifi2g=led
+				uci -q set "system.led_wifi2g.name=Wi-Fi 2.4 GHz (Longo Alcance)"
+				uci -q set "system.led_wifi2g.sysfs=ath9k-phy1"
+				uci -q set "system.led_wifi2g.trigger=default-on"
+				uci -q set "system.led_wifi2g.default=1"
+			fi
+			if [ -e /sys/class/leds/d-link:green:power ]; then
+				uci -q set system.led_power=led
+				uci -q set "system.led_power.name=Power (Alimentação)"
+				uci -q set "system.led_power.sysfs=d-link:green:power"
+				uci -q set "system.led_power.trigger=default-on"
+				uci -q set "system.led_power.default=1"
+			fi
+			if [ -e /sys/class/leds/d-link:green:planet ]; then
+				uci -q set system.led_internet=led
+				uci -q set "system.led_internet.name=Internet (Planet)"
+				uci -q set "system.led_internet.sysfs=d-link:green:planet"
+				uci -q set "system.led_internet.trigger=netdev"
+				uci -q set "system.led_internet.dev=$wan_dev"
+				uci -q set "system.led_internet.mode=link"
+				uci -q set "system.led_internet.default=1"
+			fi
+			uci commit system
+			/etc/init.d/led restart >/dev/null 2>&1 || true
 
-	# Check Wi-Fi 5 GHz: mt76-phy0 or ath10k-phy0
-	if [ -e /sys/class/leds/mt76-phy0 ]; then
-		[ -n "$(uci -q get system.led_wifi5g)" ] || uci -q set system.led_wifi5g=led
-		uci -q set "system.led_wifi5g.name=Wi-Fi 5 GHz (Ultra Rápido)"
-		uci -q set "system.led_wifi5g.sysfs=mt76-phy0"
-		if [ "$preset" = "night" ]; then
-			uci -q set "system.led_wifi5g.trigger=none"
-			uci -q set "system.led_wifi5g.default=0"
-		else
-			uci -q set "system.led_wifi5g.trigger=phy0tpt"
-			uci -q set "system.led_wifi5g.default=1"
-		fi
-	elif [ -e /sys/class/leds/ath10k-phy0 ]; then
-		[ -n "$(uci -q get system.led_wifi5g)" ] || uci -q set system.led_wifi5g=led
-		uci -q set "system.led_wifi5g.name=Wi-Fi 5 GHz (Ultra Rápido)"
-		uci -q set "system.led_wifi5g.sysfs=ath10k-phy0"
-		if [ "$preset" = "night" ]; then
-			uci -q set "system.led_wifi5g.trigger=none"
-			uci -q set "system.led_wifi5g.default=0"
-		else
-			uci -q set "system.led_wifi5g.trigger=phy0tpt"
-			uci -q set "system.led_wifi5g.default=1"
-		fi
-	fi
+			if [ -e /sys/class/leds/rgb:status ]; then
+				echo 0 255 0 > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
+				echo 1 > /sys/class/leds/rgb:status/link 2>/dev/null || true
+				echo 0 > /sys/class/leds/rgb:status/rx 2>/dev/null || true
+				echo 0 > /sys/class/leds/rgb:status/tx 2>/dev/null || true
+				echo 255 > /sys/class/leds/rgb:status/brightness 2>/dev/null || true
+			fi
+			;;
+		smart|*)
+			rm -f /etc/config/ark_led_alert_mode /etc/hotplug.d/iface/99-ark-led-alert /etc/hotplug.d/net/99-ark-led-alert
+			if [ -e /sys/class/leds/rgb:status ]; then
+				[ -n "$(uci -q get system.led_status)" ] || uci -q set system.led_status=led
+				uci -q set "system.led_status.name=Status / Conexão (RGB)"
+				uci -q set "system.led_status.sysfs=rgb:status"
+				uci -q set "system.led_status.trigger=netdev"
+				uci -q set "system.led_status.dev=$wan_dev"
+				uci -q set "system.led_status.mode=link"
+				uci -q set "system.led_status.color_red=0"
+				uci -q set "system.led_status.color_green=255"
+				uci -q set "system.led_status.color_blue=0"
+				uci -q set "system.led_status.default=1"
+			fi
 
-	# Check Wi-Fi 2.4 GHz: mt76-phy1 or ath9k-phy1
-	if [ -e /sys/class/leds/mt76-phy1 ]; then
-		[ -n "$(uci -q get system.led_wifi2g)" ] || uci -q set system.led_wifi2g=led
-		uci -q set "system.led_wifi2g.name=Wi-Fi 2.4 GHz (Longo Alcance)"
-		uci -q set "system.led_wifi2g.sysfs=mt76-phy1"
-		if [ "$preset" = "night" ]; then
-			uci -q set "system.led_wifi2g.trigger=none"
-			uci -q set "system.led_wifi2g.default=0"
-		else
-			uci -q set "system.led_wifi2g.trigger=phy1tpt"
-			uci -q set "system.led_wifi2g.default=1"
-		fi
-	elif [ -e /sys/class/leds/ath9k-phy1 ]; then
-		[ -n "$(uci -q get system.led_wifi2g)" ] || uci -q set system.led_wifi2g=led
-		uci -q set "system.led_wifi2g.name=Wi-Fi 2.4 GHz (Longo Alcance)"
-		uci -q set "system.led_wifi2g.sysfs=ath9k-phy1"
-		if [ "$preset" = "night" ]; then
-			uci -q set "system.led_wifi2g.trigger=none"
-			uci -q set "system.led_wifi2g.default=0"
-		else
-			uci -q set "system.led_wifi2g.trigger=phy1tpt"
-			uci -q set "system.led_wifi2g.default=1"
-		fi
-	fi
+			if [ -e /sys/class/leds/mt76-phy0 ]; then
+				[ -n "$(uci -q get system.led_wifi5g)" ] || uci -q set system.led_wifi5g=led
+				uci -q set "system.led_wifi5g.name=Wi-Fi 5 GHz (Ultra Rápido)"
+				uci -q set "system.led_wifi5g.sysfs=mt76-phy0"
+				uci -q set "system.led_wifi5g.trigger=default-on"
+				uci -q set "system.led_wifi5g.default=1"
+			elif [ -e /sys/class/leds/ath10k-phy0 ]; then
+				[ -n "$(uci -q get system.led_wifi5g)" ] || uci -q set system.led_wifi5g=led
+				uci -q set "system.led_wifi5g.name=Wi-Fi 5 GHz (Ultra Rápido)"
+				uci -q set "system.led_wifi5g.sysfs=ath10k-phy0"
+				uci -q set "system.led_wifi5g.trigger=default-on"
+				uci -q set "system.led_wifi5g.default=1"
+			fi
 
-	# Check D-Link Power & Planet
-	if [ -e /sys/class/leds/d-link:green:power ]; then
-		[ -n "$(uci -q get system.led_power)" ] || uci -q set system.led_power=led
-		uci -q set "system.led_power.name=Power (Alimentação)"
-		uci -q set "system.led_power.sysfs=d-link:green:power"
-		if [ "$preset" = "night" ]; then
-			uci -q set "system.led_power.trigger=none"
-			uci -q set "system.led_power.default=0"
-		else
-			uci -q set "system.led_power.trigger=default-on"
-			uci -q set "system.led_power.default=1"
-		fi
-	fi
+			if [ -e /sys/class/leds/mt76-phy1 ]; then
+				[ -n "$(uci -q get system.led_wifi2g)" ] || uci -q set system.led_wifi2g=led
+				uci -q set "system.led_wifi2g.name=Wi-Fi 2.4 GHz (Longo Alcance)"
+				uci -q set "system.led_wifi2g.sysfs=mt76-phy1"
+				uci -q set "system.led_wifi2g.trigger=default-on"
+				uci -q set "system.led_wifi2g.default=1"
+			elif [ -e /sys/class/leds/ath9k-phy1 ]; then
+				[ -n "$(uci -q get system.led_wifi2g)" ] || uci -q set system.led_wifi2g=led
+				uci -q set "system.led_wifi2g.name=Wi-Fi 2.4 GHz (Longo Alcance)"
+				uci -q set "system.led_wifi2g.sysfs=ath9k-phy1"
+				uci -q set "system.led_wifi2g.trigger=default-on"
+				uci -q set "system.led_wifi2g.default=1"
+			fi
 
-	if [ -e /sys/class/leds/d-link:green:planet ] || [ -e /sys/class/leds/d-link:orange:planet ]; then
-		[ -n "$(uci -q get system.led_internet)" ] || uci -q set system.led_internet=led
-		if [ "$preset" = "night" ]; then
-			uci -q set "system.led_internet.trigger=none"
-			uci -q set "system.led_internet.default=0"
-		elif [ "$preset" = "alert" ] && [ -e /sys/class/leds/d-link:orange:planet ]; then
-			uci -q set "system.led_internet.name=Internet (Planet Alerta)"
-			uci -q set "system.led_internet.sysfs=d-link:orange:planet"
-			uci -q set "system.led_internet.trigger=timer"
-			uci -q set "system.led_internet.delayon=500"
-			uci -q set "system.led_internet.delayoff=500"
-			uci -q set "system.led_internet.default=1"
-		else
-			uci -q set "system.led_internet.name=Internet (Planet)"
-			uci -q set "system.led_internet.sysfs=d-link:green:planet"
-			uci -q set "system.led_internet.trigger=netdev"
-			uci -q set "system.led_internet.dev=$wan_dev"
-			uci -q set "system.led_internet.mode=link tx rx"
-			uci -q set "system.led_internet.default=1"
-		fi
-	fi
+			if [ -e /sys/class/leds/d-link:green:power ]; then
+				[ -n "$(uci -q get system.led_power)" ] || uci -q set system.led_power=led
+				uci -q set "system.led_power.name=Power (Alimentação)"
+				uci -q set "system.led_power.sysfs=d-link:green:power"
+				uci -q set "system.led_power.trigger=default-on"
+				uci -q set "system.led_power.default=1"
+			fi
 
-	if [ "$preset" = "night" ]; then
-		for led in $(ls /sys/class/leds/ 2>/dev/null); do
-			echo 0 > "/sys/class/leds/$led/brightness" 2>/dev/null || true
-		done
-	fi
+			if [ -e /sys/class/leds/d-link:green:planet ]; then
+				[ -n "$(uci -q get system.led_internet)" ] || uci -q set system.led_internet=led
+				uci -q set "system.led_internet.name=Internet (Planet)"
+				uci -q set "system.led_internet.sysfs=d-link:green:planet"
+				uci -q set "system.led_internet.trigger=netdev"
+				uci -q set "system.led_internet.dev=$wan_dev"
+				uci -q set "system.led_internet.mode=link"
+				uci -q set "system.led_internet.default=1"
+			fi
 
-	uci commit system
-	/etc/init.d/led restart >/dev/null 2>&1 || true
+			uci commit system
+			/etc/init.d/led restart >/dev/null 2>&1 || true
+
+			if [ -e /sys/class/leds/rgb:status ]; then
+				echo 0 255 0 > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
+				echo 1 > /sys/class/leds/rgb:status/link 2>/dev/null || true
+				echo 0 > /sys/class/leds/rgb:status/rx 2>/dev/null || true
+				echo 0 > /sys/class/leds/rgb:status/tx 2>/dev/null || true
+				echo 255 > /sys/class/leds/rgb:status/brightness 2>/dev/null || true
+			fi
+			;;
+	esac
+
 	printf '{"success":true,"preset":"%s"}\n' "$preset"
 }
 
@@ -6114,6 +6226,9 @@ EOF
 		;;
 	system-hardware-info)
 		get_system_hardware_info
+		;;
+	update-led-alert)
+		update_led_alert
 		;;
 	*)
 		echo 'Uso: equipe-dashboard-control {features|...|irqbalance-toggle 0|1|...}' >&2

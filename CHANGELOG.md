@@ -21,7 +21,11 @@
   - **Identificação Dinâmica do Roteador**: O painel de LEDs (`/admin/system/leds`) agora detecta dinamicamente a placa e modelo do equipamento (ex: `Acer Predator Connect W6x (Stock Layout)` vs. `D-Link DGL-5500` vs. genéricos) e exibe apenas os LEDs físicos que realmente existem em `/sys/class/leds/`.
   - **Limpeza Automática de LEDs Órfãos e Fantasmas**: Criada rotina `cleanup_orphan_leds` no backend (`equipe-dashboard-control`) que remove do `/etc/config/system` e da tabela do LuCI seções de hardware de outros roteadores (ex: `d-link:green:power`, `d-link:green:planet`, `ath10k-phy0`, `ath9k-phy1`) e deduplica entradas redundantes.
   - **Suporte Nativo ao LED RGB e Wi-Fi 6 do Acer Predator Connect W6x**: Mapeamento do LED frontal multi-estado `rgb:status` (com animação CSS RGB suave) e dos canais Wi-Fi 6 MediaTek MT7986 (`mt76-phy0` 5 GHz e `mt76-phy1` 2.4 GHz).
-  - **Perfis de Iluminação Cientes do Hardware**: Os perfis de 1 clique (`Internet Inteligente`, `Modo Noturno`, `Alerta Visual de Queda`, `Desempenho Total`) agora configuram os gatilhos exatos (`netdev`, `timer`, `none`, `phy*tpt`) para a interface WAN ativa e os chips Wi-Fi da placa detectada.
+  - **Perfis Rápidos de Iluminação Otimizados (1 Clique)**:
+    - `🟢 Internet Conectada (Verde Fixo)`: Mantém o LED frontal verde contínuo e estável (`0 255 0`, `mode=link`) enquanto a WAN estiver conectada, **sem piscar com pacotes de dados RX/TX**; Wi-Fi em luz contínua suave (`default-on`).
+    - `🌙 Modo Noturno (Tudo Desligado)`: Apaga 100% dos LEDs frontais (`trigger=none`, `brightness=0`) para quem dorme no mesmo ambiente.
+    - `🛡️ Alerta de Queda Silencioso`: LEDs completamente **apagados** durante o funcionamento normal com internet; aciona o LED frontal piscando em alerta (vermelho no RGB ou laranja) **apenas se a conexão cair** (perda de link ou IP WAN via hotplug reativo).
+    - `↺ Restaurar Padrão de Fábrica`: Substitui o antigo card de tráfego por um botão de restauração instantânea, purga configurações incorretas e restabelece a iluminação de fábrica do modelo detectado com 1 clique.
 
 - **⚡ Bypass de Rede Local Configurável com Toggle e Aviso Dinâmico (Limite de Banda Individual)**:
   - **Toggle Interativo no Modal**: Substituída a nota estática informativa por um interruptor interativo com status em tempo real no bloco de `Limite de Banda Individual`.
