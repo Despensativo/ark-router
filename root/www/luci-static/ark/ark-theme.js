@@ -21,6 +21,7 @@
       this.enhanceTablesAndLogs();
       this.enhanceTabs();
       this.enhanceSafetyModals();
+      this.enhanceModals();
       this.enhanceInterfaceBadges();
       this.initGlobalEscHandler();
       this.enhanceNetlinkCharts();
@@ -86,13 +87,15 @@
           }
 
           // 2. Close native LuCI modal dialogs
-          if (window.ui && typeof window.ui.hideModal === 'function') {
-            try { window.ui.hideModal(); } catch (err) {}
+          var luciUi = (window.L && window.L.ui) || window.ui;
+          if (luciUi && typeof luciUi.hideModal === 'function') {
+            try { luciUi.hideModal(); } catch (err) {}
           }
+          document.body.classList.remove('modal-overlay-active');
 
-          // 3. Close open modals or overlays in DOM
-          var overlays = document.querySelectorAll('.modal, .cbi-modal, #modal_overlay, .modal-overlay, .ex-modal-overlay, [class*="modal_overlay"]');
-          overlays.forEach(function(el) {
+          // 3. Close open custom overlays in DOM (never remove #modal_overlay or native modal divs)
+          var customOverlays = document.querySelectorAll('.ark-custom-overlay, .ex-modal-overlay');
+          customOverlays.forEach(function(el) {
             if (el && el.parentNode) {
               el.remove();
             }
@@ -103,6 +106,46 @@
           openDropdowns.forEach(function(d) {
             d.classList.remove('open');
           });
+        }
+      });
+    },
+
+    enhanceModals: function() {
+      // 1. Backdrop click on #modal_overlay outside the modal closes it
+      var overlay = document.getElementById('modal_overlay');
+      if (overlay && !overlay._arkBound) {
+        overlay._arkBound = true;
+        overlay.addEventListener('click', function(ev) {
+          if (ev.target === overlay) {
+            var luciUi = (window.L && window.L.ui) || window.ui;
+            if (luciUi && typeof luciUi.hideModal === 'function') {
+              try { luciUi.hideModal(); } catch (e) {}
+            }
+            document.body.classList.remove('modal-overlay-active');
+          }
+        });
+      }
+
+      // 2. Add top-right sticky close '×' button to all modals (desktop & mobile)
+      var modals = document.querySelectorAll('.modal, .cbi-modal');
+      modals.forEach(function(m) {
+        if (!m.querySelector('.ark-modal-close-btn')) {
+          var closeBtn = document.createElement('button');
+          closeBtn.type = 'button';
+          closeBtn.className = 'ark-modal-close-btn';
+          closeBtn.setAttribute('aria-label', 'Fechar modal');
+          closeBtn.title = 'Fechar';
+          closeBtn.innerHTML = '&times;';
+          closeBtn.addEventListener('click', function(ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            var luciUi = (window.L && window.L.ui) || window.ui;
+            if (luciUi && typeof luciUi.hideModal === 'function') {
+              try { luciUi.hideModal(); } catch (e) {}
+            }
+            document.body.classList.remove('modal-overlay-active');
+          });
+          m.insertBefore(closeBtn, m.firstChild);
         }
       });
     },
@@ -2552,6 +2595,7 @@
           self.enhanceTablesAndLogs();
           self.enhanceTabs();
           self.enhanceSafetyModals();
+          self.enhanceModals();
           self.enhanceInterfaceBadges();
           self.enhanceNetlinkCharts();
           self.injectFeatureGuides();

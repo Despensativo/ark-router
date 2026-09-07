@@ -9,12 +9,12 @@
 .ex-hero-status { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; text-align: right; }
 .ex-hero-status strong { font-size: 1.45rem; font-variant-numeric: tabular-nums; }
 .ex-hero-status small { max-width: 280px; opacity: .72; white-space: normal !important; }
-.ex-hero-feature-button { margin-top: 5px; padding: 6px 11px; border: 1px solid rgba(255,255,255,.3); border-radius: 9px; color: #fff; background: rgba(255,255,255,.12); cursor: pointer; font-weight: 750; }
-.ex-hero-feature-button:hover { background: rgba(255,255,255,.2); }
+.ex-hero-feature-button { margin-top: 5px; padding: 7px 14px !important; border: 1px solid rgba(255,255,255,.4) !important; border-radius: 9px !important; color: #ffffff !important; background: rgba(255,255,255,.16) !important; cursor: pointer !important; font-weight: 750 !important; backdrop-filter: blur(8px) !important; -webkit-backdrop-filter: blur(8px) !important; transition: all 0.18s ease !important; }
+.ex-hero-feature-button:hover { background: rgba(255,255,255,.28) !important; border-color: rgba(255,255,255,.7) !important; color: #ffffff !important; box-shadow: 0 4px 14px rgba(0,0,0,.25) !important; }
 .ex-hero-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 7px; margin-top: 4px; }
 .ex-hero-actions .ex-hero-feature-button { margin-top: 0; }
-.ex-hero-setup-button { border-color: rgba(255,255,255,.62); color: #0f172a !important; background: #fff; box-shadow: 0 10px 24px rgba(15,23,42,.22); }
-.ex-hero-setup-button:hover { color: #fff !important; background: rgba(15,23,42,.22); }
+.ex-hero-setup-button { border: 1px solid rgba(255,255,255,.9) !important; color: #0f172a !important; background: #ffffff !important; box-shadow: 0 4px 14px rgba(0,0,0,.3) !important; font-weight: 800 !important; }
+.ex-hero-setup-button:hover { color: #0284c7 !important; background: #f1f5f9 !important; box-shadow: 0 6px 20px rgba(0,0,0,.4) !important; }
 .ex-hero-speedify { position: relative; z-index: 1; display: inline-flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 11px; padding: 8px 11px; border: 1px solid rgba(255,255,255,.24); border-radius: 13px; background: rgba(0,0,0,.13); color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); }
 .ex-hero-speedify span { opacity: .75; font-size: .76rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
 .ex-hero-speedify strong { font-size: .84rem; }
@@ -233,8 +233,8 @@ details.ex-perf-opt-card, section.ex-perf-opt-card { border-color: color-mix(in 
 .ex-priority-desc-box, .ex-reserve-box { padding: 10px 12px; border-radius: 10px; background: rgba(127,127,127,.06); border: 1px solid rgba(127,127,127,.12); margin-top: 8px; }
 .ex-priority-desc-text { margin: 0; font-size: 0.83rem; color: #cbd5e1; line-height: 1.4; }
 .ex-secret { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; margin: 9px 0; padding: 8px 10px 8px 14px; border-radius: 12px; background: rgba(127,127,127,.10); }
-.ex-secret code { min-width: 0; overflow: hidden; font-size: 1rem; transition: filter .18s ease; }
-.ex-mini-button { padding: 7px 10px; border: 1px solid color-mix(in srgb,var(--ex-primary-safe) 28%,transparent); border-radius: 9px; color: var(--ex-primary-safe); background: color-mix(in srgb,var(--ex-primary-safe) 9%,transparent); cursor: pointer; font-weight: 750; white-space: nowrap; }
+.ex-mini-button { padding: 6px 12px !important; border: 1px solid rgba(56, 189, 248, 0.45) !important; border-radius: 8px !important; color: #38bdf8 !important; background: rgba(56, 189, 248, 0.15) !important; cursor: pointer !important; font-weight: 750 !important; white-space: nowrap !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 5px !important; transition: all 0.15s ease !important; }
+.ex-mini-button:hover { background: #0284c7 !important; border-color: #38bdf8 !important; color: #ffffff !important; box-shadow: 0 0 14px rgba(56, 189, 248, 0.5) !important; }
 .ex-mwan-control, .ex-channel-card, .ex-devices { margin-bottom: 16px; }
 .ex-mwan-editor summary { padding: 12px 14px; border-radius: 11px; color: var(--ex-primary-safe); background: color-mix(in srgb,var(--ex-primary-safe) 9%,transparent); cursor: pointer; font-weight: 750; }
 .ex-mwan-editor-body { padding: 12px 2px 0; }
@@ -573,6 +573,7 @@ body.modal-overlay-active #modal_overlay {
 	overscroll-behavior-y: contain !important;
 	touch-action: pan-y !important;
 	opacity: 1 !important;
+	z-index: 10000 !important;
 }
 .modal, .cbi-modal {
 	overscroll-behavior: contain !important;
@@ -605,7 +606,7 @@ body.modal-overlay-active #modal_overlay {
 		overscroll-behavior: contain !important;
 		overscroll-behavior-y: contain !important;
 		touch-action: pan-y !important;
-		z-index: 1000 !important;
+		z-index: 10000 !important;
 	}
 	.modal, .cbi-modal {
 		width: calc(100vw - 12px) !important;
