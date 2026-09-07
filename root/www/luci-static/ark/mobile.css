@@ -201,10 +201,27 @@
 		width: 100% !important;
 	}
 
+	body.ark-login-page aside.ark-sidebar,
+	body.ark-login-page .ark-sidebar-backdrop,
+	body.ark-login-page .ark-mobile-bar,
+	body.ark-login-page #ark-sidebar,
+	body:has(input[name="luci_password"]) aside.ark-sidebar,
+	body:has(input[name="luci_password"]) .ark-sidebar-backdrop,
+	body:has(input[name="luci_password"]) .ark-mobile-bar,
+	body:has(input[name="luci_password"]) #ark-sidebar {
+		display: none !important;
+	}
+
 	body.ark-login-page #maincontent,
+	body.ark-login-page #maincontent.ark-main-container,
+	body:has(input[name="luci_password"]) #maincontent,
+	body:has(input[name="luci_password"]) #maincontent.ark-main-container,
 	#maincontent:has(input[name="luci_password"]),
 	.cbi-map:has(input[name="luci_password"]) {
-		margin: 30px auto !important;
+		margin: 24px auto !important;
+		margin-left: auto !important;
+		margin-right: auto !important;
+		max-width: 100% !important;
 		padding: 20px 16px !important;
 	}
 

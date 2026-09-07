@@ -22,8 +22,8 @@
 		<title><%=striptags( (boardinfo.hostname or "?") .. ( (node and node.title) and ' - ' .. translate(node.title) or '')) %> - ARK Router</title>
 		<meta name="viewport" content="initial-scale=1.0, width=device-width">
 		<meta name="theme-color" content="#0f172a">
-		<link rel="stylesheet" href="<%=media%>/cascade.css?v=0.9.79">
-		<link rel="stylesheet" media="only screen and (max-width: 854px)" href="<%=media%>/mobile.css?v=0.9.79" type="text/css" />
+		<link rel="stylesheet" href="<%=media%>/cascade.css?v=0.9.80">
+		<link rel="stylesheet" media="only screen and (max-width: 854px)" href="<%=media%>/mobile.css?v=0.9.80" type="text/css" />
 		<link rel="shortcut icon" href="<%=media%>/favicon.png">
 		<% if node and node.css then %>
 			<link rel="stylesheet" href="<%=resource%>/<%=node.css%>">
@@ -31,12 +31,13 @@
 		<% if css then %>
 			<style title="text/css"><%= css %></style>
 		<% end -%>
-		<script src="<%=url('admin/translations', luci.i18n.context.lang)%>?v=0.9.79"></script>
-		<script src="<%=resource%>/cbi.js?v=0.9.79"></script>
-		<script src="<%=media%>/ark-theme.js?v=0.9.79"></script>
+		<script src="<%=url('admin/translations', luci.i18n.context.lang)%>?v=0.9.80"></script>
+		<script src="<%=resource%>/cbi.js?v=0.9.80"></script>
+		<script src="<%=media%>/ark-theme.js?v=0.9.80"></script>
 	</head>
 
 	<body class="lang_<%=luci.i18n.context.lang%> <% if node then %><%= striptags( node.title ) %><%- end %> <%= is_login and 'ark-login-page' or 'ark-app-page' %> ark-theme" data-page="<%= pcdata(table.concat(disp.context.requestpath, "-")) %>">
+		<% if not is_login then %>
 		<div class="ark-mobile-bar">
 			<button type="button" class="ark-menu-toggle" id="ark-menu-toggle" aria-label="Menu">
 				<span class="ark-burger-line"></span>
@@ -67,6 +68,7 @@
 				<div id="indicators" class="ark-indicators"></div>
 			</div>
 		</aside>
+		<% end %>
 
 		<div id="maincontent" class="container ark-main-container">
 			<%- if luci.sys.process.info("uid") == 0 and luci.sys.user.getuser("root") and not luci.sys.user.getpasswd("root") then -%>

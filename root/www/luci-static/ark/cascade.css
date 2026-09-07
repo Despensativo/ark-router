@@ -904,11 +904,42 @@ input.hidden, .hidden {
 /* ==========================================================================
    MODERN LOGIN SCREEN (SYSAUTH) — Argon Concept Refined
    ========================================================================== */
+body.ark-login-page aside.ark-sidebar,
+body.ark-login-page .ark-sidebar-backdrop,
+body.ark-login-page .ark-mobile-bar,
+body.ark-login-page #ark-sidebar,
+body:has(input[name="luci_password"]) aside.ark-sidebar,
+body:has(input[name="luci_password"]) .ark-sidebar-backdrop,
+body:has(input[name="luci_password"]) .ark-mobile-bar,
+body:has(input[name="luci_password"]) #ark-sidebar {
+	display: none !important;
+}
+
 body.ark-login-page #maincontent,
+body.ark-login-page #maincontent.ark-main-container,
+body:has(input[name="luci_password"]) #maincontent,
+body:has(input[name="luci_password"]) #maincontent.ark-main-container,
 #maincontent:has(input[name="luci_password"]) {
 	max-width: 460px !important;
+	width: 100% !important;
 	margin: 80px auto !important;
+	margin-left: auto !important;
+	margin-right: auto !important;
 	padding: 0 16px !important;
+}
+
+body.ark-login-page .cbi-map::before,
+form:has(input[name="luci_password"]) .cbi-map::before {
+	content: '⚡ ARK Router';
+	display: block;
+	text-align: center;
+	font-size: 24px;
+	font-weight: 800;
+	letter-spacing: -0.02em;
+	margin-bottom: 14px;
+	background: linear-gradient(135deg, #60a5fa, #a855f7);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
 }
 
 body.ark-login-page .cbi-map,

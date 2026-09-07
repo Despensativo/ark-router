@@ -6,6 +6,11 @@
   - **Fusão de ARP e Host Hints**: A tabela de "Quem está conectado" em `overview.js` agora cruza as concessões dinâmicas do DHCP com a tabela ARP do kernel (`/proc/net/arp`) e as reservas estáticas de `dhcpConfig` e `getHostHints()`.
   - **Reconhecimento de Dispositivos de Cabo (LAN)**: Dispositivos cabeados e aparelhos com IP fixo (como `TV SALA PLACA DE REDE` no IP `192.168.73.30`) passam a ser listados imediatamente com o rótulo `Cabo / LAN`, badges visuais de limites de banda (`🛑 50M↓ / 5M↑`), IP reservado e consumo individual medido pelo `nlbwmon`.
 
+- **🔒 Ocultação Completa da Barra Lateral na Tela de Login (`sysauth`)**:
+  - **Remoção de Elementos Fantasmas**: A barra lateral vazia (`aside.ark-sidebar`), o backdrop escuro e a topbar mobile foram completamente desativados e removidos na tela de autenticação do LuCI (`header.ut`, `header.htm`, `cascade.css`, `mobile.css`, `ark-theme.js`).
+  - **Alinhamento e Centralização Perfeitos**: O formulário de login passa a ocupar o centro exato da tela tanto no Desktop quanto no Mobile, eliminando o deslocamento e a faixa escura vazia à esquerda.
+  - **Identidade Visual no Card**: Incorporado o logotipo estilizado `⚡ ARK Router` com degradê vibrante no topo do cartão de login.
+
 - **📡 Multi-Starlink: Separação Automática por Portas e Alinhamento Simultâneo Lado a Lado**:
   - **Portas Dedicadas por Antena via Policy Routing**:
     - **Porta 9201**: Encaminhada diretamente para a **Starlink 1 (WAN1)** via Tabela 5101 e `fwmark 0x5101`.

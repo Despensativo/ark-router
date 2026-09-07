@@ -33,6 +33,18 @@
     },
 
     initSidebarNavigation: function() {
+      // On login screen, remove sidebar, mobile bar, and backdrop completely
+      if (document.body.classList.contains('ark-login-page') || document.querySelector('input[name="luci_password"]')) {
+        document.body.classList.add('ark-login-page');
+        var sb = document.getElementById('ark-sidebar');
+        if (sb && sb.parentNode) sb.parentNode.removeChild(sb);
+        var mb = document.querySelector('.ark-mobile-bar');
+        if (mb && mb.parentNode) mb.parentNode.removeChild(mb);
+        var bd = document.getElementById('ark-sidebar-backdrop');
+        if (bd && bd.parentNode) bd.parentNode.removeChild(bd);
+        return;
+      }
+
       var toggle = document.getElementById('ark-menu-toggle');
       var closeBtn = document.getElementById('ark-sidebar-close');
       var backdrop = document.getElementById('ark-sidebar-backdrop');
