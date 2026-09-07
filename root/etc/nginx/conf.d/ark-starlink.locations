@@ -1,0 +1,6 @@
+location = /cgi-bin/ark-starlink-telemetry {
+    include uwsgi_params;
+    uwsgi_param SERVER_ADDR $server_addr;
+    uwsgi_modifier1 9;
+    uwsgi_pass unix:////var/run/luci-cgi_io.socket;
+}

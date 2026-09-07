@@ -1,50 +1,63 @@
 #!/bin/sh
 
 # ARK Router multi-Starlink telemetry helper.
-# Queries one logical WAN at a time because every dish uses 192.168.100.1.
-# Only a host route to the dish management address is changed; default routes,
-# mwan3 policies and Speedify routes are left untouched.
+# Supports simultaneous, concurrent querying across multiple Starlinks (WAN1, WAN2...)
+# via isolated policy routing tables (5101, 5102...) and dedicated ports (9201, 9202...).
+# Default routes, mwan3 policies and Speedify routes are completely untouched.
 
 set -u
 
 DISH_IP="192.168.100.1"
-DISH_ROUTE="${DISH_IP}/32"
-LOCK_DIR="/tmp/ark-starlink-telemetry.lock"
 CLIENT_RAM="/tmp/starlink-dish"
 CLIENT_FLASH="/usr/bin/starlink-dish"
 CLIENT_URL="https://github.com/bigmalloy/starlink-panel/releases/latest/download/starlink-dish"
-QUERY_TIMEOUT=10
-ROUTE_BACKUP=""
+QUERY_TIMEOUT=7
 CLIENT_PID=""
 WATCHDOG_PID=""
 RESULT_FILE=""
 ERROR_FILE=""
 TIMEOUT_FILE=""
+CURRENT_LOCK=""
 
 valid_name() {
 	printf '%s' "$1" | grep -Eq '^[A-Za-z0-9_.:-]+$'
 }
 
+wan_to_port() {
+	case "$1" in
+		wan|wan1) echo 9201 ;;
+		wan2) echo 9202 ;;
+		wan3) echo 9203 ;;
+		wan4) echo 9204 ;;
+		wan[0-9]*)
+			num="${1#wan}"
+			echo "$((9200 + num))"
+			;;
+		*) echo 9201 ;;
+	esac
+}
+
 release_lock() {
-	[ -n "$ROUTE_BACKUP" ] && rm -f "$ROUTE_BACKUP" 2>/dev/null || true
-	rmdir "$LOCK_DIR" 2>/dev/null || true
+	[ -n "$CURRENT_LOCK" ] && rmdir "$CURRENT_LOCK" 2>/dev/null || true
+	CURRENT_LOCK=""
 }
 
 cleanup_starlink() {
 	[ -n "$WATCHDOG_PID" ] && kill "$WATCHDOG_PID" 2>/dev/null || true
 	[ -n "$CLIENT_PID" ] && kill "$CLIENT_PID" 2>/dev/null || true
 	[ -n "$RESULT_FILE" ] && rm -f "$RESULT_FILE" "$ERROR_FILE" "$TIMEOUT_FILE" 2>/dev/null || true
-	[ -n "$ROUTE_BACKUP" ] && route_restore
 	release_lock
 }
 
 acquire_lock() {
+	lock_target="/tmp/ark-starlink-$1.lock"
 	waited=0
-	while ! mkdir "$LOCK_DIR" 2>/dev/null; do
-		[ "$waited" -lt 12 ] || { echo 'Outra antena está sendo consultada. Tente novamente.' >&2; return 1; }
+	while ! mkdir "$lock_target" 2>/dev/null; do
+		[ "$waited" -lt 8 ] || { echo "A antena $1 está sendo consultada. Tente novamente." >&2; return 1; }
 		sleep 1
 		waited=$((waited + 1))
 	done
+	CURRENT_LOCK="$lock_target"
 	trap cleanup_starlink EXIT INT TERM HUP
 }
 
@@ -68,18 +81,6 @@ interface_status() {
 	ubus call "network.interface.$1" status 2>/dev/null
 }
 
-route_restore() {
-	ip -4 route del "$DISH_ROUTE" >/dev/null 2>&1 || true
-	if [ -s "$ROUTE_BACKUP" ]; then
-		while IFS= read -r saved_route; do
-			[ -n "$saved_route" ] || continue
-			# Route text originates from the local kernel, not from user input.
-			# shellcheck disable=SC2086
-			ip -4 route add $saved_route >/dev/null 2>&1 || true
-		done <"$ROUTE_BACKUP"
-	fi
-}
-
 query_wan() {
 	logical="$1"
 	valid_name "$logical" || { echo 'Interface WAN inválida.' >&2; return 2; }
@@ -90,27 +91,22 @@ query_wan() {
 	device="$(printf '%s' "$status_json" | jsonfilter -e '@.l3_device' 2>/dev/null)"
 	[ -n "$device" ] || device="$(printf '%s' "$status_json" | jsonfilter -e '@.device' 2>/dev/null)"
 	valid_name "$device" || { echo "Dispositivo físico de $logical não identificado." >&2; return 1; }
-	gateway="$(printf '%s' "$status_json" | jsonfilter -e '@.route[@.target="0.0.0.0"].nexthop' 2>/dev/null | head -n 1)"
-	valid_name "$gateway" || gateway=""
+	
 	client="$(ensure_client)" || return 1
-	acquire_lock || return 1
-	ROUTE_BACKUP="/tmp/ark-starlink-route.$$.bak"
-	ip -4 route show exact "$DISH_ROUTE" >"$ROUTE_BACKUP" 2>/dev/null || true
-	if [ -n "$gateway" ]; then
-		ip -4 route replace "$DISH_ROUTE" via "$gateway" dev "$device" metric 1 >/dev/null 2>&1 || {
-			echo "Não foi possível preparar a rota Starlink pela $logical." >&2
-			return 1
-		}
-	else
-		ip -4 route replace "$DISH_ROUTE" dev "$device" metric 1 >/dev/null 2>&1 || {
-			echo "Não foi possível preparar a rota Starlink pela $logical." >&2
-			return 1
-		}
+	acquire_lock "$logical" || return 1
+
+	port="$(wan_to_port "$logical")"
+
+	# Ensure policy routing rules and nftables table for Starlink ports exist
+	if ! ip rule show 2>/dev/null | grep -q "lookup 510"; then
+		/usr/sbin/equipe-dashboard-control starlink-setup-ports >/dev/null 2>&1 || true
 	fi
-	RESULT_FILE="/tmp/ark-starlink-result.$$"
-	ERROR_FILE="/tmp/ark-starlink-error.$$"
-	TIMEOUT_FILE="/tmp/ark-starlink-timeout.$$"
-	"$client" dish -d "http://${DISH_IP}:9200" >"$RESULT_FILE" 2>"$ERROR_FILE" &
+
+	RESULT_FILE="/tmp/ark-starlink-result.$$.$logical"
+	ERROR_FILE="/tmp/ark-starlink-error.$$.$logical"
+	TIMEOUT_FILE="/tmp/ark-starlink-timeout.$$.$logical"
+
+	"$client" dish -d "http://127.0.0.1:${port}" >"$RESULT_FILE" 2>"$ERROR_FILE" &
 	CLIENT_PID=$!
 	(
 		sleep "$QUERY_TIMEOUT"
@@ -127,18 +123,20 @@ query_wan() {
 	kill "$WATCHDOG_PID" 2>/dev/null || true
 	wait "$WATCHDOG_PID" 2>/dev/null || true
 	WATCHDOG_PID=""
-	route_restore
-	rm -f "$ROUTE_BACKUP" 2>/dev/null || true
-	ROUTE_BACKUP=""
+	release_lock
+
 	if [ -e "$TIMEOUT_FILE" ]; then
-		echo "A antena não respondeu pela WAN $logical em ${QUERY_TIMEOUT}s." >&2
+		echo "A antena não respondeu pela WAN $logical (porta $port) em ${QUERY_TIMEOUT}s." >&2
+		rm -f "$RESULT_FILE" "$ERROR_FILE" "$TIMEOUT_FILE" 2>/dev/null || true
 		return 1
 	fi
 	if [ "$code" -ne 0 ]; then
 		cat "$ERROR_FILE" >&2 2>/dev/null || true
+		rm -f "$RESULT_FILE" "$ERROR_FILE" "$TIMEOUT_FILE" 2>/dev/null || true
 		return "$code"
 	fi
 	cat "$RESULT_FILE"
+	rm -f "$RESULT_FILE" "$ERROR_FILE" "$TIMEOUT_FILE" 2>/dev/null || true
 }
 
 case "${1:-}" in
@@ -149,5 +147,6 @@ case "${1:-}" in
 		else echo missing
 		fi
 		;;
+	port) wan_to_port "${2:-wan}" ;;
 	*) echo 'Uso: ark-starlink-telemetry query <interface-wan>' >&2; exit 2 ;;
 esac

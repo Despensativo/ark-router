@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.9.80
+
+- **📺 Visibilidade Total de Dispositivos Cabeados e com IP Estático (Tabela de Conectados)**:
+  - **Fusão de ARP e Host Hints**: A tabela de "Quem está conectado" em `overview.js` agora cruza as concessões dinâmicas do DHCP com a tabela ARP do kernel (`/proc/net/arp`) e as reservas estáticas de `dhcpConfig` e `getHostHints()`.
+  - **Reconhecimento de Dispositivos de Cabo (LAN)**: Dispositivos cabeados e aparelhos com IP fixo (como `TV SALA PLACA DE REDE` no IP `192.168.73.30`) passam a ser listados imediatamente com o rótulo `Cabo / LAN`, badges visuais de limites de banda (`🛑 50M↓ / 5M↑`), IP reservado e consumo individual medido pelo `nlbwmon`.
+
+- **📡 Multi-Starlink: Separação Automática por Portas e Alinhamento Simultâneo Lado a Lado**:
+  - **Portas Dedicadas por Antena via Policy Routing**:
+    - **Porta 9201**: Encaminhada diretamente para a **Starlink 1 (WAN1)** via Tabela 5101 e `fwmark 0x5101`.
+    - **Porta 9202**: Encaminhada diretamente para a **Starlink 2 (WAN2)** via Tabela 5102 e `fwmark 0x5102`.
+    - **Porta 9200**: Mantida para a **Antena Principal Ativa**, garantindo compatibilidade total com o aplicativo oficial da Starlink no celular.
+  - **Fim dos Locks Globais e das Pausas**: Eliminação da substituição temporária da rota global e do arquivo de trava `/tmp/ark-starlink-telemetry.lock`. Agora as antenas são consultadas em portas isoladas de forma 100% paralela e concorrente.
+  - **Nova Interface de Alinhamento Duplo Simultâneo (`/starlink/`)**:
+    - Modo Split-View com dois cards completos lado a lado: Starlink 1 e Starlink 2.
+    - Cada antena possui mostradores visuais independentes: Bússola 360° de Rotação Horizontal (Azimute) e Inclinômetro de Inclinação Vertical (Elevação), além de métricas ao vivo de obstrução, latência e GPS.
+    - Botão *⚡ Ajuste ao Vivo (1 s)* dispara consultas paralelas contínuas para ambas as antenas, permitindo que o instalador aponte e calibre as duas Starlinks no mastro em tempo real na mesma tela sem pausar nenhuma conexão.
+  - **Detecção Universal de Starlink (Modo Ponte + Modo Roteador)**:
+    - Reconhecimento automático da Starlink tanto em modo Bypass puro (CGNAT `100.64.0.0/10`) quanto em modo roteador normal com NAT (sub-rede `192.168.1.x` com gateway `192.168.1.1`).
+
+## 0.9.79
+- **⚡ Ocultação Contextual de Otimização em Portas LAN**: O botão de otimização de velocidade de WAN foi removido do modal de conversão de portas LAN para WANs novas, evitando confusão visual e erros de interface inexistente.
+
 ## 0.9.78
 
 - **🛡️ Redesenho e Clareza Total da Telemetria do Firewall (`Condição Geral ➔ Firewall` / `/status/iptables`)**:

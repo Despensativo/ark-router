@@ -17,6 +17,7 @@ const callDeviceStatus = rpc.declare({ object: 'network.device', method: 'status
 const callWirelessStatus = rpc.declare({ object: 'network.wireless', method: 'status', expect: { '': {} } });
 const callMwanStatus = rpc.declare({ object: 'mwan3', method: 'status', expect: { '': {} } });
 const callDHCPLeases = rpc.declare({ object: 'luci-rpc', method: 'getDHCPLeases', expect: { '': {} } });
+const callHostHints = rpc.declare({ object: 'luci-rpc', method: 'getHostHints', expect: { '': {} } });
 const callAssocList = rpc.declare({ object: 'iwinfo', method: 'assoclist', params: [ 'device' ], expect: { '': {} } });
 const callSurvey = rpc.declare({ object: 'iwinfo', method: 'survey', params: [ 'device' ], expect: { '': {} } });
 const callScan = rpc.declare({ object: 'iwinfo', method: 'scan', params: [ 'device' ], expect: { '': {} } });
@@ -557,9 +558,11 @@ return view.extend({
 			safe(callWirelessStatus(), {}),
 			safe(callUciGet('dhcp'), { values: {} }),
 			safe(callUciGet('firewall'), { values: {} }),
-			safe(fs.read('/tmp/equipe-wan-daily.csv'), '')
+			safe(fs.read('/tmp/equipe-wan-daily.csv'), ''),
+			safe(callHostHints(), {}),
+			safe(fs.read('/proc/net/arp'), '')
 		]).then(function(r) {
-			const interfaces=r[1], networkConfig=r[9], networkValues=values(networkConfig), topology=wifiTopology(r[16]), lanPorts=lanPortsFromNetwork(networkConfig);
+			const interfaces=r[1], networkConfig=r[9], networkValues=values(networkConfig), topology=wifiTopology(r[15]), lanPorts=lanPortsFromNetwork(networkConfig);
 			const activeWans=getActiveWanList({networkConfig:networkConfig, interfaces:interfaces});
 			const wanDevicesMap={}, wanPhysicalDevicesMap={}, wanPingsMap={};
 			const wanPromises=[];
@@ -592,6 +595,7 @@ return view.extend({
 				perfStatus: (function(){ try { return JSON.parse((r[12] && r[12].stdout) || '{}'); } catch(e){ return {}; } })(),
 				traffic:r[13], history:r[14], wirelessStatus:r[15], wifiTopology:topology, lanPorts:lanPorts, lanDevices:x[5]||[],
 				dhcpConfig: r[16], firewallConfig: r[17], wanDaily: r[18],
+				hostHints: r[19] || {}, arpTable: r[20] || '',
 				timestamp:Date.now()
 			}; });
 		});
@@ -821,12 +825,15 @@ return view.extend({
 
 		const dhcpValues = values(data.dhcpConfig);
 		const reservedMap = {};
+		const reservedNameMap = {};
 		Object.keys(dhcpValues).forEach(function(k) {
 			const h = dhcpValues[k];
-			if (h && h['.type'] === 'host' && h.mac && h.ip) {
+			if (h && h['.type'] === 'host' && h.mac) {
 				const macs = Array.isArray(h.mac) ? h.mac : String(h.mac).split(/\s+/);
 				macs.forEach(function(m) {
-					if (m) reservedMap[String(m).toUpperCase()] = h.ip;
+					const u = String(m).toUpperCase();
+					if (h.ip) reservedMap[u] = h.ip;
+					if (h.name) reservedNameMap[u] = h.name;
 				});
 			}
 		});
@@ -857,6 +864,82 @@ return view.extend({
 		const devices=[];
 		leases.forEach(function(l) { const mac=String(l.macaddr||'').toUpperCase(); if(!mac||seen[mac])return; seen[mac]=1; const a=main[mac]||guest[mac], isGuest=!!guest[mac]||(guestPrefix&&String(l.ipaddr||'').indexOf(guestPrefix)===0); devices.push({mac:mac,ip:l.ipaddr||'—',name:names[mac]||l.hostname||'Dispositivo sem nome',network:networkLabel(mac,l.ipaddr,true),guest:isGuest,signal:a&&a.signal,rate:rates[mac]||{rx:0,tx:0,totalRx:0,totalTx:0}}); });
 		Object.keys(main).concat(Object.keys(guest)).forEach(function(mac) { if(seen[mac])return; seen[mac]=1; const a=main[mac]||guest[mac], isGuest=!!guest[mac]; devices.push({mac:mac,ip:'—',name:names[mac]||'Dispositivo sem nome',network:networkLabel(mac,'',false),guest:isGuest,signal:a.signal,rate:rates[mac]||{rx:0,tx:0,totalRx:0,totalTx:0}}); });
+
+		// Parse ARP table (/proc/net/arp) to find active wired/LAN devices (e.g. TV, cameras, IoT)
+		const arpMap = {};
+		const arpText = String(data.arpTable || '');
+		if (arpText) {
+			const arpLines = arpText.split('\n');
+			for (let i = 1; i < arpLines.length; i++) {
+				const cols = arpLines[i].trim().split(/\s+/);
+				if (cols.length >= 6) {
+					const aIp = cols[0];
+					const aFlags = cols[2];
+					const aMac = String(cols[3] || '').toUpperCase();
+					const aDev = cols[5];
+					if (aMac && aMac !== '00:00:00:00:00:00' && aFlags === '0x2' && aIp !== lanStatus.ipaddr) {
+						arpMap[aMac] = { ip: aIp, device: aDev };
+					}
+				}
+			}
+		}
+
+		const hostHints = data.hostHints || {};
+
+		// Include active devices discovered via ARP on LAN
+		Object.keys(arpMap).forEach(function(mac) {
+			if (seen[mac]) return;
+			const arpInfo = arpMap[mac];
+			const devIp = arpInfo.ip;
+			const isLan = (lanPrefix && devIp.indexOf(lanPrefix) === 0) || (arpInfo.device === 'br-lan');
+			const isGuest = !!(guestPrefix && devIp.indexOf(guestPrefix) === 0);
+			if (!isLan && !isGuest) return;
+
+			seen[mac] = 1;
+			const hint = hostHints[mac] || {};
+			const devName = names[mac] || hint.name || reservedNameMap[mac] || 'Dispositivo sem nome';
+			const netLbl = isGuest ? (guestName + ' / Cabo') : 'Cabo / LAN';
+			devices.push({
+				mac: mac,
+				ip: devIp || '—',
+				name: devName,
+				network: netLbl,
+				guest: isGuest,
+				signal: null,
+				rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
+			});
+		});
+
+		// Include static DHCP hosts or devices with limits/traffic that have an active IP
+		Object.keys(dhcpValues).forEach(function(k) {
+			const h = dhcpValues[k];
+			if (!h || h['.type'] !== 'host' || !h.mac || !h.ip) return;
+			const macs = Array.isArray(h.mac) ? h.mac : String(h.mac).split(/\s+/);
+			macs.forEach(function(m) {
+				const mac = String(m || '').toUpperCase();
+				if (!mac || seen[mac]) return;
+				const devIp = h.ip;
+				const isLan = (lanPrefix && devIp.indexOf(lanPrefix) === 0);
+				const isGuest = !!(guestPrefix && devIp.indexOf(guestPrefix) === 0);
+				if (!isLan && !isGuest) return;
+				const hasTraffic = rates[mac] && (rates[mac].totalRx > 0 || rates[mac].totalTx > 0);
+				const hasLimits = limitsMap[mac] && limitsMap[mac].enabled;
+				if (hasTraffic || hasLimits || arpMap[mac]) {
+					seen[mac] = 1;
+					const hint = hostHints[mac] || {};
+					const devName = names[mac] || hint.name || h.name || 'Dispositivo sem nome';
+					devices.push({
+						mac: mac,
+						ip: devIp,
+						name: devName,
+						network: isGuest ? (guestName + ' / Cabo') : 'Cabo / LAN',
+						guest: isGuest,
+						signal: null,
+						rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
+					});
+				}
+			});
+		});
 		this.sortDevices(devices);
 		const existingRows = body.querySelectorAll('tr[data-mac]');
 		const nowTime = Date.now();
@@ -1079,7 +1162,8 @@ return view.extend({
 				const addr=String(i['ipv4-address'][0].address||''),gw=wanGateway(i),dns=(i['dns-server']||i.dns_server||[]),p=addr.split('.').map(Number);
 				const cgnat=p.length===4&&p[0]===100&&p[1]>=64&&p[1]<=127;
 				const slGw=String(gw)==='100.64.0.1',slDns=Array.isArray(dns)&&dns.some(function(s){return /^198\.54\.100\./.test(String(s));});
-				return slDns||(cgnat&&slGw);
+				const slRouterMode=(String(gw)==='192.168.1.1'&&String(i.interface||i.device)!=='lan');
+				return slDns||(cgnat&&slGw)||slRouterMode;
 			});
 			const slPub=(this.capabilities.features&&this.capabilities.features.starlink_public)||{};
 			starlinkPanelEl.style.display=(hasStarlink||slPub.enabled)?'':'none';

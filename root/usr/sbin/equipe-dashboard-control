@@ -1855,7 +1855,94 @@ starlink_active_wan_set() {
 	echo ok
 }
 
+starlink_wan_port() {
+	case "$1" in
+		wan|wan1) echo 9201 ;;
+		wan2) echo 9202 ;;
+		wan3) echo 9203 ;;
+		wan4) echo 9204 ;;
+		wan[0-9]*)
+			num="${1#wan}"
+			echo "$((9200 + num))"
+			;;
+		*) echo 9201 ;;
+	esac
+}
+
+starlink_wan_table() {
+	case "$1" in
+		wan|wan1) echo 5101 ;;
+		wan2) echo 5102 ;;
+		wan3) echo 5103 ;;
+		wan4) echo 5104 ;;
+		wan[0-9]*)
+			num="${1#wan}"
+			echo "$((5100 + num))"
+			;;
+		*) echo 5101 ;;
+	esac
+}
+
+starlink_setup_policy_routing() {
+	sysctl -w net.ipv4.conf.all.route_localnet=1 >/dev/null 2>&1 || true
+	sysctl -w net.ipv4.conf.default.route_localnet=1 >/dev/null 2>&1 || true
+
+	mkdir -p /etc/ark
+	nft_file="/etc/ark/ark_starlink.nft"
+	tmp_nft="/tmp/ark_starlink.nft.$$"
+
+	printf 'table inet ark_starlink\ndelete table inet ark_starlink\ntable inet ark_starlink {\n' > "$tmp_nft"
+	printf '\tchain prerouting {\n\t\ttype nat hook prerouting priority dstnat; policy accept;\n' >> "$tmp_nft"
+	prerouting_rules=""
+	mangle_pre_rules=""
+	output_nat_rules=""
+	mangle_out_rules=""
+
+	for network_section in $(active_wan_networks); do
+		status_json="$(ubus call "network.interface.$network_section" status 2>/dev/null)"
+		[ -n "$status_json" ] || continue
+		device="$(printf '%s' "$status_json" | jsonfilter -e '@.l3_device' 2>/dev/null)"
+		[ -n "$device" ] || device="$(printf '%s' "$status_json" | jsonfilter -e '@.device' 2>/dev/null)"
+		[ -n "$device" ] || device="$(uci -q get "network.$network_section.device")"
+		[ -n "$device" ] || continue
+		gateway="$(printf '%s' "$status_json" | jsonfilter -e '@.route[@.target="0.0.0.0"].nexthop' 2>/dev/null | head -n 1)"
+
+		port="$(starlink_wan_port "$network_section")"
+		table="$(starlink_wan_table "$network_section")"
+		mark="$(printf '0x%x' "$table")"
+		rule_prio="$((table - 4200))"
+
+		if [ -n "$gateway" ]; then
+			ip -4 route replace 192.168.100.1/32 via "$gateway" dev "$device" table "$table" 2>/dev/null || true
+		else
+			ip -4 route replace 192.168.100.1/32 dev "$device" table "$table" 2>/dev/null || true
+		fi
+
+		if ! ip rule show 2>/dev/null | grep -q "lookup $table"; then
+			ip rule add fwmark "$mark" lookup "$table" priority "$rule_prio" 2>/dev/null || true
+		fi
+
+		prerouting_rules="${prerouting_rules}\t\ttcp dport $port counter dnat ip to 192.168.100.1:9200\n"
+		mangle_pre_rules="${mangle_pre_rules}\t\ttcp dport $port counter meta mark set $mark\n"
+		output_nat_rules="${output_nat_rules}\t\ttcp dport $port counter dnat ip to 192.168.100.1:9200\n"
+		mangle_out_rules="${mangle_out_rules}\t\ttcp dport $port counter meta mark set $mark\n"
+	done
+
+	printf '%b\t}\n' "$prerouting_rules" >> "$tmp_nft"
+	printf '\tchain prerouting_mangle {\n\t\ttype filter hook prerouting priority mangle; policy accept;\n%b\t}\n' "$mangle_pre_rules" >> "$tmp_nft"
+	printf '\tchain output_nat {\n\t\ttype nat hook output priority dstnat; policy accept;\n%b\t}\n' "$output_nat_rules" >> "$tmp_nft"
+	printf '\tchain output_mangle {\n\t\ttype filter hook output priority mangle; policy accept;\n%b\t}\n' "$mangle_out_rules" >> "$tmp_nft"
+	printf '\tchain postrouting {\n\t\ttype nat hook postrouting priority srcnat; policy accept;\n\t\tip daddr 192.168.100.1 counter masquerade\n\t}\n}\n' >> "$tmp_nft"
+
+	if nft -f "$tmp_nft" 2>/dev/null; then
+		mv -f "$tmp_nft" "$nft_file"
+	else
+		rm -f "$tmp_nft" 2>/dev/null || true
+	fi
+}
+
 starlink_public_list_json() {
+	starlink_setup_policy_routing
 	active_wan="$(starlink_active_wan_get)"
 	printf '{"ok":true,"enabled":true,"active_wan":"%s","wans":[' "$(json_escape "$active_wan")"
 	first=1
@@ -1867,15 +1954,21 @@ starlink_public_list_json() {
 		gateway="$(printf '%s' "$status_json" | jsonfilter -e '@.route[@.target="0.0.0.0"].nexthop' 2>/dev/null | head -n 1)"
 		dns="$(printf '%s' "$status_json" | jsonfilter -e '@["dns-server"][@]' 2>/dev/null | tr '\n' ' ')"
 		device="$(sqm_device_for_network "$network_section")"
+		port="$(starlink_wan_port "$network_section")"
 		likely=false
 		cgnat_ip=false
 		starlink_cgnat_ipv4 "$ipaddr" && cgnat_ip=true
 		[ "$cgnat_ip" = true ] && [ "$gateway" = 100.64.0.1 ] && likely=true
 		printf '%s' "$dns" | grep -Eq '(^|[[:space:]])198\.54\.100\.' && likely=true
+		if [ "$likely" = false ] && [ "$up" = true ]; then
+			case "$gateway" in
+				192.168.1.1) likely=true ;;
+			esac
+		fi
 		[ "$first" = 1 ] || printf ','; first=0
 		if [ "$network_section" = wan ]; then label=WAN1; else label="WAN${network_section#wan}"; fi
-		printf '{"name":"%s","label":"%s","device":"%s","up":%s,"ip":"%s","gateway":"%s","likely_starlink":%s,"is_active_route":%s}' \
-			"$(json_escape "$network_section")" "$(json_escape "$label")" "$(json_escape "$device")" "$(bool "$up")" "$(json_escape "$ipaddr")" "$(json_escape "$gateway")" "$likely" "$([ "$network_section" = "$active_wan" ] && printf true || printf false)"
+		printf '{"name":"%s","label":"%s","device":"%s","port":%d,"up":%s,"ip":"%s","gateway":"%s","likely_starlink":%s,"is_active_route":%s}' \
+			"$(json_escape "$network_section")" "$(json_escape "$label")" "$(json_escape "$device")" "$port" "$(bool "$up")" "$(json_escape "$ipaddr")" "$(json_escape "$gateway")" "$likely" "$([ "$network_section" = "$active_wan" ] && printf true || printf false)"
 	done
 	printf ']}\n'
 }
@@ -4545,6 +4638,10 @@ case "$action" in
 		;;
 	starlink-public-list)
 		starlink_public_list_json
+		;;
+	starlink-setup-ports)
+		starlink_setup_policy_routing
+		echo ok
 		;;
 	starlink-active-wan-get)
 		starlink_active_wan_get

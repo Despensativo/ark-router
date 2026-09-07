@@ -4,15 +4,709 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
-<title>ARK Starlink · Somente leitura</title>
+<title>ARK Starlink · Alinhamento Simultâneo Multi-Antena</title>
 <style>
-:root{color-scheme:dark;--bg:#0b1115;--card:#17242a;--card2:#203138;--line:#2d4d58;--blue:#38bdf8;--green:#34d399;--yellow:#f59e0b;--red:#fb7185;--text:#e8f1f5;--muted:#9dafb8}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% -10%,#173440 0,#0b1115 42%);color:var(--text);font:16px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}.wrap{width:min(1080px,100%);margin:auto;padding:clamp(16px,4vw,36px)}header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:22px}h1,h2,p{margin:0}h1{font-size:clamp(1.65rem,5vw,2.5rem)}header p,.muted{color:var(--muted)}.readonly{padding:7px 11px;border:1px solid #315866;border-radius:999px;color:var(--blue);white-space:nowrap}.panel{background:color-mix(in srgb,var(--card) 94%,transparent);border:1px solid var(--line);border-radius:18px;padding:clamp(15px,3vw,24px);box-shadow:0 18px 45px #0007}.wans{display:flex;gap:8px;overflow:auto;margin-bottom:18px}.wan{border:1px solid var(--line);background:#101b20;color:var(--text);border-radius:12px;padding:10px 14px;cursor:pointer;white-space:nowrap}.wan.active{border-color:var(--blue);background:#153242}.wan small{display:block;color:var(--muted)}.status{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;background:var(--card2);border-radius:13px}.pill{padding:5px 9px;border-radius:999px;background:#33444b;color:var(--muted);font-size:.76rem;font-weight:800}.pill.ok{background:#154c3d;color:#74e5bc}.pill.bad{background:#542d34;color:#ff9eac}.actions{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}button{border:1px solid #315866;background:#19323d;color:var(--text);padding:11px 15px;border-radius:11px;font-weight:750;cursor:pointer}button.primary{background:#087eaf;border-color:#38bdf8}button:disabled{opacity:.45;cursor:not-allowed}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin:14px 0}.metric{padding:12px;background:#111e23;border-radius:12px}.metric span{display:block;color:var(--muted);font-size:.78rem;text-transform:uppercase}.metric strong{font-size:1.15rem}.align{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:15px}.dial{padding:14px;background:#111e23;border:1px solid #29434d;border-radius:15px;text-align:center}.dial h2{font-size:1rem}.dial svg{width:min(280px,100%);display:block;margin:4px auto}.dial em{display:block;color:var(--blue);font-style:normal;font-size:1.05rem;font-weight:800}.dial small{color:var(--muted)}svg text{fill:var(--muted);font-size:10px;font-weight:700;text-anchor:middle}svg .dots{fill:#64767e}.acceptable{fill:#195744aa}.current{stroke:var(--yellow);stroke-width:4;stroke-linecap:round}.dish{fill:#eef5f7;stroke:#a8b7bd;stroke-width:1.5}.pivot{fill:var(--yellow)}.message{padding:22px;text-align:center;color:var(--muted)}.error{color:#ff9eac}.footer{margin-top:15px;color:var(--muted);font-size:.83rem;text-align:center}@media(max-width:720px){header{flex-direction:column}.align{grid-template-columns:1fr}.status{align-items:flex-start;flex-direction:column}.readonly{align-self:flex-start}}
+:root{
+  color-scheme:dark;
+  --bg:#070d12;
+  --card:#101a22;
+  --card-sub:#16242f;
+  --card-hover:#1c2e3c;
+  --line:rgba(56,189,248,0.22);
+  --line-dim:rgba(255,255,255,0.08);
+  --blue:#38bdf8;
+  --blue-glow:rgba(56,189,248,0.25);
+  --green:#34d399;
+  --green-glow:rgba(52,211,153,0.25);
+  --yellow:#fbbf24;
+  --red:#f87171;
+  --text:#f1f5f9;
+  --muted:#94a3b8;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:radial-gradient(circle at 50% -20%,#132836 0%,#070d12 55%);
+  color:var(--text);
+  font:15px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  min-height:100vh;
+}
+.wrap{
+  width:min(1280px,96%);
+  margin:0 auto;
+  padding:clamp(14px,3vw,28px) 0;
+}
+header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap;
+  margin-bottom:20px;
+  padding-bottom:14px;
+  border-bottom:1px solid var(--line-dim);
+}
+h1{margin:0;font-size:clamp(1.5rem,4vw,2.2rem);letter-spacing:-0.5px;color:#fff}
+header p{margin:4px 0 0;color:var(--muted);font-size:.9rem}
+.badge-header{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 14px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:rgba(56,189,248,0.08);
+  color:var(--blue);
+  font-size:.82rem;
+  font-weight:700;
+  letter-spacing:.3px;
+}
+.panel{
+  background:var(--card);
+  border:1px solid var(--line-dim);
+  border-radius:20px;
+  padding:clamp(14px,2.5vw,24px);
+  box-shadow:0 24px 60px rgba(0,0,0,0.6);
+}
+.top-bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  flex-wrap:wrap;
+  margin-bottom:18px;
+}
+.mode-toggle-group{
+  display:flex;
+  background:#091117;
+  border:1px solid var(--line-dim);
+  border-radius:12px;
+  padding:4px;
+  gap:4px;
+}
+.mode-btn{
+  border:none;
+  background:transparent;
+  color:var(--muted);
+  font-size:.85rem;
+  font-weight:700;
+  padding:8px 14px;
+  border-radius:8px;
+  cursor:pointer;
+  transition:all .15s ease;
+}
+.mode-btn.active{
+  background:linear-gradient(135deg,#0284c7 0%,#2563eb 100%);
+  color:#fff;
+  box-shadow:0 2px 10px rgba(37,99,235,0.4);
+}
+.actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+button.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  border:1px solid #334155;
+  background:#1e293b;
+  color:#f8fafc;
+  padding:9px 16px;
+  border-radius:10px;
+  font-size:.86rem;
+  font-weight:750;
+  cursor:pointer;
+  transition:all .15s ease;
+}
+button.btn:hover{background:#334155}
+button.btn.primary{
+  background:linear-gradient(135deg,#0284c7 0%,#0369a1 100%);
+  border-color:#38bdf8;
+  color:#fff;
+  box-shadow:0 2px 12px rgba(56,189,248,0.3);
+}
+button.btn.primary:hover{box-shadow:0 4px 18px rgba(56,189,248,0.5)}
+button.btn.live-active{
+  background:linear-gradient(135deg,#059669 0%,#10b981 100%);
+  border-color:#34d399;
+  color:#fff;
+  animation:pulseLive 2s infinite ease-in-out;
+}
+@keyframes pulseLive{
+  0%,100%{box-shadow:0 0 0 0 rgba(52,211,153,0.5)}
+  50%{box-shadow:0 0 0 8px rgba(52,211,153,0)}
+}
+button:disabled{opacity:.4;cursor:not-allowed}
+
+/* Dual Column Layout */
+.dishes-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:20px;
+  margin-top:10px;
+}
+.dishes-grid.dual{
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr));
+}
+.dish-card{
+  background:var(--card-sub);
+  border:1px solid var(--line-dim);
+  border-radius:16px;
+  padding:clamp(14px,2vw,20px);
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  position:relative;
+  box-shadow:0 8px 24px rgba(0,0,0,0.35);
+  transition:border-color .2s;
+}
+.dish-card.active-route{
+  border-color:var(--blue);
+  box-shadow:0 0 0 1px var(--blue),0 12px 32px rgba(56,189,248,0.18);
+}
+.dish-card-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  padding-bottom:12px;
+  border-bottom:1px solid var(--line-dim);
+}
+.dish-title{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+.dish-title strong{
+  font-size:1.15rem;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.dish-port-tag{
+  font-size:.74rem;
+  background:#091117;
+  color:var(--blue);
+  border:1px solid var(--line);
+  padding:2px 8px;
+  border-radius:6px;
+  font-family:monospace;
+  font-weight:700;
+}
+.dish-sub{
+  font-size:.82rem;
+  color:var(--muted);
+}
+.pill{
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:.75rem;
+  font-weight:800;
+  letter-spacing:.3px;
+  background:#334155;
+  color:var(--muted);
+}
+.pill.ok{background:#064e3b;color:#6ee7b7;border:1px solid #059669}
+.pill.bad{background:#7f1d1d;color:#fca5a5;border:1px solid #b91c1c}
+.pill.warn{background:#78350f;color:#fde68a;border:1px solid #d97706}
+.pill.wait{background:#1e293b;color:#cbd5e1;border:1px solid #475569}
+
+.app-route-btn{
+  background:#091117;
+  border:1px solid var(--line-dim);
+  color:var(--muted);
+  font-size:.78rem;
+  padding:5px 10px;
+  border-radius:8px;
+  cursor:pointer;
+  transition:all .15s;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
+.app-route-btn:hover{border-color:var(--blue);color:var(--text)}
+.app-route-btn.active{
+  background:rgba(56,189,248,0.12);
+  border-color:var(--blue);
+  color:var(--blue);
+  font-weight:750;
+}
+
+/* Metrics Grid */
+.metrics{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(110px,1fr));
+  gap:8px;
+}
+.metric{
+  background:#0a131a;
+  border:1px solid rgba(255,255,255,0.05);
+  border-radius:10px;
+  padding:10px;
+  text-align:center;
+}
+.metric span{
+  display:block;
+  font-size:.72rem;
+  text-transform:uppercase;
+  color:var(--muted);
+  font-weight:700;
+  letter-spacing:.4px;
+}
+.metric strong{
+  display:block;
+  font-size:1.08rem;
+  color:#fff;
+  margin-top:2px;
+}
+
+/* Dials Grid */
+.dials{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+.dial{
+  background:#0a131a;
+  border:1px solid rgba(255,255,255,0.06);
+  border-radius:14px;
+  padding:12px 10px;
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:space-between;
+}
+.dial h3{
+  margin:0 0 6px;
+  font-size:.86rem;
+  color:var(--muted);
+  font-weight:750;
+  text-transform:uppercase;
+  letter-spacing:.3px;
+}
+.dial svg{
+  width:min(180px,100%);
+  height:auto;
+  display:block;
+  margin:4px auto;
+}
+.dial em{
+  display:block;
+  font-style:normal;
+  color:var(--blue);
+  font-size:.92rem;
+  font-weight:800;
+  margin-top:6px;
+}
+.dial small{
+  color:var(--muted);
+  font-size:.78rem;
+  margin-top:2px;
+}
+svg text{fill:var(--muted);font-size:10px;font-weight:700;text-anchor:middle}
+svg .dots{fill:#475569}
+.acceptable{fill:rgba(52,211,153,0.35)}
+.current{stroke:var(--yellow);stroke-width:4;stroke-linecap:round}
+.dish{fill:#f1f5f9;stroke:#94a3b8;stroke-width:1.5}
+.pivot{fill:var(--yellow)}
+
+/* Links Footer */
+.port-direct-links{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:16px;
+  flex-wrap:wrap;
+  margin-top:16px;
+  padding:12px;
+  background:#091117;
+  border-radius:10px;
+  border:1px solid var(--line-dim);
+  font-size:.82rem;
+  color:var(--muted);
+}
+.port-direct-links a{
+  color:var(--blue);
+  text-decoration:none;
+  font-weight:700;
+  font-family:monospace;
+}
+.port-direct-links a:hover{text-decoration:underline}
+.message{padding:30px;text-align:center;color:var(--muted);font-size:1rem}
+.error{color:var(--red)}
+
+@media(max-width:768px){
+  header{flex-direction:column;align-items:flex-start}
+  .top-bar{flex-direction:column;align-items:stretch}
+  .mode-toggle-group{width:100%;justify-content:center}
+  .actions{justify-content:stretch}
+  .actions button{flex:1}
+  .dials{grid-template-columns:1fr}
+}
 </style>
 </head>
-<body><main class="wrap"><header><div><h1>ARK Starlink</h1><p>Telemetria e alinhamento das antenas · acesso somente leitura</p></div><span class="readonly">SEM CONFIGURAÇÕES</span></header><section class="panel"><div id="message" class="message">Detectando entradas WAN…</div><div id="content" hidden><div id="wans" class="wans"></div><div class="status"><div><strong id="title">Starlink</strong><p id="network" class="muted">—</p></div><span id="state" class="pill">AGUARDANDO</span></div><div class="actions"><button id="refresh" class="primary">Consultar agora</button><button id="live">Ajuste ao vivo (1 s)</button><button id="stop" disabled>Finalizar ajuste</button><button id="set-active" style="border-color:#38bdf8;color:#38bdf8;background:rgba(56,189,248,0.12);">🎯 Ativar Rota desta Antena (192.168.100.1)</button></div><div class="metrics"><div class="metric"><span>Obstrução</span><strong id="obstruction">—</strong></div><div class="metric"><span>Latência</span><strong id="latency">—</strong></div><div class="metric"><span>GPS</span><strong id="gps">—</strong></div><div class="metric"><span>Firmware</span><strong id="firmware">—</strong></div></div><div class="align"><article class="dial"><h2>1. Rotação horizontal</h2><svg id="azdial" viewBox="0 0 200 200"></svg><em id="azhint">Consulte a antena</em><small id="azvalues">—</small></article><article class="dial"><h2>2. Inclinação vertical</h2><svg id="eldial" viewBox="0 0 200 200"></svg><em id="elhint">Consulte a antena</em><small id="elvalues">—</small></article></div><p class="footer">A página não permite alterar Wi‑Fi, WAN, SQM, ou qualquer configuração sensível do roteador. O modo ao vivo para automaticamente após 5 minutos ou ao sair desta aba.</p></div></section></main>
+<body>
+<main class="wrap">
+  <header>
+    <div>
+      <h1>ARK Starlink</h1>
+      <p>Telemetria em tempo real & alinhamento simultâneo multi-antena · zero pausas de rota</p>
+    </div>
+    <div class="badge-header">
+      <span>📡 Portas Dedicadas 9201 / 9202</span>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div id="loading" class="message">Detectando conexões Starlink e portas locais…</div>
+    <div id="main-content" hidden>
+      
+      <div class="top-bar">
+        <div id="mode-selector" class="mode-toggle-group">
+          <button id="mode-dual" class="mode-btn active" type="button">👥 Alinhamento Duplo Simultâneo</button>
+          <button id="mode-single" class="mode-btn" type="button">🎯 Antena Individual</button>
+        </div>
+        <div class="actions">
+          <button id="btn-refresh" class="btn primary" type="button">🔄 Consultar Agora</button>
+          <button id="btn-live" class="btn" type="button">⚡ Ajuste ao Vivo (1 s)</button>
+          <button id="btn-stop" class="btn" type="button" disabled>⏹️ Parar Ajuste</button>
+        </div>
+      </div>
+
+      <div id="single-wan-tabs" class="mode-toggle-group" style="margin-bottom:14px;display:none;"></div>
+
+      <div id="dishes-container" class="dishes-grid dual"></div>
+
+      <div class="port-direct-links">
+        <span>🔗 Acesso direto local:</span>
+        <span id="direct-links-list">Carregando portas…</span>
+      </div>
+
+    </div>
+  </section>
+</main>
+
 <script>
-(()=>{'use strict';const api='/cgi-bin/ark-starlink-telemetry',q=s=>document.querySelector(s);let wans=[],selected=null,activeWan='wan',timer=null,stopTimer=null,busy=false;const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const diff=(a,b)=>Math.abs(((a-b+540)%360)-180);const polar=(cx,cy,r,d)=>{const a=(d-90)*Math.PI/180;return[cx+r*Math.cos(a),cy+r*Math.sin(a)]};const sector=(cx,cy,r,c,span)=>{const a=polar(cx,cy,r,c-span/2),b=polar(cx,cy,r,c+span/2);return`M${cx},${cy} L${a[0]},${a[1]} A${r},${r} 0 0 1 ${b[0]},${b[1]} Z`};function stop(){clearTimeout(timer);clearTimeout(stopTimer);timer=stopTimer=null;q('#live').disabled=false;q('#stop').disabled=true}function error(text){q('#message').hidden=false;q('#message').className='message error';q('#message').textContent=text;q('#content').hidden=true}async function json(url){const r=await fetch(url,{cache:'no-store',credentials:'omit'}),d=await r.json().catch(()=>({ok:false,error:'Resposta inválida'}));if(!r.ok||!d.ok)throw Error(d.error||`HTTP ${r.status}`);return d}function select(w){stop();selected=w;const isAct=(w.name===activeWan);document.querySelectorAll('.wan').forEach(b=>b.classList.toggle('active',b.dataset.wan===w.name));q('#title').textContent=`Starlink · ${w.label} ${isAct?'🎯 [ROTA ATIVA 192.168.100.1]':''}`;q('#network').textContent=`${w.ip||'sem IP'} · gateway ${w.gateway||'—'} · ${w.device||'—'}${isAct?' (Rota conectada ao App Starlink)':' (Rota inativa para o App Starlink)'}`;q('#state').textContent=w.up?(w.likely_starlink?'STARLINK DETECTADA':'WAN ATIVA'):'SEM LINK';q('#state').className='pill '+(w.up?'ok':'bad');const setActBtn=q('#set-active');if(setActBtn){if(isAct){setActBtn.textContent='✓ Rota 192.168.100.1 Ativa nesta Antena';setActBtn.style.opacity='0.65';}else{setActBtn.textContent=`🎯 Ativar Rota para ${w.label} (192.168.100.1)`;setActBtn.style.opacity='1';}}}function renderList(){q('#wans').innerHTML=wans.map(w=>{const isAct=(w.name===activeWan);return `<button class="wan ${isAct?'is-active-route':''}" data-wan="${esc(w.name)}"><strong>${esc(w.label)} ${isAct?'🎯':''}</strong><small>${isAct?'Rota Ativa (192.168.100.1)':(w.likely_starlink?'Starlink detectada':'WAN disponível')}</small></button>`;}).join('');document.querySelectorAll('.wan').forEach(b=>b.onclick=()=>select(wans.find(w=>w.name===b.dataset.wan)));select(wans.find(w=>w.name===activeWan)||wans.find(w=>w.likely_starlink)||wans[0])}async function activateRoute(){if(!selected)return;const btn=q('#set-active');btn.disabled=true;btn.textContent='Apontando rota…';try{const r=await json(`${api}?action=set_active&wan=${encodeURIComponent(selected.name)}`);activeWan=r.active_wan||selected.name;renderList();read(false);}catch(e){alert('Erro ao ativar rota: '+e.message);}finally{btn.disabled=false;}}function dial(d){const az=Number(d.bore_azimuth_deg||0),azt=Number(d.desired_azimuth_deg||0),el=Number(d.elevation_deg||0),elt=Number(d.desired_elevation_deg||0),azok=diff(az,azt)<=10,elok=Math.abs(el-elt)<=8,turn=((azt-az+540)%360)-180,azText=(((az%360)+360)%360).toFixed(1),aztText=(((azt%360)+360)%360).toFixed(1),dots=Array.from({length:36},(_,i)=>{const p=polar(100,100,78,i*10);return`<circle class="dots" cx="${p[0]}" cy="${p[1]}" r="1.5"/>`}).join('');q('#azdial').innerHTML=`${dots}<path class="acceptable" d="${sector(100,100,75,azt,20)}"/><text x="100" y="14">N</text><text x="187" y="104">L</text><text x="100" y="196">S</text><text x="13" y="104">O</text><g transform="rotate(${az} 100 100)"><rect class="dish" x="82" y="77" width="36" height="46" rx="3"/><line class="current" x1="100" y1="100" x2="100" y2="24"/></g><circle class="pivot" cx="100" cy="100" r="5"/>`;q('#azhint').textContent=azok?'Alinhada — não gire':`Gire para a ${turn>0?'direita':'esquerda'} · ~${Math.round(Math.abs(turn))}°`;q('#azvalues').textContent=`Atual ${azText}° · alvo ${aztText}°`;let td='';for(let i=0;i<=18;i++){const a=i*5*Math.PI/180;td+=`<circle class="dots" cx="${34+132*Math.cos(a)}" cy="${166-132*Math.sin(a)}" r="1.5"/>`}q('#eldial').innerHTML=`${td}<path class="acceptable" d="${sector(34,166,130,90-elt,16)}"/><text x="36" y="193">HORIZONTE</text><text x="165" y="28">CÉU</text><line x1="8" y1="183" x2="80" y2="183" stroke="#64767e"/><g transform="rotate(${-el} 34 166)"><line class="current" x1="34" y1="166" x2="166" y2="166"/></g><g transform="rotate(${90-el} 34 166)"><rect class="dish" x="0" y="159" width="68" height="14" rx="4"/></g><circle class="pivot" cx="34" cy="166" r="5"/>`;q('#elhint').textContent=elok?'Alinhada — não incline':`${el>elt?'Abaixe':'Levante'} a borda da frente · ~${Math.round(Math.abs(el-elt))}°`;q('#elvalues').textContent=`Atual ${el.toFixed(1)}° · alvo ${elt.toFixed(1)}°`;q('#state').textContent=azok&&elok?'ALINHADA':'AJUSTAR';q('#state').className='pill '+(azok&&elok?'ok':'bad')}async function read(live=false){if(!selected||busy)return;busy=true;q('#refresh').disabled=true;try{const r=await json(`${api}?action=query&wan=${encodeURIComponent(selected.name)}`),d=r.telemetry||{};q('#obstruction').textContent=`${(Number(d.fraction_obstructed||0)*100).toFixed(1)}%`;q('#latency').textContent=`${Number(d.latency_ms||0).toFixed(0)} ms`;q('#gps').textContent=`${d.gps_sats||0} satélites`;q('#firmware').textContent=d.software||'—';dial(d)}catch(e){q('#state').textContent='SEM RESPOSTA';q('#state').className='pill bad';q('#network').textContent=e.message}finally{busy=false;q('#refresh').disabled=false;if(live&&timer!==null)timer=setTimeout(()=>read(true),1000)}}async function init(){try{const d=await json(`${api}?action=list`);wans=d.wans||[];activeWan=d.active_wan||(wans[0]&&wans[0].name)||'wan';if(!wans.length)throw Error('Nenhuma WAN IPv4 ativa foi encontrada.');q('#message').hidden=true;q('#content').hidden=false;renderList();read(false);}catch(e){error(e.message)}}q('#refresh').onclick=()=>read(false);q('#live').onclick=()=>{stop();q('#live').disabled=true;q('#stop').disabled=false;timer=0;stopTimer=setTimeout(stop,300000);read(true)};q('#stop').onclick=stop;q('#set-active').onclick=activateRoute;document.addEventListener('visibilitychange',()=>{if(document.hidden)stop()});window.addEventListener('pagehide',stop);init()})();
+(()=>{
+  'use strict';
+  const api = '/cgi-bin/ark-starlink-telemetry';
+  const q = s => document.querySelector(s);
+  let wans = [];
+  let activeRouteWan = 'wan';
+  let viewMode = 'dual'; // 'dual' or 'single'
+  let singleSelectedWan = null;
+  let liveTimer = null;
+  let liveStopTimer = null;
+  let liveRunning = false;
+
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const diff = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
+  const polar = (cx, cy, r, d) => {
+    const a = (d - 90) * Math.PI / 180;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  };
+  const sector = (cx, cy, r, c, span) => {
+    const a = polar(cx, cy, r, c - span / 2), b = polar(cx, cy, r, c + span / 2);
+    return `M${cx},${cy} L${a[0]},${a[1]} A${r},${r} 0 0 1 ${b[0]},${b[1]} Z`;
+  };
+
+  async function fetchJson(url) {
+    const r = await fetch(url, { cache: 'no-store', credentials: 'omit' });
+    const d = await r.json().catch(() => ({ ok: false, error: 'Resposta inválida' }));
+    if (!r.ok || !d.ok) throw new Error(d.error || `HTTP ${r.status}`);
+    return d;
+  }
+
+  function stopLive() {
+    clearTimeout(liveTimer);
+    clearTimeout(liveStopTimer);
+    liveTimer = liveStopTimer = null;
+    liveRunning = false;
+    q('#btn-live').classList.remove('live-active');
+    q('#btn-live').disabled = false;
+    q('#btn-stop').disabled = true;
+  }
+
+  function startLive() {
+    stopLive();
+    liveRunning = true;
+    q('#btn-live').classList.add('live-active');
+    q('#btn-live').disabled = true;
+    q('#btn-stop').disabled = false;
+    liveStopTimer = setTimeout(stopLive, 300000); // 5 minutes safety
+    queryAll(true);
+  }
+
+  function renderDishCardHtml(w) {
+    const isAct = (w.name === activeRouteWan);
+    const port = w.port || 9201;
+    return `
+      <article class="dish-card ${isAct ? 'active-route' : ''}" id="card-${esc(w.name)}" data-wan="${esc(w.name)}">
+        <div class="dish-card-head">
+          <div class="dish-title">
+            <strong>
+              ${esc(w.label)}
+              <span class="dish-port-tag">Porta ${port}</span>
+              ${isAct ? '<span title="Rota ativa na porta padrão 9200 (App Oficial da Starlink)">🎯 ROTA PRINCIPAL</span>' : ''}
+            </strong>
+            <span class="dish-sub">${esc(w.ip || 'Sem IP')} · ${esc(w.device || '—')}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="app-route-btn ${isAct ? 'active' : ''}" onclick="window.setActiveRoute('${esc(w.name)}')">
+              ${isAct ? '✓ App Oficial Ativo' : '🎯 Usar no App Oficial (9200)'}
+            </button>
+            <span class="pill wait" id="pill-${esc(w.name)}">AGUARDANDO</span>
+          </div>
+        </div>
+
+        <div class="metrics">
+          <div class="metric"><span>Obstrução</span><strong id="obs-${esc(w.name)}">—</strong></div>
+          <div class="metric"><span>Latência</span><strong id="lat-${esc(w.name)}">—</strong></div>
+          <div class="metric"><span>Satélites GPS</span><strong id="gps-${esc(w.name)}">—</strong></div>
+          <div class="metric"><span>Uptime</span><strong id="upt-${esc(w.name)}">—</strong></div>
+          <div class="metric"><span>Perda</span><strong id="loss-${esc(w.name)}">—</strong></div>
+          <div class="metric"><span>Ethernet</span><strong id="eth-${esc(w.name)}">—</strong></div>
+        </div>
+
+        <div class="dials">
+          <div class="dial">
+            <h3>1. Rotação horizontal (Azimute)</h3>
+            <svg id="azdial-${esc(w.name)}" viewBox="0 0 200 200"></svg>
+            <em id="azhint-${esc(w.name)}">Aguardando telemetria…</em>
+            <small id="azval-${esc(w.name)}">—</small>
+          </div>
+          <div class="dial">
+            <h3>2. Inclinação vertical (Elevação)</h3>
+            <svg id="eldial-${esc(w.name)}" viewBox="0 0 200 200"></svg>
+            <em id="elhint-${esc(w.name)}">Aguardando telemetria…</em>
+            <small id="elval-${esc(w.name)}">—</small>
+          </div>
+        </div>
+      </article>
+    `;
+  }
+
+  function renderLayout() {
+    const grid = q('#dishes-container');
+    const tabs = q('#single-wan-tabs');
+    const host = window.location.hostname || '192.168.73.1';
+
+    // Direct links footer
+    q('#direct-links-list').innerHTML = wans.map(w => {
+      const p = w.port || 9201;
+      return `<a href="http://${host}:${p}" target="_blank" rel="noopener">${esc(w.label)}: :${p}</a>`;
+    }).join(' &nbsp;•&nbsp; ');
+
+    if (viewMode === 'dual' && wans.length >= 2) {
+      tabs.style.display = 'none';
+      grid.className = 'dishes-grid dual';
+      grid.innerHTML = wans.map(renderDishCardHtml).join('');
+    } else {
+      grid.className = 'dishes-grid';
+      if (wans.length >= 2) {
+        tabs.style.display = 'flex';
+        tabs.innerHTML = wans.map(w => `
+          <button class="mode-btn ${w.name === singleSelectedWan ? 'active' : ''}" onclick="window.selectSingleWan('${esc(w.name)}')">
+            ${esc(w.label)} ${w.name === activeRouteWan ? '🎯' : ''}
+          </button>
+        `).join('');
+      } else {
+        tabs.style.display = 'none';
+      }
+      const targetWan = wans.find(w => w.name === singleSelectedWan) || wans[0];
+      grid.innerHTML = targetWan ? renderDishCardHtml(targetWan) : '<div class="message">Nenhuma Starlink selecionada</div>';
+    }
+  }
+
+  function updateDishDials(wanName, d) {
+    const az = Number(d.bore_azimuth_deg || 0);
+    const azt = Number(d.desired_azimuth_deg || 0);
+    const el = Number(d.elevation_deg || 0);
+    const elt = Number(d.desired_elevation_deg || 0);
+    const azok = diff(az, azt) <= 10;
+    const elok = Math.abs(el - elt) <= 8;
+    const turn = ((azt - az + 540) % 360) - 180;
+    const azText = (((az % 360) + 360) % 360).toFixed(1);
+    const aztText = (((azt % 360) + 360) % 360).toFixed(1);
+
+    // Azimuth SVG
+    const dots = Array.from({ length: 36 }, (_, i) => {
+      const p = polar(100, 100, 78, i * 10);
+      return `<circle class="dots" cx="${p[0]}" cy="${p[1]}" r="1.5"/>`;
+    }).join('');
+    const azSvg = q(`#azdial-${wanName}`);
+    if (azSvg) {
+      azSvg.innerHTML = `${dots}
+        <path class="acceptable" d="${sector(100, 100, 75, azt, 20)}"/>
+        <text x="100" y="14">N</text><text x="187" y="104">L</text><text x="100" y="196">S</text><text x="13" y="104">O</text>
+        <g transform="rotate(${az} 100 100)">
+          <rect class="dish" x="82" y="77" width="36" height="46" rx="3"/>
+          <line class="current" x1="100" y1="100" x2="100" y2="24"/>
+        </g>
+        <circle class="pivot" cx="100" cy="100" r="5"/>`;
+    }
+    const azHint = q(`#azhint-${wanName}`);
+    if (azHint) {
+      azHint.textContent = azok ? '✓ Alinhada — não gire' : `Gire para a ${turn > 0 ? 'direita' : 'esquerda'} · ~${Math.round(Math.abs(turn))}°`;
+      azHint.style.color = azok ? 'var(--green)' : 'var(--yellow)';
+    }
+    const azVal = q(`#azval-${wanName}`);
+    if (azVal) azVal.textContent = `Atual ${azText}° · alvo ${aztText}°`;
+
+    // Elevation SVG
+    let td = '';
+    for (let i = 0; i <= 18; i++) {
+      const a = i * 5 * Math.PI / 180;
+      td += `<circle class="dots" cx="${34 + 132 * Math.cos(a)}" cy="${166 - 132 * Math.sin(a)}" r="1.5"/>`;
+    }
+    const elSvg = q(`#eldial-${wanName}`);
+    if (elSvg) {
+      elSvg.innerHTML = `${td}
+        <path class="acceptable" d="${sector(34, 166, 130, 90 - elt, 16)}"/>
+        <text x="36" y="193">HORIZONTE</text><text x="165" y="28">CÉU</text>
+        <line x1="8" y1="183" x2="80" y2="183" stroke="#64767e"/>
+        <g transform="rotate(${-el} 34 166)"><line class="current" x1="34" y1="166" x2="166" y2="166"/></g>
+        <g transform="rotate(${90 - el} 34 166)"><rect class="dish" x="0" y="159" width="68" height="14" rx="4"/></g>
+        <circle class="pivot" cx="34" cy="166" r="5"/>`;
+    }
+    const elHint = q(`#elhint-${wanName}`);
+    if (elHint) {
+      elHint.textContent = elok ? '✓ Alinhada — não incline' : `${el > elt ? 'Abaixe' : 'Levante'} a borda · ~${Math.round(Math.abs(el - elt))}°`;
+      elHint.style.color = elok ? 'var(--green)' : 'var(--yellow)';
+    }
+    const elVal = q(`#elval-${wanName}`);
+    if (elVal) elVal.textContent = `Atual ${el.toFixed(1)}° · alvo ${elt.toFixed(1)}°`;
+
+    // Status pill
+    const pill = q(`#pill-${wanName}`);
+    if (pill) {
+      if (azok && elok) {
+        pill.className = 'pill ok';
+        pill.textContent = 'ALINHADA';
+      } else {
+        pill.className = 'pill warn';
+        pill.textContent = 'AJUSTAR';
+      }
+    }
+
+    // Metrics
+    const obsEl = q(`#obs-${wanName}`);
+    if (obsEl) obsEl.textContent = `${(Number(d.fraction_obstructed || 0) * 100).toFixed(1)}%`;
+    const latEl = q(`#lat-${wanName}`);
+    if (latEl) latEl.textContent = `${Number(d.latency_ms || 0).toFixed(0)} ms`;
+    const gpsEl = q(`#gps-${wanName}`);
+    if (gpsEl) gpsEl.textContent = `${d.gps_sats || 0} satélites`;
+    const uptEl = q(`#upt-${wanName}`);
+    if (uptEl) {
+      const up = Number(d.uptime || 0);
+      uptEl.textContent = up ? (Math.floor(up / 3600) + 'h ' + Math.floor((up % 3600) / 60) + 'm') : '—';
+    }
+    const lossEl = q(`#loss-${wanName}`);
+    if (lossEl) lossEl.textContent = Number.isFinite(Number(d.drop_rate)) ? `${Number(d.drop_rate).toFixed(2)}%` : '0.00%';
+    const ethEl = q(`#eth-${wanName}`);
+    if (ethEl) ethEl.textContent = d.eth_speed_mbps ? `${d.eth_speed_mbps} Mbps` : '1000 Mbps';
+  }
+
+  async function querySingle(wanName) {
+    try {
+      const res = await fetchJson(`${api}?action=query&wan=${encodeURIComponent(wanName)}`);
+      if (res.telemetry) updateDishDials(wanName, res.telemetry);
+    } catch (e) {
+      const pill = q(`#pill-${wanName}`);
+      if (pill) {
+        pill.className = 'pill bad';
+        pill.textContent = 'OFFLINE';
+      }
+      const azHint = q(`#azhint-${wanName}`);
+      if (azHint) azHint.textContent = 'Antena não respondeu nesta porta';
+    }
+  }
+
+  async function queryAll(isLoop = false) {
+    const targets = (viewMode === 'dual' && wans.length >= 2)
+      ? wans.map(w => w.name)
+      : [singleSelectedWan || (wans[0] && wans[0].name)];
+
+    await Promise.all(targets.map(name => querySingle(name)));
+
+    if (isLoop && liveRunning) {
+      liveTimer = setTimeout(() => queryAll(true), 1000);
+    }
+  }
+
+  window.setActiveRoute = async function(wanName) {
+    try {
+      const res = await fetchJson(`${api}?action=set_active&wan=${encodeURIComponent(wanName)}`);
+      activeRouteWan = res.active_wan || wanName;
+      renderLayout();
+      queryAll(false);
+    } catch (e) {
+      alert('Erro ao ativar rota da Starlink: ' + e.message);
+    }
+  };
+
+  window.selectSingleWan = function(wanName) {
+    singleSelectedWan = wanName;
+    renderLayout();
+    queryAll(false);
+  };
+
+  async function init() {
+    try {
+      const listData = await fetchJson(`${api}?action=list`);
+      wans = listData.wans || [];
+      activeRouteWan = listData.active_wan || (wans[0] && wans[0].name) || 'wan';
+      if (!wans.length) throw new Error('Nenhuma interface WAN ativa foi encontrada.');
+
+      singleSelectedWan = wans.find(w => w.name === activeRouteWan)?.name || wans[0].name;
+      if (wans.length < 2) {
+        viewMode = 'single';
+        q('#mode-selector').style.display = 'none';
+      } else {
+        viewMode = 'dual';
+        q('#mode-selector').style.display = 'flex';
+      }
+
+      q('#loading').hidden = true;
+      q('#main-content').hidden = false;
+      renderLayout();
+      queryAll(false);
+    } catch (e) {
+      q('#loading').textContent = 'Erro ao inicializar Starlink: ' + e.message;
+      q('#loading').className = 'message error';
+    }
+  }
+
+  q('#mode-dual').onclick = () => {
+    viewMode = 'dual';
+    q('#mode-dual').classList.add('active');
+    q('#mode-single').classList.remove('active');
+    renderLayout();
+    queryAll(false);
+  };
+  q('#mode-single').onclick = () => {
+    viewMode = 'single';
+    q('#mode-single').classList.add('active');
+    q('#mode-dual').classList.remove('active');
+    renderLayout();
+    queryAll(false);
+  };
+
+  q('#btn-refresh').onclick = () => queryAll(false);
+  q('#btn-live').onclick = startLive;
+  q('#btn-stop').onclick = stopLive;
+
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stopLive(); });
+  window.addEventListener('pagehide', stopLive);
+
+  init();
+})();
 </script>
-<script>
-(()=>{const api='/cgi-bin/ark-starlink-telemetry';const run=async()=>{const b=document.querySelector('.wan.active')||document.querySelector('.wan');if(!b)return;try{const r=await fetch(api+'?action=query&wan='+encodeURIComponent(b.dataset.wan),{cache:'no-store'}),j=await r.json(),d=j.telemetry||{};let box=document.getElementById('diagnostics');if(!box){box=document.createElement('div');box.id='diagnostics';box.className='metrics';const m=document.querySelector('.metrics');if(m)m.after(box)}const up=Number(d.uptime||0),dur=Number(d.avg_obstruction_dur);box.innerHTML='<div class="metric"><span>Perda</span><strong>'+(Number.isFinite(Number(d.drop_rate))?Number(d.drop_rate).toFixed(2)+'%':'—')+'</strong></div><div class="metric"><span>Obstruída agora</span><strong>'+(String(d.currently_obstructed||'').toLowerCase()==='true'?'Sim':'Não')+'</strong></div><div class="metric"><span>Uptime</span><strong>'+(up?Math.floor(up/3600)+' h '+Math.floor(up%3600/60)+' min':'—')+'</strong></div><div class="metric"><span>Tempo obstrução</span><strong>'+(dur?dur.toFixed(1)+' s':'—')+'</strong></div><div class="metric"><span>SNR</span><strong>'+(String(d.snr_above_noise||'').toLowerCase()==='true'?'Normal':'—')+'</strong></div><div class="metric"><span>Ethernet</span><strong>'+(d.eth_speed_mbps?d.eth_speed_mbps+' Mbps':'—')+'</strong></div><div class="metric"><span>Alertas</span><strong>'+(['al_heating','al_motors','al_psu_throttle','al_throttle','al_slow_eth','al_unexpected_location'].some(k=>String(d[k]||'').toLowerCase()==='true')?'Verificar':'Nenhum')+'</strong></div>'}catch(e){}};setTimeout(run,1200);setInterval(run,30000)})();
-</script></body></html>
+</body>
+</html>
