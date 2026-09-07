@@ -2286,11 +2286,13 @@ device_limits_json() {
 		enabled="$(uci -q get "equipe_devices.$sec.limit_enabled" || printf 0)"
 		down="$(uci -q get "equipe_devices.$sec.limit_down" || printf 0)"
 		up="$(uci -q get "equipe_devices.$sec.limit_up" || printf 0)"
+		lan_bypass="$(uci -q get "equipe_devices.$sec.limit_lan_bypass" || printf 1)"
+		[ "$lan_bypass" = 0 ] || [ "$lan_bypass" = false ] && lan_bypass=false || lan_bypass=true
 		dev_mac="$(uci -q get "equipe_devices.$sec.mac" | tr 'a-f' 'A-F')"
 		[ -n "$dev_mac" ] || continue
 		[ "$first" = 1 ] || printf ','
 		first=0
-		printf '"%s":{"enabled":%s,"down":%d,"up":%d}' "$dev_mac" "$( [ "$enabled" = 1 ] && printf true || printf false )" "$down" "$up"
+		printf '"%s":{"enabled":%s,"down":%d,"up":%d,"lan_bypass":%s}' "$dev_mac" "$( [ "$enabled" = 1 ] && printf true || printf false )" "$down" "$up" "$lan_bypass"
 	done
 	printf '}\n'
 }
@@ -2306,8 +2308,6 @@ apply_device_bandwidth_limits() {
 	rm -f /etc/nftables.d/ark_device_limits.nft 2>/dev/null || true
 
 	printf 'table inet ark_device_limits\ndelete table inet ark_device_limits\ntable inet ark_device_limits {\n\tchain forward_limits {\n\t\ttype filter hook forward priority filter - 5; policy accept;\n' > "$tmp_nft"
-	printf '\t\tip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } accept\n' >> "$tmp_nft"
-	printf '\t\tip6 saddr { fc00::/7, fe80::/10 } ip6 daddr { fc00::/7, fe80::/10 } accept\n' >> "$tmp_nft"
 
 	for sec in $(uci -q show equipe_devices 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1); do
 		enabled="$(uci -q get "equipe_devices.$sec.limit_enabled" || printf 0)"
@@ -2317,6 +2317,8 @@ apply_device_bandwidth_limits() {
 		[ "$down_mbps" -gt 0 ] || [ "$up_mbps" -gt 0 ] || continue
 		dev_mac="$(uci -q get "equipe_devices.$sec.mac" | tr 'A-F' 'a-f')"
 		[ -n "$dev_mac" ] || continue
+		lan_bypass="$(uci -q get "equipe_devices.$sec.limit_lan_bypass" || printf 1)"
+		[ "$lan_bypass" = 0 ] || [ "$lan_bypass" = false ] && lan_bypass=0 || lan_bypass=1
 
 		dev_ip=""
 		for hsec in $(uci -q show dhcp 2>/dev/null | grep '=host$' | cut -d. -f2 | cut -d= -f1); do
@@ -2333,21 +2335,42 @@ apply_device_bandwidth_limits() {
 		fi
 
 		if [ -n "$dev_ip" ]; then
-			if [ "$down_mbps" -gt 0 ]; then
-				down_kbps=$((down_mbps * 125))
-				printf '\t\tip daddr %s limit rate over %d kbytes/second drop\n' "$dev_ip" "$down_kbps" >> "$tmp_nft"
-				has_rules=1
-			fi
-			if [ "$up_mbps" -gt 0 ]; then
-				up_kbps=$((up_mbps * 125))
-				printf '\t\tip saddr %s limit rate over %d kbytes/second drop\n' "$dev_ip" "$up_kbps" >> "$tmp_nft"
-				has_rules=1
+			if [ "$lan_bypass" = 1 ]; then
+				if [ "$down_mbps" -gt 0 ]; then
+					down_kbps=$((down_mbps * 125))
+					printf '\t\tip daddr %s ip saddr != { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } limit rate over %d kbytes/second drop\n' "$dev_ip" "$down_kbps" >> "$tmp_nft"
+					has_rules=1
+				fi
+				if [ "$up_mbps" -gt 0 ]; then
+					up_kbps=$((up_mbps * 125))
+					printf '\t\tip saddr %s ip daddr != { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } limit rate over %d kbytes/second drop\n' "$dev_ip" "$up_kbps" >> "$tmp_nft"
+					has_rules=1
+				fi
+			else
+				if [ "$down_mbps" -gt 0 ]; then
+					down_kbps=$((down_mbps * 125))
+					printf '\t\tip daddr %s limit rate over %d kbytes/second drop\n' "$dev_ip" "$down_kbps" >> "$tmp_nft"
+					has_rules=1
+				fi
+				if [ "$up_mbps" -gt 0 ]; then
+					up_kbps=$((up_mbps * 125))
+					printf '\t\tip saddr %s limit rate over %d kbytes/second drop\n' "$dev_ip" "$up_kbps" >> "$tmp_nft"
+					has_rules=1
+				fi
 			fi
 		else
-			if [ "$up_mbps" -gt 0 ]; then
-				up_kbps=$((up_mbps * 125))
-				printf '\t\tether saddr %s limit rate over %d kbytes/second drop\n' "$dev_mac" "$up_kbps" >> "$tmp_nft"
-				has_rules=1
+			if [ "$lan_bypass" = 1 ]; then
+				if [ "$up_mbps" -gt 0 ]; then
+					up_kbps=$((up_mbps * 125))
+					printf '\t\tether saddr %s ip daddr != { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } limit rate over %d kbytes/second drop\n' "$dev_mac" "$up_kbps" >> "$tmp_nft"
+					has_rules=1
+				fi
+			else
+				if [ "$up_mbps" -gt 0 ]; then
+					up_kbps=$((up_mbps * 125))
+					printf '\t\tether saddr %s limit rate over %d kbytes/second drop\n' "$dev_mac" "$up_kbps" >> "$tmp_nft"
+					has_rules=1
+				fi
 			fi
 		fi
 	done
@@ -4796,6 +4819,9 @@ case "$action" in
 			[ "$saved_lim" = 1 ] && limit_enabled=true
 			limit_down="$(uci -q get "equipe_devices.$name_section.limit_down" || printf 0)"
 			limit_up="$(uci -q get "equipe_devices.$name_section.limit_up" || printf 0)"
+			saved_llb="$(uci -q get "equipe_devices.$name_section.limit_lan_bypass" || printf 1)"
+			limit_lan_bypass=true
+			[ "$saved_llb" = 0 ] || [ "$saved_llb" = false ] && limit_lan_bypass=false
 			saved_pm="$(uci -q get "equipe_devices.$name_section.parental_mode" || printf 'default')"
 			[ -n "$saved_pm" ] && parental_mode="$saved_pm"
 			[ "$(uci -q get "equipe_devices.$name_section.parental_block" || printf 0)" = 1 ] && parental_block=true
@@ -4804,8 +4830,8 @@ case "$action" in
 		fi
 		adguard_installed=false
 		[ -x /usr/bin/AdGuardHome ] && [ "$(uci -q get equipe_perf.settings.adblock_cloud || echo 0)" != "1" ] && adguard_installed=true
-		printf '{"reserved":%s,"ip":"%s","priority":%s,"dscp":"%s","wan_route":"%s","limit_enabled":%s,"limit_down":%d,"limit_up":%d,"operation_profile":"%s","qos_active":%s,"parental_mode":"%s","parental_block":%s,"safesearch":%s,"blocked_services":"%s","adguard_installed":%s}\n' \
-			"$reserved" "$(json_escape "$ip")" "$priority" "$(json_escape "$dscp")" "$(json_escape "$wan_route")" "$limit_enabled" "$limit_down" "$limit_up" "$(ark_operation_profile)" "$(feature_active sqm && bool 1 || bool 0)" \
+		printf '{"reserved":%s,"ip":"%s","priority":%s,"dscp":"%s","wan_route":"%s","limit_enabled":%s,"limit_down":%d,"limit_up":%d,"limit_lan_bypass":%s,"operation_profile":"%s","qos_active":%s,"parental_mode":"%s","parental_block":%s,"safesearch":%s,"blocked_services":"%s","adguard_installed":%s}\n' \
+			"$reserved" "$(json_escape "$ip")" "$priority" "$(json_escape "$dscp")" "$(json_escape "$wan_route")" "$limit_enabled" "$limit_down" "$limit_up" "$limit_lan_bypass" "$(ark_operation_profile)" "$(feature_active sqm && bool 1 || bool 0)" \
 			"$(json_escape "$parental_mode")" "$parental_block" "$safesearch" "$(json_escape "$blocked_services")" "$adguard_installed"
 		;;
 	device-limits-list)
@@ -4843,7 +4869,7 @@ case "$action" in
 		system_storage_purge
 		;;
 	device-save)
-		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"; name="$3"; mode="$4"; ip="$5"; priority="$6"; target_dscp="$7"; wan_route="${8:-default}"; limit_enabled="${9:-0}"; limit_down="${10:-0}"; limit_up="${11:-0}"; parental_mode="${12:-default}"; parental_block="${13:-0}"; safesearch="${14:-0}"; blocked_services="${15:-}"
+		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"; name="$3"; mode="$4"; ip="$5"; priority="$6"; target_dscp="$7"; wan_route="${8:-default}"; limit_enabled="${9:-0}"; limit_down="${10:-0}"; limit_up="${11:-0}"; parental_mode="${12:-default}"; parental_block="${13:-0}"; safesearch="${14:-0}"; blocked_services="${15:-}"; limit_lan_bypass="${16:-1}"
 		valid_mac "$mac" || { echo 'MAC invalido' >&2; exit 2; }
 		[ "${#name}" -le 48 ] || { echo 'Nome muito longo' >&2; exit 2; }
 		case "$mode" in automatic|reserved) ;; *) echo 'Modo de IP invalido' >&2; exit 2 ;; esac
@@ -4924,10 +4950,13 @@ case "$action" in
 			uci -q set "equipe_devices.$name_section.limit_enabled=1"
 			uci -q set "equipe_devices.$name_section.limit_down=$limit_down"
 			uci -q set "equipe_devices.$name_section.limit_up=$limit_up"
+			case "$limit_lan_bypass" in 0|false) limit_lan_bypass=0 ;; *) limit_lan_bypass=1 ;; esac
+			uci -q set "equipe_devices.$name_section.limit_lan_bypass=$limit_lan_bypass"
 		else
 			uci -q delete "equipe_devices.$name_section.limit_enabled" 2>/dev/null || true
 			uci -q delete "equipe_devices.$name_section.limit_down" 2>/dev/null || true
 			uci -q delete "equipe_devices.$name_section.limit_up" 2>/dev/null || true
+			uci -q delete "equipe_devices.$name_section.limit_lan_bypass" 2>/dev/null || true
 		fi
 		if [ "$parental_mode" = "custom" ]; then
 			uci -q set "equipe_devices.$name_section.parental_mode=custom"

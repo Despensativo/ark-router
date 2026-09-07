@@ -278,7 +278,8 @@ function deviceLimitsMap(config) {
 			const enabled = String(x.limit_enabled) === '1';
 			const down = Number(x.limit_down) || 0;
 			const up = Number(x.limit_up) || 0;
-			out[mac] = { enabled: enabled, down: down, up: up };
+			const lanBypass = (x.limit_lan_bypass == null || x.limit_lan_bypass === '' || String(x.limit_lan_bypass) === '1');
+			out[mac] = { enabled: enabled, down: down, up: up, lanBypass: lanBypass };
 		}
 	});
 	return out;
@@ -988,7 +989,8 @@ return view.extend({
 						const downStr = lim.down > 0 ? lim.down + 'M↓' : '';
 						const upStr = lim.up > 0 ? lim.up + 'M↑' : '';
 						const limText = [downStr, upStr].filter(Boolean).join(' / ');
-						badges.push(E('span', { class: 'ex-device-badge badge-limited', title: 'Limite de Banda Ativo: ' + limText }, [ '🛑 ' + limText ]));
+						const bypassTip = lim.lanBypass ? ' (Rede Local Livre)' : ' (Intranet Limitada)';
+						badges.push(E('span', { class: 'ex-device-badge badge-limited', title: 'Limite de Banda Ativo: ' + limText + bypassTip }, [ '🛑 ' + limText ]));
 					}
 					const nameRowEl = row.querySelector('.ex-device-name-row');
 					if (nameRowEl) {
@@ -1023,7 +1025,8 @@ return view.extend({
 				const downStr = lim.down > 0 ? lim.down + 'M↓' : '';
 				const upStr = lim.up > 0 ? lim.up + 'M↑' : '';
 				const limText = [downStr, upStr].filter(Boolean).join(' / ');
-				badges.push(E('span', { class: 'ex-device-badge badge-limited', title: 'Limite de Banda Ativo: ' + limText }, [ '🛑 ' + limText ]));
+				const bypassTip = lim.lanBypass ? ' (Rede Local Livre)' : ' (Intranet Limitada)';
+				badges.push(E('span', { class: 'ex-device-badge badge-limited', title: 'Limite de Banda Ativo: ' + limText + bypassTip }, [ '🛑 ' + limText ]));
 			}
 
 			const nameRow = E('div', { class: 'ex-device-name-row' }, [
@@ -1396,12 +1399,57 @@ return view.extend({
 				])
 			]);
 
-			const limitLanBypassNote = E('div', {
-				style: 'margin-top: 8px; padding: 6px 10px; background: rgba(56,189,248,.08); border-radius: 8px; border: 1px solid rgba(56,189,248,.2); font-size: 0.77rem; color: #cbd5e1; line-height: 1.35; display: ' + (limitEnabled ? 'block' : 'none') + ';'
+			let limitLanBypass = (state.limit_lan_bypass == null || state.limit_lan_bypass === true || state.limit_lan_bypass === '1' || state.limit_lan_bypass === 1);
+			const lanBypassToggle = E('input', {
+				type: 'checkbox',
+				checked: limitLanBypass
+			});
+
+			const lanBypassStatusPill = E('span', {
+				class: 'ex-pill ok',
+				style: 'font-size: 0.72rem; padding: 2px 8px; font-weight: 600;'
+			});
+
+			const lanBypassDescText = E('div', {
+				style: 'font-size: 0.77rem; line-height: 1.35; margin-top: 6px;'
+			});
+
+			const updateLanBypassUI = function() {
+				if (lanBypassToggle.checked) {
+					limitLanBypassBlock.style.background = 'rgba(56,189,248,.08)';
+					limitLanBypassBlock.style.borderColor = 'rgba(56,189,248,.25)';
+					lanBypassStatusPill.className = 'ex-pill ok';
+					lanBypassStatusPill.textContent = '✓ Rede Local Liberada (Recomendado)';
+					lanBypassDescText.style.color = '#cbd5e1';
+					lanBypassDescText.textContent = 'O limite se aplica estritamente à Internet. Transferências para computadores da casa, impressoras, servidores locais e NAS continuam em velocidade máxima da LAN (Gigabit / Wi-Fi 6).';
+				} else {
+					limitLanBypassBlock.style.background = 'rgba(245,158,11,.08)';
+					limitLanBypassBlock.style.borderColor = 'rgba(245,158,11,.3)';
+					lanBypassStatusPill.className = 'ex-pill warning';
+					lanBypassStatusPill.textContent = '⚠️ Intranet Limitada';
+					lanBypassDescText.style.color = '#fef08a';
+					lanBypassDescText.textContent = 'Atenção: O limite de velocidade também será aplicado ao tráfego interno (LAN / Wi-Fi). Transferências de arquivos entre PCs, streaming local ou backups para NAS serão reduzidos a esta velocidade.';
+				}
+			};
+
+			const limitLanBypassBlock = E('div', {
+				style: 'margin-top: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid; transition: all .2s ease; display: ' + (limitEnabled ? 'block' : 'none') + ';'
 			}, [
-				E('strong', { style: 'color: #38bdf8;' }, ['⚡ Bypass de Rede Local: ']),
-				'O limite se aplica estritamente à Internet. Transferências para NAS, impressoras, servidores locais e outros PCs da casa continuam em velocidade máxima da LAN (Gigabit / Wi-Fi 6).'
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 12px;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap;' }, [
+						E('strong', { style: 'font-size: 0.82rem; color: #f8fafc;' }, ['⚡ Bypass de Rede Local']),
+						lanBypassStatusPill
+					]),
+					E('label', { class: 'ex-switch', style: 'flex: 0 0 auto;' }, [
+						lanBypassToggle,
+						E('span', { class: 'ex-switch-slider' })
+					])
+				]),
+				lanBypassDescText
 			]);
+
+			lanBypassToggle.addEventListener('change', updateLanBypassUI);
+			updateLanBypassUI();
 
 			const presetBtnList = [];
 			const updatePresetActive = function() {
@@ -1416,7 +1464,7 @@ return view.extend({
 					}
 				});
 				limitFieldsRow.style.display = limitToggle.checked ? 'grid' : 'none';
-				limitLanBypassNote.style.display = limitToggle.checked ? 'block' : 'none';
+				limitLanBypassBlock.style.display = limitToggle.checked ? 'block' : 'none';
 			};
 
 			const limitPresetGrid = E('div', { class: 'ex-priority-button-grid', style: 'margin-top: 8px;' });
@@ -1461,7 +1509,7 @@ return view.extend({
 				]),
 				limitPresetGrid,
 				limitFieldsRow,
-				limitLanBypassNote
+				limitLanBypassBlock
 			]));
 
 			// --- Seção: Controle Parental & Filtros Deste Aparelho ---
@@ -1611,7 +1659,8 @@ return view.extend({
 				const parBlockVal = (parentalMode === 'custom' && parBlockToggle.checked) ? '1' : '0';
 				const safeSearchVal = (parentalMode === 'custom' && safeSearchToggle.checked) ? '1' : '0';
 				const servList = (parentalMode === 'custom' && hasAgh) ? Array.from(selectedServices).join(',') : '';
-				const args=['device-save',device.mac,name.value.trim(),isReserved?'reserved':'automatic',finalIp,prioEnabled,dscpVal,selectedWanRoute,limEnabled,String(limDown),String(limUp),parentalMode,parBlockVal,safeSearchVal,servList];
+				const limLanBypass = lanBypassToggle.checked ? '1' : '0';
+				const args=['device-save',device.mac,name.value.trim(),isReserved?'reserved':'automatic',finalIp,prioEnabled,dscpVal,selectedWanRoute,limEnabled,String(limDown),String(limUp),parentalMode,parBlockVal,safeSearchVal,servList,limLanBypass];
 				return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){
 					if(r.code)throw new Error(r.stderr||'Falha ao salvar');
 					ui.hideModal();

@@ -2,6 +2,13 @@
 
 ## 0.9.80
 
+- **⚡ Bypass de Rede Local Configurável com Toggle e Aviso Dinâmico (Limite de Banda Individual)**:
+  - **Toggle Interativo no Modal**: Substituída a nota estática informativa por um interruptor interativo com status em tempo real no bloco de `Limite de Banda Individual`.
+  - **Padrão Ativo (Rede Local Livre / Recomendado)**: Por padrão, o bypass vem ligado com destaque azul e pill `✓ Rede Local Liberada (Recomendado)`. O tráfego interno entre computadores, celulares, impressoras e NAS flui em velocidade Gigabit / Wi-Fi máxima, restringindo unicamente o consumo de Internet externa.
+  - **Opção de Limitar Intranet**: Ao desativar o toggle, o bloco se adapta dinamicamente para tom âmbar com pill `⚠️ Intranet Limitada` e aviso explicando que backups para NAS, streaming local e transferências entre PCs da casa também serão limitados à velocidade configurada.
+  - **Isolamento Seguro no nftables**: Regras de drop por taxa na tabela `inet ark_device_limits` filtram por sub-redes privadas RFC 1918 (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`) por aparelho quando o bypass está ativo, e aplicam limitação global no dispositivo quando desativado.
+  - **Tooltips Informativos nos Badges**: Os badges de dispositivo limitado (`🛑 50M↓ / 5M↑`) agora indicam no tooltip se o limite é exclusivo para a Internet (`Rede Local Livre`) ou total (`Intranet Limitada`).
+
 - **📺 Visibilidade Total de Dispositivos Cabeados e com IP Estático (Tabela de Conectados)**:
   - **Fusão de ARP e Host Hints**: A tabela de "Quem está conectado" em `overview.js` agora cruza as concessões dinâmicas do DHCP com a tabela ARP do kernel (`/proc/net/arp`) e as reservas estáticas de `dhcpConfig` e `getHostHints()`.
   - **Reconhecimento de Dispositivos de Cabo (LAN)**: Dispositivos cabeados e aparelhos com IP fixo (como `TV SALA PLACA DE REDE` no IP `192.168.73.30`) passam a ser listados imediatamente com o rótulo `Cabo / LAN`, badges visuais de limites de banda (`🛑 50M↓ / 5M↑`), IP reservado e consumo individual medido pelo `nlbwmon`.
