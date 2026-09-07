@@ -4,23 +4,34 @@ START=22
 USE_PROCD=1
 
 boot() {
-	# Verify that firewall table inet fw4 actually loaded
+	# 1. Verify firewall table inet fw4
 	if ! /usr/sbin/nft list table inet fw4 >/dev/null 2>&1; then
-		logger -t ark-firewall-guard "CRITICO: table inet fw4 nao carregada! Iniciando auto-recuperacao do firewall..."
-		
-		# Quarantine any rogue .nft files in /etc/nftables.d/ that broke fw4
+		logger -t ark-guard "CRITICO: table inet fw4 nao carregada! Auto-recuperando firewall..."
 		mkdir -p /etc/nftables.d/quarantine
 		for f in /etc/nftables.d/*.nft; do
 			[ -f "$f" ] || continue
-			logger -t ark-firewall-guard "Isolando arquivo suspeito: $f"
+			logger -t ark-guard "Isolando arquivo suspeito: $f"
 			mv "$f" /etc/nftables.d/quarantine/
 		done
-		
-		# Restart firewall
 		/sbin/fw4 restart
-		
 		if /usr/sbin/nft list table inet fw4 >/dev/null 2>&1; then
-			logger -t ark-firewall-guard "SUCESSO: Firewall auto-recuperado! NAT e Internet restaurados."
+			logger -t ark-guard "SUCESSO: Firewall auto-recuperado! NAT e encaminhamento ativos."
+		fi
+	fi
+
+	# 2. Verify AdGuard Home status if enabled
+	if [ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome enabled >/dev/null 2>&1; then
+		if ! pgrep -f 'AdGuardHome' >/dev/null 2>&1; then
+			logger -t ark-guard "AdGuard Home habilitado mas inativo no boot. Iniciando servico..."
+			/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+		fi
+	fi
+
+	# 3. Verify Dnsmasq status
+	if [ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq enabled >/dev/null 2>&1; then
+		if ! pgrep -f 'dnsmasq' >/dev/null 2>&1; then
+			logger -t ark-guard "Dnsmasq inativo no boot. Iniciando servico..."
+			/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 		fi
 	fi
 }
