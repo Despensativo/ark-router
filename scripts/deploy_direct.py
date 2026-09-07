@@ -24,6 +24,10 @@ files_to_upload = [
     (os.path.join(repo_dir, 'root', 'www', 'starlink', 'index.html'), '/www/starlink/index.html'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'ark', 'ark-theme.js'), '/www/luci-static/ark/ark-theme.js'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'ark', 'cascade.css'), '/www/luci-static/ark/cascade.css'),
+    (os.path.join(repo_dir, 'root', 'usr', 'share', 'ucode', 'luci', 'template', 'themes', 'ark', 'header.ut'), '/usr/share/ucode/luci/template/themes/ark/header.ut'),
+    (os.path.join(repo_dir, 'root', 'usr', 'share', 'ucode', 'luci', 'template', 'themes', 'ark', 'footer.ut'), '/usr/share/ucode/luci/template/themes/ark/footer.ut'),
+    (os.path.join(repo_dir, 'root', 'usr', 'lib', 'lua', 'luci', 'view', 'themes', 'ark', 'header.htm'), '/usr/lib/lua/luci/view/themes/ark/header.htm'),
+    (os.path.join(repo_dir, 'root', 'usr', 'lib', 'lua', 'luci', 'view', 'themes', 'ark', 'footer.htm'), '/usr/lib/lua/luci/view/themes/ark/footer.htm'),
     (os.path.join(repo_dir, 'root', 'etc', 'init.d', 'ark-zerotier-ram'), '/etc/init.d/ark-zerotier-ram'),
 ]
 

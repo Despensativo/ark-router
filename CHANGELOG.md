@@ -17,6 +17,13 @@
     - O banner do LuCI agora exibe a CPU real, a memória RAM livre exata, a tecnologia correta da Flash, a temperatura do processador e um atalho direto `📊 Painel ARK` para o dashboard principal.
 
 
+- **📂 Menu Lateral em Acordeão com Indicador '+' e Expansão por Clique**:
+  - **Fim do Fechamento Acidental (Fim dos Submenus Flutuantes)**: Removidas as regras de sobrevoo de mouse (`:hover`) que abriam menus flutuantes à direita e fechavam abruptamente ao mover o mouse na diagonal. O menu agora é 100% estável e não fecha ao mover o cursor.
+  - **Sinal Visual de '+' em Menus Expansíveis**: Todas as categorias com submenus (`Status`, `System`, `Services`, `Network`) exibem um indicador `+` claro e destacado no canto direito, que se transforma em `−` quando o menu é expandido. Itens de link direto (`ARK Router`, `Speedify`, `Log out`) não exibem o sinal.
+  - **Regra de Acordeão Inteligente**: Ao clicar em uma categoria para expandir, qualquer outro submenu aberto é automaticamente fechado ("ao clicar no próximo fecha o anterior"). Clicar novamente na mesma categoria recolhe o menu.
+  - **Expansão Automática da Tela Atual**: Ao carregar qualquer página interna (ex: `/admin/system/leds`), a categoria mãe correspondente (`System`) já abre automaticamente com a página ativa destacada e indentada.
+  - **Rolagem Suave da Barra Lateral**: Adicionado `overflow-y: auto` com barra de rolagem fina estilizada para navegação fluida em telas de qualquer resolução.
+
 - **💡 Detecção Inteligente e Isolamento de LEDs por Hardware (Fim da Mistura de Modelos)**:
   - **Identificação Dinâmica do Roteador**: O painel de LEDs (`/admin/system/leds`) agora detecta dinamicamente a placa e modelo do equipamento (ex: `Acer Predator Connect W6x (Stock Layout)` vs. `D-Link DGL-5500` vs. genéricos) e exibe apenas os LEDs físicos que realmente existem em `/sys/class/leds/`.
   - **Limpeza Automática de LEDs Órfãos e Fantasmas**: Criada rotina `cleanup_orphan_leds` no backend (`equipe-dashboard-control`) que remove do `/etc/config/system` e da tabela do LuCI seções de hardware de outros roteadores (ex: `d-link:green:power`, `d-link:green:planet`, `ath10k-phy0`, `ath9k-phy1`) e deduplica entradas redundantes.

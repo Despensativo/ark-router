@@ -86,6 +86,30 @@
           setOpen(false);
         }
       });
+
+      function autoExpandActiveMenu() {
+        var curPath = window.location.pathname;
+        var links = document.querySelectorAll('#topmenu .dropdown-menu a');
+        for (var i = 0; i < links.length; i++) {
+          var a = links[i];
+          var href = a.getAttribute('href') || '';
+          if (href && (href === curPath || (curPath.indexOf(href) === 0 && href.length > 15))) {
+            a.classList.add('active');
+            var parentDropdown = a.closest('li.dropdown');
+            if (parentDropdown) parentDropdown.classList.add('open');
+            break;
+          }
+        }
+      }
+
+      var topmenu = document.getElementById('topmenu');
+      if (topmenu) {
+        autoExpandActiveMenu();
+        var obs = new MutationObserver(function() {
+          autoExpandActiveMenu();
+        });
+        obs.observe(topmenu, { childList: true, subtree: true });
+      }
     },
 
     initGlobalEscHandler: function() {

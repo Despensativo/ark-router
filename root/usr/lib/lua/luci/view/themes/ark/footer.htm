@@ -31,13 +31,23 @@
           }
           return;
         }
-        if (e.target.closest('#topmenu .dropdown-menu a')) {
-          return;
-        }
-        document.querySelectorAll('#topmenu li.dropdown.open').forEach(function(li) {
-          li.classList.remove('open');
-        });
       });
+
+      function autoExpandActiveMenu() {
+        var curPath = window.location.pathname;
+        var links = document.querySelectorAll('#topmenu .dropdown-menu a');
+        for (var i = 0; i < links.length; i++) {
+          var a = links[i];
+          var href = a.getAttribute('href') || '';
+          if (href && (href === curPath || (curPath.indexOf(href) === 0 && href.length > 15))) {
+            a.classList.add('active');
+            var parentDropdown = a.closest('li.dropdown');
+            if (parentDropdown) parentDropdown.classList.add('open');
+            break;
+          }
+        }
+      }
+      setTimeout(autoExpandActiveMenu, 150);
       document.addEventListener('keydown', function(ev) {
         if (ev.key === 'Escape' || ev.keyCode === 27) {
           var modal = document.querySelector('.modal, .cbi-modal, #modal_overlay, div[class*="modal"]');
