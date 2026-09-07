@@ -24,15 +24,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y zstd
 
-      - name: Build APK with OpenWrt SDK packaging tool
+      - name: Build APK and IPK packages
         shell: bash
         env:
           SRC_DIR: ${{ github.workspace }}
           WORK_ROOT: ${{ github.workspace }}/.openwrt-build
           SDK_LINK: ${{ github.workspace }}/.openwrt-sdk-filogic
         run: |
-          chmod +x scripts/build-apk-wsl.sh scripts/build-apk-manual-wsl.sh
+          chmod +x scripts/build-apk-wsl.sh scripts/build-apk-manual-wsl.sh scripts/build-ipk-wsl.sh
           scripts/build-apk-wsl.sh
+          scripts/build-ipk-wsl.sh
 
       - name: Collect package artifacts
         shell: bash
@@ -44,6 +45,7 @@ jobs:
             exit 1
           fi
           cp dist/sdk/luci-app-ark-router*.apk release-artifacts/
+          cp dist/sdk/luci-app-ark-router*.ipk release-artifacts/ 2>/dev/null || true
           ls -lh release-artifacts
 
       - name: Upload build artifact
