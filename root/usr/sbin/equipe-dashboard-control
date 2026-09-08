@@ -6185,23 +6185,36 @@ case "$action" in
 		;;
 	wifi-iot-optimize)
 		radio2="$(wifi_radio_2g)"
-		if [ -n "$radio2" ]; then
+		[ -n "$radio2" ] || { echo 'Radio 2,4 GHz nao encontrado' >&2; exit 3; }
+		state="${2:-1}"
+		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
 			uci -q set "wireless.$radio2.legacy_rates=0"
 			uci -q set "wireless.$radio2.basic_rate=6000 12000 24000"
 			uci commit wireless
-			echo 'ok'
+			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			echo 'enabled'
 		else
-			echo 'Radio 2,4 GHz nao encontrado' >&2; exit 3
+			uci -q delete "wireless.$radio2.legacy_rates"
+			uci -q delete "wireless.$radio2.basic_rate"
+			uci commit wireless
+			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			echo 'disabled'
 		fi
 		;;
 	wifi-dfs-optimize)
 		radio5="$(wifi_radio_5g)"
-		if [ -n "$radio5" ]; then
+		[ -n "$radio5" ] || { echo 'Radio 5 GHz nao encontrado' >&2; exit 3; }
+		state="${2:-1}"
+		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
 			uci -q set "wireless.$radio5.ieee80211h=1"
 			uci commit wireless
-			echo 'ok'
+			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			echo 'enabled'
 		else
-			echo 'Radio 5 GHz nao encontrado' >&2; exit 3
+			uci -q delete "wireless.$radio5.ieee80211h"
+			uci commit wireless
+			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			echo 'disabled'
 		fi
 		;;
 	country)

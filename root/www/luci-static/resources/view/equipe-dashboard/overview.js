@@ -6155,33 +6155,133 @@ return view.extend({
 				E('section',{class:'ex-card ex-center-card'},[bigIcon('<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1.2" fill="currentColor"/></svg>'),E('span',{class:'ex-label'},[w.main.ssid||'Rede principal']),E('strong',{id:'ex-main-clients',class:'ex-number'},['0']),E('small',{id:'ex-main-wifi',class:'ex-muted'},['0 no Wi-Fi'])]),
 				E('section',{class:'ex-card ex-center-card'},[bigIcon('<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'),E('span',{class:'ex-label'},[w.guest.ssid||'Visitantes']),E('strong',{id:'ex-guest-clients',class:'ex-number'},['0']),E('small',{id:'ex-guest-wifi',class:'ex-muted'},['0 no Wi-Fi'])])
 			]),
-			E('section',{class:'ex-card ex-channel-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['AMBIENTE WI‑FI']),E('h3',{},['Canais e interferência'])]),E('button',{class:'ex-button ex-inline-button','click':L.bind(function(ev){this.analyzeChannels(ev.currentTarget);},this)},['Analisar canais agora'])]),E('div',{class:'ex-country-control'},[E('div',{},[E('span',{class:'ex-label'},['PAÍS / DOMÍNIO REGULATÓRIO']),E('strong',{id:'ex-country-current'},['—'])]),E('button',{class:'ex-mini-button','click':L.bind(function(){this.changeCountry();},this)},['Alterar país'])]),E('div',{class:'ex-channel-mode-control'},[E('div',{},[E('strong',{},['Seleção automática de canais']),E('small',{id:'ex-channel-mode-summary',class:'ex-muted'},['Verificando…'])]),E('label',{class:'ex-switch'},[E('input',{id:'ex-channel-auto-toggle',type:'checkbox','aria-label':translateText('Seleção automática de canais'),'change':L.bind(function(ev){this.toggleAutoChannels(ev.currentTarget);},this)}),E('span',{class:'ex-switch-slider'})])]),E('div',{class:'ex-grid ex-grid-2 ex-channel-grid'},[E('div',{},[E('div',{class:'ex-channel-band-head'},[E('b',{},['2,4 GHz']),E('span',{id:'ex-wifi-2-mode',class:'ex-pill standby'},['—'])]),E('span',{id:'ex-wifi-2'},['—'])]),E('div',{},[E('div',{class:'ex-channel-band-head'},[E('b',{},['5 GHz']),E('span',{id:'ex-wifi-5-mode',class:'ex-pill standby'},['—'])]),E('span',{id:'ex-wifi-5'},['—'])])]),E('p',{id:'ex-wifi-noise',class:'ex-muted'},['—']),E('p',{id:'ex-scan-result',class:'ex-scan-result'},['A análise é manual e apenas recomenda canais; não interrompe os usuários.']),E('div',{class:'ex-channel-actions'},[E('button',{class:'ex-channel-action','click':L.bind(this.showManualChannelsModal,this)},['Escolher canais']),E('button',{id:'ex-apply-channels',class:'ex-channel-action primary',disabled:true,'click':L.bind(function(){this.changeChannels('fixed');},this)},['Analisar antes de aplicar']),E('button',{class:'ex-channel-action','click':L.bind(function(){this.changeWifiWidth();},this)},['Largura / desempenho']),E('button',{class:'ex-channel-action','click':L.bind(function(){this.optimizeIot();},this)},['Otimizar para IoT']),E('button',{class:'ex-channel-action','click':L.bind(function(){this.optimizeDfs();},this)},['Otimizar Quedas (DFS)'])])]),
-			E('section',{class:'ex-card ex-autowan-card', style:'margin-bottom: 20px;'},[
+			E('section',{class:'ex-card ex-channel-card'},[
 				E('div',{class:'ex-card-title'},[
 					E('div',{},[
-						E('span',{class:'ex-kicker'},['CONECTIVIDADE FÍSICA']),
-						E('h3',{},['Portas e Auto-WAN'])
+						E('span',{class:'ex-kicker'},['AMBIENTE WI‑FI']),
+						E('h3',{},['Canais e interferência'])
+					]),
+					E('button',{class:'ex-button ex-inline-button','click':L.bind(function(ev){this.analyzeChannels(ev.currentTarget);},this)},['Analisar canais agora'])
+				]),
+				E('div',{class:'ex-country-control'},[
+					E('div',{},[
+						E('span',{class:'ex-label'},['PAÍS / DOMÍNIO REGULATÓRIO']),
+						E('strong',{id:'ex-country-current'},['—'])
+					]),
+					E('button',{class:'ex-mini-button','click':L.bind(function(){this.changeCountry();},this)},['Alterar país'])
+				]),
+				E('div',{class:'ex-channel-mode-control'},[
+					E('div',{},[
+						E('strong',{},['Seleção automática de canais']),
+						E('small',{id:'ex-channel-mode-summary',class:'ex-muted'},['Verificando…'])
+					]),
+					E('label',{class:'ex-switch'},[
+						E('input',{id:'ex-channel-auto-toggle',type:'checkbox','aria-label':translateText('Seleção automática de canais'),'change':L.bind(function(ev){this.toggleAutoChannels(ev.currentTarget);},this)}),
+						E('span',{class:'ex-switch-slider'})
 					])
 				]),
 				E('div',{class:'ex-channel-mode-control'},[
 					E('div',{},[
-						E('strong',{},['Piloto Automático de Portas (Auto-WAN)']),
-						E('small',{class:'ex-muted'},['Detecta automaticamente portas ligadas a modems e converte em WAN.'])
+						E('strong',{},['Otimização Casa Inteligente / IoT (2,4 GHz)']),
+						E('small',{id:'ex-iot-mode-summary',class:'ex-muted'},[
+							(String((w.r2g && w.r2g.legacy_rates) || '') === '0' || !!(w.r2g && w.r2g.basic_rate))
+								? 'Ativo • Taxas legadas 802.11b (1-2 Mbps) desativadas para liberar até 40% de tempo de antena.'
+								: 'Desativado • Taxas antigas 802.11b permitidas (padrão OpenWrt).'
+						])
 					]),
 					E('label',{class:'ex-switch'},[
-						E('input',{type:'checkbox', 'change':L.bind(function(ev){
-							const enabled = ev.currentTarget.checked;
-							fs.exec('/usr/sbin/ark-autowan', [enabled ? 'enable' : 'disable'])
-							.then(function(r) {
-								if (r.code) throw new Error(r.stderr || 'Falha ao configurar Auto-WAN');
-								ui.addNotification(null, E('p', {}, [enabled ? 'Auto-WAN ativado. As portas serão sondadas.' : 'Auto-WAN desativado.']), 'success');
-							}).catch(function(e) {
-								ev.currentTarget.checked = !enabled;
-								ui.addNotification(null, E('p', {}, [e.message]), 'danger');
-							});
-						},this)}),
+						E('input',{
+							id:'ex-iot-toggle',
+							type:'checkbox',
+							checked: (String((w.r2g && w.r2g.legacy_rates) || '') === '0' || !!(w.r2g && w.r2g.basic_rate)) ? '' : null,
+							'aria-label':'Otimização Casa Inteligente IoT',
+							'change': L.bind(function(ev){
+								const chk = ev.currentTarget;
+								const enable = chk.checked;
+								chk.disabled = true;
+								const summary = document.getElementById('ex-iot-mode-summary');
+								if (summary) summary.textContent = 'Aplicando alteração…';
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-iot-optimize', enable ? '1' : '0'])
+								.then(L.bind(function(r){
+									chk.disabled = false;
+									if (r.code) throw new Error(r.stderr || 'Falha ao alterar otimização IoT');
+									if (summary) summary.textContent = enable
+										? 'Ativo • Taxas legadas 802.11b (1-2 Mbps) desativadas para liberar até 40% de tempo de antena.'
+										: 'Desativado • Taxas antigas 802.11b permitidas (padrão OpenWrt).';
+									ui.addNotification(null, E('p', {}, [enable ? 'Otimização IoT ativada! Taxas 802.11b desativadas no 2,4 GHz.' : 'Otimização IoT desativada.']), 'info');
+								}, this))
+								.catch(function(e){
+									chk.disabled = false;
+									chk.checked = !enable;
+									if (summary) summary.textContent = (!enable)
+										? 'Ativo • Taxas legadas 802.11b (1-2 Mbps) desativadas para liberar até 40% de tempo de antena.'
+										: 'Desativado • Taxas antigas 802.11b permitidas (padrão OpenWrt).';
+									ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+								});
+							}, this)
+						}),
 						E('span',{class:'ex-switch-slider'})
 					])
+				]),
+				E('div',{class:'ex-channel-mode-control'},[
+					E('div',{},[
+						E('strong',{},['Prevenção de Quedas Radar DFS (5 GHz)']),
+						E('small',{id:'ex-dfs-mode-summary',class:'ex-muted'},[
+							(String((w.r5g && w.r5g.ieee80211h) || '') === '1')
+								? 'Ativo • Protocolo 802.11h CSA migra aparelhos sem desconectar se houver radar.'
+								: 'Desativado • Rádio pode interromper conexão abruptamente ao detectar radar.'
+						])
+					]),
+					E('label',{class:'ex-switch'},[
+						E('input',{
+							id:'ex-dfs-toggle',
+							type:'checkbox',
+							checked: (String((w.r5g && w.r5g.ieee80211h) || '') === '1') ? '' : null,
+							'aria-label':'Prevenção de Quedas Radar DFS',
+							'change': L.bind(function(ev){
+								const chk = ev.currentTarget;
+								const enable = chk.checked;
+								chk.disabled = true;
+								const summary = document.getElementById('ex-dfs-mode-summary');
+								if (summary) summary.textContent = 'Aplicando alteração…';
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-dfs-optimize', enable ? '1' : '0'])
+								.then(L.bind(function(r){
+									chk.disabled = false;
+									if (r.code) throw new Error(r.stderr || 'Falha ao alterar proteção DFS');
+									if (summary) summary.textContent = enable
+										? 'Ativo • Protocolo 802.11h CSA migra aparelhos sem desconectar se houver radar.'
+										: 'Desativado • Rádio pode interromper conexão abruptamente ao detectar radar.';
+									ui.addNotification(null, E('p', {}, [enable ? 'Proteção 802.11h CSA ativada no rádio 5 GHz.' : 'Proteção 802.11h CSA desativada.']), 'info');
+								}, this))
+								.catch(function(e){
+									chk.disabled = false;
+									chk.checked = !enable;
+									if (summary) summary.textContent = (!enable)
+										? 'Ativo • Protocolo 802.11h CSA migra aparelhos sem desconectar se houver radar.'
+										: 'Desativado • Rádio pode interromper conexão abruptamente ao detectar radar.';
+									ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+								});
+							}, this)
+						}),
+						E('span',{class:'ex-switch-slider'})
+					])
+				]),
+				E('div',{class:'ex-grid ex-grid-2 ex-channel-grid'},[
+					E('div',{},[
+						E('div',{class:'ex-channel-band-head'},[E('b',{},['2,4 GHz']),E('span',{id:'ex-wifi-2-mode',class:'ex-pill standby'},['—'])]),
+						E('span',{id:'ex-wifi-2'},['—'])
+					]),
+					E('div',{},[
+						E('div',{class:'ex-channel-band-head'},[E('b',{},['5 GHz']),E('span',{id:'ex-wifi-5-mode',class:'ex-pill standby'},['—'])]),
+						E('span',{id:'ex-wifi-5'},['—'])
+					])
+				]),
+				E('p',{id:'ex-wifi-noise',class:'ex-muted'},['—']),
+				E('p',{id:'ex-scan-result',class:'ex-scan-result'},['A análise é manual e apenas recomenda canais; não interrompe os usuários.']),
+				E('div',{class:'ex-channel-actions'},[
+					E('button',{class:'ex-channel-action','click':L.bind(this.showManualChannelsModal,this)},['Escolher canais']),
+					E('button',{id:'ex-apply-channels',class:'ex-channel-action primary',disabled:true,'click':L.bind(function(){this.changeChannels('fixed');},this)},['Analisar antes de aplicar']),
+					E('button',{class:'ex-channel-action','click':L.bind(function(){this.changeWifiWidth();},this)},['Largura / desempenho'])
 				])
 			]),
 			E('section',{class:'ex-card ex-devices'},[
