@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.9.88
+
+- **🔀 Alternância 1-Click entre Modo Roteador e Ponto de Acesso & Switch (Dumb AP)**:
+  - **Topologia de Rede e Conversão Automática de Portas**:
+    - **Modo Ponto de Acesso (Dumb AP)**: Converte a porta WAN física em mais uma porta LAN (unifica no bridge `br-lan` em roteadores DSA ou na VLAN 1 em roteadores swconfig), desativa o servidor DHCP local (`dhcp.lan.ignore='1'`), suspende os daemons de roteamento/balanceamento (`mwan3`, `ark-autowan-daemon`) e coloca a interface LAN em modo cliente DHCP (ou IP estático na faixa da rede principal).
+    - **Propagação Transparente do Roteador Mestre**: Todo o tráfego das portas LAN e clientes Wi-Fi (2.4 GHz e 5 GHz) recebe endereço IP, Gateway e DNS diretamente do roteador mestre upstream, atuando como switch e expansor de cobertura sem duplo NAT.
+    - **Reversão Completa para Modo Roteador**: Restaura o servidor DHCP próprio, isola a porta WAN física em sua VLAN/interface dedicada de saída à internet e reativa o firewall NAT e orquestração de rede.
+  - **Dupla Proteção e Confirmação em 2 Etapas (Second Confirmation Modal)**:
+    - **Modal 1 (Seleção e Pré-Configuração)**: Cards visuais interativos no topo do painel (`🌐 Modo Roteador` vs `🔀 Modo Ponto de Acesso`). Permite escolher entre obter IP via DHCP upstream ou fixar IP estático (com máscara, gateway e servidores DNS), detalhando o impacto na rede.
+    - **Modal 2 (Confirmação Crítica com Temporizador)**: Ao avançar, um segundo modal dedicado de alta prioridade exibe alertas enfáticos sobre a alteração de infraestrutura. O botão de confirmação definitiva fica **bloqueado por um temporizador de 3 segundos** (`Aguarde 3 s...`), exigindo intenção deliberada e utilizando escutas de captura (`addEventListener('click', fn, true)`) para impedir cliques acidentais.
+  - **Salvaguarda Anti-Lockout (IP de Resgate Permanente / Rescue IP)**:
+    - Mesmo no Modo AP com IP dinâmico recebido do mestre, o ARK Router amarra um alias IP estático de segurança permanente (`192.168.12.1` no DGL-5500 / `192.168.73.1` no Acer W6x) à interface `lan` dentro da zona segura do firewall.
+    - O usuário nunca perde o acesso à interface administrativa: basta digitar o IP de resgate ou configurar um IP manual no computador/celular.
+- **⚡ Auditoria de Hardware e Otimização Inteligente de SQM (CAKE) em CPUs Fracas**:
+  - **Identificação Automática de Arquitetura**: Diagnóstico em tempo real (`system-hardware-sqm-audit`) diferencia CPUs MIPS single-core (ex: QCA9558 720 MHz) de CPUs ARM64 multi-core (ex: MT7986 4x 2.0 GHz).
+  - **Alerta Preventivo de Saturação de CPU**: No modal de limites de banda do SQM, caso a velocidade de download configurada supere 100 Mbps em hardware MIPS fraco, o sistema alerta proativamente sobre o risco de gargalo de processamento.
+  - **Otimização 1-Click (Upload-Only SQM)**: Botão integrado *"⚡ Otimizar: Limitar somente Upload"* (`sqm-apply-upload-only`) zera o controle no download (`download=0`) e aplica CAKE exclusivamente no Upload, economizando 95% de ciclos de CPU da CPU MIPS e eliminando 100% do bufferbloat em jogos online e chamadas de vídeo.
+
 ## 0.9.87
 
 - **🔀 Conversão Dinâmica da Porta WAN em LAN (Auto-Sensing Total)**:

@@ -213,6 +213,239 @@ autowan_can_convert_wan_json() {
 	printf '{"wan_dev":"%s","carrier":%s,"has_other_wan":%s,"has_lan_access":%s,"wan_to_lan":%s}\n' \
 		"$wan_dev" "$carrier" "$has_other_wan" "$has_lan_access" "$wan_as_lan"
 }
+system_network_mode_get() {
+	local mode="$(uci -q get equipe_dashboard.main.network_mode || echo 'router')"
+	local lan_proto="$(uci -q get network.lan.proto || echo 'static')"
+	local lan_ip="$(uci -q get network.lan.ipaddr || echo '')"
+	local lan_mask="$(uci -q get network.lan.netmask || echo '255.255.255.0')"
+	local lan_gw="$(uci -q get network.lan.gateway || echo '')"
+	local lan_dns="$(uci -q get network.lan.dns || echo '')"
+	local rescue_ip="$(uci -q get network.rescue.ipaddr || echo '')"
+	local dhcp_disabled="$(uci -q get dhcp.lan.ignore || echo '0')"
+
+	local current_ip="$(ip -4 addr show br-lan 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d/ -f1 | head -n 1)"
+	[ -n "$current_ip" ] || current_ip="$lan_ip"
+	local current_gw="$(ip route show default 2>/dev/null | awk '{print $3; exit}')"
+
+	printf '{"mode":"%s","lan_proto":"%s","lan_ip":"%s","current_ip":"%s","netmask":"%s","gateway":"%s","current_gw":"%s","dns":"%s","rescue_ip":"%s","dhcp_disabled":%s}\n' \
+		"$mode" "$lan_proto" "$lan_ip" "$current_ip" "$lan_mask" "$lan_gw" "$current_gw" "$lan_dns" "$rescue_ip" "$([ "$dhcp_disabled" = "1" ] && echo true || echo false)"
+}
+system_network_mode_set() {
+	local target_mode="$1"
+	local ap_ip_proto="${2:-dhcp}"
+	local ap_ip="${3:-}"
+	local ap_mask="${4:-255.255.255.0}"
+	local ap_gw="${5:-}"
+	local ap_dns="${6:-}"
+
+	local default_rescue_ip="192.168.12.1"
+	if [ -f /tmp/sysinfo/board_name ] && grep -qi "predator" /tmp/sysinfo/board_name 2>/dev/null; then
+		default_rescue_ip="192.168.73.1"
+	elif [ "$(uci -q get network.lan.proto)" = "static" ] && [ -n "$(uci -q get network.lan.ipaddr)" ]; then
+		default_rescue_ip="$(uci -q get network.lan.ipaddr)"
+	fi
+	local saved_rescue="$(uci -q get network.rescue.ipaddr || echo "")"
+	[ -n "$saved_rescue" ] && default_rescue_ip="$saved_rescue"
+
+	if [ "$target_mode" = "ap" ]; then
+		# 1. Configura interface de Resgate no switch/bridge
+		uci -q set network.rescue=interface
+		uci -q set network.rescue.proto='static'
+		uci -q set network.rescue.ipaddr="$default_rescue_ip"
+		uci -q set network.rescue.netmask='255.255.255.0'
+		if is_swconfig; then
+			uci -q set network.rescue.ifname='eth0.1'
+		else
+			uci -q set network.rescue.device='br-lan'
+		fi
+
+		# Adiciona rescue na zona de firewall lan
+		for z in $(uci -q show firewall | grep '=zone' | cut -d. -f2 | cut -d= -f1); do
+			if [ "$(uci -q get "firewall.$z.name")" = "lan" ]; then
+				uci -q add_list "firewall.$z.network=rescue"
+				break
+			fi
+		done
+
+		# 2. Configura a interface LAN principal
+		if [ "$ap_ip_proto" = "static" ] && [ -n "$ap_ip" ]; then
+			uci -q set network.lan.proto='static'
+			uci -q set network.lan.ipaddr="$ap_ip"
+			uci -q set network.lan.netmask="$ap_mask"
+			[ -z "$ap_gw" ] || uci -q set network.lan.gateway="$ap_gw"
+			[ -z "$ap_dns" ] || uci -q set network.lan.dns="$ap_dns"
+		else
+			uci -q set network.lan.proto='dhcp'
+			uci -q delete network.lan.ipaddr
+			uci -q delete network.lan.netmask
+			uci -q delete network.lan.gateway
+			uci -q delete network.lan.dns
+		fi
+
+		# 3. Desativa servidor DHCP local
+		uci -q set dhcp.lan.ignore='1'
+		uci -q delete dhcp.lan.dhcpv4
+		uci -q delete dhcp.lan.dhcpv6
+		uci -q delete dhcp.lan.ra
+		uci -q delete dhcp.lan.ndp
+
+		# 4. Agrega porta WAN fisica no switch local (LAN / br-lan)
+		local wan_dev="$(get_physical_wan_dev)"
+		if is_swconfig; then
+			swconfig_add_port_to_vlan 5 1
+			swconfig_remove_port_from_vlan 5 2
+			swconfig dev switch0 port 5 set pvid 1 >/dev/null 2>&1 || true
+			v1_ports="$(swconfig dev switch0 vlan 1 get ports 2>/dev/null | sed 's/VLAN 1: //')"
+			has_5=0
+			for item in $v1_ports; do [ "$item" = "5" ] && has_5=1; done
+			[ "$has_5" = 1 ] || v1_ports="$v1_ports 5"
+			swconfig dev switch0 vlan 1 set ports "$v1_ports" >/dev/null 2>&1 || true
+			swconfig dev switch0 vlan 2 set ports "0t" >/dev/null 2>&1 || true
+			swconfig dev switch0 set apply >/dev/null 2>&1 || true
+		else
+			add_lan_port "$wan_dev"
+			ip link set "$wan_dev" up >/dev/null 2>&1 || true
+			brctl addif br-lan "$wan_dev" >/dev/null 2>&1 || ip link set "$wan_dev" master br-lan >/dev/null 2>&1 || true
+		fi
+
+		# 5. Desativa a WAN padrao no netifd
+		uci -q set network.wan.auto='0'
+		[ -z "$(uci -q get network.wan_modem)" ] || uci -q set network.wan_modem.auto='0'
+		[ -z "$(uci -q get network.wan_mgmt)" ] || uci -q set network.wan_mgmt.auto='0'
+
+		# 6. Desativa servicos irrelevantes em modo AP (Multi-WAN, Auto-WAN)
+		/etc/init.d/mwan3 stop >/dev/null 2>&1 || true
+		/etc/init.d/mwan3 disable >/dev/null 2>&1 || true
+		pkill -f ark-autowan-daemon 2>/dev/null || true
+		uci -q set network.autowan.enabled='0'
+
+		# 7. Salva modo
+		uci -q set equipe_dashboard.main.network_mode='ap'
+		uci commit network
+		uci commit dhcp
+		uci commit firewall
+		uci commit equipe_dashboard
+
+		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+		/etc/init.d/network reload >/dev/null 2>&1 || true
+		/etc/init.d/firewall reload >/dev/null 2>&1 || true
+
+		echo "ap_enabled"
+	else
+		# Volta para Modo Roteador / Gateway Principal
+		# 1. Restaura porta WAN física
+		local wan_dev="$(get_physical_wan_dev)"
+		if is_swconfig; then
+			swconfig_remove_port_from_vlan 5 1
+			swconfig_add_port_to_vlan 5 2
+			swconfig dev switch0 port 5 set pvid 2 >/dev/null 2>&1 || true
+			v1_ports="$(swconfig dev switch0 vlan 1 get ports 2>/dev/null | sed 's/VLAN 1: //')"
+			new_v1=""
+			for item in $v1_ports; do
+				[ "$item" != "5" ] && [ "$item" != "5t" ] && new_v1="$new_v1 $item"
+			done
+			swconfig dev switch0 vlan 1 set ports "$new_v1" >/dev/null 2>&1 || true
+			swconfig dev switch0 vlan 2 set ports "5 0t" >/dev/null 2>&1 || true
+			swconfig dev switch0 set apply >/dev/null 2>&1 || true
+		else
+			remove_lan_port "$wan_dev"
+			brctl delif br-lan "$wan_dev" >/dev/null 2>&1 || ip link set "$wan_dev" nomaster >/dev/null 2>&1 || true
+		fi
+
+		# 2. Restaura interface LAN estática com IP padrão
+		uci -q set network.lan.proto='static'
+		uci -q set network.lan.ipaddr="$default_rescue_ip"
+		uci -q set network.lan.netmask='255.255.255.0'
+		uci -q delete network.lan.gateway
+		uci -q delete network.lan.dns
+
+		# 3. Remove interface de resgate
+		uci -q delete network.rescue
+		for z in $(uci -q show firewall | grep '=zone' | cut -d. -f2 | cut -d= -f1); do
+			if [ "$(uci -q get "firewall.$z.name")" = "lan" ]; then
+				uci -q del_list "firewall.$z.network=rescue"
+				break
+			fi
+		done
+
+		# 4. Restaura WAN padrão
+		uci -q set network.wan.auto='1'
+		[ -z "$(uci -q get network.wan_modem)" ] || uci -q set network.wan_modem.auto='1'
+		[ -z "$(uci -q get network.wan_mgmt)" ] || uci -q set network.wan_mgmt.auto='1'
+
+		# 5. Reativa DHCP local na LAN
+		uci -q delete dhcp.lan.ignore
+		uci -q set dhcp.lan.force='1'
+
+		# 6. Salva modo
+		uci -q set equipe_dashboard.main.network_mode='router'
+		uci commit network
+		uci commit dhcp
+		uci commit firewall
+		uci commit equipe_dashboard
+
+		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+		/etc/init.d/network reload >/dev/null 2>&1 || true
+		/etc/init.d/firewall reload >/dev/null 2>&1 || true
+		(sleep 1; ifup wan >/dev/null 2>&1) &
+
+		echo "router_enabled"
+	fi
+}
+get_system_hardware_sqm_audit() {
+	local cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
+	[ "$cpu_cores" -ge 1 ] 2>/dev/null || cpu_cores=1
+	local cpu_arch="$(uname -m 2>/dev/null || echo 'generic')"
+	local is_mips=0
+	case "$cpu_arch" in
+		mips*) is_mips=1 ;;
+	esac
+	local is_low_end_mips=0
+	local suggested_cut_off_mbps=850
+	if [ "$is_mips" -eq 1 ] && [ "$cpu_cores" -le 1 ]; then
+		is_low_end_mips=1
+		suggested_cut_off_mbps=100
+	elif [ "$is_mips" -eq 1 ]; then
+		suggested_cut_off_mbps=250
+	elif [ "$cpu_cores" -le 2 ]; then
+		suggested_cut_off_mbps=350
+	fi
+
+	local fastpath_active="false"
+	if [ "$(uci -q get firewall.@defaults[0].flow_offloading || echo 0)" = "1" ]; then
+		fastpath_active="true"
+	fi
+
+	local cpu_model="$(awk -F': ' '/model name|machine|Hardware|Processor/{print $2; exit}' /proc/cpuinfo 2>/dev/null || echo '')"
+	[ -n "$cpu_model" ] || cpu_model="$(cat /proc/device-tree/model 2>/dev/null | tr -d '\0' || cat /tmp/sysinfo/model 2>/dev/null || echo 'MIPS Processor')"
+
+	printf '{"is_low_end_mips":%s,"cpu_arch":"%s","cpu_cores":%d,"cpu_model":"%s","suggested_cut_off_mbps":%d,"fastpath_active":%s}\n' \
+		"$(bool "$is_low_end_mips")" "$cpu_arch" "$cpu_cores" "$(json_escape "$cpu_model")" "$suggested_cut_off_mbps" "$fastpath_active"
+}
+sqm_apply_upload_only() {
+	local wan="${1:-wan}"
+	local up_kbps="${2:-0}"
+	[ -n "$up_kbps" ] && [ "$up_kbps" -gt 0 ] 2>/dev/null || { echo 'Velocidade de upload invalida' >&2; exit 2; }
+	local sec=""
+	for s in $(uci -q show sqm | grep '=queue' | cut -d. -f2 | cut -d= -f1); do
+		if [ "$(uci -q get "sqm.$s.interface")" = "$wan" ]; then
+			sec="$s"
+			break
+		fi
+	done
+	[ -n "$sec" ] || sec="ark_$wan"
+	uci -q set "sqm.$sec=queue"
+	uci -q set "sqm.$sec.interface=$wan"
+	uci -q set "sqm.$sec.enabled=1"
+	uci -q set "sqm.$sec.download=0"
+	uci -q set "sqm.$sec.upload=$up_kbps"
+	uci -q set "sqm.$sec.qdisc=cake"
+	uci -q set "sqm.$sec.script=piece_of_cake.qos"
+	uci -q set "sqm.$sec.eqdisc_opts=diffserv4 ack-filter memlimit 32M"
+	uci commit sqm
+	/etc/init.d/sqm restart >/dev/null 2>&1 || true
+	echo 'ok'
+}
 same_managed_subnet() {
 	candidate="$1"
 	for managed in lan guest; do
@@ -5456,9 +5689,8 @@ case "$action" in
 		current_theme="$(uci -q get luci.main.mediaurlbase | sed 's|/luci-static/||')"
 		[ -n "$current_theme" ] || current_theme="bootstrap"
 		theme_customized="$(uci -q get equipe_dashboard.main.theme_customized 2>/dev/null || uci -q get luci.main.theme_customized 2>/dev/null || echo 0)"
-		user_theme="$(uci -q get equipe_dashboard.main.user_theme 2>/dev/null || uci -q get luci.main.user_theme 2>/dev/null || echo '')"
-
-		printf '{"language":"%s","title":"%s","operation_profile":"%s","package_manager":"%s","current_theme":"%s","theme_customized":%s,"user_theme":"%s","appearance":{"mode":"%s","primary":"%s","secondary":"%s"},"features":{' "$(uci -q get equipe_dashboard.main.language || printf pt-br)" "$(json_escape "$title")" "$(json_escape "$operation_profile")" "$manager" "$current_theme" "$(bool $((theme_customized == 1)))" "$(json_escape "$user_theme")" "$appearance" "$primary" "$secondary"
+		local network_mode="$(uci -q get equipe_dashboard.main.network_mode || echo 'router')"
+		printf '{"language":"%s","title":"%s","operation_profile":"%s","network_mode":"%s","package_manager":"%s","current_theme":"%s","theme_customized":%s,"user_theme":"%s","appearance":{"mode":"%s","primary":"%s","secondary":"%s"},"features":{' "$(uci -q get equipe_dashboard.main.language || printf pt-br)" "$(json_escape "$title")" "$(json_escape "$operation_profile")" "$network_mode" "$manager" "$current_theme" "$(bool $((theme_customized == 1)))" "$(json_escape "$user_theme")" "$appearance" "$primary" "$secondary"
 		feature_json ark '' true; printf ','
 		feature_json sqm luci-app-sqm true; printf ','
 		feature_json mwan3 luci-app-mwan3 true; printf ','
@@ -7341,6 +7573,20 @@ case "$action" in
 
 			echo 'disabled'
 		fi
+		;;
+	system-network-mode-get)
+		system_network_mode_get
+		;;
+	system-network-mode-set)
+		shift
+		system_network_mode_set "$@"
+		;;
+	system-hardware-sqm-audit)
+		get_system_hardware_sqm_audit
+		;;
+	sqm-apply-upload-only)
+		shift
+		sqm_apply_upload_only "$@"
 		;;
 	country)
 		country="$(printf '%s' "$2" | tr 'a-z' 'A-Z')"
