@@ -6114,7 +6114,8 @@ return view.extend({
 			E('div',{class:'ex-grid ex-grid-2 ex-history-grid'},[historyCard('down','Download ao longo do dia','#3b82f6'),historyCard('up','Upload ao longo do dia','#a855f7')]),
 			E('p',{id:'ex-history-samples',class:'ex-history-caption'},['A primeira amostra aparecerá em até 1 minuto']),
 			(function(){
-				const isAutoWanActive = !!(data.networkConfig && data.networkConfig.autowan && String(data.networkConfig.autowan.enabled) === '1');
+				const netCfg = values(data.networkConfig);
+				const isAutoWanActive = !!(netCfg.autowan && String(netCfg.autowan.enabled) === '1');
 				const toggleAutoWan = function(chk, summaryEl, pillEl) {
 					if (!chk.checked) {
 						chk.disabled = true;
@@ -6180,7 +6181,7 @@ return view.extend({
 					ui.showModal('Ativar Piloto Automático de Portas (Auto-WAN)?', modalBody);
 				};
 
-				const currentPolicy = (data.networkConfig && data.networkConfig.autowan && data.networkConfig.autowan.policy) || 'balanced';
+				const currentPolicy = (netCfg.autowan && netCfg.autowan.policy) || 'balanced';
 				const setAutoWanPolicy = function(pol) {
 					const btnBal = document.getElementById('ex-autowan-pol-balanced');
 					const btnFail = document.getElementById('ex-autowan-pol-failover');
