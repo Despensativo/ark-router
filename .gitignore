@@ -8,4 +8,5 @@ build/
 docs/screenshots/_test-*.png
 .tmp_*
 !dist/sdk/*.apk
+!dist/sdk/*.ipk
 

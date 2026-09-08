@@ -5825,6 +5825,8 @@ case "$action" in
 		asset="$(printf '%s' "$info" | jsonfilter -e '@.asset' 2>/dev/null)"
 		manager="$(printf '%s' "$info" | jsonfilter -e '@.manager' 2>/dev/null)"
 		latest="$(printf '%s' "$info" | jsonfilter -e '@.latest' 2>/dev/null)"
+		repo="$(printf '%s' "$info" | jsonfilter -e '@.repo' 2>/dev/null)"
+		[ -n "$repo" ] || repo="$(ark_update_repo)"
 		[ "$available" = true ] || { echo 'Nenhuma atualizacao mais nova disponivel' >&2; exit 3; }
 		[ -n "$url" ] && [ -n "$asset" ] || { echo 'Arquivo de atualizacao indisponivel' >&2; exit 3; }
 		echo '{"state":"running","percent":10,"message":"Iniciando processo de atualização..."}' >"$status"
@@ -5837,20 +5839,53 @@ case "$action" in
 			if command -v sysupgrade >/dev/null 2>&1; then sysupgrade -b "$backup" 2>/dev/null || true; fi
 			echo "Backup: $backup"
 			echo '{"state":"running","percent":45,"message":"2/4 Baixando pacote '"$asset"' do GitHub..."}' >"$status"
-			echo "Downloading: $url"
-			if ! wget -T 35 --no-check-certificate -O "$tmp/$asset" "$url" || [ ! -s "$tmp/$asset" ]; then
+			clean_latest="$(normalize_version "$latest")"
+			download_ok=0
+			echo "Downloading primary: $url"
+			if wget -T 35 --no-check-certificate -O "$tmp/$asset" "$url" 2>&1 && [ -s "$tmp/$asset" ]; then
+				download_ok=1
+			fi
+			if [ "$download_ok" -eq 0 ] && [ -n "$clean_latest" ]; then
+				echo "Fallback downloading from releases tag v$clean_latest..."
+				if wget -T 35 --no-check-certificate -O "$tmp/$asset" "https://github.com/$repo/releases/download/v$clean_latest/$asset" 2>&1 && [ -s "$tmp/$asset" ]; then
+					download_ok=1
+				fi
+			fi
+			if [ "$download_ok" -eq 0 ]; then
 				echo "Fallback downloading from releases/latest..."
-				wget -T 35 --no-check-certificate -O "$tmp/$asset" "https://github.com/$repo/releases/latest/download/$asset" || true
+				if wget -T 35 --no-check-certificate -O "$tmp/$asset" "https://github.com/$repo/releases/latest/download/$asset" 2>&1 && [ -s "$tmp/$asset" ]; then
+					download_ok=1
+				fi
+			fi
+			if [ "$download_ok" -eq 0 ]; then
+				echo "Fallback downloading direct from raw..."
+				if wget -T 35 --no-check-certificate -O "$tmp/$asset" "https://raw.githubusercontent.com/$repo/main/dist/sdk/$asset" 2>&1 && [ -s "$tmp/$asset" ]; then
+					download_ok=1
+				fi
+			fi
+			if [ "$download_ok" -eq 0 ] || [ ! -s "$tmp/$asset" ]; then
+				echo "Erro fatal: Nao foi possivel baixar o arquivo $asset de nenhuma fonte." >&2
+				exit 3
 			fi
 			echo '{"state":"running","percent":75,"message":"3/4 Instalando nova versão '"$latest"'..."}' >"$status"
 			case "$manager" in
-				apk) ark_remove_opposite_profile "$asset" "$manager"; apk add --allow-untrusted --force-overwrite "$tmp/$asset" ;;
-				opkg) ark_remove_opposite_profile "$asset" "$manager"; opkg install --force-overwrite "$tmp/$asset" ;;
-				*) echo 'Gerenciador de pacotes indisponivel' >&2; exit 3 ;;
+				apk)
+					ark_remove_opposite_profile "$asset" "$manager"
+					apk add --allow-untrusted --force-overwrite "$tmp/$asset"
+					;;
+				opkg)
+					ark_remove_opposite_profile "$asset" "$manager"
+					opkg install --force-overwrite --force-reinstall "$tmp/$asset"
+					;;
+				*)
+					echo 'Gerenciador de pacotes indisponivel' >&2
+					exit 3
+					;;
 			esac
 			installed_after="$(ark_current_version)"
 			echo "Installed version after update: $installed_after"
-			if version_gt "$latest" "$installed_after"; then
+			clean_installed="$(normalize_version "$installed_after")"
+			if [ -n "$clean_latest" ] && version_gt "$clean_latest" "$clean_installed"; then
 				echo "Atualizacao baixada, mas a versao instalada continua antiga ($installed_after < $latest)." >&2
 				echo "Isso normalmente indica asset de release antigo/incompleto ou pacote rejeitado pelo gerenciador." >&2
 				exit 4
