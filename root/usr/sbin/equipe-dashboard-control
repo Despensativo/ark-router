@@ -5857,6 +5857,22 @@ case "$action" in
 					uci -q set "wireless.$radio5.channel=auto"
 				elif [ -n "$channel5" ]; then
 					uci -q set "wireless.$radio5.channel=$channel5"
+					# Validacao de compatibilidade: canais >= 132 (UNII-3: 149-165) nao comportam 160 MHz
+					# devido a restricao do kernel/regulamentacao. Se htmode for 160 MHz, hostapd trava em AP-DISABLED.
+					# Ajusta automaticamente para 80 MHz para garantir que o radio suba estavel.
+					if [ "$channel5" != auto ] && [ "$channel5" -ge 132 ] 2>/dev/null; then
+						cur_ht5="$(uci -q get "wireless.$radio5.htmode" || echo HE80)"
+						case "$cur_ht5" in
+							HE160)
+								uci -q set "wireless.$radio5.htmode=HE80"
+								logger -t equipe-dashboard-control "Aviso: canal $channel5 nao suporta 160 MHz; htmode ajustado para HE80."
+								;;
+							VHT160)
+								uci -q set "wireless.$radio5.htmode=VHT80"
+								logger -t equipe-dashboard-control "Aviso: canal $channel5 nao suporta 160 MHz; htmode ajustado para VHT80."
+								;;
+						esac
+					fi
 				fi
 				;;
 			auto)
@@ -5866,7 +5882,24 @@ case "$action" in
 			*) echo 'Modo de canal invalido' >&2; exit 2 ;;
 		esac
 		uci commit wireless
-		(sleep 2; wifi reload >/dev/null 2>&1 || true) &
+		(
+			sleep 2
+			wifi reload >/dev/null 2>&1 || true
+			# Watchdog de recuperacao automatica: se algum radio ficar em Canal 0 / AP-DISABLED
+			sleep 5
+			if iwinfo 2>/dev/null | grep -q "Channel: 0 (unknown GHz)"; then
+				logger -t equipe-dashboard-control "ALERTA: Interface Wi-Fi desabilitada detectada apos troca de canal. Aplicando correcao segura..."
+				for r in "$radio2" "$radio5"; do
+					[ -n "$r" ] || continue
+					cur_ht="$(uci -q get "wireless.$r.htmode")"
+					case "$cur_ht" in
+						*160) uci -q set "wireless.$r.htmode=HE80" ;;
+					esac
+				done
+				uci commit wireless
+				wifi reload >/dev/null 2>&1 || true
+			fi
+		) &
 		echo 'ok'
 		;;
 	wifi-width)
@@ -5890,8 +5923,26 @@ case "$action" in
 		case "$width5" in 20|40|80|160) ht5="${pfx5}${width5}" ;; *) echo 'Largura 5 GHz invalida' >&2; exit 2 ;; esac
 		uci set "wireless.$radio2.htmode=$ht2"
 		uci set "wireless.$radio5.htmode=$ht5"
+		# Se a largura de 5 GHz for colocada em 160 MHz, garantir que o canal seja compativel (canais < 132)
+		if [ "$width5" = 160 ]; then
+			cur_ch5="$(uci -q get "wireless.$radio5.channel" || echo auto)"
+			if [ "$cur_ch5" != auto ] && [ "$cur_ch5" -ge 132 ] 2>/dev/null; then
+				uci -q set "wireless.$radio5.channel=36"
+				logger -t equipe-dashboard-control "Aviso: canal $cur_ch5 incompativel com 160 MHz; comutado para canal 36."
+			fi
+		fi
 		uci commit wireless
-		(sleep 2; wifi reload) >/dev/null 2>&1 &
+		(
+			sleep 2
+			wifi reload >/dev/null 2>&1 || true
+			sleep 5
+			if iwinfo 2>/dev/null | grep -q "Channel: 0 (unknown GHz)"; then
+				logger -t equipe-dashboard-control "ALERTA: Interface Wi-Fi desabilitada detectada apos troca de largura. Revertendo 5 GHz para HE80..."
+				uci -q set "wireless.$radio5.htmode=HE80"
+				uci commit wireless
+				wifi reload >/dev/null 2>&1 || true
+			fi
+		) &
 		echo 'ok'
 		;;
 	country)

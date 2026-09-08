@@ -2695,18 +2695,18 @@ return view.extend({
 
 		const ch5Select = E('select', { class: 'cbi-input-select', style: 'width:100%' }, [
 			E('option', { value: 'auto' }, ['Automático (Auto)']),
-			E('optgroup', { label: 'Padrão UNII-1 (Sem DFS / Sem Radar — Recomendado)' }, [
-				E('option', { value: '36' }, ['Canal 36 (5180 MHz — Recomendado)']),
-				E('option', { value: '40' }, ['Canal 40 (5200 MHz)']),
-				E('option', { value: '44' }, ['Canal 44 (5220 MHz)']),
-				E('option', { value: '48' }, ['Canal 48 (5240 MHz)'])
+			E('optgroup', { label: 'Padrão UNII-1 (Sem DFS / Sem Radar — Suporta 80/160 MHz)' }, [
+				E('option', { value: '36' }, ['Canal 36 (5180 MHz — Recomendado / Compatível com 160 MHz)']),
+				E('option', { value: '40' }, ['Canal 40 (5200 MHz — Compatível com 160 MHz)']),
+				E('option', { value: '44' }, ['Canal 44 (5220 MHz — Compatível com 160 MHz)']),
+				E('option', { value: '48' }, ['Canal 48 (5240 MHz — Compatível com 160 MHz)'])
 			]),
-			E('optgroup', { label: 'UNII-3 Alta Potência (Sem DFS / Sem Radar — Recomendado)' }, [
-				E('option', { value: '149' }, ['Canal 149 (5745 MHz — Recomendado)']),
-				E('option', { value: '153' }, ['Canal 153 (5765 MHz)']),
-				E('option', { value: '157' }, ['Canal 157 (5785 MHz)']),
-				E('option', { value: '161' }, ['Canal 161 (5805 MHz)']),
-				E('option', { value: '165' }, ['Canal 165 (5825 MHz)'])
+			E('optgroup', { label: 'UNII-3 Alta Potência (Sem DFS / Sem Radar — Até 80 MHz)' }, [
+				E('option', { value: '149' }, ['Canal 149 (5745 MHz — Recomendado / Máx 80 MHz)']),
+				E('option', { value: '153' }, ['Canal 153 (5765 MHz — Máx 80 MHz)']),
+				E('option', { value: '157' }, ['Canal 157 (5785 MHz — Máx 80 MHz)']),
+				E('option', { value: '161' }, ['Canal 161 (5805 MHz — Máx 80 MHz)']),
+				E('option', { value: '165' }, ['Canal 165 (5825 MHz — Máx 20 MHz)'])
 			]),
 			E('optgroup', { label: 'Canais DFS (Sujeitos a verificação de radar meteorológico)' }, [
 				E('option', { value: '52' }, ['Canal 52 (5260 MHz — DFS)']),
@@ -2729,6 +2729,22 @@ return view.extend({
 		]);
 		ch5Select.value = cur.five || 'auto';
 
+		const wConf = wifiConfig(this.currentData && this.currentData.wireless || {});
+		const radio5Obj = wConf.r5g || wConf.r1 || {};
+		const is160Mode = String(radio5Obj.htmode || '').indexOf('160') >= 0;
+		const ch5Note = E('div', { class: 'alert-message info', style: 'margin-top: 8px; font-size: 12px; display: none;' });
+		const updateCh5Note = function() {
+			const num = Number(ch5Select.value);
+			if (is160Mode && num >= 132) {
+				ch5Note.textContent = 'ℹ️ O canal ' + ch5Select.value + ' opera em no máximo 80 MHz. A largura do 5 GHz será ajustada automaticamente para 80 MHz ao salvar para garantir que a rede suba sem interrupções.';
+				ch5Note.style.display = 'block';
+			} else {
+				ch5Note.style.display = 'none';
+			}
+		};
+		ch5Select.addEventListener('change', updateCh5Note);
+		updateCh5Note();
+
 		const rows = [
 			E('label', { class: 'ex-device-config-block' }, [
 				E('strong', {}, ['Canal 2,4 GHz']),
@@ -2738,7 +2754,8 @@ return view.extend({
 			E('label', { class: 'ex-device-config-block' }, [
 				E('strong', {}, ['Canal 5 GHz']),
 				ch5Select,
-				E('small', { class: 'ex-muted' }, ['Canais 36-48 e 149-165 são ideais para máxima performance sem verificação DFS de radar.'])
+				ch5Note,
+				E('small', { class: 'ex-muted' }, ['Canais 36-48 e 149-165 não usam DFS (sem pausas por radar). Canais 36-48 suportam 160 MHz; canais 149-165 operam em até 80 MHz.'])
 			]),
 			E('p', { class: 'alert-message warning' }, ['Ao aplicar, os rádios Wi‑Fi reiniciarão no novo canal selecionado.']),
 			E('div', { class: 'right' }, [
@@ -2768,7 +2785,11 @@ return view.extend({
 		return Promise.all([safe(callScan(topology.scan2),{results:[]}),safe(callScan(topology.scan5),{results:[]}),safe(callFreqList(topology.scan2),{results:[]}),safe(callFreqList(topology.scan5),{results:[]})]).then(L.bind(function(r){
 			const a=r[0].results||[], b=r[1].results||[], score2={1:0,6:0,11:0}; a.forEach(function(n){[1,6,11].forEach(function(c){const d=Math.abs((Number(n.channel)||0)-c);if(d<5)score2[c]+=(5-d)*Math.pow(10,((Number(n.signal)||-100)+100)/20);});});
 			const allowed2=(r[2].results||[]).filter(function(x){return !x.restricted&&[1,6,11].indexOf(Number(x.channel))>=0;}).map(function(x){return String(x.channel);}); Object.keys(score2).forEach(function(c){if(allowed2.length&&allowed2.indexOf(c)<0)delete score2[c];});
-			let candidates=(r[3].results||[]).filter(function(x){return !x.restricted&&[36,40,44,48,149,153,157,161].indexOf(Number(x.channel))>=0;}).map(function(x){return Number(x.channel);}); if(!candidates.length)candidates=[36,40,44,48];
+			const wConf = wifiConfig(this.currentData && this.currentData.wireless || {});
+			const radio5Obj = wConf.r5g || wConf.r1 || {};
+			const is160Mode = String(radio5Obj.htmode || '').indexOf('160') >= 0;
+			const allowed5Pool = is160Mode ? [36,40,44,48] : [36,40,44,48,149,153,157,161];
+			let candidates=(r[3].results||[]).filter(function(x){return !x.restricted&&allowed5Pool.indexOf(Number(x.channel))>=0;}).map(function(x){return Number(x.channel);}); if(!candidates.length)candidates=[36,40,44,48];
 			const score5={}; candidates.forEach(function(c){score5[c]=0;}); b.forEach(function(n){candidates.forEach(function(c){if(Math.abs((Number(n.channel)||0)-c)<=12)score5[c]+=Math.pow(10,((Number(n.signal)||-100)+100)/20);});});
 			const best2=Object.keys(score2).sort(function(x,y){return score2[x]-score2[y];})[0]||'1', best5=candidates.sort(function(x,y){return score5[x]-score5[y];})[0], current=this.currentWifiChannels(), already=current.two===String(best2)&&current.five===String(best5);
 			this.recommendedChannels={two:String(best2),five:String(best5),alreadyApplied:already};
@@ -2799,6 +2820,7 @@ return view.extend({
 		const w=wifiConfig(this.currentData.wireless);
 		const radio2 = (w.r0.hwmode === '11g' || String(w.r0.band||'').indexOf('2') === 0) ? w.r0 : w.r1;
 		const radio5 = (radio2 === w.r0) ? w.r1 : w.r0;
+		const curCh5 = Number(radio5.channel || 0);
 		const widthFrom=function(ht){const m=String(ht||'').match(/(20|40|80|160)/);return m?m[1]:'';};
 		const select=function(value,items){const s=E('select',{class:'cbi-input-select'},items.map(function(i){return E('option',{value:i[0]},[i[1]]);}));s.value=value;return s;};
 		const w2=select(widthFrom(radio2.htmode)||'20',[['20','20 MHz — mais alcance/estabilidade'],['40','40 MHz — mais rápido, mais interferência']]);
@@ -2811,12 +2833,23 @@ return view.extend({
 		}
 		const default5 = (has160 && widthFrom(radio5.htmode) === '160') ? '160' : '80';
 		const w5=select(widthFrom(radio5.htmode)||default5, items5);
+		const w5Note = E('div', { class: 'alert-message info', style: 'margin-top: 8px; font-size: 12px; display: none;' });
+		const updateW5Note = function() {
+			if (w5.value === '160' && curCh5 >= 132) {
+				w5Note.textContent = 'ℹ️ O canal 5 GHz atual (Canal ' + curCh5 + ') opera em até 80 MHz. Ao selecionar 160 MHz, o canal será comutado automaticamente para o Canal 36 para total estabilidade.';
+				w5Note.style.display = 'block';
+			} else {
+				w5Note.style.display = 'none';
+			}
+		};
+		w5.addEventListener('change', updateW5Note);
+		updateW5Note();
 		const field=function(label,node,hint){return E('label',{class:'ex-wan-edit-field'},[E('span',{},[label]),node,E('small',{class:'ex-muted'},[hint])]);};
 		ui.showModal('Largura e desempenho do Wi‑Fi',[
 			E('p',{class:'ex-muted'},['A largura maior aumenta velocidade máxima, mas também aumenta interferência e pode reduzir alcance estável. Alterar reinicia o Wi‑Fi.']),
 			E('div',{class:'ex-wan-edit-grid'},[
 				field('2,4 GHz',w2,'Recomendado: 20 MHz para maior alcance e menos interferência.'),
-				field('5 GHz',w5, has160 ? '80 MHz é mais estável; 160 MHz é o máximo desempenho perto do roteador.' : '80 MHz é a largura máxima suportada pelo hardware deste roteador (VHT80).')
+				field('5 GHz',E('div',{},[w5,w5Note]), has160 ? '80 MHz é mais estável e compatível com todos os canais; 160 MHz oferece velocidade máxima nos canais 36-64.' : '80 MHz é a largura máxima suportada pelo hardware deste roteador (VHT80).')
 			]),
 			E('p',{class:'alert-message warning'},['A alteração derruba temporariamente todos os aparelhos conectados ao Wi‑Fi.']),
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['wifi-width',w2.value,w5.value]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar largura do Wi‑Fi');ui.hideModal();reloadSoon('Largura do Wi‑Fi salva. Recarregando após reiniciar os rádios…',4200);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Wi‑Fi reiniciando. Recarregando o painel…',5200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Salvar e reiniciar Wi‑Fi'])])

@@ -2,6 +2,13 @@
 
 ## 0.9.80
 
+- **📶 Proteção Inteligente contra Queda do Wi-Fi 5 GHz (Ajuste Automático Canal vs. Largura)**:
+  - **Diagnóstico e Prevenção de Falhas no Hostapd**: Corrigido o erro que desativava o rádio 5 GHz (`AP-DISABLED` / Canal 0) quando canais da faixa UNII-3 (como o Canal `149`) eram selecionados com largura de banda de 160 MHz (`HE160`). No Brasil e na maioria dos países, a faixa UNII-3 opera em até 80 MHz porque canais centrais de extensão superiores a 165 são bloqueados por regulamentação e rejeitados pelo driver de rádio (`extension channel is disabled`).
+  - **Rebaixamento Automático de Largura (80 MHz)**: Ao selecionar qualquer canal >= 132 (ex: 149, 153, 157, 161, 165) via backend (`equipe-dashboard-control`) ou interface web, o sistema ajusta automaticamente o `htmode` para `HE80`/`VHT80`, impedindo que o hostapd aborte a inicialização.
+  - **Comutação Segura para Canal 160 MHz**: Se o usuário alternar a largura para 160 MHz enquanto estiver em um canal UNII-3, o roteador comuta automaticamente o canal para o Canal 36 (faixa UNII-1 contígua compatível com 160 MHz), garantindo que o Wi-Fi suba sem interrupções.
+  - **Feedback Dinâmico na Interface**: O modal de escolha manual de canais agora exibe alertas em tempo real informando que o canal selecionado opera em até 80 MHz e que o ajuste é feito de forma transparente. A análise de canais respeita a largura ativa (priorizando blocos de 160 MHz quando o modo 160 MHz estiver ativado).
+  - **Watchdog de Auto-Recuperação Pós-Reload**: Implementado monitoramento ativo em segundo plano que detecta se qualquer rádio cair em estado de falha (Canal 0) após a troca e aplica recuperação imediata para `HE80` e seleção automática.
+
 - **🔍 Detecção Inteligente e Visualização Completa de Hardware (CPU, Múltiplos Sensores, RAM, Flash e Portas 2.5G/1G)**:
   - **Frequência Real de Clock e Uso da CPU**: Detecção dinâmica da frequência real do processador (ex: `2.0 GHz` no Filogic 830 / Cortex-A53, `720 MHz` no QCA9558 MIPS), quantidade de núcleos físicos (`4c`), arquitetura precisa (`ARMv8 64-bit`, `MIPS 74Kc`, `x86_64`) e medição instantânea do percentual de uso via delta de `/proc/stat`.
   - **Detecção Abrangente de Sensores Térmicos**: Mapeamento dinâmico de todos os sensores físicos do equipamento em `/sys/class/thermal/` e `/sys/class/hwmon/` (CPU, Switch Ethernet MDIO, Wi-Fi 2.4 GHz e Wi-Fi 5 GHz). Roteadores sem sensor exposto (ex: MIPS legados) exibem aviso elegante sem poluir a interface nem quebrar o layout.
