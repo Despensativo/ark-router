@@ -80,5 +80,25 @@ define Package/luci-app-ark-router-full/install
 	$(INSTALL_BIN) ./root/www/cgi-bin/ark-starlink-telemetry $(1)/www/cgi-bin/ark-starlink-telemetry
 endef
 
+define Package/luci-app-ark-router/postinst
+#!/bin/sh
+[ -n "$${IPKG_INSTROOT}" ] || {
+	[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme
+	rm -f /tmp/luci-indexcache
+	rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
+}
+exit 0
+endef
+
+define Package/luci-app-ark-router-full/postinst
+#!/bin/sh
+[ -n "$${IPKG_INSTROOT}" ] || {
+	[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme
+	rm -f /tmp/luci-indexcache
+	rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
+}
+exit 0
+endef
+
 $(eval $(call BuildPackage,luci-app-ark-router))
 $(eval $(call BuildPackage,luci-app-ark-router-full))

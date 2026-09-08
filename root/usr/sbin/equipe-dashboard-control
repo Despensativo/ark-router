@@ -178,11 +178,17 @@ installed() {
 		luci-app-speedify) ([ -f /usr/share/luci/menu.d/luci-app-speedify.json ] || [ -f /usr/lib/lua/luci/controller/speedify.lua ]) && return 0 ;;
 	esac
 	if command -v apk >/dev/null 2>&1; then apk info -e "$1" >/dev/null 2>&1
+	elif [ -d /usr/lib/opkg/info ]; then [ -f "/usr/lib/opkg/info/$1.control" ] || [ -f "/usr/lib/opkg/info/$1.list" ]
 	else opkg status "$1" 2>/dev/null | grep -q '^Status:.* installed$'
 	fi
 }
 hidden() { [ "$(uci -q get equipe_dashboard.$1.hidden)" = 1 ]; }
-running() { [ -x "/etc/init.d/$1" ] && "/etc/init.d/$1" running >/dev/null 2>&1; }
+running() {
+	case "$1" in
+		mwan3) pgrep -f mwan3rtmon >/dev/null 2>&1 || pgrep -f mwan3track >/dev/null 2>&1 ;;
+		*) [ -x "/etc/init.d/$1" ] && "/etc/init.d/$1" running >/dev/null 2>&1 ;;
+	esac
+}
 ensure_qos_equipe() {
 	[ -f /etc/config/qos_equipe ] && return 0
 	{
@@ -449,7 +455,12 @@ install_argon_release() {
 		opkg install "$theme" "$config" || return 1
 	fi
 	uci -q set luci.main.mediaurlbase='/luci-static/argon'
+	uci -q set equipe_dashboard.main.theme_customized='1'
+	uci -q set equipe_dashboard.main.user_theme='argon'
+	uci -q set luci.main.theme_customized='1'
+	uci -q set luci.main.user_theme='argon'
 	uci commit luci
+	uci commit equipe_dashboard 2>/dev/null || true
 	rm -f /tmp/luci-indexcache
 	rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 	[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
@@ -854,7 +865,7 @@ speedify_wait_route() {
 	return 1
 }
 mwan3_service_running() {
-	[ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 running >/dev/null 2>&1
+	pgrep -f mwan3rtmon >/dev/null 2>&1 || pgrep -f mwan3track >/dev/null 2>&1
 }
 speedify_pause_mwan3() {
 	[ -x /etc/init.d/mwan3 ] || return 0
@@ -1098,9 +1109,9 @@ speedify_autostart_run() {
 feature_active() {
 	case "$1" in
 		sqm) uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'" ;;
-		mwan3) running mwan3 ;;
-		nlbwmon) running nlbwmon ;;
-		upnp) running miniupnpd ;;
+		mwan3) pgrep -f mwan3rtmon >/dev/null 2>&1 || pgrep -f mwan3track >/dev/null 2>&1 ;;
+		nlbwmon) pidof nlbwmon >/dev/null 2>&1 || running nlbwmon ;;
+		upnp) pidof miniupnpd >/dev/null 2>&1 || running miniupnpd ;;
 		ark) [ -d /www/luci-static/ark ] && [ "$(uci -q get luci.main.mediaurlbase)" = /luci-static/ark ] ;;
 		argon) [ -d /www/luci-static/argon ] && [ "$(uci -q get luci.main.mediaurlbase)" = /luci-static/argon ] ;;
 		uhttpd) [ -f /usr/share/luci/menu.d/luci-app-uhttpd.json ] ;;
@@ -4910,10 +4921,14 @@ get_system_hardware_info() {
 
 	# Wi-Fi Capabilities
 	wifi_ax=false; wifi_ac=false; wifi_n=false; wifi_160=false
-	if iw list 2>/dev/null | grep -q 'HE Iftypes'; then wifi_ax=true; fi
-	if iw list 2>/dev/null | grep -q 'VHT Capabilities'; then wifi_ac=true; fi
-	if iw list 2>/dev/null | grep -q 'HT20/HT40'; then wifi_n=true; fi
-	if iw list 2>/dev/null | grep -q '160 MHz'; then wifi_160=true; fi
+	iw_cache="/tmp/ark-iw-info.cache"
+	if [ ! -s "$iw_cache" ]; then
+		iw list 2>/dev/null > "$iw_cache" || true
+	fi
+	if grep -q 'HE Iftypes' "$iw_cache" 2>/dev/null; then wifi_ax=true; fi
+	if grep -q 'VHT Capabilities' "$iw_cache" 2>/dev/null; then wifi_ac=true; fi
+	if grep -q 'HT20/HT40' "$iw_cache" 2>/dev/null; then wifi_n=true; fi
+	if grep -q '160 MHz' "$iw_cache" 2>/dev/null; then wifi_160=true; fi
 
 	# Start JSON
 	printf '{"model":"%s","board":"%s","target":"%s","release":"%s","kernel":"%s",' \
@@ -5376,8 +5391,10 @@ case "$action" in
 
 		current_theme="$(uci -q get luci.main.mediaurlbase | sed 's|/luci-static/||')"
 		[ -n "$current_theme" ] || current_theme="bootstrap"
+		theme_customized="$(uci -q get equipe_dashboard.main.theme_customized 2>/dev/null || uci -q get luci.main.theme_customized 2>/dev/null || echo 0)"
+		user_theme="$(uci -q get equipe_dashboard.main.user_theme 2>/dev/null || uci -q get luci.main.user_theme 2>/dev/null || echo '')"
 
-		printf '{"language":"%s","title":"%s","operation_profile":"%s","package_manager":"%s","current_theme":"%s","appearance":{"mode":"%s","primary":"%s","secondary":"%s"},"features":{' "$(uci -q get equipe_dashboard.main.language || printf pt-br)" "$(json_escape "$title")" "$(json_escape "$operation_profile")" "$manager" "$current_theme" "$appearance" "$primary" "$secondary"
+		printf '{"language":"%s","title":"%s","operation_profile":"%s","package_manager":"%s","current_theme":"%s","theme_customized":%s,"user_theme":"%s","appearance":{"mode":"%s","primary":"%s","secondary":"%s"},"features":{' "$(uci -q get equipe_dashboard.main.language || printf pt-br)" "$(json_escape "$title")" "$(json_escape "$operation_profile")" "$manager" "$current_theme" "$(bool $((theme_customized == 1)))" "$(json_escape "$user_theme")" "$appearance" "$primary" "$secondary"
 		feature_json ark '' true; printf ','
 		feature_json sqm luci-app-sqm true; printf ','
 		feature_json mwan3 luci-app-mwan3 true; printf ','
@@ -5459,6 +5476,7 @@ case "$action" in
 				apk del speedtest-go >/dev/null 2>&1 || true
 			fi
 			rm -rf /tmp/ark-speedtest /tmp/ark-speedtest-download
+			[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme
 			rm -f /tmp/luci-indexcache
 			rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 			[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
@@ -5510,6 +5528,7 @@ case "$action" in
 				apk del speedtest-go >/dev/null 2>&1 || true
 			fi
 			rm -rf /tmp/ark-speedtest /tmp/ark-speedtest-download
+			[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme
 			rm -f /tmp/luci-indexcache
 			rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 			[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
@@ -5696,7 +5715,12 @@ case "$action" in
 				[ -d /www/luci-static/ark ] || { echo 'Tema ARK nao encontrado' >&2; exit 3; }
 				uci -q set luci.main.mediaurlbase='/luci-static/ark'
 				uci -q set luci.themes.ARK='/luci-static/ark'
+				uci -q set equipe_dashboard.main.theme_customized='1'
+				uci -q set equipe_dashboard.main.user_theme='ark'
+				uci -q set luci.main.theme_customized='1'
+				uci -q set luci.main.user_theme='ark'
 				uci commit luci
+				uci commit equipe_dashboard 2>/dev/null || true
 				rm -f /tmp/luci-indexcache
 				rm -rf /tmp/luci-modulecache/* 2>/dev/null
 				echo ok
@@ -5704,7 +5728,12 @@ case "$action" in
 			bootstrap)
 				[ -d /www/luci-static/bootstrap ] || { echo 'Tema Bootstrap nao encontrado' >&2; exit 3; }
 				uci -q set luci.main.mediaurlbase='/luci-static/bootstrap'
+				uci -q set equipe_dashboard.main.theme_customized='1'
+				uci -q set equipe_dashboard.main.user_theme='bootstrap'
+				uci -q set luci.main.theme_customized='1'
+				uci -q set luci.main.user_theme='bootstrap'
 				uci commit luci
+				uci commit equipe_dashboard 2>/dev/null || true
 				rm -f /tmp/luci-indexcache
 				rm -rf /tmp/luci-modulecache/* 2>/dev/null
 				echo ok
@@ -5712,7 +5741,12 @@ case "$action" in
 			argon)
 				[ -d /www/luci-static/argon ] || { echo 'Tema Argon nao instalado' >&2; exit 3; }
 				uci -q set luci.main.mediaurlbase='/luci-static/argon'
+				uci -q set equipe_dashboard.main.theme_customized='1'
+				uci -q set equipe_dashboard.main.user_theme='argon'
+				uci -q set luci.main.theme_customized='1'
+				uci -q set luci.main.user_theme='argon'
 				uci commit luci
+				uci commit equipe_dashboard 2>/dev/null || true
 				rm -f /tmp/luci-indexcache
 				rm -rf /tmp/luci-modulecache/* 2>/dev/null
 				echo ok
@@ -6240,7 +6274,7 @@ case "$action" in
 		uci -q set mwan3.default_rule_v4.use_policy="$policy"
 		mwan3_reorder_rules
 		uci commit mwan3
-		/etc/init.d/mwan3 restart
+		([ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 &)
 		echo "$2"
 		;;
 	mwan3-toggle)

@@ -638,7 +638,9 @@ return view.extend({
 			safe(fs.exec('/usr/sbin/equipe-dashboard-control', [ 'lan-status' ]), {}),
 			safe(fs.read('/sys/class/thermal/thermal_zone0/temp'), '0'),
 			safe(fs.exec('/usr/sbin/equipe-dashboard-control', [ 'system-perf-status' ]), {}),
-			safe(fs.exec_direct('/usr/libexec/nlbwmon-action', [ 'download', '-g', 'family,mac,ip', '-o', '-rx_bytes,-tx_bytes' ], 'json'), { columns: [], data: [] }),
+			safe(fs.exec('/usr/libexec/nlbwmon-action', [ 'download', '-g', 'family,mac,ip', '-o', '-rx_bytes,-tx_bytes' ]).then(function(res) {
+				try { return JSON.parse(res.stdout || '{}'); } catch(e) { return { columns: [], data: [] }; }
+			}), { columns: [], data: [] }),
 			safe(fs.read('/tmp/equipe-traffic-history.csv'), ''),
 			safe(callWirelessStatus(), {}),
 			safe(callUciGet('dhcp'), { values: {} }),

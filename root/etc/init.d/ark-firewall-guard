@@ -34,6 +34,28 @@ boot() {
 			/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 		fi
 	fi
+
+	# 4. Verificacao de persistencia do tema (reboot / update)
+	customized="$(uci -q get equipe_dashboard.main.theme_customized 2>/dev/null || uci -q get luci.main.theme_customized 2>/dev/null || echo 0)"
+	user_theme="$(uci -q get equipe_dashboard.main.user_theme 2>/dev/null || uci -q get luci.main.user_theme 2>/dev/null || echo '')"
+	current_theme="$(uci -q get luci.main.mediaurlbase | sed 's|/luci-static/||')"
+	if [ "$customized" = "1" ] && [ -n "$user_theme" ]; then
+		if [ -d "/www/luci-static/$user_theme" ] && [ "$current_theme" != "$user_theme" ]; then
+			logger -t ark-theme "Restaurando tema personalizado pelo usuario: $user_theme"
+			uci -q set luci.main.mediaurlbase="/luci-static/$user_theme"
+			uci commit luci
+		fi
+	elif [ "$customized" != "1" ] && [ -d /www/luci-static/ark ] && [ "$current_theme" != "ark" ]; then
+		logger -t ark-theme "Garantindo tema ARK nativo como padrao"
+		uci -q set luci.main.mediaurlbase='/luci-static/ark'
+		uci -q set luci.themes.ARK='/luci-static/ark'
+		uci -q set equipe_dashboard.main.theme_customized='0'
+		uci -q set equipe_dashboard.main.user_theme='ark'
+		uci -q set luci.main.theme_customized='0'
+		uci -q set luci.main.user_theme='ark'
+		uci commit luci
+		uci commit equipe_dashboard 2>/dev/null || true
+	fi
 }
 
 start_service() {

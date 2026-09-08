@@ -1,6 +1,42 @@
 #!/bin/sh
-uci -q get luci.themes.ARK >/dev/null || {
-	uci -q set luci.themes.ARK='/luci-static/ark'
-	uci commit luci
-}
+
+# Registra tema ARK na lista de temas do LuCI
+uci -q set luci.themes.ARK='/luci-static/ark'
+
+# Verifica se o usuario ja customizou o tema explicitamente
+customized="$(uci -q get equipe_dashboard.main.theme_customized 2>/dev/null || uci -q get luci.main.theme_customized 2>/dev/null || echo 0)"
+user_theme="$(uci -q get equipe_dashboard.main.user_theme 2>/dev/null || uci -q get luci.main.user_theme 2>/dev/null || echo '')"
+
+if [ "$customized" = "1" ] && [ -n "$user_theme" ]; then
+	# O usuario personalizou o tema previamente - preservar a escolha dele!
+	case "$user_theme" in
+		ark)
+			[ -d /www/luci-static/ark ] && uci -q set luci.main.mediaurlbase='/luci-static/ark'
+			;;
+		argon)
+			[ -d /www/luci-static/argon ] && uci -q set luci.main.mediaurlbase='/luci-static/argon'
+			;;
+		bootstrap)
+			[ -d /www/luci-static/bootstrap ] && uci -q set luci.main.mediaurlbase='/luci-static/bootstrap'
+			;;
+		*)
+			[ -d "/www/luci-static/$user_theme" ] && uci -q set luci.main.mediaurlbase="/luci-static/$user_theme"
+			;;
+	esac
+else
+	# Padrao na instalacao do addon / primeira execucao:
+	# Escolhe o tema ARK como padrao automaticamente!
+	if [ -d /www/luci-static/ark ]; then
+		uci -q set luci.main.mediaurlbase='/luci-static/ark'
+		uci -q set equipe_dashboard.main.theme_customized='0'
+		uci -q set equipe_dashboard.main.user_theme='ark'
+		uci -q set luci.main.theme_customized='0'
+		uci -q set luci.main.user_theme='ark'
+	fi
+fi
+
+uci commit luci
+uci commit equipe_dashboard 2>/dev/null || true
+rm -f /tmp/luci-indexcache
+rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 exit 0

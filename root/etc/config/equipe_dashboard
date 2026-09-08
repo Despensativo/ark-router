@@ -5,6 +5,8 @@ config settings 'main'
 	option primary '#3b82f6'
 	option secondary '#8b5cf6'
 	option operation_profile 'standard'
+	option theme_customized '0'
+	option user_theme 'ark'
 
 config feature 'sqm'
 	option hidden '0'
