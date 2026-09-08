@@ -3050,15 +3050,24 @@ import re, json, sys
 yaml_path = '/etc/adguardhome/adguardhome.yaml'
 
 OFFICIAL_BLACKLIST = [
-    'bet365.com', 'blaze.com', 'blaze-1.com', '1xbet.com', 'betano.com',
+    # Bets & Cassinos BR
+    'bet365.com', 'blaze.com', 'blaze-1.com', '1xbet.com', '1x-bet.com', 'betano.com',
     'betano.bet.br', 'sportingbet.com', 'sportingbet.com.br', 'betfair.com', 'pixbet.com',
     'pixbet.org.br', 'estrelabet.com', 'kto.com', 'f12.bet', 'novibet.com',
     'parimatch.com', 'betsson.com', 'apostaganha.bet', 'superbet.com', 'rivalo.com',
     'galera.bet', 'vaidebet.com', 'betnacional.com', 'pagbet.com', 'mrjack.bet',
     'esportesdasorte.com', 'casaapostas.com', 'stake.com', 'bc.game', 'betmotion.com',
     'playpix.com', 'cassino.com', 'betbry.com', 'tigrinho.vip', 'fortune-tiger.com', 'fortuneox.com',
+    # Bets & Cassinos Internacionais
+    'kubet.ac', 'fabet.com', 'dafabet.com', 'bet88.com', '777pub.com', 'betway.com',
+    'bodog.com', 'williamhill.com', 'bwin.com', 'melbet.com',
+    # Phishing & Golpes BR
     'rastrearpedido.com', 'rastreamentocorreios.info', 'correios-taxa.com',
-    'consulta-cpf-regularize.com', 'regularizacao-cpf.org', 'resgate-valores.com'
+    'consulta-cpf-regularize.com', 'regularizacao-cpf.org', 'resgate-valores.com',
+    # Cryptojacking & In-Browser Miners
+    'coinhive.com', 'coin-hive.com', 'cryptoloot.pro', 'crypto-loot.com', 'minr.pw', 'webminepool.com',
+    # Malware & Infostealers C2
+    'advertipros.com', 'topendpower.top', 'anondns.net'
 ]
 
 try:
@@ -3186,18 +3195,31 @@ import re, json, sys
 yaml_path = '/etc/adguardhome/adguardhome.yaml'
 
 OFFICIAL_WHITELIST = [
+    # Apple Ecosystem, Store, CDN & Time
     'apple.com', 'itunes.com', 'itunes-apple.com', 'mzstatic.com', 'aaplimg.com',
-    'icloud.com', 'apple-dns.net', 'cdn-apple.com',
+    'icloud.com', 'apple-dns.net', 'cdn-apple.com', 'swcdn.apple.com', 'updates.cdn-apple.com',
+    'time-ios.apple.com', 'time.apple.com',
+    # Google, Android, Play Integrity & Firebase
     'play.google.com', 'android.clients.google.com', 'gvt1.com', 'gstatic.com', 'googleapis.com',
+    'deviceintegritytokens.googleapis.com', 'fcm.googleapis.com',
+    # Development, Git & Repos
     'github.com', 'githubassets.com', 'githubusercontent.com', 'github.io', 'githubstatus.com',
-    'whatsapp.com', 'whatsapp.net', 'fbcdn.net',
+    # Global CDNs
+    'edgekey.net', 'akamaiedge.net', 'fastly.net', 'jsdelivr.net',
+    # Messaging & Social
+    'whatsapp.com', 'whatsapp.net', 'cdn.whatsapp.net', 'fbcdn.net',
+    # Governo & Serviços Públicos
     'gov.br', 'acesso.gov.br', 'serpro.gov.br', 'dataprev.gov.br',
     'receita.fazenda.gov.br', 'fazenda.gov.br', 'conectividade.caixa.gov.br', 'caixa.gov.br',
+    # Bancos & Finanças BR
     'bb.com.br', 'itau.com.br', 'bradesco.com.br', 'santander.com.br',
     'nubank.com.br', 'inter.co', 'bancointer.com.br', 'c6bank.com.br',
     'mercadopago.com.br', 'pagseguro.uol.com.br', 'picpay.com',
+    # Mídia, Streaming & Entregas
     'globo.com', 'globoplay.com.br', 'mercadolivre.com.br', 'ifood.com.br', 'clarotvmais.com.br',
-    'steamcommunity.com', 'steampowered.com', 'epicgames.com', 'netflix.com', 'nflxvideo.net'
+    'steamcommunity.com', 'steampowered.com', 'epicgames.com', 'netflix.com', 'nflxvideo.net',
+    # Gaming & Smart Home
+    'accounts.nintendo.com', 'plex.tv', 'roborock.com'
 ]
 
 try:

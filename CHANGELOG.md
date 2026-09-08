@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.83
+
+- **🛡️ Expansão Cirúrgica do Catálogo Oficial de Bloqueios e Exceções (AdGuard Home + Dnsmasq)**:
+  - **Novas Exceções de Alta Criticidade na Lista Branca (Whitelist)**:
+    - **Apple Store & Updates**: Inclusão de `swcdn.apple.com` e `updates.cdn-apple.com` (elimina interrupções no download de atualizações e apps pesados no iOS/macOS) e servidores de hora `time-ios.apple.com` e `time.apple.com` (garante relógio sincronizado para tokens bancários).
+    - **Google Play Integrity & Firebase**: Inclusão de `deviceintegritytokens.googleapis.com` (essencial para que aplicativos de banco no Android não acusem erro de ambiente ou integridade) e `fcm.googleapis.com` (notificações push imediatas).
+    - **CDNs Mundiais e Ferramentas Dev**: Adicionados `edgekey.net`, `akamaiedge.net`, `fastly.net` e `jsdelivr.net` (entrega de assets sem travamento).
+    - **Mensageria & Smart Home**: CDN de mídia do WhatsApp (`cdn.whatsapp.net`), autenticação Nintendo Switch (`accounts.nintendo.com`), Plex (`plex.tv`) e robôs aspiradores Roborock (`roborock.com`).
+  - **Novos Bloqueios de Ameaças Modernas na Lista Negra (Blacklist)**:
+    - **Cryptojacking & Mineradores Ocultos**: Bloqueio local de mineradores de navegador em JavaScript/WebAssembly (`coinhive.com`, `coin-hive.com`, `cryptoloot.pro`, `crypto-loot.com`, `minr.pw`, `webminepool.com`).
+    - **Malware & Infostealers C2 (2025/2026)**: Bloqueio de servidores de comando e controle e loaders de malware ativos (`advertipros.com`, `topendpower.top`, `anondns.net`).
+    - **Cassinos & Apostas Internacionais**: Bloqueio de grandes redes de apostas e caça-níqueis com alta incidência de spam e anúncios invasivos (`kubet.ac`, `dafabet.com`, `fabet.com`, `bet88.com`, `777pub.com`, `betway.com`, `bodog.com`, `williamhill.com`, `bwin.com`, `melbet.com`, `1x-bet.com`).
+  - **Validação e Sincronização em Ambos os Roteadores**:
+    - Testado e validado em tempo real no roteador primário (`192.168.73.1`) com testes de resolução DNS (`nslookup`), conferindo resposta `0.0.0.0` para alvos bloqueados e resolução normal para serviços autorizados.
+    - Sincronizado e implantado no ponto de acesso secundário DGL-5500 (`192.168.12.1`).
+
 ## 0.9.82
 
 - **🛡️ Dual-Editor Integrado de Lista Negra e Lista Branca com Sincronização 1-Clique (AdGuard Home + Dnsmasq)**:
