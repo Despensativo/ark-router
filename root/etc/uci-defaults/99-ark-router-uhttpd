@@ -8,10 +8,33 @@ if [ -f /etc/config/uhttpd ]; then
 			uci -q set uhttpd.main.ubus_prefix='/ubus'
 			changed=1
 		fi
-		if [ "$(uci -q get uhttpd.main.ubus_socket)" != "/var/run/ubus.sock" ]; then
-			uci -q set uhttpd.main.ubus_socket='/var/run/ubus.sock'
-			changed=1
+		# Se ubus_socket estiver configurado com caminho inexistente, corrige dinamicamente ou remove
+		cur_sock="$(uci -q get uhttpd.main.ubus_socket)"
+		if [ -n "$cur_sock" ]; then
+			if [ ! -S "$cur_sock" ] && [ ! -e "$cur_sock" ]; then
+				if [ -S /var/run/ubus/ubus.sock ]; then
+					uci -q set uhttpd.main.ubus_socket='/var/run/ubus/ubus.sock'
+					[ ! -e /var/run/ubus.sock ] && ln -sf /var/run/ubus/ubus.sock /var/run/ubus.sock 2>/dev/null || true
+					changed=1
+				elif [ -S /var/run/ubus.sock ]; then
+					uci -q set uhttpd.main.ubus_socket='/var/run/ubus.sock'
+					changed=1
+				else
+					# Remove parametro invalido para usar o default nativo compilado do uhttpd
+					uci -q delete uhttpd.main.ubus_socket
+					changed=1
+				fi
+			fi
 		fi
+
+		# Garante symlink de compatibilidade entre caminhos antigo e novo
+		if [ -S /var/run/ubus/ubus.sock ] && [ ! -e /var/run/ubus.sock ]; then
+			ln -sf /var/run/ubus/ubus.sock /var/run/ubus.sock 2>/dev/null || true
+		elif [ -S /var/run/ubus.sock ] && [ ! -e /var/run/ubus.sock ]; then
+			mkdir -p /var/run/ubus
+			ln -sf /var/run/ubus.sock /var/run/ubus/ubus.sock 2>/dev/null || true
+		fi
+
 		if [ "$(uci -q get uhttpd.main.ubus_cors)" != "1" ]; then
 			uci -q set uhttpd.main.ubus_cors='1'
 			changed=1

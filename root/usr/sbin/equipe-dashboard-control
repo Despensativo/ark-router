@@ -4663,9 +4663,9 @@ get_active_online_wan_dev() {
 get_internet_led_sysfs() {
 	for cand in \
 		"d-link:green:planet" \
-		"blue:wan" "green:wan" "white:wan" \
 		"blue:internet" "green:internet" "white:internet" \
-		"wan" "internet" "planet"; do
+		"blue:wan" "green:wan" "white:wan" \
+		"planet" "internet" "wan"; do
 		if [ -e "/sys/class/leds/$cand" ]; then
 			printf '%s' "$cand"
 			return 0
@@ -4692,8 +4692,8 @@ get_internet_led_sysfs() {
 get_internet_alert_led_sysfs() {
 	for cand in \
 		"d-link:orange:planet" \
-		"orange:wan" "red:wan" "amber:wan" \
-		"orange:internet" "red:internet" "amber:internet"; do
+		"orange:internet" "red:internet" "amber:internet" \
+		"orange:wan" "red:wan" "amber:wan"; do
 		if [ -e "/sys/class/leds/$cand" ]; then
 			printf '%s' "$cand"
 			return 0
@@ -4768,7 +4768,19 @@ update_wan_led() {
 		echo 1 > "/sys/class/leds/$inet_led/link" 2>/dev/null || true
 		echo 0 > "/sys/class/leds/$inet_led/rx" 2>/dev/null || true
 		echo 0 > "/sys/class/leds/$inet_led/tx" 2>/dev/null || true
-		echo 255 > "/sys/class/leds/$inet_led/brightness" 2>/dev/null || true
+		[ -e "/sys/class/leds/$inet_led/mode" ] && echo link > "/sys/class/leds/$inet_led/mode" 2>/dev/null || true
+		echo 255 > "/sys/class/leds/$inet_led/brightness" 2>/dev/null || echo 1 > "/sys/class/leds/$inet_led/brightness" 2>/dev/null || true
+
+		# Se houver LED fisico secundario de porta WAN (ex: Cudy WR3000 possui blue:internet e blue:wan), sincroniza tambem
+		if [ "$inet_led" = "blue:internet" ] && [ -e "/sys/class/leds/blue:wan" ]; then
+			echo netdev > "/sys/class/leds/blue:wan/trigger" 2>/dev/null || true
+			echo "$active_dev" > "/sys/class/leds/blue:wan/device_name" 2>/dev/null || true
+			echo 1 > "/sys/class/leds/blue:wan/link" 2>/dev/null || true
+			echo 0 > "/sys/class/leds/blue:wan/rx" 2>/dev/null || true
+			echo 0 > "/sys/class/leds/blue:wan/tx" 2>/dev/null || true
+			[ -e "/sys/class/leds/blue:wan/mode" ] && echo link > "/sys/class/leds/blue:wan/mode" 2>/dev/null || true
+			echo 1 > "/sys/class/leds/blue:wan/brightness" 2>/dev/null || true
+		fi
 
 		if [ -n "$alert_led" ] && [ -e "/sys/class/leds/$alert_led" ]; then
 			echo none > "/sys/class/leds/$alert_led/trigger" 2>/dev/null || true
@@ -4782,10 +4794,15 @@ update_wan_led() {
 			echo timer > "/sys/class/leds/$alert_led/trigger" 2>/dev/null || true
 			echo 500 > "/sys/class/leds/$alert_led/delay_on" 2>/dev/null || true
 			echo 500 > "/sys/class/leds/$alert_led/delay_off" 2>/dev/null || true
-			echo 255 > "/sys/class/leds/$alert_led/brightness" 2>/dev/null || true
+			echo 255 > "/sys/class/leds/$alert_led/brightness" 2>/dev/null || echo 1 > "/sys/class/leds/$alert_led/brightness" 2>/dev/null || true
 		else
 			echo none > "/sys/class/leds/$inet_led/trigger" 2>/dev/null || true
 			echo 0 > "/sys/class/leds/$inet_led/brightness" 2>/dev/null || true
+		fi
+
+		if [ "$inet_led" = "blue:internet" ] && [ -e "/sys/class/leds/blue:wan" ]; then
+			echo none > "/sys/class/leds/blue:wan/trigger" 2>/dev/null || true
+			echo 0 > "/sys/class/leds/blue:wan/brightness" 2>/dev/null || true
 		fi
 	fi
 
@@ -4887,8 +4904,8 @@ get_led_hardware_info() {
 				type="wifi2g"
 				color="green"
 				;;
-			*blue:wan*|*blue:internet*|*blue*planet*)
-				name="Internet (Planeta / WAN)"
+			*blue:internet*|*blue*planet*)
+				name="Internet (Planeta 🌐)"
 				if [ "$cur_brightness" -gt 0 ] 2>/dev/null; then
 					sub="Conectividade WAN ($wan_dev) — Online"
 				else
@@ -4896,6 +4913,34 @@ get_led_hardware_info() {
 				fi
 				type="internet"
 				color="blue"
+				;;
+			*blue:wan*)
+				name="Porta WAN"
+				if [ "$cur_brightness" -gt 0 ] 2>/dev/null; then
+					sub="Link Ativo ($wan_dev)"
+				else
+					sub="Sem Link"
+				fi
+				type="internet"
+				color="blue"
+				;;
+			*wifi2*|*wlan2*|*2g*)
+				name="Wi-Fi 2.4 GHz"
+				sub="LED do Painel Frontal (2.4 GHz)"
+				type="wifi2g"
+				case "$led" in
+					*blue*) color="blue" ;;
+					*) color="green" ;;
+				esac
+				;;
+			*wifi5*|*wlan5*|*5g*)
+				name="Wi-Fi 5 GHz"
+				sub="LED do Painel Frontal (5 GHz)"
+				type="wifi5g"
+				case "$led" in
+					*blue*) color="blue" ;;
+					*) color="green" ;;
+				esac
 				;;
 			*green:wan*|*green:internet*|*green*planet*|*wan*|*internet*|*web*|*planet*)
 				name="Internet (Planeta / WAN)"
