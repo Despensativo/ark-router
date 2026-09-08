@@ -1145,6 +1145,10 @@
     },
 
     applyPageTransforms: function() {
+      var mode = localStorage.getItem('ark_interface_mode') || 'basic';
+      if (document.body && document.body.getAttribute('data-interface-mode') !== mode) {
+        document.body.setAttribute('data-interface-mode', mode);
+      }
       var path = location.pathname;
       if (path.indexOf('/status/overview') !== -1) {
         this.transformStatusOverview();
@@ -2145,68 +2149,141 @@
 
     transformNetworkWireless: function() {
       var view = document.getElementById('view') || document.getElementById('maincontent');
-      if (!view || document.getElementById('ark-wireless-dashboard')) return;
+      if (!view) return;
 
       var wifiSec = document.getElementById('cbi-wireless-wifi-device');
       if (!wifiSec) return;
 
-      var table = wifiSec.querySelector('.table.cbi-section-table');
+      var table = wifiSec.querySelector('.table.cbi-section-table, table.cbi-section-table');
       if (!table) return;
 
-      var dash = document.createElement('div');
-      dash.id = 'ark-wireless-dashboard';
-      dash.innerHTML = '' +
-        '<div class="ark-wireless-grid">' +
-          '<div class="ark-radio-card radio-5g" id="ark-radio-5g-card">' +
-            '<div class="ark-radio-header">' +
-              '<div class="ark-radio-title-wrap">' +
-                '<h3><span>⚡</span> Rádio 5 GHz (Ultra Velocidade)</h3>' +
-                '<div class="ark-radio-meta">Qualcomm Atheros QCA9880 • 802.11ac/an • Até 1300 Mbps</div>' +
-                '<div class="ark-radio-badges">' +
-                  '<span class="ark-chip primary">Canal 36 (80 MHz)</span>' +
-                  '<span class="ark-chip online">🟢 Rádio Ativo</span>' +
+      var dash = document.getElementById('ark-wireless-dashboard');
+      if (!dash) {
+        dash = document.createElement('div');
+        dash.id = 'ark-wireless-dashboard';
+        dash.innerHTML = '' +
+          '<div class="ark-wireless-grid">' +
+            '<div class="ark-radio-card radio-5g" id="ark-radio-5g-card">' +
+              '<div class="ark-radio-header">' +
+                '<div class="ark-radio-title-wrap">' +
+                  '<h3><span>⚡</span> Rádio 5 GHz (Ultra Velocidade)</h3>' +
+                  '<div class="ark-radio-meta" id="ark-r5g-meta">Identificando hardware...</div>' +
+                  '<div class="ark-radio-badges" id="ark-r5g-badges">' +
+                    '<span class="ark-chip primary" id="ark-r5g-chan-chip">Canal --</span>' +
+                    '<span class="ark-chip info" id="ark-r5g-bitrate-chip" style="display:none;"></span>' +
+                    '<span class="ark-chip online" id="ark-r5g-status-chip">🟢 Rádio Ativo</span>' +
+                  '</div>' +
                 '</div>' +
+                '<div class="ark-radio-actions" id="ark-r5g-actions"></div>' +
               '</div>' +
-              '<div class="ark-radio-actions" id="ark-r5g-actions"></div>' +
+              '<div style="font-size:12px;font-weight:700;color:#94a3b8;margin-top:8px;">Redes Wi-Fi Transmitidas (5 GHz):</div>' +
+              '<div class="ark-ssid-list" id="ark-r5g-ssids"></div>' +
             '</div>' +
-            '<div style="font-size:12px;font-weight:700;color:#94a3b8;margin-top:8px;">Redes Wi-Fi Transmitidas (5 GHz):</div>' +
-            '<div class="ark-ssid-list" id="ark-r5g-ssids"></div>' +
-          '</div>' +
-          '<div class="ark-radio-card radio-2g" id="ark-radio-2g-card">' +
-            '<div class="ark-radio-header">' +
-              '<div class="ark-radio-title-wrap">' +
-                '<h3><span>📡</span> Rádio 2.4 GHz (Longo Alcance)</h3>' +
-                '<div class="ark-radio-meta">Qualcomm Atheros QCA9558 • 802.11bgn • Até 450 Mbps</div>' +
-                '<div class="ark-radio-badges">' +
-                  '<span class="ark-chip primary">Canal 11 (20 MHz)</span>' +
-                  '<span class="ark-chip online">🟢 Rádio Ativo</span>' +
+            '<div class="ark-radio-card radio-2g" id="ark-radio-2g-card">' +
+              '<div class="ark-radio-header">' +
+                '<div class="ark-radio-title-wrap">' +
+                  '<h3><span>📡</span> Rádio 2.4 GHz (Longo Alcance)</h3>' +
+                  '<div class="ark-radio-meta" id="ark-r2g-meta">Identificando hardware...</div>' +
+                  '<div class="ark-radio-badges" id="ark-r2g-badges">' +
+                    '<span class="ark-chip primary" id="ark-r2g-chan-chip">Canal --</span>' +
+                    '<span class="ark-chip info" id="ark-r2g-bitrate-chip" style="display:none;"></span>' +
+                    '<span class="ark-chip online" id="ark-r2g-status-chip">🟢 Rádio Ativo</span>' +
+                  '</div>' +
                 '</div>' +
+                '<div class="ark-radio-actions" id="ark-r2g-actions"></div>' +
               '</div>' +
-              '<div class="ark-radio-actions" id="ark-r2g-actions"></div>' +
+              '<div style="font-size:12px;font-weight:700;color:#94a3b8;margin-top:8px;">Redes Wi-Fi Transmitidas (2.4 GHz):</div>' +
+              '<div class="ark-ssid-list" id="ark-r2g-ssids"></div>' +
             '</div>' +
-            '<div style="font-size:12px;font-weight:700;color:#94a3b8;margin-top:8px;">Redes Wi-Fi Transmitidas (2.4 GHz):</div>' +
-            '<div class="ark-ssid-list" id="ark-r2g-ssids"></div>' +
-          '</div>' +
-        '</div>';
+          '</div>';
 
-      table.parentNode.insertBefore(dash, table);
+        table.parentNode.insertBefore(dash, table);
+      }
 
-      var rows = table.querySelectorAll('.tr.cbi-section-table-row');
+      var rows = table.querySelectorAll('.tr.cbi-section-table-row, tr.cbi-section-table-row');
       var currentRadio = null;
+
+      var r5gSsids = document.getElementById('ark-r5g-ssids');
+      var r2gSsids = document.getElementById('ark-r2g-ssids');
+      if (r5gSsids) r5gSsids.innerHTML = '';
+      if (r2gSsids) r2gSsids.innerHTML = '';
 
       rows.forEach(function(r) {
         var sid = r.getAttribute('data-sid') || '';
-        var isRadio = (sid === 'radio0' || sid === 'radio1');
+        var isRadio = (sid === 'radio0' || sid === 'radio1' || (sid.indexOf('radio') === 0 && sid.indexOf('_') === -1));
 
         if (isRadio) {
-          var rowText = (r.textContent || '').toLowerCase();
-          if (rowText.indexOf('5ghz') !== -1 || rowText.indexOf('5 ghz') !== -1 || rowText.indexOf('802.11a') !== -1 || rowText.indexOf('802.11ac') !== -1 || rowText.indexOf('802.11ax') !== -1) {
-            currentRadio = '5g';
-          } else if (rowText.indexOf('2.4ghz') !== -1 || rowText.indexOf('2.4 ghz') !== -1 || rowText.indexOf('802.11b') !== -1 || rowText.indexOf('802.11g') !== -1) {
-            currentRadio = '2g';
+          var rowText = (r.textContent || '');
+          var rowLower = rowText.toLowerCase();
+
+          // Detecção precisa da banda (802.11ax existe em 2.4G e 5G simultaneamente no Wi-Fi 6)
+          var is2g = false;
+          var is5g = false;
+
+          if (rowLower.indexOf('2.4') !== -1 || /channel:\s*([1-9]|1[0-4])\b/i.test(rowLower) || rowLower.indexOf('b/g/n') !== -1) {
+            is2g = true;
+          } else if (rowLower.indexOf('5.') !== -1 || rowLower.indexOf('5ghz') !== -1 || rowLower.indexOf('5 ghz') !== -1 || /channel:\s*(3[6-9]|[4-9][0-9]|1[0-9]{2})\b/i.test(rowLower) || rowLower.indexOf('ac/ax/n') !== -1 || rowLower.indexOf('ac/an') !== -1) {
+            is5g = true;
           } else {
-            currentRadio = (sid === 'radio0') ? '5g' : '2g';
+            is2g = (sid === 'radio0');
+            is5g = (sid === 'radio1');
           }
+
+          currentRadio = is5g ? '5g' : '2g';
+
+          // Mapeamento dinâmico de hardware e velocidade teórica
+          var metaEl = document.getElementById('ark-r' + currentRadio + '-meta');
+          if (metaEl) {
+            if (rowText.indexOf('MT7986') !== -1 || rowText.indexOf('mt7986') !== -1) {
+              if (currentRadio === '5g') {
+                metaEl.textContent = 'MediaTek MT7986 (Filogic 830) • Wi-Fi 6 (802.11ax/ac/n) • Até 2402 Mbps';
+              } else {
+                metaEl.textContent = 'MediaTek MT7986 (Filogic 830) • Wi-Fi 6 (802.11ax/b/g/n) • Até 574 Mbps';
+              }
+            } else if (rowText.indexOf('QCA9880') !== -1) {
+              metaEl.textContent = 'Qualcomm Atheros QCA9880 • 802.11ac/an • Até 1300 Mbps';
+            } else if (rowText.indexOf('QCA9558') !== -1) {
+              metaEl.textContent = 'Qualcomm Atheros QCA9558 • 802.11bgn • Até 450 Mbps';
+            } else {
+              var mDev = rowText.match(/(MediaTek\s+[A-Za-z0-9]+|Qualcomm\s+[A-Za-z0-9]+|[A-Za-z0-9_-]+\s+802\.11[a-z/]+)/i);
+              metaEl.textContent = (mDev ? mDev[1] : sid) + ' • Wi-Fi ' + (currentRadio === '5g' ? '5 GHz' : '2.4 GHz');
+            }
+          }
+
+          // Badges dinâmicos de Canal, Frequência, Bitrate e Status
+          var chanMatch = rowText.match(/Channel:\s*([0-9]+)(?:\s*\(([^)]+)\))?/i);
+          var bitMatch = rowText.match(/Bitrate:\s*([0-9.]+\s*[M|G]bit\/s)/i);
+
+          var chanBadge = document.getElementById('ark-r' + currentRadio + '-chan-chip');
+          if (chanBadge && chanMatch) {
+            var ch = chanMatch[1];
+            var f = chanMatch[2] ? ' (' + chanMatch[2] + ')' : '';
+            chanBadge.textContent = 'Canal ' + ch + f;
+          }
+
+          var bitBadge = document.getElementById('ark-r' + currentRadio + '-bitrate-chip');
+          if (bitBadge) {
+            if (bitMatch) {
+              bitBadge.style.display = 'inline-flex';
+              bitBadge.textContent = '⚡ ' + bitMatch[1];
+            } else {
+              bitBadge.style.display = 'none';
+            }
+          }
+
+          var statusBadge = document.getElementById('ark-r' + currentRadio + '-status-chip');
+          if (statusBadge) {
+            var isOff = (rowLower.indexOf('disabled') !== -1 || rowLower.indexOf('desativado') !== -1 || (chanMatch && chanMatch[1] === '0'));
+            if (isOff) {
+              statusBadge.className = 'ark-chip offline';
+              statusBadge.textContent = '🔴 Rádio Desativado';
+            } else {
+              statusBadge.className = 'ark-chip online';
+              statusBadge.textContent = '🟢 Rádio Ativo';
+            }
+          }
+
+          // Botões de ação do rádio
           var actions = r.querySelector('.cbi-section-actions');
           var targetSlot = document.getElementById('ark-r' + currentRadio + '-actions');
           if (actions && targetSlot && targetSlot.children.length === 0) {
@@ -2218,12 +2295,22 @@
             });
           }
         } else if (currentRadio) {
-          var statDiv = r.querySelector('[data-name="_stat"]');
-          var ssidText = 'OpenWrt';
-          if (statDiv) {
-            var m = statDiv.textContent.match(/SSID:\s*([^\s|]+)/i);
-            if (m) ssidText = m[1];
-          }
+          var statDiv = r.querySelector('[data-name="_stat"]') || r;
+          var ssidText = 'Wi-Fi';
+          var statTxt = statDiv.textContent || '';
+          var mSsid = statTxt.match(/SSID:\s*([^\s|]+)/i);
+          if (mSsid) ssidText = mSsid[1];
+
+          var mMode = statTxt.match(/Mode:\s*(Master|Client|Mesh|Ad-Hoc|AP|[A-Za-z]+)/i);
+          var modeText = mMode ? mMode[1].replace(/BSSID.*/i, '').trim() : 'Ponto de Acesso';
+          if (modeText.toLowerCase() === 'master') modeText = 'Ponto de Acesso (Master)';
+
+          var mEnc = statTxt.match(/Encryption:\s*([^|\n\r]+?)(?:\s*(?:Desativar|Editar|Remover)|$)/i);
+          var encText = mEnc ? mEnc[1].replace(/BSSID:[^|]+\|?/i, '').trim() : 'WPA2/WPA3 PSK';
+
+          var mSig = statTxt.match(/(-?[0-9]+(?:\/-?[0-9]+)?\s*dBm)/i);
+          var sigText = mSig ? (' • Sinal: ' + mSig[1]) : '';
+
           var actionsCell = r.querySelector('.cbi-section-actions');
 
           var ssidCard = document.createElement('div');
@@ -2233,7 +2320,7 @@
               '<div class="ark-ssid-icon">📶</div>' +
               '<div class="ark-ssid-details">' +
                 '<strong>' + ssidText + '</strong>' +
-                '<span>Modo Master • Ponto de Acesso • WPA2-PSK</span>' +
+                '<span>Modo ' + modeText + ' • ' + encText + sigText + '</span>' +
               '</div>' +
             '</div>' +
             '<div class="ark-ssid-actions"></div>';
@@ -2253,9 +2340,12 @@
         }
       });
 
-      table.style.display = 'none';
+      var mode = localStorage.getItem('ark_interface_mode') || 'basic';
+      if (mode !== 'advanced') {
+        table.style.setProperty('display', 'none', 'important');
+      }
       var oldSearch = wifiSec.querySelector('.ark-table-search-bar');
-      if (oldSearch) oldSearch.style.display = 'none';
+      if (oldSearch && mode !== 'advanced') oldSearch.style.display = 'none';
     },
 
     transformNetworkInterfaces: function() {

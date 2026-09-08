@@ -2,6 +2,16 @@
 
 ## 0.9.80
 
+- **📶 Centro de Comando Wi-Fi Totalmente Dinâmico e Fim das Strings Obsoletas (QCA9880 / QCA9558)**:
+  - **Eliminação de Dados Hardcoded Antigos**: Removidas as descrições estáticas herdadas do roteador antigo D-Link DGL-5500 (`Qualcomm Atheros QCA9880 • 802.11ac/an • Até 1300 Mbps` e `Qualcomm Atheros QCA9558 • 802.11bgn • Até 450 Mbps`).
+  - **Detecção Real do Hardware Wi-Fi 6**: O painel agora lê dinamicamente a arquitetura dos rádios em tempo real. No Acer Predator Connect W6x, exibe com precisão:
+    - **5 GHz**: `MediaTek MT7986 (Filogic 830) • Wi-Fi 6 (802.11ax/ac/n) • Até 2402 Mbps`
+    - **2.4 GHz**: `MediaTek MT7986 (Filogic 830) • Wi-Fi 6 (802.11ax/b/g/n) • Até 574 Mbps`
+  - **Correção Crítica na Detecção de Bandas 802.11ax**: Corrigido o erro que classificava a banda de 2.4 GHz como 5 GHz devido à presença de `802.11ax` (padrão que opera em ambas as frequências no Wi-Fi 6), o que causava a transferência indevida de SSIDs de 2.4 GHz para o card de 5 GHz e deixava o card de 2.4 GHz vazio.
+  - **Separação Precisa de Redes Transmitidas**: As redes Wi-Fi agora são alocadas perfeitamente em suas respectivas frequências (`CASA_ARK_5G` e `Tv` no rádio 5 GHz; `CASA_ARK` no rádio 2.4 GHz), exibindo o modo de operação correto, protocolo de criptografia (`WPA2/WPA3`) e nível de sinal (dBm).
+  - **Badges Dinâmicos em Tempo Real**: Chips atualizados automaticamente a cada ciclo com Canal ativo (`Canal 44 (5.220 GHz)`), taxa física de bitrate real (`⚡ 2401.9 Mbit/s` no 5G e `⚡ 51.5 Mbit/s` no 2.4G) e status operacional (`🟢 Rádio Ativo`).
+  - **Ocultação da Tabela Bruta Duplicada**: Em modo Básico, a tabela nativa repetida do LuCI é ocultada de forma limpa e contínua via CSS, mantendo apenas os cartões visuais modernos da ARK sem conflitos ao atualizar a cada 3 segundos.
+
 - **📶 Proteção Inteligente contra Queda do Wi-Fi 5 GHz (Ajuste Automático Canal vs. Largura)**:
   - **Diagnóstico e Prevenção de Falhas no Hostapd**: Corrigido o erro que desativava o rádio 5 GHz (`AP-DISABLED` / Canal 0) quando canais da faixa UNII-3 (como o Canal `149`) eram selecionados com largura de banda de 160 MHz (`HE160`). No Brasil e na maioria dos países, a faixa UNII-3 opera em até 80 MHz porque canais centrais de extensão superiores a 165 são bloqueados por regulamentação e rejeitados pelo driver de rádio (`extension channel is disabled`).
   - **Rebaixamento Automático de Largura (80 MHz)**: Ao selecionar qualquer canal >= 132 (ex: 149, 153, 157, 161, 165) via backend (`equipe-dashboard-control`) ou interface web, o sistema ajusta automaticamente o `htmode` para `HE80`/`VHT80`, impedindo que o hostapd aborte a inicialização.

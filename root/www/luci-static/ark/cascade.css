@@ -1754,6 +1754,10 @@ body.modal-overlay-active #modal_overlay {
 	gap: 20px !important;
 	margin: 20px 0 !important;
 }
+body:not([data-interface-mode="advanced"]) #cbi-wireless-wifi-device > .table.cbi-section-table,
+body:not([data-interface-mode="advanced"]) #cbi-wireless-wifi-device > .cbi-section-table {
+	display: none !important;
+}
 .ark-radio-card {
 	background: var(--ark-surface-1) !important;
 	border: 1px solid var(--ark-border) !important;
