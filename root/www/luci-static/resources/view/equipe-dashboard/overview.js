@@ -4240,30 +4240,66 @@ return view.extend({
 		cloudRadio.addEventListener('change', updateVisibility);
 		updateVisibility();
 
+		const blacklistSyncBtn = E('button', {
+			class: 'btn cbi-button cbi-button-action',
+			style: 'padding: 6px 14px; font-weight: 700; font-size: 0.82rem; background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.35); color: #f87171; white-space: nowrap;',
+			click: function(ev) {
+				const btn = ev.currentTarget;
+				btn.disabled = true;
+				btn.textContent = '🔄 Sincronizando…';
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['adblock-blacklist-sync']).then(function(r) {
+					btn.disabled = false;
+					btn.textContent = '🔄 Sincronizar Bets & Ameaças';
+					if (r.code) throw new Error(r.stderr || 'Falha ao sincronizar lista negra');
+					let data = {};
+					try { data = JSON.parse(r.stdout); } catch(e) {}
+					const added = data.added || 0;
+					const total = data.total || 0;
+					if (data.blacklist) {
+						blacklistTextarea.value = data.blacklist.replace(/,/g, ', ');
+					}
+					ui.addNotification(null, E('p', {}, [
+						added > 0
+							? ('✅ Lista de bloqueios sincronizada: ' + added + ' novas regras adicionadas sem duplicatas! (' + total + ' regras ativas).')
+							: ('✅ Lista de bloqueios atualizada! Todos os domínios de apostas e golpes já constam na lista (' + total + ' regras ativas). Nenhuma duplicata criada.')
+					]), 'success');
+				}).catch(function(err) {
+					btn.disabled = false;
+					btn.textContent = '🔄 Sincronizar Bets & Ameaças';
+					ui.addNotification(null, E('p', {}, ['Erro ao sincronizar lista negra: ' + err.message]), 'danger');
+				});
+			}
+		}, ['🔄 Sincronizar Bets & Ameaças']);
+
+		const blacklistText = (f.custom_blacklist || '').replace(/,/g, ', ');
 		const blacklistTextarea = E('textarea', {
 			class: 'ex-blacklist-input',
 			rows: 3,
-			style: 'width: 100%; box-sizing: border-box; margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,.25); border: 1px solid rgba(148,163,184,.25); color: #f8fafc; font-family: monospace; font-size: 0.82rem; resize: vertical; line-height: 1.4;',
-			placeholder: 'Ex: bet365.com, blaze.com, tigrinho.vip, tiktok.com',
-			value: (f.custom_blacklist || '').replace(/,/g, ', ')
-		});
+			style: 'width: 100%; box-sizing: border-box; margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,.25); border: 1px solid rgba(148,163,184,.25); color: #f8fafc; font-family: monospace; font-size: 0.82rem; resize: vertical; line-height: 1.4;',
+			placeholder: 'Ex: bet365.com, blaze.com, tigrinho.vip, tiktok.com'
+		}, [ blacklistText ]);
+		blacklistTextarea.value = blacklistText;
 
 		const blacklistBlock = E('div', {
 			class: 'ex-device-config-block',
 			style: 'margin-top: 12px; padding: 12px; border-radius: 10px; background: rgba(239,68,68,.05); border: 1px solid rgba(239,68,68,.22);'
 		}, [
-			E('div', { style: 'display: flex; align-items: center; gap: 8px; margin-bottom: 4px;' }, [
-				E('strong', { style: 'font-size: 0.88rem; color: #ef4444;' }, ['🚫 Bloquear Sites Específicos (Lista Negra da Rede)'])
+			E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; flex-wrap: wrap;' }, [
+				E('strong', { style: 'font-size: 0.88rem; color: #ef4444;' }, ['🚫 Bloquear Sites Específicos (Lista Negra da Rede)']),
+				blacklistSyncBtn
 			]),
-			E('p', { class: 'ex-muted', style: 'margin: 0 0 6px 0; font-size: 0.81rem; line-height: 1.35;' }, [
-				'Corta o domínio principal e todos os seus subdomínios instantaneamente em 0ms para todos os aparelhos da casa. Separe múltiplos domínios por vírgula ou espaço:'
+			E('p', { class: 'ex-muted', style: 'margin: 0; font-size: 0.81rem; line-height: 1.4;' }, [
+				'Corta o domínio principal e todos os seus subdomínios instantaneamente em 0ms para todos os aparelhos da casa. Separe múltiplos domínios por vírgula ou espaço.',
+				E('span', { style: 'display: block; margin-top: 4px; font-size: 0.77rem; color: #94a3b8;' }, [
+					'💡 O botão baixa e adiciona novos domínios catalogados (Bets, Cassinos e Golpes BR) sem apagar as suas regras existentes e sem duplicar.'
+				])
 			]),
 			blacklistTextarea
 		]);
 
 		const whitelistSyncBtn = E('button', {
 			class: 'btn cbi-button cbi-button-action',
-			style: 'padding: 6px 14px; font-weight: 700; font-size: 0.82rem; background: rgba(59,130,246,.15); border: 1px solid rgba(59,130,246,.35); color: #60a5fa;',
+			style: 'padding: 6px 14px; font-weight: 700; font-size: 0.82rem; background: rgba(59,130,246,.15); border: 1px solid rgba(59,130,246,.35); color: #60a5fa; white-space: nowrap;',
 			click: function(ev) {
 				const btn = ev.currentTarget;
 				btn.disabled = true;
@@ -4276,6 +4312,9 @@ return view.extend({
 					try { data = JSON.parse(r.stdout); } catch(e) {}
 					const added = data.added || 0;
 					const total = data.total || 0;
+					if (data.whitelist) {
+						whitelistTextarea.value = data.whitelist.replace(/,/g, ', ');
+					}
 					ui.addNotification(null, E('p', {}, [
 						added > 0
 							? ('✅ Lista de exceções sincronizada: ' + added + ' novas regras adicionadas sem duplicatas! (' + total + ' regras ativas).')
@@ -4288,6 +4327,15 @@ return view.extend({
 				});
 			}
 		}, ['🔄 Sincronizar Regras de Exceção']);
+
+		const whitelistText = (f.custom_whitelist || '').replace(/,/g, ', ');
+		const whitelistTextarea = E('textarea', {
+			class: 'ex-whitelist-input',
+			rows: 3,
+			style: 'width: 100%; box-sizing: border-box; margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,.25); border: 1px solid rgba(148,163,184,.25); color: #f8fafc; font-family: monospace; font-size: 0.82rem; resize: vertical; line-height: 1.4;',
+			placeholder: 'Ex: apple.com, play.google.com, github.com, whatsapp.com, gov.br, bb.com.br'
+		}, [ whitelistText ]);
+		whitelistTextarea.value = whitelistText;
 
 		const whitelistBlock = E('div', {
 			class: 'ex-device-config-block',
@@ -4302,7 +4350,8 @@ return view.extend({
 				E('span', { style: 'display: block; margin-top: 4px; font-size: 0.77rem; color: #94a3b8;' }, [
 					'💡 O botão compara o que há de novo e adiciona somente as regras faltantes, sem remover suas regras personalizadas e sem criar duplicatas.'
 				])
-			])
+			]),
+			whitelistTextarea
 		]);
 
 		const modalContent = [
@@ -4379,10 +4428,11 @@ return view.extend({
 						const webPort = parseInt(portInput.value, 10) || 3000;
 						const ztAcc = protZeroTier.input.checked ? '1' : '0';
 						const rawBlacklist = blacklistTextarea.value.trim();
+						const rawWhitelist = whitelistTextarea.value.trim();
 						const nextdnsId = nextdnsIdInput.value.trim();
 
 						const cmd = active ? 'adblock-configure' : 'adblock-enable';
-						const args = [cmd, mode, (mode === 'local' ? cacheMb : prov), prot, par, ss, prov, cCache, String(webPort), ztAcc, rawBlacklist, nextdnsId];
+						const args = [cmd, mode, (mode === 'local' ? cacheMb : prov), prot, par, ss, prov, cCache, String(webPort), ztAcc, rawBlacklist, nextdnsId, rawWhitelist];
 
 						fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 							if (r.code) throw new Error(r.stderr || 'Falha ao configurar bloqueador');

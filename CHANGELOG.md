@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.9.82
+
+- **🛡️ Dual-Editor Integrado de Lista Negra e Lista Branca com Sincronização 1-Clique (AdGuard Home + Dnsmasq)**:
+  - **Visualização e Edição Direta no Painel (Zero Dependência da Porta 3000)**:
+    - O modal do Bloqueador de Anúncios agora conta com dois editores completos em formato de textarea estilizados em modo escuro: um para **🚫 Bloquear Sites Específicos (Lista Negra)** e outro para **✅ Lista Branca de Serviços Essenciais (Exceções)**.
+    - O usuário pode visualizar, adicionar, alterar ou remover domínios diretamente pelo ARK Router, sem precisar abrir a porta 3000 ou painéis externos.
+  - **Sincronização 1-Clique de Bets, Cassinos e Golpes BR (`adblock-blacklist-sync`)**:
+    - Novo botão dedicado **`🔄 Sincronizar Bets & Ameaças`** na Lista Negra.
+    - Catálogo curado nacional com mais de 40 domínios críticos: casas de apostas (Bet365, Blaze, Betano, Sportingbet, Betfair, Pixbet, EstrelaBet, KTO, F12, Novibet, etc.), cassinos/jogos de azar (Tigrinho, Fortune Tiger/Ox, Stake, BC.Game) e sites de phishing/golpes frequentes no Brasil (falsos Correios, consulta de CPF fraudulenta, resgate de valores).
+    - **Algoritmo Idempotente**: Adiciona apenas os novos domínios sem apagar as regras personalizadas do usuário e sem criar duplicatas.
+    - **Bloqueio Local em 0ms**: Todos os domínios da lista negra são espelhados imediatamente no Dnsmasq (`dhcp.@dnsmasq[0].address=/$dom/0.0.0.0`), garantindo resposta nula local instantânea antes mesmo da consulta sair do roteador.
+  - **Sincronização de Lista Branca Atualizada em Tempo Real (`adblock-whitelist-sync`)**:
+    - Botão **`🔄 Sincronizar Regras de Exceção`** atualizado para refletir as novas regras no textarea na hora em que o usuário clica, acompanhado de toast informativo.
+  - **Performance Turbinada com `uci batch` e Reload Atômico**:
+    - Transição de loops shell unitários para execução atômica via `uci batch`, reduzindo o tempo de sincronização e aplicação de 6,6 segundos para **0,9 segundo**.
+    - Recarregamento leve com sinalização SIGHUP (`dnsmasq reload` e `adguardhome reload`) sem derrubar conexões de rede ativas.
+
 ## 0.9.81
 
 - **🔄 Sincronização Inteligente de Lista Branca de Serviços Essenciais (AdGuard Home)**:

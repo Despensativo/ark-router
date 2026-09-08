@@ -2860,57 +2860,114 @@ adblock_status_json() {
 
 	cloud_provider="$(uci -q get equipe_perf.settings.adblock_cloud_provider || printf 'adguard_dns')"
 	custom_blacklist="$(uci -q get equipe_perf.settings.custom_blacklist || true)"
+	custom_whitelist="$(uci -q get equipe_perf.settings.custom_whitelist || true)"
 	nextdns_id="$(uci -q get equipe_perf.settings.nextdns_id || true)"
 
-	printf '{"installed":%s,"active":%s,"mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s","mem_total_mb":%d,"cache_size_mb":%d,"recommended_cache_mb":%d,"parental_enabled":%s,"protection_enabled":%s,"safesearch_enabled":%s,"cloud_cache":%s,"web_port":%d,"zerotier_access":%s,"zt_web_url":"%s","custom_blacklist":"%s","nextdns_id":"%s"}\n' \
-		"$local_installed" "$active" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url" "$mem_total_mb" "$cache_size_mb" "$recommended_cache_mb" "$parental_enabled" "$protection_enabled" "$safesearch_enabled" "$cloud_cache" "$web_port" "$zt_access" "$zt_web_url" "$(json_escape "$custom_blacklist")" "$(json_escape "$nextdns_id")"
+	if [ -f /etc/adguardhome/adguardhome.yaml ] && command -v python3 >/dev/null 2>&1; then
+		agh_rules="$(python3 -c "
+import re
+try:
+    with open('/etc/adguardhome/adguardhome.yaml', 'r', encoding='utf-8') as f:
+        content = f.read()
+    lines = content.splitlines()
+    idx_ur = -1
+    for i, l in enumerate(lines):
+        if re.match(r'^user_rules:', l):
+            idx_ur = i; break
+    bl, wl = [], []
+    if idx_ur != -1:
+        for l in lines[idx_ur + 1:]:
+            if re.match(r'^[a-z0-9_-]+:', l): break
+            s = l.strip()
+            m = re.search(r'''^-\s*['\"]?(.*?)['\"]?\s*$''', s)
+            r = m.group(1) if m else s
+            wm = re.search(r'^@@\|\|([a-z0-9.-]+)\^?$', r.lower())
+            if wm:
+                d = wm.group(1)
+                if d not in wl: wl.append(d)
+                continue
+            bm = re.search(r'^\|\|([a-z0-9.-]+)\^?$', r.lower())
+            if bm:
+                d = bm.group(1)
+                if d not in bl: bl.append(d)
+    print(','.join(bl) + '|' + ','.join(wl))
+except Exception:
+    print('|')
+")"
+		agh_bl="${agh_rules%|*}"
+		agh_wl="${agh_rules#*|}"
+		[ -n "$agh_bl" ] && custom_blacklist="$agh_bl"
+		[ -n "$agh_wl" ] && custom_whitelist="$agh_wl"
+	fi
+
+	printf '{"installed":%s,"active":%s,"mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s","mem_total_mb":%d,"cache_size_mb":%d,"recommended_cache_mb":%d,"parental_enabled":%s,"protection_enabled":%s,"safesearch_enabled":%s,"cloud_cache":%s,"web_port":%d,"zerotier_access":%s,"zt_web_url":"%s","custom_blacklist":"%s","custom_whitelist":"%s","nextdns_id":"%s"}\n' \
+		"$local_installed" "$active" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url" "$mem_total_mb" "$cache_size_mb" "$recommended_cache_mb" "$parental_enabled" "$protection_enabled" "$safesearch_enabled" "$cloud_cache" "$web_port" "$zt_access" "$zt_web_url" "$(json_escape "$custom_blacklist")" "$(json_escape "$custom_whitelist")" "$(json_escape "$nextdns_id")"
 }
 
-adblock_apply_blacklist() {
-	raw_domains="$1"
+adblock_apply_rules() {
+	raw_blacklist="$1"
+	raw_whitelist="${2:-}"
 	mkdir -p /etc/config
 	[ -f /etc/config/equipe_perf ] || touch /etc/config/equipe_perf
 	uci -q set equipe_perf.settings=performance
 
-	# 1. Limpar endereços antigos que terminam em /0.0.0.0 do UCI dhcp
 	old_addrs="$(uci -q get dhcp.@dnsmasq[0].address || true)"
-	for a in $old_addrs; do
-		case "$a" in
-			*/0.0.0.0) uci -q del_list "dhcp.@dnsmasq[0].address=$a" ;;
-		esac
-	done
 
-	# 2. Sanitizar e adicionar os novos domínios ao UCI dhcp
-	clean_domains=""
-	for item in $(printf '%s' "$raw_domains" | tr ',;\n\r\t' ' '); do
+	# 2. Sanitizar blacklist
+	clean_bl=""
+	for item in $(printf '%s' "$raw_blacklist" | tr ',;\n\r\t' ' '); do
 		dom="$(printf '%s' "$item" | sed -E 's|^https?://||; s|/.*$||' | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9.-')"
 		if printf '%s' "$dom" | grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$'; then
-			case " $clean_domains " in
+			case " $clean_bl " in
 				*" $dom "*) ;;
 				*)
-					if [ -z "$clean_domains" ]; then
-						clean_domains="$dom"
-					else
-						clean_domains="$clean_domains,$dom"
-					fi
-					uci -q add_list "dhcp.@dnsmasq[0].address=/$dom/0.0.0.0"
+					[ -z "$clean_bl" ] && clean_bl="$dom" || clean_bl="$clean_bl,$dom"
 					;;
 			esac
 		fi
 	done
 
-	uci -q set "equipe_perf.settings.custom_blacklist=$clean_domains"
-	uci commit equipe_perf
-	uci commit dhcp
+	# 3. Sanitizar whitelist
+	clean_wl=""
+	for item in $(printf '%s' "$raw_whitelist" | tr ',;\n\r\t' ' '); do
+		dom="$(printf '%s' "$item" | sed -E 's|^https?://||; s|/.*$||' | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9.-')"
+		if printf '%s' "$dom" | grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$'; then
+			case " $clean_wl " in
+				*" $dom "*) ;;
+				*)
+					[ -z "$clean_wl" ] && clean_wl="$dom" || clean_wl="$clean_wl,$dom"
+					;;
+			esac
+		fi
+	done
 
-	# 3. Se AdGuard Home estiver instalado com yaml, sincronizar user_rules
+	{
+		echo "set equipe_perf.settings.custom_blacklist='$clean_bl'"
+		[ "$raw_whitelist" != "__KEEP_EXISTING__" ] && echo "set equipe_perf.settings.custom_whitelist='$clean_wl'"
+		for a in $old_addrs; do
+			case "$a" in
+				*/0.0.0.0) echo "del_list dhcp.@dnsmasq[0].address='$a'" ;;
+			esac
+		done
+		for d in $(printf '%s' "$clean_bl" | tr ',' ' '); do
+			echo "add_list dhcp.@dnsmasq[0].address='/$d/0.0.0.0'"
+		done
+		echo "commit dhcp"
+		echo "commit equipe_perf"
+	} | uci batch >/dev/null 2>&1 || true
+
+	# 4. Sincronizar user_rules no AdGuard Home
 	if [ -f /etc/adguardhome/adguardhome.yaml ] && command -v python3 >/dev/null 2>&1; then
 		python3 -c "
 import sys, re
 
 yaml_path = '/etc/adguardhome/adguardhome.yaml'
-raw_domains = sys.argv[1] if len(sys.argv) > 1 else ''
-domains = [d.strip() for d in raw_domains.split(',') if d.strip()]
+raw_bl = sys.argv[1] if len(sys.argv) > 1 else ''
+raw_wl = sys.argv[2] if len(sys.argv) > 2 else ''
+has_wl_arg = len(sys.argv) > 2 and sys.argv[2] != '__KEEP_EXISTING__'
+
+new_bl_domains = [d.strip().lower() for d in raw_bl.split(',') if d.strip()]
+new_wl_domains = [d.strip().lower() for d in raw_wl.split(',') if d.strip()]
 
 try:
     with open(yaml_path, 'r', encoding='utf-8') as f:
@@ -2924,48 +2981,193 @@ try:
             break
 
     if idx_ur != -1:
-        cur_line = lines[idx_ur]
         end_idx = len(lines)
         for j in range(idx_ur + 1, len(lines)):
             if re.match(r'^[a-z0-9_-]+:', lines[j]):
                 end_idx = j
                 break
 
-        existing_rules = []
-        if not cur_line.strip().endswith('[]'):
-            for l in lines[idx_ur + 1:end_idx]:
-                s = l.strip()
-                if s.startswith('- \"# ARK-') or s.startswith('# ARK-'):
-                    continue
-                if s.startswith('- \"||') and s.endswith('^\"'):
-                    continue
-                if s.startswith('- ||') and s.endswith('^'):
-                    continue
-                if s:
-                    existing_rules.append(l)
+        existing_other = []
+        existing_wl = []
+        for l in lines[idx_ur + 1:end_idx]:
+            s = l.strip()
+            if not s:
+                continue
+            m = re.search(r'''^-\s*['\"]?(.*?)['\"]?\s*$''', s)
+            r = m.group(1) if m else s
+            wm = re.search(r'''^@@\|\|([a-z0-9.-]+)\^?$''', r.lower())
+            if wm:
+                d = wm.group(1)
+                if d not in existing_wl: existing_wl.append(d)
+                continue
+            bm = re.search(r'''^\|\|([a-z0-9.-]+)\^?$''', r.lower())
+            if bm:
+                continue
+            existing_other.append(r)
 
-        new_rule_lines = []
-        for d in domains:
-            new_rule_lines.append(f'  - \"||{d}^\"')
+        target_wl = new_wl_domains if has_wl_arg else existing_wl
+        target_bl = new_bl_domains
 
-        all_rule_lines = new_rule_lines + existing_rules
-        if all_rule_lines:
-            new_block = ['user_rules:'] + all_rule_lines
-        else:
-            new_block = ['user_rules: []']
+        final_rules = []
+        for d in target_wl:
+            final_rules.append(f\"  - '@@||{d}^'\")
+        for d in target_bl:
+            final_rules.append(f\"  - '||{d}^'\")
+        for r in existing_other:
+            final_rules.append(f\"  - '{r}'\")
 
-        res = lines[:idx_ur] + new_block + lines[end_idx:]
-        new_content = '\n'.join(res) + '\n'
+        new_block = ['user_rules:'] + final_rules if final_rules else ['user_rules: []']
+        new_content = '\\n'.join(lines[:idx_ur] + new_block + lines[end_idx:]) + '\\n'
 
         with open(yaml_path, 'w', encoding='utf-8') as f:
             f.write(new_content)
 except Exception:
     pass
-" "$clean_domains"
+" "$clean_bl" "${raw_whitelist:-$clean_wl}"
 		/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
 	fi
 
 	/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+}
+
+adblock_apply_blacklist() {
+	adblock_apply_rules "$1" "${2:-__KEEP_EXISTING__}"
+}
+
+adblock_sync_blacklist() {
+	if [ ! -f /etc/adguardhome/adguardhome.yaml ]; then
+		printf '{"status":"error","message":"AdGuard Home nao encontrado no roteador","added":0,"total":0}\n'
+		return 1
+	fi
+	if ! command -v python3 >/dev/null 2>&1; then
+		printf '{"status":"error","message":"Python3 necessario para sincronizar regras","added":0,"total":0}\n'
+		return 1
+	fi
+
+	python3 -c "
+import re, json, sys
+
+yaml_path = '/etc/adguardhome/adguardhome.yaml'
+
+OFFICIAL_BLACKLIST = [
+    'bet365.com', 'blaze.com', 'blaze-1.com', '1xbet.com', 'betano.com',
+    'betano.bet.br', 'sportingbet.com', 'sportingbet.com.br', 'betfair.com', 'pixbet.com',
+    'pixbet.org.br', 'estrelabet.com', 'kto.com', 'f12.bet', 'novibet.com',
+    'parimatch.com', 'betsson.com', 'apostaganha.bet', 'superbet.com', 'rivalo.com',
+    'galera.bet', 'vaidebet.com', 'betnacional.com', 'pagbet.com', 'mrjack.bet',
+    'esportesdasorte.com', 'casaapostas.com', 'stake.com', 'bc.game', 'betmotion.com',
+    'playpix.com', 'cassino.com', 'betbry.com', 'tigrinho.vip', 'fortune-tiger.com', 'fortuneox.com',
+    'rastrearpedido.com', 'rastreamentocorreios.info', 'correios-taxa.com',
+    'consulta-cpf-regularize.com', 'regularizacao-cpf.org', 'resgate-valores.com'
+]
+
+try:
+    with open(yaml_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    lines = content.splitlines()
+    idx_ur = -1
+    for i, l in enumerate(lines):
+        if re.match(r'^user_rules:', l):
+            idx_ur = i
+            break
+
+    if idx_ur == -1:
+        print(json.dumps({'status': 'error', 'message': 'user_rules nao encontrado no yaml', 'added': 0, 'total': 0}))
+        sys.exit(0)
+
+    end_idx = len(lines)
+    for j in range(idx_ur + 1, len(lines)):
+        if re.match(r'^[a-z0-9_-]+:', lines[j]):
+            end_idx = j
+            break
+
+    existing_lines = lines[idx_ur + 1:end_idx]
+    existing_rules_cleaned = []
+    seen = set()
+    existing_bl_domains = set()
+    all_bl_list = []
+
+    for l in existing_lines:
+        s = l.strip()
+        if not s:
+            continue
+        m = re.search(r'''^-\s*['\"]?(.*?)['\"]?\s*$''', s)
+        rule_val = m.group(1) if m else s
+        if rule_val in seen:
+            continue
+        seen.add(rule_val)
+        existing_rules_cleaned.append(f\"  - '{rule_val}'\")
+        bm = re.search(r'''^\|\|([a-z0-9.-]+)\^?$''', rule_val.lower())
+        if bm:
+            d = bm.group(1)
+            existing_bl_domains.add(d)
+            if d not in all_bl_list:
+                all_bl_list.append(d)
+
+    new_rules = []
+    added_count = 0
+    for d in OFFICIAL_BLACKLIST:
+        d_lower = d.lower().strip()
+        if d_lower not in existing_bl_domains:
+            new_rules.append(f\"  - '||{d_lower}^'\")
+            existing_bl_domains.add(d_lower)
+            all_bl_list.append(d_lower)
+            added_count += 1
+
+    final_rules = existing_rules_cleaned + new_rules
+    new_block = ['user_rules:'] + final_rules if final_rules else ['user_rules: []']
+    new_content = '\\n'.join(lines[:idx_ur] + new_block + lines[end_idx:]) + '\\n'
+
+    if new_rules or len(existing_rules_cleaned) != len(existing_lines):
+        with open(yaml_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+
+    print(json.dumps({
+        'status': 'ok',
+        'added': added_count,
+        'total': len(existing_bl_domains),
+        'preserved': len(existing_rules_cleaned),
+        'source': 'ARK Curated Bets, Cassinos & Phishing BR',
+        'blacklist': ','.join(all_bl_list)
+    }))
+except Exception as e:
+    print(json.dumps({'status': 'error', 'message': str(e), 'added': 0, 'total': 0}))
+"
+	# Sincronizar domínios bloqueados com Dnsmasq e UCI
+	bl_list="$(python3 -c "
+import re
+try:
+    with open('/etc/adguardhome/adguardhome.yaml', 'r', encoding='utf-8') as f:
+        c = f.read()
+    bl = []
+    for l in c.splitlines():
+        bm = re.search(r'''^-\s*['\"]?\|\|([a-z0-9.-]+)\^?['\"]?\s*$''', l.strip())
+        if bm and bm.group(1) not in bl:
+            bl.append(bm.group(1))
+    print(','.join(bl))
+except Exception:
+    pass
+")"
+	if [ -n "$bl_list" ]; then
+		old_addrs="$(uci -q get dhcp.@dnsmasq[0].address || true)"
+		{
+			echo "set equipe_perf.settings.custom_blacklist='$bl_list'"
+			for a in $old_addrs; do
+				case "$a" in
+					*/0.0.0.0) echo "del_list dhcp.@dnsmasq[0].address='$a'" ;;
+				esac
+			done
+			for d in $(printf '%s' "$bl_list" | tr ',' ' '); do
+				echo "add_list dhcp.@dnsmasq[0].address='/$d/0.0.0.0'"
+			done
+			echo "commit dhcp"
+			echo "commit equipe_perf"
+		} | uci batch >/dev/null 2>&1 || true
+	fi
+
+	/etc/init.d/adguardhome reload >/dev/null 2>&1 || /etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+	/etc/init.d/dnsmasq reload >/dev/null 2>&1 || /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 }
 
 adblock_sync_whitelist() {
@@ -3023,6 +3225,7 @@ try:
     existing_rules_cleaned = []
     seen = set()
     existing_whitelist_domains = set()
+    all_wl_list = []
 
     for l in existing_lines:
         s = l.strip()
@@ -3036,14 +3239,20 @@ try:
         existing_rules_cleaned.append(f\"  - '{rule_val}'\")
         wm = re.search(r'''@@\|\|([a-z0-9.-]+)\^?''', rule_val.lower())
         if wm:
-            existing_whitelist_domains.add(wm.group(1))
+            d = wm.group(1)
+            existing_whitelist_domains.add(d)
+            if d not in all_wl_list:
+                all_wl_list.append(d)
 
     new_rules = []
+    added_count = 0
     for d in OFFICIAL_WHITELIST:
         d_lower = d.lower().strip()
         if d_lower not in existing_whitelist_domains:
             new_rules.append(f'@@||{d_lower}^')
             existing_whitelist_domains.add(d_lower)
+            all_wl_list.append(d_lower)
+            added_count += 1
 
     final_rules = existing_rules_cleaned + [f\"  - '{r}'\" for r in new_rules]
     new_block = ['user_rules:'] + final_rules if final_rules else ['user_rules: []']
@@ -3055,14 +3264,32 @@ try:
 
     print(json.dumps({
         'status': 'ok',
-        'added': len(new_rules),
-        'total': len(final_rules),
+        'added': added_count,
+        'total': len(existing_whitelist_domains),
         'preserved': len(existing_rules_cleaned),
-        'source': 'Anudeep Global + Brasil Oficial'
+        'source': 'Anudeep Global + Brasil Oficial',
+        'whitelist': ','.join(all_wl_list)
     }))
 except Exception as e:
     print(json.dumps({'status': 'error', 'message': str(e), 'added': 0, 'total': 0}))
 "
+	# Sincronizar domínios com UCI
+	wl_list="$(python3 -c "
+import re
+try:
+    with open('/etc/adguardhome/adguardhome.yaml', 'r', encoding='utf-8') as f:
+        c = f.read()
+    wl = []
+    for l in c.splitlines():
+        wm = re.search(r'''^-\s*['\"]?@@\|\|([a-z0-9.-]+)\^?['\"]?\s*$''', l.strip())
+        if wm and wm.group(1) not in wl:
+            wl.append(wm.group(1))
+    print(','.join(wl))
+except Exception:
+    pass
+")"
+	[ -n "$wl_list" ] && uci -q set "equipe_perf.settings.custom_whitelist=$wl_list" && uci commit equipe_perf
+
 	/etc/init.d/adguardhome reload >/dev/null 2>&1 || /etc/init.d/adguardhome restart >/dev/null 2>&1 || true
 }
 
@@ -3078,6 +3305,7 @@ adblock_configure() {
 	zt_access="${9:-1}"
 	custom_blacklist="${10:-}"
 	nextdns_id="${11:-}"
+	custom_whitelist="${12:-}"
 
 	case "$cache_mb" in ''|*[!0-9]*) cache_mb=64 ;; esac
 	[ "$cache_mb" -lt 4 ] && cache_mb=4
@@ -3146,7 +3374,7 @@ adblock_configure() {
 			/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
 			/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 		fi
-		adblock_apply_blacklist "$custom_blacklist"
+		adblock_apply_rules "$custom_blacklist" "${custom_whitelist:-__KEEP_EXISTING__}"
 		echo ok
 		return 0
 	elif [ "$mode" = "cloud" ]; then
@@ -3209,7 +3437,7 @@ adblock_configure() {
 		uci -q set "dhcp.@dnsmasq[0].cachesize=$cloud_cache"
 		uci commit dhcp
 		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
-		adblock_apply_blacklist "$custom_blacklist"
+		adblock_apply_rules "$custom_blacklist" "${custom_whitelist:-__KEEP_EXISTING__}"
 		echo ok
 		return 0
 	fi
@@ -3230,6 +3458,7 @@ adblock_enable() {
 	zt_access="${9:-1}"
 	custom_blacklist="${10:-}"
 	nextdns_id="${11:-}"
+	custom_whitelist="${12:-}"
 
 	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
 	overlay_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"
@@ -3269,7 +3498,7 @@ adblock_enable() {
 		uci -q set equipe_perf.settings.adblock_cloud='0'
 		uci commit equipe_perf
 
-		adblock_configure local "$cache_mb" "$protection" "$parental" "$safesearch" "$provider" "$cloud_cache" "$web_port" "$zt_access" "$custom_blacklist" "$nextdns_id" >/dev/null 2>&1 || true
+		adblock_configure local "$cache_mb" "$protection" "$parental" "$safesearch" "$provider" "$cloud_cache" "$web_port" "$zt_access" "$custom_blacklist" "$nextdns_id" "$custom_whitelist" >/dev/null 2>&1 || true
 
 		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 		echo ok
@@ -3294,7 +3523,7 @@ adblock_enable() {
 	uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'
 	uci commit dhcp
 
-	adblock_configure cloud "$cache_mb" "$protection" "$parental" "$safesearch" "$provider" "$cloud_cache" "$web_port" "$zt_access" "$custom_blacklist" "$nextdns_id"
+	adblock_configure cloud "$cache_mb" "$protection" "$parental" "$safesearch" "$provider" "$cloud_cache" "$web_port" "$zt_access" "$custom_blacklist" "$nextdns_id" "$custom_whitelist"
 	return 0
 }
 
@@ -5806,21 +6035,32 @@ case "$action" in
 		adblock_status_json
 		;;
 	adblock-enable)
-		adblock_enable "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}"
+		adblock_enable "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}" "${13}"
 		;;
 	adblock-configure)
-		adblock_configure "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}"
+		adblock_configure "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}" "${13}"
 		;;
 	adblock-blacklist)
 		if [ "$#" -ge 2 ]; then
-			adblock_apply_blacklist "$2"
+			adblock_apply_rules "$2" "${3:-__KEEP_EXISTING__}"
 			echo ok
 		else
 			uci -q get equipe_perf.settings.custom_blacklist || true
 		fi
 		;;
+	adblock-blacklist-sync)
+		adblock_sync_blacklist
+		;;
 	adblock-whitelist-sync)
 		adblock_sync_whitelist
+		;;
+	adblock-whitelist)
+		if [ "$#" -ge 2 ]; then
+			adblock_apply_rules "${3:-__KEEP_EXISTING__}" "$2"
+			echo ok
+		else
+			uci -q get equipe_perf.settings.custom_whitelist || true
+		fi
 		;;
 	adblock-disable)
 		adblock_disable
