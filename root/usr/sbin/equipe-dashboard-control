@@ -3696,9 +3696,13 @@ get_led_hardware_info() {
 	wan_dev="$(uci -q get network.wan.device || true)"
 	[ -n "$wan_dev" ] || wan_dev="$(uci -q get network.wan1.device || echo 'eth1')"
 
+	has_rgb=false
+	[ -e /sys/class/leds/rgb:status ] && has_rgb=true
+	cur_rgb_hex="$(uci -q get system.led_status.hex_color || echo '#00FF00')"
+
 	first_led=1
-	printf '{"model":"%s","board":"%s","wan_dev":"%s","leds":[' \
-		"$(json_escape "$model")" "$(json_escape "$board")" "$(json_escape "$wan_dev")"
+	printf '{"model":"%s","board":"%s","wan_dev":"%s","has_rgb":%s,"current_rgb_hex":"%s","leds":[' \
+		"$(json_escape "$model")" "$(json_escape "$board")" "$(json_escape "$wan_dev")" "$has_rgb" "$(json_escape "$cur_rgb_hex")"
 
 	for led in $(ls /sys/class/leds/ 2>/dev/null); do
 		[ -d "/sys/class/leds/$led" ] || continue
@@ -3786,9 +3790,10 @@ get_led_hardware_info() {
 		esac
 
 		[ "$first_led" = 1 ] && first_led=0 || printf ','
-		printf '{"sysfs":"%s","name":"%s","sub":"%s","type":"%s","color":"%s","trigger":"%s","brightness":%s}' \
+		printf '{"sysfs":"%s","name":"%s","sub":"%s","type":"%s","color":"%s","trigger":"%s","brightness":%s,"hex_color":"%s"}' \
 			"$(json_escape "$led")" "$(json_escape "$name")" "$(json_escape "$sub")" \
-			"$(json_escape "$type")" "$(json_escape "$color")" "$(json_escape "$cur_trigger")" "$cur_brightness"
+			"$(json_escape "$type")" "$(json_escape "$color")" "$(json_escape "$cur_trigger")" "$cur_brightness" \
+			"$(json_escape "$cur_rgb_hex")"
 	done
 	printf ']}\n'
 }
@@ -3816,9 +3821,10 @@ update_led_alert() {
 			echo 0 > /sys/class/leds/d-link:green:planet/brightness 2>/dev/null || true
 		fi
 	else
-		# Falha na conexao / cabo desconectado / sem IP: Alerta visual piscante (vermelho ou laranja)
+		# Falha na conexao / cabo desconectado / sem IP: Alerta visual piscante (vermelho)
 		if [ -e /sys/class/leds/rgb:status ]; then
-			echo 255 0 0 > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
+			# No WS2812B GRB, Byte 1 (segundo valor) e o canal Vermelho!
+			echo 0 255 0 > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
 			echo timer > /sys/class/leds/rgb:status/trigger 2>/dev/null || true
 			echo 500 > /sys/class/leds/rgb:status/delay_on 2>/dev/null || true
 			echo 500 > /sys/class/leds/rgb:status/delay_off 2>/dev/null || true
@@ -3832,6 +3838,96 @@ update_led_alert() {
 			echo 0 > /sys/class/leds/d-link:green:planet/brightness 2>/dev/null || true
 		fi
 	fi
+}
+
+set_led_rgb_color() {
+	raw_color="${1:-#00FF00}"
+	rm -f /etc/config/ark_led_alert_mode /etc/hotplug.d/iface/99-ark-led-alert /etc/hotplug.d/net/99-ark-led-alert
+	wan_dev="$(uci -q get network.wan.device || true)"
+	[ -n "$wan_dev" ] || wan_dev="$(uci -q get network.wan1.device || echo 'eth1')"
+
+	clean_color="$(printf '%s' "$raw_color" | tr 'A-Z' 'a-z' | tr -d '#, ')"
+	r_val=0; g_val=255; b_val=0
+	hex_display="#00FF00"
+
+	case "$clean_color" in
+		green|verde)
+			r_val=0; g_val=255; b_val=0; hex_display="#00FF00" ;;
+		red|vermelho)
+			r_val=255; g_val=0; b_val=0; hex_display="#FF0000" ;;
+		blue|azul)
+			r_val=0; g_val=0; b_val=255; hex_display="#0000FF" ;;
+		cyan|ciano)
+			r_val=0; g_val=229; b_val=255; hex_display="#00E5FF" ;;
+		purple|roxo|magenta)
+			r_val=139; g_val=92; b_val=246; hex_display="#8B5CF6" ;;
+		yellow|amarelo|amber|ambar)
+			r_val=245; g_val=158; b_val=11; hex_display="#F59E0B" ;;
+		white|branco)
+			r_val=255; g_val=255; b_val=255; hex_display="#FFFFFF" ;;
+		orange|laranja)
+			r_val=255; g_val=128; b_val=0; hex_display="#FF8000" ;;
+		pink|rosa)
+			r_val=236; g_val=72; b_val=153; hex_display="#EC4899" ;;
+		[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f])
+			hex_display="#$(printf '%s' "$clean_color" | tr 'a-z' 'A-Z')"
+			r_hex="$(printf '%s' "$clean_color" | cut -c1-2)"
+			g_hex="$(printf '%s' "$clean_color" | cut -c3-4)"
+			b_hex="$(printf '%s' "$clean_color" | cut -c5-6)"
+			r_val="$(printf '%d' "0x$r_hex" 2>/dev/null || echo 0)"
+			g_val="$(printf '%d' "0x$g_hex" 2>/dev/null || echo 0)"
+			b_val="$(printf '%d' "0x$b_hex" 2>/dev/null || echo 0)"
+			;;
+		*)
+			if [ -n "$2" ] && [ -n "$3" ]; then
+				r_val="$(printf '%d' "$1" 2>/dev/null || echo 0)"
+				g_val="$(printf '%d' "$2" 2>/dev/null || echo 0)"
+				b_val="$(printf '%d' "$3" 2>/dev/null || echo 0)"
+				hex_display="$(printf '#%02X%02X%02X' "$r_val" "$g_val" "$b_val")"
+			fi
+			;;
+	esac
+
+	[ "$r_val" -gt 255 ] && r_val=255; [ "$r_val" -lt 0 ] && r_val=0
+	[ "$g_val" -gt 255 ] && g_val=255; [ "$g_val" -lt 0 ] && g_val=0
+	[ "$b_val" -gt 255 ] && b_val=255; [ "$b_val" -lt 0 ] && b_val=0
+
+	# Mapeamento do hardware WS2812B (Protocolo nativo GRB no SPI):
+	# Byte 0 = Verde (G)
+	# Byte 1 = Vermelho (R)
+	# Byte 2 = Azul (B)
+	hw_byte0="$g_val"
+	hw_byte1="$r_val"
+	hw_byte2="$b_val"
+
+	if [ -e /sys/class/leds/rgb:status ]; then
+		[ -n "$(uci -q get system.led_status)" ] || uci -q set system.led_status=led
+		uci -q set "system.led_status.name=Status / Conexão (RGB)"
+		uci -q set "system.led_status.sysfs=rgb:status"
+		uci -q set "system.led_status.trigger=netdev"
+		uci -q set "system.led_status.dev=$wan_dev"
+		uci -q set "system.led_status.mode=link"
+		# No OpenWrt /etc/init.d/led:
+		# multi_index e red green blue -> index 0 le color_red, index 1 le color_green, index 2 le color_blue
+		# Como o index 0 do driver escreve no Byte 0 (Verde) do WS2812B, atribuimos hw_byte0 para color_red!
+		uci -q set "system.led_status.color_red=$hw_byte0"
+		uci -q set "system.led_status.color_green=$hw_byte1"
+		uci -q set "system.led_status.color_blue=$hw_byte2"
+		uci -q set "system.led_status.hex_color=$hex_display"
+		uci -q set "system.led_status.default=1"
+		uci commit system
+		/etc/init.d/led restart >/dev/null 2>&1 || true
+
+		# Escreve imediatamente no sysfs para resposta visual instantanea
+		echo "$hw_byte0 $hw_byte1 $hw_byte2" > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
+		echo 1 > /sys/class/leds/rgb:status/link 2>/dev/null || true
+		echo 0 > /sys/class/leds/rgb:status/rx 2>/dev/null || true
+		echo 0 > /sys/class/leds/rgb:status/tx 2>/dev/null || true
+		echo 255 > /sys/class/leds/rgb:status/brightness 2>/dev/null || true
+	fi
+
+	printf '{"success":true,"hex":"%s","r":%d,"g":%d,"b":%d,"hw_intensity":"%s %s %s"}\n' \
+		"$hex_display" "$r_val" "$g_val" "$b_val" "$hw_byte0" "$hw_byte1" "$hw_byte2"
 }
 
 set_led_preset() {
@@ -3899,9 +3995,11 @@ EOF
 				uci -q set "system.led_status.trigger=netdev"
 				uci -q set "system.led_status.dev=$wan_dev"
 				uci -q set "system.led_status.mode=link"
-				uci -q set "system.led_status.color_red=0"
-				uci -q set "system.led_status.color_green=255"
+				# WS2812B GRB: Verde puro e 255 no byte 0 (color_red)
+				uci -q set "system.led_status.color_red=255"
+				uci -q set "system.led_status.color_green=0"
 				uci -q set "system.led_status.color_blue=0"
+				uci -q set "system.led_status.hex_color=#00FF00"
 				uci -q set "system.led_status.default=1"
 			fi
 			if [ -e /sys/class/leds/mt76-phy0 ]; then
@@ -3950,7 +4048,7 @@ EOF
 			/etc/init.d/led restart >/dev/null 2>&1 || true
 
 			if [ -e /sys/class/leds/rgb:status ]; then
-				echo 0 255 0 > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
+				echo 255 0 0 > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
 				echo 1 > /sys/class/leds/rgb:status/link 2>/dev/null || true
 				echo 0 > /sys/class/leds/rgb:status/rx 2>/dev/null || true
 				echo 0 > /sys/class/leds/rgb:status/tx 2>/dev/null || true
@@ -3966,9 +4064,11 @@ EOF
 				uci -q set "system.led_status.trigger=netdev"
 				uci -q set "system.led_status.dev=$wan_dev"
 				uci -q set "system.led_status.mode=link"
-				uci -q set "system.led_status.color_red=0"
-				uci -q set "system.led_status.color_green=255"
+				# WS2812B GRB: Verde puro e 255 no byte 0 (color_red)
+				uci -q set "system.led_status.color_red=255"
+				uci -q set "system.led_status.color_green=0"
 				uci -q set "system.led_status.color_blue=0"
+				uci -q set "system.led_status.hex_color=#00FF00"
 				uci -q set "system.led_status.default=1"
 			fi
 
@@ -4022,7 +4122,7 @@ EOF
 			/etc/init.d/led restart >/dev/null 2>&1 || true
 
 			if [ -e /sys/class/leds/rgb:status ]; then
-				echo 0 255 0 > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
+				echo 255 0 0 > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
 				echo 1 > /sys/class/leds/rgb:status/link 2>/dev/null || true
 				echo 0 > /sys/class/leds/rgb:status/rx 2>/dev/null || true
 				echo 0 > /sys/class/leds/rgb:status/tx 2>/dev/null || true
@@ -6271,6 +6371,9 @@ EOF
 		;;
 	set-led-preset)
 		set_led_preset "${2:-smart}"
+		;;
+	set-led-rgb-color|set-led-color)
+		set_led_rgb_color "$2" "$3" "$4"
 		;;
 	get-led-status)
 		get_led_status

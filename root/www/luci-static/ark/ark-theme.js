@@ -2526,15 +2526,51 @@
               '<div class="ark-preset-tile-title">🌙 Modo Noturno (Tudo Desligado)</div>' +
               '<div class="ark-preset-tile-desc">Desliga todos os LEDs frontais para quartos e ambientes de descanso. Roteador 100% escuro sem claridade.</div>' +
             '</button>' +
-            '<button type="button" class="ark-preset-tile" data-led-preset="alert">' +
-              '<div class="ark-preset-tile-title">🛡️ Alerta de Queda (Silencioso)</div>' +
-              '<div class="ark-preset-tile-desc">LEDs apagados em uso normal; acende ou pisca em alerta visual somente se a conexão cair.</div>' +
-            '</button>' +
             '<button type="button" class="ark-preset-tile" data-led-preset="default">' +
               '<div class="ark-preset-tile-title">↺ Restaurar Padrão de Fábrica</div>' +
               '<div class="ark-preset-tile-desc">Restaura a iluminação original e gatilhos padrão de fábrica do seu roteador com 1 clique.</div>' +
             '</button>' +
           '</div>' +
+
+          '<!-- Seção de Personalização Visual de Cor RGB -->' +
+          '<div id="ark-rgb-picker-section" class="ark-rgb-box" style="display:none;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">' +
+              '<div style="display:flex;align-items:center;gap:8px;">' +
+                '<span style="font-size:22px;">🎨</span>' +
+                '<div>' +
+                  '<h4 style="margin:0;font-size:14px;color:#fff;">Personalizar Cor do LED RGB Frontal</h4>' +
+                  '<p style="margin:2px 0 0;font-size:12px;color:var(--ark-text-muted);">Escolha a cor antes de aplicar: utilize a paleta visual, selecione um tom rápido ou digite o código HEX / RGB:</p>' +
+                '</div>' +
+              '</div>' +
+              '<div id="ark-rgb-preview-badge" style="display:flex;align-items:center;gap:8px;padding:5px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:20px;">' +
+                '<span id="ark-rgb-preview-dot" style="width:14px;height:14px;border-radius:50%;background:#00FF00;box-shadow:0 0 10px #00FF00;display:inline-block;transition:all 0.2s ease;"></span>' +
+                '<span id="ark-rgb-preview-text" style="font-size:12px;font-weight:700;font-family:monospace;color:#fff;">#00FF00</span>' +
+              '</div>' +
+            '</div>' +
+
+            '<div style="display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap;">' +
+              '<div style="display:flex;align-items:center;gap:8px;">' +
+                '<input type="color" id="ark-rgb-color-native" value="#00ff00" style="width:40px;height:36px;padding:2px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:transparent;cursor:pointer;" title="Clique para abrir a paleta de cores completa">' +
+                '<input type="text" id="ark-rgb-hex-manual" value="#00FF00" maxlength="20" style="width:120px;height:36px;padding:0 10px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:rgba(0,0,0,0.3);color:#fff;font-family:monospace;font-weight:700;font-size:13px;text-transform:uppercase;" placeholder="#00FF00">' +
+              '</div>' +
+              '<button type="button" id="ark-rgb-apply-btn" class="cbi-button cbi-button-apply" style="height:36px;display:flex;align-items:center;gap:6px;font-weight:600;font-size:12px;padding:0 16px;">' +
+                '<span>✨</span> Aplicar Cor no LED' +
+              '</button>' +
+            '</div>' +
+
+            '<div style="display:flex;align-items:center;gap:6px;margin-top:12px;flex-wrap:wrap;">' +
+              '<span style="font-size:11px;color:var(--ark-text-muted);margin-right:4px;">Cores rápidas:</span>' +
+              '<button type="button" class="ark-color-swatch-btn" data-color="#00FF00" style="background:#00FF00;color:#000;" title="Verde Esmeralda">Verde</button>' +
+              '<button type="button" class="ark-color-swatch-btn" data-color="#00E5FF" style="background:#00E5FF;color:#000;" title="Azul Ciano / Predador">Ciano</button>' +
+              '<button type="button" class="ark-color-swatch-btn" data-color="#3B82F6" style="background:#3B82F6;color:#fff;" title="Azul Royal">Azul</button>' +
+              '<button type="button" class="ark-color-swatch-btn" data-color="#8B5CF6" style="background:#8B5CF6;color:#fff;" title="Roxo Cyberpunk">Roxo</button>' +
+              '<button type="button" class="ark-color-swatch-btn" data-color="#EC4899" style="background:#EC4899;color:#fff;" title="Rosa / Magenta">Rosa</button>' +
+              '<button type="button" class="ark-color-swatch-btn" data-color="#F59E0B" style="background:#F59E0B;color:#000;" title="Âmbar / Laranja">Âmbar</button>' +
+              '<button type="button" class="ark-color-swatch-btn" data-color="#EF4444" style="background:#EF4444;color:#fff;" title="Vermelho Gamer">Vermelho</button>' +
+              '<button type="button" class="ark-color-swatch-btn" data-color="#FFFFFF" style="background:#FFFFFF;color:#000;" title="Branco Puro">Branco</button>' +
+            '</div>' +
+          '</div>' +
+
           '<div id="ark-led-feedback" style="display:none;margin-top:12px;font-size:12px;font-weight:600;padding:8px 12px;border-radius:6px;"></div>' +
         '</div>' +
         '<div id="ark-led-hardware-header" style="margin:20px 0 10px;font-size:14px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;">' +
@@ -2546,11 +2582,91 @@
 
       var hardwareInfo = null;
 
+      var colorNative = container.querySelector('#ark-rgb-color-native');
+      var hexManual = container.querySelector('#ark-rgb-hex-manual');
+      var previewDot = container.querySelector('#ark-rgb-preview-dot');
+      var previewText = container.querySelector('#ark-rgb-preview-text');
+      var applyColorBtn = container.querySelector('#ark-rgb-apply-btn');
+
+      function syncColor(val, source) {
+        if (!val) return;
+        val = String(val).trim();
+        var hex = val;
+        if (hex.indexOf('#') !== 0 && /^[0-9a-fA-F]{6}$/.test(hex)) {
+          hex = '#' + hex;
+        }
+        if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+          hex = hex.toUpperCase();
+          if (source !== 'native' && colorNative) colorNative.value = hex.toLowerCase();
+          if (source !== 'manual' && hexManual) hexManual.value = hex;
+          if (previewDot) {
+            previewDot.style.background = hex;
+            previewDot.style.boxShadow = '0 0 10px ' + hex;
+          }
+          if (previewText) previewText.textContent = hex;
+        } else if (source === 'manual' && hexManual) {
+          hexManual.value = val;
+          if (previewText) previewText.textContent = val;
+        }
+      }
+
+      if (colorNative) {
+        colorNative.addEventListener('input', function() { syncColor(this.value, 'native'); });
+        colorNative.addEventListener('change', function() { syncColor(this.value, 'native'); });
+      }
+
+      if (hexManual) {
+        hexManual.addEventListener('input', function() { syncColor(this.value, 'manual'); });
+        hexManual.addEventListener('change', function() { syncColor(this.value, 'manual'); });
+      }
+
+      container.querySelectorAll('.ark-color-swatch-btn').forEach(function(swatch) {
+        swatch.addEventListener('click', function() {
+          var c = this.getAttribute('data-color');
+          syncColor(c, 'swatch');
+        });
+      });
+
       var callExec = (window.L && window.L.rpc) ? window.L.rpc.declare({
         object: 'file',
         method: 'exec',
         params: ['command', 'params']
       }) : null;
+
+      if (applyColorBtn) {
+        applyColorBtn.addEventListener('click', function() {
+          var chosenColor = (hexManual && hexManual.value) || (colorNative && colorNative.value) || '#00FF00';
+          var fb = document.getElementById('ark-led-feedback');
+          if (fb) {
+            fb.style.display = 'block';
+            fb.style.background = 'rgba(59, 130, 246, 0.15)';
+            fb.style.color = '#60a5fa';
+            fb.textContent = '⏳ Aplicando cor ' + chosenColor + ' no LED RGB frontal...';
+          }
+          if (callExec) {
+            callExec('/usr/sbin/equipe-dashboard-control', ['set-led-rgb-color', chosenColor]).then(function(res) {
+              if (fb) {
+                fb.style.background = 'rgba(16, 185, 129, 0.2)';
+                fb.style.color = '#34d399';
+                fb.textContent = '✅ Cor ' + chosenColor + ' aplicada com sucesso no LED frontal!';
+                setTimeout(function() { fb.style.display = 'none'; }, 4000);
+              }
+              var rgbInd = document.getElementById('ind-rgb_status');
+              if (rgbInd) {
+                rgbInd.className = 'ark-led-indicator';
+                rgbInd.style.background = chosenColor;
+                rgbInd.style.boxShadow = '0 0 12px ' + chosenColor;
+              }
+            }).catch(function(err) {
+              if (fb) {
+                fb.style.background = 'rgba(239, 68, 68, 0.2)';
+                fb.style.color = '#f87171';
+                fb.textContent = '⚠️ Erro ao aplicar cor: ' + err;
+              }
+            });
+          }
+        });
+      }
 
       function sanitizeTableRows(validLeds) {
         if (!validLeds || !validLeds.length) return;
@@ -2582,6 +2698,14 @@
           titleEl.textContent = 'Painel Frontal dos LEDs Físicos (' + info.model + '):';
         }
 
+        if (info.has_rgb) {
+          var rgbSection = document.getElementById('ark-rgb-picker-section');
+          if (rgbSection) rgbSection.style.display = 'block';
+          if (info.current_rgb_hex) {
+            syncColor(info.current_rgb_hex, 'init');
+          }
+        }
+
         var grid = document.getElementById('ark-led-tiles');
         if (!grid) return;
         grid.innerHTML = '';
@@ -2608,6 +2732,14 @@
             '</div>';
 
           grid.appendChild(card);
+
+          if (l.sysfs === 'rgb:status' && l.hex_color) {
+            var el = card.querySelector('#ind-' + domId);
+            if (el && indClass.indexOf('off') === -1) {
+              el.style.background = l.hex_color;
+              el.style.boxShadow = '0 0 10px ' + l.hex_color;
+            }
+          }
         });
 
         sanitizeTableRows(info.leds);
@@ -2622,8 +2754,14 @@
 
           if (preset === 'night' || preset === 'alert') {
             el.className = 'ark-led-indicator off';
+            el.style.background = '';
+            el.style.boxShadow = '';
           } else { // smart ou default
             el.className = 'ark-led-indicator ' + (l.color || 'green');
+            if (l.sysfs === 'rgb:status') {
+              el.style.background = '#00FF00';
+              el.style.boxShadow = '0 0 10px #00FF00';
+            }
           }
         });
       }

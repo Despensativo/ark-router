@@ -3016,6 +3016,29 @@ path[fill="#00ffff"], polygon[fill="#00ffff"] { fill: #06b6d4 !important; }
 	line-height: 1.4;
 }
 
+/* 23b. RGB Color Picker & Palette */
+.ark-rgb-box {
+	margin-top: 18px;
+	padding-top: 18px;
+	border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.ark-color-swatch-btn {
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 6px;
+	padding: 4px 10px;
+	font-size: 11px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.ark-color-swatch-btn:hover {
+	transform: scale(1.06);
+	box-shadow: 0 0 10px currentColor;
+}
+.ark-color-swatch-btn:active {
+	transform: scale(0.96);
+}
+
 /* 24. Firewall / iptables Telemetry Styling (admin/status/iptables) */
 [data-chain] {
 	background: var(--ark-surface-1, #111c35) !important;
