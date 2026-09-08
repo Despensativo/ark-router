@@ -56,6 +56,7 @@ probe_swconfig_dhcp() {
 
 	swconfig dev switch0 vlan 99 set vid 99 >/dev/null 2>&1
 	swconfig dev switch0 vlan 99 set ports "$p 0t" >/dev/null 2>&1
+	swconfig dev switch0 port "$p" set pvid 99 >/dev/null 2>&1
 	swconfig dev switch0 vlan 1 set ports "$new_v1" >/dev/null 2>&1
 	swconfig dev switch0 set apply >/dev/null 2>&1
 
@@ -70,6 +71,7 @@ probe_swconfig_dhcp() {
 	swconfig dev switch0 set apply >/dev/null 2>&1
 
 	if [ "$res" -ne 0 ]; then
+		swconfig dev switch0 port "$p" set pvid 1 >/dev/null 2>&1
 		swconfig dev switch0 vlan 1 set ports "$v1_ports" >/dev/null 2>&1
 		swconfig dev switch0 set apply >/dev/null 2>&1
 		return 1
