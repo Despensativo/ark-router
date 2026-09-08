@@ -1,0 +1,8 @@
+#!/bin/sh
+# ARK Router - WAN / Internet LED Dynamic Update
+[ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ] || exit 0
+case "$INTERFACE" in
+	wan*|lan|rescue)
+		/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 &
+		;;
+esac

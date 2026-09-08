@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.9.89
+
+- **🌐 Motor Dinâmico de LED WAN / Planeta (Planet LED Solid Fix)**:
+  - **LED Planeta Fixo e Estável (Cudy WR3000 / TR3000, D-Link DGL-5500 e Acer Predator W6x)**:
+    - O LED do planeta (🌐 / WAN / Internet) não permanecia aceso fixo devido ao trigger original do OpenWrt (`mode 'link tx rx'`), que causa piscamento frenético e períodos apagados durante inatividade de pacotes.
+    - O motor ARK agora configura o LED com driver `netdev`, modo de link estrito (`mode 'link'`) e brilho total (`brightness 255`), mantendo o planeta **aceso e fixo (sólido)** enquanto houver conexão ativa com a internet ou link físico estabelecido.
+    - **Esclarecimento de Hardware**: Confirmado que roteadores como Cudy WR3000 / TR3000 utilizam LEDs monocromáticos GPIO dedicados (`green:internet`, `blue:wan`, `green:status`), não possuindo matriz RGB.
+  - **Reassociação Dinâmica em Tempo Real (Auto-WAN, Multi-WAN e Modo AP)**:
+    - Hotplug de rede e interface (`99-ark-led-wan`) e integração com `ark-autowan-daemon` remapeiam dinamicamente o LED da internet conforme portas são promovidas a WAN, comutadas no balanceamento/failover ou integradas ao bridge `br-lan` no Modo Ponto de Acesso.
+- **🛠️ Correções Críticas no Painel LuCI e Shell Ash**:
+  - **Correção de `mwanPaused is not defined`**: Resolvido erro de referência no `overview.js` que impedia o carregamento do painel e gerava tela vermelha no Acer Predator W6x (192.168.73.1).
+  - **Correção de Escopo Ash em `equipe-dashboard-control features`**: Eliminado uso indevido de `local` fora de função no interpretador BusyBox ash. Isso restaurou o retorno íntegro do JSON de capacidades do sistema, corrigindo a anomalia onde os recursos (SQM, Multi-WAN, HTTPS, UPnP, AdBlock) apareciam incorretamente como "Não disponível" no modal de Recursos e Compatibilidade.
+
 ## 0.9.88
 
 - **🔀 Alternância 1-Click entre Modo Roteador e Ponto de Acesso & Switch (Dumb AP)**:

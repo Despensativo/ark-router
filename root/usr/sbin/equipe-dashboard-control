@@ -4596,15 +4596,211 @@ get_primary_wan_dev() {
 	if [ -z "$dev" ]; then
 		dev="$(ubus call network.interface.wan status 2>/dev/null | grep -o '"device": "[^"]*"' | cut -d'"' -f4 || true)"
 	fi
-	[ -n "$dev" ] || dev="eth0.2"
+	if [ -z "$dev" ]; then
+		dev="$(uci -q get network.wan2.device || uci -q get network.wan2.ifname || true)"
+	fi
+	if [ -z "$dev" ]; then
+		if [ -e /sys/class/net/wan ]; then
+			dev="wan"
+		elif [ -e /sys/class/net/eth1 ]; then
+			dev="eth1"
+		elif [ -e /sys/class/net/eth0.2 ]; then
+			dev="eth0.2"
+		else
+			dev="eth0.2"
+		fi
+	fi
 	printf '%s' "$dev"
+}
+
+get_active_online_wan_dev() {
+	# 1. Modo Ponto de Acesso (Dumb AP): a saida e o bridge local
+	if [ "$(uci -q get dhcp.lan.ignore || echo 0)" = "1" ] || [ "$(uci -q get network.lan.proto || echo static)" = "dhcp" ]; then
+		printf 'br-lan'
+		return 0
+	fi
+
+	# 2. Rota padrao ativa no kernel (Default Gateway)
+	local def_dev="$(ip route show default 2>/dev/null | awk '/default/{print $5; exit}')"
+	if [ -n "$def_dev" ] && [ -e "/sys/class/net/$def_dev" ]; then
+		printf '%s' "$def_dev"
+		return 0
+	fi
+
+	# 3. Interfaces com status UP no netifd (ordem de prioridade: wan, wan2, wan1, ...)
+	for iface in wan wan2 wan1 wan3 wan4; do
+		local auto="$(uci -q get "network.$iface.auto" || echo 1)"
+		[ "$auto" != "0" ] || continue
+		local status="$(ubus call "network.interface.$iface" status 2>/dev/null || true)"
+		if echo "$status" | grep -q '"up": true'; then
+			local d="$(echo "$status" | grep -o '"l3_device": "[^"]*"' | cut -d'"' -f4)"
+			[ -z "$d" ] && d="$(echo "$status" | grep -o '"device": "[^"]*"' | cut -d'"' -f4)"
+			[ -z "$d" ] && d="$(uci -q get "network.$iface.device" || uci -q get "network.$iface.ifname" || echo "")"
+			if [ -n "$d" ] && [ -e "/sys/class/net/$d" ]; then
+				printf '%s' "$d"
+				return 0
+			fi
+		fi
+	done
+
+	# 4. Interfaces com link fisico ativo (carrier = 1)
+	for iface in wan wan2 wan1; do
+		local auto="$(uci -q get "network.$iface.auto" || echo 1)"
+		[ "$auto" != "0" ] || continue
+		local d="$(uci -q get "network.$iface.device" || uci -q get "network.$iface.ifname" || echo "")"
+		if [ -n "$d" ] && [ -e "/sys/class/net/$d" ]; then
+			if [ "$(cat "/sys/class/net/$d/carrier" 2>/dev/null || echo 0)" = "1" ]; then
+				printf '%s' "$d"
+				return 0
+			fi
+		fi
+	done
+
+	# 5. Fallback para interface WAN primaria
+	get_primary_wan_dev
+}
+
+get_internet_led_sysfs() {
+	for cand in \
+		"d-link:green:planet" \
+		"blue:wan" "green:wan" "white:wan" \
+		"blue:internet" "green:internet" "white:internet" \
+		"wan" "internet" "planet"; do
+		if [ -e "/sys/class/leds/$cand" ]; then
+			printf '%s' "$cand"
+			return 0
+		fi
+	done
+
+	for p in /sys/class/leds/*planet* /sys/class/leds/*internet* /sys/class/leds/*wan*; do
+		[ -e "$p" ] || continue
+		local b="$(basename "$p")"
+		case "$b" in
+			*orange*|*red*|*amber*) continue ;;
+			*) printf '%s' "$b"; return 0 ;;
+		esac
+	done
+
+	if [ -e /sys/class/leds/rgb:status ]; then
+		printf 'rgb:status'
+		return 0
+	fi
+
+	return 1
+}
+
+get_internet_alert_led_sysfs() {
+	for cand in \
+		"d-link:orange:planet" \
+		"orange:wan" "red:wan" "amber:wan" \
+		"orange:internet" "red:internet" "amber:internet"; do
+		if [ -e "/sys/class/leds/$cand" ]; then
+			printf '%s' "$cand"
+			return 0
+		fi
+	done
+	return 1
+}
+
+update_wan_led() {
+	local active_dev="$(get_active_online_wan_dev)"
+	local inet_led="$(get_internet_led_sysfs || echo "")"
+	local alert_led="$(get_internet_alert_led_sysfs || echo "")"
+
+	[ -n "$inet_led" ] || return 0
+
+	# Instala scripts hotplug caso nao existam
+	if [ ! -f /etc/hotplug.d/iface/99-ark-led-wan ]; then
+		mkdir -p /etc/hotplug.d/iface /etc/hotplug.d/net
+		printf '#!/bin/sh\n[ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ] || exit 0\n/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 &\n' > /etc/hotplug.d/iface/99-ark-led-wan
+		chmod +x /etc/hotplug.d/iface/99-ark-led-wan
+		printf '#!/bin/sh\n[ "$ACTION" = "add" ] || [ "$ACTION" = "remove" ] || [ "$ACTION" = "change" ] || exit 0\n/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 &\n' > /etc/hotplug.d/net/99-ark-led-wan
+		chmod +x /etc/hotplug.d/net/99-ark-led-wan
+	fi
+
+	local has_link=0
+	local carrier="$(cat "/sys/class/net/$active_dev/carrier" 2>/dev/null || echo 0)"
+	if [ "$carrier" = "1" ]; then
+		has_link=1
+	else
+		for w in wan wan2 wan1; do
+			local d="$(uci -q get "network.$w.device" || uci -q get "network.$w.ifname" || echo "")"
+			if [ -n "$d" ] && [ -e "/sys/class/net/$d" ]; then
+				if [ "$(cat "/sys/class/net/$d/carrier" 2>/dev/null || echo 0)" = "1" ]; then
+					active_dev="$d"
+					has_link=1
+					break
+				fi
+			fi
+		done
+	fi
+
+	if [ "$inet_led" = "rgb:status" ]; then
+		if [ -f /etc/config/ark_led_alert_mode ] && [ "$has_link" = "0" ]; then
+			echo 0 255 0 > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
+			echo timer > /sys/class/leds/rgb:status/trigger 2>/dev/null || true
+			echo 500 > /sys/class/leds/rgb:status/delay_on 2>/dev/null || true
+			echo 500 > /sys/class/leds/rgb:status/delay_off 2>/dev/null || true
+			echo 255 > /sys/class/leds/rgb:status/brightness 2>/dev/null || true
+		elif [ "$has_link" = "1" ]; then
+			local r_val="$(uci -q get system.led_status.color_red || echo 255)"
+			local g_val="$(uci -q get system.led_status.color_green || echo 0)"
+			local b_val="$(uci -q get system.led_status.color_blue || echo 0)"
+			echo "$r_val $g_val $b_val" > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
+			echo netdev > /sys/class/leds/rgb:status/trigger 2>/dev/null || true
+			echo "$active_dev" > /sys/class/leds/rgb:status/device_name 2>/dev/null || true
+			echo 1 > /sys/class/leds/rgb:status/link 2>/dev/null || true
+			echo 0 > /sys/class/leds/rgb:status/rx 2>/dev/null || true
+			echo 0 > /sys/class/leds/rgb:status/tx 2>/dev/null || true
+			echo 255 > /sys/class/leds/rgb:status/brightness 2>/dev/null || true
+		else
+			echo none > /sys/class/leds/rgb:status/trigger 2>/dev/null || true
+			echo 0 > /sys/class/leds/rgb:status/brightness 2>/dev/null || true
+		fi
+		return 0
+	fi
+
+	# Hardware Monocromatico (Cudy WR3000, D-Link DGL-5500, etc.)
+	if [ "$has_link" = "1" ]; then
+		# Conectado: LED do Planeta LIGADO FIXO (solido, sem piscar em pacotes)
+		echo netdev > "/sys/class/leds/$inet_led/trigger" 2>/dev/null || true
+		echo "$active_dev" > "/sys/class/leds/$inet_led/device_name" 2>/dev/null || true
+		echo 1 > "/sys/class/leds/$inet_led/link" 2>/dev/null || true
+		echo 0 > "/sys/class/leds/$inet_led/rx" 2>/dev/null || true
+		echo 0 > "/sys/class/leds/$inet_led/tx" 2>/dev/null || true
+		echo 255 > "/sys/class/leds/$inet_led/brightness" 2>/dev/null || true
+
+		if [ -n "$alert_led" ] && [ -e "/sys/class/leds/$alert_led" ]; then
+			echo none > "/sys/class/leds/$alert_led/trigger" 2>/dev/null || true
+			echo 0 > "/sys/class/leds/$alert_led/brightness" 2>/dev/null || true
+		fi
+	else
+		# Desconectado / sem cabo:
+		if [ -n "$alert_led" ] && [ -e "/sys/class/leds/$alert_led" ]; then
+			echo none > "/sys/class/leds/$inet_led/trigger" 2>/dev/null || true
+			echo 0 > "/sys/class/leds/$inet_led/brightness" 2>/dev/null || true
+			echo timer > "/sys/class/leds/$alert_led/trigger" 2>/dev/null || true
+			echo 500 > "/sys/class/leds/$alert_led/delay_on" 2>/dev/null || true
+			echo 500 > "/sys/class/leds/$alert_led/delay_off" 2>/dev/null || true
+			echo 255 > "/sys/class/leds/$alert_led/brightness" 2>/dev/null || true
+		else
+			echo none > "/sys/class/leds/$inet_led/trigger" 2>/dev/null || true
+			echo 0 > "/sys/class/leds/$inet_led/brightness" 2>/dev/null || true
+		fi
+	fi
+
+	local uci_dev="$(uci -q get system.led_internet.dev || echo "")"
+	if [ "$uci_dev" != "$active_dev" ]; then
+		uci -q set "system.led_internet.dev=$active_dev"
+		uci commit system 2>/dev/null || true
+	fi
 }
 
 get_led_hardware_info() {
 	cleanup_orphan_leds
 	model="$(cat /tmp/sysinfo/model 2>/dev/null || cat /proc/cpuinfo 2>/dev/null | awk -F': ' '/model name|machine|Hardware/{print $2; exit}' || echo 'ARK Router')"
 	board="$(cat /tmp/sysinfo/board_name 2>/dev/null || echo 'generic')"
-	wan_dev="$(get_primary_wan_dev)"
+	wan_dev="$(get_active_online_wan_dev)"
 
 	has_rgb=false
 	[ -e /sys/class/leds/rgb:status ] && has_rgb=true
@@ -4625,8 +4821,8 @@ get_led_hardware_info() {
 		color="green"
 
 		case "$led" in
-			"d-link:orange:planet"|"d-link:orange:power")
-				# Bicolor secundário: consolidado no card representativo (verde) para evitar duplicatas
+			"d-link:orange:planet"|"d-link:orange:power"|*orange:wan*|*red:wan*|*amber:wan*|*orange:internet*|*red:internet*)
+				# Bicolor/Alerta secundário: consolidado no card representativo para evitar duplicatas
 				continue
 				;;
 			"rgb:status")
@@ -4637,13 +4833,13 @@ get_led_hardware_info() {
 				;;
 			"mt76-phy0")
 				name="Wi-Fi 5 GHz (Ultra Rápido)"
-				sub="MediaTek MT7986 (802.11ax / Wi-Fi 6)"
+				sub="MediaTek MT7986 / MT7981 (802.11ax / Wi-Fi 6)"
 				type="wifi5g"
 				color="blue"
 				;;
 			"mt76-phy1")
 				name="Wi-Fi 2.4 GHz (Longo Alcance)"
-				sub="MediaTek MT7986 (802.11ax / Wi-Fi 6)"
+				sub="MediaTek MT7986 / MT7981 (802.11ax / Wi-Fi 6)"
 				type="wifi2g"
 				color="green"
 				;;
@@ -4691,16 +4887,39 @@ get_led_hardware_info() {
 				type="wifi2g"
 				color="green"
 				;;
-			*power*|*pwr*|*status*|*system*)
+			*blue:wan*|*blue:internet*|*blue*planet*)
+				name="Internet (Planeta / WAN)"
+				if [ "$cur_brightness" -gt 0 ] 2>/dev/null; then
+					sub="Conectividade WAN ($wan_dev) — Online"
+				else
+					sub="Conectividade WAN ($wan_dev) — Sem Conexão"
+				fi
+				type="internet"
+				color="blue"
+				;;
+			*green:wan*|*green:internet*|*green*planet*|*wan*|*internet*|*web*|*planet*)
+				name="Internet (Planeta / WAN)"
+				if [ "$cur_brightness" -gt 0 ] 2>/dev/null; then
+					sub="Conectividade WAN ($wan_dev) — Online"
+				else
+					sub="Conectividade WAN ($wan_dev) — Sem Conexão"
+				fi
+				type="internet"
+				color="green"
+				;;
+			*status*)
+				name="Status / Conexão"
+				sub="Alimentação e status do sistema"
+				type="power"
+				case "$led" in
+					*blue*) color="blue" ;;
+					*) color="green" ;;
+				esac
+				;;
+			*power*|*pwr*|*system*)
 				name="Power / Sistema"
 				sub="Alimentação e status do sistema"
 				type="power"
-				color="green"
-				;;
-			*wan*|*internet*|*web*|*planet*)
-				name="Internet (WAN)"
-				sub="Conectividade de rede externa"
-				type="internet"
 				color="green"
 				;;
 			*5g*|*5ghz*|*phy0*)
@@ -4734,49 +4953,13 @@ get_led_hardware_info() {
 
 update_led_alert() {
 	[ -f /etc/config/ark_led_alert_mode ] || return 0
-	wan_dev="$(get_primary_wan_dev)"
-
-	carrier="$(cat "/sys/class/net/$wan_dev/carrier" 2>/dev/null || echo '0')"
-	wan_status="$(ubus call network.interface.wan status 2>/dev/null || true)"
-	wan_up=0
-	echo "$wan_status" | grep -q '"up": true' && wan_up=1
-
-	# Se a conexao estiver saudavel (carrier=1 e wan_up=1): LED fica silencioso / 100% desligado
-	if [ "$carrier" = "1" ] && [ "$wan_up" = "1" ]; then
-		if [ -e /sys/class/leds/rgb:status ]; then
-			echo none > /sys/class/leds/rgb:status/trigger 2>/dev/null || true
-			echo 0 > /sys/class/leds/rgb:status/brightness 2>/dev/null || true
-		fi
-		if [ -e /sys/class/leds/d-link:orange:planet ]; then
-			echo 0 > /sys/class/leds/d-link:orange:planet/brightness 2>/dev/null || true
-		fi
-		if [ -e /sys/class/leds/d-link:green:planet ]; then
-			echo 0 > /sys/class/leds/d-link:green:planet/brightness 2>/dev/null || true
-		fi
-	else
-		# Falha na conexao / cabo desconectado / sem IP: Alerta visual piscante (vermelho/laranja)
-		if [ -e /sys/class/leds/rgb:status ]; then
-			# No WS2812B GRB, Byte 1 (segundo valor) e o canal Vermelho!
-			echo 0 255 0 > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
-			echo timer > /sys/class/leds/rgb:status/trigger 2>/dev/null || true
-			echo 500 > /sys/class/leds/rgb:status/delay_on 2>/dev/null || true
-			echo 500 > /sys/class/leds/rgb:status/delay_off 2>/dev/null || true
-			echo 255 > /sys/class/leds/rgb:status/brightness 2>/dev/null || true
-		fi
-		if [ -e /sys/class/leds/d-link:orange:planet ]; then
-			echo timer > /sys/class/leds/d-link:orange:planet/trigger 2>/dev/null || true
-			echo 500 > /sys/class/leds/d-link:orange:planet/delay_on 2>/dev/null || true
-			echo 500 > /sys/class/leds/d-link:orange:planet/delay_off 2>/dev/null || true
-			echo 255 > /sys/class/leds/d-link:orange:planet/brightness 2>/dev/null || true
-			echo 0 > /sys/class/leds/d-link:green:planet/brightness 2>/dev/null || true
-		fi
-	fi
+	update_wan_led
 }
 
 set_led_rgb_color() {
 	raw_color="${1:-#00FF00}"
 	rm -f /etc/config/ark_led_alert_mode /etc/hotplug.d/iface/99-ark-led-alert /etc/hotplug.d/net/99-ark-led-alert
-	wan_dev="$(get_primary_wan_dev)"
+	wan_dev="$(get_active_online_wan_dev)"
 
 	clean_color="$(printf '%s' "$raw_color" | tr 'A-Z' 'a-z' | tr -d '#, ')"
 	r_val=0; g_val=255; b_val=0
@@ -4824,10 +5007,7 @@ set_led_rgb_color() {
 	[ "$g_val" -gt 255 ] && g_val=255; [ "$g_val" -lt 0 ] && g_val=0
 	[ "$b_val" -gt 255 ] && b_val=255; [ "$b_val" -lt 0 ] && b_val=0
 
-	# Mapeamento do hardware WS2812B (Protocolo nativo GRB no SPI):
-	# Byte 0 = Verde (G)
-	# Byte 1 = Vermelho (R)
-	# Byte 2 = Azul (B)
+	# WS2812B GRB no SPI: Byte 0 = Verde (G), Byte 1 = Vermelho (R), Byte 2 = Azul (B)
 	hw_byte0="$g_val"
 	hw_byte1="$r_val"
 	hw_byte2="$b_val"
@@ -4839,9 +5019,6 @@ set_led_rgb_color() {
 		uci -q set "system.led_status.trigger=netdev"
 		uci -q set "system.led_status.dev=$wan_dev"
 		uci -q set "system.led_status.mode=link"
-		# No OpenWrt /etc/init.d/led:
-		# multi_index e red green blue -> index 0 le color_red, index 1 le color_green, index 2 le color_blue
-		# Como o index 0 do driver escreve no Byte 0 (Verde) do WS2812B, atribuimos hw_byte0 para color_red!
 		uci -q set "system.led_status.color_red=$hw_byte0"
 		uci -q set "system.led_status.color_green=$hw_byte1"
 		uci -q set "system.led_status.color_blue=$hw_byte2"
@@ -4850,7 +5027,6 @@ set_led_rgb_color() {
 		uci commit system
 		/etc/init.d/led restart >/dev/null 2>&1 || true
 
-		# Escreve imediatamente no sysfs para resposta visual instantanea
 		echo "$hw_byte0 $hw_byte1 $hw_byte2" > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
 		echo 1 > /sys/class/leds/rgb:status/link 2>/dev/null || true
 		echo 0 > /sys/class/leds/rgb:status/rx 2>/dev/null || true
@@ -4866,7 +5042,9 @@ set_led_preset() {
 	preset="${1:-smart}"
 	cleanup_orphan_leds
 
-	wan_dev="$(get_primary_wan_dev)"
+	wan_dev="$(get_active_online_wan_dev)"
+	inet_led="$(get_internet_led_sysfs || echo "")"
+	alert_led="$(get_internet_alert_led_sysfs || echo "")"
 
 	case "$preset" in
 		night)
@@ -4888,18 +5066,18 @@ set_led_preset() {
 			cat << 'EOF' > /etc/hotplug.d/iface/99-ark-led-alert
 #!/bin/sh
 [ -f /etc/config/ark_led_alert_mode ] || exit 0
-/usr/sbin/equipe-dashboard-control update-led-alert >/dev/null 2>&1 &
+/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 &
 EOF
 			chmod +x /etc/hotplug.d/iface/99-ark-led-alert
 
 			cat << 'EOF' > /etc/hotplug.d/net/99-ark-led-alert
 #!/bin/sh
 [ -f /etc/config/ark_led_alert_mode ] || exit 0
-/usr/sbin/equipe-dashboard-control update-led-alert >/dev/null 2>&1 &
+/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 &
 EOF
 			chmod +x /etc/hotplug.d/net/99-ark-led-alert
 
-			# LEDs Wi-Fi ficam discretos/apagados no modo alerta silencioso
+			# LEDs Wi-Fi ficam discretos/apagados no modo alerta
 			if [ -e /sys/class/leds/mt76-phy0 ]; then
 				uci -q set system.led_wifi5g.trigger=none
 				uci -q set system.led_wifi5g.default=0
@@ -4911,100 +5089,17 @@ EOF
 				echo 0 > /sys/class/leds/mt76-phy1/brightness 2>/dev/null || true
 			fi
 			uci commit system 2>/dev/null || true
-			update_led_alert
+			update_wan_led
 			;;
-		default)
+		default|smart|*)
 			rm -f /etc/config/ark_led_alert_mode /etc/hotplug.d/iface/99-ark-led-alert /etc/hotplug.d/net/99-ark-led-alert
-			# Purga todas as secoes de led customizadas e recria o padrao limpo do hardware ativo
-			for sec in $(uci -q show system 2>/dev/null | grep '=led$' | cut -d. -f2 | cut -d= -f1); do
-				uci -q delete "system.$sec"
-			done
-
-			if [ -e /sys/class/leds/rgb:status ]; then
-				uci -q set system.led_status=led
-				uci -q set "system.led_status.name=Status / Conexão (RGB)"
-				uci -q set "system.led_status.sysfs=rgb:status"
-				uci -q set "system.led_status.trigger=netdev"
-				uci -q set "system.led_status.dev=$wan_dev"
-				uci -q set "system.led_status.mode=link"
-				# WS2812B GRB: Verde puro e 255 no byte 0 (color_red)
-				uci -q set "system.led_status.color_red=255"
-				uci -q set "system.led_status.color_green=0"
-				uci -q set "system.led_status.color_blue=0"
-				uci -q set "system.led_status.hex_color=#00FF00"
-				uci -q set "system.led_status.default=1"
-			fi
-			if [ -e /sys/class/leds/mt76-phy0 ]; then
-				uci -q set system.led_wifi5g=led
-				uci -q set "system.led_wifi5g.name=Wi-Fi 5 GHz (Ultra Rápido)"
-				uci -q set "system.led_wifi5g.sysfs=mt76-phy0"
-				uci -q set "system.led_wifi5g.trigger=default-on"
-				uci -q set "system.led_wifi5g.default=1"
-			elif [ -e /sys/class/leds/ath10k-phy0 ]; then
-				uci -q set system.led_wifi5g=led
-				uci -q set "system.led_wifi5g.name=Wi-Fi 5 GHz (Ultra Rápido)"
-				uci -q set "system.led_wifi5g.sysfs=ath10k-phy0"
-				uci -q set "system.led_wifi5g.trigger=default-on"
-				uci -q set "system.led_wifi5g.default=1"
-			fi
-			if [ -e /sys/class/leds/mt76-phy1 ]; then
-				uci -q set system.led_wifi2g=led
-				uci -q set "system.led_wifi2g.name=Wi-Fi 2.4 GHz (Longo Alcance)"
-				uci -q set "system.led_wifi2g.sysfs=mt76-phy1"
-				uci -q set "system.led_wifi2g.trigger=default-on"
-				uci -q set "system.led_wifi2g.default=1"
-			elif [ -e /sys/class/leds/ath9k-phy1 ]; then
-				uci -q set system.led_wifi2g=led
-				uci -q set "system.led_wifi2g.name=Wi-Fi 2.4 GHz (Longo Alcance)"
-				uci -q set "system.led_wifi2g.sysfs=ath9k-phy1"
-				uci -q set "system.led_wifi2g.trigger=default-on"
-				uci -q set "system.led_wifi2g.default=1"
-			fi
-			if [ -e /sys/class/leds/d-link:green:power ]; then
-				uci -q set system.led_power=led
-				uci -q set "system.led_power.name=Power (Alimentação)"
-				uci -q set "system.led_power.sysfs=d-link:green:power"
-				uci -q set "system.led_power.trigger=default-on"
-				uci -q set "system.led_power.default=1"
-			fi
-			if [ -e /sys/class/leds/d-link:green:planet ]; then
-				uci -q set system.led_internet=led
-				uci -q set "system.led_internet.name=Internet (Planet)"
-				uci -q set "system.led_internet.sysfs=d-link:green:planet"
-				uci -q set "system.led_internet.trigger=netdev"
-				uci -q set "system.led_internet.dev=$wan_dev"
-				uci -q set "system.led_internet.mode=link"
-				uci -q set "system.led_internet.default=1"
-			fi
-			if [ -e /sys/class/leds/d-link:orange:planet ]; then
-				uci -q delete system.led_internet_orange 2>/dev/null || true
-				echo none > /sys/class/leds/d-link:orange:planet/trigger 2>/dev/null || true
-				echo 0 > /sys/class/leds/d-link:orange:planet/brightness 2>/dev/null || true
-			fi
-			uci commit system
-			/etc/init.d/led restart >/dev/null 2>&1 || true
-
-			if [ -e /sys/class/leds/d-link:green:planet ]; then
-				echo netdev > /sys/class/leds/d-link:green:planet/trigger 2>/dev/null || true
-				echo "$wan_dev" > /sys/class/leds/d-link:green:planet/device_name 2>/dev/null || true
-				echo 1 > /sys/class/leds/d-link:green:planet/link 2>/dev/null || true
-				echo 255 > /sys/class/leds/d-link:green:planet/brightness 2>/dev/null || true
-			fi
-			if [ -e /sys/class/leds/d-link:orange:planet ]; then
-				echo none > /sys/class/leds/d-link:orange:planet/trigger 2>/dev/null || true
-				echo 0 > /sys/class/leds/d-link:orange:planet/brightness 2>/dev/null || true
+			
+			if [ "$preset" = "default" ]; then
+				for sec in $(uci -q show system 2>/dev/null | grep '=led$' | cut -d. -f2 | cut -d= -f1); do
+					uci -q delete "system.$sec"
+				done
 			fi
 
-			if [ -e /sys/class/leds/rgb:status ]; then
-				echo 255 0 0 > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
-				echo 1 > /sys/class/leds/rgb:status/link 2>/dev/null || true
-				echo 0 > /sys/class/leds/rgb:status/rx 2>/dev/null || true
-				echo 0 > /sys/class/leds/rgb:status/tx 2>/dev/null || true
-				echo 255 > /sys/class/leds/rgb:status/brightness 2>/dev/null || true
-			fi
-			;;
-		smart|*)
-			rm -f /etc/config/ark_led_alert_mode /etc/hotplug.d/iface/99-ark-led-alert /etc/hotplug.d/net/99-ark-led-alert
 			if [ -e /sys/class/leds/rgb:status ]; then
 				[ -n "$(uci -q get system.led_status)" ] || uci -q set system.led_status=led
 				uci -q set "system.led_status.name=Status / Conexão (RGB)"
@@ -5048,50 +5143,44 @@ EOF
 				uci -q set "system.led_wifi2g.default=1"
 			fi
 
-			if [ -e /sys/class/leds/d-link:green:power ]; then
+			# Power / Status LED (Cudy, D-Link, etc.)
+			local pwr_led=""
+			for cand_pwr in "d-link:green:power" "green:status" "blue:status" "status" "power"; do
+				if [ -e "/sys/class/leds/$cand_pwr" ]; then
+					pwr_led="$cand_pwr"
+					break
+				fi
+			done
+			if [ -n "$pwr_led" ]; then
 				[ -n "$(uci -q get system.led_power)" ] || uci -q set system.led_power=led
-				uci -q set "system.led_power.name=Power (Alimentação)"
-				uci -q set "system.led_power.sysfs=d-link:green:power"
+				uci -q set "system.led_power.name=Power / Status"
+				uci -q set "system.led_power.sysfs=$pwr_led"
 				uci -q set "system.led_power.trigger=default-on"
 				uci -q set "system.led_power.default=1"
 			fi
 
-			if [ -e /sys/class/leds/d-link:green:planet ]; then
-				uci -q set system.led_internet=led
-				uci -q set "system.led_internet.name=Internet (Planet)"
-				uci -q set "system.led_internet.sysfs=d-link:green:planet"
+			# Internet / Planet LED (Cudy WR3000, D-Link DGL-5500, etc.)
+			# ESTRITAMENTE mode 'link' para ligar FIXO (sem piscar freneticamente com pacotes)
+			if [ -n "$inet_led" ] && [ "$inet_led" != "rgb:status" ]; then
+				[ -n "$(uci -q get system.led_internet)" ] || uci -q set system.led_internet=led
+				uci -q set "system.led_internet.name=Internet (Planeta / WAN)"
+				uci -q set "system.led_internet.sysfs=$inet_led"
 				uci -q set "system.led_internet.trigger=netdev"
 				uci -q set "system.led_internet.dev=$wan_dev"
 				uci -q set "system.led_internet.mode=link"
 				uci -q set "system.led_internet.default=1"
 			fi
-			if [ -e /sys/class/leds/d-link:orange:planet ]; then
+			if [ -n "$alert_led" ]; then
 				uci -q delete system.led_internet_orange 2>/dev/null || true
-				echo none > /sys/class/leds/d-link:orange:planet/trigger 2>/dev/null || true
-				echo 0 > /sys/class/leds/d-link:orange:planet/brightness 2>/dev/null || true
+				echo none > "/sys/class/leds/$alert_led/trigger" 2>/dev/null || true
+				echo 0 > "/sys/class/leds/$alert_led/brightness" 2>/dev/null || true
 			fi
 
 			uci commit system
 			/etc/init.d/led restart >/dev/null 2>&1 || true
 
-			if [ -e /sys/class/leds/d-link:green:planet ]; then
-				echo netdev > /sys/class/leds/d-link:green:planet/trigger 2>/dev/null || true
-				echo "$wan_dev" > /sys/class/leds/d-link:green:planet/device_name 2>/dev/null || true
-				echo 1 > /sys/class/leds/d-link:green:planet/link 2>/dev/null || true
-				echo 255 > /sys/class/leds/d-link:green:planet/brightness 2>/dev/null || true
-			fi
-			if [ -e /sys/class/leds/d-link:orange:planet ]; then
-				echo none > /sys/class/leds/d-link:orange:planet/trigger 2>/dev/null || true
-				echo 0 > /sys/class/leds/d-link:orange:planet/brightness 2>/dev/null || true
-			fi
-
-			if [ -e /sys/class/leds/rgb:status ]; then
-				echo 255 0 0 > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
-				echo 1 > /sys/class/leds/rgb:status/link 2>/dev/null || true
-				echo 0 > /sys/class/leds/rgb:status/rx 2>/dev/null || true
-				echo 0 > /sys/class/leds/rgb:status/tx 2>/dev/null || true
-				echo 255 > /sys/class/leds/rgb:status/brightness 2>/dev/null || true
-			fi
+			# Resposta visual imediata no hardware
+			update_wan_led
 			;;
 	esac
 
@@ -5689,7 +5778,7 @@ case "$action" in
 		current_theme="$(uci -q get luci.main.mediaurlbase | sed 's|/luci-static/||')"
 		[ -n "$current_theme" ] || current_theme="bootstrap"
 		theme_customized="$(uci -q get equipe_dashboard.main.theme_customized 2>/dev/null || uci -q get luci.main.theme_customized 2>/dev/null || echo 0)"
-		local network_mode="$(uci -q get equipe_dashboard.main.network_mode || echo 'router')"
+		network_mode="$(uci -q get equipe_dashboard.main.network_mode || echo 'router')"
 		printf '{"language":"%s","title":"%s","operation_profile":"%s","network_mode":"%s","package_manager":"%s","current_theme":"%s","theme_customized":%s,"user_theme":"%s","appearance":{"mode":"%s","primary":"%s","secondary":"%s"},"features":{' "$(uci -q get equipe_dashboard.main.language || printf pt-br)" "$(json_escape "$title")" "$(json_escape "$operation_profile")" "$network_mode" "$manager" "$current_theme" "$(bool $((theme_customized == 1)))" "$(json_escape "$user_theme")" "$appearance" "$primary" "$secondary"
 		feature_json ark '' true; printf ','
 		feature_json sqm luci-app-sqm true; printf ','
@@ -7926,6 +8015,9 @@ EOF
 		;;
 	update-led-alert)
 		update_led_alert
+		;;
+	update-wan-led)
+		update_wan_led
 		;;
 	*)
 		echo 'Uso: equipe-dashboard-control {features|...|irqbalance-toggle 0|1|...}' >&2

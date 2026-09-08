@@ -198,6 +198,7 @@ run_autowan_cycle() {
 							/usr/sbin/equipe-dashboard-control wan-save iface="$next_wan" device="$port_dev" mode=wan proto=dhcp >/dev/null 2>&1
 							echo "$port_dev=$next_wan" >> "$DYNAMIC_WANS_FILE"
 							/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
+							/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 || true
 						else
 							logger -t ark-autowan "Nenhum DHCP upstream na porta $port_dev (dispositivo cliente ou PC). Mantendo em LAN."
 						fi
@@ -215,6 +216,7 @@ run_autowan_cycle() {
 					/usr/sbin/equipe-dashboard-control wan-save iface="$dyn_wan" mode=lan >/dev/null 2>&1
 					sed -i "/^$port_dev=/d" "$DYNAMIC_WANS_FILE" 2>/dev/null || true
 					/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
+					/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 || true
 				fi
 			fi
 
@@ -245,6 +247,7 @@ run_autowan_cycle() {
 							/usr/sbin/equipe-dashboard-control wan-save iface="$next_wan" device="lan$p" mode=wan proto=dhcp >/dev/null 2>&1
 							echo "$port_name=$next_wan" >> "$DYNAMIC_WANS_FILE"
 							/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
+							/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 || true
 						else
 							logger -t ark-autowan "Nenhum DHCP upstream na porta fisica $p (dispositivo cliente ou PC). Mantendo em LAN."
 						fi
@@ -260,7 +263,7 @@ run_autowan_cycle() {
 				if [ -n "$dyn_entry" ]; then
 					local dyn_wan="${dyn_entry#*=}"
 					logger -t ark-autowan "Porta fisica $p desconectada. Revertendo $dyn_wan de volta para LAN..."
-					(/usr/sbin/equipe-dashboard-control wan-save iface="$dyn_wan" mode=lan >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1) &
+					(/usr/sbin/equipe-dashboard-control wan-save iface="$dyn_wan" mode=lan >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1) &
 					sed -i "/^$port_name=/d" "$DYNAMIC_WANS_FILE" 2>/dev/null || true
 				fi
 			fi

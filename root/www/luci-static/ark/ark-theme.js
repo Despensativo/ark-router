@@ -2770,7 +2770,7 @@
           var sysfsText = '';
           for (var i = 0; i < cells.length; i++) {
             var txt = (cells[i].innerText || cells[i].textContent || '').trim();
-            if (txt && (validSet[txt] || txt.indexOf('d-link') >= 0 || txt.indexOf('ath10k') >= 0 || txt.indexOf('ath9k') >= 0 || txt.indexOf('mt76') >= 0 || txt.indexOf('rgb:') >= 0)) {
+            if (txt && (validSet[txt] || txt.indexOf('d-link') >= 0 || txt.indexOf('ath10k') >= 0 || txt.indexOf('ath9k') >= 0 || txt.indexOf('mt76') >= 0 || txt.indexOf('rgb:') >= 0 || txt.indexOf('blue:') >= 0 || txt.indexOf('green:') >= 0 || txt.indexOf('wan') >= 0 || txt.indexOf('internet') >= 0)) {
               sysfsText = txt;
               break;
             }

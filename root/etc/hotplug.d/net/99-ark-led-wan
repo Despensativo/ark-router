@@ -1,0 +1,4 @@
+#!/bin/sh
+# ARK Router - Netdev Carrier / Cable LED Dynamic Update
+[ "$ACTION" = "add" ] || [ "$ACTION" = "remove" ] || [ "$ACTION" = "change" ] || exit 0
+/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 &
