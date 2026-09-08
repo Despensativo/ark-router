@@ -12,6 +12,12 @@ for h in $(uci -q show dhcp 2>/dev/null | grep -E '\.name=' | cut -d. -f2 | cut 
 		changed=1
 	fi
 done
+
+# Forca o dnsmasq a sempre fornecer DHCP na LAN (evita desativacao por rogue server check)
+if [ "$(uci -q get dhcp.lan.force)" != "1" ]; then
+	uci -q set dhcp.lan.force='1'
+	changed=1
+fi
 [ "$changed" = 1 ] && uci commit dhcp || true
 
 # Otimizacao de leitura de trafego em tempo real no nlbwmon (de 30s para 2s)
