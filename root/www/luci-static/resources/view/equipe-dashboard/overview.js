@@ -492,6 +492,7 @@ function getWifiRuntimeState(cfg, wirelessConfig, wirelessStatus) {
 }
 function wifiBand(radioName, radio) {
 	const c=(radio&&radio.config)||{}, band=String(c.band||'').toLowerCase(), ht=String(c.htmode||'').toLowerCase(), hw=String(c.hwmode||'').toLowerCase(), name=String(radioName||'').toLowerCase();
+	if (band.indexOf('6') === 0 || hw.indexOf('6g') >= 0 || ht.indexOf('320') >= 0 || name.indexOf('6g') >= 0) return '6g';
 	if (band.indexOf('2') === 0 || hw === '11g' || ht.indexOf('g') >= 0 || name.indexOf('2g') >= 0) return '2g';
 	if (band.indexOf('5') === 0 || hw === '11a' || ht.indexOf('80') >= 0 || ht.indexOf('160') >= 0 || name.indexOf('5g') >= 0) return '5g';
 	return '';
@@ -538,6 +539,7 @@ function surveyInfo(s) {
 	if (mhz === 2484) channel = 14;
 	else if (mhz >= 2412 && mhz <= 2472) channel = Math.round((mhz - 2407) / 5);
 	else if (mhz >= 5000 && mhz <= 5900) channel = Math.round((mhz - 5000) / 5);
+	else if (mhz >= 5925 && mhz <= 7125) channel = Math.round((mhz - 5950) / 5);
 	return { noise: noise > 127 ? noise - 256 : noise, busy: time > 0 ? busy * 100 / time : 0, channel: channel };
 }
 function prefix24(ip) {
@@ -2701,11 +2703,17 @@ return view.extend({
 			E('option', { value: 'lan' }, ['Rede Principal / LAN (mesma faixa de computadores e impressoras)']),
 			E('option', { value: 'guest' }, ['Rede Isolada / Visitantes (sem acesso aos computadores locais)'])
 		]);
-		const bandSelect = E('select', { class: 'cbi-input-select', style: 'width:100%' }, [
-			E('option', { value: 'both' }, ['Unificada (2.4 GHz + 5 GHz com mesmo nome)']),
+		const hw = (this.capabilities && this.capabilities.hardware) || {};
+		const has6g = !!(hw.wifi && hw.wifi.wifi_6g);
+		const bandOptions = [
+			E('option', { value: 'both' }, [has6g ? 'Todas as Bandas (2.4 GHz + 5 GHz + 6 GHz)' : 'Unificada (2.4 GHz + 5 GHz com mesmo nome)']),
 			E('option', { value: '2g' }, ['Apenas 2.4 GHz']),
 			E('option', { value: '5g' }, ['Apenas 5 GHz'])
-		]);
+		];
+		if (has6g) {
+			bandOptions.push(E('option', { value: '6g' }, ['Apenas 6 GHz (Wi-Fi 6E / Wi-Fi 7)']));
+		}
+		const bandSelect = E('select', { class: 'cbi-input-select', style: 'width:100%' }, bandOptions);
 
 		const passRow1 = E('label', { class: 'ex-device-config-block' }, [ E('strong', {}, ['Senha']), password ]);
 		const passRow2 = E('label', { class: 'ex-device-config-block' }, [ E('strong', {}, ['Confirmar senha']), passwordConfirm ]);
@@ -3260,22 +3268,27 @@ return view.extend({
 		const radio2 = (w.r0.hwmode === '11g' || String(w.r0.band||'').indexOf('2') === 0) ? w.r0 : w.r1;
 		const radio5 = (radio2 === w.r0) ? w.r1 : w.r0;
 		const curCh5 = Number(radio5.channel || 0);
-		const widthFrom=function(ht){const m=String(ht||'').match(/(20|40|80|160)/);return m?m[1]:'';};
+		const widthFrom=function(ht){const m=String(ht||'').match(/(20|40|80|160|320)/);return m?m[1]:'';};
 		const select=function(value,items){const s=E('select',{class:'cbi-input-select'},items.map(function(i){return E('option',{value:i[0]},[i[1]]);}));s.value=value;return s;};
 		const w2=select(widthFrom(radio2.htmode)||'20',[['20','20 MHz — mais alcance/estabilidade'],['40','40 MHz — mais rápido, mais interferência']]);
 		
 		const hw = this.capabilities.hardware || {};
-		const has160 = !!hw.wifi_160_supported;
+		const has160 = !!(hw.wifi_160_supported || (hw.wifi && hw.wifi.wifi_160));
+		const has320 = !!(hw.wifi_320_supported || (hw.wifi && hw.wifi.wifi_320));
 		const items5 = [['80','80 MHz — mais compatível/estável']];
 		if (has160) {
 			items5.push(['160','160 MHz — velocidade máxima perto do roteador']);
 		}
-		const default5 = (has160 && widthFrom(radio5.htmode) === '160') ? '160' : '80';
-		const w5=select(widthFrom(radio5.htmode)||default5, items5);
+		if (has320) {
+			items5.push(['320','320 MHz — taxa extrema de dados (Wi-Fi 7)']);
+		}
+		const curWidth5 = widthFrom(radio5.htmode);
+		const default5 = (has320 && curWidth5 === '320') ? '320' : ((has160 && curWidth5 === '160') ? '160' : '80');
+		const w5=select(curWidth5 || default5, items5);
 		const w5Note = E('div', { class: 'alert-message info', style: 'margin-top: 8px; font-size: 12px; display: none;' });
 		const updateW5Note = function() {
-			if (w5.value === '160' && curCh5 >= 132) {
-				w5Note.textContent = 'ℹ️ O canal 5 GHz atual (Canal ' + curCh5 + ') opera em até 80 MHz. Ao selecionar 160 MHz, o canal será comutado automaticamente para o Canal 36 para total estabilidade.';
+			if ((w5.value === '160' || w5.value === '320') && curCh5 >= 132) {
+				w5Note.textContent = 'ℹ️ O canal 5 GHz atual (Canal ' + curCh5 + ') opera em até 80 MHz. Ao selecionar ' + w5.value + ' MHz, o canal será comutado automaticamente para o Canal 36 para total estabilidade.';
 				w5Note.style.display = 'block';
 			} else {
 				w5Note.style.display = 'none';
@@ -3288,7 +3301,7 @@ return view.extend({
 			E('p',{class:'ex-muted'},['A largura maior aumenta velocidade máxima, mas também aumenta interferência e pode reduzir alcance estável. Alterar reinicia o Wi‑Fi.']),
 			E('div',{class:'ex-wan-edit-grid'},[
 				field('2,4 GHz',w2,'Recomendado: 20 MHz para maior alcance e menos interferência.'),
-				field('5 GHz',E('div',{},[w5,w5Note]), has160 ? '80 MHz é mais estável e compatível com todos os canais; 160 MHz oferece velocidade máxima nos canais 36-64.' : '80 MHz é a largura máxima suportada pelo hardware deste roteador (VHT80).')
+				field('5 GHz',E('div',{},[w5,w5Note]), has320 ? 'Suporta até 320 MHz (Wi-Fi 7).' : (has160 ? '80 MHz é mais estável e compatível com todos os canais; 160 MHz oferece velocidade máxima nos canais 36-64.' : '80 MHz é a largura máxima suportada pelo hardware deste roteador (VHT80).'))
 			]),
 			E('p',{class:'alert-message warning'},['A alteração derruba temporariamente todos os aparelhos conectados ao Wi‑Fi.']),
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['wifi-width',w2.value,w5.value]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar largura do Wi‑Fi');ui.hideModal();reloadSoon('Largura do Wi‑Fi salva. Recarregando após reiniciar os rádios…',4200);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Wi‑Fi reiniciando. Recarregando o painel…',5200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Salvar e reiniciar Wi‑Fi'])])
@@ -5609,10 +5622,24 @@ return view.extend({
 			return infoItem(p.toUpperCase(), speedText, 'Suporta ' + (info.max_speed || '1G'));
 		}) : [ infoItem('Portas de Rede', 'Detectadas automaticamente pela bridge LAN') ];
 
+		const wifiStandards = [];
+		if (wf.wifi_be) wifiStandards.push('Wi-Fi 7 (be)');
+		if (wf.wifi_ax) wifiStandards.push('Wi-Fi 6/6E (ax)');
+		if (wf.wifi_ac) wifiStandards.push('Wi-Fi 5 (ac)');
+		if (wf.wifi_n) wifiStandards.push('Wi-Fi 4 (n)');
+		if (!wifiStandards.length) wifiStandards.push('Wi-Fi Padrão');
+
+		let maxWidthStr = '80 MHz (VHT80)';
+		if (wf.wifi_320) maxWidthStr = '320 MHz (EHT320 / Wi-Fi 7)';
+		else if (wf.wifi_160) maxWidthStr = '160 MHz (Ultra Rápido)';
+
+		let bandsStr = '2.4 GHz + 5.0 GHz (Dual-Band)';
+		if (wf.wifi_6g) bandsStr = '2.4 GHz + 5 GHz + 6 GHz (Tri-Band)';
+
 		const wifiRows = [
-			infoItem('Padrões Suportados', (wf.wifi_ax ? 'Wi-Fi 6 (ax) • ' : '') + (wf.wifi_ac ? 'Wi-Fi 5 (ac) • ' : '') + (wf.wifi_n ? 'Wi-Fi 4 (n)' : 'Wi-Fi')),
-			infoItem('Largura Máxima 5 GHz', wf.wifi_160 ? '160 MHz (Ultra Rápido)' : '80 MHz (VHT80)'),
-			infoItem('Bandas Simultâneas', '2.4 GHz + 5.0 GHz (Dual-Band)')
+			infoItem('Padrões Suportados', wifiStandards.join(' • ')),
+			infoItem('Largura Máxima do Canal', maxWidthStr),
+			infoItem('Bandas Simultâneas', bandsStr)
 		];
 
 		ui.showModal('Especificações Técnicas do Hardware', [

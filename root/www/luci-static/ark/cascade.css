@@ -2945,6 +2945,11 @@ path[fill="#00ffff"], polygon[fill="#00ffff"] { fill: #06b6d4 !important; }
 	background: #3b82f6;
 	color: #3b82f6;
 }
+.ark-led-indicator.white {
+	background: #f8fafc;
+	color: #f8fafc;
+	box-shadow: 0 0 10px rgba(248, 250, 252, 0.8);
+}
 .ark-led-indicator.off {
 	background: #334155;
 	color: transparent;

@@ -2823,7 +2823,7 @@
 
           grid.appendChild(card);
 
-          if (l.sysfs === 'rgb:status' && l.hex_color) {
+          if ((l.type === 'status_rgb' || l.sysfs === 'rgb:status' || l.color === 'rgb') && l.hex_color) {
             var el = card.querySelector('#ind-' + domId);
             if (el && indClass.indexOf('off') === -1) {
               el.style.background = l.hex_color;
@@ -2848,9 +2848,10 @@
             el.style.boxShadow = '';
           } else { // smart ou default
             el.className = 'ark-led-indicator ' + (l.color || 'green');
-            if (l.sysfs === 'rgb:status') {
-              el.style.background = '#00FF00';
-              el.style.boxShadow = '0 0 10px #00FF00';
+            if (l.type === 'status_rgb' || l.sysfs === 'rgb:status' || l.color === 'rgb') {
+              var col = (hardwareInfo && hardwareInfo.current_rgb_hex) || '#00FF00';
+              el.style.background = col;
+              el.style.boxShadow = '0 0 10px ' + col;
             }
           }
         });
