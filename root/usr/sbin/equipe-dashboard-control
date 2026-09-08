@@ -6253,14 +6253,48 @@ case "$action" in
 		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
 			uci -q set network.autowan=config
 			uci -q set network.autowan.enabled='1'
+			[ -n "$(uci -q get network.autowan.policy)" ] || uci -q set network.autowan.policy='balanced'
 			uci commit network
+			if [ -x /etc/init.d/ark-autowan ]; then
+				/etc/init.d/ark-autowan enable >/dev/null 2>&1 || true
+				/etc/init.d/ark-autowan restart >/dev/null 2>&1 || true
+			fi
 			echo 'enabled'
 		else
 			uci -q set network.autowan=config
 			uci -q set network.autowan.enabled='0'
 			uci commit network
+			if [ -x /etc/init.d/ark-autowan ]; then
+				/etc/init.d/ark-autowan stop >/dev/null 2>&1 || true
+				/etc/init.d/ark-autowan disable >/dev/null 2>&1 || true
+			fi
 			echo 'disabled'
 		fi
+		;;
+	autowan-policy-get)
+		pol="$(uci -q get network.autowan.policy || echo balanced)"
+		echo "$pol"
+		;;
+	autowan-policy-set)
+		pol="$2"
+		case "$pol" in
+			balanced|failover) ;;
+			*) echo 'Politica Auto-WAN invalida (use balanced ou failover)' >&2; exit 2 ;;
+		esac
+		uci -q set network.autowan=config
+		uci -q set network.autowan.policy="$pol"
+		uci commit network
+		# Se houver mais de uma WAN ativa, sincroniza com o mwan3
+		active_wans_cnt=0
+		for w in $(uci -q show network | grep '=interface' | cut -d. -f2 | cut -d= -f1 | grep -E '^wan([0-9]+)?$'); do
+			p="$(uci -q get "network.$w.proto" || printf 'none')"
+			d="$(uci -q get "network.$w.device" || uci -q get "network.$w.ifname" || printf '')"
+			[ "$p" != "none" ] && [ -n "$d" ] && active_wans_cnt=$((active_wans_cnt + 1))
+		done
+		if [ "$active_wans_cnt" -ge 2 ]; then
+			/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
+		fi
+		echo "$pol"
 		;;
 	autowan-can-convert)
 		port="$2"

@@ -6124,6 +6124,7 @@ return view.extend({
 							chk.disabled = false;
 							if (summaryEl) summaryEl.textContent = 'Desativado • As portas físicas permanecem fixas conforme a topologia padrão.';
 							if (pillEl) { pillEl.className = 'ex-pill standby'; pillEl.textContent = 'STANDBY'; }
+							if (policyBox) policyBox.style.display = 'none';
 							ui.addNotification(null, E('p', {}, ['Piloto Automático (Auto-WAN) desativado.']), 'info');
 						}).catch(function(e) {
 							chk.disabled = false;
@@ -6164,6 +6165,7 @@ return view.extend({
 										chk.checked = true;
 										if (summaryEl) summaryEl.textContent = 'Ativo • Portas vagas monitoradas para detecção inteligente de novas conexões.';
 										if (pillEl) { pillEl.className = 'ex-pill online'; pillEl.textContent = 'VIGILÂNCIA ATIVA'; }
+										if (policyBox) policyBox.style.display = 'block';
 										ui.addNotification(null, E('p', {}, ['Piloto Automático (Auto-WAN) ativado com sucesso!']), 'success');
 									}).catch(function(e) {
 										chk.disabled = false;
@@ -6178,11 +6180,67 @@ return view.extend({
 					ui.showModal('Ativar Piloto Automático de Portas (Auto-WAN)?', modalBody);
 				};
 
+				const currentPolicy = (data.networkConfig && data.networkConfig.autowan && data.networkConfig.autowan.policy) || 'balanced';
+				const setAutoWanPolicy = function(pol) {
+					const btnBal = document.getElementById('ex-autowan-pol-balanced');
+					const btnFail = document.getElementById('ex-autowan-pol-failover');
+					if (btnBal) btnBal.disabled = true;
+					if (btnFail) btnFail.disabled = true;
+					fs.exec('/usr/sbin/equipe-dashboard-control', ['autowan-policy-set', pol])
+					.then(function(r) {
+						if (btnBal) {
+							btnBal.disabled = false;
+							btnBal.className = 'btn cbi-button ' + (pol === 'balanced' ? 'cbi-button-positive' : 'cbi-button-neutral');
+						}
+						if (btnFail) {
+							btnFail.disabled = false;
+							btnFail.className = 'btn cbi-button ' + (pol === 'failover' ? 'cbi-button-positive' : 'cbi-button-neutral');
+						}
+						ui.addNotification(null, E('p', {}, [
+							pol === 'balanced'
+								? 'Multi-WAN configurado para Balanceamento (tráfego distribuído entre conexões).'
+								: 'Multi-WAN configurado para Failover (WAN1 prioritária e as demais como reserva).'
+						]), 'info');
+					}).catch(function(e) {
+						if (btnBal) btnBal.disabled = false;
+						if (btnFail) btnFail.disabled = false;
+						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+					});
+				};
+
 				const pillEl = E('span',{class:'ex-pill ' + (isAutoWanActive ? 'online' : 'standby')},[isAutoWanActive ? 'VIGILÂNCIA ATIVA' : 'STANDBY']);
 				const summaryEl = E('small',{id:'ex-autowan-mode-summary',class:'ex-muted'},[
 					isAutoWanActive
 						? 'Ativo • Portas vagas monitoradas para detecção inteligente de novas conexões.'
 						: 'Desativado • As portas físicas permanecem fixas conforme a topologia padrão.'
+				]);
+
+				const policyBox = E('div', {
+					id: 'ex-autowan-policy-box',
+					style: 'display:' + (isAutoWanActive ? 'block' : 'none') + '; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);'
+				}, [
+					E('div', { style: 'display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;' }, [
+						E('div', {}, [
+							E('strong', { style: 'font-size:13px;' }, ['Comportamento Multi-WAN automático']),
+							E('small', { class: 'ex-muted', style: 'display:block;' }, ['Quando houver 2 ou mais conexões de internet ativas detectadas.'])
+						])
+					]),
+					E('div', { style: 'display:flex; gap:10px; flex-wrap:wrap;' }, [
+						E('button', {
+							id: 'ex-autowan-pol-balanced',
+							type: 'button',
+							class: 'btn cbi-button ' + (currentPolicy === 'balanced' ? 'cbi-button-positive' : 'cbi-button-neutral'),
+							style: 'flex:1; min-width:160px; font-weight:600;',
+							click: function() { setAutoWanPolicy('balanced'); }
+						}, ['⚡ Balancear Carga (Soma/Distribuição)']),
+						E('button', {
+							id: 'ex-autowan-pol-failover',
+							type: 'button',
+							class: 'btn cbi-button ' + (currentPolicy === 'failover' ? 'cbi-button-positive' : 'cbi-button-neutral'),
+							style: 'flex:1; min-width:160px; font-weight:600;',
+							click: function() { setAutoWanPolicy('failover'); }
+						}, ['🛡️ Failover Inteligente (Backup)'])
+					])
 				]);
 
 				const inpAttrs = { id:'ex-autowan-toggle', type:'checkbox', 'aria-label':'Piloto Automático Auto-WAN' };
@@ -6212,7 +6270,8 @@ return view.extend({
 							chkInput,
 							E('span',{class:'ex-switch-slider'})
 						])
-					])
+					]),
+					policyBox
 				]);
 			})(),
 			starlinkSection || '',

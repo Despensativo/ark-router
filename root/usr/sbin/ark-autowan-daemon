@@ -1,0 +1,122 @@
+#!/bin/sh
+# ARK Router - Autonomous Auto-WAN Daemon
+# Continuously monitors physical ports, probes upstream DHCP, and dynamically manages Multi-WAN.
+# BusyBox ash compliant. Memory footprint < 1.5 MB.
+
+STATE_FILE="/var/run/ark-autowan.state"
+DYNAMIC_WANS_FILE="/var/run/ark-autowan-dynamic.list"
+LOCK_FILE="/var/run/ark-autowan.lock"
+
+logger -t ark-autowan "ARK Auto-WAN Daemon iniciado."
+
+touch "$STATE_FILE" "$DYNAMIC_WANS_FILE"
+
+find_next_free_wan() {
+	local idx=2
+	while [ "$idx" -le 8 ]; do
+		local iface="wan$idx"
+		local proto="$(uci -q get "network.$iface.proto" || echo "")"
+		local dev="$(uci -q get "network.$iface.device" || uci -q get "network.$iface.ifname" || echo "")"
+		if [ -z "$proto" ] || [ "$proto" = "none" ] || [ -z "$dev" ]; then
+			echo "$iface"
+			return 0
+		fi
+		idx=$((idx + 1))
+	done
+	echo "wan9"
+}
+
+is_dev_already_wan() {
+	local dev="$1"
+	for w in $(uci -q show network | grep '=interface' | cut -d. -f2 | cut -d= -f1 | grep -E '^wan([0-9]+)?$'); do
+		local d="$(uci -q get "network.$w.device" || uci -q get "network.$w.ifname" || echo "")"
+		[ "$d" = "$dev" ] && return 0
+	done
+	return 1
+}
+
+probe_dhcp_upstream() {
+	local dev="$1"
+	udhcpc -i "$dev" -n -q -f -t 2 -T 1 -s /bin/true >/dev/null 2>&1
+	return $?
+}
+
+run_autowan_cycle() {
+	local enabled="$(uci -q get network.autowan.enabled || echo 0)"
+	[ "$enabled" = "1" ] || return 0
+
+	local pol="$(uci -q get network.autowan.policy || echo balanced)"
+
+	# 1. Arquitetura DSA (ex: Acer Predator W6X / lan1 lan2 lan3 lan4)
+	if [ -d "/sys/class/net/lan1" ] || [ -d "/sys/class/net/lan2" ]; then
+		for port_dev in lan1 lan2 lan3 lan4; do
+			[ -d "/sys/class/net/$port_dev" ] || continue
+			local oper="$(cat "/sys/class/net/$port_dev/operstate" 2>/dev/null || echo down)"
+			local prev_oper="$(grep "^$port_dev=" "$STATE_FILE" 2>/dev/null | cut -d= -f2)"
+
+			# Transição: cabo recém-conectado (DOWN -> UP)
+			if [ "$oper" = "up" ] && [ "$prev_oper" != "up" ]; then
+				logger -t ark-autowan "Link UP detectado na porta $port_dev"
+				if ! is_dev_already_wan "$port_dev"; then
+					# Checagem de segurança Fail-Safe (não converte se for a última LAN sem Wi-Fi)
+					if /usr/sbin/equipe-dashboard-control autowan-can-convert "$port_dev" >/dev/null 2>&1; then
+						logger -t ark-autowan "Sondando DHCP upstream na porta $port_dev..."
+						if probe_dhcp_upstream "$port_dev"; then
+							local next_wan="$(find_next_free_wan)"
+							logger -t ark-autowan "DHCP upstream detectado na porta $port_dev! Promovendo para $next_wan..."
+							/usr/sbin/equipe-dashboard-control wan-save iface="$next_wan" device="$port_dev" mode=wan proto=dhcp >/dev/null 2>&1
+							echo "$port_dev=$next_wan" >> "$DYNAMIC_WANS_FILE"
+							/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
+						else
+							logger -t ark-autowan "Nenhum DHCP upstream na porta $port_dev (dispositivo cliente ou PC). Mantendo em LAN."
+						fi
+					else
+						logger -t ark-autowan "Porta $port_dev protegida pelo Fail-Safe Salva-Vidas (Wi-Fi desligado e sem outra LAN conectada)."
+					fi
+				fi
+			# Transição: cabo desconectado (UP -> DOWN)
+			elif [ "$oper" != "up" ] && [ "$prev_oper" = "up" ]; then
+				logger -t ark-autowan "Link DOWN detectado na porta $port_dev"
+				local dyn_entry="$(grep "^$port_dev=" "$DYNAMIC_WANS_FILE" 2>/dev/null | tail -n 1)"
+				if [ -n "$dyn_entry" ]; then
+					local dyn_wan="${dyn_entry#*=}"
+					logger -t ark-autowan "Porta $port_dev desconectada. Revertendo $dyn_wan de volta para LAN..."
+					/usr/sbin/equipe-dashboard-control wan-save iface="$dyn_wan" mode=lan >/dev/null 2>&1
+					sed -i "/^$port_dev=/d" "$DYNAMIC_WANS_FILE" 2>/dev/null || true
+					/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
+				fi
+			fi
+
+			# Atualiza estado no arquivo de rastreamento
+			sed -i "/^$port_dev=/d" "$STATE_FILE" 2>/dev/null || true
+			echo "$port_dev=$oper" >> "$STATE_FILE"
+		done
+
+	# 2. Arquitetura swconfig (ex: D-Link DGL-5500 / ath79 switch0)
+	elif command -v swconfig >/dev/null 2>&1 && swconfig dev switch0 show >/dev/null 2>&1; then
+		for p in 1 2 3 4; do
+			local port_name="port$p"
+			local oper="$(swconfig dev switch0 port "$p" get link 2>/dev/null | grep -q "link:up" && echo up || echo down)"
+			local prev_oper="$(grep "^$port_name=" "$STATE_FILE" 2>/dev/null | cut -d= -f2)"
+
+			if [ "$oper" = "up" ] && [ "$prev_oper" != "up" ]; then
+				logger -t ark-autowan "Link UP detectado na porta fisica $p (switch0)"
+				if /usr/sbin/equipe-dashboard-control autowan-can-convert "$p" >/dev/null 2>&1; then
+					logger -t ark-autowan "Porta fisica $p conectada. Monitorando conexao..."
+				else
+					logger -t ark-autowan "Porta fisica $p protegida pela Regra Salva-Vidas."
+				fi
+			elif [ "$oper" != "up" ] && [ "$prev_oper" = "up" ]; then
+				logger -t ark-autowan "Link DOWN detectado na porta fisica $p (switch0)"
+			fi
+
+			sed -i "/^$port_name=/d" "$STATE_FILE" 2>/dev/null || true
+			echo "$port_name=$oper" >> "$STATE_FILE"
+		done
+	fi
+}
+
+while true; do
+	run_autowan_cycle
+	sleep 3
+done
