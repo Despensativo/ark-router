@@ -6113,6 +6113,108 @@ return view.extend({
 			E('div',{class:'ex-grid ex-grid-2'},[metricCard('↓','Download agora','ex-download','ex-down-total','#3b82f6'),metricCard('↑','Upload agora','ex-upload','ex-up-total','#a855f7')]),
 			E('div',{class:'ex-grid ex-grid-2 ex-history-grid'},[historyCard('down','Download ao longo do dia','#3b82f6'),historyCard('up','Upload ao longo do dia','#a855f7')]),
 			E('p',{id:'ex-history-samples',class:'ex-history-caption'},['A primeira amostra aparecerá em até 1 minuto']),
+			(function(){
+				const isAutoWanActive = !!(data.networkConfig && data.networkConfig.autowan && String(data.networkConfig.autowan.enabled) === '1');
+				const toggleAutoWan = function(chk, summaryEl, pillEl) {
+					if (!chk.checked) {
+						chk.disabled = true;
+						if (summaryEl) summaryEl.textContent = 'Desativando Auto-WAN…';
+						fs.exec('/usr/sbin/equipe-dashboard-control', ['autowan-toggle', '0'])
+						.then(function(r) {
+							chk.disabled = false;
+							if (summaryEl) summaryEl.textContent = 'Desativado • As portas físicas permanecem fixas conforme a topologia padrão.';
+							if (pillEl) { pillEl.className = 'ex-pill standby'; pillEl.textContent = 'STANDBY'; }
+							ui.addNotification(null, E('p', {}, ['Piloto Automático (Auto-WAN) desativado.']), 'info');
+						}).catch(function(e) {
+							chk.disabled = false;
+							chk.checked = true;
+							ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+						});
+						return;
+					}
+
+					chk.checked = false;
+
+					const modalBody = [
+						E('div', { class: 'alert-message warning', style: 'margin-bottom: 14px; font-size: 12.5px; line-height: 1.55;' }, [
+							E('strong', { style: 'display:block; margin-bottom:8px; font-size:13.5px;' }, ['⚠️ Importante: Entenda como o Auto-WAN opera']),
+							E('ul', { style: 'margin: 0; padding-left: 18px;' }, [
+								E('li', {}, ['Ao ativar, o roteador passará a monitorar continuamente a inserção de novos cabos nas portas de rede livres.']),
+								E('li', {}, ['Ao detectar um cabo recém-espetado, ele envia uma sondagem DHCP. Se receber resposta de internet/modem, a porta será promovida automaticamente para WAN (Load Balance ou Failover).']),
+								E('li', {}, ['Se for um PC, TV ou console de jogos (sem DHCP upstream), a porta continuará funcionando normalmente na rede local (LAN).']),
+								E('li', {}, ['Atenção a modems em Modo Bridge (PPPoE): eles não fornecem IP por DHCP. Se sua internet exigir usuário e senha, configure a WAN manualmente na barra abaixo.']),
+								E('li', {}, ['Garantia de segurança: A Porta LAN 1 e o sinal Wi-Fi nunca serão alterados para evitar que você perca o acesso ao painel.'])
+							])
+						]),
+						E('div', { style: 'display:flex; justify-content:flex-end; gap:10px; margin-top:16px;' }, [
+							E('button', {
+								class: 'btn cbi-button cbi-button-neutral',
+								'click': function() { if (window.L && L.ui) L.ui.hideModal(); }
+							}, ['Cancelar']),
+							E('button', {
+								class: 'btn cbi-button cbi-button-positive',
+								style: 'font-weight:bold;',
+								'click': function() {
+									if (window.L && L.ui) L.ui.hideModal();
+									chk.disabled = true;
+									if (summaryEl) summaryEl.textContent = 'Ativando Auto-WAN…';
+									fs.exec('/usr/sbin/equipe-dashboard-control', ['autowan-toggle', '1'])
+									.then(function(r) {
+										chk.disabled = false;
+										chk.checked = true;
+										if (summaryEl) summaryEl.textContent = 'Ativo • Portas vagas monitoradas para detecção inteligente de novas conexões.';
+										if (pillEl) { pillEl.className = 'ex-pill online'; pillEl.textContent = 'VIGILÂNCIA ATIVA'; }
+										ui.addNotification(null, E('p', {}, ['Piloto Automático (Auto-WAN) ativado com sucesso!']), 'success');
+									}).catch(function(e) {
+										chk.disabled = false;
+										chk.checked = false;
+										ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+									});
+								}
+							}, ['Entendi, Ativar Auto-WAN'])
+						])
+					];
+
+					ui.showModal('Ativar Piloto Automático de Portas (Auto-WAN)?', modalBody);
+				};
+
+				const pillEl = E('span',{class:'ex-pill ' + (isAutoWanActive ? 'online' : 'standby')},[isAutoWanActive ? 'VIGILÂNCIA ATIVA' : 'STANDBY']);
+				const summaryEl = E('small',{id:'ex-autowan-mode-summary',class:'ex-muted'},[
+					isAutoWanActive
+						? 'Ativo • Portas vagas monitoradas para detecção inteligente de novas conexões.'
+						: 'Desativado • As portas físicas permanecem fixas conforme a topologia padrão.'
+				]);
+
+				const inpAttrs = { id:'ex-autowan-toggle', type:'checkbox', 'aria-label':'Piloto Automático Auto-WAN' };
+				if (isAutoWanActive) inpAttrs.checked = '';
+				const chkInput = E('input', inpAttrs);
+				chkInput.addEventListener('change', function(ev) {
+					toggleAutoWan(ev.currentTarget, summaryEl, pillEl);
+				});
+
+				return E('section',{class:'ex-card ex-autowan-card', style:'margin-bottom: 20px;'},[
+					E('div',{class:'ex-card-title'},[
+						E('div',{},[
+							E('span',{class:'ex-kicker'},['CONECTIVIDADE FÍSICA']),
+							E('h3',{},['Portas e Auto-WAN'])
+						]),
+						pillEl
+					]),
+					E('p',{class:'ex-muted', style:'margin: 6px 0 12px; line-height: 1.45; font-size: 13px;'},[
+						'O sistema analisa os cabos conectados nas portas Ethernet. Se uma porta receber sinal de internet/modem (DHCP), ela é automaticamente configurada como WAN adicional para Multi-WAN. Se for um computador, videogame ou TV, opera normalmente como rede local (LAN).'
+					]),
+					E('div',{class:'ex-channel-mode-control'},[
+						E('div',{},[
+							E('strong',{},['Piloto Automático de Portas (Auto-WAN)']),
+							summaryEl
+						]),
+						E('label',{class:'ex-switch'},[
+							chkInput,
+							E('span',{class:'ex-switch-slider'})
+						])
+					])
+				]);
+			})(),
 			starlinkSection || '',
 			E('div',{class:'ex-grid ex-grid-2'},wanCards),
 			E('section',{class:'ex-card ex-mwan-control'},[

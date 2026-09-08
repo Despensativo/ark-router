@@ -6217,6 +6217,20 @@ case "$action" in
 			echo 'disabled'
 		fi
 		;;
+	autowan-toggle)
+		state="${2:-0}"
+		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
+			uci -q set network.autowan=config
+			uci -q set network.autowan.enabled='1'
+			uci commit network
+			echo 'enabled'
+		else
+			uci -q set network.autowan=config
+			uci -q set network.autowan.enabled='0'
+			uci commit network
+			echo 'disabled'
+		fi
+		;;
 	country)
 		country="$(printf '%s' "$2" | tr 'a-z' 'A-Z')"
 		printf '%s' "$country" | grep -Eq '^([A-Z]{2}|00)$' || { echo 'Codigo de pais invalido' >&2; exit 2; }
