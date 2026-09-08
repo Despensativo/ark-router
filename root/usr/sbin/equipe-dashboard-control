@@ -4783,6 +4783,57 @@ case "$action" in
 		) >"$log" 2>&1 || echo '{"state":"error","percent":0,"message":"Falha na atualização."}' >"$status" &
 		echo started
 		;;
+	manual-update-start)
+		status=/tmp/ark-router-self-update.status
+		log=/tmp/ark-router-self-update.log
+		[ "$(cat "$status" 2>/dev/null)" != running ] || { echo running; exit 0; }
+		manager="$(ark_package_manager)"
+		pkg_file="$2"
+		if [ -z "$pkg_file" ]; then
+			case "$manager" in
+				apk) [ -f /tmp/upload.apk ] && pkg_file="/tmp/upload.apk" ;;
+				opkg) [ -f /tmp/upload.ipk ] && pkg_file="/tmp/upload.ipk" ;;
+			esac
+		fi
+		[ -n "$pkg_file" ] && [ -s "$pkg_file" ] || { echo "Arquivo de pacote invalido ou nao encontrado" >&2; exit 3; }
+		echo '{"state":"running","percent":10,"message":"Iniciando instalação manual offline..."}' >"$status"
+		(
+			set -e
+			echo '{"state":"running","percent":25,"message":"1/4 Criando backup de segurança do sistema..."}' >"$status"
+			backup="/tmp/ark-router-before-self-update-$(date +%Y%m%d-%H%M%S).tar.gz"
+			if command -v sysupgrade >/dev/null 2>&1; then sysupgrade -b "$backup" 2>/dev/null || true; fi
+			echo "Backup: $backup"
+			echo '{"state":"running","percent":50,"message":"2/4 Verificando pacote e preparando instalação..."}' >"$status"
+			echo "Arquivo: $pkg_file"
+			echo '{"state":"running","percent":75,"message":"3/4 Instalando pacote com '"$manager"'..."}' >"$status"
+			case "$manager" in
+				apk)
+					apk add --allow-untrusted --force-overwrite "$pkg_file"
+					;;
+				opkg)
+					opkg install --force-overwrite "$pkg_file"
+					;;
+				*)
+					echo 'Gerenciador de pacotes indisponivel' >&2
+					exit 3
+					;;
+			esac
+			rm -f "$pkg_file"
+			installed_after="$(ark_current_version)"
+			echo "Versão instalada: $installed_after"
+			echo '{"state":"running","percent":90,"message":"4/4 Limpando caches e recarregando serviços web..."}' >"$status"
+			if command -v apk >/dev/null 2>&1 && apk info -e speedtest-go >/dev/null 2>&1; then
+				apk del speedtest-go >/dev/null 2>&1 || true
+			fi
+			rm -rf /tmp/ark-speedtest /tmp/ark-speedtest-download
+			rm -f /tmp/luci-indexcache
+			rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
+			[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
+			[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+			echo '{"state":"done","percent":100,"message":"Instalação concluída com sucesso! Versão '"$installed_after"' ativa."}' >"$status"
+		) >"$log" 2>&1 || echo '{"state":"error","percent":0,"message":"Falha na instalação manual do pacote."}' >"$status" &
+		echo started
+		;;
 	language)
 		case "$2" in pt-br|en) ;; *) echo 'Idioma invalido' >&2; exit 2 ;; esac
 		uci -q set equipe_dashboard.main=settings

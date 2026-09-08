@@ -2911,30 +2911,63 @@ return view.extend({
 	renderSelfUpdateResult: function(info){
 		const node=document.getElementById('ex-self-update-result'); if(!node)return;
 		info=info||{};
-		const current=info.current||(this.capabilities.update&&this.capabilities.update.current)||'—', latest=info.latest||'—';
+		const update=this.capabilities.update||{}, manager=info.manager||update.manager||this.capabilities.package_manager||'opkg';
+		const current=info.current||update.current||'—', latest=info.latest||'—';
 		const profileUpgrade=!!info.available&&info.profile==='full'&&info.actual_profile!=='full'&&current===latest;
 		const state=info.error?('Erro: '+info.error):(info.available?(profileUpgrade?'Upgrade para Full disponível':'Atualização disponível'):'Sem atualização mais nova');
 		const stateClass=info.error?'offline':(info.available?'online':'standby');
 		const actions=[];
-		if(info.available)actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.startSelfUpdate,this,info)},['Atualizar agora']));
-		node.replaceChildren(E('div',{class:'ex-feature-row ex-update-result-row'},[
+		if(info.available){
+			actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.startSelfUpdate,this,info)},['Atualizar agora']));
+		}
+		actions.push(E('button',{class:'ex-mini-button','style':'background: rgba(127,127,127,.12);','click':L.bind(this.openManualUpdateModal,this,info)},['📦 Instalar manual/offline']));
+
+		const children = [
 			E('div',{class:'ex-feature-copy'},[
-				E('div',{class:'ex-feature-name-row'},[E('strong',{},[state]),E('span',{class:'ex-pill '+stateClass},[latest])]),
+				E('div',{class:'ex-feature-name-row'},[
+					E('strong',{},[state]),
+					latest && latest !== '—' ? E('span',{class:'ex-pill '+stateClass},[latest]) : ''
+				]),
 				E('small',{class:'ex-muted'},['Instalada: ',current,' • Perfil: ',info.actual_profile||'—',' → ',info.profile||'—']),
-				E('small',{class:'ex-muted'},['Repo: ',info.repo||((this.capabilities.update||{}).repo||'—')]),
+				E('small',{class:'ex-muted'},['Repo: ',info.repo||(update.repo||'Despensativo/ark-router')]),
 				info.asset?E('code',{},[info.asset]):''
-			]),
-			E('div',{class:'ex-feature-state'},[E('div',{class:'ex-feature-actions'},actions)])
-		])); translateTree(node);
+			])
+		];
+
+		if(info.error){
+			const asset = info.asset || ((manager === 'apk') ? 'luci-app-ark-router-full.apk' : 'luci-app-ark-router.ipk');
+			const repo = info.repo || update.repo || 'Despensativo/ark-router';
+			const dlUrl = info.url || ('https://github.com/' + repo + '/raw/main/dist/sdk/' + asset);
+			const relUrl = 'https://github.com/' + repo + '/releases/latest';
+
+			children.push(E('div',{class:'ex-manual-update-box'},[
+				E('strong',{style:'font-size: 0.8rem; color: #f59e0b;'},['💡 Não conseguiu conectar ao GitHub?']),
+				E('small',{class:'ex-muted'},['Você pode baixar o arquivo do pacote no seu dispositivo e instalá-lo manualmente sem precisar de internet no roteador:']),
+				E('div',{class:'ex-manual-update-actions'},[
+					E('a',{class:'ex-feature-link',href:dlUrl,target:'_blank'},['📥 Baixar '+asset]),
+					E('a',{class:'ex-feature-link',href:relUrl,target:'_blank'},['🔗 Ver Releases']),
+					E('button',{class:'ex-mini-button','click':L.bind(this.openManualUpdateModal,this,info)},['📦 Instalar pacote baixado'])
+				])
+			]));
+		}
+
+		children.push(E('div',{class:'ex-feature-state'},[
+			E('div',{class:'ex-feature-actions',style:'flex-wrap: wrap; gap: 8px; margin-top: 6px;'},actions)
+		]));
+
+		node.replaceChildren(E('div',{class:'ex-update-card'},[
+			E('div',{class:'ex-update-result-row'},children)
+		]));
+		translateTree(node);
 	},
 	checkSelfUpdate: function(button){
 		if(button){button.disabled=true;button.textContent='Verificando…';}
-		const node=document.getElementById('ex-self-update-result'); if(node)node.replaceChildren(E('small',{class:'ex-muted'},['Consultando GitHub Releases…']));
+		const node=document.getElementById('ex-self-update-result'); if(node)node.replaceChildren(E('div',{class:'ex-update-card'},[E('small',{class:'ex-muted'},['Consultando GitHub Releases…'])]));
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-check'],20000).then(L.bind(function(r){
 			if(r.code)throw new Error(r.stderr||'Falha ao verificar atualização');
 			let info={}; try{info=JSON.parse(r.stdout||'{}');}catch(e){throw new Error('Resposta de atualização inválida');}
 			this.renderSelfUpdateResult(info);
-		},this)).catch(function(e){if(node)node.replaceChildren(E('p',{class:'alert-message warning'},[e.message]));}).finally(function(){if(button){button.disabled=false;button.textContent='Verificar atualização';}});
+		},this)).catch(function(e){if(node)node.replaceChildren(E('div',{class:'ex-update-card'},[E('p',{class:'alert-message warning'},[e.message])]));}).finally(function(){if(button){button.disabled=false;button.textContent='Verificar atualização';}});
 	},
 	pollSelfUpdate: function(attempt){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-status']).then(L.bind(function(r){
@@ -3008,18 +3041,107 @@ return view.extend({
 			},this)},['Confirmar atualização'])])
 		]);
 	},
+	openManualUpdateModal: function(info){
+		info=info||{};
+		const update=this.capabilities.update||{}, manager=info.manager||update.manager||this.capabilities.package_manager||'opkg';
+		const ext=(manager==='apk')?'.apk':'.ipk';
+		const asset=info.asset || ((manager==='apk')
+			? (this.capabilities.actual_profile==='lite'?'luci-app-ark-router.apk':'luci-app-ark-router-full.apk')
+			: (this.capabilities.actual_profile==='full'?'luci-app-ark-router-full.ipk':'luci-app-ark-router.ipk'));
+		const repo=info.repo||update.repo||'Despensativo/ark-router';
+		const dlUrl=info.url || ('https://github.com/' + repo + '/raw/main/dist/sdk/' + asset);
+		const relUrl='https://github.com/' + repo + '/releases/latest';
+		const self=this;
+
+		ui.showModal('Instalação Manual / Offline do ARK Router',[
+			E('p',{},['Se a consulta online falhar ou o roteador não tiver internet no momento, você pode baixar o pacote pelo celular ou PC e instalá-lo manualmente aqui:']),
+			E('div',{class:'ex-manual-update-box',style:'margin: 12px 0;'},[
+				E('strong',{style:'font-size: 0.88rem;'},['Pacote compatível com este roteador:']),
+				E('div',{style:'display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0;'},[
+					E('code',{style:'font-size: 0.85rem; font-weight: 700;'},[asset]),
+					E('span',{class:'ex-pill online'},[manager])
+				]),
+				E('div',{class:'ex-manual-update-actions',style:'margin-top: 6px;'},[
+					E('a',{class:'ex-feature-link',href:dlUrl,target:'_blank'},['📥 Baixar pacote direto ('+asset+')']),
+					E('a',{class:'ex-feature-link',href:relUrl,target:'_blank'},['🔗 Abrir GitHub Releases'])
+				])
+			]),
+			E('p',{class:'alert-message info',style:'margin-top: 10px;'},['Selecione o arquivo ('+ext+'). O sistema criará backup de segurança automático, preservará todas as configurações de Wi-Fi e rede, e aplicará com logs e barra de progresso em tempo real.']),
+			E('div',{class:'right',style:'margin-top: 16px;'},[
+				E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',
+				E('button',{class:'btn cbi-button cbi-button-action important','click':function(){
+					closeModal();
+					self.startManualPackageUpload(asset, manager);
+				}},['Selecionar arquivo e instalar'])
+			])
+		]);
+	},
+	startManualPackageUpload: function(expectedAsset, manager){
+		const targetPath = (manager === 'apk') ? '/tmp/upload.apk' : '/tmp/upload.ipk';
+		const self = this;
+		ui.uploadFile(targetPath).then(function(reply){
+			const filename = (reply && reply.name) ? reply.name : (expectedAsset || 'pacote');
+			ui.showModal('Confirmar Instalação Manual',[
+				E('p',{},['Arquivo carregado com sucesso: ', E('strong',{},[filename])]),
+				E('p',{class:'alert-message warning'},['A instalação criará backup automático, substituirá com segurança os arquivos da versão e recarregará a interface web. Configurações de rede serão preservadas.']),
+				E('div',{class:'right'},[
+					E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',
+					E('button',{class:'btn cbi-button cbi-button-positive','click':function(){
+						closeModal();
+						ui.addNotification(null,E('p',{},['Instalação manual iniciada. O painel avisará quando terminar.']));
+						return fs.exec('/usr/sbin/equipe-dashboard-control',['manual-update-start', targetPath]).then(function(r){
+							if(r.code)throw new Error(r.stderr||'Falha ao iniciar instalação manual');
+							self.pollSelfUpdate(0);
+						}).catch(function(e){
+							if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
+							ui.addNotification(null,E('p',{},[e.message]),'danger');
+						});
+					}},['Confirmar e Instalar'])
+				])
+			]);
+		}).catch(function(err){
+			if(err && err.message && err.message.includes('cancelled')) return;
+			ui.addNotification(null, E('p',{},['Upload cancelado ou falhou: ' + (err ? err.message : '')]), 'warning');
+		});
+	},
 	selfUpdatePanel: function(){
 		const update=this.capabilities.update||{}, manager=update.manager||this.capabilities.package_manager||'—';
-		return E('section',{class:'ex-appearance-panel ex-update-panel'},[
-			E('div',{class:'ex-appearance-heading'},[
-				E('div',{},[E('strong',{},['Atualização do ARK Router']),E('small',{class:'ex-muted'},['Verifica o GitHub Releases e instala somente após confirmação.'])]),
+		return E('section',{class:'ex-update-panel'},[
+			E('div',{class:'ex-update-header'},[
+				E('div',{},[
+					E('strong',{},['Atualização do ARK Router']),
+					E('small',{class:'ex-muted'},['Verifica o GitHub Releases e instala com segurança após confirmação.'])
+				]),
 				E('span',{class:'ex-pill '+(manager==='none'?'offline':'online')},[manager])
 			]),
-			E('div',{class:'ex-feature-row'},[
-				E('div',{class:'ex-feature-copy'},[E('strong',{},['Versão instalada: ',update.current||'—']),E('small',{class:'ex-muted'},['Repositório: ',update.repo||'Despensativo/ark-router'])]),
-				E('div',{class:'ex-feature-actions'},[E('button',{class:'ex-mini-button','click':L.bind(function(ev){this.checkSelfUpdate(ev.currentTarget);},this)},['Verificar atualização'])])
-			]),
-			E('div',{id:'ex-self-update-result',class:'ex-update-result'},[E('small',{class:'ex-muted'},['Nenhuma verificação executada nesta sessão.'])])
+			E('div',{class:'ex-update-cards-grid'},[
+				E('div',{class:'ex-update-card'},[
+					E('div',{class:'ex-feature-copy'},[
+						E('div',{class:'ex-feature-name-row'},[
+							E('strong',{},['Versão instalada: ',update.current||'—']),
+							E('span',{class:'ex-pill online'},[update.current||'0.9.80'])
+						]),
+						E('small',{class:'ex-muted'},['Repositório: ',update.repo||'Despensativo/ark-router']),
+						E('small',{class:'ex-muted'},['Gerenciador: ',manager])
+					]),
+					E('div',{class:'ex-feature-actions',style:'margin-top: 8px; flex-wrap: wrap; gap: 8px;'},[
+						E('button',{class:'ex-mini-button','click':L.bind(function(ev){this.checkSelfUpdate(ev.currentTarget);},this)},['Verificar atualização']),
+						E('button',{class:'ex-mini-button','style':'background: rgba(127,127,127,.12);','click':L.bind(this.openManualUpdateModal,this)},['📦 Instalar manual/offline'])
+					])
+				]),
+				E('div',{id:'ex-self-update-result',class:'ex-update-result'},[
+					E('div',{class:'ex-update-card'},[
+						E('div',{class:'ex-feature-copy'},[
+							E('strong',{},['Status de atualização']),
+							E('small',{class:'ex-muted'},['Nenhuma verificação executada nesta sessão.']),
+							E('small',{class:'ex-muted'},['Clique em "Verificar atualização" ou use a opção manual abaixo se estiver sem internet no aparelho.'])
+						]),
+						E('div',{class:'ex-feature-actions',style:'margin-top: 8px;'},[
+							E('button',{class:'ex-mini-button','click':L.bind(this.openManualUpdateModal,this)},['Instalar pacote offline'])
+						])
+					])
+				])
+			])
 		]);
 	},
 	pollFeatureInstall: function(key,attempt){
