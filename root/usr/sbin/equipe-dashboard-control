@@ -2044,6 +2044,9 @@ ensure_mwan3_ark_config() {
 		uci -q set "mwan3.$w.up=3"
 		uci -q delete "mwan3.$w.track_ip" 2>/dev/null || true
 		for ip in 1.1.1.1 8.8.8.8 9.9.9.9 208.67.222.222; do uci -q add_list "mwan3.$w.track_ip=$ip"; done
+		uci -q delete "mwan3.$w.flush_conntrack" 2>/dev/null || true
+		uci -q add_list "mwan3.$w.flush_conntrack=ifdown"
+		uci -q add_list "mwan3.$w.flush_conntrack=disconnected"
 
 		uci -q set "mwan3.${w}_m1_w3=member"
 		uci -q set "mwan3.${w}_m1_w3.interface=$w"
@@ -2078,6 +2081,24 @@ ensure_mwan3_ark_config() {
 	uci -q set mwan3.wan2_then_wan=policy
 	uci -q add_list "mwan3.wan2_then_wan.use_member=wan2_m1_w3"
 	uci -q add_list "mwan3.wan2_then_wan.use_member=wan_m2_w3"
+	uci -q set mwan3.ssh=rule
+	uci -q set mwan3.ssh.family=ipv4
+	uci -q set mwan3.ssh.sticky=1
+	uci -q set mwan3.ssh.timeout=3600
+	uci -q set mwan3.ssh.dest_port=22
+	uci -q set mwan3.ssh.proto=tcp
+	uci -q set mwan3.whatsapp_tcp=rule
+	uci -q set mwan3.whatsapp_tcp.family=ipv4
+	uci -q set mwan3.whatsapp_tcp.sticky=1
+	uci -q set mwan3.whatsapp_tcp.timeout=3600
+	uci -q set mwan3.whatsapp_tcp.dest_port='5222,5228,5242'
+	uci -q set mwan3.whatsapp_tcp.proto=tcp
+	uci -q set mwan3.whatsapp_udp=rule
+	uci -q set mwan3.whatsapp_udp.family=ipv4
+	uci -q set mwan3.whatsapp_udp.sticky=1
+	uci -q set mwan3.whatsapp_udp.timeout=3600
+	uci -q set mwan3.whatsapp_udp.dest_port=3478
+	uci -q set mwan3.whatsapp_udp.proto=udp
 	uci -q set mwan3.https=rule
 	uci -q set mwan3.https.family=ipv4
 	uci -q set mwan3.https.sticky=1
@@ -2945,6 +2966,104 @@ except Exception:
 	fi
 
 	/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+}
+
+adblock_sync_whitelist() {
+	if [ ! -f /etc/adguardhome/adguardhome.yaml ]; then
+		printf '{"status":"error","message":"AdGuard Home nao encontrado no roteador","added":0,"total":0}\n'
+		return 1
+	fi
+	if ! command -v python3 >/dev/null 2>&1; then
+		printf '{"status":"error","message":"Python3 necessario para sincronizar regras","added":0,"total":0}\n'
+		return 1
+	fi
+
+	python3 -c "
+import re, json, sys
+
+yaml_path = '/etc/adguardhome/adguardhome.yaml'
+
+OFFICIAL_WHITELIST = [
+    'apple.com', 'itunes.com', 'itunes-apple.com', 'mzstatic.com', 'aaplimg.com',
+    'icloud.com', 'apple-dns.net', 'cdn-apple.com',
+    'play.google.com', 'android.clients.google.com', 'gvt1.com', 'gstatic.com', 'googleapis.com',
+    'github.com', 'githubassets.com', 'githubusercontent.com', 'github.io', 'githubstatus.com',
+    'whatsapp.com', 'whatsapp.net', 'fbcdn.net',
+    'gov.br', 'acesso.gov.br', 'serpro.gov.br', 'dataprev.gov.br',
+    'receita.fazenda.gov.br', 'fazenda.gov.br', 'conectividade.caixa.gov.br', 'caixa.gov.br',
+    'bb.com.br', 'itau.com.br', 'bradesco.com.br', 'santander.com.br',
+    'nubank.com.br', 'inter.co', 'bancointer.com.br', 'c6bank.com.br',
+    'mercadopago.com.br', 'pagseguro.uol.com.br', 'picpay.com',
+    'globo.com', 'globoplay.com.br', 'mercadolivre.com.br', 'ifood.com.br', 'clarotvmais.com.br',
+    'steamcommunity.com', 'steampowered.com', 'epicgames.com', 'netflix.com', 'nflxvideo.net'
+]
+
+try:
+    with open(yaml_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    lines = content.splitlines()
+    idx_ur = -1
+    for i, l in enumerate(lines):
+        if re.match(r'^user_rules:', l):
+            idx_ur = i
+            break
+
+    if idx_ur == -1:
+        print(json.dumps({'status': 'error', 'message': 'user_rules nao encontrado no yaml', 'added': 0, 'total': 0}))
+        sys.exit(0)
+
+    end_idx = len(lines)
+    for j in range(idx_ur + 1, len(lines)):
+        if re.match(r'^[a-z0-9_-]+:', lines[j]):
+            end_idx = j
+            break
+
+    existing_lines = lines[idx_ur + 1:end_idx]
+    existing_rules_cleaned = []
+    seen = set()
+    existing_whitelist_domains = set()
+
+    for l in existing_lines:
+        s = l.strip()
+        if not s:
+            continue
+        m = re.search(r'''^-\s*['\"]?(.*?)['\"]?\s*$''', s)
+        rule_val = m.group(1) if m else s
+        if rule_val in seen:
+            continue
+        seen.add(rule_val)
+        existing_rules_cleaned.append(f\"  - '{rule_val}'\")
+        wm = re.search(r'''@@\|\|([a-z0-9.-]+)\^?''', rule_val.lower())
+        if wm:
+            existing_whitelist_domains.add(wm.group(1))
+
+    new_rules = []
+    for d in OFFICIAL_WHITELIST:
+        d_lower = d.lower().strip()
+        if d_lower not in existing_whitelist_domains:
+            new_rules.append(f'@@||{d_lower}^')
+            existing_whitelist_domains.add(d_lower)
+
+    final_rules = existing_rules_cleaned + [f\"  - '{r}'\" for r in new_rules]
+    new_block = ['user_rules:'] + final_rules if final_rules else ['user_rules: []']
+    new_content = '\\n'.join(lines[:idx_ur] + new_block + lines[end_idx:]) + '\\n'
+
+    if new_rules or len(existing_rules_cleaned) != len(existing_lines):
+        with open(yaml_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+
+    print(json.dumps({
+        'status': 'ok',
+        'added': len(new_rules),
+        'total': len(final_rules),
+        'preserved': len(existing_rules_cleaned),
+        'source': 'Anudeep Global + Brasil Oficial'
+    }))
+except Exception as e:
+    print(json.dumps({'status': 'error', 'message': str(e), 'added': 0, 'total': 0}))
+"
+	/etc/init.d/adguardhome reload >/dev/null 2>&1 || /etc/init.d/adguardhome restart >/dev/null 2>&1 || true
 }
 
 adblock_configure() {
@@ -5561,6 +5680,9 @@ case "$action" in
 			*) echo 'Modo invalido' >&2; exit 2 ;;
 		esac
 		ensure_mwan3_ark_config
+		uci -q set mwan3.ssh.use_policy="$policy"
+		uci -q set mwan3.whatsapp_tcp.use_policy="$policy"
+		uci -q set mwan3.whatsapp_udp.use_policy="$policy"
 		uci -q set mwan3.https.use_policy="$policy"
 		uci -q set mwan3.https_quic.use_policy="$policy"
 		uci -q set mwan3.default_rule_v4.use_policy="$policy"
@@ -5696,6 +5818,9 @@ case "$action" in
 		else
 			uci -q get equipe_perf.settings.custom_blacklist || true
 		fi
+		;;
+	adblock-whitelist-sync)
+		adblock_sync_whitelist
 		;;
 	adblock-disable)
 		adblock_disable

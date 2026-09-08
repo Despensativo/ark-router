@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.9.81
+
+- **🔄 Sincronização Inteligente de Lista Branca de Serviços Essenciais (AdGuard Home)**:
+  - **Exceções Nativas de Serviços Críticos (Brasil & Mundial)**: Integrada lista de exceções recomendadas no AdGuard Home (`user_rules`) para eliminar falso-positivos em ecossistemas sensíveis:
+    - **Apple & Lojas**: App Store, TestFlight, iTunes, iCloud, CDNs Akamai/Fastly (`apple.com`, `itunes.com`, `mzstatic.com`, `aaplimg.com`, `icloud.com`).
+    - **Google & Android**: Play Store, Play Services, Firebase (`play.google.com`, `android.clients.google.com`, `gvt1.com`, `gstatic.com`).
+    - **GitHub & Ferramentas Dev**: Web UI, APIs, assets, raw e repositórios (`github.com`, `githubassets.com`, `githubusercontent.com`, `github.io`).
+    - **Governo Federal & Cidadania BR**: Autenticação unificada, Receita Federal, Dataprev, Serpro, Conectividade Social e FGTS (`gov.br`, `acesso.gov.br`, `serpro.gov.br`, `dataprev.gov.br`, `fazenda.gov.br`, `caixa.gov.br`).
+    - **Bancos Brasileiros & PIX**: Prevenção de bloqueio em APIs bancárias (`bb.com.br`, `itau.com.br`, `bradesco.com.br`, `santander.com.br`, `nubank.com.br`, `inter.co`, `c6bank.com.br`, `mercadopago.com.br`, `pagseguro.uol.com.br`, `picpay.com`).
+    - **Mensageria e Mídia**: WhatsApp (`whatsapp.com`, `whatsapp.net`, `fbcdn.net`), Globoplay, iFood, Mercado Livre, Steam e Netflix.
+  - **Botão de Sincronização 1-Clique no Painel**:
+    - Novo botão **`🔄 Sincronizar Regras de Exceção`** diretamente no modal do Bloqueador de Anúncios.
+    - **Algoritmo 100% Seguro e Idempotente**: Compara as regras atuais com o catálogo oficial, inserindo apenas o que for novo. NUNCA remove ou altera regras personalizadas do usuário e impede duplicações.
+    - Notificação toast instantânea com o resultado da sincronização (`X novas regras adicionadas sem duplicatas`).
+
+- **⚡ Resiliência e Afinidade Multi-WAN (MWAN3) com Fim de Quedas no GitHub, WhatsApp e Bancos**:
+  - **Limpeza Imediata de Sessões Mortas (`flush_conntrack`)**: Adicionado `list flush_conntrack 'ifdown'` e `'disconnected'` nas interfaces de WAN. Se uma WAN cair, o kernel limpa instantaneamente a tabela de conexões, migrando o tráfego para o link reserva em poucos segundos sem congelar o tráfego por minutos.
+  - **Afinidade para SSH e Git Push/Clone (Porta 22)**: Criada regra dedicada `mwan3.ssh` (`dest_port 22`, `proto tcp`, `sticky 1`, `timeout 3600`) que mantém conexões SSH do GitHub, servidores e terminais na mesma WAN, eliminando desconexões (`Broken pipe` / `Connection reset by peer`) durante push/clone de repositórios pesados.
+  - **Isolamento de Mensageria e Chamadas WhatsApp/VoIP**: Criadas regras dedicadas `mwan3.whatsapp_tcp` (portas 5222, 5228, 5242) e `mwan3.whatsapp_udp` (porta 3478 STUN/TURN) com `sticky 1`, impedindo que chamadas de áudio/vídeo sofram re-roteamento e congelamento ao falar.
+  - **Consistência QUIC / HTTP/3 (UDP 443) e HTTPS (TCP 443)**: Sincronizadas as regras de porta 443 para operarem com a mesma marcação de sticky e política unificada, impedindo divisão de tráfego entre lojas de apps e navegadores.
+
 ## 0.9.80
 
 - **📶 Centro de Comando Wi-Fi Totalmente Dinâmico e Fim das Strings Obsoletas (QCA9880 / QCA9558)**:

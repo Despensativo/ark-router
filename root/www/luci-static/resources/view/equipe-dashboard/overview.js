@@ -4261,6 +4261,50 @@ return view.extend({
 			blacklistTextarea
 		]);
 
+		const whitelistSyncBtn = E('button', {
+			class: 'btn cbi-button cbi-button-action',
+			style: 'padding: 6px 14px; font-weight: 700; font-size: 0.82rem; background: rgba(59,130,246,.15); border: 1px solid rgba(59,130,246,.35); color: #60a5fa;',
+			click: function(ev) {
+				const btn = ev.currentTarget;
+				btn.disabled = true;
+				btn.textContent = '🔄 Sincronizando…';
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['adblock-whitelist-sync']).then(function(r) {
+					btn.disabled = false;
+					btn.textContent = '🔄 Sincronizar Regras de Exceção';
+					if (r.code) throw new Error(r.stderr || 'Falha ao sincronizar lista branca');
+					let data = {};
+					try { data = JSON.parse(r.stdout); } catch(e) {}
+					const added = data.added || 0;
+					const total = data.total || 0;
+					ui.addNotification(null, E('p', {}, [
+						added > 0
+							? ('✅ Lista de exceções sincronizada: ' + added + ' novas regras adicionadas sem duplicatas! (' + total + ' regras ativas).')
+							: ('✅ Lista atualizada! Todas as regras oficiais já estão ativas (' + total + ' regras). Nenhuma duplicata criada.')
+					]), 'success');
+				}).catch(function(err) {
+					btn.disabled = false;
+					btn.textContent = '🔄 Sincronizar Regras de Exceção';
+					ui.addNotification(null, E('p', {}, ['Erro ao sincronizar lista branca: ' + err.message]), 'danger');
+				});
+			}
+		}, ['🔄 Sincronizar Regras de Exceção']);
+
+		const whitelistBlock = E('div', {
+			class: 'ex-device-config-block',
+			style: 'margin-top: 12px; padding: 12px; border-radius: 10px; background: rgba(59,130,246,.05); border: 1px solid rgba(59,130,246,.22);'
+		}, [
+			E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; flex-wrap: wrap;' }, [
+				E('strong', { style: 'font-size: 0.88rem; color: #38bdf8;' }, ['✅ Lista Branca de Serviços Essenciais (Brasil & Mundial)']),
+				whitelistSyncBtn
+			]),
+			E('p', { class: 'ex-muted', style: 'margin: 0; font-size: 0.81rem; line-height: 1.4;' }, [
+				'Desbloqueia automaticamente serviços críticos (Apple App Store, Google Play, WhatsApp, GitHub, Gov.br, Bancos BR e PIX) para que filtros agressivos não causem falso-positivos.',
+				E('span', { style: 'display: block; margin-top: 4px; font-size: 0.77rem; color: #94a3b8;' }, [
+					'💡 O botão compara o que há de novo e adiciona somente as regras faltantes, sem remover suas regras personalizadas e sem criar duplicatas.'
+				])
+			])
+		]);
+
 		const modalContent = [
 			E('p', {}, [active ? 'Ajuste a memória RAM alocada e as proteções do bloqueador de anúncios:' : 'Escolha como deseja ativar o bloqueio de anúncios e rastreadores neste roteador:']),
 			isFull ? E('div', {
@@ -4312,6 +4356,7 @@ return view.extend({
 				cloudWrap
 			]),
 			blacklistBlock,
+			whitelistBlock,
 			E('p', { class: 'alert-message warning', style: 'margin-top: 14px;' }, [
 				'O modo All-Servers do DNS Turbo permanece protegido para que consultas paralelas não vazem requisições não filtradas.'
 			]),
