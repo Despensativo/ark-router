@@ -6143,7 +6143,7 @@ return view.extend({
 								E('li', {}, ['Ao detectar um cabo recém-espetado, ele envia uma sondagem DHCP. Se receber resposta de internet/modem, a porta será promovida automaticamente para WAN (Load Balance ou Failover).']),
 								E('li', {}, ['Se for um PC, TV ou console de jogos (sem DHCP upstream), a porta continuará funcionando normalmente na rede local (LAN).']),
 								E('li', {}, ['Atenção a modems em Modo Bridge (PPPoE): eles não fornecem IP por DHCP. Se sua internet exigir usuário e senha, configure a WAN manualmente na barra abaixo.']),
-								E('li', {}, ['Garantia de segurança: A Porta LAN 1 e o sinal Wi-Fi nunca serão alterados para evitar que você perca o acesso ao painel.'])
+								E('li', {}, ['Garantia Salva-Vidas (Fail-Safe Inteligente): Todas as portas (inclusive a Porta 1) são inteligentes e podem virar WAN. Porém, se o Wi-Fi estiver desligado e nenhuma outra porta tiver conexão local ativa, o sistema protege a última porta conectada para garantir que você nunca perca o acesso ao painel.'])
 							])
 						]),
 						E('div', { style: 'display:flex; justify-content:flex-end; gap:10px; margin-top:16px;' }, [

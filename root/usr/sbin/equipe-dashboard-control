@@ -115,6 +115,37 @@ wifi_known_radios() {
 	[ -n "$r2" ] && printf '%s\n' "$r2"
 	[ -n "$r5" ] && [ "$r5" != "$r2" ] && printf '%s\n' "$r5"
 }
+autowan_can_convert() {
+	local port="$1"
+	# 1. Se ha Wi-Fi ativo (disabled=0), e 100% seguro converter qualquer porta física
+	if uci -q show wireless | grep -q "\.disabled='0'"; then
+		return 0
+	fi
+
+	# 2. Se Wi-Fi desligado, checa se há outra porta LAN com cabo ativo
+	# Suporte a swconfig (ex: D-Link DGL-5500 12.1)
+	if command -v swconfig >/dev/null 2>&1 && swconfig dev switch0 show >/dev/null 2>&1; then
+		local lan_links=0
+		for p in 1 2 3 4; do
+			if [ "$p" != "$port" ] && swconfig dev switch0 port "$p" get link 2>/dev/null | grep -q "link:up"; then
+				lan_links=$((lan_links + 1))
+			fi
+		done
+		[ "$lan_links" -ge 1 ] && return 0
+	fi
+
+	# Suporte a DSA (ex: Predator W6X 73.1)
+	local dsa_lan_links=0
+	for iface in lan1 lan2 lan3 lan4; do
+		if [ "$iface" != "$port" ] && [ -f "/sys/class/net/$iface/operstate" ]; then
+			[ "$(cat "/sys/class/net/$iface/operstate")" = "up" ] && dsa_lan_links=$((dsa_lan_links + 1))
+		fi
+	done
+	[ "$dsa_lan_links" -ge 1 ] && return 0
+
+	# Sem Wi-Fi e sem outra porta LAN: protege contra lockout
+	return 1
+}
 same_managed_subnet() {
 	candidate="$1"
 	for managed in lan guest; do
@@ -6229,6 +6260,16 @@ case "$action" in
 			uci -q set network.autowan.enabled='0'
 			uci commit network
 			echo 'disabled'
+		fi
+		;;
+	autowan-can-convert)
+		port="$2"
+		if autowan_can_convert "$port"; then
+			echo 'allowed'
+			exit 0
+		else
+			echo 'protected'
+			exit 1
 		fi
 		;;
 	country)
