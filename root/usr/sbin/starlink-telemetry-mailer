@@ -1,18 +1,21 @@
 #!/bin/sh
 # ARK Router - Despachante Inteligente de Relatórios de Telemetria Dual Starlink
 # Compila o histórico das últimas 25h, formata relatório executivo e envia com anexo .csv.gz.
+# Suporta API Resend (sem necessidade de senha) e SMTP tradicional (msmtp).
 
 set -u
 
 CONF="starlink_telemetry"
 FLASH_DIR="/etc/starlink_history"
 RAM_DIR="/tmp/starlink_telemetry"
-TMP_REPORT="/tmp/starlink_report.$$"
+TMP_REPORT="/tmp/starlink_report.$$.eml"
+TMP_HTML="/tmp/starlink_report.$$.html"
 TMP_ATTACH="/tmp/starlink_25h_export.$$.csv.gz"
 LAST_EPOCH_FILE="${FLASH_DIR}/.last_email_epoch"
 
 log() {
 	logger -t "starlink-mailer" "$1"
+	echo "starlink-mailer: $1" >&2
 }
 
 is_email_enabled() {
@@ -134,6 +137,81 @@ build_attachment() {
 	) | gzip -c > "$TMP_ATTACH"
 }
 
+send_via_resend() {
+	local api_key="$1"
+	local from_email="$2"
+	local to_email="$3"
+	local subject="$4"
+	local html_file="$5"
+	local attach_file="$6"
+	local attach_name="$7"
+
+	if [ -z "$api_key" ] || [ "$api_key" = "re_xxxxxxxxx" ]; then
+		log "Atenção: Por favor, configure sua chave real do Resend (substitua 're_xxxxxxxxx' em starlink_telemetry.email.resend_api_key)."
+		return 1
+	fi
+
+	local tmp_json="/tmp/resend_payload_$$.json"
+
+	# Constrói o JSON via ucode com ARGV limpo, sem quebra de aspas ou caracteres especiais
+	ucode -e '
+		let fs = require("fs");
+		let from_e = ARGV[0];
+		let to_e = ARGV[1];
+		let subj = ARGV[2];
+		let html_path = ARGV[3];
+		let attach_path = ARGV[4];
+		let attach_name = ARGV[5];
+
+		let html_content = (html_path && fs.stat(html_path)) ? fs.readfile(html_path) : "";
+
+		let payload = {
+			from: from_e,
+			to: [ to_e ],
+			subject: subj,
+			html: html_content
+		};
+
+		if (attach_path && fs.stat(attach_path)) {
+			let raw = fs.readfile(attach_path);
+			if (raw) {
+				payload.attachments = [{
+					filename: attach_name || "export.csv.gz",
+					content: b64enc(raw)
+				}];
+			}
+		}
+
+		print(sprintf("%J\n", payload));
+	' "$from_email" "$to_email" "$subject" "$html_file" "$attach_file" "$attach_name" > "$tmp_json" 2>/dev/null
+
+	log "Enviando e-mail via Resend API (sem senha de e-mail)..."
+	local resp
+	local fetch_err="/tmp/resend_err_$$.log"
+	resp="$(uclient-fetch -q -O - \
+		--header="Authorization: Bearer $api_key" \
+		--header="Content-Type: application/json" \
+		--post-file="$tmp_json" \
+		https://api.resend.com/emails 2>"$fetch_err" || true)"
+
+	rm -f "$tmp_json"
+
+	if printf '%s' "$resp" | grep -q '"id"'; then
+		local mail_id
+		mail_id="$(printf '%s' "$resp" | jsonfilter -e '@.id' 2>/dev/null || printf 'ok')"
+		log "Relatório executivo enviado com sucesso via Resend API! ID: $mail_id"
+		date +%s > "$LAST_EPOCH_FILE"
+		rm -f "$fetch_err"
+		return 0
+	else
+		local err_detail
+		err_detail="$(cat "$fetch_err" 2>/dev/null || true)"
+		log "Erro ao enviar via Resend API: ${resp:-$err_detail}"
+		rm -f "$fetch_err"
+		return 1
+	fi
+}
+
 send_report() {
 	local is_test="${1:-0}"
 
@@ -142,22 +220,12 @@ send_report() {
 		return 0
 	fi
 
-	command -v msmtp >/dev/null 2>&1 || {
-		log "msmtp não está instalado. Tentando instalar via apk..."
-		if command -v apk >/dev/null 2>&1; then
-			apk add msmtp >/dev/null 2>&1 || true
-		fi
-		if ! command -v msmtp >/dev/null 2>&1; then
-			log "Erro: msmtp não encontrado e não pôde ser instalado. Relatório não enviado."
-			return 1
-		fi
-	}
-
-	ensure_msmtprc || return 1
+	local provider
+	provider="$(uci -q get "${CONF}.email.provider" || printf 'resend')"
 
 	local email_to email_from attach_csv
-	email_to="$(uci -q get "${CONF}.email.email_to" || true)"
-	email_from="$(uci -q get "${CONF}.email.email_from" || uci -q get "${CONF}.email.smtp_user" || true)"
+	email_to="$(uci -q get "${CONF}.email.email_to" || printf 'hcsskt@gmail.com')"
+	email_from="$(uci -q get "${CONF}.email.email_from" || printf 'onboarding@resend.dev')"
 	attach_csv="$(uci -q get "${CONF}.email.attach_csv" || printf '1')"
 
 	[ -n "$email_to" ] || {
@@ -169,10 +237,9 @@ send_report() {
 	hostname="$(cat /proc/sys/kernel/hostname 2>/dev/null || printf 'ARK-Router')"
 	model="$(cat /tmp/sysinfo/model 2>/dev/null || printf 'ARK Dual-WAN Gateway')"
 
-	local now_fmt now_date
+	local now_fmt now_date date_slug
 	now_fmt="$(date '+%d/%m/%Y às %H:%M:%S')"
 	now_date="$(date '+%d/%m/%Y')"
-	local date_slug
 	date_slug="$(date '+%Y%m%d')"
 
 	log "Compilando estatísticas das últimas 25h para e-mail..."
@@ -204,57 +271,10 @@ send_report() {
 
 	local subject_prefix=""
 	[ "$is_test" -eq 1 ] && subject_prefix="[TESTE] "
+	local email_subject="${subject_prefix}[ARK Router] Relatório Executivo 25h - Dual Starlink / Multi-WAN ($now_date)"
 
-	local boundary="ARK_BOUNDARY_$(date +%s)_$$"
-	local alt_boundary="ARK_ALT_$(date +%s)_$$"
-
-	# Monta o E-mail em formato MIME padrão
-	cat > "$TMP_REPORT" <<EOF
-From: $email_from
-To: $email_to
-Subject: ${subject_prefix}[ARK Router] Relatório Executivo 25h - Dual Starlink / Multi-WAN ($now_date)
-Date: $(date -R 2>/dev/null || date)
-MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="$boundary"
-
---$boundary
-Content-Type: multipart/alternative; boundary="$alt_boundary"
-
---$alt_boundary
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-
-================================================================================
-           ARK ROUTER - RELATÓRIO EXECUTIVO DUAL STARLINK & MULTI-WAN
-================================================================================
-Roteador: $hostname ($model)
-Data de Emissão: $now_fmt
-Amostras Analisadas: $total segundos (~$hours_float horas de histórico)
-
-1. DESEMPENHO INDIVIDUAL DOS LINKS
---------------------------------------------------------------------------------
-Métrica                     Link 1 (WAN 1)            Link 2 (WAN 2)
---------------------------------------------------------------------------------
-Disponibilidade             $w1_avail %                $w2_avail %
-Latência Média              $w1_lat ms                $w2_lat ms
-Perda Média de Pacotes      $w1_loss %                $w2_loss %
-Pior Rajada de Perda        $w1_max_loss %            $w2_max_loss %
-
-2. EFICÁCIA DA DUPLICAÇÃO & REDUNDÂNCIA (PROTEÇÃO PS PORTAL)
---------------------------------------------------------------------------------
-• Falhas exclusivas da WAN 1 (salvas pela WAN 2):  $saved_w1 segundos
-• Falhas exclusivas da WAN 2 (salvas pela WAN 1):  $saved_w2 segundos
-• Quedas simultâneas em ambos os enlaces:          $sim_loss segundos
-• Disponibilidade combinada (Túnel Resiliente):    $combined_avail %
-
-$( [ "$is_test" -eq 1 ] && echo "OBS: Este é um e-mail de teste de disparo solicitado manualmente." )
-================================================================================
-Gerado automaticamente pelo ARK Router OS.
-
---$alt_boundary
-Content-Type: text/html; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-
+	# Gera corpo HTML do relatório
+	cat > "$TMP_HTML" <<EOF
 <!DOCTYPE html>
 <html>
 <head>
@@ -309,27 +329,88 @@ Content-Transfer-Encoding: 8bit
 </div>
 </body>
 </html>
+EOF
+
+	# Prepara arquivo de anexo se ativado
+	local attach_path=""
+	local attach_filename="starlink_telemetria_25h_${date_slug}.csv.gz"
+	if [ "$attach_csv" = "1" ]; then
+		build_attachment
+		[ -f "$TMP_ATTACH" ] && [ -s "$TMP_ATTACH" ] && attach_path="$TMP_ATTACH"
+	fi
+
+	# ================= ROTA RESEND API =================
+	if [ "$provider" = "resend" ]; then
+		local resend_key
+		resend_key="$(uci -q get "${CONF}.email.resend_api_key" || printf 're_xxxxxxxxx')"
+		send_via_resend "$resend_key" "$email_from" "$email_to" "$email_subject" "$TMP_HTML" "$attach_path" "$attach_filename"
+		local ret=$?
+		rm -f "$TMP_HTML" "$TMP_ATTACH"
+		return "$ret"
+	fi
+
+	# ================= ROTA SMTP (MSMTP) =================
+	command -v msmtp >/dev/null 2>&1 || {
+		log "msmtp não está instalado. Tentando instalar via apk..."
+		if command -v apk >/dev/null 2>&1; then
+			apk add msmtp >/dev/null 2>&1 || true
+		fi
+		if ! command -v msmtp >/dev/null 2>&1; then
+			log "Erro: msmtp não encontrado e não pôde ser instalado. Relatório não enviado."
+			rm -f "$TMP_HTML" "$TMP_ATTACH"
+			return 1
+		fi
+	}
+
+	ensure_msmtprc || { rm -f "$TMP_HTML" "$TMP_ATTACH"; return 1; }
+
+	local boundary="ARK_BOUNDARY_$(date +%s)_$$"
+	local alt_boundary="ARK_ALT_$(date +%s)_$$"
+
+	cat > "$TMP_REPORT" <<EOF
+From: $email_from
+To: $email_to
+Subject: $email_subject
+Date: $(date -R 2>/dev/null || date)
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="$boundary"
+
+--$boundary
+Content-Type: multipart/alternative; boundary="$alt_boundary"
+
+--$alt_boundary
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+ARK ROUTER - RELATÓRIO EXECUTIVO DUAL STARLINK & MULTI-WAN
+Data de Emissão: $now_fmt
+Amostras: $total (~$hours_float h)
+WAN 1: $w1_avail % disp | $w1_lat ms | $w1_loss % perda
+WAN 2: $w2_avail % disp | $w2_lat ms | $w2_loss % perda
+Disponibilidade Combinada: $combined_avail %
+
+--$alt_boundary
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+$(cat "$TMP_HTML")
 
 --$alt_boundary--
 EOF
 
-	# Anexa a planilha compactada .csv.gz se ativado
-	if [ "$attach_csv" = "1" ]; then
-		build_attachment
-		if [ -f "$TMP_ATTACH" ] && [ -s "$TMP_ATTACH" ]; then
-			local b64_content
-			b64_content="$(ucode -e 'let fs = require("fs"); print(b64enc(fs.readfile("'"$TMP_ATTACH"'")));' 2>/dev/null || true)"
-			if [ -n "$b64_content" ]; then
-				cat >> "$TMP_REPORT" <<EOF
+	if [ -n "$attach_path" ]; then
+		local b64_content
+		b64_content="$(ucode -e 'let fs = require("fs"); print(b64enc(fs.readfile("'"$attach_path"'")));' 2>/dev/null || true)"
+		if [ -n "$b64_content" ]; then
+			cat >> "$TMP_REPORT" <<EOF
 
 --$boundary
-Content-Type: application/gzip; name="starlink_telemetria_25h_${date_slug}.csv.gz"
+Content-Type: application/gzip; name="$attach_filename"
 Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="starlink_telemetria_25h_${date_slug}.csv.gz"
+Content-Disposition: attachment; filename="$attach_filename"
 
 $b64_content
 EOF
-			fi
 		fi
 	fi
 
@@ -338,17 +419,17 @@ EOF
 --$boundary--
 EOF
 
-	log "Disparando e-mail para $email_to..."
+	log "Disparando e-mail via SMTP para $email_to..."
 	if msmtp -a default "$email_to" < "$TMP_REPORT" 2>/tmp/msmtp_err; then
 		log "Relatório executivo enviado com sucesso para $email_to!"
 		date +%s > "$LAST_EPOCH_FILE"
-		rm -f "$TMP_REPORT" "$TMP_ATTACH" /tmp/msmtp_err
+		rm -f "$TMP_REPORT" "$TMP_HTML" "$TMP_ATTACH" /tmp/msmtp_err
 		return 0
 	else
 		local err
 		err="$(cat /tmp/msmtp_err 2>/dev/null || printf 'Erro desconhecido')"
-		log "Falha ao enviar e-mail: $err"
-		rm -f "$TMP_REPORT" "$TMP_ATTACH"
+		log "Falha ao enviar e-mail via SMTP: $err"
+		rm -f "$TMP_REPORT" "$TMP_HTML" "$TMP_ATTACH"
 		return 1
 	fi
 }
