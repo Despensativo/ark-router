@@ -6,7 +6,11 @@ ARK Router is composed of a LuCI JavaScript view, a scoped CSS file, an RPC ACL,
 
 - `root/www/luci-static/resources/view/equipe-dashboard/overview.js`: UI, polling and RPC orchestration.
 - `root/www/luci-static/resources/view/equipe-dashboard/overview.css`: responsive presentation and theme variables.
-- `root/usr/sbin/equipe-dashboard-control`: validated write operations and capability detection.
+- `root/www/luci-static/ark/ark-theme.js`: visual injection, dynamic tables, modals and hardware badges.
+- `root/usr/sbin/equipe-dashboard-control`: validated write operations, capability detection and LED engine.
+- `root/usr/sbin/ark-autowan-daemon`: continuous background auto-sensing daemon for port promotion/reversion.
+- `root/etc/hotplug.d/iface/99-ark-led-wan`: dynamic interface-driven WAN/Planet LED status updater.
+- `root/etc/hotplug.d/net/99-ark-led-wan`: dynamic device-driven WAN/Planet LED status updater.
 - `root/usr/sbin/equipe-traffic-history`: lightweight traffic history collector.
 - `root/etc/init.d/equipe-traffic-history`: collector service.
 - `root/etc/config/equipe_dashboard`: dashboard preferences.

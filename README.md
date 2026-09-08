@@ -1,7 +1,7 @@
 # ARK Router
 
 ![OpenWrt](https://img.shields.io/badge/OpenWrt-24.x%20%2F%2025.x-00B5E2?logo=openwrt&logoColor=white)
-![Release](https://img.shields.io/badge/release-v0.9.69-blue.svg)
+![Release](https://img.shields.io/badge/release-v0.9.89-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![Language](https://img.shields.io/badge/UI-PT--BR%20%2F%20EN-blue)
 ![Platform](https://img.shields.io/badge/arch-all%20%2F%20noarch-orange)
@@ -12,7 +12,7 @@ The project does not replace OpenWrt or LuCI — it operates on top of LuCI as a
 
 > **Keywords / SEO**: ARK Router, OpenWrt dashboard, LuCI dashboard, OpenWrt moderno, monitorar tráfego por dispositivo, per-device bandwidth monitor, OpenWrt Starlink telemetry, ZeroTier OpenWrt autostart, DNS benchmark router, SQM CAKE bufferbloat QoS, Multi-WAN failover load balancing, Speedify OpenWrt bonding, OpenWrt mobile UI, painel roteador OpenWrt, network bandwidth limiter, real-time router monitoring, adguard home openwrt ram, dns blacklist openwrt, cross-browser responsive openwrt.
 
-The current official release is **v0.9.69**. ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
+The current official release is **v0.9.89**. ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
 
 ---
 
@@ -49,6 +49,18 @@ O **ARK Router** transforma roteadores com **OpenWrt** em verdadeiras centrais d
    - Auto-purga periódica de caches de memória RAM, reciclagem agressiva de conexões conntrack TCP/UDP, balanceamento de interrupções de CPU multithread (`irqbalance`) e aceleração do `nlbwmon` para 2 segundos.
 10. **📱 100% Otimizado para Celular (Mobile-First)**:
     - Layout fluido com botões grandes de toque (48px) para iPhones e Androids, sem rolagem horizontal ou quebras visuais.
+11. **🔀 Alternância 1-Click entre Modo Roteador e Modo Ponto de Acesso & Switch (Dumb AP)**:
+    - Converte portas e unifica interfaces em bridge (`br-lan`), desativa DHCP local e propaga transparentemente o DHCP do roteador mestre para portas LAN e Wi-Fi sem duplo NAT.
+    - Dupla proteção com temporizador de 3 segundos no modal de confirmação e salvaguarda permanente com IP de Resgate anti-lockout (`192.168.12.1` / `192.168.73.1`).
+12. **🔀 Conversão Dinâmica da Porta WAN em LAN (Auto-Sensing Total)**:
+    - Permite transformar a porta WAN física em uma porta LAN comum para switches, PCs ou TVs.
+    - Se um cabo com sinal de internet/DHCP for conectado a ela, o Piloto Automático de Portas (Auto-WAN) a promove dinamicamente a WAN em tempo real.
+13. **🌐 Motor Dinâmico de LED WAN / Planeta (Planet LED Solid Fix)**:
+    - Corrige o LED do planeta (🌐) em roteadores Cudy (WR3000/TR3000), D-Link e Acer, eliminando o piscar excessivo e mantendo-o **aceso e fixo (sólido)** enquanto a conexão estiver ativa. Reatribuição dinâmica em tempo real durante trocas de porta ou comutações Multi-WAN.
+14. **⚡ Otimização Inteligente de SQM (CAKE) em CPUs Fracas (Upload-Only SQM)**:
+    - Detecção automática de processadores MIPS vs. ARM64, alerta preventivo de sobrecarga acima de 100 Mbps e botão 1-clique para limitar somente o upload, eliminando bufferbloat e economizando 95% de CPU em hardware de 128 MB.
+15. **📡 Seleção Automática de Canais Wi-Fi Inteligente (Sem Radares DFS e Sem Sobreposição)**:
+    - Restringe a banda de 2.4 GHz exclusivamente aos canais padrão ouro 1, 6 e 11, e a banda de 5 GHz a canais estáveis livres de interferência e bloqueios por radar meteorológico DFS.
 
 ---
 
