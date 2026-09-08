@@ -2014,9 +2014,27 @@ starlink_public_list_json() {
 	done
 	printf ']}\n'
 }
+mwan3_reorder_rules() {
+	uci -q reorder "mwan3.bypass_pvt192=0" 2>/dev/null || true
+	uci -q reorder "mwan3.bypass_pvt10=1" 2>/dev/null || true
+	uci -q reorder "mwan3.bypass_pvt172=2" 2>/dev/null || true
+	order_idx=3
+	for r in $(uci -q show mwan3 2>/dev/null | grep '=rule$' | cut -d. -f2 | cut -d= -f1 | grep '^ark_dev_'); do
+		uci -q reorder "mwan3.$r=$order_idx" 2>/dev/null || true
+		order_idx=$((order_idx + 1))
+	done
+	uci -q reorder "mwan3.dev_pool1=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
+	uci -q reorder "mwan3.dev_pool2=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
+	uci -q reorder "mwan3.ssh=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
+	uci -q reorder "mwan3.whatsapp_tcp=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
+	uci -q reorder "mwan3.whatsapp_udp=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
+	uci -q reorder "mwan3.https=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
+	uci -q reorder "mwan3.https_quic=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
+	uci -q reorder "mwan3.default_rule_v4=99" 2>/dev/null || true
+}
 ensure_mwan3_ark_config() {
 	[ -f /etc/config/mwan3 ] || return 0
-	for sec in wan6 wanb wanb6 wanb_m1_w2 wanb_m1_w3 wanb_m2_w2 wan6_m1_w3 wan6_m2_w3 wanb6_m1_w2 wanb6_m1_w3 wanb6_m2_w2 wanb_only wan_wanb wanb_wan default_rule_v6; do
+	for sec in wan6 wanb wanb6 wanb_m1_w2 wanb_m1_w3 wanb_m2_w2 wan6_m1_w3 wan6_m2_w3 wanb6_m1_w2 wanb6_m1_w3 wanb6_m2_w2 wanb_only wan_wanb wanb_wan default_rule_v6 device_wan1_pref device_wan2_pref bypass_private; do
 		uci -q delete "mwan3.$sec" 2>/dev/null || true
 	done
 	active_wans=""
@@ -2028,7 +2046,7 @@ ensure_mwan3_ark_config() {
 		fi
 	done
 	[ -n "$active_wans" ] || active_wans="wan wan2"
-	for p in wan_only wan2_only wan3_only wan4_only balanced wan_then_wan2 wan2_then_wan; do
+	for p in wan_only wan2_only wan3_only wan4_only balanced wan_then_wan2 wan2_then_wan wan1_pref wan2_pref; do
 		uci -q delete "mwan3.$p.use_member" 2>/dev/null || true
 	done
 	wan_idx=1
@@ -2036,6 +2054,7 @@ ensure_mwan3_ark_config() {
 		uci -q set "mwan3.$w=interface"
 		uci -q set "mwan3.$w.enabled=1"
 		uci -q set "mwan3.$w.family=ipv4"
+		uci -q set "mwan3.$w.initial_state=offline"
 		uci -q set "mwan3.$w.reliability=2"
 		uci -q set "mwan3.$w.count=1"
 		uci -q set "mwan3.$w.timeout=2"
@@ -2044,9 +2063,8 @@ ensure_mwan3_ark_config() {
 		uci -q set "mwan3.$w.up=3"
 		uci -q delete "mwan3.$w.track_ip" 2>/dev/null || true
 		for ip in 1.1.1.1 8.8.8.8 9.9.9.9 208.67.222.222; do uci -q add_list "mwan3.$w.track_ip=$ip"; done
+		# Fim da limpeza global destrutiva de conntrack (preserva sessoes ativas da WAN saudavel)
 		uci -q delete "mwan3.$w.flush_conntrack" 2>/dev/null || true
-		uci -q add_list "mwan3.$w.flush_conntrack=ifdown"
-		uci -q add_list "mwan3.$w.flush_conntrack=disconnected"
 
 		uci -q set "mwan3.${w}_m1_w3=member"
 		uci -q set "mwan3.${w}_m1_w3.interface=$w"
@@ -2081,40 +2099,103 @@ ensure_mwan3_ark_config() {
 	uci -q set mwan3.wan2_then_wan=policy
 	uci -q add_list "mwan3.wan2_then_wan.use_member=wan2_m1_w3"
 	uci -q add_list "mwan3.wan2_then_wan.use_member=wan_m2_w3"
+
+	# Politicas estaveis por dispositivo (Device Pinning com failover seletivo) - max 15 chars
+	uci -q set mwan3.wan1_pref=policy
+	uci -q add_list "mwan3.wan1_pref.use_member=wan_m1_w3"
+	uci -q add_list "mwan3.wan1_pref.use_member=wan2_m2_w3"
+
+	uci -q set mwan3.wan2_pref=policy
+	uci -q add_list "mwan3.wan2_pref.use_member=wan2_m1_w3"
+	uci -q add_list "mwan3.wan2_pref.use_member=wan_m2_w3"
+
+	# 1. Regras 0-2: Bypass estrito de redes privadas RFC1918 (LAN, ONUs, Starlink, ZeroTier)
+	uci -q set mwan3.bypass_pvt192=rule
+	uci -q set mwan3.bypass_pvt192.family=ipv4
+	uci -q set mwan3.bypass_pvt192.dest_ip='192.168.0.0/16'
+	uci -q set mwan3.bypass_pvt192.use_policy=default
+
+	uci -q set mwan3.bypass_pvt10=rule
+	uci -q set mwan3.bypass_pvt10.family=ipv4
+	uci -q set mwan3.bypass_pvt10.dest_ip='10.0.0.0/8'
+	uci -q set mwan3.bypass_pvt10.use_policy=default
+
+	uci -q set mwan3.bypass_pvt172=rule
+	uci -q set mwan3.bypass_pvt172.family=ipv4
+	uci -q set mwan3.bypass_pvt172.dest_ip='172.16.0.0/12'
+	uci -q set mwan3.bypass_pvt172.use_policy=default
+
+	# 2. Regras de Pools por Dispositivo (Balanceamento Estavel por Aparelho)
+	lan_net="$(uci -q get network.lan.ipaddr || printf '192.168.73.1')"
+	lan_prefix="$(printf '%s' "$lan_net" | cut -d. -f1-3)"
+	[ -n "$lan_prefix" ] || lan_prefix="192.168.73"
+
+	pool1_en="$(uci -q get mwan3.dev_pool1.enabled || printf '0')"
+	uci -q set mwan3.dev_pool1=rule
+	uci -q set mwan3.dev_pool1.family=ipv4
+	uci -q set "mwan3.dev_pool1.src_ip=${lan_prefix}.0/25"
+	uci -q set mwan3.dev_pool1.dest_ip='0.0.0.0/0'
+	uci -q set mwan3.dev_pool1.use_policy=wan1_pref
+	uci -q set "mwan3.dev_pool1.enabled=$pool1_en"
+
+	pool2_en="$(uci -q get mwan3.dev_pool2.enabled || printf '0')"
+	uci -q set mwan3.dev_pool2=rule
+	uci -q set mwan3.dev_pool2.family=ipv4
+	uci -q set "mwan3.dev_pool2.src_ip=${lan_prefix}.128/25"
+	uci -q set mwan3.dev_pool2.dest_ip='0.0.0.0/0'
+	uci -q set mwan3.dev_pool2.use_policy=wan2_pref
+	uci -q set "mwan3.dev_pool2.enabled=$pool2_en"
+
+	# 3. Regras de Servicos Criticos (SSH, WhatsApp, HTTPS/QUIC)
 	uci -q set mwan3.ssh=rule
 	uci -q set mwan3.ssh.family=ipv4
 	uci -q set mwan3.ssh.sticky=1
 	uci -q set mwan3.ssh.timeout=3600
 	uci -q set mwan3.ssh.dest_port=22
 	uci -q set mwan3.ssh.proto=tcp
+	[ -n "$(uci -q get mwan3.ssh.use_policy)" ] || uci -q set mwan3.ssh.use_policy=wan_then_wan2
+
 	uci -q set mwan3.whatsapp_tcp=rule
 	uci -q set mwan3.whatsapp_tcp.family=ipv4
 	uci -q set mwan3.whatsapp_tcp.sticky=1
 	uci -q set mwan3.whatsapp_tcp.timeout=3600
 	uci -q set mwan3.whatsapp_tcp.dest_port='5222,5228,5242'
 	uci -q set mwan3.whatsapp_tcp.proto=tcp
+	[ -n "$(uci -q get mwan3.whatsapp_tcp.use_policy)" ] || uci -q set mwan3.whatsapp_tcp.use_policy=wan_then_wan2
+
 	uci -q set mwan3.whatsapp_udp=rule
 	uci -q set mwan3.whatsapp_udp.family=ipv4
 	uci -q set mwan3.whatsapp_udp.sticky=1
 	uci -q set mwan3.whatsapp_udp.timeout=3600
 	uci -q set mwan3.whatsapp_udp.dest_port=3478
 	uci -q set mwan3.whatsapp_udp.proto=udp
+	[ -n "$(uci -q get mwan3.whatsapp_udp.use_policy)" ] || uci -q set mwan3.whatsapp_udp.use_policy=wan_then_wan2
+
 	uci -q set mwan3.https=rule
 	uci -q set mwan3.https.family=ipv4
 	uci -q set mwan3.https.sticky=1
 	uci -q set mwan3.https.timeout=3600
 	uci -q set mwan3.https.dest_port=443
 	uci -q set mwan3.https.proto=tcp
+	[ -n "$(uci -q get mwan3.https.use_policy)" ] || uci -q set mwan3.https.use_policy=wan_then_wan2
+
 	uci -q set mwan3.https_quic=rule
 	uci -q set mwan3.https_quic.family=ipv4
 	uci -q set mwan3.https_quic.sticky=1
 	uci -q set mwan3.https_quic.timeout=3600
 	uci -q set mwan3.https_quic.dest_port=443
 	uci -q set mwan3.https_quic.proto=udp
+	[ -n "$(uci -q get mwan3.https_quic.use_policy)" ] || uci -q set mwan3.https_quic.use_policy=wan_then_wan2
+
+	# 4. Regra Geral Catch-All (SEMPRE A ULTIMA REGRA)
 	uci -q set mwan3.default_rule_v4=rule
 	uci -q set mwan3.default_rule_v4.dest_ip='0.0.0.0/0'
 	uci -q set mwan3.default_rule_v4.family=ipv4
 	uci -q set mwan3.default_rule_v4.sticky=1
+	[ -n "$(uci -q get mwan3.default_rule_v4.use_policy)" ] || uci -q set mwan3.default_rule_v4.use_policy=wan_then_wan2
+
+	# Reordenacao estrita de prioridade no UCI
+	mwan3_reorder_rules
 }
 ark_operation_profile() { uci -q get equipe_dashboard.main.operation_profile 2>/dev/null || printf 'standard'; }
 apply_operation_profile() {
@@ -5935,7 +6016,12 @@ case "$action" in
 		printf '{"old_ip":"%s","new_ip":"%s","url":"http://%s/cgi-bin/luci/admin/equipe-dashboard"}\n' "$(json_escape "$old_ip")" "$(json_escape "$router_ip")" "$(json_escape "$router_ip")"
 		;;
 	mwan)
+		device_mode=0
 		case "$2" in
+			balanced_devices|balanced_device|devices)
+				policy='wan_then_wan2'
+				device_mode=1
+				;;
 			failover|wan_then_wan2) policy='wan_then_wan2' ;;
 			failover_wan2|wan2_then_wan) policy='wan2_then_wan' ;;
 			balanced) policy='balanced' ;;
@@ -5947,12 +6033,20 @@ case "$action" in
 			*) echo 'Modo invalido' >&2; exit 2 ;;
 		esac
 		ensure_mwan3_ark_config
+		if [ "$device_mode" = "1" ]; then
+			uci -q set mwan3.dev_pool1.enabled=1
+			uci -q set mwan3.dev_pool2.enabled=1
+		else
+			uci -q set mwan3.dev_pool1.enabled=0
+			uci -q set mwan3.dev_pool2.enabled=0
+		fi
 		uci -q set mwan3.ssh.use_policy="$policy"
 		uci -q set mwan3.whatsapp_tcp.use_policy="$policy"
 		uci -q set mwan3.whatsapp_udp.use_policy="$policy"
 		uci -q set mwan3.https.use_policy="$policy"
 		uci -q set mwan3.https_quic.use_policy="$policy"
 		uci -q set mwan3.default_rule_v4.use_policy="$policy"
+		mwan3_reorder_rules
 		uci commit mwan3
 		/etc/init.d/mwan3 restart
 		echo "$2"
@@ -6259,7 +6353,6 @@ case "$action" in
 			uci -q set "mwan3.$mwan3_rule.dest_ip=0.0.0.0/0"
 			[ -n "$ip" ] && uci -q set "mwan3.$mwan3_rule.src_ip=$ip"
 			uci -q set "mwan3.$mwan3_rule.use_policy=$policy"
-			uci -q reorder "mwan3.$mwan3_rule=0" 2>/dev/null || true
 			mwan3_changed=1
 		else
 			uci -q delete "equipe_devices.$name_section.wan_route" 2>/dev/null || true
@@ -6292,7 +6385,10 @@ case "$action" in
 			uci -q delete "equipe_devices.$name_section.blocked_services" 2>/dev/null || true
 		fi
 		uci commit equipe_devices; uci commit dhcp; uci commit firewall
-		[ "$mwan3_changed" = 1 ] && uci commit mwan3 2>/dev/null || true
+		if [ "$mwan3_changed" = 1 ]; then
+			mwan3_reorder_rules
+			uci commit mwan3 2>/dev/null || true
+		fi
 		apply_device_bandwidth_limits
 		sanitize_dhcp_hostnames
 		device_apply_parental "$mac" "$ip" "$name" "$parental_mode" "$parental_block" "$safesearch" "$blocked_services"

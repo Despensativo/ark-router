@@ -851,8 +851,12 @@ return view.extend({
 	updateMwanMode: function(data) {
 		const v=values(data.mwanConfig), p=(v.default_rule_v4||{}).use_policy||(v.https||{}).use_policy||'wan_then_wan2';
 		const activeWans = getActiveWanList(data);
+		const devPool1 = v.dev_pool1, devPool2 = v.dev_pool2;
+		const isDeviceBalanced = !!(devPool1 && String(devPool1.enabled) === '1' && devPool2 && String(devPool2.enabled) === '1');
 		let mode = 'failover';
-		if (p === 'balanced') {
+		if (isDeviceBalanced) {
+			mode = 'balanced_devices';
+		} else if (p === 'balanced') {
 			mode = 'balanced';
 		} else if (p === 'wan2_then_wan' || p === 'failover_wan2') {
 			mode = 'failover_wan2';
@@ -867,8 +871,10 @@ return view.extend({
 			b.classList.toggle('active', b.id === ('ex-mode-' + mode));
 		});
 		let modeLabel = 'Failover (WAN1 → WAN2)';
-		if (mode === 'balanced') {
-			modeLabel = 'Balanceamento';
+		if (mode === 'balanced_devices') {
+			modeLabel = 'Balanceamento por Aparelho (Recomendado)';
+		} else if (mode === 'balanced') {
+			modeLabel = 'Balanceamento por Conexão';
 		} else if (mode === 'failover') {
 			modeLabel = activeWans.length > 1 ? ('Failover (' + activeWans.map(function(w){return w.label;}).join(' → ') + ')') : 'Failover (WAN1 → WAN2)';
 		} else if (mode === 'failover_wan2') {
@@ -6326,9 +6332,10 @@ return view.extend({
 		},this));
 		const mwanModeButtons = [];
 		if (activeWans.length >= 2) {
+			mwanModeButtons.push(modeButton('balanced_devices', '⚖️ Balancear por Aparelho (Recomendado)'));
 			mwanModeButtons.push(modeButton('failover', 'Failover (WAN1 principal)'));
 			mwanModeButtons.push(modeButton('failover_wan2', 'Failover (WAN2 principal)'));
-			mwanModeButtons.push(modeButton('balanced', 'Balancear'));
+			mwanModeButtons.push(modeButton('balanced', 'Balancear por Conexão'));
 		}
 		activeWans.forEach(function(w) {
 			mwanModeButtons.push(modeButton(w.domId, 'Só ' + w.label));

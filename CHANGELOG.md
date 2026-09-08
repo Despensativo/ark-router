@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.9.84
+
+- **⚖️ Nova Arquitetura Multi-WAN: Balanceamento Estável por Aparelho (Device Pinning) e Saneamento Conntrack**:
+  - **Fim do Balanceamento Caótico por Conexão**:
+    - Substituição da divisão cega de fluxos por **Distribuição Estável por Aparelho**: Cada dispositivo na LAN (`192.168.73.0/25` vs `192.168.73.128/25`) é fixado em uma operadora (WAN1 ou WAN2) para 100% do seu tráfego (TCP, UDP, QUIC, HTTPS, bancário, jogos e streaming).
+    - Elimina a fragmentação de sessões e erros de autenticação em bancos, jogos online e lojas de aplicativos decorrentes de pacotes saindo por IPs públicos diferentes.
+  - **Eliminação do `flush_conntrack` Destrutivo**:
+    - Removidos os gatilhos `list flush_conntrack 'ifdown'` e `'disconnected'` do `mwan3track`. Quando uma WAN oscila ou cai, o kernel não apaga mais a tabela conntrack global, preservando intactas e com zero interrupção todas as conexões ativas dos clientes na WAN saudável.
+  - **Bypass Estrito RFC1918 (Regra 0 Prioritária)**:
+    - Adicionada regra prioritária `bypass_private` no topo da fila mwan3 direcionando `192.168.0.0/16`, `10.0.0.0/8` e `172.16.0.0/12` para a política `default`.
+    - Garante acesso direto e sem interferência do balanceador a ONUs de fibra (`192.168.1.3`, `192.168.51.2`), telemetria Starlink (`192.168.100.1`) e redes ZeroTier.
+  - **Reordenação Estrita e Determinística de Regras (`mwan3_reorder_rules`)**:
+    - Correção estrutural na hierarquia de avaliação do iptables/mwan3:
+      1. `bypass_private` (Prioridade 0 — redes privadas e locais)
+      2. `ark_dev_*` (Prioridade 1..N — regras personalizadas de dispositivos fixados manualmente)
+      3. `dev_pool1` e `dev_pool2` (Balanceamento estável 50/50 por faixa de host)
+      4. `ssh`, `whatsapp_tcp`, `whatsapp_udp`, `https`, `https_quic` (Serviços com sticky 3600s)
+      5. `default_rule_v4` (Catch-all `0.0.0.0/0` posicionado estritamente como última regra)
+  - **Prevenção de Falso "Online" no Boot (`initial_state offline`)**:
+    - As interfaces mwan3 iniciam em estado `offline` no boot e só liberam tráfego após validação dos pings de rastreamento (`1.1.1.1`, `8.8.8.8`, `9.9.9.9`), eliminando "buracos negros" de tráfego na inicialização do sistema.
+  - **Interface LuCI Atualizada com Novo Modo Recomendado**:
+    - Novo botão **`⚖️ Balancear por Aparelho (Recomendado)`** nos controles Multi-WAN do painel ARK.
+    - Reconhecimento dinâmico no dashboard (`overview.js`) identificando claramente o modo ativo entre Balanceamento por Aparelho, Balanceamento por Conexão ou Failover.
+
 ## 0.9.83
 
 - **🛡️ Expansão Cirúrgica do Catálogo Oficial de Bloqueios e Exceções (AdGuard Home + Dnsmasq)**:
