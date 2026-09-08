@@ -5436,6 +5436,7 @@ case "$action" in
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
 			[ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
 			[ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 || true
+			starlink_setup_policy_routing >/dev/null 2>&1 || true
 			echo ok
 			exit 0
 		fi
@@ -5467,6 +5468,7 @@ case "$action" in
 		/etc/init.d/network reload >/dev/null 2>&1 || true
 		/etc/init.d/firewall reload >/dev/null 2>&1 || true
 		[ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 || true
+		starlink_setup_policy_routing >/dev/null 2>&1 || true
 		echo ok
 		;;
 	lan-status)
