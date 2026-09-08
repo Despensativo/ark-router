@@ -6156,6 +6156,34 @@ return view.extend({
 				E('section',{class:'ex-card ex-center-card'},[bigIcon('<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'),E('span',{class:'ex-label'},[w.guest.ssid||'Visitantes']),E('strong',{id:'ex-guest-clients',class:'ex-number'},['0']),E('small',{id:'ex-guest-wifi',class:'ex-muted'},['0 no Wi-Fi'])])
 			]),
 			E('section',{class:'ex-card ex-channel-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['AMBIENTE WI‑FI']),E('h3',{},['Canais e interferência'])]),E('button',{class:'ex-button ex-inline-button','click':L.bind(function(ev){this.analyzeChannels(ev.currentTarget);},this)},['Analisar canais agora'])]),E('div',{class:'ex-country-control'},[E('div',{},[E('span',{class:'ex-label'},['PAÍS / DOMÍNIO REGULATÓRIO']),E('strong',{id:'ex-country-current'},['—'])]),E('button',{class:'ex-mini-button','click':L.bind(function(){this.changeCountry();},this)},['Alterar país'])]),E('div',{class:'ex-channel-mode-control'},[E('div',{},[E('strong',{},['Seleção automática de canais']),E('small',{id:'ex-channel-mode-summary',class:'ex-muted'},['Verificando…'])]),E('label',{class:'ex-switch'},[E('input',{id:'ex-channel-auto-toggle',type:'checkbox','aria-label':translateText('Seleção automática de canais'),'change':L.bind(function(ev){this.toggleAutoChannels(ev.currentTarget);},this)}),E('span',{class:'ex-switch-slider'})])]),E('div',{class:'ex-grid ex-grid-2 ex-channel-grid'},[E('div',{},[E('div',{class:'ex-channel-band-head'},[E('b',{},['2,4 GHz']),E('span',{id:'ex-wifi-2-mode',class:'ex-pill standby'},['—'])]),E('span',{id:'ex-wifi-2'},['—'])]),E('div',{},[E('div',{class:'ex-channel-band-head'},[E('b',{},['5 GHz']),E('span',{id:'ex-wifi-5-mode',class:'ex-pill standby'},['—'])]),E('span',{id:'ex-wifi-5'},['—'])])]),E('p',{id:'ex-wifi-noise',class:'ex-muted'},['—']),E('p',{id:'ex-scan-result',class:'ex-scan-result'},['A análise é manual e apenas recomenda canais; não interrompe os usuários.']),E('div',{class:'ex-channel-actions'},[E('button',{class:'ex-channel-action','click':L.bind(this.showManualChannelsModal,this)},['Escolher canais']),E('button',{id:'ex-apply-channels',class:'ex-channel-action primary',disabled:true,'click':L.bind(function(){this.changeChannels('fixed');},this)},['Analisar antes de aplicar']),E('button',{class:'ex-channel-action','click':L.bind(function(){this.changeWifiWidth();},this)},['Largura / desempenho']),E('button',{class:'ex-channel-action','click':L.bind(function(){this.optimizeIot();},this)},['Otimizar para IoT']),E('button',{class:'ex-channel-action','click':L.bind(function(){this.optimizeDfs();},this)},['Otimizar Quedas (DFS)'])])]),
+			E('section',{class:'ex-card ex-autowan-card', style:'margin-bottom: 20px;'},[
+				E('div',{class:'ex-card-title'},[
+					E('div',{},[
+						E('span',{class:'ex-kicker'},['CONECTIVIDADE FÍSICA']),
+						E('h3',{},['Portas e Auto-WAN'])
+					])
+				]),
+				E('div',{class:'ex-channel-mode-control'},[
+					E('div',{},[
+						E('strong',{},['Piloto Automático de Portas (Auto-WAN)']),
+						E('small',{class:'ex-muted'},['Detecta automaticamente portas ligadas a modems e converte em WAN.'])
+					]),
+					E('label',{class:'ex-switch'},[
+						E('input',{type:'checkbox', 'change':L.bind(function(ev){
+							const enabled = ev.currentTarget.checked;
+							fs.exec('/usr/sbin/ark-autowan', [enabled ? 'enable' : 'disable'])
+							.then(function(r) {
+								if (r.code) throw new Error(r.stderr || 'Falha ao configurar Auto-WAN');
+								ui.addNotification(null, E('p', {}, [enabled ? 'Auto-WAN ativado. As portas serão sondadas.' : 'Auto-WAN desativado.']), 'success');
+							}).catch(function(e) {
+								ev.currentTarget.checked = !enabled;
+								ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+							});
+						},this)}),
+						E('span',{class:'ex-switch-slider'})
+					])
+				])
+			]),
 			E('section',{class:'ex-card ex-devices'},[
 				E('div',{class:'ex-card-title'},[
 					E('div',{},[

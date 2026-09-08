@@ -1,0 +1,53 @@
+#!/bin/sh
+# ARK Router Auto-WAN & Flexible Port Manager
+# Detecta se uma interface porta tem servidor DHCP upstream e a reconfigura como WAN.
+
+ACTION="$1"
+PORT="$2"
+
+log() {
+	logger -t ark-autowan "$1"
+	echo "$1"
+}
+
+auto_detect_wan() {
+	local iface="$1"
+	log "Testando porta $iface para DHCP upstream..."
+	
+	if udhcpc -n -q -t 3 -i "$iface" >/dev/null 2>&1; then
+		log "DHCP detectado em $iface! Configurando como WAN."
+		uci -q set network.wan.ifname="$iface"
+		uci commit network
+		/etc/init.d/network reload
+		return 0
+	else
+		log "Sem DHCP em $iface. Mantendo como LAN."
+		return 1
+	fi
+}
+
+case "$ACTION" in
+	enable)
+		uci -q set system.autowan=ark
+		uci -q set system.autowan.enabled='1'
+		uci commit system
+		log "Piloto Automático (Auto-WAN) ativado."
+		;;
+	disable)
+		uci -q set system.autowan.enabled='0'
+		uci commit system
+		log "Piloto Automático (Auto-WAN) desativado."
+		;;
+	test)
+		if [ -n "$PORT" ]; then
+			auto_detect_wan "$PORT"
+		else
+			log "Erro: Especifique a interface (ex: eth1)."
+		fi
+		;;
+	*)
+		echo "Uso: $0 {enable|disable|test <iface>}"
+		exit 1
+		;;
+esac
+exit 0
