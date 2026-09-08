@@ -165,6 +165,15 @@ function lanPortsFromNetwork(networkConfig) {
 		if(s['.type']==='device'&&s.name==='br-lan') {
 			const p=Array.isArray(s.ports)?s.ports:String(s.ports||'').split(/\s+/);
 			p.forEach(function(port){ if(port&&!seen[port]){seen[port]=1;ports.push(port);} });
+		} else if(s['.type']==='switch_vlan'&&String(s.vlan)==='1') {
+			const p=Array.isArray(s.ports)?s.ports:String(s.ports||'').split(/\s+/);
+			p.forEach(function(port){
+				const clean=String(port||'').replace(/t$/,'');
+				if(clean && clean !== '0' && !seen['lan'+clean]) {
+					seen['lan'+clean]=1;
+					ports.push('lan'+clean);
+				}
+			});
 		}
 	});
 	if(!ports.length) ['lan1','lan2','lan3','lan4'].forEach(function(port){ports.push(port);});
@@ -789,7 +798,15 @@ return view.extend({
 		},this),Math.max(250,wait));
 	},
 	updateWan: function(prefix, i, d, physical, m, ping, cfg, daily) {
-		const phy=(physical&&Object.keys(physical).length)?physical:d, mwanInterfaces=((this.currentData||{}).mwan||{}).interfaces||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;}), online=!!i.up&&(!mwanRunning||(m&&(m.status==='online'||m.status==='unknown'||!m.running))), disabled=!phy.carrier||(mwanRunning&&m&&m.status==='disabled');
+		let phy=(physical&&Object.keys(physical).length)?physical:d;
+		if(!phy.carrier && this.currentData && this.currentData.hardwareInfo && this.currentData.hardwareInfo.ports){
+			const hwPorts=this.currentData.hardwareInfo.ports;
+			const hwMatch=hwPorts[i.device] || hwPorts[cfg.device] || (prefix==='ex-wan1'?(hwPorts.wan||hwPorts.wan1):null);
+			if(hwMatch && hwMatch.carrier){
+				phy=Object.assign({},phy,{carrier:true, speed:hwMatch.speed||phy.speed, duplex:hwMatch.duplex||phy.duplex});
+			}
+		}
+		const mwanInterfaces=((this.currentData||{}).mwan||{}).interfaces||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;}), online=!!i.up&&(!mwanRunning||(m&&(m.status==='online'||m.status==='unknown'||!m.running))), disabled=!phy.carrier||(mwanRunning&&m&&m.status==='disabled');
 		setPill(prefix+'-status',online?'online':(disabled?'standby':'offline'),online?'ONLINE':(disabled?'SEM CABO':'OFFLINE'));
 		const a=i['ipv4-address']&&i['ipv4-address'][0], speed=String(phy.speed||'').match(/[0-9]+/), full=String(phy.speed||'').toUpperCase().indexOf('F')>=0, link=phy.carrier?(speed?speed[0]+' Mbps'+(full?' • Full duplex':''):'conectado'):(i.up?'interface ativa':'sem link'), stats=d.statistics||{};
 		text(prefix+'-mode',wanProtoLabel(i,cfg)); text(prefix+'-ip',a?a.address:'—'); text(prefix+'-gateway',wanGateway(i)); text(prefix+'-mask',a?cidrMask(a.mask):'—'); text(prefix+'-dns',wanDns(i)); text(prefix+'-link',link); text(prefix+'-latency',(online&&ping!=null)?ping.toFixed(0)+' ms':'—'); text(prefix+'-rx-day',daily?formatBytes(daily.rx):'Coletando…'); text(prefix+'-tx-day',daily?formatBytes(daily.tx):'Coletando…'); text(prefix+'-session','↓ '+formatBytes(Number(stats.rx_bytes)||0)+'  •  ↑ '+formatBytes(Number(stats.tx_bytes)||0)); text(prefix+'-uptime',i.up?formatUptime(i.uptime):'—');
@@ -1218,7 +1235,20 @@ return view.extend({
 			const cfg = (values(data.networkConfig)[w.iface]) || {};
 			this.updateWan('ex-' + w.domId, i, d, phy, m, ping, cfg, wanDaily[w.iface]||null);
 		}, this));
-		(data.lanPorts||[]).forEach(L.bind(function(port,idx){this.updateLan('ex-lan-'+portDomId(port),(data.lanDevices||[])[idx]||{});},this));
+		(data.lanPorts||[]).forEach(L.bind(function(port,idx){
+			let dev = (data.lanDevices||[])[idx] || {};
+			if (!dev.carrier && data.hardwareInfo && data.hardwareInfo.ports && data.hardwareInfo.ports[port]) {
+				const hw = data.hardwareInfo.ports[port];
+				if (hw.carrier) {
+					dev = Object.assign({}, dev, {
+						carrier: true,
+						speed: hw.speed || dev.speed,
+						duplex: hw.duplex || dev.duplex
+					});
+				}
+			}
+			this.updateLan('ex-lan-'+portDomId(port), dev);
+		},this));
 		const mwanRunning=Object.keys(mi).some(function(k){return !!mi[k].running;});
 		const activeWanLabels=[];
 		activeWans.forEach(function(w){
@@ -1944,6 +1974,7 @@ return view.extend({
 			const dns1=E('input',{class:'cbi-input-text',value:dnsList[0]||'1.1.1.1'}), dns2=E('input',{class:'cbi-input-text',value:dnsList[1]||'8.8.8.8'}), dns3=E('input',{class:'cbi-input-text',value:dnsList[2]||'',placeholder:'opcional'});
 			const clonedMac=cfg.macaddr||'', macaddr=E('input',{class:'cbi-input-text',value:clonedMac,placeholder:'vazio = MAC físico do roteador'});
 			const macClear=E('button',{class:'ex-feature-link',type:'button','click':function(){macaddr.value='';}},['Usar MAC físico']);
+			const modemIp=E('input',{class:'cbi-input-text',value:cfg.modem_ip||'',placeholder:'ex: 192.168.1.3 (opcional)'});
 
 			const pppoeProfileSelect = E('select', { class: 'cbi-input-select', style: 'flex:1;' }, [
 				E('option', { value: '' }, ['-- Escolher perfil PPPoE salvo --'])
@@ -2065,7 +2096,12 @@ return view.extend({
 			]);
 
 			const field=function(label,node,hint,extraClass){return E('label',{class:'ex-wan-edit-field'+(extraClass?(' '+extraClass):'')},[E('span',{},[label]),node,hint?E('small',{class:'ex-muted'},[hint]):'']);};
-			const pppoeBlock=E('div',{class:'ex-wan-proto-block'},[pppoeProfileBar,field('Usuário PPPoE',username),field('Senha PPPoE',passWrap,'Deixe vazio para manter/definir vazia conforme operadora','ex-wan-field-wide')]);
+			const pppoeBlock=E('div',{class:'ex-wan-proto-block'},[
+				pppoeProfileBar,
+				field('Usuário PPPoE',username),
+				field('Senha PPPoE',passWrap,'Deixe vazio para manter/definir vazia conforme operadora','ex-wan-field-wide'),
+				field('IP de Acesso ao Modem / ONU',modemIp,'Opcional: permite abrir o painel web da ONU em Bridge (ex: 192.168.1.3 ou 192.168.51.2)','ex-wan-field-wide')
+			]);
 			const staticBlock=E('div',{class:'ex-wan-proto-block'},[field('IPv4',ipaddr),field('Máscara',netmask),field('Gateway',gateway)]);
 			const isNewWan = !!(preferredDevice && (!cfg.proto || cfg.proto === 'none'));
 			const isExistingWan = !isNewWan && !!(cfg.proto && cfg.proto !== 'none');
@@ -2114,7 +2150,7 @@ return view.extend({
 					const isConvertingToWan = (role.value === 'wan') && (isNewWan || preferredDevice);
 					const doApply = function() {
 						const dns = [dns1.value.trim(), dns2.value.trim(), dns3.value.trim()].filter(Boolean).join(' ');
-						const args = ['wan-save', 'iface=' + which, 'mode=' + role.value, 'device=' + device.value, 'proto=' + proto.value, 'username=' + username.value, 'password=' + password.value, 'ipaddr=' + ipaddr.value, 'netmask=' + netmask.value, 'gateway=' + gateway.value, 'dns=' + dns, 'macaddr=' + macaddr.value.trim()];
+						const args = ['wan-save', 'iface=' + which, 'mode=' + role.value, 'device=' + device.value, 'proto=' + proto.value, 'username=' + username.value, 'password=' + password.value, 'ipaddr=' + ipaddr.value, 'netmask=' + netmask.value, 'gateway=' + gateway.value, 'dns=' + dns, 'macaddr=' + macaddr.value.trim(), 'modem_ip=' + modemIp.value.trim()];
 						return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 							if (r.code) throw new Error(r.stderr || 'Falha ao salvar WAN');
 							ui.hideModal();

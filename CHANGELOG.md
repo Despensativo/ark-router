@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.9.85
+
+- **🔌 Suporte Completo à Arquitetura Swconfig (D-Link DGL-5500 e Roteadores com Switch AR8327/MIPS)**:
+  - **Auto-WAN Autônomo com Isolamento Físico por VLAN**:
+    - Implementada rotina `probe_swconfig_dhcp` no daemon `ark-autowan-daemon`: ao detectar cabo inserido em porta física (1..4), a porta é temporariamente isolada na VLAN 99 e sondada via `udhcpc`. Se receber resposta DHCP de modem/upstream, é promovida automaticamente para `wan2` em VLAN dedicada (`eth0.3`) e removida da VLAN 1 (`br-lan`).
+    - **Fim do Comportamento de Hub**: Elimina o bridging indevido entre upstream e LAN. O tráfego e DHCP da rede upstream ficam 100% isolados pelo switch de hardware AR8327, mantendo o roteador como mestre da sua própria rede local com servidor DHCP independente.
+    - **Reversão Automática ao Desconectar**: Ao despluguar o cabo, a porta volta dinamicamente para a VLAN 1 (LAN) sem necessidade de reinicialização.
+  - **Correção da Leitura das Portas Físicas ("SEM CABO")**:
+    - No backend (`equipe-dashboard-control system-hardware-info`), adicionada consulta direta a `swconfig dev switch0 port X get link` para portas 1 a 4 (`lan1` a `lan4`) e porta 5 (`wan`).
+    - No frontend (`overview.js`), o status das portas LAN e WAN agora consome os dados físicos do switch como fallback caso o netdev Linux virtual não exponha carrier. As portas conectadas exibem instantaneamente `CONECTADA • 100 Mbps / 1000 Mbps • Full duplex`.
+  - **Gerenciamento de Portas no Backend (`wan-save`)**:
+    - `valid_net_device`: Reconhece portas `lan1..lan4`, `port1..port5` e `eth0.X` em roteadores com arquitetura swconfig.
+    - `add_lan_port` e `remove_lan_port`: Manipulam diretamente a lista de portas da `switch_vlan 1` (`network.@switch_vlan[0].ports`).
+    - `lanPortsFromNetwork`: Lê as portas ativas diretamente de `switch_vlan 1`, ocultando automaticamente portas que viraram WAN e restaurando-as quando voltam a ser LAN.
+- **🌐 Acesso Direto à Gerência de Modems e ONUs de Fibra em Conexões PPPoE**:
+  - **Campo Dedicado no Modal WAN**:
+    - Adicionado campo opcional `"IP de Acesso ao Modem / ONU"` no bloco PPPoE (ex: `192.168.1.3`, `192.168.51.2`).
+  - **Geração Automática de Alias IP e Roteamento RFC1918**:
+    - O backend calcula automaticamente um IP válido na mesma sub-rede (ex: se ONU é `192.168.1.3`, assume `192.168.1.254/24`), cria a interface de gerência estática `${iface}_modem` no dispositivo físico pai e a adiciona à zona de firewall `wan` com masquerade (NAT).
+    - Combinado com o bypass RFC1918 (`bypass_private`) no mwan3, qualquer dispositivo da rede local pode acessar diretamente a interface web da ONU/Modem pelo navegador sem conflitos com o tunelamento PPPoE.
+
 ## 0.9.84
 
 - **⚖️ Nova Arquitetura Multi-WAN: Balanceamento Estável por Aparelho (Device Pinning) e Saneamento Conntrack**:

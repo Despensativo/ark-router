@@ -41,6 +41,62 @@ probe_dhcp_upstream() {
 	return $?
 }
 
+probe_swconfig_dhcp() {
+	local p="$1"
+	local v1_ports="$(swconfig dev switch0 vlan 1 get ports 2>/dev/null | sed 's/VLAN 1: //')"
+	[ -n "$v1_ports" ] || v1_ports="0t 1 2 3 4"
+
+	local new_v1=""
+	for item in $v1_ports; do
+		case "$item" in
+			"$p"|"$p"t) continue ;;
+			*) new_v1="$new_v1 $item" ;;
+		esac
+	done
+
+	swconfig dev switch0 vlan 99 set vid 99 >/dev/null 2>&1
+	swconfig dev switch0 vlan 99 set ports "$p 0t" >/dev/null 2>&1
+	swconfig dev switch0 vlan 1 set ports "$new_v1" >/dev/null 2>&1
+	swconfig dev switch0 set apply >/dev/null 2>&1
+
+	ip link add link eth0 name eth0.99 type vlan id 99 >/dev/null 2>&1 || true
+	ip link set eth0.99 up >/dev/null 2>&1 || true
+
+	udhcpc -i eth0.99 -n -q -f -t 2 -T 1 -s /bin/true >/dev/null 2>&1
+	local res=$?
+
+	ip link delete eth0.99 >/dev/null 2>&1 || true
+	swconfig dev switch0 vlan 99 set ports "" >/dev/null 2>&1
+	swconfig dev switch0 set apply >/dev/null 2>&1
+
+	if [ "$res" -ne 0 ]; then
+		swconfig dev switch0 vlan 1 set ports "$v1_ports" >/dev/null 2>&1
+		swconfig dev switch0 set apply >/dev/null 2>&1
+		return 1
+	fi
+
+	return 0
+}
+
+is_swconfig_port_already_wan() {
+	local p="$1"
+	local idx=0
+	while true; do
+		local v="$(uci -q get "network.@switch_vlan[$idx].vlan")"
+		[ -z "$v" ] && break
+		if [ "$v" != "1" ]; then
+			local ports="$(uci -q get "network.@switch_vlan[$idx].ports")"
+			for item in $ports; do
+				case "$item" in
+					"$p"|"$p"t) return 0 ;;
+				esac
+			done
+		fi
+		idx=$((idx + 1))
+	done
+	return 1
+}
+
 run_autowan_cycle() {
 	local enabled="$(uci -q get network.autowan.enabled || echo 0)"
 	[ "$enabled" = "1" ] || return 0
@@ -99,15 +155,36 @@ run_autowan_cycle() {
 			local oper="$(swconfig dev switch0 port "$p" get link 2>/dev/null | grep -q "link:up" && echo up || echo down)"
 			local prev_oper="$(grep "^$port_name=" "$STATE_FILE" 2>/dev/null | cut -d= -f2)"
 
+			# Transição: cabo recém-conectado (DOWN -> UP)
 			if [ "$oper" = "up" ] && [ "$prev_oper" != "up" ]; then
 				logger -t ark-autowan "Link UP detectado na porta fisica $p (switch0)"
-				if /usr/sbin/equipe-dashboard-control autowan-can-convert "$p" >/dev/null 2>&1; then
-					logger -t ark-autowan "Porta fisica $p conectada. Monitorando conexao..."
-				else
-					logger -t ark-autowan "Porta fisica $p protegida pela Regra Salva-Vidas."
+				if ! is_swconfig_port_already_wan "$p"; then
+					if /usr/sbin/equipe-dashboard-control autowan-can-convert "$p" >/dev/null 2>&1; then
+						logger -t ark-autowan "Sondando DHCP upstream na porta fisica $p..."
+						if probe_swconfig_dhcp "$p"; then
+							local next_wan="$(find_next_free_wan)"
+							logger -t ark-autowan "DHCP upstream detectado na porta fisica $p! Promovendo para $next_wan..."
+							/usr/sbin/equipe-dashboard-control wan-save iface="$next_wan" device="lan$p" mode=wan proto=dhcp >/dev/null 2>&1
+							echo "$port_name=$next_wan" >> "$DYNAMIC_WANS_FILE"
+							/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
+						else
+							logger -t ark-autowan "Nenhum DHCP upstream na porta fisica $p (dispositivo cliente ou PC). Mantendo em LAN."
+						fi
+					else
+						logger -t ark-autowan "Porta fisica $p protegida pela Regra Salva-Vidas."
+					fi
 				fi
+			# Transição: cabo desconectado (UP -> DOWN)
 			elif [ "$oper" != "up" ] && [ "$prev_oper" = "up" ]; then
 				logger -t ark-autowan "Link DOWN detectado na porta fisica $p (switch0)"
+				local dyn_entry="$(grep "^$port_name=" "$DYNAMIC_WANS_FILE" 2>/dev/null | tail -n 1)"
+				if [ -n "$dyn_entry" ]; then
+					local dyn_wan="${dyn_entry#*=}"
+					logger -t ark-autowan "Porta fisica $p desconectada. Revertendo $dyn_wan de volta para LAN..."
+					/usr/sbin/equipe-dashboard-control wan-save iface="$dyn_wan" mode=lan >/dev/null 2>&1
+					sed -i "/^$port_name=/d" "$DYNAMIC_WANS_FILE" 2>/dev/null || true
+					/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
+				fi
 			fi
 
 			sed -i "/^$port_name=/d" "$STATE_FILE" 2>/dev/null || true

@@ -1124,11 +1124,22 @@ valid_wifi_password() {
 	length="${#1}"
 	[ "$length" -ge 8 ] && [ "$length" -le 63 ] && valid_plain "$1" 63
 }
+is_swconfig() {
+	command -v swconfig >/dev/null 2>&1 && swconfig dev switch0 show >/dev/null 2>&1
+}
 valid_net_device() {
 	case "$1" in
 		''|*/*|*..*|*[!A-Za-z0-9_.:-]*) return 1 ;;
 	esac
-	[ "$1" = wan ] || [ -d "/sys/class/net/$1" ]
+	if [ "$1" = wan ] || [ -d "/sys/class/net/$1" ]; then
+		return 0
+	fi
+	if is_swconfig; then
+		case "$1" in
+			lan[1-5]|port[1-5]|[1-5]|eth0.[0-9]*) return 0 ;;
+		esac
+	fi
+	return 1
 }
 valid_ssid() {
 	length="${#1}"
@@ -3912,17 +3923,84 @@ system_storage_purge() {
 lan_bridge_section() {
 	uci -q show network | awk -F= '/\.name=.br-lan./ { key=$1; sub(/^network\./, "", key); sub(/\.name$/, "", key); print key; exit }'
 }
+find_switch_vlan() {
+	local target_vlan="$1"
+	local idx=0
+	while true; do
+		local v="$(uci -q get "network.@switch_vlan[$idx].vlan")"
+		[ -z "$v" ] && break
+		if [ "$v" = "$target_vlan" ]; then
+			echo "@switch_vlan[$idx]"
+			return 0
+		fi
+		idx=$((idx + 1))
+	done
+	return 1
+}
+swconfig_remove_port_from_vlan() {
+	local p="$1"
+	local target_vlan="${2:-1}"
+	local sec="$(find_switch_vlan "$target_vlan")"
+	[ -n "$sec" ] || return 0
+	local cur_ports="$(uci -q get "network.$sec.ports")"
+	local new_ports=""
+	for item in $cur_ports; do
+		case "$item" in
+			"$p"|"$p"t) continue ;;
+			*) new_ports="$new_ports $item" ;;
+		esac
+	done
+	new_ports="$(printf '%s' "$new_ports" | awk '{$1=$1};1')"
+	uci -q set "network.$sec.ports=$new_ports"
+}
+swconfig_add_port_to_vlan() {
+	local p="$1"
+	local target_vlan="${2:-1}"
+	local sec="$(find_switch_vlan "$target_vlan")"
+	[ -n "$sec" ] || return 0
+	local cur_ports="$(uci -q get "network.$sec.ports")"
+	for item in $cur_ports; do
+		if [ "$item" = "$p" ] || [ "$item" = "${p}t" ]; then
+			return 0
+		fi
+	done
+	local new_ports=""
+	local added=0
+	for item in $cur_ports; do
+		if [ "$item" = "0t" ] && [ "$added" = 0 ]; then
+			new_ports="$new_ports $p $item"
+			added=1
+		else
+			new_ports="$new_ports $item"
+		fi
+	done
+	[ "$added" = 1 ] || new_ports="$new_ports $p"
+	new_ports="$(printf '%s' "$new_ports" | awk '{$1=$1};1')"
+	uci -q set "network.$sec.ports=$new_ports"
+}
 bridge_has_port() {
 	br="$1"; port="$2"
 	uci -q get "network.$br.ports" 2>/dev/null | tr ' ' '\n' | grep -qx "$port"
 }
 add_lan_port() {
-	port="$1"; br="$(lan_bridge_section)"
+	port="$1"
+	if is_swconfig; then
+		p="$(printf '%s' "$port" | tr -cd '0-9')"
+		[ -n "$p" ] && swconfig_add_port_to_vlan "$p" 1
+		return 0
+	fi
+	br="$(lan_bridge_section)"
 	[ -n "$br" ] || return 0
 	bridge_has_port "$br" "$port" || uci -q add_list "network.$br.ports=$port"
 }
 remove_lan_port() {
-	port="$1"; br="$(lan_bridge_section)"
+	port="$1"
+	if is_swconfig; then
+		p="$(printf '%s' "$port" | tr -cd '0-9')"
+		[ -n "$p" ] && swconfig_remove_port_from_vlan "$p" 1
+		return 0
+	fi
+	br="$(lan_bridge_section)"
 	[ -n "$br" ] || return 0
 	uci -q del_list "network.$br.ports=$port" 2>/dev/null || true
 }
@@ -4927,6 +5005,43 @@ get_system_hardware_info() {
 				;;
 		esac
 	done
+	if is_swconfig; then
+		for p in 1 2 3 4; do
+			sw_link="$(swconfig dev switch0 port "$p" get link 2>/dev/null || true)"
+			p_carrier=0; p_speed=""; p_duplex="Automático"; p_max="1G"
+			if printf '%s' "$sw_link" | grep -q 'link:up'; then
+				p_carrier=1
+				case "$sw_link" in
+					*1000base*) p_speed="1000"; p_max="1G" ;;
+					*100base*) p_speed="100"; p_max="100M" ;;
+					*10base*) p_speed="10"; p_max="10M" ;;
+					*) p_speed="100"; p_max="100M" ;;
+				esac
+				printf '%s' "$sw_link" | grep -q 'full-duplex' && p_duplex="Full duplex" || p_duplex="Half duplex"
+			fi
+			for alias in "lan$p" "port$p"; do
+				[ "$first_p" = 1 ] && first_p=0 || printf ','
+				printf '"%s":{"speed":"%s","carrier":%s,"duplex":"%s","max_speed":"%s"}' \
+					"$alias" "$p_speed" "$p_carrier" "$p_duplex" "$p_max"
+			done
+		done
+		sw_wan="$(swconfig dev switch0 port 5 get link 2>/dev/null || true)"
+		p_carrier=0; p_speed=""; p_duplex="Automático"; p_max="1G"
+		if printf '%s' "$sw_wan" | grep -q 'link:up'; then
+			p_carrier=1
+			case "$sw_wan" in
+				*1000base*) p_speed="1000"; p_max="1G" ;;
+				*100base*) p_speed="100"; p_max="100M" ;;
+				*) p_speed="100"; p_max="100M" ;;
+			esac
+			printf '%s' "$sw_wan" | grep -q 'full-duplex' && p_duplex="Full duplex" || p_duplex="Half duplex"
+		fi
+		for alias in "wan" "wan1" "port5" "eth0.2"; do
+			[ "$first_p" = 1 ] && first_p=0 || printf ','
+			printf '"%s":{"speed":"%s","carrier":%s,"duplex":"%s","max_speed":"%s"}' \
+				"$alias" "$p_speed" "$p_carrier" "$p_duplex" "$p_max"
+		done
+	fi
 	printf '}}\n'
 }
 
@@ -5860,7 +5975,7 @@ case "$action" in
 		echo ok
 		;;
 	wan-save)
-		iface='' mode='wan' device='' proto='dhcp' username='' password='' ipaddr='' netmask='' gateway='' dns='' macaddr=''
+		iface='' mode='wan' device='' proto='dhcp' username='' password='' ipaddr='' netmask='' gateway='' dns='' macaddr='' modem_ip=''
 		shift
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
@@ -5876,21 +5991,36 @@ case "$action" in
 				gateway) [ -z "$value" ] || valid_ipv4 "$value" || { echo 'Gateway invalido' >&2; exit 2; }; gateway="$value" ;;
 				dns) valid_plain "$value" 120 || { echo 'DNS invalido' >&2; exit 2; }; dns="$value"; for server in $dns; do valid_ipv4 "$server" || { echo 'DNS WAN invalido' >&2; exit 2; }; done ;;
 				macaddr) [ -z "$value" ] || valid_mac_anycase "$value" || { echo 'MAC WAN invalido' >&2; exit 2; }; macaddr="$(printf '%s' "$value" | tr 'a-f' 'A-F')" ;;
+				modem_ip) [ -z "$value" ] || valid_ipv4 "$value" || { echo 'IP da ONU/Modem invalido' >&2; exit 2; }; modem_ip="$value" ;;
 				*) echo "Campo WAN invalido: $key" >&2; exit 2 ;;
 			esac
 		done
 		[ -n "$iface" ] || { echo 'WAN ausente' >&2; exit 2; }
-		[ -n "$device" ] || device="$(uci -q get "network.$iface.device")"
+		[ -n "$device" ] || device="$(uci -q get "network.$iface.device" || uci -q get "network.$iface.ifname")"
 		[ "$iface" != wan ] || [ "$mode" = wan ] || { echo 'A WAN1 fisica nao pode virar LAN por este atalho' >&2; exit 2; }
 		ez_backup >/dev/null || { echo 'Falha ao criar backup antes da alteracao WAN' >&2; exit 3; }
 		if [ "$iface" != wan ] && [ "$mode" = lan ]; then
-			old="$(uci -q get "network.$iface.device")"
+			old="$(uci -q get "network.$iface.ark_phys_port" || uci -q get "network.$iface.device" || uci -q get "network.$iface.ifname")"
 			[ -n "$old" ] && [ "$old" != wan ] && add_lan_port "$old"
+			if is_swconfig; then
+				sw_ifname="$(uci -q get "network.$iface.ifname")"
+				case "$sw_ifname" in
+					eth0.[0-9]*)
+						vlan_id="${sw_ifname#eth0.}"
+						vsec="$(find_switch_vlan "$vlan_id")"
+						[ -n "$vsec" ] && uci -q delete "network.$vsec"
+						;;
+				esac
+			fi
+			uci -q delete "network.${iface}_modem" 2>/dev/null || true
 			uci -q delete "network.$iface"
 			uci -q set "sqm.$iface.enabled=0" 2>/dev/null || true
 			uci -q delete "sqm.$iface" 2>/dev/null || true
 			zone="$(firewall_wan_zone_section)"
-			[ -n "$zone" ] && uci -q del_list "firewall.$zone.network=$iface" 2>/dev/null || true
+			if [ -n "$zone" ]; then
+				uci -q del_list "firewall.$zone.network=$iface" 2>/dev/null || true
+				uci -q del_list "firewall.$zone.network=${iface}_modem" 2>/dev/null || true
+			fi
 			[ -f /etc/config/mwan3 ] && {
 				uci -q delete "mwan3.$iface" 2>/dev/null || true
 				ensure_mwan3_ark_config
@@ -5907,22 +6037,81 @@ case "$action" in
 			echo ok
 			exit 0
 		fi
-		old="$(uci -q get "network.$iface.device")"
+
+		old="$(uci -q get "network.$iface.ark_phys_port" || uci -q get "network.$iface.device" || uci -q get "network.$iface.ifname")"
 		[ "$iface" != wan ] && [ -n "$old" ] && [ "$old" != "$device" ] && [ "$old" != wan ] && add_lan_port "$old"
 		[ "$device" != wan ] && remove_lan_port "$device"
+
+		effective_dev="$device"
+		if is_swconfig; then
+			p_num="$(printf '%s' "$device" | tr -cd '0-9')"
+			if [ -n "$p_num" ] && [ "$p_num" -ge 1 ] && [ "$p_num" -le 5 ]; then
+				if [ "$iface" = wan ]; then
+					vlan_id=2
+				else
+					idx="$(printf '%s' "$iface" | sed 's/[^0-9]//g')"
+					[ -n "$idx" ] || idx=2
+					vlan_id=$((idx + 1))
+				fi
+				vsec="$(find_switch_vlan "$vlan_id")"
+				if [ -z "$vsec" ]; then
+					vsec="$(uci -q add network switch_vlan)"
+					uci -q set "network.$vsec.device=switch0"
+					uci -q set "network.$vsec.vlan=$vlan_id"
+				fi
+				uci -q set "network.$vsec.ports=$p_num 0t"
+				effective_dev="eth0.$vlan_id"
+			fi
+		fi
+
 		uci -q set "network.$iface=interface"
-		uci -q set "network.$iface.device=$device"
+		uci -q set "network.$iface.device=$effective_dev"
+		uci -q set "network.$iface.ifname=$effective_dev"
+		[ -n "$device" ] && uci -q set "network.$iface.ark_phys_port=$device"
+
 		if [ "$iface" != wan ]; then
 			idx="$(printf '%s' "$iface" | sed 's/[^0-9]//g')"
 			[ -n "$idx" ] || idx=2
 			metric=$((idx * 10))
 			uci -q set "network.$iface.metric=$metric"
-			uci -q set "sqm.$iface.interface=$device" 2>/dev/null || true
+			uci -q set "sqm.$iface.interface=$effective_dev" 2>/dev/null || true
 		else
 			uci -q set network.wan.metric=10
 		fi
 		apply_wan_proto "$iface" "$proto" "$username" "$password" "$ipaddr" "$netmask" "$gateway" "$dns" "$macaddr" || exit $?
+
 		zone="$(firewall_wan_zone_section)"
+		# PPPoE ONU/Modem Access IP Management
+		if [ "$proto" = pppoe ] && [ -n "$modem_ip" ]; then
+			p1="$(printf '%s' "$modem_ip" | cut -d. -f1)"
+			p2="$(printf '%s' "$modem_ip" | cut -d. -f2)"
+			p3="$(printf '%s' "$modem_ip" | cut -d. -f3)"
+			p4="$(printf '%s' "$modem_ip" | cut -d. -f4)"
+			if [ "$p4" = 254 ]; then
+				router_modem_ip="${p1}.${p2}.${p3}.253"
+			else
+				router_modem_ip="${p1}.${p2}.${p3}.254"
+			fi
+			uci -q set "network.$iface.modem_ip=$modem_ip"
+			uci -q set "network.${iface}_modem=interface"
+			uci -q set "network.${iface}_modem.proto=static"
+			uci -q set "network.${iface}_modem.device=$effective_dev"
+			uci -q set "network.${iface}_modem.ifname=$effective_dev"
+			uci -q set "network.${iface}_modem.ipaddr=$router_modem_ip"
+			uci -q set "network.${iface}_modem.netmask=255.255.255.0"
+			uci -q set "network.${iface}_modem.delegate=0"
+			uci -q set "network.${iface}_modem.peerdns=0"
+			if [ -n "$zone" ]; then
+				firewall_zone_has_network "$zone" "${iface}_modem" || uci -q add_list "firewall.$zone.network=${iface}_modem"
+			fi
+		else
+			uci -q delete "network.$iface.modem_ip"
+			if [ "$(uci -q get "network.${iface}_modem")" = interface ]; then
+				uci -q delete "network.${iface}_modem"
+				[ -n "$zone" ] && uci -q del_list "firewall.$zone.network=${iface}_modem" 2>/dev/null || true
+			fi
+		fi
+
 		if [ -n "$zone" ]; then
 			firewall_zone_has_network "$zone" "$iface" || uci -q add_list "firewall.$zone.network=$iface"
 			uci commit firewall
