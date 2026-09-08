@@ -5988,7 +5988,20 @@ case "$action" in
 		bypass='{}'; speedify_runtime_running && [ -n "$cli" ] && bypass="$("$cli" -s show streamingbypass 2>/dev/null || printf '{}')"
 		printf ',"speedify_bypass":%s' "$bypass"
 		starlink_public=false; [ "$(uci -q get equipe_dashboard.starlink.public_view || printf 0)" = 1 ] && starlink_public=true
+		starlink_always_show=false; [ "$(uci -q get starlink_telemetry.global.always_show || printf 0)" = 1 ] && starlink_always_show=true
+		sl_tel_enabled=false; [ "$(uci -q get starlink_telemetry.global.enabled || printf 0)" = 1 ] && sl_tel_enabled=true
+		sl_sample_mode="$(uci -q get starlink_telemetry.global.sample_mode || printf 'auto')"
+		sl_max_h="$(uci -q get starlink_telemetry.global.max_history_hours || printf 25)"
+		sl_purge_boot=true; [ "$(uci -q get starlink_telemetry.global.purge_boot_email || printf 1)" = 0 ] && sl_purge_boot=false
+		sl_mail_enabled=false; [ "$(uci -q get starlink_telemetry.email.enabled || printf 0)" = 1 ] && sl_mail_enabled=true
+		sl_provider="$(uci -q get starlink_telemetry.email.provider || printf 'resend')"
+		sl_key="$(uci -q get starlink_telemetry.email.resend_api_key || printf 're_xxxxxxxxx')"
+		sl_to="$(uci -q get starlink_telemetry.email.email_to || printf 'hcsskt@gmail.com')"
+		sl_from="$(uci -q get starlink_telemetry.email.email_from || printf 'onboarding@resend.dev')"
+		sl_attach=true; [ "$(uci -q get starlink_telemetry.email.attach_csv || printf 1)" = 0 ] && sl_attach=false
 		printf ',"starlink_public":{"enabled":%s,"url":"/starlink/","read_only":true,"active_wan":"%s"}' "$starlink_public" "$(starlink_active_wan_get)"
+		printf ',"starlink_always_show":%s,"starlink_telemetry":{"enabled":%s,"sample_mode":"%s","max_history_hours":%s,"purge_boot_email":%s,"email_enabled":%s,"provider":"%s","resend_api_key":"%s","email_to":"%s","email_from":"%s","attach_csv":%s}' \
+			"$starlink_always_show" "$sl_tel_enabled" "$(json_escape "$sl_sample_mode")" "$sl_max_h" "$sl_purge_boot" "$sl_mail_enabled" "$(json_escape "$sl_provider")" "$(json_escape "$sl_key")" "$(json_escape "$sl_to")" "$(json_escape "$sl_from")" "$sl_attach"
 		current_version="$(ark_current_version)"
 		update_repo="$(ark_update_repo)"
 		printf '},"hardware":{"cpu_cores":%s,"cpu_freq_mhz":%s,"cpu_freq_str":"%s","cpu_arch":"%s","mem_total_mb":%s,"flash_type":"%s","wifi_160_supported":%s,"is_legacy_owrt":%s},"https":{"available":%s,"redirect":%s,"certificate":"local","ca_available":%s,"ca_fingerprint":"%s","ca_download":"/ark-router/ark-router-ca.crt"},"update":{"current":"%s","repo":"%s","manager":"%s"}}\n' \
@@ -6940,11 +6953,82 @@ case "$action" in
 		fi
 		echo ok
 		;;
+	starlink-always-show-toggle)
+		val="${2:-}"
+		case "$val" in 0|1) ;; *) echo 'Estado invalido (0 ou 1)' >&2; exit 2 ;; esac
+		uci -q set starlink_telemetry.global=starlink_telemetry
+		uci -q set "starlink_telemetry.global.always_show=$val"
+		uci commit starlink_telemetry
+		echo ok
+		;;
+	starlink-telemetry-config-get)
+		always_show="$(uci -q get starlink_telemetry.global.always_show || printf 0)"
+		enabled="$(uci -q get starlink_telemetry.global.enabled || printf 0)"
+		sample_mode="$(uci -q get starlink_telemetry.global.sample_mode || printf 'auto')"
+		max_history_hours="$(uci -q get starlink_telemetry.global.max_history_hours || printf 25)"
+		purge_boot_email="$(uci -q get starlink_telemetry.global.purge_boot_email || printf 1)"
+		email_enabled="$(uci -q get starlink_telemetry.email.enabled || printf 0)"
+		provider="$(uci -q get starlink_telemetry.email.provider || printf 'resend')"
+		resend_api_key="$(uci -q get starlink_telemetry.email.resend_api_key || printf 're_xxxxxxxxx')"
+		email_from="$(uci -q get starlink_telemetry.email.email_from || printf 'onboarding@resend.dev')"
+		email_to="$(uci -q get starlink_telemetry.email.email_to || printf 'hcsskt@gmail.com')"
+		attach_csv="$(uci -q get starlink_telemetry.email.attach_csv || printf 1)"
+		printf '{"always_show":%s,"enabled":%s,"sample_mode":"%s","max_history_hours":%s,"purge_boot_email":%s,"email_enabled":%s,"provider":"%s","resend_api_key":"%s","email_from":"%s","email_to":"%s","attach_csv":%s}\n' \
+			"$([ "$always_show" = "1" ] && echo true || echo false)" \
+			"$([ "$enabled" = "1" ] && echo true || echo false)" \
+			"$(json_escape "$sample_mode")" \
+			"$max_history_hours" \
+			"$([ "$purge_boot_email" = "1" ] && echo true || echo false)" \
+			"$([ "$email_enabled" = "1" ] && echo true || echo false)" \
+			"$(json_escape "$provider")" \
+			"$(json_escape "$resend_api_key")" \
+			"$(json_escape "$email_from")" \
+			"$(json_escape "$email_to")" \
+			"$([ "$attach_csv" = "1" ] && echo true || echo false)"
+		;;
+	starlink-telemetry-config-set)
+		shift
+		uci -q set starlink_telemetry.global=starlink_telemetry
+		uci -q set starlink_telemetry.email=email
+		old_enabled="$(uci -q get starlink_telemetry.global.enabled || printf 0)"
+		for pair in "$@"; do
+			key="${pair%%=*}"; value="${pair#*=}"
+			case "$key" in
+				always_show) uci -q set "starlink_telemetry.global.always_show=$value" ;;
+				enabled) uci -q set "starlink_telemetry.global.enabled=$value" ;;
+				sample_mode) uci -q set "starlink_telemetry.global.sample_mode=$value" ;;
+				max_history_hours) uci -q set "starlink_telemetry.global.max_history_hours=$value" ;;
+				purge_boot_email) uci -q set "starlink_telemetry.global.purge_boot_email=$value" ;;
+				email_enabled) uci -q set "starlink_telemetry.email.enabled=$value" ;;
+				provider) uci -q set "starlink_telemetry.email.provider=$value" ;;
+				resend_api_key) uci -q set "starlink_telemetry.email.resend_api_key=$value" ;;
+				email_to) uci -q set "starlink_telemetry.email.email_to=$value" ;;
+				email_from) uci -q set "starlink_telemetry.email.email_from=$value" ;;
+				attach_csv) uci -q set "starlink_telemetry.email.attach_csv=$value" ;;
+			esac
+		done
+		uci commit starlink_telemetry
+		new_enabled="$(uci -q get starlink_telemetry.global.enabled || printf 0)"
+		if [ "$new_enabled" = "1" ]; then
+			/etc/init.d/starlink-telemetry enable 2>/dev/null || true
+			/etc/init.d/starlink-telemetry restart 2>/dev/null || true
+		elif [ "$old_enabled" = "1" ] && [ "$new_enabled" = "0" ]; then
+			/etc/init.d/starlink-telemetry stop 2>/dev/null || true
+			/etc/init.d/starlink-telemetry disable 2>/dev/null || true
+		fi
+		echo ok
+		;;
 	starlink-telemetry-send-test)
 		if [ -x /usr/sbin/starlink-telemetry-mailer ]; then
-			/usr/sbin/starlink-telemetry-mailer send-test
+			out="$(/usr/sbin/starlink-telemetry-mailer send-test 2>&1 || true)"
+			if printf '%s' "$out" | grep -q "sucesso"; then
+				id="$(printf '%s' "$out" | grep -o 'ID: [^ ]*' | head -n 1 || printf 'ok')"
+				printf '{"success":true,"message":"Relatório executivo enviado com sucesso! %s","output":"%s"}\n' "$id" "$(json_escape "$out")"
+			else
+				printf '{"success":false,"message":"Falha no envio do relatório por e-mail","output":"%s"}\n' "$(json_escape "$out")"
+			fi
 		else
-			echo 'Mailer nao encontrado' >&2; exit 1
+			echo '{"success":false,"message":"Mailer nao encontrado"}' >&2; exit 1
 		fi
 		;;
 	starlink-telemetry-flush)

@@ -1371,7 +1371,8 @@ return view.extend({
 				return slDns||(cgnat&&slGw)||slRouterMode;
 			});
 			const slPub=(this.capabilities.features&&this.capabilities.features.starlink_public)||{};
-			starlinkPanelEl.style.display=(hasStarlink||slPub.enabled)?'':'none';
+			const slAlwaysShow=!!(this.capabilities.features&&this.capabilities.features.starlink_always_show)||(localStorage.getItem('ark_starlink_always_show')==='1');
+			starlinkPanelEl.style.display=(hasStarlink||slPub.enabled||slAlwaysShow)?'':'none';
 		}
 		this.updateWifi(data); this.updateMwanMode(data); this.updateHistory(data.history); this.renderDevices(data,dr); text('ex-clock',new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
 	},
@@ -4746,6 +4747,334 @@ return view.extend({
 			ui.addNotification(null,E('p',{},[desired?'Página /starlink/ liberada somente para dispositivos da LAN.':'Página /starlink/ bloqueada.']));
 		},this)).catch(function(e){input.checked=!desired;ui.addNotification(null,E('p',{},[e.message]),'danger');}).finally(function(){input.disabled=false;});
 	},
+	toggleStarlinkAlwaysShow: function(input){
+		const desired = !!input.checked; input.disabled = true;
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['starlink-always-show-toggle', desired ? '1' : '0']).then(L.bind(function(r){
+			if (r.code) throw new Error(r.stderr || 'Falha ao alterar visibilidade do painel Starlink');
+			if (this.capabilities.features) this.capabilities.features.starlink_always_show = desired;
+			try { localStorage.setItem('ark_starlink_always_show', desired ? '1' : '0'); } catch(e){}
+			const panel = document.getElementById('ex-starlink-global-panel');
+			if (panel) {
+				const isDetected = panel.classList.contains('detected') || panel.classList.contains('problem');
+				panel.style.display = (isDetected || desired) ? '' : 'none';
+			}
+			const modalState = document.getElementById('ex-starlink-always-show-modal-state');
+			if (modalState) modalState.textContent = desired ? 'LIGADO' : 'DESLIGADO';
+			const cardState = document.getElementById('ex-starlink-always-show-card-state');
+			if (cardState) cardState.textContent = desired ? 'LIGADO' : 'DESLIGADO';
+			const cardInput = document.getElementById('ex-starlink-always-show-card-input');
+			if (cardInput && cardInput !== input) cardInput.checked = desired;
+			const modalInput = document.getElementById('ex-starlink-always-show-modal-input');
+			if (modalInput && modalInput !== input) modalInput.checked = desired;
+			ui.addNotification(null, E('p', {}, [desired ? 'Painel Starlink e Central de Telemetria fixados como visíveis no início.' : 'Painel Starlink voltará a ser exibido apenas quando uma antena física for detectada.']), 'info');
+		}, this)).catch(function(e){
+			input.checked = !desired;
+			ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+		}).finally(function(){ input.disabled = false; });
+	},
+	saveStarlinkTelemetrySettings: function(params, btn){
+		if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+		const args = ['starlink-telemetry-config-set'];
+		Object.keys(params).forEach(function(k){
+			args.push(k + '=' + params[k]);
+		});
+		return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(L.bind(function(r){
+			if (r.code) throw new Error(r.stderr || 'Falha ao salvar configurações');
+			ui.addNotification(null, E('p', {}, ['Configurações de telemetria e e-mail salvas com sucesso!']), 'info');
+			if (this.capabilities.features) {
+				this.capabilities.features.starlink_telemetry = Object.assign(this.capabilities.features.starlink_telemetry || {}, params);
+			}
+			this.updateStarlinkTelemetryStatusBadge();
+		}, this)).catch(function(e){
+			ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+		}).finally(function(){
+			if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Configurações'; }
+		});
+	},
+	triggerStarlinkTestEmail: function(btn){
+		if (btn) { btn.disabled = true; btn.textContent = 'Disparando e-mail de teste…'; }
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['starlink-telemetry-send-test']).then(function(r){
+			let res = {};
+			try { res = JSON.parse(r.stdout || '{}'); } catch(e){}
+			if (res.success) {
+				ui.addNotification(null, E('p', {}, [res.message || 'Relatório executivo enviado com sucesso por e-mail!']), 'info');
+			} else {
+				ui.addNotification(null, E('p', {}, [res.message || res.output || 'Falha ao enviar e-mail. Verifique a chave Resend API e conexão.']), 'danger');
+			}
+		}).catch(function(e){
+			ui.addNotification(null, E('p', {}, ['Erro ao disparar e-mail: ' + e.message]), 'danger');
+		}).finally(function(){
+			if (btn) { btn.disabled = false; btn.textContent = '✉️ Disparar E-mail de Teste Agora'; }
+		});
+	},
+	flushStarlinkTelemetryRam: function(btn){
+		if (btn) { btn.disabled = true; btn.textContent = 'Compactando…'; }
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['starlink-telemetry-flush']).then(function(r){
+			if (r.code) throw new Error(r.stderr || 'Falha ao descarregar RAM');
+			ui.addNotification(null, E('p', {}, ['Amostras em RAM sincronizadas e compactadas na Flash com sucesso!']), 'info');
+		}).catch(function(e){
+			ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+		}).finally(function(){
+			if (btn) { btn.disabled = false; btn.textContent = '⚡ Sincronizar RAM para Flash'; }
+		});
+	},
+	updateStarlinkTelemetryStatusBadge: function(){
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['starlink-telemetry-status']).then(function(r){
+			let st = {};
+			try { st = JSON.parse(r.stdout || '{}'); } catch(e){}
+			const badge = document.getElementById('ex-starlink-telemetry-status-badge');
+			if (badge) {
+				if (st.enabled && st.running) {
+					badge.className = 'ex-pill online';
+					badge.textContent = 'COLETANDO (' + (st.hours_saved || 0) + 'h salvas)';
+				} else if (st.enabled) {
+					badge.className = 'ex-pill standby';
+					badge.textContent = 'ATIVO / AGUARDANDO';
+				} else {
+					badge.className = 'ex-pill offline';
+					badge.textContent = 'DESATIVADO';
+				}
+			}
+			const flashInfo = document.getElementById('ex-starlink-telemetry-flash-info');
+			if (flashInfo && st.flash_bytes !== undefined) {
+				const kb = Math.round(st.flash_bytes / 1024);
+				flashInfo.textContent = 'Histórico: ' + (st.hours_saved || 0) + 'h compactadas na Flash (~' + (kb < 1024 ? kb + ' KB' : (kb / 1024).toFixed(1) + ' MB') + ')';
+			}
+		}).catch(function(){});
+	},
+	renderStarlinkTelemetrySection: function(){
+		const telData = (this.capabilities.features && this.capabilities.features.starlink_telemetry) || {};
+		const telAlwaysShow = !!(this.capabilities.features && this.capabilities.features.starlink_always_show);
+		const telEnabled = !!telData.enabled;
+		const sampleMode = telData.sample_mode || 'auto';
+		const maxHistoryHours = String(telData.max_history_hours || 25);
+		const purgeBootEmail = (telData.purge_boot_email !== false && telData.purge_boot_email !== '0');
+		const emailEnabled = !!telData.email_enabled;
+		const provider = telData.provider || 'resend';
+		const resendApiKey = telData.resend_api_key || 're_xxxxxxxxx';
+		const emailTo = telData.email_to || 'hcsskt@gmail.com';
+		const emailFrom = telData.email_from || 'onboarding@resend.dev';
+		const attachCsv = (telData.attach_csv !== false && telData.attach_csv !== '0');
+
+		const statusBadge = E('span', { id: 'ex-starlink-telemetry-status-badge', class: 'ex-pill ' + (telEnabled ? 'online' : 'offline') }, [telEnabled ? 'ATIVO' : 'DESLIGADO']);
+		const flashInfo = E('small', { id: 'ex-starlink-telemetry-flash-info', class: 'ex-muted', style: 'font-size: 12px; display: block; margin-top: 2px;' }, ['Histórico: consultando…']);
+
+		const alwaysShowInput = E('input', {
+			id: 'ex-starlink-always-show-card-input',
+			type: 'checkbox',
+			'aria-label': 'Sempre exibir painel Starlink',
+			change: L.bind(function(ev) {
+				this.toggleStarlinkAlwaysShow(ev.currentTarget);
+			}, this)
+		});
+		alwaysShowInput.checked = telAlwaysShow;
+
+		const telEnabledInput = E('input', { type: 'checkbox', 'aria-label': 'Ativar registro de telemetria' });
+		telEnabledInput.checked = telEnabled;
+
+		const sampleModeSelect = E('select', { class: 'cbi-input-select', style: 'width: 100%; max-width: 320px; font-weight: 600;' }, [
+			E('option', { value: 'auto' }, ['🛰️ Automático (antena real / probes WAN)']),
+			E('option', { value: 'simulate' }, ['🧪 Simulação (gerar dados Starlink para testes)'])
+		]);
+		sampleModeSelect.value = sampleMode;
+
+		const emailEnabledInput = E('input', { type: 'checkbox', 'aria-label': 'Enviar logs por e-mail' });
+		emailEnabledInput.checked = emailEnabled;
+
+		const providerSelect = E('select', { class: 'cbi-input-select', style: 'width: 100%; max-width: 320px; font-weight: 600;' }, [
+			E('option', { value: 'resend' }, ['🚀 API Resend (Gratuito, Sem Senha)']),
+			E('option', { value: 'smtp' }, ['✉️ SMTP Tradicional (msmtp)'])
+		]);
+		providerSelect.value = provider;
+
+		const apiKeyInput = E('input', { class: 'cbi-input-text', type: 'password', value: resendApiKey, placeholder: 're_xxxxxxxxx', style: 'width: 100%; max-width: 280px; font-family: monospace; font-size: 13px;' });
+		const toggleApiKeyBtn = E('button', { class: 'ex-mini-button', type: 'button', style: 'margin-left: 8px;' }, ['Ver']);
+		toggleApiKeyBtn.addEventListener('click', function() {
+			if (apiKeyInput.type === 'password') {
+				apiKeyInput.type = 'text';
+				toggleApiKeyBtn.textContent = 'Ocultar';
+			} else {
+				apiKeyInput.type = 'password';
+				toggleApiKeyBtn.textContent = 'Ver';
+			}
+		});
+
+		const emailToInput = E('input', { class: 'cbi-input-text', type: 'text', value: emailTo, placeholder: 'seu-email@gmail.com', style: 'width: 100%; max-width: 320px;' });
+		const emailFromInput = E('input', { class: 'cbi-input-text', type: 'text', value: emailFrom, placeholder: 'onboarding@resend.dev', style: 'width: 100%; max-width: 320px;' });
+
+		const maxHoursSelect = E('select', { class: 'cbi-input-select', style: 'width: 100%; max-width: 320px; font-weight: 600;' }, [
+			E('option', { value: '25' }, ['25 horas (Padrão recomendado ~850 KB na flash)']),
+			E('option', { value: '12' }, ['12 horas (~400 KB na flash)']),
+			E('option', { value: '48' }, ['48 horas (~1.6 MB na flash)']),
+			E('option', { value: '72' }, ['72 horas (~2.4 MB na flash)'])
+		]);
+		maxHoursSelect.value = maxHistoryHours;
+
+		const purgeBootInput = E('input', { type: 'checkbox', 'aria-label': 'Enviar por e-mail antes de apagar log' });
+		purgeBootInput.checked = purgeBootEmail;
+
+		const attachCsvInput = E('input', { type: 'checkbox', 'aria-label': 'Anexar planilha .csv.gz' });
+		attachCsvInput.checked = attachCsv;
+
+		const emailFieldsContainer = E('div', { id: 'ex-starlink-email-fields', style: emailEnabled ? 'display:grid; gap:12px; margin-top:10px;' : 'display:none; gap:12px; margin-top:10px;' }, [
+			E('div', { style: 'display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:10px 12px; background:rgba(0,0,0,0.18); border-radius:10px;' }, [
+				E('div', {}, [
+					E('strong', { style: 'display:block; font-size:13px;' }, ['Provedor de E-mail']),
+					E('small', { class: 'ex-muted' }, ['API REST Resend (sem necessidade de senhas) ou SMTP tradicional.'])
+				]),
+				providerSelect
+			]),
+			E('div', { id: 'ex-starlink-resend-key-row', style: (provider === 'resend') ? 'display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:10px 12px; background:rgba(0,0,0,0.18); border-radius:10px;' : 'display:none; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:10px 12px; background:rgba(0,0,0,0.18); border-radius:10px;' }, [
+				E('div', {}, [
+					E('strong', { style: 'display:block; font-size:13px;' }, ['Chave da API Resend (Token)']),
+					E('small', { class: 'ex-muted' }, ['Chave gerada no resend.com (ex: re_xxxxxxxxx). Risco zero para suas contas pessoais.'])
+				]),
+				E('div', { style: 'display:flex; align-items:center;' }, [apiKeyInput, toggleApiKeyBtn])
+			]),
+			E('div', { style: 'display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:10px 12px; background:rgba(0,0,0,0.18); border-radius:10px;' }, [
+				E('div', {}, [
+					E('strong', { style: 'display:block; font-size:13px;' }, ['E-mail de Destino (Para)']),
+					E('small', { class: 'ex-muted' }, ['Endereço que receberá o relatório executivo com os anexos.'])
+				]),
+				emailToInput
+			]),
+			E('div', { style: 'display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:10px 12px; background:rgba(0,0,0,0.18); border-radius:10px;' }, [
+				E('div', {}, [
+					E('strong', { style: 'display:block; font-size:13px;' }, ['Remetente do E-mail (De)']),
+					E('small', { class: 'ex-muted' }, ['Padrão de testes: onboarding@resend.dev ou domínio configurado.'])
+				]),
+				emailFromInput
+			]),
+			E('div', { style: 'display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; background:rgba(0,0,0,0.18); border-radius:10px;' }, [
+				E('div', {}, [
+					E('strong', { style: 'display:block; font-size:13px;' }, ['Anexar Planilha (.csv.gz)']),
+					E('small', { class: 'ex-muted' }, ['Inclui arquivo compactado segundo a segundo com todos os dados da viagem.'])
+				]),
+				E('label', { class: 'ex-switch' }, [attachCsvInput, E('span', { class: 'ex-switch-slider' })])
+			])
+		]);
+
+		emailEnabledInput.addEventListener('change', function() {
+			emailFieldsContainer.style.display = emailEnabledInput.checked ? 'grid' : 'none';
+		});
+
+		providerSelect.addEventListener('change', function() {
+			const isResend = providerSelect.value === 'resend';
+			const keyRow = document.getElementById('ex-starlink-resend-key-row');
+			if (keyRow) keyRow.style.display = isResend ? 'flex' : 'none';
+		});
+
+		const saveBtn = E('button', {
+			class: 'ex-hero-feature-button',
+			type: 'button',
+			style: 'padding: 8px 18px !important; background: #0284c7 !important; border-color: #38bdf8 !important; color: #fff !important; font-weight: 750 !important; cursor: pointer;'
+		}, ['💾 Salvar Configurações']);
+
+		saveBtn.addEventListener('click', L.bind(function() {
+			const params = {
+				always_show: alwaysShowInput.checked ? '1' : '0',
+				enabled: telEnabledInput.checked ? '1' : '0',
+				sample_mode: sampleModeSelect.value,
+				max_history_hours: maxHoursSelect.value,
+				purge_boot_email: purgeBootInput.checked ? '1' : '0',
+				email_enabled: emailEnabledInput.checked ? '1' : '0',
+				provider: providerSelect.value,
+				resend_api_key: apiKeyInput.value.trim(),
+				email_to: emailToInput.value.trim(),
+				email_from: emailFromInput.value.trim(),
+				attach_csv: attachCsvInput.checked ? '1' : '0'
+			};
+			this.saveStarlinkTelemetrySettings(params, saveBtn);
+		}, this));
+
+		const testEmailBtn = E('button', {
+			class: 'ex-mini-button',
+			type: 'button',
+			style: 'padding: 8px 14px; font-weight: 700; border-color: rgba(56, 189, 248, 0.4); color: #38bdf8;'
+		}, ['✉️ Disparar E-mail de Teste Agora']);
+
+		testEmailBtn.addEventListener('click', L.bind(function() {
+			this.triggerStarlinkTestEmail(testEmailBtn);
+		}, this));
+
+		const flushBtn = E('button', {
+			class: 'ex-mini-button',
+			type: 'button',
+			style: 'padding: 8px 14px; font-weight: 700;'
+		}, ['⚡ Sincronizar RAM para Flash']);
+
+		flushBtn.addEventListener('click', L.bind(function() {
+			this.flushStarlinkTelemetryRam(flushBtn);
+		}, this));
+
+		window.setTimeout(L.bind(this.updateStarlinkTelemetryStatusBadge, this), 100);
+
+		return E('div', {
+			class: 'ex-starlink-telemetry-config',
+			style: 'margin-top: 14px; padding: 16px; background: rgba(15, 23, 42, 0.55); border-radius: 14px; border: 1px solid rgba(56, 189, 248, 0.22); display: grid; gap: 12px;'
+		}, [
+			E('div', { style: 'display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; border-bottom: 1px solid rgba(127,127,127,0.18); padding-bottom: 10px;' }, [
+				E('div', {}, [
+					E('strong', { style: 'font-size: 1rem; color: #38bdf8; display:flex; align-items:center; gap:6px;' }, [
+						'📡 Telemetria, Logs e Envio por E-mail'
+					]),
+					flashInfo
+				]),
+				statusBadge
+			]),
+			E('div', { style: 'display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; background:rgba(127,127,127,0.06); border-radius:10px;' }, [
+				E('div', {}, [
+					E('strong', { style: 'display:block; font-size:13.5px;' }, ['Sempre exibir painel Starlink']),
+					E('small', { class: 'ex-muted' }, ['Mantém este painel e as ferramentas Starlink visíveis na tela inicial mesmo sem antena física detectada.'])
+				]),
+				E('div', { class: 'ex-device-switch-control' }, [
+					E('strong', { id: 'ex-starlink-always-show-card-state', class: 'ex-device-switch-state' }, [telAlwaysShow ? 'LIGADO' : 'DESLIGADO']),
+					E('label', { class: 'ex-switch' }, [alwaysShowInput, E('span', { class: 'ex-switch-slider' })])
+				])
+			]),
+			E('div', { style: 'display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; background:rgba(127,127,127,0.06); border-radius:10px;' }, [
+				E('div', {}, [
+					E('strong', { style: 'display:block; font-size:13.5px;' }, ['Ativar registro de telemetria (Logs 1s em RAM)']),
+					E('small', { class: 'ex-muted' }, ['Coleta métricas segundo a segundo em RAM (/tmp/starlink_telemetry) e compacta na Flash a cada 15 min. Protege a vida útil da memória.'])
+				]),
+				E('label', { class: 'ex-switch' }, [telEnabledInput, E('span', { class: 'ex-switch-slider' })])
+			]),
+			E('div', { style: 'display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:10px 12px; background:rgba(127,127,127,0.06); border-radius:10px;' }, [
+				E('div', {}, [
+					E('strong', { style: 'display:block; font-size:13.5px;' }, ['Modo da Telemetria']),
+					E('small', { class: 'ex-muted' }, ['Escolha entre consultar antenas físicas reais ou simular comportamento Starlink com handovers para testes em bancada.'])
+				]),
+				sampleModeSelect
+			]),
+			E('div', { style: 'display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:10px 12px; background:rgba(127,127,127,0.06); border-radius:10px;' }, [
+				E('div', {}, [
+					E('strong', { style: 'display:block; font-size:13.5px;' }, ['Prazo para guardar logs (Retenção na Flash)']),
+					E('small', { class: 'ex-muted' }, ['Tempo máximo de histórico preservado na memória interna do roteador.'])
+				]),
+				maxHoursSelect
+			]),
+			E('div', { style: 'display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; background:rgba(127,127,127,0.06); border-radius:10px;' }, [
+				E('div', {}, [
+					E('strong', { style: 'display:block; font-size:13.5px;' }, ['Enviar por e-mail sempre antes de apagar log anterior']),
+					E('small', { class: 'ex-muted' }, ['Se o roteador ficar desligado por dias ou o histórico exceder o prazo, aguarda conexão e envia os logs por e-mail antes de descartar.'])
+				]),
+				E('label', { class: 'ex-switch' }, [purgeBootInput, E('span', { class: 'ex-switch-slider' })])
+			]),
+			E('div', { style: 'display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; background:rgba(127,127,127,0.06); border-radius:10px;' }, [
+				E('div', {}, [
+					E('strong', { style: 'display:block; font-size:13.5px;' }, ['Enviar logs e relatórios por e-mail']),
+					E('small', { class: 'ex-muted' }, ['Dispara relatórios executivos consolidados com tabela formatada e planilha compactada (.csv.gz) em anexo.'])
+				]),
+				E('label', { class: 'ex-switch' }, [emailEnabledInput, E('span', { class: 'ex-switch-slider' })])
+			]),
+			emailFieldsContainer,
+			E('div', { style: 'display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:10px; margin-top:10px; padding-top:12px; border-top:1px solid rgba(127,127,127,0.18);' }, [
+				flushBtn,
+				testEmailBtn,
+				saveBtn
+			])
+		]);
+	},
 	stopStarlinkAlignment: function(){
 		const oldWan=this.starlinkTelemetryWan, oldId=portDomId(oldWan||'wan');this.starlinkTelemetryActive=false;this.starlinkTelemetryWan=null;if(this.starlinkTelemetryTimer)window.clearTimeout(this.starlinkTelemetryTimer);if(this.starlinkTelemetryStopTimer)window.clearTimeout(this.starlinkTelemetryStopTimer);this.starlinkTelemetryTimer=null;this.starlinkTelemetryStopTimer=null;const b=document.getElementById('ex-starlink-live-'+oldId);if(b)b.textContent='Ajuste ao vivo (1 s)';
 	},
@@ -4889,11 +5218,13 @@ return view.extend({
 			]);
 			return panel;
 		},this));
-		const starlinkPanel=E('details',{id:'ex-starlink-global-panel',class:'ex-starlink-panel '+(starlinkProblem?'problem':(starlinkDetected?'detected':'idle')),style:starlinkDetected?'':'display:none;'},[
+		const starlinkAlwaysShow = !!(this.capabilities.features && (this.capabilities.features.starlink_always_show === 1 || this.capabilities.features.starlink_always_show === true || this.capabilities.features.starlink_always_show === '1')) || (localStorage.getItem('ark_starlink_always_show') === '1');
+		const showStarlinkPanel = starlinkDetected || starlinkAlwaysShow;
+		const starlinkPanel=E('details',{id:'ex-starlink-global-panel',class:'ex-starlink-panel '+(starlinkProblem?'problem':(starlinkDetected?'detected':'idle')),style:showStarlinkPanel?'':'display:none;'},[
 			E('summary',{},[
 				E('span',{class:'ex-starlink-summary-main'},[
 					E('span',{class:'ex-starlink-icon'},['◉']),
-					E('span',{},[E('strong',{},['Starlink']),E('small',{class:'ex-muted'},[starlinkDetected?(starlinkWans.length+' entrada'+(starlinkWans.length===1?'':'s')+' Starlink detectada'+(starlinkWans.length===1?'':'s')+' • ajuste sequencial'):'Nenhuma entrada Starlink detectada'])])
+					E('span',{},[E('strong',{},['Starlink']),E('small',{class:'ex-muted'},[starlinkDetected?(starlinkWans.length+' entrada'+(starlinkWans.length===1?'':'s')+' Starlink detectada'+(starlinkWans.length===1?'':'s')+' • ajuste sequencial'):(starlinkAlwaysShow?'Exibição forçada via configuração • Nenhuma antena física conectada':'Nenhuma entrada Starlink detectada')])])
 				]),
 				E('span',{class:'ex-pill '+(starlinkProblem?'offline':(starlinkDetected?'online':'standby'))},[starlinkProblem?'SEM CONEXÃO':(starlinkDetected?'DETECTADA':'AGUARDANDO')])
 			]),
@@ -4902,7 +5233,7 @@ return view.extend({
 					E('strong',{},['Duas ou mais Starlink detectadas']),
 					E('span',{},['Se possível, instale as antenas afastadas e aponte-as para lados diferentes. Não é uma disputa direta por satélite, mas essa separação reduz obstruções compartilhadas e possível interferência, melhorando a diversidade dos enlaces.'])
 				]):'',
-				starlinkDetected?E('div',{class:'ex-starlink-list ex-starlink-wan-list'},starlinkWanCards):E('p',{class:'ex-muted'},['Quando uma WAN compatível for detectada, o ARK criará um card independente para consultar e alinhar cada antena.']),
+				starlinkDetected?E('div',{class:'ex-starlink-list ex-starlink-wan-list'},starlinkWanCards):E('p',{class:'ex-muted'},[starlinkAlwaysShow?'Painel exibido conforme configuração de preferência. Quando uma WAN Starlink for conectada, os mostradores de alinhamento 3D aparecerão aqui automaticamente.':'Quando uma WAN compatível for detectada, o ARK criará um card independente para consultar e alinhar cada antena.']),
 				E('div',{class:'ex-starlink-public'},[
 					E('div',{},[E('strong',{},['Visualização sem login']),E('small',{class:'ex-muted'},['Libera apenas telemetria e alinhamento em /starlink/ para dispositivos da LAN. Não permite alterar nenhuma configuração.']),E('a',{id:'ex-starlink-public-link',class:'ex-text-link',href:'/starlink/',target:'_blank',rel:'noopener noreferrer',hidden:!starlinkPublic.enabled},['Abrir painel somente leitura →'])]),
 					E('div',{class:'ex-device-switch-control'},[E('strong',{id:'ex-starlink-public-state',class:'ex-device-switch-state'},[starlinkPublic.enabled?'LIGADO':'DESLIGADO']),E('label',{class:'ex-switch'},[starlinkPublicInput,E('span',{class:'ex-switch-slider'})])])
@@ -4911,7 +5242,8 @@ return view.extend({
 					E('strong',{},['Módulo Starlink dedicado • Lite e Full']),
 					E('small',{class:'ex-muted'},['Uma antena é consultada por vez através de uma rota temporária exclusiva para 192.168.100.1. Internet, mwan3 e Speedify permanecem inalterados.']),
 					luci&&f.active?E('a',{class:'ex-text-link',href:L.url('admin/speedify'),target:'_blank',rel:'noopener noreferrer'},['Abrir Central Starlink / Speedify →']):(luci?E('small',{class:'ex-muted'},['Ligue o BONDING REAL para iniciar a Central Starlink oficial.']):'')
-				])
+				]),
+				this.renderStarlinkTelemetrySection()
 			])
 		]);
 		const speedifyAdvanced=installed?E('details',{class:'ex-speedify-advanced'},[
@@ -5736,6 +6068,31 @@ return view.extend({
 				this.showWanOptimizationsModal();
 			},this)},['Otimizar internet'])
 		]);
+		const starlinkAlwaysShowModalVal = !!(this.capabilities.features && (this.capabilities.features.starlink_always_show === 1 || this.capabilities.features.starlink_always_show === true || this.capabilities.features.starlink_always_show === '1')) || (localStorage.getItem('ark_starlink_always_show') === '1');
+		const starlinkAlwaysShowModalInput = E('input', {
+			id: 'ex-starlink-always-show-modal-input',
+			type: 'checkbox',
+			'aria-label': 'Sempre exibir painel Starlink',
+			change: L.bind(function(ev) {
+				this.toggleStarlinkAlwaysShow(ev.currentTarget);
+			}, this)
+		});
+		starlinkAlwaysShowModalInput.checked = starlinkAlwaysShowModalVal;
+
+		const starlinkModalPanel = E('section', {
+			class: 'ex-cleanup-entry',
+			style: 'display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px;'
+		}, [
+			E('div', {}, [
+				E('strong', { style: 'display: block; margin-bottom: 2px;' }, ['📡 Painel Starlink e Central de Telemetria']),
+				E('small', { class: 'ex-muted' }, ['Sempre exibir o painel Starlink no início, permitindo testar e configurar telemetria mesmo sem antena física detectada.'])
+			]),
+			E('div', { class: 'ex-device-switch-control', style: 'flex-shrink: 0;' }, [
+				E('strong', { id: 'ex-starlink-always-show-modal-state', class: 'ex-device-switch-state' }, [starlinkAlwaysShowModalVal ? 'LIGADO' : 'DESLIGADO']),
+				E('label', { class: 'ex-switch' }, [starlinkAlwaysShowModalInput, E('span', { class: 'ex-switch-slider' })])
+			])
+		]);
+
 		ui.showModal('RECURSOS E COMPATIBILIDADE',[
 			profilePanel,
 			wanOptPanel,
@@ -5746,6 +6103,7 @@ return view.extend({
 			ipv6Panel,
 			E('section',{class:'ex-cleanup-entry'},[E('div',{},[E('strong',{},['Otimização modo ARK']),E('small',{class:'ex-muted'},['Remove painéis e serviços dispensáveis para manter o OpenWrt enxuto. Sempre cria backup antes de remover.'])]),E('button',{class:'ex-mini-button','click':L.bind(this.showArkCleanup,this)},['Analisar e limpar'])]),
 			httpsPanel,
+			starlinkModalPanel,
 			E('section',{class:'ex-appearance-panel'},[E('div',{class:'ex-appearance-heading'},[E('div',{},[E('strong',{},['Aparência']),E('small',{class:'ex-muted'},['No modo automático, o painel acompanha as cores e o modo claro ou escuro do tema LuCI.'])]),appearanceMode]),appearanceColors,E('button',{class:'ex-mini-button ex-save-appearance','click':L.bind(function(){this.setAppearance(appearanceMode.value,primary.value,secondary.value);},this)},['Salvar aparência']),themeRow]),
 			E('div',{class:'ex-feature-list'},rows),
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])

@@ -123,6 +123,10 @@ check_startup_backlog() {
 	local now_epoch
 	now_epoch="$(date +%s)"
 
+	local purge_boot
+	purge_boot="$(uci -q get "${CONF}.global.purge_boot_email" || printf '1')"
+	[ "$purge_boot" = "1" ] || return 0
+
 	# Se há arquivos de uma sessão anterior ainda não enviados, ou se excede 20 horas de intervalo
 	if [ "$last_send" -eq 0 ] || [ $((now_epoch - last_send)) -ge 72000 ] || [ "$count" -ge "$max_h" ]; then
 		log "Detectado histórico anterior pendente pós-boot ($count arquivos salvos). Disparando envio antes de rotacionar..."
@@ -174,8 +178,10 @@ flush_ram_to_flash() {
 	count="$(ls -1 "${FLASH_DIR}"/*.csv.gz 2>/dev/null | wc -l)"
 	if [ "$count" -gt "$max_h" ]; then
 		local to_remove=$((count - max_h))
+		local purge_boot
+		purge_boot="$(uci -q get "${CONF}.global.purge_boot_email" || printf '1')"
 		# REGRA ESTREITA: Antes de apagar qualquer arquivo excedente, dispara o e-mail com o que tiver!
-		if [ -x /usr/sbin/starlink-telemetry-mailer ]; then
+		if [ "$purge_boot" = "1" ] && [ -x /usr/sbin/starlink-telemetry-mailer ]; then
 			log "Limite de retenção atingido ($count blocos > $max_h). Disparando e-mail antes do purge..."
 			/usr/sbin/starlink-telemetry-mailer send-daily 2>/dev/null || true
 		fi
