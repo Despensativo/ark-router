@@ -1759,8 +1759,17 @@ ark_remove_opposite_profile() {
 }
 ark_latest_release() {
 	repo="$(ark_update_repo)"
-	tag="$(wget -T 3 -qO- --header='User-Agent: ARK-Router' "https://api.github.com/repos/$repo/tags" 2>/dev/null | jsonfilter -e '@[0].name' 2>/dev/null | head -n 1)"
-	[ -n "$tag" ] || tag="$(wget -T 3 -qO- --header='User-Agent: ARK-Router' "https://api.github.com/repos/$repo/releases/latest" 2>/dev/null | jsonfilter -e '@.tag_name' 2>/dev/null | head -n 1)"
+	tag=""
+	# 1. Tentativa primária ultra-rápida via raw.githubusercontent.com (sem rate limit e sem jsonfilter)
+	tag="$(wget -T 10 -qO- --no-check-certificate "https://raw.githubusercontent.com/$repo/main/VERSION" 2>/dev/null | tr -d '\r\n v')"
+	# 2. Fallback via tags da API do GitHub
+	if [ -z "$tag" ]; then
+		tag="$(wget -T 10 -qO- --no-check-certificate --header='User-Agent: ARK-Router' "https://api.github.com/repos/$repo/tags" 2>/dev/null | jsonfilter -e '@[0].name' 2>/dev/null | head -n 1 | tr -d '\r\n v')"
+	fi
+	# 3. Fallback via releases/latest da API do GitHub
+	if [ -z "$tag" ]; then
+		tag="$(wget -T 10 -qO- --no-check-certificate --header='User-Agent: ARK-Router' "https://api.github.com/repos/$repo/releases/latest" 2>/dev/null | jsonfilter -e '@.tag_name' 2>/dev/null | head -n 1 | tr -d '\r\n v')"
+	fi
 	printf '%s' "$tag"
 }
 ark_update_json() {
@@ -4743,9 +4752,9 @@ case "$action" in
 			echo "Backup: $backup"
 			echo '{"state":"running","percent":45,"message":"2/4 Baixando pacote '"$asset"' do GitHub..."}' >"$status"
 			echo "Downloading: $url"
-			if ! wget -T 25 -O "$tmp/$asset" "$url" || [ ! -s "$tmp/$asset" ]; then
+			if ! wget -T 35 --no-check-certificate -O "$tmp/$asset" "$url" || [ ! -s "$tmp/$asset" ]; then
 				echo "Fallback downloading from releases/latest..."
-				wget -T 25 -O "$tmp/$asset" "https://github.com/$repo/releases/latest/download/$asset" || true
+				wget -T 35 --no-check-certificate -O "$tmp/$asset" "https://github.com/$repo/releases/latest/download/$asset" || true
 			fi
 			echo '{"state":"running","percent":75,"message":"3/4 Instalando nova versão '"$latest"'..."}' >"$status"
 			case "$manager" in
