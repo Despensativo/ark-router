@@ -4759,7 +4759,7 @@ case "$action" in
 			echo '{"state":"running","percent":75,"message":"3/4 Instalando nova versão '"$latest"'..."}' >"$status"
 			case "$manager" in
 				apk) ark_remove_opposite_profile "$asset" "$manager"; apk add --allow-untrusted --force-overwrite "$tmp/$asset" ;;
-				opkg) ark_remove_opposite_profile "$asset" "$manager"; opkg install "$tmp/$asset" ;;
+				opkg) ark_remove_opposite_profile "$asset" "$manager"; opkg install --force-overwrite "$tmp/$asset" ;;
 				*) echo 'Gerenciador de pacotes indisponivel' >&2; exit 3 ;;
 			esac
 			installed_after="$(ark_current_version)"
