@@ -1,6 +1,22 @@
 # Changelog
 
-## 0.9.85
+## 0.9.86
+
+- **📡 Modo Auto Inteligente de Canais Wi-Fi (Sem Radares DFS e Livre de Sobreposição)**:
+  - **2.4 GHz - Restrição Estrita a Canais 1, 6 e 11**:
+    - No modo automático, o Hostapd ACS agora avalia e seleciona exclusivamente entre os canais padrão ouro sem sobreposição espectral (`1`, `6` e `11`). Elimina a queda em canais intermediários poluídos (2 a 5 e 7 a 10) que causam interferência de canal adjacente (ACI) e perda de pacotes em automações IoT e celulares.
+  - **5 GHz - Eliminação de Radares DFS e Bloqueio TDWR**:
+    - O modo automático passa a operar estritamente nas faixas limpas livres de radar: **UNII-1** (canais 36, 40, 44, 48) e **UNII-3** (canais 149, 153, 157, 161).
+    - **Zero Tempo de Espera (CAC = 0s)**: Wi-Fi sobe instantaneamente ao ligar o roteador ou reiniciar o serviço, sem pausas obrigatórias de 60 segundos (DFS) ou 10 minutos (TDWR Doppler).
+    - **Sem Quedas Abruptas por Falsos Positivos**: Elimina quedas súbitas da rede 5 GHz provocadas por detecção de radar meteorológico.
+    - **Compatibilidade Total**: Garante que Smart TVs, consoles e aparelhos mais antigos que não suportam canais DFS detectem e se conectem normalmente à rede 5 GHz.
+    - **Ajuste Dinâmico em 160 MHz**: Em rádios Wi-Fi 6 de 160 MHz, comuta inteligentemente para 80 MHz ao ativar o modo automático para garantir conformidade e estabilidade livre de DFS.
+  - **Inicialização Automática (`99-ark-router-wifi`)**:
+    - Script em `uci-defaults` garante que instalações ou atualizações apliquem automaticamente as diretivas de proteção nos rádios configurados em canal automático.
+  - **Interface Web e Badges Dinâmicos**:
+    - Resumo atualizado para `"Ligado • Auto Inteligente (1, 6, 11 no 2,4 GHz • Sem radar DFS no 5 GHz)"` e notas informativas detalhadas no modal de seleção manual e sugestão de canais.
+
+
 
 - **🔌 Suporte Completo à Arquitetura Swconfig (D-Link DGL-5500 e Roteadores com Switch AR8327/MIPS)**:
   - **Auto-WAN Autônomo com Isolamento Físico por VLAN**:

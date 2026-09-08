@@ -42,7 +42,7 @@ const EN={
 	'Modo de conexão':'Connection mode','DHCP automático':'Automatic DHCP','IP fixo / estático':'Static IP','Modem móvel (QMI)':'Mobile modem (QMI)','Modem móvel (MBIM)':'Mobile modem (MBIM)','Modem móvel (NCM)':'Mobile modem (NCM)','Wi-Fi como internet':'Wi-Fi as internet','Desativada':'Disabled','Endereço IPv4':'IPv4 address','Gateway':'Gateway','Máscara':'Netmask','DNS recebidos':'Received DNS','Link físico':'Physical link','Latência':'Latency','Tempo online':'Uptime','ONLINE':'ONLINE','OFFLINE':'OFFLINE','SEM CABO':'UNPLUGGED','conectado':'connected','interface ativa':'interface active','sem link':'no link','CONECTADA':'CONNECTED','Full duplex':'Full duplex','Automático':'Automatic',
 	'PORTAS CABEADAS':'WIRED PORTS','LAN disponíveis':'Available LAN ports','A LAN1 está configurada como WAN2':'LAN1 is configured as WAN2','Velocidade':'Speed','Modo':'Mode','Recebido':'Received','Enviado':'Sent','Recebido hoje':'Received today','Enviado hoje':'Sent today','Sessão atual':'Current session',
 	'REDE WI‑FI':'WI-FI NETWORK','ATIVA':'ACTIVE','Ver senha':'Show password','Ocultar senha':'Hide password','Acesso principal':'Main access','Visitantes com upload limitado':'Guests with limited upload','Acesso principal • disponível em 2,4 e 5 GHz':'Main access • available on 2.4 and 5 GHz','Visitantes com upload limitado • disponível em 2,4 e 5 GHz':'Guests with limited upload • available on 2.4 and 5 GHz','Alterar senha nesta tela →':'Change password here →',
-	'AMBIENTE WI‑FI':'WI-FI ENVIRONMENT','Canais e interferência':'Channels and interference','Analisar canais agora':'Analyze channels now','PAÍS / DOMÍNIO REGULATÓRIO':'COUNTRY / REGULATORY DOMAIN','Alterar país':'Change country','Seleção automática de canais':'Automatic channel selection','Verificando…':'Checking…','Desligado • canais definidos manualmente':'Off • manually selected channels','Ligado • o roteador escolhe os canais':'On • the router selects channels','Configuração mista entre as bandas':'Mixed configuration between bands','AUTO':'AUTO','MANUAL':'MANUAL',
+	'AMBIENTE WI‑FI':'WI-FI ENVIRONMENT','Canais e interferência':'Channels and interference','Analisar canais agora':'Analyze channels now','PAÍS / DOMÍNIO REGULATÓRIO':'COUNTRY / REGULATORY DOMAIN','Alterar país':'Change country','Seleção automática de canais':'Automatic channel selection','Seleção automática inteligente de canais':'Smart automatic channel selection','Verificando…':'Checking…','Desligado • canais definidos manualmente':'Off • manually selected channels','Ligado • o roteador escolhe os canais':'On • the router selects channels','Ligado • Auto Inteligente (1, 6, 11 no 2,4 GHz • Sem radar DFS no 5 GHz)':'On • Smart Auto (1, 6, 11 on 2.4 GHz • Zero DFS radar on 5 GHz)','Ativar Seleção Automática Inteligente':'Enable Smart Auto Selection','Automático Inteligente (1, 6 ou 11)':'Smart Auto (1, 6 or 11)','Automático Inteligente (Sem DFS / Inicialização imediata)':'Smart Auto (Zero DFS / Instant startup)','Configuração mista entre as bandas':'Mixed configuration between bands','AUTO':'AUTO','MANUAL':'MANUAL',
 	'A análise é manual e apenas recomenda canais; não interrompe os usuários.':'Analysis is manual and only recommends channels; it does not interrupt users.','Analisar antes de aplicar':'Analyze before applying',
 	'DISPOSITIVOS':'DEVICES','Quem está conectado':'Connected devices','Ordenar':'Sort','Nome':'Name','Maior primeiro':'Largest first','Menor primeiro':'Smallest first','Expandir lista e ver tráfego individual':'Expand list and view per-device traffic','Dispositivo':'Device','Rede / sinal':'Network / signal','Agora':'Now','Total':'Total','Nenhum dispositivo conectado.':'No devices connected.','Configurar':'Configure','Visitantes / Wi-Fi':'Guests / Wi-Fi','Cabo / LAN':'Wired / LAN','Rede principal':'Main network','Visitantes':'Guests',
 	'A velocidade instantânea vem dos contadores do roteador; o total acumulado vem do nlbwmon e é atualizado a cada 3 segundos. Em Configurar, você pode renomear, reservar o IP e priorizar o aparelho.':'Instant speed comes from router counters; accumulated total comes from nlbwmon and refreshes every 3 seconds. Under Configure, you can rename, reserve the IP, and prioritize the device.',
@@ -852,7 +852,7 @@ return view.extend({
 		const country=String(r2.country||r5.country||'00').toUpperCase(), countryInfo=this.countries.find(function(x){return String(x.code||x.iso3166).toUpperCase()===country;}); text('ex-country-current',(countryInfo&&countryInfo.country?countryInfo.country:'País')+' ('+country+')');
 		const allAuto=auto2&&auto5, mixed=auto2!==auto5, toggle=document.getElementById('ex-channel-auto-toggle');
 		if(toggle){toggle.checked=allAuto;toggle.indeterminate=mixed;toggle.setAttribute('aria-checked',mixed?'mixed':String(allAuto));}
-		text('ex-channel-mode-summary',mixed?'Configuração mista entre as bandas':(allAuto?'Ligado • o roteador escolhe os canais':'Desligado • canais definidos manualmente'));
+		text('ex-channel-mode-summary',mixed?'Configuração mista entre as bandas':(allAuto?'Ligado • Auto Inteligente (1, 6, 11 no 2,4 GHz • Sem radar DFS no 5 GHz)':'Desligado • canais definidos manualmente'));
 		setPill('ex-wifi-2-mode',auto2?'online':'standby',auto2?'AUTO':'MANUAL'); setPill('ex-wifi-5-mode',auto5?'online':'standby',auto5?'AUTO':'MANUAL');
 		text('ex-wifi-2','Canal '+(auto2?(s2.channel||'em seleção'):(r2.channel||'—'))+' • '+(auto2?'automático':'manual')+' • '+(r2.htmode||'')+' • ocupação '+s2.busy.toFixed(0)+'%');
 		text('ex-wifi-5','Canal '+(auto5?(s5.channel||'em seleção'):(r5.channel||'—'))+' • '+(auto5?'automático':'manual')+' • '+(r5.htmode||'')+' • ocupação '+s5.busy.toFixed(0)+'%');
@@ -2921,7 +2921,7 @@ return view.extend({
 	showManualChannelsModal: function() {
 		const cur = this.currentWifiChannels();
 		const ch2Select = E('select', { class: 'cbi-input-select', style: 'width:100%' }, [
-			E('option', { value: 'auto' }, ['Automático (Auto)']),
+			E('option', { value: 'auto' }, ['Automático Inteligente (1, 6 ou 11)']),
 			E('option', { value: '1' }, ['Canal 1 (2412 MHz — Recomendado / Sem sobreposição)']),
 			E('option', { value: '2' }, ['Canal 2 (2417 MHz — Sobreposição com canais 1 e 6)']),
 			E('option', { value: '3' }, ['Canal 3 (2422 MHz — Sobreposição com canais 1 e 6)']),
@@ -2944,7 +2944,9 @@ return view.extend({
 				ch2Note.textContent = '✅ Canal 100% limpo de sobreposição: padrão ouro da indústria para estabilidade de IoT (lâmpadas, tomadas, câmeras) e celulares.';
 				ch2Note.style.display = 'block';
 			} else if (v === 'auto') {
-				ch2Note.style.display = 'none';
+				ch2Note.className = 'alert-message success';
+				ch2Note.textContent = '✅ Modo Auto Inteligente: o roteador avaliará o espectro e operará estritamente nos canais 1, 6 ou 11 para eliminar sobreposições de vizinhos.';
+				ch2Note.style.display = 'block';
 			} else {
 				ch2Note.className = 'alert-message warning';
 				ch2Note.textContent = '⚠️ Canal com sobreposição espectral: causa interferência adjacente (ACI) com vizinhos, aumentando perda de pacotes em dispositivos fracos. Prefira 1, 6 ou 11.';
@@ -2972,7 +2974,7 @@ return view.extend({
 			: 'Canal 48 (5240 MHz — Seguro / Sem DFS / Até 80 MHz)';
 
 		const ch5Select = E('select', { class: 'cbi-input-select', style: 'width:100%' }, [
-			E('option', { value: 'auto' }, ['Automático (Auto)']),
+			E('option', { value: 'auto' }, ['Automático Inteligente (Sem DFS / Inicialização imediata)']),
 			E('optgroup', { label: unii1Label }, [
 				E('option', { value: '36' }, [ch36Desc]),
 				E('option', { value: '40' }, [ch40Desc]),
@@ -3015,7 +3017,11 @@ return view.extend({
 		const ch5Note = E('div', { class: 'alert-message info', style: 'margin-top: 6px; font-size: 11.5px; display: none;' });
 		const updateCh5Note = function() {
 			const num = Number(ch5Select.value);
-			if (num === 120 || num === 124 || num === 128) {
+			if (ch5Select.value === 'auto') {
+				ch5Note.className = 'alert-message success';
+				ch5Note.textContent = '✅ Modo Auto Inteligente: o roteador selecionará dinamicamente o melhor canal nas faixas UNII-1 e UNII-3, evitando completamente radares DFS (zero espera de CAC, sem quedas e total compatibilidade com Smart TVs e consoles).';
+				ch5Note.style.display = 'block';
+			} else if (num === 120 || num === 124 || num === 128) {
 				ch5Note.className = 'alert-message danger';
 				ch5Note.textContent = '⚠️ ALERTA TDWR: Os canais 120 a 128 são reservados para radares meteorológicos Doppler. Por exigência regulatória estrita da Anatel, o roteador deve aguardar 10 MINUTOS (600s) de silêncio absoluto (CAC) antes de ativar o Wi-Fi. Evite estes canais para não ficar sem rede 5 GHz após reinicializações!';
 				ch5Note.style.display = 'block';
@@ -3111,11 +3117,11 @@ return view.extend({
 		const suggested=this.recommendedChannels, fixed=mode==='fixed';
 		if(fixed&&!suggested){ui.addNotification(null,E('p',{},['Execute a análise de canais antes de aplicar uma sugestão.']));return;}
 		if(fixed&&suggested.alreadyApplied){ui.addNotification(null,E('p',{},['Os canais sugeridos já estão aplicados. Nenhuma alteração foi feita.']));return;}
-		const description=fixed?('Fixar canal '+suggested.two+' no 2,4 GHz e '+suggested.five+' no 5 GHz?'):'Voltar as duas bandas para seleção automática de canais?';
-		ui.showModal(fixed?'Aplicar canais sugeridos':'Voltar ao modo automático',[
+		const description=fixed?('Fixar canal '+suggested.two+' no 2,4 GHz e '+suggested.five+' no 5 GHz?'):'Ativar o Modo Auto Inteligente nas duas bandas? O roteador selecionará os melhores canais limpos (1, 6 ou 11 no 2,4 GHz e faixas livres de radares DFS no 5 GHz para máxima compatibilidade e sem quedas).';
+		ui.showModal(fixed?'Aplicar canais sugeridos':'Ativar Seleção Automática Inteligente',[
 			E('p',{},[description]),
 			E('p',{class:'alert-message warning'},['A alteração reiniciará as duas bandas do Wi‑Fi e desconectará temporariamente os aparelhos conectados.']),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const args=['channels',mode];if(fixed)args.push(suggested.two,suggested.five);return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao aplicar os canais');ui.hideModal();reloadSoon(fixed?'Canais sugeridos salvos. Recarregando após reiniciar o Wi‑Fi…':'Seleção automática ligada. Recarregando após reiniciar o Wi‑Fi…',4200);}).catch(L.bind(function(e){if(reloadAfterExpectedDisconnect(e,fixed?'Canais enviados. O Wi‑Fi está reiniciando; recarregando o painel…':'Modo automático enviado. O Wi‑Fi está reiniciando; recarregando o painel…',5200))return;this.updateWifi(this.currentData);ui.addNotification(null,E('p',{},[e.message]));},this));},this)},[fixed?'Confirmar e aplicar':'Confirmar modo automático'])])
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const args=['channels',mode];if(fixed)args.push(suggested.two,suggested.five);return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao aplicar os canais');ui.hideModal();reloadSoon(fixed?'Canais sugeridos salvos. Recarregando após reiniciar o Wi‑Fi…':'Modo Auto Inteligente ativado. Recarregando após reiniciar o Wi‑Fi…',4200);}).catch(L.bind(function(e){if(reloadAfterExpectedDisconnect(e,fixed?'Canais enviados. O Wi‑Fi está reiniciando; recarregando o painel…':'Modo automático enviado. O Wi‑Fi está reiniciando; recarregando o painel…',5200))return;this.updateWifi(this.currentData);ui.addNotification(null,E('p',{},[e.message]));},this));},this)},[fixed?'Confirmar e aplicar':'Confirmar modo automático'])])
 		]);
 	},
 	optimizeIot: function() {
@@ -6645,11 +6651,11 @@ return view.extend({
 				]),
 				E('div',{class:'ex-channel-mode-control'},[
 					E('div',{},[
-						E('strong',{},['Seleção automática de canais']),
+						E('strong',{},['Seleção automática inteligente de canais']),
 						E('small',{id:'ex-channel-mode-summary',class:'ex-muted'},['Verificando…'])
 					]),
 					E('label',{class:'ex-switch'},[
-						E('input',{id:'ex-channel-auto-toggle',type:'checkbox','aria-label':translateText('Seleção automática de canais'),'change':L.bind(function(ev){this.toggleAutoChannels(ev.currentTarget);},this)}),
+						E('input',{id:'ex-channel-auto-toggle',type:'checkbox','aria-label':translateText('Seleção automática inteligente de canais'),'change':L.bind(function(ev){this.toggleAutoChannels(ev.currentTarget);},this)}),
 						E('span',{class:'ex-switch-slider'})
 					])
 				]),

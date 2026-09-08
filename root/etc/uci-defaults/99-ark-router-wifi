@@ -1,0 +1,71 @@
+#!/bin/sh
+# Configura o Modo Auto Inteligente por padrao no Wi-Fi caso os canais estejam em auto
+
+[ -f /etc/config/wireless ] || exit 0
+
+radio2=""
+radio5=""
+for dev in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut -d= -f1); do
+	hwmode="$(uci -q get wireless.$dev.hwmode 2>/dev/null)"
+	band="$(uci -q get wireless.$dev.band 2>/dev/null)"
+	htmode="$(uci -q get wireless.$dev.htmode 2>/dev/null)"
+	case "$band" in
+		2g|2.4g) radio2="$dev" ;;
+		5g) radio5="$dev" ;;
+		*)
+			case "$hwmode" in
+				11g|11b) radio2="$dev" ;;
+				11a) radio5="$dev" ;;
+				*)
+					case "$htmode" in
+						VHT*|HE160|HE80) radio5="$dev" ;;
+						HT20|HT40) [ -z "$radio2" ] && radio2="$dev" || radio5="$dev" ;;
+					esac
+					;;
+			esac
+			;;
+	esac
+done
+
+changed=0
+if [ -n "$radio2" ]; then
+	ch2="$(uci -q get wireless.$radio2.channel)"
+	if [ "$ch2" = "auto" ] || [ -z "$ch2" ]; then
+		curr_channels="$(uci -q get wireless.$radio2.channels)"
+		if [ -z "$curr_channels" ]; then
+			uci -q set wireless.$radio2.channel='auto'
+			uci -q add_list wireless.$radio2.channels='1'
+			uci -q add_list wireless.$radio2.channels='6'
+			uci -q add_list wireless.$radio2.channels='11'
+			changed=1
+		fi
+	fi
+fi
+
+if [ -n "$radio5" ]; then
+	ch5="$(uci -q get wireless.$radio5.channel)"
+	if [ "$ch5" = "auto" ] || [ -z "$ch5" ]; then
+		curr_channels="$(uci -q get wireless.$radio5.channels)"
+		if [ -z "$curr_channels" ]; then
+			cur_ht5="$(uci -q get wireless.$radio5.htmode || echo VHT80)"
+			case "$cur_ht5" in
+				*160)
+					case "$cur_ht5" in
+						HE160) uci -q set wireless.$radio5.htmode=HE80 ;;
+						VHT160) uci -q set wireless.$radio5.htmode=VHT80 ;;
+					esac
+					;;
+			esac
+			uci -q set wireless.$radio5.channel='auto'
+			uci -q set wireless.$radio5.acs_exclude_dfs='1'
+			uci -q set wireless.$radio5.ieee80211h='1'
+			for ch in 36 40 44 48 149 153 157 161; do
+				uci -q add_list wireless.$radio5.channels="$ch"
+			done
+			changed=1
+		fi
+	fi
+fi
+
+[ "$changed" = "1" ] && uci commit wireless
+exit 0

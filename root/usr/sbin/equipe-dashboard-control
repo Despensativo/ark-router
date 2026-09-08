@@ -6908,13 +6908,36 @@ case "$action" in
 				channel5="$4"
 				if [ "$channel2" = auto ]; then
 					uci -q set "wireless.$radio2.channel=auto"
+					uci -q delete "wireless.$radio2.channels"
+					uci -q add_list "wireless.$radio2.channels=1"
+					uci -q add_list "wireless.$radio2.channels=6"
+					uci -q add_list "wireless.$radio2.channels=11"
 				elif [ -n "$channel2" ]; then
 					uci -q set "wireless.$radio2.channel=$channel2"
+					uci -q delete "wireless.$radio2.channels"
 				fi
 				if [ "$channel5" = auto ]; then
+					cur_ht5="$(uci -q get "wireless.$radio5.htmode" || echo VHT80)"
+					case "$cur_ht5" in
+						*160)
+							case "$cur_ht5" in
+								HE160) uci -q set "wireless.$radio5.htmode=HE80" ;;
+								VHT160) uci -q set "wireless.$radio5.htmode=VHT80" ;;
+							esac
+							logger -t equipe-dashboard-control "Auto Inteligente 5 GHz: htmode ajustado para 80 MHz para operacao 100% livre de DFS/radares."
+							;;
+					esac
 					uci -q set "wireless.$radio5.channel=auto"
+					uci -q set "wireless.$radio5.acs_exclude_dfs=1"
+					uci -q set "wireless.$radio5.ieee80211h=1"
+					uci -q delete "wireless.$radio5.channels"
+					for ch in 36 40 44 48 149 153 157 161; do
+						uci -q add_list "wireless.$radio5.channels=$ch"
+					done
 				elif [ -n "$channel5" ]; then
 					uci -q set "wireless.$radio5.channel=$channel5"
+					uci -q delete "wireless.$radio5.channels"
+					uci -q delete "wireless.$radio5.acs_exclude_dfs"
 					# Validacao de compatibilidade: canais >= 132 (UNII-3: 149-165) nao comportam 160 MHz
 					# devido a restricao do kernel/regulamentacao. Se htmode for 160 MHz, hostapd trava em AP-DISABLED.
 					# Ajusta automaticamente para 80 MHz para garantir que o radio suba estavel.
@@ -6934,8 +6957,32 @@ case "$action" in
 				fi
 				;;
 			auto)
+				# 2.4 GHz: Auto Inteligente limitado estritamente a 1, 6 e 11 (sem sobreposicao espectral)
 				uci -q set "wireless.$radio2.channel=auto"
+				uci -q delete "wireless.$radio2.channels"
+				uci -q add_list "wireless.$radio2.channels=1"
+				uci -q add_list "wireless.$radio2.channels=6"
+				uci -q add_list "wireless.$radio2.channels=11"
+
+				# 5 GHz: Auto Inteligente limitado a UNII-1 (36-48) e UNII-3 (149-161)
+				# Sem radar DFS (zero espera CAC de 60s/10min, sem quedas e total compatibilidade com Smart TVs)
+				cur_ht5="$(uci -q get "wireless.$radio5.htmode" || echo VHT80)"
+				case "$cur_ht5" in
+					*160)
+						case "$cur_ht5" in
+							HE160) uci -q set "wireless.$radio5.htmode=HE80" ;;
+							VHT160) uci -q set "wireless.$radio5.htmode=VHT80" ;;
+						esac
+						logger -t equipe-dashboard-control "Auto Inteligente 5 GHz: htmode ajustado para 80 MHz para operacao 100% livre de DFS/radares."
+						;;
+				esac
 				uci -q set "wireless.$radio5.channel=auto"
+				uci -q set "wireless.$radio5.acs_exclude_dfs=1"
+				uci -q set "wireless.$radio5.ieee80211h=1"
+				uci -q delete "wireless.$radio5.channels"
+				for ch in 36 40 44 48 149 153 157 161; do
+					uci -q add_list "wireless.$radio5.channels=$ch"
+				done
 				;;
 			*) echo 'Modo de canal invalido' >&2; exit 2 ;;
 		esac
