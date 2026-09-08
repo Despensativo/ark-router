@@ -42,7 +42,9 @@ if [ -f /etc/config/uhttpd ]; then
 	fi
 	if [ "$changed" = 1 ]; then
 		uci commit uhttpd
-		/etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+		if /etc/init.d/uhttpd enabled 2>/dev/null; then
+			/etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+		fi
 	fi
 fi
 
