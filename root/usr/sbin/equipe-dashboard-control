@@ -6915,6 +6915,47 @@ case "$action" in
 		uci commit equipe_dashboard
 		echo ok
 		;;
+	starlink-telemetry-status)
+		if [ -x /usr/sbin/starlink-telemetry-daemon ]; then
+			exec /usr/sbin/starlink-telemetry-daemon status
+		else
+			echo '{"enabled":false,"running":false,"error":"daemon_not_found"}'
+		fi
+		;;
+	starlink-telemetry-toggle)
+		val="${2:-}"
+		case "$val" in 0|1) ;; *) echo 'Estado invalido (0 ou 1)' >&2; exit 2 ;; esac
+		uci -q set starlink_telemetry.global.enabled="$val"
+		uci commit starlink_telemetry
+		if [ "$val" = "1" ]; then
+			/etc/init.d/starlink-telemetry enable 2>/dev/null || true
+			/etc/init.d/starlink-telemetry restart 2>/dev/null || true
+		else
+			/etc/init.d/starlink-telemetry stop 2>/dev/null || true
+			/etc/init.d/starlink-telemetry disable 2>/dev/null || true
+			if [ -f /var/run/starlink-telemetry.pid ]; then
+				local pid
+				pid="$(cat /var/run/starlink-telemetry.pid 2>/dev/null || true)"
+				[ -n "$pid" ] && kill "$pid" 2>/dev/null || true
+			fi
+		fi
+		echo ok
+		;;
+	starlink-telemetry-send-test)
+		if [ -x /usr/sbin/starlink-telemetry-mailer ]; then
+			/usr/sbin/starlink-telemetry-mailer send-test
+		else
+			echo 'Mailer nao encontrado' >&2; exit 1
+		fi
+		;;
+	starlink-telemetry-flush)
+		if [ -x /usr/sbin/starlink-telemetry-daemon ]; then
+			/usr/sbin/starlink-telemetry-daemon flush
+			echo ok
+		else
+			echo 'Daemon nao encontrado' >&2; exit 1
+		fi
+		;;
 	speedify-install)
 		status="/tmp/equipe-dashboard-install-speedify.status"; log="/tmp/equipe-dashboard-install-speedify.log"
 		[ "$(cat "$status" 2>/dev/null)" != running ] || { echo running; exit 0; }

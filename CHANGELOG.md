@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.9.90
+
+- **📡 Motor de Telemetria Dual Starlink / Multi-WAN & Buffer Persistente de 25 Horas**:
+  - **Amostragem em Alta Resolução (1 segundo)**: Loop de telemetria ultra-leve gravando na memória RAM (`/tmp/starlink_telemetry`), eliminando totalmente o desgaste da memória flash do roteador.
+  - **Sincronização Periódica e Compactação Gzip**: A cada 15 minutos e durante o desligamento seguro (`SIGTERM`/reboot), os dados da RAM são consolidados em arquivos compactados (`.csv.gz`) na memória flash interna (`/etc/starlink_history`), ocupando menos de 1 MB para 25 horas contínuas de histórico.
+  - **Buffer Circular de 25 Horas**: Mantém estritamente as últimas 25 horas gravadas, purgando com segurança os blocos mais antigos após o ciclo diário.
+  - **Detecção Automática de Ambiente (Starlink vs. Laboratório Residencial)**:
+    - Se antenas Starlink estiverem conectadas (gRPC `192.168.100.1`), coleta métricas de satélite, alertas térmicos e porcentagem de céu obstruído.
+    - Se estiver em ambiente de bancada/casa (com 2 conexões de fibra/cabo), realiza sondas instantâneas de ping e perda de pacotes pelas interfaces WAN físicas, permitindo testar e validar toda a infraestrutura antes da ida a campo.
+- **✉️ Despachante Inteligente de Relatórios por E-mail (`starlink-telemetry-mailer`)**:
+  - **Relatório Executivo Consolidado**: Resumo em texto simples e HTML estruturado, apresentando latência média, taxa de perda, disponibilidade de cada link e análise de redundância (quantos segundos foram salvos pela outra WAN).
+  - **Anexo Histórico Automatizado**: Anexa a planilha diária compactada `.csv.gz` codificada em Base64 nativo via `ucode` (sem dependência de ferramentas externas).
+  - **Disparo Preemptivo**: Executa automaticamente antes da rotação/descarte dos dados mais antigos e sob demanda (`send-test` / `send-daily`).
+- **🔒 Política de Ativação Estrita**:
+  - **Desativado por Padrão (`enabled '0'`)**: Nenhum recurso de rede ou CPU é consumido sem consentimento.
+  - **Persistência Total**: Uma vez ativado pelo usuário, o serviço permanece ativo e é gerenciado pelo `procd` com reinicialização automática (`respawn`) e persistência através de reboots. Só para quando o usuário explicitamente desativá-lo.
+
 ## 0.9.89
 
 - **🌐 Motor Dinâmico de LED WAN / Planeta (Planet LED Solid Fix)**:

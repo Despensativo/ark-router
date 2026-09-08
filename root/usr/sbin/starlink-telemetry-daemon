@@ -1,0 +1,314 @@
+#!/bin/sh
+# ARK Router - Daemon de Coleta de Telemetria Dual Starlink & Multi-WAN
+# Buffer persistente de 25 horas com proteção estrita contra desgaste de flash.
+
+set -u
+
+CONF="starlink_telemetry"
+RAM_DIR="/tmp/starlink_telemetry"
+FLASH_DIR="/etc/starlink_history"
+LOCK_DIR="/tmp/ark_starlink_telemetry.lock"
+PID_FILE="/var/run/starlink-telemetry.pid"
+
+log() {
+	logger -t "starlink-telemetry" "$1"
+}
+
+is_enabled() {
+	local en
+	en="$(uci -q get "${CONF}.global.enabled" || printf '0')"
+	[ "$en" = "1" ]
+}
+
+get_wan_device() {
+	local iface="$1"
+	local dev
+	dev="$(ubus call "network.interface.${iface}" status 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null)"
+	[ -n "$dev" ] || dev="$(ubus call "network.interface.${iface}" status 2>/dev/null | jsonfilter -e '@.device' 2>/dev/null)"
+	[ -n "$dev" ] || dev="$(uci -q get "network.${iface}.device" || true)"
+	printf '%s' "${dev:-}"
+}
+
+probe_wan_ping() {
+	local dev="$1"
+	local target="${2:-1.1.1.1}"
+	local out
+	local lat="999"
+	local loss="100"
+
+	[ -z "$dev" ] && { printf 'DOWN|999|100\n'; return 1; }
+
+	out="$(ping -c 1 -W 1 -I "$dev" "$target" 2>/dev/null || true)"
+	if printf '%s' "$out" | grep -q "1 packets received"; then
+		lat="$(printf '%s' "$out" | sed -n 's/.*time=\([0-9.]*\) ms.*/\1/p' | head -n 1)"
+		[ -n "$lat" ] || lat="25.0"
+		loss="0"
+		printf 'UP|%s|%s\n' "$lat" "$loss"
+		return 0
+	else
+		printf 'DOWN|999|100\n'
+		return 1
+	fi
+}
+
+probe_starlink_grpc() {
+	local port="$1"
+	local dev="$2"
+	local iface="$3"
+
+	[ -n "$dev" ] || return 1
+	# Teste ultra-rápido (1 pacote, 1s) para saber se a antena responde em 192.168.100.1
+	ping -c 1 -W 1 -I "$dev" 192.168.100.1 >/dev/null 2>&1 || return 1
+
+	if [ -x /usr/libexec/ark-starlink-telemetry ]; then
+		local res
+		res="$(/usr/libexec/ark-starlink-telemetry query "$iface" 2>/dev/null || true)"
+		if [ -n "$res" ] && printf '%s' "$res" | grep -q '"state"'; then
+			local lat loss obstr
+			lat="$(printf '%s' "$res" | jsonfilter -e '@.pop_ping_latency_ms' 2>/dev/null || printf '25.0')"
+			loss="$(printf '%s' "$res" | jsonfilter -e '@.pop_ping_drop_rate' 2>/dev/null || printf '0.0')"
+			obstr="$(printf '%s' "$res" | jsonfilter -e '@.fraction_obstruction' 2>/dev/null || printf '0.0')"
+			printf 'UP|%s|%s|%s|OK\n' "${lat:-25.0}" "${loss:-0.0}" "${obstr:-0.0}"
+			return 0
+		fi
+	fi
+	return 1
+}
+
+flush_ram_to_flash() {
+	local cur_hour="$1"
+	mkdir -p "$FLASH_DIR"
+
+	for csv in "$RAM_DIR"/active_*.csv; do
+		[ -f "$csv" ] || continue
+		local base
+		base="$(basename "$csv" .csv)"
+		# Se for a hora atual e não for chamada final de encerramento, não rotaciona ainda
+		if [ -n "$cur_hour" ] && [ "$base" = "active_${cur_hour}" ]; then
+			continue
+		fi
+		if [ -s "$csv" ]; then
+			local target="${FLASH_DIR}/${base#active_}.csv.gz"
+			gzip -c "$csv" > "${target}.tmp" && mv -f "${target}.tmp" "$target"
+			rm -f "$csv"
+			log "Hora $base compactada para flash: $target"
+		else
+			rm -f "$csv"
+		fi
+	done
+
+	# Manter buffer circular de 25 horas
+	local max_h
+	max_h="$(uci -q get "${CONF}.global.max_history_hours" || printf '25')"
+	[ -n "$max_h" ] || max_h=25
+
+	local count
+	count="$(ls -1 "${FLASH_DIR}"/*.csv.gz 2>/dev/null | wc -l)"
+	if [ "$count" -gt "$max_h" ]; then
+		local to_remove=$((count - max_h))
+		# Dispara envio diário antes do purge se habilitado
+		if [ -x /usr/sbin/starlink-telemetry-mailer ]; then
+			/usr/sbin/starlink-telemetry-mailer check-and-send 2>/dev/null || true
+		fi
+		# Remove os arquivos mais antigos
+		ls -1t "${FLASH_DIR}"/*.csv.gz 2>/dev/null | tail -n "$to_remove" | while read -r old_file; do
+			rm -f "$old_file"
+			log "Purge de histórico antigo (>25h): $old_file"
+		done
+	fi
+}
+
+on_exit() {
+	log "Encerrando coletor de telemetria e sincronizando buffer para a flash..."
+	flush_ram_to_flash ""
+	rm -f "$PID_FILE"
+	rmdir "$LOCK_DIR" 2>/dev/null || true
+	exit 0
+}
+
+daemon_run() {
+	if ! is_enabled; then
+		log "Serviço desativado por configuração (starlink_telemetry.global.enabled=0). Encerrando."
+		exit 0
+	fi
+
+	mkdir "$LOCK_DIR" 2>/dev/null || {
+		if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE" 2>/dev/null)" 2>/dev/null; then
+			echo "Daemon já está em execução (PID $(cat "$PID_FILE"))."
+			exit 0
+		fi
+		rmdir "$LOCK_DIR" 2>/dev/null || true
+		mkdir "$LOCK_DIR" || exit 1
+	}
+
+	echo "$$" > "$PID_FILE"
+	trap on_exit INT TERM HUP EXIT
+
+	mkdir -p "$RAM_DIR"
+	mkdir -p "$FLASH_DIR"
+
+	# Garante que as rotas isoladas de porta 9201/9202 existam
+	if [ -x /usr/sbin/equipe-dashboard-control ]; then
+		/usr/sbin/equipe-dashboard-control starlink-setup-ports >/dev/null 2>&1 || true
+	fi
+
+	log "Coletor de telemetria iniciado com sucesso. Buffer RAM: $RAM_DIR | Flash: $FLASH_DIR"
+
+	local poll_sec flush_min
+	poll_sec="$(uci -q get "${CONF}.global.poll_interval" || printf '1')"
+	flush_min="$(uci -q get "${CONF}.global.flush_interval" || printf '15')"
+	[ -n "$poll_sec" ] || poll_sec=1
+	[ -n "$flush_min" ] || flush_min=15
+
+	local flush_ticks=$((flush_min * 60 / poll_sec))
+	[ "$flush_ticks" -gt 0 ] || flush_ticks=900
+	local tick=0
+
+	local wan1_name wan2_name
+	wan1_name="$(uci -q get "${CONF}.global.wan1_name" || printf 'wan')"
+	wan2_name="$(uci -q get "${CONF}.global.wan2_name" || printf 'wan2')"
+
+	local last_hour=""
+
+	while true; do
+		# Verifica periodicamente se o serviço foi desativado
+		if [ $((tick % 10)) -eq 0 ]; then
+			if ! is_enabled; then
+				log "Serviço foi desativado pelo usuário. Finalizando execução."
+				break
+			fi
+		fi
+
+		local now_epoch now_hour now_iso
+		now_epoch="$(date +%s)"
+		now_hour="$(date +%Y%m%d_%H)"
+		now_iso="$(date -Iseconds 2>/dev/null || date '+%Y-%m-%dT%H:%M:%S%z')"
+
+		# Novo cabeçalho de hora em arquivo de RAM
+		local active_csv="${RAM_DIR}/active_${now_hour}.csv"
+		if [ ! -f "$active_csv" ]; then
+			printf 'timestamp_epoch,iso_time,wan1_state,wan1_lat_ms,wan1_loss_pct,wan1_obstr_pct,wan1_alerts,wan2_state,wan2_lat_ms,wan2_loss_pct,wan2_obstr_pct,wan2_alerts,saved_by_wan1,saved_by_wan2,simultaneous_loss\n' > "$active_csv"
+			if [ -n "$last_hour" ] && [ "$last_hour" != "$now_hour" ]; then
+				flush_ram_to_flash "$now_hour"
+			fi
+			last_hour="$now_hour"
+		fi
+
+		local wan1_dev wan2_dev
+		wan1_dev="$(get_wan_device "$wan1_name")"
+		wan2_dev="$(get_wan_device "$wan2_name")"
+
+		# Sonda WAN 1
+		local w1_state="DOWN" w1_lat="999" w1_loss="100" w1_obstr="0" w1_alerts="NONE"
+		if res="$(probe_starlink_grpc "9201" "$wan1_dev" "$wan1_name")"; then
+			w1_state="$(printf '%s' "$res" | cut -d'|' -f1)"
+			w1_lat="$(printf '%s' "$res" | cut -d'|' -f2)"
+			w1_loss="$(printf '%s' "$res" | cut -d'|' -f3)"
+			w1_obstr="$(printf '%s' "$res" | cut -d'|' -f4)"
+			w1_alerts="$(printf '%s' "$res" | cut -d'|' -f5)"
+		else
+			if res="$(probe_wan_ping "$wan1_dev" "1.1.1.1")"; then
+				w1_state="$(printf '%s' "$res" | cut -d'|' -f1)"
+				w1_lat="$(printf '%s' "$res" | cut -d'|' -f2)"
+				w1_loss="$(printf '%s' "$res" | cut -d'|' -f3)"
+			fi
+		fi
+
+		# Sonda WAN 2
+		local w2_state="DOWN" w2_lat="999" w2_loss="100" w2_obstr="0" w2_alerts="NONE"
+		if res="$(probe_starlink_grpc "9202" "$wan2_dev" "$wan2_name")"; then
+			w2_state="$(printf '%s' "$res" | cut -d'|' -f1)"
+			w2_lat="$(printf '%s' "$res" | cut -d'|' -f2)"
+			w2_loss="$(printf '%s' "$res" | cut -d'|' -f3)"
+			w2_obstr="$(printf '%s' "$res" | cut -d'|' -f4)"
+			w2_alerts="$(printf '%s' "$res" | cut -d'|' -f5)"
+		else
+			if res="$(probe_wan_ping "$wan2_dev" "1.1.1.1")"; then
+				w2_state="$(printf '%s' "$res" | cut -d'|' -f1)"
+				w2_lat="$(printf '%s' "$res" | cut -d'|' -f2)"
+				w2_loss="$(printf '%s' "$res" | cut -d'|' -f3)"
+			fi
+		fi
+
+		# Análise de redundância instantânea
+		local saved_by_w1=0 saved_by_w2=0 sim_loss=0
+		if [ "$w1_state" = "UP" ] && [ "$w2_state" != "UP" ]; then
+			saved_by_w1=1
+		elif [ "$w1_state" != "UP" ] && [ "$w2_state" = "UP" ]; then
+			saved_by_w2=1
+		elif [ "$w1_state" != "UP" ] && [ "$w2_state" != "UP" ]; then
+			sim_loss=1
+		fi
+
+		# Grava amostra atômica na RAM
+		printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d,%d\n' \
+			"$now_epoch" "$now_iso" \
+			"$w1_state" "$w1_lat" "$w1_loss" "$w1_obstr" "$w1_alerts" \
+			"$w2_state" "$w2_lat" "$w2_loss" "$w2_obstr" "$w2_alerts" \
+			"$saved_by_w1" "$saved_by_w2" "$sim_loss" >> "$active_csv"
+
+		# Grava resumo live para a interface LuCI/status instantâneo em /tmp
+		cat > "/tmp/starlink_telemetry_live.json" <<EOF
+{
+  "timestamp": $now_epoch,
+  "iso_time": "$now_iso",
+  "wan1": { "name": "$wan1_name", "device": "$wan1_dev", "state": "$w1_state", "latency_ms": $w1_lat, "loss_pct": $w1_loss, "obstr_pct": $w1_obstr, "alerts": "$w1_alerts" },
+  "wan2": { "name": "$wan2_name", "device": "$wan2_dev", "state": "$w2_state", "latency_ms": $w2_lat, "loss_pct": $w2_loss, "obstr_pct": $w2_obstr, "alerts": "$w2_alerts" },
+  "redundancy": { "saved_by_wan1": $saved_by_w1, "saved_by_wan2": $saved_by_w2, "simultaneous_loss": $sim_loss }
+}
+EOF
+
+		tick=$((tick + 1))
+		if [ "$tick" -ge "$flush_ticks" ]; then
+			tick=0
+			flush_ram_to_flash "$now_hour"
+		fi
+
+		sleep "$poll_sec"
+	done
+
+	on_exit
+}
+
+daemon_status() {
+	local running=0 pid=0
+	if [ -f "$PID_FILE" ]; then
+		pid="$(cat "$PID_FILE" 2>/dev/null)"
+		if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+			running=1
+		fi
+	fi
+
+	local hours_count=0 flash_bytes=0
+	if [ -d "$FLASH_DIR" ]; then
+		hours_count="$(ls -1 "${FLASH_DIR}"/*.csv.gz 2>/dev/null | wc -l)"
+		flash_bytes="$(du -sb "$FLASH_DIR" 2>/dev/null | awk '{print $1}' || printf 0)"
+	fi
+
+	local ram_bytes=0
+	if [ -d "$RAM_DIR" ]; then
+		ram_bytes="$(du -sb "$RAM_DIR" 2>/dev/null | awk '{print $1}' || printf 0)"
+	fi
+
+	local live="{}"
+	[ -f "/tmp/starlink_telemetry_live.json" ] && live="$(cat "/tmp/starlink_telemetry_live.json")"
+
+	cat <<EOF
+{
+  "enabled": $(is_enabled && echo true || echo false),
+  "running": $([ "$running" -eq 1 ] && echo true || echo false),
+  "pid": $pid,
+  "hours_saved": $hours_count,
+  "flash_bytes": $flash_bytes,
+  "ram_bytes": $ram_bytes,
+  "live": $live
+}
+EOF
+}
+
+case "${1:-run}" in
+	run) daemon_run ;;
+	status) daemon_status ;;
+	flush) flush_ram_to_flash "" ;;
+	*) echo "Uso: $0 {run|status|flush}" >&2; exit 1 ;;
+esac

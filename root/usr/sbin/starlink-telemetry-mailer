@@ -1,0 +1,380 @@
+#!/bin/sh
+# ARK Router - Despachante Inteligente de Relatórios de Telemetria Dual Starlink
+# Compila o histórico das últimas 25h, formata relatório executivo e envia com anexo .csv.gz.
+
+set -u
+
+CONF="starlink_telemetry"
+FLASH_DIR="/etc/starlink_history"
+RAM_DIR="/tmp/starlink_telemetry"
+TMP_REPORT="/tmp/starlink_report.$$"
+TMP_ATTACH="/tmp/starlink_25h_export.$$.csv.gz"
+LAST_EPOCH_FILE="${FLASH_DIR}/.last_email_epoch"
+
+log() {
+	logger -t "starlink-mailer" "$1"
+}
+
+is_email_enabled() {
+	local en
+	en="$(uci -q get "${CONF}.email.enabled" || printf '0')"
+	[ "$en" = "1" ]
+}
+
+ensure_msmtprc() {
+	local server port tls user pass from
+	server="$(uci -q get "${CONF}.email.smtp_server" || printf 'smtp.gmail.com')"
+	port="$(uci -q get "${CONF}.email.smtp_port" || printf '587')"
+	tls="$(uci -q get "${CONF}.email.smtp_tls" || printf '1')"
+	user="$(uci -q get "${CONF}.email.smtp_user" || true)"
+	pass="$(uci -q get "${CONF}.email.smtp_pass" || true)"
+	from="$(uci -q get "${CONF}.email.email_from" || printf '%s' "$user")"
+
+	[ -n "$user" ] && [ -n "$pass" ] || {
+		log "Usuário ou senha de SMTP não configurados em starlink_telemetry.email."
+		return 1
+	}
+
+	mkdir -p /etc
+	cat > /etc/msmtprc <<EOF
+defaults
+auth on
+tls $([ "$tls" = "1" ] && echo "on" || echo "off")
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+tls_starttls $([ "$port" = "587" ] && echo "on" || echo "off")
+logfile /var/log/msmtp.log
+
+account default
+host $server
+port $port
+from $from
+user $user
+password $pass
+EOF
+	chmod 600 /etc/msmtprc
+	return 0
+}
+
+aggregate_stats() {
+	# Lê todos os .csv.gz de flash e .csv de RAM usando zcat / cat e awk
+	local stats
+	stats="$( (
+		for f in "${FLASH_DIR}"/*.csv.gz; do
+			[ -f "$f" ] && zcat "$f" 2>/dev/null
+		done
+		for f in "${RAM_DIR}"/*.csv; do
+			[ -f "$f" ] && cat "$f" 2>/dev/null
+		done
+	) | awk -F',' '
+		NR==1 || $1 ~ /timestamp/ { next }
+		$1 !~ /^[0-9]+$/ { next }
+		{
+			total++;
+			# w1: col3=state, col4=lat, col5=loss
+			if ($3 == "UP") { w1_up++; w1_lat_sum += $4; }
+			else { w1_down++; }
+			w1_loss_sum += $5;
+			if ($5 > w1_max_loss) w1_max_loss = $5;
+
+			# w2: col8=state, col9=lat, col10=loss
+			if ($8 == "UP") { w2_up++; w2_lat_sum += $9; }
+			else { w2_down++; }
+			w2_loss_sum += $10;
+			if ($10 > w2_max_loss) w2_max_loss = $10;
+
+			# redundancy: col13=saved1, col14=saved2, col15=sim_loss
+			if ($13 == 1) saved_w1++;
+			if ($14 == 1) saved_w2++;
+			if ($15 == 1) sim_loss++;
+		}
+		END {
+			if (total == 0) total = 1;
+			w1_avg_lat = (w1_up > 0) ? (w1_lat_sum / w1_up) : 999;
+			w2_avg_lat = (w2_up > 0) ? (w2_lat_sum / w2_up) : 999;
+			w1_avg_loss = w1_loss_sum / total;
+			w2_avg_loss = w2_loss_sum / total;
+			w1_avail = (w1_up / total) * 100;
+			w2_avail = (w2_up / total) * 100;
+			combined_avail = ((total - sim_loss) / total) * 100;
+
+			printf "%d|%d|%.2f|%.2f|%.2f|%.2f|%d|%.2f|%.2f|%.2f|%.2f|%d|%d|%d|%.2f\n",
+				total, w1_up, w1_avail, w1_avg_lat, w1_avg_loss, w1_max_loss,
+				w2_up, w2_avail, w2_avg_lat, w2_avg_loss, w2_max_loss,
+				saved_w1, saved_w2, sim_loss, combined_avail;
+		}
+	')"
+	printf '%s' "$stats"
+}
+
+build_attachment() {
+	mkdir -p /tmp
+	rm -f "$TMP_ATTACH"
+
+	# Consolida todos os arquivos das últimas 25h em um único .csv.gz
+	(
+		local header_printed=0
+		for f in "${FLASH_DIR}"/*.csv.gz; do
+			if [ -f "$f" ]; then
+				if [ "$header_printed" -eq 0 ]; then
+					zcat "$f" 2>/dev/null | head -n 1
+					header_printed=1
+				fi
+				zcat "$f" 2>/dev/null | sed 1d
+			fi
+		done
+		for f in "${RAM_DIR}"/*.csv; do
+			if [ -f "$f" ]; then
+				if [ "$header_printed" -eq 0 ]; then
+					head -n 1 "$f" 2>/dev/null
+					header_printed=1
+				fi
+				sed 1d "$f" 2>/dev/null
+			fi
+		done
+	) | gzip -c > "$TMP_ATTACH"
+}
+
+send_report() {
+	local is_test="${1:-0}"
+
+	if ! is_email_enabled && [ "$is_test" -ne 1 ]; then
+		log "Envio de e-mail desativado em starlink_telemetry.email.enabled."
+		return 0
+	fi
+
+	command -v msmtp >/dev/null 2>&1 || {
+		log "msmtp não está instalado. Tentando instalar via apk..."
+		if command -v apk >/dev/null 2>&1; then
+			apk add msmtp >/dev/null 2>&1 || true
+		fi
+		if ! command -v msmtp >/dev/null 2>&1; then
+			log "Erro: msmtp não encontrado e não pôde ser instalado. Relatório não enviado."
+			return 1
+		fi
+	}
+
+	ensure_msmtprc || return 1
+
+	local email_to email_from attach_csv
+	email_to="$(uci -q get "${CONF}.email.email_to" || true)"
+	email_from="$(uci -q get "${CONF}.email.email_from" || uci -q get "${CONF}.email.smtp_user" || true)"
+	attach_csv="$(uci -q get "${CONF}.email.attach_csv" || printf '1')"
+
+	[ -n "$email_to" ] || {
+		log "Destinatário de e-mail (email_to) não configurado."
+		return 1
+	}
+
+	local hostname model
+	hostname="$(cat /proc/sys/kernel/hostname 2>/dev/null || printf 'ARK-Router')"
+	model="$(cat /tmp/sysinfo/model 2>/dev/null || printf 'ARK Dual-WAN Gateway')"
+
+	local now_fmt now_date
+	now_fmt="$(date '+%d/%m/%Y às %H:%M:%S')"
+	now_date="$(date '+%d/%m/%Y')"
+	local date_slug
+	date_slug="$(date '+%Y%m%d')"
+
+	log "Compilando estatísticas das últimas 25h para e-mail..."
+	local stats
+	stats="$(aggregate_stats)"
+
+	local total w1_up w1_avail w1_lat w1_loss w1_max_loss
+	local w2_up w2_avail w2_lat w2_loss w2_max_loss
+	local saved_w1 saved_w2 sim_loss combined_avail
+
+	total="$(printf '%s' "$stats" | cut -d'|' -f1)"
+	w1_up="$(printf '%s' "$stats" | cut -d'|' -f2)"
+	w1_avail="$(printf '%s' "$stats" | cut -d'|' -f3)"
+	w1_lat="$(printf '%s' "$stats" | cut -d'|' -f4)"
+	w1_loss="$(printf '%s' "$stats" | cut -d'|' -f5)"
+	w1_max_loss="$(printf '%s' "$stats" | cut -d'|' -f6)"
+	w2_up="$(printf '%s' "$stats" | cut -d'|' -f7)"
+	w2_avail="$(printf '%s' "$stats" | cut -d'|' -f8)"
+	w2_lat="$(printf '%s' "$stats" | cut -d'|' -f9)"
+	w2_loss="$(printf '%s' "$stats" | cut -d'|' -f10)"
+	w2_max_loss="$(printf '%s' "$stats" | cut -d'|' -f11)"
+	saved_w1="$(printf '%s' "$stats" | cut -d'|' -f12)"
+	saved_w2="$(printf '%s' "$stats" | cut -d'|' -f13)"
+	sim_loss="$(printf '%s' "$stats" | cut -d'|' -f14)"
+	combined_avail="$(printf '%s' "$stats" | cut -d'|' -f15)"
+
+	local hours_float
+	hours_float="$(awk -v t="$total" 'BEGIN { printf "%.1f", t / 3600 }')"
+
+	local subject_prefix=""
+	[ "$is_test" -eq 1 ] && subject_prefix="[TESTE] "
+
+	local boundary="ARK_BOUNDARY_$(date +%s)_$$"
+	local alt_boundary="ARK_ALT_$(date +%s)_$$"
+
+	# Monta o E-mail em formato MIME padrão
+	cat > "$TMP_REPORT" <<EOF
+From: $email_from
+To: $email_to
+Subject: ${subject_prefix}[ARK Router] Relatório Executivo 25h - Dual Starlink / Multi-WAN ($now_date)
+Date: $(date -R 2>/dev/null || date)
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="$boundary"
+
+--$boundary
+Content-Type: multipart/alternative; boundary="$alt_boundary"
+
+--$alt_boundary
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+================================================================================
+           ARK ROUTER - RELATÓRIO EXECUTIVO DUAL STARLINK & MULTI-WAN
+================================================================================
+Roteador: $hostname ($model)
+Data de Emissão: $now_fmt
+Amostras Analisadas: $total segundos (~$hours_float horas de histórico)
+
+1. DESEMPENHO INDIVIDUAL DOS LINKS
+--------------------------------------------------------------------------------
+Métrica                     Link 1 (WAN 1)            Link 2 (WAN 2)
+--------------------------------------------------------------------------------
+Disponibilidade             $w1_avail %                $w2_avail %
+Latência Média              $w1_lat ms                $w2_lat ms
+Perda Média de Pacotes      $w1_loss %                $w2_loss %
+Pior Rajada de Perda        $w1_max_loss %            $w2_max_loss %
+
+2. EFICÁCIA DA DUPLICAÇÃO & REDUNDÂNCIA (PROTEÇÃO PS PORTAL)
+--------------------------------------------------------------------------------
+• Falhas exclusivas da WAN 1 (salvas pela WAN 2):  $saved_w1 segundos
+• Falhas exclusivas da WAN 2 (salvas pela WAN 1):  $saved_w2 segundos
+• Quedas simultâneas em ambos os enlaces:          $sim_loss segundos
+• Disponibilidade combinada (Túnel Resiliente):    $combined_avail %
+
+$( [ "$is_test" -eq 1 ] && echo "OBS: Este é um e-mail de teste de disparo solicitado manualmente." )
+================================================================================
+Gerado automaticamente pelo ARK Router OS.
+
+--$alt_boundary
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 24px; }
+  .card { max-width: 650px; margin: 0 auto; background: #1e293b; border-radius: 12px; border: 1px solid #334155; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+  h1 { font-size: 20px; color: #38bdf8; margin-top: 0; border-bottom: 2px solid #0284c7; padding-bottom: 10px; }
+  .meta { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #334155; }
+  th { background: #0f172a; color: #94a3b8; }
+  .highlight { color: #4ade80; font-weight: bold; }
+  .badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 12px; }
+  .badge-success { background: #065f46; color: #34d399; }
+  .footer { margin-top: 24px; font-size: 12px; color: #64748b; text-align: center; border-top: 1px solid #334155; padding-top: 12px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>📡 ARK Router · Relatório Dual Starlink</h1>
+  <div class="meta">
+    <strong>Dispositivo:</strong> $hostname ($model)<br>
+    <strong>Emitido em:</strong> $now_fmt<br>
+    <strong>Janela Analisada:</strong> $total amostras (~$hours_float horas)
+  </div>
+
+  <h3>1. Desempenho dos Enlaces</h3>
+  <table>
+    <thead><tr><th>Métrica</th><th>WAN 1</th><th>WAN 2</th></tr></thead>
+    <tbody>
+      <tr><td>Disponibilidade</td><td class="highlight">$w1_avail %</td><td class="highlight">$w2_avail %</td></tr>
+      <tr><td>Latência Média</td><td>$w1_lat ms</td><td>$w2_lat ms</td></tr>
+      <tr><td>Perda Média</td><td>$w1_loss %</td><td>$w2_loss %</td></tr>
+      <tr><td>Maior Rajada de Perda</td><td>$w1_max_loss %</td><td>$w2_max_loss %</td></tr>
+    </tbody>
+  </table>
+
+  <h3>2. Eficácia da Duplicação (Proteção PS Portal)</h3>
+  <table>
+    <tbody>
+      <tr><td>Quedas WAN 1 salvas pela WAN 2</td><td class="highlight">$saved_w1 s</td></tr>
+      <tr><td>Quedas WAN 2 salvas pela WAN 1</td><td class="highlight">$saved_w2 s</td></tr>
+      <tr><td>Falhas simultâneas em ambas</td><td>$sim_loss s</td></tr>
+      <tr><td><strong>Disponibilidade Combinada</strong></td><td><span class="badge badge-success">$combined_avail %</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    ARK Router OS · Sistema de Alta Disponibilidade Dual Starlink
+  </div>
+</div>
+</body>
+</html>
+
+--$alt_boundary--
+EOF
+
+	# Anexa a planilha compactada .csv.gz se ativado
+	if [ "$attach_csv" = "1" ]; then
+		build_attachment
+		if [ -f "$TMP_ATTACH" ] && [ -s "$TMP_ATTACH" ]; then
+			local b64_content
+			b64_content="$(ucode -e 'let fs = require("fs"); print(b64enc(fs.readfile("'"$TMP_ATTACH"'")));' 2>/dev/null || true)"
+			if [ -n "$b64_content" ]; then
+				cat >> "$TMP_REPORT" <<EOF
+
+--$boundary
+Content-Type: application/gzip; name="starlink_telemetria_25h_${date_slug}.csv.gz"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="starlink_telemetria_25h_${date_slug}.csv.gz"
+
+$b64_content
+EOF
+			fi
+		fi
+	fi
+
+	cat >> "$TMP_REPORT" <<EOF
+
+--$boundary--
+EOF
+
+	log "Disparando e-mail para $email_to..."
+	if msmtp -a default "$email_to" < "$TMP_REPORT" 2>/tmp/msmtp_err; then
+		log "Relatório executivo enviado com sucesso para $email_to!"
+		date +%s > "$LAST_EPOCH_FILE"
+		rm -f "$TMP_REPORT" "$TMP_ATTACH" /tmp/msmtp_err
+		return 0
+	else
+		local err
+		err="$(cat /tmp/msmtp_err 2>/dev/null || printf 'Erro desconhecido')"
+		log "Falha ao enviar e-mail: $err"
+		rm -f "$TMP_REPORT" "$TMP_ATTACH"
+		return 1
+	fi
+}
+
+check_and_send() {
+	local last_epoch=0
+	[ -f "$LAST_EPOCH_FILE" ] && last_epoch="$(cat "$LAST_EPOCH_FILE" 2>/dev/null || printf 0)"
+	local now_epoch
+	now_epoch="$(date +%s)"
+	local diff=$((now_epoch - last_epoch))
+
+	# Dispara se passou mais de 20 horas desde o último envio
+	if [ "$diff" -ge 72000 ]; then
+		log "Janela diária atingida ($diff segundos desde o último e-mail). Iniciando despacho..."
+		send_report 0
+	fi
+}
+
+case "${1:-send-daily}" in
+	send-daily) send_report 0 ;;
+	send-test) send_report 1 ;;
+	check-and-send) check_and_send ;;
+	status)
+		last_epoch=0
+		[ -f "$LAST_EPOCH_FILE" ] && last_epoch="$(cat "$LAST_EPOCH_FILE" 2>/dev/null || printf 0)"
+		echo "Último envio registrado em epoch: $last_epoch"
+		;;
+	*) echo "Uso: $0 {send-daily|send-test|check-and-send|status}" >&2; exit 1 ;;
+esac
