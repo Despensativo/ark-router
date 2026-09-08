@@ -356,6 +356,10 @@ function wifiConfig(config) {
 		const out=Object.assign({}, b || {}, a || {});
 		out.id = id;
 		out.kind = kindLabel || 'extra';
+		out.sec2=(a&&a['.name'])||'';
+		out.sec5=(b&&b['.name'])||'';
+		out.dev2=(a&&a.device)||dev2g;
+		out.dev5=(b&&b.device)||dev5g;
 		out.ssid2=(a&&a.ssid)||'';
 		out.ssid5=(b&&b.ssid)||'';
 		out.key=(a&&a.key)||(b&&b.key)||'';
@@ -403,6 +407,77 @@ function wifiConfig(config) {
 		r1: radio5g,
 		rawRadio0: v.radio0 || {},
 		rawRadio1: v.radio1 || {}
+	};
+}
+function getWifiRuntimeState(cfg, wirelessConfig, wirelessStatus) {
+	cfg = cfg || {};
+	const isUciDisabled = String(cfg.disabled || '0') === '1';
+	const statusKeys = Object.keys(wirelessStatus || {});
+	if (!statusKeys.length) {
+		return {
+			state: isUciDisabled ? 'disabled' : 'active',
+			label: isUciDisabled ? 'DESLIGADA' : 'ATIVA',
+			pillClass: isUciDisabled ? 'standby' : 'online',
+			checked: !isUciDisabled
+		};
+	}
+
+	let driverFailed = false;
+	let anyRadioUp = false;
+	let anyIfaceUp = false;
+
+	const dev2 = cfg.dev2 || 'radio0';
+	const dev5 = cfg.dev5 || 'radio1';
+	const relevantRadios = [dev2, dev5].filter(Boolean);
+
+	relevantRadios.forEach(function(rName) {
+		const rStat = wirelessStatus[rName];
+		if (rStat) {
+			if (rStat.retry_setup_failed) driverFailed = true;
+			if (rStat.up) anyRadioUp = true;
+			const ifaces = rStat.interfaces || [];
+			ifaces.forEach(function(ifc) {
+				const sec = ifc.section;
+				const matchSec = sec && (sec === cfg.sec2 || sec === cfg.sec5 || sec === cfg.id || sec === ('default_' + rName) || sec === ('guest_' + rName));
+				const matchSsid = ifc.config && (ifc.config.ssid === cfg.ssid || ifc.config.ssid === cfg.ssid2 || ifc.config.ssid === cfg.ssid5);
+				if ((matchSec || matchSsid) && ifc.ifname) anyIfaceUp = true;
+			});
+		}
+	});
+
+	if (driverFailed) {
+		return {
+			state: 'error',
+			label: 'ERRO NO DRIVER',
+			pillClass: 'offline',
+			checked: false,
+			error: true
+		};
+	}
+
+	if (isUciDisabled) {
+		return {
+			state: 'disabled',
+			label: 'DESLIGADA',
+			pillClass: 'standby',
+			checked: false
+		};
+	}
+
+	if (anyIfaceUp || (anyRadioUp && !driverFailed)) {
+		return {
+			state: 'active',
+			label: 'ATIVA',
+			pillClass: 'online',
+			checked: true
+		};
+	}
+
+	return {
+		state: 'down',
+		label: 'DESLIGADA',
+		pillClass: 'standby',
+		checked: false
 	};
 }
 function wifiBand(radioName, radio) {
@@ -735,8 +810,24 @@ return view.extend({
 		text('ex-main-ssid',w.main.ssid||'Rede principal');
 		text('ex-guest-ssid',w.guest.ssid||'Visitantes');
 		text('ex-main-key',w.main.key||'sem senha'); text('ex-guest-key',w.guest.key||'sem senha');
-		setPill('ex-main-wifi-status',String(w.main.disabled||'0')==='1'?'standby':'online',String(w.main.disabled||'0')==='1'?'DESLIGADA':'ATIVA');
-		setPill('ex-guest-wifi-status',String(w.guest.disabled||'0')==='1'?'standby':'online',String(w.guest.disabled||'0')==='1'?'DESLIGADA':'ATIVA');
+
+		const mainRuntime = getWifiRuntimeState(w.main, data.wireless, data.wirelessStatus);
+		setPill('ex-main-wifi-status', mainRuntime.pillClass, mainRuntime.label);
+		const mainToggle = document.getElementById('ex-main-wifi-toggle');
+		if (mainToggle && !mainToggle.disabled) mainToggle.checked = mainRuntime.checked;
+
+		const guestRuntime = getWifiRuntimeState(w.guest, data.wireless, data.wirelessStatus);
+		setPill('ex-guest-wifi-status', guestRuntime.pillClass, guestRuntime.label);
+		const guestToggle = document.getElementById('ex-guest-wifi-toggle');
+		if (guestToggle && !guestToggle.disabled) guestToggle.checked = guestRuntime.checked;
+
+		(w.extras||[]).forEach(function(e) {
+			const extraRuntime = getWifiRuntimeState(e, data.wireless, data.wirelessStatus);
+			setPill('ex-' + e.id + '-wifi-status', extraRuntime.pillClass, extraRuntime.label);
+			const extraToggle = document.getElementById('ex-' + e.id + '-wifi-toggle');
+			if (extraToggle && !extraToggle.disabled) extraToggle.checked = extraRuntime.checked;
+		});
+
 		const r2 = w.r2g || w.r0 || {}, r5 = w.r5g || w.r1 || {};
 		const auto2=String(r2.channel||'auto')==='auto', auto5=String(r5.channel||'auto')==='auto';
 		const country=String(r2.country||r5.country||'00').toUpperCase(), countryInfo=this.countries.find(function(x){return String(x.code||x.iso3166).toUpperCase()===country;}); text('ex-country-current',(countryInfo&&countryInfo.country?countryInfo.country:'País')+' ('+country+')');
@@ -2564,6 +2655,74 @@ return view.extend({
 		];
 		ui.showModal('Adicionar nova rede Wi‑Fi', rows);
 		ssid.focus();
+	},
+	toggleWifiNetwork: function(chk, kind, cfg) {
+		const desired = chk.checked;
+		const ssidName = (cfg && (cfg.ssid || cfg.ssid2 || cfg.ssid5)) || (kind === 'guest' ? 'Visitantes' : 'Rede principal');
+
+		// Fail-Safe: Se tentar desligar a rede principal, alertar que o acesso sem fio será interrompido
+		if (kind === 'main' && !desired) {
+			chk.checked = true;
+			const modalBody = [
+				E('div', { class: 'alert-message warning', style: 'font-size:13px;line-height:1.55;' }, [
+					E('strong', { style: 'display:block;margin-bottom:6px;' }, ['⚠️ Desligar a rede Wi‑Fi principal?']),
+					E('p', {}, ['Se você estiver conectado ao roteador através desta rede Wi‑Fi, sua conexão sem fio cairá imediatamente.']),
+					E('p', {}, ['Para voltar a acessar o painel ou religar o sinal Wi‑Fi, você precisará conectar um cabo de rede em uma das portas LAN.']),
+					E('p', { style: 'margin-bottom:0;font-weight:600;' }, ['Deseja realmente desligar o sinal Wi‑Fi agora?'])
+				]),
+				E('div', { style: 'display:flex;justify-content:flex-end;gap:10px;margin-top:16px;' }, [
+					E('button', {
+						class: 'btn cbi-button cbi-button-neutral',
+						'click': function() { if (window.L && L.ui) L.ui.hideModal(); }
+					}, ['Cancelar']),
+					E('button', {
+						class: 'btn cbi-button cbi-button-reset',
+						style: 'font-weight:bold;',
+						'click': L.bind(function() {
+							if (window.L && L.ui) L.ui.hideModal();
+							chk.checked = false;
+							this._executeWifiToggle(chk, kind, cfg, false);
+						}, this)
+					}, ['Sim, Desligar Wi‑Fi'])
+				])
+			];
+			ui.showModal('Confirmar desligamento do Wi‑Fi', modalBody);
+			return;
+		}
+
+		this._executeWifiToggle(chk, kind, cfg, desired);
+	},
+	_executeWifiToggle: function(chk, kind, cfg, desired) {
+		chk.disabled = true;
+		const pill = document.getElementById('ex-' + kind + '-wifi-status');
+		if (pill) {
+			pill.className = 'ex-pill standby';
+			pill.textContent = desired ? 'LIGANDO…' : 'DESLIGANDO…';
+		}
+		const ssidName = (cfg && (cfg.ssid || cfg.ssid2 || cfg.ssid5)) || (kind === 'guest' ? 'Visitantes' : 'Rede principal');
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-toggle', kind, desired ? '1' : '0'])
+		.then(L.bind(function(r) {
+			chk.disabled = false;
+			if (r.code) throw new Error(r.stderr || 'Falha ao alterar estado do Wi-Fi');
+			if (pill) {
+				pill.className = 'ex-pill ' + (desired ? 'online' : 'standby');
+				pill.textContent = desired ? 'ATIVA' : 'DESLIGADA';
+			}
+			ui.addNotification(null, E('p', {}, [
+				'Wi‑Fi "' + ssidName + '" ' + (desired ? 'ligado com sucesso!' : 'desligado.')
+			]), desired ? 'success' : 'info');
+		}, this))
+		.catch(L.bind(function(e) {
+			chk.disabled = false;
+			chk.checked = !desired;
+			if (pill) {
+				pill.className = 'ex-pill ' + (!desired ? 'online' : 'standby');
+				pill.textContent = !desired ? 'ATIVA' : 'DESLIGADA';
+			}
+			const msg = String(e && e.message || e || '');
+			if (reloadAfterExpectedDisconnect(msg, 'Wi‑Fi reiniciando. Reconecte caso tenha alterado o sinal sem fio.', 4000)) return;
+			ui.addNotification(null, E('p', {}, [msg]), 'danger');
+		}, this));
 	},
 	editWifiNetwork: function(kind, current) {
 		current=current||{};
@@ -5937,7 +6096,7 @@ return view.extend({
 		const wifiCard=L.bind(function(kind,title,cfg,isExtra){
 			const ssid=cfg.ssid||(kind==='guest'?'ARK Router Visitantes':'ARK Router'),
 			      key=cfg.key||'',
-			      active=String(cfg.disabled||'0')!=='1',
+			      runtime=getWifiRuntimeState(cfg, data.wireless, data.wirelessStatus),
 			      keyId='ex-'+kind+'-key';
 			const kickerText = isExtra ? ('REDE ADICIONAL' + (cfg.network === 'guest' ? ' (ISOLADA)' : '')) : ('REDE WI‑FI' + (cfg.split ? ' (SEPARADA)' : ''));
 			const titleElements = [
@@ -5964,7 +6123,19 @@ return view.extend({
 			return E('section',{class:'ex-card ex-wifi-card'},[
 				E('div',{class:'ex-card-title'},[
 					E('div',{},titleElements),
-					E('span',{id:'ex-'+kind+'-wifi-status',class:'ex-pill '+(active?'online':'standby')},[active?'ATIVA':'DESLIGADA'])
+					E('div',{style:'display:flex;align-items:center;gap:10px;'},[
+						E('span',{id:'ex-'+kind+'-wifi-status',class:'ex-pill '+runtime.pillClass},[runtime.label]),
+						E('label',{class:'ex-switch',title:'Ligar ou desligar Wi‑Fi '+ssid},[
+							E('input',{
+								id:'ex-'+kind+'-wifi-toggle',
+								type:'checkbox',
+								checked: runtime.checked ? '' : null,
+								'aria-label':'Ligar ou desligar Wi‑Fi '+ssid,
+								'change':L.bind(function(ev){ this.toggleWifiNetwork(ev.currentTarget, kind, cfg); }, this)
+							}),
+							E('span',{class:'ex-switch-slider'})
+						])
+					])
 				]),
 				E('div',{class:'ex-secret'},[
 					E('code',{id:keyId,'data-hidden':'1',style:'filter:blur(5px)'},[key||'sem senha']),

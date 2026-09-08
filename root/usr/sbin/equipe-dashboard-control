@@ -5937,6 +5937,61 @@ case "$action" in
 		(sleep 2; wifi reload) >/dev/null 2>&1 &
 		echo 'ok'
 		;;
+	wifi-toggle)
+		wifi_kind="$2"
+		desired_state="${3:-1}"
+		case "$wifi_kind" in
+			main)
+				sections="$(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1 | while read -r s; do
+					net="$(uci -q get "wireless.$s.network")"
+					[ "$net" = "lan" ] || [ -z "$net" ] && echo "$s"
+				done)"
+				[ -n "$sections" ] || sections='default_radio0 default_radio1'
+				;;
+			guest)
+				sections="$(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1 | while read -r s; do
+					net="$(uci -q get "wireless.$s.network")"
+					[ "$net" = "guest" ] && echo "$s"
+				done)"
+				[ -n "$sections" ] || sections='guest_radio0 guest_radio1'
+				;;
+			*)
+				clean_prefix="$(printf '%s' "$wifi_kind" | sed 's/^extra_//')"
+				sections="$(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1 | grep -E "^(extra_)?${clean_prefix}")"
+				[ -n "$sections" ] || { echo 'Rede nao encontrada' >&2; exit 2; }
+				;;
+		esac
+
+		has_sae=1
+		if opkg list-installed 2>/dev/null | grep -q "^wpad-basic -"; then
+			has_sae=0
+		fi
+
+		if [ "$desired_state" = "1" ]; then
+			for r in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut -d= -f1); do
+				[ "$(uci -q get "wireless.$r.disabled")" = "1" ] && uci -q set "wireless.$r.disabled=0"
+			done
+
+			for section in $sections; do
+				if [ "$has_sae" = "0" ]; then
+					cur_enc="$(uci -q get "wireless.$section.encryption")"
+					if [ "$cur_enc" = "sae" ] || [ "$cur_enc" = "sae-mixed" ]; then
+						uci -q set "wireless.$section.encryption=psk2"
+					fi
+				fi
+				uci -q set "wireless.$section.disabled=0"
+			done
+			[ "$wifi_kind" = "guest" ] && uci -q delete dhcp.guest.ignore && uci commit dhcp 2>/dev/null || true
+		else
+			for section in $sections; do
+				uci -q set "wireless.$section.disabled=1"
+			done
+			[ "$wifi_kind" = "guest" ] && uci -q set dhcp.guest.ignore=1 && uci commit dhcp 2>/dev/null || true
+		fi
+		uci commit wireless
+		(sleep 1; wifi reload >/dev/null 2>&1 || true) &
+		echo "ok"
+		;;
 	wifi-settings)
 		wifi_kind="$2"
 		case "$2" in
@@ -6020,7 +6075,11 @@ case "$action" in
 				uci -q set "wireless.$section.encryption=none"
 				uci -q delete "wireless.$section.key"
 			elif [ -n "$encryption" ]; then
-				uci -q set "wireless.$section.encryption=$encryption"
+				sec_enc="$encryption"
+				if opkg list-installed 2>/dev/null | grep -q "^wpad-basic -" && { [ "$sec_enc" = "sae" ] || [ "$sec_enc" = "sae-mixed" ]; }; then
+					sec_enc="psk2"
+				fi
+				uci -q set "wireless.$section.encryption=$sec_enc"
 				[ -n "$password" ] && uci -q set "wireless.$section.key=$password"
 			elif [ -n "$password" ]; then
 				uci -q set "wireless.$section.key=$password"
@@ -6050,6 +6109,9 @@ case "$action" in
 		case "$target_network" in lan|guest) ;; *) target_network='lan' ;; esac
 		case "$band_mode" in both|2g|5g) ;; *) band_mode='both' ;; esac
 		case "$new_encryption" in psk2|sae-mixed|sae|none) ;; *) new_encryption='sae-mixed' ;; esac
+		if opkg list-installed 2>/dev/null | grep -q "^wpad-basic -" && { [ "$new_encryption" = "sae" ] || [ "$new_encryption" = "sae-mixed" ]; }; then
+			new_encryption="psk2"
+		fi
 		radio2="$(wifi_radio_2g)"; radio5="$(wifi_radio_5g)"
 		[ -n "$radio2" ] || radio2='radio0'
 		[ -n "$radio5" ] || radio5="$radio2"
