@@ -5110,9 +5110,18 @@ return view.extend({
 		const detectionData=data||this.currentData||{};
 		const f=this.feature('speedify'), installed=!!f.installed, supported=f.supported!==false, prepared=!!f.prepared, state=(f.state||'unavailable'), luci=!!f.luci, storage=f.storage||{}, rec=storage.recommended||'none', installedMode=String(f.install_mode||'');
 		if(f.hidden) return '';
-		const isWeakOrUnsupported = !installed && (!supported || (this.capabilities.hardware && this.capabilities.hardware.mem_total_mb < 300));
+		const arch = (this.capabilities.hardware && this.capabilities.hardware.cpu_arch) || '';
+		const is64bit = arch === 'aarch64' || arch === 'x86_64';
+		const memMb = (this.capabilities.hardware && this.capabilities.hardware.mem_total_mb) || 128;
+		const isUnsupportedArch = !is64bit;
+		const isTooLowRam = memMb < 160;
+
+		const isWeakOrUnsupported = !installed && (isUnsupportedArch || isTooLowRam);
 		if (isWeakOrUnsupported) {
-			const memMb = (this.capabilities.hardware && this.capabilities.hardware.mem_total_mb) || 128;
+			const reasonText = isUnsupportedArch
+				? ('O motor Speedify Router é um serviço 64-bit que exige processador ARM64 ou x86_64. Este roteador opera com arquitetura ' + (arch || 'MIPS 32-bit') + ' e não possui binários oficiais compilados pelo desenvolvedor.')
+				: ('O motor Speedify exige no mínimo 160 MB de RAM para carregar em memória. Este roteador possui apenas ' + memMb + ' MB de RAM.');
+
 			return E('section', { class: 'ex-card ex-speedify-card is-unsupported' }, [
 				E('div', { class: 'ex-card-title' }, [
 					E('div', {}, [
@@ -5133,7 +5142,7 @@ return view.extend({
 						'⚠️ Este roteador não atende aos requisitos mínimos para Bonding Real (Speedify).'
 					]),
 					E('p', { class: 'ex-muted', style: 'margin:0;font-size:12.5px;line-height:1.5;' }, [
-						'O motor Speedify Router é um serviço comercial 64-bit pesado que exige processador ARM64/x86_64 e no mínimo 512 MB de RAM para criptografia e agregação de pacotes. Este roteador opera com arquitetura MIPS (32-bit) e apenas ' + memMb + ' MB de RAM (onde o Speedify esgotaria a memória imediatamente).',
+						reasonText,
 						E('br'),
 						'A redundância e distribuição de tráfego neste hardware é gerenciada nativamente com altíssima eficiência pelo ',
 						E('strong', { style: 'color:#38bdf8;' }, ['Multi-WAN leve (mwan3)']),
