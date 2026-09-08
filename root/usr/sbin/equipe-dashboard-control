@@ -2914,35 +2914,47 @@ adblock_apply_rules() {
 	old_addrs="$(uci -q get dhcp.@dnsmasq[0].address || true)"
 
 	# 2. Sanitizar blacklist
-	clean_bl=""
-	for item in $(printf '%s' "$raw_blacklist" | tr ',;\n\r\t' ' '); do
-		dom="$(printf '%s' "$item" | sed -E 's|^https?://||; s|/.*$||' | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9.-')"
-		if printf '%s' "$dom" | grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$'; then
-			case " $clean_bl " in
-				*" $dom "*) ;;
-				*)
-					[ -z "$clean_bl" ] && clean_bl="$dom" || clean_bl="$clean_bl,$dom"
-					;;
-			esac
-		fi
-	done
+	has_bl_arg=1
+	if [ "$raw_blacklist" = "__KEEP_EXISTING__" ]; then
+		has_bl_arg=0
+		clean_bl="$(uci -q get equipe_perf.settings.custom_blacklist || true)"
+	else
+		clean_bl=""
+		for item in $(printf '%s' "$raw_blacklist" | tr ',;\n\r\t' ' '); do
+			dom="$(printf '%s' "$item" | sed -E 's|^https?://||; s|/.*$||' | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9.-')"
+			if printf '%s' "$dom" | grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$'; then
+				case " $clean_bl " in
+					*" $dom "*) ;;
+					*)
+						[ -z "$clean_bl" ] && clean_bl="$dom" || clean_bl="$clean_bl,$dom"
+						;;
+				esac
+			fi
+		done
+	fi
 
 	# 3. Sanitizar whitelist
-	clean_wl=""
-	for item in $(printf '%s' "$raw_whitelist" | tr ',;\n\r\t' ' '); do
-		dom="$(printf '%s' "$item" | sed -E 's|^https?://||; s|/.*$||' | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9.-')"
-		if printf '%s' "$dom" | grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$'; then
-			case " $clean_wl " in
-				*" $dom "*) ;;
-				*)
-					[ -z "$clean_wl" ] && clean_wl="$dom" || clean_wl="$clean_wl,$dom"
-					;;
-			esac
-		fi
-	done
+	has_wl_arg=1
+	if [ "$raw_whitelist" = "__KEEP_EXISTING__" ]; then
+		has_wl_arg=0
+		clean_wl="$(uci -q get equipe_perf.settings.custom_whitelist || true)"
+	else
+		clean_wl=""
+		for item in $(printf '%s' "$raw_whitelist" | tr ',;\n\r\t' ' '); do
+			dom="$(printf '%s' "$item" | sed -E 's|^https?://||; s|/.*$||' | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9.-')"
+			if printf '%s' "$dom" | grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$'; then
+				case " $clean_wl " in
+					*" $dom "*) ;;
+					*)
+						[ -z "$clean_wl" ] && clean_wl="$dom" || clean_wl="$clean_wl,$dom"
+						;;
+				esac
+			fi
+		done
+	fi
 
 	{
-		echo "set equipe_perf.settings.custom_blacklist='$clean_bl'"
+		[ "$raw_blacklist" != "__KEEP_EXISTING__" ] && echo "set equipe_perf.settings.custom_blacklist='$clean_bl'"
 		[ "$raw_whitelist" != "__KEEP_EXISTING__" ] && echo "set equipe_perf.settings.custom_whitelist='$clean_wl'"
 		for a in $old_addrs; do
 			case "$a" in
@@ -2964,6 +2976,7 @@ import sys, re
 yaml_path = '/etc/adguardhome/adguardhome.yaml'
 raw_bl = sys.argv[1] if len(sys.argv) > 1 else ''
 raw_wl = sys.argv[2] if len(sys.argv) > 2 else ''
+has_bl_arg = len(sys.argv) > 1 and sys.argv[1] != '__KEEP_EXISTING__'
 has_wl_arg = len(sys.argv) > 2 and sys.argv[2] != '__KEEP_EXISTING__'
 
 new_bl_domains = [d.strip().lower() for d in raw_bl.split(',') if d.strip()]
@@ -2989,6 +3002,7 @@ try:
 
         existing_other = []
         existing_wl = []
+        existing_bl = []
         for l in lines[idx_ur + 1:end_idx]:
             s = l.strip()
             if not s:
@@ -3002,11 +3016,13 @@ try:
                 continue
             bm = re.search(r'''^\|\|([a-z0-9.-]+)\^?$''', r.lower())
             if bm:
+                d = bm.group(1)
+                if d not in existing_bl: existing_bl.append(d)
                 continue
             existing_other.append(r)
 
         target_wl = new_wl_domains if has_wl_arg else existing_wl
-        target_bl = new_bl_domains
+        target_bl = new_bl_domains if has_bl_arg else existing_bl
 
         final_rules = []
         for d in target_wl:
@@ -3023,7 +3039,7 @@ try:
             f.write(new_content)
 except Exception:
     pass
-" "$clean_bl" "${raw_whitelist:-$clean_wl}"
+" "${raw_blacklist:-$clean_bl}" "${raw_whitelist:-$clean_wl}"
 		/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
 	fi
 
@@ -3325,9 +3341,9 @@ adblock_configure() {
 	cloud_cache="${7:-25000}"
 	web_port="${8:-3000}"
 	zt_access="${9:-1}"
-	custom_blacklist="${10:-}"
+	custom_blacklist="${10:-__KEEP_EXISTING__}"
 	nextdns_id="${11:-}"
-	custom_whitelist="${12:-}"
+	custom_whitelist="${12:-__KEEP_EXISTING__}"
 
 	case "$cache_mb" in ''|*[!0-9]*) cache_mb=64 ;; esac
 	[ "$cache_mb" -lt 4 ] && cache_mb=4
@@ -3478,9 +3494,9 @@ adblock_enable() {
 	cloud_cache="${7:-25000}"
 	web_port="${8:-3000}"
 	zt_access="${9:-1}"
-	custom_blacklist="${10:-}"
+	custom_blacklist="${10:-__KEEP_EXISTING__}"
 	nextdns_id="${11:-}"
-	custom_whitelist="${12:-}"
+	custom_whitelist="${12:-__KEEP_EXISTING__}"
 
 	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
 	overlay_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"
