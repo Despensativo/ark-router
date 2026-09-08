@@ -6934,7 +6934,6 @@ case "$action" in
 			/etc/init.d/starlink-telemetry stop 2>/dev/null || true
 			/etc/init.d/starlink-telemetry disable 2>/dev/null || true
 			if [ -f /var/run/starlink-telemetry.pid ]; then
-				local pid
 				pid="$(cat /var/run/starlink-telemetry.pid 2>/dev/null || true)"
 				[ -n "$pid" ] && kill "$pid" 2>/dev/null || true
 			fi
@@ -6954,6 +6953,13 @@ case "$action" in
 			echo ok
 		else
 			echo 'Daemon nao encontrado' >&2; exit 1
+		fi
+		;;
+	rpc-disconnect-test)
+		if [ -x /usr/sbin/ark-probe-disconnect ]; then
+			exec /usr/sbin/ark-probe-disconnect client "${2:-}" "${3:-9999}" "${4:-30}"
+		else
+			echo 'Testador ark-probe-disconnect nao encontrado' >&2; exit 1
 		fi
 		;;
 	speedify-install)

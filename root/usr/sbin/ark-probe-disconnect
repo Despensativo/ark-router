@@ -1,0 +1,209 @@
+#!/bin/sh
+# ARK Router - Testador de Desconexão e Resiliência Dual-WAN em Alta Resolução (RPC/UDP Sub-Segundo)
+# Mede o tempo exato de desconexão (em milissegundos) durante a arrancada de cabos ou quedas de link.
+
+set -u
+
+TARGET="${2:-}"
+PORT="${3:-9999}"
+INTERVAL_MS="${4:-30}"
+
+get_wan_dev() {
+	local iface="$1"
+	local dev
+	dev="$(ubus call "network.interface.${iface}" status 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null)"
+	[ -n "$dev" ] || dev="$(ubus call "network.interface.${iface}" status 2>/dev/null | jsonfilter -e '@.device' 2>/dev/null)"
+	[ -n "$dev" ] || dev="$(uci -q get "network.${iface}.device" || true)"
+	printf '%s' "${dev:-}"
+}
+
+run_server() {
+	local listen_port="${2:-$PORT}"
+	echo "================================================================================"
+	echo "   ARK ROUTER - RECEPTOR RPC/UDP DE TESTE DE DESCONEXÃO (MODO VPS / SERVIDOR)   "
+	echo "================================================================================"
+	echo "Escutando na porta UDP $listen_port..."
+	echo "Aguardando sondas simultâneas das duas WANs do roteador..."
+	echo ""
+
+	# Utiliza python3 se disponível na VPS para medição com resolução de microssegundos
+	if command -v python3 >/dev/null 2>&1; then
+		python3 -c "
+import socket, time, sys
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock.bind(('0.0.0.0', int('$listen_port')))
+last_seen = {}
+last_pkt_time = time.time()
+total_pkts = 0
+w1_count = 0
+w2_count = 0
+
+print('Receptor Python ativo na porta $listen_port. Pronto para testes.')
+while True:
+    data, addr = sock.recvfrom(2048)
+    now = time.time()
+    total_pkts += 1
+    gap_ms = (now - last_pkt_time) * 1000.0
+    last_pkt_time = now
+    text = data.decode('utf-8', errors='replace').strip()
+    parts = text.split('|')
+    seq = parts[1] if len(parts) > 1 else '0'
+    wan = parts[3] if len(parts) > 3 else 'UNK'
+    
+    if 'wan2' in wan or 'lan4' in wan:
+        w2_count += 1
+    else:
+        w1_count += 1
+
+    status = 'LISO'
+    if gap_ms > 50.0:
+        status = f'ALERTA (Gap: {gap_ms:.1f}ms)'
+    if gap_ms > 200.0:
+        status = f'QUEDA RESIDUAL ({gap_ms:.1f}ms)'
+
+    # Responde de volta para medir RTT
+    sock.sendto(f'ACK|{seq}|{wan}|{now}'.encode('utf-8'), addr)
+
+    if total_pkts % 20 == 0 or gap_ms > 40.0:
+        print(f'[PKT {seq:>5}] De: {addr[0]:<15} via {wan:<6} | Gap Inter-Pacotes: {gap_ms:>5.1f} ms | Status: {status}')
+        sys.stdout.flush()
+"
+	else
+		echo "Python3 recomendado para maior precisão de microssegundos na VPS."
+	fi
+}
+
+run_client() {
+	[ -n "$TARGET" ] || {
+		echo "Uso: $0 client <IP_DA_VPS> [PORTA] [INTERVALO_MS]" >&2
+		echo "Exemplo: $0 client 203.0.113.50 9999 30" >&2
+		exit 1
+	}
+
+	local wan1_dev wan2_dev
+	wan1_dev="$(get_wan_dev "wan")"
+	wan2_dev="$(get_wan_dev "wan2")"
+
+	[ -n "$wan1_dev" ] || wan1_dev="eth1"
+	[ -n "$wan2_dev" ] || wan2_dev="lan4"
+
+	echo "================================================================================"
+	echo "       ARK ROUTER - TESTADOR SUB-SEGUNDO DE REDUNDÂNCIA E DESCONEXÃO           "
+	echo "================================================================================"
+	echo "Alvo Remoto (VPS): $TARGET:$PORT"
+	echo "Intervalo de Sonda: ${INTERVAL_MS} ms (~$(( 1000 / INTERVAL_MS )) pacotes/segundo por link)"
+	echo "Link 1: WAN ($wan1_dev)"
+	echo "Link 2: WAN2 ($wan2_dev)"
+	echo "--------------------------------------------------------------------------------"
+	echo "Iniciando duplicação ativa. Puxe o cabo da WAN 1 ou da WAN 2 a qualquer momento!"
+	echo "Pressione Ctrl+C para encerrar e ver o relatório final de resiliência."
+	echo "================================================================================"
+
+	if command -v python3 >/dev/null 2>&1; then
+		python3 -c "
+import socket, time, sys, select
+
+target = '$TARGET'
+port = int('$PORT')
+interval = float('$INTERVAL_MS') / 1000.0
+w1_dev = '$wan1_dev'
+w2_dev = '$wan2_dev'
+
+# Cria sockets vinculados às interfaces físicas (SO_BINDTODEVICE)
+s1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+try:
+    s1.setsockopt(socket.SOL_SOCKET, 25, w1_dev.encode())
+except Exception as e:
+    pass
+
+s2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+try:
+    s2.setsockopt(socket.SOL_SOCKET, 25, w2_dev.encode())
+except Exception as e:
+    pass
+
+seq = 0
+s1_sent = 0
+s2_sent = 0
+s1_ack = 0
+s2_ack = 0
+last_recv_time = time.time()
+max_gap_ms = 0.0
+total_saved_by_w1 = 0
+total_saved_by_w2 = 0
+
+try:
+    while True:
+        seq += 1
+        now = time.time()
+        msg = f'ARK_PROBE|{seq}|{now}|'
+        
+        # Envia cópia idêntica pela WAN 1 e pela WAN 2 simultaneamente
+        try:
+            s1.sendto((msg + w1_dev).encode('utf-8'), (target, port))
+            s1_sent += 1
+        except Exception:
+            pass
+
+        try:
+            s2.sendto((msg + w2_dev).encode('utf-8'), (target, port))
+            s2_sent += 1
+        except Exception:
+            pass
+
+        # Escuta retornos com timeout correspondente ao intervalo
+        timeout_loop = now + interval
+        while time.time() < timeout_loop:
+            r, _, _ = select.select([s1, s2], [], [], 0.005)
+            for s in r:
+                data, _ = s.recvfrom(1024)
+                ack_now = time.time()
+                gap_ms = (ack_now - last_recv_time) * 1000.0
+                last_recv_time = ack_now
+                if gap_ms > max_gap_ms and seq > 5:
+                    max_gap_ms = gap_ms
+
+                resp = data.decode('utf-8', errors='replace').strip().split('|')
+                ack_seq = resp[1] if len(resp) > 1 else str(seq)
+                ack_wan = resp[2] if len(resp) > 2 else ''
+
+                if w1_dev in ack_wan:
+                    s1_ack += 1
+                else:
+                    s2_ack += 1
+
+                status = 'LISO (Vencedor)'
+                if gap_ms > 45.0:
+                    status = f'OSCILAÇÃO ({gap_ms:.1f}ms)'
+                if gap_ms > 200.0:
+                    status = f'QUEDA ({gap_ms:.1f}ms)'
+
+                if seq % 25 == 0 or gap_ms > 50.0:
+                    print(f'[SEQ {seq:>5}] Resposta via {ack_wan:<6} | Gap entre pacotes: {gap_ms:>5.1f} ms | Status: {status}')
+                    sys.stdout.flush()
+
+        time.sleep(max(0, timeout_loop - time.time()))
+
+except KeyboardInterrupt:
+    print('\n==================== RELATÓRIO DO TESTE ====================')
+    print(f'Total de Pacotes Gerados: {seq}')
+    print(f'ACKs Recebidos via WAN 1 ({w1_dev}): {s1_ack}')
+    print(f'ACKs Recebidos via WAN 2 ({w2_dev}): {s2_ack}')
+    print(f'Maior Vácuo entre Pacotes (Pior Gap): {max_gap_ms:.1f} ms')
+    if max_gap_ms < 50.0:
+        print('RESULTADO: PERFEITO! Zero congelamento no PS Portal (Gap < 50ms).')
+    elif max_gap_ms < 100.0:
+        print('RESULTADO: EXCELENTE! Oscilação imperceptível sem desconexão.')
+    else:
+        print(f'RESULTADO: Queda detectada com vácuo de {max_gap_ms:.1f} ms.')
+"
+	else
+		echo "Python3 não encontrado no roteador para o cliente avançado."
+	fi
+}
+
+case "${1:-client}" in
+	server) run_server "$@" ;;
+	client) run_client "$@" ;;
+	*) echo "Uso: $0 {client|server} [args...]" >&2; exit 1 ;;
+esac

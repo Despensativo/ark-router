@@ -1,6 +1,7 @@
 #!/bin/sh
 # ARK Router - Daemon de Coleta de Telemetria Dual Starlink & Multi-WAN
-# Buffer persistente de 25 horas com proteção estrita contra desgaste de flash.
+# Buffer persistente de 25 horas com proteção estrita contra desgaste de flash
+# e envio inteligente preventivo pré-purge e pós-boot.
 
 set -u
 
@@ -9,6 +10,7 @@ RAM_DIR="/tmp/starlink_telemetry"
 FLASH_DIR="/etc/starlink_history"
 LOCK_DIR="/tmp/ark_starlink_telemetry.lock"
 PID_FILE="/var/run/starlink-telemetry.pid"
+LAST_EPOCH_FILE="${FLASH_DIR}/.last_email_epoch"
 
 log() {
 	logger -t "starlink-telemetry" "$1"
@@ -75,6 +77,72 @@ probe_starlink_grpc() {
 	return 1
 }
 
+simulate_starlink_sample() {
+	local tick="$1"
+	# Simula Starlink 1 (rev4_catapult): Latência 21-26ms. Handover a cada 15s (tick % 15 == 0)
+	local s1_lat s1_loss s1_obstr
+	s1_lat="$(awk -v t="$tick" 'BEGIN { srand(t + 101); printf "%.1f", 21.0 + (rand() * 5.5) }')"
+	s1_obstr="0.66"
+	if [ $((tick % 15)) -eq 0 ]; then
+		s1_loss="$(awk -v t="$tick" 'BEGIN { srand(t + 202); printf "%.1f", 20.0 + (rand() * 20.0) }')"
+	else
+		s1_loss="0.0"
+	fi
+
+	# Simula Starlink 2 (rev4_panda): Latência 22.8-27.5ms. Handover a cada 15s defasado (tick % 15 == 7)
+	local s2_lat s2_loss s2_obstr
+	s2_lat="$(awk -v t="$tick" 'BEGIN { srand(t + 303); printf "%.1f", 22.8 + (rand() * 4.7) }')"
+	s2_obstr="0.86"
+	if [ $(( (tick + 7) % 15 )) -eq 0 ]; then
+		s2_loss="$(awk -v t="$tick" 'BEGIN { srand(t + 404); printf "%.1f", 25.0 + (rand() * 25.0) }')"
+	else
+		s2_loss="0.0"
+	fi
+
+	# 1% de chance de micro-perda simultânea (clima/obstrução compartilhada)
+	if [ $((tick % 120)) -eq 42 ]; then
+		s1_loss="45.0"
+		s2_loss="50.0"
+	fi
+
+	printf 'UP|%s|%s|%s|OK\n' "$s1_lat" "$s1_loss" "$s1_obstr"
+	printf 'UP|%s|%s|%s|OK\n' "$s2_lat" "$s2_loss" "$s2_obstr"
+}
+
+check_startup_backlog() {
+	local count
+	count="$(ls -1 "${FLASH_DIR}"/*.csv.gz 2>/dev/null | wc -l)"
+	[ "$count" -gt 0 ] || return 0
+
+	local max_h
+	max_h="$(uci -q get "${CONF}.global.max_history_hours" || printf '25')"
+	[ -n "$max_h" ] || max_h=25
+
+	local last_send=0
+	[ -f "$LAST_EPOCH_FILE" ] && last_send="$(cat "$LAST_EPOCH_FILE" 2>/dev/null || printf 0)"
+	local now_epoch
+	now_epoch="$(date +%s)"
+
+	# Se há arquivos de uma sessão anterior ainda não enviados, ou se excede 20 horas de intervalo
+	if [ "$last_send" -eq 0 ] || [ $((now_epoch - last_send)) -ge 72000 ] || [ "$count" -ge "$max_h" ]; then
+		log "Detectado histórico anterior pendente pós-boot ($count arquivos salvos). Disparando envio antes de rotacionar..."
+		(
+			# Aguarda internet subir em segundo plano por até 90s
+			local wait_sec=0
+			while [ "$wait_sec" -lt 90 ]; do
+				if ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1 || ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
+					break
+				fi
+				sleep 5
+				wait_sec=$((wait_sec + 5))
+			done
+			if [ -x /usr/sbin/starlink-telemetry-mailer ]; then
+				/usr/sbin/starlink-telemetry-mailer send-daily 2>/dev/null || true
+			fi
+		) >/dev/null 2>&1 &
+	fi
+}
+
 flush_ram_to_flash() {
 	local cur_hour="$1"
 	mkdir -p "$FLASH_DIR"
@@ -106,14 +174,15 @@ flush_ram_to_flash() {
 	count="$(ls -1 "${FLASH_DIR}"/*.csv.gz 2>/dev/null | wc -l)"
 	if [ "$count" -gt "$max_h" ]; then
 		local to_remove=$((count - max_h))
-		# Dispara envio diário antes do purge se habilitado
+		# REGRA ESTREITA: Antes de apagar qualquer arquivo excedente, dispara o e-mail com o que tiver!
 		if [ -x /usr/sbin/starlink-telemetry-mailer ]; then
-			/usr/sbin/starlink-telemetry-mailer check-and-send 2>/dev/null || true
+			log "Limite de retenção atingido ($count blocos > $max_h). Disparando e-mail antes do purge..."
+			/usr/sbin/starlink-telemetry-mailer send-daily 2>/dev/null || true
 		fi
-		# Remove os arquivos mais antigos
+		# Remove os arquivos mais antigos após a tentativa de envio
 		ls -1t "${FLASH_DIR}"/*.csv.gz 2>/dev/null | tail -n "$to_remove" | while read -r old_file; do
 			rm -f "$old_file"
-			log "Purge de histórico antigo (>25h): $old_file"
+			log "Purge de histórico antigo (>25h preservadas em e-mail): $old_file"
 		done
 	fi
 }
@@ -151,6 +220,9 @@ daemon_run() {
 	if [ -x /usr/sbin/equipe-dashboard-control ]; then
 		/usr/sbin/equipe-dashboard-control starlink-setup-ports >/dev/null 2>&1 || true
 	fi
+
+	# Verifica se há histórico pendente pós-boot para enviar por e-mail antes de qualquer descarte
+	check_startup_backlog
 
 	log "Coletor de telemetria iniciado com sucesso. Buffer RAM: $RAM_DIR | Flash: $FLASH_DIR"
 
@@ -198,45 +270,76 @@ daemon_run() {
 		wan1_dev="$(get_wan_device "$wan1_name")"
 		wan2_dev="$(get_wan_device "$wan2_name")"
 
-		# Sonda WAN 1
+		local sample_mode
+		sample_mode="$(uci -q get "${CONF}.global.sample_mode" || printf 'auto')"
+
 		local w1_state="DOWN" w1_lat="999" w1_loss="100" w1_obstr="0" w1_alerts="NONE"
-		if res="$(probe_starlink_grpc "9201" "$wan1_dev" "$wan1_name")"; then
-			w1_state="$(printf '%s' "$res" | cut -d'|' -f1)"
-			w1_lat="$(printf '%s' "$res" | cut -d'|' -f2)"
-			w1_loss="$(printf '%s' "$res" | cut -d'|' -f3)"
-			w1_obstr="$(printf '%s' "$res" | cut -d'|' -f4)"
-			w1_alerts="$(printf '%s' "$res" | cut -d'|' -f5)"
+		local w2_state="DOWN" w2_lat="999" w2_loss="100" w2_obstr="0" w2_alerts="NONE"
+
+		if [ "$sample_mode" = "simulate" ]; then
+			# Modo Simulação Starlink em bancada
+			local sim_out sim1 sim2
+			sim_out="$(simulate_starlink_sample "$tick")"
+			sim1="$(printf '%s' "$sim_out" | head -n 1)"
+			sim2="$(printf '%s' "$sim_out" | tail -n 1)"
+
+			w1_state="$(printf '%s' "$sim1" | cut -d'|' -f1)"
+			w1_lat="$(printf '%s' "$sim1" | cut -d'|' -f2)"
+			w1_loss="$(printf '%s' "$sim1" | cut -d'|' -f3)"
+			w1_obstr="$(printf '%s' "$sim1" | cut -d'|' -f4)"
+			w1_alerts="$(printf '%s' "$sim1" | cut -d'|' -f5)"
+
+			w2_state="$(printf '%s' "$sim2" | cut -d'|' -f1)"
+			w2_lat="$(printf '%s' "$sim2" | cut -d'|' -f2)"
+			w2_loss="$(printf '%s' "$sim2" | cut -d'|' -f3)"
+			w2_obstr="$(printf '%s' "$sim2" | cut -d'|' -f4)"
+			w2_alerts="$(printf '%s' "$sim2" | cut -d'|' -f5)"
 		else
-			if res="$(probe_wan_ping "$wan1_dev" "1.1.1.1")"; then
+			# Sonda WAN 1
+			if res="$(probe_starlink_grpc "9201" "$wan1_dev" "$wan1_name")"; then
 				w1_state="$(printf '%s' "$res" | cut -d'|' -f1)"
 				w1_lat="$(printf '%s' "$res" | cut -d'|' -f2)"
 				w1_loss="$(printf '%s' "$res" | cut -d'|' -f3)"
+				w1_obstr="$(printf '%s' "$res" | cut -d'|' -f4)"
+				w1_alerts="$(printf '%s' "$res" | cut -d'|' -f5)"
+			else
+				if res="$(probe_wan_ping "$wan1_dev" "1.1.1.1")"; then
+					w1_state="$(printf '%s' "$res" | cut -d'|' -f1)"
+					w1_lat="$(printf '%s' "$res" | cut -d'|' -f2)"
+					w1_loss="$(printf '%s' "$res" | cut -d'|' -f3)"
+				fi
 			fi
-		fi
 
-		# Sonda WAN 2
-		local w2_state="DOWN" w2_lat="999" w2_loss="100" w2_obstr="0" w2_alerts="NONE"
-		if res="$(probe_starlink_grpc "9202" "$wan2_dev" "$wan2_name")"; then
-			w2_state="$(printf '%s' "$res" | cut -d'|' -f1)"
-			w2_lat="$(printf '%s' "$res" | cut -d'|' -f2)"
-			w2_loss="$(printf '%s' "$res" | cut -d'|' -f3)"
-			w2_obstr="$(printf '%s' "$res" | cut -d'|' -f4)"
-			w2_alerts="$(printf '%s' "$res" | cut -d'|' -f5)"
-		else
-			if res="$(probe_wan_ping "$wan2_dev" "1.1.1.1")"; then
+			# Sonda WAN 2
+			if res="$(probe_starlink_grpc "9202" "$wan2_dev" "$wan2_name")"; then
 				w2_state="$(printf '%s' "$res" | cut -d'|' -f1)"
 				w2_lat="$(printf '%s' "$res" | cut -d'|' -f2)"
 				w2_loss="$(printf '%s' "$res" | cut -d'|' -f3)"
+				w2_obstr="$(printf '%s' "$res" | cut -d'|' -f4)"
+				w2_alerts="$(printf '%s' "$res" | cut -d'|' -f5)"
+			else
+				if res="$(probe_wan_ping "$wan2_dev" "1.1.1.1")"; then
+					w2_state="$(printf '%s' "$res" | cut -d'|' -f1)"
+					w2_lat="$(printf '%s' "$res" | cut -d'|' -f2)"
+					w2_loss="$(printf '%s' "$res" | cut -d'|' -f3)"
+				fi
 			fi
 		fi
 
-		# Análise de redundância instantânea
+		# Análise de redundância instantânea (considera queda total ou perda severa de pacotes > 15%)
 		local saved_by_w1=0 saved_by_w2=0 sim_loss=0
-		if [ "$w1_state" = "UP" ] && [ "$w2_state" != "UP" ]; then
+		local w1_bad=0 w2_bad=0
+		[ "$w1_state" != "UP" ] && w1_bad=1
+		awk -v l="$w1_loss" 'BEGIN { if (l >= 15.0) exit 0; exit 1 }' 2>/dev/null && w1_bad=1
+
+		[ "$w2_state" != "UP" ] && w2_bad=1
+		awk -v l="$w2_loss" 'BEGIN { if (l >= 15.0) exit 0; exit 1 }' 2>/dev/null && w2_bad=1
+
+		if [ "$w1_bad" -eq 0 ] && [ "$w2_bad" -eq 1 ]; then
 			saved_by_w1=1
-		elif [ "$w1_state" != "UP" ] && [ "$w2_state" = "UP" ]; then
+		elif [ "$w1_bad" -eq 1 ] && [ "$w2_bad" -eq 0 ]; then
 			saved_by_w2=1
-		elif [ "$w1_state" != "UP" ] && [ "$w2_state" != "UP" ]; then
+		elif [ "$w1_bad" -eq 1 ] && [ "$w2_bad" -eq 1 ]; then
 			sim_loss=1
 		fi
 
@@ -252,6 +355,7 @@ daemon_run() {
 {
   "timestamp": $now_epoch,
   "iso_time": "$now_iso",
+  "sample_mode": "$sample_mode",
   "wan1": { "name": "$wan1_name", "device": "$wan1_dev", "state": "$w1_state", "latency_ms": $w1_lat, "loss_pct": $w1_loss, "obstr_pct": $w1_obstr, "alerts": "$w1_alerts" },
   "wan2": { "name": "$wan2_name", "device": "$wan2_dev", "state": "$w2_state", "latency_ms": $w2_lat, "loss_pct": $w2_loss, "obstr_pct": $w2_obstr, "alerts": "$w2_alerts" },
   "redundancy": { "saved_by_wan1": $saved_by_w1, "saved_by_wan2": $saved_by_w2, "simultaneous_loss": $sim_loss }
