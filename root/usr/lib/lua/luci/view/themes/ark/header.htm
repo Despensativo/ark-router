@@ -69,7 +69,7 @@
 			</div>
 		</aside>
 		<% end %>
-
+		<header style="display:none;height:0;margin:0;padding:0;border:0;"></header>
 		<div id="maincontent" class="container ark-main-container">
 			<%- if luci.sys.process.info("uid") == 0 and luci.sys.user.getuser("root") and not luci.sys.user.getpasswd("root") then -%>
 				<div class="alert-message warning">

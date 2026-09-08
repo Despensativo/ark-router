@@ -200,7 +200,7 @@ feature_package() {
 	esac
 }
 bulk_feature_keys() {
-	printf 'argon sqm mwan3 nlbwmon upnp uhttpd'
+	printf 'sqm mwan3 nlbwmon upnp uhttpd'
 }
 feature_missing_installable() {
 	key="$1"; package="$(feature_package "$key" 2>/dev/null)" || return 1
@@ -3698,12 +3698,26 @@ cleanup_orphan_leds() {
 	fi
 }
 
+get_primary_wan_dev() {
+	local dev="$(uci -q get network.wan.device || true)"
+	[ -z "$dev" ] && dev="$(uci -q get network.wan.ifname || true)"
+	[ -z "$dev" ] && dev="$(uci -q get network.wan1.device || true)"
+	[ -z "$dev" ] && dev="$(uci -q get network.wan1.ifname || true)"
+	if [ -z "$dev" ]; then
+		dev="$(ubus call network.interface.wan status 2>/dev/null | grep -o '"l3_device": "[^"]*"' | cut -d'"' -f4 || true)"
+	fi
+	if [ -z "$dev" ]; then
+		dev="$(ubus call network.interface.wan status 2>/dev/null | grep -o '"device": "[^"]*"' | cut -d'"' -f4 || true)"
+	fi
+	[ -n "$dev" ] || dev="eth0.2"
+	printf '%s' "$dev"
+}
+
 get_led_hardware_info() {
 	cleanup_orphan_leds
 	model="$(cat /tmp/sysinfo/model 2>/dev/null || cat /proc/cpuinfo 2>/dev/null | awk -F': ' '/model name|machine|Hardware/{print $2; exit}' || echo 'ARK Router')"
 	board="$(cat /tmp/sysinfo/board_name 2>/dev/null || echo 'generic')"
-	wan_dev="$(uci -q get network.wan.device || true)"
-	[ -n "$wan_dev" ] || wan_dev="$(uci -q get network.wan1.device || echo 'eth1')"
+	wan_dev="$(get_primary_wan_dev)"
 
 	has_rgb=false
 	[ -e /sys/class/leds/rgb:status ] && has_rgb=true
@@ -3724,6 +3738,10 @@ get_led_hardware_info() {
 		color="green"
 
 		case "$led" in
+			"d-link:orange:planet"|"d-link:orange:power")
+				# Bicolor secundário: consolidado no card representativo (verde) para evitar duplicatas
+				continue
+				;;
 			"rgb:status")
 				name="Status / Conexão (RGB)"
 				sub="Painel Frontal Multi-Estado (Status, WAN e Alertas)"
@@ -3742,27 +3760,47 @@ get_led_hardware_info() {
 				type="wifi2g"
 				color="green"
 				;;
-			"d-link:green:power"|"d-link:orange:power")
+			"d-link:green:power")
 				name="Power (Alimentação)"
-				sub="LED Bicolor Verde / Laranja"
+				pwr_org_bri="$(cat /sys/class/leds/d-link:orange:power/brightness 2>/dev/null || echo 0)"
+				if [ "$cur_brightness" -gt 0 ] 2>/dev/null; then
+					sub="LED Bicolor (Verde: Operação Normal)"
+					color="green"
+				elif [ "$pwr_org_bri" -gt 0 ] 2>/dev/null; then
+					sub="LED Bicolor (Laranja: Alerta / Boot)"
+					color="orange"
+					cur_brightness="$pwr_org_bri"
+				else
+					sub="LED Bicolor Verde / Laranja"
+					color="green"
+				fi
 				type="power"
-				color="green"
 				;;
-			"d-link:green:planet"|"d-link:orange:planet")
+			"d-link:green:planet")
 				name="Internet (Planet)"
-				sub="Conectividade WAN (eth0.2)"
+				planet_org_bri="$(cat /sys/class/leds/d-link:orange:planet/brightness 2>/dev/null || echo 0)"
+				if [ "$cur_brightness" -gt 0 ] 2>/dev/null; then
+					sub="Conectividade WAN ($wan_dev) — Online"
+					color="green"
+				elif [ "$planet_org_bri" -gt 0 ] 2>/dev/null; then
+					sub="Conectividade WAN ($wan_dev) — Sem Conexão / Alerta"
+					color="orange"
+					cur_brightness="$planet_org_bri"
+				else
+					sub="Conectividade WAN ($wan_dev)"
+					color="green"
+				fi
 				type="internet"
-				color="green"
 				;;
 			"ath10k-phy0")
 				name="Wi-Fi 5 GHz (Ultra Rápido)"
-				sub="Qualcomm Atheros QCA9880"
+				sub="Qualcomm Atheros QCA9880 (Até 1300 Mbps)"
 				type="wifi5g"
 				color="blue"
 				;;
 			"ath9k-phy1")
 				name="Wi-Fi 2.4 GHz (Longo Alcance)"
-				sub="Qualcomm Atheros QCA9558"
+				sub="Qualcomm Atheros QCA9558 (Até 450 Mbps)"
 				type="wifi2g"
 				color="green"
 				;;
@@ -3809,8 +3847,7 @@ get_led_hardware_info() {
 
 update_led_alert() {
 	[ -f /etc/config/ark_led_alert_mode ] || return 0
-	wan_dev="$(uci -q get network.wan.device || true)"
-	[ -n "$wan_dev" ] || wan_dev="$(uci -q get network.wan1.device || echo 'eth1')"
+	wan_dev="$(get_primary_wan_dev)"
 
 	carrier="$(cat "/sys/class/net/$wan_dev/carrier" 2>/dev/null || echo '0')"
 	wan_status="$(ubus call network.interface.wan status 2>/dev/null || true)"
@@ -3830,7 +3867,7 @@ update_led_alert() {
 			echo 0 > /sys/class/leds/d-link:green:planet/brightness 2>/dev/null || true
 		fi
 	else
-		# Falha na conexao / cabo desconectado / sem IP: Alerta visual piscante (vermelho)
+		# Falha na conexao / cabo desconectado / sem IP: Alerta visual piscante (vermelho/laranja)
 		if [ -e /sys/class/leds/rgb:status ]; then
 			# No WS2812B GRB, Byte 1 (segundo valor) e o canal Vermelho!
 			echo 0 255 0 > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
@@ -3852,8 +3889,7 @@ update_led_alert() {
 set_led_rgb_color() {
 	raw_color="${1:-#00FF00}"
 	rm -f /etc/config/ark_led_alert_mode /etc/hotplug.d/iface/99-ark-led-alert /etc/hotplug.d/net/99-ark-led-alert
-	wan_dev="$(uci -q get network.wan.device || true)"
-	[ -n "$wan_dev" ] || wan_dev="$(uci -q get network.wan1.device || echo 'eth1')"
+	wan_dev="$(get_primary_wan_dev)"
 
 	clean_color="$(printf '%s' "$raw_color" | tr 'A-Z' 'a-z' | tr -d '#, ')"
 	r_val=0; g_val=255; b_val=0
@@ -3943,8 +3979,7 @@ set_led_preset() {
 	preset="${1:-smart}"
 	cleanup_orphan_leds
 
-	wan_dev="$(uci -q get network.wan.device || true)"
-	[ -n "$wan_dev" ] || wan_dev="$(uci -q get network.wan1.device || echo 'eth1')"
+	wan_dev="$(get_primary_wan_dev)"
 
 	case "$preset" in
 		night)
@@ -3956,6 +3991,7 @@ set_led_preset() {
 			uci commit system
 			/etc/init.d/led restart >/dev/null 2>&1 || true
 			for led in $(ls /sys/class/leds/ 2>/dev/null); do
+				echo none > "/sys/class/leds/$led/trigger" 2>/dev/null || true
 				echo 0 > "/sys/class/leds/$led/brightness" 2>/dev/null || true
 			done
 			;;
@@ -4053,8 +4089,24 @@ EOF
 				uci -q set "system.led_internet.mode=link"
 				uci -q set "system.led_internet.default=1"
 			fi
+			if [ -e /sys/class/leds/d-link:orange:planet ]; then
+				uci -q delete system.led_internet_orange 2>/dev/null || true
+				echo none > /sys/class/leds/d-link:orange:planet/trigger 2>/dev/null || true
+				echo 0 > /sys/class/leds/d-link:orange:planet/brightness 2>/dev/null || true
+			fi
 			uci commit system
 			/etc/init.d/led restart >/dev/null 2>&1 || true
+
+			if [ -e /sys/class/leds/d-link:green:planet ]; then
+				echo netdev > /sys/class/leds/d-link:green:planet/trigger 2>/dev/null || true
+				echo "$wan_dev" > /sys/class/leds/d-link:green:planet/device_name 2>/dev/null || true
+				echo 1 > /sys/class/leds/d-link:green:planet/link 2>/dev/null || true
+				echo 255 > /sys/class/leds/d-link:green:planet/brightness 2>/dev/null || true
+			fi
+			if [ -e /sys/class/leds/d-link:orange:planet ]; then
+				echo none > /sys/class/leds/d-link:orange:planet/trigger 2>/dev/null || true
+				echo 0 > /sys/class/leds/d-link:orange:planet/brightness 2>/dev/null || true
+			fi
 
 			if [ -e /sys/class/leds/rgb:status ]; then
 				echo 255 0 0 > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
@@ -4118,7 +4170,7 @@ EOF
 			fi
 
 			if [ -e /sys/class/leds/d-link:green:planet ]; then
-				[ -n "$(uci -q get system.led_internet)" ] || uci -q set system.led_internet=led
+				uci -q set system.led_internet=led
 				uci -q set "system.led_internet.name=Internet (Planet)"
 				uci -q set "system.led_internet.sysfs=d-link:green:planet"
 				uci -q set "system.led_internet.trigger=netdev"
@@ -4126,9 +4178,25 @@ EOF
 				uci -q set "system.led_internet.mode=link"
 				uci -q set "system.led_internet.default=1"
 			fi
+			if [ -e /sys/class/leds/d-link:orange:planet ]; then
+				uci -q delete system.led_internet_orange 2>/dev/null || true
+				echo none > /sys/class/leds/d-link:orange:planet/trigger 2>/dev/null || true
+				echo 0 > /sys/class/leds/d-link:orange:planet/brightness 2>/dev/null || true
+			fi
 
 			uci commit system
 			/etc/init.d/led restart >/dev/null 2>&1 || true
+
+			if [ -e /sys/class/leds/d-link:green:planet ]; then
+				echo netdev > /sys/class/leds/d-link:green:planet/trigger 2>/dev/null || true
+				echo "$wan_dev" > /sys/class/leds/d-link:green:planet/device_name 2>/dev/null || true
+				echo 1 > /sys/class/leds/d-link:green:planet/link 2>/dev/null || true
+				echo 255 > /sys/class/leds/d-link:green:planet/brightness 2>/dev/null || true
+			fi
+			if [ -e /sys/class/leds/d-link:orange:planet ]; then
+				echo none > /sys/class/leds/d-link:orange:planet/trigger 2>/dev/null || true
+				echo 0 > /sys/class/leds/d-link:orange:planet/brightness 2>/dev/null || true
+			fi
 
 			if [ -e /sys/class/leds/rgb:status ]; then
 				echo 255 0 0 > /sys/class/leds/rgb:status/multi_intensity 2>/dev/null || true
@@ -5185,6 +5253,8 @@ case "$action" in
 				wan)
 					[ "$(printf '%s' "$value" | awk -F'|' '{print NF}')" = 6 ] || { echo 'Perfil WAN SQM invalido' >&2; exit 2; }
 					section="$(printf '%s' "$value" | cut -d '|' -f1)"; network_section="$(printf '%s' "$value" | cut -d '|' -f2)"; device="$(printf '%s' "$value" | cut -d '|' -f3)"; enabled="$(printf '%s' "$value" | cut -d '|' -f4)"; download="$(printf '%s' "$value" | cut -d '|' -f5)"; upload="$(printf '%s' "$value" | cut -d '|' -f6)"
+					[ -n "$download" ] || download=0
+					[ -n "$upload" ] || upload=0
 					case "$section" in wan[0-9]*) ;; *) echo 'Secao SQM WAN invalida' >&2; exit 2 ;; esac
 					case "$network_section" in wan|wan[0-9]*) ;; *) echo 'Interface logica WAN invalida' >&2; exit 2 ;; esac
 					expected_section="$(sqm_section_for_network "$network_section")" || { echo 'Mapeamento SQM invalido' >&2; exit 2; }
@@ -5203,7 +5273,10 @@ case "$action" in
 						*) submitted_sections="${submitted_sections}${section} " ;;
 					esac
 					;;
-				guest_download|guest_upload) valid_sqm_rate "$value" || { echo 'Velocidade visitante invalida' >&2; exit 2; } ;;
+				guest_download|guest_upload)
+					[ -n "$value" ] || value=0
+					valid_sqm_rate "$value" || { echo 'Velocidade visitante invalida' >&2; exit 2; }
+					;;
 				*) echo "Campo SQM invalido: $key" >&2; exit 2 ;;
 			esac
 		done
@@ -5221,16 +5294,18 @@ case "$action" in
 			case "$key" in
 				wan)
 					section="$(printf '%s' "$value" | cut -d '|' -f1)"; device="$(printf '%s' "$value" | cut -d '|' -f3)"; enabled="$(printf '%s' "$value" | cut -d '|' -f4)"; download="$(printf '%s' "$value" | cut -d '|' -f5)"; upload="$(printf '%s' "$value" | cut -d '|' -f6)"
+					[ -n "$download" ] || download=0
+					[ -n "$upload" ] || upload=0
 					ensure_sqm_section "$section" "$device"
 					uci -q set "sqm.$section.enabled=$enabled"
 					uci -q set "sqm.$section.download=$download"
 					uci -q set "sqm.$section.upload=$upload"
 					;;
 				guest_upload)
-					ensure_qos_equipe; uci -q set qos_equipe.guest=guest_limit; uci -q set qos_equipe.guest.enabled=1; uci -q set "qos_equipe.guest.upload_kbps=$value"
+					ensure_qos_equipe; uci -q set qos_equipe.guest=guest_limit; uci -q set qos_equipe.guest.enabled=1; [ -n "$value" ] || value=0; uci -q set "qos_equipe.guest.upload_kbps=$value"
 					;;
 				guest_download)
-					ensure_qos_equipe; uci -q set qos_equipe.guest=guest_limit; uci -q set qos_equipe.guest.enabled=1; uci -q set "qos_equipe.guest.download_kbps=$value"
+					ensure_qos_equipe; uci -q set qos_equipe.guest=guest_limit; uci -q set qos_equipe.guest.enabled=1; [ -n "$value" ] || value=0; uci -q set "qos_equipe.guest.download_kbps=$value"
 					;;
 			esac
 		done
@@ -5247,7 +5322,10 @@ case "$action" in
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
 				wan1_enabled|wan2_enabled) case "$value" in 0|1) ;; *) echo 'Estado SQM invalido' >&2; exit 2 ;; esac ;;
-				wan1_download|wan1_upload|wan2_download|wan2_upload|guest_download|guest_upload) valid_sqm_rate "$value" || { echo 'Velocidade SQM invalida' >&2; exit 2; } ;;
+				wan1_download|wan1_upload|wan2_download|wan2_upload|guest_download|guest_upload)
+					[ -n "$value" ] || value=0
+					valid_sqm_rate "$value" || { echo 'Velocidade SQM invalida' >&2; exit 2; }
+					;;
 				*) echo "Campo SQM invalido: $key" >&2; exit 2 ;;
 			esac
 		done
@@ -5259,10 +5337,10 @@ case "$action" in
 			case "$key" in
 				wan1_enabled) uci -q set "sqm.wan1.enabled=$value" ;;
 				wan2_enabled) uci -q set "sqm.wan2.enabled=$value" ;;
-				wan1_download) uci -q set "sqm.wan1.download=$value" ;;
-				wan1_upload) uci -q set "sqm.wan1.upload=$value" ;;
-				wan2_download) uci -q set "sqm.wan2.download=$value" ;;
-				wan2_upload) uci -q set "sqm.wan2.upload=$value" ;;
+				wan1_download) [ -n "$value" ] || value=0; uci -q set "sqm.wan1.download=$value" ;;
+				wan1_upload) [ -n "$value" ] || value=0; uci -q set "sqm.wan1.upload=$value" ;;
+				wan2_download) [ -n "$value" ] || value=0; uci -q set "sqm.wan2.download=$value" ;;
+				wan2_upload) [ -n "$value" ] || value=0; uci -q set "sqm.wan2.upload=$value" ;;
 				guest_upload)
 					ensure_qos_equipe
 					uci -q set qos_equipe.guest=guest_limit
@@ -6104,6 +6182,27 @@ case "$action" in
 			fi
 		) &
 		echo 'ok'
+		;;
+	wifi-iot-optimize)
+		radio2="$(wifi_radio_2g)"
+		if [ -n "$radio2" ]; then
+			uci -q set "wireless.$radio2.legacy_rates=0"
+			uci -q set "wireless.$radio2.basic_rate=6000 12000 24000"
+			uci commit wireless
+			echo 'ok'
+		else
+			echo 'Radio 2,4 GHz nao encontrado' >&2; exit 3
+		fi
+		;;
+	wifi-dfs-optimize)
+		radio5="$(wifi_radio_5g)"
+		if [ -n "$radio5" ]; then
+			uci -q set "wireless.$radio5.ieee80211h=1"
+			uci commit wireless
+			echo 'ok'
+		else
+			echo 'Radio 5 GHz nao encontrado' >&2; exit 3
+		fi
 		;;
 	country)
 		country="$(printf '%s' "$2" | tr 'a-z' 'A-Z')"

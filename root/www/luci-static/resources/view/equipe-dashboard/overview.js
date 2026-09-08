@@ -1767,20 +1767,33 @@ return view.extend({
 	},
 	editSqmLimits: function(){
 		const data=this.currentData||{}, sqm=values(data.sqm), qosValues=values(data.qos), qos=qosValues.main||{}, qosGuest=qosValues.guest||{};
-		const field=function(label,value,hint){const node=E('input',{type:'number',class:'cbi-input-text',min:0,max:100000,step:'0.1',value:kbpsToMbpsInput(value)});return {node:node,row:E('label',{class:'ex-qos-edit-field'},[E('span',{},[label+' (Mbps)']),node,E('small',{class:'ex-muted'},[hint||'Mbps • 0 = ilimitado / sem limite'])])};};
+		const field=function(label,value,hint){const node=E('input',{type:'number',class:'cbi-input-text',min:0,max:100000,step:'0.1',placeholder:'0 (ilimitado)',value:kbpsToMbpsInput(value)});return {node:node,row:E('label',{class:'ex-qos-edit-field'},[E('span',{},[label+' (Mbps)']),node,E('small',{class:'ex-muted'},[hint||'Mbps • 0 ou vazio = ilimitado'])])};};
 		const profiles=sqmWanProfiles(data);if(!profiles.length)throw new Error('Nenhuma interface configurada como WAN foi encontrada.');
 		const guestDownloadLimit=qosGuest.download_kbps||qos.guest_download_kbps||0, guestUploadLimit=qosGuest.upload_kbps||qos.guest_upload_kbps||0;
 		const editors=profiles.map(function(profile){const queue=sqm[profile.section]||{},enabled=E('input',{type:'checkbox'}),download=field(profile.label+' download',queue.download),upload=field(profile.label+' upload',queue.upload);enabled.checked=queue.enabled==='1';return {profile:profile,enabled:enabled,download:download,upload:upload,section:E('section',{},[E('h3',{},[profile.label]),E('small',{class:'ex-muted'},['Interface '+profile.network+' • dispositivo '+profile.device+(profile.online?' • online':' • sem link')]),E('label',{class:'ex-qos-edit-toggle'},[enabled,E('span',{},['Ativar fila '+profile.label])]),download.row,upload.row])};});
-		const guestDown=field('Visitantes download total',guestDownloadLimit,'Mbps • 0 = ilimitado'), guestUp=field('Visitantes upload total',guestUploadLimit,'Mbps • exemplo: 1,5 • 0 = ilimitado');
+		const guestDown=field('Visitantes download total',guestDownloadLimit,'Mbps • 0 ou vazio = ilimitado'), guestUp=field('Visitantes upload total',guestUploadLimit,'Mbps • exemplo: 1,5 • 0 ou vazio = ilimitado');
 		ui.showModal('Editar SQM / CAKE',[
 			E('div',{style:'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;'},[
-				E('p',{class:'ex-muted',style:'margin:0;'},['Defina os limites em Mbps. Exemplo: 1,2 Gbps = 1200 Mbps. Use 0 quando não quiser limitar aquela direção.']),
+				E('p',{class:'ex-muted',style:'margin:0;'},['Defina os limites em Mbps. Exemplo: 1,2 Gbps = 1200 Mbps. Use 0 ou deixe em branco quando não quiser limitar aquela direção (ilimitado).']),
 				E('button',{class:'ex-mini-button','click':L.bind(function(){ui.hideModal();this.openFastCom();},this)},['🎬 Medir no Fast.com'])
 			]),
 			E('div',{class:'ex-qos-edit-grid'},editors.map(function(editor){return editor.section;}).concat([E('section',{},[E('h3',{},['Visitantes']),guestDown.row,guestUp.row])])),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
 			const btn = ev.currentTarget;
-			const args=['sqm-save-v2'];let invalid=false;editors.forEach(function(editor){const profile=editor.profile,download=mbpsToKbps(editor.download.node.value),upload=mbpsToKbps(editor.upload.node.value);if(download==null||upload==null)invalid=true;args.push('wan='+[profile.section,profile.network,profile.device,editor.enabled.checked?'1':'0',download,upload].join('|'));});const guestDownload=mbpsToKbps(guestDown.node.value),guestUpload=mbpsToKbps(guestUp.node.value);
-			if(invalid||guestDownload==null||guestUpload==null){ui.addNotification(null,E('p',{},['Informe velocidades válidas em Mbps.']),'danger');return;}
+			const args=['sqm-save-v2'];let invalid=false;
+			editors.forEach(function(editor){
+				const profile=editor.profile;
+				const dRaw=String(editor.download.node.value||'').trim();
+				const uRaw=String(editor.upload.node.value||'').trim();
+				const download=(dRaw===''||dRaw==='0')?'0':mbpsToKbps(dRaw);
+				const upload=(uRaw===''||uRaw==='0')?'0':mbpsToKbps(uRaw);
+				if(download==null||upload==null)invalid=true;
+				args.push('wan='+[profile.section,profile.network,profile.device,editor.enabled.checked?'1':'0',download,upload].join('|'));
+			});
+			const gDRaw=String(guestDown.node.value||'').trim();
+			const gURaw=String(guestUp.node.value||'').trim();
+			const guestDownload=(gDRaw===''||gDRaw==='0')?'0':mbpsToKbps(gDRaw);
+			const guestUpload=(gURaw===''||gURaw==='0')?'0':mbpsToKbps(gURaw);
+			if(invalid||guestDownload==null||guestUpload==null){ui.addNotification(null,E('p',{},['Informe velocidades válidas em Mbps ou 0 para ilimitado.']),'danger');return;}
 			btn.disabled = true;
 			btn.textContent = 'Salvando SQM…';
 			args.push('guest_download='+guestDownload,'guest_upload='+guestUpload);
@@ -2469,9 +2482,9 @@ return view.extend({
 	showAddWifiModal: function() {
 		const ssid = E('input', { class: 'cbi-input-text', placeholder: 'Ex: MinhaRede_IoT', maxlength: 32, style: 'width:100%' });
 		const encSelect = E('select', { class: 'cbi-input-select', style: 'width:100%' }, [
-			E('option', { value: 'sae-mixed' }, ['WPA2 / WPA3 Misto (Recomendado — Seguro e compatível)']),
-			E('option', { value: 'psk2' }, ['WPA2-PSK (AES — Padrão mais compatível)']),
-			E('option', { value: 'sae' }, ['WPA3-SAE Puro (Máxima segurança moderna)']),
+			E('option', { value: 'sae-mixed' }, ['WPA2 / WPA3 Misto (Mais Seguro)']),
+			E('option', { value: 'psk2' }, ['WPA2-PSK (Máxima Compatibilidade IoT)']),
+			E('option', { value: 'sae' }, ['WPA3-SAE Puro (Máxima Segurança Moderna)']),
 			E('option', { value: 'none' }, ['Sem Senha (Rede Aberta)'])
 		]);
 		const password = E('input', { type: 'password', class: 'cbi-input-text', placeholder: 'senha (mínimo 8 caracteres)', maxlength: 63, style: 'width:100%' });
@@ -2492,18 +2505,32 @@ return view.extend({
 		const passRow2 = E('label', { class: 'ex-device-config-block' }, [ E('strong', {}, ['Confirmar senha']), passwordConfirm ]);
 		const showRow = E('label', { class: 'ex-show-password' }, [ show, E('span', {}, ['Mostrar senha digitada']) ]);
 
+		const encAlert = E('div', { class: 'alert-message', style: 'margin-top: 6px; font-size: 11.5px; display: none;' });
 		const updateEncVisibility = function() {
-			const isNone = encSelect.value === 'none';
+			const encVal = encSelect.value;
+			const isNone = encVal === 'none';
 			passRow1.style.display = isNone ? 'none' : 'block';
 			passRow2.style.display = isNone ? 'none' : 'block';
 			showRow.style.display = isNone ? 'none' : 'flex';
+			
+			if (encVal === 'psk2') {
+				encAlert.className = 'alert-message success';
+				encAlert.style.display = 'block';
+				encAlert.innerHTML = '<strong>PMF Desativado:</strong> Recomendado para Casa Inteligente. Garante a conexão de dispositivos IoT antigos e modernos sem falhas de autenticação.';
+			} else if (encVal === 'sae-mixed' || encVal === 'sae') {
+				encAlert.className = 'alert-message warning';
+				encAlert.style.display = 'block';
+				encAlert.innerHTML = '<strong>Atenção ao WPA3 e PMF:</strong> A segurança WPA3 exige o uso de PMF. Vários dispositivos IoT/Smart Home recusarão conexão na rede.';
+			} else {
+				encAlert.style.display = 'none';
+			}
 		};
 		encSelect.addEventListener('change', updateEncVisibility);
 		updateEncVisibility();
 
 		const rows = [
 			E('label', { class: 'ex-device-config-block' }, [ E('strong', {}, ['Nome da nova rede Wi‑Fi (SSID)']), ssid ]),
-			E('label', { class: 'ex-device-config-block' }, [ E('strong', {}, ['Segurança / Criptografia']), encSelect ]),
+			E('label', { class: 'ex-device-config-block' }, [ E('strong', {}, ['Segurança / Criptografia']), encSelect, encAlert ]),
 			E('label', { class: 'ex-device-config-block' }, [ E('strong', {}, ['Tipo de rede e isolamento']), netSelect, E('small', { class: 'ex-muted' }, ['Escolha se os aparelhos desta rede podem conversar com outros computadores da casa ou se ficam isolados.']) ]),
 			E('label', { class: 'ex-device-config-block' }, [ E('strong', {}, ['Frequência / Bandas']), bandSelect ]),
 			passRow1,
@@ -2546,9 +2573,9 @@ return view.extend({
 		split.checked=!!current.split;
 		const curEnc=current.encryption||'sae-mixed';
 		const encSelect = E('select', { class: 'cbi-input-select', style: 'width:100%' }, [
-			E('option', { value: 'sae-mixed' }, ['WPA2 / WPA3 Misto (Recomendado — Seguro e compatível)']),
-			E('option', { value: 'psk2' }, ['WPA2-PSK (AES — Padrão mais compatível)']),
-			E('option', { value: 'sae' }, ['WPA3-SAE Puro (Máxima segurança moderna)']),
+			E('option', { value: 'sae-mixed' }, ['WPA2 / WPA3 Misto (Mais Seguro)']),
+			E('option', { value: 'psk2' }, ['WPA2-PSK (Máxima Compatibilidade IoT)']),
+			E('option', { value: 'sae' }, ['WPA3-SAE Puro (Máxima Segurança Moderna)']),
 			E('option', { value: 'none' }, ['Sem Senha (Rede Aberta)'])
 		]);
 		encSelect.value = curEnc;
@@ -2559,7 +2586,7 @@ return view.extend({
 		const password2=E('input',{type:'password',class:'cbi-input-text',value:'',placeholder:'repita a nova senha se preencher',maxlength:63,autocomplete:'new-password',style:'width:100%'});
 		const show=E('input',{type:'checkbox'});
 		show.addEventListener('change',function(){password.type=password2.type=show.checked?'text':'password';});
-		const unifiedRow=E('label',{class:'ex-device-config-block'},[E('strong',{},['Nome da rede Wi‑Fi']),ssid,E('small',{class:'ex-muted'},['Aplicado ao 2,4 GHz e ao 5 GHz.'])]);
+		const unifiedRow=E('label',{class:'ex-device-config-block'},[E('strong',{},['Nome da rede WiFi']),ssid,E('small',{class:'ex-muted'},['Aplicado ao 2,4 GHz e ao 5 GHz.'])]);
 		const splitRows=E('div',{},[E('label',{class:'ex-device-config-block'},[E('strong',{},['Nome 2,4 GHz']),ssid2]),E('label',{class:'ex-device-config-block'},[E('strong',{},['Nome 5 GHz']),ssid5])]);
 		const updateSplit=function(){unifiedRow.style.display=split.checked?'none':'block';splitRows.style.display=split.checked?'block':'none';};
 		split.addEventListener('change',function(){if(split.checked){ssid2.value=ssid2.value||ssid.value;ssid5.value=ssid5.value||ssid.value;}else{ssid.value=ssid.value||ssid2.value||ssid5.value;}updateSplit();});
@@ -2569,17 +2596,30 @@ return view.extend({
 		const passRow2 = E('label',{class:'ex-device-config-block'},[E('strong',{},['Confirmar nova senha']),password2]);
 		const showRow = E('label',{class:'ex-show-password'},[show,E('span',{},['Mostrar senha digitada'])]);
 
+		const encAlert = E('div', { class: 'alert-message', style: 'margin-top: 6px; font-size: 11.5px; display: none;' });
 		const updateEncVisibility = function() {
-			const isNone = encSelect.value === 'none';
+			const encVal = encSelect.value;
+			const isNone = encVal === 'none';
 			passRow1.style.display = isNone ? 'none' : 'block';
 			passRow2.style.display = isNone ? 'none' : 'block';
 			showRow.style.display = isNone ? 'none' : 'flex';
+			if (encVal === 'psk2') {
+				encAlert.className = 'alert-message success';
+				encAlert.style.display = 'block';
+				encAlert.innerHTML = '<strong>PMF Desativado:</strong> Recomendado para Casa Inteligente. Garante a conexão de dispositivos IoT antigos e modernos (Tuya/Sonoff) sem falhas de autenticação 802.11w.';
+			} else if (encVal === 'sae-mixed' || encVal === 'sae') {
+				encAlert.className = 'alert-message warning';
+				encAlert.style.display = 'block';
+				encAlert.innerHTML = '<strong>Atenção ao WPA3 e PMF:</strong> A segurança WPA3 exige/ativa o PMF (Protected Management Frames). Vários dispositivos Smart Home/IoT recusarão a conexão.';
+			} else {
+				encAlert.style.display = 'none';
+			}
 		};
 		encSelect.addEventListener('change', updateEncVisibility);
 		updateEncVisibility();
 
 		const rows=[
-			E('label',{class:'ex-device-config-block'},[E('strong',{},['Segurança / Criptografia']),encSelect]),
+			E('label',{class:'ex-device-config-block'},[E('strong',{},['Segurança / Criptografia']),encSelect,encAlert]),
 			E('label',{class:'ex-show-password'},[split,E('span',{},['Separar nomes 2,4 GHz e 5 GHz'])]),
 			unifiedRow,
 			splitRows
@@ -2680,51 +2720,88 @@ return view.extend({
 		const ch2Select = E('select', { class: 'cbi-input-select', style: 'width:100%' }, [
 			E('option', { value: 'auto' }, ['Automático (Auto)']),
 			E('option', { value: '1' }, ['Canal 1 (2412 MHz — Recomendado / Sem sobreposição)']),
-			E('option', { value: '2' }, ['Canal 2 (2417 MHz)']),
-			E('option', { value: '3' }, ['Canal 3 (2422 MHz)']),
-			E('option', { value: '4' }, ['Canal 4 (2427 MHz)']),
-			E('option', { value: '5' }, ['Canal 5 (2432 MHz)']),
+			E('option', { value: '2' }, ['Canal 2 (2417 MHz — Sobreposição com canais 1 e 6)']),
+			E('option', { value: '3' }, ['Canal 3 (2422 MHz — Sobreposição com canais 1 e 6)']),
+			E('option', { value: '4' }, ['Canal 4 (2427 MHz — Sobreposição com canais 1 e 6)']),
+			E('option', { value: '5' }, ['Canal 5 (2432 MHz — Sobreposição com canais 1 e 6)']),
 			E('option', { value: '6' }, ['Canal 6 (2437 MHz — Recomendado / Sem sobreposição)']),
-			E('option', { value: '7' }, ['Canal 7 (2442 MHz)']),
-			E('option', { value: '8' }, ['Canal 8 (2447 MHz)']),
-			E('option', { value: '9' }, ['Canal 9 (2452 MHz)']),
-			E('option', { value: '10' }, ['Canal 10 (2457 MHz)']),
+			E('option', { value: '7' }, ['Canal 7 (2442 MHz — Sobreposição com canais 6 e 11)']),
+			E('option', { value: '8' }, ['Canal 8 (2447 MHz — Sobreposição com canais 6 e 11)']),
+			E('option', { value: '9' }, ['Canal 9 (2452 MHz — Sobreposição com canais 6 e 11)']),
+			E('option', { value: '10' }, ['Canal 10 (2457 MHz — Sobreposição com canais 6 e 11)']),
 			E('option', { value: '11' }, ['Canal 11 (2462 MHz — Recomendado / Sem sobreposição)'])
 		]);
 		ch2Select.value = cur.two || 'auto';
 
+		const ch2Note = E('div', { class: 'alert-message info', style: 'margin-top: 6px; font-size: 11.5px; display: none;' });
+		const updateCh2Note = function() {
+			const v = ch2Select.value;
+			if (v === '1' || v === '6' || v === '11') {
+				ch2Note.className = 'alert-message success';
+				ch2Note.textContent = '✅ Canal 100% limpo de sobreposição: padrão ouro da indústria para estabilidade de IoT (lâmpadas, tomadas, câmeras) e celulares.';
+				ch2Note.style.display = 'block';
+			} else if (v === 'auto') {
+				ch2Note.style.display = 'none';
+			} else {
+				ch2Note.className = 'alert-message warning';
+				ch2Note.textContent = '⚠️ Canal com sobreposição espectral: causa interferência adjacente (ACI) com vizinhos, aumentando perda de pacotes em dispositivos fracos. Prefira 1, 6 ou 11.';
+				ch2Note.style.display = 'block';
+			}
+		};
+		ch2Select.addEventListener('change', updateCh2Note);
+		updateCh2Note();
+
+		const has160Support = !!(this.capabilities && this.capabilities.hardware && this.capabilities.hardware.wifi_160_supported);
+		const unii1Label = has160Support
+			? 'UNII-1 — Livre de DFS / Recomendado (Suporta 80/160 MHz)'
+			: 'UNII-1 — Livre de DFS / Recomendado (Até 80 MHz)';
+		const ch36Desc = has160Support
+			? 'Canal 36 (5180 MHz — Recomendado / Âncora 160 MHz / Sem DFS)'
+			: 'Canal 36 (5180 MHz — Recomendado / Sem DFS / Até 80 MHz)';
+		const ch40Desc = has160Support
+			? 'Canal 40 (5200 MHz — Seguro / Compatível com 160 MHz)'
+			: 'Canal 40 (5200 MHz — Seguro / Sem DFS / Até 80 MHz)';
+		const ch44Desc = has160Support
+			? 'Canal 44 (5220 MHz — Seguro / Compatível com 160 MHz)'
+			: 'Canal 44 (5220 MHz — Seguro / Sem DFS / Até 80 MHz)';
+		const ch48Desc = has160Support
+			? 'Canal 48 (5240 MHz — Seguro / Compatível com 160 MHz)'
+			: 'Canal 48 (5240 MHz — Seguro / Sem DFS / Até 80 MHz)';
+
 		const ch5Select = E('select', { class: 'cbi-input-select', style: 'width:100%' }, [
 			E('option', { value: 'auto' }, ['Automático (Auto)']),
-			E('optgroup', { label: 'Padrão UNII-1 (Sem DFS / Sem Radar — Suporta 80/160 MHz)' }, [
-				E('option', { value: '36' }, ['Canal 36 (5180 MHz — Recomendado / Compatível com 160 MHz)']),
-				E('option', { value: '40' }, ['Canal 40 (5200 MHz — Compatível com 160 MHz)']),
-				E('option', { value: '44' }, ['Canal 44 (5220 MHz — Compatível com 160 MHz)']),
-				E('option', { value: '48' }, ['Canal 48 (5240 MHz — Compatível com 160 MHz)'])
+			E('optgroup', { label: unii1Label }, [
+				E('option', { value: '36' }, [ch36Desc]),
+				E('option', { value: '40' }, [ch40Desc]),
+				E('option', { value: '44' }, [ch44Desc]),
+				E('option', { value: '48' }, [ch48Desc])
 			]),
-			E('optgroup', { label: 'UNII-3 Alta Potência (Sem DFS / Sem Radar — Até 80 MHz)' }, [
-				E('option', { value: '149' }, ['Canal 149 (5745 MHz — Recomendado / Máx 80 MHz)']),
-				E('option', { value: '153' }, ['Canal 153 (5765 MHz — Máx 80 MHz)']),
-				E('option', { value: '157' }, ['Canal 157 (5785 MHz — Máx 80 MHz)']),
-				E('option', { value: '161' }, ['Canal 161 (5805 MHz — Máx 80 MHz)']),
-				E('option', { value: '165' }, ['Canal 165 (5825 MHz — Máx 20 MHz)'])
+			E('optgroup', { label: 'UNII-3 — Livre de DFS & Alta Potência TX (Máx 80 MHz)' }, [
+				E('option', { value: '149' }, ['Canal 149 (5745 MHz — Recomendado / Maior Potência / Sem DFS)']),
+				E('option', { value: '153' }, ['Canal 153 (5765 MHz — Alta Potência / Sem DFS)']),
+				E('option', { value: '157' }, ['Canal 157 (5785 MHz — Alta Potência / Sem DFS)']),
+				E('option', { value: '161' }, ['Canal 161 (5805 MHz — Alta Potência / Sem DFS)']),
+				E('option', { value: '165' }, ['Canal 165 (5825 MHz — Alta Potência / Somente 20 MHz)'])
 			]),
-			E('optgroup', { label: 'Canais DFS (Sujeitos a verificação de radar meteorológico)' }, [
-				E('option', { value: '52' }, ['Canal 52 (5260 MHz — DFS)']),
-				E('option', { value: '56' }, ['Canal 56 (5280 MHz — DFS)']),
-				E('option', { value: '60' }, ['Canal 60 (5300 MHz — DFS)']),
-				E('option', { value: '64' }, ['Canal 64 (5320 MHz — DFS)']),
-				E('option', { value: '100' }, ['Canal 100 (5500 MHz — DFS)']),
-				E('option', { value: '104' }, ['Canal 104 (5520 MHz — DFS)']),
-				E('option', { value: '108' }, ['Canal 108 (5540 MHz — DFS)']),
-				E('option', { value: '112' }, ['Canal 112 (5560 MHz — DFS)']),
-				E('option', { value: '116' }, ['Canal 116 (5580 MHz — DFS)']),
-				E('option', { value: '120' }, ['Canal 120 (5600 MHz — DFS)']),
-				E('option', { value: '124' }, ['Canal 124 (5620 MHz — DFS)']),
-				E('option', { value: '128' }, ['Canal 128 (5640 MHz — DFS)']),
-				E('option', { value: '132' }, ['Canal 132 (5660 MHz — DFS)']),
-				E('option', { value: '136' }, ['Canal 136 (5680 MHz — DFS)']),
-				E('option', { value: '140' }, ['Canal 140 (5700 MHz — DFS)']),
-				E('option', { value: '144' }, ['Canal 144 (5720 MHz — DFS)'])
+			E('optgroup', { label: 'Canais DFS — Espectro Limpo (Espera CAC de 60s)' }, [
+				E('option', { value: '52' }, [has160Support ? 'Canal 52 (5260 MHz — DFS Bloco 2A / Extensão 160 MHz)' : 'Canal 52 (5260 MHz — DFS Bloco 2A)']),
+				E('option', { value: '56' }, ['Canal 56 (5280 MHz — DFS Bloco 2A)']),
+				E('option', { value: '60' }, ['Canal 60 (5300 MHz — DFS Bloco 2A)']),
+				E('option', { value: '64' }, ['Canal 64 (5320 MHz — DFS Bloco 2A)']),
+				E('option', { value: '100' }, ['Canal 100 (5500 MHz — DFS Espectro Limpo)']),
+				E('option', { value: '104' }, ['Canal 104 (5520 MHz — DFS Espectro Limpo)']),
+				E('option', { value: '108' }, ['Canal 108 (5540 MHz — DFS Espectro Limpo)']),
+				E('option', { value: '112' }, ['Canal 112 (5560 MHz — DFS Espectro Limpo)']),
+				E('option', { value: '116' }, ['Canal 116 (5580 MHz — DFS Espectro Limpo)']),
+				E('option', { value: '132' }, ['Canal 132 (5660 MHz — DFS Espectro Limpo / Máx 80 MHz)']),
+				E('option', { value: '136' }, ['Canal 136 (5680 MHz — DFS Espectro Limpo / Máx 80 MHz)']),
+				E('option', { value: '140' }, ['Canal 140 (5700 MHz — DFS Espectro Limpo / Máx 80 MHz)']),
+				E('option', { value: '144' }, ['Canal 144 (5720 MHz — DFS Espectro Limpo / Máx 80 MHz)'])
+			]),
+			E('optgroup', { label: '⚠️ TDWR — Radares Meteorológicos (EVITAR / 10 Minutos de Espera)' }, [
+				E('option', { value: '120' }, ['Canal 120 (5600 MHz — ⚠️ Radar TDWR / Espera obrigatória de 10 min)']),
+				E('option', { value: '124' }, ['Canal 124 (5620 MHz — ⚠️ Radar TDWR / Espera obrigatória de 10 min)']),
+				E('option', { value: '128' }, ['Canal 128 (5640 MHz — ⚠️ Radar TDWR / Espera obrigatória de 10 min)'])
 			])
 		]);
 		ch5Select.value = cur.five || 'auto';
@@ -2732,11 +2809,28 @@ return view.extend({
 		const wConf = wifiConfig(this.currentData && this.currentData.wireless || {});
 		const radio5Obj = wConf.r5g || wConf.r1 || {};
 		const is160Mode = String(radio5Obj.htmode || '').indexOf('160') >= 0;
-		const ch5Note = E('div', { class: 'alert-message info', style: 'margin-top: 8px; font-size: 12px; display: none;' });
+		const ch5Note = E('div', { class: 'alert-message info', style: 'margin-top: 6px; font-size: 11.5px; display: none;' });
 		const updateCh5Note = function() {
 			const num = Number(ch5Select.value);
-			if (is160Mode && num >= 132) {
-				ch5Note.textContent = 'ℹ️ O canal ' + ch5Select.value + ' opera em no máximo 80 MHz. A largura do 5 GHz será ajustada automaticamente para 80 MHz ao salvar para garantir que a rede suba sem interrupções.';
+			if (num === 120 || num === 124 || num === 128) {
+				ch5Note.className = 'alert-message danger';
+				ch5Note.textContent = '⚠️ ALERTA TDWR: Os canais 120 a 128 são reservados para radares meteorológicos Doppler. Por exigência regulatória estrita da Anatel, o roteador deve aguardar 10 MINUTOS (600s) de silêncio absoluto (CAC) antes de ativar o Wi-Fi. Evite estes canais para não ficar sem rede 5 GHz após reinicializações!';
+				ch5Note.style.display = 'block';
+			} else if (is160Mode && num >= 132) {
+				ch5Note.className = 'alert-message warning';
+				ch5Note.textContent = 'ℹ️ O canal ' + ch5Select.value + ' opera em no máximo 80 MHz. A largura do 5 GHz será ajustada automaticamente para 80 MHz ao salvar para garantir estabilidade.';
+				ch5Note.style.display = 'block';
+			} else if ([52, 56, 60, 64, 100, 104, 108, 112, 116, 132, 136, 140, 144].indexOf(num) >= 0) {
+				ch5Note.className = 'alert-message info';
+				ch5Note.textContent = 'ℹ️ Canal DFS: Ao reiniciar ou aplicar, o roteador realiza 60 segundos de escuta inicial silenciosa (CAC) para checagem de radar antes de transmitir.';
+				ch5Note.style.display = 'block';
+			} else if ([36, 40, 44, 48].indexOf(num) >= 0) {
+				ch5Note.className = 'alert-message success';
+				ch5Note.textContent = '✅ Faixa UNII-1: 100% livre de DFS/radar (CAC = 0s, inicialização instantânea). ' + (has160Support ? 'Recomendado como âncora para 160 MHz.' : 'Recomendado para máxima estabilidade em 80 MHz.');
+				ch5Note.style.display = 'block';
+			} else if ([149, 153, 157, 161, 165].indexOf(num) >= 0) {
+				ch5Note.className = 'alert-message success';
+				ch5Note.textContent = '✅ Faixa UNII-3: 100% livre de DFS, permite potências de transmissão maiores (até 1W / 30 dBm) para alcance expandido. Opera em até 80 MHz.';
 				ch5Note.style.display = 'block';
 			} else {
 				ch5Note.style.display = 'none';
@@ -2745,17 +2839,22 @@ return view.extend({
 		ch5Select.addEventListener('change', updateCh5Note);
 		updateCh5Note();
 
+		const ch5HelpText = has160Support
+			? 'Canais 36-48 e 149-165 não usam DFS (sem pausas por radar). Canais 36-48 suportam 160 MHz; canais 149-165 operam em até 80 MHz.'
+			: 'Canais 36-48 e 149-165 não usam DFS (sem pausas por radar). Este hardware opera com canais de até 80 MHz (VHT80) para máxima estabilidade.';
+
 		const rows = [
 			E('label', { class: 'ex-device-config-block' }, [
 				E('strong', {}, ['Canal 2,4 GHz']),
 				ch2Select,
-				E('small', { class: 'ex-muted' }, ['Canais 1, 6 e 11 são os únicos sem sobreposição de frequência no 2,4 GHz.'])
+				ch2Note,
+				E('small', { class: 'ex-muted' }, ['Canais 1, 6 e 11 são os únicos sem sobreposição no 2,4 GHz. Dica: use 20 MHz (HT20) para total estabilidade de automação residencial e IoT.'])
 			]),
 			E('label', { class: 'ex-device-config-block' }, [
 				E('strong', {}, ['Canal 5 GHz']),
 				ch5Select,
 				ch5Note,
-				E('small', { class: 'ex-muted' }, ['Canais 36-48 e 149-165 não usam DFS (sem pausas por radar). Canais 36-48 suportam 160 MHz; canais 149-165 operam em até 80 MHz.'])
+				E('small', { class: 'ex-muted' }, [ch5HelpText])
 			]),
 			E('p', { class: 'alert-message warning' }, ['Ao aplicar, os rádios Wi‑Fi reiniciarão no novo canal selecionado.']),
 			E('div', { class: 'right' }, [
@@ -2814,6 +2913,66 @@ return view.extend({
 			E('p',{},[description]),
 			E('p',{class:'alert-message warning'},['A alteração reiniciará as duas bandas do Wi‑Fi e desconectará temporariamente os aparelhos conectados.']),
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const args=['channels',mode];if(fixed)args.push(suggested.two,suggested.five);return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao aplicar os canais');ui.hideModal();reloadSoon(fixed?'Canais sugeridos salvos. Recarregando após reiniciar o Wi‑Fi…':'Seleção automática ligada. Recarregando após reiniciar o Wi‑Fi…',4200);}).catch(L.bind(function(e){if(reloadAfterExpectedDisconnect(e,fixed?'Canais enviados. O Wi‑Fi está reiniciando; recarregando o painel…':'Modo automático enviado. O Wi‑Fi está reiniciando; recarregando o painel…',5200))return;this.updateWifi(this.currentData);ui.addNotification(null,E('p',{},[e.message]));},this));},this)},[fixed?'Confirmar e aplicar':'Confirmar modo automático'])])
+		]);
+	},
+	optimizeIot: function() {
+		ui.showModal('Otimização IoT (Casa Inteligente)', [
+			E('p', { class: 'alert-message info' }, [
+				'A otimização IoT elimina a necessidade de manutenção de taxas muito antigas (1 Mbps a 2 Mbps - padrão 802.11b) na rede de 2.4 GHz, forçando uma base mais rápida e eficiente.'
+			]),
+			E('ul', { style: 'margin-left: 20px;' }, [
+				E('li', {}, ['Libera até 40% a mais de tempo de antena (airtime).']),
+				E('li', {}, ['Aumenta a estabilidade geral da rede Wi-Fi.']),
+				E('li', {}, ['Não afeta dispositivos modernos ou a maioria esmagadora de equipamentos Casa Inteligente (que usam o padrão "G" ou "N").'])
+			]),
+			E('div', { class: 'right', style: 'margin-top: 15px;' }, [
+				E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': ui.hideModal }, ['Cancelar']),
+				' ',
+				E('button', { class: 'btn cbi-button cbi-button-positive', 'click': L.bind(function(ev) {
+					const btn = ev.currentTarget;
+					btn.disabled = true;
+					btn.textContent = 'Aplicando...';
+					return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-iot-optimize']).then(function(r) {
+						if (r.code) throw new Error(r.stderr || 'Falha ao aplicar otimização IoT');
+						ui.hideModal();
+						ui.addNotification(null, E('p', {}, ['Otimização IoT aplicada com sucesso! Seu Wi-Fi de 2.4 GHz agora roda com maior eficiência no ar.']), 'info');
+					}).catch(function(e) {
+						btn.disabled = false;
+						btn.textContent = 'Aplicar otimização';
+						ui.addNotification(null, E('p', {}, [String(e && e.message || e)]), 'danger');
+					});
+				}, this) }, ['Aplicar otimização'])
+			])
+		]);
+	},
+	optimizeDfs: function() {
+		ui.showModal('Otimização de Quedas (Radar DFS)', [
+			E('p', { class: 'alert-message info' }, [
+				'Ativa o protocolo "802.11h CSA (Channel Switch Announcement)" na rede 5 GHz. Se o roteador detectar um radar meteorológico, em vez de derrubar sua rede abruptamente, ele anunciará aos dispositivos para mudarem de canal sem desconectar.'
+			]),
+			E('ul', { style: 'margin-left: 20px;' }, [
+				E('li', {}, ['Mantém chamadas, jogos e downloads ativos mesmo durante mudança forçada de canal.']),
+				E('li', {}, ['Aumenta substancialmente a estabilidade em canais DFS (52 ao 144).']),
+				E('li', {}, ['Compatível com qualquer celular ou placa de rede dos últimos 10 anos.'])
+			]),
+			E('div', { class: 'right', style: 'margin-top: 15px;' }, [
+				E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': ui.hideModal }, ['Cancelar']),
+				' ',
+				E('button', { class: 'btn cbi-button cbi-button-positive', 'click': L.bind(function(ev) {
+					const btn = ev.currentTarget;
+					btn.disabled = true;
+					btn.textContent = 'Aplicando...';
+					return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-dfs-optimize']).then(function(r) {
+						if (r.code) throw new Error(r.stderr || 'Falha ao aplicar otimização DFS');
+						ui.hideModal();
+						ui.addNotification(null, E('p', {}, ['Protocolo 802.11h CSA ativado com sucesso no 5 GHz! Sua rede agora fará transição inteligente em caso de radares.']), 'info');
+					}).catch(function(e) {
+						btn.disabled = false;
+						btn.textContent = 'Aplicar otimização';
+						ui.addNotification(null, E('p', {}, [String(e && e.message || e)]), 'danger');
+					});
+				}, this) }, ['Ativar Protocolo'])
+			])
 		]);
 	},
 	changeWifiWidth: function() {
@@ -4617,10 +4776,13 @@ return view.extend({
 			const dnsMode=select(saved.dns_mode||'recommended',[['recommended','DNS recomendado'],['operator','DNS da operadora'],['custom','DNS personalizado']]);
 			const savedDns=String(saved.dns_servers||'1.1.1.1 1.0.0.1 8.8.8.8').split(/\s+/);
 			const dns1=input('text',savedDns[0]||'1.1.1.1',{placeholder:'DNS 1'}), dns2=input('text',savedDns[1]||'1.0.0.1',{placeholder:'DNS 2'}), dns3=input('text',savedDns[2]||'8.8.8.8',{placeholder:'DNS 3 opcional'});
-			const disableIpv6=checkbox(saved.disable_ipv6!==false), disableWps=checkbox(saved.disable_wps!==false), useArgon=checkbox(saved.use_argon!==false);
-			const modules=(saved.install_modules||'argon sqm mwan3 nlbwmon').split(/\s+/), moduleBoxes={};
+			const isLegacy = !!(this.capabilities && this.capabilities.hardware && this.capabilities.hardware.is_legacy_owrt);
+			const disableIpv6=checkbox(saved.disable_ipv6!==false), disableWps=checkbox(saved.disable_wps!==false), useArgon=checkbox(!isLegacy && saved.use_argon!==false);
+			const defaultModules = isLegacy ? 'sqm mwan3 nlbwmon' : 'sqm mwan3 nlbwmon';
+			const modules=(saved.install_modules||defaultModules).split(/\s+/), moduleBoxes={};
 			const moduleNames={argon:'Tema Argon',sqm:'SQM / CAKE',mwan3:'Multi‑WAN',nlbwmon:'Consumo por dispositivo',upnp:'UPnP / NAT‑PMP',uhttpd:'HTTPS/uHTTPd'};
-			['argon','sqm','mwan3','nlbwmon','upnp','uhttpd'].forEach(L.bind(function(key){const f=this.feature(key)||{}, installed=f.installed;moduleBoxes[key]=checkbox(installed||modules.indexOf(key)>=0);moduleBoxes[key].disabled=installed;},this));
+			const modKeys = isLegacy ? ['sqm','mwan3','nlbwmon','upnp','uhttpd'] : ['argon','sqm','mwan3','nlbwmon','upnp','uhttpd'];
+			modKeys.forEach(L.bind(function(key){const f=this.feature(key)||{}, installed=f.installed;moduleBoxes[key]=checkbox(installed||modules.indexOf(key)>=0);moduleBoxes[key].disabled=installed;},this));
 			const progress=E('div',{class:'ex-ez-progress'},[E('strong',{},['Progresso salvo: etapa ',String(saved.applied_step||0),'/7']),E('small',{class:'ex-muted'},[saved.state==='applied'?'Configuração já aplicada.':(saved.last_step?'Última etapa: '+saved.last_step:'Rascunho pronto para editar.')]),saved.backup?E('code',{},[saved.backup]):'']);
 			const collect=L.bind(function(){
 				const selectedModules=Object.keys(moduleBoxes).filter(function(k){return moduleBoxes[k].checked&&!moduleBoxes[k].disabled;}).join(' ');
@@ -4670,7 +4832,7 @@ return view.extend({
 				E('section',{class:'ex-ez-section'},[E('h3',{},['3. Wi‑Fi principal']),E('div',{class:'ex-ez-grid'},[this.ezField('Nome da rede principal',mainSsid),this.ezField('Senha principal',mainKey,'Mínimo 8 caracteres.'),this.ezField('2,4 GHz e 5 GHz',wifiMode)])]),
 				E('section',{class:'ex-ez-section'},[E('h3',{},['4. Rede visitante']),E('div',{class:'ex-ez-grid'},[this.ezField('Habilitar visitante',guestEnabled),this.ezField('Nome da rede visitante',guestSsid),this.ezField('Senha visitante',guestKey,'Mínimo 8 caracteres.'),this.ezField('Limitar visitante',guestLimitEnabled),this.ezField('Download total visitante em Mbps',guestDownload,'0 = ilimitado.'),this.ezField('Upload total visitante em Mbps',guestUpload,'Exemplo: 1,5 Mbps. Use 0 para ilimitado.')])]),
 				E('section',{class:'ex-ez-section'},[E('h3',{},['5. SQM / CAKE']),E('p',{class:'ex-muted'},['Ajuda a manter latência estável quando o link está cheio. Informe as velocidades em Mbps; 1,2 Gbps = 1200 Mbps.']),E('div',{class:'ex-ez-grid'},[this.ezField('Configurar SQM',sqmEnabled),this.ezField('Estratégia',sqmStrategy),this.ezField('WAN1 upload Mbps',sqmWanUp),this.ezField('WAN1 download Mbps',sqmWanDown),this.ezField('WAN2 upload Mbps',sqmWan2Up),this.ezField('WAN2 download Mbps',sqmWan2Down)])]),
-				E('section',{class:'ex-ez-section'},[E('h3',{},['6. DNS e segurança']),E('div',{class:'ex-ez-grid'},[this.ezField('Modo DNS',dnsMode),this.ezField('DNS 1',dns1),this.ezField('DNS 2',dns2),this.ezField('DNS 3',dns3,'Opcional'),this.ezField('Desativar IPv6',disableIpv6),this.ezField('Desativar WPS',disableWps),this.ezField('Usar Argon se instalado',useArgon)])]),
+				E('section',{class:'ex-ez-section'},[E('h3',{},['6. DNS e segurança']),E('div',{class:'ex-ez-grid'},[this.ezField('Modo DNS',dnsMode),this.ezField('DNS 1',dns1),this.ezField('DNS 2',dns2),this.ezField('DNS 3',dns3,'Opcional'),this.ezField('Desativar IPv6',disableIpv6),this.ezField('Desativar WPS',disableWps),isLegacy?'':this.ezField('Usar Argon se instalado',useArgon)].filter(Boolean))]),
 				E('section',{class:'ex-ez-section'},[E('h3',{},['7. Recursos opcionais']),E('p',{class:'ex-muted'},['Marcados como “já instalado” já existem no roteador. Os demais são opcionais e só serão instalados se você confirmar.']),moduleList,E('button',{class:'ex-mini-button ex-ez-install-modules','click':installModules},['Instalar módulos selecionados'])]),
 				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar']),' ',E('button',{class:'btn cbi-button cbi-button-neutral','click':reset},['Apagar rascunho']),' ',E('button',{class:'btn cbi-button cbi-button-action','click':saveDraft},['Salvar rascunho']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':applySetup},['Salvar e aplicar'])])
 			])]);
@@ -4883,14 +5045,18 @@ return view.extend({
 		const httpsPanel=E('section',{class:'ex-https-panel'+(https.redirect?' is-enabled':'')},[E('div',{class:'ex-https-heading'},[E('div',{},[E('strong',{},['HTTPS e segurança']),E('small',{class:'ex-muted ex-https-summary'},[https.redirect?'Ligado • todo acesso HTTP vai para HTTPS':'Desligado • HTTP e HTTPS disponíveis'])]),E('span',{class:'ex-pill '+(https.available?'online':'offline')},[https.available?'Disponível':'Indisponível'])]),E('div',{class:'ex-https-toggle-row'},[E('div',{},[E('strong',{},['Redirecionar HTTP para HTTPS']),E('small',{class:'ex-muted'},[https.ca_available?'Certificado ARK preparado para este endereço. Instale a autoridade somente nos dispositivos administrativos.':'Certificado local/autossinado: a conexão é criptografada, mas navegadores não confiam nele automaticamente.'])]),E('div',{class:'ex-https-switch-wrap'},[E('span',{class:'ex-https-switch-state '+(https.redirect?'online':'standby')},[https.redirect?'ATIVO':'DESLIGADO']),E('label',{class:'ex-switch'},[httpsInput,E('span',{class:'ex-switch-slider'})])])]),certificateActions,https.available?E('a',{class:'ex-text-link',href:'https://'+window.location.hostname+window.location.pathname,target:'_blank',rel:'noopener'},['Abrir endereço HTTPS']):'']);
 		const appearance=this.capabilities.appearance||{mode:'auto',primary:'#3b82f6',secondary:'#8b5cf6'}, appearanceMode=E('select',{class:'cbi-input-select'},[E('option',{value:'auto'},['Automático (seguir o tema)']),E('option',{value:'equipe'},['ARK Router']),E('option',{value:'custom'},['Personalizado'])]), primary=E('input',{type:'color',value:appearance.primary||'#3b82f6','aria-label':translateText('Cor principal')}), secondary=E('input',{type:'color',value:appearance.secondary||'#8b5cf6','aria-label':translateText('Cor secundária')}); appearanceMode.value=appearance.mode||'auto';
 		const appearanceColors=E('div',{class:'ex-color-fields'},[E('label',{},[E('span',{},['Cor principal']),primary]),E('label',{},[E('span',{},['Cor secundária']),secondary])]);
-		const currentTheme = this.capabilities.current_theme || 'bootstrap';
-		const themeSelect = E('select',{class:'cbi-input-select'},[
-			E('option',{value:'ark'},['⚡ Tema ARK (Nativo / Estilo Argon)']),
-			E('option',{value:'bootstrap'},['Tema Bootstrap (Padrão clássico)'])
-		]);
-		if (this.feature('argon') && this.feature('argon').installed) {
-			themeSelect.appendChild(E('option',{value:'argon'},['Tema Argon (Externo)']));
+		const isLegacy = !!(this.capabilities && this.capabilities.hardware && this.capabilities.hardware.is_legacy_owrt);
+		const currentTheme = this.capabilities.current_theme || 'ark';
+		const themeOptions = [
+			E('option',{value:'ark'},['⚡ Tema ARK (Nativo)'])
+		];
+		if (currentTheme === 'bootstrap') {
+			themeOptions.push(E('option',{value:'bootstrap'},['Tema Bootstrap (Padrão clássico)']));
 		}
+		if (!isLegacy && this.feature('argon') && this.feature('argon').installed) {
+			themeOptions.push(E('option',{value:'argon'},['Tema Argon (Externo)']));
+		}
+		const themeSelect = E('select',{class:'cbi-input-select'}, themeOptions);
 		themeSelect.value = currentTheme;
 		const themeRow = E('div',{class:'ex-brand-row',style:'margin-top:12px;padding-top:12px;border-top:1px solid rgba(127,127,127,0.14);'},[
 			E('label',{},['Tema do LuCI']),
@@ -4900,7 +5066,14 @@ return view.extend({
 			},this)},['Aplicar tema'])
 		]);
 
-		const rows=Object.keys(FEATURE_META).map(L.bind(function(key){
+		const rows=Object.keys(FEATURE_META).filter(L.bind(function(key){
+			if (key === 'argon') {
+				if (isLegacy) return false;
+				const f = this.feature('argon') || {};
+				if (!f.installed && (f.hidden || !f.installable)) return false;
+			}
+			return true;
+		}, this)).map(L.bind(function(key){
 			const meta=FEATURE_META[key],f=this.feature(key)||{};
 			let state=f.installed?(f.temporary?'Pronto na memória':(f.active?(key==='argon'||key==='ark'?'Tema ativo':'Instalado e ativo'):(key==='argon'||key==='ark'?'Instalado, mas não selecionado':'Instalado, mas inativo'))):(f.installable?'Não instalado':'Não disponível');
 			if(!f.installed&&f.hidden)state='Sugestão oculta';
@@ -4916,7 +5089,7 @@ return view.extend({
 			if(key==='irqbalance'&&f.installed)actions.push(E('button',{class:'ex-mini-button','click':L.bind(function(){const desired=!f.active;return fs.exec('/usr/sbin/equipe-dashboard-control',['irqbalance-toggle',desired?'1':'0']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar IRQ Balance');ui.addNotification(null,E('p',{},[desired?'IRQ Balance ativado.':'IRQ Balance desativado.']));window.setTimeout(function(){window.location.reload();},900);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},[f.active?'Desativar':'Ativar']));
 			return E('div',{class:'ex-feature-row'},[E('div',{class:'ex-feature-copy'},[E('div',{class:'ex-feature-name-row'},[E('strong',{},[meta.name]),(meta.recommended?E('span',{class:'ex-recommended-badge'},['RECOMENDADO']):'')]),E('small',{class:'ex-muted'},[meta.description]),f.package?E('code',{},[f.package]):'',(!f.installed&&f.reason)?E('small',{class:'ex-feature-reason',style:'color:#ef4444;font-weight:600;display:block;margin-top:4px;'},['⚠️ '+f.reason]):'']),E('div',{class:'ex-feature-state'},[E('span',{class:'ex-pill '+(f.installed?(f.active?'online':'standby'):(f.hidden?'standby':'offline'))},[state]),E('div',{class:'ex-feature-actions'},actions)])]);
 		},this));
-		const bulkKeys=['argon','sqm','mwan3','nlbwmon','upnp','uhttpd'].filter(L.bind(function(key){const f=this.feature(key)||{};return !f.installed&&f.installable;},this));
+		const bulkKeys=['sqm','mwan3','nlbwmon','upnp','uhttpd'].filter(L.bind(function(key){const f=this.feature(key)||{};return !f.installed&&f.installable;},this));
 		const bulkPanel=E('section',{class:'ex-cleanup-entry'},[E('div',{},[E('strong',{},['Instalação rápida']),E('small',{class:'ex-muted'},[bulkKeys.length?('Instala todos os recursos leves faltantes: '+bulkKeys.map(function(k){return (FEATURE_META[k]&&FEATURE_META[k].name)||k;}).join(', ')):'Todos os recursos leves compatíveis já estão instalados ou indisponíveis neste roteador.'])]),E('button',{class:'ex-mini-button','click':L.bind(this.installMissingFeatures,this,bulkKeys),disabled:!bulkKeys.length},['Instalar faltantes'])]);
 		const ipv6Panel=E('section',{class:'ex-cleanup-entry'},[E('div',{},[E('strong',{},['IPv6 totalmente desligado']),E('small',{class:'ex-muted'},['Remove WAN6, ULA, RA/DHCPv6/NDP e regras IPv6. Cria backup antes de aplicar.'])]),E('button',{class:'ex-mini-button','click':L.bind(this.disableIpv6Full,this)},['Desativar IPv6'])]);
 		const profileSelect=E('select',{class:'cbi-input-select'},[
@@ -5940,7 +6113,7 @@ return view.extend({
 			E('div',{class:'ex-grid ex-grid-2'},[metricCard('↓','Download agora','ex-download','ex-down-total','#3b82f6'),metricCard('↑','Upload agora','ex-upload','ex-up-total','#a855f7')]),
 			E('div',{class:'ex-grid ex-grid-2 ex-history-grid'},[historyCard('down','Download ao longo do dia','#3b82f6'),historyCard('up','Upload ao longo do dia','#a855f7')]),
 			E('p',{id:'ex-history-samples',class:'ex-history-caption'},['A primeira amostra aparecerá em até 1 minuto']),
-			starlinkSection,
+			starlinkSection || '',
 			E('div',{class:'ex-grid ex-grid-2'},wanCards),
 			E('section',{class:'ex-card ex-mwan-control'},[
 				E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['MULTI‑WAN']),E('h3',{},['Modo atual: ',E('span',{id:'ex-mwan-mode'},['Failover WAN1 → WAN2'])])]),E('span',{id:'ex-mwan-status',class:'ex-pill '+(mwanRunning?'online':(mwanPaused?'standby':'offline'))},[mwanPaused?'PAUSADO':(mwanRunning?'ATIVO':'DESLIGADO')])]),
@@ -5982,7 +6155,7 @@ return view.extend({
 				E('section',{class:'ex-card ex-center-card'},[bigIcon('<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1.2" fill="currentColor"/></svg>'),E('span',{class:'ex-label'},[w.main.ssid||'Rede principal']),E('strong',{id:'ex-main-clients',class:'ex-number'},['0']),E('small',{id:'ex-main-wifi',class:'ex-muted'},['0 no Wi-Fi'])]),
 				E('section',{class:'ex-card ex-center-card'},[bigIcon('<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'),E('span',{class:'ex-label'},[w.guest.ssid||'Visitantes']),E('strong',{id:'ex-guest-clients',class:'ex-number'},['0']),E('small',{id:'ex-guest-wifi',class:'ex-muted'},['0 no Wi-Fi'])])
 			]),
-			E('section',{class:'ex-card ex-channel-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['AMBIENTE WI‑FI']),E('h3',{},['Canais e interferência'])]),E('button',{class:'ex-button ex-inline-button','click':L.bind(function(ev){this.analyzeChannels(ev.currentTarget);},this)},['Analisar canais agora'])]),E('div',{class:'ex-country-control'},[E('div',{},[E('span',{class:'ex-label'},['PAÍS / DOMÍNIO REGULATÓRIO']),E('strong',{id:'ex-country-current'},['—'])]),E('button',{class:'ex-mini-button','click':L.bind(function(){this.changeCountry();},this)},['Alterar país'])]),E('div',{class:'ex-channel-mode-control'},[E('div',{},[E('strong',{},['Seleção automática de canais']),E('small',{id:'ex-channel-mode-summary',class:'ex-muted'},['Verificando…'])]),E('label',{class:'ex-switch'},[E('input',{id:'ex-channel-auto-toggle',type:'checkbox','aria-label':translateText('Seleção automática de canais'),'change':L.bind(function(ev){this.toggleAutoChannels(ev.currentTarget);},this)}),E('span',{class:'ex-switch-slider'})])]),E('div',{class:'ex-grid ex-grid-2 ex-channel-grid'},[E('div',{},[E('div',{class:'ex-channel-band-head'},[E('b',{},['2,4 GHz']),E('span',{id:'ex-wifi-2-mode',class:'ex-pill standby'},['—'])]),E('span',{id:'ex-wifi-2'},['—'])]),E('div',{},[E('div',{class:'ex-channel-band-head'},[E('b',{},['5 GHz']),E('span',{id:'ex-wifi-5-mode',class:'ex-pill standby'},['—'])]),E('span',{id:'ex-wifi-5'},['—'])])]),E('p',{id:'ex-wifi-noise',class:'ex-muted'},['—']),E('p',{id:'ex-scan-result',class:'ex-scan-result'},['A análise é manual e apenas recomenda canais; não interrompe os usuários.']),E('div',{class:'ex-channel-actions'},[E('button',{class:'ex-channel-action','click':L.bind(this.showManualChannelsModal,this)},['Escolher canais']),E('button',{id:'ex-apply-channels',class:'ex-channel-action primary',disabled:true,'click':L.bind(function(){this.changeChannels('fixed');},this)},['Analisar antes de aplicar']),E('button',{class:'ex-channel-action','click':L.bind(function(){this.changeWifiWidth();},this)},['Largura / desempenho'])])]),
+			E('section',{class:'ex-card ex-channel-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['AMBIENTE WI‑FI']),E('h3',{},['Canais e interferência'])]),E('button',{class:'ex-button ex-inline-button','click':L.bind(function(ev){this.analyzeChannels(ev.currentTarget);},this)},['Analisar canais agora'])]),E('div',{class:'ex-country-control'},[E('div',{},[E('span',{class:'ex-label'},['PAÍS / DOMÍNIO REGULATÓRIO']),E('strong',{id:'ex-country-current'},['—'])]),E('button',{class:'ex-mini-button','click':L.bind(function(){this.changeCountry();},this)},['Alterar país'])]),E('div',{class:'ex-channel-mode-control'},[E('div',{},[E('strong',{},['Seleção automática de canais']),E('small',{id:'ex-channel-mode-summary',class:'ex-muted'},['Verificando…'])]),E('label',{class:'ex-switch'},[E('input',{id:'ex-channel-auto-toggle',type:'checkbox','aria-label':translateText('Seleção automática de canais'),'change':L.bind(function(ev){this.toggleAutoChannels(ev.currentTarget);},this)}),E('span',{class:'ex-switch-slider'})])]),E('div',{class:'ex-grid ex-grid-2 ex-channel-grid'},[E('div',{},[E('div',{class:'ex-channel-band-head'},[E('b',{},['2,4 GHz']),E('span',{id:'ex-wifi-2-mode',class:'ex-pill standby'},['—'])]),E('span',{id:'ex-wifi-2'},['—'])]),E('div',{},[E('div',{class:'ex-channel-band-head'},[E('b',{},['5 GHz']),E('span',{id:'ex-wifi-5-mode',class:'ex-pill standby'},['—'])]),E('span',{id:'ex-wifi-5'},['—'])])]),E('p',{id:'ex-wifi-noise',class:'ex-muted'},['—']),E('p',{id:'ex-scan-result',class:'ex-scan-result'},['A análise é manual e apenas recomenda canais; não interrompe os usuários.']),E('div',{class:'ex-channel-actions'},[E('button',{class:'ex-channel-action','click':L.bind(this.showManualChannelsModal,this)},['Escolher canais']),E('button',{id:'ex-apply-channels',class:'ex-channel-action primary',disabled:true,'click':L.bind(function(){this.changeChannels('fixed');},this)},['Analisar antes de aplicar']),E('button',{class:'ex-channel-action','click':L.bind(function(){this.changeWifiWidth();},this)},['Largura / desempenho']),E('button',{class:'ex-channel-action','click':L.bind(function(){this.optimizeIot();},this)},['Otimizar para IoT']),E('button',{class:'ex-channel-action','click':L.bind(function(){this.optimizeDfs();},this)},['Otimizar Quedas (DFS)'])])]),
 			E('section',{class:'ex-card ex-devices'},[
 				E('div',{class:'ex-card-title'},[
 					E('div',{},[
@@ -6026,7 +6199,7 @@ return view.extend({
 			]),
 			this.adblockCard(),
 			this.zerotierCard(),
-			speedifySection,
+			speedifySection || '',
 			E('section',{class:'ex-card ex-reboot-card'},[E('div',{},[E('span',{class:'ex-kicker'},['SISTEMA']),E('h3',{},['Reiniciar o roteador']),E('p',{class:'ex-muted'},['Interrompe a internet por alguns minutos e encerra as sessões abertas.'])]),E('button',{class:'ex-reboot-button','click':L.bind(function(){this.requestReboot();},this)},['Reiniciar…'])])
 		]);
 		if(!this.feature('history').installed){const h=root.querySelector('.ex-history-grid'),c=root.querySelector('.ex-history-caption');if(h)h.remove();if(c)c.remove();}
