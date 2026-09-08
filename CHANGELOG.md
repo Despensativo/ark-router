@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9.87
+
+- **🔀 Conversão Dinâmica da Porta WAN em LAN (Auto-Sensing Total)**:
+  - **Uso Flexível da Porta WAN Física**:
+    - Adicionada opção *"Converter porta WAN em LAN (Auto-Sensing Total)"* integrada ao card **Portas e Auto-WAN**, permitindo transformar a porta WAN física em mais uma porta de rede local (LAN) para conectar computadores, TVs, consoles ou switches.
+    - **Vigilância e Promoção Automática**: Quando convertida em LAN, a porta passa a ser monitorada continuamente pelo Piloto Automático (Auto-WAN). Caso um cabo com sinal de internet/modem upstream (DHCP) seja conectado a ela, o sistema a promove dinamicamente a WAN em tempo real.
+    - **Dependência Estrita do Auto-WAN**: O recurso só pode ser ativado e permanecer ativo enquanto o Piloto Automático de Portas (Auto-WAN) estiver ligado. Ao desativar o Auto-WAN, a porta WAN física é restaurada automaticamente ao seu modo original padrão.
+    - **Proteção Anti-Lockout e Modal Informativo**: Antes da conversão, o painel executa diagnóstico preventivo (`autowan-can-convert-wan`), alertando o usuário via modal de confirmação seguro caso detecte cabo conectado na porta WAN sem outra WAN ou se não houver acesso LAN garantido (Wi-Fi ativo ou outra LAN física).
+  - **Alinhamento e Sincronização Dinâmica com o Serviço Multi-WAN**:
+    - Enquanto o Auto-WAN estiver ativo, o card do **Serviço Multi-WAN** reflete o status de orquestração automática (`PILOTO AUTOMÁTICO`, badge verde `online`), bloqueia o interruptor manual para evitar conflitos de estado e sincroniza dinamicamente as políticas de tráfego (*Balanceamento de Carga* vs. *Failover Inteligente*).
+    - Ao desativar o Auto-WAN, o controle do Multi-WAN retorna imediatamente ao modo manual independente.
+  - **Suporte Híbrido Hardware (swconfig + DSA)**:
+    - Compatível com arquiteturas baseadas em `swconfig` (ex: D-Link DGL-5500 / ath79, manipulando as VLANs de hardware 1 e 2 no chip AR8327) e em `DSA` (ex: Acer Predator W6x / MT7986, manipulando o bridge `br-lan` via netlink e `brctl`).
+
 ## 0.9.86
 
 - **📡 Modo Auto Inteligente de Canais Wi-Fi (Sem Radares DFS e Livre de Sobreposição)**:

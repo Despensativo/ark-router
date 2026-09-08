@@ -149,6 +149,70 @@ autowan_can_convert() {
 	# Sem Wi-Fi e sem outra porta LAN: protege contra lockout
 	return 1
 }
+get_physical_wan_dev() {
+	if is_swconfig; then
+		echo "5"
+	else
+		local d="$(uci -q get network.wan.ark_phys_port || uci -q get network.wan.device || uci -q get network.wan.ifname || echo eth1)"
+		echo "$d"
+	fi
+}
+autowan_can_convert_wan_json() {
+	local wan_dev="$(get_physical_wan_dev)"
+	local carrier="false"
+	local has_other_wan="false"
+	local has_lan_access="false"
+
+	# Checa se a porta WAN fisica tem link/cabo conectado
+	if is_swconfig; then
+		if swconfig dev switch0 port 5 get link 2>/dev/null | grep -q "link:up"; then
+			carrier="true"
+		fi
+	else
+		if [ -f "/sys/class/net/$wan_dev/operstate" ] && [ "$(cat "/sys/class/net/$wan_dev/operstate" 2>/dev/null)" = "up" ]; then
+			carrier="true"
+		elif [ -f "/sys/class/net/$wan_dev/carrier" ] && [ "$(cat "/sys/class/net/$wan_dev/carrier" 2>/dev/null)" = "1" ]; then
+			carrier="true"
+		fi
+	fi
+
+	# Checa se ha outra WAN alem da WAN fisica principal
+	for w in $(uci -q show network | grep '=interface' | cut -d. -f2 | cut -d= -f1 | grep -E '^wan[2-9]$'); do
+		local p="$(uci -q get "network.$w.proto" || echo "")"
+		local d="$(uci -q get "network.$w.device" || uci -q get "network.$w.ifname" || echo "")"
+		if [ -n "$p" ] && [ "$p" != "none" ] && [ -n "$d" ]; then
+			has_other_wan="true"
+			break
+		fi
+	done
+
+	# Checa se ha acesso LAN garantido (Wi-Fi ativo ou outra LAN cabeada conectada)
+	if uci -q show wireless | grep -q "\.disabled='0'"; then
+		has_lan_access="true"
+	else
+		if is_swconfig; then
+			for p in 1 2 3 4; do
+				if swconfig dev switch0 port "$p" get link 2>/dev/null | grep -q "link:up"; then
+					has_lan_access="true"
+					break
+				fi
+			done
+		else
+			for iface in lan1 lan2 lan3 lan4; do
+				if [ -f "/sys/class/net/$iface/operstate" ] && [ "$(cat "/sys/class/net/$iface/operstate")" = "up" ]; then
+					has_lan_access="true"
+					break
+				fi
+			done
+		fi
+	fi
+
+	local wan_as_lan="false"
+	[ "$(uci -q get network.autowan.wan_to_lan || echo 0)" = "1" ] && wan_as_lan="true"
+
+	printf '{"wan_dev":"%s","carrier":%s,"has_other_wan":%s,"has_lan_access":%s,"wan_to_lan":%s}\n' \
+		"$wan_dev" "$carrier" "$has_other_wan" "$has_lan_access" "$wan_as_lan"
+}
 same_managed_subnet() {
 	candidate="$1"
 	for managed in lan guest; do
@@ -7107,6 +7171,11 @@ case "$action" in
 			fi
 			pkill -f ark-autowan-daemon 2>/dev/null || true
 
+			# Se a porta WAN estava operando como LAN, restaura para WAN fisica padrao
+			if [ "$(uci -q get network.autowan.wan_to_lan)" = "1" ]; then
+				"$0" autowan-wan-to-lan 0 >/dev/null 2>&1 || true
+			fi
+
 			# Reverte WANs dinamicas criadas de volta para LAN
 			if [ -f /var/run/ark-autowan-dynamic.list ]; then
 				for entry in $(cat /var/run/ark-autowan-dynamic.list 2>/dev/null); do
@@ -7186,6 +7255,91 @@ case "$action" in
 		else
 			echo 'protected'
 			exit 1
+		fi
+		;;
+	autowan-can-convert-wan)
+		autowan_can_convert_wan_json
+		;;
+	autowan-wan-to-lan)
+		state="${2:-0}"
+		wan_dev="$(get_physical_wan_dev)"
+		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
+			[ "$(uci -q get network.autowan.enabled)" = "1" ] || { echo 'Auto-WAN deve estar ativado primeiro' >&2; exit 2; }
+			[ "$(uci -q get network.autowan.wan_to_lan)" != "1" ] || { echo 'enabled'; exit 0; }
+
+			# swconfig (D-Link DGL-5500)
+			if is_swconfig; then
+				# Adiciona porta 5 na VLAN 1 (LAN)
+				swconfig_add_port_to_vlan 5 1
+				# Remove porta 5 da VLAN 2 (WAN)
+				swconfig_remove_port_from_vlan 5 2
+
+				# Aplica em tempo real no switch de hardware
+				swconfig dev switch0 port 5 set pvid 1 >/dev/null 2>&1 || true
+				v1_ports="$(swconfig dev switch0 vlan 1 get ports 2>/dev/null | sed 's/VLAN 1: //')"
+				has_5=0
+				for item in $v1_ports; do [ "$item" = "5" ] && has_5=1; done
+				[ "$has_5" = 1 ] || v1_ports="$v1_ports 5"
+				swconfig dev switch0 vlan 1 set ports "$v1_ports" >/dev/null 2>&1 || true
+				swconfig dev switch0 vlan 2 set ports "0t" >/dev/null 2>&1 || true
+				swconfig dev switch0 set apply >/dev/null 2>&1 || true
+			else
+				# DSA (Acer Predator W6x)
+				add_lan_port "$wan_dev"
+				ip link set "$wan_dev" up >/dev/null 2>&1 || true
+				brctl addif br-lan "$wan_dev" >/dev/null 2>&1 || ip link set "$wan_dev" master br-lan >/dev/null 2>&1 || true
+			fi
+
+			# Desativa inicializacao automatica da WAN padrao no netifd
+			uci -q set network.wan.auto='0'
+			[ -z "$(uci -q get network.wan_modem)" ] || uci -q set network.wan_modem.auto='0'
+			[ -z "$(uci -q get network.wan_mgmt)" ] || uci -q set network.wan_mgmt.auto='0'
+			uci -q set network.autowan.wan_to_lan='1'
+			uci commit network
+
+			ifdown wan >/dev/null 2>&1 || true
+			/etc/init.d/network reload >/dev/null 2>&1 || true
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+
+			echo 'enabled'
+		else
+			[ "$(uci -q get network.autowan.wan_to_lan)" = "1" ] || { echo 'disabled'; exit 0; }
+
+			# swconfig (D-Link DGL-5500)
+			if is_swconfig; then
+				# Remove porta 5 da VLAN 1 (LAN)
+				swconfig_remove_port_from_vlan 5 1
+				# Restaura porta 5 na VLAN 2 (WAN)
+				swconfig_add_port_to_vlan 5 2
+
+				# Aplica em tempo real no switch de hardware
+				swconfig dev switch0 port 5 set pvid 2 >/dev/null 2>&1 || true
+				v1_ports="$(swconfig dev switch0 vlan 1 get ports 2>/dev/null | sed 's/VLAN 1: //')"
+				new_v1=""
+				for item in $v1_ports; do
+					[ "$item" != "5" ] && [ "$item" != "5t" ] && new_v1="$new_v1 $item"
+				done
+				swconfig dev switch0 vlan 1 set ports "$new_v1" >/dev/null 2>&1 || true
+				swconfig dev switch0 vlan 2 set ports "5 0t" >/dev/null 2>&1 || true
+				swconfig dev switch0 set apply >/dev/null 2>&1 || true
+			else
+				# DSA (Acer Predator W6x)
+				remove_lan_port "$wan_dev"
+				brctl delif br-lan "$wan_dev" >/dev/null 2>&1 || ip link set "$wan_dev" nomaster >/dev/null 2>&1 || true
+			fi
+
+			# Restaura inicializacao automatica da WAN padrao no netifd
+			uci -q set network.wan.auto='1'
+			[ -z "$(uci -q get network.wan_modem)" ] || uci -q set network.wan_modem.auto='1'
+			[ -z "$(uci -q get network.wan_mgmt)" ] || uci -q set network.wan_mgmt.auto='1'
+			uci -q delete network.autowan.wan_to_lan
+			uci commit network
+
+			/etc/init.d/network reload >/dev/null 2>&1 || true
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			(sleep 1; ifup wan >/dev/null 2>&1) &
+
+			echo 'disabled'
 		fi
 		;;
 	country)

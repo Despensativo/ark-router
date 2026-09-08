@@ -156,7 +156,9 @@ init_swconfig_quarantine() {
 	swconfig dev switch0 vlan 99 set ports "0t" >/dev/null 2>&1
 	swconfig dev switch0 set apply >/dev/null 2>&1
 
-	for p in 2 3 4; do
+	local ports_to_quarantine="2 3 4"
+	[ "$(uci -q get network.autowan.wan_to_lan || echo 0)" = "1" ] && ports_to_quarantine="2 3 4 5"
+	for p in $ports_to_quarantine; do
 		local oper="$(swconfig dev switch0 port "$p" get link 2>/dev/null | grep -q "link:up" && echo up || echo down)"
 		if [ "$oper" = "down" ] && ! is_swconfig_port_already_wan "$p"; then
 			swconfig_quarantine_port "$p"
@@ -169,10 +171,16 @@ run_autowan_cycle() {
 	[ "$enabled" = "1" ] || return 0
 
 	local pol="$(uci -q get network.autowan.policy || echo balanced)"
+	local wan_as_lan="$(uci -q get network.autowan.wan_to_lan || echo 0)"
 
 	# 1. Arquitetura DSA (ex: Acer Predator W6X / lan1 lan2 lan3 lan4)
 	if [ -d "/sys/class/net/lan1" ] || [ -d "/sys/class/net/lan2" ]; then
-		for port_dev in lan1 lan2 lan3 lan4; do
+		local dsa_ports="lan1 lan2 lan3 lan4"
+		if [ "$wan_as_lan" = "1" ]; then
+			local wan_dev="$(uci -q get network.wan.ark_phys_port || uci -q get network.wan.device || uci -q get network.wan.ifname || echo eth1)"
+			[ -d "/sys/class/net/$wan_dev" ] && dsa_ports="$dsa_ports $wan_dev"
+		fi
+		for port_dev in $dsa_ports; do
 			[ -d "/sys/class/net/$port_dev" ] || continue
 			local oper="$(cat "/sys/class/net/$port_dev/operstate" 2>/dev/null || echo down)"
 			local prev_oper="$(grep "^$port_dev=" "$STATE_FILE" 2>/dev/null | cut -d= -f2)"
@@ -218,7 +226,9 @@ run_autowan_cycle() {
 	# 2. Arquitetura swconfig (ex: D-Link DGL-5500 / ath79 switch0)
 	# Porta 1 eh estritamente mantida em LAN (porta mestre de administracao e resgate)
 	elif command -v swconfig >/dev/null 2>&1 && swconfig dev switch0 show >/dev/null 2>&1; then
-		for p in 2 3 4; do
+		local sw_ports="2 3 4"
+		[ "$wan_as_lan" = "1" ] && sw_ports="2 3 4 5"
+		for p in $sw_ports; do
 			local port_name="port$p"
 			local oper="$(swconfig dev switch0 port "$p" get link 2>/dev/null | grep -q "link:up" && echo up || echo down)"
 			local prev_oper="$(grep "^$port_name=" "$STATE_FILE" 2>/dev/null | cut -d= -f2)"

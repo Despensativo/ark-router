@@ -180,6 +180,7 @@ function lanPortsFromNetwork(networkConfig) {
 	return ports;
 }
 function portLabel(port) {
+	if (port === 'eth1' || port === 'lan5' || port === 'port5') return 'PORTA WAN (LAN)';
 	const m=String(port||'').match(/^lan([0-9]+)$/i);
 	return m?'LAN'+m[1]:String(port||'porta').toUpperCase();
 }
@@ -808,6 +809,23 @@ return view.extend({
 				phy=Object.assign({},phy,{carrier:true, speed:hwMatch.speed||phy.speed, duplex:hwMatch.duplex||phy.duplex});
 			}
 		}
+		const netValues = values((this.currentData||{}).networkConfig);
+		const isWanToLan = !!(netValues.autowan && String(netValues.autowan.wan_to_lan) === '1');
+		if (prefix === 'ex-wan1' && isWanToLan) {
+			setPill(prefix+'-status','standby','EM REDE LOCAL (LAN)');
+			text(prefix+'-mode','Operando como LAN (Auto-Sensing)');
+			text(prefix+'-ip','—');
+			text(prefix+'-gateway','—');
+			text(prefix+'-mask','—');
+			text(prefix+'-dns','—');
+			text(prefix+'-link',phy.carrier ? 'Conectado (em LAN)' : 'Sem cabo');
+			text(prefix+'-latency','—');
+			text(prefix+'-rx-day','—');
+			text(prefix+'-tx-day','—');
+			text(prefix+'-session','—');
+			text(prefix+'-uptime','—');
+			return;
+		}
 		const mwanInterfaces=((this.currentData||{}).mwan||{}).interfaces||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;}), online=!!i.up&&(!mwanRunning||(m&&(m.status==='online'||m.status==='unknown'||!m.running))), disabled=!phy.carrier||(mwanRunning&&m&&m.status==='disabled');
 		setPill(prefix+'-status',online?'online':(disabled?'standby':'offline'),online?'ONLINE':(disabled?'SEM CABO':'OFFLINE'));
 		const a=i['ipv4-address']&&i['ipv4-address'][0], speed=String(phy.speed||'').match(/[0-9]+/), full=String(phy.speed||'').toUpperCase().indexOf('F')>=0, link=phy.carrier?(speed?speed[0]+' Mbps'+(full?' • Full duplex':''):'conectado'):(i.up?'interface ativa':'sem link'), stats=d.statistics||{};
@@ -902,12 +920,38 @@ return view.extend({
 			const matched = activeWans.find(function(w){return w.domId === mode || w.iface === mode;});
 			modeLabel = matched ? ('Somente ' + matched.label) : ('Somente ' + mode.toUpperCase());
 		}
-		text('ex-mwan-mode', modeLabel);
-		const mwanInterfaces=(data.mwan&&data.mwan.interfaces)||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;});
-		const speedify=(this.capabilities.features&&this.capabilities.features.speedify)||{}, paused=String(speedify.desired_state||'')==='connected'&&!mwanRunning;
-		const toggle=document.getElementById('ex-mwan-toggle');if(toggle){toggle.checked=mwanRunning;toggle.disabled=paused;}
-		text('ex-mwan-toggle-state',paused?'PAUSADO PELO SPEEDIFY':(mwanRunning?'LIGADO':'DESLIGADO'));
-		setPill('ex-mwan-status',mwanRunning?'online':(paused?'standby':'offline'),paused?'PAUSADO':(mwanRunning?'ATIVO':'DESLIGADO'));
+		const netCfg = values(data.networkConfig);
+		const isAutoWanActive = !!(netCfg.autowan && String(netCfg.autowan.enabled) === '1');
+		const autowanPolicy = (netCfg.autowan && netCfg.autowan.policy) || 'balanced';
+
+		if (isAutoWanActive) {
+			const autowanModeLabel = (autowanPolicy === 'balanced') ? 'Balanceamento Inteligente (Auto-WAN)' : 'Failover Automático (Auto-WAN)';
+			text('ex-mwan-mode', autowanModeLabel);
+			const toggle = document.getElementById('ex-mwan-toggle');
+			if (toggle) {
+				toggle.checked = true;
+				toggle.disabled = true;
+				toggle.title = 'Gerenciado dinamicamente pelo Auto-WAN. Para controle manual, desative o Piloto Automático.';
+			}
+			text('ex-mwan-toggle-state', 'PILOTO AUTOMÁTICO');
+			setPill('ex-mwan-status', 'online', 'PILOTO AUTOMÁTICO');
+			const subEl = document.getElementById('ex-mwan-toggle-desc');
+			if (subEl) subEl.textContent = 'Gerenciado dinamicamente pelo Piloto Automático de Portas conforme cabos de internet são inseridos ou removidos.';
+		} else {
+			text('ex-mwan-mode', modeLabel);
+			const mwanInterfaces=(data.mwan&&data.mwan.interfaces)||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;});
+			const speedify=(this.capabilities.features&&this.capabilities.features.speedify)||{}, paused=String(speedify.desired_state||'')==='connected'&&!mwanRunning;
+			const toggle=document.getElementById('ex-mwan-toggle');
+			if(toggle){
+				toggle.checked=mwanRunning;
+				toggle.disabled=paused;
+				toggle.title = '';
+			}
+			text('ex-mwan-toggle-state',paused?'PAUSADO PELO SPEEDIFY':(mwanRunning?'LIGADO':'DESLIGADO'));
+			setPill('ex-mwan-status',mwanRunning?'online':(paused?'standby':'offline'),paused?'PAUSADO':(mwanRunning?'ATIVO':'DESLIGADO'));
+			const subEl = document.getElementById('ex-mwan-toggle-desc');
+			if (subEl) subEl.textContent = paused?'Pausado automaticamente enquanto o Speedify controla as rotas.':'Liga failover/balanceamento sem alterar o modo escolhido.';
+		}
 	},
 	updateHistory: function(raw) {
 		const cutoff=Math.floor(Date.now()/1000)-86400;
@@ -1835,6 +1879,11 @@ return view.extend({
 			btn.textContent = 'Aplicando…';
 			return fs.exec('/usr/sbin/equipe-dashboard-control',['mwan',mode]).then(L.bind(function(r){
 				if(r.code)throw new Error(r.stderr||'Falha ao aplicar');
+				if (mode === 'balanced' || mode === 'balanced_devices') {
+					fs.exec('/usr/sbin/equipe-dashboard-control', ['autowan-policy-set', 'balanced']).catch(function(){});
+				} else if (mode.indexOf('failover') >= 0) {
+					fs.exec('/usr/sbin/equipe-dashboard-control', ['autowan-policy-set', 'failover']).catch(function(){});
+				}
 				ui.hideModal();
 				ui.addNotification(null,E('p',{},['Modo Multi‑WAN alterado para '+label+'.']));
 				return this.fetchData().then(L.bind(this.update,this));
@@ -6224,7 +6273,9 @@ return view.extend({
 					var modal = document.querySelector('.modal, .cbi-modal, #modal_overlay, div[class*="modal"]');
 					if (modal) {
 						ev.preventDefault();
-						if (window.L && L.ui && typeof L.ui.hideModal === 'function') {
+						if (typeof ui !== 'undefined' && typeof ui.hideModal === 'function') {
+							ui.hideModal();
+						} else if (window.L && L.ui && typeof L.ui.hideModal === 'function') {
 							L.ui.hideModal();
 						} else {
 							var btn = modal.querySelector('button.cbi-button-neutral, button.btn-neutral, .close');
@@ -6314,8 +6365,12 @@ return view.extend({
 		const irqbalanceInput=E('input',{type:'checkbox','aria-label':'Ativar IRQ Balance','change':L.bind(function(ev){const input=ev.currentTarget,desired=!!input.checked;return fs.exec('/usr/sbin/equipe-dashboard-control',['irqbalance-toggle',desired?'1':'0']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar IRQ Balance');reloadSoon(desired?'IRQ Balance ativado. Recarregando o painel…':'IRQ Balance desativado. Recarregando o painel…',900);}).catch(function(e){input.checked=!desired;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)});irqbalanceInput.checked=!!irqbalance.active;irqbalanceInput.disabled=!irqbalance.installed;
 		const irqbalanceControl=irqbalance.installed?E('div',{class:'ex-device-switch-control'},[E('strong',{class:'ex-device-switch-state'},[irqbalance.active?'LIGADA':'DESLIGADA']),E('label',{class:'ex-switch'},[irqbalanceInput,E('span',{class:'ex-switch-slider'})])]):E('button',{class:'ex-mini-button','click':L.bind(this.installFeature,this,'irqbalance')},['Instalar IRQ Balance']);
 		const mwanInterfaces=(data.mwan&&data.mwan.interfaces)||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;});
-		const speedifyFeature=this.feature('speedify'), mwanPaused=String(speedifyFeature.desired_state||'')==='connected'&&!mwanRunning;
-		const mwanInput=E('input',{id:'ex-mwan-toggle',type:'checkbox','aria-label':'Ativar Multi-WAN','change':L.bind(function(ev){this.toggleMwan3(ev.currentTarget);},this)});mwanInput.checked=mwanRunning;mwanInput.disabled=mwanPaused;
+		const netCfgValues = values(data.networkConfig);
+		const isAutoWanActiveGlobal = !!(netCfgValues.autowan && String(netCfgValues.autowan.enabled) === '1');
+		const mwanInput=E('input',{id:'ex-mwan-toggle',type:'checkbox','aria-label':'Ativar Multi-WAN','change':L.bind(function(ev){this.toggleMwan3(ev.currentTarget);},this)});
+		mwanInput.checked = isAutoWanActiveGlobal || mwanRunning;
+		mwanInput.disabled = isAutoWanActiveGlobal || mwanPaused;
+		if (isAutoWanActiveGlobal) mwanInput.title = 'Gerenciado pelo Piloto Automático Auto-WAN. Para controle manual, desative o Auto-WAN.';
 		const activeWans=getActiveWanList(data);
 		const nextWan=getNextAvailableWan(data);
 		const qosWanProfiles=sqmWanProfiles(data), qosWanRows=qosWanProfiles.map(function(profile){return infoRow(profile.label+' limites','ex-qos-wan-'+portDomId(profile.network));});
@@ -6433,6 +6488,102 @@ return view.extend({
 			(function(){
 				const netCfg = values(data.networkConfig);
 				const isAutoWanActive = !!(netCfg.autowan && String(netCfg.autowan.enabled) === '1');
+				const isWanToLanActive = !!(netCfg.autowan && String(netCfg.autowan.wan_to_lan) === '1');
+
+				const wanToLanSummaryEl = E('small', { id: 'ex-autowan-wan-to-lan-summary', class: 'ex-muted', style: 'display:block; margin-top:2px;' }, [
+					isWanToLanActive
+						? 'Ativo • A porta WAN física opera como rede local (LAN) com detecção automática de internet.'
+						: 'Desativado • A porta WAN física opera exclusivamente como entrada de internet principal.'
+				]);
+				const wanToLanAttrs = { id: 'ex-autowan-wan-to-lan-toggle', type: 'checkbox', 'aria-label': 'Converter porta WAN em LAN' };
+				if (isWanToLanActive) wanToLanAttrs.checked = '';
+				const wanToLanInput = E('input', wanToLanAttrs);
+
+				const toggleWanToLan = function(chk) {
+					if (!chk.checked) {
+						chk.disabled = true;
+						wanToLanSummaryEl.textContent = 'Restaurando porta WAN para modo padrão…';
+						fs.exec('/usr/sbin/equipe-dashboard-control', ['autowan-wan-to-lan', '0'])
+						.then(function(r) {
+							chk.disabled = false;
+							chk.checked = false;
+							wanToLanSummaryEl.textContent = 'Desativado • A porta WAN física opera exclusivamente como entrada de internet principal.';
+							ui.addNotification(null, E('p', {}, ['Porta WAN física restaurada para conexão de modem/internet padrão.']), 'info');
+							reloadSoon('Porta WAN física restaurada. Atualizando o painel…', 1200);
+						}).catch(function(e) {
+							chk.disabled = false;
+							chk.checked = true;
+							ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+						});
+						return;
+					}
+
+					chk.checked = false;
+					chk.disabled = true;
+
+					fs.exec('/usr/sbin/equipe-dashboard-control', ['autowan-can-convert-wan'])
+					.then(function(res) {
+						chk.disabled = false;
+						let diag = {};
+						try { diag = JSON.parse(res.stdout || '{}'); } catch(e){}
+
+						const warningItems = [
+							E('li', {}, ['A porta WAN física será adicionada à rede local (LAN), podendo ser usada para conectar computadores, TVs ou switches.']),
+							E('li', {}, ['O Piloto Automático (Auto-WAN) passará a monitorar a porta WAN: se um cabo com sinal de internet (DHCP) for inserido nela, ela voltará a ser WAN dinamicamente.']),
+							E('li', {}, ['Se a sua internet principal estiver nesta porta e for via DHCP, o Auto-WAN continuará detectando-a. Caso use PPPoE, configure-a como WAN antes de conectar.'])
+						];
+
+						if (diag.carrier && !diag.has_other_wan) {
+							warningItems.unshift(E('li', { style: 'color: #f59e0b; font-weight: bold;' }, [
+								'⚠️ Detectamos cabo conectado na porta WAN no momento. Certifique-se de que possui acesso via Wi-Fi ou outra porta LAN.'
+							]));
+						}
+
+						const modalBody = [
+							E('div', { class: 'alert-message warning', style: 'margin-bottom: 14px; font-size: 12.5px; line-height: 1.55;' }, [
+								E('strong', { style: 'display:block; margin-bottom:8px; font-size:13.5px;' }, ['Converter porta WAN física em LAN (Auto-Sensing)?']),
+								E('ul', { style: 'margin: 0; padding-left: 18px;' }, warningItems)
+							]),
+							E('div', { style: 'display:flex; justify-content:flex-end; gap:10px; margin-top:16px;' }, [
+								E('button', {
+									class: 'btn cbi-button cbi-button-neutral',
+									'click': function() { ui.hideModal(); }
+								}, ['Cancelar']),
+								E('button', {
+									class: 'btn cbi-button cbi-button-positive',
+									style: 'font-weight:bold;',
+									'click': function() {
+										ui.hideModal();
+										chk.disabled = true;
+										wanToLanSummaryEl.textContent = 'Convertendo porta WAN em LAN…';
+										fs.exec('/usr/sbin/equipe-dashboard-control', ['autowan-wan-to-lan', '1'])
+										.then(function(r) {
+											chk.disabled = false;
+											chk.checked = true;
+											wanToLanSummaryEl.textContent = 'Ativo • A porta WAN física opera como rede local (LAN) com detecção automática de internet.';
+											ui.addNotification(null, E('p', {}, ['Porta WAN física convertida com sucesso em rede local (LAN)!']), 'success');
+											reloadSoon('Porta WAN física convertida em LAN. Atualizando o painel…', 1200);
+										}).catch(function(e) {
+											chk.disabled = false;
+											chk.checked = false;
+											ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+										});
+									}
+								}, ['Confirmar e Converter'])
+							])
+						];
+
+						ui.showModal('Converter porta WAN em LAN?', modalBody);
+					}).catch(function(e) {
+						chk.disabled = false;
+						ui.addNotification(null, E('p', {}, ['Falha ao verificar status da porta WAN: ' + e.message]), 'danger');
+					});
+				};
+
+				wanToLanInput.addEventListener('change', function(ev) {
+					toggleWanToLan(ev.currentTarget);
+				});
+
 				const toggleAutoWan = function(chk, summaryEl, pillEl) {
 					if (!chk.checked) {
 						chk.disabled = true;
@@ -6443,7 +6594,16 @@ return view.extend({
 							if (summaryEl) summaryEl.textContent = 'Desativado • As portas físicas permanecem fixas conforme a topologia padrão.';
 							if (pillEl) { pillEl.className = 'ex-pill standby'; pillEl.textContent = 'STANDBY'; }
 							if (policyBox) policyBox.style.display = 'none';
-							ui.addNotification(null, E('p', {}, ['Piloto Automático (Auto-WAN) desativado.']), 'info');
+							if (wanToLanInput) wanToLanInput.checked = false;
+							wanToLanSummaryEl.textContent = 'Desativado • A porta WAN física opera exclusivamente como entrada de internet principal.';
+							const mwanToggle = document.getElementById('ex-mwan-toggle');
+							if (mwanToggle) { mwanToggle.disabled = false; mwanToggle.title = ''; }
+							const mwanDesc = document.getElementById('ex-mwan-toggle-desc');
+							if (mwanDesc) mwanDesc.textContent = 'Liga failover/balanceamento sem alterar o modo escolhido.';
+							const mwanState = document.getElementById('ex-mwan-toggle-state');
+							if (mwanState) mwanState.textContent = (mwanToggle && mwanToggle.checked) ? 'LIGADO' : 'DESLIGADO';
+							setPill('ex-mwan-status', (mwanToggle && mwanToggle.checked) ? 'online' : 'offline', (mwanToggle && mwanToggle.checked) ? 'ATIVO' : 'DESLIGADO');
+							ui.addNotification(null, E('p', {}, ['Piloto Automático (Auto-WAN) desativado. Porta WAN restaurada.']), 'info');
 						}).catch(function(e) {
 							chk.disabled = false;
 							chk.checked = true;
@@ -6468,13 +6628,13 @@ return view.extend({
 						E('div', { style: 'display:flex; justify-content:flex-end; gap:10px; margin-top:16px;' }, [
 							E('button', {
 								class: 'btn cbi-button cbi-button-neutral',
-								'click': function() { if (window.L && L.ui) L.ui.hideModal(); }
+								'click': function() { ui.hideModal(); }
 							}, ['Cancelar']),
 							E('button', {
 								class: 'btn cbi-button cbi-button-positive',
 								style: 'font-weight:bold;',
 								'click': function() {
-									if (window.L && L.ui) L.ui.hideModal();
+									ui.hideModal();
 									chk.disabled = true;
 									if (summaryEl) summaryEl.textContent = 'Ativando Auto-WAN…';
 									fs.exec('/usr/sbin/equipe-dashboard-control', ['autowan-toggle', '1'])
@@ -6484,6 +6644,17 @@ return view.extend({
 										if (summaryEl) summaryEl.textContent = 'Ativo • Portas vagas monitoradas para detecção inteligente de novas conexões.';
 										if (pillEl) { pillEl.className = 'ex-pill online'; pillEl.textContent = 'VIGILÂNCIA ATIVA'; }
 										if (policyBox) policyBox.style.display = 'block';
+										const mwanToggle = document.getElementById('ex-mwan-toggle');
+										if (mwanToggle) {
+											mwanToggle.checked = true;
+											mwanToggle.disabled = true;
+											mwanToggle.title = 'Gerenciado pelo Piloto Automático Auto-WAN. Para controle manual, desative o Auto-WAN.';
+										}
+										const mwanDesc = document.getElementById('ex-mwan-toggle-desc');
+										if (mwanDesc) mwanDesc.textContent = 'Gerenciado dinamicamente pelo Piloto Automático de Portas conforme cabos de internet são inseridos ou removidos.';
+										const mwanState = document.getElementById('ex-mwan-toggle-state');
+										if (mwanState) mwanState.textContent = 'PILOTO AUTOMÁTICO';
+										setPill('ex-mwan-status', 'online', 'PILOTO AUTOMÁTICO');
 										ui.addNotification(null, E('p', {}, ['Piloto Automático (Auto-WAN) ativado com sucesso!']), 'success');
 									}).catch(function(e) {
 										chk.disabled = false;
@@ -6514,6 +6685,7 @@ return view.extend({
 							btnFail.disabled = false;
 							btnFail.className = 'btn cbi-button ' + (pol === 'failover' ? 'cbi-button-positive' : 'cbi-button-neutral');
 						}
+						text('ex-mwan-mode', pol === 'balanced' ? 'Balanceamento Inteligente (Auto-WAN)' : 'Failover Automático (Auto-WAN)');
 						ui.addNotification(null, E('p', {}, [
 							pol === 'balanced'
 								? 'Multi-WAN configurado para Balanceamento (tráfego distribuído entre conexões).'
@@ -6558,6 +6730,19 @@ return view.extend({
 							style: 'flex:1; min-width:160px; font-weight:600;',
 							click: function() { setAutoWanPolicy('failover'); }
 						}, ['🛡️ Failover Inteligente (Backup)'])
+					]),
+					E('div', {
+						class: 'ex-channel-mode-control',
+						style: 'margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06);'
+					}, [
+						E('div', {}, [
+							E('strong', {}, ['Converter porta WAN em LAN (Auto-Sensing Total)']),
+							wanToLanSummaryEl
+						]),
+						E('label', { class: 'ex-switch' }, [
+							wanToLanInput,
+							E('span', { class: 'ex-switch-slider' })
+						])
 					])
 				]);
 
@@ -6595,8 +6780,23 @@ return view.extend({
 			starlinkSection || '',
 			E('div',{class:'ex-grid ex-grid-2'},wanCards),
 			E('section',{class:'ex-card ex-mwan-control'},[
-				E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['MULTI‑WAN']),E('h3',{},['Modo atual: ',E('span',{id:'ex-mwan-mode'},['Failover WAN1 → WAN2'])])]),E('span',{id:'ex-mwan-status',class:'ex-pill '+(mwanRunning?'online':(mwanPaused?'standby':'offline'))},[mwanPaused?'PAUSADO':(mwanRunning?'ATIVO':'DESLIGADO')])]),
-				E('div',{class:'ex-qos-toggle-row ex-mwan-toggle-row'},[E('div',{},[E('strong',{},['Serviço Multi-WAN']),E('small',{class:'ex-muted'},[mwanPaused?'Pausado automaticamente enquanto o Speedify controla as rotas.':'Liga failover/balanceamento sem alterar o modo escolhido.'])]),E('div',{class:'ex-device-switch-control'},[E('strong',{id:'ex-mwan-toggle-state',class:'ex-device-switch-state'},[mwanPaused?'PAUSADO PELO SPEEDIFY':(mwanRunning?'LIGADO':'DESLIGADO')]),E('label',{class:'ex-switch'},[mwanInput,E('span',{class:'ex-switch-slider'})])])]),
+				E('div',{class:'ex-card-title'},[
+					E('div',{},[
+						E('span',{class:'ex-kicker'},['MULTI‑WAN']),
+						E('h3',{},['Modo atual: ',E('span',{id:'ex-mwan-mode'},[isAutoWanActiveGlobal ? ((netCfgValues.autowan && netCfgValues.autowan.policy === 'failover') ? 'Failover Automático (Auto-WAN)' : 'Balanceamento Inteligente (Auto-WAN)') : 'Failover WAN1 → WAN2'])])
+					]),
+					E('span',{id:'ex-mwan-status',class:'ex-pill '+(isAutoWanActiveGlobal ? 'online' : (mwanRunning?'online':(mwanPaused?'standby':'offline')))},[isAutoWanActiveGlobal ? 'PILOTO AUTOMÁTICO' : (mwanPaused?'PAUSADO':(mwanRunning?'ATIVO':'DESLIGADO'))])
+				]),
+				E('div',{class:'ex-qos-toggle-row ex-mwan-toggle-row'},[
+					E('div',{},[
+						E('strong',{},['Serviço Multi-WAN']),
+						E('small',{id:'ex-mwan-toggle-desc',class:'ex-muted'},[isAutoWanActiveGlobal ? 'Gerenciado dinamicamente pelo Piloto Automático de Portas conforme cabos de internet são inseridos ou removidos.' : (mwanPaused?'Pausado automaticamente enquanto o Speedify controla as rotas.':'Liga failover/balanceamento sem alterar o modo escolhido.')])
+					]),
+					E('div',{class:'ex-device-switch-control'},[
+						E('strong',{id:'ex-mwan-toggle-state',class:'ex-device-switch-state'},[isAutoWanActiveGlobal ? 'PILOTO AUTOMÁTICO' : (mwanPaused?'PAUSADO PELO SPEEDIFY':(mwanRunning?'LIGADO':'DESLIGADO'))]),
+						E('label',{class:'ex-switch'},[mwanInput,E('span',{class:'ex-switch-slider'})])
+					])
+				]),
 				E('details',{class:'ex-mwan-editor'},[
 					E('summary',{},['Editar modo do Multi‑WAN']),
 					E('div',{class:'ex-mwan-editor-body'},[
