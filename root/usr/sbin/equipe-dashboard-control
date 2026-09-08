@@ -117,7 +117,10 @@ wifi_known_radios() {
 }
 autowan_can_convert() {
 	local port="$1"
-	# 1. Se ha Wi-Fi ativo (disabled=0), e 100% seguro converter qualquer porta física
+	# Porta 1 / lan1 eh sagrada como porta mestre de resgate/administracao local
+	[ "$port" != "1" ] && [ "$port" != "lan1" ] && [ "$port" != "port1" ] || return 1
+
+	# 1. Se ha Wi-Fi ativo (disabled=0), e 100% seguro converter qualquer porta física secundária
 	if uci -q show wireless | grep -q "\.disabled='0'"; then
 		return 0
 	fi
@@ -6031,8 +6034,8 @@ case "$action" in
 			uci commit mwan3 2>/dev/null || true
 			/etc/init.d/network reload >/dev/null 2>&1 || true
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
-			[ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
-			[ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 || true
+			([ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 &)
+			([ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 &)
 			starlink_setup_policy_routing >/dev/null 2>&1 || true
 			echo ok
 			exit 0
@@ -6123,7 +6126,7 @@ case "$action" in
 		uci commit network
 		/etc/init.d/network reload >/dev/null 2>&1 || true
 		/etc/init.d/firewall reload >/dev/null 2>&1 || true
-		[ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 || true
+		([ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 &)
 		starlink_setup_policy_routing >/dev/null 2>&1 || true
 		echo ok
 		;;
@@ -7003,6 +7006,10 @@ case "$action" in
 	autowan-toggle)
 		state="${2:-0}"
 		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
+			mkdir -p /etc/ark-router
+			if [ ! -f /etc/ark-router/autowan-baseline.uci ]; then
+				uci export network > /etc/ark-router/autowan-baseline.uci 2>/dev/null || true
+			fi
 			uci -q set network.autowan=config
 			uci -q set network.autowan.enabled='1'
 			[ -n "$(uci -q get network.autowan.policy)" ] || uci -q set network.autowan.policy='balanced'
@@ -7013,13 +7020,55 @@ case "$action" in
 			fi
 			echo 'enabled'
 		else
-			uci -q set network.autowan=config
-			uci -q set network.autowan.enabled='0'
-			uci commit network
 			if [ -x /etc/init.d/ark-autowan ]; then
 				/etc/init.d/ark-autowan stop >/dev/null 2>&1 || true
 				/etc/init.d/ark-autowan disable >/dev/null 2>&1 || true
 			fi
+			pkill -f ark-autowan-daemon 2>/dev/null || true
+
+			# Reverte WANs dinamicas criadas de volta para LAN
+			if [ -f /var/run/ark-autowan-dynamic.list ]; then
+				for entry in $(cat /var/run/ark-autowan-dynamic.list 2>/dev/null); do
+					dyn_wan="${entry#*=}"
+					[ -n "$dyn_wan" ] && [ "$dyn_wan" != "wan" ] && "$0" wan-save iface="$dyn_wan" mode=lan >/dev/null 2>&1 || true
+				done
+				rm -f /var/run/ark-autowan-dynamic.list 2>/dev/null || true
+			fi
+
+			# Limpa VLAN de quarentena (99) e restaura portas LAN no swconfig
+			if is_swconfig; then
+				swconfig dev switch0 vlan 99 set ports "" >/dev/null 2>&1 || true
+				swconfig dev switch0 vlan 1 set ports "1 2 3 4 0t" >/dev/null 2>&1 || true
+				for p in 1 2 3 4; do
+					swconfig dev switch0 port "$p" set pvid 1 >/dev/null 2>&1 || true
+				done
+				swconfig dev switch0 port 5 set pvid 2 >/dev/null 2>&1 || true
+				swconfig dev switch0 set apply >/dev/null 2>&1 || true
+				v1_sec="$(find_switch_vlan 1)"
+				[ -n "$v1_sec" ] && uci -q set "network.$v1_sec.ports=1 2 3 4 0t"
+				for idx in $(uci -q show network | grep '=switch_vlan' | cut -d. -f2 | cut -d= -f1); do
+					v="$(uci -q get "network.$idx.vlan")"
+					[ "$v" != "1" ] && [ "$v" != "2" ] && uci -q delete "network.$idx"
+				done
+			fi
+
+			# Em DSA, garante que lan1..lan4 estejam vinculadas a br-lan
+			if [ -d "/sys/class/net/lan1" ] || [ -d "/sys/class/net/lan2" ]; then
+				for p in lan1 lan2 lan3 lan4; do
+					[ -d "/sys/class/net/$p" ] || continue
+					brctl addif br-lan "$p" >/dev/null 2>&1 || true
+				done
+			fi
+
+			rm -f /etc/ark-router/autowan-baseline.uci 2>/dev/null || true
+
+			uci -q set network.autowan=config
+			uci -q set network.autowan.enabled='0'
+			uci commit network
+			/etc/init.d/network reload >/dev/null 2>&1 || true
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			([ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 &)
+
 			echo 'disabled'
 		fi
 		;;

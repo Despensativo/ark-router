@@ -41,11 +41,12 @@ probe_dhcp_upstream() {
 	return $?
 }
 
-probe_swconfig_dhcp() {
+swconfig_quarantine_port() {
 	local p="$1"
-	local v1_ports="$(swconfig dev switch0 vlan 1 get ports 2>/dev/null | sed 's/VLAN 1: //')"
-	[ -n "$v1_ports" ] || v1_ports="0t 1 2 3 4"
+	[ "$p" != "1" ] || return 0 # Porta 1 eh LAN Mestre Salva-Vidas, nunca fica em quarentena
 
+	# Remove da VLAN 1
+	local v1_ports="$(swconfig dev switch0 vlan 1 get ports 2>/dev/null | sed 's/VLAN 1: //')"
 	local new_v1=""
 	for item in $v1_ports; do
 		case "$item" in
@@ -53,12 +54,52 @@ probe_swconfig_dhcp() {
 			*) new_v1="$new_v1 $item" ;;
 		esac
 	done
-
-	swconfig dev switch0 vlan 99 set vid 99 >/dev/null 2>&1
-	swconfig dev switch0 vlan 99 set ports "$p 0t" >/dev/null 2>&1
-	swconfig dev switch0 port "$p" set pvid 99 >/dev/null 2>&1
 	swconfig dev switch0 vlan 1 set ports "$new_v1" >/dev/null 2>&1
+
+	# Adiciona a VLAN 99 com PVID 99 (Quarentena de Hardware)
+	swconfig dev switch0 vlan 99 set vid 99 >/dev/null 2>&1
+	local v99_ports="$(swconfig dev switch0 vlan 99 get ports 2>/dev/null | sed 's/VLAN 99: //')"
+	local has_p=0 has_0t=0
+	for item in $v99_ports; do
+		[ "$item" = "$p" ] && has_p=1
+		[ "$item" = "0t" ] && has_0t=1
+	done
+	[ "$has_p" = 1 ] || v99_ports="$v99_ports $p"
+	[ "$has_0t" = 1 ] || v99_ports="$v99_ports 0t"
+	swconfig dev switch0 vlan 99 set ports "$v99_ports" >/dev/null 2>&1
+	swconfig dev switch0 port "$p" set pvid 99 >/dev/null 2>&1
 	swconfig dev switch0 set apply >/dev/null 2>&1
+}
+
+swconfig_release_to_lan() {
+	local p="$1"
+	# Remove da VLAN 99
+	local v99_ports="$(swconfig dev switch0 vlan 99 get ports 2>/dev/null | sed 's/VLAN 99: //')"
+	local new_v99=""
+	for item in $v99_ports; do
+		case "$item" in
+			"$p"|"$p"t) continue ;;
+			*) new_v99="$new_v99 $item" ;;
+		esac
+	done
+	swconfig dev switch0 vlan 99 set ports "$new_v99" >/dev/null 2>&1
+
+	# Restaura na VLAN 1 com PVID 1
+	local v1_ports="$(swconfig dev switch0 vlan 1 get ports 2>/dev/null | sed 's/VLAN 1: //')"
+	local has_p=0
+	for item in $v1_ports; do
+		[ "$item" = "$p" ] && has_p=1
+	done
+	[ "$has_p" = 1 ] || v1_ports="$v1_ports $p"
+	swconfig dev switch0 vlan 1 set ports "$v1_ports" >/dev/null 2>&1
+	swconfig dev switch0 port "$p" set pvid 1 >/dev/null 2>&1
+	swconfig dev switch0 set apply >/dev/null 2>&1
+}
+
+probe_swconfig_dhcp() {
+	local p="$1"
+	# Garante quarentena de hardware imediata
+	swconfig_quarantine_port "$p"
 
 	ip link add link eth0 name eth0.99 type vlan id 99 >/dev/null 2>&1 || true
 	ip link set eth0.99 up >/dev/null 2>&1 || true
@@ -67,16 +108,24 @@ probe_swconfig_dhcp() {
 	local res=$?
 
 	ip link delete eth0.99 >/dev/null 2>&1 || true
-	swconfig dev switch0 vlan 99 set ports "" >/dev/null 2>&1
-	swconfig dev switch0 set apply >/dev/null 2>&1
 
 	if [ "$res" -ne 0 ]; then
-		swconfig dev switch0 port "$p" set pvid 1 >/dev/null 2>&1
-		swconfig dev switch0 vlan 1 set ports "$v1_ports" >/dev/null 2>&1
-		swconfig dev switch0 set apply >/dev/null 2>&1
+		# Nao eh roteador upstream: libera para a LAN
+		swconfig_release_to_lan "$p"
 		return 1
 	fi
 
+	# Roteador upstream confirmado: desassocia da VLAN 99 antes do wan-save criar a VLAN definitiva
+	local v99_ports="$(swconfig dev switch0 vlan 99 get ports 2>/dev/null | sed 's/VLAN 99: //')"
+	local new_v99=""
+	for item in $v99_ports; do
+		case "$item" in
+			"$p"|"$p"t) continue ;;
+			*) new_v99="$new_v99 $item" ;;
+		esac
+	done
+	swconfig dev switch0 vlan 99 set ports "$new_v99" >/dev/null 2>&1
+	swconfig dev switch0 set apply >/dev/null 2>&1
 	return 0
 }
 
@@ -86,7 +135,7 @@ is_swconfig_port_already_wan() {
 	while true; do
 		local v="$(uci -q get "network.@switch_vlan[$idx].vlan")"
 		[ -z "$v" ] && break
-		if [ "$v" != "1" ]; then
+		if [ "$v" != "1" ] && [ "$v" != "99" ]; then
 			local ports="$(uci -q get "network.@switch_vlan[$idx].ports")"
 			for item in $ports; do
 				case "$item" in
@@ -97,6 +146,22 @@ is_swconfig_port_already_wan() {
 		idx=$((idx + 1))
 	done
 	return 1
+}
+
+init_swconfig_quarantine() {
+	command -v swconfig >/dev/null 2>&1 || return 0
+	swconfig dev switch0 show >/dev/null 2>&1 || return 0
+
+	swconfig dev switch0 vlan 99 set vid 99 >/dev/null 2>&1
+	swconfig dev switch0 vlan 99 set ports "0t" >/dev/null 2>&1
+	swconfig dev switch0 set apply >/dev/null 2>&1
+
+	for p in 2 3 4; do
+		local oper="$(swconfig dev switch0 port "$p" get link 2>/dev/null | grep -q "link:up" && echo up || echo down)"
+		if [ "$oper" = "down" ] && ! is_swconfig_port_already_wan "$p"; then
+			swconfig_quarantine_port "$p"
+		fi
+	done
 }
 
 run_autowan_cycle() {
@@ -151,8 +216,9 @@ run_autowan_cycle() {
 		done
 
 	# 2. Arquitetura swconfig (ex: D-Link DGL-5500 / ath79 switch0)
+	# Porta 1 eh estritamente mantida em LAN (porta mestre de administracao e resgate)
 	elif command -v swconfig >/dev/null 2>&1 && swconfig dev switch0 show >/dev/null 2>&1; then
-		for p in 1 2 3 4; do
+		for p in 2 3 4; do
 			local port_name="port$p"
 			local oper="$(swconfig dev switch0 port "$p" get link 2>/dev/null | grep -q "link:up" && echo up || echo down)"
 			local prev_oper="$(grep "^$port_name=" "$STATE_FILE" 2>/dev/null | cut -d= -f2)"
@@ -179,13 +245,13 @@ run_autowan_cycle() {
 			# Transição: cabo desconectado (UP -> DOWN)
 			elif [ "$oper" != "up" ] && [ "$prev_oper" = "up" ]; then
 				logger -t ark-autowan "Link DOWN detectado na porta fisica $p (switch0)"
+				swconfig_quarantine_port "$p"
 				local dyn_entry="$(grep "^$port_name=" "$DYNAMIC_WANS_FILE" 2>/dev/null | tail -n 1)"
 				if [ -n "$dyn_entry" ]; then
 					local dyn_wan="${dyn_entry#*=}"
 					logger -t ark-autowan "Porta fisica $p desconectada. Revertendo $dyn_wan de volta para LAN..."
-					/usr/sbin/equipe-dashboard-control wan-save iface="$dyn_wan" mode=lan >/dev/null 2>&1
+					(/usr/sbin/equipe-dashboard-control wan-save iface="$dyn_wan" mode=lan >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1) &
 					sed -i "/^$port_name=/d" "$DYNAMIC_WANS_FILE" 2>/dev/null || true
-					/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
 				fi
 			fi
 
@@ -195,7 +261,10 @@ run_autowan_cycle() {
 	fi
 }
 
+init_swconfig_quarantine
+
 while true; do
 	run_autowan_cycle
-	sleep 3
+	sleep 1
 done
+
