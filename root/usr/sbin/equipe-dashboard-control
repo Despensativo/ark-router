@@ -2458,10 +2458,10 @@ ensure_mwan3_ark_config() {
 	uci -q set mwan3.bypass_pvt172.dest_ip='172.16.0.0/12'
 	uci -q set mwan3.bypass_pvt172.use_policy=default
 
-	# 2. Regras de Pools por Dispositivo (apenas se modo balanced_devices estiver ativo)
-	pool1_en="$(uci -q get mwan3.dev_pool1.enabled || printf '0')"
-	if [ "$pool1_en" = "1" ]; then
-		lan_net="$(uci -q get network.lan.ipaddr || printf '192.168.73.1')"
+	# 2. Regras de Pools por Dispositivo (apenas se modo balanced_devices estiver explicitamente selecionado e Auto-WAN nao estiver desativado)
+	current_mwan_mode="$(uci -q get equipe_dashboard.mwan.mode || printf 'failover')"
+	if [ "$current_mwan_mode" = "balanced_devices" ]; then
+		lan_net="$(uci -q get "network.lan.ipaddr" || printf '192.168.73.1')"
 		lan_prefix="$(printf '%s' "$lan_net" | cut -d. -f1-3)"
 		[ -n "$lan_prefix" ] || lan_prefix="192.168.73"
 		uci -q set mwan3.dev_pool1=rule
@@ -6868,21 +6868,48 @@ case "$action" in
 		;;
 	mwan)
 		device_mode=0
+		uci -q set equipe_dashboard.mwan=config
 		case "$2" in
 			balanced_devices|balanced_device|devices)
 				policy='wan_then_wan2'
 				device_mode=1
+				uci -q set equipe_dashboard.mwan.mode=balanced_devices
 				;;
-			failover|wan_then_wan2) policy='wan_then_wan2' ;;
-			failover_wan2|wan2_then_wan) policy='wan2_then_wan' ;;
-			balanced) policy='balanced' ;;
-			wan1|wan) policy='wan_only' ;;
-			wan2) policy='wan2_only' ;;
-			wan3) policy='wan3_only' ;;
-			wan4) policy='wan4_only' ;;
-			wan[0-9]*) policy="${2}_only" ;;
+			failover|wan_then_wan2)
+				policy='wan_then_wan2'
+				uci -q set equipe_dashboard.mwan.mode=failover
+				;;
+			failover_wan2|wan2_then_wan)
+				policy='wan2_then_wan'
+				uci -q set equipe_dashboard.mwan.mode=failover_wan2
+				;;
+			balanced)
+				policy='balanced'
+				uci -q set equipe_dashboard.mwan.mode=balanced
+				;;
+			wan1|wan)
+				policy='wan_only'
+				uci -q set equipe_dashboard.mwan.mode=wan1
+				;;
+			wan2)
+				policy='wan2_only'
+				uci -q set equipe_dashboard.mwan.mode=wan2
+				;;
+			wan3)
+				policy='wan3_only'
+				uci -q set equipe_dashboard.mwan.mode=wan3
+				;;
+			wan4)
+				policy='wan4_only'
+				uci -q set equipe_dashboard.mwan.mode=wan4
+				;;
+			wan[0-9]*)
+				policy="${2}_only"
+				uci -q set equipe_dashboard.mwan.mode="$2"
+				;;
 			*) echo 'Modo invalido' >&2; exit 2 ;;
 		esac
+		uci commit equipe_dashboard
 		ensure_mwan3_ark_config
 		if [ "$device_mode" = "1" ]; then
 			uci -q set mwan3.dev_pool1.enabled=1
@@ -7911,7 +7938,8 @@ EOF
 				/etc/init.d/ark-autowan stop >/dev/null 2>&1 || true
 				/etc/init.d/ark-autowan disable >/dev/null 2>&1 || true
 			fi
-			pkill -f ark-autowan-daemon 2>/dev/null || true
+			pkill -9 -f ark-autowan-daemon 2>/dev/null || true
+			rm -f /var/run/ark-autowan.state /var/run/ark-autowan-dynamic.list /var/run/ark-autowan.lock 2>/dev/null || true
 
 			# Se a porta WAN estava operando como LAN, restaura para WAN fisica padrao
 			if [ "$(uci -q get network.autowan.wan_to_lan)" = "1" ]; then
@@ -7956,7 +7984,21 @@ EOF
 
 			uci -q set network.autowan=config
 			uci -q set network.autowan.enabled='0'
+			uci -q set network.autowan.policy='failover'
 			uci commit network
+
+			# GARANTIA ABSOLUTA: Elimina pools de dispositivo e restaura failover puro wan_then_wan2
+			uci -q delete mwan3.dev_pool1
+			uci -q delete mwan3.dev_pool2
+			uci -q set equipe_dashboard.mwan=config
+			uci -q set equipe_dashboard.mwan.mode=failover
+			uci commit equipe_dashboard
+			for r in ssh whatsapp_tcp whatsapp_udp https https_quic default_rule_v4; do
+				uci -q set "mwan3.$r.use_policy=wan_then_wan2"
+			done
+			mwan3_reorder_rules
+			uci commit mwan3
+
 			/etc/init.d/network reload >/dev/null 2>&1 || true
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
 			([ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 &)
@@ -7977,15 +8019,17 @@ EOF
 		uci -q set network.autowan=config
 		uci -q set network.autowan.policy="$pol"
 		uci commit network
-		# Se houver mais de uma WAN ativa, sincroniza com o mwan3
-		active_wans_cnt=0
-		for w in $(uci -q show network | grep '=interface' | cut -d. -f2 | cut -d= -f1 | grep -E '^wan([0-9]+)?$'); do
-			p="$(uci -q get "network.$w.proto" || printf 'none')"
-			d="$(uci -q get "network.$w.device" || uci -q get "network.$w.ifname" || printf '')"
-			[ "$p" != "none" ] && [ -n "$d" ] && active_wans_cnt=$((active_wans_cnt + 1))
-		done
-		if [ "$active_wans_cnt" -ge 2 ]; then
-			/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
+		# Sincroniza com o mwan3 APENAS se Auto-WAN estiver efetivamente ATIVADO
+		if [ "$(uci -q get network.autowan.enabled)" = "1" ]; then
+			active_wans_cnt=0
+			for w in $(uci -q show network | grep '=interface' | cut -d. -f2 | cut -d= -f1 | grep -E '^wan([0-9]+)?$'); do
+				p="$(uci -q get "network.$w.proto" || printf 'none')"
+				d="$(uci -q get "network.$w.device" || uci -q get "network.$w.ifname" || printf '')"
+				[ "$p" != "none" ] && [ -n "$d" ] && active_wans_cnt=$((active_wans_cnt + 1))
+			done
+			if [ "$active_wans_cnt" -ge 2 ]; then
+				/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
+			fi
 		fi
 		echo "$pol"
 		;;

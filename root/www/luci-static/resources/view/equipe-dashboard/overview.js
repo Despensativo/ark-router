@@ -7385,8 +7385,8 @@ return view.extend({
 							if (mwanDesc) mwanDesc.textContent = 'Liga failover/balanceamento sem alterar o modo escolhido.';
 							const mwanState = document.getElementById('ex-mwan-toggle-state');
 							if (mwanState) mwanState.textContent = (mwanToggle && mwanToggle.checked) ? 'LIGADO' : 'DESLIGADO';
-							setPill('ex-mwan-status', (mwanToggle && mwanToggle.checked) ? 'online' : 'offline', (mwanToggle && mwanToggle.checked) ? 'ATIVO' : 'DESLIGADO');
-							ui.addNotification(null, E('p', {}, ['Piloto Automático (Auto-WAN) desativado. Porta WAN restaurada.']), 'info');
+							ui.addNotification(null, E('p', {}, ['Piloto Automático (Auto-WAN) desativado. Porta WAN restaurada e Failover garantido.']), 'info');
+							reloadSoon('Piloto Automático desativado. Atualizando o painel…', 1400);
 						}).catch(function(e) {
 							chk.disabled = false;
 							chk.checked = true;

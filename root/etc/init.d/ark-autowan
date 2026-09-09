@@ -20,5 +20,5 @@ start_service() {
 }
 
 stop_service() {
-	rm -f /var/run/ark-autowan.state 2>/dev/null || true
+	rm -f /var/run/ark-autowan.state /var/run/ark-autowan-dynamic.list /var/run/ark-autowan.lock 2>/dev/null || true
 }

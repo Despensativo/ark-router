@@ -7,6 +7,11 @@ STATE_FILE="/var/run/ark-autowan.state"
 DYNAMIC_WANS_FILE="/var/run/ark-autowan-dynamic.list"
 LOCK_FILE="/var/run/ark-autowan.lock"
 
+if [ "$(uci -q get network.autowan.enabled || echo 0)" != "1" ]; then
+	logger -t ark-autowan "Auto-WAN está desativado no UCI. Encerrando daemon."
+	exit 0
+fi
+
 logger -t ark-autowan "ARK Auto-WAN Daemon iniciado."
 
 touch "$STATE_FILE" "$DYNAMIC_WANS_FILE"
@@ -149,6 +154,9 @@ is_swconfig_port_already_wan() {
 }
 
 init_swconfig_quarantine() {
+	local enabled="$(uci -q get network.autowan.enabled || echo 0)"
+	[ "$enabled" = "1" ] || return 0
+
 	command -v swconfig >/dev/null 2>&1 || return 0
 	swconfig dev switch0 show >/dev/null 2>&1 || return 0
 
@@ -168,7 +176,10 @@ init_swconfig_quarantine() {
 
 run_autowan_cycle() {
 	local enabled="$(uci -q get network.autowan.enabled || echo 0)"
-	[ "$enabled" = "1" ] || return 0
+	if [ "$enabled" != "1" ]; then
+		logger -t ark-autowan "Auto-WAN desativado no UCI. Encerrando daemon."
+		exit 0
+	fi
 
 	local pol="$(uci -q get network.autowan.policy || echo balanced)"
 	local wan_as_lan="$(uci -q get network.autowan.wan_to_lan || echo 0)"
