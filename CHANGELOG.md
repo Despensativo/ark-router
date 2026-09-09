@@ -1,5 +1,54 @@
 # Changelog
 
+## 0.9.94
+
+- **📶 Identificação Detalhada de Frequência (2,4 GHz / 5 GHz) e SSID na Lista de Dispositivos Conectados**:
+  - **Mapeamento de Banda em Tempo Real**: Cada dispositivo conectado agora tem sua interface de rádio associada identificada com precisão (`2,4 GHz` ou `5 GHz` ou `6 GHz`).
+  - **Exibição do Nome Exato da Rede (SSID)**: A coluna de rede agora mostra o SSID específico onde o cliente está associado (ex.: `CASA_ARK_5G`, `CASA_ARK`, `Tv casa`, `Equipe-X`) em vez de um rótulo genérico.
+  - **Badges Visuais Estilizados**:
+    - Dispositivos em **5 GHz** recebem o badge visual azul `[ 5 GHz ]`.
+    - Dispositivos em **2,4 GHz** recebem o badge visual âmbar `[ 2,4 GHz ]`.
+    - Dispositivos cabeados recebem o badge discreto `[ Cabo ]`.
+  - **Atualização Dinâmica Suave**: O loop de atualização em tempo real (`shouldKeepInPlace`) atualiza instantaneamente a célula de rede e o sinal sem recarregar ou piscar a tabela caso o dispositivo alterne de frequência.
+  - **Visualização Responsiva em Celulares**: No modo mobile, a informação de SSID e frequência é incluída de forma compacta na linha de metadados do aparelho.
+
+## 0.9.93
+
+- **🚀 Toggles de Hardware e Desempenho Wi-Fi no Painel Operacional**:
+  - **Modo Potência Máxima de Transmissão (1 Watt / Panamá PA)**: Adicionado controle de alternância dinâmico na seção *Ambiente Wi-Fi*. Permite alternar com um clique entre o padrão regulatório Brasil (`BR`) e o domínio permissivo Panamá (`PA`), destravando 100% da capacidade física dos amplificadores de hardware (até **30 dBm / 1.000 mW** no Acer Predator W6x e **28 dBm / 630 mW** no Cudy WR3000 em 5 GHz 160 MHz).
+  - **Aceleração de Hardware Wi-Fi (MediaTek WED - Wireless Ethernet Dispatch)**: Adicionado controle de alternância nativo detectado automaticamente em chips MediaTek Filogic compatíveis (MT7981, MT7986, MT7988). Quando ativo, realiza o despacho direto de pacotes Wi-Fi via DMA/PPE no silício do roteador, aliviando completamente a CPU de interrupções de pacotes de rede sem quebrar o roteamento ou as filas de latência do CAKE SQM.
+  - **Comandos de Automação no Backend (`equipe-dashboard-control`)**: Implementados os comandos `wifi-maxpower-toggle <1|0>` e `wifi-wed-toggle <1|0>`, com reflexo de estado instantâneo nas chamadas JSON de `capabilities.hardware`.
+
+## 0.9.92
+
+- **🔒 Blindagem de Privacidade e Proteção de Credenciais do Usuário (E1-41)**:
+  - **Remoção de E-mail Pessoal em Pacotes Distribuídos**: Limpos todos os endereços e chaves de teste hardcoded nos templates padrão (`root/etc/config/starlink_telemetry`, `starlink-telemetry-mailer`, `equipe-dashboard-control` e `overview.js`). As credenciais de envio agora são estritamente individuais e salvas no perfil privativo do usuário.
+  - **Preservação de Configurações em Upgrades (`conffiles`)**: Declarados `/etc/config/starlink_telemetry` e `/etc/config/equipe_perf` na diretiva de arquivos protegidos (`conffiles`) do `Makefile` e do gerador de APK. Atualizações de pacote nunca sobrescrevem as chaves, e-mails ou limites personalizados configurados pelo usuário.
+- **⚡ Eficiência de Recursos e Otimização do Navegador (E3-01 & E1-33)**:
+  - **Pausa Inteligente de Polling via Page Visibility API (E3-01)**: O painel `overview.js` agora detecta quando a aba do navegador é minimizada ou colocada em segundo plano (`document.hidden`), pausando os loops de atualização. O ciclo é restaurado instantaneamente quando o usuário retorna à aba, poupando ciclos de CPU e memória tanto no roteador quanto no dispositivo cliente.
+  - **Cache HTTP Determinístico e Remoção de `Date.now()` (E1-33)**: Substituído o bust de cache agressivo com timestamp por tokens de versão estáticos alinhados à versão do pacote (`?v=0.9.92`) nos arquivos CSS e JS do tema e painel (`header.ut`, `header.htm`, `overview.js`).
+- **🎮 Aprimoramento e Correções de Rede & QoS CAKE (E1-08, E1-09 & E1-12)**:
+  - **Marcação DSCP Eficiente para Modo Gamer (E1-08 / E1-09)**: No perfil Gamer do CAKE SQM, a marcação de tráfego de baixa latência foi ajustada para `set_dscp=EF` mantendo as opções avançadas `nat dual-srchost`, garantindo que jogos online recebam prioridade na fila sem degradar fluxos paralelos.
+  - **Compatibilidade Firewall4 Declarativa (E1-12)**: Injetada a opção `fw4_compatible '1'` nas seções de controle de limites de rede para plena harmonia com a pilha nftables do OpenWrt 23.05+.
+- **🧹 Higienização de Inicialização e Governança de Flash/RAM (E1-04, E1-28 & E1-39)**:
+  - **Correção da Variável de Largura de Canal 5 GHz (E1-28)**: Corrigida a inicialização de `cur_ht5` no script `99-ark-router-wifi`, assegurando a leitura fidedigna da largura de canal durante o primeiro boot do roteador.
+  - **Retenção Segura de Backups em `/tmp` (E1-04)**: Adicionada rotação automática com retenção máxima de 3 arquivos para backups temporários gerados na RAM (`/tmp/ark-router-ezsetup-backup-*` e `/tmp/ark-profile-backup-*`), prevenindo vazamento de espaço em RAM em sessões de configuração extensas.
+  - **Remoção de Parâmetro Não Suportado no uHTTPd (E1-39)**: Expurgada a chave `ubus_cors` do `uhttpd` nos scripts de inicialização, eliminando advertências do serviço web.
+
+## 0.9.91
+
+- **🛡️ Blindagem de Hardware DSA contra Sequestro de Portas WAN (Correção Definitiva WAN2 Offline)**:
+  - **Isolamento Estrito de Portas**: A rotina de restauração e desligamento do Auto-WAN em `equipe-dashboard-control` agora checa ativamente `network.wan.device` e `network.wan2.device`. NUNCA adiciona uma porta dedicada à WAN secundária (ex: `lan4`) dentro do bridge da rede local (`br-lan`).
+  - **Comando `nomaster` Garantido**: Executa `ip link set "$wan2_dev" nomaster` automaticamente para garantir que a placa física nunca fique escravizada à ponte LAN, eliminando 100% da perda de pacotes para o gateway `192.168.51.1` e mantendo o MWAN3 com a etiqueta verde `ONLINE`.
+- **🔊 Desbloqueio e Atualização do Ecossistema Amazon Alexa (Fim da Luz Laranja Infinita)**:
+  - **Diagnóstico Forense da Falha de Firmware**: Identificado que listas agressivas de telemetria externa (`Smart TV Adblock` e `AdGuard DNS Filter`) bloqueavam `minerva.devices.a2z.com` e `alexa-hybrid-interaction-log-config-prod-na.s3.amazonaws.com` respondendo com `0.0.0.0`.
+  - **Regras de Exceção `$important`**: Implementadas exceções com prioridade máxima na `OFFICIAL_WHITELIST` para `a2z.com`, `devices.a2z.com`, `amazon.com`, `amazonalexa.com`, `amazonaws.com`, `s3.amazonaws.com` e `device-metrics-*.amazon.com`, permitindo o download seguro e íntegro do firmware (250–450 MB) via CloudFront CDN.
+- **📺 Blindagem Global para Smart TVs (Samsung Smart Hub, LG webOS e Roku)**:
+  - Protegidos os servidores essenciais de catálogo e autenticação de Smart TVs e dongles (`samsungqbe.com`, `osb.samsungqbe.com`, `samsungcloudsolution.com`, `samsungcloudsolution.net`, `lgtvcommon.com`, `lgtvsdp.com`, `lgappstv.com` e `roku.com`), eliminando erros de conexão em lojas de aplicativos e controle remoto.
+- **⚡ Otimização do Upstream DNS do AdGuard Home (Fim da Filtragem Oculta na Nuvem)**:
+  - Substituído o upstream público filtrado (`dns.adguard-dns.com`) por resolvedores limpos e de altíssima performance (**Cloudflare `1.1.1.1`** e **Google `8.8.8.8`**).
+  - Garante que a autoridade sobre bloqueios e liberações pertença exclusivamente ao roteador local, sem intervenções ou falsos positivos gerados por servidores externos.
+
 ## 0.9.90
 
 - **🛡️ Blindagem Definitiva do Multi-WAN & Piloto Automático de Portas (Zero Traffic Splitting)**:

@@ -105,6 +105,8 @@ build_variant() {
 /etc/config/equipe_dashboard
 /etc/config/equipe_devices
 /etc/config/qos_equipe
+/etc/config/equipe_perf
+/etc/config/starlink_telemetry
 EOF
 	( cd "$pkg_root" && find . -type f,l -printf "/%P\n" | sort ) > "$pkg_root/lib/apk/packages/${pkg_name}.list"
 

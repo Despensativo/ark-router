@@ -2554,9 +2554,9 @@ apply_operation_profile() {
 	# 2. Identifica hardware e memoria disponivel para otimizacao inteligente
 	mem_total_kb="$(awk '/MemTotal/{print $2}' /proc/meminfo 2>/dev/null || echo 256000)"
 	if [ "$mem_total_kb" -gt 300000 ]; then
-		cake_opts="diffserv4 ack-filter memlimit 64M"
+		cake_opts="diffserv4 nat dual-srchost ack-filter memlimit 64M"
 	else
-		cake_opts="diffserv4 ack-filter memlimit 32M"
+		cake_opts="diffserv4 nat dual-srchost ack-filter memlimit 32M"
 	fi
 
 	uci -q set equipe_dashboard.main=settings
@@ -2564,7 +2564,7 @@ apply_operation_profile() {
 	if [ "$mode" = gamer ]; then
 		uci -q show firewall 2>/dev/null | grep -E '^firewall\.ark_priority_.*\.set_dscp=' | while read -r line; do
 			sec="$(printf '%s' "$line" | awk -F. '{print $2}')"
-			uci -q set "firewall.$sec.set_dscp=AF41"
+			uci -q set "firewall.$sec.set_dscp=EF"
 		done
 		if [ -f /etc/config/sqm ]; then
 			sqm_queues="$(uci -q show sqm | grep '=queue' | cut -d. -f2 | cut -d= -f1)"
@@ -2625,6 +2625,9 @@ ez_backup() {
 	} > "$stage/metadata/README.txt"
 	tar -czf "$file" -C "$stage" . || return 1
 	rm -rf "$stage"
+	# Retenção inteligente em /tmp: mantém no máximo os 3 backups mais recentes para economizar RAM
+	ls -1t /tmp/ark-router-ezsetup-backup-*.tar.gz 2>/dev/null | tail -n +4 | xargs rm -f 2>/dev/null || true
+	ls -1t /tmp/ark-profile-backup-*.tar.gz 2>/dev/null | tail -n +4 | xargs rm -f 2>/dev/null || true
 	ez_set backup "$file"
 	printf '%s' "$file"
 }
@@ -2874,6 +2877,7 @@ EOF
 		uci -q set firewall.ark_limits=include
 		uci -q set firewall.ark_limits.type=script
 		uci -q set "firewall.ark_limits.path=$apply_sh"
+		uci -q set firewall.ark_limits.fw4_compatible='1'
 		uci commit firewall
 	else
 		rm -f "$tmp_nft" "$nft_file" "$apply_sh" 2>/dev/null || true
@@ -3443,7 +3447,7 @@ try:
 
         final_rules = []
         for d in target_wl:
-            final_rules.append(f\"  - '@@||{d}^'\")
+            final_rules.append(f\"  - '@@||{d}^$important'\")
         for d in target_bl:
             final_rules.append(f\"  - '||{d}^'\")
         for r in existing_other:
@@ -3652,7 +3656,16 @@ OFFICIAL_WHITELIST = [
     'globo.com', 'globoplay.com.br', 'mercadolivre.com.br', 'ifood.com.br', 'clarotvmais.com.br',
     'steamcommunity.com', 'steampowered.com', 'epicgames.com', 'netflix.com', 'nflxvideo.net',
     # Gaming & Smart Home
-    'accounts.nintendo.com', 'plex.tv', 'roborock.com'
+    'accounts.nintendo.com', 'plex.tv', 'roborock.com',
+    # Amazon & Alexa Ecosystem
+    'amazon.com', 'amazonalexa.com', 'alexa.amazon.com', 'a2z.com', 'devices.a2z.com',
+    'amazonaws.com', 's3.amazonaws.com', 'media-amazon.com', 'avs-alexa-na.amazon.com',
+    'alexa-hybrid-interaction-log-config-prod-na.s3.amazonaws.com',
+    'device-metrics-us.amazon.com', 'device-metrics-us-2.amazon.com',
+    # Smart TVs & Dongles (Samsung, LG, Roku)
+    'samsungcloudsolution.com', 'samsungcloudsolution.net', 'samsungqbe.com',
+    'lgtvcommon.com', 'lgtvsdp.com', 'lgappstv.com',
+    'roku.com'
 ]
 
 try:
@@ -3704,7 +3717,7 @@ try:
     for d in OFFICIAL_WHITELIST:
         d_lower = d.lower().strip()
         if d_lower not in existing_whitelist_domains:
-            new_rules.append(f'@@||{d_lower}^')
+            new_rules.append(f'@@||{d_lower}^$important')
             existing_whitelist_domains.add(d_lower)
             all_wl_list.append(d_lower)
             added_count += 1
@@ -5999,8 +6012,8 @@ case "$action" in
 		sl_purge_boot=true; [ "$(uci -q get starlink_telemetry.global.purge_boot_email || printf 1)" = 0 ] && sl_purge_boot=false
 		sl_mail_enabled=false; [ "$(uci -q get starlink_telemetry.email.enabled || printf 0)" = 1 ] && sl_mail_enabled=true
 		sl_provider="$(uci -q get starlink_telemetry.email.provider || printf 'resend')"
-		sl_key="$(uci -q get starlink_telemetry.email.resend_api_key || printf 're_xxxxxxxxx')"
-		sl_to="$(uci -q get starlink_telemetry.email.email_to || printf 'hcsskt@gmail.com')"
+		sl_key="$(uci -q get starlink_telemetry.email.resend_api_key || true)"
+		sl_to="$(uci -q get starlink_telemetry.email.email_to || true)"
 		sl_from="$(uci -q get starlink_telemetry.email.email_from || printf 'onboarding@resend.dev')"
 		sl_attach=true; [ "$(uci -q get starlink_telemetry.email.attach_csv || printf 1)" = 0 ] && sl_attach=false
 		printf ',"starlink_public":{"enabled":%s,"url":"/starlink/","read_only":true,"active_wan":"%s"}' "$starlink_public" "$(starlink_active_wan_get)"
@@ -6008,8 +6021,15 @@ case "$action" in
 			"$starlink_always_show" "$sl_tel_enabled" "$(json_escape "$sl_sample_mode")" "$sl_max_h" "$sl_purge_boot" "$sl_mail_enabled" "$(json_escape "$sl_provider")" "$(json_escape "$sl_key")" "$(json_escape "$sl_to")" "$(json_escape "$sl_from")" "$sl_attach"
 		current_version="$(ark_current_version)"
 		update_repo="$(ark_update_repo)"
-		printf '},"hardware":{"cpu_cores":%s,"cpu_freq_mhz":%s,"cpu_freq_str":"%s","cpu_arch":"%s","mem_total_mb":%s,"flash_type":"%s","wifi_160_supported":%s,"is_legacy_owrt":%s},"https":{"available":%s,"redirect":%s,"certificate":"local","ca_available":%s,"ca_fingerprint":"%s","ca_download":"/ark-router/ark-router-ca.crt"},"update":{"current":"%s","repo":"%s","manager":"%s"}}\n' \
-			"$cpu_cores" "$cpu_freq_mhz" "$(json_escape "$cpu_freq_str")" "$(json_escape "$cpu_arch")" "$mem_total_mb" "$(json_escape "$flash_type")" "$wifi_160" "$is_legacy_owrt" "$https_available" "$(bool "$https_redirect")" "$ca_available" "$ca_fingerprint" "$(json_escape "$current_version")" "$(json_escape "$update_repo")" "$(json_escape "$manager")"
+		wifi_wed_supported=false
+		wifi_wed_enabled=false
+		[ -e /sys/module/mt7915e/parameters/wed_enable ] && wifi_wed_supported=true
+		[ "$(cat /sys/module/mt7915e/parameters/wed_enable 2>/dev/null)" = "Y" ] && wifi_wed_enabled=true
+		wifi_maxpower_enabled=false
+		cur_country="$(uci -q get wireless.radio0.country || uci -q get wireless.radio1.country || echo 'BR')"
+		[ "$cur_country" = "PA" ] && wifi_maxpower_enabled=true
+		printf '},"hardware":{"cpu_cores":%s,"cpu_freq_mhz":%s,"cpu_freq_str":"%s","cpu_arch":"%s","mem_total_mb":%s,"flash_type":"%s","wifi_160_supported":%s,"wifi_wed_supported":%s,"wifi_wed_enabled":%s,"wifi_maxpower_enabled":%s,"is_legacy_owrt":%s},"https":{"available":%s,"redirect":%s,"certificate":"local","ca_available":%s,"ca_fingerprint":"%s","ca_download":"/ark-router/ark-router-ca.crt"},"update":{"current":"%s","repo":"%s","manager":"%s"}}\n' \
+			"$cpu_cores" "$cpu_freq_mhz" "$(json_escape "$cpu_freq_str")" "$(json_escape "$cpu_arch")" "$mem_total_mb" "$(json_escape "$flash_type")" "$wifi_160" "$wifi_wed_supported" "$wifi_wed_enabled" "$wifi_maxpower_enabled" "$is_legacy_owrt" "$https_available" "$(bool "$https_redirect")" "$ca_available" "$ca_fingerprint" "$(json_escape "$current_version")" "$(json_escape "$update_repo")" "$(json_escape "$manager")"
 		;;
 	self-update-check)
 		ark_update_json
@@ -7000,9 +7020,9 @@ case "$action" in
 		purge_boot_email="$(uci -q get starlink_telemetry.global.purge_boot_email || printf 1)"
 		email_enabled="$(uci -q get starlink_telemetry.email.enabled || printf 0)"
 		provider="$(uci -q get starlink_telemetry.email.provider || printf 'resend')"
-		resend_api_key="$(uci -q get starlink_telemetry.email.resend_api_key || printf 're_xxxxxxxxx')"
+		resend_api_key="$(uci -q get starlink_telemetry.email.resend_api_key || true)"
 		email_from="$(uci -q get starlink_telemetry.email.email_from || printf 'onboarding@resend.dev')"
-		email_to="$(uci -q get starlink_telemetry.email.email_to || printf 'hcsskt@gmail.com')"
+		email_to="$(uci -q get starlink_telemetry.email.email_to || true)"
 		attach_csv="$(uci -q get starlink_telemetry.email.attach_csv || printf 1)"
 		printf '{"always_show":%s,"enabled":%s,"sample_mode":"%s","max_history_hours":%s,"purge_boot_email":%s,"email_enabled":%s,"provider":"%s","resend_api_key":"%s","email_from":"%s","email_to":"%s","attach_csv":%s}\n' \
 			"$([ "$always_show" = "1" ] && echo true || echo false)" \
@@ -7917,6 +7937,40 @@ EOF
 			echo 'disabled'
 		fi
 		;;
+	wifi-maxpower-toggle)
+		state="${2:-1}"
+		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
+			for r in $(uci -q show wireless | grep '=wifi-device' | cut -d. -f2 | cut -d= -f1); do
+				uci -q set "wireless.$r.country=PA"
+			done
+			uci commit wireless
+			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			echo 'enabled'
+		else
+			for r in $(uci -q show wireless | grep '=wifi-device' | cut -d. -f2 | cut -d= -f1); do
+				uci -q set "wireless.$r.country=BR"
+			done
+			uci commit wireless
+			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			echo 'disabled'
+		fi
+		;;
+	wifi-wed-toggle)
+		state="${2:-1}"
+		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
+			mkdir -p /etc/modules.d
+			touch /etc/modules.conf
+			grep -q "options mt7915e wed_enable=Y" /etc/modules.conf || echo "options mt7915e wed_enable=Y" >> /etc/modules.conf
+			echo "mt7915e wed_enable=Y" > /etc/modules.d/mt7915e
+			echo Y > /sys/module/mt7915e/parameters/wed_enable 2>/dev/null || true
+			echo 'enabled'
+		else
+			sed -i '/options mt7915e wed_enable/d' /etc/modules.conf 2>/dev/null || true
+			echo "mt7915e wed_enable=N" > /etc/modules.d/mt7915e
+			echo N > /sys/module/mt7915e/parameters/wed_enable 2>/dev/null || true
+			echo 'disabled'
+		fi
+		;;
 	autowan-toggle)
 		state="${2:-0}"
 		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
@@ -7972,12 +8026,17 @@ EOF
 				done
 			fi
 
-			# Em DSA, garante que lan1..lan4 estejam vinculadas a br-lan
+			# Em DSA, garante que portas LAN livres estejam vinculadas a br-lan (NUNCA adicionar portas de WAN/WAN2)
+			wan_dev=$(uci -q get network.wan.device)
+			wan2_dev=$(uci -q get network.wan2.device)
 			if [ -d "/sys/class/net/lan1" ] || [ -d "/sys/class/net/lan2" ]; then
 				for p in lan1 lan2 lan3 lan4; do
 					[ -d "/sys/class/net/$p" ] || continue
+					[ -n "$wan_dev" ] && [ "$p" = "$wan_dev" ] && continue
+					[ -n "$wan2_dev" ] && [ "$p" = "$wan2_dev" ] && continue
 					brctl addif br-lan "$p" >/dev/null 2>&1 || true
 				done
+				[ -n "$wan2_dev" ] && ip link set "$wan2_dev" nomaster >/dev/null 2>&1 || true
 			fi
 
 			rm -f /etc/ark-router/autowan-baseline.uci 2>/dev/null || true

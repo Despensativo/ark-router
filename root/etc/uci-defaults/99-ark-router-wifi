@@ -54,6 +54,7 @@ if [ -n "$radio2" ]; then
 fi
 
 if [ -n "$radio5" ]; then
+	cur_ht5="$(uci -q get wireless.$radio5.htmode)"
 	ch5="$(uci -q get wireless.$radio5.channel)"
 	if [ "$ch5" = "auto" ] || [ -z "$ch5" ]; then
 		curr_channels="$(uci -q get wireless.$radio5.channels)"

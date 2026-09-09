@@ -224,7 +224,7 @@ send_report() {
 	provider="$(uci -q get "${CONF}.email.provider" || printf 'resend')"
 
 	local email_to email_from attach_csv
-	email_to="$(uci -q get "${CONF}.email.email_to" || printf 'hcsskt@gmail.com')"
+	email_to="$(uci -q get "${CONF}.email.email_to" || true)"
 	email_from="$(uci -q get "${CONF}.email.email_from" || printf 'onboarding@resend.dev')"
 	attach_csv="$(uci -q get "${CONF}.email.attach_csv" || printf '1')"
 

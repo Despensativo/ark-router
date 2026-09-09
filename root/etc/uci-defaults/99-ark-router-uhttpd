@@ -35,8 +35,8 @@ if [ -f /etc/config/uhttpd ]; then
 			ln -sf /var/run/ubus.sock /var/run/ubus/ubus.sock 2>/dev/null || true
 		fi
 
-		if [ "$(uci -q get uhttpd.main.ubus_cors)" != "1" ]; then
-			uci -q set uhttpd.main.ubus_cors='1'
+		if [ -n "$(uci -q get uhttpd.main.ubus_cors)" ]; then
+			uci -q delete uhttpd.main.ubus_cors
 			changed=1
 		fi
 	fi

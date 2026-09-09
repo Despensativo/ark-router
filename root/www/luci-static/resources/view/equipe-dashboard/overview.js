@@ -7,7 +7,7 @@
 
 document.querySelector('head').appendChild(E('link', {
 	'rel': 'stylesheet', 'type': 'text/css',
-	'href': L.resource('view/equipe-dashboard/overview.css') + '?v=' + Date.now()
+	'href': L.resource('view/equipe-dashboard/overview.css') + '?v=0.9.94'
 }));
 
 const callSystemBoard = rpc.declare({ object: 'system', method: 'board' });
@@ -270,7 +270,22 @@ function metricCard(icon, label, valueId, hintId, color) {
 }
 function assocMap(groups) {
 	const out = {};
-	groups.forEach(function(g) { ((g && g.results) || []).forEach(function(r) { if (r.mac) out[r.mac.toUpperCase()] = r; }); });
+	(groups || []).forEach(function(g) {
+		const meta = g && g.meta;
+		const ifname = g && g.ifname;
+		((g && g.results) || []).forEach(function(r) {
+			if (r && r.mac) {
+				const u = String(r.mac).toUpperCase();
+				if (meta) {
+					r.band = meta.band || '';
+					r.bandLabel = meta.bandLabel || (meta.band === '5g' ? '5 GHz' : (meta.band === '6g' ? '6 GHz' : '2,4 GHz'));
+					r.ssid = meta.ssid || '';
+					r.ifname = ifname;
+				}
+				out[u] = r;
+			}
+		});
+	});
 	return out;
 }
 function friendlyMap(config) {
@@ -498,16 +513,26 @@ function wifiBand(radioName, radio) {
 	return '';
 }
 function wifiTopology(status) {
-	const topo={ mainIfnames:[], guestIfnames:[], survey2:'phy0-ap0', survey5:'phy1-ap0', scan2:'phy0-ap0', scan5:'phy1-ap0', dynamic:false };
+	const topo={ mainIfnames:[], guestIfnames:[], ifaceMeta:{}, survey2:'phy0-ap0', survey5:'phy1-ap0', scan2:'phy0-ap0', scan5:'phy1-ap0', dynamic:false };
 	Object.keys(status||{}).forEach(function(radioName) {
 		const radio=status[radioName]||{}, band=wifiBand(radioName, radio), ifaces=radio.interfaces||[];
+		const bandLabel = (band === '5g' ? '5 GHz' : (band === '6g' ? '6 GHz' : '2,4 GHz'));
 		let firstAp='';
 		ifaces.forEach(function(iface) {
 			const ifname=iface.ifname, cfg=iface.config||{}, networks=Array.isArray(cfg.network)?cfg.network:[cfg.network].filter(Boolean);
 			if (!ifname) return;
 			if (!firstAp) firstAp=ifname;
-			if (networks.indexOf('guest') >= 0) topo.guestIfnames.push(ifname);
+			const isGuest = (networks.indexOf('guest') >= 0);
+			if (isGuest) topo.guestIfnames.push(ifname);
 			else if (networks.indexOf('lan') >= 0 || networks.length === 0) topo.mainIfnames.push(ifname);
+			topo.ifaceMeta[ifname] = {
+				ifname: ifname,
+				radio: radioName,
+				band: band,
+				bandLabel: bandLabel,
+				ssid: cfg.ssid || '',
+				isGuest: isGuest
+			};
 		});
 		if (firstAp && band === '2g') topo.survey2=topo.scan2=firstAp;
 		if (firstAp && band === '5g') topo.survey5=topo.scan5=firstAp;
@@ -673,8 +698,16 @@ return view.extend({
 			});
 			return Promise.all([
 				Promise.all(wanPromises),
-				Promise.all(topology.mainIfnames.map(function(n){ return safe(callAssocList(n), { results: [] }); })),
-				Promise.all(topology.guestIfnames.map(function(n){ return safe(callAssocList(n), { results: [] }); })),
+				Promise.all(topology.mainIfnames.map(function(n){
+					return safe(callAssocList(n), { results: [] }).then(function(res){
+						return { ifname: n, meta: (topology.ifaceMeta && topology.ifaceMeta[n]) || {}, results: (res && res.results) || [] };
+					});
+				})),
+				Promise.all(topology.guestIfnames.map(function(n){
+					return safe(callAssocList(n), { results: [] }).then(function(res){
+						return { ifname: n, meta: (topology.ifaceMeta && topology.ifaceMeta[n]) || {}, results: (res && res.results) || [] };
+					});
+				})),
 				isInitial ? Promise.resolve({ results: [] }) : safe(callSurvey(topology.survey2), { results: [] }),
 				isInitial ? Promise.resolve({ results: [] }) : safe(callSurvey(topology.survey5), { results: [] }),
 				Promise.all(lanPorts.map(function(port){ return safe(callDeviceStatus(port), {}); }))
@@ -799,6 +832,11 @@ return view.extend({
 		if(this.refreshTimer){window.clearTimeout(this.refreshTimer);this.refreshTimer=null;}
 		const wait=delay!=null?delay:(this.currentData?this.adaptiveRefreshSeconds(this.currentData)*1000:3000);
 		this.refreshTimer=window.setTimeout(L.bind(function(){
+			if(typeof document !== 'undefined' && document.hidden){
+				this.refreshPaused = true;
+				return;
+			}
+			this.refreshPaused = false;
 			this.fetchDataTimed(9000).then(L.bind(function(data){this.update(data);this.scheduleAdaptiveRefresh();},this)).catch(L.bind(function(){this.scheduleAdaptiveRefresh(3000);},this));
 		},this),Math.max(250,wait));
 	},
@@ -870,6 +908,17 @@ return view.extend({
 		const r2 = w.r2g || w.r0 || {}, r5 = w.r5g || w.r1 || {};
 		const auto2=String(r2.channel||'auto')==='auto', auto5=String(r5.channel||'auto')==='auto';
 		const country=String(r2.country||r5.country||'00').toUpperCase(), countryInfo=this.countries.find(function(x){return String(x.code||x.iso3166).toUpperCase()===country;}); text('ex-country-current',(countryInfo&&countryInfo.country?countryInfo.country:'País')+' ('+country+')');
+		const maxPowerToggle = document.getElementById('ex-maxpower-toggle');
+		if(maxPowerToggle && !maxPowerToggle.disabled){
+			const isPA = (country === 'PA');
+			maxPowerToggle.checked = isPA;
+			const maxSummary = document.getElementById('ex-maxpower-mode-summary');
+			if(maxSummary){
+				maxSummary.textContent = isPA
+					? 'Ativo • Libera 100% da potência física dos amplificadores (até 1.000 mW / 30 dBm) usando o domínio Panamá (PA).'
+					: 'Desativado • Limite regulatório padrão Brasil (BR) aplicado.';
+			}
+		}
 		const allAuto=auto2&&auto5, mixed=auto2!==auto5, toggle=document.getElementById('ex-channel-auto-toggle');
 		if(toggle){toggle.checked=allAuto;toggle.indeterminate=mixed;toggle.setAttribute('aria-checked',mixed?'mixed':String(allAuto));}
 		text('ex-channel-mode-summary',mixed?'Configuração mista entre as bandas':(allAuto?'Ligado • Auto Inteligente (1, 6, 11 no 2,4 GHz • Sem radar DFS no 5 GHz)':'Desligado • canais definidos manualmente'));
@@ -1018,17 +1067,100 @@ return view.extend({
 
 		const limitsMap = deviceLimitsMap(data.names);
 
-		const networkLabel=function(mac,ip,hasLease){
-			if(guest[mac])return guestName+' / Wi-Fi';
-			if(main[mac])return mainName+' / Wi-Fi';
-			if(hasLease)return 'Cabo / LAN';
-			if(guestPrefix&&String(ip||'').indexOf(guestPrefix)===0)return guestName;
-			if(lanPrefix&&String(ip||'').indexOf(lanPrefix)===0)return mainName;
-			return mainName;
+		const deviceWifiInfo = function(mac, ip) {
+			const a = main[mac] || guest[mac];
+			const isGuest = !!guest[mac] || (guestPrefix && String(ip || '').indexOf(guestPrefix) === 0);
+			if (a) {
+				const is5G = (a.band === '5g');
+				const bandLabel = a.bandLabel || (is5G ? '5 GHz' : (a.band === '6g' ? '6 GHz' : '2,4 GHz'));
+				const ssid = a.ssid || (isGuest ? guestName : mainName);
+				return {
+					isWifi: true,
+					ssid: ssid,
+					band: a.band || '',
+					bandLabel: bandLabel,
+					signal: a.signal,
+					isGuest: isGuest,
+					network: ssid
+				};
+			}
+			const wiredNet = isGuest ? (guestName + ' / Cabo') : 'Cabo / LAN';
+			return {
+				isWifi: false,
+				ssid: '',
+				band: '',
+				bandLabel: '',
+				signal: null,
+				isGuest: isGuest,
+				network: wiredNet
+			};
+		};
+		const renderNetworkCell = function(d) {
+			if (d.isWifi) {
+				const is5G = (d.band === '5g');
+				const bandText = d.bandLabel || (is5G ? '5 GHz' : '2,4 GHz');
+				const badgeStyle = is5G
+					? 'background:rgba(59,130,246,0.18);color:#60a5fa;border:1px solid rgba(59,130,246,0.35);'
+					: 'background:rgba(245,158,11,0.18);color:#f59e0b;border:1px solid rgba(245,158,11,0.35);';
+				const children = [
+					E('strong', { style: 'font-weight:600;color:var(--ex-text);' }, [d.ssid || d.network || 'Wi-Fi']),
+					E('span', {
+						class: 'ex-device-badge ' + (is5G ? 'badge-wifi-50' : 'badge-wifi-24'),
+						style: badgeStyle + 'font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;'
+					}, [bandText])
+				];
+				if (d.signal != null) {
+					children.push(E('span', { class: 'ex-muted', style: 'font-size:0.75rem;font-variant-numeric:tabular-nums;white-space:nowrap;' }, ['• ' + d.signal + ' dBm']));
+				}
+				return E('div', { class: 'ex-net-info', style: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;' }, children);
+			} else {
+				return E('div', { class: 'ex-net-info', style: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;' }, [
+					E('strong', { style: 'font-weight:600;color:var(--ex-text);' }, [d.network || 'Cabo / LAN']),
+					E('span', {
+						class: 'ex-device-badge badge-cabo',
+						style: 'background:rgba(148,163,184,0.15);color:#94a3b8;border:1px solid rgba(148,163,184,0.3);font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;'
+					}, ['Cabo'])
+				]);
+			}
 		};
 		const devices=[];
-		leases.forEach(function(l) { const mac=String(l.macaddr||'').toUpperCase(); if(!mac||seen[mac])return; seen[mac]=1; const a=main[mac]||guest[mac], isGuest=!!guest[mac]||(guestPrefix&&String(l.ipaddr||'').indexOf(guestPrefix)===0); devices.push({mac:mac,ip:l.ipaddr||'—',name:names[mac]||l.hostname||'Dispositivo sem nome',network:networkLabel(mac,l.ipaddr,true),guest:isGuest,signal:a&&a.signal,rate:rates[mac]||{rx:0,tx:0,totalRx:0,totalTx:0}}); });
-		Object.keys(main).concat(Object.keys(guest)).forEach(function(mac) { if(seen[mac])return; seen[mac]=1; const a=main[mac]||guest[mac], isGuest=!!guest[mac]; devices.push({mac:mac,ip:'—',name:names[mac]||'Dispositivo sem nome',network:networkLabel(mac,'',false),guest:isGuest,signal:a.signal,rate:rates[mac]||{rx:0,tx:0,totalRx:0,totalTx:0}}); });
+		leases.forEach(function(l) {
+			const mac=String(l.macaddr||'').toUpperCase();
+			if(!mac||seen[mac])return;
+			seen[mac]=1;
+			const w = deviceWifiInfo(mac, l.ipaddr);
+			devices.push({
+				mac: mac,
+				ip: l.ipaddr || '—',
+				name: names[mac] || l.hostname || 'Dispositivo sem nome',
+				network: w.network,
+				ssid: w.ssid,
+				band: w.band,
+				bandLabel: w.bandLabel,
+				isWifi: w.isWifi,
+				guest: w.isGuest,
+				signal: w.signal,
+				rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
+			});
+		});
+		Object.keys(main).concat(Object.keys(guest)).forEach(function(mac) {
+			if(seen[mac])return;
+			seen[mac]=1;
+			const w = deviceWifiInfo(mac, '');
+			devices.push({
+				mac: mac,
+				ip: '—',
+				name: names[mac] || 'Dispositivo sem nome',
+				network: w.network,
+				ssid: w.ssid,
+				band: w.band,
+				bandLabel: w.bandLabel,
+				isWifi: true,
+				guest: w.isGuest,
+				signal: w.signal,
+				rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
+			});
+		});
 
 		// Parse ARP table (/proc/net/arp) to find active wired/LAN devices (e.g. TV, cameras, IoT)
 		const arpMap = {};
@@ -1063,14 +1195,18 @@ return view.extend({
 			seen[mac] = 1;
 			const hint = hostHints[mac] || {};
 			const devName = names[mac] || hint.name || reservedNameMap[mac] || 'Dispositivo sem nome';
-			const netLbl = isGuest ? (guestName + ' / Cabo') : 'Cabo / LAN';
+			const w = deviceWifiInfo(mac, devIp);
 			devices.push({
 				mac: mac,
 				ip: devIp || '—',
 				name: devName,
-				network: netLbl,
+				network: w.network,
+				ssid: w.ssid,
+				band: w.band,
+				bandLabel: w.bandLabel,
+				isWifi: w.isWifi,
 				guest: isGuest,
-				signal: null,
+				signal: w.signal,
 				rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
 			});
 		});
@@ -1093,13 +1229,18 @@ return view.extend({
 					seen[mac] = 1;
 					const hint = hostHints[mac] || {};
 					const devName = names[mac] || hint.name || h.name || 'Dispositivo sem nome';
+					const w = deviceWifiInfo(mac, devIp);
 					devices.push({
 						mac: mac,
 						ip: devIp,
 						name: devName,
-						network: isGuest ? (guestName + ' / Cabo') : 'Cabo / LAN',
+						network: w.network,
+						ssid: w.ssid,
+						band: w.band,
+						bandLabel: w.bandLabel,
+						isWifi: w.isWifi,
 						guest: isGuest,
-						signal: null,
+						signal: w.signal,
 						rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
 					});
 				}
@@ -1160,9 +1301,14 @@ return view.extend({
 					if (nameRowEl) {
 						nameRowEl.replaceChildren.apply(nameRowEl, [ E('strong', {}, [d.name]) ].concat(badges));
 					}
+					const wifiMeta = d.isWifi ? (' • ' + (d.ssid || 'Wi-Fi') + ' (' + (d.bandLabel || (d.band === '5g' ? '5G' : '2.4G')) + ')') : '';
 					const metaEl = row.querySelector('.ex-device-meta');
 					if (metaEl) {
-						metaEl.textContent = d.ip + ' • ' + d.mac + (reservedIp && reservedIp !== d.ip ? ' (Fixo: ' + reservedIp + ')' : '');
+						metaEl.textContent = d.ip + ' • ' + d.mac + (reservedIp && reservedIp !== d.ip ? ' (Fixo: ' + reservedIp + ')' : '') + wifiMeta;
+					}
+					const netEl = row.querySelector('.ex-net-cell');
+					if (netEl) {
+						netEl.replaceChildren(renderNetworkCell(d));
 					}
 				}
 			}, this));
@@ -1197,12 +1343,13 @@ return view.extend({
 				E('strong', {}, [d.name])
 			].concat(badges));
 
-			const metaText = d.ip + ' • ' + d.mac + (reservedIp && reservedIp !== d.ip ? ' (Fixo: ' + reservedIp + ')' : '');
+			const wifiMeta = d.isWifi ? (' • ' + (d.ssid || 'Wi-Fi') + ' (' + (d.bandLabel || (d.band === '5g' ? '5G' : '2.4G')) + ')') : '';
+			const metaText = d.ip + ' • ' + d.mac + (reservedIp && reservedIp !== d.ip ? ' (Fixo: ' + reservedIp + ')' : '') + wifiMeta;
 			const totalBytes = (Number(d.rate.totalRx) || 0) + (Number(d.rate.totalTx) || 0);
 
 			const tr=E('tr',{'data-mac':d.mac},[
 				E('td',{},[nameRow, E('small',{class:'ex-device-meta'},[metaText])]),
-				E('td',{'class':'ex-hide-mobile'},[d.network+(d.signal!=null?' • '+d.signal+' dBm':'')]),
+				E('td',{'class':'ex-hide-mobile ex-net-cell'},[renderNetworkCell(d)]),
 				E('td',{'class':'ex-rate-cell'},[
 					E('span',{class:'down'},['↓ '+formatRate(d.rate.rx)]),
 					E('span',{class:'up'},['↑ '+formatRate(d.rate.tx)]),
@@ -3572,7 +3719,7 @@ return view.extend({
 					E('div',{class:'ex-feature-copy'},[
 						E('div',{class:'ex-feature-name-row'},[
 							E('strong',{},['Versão instalada: ',update.current||'—']),
-							E('span',{class:'ex-pill online'},[update.current||'0.9.80'])
+							E('span',{class:'ex-pill online'},[update.current||'0.9.94'])
 						]),
 						E('small',{class:'ex-muted'},['Repositório: ',update.repo||'Despensativo/ark-router']),
 						E('small',{class:'ex-muted'},['Gerenciador: ',manager])
@@ -4863,8 +5010,8 @@ return view.extend({
 		const purgeBootEmail = (telData.purge_boot_email !== false && telData.purge_boot_email !== '0');
 		const emailEnabled = !!telData.email_enabled;
 		const provider = telData.provider || 'resend';
-		const resendApiKey = telData.resend_api_key || 're_xxxxxxxxx';
-		const emailTo = telData.email_to || 'hcsskt@gmail.com';
+		const resendApiKey = telData.resend_api_key || '';
+		const emailTo = telData.email_to || '';
 		const emailFrom = telData.email_from || 'onboarding@resend.dev';
 		const attachCsv = (telData.attach_csv !== false && telData.attach_csv !== '0');
 
@@ -7067,6 +7214,10 @@ return view.extend({
 		this.board=loaded[0]||{}; this.countries=(loaded[1]&&loaded[1].results)||[]; this.capabilities=loaded[2]||{features:{}}; dashboardLanguage=this.capabilities.language||'pt-br';this.applyAppearance();this.applyBrand(this.capabilities.title);enableTranslation(); const data=loaded[3], w=wifiConfig(data.wireless), release=((this.board.release||{}).description||'').split(' ').slice(0,2).join(' '), panelTitle=this.capabilities.title||'ARK Router';
 		const isGamer=(this.capabilities&&this.capabilities.operation_profile)==='gamer';
 		const isApMode=(this.capabilities&&this.capabilities.network_mode)==='ap';
+		const hw = (this.capabilities && this.capabilities.hardware) || {};
+		const isMaxPower = !!(hw.wifi_maxpower_enabled || (w.r2g && w.r2g.country === 'PA') || (w.r5g && w.r5g.country === 'PA'));
+		const isWedSupported = !!hw.wifi_wed_supported;
+		const isWedEnabled = !!hw.wifi_wed_enabled;
 		const heroEyebrow=isApMode?'🔀 MODO PONTO DE ACESSO & SWITCH • EXPANSÃO UNIFICADA':(isGamer?'🎮 MODO GAMER • BAIXA LATÊNCIA':'CENTRAL DE OPERAÇÕES');
 		const gamerButton=E('button',{class:'ex-hero-feature-button '+(isGamer?'ex-hero-gamer-active':'ex-hero-gamer-btn'),'click':L.bind(this.switchProfile,this,isGamer?'standard':'gamer')},[isGamer?'🎮 GAMER ATIVO':'🎮 Modo Gamer']);
 		const opModeButton=E('button',{class:'ex-hero-feature-button ex-hero-opmode-btn',style:isApMode?'border-color:#3b82f6;color:#60a5fa;font-weight:700;':'font-weight:650;','click':L.bind(this.showNetworkModeModal,this)},[isApMode?'🔀 Modo Switch / AP':'🌐 Modo Roteador']);
@@ -7728,6 +7879,94 @@ return view.extend({
 						E('span',{class:'ex-switch-slider'})
 					])
 				]),
+				E('div',{class:'ex-channel-mode-control'},[
+					E('div',{},[
+						E('strong',{},['Modo Potência Máxima de Transmissão Wi-Fi (1 Watt / Panamá)']),
+						E('small',{id:'ex-maxpower-mode-summary',class:'ex-muted'},[
+							isMaxPower
+								? 'Ativo • Libera 100% da potência física dos amplificadores (até 1.000 mW / 30 dBm) usando o domínio regulatório Panamá (PA).'
+								: 'Desativado • Limite regulatório padrão Brasil (BR) aplicado.'
+						])
+					]),
+					E('label',{class:'ex-switch'},[
+						E('input',{
+							id:'ex-maxpower-toggle',
+							type:'checkbox',
+							checked: isMaxPower ? '' : null,
+							'aria-label':'Modo Potência Máxima de Transmissão Wi-Fi',
+							'change': L.bind(function(ev){
+								const chk = ev.currentTarget;
+								const enable = chk.checked;
+								chk.disabled = true;
+								const summary = document.getElementById('ex-maxpower-mode-summary');
+								if (summary) summary.textContent = 'Aplicando alteração e reiniciando rádio…';
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-maxpower-toggle', enable ? '1' : '0'])
+								.then(L.bind(function(r){
+									chk.disabled = false;
+									if (r.code) throw new Error(r.stderr || 'Falha ao alterar potência Wi-Fi');
+									if (summary) summary.textContent = enable
+										? 'Ativo • Libera 100% da potência física dos amplificadores (até 1.000 mW / 30 dBm) usando o domínio regulatório Panamá (PA).'
+										: 'Desativado • Limite regulatório padrão Brasil (BR) aplicado.';
+									ui.addNotification(null, E('p', {}, [enable ? 'Modo Potência Máxima ativado! Amplificadores liberados para até 1.000 mW (Panamá PA).' : 'Potência regulatória padrão Brasil (BR) restaurada.']), 'info');
+									const countryEl = document.getElementById('ex-country-current');
+									if (countryEl) countryEl.textContent = enable ? 'Panamá (PA)' : 'Brasil (BR)';
+								}, this))
+								.catch(function(e){
+									chk.disabled = false;
+									chk.checked = !enable;
+									if (summary) summary.textContent = (!enable)
+										? 'Ativo • Libera 100% da potência física dos amplificadores (até 1.000 mW / 30 dBm) usando o domínio regulatório Panamá (PA).'
+										: 'Desativado • Limite regulatório padrão Brasil (BR) aplicado.';
+									ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+								});
+							}, this)
+						}),
+						E('span',{class:'ex-switch-slider'})
+					])
+				]),
+				isWedSupported ? E('div',{class:'ex-channel-mode-control'},[
+					E('div',{},[
+						E('strong',{},['Aceleração de Hardware Wi-Fi (MediaTek WED)']),
+						E('small',{id:'ex-wed-mode-summary',class:'ex-muted'},[
+							isWedEnabled
+								? 'Ativo • Despacho direto de pacotes Wi-Fi via DMA/PPE no hardware MediaTek, aliviando a CPU.'
+								: 'Desativado • Pacotes Wi-Fi processados pela pilha padrão de interrupções de CPU.'
+						])
+					]),
+					E('label',{class:'ex-switch'},[
+						E('input',{
+							id:'ex-wed-toggle',
+							type:'checkbox',
+							checked: isWedEnabled ? '' : null,
+							'aria-label':'Aceleração de Hardware Wi-Fi MediaTek WED',
+							'change': L.bind(function(ev){
+								const chk = ev.currentTarget;
+								const enable = chk.checked;
+								chk.disabled = true;
+								const summary = document.getElementById('ex-wed-mode-summary');
+								if (summary) summary.textContent = 'Aplicando alteração…';
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-wed-toggle', enable ? '1' : '0'])
+								.then(L.bind(function(r){
+									chk.disabled = false;
+									if (r.code) throw new Error(r.stderr || 'Falha ao alterar aceleração WED');
+									if (summary) summary.textContent = enable
+										? 'Ativo • Despacho direto de pacotes Wi-Fi via DMA/PPE no hardware MediaTek, aliviando a CPU.'
+										: 'Desativado • Pacotes Wi-Fi processados pela pilha padrão de interrupções de CPU.';
+									ui.addNotification(null, E('p', {}, [enable ? 'Aceleração de Hardware Wi-Fi (WED) ativada!' : 'Aceleração de Hardware Wi-Fi (WED) desativada.']), 'info');
+								}, this))
+								.catch(function(e){
+									chk.disabled = false;
+									chk.checked = !enable;
+									if (summary) summary.textContent = (!enable)
+										? 'Ativo • Despacho direto de pacotes Wi-Fi via DMA/PPE no hardware MediaTek, aliviando a CPU.'
+										: 'Desativado • Pacotes Wi-Fi processados pela pilha padrão de interrupções de CPU.';
+									ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+								});
+							}, this)
+						}),
+						E('span',{class:'ex-switch-slider'})
+					])
+				]) : '',
 				E('div',{class:'ex-grid ex-grid-2 ex-channel-grid'},[
 					E('div',{},[
 						E('div',{class:'ex-channel-band-head'},[E('b',{},['2,4 GHz']),E('span',{id:'ex-wifi-2-mode',class:'ex-pill standby'},['—'])]),
@@ -7803,6 +8042,15 @@ return view.extend({
 		this.dashboardRoot=root;
 		const deviceDetails=root.querySelector('#ex-device-details');
 		if(deviceDetails)deviceDetails.addEventListener('toggle',L.bind(function(){if(this.currentData)this.updateRefreshSummary(this.currentData);this.scheduleAdaptiveRefresh(0);},this));
+		if(typeof document !== 'undefined' && !window._arkVisibilityListenerAttached){
+			window._arkVisibilityListenerAttached = true;
+			document.addEventListener('visibilitychange', L.bind(function(){
+				if(!document.hidden && this.refreshPaused){
+					this.refreshPaused = false;
+					this.scheduleAdaptiveRefresh(0);
+				}
+			}, this));
+		}
 		this.update(data); this.scheduleAdaptiveRefresh(); return root;
 	},
 	handleSaveApply:null, handleSave:null, handleReset:null

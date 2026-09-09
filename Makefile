@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ark-router
-PKG_VERSION:=0.9.90
+PKG_VERSION:=0.9.94
 PKG_RELEASE:=1
 PKG_MAINTAINER:=ARK Router contributors
 PKG_LICENSE:=MIT
@@ -47,12 +47,16 @@ define Package/luci-app-ark-router/conffiles
 /etc/config/equipe_dashboard
 /etc/config/equipe_devices
 /etc/config/qos_equipe
+/etc/config/equipe_perf
+/etc/config/starlink_telemetry
 endef
 
 define Package/luci-app-ark-router-full/conffiles
 /etc/config/equipe_dashboard
 /etc/config/equipe_devices
 /etc/config/qos_equipe
+/etc/config/equipe_perf
+/etc/config/starlink_telemetry
 endef
 
 define Build/Compile
