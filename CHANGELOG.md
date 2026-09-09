@@ -2,6 +2,21 @@
 
 ## 0.9.90
 
+- **🛡️ Blindagem Definitiva do Multi-WAN & Piloto Automático de Portas (Zero Traffic Splitting)**:
+  - **Exclusão Incondicional de Pools Legados (`dev_pool1` e `dev_pool2`)**: O script `autowan-toggle 0` e o comando `mwan failover` agora purgam sumariamente quaisquer regras de divisão de tráfego por faixa de IP do `/etc/config/mwan3` e do `iptables`, impedindo que dispositivos aleatórios sejam desviados para a WAN secundária (Starlink) quando em modo Failover.
+  - **Guarda de Estado no UCI (`equipe_dashboard.mwan.mode`)**: Todas as chamadas de verificação (`ensure_mwan3_ark_config`) deletam `dev_pool1` e `dev_pool2` automaticamente, a menos que o modo `balanced_devices` seja expressamente requisitado pelo usuário.
+  - **Bloqueio de Mutação de Políticas com Auto-WAN Desligado**: A rotina `autowan-policy-set` só altera as regras ativas do Multi-WAN se o Auto-WAN estiver efetivamente ligado (`network.autowan.enabled='1'`). Se estiver desligado, o modo do usuário (Failover puro) é estritamente preservado.
+  - **Encerramento Imediato do Daemon (`ark-autowan-daemon`)**: Caso o Auto-WAN seja desativado, o daemon em background finaliza instantaneamente sua execução (`exit 0`), eliminando qualquer risco de portas serem colocadas em quarentena ou de regras serem recriadas em segundo plano.
+- **📶 Estabilidade Máxima para Alexa & Dispositivos IoT no Wi-Fi 2.4 GHz**:
+  - **Eliminação de Quedas e Desconexões (Anti-Deauth)**: Injeção nativa de `option disassoc_low_ack '0'` no rádio 2.4 GHz, impedindo que o driver do roteador desconecte dispositivos inteligentes (Echo Dot, lâmpadas, tomadas) que demoram a responder durante repouso (Power Save).
+  - **Sincronização DTIM Otimizada (`option dtim_period '2'`)**: Garante que dispositivos inteligentes acordem exatamente no momento em que há pacotes em buffer no Access Point.
+  - **Fim do Bloqueio de Taxas Básicas**: Removidas travas agressivas (`legacy_rates '0'` e `basic_rate` elevados) que impediam a negociação de clientes legados ou distantes.
+  - **Regra Persistente de Baixa Latência no Multi-WAN (`iot_alexa_mqtt`)**: Tráfego MQTT de automação (portas 8883 e 8886) amarrado com `sticky '1'` e política `wan_then_wan2`, eliminando perda de sessão de controle de voz durante failovers.
+- **🚀 Wi-Fi 5 GHz em 160 MHz Contínuo (HE160)**:
+  - Preservação da largura total de canal de 160 MHz (`htmode 'HE160'`) em roteadores Wi-Fi 6 compatíveis (ex: Acer Predator W6x), permitindo links locais de até 2.4 Gbps sem regressão automática para 80 MHz nos scripts de automação de canal.
+- **💾 Otimização de Flash e Memória RAM no Cudy WR3000 (16 MB Flash / 128 MB RAM)**:
+  - **Recuperação de Armazenamento**: Limpeza profunda de arquivos duplicados no `/overlay`, reduzindo o uso para apenas 10% e liberando 2.8 MB de memória flash livre.
+  - **Verificação de zRAM**: Confirmação de compressão de memória RAM ativa via zRAM swap (116 MB lzo-rle), mantendo folga estável de > 85 MB de memória física livre.
 - **📡 Motor de Telemetria Dual Starlink / Multi-WAN & Buffer Persistente de 25 Horas**:
   - **Amostragem em Alta Resolução (1 segundo)**: Loop de telemetria ultra-leve gravando na memória RAM (`/tmp/starlink_telemetry`), eliminando totalmente o desgaste da memória flash do roteador.
   - **Sincronização Periódica e Compactação Gzip**: A cada 15 minutos e durante o desligamento seguro (`SIGTERM`/reboot), os dados da RAM são consolidados em arquivos compactados (`.csv.gz`) na memória flash interna (`/etc/starlink_history`), ocupando menos de 1 MB para 25 horas contínuas de histórico.

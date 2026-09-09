@@ -2,7 +2,7 @@
 
 ## Short Term
 
-- Test the published `v0.9.89` package across architectures (ARM64 MT7986, MIPS QCA9558, MT7981).
+- Test the published `v0.9.90` package across architectures (ARM64 MT7986, MIPS QCA9558, MT7981).
 - Validate Auto-WAN dynamic sensing, Dumb AP topology switching, and SQM upload-only optimization on additional OpenWrt 24.x/25.x targets.
 - Test on both `apk` (OpenWrt 25.x) and `opkg` (OpenWrt 23.x / 24.x) based releases.
 - Expand compatibility table populated by live router reports.
