@@ -7829,14 +7829,43 @@ case "$action" in
 		[ -n "$radio2" ] || { echo 'Radio 2,4 GHz nao encontrado' >&2; exit 3; }
 		state="${2:-1}"
 		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
-			uci -q set "wireless.$radio2.legacy_rates=0"
-			uci -q set "wireless.$radio2.basic_rate=6000 12000 24000"
+			uci -q set "wireless.$radio2.iot_stability=1"
+			# Remove restricoes toxicas de taxas que causam retransmissoes e quedas nas Alexas
+			uci -q delete "wireless.$radio2.legacy_rates"
+			uci -q delete "wireless.$radio2.basic_rate"
+			# Aplica protecao anti-desconexao disassoc_low_ack=0 e dtim_period=2 em todas as interfaces AP 2.4G
+			for iface in $(uci -q show wireless | grep -E "\.device=['\"]?$radio2['\"]?" | cut -d. -f2); do
+				mode="$(uci -q get wireless.$iface.mode || echo ap)"
+				if [ "$mode" = "ap" ]; then
+					uci -q set "wireless.$iface.disassoc_low_ack=0"
+					uci -q set "wireless.$iface.dtim_period=2"
+				fi
+			done
 			uci commit wireless
+			# Regra de persistencia MQTT para Alexa e Casa Inteligente (portas 8883/8886 no Multi-WAN)
+			if [ -f /etc/config/mwan3 ]; then
+				if ! uci -q get mwan3.iot_alexa_mqtt >/dev/null; then
+					policy="$(uci -q get mwan3.wan_then_wan2 >/dev/null && echo 'wan_then_wan2' || echo 'balanced')"
+					uci -q batch <<-EOF
+						set mwan3.iot_alexa_mqtt=rule
+						set mwan3.iot_alexa_mqtt.family='ipv4'
+						set mwan3.iot_alexa_mqtt.proto='tcp'
+						set mwan3.iot_alexa_mqtt.dest_port='8883,8886'
+						set mwan3.iot_alexa_mqtt.use_policy='$policy'
+						set mwan3.iot_alexa_mqtt.sticky='1'
+						set mwan3.iot_alexa_mqtt.timeout='3600'
+						commit mwan3
+EOF
+					(sleep 2; /etc/init.d/mwan3 restart) >/dev/null 2>&1 &
+				fi
+			fi
 			(sleep 1; wifi reload) >/dev/null 2>&1 &
 			echo 'enabled'
 		else
-			uci -q delete "wireless.$radio2.legacy_rates"
-			uci -q delete "wireless.$radio2.basic_rate"
+			uci -q set "wireless.$radio2.iot_stability=0"
+			for iface in $(uci -q show wireless | grep -E "\.device=['\"]?$radio2['\"]?" | cut -d. -f2); do
+				uci -q delete "wireless.$iface.disassoc_low_ack"
+			done
 			uci commit wireless
 			(sleep 1; wifi reload) >/dev/null 2>&1 &
 			echo 'disabled'

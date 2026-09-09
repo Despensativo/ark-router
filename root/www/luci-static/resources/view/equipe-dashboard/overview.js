@@ -7644,19 +7644,19 @@ return view.extend({
 				]),
 				E('div',{class:'ex-channel-mode-control'},[
 					E('div',{},[
-						E('strong',{},['Otimização Casa Inteligente / IoT (2,4 GHz)']),
+						E('strong',{},['Modo Estabilidade Casa Inteligente / Alexas (2,4 GHz)']),
 						E('small',{id:'ex-iot-mode-summary',class:'ex-muted'},[
-							(String((w.r2g && w.r2g.legacy_rates) || '') === '0' || !!(w.r2g && w.r2g.basic_rate))
-								? 'Ativo • Taxas legadas 802.11b (1-2 Mbps) desativadas para liberar até 40% de tempo de antena.'
-								: 'Desativado • Taxas antigas 802.11b permitidas (padrão OpenWrt).'
+							(String((w.r2g && w.r2g.iot_stability) || '') === '1' || (String((w.r2g && w.r2g.iot_stability) || '') !== '0' && !((w.r2g && w.r2g.legacy_rates) === '0') && !((w.r2g && w.r2g.basic_rate))))
+								? 'Ativo • Proteção anti-desconexão (disassoc_low_ack=0), DTIM sincronizado e rota estável AWS IoT.'
+								: 'Desativado • Configuração padrão do OpenWrt.'
 						])
 					]),
 					E('label',{class:'ex-switch'},[
 						E('input',{
 							id:'ex-iot-toggle',
 							type:'checkbox',
-							checked: (String((w.r2g && w.r2g.legacy_rates) || '') === '0' || !!(w.r2g && w.r2g.basic_rate)) ? '' : null,
-							'aria-label':'Otimização Casa Inteligente IoT',
+							checked: (String((w.r2g && w.r2g.iot_stability) || '') === '1' || (String((w.r2g && w.r2g.iot_stability) || '') !== '0' && !((w.r2g && w.r2g.legacy_rates) === '0') && !((w.r2g && w.r2g.basic_rate)))) ? '' : null,
+							'aria-label':'Modo Estabilidade Casa Inteligente Alexas',
 							'change': L.bind(function(ev){
 								const chk = ev.currentTarget;
 								const enable = chk.checked;
@@ -7666,18 +7666,18 @@ return view.extend({
 								fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-iot-optimize', enable ? '1' : '0'])
 								.then(L.bind(function(r){
 									chk.disabled = false;
-									if (r.code) throw new Error(r.stderr || 'Falha ao alterar otimização IoT');
+									if (r.code) throw new Error(r.stderr || 'Falha ao alterar modo IoT');
 									if (summary) summary.textContent = enable
-										? 'Ativo • Taxas legadas 802.11b (1-2 Mbps) desativadas para liberar até 40% de tempo de antena.'
-										: 'Desativado • Taxas antigas 802.11b permitidas (padrão OpenWrt).';
-									ui.addNotification(null, E('p', {}, [enable ? 'Otimização IoT ativada! Taxas 802.11b desativadas no 2,4 GHz.' : 'Otimização IoT desativada.']), 'info');
+										? 'Ativo • Proteção anti-desconexão (disassoc_low_ack=0), DTIM sincronizado e rota estável AWS IoT.'
+										: 'Desativado • Configuração padrão do OpenWrt.';
+									ui.addNotification(null, E('p', {}, [enable ? 'Modo Casa Inteligente ativado! Proteção anti-desconexão e estabilidade aplicadas para Alexas e IoT.' : 'Modo Casa Inteligente desativado.']), 'info');
 								}, this))
 								.catch(function(e){
 									chk.disabled = false;
 									chk.checked = !enable;
 									if (summary) summary.textContent = (!enable)
-										? 'Ativo • Taxas legadas 802.11b (1-2 Mbps) desativadas para liberar até 40% de tempo de antena.'
-										: 'Desativado • Taxas antigas 802.11b permitidas (padrão OpenWrt).';
+										? 'Ativo • Proteção anti-desconexão (disassoc_low_ack=0), DTIM sincronizado e rota estável AWS IoT.'
+										: 'Desativado • Configuração padrão do OpenWrt.';
 									ui.addNotification(null, E('p', {}, [e.message]), 'danger');
 								});
 							}, this)
