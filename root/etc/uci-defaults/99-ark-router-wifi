@@ -58,21 +58,14 @@ if [ -n "$radio5" ]; then
 	if [ "$ch5" = "auto" ] || [ -z "$ch5" ]; then
 		curr_channels="$(uci -q get wireless.$radio5.channels)"
 		if [ -z "$curr_channels" ]; then
-			cur_ht5="$(uci -q get wireless.$radio5.htmode || echo VHT80)"
-			case "$cur_ht5" in
-				*160)
-					case "$cur_ht5" in
-						HE160) uci -q set wireless.$radio5.htmode=HE80 ;;
-						VHT160) uci -q set wireless.$radio5.htmode=VHT80 ;;
-					esac
-					;;
-			esac
-			uci -q set wireless.$radio5.channel='auto'
-			uci -q set wireless.$radio5.acs_exclude_dfs='1'
 			uci -q set wireless.$radio5.ieee80211h='1'
-			for ch in 36 40 44 48 149 153 157 161; do
-				uci -q add_list wireless.$radio5.channels="$ch"
-			done
+			if [ "$cur_ht5" != "HE160" ] && [ "$cur_ht5" != "VHT160" ]; then
+				uci -q set wireless.$radio5.channel='auto'
+				uci -q set wireless.$radio5.acs_exclude_dfs='1'
+				for ch in 36 40 44 48 149 153 157 161; do
+					uci -q add_list wireless.$radio5.channels="$ch"
+				done
+			fi
 			changed=1
 		fi
 	fi
