@@ -7,7 +7,7 @@
 
 document.querySelector('head').appendChild(E('link', {
 	'rel': 'stylesheet', 'type': 'text/css',
-	'href': L.resource('view/equipe-dashboard/overview.css') + '?v=0.9.94'
+	'href': L.resource('view/equipe-dashboard/overview.css') + '?v=0.9.95'
 }));
 
 const callSystemBoard = rpc.declare({ object: 'system', method: 'board' });
@@ -271,17 +271,38 @@ function metricCard(icon, label, valueId, hintId, color) {
 function assocMap(groups) {
 	const out = {};
 	(groups || []).forEach(function(g) {
-		const meta = g && g.meta;
-		const ifname = g && g.ifname;
+		const meta = (g && g.meta) || {};
+		const ifname = (g && g.ifname) || meta.ifname || '';
 		((g && g.results) || []).forEach(function(r) {
 			if (r && r.mac) {
 				const u = String(r.mac).toUpperCase();
-				if (meta) {
-					r.band = meta.band || '';
-					r.bandLabel = meta.bandLabel || (meta.band === '5g' ? '5 GHz' : (meta.band === '6g' ? '6 GHz' : '2,4 GHz'));
-					r.ssid = meta.ssid || '';
-					r.ifname = ifname;
+				const rx = r.rx || {};
+				const tx = r.tx || {};
+				const mhz = rx.mhz || tx.mhz || 0;
+				const isVht = !!(rx.vht || tx.vht);
+				const isHeWide = !!((rx.he || tx.he) && mhz >= 80);
+				const is6gMhz = (mhz === 320);
+				const ifLower = ifname.toLowerCase();
+
+				let detectedBand = meta.band || '';
+				if (!detectedBand) {
+					if (is6gMhz || ifLower.indexOf('phy2') >= 0 || ifLower.indexOf('radio2') >= 0 || ifLower.indexOf('6g') >= 0) {
+						detectedBand = '6g';
+					} else if (mhz >= 80 || isVht || isHeWide || ifLower.indexOf('phy1') >= 0 || ifLower.indexOf('radio1') >= 0 || ifLower.indexOf('5g') >= 0 || ifLower.indexOf('wlan1') >= 0) {
+						detectedBand = '5g';
+					} else if (ifLower.indexOf('phy0') >= 0 || ifLower.indexOf('radio0') >= 0 || ifLower.indexOf('2g') >= 0 || ifLower.indexOf('wlan0') >= 0) {
+						detectedBand = '2g';
+					}
 				}
+				if (mhz >= 80 || isVht || (isHeWide && detectedBand !== '6g')) {
+					detectedBand = (is6gMhz ? '6g' : '5g');
+				}
+
+				const bandLabel = meta.bandLabel || (detectedBand === '5g' ? '5 GHz' : (detectedBand === '6g' ? '6 GHz' : '2,4 GHz'));
+				r.band = detectedBand || '2g';
+				r.bandLabel = bandLabel;
+				r.ssid = meta.ssid || '';
+				r.ifname = ifname;
 				out[u] = r;
 			}
 		});
@@ -512,8 +533,19 @@ function wifiBand(radioName, radio) {
 	if (band.indexOf('5') === 0 || hw === '11a' || ht.indexOf('80') >= 0 || ht.indexOf('160') >= 0 || name.indexOf('5g') >= 0) return '5g';
 	return '';
 }
-function wifiTopology(status) {
+function wifiTopology(status, wirelessUci) {
 	const topo={ mainIfnames:[], guestIfnames:[], ifaceMeta:{}, survey2:'phy0-ap0', survey5:'phy1-ap0', scan2:'phy0-ap0', scan5:'phy1-ap0', dynamic:false };
+	const uciMeta = {};
+	if (wirelessUci) {
+		try {
+			const w = wifiConfig(wirelessUci);
+			if (w.r2g && w.r2g.ssid) uciMeta['2g_main'] = w.r2g.ssid;
+			if (w.r5g && w.r5g.ssid) uciMeta['5g_main'] = w.r5g.ssid;
+			if (w.main && w.main.ssid2) uciMeta['2g_main'] = w.main.ssid2;
+			if (w.main && w.main.ssid5) uciMeta['5g_main'] = w.main.ssid5;
+			if (w.guest && w.guest.ssid) uciMeta['guest'] = w.guest.ssid;
+		} catch(e) {}
+	}
 	Object.keys(status||{}).forEach(function(radioName) {
 		const radio=status[radioName]||{}, band=wifiBand(radioName, radio), ifaces=radio.interfaces||[];
 		const bandLabel = (band === '5g' ? '5 GHz' : (band === '6g' ? '6 GHz' : '2,4 GHz'));
@@ -525,12 +557,13 @@ function wifiTopology(status) {
 			const isGuest = (networks.indexOf('guest') >= 0);
 			if (isGuest) topo.guestIfnames.push(ifname);
 			else if (networks.indexOf('lan') >= 0 || networks.length === 0) topo.mainIfnames.push(ifname);
+			const fallbackSsid = isGuest ? (uciMeta['guest'] || '') : (band === '5g' ? (uciMeta['5g_main'] || '') : (uciMeta['2g_main'] || ''));
 			topo.ifaceMeta[ifname] = {
 				ifname: ifname,
 				radio: radioName,
 				band: band,
 				bandLabel: bandLabel,
-				ssid: cfg.ssid || '',
+				ssid: cfg.ssid || fallbackSsid,
 				isGuest: isGuest
 			};
 		});
@@ -540,6 +573,19 @@ function wifiTopology(status) {
 	topo.dynamic = topo.mainIfnames.length > 0 || topo.guestIfnames.length > 0;
 	if (!topo.mainIfnames.length) topo.mainIfnames=['phy0-ap0','phy1-ap0'];
 	if (!topo.guestIfnames.length) topo.guestIfnames=['phy0-ap1','phy1-ap1'];
+
+	if (!topo.ifaceMeta['phy0-ap0']) {
+		topo.ifaceMeta['phy0-ap0'] = { ifname: 'phy0-ap0', radio: 'radio0', band: '2g', bandLabel: '2,4 GHz', ssid: uciMeta['2g_main'] || '', isGuest: false };
+	}
+	if (!topo.ifaceMeta['phy1-ap0']) {
+		topo.ifaceMeta['phy1-ap0'] = { ifname: 'phy1-ap0', radio: 'radio1', band: '5g', bandLabel: '5 GHz', ssid: uciMeta['5g_main'] || '', isGuest: false };
+	}
+	if (!topo.ifaceMeta['phy0-ap1']) {
+		topo.ifaceMeta['phy0-ap1'] = { ifname: 'phy0-ap1', radio: 'radio0', band: '2g', bandLabel: '2,4 GHz', ssid: uciMeta['guest'] || '', isGuest: true };
+	}
+	if (!topo.ifaceMeta['phy1-ap1']) {
+		topo.ifaceMeta['phy1-ap1'] = { ifname: 'phy1-ap1', radio: 'radio1', band: '5g', bandLabel: '5 GHz', ssid: uciMeta['guest'] || '', isGuest: true };
+	}
 	return topo;
 }
 function speedifyModeLabel(mode) {
@@ -678,7 +724,7 @@ return view.extend({
 			safe(fs.read('/proc/net/arp'), ''),
 			safe(fs.exec('/usr/sbin/equipe-dashboard-control', [ 'system-hardware-info' ]), {})
 		]).then(function(r) {
-			const interfaces=r[1], networkConfig=r[9], networkValues=values(networkConfig), topology=wifiTopology(r[15]), lanPorts=lanPortsFromNetwork(networkConfig);
+			const interfaces=r[1], networkConfig=r[9], networkValues=values(networkConfig), topology=wifiTopology(r[15], r[6]), lanPorts=lanPortsFromNetwork(networkConfig);
 			const activeWans=getActiveWanList({networkConfig:networkConfig, interfaces:interfaces});
 			const wanDevicesMap={}, wanPhysicalDevicesMap={}, wanPingsMap={};
 			const wanPromises=[];
@@ -1071,13 +1117,19 @@ return view.extend({
 			const a = main[mac] || guest[mac];
 			const isGuest = !!guest[mac] || (guestPrefix && String(ip || '').indexOf(guestPrefix) === 0);
 			if (a) {
-				const is5G = (a.band === '5g');
-				const bandLabel = a.bandLabel || (is5G ? '5 GHz' : (a.band === '6g' ? '6 GHz' : '2,4 GHz'));
-				const ssid = a.ssid || (isGuest ? guestName : mainName);
+				const is5G = (a.band === '5g') || (a.bandLabel === '5 GHz') ||
+					(a.ifname && (a.ifname.indexOf('phy1') >= 0 || a.ifname.indexOf('radio1') >= 0 || a.ifname.indexOf('5g') >= 0 || a.ifname.indexOf('wlan1') >= 0)) ||
+					(a.rx && (a.rx.mhz >= 80 || a.rx.vht)) || (a.tx && (a.tx.mhz >= 80 || a.tx.vht));
+				const is6G = (a.band === '6g') || (a.bandLabel === '6 GHz') ||
+					(a.rx && a.rx.mhz === 320) || (a.tx && a.tx.mhz === 320);
+				const band = is6G ? '6g' : (is5G ? '5g' : '2g');
+				const bandLabel = is6G ? '6 GHz' : (is5G ? '5 GHz' : '2,4 GHz');
+				const defaultMainSsid = is5G ? (wifiNames.main.ssid5 || wifiNames.main.ssid || 'CASA_ARK_5G') : (wifiNames.main.ssid2 || wifiNames.main.ssid || 'CASA_ARK');
+				const ssid = a.ssid || (isGuest ? guestName : defaultMainSsid);
 				return {
 					isWifi: true,
 					ssid: ssid,
-					band: a.band || '',
+					band: band,
 					bandLabel: bandLabel,
 					signal: a.signal,
 					isGuest: isGuest,
@@ -1301,7 +1353,7 @@ return view.extend({
 					if (nameRowEl) {
 						nameRowEl.replaceChildren.apply(nameRowEl, [ E('strong', {}, [d.name]) ].concat(badges));
 					}
-					const wifiMeta = d.isWifi ? (' • ' + (d.ssid || 'Wi-Fi') + ' (' + (d.bandLabel || (d.band === '5g' ? '5G' : '2.4G')) + ')') : '';
+					const wifiMeta = d.isWifi ? (' • ' + (d.ssid || 'Wi-Fi') + ' (' + (d.bandLabel || (d.band === '5g' ? '5 GHz' : '2,4 GHz')) + ')') : '';
 					const metaEl = row.querySelector('.ex-device-meta');
 					if (metaEl) {
 						metaEl.textContent = d.ip + ' • ' + d.mac + (reservedIp && reservedIp !== d.ip ? ' (Fixo: ' + reservedIp + ')' : '') + wifiMeta;
@@ -1343,7 +1395,7 @@ return view.extend({
 				E('strong', {}, [d.name])
 			].concat(badges));
 
-			const wifiMeta = d.isWifi ? (' • ' + (d.ssid || 'Wi-Fi') + ' (' + (d.bandLabel || (d.band === '5g' ? '5G' : '2.4G')) + ')') : '';
+			const wifiMeta = d.isWifi ? (' • ' + (d.ssid || 'Wi-Fi') + ' (' + (d.bandLabel || (d.band === '5g' ? '5 GHz' : '2,4 GHz')) + ')') : '';
 			const metaText = d.ip + ' • ' + d.mac + (reservedIp && reservedIp !== d.ip ? ' (Fixo: ' + reservedIp + ')' : '') + wifiMeta;
 			const totalBytes = (Number(d.rate.totalRx) || 0) + (Number(d.rate.totalTx) || 0);
 
@@ -3719,7 +3771,7 @@ return view.extend({
 					E('div',{class:'ex-feature-copy'},[
 						E('div',{class:'ex-feature-name-row'},[
 							E('strong',{},['Versão instalada: ',update.current||'—']),
-							E('span',{class:'ex-pill online'},[update.current||'0.9.94'])
+							E('span',{class:'ex-pill online'},[update.current||'0.9.95'])
 						]),
 						E('small',{class:'ex-muted'},['Repositório: ',update.repo||'Despensativo/ark-router']),
 						E('small',{class:'ex-muted'},['Gerenciador: ',manager])

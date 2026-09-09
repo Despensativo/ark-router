@@ -9,4 +9,6 @@ docs/screenshots/_test-*.png
 .tmp_*
 !dist/sdk/*.apk
 !dist/sdk/*.ipk
+backups_cudy/
+cudy_installed_pkgs.txt
 

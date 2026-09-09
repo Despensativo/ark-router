@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.95
+
+- **📶 Correção Definitiva e Blindagem de Detecção de Banda Wi-Fi (5 GHz vs 2,4 GHz)**:
+  - **Detecção em Camadas com Validação Física de PHY**: Implementada heurística à prova de falhas em `overview.js`. Clientes negociando largura de banda de 80 MHz / 160 MHz ou modulação VHT (802.11ac) são matematicamente garantidos como **5 GHz**, prevenindo qualquer falso reporte de 2,4 GHz mesmo quando o status ubus inicial ainda estiver carregando.
+  - **Mapeamento de Interface e SSIDs de Fallback**: Caso os metadados de rádio ubus estejam em transição, o painel utiliza o nome da interface física (`phy1-ap0` = 5 GHz, `phy0-ap0` = 2,4 GHz) e os SSIDs configurados no UCI (`CASA_ARK_5G` para 5 GHz e `CASA_ARK` para 2,4 GHz).
+  - **Pre-população do Topo Wi-Fi**: Interfaces padrão e metadados de SSID são pré-inicializados com base na configuração persistente do UCI, assegurando que o dispositivo Alexa e qualquer outro cliente 5 GHz sejam identificados imediatamente com badge azul `[ 5 GHz ]` e SSID correto `CASA_ARK_5G`.
+  - **Compatibilidade Multi-Plataforma Expandida**: Suporte integrado e pacotes compilados para arquiteturas OpenWrt 24.x/snapshots (APK nos roteadores Acer Predator W6x e Cudy WR3000) e OpenWrt 19.07 (IPK no D-Link DGL-5500).
+
 ## 0.9.94
 
 - **📶 Identificação Detalhada de Frequência (2,4 GHz / 5 GHz) e SSID na Lista de Dispositivos Conectados**:
