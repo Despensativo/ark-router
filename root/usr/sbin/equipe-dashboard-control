@@ -2458,26 +2458,29 @@ ensure_mwan3_ark_config() {
 	uci -q set mwan3.bypass_pvt172.dest_ip='172.16.0.0/12'
 	uci -q set mwan3.bypass_pvt172.use_policy=default
 
-	# 2. Regras de Pools por Dispositivo (Balanceamento Estavel por Aparelho)
-	lan_net="$(uci -q get network.lan.ipaddr || printf '192.168.73.1')"
-	lan_prefix="$(printf '%s' "$lan_net" | cut -d. -f1-3)"
-	[ -n "$lan_prefix" ] || lan_prefix="192.168.73"
-
+	# 2. Regras de Pools por Dispositivo (apenas se modo balanced_devices estiver ativo)
 	pool1_en="$(uci -q get mwan3.dev_pool1.enabled || printf '0')"
-	uci -q set mwan3.dev_pool1=rule
-	uci -q set mwan3.dev_pool1.family=ipv4
-	uci -q set "mwan3.dev_pool1.src_ip=${lan_prefix}.0/25"
-	uci -q set mwan3.dev_pool1.dest_ip='0.0.0.0/0'
-	uci -q set mwan3.dev_pool1.use_policy=wan1_pref
-	uci -q set "mwan3.dev_pool1.enabled=$pool1_en"
+	if [ "$pool1_en" = "1" ]; then
+		lan_net="$(uci -q get network.lan.ipaddr || printf '192.168.73.1')"
+		lan_prefix="$(printf '%s' "$lan_net" | cut -d. -f1-3)"
+		[ -n "$lan_prefix" ] || lan_prefix="192.168.73"
+		uci -q set mwan3.dev_pool1=rule
+		uci -q set mwan3.dev_pool1.family=ipv4
+		uci -q set "mwan3.dev_pool1.src_ip=${lan_prefix}.0/25"
+		uci -q set mwan3.dev_pool1.dest_ip='0.0.0.0/0'
+		uci -q set mwan3.dev_pool1.use_policy=wan1_pref
+		uci -q set mwan3.dev_pool1.enabled=1
 
-	pool2_en="$(uci -q get mwan3.dev_pool2.enabled || printf '0')"
-	uci -q set mwan3.dev_pool2=rule
-	uci -q set mwan3.dev_pool2.family=ipv4
-	uci -q set "mwan3.dev_pool2.src_ip=${lan_prefix}.128/25"
-	uci -q set mwan3.dev_pool2.dest_ip='0.0.0.0/0'
-	uci -q set mwan3.dev_pool2.use_policy=wan2_pref
-	uci -q set "mwan3.dev_pool2.enabled=$pool2_en"
+		uci -q set mwan3.dev_pool2=rule
+		uci -q set mwan3.dev_pool2.family=ipv4
+		uci -q set "mwan3.dev_pool2.src_ip=${lan_prefix}.128/25"
+		uci -q set mwan3.dev_pool2.dest_ip='0.0.0.0/0'
+		uci -q set mwan3.dev_pool2.use_policy=wan2_pref
+		uci -q set mwan3.dev_pool2.enabled=1
+	else
+		uci -q delete mwan3.dev_pool1
+		uci -q delete mwan3.dev_pool2
+	fi
 
 	# 3. Regras de Servicos Criticos (SSH, WhatsApp, HTTPS/QUIC)
 	uci -q set mwan3.ssh=rule
@@ -6885,8 +6888,8 @@ case "$action" in
 			uci -q set mwan3.dev_pool1.enabled=1
 			uci -q set mwan3.dev_pool2.enabled=1
 		else
-			uci -q set mwan3.dev_pool1.enabled=0
-			uci -q set mwan3.dev_pool2.enabled=0
+			uci -q delete mwan3.dev_pool1
+			uci -q delete mwan3.dev_pool2
 		fi
 		uci -q set mwan3.ssh.use_policy="$policy"
 		uci -q set mwan3.whatsapp_tcp.use_policy="$policy"
