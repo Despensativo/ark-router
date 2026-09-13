@@ -2767,6 +2767,212 @@ wireguard_peer_qr() {
 		"$(json_escape "$peer_name")" "$conf_txt" "$qr_svg"
 }
 
+
+b64_decode_str() {
+	if command -v ucode >/dev/null 2>&1; then
+		ucode -e 'print(b64dec(ARGV[0]))' -- "$1"
+	elif command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1; then
+		python -c "import sys, base64; sys.stdout.write(base64.b64decode(sys.argv[1]).decode('utf-8', errors='replace'))" "$1"
+	elif command -v base64 >/dev/null 2>&1; then
+		printf '%s' "$1" | base64 -d 2>/dev/null || printf '%s' "$1" | base64 -D 2>/dev/null
+	elif command -v openssl >/dev/null 2>&1; then
+		printf '%s' "$1" | openssl base64 -d 2>/dev/null
+	fi
+}
+
+b64_encode_file() {
+	file="$1"
+	if command -v ucode >/dev/null 2>&1; then
+		ucode -e 'let fs = require("fs"); let c = fs.readfile(ARGV[0]); if (c) print(b64enc(c));' -- "$file"
+	elif command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1; then
+		python -c "import sys, base64; sys.stdout.write(base64.b64encode(open(sys.argv[1], 'rb').read()).decode('ascii'))" "$file"
+	elif command -v base64 >/dev/null 2>&1; then
+		base64 "$file" 2>/dev/null | tr -d '\r\n'
+	fi
+}
+
+wireguard_client_import() {
+	b64="$1"
+	[ -n "$b64" ] || { echo 'Conteudo da configuracao vazio' >&2; exit 2; }
+
+	tmp_conf="/tmp/ark_wg_client.$$.conf"
+	b64_decode_str "$b64" > "$tmp_conf" 2>/dev/null
+	[ -s "$tmp_conf" ] || { echo 'Falha ao decodificar arquivo .conf' >&2; exit 2; }
+
+	clean_lines() {
+		sed 's/^[[:space:]]*//; s/[[:space:]]*$//' "$tmp_conf" | grep -v '^[#;]' | tr -d '\r'
+	}
+	get_val() {
+		clean_lines | grep -iE "^${1}[[:space:]]*=" | head -n 1 | sed -E "s/^${1}[[:space:]]*=[[:space:]]*//I"
+	}
+
+	privkey="$(get_val 'PrivateKey')"
+	addresses="$(get_val 'Address')"
+	dns="$(get_val 'DNS')"
+	pubkey="$(get_val 'PublicKey')"
+	preshared_key="$(get_val 'PresharedKey')"
+	endpoint="$(get_val 'Endpoint')"
+	allowed_ips="$(get_val 'AllowedIPs')"
+	keepalive="$(get_val 'PersistentKeepalive')"
+
+	rm -f "$tmp_conf" 2>/dev/null
+
+	[ -n "$privkey" ] || { echo 'Chave Privada (PrivateKey) nao encontrada no .conf' >&2; exit 2; }
+	[ -n "$pubkey" ] || { echo 'Chave Publica do Servidor (PublicKey) nao encontrada no .conf' >&2; exit 2; }
+	[ -n "$endpoint" ] || { echo 'Endpoint do Servidor nao encontrado no .conf' >&2; exit 2; }
+
+	case "$endpoint" in
+		\[*\]:*)
+			ep_host="$(printf '%s' "$endpoint" | sed 's/^\[//; s/\].*//')"
+			ep_port="${endpoint##*:}"
+			;;
+		*:*)
+			ep_host="${endpoint%:*}"
+			ep_port="${endpoint##*:}"
+			;;
+		*)
+			ep_host="$endpoint"
+			ep_port="51820"
+			;;
+	esac
+
+	# Cleanup old wgclient
+	uci -q delete network.wgclient
+	for s in $(uci -q show network | grep '=wireguard_wgclient$' | cut -d. -f2 | cut -d= -f1); do
+		uci -q delete "network.$s"
+	done
+
+	uci -q set network.wgclient=interface
+	uci -q set network.wgclient.proto='wireguard'
+	uci -q set network.wgclient.private_key="$privkey"
+	uci -q set network.wgclient.listen_port='51821'
+	uci -q set network.wgclient.auto='1'
+	if [ -n "$addresses" ]; then
+		for a in $(echo "$addresses" | tr ',' ' '); do
+			uci -q add_list network.wgclient.addresses="$a"
+		done
+	fi
+	if [ -n "$dns" ]; then
+		for d in $(echo "$dns" | tr ',' ' '); do
+			uci -q add_list network.wgclient.dns="$d"
+		done
+	fi
+
+	sec="$(uci -q add network wireguard_wgclient)"
+	uci -q set "network.$sec.public_key=$pubkey"
+	[ -n "$preshared_key" ] && uci -q set "network.$sec.preshared_key=$preshared_key"
+	uci -q set "network.$sec.endpoint_host=$ep_host"
+	uci -q set "network.$sec.endpoint_port=$ep_port"
+	uci -q set "network.$sec.persistent_keepalive=${keepalive:-25}"
+	uci -q set "network.$sec.route_allowed_ips=1"
+	for aip in $(echo "${allowed_ips:-0.0.0.0/0}" | tr ',' ' '); do
+		uci -q add_list "network.$sec.allowed_ips=$aip"
+	done
+
+	wan_sec=""
+	for z in $(uci -q show firewall | grep '=zone$' | cut -d. -f2 | cut -d= -f1); do
+		if [ "$(uci -q get "firewall.$z.name")" = "wan" ]; then
+			wan_sec="$z"
+			break
+		fi
+	done
+	if [ -n "$wan_sec" ]; then
+		if ! uci -q get "firewall.$wan_sec.network" | grep -qw "wgclient"; then
+			uci -q add_list "firewall.$wan_sec.network=wgclient"
+		fi
+	fi
+
+	mkdir -p /etc/wireguard
+	b64_decode_str "$b64" > /etc/wireguard/wgclient.conf 2>/dev/null
+	chmod 600 /etc/wireguard/wgclient.conf 2>/dev/null
+
+	uci commit network
+	uci commit firewall
+	/etc/init.d/firewall reload >/dev/null 2>&1 || true
+	/sbin/ifup wgclient >/dev/null 2>&1 || true
+
+	echo 'ok'
+}
+
+wireguard_client_status_json() {
+	installed_wg=false; ([ -x /usr/bin/wg ] || [ -f /lib/netifd/proto/wireguard.sh ]) && installed_wg=true
+	configured=false; [ "$(uci -q get network.wgclient.proto)" = "wireguard" ] && configured=true
+	active=false; [ -d /sys/class/net/wgclient ] && active=true
+	autostart=false; [ "$(uci -q get network.wgclient.auto)" != "0" ] && autostart=true
+
+	client_ip="$(uci -q get network.wgclient.addresses 2>/dev/null || true)"
+	ep_host="$(uci -q get network.@wireguard_wgclient[0].endpoint_host 2>/dev/null || true)"
+	ep_port="$(uci -q get network.@wireguard_wgclient[0].endpoint_port 2>/dev/null || printf '51820')"
+	pubkey="$(uci -q get network.@wireguard_wgclient[0].public_key 2>/dev/null || true)"
+	endpoint="${ep_host}:${ep_port}"
+	[ -z "$ep_host" ] && endpoint=""
+
+	hs=0; rx=0; tx=0; live_ep=""
+	if $active && command -v wg >/dev/null 2>&1; then
+		dump="$(wg show wgclient dump 2>/dev/null | tail -n +2 | head -n 1 || true)"
+		if [ -n "$dump" ]; then
+			live_ep="$(echo "$dump" | awk '{print $3}')"
+			hs="$(echo "$dump" | awk '{print $5}')"
+			rx="$(echo "$dump" | awk '{print $6}')"
+			tx="$(echo "$dump" | awk '{print $7}')"
+		fi
+	fi
+	[ "$live_ep" = "(none)" ] && live_ep=""
+	[ -n "$live_ep" ] && endpoint="$live_ep"
+	[ -n "$hs" ] || hs=0
+	[ -n "$rx" ] || rx=0
+	[ -n "$tx" ] || tx=0
+
+	online=false
+	now="$(date +%s)"
+	if [ "$hs" -gt 0 ]; then
+		diff=$((now - hs))
+		[ "$diff" -le 180 ] && online=true
+	fi
+
+	conf_b64=""
+	if [ -f /etc/wireguard/wgclient.conf ]; then
+		conf_b64="$(b64_encode_file /etc/wireguard/wgclient.conf)"
+	fi
+
+	printf '{"installed":%s,"configured":%s,"active":%s,"autostart":%s,"online":%s,"endpoint":"%s","public_key":"%s","client_ip":"%s","latest_handshake":%d,"rx_bytes":%s,"tx_bytes":%s,"conf_b64":"%s"}\n' \
+		"$installed_wg" "$configured" "$active" "$autostart" "$online" "$(json_escape "$endpoint")" "$(json_escape "$pubkey")" "$(json_escape "$client_ip")" "$hs" "$rx" "$tx" "$conf_b64"
+}
+
+wireguard_client_toggle() {
+	des="$1"
+	if [ "$des" = "1" ] || [ "$des" = "on" ] || [ "$des" = "start" ]; then
+		uci -q set network.wgclient.disabled='0'
+		uci commit network
+		/sbin/ifup wgclient >/dev/null 2>&1 || true
+		echo 'ok'
+	else
+		uci -q set network.wgclient.disabled='1'
+		uci commit network
+		/sbin/ifdown wgclient >/dev/null 2>&1 || true
+		echo 'ok'
+	fi
+}
+
+wireguard_client_delete() {
+	/sbin/ifdown wgclient >/dev/null 2>&1 || true
+	uci -q delete network.wgclient
+	for s in $(uci -q show network | grep '=wireguard_wgclient$' | cut -d. -f2 | cut -d= -f1); do
+		uci -q delete "network.$s"
+	done
+	for z in $(uci -q show firewall | grep '=zone$' | cut -d. -f2 | cut -d= -f1); do
+		if [ "$(uci -q get "firewall.$z.name")" = "wan" ]; then
+			uci -q del_list "firewall.$z.network=wgclient" 2>/dev/null || true
+		fi
+	done
+	rm -f /etc/wireguard/wgclient.conf 2>/dev/null
+	uci commit network
+	uci commit firewall
+	/etc/init.d/firewall reload >/dev/null 2>&1 || true
+	echo 'ok'
+}
+
+
 speedtest_history_file() {
 	case "$1" in wan|wan2) ;; *) return 1 ;; esac
 	mkdir -p /etc/ark-router/speedtest-history
@@ -5561,8 +5767,23 @@ feature_json() {
 		[ -n "$wan_ip" ] || wan_ip="$(uci -q get network.wan.ipaddr 2>/dev/null || true)"
 		custom_endpoint="$(uci -q get equipe_dashboard.wireguard.endpoint 2>/dev/null || true)"
 		endpoint="${custom_endpoint:-$wan_ip}"
-		printf '"wireguard":{"installed":%s,"active":%s,"autostart":%s,"hidden":%s,"installable":true,"package":"wireguard-tools","ip":"%s","listen_port":"%s","public_key":"%s","endpoint":"%s","peers_count":%d,"peers_active":%d}' \
-			"$installed_wg" "$active_wg" "$autostart_wg" "$(bool $((concealed == 0)))" "$(json_escape "$wg_ip")" "$(json_escape "$listen_port")" "$(json_escape "$pubkey")" "$(json_escape "$endpoint")" "$peers_count" "$peers_active"
+
+		client_configured=false; [ "$(uci -q get network.wgclient.proto)" = "wireguard" ] && client_configured=true
+		client_active=false; [ -d /sys/class/net/wgclient ] && client_active=true
+		client_endpoint="$(uci -q get network.@wireguard_wgclient[0].endpoint_host 2>/dev/null || true)"
+		client_online=false
+		if [ "$client_active" = true ] && command -v wg >/dev/null 2>&1; then
+			client_hs="$(wg show wgclient latest-handshakes 2>/dev/null | awk '{print $2}' || true)"
+			if [ -n "$client_hs" ] && [ "$client_hs" -gt 0 ]; then
+				now_c="$(date +%s)"
+				diff_c=$((now_c - client_hs))
+				[ "$diff_c" -le 180 ] && client_online=true
+			fi
+		fi
+
+		printf '"wireguard":{"installed":%s,"active":%s,"autostart":%s,"hidden":%s,"installable":true,"package":"wireguard-tools","ip":"%s","listen_port":"%s","public_key":"%s","endpoint":"%s","peers_count":%d,"peers_active":%d,"client_configured":%s,"client_active":%s,"client_online":%s,"client_endpoint":"%s"}' \
+			"$installed_wg" "$active_wg" "$autostart_wg" "$(bool $((concealed == 0)))" "$(json_escape "$wg_ip")" "$(json_escape "$listen_port")" "$(json_escape "$pubkey")" "$(json_escape "$endpoint")" "$peers_count" "$peers_active" \
+			"$client_configured" "$client_active" "$client_online" "$(json_escape "$client_endpoint")"
 		return 0
 	fi
 	if [ -n "$package" ]; then installed "$package"; present=$?; else feature_active "$key"; present=$?; fi
@@ -8319,6 +8540,19 @@ case "$action" in
 	wireguard-peer-qr)
 		wireguard_peer_qr "$2"
 		;;
+	wireguard-client-import)
+		wireguard_client_import "$2"
+		;;
+	wireguard-client-status)
+		wireguard_client_status_json
+		;;
+	wireguard-client-toggle)
+		wireguard_client_toggle "$2"
+		;;
+	wireguard-client-delete)
+		wireguard_client_delete
+		;;
+
 	adblock-status)
 		adblock_status_json
 		;;
