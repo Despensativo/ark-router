@@ -42,8 +42,28 @@ is_dev_already_wan() {
 
 probe_dhcp_upstream() {
 	local dev="$1"
-	udhcpc -i "$dev" -n -q -f -t 2 -T 1 -s /bin/true >/dev/null 2>&1
-	return $?
+	local was_in_br=0
+
+	# 1. Blindagem contra Rogue DHCP: desconecta a porta da bridge br-lan antes de sondar
+	if brctl show br-lan 2>/dev/null | grep -q "\<$dev\>" || ip link show "$dev" 2>/dev/null | grep -q "master br-lan"; then
+		was_in_br=1
+		ip link set "$dev" nomaster >/dev/null 2>&1 || brctl delif br-lan "$dev" >/dev/null 2>&1 || true
+	fi
+	ip link set "$dev" up >/dev/null 2>&1 || true
+
+	# 2. Aguarda estabilizacao fisica do link (PHY auto-negotiation, duplex)
+	sleep 2
+
+	# 3. Dispara ate 3 tentativas de DHCP (espera ate 6s para modems responderem)
+	udhcpc -i "$dev" -n -q -f -t 3 -T 2 -s /bin/true >/dev/null 2>&1
+	local res=$?
+
+	# 4. Se nao for modem upstream e a porta pertencia a br-lan, restaura-a na bridge
+	if [ "$res" -ne 0 ] && [ "$was_in_br" = 1 ]; then
+		brctl addif br-lan "$dev" >/dev/null 2>&1 || ip link set "$dev" master br-lan >/dev/null 2>&1 || true
+		ip link set "$dev" up >/dev/null 2>&1 || true
+	fi
+	return $res
 }
 
 swconfig_quarantine_port() {
@@ -106,10 +126,14 @@ probe_swconfig_dhcp() {
 	# Garante quarentena de hardware imediata
 	swconfig_quarantine_port "$p"
 
+	# Aguarda estabilizacao fisica do link no switch de hardware (PHY auto-negotiation)
+	sleep 2
+
 	ip link add link eth0 name eth0.99 type vlan id 99 >/dev/null 2>&1 || true
 	ip link set eth0.99 up >/dev/null 2>&1 || true
 
-	udhcpc -i eth0.99 -n -q -f -t 2 -T 1 -s /bin/true >/dev/null 2>&1
+	# Dispara ate 3 tentativas de DHCP com intervalo de 2s (ate 6s total)
+	udhcpc -i eth0.99 -n -q -f -t 3 -T 2 -s /bin/true >/dev/null 2>&1
 	local res=$?
 
 	ip link delete eth0.99 >/dev/null 2>&1 || true
@@ -208,18 +232,55 @@ run_autowan_cycle() {
 							logger -t ark-autowan "DHCP upstream detectado na porta $port_dev! Promovendo para $next_wan..."
 							/usr/sbin/equipe-dashboard-control wan-save iface="$next_wan" device="$port_dev" mode=wan proto=dhcp >/dev/null 2>&1
 							echo "$port_dev=$next_wan" >> "$DYNAMIC_WANS_FILE"
+							# Aguarda a nova WAN obter IP e estabilizar rotas antes de reconfigurar o Multi-WAN
+							local w_wait=0
+							while [ "$w_wait" -lt 8 ]; do
+								if ubus call "network.interface.$next_wan" status 2>/dev/null | grep -q '"up": true'; then
+									break
+								fi
+								sleep 1
+								w_wait=$((w_wait + 1))
+							done
 							/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
 							/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 || true
 						else
-							logger -t ark-autowan "Nenhum DHCP upstream na porta $port_dev (dispositivo cliente ou PC). Mantendo em LAN."
+							logger -t ark-autowan "Nenhum DHCP upstream na porta $port_dev (tentativa inicial). Agendando repescagem em 10s..."
+							echo "$(date +%s)" > "/var/run/ark-autowan-retry-$port_dev"
 						fi
 					else
 						logger -t ark-autowan "Porta $port_dev protegida pelo Fail-Safe Salva-Vidas (Wi-Fi desligado e sem outra LAN conectada)."
 					fi
 				fi
+			# Checagem de repescagem unica (para modems lentos/em boot)
+			elif [ -f "/var/run/ark-autowan-retry-$port_dev" ] && [ "$oper" = "up" ] && ! is_dev_already_wan "$port_dev"; then
+				local retry_ts="$(cat "/var/run/ark-autowan-retry-$port_dev" 2>/dev/null || echo 0)"
+				local now_ts="$(date +%s)"
+				if [ $((now_ts - retry_ts)) -ge 10 ]; then
+					rm -f "/var/run/ark-autowan-retry-$port_dev"
+					logger -t ark-autowan "Executando repescagem de DHCP na porta $port_dev..."
+					if probe_dhcp_upstream "$port_dev"; then
+						local next_wan="$(find_next_free_wan)"
+						logger -t ark-autowan "DHCP upstream detectado na repescagem para a porta $port_dev! Promovendo para $next_wan..."
+						/usr/sbin/equipe-dashboard-control wan-save iface="$next_wan" device="$port_dev" mode=wan proto=dhcp >/dev/null 2>&1
+						echo "$port_dev=$next_wan" >> "$DYNAMIC_WANS_FILE"
+						local w_wait=0
+						while [ "$w_wait" -lt 8 ]; do
+							if ubus call "network.interface.$next_wan" status 2>/dev/null | grep -q '"up": true'; then
+								break
+							fi
+							sleep 1
+							w_wait=$((w_wait + 1))
+						done
+						/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
+						/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 || true
+					else
+						logger -t ark-autowan "Repescagem concluída: nenhum DHCP na porta $port_dev. Mantido em LAN."
+					fi
+				fi
 			# Transição: cabo desconectado (UP -> DOWN)
 			elif [ "$oper" != "up" ] && [ "$prev_oper" = "up" ]; then
 				logger -t ark-autowan "Link DOWN detectado na porta $port_dev"
+				rm -f "/var/run/ark-autowan-retry-$port_dev" 2>/dev/null || true
 				local dyn_entry="$(grep "^$port_dev=" "$DYNAMIC_WANS_FILE" 2>/dev/null | tail -n 1)"
 				if [ -n "$dyn_entry" ]; then
 					local dyn_wan="${dyn_entry#*=}"
@@ -257,18 +318,55 @@ run_autowan_cycle() {
 							logger -t ark-autowan "DHCP upstream detectado na porta fisica $p! Promovendo para $next_wan..."
 							/usr/sbin/equipe-dashboard-control wan-save iface="$next_wan" device="lan$p" mode=wan proto=dhcp >/dev/null 2>&1
 							echo "$port_name=$next_wan" >> "$DYNAMIC_WANS_FILE"
+							# Aguarda a nova WAN obter IP e estabilizar rotas antes de reconfigurar o Multi-WAN
+							local w_wait=0
+							while [ "$w_wait" -lt 8 ]; do
+								if ubus call "network.interface.$next_wan" status 2>/dev/null | grep -q '"up": true'; then
+									break
+								fi
+								sleep 1
+								w_wait=$((w_wait + 1))
+							done
 							/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
 							/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 || true
 						else
-							logger -t ark-autowan "Nenhum DHCP upstream na porta fisica $p (dispositivo cliente ou PC). Mantendo em LAN."
+							logger -t ark-autowan "Nenhum DHCP upstream na porta fisica $p (tentativa inicial). Agendando repescagem em 10s..."
+							echo "$(date +%s)" > "/var/run/ark-autowan-retry-$port_name"
 						fi
 					else
 						logger -t ark-autowan "Porta fisica $p protegida pela Regra Salva-Vidas."
 					fi
 				fi
+			# Checagem de repescagem unica (para modems lentos/em boot)
+			elif [ -f "/var/run/ark-autowan-retry-$port_name" ] && [ "$oper" = "up" ] && ! is_swconfig_port_already_wan "$p"; then
+				local retry_ts="$(cat "/var/run/ark-autowan-retry-$port_name" 2>/dev/null || echo 0)"
+				local now_ts="$(date +%s)"
+				if [ $((now_ts - retry_ts)) -ge 10 ]; then
+					rm -f "/var/run/ark-autowan-retry-$port_name"
+					logger -t ark-autowan "Executando repescagem de DHCP na porta fisica $p..."
+					if probe_swconfig_dhcp "$p"; then
+						local next_wan="$(find_next_free_wan)"
+						logger -t ark-autowan "DHCP upstream detectado na repescagem para a porta fisica $p! Promovendo para $next_wan..."
+						/usr/sbin/equipe-dashboard-control wan-save iface="$next_wan" device="lan$p" mode=wan proto=dhcp >/dev/null 2>&1
+						echo "$port_name=$next_wan" >> "$DYNAMIC_WANS_FILE"
+						local w_wait=0
+						while [ "$w_wait" -lt 8 ]; do
+							if ubus call "network.interface.$next_wan" status 2>/dev/null | grep -q '"up": true'; then
+								break
+							fi
+							sleep 1
+							w_wait=$((w_wait + 1))
+						done
+						/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
+						/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 || true
+					else
+						logger -t ark-autowan "Repescagem concluída: nenhum DHCP na porta fisica $p. Mantido em LAN."
+					fi
+				fi
 			# Transição: cabo desconectado (UP -> DOWN)
 			elif [ "$oper" != "up" ] && [ "$prev_oper" = "up" ]; then
 				logger -t ark-autowan "Link DOWN detectado na porta fisica $p (switch0)"
+				rm -f "/var/run/ark-autowan-retry-$port_name" 2>/dev/null || true
 				swconfig_quarantine_port "$p"
 				local dyn_entry="$(grep "^$port_name=" "$DYNAMIC_WANS_FILE" 2>/dev/null | tail -n 1)"
 				if [ -n "$dyn_entry" ]; then

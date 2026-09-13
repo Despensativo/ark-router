@@ -8261,6 +8261,8 @@ EOF
 			ifdown wan >/dev/null 2>&1 || true
 			/etc/init.d/network reload >/dev/null 2>&1 || true
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			rm -f /var/run/ark-autowan-retry-* 2>/dev/null || true
+			sed -i "/^port5=/d; /^wan=/d; /^eth1=/d; /^lan[1-4]=/d" /var/run/ark-autowan.state 2>/dev/null || true
 
 			echo 'enabled'
 		else
@@ -8299,6 +8301,8 @@ EOF
 			/etc/init.d/network reload >/dev/null 2>&1 || true
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
 			(sleep 1; ifup wan >/dev/null 2>&1) &
+			rm -f /var/run/ark-autowan-retry-* 2>/dev/null || true
+			sed -i "/^port5=/d; /^wan=/d; /^eth1=/d; /^lan[1-4]=/d" /var/run/ark-autowan.state 2>/dev/null || true
 
 			echo 'disabled'
 		fi
