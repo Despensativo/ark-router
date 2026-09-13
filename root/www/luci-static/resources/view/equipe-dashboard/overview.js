@@ -2285,7 +2285,7 @@ return view.extend({
 					E('option', { value: '' }, ['-- Escolher perfil PPPoE salvo (' + savedProfiles.length + ') --'])
 				);
 				savedProfiles.forEach(function(p){
-					const optLabel = p.name + ' (' + (p.username || 'sem usuário') + (p.macaddr ? ' • MAC ' + p.macaddr : '') + ')';
+					const optLabel = p.name + ' (' + (p.username || 'sem usuário') + (p.macaddr ? ' • MAC ' + p.macaddr : '') + (p.modem_ip ? ' • ONU ' + p.modem_ip : '') + ')';
 					pppoeProfileSelect.appendChild(E('option', { value: p.id }, [optLabel]));
 				});
 				if (selectIdToPick) {
@@ -2305,6 +2305,7 @@ return view.extend({
 					username.value = found.username || '';
 					password.value = found.password || '';
 					macaddr.value = found.macaddr || '';
+					modemIp.value = found.modem_ip || '';
 					deleteProfileBtn.disabled = false;
 					profileStatus.textContent = '✓ ' + found.name + ' aplicado';
 					profileStatus.style.display = 'inline-block';
@@ -2321,6 +2322,7 @@ return view.extend({
 					const u = username.value.trim();
 					const p = password.value;
 					const m = macaddr.value.trim();
+					const mip = modemIp.value.trim();
 					if (!u) {
 						ui.addNotification(null, E('p', {}, ['Preencha ao menos o Usuário PPPoE antes de salvar o perfil.']), 'warning');
 						return;
@@ -2334,7 +2336,8 @@ return view.extend({
 						'name=' + profName.trim(),
 						'username=' + u,
 						'password=' + p,
-						'macaddr=' + m
+						'macaddr=' + m,
+						'modem_ip=' + mip
 					]).then(function(r){
 						if (r.code) throw new Error(r.stderr || 'Falha ao salvar perfil');
 						let data = {}; try { data = JSON.parse(r.stdout || '{}'); } catch(e) {}
@@ -2367,7 +2370,7 @@ return view.extend({
 				E('div', { style: 'display:flex; gap:8px; align-items:center;' }, [
 					pppoeProfileSelect
 				]),
-				E('small', { class: 'ex-muted', style: 'margin-top:4px; display:block;' }, ['Salva e preenche Usuário, Senha e MAC Clonado em 1 clique para qualquer WAN.'])
+				E('small', { class: 'ex-muted', style: 'margin-top:4px; display:block;' }, ['Salva e preenche Usuário, Senha, MAC Clonado e IP da ONU em 1 clique para qualquer WAN.'])
 			]);
 
 			const field=function(label,node,hint,extraClass){return E('label',{class:'ex-wan-edit-field'+(extraClass?(' '+extraClass):'')},[E('span',{},[label]),node,hint?E('small',{class:'ex-muted'},[hint]):'']);};

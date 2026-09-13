@@ -8455,15 +8455,16 @@ EOF
 			puser="$(uci -q get "equipe_dashboard.$sec.username" || printf '')"
 			ppass="$(uci -q get "equipe_dashboard.$sec.password" || printf '')"
 			pmac="$(uci -q get "equipe_dashboard.$sec.macaddr" || printf '')"
+			pmodem_ip="$(uci -q get "equipe_dashboard.$sec.modem_ip" || printf '')"
 			[ "$first" = 1 ] && first=0 || printf ','
-			printf '{"id":"%s","name":"%s","username":"%s","password":"%s","macaddr":"%s"}' \
-				"$(json_escape "$sec")" "$(json_escape "$pname")" "$(json_escape "$puser")" "$(json_escape "$ppass")" "$(json_escape "$pmac")"
+			printf '{"id":"%s","name":"%s","username":"%s","password":"%s","macaddr":"%s","modem_ip":"%s"}' \
+				"$(json_escape "$sec")" "$(json_escape "$pname")" "$(json_escape "$puser")" "$(json_escape "$ppass")" "$(json_escape "$pmac")" "$(json_escape "$pmodem_ip")"
 		done
 		printf ']}\n'
 		;;
 	pppoe-profile-save)
 		shift
-		pname=""; puser=""; ppass=""; pmac=""
+		pname=""; puser=""; ppass=""; pmac=""; pmodem_ip=""
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
@@ -8471,6 +8472,7 @@ EOF
 				username) puser="$value" ;;
 				password) ppass="$value" ;;
 				macaddr) pmac="$value" ;;
+				modem_ip) pmodem_ip="$value" ;;
 			esac
 		done
 		[ -n "$pname" ] || { echo 'Nome do perfil obrigatorio' >&2; exit 2; }
@@ -8486,6 +8488,11 @@ EOF
 		else
 			uci -q delete "equipe_dashboard.$sec_id.macaddr"
 		fi
+		if [ -n "$pmodem_ip" ]; then
+			uci -q set "equipe_dashboard.$sec_id.modem_ip=$pmodem_ip"
+		else
+			uci -q delete "equipe_dashboard.$sec_id.modem_ip"
+		fi
 		uci commit equipe_dashboard
 		printf '{"profiles":['
 		first=1
@@ -8494,9 +8501,10 @@ EOF
 			pu="$(uci -q get "equipe_dashboard.$sec.username" || printf '')"
 			pp="$(uci -q get "equipe_dashboard.$sec.password" || printf '')"
 			pm="$(uci -q get "equipe_dashboard.$sec.macaddr" || printf '')"
+			pmi="$(uci -q get "equipe_dashboard.$sec.modem_ip" || printf '')"
 			[ "$first" = 1 ] && first=0 || printf ','
-			printf '{"id":"%s","name":"%s","username":"%s","password":"%s","macaddr":"%s"}' \
-				"$(json_escape "$sec")" "$(json_escape "$pn")" "$(json_escape "$pu")" "$(json_escape "$pp")" "$(json_escape "$pm")"
+			printf '{"id":"%s","name":"%s","username":"%s","password":"%s","macaddr":"%s","modem_ip":"%s"}' \
+				"$(json_escape "$sec")" "$(json_escape "$pn")" "$(json_escape "$pu")" "$(json_escape "$pp")" "$(json_escape "$pm")" "$(json_escape "$pmi")"
 		done
 		printf ']}\n'
 		;;
@@ -8512,9 +8520,10 @@ EOF
 			pu="$(uci -q get "equipe_dashboard.$sec.username" || printf '')"
 			pp="$(uci -q get "equipe_dashboard.$sec.password" || printf '')"
 			pm="$(uci -q get "equipe_dashboard.$sec.macaddr" || printf '')"
+			pmi="$(uci -q get "equipe_dashboard.$sec.modem_ip" || printf '')"
 			[ "$first" = 1 ] && first=0 || printf ','
-			printf '{"id":"%s","name":"%s","username":"%s","password":"%s","macaddr":"%s"}' \
-				"$(json_escape "$sec")" "$(json_escape "$pn")" "$(json_escape "$pu")" "$(json_escape "$pp")" "$(json_escape "$pm")"
+			printf '{"id":"%s","name":"%s","username":"%s","password":"%s","macaddr":"%s","modem_ip":"%s"}' \
+				"$(json_escape "$sec")" "$(json_escape "$pn")" "$(json_escape "$pu")" "$(json_escape "$pp")" "$(json_escape "$pm")" "$(json_escape "$pmi")"
 		done
 		printf ']}\n'
 		;;
