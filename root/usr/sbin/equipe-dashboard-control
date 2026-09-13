@@ -3059,7 +3059,9 @@ dns_turbo_save() {
 	fi
 
 	count=0
-	for ip in "$dns1" "$dns2" "$dns3" "$dns4"; do
+	for raw_ip in "$dns1" "$dns2" "$dns3" "$dns4"; do
+		[ -n "$raw_ip" ] || continue
+		ip="$(printf '%s' "$raw_ip" | sed -E 's/[:#][0-9]+$//' | tr -d ' ,;\t\r\n')"
 		[ -n "$ip" ] || continue
 		valid_ipv4 "$ip" || continue
 		if [ "$blocker_name" != "AdGuard Home" ]; then
@@ -3389,7 +3391,7 @@ adblock_apply_rules() {
 	else
 		clean_bl=""
 		for item in $(printf '%s' "$raw_blacklist" | tr ',;\n\r\t' ' '); do
-			dom="$(printf '%s' "$item" | sed -E 's|^https?://||; s|/.*$||' | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9.-')"
+			dom="$(printf '%s' "$item" | sed -E 's|^@@\|\|||; s|^\|\|||; s|\^.*$||; s|^https?://||; s|/.*$||' | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9.-')"
 			if printf '%s' "$dom" | grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$'; then
 				case " $clean_bl " in
 					*" $dom "*) ;;
@@ -3409,7 +3411,7 @@ adblock_apply_rules() {
 	else
 		clean_wl=""
 		for item in $(printf '%s' "$raw_whitelist" | tr ',;\n\r\t' ' '); do
-			dom="$(printf '%s' "$item" | sed -E 's|^https?://||; s|/.*$||' | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9.-')"
+			dom="$(printf '%s' "$item" | sed -E 's|^@@\|\|||; s|^\|\|||; s|\^.*$||; s|^https?://||; s|/.*$||' | tr 'A-Z' 'a-z' | tr -cd 'a-z0-9.-')"
 			if printf '%s' "$dom" | grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$'; then
 				case " $clean_wl " in
 					*" $dom "*) ;;
@@ -3827,6 +3829,7 @@ adblock_configure() {
 	[ "$cache_mb" -gt 256 ] && cache_mb=256
 
 	case "$web_port" in ''|*[!0-9]*) web_port=3000 ;; esac
+	case "$web_port" in 22|53|80|443|5335|5353) web_port=3000 ;; esac
 	[ "$web_port" -lt 80 ] && web_port=3000
 	[ "$web_port" -gt 65535 ] && web_port=3000
 
@@ -3839,6 +3842,7 @@ adblock_configure() {
 		cache_bytes=$((cache_mb * 1048576))
 		yaml="/etc/adguardhome/adguardhome.yaml"
 		if [ -f "$yaml" ]; then
+			cp -f "$yaml" "${yaml}.bak" 2>/dev/null || true
 			sed -i "s/^  cache_size: .*/  cache_size: $cache_bytes/" "$yaml"
 			sed -i "s/^  safebrowsing_cache_size: .*/  safebrowsing_cache_size: $cache_bytes/" "$yaml"
 			sed -i "s/^  safesearch_cache_size: .*/  safesearch_cache_size: $cache_bytes/" "$yaml"
@@ -3852,6 +3856,13 @@ adblock_configure() {
 			in_ss && /^    enabled:/ { print "    enabled: " val; in_ss=0; next }
 			{ print }
 			' "$yaml" > "${yaml}.tmp" && mv -f "${yaml}.tmp" "$yaml"
+
+			if [ -x /usr/bin/AdGuardHome ]; then
+				if ! /usr/bin/AdGuardHome --check-config -c "$yaml" >/dev/null 2>&1; then
+					logger -t ark-adguard "Configuracao YAML do AdGuard Home corrompida. Revertendo backup de seguranca."
+					cp -f "${yaml}.bak" "$yaml" 2>/dev/null || true
+				fi
+			fi
 
 			# Gerenciamento de Firewall ZeroTier para porta do AdGuard
 			cur_zt_http="$(uci -q get firewall.zt_http.dest_port || echo '80 443')"
@@ -6719,12 +6730,31 @@ case "$action" in
 				proto) case "$value" in dhcp|pppoe|static) proto="$value" ;; *) echo 'Protocolo invalido' >&2; exit 2 ;; esac ;;
 				username) valid_plain "$value" 96 || { echo 'Usuario PPPoE invalido' >&2; exit 2; }; username="$value" ;;
 				password) valid_plain "$value" 128 || { echo 'Senha PPPoE invalida' >&2; exit 2; }; password="$value" ;;
-				ipaddr) [ -z "$value" ] || valid_ipv4 "$value" || { echo 'IP estatico invalido' >&2; exit 2; }; ipaddr="$value" ;;
-				netmask) [ -z "$value" ] || valid_ipv4 "$value" || { echo 'Mascara invalida' >&2; exit 2; }; netmask="$value" ;;
-				gateway) [ -z "$value" ] || valid_ipv4 "$value" || { echo 'Gateway invalido' >&2; exit 2; }; gateway="$value" ;;
-				dns) valid_plain "$value" 120 || { echo 'DNS invalido' >&2; exit 2; }; dns="$value"; for server in $dns; do valid_ipv4 "$server" || { echo 'DNS WAN invalido' >&2; exit 2; }; done ;;
-				macaddr) [ -z "$value" ] || valid_mac_anycase "$value" || { echo 'MAC WAN invalido' >&2; exit 2; }; macaddr="$(printf '%s' "$value" | tr 'a-f' 'A-F')" ;;
-				modem_ip) [ -z "$value" ] || valid_ipv4 "$value" || { echo 'IP da ONU/Modem invalido' >&2; exit 2; }; modem_ip="$value" ;;
+				ipaddr) [ -z "$value" ] || { clean_ip="$(printf '%s' "$value" | tr -d ' ,;\t\r\n')"; valid_ipv4 "$clean_ip" || { echo 'IP estatico invalido' >&2; exit 2; }; ipaddr="$clean_ip"; } ;;
+				netmask) [ -z "$value" ] || { clean_nm="$(printf '%s' "$value" | tr -d ' ,;\t\r\n')"; valid_ipv4 "$clean_nm" || { echo 'Mascara invalida' >&2; exit 2; }; netmask="$clean_nm"; } ;;
+				gateway) [ -z "$value" ] || { clean_gw="$(printf '%s' "$value" | tr -d ' ,;\t\r\n')"; valid_ipv4 "$clean_gw" || { echo 'Gateway invalido' >&2; exit 2; }; gateway="$clean_gw"; } ;;
+				dns)
+					val="$(printf '%s' "$value" | tr ',;\t' '  ' | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//')"
+					valid_plain "$val" 120 || { echo 'DNS invalido' >&2; exit 2; }
+					dns="$val"
+					for server in $dns; do valid_ipv4 "$server" || { echo "DNS WAN invalido: $server" >&2; exit 2; }; done
+					;;
+				macaddr)
+					if [ -n "$value" ]; then
+						clean_mac="$(printf '%s' "$value" | tr '-' ':' | tr 'a-f' 'A-F' | tr -d ' ')"
+						valid_mac_anycase "$clean_mac" || { echo 'MAC WAN invalido' >&2; exit 2; }
+						macaddr="$clean_mac"
+					fi
+					;;
+				modem_ip)
+					if [ -n "$value" ]; then
+						clean_mip="$(printf '%s' "$value" | tr -d ' ,;\t\r\n')"
+						valid_ipv4 "$clean_mip" || { echo 'IP da ONU/Modem invalido' >&2; exit 2; }
+						p4="$(printf '%s' "$clean_mip" | cut -d. -f4)"
+						[ "$p4" -ge 1 ] && [ "$p4" -le 254 ] || { echo 'IP da ONU/Modem deve ser um endereco de host valido (1-254)' >&2; exit 2; }
+						modem_ip="$clean_mip"
+					fi
+					;;
 				*) echo "Campo WAN invalido: $key" >&2; exit 2 ;;
 			esac
 		done
@@ -6921,6 +6951,13 @@ case "$action" in
 			echo 'A LAN principal nao pode usar a mesma rede da visitante.' >&2
 			exit 2
 		fi
+		for iface_check in wan wan2 wan_modem wan2_modem; do
+			other_ip="$(uci -q get "network.$iface_check.ipaddr" || true)"
+			if [ -n "$other_ip" ] && [ "$(ipv4_prefix24 "$other_ip")" = "$(ipv4_prefix24 "$router_ip")" ]; then
+				echo "A rede LAN ($router_ip) nao pode usar a mesma faixa da interface $iface_check ($other_ip)." >&2
+				exit 2
+			fi
+		done
 		ez_backup >/dev/null || { echo 'Falha ao criar backup antes da alteracao da LAN' >&2; exit 3; }
 		start_host="$(ipv4_host "$start_ip")"; end_host="$(ipv4_host "$end_ip")"; limit=$((end_host - start_host + 1))
 		old_ip="$(uci -q get network.lan.ipaddr || true)"
@@ -7364,7 +7401,7 @@ case "$action" in
 		system_storage_purge
 		;;
 	device-save)
-		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"; name="$3"; mode="$4"; ip="$5"; priority="$6"; target_dscp="$7"; wan_route="${8:-default}"; limit_enabled="${9:-0}"; limit_down="${10:-0}"; limit_up="${11:-0}"; parental_mode="${12:-default}"; parental_block="${13:-0}"; safesearch="${14:-0}"; blocked_services="${15:-}"; limit_lan_bypass="${16:-1}"
+		mac="$(printf '%s' "$2" | tr '-' ':' | tr 'a-f' 'A-F' | tr -d ' ')"; name="$3"; mode="$4"; ip="$(printf '%s' "$5" | tr -d ' ,;\t\r\n')"; priority="$6"; target_dscp="$7"; wan_route="${8:-default}"; limit_enabled="${9:-0}"; limit_down="${10:-0}"; limit_up="${11:-0}"; parental_mode="${12:-default}"; parental_block="${13:-0}"; safesearch="${14:-0}"; blocked_services="${15:-}"; limit_lan_bypass="${16:-1}"
 		valid_mac "$mac" || { echo 'MAC invalido' >&2; exit 2; }
 		[ "${#name}" -le 48 ] || { echo 'Nome muito longo' >&2; exit 2; }
 		case "$mode" in automatic|reserved) ;; *) echo 'Modo de IP invalido' >&2; exit 2 ;; esac
