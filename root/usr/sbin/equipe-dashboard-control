@@ -1128,7 +1128,7 @@ speedify_prepare_wans() {
 	uci -q set equipe_dashboard.speedify.prepared=1
 	uci -q set equipe_dashboard.speedify.mode='optional'
 	uci commit equipe_dashboard
-	( sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall restart >/dev/null 2>&1 || true ) >/dev/null 2>&1 &
+	( sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true ) >/dev/null 2>&1 &
 	echo "prepared:$wan_count"
 }
 speedify_status_json() {
@@ -1617,7 +1617,7 @@ tailscale_firewall_prepare() {
 		uci -q set "firewall.$fwd.dest=lan"
 	fi
 	uci commit firewall
-	/etc/init.d/firewall restart >/dev/null 2>&1 || true
+	/etc/init.d/firewall reload >/dev/null 2>&1 || true
 }
 tailscale_install() {
 	command -v tailscale >/dev/null 2>&1 && return 0
@@ -1718,7 +1718,7 @@ zerotier_firewall_prepare() {
 	uci -q set firewall.zt_ping.target=ACCEPT
 
 	uci commit firewall
-	/etc/init.d/firewall restart >/dev/null 2>&1 || true
+	/etc/init.d/firewall reload >/dev/null 2>&1 || true
 }
 zerotier_current_ip() {
 	zerotier-cli listnetworks 2>/dev/null | awk 'NR>1 {for(i=1;i<=NF;i++) if($i ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\/[0-9]+$/) {split($i,a,"/"); print a[1]; exit}}'
@@ -2645,7 +2645,7 @@ apply_operation_profile() {
 	uci commit equipe_dashboard
 	uci commit firewall 2>/dev/null || true
 	[ -f /etc/config/sqm ] && uci commit sqm 2>/dev/null || true
-	/etc/init.d/firewall restart >/dev/null 2>&1 || true
+	/etc/init.d/firewall reload >/dev/null 2>&1 || true
 	[ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
 	return 0
 }
@@ -2943,7 +2943,7 @@ detect_dns_blocker() {
 		echo "Bloqueador em Nuvem"
 		return 0
 	fi
-	if uci -q get dhcp.@dnsmasq[0].server 2>/dev/null | grep -qE '127\.0\.0\.1#(5335|5353)'; then
+	if [ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome status 2>/dev/null | grep -q 'running'; then
 		echo "AdGuard Home"
 		return 0
 	fi
@@ -3049,15 +3049,22 @@ dns_turbo_save() {
 	uci -q set "dhcp.@dnsmasq[0].allservers=$allservers"
 	uci -q delete dhcp.@dnsmasq[0].server
 
-	if [ -n "$blocker_name" ]; then
+	if [ "$blocker_name" = "AdGuard Home" ]; then
 		uci -q add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
+		uci -q set dhcp.@dnsmasq[0].noresolv='1'
+	elif [ -n "$blocker_name" ]; then
+		uci -q set dhcp.@dnsmasq[0].noresolv='1'
+	else
+		uci -q set dhcp.@dnsmasq[0].noresolv='0'
 	fi
 
 	count=0
 	for ip in "$dns1" "$dns2" "$dns3" "$dns4"; do
 		[ -n "$ip" ] || continue
 		valid_ipv4 "$ip" || continue
-		uci -q add_list "dhcp.@dnsmasq[0].server=$ip"
+		if [ "$blocker_name" != "AdGuard Home" ]; then
+			uci -q add_list "dhcp.@dnsmasq[0].server=$ip"
+		fi
 		count=$((count+1))
 	done
 	if [ "$count" -eq 0 ] && [ -z "$blocker_name" ]; then
@@ -3065,13 +3072,6 @@ dns_turbo_save() {
 		uci -q add_list dhcp.@dnsmasq[0].server='8.8.8.8'
 		uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.1'
 		uci -q add_list dhcp.@dnsmasq[0].server='8.8.4.4'
-	elif [ "$count" -eq 0 ] && [ -n "$blocker_name" ]; then
-		uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.1'
-	fi
-	if [ -n "$blocker_name" ]; then
-		uci -q set dhcp.@dnsmasq[0].noresolv='1'
-	else
-		uci -q set dhcp.@dnsmasq[0].noresolv='0'
 	fi
 	uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'
 	lan_ip="$(uci -q get network.lan.ipaddr || echo 192.168.73.1)"
@@ -6258,7 +6258,7 @@ case "$action" in
 		elif [ "$target_mode" = restore ]; then
 			if [ -f /etc/config/ark_last_profile_backup.tar.gz ]; then
 				tar -xzf /etc/config/ark_last_profile_backup.tar.gz -C /
-				/etc/init.d/firewall restart >/dev/null 2>&1 || true
+				/etc/init.d/firewall reload >/dev/null 2>&1 || true
 				[ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
 				/etc/init.d/rpcd restart >/dev/null 2>&1 || true
 				printf '{"status":"restored","operation_profile":"%s"}\n' "$(ark_operation_profile)"
@@ -6401,7 +6401,7 @@ case "$action" in
 	ipv6-disable-full)
 		backup="$(cleanup_backup)" || { echo 'Falha ao criar backup antes de desativar IPv6' >&2; exit 3; }
 		disable_ipv6_full
-		(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall restart >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) &
+		(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) &
 		printf '{"status":"ok","backup":"%s"}\n' "$(json_escape "$backup")"
 		;;
 	theme)
@@ -6816,6 +6816,11 @@ case "$action" in
 		zone="$(firewall_wan_zone_section)"
 		# PPPoE ONU/Modem Access IP Management
 		if [ "$proto" = pppoe ] && [ -n "$modem_ip" ]; then
+			lan_ip="$(uci -q get network.lan.ipaddr || echo 192.168.73.1)"
+			if [ "$(ipv4_prefix24 "$lan_ip")" = "$(ipv4_prefix24 "$modem_ip")" ]; then
+				echo "O IP da ONU ($modem_ip) nao pode estar na mesma faixa da rede local LAN ($lan_ip)" >&2
+				exit 2
+			fi
 			p1="$(printf '%s' "$modem_ip" | cut -d. -f1)"
 			p2="$(printf '%s' "$modem_ip" | cut -d. -f2)"
 			p3="$(printf '%s' "$modem_ip" | cut -d. -f3)"
@@ -6832,6 +6837,7 @@ case "$action" in
 			uci -q set "network.${iface}_modem.ifname=$effective_dev"
 			uci -q set "network.${iface}_modem.ipaddr=$router_modem_ip"
 			uci -q set "network.${iface}_modem.netmask=255.255.255.0"
+			uci -q set "network.${iface}_modem.defaultroute=0"
 			uci -q set "network.${iface}_modem.delegate=0"
 			uci -q set "network.${iface}_modem.peerdns=0"
 			if [ -n "$zone" ]; then
@@ -7001,7 +7007,9 @@ case "$action" in
 		uci -q set mwan3.default_rule_v4.use_policy="$policy"
 		mwan3_reorder_rules
 		uci commit mwan3
-		([ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 &)
+		if [ "$(uci -q get equipe_dashboard.speedify.desired_state)" != "connected" ]; then
+			([ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 &)
+		fi
 		echo "$2"
 		;;
 	mwan3-toggle)
@@ -7464,8 +7472,8 @@ case "$action" in
 		sanitize_dhcp_hostnames
 		device_apply_parental "$mac" "$ip" "$name" "$parental_mode" "$parental_block" "$safesearch" "$blocked_services"
 		/etc/init.d/dnsmasq reload >/dev/null 2>&1
-		/etc/init.d/firewall restart >/dev/null 2>&1
-		[ "$mwan3_changed" = 1 ] && (sleep 1; /etc/init.d/mwan3 restart >/dev/null 2>&1) &
+		/etc/init.d/firewall reload >/dev/null 2>&1
+		[ "$mwan3_changed" = 1 ] && [ "$(uci -q get equipe_dashboard.speedify.desired_state)" != "connected" ] && (sleep 1; /etc/init.d/mwan3 restart >/dev/null 2>&1) &
 		echo ok
 		;;
 	reboot-prepare)
@@ -7669,7 +7677,11 @@ case "$action" in
 			uci commit qos_equipe 2>/dev/null || true
 			apply_guest_tc_limit >/dev/null 2>&1 || true
 		fi
-		(sleep 2; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/firewall restart >/dev/null 2>&1 || true; wifi reload >/dev/null 2>&1 || true) &
+		if [ "$wifi_kind" = guest ]; then
+			(sleep 2; /etc/init.d/dnsmasq reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; wifi reload >/dev/null 2>&1 || true) &
+		else
+			(sleep 1; wifi reload >/dev/null 2>&1 || true) &
+		fi
 		echo 'ok'
 		;;
 	wifi-add)
