@@ -196,6 +196,15 @@ function portLabel(port) {
 	return m?'LAN'+m[1]:String(port||'porta').toUpperCase();
 }
 function portDomId(port) { return String(port||'port').replace(/[^A-Za-z0-9_-]/g,'_'); }
+function isCompanionOrVirtualIpv6Wan(name, cfg, live) {
+	const n = String(name || '').toLowerCase();
+	if (n === 'wan6' || /_6$/i.test(n) || /^wan[0-9]*_6$/i.test(n)) return true;
+	const proto = String((cfg && cfg.proto) || (live && live.proto) || '').toLowerCase();
+	if (proto === 'dhcpv6' || proto === '6in4' || proto === '6to4' || proto === '6rd') return true;
+	const dev = String((cfg && cfg.device) || (live && (live.l3_device || live.device)) || '');
+	if (dev.charAt(0) === '@') return true;
+	return false;
+}
 function getActiveWanList(data) {
 	const net=values((data||{}).networkConfig), dump=(data||{}).interfaces||{}, list=[], seen={};
 	const isWanToLan = !!(net.autowan && String(net.autowan.wan_to_lan) === '1');
@@ -203,7 +212,8 @@ function getActiveWanList(data) {
 	const otherWans = Object.keys(net).filter(function(k){
 		if (!/^wan([0-9]+)$/i.test(k)) return false;
 		const cfg = net[k] || {}, live = iface(dump, k);
-		const proto = String(cfg.proto || ''), dev = String(cfg.device || live.l3_device || live.device || '');
+		if (isCompanionOrVirtualIpv6Wan(k, cfg, live)) return false;
+		const proto = String(cfg.proto || live.proto || ''), dev = String(cfg.device || live.l3_device || live.device || '');
 		return proto !== 'none' && proto && dev;
 	});
 	// Se a porta WAN física opera como rede local (LAN) e não foi promovida, e existe outra WAN (ex: WAN2),
@@ -212,12 +222,17 @@ function getActiveWanList(data) {
 		list.push({iface:'wan', label:'WAN1', domId:'wan1', isPrimary:true, device:(net.wan||{}).device||'wan'});
 		seen.wan=1;
 	}
-	Object.keys(net).filter(function(k){ return /^wan([0-9]+)$/i.test(k); })
+	Object.keys(net).filter(function(k){
+		if (!/^wan([0-9]+)$/i.test(k)) return false;
+		const cfg = net[k] || {}, live = iface(dump, k);
+		if (isCompanionOrVirtualIpv6Wan(k, cfg, live)) return false;
+		return true;
+	})
 		.sort(function(a,b){ return Number(a.replace(/\D/g,'')) - Number(b.replace(/\D/g,'')); })
 		.forEach(function(name){
 			const cfg=net[name]||{}, live=iface(dump,name);
-			const proto=String(cfg.proto||''), dev=String(cfg.device||live.l3_device||live.device||'');
-			if(proto==='none' || !proto || !dev) return;
+			const proto=String(cfg.proto||live.proto||''), dev=String(cfg.device||live.l3_device||live.device||'');
+			if(proto==='none' || proto==='dhcpv6' || !proto || !dev || dev.charAt(0) === '@') return;
 			const num=name.replace(/\D/g,'');
 			const ifaceKey=name.toLowerCase();
 			if(!seen[ifaceKey]){
@@ -231,6 +246,7 @@ function getNextAvailableWan(data) {
 	const net=values((data||{}).networkConfig);
 	let n = 2;
 	while (true) {
+		if (n === 6) { n++; continue; }
 		const name = 'wan' + n;
 		const cfg = net[name] || {};
 		const proto = String(cfg.proto || '');
@@ -249,7 +265,7 @@ function sqmWanProfiles(data) {
 	const net=values((data||{}).networkConfig), dump=(data||{}).interfaces||{}, result=[], seen={};
 	Object.keys(net).filter(function(name){return /^wan(?:[0-9]+)?$/i.test(name);}).sort(function(a,b){if(a==='wan')return -1;if(b==='wan')return 1;return Number(a.replace(/\D/g,''))-Number(b.replace(/\D/g,''));}).forEach(function(name){
 		const cfg=net[name]||{}, live=iface(dump,name), proto=String(cfg.proto||''), hasIpv4=Array.isArray(live['ipv4-address'])&&live['ipv4-address'].length>0;
-		if(proto==='none'||proto==='dhcpv6'||(!/^(dhcp|pppoe|static)$/i.test(proto)&&!hasIpv4))return;
+		if(isCompanionOrVirtualIpv6Wan(name, cfg, live) || proto==='none'||proto==='dhcpv6'||(!/^(dhcp|pppoe|static)$/i.test(proto)&&!hasIpv4))return;
 		const section=name==='wan'?'wan1':name.toLowerCase();if(seen[section])return;seen[section]=1;
 		result.push({network:name,section:section,label:name==='wan'?'WAN1':name.toUpperCase(),device:String(live.l3_device||live.device||cfg.device||name),online:!!live.up});
 	});
@@ -1590,7 +1606,30 @@ return view.extend({
 				E('small',{},[speedifyModeLabel(sf.runtime_mode||sf.bonding_mode)+' • IP '+(sf.tunnel_ip||'—')])
 			);
 		}
-		text('ex-lan-ip',lanStatus.ipaddr||'—'); text('ex-lan-dhcp',(lanStatus.dhcp_start&&lanStatus.dhcp_end)?lanStatus.dhcp_start+' → '+lanStatus.dhcp_end:'—'); text('ex-lan-mask',lanStatus.netmask||'—'); text('ex-lan-dns',Array.isArray(lanStatus.dns)&&lanStatus.dns.length?lanStatus.dns.join('  •  '):'Sem DNS fixo'); text('ex-lan-ipv6',lanStatus.ipv6_label||(function(){const dhcpLan=(data.dhcpConfig&&data.dhcpConfig.values&&data.dhcpConfig.values.lan)||(data.dhcpConfig&&data.dhcpConfig.lan)||{};if(dhcpLan.ndp==='relay')return 'Cascata (NDP Relay)';if(dhcpLan.dhcpv6==='disabled'&&dhcpLan.ra==='disabled')return 'Desativado (IPv4 Puro)';return 'Pilha Dupla Global';})());
+		text('ex-lan-ip',lanStatus.ipaddr||'—'); text('ex-lan-dhcp',(lanStatus.dhcp_start&&lanStatus.dhcp_end)?lanStatus.dhcp_start+' → '+lanStatus.dhcp_end:'—'); text('ex-lan-mask',lanStatus.netmask||'—'); text('ex-lan-dns',Array.isArray(lanStatus.dns)&&lanStatus.dns.length?lanStatus.dns.join('  •  '):'Sem DNS fixo');
+		let ipv6Label = lanStatus.ipv6_label;
+		if (!ipv6Label) {
+			const dhcpLan=(data.dhcpConfig&&data.dhcpConfig.values&&data.dhcpConfig.values.lan)||(data.dhcpConfig&&data.dhcpConfig.lan)||{};
+			if(dhcpLan.ndp==='relay') ipv6Label = 'Cascata (NDP Relay)';
+			else if(dhcpLan.dhcpv6==='disabled'&&dhcpLan.ra==='disabled') ipv6Label = 'Desativado (IPv4 Puro)';
+			else ipv6Label = 'Pilha Dupla Global';
+		}
+		text('ex-lan-ipv6', ipv6Label);
+		let ipv6Prefix = '—';
+		const lanIface = iface(data.interfaces, 'lan');
+		const wan6Iface = iface(data.interfaces, 'wan6');
+		if (lanIface && Array.isArray(lanIface['ipv6-prefix-assignment']) && lanIface['ipv6-prefix-assignment'].length > 0) {
+			const p = lanIface['ipv6-prefix-assignment'][0];
+			ipv6Prefix = (p.address || '') + '/' + (p.mask || 64);
+		} else if (wan6Iface && Array.isArray(wan6Iface['ipv6-prefix']) && wan6Iface['ipv6-prefix'].length > 0) {
+			const p = wan6Iface['ipv6-prefix'][0];
+			ipv6Prefix = (p.address || '') + '/' + (p.mask || 64);
+		} else if (lanStatus.ipv6_relay === '1' || (ipv6Label && ipv6Label.indexOf('Relay') !== -1)) {
+			ipv6Prefix = 'Repasse NDP WAN ⇄ LAN';
+		} else if (lanStatus.ipv6_mode === 'ipv4_only' || (ipv6Label && ipv6Label.indexOf('Desativado') !== -1)) {
+			ipv6Prefix = 'Desativado';
+		}
+		text('ex-lan-ipv6-prefix', ipv6Prefix);
 		const lanPrefix=prefix24(lanStatus.ipaddr), guestPrefix=prefix24(((values(data.networkConfig).guest)||{}).ipaddr);
 		const leases=data.leases.dhcp_leases||[], main=assocMap(data.mainAssoc), guest=assocMap(data.guestAssoc); text('ex-main-clients',leases.filter(function(l){return lanPrefix&&String(l.ipaddr||'').indexOf(lanPrefix)===0;}).length); text('ex-main-wifi',Object.keys(main).length+' no Wi-Fi'); text('ex-guest-clients',leases.filter(function(l){return guestPrefix&&String(l.ipaddr||'').indexOf(guestPrefix)===0;}).length); text('ex-guest-wifi',Object.keys(guest).length+' no Wi-Fi');
 		const hwInfo=data.hardwareInfo||{}, cpuInfo=hwInfo.cpu||{}, thermalSensors=hwInfo.thermal_sensors||[], storageInfo=hwInfo.storage||{};
@@ -2776,7 +2815,7 @@ return view.extend({
 		fetchLogs();
 	},
 	showWanOptimizationsModal: function(iface) {
-		iface = /^wan([0-9]+)?$/.test(String(iface || '')) ? String(iface) : 'wan';
+		iface = (/^wan([0-9]+)?$/.test(String(iface || '')) && String(iface).toLowerCase() !== 'wan6') ? String(iface) : 'wan';
 		return fs.exec('/usr/sbin/equipe-dashboard-control', ['wan-optimize-status', 'iface=' + iface]).then(L.bind(function(r) {
 			let opt = {};
 			try { opt = JSON.parse(r.stdout || '{}'); } catch(e) {}
@@ -3143,7 +3182,7 @@ return view.extend({
 					E('strong',{},['🌐 Conectividade IPv6 e Modo Cascata (NDP Relay)']),
 					E('small',{class:'ex-muted'},['Configure o protocolo IPv6 para esta rede local (Pilha Dupla Global, Seletivo por MAC, Cascata/NDP Relay ou IPv4 Puro).'])
 				]),
-				E('button',{class:'ex-mini-button',style:'min-height:38px;padding:6px 12px;','click':L.bind(function(){closeModal();this.showIpv6Modal();},this)},['Ajustes IPv6 / Relay'])
+				E('button',{class:'ex-mini-button btn-ipv6',style:'min-height:38px;padding:6px 14px;','click':L.bind(function(){closeModal();this.showIpv6Modal();},this)},['🌐 Ajustes IPv6 / Relay'])
 			]),
 			E('div',{class:'right',style:'margin-top:16px;'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
 				const dns=[dns1.value.trim(),dns2.value.trim(),dns3.value.trim()].filter(Boolean);
@@ -6893,10 +6932,10 @@ return view.extend({
 				E('strong',{},['🌐 Central de Conectividade IPv6']),
 				E('small',{class:'ex-muted'},['Modos de operação: Pilha Dupla Global, IPv6 Seletivo por MAC (Gamer/IoT), IPv4 Apenas ou IPv6-Only. Suporte a cascata NDP Relay.'])
 			]),
-			E('button',{class:'ex-mini-button','click':L.bind(function(){
+			E('button',{class:'ex-mini-button btn-ipv6','click':L.bind(function(){
 				closeModal();
 				this.showIpv6Modal();
-			},this)},['Gerenciar IPv6'])
+			},this)},['Ajustes IPv6'])
 		]);
 		const profileSelect=E('select',{class:'cbi-input-select'},[
 			E('option',{value:'standard'},['Modo Padrão / Equilibrado']),
@@ -8426,8 +8465,12 @@ return view.extend({
 						E('h3',{},['LAN / DHCP'])
 					]),
 					E('div',{style:'display:flex;align-items:center;gap:8px;flex-wrap:wrap;'},[
-						E('button',{class:'ex-mini-button','click':L.bind(function(){this.showIpv6Modal();},this)},['🌐 Ajustes IPv6 / Relay']),
-						E('button',{class:'ex-mini-button','click':L.bind(function(){this.editLan();},this)},['Editar IP, DHCP e DNS'])
+						E('button',{
+							class:'ex-mini-button btn-ipv6',
+							title:'Alternar modo IPv6 (Pilha Dupla, Seletivo por MAC, Cascata NDP Relay ou IPv4)',
+							click:L.bind(function(){this.showIpv6Modal();},this)
+						},['🌐 Ajustes IPv6']),
+						E('button',{class:'ex-mini-button',click:L.bind(function(){this.editLan();},this)},['Editar IP & DHCP'])
 					])
 				]),
 				E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},[
@@ -8435,9 +8478,18 @@ return view.extend({
 					infoRow('Faixa DHCP','ex-lan-dhcp'),
 					infoRow('Máscara','ex-lan-mask'),
 					infoRow('DNS enviado','ex-lan-dns'),
-					infoRow('Modo IPv6 / Relay','ex-lan-ipv6')
+					E('div', {
+						class: 'ex-row ex-row-clickable',
+						style: 'cursor:pointer;',
+						title: 'Clique para alternar modos IPv6 (Pilha Dupla, Seletivo por MAC, Cascata ou IPv4 Puro)',
+						click: L.bind(function(){ this.showIpv6Modal(); }, this)
+					}, [
+						E('span', {}, ['Modo IPv6']),
+						E('strong', { id: 'ex-lan-ipv6', style: 'color:#c084fc;font-weight:700;' }, ['—'])
+					]),
+					infoRow('Prefixo IPv6 (PD)', 'ex-lan-ipv6-prefix')
 				]),
-				E('p',{class:'ex-muted'},['Use para trocar entre redes 192.168.x.x, 10.0.x.x ou definir manualmente a faixa, os DNS e a distribuição IPv6/Relay.'])
+				E('p',{class:'ex-muted'},['Use para trocar entre redes 192.168.x.x, 10.0.x.x ou gerenciar a distribuição de IP, DNS e o protocolo IPv6.'])
 			]),
 			E('div',{class:'ex-lan-block'},[E('div',{class:'ex-lan-title'},[E('div',{},[E('span',{class:'ex-kicker'},['PORTAS CABEADAS']),E('h3',{},['LAN disponíveis'])]),E('small',{class:'ex-muted'},['Portas em modo LAN aparecem aqui; ao converter uma porta em '+nextWan.label+', ela sai desta lista e vira uma nova conexão de internet.'])]),E('div',{class:'ex-grid ex-grid-2'},lanCards.length?lanCards:[E('section',{class:'ex-card ex-lan-card ex-center-card'},[E('strong',{},['Nenhuma porta LAN disponível']),E('small',{class:'ex-muted'},['Todas as portas cabeadas livres estão em uso como WAN ou não foram detectadas.'])])])]),
 			wifiBlock,

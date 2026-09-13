@@ -243,6 +243,10 @@ details.ex-perf-opt-card, section.ex-perf-opt-card { border-color: color-mix(in 
 .ex-secret { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; margin: 9px 0; padding: 8px 10px 8px 14px; border-radius: 12px; background: rgba(127,127,127,.10); }
 .ex-mini-button { padding: 6px 12px !important; border: 1px solid rgba(56, 189, 248, 0.45) !important; border-radius: 8px !important; color: #38bdf8 !important; background: rgba(56, 189, 248, 0.15) !important; cursor: pointer !important; font-weight: 750 !important; white-space: nowrap !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 5px !important; transition: all 0.15s ease !important; }
 .ex-mini-button:hover { background: #0284c7 !important; border-color: #38bdf8 !important; color: #ffffff !important; box-shadow: 0 0 14px rgba(56, 189, 248, 0.5) !important; }
+.ex-mini-button.btn-ipv6 { border-color: rgba(168, 85, 247, 0.45) !important; color: #c084fc !important; background: rgba(168, 85, 247, 0.14) !important; }
+.ex-mini-button.btn-ipv6:hover { background: #9333ea !important; border-color: #c084fc !important; color: #ffffff !important; box-shadow: 0 0 14px rgba(168, 85, 247, 0.45) !important; }
+.ex-row-clickable { cursor: pointer; border-radius: 6px; padding: 2px 4px; margin: -2px -4px; transition: background 0.15s ease; }
+.ex-row-clickable:hover { background: rgba(168, 85, 247, 0.1); }
 .ex-mwan-control, .ex-channel-card, .ex-devices { margin-bottom: 16px; }
 .ex-mwan-editor summary { padding: 12px 14px; border-radius: 11px; color: var(--ex-primary-safe); background: color-mix(in srgb,var(--ex-primary-safe) 9%,transparent); cursor: pointer; font-weight: 750; }
 .ex-mwan-editor-body { padding: 12px 2px 0; }
