@@ -5709,7 +5709,7 @@ get_system_hardware_info() {
 			esac
 			printf '%s' "$sw_wan" | grep -q 'full-duplex' && p_duplex="Full duplex" || p_duplex="Half duplex"
 		fi
-		for alias in "wan" "wan1" "port5" "eth0.2"; do
+		for alias in "wan" "wan1" "port5" "lan5" "eth0.2"; do
 			[ "$first_p" = 1 ] && first_p=0 || printf ','
 			printf '"%s":{"speed":"%s","carrier":%s,"duplex":"%s","max_speed":"%s"}' \
 				"$alias" "$p_speed" "$p_carrier" "$p_duplex" "$p_max"

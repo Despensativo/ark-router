@@ -177,18 +177,38 @@ function lanPortsFromNetwork(networkConfig) {
 		}
 	});
 	if(!ports.length) ['lan1','lan2','lan3','lan4'].forEach(function(port){ports.push(port);});
+	const isWanToLan = !!(net.autowan && String(net.autowan.wan_to_lan) === '1');
+	if (isWanToLan) {
+		const wanDev = (net.wan && (net.wan.ark_phys_port || net.wan.device || net.wan.ifname)) || '';
+		const targetPort = (wanDev === 'eth0.2' || !wanDev) ? 'lan5' : wanDev;
+		if (!seen[targetPort] && !seen.lan5 && !seen.eth1) {
+			seen[targetPort] = 1;
+			ports.push(targetPort);
+		}
+	}
 	return ports;
 }
 function portLabel(port) {
-	if (port === 'eth1' || port === 'lan5' || port === 'port5') return 'PORTA WAN (LAN)';
+	if (port === 'eth1' || port === 'lan5' || port === 'port5' || port === 'wan' || port === 'eth0.2') return 'PORTA WAN (LAN)';
 	const m=String(port||'').match(/^lan([0-9]+)$/i);
 	return m?'LAN'+m[1]:String(port||'porta').toUpperCase();
 }
 function portDomId(port) { return String(port||'port').replace(/[^A-Za-z0-9_-]/g,'_'); }
 function getActiveWanList(data) {
 	const net=values((data||{}).networkConfig), dump=(data||{}).interfaces||{}, list=[], seen={};
-	list.push({iface:'wan', label:'WAN1', domId:'wan1', isPrimary:true, device:(net.wan||{}).device||'wan'});
-	seen.wan=1;
+	const isWanToLan = !!(net.autowan && String(net.autowan.wan_to_lan) === '1');
+	const otherWans = Object.keys(net).filter(function(k){
+		if (!/^wan([0-9]+)$/i.test(k)) return false;
+		const cfg = net[k] || {}, live = iface(dump, k);
+		const proto = String(cfg.proto || ''), dev = String(cfg.device || live.l3_device || live.device || '');
+		return proto !== 'none' && proto && dev;
+	});
+	// Se a porta WAN física opera como rede local (LAN) e existe outra WAN (ex: WAN2),
+	// não exibe a WAN1 como um card vazio no topo. Ela atua como porta LAN.
+	if (!isWanToLan || !otherWans.length) {
+		list.push({iface:'wan', label:'WAN1', domId:'wan1', isPrimary:true, device:(net.wan||{}).device||'wan'});
+		seen.wan=1;
+	}
 	Object.keys(net).filter(function(k){ return /^wan([0-9]+)$/i.test(k); })
 		.sort(function(a,b){ return Number(a.replace(/\D/g,'')) - Number(b.replace(/\D/g,'')); })
 		.forEach(function(name){
@@ -1484,9 +1504,11 @@ return view.extend({
 		}, this));
 		(data.lanPorts||[]).forEach(L.bind(function(port,idx){
 			let dev = (data.lanDevices||[])[idx] || {};
-			if (!dev.carrier && data.hardwareInfo && data.hardwareInfo.ports && data.hardwareInfo.ports[port]) {
-				const hw = data.hardwareInfo.ports[port];
-				if (hw.carrier) {
+			if (!dev.carrier && data.hardwareInfo && data.hardwareInfo.ports) {
+				const hwPorts = data.hardwareInfo.ports;
+				const isWanPort = (port === 'lan5' || port === 'port5' || port === 'eth1' || port === 'wan' || port === 'eth0.2');
+				const hw = hwPorts[port] || (isWanPort ? (hwPorts.lan5 || hwPorts.port5 || hwPorts.wan || hwPorts.wan1 || hwPorts.eth1) : null);
+				if (hw && hw.carrier) {
 					dev = Object.assign({}, dev, {
 						carrier: true,
 						speed: hw.speed || dev.speed,
@@ -7542,7 +7564,10 @@ return view.extend({
 		const getPortBadge=function(device,isLan){
 			if(!device)return null;
 			let p=portsInfo[device];
-			if(!p&&(device==='wan'||device==='wan1')&&portsInfo['eth1'])p=portsInfo['eth1'];
+			const isWanPort = (device==='wan'||device==='wan1'||device==='lan5'||device==='port5'||device==='eth1'||device==='eth0.2');
+			if(!p && isWanPort){
+				p = portsInfo['eth1'] || portsInfo['port5'] || portsInfo['lan5'] || portsInfo['wan'] || portsInfo['wan1'];
+			}
 			if(!p){
 				const clean=String(device).replace(/@.+/,'');
 				if(portsInfo[clean])p=portsInfo[clean];
@@ -7590,6 +7615,19 @@ return view.extend({
 		const lanPorts=(data.lanPorts&&data.lanPorts.length)?data.lanPorts:lanPortsFromNetwork(data.networkConfig);
 		const lanCards=lanPorts.map(L.bind(function(port){
 			const id='ex-lan-'+portDomId(port), label=portLabel(port);
+			const isPhysicalWanAsLan = (port === 'eth1' || port === 'lan5' || port === 'port5' || port === 'wan' || port === 'eth0.2');
+			const actionBtn = isPhysicalWanAsLan ? E('button', {
+				class: 'ex-mini-button ex-wan-edit-button',
+				click: L.bind(function() {
+					fs.exec('/usr/sbin/equipe-dashboard-control', ['autowan-wan-to-lan', '0']).then(L.bind(function() {
+						ui.addNotification(null, E('p', {}, ['Porta WAN física restaurada para conexão de modem/internet padrão.']), 'info');
+						reloadSoon('Porta WAN física restaurada. Atualizando o painel…', 1200);
+					}, this));
+				}, this)
+			}, ['Restaurar como WAN1']) : E('button', {
+				class: 'ex-mini-button ex-wan-edit-button',
+				click: L.bind(function(){this.editWan(nextWan.iface,port);},this)
+			}, ['Usar como '+nextWan.label]);
 			return E('section',{class:'ex-card ex-lan-card'},[
 				E('div',{class:'ex-card-title'},[
 					E('div',{style:'display:flex;align-items:center;gap:6px;'},[
@@ -7602,7 +7640,7 @@ return view.extend({
 				infoRow('Modo',id+'-duplex'),
 				infoRow('Recebido',id+'-rx'),
 				infoRow('Enviado',id+'-tx'),
-				E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(function(){this.editWan(nextWan.iface,port);},this)},['Usar como '+nextWan.label])
+				actionBtn
 			]);
 		},this));
 		const mwanModeButtons = [];
