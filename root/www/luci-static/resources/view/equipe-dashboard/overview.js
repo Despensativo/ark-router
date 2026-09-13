@@ -178,7 +178,8 @@ function lanPortsFromNetwork(networkConfig) {
 	});
 	if(!ports.length) ['lan1','lan2','lan3','lan4'].forEach(function(port){ports.push(port);});
 	const isWanToLan = !!(net.autowan && String(net.autowan.wan_to_lan) === '1');
-	if (isWanToLan) {
+	const isWanPromoted = !!(net.autowan && String(net.autowan.wan_promoted) === '1');
+	if (isWanToLan && !isWanPromoted) {
 		const wanDev = (net.wan && (net.wan.ark_phys_port || net.wan.device || net.wan.ifname)) || '';
 		const targetPort = (wanDev === 'eth0.2' || !wanDev) ? 'lan5' : wanDev;
 		if (!seen[targetPort] && !seen.lan5 && !seen.eth1) {
@@ -197,15 +198,16 @@ function portDomId(port) { return String(port||'port').replace(/[^A-Za-z0-9_-]/g
 function getActiveWanList(data) {
 	const net=values((data||{}).networkConfig), dump=(data||{}).interfaces||{}, list=[], seen={};
 	const isWanToLan = !!(net.autowan && String(net.autowan.wan_to_lan) === '1');
+	const isWanPromoted = !!(net.autowan && String(net.autowan.wan_promoted) === '1');
 	const otherWans = Object.keys(net).filter(function(k){
 		if (!/^wan([0-9]+)$/i.test(k)) return false;
 		const cfg = net[k] || {}, live = iface(dump, k);
 		const proto = String(cfg.proto || ''), dev = String(cfg.device || live.l3_device || live.device || '');
 		return proto !== 'none' && proto && dev;
 	});
-	// Se a porta WAN física opera como rede local (LAN) e existe outra WAN (ex: WAN2),
+	// Se a porta WAN física opera como rede local (LAN) e não foi promovida, e existe outra WAN (ex: WAN2),
 	// não exibe a WAN1 como um card vazio no topo. Ela atua como porta LAN.
-	if (!isWanToLan || !otherWans.length) {
+	if (!isWanToLan || isWanPromoted || !otherWans.length) {
 		list.push({iface:'wan', label:'WAN1', domId:'wan1', isPrimary:true, device:(net.wan||{}).device||'wan'});
 		seen.wan=1;
 	}
@@ -917,7 +919,8 @@ return view.extend({
 		}
 		const netValues = values((this.currentData||{}).networkConfig);
 		const isWanToLan = !!(netValues.autowan && String(netValues.autowan.wan_to_lan) === '1');
-		if (prefix === 'ex-wan1' && isWanToLan) {
+		const isWanPromoted = !!(netValues.autowan && String(netValues.autowan.wan_promoted) === '1');
+		if (prefix === 'ex-wan1' && isWanToLan && !isWanPromoted) {
 			setPill(prefix+'-status','standby','EM REDE LOCAL (LAN)');
 			text(prefix+'-mode','Operando como LAN (Auto-Sensing)');
 			text(prefix+'-ip','—');

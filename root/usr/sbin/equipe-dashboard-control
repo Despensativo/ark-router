@@ -4433,7 +4433,21 @@ apply_wan_proto() {
 	if [ -n "$dns" ]; then
 		for server in $dns; do valid_ipv4 "$server" || { echo 'DNS WAN invalido' >&2; return 2; }; uci -q add_list "network.$iface.dns=$server"; done
 	fi
-	[ -z "$macaddr" ] || uci -q set "network.$iface.macaddr=$macaddr"
+	if [ -n "$macaddr" ]; then
+		uci -q set "network.$iface.macaddr=$macaddr"
+	elif [ "$iface" != "wan" ]; then
+		local base_mac="$(cat /sys/class/net/eth0/address 2>/dev/null || cat /sys/class/net/br-lan/address 2>/dev/null || echo "")"
+		if [ -n "$base_mac" ]; then
+			local idx="$(printf '%s' "$iface" | tr -cd '0-9')"
+			[ -n "$idx" ] || idx=2
+			local prefix="$(printf '%s' "$base_mac" | cut -d: -f1-5)"
+			local last_hex="$(printf '%s' "$base_mac" | cut -d: -f6)"
+			local last_dec=$(( 0x$last_hex + idx ))
+			[ "$last_dec" -le 254 ] || last_dec=$(( 0x$last_hex - idx ))
+			local new_hex="$(printf '%02x' "$last_dec")"
+			uci -q set "network.$iface.macaddr=${prefix}:${new_hex}"
+		fi
+	fi
 	uci -q set "network.$iface.delegate=0"
 	uci -q set "network.$iface.ipv6=0"
 }
@@ -8224,88 +8238,129 @@ EOF
 	autowan-wan-to-lan)
 		state="${2:-0}"
 		wan_dev="$(get_physical_wan_dev)"
-		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
-			[ "$(uci -q get network.autowan.enabled)" = "1" ] || { echo 'Auto-WAN deve estar ativado primeiro' >&2; exit 2; }
-			[ "$(uci -q get network.autowan.wan_to_lan)" != "1" ] || { echo 'enabled'; exit 0; }
+		case "$state" in
+			promote)
+				# Promocao automatica pelo daemon: cabo upstream com DHCP detectado na porta WAN
+				if is_swconfig; then
+					swconfig_remove_port_from_vlan 5 1
+					swconfig_add_port_to_vlan 5 2
+					swconfig dev switch0 port 5 set pvid 2 >/dev/null 2>&1 || true
+					v1_ports="$(swconfig dev switch0 vlan 1 get ports 2>/dev/null | sed 's/VLAN 1: //')"
+					new_v1=""
+					for item in $v1_ports; do
+						[ "$item" != "5" ] && [ "$item" != "5t" ] && new_v1="$new_v1 $item"
+					done
+					swconfig dev switch0 vlan 1 set ports "$new_v1" >/dev/null 2>&1 || true
+					swconfig dev switch0 vlan 2 set ports "5 0t" >/dev/null 2>&1 || true
+					swconfig dev switch0 set apply >/dev/null 2>&1 || true
+				else
+					remove_lan_port "$wan_dev"
+					brctl delif br-lan "$wan_dev" >/dev/null 2>&1 || ip link set "$wan_dev" nomaster >/dev/null 2>&1 || true
+				fi
+				uci -q set network.wan.auto='1'
+				uci -q set network.autowan.wan_promoted='1'
+				uci commit network
+				(sleep 1; ifup wan >/dev/null 2>&1) &
+				echo 'promoted'
+				;;
+			revert)
+				# Reversao automatica pelo daemon: cabo desconectado da porta WAN, retorna para LAN
+				if is_swconfig; then
+					swconfig_add_port_to_vlan 5 1
+					swconfig_remove_port_from_vlan 5 2
+					swconfig dev switch0 port 5 set pvid 1 >/dev/null 2>&1 || true
+					v1_ports="$(swconfig dev switch0 vlan 1 get ports 2>/dev/null | sed 's/VLAN 1: //')"
+					has_5=0
+					for item in $v1_ports; do [ "$item" = "5" ] && has_5=1; done
+					[ "$has_5" = 1 ] || v1_ports="$v1_ports 5"
+					swconfig dev switch0 vlan 1 set ports "$v1_ports" >/dev/null 2>&1 || true
+					swconfig dev switch0 vlan 2 set ports "0t" >/dev/null 2>&1 || true
+					swconfig dev switch0 set apply >/dev/null 2>&1 || true
+				else
+					add_lan_port "$wan_dev"
+					ip link set "$wan_dev" up >/dev/null 2>&1 || true
+					brctl addif br-lan "$wan_dev" >/dev/null 2>&1 || ip link set "$wan_dev" master br-lan >/dev/null 2>&1 || true
+				fi
+				ifdown wan >/dev/null 2>&1 || true
+				uci -q set network.wan.auto='0'
+				uci -q delete network.autowan.wan_promoted
+				uci commit network
+				echo 'reverted'
+				;;
+			1|on|enable)
+				[ "$(uci -q get network.autowan.enabled)" = "1" ] || { echo 'Auto-WAN deve estar ativado primeiro' >&2; exit 2; }
+				[ "$(uci -q get network.autowan.wan_to_lan)" != "1" ] || { echo 'enabled'; exit 0; }
 
-			# swconfig (D-Link DGL-5500)
-			if is_swconfig; then
-				# Adiciona porta 5 na VLAN 1 (LAN)
-				swconfig_add_port_to_vlan 5 1
-				# Remove porta 5 da VLAN 2 (WAN)
-				swconfig_remove_port_from_vlan 5 2
+				# swconfig (D-Link DGL-5500)
+				if is_swconfig; then
+					swconfig_add_port_to_vlan 5 1
+					swconfig_remove_port_from_vlan 5 2
+					swconfig dev switch0 port 5 set pvid 1 >/dev/null 2>&1 || true
+					v1_ports="$(swconfig dev switch0 vlan 1 get ports 2>/dev/null | sed 's/VLAN 1: //')"
+					has_5=0
+					for item in $v1_ports; do [ "$item" = "5" ] && has_5=1; done
+					[ "$has_5" = 1 ] || v1_ports="$v1_ports 5"
+					swconfig dev switch0 vlan 1 set ports "$v1_ports" >/dev/null 2>&1 || true
+					swconfig dev switch0 vlan 2 set ports "0t" >/dev/null 2>&1 || true
+					swconfig dev switch0 set apply >/dev/null 2>&1 || true
+				else
+					add_lan_port "$wan_dev"
+					ip link set "$wan_dev" up >/dev/null 2>&1 || true
+					brctl addif br-lan "$wan_dev" >/dev/null 2>&1 || ip link set "$wan_dev" master br-lan >/dev/null 2>&1 || true
+				fi
 
-				# Aplica em tempo real no switch de hardware
-				swconfig dev switch0 port 5 set pvid 1 >/dev/null 2>&1 || true
-				v1_ports="$(swconfig dev switch0 vlan 1 get ports 2>/dev/null | sed 's/VLAN 1: //')"
-				has_5=0
-				for item in $v1_ports; do [ "$item" = "5" ] && has_5=1; done
-				[ "$has_5" = 1 ] || v1_ports="$v1_ports 5"
-				swconfig dev switch0 vlan 1 set ports "$v1_ports" >/dev/null 2>&1 || true
-				swconfig dev switch0 vlan 2 set ports "0t" >/dev/null 2>&1 || true
-				swconfig dev switch0 set apply >/dev/null 2>&1 || true
-			else
-				# DSA (Acer Predator W6x)
-				add_lan_port "$wan_dev"
-				ip link set "$wan_dev" up >/dev/null 2>&1 || true
-				brctl addif br-lan "$wan_dev" >/dev/null 2>&1 || ip link set "$wan_dev" master br-lan >/dev/null 2>&1 || true
-			fi
+				uci -q set network.wan.auto='0'
+				[ -z "$(uci -q get network.wan_modem)" ] || uci -q set network.wan_modem.auto='0'
+				[ -z "$(uci -q get network.wan_mgmt)" ] || uci -q set network.wan_mgmt.auto='0'
+				uci -q set network.autowan.wan_to_lan='1'
+				uci -q delete network.autowan.wan_promoted
+				uci commit network
 
-			# Desativa inicializacao automatica da WAN padrao no netifd
-			uci -q set network.wan.auto='0'
-			[ -z "$(uci -q get network.wan_modem)" ] || uci -q set network.wan_modem.auto='0'
-			[ -z "$(uci -q get network.wan_mgmt)" ] || uci -q set network.wan_mgmt.auto='0'
-			uci -q set network.autowan.wan_to_lan='1'
-			uci commit network
+				ifdown wan >/dev/null 2>&1 || true
+				/etc/init.d/network reload >/dev/null 2>&1 || true
+				/etc/init.d/firewall reload >/dev/null 2>&1 || true
+				rm -f /var/run/ark-autowan-retry-* 2>/dev/null || true
+				sed -i "/^port5=/d; /^wan=/d; /^eth1=/d; /^lan[1-4]=/d" /var/run/ark-autowan.state 2>/dev/null || true
 
-			ifdown wan >/dev/null 2>&1 || true
-			/etc/init.d/network reload >/dev/null 2>&1 || true
-			/etc/init.d/firewall reload >/dev/null 2>&1 || true
-			rm -f /var/run/ark-autowan-retry-* 2>/dev/null || true
-			sed -i "/^port5=/d; /^wan=/d; /^eth1=/d; /^lan[1-4]=/d" /var/run/ark-autowan.state 2>/dev/null || true
+				echo 'enabled'
+				;;
+			*)
+				[ "$(uci -q get network.autowan.wan_to_lan)" = "1" ] || { echo 'disabled'; exit 0; }
 
-			echo 'enabled'
-		else
-			[ "$(uci -q get network.autowan.wan_to_lan)" = "1" ] || { echo 'disabled'; exit 0; }
+				# swconfig (D-Link DGL-5500)
+				if is_swconfig; then
+					swconfig_remove_port_from_vlan 5 1
+					swconfig_add_port_to_vlan 5 2
+					swconfig dev switch0 port 5 set pvid 2 >/dev/null 2>&1 || true
+					v1_ports="$(swconfig dev switch0 vlan 1 get ports 2>/dev/null | sed 's/VLAN 1: //')"
+					new_v1=""
+					for item in $v1_ports; do
+						[ "$item" != "5" ] && [ "$item" != "5t" ] && new_v1="$new_v1 $item"
+					done
+					swconfig dev switch0 vlan 1 set ports "$new_v1" >/dev/null 2>&1 || true
+					swconfig dev switch0 vlan 2 set ports "5 0t" >/dev/null 2>&1 || true
+					swconfig dev switch0 set apply >/dev/null 2>&1 || true
+				else
+					remove_lan_port "$wan_dev"
+					brctl delif br-lan "$wan_dev" >/dev/null 2>&1 || ip link set "$wan_dev" nomaster >/dev/null 2>&1 || true
+				fi
 
-			# swconfig (D-Link DGL-5500)
-			if is_swconfig; then
-				# Remove porta 5 da VLAN 1 (LAN)
-				swconfig_remove_port_from_vlan 5 1
-				# Restaura porta 5 na VLAN 2 (WAN)
-				swconfig_add_port_to_vlan 5 2
+				uci -q set network.wan.auto='1'
+				[ -z "$(uci -q get network.wan_modem)" ] || uci -q set network.wan_modem.auto='1'
+				[ -z "$(uci -q get network.wan_mgmt)" ] || uci -q set network.wan_mgmt.auto='1'
+				uci -q delete network.autowan.wan_to_lan
+				uci -q delete network.autowan.wan_promoted
+				uci commit network
 
-				# Aplica em tempo real no switch de hardware
-				swconfig dev switch0 port 5 set pvid 2 >/dev/null 2>&1 || true
-				v1_ports="$(swconfig dev switch0 vlan 1 get ports 2>/dev/null | sed 's/VLAN 1: //')"
-				new_v1=""
-				for item in $v1_ports; do
-					[ "$item" != "5" ] && [ "$item" != "5t" ] && new_v1="$new_v1 $item"
-				done
-				swconfig dev switch0 vlan 1 set ports "$new_v1" >/dev/null 2>&1 || true
-				swconfig dev switch0 vlan 2 set ports "5 0t" >/dev/null 2>&1 || true
-				swconfig dev switch0 set apply >/dev/null 2>&1 || true
-			else
-				# DSA (Acer Predator W6x)
-				remove_lan_port "$wan_dev"
-				brctl delif br-lan "$wan_dev" >/dev/null 2>&1 || ip link set "$wan_dev" nomaster >/dev/null 2>&1 || true
-			fi
+				/etc/init.d/network reload >/dev/null 2>&1 || true
+				/etc/init.d/firewall reload >/dev/null 2>&1 || true
+				(sleep 1; ifup wan >/dev/null 2>&1) &
+				rm -f /var/run/ark-autowan-retry-* 2>/dev/null || true
+				sed -i "/^port5=/d; /^wan=/d; /^eth1=/d; /^lan[1-4]=/d" /var/run/ark-autowan.state 2>/dev/null || true
 
-			# Restaura inicializacao automatica da WAN padrao no netifd
-			uci -q set network.wan.auto='1'
-			[ -z "$(uci -q get network.wan_modem)" ] || uci -q set network.wan_modem.auto='1'
-			[ -z "$(uci -q get network.wan_mgmt)" ] || uci -q set network.wan_mgmt.auto='1'
-			uci -q delete network.autowan.wan_to_lan
-			uci commit network
-
-			/etc/init.d/network reload >/dev/null 2>&1 || true
-			/etc/init.d/firewall reload >/dev/null 2>&1 || true
-			(sleep 1; ifup wan >/dev/null 2>&1) &
-			rm -f /var/run/ark-autowan-retry-* 2>/dev/null || true
-			sed -i "/^port5=/d; /^wan=/d; /^eth1=/d; /^lan[1-4]=/d" /var/run/ark-autowan.state 2>/dev/null || true
-
-			echo 'disabled'
-		fi
+				echo 'disabled'
+				;;
+		esac
 		;;
 	system-network-mode-get)
 		system_network_mode_get
