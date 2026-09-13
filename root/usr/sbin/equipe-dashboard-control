@@ -2440,6 +2440,8 @@ wireguard_firewall_setup() {
 		uci -q set "firewall.$zg.forward=ACCEPT"
 		uci -q set "firewall.$zg.masq=1"
 		uci -q add_list "firewall.$zg.network=wg0"
+		uci -q add_list "firewall.$zg.network=wgclient"
+		uci -q set "firewall.$zg.device=wg+"
 		changed=1
 	else
 		nets="$(uci -q get "firewall.$zg.network" || true)"
@@ -2450,6 +2452,21 @@ wireguard_firewall_setup() {
 				changed=1
 				;;
 		esac
+		case " $nets " in
+			*" wgclient "*) ;;
+			*)
+				uci -q add_list "firewall.$zg.network=wgclient"
+				changed=1
+				;;
+		esac
+		if [ "$(uci -q get "firewall.$zg.device")" != "wg+" ]; then
+			uci -q set "firewall.$zg.device=wg+"
+			changed=1
+		fi
+		if [ "$(uci -q get "firewall.$zg.masq")" != "1" ]; then
+			uci -q set "firewall.$zg.masq=1"
+			changed=1
+		fi
 	fi
 
 	fw_wan=""
@@ -2511,6 +2528,50 @@ wireguard_firewall_setup() {
 			uci -q set "firewall.$rule_wg.dest_port=$port"
 			changed=1
 		fi
+	fi
+
+	# Explicit WireGuard Access Rules (identical to ZeroTier)
+	# 1. HTTP / HTTPS (LuCI Web UI)
+	if ! uci -q show firewall | grep -q "name='Allow-WireGuard-HTTP-HTTPS'"; then
+		r="$(uci add firewall rule)"
+		uci -q set "firewall.$r.name=Allow-WireGuard-HTTP-HTTPS"
+		uci -q set "firewall.$r.src=wireguard"
+		uci -q set "firewall.$r.proto=tcp"
+		uci -q set "firewall.$r.dest_port=80 443"
+		uci -q set "firewall.$r.target=ACCEPT"
+		changed=1
+	fi
+
+	# 2. SSH
+	if ! uci -q show firewall | grep -q "name='Allow-WireGuard-SSH'"; then
+		r="$(uci add firewall rule)"
+		uci -q set "firewall.$r.name=Allow-WireGuard-SSH"
+		uci -q set "firewall.$r.src=wireguard"
+		uci -q set "firewall.$r.proto=tcp"
+		uci -q set "firewall.$r.dest_port=22"
+		uci -q set "firewall.$r.target=ACCEPT"
+		changed=1
+	fi
+
+	# 3. Ping (ICMP)
+	if ! uci -q show firewall | grep -q "name='Allow-WireGuard-Ping'"; then
+		r="$(uci add firewall rule)"
+		uci -q set "firewall.$r.name=Allow-WireGuard-Ping"
+		uci -q set "firewall.$r.src=wireguard"
+		uci -q set "firewall.$r.proto=icmp"
+		uci -q set "firewall.$r.target=ACCEPT"
+		changed=1
+	fi
+
+	# 4. AdGuard Home
+	if ! uci -q show firewall | grep -q "name='Allow-WireGuard-AdGuard'"; then
+		r="$(uci add firewall rule)"
+		uci -q set "firewall.$r.name=Allow-WireGuard-AdGuard"
+		uci -q set "firewall.$r.src=wireguard"
+		uci -q set "firewall.$r.proto=tcp"
+		uci -q set "firewall.$r.dest_port=3000"
+		uci -q set "firewall.$r.target=ACCEPT"
+		changed=1
 	fi
 
 	if [ "$changed" = 1 ]; then
@@ -2869,18 +2930,12 @@ wireguard_client_import() {
 		uci -q add_list "network.$sec.allowed_ips=$aip"
 	done
 
-	wan_sec=""
 	for z in $(uci -q show firewall | grep '=zone$' | cut -d. -f2 | cut -d= -f1); do
 		if [ "$(uci -q get "firewall.$z.name")" = "wan" ]; then
-			wan_sec="$z"
-			break
+			uci -q del_list "firewall.$z.network=wgclient" 2>/dev/null || true
 		fi
 	done
-	if [ -n "$wan_sec" ]; then
-		if ! uci -q get "firewall.$wan_sec.network" | grep -qw "wgclient"; then
-			uci -q add_list "firewall.$wan_sec.network=wgclient"
-		fi
-	fi
+	wireguard_firewall_setup
 
 	mkdir -p /etc/wireguard
 	b64_decode_str "$b64" > /etc/wireguard/wgclient.conf 2>/dev/null
