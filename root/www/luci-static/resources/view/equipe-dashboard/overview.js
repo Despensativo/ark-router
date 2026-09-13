@@ -352,6 +352,18 @@ function deviceLimitsMap(config) {
 	});
 	return out;
 }
+function deviceIpv6Map(config) {
+	const out = {};
+	const v = values(config);
+	Object.keys(v).forEach(function(k) {
+		const x = v[k];
+		if (x && x.mac) {
+			const mac = String(x.mac).toUpperCase();
+			out[mac] = (String(x.ipv6_allowed) === '1' || x.ipv6_allowed === true);
+		}
+	});
+	return out;
+}
 function wifiConfig(config) {
 	const v = values(config);
 	const bandOfSection=function(section){
@@ -1156,6 +1168,13 @@ return view.extend({
 		});
 
 		const limitsMap = deviceLimitsMap(data.names);
+		const ipv6Map = deviceIpv6Map(data.names);
+		const dhcp6Leases = (data.leases && data.leases.dhcp6_leases) || [];
+		const dhcp6ActiveMap = {};
+		dhcp6Leases.forEach(function(l) {
+			if (l.macaddr) dhcp6ActiveMap[String(l.macaddr).toUpperCase()] = true;
+			if (l.mac) dhcp6ActiveMap[String(l.mac).toUpperCase()] = true;
+		});
 
 		const deviceWifiInfo = function(mac, ip) {
 			const a = main[mac] || guest[mac];
@@ -1393,6 +1412,9 @@ return view.extend({
 						const bypassTip = lim.lanBypass ? ' (Rede Local Livre)' : ' (Intranet Limitada)';
 						badges.push(E('span', { class: 'ex-device-badge badge-limited', title: 'Limite de Banda Ativo: ' + limText + bypassTip }, [ '🛑 ' + limText ]));
 					}
+					if (ipv6Map[d.mac] || dhcp6ActiveMap[d.mac]) {
+						badges.push(E('span', { class: 'ex-device-badge badge-ipv6', style: 'background:rgba(16,185,129,0.16);color:#10b981;border:1px solid rgba(16,185,129,0.35);font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;', title: ipv6Map[d.mac] ? 'IPv6 Permitido para este aparelho' : 'IPv6 Ativo' }, [ '⚡ IPv6' ]));
+					}
 					const nameRowEl = row.querySelector('.ex-device-name-row');
 					if (nameRowEl) {
 						nameRowEl.replaceChildren.apply(nameRowEl, [ E('strong', {}, [d.name]) ].concat(badges));
@@ -1433,6 +1455,9 @@ return view.extend({
 				const limText = [downStr, upStr].filter(Boolean).join(' / ');
 				const bypassTip = lim.lanBypass ? ' (Rede Local Livre)' : ' (Intranet Limitada)';
 				badges.push(E('span', { class: 'ex-device-badge badge-limited', title: 'Limite de Banda Ativo: ' + limText + bypassTip }, [ '🛑 ' + limText ]));
+			}
+			if (ipv6Map[d.mac] || dhcp6ActiveMap[d.mac]) {
+				badges.push(E('span', { class: 'ex-device-badge badge-ipv6', style: 'background:rgba(16,185,129,0.16);color:#10b981;border:1px solid rgba(16,185,129,0.35);font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;', title: ipv6Map[d.mac] ? 'IPv6 Permitido para este aparelho' : 'IPv6 Ativo' }, [ '⚡ IPv6' ]));
 			}
 
 			const nameRow = E('div', { class: 'ex-device-name-row' }, [
@@ -1960,6 +1985,41 @@ return view.extend({
 				limitLanBypassBlock
 			]));
 
+			// --- Seção: Conectividade IPv6 Individual (Modo Seletivo) ---
+			let ipv6Allowed = (state.ipv6_allowed === true || state.ipv6_allowed === '1' || state.ipv6_allowed === 1);
+			const ipv6Toggle = E('input', {
+				type: 'checkbox',
+				checked: ipv6Allowed,
+				style: 'width: 20px; height: 20px; cursor: pointer;'
+			});
+			const ipv6StatusPill = E('span', {
+				class: 'ex-pill ' + (ipv6Allowed ? 'online' : 'standby'),
+				style: 'font-size: 0.72rem; padding: 2px 8px; font-weight: 600;'
+			}, [ ipv6Allowed ? '⚡ PERMITIDO' : 'BLOQUEADO NO MODO SELETIVO' ]);
+
+			ipv6Toggle.addEventListener('change', function() {
+				ipv6StatusPill.className = 'ex-pill ' + (ipv6Toggle.checked ? 'online' : 'standby');
+				ipv6StatusPill.textContent = ipv6Toggle.checked ? '⚡ PERMITIDO' : 'BLOQUEADO NO MODO SELETIVO';
+			});
+
+			sections.push(E('div', { class: 'ex-device-config-block' }, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 12px;' }, [
+					E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
+						E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap;' }, [
+							E('strong', {}, ['⚡ Conectividade IPv6 Individual']),
+							ipv6StatusPill
+						]),
+						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, [
+							'Permite que este aparelho navegue em IPv6 quando o Modo Seletivo estiver ativo. Ideal para PC Gamer, consoles e celulares modernos.'
+						])
+					]),
+					E('label', { class: 'ex-switch', style: 'flex: 0 0 auto;' }, [
+						ipv6Toggle,
+						E('span', { class: 'ex-switch-slider' })
+					])
+				])
+			]));
+
 			// --- Seção: Controle Parental & Filtros Deste Aparelho ---
 			let parentalMode = state.parental_mode || 'default';
 			const parBlockToggle = E('input', { type: 'checkbox' });
@@ -2108,7 +2168,8 @@ return view.extend({
 				const safeSearchVal = (parentalMode === 'custom' && safeSearchToggle.checked) ? '1' : '0';
 				const servList = (parentalMode === 'custom' && hasAgh) ? Array.from(selectedServices).join(',') : '';
 				const limLanBypass = lanBypassToggle.checked ? '1' : '0';
-				const args=['device-save',device.mac,name.value.trim(),isReserved?'reserved':'automatic',finalIp,prioEnabled,dscpVal,selectedWanRoute,limEnabled,String(limDown),String(limUp),parentalMode,parBlockVal,safeSearchVal,servList,limLanBypass];
+				const ipv6AllowedVal = ipv6Toggle.checked ? '1' : '0';
+				const args=['device-save',device.mac,name.value.trim(),isReserved?'reserved':'automatic',finalIp,prioEnabled,dscpVal,selectedWanRoute,limEnabled,String(limDown),String(limUp),parentalMode,parBlockVal,safeSearchVal,servList,limLanBypass,ipv6AllowedVal];
 				return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){
 					if(r.code)throw new Error(r.stderr||'Falha ao salvar');
 					ui.hideModal();
@@ -6192,6 +6253,210 @@ return view.extend({
 			}},['Criar backup e desativar IPv6'])])
 		]);
 	},
+	showIpv6Modal: function() {
+		const self = this;
+		ui.showModal('Central de Conectividade IPv6', [
+			E('p', { class: 'ex-muted' }, ['Consultando status de rede IPv6 do roteador…'])
+		]);
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['ipv6-status']).then(function(r) {
+			let st = {};
+			try { st = JSON.parse(r.stdout || '{}'); } catch(e) {}
+			const curMode = st.mode || 'dual_stack';
+			const isRelay = !!st.relay;
+
+			const modeBadgeMeta = {
+				ipv4_only: { label: 'Modo 1: IPv4 Apenas', color: '#f59e0b', bg: 'rgba(245,158,11,.15)', border: 'rgba(245,158,11,.35)' },
+				dual_stack: { label: 'Modo 2: Pilha Dupla Global', color: '#10b981', bg: 'rgba(16,185,129,.15)', border: 'rgba(16,185,129,.35)' },
+				selective: { label: 'Modo 3: IPv6 Seletivo por MAC', color: '#38bdf8', bg: 'rgba(56,189,248,.15)', border: 'rgba(56,189,248,.35)' },
+				ipv6_only: { label: 'Modo 4: IPv6-Only (Single-Stack)', color: '#c084fc', bg: 'rgba(192,132,252,.15)', border: 'rgba(192,132,252,.35)' }
+			};
+			const curBadge = modeBadgeMeta[curMode] || modeBadgeMeta.dual_stack;
+
+			const statusHeader = E('div', {
+				class: 'ex-priority-desc-box',
+				style: 'margin-bottom: 16px; border: 1px solid rgba(255,255,255,.1); padding: 14px; border-radius: 10px; background: rgba(15,23,42,.6);'
+			}, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
+						E('strong', { style: 'font-size: 0.95rem; color: #f8fafc;' }, ['Estado Atual:']),
+						E('span', {
+							class: 'ex-device-badge',
+							style: 'font-weight: 700; font-size: 0.78rem; padding: 3px 10px; border-radius: 8px; color:' + curBadge.color + '; background:' + curBadge.bg + '; border: 1px solid ' + curBadge.border + ';'
+						}, [ curBadge.label ])
+					]),
+					E('span', {
+						class: 'ex-pill ' + (st.odhcpd_active ? 'online' : 'standby'),
+						style: 'font-size: 0.75rem;'
+					}, [ st.odhcpd_active ? (isRelay ? 'odhcpd (Relay Ativo)' : 'odhcpd (Servidor Ativo)') : 'odhcpd desligado' ])
+				]),
+				E('div', { class: 'ex-grid ex-grid-2', style: 'gap: 8px; font-size: 0.8rem;' }, [
+					E('div', {}, [
+						E('span', { class: 'ex-muted' }, ['Prefixo ISP Delegado: ']),
+						E('strong', { style: 'color: #38bdf8; font-family: monospace;' }, [ st.prefix_delegated && st.prefix_delegated !== 'none' ? st.prefix_delegated : 'Nenhum / Não recebido' ])
+					]),
+					E('div', {}, [
+						E('span', { class: 'ex-muted' }, ['Prefixo ULA Local: ']),
+						E('strong', { style: 'color: #cbd5e1; font-family: monospace;' }, [ st.ula_prefix && st.ula_prefix !== 'none' ? st.ula_prefix : 'fd00:ark:lan::/48' ])
+					]),
+					E('div', {}, [
+						E('span', { class: 'ex-muted' }, ['Filtro AAAA no DNS: ']),
+						E('strong', { style: 'color: ' + (st.filter_aaaa ? '#f59e0b' : '#10b981') }, [ st.filter_aaaa ? 'Ativo (Bloqueando AAAA)' : 'Desativado (Normal)' ])
+					]),
+					E('div', {}, [
+						E('span', { class: 'ex-muted' }, ['Dispositivos Seletivos: ']),
+						E('strong', { style: 'color: #38bdf8;' }, [ (st.selective_allowed_macs && st.selective_allowed_macs.length) ? (st.selective_allowed_macs.length + ' autorizado(s)') : 'Nenhum aparelho liberado' ])
+					])
+				])
+			]);
+
+			const applyMode = function(newMode, label, promptMsg) {
+				ui.showModal('Aplicar ' + label, [
+					E('p', { class: 'alert-message warning' }, [ promptMsg || 'O roteador reconfigurará o subsistema IPv6 e recarregará as interfaces e firewall. A conexão de rede reiniciará brevemente.' ]),
+					E('div', { class: 'right' }, [
+						E('button', { class: 'btn cbi-button cbi-button-neutral', click: function(){ self.showIpv6Modal(); } }, ['Voltar']),
+						' ',
+						E('button', {
+							class: 'btn cbi-button cbi-button-positive',
+							click: function(ev) {
+								const b = ev.currentTarget;
+								b.disabled = true;
+								b.textContent = 'Aplicando…';
+								return fs.exec('/usr/sbin/equipe-dashboard-control', ['ipv6-mode-set', newMode]).then(function(res) {
+									if (res.code) throw new Error(res.stderr || 'Falha ao aplicar modo IPv6');
+									ui.hideModal();
+									ui.addNotification(null, E('p', {}, [label + ' ativado com sucesso.']));
+									window.setTimeout(function(){ window.location.reload(); }, 2200);
+								}).catch(function(e) {
+									b.disabled = false;
+									b.textContent = 'Confirmar e aplicar';
+									if (reloadAfterExpectedDisconnect(e, 'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…', 4200)) return;
+									ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+								});
+							}
+						}, ['Confirmar e aplicar'])
+					])
+				]);
+			};
+
+			const renderModeCard = function(modeId, title, badgeText, description, benefitsList, isCurrent) {
+				return E('div', {
+					class: 'ex-cleanup-entry',
+					style: 'margin-bottom: 12px; padding: 14px; border-radius: 10px; border: 1px solid ' + (isCurrent ? 'rgba(56,189,248,.4)' : 'rgba(255,255,255,.08)') + '; background: ' + (isCurrent ? 'rgba(56,189,248,.05)' : 'rgba(255,255,255,.02)') + ';'
+				}, [
+					E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
+						E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;' }, [
+							E('strong', { style: 'font-size: 0.92rem; color: #f8fafc;' }, [ title ]),
+							E('span', { class: 'ex-device-badge', style: 'font-size: 0.68rem; padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,.1); color: #cbd5e1;' }, [ badgeText ]),
+							isCurrent ? E('span', { class: 'ex-pill ok', style: 'font-size: 0.68rem; padding: 2px 6px;' }, [ 'ATIVO ATUALMENTE' ]) : ''
+						]),
+						E('p', { class: 'ex-muted', style: 'font-size: 0.8rem; line-height: 1.4; margin: 4px 0 6px;' }, [ description ]),
+						E('ul', { style: 'margin: 0; padding-left: 18px; font-size: 0.78rem; color: #94a3b8; line-height: 1.45;' }, benefitsList.map(function(b){ return E('li', {}, [ b ]); }))
+					]),
+					E('div', { style: 'flex: 0 0 auto; display: flex; align-items: center; margin-left: 12px;' }, [
+						isCurrent
+							? E('button', { class: 'ex-mini-button', disabled: true, style: 'opacity: .6; cursor: default;' }, [ 'Modo Ativo' ])
+							: E('button', {
+								class: 'ex-mini-button',
+								style: 'min-height: 40px; padding: 8px 14px; font-weight: 600;',
+								click: function(){ applyMode(modeId, title); }
+							}, [ 'Ativar Modo' ])
+					])
+				]);
+			};
+
+			const cards = [
+				renderModeCard('dual_stack', 'Modo 2: Pilha Dupla Global', 'Recomendado Padrão',
+					'IPv4 e IPv6 nativos funcionando simultaneamente com máxima performance e compatibilidade global.',
+					[
+						'Compatível com PPPoE Fibra e conexões DHCPv6 dinâmicas (IA_PD automático).',
+						'Endereçamento ULA estático permanente (fd00:ark:lan::/48) blindando hostnames locais (.lan) contra trocas de IP da operadora.',
+						'Conformidade RFC 7084: expiração imediata de prefixos antigos (valid_lifetime=0) em quedas do PPPoE.'
+					],
+					curMode === 'dual_stack'
+				),
+				renderModeCard('selective', 'Modo 3: IPv6 Seletivo por Aparelho', 'Escudo Gamer & IoT',
+					'Apenas aparelhos marcados com "⚡ Permitir IPv6" no painel utilizam IPv6. Dispositivos não autorizados têm o tráfego rejeitado instantaneamente em 0,1ms.',
+					[
+						'Zero lag no Happy Eyeballs: celulares e TVs antigas não congelam esperando timeout de IPv6; caem em 0,1ms no IPv4.',
+						'Otimizado para PC Gamer, PlayStation 5, Xbox Series e iPhones de última geração.',
+						'Gerenciável aparelho por aparelho diretamente no card DISPOSITIVOS.'
+					],
+					curMode === 'selective'
+				),
+				renderModeCard('ipv4_only', 'Modo 1: IPv4 Apenas', 'Purga Limpa',
+					'Desliga totalmente o stack IPv6 do kernel, wan6, odhcpd e ULA. Ativa filtro de consultas AAAA no DNS.',
+					[
+						'Para redes legadas ou operadoras com IPv6 instável.',
+						'Filtro AAAA impede que navegadores percam tempo consultando endereços IPv6 inexistentes.',
+						'Economiza memória RAM e ciclos de CPU desativando daemons IPv6.'
+					],
+					curMode === 'ipv4_only'
+				),
+				renderModeCard('ipv6_only', 'Modo 4: IPv6-Only (Futurista)', 'Single-Stack',
+					'LAN operando puramente em IPv6 sem concessões DHCP IPv4 locais, com síntese DNS64 no dnsmasq.',
+					[
+						'Ideal para laboratórios, testes de novas tecnologias e transição pura para a próxima geração.',
+						'Apenas dispositivos compatíveis com IPv6 navegarão na rede local.'
+					],
+					curMode === 'ipv6_only'
+				)
+			];
+
+			const relayToggle = E('input', {
+				type: 'checkbox',
+				checked: isRelay,
+				change: function(ev) {
+					const desired = ev.currentTarget.checked ? '1' : '0';
+					ev.currentTarget.disabled = true;
+					fs.exec('/usr/sbin/equipe-dashboard-control', ['ipv6-relay-toggle', desired]).then(function(res) {
+						if (res.code) throw new Error(res.stderr || 'Falha ao alternar NDP Relay');
+						ui.addNotification(null, E('p', {}, [desired === '1' ? 'Modo NDP Relay ativado.' : 'Modo Servidor odhcpd ativado.']));
+						self.showIpv6Modal();
+					}).catch(function(e) {
+						ev.currentTarget.disabled = false;
+						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+					});
+				}
+			});
+
+			const cascadePanel = E('section', {
+				class: 'ex-cleanup-entry',
+				style: 'margin-top: 16px; padding: 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.02);'
+			}, [
+				E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;' }, [
+						E('strong', { style: 'font-size: 0.92rem; color: #f8fafc;' }, ['🔗 Roteador em Cascata / NDP Relay']),
+						E('span', { class: 'ex-pill ' + (isRelay ? 'online' : 'standby'), style: 'font-size: 0.7rem;' }, [ isRelay ? 'RELAY ATIVO' : 'SERVIDOR DIRETO' ])
+					]),
+					E('p', { class: 'ex-muted', style: 'font-size: 0.8rem; line-height: 1.4; margin: 4px 0 0;' }, [
+						'Ative se este ARK Router estiver conectado atrás de outro roteador principal (operadora) e receber apenas um prefixo /64. O odhcpd repassa os anúncios de vizinhança (NDP) transparentemente para os seus clientes, sem necessidade de DMZ no mestre.'
+					])
+				]),
+				E('div', { style: 'flex: 0 0 auto; margin-left: 12px;' }, [
+					E('label', { class: 'ex-switch' }, [
+						relayToggle,
+						E('span', { class: 'ex-switch-slider' })
+					])
+				])
+			]);
+
+			ui.showModal('Central de Conectividade IPv6', [
+				statusHeader,
+				E('div', {}, cards),
+				cascadePanel,
+				E('div', { class: 'right', style: 'margin-top: 16px;' }, [
+					E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Fechar'])
+				])
+			]);
+		}).catch(function(e) {
+			ui.showModal('Central de Conectividade IPv6', [
+				E('p', { class: 'alert-message danger' }, [ 'Falha ao consultar estado IPv6: ' + e.message ]),
+				E('div', { class: 'right' }, [
+					E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Fechar'])
+				])
+			]);
+		});
+	},
 	showThermalModal: function() {
 		const hwInfo = (this.currentData && this.currentData.hardwareInfo) || {};
 		const sensors = hwInfo.thermal_sensors || [];
@@ -6614,7 +6879,16 @@ return view.extend({
 		},this));
 		const bulkKeys=['sqm','mwan3','nlbwmon','upnp','uhttpd'].filter(L.bind(function(key){const f=this.feature(key)||{};return !f.installed&&f.installable;},this));
 		const bulkPanel=E('section',{class:'ex-cleanup-entry'},[E('div',{},[E('strong',{},['Instalação rápida']),E('small',{class:'ex-muted'},[bulkKeys.length?('Instala todos os recursos leves faltantes: '+bulkKeys.map(function(k){return (FEATURE_META[k]&&FEATURE_META[k].name)||k;}).join(', ')):'Todos os recursos leves compatíveis já estão instalados ou indisponíveis neste roteador.'])]),E('button',{class:'ex-mini-button','click':L.bind(this.installMissingFeatures,this,bulkKeys),disabled:!bulkKeys.length},['Instalar faltantes'])]);
-		const ipv6Panel=E('section',{class:'ex-cleanup-entry'},[E('div',{},[E('strong',{},['IPv6 totalmente desligado']),E('small',{class:'ex-muted'},['Remove WAN6, ULA, RA/DHCPv6/NDP e regras IPv6. Cria backup antes de aplicar.'])]),E('button',{class:'ex-mini-button','click':L.bind(this.disableIpv6Full,this)},['Desativar IPv6'])]);
+		const ipv6Panel=E('section',{class:'ex-cleanup-entry'},[
+			E('div',{},[
+				E('strong',{},['🌐 Central de Conectividade IPv6']),
+				E('small',{class:'ex-muted'},['Modos de operação: Pilha Dupla Global, IPv6 Seletivo por MAC (Gamer/IoT), IPv4 Apenas ou IPv6-Only. Suporte a cascata NDP Relay.'])
+			]),
+			E('button',{class:'ex-mini-button','click':L.bind(function(){
+				closeModal();
+				this.showIpv6Modal();
+			},this)},['Gerenciar IPv6'])
+		]);
 		const profileSelect=E('select',{class:'cbi-input-select'},[
 			E('option',{value:'standard'},['Modo Padrão / Equilibrado']),
 			E('option',{value:'gamer'},['Modo Gamer (Baixa Latência & PUBG Mobile)'])

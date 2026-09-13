@@ -561,6 +561,7 @@ button.ex-mode-button.active::before,
 .ex-device-badge.badge-gamer { background: linear-gradient(120deg, rgba(239, 68, 68, 0.2), rgba(168, 85, 247, 0.2)); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.4); text-shadow: 0 0 10px rgba(244, 63, 94, 0.25); }
 .ex-device-badge.badge-video { background: rgba(16, 185, 129, 0.16); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.32); }
 .ex-device-badge.badge-limited { background: rgba(239, 68, 68, 0.16); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.38); }
+.ex-device-badge.badge-ipv6 { background: rgba(16, 185, 129, 0.16); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); }
 .ex-device-meta { display: block; margin-top: 3px; opacity: .52; font-weight: 400; }
 .ex-rate-cell span { display: block; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .ex-rate-cell .down { color: #3b82f6; }

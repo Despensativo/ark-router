@@ -691,6 +691,353 @@ cleanup_apply_keys() {
 	sync
 	echo ok
 }
+restore_ipv6_firewall_rules() {
+	zone="$(firewall_wan_zone_section)"
+	if [ -n "$zone" ]; then
+		firewall_zone_has_network "$zone" wan6 || uci -q add_list "firewall.$zone.network=wan6"
+	fi
+
+	if ! uci -q get firewall.Allow_ICMPv6_Input >/dev/null 2>&1; then
+		uci -q set firewall.Allow_ICMPv6_Input=rule
+		uci -q set firewall.Allow_ICMPv6_Input.name='Allow-ICMPv6-Input'
+		uci -q set firewall.Allow_ICMPv6_Input.src='wan'
+		uci -q set firewall.Allow_ICMPv6_Input.proto='icmp'
+		for itype in echo-request echo-reply destination-unreachable packet-too-big time-exceeded bad-header unknown-header-type router-solicitation neighbour-solicitation router-advertisement neighbour-advertisement; do
+			uci -q add_list "firewall.Allow_ICMPv6_Input.icmp_type=$itype"
+		done
+		uci -q set firewall.Allow_ICMPv6_Input.limit='1000/sec'
+		uci -q set firewall.Allow_ICMPv6_Input.family='ipv6'
+		uci -q set firewall.Allow_ICMPv6_Input.target='ACCEPT'
+	fi
+
+	if ! uci -q get firewall.Allow_ICMPv6_Forward >/dev/null 2>&1; then
+		uci -q set firewall.Allow_ICMPv6_Forward=rule
+		uci -q set firewall.Allow_ICMPv6_Forward.name='Allow-ICMPv6-Forward'
+		uci -q set firewall.Allow_ICMPv6_Forward.src='wan'
+		uci -q set firewall.Allow_ICMPv6_Forward.dest='*'
+		uci -q set firewall.Allow_ICMPv6_Forward.proto='icmp'
+		for itype in echo-request echo-reply destination-unreachable packet-too-big time-exceeded bad-header unknown-header-type; do
+			uci -q add_list "firewall.Allow_ICMPv6_Forward.icmp_type=$itype"
+		done
+		uci -q set firewall.Allow_ICMPv6_Forward.limit='1000/sec'
+		uci -q set firewall.Allow_ICMPv6_Forward.family='ipv6'
+		uci -q set firewall.Allow_ICMPv6_Forward.target='ACCEPT'
+	fi
+
+	if ! uci -q get firewall.Allow_DHCPv6 >/dev/null 2>&1; then
+		uci -q set firewall.Allow_DHCPv6=rule
+		uci -q set firewall.Allow_DHCPv6.name='Allow-DHCPv6'
+		uci -q set firewall.Allow_DHCPv6.src='wan'
+		uci -q set firewall.Allow_DHCPv6.proto='udp'
+		uci -q set firewall.Allow_DHCPv6.src_ip='fc00::/6'
+		uci -q set firewall.Allow_DHCPv6.dest_ip='fc00::/6'
+		uci -q set firewall.Allow_DHCPv6.dest_port='546'
+		uci -q set firewall.Allow_DHCPv6.family='ipv6'
+		uci -q set firewall.Allow_DHCPv6.target='ACCEPT'
+	fi
+}
+
+enable_ipv6_dual_stack() {
+	rm -f /etc/sysctl.d/99-ark-router-disable-ipv6.conf 2>/dev/null || true
+	sysctl -w net.ipv6.conf.all.disable_ipv6=0 >/dev/null 2>&1 || true
+	sysctl -w net.ipv6.conf.default.disable_ipv6=0 >/dev/null 2>&1 || true
+	sysctl -w net.ipv6.conf.lo.disable_ipv6=0 >/dev/null 2>&1 || true
+
+	for iface in wan wan2; do
+		if [ -n "$(uci -q get "network.$iface.proto")" ]; then
+			uci -q set "network.$iface.ipv6=1"
+			uci -q set "network.$iface.delegate=1"
+		fi
+	done
+
+	uci -q delete network.wan6
+	uci -q set network.wan6=interface
+	uci -q set network.wan6.proto='dhcpv6'
+	uci -q set network.wan6.device='@wan'
+	uci -q set network.wan6.reqprefix='auto'
+	uci -q set network.wan6.reqaddress='try'
+
+	ula="$(uci -q get network.globals.ula_prefix)"
+	[ -n "$ula" ] || uci -q set network.globals.ula_prefix='fd00:ark:lan::/48'
+	uci -q set network.lan.ip6assign='64'
+	uci -q delete network.lan.delegate
+
+	uci -q delete dhcp.@dnsmasq[0].filter_aaaa
+	relay="$(uci -q get equipe_dashboard.ipv6.relay || echo 0)"
+	if [ "$relay" = "1" ]; then
+		uci -q set dhcp.lan.dhcpv6='relay'
+		uci -q set dhcp.lan.ra='relay'
+		uci -q set dhcp.lan.ndp='relay'
+		uci -q set dhcp.wan.dhcpv6='relay'
+		uci -q set dhcp.wan.ra='relay'
+		uci -q set dhcp.wan.ndp='relay'
+		uci -q set dhcp.wan.master='1'
+	else
+		uci -q set dhcp.lan.dhcpv6='server'
+		uci -q set dhcp.lan.ra='server'
+		uci -q set dhcp.lan.ndp='disabled'
+		uci -q delete dhcp.wan.dhcpv6
+		uci -q delete dhcp.wan.ra
+		uci -q delete dhcp.wan.ndp
+		uci -q delete dhcp.wan.master
+	fi
+
+	restore_ipv6_firewall_rules
+
+	uci commit network
+	uci commit dhcp
+	uci commit firewall
+
+	[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd enable >/dev/null 2>&1 || true
+	[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
+}
+
+clean_ipv6_selective_firewall() {
+	if command -v nft >/dev/null 2>&1; then
+		nft delete table inet ark_ipv6_selective 2>/dev/null || true
+	fi
+	if command -v ip6tables >/dev/null 2>&1; then
+		lan_dev="$(uci -q get network.lan.device || uci -q get network.lan.ifname || echo br-lan)"
+		ip6tables -D FORWARD -i "$lan_dev" -j ARK_IPV6_SEL 2>/dev/null || true
+		ip6tables -F ARK_IPV6_SEL 2>/dev/null || true
+		ip6tables -X ARK_IPV6_SEL 2>/dev/null || true
+	fi
+	rm -f /etc/ark/ark_ipv6_selective.* 2>/dev/null || true
+	uci -q delete firewall.ark_ipv6_selective
+	uci commit firewall
+}
+
+sync_ipv6_selective_firewall() {
+	mkdir -p /etc/ark
+	lan_dev="$(uci -q get network.lan.device || uci -q get network.lan.ifname || echo br-lan)"
+
+	allowed_macs=""
+	if [ -f /etc/config/equipe_devices ]; then
+		sections="$(uci -q show equipe_devices 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1)"
+		for s in $sections; do
+			if [ "$(uci -q get "equipe_devices.$s.ipv6_allowed")" = "1" ]; then
+				m="$(uci -q get "equipe_devices.$s.mac" | tr 'A-F' 'a-f')"
+				[ -n "$m" ] && allowed_macs="$allowed_macs $m"
+			fi
+		done
+	fi
+
+	if command -v nft >/dev/null 2>&1; then
+		tmp_nft="/tmp/ark_ipv6_selective.nft"
+		nft_file="/etc/ark/ark_ipv6_selective.nft"
+		apply_sh="/etc/ark/ark_ipv6_selective.sh"
+
+		elements_str=""
+		for m in $allowed_macs; do
+			[ -z "$elements_str" ] && elements_str="$m" || elements_str="$elements_str, $m"
+		done
+		elements_line=""
+		[ -n "$elements_str" ] && elements_line="		elements = { $elements_str }"
+
+		cat << EOF > "$tmp_nft"
+table inet ark_ipv6_selective
+delete table inet ark_ipv6_selective
+table inet ark_ipv6_selective {
+	set allowed_macs {
+		type ether_addr
+$elements_line
+	}
+	chain forward_ipv6_selective {
+		type filter hook forward priority filter - 4; policy accept;
+		meta nfproto ipv6 iifname "$lan_dev" ether saddr != @allowed_macs reject with icmpv6 type admin-prohibited
+	}
+}
+EOF
+		if ! /usr/sbin/nft -c -f "$tmp_nft" 2>/dev/null; then
+			rm -f "$tmp_nft"
+			echo "Erro de sintaxe nftables no filtro seletivo IPv6" >&2
+			return 1
+		fi
+		mv -f "$tmp_nft" "$nft_file"
+		cat << 'EOF' > "$apply_sh"
+#!/bin/sh
+[ -f /etc/ark/ark_ipv6_selective.nft ] && /usr/sbin/nft -f /etc/ark/ark_ipv6_selective.nft 2>/dev/null || true
+EOF
+		chmod +x "$apply_sh"
+		nft delete table inet ark_ipv6_selective 2>/dev/null || true
+		nft -f "$nft_file" 2>/dev/null || true
+		uci -q set firewall.ark_ipv6_selective=include
+		uci -q set firewall.ark_ipv6_selective.type=script
+		uci -q set "firewall.ark_ipv6_selective.path=$apply_sh"
+		uci -q set firewall.ark_ipv6_selective.fw4_compatible='1'
+		uci commit firewall
+
+	elif command -v ip6tables >/dev/null 2>&1; then
+		apply_sh="/etc/ark/ark_ipv6_selective.sh"
+		cat << EOF > "$apply_sh"
+#!/bin/sh
+lan_dev="\$(uci -q get network.lan.device || uci -q get network.lan.ifname || echo br-lan)"
+ip6tables -F ARK_IPV6_SEL 2>/dev/null || ip6tables -N ARK_IPV6_SEL 2>/dev/null
+ip6tables -D FORWARD -i "\$lan_dev" -j ARK_IPV6_SEL 2>/dev/null || true
+ip6tables -I FORWARD 1 -i "\$lan_dev" -j ARK_IPV6_SEL
+EOF
+		for m in $allowed_macs; do
+			printf 'ip6tables -A ARK_IPV6_SEL -m mac --mac-source %s -j RETURN\n' "$m" >> "$apply_sh"
+		done
+		cat << 'EOF' >> "$apply_sh"
+ip6tables -A ARK_IPV6_SEL -j REJECT --reject-with icmp6-adm-prohibited
+EOF
+		chmod +x "$apply_sh"
+		/bin/sh "$apply_sh" 2>/dev/null || true
+		uci -q set firewall.ark_ipv6_selective=include
+		uci -q set firewall.ark_ipv6_selective.type=script
+		uci -q set "firewall.ark_ipv6_selective.path=$apply_sh"
+		uci commit firewall
+	fi
+}
+
+set_ipv6_mode() {
+	mode="$1"
+	case "$mode" in
+		ipv4_only)
+			disable_ipv6_full
+			clean_ipv6_selective_firewall
+			uci -q set equipe_dashboard.ipv6=ipv6
+			uci -q set equipe_dashboard.ipv6.mode='ipv4_only'
+			uci commit equipe_dashboard
+			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) &
+			echo ok
+			;;
+		dual_stack)
+			enable_ipv6_dual_stack
+			clean_ipv6_selective_firewall
+			uci -q delete dhcp.lan.ignore
+			uci commit dhcp
+			uci -q set equipe_dashboard.ipv6=ipv6
+			uci -q set equipe_dashboard.ipv6.mode='dual_stack'
+			uci commit equipe_dashboard
+			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) &
+			echo ok
+			;;
+		selective)
+			enable_ipv6_dual_stack
+			sync_ipv6_selective_firewall
+			uci -q delete dhcp.lan.ignore
+			uci commit dhcp
+			uci -q set equipe_dashboard.ipv6=ipv6
+			uci -q set equipe_dashboard.ipv6.mode='selective'
+			uci commit equipe_dashboard
+			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) &
+			echo ok
+			;;
+		ipv6_only)
+			enable_ipv6_dual_stack
+			clean_ipv6_selective_firewall
+			uci -q set dhcp.lan.ignore='1'
+			uci commit dhcp
+			uci -q set equipe_dashboard.ipv6=ipv6
+			uci -q set equipe_dashboard.ipv6.mode='ipv6_only'
+			uci commit equipe_dashboard
+			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) &
+			echo ok
+			;;
+		*)
+			echo "Modo invalido: $mode (use: ipv4_only, dual_stack, selective, ipv6_only)" >&2
+			exit 2
+			;;
+	esac
+}
+
+set_ipv6_relay() {
+	state="$1"
+	case "$state" in 1|true) state=1 ;; *) state=0 ;; esac
+	uci -q set equipe_dashboard.ipv6=ipv6
+	uci -q set "equipe_dashboard.ipv6.relay=$state"
+	uci commit equipe_dashboard
+
+	mode="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
+	if [ "$mode" != "ipv4_only" ]; then
+		if [ "$state" = 1 ]; then
+			uci -q set dhcp.lan.dhcpv6='relay'
+			uci -q set dhcp.lan.ra='relay'
+			uci -q set dhcp.lan.ndp='relay'
+			uci -q set dhcp.wan.dhcpv6='relay'
+			uci -q set dhcp.wan.ra='relay'
+			uci -q set dhcp.wan.ndp='relay'
+			uci -q set dhcp.wan.master='1'
+		else
+			uci -q set dhcp.lan.dhcpv6='server'
+			uci -q set dhcp.lan.ra='server'
+			uci -q set dhcp.lan.ndp='disabled'
+			uci -q delete dhcp.wan.dhcpv6
+			uci -q delete dhcp.wan.ra
+			uci -q delete dhcp.wan.ndp
+			uci -q delete dhcp.wan.master
+		fi
+		uci commit dhcp
+		[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
+	fi
+	echo ok
+}
+
+toggle_ipv6_device() {
+	mac="$(printf '%s' "$1" | tr '-' ':' | tr 'a-f' 'A-F' | tr -d ' ')"
+	valid_mac "$mac" || { echo 'MAC invalido' >&2; exit 2; }
+	case "$2" in 1|true) state=1 ;; *) state=0 ;; esac
+	name_section="device_$(printf '%s' "$mac" | tr -d ':')"
+	uci -q set "equipe_devices.$name_section=device"
+	uci -q set "equipe_devices.$name_section.mac=$mac"
+	uci -q set "equipe_devices.$name_section.ipv6_allowed=$state"
+	uci commit equipe_devices
+
+	mode="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
+	if [ "$mode" = "selective" ]; then
+		sync_ipv6_selective_firewall
+	fi
+	echo ok
+}
+
+get_ipv6_status() {
+	mode="$(uci -q get equipe_dashboard.ipv6.mode || echo 'dual_stack')"
+	relay="$(uci -q get equipe_dashboard.ipv6.relay || echo '0')"
+	wan6_proto="$(uci -q get network.wan6.proto || echo 'none')"
+	wan6_dev="$(uci -q get network.wan6.device || echo '')"
+	
+	lan_dev="$(uci -q get network.lan.device || uci -q get network.lan.ifname || echo br-lan)"
+	prefix_delegated="$(ip -6 route show 2>/dev/null | grep -E 'proto (kernel|ra|static)' | grep -v 'fe80::' | grep -v 'fd00:' | head -n 1 | awk '{print $1}')"
+	lan_ip6="$(ip -6 addr show dev "$lan_dev" scope global 2>/dev/null | grep -v 'fd00:' | grep 'inet6' | head -n 1 | awk '{print $2}')"
+	ula_ip6="$(ip -6 addr show dev "$lan_dev" scope global 2>/dev/null | grep 'fd00:' | grep 'inet6' | head -n 1 | awk '{print $2}')"
+	ula_prefix="$(uci -q get network.globals.ula_prefix || echo '')"
+	filter_aaaa="$(uci -q get dhcp.@dnsmasq[0].filter_aaaa || echo '0')"
+	odhcpd_active="$(pidof odhcpd >/dev/null && echo 'true' || echo 'false')"
+
+	allowed_macs=""
+	first=1
+	if [ -f /etc/config/equipe_devices ]; then
+		sections="$(uci -q show equipe_devices 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1)"
+		for s in $sections; do
+			if [ "$(uci -q get "equipe_devices.$s.ipv6_allowed")" = "1" ]; then
+				mac="$(uci -q get "equipe_devices.$s.mac")"
+				if [ -n "$mac" ]; then
+					[ "$first" = 1 ] && first=0 || allowed_macs="$allowed_macs,"
+					allowed_macs="$allowed_macs\"$mac\""
+				fi
+			fi
+		done
+	fi
+
+	cat <<EOF
+{
+  "mode": "$mode",
+  "relay": $([ "$relay" = "1" ] && echo true || echo false),
+  "wan6_proto": "$wan6_proto",
+  "wan6_dev": "$wan6_dev",
+  "prefix_delegated": "${prefix_delegated:-none}",
+  "lan_ip6": "${lan_ip6:-none}",
+  "ula_ip6": "${ula_ip6:-none}",
+  "ula_prefix": "${ula_prefix:-none}",
+  "filter_aaaa": $([ "$filter_aaaa" = "1" ] && echo true || echo false),
+  "odhcpd_active": $odhcpd_active,
+  "selective_allowed_macs": [$allowed_macs]
+}
+EOF
+}
+
 disable_ipv6_full() {
 	uci -q delete network.globals.ula_prefix
 	uci -q delete network.lan.ip6assign
@@ -741,8 +1088,9 @@ EOF
 	sysctl -w net.ipv6.conf.all.disable_ipv6=1 >/dev/null 2>&1 || true
 	sysctl -w net.ipv6.conf.default.disable_ipv6=1 >/dev/null 2>&1 || true
 	sysctl -w net.ipv6.conf.lo.disable_ipv6=1 >/dev/null 2>&1 || true
-	ip -6 addr flush dev br-lan scope global >/dev/null 2>&1 || true
-	ip -6 route flush dev br-lan >/dev/null 2>&1 || true
+	lan_dev="$(uci -q get network.lan.device || uci -q get network.lan.ifname || echo br-lan)"
+	ip -6 addr flush dev "$lan_dev" scope global >/dev/null 2>&1 || true
+	ip -6 route flush dev "$lan_dev" >/dev/null 2>&1 || true
 }
 install_argon_release() {
 	version="${ARK_ARGON_VERSION:-2.4.6}"
@@ -6523,10 +6871,21 @@ case "$action" in
 		shift
 		cleanup_apply_keys "$@"
 		;;
+	ipv6-status)
+		get_ipv6_status
+		;;
+	ipv6-mode-set)
+		set_ipv6_mode "$2"
+		;;
+	ipv6-relay-toggle)
+		set_ipv6_relay "${2:-0}"
+		;;
+	ipv6-device-toggle)
+		toggle_ipv6_device "$2" "${3:-0}"
+		;;
 	ipv6-disable-full)
 		backup="$(cleanup_backup)" || { echo 'Falha ao criar backup antes de desativar IPv6' >&2; exit 3; }
-		disable_ipv6_full
-		(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) &
+		set_ipv6_mode "ipv4_only" >/dev/null 2>&1
 		printf '{"status":"ok","backup":"%s"}\n' "$(json_escape "$backup")"
 		;;
 	theme)
@@ -7477,12 +7836,15 @@ case "$action" in
 			[ "$(uci -q get "equipe_devices.$name_section.parental_block" || printf 0)" = 1 ] && parental_block=true
 			[ "$(uci -q get "equipe_devices.$name_section.safesearch" || printf 0)" = 1 ] && safesearch=true
 			blocked_services="$(uci -q get "equipe_devices.$name_section.blocked_services" || true)"
+			saved_ipv6_allowed="$(uci -q get "equipe_devices.$name_section.ipv6_allowed" || printf 0)"
+			ipv6_allowed=false
+			[ "$saved_ipv6_allowed" = 1 ] && ipv6_allowed=true
 		fi
 		adguard_installed=false
 		[ -x /usr/bin/AdGuardHome ] && [ "$(uci -q get equipe_perf.settings.adblock_cloud || echo 0)" != "1" ] && adguard_installed=true
-		printf '{"reserved":%s,"ip":"%s","priority":%s,"dscp":"%s","wan_route":"%s","limit_enabled":%s,"limit_down":%d,"limit_up":%d,"limit_lan_bypass":%s,"operation_profile":"%s","qos_active":%s,"parental_mode":"%s","parental_block":%s,"safesearch":%s,"blocked_services":"%s","adguard_installed":%s}\n' \
+		printf '{"reserved":%s,"ip":"%s","priority":%s,"dscp":"%s","wan_route":"%s","limit_enabled":%s,"limit_down":%d,"limit_up":%d,"limit_lan_bypass":%s,"operation_profile":"%s","qos_active":%s,"parental_mode":"%s","parental_block":%s,"safesearch":%s,"blocked_services":"%s","adguard_installed":%s,"ipv6_allowed":%s}\n' \
 			"$reserved" "$(json_escape "$ip")" "$priority" "$(json_escape "$dscp")" "$(json_escape "$wan_route")" "$limit_enabled" "$limit_down" "$limit_up" "$limit_lan_bypass" "$(ark_operation_profile)" "$(feature_active sqm && bool 1 || bool 0)" \
-			"$(json_escape "$parental_mode")" "$parental_block" "$safesearch" "$(json_escape "$blocked_services")" "$adguard_installed"
+			"$(json_escape "$parental_mode")" "$parental_block" "$safesearch" "$(json_escape "$blocked_services")" "$adguard_installed" "$ipv6_allowed"
 		;;
 	device-limits-list)
 		device_limits_json
@@ -7519,7 +7881,7 @@ case "$action" in
 		system_storage_purge
 		;;
 	device-save)
-		mac="$(printf '%s' "$2" | tr '-' ':' | tr 'a-f' 'A-F' | tr -d ' ')"; name="$3"; mode="$4"; ip="$(printf '%s' "$5" | tr -d ' ,;\t\r\n')"; priority="$6"; target_dscp="$7"; wan_route="${8:-default}"; limit_enabled="${9:-0}"; limit_down="${10:-0}"; limit_up="${11:-0}"; parental_mode="${12:-default}"; parental_block="${13:-0}"; safesearch="${14:-0}"; blocked_services="${15:-}"; limit_lan_bypass="${16:-1}"
+		mac="$(printf '%s' "$2" | tr '-' ':' | tr 'a-f' 'A-F' | tr -d ' ')"; name="$3"; mode="$4"; ip="$(printf '%s' "$5" | tr -d ' ,;\t\r\n')"; priority="$6"; target_dscp="$7"; wan_route="${8:-default}"; limit_enabled="${9:-0}"; limit_down="${10:-0}"; limit_up="${11:-0}"; parental_mode="${12:-default}"; parental_block="${13:-0}"; safesearch="${14:-0}"; blocked_services="${15:-}"; limit_lan_bypass="${16:-1}"; ipv6_allowed="${17:-0}"
 		valid_mac "$mac" || { echo 'MAC invalido' >&2; exit 2; }
 		[ "${#name}" -le 48 ] || { echo 'Nome muito longo' >&2; exit 2; }
 		case "$mode" in automatic|reserved) ;; *) echo 'Modo de IP invalido' >&2; exit 2 ;; esac
@@ -7531,6 +7893,7 @@ case "$action" in
 		case "$parental_mode" in custom|default) ;; *) parental_mode='default' ;; esac
 		case "$parental_block" in 1|true) parental_block=1 ;; *) parental_block=0 ;; esac
 		case "$safesearch" in 1|true) safesearch=1 ;; *) safesearch=0 ;; esac
+		case "$ipv6_allowed" in 1|true) ipv6_allowed=1 ;; *) ipv6_allowed=0 ;; esac
 		if [ "$mode" = reserved ]; then
 			valid_ipv4 "$ip" && same_managed_subnet "$ip" || { echo 'Use um IPv4 valido de uma rede local, diferente do endereco do roteador' >&2; exit 2; }
 			duplicate="$(uci -q show dhcp 2>/dev/null | grep -F ".ip='$ip'" | head -n1)"
@@ -7618,6 +7981,7 @@ case "$action" in
 			uci -q delete "equipe_devices.$name_section.safesearch" 2>/dev/null || true
 			uci -q delete "equipe_devices.$name_section.blocked_services" 2>/dev/null || true
 		fi
+		uci -q set "equipe_devices.$name_section.ipv6_allowed=$ipv6_allowed"
 		uci commit equipe_devices; uci commit dhcp; uci commit firewall
 		if [ "$mwan3_changed" = 1 ]; then
 			mwan3_reorder_rules
@@ -7626,6 +7990,8 @@ case "$action" in
 		apply_device_bandwidth_limits
 		sanitize_dhcp_hostnames
 		device_apply_parental "$mac" "$ip" "$name" "$parental_mode" "$parental_block" "$safesearch" "$blocked_services"
+		cur_ipv6_mode="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
+		[ "$cur_ipv6_mode" = "selective" ] && sync_ipv6_selective_firewall
 		/etc/init.d/dnsmasq reload >/dev/null 2>&1
 		/etc/init.d/firewall reload >/dev/null 2>&1
 		[ "$mwan3_changed" = 1 ] && [ "$(uci -q get equipe_dashboard.speedify.desired_state)" != "connected" ] && (sleep 1; /etc/init.d/mwan3 restart >/dev/null 2>&1) &
