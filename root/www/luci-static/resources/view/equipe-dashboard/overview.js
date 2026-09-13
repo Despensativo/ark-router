@@ -2356,6 +2356,16 @@ return view.extend({
 				}
 			}, ['💾 Salvar perfil']);
 
+			const viewPppoeLogsBtn = E('button', {
+				class: 'btn cbi-button',
+				type: 'button',
+				style: 'font-size:0.8rem; padding:3px 8px; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.35); font-weight:600; border-radius:4px;',
+				title: 'Ver histórico e diagnóstico da conexão PPPoE',
+				click: L.bind(function() {
+					this.showPppoeLogsModal(which, whichLabel);
+				}, this)
+			}, ['📜 Logs PPPoE']);
+
 			const pppoeProfileBar = E('div', { class: 'ex-pppoe-profile-bar', style: 'grid-column: 1 / -1; margin-bottom: 8px; padding: 10px; background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.2); border-radius: 8px;' }, [
 				E('div', { style: 'display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;' }, [
 					E('div', { style: 'display:flex; align-items:center; gap:8px;' }, [
@@ -2363,6 +2373,7 @@ return view.extend({
 						profileStatus
 					]),
 					E('div', { style: 'display:flex; gap:6px;' }, [
+						viewPppoeLogsBtn,
 						saveProfileBtn,
 						deleteProfileBtn
 					])
@@ -2491,6 +2502,156 @@ return view.extend({
 				},this)},['Confirmar alteração'])])
 			]);
 		}, this));
+	},
+	showPppoeLogsModal: function(iface, label) {
+		const wanLabel = label || (iface === 'wan' ? 'WAN1' : String(iface || '').toUpperCase());
+		const logContainer = E('div', {
+			class: 'ex-pppoe-log-box',
+			style: 'background:#090d16; color:#94a3b8; padding:12px; border-radius:8px; font-family:Consolas,Monaco,"Courier New",monospace; font-size:0.78rem; line-height:1.5; max-height:380px; overflow-y:auto; white-space:pre-wrap; word-break:break-all; border:1px solid rgba(255,255,255,0.08); margin:10px 0;'
+		}, [E('span', { class: 'ex-muted' }, ['Carregando logs do PPPoE…'])]);
+
+		const statusBadge = E('span', {
+			class: 'ex-pill standby',
+			style: 'font-size:0.75rem; margin-left:8px; vertical-align:middle;'
+		}, ['Consultando…']);
+
+		const linesSelect = E('select', { class: 'cbi-input-select', style: 'font-size:0.8rem; padding:2px 6px;' }, [
+			E('option', { value: '50' }, ['Últimas 50 linhas']),
+			E('option', { value: '120', selected: 'selected' }, ['Últimas 120 linhas']),
+			E('option', { value: '250' }, ['Últimas 250 linhas']),
+			E('option', { value: '500' }, ['Últimas 500 linhas'])
+		]);
+
+		const refreshBtn = E('button', {
+			class: 'btn cbi-button cbi-button-action',
+			type: 'button',
+			style: 'font-size:0.8rem; padding:3px 10px;'
+		}, ['🔄 Atualizar']);
+
+		const copyBtn = E('button', {
+			class: 'btn cbi-button cbi-button-neutral',
+			type: 'button',
+			style: 'font-size:0.8rem; padding:3px 10px;'
+		}, ['📋 Copiar']);
+
+		let rawLogText = '';
+
+		const fetchLogs = L.bind(function() {
+			refreshBtn.disabled = true;
+			refreshBtn.textContent = 'Carregando…';
+			statusBadge.textContent = 'Buscando…';
+			statusBadge.className = 'ex-pill standby';
+
+			const lines = linesSelect.value || '120';
+			return fs.exec('/usr/sbin/equipe-dashboard-control', ['pppoe-log', lines]).then(function(res) {
+				refreshBtn.disabled = false;
+				refreshBtn.textContent = '🔄 Atualizar';
+				rawLogText = (res.stdout || '').trim();
+
+				if (!rawLogText || rawLogText.indexOf('(Nenhum evento') === 0) {
+					logContainer.innerHTML = '';
+					logContainer.appendChild(E('span', { class: 'ex-muted' }, [rawLogText || '(Nenhum evento PPPoE encontrado no buffer de log)']));
+					statusBadge.textContent = 'Sem eventos';
+					statusBadge.className = 'ex-pill standby';
+					return;
+				}
+
+				const recentLines = rawLogText.split('\n').slice(-5).join(' ');
+				if (/local\s+IP address|CHAP authentication succeeded/i.test(recentLines)) {
+					statusBadge.textContent = '● Autenticado & Conectado';
+					statusBadge.className = 'ex-pill online';
+				} else if (/Modem hangup|Connection terminated|Timeout waiting|failed/i.test(recentLines)) {
+					statusBadge.textContent = '▲ Desconectado / Reconectando';
+					statusBadge.className = 'ex-pill offline';
+				} else {
+					statusBadge.textContent = '● Ativo';
+					statusBadge.className = 'ex-pill online';
+				}
+
+				logContainer.innerHTML = '';
+				const linesArr = rawLogText.split('\n');
+				linesArr.forEach(function(line) {
+					const lineDiv = E('div', { style: 'padding:1px 0;' });
+					if (/succeeded|authorized|local\s+IP address/i.test(line)) {
+						lineDiv.style.color = '#34d399';
+						lineDiv.style.fontWeight = '600';
+					} else if (/failed|terminated|hangup|Permission denied|timed? ?out/i.test(line)) {
+						lineDiv.style.color = '#f87171';
+						lineDiv.style.fontWeight = '600';
+					} else if (/Connected to|Connect:|session is/i.test(line)) {
+						lineDiv.style.color = '#60a5fa';
+					} else if (/remote IP|primary\s+DNS|secondary\s+DNS/i.test(line)) {
+						lineDiv.style.color = '#38bdf8';
+					} else {
+						lineDiv.style.color = '#94a3b8';
+					}
+					lineDiv.textContent = line;
+					logContainer.appendChild(lineDiv);
+				});
+
+				window.setTimeout(function() {
+					logContainer.scrollTop = logContainer.scrollHeight;
+				}, 50);
+			}).catch(function(err) {
+				refreshBtn.disabled = false;
+				refreshBtn.textContent = '🔄 Atualizar';
+				statusBadge.textContent = 'Erro';
+				statusBadge.className = 'ex-pill offline';
+				logContainer.innerHTML = '';
+				logContainer.appendChild(E('span', { style: 'color:#f87171;' }, ['Erro ao consultar logs: ' + (err.message || err)]));
+			});
+		}, this);
+
+		refreshBtn.addEventListener('click', fetchLogs);
+		linesSelect.addEventListener('change', fetchLogs);
+
+		copyBtn.addEventListener('click', function() {
+			if (!rawLogText) return;
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(rawLogText).then(function() {
+					ui.addNotification(null, E('p', {}, ['Logs PPPoE copiados para a área de transferência!']));
+				});
+			} else {
+				const ta = E('textarea', { style: 'position:absolute; left:-9999px;' }, [rawLogText]);
+				document.body.appendChild(ta);
+				ta.select();
+				document.execCommand('copy');
+				document.body.removeChild(ta);
+				ui.addNotification(null, E('p', {}, ['Logs PPPoE copiados!']));
+			}
+		});
+
+		const modalContent = [
+			E('div', { style: 'display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;' }, [
+				E('div', { style: 'display:flex; align-items:center;' }, [
+					E('strong', { style: 'font-size:0.9rem;' }, ['Histórico de Conexão & Sessão']),
+					statusBadge
+				]),
+				E('div', { style: 'display:flex; align-items:center; gap:6px;' }, [
+					linesSelect,
+					refreshBtn,
+					copyBtn
+				])
+			]),
+			logContainer,
+			E('div', { style: 'display:flex; justify-content:space-between; align-items:center; margin-top:8px; flex-wrap:wrap; gap:8px;' }, [
+				E('small', { class: 'ex-muted' }, [
+					'💡 Linhas em ',
+					E('span', { style: 'color:#34d399; font-weight:bold;' }, ['verde']),
+					' indicam sucesso e IPs obtidos. Linhas em ',
+					E('span', { style: 'color:#f87171; font-weight:bold;' }, ['vermelho']),
+					' indicam desconexão ou falha de autenticação.'
+				]),
+				E('button', {
+					class: 'btn cbi-button cbi-button-neutral',
+					type: 'button',
+					click: function() { ui.hideModal(); }
+				}, ['Fechar'])
+			])
+		];
+
+		ui.showModal('📜 Logs e Diagnóstico PPPoE — ' + wanLabel, modalContent);
+		fetchLogs();
 	},
 	showWanOptimizationsModal: function(iface) {
 		iface = /^wan([0-9]+)?$/.test(String(iface || '')) ? String(iface) : 'wan';
@@ -7397,7 +7558,19 @@ return view.extend({
 				infoRow('Enviado hoje',id+'-tx-day'),
 				infoRow('Sessão atual',id+'-session'),
 				infoRow('Tempo online',id+'-uptime'),
-				E('button',{class:'ex-mini-button ex-wan-edit-button','click':L.bind(function(){this.editWan(w.iface);},this)},[w.isPrimary?'Editar internet':'Editar porta / internet'])
+				E('div', { class: 'ex-wan-card-actions', style: 'display:flex; gap:6px; margin-top:8px;' }, [
+					E('button', {
+						class: 'ex-mini-button ex-wan-edit-button',
+						style: 'flex:1;',
+						click: L.bind(function(){ this.editWan(w.iface); }, this)
+					}, [w.isPrimary ? 'Editar internet' : 'Editar porta / internet']),
+					((values((data||{}).networkConfig)[w.iface] || {}).proto === 'pppoe' || (w.isPrimary && !((values((data||{}).networkConfig)[w.iface] || {}).proto))) ? E('button', {
+						class: 'ex-mini-button ex-wan-log-button',
+						style: 'background:rgba(59,130,246,0.12); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); font-weight:600; padding:6px 10px; white-space:nowrap;',
+						title: 'Ver histórico e diagnóstico da conexão PPPoE',
+						click: L.bind(function(){ this.showPppoeLogsModal(w.iface, w.label); }, this)
+					}, ['📜 Logs PPPoE']) : null
+				].filter(Boolean))
 			]);
 		},this));
 		const lanPorts=(data.lanPorts&&data.lanPorts.length)?data.lanPorts:lanPortsFromNetwork(data.networkConfig);

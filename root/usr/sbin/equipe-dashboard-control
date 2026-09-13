@@ -8637,6 +8637,27 @@ EOF
 		done
 		printf ']}\n'
 		;;
+	pppoe-log)
+		shift
+		count="${1:-150}"
+		[ "$count" = "wan" ] || [ "$count" = "wan2" ] || [ "$count" = "all" ] && { shift; count="${1:-150}"; }
+		case "$count" in ''|*[!0-9]*) count=150 ;; esac
+		[ "$count" -ge 10 ] || count=10
+		[ "$count" -le 500 ] || count=500
+		out=''
+		if command -v logread >/dev/null 2>&1; then
+			out="$(logread -e pppd | tail -n "$count")"
+		elif [ -f /var/log/messages ]; then
+			out="$(grep 'pppd' /var/log/messages | tail -n "$count")"
+		else
+			out="$(dmesg | grep 'pppd' | tail -n "$count")"
+		fi
+		if [ -z "$out" ]; then
+			echo "(Nenhum evento PPPoE recente registrado no log do sistema)"
+		else
+			printf '%s\n' "$out"
+		fi
+		;;
 	cleanup-orphan-leds)
 		cleanup_orphan_leds
 		echo 'ok'
