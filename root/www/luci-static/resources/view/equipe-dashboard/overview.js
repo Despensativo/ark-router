@@ -953,6 +953,7 @@ return view.extend({
 			setPill(prefix+'-status','standby','EM REDE LOCAL (LAN)');
 			text(prefix+'-mode','Operando como LAN (Auto-Sensing)');
 			text(prefix+'-ip','—');
+			text(prefix+'-ipv6','—');
 			text(prefix+'-gateway','—');
 			text(prefix+'-mask','—');
 			text(prefix+'-dns','—');
@@ -967,7 +968,19 @@ return view.extend({
 		const mwanInterfaces=((this.currentData||{}).mwan||{}).interfaces||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;}), online=!!i.up&&(!mwanRunning||(m&&(m.status==='online'||m.status==='unknown'||!m.running))), disabled=!phy.carrier||(mwanRunning&&m&&m.status==='disabled');
 		setPill(prefix+'-status',online?'online':(disabled?'standby':'offline'),online?'ONLINE':(disabled?'SEM CABO':'OFFLINE'));
 		const a=i['ipv4-address']&&i['ipv4-address'][0], speed=String(phy.speed||'').match(/[0-9]+/), full=String(phy.speed||'').toUpperCase().indexOf('F')>=0, link=phy.carrier?(speed?speed[0]+' Mbps'+(full?' • Full duplex':''):'conectado'):(i.up?'interface ativa':'sem link'), stats=d.statistics||{};
-		text(prefix+'-mode',wanProtoLabel(i,cfg)); text(prefix+'-ip',a?a.address:'—'); text(prefix+'-gateway',wanGateway(i)); text(prefix+'-mask',a?cidrMask(a.mask):'—'); text(prefix+'-dns',wanDns(i)); text(prefix+'-link',link); text(prefix+'-latency',(online&&ping!=null)?ping.toFixed(0)+' ms':'—'); text(prefix+'-rx-day',daily?formatBytes(daily.rx):'Coletando…'); text(prefix+'-tx-day',daily?formatBytes(daily.tx):'Coletando…'); text(prefix+'-session','↓ '+formatBytes(Number(stats.rx_bytes)||0)+'  •  ↑ '+formatBytes(Number(stats.tx_bytes)||0)); text(prefix+'-uptime',i.up?formatUptime(i.uptime):'—');
+		let ip6Str = '—';
+		const ip6Arr = i['ipv6-address'];
+		if (Array.isArray(ip6Arr) && ip6Arr.length > 0) {
+			ip6Str = ip6Arr[0].address;
+		} else if (this.currentData && this.currentData.interfaces) {
+			const ifaceName = (cfg && (cfg.section || cfg.iface)) || (prefix.replace(/^ex-/, '').replace(/1$/, ''));
+			const compName = (ifaceName === 'wan' ? 'wan6' : (ifaceName + '_6'));
+			const comp = iface(this.currentData.interfaces, compName) || (ifaceName === 'wan' ? iface(this.currentData.interfaces, 'wan6') : null);
+			if (comp && Array.isArray(comp['ipv6-address']) && comp['ipv6-address'].length > 0) {
+				ip6Str = comp['ipv6-address'][0].address;
+			}
+		}
+		text(prefix+'-mode',wanProtoLabel(i,cfg)); text(prefix+'-ip',a?a.address:'—'); text(prefix+'-ipv6',ip6Str); text(prefix+'-gateway',wanGateway(i)); text(prefix+'-mask',a?cidrMask(a.mask):'—'); text(prefix+'-dns',wanDns(i)); text(prefix+'-link',link); text(prefix+'-latency',(online&&ping!=null)?ping.toFixed(0)+' ms':'—'); text(prefix+'-rx-day',daily?formatBytes(daily.rx):'Coletando…'); text(prefix+'-tx-day',daily?formatBytes(daily.tx):'Coletando…'); text(prefix+'-session','↓ '+formatBytes(Number(stats.rx_bytes)||0)+'  •  ↑ '+formatBytes(Number(stats.tx_bytes)||0)); text(prefix+'-uptime',i.up?formatUptime(i.uptime):'—');
 	},
 	updateLan: function(prefix, device) {
 		const connected=!!device.carrier, speed=String(device.speed||'').match(/[0-9]+/), stats=device.statistics||{}, full=String(device.speed||'').toUpperCase().indexOf('F')>=0;
@@ -7971,6 +7984,7 @@ return view.extend({
 				]),
 				infoRow('Modo de conexão',id+'-mode'),
 				infoRow('Endereço IPv4',id+'-ip'),
+				infoRow('Endereço IPv6',id+'-ipv6'),
 				infoRow('Gateway',id+'-gateway'),
 				infoRow('Máscara',id+'-mask'),
 				infoRow('DNS recebidos',id+'-dns'),

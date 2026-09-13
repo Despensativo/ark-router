@@ -691,6 +691,47 @@ cleanup_apply_keys() {
 	sync
 	echo ok
 }
+sync_adguard_ipv6() {
+	enable_ipv6="${1:-}"
+	if [ -z "$enable_ipv6" ]; then
+		cur_mode="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
+		[ "$cur_mode" != "ipv4_only" ] && enable_ipv6=1 || enable_ipv6=0
+	fi
+
+	yaml="/etc/adguardhome/adguardhome.yaml"
+	[ -f "$yaml" ] || return 0
+
+	cp -f "$yaml" "${yaml}.bak_ipv6" 2>/dev/null || true
+
+	if [ "$enable_ipv6" = "1" ] || [ "$enable_ipv6" = "true" ]; then
+		# 1. Liberar resolucao de registros AAAA (IPv6)
+		sed -i 's/^[[:space:]]*aaaa_disabled:.*/  aaaa_disabled: false/' "$yaml"
+
+		# 2. Adicionar upstreams IPv6 ultrarrapidos caso nao existam
+		if ! grep -q "2606:4700:4700::1111" "$yaml"; then
+			sed -i '/^[[:space:]]*upstream_dns:/a \    - 2606:4700:4700::1111\n    - 2001:4860:4860::8888' "$yaml"
+		fi
+
+		# 3. Adicionar bootstrap IPv6 caso nao exista
+		if ! sed -n '/^[[:space:]]*bootstrap_dns:/,/^[a-z_]/p' "$yaml" | grep -q "2606:4700:4700::1111"; then
+			sed -i '/^[[:space:]]*bootstrap_dns:/a \    - 2606:4700:4700::1111\n    - 2001:4860:4860::8888' "$yaml"
+		fi
+	else
+		# Modo IPv4 Puro: desativar consultas AAAA para economia de latencia
+		sed -i 's/^[[:space:]]*aaaa_disabled:.*/  aaaa_disabled: true/' "$yaml"
+		sed -i '/2606:4700:4700::1111/d; /2001:4860:4860::8888/d' "$yaml"
+	fi
+
+	if [ -x /usr/bin/AdGuardHome ]; then
+		if /usr/bin/AdGuardHome --config "$yaml" --check-config >/dev/null 2>&1; then
+			/etc/init.d/adguardhome reload >/dev/null 2>&1 || /etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+		else
+			logger -t ark-adguard "Configuracao YAML do AdGuard corrompida ao sincronizar IPv6. Revertendo."
+			cp -f "${yaml}.bak_ipv6" "$yaml" 2>/dev/null || true
+		fi
+	fi
+}
+
 restore_ipv6_firewall_rules() {
 	zone="$(firewall_wan_zone_section)"
 	if [ -n "$zone" ]; then
@@ -790,6 +831,7 @@ enable_ipv6_dual_stack() {
 
 	[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd enable >/dev/null 2>&1 || true
 	[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
+	sync_adguard_ipv6 true
 }
 
 clean_ipv6_selective_firewall() {
@@ -1091,6 +1133,7 @@ EOF
 	lan_dev="$(uci -q get network.lan.device || uci -q get network.lan.ifname || echo br-lan)"
 	ip -6 addr flush dev "$lan_dev" scope global >/dev/null 2>&1 || true
 	ip -6 route flush dev "$lan_dev" >/dev/null 2>&1 || true
+	sync_adguard_ipv6 false
 }
 install_argon_release() {
 	version="${ARK_ARGON_VERSION:-2.4.6}"
@@ -3448,7 +3491,12 @@ dns_turbo_save() {
 		uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.1'
 		uci -q add_list dhcp.@dnsmasq[0].server='8.8.4.4'
 	fi
-	uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'
+	cur_ipv6="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
+	if [ "$cur_ipv6" = "ipv4_only" ]; then
+		uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'
+	else
+		uci -q delete dhcp.@dnsmasq[0].filter_aaaa
+	fi
 	lan_ip="$(uci -q get network.lan.ipaddr || echo 192.168.73.1)"
 	if [ "$fallback" = 1 ]; then
 		apply_lan_dhcp_dns "$lan_ip 1.1.1.1"
@@ -4303,11 +4351,12 @@ adblock_configure() {
 			' "$yaml" > "${yaml}.tmp" && mv -f "${yaml}.tmp" "$yaml"
 
 			if [ -x /usr/bin/AdGuardHome ]; then
-				if ! /usr/bin/AdGuardHome --check-config -c "$yaml" >/dev/null 2>&1; then
+				if ! (/usr/bin/AdGuardHome --config "$yaml" --check-config >/dev/null 2>&1 || /usr/bin/AdGuardHome --check-config -c "$yaml" >/dev/null 2>&1); then
 					logger -t ark-adguard "Configuracao YAML do AdGuard Home corrompida. Revertendo backup de seguranca."
 					cp -f "${yaml}.bak" "$yaml" 2>/dev/null || true
 				fi
 			fi
+			sync_adguard_ipv6
 
 			# Gerenciamento de Firewall ZeroTier para porta do AdGuard
 			cur_zt_http="$(uci -q get firewall.zt_http.dest_port || echo '80 443')"
@@ -4463,7 +4512,12 @@ adblock_enable() {
 		uci -q add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
 		uci -q set dhcp.@dnsmasq[0].noresolv='1'
 		uci -q set dhcp.@dnsmasq[0].allservers='0'
-		uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'
+		cur_ipv6="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
+		if [ "$cur_ipv6" = "ipv4_only" ]; then
+			uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'
+		else
+			uci -q delete dhcp.@dnsmasq[0].filter_aaaa
+		fi
 		uci commit dhcp
 
 		mkdir -p /etc/config
@@ -4494,7 +4548,12 @@ adblock_enable() {
 
 	uci -q set dhcp.@dnsmasq[0].allservers='0'
 	uci -q set dhcp.@dnsmasq[0].noresolv='1'
-	uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'
+	cur_ipv6="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
+	if [ "$cur_ipv6" = "ipv4_only" ]; then
+		uci -q set dhcp.@dnsmasq[0].filter_aaaa='1'
+	else
+		uci -q delete dhcp.@dnsmasq[0].filter_aaaa
+	fi
 	uci commit dhcp
 
 	adblock_configure cloud "$cache_mb" "$protection" "$parental" "$safesearch" "$provider" "$cloud_cache" "$web_port" "$zt_access" "$custom_blacklist" "$nextdns_id" "$custom_whitelist"
