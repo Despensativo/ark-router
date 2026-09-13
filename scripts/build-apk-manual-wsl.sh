@@ -31,6 +31,10 @@ trap cleanup EXIT
 
 mkdir -p "$pkg_root" "$out_dir" "$pkg_root/usr/share/ark-router"
 cp -a "$SRC_DIR/root/." "$pkg_root/"
+if [ -d "$SRC_DIR/dist/minified" ]; then
+	echo "Embedding minified assets from $SRC_DIR/dist/minified..."
+	cp -a "$SRC_DIR/dist/minified/." "$pkg_root/"
+fi
 printf '%s\n' "$version" > "$pkg_root/usr/share/ark-router/VERSION"
 printf '%s\n' "$version" > "$SRC_DIR/root/usr/share/ark-router/VERSION"
 rm -rf "$pkg_root/etc/etc" "$pkg_root/usr/usr" "$pkg_root/www/www"

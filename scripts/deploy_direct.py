@@ -13,7 +13,15 @@ if not PASSWORD:
 
 repo_dir = os.environ.get('ARK_ROUTER_REPO_DIR', os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-files_to_upload = [
+# Run minification pipeline before deploy
+try:
+    from build_minified_assets import build_minified
+    minified_map = build_minified()
+except Exception as e:
+    print(f"Aviso: Não foi possível minificar assets automaticamente ({e}). Usando originais.")
+    minified_map = {}
+
+raw_files_to_upload = [
     (os.path.join(repo_dir, 'root', 'usr', 'sbin', 'equipe-dashboard-control'), '/usr/sbin/equipe-dashboard-control'),
     (os.path.join(repo_dir, 'root', 'usr', 'sbin', 'equipe-traffic-history'), '/usr/sbin/equipe-traffic-history'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'resources', 'view', 'equipe-dashboard', 'overview.js'), '/www/luci-static/resources/view/equipe-dashboard/overview.js'),
@@ -29,6 +37,11 @@ files_to_upload = [
     (os.path.join(repo_dir, 'root', 'usr', 'lib', 'lua', 'luci', 'view', 'themes', 'ark', 'header.htm'), '/usr/lib/lua/luci/view/themes/ark/header.htm'),
     (os.path.join(repo_dir, 'root', 'usr', 'lib', 'lua', 'luci', 'view', 'themes', 'ark', 'footer.htm'), '/usr/lib/lua/luci/view/themes/ark/footer.htm'),
     (os.path.join(repo_dir, 'root', 'etc', 'init.d', 'ark-zerotier-ram'), '/etc/init.d/ark-zerotier-ram'),
+]
+
+files_to_upload = [
+    (minified_map.get(local_path, local_path), remote_path)
+    for local_path, remote_path in raw_files_to_upload
 ]
 
 print(f"Conectando ao roteador {ROUTER_IP} via SSH...")

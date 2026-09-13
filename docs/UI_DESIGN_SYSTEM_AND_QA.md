@@ -113,3 +113,39 @@ python scripts/qa_visual_matrix.py
 * `mr_during_menu == 'hidden'`: Fundo 100% travado ao abrir o menu lateral.
 * `mr_after_menu == 'auto'`: Fundo 100% destravado e restaurado ao fechar o menu lateral.
 * Capturas de tela salvas em `docs/qa_screenshots/` para auditoria visual instantânea.
+
+---
+
+## 6. Formato de Desenvolvimento de Botões e Modais: O Que Dá Certo vs. O Que NÃO Dá
+
+Este guia consolida as lições aprendidas durante o desenvolvimento do ARK Router para garantir consistência e estabilidade em todos os navegadores e dispositivos.
+
+### 6.1 Padrão de Engenharia de Botões e Modais de Confirmação
+
+1. **Ações Destrutivas / Críticas (Reboot, Reset, Flash, Mudança de Perfil)**:
+   * **Regra de Ouro**: Utilizar sempre `addEventListener('click', handler, true)` (fase de captura). Isso garante a interceptação do clique antes que manipuladores internos do LuCI ou submissões de formulário sejam disparados.
+   * **Trava Visual de 2 Segundos**: Ao abrir o modal de confirmação, o botão final de ação deve iniciar bloqueado (`disabled`) com contagem regressiva visível ("Aguarde 2s...", "Aguarde 1s..."), tornando-se ativo apenas após os 2 segundos.
+   * **Token Efêmero no Backend**: O backend (`equipe-dashboard-control`) deve validar a existência de um token temporário criado no primeiro clique e rejeitar qualquer chamada que ocorra antes do tempo mínimo exigido.
+
+2. **Área de Toque e Interação Touch**:
+   * Altura mínima útil de 40px (`min-height: 40px`) para todos os botões e seletores.
+   * `user-select: none` e `-webkit-tap-highlight-color: transparent` para eliminar flash azul e seleções de texto acidentais no mobile.
+   * Em telas pequenas (`<= 600px`), os botões de ação do rodapé de modais devem ser dispostos lado a lado (`flex: 1 1 calc(50% - 8px)`), facilitando o toque com o polegar.
+
+3. **Arquitetura de Modais e Overlays**:
+   * Desacoplamento estrito: `#modal_overlay` cobre a tela inteira (`fixed`, `inset: 0`, `100vw`, `100dvh`).
+   * A caixa do modal (`.modal`, `.cbi-modal`) é o cartão central (`max-width: min(90vw, 560px)`).
+   * Quando o modal está fechado, o overlay DEVE ter `pointer-events: none !important; opacity: 0; display: none;`.
+
+### 6.2 Matriz Prática: O Que Dá Certo vs. O Que NÃO Dá
+
+| Funcionalidade / Padrão | ✅ O Que DÁ Certo (Fazer) | ❌ O Que NÃO Dá Certo (Evitar) |
+| :--- | :--- | :--- |
+| **Confirmação de Ações** | Modais assíncronos com confirmação em duas etapas e contador de 2s. | `confirm()` ou `alert()` síncronos do browser (congelam o loop do LuCI e falham no iOS/Safari). |
+| **Manipulação de Eventos** | `addEventListener('click', fn, true)` na fase de captura. | Eventos inline `onclick="..."` ou listeners em fase de propagação (podem ser ignorados pelo LuCI). |
+| **Dimensionamento de Telas** | `width: 100%`, `max-width: ...`, `min-width: 0` em filhos de flex/grid. | `width: 600px` fixo em cartões ou botões (causa transbordamento horizontal imediato em celulares). |
+| **Rolagem no LuCI** | Travar `.main-right` (`overflow: hidden`) ao abrir modais ou menu lateral. | Tentar travar `document.body` (no LuCI Argon o body já tem `overflow: hidden`, quem rola é `.main-right`). |
+| **Renderização de Tabelas** | Selecionar tanto `table` quanto `.table`, `.tr`, `.td` via JS/CSS. | Assumir que o LuCI só gera tags `<table>` (OpenWrt 19.07+ usa divs para tabelas responsivas). |
+| **Senhas e Formulários** | Ignorar campos ocultos de bypass (`position: absolute; left: -100000px`). | Tentar ler valores de formulário pegando o primeiro `input[type=password]` sem verificar se está visível. |
+| **Assets de Frontend** | Manter código fonte legível e minificar para envio ao roteador (`scripts/build_minified_assets.py`). | Subir arquivos descompactados com 500 KB+ direto para o `/overlay` do roteador de 16 MB. |
+| **Armazenamento de Dados** | Salvar históricos e dados voláteis em `/tmp` (RAM). | Salvar arquivos de log ou CSVs que crescem indefinidamente em `/etc` no Flash SPI. |

@@ -1045,18 +1045,39 @@ return view.extend({
 		const autowanPolicy = (netCfg.autowan && netCfg.autowan.policy) || 'balanced';
 
 		if (isAutoWanActive) {
-			const autowanModeLabel = (autowanPolicy === 'balanced') ? 'Balanceamento Inteligente (Auto-WAN)' : 'Failover Automático (Auto-WAN)';
-			text('ex-mwan-mode', autowanModeLabel);
+			const dump = data.interfaces || {};
+			const connectedWans = activeWans.filter(function(w){
+				const live = iface(dump, w.iface);
+				return live && live.up;
+			});
+			const mwanInterfaces=(data.mwan&&data.mwan.interfaces)||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;});
 			const toggle = document.getElementById('ex-mwan-toggle');
 			if (toggle) {
-				toggle.checked = true;
+				toggle.checked = mwanRunning;
 				toggle.disabled = true;
-				toggle.title = 'Gerenciado dinamicamente pelo Auto-WAN. Para controle manual, desative o Piloto Automático.';
+				toggle.title = 'Gerenciado dinamicamente pelo Piloto Automático de Portas (Auto-WAN).';
 			}
-			text('ex-mwan-toggle-state', 'PILOTO AUTOMÁTICO');
-			setPill('ex-mwan-status', 'online', 'PILOTO AUTOMÁTICO');
-			const subEl = document.getElementById('ex-mwan-toggle-desc');
-			if (subEl) subEl.textContent = 'Gerenciado dinamicamente pelo Piloto Automático de Portas conforme cabos de internet são inseridos ou removidos.';
+			if (connectedWans.length >= 2) {
+				const autowanModeLabel = (autowanPolicy === 'balanced') ? 'Balanceamento Inteligente (Auto-WAN)' : 'Failover Automático (Auto-WAN)';
+				text('ex-mwan-mode', autowanModeLabel + ' • ' + connectedWans.length + ' Links');
+				text('ex-mwan-toggle-state', mwanRunning ? ('ATIVO (' + connectedWans.length + ' LINKS)') : 'SINCRONIZANDO');
+				setPill('ex-mwan-status', mwanRunning ? 'online' : 'standby', mwanRunning ? ('MULTI-WAN ATIVO (' + connectedWans.length + ')') : 'SINCRONIZANDO');
+				const subEl = document.getElementById('ex-mwan-toggle-desc');
+				if (subEl) subEl.textContent = 'Multi-WAN em operação distribuindo tráfego dinamicamente entre as portas conectadas (' + connectedWans.map(function(w){return w.label;}).join(', ') + ').';
+			} else if (connectedWans.length === 1) {
+				const singleWan = connectedWans[0];
+				text('ex-mwan-mode', 'Modo Single-WAN (' + singleWan.label + ' via DHCP)');
+				text('ex-mwan-toggle-state', 'STANDBY (1 LINK)');
+				setPill('ex-mwan-status', 'standby', 'SINGLE-WAN');
+				const subEl = document.getElementById('ex-mwan-toggle-desc');
+				if (subEl) subEl.textContent = 'Operando com 1 cabo de internet (' + singleWan.label + '). Balanceamento pausado para economizar RAM/CPU. Ativará automaticamente ao plugar um 2º cabo.';
+			} else {
+				text('ex-mwan-mode', 'Piloto Automático (Auto-WAN)');
+				text('ex-mwan-toggle-state', 'AGUARDANDO CABO');
+				setPill('ex-mwan-status', 'offline', 'SEM CABO');
+				const subEl = document.getElementById('ex-mwan-toggle-desc');
+				if (subEl) subEl.textContent = 'Nenhum cabo de modem detectado com sinal DHCP. Conecte um cabo de internet em qualquer porta para iniciar.';
+			}
 		} else {
 			text('ex-mwan-mode', modeLabel);
 			const mwanInterfaces=(data.mwan&&data.mwan.interfaces)||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;});
@@ -7054,6 +7075,13 @@ return view.extend({
 		}, data.perfStatus || {});
 
 		const irqbalance = this.feature('irqbalance');
+		const hwInfo = data.hardwareInfo || {};
+		const cpuInfo = hwInfo.cpu || {};
+		const cpuCores = cpuInfo.cores || 1;
+		const memTotalMb = (hwInfo.memory && hwInfo.memory.total_mb) || 128;
+		const isOpkg = !!(hwInfo.target && (hwInfo.target.indexOf('ar71xx') >= 0 || hwInfo.target.indexOf('ath79') >= 0));
+		const hasSpeedify = !!this.perfState.speedify_installed;
+
 		const conntrackCount = this.perfState.conntrack_count || 0;
 		const conntrackMax = this.perfState.conntrack_max || 16384;
 		const conntrackPercent = conntrackMax > 0 ? Math.min(100, Math.round((conntrackCount / conntrackMax) * 100)) : 0;
@@ -7062,11 +7090,11 @@ return view.extend({
 			let c = 0;
 			if (self.perfState.conntrack_recycle) c++;
 			if (self.perfState.ram_autopurge) c++;
-			if (self.perfState.speedify_installed && !self.perfState.speedify_encryption) c++;
-			if (self.perfState.speedify_log_cap) c++;
+			if (hasSpeedify && !self.perfState.speedify_encryption) c++;
+			if (hasSpeedify && self.perfState.speedify_log_cap) c++;
 			if (self.perfState.nlbwmon_lite) c++;
 			if (self.perfState.dns_allservers) c++;
-			if (irqbalance.installed && irqbalance.active) c++;
+			if (cpuCores > 1 && irqbalance.installed && irqbalance.active) c++;
 			return c;
 		};
 
@@ -7213,58 +7241,70 @@ return view.extend({
 			]);
 		};
 
-		const irqStatePill = E('strong', {
-			class: 'ex-device-switch-state',
-			style: 'margin-right: 12px;'
-		}, [irqbalance.active ? 'LIGADA' : 'DESLIGADA']);
+		let irqControl;
+		let irqBadge = 'DUAL-CORE / QUAD-CORE';
+		let irqBadgeClass = 'badge-blue';
+		let irqAdvice = (irqbalance.installed ? 'Recomendado para processadores Dual-Core e Quad-Core (Filogic 820/830, MediaTek, x86).' : 'Instale o pacote IRQ Balance na Central de Recursos para habilitar.');
+		
+		if (cpuCores <= 1) {
+			irqBadge = 'SINGLE-CORE (1 NÚCLEO)';
+			irqBadgeClass = 'badge-muted';
+			irqAdvice = 'Indisponível em CPUs de 1 núcleo (' + (hwInfo.model || 'Qualcomm QCA9558') + '). O IRQ Balance requer processadores Multicore (Dual-Core ou Quad-Core) para distribuir tarefas.';
+			irqControl = E('span', { class: 'ex-pill standby', style: 'padding: 6px 12px; font-weight: 700; cursor: default;' }, ['SINGLE-CORE']);
+		} else {
+			const irqStatePill = E('strong', {
+				class: 'ex-device-switch-state',
+				style: 'margin-right: 12px;'
+			}, [irqbalance.active ? 'LIGADA' : 'DESLIGADA']);
 
-		const irqInput = E('input', {
-			type: 'checkbox',
-			'aria-label': 'Distribuição de Interrupções Multicore (IRQ Balance)',
-			change: function(ev) {
-				const input = ev.currentTarget;
-				const desired = !!input.checked;
-				irqStatePill.textContent = desired ? 'LIGADA' : 'DESLIGADA';
-				fs.exec('/usr/sbin/equipe-dashboard-control', ['irqbalance-toggle', desired ? '1' : '0']).then(function(r) {
-					if (r.code) throw new Error(r.stderr || 'Falha ao alterar IRQ Balance');
-					reloadSoon(desired ? 'IRQ Balance ativado. Recarregando…' : 'IRQ Balance desativado. Recarregando…', 900);
-				}).catch(function(e) {
-					input.checked = !desired;
-					irqStatePill.textContent = !desired ? 'LIGADA' : 'DESLIGADA';
-					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
-				});
-			}
-		});
-		irqInput.checked = !!irqbalance.active;
-		if (!irqbalance.installed) irqInput.disabled = true;
+			const irqInput = E('input', {
+				type: 'checkbox',
+				'aria-label': 'Distribuição de Interrupções Multicore (IRQ Balance)',
+				change: function(ev) {
+					const input = ev.currentTarget;
+					const desired = !!input.checked;
+					irqStatePill.textContent = desired ? 'LIGADA' : 'DESLIGADA';
+					fs.exec('/usr/sbin/equipe-dashboard-control', ['irqbalance-toggle', desired ? '1' : '0']).then(function(r) {
+						if (r.code) throw new Error(r.stderr || 'Falha ao alterar IRQ Balance');
+						reloadSoon(desired ? 'IRQ Balance ativado. Recarregando…' : 'IRQ Balance desativado. Recarregando…', 900);
+					}).catch(function(e) {
+						input.checked = !desired;
+						irqStatePill.textContent = !desired ? 'LIGADA' : 'DESLIGADA';
+						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+					});
+				}
+			});
+			irqInput.checked = !!irqbalance.active;
+			if (!irqbalance.installed) irqInput.disabled = true;
 
-		const irqControl = irqbalance.installed ? E('div', {
-			class: 'ex-device-switch-control',
-			style: 'cursor: pointer; user-select: none;',
-			click: function(ev) {
-				ev.preventDefault();
-				ev.stopPropagation();
-				if (!irqbalance.installed || irqInput.disabled) return;
-				irqInput.checked = !irqInput.checked;
-				irqInput.dispatchEvent(new Event('change', { bubbles: true }));
-			}
-		}, [
-			irqStatePill,
-			E('label', { class: 'ex-switch', style: 'pointer-events: none;' }, [
-				irqInput,
-				E('span', { class: 'ex-switch-slider' })
-			])
-		]) : E('button', { class: 'ex-mini-button', click: L.bind(this.installFeature, this, 'irqbalance') }, ['Instalar']);
+			irqControl = irqbalance.installed ? E('div', {
+				class: 'ex-device-switch-control',
+				style: 'cursor: pointer; user-select: none;',
+				click: function(ev) {
+					ev.preventDefault();
+					ev.stopPropagation();
+					if (!irqbalance.installed || irqInput.disabled) return;
+					irqInput.checked = !irqInput.checked;
+					irqInput.dispatchEvent(new Event('change', { bubbles: true }));
+				}
+			}, [
+				irqStatePill,
+				E('label', { class: 'ex-switch', style: 'pointer-events: none;' }, [
+					irqInput,
+					E('span', { class: 'ex-switch-slider' })
+				])
+			]) : E('button', { class: 'ex-mini-button', click: L.bind(this.installFeature, this, 'irqbalance') }, ['Instalar']);
+		}
 
 		const irqRow = E('div', { class: 'ex-perf-item' }, [
 			E('div', { class: 'ex-perf-item-content' }, [
 				E('div', { class: 'ex-perf-item-head' }, [
 					E('span', { class: 'ex-perf-icon' }, ['⚖️']),
 					E('strong', {}, ['Distribuição de Interrupções Multicore (IRQ Balance)']),
-					E('span', { class: 'ex-perf-badge badge-blue' }, ['DUAL-CORE / QUAD-CORE'])
+					E('span', { class: 'ex-perf-badge ' + irqBadgeClass }, [irqBadge])
 				]),
 				E('p', { class: 'ex-perf-desc' }, ['Equilibra o processamento dos pacotes Wi-Fi, Ethernet e placa de rede entre os núcleos da CPU.']),
-				E('small', { class: 'ex-perf-hw-advice' }, ['💡 ' + (irqbalance.installed ? 'Recomendado para processadores Dual-Core e Quad-Core (Filogic 820/830, MediaTek, x86).' : 'Instale o pacote IRQ Balance na Central de Recursos para habilitar.')])
+				E('small', { class: 'ex-perf-hw-advice' }, ['💡 ' + irqAdvice])
 			]),
 			irqControl
 		]);
@@ -7298,6 +7338,19 @@ return view.extend({
 			}
 		}, ['⚙️ Limites']);
 
+		const ramBadge = memTotalMb <= 150 ? 'CRÍTICO PARA 128 MB RAM' : (memTotalMb <= 300 ? 'RECOMENDADO PARA 256 MB' : 'RECOMENDADO PARA 512 MB');
+		const ramAdvice = memTotalMb <= 150
+			? 'Essencial para o D-Link DGL-5500 (128 MB) para manter margem segura de RAM livre (> 60 MB) e evitar esgotamento de memória sob carga contínua.'
+			: 'Essencial para roteadores com 256MB ou 512MB de RAM (ex: Cudy WR3000) para evitar esgotamento em uso contínuo de várias horas.';
+
+		const conntrackBadge = memTotalMb <= 150 ? '128 MB (PADRÃO 16K)' : '512MB / 1GB RAM';
+		const conntrackAdvice = memTotalMb <= 150
+			? 'O DGL-5500 opera perfeitamente com a tabela padrão de 16.384 conexões (apenas ' + conntrackPercent + '% em uso). Conexões ampliadas (65k/131k) são exclusivas para roteadores com 512MB ou 1GB de RAM.'
+			: 'Padrão ativo em 1 hora (ideal para 100 a 250 clientes). Toque em “Limites” para dimensionar conexões NAT, rajada e pool DHCP.';
+
+		const flashBadge = memTotalMb <= 150 ? 'ROTEADORES <= 16MB (DGL-5500)' : 'ROTEADORES <= 16MB';
+		const flashDesc = 'Compacta pacotes pesados para descompressão em RAM no boot, limpa caches do ' + (isOpkg ? 'OPKG' : 'APK') + ' e remove redundâncias na partição Flash.';
+
 		const rows = [
 			makePerfRow(
 				'⚡',
@@ -7328,19 +7381,19 @@ return view.extend({
 					E('div', { class: 'ex-perf-item-head' }, [
 						E('span', { class: 'ex-perf-icon' }, ['💾']),
 						E('strong', {}, ['Otimização de Armazenamento Flash']),
-						E('span', { class: 'ex-perf-badge badge-blue' }, ['ROTEADORES <= 16MB'])
+						E('span', { class: 'ex-perf-badge badge-blue' }, [flashBadge])
 					]),
-					E('p', { class: 'ex-perf-desc' }, ['Compacta pacotes pesados (ZeroTier) para descompressão em RAM no boot, limpa caches do APK e remove redundâncias na partição Flash.'])
+					E('p', { class: 'ex-perf-desc' }, [flashDesc])
 				]),
 				purgeStorageBtn
 			]),
 			makePerfRow(
 				'🛡️',
 				'Capacidade & Conexões NAT (Conntrack)',
-				'512MB / 1GB RAM',
+				conntrackBadge,
 				'badge-green',
-				'Controla a tabela de conexões ativas do firewall e a reciclagem de conexões mortas (padrão de 1 hora ativo). Expande a tabela para 131.072 conexões simultâneas. (' + conntrackStateText + ')',
-				'Padrão ativo em 1 hora (ideal para 100 a 250 clientes). Toque em “Limites” para dimensionar conexões NAT, rajada e pool DHCP.',
+				'Controla a tabela de conexões ativas do firewall e a reciclagem de conexões mortas (padrão de 1 hora ativo). ' + (memTotalMb <= 150 ? 'Tabela dimensionada para 16.384 conexões. (' : 'Expande a tabela para 131.072 conexões simultâneas. (') + conntrackStateText + ')',
+				conntrackAdvice,
 				!!this.perfState.conntrack_recycle,
 				true,
 				'conntrack_recycle',
@@ -7350,16 +7403,19 @@ return view.extend({
 			makePerfRow(
 				'🧹',
 				'Auto-Purge de Memória RAM & Caches do Kernel',
-				'RECOMENDADO PARA 256MB/512MB RAM',
+				ramBadge,
 				'badge-green',
 				'Ajusta o descarte contínuo de buffers (vfs_cache_pressure) e executa reciclagem de temporários em /tmp, mantendo margem segura de RAM livre.',
-				'Essencial para roteadores com 256MB ou 512MB de RAM (ex: Cudy WR3000) para evitar esgotamento em uso contínuo de várias horas.',
+				ramAdvice,
 				!!this.perfState.ram_autopurge,
 				true,
 				'ram_autopurge',
 				false
-			),
-			makePerfRow(
+			)
+		];
+
+		if (hasSpeedify) {
+			rows.push(makePerfRow(
 				'🚀',
 				'Modo Turbo Speedify (Desligar Criptografia Interna)',
 				'PARA CPUS DUAL-CORE / MÁXIMA VELOCIDADE',
@@ -7370,8 +7426,8 @@ return view.extend({
 				true,
 				'speedify_encryption',
 				true
-			),
-			makePerfRow(
+			));
+			rows.push(makePerfRow(
 				'🔒',
 				'Trava de Logs do Speedify (Capping 2MB)',
 				'BLINDAGEM DE MEMÓRIA',
@@ -7382,21 +7438,23 @@ return view.extend({
 				true,
 				'speedify_log_cap',
 				false
-			),
-			makePerfRow(
-				'📊',
-				'Modo Leve do Monitor de Tráfego (nlbwmon Lite)',
-				'ECONOMIA EM EVENTOS',
-				'badge-blue',
-				'Agrupa métricas apenas por dispositivo (MAC/IP local), sem salvar o histórico detalhado de cada IP externo remoto da internet na memória.',
-				'Recomendado em eventos e redes públicas para evitar crescimento do banco de dados na RAM.',
-				!!this.perfState.nlbwmon_lite,
-				true,
-				'nlbwmon_lite',
-				false
-			),
-			irqRow
-		];
+			));
+		}
+
+		rows.push(makePerfRow(
+			'📊',
+			'Modo Leve do Monitor de Tráfego (nlbwmon Lite)',
+			'ECONOMIA EM EVENTOS',
+			'badge-blue',
+			'Agrupa métricas apenas por dispositivo (MAC/IP local), sem salvar o histórico detalhado de cada IP externo remoto da internet na memória.',
+			'Recomendado em eventos e redes públicas para evitar crescimento do banco de dados na RAM.',
+			!!this.perfState.nlbwmon_lite,
+			true,
+			'nlbwmon_lite',
+			false
+		));
+
+		rows.push(irqRow);
 
 		const initialActive = countActive();
 		const summarySubtitle = initialActive > 0 ? (initialActive + ' otimizaç' + (initialActive === 1 ? 'ão ativa' : 'ões ativas') + ' • toque para configurar') : 'Controles de estabilidade e memória para eventos • toque para configurar';
@@ -7548,7 +7606,7 @@ return view.extend({
 		const sortSelect=E('select',{id:'ex-device-sort-key',class:'cbi-input-select ex-device-sort-select','change':L.bind(function(ev){this.setDeviceSort(ev.currentTarget.value);},this)},[E('option',{value:'total'},['Total consumido']),E('option',{value:'now'},['Agora (velocidade)']),E('option',{value:'name'},['Nome do aparelho'])]);sortSelect.value=this.deviceSortKey||'total';
 		const deviceSortControls=E('div',{class:'ex-device-sort-controls'},[E('span',{class:'ex-muted ex-device-sort-label'},['Ordenar']),sortSelect,E('button',{id:'ex-device-sort-dir',class:'ex-mini-button','click':L.bind(function(ev){this.toggleDeviceSortDirection(ev.currentTarget);},this)},[this.deviceSortKey==='name'?(this.deviceSortDir==='asc'?'A → Z':'Z → A'):(this.deviceSortDir==='desc'?'Maior primeiro':'Menor primeiro')])]);
 		const arkVersion=((this.capabilities.update||{}).current)||'—';
-		const irqbalance=this.feature('irqbalance');
+		const irqbalance = this.feature('irqbalance');
 		const irqbalanceInput=E('input',{type:'checkbox','aria-label':'Ativar IRQ Balance','change':L.bind(function(ev){const input=ev.currentTarget,desired=!!input.checked;return fs.exec('/usr/sbin/equipe-dashboard-control',['irqbalance-toggle',desired?'1':'0']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar IRQ Balance');reloadSoon(desired?'IRQ Balance ativado. Recarregando o painel…':'IRQ Balance desativado. Recarregando o painel…',900);}).catch(function(e){input.checked=!desired;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)});irqbalanceInput.checked=!!irqbalance.active;irqbalanceInput.disabled=!irqbalance.installed;
 		const irqbalanceControl=irqbalance.installed?E('div',{class:'ex-device-switch-control'},[E('strong',{class:'ex-device-switch-state'},[irqbalance.active?'LIGADA':'DESLIGADA']),E('label',{class:'ex-switch'},[irqbalanceInput,E('span',{class:'ex-switch-slider'})])]):E('button',{class:'ex-mini-button','click':L.bind(this.installFeature,this,'irqbalance')},['Instalar IRQ Balance']);
 		const mwanInterfaces=(data.mwan&&data.mwan.interfaces)||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;});
@@ -7996,33 +8054,67 @@ return view.extend({
 			})(),
 			starlinkSection || '',
 			E('div',{class:'ex-grid ex-grid-2'},wanCards),
-			E('section',{class:'ex-card ex-mwan-control'},[
-				E('div',{class:'ex-card-title'},[
-					E('div',{},[
-						E('span',{class:'ex-kicker'},['MULTI‑WAN']),
-						E('h3',{},['Modo atual: ',E('span',{id:'ex-mwan-mode'},[isAutoWanActiveGlobal ? ((netCfgValues.autowan && netCfgValues.autowan.policy === 'failover') ? 'Failover Automático (Auto-WAN)' : 'Balanceamento Inteligente (Auto-WAN)') : 'Failover WAN1 → WAN2'])])
+			(function(){
+				const connectedWansInitial = activeWans.filter(function(w){
+					const live = iface(data.interfaces, w.iface);
+					return live && live.up;
+				});
+				let initialMwanModeLabel = 'Failover WAN1 → WAN2';
+				let initialMwanPillClass = mwanRunning ? 'online' : (mwanPaused ? 'standby' : 'offline');
+				let initialMwanPillText = mwanPaused ? 'PAUSADO' : (mwanRunning ? 'ATIVO' : 'DESLIGADO');
+				let initialMwanToggleState = mwanPaused ? 'PAUSADO PELO SPEEDIFY' : (mwanRunning ? 'LIGADO' : 'DESLIGADO');
+				let initialMwanToggleDesc = mwanPaused ? 'Pausado automaticamente enquanto o Speedify controla as rotas.' : 'Liga failover/balanceamento sem alterar o modo escolhido.';
+
+				if (isAutoWanActiveGlobal) {
+					if (connectedWansInitial.length >= 2) {
+						initialMwanModeLabel = ((netCfgValues.autowan && netCfgValues.autowan.policy === 'failover') ? 'Failover Automático (Auto-WAN)' : 'Balanceamento Inteligente (Auto-WAN)') + ' • ' + connectedWansInitial.length + ' Links';
+						initialMwanPillClass = mwanRunning ? 'online' : 'standby';
+						initialMwanPillText = mwanRunning ? ('MULTI-WAN ATIVO (' + connectedWansInitial.length + ')') : 'SINCRONIZANDO';
+						initialMwanToggleState = mwanRunning ? ('ATIVO (' + connectedWansInitial.length + ' LINKS)') : 'SINCRONIZANDO';
+						initialMwanToggleDesc = 'Multi-WAN em operação distribuindo tráfego dinamicamente entre as portas conectadas (' + connectedWansInitial.map(function(w){return w.label;}).join(', ') + ').';
+					} else if (connectedWansInitial.length === 1) {
+						initialMwanModeLabel = 'Modo Single-WAN (' + connectedWansInitial[0].label + ' via DHCP)';
+						initialMwanPillClass = 'standby';
+						initialMwanPillText = 'SINGLE-WAN';
+						initialMwanToggleState = 'STANDBY (1 LINK)';
+						initialMwanToggleDesc = 'Operando com 1 cabo de internet (' + connectedWansInitial[0].label + '). Balanceamento pausado para economizar RAM/CPU. Ativará automaticamente ao plugar um 2º cabo.';
+					} else {
+						initialMwanModeLabel = 'Piloto Automático (Auto-WAN)';
+						initialMwanPillClass = 'offline';
+						initialMwanPillText = 'SEM CABO';
+						initialMwanToggleState = 'AGUARDANDO CABO';
+						initialMwanToggleDesc = 'Nenhum cabo de modem detectado com sinal DHCP. Conecte um cabo de internet em qualquer porta para iniciar.';
+					}
+				}
+
+				return E('section',{class:'ex-card ex-mwan-control'},[
+					E('div',{class:'ex-card-title'},[
+						E('div',{},[
+							E('span',{class:'ex-kicker'},['MULTI‑WAN']),
+							E('h3',{},['Modo atual: ',E('span',{id:'ex-mwan-mode'},[initialMwanModeLabel])])
+						]),
+						E('span',{id:'ex-mwan-status',class:'ex-pill ' + initialMwanPillClass},[initialMwanPillText])
 					]),
-					E('span',{id:'ex-mwan-status',class:'ex-pill '+(isAutoWanActiveGlobal ? 'online' : (mwanRunning?'online':(mwanPaused?'standby':'offline')))},[isAutoWanActiveGlobal ? 'PILOTO AUTOMÁTICO' : (mwanPaused?'PAUSADO':(mwanRunning?'ATIVO':'DESLIGADO'))])
-				]),
-				E('div',{class:'ex-qos-toggle-row ex-mwan-toggle-row'},[
-					E('div',{},[
-						E('strong',{},['Serviço Multi-WAN']),
-						E('small',{id:'ex-mwan-toggle-desc',class:'ex-muted'},[isAutoWanActiveGlobal ? 'Gerenciado dinamicamente pelo Piloto Automático de Portas conforme cabos de internet são inseridos ou removidos.' : (mwanPaused?'Pausado automaticamente enquanto o Speedify controla as rotas.':'Liga failover/balanceamento sem alterar o modo escolhido.')])
+					E('div',{class:'ex-qos-toggle-row ex-mwan-toggle-row'},[
+						E('div',{},[
+							E('strong',{},['Serviço Multi-WAN']),
+							E('small',{id:'ex-mwan-toggle-desc',class:'ex-muted'},[initialMwanToggleDesc])
+						]),
+						E('div',{class:'ex-device-switch-control'},[
+							E('strong',{id:'ex-mwan-toggle-state',class:'ex-device-switch-state'},[initialMwanToggleState]),
+							E('label',{class:'ex-switch'},[mwanInput,E('span',{class:'ex-switch-slider'})])
+						])
 					]),
-					E('div',{class:'ex-device-switch-control'},[
-						E('strong',{id:'ex-mwan-toggle-state',class:'ex-device-switch-state'},[isAutoWanActiveGlobal ? 'PILOTO AUTOMÁTICO' : (mwanPaused?'PAUSADO PELO SPEEDIFY':(mwanRunning?'LIGADO':'DESLIGADO'))]),
-						E('label',{class:'ex-switch'},[mwanInput,E('span',{class:'ex-switch-slider'})])
+					E('details',{class:'ex-mwan-editor'},[
+						E('summary',{},['Editar modo do Multi‑WAN']),
+						E('div',{class:'ex-mwan-editor-body'},[
+							E('p',{class:'ex-muted'},[activeWans.length>=2?'Escolha um modo abaixo. Depois do clique, ainda será necessário confirmar antes que qualquer alteração seja aplicada.':'Quando houver 2 ou mais conexões WAN ativas, você poderá alternar entre Failover e Balanceamento.']),
+							E('div',{class:'ex-mode-grid'},mwanModeButtons),
+							E('small',{class:'ex-muted'},['Balanceamento distribui conexões entre os links; não soma a velocidade de um único envio.'])
+						])
 					])
-				]),
-				E('details',{class:'ex-mwan-editor'},[
-					E('summary',{},['Editar modo do Multi‑WAN']),
-					E('div',{class:'ex-mwan-editor-body'},[
-						E('p',{class:'ex-muted'},[activeWans.length>=2?'Escolha um modo abaixo. Depois do clique, ainda será necessário confirmar antes que qualquer alteração seja aplicada.':'Quando houver 2 ou mais conexões WAN ativas, você poderá alternar entre Failover e Balanceamento.']),
-						E('div',{class:'ex-mode-grid'},mwanModeButtons),
-						E('small',{class:'ex-muted'},['Balanceamento distribui conexões entre os links; não soma a velocidade de um único envio.'])
-					])
-				])
-			]),
+				]);
+			})(),
 			E('section',{class:'ex-card ex-qos-card'},[
 				E('div',{class:'ex-card-title'},[
 					E('div',{},[E('span',{class:'ex-kicker'},['CONTROLE DE FILAS']),E('h3',{},['CAKE / SQM'])]),

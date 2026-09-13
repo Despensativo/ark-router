@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.9.97
+
+- **🌐 Auto-WAN Inteligente com Standby de Balanceamento em Single-WAN**:
+  - **Auto-Sensing Completo em Qualquer Porta (Portas 1, 2, 3, 4 e 5)**: O daemon de Auto-WAN monitora dinamicamente todas as portas do switch/DSA. Ao conectar um cabo de modem/provedor em qualquer porta física, uma quarentena rápida de 1 segundo sonda a presença de servidor DHCP upstream. Se confirmado, a porta é promovida automaticamente a WAN.
+  - **Operação Nativa Single-WAN (0% Overhead de MWAN3)**: Quando há apenas 1 cabo de internet conectado, o serviço de Multi-WAN (`mwan3`) permanece **automaticamente desativado/pausado em Standby**. O tráfego flui em velocidade de linha (line-rate) diretamente pelo kernel Linux com software flow offloading ativo, economizando memória RAM e CPU essenciais (eliminando instâncias de `mwan3track` e pings contínuos).
+  - **Ativação Dinâmica de Multi-WAN sob Demanda ($\ge 2$ WANs)**: O balanceamento de carga (`mwan3`) só acorda e inicia seus processos se e quando 2 ou mais cabos de internet forem fisicamente conectados e autenticados. Se um dos cabos for desconectado, o Multi-WAN é imediatamente colocado de volta em Standby e o link remanescente assume 100% da navegação sem interrupção.
+  - **Feedback Visual Claro no LuCI (`overview.js`)**:
+    - **1 Link Ativo**: Exibe `Modo Single-WAN (WANx via DHCP)`, badge âmbar `[ SINGLE-WAN ]`, estado `STANDBY (1 LINK)` e descrição explicativa de que o balanceamento está em repouso.
+    - **2+ Links Ativos**: Exibe `Balanceamento Inteligente • 2 Links`, badge verde `[ MULTI-WAN ATIVO (2) ]` e estado `ATIVO (2 LINKS)`.
+    - **Sem Cabos**: Exibe `Piloto Automático (Auto-WAN)`, badge cinza `[ SEM CABO ]` e estado `AGUARDANDO CABO`.
+  - **Adaptação de Hardware Específica para Single-Core & 128 MB RAM (D-Link DGL-5500)**:
+    - `overview.js` detecta processadores de 1 núcleo (`cpuCores <= 1`) e exibe o IRQ Balance com badge cinza `[ SINGLE-CORE (1 NÚCLEO) ]`, estado `SINGLE-CORE` e explicação informativa, prevenindo confusão de recursos.
+    - Otimizações de conntrack (`conntrack_recycle`) ativadas com tempo limite reduzido para TCP estabelecido, liberando RAM instantaneamente.
+    - Ocultação inteligente de controles do Speedify quando o pacote não está instalado.
+
 ## 0.9.96
 
 - **🛡️ Blindagem Total Contra Erros Humanos de Digitação & Validação Defensiva**:

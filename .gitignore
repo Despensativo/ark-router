@@ -11,4 +11,6 @@ docs/screenshots/_test-*.png
 !dist/sdk/*.ipk
 backups_cudy/
 cudy_installed_pkgs.txt
-
+__pycache__/
+*.pyc
+dist/minified/

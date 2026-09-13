@@ -161,3 +161,27 @@ To guarantee visual containment, zero layout breaking, and cross-browser stabili
   7. Compact Mobile Viewport (360×740);
   8. Tablet Viewport (768×1024).
 - **Automated Assertions**: Validates horizontal overflow absence (`hasDocOverflow == false`), element containment, scroll fluidity, side-menu background locking/unlocking, and saves high-resolution audit screenshots under `docs/qa_screenshots/`.
+
+## 16 MB Flash SPI Budget and OverlayFS Dynamics
+
+On 16 MB embedded targets (such as Cudy WR3000 v1 and D-Link DGL-5500), physical flash space is constrained:
+$$\text{Overlay Space} = 16\text{ MB} - (\text{Bootloader} + \text{Kernel} + \text{SquashFS / ROM})$$
+
+1. **SquashFS vs. Overlay Partitioning**:
+   - Compiling packages and views directly into the firmware image stores them in compressed read-only SquashFS (`/rom`), which achieves ~3:1 to 4:1 compression.
+   - The remaining unallocated space at the end of the 16 MB SPI chip becomes the writable JFFS2 partition mounted at `/overlay` (`rootfs_data`).
+2. **Duplication Penalty on Direct Deploys**:
+   - If files already baked in `/rom` are pushed to `/www/...` or `/usr/...` on a running router, OverlayFS writes them to `/overlay/upper`, consuming uncompressed flash in the writable partition.
+   - Unminified JavaScript files (such as raw `overview.js` at 550+ KB) quickly exhaust a 3.1 MB overlay partition.
+3. **Minification Pipeline (`scripts/build_minified_assets.py`)**:
+   - Development code remains fully formatted and commented in `root/www/...`.
+   - Direct deployments and package builds pass through an automated minification pass (via `esbuild`/`terser`), shrinking assets by ~60-70% and validating syntax with `node --check`.
+
+## ZeroTier Resource Tuning (`local.conf`)
+
+ZeroTier One is a C++ multi-threaded mesh daemon. To minimize resource consumption on 128 MB to 256 MB routers:
+- Virtual memory (VSZ ~32 MB) represents pre-allocated thread stack space, while actual physical resident RAM (RSS) is ~8 MB.
+- Tuning via `/var/lib/zerotier-one/local.conf` (configured through `/etc/config/zerotier` `local_conf_path`):
+  - `"portMappingEnabled": false`: Disables continuous UPnP/NAT-PMP probing loops, saving CPU and thread overhead.
+  - `"interfacePrefixBlacklist": ["br-lan", "lan", "eth", "wlan"]`: Prevents ZeroTier from scanning and broadcasting across the internal LAN, cutting socket buffers and neighbor table tracking.
+  - `"allowTcpFallbackRelay": false`: Avoids keeping fallback TLS sockets open when direct UDP connectivity is healthy.

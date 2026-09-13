@@ -31,6 +31,10 @@ build_ipk_variant() {
 
 	# 1. Copy payload files
 	cp -a "$SRC_DIR/root/." "$data_dir/"
+	if [ -d "$SRC_DIR/dist/minified" ]; then
+		echo "Embedding minified assets from $SRC_DIR/dist/minified..."
+		cp -a "$SRC_DIR/dist/minified/." "$data_dir/"
+	fi
 	mkdir -p "$data_dir/usr/share/ark-router"
 	printf '%s\n' "$version" > "$data_dir/usr/share/ark-router/VERSION"
 	rm -rf "$data_dir/etc/etc" "$data_dir/usr/usr" "$data_dir/www/www"

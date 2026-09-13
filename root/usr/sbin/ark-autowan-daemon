@@ -16,6 +16,28 @@ logger -t ark-autowan "ARK Auto-WAN Daemon iniciado."
 
 touch "$STATE_FILE" "$DYNAMIC_WANS_FILE"
 
+sync_autowan_mwan() {
+	local pol="$1"
+	local active_cnt=0
+	for w in $(uci -q show network | grep '=interface' | cut -d. -f2 | cut -d= -f1 | grep -E '^wan([0-9]+)?$'); do
+		local auto="$(uci -q get "network.$w.auto" || echo '1')"
+		[ "$auto" != "0" ] || continue
+		local p="$(uci -q get "network.$w.proto" || echo 'none')"
+		local d="$(uci -q get "network.$w.device" || uci -q get "network.$w.ifname" || echo '')"
+		[ "$p" != "none" ] && [ -n "$d" ] && active_cnt=$((active_cnt + 1))
+	done
+	if [ "$active_cnt" -lt 2 ]; then
+		logger -t ark-autowan "Conexao de internet ativa (Single-WAN DHCP). Balanceamento (MWAN3) mantido em standby para economizar RAM/CPU."
+		/etc/init.d/mwan3 stop >/dev/null 2>&1 || true
+		/etc/init.d/mwan3 disable >/dev/null 2>&1 || true
+	else
+		logger -t ark-autowan "Multi-WAN detectado ($active_cnt links ativos). Ativando balanceamento e failover (MWAN3) com politica $pol."
+		/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
+		/etc/init.d/mwan3 enable >/dev/null 2>&1 || true
+		/etc/init.d/mwan3 restart >/dev/null 2>&1 || true
+	fi
+}
+
 find_next_free_wan() {
 	local idx=2
 	while [ "$idx" -le 8 ]; do
@@ -68,7 +90,6 @@ probe_dhcp_upstream() {
 
 swconfig_quarantine_port() {
 	local p="$1"
-	[ "$p" != "1" ] || return 0 # Porta 1 eh LAN Mestre Salva-Vidas, nunca fica em quarentena
 
 	# Remove da VLAN 1
 	local v1_ports="$(swconfig dev switch0 vlan 1 get ports 2>/dev/null | sed 's/VLAN 1: //')"
@@ -228,7 +249,7 @@ run_autowan_cycle() {
 							sleep 1
 							w_wait=$((w_wait + 1))
 						done
-						/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
+						sync_autowan_mwan "$pol" >/dev/null 2>&1 || true
 						/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 || true
 					else
 						logger -t ark-autowan "Nenhum DHCP upstream na porta WAN física ($wan_dev). Mantida em LAN."
@@ -250,7 +271,7 @@ run_autowan_cycle() {
 								sleep 1
 								w_wait=$((w_wait + 1))
 							done
-							/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
+							sync_autowan_mwan "$pol" >/dev/null 2>&1 || true
 							/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 || true
 						else
 							logger -t ark-autowan "Nenhum DHCP upstream na porta $port_dev. Mantida em LAN."
@@ -267,10 +288,10 @@ run_autowan_cycle() {
 					local dyn_wan="${dyn_entry#*=}"
 					if [ "$dyn_wan" = "wan" ]; then
 						logger -t ark-autowan "Porta WAN física desconectada. Revertendo de volta para LAN (Auto-Sensing)..."
-						(/usr/sbin/equipe-dashboard-control autowan-wan-to-lan revert >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1) &
+						(/usr/sbin/equipe-dashboard-control autowan-wan-to-lan revert >/dev/null 2>&1; sync_autowan_mwan "$pol" >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1) &
 					else
 						logger -t ark-autowan "Porta $port_dev desconectada. Revertendo $dyn_wan de volta para LAN..."
-						(/usr/sbin/equipe-dashboard-control wan-save iface="$dyn_wan" mode=lan >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1) &
+						(/usr/sbin/equipe-dashboard-control wan-save iface="$dyn_wan" mode=lan >/dev/null 2>&1; sync_autowan_mwan "$pol" >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1) &
 					fi
 					sed -i "/^$port_dev=/d" "$DYNAMIC_WANS_FILE" 2>/dev/null || true
 				fi
@@ -282,10 +303,10 @@ run_autowan_cycle() {
 		done
 
 	# 2. Arquitetura swconfig (ex: D-Link DGL-5500 / ath79 switch0)
-	# Porta 1 eh estritamente mantida em LAN (porta mestre de administracao e resgate)
+	# Monitora todas as portas físicas 1 a 4 (e porta 5 quando convertida em LAN)
 	elif command -v swconfig >/dev/null 2>&1 && swconfig dev switch0 show >/dev/null 2>&1; then
-		local sw_ports="2 3 4"
-		[ "$wan_as_lan" = "1" ] && sw_ports="2 3 4 5"
+		local sw_ports="1 2 3 4"
+		[ "$wan_as_lan" = "1" ] && sw_ports="1 2 3 4 5"
 		for p in $sw_ports; do
 			local port_name="port$p"
 			local oper="$(swconfig dev switch0 port "$p" get link 2>/dev/null | grep -q "link:up" && echo up || echo down)"
@@ -308,7 +329,7 @@ run_autowan_cycle() {
 							sleep 1
 							w_wait=$((w_wait + 1))
 						done
-						/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
+						sync_autowan_mwan "$pol" >/dev/null 2>&1 || true
 						/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 || true
 					else
 						logger -t ark-autowan "Nenhum DHCP upstream na porta WAN física (porta 5). Mantida em LAN."
@@ -329,7 +350,7 @@ run_autowan_cycle() {
 								sleep 1
 								w_wait=$((w_wait + 1))
 							done
-							/usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1 || true
+							sync_autowan_mwan "$pol" >/dev/null 2>&1 || true
 							/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 || true
 						else
 							logger -t ark-autowan "Nenhum DHCP upstream na porta fisica $p. Mantida em LAN."
@@ -346,10 +367,10 @@ run_autowan_cycle() {
 					local dyn_wan="${dyn_entry#*=}"
 					if [ "$dyn_wan" = "wan" ]; then
 						logger -t ark-autowan "Porta WAN física desconectada. Revertendo de volta para LAN (Auto-Sensing)..."
-						(/usr/sbin/equipe-dashboard-control autowan-wan-to-lan revert >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1) &
+						(/usr/sbin/equipe-dashboard-control autowan-wan-to-lan revert >/dev/null 2>&1; sync_autowan_mwan "$pol" >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1) &
 					else
 						logger -t ark-autowan "Porta fisica $p desconectada. Revertendo $dyn_wan de volta para LAN..."
-						(/usr/sbin/equipe-dashboard-control wan-save iface="$dyn_wan" mode=lan >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control mwan "$pol" >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1) &
+						(/usr/sbin/equipe-dashboard-control wan-save iface="$dyn_wan" mode=lan >/dev/null 2>&1; sync_autowan_mwan "$pol" >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1) &
 					fi
 					sed -i "/^$port_name=/d" "$DYNAMIC_WANS_FILE" 2>/dev/null || true
 				fi
