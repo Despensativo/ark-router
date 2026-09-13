@@ -346,8 +346,22 @@ const PING_TARGET_PRESETS = [
 	}
 ];
 function getPingTargetInfo(data) {
-	let target = 'registro_br';
-	let customIp = '';
+	const eqCfg = data && data.equipeDashboardConfig && data.equipeDashboardConfig.values && data.equipeDashboardConfig.values.main;
+	let target = (eqCfg && eqCfg.ping_target) || '';
+	let customIp = (eqCfg && eqCfg.ping_custom_ip != null) ? eqCfg.ping_custom_ip : '';
+
+	// Router UCI config is the authoritative single source of truth across reboots & devices
+	if (target) {
+		try {
+			if (typeof window !== 'undefined' && window.localStorage) {
+				window.localStorage.setItem('ark_wan_ping_target', target);
+				if (customIp != null) window.localStorage.setItem('ark_wan_ping_custom_ip', customIp);
+			}
+		} catch(e) {}
+		return { target: target, customIp: customIp };
+	}
+
+	// Fallback to localStorage if router UCI data hasn't loaded yet
 	try {
 		if (typeof window !== 'undefined' && window.localStorage) {
 			const st = window.localStorage.getItem('ark_wan_ping_target');
@@ -356,16 +370,8 @@ function getPingTargetInfo(data) {
 			if (sc != null) customIp = sc;
 		}
 	} catch(e) {}
-	const eqCfg = data && data.equipeDashboardConfig && data.equipeDashboardConfig.values && data.equipeDashboardConfig.values.main;
-	if (eqCfg) {
-		if (eqCfg.ping_target && (!window.localStorage || !window.localStorage.getItem('ark_wan_ping_target'))) {
-			target = eqCfg.ping_target;
-		}
-		if (eqCfg.ping_custom_ip != null && (!window.localStorage || !window.localStorage.getItem('ark_wan_ping_custom_ip'))) {
-			customIp = eqCfg.ping_custom_ip;
-		}
-	}
-	return { target: target, customIp: customIp };
+
+	return { target: target || 'registro_br', customIp: customIp || '' };
 }
 function getPingTargetShortLabel(target, customIp) {
 	if (target === 'custom') {
@@ -3115,6 +3121,15 @@ return view.extend({
 				saveBtn.disabled = true;
 				saveBtn.textContent = 'Salvando…';
 
+				// Update in-memory state immediately so ongoing cycles use new target
+				if (this.currentData) {
+					if (!this.currentData.equipeDashboardConfig) this.currentData.equipeDashboardConfig = { values: {} };
+					if (!this.currentData.equipeDashboardConfig.values) this.currentData.equipeDashboardConfig.values = {};
+					if (!this.currentData.equipeDashboardConfig.values.main) this.currentData.equipeDashboardConfig.values.main = {};
+					this.currentData.equipeDashboardConfig.values.main.ping_target = selectedTarget;
+					this.currentData.equipeDashboardConfig.values.main.ping_custom_ip = customVal;
+				}
+
 				try {
 					if (typeof window !== 'undefined' && window.localStorage) {
 						window.localStorage.setItem('ark_wan_ping_target', selectedTarget);
@@ -3131,10 +3146,11 @@ return view.extend({
 				fs.exec('/usr/sbin/equipe-dashboard-control', ['ping-target-set', selectedTarget, customVal]).then(L.bind(function(res) {
 					ui.hideModal();
 					ui.addNotification(null, E('p', {}, [
-						'Servidor de teste de latência configurado para: ',
-						E('strong', {}, [ shortLbl ])
+						'Servidor de teste de latência e monitoramento configurado para: ',
+						E('strong', {}, [ shortLbl ]),
+						' (salvo na memória permanente à prova de reinício)'
 					]), 'info');
-					this.scheduleAdaptiveRefresh(100);
+					this.scheduleAdaptiveRefresh(50);
 				}, this)).catch(L.bind(function(err) {
 					ui.hideModal();
 					this.scheduleAdaptiveRefresh(100);

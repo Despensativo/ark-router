@@ -3471,6 +3471,30 @@ mwan3_reorder_rules() {
 	uci -q reorder "mwan3.https_quic=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
 	uci -q reorder "mwan3.default_rule_v4=99" 2>/dev/null || true
 }
+get_configured_ping_track_ips() {
+	local target="$(uci -q get equipe_dashboard.main.ping_target || printf 'registro_br')"
+	local custom_ip="$(uci -q get equipe_dashboard.main.ping_custom_ip || true)"
+	local primary=""
+	case "$target" in
+		registro_br) primary="200.160.2.3" ;;
+		cloudflare)  primary="1.1.1.1" ;;
+		google)      primary="8.8.8.8" ;;
+		quad9)       primary="9.9.9.9" ;;
+		custom)      primary="${custom_ip:-200.160.2.3}" ;;
+		isp)         primary="" ;;
+		*)           primary="200.160.2.3" ;;
+	esac
+
+	local ips=""
+	[ -n "$primary" ] && ips="$primary"
+	for fallback in 200.160.2.3 1.1.1.1 8.8.8.8 9.9.9.9 208.67.222.222; do
+		case " $ips " in
+			*" $fallback "*) ;;
+			*) ips="${ips:+$ips }$fallback" ;;
+		esac
+	done
+	printf '%s\n' "$ips"
+}
 ensure_mwan3_ark_config() {
 	[ -f /etc/config/mwan3 ] || return 0
 	for sec in wan6 wanb wanb6 wanb_m1_w2 wanb_m1_w3 wanb_m2_w2 wan6_m1_w3 wan6_m2_w3 wanb6_m1_w2 wanb6_m1_w3 wanb6_m2_w2 wanb_only wan_wanb wanb_wan default_rule_v6 device_wan1_pref device_wan2_pref bypass_private; do
@@ -3491,6 +3515,7 @@ ensure_mwan3_ark_config() {
 		uci -q delete "mwan3.$p.use_member" 2>/dev/null || true
 	done
 	wan_idx=1
+	track_ips="$(get_configured_ping_track_ips)"
 	for w in $active_wans; do
 		uci -q set "mwan3.$w=interface"
 		uci -q set "mwan3.$w.enabled=1"
@@ -3503,7 +3528,7 @@ ensure_mwan3_ark_config() {
 		uci -q set "mwan3.$w.down=3"
 		uci -q set "mwan3.$w.up=3"
 		uci -q delete "mwan3.$w.track_ip" 2>/dev/null || true
-		for ip in 1.1.1.1 8.8.8.8 9.9.9.9 208.67.222.222; do uci -q add_list "mwan3.$w.track_ip=$ip"; done
+		for ip in $track_ips; do uci -q add_list "mwan3.$w.track_ip=$ip"; done
 		# Fim da limpeza global destrutiva de conntrack (preserva sessoes ativas da WAN saudavel)
 		uci -q delete "mwan3.$w.flush_conntrack" 2>/dev/null || true
 
@@ -10098,8 +10123,21 @@ EOF
 			uci -q delete equipe_dashboard.main.ping_custom_ip 2>/dev/null || true
 		fi
 		uci commit equipe_dashboard
-		printf '{"ok":true,"target":"%s","custom_ip":"%s"}\n' \
-			"$(json_escape "$target")" "$(json_escape "$custom_ip")"
+		track_ips="$(get_configured_ping_track_ips)"
+		if [ -f /etc/config/mwan3 ]; then
+			for mw in $(uci -q show mwan3 2>/dev/null | grep '=interface' | cut -d. -f2 | cut -d= -f1); do
+				uci -q delete "mwan3.$mw.track_ip" 2>/dev/null || true
+				for tip in $track_ips; do
+					uci -q add_list "mwan3.$mw.track_ip=$tip"
+				done
+			done
+			uci commit mwan3 2>/dev/null || true
+			if [ -x /usr/sbin/mwan3 ] && [ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 enabled 2>/dev/null; then
+				/usr/sbin/mwan3 restart >/dev/null 2>&1 || true
+			fi
+		fi
+		printf '{"ok":true,"target":"%s","custom_ip":"%s","track_ips":"%s"}\n' \
+			"$(json_escape "$target")" "$(json_escape "$custom_ip")" "$(json_escape "$track_ips")"
 		;;
 	*)
 		echo 'Uso: equipe-dashboard-control {features|...|irqbalance-toggle 0|1|...}' >&2
