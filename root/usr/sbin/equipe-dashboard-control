@@ -6825,6 +6825,12 @@ case "$action" in
 				uci -q set "network.$vsec.ports=$p_num 0t"
 				effective_dev="eth0.$vlan_id"
 			fi
+		else
+			if [ "$effective_dev" = "wan" ] && [ ! -e "/sys/class/net/wan" ]; then
+				if [ -e "/sys/class/net/eth1" ]; then
+					effective_dev="eth1"
+				fi
+			fi
 		fi
 
 		uci -q set "network.$iface=interface"
