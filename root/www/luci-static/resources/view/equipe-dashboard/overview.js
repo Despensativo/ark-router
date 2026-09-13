@@ -106,7 +106,22 @@ function translateText(value){
 function translateTree(root){if(dashboardLanguage!=='en'||!root)return;if(root.nodeType===Node.TEXT_NODE){if(!root.parentNode||!/^(SCRIPT|STYLE|CODE)$/.test(root.parentNode.nodeName)){const v=translateText(root.nodeValue);if(v!==root.nodeValue)root.nodeValue=v;}return;}const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;while((n=walker.nextNode())){if(n.parentNode&&/^(SCRIPT|STYLE|CODE)$/.test(n.parentNode.nodeName))continue;const v=translateText(n.nodeValue);if(v!==n.nodeValue)n.nodeValue=v;}}
 function enableTranslation(){translateTree(document.body);if(translationObserver)return;translationObserver=new MutationObserver(function(records){records.forEach(function(r){r.addedNodes.forEach(function(n){translateTree(n);});if(r.type==='characterData'&&r.target){const v=translateText(r.target.nodeValue);if(v!==r.target.nodeValue)r.target.nodeValue=v;}});});translationObserver.observe(document.body,{subtree:true,childList:true,characterData:true});}
 
-function safe(promise, fallback) { return L.resolveDefault(promise, fallback); }
+function safe(promise, fallback, timeoutMs) {
+	if (!promise || typeof promise.then !== 'function') return Promise.resolve(fallback);
+	var timeout = timeoutMs || 4500;
+	var timer = null;
+	var timeoutPromise = new Promise(function(_, reject) {
+		timer = window.setTimeout(function() {
+			reject(new Error('Operation timed out'));
+		}, timeout);
+	});
+	return L.resolveDefault(
+		Promise.race([promise, timeoutPromise]).finally(function() {
+			if (timer) window.clearTimeout(timer);
+		}),
+		fallback
+	);
+}
 function formatRate(bits) {
 	bits = Number(bits) || 0;
 	if (bits >= 1000000000) return (bits / 1000000000).toFixed(bits >= 10000000000 ? 1 : 2) + ' Gbps';
