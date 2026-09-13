@@ -981,14 +981,41 @@ speedify_install_auto_safe() {
 		return 3
 	fi
 }
+speedify_clean_runtime_network() {
+	tunnel_dev="$(speedify_tunnel_device 2>/dev/null || echo connectify0)"
+	if uci -q get network.speedify >/dev/null 2>&1; then
+		ifdown speedify >/dev/null 2>&1 || true
+		uci -q delete network.speedify
+		uci commit network
+	fi
+	for d in $(uci -q show network 2>/dev/null | grep "=device$" | cut -d. -f2 | cut -d= -f1); do
+		if [ "$(uci -q get "network.$d.name" 2>/dev/null)" = "$tunnel_dev" ]; then
+			uci -q delete "network.$d"
+			uci commit network
+		fi
+	done
+	for z in $(uci -q show firewall 2>/dev/null | grep "=zone$" | cut -d. -f2 | cut -d= -f1); do
+		if [ "$(uci -q get "firewall.$z.name" 2>/dev/null)" = "speedify" ]; then
+			uci -q delete "firewall.$z"
+		fi
+	done
+	for fwd in $(uci -q show firewall 2>/dev/null | grep "=forwarding$" | cut -d. -f2 | cut -d= -f1); do
+		src="$(uci -q get "firewall.$fwd.src" 2>/dev/null)"
+		dest="$(uci -q get "firewall.$fwd.dest" 2>/dev/null)"
+		if [ "$src" = "speedify" ] || [ "$dest" = "speedify" ]; then
+			uci -q delete "firewall.$fwd"
+		fi
+	done
+	uci commit firewall
+	/etc/init.d/firewall reload >/dev/null 2>&1 || true
+}
 speedify_prepare_runtime_network() {
 	tunnel_dev="$(speedify_tunnel_device)"
-	uci -q batch <<'EOI'
-set network.speedify=interface
-set network.speedify.proto=none
-set network.speedify.defaultroute=0
-add_list network.speedify.dns=10.202.0.1
-EOI
+	uci -q set network.speedify=interface
+	uci -q set network.speedify.proto=none
+	uci -q set network.speedify.defaultroute=0
+	uci -q delete network.speedify.dns
+	uci -q add_list network.speedify.dns=10.202.0.1
 	uci -q set "network.speedify.device=$tunnel_dev"
 	if ! uci -q show network 2>/dev/null | grep -q "device.*name='$tunnel_dev'"; then
 		uci -q batch <<'EOI'
@@ -1269,7 +1296,7 @@ speedify_safe_disconnect() {
 	cli="$1"
 	ark_run_limited 5 "$cli" disconnect >/dev/null 2>&1 || true
 	ark_run_limited 5 "$cli" route default off >/dev/null 2>&1 || true
-	ifdown speedify >/dev/null 2>&1 || true
+	speedify_clean_runtime_network
 	# Reativa somente as WANs que o usuario ja configurou; nenhuma LAN e convertida.
 	for iface in wan wan2 wan3 wan4; do
 		proto="$(uci -q get "network.$iface.proto" || true)"
@@ -1286,6 +1313,7 @@ speedify_safe_disconnect() {
 speedify_stop_runtime() {
 	cli="$1"
 	[ -n "$cli" ] && speedify_safe_disconnect "$cli"
+	speedify_clean_runtime_network
 	# O ARK controla o boot para o daemon nao consumir RAM quando inativo.
 	if [ -x /etc/init.d/speedify ]; then
 		/etc/init.d/speedify stop >/dev/null 2>&1 || true
@@ -1479,6 +1507,8 @@ speedify_cli_path() {
 	if [ -x /usr/share/speedify/speedify_cli ]; then printf /usr/share/speedify/speedify_cli; return 0; fi
 	if [ -x /etc/ark-router/speedify-cli ]; then printf /etc/ark-router/speedify-cli; return 0; fi
 	if [ -x /tmp/ark-speedify-cli ]; then printf /tmp/ark-speedify-cli; return 0; fi
+	p="$(which speedify_cli 2>/dev/null || which speedify 2>/dev/null || true)"
+	if [ -n "$p" ] && [ -x "$p" ]; then printf '%s' "$p"; return 0; fi
 }
 speedify_runtime_running() { pgrep -f '/speedify -d' >/dev/null 2>&1 || pgrep -x 'speedify' >/dev/null 2>&1; }
 speedify_supported() {
