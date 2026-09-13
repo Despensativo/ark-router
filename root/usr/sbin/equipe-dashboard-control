@@ -481,6 +481,7 @@ installed() {
 		luci-app-uhttpd) [ -f /usr/share/luci/menu.d/luci-app-uhttpd.json ] && return 0 ;;
 		tailscale) [ -x /usr/sbin/tailscale ] && return 0 ;;
 		zerotier) ([ -x /usr/sbin/zerotier-one ] || [ -f /etc/init.d/zerotier ]) && return 0 ;;
+		wireguard) ([ -x /usr/bin/wg ] || [ -f /lib/netifd/proto/wireguard.sh ]) && return 0 ;;
 		irqbalance) ([ -x /usr/sbin/irqbalance ] || [ -f /etc/init.d/irqbalance ]) && return 0 ;;
 		speedify) ([ -x /usr/share/speedify/speedify ] || [ -x /usr/bin/speedify ] || [ -x /tmp/speedify/speedify ]) && return 0 ;;
 		luci-app-speedify) ([ -f /usr/share/luci/menu.d/luci-app-speedify.json ] || [ -f /usr/lib/lua/luci/controller/speedify.lua ]) && return 0 ;;
@@ -543,6 +544,7 @@ feature_package() {
 		speedify) printf speedify ;;
 		tailscale) printf tailscale ;;
 		zerotier) printf zerotier ;;
+		wireguard) printf 'wireguard-tools' ;;
 		irqbalance) printf irqbalance ;;
 		*) return 1 ;;
 	esac
@@ -553,7 +555,7 @@ bulk_feature_keys() {
 feature_missing_installable() {
 	key="$1"; package="$(feature_package "$key" 2>/dev/null)" || return 1
 	case "$key" in
-		speedify|tailscale|zerotier) return 1 ;;
+		speedify|tailscale|zerotier|wireguard) return 1 ;;
 		speedtest)
 			feature_active speedtest && return 1
 			tmp_avail="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"; [ -n "$tmp_avail" ] || tmp_avail=0
@@ -1852,6 +1854,7 @@ feature_active() {
 		speedify) [ -x /usr/share/speedify/speedify_cli ] || installed speedify ;;
 		tailscale) command -v tailscale >/dev/null 2>&1 ;;
 		zerotier) pidof zerotier-one >/dev/null 2>&1 && [ "$(uci -q get zerotier.global.enabled)" = 1 ] ;;
+		wireguard) [ -d /sys/class/net/wg0 ] || (command -v wg >/dev/null 2>&1 && [ -n "$(wg show interfaces 2>/dev/null)" ]) ;;
 		irqbalance) running irqbalance ;;
 		*) return 1 ;;
 	esac
@@ -2345,6 +2348,425 @@ zerotier_autostart_toggle() {
 			;;
 	esac
 }
+
+wireguard_status_json() {
+	installed_wg=false; ([ -x /usr/bin/wg ] || [ -f /lib/netifd/proto/wireguard.sh ]) && installed_wg=true
+	autostart_wg=false; [ "$(uci -q get network.wg0.auto)" != "0" ] && autostart_wg=true
+	configured_wg=false; [ -n "$(uci -q get network.wg0.proto)" ] && configured_wg=true
+	active_wg=false; [ -d /sys/class/net/wg0 ] && active_wg=true
+
+	listen_port="$(uci -q get network.wg0.listen_port || printf '51820')"
+	wg_ip="$(uci -q get network.wg0.addresses 2>/dev/null || uci -q get network.wg0.ipaddr 2>/dev/null || printf '10.14.0.1/24')"
+	pubkey=""
+	if [ -f /etc/wireguard/server_public.key ]; then
+		pubkey="$(cat /etc/wireguard/server_public.key 2>/dev/null || true)"
+	fi
+	if [ -z "$pubkey" ] && command -v wg >/dev/null 2>&1 && $active_wg; then
+		pubkey="$(wg show wg0 public-key 2>/dev/null || true)"
+	fi
+
+	wan_ip="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null || true)"
+	[ -n "$wan_ip" ] || wan_ip="$(uci -q get network.wan.ipaddr 2>/dev/null || true)"
+	[ -n "$wan_ip" ] || wan_ip="$(uci -q get network.wan1.ipaddr 2>/dev/null || true)"
+	custom_endpoint="$(uci -q get equipe_dashboard.wireguard.endpoint 2>/dev/null || true)"
+	endpoint="${custom_endpoint:-$wan_ip}"
+
+	dump_file="/tmp/ark-wg0-dump.$$"
+	if $active_wg && command -v wg >/dev/null 2>&1; then
+		wg show wg0 dump 2>/dev/null | tail -n +2 > "$dump_file" 2>/dev/null || true
+	fi
+
+	peers_count=0
+	peers_active=0
+	now="$(date +%s)"
+
+	printf '{"installed":%s,"active":%s,"configured":%s,"autostart":%s,"ip":"%s","listen_port":"%s","public_key":"%s","endpoint":"%s","has_qrencode":%s,"peers":[' \
+		"$installed_wg" "$active_wg" "$configured_wg" "$autostart_wg" "$(json_escape "$wg_ip")" "$(json_escape "$listen_port")" "$(json_escape "$pubkey")" "$(json_escape "$endpoint")" "$([ -x /usr/bin/qrencode ] && printf true || printf false)"
+
+	first_peer=1
+	for sec in $(uci -q show network 2>/dev/null | grep '=wireguard_wg0$' | cut -d. -f2 | cut -d= -f1); do
+		pk="$(uci -q get "network.$sec.public_key" || true)"
+		[ -n "$pk" ] || continue
+		desc="$(uci -q get "network.$sec.description" || printf '%s' "$sec")"
+		aips="$(uci -q get "network.$sec.allowed_ips" || true)"
+
+		hs=0; rx=0; tx=0; ep=''
+		if [ -f "$dump_file" ]; then
+			line="$(awk -v k="$pk" '$1==k {print; exit}' "$dump_file" 2>/dev/null || true)"
+			if [ -n "$line" ]; then
+				ep="$(printf '%s' "$line" | awk '{print $3}')"
+				hs="$(printf '%s' "$line" | awk '{print $5}')"
+				rx="$(printf '%s' "$line" | awk '{print $6}')"
+				tx="$(printf '%s' "$line" | awk '{print $7}')"
+			fi
+		fi
+		[ "$ep" = "(none)" ] && ep=""
+		[ -n "$hs" ] || hs=0
+		[ -n "$rx" ] || rx=0
+		[ -n "$tx" ] || tx=0
+
+		peer_online=false
+		if [ "$hs" -gt 0 ]; then
+			diff=$((now - hs))
+			if [ "$diff" -le 180 ]; then
+				peer_online=true
+				peers_active=$((peers_active + 1))
+			fi
+		fi
+		peers_count=$((peers_count + 1))
+
+		has_cfg=false
+		[ -f "/etc/wireguard/clients/$desc.conf" ] && has_cfg=true
+
+		[ "$first_peer" = 1 ] && first_peer=0 || printf ','
+		printf '{"name":"%s","public_key":"%s","allowed_ips":"%s","endpoint":"%s","latest_handshake":%d,"rx_bytes":%s,"tx_bytes":%s,"online":%s,"has_config":%s}' \
+			"$(json_escape "$desc")" "$(json_escape "$pk")" "$(json_escape "$aips")" "$(json_escape "$ep")" "$hs" "$rx" "$tx" "$peer_online" "$has_cfg"
+	done
+
+	rm -f "$dump_file" 2>/dev/null || true
+	printf '],"peers_count":%d,"peers_active":%d}\n' "$peers_count" "$peers_active"
+}
+
+wireguard_firewall_setup() {
+	port="${1:-51820}"
+	changed=0
+
+	zg="$(uci -q show firewall 2>/dev/null | grep -E "\\.name='wireguard'" | head -n1 | cut -d. -f2)"
+	if [ -z "$zg" ]; then
+		zg="$(uci add firewall zone)"
+		uci -q set "firewall.$zg.name=wireguard"
+		uci -q set "firewall.$zg.input=ACCEPT"
+		uci -q set "firewall.$zg.output=ACCEPT"
+		uci -q set "firewall.$zg.forward=ACCEPT"
+		uci -q set "firewall.$zg.masq=1"
+		uci -q add_list "firewall.$zg.network=wg0"
+		changed=1
+	else
+		nets="$(uci -q get "firewall.$zg.network" || true)"
+		case " $nets " in
+			*" wg0 "*) ;;
+			*)
+				uci -q add_list "firewall.$zg.network=wg0"
+				changed=1
+				;;
+		esac
+	fi
+
+	fw_wan=""
+	for sec in $(uci -q show firewall | grep -E '=forwarding$' | cut -d. -f2 | cut -d= -f1); do
+		if [ "$(uci -q get "firewall.$sec.src")" = "wireguard" ] && [ "$(uci -q get "firewall.$sec.dest")" = "wan" ]; then
+			fw_wan="$sec"; break
+		fi
+	done
+	if [ -z "$fw_wan" ]; then
+		f="$(uci add firewall forwarding)"
+		uci -q set "firewall.$f.src=wireguard"
+		uci -q set "firewall.$f.dest=wan"
+		changed=1
+	fi
+
+	fw_lan=""
+	for sec in $(uci -q show firewall | grep -E '=forwarding$' | cut -d. -f2 | cut -d= -f1); do
+		if [ "$(uci -q get "firewall.$sec.src")" = "wireguard" ] && [ "$(uci -q get "firewall.$sec.dest")" = "lan" ]; then
+			fw_lan="$sec"; break
+		fi
+	done
+	if [ -z "$fw_lan" ]; then
+		f="$(uci add firewall forwarding)"
+		uci -q set "firewall.$f.src=wireguard"
+		uci -q set "firewall.$f.dest=lan"
+		changed=1
+	fi
+
+	fw_lan_wg=""
+	for sec in $(uci -q show firewall | grep -E '=forwarding$' | cut -d. -f2 | cut -d= -f1); do
+		if [ "$(uci -q get "firewall.$sec.src")" = "lan" ] && [ "$(uci -q get "firewall.$sec.dest")" = "wireguard" ]; then
+			fw_lan_wg="$sec"; break
+		fi
+	done
+	if [ -z "$fw_lan_wg" ]; then
+		f="$(uci add firewall forwarding)"
+		uci -q set "firewall.$f.src=lan"
+		uci -q set "firewall.$f.dest=wireguard"
+		changed=1
+	fi
+
+	rule_wg=""
+	for sec in $(uci -q show firewall | grep -E '=rule$' | cut -d. -f2 | cut -d= -f1); do
+		if [ "$(uci -q get "firewall.$sec.name")" = "Allow-WireGuard-Inbound" ]; then
+			rule_wg="$sec"; break
+		fi
+	done
+	if [ -z "$rule_wg" ]; then
+		r="$(uci add firewall rule)"
+		uci -q set "firewall.$r.name=Allow-WireGuard-Inbound"
+		uci -q set "firewall.$r.src=wan"
+		uci -q set "firewall.$r.proto=udp"
+		uci -q set "firewall.$r.dest_port=$port"
+		uci -q set "firewall.$r.target=ACCEPT"
+		changed=1
+	else
+		cur_port="$(uci -q get "firewall.$rule_wg.dest_port" || true)"
+		if [ "$cur_port" != "$port" ]; then
+			uci -q set "firewall.$rule_wg.dest_port=$port"
+			changed=1
+		fi
+	fi
+
+	if [ "$changed" = 1 ]; then
+		uci commit firewall
+		/etc/init.d/firewall reload >/dev/null 2>&1 || true
+	fi
+}
+
+wireguard_server_setup() {
+	port="${1:-51820}"
+	ip="${2:-10.14.0.1/24}"
+
+	case "$port" in ''|*[!0-9]*) port=51820 ;; esac
+	[ "$port" -ge 1 ] && [ "$port" -le 65535 ] || port=51820
+
+	mkdir -p /etc/wireguard/clients
+	chmod 700 /etc/wireguard
+
+	if [ ! -s /etc/wireguard/server_private.key ]; then
+		( umask 077 && wg genkey > /etc/wireguard/server_private.key )
+		chmod 600 /etc/wireguard/server_private.key
+		wg pubkey < /etc/wireguard/server_private.key > /etc/wireguard/server_public.key
+		chmod 644 /etc/wireguard/server_public.key
+	fi
+	privkey="$(cat /etc/wireguard/server_private.key)"
+
+	uci -q set network.wg0=interface
+	uci -q set network.wg0.proto='wireguard'
+	uci -q set network.wg0.private_key="$privkey"
+	uci -q set network.wg0.listen_port="$port"
+	uci -q set network.wg0.addresses="$ip"
+	uci -q set network.wg0.auto='1'
+	uci commit network
+
+	wireguard_firewall_setup "$port"
+	ifup wg0 >/dev/null 2>&1 || true
+	sleep 1
+
+	wireguard_status_json
+}
+
+wireguard_enable() {
+	if [ -z "$(uci -q get network.wg0.proto)" ]; then
+		wireguard_server_setup "51820" "10.14.0.1/24"
+		return 0
+	fi
+	uci -q set network.wg0.auto='1'
+	uci commit network
+	port="$(uci -q get network.wg0.listen_port || printf '51820')"
+	wireguard_firewall_setup "$port"
+	ifup wg0 >/dev/null 2>&1 || true
+	sleep 1
+	wireguard_status_json
+}
+
+wireguard_disable() {
+	uci -q set network.wg0.auto='0'
+	uci commit network
+	ifdown wg0 >/dev/null 2>&1 || true
+	sleep 1
+	wireguard_status_json
+}
+
+wireguard_autostart_toggle() {
+	val="${1:-1}"
+	case "$val" in
+		1|true|on)
+			uci -q set network.wg0.auto='1'
+			uci commit network
+			echo ok
+			;;
+		*)
+			uci -q set network.wg0.auto='0'
+			uci commit network
+			echo ok
+			;;
+	esac
+}
+
+wireguard_peer_add() {
+	name="$1"
+	req_ip="$2"
+	custom_endpoint="$3"
+	tunnel_mode="${4:-full}"
+
+	[ -n "$name" ] || { echo 'Nome do cliente obrigatorio' >&2; exit 2; }
+	clean_name="$(printf '%s' "$name" | sed 's/[^a-zA-Z0-9_-]/-/g; s/-\{2,\}/-/g; s/^-//; s/-$//')"
+	[ -n "$clean_name" ] || clean_name="cliente-$(date +%s)"
+
+	if [ ! -s /etc/wireguard/server_private.key ] || [ -z "$(uci -q get network.wg0.proto)" ]; then
+		wireguard_server_setup "51820" "10.14.0.1/24" >/dev/null 2>&1 || true
+	fi
+	server_pub="$(cat /etc/wireguard/server_public.key 2>/dev/null || true)"
+	server_port="$(uci -q get network.wg0.listen_port || printf '51820')"
+
+	client_ip="$req_ip"
+	if [ -z "$client_ip" ]; then
+		max_host=1
+		for aip in $(uci -q show network 2>/dev/null | grep -E '\.allowed_ips=' | cut -d= -f2 | tr -d "'\""); do
+			case "$aip" in
+				10.14.0.*)
+					h="$(printf '%s' "$aip" | awk -F. '{split($4,a,"/"); print a[1]}')"
+					case "$h" in ''|*[!0-9]*) ;; *)
+						[ "$h" -gt "$max_host" ] && max_host="$h"
+						;;
+					esac
+					;;
+			esac
+		done
+		client_ip="10.14.0.$((max_host + 1))"
+	fi
+
+	client_priv="$(wg genkey)"
+	client_pub="$(printf '%s' "$client_priv" | wg pubkey)"
+	client_psk="$(wg genpsk 2>/dev/null || true)"
+
+	for sec in $(uci -q show network 2>/dev/null | grep '=wireguard_wg0$' | cut -d. -f2 | cut -d= -f1); do
+		cur_desc="$(uci -q get "network.$sec.description" || true)"
+		cur_pk="$(uci -q get "network.$sec.public_key" || true)"
+		if [ "$cur_desc" = "$clean_name" ] || [ "$cur_pk" = "$client_pub" ]; then
+			uci -q delete "network.$sec"
+		fi
+	done
+
+	psec="$(uci add network wireguard_wg0)"
+	uci -q set "network.$psec.description=$clean_name"
+	uci -q set "network.$psec.public_key=$client_pub"
+	[ -n "$client_psk" ] && uci -q set "network.$psec.preshared_key=$client_psk"
+	uci -q add_list "network.$psec.allowed_ips=$client_ip/32"
+	uci -q set "network.$psec.route_allowed_ips=1"
+	uci commit network
+
+	wan_ip="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null || true)"
+	[ -n "$wan_ip" ] || wan_ip="$(uci -q get network.wan.ipaddr 2>/dev/null || true)"
+	[ -n "$wan_ip" ] || wan_ip="$(uci -q get network.wan1.ipaddr 2>/dev/null || true)"
+	[ -n "$custom_endpoint" ] || custom_endpoint="$(uci -q get equipe_dashboard.wireguard.endpoint 2>/dev/null || true)"
+	endpoint="${custom_endpoint:-$wan_ip}"
+	[ -n "$endpoint" ] || endpoint="192.168.73.1"
+
+	if [ "$tunnel_mode" = "split" ]; then
+		lan_net="$(uci -q get network.lan.ipaddr || printf '192.168.1.1')"
+		lan_prefix="$(ipv4_prefix24 "$lan_net")"
+		client_allowed_ips="$lan_prefix.0/24, 10.14.0.0/24"
+	else
+		client_allowed_ips="0.0.0.0/0, ::/0"
+	fi
+
+	mkdir -p /etc/wireguard/clients
+	chmod 700 /etc/wireguard/clients
+	cfg_file="/etc/wireguard/clients/$clean_name.conf"
+
+	(
+		umask 077
+		cat > "$cfg_file" <<EOF
+[Interface]
+PrivateKey = $client_priv
+Address = $client_ip/24
+DNS = 10.14.0.1, 1.1.1.1
+
+[Peer]
+PublicKey = $server_pub
+$( [ -n "$client_psk" ] && printf 'PresharedKey = %s\n' "$client_psk" )
+Endpoint = $endpoint:$server_port
+AllowedIPs = $client_allowed_ips
+PersistentKeepalive = 25
+EOF
+	)
+	chmod 600 "$cfg_file"
+
+	if [ -d /sys/class/net/wg0 ] && command -v wg >/dev/null 2>&1; then
+		if [ -n "$client_psk" ]; then
+			psk_tmp="/tmp/ark-wg-psk.$$"
+			printf '%s' "$client_psk" > "$psk_tmp"
+			wg set wg0 peer "$client_pub" preshared-key "$psk_tmp" allowed-ips "$client_ip/32" 2>/dev/null || true
+			rm -f "$psk_tmp" 2>/dev/null || true
+		else
+			wg set wg0 peer "$client_pub" allowed-ips "$client_ip/32" 2>/dev/null || true
+		fi
+	fi
+	ifup wg0 >/dev/null 2>&1 || true
+
+	json_text_escape() {
+		sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g' | tr '\r' ' ' | awk '{ if (NR>1) printf "\\n"; printf "%s", $0 }'
+	}
+	conf_txt="$(cat "$cfg_file" | json_text_escape)"
+	qr_svg=""
+	if command -v qrencode >/dev/null 2>&1; then
+		qr_svg="$(qrencode -t SVG --svg-path --inline -o - < "$cfg_file" 2>/dev/null | json_text_escape || true)"
+	fi
+
+	printf '{"ok":true,"name":"%s","clean_name":"%s","public_key":"%s","ip":"%s","endpoint":"%s:%s","conf":"%s","qr_svg":"%s"}\n' \
+		"$(json_escape "$name")" "$(json_escape "$clean_name")" "$(json_escape "$client_pub")" "$(json_escape "$client_ip")" "$(json_escape "$endpoint")" "$server_port" "$conf_txt" "$qr_svg"
+}
+
+wireguard_peer_delete() {
+	target="$1"
+	[ -n "$target" ] || { echo 'Chave ou nome do peer obrigatorio' >&2; exit 2; }
+
+	deleted_pk=""
+	for sec in $(uci -q show network 2>/dev/null | grep '=wireguard_wg0$' | cut -d. -f2 | cut -d= -f1); do
+		pk="$(uci -q get "network.$sec.public_key" || true)"
+		nm="$(uci -q get "network.$sec.description" || true)"
+		if [ "$pk" = "$target" ] || [ "$nm" = "$target" ] || [ "$sec" = "$target" ]; then
+			deleted_pk="$pk"
+			uci -q delete "network.$sec"
+			[ -n "$nm" ] && rm -f "/etc/wireguard/clients/$nm.conf" 2>/dev/null || true
+		fi
+	done
+	uci commit network
+
+	if [ -n "$deleted_pk" ] && [ -d /sys/class/net/wg0 ] && command -v wg >/dev/null 2>&1; then
+		wg set wg0 peer "$deleted_pk" remove 2>/dev/null || true
+	fi
+	ifup wg0 >/dev/null 2>&1 || true
+
+	wireguard_status_json
+}
+
+wireguard_peer_qr() {
+	target="$1"
+	[ -n "$target" ] || { echo 'Nome ou chave do peer obrigatorio' >&2; exit 2; }
+
+	cfg_file=""
+	peer_name="$target"
+	if [ -f "/etc/wireguard/clients/$target.conf" ]; then
+		cfg_file="/etc/wireguard/clients/$target.conf"
+	else
+		for sec in $(uci -q show network 2>/dev/null | grep '=wireguard_wg0$' | cut -d. -f2 | cut -d= -f1); do
+			pk="$(uci -q get "network.$sec.public_key" || true)"
+			nm="$(uci -q get "network.$sec.description" || true)"
+			if [ "$pk" = "$target" ] || [ "$nm" = "$target" ]; then
+				peer_name="$nm"
+				[ -f "/etc/wireguard/clients/$nm.conf" ] && cfg_file="/etc/wireguard/clients/$nm.conf"
+				break
+			fi
+		done
+	fi
+
+	if [ -z "$cfg_file" ] || [ ! -f "$cfg_file" ]; then
+		printf '{"ok":false,"error":"Arquivo de configuracao .conf nao encontrado para este cliente"}\n'
+		return 1
+	fi
+
+	json_text_escape() {
+		sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g' | tr '\r' ' ' | awk '{ if (NR>1) printf "\\n"; printf "%s", $0 }'
+	}
+	conf_txt="$(cat "$cfg_file" | json_text_escape)"
+	qr_svg=""
+	if command -v qrencode >/dev/null 2>&1; then
+		qr_svg="$(qrencode -t SVG --svg-path --inline -o - < "$cfg_file" 2>/dev/null | json_text_escape || true)"
+	fi
+
+	printf '{"ok":true,"name":"%s","conf":"%s","qr_svg":"%s"}\n' \
+		"$(json_escape "$peer_name")" "$conf_txt" "$qr_svg"
+}
+
 speedtest_history_file() {
 	case "$1" in wan|wan2) ;; *) return 1 ;; esac
 	mkdir -p /etc/ark-router/speedtest-history
@@ -5109,6 +5531,40 @@ feature_json() {
 			"$installed_zt" "$active_zt" "$autostart_zt" "$(bool $((concealed == 0)))" "$(json_escape "${node:-—}")" "$(json_escape "$netid")" "$(json_escape "${nstatus:-—}")" "$(json_escape "${ip:-—}")" "$(json_escape "$lan_cidr")"
 		return 0
 	fi
+	if [ "$key" = wireguard ]; then
+		hidden "$key"; concealed=$?
+		installed_wg=false; ([ -x /usr/bin/wg ] || [ -f /lib/netifd/proto/wireguard.sh ]) && installed_wg=true
+		active_wg=false; [ -d /sys/class/net/wg0 ] && active_wg=true
+		autostart_wg=false; [ "$(uci -q get network.wg0.auto)" != "0" ] && autostart_wg=true
+		listen_port="$(uci -q get network.wg0.listen_port || printf '51820')"
+		wg_ip="$(uci -q get network.wg0.addresses 2>/dev/null || uci -q get network.wg0.ipaddr 2>/dev/null || printf '10.14.0.1/24')"
+		pubkey=""
+		peers_count=0
+		peers_active=0
+		if command -v wg >/dev/null 2>&1 && [ -d /sys/class/net/wg0 ]; then
+			pubkey="$(wg show wg0 public-key 2>/dev/null || true)"
+			peers_count="$(wg show wg0 peers 2>/dev/null | wc -l)"
+			now="$(date +%s)"
+			for hs in $(wg show wg0 latest-handshakes 2>/dev/null | awk '{print $2}'); do
+				if [ -n "$hs" ] && [ "$hs" -gt 0 ]; then
+					diff=$((now - hs))
+					[ "$diff" -le 180 ] && peers_active=$((peers_active + 1))
+				fi
+			done
+		else
+			[ -f /etc/wireguard/server_public.key ] && pubkey="$(cat /etc/wireguard/server_public.key 2>/dev/null || true)"
+			peers_count="$(uci -q show network 2>/dev/null | grep -c '=wireguard_wg0$' || true)"
+		fi
+		[ -n "$peers_count" ] || peers_count=0
+		[ -n "$peers_active" ] || peers_active=0
+		wan_ip="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null || true)"
+		[ -n "$wan_ip" ] || wan_ip="$(uci -q get network.wan.ipaddr 2>/dev/null || true)"
+		custom_endpoint="$(uci -q get equipe_dashboard.wireguard.endpoint 2>/dev/null || true)"
+		endpoint="${custom_endpoint:-$wan_ip}"
+		printf '"wireguard":{"installed":%s,"active":%s,"autostart":%s,"hidden":%s,"installable":true,"package":"wireguard-tools","ip":"%s","listen_port":"%s","public_key":"%s","endpoint":"%s","peers_count":%d,"peers_active":%d}' \
+			"$installed_wg" "$active_wg" "$autostart_wg" "$(bool $((concealed == 0)))" "$(json_escape "$wg_ip")" "$(json_escape "$listen_port")" "$(json_escape "$pubkey")" "$(json_escape "$endpoint")" "$peers_count" "$peers_active"
+		return 0
+	fi
 	if [ -n "$package" ]; then installed "$package"; present=$?; else feature_active "$key"; present=$?; fi
 	feature_active "$key"; enabled=$?
 	hidden "$key"; concealed=$?
@@ -6582,6 +7038,7 @@ case "$action" in
 		feature_json speedify speedify true; printf ','
 		feature_json tailscale tailscale true; printf ','
 		feature_json zerotier zerotier true; printf ','
+		feature_json wireguard wireguard-tools true; printf ','
 		feature_json adblock adblock true
 		printf ','; feature_json irqbalance irqbalance "$irq_installable" "$irq_reason"
 		cli="$(speedify_cli_path)"
@@ -6858,6 +7315,13 @@ case "$action" in
 		elif [ "$key" = speedify ]; then speedify_install_auto_safe
 		elif [ "$key" = tailscale ]; then tailscale_install
 		elif [ "$key" = zerotier ]; then zerotier_enable
+		elif [ "$key" = wireguard ]; then
+			if command -v apk >/dev/null 2>&1; then
+				apk update && apk add wireguard-tools luci-proto-wireguard kmod-wireguard qrencode
+			else
+				opkg update && opkg install wireguard-tools luci-proto-wireguard kmod-wireguard qrencode
+			fi
+			killall -HUP netifd 2>/dev/null || true
 		elif [ "$key" = argon ] && command -v apk >/dev/null 2>&1 && ! apk search luci-theme-argon 2>/dev/null | grep -qx 'luci-theme-argon.*'; then install_argon_release
 		elif command -v apk >/dev/null 2>&1; then apk update && apk add "$package"
 		else opkg update && opkg install "$package"
@@ -7830,6 +8294,30 @@ case "$action" in
 		;;
 	zerotier-autostart-toggle)
 		zerotier_autostart_toggle "$2"
+		;;
+	wireguard-status)
+		wireguard_status_json
+		;;
+	wireguard-server-setup)
+		wireguard_server_setup "$2" "$3"
+		;;
+	wireguard-enable)
+		wireguard_enable
+		;;
+	wireguard-disable)
+		wireguard_disable
+		;;
+	wireguard-autostart-toggle)
+		wireguard_autostart_toggle "$2"
+		;;
+	wireguard-peer-add)
+		wireguard_peer_add "$2" "$3" "$4" "$5"
+		;;
+	wireguard-peer-delete)
+		wireguard_peer_delete "$2"
+		;;
+	wireguard-peer-qr)
+		wireguard_peer_qr "$2"
 		;;
 	adblock-status)
 		adblock_status_json

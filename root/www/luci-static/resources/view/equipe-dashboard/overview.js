@@ -74,6 +74,7 @@ const FEATURE_META={
 	,irqbalance:{name:'IRQ Balance',description:'Distribui interrupções de hardware entre os núcleos do processador para manter Wi‑Fi, rede e CPU mais responsivos.'}
 	,speedify:{name:'Speedify Bonding',description:'Integra o Speedify para somar links de internet de verdade usando licença Speedify Router.',recommended:true}
 	,zerotier:{name:'ZeroTier remoto leve',description:'Acesso remoto leve por rede virtual. Melhor para roteadores com pouca flash/RAM.',recommended:true}
+	,wireguard:{name:'WireGuard VPN',description:'Servidor VPN moderno de alta velocidade no kernel Linux. Conexão direta com QR Code para celular e PC.',recommended:true}
 	,adblock:{name:'Bloqueador de Anúncios',description:'Protege a rede inteira contra propagandas invasivas, anúncios de Smart TV e rastreadores.',recommended:true}
 };
 function installDashboardNotifications(){
@@ -4946,6 +4947,318 @@ return view.extend({
 			E('small',{class:'ex-muted'},[active ? 'ZeroTier ativo. Use o IP acima para acessar o roteador remotamente.' : 'ZeroTier desligado (processo finalizado, zero uso de CPU e RAM). Clique em Ativar para conectar.'])
 		]);
 	},
+	enableWireguard: function(){
+		ui.showModal('Ativar WireGuard', [E('p', {}, ['Iniciando servidor WireGuard no kernel Linux…'])]);
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-enable']).then(function(r){
+			if(r.code) throw new Error(r.stderr || 'Falha ao iniciar WireGuard');
+			ui.hideModal();
+			reloadSoon('WireGuard ativado com sucesso. Recarregando…', 1500);
+		}).catch(function(e){
+			ui.showModal('Ativar WireGuard', [E('p', {class:'alert-message warning'}, [e.message]), E('div', {class:'right'}, [E('button', {class:'btn cbi-button cbi-button-neutral', 'click':closeModal}, ['Fechar'])])]);
+		});
+	},
+	disableWireguard: function(){
+		ui.showModal('Desligar WireGuard', [
+			E('p', {}, ['Desligar o WireGuard neste roteador? O túnel VPN será interrompido e os clientes conectados perderão o acesso até você reativar.']),
+			E('div', {class:'right'}, [
+				E('button', {class:'btn cbi-button cbi-button-neutral', 'click':closeModal}, ['Cancelar']),
+				' ',
+				E('button', {class:'btn cbi-button cbi-button-negative', 'click':function(){
+					return fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-disable']).then(function(r){
+						if(r.code) throw new Error(r.stderr || 'Falha ao desligar WireGuard');
+						ui.hideModal();
+						reloadSoon('WireGuard desligado com sucesso. Recarregando…', 1200);
+					}).catch(function(e){
+						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+					});
+				}}, ['Desligar'])
+			])
+		]);
+	},
+	showWireGuardQrModal: function(peerName, confText, qrSvg){
+		const qrContainer = E('div', {class:'ex-wireguard-qr-box'}, []);
+		if(qrSvg){
+			qrContainer.innerHTML = qrSvg;
+		} else {
+			qrContainer.appendChild(E('p', {class:'ex-muted'}, ['QR Code não disponível (instale o pacote qrencode). Use a configuração abaixo.']));
+		}
+
+		const confBox = E('textarea', {
+			class:'cbi-input-textarea',
+			readonly:'readonly',
+			rows: 8,
+			style:'width:100%; font-family:monospace; font-size:12px; margin-top:10px;'
+		}, [confText || '']);
+
+		const downloadBtn = E('button', {
+			class:'btn cbi-button cbi-button-action',
+			click: function(){
+				const blob = new Blob([confText], { type: 'text/plain;charset=utf-8' });
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement('a');
+				a.href = url;
+				a.download = (peerName || 'wireguard-client') + '.conf';
+				document.body.appendChild(a);
+				a.click();
+				setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
+			}
+		}, ['📥 Baixar .conf']);
+
+		const copyBtn = E('button', {
+			class:'btn cbi-button cbi-button-neutral',
+			click: function(){
+				navigator.clipboard.writeText(confText).then(function(){
+					ui.addNotification(null, E('p', {}, ['Configuração copiada para a área de transferência!']), 'info');
+				}).catch(function(){
+					confBox.select();
+					document.execCommand('copy');
+					ui.addNotification(null, E('p', {}, ['Texto selecionado/copiado!']), 'info');
+				});
+			}
+		}, ['📋 Copiar Texto']);
+
+		ui.showModal('Conectar Cliente: ' + peerName, [
+			E('p', {class:'ex-muted'}, ['Escaneie o QR Code no app WireGuard (iOS/Android) ou baixe o arquivo .conf para Windows/Mac.']),
+			qrContainer,
+			E('div', {style:'margin-top:12px;'}, [
+				E('strong', {}, ['Arquivo de Configuração:']),
+				confBox
+			]),
+			E('div', {class:'right', style:'margin-top:14px; display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;'}, [
+				downloadBtn,
+				copyBtn,
+				E('button', {class:'btn cbi-button cbi-button-neutral', click:closeModal}, ['Fechar'])
+			])
+		]);
+	},
+	showWireGuardModal: function(){
+		const self = this;
+		ui.showModal('Carregando WireGuard', [E('p', {}, ['Obtendo estado dos pares e configurações…'])]);
+
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-status']).then(function(r){
+			if(r.code) throw new Error(r.stderr || 'Falha ao obter status do WireGuard');
+			let status = {};
+			try { status = JSON.parse(r.stdout); } catch(e){ throw new Error('Resposta JSON inválida do backend'); }
+			ui.hideModal();
+
+			const peers = status.peers || [];
+			const nextIp = '10.14.0.' + (peers.length + 2);
+
+			const nameInput = E('input', {class:'cbi-input-text', type:'text', placeholder:'ex.: Arthur-iPhone', maxlength:32, style:'width:100%;'});
+			const ipInput = E('input', {class:'cbi-input-text', type:'text', value:nextIp, placeholder:'ex.: 10.14.0.2', maxlength:24, style:'width:100%;'});
+			const endpointInput = E('input', {class:'cbi-input-text', type:'text', value:status.endpoint || '', placeholder:'IP público ou DDNS', maxlength:64, style:'width:100%;'});
+			const tunnelSelect = E('select', {class:'cbi-input-select', style:'width:100%;'}, [
+				E('option', {value:'full', selected:'selected'}, ['VPN Completa (todo o tráfego 0.0.0.0/0) - Mais seguro']),
+				E('option', {value:'split'}, ['Split Tunnel (apenas rede do roteador) - Leve'])
+			]);
+
+			const addPeerSection = E('div', {class:'ex-device-config-block', style:'margin-bottom:16px; padding:14px; border:1px solid rgba(127,127,127,.2); border-radius:12px;'}, [
+				E('h4', {style:'margin:0 0 10px; font-size:0.98rem;'}, ['+ Adicionar Novo Dispositivo / Gerar QR Code']),
+				E('div', {style:'display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; margin-bottom:12px;'}, [
+					E('label', {class:'ex-field', style:'margin:0;'}, [E('span', {style:'font-size:0.75rem; font-weight:600; opacity:.75;'}, ['NOME DO DISPOSITIVO']), nameInput]),
+					E('label', {class:'ex-field', style:'margin:0;'}, [E('span', {style:'font-size:0.75rem; font-weight:600; opacity:.75;'}, ['IP NA VPN']), ipInput]),
+					E('label', {class:'ex-field', style:'margin:0;'}, [E('span', {style:'font-size:0.75rem; font-weight:600; opacity:.75;'}, ['ENDPOINT (IP/DDNS DO ROTEADOR)']), endpointInput]),
+					E('label', {class:'ex-field', style:'margin:0;'}, [E('span', {style:'font-size:0.75rem; font-weight:600; opacity:.75;'}, ['TIPO DE TÚNEL']), tunnelSelect])
+				]),
+				E('div', {style:'display:flex; justify-content:flex-end;'}, [
+					E('button', {
+						class:'btn cbi-button cbi-button-positive',
+						style:'min-height:40px; padding:0 16px;',
+						click: function(){
+							const name = (nameInput.value || '').trim();
+							const ip = (ipInput.value || '').trim();
+							const ep = (endpointInput.value || '').trim();
+							const mode = tunnelSelect.value;
+							if(!name){
+								ui.addNotification(null, E('p', {}, ['Informe o nome do dispositivo']), 'warning');
+								return;
+							}
+							ui.showModal('Gerando Chaves & QR Code', [E('p', {}, ['Criando credenciais criptográficas WireGuard…'])]);
+							return fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-peer-add', name, ip, ep, mode]).then(function(res){
+								if(res.code) throw new Error(res.stderr || 'Falha ao criar par WireGuard');
+								let rData = {};
+								try { rData = JSON.parse(res.stdout); } catch(err){ throw new Error('Falha ao processar resposta'); }
+								ui.hideModal();
+								self.showWireGuardQrModal(rData.name || name, rData.conf, rData.qr_svg);
+							}).catch(function(err){
+								ui.showModal('Erro ao adicionar cliente', [E('p', {class:'alert-message warning'}, [err.message]), E('div', {class:'right'}, [E('button', {class:'btn cbi-button cbi-button-neutral', click:closeModal}, ['Fechar'])])]);
+							});
+						}
+					}, ['⚡ Gerar Par & Exibir QR Code'])
+				])
+			]);
+
+			const peersList = E('div', {style:'display:flex; flex-direction:column; gap:10px;'}, []);
+			if(peers.length === 0){
+				peersList.appendChild(E('p', {class:'ex-muted', style:'text-align:center; padding:16px;'}, ['Nenhum dispositivo cliente cadastrado ainda. Use o formulário acima para conectar seu celular ou PC.']));
+			} else {
+				peers.forEach(function(p){
+					const rxMb = (Number(p.rx_bytes || 0) / 1048576).toFixed(1);
+					const txMb = (Number(p.tx_bytes || 0) / 1048576).toFixed(1);
+					let statusText = 'Nunca conectou';
+					let statusColor = 'inherit';
+					if(p.online){
+						statusText = '● Conectado agora';
+						statusColor = '#22c55e';
+					} else if(p.latest_handshake > 0){
+						const diff = Math.floor(Date.now() / 1000) - Number(p.latest_handshake);
+						if(diff < 3600) statusText = 'Visto há ' + Math.floor(diff / 60) + ' min';
+						else if(diff < 86400) statusText = 'Visto há ' + Math.floor(diff / 3600) + 'h';
+						else statusText = 'Visto há ' + Math.floor(diff / 86400) + 'd';
+					}
+
+					const pCard = E('div', {
+						class:'ex-wireguard-peer-card',
+						style:'display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border-radius:10px; background:rgba(127,127,127,.07); flex-wrap:wrap;'
+					}, [
+						E('div', {style:'flex:1 1 200px; min-width:0;'}, [
+							E('div', {style:'display:flex; align-items:center; gap:8px;'}, [
+								E('strong', {style:'font-size:0.95rem;'}, [p.name]),
+								E('span', {style:'font-size:0.75rem; color:' + statusColor + '; font-weight:700;'}, [statusText])
+							]),
+							E('div', {class:'ex-muted', style:'font-size:0.8rem; margin-top:2px;'}, [
+								'IP: ' + p.allowed_ips + ' | Tráfego: ↓ ' + rxMb + ' MB  ↑ ' + txMb + ' MB'
+							])
+						]),
+						E('div', {style:'display:flex; gap:8px; align-items:center;'}, [
+							p.has_config ? E('button', {
+								class:'ex-mini-button',
+								style:'min-height:36px;',
+								click: function(){
+									ui.showModal('Carregando QR Code', [E('p', {}, ['Lendo dados do cliente…'])]);
+									fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-peer-qr', p.name]).then(function(qrRes){
+										if(qrRes.code) throw new Error(qrRes.stderr || 'Falha ao obter QR');
+										let qd = JSON.parse(qrRes.stdout);
+										ui.hideModal();
+										self.showWireGuardQrModal(p.name, qd.conf, qd.qr_svg);
+									}).catch(function(e){
+										ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+									});
+								}
+							}, ['📱 Ver QR Code']) : '',
+							E('button', {
+								class:'ex-feature-link',
+								style:'color:#ef4444; min-height:36px; padding:0 8px;',
+								click: function(){
+									ui.showModal('Excluir ' + p.name, [
+										E('p', {}, ['Remover o dispositivo ' + p.name + ' do servidor WireGuard? O acesso deste dispositivo será bloqueado imediatamente.']),
+										E('div', {class:'right'}, [
+											E('button', {class:'btn cbi-button cbi-button-neutral', click:closeModal}, ['Cancelar']),
+											' ',
+											E('button', {class:'btn cbi-button cbi-button-negative', click:function(){
+												return fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-peer-delete', p.public_key]).then(function(delRes){
+													if(delRes.code) throw new Error(delRes.stderr || 'Falha ao remover cliente');
+													ui.hideModal();
+													reloadSoon('Cliente removido. Recarregando…', 1200);
+												}).catch(function(err){
+													ui.addNotification(null, E('p', {}, [err.message]), 'danger');
+												});
+											}}, ['Excluir'])
+										])
+									]);
+								}
+							}, ['Excluir'])
+						])
+					]);
+					peersList.appendChild(pCard);
+				});
+			}
+
+			ui.showModal('Gerenciar Servidor WireGuard', [
+				E('div', {style:'margin-bottom:14px;'}, [
+					E('p', {class:'ex-muted', style:'margin-bottom:8px;'}, [
+						'Servidor WireGuard ativo no kernel com criptografia Noise Protocol Framework. Chave Pública do Servidor: '
+					]),
+					E('div', {style:'display:flex; align-items:center; gap:8px; font-family:monospace; font-size:0.8rem; background:rgba(127,127,127,.1); padding:6px 10px; border-radius:6px;'}, [
+						E('span', {style:'flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;'}, [status.public_key || '—']),
+						E('button', {
+							class:'ex-mini-button',
+							style:'padding:2px 8px; font-size:0.75rem;',
+							click: function(){
+								navigator.clipboard.writeText(status.public_key || '').then(function(){
+									ui.addNotification(null, E('p', {}, ['Chave pública copiada!']), 'info');
+								});
+							}
+						}, ['Copiar'])
+					])
+				]),
+				addPeerSection,
+				E('h4', {style:'margin:16px 0 10px; font-size:0.98rem;'}, ['Dispositivos Pareados (' + peers.length + ')']),
+				peersList,
+				E('div', {class:'right', style:'margin-top:16px;'}, [
+					E('button', {class:'btn cbi-button cbi-button-neutral', click:closeModal}, ['Fechar'])
+				])
+			]);
+		}).catch(function(err){
+			ui.showModal('WireGuard', [E('p', {class:'alert-message warning'}, [err.message]), E('div', {class:'right'}, [E('button', {class:'btn cbi-button cbi-button-neutral', click:closeModal}, ['Fechar'])])]);
+		});
+	},
+	wireguardCard: function(){
+		const f = this.feature('wireguard') || {};
+		const installed = !!f.installed;
+		const active = !!f.active;
+		const peersCount = Number(f.peers_count || 0);
+		const peersActive = Number(f.peers_active || 0);
+
+		return E('section', {class:'ex-card ex-remote-card'}, [
+			E('div', {class:'ex-card-title'}, [
+				E('div', {}, [
+					E('span', {class:'ex-kicker'}, ['VPN DE ALTA PERFORMANCE (KERNEL)']),
+					E('h3', {}, ['WireGuard VPN'])
+				]),
+				E('span', {class:'ex-pill ' + (active ? 'online' : (installed ? 'standby' : 'offline'))}, [
+					active ? 'ATIVO' : (installed ? 'DESLIGADO' : 'OPCIONAL')
+				])
+			]),
+			E('p', {class:'ex-muted'}, [
+				'Servidor VPN ultrarrápido integrado diretamente ao kernel Linux. Conecte iPhone, Android, Windows e Mac com geração instantânea de QR Code, sem custos e sem intermediários.'
+			]),
+			E('div', {class:'ex-grid ex-grid-4 ex-qos-grid'}, [
+				E('div', {class:'ex-row'}, [E('span', {}, ['IP da Interface']), E('strong', {}, [active ? (f.ip || '10.14.0.1/24') : '—'])]),
+				E('div', {class:'ex-row'}, [E('span', {}, ['Porta UDP']), E('strong', {}, [f.listen_port || '51820'])]),
+				E('div', {class:'ex-row'}, [E('span', {}, ['Dispositivos']), E('strong', {}, [active ? (peersActive + ' ativos (' + peersCount + ' total)') : (peersCount + ' cadastrados')])]),
+				E('div', {class:'ex-row'}, [E('span', {}, ['Endpoint WAN']), E('strong', {}, [f.endpoint ? (f.endpoint + ':' + (f.listen_port || '51820')) : 'Automático'])])
+			]),
+			installed ? E('div', { class: 'ex-device-config-block', style: 'margin-top: 10px; margin-bottom: 8px;' }, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 12px;' }, [
+					E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
+						E('strong', {}, ['Auto-iniciar no boot']),
+						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, [
+							'Inicia o servidor WireGuard e carrega as regras de firewall automaticamente ao ligar o roteador.'
+						])
+					]),
+					E('label', { class: 'ex-switch', style: 'flex: 0 0 auto;' }, [
+						E('input', {
+							type: 'checkbox',
+							checked: !!f.autostart,
+							change: function(ev) {
+								const input = ev.currentTarget;
+								const val = input.checked ? '1' : '0';
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-autostart-toggle', val]).then(function(r) {
+									if (r.code) throw new Error(r.stderr || 'Falha ao alterar inicialização');
+									ui.addNotification(null, E('p', {}, [val === '1' ? 'WireGuard configurado para iniciar automaticamente no boot.' : 'WireGuard não irá mais iniciar sozinho no boot.']), 'info');
+								}).catch(function(e) {
+									input.checked = !input.checked;
+									ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+								});
+							}
+						}),
+						E('span', { class: 'ex-switch-slider' })
+					])
+				])
+			]) : '',
+			E('div', {class:'ex-speedify-actions'}, [
+				installed ? '' : E('button', {class:'ex-mini-button', click:L.bind(this.installFeature, this, 'wireguard')}, ['Instalar WireGuard']),
+				installed && !active ? E('button', {class:'ex-mini-button', click:L.bind(this.enableWireguard, this)}, ['▶ Ativar WireGuard']) : '',
+				installed && active ? E('button', {class:'ex-mini-button', click:L.bind(this.showWireGuardModal, this)}, ['📱 Gerenciar / Adicionar Dispositivo (' + peersCount + ')']) : '',
+				installed && active ? E('button', {class:'ex-feature-link', click:L.bind(this.disableWireguard, this)}, ['⏹ Desligar']) : '',
+				E('a', {class:'ex-text-link', href:L.url('admin/network/network'), target:'_blank', rel:'noopener noreferrer'}, ['Configuração Avançada LuCI →'])
+			]),
+			E('small', {class:'ex-muted'}, [
+				active ? 'WireGuard ativo e pronto para tráfego seguro. Toque em “Gerenciar / Adicionar Dispositivo” para parear celulares e notebooks via QR Code.' : 'WireGuard desligado (interface desmontada, zero uso de CPU). Clique em Ativar para iniciar.'
+			])
+		]);
+	},
 	adblockCard: function(){
 		const f = this.feature('adblock') || {};
 		const installed = !!f.installed;
@@ -9094,6 +9407,7 @@ return view.extend({
 				])
 			]),
 			this.adblockCard(),
+			this.wireguardCard(),
 			this.zerotierCard(),
 			speedifySection || '',
 			E('section',{class:'ex-card ex-reboot-card'},[E('div',{},[E('span',{class:'ex-kicker'},['SISTEMA']),E('h3',{},['Reiniciar o roteador']),E('p',{class:'ex-muted'},['Interrompe a internet por alguns minutos e encerra as sessões abertas.'])]),E('button',{class:'ex-reboot-button','click':L.bind(function(){this.requestReboot();},this)},['Reiniciar…'])])

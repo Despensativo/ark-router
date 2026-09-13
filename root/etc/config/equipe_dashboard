@@ -21,3 +21,7 @@ config feature 'nlbwmon'
 
 config feature 'upnp'
 	option hidden '0'
+
+config feature 'wireguard'
+	option hidden '0'
+
