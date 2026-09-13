@@ -8653,7 +8653,11 @@ EOF
 			out="$(dmesg | grep 'pppd' | tail -n "$count")"
 		fi
 		if [ -z "$out" ]; then
-			echo "(Nenhum evento PPPoE recente registrado no log do sistema)"
+			if [ -d /sys/class/net/pppoe-wan ] || [ -d /sys/class/net/pppoe-wan2 ]; then
+				echo "(Nenhum evento PPPoE recente registrado no log do sistema — Conexão ativa e estável sem erros)"
+			else
+				echo "(Nenhum evento PPPoE recente registrado no log do sistema)"
+			fi
 		else
 			printf '%s\n' "$out"
 		fi

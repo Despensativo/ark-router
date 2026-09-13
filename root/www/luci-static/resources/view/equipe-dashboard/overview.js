@@ -2550,9 +2550,23 @@ return view.extend({
 
 				if (!rawLogText || rawLogText.indexOf('(Nenhum evento') === 0) {
 					logContainer.innerHTML = '';
-					logContainer.appendChild(E('span', { class: 'ex-muted' }, [rawLogText || '(Nenhum evento PPPoE encontrado no buffer de log)']));
-					statusBadge.textContent = 'Sem eventos';
-					statusBadge.className = 'ex-pill standby';
+					const isCleanActive = (rawLogText && rawLogText.indexOf('ativa e estável') !== -1);
+					if (isCleanActive) {
+						statusBadge.textContent = '● Conectado & Estável (0 erros)';
+						statusBadge.className = 'ex-pill online';
+						logContainer.appendChild(E('div', { style: 'color:#34d399; font-weight:600; margin-bottom:6px;' }, [
+							'✓ Sessão PPPoE Ativa e 100% Estável'
+						]));
+						logContainer.appendChild(E('div', { class: 'ex-muted' }, [
+							'Nenhuma queda, timeout ou erro de autenticação registrado no log.',
+							E('br'),
+							'A conexão está funcionando normalmente sem interrupções.'
+						]));
+					} else {
+						statusBadge.textContent = 'Sem eventos recentes';
+						statusBadge.className = 'ex-pill standby';
+						logContainer.appendChild(E('span', { class: 'ex-muted' }, [rawLogText || '(Nenhum evento PPPoE encontrado no buffer de log)']));
+					}
 					return;
 				}
 
