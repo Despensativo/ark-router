@@ -1,0 +1,62 @@
+#!/bin/sh
+# /usr/sbin/ark-web-watchdog
+# ARK Router Web Server & Access Auto-Recovery Watchdog
+# Runs every minute to guarantee 100% web interface uptime and access integrity
+
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+
+# 1. Probe Web Server (Nginx) responsiveness
+probe_ok=0
+if wget -q -T 3 -O /dev/null http://127.0.0.1/ >/dev/null 2>&1; then
+    probe_ok=1
+else
+    sleep 1
+    if wget -q -T 3 -O /dev/null http://127.0.0.1/ >/dev/null 2>&1; then
+        probe_ok=1
+    fi
+fi
+
+if [ "$probe_ok" = "0" ]; then
+    logger -t ark-watchdog "CRITICAL: Web server (Nginx) not responding on port 80! Executing auto-recovery..."
+    killall -9 nginx >/dev/null 2>&1
+    sleep 1
+    /etc/init.d/nginx restart >/dev/null 2>&1
+    sleep 2
+    if wget -q -T 3 -O /dev/null http://127.0.0.1/ >/dev/null 2>&1; then
+        logger -t ark-watchdog "SUCCESS: Web server recovered cleanly."
+    else
+        logger -t ark-watchdog "ERROR: Web server restart attempt did not resolve responsiveness."
+    fi
+fi
+
+# 2. Guarantee LAN IPv6 access in restrict_locally
+if [ -f /etc/nginx/restrict_locally ]; then
+    if ! grep -q "2000::/3" /etc/nginx/restrict_locally; then
+        sed -i '/allow ::1;/a \tallow 2000::/3;' /etc/nginx/restrict_locally
+        /etc/init.d/nginx reload >/dev/null 2>&1
+        logger -t ark-watchdog "Restored IPv6 LAN access rule (2000::/3) in /etc/nginx/restrict_locally"
+    fi
+fi
+
+# 3. Guarantee WireGuard subnet allowed_ips integrity
+if [ -f /etc/config/network ]; then
+    wg_ips=$(uci -q get network.@wireguard_wgclient[0].allowed_ips || true)
+    if [ "$wg_ips" = "10.203.73.1/32" ]; then
+        uci -q delete network.@wireguard_wgclient[0].allowed_ips
+        uci -q add_list network.@wireguard_wgclient[0].allowed_ips="10.203.73.0/24"
+        uci -q set network.wgclient.addresses="10.203.73.5/24"
+        uci commit network
+        which wg >/dev/null 2>&1 && wg set wgclient peer U8tonjTriOhMyQl4xD1XVcMcJI/CvV3QDivTZBqQkDE= allowed-ips 10.203.73.0/24 >/dev/null 2>&1
+        logger -t ark-watchdog "Restored WireGuard subnet allowed_ips to 10.203.73.0/24"
+    fi
+fi
+
+# 4. Clean RAM log bloat if access.log exists
+if [ -f /var/log/nginx/access.log ]; then
+    sz=$(wc -c < /var/log/nginx/access.log 2>/dev/null || echo 0)
+    if [ "$sz" -gt 262144 ]; then
+        > /var/log/nginx/access.log
+    fi
+fi
+
+exit 0
