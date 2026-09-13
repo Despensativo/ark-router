@@ -272,6 +272,105 @@ function sqmWanProfiles(data) {
 	return result;
 }
 function parsePing(r) { const m = ((r && r.stdout) || '').match(/time[=<]([0-9.]+)/); return r && r.code === 0 && m ? Number(m[1]) : null; }
+const PING_TARGET_PRESETS = [
+	{
+		id: 'registro_br',
+		title: 'Registro.br / NIC.br (Brasil)',
+		shortLabel: '🇧🇷 Registro.br',
+		ip: '200.160.2.3',
+		desc: 'Ponto Central IX.br (São Paulo). Referência recomendada e mais precisa para aferir a qualidade da rota e latência nacional.',
+		badge: 'Recomendado BR'
+	},
+	{
+		id: 'cloudflare',
+		title: 'Cloudflare DNS',
+		shortLabel: '⚡ Cloudflare',
+		ip: '1.1.1.1',
+		desc: 'Rede Anycast global com PoPs nas capitais brasileiras e altíssima velocidade para CDN.',
+		badge: 'Ultra-rápido'
+	},
+	{
+		id: 'google',
+		title: 'Google Public DNS',
+		shortLabel: '🌐 Google',
+		ip: '8.8.8.8',
+		desc: 'Serviço global do Google, padrão consagrado para testes de estabilidade e rotas internacionais.',
+		badge: 'Global'
+	},
+	{
+		id: 'quad9',
+		title: 'Quad9 Security DNS',
+		shortLabel: '🛡️ Quad9',
+		ip: '9.9.9.9',
+		desc: 'Anycast seguro com bloqueio automático contra malwares, phishing e ameaças.',
+		badge: 'Segurança'
+	},
+	{
+		id: 'isp',
+		title: 'DNS da Operadora (Dinâmico)',
+		shortLabel: '📡 Operadora',
+		ip: 'dinâmico',
+		desc: 'Mede o tempo de resposta do primeiro salto até a infraestrutura do seu provedor de internet.',
+		badge: 'Local'
+	},
+	{
+		id: 'custom',
+		title: 'Servidor Personalizado',
+		shortLabel: '✍️ Custom',
+		ip: 'personalizado',
+		desc: 'Insira qualquer IP ou domínio (servidores de jogos como Riot/Steam, filiais corporativas ou VPNs).',
+		badge: 'Manual'
+	}
+];
+function getPingTargetInfo(data) {
+	let target = 'registro_br';
+	let customIp = '';
+	try {
+		if (typeof window !== 'undefined' && window.localStorage) {
+			const st = window.localStorage.getItem('ark_wan_ping_target');
+			const sc = window.localStorage.getItem('ark_wan_ping_custom_ip');
+			if (st) target = st;
+			if (sc != null) customIp = sc;
+		}
+	} catch(e) {}
+	const eqCfg = data && data.equipeDashboardConfig && data.equipeDashboardConfig.values && data.equipeDashboardConfig.values.main;
+	if (eqCfg) {
+		if (eqCfg.ping_target && (!window.localStorage || !window.localStorage.getItem('ark_wan_ping_target'))) {
+			target = eqCfg.ping_target;
+		}
+		if (eqCfg.ping_custom_ip != null && (!window.localStorage || !window.localStorage.getItem('ark_wan_ping_custom_ip'))) {
+			customIp = eqCfg.ping_custom_ip;
+		}
+	}
+	return { target: target, customIp: customIp };
+}
+function getPingTargetShortLabel(target, customIp) {
+	if (target === 'custom') {
+		const clean = (customIp || '').trim();
+		return clean ? ('✍️ ' + clean) : '✍️ Custom';
+	}
+	const p = PING_TARGET_PRESETS.find(function(item) { return item.id === target; });
+	return p ? p.shortLabel : '🇧🇷 Registro.br';
+}
+function resolvePingTarget(target, customIp, live, cfg) {
+	if (target === 'registro_br') return '200.160.2.3';
+	if (target === 'cloudflare') return '1.1.1.1';
+	if (target === 'google') return '8.8.8.8';
+	if (target === 'quad9') return '9.9.9.9';
+	if (target === 'custom' && customIp && customIp.trim()) return customIp.trim();
+	if (target === 'isp') {
+		const dnsList = (live && (live['dns-server'] || live.dns_server)) || (cfg && cfg.dns) || [];
+		if (Array.isArray(dnsList) && dnsList.length && dnsList[0] && dnsList[0] !== '0.0.0.0') {
+			return dnsList[0];
+		}
+		const routes = Array.isArray(live && live.route) ? live.route : [];
+		const def = routes.find(function(r) { return r && (r.target === '0.0.0.0' || Number(r.mask) === 0) && r.nexthop; }) ||
+			routes.find(function(r) { return r && r.nexthop; });
+		if (def && def.nexthop && def.nexthop !== '0.0.0.0') return def.nexthop;
+		return '200.160.2.3';
+	}
+	return '200.160.2.3';
+}
 function bigIcon(svgHtml) { const span = E('span', { 'class': 'ex-big-icon', 'aria-hidden': 'true' }); span.innerHTML = svgHtml; return span; }
 function infoRow(label, id) { return E('div', { 'class': 'ex-row' }, [ E('span', {}, [ label ]), E('strong', { 'id': id }, [ '—' ]) ]); }
 function cidrMask(bits) {
@@ -773,9 +872,12 @@ return view.extend({
 			safe(fs.read('/tmp/equipe-wan-daily.csv'), ''),
 			safe(callHostHints(), {}),
 			safe(fs.read('/proc/net/arp'), ''),
-			safe(fs.exec('/usr/sbin/equipe-dashboard-control', [ 'system-hardware-info' ]), {})
+			safe(fs.exec('/usr/sbin/equipe-dashboard-control', [ 'system-hardware-info' ]), {}),
+			safe(callUciGet('equipe_dashboard'), { values: {} })
 		]).then(function(r) {
 			const interfaces=r[1], networkConfig=r[9], networkValues=values(networkConfig), topology=wifiTopology(r[15], r[6]), lanPorts=lanPortsFromNetwork(networkConfig);
+			const equipeDashboardConfig=r[22] || { values: {} };
+			const pingCfg = getPingTargetInfo({ equipeDashboardConfig: equipeDashboardConfig });
 			const activeWans=getActiveWanList({networkConfig:networkConfig, interfaces:interfaces});
 			const wanDevicesMap={}, wanPhysicalDevicesMap={}, wanPingsMap={};
 			const wanPromises=[];
@@ -788,8 +890,7 @@ return view.extend({
 				if(!isInitial && live.up && logicalDev){
 					const ip = (live['ipv4-address'] && live['ipv4-address'][0] && live['ipv4-address'][0].address) || '';
 					const bindTarget = ip || logicalDev;
-					const dnsList = (live['dns-server'] || cfg.dns || []);
-					const pingTarget = (Array.isArray(dnsList) && dnsList.length && dnsList[0] && dnsList[0] !== '0.0.0.0') ? dnsList[0] : '8.8.8.8';
+					const pingTarget = resolvePingTarget(pingCfg.target, pingCfg.customIp, live, cfg);
 					wanPromises.push(safe(fs.exec('/bin/ping',['-c','1','-W','2','-I',bindTarget,pingTarget]),{}).then(function(p){wanPingsMap[w.iface]=p;}));
 				}
 			});
@@ -818,6 +919,7 @@ return view.extend({
 				dhcpConfig: r[16], firewallConfig: r[17], wanDaily: r[18],
 				hostHints: r[19] || {}, arpTable: r[20] || '',
 				hardwareInfo: (function(){ try { return JSON.parse((r[21] && r[21].stdout) || '{}'); } catch(e){ return {}; } })(),
+				equipeDashboardConfig: equipeDashboardConfig,
 				timestamp:Date.now()
 			}; });
 		});
@@ -959,6 +1061,7 @@ return view.extend({
 			text(prefix+'-dns','—');
 			text(prefix+'-link',phy.carrier ? 'Conectado (em LAN)' : 'Sem cabo');
 			text(prefix+'-latency','—');
+			text(prefix+'-latency-target','—');
 			text(prefix+'-rx-day','—');
 			text(prefix+'-tx-day','—');
 			text(prefix+'-session','—');
@@ -980,7 +1083,9 @@ return view.extend({
 				ip6Str = comp['ipv6-address'][0].address;
 			}
 		}
-		text(prefix+'-mode',wanProtoLabel(i,cfg)); text(prefix+'-ip',a?a.address:'—'); text(prefix+'-ipv6',ip6Str); text(prefix+'-gateway',wanGateway(i)); text(prefix+'-mask',a?cidrMask(a.mask):'—'); text(prefix+'-dns',wanDns(i)); text(prefix+'-link',link); text(prefix+'-latency',(online&&ping!=null)?ping.toFixed(0)+' ms':'—'); text(prefix+'-rx-day',daily?formatBytes(daily.rx):'Coletando…'); text(prefix+'-tx-day',daily?formatBytes(daily.tx):'Coletando…'); text(prefix+'-session','↓ '+formatBytes(Number(stats.rx_bytes)||0)+'  •  ↑ '+formatBytes(Number(stats.tx_bytes)||0)); text(prefix+'-uptime',i.up?formatUptime(i.uptime):'—');
+		const pInfo = getPingTargetInfo(this.currentData);
+		const pTargetLabel = getPingTargetShortLabel(pInfo.target, pInfo.customIp);
+		text(prefix+'-mode',wanProtoLabel(i,cfg)); text(prefix+'-ip',a?a.address:'—'); text(prefix+'-ipv6',ip6Str); text(prefix+'-gateway',wanGateway(i)); text(prefix+'-mask',a?cidrMask(a.mask):'—'); text(prefix+'-dns',wanDns(i)); text(prefix+'-link',link); text(prefix+'-latency-target',pTargetLabel); text(prefix+'-latency',(online&&ping!=null)?ping.toFixed(0)+' ms':(online?'Tempo esgotado':'—')); text(prefix+'-rx-day',daily?formatBytes(daily.rx):'Coletando…'); text(prefix+'-tx-day',daily?formatBytes(daily.tx):'Coletando…'); text(prefix+'-session','↓ '+formatBytes(Number(stats.rx_bytes)||0)+'  •  ↑ '+formatBytes(Number(stats.tx_bytes)||0)); text(prefix+'-uptime',i.up?formatUptime(i.uptime):'—');
 	},
 	updateLan: function(prefix, device) {
 		const connected=!!device.carrier, speed=String(device.speed||'').match(/[0-9]+/), stats=device.statistics||{}, full=String(device.speed||'').toUpperCase().indexOf('F')>=0;
@@ -2826,6 +2931,210 @@ return view.extend({
 
 		ui.showModal('📜 Logs e Diagnóstico PPPoE — ' + wanLabel, modalContent);
 		fetchLogs();
+	},
+	showLatencyTargetModal: function() {
+		const currentInfo = getPingTargetInfo(this.currentData);
+		let selectedTarget = currentInfo.target || 'registro_br';
+		let customIpVal = currentInfo.customIp || '';
+
+		const activeWans = getActiveWanList(this.currentData || {});
+
+		const modalBody = [];
+
+		modalBody.push(E('p', { class: 'ex-muted', style: 'margin-bottom:12px; font-size:0.86rem; line-height:1.45;' }, [
+			'Selecione o servidor de destino para a medição contínua de latência (ping) das conexões WAN no painel. O ',
+			E('strong', { style: 'color:#60a5fa;' }, ['Registro.br / NIC.br']),
+			' é a referência oficial recomendada para aferir rotas nacionais e estabilidade no Brasil.'
+		]));
+
+		const cardsContainer = E('div', { class: 'ex-ping-target-grid' });
+		const customInputContainer = E('div', {
+			id: 'ex-ping-custom-container',
+			style: (selectedTarget === 'custom' ? 'display:block;' : 'display:none;') + 'margin-bottom:14px; padding:12px; border-radius:10px; background:rgba(127,127,127,0.08); border:1px solid rgba(127,127,127,0.15);'
+		}, [
+			E('label', { style: 'display:block; font-weight:700; font-size:0.85rem; margin-bottom:6px; color:#e2e8f0;' }, ['Endereço IP ou Domínio Personalizado:']),
+			E('input', {
+				id: 'ex-ping-custom-input',
+				type: 'text',
+				class: 'cbi-input-text',
+				style: 'width:100%; min-height:40px; font-size:0.92rem; padding:8px 12px; border-radius:8px;',
+				placeholder: 'ex: 200.160.2.3, 1.0.0.1 ou ping.seuservidor.com',
+				value: customIpVal
+			}),
+			E('small', { class: 'ex-muted', style: 'display:block; margin-top:4px;' }, [
+				'Dica: Útil para testar a rota direta até o servidor do seu jogo favorito (Riot/Steam), VPN corporativa ou filial.'
+			])
+		]);
+
+		const liveResultBox = E('div', {
+			id: 'ex-ping-live-box',
+			class: 'ex-ping-live-result',
+			style: 'display:none;'
+		}, [
+			E('span', { id: 'ex-ping-live-text', style: 'font-size:0.85rem; font-weight:600; color:#e2e8f0;' }, ['Testando latência…']),
+			E('span', { id: 'ex-ping-live-badge', style: 'font-family:monospace; font-size:0.85rem; color:#60a5fa;' }, ['…'])
+		]);
+
+		const updateCardsSelection = function(targetKey) {
+			selectedTarget = targetKey;
+			const cards = cardsContainer.querySelectorAll('.ex-ping-target-card');
+			cards.forEach(function(card) {
+				const isIt = card.getAttribute('data-target') === targetKey;
+				card.classList.toggle('is-active', isIt);
+			});
+			if (customInputContainer) {
+				customInputContainer.style.display = (targetKey === 'custom' ? 'block' : 'none');
+				if (targetKey === 'custom') {
+					const inp = customInputContainer.querySelector('#ex-ping-custom-input');
+					if (inp) inp.focus();
+				}
+			}
+			if (liveResultBox) liveResultBox.style.display = 'none';
+		};
+
+		PING_TARGET_PRESETS.forEach(function(preset) {
+			const isActive = (preset.id === selectedTarget);
+			const card = E('div', {
+				class: 'ex-ping-target-card' + (isActive ? ' is-active' : ''),
+				'data-target': preset.id,
+				click: function() { updateCardsSelection(preset.id); }
+			}, [
+				E('div', { class: 'ex-ping-target-card-header' }, [
+					E('div', { class: 'ex-ping-target-card-title' }, [
+						preset.shortLabel.split(' ')[0] + ' ',
+						preset.title
+					]),
+					preset.badge ? E('span', { class: 'ex-ping-target-card-badge' }, [ preset.badge ]) : ''
+				]),
+				E('div', { class: 'ex-ping-target-card-ip' }, [ 'Alvo: ' + preset.ip ]),
+				E('div', { class: 'ex-ping-target-card-desc' }, [ preset.desc ])
+			]);
+			cardsContainer.appendChild(card);
+		});
+
+		modalBody.push(cardsContainer);
+		modalBody.push(customInputContainer);
+		modalBody.push(liveResultBox);
+
+		const testBtn = E('button', {
+			class: 'btn cbi-button',
+			style: 'min-height:40px; padding:0 14px; background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); font-weight:700; user-select:none; -webkit-tap-highlight-color:transparent;',
+			click: L.bind(function() {
+				const customInp = document.getElementById('ex-ping-custom-input');
+				const customVal = (customInp && customInp.value) ? customInp.value.trim() : '';
+				if (selectedTarget === 'custom' && !customVal) {
+					ui.addNotification(null, E('p', {}, ['Informe um IP ou domínio para o teste personalizado.']), 'warning');
+					return;
+				}
+				testBtn.disabled = true;
+				testBtn.textContent = '⏳ Testando…';
+				if (liveResultBox) {
+					liveResultBox.style.display = 'flex';
+					const lt = document.getElementById('ex-ping-live-text');
+					const lb = document.getElementById('ex-ping-live-badge');
+					if (lt) lt.textContent = 'Enviando pacotes ICMP…';
+					if (lb) lb.textContent = 'Aguarde';
+				}
+
+				const testPromises = [];
+				activeWans.forEach(function(w) {
+					const live = iface((this.currentData||{}).interfaces, w.iface);
+					const cfg = ((values((this.currentData||{}).networkConfig))[w.iface]) || {};
+					const logicalDev = live ? (live.l3_device || live.device || cfg.device || w.iface) : w.iface;
+					const ip = (live && live['ipv4-address'] && live['ipv4-address'][0] && live['ipv4-address'][0].address) || '';
+					const bindTarget = ip || logicalDev;
+					const targetHost = resolvePingTarget(selectedTarget, customVal, live, cfg);
+					testPromises.push(safe(fs.exec('/bin/ping', ['-c', '1', '-W', '2', '-I', bindTarget, targetHost]), {}).then(function(res) {
+						const p = parsePing(res);
+						return { wan: w.label, iface: w.iface, ping: p, host: targetHost };
+					}));
+				}, this);
+
+				Promise.all(testPromises).then(function(results) {
+					testBtn.disabled = false;
+					testBtn.textContent = '⚡ Testar Latência Agora';
+					const lt = document.getElementById('ex-ping-live-text');
+					const lb = document.getElementById('ex-ping-live-badge');
+					if (lt && lb) {
+						const resSummary = results.map(function(r) {
+							return r.wan + ': ' + (r.ping != null ? (r.ping.toFixed(0) + ' ms') : 'Falha');
+						}).join('  •  ');
+						const targetUsed = (results[0] && results[0].host) || '';
+						lt.textContent = 'Resultado (' + targetUsed + '):';
+						lb.textContent = resSummary;
+					}
+				}).catch(function(e) {
+					testBtn.disabled = false;
+					testBtn.textContent = '⚡ Testar Latência Agora';
+					const lt = document.getElementById('ex-ping-live-text');
+					if (lt) lt.textContent = 'Erro ao executar ping: ' + (e.message || e);
+				});
+			}, this)
+		}, [ '⚡ Testar Latência Agora' ]);
+
+		const saveBtn = E('button', {
+			class: 'btn cbi-button cbi-button-positive',
+			style: 'min-height:40px; padding:0 18px; font-weight:750; user-select:none; -webkit-tap-highlight-color:transparent;',
+			click: L.bind(function() {
+				const customInp = document.getElementById('ex-ping-custom-input');
+				const customVal = (customInp && customInp.value) ? customInp.value.trim() : '';
+				if (selectedTarget === 'custom') {
+					if (!customVal) {
+						ui.addNotification(null, E('p', {}, ['Informe um IP ou domínio válido para o servidor personalizado.']), 'warning');
+						return;
+					}
+					if (!/^[a-zA-Z0-9.:_-]+$/.test(customVal)) {
+						ui.addNotification(null, E('p', {}, ['O endereço inserido contém caracteres inválidos.']), 'warning');
+						return;
+					}
+				}
+
+				saveBtn.disabled = true;
+				saveBtn.textContent = 'Salvando…';
+
+				try {
+					if (typeof window !== 'undefined' && window.localStorage) {
+						window.localStorage.setItem('ark_wan_ping_target', selectedTarget);
+						window.localStorage.setItem('ark_wan_ping_custom_ip', customVal);
+					}
+				} catch(e) {}
+
+				const shortLbl = getPingTargetShortLabel(selectedTarget, customVal);
+				activeWans.forEach(function(w) {
+					const b = document.getElementById('ex-' + w.domId + '-latency-target');
+					if (b) b.textContent = shortLbl;
+				});
+
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['ping-target-set', selectedTarget, customVal]).then(L.bind(function(res) {
+					ui.hideModal();
+					ui.addNotification(null, E('p', {}, [
+						'Servidor de teste de latência configurado para: ',
+						E('strong', {}, [ shortLbl ])
+					]), 'info');
+					this.scheduleAdaptiveRefresh(100);
+				}, this)).catch(L.bind(function(err) {
+					ui.hideModal();
+					this.scheduleAdaptiveRefresh(100);
+				}, this));
+			}, this)
+		}, [ 'Salvar Servidor' ]);
+
+		const cancelBtn = E('button', {
+			class: 'btn cbi-button cbi-button-neutral',
+			style: 'min-height:40px; padding:0 16px; user-select:none; -webkit-tap-highlight-color:transparent;',
+			click: closeModal
+		}, [ 'Cancelar' ]);
+
+		const footer = E('div', {
+			style: 'display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:16px; flex-wrap:wrap;'
+		}, [
+			testBtn,
+			E('div', { style: 'display:flex; gap:8px;' }, [ cancelBtn, saveBtn ])
+		]);
+
+		modalBody.push(footer);
+
+		ui.showModal('🎯 Servidor de Teste de Latência da WAN', modalBody);
 	},
 	showWanOptimizationsModal: function(iface) {
 		iface = (/^wan([0-9]+)?$/.test(String(iface || '')) && String(iface).toLowerCase() !== 'wan6') ? String(iface) : 'wan';
@@ -7989,7 +8298,22 @@ return view.extend({
 				infoRow('Máscara',id+'-mask'),
 				infoRow('DNS recebidos',id+'-dns'),
 				infoRow('Link físico',id+'-link'),
-				infoRow('Latência',id+'-latency'),
+				E('div', {
+					class: 'ex-row ex-row-clickable',
+					style: 'cursor:pointer; min-height:40px; user-select:none; -webkit-tap-highlight-color:transparent;',
+					title: 'Clique para escolher o servidor de teste de latência (Registro.br, Cloudflare, Google, etc.)',
+					click: L.bind(function(){ this.showLatencyTargetModal(); }, this)
+				}, [
+					E('span', { style: 'display:inline-flex; align-items:center; gap:6px; min-width:0;' }, [
+						'Latência',
+						E('span', {
+							id: id+'-latency-target',
+							class: 'ex-latency-badge',
+							title: 'Servidor de teste de latência ativo'
+						}, [ getPingTargetShortLabel(getPingTargetInfo(data).target, getPingTargetInfo(data).customIp) ])
+					]),
+					E('strong', { id: id+'-latency' }, [ '—' ])
+				]),
 				infoRow('Recebido hoje',id+'-rx-day'),
 				infoRow('Enviado hoje',id+'-tx-day'),
 				infoRow('Sessão atual',id+'-session'),

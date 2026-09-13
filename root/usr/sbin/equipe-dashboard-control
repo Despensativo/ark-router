@@ -9290,6 +9290,40 @@ EOF
 	update-wan-led)
 		update_wan_led
 		;;
+	ping-target-get)
+		target="$(uci -q get equipe_dashboard.main.ping_target || printf 'registro_br')"
+		custom_ip="$(uci -q get equipe_dashboard.main.ping_custom_ip || true)"
+		case "$target" in
+			registro_br) resolved="200.160.2.3"; label="Registro.br / NIC.br (200.160.2.3)" ;;
+			cloudflare) resolved="1.1.1.1"; label="Cloudflare (1.1.1.1)" ;;
+			google) resolved="8.8.8.8"; label="Google (8.8.8.8)" ;;
+			quad9) resolved="9.9.9.9"; label="Quad9 (9.9.9.9)" ;;
+			isp) resolved="dinamico"; label="DNS da Operadora" ;;
+			custom) resolved="${custom_ip:-200.160.2.3}"; label="Personalizado (${custom_ip:-200.160.2.3})" ;;
+			*) target="registro_br"; resolved="200.160.2.3"; label="Registro.br / NIC.br (200.160.2.3)" ;;
+		esac
+		printf '{"target":"%s","custom_ip":"%s","resolved_ip":"%s","label":"%s"}\n' \
+			"$(json_escape "$target")" "$(json_escape "$custom_ip")" "$(json_escape "$resolved")" "$(json_escape "$label")"
+		;;
+	ping-target-set)
+		target="$2"
+		custom_ip="$3"
+		case "$target" in
+			registro_br|cloudflare|google|quad9|isp|custom) ;;
+			*) target="registro_br" ;;
+		esac
+		uci -q set equipe_dashboard.main=settings
+		uci -q set equipe_dashboard.main.ping_target="$target"
+		if [ "$target" = "custom" ] && [ -n "$custom_ip" ]; then
+			clean_ip="$(printf '%s' "$custom_ip" | tr -cd 'a-zA-Z0-9.:_-' | cut -c1-64)"
+			uci -q set equipe_dashboard.main.ping_custom_ip="$clean_ip"
+		else
+			uci -q delete equipe_dashboard.main.ping_custom_ip 2>/dev/null || true
+		fi
+		uci commit equipe_dashboard
+		printf '{"ok":true,"target":"%s","custom_ip":"%s"}\n' \
+			"$(json_escape "$target")" "$(json_escape "$custom_ip")"
+		;;
 	*)
 		echo 'Uso: equipe-dashboard-control {features|...|irqbalance-toggle 0|1|...}' >&2
 		exit 2
