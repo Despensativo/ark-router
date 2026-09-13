@@ -132,10 +132,17 @@ function formatBytes(bytes) {
 	while (bytes >= 1024 && unit < units.length - 1) { bytes /= 1024; unit++; }
 	return bytes.toFixed(unit > 1 ? 1 : 0) + ' ' + units[unit];
 }
+if (!String.prototype.format) {
+	String.prototype.format = function() {
+		var args = arguments;
+		var i = 0;
+		return this.replace(/%[sdh]/g, function() { return args[i++]; });
+	};
+}
 function formatUptime(seconds) {
 	seconds = Math.max(0, Number(seconds) || 0);
 	const d = Math.floor(seconds / 86400), h = Math.floor((seconds % 86400) / 3600), m = Math.floor((seconds % 3600) / 60);
-	return d ? '%dd %dh %dm'.format(d, h, m) : (h ? '%dh %dm'.format(h, m) : '%dm'.format(m));
+	return d ? (d + 'd ' + h + 'h ' + m + 'm') : (h ? (h + 'h ' + m + 'm') : (m + 'm'));
 }
 function text(id, value) { const n = document.getElementById(id); if (n) n.textContent = value == null ? '—' : String(value); }
 function setPill(id, state, label) { const n = document.getElementById(id); if (n) { n.className = 'ex-pill ' + state; n.textContent = label; } }
