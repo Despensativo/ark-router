@@ -7385,10 +7385,26 @@ case "$action" in
 		end_host=$((start + limit - 1))
 		[ "$end_host" -le 254 ] || end_host=254
 		dns_values="$(lan_dhcp_dns_values | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
-		printf '{"ipaddr":"%s","netmask":"%s","dhcp_start":"%s.%s","dhcp_end":"%s.%s","start":"%s","limit":"%s","preset":"%s","supported":%s,"dns":[' \
+		ipv6_mode="$(uci -q get equipe_dashboard.ipv6.mode || printf dual_stack)"
+		ipv6_relay="$(uci -q get equipe_dashboard.ipv6.relay || printf 0)"
+		ipv6_label="Pilha Dupla Global"
+		case "$ipv6_mode" in
+			ipv4_only) ipv6_label="Desativado (IPv4 Puro)" ;;
+			selective) ipv6_label="Seletivo por MAC" ;;
+			ipv6_only) ipv6_label="IPv6-Only" ;;
+			*)
+				if [ "$ipv6_relay" = "1" ] || [ "$(uci -q get dhcp.lan.ndp)" = "relay" ]; then
+					ipv6_label="Cascata (NDP Relay)"
+				else
+					ipv6_label="Pilha Dupla Global"
+				fi
+				;;
+		esac
+		printf '{"ipaddr":"%s","netmask":"%s","dhcp_start":"%s.%s","dhcp_end":"%s.%s","start":"%s","limit":"%s","preset":"%s","supported":%s,"ipv6_mode":"%s","ipv6_relay":"%s","ipv6_label":"%s","dns":[' \
 			"$(json_escape "$lan_ip")" "$(json_escape "$netmask")" "$prefix" "$start_host" "$prefix" "$end_host" "$start" "$limit" \
 			"$(case "$lan_ip" in 192.168.*) printf 192 ;; 10.0.*) printf 10 ;; *) printf manual ;; esac)" \
-			"$( [ "$netmask" = 255.255.255.0 ] && printf true || printf false )"
+			"$( [ "$netmask" = 255.255.255.0 ] && printf true || printf false )" \
+			"$(json_escape "$ipv6_mode")" "$(json_escape "$ipv6_relay")" "$(json_escape "$ipv6_label")"
 		first=1
 		for server in $dns_values; do
 			[ "$first" = 1 ] || printf ','

@@ -57,6 +57,7 @@ const EN={
 	'HTTPS e segurança':'HTTPS and security','Disponível':'Available','Indisponível':'Unavailable','Redirecionar HTTP para HTTPS':'Redirect HTTP to HTTPS','Desligado • HTTP e HTTPS disponíveis':'Off • HTTP and HTTPS available','Ligado • todo acesso HTTP vai para HTTPS':'On • all HTTP access redirects to HTTPS','Certificado local/autossinado: a conexão é criptografada, mas navegadores não confiam nele automaticamente.':'Local/self-signed certificate: the connection is encrypted, but browsers do not trust it automatically.','Abrir endereço HTTPS':'Open HTTPS address','Ativar redirecionamento HTTPS':'Enable HTTPS redirection','Desativar redirecionamento HTTPS':'Disable HTTPS redirection','Depois de ativar, o navegador abrirá o painel em HTTPS e poderá exibir um aviso sobre o certificado local.':'After enabling, the browser will open the dashboard over HTTPS and may display a warning about the local certificate.','O HTTP continuará disponível sem redirecionamento. O HTTPS permanecerá funcionando.':'HTTP will remain available without redirection. HTTPS will continue working.','Confirmar alteração':'Confirm change',
 	'Instalar recurso':'Install feature','Cancelar':'Cancel','Confirmar instalação':'Confirm installation','Instalação iniciada. O painel avisará quando terminar.':'Installation started. The dashboard will notify you when it finishes.','Recurso instalado com sucesso. Recarregando o painel…':'Feature installed successfully. Reloading the dashboard…','A instalação não foi concluída. Consulte os registros do sistema.':'Installation did not complete. Check the system logs.','Essa ação atualizará a lista de pacotes e instalará somente o pacote indicado e suas dependências. Nenhuma configuração de rede será alterada automaticamente.':'This action will refresh the package list and install only the selected package and its dependencies. No network settings will be changed automatically.','O monitor de consumo não está instalado; a lista de dispositivos continua disponível, sem velocidade individual.':'The usage monitor is not installed; the device list remains available without per-device speed.','O tema visual do LuCI será alterado. As configurações de rede não serão modificadas.':'The LuCI visual theme will change. Network settings will not be modified.'
 	,'SISTEMA':'SYSTEM','Reiniciar o roteador':'Restart router','Interrompe a internet por alguns minutos e encerra as sessões abertas.':'Internet access will stop for a few minutes and open sessions will end.','Reiniciar…':'Restart…','Primeira confirmação':'First confirmation','Deseja preparar o reinício do roteador? Nenhuma configuração será apagada.':'Prepare to restart the router? No configuration will be erased.','A internet e o painel ficarão indisponíveis por alguns minutos.':'The internet and dashboard will be unavailable for a few minutes.','Continuar':'Continue','Confirmação final':'Final confirmation','O roteador será reiniciado imediatamente. Aguarde a rede voltar antes de abrir o painel novamente.':'The router will restart immediately. Wait for the network to return before reopening the dashboard.','Aguarde 2 s':'Wait 2 s','Aguarde 1 s':'Wait 1 s','Reiniciar agora':'Restart now','Reiniciando…':'Restarting…','Roteador reiniciando. A conexão será interrompida.':'Router restarting. The connection will be interrupted.'
+	,'🌐 Ajustes IPv6 / Relay':'🌐 IPv6 / Relay Settings','Modo IPv6 / Relay':'IPv6 / Relay Mode','Ajustes IPv6 / Relay':'IPv6 / Relay Settings','Ativado':'Enabled','Desativado':'Disabled','🌐 Conectividade IPv6 e Modo Cascata (NDP Relay)':'🌐 IPv6 Connectivity & Cascade Mode (NDP Relay)'
 };
 const FEATURE_META={
 	ark:{name:'Tema ARK (Nativo)',description:'Tema visual moderno estilo Argon embutido no ARK Router, com Dark Mode refinado e tela de login elegante.',recommended:true},
@@ -1589,7 +1590,7 @@ return view.extend({
 				E('small',{},[speedifyModeLabel(sf.runtime_mode||sf.bonding_mode)+' • IP '+(sf.tunnel_ip||'—')])
 			);
 		}
-		text('ex-lan-ip',lanStatus.ipaddr||'—'); text('ex-lan-dhcp',(lanStatus.dhcp_start&&lanStatus.dhcp_end)?lanStatus.dhcp_start+' → '+lanStatus.dhcp_end:'—'); text('ex-lan-mask',lanStatus.netmask||'—'); text('ex-lan-dns',Array.isArray(lanStatus.dns)&&lanStatus.dns.length?lanStatus.dns.join('  •  '):'Sem DNS fixo');
+		text('ex-lan-ip',lanStatus.ipaddr||'—'); text('ex-lan-dhcp',(lanStatus.dhcp_start&&lanStatus.dhcp_end)?lanStatus.dhcp_start+' → '+lanStatus.dhcp_end:'—'); text('ex-lan-mask',lanStatus.netmask||'—'); text('ex-lan-dns',Array.isArray(lanStatus.dns)&&lanStatus.dns.length?lanStatus.dns.join('  •  '):'Sem DNS fixo'); text('ex-lan-ipv6',lanStatus.ipv6_label||(function(){const dhcpLan=(data.dhcpConfig&&data.dhcpConfig.values&&data.dhcpConfig.values.lan)||(data.dhcpConfig&&data.dhcpConfig.lan)||{};if(dhcpLan.ndp==='relay')return 'Cascata (NDP Relay)';if(dhcpLan.dhcpv6==='disabled'&&dhcpLan.ra==='disabled')return 'Desativado (IPv4 Puro)';return 'Pilha Dupla Global';})());
 		const lanPrefix=prefix24(lanStatus.ipaddr), guestPrefix=prefix24(((values(data.networkConfig).guest)||{}).ipaddr);
 		const leases=data.leases.dhcp_leases||[], main=assocMap(data.mainAssoc), guest=assocMap(data.guestAssoc); text('ex-main-clients',leases.filter(function(l){return lanPrefix&&String(l.ipaddr||'').indexOf(lanPrefix)===0;}).length); text('ex-main-wifi',Object.keys(main).length+' no Wi-Fi'); text('ex-guest-clients',leases.filter(function(l){return guestPrefix&&String(l.ipaddr||'').indexOf(guestPrefix)===0;}).length); text('ex-guest-wifi',Object.keys(guest).length+' no Wi-Fi');
 		const hwInfo=data.hardwareInfo||{}, cpuInfo=hwInfo.cpu||{}, thermalSensors=hwInfo.thermal_sensors||[], storageInfo=hwInfo.storage||{};
@@ -3137,7 +3138,14 @@ return view.extend({
 			E('p',{class:'alert-message warning'},['Alterar o IP principal muda o endereço de acesso do painel e pode desconectar dispositivos. O ARK cria um backup em /tmp antes de aplicar.']),
 			E('div',{class:'ex-wan-edit-grid'},[field('Modelo de rede',mode),field('IP do roteador',routerIp,'Endereço usado para abrir o painel'),field('Máscara',netmask,'Nesta versão, use /24: 255.255.255.0'),field('DHCP começa em',dhcpStart),field('DHCP termina em',dhcpEnd),field('DNS enviado 1',dns1),field('DNS enviado 2',dns2),field('DNS enviado 3',dns3,'Opcional. Apague os três para não enviar DNS fixo.')]),
 			E('p',{class:'ex-muted'},['Exemplo: roteador 192.168.25.1 sugere automaticamente DHCP 192.168.25.10 até 192.168.25.254. Depois você pode ajustar só o final. O DHCP não pode incluir o IP do roteador. DNS preenchido será enviado aos aparelhos via DHCP.']),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+			E('div',{class:'ex-cleanup-entry',style:'margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.03);'},[
+				E('div',{},[
+					E('strong',{},['🌐 Conectividade IPv6 e Modo Cascata (NDP Relay)']),
+					E('small',{class:'ex-muted'},['Configure o protocolo IPv6 para esta rede local (Pilha Dupla Global, Seletivo por MAC, Cascata/NDP Relay ou IPv4 Puro).'])
+				]),
+				E('button',{class:'ex-mini-button',style:'min-height:38px;padding:6px 12px;','click':L.bind(function(){closeModal();this.showIpv6Modal();},this)},['Ajustes IPv6 / Relay'])
+			]),
+			E('div',{class:'right',style:'margin-top:16px;'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
 				const dns=[dns1.value.trim(),dns2.value.trim(),dns3.value.trim()].filter(Boolean);
 				const next={mode:mode.value,routerIp:routerIp.value.trim(),netmask:netmask.value.trim(),startIp:dhcpStart.value.trim(),endIp:dhcpEnd.value.trim(),dns:dns,oldIp:state.ipaddr||''};
 				ui.showModal('Confirmar alteração da LAN',[E('p',{class:'alert-message warning'},['Essa alteração reinicia a rede/portas LAN e DHCP. O painel pode cair por alguns segundos e os dispositivos podem precisar renovar IP.']),E('div',{class:'ex-qos-edit-grid'},[E('section',{},[E('h3',{},['Novo acesso']),E('p',{},['Roteador: ',E('strong',{},[next.routerIp])]),E('p',{},['Máscara: ',E('strong',{},[next.netmask])])]),E('section',{},[E('h3',{},['Nova faixa DHCP']),E('p',{},[next.startIp,' → ',next.endIp])]),E('section',{},[E('h3',{},['DNS via DHCP']),E('p',{},[next.dns.length?next.dns.join(' • '):'Sem DNS fixo'])])]),E('p',{class:'ex-muted'},['O ARK cria backup em /tmp antes de aplicar. Se o IP principal mudar, tentarei abrir automaticamente o painel no novo endereço.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Voltar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
@@ -6421,7 +6429,7 @@ return view.extend({
 
 			const cascadePanel = E('section', {
 				class: 'ex-cleanup-entry',
-				style: 'margin-top: 16px; padding: 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.02);'
+				style: 'margin-top: 16px; padding: 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.02); align-items: center;'
 			}, [
 				E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
 					E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;' }, [
@@ -6432,8 +6440,9 @@ return view.extend({
 						'Ative se este ARK Router estiver conectado atrás de outro roteador principal (operadora) e receber apenas um prefixo /64. O odhcpd repassa os anúncios de vizinhança (NDP) transparentemente para os seus clientes, sem necessidade de DMZ no mestre.'
 					])
 				]),
-				E('div', { style: 'flex: 0 0 auto; margin-left: 12px;' }, [
-					E('label', { class: 'ex-switch' }, [
+				E('div', { style: 'flex: 0 0 auto; margin-left: 14px; display: flex; flex-direction: row; align-items: center; gap: 10px;' }, [
+					E('strong', { class: 'ex-device-switch-state', style: 'font-size: 0.8rem; font-weight: 700; color: ' + (isRelay ? '#38bdf8' : '#94a3b8') + ';' }, [ isRelay ? 'Ativado' : 'Desativado' ]),
+					E('label', { class: 'ex-switch', style: 'width: 48px; min-width: 48px; max-width: 48px; height: 26px; min-height: 26px; max-height: 26px; margin: 0;' }, [
 						relayToggle,
 						E('span', { class: 'ex-switch-slider' })
 					])
@@ -8410,7 +8419,26 @@ return view.extend({
 					E('button',{class:'ex-button',style:'margin-top:0;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.1);font-weight:650;cursor:pointer;','click':L.bind(this.openFastCom,this)},['🎬 Testar velocidade da internet'])
 				])
 			]),
-			E('section',{class:'ex-card ex-lan-config-card'},[E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['REDE PRINCIPAL']),E('h3',{},['LAN / DHCP'])]),E('button',{class:'ex-mini-button','click':L.bind(function(){this.editLan();},this)},['Editar IP, DHCP e DNS'])]),E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},[infoRow('IP do roteador','ex-lan-ip'),infoRow('Faixa DHCP','ex-lan-dhcp'),infoRow('Máscara','ex-lan-mask'),infoRow('DNS enviado','ex-lan-dns')]),E('p',{class:'ex-muted'},['Use para trocar entre redes 192.168.x.x, 10.0.x.x ou definir manualmente a faixa e os DNS que os dispositivos recebem.'])]),
+			E('section',{class:'ex-card ex-lan-config-card'},[
+				E('div',{class:'ex-card-title'},[
+					E('div',{},[
+						E('span',{class:'ex-kicker'},['REDE PRINCIPAL']),
+						E('h3',{},['LAN / DHCP'])
+					]),
+					E('div',{style:'display:flex;align-items:center;gap:8px;flex-wrap:wrap;'},[
+						E('button',{class:'ex-mini-button','click':L.bind(function(){this.showIpv6Modal();},this)},['🌐 Ajustes IPv6 / Relay']),
+						E('button',{class:'ex-mini-button','click':L.bind(function(){this.editLan();},this)},['Editar IP, DHCP e DNS'])
+					])
+				]),
+				E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},[
+					infoRow('IP do roteador','ex-lan-ip'),
+					infoRow('Faixa DHCP','ex-lan-dhcp'),
+					infoRow('Máscara','ex-lan-mask'),
+					infoRow('DNS enviado','ex-lan-dns'),
+					infoRow('Modo IPv6 / Relay','ex-lan-ipv6')
+				]),
+				E('p',{class:'ex-muted'},['Use para trocar entre redes 192.168.x.x, 10.0.x.x ou definir manualmente a faixa, os DNS e a distribuição IPv6/Relay.'])
+			]),
 			E('div',{class:'ex-lan-block'},[E('div',{class:'ex-lan-title'},[E('div',{},[E('span',{class:'ex-kicker'},['PORTAS CABEADAS']),E('h3',{},['LAN disponíveis'])]),E('small',{class:'ex-muted'},['Portas em modo LAN aparecem aqui; ao converter uma porta em '+nextWan.label+', ela sai desta lista e vira uma nova conexão de internet.'])]),E('div',{class:'ex-grid ex-grid-2'},lanCards.length?lanCards:[E('section',{class:'ex-card ex-lan-card ex-center-card'},[E('strong',{},['Nenhuma porta LAN disponível']),E('small',{class:'ex-muted'},['Todas as portas cabeadas livres estão em uso como WAN ou não foram detectadas.'])])])]),
 			wifiBlock,
 			E('div',{class:'ex-grid ex-grid-2',style:'margin:10px 0 16px;'},[
