@@ -7,7 +7,7 @@
 
 document.querySelector('head').appendChild(E('link', {
 	'rel': 'stylesheet', 'type': 'text/css',
-	'href': L.resource('view/equipe-dashboard/overview.css') + '?v=0.9.95'
+	'href': L.resource('view/equipe-dashboard/overview.css') + '?v=0.9.96'
 }));
 
 const callSystemBoard = rpc.declare({ object: 'system', method: 'board' });
@@ -3949,7 +3949,7 @@ return view.extend({
 					E('div',{class:'ex-feature-copy'},[
 						E('div',{class:'ex-feature-name-row'},[
 							E('strong',{},['Versão instalada: ',update.current||'—']),
-							E('span',{class:'ex-pill online'},[update.current||'0.9.95'])
+							E('span',{class:'ex-pill online'},[update.current||'0.9.96'])
 						]),
 						E('small',{class:'ex-muted'},['Repositório: ',update.repo||'Despensativo/ark-router']),
 						E('small',{class:'ex-muted'},['Gerenciador: ',manager])

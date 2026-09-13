@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.9.96
+
+- **🛡️ Blindagem Total Contra Erros Humanos de Digitação & Validação Defensiva**:
+  - **AdGuard Home Defensivo**: Proteção completa contra portas inválidas ou conflitantes com fallback automático para `3000`. Validação sintática do arquivo YAML antes de aplicar alterações com detecção e reversão automática para backup de segurança (`adguardhome.yaml.bak`) caso ocorra qualquer inconsistência.
+  - **Adblock & Listas de Bloqueio/Permissão**: Limpeza e sanitização rigorosa de domínios em listas customizadas (remoção de caracteres inválidos, espaços, pontuação acidental e trailing dots), prevenindo quebras no dnsmasq ou AdGuard.
+  - **DNS Turbo Resiliente**: Filtro automático de vírgulas, espaços, tabulações e quebras de linha em endereços IP de servidores DNS inseridos manualmente, evitando entradas truncadas no UCI.
+  - **Normalização de Endereços MAC de WAN/LAN**: Normalização automática para formato padrão OpenWrt (`AA:BB:CC:DD:EE:FF`) mesmo quando colados de interfaces Windows (com hífens `-`) ou em letras minúsculas.
+  - **Prevenção de Conflito de Sub-rede LAN vs WAN**: Verificação defensiva impedindo atribuição de IPs na mesma faixa de rede da WAN ou colisão com a sub-rede privada padrão (`192.168.1.0/24`).
+  - **Mapeamento Automático de DSA para WAN**: Detecção de portas físicas em plataformas com Distributed Switch Architecture (DSA), garantindo que conexões WAN sejam mapeadas corretamente para portas como `eth1`.
+
+- **📜 Atalho & Modal de Histórico e Diagnóstico de Logs PPPoE**:
+  - **Acesso Rápido no Card WAN**: Inclusão de atalho direto para logs de conexão PPPoE no painel da WAN (`overview.js`), permitindo auditoria e resolução de problemas com um clique sem precisar navegar até o Log do Sistema geral.
+  - **Diagnóstico de Sessão em Tempo Real**: Leitura inteligente do estado da sessão PPPoE:
+    - `● Conectado & Estável (0 erros)` quando a sessão está ativa e sem falhas recentes.
+    - `⚠️ Conectando / Reautenticando...` durante o processo de negociação LCP/IPCP.
+    - `❌ Falha de Autenticação / Timeout` com destaque para erros comuns (credenciais rejeitadas, timeout de PADO, etc.).
+  - **Filtro Inteligente de Eventos**: Extração focada de mensagens do daemon `pppd` e `rp-pppoe`, com botões de atualização em tempo real (`🔄 Atualizar`) e cópia para a área de transferência (`📋 Copiar`).
+
+- **🔇 Isolamento e Rotação de Logs do AdGuard Home em RAM**:
+  - **Desacoplamento do Syslog do Sistema**: Configuração de log dedicado do daemon AdGuard Home para arquivo em RAM (`/var/lib/adguardhome/adguardhome.log`) com rotação automática limitada a 1 MB e 1 backup.
+  - **Preservação Integral do Log do Kernel/Sistema**: Eliminação de até 10 linhas por segundo geradas por consultas DNS que antes sobrecarregavam o `syslogd`/`logd`, garantindo que históricos de conexão PPPoE, eventos de firewall e logs do kernel permaneçam preservados indefinidamente.
+  - **Persistência Pós-Atualização**: Mecanismos em `99-ark-router-dhcp-sanitize` e `equipe-dashboard-control` que reaplicam o isolamento automaticamente mesmo após reinstalações ou atualizações do pacote upstream do AdGuard.
+
+- **⚡ Zero-Downtime no Firewall e Estabilidade de Conexão Contínua**:
+  - **Recarga Suave do Firewall (`reload`)**: Substituição de reinícios agressivos do firewall (`restart`) por recargas de regras que preservam integralmente a tabela de conexões ativas (`conntrack`), garantindo que alterações no painel não derrubem chamadas de voz/vídeo, streams ou downloads em andamento.
+  - **Resiliência Speedify & Multi-WAN (MWAN3)**: Limpeza automática de interfaces e rotas órfãs com garantia de regras prioritárias de DNS (`dns_udp` e `dns_tcp` com `sticky=0`) acompanhando a política ativa sem conflitos.
+  - **Vincular IP da ONU aos Perfis PPPoE**: Armazenamento e aplicação automática do IP do modem/ONU (`modem_ip`) associado a cada perfil de provedor PPPoE configurado.
+
 ## 0.9.95
 
 - **📶 Correção Definitiva e Blindagem de Detecção de Banda Wi-Fi (5 GHz vs 2,4 GHz)**:
