@@ -1128,11 +1128,21 @@ footer.ark-footer, footer {
 	opacity: 0;
 	pointer-events: none !important;
 }
-body.modal-overlay-active {
+body:not(.modal-overlay-active) #modal_overlay,
+body.ark-login-page #modal_overlay,
+body.ark-login-page .modal,
+body.ark-login-page .cbi-modal {
+	display: none !important;
+	opacity: 0 !important;
+	pointer-events: none !important;
+	visibility: hidden !important;
+}
+
+body.modal-overlay-active:not(.ark-login-page) {
 	overflow: hidden !important;
 	height: 100vh !important;
 }
-body.modal-overlay-active #modal_overlay {
+body.modal-overlay-active:not(.ark-login-page) #modal_overlay {
 	visibility: visible !important;
 	opacity: 1 !important;
 	pointer-events: auto !important;

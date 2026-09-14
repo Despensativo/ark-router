@@ -15,6 +15,7 @@
     mode: 'basic',
 
     init: function() {
+      document.body.classList.remove('modal-overlay-active');
       this.initSidebarNavigation();
       this.cleanupButtons();
       this.enhancePasswordFields();
@@ -36,6 +37,9 @@
       // On login screen, remove sidebar, mobile bar, and backdrop completely
       if (document.body.classList.contains('ark-login-page') || document.querySelector('input[name="luci_password"]')) {
         document.body.classList.add('ark-login-page');
+        document.body.classList.remove('modal-overlay-active');
+        var ov = document.getElementById('modal_overlay');
+        if (ov) { ov.style.display = 'none'; ov.style.opacity = '0'; ov.style.pointerEvents = 'none'; }
         var sb = document.getElementById('ark-sidebar');
         if (sb && sb.parentNode) sb.parentNode.removeChild(sb);
         var mb = document.querySelector('.ark-mobile-bar');
@@ -162,14 +166,11 @@
         });
       }
 
-      // 2. Add top-right sticky close '×' button to all modals (desktop & mobile)
+      // 2. Add top-right sticky close '×' button to active populated modals (desktop & mobile)
       var modals = document.querySelectorAll('.modal, .cbi-modal');
-      if (modals.length > 0) {
-        document.body.classList.add('modal-overlay-active');
-      } else {
-        document.body.classList.remove('modal-overlay-active');
-      }
       modals.forEach(function(m) {
+        // Ignore empty hidden modal skeleton in DOM
+        if (m.children.length === 0 || (m.children.length === 1 && m.children[0].classList.contains('ark-modal-close-btn'))) return;
         if (!m.querySelector('.ark-modal-close-btn')) {
           var closeBtn = document.createElement('button');
           closeBtn.type = 'button';
