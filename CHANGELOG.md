@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.0.0
+
+- **🎉 Marco Oficial da Versão 1.0.0 do ARK Router (13/09/2026)**:
+  - **🔄 Cachebuster Dinâmico de Assets no Frontend (Zero Manutenção)**:
+    - O tema Ark (`header.ut` no OpenWrt 24.x/25.x com Ucode e `header.htm` no OpenWrt 19.07 com Lua) agora lê dinamicamente `/usr/share/ark-router/VERSION`.
+    - Todas as folhas de estilo e scripts (`cascade.css`, `mobile.css`, `ark-theme.js`, `cbi.js`, `overview.css`) recebem automaticamente o parâmetro de versão exato (`?v=1.0.0`), forçando todos os celulares e computadores a baixarem o código mais recente sem necessidade de limpeza manual de cache no navegador.
+  - **🎮 Correção e Estabilidade Total do MiniUPnPd (Consoles / Videogames / NAT Aberto)**:
+    - Removida a dependência obrigatória de STUN externo (`use_stun='0'`), eliminando o crash prematuro no boot (`Performing STUN failed. EXITING`).
+    - O daemon `miniupnpd` agora detecta a WAN diretamente e permanece 100% ativo servindo portas para consoles e computadores na rede.
+  - **📈 Resolução do Alerta de Buffer Truncado no `nlbwmon` (`net.core.rmem_max`)**:
+    - Ajustado `net.core.rmem_max = 1048576` (1 MB) via sysctl de memória, garantindo que o monitor de tráfego aloque seu buffer Netlink integral sem alertas de truncamento no log do kernel e sem descarte de estatísticas em downloads de alta velocidade.
+  - **⚡ Cachesize Inteligente do Dnsmasq Balanceado por Hardware**:
+    - Otimização automática em `99-ark-router-dhcp-sanitize`: roteadores com 128 MB de RAM utilizam `5000` entradas (economia de RAM), enquanto dispositivos com 256 MB ou mais utilizam `10000` entradas (teto máximo seguro recomendado pelo autor do dnsmasq sem gerar avisos de colisão de hash).
+  - **🛡️ Estabilidade de Kernel e Wi-Fi**:
+    - Ajustes de memória virtual (`vfs_cache_pressure = 150`, `dirty_ratio = 10`, `dirty_background_ratio = 5`, `swappiness = 30`) e Auto-Trim de cache via cron.
+    - Preservação estrita dos daemons `wpad` e `wpa_supplicant` exigidos pelo `netifd` (`ubus wait_for wpa_supplicant`) na inicialização física dos rádios, garantindo inicialização de Wi-Fi sem timeouts.
+
 ## 0.9.99
 
 - **🛡️ Auditoria Completa de Estabilidade, Hardware & Flash Wear (13/09/2026)**:

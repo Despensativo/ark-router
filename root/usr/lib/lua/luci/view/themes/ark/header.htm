@@ -13,7 +13,7 @@
 	local boardinfo = util.ubus("system", "board")
 	local node = disp.context.dispatched
 	local is_login = not disp.context.authsession
-	local ark_v = (fs.readfile("/usr/share/ark-router/VERSION") or "0.9.99"):gsub("%s+", "")
+	local ark_v = (fs.readfile("/usr/share/ark-router/VERSION") or "1.0.0"):gsub("%s+", "")
 
 	http.prepare_content("text/html")
 -%>
