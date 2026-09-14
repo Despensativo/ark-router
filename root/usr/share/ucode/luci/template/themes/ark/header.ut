@@ -5,7 +5,9 @@
 
 {%
 	import { getuid, getspnam } from 'luci.core';
+	import * as fs from 'fs';
 	const boardinfo = ubus.call('system', 'board');
+	const ark_v = trim(fs.readfile('/usr/share/ark-router/VERSION') ?? '0.9.99');
 	http.prepare_content('text/html; charset=UTF-8');
 -%}
 
@@ -16,8 +18,8 @@
 		<title>{{ striptags(`${boardinfo.hostname ?? 'ARK Router'}${dispatched?.title ? ` | ${_(dispatched.title)}` : ''}`) }}</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<meta name="theme-color" content="#0f172a">
-		<link rel="stylesheet" href="{{ media }}/cascade.css?v=0.9.96">
-		<link rel="stylesheet" media="only screen and (max-width: 854px)" href="{{ media }}/mobile.css?v=0.9.96" />
+		<link rel="stylesheet" href="{{ media }}/cascade.css?v={{ ark_v }}">
+		<link rel="stylesheet" media="only screen and (max-width: 854px)" href="{{ media }}/mobile.css?v={{ ark_v }}" />
 		<link rel="icon" href="{{ media }}/favicon.png">
 		{% if (node?.css): %}
 		<link rel="stylesheet" href="{{ resource }}/{{ node.css }}">
@@ -26,8 +28,9 @@
 		<style title="text/css">{{ css }}</style>
 		{% endif %}
 		<script src="{{ dispatcher.build_url('admin/translations', dispatcher.lang) }}"></script>
-		<script src="{{ resource }}/cbi.js?v=0.9.96"></script>
-		<script src="{{ media }}/ark-theme.js?v=0.9.96"></script>
+		<script src="{{ resource }}/cbi.js?v={{ ark_v }}"></script>
+		<script src="{{ media }}/ark-theme.js?v={{ ark_v }}"></script>
+		<script>window.ARK_VERSION = "{{ ark_v }}";</script>
 	</head>
 	{% let is_login = !(ctx?.authsession || dispatcher?.context?.authsession); %}
 	<body class="lang_{{ dispatcher.lang }} {{ entityencode(striptags(node?.title ?? ''), true) }} {{ is_login ? 'ark-login-page' : 'ark-app-page' }} ark-theme" data-page="{{ entityencode(join('-', ctx.request_path), true) }}">

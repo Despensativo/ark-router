@@ -18,6 +18,19 @@ if [ "$(uci -q get dhcp.lan.force)" != "1" ]; then
 	uci -q set dhcp.lan.force='1'
 	changed=1
 fi
+
+# Otimizacao inteligente do cachesize do dnsmasq conforme a RAM do hardware
+mem_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 131072)"
+if [ "$mem_kb" -le 135000 ]; then
+	target_cache=5000
+else
+	target_cache=10000
+fi
+cur_cache="$(uci -q get dhcp.@dnsmasq[0].cachesize || true)"
+if [ -z "$cur_cache" ] || [ "$cur_cache" -gt 10000 ] || [ "$cur_cache" -lt 1000 ]; then
+	uci -q set "dhcp.@dnsmasq[0].cachesize=$target_cache"
+	changed=1
+fi
 [ "$changed" = 1 ] && uci commit dhcp || true
 
 # Otimizacao de leitura de trafego em tempo real no nlbwmon (de 30s para 2s)
@@ -27,6 +40,7 @@ if [ -f /etc/config/nlbwmon ]; then
 		uci commit nlbwmon
 		/etc/init.d/nlbwmon restart >/dev/null 2>&1 || true
 	fi
+fi
 # Otimizacao de isolamento de logs do AdGuard Home (evita saturacao do syslog com consultas DNS)
 if [ -f /etc/init.d/adguardhome ] && ! grep -q -- '--logfile' /etc/init.d/adguardhome; then
 	sed -i '/procd_append_param command --config/a \	procd_append_param command --logfile /var/lib/adguardhome/adguardhome.log' /etc/init.d/adguardhome

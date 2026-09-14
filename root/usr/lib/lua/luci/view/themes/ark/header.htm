@@ -8,10 +8,12 @@
 	local util = require "luci.util"
 	local http = require "luci.http"
 	local disp = require "luci.dispatcher"
+	local fs   = require "nixio.fs"
 
 	local boardinfo = util.ubus("system", "board")
 	local node = disp.context.dispatched
 	local is_login = not disp.context.authsession
+	local ark_v = (fs.readfile("/usr/share/ark-router/VERSION") or "0.9.99"):gsub("%s+", "")
 
 	http.prepare_content("text/html")
 -%>
@@ -22,8 +24,8 @@
 		<title><%=striptags( (boardinfo.hostname or "?") .. ( (node and node.title) and ' - ' .. translate(node.title) or '')) %> - ARK Router</title>
 		<meta name="viewport" content="initial-scale=1.0, width=device-width">
 		<meta name="theme-color" content="#0f172a">
-		<link rel="stylesheet" href="<%=media%>/cascade.css?v=0.9.96">
-		<link rel="stylesheet" media="only screen and (max-width: 854px)" href="<%=media%>/mobile.css?v=0.9.96" type="text/css" />
+		<link rel="stylesheet" href="<%=media%>/cascade.css?v=<%=ark_v%>">
+		<link rel="stylesheet" media="only screen and (max-width: 854px)" href="<%=media%>/mobile.css?v=<%=ark_v%>" type="text/css" />
 		<link rel="shortcut icon" href="<%=media%>/favicon.png">
 		<% if node and node.css then %>
 			<link rel="stylesheet" href="<%=resource%>/<%=node.css%>">
@@ -31,9 +33,10 @@
 		<% if css then %>
 			<style title="text/css"><%= css %></style>
 		<% end -%>
-		<script src="<%=url('admin/translations', luci.i18n.context.lang)%>?v=0.9.96"></script>
-		<script src="<%=resource%>/cbi.js?v=0.9.96"></script>
-		<script src="<%=media%>/ark-theme.js?v=0.9.96"></script>
+		<script src="<%=url('admin/translations', luci.i18n.context.lang)%>?v=<%=ark_v%>"></script>
+		<script src="<%=resource%>/cbi.js?v=<%=ark_v%>"></script>
+		<script src="<%=media%>/ark-theme.js?v=<%=ark_v%>"></script>
+		<script>window.ARK_VERSION = "<%=ark_v%>";</script>
 	</head>
 
 	<body class="lang_<%=luci.i18n.context.lang%> <% if node then %><%= striptags( node.title ) %><%- end %> <%= is_login and 'ark-login-page' or 'ark-app-page' %> ark-theme" data-page="<%= pcdata(table.concat(disp.context.requestpath, "-")) %>">

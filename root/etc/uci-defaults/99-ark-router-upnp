@@ -3,9 +3,12 @@
 
 if [ -f /etc/config/upnpd ]; then
 	changed=0
-	[ "$(uci -q get upnpd.config.use_stun)" = "1" ] || { uci -q set upnpd.config.use_stun='1'; changed=1; }
-	[ "$(uci -q get upnpd.config.stun_host)" = "stun.cloudflare.com" ] || { uci -q set upnpd.config.stun_host='stun.cloudflare.com'; changed=1; }
-	[ "$(uci -q get upnpd.config.stun_port)" = "3478" ] || { uci -q set upnpd.config.stun_port='3478'; changed=1; }
+	# Desativa STUN obrigatorio para evitar crash no boot ("Performing STUN failed. EXITING")
+	# Em conexões diretas ou PPPoE, o miniupnpd detecta a WAN nativamente com estabilidade.
+	[ "$(uci -q get upnpd.config.use_stun)" = "0" ] || { uci -q set upnpd.config.use_stun='0'; changed=1; }
+	[ "$(uci -q get upnpd.config.enabled)" = "1" ] || { uci -q set upnpd.config.enabled='1'; changed=1; }
+	[ "$(uci -q get upnpd.config.enable_upnp)" = "1" ] || { uci -q set upnpd.config.enable_upnp='1'; changed=1; }
+	[ "$(uci -q get upnpd.config.enable_natpmp)" = "1" ] || { uci -q set upnpd.config.enable_natpmp='1'; changed=1; }
 	if [ "$changed" = "1" ]; then
 		uci commit upnpd
 		[ -x /etc/init.d/miniupnpd ] && /etc/init.d/miniupnpd restart >/dev/null 2>&1 || true
