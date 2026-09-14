@@ -1,0 +1,12 @@
+#!/bin/sh
+# /etc/hotplug.d/iface/30-wireguard-wan - Re-sync WireGuard on any WAN interface state change
+
+case "$ACTION" in
+	ifup|ifdown)
+		case "$INTERFACE" in
+			wan*|pppoe-wan*)
+				/usr/sbin/ark-wireguard-wan-sync >/dev/null 2>&1 &
+				;;
+		esac
+		;;
+esac

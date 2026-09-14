@@ -14,3 +14,8 @@ cudy_installed_pkgs.txt
 __pycache__/
 *.pyc
 dist/minified/
+
+# Security, keys & local configs
+*.key
+*.conf
+root/etc/wireguard/

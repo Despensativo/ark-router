@@ -87,6 +87,9 @@ if [ -f /etc/config/mwan3 ] && ! uci -q get mwan3.iot_alexa_mqtt >/dev/null; the
 		set mwan3.iot_alexa_mqtt.timeout='3600'
 		commit mwan3
 EOF
+# Suporte a desligamento de wpa_supplicant em modo AP exclusivo
+if [ -f /etc/init.d/wpad ] && ! grep -q 'wireless.globals.supplicant' /etc/init.d/wpad; then
+	sed -i 's/if \[ -x "\/usr\/sbin\/wpa_supplicant" \]; then/if \[ "$(\/sbin\/uci -q get wireless.globals.supplicant || echo 1)" != "0" \] \&\& \[ -x "\/usr\/sbin\/wpa_supplicant" \]; then/' /etc/init.d/wpad 2>/dev/null || true
 fi
 
 exit 0

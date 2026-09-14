@@ -11,14 +11,14 @@ Use GitHub Releases as the public distribution channel:
 1. Keep source code on the `main` branch.
 2. Update `VERSION`, `Makefile`, `CHANGELOG.md` and runtime version files.
 3. Commit and push to GitHub.
-4. Create and push a version tag matching `VERSION`, such as `v0.9.90`.
+4. Create and push a version tag matching `VERSION`, such as `v0.9.99`.
 5. Let GitHub Actions build the OpenWrt package.
 6. Confirm that the Release contains:
    - `luci-app-ark-router.apk`
    - `luci-app-ark-router-lite.apk`
    - `luci-app-ark-router-full.apk`
-   - versioned `.apk`, such as `luci-app-ark-router-lite-0.9.90-r1.apk`
-   - versioned Full `.apk`, such as `luci-app-ark-router-full-0.9.90-r1.apk`
+   - versioned `.apk`, such as `luci-app-ark-router-lite-0.9.99-r1.apk`
+   - versioned Full `.apk`, such as `luci-app-ark-router-full-0.9.99-r1.apk`
    - `.ipk` assets when the workflow/build target produces them.
 7. Test the SSH installer from a router.
 
@@ -29,20 +29,14 @@ The current workflow is `.github/workflows/build-packages.yml`. It runs on:
 
 ## Before Publishing
 
-Run local validation:
+- Ensure that:
+  - `VERSION` is bumped;
+  - `CHANGELOG.md` describes the release;
+  - `Makefile` matches `VERSION`;
+  - assets are minified and valid (`scripts/build_minified_assets.py`);
+  - `git status` is clean or changes are intentionally included.
 
-```sh
-node --check root/www/luci-static/resources/view/equipe-dashboard/overview.js
-```
-
-On an OpenWrt router, validate shell scripts with BusyBox `ash`:
-
-```sh
-ash -n /tmp/ark-install-test.sh
-ash -n /usr/sbin/equipe-dashboard-control
-```
-
-Confirm that scripts use LF line endings. Windows CRLF line endings can break `ash` with confusing syntax errors. The repository includes `.gitattributes` rules to keep shell/runtime files as LF.
+The repository includes `.gitattributes` rules to keep shell/runtime files as LF.
 
 Review screenshots before publishing. Public screenshots must not expose:
 
@@ -73,10 +67,10 @@ Typical release flow:
 ```sh
 git status
 git add .
-git commit -m "Release ARK Router v0.9.90"
+git commit -m "Release ARK Router v0.9.99"
 git push origin main
-git tag -a v0.9.90 -m "ARK Router v0.9.90"
-git push origin v0.9.90
+git tag -a v0.9.99 -m "ARK Router v0.9.99"
+git push origin v0.9.99
 ```
 
 After the tag is pushed, open:
@@ -90,7 +84,7 @@ Confirm that **Build OpenWrt package** finishes successfully.
 Then open:
 
 ```text
-https://github.com/Despensativo/ark-router/releases/tag/v0.9.90
+https://github.com/Despensativo/ark-router/releases/tag/v0.9.99
 ```
 
 Confirm that package assets were attached.

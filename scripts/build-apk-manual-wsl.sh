@@ -37,7 +37,7 @@ if [ -d "$SRC_DIR/dist/minified" ]; then
 fi
 printf '%s\n' "$version" > "$pkg_root/usr/share/ark-router/VERSION"
 printf '%s\n' "$version" > "$SRC_DIR/root/usr/share/ark-router/VERSION"
-rm -rf "$pkg_root/etc/etc" "$pkg_root/usr/usr" "$pkg_root/www/www"
+rm -rf "$pkg_root/etc/etc" "$pkg_root/usr/usr" "$pkg_root/www/www" "$pkg_root/etc/mwan3.user"
 
 if [ ! -s "$sign_key" ]; then
 	sign_key="$work_dir/ark-router-apk-private-key.pem"

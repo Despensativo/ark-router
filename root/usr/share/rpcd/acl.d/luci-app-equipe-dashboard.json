@@ -19,7 +19,7 @@
 				"network.wireless": [ "status" ],
 				"system": [ "board", "info" ]
 			},
-			"uci": [ "dhcp", "equipe_devices", "equipe_perf", "firewall", "mwan3", "network", "qos_equipe", "sqm", "starlink_telemetry", "wireless" ]
+			"uci": [ "dhcp", "equipe_dashboard", "equipe_devices", "equipe_perf", "firewall", "luci", "mwan3", "network", "qos_equipe", "sqm", "starlink_telemetry", "wireless" ]
 		},
 		"write": {
 			"file": {
@@ -27,7 +27,8 @@
 			},
 			"ubus": {
 				"file": [ "exec" ]
-			}
+			},
+			"uci": [ "dhcp", "equipe_dashboard", "equipe_devices", "equipe_perf", "firewall", "luci", "mwan3", "network", "qos_equipe", "sqm", "starlink_telemetry", "wireless" ]
 		}
 	}
 }

@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ark-router
-PKG_VERSION:=0.9.97
+PKG_VERSION:=0.9.99
 PKG_RELEASE:=1
 PKG_MAINTAINER:=ARK Router contributors
 PKG_LICENSE:=MIT
@@ -64,6 +64,7 @@ endef
 
 define Package/luci-app-ark-router/install
 	$(CP) ./root/* $(1)/
+	[ ! -d ./dist/minified ] || $(CP) ./dist/minified/* $(1)/
 	# Lite downloads the optional telemetry client on first use into /tmp.
 	# Keep the persistent binary out of the small-flash package.
 	rm -f $(1)/usr/bin/starlink-dish
@@ -75,6 +76,7 @@ endef
 
 define Package/luci-app-ark-router-full/install
 	$(CP) ./root/* $(1)/
+	[ ! -d ./dist/minified ] || $(CP) ./dist/minified/* $(1)/
 	# Full carries the architecture-specific Starlink client persistently.
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) ./root/usr/bin/starlink-dish $(1)/usr/bin/starlink-dish

@@ -1,0 +1,50 @@
+#!/bin/sh
+# /usr/sbin/ark-wireguard-wan-sync
+# ARK Router - Re-align WireGuard tunnels on WAN failover / reconnect / IP change
+
+LOCK="/tmp/ark_wg_wan_sync.lock"
+if [ -e "$LOCK" ]; then
+	pid="$(cat "$LOCK" 2>/dev/null)"
+	if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+		exit 0
+	fi
+fi
+echo "$$" > "$LOCK"
+trap 'rm -f "$LOCK"' EXIT INT TERM
+
+# Brief settle pause so routing table / default gw is refreshed
+sleep 1
+
+# 1. WireGuard endpoint re-sync: iterate over all configured wireguard peer sections
+
+# 2. Iterate over all configured wireguard peer sections in network config
+for s in $(uci -q show network 2>/dev/null | grep -E '=wireguard_[a-zA-Z0-9_]+$' | cut -d. -f2 | cut -d= -f1); do
+	ep_host="$(uci -q get "network.$s.endpoint_host")"
+	[ -n "$ep_host" ] || continue
+	pubkey="$(uci -q get "network.$s.public_key")"
+	[ -n "$pubkey" ] || continue
+	ep_port="$(uci -q get "network.$s.endpoint_port" || printf '51820')"
+
+	# Extract interface name from section name (e.g. @wireguard_wgclient[0] -> wgclient)
+	sec_clean="${s#@wireguard_}"
+	sec_clean="${sec_clean#wireguard_}"
+	iface="${sec_clean%%\[*}"
+	[ -n "$iface" ] && [ -d "/sys/class/net/$iface" ] || continue
+
+	target_ip="$ep_host"
+	case "$ep_host" in
+		*[a-zA-Z]*)
+			resolved="$(nslookup "$ep_host" 2>/dev/null | awk '/^Address[ 0-9]*:/{print $NF}' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n1)"
+			[ -n "$resolved" ] && target_ip="$resolved"
+			;;
+	esac
+
+	# Re-poke the peer endpoint into the kernel WireGuard interface.
+	# This forces the kernel socket to rebind and dispatch an immediate handshake initiation via the active default route.
+	if command -v wg >/dev/null 2>&1; then
+		wg set "$iface" peer "$pubkey" endpoint "${target_ip}:${ep_port}" 2>/dev/null || true
+		logger -t ark-wireguard "WAN failover re-sync: updated $iface peer $pubkey -> ${target_ip}:${ep_port}"
+	fi
+done
+
+exit 0

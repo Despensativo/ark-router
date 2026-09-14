@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.9.99
+
+- **🛡️ Auditoria Completa de Estabilidade, Hardware & Flash Wear (13/09/2026)**:
+  - **Preservação de Flash SPI (ARK-07)**: Correção da rotina de persistência em `equipe-traffic-history` (`minute % 60 == 0`), eliminando o bug de saturação que gravava na Flash a cada minuto (redução de 60× no desgaste físico da Flash SPI de 16 MB).
+  - **Otimização de CPU no Histórico de Tráfego**: `tail -n 1440` executado estritamente na virada do minuto (`new_minute == 1`), eliminando 11 de cada 12 regravações por minuto em `/tmp`.
+  - **Trava Singleton por Pidfile**: Daemon `equipe-traffic-history` agora valida `/var/run/equipe-traffic-history.pid` com detecção de processo ativo e trap de encerramento, impedindo instâncias duplicadas e loops concorrentes em segundo plano.
+  - **Proteção de Flash em Roteadores com ROM Read-Only**: `equipe-dashboard-control` agora detecta se `zerotier-one` ou `libstdc++` já estão em `/rom/` (SquashFS). Em caso afirmativo, remove tarballs residuais e cancela a compactação para RAM, impedindo a gravação de ~1 MB desnecessário na partição `/overlay` em dispositivos como Cudy WR3000 v1.
+  - **Estabilidade de LAN em Failover (ARK-08)**: Removido flush global de conntrack em `ark-wireguard-wan-sync`, evitando quedas em chamadas e conexões locais durante oscilações de link secundário.
+  - **Travas de Concorrência (ARK-05)**: Corrigidas checagens de jobs em execução para `grep -qE '("state":"running"|^running)'` em `self-update`, `manual-update` e `speedtest`.
+  - **Preservação de Overhead no SQM (ARK-16)**: `ensure_sqm_section` preserva configurações customizadas de `linklayer` (PPPoE, Ethernet, ATM).
+  - **Segurança na Exclusão de Perfil PPPoE (ARK-14)**: `pppoe-profile-delete` valida o tipo `pppoe_profile` antes da remoção, protegendo a seção global `main`.
+  - **Sanitização de YAML no AdGuard Home (ARK-04)**: Escape de barras invertidas (`\\`) e validação rigorosa de identificadores de clientes e serviços.
+  - **Blindagem do DOM e Tema (ARK-18 & ARK-19)**:
+    - Guarda `isMutatingSelf` no `MutationObserver` do tema Ark para evitar loops infinitos no DOM.
+    - Limpeza rigorosa de listeners globais de tecla `Escape`.
+    - Tratamento seguro de SSIDs com espaços e prevenção de XSS no renderizador de cartões wireless via `.textContent`.
+    - Poda automática de MACs inativos da memória do navegador (`deviceRatesSmoothed` e `wifiPrevious`).
+    - Null-safety defensiva em `iface()`, `friendlyMap()`, topologia Wi-Fi e `trafficMap()`.
+  - **Escapamento RFC 8259 em JSON (ARK-12)**: `json_escape` com suporte a quebras de linha (`\n`), retornos de carro (`\r`) e tabulações (`\t`).
+  - **Sanitização contra Injeção no Export WireGuard (ARK-13)**: Sanitização com `tr -d '\r\n '` para `$client_ip`, `$endpoint` e `$server_port`.
+  - **⚡ Otimização Fina de Memória Virtual do Kernel (Sysctl Tuning)**:
+    - Criação de `/etc/sysctl.d/99-ark-memory.conf` (`vfs_cache_pressure = 150`, `dirty_ratio = 10`, `dirty_background_ratio = 5`, `swappiness = 30`).
+    - Faz o kernel liberar caches de arquivos e diretórios da flash com agilidade e descarregar páginas sujas aos poucos, preservando RAM livre para pacotes de tráfego intenso e eliminando retenção artificial em roteadores de 128 MB e 256 MB.
+  - **🧹 Rotina Silenciosa de Auto-Trim de Cache de Memória RAM**:
+    - Seletor flexível no painel (`1h`, `2h`, `6h`, `12h`, `24h` ou Desativado) integrado ao cron do sistema (`sync && echo 3 > /proc/sys/vm/drop_caches`).
+    - Limpeza 100% segura que não afeta conexões ativas nem causa perda de pacotes.
+    - Botão de purga manual em tempo real integrado à interface LuCI.
+  - **📶 Blindagem e Estabilidade do Subsistema Wi-Fi (mac80211 / wpad)**:
+    - Preservação estrita dos daemons `wpad` e `wpa_supplicant` requeridos pelo `netifd` (`ubus wait_for wpa_supplicant`) na inicialização dos rádios físicos, garantindo estabilidade e conexão instantânea dos aparelhos em 2.4 GHz e 5 GHz.
+- **🚀 Firmware Sysupgrade Otimizado com Instalação Interna (Cudy WR3000 v1 / OpenWrt 25)**:
+  - Compilação no ImageBuilder com ARK Router v0.9.99 minificado embutido diretamente na partição SquashFS ROM.
+  - Inclusão embutida de `wireguard-tools`, `kmod-wireguard`, `luci-proto-wireguard`, `tc-full`, `kmod-sched-act-police` e `zram-swap`.
+  - Remoção de pacotes obsoletos (`curl`) poupando ~786 KB.
+  - Partição `/overlay` (`rootfs_data`) liberada com **~3,2 MB 100% livres (0 KB gastos pelo sistema)** para dados e customizações do usuário.
+
+## 0.9.98
+
+- **⚡ Bypass Individual de AdGuard Home por Dispositivo**:
+  - **Novo Modo no Modal de Configuração do Aparelho**: Adicionado o botão `⚡ Bypass (Sem Bloqueio)` ao lado de `🌐 Padrão da Rede` e `🛡️ Filtro Individual` em *Controle Parental & Filtros Deste Aparelho* (`overview.js`).
+  - **Dual-Layer DNAT + Engine Bypass**:
+    - **Kernel Firewall DNAT**: Redirecionamento transparente de tráfego DNS (portas 53 UDP/TCP) no nível do nftables/iptables diretamente para DNS público upstream rápido (`1.1.1.1:53`), garantindo que consultas DNS do aparelho nunca passem pelo dnsmasq local ou AdGuard Home.
+    - **AdGuard Home Persistent Client**: Configuração automática no arquivo `/etc/adguardhome/adguardhome.yaml` com `filtering_enabled: false` e `use_global_settings: false` para assegurar imunidade total caso o dispositivo envie consultas diretas.
+- **🛡️ Eliminação de `window.prompt()` & Blindagem Defensiva Total (Auditoria Estática)**:
+  - **Diálogo Nativo In-Page para Perfis PPPoE**: Substituição do único `window.prompt()` residual por uma caixa de diálogo embutida estilizada no padrão LuCI/ARK Router, com inputs acessíveis, suporte a `Enter`/`Esc` e botões de altura útil $\ge 40\text{ px}$, eliminando congelamentos no mobile.
+  - **Defensiva em Métodos de Features**: Aplicação de fallback defensivo `|| {}` em chamadas `this.feature()` (`speedify`, `sqm`, `custom_qos`, `irqbalance`, etc.).
+  - **Suporte a Assets Minificados no SDK**: `Makefile` atualizado para incorporar automaticamente o diretório `dist/minified` caso existente na raiz de compilação.
+
 ## 0.9.97
 
 - **🌐 Auto-WAN Inteligente com Standby de Balanceamento em Single-WAN**:

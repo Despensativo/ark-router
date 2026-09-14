@@ -12,10 +12,45 @@ reply_error() {
 	exit 0
 }
 
+client_is_authorized() {
+	remote="${REMOTE_ADDR:-}"
+	[ -n "$remote" ] || return 1
+	if [ "$remote" = "127.0.0.1" ] || [ "$remote" = "::1" ]; then
+		return 0
+	fi
+
+	# Fast kernel routing check
+	local dev=""
+	case "$remote" in
+		*:*)
+			dev="$(ip -6 route get "$remote" 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1); exit}')"
+			;;
+		*)
+			dev="$(ip -4 route get "$remote" 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1); exit}')"
+			;;
+	esac
+
+	case "$dev" in
+		br-lan*|lan*|eth0|lo) return 0 ;; # Local LAN (IPv4 / IPv6)
+		wg*|wireguard*)       return 0 ;; # WireGuard VPN
+		zt*|zerotier*)        return 0 ;; # ZeroTier VPN
+		tailscale*)           return 0 ;; # Tailscale VPN
+	esac
+
+	# Fallback checks
+	client_is_lan || client_is_wireguard || client_is_zerotier
+}
+
 client_is_lan() {
 	remote="${REMOTE_ADDR:-}"
 	[ "$remote" = 127.0.0.1 ] && return 0
-	case "$remote" in *:*) return 1 ;; esac
+	case "$remote" in
+		*:*)
+			# IPv6 LAN check: link-local, ULA or on-link prefix
+			case "$remote" in fe80:*|fd*) return 0 ;; esac
+			return 1
+			;;
+	esac
 	lan_json="$(ubus call network.interface.lan status 2>/dev/null)"
 	lan_ip="$(printf '%s' "$lan_json" | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null)"
 	lan_mask="$(printf '%s' "$lan_json" | jsonfilter -e '@["ipv4-address"][0].mask' 2>/dev/null)"
@@ -27,6 +62,27 @@ client_is_lan() {
 			block = 2 ^ (32-bits)
 			exit (int(ipnum(client)/block) == int(ipnum(lan)/block)) ? 0 : 1
 		}'
+}
+
+client_is_wireguard() {
+	remote="${REMOTE_ADDR:-}"
+	[ -n "$remote" ] || return 1
+	for wg_cidr in $(ip -4 -o addr show 2>/dev/null | awk '/: wg/{print $4}'); do
+		wg_ip="${wg_cidr%%/*}"
+		wg_mask="${wg_cidr##*/}"
+		[ -n "$wg_ip" ] && [ -n "$wg_mask" ] || continue
+		[ "$wg_mask" = "32" ] && wg_mask=24
+		if awk -v client="$remote" -v lan="$wg_ip" -v bits="$wg_mask" '
+			function ipnum(ip, p) { split(ip,p,"."); return (((p[1]*256+p[2])*256+p[3])*256+p[4]) }
+			BEGIN {
+				if (bits < 0 || bits > 32) exit 1
+				block = 2 ^ (32-bits)
+				exit (int(ipnum(client)/block) == int(ipnum(lan)/block)) ? 0 : 1
+			}'; then
+			return 0
+		fi
+	done
+	return 1
 }
 
 client_is_zerotier() {
@@ -67,7 +123,7 @@ client_is_zerotier() {
 
 [ "$enabled" = 1 ] || reply_error '403 Forbidden' 'Visualização pública Starlink desativada.'
 [ "${REQUEST_METHOD:-GET}" = GET ] || reply_error '405 Method Not Allowed' 'Somente leitura GET.'
-client_is_lan || client_is_zerotier || reply_error '403 Forbidden' 'Visualização disponível somente na rede LAN ou ZeroTier autorizada.'
+client_is_authorized || reply_error '403 Forbidden' 'Visualização disponível somente na rede LAN, WireGuard ou ZeroTier autorizada.'
 
 query_value() {
 	printf '%s' "${QUERY_STRING:-}" | tr '&' '\n' | sed -n "s/^$1=//p" | head -n 1

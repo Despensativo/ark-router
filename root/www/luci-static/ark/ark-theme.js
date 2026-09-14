@@ -1078,19 +1078,23 @@
 
       document.body.appendChild(overlay);
 
+      var closeModal = function() {
+        document.removeEventListener('keydown', escHandler);
+        if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      };
+
       overlay.querySelector('.ark-modal-cancel').addEventListener('click', function() {
-        overlay.remove();
+        closeModal();
       });
 
       overlay.querySelector('.ark-modal-confirm').addEventListener('click', function() {
-        overlay.remove();
+        closeModal();
         if (typeof opts.onConfirm === 'function') opts.onConfirm();
       });
 
       var escHandler = function(e) {
         if (e.key === 'Escape') {
-          overlay.remove();
-          document.removeEventListener('keydown', escHandler);
+          closeModal();
         }
       };
       document.addEventListener('keydown', escHandler);
@@ -2298,8 +2302,8 @@
           var statDiv = r.querySelector('[data-name="_stat"]') || r;
           var ssidText = 'Wi-Fi';
           var statTxt = statDiv.textContent || '';
-          var mSsid = statTxt.match(/SSID:\s*([^\s|]+)/i);
-          if (mSsid) ssidText = mSsid[1];
+          var mSsid = statTxt.match(/SSID:\s*([^|\n\r]+?)(?:\s*(?:\||BSSID|Mode:|$))/i);
+          if (mSsid) ssidText = mSsid[1].trim().replace(/^["']|["']$/g, '');
 
           var mMode = statTxt.match(/Mode:\s*(Master|Client|Mesh|Ad-Hoc|AP|[A-Za-z]+)/i);
           var modeText = mMode ? mMode[1].replace(/BSSID.*/i, '').trim() : 'Ponto de Acesso';
@@ -2315,17 +2319,33 @@
 
           var ssidCard = document.createElement('div');
           ssidCard.className = 'ark-ssid-card';
-          ssidCard.innerHTML = '' +
-            '<div class="ark-ssid-info">' +
-              '<div class="ark-ssid-icon">📶</div>' +
-              '<div class="ark-ssid-details">' +
-                '<strong>' + ssidText + '</strong>' +
-                '<span>Modo ' + modeText + ' • ' + encText + sigText + '</span>' +
-              '</div>' +
-            '</div>' +
-            '<div class="ark-ssid-actions"></div>';
 
-          var actWrap = ssidCard.querySelector('.ark-ssid-actions');
+          var info = document.createElement('div');
+          info.className = 'ark-ssid-info';
+
+          var icon = document.createElement('div');
+          icon.className = 'ark-ssid-icon';
+          icon.textContent = '📶';
+
+          var details = document.createElement('div');
+          details.className = 'ark-ssid-details';
+
+          var strong = document.createElement('strong');
+          strong.textContent = ssidText;
+
+          var span = document.createElement('span');
+          span.textContent = 'Modo ' + modeText + ' • ' + encText + sigText;
+
+          details.appendChild(strong);
+          details.appendChild(span);
+          info.appendChild(icon);
+          info.appendChild(details);
+
+          var actWrap = document.createElement('div');
+          actWrap.className = 'ark-ssid-actions';
+
+          ssidCard.appendChild(info);
+          ssidCard.appendChild(actWrap);
           if (actionsCell) {
             var sbtns = actionsCell.querySelectorAll('button');
             sbtns.forEach(function(sb) {
@@ -2982,21 +3002,28 @@
     observeDOM: function() {
       var self = this;
       var timeout = null;
+      var isMutatingSelf = false;
       var observer = new MutationObserver(function() {
+        if (isMutatingSelf) return;
         clearTimeout(timeout);
         timeout = setTimeout(function() {
-          self.cleanupButtons();
-          self.enhancePasswordFields();
-          self.enhanceTablesAndLogs();
-          self.enhanceTabs();
-          self.enhanceSafetyModals();
-          self.enhanceModals();
-          self.enhanceInterfaceBadges();
-          self.enhanceNetlinkCharts();
-          self.injectFeatureGuides();
-          self.translateRemainingUI();
-          self.hideRedundantOverviewSections();
-          self.applyPageTransforms();
+          isMutatingSelf = true;
+          try {
+            self.cleanupButtons();
+            self.enhancePasswordFields();
+            self.enhanceTablesAndLogs();
+            self.enhanceTabs();
+            self.enhanceSafetyModals();
+            self.enhanceModals();
+            self.enhanceInterfaceBadges();
+            self.enhanceNetlinkCharts();
+            self.injectFeatureGuides();
+            self.translateRemainingUI();
+            self.hideRedundantOverviewSections();
+            self.applyPageTransforms();
+          } finally {
+            setTimeout(function() { isMutatingSelf = false; }, 50);
+          }
         }, 150);
       });
 

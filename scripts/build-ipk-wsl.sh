@@ -37,7 +37,7 @@ build_ipk_variant() {
 	fi
 	mkdir -p "$data_dir/usr/share/ark-router"
 	printf '%s\n' "$version" > "$data_dir/usr/share/ark-router/VERSION"
-	rm -rf "$data_dir/etc/etc" "$data_dir/usr/usr" "$data_dir/www/www"
+	rm -rf "$data_dir/etc/etc" "$data_dir/usr/usr" "$data_dir/www/www" "$data_dir/etc/mwan3.user"
 
 	# Strip starlink binary if lite
 	if [ "$pkg_name" = "$PKG_BASE_NAME" ]; then

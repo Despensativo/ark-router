@@ -45,10 +45,10 @@ record_history_peak() {
 		mv "$history.new" "$history"
 	fi
 	printf '%s,%s,%s\n' "$((minute * 60))" "$down" "$up" >> "$history"
-	tail -n 1440 "$history" > "$history.new" && mv "$history.new" "$history"
 	if [ "$new_minute" = 1 ]; then
+		tail -n 1440 "$history" > "$history.new" && mv "$history.new" "$history"
 		lines="$(wc -l < "$history")"
-		if [ $((lines % 60)) -eq 0 ]; then
+		if [ $((minute % 60)) -eq 0 ] || [ ! -s "$persist" ]; then
 			cp "$history" "$persist"
 			cp "$wan_daily" "$wan_daily_persist"
 		fi
@@ -115,6 +115,16 @@ $iface,$dev,$cur_rx,$cur_tx"
 		record_history_peak "$now" "$total_down" "$total_up"
 	fi
 }
+
+pidfile='/var/run/equipe-traffic-history.pid'
+if [ -f "$pidfile" ]; then
+	old_pid="$(cat "$pidfile" 2>/dev/null)"
+	if [ -n "$old_pid" ] && [ -d "/proc/$old_pid" ] && [ "$old_pid" != "$$" ]; then
+		exit 0
+	fi
+fi
+echo "$$" > "$pidfile"
+trap 'rm -f "$pidfile" 2>/dev/null; exit 0' INT TERM HUP EXIT
 
 [ -s "$history" ] || { [ -s "$persist" ] && cp "$persist" "$history" || : > "$history"; }
 [ -s "$wan_daily" ] || { [ -s "$wan_daily_persist" ] && cp "$wan_daily_persist" "$wan_daily" || : > "$wan_daily"; }

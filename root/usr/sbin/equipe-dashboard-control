@@ -1,7 +1,7 @@
 #!/bin/sh
 # Controle backend unificado do LuCI App ARK Router / Equipe Dashboard
 action="$1"
-ARK_ROUTER_VERSION="0.9.97"
+ARK_ROUTER_VERSION="0.9.99"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() {
@@ -10,7 +10,7 @@ bool() {
 		*) printf false ;;
 	esac
 }
-json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+json_escape() { printf '%s' "$1" | sed ':a;N;$!ba;s/\\/\\\\/g;s/"/\\"/g;s/\r/\\r/g;s/\n/\\n/g;s/\t/\\t/g'; }
 json_bool_value() { [ "$1" = 1 ] || [ "$1" = true ] || [ "$1" = yes ] || [ "$1" = on ] && printf true || printf false; }
 valid_mac() { printf '%s' "$1" | grep -Eq '^([0-9A-F]{2}:){5}[0-9A-F]{2}$'; }
 valid_mac_anycase() { printf '%s' "$1" | grep -Eq '^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$'; }
@@ -2152,6 +2152,10 @@ zerotier_ram_compress() {
 	overlay_total="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $2}')"
 	case "$overlay_total" in ''|*[!0-9]*) overlay_total=65536 ;; esac
 	if [ "$overlay_total" -le 16384 ]; then
+		if [ -f /rom/usr/lib/libstdc++.so.6.0.33 ] || [ -f /rom/usr/bin/zerotier-one ]; then
+			rm -f /etc/ark-router/zerotier-pkg.tar.gz /etc/ark-router/zerotier-libs.tar.gz 2>/dev/null || true
+			return 0
+		fi
 		if [ -f /etc/ark-router/zerotier-pkg.tar.gz ]; then
 			if [ ! -f /tmp/usr/lib/libstdc++.so.6.0.33 ] || [ ! -f /tmp/usr/bin/zerotier-one ]; then
 				mkdir -p /tmp
@@ -2198,9 +2202,18 @@ zerotier_enable() {
 	uci -q delete "zerotier.$sec.join" 2>/dev/null || true
 	uci commit zerotier
 	zerotier_firewall_prepare
-	[ -x /etc/init.d/ark-zerotier-ram ] && { /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true; /etc/init.d/ark-zerotier-ram start >/dev/null 2>&1 || true; }
+	zt_auto="$(uci -q get equipe_dashboard.zerotier.autostart || true)"
+	if [ "$zt_auto" != "0" ]; then
+		[ -x /etc/init.d/ark-zerotier-ram ] && { /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true; }
+		[ -x /etc/init.d/zerotier ] && { /etc/init.d/zerotier enable >/dev/null 2>&1 || true; }
+	else
+		[ -x /etc/init.d/zerotier ] && /etc/init.d/zerotier disable >/dev/null 2>&1 || true
+		[ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram disable >/dev/null 2>&1 || true
+		rm -f /etc/rc.d/S*zerotier* /etc/rc.d/K*zerotier* 2>/dev/null || true
+	fi
+	[ -x /etc/init.d/ark-zerotier-ram ] && { /etc/init.d/ark-zerotier-ram start >/dev/null 2>&1 || true; }
 	killall -9 zerotier-one 2>/dev/null || true
-	[ -x /etc/init.d/zerotier ] && { /etc/init.d/zerotier enable >/dev/null 2>&1 || true; /etc/init.d/zerotier restart >/dev/null 2>&1 || true; }
+	[ -x /etc/init.d/zerotier ] && { /etc/init.d/zerotier restart >/dev/null 2>&1 || true; }
 	i=0
 	while [ "$i" -lt 8 ]; do
 		pidof zerotier-one >/dev/null 2>&1 && break
@@ -2221,6 +2234,7 @@ zerotier_disable() {
 	}
 	killall -9 zerotier-one 2>/dev/null || true
 	[ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram disable >/dev/null 2>&1 || true
+	rm -f /etc/rc.d/S*zerotier* /etc/rc.d/K*zerotier* 2>/dev/null || true
 	ztdev="$(zerotier_device_name 2>/dev/null || true)"
 	[ -n "$ztdev" ] && ip link set "$ztdev" down 2>/dev/null || true
 	echo ok
@@ -2282,7 +2296,14 @@ zerotier_leave_network() {
 zerotier_status_json() {
 	installed_zt=false; [ -x /usr/sbin/zerotier-one ] || [ -x /usr/bin/zerotier-one ] || command -v zerotier-cli >/dev/null 2>&1 && installed_zt=true
 	autostart=false
-	[ -x /etc/init.d/zerotier ] && /etc/init.d/zerotier enabled >/dev/null 2>&1 && autostart=true
+	zt_auto="$(uci -q get equipe_dashboard.zerotier.autostart || true)"
+	if [ "$zt_auto" = "1" ]; then
+		autostart=true
+	elif [ "$zt_auto" = "0" ]; then
+		autostart=false
+	elif [ -x /etc/init.d/zerotier ] && /etc/init.d/zerotier enabled >/dev/null 2>&1; then
+		autostart=true
+	fi
 	if ! $installed_zt; then
 		printf '{"installed":false,"active":false,"online":false,"autostart":false,"node_id":"—","network_id":"","network_status":"—","ip":"—","lan_cidr":"—"}\n'
 		return 0
@@ -2341,6 +2362,7 @@ zerotier_autostart_toggle() {
 		0|false|off)
 			[ -x /etc/init.d/zerotier ] && /etc/init.d/zerotier disable >/dev/null 2>&1 || true
 			[ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram disable >/dev/null 2>&1 || true
+			rm -f /etc/rc.d/S*zerotier* /etc/rc.d/K*zerotier* 2>/dev/null || true
 			uci -q set equipe_dashboard.zerotier=feature
 			uci -q set equipe_dashboard.zerotier.autostart='0'
 			uci commit equipe_dashboard
@@ -2580,6 +2602,58 @@ wireguard_firewall_setup() {
 	fi
 }
 
+wireguard_firewall_cleanup() {
+	local wg0_enabled=0
+	local wgclient_enabled=0
+
+	[ "$(uci -q get network.wg0.disabled)" != "1" ] && [ "$(uci -q get network.wg0.auto)" != "0" ] && [ -n "$(uci -q get network.wg0.proto)" ] && wg0_enabled=1
+	[ "$(uci -q get network.wgclient.disabled)" != "1" ] && [ "$(uci -q get network.wgclient.auto)" != "0" ] && [ -n "$(uci -q get network.wgclient.proto)" ] && wgclient_enabled=1
+
+	if [ "$wg0_enabled" -eq 0 ] && [ "$wgclient_enabled" -eq 0 ]; then
+		local changed=0
+		while true; do
+			local r="$(uci -q show firewall 2>/dev/null | grep -E '\.name=.Allow-WireGuard-' | head -n1 | cut -d. -f2 | cut -d= -f1)"
+			[ -n "$r" ] || break
+			uci -q delete "firewall.$r"
+			changed=1
+		done
+		while true; do
+			local fw_match=""
+			for sec in $(uci -q show firewall 2>/dev/null | grep -E '=forwarding$' | cut -d. -f2 | cut -d= -f1); do
+				local s="$(uci -q get "firewall.$sec.src")"
+				local d="$(uci -q get "firewall.$sec.dest")"
+				if [ "$s" = "wireguard" ] || [ "$d" = "wireguard" ]; then
+					fw_match="$sec"
+					break
+				fi
+			done
+			[ -n "$fw_match" ] || break
+			uci -q delete "firewall.$fw_match"
+			changed=1
+		done
+		while true; do
+			local z="$(uci -q show firewall 2>/dev/null | grep -E '=zone$' | cut -d. -f2 | cut -d= -f1 | while read -r zsec; do
+				if [ "$(uci -q get "firewall.$zsec.name")" = "wireguard" ]; then
+					echo "$zsec"
+					break
+				fi
+			done)"
+			[ -n "$z" ] || break
+			uci -q delete "firewall.$z"
+			changed=1
+		done
+		if uci -q get mwan3.wireguard_udp >/dev/null 2>&1; then
+			uci -q delete mwan3.wireguard_udp
+			uci commit mwan3 2>/dev/null || true
+			[ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 || true
+		fi
+		if [ "$changed" -eq 1 ]; then
+			uci commit firewall
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+		fi
+	fi
+}
+
 wireguard_server_setup() {
 	port="${1:-51820}"
 	ip="${2:-10.14.0.1/24}"
@@ -2604,6 +2678,7 @@ wireguard_server_setup() {
 	uci -q set network.wg0.listen_port="$port"
 	uci -q set network.wg0.addresses="$ip"
 	uci -q set network.wg0.auto='1'
+	uci -q set network.wg0.disabled='0'
 	uci commit network
 
 	wireguard_firewall_setup "$port"
@@ -2618,6 +2693,7 @@ wireguard_enable() {
 		wireguard_server_setup "51820" "10.14.0.1/24"
 		return 0
 	fi
+	uci -q set network.wg0.disabled='0'
 	uci -q set network.wg0.auto='1'
 	uci commit network
 	port="$(uci -q get network.wg0.listen_port || printf '51820')"
@@ -2629,8 +2705,12 @@ wireguard_enable() {
 
 wireguard_disable() {
 	uci -q set network.wg0.auto='0'
+	uci -q set network.wg0.disabled='1'
 	uci commit network
-	ifdown wg0 >/dev/null 2>&1 || true
+	/sbin/ifdown wg0 >/dev/null 2>&1 || true
+	ip route flush dev wg0 2>/dev/null || true
+	ip link delete dev wg0 2>/dev/null || true
+	wireguard_firewall_cleanup
 	sleep 1
 	wireguard_status_json
 }
@@ -2718,6 +2798,10 @@ wireguard_peer_add() {
 	else
 		client_allowed_ips="0.0.0.0/0, ::/0"
 	fi
+
+	client_ip="$(printf '%s' "$client_ip" | tr -d '\r\n ')"
+	endpoint="$(printf '%s' "$endpoint" | tr -d '\r\n ')"
+	server_port="$(printf '%s' "$server_port" | tr -d '\r\n ')"
 
 	mkdir -p /etc/wireguard/clients
 	chmod 700 /etc/wireguard/clients
@@ -2830,21 +2914,41 @@ wireguard_peer_qr() {
 
 
 b64_decode_str() {
+	raw_input="$1"
+	if [ -z "$raw_input" ]; then
+		raw_input="$(cat)"
+	fi
+	[ -n "$raw_input" ] || return 1
+
+	case "$raw_input" in
+		*"[Interface]"*|*"[Peer]"*)
+			printf '%s\n' "$raw_input"
+			return 0
+			;;
+	esac
+
+	clean_b64="$(printf '%s' "$raw_input" | tr -d '\r\n ')"
+
 	if command -v ucode >/dev/null 2>&1; then
-		ucode -e 'print(b64dec(ARGV[0]))' -- "$1"
+		ucode -e 'print(b64dec(ARGV[0]))' -- "$clean_b64"
+	elif command -v lua >/dev/null 2>&1; then
+		printf '%s' "$clean_b64" | lua -e 'local nx=require("nixio"); local s=io.read("*all"); io.write((nx and nx.bin and nx.bin.b64decode and nx.bin.b64decode(s)) or "")' 2>/dev/null
 	elif command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1; then
-		python -c "import sys, base64; sys.stdout.write(base64.b64decode(sys.argv[1]).decode('utf-8', errors='replace'))" "$1"
+		python -c "import sys, base64; sys.stdout.write(base64.b64decode(sys.argv[1]).decode('utf-8', errors='replace'))" "$clean_b64"
 	elif command -v base64 >/dev/null 2>&1; then
-		printf '%s' "$1" | base64 -d 2>/dev/null || printf '%s' "$1" | base64 -D 2>/dev/null
+		printf '%s' "$clean_b64" | base64 -d 2>/dev/null || printf '%s' "$clean_b64" | base64 -D 2>/dev/null
 	elif command -v openssl >/dev/null 2>&1; then
-		printf '%s' "$1" | openssl base64 -d 2>/dev/null
+		printf '%s' "$clean_b64" | openssl base64 -d 2>/dev/null
 	fi
 }
 
 b64_encode_file() {
 	file="$1"
+	[ -s "$file" ] || return 0
 	if command -v ucode >/dev/null 2>&1; then
 		ucode -e 'let fs = require("fs"); let c = fs.readfile(ARGV[0]); if (c) print(b64enc(c));' -- "$file"
+	elif command -v lua >/dev/null 2>&1; then
+		cat "$file" 2>/dev/null | lua -e 'local nx=require("nixio"); local s=io.read("*all"); io.write((nx and nx.bin and nx.bin.b64encode and nx.bin.b64encode(s)) or "")' 2>/dev/null
 	elif command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1; then
 		python -c "import sys, base64; sys.stdout.write(base64.b64encode(open(sys.argv[1], 'rb').read()).decode('ascii'))" "$file"
 	elif command -v base64 >/dev/null 2>&1; then
@@ -2854,6 +2958,7 @@ b64_encode_file() {
 
 wireguard_client_import() {
 	b64="$1"
+	[ -n "$b64" ] || b64="$(cat)"
 	[ -n "$b64" ] || { echo 'Conteudo da configuracao vazio' >&2; exit 2; }
 
 	tmp_conf="/tmp/ark_wg_client.$$.conf"
@@ -2866,21 +2971,20 @@ wireguard_client_import() {
 	get_val() {
 		clean_lines | grep -iE "^${1}[[:space:]]*=" | head -n 1 | sed -E "s/^${1}[[:space:]]*=[[:space:]]*//I"
 	}
+	get_all_vals() {
+		clean_lines | grep -iE "^${1}[[:space:]]*=" | sed -E "s/^${1}[[:space:]]*=[[:space:]]*//I" | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -v '^$'
+	}
 
 	privkey="$(get_val 'PrivateKey')"
-	addresses="$(get_val 'Address')"
-	dns="$(get_val 'DNS')"
 	pubkey="$(get_val 'PublicKey')"
 	preshared_key="$(get_val 'PresharedKey')"
 	endpoint="$(get_val 'Endpoint')"
-	allowed_ips="$(get_val 'AllowedIPs')"
 	keepalive="$(get_val 'PersistentKeepalive')"
+	mtu="$(get_val 'MTU')"
 
-	rm -f "$tmp_conf" 2>/dev/null
-
-	[ -n "$privkey" ] || { echo 'Chave Privada (PrivateKey) nao encontrada no .conf' >&2; exit 2; }
-	[ -n "$pubkey" ] || { echo 'Chave Publica do Servidor (PublicKey) nao encontrada no .conf' >&2; exit 2; }
-	[ -n "$endpoint" ] || { echo 'Endpoint do Servidor nao encontrado no .conf' >&2; exit 2; }
+	[ -n "$privkey" ] || { rm -f "$tmp_conf" 2>/dev/null; echo 'Chave Privada (PrivateKey) nao encontrada no .conf' >&2; exit 2; }
+	[ -n "$pubkey" ] || { rm -f "$tmp_conf" 2>/dev/null; echo 'Chave Publica do Servidor (PublicKey) nao encontrada no .conf' >&2; exit 2; }
+	[ -n "$endpoint" ] || { rm -f "$tmp_conf" 2>/dev/null; echo 'Endpoint do Servidor nao encontrado no .conf' >&2; exit 2; }
 
 	case "$endpoint" in
 		\[*\]:*)
@@ -2908,16 +3012,15 @@ wireguard_client_import() {
 	uci -q set network.wgclient.private_key="$privkey"
 	uci -q set network.wgclient.listen_port='51821'
 	uci -q set network.wgclient.auto='1'
-	if [ -n "$addresses" ]; then
-		for a in $(echo "$addresses" | tr ',' ' '); do
-			uci -q add_list network.wgclient.addresses="$a"
-		done
-	fi
-	if [ -n "$dns" ]; then
-		for d in $(echo "$dns" | tr ',' ' '); do
-			uci -q add_list network.wgclient.dns="$d"
-		done
-	fi
+	[ -n "$mtu" ] && uci -q set network.wgclient.mtu="$mtu"
+
+	for a in $(get_all_vals 'Address'); do
+		uci -q add_list network.wgclient.addresses="$a"
+	done
+
+	for d in $(get_all_vals 'DNS'); do
+		uci -q add_list network.wgclient.dns="$d"
+	done
 
 	sec="$(uci -q add network wireguard_wgclient)"
 	uci -q set "network.$sec.public_key=$pubkey"
@@ -2926,9 +3029,15 @@ wireguard_client_import() {
 	uci -q set "network.$sec.endpoint_port=$ep_port"
 	uci -q set "network.$sec.persistent_keepalive=${keepalive:-25}"
 	uci -q set "network.$sec.route_allowed_ips=1"
-	for aip in $(echo "${allowed_ips:-0.0.0.0/0}" | tr ',' ' '); do
+
+	allowed_count=0
+	for aip in $(get_all_vals 'AllowedIPs'); do
 		uci -q add_list "network.$sec.allowed_ips=$aip"
+		allowed_count=$((allowed_count + 1))
 	done
+	if [ "$allowed_count" -eq 0 ]; then
+		uci -q add_list "network.$sec.allowed_ips=0.0.0.0/0"
+	fi
 
 	for z in $(uci -q show firewall | grep '=zone$' | cut -d. -f2 | cut -d= -f1); do
 		if [ "$(uci -q get "firewall.$z.name")" = "wan" ]; then
@@ -2938,13 +3047,16 @@ wireguard_client_import() {
 	wireguard_firewall_setup
 
 	mkdir -p /etc/wireguard
-	b64_decode_str "$b64" > /etc/wireguard/wgclient.conf 2>/dev/null
+	cp -f "$tmp_conf" /etc/wireguard/wgclient.conf 2>/dev/null
 	chmod 600 /etc/wireguard/wgclient.conf 2>/dev/null
+	rm -f "$tmp_conf" 2>/dev/null
 
 	uci commit network
 	uci commit firewall
+	rm -f /tmp/ark-features.cache 2>/dev/null || true
 	/etc/init.d/firewall reload >/dev/null 2>&1 || true
 	/sbin/ifup wgclient >/dev/null 2>&1 || true
+	/usr/sbin/ark-wireguard-wan-sync >/dev/null 2>&1 &
 
 	echo 'ok'
 }
@@ -2996,21 +3108,32 @@ wireguard_client_status_json() {
 
 wireguard_client_toggle() {
 	des="$1"
+	rm -f /tmp/ark-features.cache 2>/dev/null || true
 	if [ "$des" = "1" ] || [ "$des" = "on" ] || [ "$des" = "start" ]; then
 		uci -q set network.wgclient.disabled='0'
+		uci -q set network.wgclient.auto='1'
 		uci commit network
+		wireguard_firewall_setup
 		/sbin/ifup wgclient >/dev/null 2>&1 || true
+		/usr/sbin/ark-wireguard-wan-sync >/dev/null 2>&1 &
 		echo 'ok'
 	else
 		uci -q set network.wgclient.disabled='1'
+		uci -q set network.wgclient.auto='0'
 		uci commit network
 		/sbin/ifdown wgclient >/dev/null 2>&1 || true
+		ip route flush dev wgclient 2>/dev/null || true
+		ip link delete dev wgclient 2>/dev/null || true
+		wireguard_firewall_cleanup
 		echo 'ok'
 	fi
 }
 
 wireguard_client_delete() {
+	rm -f /tmp/ark-features.cache 2>/dev/null || true
 	/sbin/ifdown wgclient >/dev/null 2>&1 || true
+	ip route flush dev wgclient 2>/dev/null || true
+	ip link delete dev wgclient 2>/dev/null || true
 	uci -q delete network.wgclient
 	for s in $(uci -q show network | grep '=wireguard_wgclient$' | cut -d. -f2 | cut -d= -f1); do
 		uci -q delete "network.$s"
@@ -3022,8 +3145,7 @@ wireguard_client_delete() {
 	done
 	rm -f /etc/wireguard/wgclient.conf 2>/dev/null
 	uci commit network
-	uci commit firewall
-	/etc/init.d/firewall reload >/dev/null 2>&1 || true
+	wireguard_firewall_cleanup
 	echo 'ok'
 }
 
@@ -3085,8 +3207,8 @@ speedtest_schedule_weak_cleanup() {
 	[ "$tmp_total" -le "${ARK_SPEEDTEST_WEAK_TMP_KB:-160000}" ] || return 0
 	(
 		sleep "${ARK_SPEEDTEST_CLEANUP_DELAY:-300}"
-		[ "$(cat /tmp/ark-speedtest-wan.status 2>/dev/null)" = running ] && exit 0
-		[ "$(cat /tmp/ark-speedtest-wan2.status 2>/dev/null)" = running ] && exit 0
+		grep -q 'running' /tmp/ark-speedtest-wan.status 2>/dev/null && exit 0
+		grep -q 'running' /tmp/ark-speedtest-wan2.status 2>/dev/null && exit 0
 		rm -rf /tmp/ark-speedtest /tmp/ark-speedtest-download
 		echo cleaned >/tmp/ark-speedtest-cleanup.status
 	) >/dev/null 2>&1 &
@@ -3266,12 +3388,12 @@ ensure_sqm_section() {
 	section="$1"; device="$2"
 	uci -q get "sqm.$section" >/dev/null 2>&1 || uci -q set "sqm.$section=queue"
 	uci -q set "sqm.$section.interface=$device"
-	uci -q set "sqm.$section.qdisc=cake"
-	uci -q set "sqm.$section.script=piece_of_cake.qos"
-	uci -q set "sqm.$section.qdisc_advanced=1"
-	uci -q set "sqm.$section.eqdisc_opts=diffserv4 nat dual-srchost ack-filter"
-	uci -q set "sqm.$section.iqdisc_opts=diffserv4 nat dual-dsthost ingress"
-	uci -q set "sqm.$section.linklayer=none"
+	[ -n "$(uci -q get "sqm.$section.qdisc")" ] || uci -q set "sqm.$section.qdisc=cake"
+	[ -n "$(uci -q get "sqm.$section.script")" ] || uci -q set "sqm.$section.script=piece_of_cake.qos"
+	[ -n "$(uci -q get "sqm.$section.qdisc_advanced")" ] || uci -q set "sqm.$section.qdisc_advanced=1"
+	[ -n "$(uci -q get "sqm.$section.eqdisc_opts")" ] || uci -q set "sqm.$section.eqdisc_opts=diffserv4 nat dual-srchost ack-filter"
+	[ -n "$(uci -q get "sqm.$section.iqdisc_opts")" ] || uci -q set "sqm.$section.iqdisc_opts=diffserv4 nat dual-dsthost ingress"
+	[ -n "$(uci -q get "sqm.$section.linklayer")" ] || uci -q set "sqm.$section.linklayer=none"
 }
 active_wan_networks() {
 	uci -q show network 2>/dev/null | sed -n 's/^network\.\(wan[0-9]*\)=interface$/\1/p' | while IFS= read -r network_section; do
@@ -3457,7 +3579,8 @@ mwan3_reorder_rules() {
 	uci -q reorder "mwan3.bypass_pvt172=2" 2>/dev/null || true
 	uci -q reorder "mwan3.dns_udp=3" 2>/dev/null || true
 	uci -q reorder "mwan3.dns_tcp=4" 2>/dev/null || true
-	order_idx=5
+	uci -q reorder "mwan3.wireguard_udp=5" 2>/dev/null || true
+	order_idx=6
 	for r in $(uci -q show mwan3 2>/dev/null | grep '=rule$' | cut -d. -f2 | cut -d= -f1 | grep '^ark_dev_'); do
 		uci -q reorder "mwan3.$r=$order_idx" 2>/dev/null || true
 		order_idx=$((order_idx + 1))
@@ -3481,7 +3604,11 @@ get_configured_ping_track_ips() {
 		google)      primary="8.8.8.8" ;;
 		quad9)       primary="9.9.9.9" ;;
 		custom)      primary="${custom_ip:-200.160.2.3}" ;;
-		isp)         primary="" ;;
+		isp)
+			primary="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@.route[@.target="0.0.0.0"].nexthop' 2>/dev/null | head -n 1)"
+			[ -n "$primary" ] || primary="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].ptpaddress' 2>/dev/null)"
+			[ -n "$primary" ] || primary="$(uci -q get network.wan.gateway || true)"
+			;;
 		*)           primary="200.160.2.3" ;;
 	esac
 
@@ -3629,6 +3756,15 @@ ensure_mwan3_ark_config() {
 	uci -q set mwan3.dns_tcp.dest_port='53,853'
 	uci -q set mwan3.dns_tcp.sticky=0
 	[ -n "$(uci -q get mwan3.dns_tcp.use_policy)" ] || uci -q set mwan3.dns_tcp.use_policy=wan_then_wan2
+
+	# Regra de WireGuard VPN (Resiliente / Sem Sticky / Failover Imediato)
+	uci -q set mwan3.wireguard_udp=rule
+	uci -q set mwan3.wireguard_udp.family=ipv4
+	uci -q set mwan3.wireguard_udp.proto=udp
+	uci -q set mwan3.wireguard_udp.dest_port='51820,51821'
+	uci -q set mwan3.wireguard_udp.sticky=0
+	uci -q set mwan3.wireguard_udp.timeout=60
+	[ -n "$(uci -q get mwan3.wireguard_udp.use_policy)" ] || uci -q set mwan3.wireguard_udp.use_policy=wan_then_wan2
 
 	# 3. Regras Criticas Essenciais
 	uci -q set mwan3.ssh=rule
@@ -4133,8 +4269,13 @@ system_perf_status_json() {
 	[ -n "$root_used_kb" ] || root_used_kb=0
 	[ -n "$root_avail_kb" ] || root_avail_kb=0
 
-	printf '{"conntrack_recycle":%s,"ram_autopurge":%s,"speedify_encryption":%s,"speedify_installed":%s,"speedify_log_cap":%s,"nlbwmon_lite":%s,"irqbalance_installed":%s,"irqbalance_active":%s,"conntrack_count":%s,"conntrack_max":%s,"mem_total_kb":%s,"mem_avail_kb":%s,"root_total_kb":%s,"root_used_kb":%s,"root_avail_kb":%s,"dns_allservers":%s,"dns_servers":"%s","dns_blocker_active":%s,"dns_blocker_name":"%s"}\n' \
-		"$conntrack_recycle" "$ram_autopurge" "$speedify_encryption" "$speedify_installed" "$speedify_log_cap" "$nlbwmon_lite" "$irq_installed" "$irq_active" "$conntrack_count" "$conntrack_max" "$mem_total_kb" "$mem_avail_kb" "$root_total_kb" "$root_used_kb" "$root_avail_kb" "$dns_allservers" "$(json_escape "$dns_servers")" "$dns_blocker_active" "$(json_escape "$blocker_name")"
+	wifi_supplicant_disable=false
+	[ "$(uci -q get wireless.globals.supplicant || printf 1)" = 0 ] && wifi_supplicant_disable=true
+
+	ram_trim_interval="$(uci -q get equipe_perf.settings.ram_trim_interval || printf 0)"
+
+	printf '{"conntrack_recycle":%s,"ram_autopurge":%s,"speedify_encryption":%s,"speedify_installed":%s,"speedify_log_cap":%s,"nlbwmon_lite":%s,"irqbalance_installed":%s,"irqbalance_active":%s,"conntrack_count":%s,"conntrack_max":%s,"mem_total_kb":%s,"mem_avail_kb":%s,"root_total_kb":%s,"root_used_kb":%s,"root_avail_kb":%s,"dns_allservers":%s,"dns_servers":"%s","dns_blocker_active":%s,"dns_blocker_name":"%s","wifi_supplicant_disable":%s,"ram_trim_interval":"%s"}\n' \
+		"$conntrack_recycle" "$ram_autopurge" "$speedify_encryption" "$speedify_installed" "$speedify_log_cap" "$nlbwmon_lite" "$irq_installed" "$irq_active" "$conntrack_count" "$conntrack_max" "$mem_total_kb" "$mem_avail_kb" "$root_total_kb" "$root_used_kb" "$root_avail_kb" "$dns_allservers" "$(json_escape "$dns_servers")" "$dns_blocker_active" "$(json_escape "$blocker_name")" "$wifi_supplicant_disable" "$(json_escape "$ram_trim_interval")"
 }
 
 dns_turbo_status_json() {
@@ -4280,6 +4421,8 @@ system_perf_save() {
 	speedify_log_cap="${4:-0}"
 	nlbwmon_lite="${5:-0}"
 	dns_allservers="${6:-0}"
+	wifi_supplicant_disable="${7:-0}"
+	ram_trim_interval="${8:-0}"
 
 	case "$conntrack_recycle" in 1|true) conntrack_recycle=1 ;; *) conntrack_recycle=0 ;; esac
 	case "$ram_autopurge" in 1|true) ram_autopurge=1 ;; *) ram_autopurge=0 ;; esac
@@ -4287,6 +4430,8 @@ system_perf_save() {
 	case "$speedify_log_cap" in 1|true) speedify_log_cap=1 ;; *) speedify_log_cap=0 ;; esac
 	case "$nlbwmon_lite" in 1|true) nlbwmon_lite=1 ;; *) nlbwmon_lite=0 ;; esac
 	case "$dns_allservers" in 1|true) dns_allservers=1 ;; *) dns_allservers=0 ;; esac
+	case "$wifi_supplicant_disable" in 1|true) wifi_supplicant_disable=1 ;; *) wifi_supplicant_disable=0 ;; esac
+	case "$ram_trim_interval" in 1h|2h|6h|12h|24h) ;; *) ram_trim_interval=0 ;; esac
 
 	blocker_name="$(detect_dns_blocker 2>/dev/null || true)"
 	if [ -n "$blocker_name" ]; then
@@ -4301,6 +4446,8 @@ system_perf_save() {
 	uci -q set "equipe_perf.settings.speedify_encryption=$speedify_encryption"
 	uci -q set "equipe_perf.settings.speedify_log_cap=$speedify_log_cap"
 	uci -q set "equipe_perf.settings.nlbwmon_lite=$nlbwmon_lite"
+	uci -q set "equipe_perf.settings.wifi_supplicant_disable=$wifi_supplicant_disable"
+	uci -q set "equipe_perf.settings.ram_trim_interval=$ram_trim_interval"
 	uci commit equipe_perf
 
 	# DNS All-Servers
@@ -4334,11 +4481,44 @@ system_perf_save() {
 
 	if [ "$ram_autopurge" = 1 ]; then
 		sysctl -w vm.vfs_cache_pressure=150 2>/dev/null || true
-		sysctl -w vm.min_free_kbytes=8192 2>/dev/null || true
-		printf 'vm.vfs_cache_pressure=150\nvm.min_free_kbytes=8192\n' > /etc/sysctl.d/99-ark-memory.conf
+		sysctl -w vm.dirty_ratio=10 2>/dev/null || true
+		sysctl -w vm.dirty_background_ratio=5 2>/dev/null || true
+		sysctl -w vm.swappiness=30 2>/dev/null || true
+		cat <<-EOF > /etc/sysctl.d/99-ark-memory.conf
+			vm.vfs_cache_pressure=150
+			vm.dirty_ratio=10
+			vm.dirty_background_ratio=5
+			vm.swappiness=30
+		EOF
 	else
 		sysctl -w vm.vfs_cache_pressure=100 2>/dev/null || true
+		sysctl -w vm.dirty_ratio=20 2>/dev/null || true
+		sysctl -w vm.dirty_background_ratio=10 2>/dev/null || true
+		sysctl -w vm.swappiness=60 2>/dev/null || true
 		rm -f /etc/sysctl.d/99-ark-memory.conf 2>/dev/null || true
+	fi
+
+	# Garantir que wpad e wpa_supplicant permanecam ativos (essencial para o netifd inicializar radios Wi-Fi)
+	uci -q delete wireless.globals 2>/dev/null || true
+	uci commit wireless 2>/dev/null || true
+	if [ -f /etc/init.d/wpad ]; then
+		sed -i 's/.*wireless.globals.supplicant.*/\tif [ -x "\/usr\/sbin\/wpa_supplicant" ]; then/' /etc/init.d/wpad 2>/dev/null || true
+	fi
+
+	# Agendamento de trim de memoria (drop_caches)
+	mkdir -p /etc/crontabs
+	[ -f /etc/crontabs/root ] || touch /etc/crontabs/root
+	sed -i '/drop_caches/d' /etc/crontabs/root 2>/dev/null || true
+	case "$ram_trim_interval" in
+		1h) echo "0 * * * * sync && echo 3 > /proc/sys/vm/drop_caches" >> /etc/crontabs/root ;;
+		2h) echo "0 */2 * * * sync && echo 3 > /proc/sys/vm/drop_caches" >> /etc/crontabs/root ;;
+		6h) echo "0 */6 * * * sync && echo 3 > /proc/sys/vm/drop_caches" >> /etc/crontabs/root ;;
+		12h) echo "0 */12 * * * sync && echo 3 > /proc/sys/vm/drop_caches" >> /etc/crontabs/root ;;
+		24h) echo "30 4 * * * sync && echo 3 > /proc/sys/vm/drop_caches" >> /etc/crontabs/root ;;
+	esac
+	if [ -x /etc/init.d/cron ]; then
+		/etc/init.d/cron enable >/dev/null 2>&1 || true
+		/etc/init.d/cron restart >/dev/null 2>&1 || true
 	fi
 
 	if command -v speedify_cli >/dev/null 2>&1; then
@@ -5320,19 +5500,18 @@ device_apply_parental() {
 		agh_active=1
 	fi
 
-	if [ "$p_mode" = "custom" ]; then
-		if [ "$agh_active" = "1" ]; then
-			if command -v python3 >/dev/null 2>&1; then
-				python3 -c "
+	if [ "$agh_active" = "1" ] && command -v python3 >/dev/null 2>&1; then
+		python3 -c "
 import sys, re
 
 yaml_path = '/etc/adguardhome/adguardhome.yaml'
 mac = sys.argv[1]
 ip = sys.argv[2]
 name = sys.argv[3] or mac
-p_block = (sys.argv[4] == '1')
-s_safe = (sys.argv[5] == '1')
-services = [s.strip() for s in sys.argv[6].split(',') if s.strip()]
+mode = sys.argv[4]
+p_block = (sys.argv[5] == '1')
+s_safe = (sys.argv[6] == '1')
+services = [s.strip() for s in sys.argv[7].split(',') if s.strip()]
 
 try:
     with open(yaml_path, 'r', encoding='utf-8') as f:
@@ -5372,21 +5551,48 @@ try:
                 continue
             filtered_blocks.append(block)
 
-        if services:
-            s_lines = '\\n'.join(['          - ' + s for s in services])
-            services_block = '      blocked_services:\\n        schedule:\\n          time_zone: UTC\\n        ids:\\n' + s_lines
-        else:
-            services_block = '      blocked_services:\\n        schedule:\\n          time_zone: UTC\\n        ids: []'
+        if mode in ('custom', 'bypass'):
+            ids_lines = ('        - \"' + ip + '\"\\n') if ip else ''
+            if mac:
+                ids_lines += '        - \"' + mac.lower() + '\"'
 
-        ids_lines = ('        - \"' + ip + '\"\\n') if ip else ''
-        if mac:
-            ids_lines += '        - \"' + mac.lower() + '\"'
+            name_escaped = name.replace('\\\\', '\\\\\\\\').replace('\"', '\\\\\"')
 
-        p_str = 'true' if p_block else 'false'
-        s_str = 'true' if s_safe else 'false'
-        name_clean = name.replace('\"', '\\\\\"')
+            if mode == 'bypass':
+                new_client = f'''    - name: \"{name_escaped}\"
+      ids:
+{ids_lines}
+      use_global_settings: false
+      filtering_enabled: false
+      parental_enabled: false
+      safesearch_enabled: false
+      safe_search:
+        enabled: false
+        bing: false
+        duckduckgo: false
+        ecosia: false
+        google: false
+        pixabay: false
+        yandex: false
+        youtube: false
+      use_global_blocked_services: false
+      blocked_services:
+        schedule:
+          time_zone: UTC
+        ids: []'''
+            else:
+                clean_services = [re.sub(r'[^a-zA-Z0-9_.-]', '', s) for s in services if s]
+                clean_services = [s for s in clean_services if s]
+                if clean_services:
+                    s_lines = '\\n'.join(['          - ' + s for s in clean_services])
+                    services_block = '      blocked_services:\\n        schedule:\\n          time_zone: UTC\\n        ids:\\n' + s_lines
+                else:
+                    services_block = '      blocked_services:\\n        schedule:\\n          time_zone: UTC\\n        ids: []'
 
-        new_client = f'''    - name: \"{name_clean}\"
+                p_str = 'true' if p_block else 'false'
+                s_str = 'true' if s_safe else 'false'
+
+                new_client = f'''    - name: \"{name_escaped}\"
       ids:
 {ids_lines}
       use_global_settings: false
@@ -5404,7 +5610,8 @@ try:
         youtube: {s_str}
       use_global_blocked_services: false
 {services_block}'''
-        filtered_blocks.append(new_client)
+
+            filtered_blocks.append(new_client)
 
         if filtered_blocks:
             new_mid = '\\n' + '\\n'.join([b.strip('\\n') for b in filtered_blocks]) + '\\n'
@@ -5416,85 +5623,43 @@ try:
             f.write(new_content)
 except Exception:
     pass
-" "$p_mac" "$p_ip" "$p_name" "$p_block" "$p_safe" "$p_services"
-				/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
-			fi
+" "$p_mac" "$p_ip" "$p_name" "$p_mode" "$p_block" "$p_safe" "$p_services"
+		/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+	fi
+
+	if [ "$p_mode" = "bypass" ]; then
+		uci -q set "firewall.ark_par_$p_suffix=redirect"
+		uci -q set "firewall.ark_par_$p_suffix.name=ARK-Bypass-$p_mac"
+		uci -q set "firewall.ark_par_$p_suffix.src=lan"
+		uci -q set "firewall.ark_par_$p_suffix.proto=tcp udp"
+		uci -q set "firewall.ark_par_$p_suffix.src_dport=53"
+		uci -q set "firewall.ark_par_$p_suffix.dest_ip=1.1.1.1"
+		uci -q set "firewall.ark_par_$p_suffix.dest_port=53"
+		uci -q set "firewall.ark_par_$p_suffix.target=DNAT"
+		[ -n "$p_mac" ] && uci -q set "firewall.ark_par_$p_suffix.src_mac=$p_mac"
+		[ -n "$p_ip" ] && uci -q set "firewall.ark_par_$p_suffix.src_ip=$p_ip"
+		uci -q set "firewall.ark_par_$p_suffix.enabled=1"
+		uci commit firewall
+		/etc/init.d/firewall reload >/dev/null 2>&1 || true
+	elif [ "$p_mode" = "custom" ] && [ "$agh_active" != "1" ]; then
+		if [ "$p_block" = "1" ] || [ "$p_safe" = "1" ]; then
+			uci -q set "firewall.ark_par_$p_suffix=redirect"
+			uci -q set "firewall.ark_par_$p_suffix.name=ARK-Parental-$p_mac"
+			uci -q set "firewall.ark_par_$p_suffix.src=lan"
+			uci -q set "firewall.ark_par_$p_suffix.proto=tcp udp"
+			uci -q set "firewall.ark_par_$p_suffix.src_dport=53"
+			uci -q set "firewall.ark_par_$p_suffix.dest_ip=94.140.14.15"
+			uci -q set "firewall.ark_par_$p_suffix.dest_port=53"
+			uci -q set "firewall.ark_par_$p_suffix.target=DNAT"
+			[ -n "$p_mac" ] && uci -q set "firewall.ark_par_$p_suffix.src_mac=$p_mac"
+			[ -n "$p_ip" ] && uci -q set "firewall.ark_par_$p_suffix.src_ip=$p_ip"
+			uci -q set "firewall.ark_par_$p_suffix.enabled=1"
 		else
-			if [ "$p_block" = "1" ] || [ "$p_safe" = "1" ]; then
-				uci -q set "firewall.ark_par_$p_suffix=redirect"
-				uci -q set "firewall.ark_par_$p_suffix.name=ARK-Parental-$p_mac"
-				uci -q set "firewall.ark_par_$p_suffix.src=lan"
-				uci -q set "firewall.ark_par_$p_suffix.proto=tcp udp"
-				uci -q set "firewall.ark_par_$p_suffix.src_dport=53"
-				uci -q set "firewall.ark_par_$p_suffix.dest_ip=94.140.14.15"
-				uci -q set "firewall.ark_par_$p_suffix.dest_port=53"
-				uci -q set "firewall.ark_par_$p_suffix.target=DNAT"
-				[ -n "$p_mac" ] && uci -q set "firewall.ark_par_$p_suffix.src_mac=$p_mac"
-				[ -n "$p_ip" ] && uci -q set "firewall.ark_par_$p_suffix.src_ip=$p_ip"
-				uci -q set "firewall.ark_par_$p_suffix.enabled=1"
-			else
-				uci -q delete "firewall.ark_par_$p_suffix"
-			fi
-			uci commit firewall
-			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			uci -q delete "firewall.ark_par_$p_suffix"
 		fi
+		uci commit firewall
+		/etc/init.d/firewall reload >/dev/null 2>&1 || true
 	else
-		if [ "$agh_active" = "1" ]; then
-			if command -v python3 >/dev/null 2>&1; then
-				python3 -c "
-import sys, re
-yaml_path = '/etc/adguardhome/adguardhome.yaml'
-mac = sys.argv[1]
-ip = sys.argv[2]
-name = sys.argv[3] or mac
-try:
-    with open(yaml_path, 'r', encoding='utf-8') as f:
-        content = f.read()
-    idx_p = content.find('  persistent:')
-    if idx_p != -1:
-        eol_p = content.find('\\n', idx_p)
-        if eol_p == -1: eol_p = len(content)
-        idx_log = content.find('\\nlog:\\n', idx_p)
-        if idx_log == -1: idx_log = content.find('\\nlog:', idx_p)
-        if idx_log == -1: idx_log = len(content)
-        before = content[:idx_p] + '  persistent:'
-        after = content[idx_log:]
-        mid = content[eol_p:idx_log]
-
-        client_blocks = []
-        current = []
-        for line in mid.splitlines(True):
-            if line.startswith('    - '):
-                if current and any(c.strip() for c in current):
-                    client_blocks.append(''.join(current))
-                    current = []
-            current.append(line)
-        if current and any(c.strip() for c in current):
-            client_blocks.append(''.join(current))
-
-        filtered_blocks = []
-        mac_clean = mac.lower().replace(':', '')
-        name_clean = name.lower()
-        for block in client_blocks:
-            b_clean = block.lower().replace(':', '')
-            if (mac_clean and mac_clean in b_clean) or (ip and ip in block) or (name_clean and ('name: \"' + name_clean + '\"' in b_clean or 'name: ' + name_clean in b_clean)):
-                continue
-            filtered_blocks.append(block)
-
-        if filtered_blocks:
-            new_mid = '\\n' + '\\n'.join([b.strip('\\n') for b in filtered_blocks]) + '\\n'
-            new_content = before + new_mid + '\\n' + after.lstrip('\\n')
-        else:
-            new_mid = ' []\\n'
-            new_content = before + new_mid + after.lstrip('\\n')
-        with open(yaml_path, 'w', encoding='utf-8') as f:
-            f.write(new_content)
-except Exception:
-    pass
-" "$p_mac" "$p_ip" "$p_name"
-				/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
-			fi
-		fi
 		if [ -n "$(uci -q get "firewall.ark_par_$p_suffix" 2>/dev/null)" ]; then
 			uci -q delete "firewall.ark_par_$p_suffix"
 			uci commit firewall
@@ -5803,7 +5968,14 @@ feature_json() {
 		installed_zt=false; [ -x /usr/sbin/zerotier-one ] || command -v zerotier-cli >/dev/null 2>&1 && installed_zt=true
 		active_zt=false; pidof zerotier-one >/dev/null 2>&1 && active_zt=true
 		autostart_zt=false
-		[ -x /etc/init.d/zerotier ] && /etc/init.d/zerotier enabled >/dev/null 2>&1 && autostart_zt=true
+		zt_auto="$(uci -q get equipe_dashboard.zerotier.autostart || true)"
+		if [ "$zt_auto" = "1" ]; then
+			autostart_zt=true
+		elif [ "$zt_auto" = "0" ]; then
+			autostart_zt=false
+		elif [ -x /etc/init.d/zerotier ] && /etc/init.d/zerotier enabled >/dev/null 2>&1; then
+			autostart_zt=true
+		fi
 		state='{}'
 		if $active_zt; then
 			state="$(zerotier_status_json 2>/dev/null || printf '{}')"
@@ -7154,6 +7326,8 @@ case "$action" in
 				uci -q set mwan3.dns_udp.sticky=0
 				uci -q set mwan3.dns_tcp.use_policy="$policy"
 				uci -q set mwan3.dns_tcp.sticky=0
+				uci -q set mwan3.wireguard_udp.use_policy="$policy"
+				uci -q set mwan3.wireguard_udp.sticky=0
 				uci -q set mwan3.https.use_policy="$policy"
 				uci -q set mwan3.https_quic.use_policy="$policy"
 				uci -q set mwan3.default_rule_v4.use_policy="$policy"
@@ -7231,6 +7405,16 @@ case "$action" in
 		cat /tmp/ark-ezsetup-modules.log 2>/dev/null
 		;;
 	features)
+		cache="/tmp/ark-features.cache"
+		if [ -s "$cache" ]; then
+			now="$(date +%s)"
+			mtime="$(date -r "$cache" +%s 2>/dev/null || echo 0)"
+			if [ $((now - mtime)) -lt 15 ] 2>/dev/null; then
+				cat "$cache"
+				exit 0
+			fi
+		fi
+		features_payload() {
 		manager="$(ark_package_manager)"
 		speedtest_installable=false; [ "$manager" = apk ] && speedtest_installable=true
 		appearance="$(uci -q get equipe_dashboard.main.appearance || printf auto)"
@@ -7324,7 +7508,9 @@ case "$action" in
 		[ -n "$current_theme" ] || current_theme="bootstrap"
 		theme_customized="$(uci -q get equipe_dashboard.main.theme_customized 2>/dev/null || uci -q get luci.main.theme_customized 2>/dev/null || echo 0)"
 		network_mode="$(uci -q get equipe_dashboard.main.network_mode || echo 'router')"
-		printf '{"language":"%s","title":"%s","operation_profile":"%s","network_mode":"%s","package_manager":"%s","current_theme":"%s","theme_customized":%s,"user_theme":"%s","appearance":{"mode":"%s","primary":"%s","secondary":"%s"},"features":{' "$(uci -q get equipe_dashboard.main.language || printf pt-br)" "$(json_escape "$title")" "$(json_escape "$operation_profile")" "$network_mode" "$manager" "$current_theme" "$(bool $((theme_customized == 1)))" "$(json_escape "$user_theme")" "$appearance" "$primary" "$secondary"
+		ping_target="$(uci -q get equipe_dashboard.main.ping_target || printf 'registro_br')"
+		ping_custom_ip="$(uci -q get equipe_dashboard.main.ping_custom_ip || true)"
+		printf '{"language":"%s","title":"%s","operation_profile":"%s","network_mode":"%s","package_manager":"%s","current_theme":"%s","theme_customized":%s,"user_theme":"%s","ping_target":"%s","ping_custom_ip":"%s","appearance":{"mode":"%s","primary":"%s","secondary":"%s"},"features":{' "$(uci -q get equipe_dashboard.main.language || printf pt-br)" "$(json_escape "$title")" "$(json_escape "$operation_profile")" "$network_mode" "$manager" "$current_theme" "$(bool $((theme_customized == 1)))" "$(json_escape "$user_theme")" "$(json_escape "$ping_target")" "$(json_escape "$ping_custom_ip")" "$appearance" "$primary" "$secondary"
 		feature_json ark '' true; printf ','
 		feature_json sqm luci-app-sqm true; printf ','
 		feature_json mwan3 luci-app-mwan3 true; printf ','
@@ -7371,6 +7557,10 @@ case "$action" in
 		[ "$cur_country" = "PA" ] && wifi_maxpower_enabled=true
 		printf '},"hardware":{"cpu_cores":%s,"cpu_freq_mhz":%s,"cpu_freq_str":"%s","cpu_arch":"%s","mem_total_mb":%s,"flash_type":"%s","wifi_160_supported":%s,"wifi_wed_supported":%s,"wifi_wed_enabled":%s,"wifi_maxpower_enabled":%s,"is_legacy_owrt":%s},"https":{"available":%s,"redirect":%s,"certificate":"local","ca_available":%s,"ca_fingerprint":"%s","ca_download":"/ark-router/ark-router-ca.crt"},"update":{"current":"%s","repo":"%s","manager":"%s"}}\n' \
 			"$cpu_cores" "$cpu_freq_mhz" "$(json_escape "$cpu_freq_str")" "$(json_escape "$cpu_arch")" "$mem_total_mb" "$(json_escape "$flash_type")" "$wifi_160" "$wifi_wed_supported" "$wifi_wed_enabled" "$wifi_maxpower_enabled" "$is_legacy_owrt" "$https_available" "$(bool "$https_redirect")" "$ca_available" "$ca_fingerprint" "$(json_escape "$current_version")" "$(json_escape "$update_repo")" "$(json_escape "$manager")"
+		}
+		features_out="$(features_payload)"
+		printf '%s\n' "$features_out" > "$cache" 2>/dev/null
+		printf '%s\n' "$features_out"
 		;;
 	self-update-check)
 		ark_update_json
@@ -7384,7 +7574,7 @@ case "$action" in
 	self-update-start)
 		status=/tmp/ark-router-self-update.status
 		log=/tmp/ark-router-self-update.log
-		[ "$(cat "$status" 2>/dev/null)" != running ] || { echo running; exit 0; }
+		grep -qE '("state":"running"|^running)' "$status" 2>/dev/null && { echo running; exit 0; }
 		info="$(ark_update_json)"
 		available="$(printf '%s' "$info" | jsonfilter -e '@.available' 2>/dev/null)"
 		url="$(printf '%s' "$info" | jsonfilter -e '@.url' 2>/dev/null)"
@@ -7474,7 +7664,7 @@ case "$action" in
 	manual-update-start)
 		status=/tmp/ark-router-self-update.status
 		log=/tmp/ark-router-self-update.log
-		[ "$(cat "$status" 2>/dev/null)" != running ] || { echo running; exit 0; }
+		grep -qE '("state":"running"|^running)' "$status" 2>/dev/null && { echo running; exit 0; }
 		manager="$(ark_package_manager)"
 		pkg_file="$2"
 		if [ -z "$pkg_file" ]; then
@@ -7765,7 +7955,7 @@ case "$action" in
 		selected_wan="$2"
 		feature_active speedtest || { echo 'Medidor indisponivel' >&2; exit 3; }
 		status="/tmp/ark-speedtest-$2.status"; result="/tmp/ark-speedtest-$2.json"; log="/tmp/ark-speedtest-$2.log"
-		[ "$(cat "$status" 2>/dev/null)" != running ] || { echo running; exit 0; }
+		grep -q 'running' "$status" 2>/dev/null && { echo running; exit 0; }
 		ifstatus_json="$(ubus call "network.interface.$network" status 2>/dev/null)"
 		source_ip="$(printf '%s\n' "$ifstatus_json" | jsonfilter -e '@["ipv4-address"][0].address')"
 		[ -n "$source_ip" ] || { echo 'A interface nao possui IPv4 ativo' >&2; exit 3; }
@@ -8355,6 +8545,8 @@ case "$action" in
 		uci -q set mwan3.dns_udp.sticky=0
 		uci -q set mwan3.dns_tcp.use_policy="$policy"
 		uci -q set mwan3.dns_tcp.sticky=0
+		uci -q set mwan3.wireguard_udp.use_policy="$policy"
+		uci -q set mwan3.wireguard_udp.sticky=0
 		uci -q set mwan3.ssh.use_policy="$policy"
 		uci -q set mwan3.whatsapp_tcp.use_policy="$policy"
 		uci -q set mwan3.whatsapp_udp.use_policy="$policy"
@@ -8737,6 +8929,13 @@ case "$action" in
 		shift
 		system_perf_save "$@"
 		;;
+	ram-purge-now)
+		sync
+		echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
+		mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+		mem_avail_kb="$(awk '/MemAvailable:/ {print $2; exit}' /proc/meminfo 2>/dev/null || awk '/MemFree:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+		printf '{"ok":true,"mem_total_kb":%s,"mem_avail_kb":%s}\n' "$mem_total_kb" "$mem_avail_kb"
+		;;
 	dns-turbo-status)
 		dns_turbo_status_json
 		;;
@@ -8767,7 +8966,7 @@ case "$action" in
 		case "$limit_enabled" in 1|true) limit_enabled=1 ;; *) limit_enabled=0 ;; esac
 		case "$limit_down" in ''|*[!0-9]*) limit_down=0 ;; esac
 		case "$limit_up" in ''|*[!0-9]*) limit_up=0 ;; esac
-		case "$parental_mode" in custom|default) ;; *) parental_mode='default' ;; esac
+		case "$parental_mode" in custom|bypass|default) ;; *) parental_mode='default' ;; esac
 		case "$parental_block" in 1|true) parental_block=1 ;; *) parental_block=0 ;; esac
 		case "$safesearch" in 1|true) safesearch=1 ;; *) safesearch=0 ;; esac
 		case "$ipv6_allowed" in 1|true) ipv6_allowed=1 ;; *) ipv6_allowed=0 ;; esac
@@ -8852,6 +9051,11 @@ case "$action" in
 			uci -q set "equipe_devices.$name_section.parental_block=$parental_block"
 			uci -q set "equipe_devices.$name_section.safesearch=$safesearch"
 			uci -q set "equipe_devices.$name_section.blocked_services=$blocked_services"
+		elif [ "$parental_mode" = "bypass" ]; then
+			uci -q set "equipe_devices.$name_section.parental_mode=bypass"
+			uci -q delete "equipe_devices.$name_section.parental_block" 2>/dev/null || true
+			uci -q delete "equipe_devices.$name_section.safesearch" 2>/dev/null || true
+			uci -q delete "equipe_devices.$name_section.blocked_services" 2>/dev/null || true
 		else
 			uci -q delete "equipe_devices.$name_section.parental_mode" 2>/dev/null || true
 			uci -q delete "equipe_devices.$name_section.parental_block" 2>/dev/null || true
@@ -9305,13 +9509,20 @@ case "$action" in
 		esac
 		case "$width2" in 20|40) ht2="${pfx2}${width2}" ;; *) echo 'Largura 2,4 GHz invalida' >&2; exit 2 ;; esac
 		case "$width5" in 20|40|80|160|320) ht5="${pfx5}${width5}" ;; *) echo 'Largura 5 GHz invalida' >&2; exit 2 ;; esac
-		uci set "wireless.$radio2.htmode=$ht2"
-		uci set "wireless.$radio5.htmode=$ht5"
+		changed2=0
+		changed5=0
+		[ "$ht2" != "$current_ht2" ] && changed2=1
+		[ "$ht5" != "$current_ht5" ] && changed5=1
+
+		[ "$changed2" = 1 ] && uci set "wireless.$radio2.htmode=$ht2"
+		[ "$changed5" = 1 ] && uci set "wireless.$radio5.htmode=$ht5"
+
 		# Se a largura de 5 GHz for colocada em 160 MHz ou 320 MHz, garantir que o canal seja compativel (canais < 132)
 		if [ "$width5" = 160 ] || [ "$width5" = 320 ]; then
 			cur_ch5="$(uci -q get "wireless.$radio5.channel" || echo auto)"
 			if [ "$cur_ch5" != auto ] && [ "$cur_ch5" -ge 132 ] 2>/dev/null; then
 				uci -q set "wireless.$radio5.channel=36"
+				changed5=1
 				logger -t equipe-dashboard-control "Aviso: canal $cur_ch5 incompativel com ${width5} MHz; comutado para canal 36."
 			fi
 		fi
@@ -9323,12 +9534,23 @@ case "$action" in
 				*) pfx6="HE" ;;
 			esac
 			case "$width6" in 20|40|80|160|320) ht6="${pfx6}${width6}" ;; *) ht6="HE160" ;; esac
-			uci set "wireless.$radio6.htmode=$ht6"
+			if [ "$ht6" != "$current_ht6" ]; then
+				uci set "wireless.$radio6.htmode=$ht6"
+			fi
 		fi
 		uci commit wireless
 		(
-			sleep 2
-			wifi reload >/dev/null 2>&1 || true
+			sleep 1
+			if [ "$changed2" = 0 ] && [ "$changed5" = 1 ]; then
+				logger -t equipe-dashboard-control "Reiniciando seletivamente apenas o radio 5 GHz ($radio5)..."
+				wifi reconf "$radio5" >/dev/null 2>&1 || wifi reload >/dev/null 2>&1 || true
+			elif [ "$changed2" = 1 ] && [ "$changed5" = 0 ]; then
+				logger -t equipe-dashboard-control "Reiniciando seletivamente apenas o radio 2,4 GHz ($radio2)..."
+				wifi reconf "$radio2" >/dev/null 2>&1 || wifi reload >/dev/null 2>&1 || true
+			else
+				logger -t equipe-dashboard-control "Reiniciando ambos os radios Wi-Fi..."
+				wifi reload >/dev/null 2>&1 || true
+			fi
 			sleep 5
 			if iwinfo 2>/dev/null | grep -q "Channel: 0 (unknown GHz)"; then
 				logger -t equipe-dashboard-control "ALERTA: Interface Wi-Fi desabilitada detectada apos troca de largura. Revertendo 5 GHz para HE80..."
@@ -10026,6 +10248,7 @@ EOF
 	pppoe-profile-delete)
 		sec_id="$2"
 		[ -n "$sec_id" ] || { echo 'ID do perfil obrigatorio' >&2; exit 2; }
+		[ "$(uci -q get "equipe_dashboard.$sec_id")" = "pppoe_profile" ] || { echo 'Perfil invalido' >&2; exit 3; }
 		uci -q delete "equipe_dashboard.$sec_id"
 		uci commit equipe_dashboard
 		printf '{"profiles":['
@@ -10099,9 +10322,13 @@ EOF
 			registro_br) resolved="200.160.2.3"; label="Registro.br / NIC.br (200.160.2.3)" ;;
 			cloudflare) resolved="1.1.1.1"; label="Cloudflare (1.1.1.1)" ;;
 			google) resolved="8.8.8.8"; label="Google (8.8.8.8)" ;;
-			quad9) resolved="9.9.9.9"; label="Quad9 (9.9.9.9)" ;;
-			isp) resolved="dinamico"; label="DNS da Operadora" ;;
-			custom) resolved="${custom_ip:-200.160.2.3}"; label="Personalizado (${custom_ip:-200.160.2.3})" ;;
+			isp)
+				resolved="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@.route[@.target="0.0.0.0"].nexthop' 2>/dev/null | head -n 1)"
+				[ -n "$resolved" ] || resolved="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].ptpaddress' 2>/dev/null)"
+				[ -n "$resolved" ] || resolved="$(uci -q get network.wan.gateway || true)"
+				[ -n "$resolved" ] || resolved="dinamico"
+				label="Gateway da Operadora ($resolved)"
+				;;
 			*) target="registro_br"; resolved="200.160.2.3"; label="Registro.br / NIC.br (200.160.2.3)" ;;
 		esac
 		printf '{"target":"%s","custom_ip":"%s","resolved_ip":"%s","label":"%s"}\n' \
