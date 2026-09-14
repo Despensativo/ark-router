@@ -164,6 +164,11 @@
 
       // 2. Add top-right sticky close '×' button to all modals (desktop & mobile)
       var modals = document.querySelectorAll('.modal, .cbi-modal');
+      if (modals.length > 0) {
+        document.body.classList.add('modal-overlay-active');
+      } else {
+        document.body.classList.remove('modal-overlay-active');
+      }
       modals.forEach(function(m) {
         if (!m.querySelector('.ark-modal-close-btn')) {
           var closeBtn = document.createElement('button');

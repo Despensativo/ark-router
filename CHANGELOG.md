@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.1
+
+- **🛡️ Preservação Extrema de Flash SPI & Ergonomia Mobile (13/09/2026)**:
+  - **💾 Redução Drástica de Desgaste na Flash SPI (`equipe-traffic-history`)**:
+    - Intervalo de persistência dos CSVs na Flash (`/etc/equipe-traffic-history.csv` e `/etc/equipe-wan-daily.csv`) alterado de 1 hora para cada 12 horas (`minute % 720 == 0`), reduzindo em 92% os ciclos de gravação/apagamento na partição JFFS2/UBIFS.
+    - Implementada sincronização atômica imediata (`flush_to_persist`) no trap de encerramento do serviço (`SIGTERM`, `SIGHUP`, `SIGINT`), garantindo que qualquer reboot ordenado ou parada de serviço salve o estado mais recente em disco sem perda de dados.
+  - **📱 Touch Target Mobile Conforme Diretrizes (`min-height: 40px`)**:
+    - Ajustada a classe `.ex-mini-button` em `overview.css` para garantir altura mínima útil de 40px, `box-sizing: border-box`, `user-select: none` e `-webkit-tap-highlight-color: transparent`, prevenindo toques acidentais e zoom duplo em smartphones.
+  - **🪟 Sincronização Reativa do Bloqueio de Rolagem em Modais**:
+    - O tema Ark (`ark-theme.js`) agora adiciona ativamente a classe `modal-overlay-active` ao `document.body` sempre que um modal nativo do LuCI é detectado, travando a rolagem do contêiner `.main-right` e evitando deslocamentos acidentais da tela no mobile.
+
 ## 1.0.0
 
 - **🎉 Marco Oficial da Versão 1.0.0 do ARK Router (13/09/2026)**:

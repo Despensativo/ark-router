@@ -25,6 +25,11 @@ wan_interfaces() {
 	done
 }
 
+flush_to_persist() {
+	[ -s "$history" ] && cp "$history" "$persist" 2>/dev/null || true
+	[ -s "$wan_daily" ] && cp "$wan_daily" "$wan_daily_persist" 2>/dev/null || true
+}
+
 record_history_peak() {
 	local now="$1" down="$2" up="$3" minute last last_time last_minute last_down last_up new_minute lines
 	minute=$((now / 60))
@@ -48,9 +53,8 @@ record_history_peak() {
 	if [ "$new_minute" = 1 ]; then
 		tail -n 1440 "$history" > "$history.new" && mv "$history.new" "$history"
 		lines="$(wc -l < "$history")"
-		if [ $((minute % 60)) -eq 0 ] || [ ! -s "$persist" ]; then
-			cp "$history" "$persist"
-			cp "$wan_daily" "$wan_daily_persist"
+		if [ $((minute % 720)) -eq 0 ] || [ ! -s "$persist" ]; then
+			flush_to_persist
 		fi
 	fi
 }
@@ -124,7 +128,7 @@ if [ -f "$pidfile" ]; then
 	fi
 fi
 echo "$$" > "$pidfile"
-trap 'rm -f "$pidfile" 2>/dev/null; exit 0' INT TERM HUP EXIT
+trap 'flush_to_persist; rm -f "$pidfile" 2>/dev/null; exit 0' INT TERM HUP EXIT
 
 [ -s "$history" ] || { [ -s "$persist" ] && cp "$persist" "$history" || : > "$history"; }
 [ -s "$wan_daily" ] || { [ -s "$wan_daily_persist" ] && cp "$wan_daily_persist" "$wan_daily" || : > "$wan_daily"; }
