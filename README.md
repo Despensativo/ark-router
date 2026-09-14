@@ -389,8 +389,13 @@ tar -xzf /tmp/ark-router-config-backup-YYYYMMDD-HHMMSS.tar.gz -C /
 
 ## Project Status
 
-Version 0.9.53 is the current official release. It brings real-time per-device hardware rates (Wi-Fi DMA), exponential decay smoothing (anti-dropping to 0 bps), an in-place anti-jitter update engine with an integrated Total consumed column (MB/GB), a built-in multi-provider DNS Turbo benchmark (Cloudflare, Google, Quad9, OpenDNS, AdGuard), a ZeroTier remote-access module with hybrid flash/RAM execution and interactive boot autostart switch, a System Performance and Stability center (RAM autopurge, conntrack connection recycling, IRQ Balance, nlbwmon 2s acceleration), full mobile touch responsiveness (iOS/Android) with 48px touch targets, dynamic WAN2-WAN4 Multi-WAN failover/balancing, multi-Starlink telemetry and alignment with LAN-only `/starlink/` viewer, CAKE/SQM upload and download queue management, guest rate limits, and safe rollback checkpoints. Suitable for home, office, mobile, event and production OpenWrt 24.x/25.x setups.
+Version **1.0.1** is the current official release. It consolidates universal compatibility for both OpenWrt generations (OpenWrt Antigo 19.07-23.05 via IPK and OpenWrt Novo 24.x-25.x via APK and native SquashFS ROM builds). It features an in-place anti-jitter update engine with an integrated Total consumed column (MB/GB), real-time per-device hardware rates (Wi-Fi DMA), a built-in multi-provider DNS Turbo benchmark, ZeroTier remote-access with hybrid flash/RAM execution, a System Performance and Stability center (12h flash wear protection, RAM autopurge, conntrack connection recycling, IRQ Balance), full mobile touch responsiveness (iOS/Android) with 40px+ touch targets and ghost modal overlay prevention, dynamic Multi-WAN failover/balancing, multi-Starlink telemetry, CAKE/SQM upload and download queue management, guest rate limits, and safe rollback checkpoints. Suitable for home, office, mobile, event, gaming and production OpenWrt setups.
+
+## Native ROM Builds (ImageBuilder)
+
+For routers with constrained 16 MB SPI flash (such as Cudy WR3000 v1 / MediaTek Filogic 820), ARK Router can be baked directly into the SquashFS `/rom` using the OpenWrt ImageBuilder. This reduces `/overlay` usage to less than 350 KB, leaving over 2.8 MB of writable flash permanently available. See `GUIA-INSTALACAO-ROM-CUDY-WR3000-OUTRA-IA.md` in the project root for complete automated flashing and compilation procedures.
 
 ## License
 
 This project is released under the MIT License. See [`LICENSE`](LICENSE).
+

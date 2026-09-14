@@ -1,5 +1,6 @@
 *.ipk
 *.tar.gz
+*.bin
 .DS_Store
 Thumbs.db
 .vscode/

@@ -57,3 +57,10 @@ ARK Router must remain compatible with both generations:
 ### 5. Cursor AI & Assistant Commands Available
 - LuCI / Router: `/create-luci-view`, `/audit-ark-theme`, `/verify-router-health`
 - React / Web: `/create-component`, `/refactor-component`, `/create-form`, `/add-tests`, `/audit-accessibility`, `/optimize-performance`, `/setup-dark-mode`
+
+### 6. Native ROM Firmware & ImageBuilder (Cudy WR3000 v1 / filogic)
+- **Pre-compiled ROM**: Located at `openwrt-25.12.5-cudy-wr3000-v1-ark-router-squashfs-sysupgrade.bin` in workspace root and `Firmware/`.
+- **Integrity**: SHA-256 `aaba6cd4bb69c20195af4f69239bec3991c6b4d6e865a46a198735ff8182ea2d` (12.58 MB).
+- **Runbook / Multi-AI Guide**: See `GUIA-INSTALACAO-ROM-CUDY-WR3000-OUTRA-IA.md` for complete step-by-step flashing script, SCP upload with `pscp -scp`, and WSL ImageBuilder compilation instructions.
+- **Overlay Zero-Waste Directive**: When deploying natively to ROM, keep `/etc/sysupgrade.conf` strictly free of `/usr` and `/www` paths to maintain > 2.8 MB free on `/overlay`.
+
