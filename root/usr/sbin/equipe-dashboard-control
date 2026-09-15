@@ -2107,6 +2107,9 @@ valid_net_device() {
 	if [ "$1" = wan ] || [ -d "/sys/class/net/$1" ]; then
 		return 0
 	fi
+	case "$1" in
+		pppoe-*) return 0 ;;
+	esac
 	if is_swconfig; then
 		case "$1" in
 			lan[1-5]|port[1-5]|[1-5]|eth0.[0-9]*) return 0 ;;
@@ -3685,6 +3688,11 @@ sqm_section_for_network() {
 }
 sqm_device_for_network() {
 	network_section="$1"
+	proto="$(uci -q get "network.$network_section.proto")"
+	if [ "$proto" = pppoe ]; then
+		printf 'pppoe-%s' "$network_section"
+		return 0
+	fi
 	device="$(ubus call "network.interface.$network_section" status 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null)"
 	[ -n "$device" ] || device="$(uci -q get "network.$network_section.device")"
 	[ -n "$device" ] || device="$network_section"
@@ -8907,8 +8915,9 @@ case "$action" in
 			fi
 			uci -q delete "network.${iface}_modem" 2>/dev/null || true
 			uci -q delete "network.$iface"
-			uci -q set "sqm.$iface.enabled=0" 2>/dev/null || true
-			uci -q delete "sqm.$iface" 2>/dev/null || true
+			sqm_del_sec="$(sqm_section_for_network "$iface" 2>/dev/null || printf '%s' "$iface")"
+			uci -q set "sqm.$sqm_del_sec.enabled=0" 2>/dev/null || true
+			uci -q delete "sqm.$sqm_del_sec" 2>/dev/null || true
 			zone="$(firewall_wan_zone_section)"
 			if [ -n "$zone" ]; then
 				uci -q del_list "firewall.$zone.network=$iface" 2>/dev/null || true
@@ -8997,8 +9006,13 @@ case "$action" in
 				uci -q set "network.$iface.send_rs=0"
 			fi
 		fi
-		if [ "$iface" != wan ]; then
-			uci -q set "sqm.$iface.interface=$effective_dev" 2>/dev/null || true
+		sqm_sec="$(sqm_section_for_network "$iface" 2>/dev/null || true)"
+		if [ -n "$sqm_sec" ] && uci -q get "sqm.$sqm_sec" >/dev/null 2>&1; then
+			if [ "$proto" = pppoe ]; then
+				uci -q set "sqm.$sqm_sec.interface=pppoe-$iface"
+			else
+				uci -q set "sqm.$sqm_sec.interface=$effective_dev"
+			fi
 		fi
 		apply_wan_proto "$iface" "$proto" "$username" "$password" "$ipaddr" "$netmask" "$gateway" "$dns" "$macaddr" || exit $?
 
@@ -10748,6 +10762,17 @@ EOF
 		esac
 		saved_profile="$(uci -q get "equipe_dashboard.wan_profiles.$iface")"
 		case "$saved_profile" in auto|xpon_bridge|xpon_vlan|dhcp_cable|mobile_starlink|dedicated_static|custom) ;; *) saved_profile='auto' ;; esac
+		if [ "$proto" != pppoe ] && { [ "$saved_profile" = xpon_bridge ] || [ "$saved_profile" = xpon_vlan ]; }; then
+			saved_profile='auto'
+		elif [ "$proto" = pppoe ] && [ "$saved_profile" = dhcp_cable ]; then
+			saved_profile='auto'
+		fi
+		mwan_active_wans=0
+		if [ -f /etc/config/mwan3 ]; then
+			for w in $(active_wan_networks); do
+				[ "$(uci -q get "mwan3.$w.enabled")" = 1 ] && mwan_active_wans=$((mwan_active_wans + 1))
+			done
+		fi
 		tcp_turbo=0
 		[ -f /etc/sysctl.d/99-ark-performance.conf ] && [ "$(sysctl -n net.core.rmem_max 2>/dev/null)" -ge 4194304 ] 2>/dev/null && tcp_turbo=1
 		flow_offload=0
@@ -10789,8 +10814,8 @@ EOF
 		irq_installed=0; irq_active=0
 		[ -x /etc/init.d/irqbalance ] && irq_installed=1
 		[ "$irq_installed" = 1 ] && /etc/init.d/irqbalance running >/dev/null 2>&1 && irq_active=1
-		printf '{"iface":"%s","label":"%s","proto":"%s","wan_dev":"%s","l3_device":"%s","link_speed_mbps":%s,"duplex":"%s","ip":"%s","gateway":"%s","starlink":%s,"detected_profile":"%s","saved_profile":"%s","tcp_turbo":%s,"flow_offloading":%s,"linklayer_profile":"%s","baby_jumbo":%s,"current_mtu":%s,"sqm_section":"%s","sqm_installed":%s,"sqm_active":%s,"sqm_any_active":%s,"sqm_wan_count":%s,"irqbalance_installed":%s,"irqbalance_active":%s}\n' \
-			"$(json_escape "$iface")" "$(json_escape "$wan_label")" "$(json_escape "$proto")" "$(json_escape "$wan_dev")" "$(json_escape "$wan_l3_dev")" "$cur_speed" "$(json_escape "$cur_duplex")" "$(json_escape "$wan_ip")" "$(json_escape "$wan_gateway")" "$starlink" "$(json_escape "$detected_profile")" "$(json_escape "$saved_profile")" "$tcp_turbo" "$flow_offload" "$linklayer_profile" "$baby_jumbo" "$cur_mtu" "$(json_escape "$sqm_section")" "$sqm_installed" "$sqm_active" "$sqm_any_active" "$sqm_wan_count" "$irq_installed" "$irq_active"
+		printf '{"iface":"%s","label":"%s","proto":"%s","wan_dev":"%s","l3_device":"%s","link_speed_mbps":%s,"duplex":"%s","ip":"%s","gateway":"%s","starlink":%s,"detected_profile":"%s","saved_profile":"%s","tcp_turbo":%s,"flow_offloading":%s,"linklayer_profile":"%s","baby_jumbo":%s,"current_mtu":%s,"sqm_section":"%s","sqm_installed":%s,"sqm_active":%s,"sqm_any_active":%s,"sqm_wan_count":%s,"irqbalance_installed":%s,"irqbalance_active":%s,"mwan_active_wans":%s}\n' \
+			"$(json_escape "$iface")" "$(json_escape "$wan_label")" "$(json_escape "$proto")" "$(json_escape "$wan_dev")" "$(json_escape "$wan_l3_dev")" "$cur_speed" "$(json_escape "$cur_duplex")" "$(json_escape "$wan_ip")" "$(json_escape "$wan_gateway")" "$starlink" "$(json_escape "$detected_profile")" "$(json_escape "$saved_profile")" "$tcp_turbo" "$flow_offload" "$linklayer_profile" "$baby_jumbo" "$cur_mtu" "$(json_escape "$sqm_section")" "$sqm_installed" "$sqm_active" "$sqm_any_active" "$sqm_wan_count" "$irq_installed" "$irq_active" "$mwan_active_wans"
 		;;
 	wan-optimize-set)
 		shift
@@ -10870,9 +10895,13 @@ EOF
 			rm -f /etc/sysctl.d/99-ark-performance.conf
 			sysctl -w net.core.rmem_max=212992 >/dev/null 2>&1 || true
 			sysctl -w net.core.wmem_max=212992 >/dev/null 2>&1 || true
+			sysctl -w net.ipv4.tcp_rmem="4096 87380 212992" >/dev/null 2>&1 || true
+			sysctl -w net.ipv4.tcp_wmem="4096 65536 212992" >/dev/null 2>&1 || true
 			sysctl -w net.core.netdev_max_backlog=1000 >/dev/null 2>&1 || true
 			sysctl -w net.ipv4.tcp_congestion_control=cubic >/dev/null 2>&1 || true
 			sysctl -w net.ipv4.tcp_mtu_probing=0 >/dev/null 2>&1 || true
+			sysctl -w net.ipv4.tcp_slow_start_after_idle=1 >/dev/null 2>&1 || true
+			sysctl -w net.ipv4.tcp_fastopen=1 >/dev/null 2>&1 || true
 		fi
 		if [ "$flow_offload" = 1 ]; then
 			uci -q set firewall.@defaults[0].flow_offloading=1
@@ -10906,6 +10935,12 @@ EOF
 			ensure_sqm_section "$sqm_section" "$wan_device"
 			uci -q set "sqm.$sqm_section.enabled=1"
 			sqm_changed=1
+		elif uci -q get "sqm.$sqm_section" >/dev/null 2>&1; then
+			cur_sqm_dev="$(uci -q get "sqm.$sqm_section.interface")"
+			if [ "$cur_sqm_dev" != "$wan_device" ]; then
+				uci -q set "sqm.$sqm_section.interface=$wan_device"
+				sqm_changed=1
+			fi
 		fi
 		if [ -n "$linklayer_profile" ]; then
 			if uci -q get "sqm.$sqm_section" >/dev/null 2>&1; then
@@ -10946,14 +10981,34 @@ EOF
 		wan_dev="$(uci -q get "network.$iface.device")"
 		[ -n "$wan_dev" ] || wan_dev="$(sqm_device_for_network "$iface")"
 		valid_net_device "$wan_dev" || { echo "Dispositivo fisico invalido para $iface" >&2; exit 2; }
+		dev_sec=""
+		for s in $(uci -q show network 2>/dev/null | sed -n 's/^network\.\(@device\[[0-9]*\]\|[a-zA-Z0-9_]*\)=device$/\1/p'); do
+			if [ "$(uci -q get "network.$s.name")" = "$wan_dev" ]; then
+				dev_sec="$s"
+				break
+			fi
+		done
+		if [ -z "$dev_sec" ]; then
+			uci add network device >/dev/null 2>&1
+			dev_sec="@device[-1]"
+			uci -q set "network.$dev_sec.name=$wan_dev"
+		fi
 		if [ "$baby_jumbo" = 1 ]; then
 			ip link set "$wan_dev" mtu 1508 >/dev/null 2>&1 || true
+			uci -q set "network.$dev_sec.mtu=1508"
 			uci -q set "network.$iface.mtu=1500"
 			uci -q set "network.$iface.device_mtu=1508"
+			[ "$(uci -q get "network.$iface.proto")" = pppoe ] && ip link set "pppoe-$iface" mtu 1500 >/dev/null 2>&1 || true
 			uci commit network
 		elif [ "$baby_jumbo" = 0 ]; then
 			ip link set "$wan_dev" mtu 1500 >/dev/null 2>&1 || true
-			[ "$(uci -q get "network.$iface.proto")" = pppoe ] && uci -q set "network.$iface.mtu=1492" || uci -q delete "network.$iface.mtu"
+			uci -q set "network.$dev_sec.mtu=1500"
+			if [ "$(uci -q get "network.$iface.proto")" = pppoe ]; then
+				uci -q set "network.$iface.mtu=1492"
+				ip link set "pppoe-$iface" mtu 1492 >/dev/null 2>&1 || true
+			else
+				uci -q delete "network.$iface.mtu"
+			fi
 			uci -q delete "network.$iface.device_mtu"
 			uci commit network
 		fi

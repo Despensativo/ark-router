@@ -3958,6 +3958,7 @@ return view.extend({
 							E('div', { class: 'ex-opt-module-info' }, [
 								E('strong', {}, ['🚀 Aceleração de Tráfego (Fastpath / Flow Offloading)']),
 								E('p', {}, ['Processa o tráfego de dados diretamente pelo kernel do Linux, reduzindo o uso da CPU para a internet rodar na velocidade máxima sem aquecer o roteador.']),
+								(Number(opt.mwan_active_wans || 0) >= 2) ? E('small', { class: 'ex-opt-requirement warning', style: 'color:#f59e0b;display:block;margin-top:4px;' }, ['⚠️ Multi-WAN ativo: O Flow Offloading (Fastpath) ignora balanceamento e failover do mwan3. Recomenda-se manter desligado com 2 ou mais conexões ativas.']) : '',
 								E('small', { class: 'ex-opt-requirement' + (sqmAnyActive ? ' blocked' : ' ready') }, [sqmAnyActive ? '⚠ Requer SQM / CAKE desligado em todas as WANs.' : '✓ Pronto e ativo: downloads acelerados com menor uso de CPU.'])
 							]),
 							E('label', { class: 'ex-switch' }, [ flowInput, E('span', { class: 'ex-switch-slider' }) ])
