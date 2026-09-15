@@ -1,0 +1,33 @@
+#!/bin/sh
+# ARK Router - Inicialização Automática e Nativa dos LEDs do Sistema
+# Executado uma única vez no primeiro boot ou após instalação da ROM/pacote.
+
+mkdir -p /etc/hotplug.d/iface /etc/hotplug.d/net
+
+cat << 'EOF' > /etc/hotplug.d/iface/99-ark-led-wan
+#!/bin/sh
+# ARK Router - WAN / Internet LED Dynamic Update
+[ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ] || exit 0
+case "$INTERFACE" in
+	wan*|lan|rescue)
+		/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 &
+		;;
+esac
+EOF
+chmod 0755 /etc/hotplug.d/iface/99-ark-led-wan 2>/dev/null || true
+
+cat << 'EOF' > /etc/hotplug.d/net/99-ark-led-wan
+#!/bin/sh
+# ARK Router - Netdev Carrier / Cable LED Dynamic Update
+[ "$ACTION" = "add" ] || [ "$ACTION" = "remove" ] || [ "$ACTION" = "change" ] || exit 0
+/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 &
+EOF
+chmod 0755 /etc/hotplug.d/net/99-ark-led-wan 2>/dev/null || true
+
+# Executa o preset inteligente nativo para o hardware detectado
+if [ -x /usr/sbin/equipe-dashboard-control ]; then
+	/usr/sbin/equipe-dashboard-control set-led-preset smart >/dev/null 2>&1 || true
+	/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 || true
+fi
+
+exit 0

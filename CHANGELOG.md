@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.0.2
+
+- **🌐 Blindagem Dual-WAN, Correção do DNS Turbo e Robustez IPv6 (14/09/2026)**:
+  - **🛡️ Prevenção Ativa de Buraco Negro IPv6 (Apple / Multi-OS Black Hole)**:
+    - Validação e imposição de métricas distintas de rota IPv4 e IPv6: Métrica `10` na WAN 1 primária (`pppoe-wan`) e Métrica `20` na WAN 2 secundária (`pppoe-wan2`).
+    - Desativação explícita de IPv6 na WAN 2 (`ipv6=0`, `accept_ra=0`), eliminando o descarte de pacotes de atualizações de apps da Apple e conexões que tentavam rotear IPv6 pela interface da Claro sem suporte externo.
+    - MSS Clamping ativo e verificado no NFTables (`inet fw4 forward_mss_clamp`) em 1452 bytes (IPv4) e 1432 bytes (IPv6).
+  - **⚡ Correção Crítica no DNS Turbo Paralelo (All-Servers)**:
+    - Corrigido falso-positivo no detector `detect_dns_blocker` em `equipe-dashboard-control`: a busca por `grep -q 'running'` causava casamento indevido com a string `"not running"`, e `pgrep -f 'AdGuardHome'` casava com subprocessos de inspeção.
+    - Implementada filtragem exata com `pgrep -x` e descarte de linhas negativas, restaurando a ativação real do modo DNS Turbo Paralelo sem bloqueio fantasma.
+  - **🔄 Blindagem do Speedify Assist nas WANs**:
+    - O assistente `speedify_prepare_wans` agora preserva as métricas de rota existentes (10 e 20) e as flags `ipv6=1` configuradas, evitando substituição destrutiva de configurações de rede.
+  - **🎯 Correção na Seleção de Dispositivo DMZ**:
+    - Corrigida a extração de endereço IP nos cards de dispositivos do modal de DMZ (`l.ipaddr` vs `l.ip`), garantindo preenchimento imediato ao tocar no dispositivo.
+  - **🛡️ Bloqueio de Anúncios SLAAC/RA via Netdev Egress (`table netdev ark_ipv6_<port>`)**:
+    - Implementado bloqueio físico de anúncios de rota SLAAC (`Router Advertisements` - ICMPv6 RA) e DHCPv6 na porta ethernet física do dispositivo com `ipv6_allowed='0'`, impedindo que sistemas como Android TV recebam pacotes multicast da bridge e gerem endereços IPv6 na interface.
+  - **🔧 Correção de Prefixo ULA Hexadecimal no Chaveamento IPv6**:
+    - Substituído o prefixo inválido `fd00:ark:lan::/48` (`r, k, l, n` não são dígitos hexadecimais válidos) pelo prefixo padrão RFC 4193 `fd73:0192:0168::/48`, garantindo conformidade com os parsers de kernel e daemons de rede.
+    - Adicionada preservação de ULA ao desativar IPv6 para manter estabilidade na rede local.
+
 ## 1.0.1
 
 - **🛡️ Preservação Extrema de Flash SPI & Ergonomia Mobile (13/09/2026)**:

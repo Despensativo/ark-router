@@ -1,7 +1,7 @@
 #!/bin/sh
 # Controle backend unificado do LuCI App ARK Router / Equipe Dashboard
 action="$1"
-ARK_ROUTER_VERSION="1.0.1"
+ARK_ROUTER_VERSION="1.0.2"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 
 bool() {
@@ -40,6 +40,12 @@ sanitize_dhcp_hostnames() {
 }
 valid_ipv4() {
 	printf '%s\n' "$1" | awk -F. 'NF == 4 { for (i=1;i<=4;i++) if ($i !~ /^[0-9]+$/ || $i < 0 || $i > 255) exit 1; exit 0 } { exit 1 }'
+}
+valid_ipv6() {
+	printf '%s' "$1" | grep -Eq '^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$'
+}
+valid_ip() {
+	valid_ipv4 "$1" || valid_ipv6 "$1"
 }
 ipv4_prefix24() { printf '%s\n' "$1" | awk -F. 'NF == 4 { printf "%s.%s.%s", $1, $2, $3 }'; }
 ipv4_host() { printf '%s\n' "$1" | awk -F. 'NF == 4 { print $4 }'; }
@@ -485,6 +491,8 @@ installed() {
 		irqbalance) ([ -x /usr/sbin/irqbalance ] || [ -f /etc/init.d/irqbalance ]) && return 0 ;;
 		speedify) ([ -x /usr/share/speedify/speedify ] || [ -x /usr/bin/speedify ] || [ -x /tmp/speedify/speedify ]) && return 0 ;;
 		luci-app-speedify) ([ -f /usr/share/luci/menu.d/luci-app-speedify.json ] || [ -f /usr/lib/lua/luci/controller/speedify.lua ]) && return 0 ;;
+		history) ([ -x /usr/sbin/equipe-traffic-history ] || [ -f /etc/init.d/equipe-traffic-history ]) && return 0 ;;
+		custom_qos) (command -v tc >/dev/null 2>&1 || [ -f /etc/config/qos_equipe ]) && return 0 ;;
 	esac
 	if command -v apk >/dev/null 2>&1; then apk info -e "$1" >/dev/null 2>&1
 	elif [ -d /usr/lib/opkg/info ]; then [ -f "/usr/lib/opkg/info/$1.control" ] || [ -f "/usr/lib/opkg/info/$1.list" ]
@@ -786,10 +794,14 @@ enable_ipv6_dual_stack() {
 	sysctl -w net.ipv6.conf.default.disable_ipv6=0 >/dev/null 2>&1 || true
 	sysctl -w net.ipv6.conf.lo.disable_ipv6=0 >/dev/null 2>&1 || true
 
-	for iface in wan wan2; do
+	if [ -n "$(uci -q get network.wan.proto)" ]; then
+		uci -q set network.wan.ipv6=1
+		uci -q set network.wan.delegate=1
+	fi
+	for iface in wan2 wan3 wan4; do
 		if [ -n "$(uci -q get "network.$iface.proto")" ]; then
-			uci -q set "network.$iface.ipv6=1"
-			uci -q set "network.$iface.delegate=1"
+			cur_v6="$(uci -q get "network.$iface.ipv6")"
+			[ "$cur_v6" = "1" ] || uci -q set "network.$iface.ipv6=0"
 		fi
 	done
 
@@ -801,7 +813,15 @@ enable_ipv6_dual_stack() {
 	uci -q set network.wan6.reqaddress='try'
 
 	ula="$(uci -q get network.globals.ula_prefix)"
-	[ -n "$ula" ] || uci -q set network.globals.ula_prefix='fd00:ark:lan::/48'
+	if [ -z "$ula" ]; then
+		saved_ula="$(uci -q get equipe_dashboard.ipv6.saved_ula)"
+		if [ -n "$saved_ula" ] && [ "$saved_ula" != "none" ]; then
+			ula="$saved_ula"
+		else
+			ula="fd73:0192:0168::/48"
+		fi
+		uci -q set "network.globals.ula_prefix=$ula"
+	fi
 	uci -q set network.lan.ip6assign='64'
 	uci -q delete network.lan.delegate
 
@@ -839,6 +859,9 @@ enable_ipv6_dual_stack() {
 clean_ipv6_selective_firewall() {
 	if command -v nft >/dev/null 2>&1; then
 		nft delete table inet ark_ipv6_selective 2>/dev/null || true
+		for t in $(nft list tables 2>/dev/null | grep 'table netdev ark_ipv6_' | awk '{print $3}'); do
+			nft delete table netdev "$t" 2>/dev/null || true
+		done
 	fi
 	if command -v ip6tables >/dev/null 2>&1; then
 		lan_dev="$(uci -q get network.lan.device || uci -q get network.lan.ifname || echo br-lan)"
@@ -854,16 +877,27 @@ clean_ipv6_selective_firewall() {
 sync_ipv6_selective_firewall() {
 	mkdir -p /etc/ark
 	lan_dev="$(uci -q get network.lan.device || uci -q get network.lan.ifname || echo br-lan)"
+	cur_mode="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
 
 	allowed_macs=""
+	blocked_macs=""
 	if [ -f /etc/config/equipe_devices ]; then
 		sections="$(uci -q show equipe_devices 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1)"
 		for s in $sections; do
-			if [ "$(uci -q get "equipe_devices.$s.ipv6_allowed")" = "1" ]; then
-				m="$(uci -q get "equipe_devices.$s.mac" | tr 'A-F' 'a-f')"
-				[ -n "$m" ] && allowed_macs="$allowed_macs $m"
+			val="$(uci -q get "equipe_devices.$s.ipv6_allowed")"
+			m="$(uci -q get "equipe_devices.$s.mac" | tr 'A-F' 'a-f')"
+			[ -n "$m" ] || continue
+			if [ "$val" = "1" ]; then
+				allowed_macs="$allowed_macs $m"
+			elif [ "$val" = "0" ]; then
+				blocked_macs="$blocked_macs $m"
 			fi
 		done
+	fi
+
+	if [ "$cur_mode" = "ipv4_only" ] || [ "$cur_mode" = "ipv6_only" ]; then
+		clean_ipv6_selective_firewall
+		return 0
 	fi
 
 	if command -v nft >/dev/null 2>&1; then
@@ -871,14 +905,15 @@ sync_ipv6_selective_firewall() {
 		nft_file="/etc/ark/ark_ipv6_selective.nft"
 		apply_sh="/etc/ark/ark_ipv6_selective.sh"
 
-		elements_str=""
-		for m in $allowed_macs; do
-			[ -z "$elements_str" ] && elements_str="$m" || elements_str="$elements_str, $m"
-		done
-		elements_line=""
-		[ -n "$elements_str" ] && elements_line="		elements = { $elements_str }"
+		if [ "$cur_mode" = "selective" ]; then
+			elements_str=""
+			for m in $allowed_macs; do
+				[ -z "$elements_str" ] && elements_str="$m" || elements_str="$elements_str, $m"
+			done
+			elements_line=""
+			[ -n "$elements_str" ] && elements_line="		elements = { $elements_str }"
 
-		cat << EOF > "$tmp_nft"
+			cat << EOF > "$tmp_nft"
 table inet ark_ipv6_selective
 delete table inet ark_ipv6_selective
 table inet ark_ipv6_selective {
@@ -890,11 +925,91 @@ $elements_line
 		type filter hook forward priority filter - 4; policy accept;
 		meta nfproto ipv6 iifname "$lan_dev" ether saddr != @allowed_macs reject with icmpv6 type admin-prohibited
 	}
+	chain input_ipv6_selective {
+		type filter hook input priority filter - 4; policy accept;
+		meta nfproto ipv6 iifname "$lan_dev" ether saddr != @allowed_macs udp dport 53 reject with icmpv6 type admin-prohibited
+		meta nfproto ipv6 iifname "$lan_dev" ether saddr != @allowed_macs tcp dport 53 reject with icmpv6 type admin-prohibited
+		meta nfproto ipv6 iifname "$lan_dev" ether saddr != @allowed_macs icmpv6 type nd-router-solicit drop
+		meta nfproto ipv6 iifname "$lan_dev" ether saddr != @allowed_macs udp dport 547 drop
+	}
 }
 EOF
+		else
+			# Modo 2 (dual_stack): Pilha Dupla com Bloqueio Direto Individual para dispositivos desativados
+			if [ -z "$blocked_macs" ]; then
+				clean_ipv6_selective_firewall
+				return 0
+			fi
+			elements_str=""
+			for m in $blocked_macs; do
+				[ -z "$elements_str" ] && elements_str="$m" || elements_str="$elements_str, $m"
+			done
+			elements_line="		elements = { $elements_str }"
+
+			cat << EOF > "$tmp_nft"
+table inet ark_ipv6_selective
+delete table inet ark_ipv6_selective
+table inet ark_ipv6_selective {
+	set blocked_macs {
+		type ether_addr
+$elements_line
+	}
+	chain forward_ipv6_selective {
+		type filter hook forward priority filter - 4; policy accept;
+		meta nfproto ipv6 iifname "$lan_dev" ether saddr @blocked_macs reject with icmpv6 type admin-prohibited
+	}
+	chain input_ipv6_selective {
+		type filter hook input priority filter - 4; policy accept;
+		meta nfproto ipv6 iifname "$lan_dev" ether saddr @blocked_macs udp dport 53 reject with icmpv6 type admin-prohibited
+		meta nfproto ipv6 iifname "$lan_dev" ether saddr @blocked_macs tcp dport 53 reject with icmpv6 type admin-prohibited
+		meta nfproto ipv6 iifname "$lan_dev" ether saddr @blocked_macs icmpv6 type nd-router-solicit drop
+		meta nfproto ipv6 iifname "$lan_dev" ether saddr @blocked_macs udp dport 547 drop
+	}
+}
+EOF
+		fi
+
+		blocked_netdev_ports=""
+		for bm in $blocked_macs; do
+			pnum="$(brctl showmacs "$lan_dev" 2>/dev/null | grep -i "$bm" | awk '{print $1}' | head -n 1)"
+			[ -n "$pnum" ] || continue
+			for bp in "/sys/class/net/$lan_dev/brif"/*; do
+				[ -f "$bp/port_no" ] || continue
+				ifp="$(cat "$bp/port_no" 2>/dev/null)"
+				if [ "$((ifp))" -eq "$pnum" ] 2>/dev/null; then
+					bname="$(basename "$bp")"
+					case " $blocked_netdev_ports " in
+						*" $bname "*) ;;
+						*) blocked_netdev_ports="$blocked_netdev_ports $bname" ;;
+					esac
+				fi
+			done
+		done
+
+		for bname in $blocked_netdev_ports; do
+			case "$bname" in
+				lan*|eth*)
+					cat << NETDEV_EOF >> "$tmp_nft"
+table netdev ark_ipv6_${bname}
+delete table netdev ark_ipv6_${bname}
+table netdev ark_ipv6_${bname} {
+	chain egress {
+		type filter hook egress device "${bname}" priority 0;
+		ether type ip6 drop
+	}
+	chain ingress {
+		type filter hook ingress device "${bname}" priority 0;
+		ether type ip6 drop
+	}
+}
+NETDEV_EOF
+					;;
+			esac
+		done
+
 		if ! /usr/sbin/nft -c -f "$tmp_nft" 2>/dev/null; then
 			rm -f "$tmp_nft"
-			echo "Erro de sintaxe nftables no filtro seletivo IPv6" >&2
+			echo "Erro de sintaxe nftables no filtro IPv6" >&2
 			return 1
 		fi
 		mv -f "$tmp_nft" "$nft_file"
@@ -904,6 +1019,9 @@ EOF
 EOF
 		chmod +x "$apply_sh"
 		nft delete table inet ark_ipv6_selective 2>/dev/null || true
+		for t in $(nft list tables 2>/dev/null | grep 'table netdev ark_ipv6_' | awk '{print $3}'); do
+			nft delete table netdev "$t" 2>/dev/null || true
+		done
 		nft -f "$nft_file" 2>/dev/null || true
 		uci -q set firewall.ark_ipv6_selective=include
 		uci -q set firewall.ark_ipv6_selective.type=script
@@ -913,19 +1031,36 @@ EOF
 
 	elif command -v ip6tables >/dev/null 2>&1; then
 		apply_sh="/etc/ark/ark_ipv6_selective.sh"
-		cat << EOF > "$apply_sh"
+		if [ "$cur_mode" = "selective" ]; then
+			cat << EOF > "$apply_sh"
 #!/bin/sh
 lan_dev="\$(uci -q get network.lan.device || uci -q get network.lan.ifname || echo br-lan)"
 ip6tables -F ARK_IPV6_SEL 2>/dev/null || ip6tables -N ARK_IPV6_SEL 2>/dev/null
 ip6tables -D FORWARD -i "\$lan_dev" -j ARK_IPV6_SEL 2>/dev/null || true
 ip6tables -I FORWARD 1 -i "\$lan_dev" -j ARK_IPV6_SEL
 EOF
-		for m in $allowed_macs; do
-			printf 'ip6tables -A ARK_IPV6_SEL -m mac --mac-source %s -j RETURN\n' "$m" >> "$apply_sh"
-		done
-		cat << 'EOF' >> "$apply_sh"
+			for m in $allowed_macs; do
+				printf 'ip6tables -A ARK_IPV6_SEL -m mac --mac-source %s -j RETURN\n' "$m" >> "$apply_sh"
+			done
+			cat << 'EOF' >> "$apply_sh"
 ip6tables -A ARK_IPV6_SEL -j REJECT --reject-with icmp6-adm-prohibited
 EOF
+		else
+			if [ -z "$blocked_macs" ]; then
+				clean_ipv6_selective_firewall
+				return 0
+			fi
+			cat << EOF > "$apply_sh"
+#!/bin/sh
+lan_dev="\$(uci -q get network.lan.device || uci -q get network.lan.ifname || echo br-lan)"
+ip6tables -F ARK_IPV6_SEL 2>/dev/null || ip6tables -N ARK_IPV6_SEL 2>/dev/null
+ip6tables -D FORWARD -i "\$lan_dev" -j ARK_IPV6_SEL 2>/dev/null || true
+ip6tables -I FORWARD 1 -i "\$lan_dev" -j ARK_IPV6_SEL
+EOF
+			for m in $blocked_macs; do
+				printf 'ip6tables -A ARK_IPV6_SEL -m mac --mac-source %s -j REJECT --reject-with icmp6-adm-prohibited\n' "$m" >> "$apply_sh"
+			done
+		fi
 		chmod +x "$apply_sh"
 		/bin/sh "$apply_sh" 2>/dev/null || true
 		uci -q set firewall.ark_ipv6_selective=include
@@ -949,7 +1084,7 @@ set_ipv6_mode() {
 			;;
 		dual_stack)
 			enable_ipv6_dual_stack
-			clean_ipv6_selective_firewall
+			sync_ipv6_selective_firewall
 			uci -q delete dhcp.lan.ignore
 			uci commit dhcp
 			uci -q set equipe_dashboard.ipv6=ipv6
@@ -1083,12 +1218,14 @@ EOF
 }
 
 disable_ipv6_full() {
+	ula="$(uci -q get network.globals.ula_prefix)"
+	[ -n "$ula" ] && uci -q set "equipe_dashboard.ipv6.saved_ula=$ula"
 	uci -q delete network.globals.ula_prefix
 	uci -q delete network.lan.ip6assign
 	uci -q delete network.lan.ip6hint
 	uci -q delete network.lan.ip6ifaceid
 	uci -q delete network.lan.delegate
-	for iface in wan wan2; do
+	for iface in wan wan2 wan3 wan4; do
 		uci -q set "network.$iface.delegate=0"
 		uci -q set "network.$iface.ipv6=0"
 	done
@@ -1496,10 +1633,19 @@ speedify_prepare_wans() {
 		case "$proto" in
 			dhcp|pppoe|static|qmi|qmi-sh|dhcpv6|wwan)
 				wan_index=$((wan_index + 1))
-				metric=$((wan_index * 10))
-				uci -q set "network.$iface.metric=$metric"
+				cur_m="$(uci -q get "network.$iface.metric" || true)"
+				if [ -n "$cur_m" ] && [ "$cur_m" -ge 1 ] 2>/dev/null; then
+					metric="$cur_m"
+				else
+					metric=$((wan_index * 10))
+					uci -q set "network.$iface.metric=$metric"
+				fi
+				uci -q set "network.$iface.ip6metric=$metric"
 				uci -q set "network.$iface.delegate=0"
-				uci -q set "network.$iface.ipv6=0"
+				cur_ipv6="$(uci -q get "network.$iface.ipv6" || true)"
+				if [ -z "$cur_ipv6" ]; then
+					uci -q set "network.$iface.ipv6=0"
+				fi
 				wan_count=$((wan_count + 1))
 				;;
 			*) ;;
@@ -1627,8 +1773,14 @@ mwan3_toggle() {
 		echo paused
 		return 0
 	fi
-	if [ "$desired" = 1 ]; then /etc/init.d/mwan3 enable >/dev/null 2>&1; /etc/init.d/mwan3 restart >/dev/null 2>&1
-	else /etc/init.d/mwan3 stop >/dev/null 2>&1; /etc/init.d/mwan3 disable >/dev/null 2>&1
+	if [ "$desired" = 1 ]; then
+		ensure_mwan3_ark_config
+		uci commit mwan3 >/dev/null 2>&1 || true
+		/etc/init.d/mwan3 enable >/dev/null 2>&1
+		/etc/init.d/mwan3 restart >/dev/null 2>&1
+	else
+		/etc/init.d/mwan3 stop >/dev/null 2>&1
+		/etc/init.d/mwan3 disable >/dev/null 2>&1
 	fi
 	echo "$desired"
 }
@@ -1850,11 +2002,13 @@ feature_active() {
 			ls /sys/class/thermal/thermal_zone*/temp >/dev/null 2>&1 || \
 			ls /sys/class/hwmon/hwmon*/temp*_input >/dev/null 2>&1
 			;;
+		history) pgrep -f equipe-traffic-history >/dev/null 2>&1 || running equipe-traffic-history ;;
+		custom_qos) [ -f /etc/config/qos_equipe ] && [ "$(uci -q get qos_equipe.guest.enabled)" = 1 ] ;;
 		speedtest) command -v speedtest-go >/dev/null 2>&1 || [ -x /tmp/ark-speedtest/speedtest-go ] ;;
 		speedify) [ -x /usr/share/speedify/speedify_cli ] || installed speedify ;;
 		tailscale) command -v tailscale >/dev/null 2>&1 ;;
 		zerotier) pidof zerotier-one >/dev/null 2>&1 && [ "$(uci -q get zerotier.global.enabled)" = 1 ] ;;
-		wireguard) [ -d /sys/class/net/wg0 ] || (command -v wg >/dev/null 2>&1 && [ -n "$(wg show interfaces 2>/dev/null)" ]) ;;
+		wireguard) [ -d /sys/class/net/wg0 ] || [ -d /sys/class/net/wgclient ] || (command -v wg >/dev/null 2>&1 && [ -n "$(wg show interfaces 2>/dev/null)" ]) ;;
 		irqbalance) running irqbalance ;;
 		*) return 1 ;;
 	esac
@@ -2390,8 +2544,23 @@ wireguard_status_json() {
 	wan_ip="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null || true)"
 	[ -n "$wan_ip" ] || wan_ip="$(uci -q get network.wan.ipaddr 2>/dev/null || true)"
 	[ -n "$wan_ip" ] || wan_ip="$(uci -q get network.wan1.ipaddr 2>/dev/null || true)"
+
+	wan_ipv6="$(ip -6 addr show scope global 2>/dev/null | awk '/inet6 2/ {print $2}' | cut -d/ -f1 | head -n 1)"
+	[ -n "$wan_ipv6" ] || wan_ipv6="$(ubus call network.interface.wan6 status 2>/dev/null | jsonfilter -e '@["ipv6-address"][0].address' 2>/dev/null || true)"
+
+	is_cgnat=false
+	case "$wan_ip" in
+		100.*|10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*) is_cgnat=true ;;
+	esac
+
 	custom_endpoint="$(uci -q get equipe_dashboard.wireguard.endpoint 2>/dev/null || true)"
-	endpoint="${custom_endpoint:-$wan_ip}"
+	if [ -n "$custom_endpoint" ]; then
+		endpoint="$custom_endpoint"
+	elif [ "$is_cgnat" = true ] && [ -n "$wan_ipv6" ]; then
+		endpoint="$wan_ipv6"
+	else
+		endpoint="${wan_ip:-$wan_ipv6}"
+	fi
 
 	dump_file="/tmp/ark-wg0-dump.$$"
 	if $active_wg && command -v wg >/dev/null 2>&1; then
@@ -2402,8 +2571,8 @@ wireguard_status_json() {
 	peers_active=0
 	now="$(date +%s)"
 
-	printf '{"installed":%s,"active":%s,"configured":%s,"autostart":%s,"ip":"%s","listen_port":"%s","public_key":"%s","endpoint":"%s","has_qrencode":%s,"peers":[' \
-		"$installed_wg" "$active_wg" "$configured_wg" "$autostart_wg" "$(json_escape "$wg_ip")" "$(json_escape "$listen_port")" "$(json_escape "$pubkey")" "$(json_escape "$endpoint")" "$([ -x /usr/bin/qrencode ] && printf true || printf false)"
+	printf '{"installed":%s,"active":%s,"configured":%s,"autostart":%s,"ip":"%s","listen_port":"%s","public_key":"%s","endpoint":"%s","endpoint_ipv4":"%s","endpoint_ipv6":"%s","is_cgnat":%s,"has_qrencode":%s,"peers":[' \
+		"$installed_wg" "$active_wg" "$configured_wg" "$autostart_wg" "$(json_escape "$wg_ip")" "$(json_escape "$listen_port")" "$(json_escape "$pubkey")" "$(json_escape "$endpoint")" "$(json_escape "$wan_ip")" "$(json_escape "$wan_ipv6")" "$is_cgnat" "$([ -x /usr/bin/qrencode ] && printf true || printf false)"
 
 	first_peer=1
 	for sec in $(uci -q show network 2>/dev/null | grep '=wireguard_wg0$' | cut -d. -f2 | cut -d= -f1); do
@@ -2461,6 +2630,8 @@ wireguard_firewall_setup() {
 		uci -q set "firewall.$zg.output=ACCEPT"
 		uci -q set "firewall.$zg.forward=ACCEPT"
 		uci -q set "firewall.$zg.masq=1"
+		uci -q set "firewall.$zg.masq6=1"
+		uci -q set "firewall.$zg.mtu_fix=1"
 		uci -q add_list "firewall.$zg.network=wg0"
 		uci -q add_list "firewall.$zg.network=wgclient"
 		uci -q set "firewall.$zg.device=wg+"
@@ -2487,6 +2658,14 @@ wireguard_firewall_setup() {
 		fi
 		if [ "$(uci -q get "firewall.$zg.masq")" != "1" ]; then
 			uci -q set "firewall.$zg.masq=1"
+			changed=1
+		fi
+		if [ "$(uci -q get "firewall.$zg.masq6")" != "1" ]; then
+			uci -q set "firewall.$zg.masq6=1"
+			changed=1
+		fi
+		if [ "$(uci -q get "firewall.$zg.mtu_fix")" != "1" ]; then
+			uci -q set "firewall.$zg.mtu_fix=1"
 			changed=1
 		fi
 	fi
@@ -2787,14 +2966,31 @@ wireguard_peer_add() {
 	wan_ip="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null || true)"
 	[ -n "$wan_ip" ] || wan_ip="$(uci -q get network.wan.ipaddr 2>/dev/null || true)"
 	[ -n "$wan_ip" ] || wan_ip="$(uci -q get network.wan1.ipaddr 2>/dev/null || true)"
+	wan_ipv6="$(ip -6 addr show scope global 2>/dev/null | awk '/inet6 2/ {print $2}' | cut -d/ -f1 | head -n 1)"
+	[ -n "$wan_ipv6" ] || wan_ipv6="$(ubus call network.interface.wan6 status 2>/dev/null | jsonfilter -e '@["ipv6-address"][0].address' 2>/dev/null || true)"
+
+	is_cgnat=false
+	case "$wan_ip" in
+		100.*|10.*|192.168.*|172.1[6-9].*|172.2[0-9].*|172.3[0-1].*) is_cgnat=true ;;
+	esac
+
 	[ -n "$custom_endpoint" ] || custom_endpoint="$(uci -q get equipe_dashboard.wireguard.endpoint 2>/dev/null || true)"
-	endpoint="${custom_endpoint:-$wan_ip}"
+	if [ -n "$custom_endpoint" ]; then
+		endpoint="$custom_endpoint"
+	elif [ "$is_cgnat" = true ] && [ -n "$wan_ipv6" ]; then
+		endpoint="$wan_ipv6"
+	else
+		endpoint="${wan_ip:-$wan_ipv6}"
+	fi
 	[ -n "$endpoint" ] || endpoint="192.168.73.1"
+
+	host_num="${client_ip##*.}"
+	[ -n "$host_num" ] || host_num=2
 
 	if [ "$tunnel_mode" = "split" ]; then
 		lan_net="$(uci -q get network.lan.ipaddr || printf '192.168.1.1')"
 		lan_prefix="$(ipv4_prefix24 "$lan_net")"
-		client_allowed_ips="$lan_prefix.0/24, 10.14.0.0/24"
+		client_allowed_ips="$lan_prefix.0/24, 10.14.0.0/24, fddd:dd40:a110::/64"
 	else
 		client_allowed_ips="0.0.0.0/0, ::/0"
 	fi
@@ -2802,6 +2998,14 @@ wireguard_peer_add() {
 	client_ip="$(printf '%s' "$client_ip" | tr -d '\r\n ')"
 	endpoint="$(printf '%s' "$endpoint" | tr -d '\r\n ')"
 	server_port="$(printf '%s' "$server_port" | tr -d '\r\n ')"
+
+	case "$endpoint" in
+		\[*\]:*) full_endpoint="$endpoint" ;;
+		\[*\]) full_endpoint="$endpoint:$server_port" ;;
+		*:*:*) full_endpoint="[$endpoint]:$server_port" ;;
+		*:*) full_endpoint="$endpoint" ;;
+		*) full_endpoint="$endpoint:$server_port" ;;
+	esac
 
 	mkdir -p /etc/wireguard/clients
 	chmod 700 /etc/wireguard/clients
@@ -2812,13 +3016,13 @@ wireguard_peer_add() {
 		cat > "$cfg_file" <<EOF
 [Interface]
 PrivateKey = $client_priv
-Address = $client_ip/24
-DNS = 10.14.0.1, 1.1.1.1
+Address = $client_ip/24, fddd:dd40:a110::$host_num/64
+DNS = 10.14.0.1, 1.1.1.1, 2606:4700:4700::1111
 
 [Peer]
 PublicKey = $server_pub
 $( [ -n "$client_psk" ] && printf 'PresharedKey = %s\n' "$client_psk" )
-Endpoint = $endpoint:$server_port
+Endpoint = $full_endpoint
 AllowedIPs = $client_allowed_ips
 PersistentKeepalive = 25
 EOF
@@ -2846,8 +3050,8 @@ EOF
 		qr_svg="$(qrencode -t SVG --svg-path --inline -o - < "$cfg_file" 2>/dev/null | json_text_escape || true)"
 	fi
 
-	printf '{"ok":true,"name":"%s","clean_name":"%s","public_key":"%s","ip":"%s","endpoint":"%s:%s","conf":"%s","qr_svg":"%s"}\n' \
-		"$(json_escape "$name")" "$(json_escape "$clean_name")" "$(json_escape "$client_pub")" "$(json_escape "$client_ip")" "$(json_escape "$endpoint")" "$server_port" "$conf_txt" "$qr_svg"
+	printf '{"ok":true,"name":"%s","clean_name":"%s","public_key":"%s","ip":"%s","endpoint":"%s","conf":"%s","qr_svg":"%s"}\n' \
+		"$(json_escape "$name")" "$(json_escape "$clean_name")" "$(json_escape "$client_pub")" "$(json_escape "$client_ip")" "$(json_escape "$full_endpoint")" "$conf_txt" "$qr_svg"
 }
 
 wireguard_peer_delete() {
@@ -3577,14 +3781,14 @@ mwan3_reorder_rules() {
 	uci -q reorder "mwan3.bypass_pvt192=0" 2>/dev/null || true
 	uci -q reorder "mwan3.bypass_pvt10=1" 2>/dev/null || true
 	uci -q reorder "mwan3.bypass_pvt172=2" 2>/dev/null || true
-	uci -q reorder "mwan3.dns_udp=3" 2>/dev/null || true
-	uci -q reorder "mwan3.dns_tcp=4" 2>/dev/null || true
-	uci -q reorder "mwan3.wireguard_udp=5" 2>/dev/null || true
-	order_idx=6
-	for r in $(uci -q show mwan3 2>/dev/null | grep '=rule$' | cut -d. -f2 | cut -d= -f1 | grep '^ark_dev_'); do
+	order_idx=3
+	for r in $(uci -q show mwan3 2>/dev/null | grep '=rule$' | cut -d. -f2 | cut -d= -f1 | grep -E '^d_[0-9a-f]{12}$|^ark_dev_'); do
 		uci -q reorder "mwan3.$r=$order_idx" 2>/dev/null || true
 		order_idx=$((order_idx + 1))
 	done
+	uci -q reorder "mwan3.dns_udp=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
+	uci -q reorder "mwan3.dns_tcp=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
+	uci -q reorder "mwan3.wireguard_udp=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
 	uci -q reorder "mwan3.dev_pool1=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
 	uci -q reorder "mwan3.dev_pool2=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
 	uci -q reorder "mwan3.ssh=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
@@ -3595,8 +3799,9 @@ mwan3_reorder_rules() {
 	uci -q reorder "mwan3.default_rule_v4=99" 2>/dev/null || true
 }
 get_configured_ping_track_ips() {
-	local target="$(uci -q get equipe_dashboard.main.ping_target || printf 'registro_br')"
-	local custom_ip="$(uci -q get equipe_dashboard.main.ping_custom_ip || true)"
+	local target="$(uci -q get equipe_dashboard.main.ping_target 2>/dev/null)"
+	[ -n "$target" ] || target="registro_br"
+	local custom_ip="$(uci -q get equipe_dashboard.main.ping_custom_ip 2>/dev/null)"
 	local primary=""
 	case "$target" in
 		registro_br) primary="200.160.2.3" ;;
@@ -3620,6 +3825,7 @@ get_configured_ping_track_ips() {
 			*) ips="${ips:+$ips }$fallback" ;;
 		esac
 	done
+	[ -n "$ips" ] || ips="200.160.2.3 1.1.1.1 8.8.8.8 9.9.9.9 208.67.222.222"
 	printf '%s\n' "$ips"
 }
 ensure_mwan3_ark_config() {
@@ -3643,6 +3849,7 @@ ensure_mwan3_ark_config() {
 	done
 	wan_idx=1
 	track_ips="$(get_configured_ping_track_ips)"
+	[ -n "$track_ips" ] || track_ips="200.160.2.3 1.1.1.1 8.8.8.8 9.9.9.9 208.67.222.222"
 	for w in $active_wans; do
 		uci -q set "mwan3.$w=interface"
 		uci -q set "mwan3.$w.enabled=1"
@@ -3940,7 +4147,44 @@ ez_backup() {
 }
 ez_progress() { ez_set applied_step "$1"; ez_set last_step "$2"; uci commit equipe_dashboard; }
 ez_json() {
-	printf '{"state":"%s","applied_step":%s,"last_step":"%s","backup":"%s","profile":"%s","router_name":"%s","country":"%s","wifi_mode":"%s","main_ssid":"%s","guest_enabled":%s,"guest_ssid":"%s","guest_limit_enabled":%s,"guest_download_kbps":"%s","guest_upload_kbps":"%s","wan_mode":"%s","wan2_enabled":%s,"wan2_port":"%s","sqm_enabled":%s,"sqm_strategy":"%s","sqm_wan_upload":"%s","sqm_wan_download":"%s","sqm_wan2_upload":"%s","sqm_wan2_download":"%s","dns_mode":"%s","dns_servers":"%s","disable_ipv6":%s,"disable_wps":%s,"use_argon":%s,"install_modules":"%s"}\n' \
+	# Ler dados atuais do roteador caso ainda nao existam no setup
+	cur_wan_proto="$(uci -q get network.wan.proto || printf 'dhcp')"
+	cur_wan_user="$(uci -q get network.wan.username || true)"
+	cur_wan_pass="$(uci -q get network.wan.password || true)"
+	cur_wan_ip="$(uci -q get network.wan.ipaddr || true)"
+	cur_wan_mask="$(uci -q get network.wan.netmask || true)"
+	cur_wan_gw="$(uci -q get network.wan.gateway || true)"
+	cur_wan_dns="$(uci -q get network.wan.dns || true)"
+
+	cur_wan2_proto="$(uci -q get network.wan2.proto || printf 'dhcp')"
+	cur_wan2_user="$(uci -q get network.wan2.username || true)"
+	cur_wan2_pass="$(uci -q get network.wan2.password || true)"
+	cur_wan2_ip="$(uci -q get network.wan2.ipaddr || true)"
+	cur_wan2_mask="$(uci -q get network.wan2.netmask || true)"
+	cur_wan2_gw="$(uci -q get network.wan2.gateway || true)"
+	cur_wan2_dns="$(uci -q get network.wan2.dns || true)"
+
+	cur_main_ssid="$(uci -q get wireless.default_radio0.ssid || uci -q get wireless.@wifi-iface[0].ssid || printf 'ARK Router')"
+	cur_main_key="$(uci -q get wireless.default_radio0.key || uci -q get wireless.@wifi-iface[0].key || true)"
+	cur_main_ssid_5g="$(uci -q get wireless.default_radio1.ssid || uci -q get wireless.@wifi-iface[1].ssid || true)"
+	cur_main_key_5g="$(uci -q get wireless.default_radio1.key || uci -q get wireless.@wifi-iface[1].key || true)"
+	[ -n "$cur_main_ssid_5g" ] || cur_main_ssid_5g="$cur_main_ssid"
+	[ -n "$cur_main_key_5g" ] || cur_main_key_5g="$cur_main_key"
+	detected_wifi_mode="unified"
+	if [ "$cur_main_ssid" != "$cur_main_ssid_5g" ]; then
+		detected_wifi_mode="split"
+	fi
+	cur_wifi_mode="$(ez_get wifi_mode "$detected_wifi_mode")"
+
+	cur_guest_ssid="$(uci -q get wireless.guest_radio0.ssid || uci -q get wireless.@wifi-iface[1].ssid || printf 'ARK Router Visitantes')"
+	cur_guest_key="$(uci -q get wireless.guest_radio0.key || uci -q get wireless.@wifi-iface[1].key || true)"
+
+	cur_wan_online=false
+	if [ -n "$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null)" ] || [ -d /sys/class/net/pppoe-wan ]; then
+		cur_wan_online=true
+	fi
+
+	printf '{"state":"%s","applied_step":%s,"last_step":"%s","backup":"%s","profile":"%s","router_name":"%s","country":"%s","wifi_mode":"%s","main_ssid":"%s","main_key":"%s","main_ssid_5g":"%s","main_key_5g":"%s","guest_enabled":%s,"guest_ssid":"%s","guest_key":"%s","guest_limit_enabled":%s,"guest_download_kbps":"%s","guest_upload_kbps":"%s","wan1_online":%s,"wan1_proto":"%s","wan1_username":"%s","wan1_password":"%s","wan1_ipaddr":"%s","wan1_netmask":"%s","wan1_gateway":"%s","wan1_dns":"%s","wan_mode":"%s","wan2_enabled":%s,"wan2_port":"%s","wan2_proto":"%s","wan2_username":"%s","wan2_password":"%s","wan2_ipaddr":"%s","wan2_netmask":"%s","wan2_gateway":"%s","wan2_dns":"%s","sqm_enabled":%s,"sqm_strategy":"%s","sqm_wan_upload":"%s","sqm_wan_download":"%s","sqm_wan2_upload":"%s","sqm_wan2_download":"%s","dns_mode":"%s","dns_servers":"%s","disable_ipv6":%s,"disable_wps":%s,"install_modules":"%s"}\n' \
 		"$(json_escape "$(ez_get state draft)")" \
 		"$(ez_get applied_step 0)" \
 		"$(json_escape "$(ez_get last_step '')")" \
@@ -3948,16 +4192,35 @@ ez_json() {
 		"$(json_escape "$(ez_get profile event)")" \
 		"$(json_escape "$(ez_get router_name 'ARK Router')")" \
 		"$(json_escape "$(ez_get country BR)")" \
-		"$(json_escape "$(ez_get wifi_mode unified)")" \
-		"$(json_escape "$(ez_get main_ssid 'ARK Router')")" \
-		"$(json_bool_value "$(ez_get guest_enabled 1)")" \
-		"$(json_escape "$(ez_get guest_ssid 'ARK Router Visitantes')")" \
+		"$(json_escape "$cur_wifi_mode")" \
+		"$(json_escape "$(ez_get main_ssid "$cur_main_ssid")")" \
+		"$(json_escape "$(ez_get main_key "$cur_main_key")")" \
+		"$(json_escape "$(ez_get main_ssid_5g "$cur_main_ssid_5g")")" \
+		"$(json_escape "$(ez_get main_key_5g "$cur_main_key_5g")")" \
+		"$(json_bool_value "$(ez_get guest_enabled 0)")" \
+		"$(json_escape "$(ez_get guest_ssid "$cur_guest_ssid")")" \
+		"$(json_escape "$(ez_get guest_key "$cur_guest_key")")" \
 		"$(json_bool_value "$(ez_get guest_limit_enabled 1)")" \
 		"$(json_escape "$(ez_get guest_download_kbps 0)")" \
 		"$(json_escape "$(ez_get guest_upload_kbps 1500)")" \
+		"$cur_wan_online" \
+		"$(json_escape "$(ez_get wan1_proto "$cur_wan_proto")")" \
+		"$(json_escape "$(ez_get wan1_username "$cur_wan_user")")" \
+		"$(json_escape "$(ez_get wan1_password "$cur_wan_pass")")" \
+		"$(json_escape "$(ez_get wan1_ipaddr "$cur_wan_ip")")" \
+		"$(json_escape "$(ez_get wan1_netmask "$cur_wan_mask")")" \
+		"$(json_escape "$(ez_get wan1_gateway "$cur_wan_gw")")" \
+		"$(json_escape "$(ez_get wan1_dns "$cur_wan_dns")")" \
 		"$(json_escape "$(ez_get wan_mode failover)")" \
-		"$(json_bool_value "$(ez_get wan2_enabled 1)")" \
+		"$(json_bool_value "$(ez_get wan2_enabled 0)")" \
 		"$(json_escape "$(ez_get wan2_port 'lan1')")" \
+		"$(json_escape "$(ez_get wan2_proto "$cur_wan2_proto")")" \
+		"$(json_escape "$(ez_get wan2_username "$cur_wan2_user")")" \
+		"$(json_escape "$(ez_get wan2_password "$cur_wan2_pass")")" \
+		"$(json_escape "$(ez_get wan2_ipaddr "$cur_wan2_ip")")" \
+		"$(json_escape "$(ez_get wan2_netmask "$cur_wan2_mask")")" \
+		"$(json_escape "$(ez_get wan2_gateway "$cur_wan2_gw")")" \
+		"$(json_escape "$(ez_get wan2_dns "$cur_wan2_dns")")" \
 		"$(json_bool_value "$(ez_get sqm_enabled 0)")" \
 		"$(json_escape "$(ez_get sqm_strategy manual)")" \
 		"$(json_escape "$(ez_get sqm_wan_upload '')")" \
@@ -3966,10 +4229,9 @@ ez_json() {
 		"$(json_escape "$(ez_get sqm_wan2_download '')")" \
 		"$(json_escape "$(ez_get dns_mode recommended)")" \
 		"$(json_escape "$(ez_get dns_servers '1.1.1.1 1.0.0.1 8.8.8.8')")" \
-		"$(json_bool_value "$(ez_get disable_ipv6 1)")" \
+		"$(json_bool_value "$(ez_get disable_ipv6 0)")" \
 		"$(json_bool_value "$(ez_get disable_wps 1)")" \
-		"$(json_bool_value "$(ez_get use_argon 1)")" \
-		"$(json_escape "$(ez_get install_modules 'argon sqm mwan3 nlbwmon')")"
+		"$(json_escape "$(ez_get install_modules 'sqm mwan3 nlbwmon')")"
 }
 ez_apply_wifi_iface() {
 	section="$1"; device="$2"; network="$3"; ssid="$4"; key="$5"; disabled="$6"
@@ -4195,7 +4457,7 @@ EOF
 }
 
 detect_dns_blocker() {
-	if pgrep -f 'AdGuardHome' >/dev/null 2>&1 || pgrep -f 'adguardhome' >/dev/null 2>&1; then
+	if pgrep -x 'AdGuardHome' >/dev/null 2>&1 || pgrep -x 'adguardhome' >/dev/null 2>&1; then
 		echo "AdGuard Home"
 		return 0
 	fi
@@ -4203,19 +4465,19 @@ detect_dns_blocker() {
 		echo "Bloqueador em Nuvem"
 		return 0
 	fi
-	if [ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome status 2>/dev/null | grep -q 'running'; then
+	if [ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome status 2>/dev/null | grep -v 'not running' | grep -q 'running'; then
 		echo "AdGuard Home"
 		return 0
 	fi
-	if [ -f /etc/init.d/adblock-fast ] && /etc/init.d/adblock-fast status >/dev/null 2>&1; then
+	if [ -f /etc/init.d/adblock-fast ] && /etc/init.d/adblock-fast status 2>/dev/null | grep -v 'not running' | grep -q 'running'; then
 		echo "Adblock Fast"
 		return 0
 	fi
-	if [ -f /etc/init.d/adblock ] && /etc/init.d/adblock status >/dev/null 2>&1; then
+	if [ -f /etc/init.d/adblock ] && /etc/init.d/adblock status 2>/dev/null | grep -v 'not running' | grep -q 'running'; then
 		echo "Adblock"
 		return 0
 	fi
-	if pgrep -f 'pihole-FTL' >/dev/null 2>&1; then
+	if pgrep -x 'pihole-FTL' >/dev/null 2>&1; then
 		echo "Pi-hole"
 		return 0
 	fi
@@ -4278,6 +4540,123 @@ system_perf_status_json() {
 		"$conntrack_recycle" "$ram_autopurge" "$speedify_encryption" "$speedify_installed" "$speedify_log_cap" "$nlbwmon_lite" "$irq_installed" "$irq_active" "$conntrack_count" "$conntrack_max" "$mem_total_kb" "$mem_avail_kb" "$root_total_kb" "$root_used_kb" "$root_avail_kb" "$dns_allservers" "$(json_escape "$dns_servers")" "$dns_blocker_active" "$(json_escape "$blocker_name")" "$wifi_supplicant_disable" "$(json_escape "$ram_trim_interval")"
 }
 
+
+dmz_status_json() {
+	enabled=false
+	dest_ip=""
+	mac=""
+	device_name=""
+	src_zone="wan"
+
+	cur_dest="$(uci -q get firewall.ark_dmz.dest_ip || true)"
+	cur_enabled="$(uci -q get firewall.ark_dmz.enabled || printf 1)"
+
+	if [ -n "$cur_dest" ] && [ "$cur_enabled" != "0" ]; then
+		enabled=true
+		dest_ip="$cur_dest"
+	fi
+
+	saved_enabled="$(uci -q get equipe_dashboard.dmz.enabled || printf 0)"
+	saved_ip="$(uci -q get equipe_dashboard.dmz.dest_ip || true)"
+	saved_mac="$(uci -q get equipe_dashboard.dmz.mac || true)"
+	saved_name="$(uci -q get equipe_dashboard.dmz.name || true)"
+
+	if [ "$saved_enabled" = 1 ] && [ -n "$saved_ip" ]; then
+		dest_ip="$saved_ip"
+		[ -n "$saved_mac" ] && mac="$saved_mac"
+		[ -n "$saved_name" ] && device_name="$saved_name"
+	fi
+
+	if [ -n "$dest_ip" ]; then
+		if [ -z "$mac" ]; then
+			if [ -f /tmp/dhcp.leases ]; then
+				mac="$(awk -v ip="$dest_ip" '$3==ip {print toupper($2); exit}' /tmp/dhcp.leases)"
+			fi
+			if [ -z "$mac" ]; then
+				mac="$(ip neigh show 2>/dev/null | awk -v ip="$dest_ip" '$1==ip {print toupper($5); exit}')"
+			fi
+		fi
+		if [ -n "$mac" ] && [ -z "$device_name" ]; then
+			sec_name="device_$(printf '%s' "$mac" | tr -d ':')"
+			device_name="$(uci -q get "equipe_devices.$sec_name.name" || true)"
+			if [ -z "$device_name" ]; then
+				host="$(find_dhcp_host "$mac")"
+				[ -n "$host" ] && device_name="$(uci -q get "dhcp.$host.name" || true)"
+			fi
+		fi
+	fi
+
+	printf '{"enabled":%s,"dest_ip":"%s","mac":"%s","name":"%s","src_zone":"%s"}\n' \
+		"$enabled" "$(json_escape "$dest_ip")" "$(json_escape "$mac")" "$(json_escape "$device_name")" "$(json_escape "$src_zone")"
+}
+
+dmz_set() {
+	enable="${1:-0}"
+	ip="$(printf '%s' "${2:-}" | tr -d ' ,;\t\r\n')"
+	mac="$(printf '%s' "${3:-}" | tr '-' ':' | tr 'a-f' 'A-F' | tr -d ' ')"
+	name="${4:-}"
+	wan_src="${5:-wan}"
+
+	case "$enable" in
+		1|true|on)
+			valid_ipv4 "$ip" || { echo "Endereço IPv4 inválido para DMZ" >&2; exit 2; }
+			same_managed_subnet "$ip" || { echo "O IP do DMZ deve pertencer à mesma rede local (LAN) do roteador" >&2; exit 2; }
+
+			if [ -n "$mac" ]; then
+				valid_mac "$mac" || { echo "Endereço MAC inválido" >&2; exit 2; }
+				suffix="$(device_suffix "$mac")"
+				sec_name="device_$(printf '%s' "$mac" | tr -d ':')"
+				host="$(find_dhcp_host "$mac")"
+				[ -n "$host" ] || host="ark_$suffix"
+				clean_host_name="$(printf '%s' "${name:-ark-$suffix}" | sed 's/[^a-zA-Z0-9_-]/-/g; s/\-{2,\}/-/g; s/^-//; s/-$//')"
+				[ -n "$clean_host_name" ] || clean_host_name="ark-$suffix"
+
+				uci -q set "dhcp.$host=host"
+				uci -q set "dhcp.$host.name=$clean_host_name"
+				uci -q set "dhcp.$host.mac=$mac"
+				uci -q set "dhcp.$host.ip=$ip"
+				uci commit dhcp
+				/etc/init.d/dnsmasq reload >/dev/null 2>&1 || true
+
+				[ -n "$name" ] && uci -q set "equipe_devices.$sec_name.name=$name"
+				uci -q set "equipe_devices.$sec_name.mac=$mac"
+				uci commit equipe_devices
+			fi
+
+			uci -q set firewall.ark_dmz=redirect
+			uci -q set firewall.ark_dmz.name='ARK_DMZ'
+			uci -q set "firewall.ark_dmz.src=$wan_src"
+			uci -q set firewall.ark_dmz.dest='lan'
+			uci -q set firewall.ark_dmz.proto='all'
+			uci -q set "firewall.ark_dmz.dest_ip=$ip"
+			uci -q set firewall.ark_dmz.target='DNAT'
+			uci -q set firewall.ark_dmz.enabled='1'
+			uci commit firewall
+
+			uci -q set equipe_dashboard.dmz=dmz
+			uci -q set equipe_dashboard.dmz.enabled='1'
+			uci -q set "equipe_dashboard.dmz.dest_ip=$ip"
+			[ -n "$mac" ] && uci -q set "equipe_dashboard.dmz.mac=$mac"
+			[ -n "$name" ] && uci -q set "equipe_dashboard.dmz.name=$name"
+			uci commit equipe_dashboard
+
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			echo ok
+			;;
+		*)
+			uci -q delete firewall.ark_dmz
+			uci commit firewall
+			if [ -f /etc/config/equipe_dashboard ]; then
+				uci -q set equipe_dashboard.dmz=dmz
+				uci -q set equipe_dashboard.dmz.enabled='0'
+				uci commit equipe_dashboard
+			fi
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			echo ok
+			;;
+	esac
+}
+
 dns_turbo_status_json() {
 	allservers=false
 	[ "$(uci -q get dhcp.@dnsmasq[0].allservers)" = 1 ] && allservers=true
@@ -4326,9 +4705,13 @@ dns_turbo_save() {
 	count=0
 	for raw_ip in "$dns1" "$dns2" "$dns3" "$dns4"; do
 		[ -n "$raw_ip" ] || continue
-		ip="$(printf '%s' "$raw_ip" | sed -E 's/[:#][0-9]+$//' | tr -d ' ,;\t\r\n')"
+		ip="$(printf '%s' "$raw_ip" | sed -E 's/#[0-9]+$//' | tr -d ' ,;\t\r\n')"
+		case "$ip" in
+			*:*:*) ;;
+			*:*) ip="${ip%%:*}" ;;
+		esac
 		[ -n "$ip" ] || continue
-		valid_ipv4 "$ip" || continue
+		valid_ip "$ip" || continue
 		if [ "$blocker_name" != "AdGuard Home" ]; then
 			uci -q add_list "dhcp.@dnsmasq[0].server=$ip"
 		fi
@@ -5630,20 +6013,13 @@ except Exception:
 		/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
 	fi
 
-	if [ "$p_mode" = "bypass" ]; then
-		uci -q set "firewall.ark_par_$p_suffix=redirect"
-		uci -q set "firewall.ark_par_$p_suffix.name=ARK-Bypass-$p_mac"
-		uci -q set "firewall.ark_par_$p_suffix.src=lan"
-		uci -q set "firewall.ark_par_$p_suffix.proto=tcp udp"
-		uci -q set "firewall.ark_par_$p_suffix.src_dport=53"
-		uci -q set "firewall.ark_par_$p_suffix.dest_ip=1.1.1.1"
-		uci -q set "firewall.ark_par_$p_suffix.dest_port=53"
-		uci -q set "firewall.ark_par_$p_suffix.target=DNAT"
-		[ -n "$p_mac" ] && uci -q set "firewall.ark_par_$p_suffix.src_mac=$p_mac"
-		[ -n "$p_ip" ] && uci -q set "firewall.ark_par_$p_suffix.src_ip=$p_ip"
-		uci -q set "firewall.ark_par_$p_suffix.enabled=1"
-		uci commit firewall
-		/etc/init.d/firewall reload >/dev/null 2>&1 || true
+	has_custom_dns="$(uci -q get "equipe_devices.device_$(printf '%s' "$p_mac" | tr -d ':').custom_dns" || true)"
+	if [ "$p_mode" = "bypass" ] || [ -n "$has_custom_dns" ]; then
+		if [ -n "$(uci -q get "firewall.ark_par_$p_suffix" 2>/dev/null)" ]; then
+			uci -q delete "firewall.ark_par_$p_suffix"
+			uci commit firewall
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+		fi
 	elif [ "$p_mode" = "custom" ] && [ "$agh_active" != "1" ]; then
 		if [ "$p_block" = "1" ] || [ "$p_safe" = "1" ]; then
 			uci -q set "firewall.ark_par_$p_suffix=redirect"
@@ -5790,14 +6166,15 @@ apply_wan_proto() {
 	uci -q set "network.$iface.proto=$proto"
 	uci -q delete "network.$iface.macaddr"
 	uci -q delete "network.$iface.username"
-	uci -q delete "network.$iface.password"
 	uci -q delete "network.$iface.ipaddr"
 	uci -q delete "network.$iface.netmask"
 	uci -q delete "network.$iface.gateway"
 	if [ "$proto" = pppoe ]; then
 		[ -n "$username" ] || { echo 'Usuario PPPoE obrigatorio' >&2; return 2; }
+		[ -n "$password" ] || password="$(uci -q get "network.$iface.password" || true)"
 		uci -q set "network.$iface.username=$username"
-		uci -q set "network.$iface.password=$password"
+		uci -q delete "network.$iface.password"
+		[ -n "$password" ] && uci -q set "network.$iface.password=$password"
 	elif [ "$proto" = static ]; then
 		valid_ipv4 "$ipaddr" && valid_ipv4 "$netmask" || { echo 'IPv4 estatico invalido' >&2; return 2; }
 		[ -z "$gateway" ] || valid_ipv4 "$gateway" || { echo 'Gateway invalido' >&2; return 2; }
@@ -5808,7 +6185,7 @@ apply_wan_proto() {
 	uci -q set "network.$iface.peerdns=0"
 	uci -q delete "network.$iface.dns"
 	if [ -n "$dns" ]; then
-		for server in $dns; do valid_ipv4 "$server" || { echo 'DNS WAN invalido' >&2; return 2; }; uci -q add_list "network.$iface.dns=$server"; done
+		for server in $dns; do valid_ip "$server" || { echo "DNS WAN invalido: $server" >&2; return 2; }; uci -q add_list "network.$iface.dns=$server"; done
 	fi
 	if [ -n "$macaddr" ]; then
 		uci -q set "network.$iface.macaddr=$macaddr"
@@ -5825,8 +6202,6 @@ apply_wan_proto() {
 			uci -q set "network.$iface.macaddr=${prefix}:${new_hex}"
 		fi
 	fi
-	uci -q set "network.$iface.delegate=0"
-	uci -q set "network.$iface.ipv6=0"
 }
 bind_uhttpd_to_lan_ip() {
 	configure_uhttpd_listeners
@@ -5995,8 +6370,8 @@ feature_json() {
 	if [ "$key" = wireguard ]; then
 		hidden "$key"; concealed=$?
 		installed_wg=false; ([ -x /usr/bin/wg ] || [ -f /lib/netifd/proto/wireguard.sh ]) && installed_wg=true
-		active_wg=false; [ -d /sys/class/net/wg0 ] && active_wg=true
-		autostart_wg=false; [ "$(uci -q get network.wg0.auto)" != "0" ] && autostart_wg=true
+		active_wg=false; ([ -d /sys/class/net/wg0 ] || [ -d /sys/class/net/wgclient ]) && active_wg=true
+		autostart_wg=false; ([ "$(uci -q get network.wg0.auto)" != "0" ] || [ "$(uci -q get network.wgclient.auto)" != "0" ]) && autostart_wg=true
 		listen_port="$(uci -q get network.wg0.listen_port || printf '51820')"
 		wg_ip="$(uci -q get network.wg0.addresses 2>/dev/null || uci -q get network.wg0.ipaddr 2>/dev/null || printf '10.14.0.1/24')"
 		pubkey=""
@@ -6211,7 +6586,7 @@ get_internet_led_sysfs() {
 		fi
 	done
 
-	for p in /sys/class/leds/*planet* /sys/class/leds/*internet* /sys/class/leds/*wan*; do
+	for p in /sys/class/leds/*planet* /sys/class/leds/*internet* /sys/class/leds/*wan* /sys/class/leds/*broadband* /sys/class/leds/*online* /sys/class/leds/*modem* /sys/class/leds/*dsl*; do
 		[ -e "$p" ] || continue
 		local b="$(basename "$p")"
 		case "$b" in
@@ -6318,15 +6693,18 @@ update_wan_led() {
 		echo 255 > "/sys/class/leds/$inet_led/brightness" 2>/dev/null || echo 1 > "/sys/class/leds/$inet_led/brightness" 2>/dev/null || true
 
 		# Se houver LED fisico secundario de porta WAN (ex: Cudy WR3000 possui blue:internet e blue:wan), sincroniza tambem
-		if [ "$inet_led" = "blue:internet" ] && [ -e "/sys/class/leds/blue:wan" ]; then
-			echo netdev > "/sys/class/leds/blue:wan/trigger" 2>/dev/null || true
-			echo "$active_dev" > "/sys/class/leds/blue:wan/device_name" 2>/dev/null || true
-			echo 1 > "/sys/class/leds/blue:wan/link" 2>/dev/null || true
-			echo 0 > "/sys/class/leds/blue:wan/rx" 2>/dev/null || true
-			echo 0 > "/sys/class/leds/blue:wan/tx" 2>/dev/null || true
-			[ -e "/sys/class/leds/blue:wan/mode" ] && echo link > "/sys/class/leds/blue:wan/mode" 2>/dev/null || true
-			echo 1 > "/sys/class/leds/blue:wan/brightness" 2>/dev/null || true
-		fi
+		for sec_wan in /sys/class/leds/*:wan /sys/class/leds/wan; do
+			[ -d "$sec_wan" ] || continue
+			local sec_b="$(basename "$sec_wan")"
+			[ "$sec_b" != "$inet_led" ] || continue
+			echo netdev > "$sec_wan/trigger" 2>/dev/null || true
+			echo "$active_dev" > "$sec_wan/device_name" 2>/dev/null || true
+			echo 1 > "$sec_wan/link" 2>/dev/null || true
+			echo 0 > "$sec_wan/rx" 2>/dev/null || true
+			echo 0 > "$sec_wan/tx" 2>/dev/null || true
+			[ -e "$sec_wan/mode" ] && echo link > "$sec_wan/mode" 2>/dev/null || true
+			echo 1 > "$sec_wan/brightness" 2>/dev/null || echo 255 > "$sec_wan/brightness" 2>/dev/null || true
+		done
 
 		if [ -n "$alert_led" ] && [ -e "/sys/class/leds/$alert_led" ]; then
 			echo none > "/sys/class/leds/$alert_led/trigger" 2>/dev/null || true
@@ -6346,10 +6724,13 @@ update_wan_led() {
 			echo 0 > "/sys/class/leds/$inet_led/brightness" 2>/dev/null || true
 		fi
 
-		if [ "$inet_led" = "blue:internet" ] && [ -e "/sys/class/leds/blue:wan" ]; then
-			echo none > "/sys/class/leds/blue:wan/trigger" 2>/dev/null || true
-			echo 0 > "/sys/class/leds/blue:wan/brightness" 2>/dev/null || true
-		fi
+		for sec_wan in /sys/class/leds/*:wan /sys/class/leds/wan; do
+			[ -d "$sec_wan" ] || continue
+			local sec_b="$(basename "$sec_wan")"
+			[ "$sec_b" != "$inet_led" ] || continue
+			echo none > "$sec_wan/trigger" 2>/dev/null || true
+			echo 0 > "$sec_wan/brightness" 2>/dev/null || true
+		done
 	fi
 
 	local uci_dev="$(uci -q get system.led_internet.dev || echo "")"
@@ -6785,11 +7166,13 @@ EOF
 EOF
 			chmod +x /etc/hotplug.d/net/99-ark-led-alert
 
-			# LEDs Wi-Fi ficam discretos/apagados no modo alerta
-			for wf_led in mt76-phy0 mt76-phy1 ath10k-phy0 ath9k-phy1 ath11k-phy0 ath11k-phy1; do
-				if [ -e "/sys/class/leds/$wf_led" ]; then
-					echo 0 > "/sys/class/leds/$wf_led/brightness" 2>/dev/null || true
-				fi
+			# LEDs Wi-Fi ficam discretos/apagados no modo alerta em todos os fabricantes
+			for wf_led in $(ls /sys/class/leds/ 2>/dev/null); do
+				case "$wf_led" in
+					*wifi*|*wlan*|*phy*|*2g*|*5g*|*6g*)
+						echo 0 > "/sys/class/leds/$wf_led/brightness" 2>/dev/null || true
+						;;
+				esac
 			done
 			uci commit system 2>/dev/null || true
 			update_wan_led
@@ -6827,9 +7210,23 @@ EOF
 			fi
 
 			local w5_led=""
-			for cand in mt76-phy0 ath10k-phy0 ath11k-phy0 ath12k-phy0; do
+			for cand in mt76-phy0 ath10k-phy0 ath11k-phy0 ath12k-phy0 blue:wifi5 green:wifi5 white:wifi5 wifi5 wlan5g wlan-5g 5g wlan5 wifi-5g; do
 				if [ -e "/sys/class/leds/$cand" ]; then w5_led="$cand"; break; fi
 			done
+			if [ -z "$w5_led" ]; then
+				for p in /sys/class/leds/*wifi5* /sys/class/leds/*wlan5* /sys/class/leds/*5g* /sys/class/leds/*5ghz*; do
+					[ -e "$p" ] || continue
+					w5_led="$(basename "$p")"
+					break
+				done
+			fi
+			if [ -z "$w5_led" ]; then
+				for p in /sys/class/leds/*phy0*; do
+					[ -e "$p" ] || continue
+					w5_led="$(basename "$p")"
+					break
+				done
+			fi
 			if [ -n "$w5_led" ]; then
 				[ -n "$(uci -q get system.led_wifi5g)" ] || uci -q set system.led_wifi5g=led
 				uci -q set "system.led_wifi5g.name=Wi-Fi 5 GHz (Ultra Rápido)"
@@ -6839,9 +7236,30 @@ EOF
 			fi
 
 			local w2_led=""
-			for cand in mt76-phy1 ath9k-phy1 ath11k-phy1 ath12k-phy1; do
+			for cand in mt76-phy1 ath9k-phy1 ath11k-phy1 ath12k-phy1 blue:wifi2 green:wifi2 white:wifi2 wifi2 wlan2g wlan-2g 2g wlan2 wifi-2g; do
 				if [ -e "/sys/class/leds/$cand" ]; then w2_led="$cand"; break; fi
 			done
+			if [ -z "$w2_led" ]; then
+				for p in /sys/class/leds/*wifi2* /sys/class/leds/*wlan2* /sys/class/leds/*2g* /sys/class/leds/*2ghz*; do
+					[ -e "$p" ] || continue
+					w2_led="$(basename "$p")"
+					break
+				done
+			fi
+			if [ -z "$w2_led" ]; then
+				for p in /sys/class/leds/*phy1*; do
+					[ -e "$p" ] || continue
+					w2_led="$(basename "$p")"
+					break
+				done
+			fi
+			if [ -z "$w2_led" ] && [ -z "$w5_led" ]; then
+				for p in /sys/class/leds/*wlan* /sys/class/leds/*wifi*; do
+					[ -e "$p" ] || continue
+					w2_led="$(basename "$p")"
+					break
+				done
+			fi
 			if [ -n "$w2_led" ]; then
 				[ -n "$(uci -q get system.led_wifi2g)" ] || uci -q set system.led_wifi2g=led
 				uci -q set "system.led_wifi2g.name=Wi-Fi 2.4 GHz (Longo Alcance)"
@@ -6850,14 +7268,46 @@ EOF
 				uci -q set "system.led_wifi2g.default=1"
 			fi
 
-			# Power / Status LED (Cudy, D-Link, etc.)
+			local w6_led=""
+			for cand in blue:wifi6 green:wifi6 white:wifi6 wifi6 wlan6g wlan-6g 6g; do
+				if [ -e "/sys/class/leds/$cand" ]; then w6_led="$cand"; break; fi
+			done
+			if [ -z "$w6_led" ]; then
+				for p in /sys/class/leds/*wifi6* /sys/class/leds/*wlan6* /sys/class/leds/*6g* /sys/class/leds/*6ghz* /sys/class/leds/*phy2*; do
+					[ -e "$p" ] || continue
+					w6_led="$(basename "$p")"
+					break
+				done
+			fi
+			if [ -n "$w6_led" ]; then
+				[ -n "$(uci -q get system.led_wifi6g)" ] || uci -q set system.led_wifi6g=led
+				uci -q set "system.led_wifi6g.name=Wi-Fi 6 GHz (Ultra Rápido)"
+				uci -q set "system.led_wifi6g.sysfs=$w6_led"
+				uci -q set "system.led_wifi6g.trigger=default-on"
+				uci -q set "system.led_wifi6g.default=1"
+			fi
+
+			# Power / Status LED (Compatibilidade Universal: TP-Link, GL.iNet, Netgear, Cudy, D-Link, Asus, Xiaomi, RPi, etc.)
 			local pwr_led=""
-			for cand_pwr in "d-link:green:power" "green:status" "blue:status" "status" "power"; do
+			for cand_pwr in \
+				"d-link:green:power" "green:power" "blue:power" "white:power" \
+				"green:status" "blue:status" "white:status" \
+				"power" "status" "pwr" "act" "system"; do
 				if [ -e "/sys/class/leds/$cand_pwr" ]; then
 					pwr_led="$cand_pwr"
 					break
 				fi
 			done
+			if [ -z "$pwr_led" ]; then
+				for p in /sys/class/leds/*power* /sys/class/leds/*status* /sys/class/leds/*system* /sys/class/leds/*pwr* /sys/class/leds/*act*; do
+					[ -e "$p" ] || continue
+					local pb="$(basename "$p")"
+					case "$pb" in
+						*orange*|*red*|*amber*|*fail*) continue ;;
+						*) pwr_led="$pb"; break ;;
+					esac
+				done
+			fi
 			if [ -n "$pwr_led" ]; then
 				[ -n "$(uci -q get system.led_power)" ] || uci -q set system.led_power=led
 				uci -q set "system.led_power.name=Power / Status"
@@ -6967,6 +7417,15 @@ get_system_hardware_info() {
 			*ipq5018*|*ipq5000*) cpu_freq_mhz=1000 ;;
 			*ipq9574*|*ipq9554*) cpu_freq_mhz=2200 ;;
 			*bcm4908*|*bcm4912*) cpu_freq_mhz=1800 ;;
+			*bcm2711*|*rpi-4*) cpu_freq_mhz=1500 ;;
+			*bcm2837*|*rpi-3*) cpu_freq_mhz=1200 ;;
+			*rk3588*) cpu_freq_mhz=2400 ;;
+			*rk3568*|*rk3566*) cpu_freq_mhz=2000 ;;
+			*rk3399*) cpu_freq_mhz=1800 ;;
+			*rk3328*) cpu_freq_mhz=1300 ;;
+			*allwinner*|*sun8i*|*sun50i*|*h3*|*h5*|*h6*) cpu_freq_mhz=1200 ;;
+			*armada-3720*|*armada-38*) cpu_freq_mhz=1000 ;;
+			*x86_64*|*i386*) cpu_freq_mhz=2000 ;;
 		esac
 	fi
 	if [ "$cpu_freq_mhz" -ge 1000 ]; then
@@ -7054,6 +7513,7 @@ get_system_hardware_info() {
 
 	# Thermal Sensors List
 	first_t=1
+	has_cpu_thermal=0
 	printf '"thermal_sensors":['
 	for z in /sys/class/thermal/thermal_zone*; do
 		[ -d "$z" ] || continue
@@ -7063,7 +7523,7 @@ get_system_hardware_info() {
 		[ "$ztemp" -gt 1000 ] && ztemp_c=$((ztemp / 1000)) || ztemp_c="$ztemp"
 		label="Processador (CPU)"
 		case "$ztype" in
-			*cpu*) label="Processador (CPU)" ;;
+			*cpu*) label="Processador (CPU)"; has_cpu_thermal=1 ;;
 			*wifi*|*wlan*) label="Wi-Fi" ;;
 			*switch*|*phy*|*mdio*) label="Switch de Rede" ;;
 			*) label="$ztype" ;;
@@ -7088,8 +7548,21 @@ get_system_hardware_info() {
 				*mdio*|*switch*|*phy*) hlabel="Switch Ethernet"; htype="switch" ;;
 				*) hlabel="$hname"; htype="generic" ;;
 			esac
+			t_label_file="$(printf '%s' "$tf" | sed 's/_input$/_label/')"
+			t_label="$(cat "$t_label_file" 2>/dev/null || echo '')"
+			if [ -n "$t_label" ]; then
+				hlabel="$t_label"
+				case "$t_label" in
+					*Core*|*CPU*|*Package*|*cpu*) htype="cpu" ;;
+					*Wi-Fi*|*WLAN*|*wifi*|*wlan*) htype="wifi" ;;
+					*) htype="generic" ;;
+				esac
+			fi
 			if [ "$htype" = "cpu" ]; then
-				continue
+				if [ "$has_cpu_thermal" = 1 ]; then
+					continue
+				fi
+				has_cpu_thermal=1
 			fi
 			[ "$first_t" = 1 ] && first_t=0 || printf ','
 			printf '{"name":"%s","type":"%s","temp_c":%s}' \
@@ -7178,6 +7651,7 @@ case "$action" in
 		shift
 		uci -q set equipe_dashboard.setup=ezsetup
 		uci -q set equipe_dashboard.setup.state=draft
+		uci -q set equipe_dashboard.setup.applied_step=0
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
@@ -7194,14 +7668,46 @@ case "$action" in
 					value="$(printf '%s' "$value" | tr 'a-z' 'A-Z')"; printf '%s' "$value" | grep -Eq '^([A-Z]{2}|00)$' || { echo 'Pais invalido' >&2; exit 2; } ;;
 				wifi_mode)
 					case "$value" in unified|split) ;; *) echo 'Modo Wi-Fi invalido' >&2; exit 2 ;; esac ;;
-				main_ssid|guest_ssid)
+				main_ssid|guest_ssid|main_ssid_2g|main_ssid_5g)
 					valid_plain "$value" 32 && [ -n "$value" ] || { echo 'SSID invalido' >&2; exit 2; } ;;
-				main_key|guest_key)
-					valid_wifi_password "$value" || { echo 'Senha Wi-Fi invalida' >&2; exit 2; } ;;
-				guest_enabled|guest_limit_enabled|wan2_enabled|sqm_enabled|disable_ipv6|disable_wps|use_argon)
+				main_key|guest_key|main_key_2g|main_key_5g)
+					if [ -n "$value" ]; then
+						valid_wifi_password "$value" || { echo 'Senha Wi-Fi invalida (minimo 8 caracteres)' >&2; exit 2; }
+					fi ;;
+				guest_enabled|guest_limit_enabled|wan2_enabled|sqm_enabled|disable_ipv6|disable_wps|change_admin_password)
 					value="$(ez_bool "$value")" ;;
+				admin_password)
+					[ -z "$value" ] || valid_plain "$value" 64 || { echo 'Senha de administrador invalida' >&2; exit 2; } ;;
 				guest_download_kbps|guest_upload_kbps)
 					valid_sqm_rate "$value" || { echo 'Limite visitante invalido' >&2; exit 2; } ;;
+				wan1_proto)
+					case "$value" in dhcp|pppoe|static) ;; *) echo 'Protocolo WAN1 invalido' >&2; exit 2 ;; esac ;;
+				wan1_username)
+					valid_plain "$value" 96 || { echo 'Usuario PPPoE invalido' >&2; exit 2; } ;;
+				wan1_password)
+					valid_plain "$value" 128 || { echo 'Senha PPPoE invalida' >&2; exit 2; } ;;
+				wan1_ipaddr|wan1_netmask|wan1_gateway)
+					[ -z "$value" ] || valid_ipv4 "$value" || { echo "Parametro $key invalido" >&2; exit 2; } ;;
+				wan1_dns)
+					val="$(printf '%s' "$value" | tr ',;\t' '  ' | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//')"
+					valid_plain "$val" 120 || { echo 'DNS WAN1 invalido' >&2; exit 2; }
+					for server in $val; do valid_ip "$server" || { echo "DNS WAN1 invalido: $server" >&2; exit 2; }; done
+					value="$val"
+					;;
+				wan2_proto)
+					case "$value" in dhcp|pppoe|static) ;; *) echo 'Protocolo WAN2 invalido' >&2; exit 2 ;; esac ;;
+				wan2_username)
+					valid_plain "$value" 96 || { echo 'Usuario PPPoE WAN2 invalido' >&2; exit 2; } ;;
+				wan2_password)
+					valid_plain "$value" 128 || { echo 'Senha PPPoE WAN2 invalida' >&2; exit 2; } ;;
+				wan2_ipaddr|wan2_netmask|wan2_gateway)
+					[ -z "$value" ] || valid_ipv4 "$value" || { echo "Parametro $key invalido" >&2; exit 2; } ;;
+				wan2_dns)
+					val="$(printf '%s' "$value" | tr ',;\t' '  ' | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//')"
+					valid_plain "$val" 120 || { echo 'DNS WAN2 invalido' >&2; exit 2; }
+					for server in $val; do valid_ip "$server" || { echo "DNS WAN2 invalido: $server" >&2; exit 2; }; done
+					value="$val"
+					;;
 				wan_mode)
 					case "$value" in single|failover|balanced|wan1|wan2) ;; *) echo 'Modo WAN invalido' >&2; exit 2 ;; esac ;;
 				wan2_port)
@@ -7213,8 +7719,11 @@ case "$action" in
 				dns_mode)
 					case "$value" in operator|recommended|custom) ;; *) echo 'Modo DNS invalido' >&2; exit 2 ;; esac ;;
 				dns_servers)
-					valid_plain "$value" 120 || { echo 'DNS invalido' >&2; exit 2; }
-					for server in $value; do valid_ipv4 "$server" || { echo 'DNS deve conter IPv4 validos' >&2; exit 2; }; done ;;
+					val="$(printf '%s' "$value" | tr ',;	' '  ' | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//')"
+					valid_plain "$val" 120 || { echo 'DNS invalido' >&2; exit 2; }
+					for server in $val; do valid_ip "$server" || { echo "DNS invalido: $server" >&2; exit 2; }; done
+					value="$val"
+					;;
 				install_modules)
 					valid_plain "$value" 120 || { echo 'Lista de modulos invalida' >&2; exit 2; }
 					for module in $value; do feature_package "$module" >/dev/null || { echo "Modulo invalido: $module" >&2; exit 2; }; done ;;
@@ -7234,13 +7743,16 @@ case "$action" in
 			ez_progress 1 "backup:$backup"
 		fi
 		if [ "$(ez_get applied_step 0)" -lt 2 ]; then
+			if [ "$(ez_get change_admin_password 0)" = 1 ]; then
+				adm_pass="$(ez_get admin_password '')"
+				if [ -n "$adm_pass" ]; then
+					printf '%s\n%s\n' "$adm_pass" "$adm_pass" | passwd root >/dev/null 2>&1 || true
+					uci -q delete equipe_dashboard.setup.admin_password
+				fi
+			fi
 			title="$(ez_get router_name 'ARK Router')"; country="$(ez_get country BR)"
 			uci -q set equipe_dashboard.main=settings
 			uci -q set "equipe_dashboard.main.title=$title"
-			if [ "$(ez_get use_argon 1)" = 1 ] && installed luci-theme-argon; then
-				uci -q set luci.main.mediaurlbase='/luci-static/argon'
-				uci commit luci
-			fi
 			if [ "$(ez_get disable_wps 1)" = 1 ]; then
 				uci -q show wireless 2>/dev/null | sed -n "s/^\(wireless\.[^.]*\)\.wps_pushbutton=.*/\1/p" | while read -r section; do uci -q set "$section.wps_pushbutton=0"; done
 				uci -q show wireless 2>/dev/null | sed -n "s/^\(wireless\.[^.]*\)\.wps_label=.*/\1/p" | while read -r section; do uci -q set "$section.wps_label=0"; done
@@ -7251,7 +7763,7 @@ case "$action" in
 			ez_progress 2 identity
 		fi
 		if [ "$(ez_get applied_step 0)" -lt 3 ]; then
-			if [ "$(ez_get disable_ipv6 1)" = 1 ]; then
+			if [ "$(ez_get disable_ipv6 0)" = 1 ]; then
 				disable_ipv6_full
 			fi
 			dns_mode="$(ez_get dns_mode recommended)"
@@ -7269,22 +7781,39 @@ case "$action" in
 			ez_progress 3 network_basics
 		fi
 		if [ "$(ez_get applied_step 0)" -lt 4 ]; then
-			main_ssid="$(ez_get main_ssid 'ARK Router')"; main_key="$(ez_get main_key '')"
-			guest_ssid="$(ez_get guest_ssid 'ARK Router Visitantes')"; guest_key="$(ez_get guest_key '')"
+			main_ssid="$(ez_get main_ssid '')"
+			[ -n "$main_ssid" ] || main_ssid="$(uci -q get wireless.default_radio0.ssid || uci -q get wireless.@wifi-iface[0].ssid || printf 'ARK Router')"
+			main_key="$(ez_get main_key '')"
+			[ -n "$main_key" ] || main_key="$(uci -q get wireless.default_radio0.key || uci -q get wireless.@wifi-iface[0].key || true)"
+			guest_ssid="$(ez_get guest_ssid 'ARK Router Visitantes')"
+			guest_key="$(ez_get guest_key '')"
+			[ -n "$guest_key" ] || guest_key="$(uci -q get wireless.guest_radio0.key || uci -q get wireless.@wifi-iface[1].key || true)"
 			mode="$(ez_get wifi_mode unified)"
-			[ -n "$main_key" ] && valid_wifi_password "$main_key" || { echo 'Senha da rede principal ausente ou invalida' >&2; exit 2; }
-			[ "$(ez_get guest_enabled 1)" = 0 ] || { [ -n "$guest_key" ] && valid_wifi_password "$guest_key"; } || { echo 'Senha da rede visitante ausente ou invalida' >&2; exit 2; }
+			if [ -n "$main_key" ]; then
+				valid_wifi_password "$main_key" || { echo 'Senha da rede principal invalida (minimo 8 caracteres)' >&2; exit 2; }
+			fi
+			guest_enabled="$(ez_get guest_enabled 0)"
+			if [ "$guest_enabled" = 1 ]; then
+				if [ -z "$guest_key" ]; then guest_key="visitante1234"; fi
+				valid_wifi_password "$guest_key" || { echo 'Senha da rede visitante invalida (minimo 8 caracteres)' >&2; exit 2; }
+			fi
 			if [ "$mode" = split ]; then
-				main2="${main_ssid}-2G"; main5="${main_ssid}-5G"; guest2="${guest_ssid}-2G"; guest5="${guest_ssid}-5G"
+				main2="$(ez_get main_ssid_2g "$main_ssid")"
+				[ -n "$main2" ] || main2="${main_ssid}"
+				key2="$(ez_get main_key_2g "$main_key")"
+				main5="$(ez_get main_ssid_5g '')"
+				[ -n "$main5" ] || main5="${main_ssid}_5G"
+				key5="$(ez_get main_key_5g "$main_key")"
+				guest2="${guest_ssid}-2G"; guest5="${guest_ssid}-5G"
 			else
-				main2="$main_ssid"; main5="$main_ssid"; guest2="$guest_ssid"; guest5="$guest_ssid"
+				main2="$main_ssid"; main5="$main_ssid"; key2="$main_key"; key5="$main_key"
+				guest2="$guest_ssid"; guest5="$guest_ssid"
 			fi
 			radio2="$(wifi_radio_2g)"; radio5="$(wifi_radio_5g)"
 			[ -n "$radio2" ] || { echo 'Radio 2,4 GHz nao encontrado' >&2; exit 3; }
 			[ -n "$radio5" ] || radio5="$radio2"
-			ez_apply_wifi_iface default_radio0 "$radio2" lan "$main2" "$main_key" 0
-			ez_apply_wifi_iface default_radio1 "$radio5" lan "$main5" "$main_key" 0
-			guest_enabled="$(ez_get guest_enabled 1)"
+			ez_apply_wifi_iface default_radio0 "$radio2" lan "$main2" "${key2:-$main_key}" 0
+			ez_apply_wifi_iface default_radio1 "$radio5" lan "$main5" "${key5:-$main_key}" 0
 			if [ "$guest_enabled" = 1 ]; then
 				ez_apply_guest_network 1
 				ez_apply_wifi_iface guest_radio0 "$radio2" guest "$guest2" "$guest_key" 0
@@ -7301,22 +7830,42 @@ case "$action" in
 			ez_progress 4 wifi
 		fi
 		if [ "$(ez_get applied_step 0)" -lt 5 ]; then
-			if [ "$(ez_get wan2_enabled 1)" = 1 ]; then
-				wan2_port="$(ez_get wan2_port lan1)"
-				ports="$(uci -q get network.@device[0].ports 2>/dev/null)"
-				if [ -n "$ports" ]; then
-					new_ports=""
-					for p in $ports; do
-						[ "$p" = "$wan2_port" ] || new_ports="${new_ports:+${new_ports} }$p"
-					done
-					uci -q set network.@device[0].ports="$new_ports"
-				fi
-				uci -q set network.wan2=interface
-				uci -q set network.wan2.proto=dhcp
+			# WAN 1 Configuration
+			wan1_proto="$(ez_get wan1_proto '')"
+			if [ -n "$wan1_proto" ]; then
+				wan1_user="$(ez_get wan1_username '')"
+				wan1_pass="$(ez_get wan1_password '')"
+				wan1_ip="$(ez_get wan1_ipaddr '')"
+				wan1_mask="$(ez_get wan1_netmask '')"
+				wan1_gw="$(ez_get wan1_gateway '')"
+				wan1_dns="$(ez_get wan1_dns '')"
+				apply_wan_proto wan "$wan1_proto" "$wan1_user" "$wan1_pass" "$wan1_ip" "$wan1_mask" "$wan1_gw" "$wan1_dns"
+				uci -q set network.wan.metric=10
+			fi
+
+			# WAN 2 Configuration
+			wan2_port="$(ez_get wan2_port lan1)"
+			if [ "$(ez_get wan2_enabled 0)" = 1 ]; then
+				remove_lan_port "$wan2_port"
+				wan2_proto="$(ez_get wan2_proto dhcp)"
+				wan2_user="$(ez_get wan2_username '')"
+				wan2_pass="$(ez_get wan2_password '')"
+				wan2_ip="$(ez_get wan2_ipaddr '')"
+				wan2_mask="$(ez_get wan2_netmask '')"
+				wan2_gw="$(ez_get wan2_gateway '')"
+				wan2_dns="$(ez_get wan2_dns '')"
+				apply_wan_proto wan2 "$wan2_proto" "$wan2_user" "$wan2_pass" "$wan2_ip" "$wan2_mask" "$wan2_gw" "$wan2_dns"
 				uci -q set "network.wan2.device=$wan2_port"
 				uci -q set network.wan2.metric=20
-				uci -q add_list firewall.@zone[1].network=wan2
+				zone="$(firewall_wan_zone_section)"
+				[ -n "$zone" ] && firewall_zone_has_network "$zone" wan2 || uci -q add_list "firewall.$zone.network=wan2"
+			else
+				add_lan_port "$wan2_port"
+				uci -q delete network.wan2
+				zone="$(firewall_wan_zone_section)"
+				[ -n "$zone" ] && uci -q del_list "firewall.$zone.network=wan2" 2>/dev/null || true
 			fi
+
 			if installed luci-app-mwan3 || [ -f /etc/config/mwan3 ]; then
 				ensure_mwan3_ark_config
 				case "$(ez_get wan_mode failover)" in
@@ -7337,6 +7886,7 @@ case "$action" in
 				uci commit mwan3
 			fi
 			uci commit network
+			uci commit firewall
 			ez_progress 5 wan
 		fi
 		if [ "$(ez_get applied_step 0)" -lt 6 ]; then
@@ -7362,9 +7912,10 @@ case "$action" in
 			ez_progress 6 qos
 		fi
 		if [ "$(ez_get applied_step 0)" -lt 7 ]; then
-			/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
-			/etc/init.d/firewall restart >/dev/null 2>&1 || true
 			/etc/init.d/network reload >/dev/null 2>&1 || true
+			sleep 1
+			/etc/init.d/firewall restart >/dev/null 2>&1 || true
+			/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 			[ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
 			[ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 || true
 			(sleep 2; wifi reload) >/dev/null 2>&1 &
@@ -7522,9 +8073,9 @@ case "$action" in
 		feature_json argon luci-theme-argon "$argon_installable" "$argon_reason"; printf ','
 		feature_json uhttpd luci-app-uhttpd true; printf ','
 		feature_json wifi '' false; printf ','
-		feature_json history '' false; printf ','
+		feature_json history history false; printf ','
 		feature_json temperature '' false; printf ','
-		feature_json custom_qos '' false; printf ','
+		feature_json custom_qos custom_qos false; printf ','
 		feature_json speedify speedify true; printf ','
 		feature_json tailscale tailscale true; printf ','
 		feature_json zerotier zerotier true; printf ','
@@ -8209,11 +8760,25 @@ case "$action" in
 		echo ok
 		;;
 	wan-save)
-		iface='' mode='wan' device='' proto='dhcp' username='' password='' ipaddr='' netmask='' gateway='' dns='' macaddr='' modem_ip=''
+		iface='' mode='wan' device='' proto='dhcp' username='' password='' ipaddr='' netmask='' gateway='' dns='' macaddr='' modem_ip='' metric='' ipv6=''
 		shift
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
+				ipv6) case "$value" in 1|true|yes) ipv6=1 ;; 0|false|no) ipv6=0 ;; *) echo 'IPv6 WAN invalido' >&2; exit 2 ;; esac ;;
+				metric)
+					case "$value" in
+						[1-9]|[1-9][0-9]|[1-9][0-9][0-9])
+							if [ "$value" -ge 1 ] && [ "$value" -le 255 ]; then
+								metric="$value"
+							else
+								echo 'Metrica WAN deve estar entre 1 e 255' >&2
+								exit 2
+							fi
+							;;
+						*) echo 'Metrica WAN invalida' >&2; exit 2 ;;
+					esac
+					;;
 				iface) case "$value" in wan|wan[2-9]|wan[1-9][0-9]) iface="$value" ;; *) echo 'WAN invalida' >&2; exit 2 ;; esac ;;
 				mode) case "$value" in wan|lan) mode="$value" ;; *) echo 'Modo da porta invalido' >&2; exit 2 ;; esac ;;
 				device) valid_net_device "$value" || { echo 'Porta fisica invalida' >&2; exit 2; }; device="$value" ;;
@@ -8328,14 +8893,37 @@ case "$action" in
 		uci -q set "network.$iface.ifname=$effective_dev"
 		[ -n "$device" ] && uci -q set "network.$iface.ark_phys_port=$device"
 
+		idx="$(printf '%s' "$iface" | sed 's/[^0-9]//g')"
+		[ -n "$idx" ] || idx=1
+		default_metric=$((idx * 10))
+		[ -n "$metric" ] || metric="$default_metric"
+
+		# Validacao de prioridade/metrica duplicada (nao pode existir duas WANs ativas com o mesmo peso)
+		for other_wan in $(uci -q show network 2>/dev/null | grep -E '^network\.wan[0-9]*=interface' | cut -d. -f2 | cut -d= -f1); do
+			[ "$other_wan" != "$iface" ] && [ "$other_wan" != "wan6" ] || continue
+			other_proto="$(uci -q get "network.$other_wan.proto")"
+			[ -n "$other_proto" ] && [ "$other_proto" != "none" ] || continue
+			other_m="$(uci -q get "network.$other_wan.metric")"
+			if [ -n "$other_m" ] && [ "$other_m" -eq "$metric" ] 2>/dev/null; then
+				echo "Conflito de prioridade: A interface $other_wan ja utiliza a metrica $metric. Cada WAN deve ter um peso exclusivo para evitar instabilidade de rotas." >&2
+				exit 2
+			fi
+		done
+
+		uci -q set "network.$iface.metric=$metric"
+		uci -q set "network.$iface.ip6metric=$metric"
+		if [ -n "$ipv6" ]; then
+			uci -q set "network.$iface.ipv6=$ipv6"
+			if [ "$ipv6" = "1" ]; then
+				uci -q delete "network.$iface.accept_ra" 2>/dev/null || true
+				uci -q delete "network.$iface.send_rs" 2>/dev/null || true
+			else
+				uci -q set "network.$iface.accept_ra=0"
+				uci -q set "network.$iface.send_rs=0"
+			fi
+		fi
 		if [ "$iface" != wan ]; then
-			idx="$(printf '%s' "$iface" | sed 's/[^0-9]//g')"
-			[ -n "$idx" ] || idx=2
-			metric=$((idx * 10))
-			uci -q set "network.$iface.metric=$metric"
 			uci -q set "sqm.$iface.interface=$effective_dev" 2>/dev/null || true
-		else
-			uci -q set network.wan.metric=10
 		fi
 		apply_wan_proto "$iface" "$proto" "$username" "$password" "$ipaddr" "$netmask" "$gateway" "$dns" "$macaddr" || exit $?
 
@@ -8908,15 +9496,33 @@ case "$action" in
 			[ "$(uci -q get "equipe_devices.$name_section.parental_block" || printf 0)" = 1 ] && parental_block=true
 			[ "$(uci -q get "equipe_devices.$name_section.safesearch" || printf 0)" = 1 ] && safesearch=true
 			blocked_services="$(uci -q get "equipe_devices.$name_section.blocked_services" || true)"
-			saved_ipv6_allowed="$(uci -q get "equipe_devices.$name_section.ipv6_allowed" || printf 0)"
-			ipv6_allowed=false
-			[ "$saved_ipv6_allowed" = 1 ] && ipv6_allowed=true
+			cur_ipv6_mode="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
+			saved_ipv6_allowed="$(uci -q get "equipe_devices.$name_section.ipv6_allowed" || true)"
+			if [ "$cur_ipv6_mode" = "selective" ]; then
+				ipv6_allowed=false
+				[ "$saved_ipv6_allowed" = "1" ] && ipv6_allowed=true
+			else
+				ipv6_allowed=true
+				[ "$saved_ipv6_allowed" = "0" ] && ipv6_allowed=false
+			fi
+			saved_custom_dns="$(uci -q get "equipe_devices.$name_section.custom_dns" || true)"
 		fi
 		adguard_installed=false
 		[ -x /usr/bin/AdGuardHome ] && [ "$(uci -q get equipe_perf.settings.adblock_cloud || echo 0)" != "1" ] && adguard_installed=true
-		printf '{"reserved":%s,"ip":"%s","priority":%s,"dscp":"%s","wan_route":"%s","limit_enabled":%s,"limit_down":%d,"limit_up":%d,"limit_lan_bypass":%s,"operation_profile":"%s","qos_active":%s,"parental_mode":"%s","parental_block":%s,"safesearch":%s,"blocked_services":"%s","adguard_installed":%s,"ipv6_allowed":%s}\n' \
+		dmz_active=false
+		dmz_dest="$(uci -q get firewall.ark_dmz.dest_ip || true)"
+		dmz_en="$(uci -q get firewall.ark_dmz.enabled || printf 1)"
+		saved_dmz_mac="$(uci -q get equipe_dashboard.dmz.mac || true)"
+		if [ -n "$dmz_dest" ] && [ "$dmz_en" != 0 ]; then
+			if [ -n "$ip" ] && [ "$ip" = "$dmz_dest" ]; then
+				dmz_active=true
+			elif [ -n "$saved_dmz_mac" ] && [ "$mac" = "$saved_dmz_mac" ]; then
+				dmz_active=true
+			fi
+		fi
+		printf '{"reserved":%s,"ip":"%s","priority":%s,"dscp":"%s","wan_route":"%s","limit_enabled":%s,"limit_down":%d,"limit_up":%d,"limit_lan_bypass":%s,"operation_profile":"%s","qos_active":%s,"parental_mode":"%s","parental_block":%s,"safesearch":%s,"blocked_services":"%s","adguard_installed":%s,"ipv6_allowed":%s,"custom_dns":"%s","dmz":%s}\n' \
 			"$reserved" "$(json_escape "$ip")" "$priority" "$(json_escape "$dscp")" "$(json_escape "$wan_route")" "$limit_enabled" "$limit_down" "$limit_up" "$limit_lan_bypass" "$(ark_operation_profile)" "$(feature_active sqm && bool 1 || bool 0)" \
-			"$(json_escape "$parental_mode")" "$parental_block" "$safesearch" "$(json_escape "$blocked_services")" "$adguard_installed" "$ipv6_allowed"
+			"$(json_escape "$parental_mode")" "$parental_block" "$safesearch" "$(json_escape "$blocked_services")" "$adguard_installed" "$ipv6_allowed" "$(json_escape "$saved_custom_dns")" "$dmz_active"
 		;;
 	device-limits-list)
 		device_limits_json
@@ -8939,6 +9545,13 @@ case "$action" in
 		mem_avail_kb="$(awk '/MemAvailable:/ {print $2; exit}' /proc/meminfo 2>/dev/null || awk '/MemFree:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
 		printf '{"ok":true,"mem_total_kb":%s,"mem_avail_kb":%s}\n' "$mem_total_kb" "$mem_avail_kb"
 		;;
+	dmz-status)
+		dmz_status_json
+		;;
+	dmz-set)
+		shift
+		dmz_set "$@"
+		;;
 	dns-turbo-status)
 		dns_turbo_status_json
 		;;
@@ -8960,7 +9573,7 @@ case "$action" in
 		system_storage_purge
 		;;
 	device-save)
-		mac="$(printf '%s' "$2" | tr '-' ':' | tr 'a-f' 'A-F' | tr -d ' ')"; name="$3"; mode="$4"; ip="$(printf '%s' "$5" | tr -d ' ,;\t\r\n')"; priority="$6"; target_dscp="$7"; wan_route="${8:-default}"; limit_enabled="${9:-0}"; limit_down="${10:-0}"; limit_up="${11:-0}"; parental_mode="${12:-default}"; parental_block="${13:-0}"; safesearch="${14:-0}"; blocked_services="${15:-}"; limit_lan_bypass="${16:-1}"; ipv6_allowed="${17:-0}"
+		mac="$(printf '%s' "$2" | tr '-' ':' | tr 'a-f' 'A-F' | tr -d ' ')"; name="$3"; mode="$4"; ip="$(printf '%s' "$5" | tr -d ' ,;\t\r\n')"; priority="$6"; target_dscp="$7"; wan_route="${8:-default}"; limit_enabled="${9:-0}"; limit_down="${10:-0}"; limit_up="${11:-0}"; parental_mode="${12:-default}"; parental_block="${13:-0}"; safesearch="${14:-0}"; blocked_services="${15:-}"; limit_lan_bypass="${16:-1}"; ipv6_allowed="${17:-0}"; custom_dns="${18:-}"; dmz_enabled="${19:-0}"
 		valid_mac "$mac" || { echo 'MAC invalido' >&2; exit 2; }
 		[ "${#name}" -le 48 ] || { echo 'Nome muito longo' >&2; exit 2; }
 		case "$mode" in automatic|reserved) ;; *) echo 'Modo de IP invalido' >&2; exit 2 ;; esac
@@ -8973,6 +9586,18 @@ case "$action" in
 		case "$parental_block" in 1|true) parental_block=1 ;; *) parental_block=0 ;; esac
 		case "$safesearch" in 1|true) safesearch=1 ;; *) safesearch=0 ;; esac
 		case "$ipv6_allowed" in 1|true) ipv6_allowed=1 ;; *) ipv6_allowed=0 ;; esac
+		clean_custom_dns=""
+		if [ -n "$custom_dns" ]; then
+			for dip in $(printf '%s' "$custom_dns" | tr ',;' ' '); do
+				if valid_ipv4 "$dip"; then
+					if [ -z "$clean_custom_dns" ]; then
+						clean_custom_dns="$dip"
+					else
+						clean_custom_dns="${clean_custom_dns},$dip"
+					fi
+				fi
+			done
+		fi
 		if [ "$mode" = reserved ]; then
 			valid_ipv4 "$ip" && same_managed_subnet "$ip" || { echo 'Use um IPv4 valido de uma rede local, diferente do endereco do roteador' >&2; exit 2; }
 			duplicate="$(uci -q show dhcp 2>/dev/null | grep -F ".ip='$ip'" | head -n1)"
@@ -8992,14 +9617,64 @@ case "$action" in
 			uci -q set "equipe_devices.$name_section.name=$name"
 		fi
 		host="$(find_dhcp_host "$mac")"
-		if [ "$mode" = reserved ]; then
+		tag_name="dns_$suffix"
+		if [ -n "$clean_custom_dns" ]; then
+			uci -q set "equipe_devices.$name_section.custom_dns=$clean_custom_dns"
+			uci -q set "dhcp.$tag_name=tag"
+			uci -q set "dhcp.$tag_name.dhcp_option=6,$clean_custom_dns"
+			uci -q set "dhcp.$tag_name.force=1"
+		else
+			uci -q delete "equipe_devices.$name_section.custom_dns" 2>/dev/null || true
+			uci -q delete "dhcp.$tag_name" 2>/dev/null || true
+		fi
+		if [ "$wan_route" != default ]; then
+			if [ -z "$ip" ]; then
+				if [ -f /tmp/dhcp.leases ]; then
+					ip="$(awk -v m="$(printf '%s' "$mac" | tr 'A-F' 'a-f')" '$2==m {print $3; exit}' /tmp/dhcp.leases)"
+				fi
+				if [ -z "$ip" ]; then
+					ip="$(ip neigh show 2>/dev/null | awk -v m="$(printf '%s' "$mac" | tr 'A-F' 'a-f')" '$5==m {print $1; exit}')"
+				fi
+			fi
+			if [ -z "$ip" ] || ! valid_ipv4 "$ip"; then
+				echo "Nao e possivel definir rota exclusiva de WAN sem um endereco IP valido para o dispositivo." >&2
+				exit 2
+			fi
+			# Garante reserva de DHCP para que o IP deste aparelho nunca mude no futuro
 			[ -n "$host" ] || host="ark_$suffix"
-			dns_host_name="$(printf '%s' "${name:-ark-$suffix}" | sed 's/[^a-zA-Z0-9_-]/-/g; s/-\{2,\}/-/g; s/^-//; s/-$//')"
+			dns_host_name="$(printf '%s' "${name:-ark-$suffix}" | sed 's/[^a-zA-Z0-9_-]/-/g; s/\-{2,\}/-/g; s/^-//; s/-$//')"
 			[ -n "$dns_host_name" ] || dns_host_name="ark-$suffix"
 			uci -q set "dhcp.$host=host"
 			uci -q set "dhcp.$host.name=$dns_host_name"
 			uci -q set "dhcp.$host.mac=$mac"
 			uci -q set "dhcp.$host.ip=$ip"
+			if [ -n "$clean_custom_dns" ]; then
+				uci -q set "dhcp.$host.tag=$tag_name"
+			else
+				uci -q delete "dhcp.$host.tag" 2>/dev/null || true
+			fi
+		elif [ "$mode" = reserved ]; then
+			[ -n "$host" ] || host="ark_$suffix"
+			dns_host_name="$(printf '%s' "${name:-ark-$suffix}" | sed 's/[^a-zA-Z0-9_-]/-/g; s/\-{2,\}/-/g; s/^-//; s/-$//')"
+			[ -n "$dns_host_name" ] || dns_host_name="ark-$suffix"
+			uci -q set "dhcp.$host=host"
+			uci -q set "dhcp.$host.name=$dns_host_name"
+			uci -q set "dhcp.$host.mac=$mac"
+			uci -q set "dhcp.$host.ip=$ip"
+			if [ -n "$clean_custom_dns" ]; then
+				uci -q set "dhcp.$host.tag=$tag_name"
+			else
+				uci -q delete "dhcp.$host.tag" 2>/dev/null || true
+			fi
+		elif [ -n "$clean_custom_dns" ]; then
+			[ -n "$host" ] || host="ark_$suffix"
+			dns_host_name="$(printf '%s' "${name:-ark-$suffix}" | sed 's/[^a-zA-Z0-9_-]/-/g; s/\-{2,\}/-/g; s/^-//; s/-$//')"
+			[ -n "$dns_host_name" ] || dns_host_name="ark-$suffix"
+			uci -q set "dhcp.$host=host"
+			uci -q set "dhcp.$host.name=$dns_host_name"
+			uci -q set "dhcp.$host.mac=$mac"
+			uci -q set "dhcp.$host.tag=$tag_name"
+			uci -q delete "dhcp.$host.ip" 2>/dev/null || true
 		else
 			[ -z "$host" ] || uci -q delete "dhcp.$host"
 		fi
@@ -9018,22 +9693,24 @@ case "$action" in
 		elif [ "$priority" = 0 ]; then uci -q delete "firewall.$priority_section"
 		fi
 		mwan3_changed=0
-		mwan3_rule="ark_dev_$suffix"
+		mwan3_rule="d_$suffix"
 		if [ "$wan_route" != default ]; then
 			uci -q set "equipe_devices.$name_section.wan_route=$wan_route"
 			policy="${wan_route}_only"
 			[ "$policy" = "wan1_only" ] && policy="wan_only"
+			uci -q delete "mwan3.ark_dev_$suffix" 2>/dev/null || true
 			uci -q set "mwan3.$mwan3_rule=rule"
 			uci -q set "mwan3.$mwan3_rule.family=ipv4"
 			uci -q set "mwan3.$mwan3_rule.proto=all"
 			uci -q set "mwan3.$mwan3_rule.dest_ip=0.0.0.0/0"
-			[ -n "$ip" ] && uci -q set "mwan3.$mwan3_rule.src_ip=$ip"
+			uci -q set "mwan3.$mwan3_rule.src_ip=$ip"
 			uci -q set "mwan3.$mwan3_rule.use_policy=$policy"
 			mwan3_changed=1
 		else
 			uci -q delete "equipe_devices.$name_section.wan_route" 2>/dev/null || true
-			if [ -n "$(uci -q get "mwan3.$mwan3_rule" 2>/dev/null)" ]; then
-				uci -q delete "mwan3.$mwan3_rule"
+			if [ -n "$(uci -q get "mwan3.$mwan3_rule" 2>/dev/null)" ] || [ -n "$(uci -q get "mwan3.ark_dev_$suffix" 2>/dev/null)" ]; then
+				uci -q delete "mwan3.$mwan3_rule" 2>/dev/null || true
+				uci -q delete "mwan3.ark_dev_$suffix" 2>/dev/null || true
 				mwan3_changed=1
 			fi
 		fi
@@ -9074,8 +9751,23 @@ case "$action" in
 		apply_device_bandwidth_limits
 		sanitize_dhcp_hostnames
 		device_apply_parental "$mac" "$ip" "$name" "$parental_mode" "$parental_block" "$safesearch" "$blocked_services"
-		cur_ipv6_mode="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
-		[ "$cur_ipv6_mode" = "selective" ] && sync_ipv6_selective_firewall
+		sync_ipv6_selective_firewall
+		case "$dmz_enabled" in
+			1|true|on)
+				if [ -z "$ip" ]; then
+					[ -f /tmp/dhcp.leases ] && ip="$(awk -v m="$(printf '%s' "$mac" | tr 'A-F' 'a-f')" '$2==m {print $3; exit}' /tmp/dhcp.leases)"
+					[ -z "$ip" ] && ip="$(ip neigh show 2>/dev/null | awk -v m="$(printf '%s' "$mac" | tr 'A-F' 'a-f')" '$5==m {print $1; exit}')"
+				fi
+				[ -n "$ip" ] && dmz_set 1 "$ip" "$mac" "$name" >/dev/null 2>&1 || true
+				;;
+			0|false|off)
+				cur_dmz_mac="$(uci -q get equipe_dashboard.dmz.mac || true)"
+				cur_dmz_ip="$(uci -q get firewall.ark_dmz.dest_ip || true)"
+				if [ "$mac" = "$cur_dmz_mac" ] || { [ -n "$ip" ] && [ "$ip" = "$cur_dmz_ip" ]; }; then
+					dmz_set 0 >/dev/null 2>&1 || true
+				fi
+				;;
+		esac
 		/etc/init.d/dnsmasq reload >/dev/null 2>&1
 		/etc/init.d/firewall reload >/dev/null 2>&1
 		[ "$mwan3_changed" = 1 ] && [ "$(uci -q get equipe_dashboard.speedify.desired_state)" != "connected" ] && (sleep 1; /etc/init.d/mwan3 restart >/dev/null 2>&1) &
@@ -10109,10 +10801,18 @@ EOF
 		fi
 		if [ "$flow_offload" = 1 ]; then
 			uci -q set firewall.@defaults[0].flow_offloading=1
+			# Detecta aceleracao em silicio MediaTek Filogic PPE / WED ou MT7621 PPE
+			if [ -e /sys/kernel/debug/ppe0 ] || [ -e /sys/kernel/debug/ppe1 ] || [ -d /sys/devices/platform/soc/15010000.wed ] || \
+			   grep -qiE 'mt7981|mt7986|mt7988|mt7621|mt7622|filogic' /tmp/sysinfo/board_name /tmp/sysinfo/model 2>/dev/null; then
+				uci -q set firewall.@defaults[0].flow_offloading_hw=1
+			else
+				uci -q set firewall.@defaults[0].flow_offloading_hw=0
+			fi
 			uci commit firewall
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
 		elif [ "$flow_offload" = 0 ]; then
 			uci -q set firewall.@defaults[0].flow_offloading=0
+			uci -q set firewall.@defaults[0].flow_offloading_hw=0
 			uci commit firewall
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
 		fi
@@ -10368,6 +11068,10 @@ EOF
 		fi
 		printf '{"ok":true,"target":"%s","custom_ip":"%s","track_ips":"%s"}\n' \
 			"$(json_escape "$target")" "$(json_escape "$custom_ip")" "$(json_escape "$track_ips")"
+		;;
+	sync-ipv6-firewall)
+		sync_ipv6_selective_firewall
+		echo ok
 		;;
 	*)
 		echo 'Uso: equipe-dashboard-control {features|...|irqbalance-toggle 0|1|...}' >&2

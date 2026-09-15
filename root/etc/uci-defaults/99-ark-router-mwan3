@@ -1,0 +1,12 @@
+#!/bin/sh
+# ARK Router - Inicialização Automática do Multi-WAN (mwan3)
+# Garante targets de ping e políticas ativas sem deixar track_ip vazio
+
+[ -f /etc/config/mwan3 ] || exit 0
+
+if [ -x /usr/sbin/equipe-dashboard-control ]; then
+	/usr/sbin/equipe-dashboard-control ensure_mwan3_ark_config >/dev/null 2>&1 || true
+	uci commit mwan3 >/dev/null 2>&1 || true
+fi
+
+exit 0

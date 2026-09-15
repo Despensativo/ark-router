@@ -1,24 +1,28 @@
 #!/bin/sh
-# Configura o Modo Auto Inteligente por padrao no Wi-Fi caso os canais estejam em auto
+# Configura o Wi-Fi Nativo, Ativação no Boot e Modo Inteligente para Todos os Modelos OpenWrt
 
 [ -f /etc/config/wireless ] || exit 0
 
 radio2=""
 radio5=""
+radio6=""
+
 for dev in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut -d= -f1); do
 	hwmode="$(uci -q get wireless.$dev.hwmode 2>/dev/null)"
 	band="$(uci -q get wireless.$dev.band 2>/dev/null)"
 	htmode="$(uci -q get wireless.$dev.htmode 2>/dev/null)"
 	case "$band" in
-		2g|2.4g) radio2="$dev" ;;
-		5g) radio5="$dev" ;;
+		2g|2.4g) [ -z "$radio2" ] && radio2="$dev" ;;
+		5g) [ -z "$radio5" ] && radio5="$dev" ;;
+		6g) [ -z "$radio6" ] && radio6="$dev" ;;
 		*)
 			case "$hwmode" in
-				11g|11b) radio2="$dev" ;;
-				11a) radio5="$dev" ;;
+				11g|11b) [ -z "$radio2" ] && radio2="$dev" ;;
+				11a) [ -z "$radio5" ] && radio5="$dev" ;;
 				*)
 					case "$htmode" in
-						VHT*|HE160|HE80) radio5="$dev" ;;
+						EHT320|EHT160) [ -z "$radio6" ] && radio6="$dev" || radio5="$dev" ;;
+						VHT*|HE160|HE80) [ -z "$radio5" ] && radio5="$dev" || radio6="$dev" ;;
 						HT20|HT40) [ -z "$radio2" ] && radio2="$dev" || radio5="$dev" ;;
 					esac
 					;;
@@ -28,6 +32,44 @@ for dev in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut 
 done
 
 changed=0
+
+# 1. Ativação Nativa Obrigatória Out-of-the-Box de Todos os Rádios
+for dev in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut -d= -f1); do
+	is_dis="$(uci -q get "wireless.$dev.disabled")"
+	if [ "$is_dis" = "1" ]; then
+		uci -q set "wireless.$dev.disabled=0"
+		changed=1
+	fi
+	# Define código de país seguro se não existir para evitar bloqueio regulatório nos drivers
+	cur_country="$(uci -q get "wireless.$dev.country")"
+	if [ -z "$cur_country" ]; then
+		uci -q set "wireless.$dev.country=BR"
+		changed=1
+	fi
+done
+
+# 2. Ativação e Nomeação Amigável de Todas as Interfaces AP
+for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
+	is_if_dis="$(uci -q get "wireless.$iface.disabled")"
+	if [ "$is_if_dis" = "1" ]; then
+		uci -q set "wireless.$iface.disabled=0"
+		changed=1
+	fi
+	cur_ssid="$(uci -q get "wireless.$iface.ssid")"
+	if [ "$cur_ssid" = "OpenWrt" ] || [ -z "$cur_ssid" ]; then
+		dev_of_iface="$(uci -q get "wireless.$iface.device")"
+		if [ -n "$radio6" ] && [ "$dev_of_iface" = "$radio6" ]; then
+			uci -q set "wireless.$iface.ssid=ARK Router 6G"
+		elif [ -n "$radio5" ] && [ "$dev_of_iface" = "$radio5" ]; then
+			uci -q set "wireless.$iface.ssid=ARK Router 5G"
+		else
+			uci -q set "wireless.$iface.ssid=ARK Router"
+		fi
+		changed=1
+	fi
+done
+
+# 3. Otimizações de Canal e Estabilidade para 2.4 GHz (IoT / Smart Home)
 if [ -n "$radio2" ]; then
 	ch2="$(uci -q get wireless.$radio2.channel)"
 	if [ "$ch2" = "auto" ] || [ -z "$ch2" ]; then
@@ -53,6 +95,7 @@ if [ -n "$radio2" ]; then
 	changed=1
 fi
 
+# 4. Otimizações de Canal e Salvaguarda UNII-3 para 5 GHz
 if [ -n "$radio5" ]; then
 	cur_ht5="$(uci -q get wireless.$radio5.htmode)"
 	ch5="$(uci -q get wireless.$radio5.channel)"
@@ -69,6 +112,22 @@ if [ -n "$radio5" ]; then
 			fi
 			changed=1
 		fi
+	fi
+	# Salvaguarda UNII-3 (149-165) em 160 MHz para evitar AP-DISABLED / crash do hostapd no boot
+	if [ "$ch5" != "auto" ] && [ -n "$ch5" ] && [ "$ch5" -ge 132 ] 2>/dev/null; then
+		case "$cur_ht5" in
+			HE160) uci -q set wireless.$radio5.htmode='HE80'; changed=1 ;;
+			VHT160) uci -q set wireless.$radio5.htmode='VHT80'; changed=1 ;;
+		esac
+	fi
+fi
+
+# 5. Otimizações para Rádio 6 GHz (Wi-Fi 6E / Wi-Fi 7)
+if [ -n "$radio6" ]; then
+	ch6="$(uci -q get wireless.$radio6.channel)"
+	if [ "$ch6" = "auto" ] || [ -z "$ch6" ]; then
+		uci -q set wireless.$radio6.channel='auto'
+		changed=1
 	fi
 fi
 
@@ -87,7 +146,9 @@ if [ -f /etc/config/mwan3 ] && ! uci -q get mwan3.iot_alexa_mqtt >/dev/null; the
 		set mwan3.iot_alexa_mqtt.timeout='3600'
 		commit mwan3
 EOF
-# Suporte a desligamento de wpa_supplicant em modo AP exclusivo
+fi
+
+# Suporte a desligamento de wpa_supplicant em modo AP exclusivo para economizar RAM
 if [ -f /etc/init.d/wpad ] && ! grep -q 'wireless.globals.supplicant' /etc/init.d/wpad; then
 	sed -i 's/if \[ -x "\/usr\/sbin\/wpa_supplicant" \]; then/if \[ "$(\/sbin\/uci -q get wireless.globals.supplicant || echo 1)" != "0" \] \&\& \[ -x "\/usr\/sbin\/wpa_supplicant" \]; then/' /etc/init.d/wpad 2>/dev/null || true
 fi

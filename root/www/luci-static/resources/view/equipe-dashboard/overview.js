@@ -7,7 +7,7 @@
 
 document.querySelector('head').appendChild(E('link', {
 	'rel': 'stylesheet', 'type': 'text/css',
-	'href': L.resource('view/equipe-dashboard/overview.css') + '?v=' + (window.ARK_VERSION || '1.0.1')
+	'href': L.resource('view/equipe-dashboard/overview.css') + '?v=' + (window.ARK_VERSION || '1.0.2')
 }));
 
 const callSystemBoard = rpc.declare({ object: 'system', method: 'board' });
@@ -122,6 +122,19 @@ function safe(promise, fallback, timeoutMs) {
 		fallback
 	);
 }
+
+function getDeviceIcon(name) {
+	const n = String(name || '').toLowerCase();
+	if (n.indexOf('gamer') >= 0 || n.indexOf('playstation') >= 0 || n.indexOf('ps5') >= 0 || n.indexOf('ps4') >= 0 || n.indexOf('xbox') >= 0 || n.indexOf('nintendo') >= 0 || n.indexOf('switch') >= 0 || n.indexOf('game') >= 0) return '🎮';
+	if (n.indexOf('tv') >= 0 || n.indexOf('box') >= 0 || n.indexOf('chromecast') >= 0 || n.indexOf('roku') >= 0 || n.indexOf('fire') >= 0 || n.indexOf('smart') >= 0) return '📺';
+	if (n.indexOf('pc') >= 0 || n.indexOf('desktop') >= 0 || n.indexOf('computador') >= 0 || n.indexOf('notebook') >= 0 || n.indexOf('macbook') >= 0 || n.indexOf('laptop') >= 0 || n.indexOf('dell') >= 0 || n.indexOf('lenovo') >= 0) return '💻';
+	if (n.indexOf('iphone') >= 0 || n.indexOf('ipad') >= 0 || n.indexOf('galaxy') >= 0 || n.indexOf('s23') >= 0 || n.indexOf('celular') >= 0 || n.indexOf('phone') >= 0 || n.indexOf('redmi') >= 0 || n.indexOf('xiaomi') >= 0 || n.indexOf('motorola') >= 0) return '📱';
+	if (n.indexOf('alexa') >= 0 || n.indexOf('echo') >= 0 || n.indexOf('sound') >= 0 || n.indexOf('som') >= 0) return '🔊';
+	if (n.indexOf('camera') >= 0 || n.indexOf('porteiro') >= 0 || n.indexOf('intelbras') >= 0) return '📹';
+	if (n.indexOf('lamp') >= 0 || n.indexOf('luz') >= 0 || n.indexOf('apagador') >= 0 || n.indexOf('tomada') >= 0 || n.indexOf('medidor') >= 0) return '💡';
+	return '🖥️';
+}
+
 function formatRate(bits) {
 	bits = Number(bits) || 0;
 	if (bits >= 1000000000) return (bits / 1000000000).toFixed(bits >= 10000000000 ? 1 : 2) + ' Gbps';
@@ -510,14 +523,19 @@ function deviceLimitsMap(config) {
 	});
 	return out;
 }
-function deviceIpv6Map(config) {
+function deviceIpv6Map(config, globalIpv6Mode) {
 	const out = {};
 	const v = values(config);
+	const isSelective = (globalIpv6Mode === 'selective');
 	Object.keys(v).forEach(function(k) {
 		const x = v[k];
 		if (x && x.mac) {
 			const mac = String(x.mac).toUpperCase();
-			out[mac] = (String(x.ipv6_allowed) === '1' || x.ipv6_allowed === true);
+			if (isSelective) {
+				out[mac] = (String(x.ipv6_allowed) === '1' || x.ipv6_allowed === true);
+			} else {
+				out[mac] = (String(x.ipv6_allowed) !== '0' && x.ipv6_allowed !== false);
+			}
 		}
 	});
 	return out;
@@ -892,7 +910,8 @@ return view.extend({
 		const isGamer = targetMode === 'gamer';
 		const sqm = values((this.currentData||{}).sqm);
 		const qosActive = sqmWanProfiles(this.currentData||{}).some(function(profile){ return !!(sqm[profile.section] && sqm[profile.section].enabled === '1'); });
-		const autoEnableSqm = E('input', {type: 'checkbox', checked: true});
+		const autoEnableSqm = E('input', {type: 'checkbox', checked: ''});
+		autoEnableSqm.checked = true;
 		const modalElements = [
 			E('p', {}, [isGamer ? 'Ativar o Modo Gamer (Baixa Latência)?' : 'Voltar ao Modo Padrão / Controlado?']),
 			E('p', {class: 'alert-message warning'}, [isGamer ? 'O ARK Router ativará o tema Vermelho Gamer, aplicará otimizações de baixa latência e anti-bufferbloat (CAKE ack-filter) e priorizará pacotes de jogos em tempo real (DSCP EF).' : 'O ARK Router retornará ao tema visual padrão e aplicará o equilíbrio padrão de tráfego.'])
@@ -1400,7 +1419,7 @@ return view.extend({
 		});
 
 		const limitsMap = deviceLimitsMap(data.names);
-		const ipv6Map = deviceIpv6Map(data.names);
+		const ipv6Map = deviceIpv6Map(data.names, (values(data.equipeDashboardConfig).ipv6||{}).mode || 'dual_stack');
 		const parentalMap = deviceParentalMap(data.names);
 		const dhcp6Leases = (data.leases && data.leases.dhcp6_leases) || [];
 		const dhcp6ActiveMap = {};
@@ -1649,7 +1668,10 @@ return view.extend({
 					if (ipv6Map[d.mac] || dhcp6ActiveMap[d.mac]) {
 						badges.push(E('span', { class: 'ex-device-badge badge-ipv6', style: 'background:rgba(16,185,129,0.16);color:#10b981;border:1px solid rgba(16,185,129,0.35);font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;', title: ipv6Map[d.mac] ? 'IPv6 Permitido para este aparelho' : 'IPv6 Ativo' }, [ '⚡ IPv6' ]));
 					}
-					if (par && par.mode === 'bypass') {
+					if (this.dmzActive && ((this.dmzDestIp && this.dmzDestIp === d.ip) || (this.dmzMac && this.dmzMac === d.mac))) {
+				badges.push(E('span', { class: 'ex-device-badge badge-dmz', style: 'background:rgba(244,63,94,0.18);color:#f43f5e;border:1px solid rgba(244,63,94,0.4);font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;', title: 'Zona Desmilitarizada (DMZ): Todas as portas da WAN direcionadas para este dispositivo' }, [ '🎯 DMZ Ativa' ]));
+			}
+			if (par && par.mode === 'bypass') {
 						badges.push(E('span', { class: 'ex-device-badge badge-bypass', style: 'background:rgba(59,130,246,0.16);color:#60a5fa;border:1px solid rgba(59,130,246,0.35);font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;', title: 'Bypass AdGuard: DNS liberado direto para a Internet (1.1.1.1) sem bloqueio de anúncios ou filtros' }, [ '⚡ Bypass AdGuard' ]));
 					} else if (par && par.mode === 'custom') {
 						badges.push(E('span', { class: 'ex-device-badge badge-parental', style: 'background:rgba(239,68,68,0.16);color:#f87171;border:1px solid rgba(239,68,68,0.35);font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;', title: 'Filtro Individual / Parental ativo para este aparelho' }, [ '🛡️ Filtro Ativo' ]));
@@ -1729,6 +1751,7 @@ return view.extend({
 			]);
 			body.appendChild(tr);
 		},this));
+		this.devices = devices;
 		text('ex-device-count',devices.length+' conectado'+(devices.length===1?'':'s'));
 		const empty=document.getElementById('ex-device-empty'); if(empty)empty.style.display=devices.length?'none':'';
 	},
@@ -2114,9 +2137,10 @@ return view.extend({
 
 			const limitToggle = E('input', {
 				type: 'checkbox',
-				checked: limitEnabled,
+				checked: limitEnabled ? '' : null,
 				style: 'width: 20px; height: 20px; cursor: pointer;'
 			});
+			limitToggle.checked = !!limitEnabled;
 
 			const limitPresets = [
 				{ label: '♾️ Ilimitado', down: 0, up: 0 },
@@ -2143,8 +2167,9 @@ return view.extend({
 			let limitLanBypass = (state.limit_lan_bypass == null || state.limit_lan_bypass === true || state.limit_lan_bypass === '1' || state.limit_lan_bypass === 1);
 			const lanBypassToggle = E('input', {
 				type: 'checkbox',
-				checked: limitLanBypass
+				checked: limitLanBypass ? '' : null
 			});
+			lanBypassToggle.checked = !!limitLanBypass;
 
 			const lanBypassStatusPill = E('span', {
 				class: 'ex-pill ok',
@@ -2253,39 +2278,60 @@ return view.extend({
 				limitLanBypassBlock
 			]));
 
-			// --- Seção: Conectividade IPv6 Individual (Modo Seletivo) ---
+			// --- Seção: Protocolo de Internet / IPv6 Individual ---
 			let ipv6Allowed = (state.ipv6_allowed === true || state.ipv6_allowed === '1' || state.ipv6_allowed === 1);
-			const ipv6Toggle = E('input', {
-				type: 'checkbox',
-				checked: ipv6Allowed,
-				style: 'width: 20px; height: 20px; cursor: pointer;'
-			});
-			const ipv6StatusPill = E('span', {
-				class: 'ex-pill ' + (ipv6Allowed ? 'online' : 'standby'),
-				style: 'font-size: 0.72rem; padding: 2px 8px; font-weight: 600;'
-			}, [ ipv6Allowed ? '⚡ PERMITIDO' : 'BLOQUEADO NO MODO SELETIVO' ]);
+			const ipv6BtnDual = E('button', {
+				type: 'button',
+				class: 'ex-priority-option-btn' + (ipv6Allowed ? ' active' : ''),
+				style: 'flex: 1; min-height: 40px; font-weight: 700;',
+				click: function() { setIpv6Mode(true); }
+			}, [ '⚡ Pilha Dupla (IPv4 + IPv6)' ]);
 
-			ipv6Toggle.addEventListener('change', function() {
-				ipv6StatusPill.className = 'ex-pill ' + (ipv6Toggle.checked ? 'online' : 'standby');
-				ipv6StatusPill.textContent = ipv6Toggle.checked ? '⚡ PERMITIDO' : 'BLOQUEADO NO MODO SELETIVO';
+			const ipv6BtnBlocked = E('button', {
+				type: 'button',
+				class: 'ex-priority-option-btn' + (!ipv6Allowed ? ' active' : ''),
+				style: 'flex: 1; min-height: 40px; font-weight: 700;',
+				click: function() { setIpv6Mode(false); }
+			}, [ '🚫 IPv4 Puro (Bloquear IPv6)' ]);
+
+			const ipv6StatusPill = E('span', {
+				class: 'ex-pill ' + (ipv6Allowed ? 'online' : 'warning'),
+				style: 'font-size: 0.72rem; padding: 2px 8px; font-weight: 600;'
 			});
+
+			const ipv6DescText = E('small', { class: 'ex-muted', style: 'display: block; margin-top: 6px; line-height: 1.4;' });
+
+			const setIpv6Mode = function(allowed) {
+				ipv6Allowed = !!allowed;
+				ipv6BtnDual.classList.toggle('active', ipv6Allowed);
+				ipv6BtnBlocked.classList.toggle('active', !ipv6Allowed);
+				if (ipv6Allowed) {
+					ipv6StatusPill.className = 'ex-pill online';
+					ipv6StatusPill.textContent = '⚡ PILHA DUPLA (LIBERADO)';
+					ipv6DescText.textContent = 'Este aparelho navega livremente com IPv4 e IPv6 em simultâneo. Recomendado para PCs Gamers, consoles e celulares.';
+				} else {
+					ipv6StatusPill.className = 'ex-pill warning';
+					ipv6StatusPill.textContent = '🚫 BLOQUEIO ATIVO (IPv4 PURO)';
+					ipv6DescText.textContent = 'O firewall do roteador bloqueia 100% do tráfego IPv6 para este aparelho. Ele operará exclusivamente em IPv4 puro (ideal para TV Box, UniTV, IPTV e saídas dedicadas por WAN2).';
+				}
+			};
+			setIpv6Mode(ipv6Allowed);
+
+			const ipv6ButtonGroup = E('div', {
+				class: 'ex-priority-button-grid',
+				style: 'margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;'
+			}, [
+				ipv6BtnDual,
+				ipv6BtnBlocked
+			]);
 
 			sections.push(E('div', { class: 'ex-device-config-block' }, [
-				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 12px;' }, [
-					E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
-						E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap;' }, [
-							E('strong', {}, ['⚡ Conectividade IPv6 Individual']),
-							ipv6StatusPill
-						]),
-						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, [
-							'Permite que este aparelho navegue em IPv6 quando o Modo Seletivo estiver ativo. Ideal para PC Gamer, consoles e celulares modernos.'
-						])
-					]),
-					E('label', { class: 'ex-switch', style: 'flex: 0 0 auto;' }, [
-						ipv6Toggle,
-						E('span', { class: 'ex-switch-slider' })
-					])
-				])
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px;' }, [
+					E('strong', {}, ['🌐 Protocolo de Internet Deste Aparelho (IPv4 / IPv6)']),
+					ipv6StatusPill
+				]),
+				ipv6ButtonGroup,
+				ipv6DescText
 			]));
 
 			// --- Seção: Controle Parental & Filtros Deste Aparelho ---
@@ -2413,7 +2459,7 @@ return view.extend({
 							'⚡ Modo Direto sem Filtragem (Bypass)'
 						]),
 						E('p', { class: 'ex-muted', style: 'margin: 6px 0 0; font-size: 0.82rem; line-height: 1.4;' }, [
-							'Este aparelho terá tráfego DNS liberado direto para a Internet (1.1.1.1), contornando o AdGuard Home e qualquer bloqueio de anúncios ou filtro parental da rede local.'
+							'Este aparelho terá tráfego DNS liberado direto para a Internet, contornando o AdGuard Home e qualquer bloqueio ou filtro parental da rede local. Totalmente compatível com DNS manual ou personalizado.'
 						])
 					]));
 				} else {
@@ -2439,6 +2485,111 @@ return view.extend({
 				]),
 				parDetailContainer
 			]));
+			// --- Seção: Servidor DNS Deste Aparelho (DHCP Opção 6) ---
+			let curCustomDns = (state.custom_dns || '').trim();
+			const customDnsInput = E('input', {
+				type: 'text',
+				class: 'cbi-input-text',
+				value: curCustomDns,
+				placeholder: 'Padrão da rede (vazio) ou ex.: 8.8.8.8, 8.8.4.4',
+				style: 'width: 100%; box-sizing: border-box;'
+			});
+
+			const dnsPresets = [
+				{ label: '🌐 Padrão da Rede', val: '' },
+				{ label: '⚡ Google (8.8.8.8)', val: '8.8.8.8, 8.8.4.4' },
+				{ label: '🛡️ Cloudflare (1.1.1.1)', val: '1.1.1.1, 1.0.0.1' },
+				{ label: '🔒 Quad9 (9.9.9.9)', val: '9.9.9.9, 149.112.112.112' },
+				{ label: '🚫 AdGuard DNS', val: '94.140.14.14, 94.140.15.15' }
+			];
+
+			const dnsPresetBtnList = [];
+			const updateDnsPresetActive = function() {
+				const curVal = customDnsInput.value.replace(/\s+/g, '');
+				dnsPresetBtnList.forEach(function(p) {
+					const pVal = p.val.replace(/\s+/g, '');
+					if (!pVal) {
+						p.btn.classList.toggle('active', !curVal);
+					} else {
+						p.btn.classList.toggle('active', curVal === pVal || curVal === pVal.split(',')[0]);
+					}
+				});
+			};
+
+			const dnsPresetGrid = E('div', { class: 'ex-priority-button-grid', style: 'margin-bottom: 8px;' });
+			dnsPresets.forEach(function(p) {
+				const b = E('button', {
+					type: 'button',
+					class: 'ex-priority-option-btn',
+					click: function() {
+						customDnsInput.value = p.val;
+						updateDnsPresetActive();
+					}
+				}, [ p.label ]);
+				dnsPresetBtnList.push({ val: p.val, btn: b });
+				dnsPresetGrid.appendChild(b);
+			});
+
+			customDnsInput.addEventListener('input', updateDnsPresetActive);
+			customDnsInput.addEventListener('change', updateDnsPresetActive);
+			updateDnsPresetActive();
+
+			let isDmz = !!state.dmz;
+			const dmzToggle = E('input', {
+				type: 'checkbox',
+				checked: isDmz ? '' : null,
+				'aria-label': 'Ativar DMZ para este dispositivo'
+			});
+			const dmzSummaryEl = E('small', { class: 'ex-muted', style: 'display: block; margin-top: 3px; font-size: 0.8rem; line-height: 1.35;' }, [
+				isDmz
+					? '⚡ Este aparelho é a DMZ ativa da rede. Todas as portas não solicitadas da WAN vão para ele (NAT Aberto).'
+					: 'Desativado. O firewall bloqueia portas não solicitadas para este aparelho.'
+			]);
+			dmzToggle.addEventListener('change', function(ev) {
+				if (ev.currentTarget.checked) {
+					dmzSummaryEl.textContent = '⚡ DMZ será ativada para este aparelho ao salvar. Se o IP não estiver reservado, o ARK Router reservará automaticamente.';
+					if (!isReserved) {
+						updateReserveMode(true);
+					}
+				} else {
+					dmzSummaryEl.textContent = 'Desativado. O firewall protegerá as portas deste aparelho.';
+				}
+			});
+
+			sections.push(E('div', { class: 'ex-device-config-block' }, [
+				E('div', { style: 'display:flex; align-items:center; justify-content:space-between; gap:12px;' }, [
+					E('div', {}, [
+						E('div', { style: 'display:flex; align-items:center; gap:8px;' }, [
+							E('strong', {}, ['🎯 Zona Desmilitarizada (DMZ / Host Aberto)']),
+							isDmz ? E('span', { class: 'ex-pill online', style: 'font-size:0.72rem;' }, ['DMZ ATUAL']) : ''
+						]),
+						dmzSummaryEl
+					]),
+					E('label', { class: 'ex-switch' }, [
+						dmzToggle,
+						E('span', { class: 'ex-switch-slider' })
+					])
+				]),
+				E('p', { class: 'ex-muted', style: 'margin: 6px 0 0; font-size: 0.78rem; line-height: 1.3;' }, [
+					'🎮 Ideal para Consoles (PS5, Xbox, Switch) e PC Gamer para eliminar NAT Restrito/Moderado. Apenas um aparelho por vez pode ser o DMZ da rede.'
+				])
+			]));
+
+			sections.push(E('div', { class: 'ex-device-config-block' }, [
+				E('strong', {}, ['🌐 Servidor DNS Deste Aparelho (DHCP Opção 6)']),
+				E('small', { class: 'ex-muted', style: 'display: block; margin: 2px 0 8px;' }, [
+					'Envie um DNS exclusivo diretamente para este dispositivo via DHCP. Ele falará direto com os servidores sem intermediários:'
+				]),
+				dnsPresetGrid,
+				E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600;' }, [
+					E('span', {}, ['Endereço(s) DNS personalizado(s):']),
+					customDnsInput
+				]),
+				E('p', { class: 'ex-muted', style: 'margin: 6px 0 0; font-size: 0.8rem; line-height: 1.35;' }, [
+					'💡 Dica: Se preenchido, o roteador avisa este aparelho para consultar o DNS escolhido. Caso o aparelho já tenha DNS fixo manual (ex.: 8.8.8.8 na TV), o roteador respeita e dá passagem livre automática.'
+				])
+			]));
+
 
 			sections.push(E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
 				const btn = ev.currentTarget;
@@ -2454,8 +2605,10 @@ return view.extend({
 				const safeSearchVal = (parentalMode === 'custom' && safeSearchToggle.checked) ? '1' : '0';
 				const servList = (parentalMode === 'custom' && hasAgh) ? Array.from(selectedServices).join(',') : '';
 				const limLanBypass = lanBypassToggle.checked ? '1' : '0';
-				const ipv6AllowedVal = ipv6Toggle.checked ? '1' : '0';
-				const args=['device-save',device.mac,name.value.trim(),isReserved?'reserved':'automatic',finalIp,prioEnabled,dscpVal,selectedWanRoute,limEnabled,String(limDown),String(limUp),parentalMode,parBlockVal,safeSearchVal,servList,limLanBypass,ipv6AllowedVal];
+				const ipv6AllowedVal = ipv6Allowed ? '1' : '0';
+				const customDnsVal = customDnsInput.value.trim();
+				const dmzVal = dmzToggle.checked ? '1' : '0';
+				const args=['device-save',device.mac,name.value.trim(),isReserved?'reserved':'automatic',finalIp,prioEnabled,dscpVal,selectedWanRoute,limEnabled,String(limDown),String(limUp),parentalMode,parBlockVal,safeSearchVal,servList,limLanBypass,ipv6AllowedVal,customDnsVal,dmzVal];
 				return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){
 					if(r.code)throw new Error(r.stderr||'Falha ao salvar');
 					ui.hideModal();
@@ -2643,6 +2796,12 @@ return view.extend({
 			const clonedMac=cfg.macaddr||'', macaddr=E('input',{class:'cbi-input-text',value:clonedMac,placeholder:'vazio = MAC físico do roteador'});
 			const macClear=E('button',{class:'ex-feature-link',type:'button','click':function(){macaddr.value='';}},['Usar MAC físico']);
 			const modemIp=E('input',{class:'cbi-input-text',value:cfg.modem_ip||'',placeholder:'ex: 192.168.1.3 (opcional)'});
+			const defaultMetric=String(cfg.metric||(parseInt(whichNum,10)*10));
+			const metricInput=E('input',{class:'cbi-input-text',type:'number',min:'1',max:'255',value:defaultMetric,placeholder:'Ex: 10, 20, 30'});
+			const ipv6Enabled=(cfg.ipv6==='1'||cfg.ipv6===1||cfg.ipv6===true||(isPrimary&&cfg.ipv6===undefined));
+			const ipv6Input=E('input',{type:'checkbox',class:'cbi-input-checkbox',checked:ipv6Enabled ? '' : null});
+			ipv6Input.checked = !!ipv6Enabled;
+			const ipv6Switch=E('label',{class:'ex-switch'},[ipv6Input,E('span',{class:'ex-switch-slider'})]);
 
 			const pppoeProfileSelect = E('select', { class: 'cbi-input-select', style: 'flex:1;' }, [
 				E('option', { value: '' }, ['-- Escolher perfil PPPoE salvo --'])
@@ -2881,6 +3040,8 @@ return view.extend({
 				field('Função',role),
 				field('Porta física',device,'Porta vinculada ao card selecionado'),
 				field('Tipo de conexão',proto),
+				field('Prioridade / Métrica (Peso)',metricInput,'Menor número = maior prioridade (ex: WAN1=10, WAN2=20). Não pode haver WANs com o mesmo peso.'),
+				field('Conectividade IPv6',ipv6Switch,'Habilita requisição de endereço e rota IPv6 nesta conexão WAN.'),
 				pppoeBlock,
 				staticBlock,
 				field('DNS 1',dns1),
@@ -2900,8 +3061,26 @@ return view.extend({
 				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
 					const isConvertingToWan = (role.value === 'wan') && (isNewWan || preferredDevice);
 					const doApply = function() {
+						const chosenMetric = parseInt(metricInput.value, 10);
+						if (!chosenMetric || chosenMetric < 1 || chosenMetric > 255) {
+							ui.addNotification(null, E('p', {}, ['A métrica / prioridade da WAN deve ser um número entre 1 e 255.']), 'warning');
+							return;
+						}
+						for (let otherIface in net) {
+							if (otherIface !== which && /^wan[0-9]*$/.test(otherIface) && otherIface !== 'wan6') {
+								const otherCfg = net[otherIface];
+								if (otherCfg && otherCfg.proto && otherCfg.proto !== 'none') {
+									const otherMetric = parseInt(otherCfg.metric, 10);
+									if (otherMetric === chosenMetric) {
+										ui.addNotification(null, E('p', {}, ['Conflito de prioridade: A conexão ' + otherIface.toUpperCase() + ' já utiliza a métrica ' + chosenMetric + '. Cada conexão precisa ter um peso exclusivo para evitar instabilidade de rotas.']), 'danger');
+										return;
+									}
+								}
+							}
+						}
+						const chosenIpv6 = ipv6Input.checked ? '1' : '0';
 						const dns = [dns1.value.trim(), dns2.value.trim(), dns3.value.trim()].filter(Boolean).join(' ');
-						const args = ['wan-save', 'iface=' + which, 'mode=' + role.value, 'device=' + device.value, 'proto=' + proto.value, 'username=' + username.value, 'password=' + password.value, 'ipaddr=' + ipaddr.value, 'netmask=' + netmask.value, 'gateway=' + gateway.value, 'dns=' + dns, 'macaddr=' + macaddr.value.trim(), 'modem_ip=' + modemIp.value.trim()];
+						const args = ['wan-save', 'iface=' + which, 'mode=' + role.value, 'device=' + device.value, 'proto=' + proto.value, 'metric=' + chosenMetric, 'ipv6=' + chosenIpv6, 'username=' + username.value, 'password=' + password.value, 'ipaddr=' + ipaddr.value, 'netmask=' + netmask.value, 'gateway=' + gateway.value, 'dns=' + dns, 'macaddr=' + macaddr.value.trim(), 'modem_ip=' + modemIp.value.trim()];
 						return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 							if (r.code) throw new Error(r.stderr || 'Falha ao salvar WAN');
 							ui.hideModal();
@@ -3523,7 +3702,8 @@ return view.extend({
 			const flowInput = E('input', { type: 'checkbox' });
 			const jumboInput = E('input', { type: 'checkbox' });
 			const irqInput = E('input', { type: 'checkbox' });
-			const enableSqmInput = E('input', { type: 'checkbox', checked: true });
+			const enableSqmInput = E('input', { type: 'checkbox', checked: '' });
+			enableSqmInput.checked = true;
 			const sqmDependency = E('div', { class: 'ex-opt-sqm-dependency' });
 			const selectedSummary = E('div', { class: 'ex-opt-selected-summary' });
 			const globalWarning = E('small', { class: 'ex-muted' });
@@ -4728,8 +4908,8 @@ return view.extend({
 				E('div',{class:'ex-update-card'},[
 					E('div',{class:'ex-feature-copy'},[
 						E('div',{class:'ex-feature-name-row'},[
-							E('strong',{},['Versão instalada: ',update.current||'—']),
-							E('span',{class:'ex-pill online'},[update.current||window.ARK_VERSION||'1.0.1'])
+							E('strong',{},['Versão instalada: ']),
+							E('span',{class:'ex-pill online'},[update.current||window.ARK_VERSION||'1.0.2'])
 						]),
 						E('small',{class:'ex-muted'},['Repositório: ',update.repo||'Despensativo/ark-router']),
 						E('small',{class:'ex-muted'},['Gerenciador: ',manager])
@@ -5218,10 +5398,11 @@ return view.extend({
 							'Inicia o ZeroTier automaticamente ao ligar o roteador. Em aparelhos compactos, prepara o binário na RAM sem ocupar a flash.'
 						])
 					]),
-					E('label', { class: 'ex-switch', style: 'flex: 0 0 auto;' }, [
-						E('input', {
+					(function(){
+						const ztAutostart = !!f.autostart;
+						const ztInput = E('input', {
 							type: 'checkbox',
-							checked: !!f.autostart,
+							checked: ztAutostart ? '' : null,
 							change: function(ev) {
 								const input = ev.currentTarget;
 								const val = input.checked ? '1' : '0';
@@ -5235,9 +5416,13 @@ return view.extend({
 									ui.addNotification(null, E('p', {}, [e.message]), 'danger');
 								});
 							}
-						}),
-						E('span', { class: 'ex-switch-slider' })
-					])
+						});
+						ztInput.checked = ztAutostart;
+						return E('label', { class: 'ex-switch', style: 'flex: 0 0 auto;' }, [
+							ztInput,
+							E('span', { class: 'ex-switch-slider' })
+						]);
+					})()
 				])
 			]) : '',
 			E('div',{class:'ex-speedify-actions'},[
@@ -5349,6 +5534,10 @@ return view.extend({
 			const peers = status.peers || [];
 			const nextIp = '10.14.0.' + (peers.length + 2);
 
+			const hasCgnat = !!status.is_cgnat;
+			const epIpv4 = status.endpoint_ipv4 || '';
+			const epIpv6 = status.endpoint_ipv6 || '';
+
 			const nameInput = E('input', {class:'cbi-input-text', type:'text', placeholder:'ex.: Arthur-iPhone', maxlength:32, style:'width:100%;'});
 			const ipInput = E('input', {class:'cbi-input-text', type:'text', value:nextIp, placeholder:'ex.: 10.14.0.2', maxlength:24, style:'width:100%;'});
 			const endpointInput = E('input', {class:'cbi-input-text', type:'text', value:status.endpoint || '', placeholder:'IP público ou DDNS', maxlength:64, style:'width:100%;'});
@@ -5357,12 +5546,45 @@ return view.extend({
 				E('option', {value:'split'}, ['Split Tunnel (apenas rede do roteador) - Leve'])
 			]);
 
+			const endpointSuggestions = (epIpv4 || epIpv6) ? E('div', {style:'display:flex; gap:6px; flex-wrap:wrap; margin-top:5px; align-items:center;'}, [
+				E('small', {class:'ex-muted', style:'font-size:0.72rem;'}, ['Sugestões:']),
+				epIpv6 ? E('button', {
+					type: 'button',
+					class: 'ex-mini-button btn-ipv6',
+					style: 'min-height:40px!important; padding:6px 12px!important; font-size:0.8rem!important; display:inline-flex; align-items:center; user-select:none; -webkit-tap-highlight-color:transparent;',
+					title: 'Usar IPv6 Global: ' + epIpv6,
+					click: function(){ endpointInput.value = epIpv6; }
+				}, ['🌐 IPv6 Global (Fura CGNAT)']) : '',
+				epIpv4 ? E('button', {
+					type: 'button',
+					class: 'ex-mini-button',
+					style: 'min-height:40px!important; padding:6px 12px!important; font-size:0.8rem!important; display:inline-flex; align-items:center; user-select:none; -webkit-tap-highlight-color:transparent;',
+					title: 'Usar IPv4: ' + epIpv4,
+					click: function(){ endpointInput.value = epIpv4; }
+				}, ['📡 IPv4 (' + epIpv4 + (hasCgnat ? ' - CGNAT' : '') + ')']) : ''
+			]) : '';
+
+			const cgnatWarning = hasCgnat ? E('div', {
+				class: 'alert-message warning',
+				style: 'margin-bottom:12px; display:flex; align-items:flex-start; gap:10px; padding:10px; border-radius:8px;'
+			}, [
+				E('span', {style:'font-size:1.2rem;'}, ['⚠️']),
+				E('div', {}, [
+					E('strong', {}, ['Conexão IPv4 em CGNAT (' + (epIpv4 || 'Privado') + ')']),
+					E('p', {style:'margin:3px 0 0 0; font-size:0.82rem; line-height:1.35;'}, [
+						'Sua operadora coloca o roteador atrás de CGNAT. Dispositivos externos (celular 4G/5G) não conseguem conectar por IPv4. ',
+						epIpv6 ? E('span', {style:'color:#22c55e; font-weight:700;'}, ['Recomendamos usar o Endpoint IPv6 Global para conexão direta sem bloqueio.']) : ''
+					])
+				])
+			]) : '';
+
 			const addPeerSection = E('div', {class:'ex-device-config-block', style:'margin-bottom:16px; padding:14px; border:1px solid rgba(127,127,127,.2); border-radius:12px;'}, [
+				cgnatWarning,
 				E('h4', {style:'margin:0 0 10px; font-size:0.98rem;'}, ['+ Adicionar Novo Dispositivo / Gerar QR Code']),
 				E('div', {style:'display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; margin-bottom:12px;'}, [
 					E('label', {class:'ex-field', style:'margin:0;'}, [E('span', {style:'font-size:0.75rem; font-weight:600; opacity:.75;'}, ['NOME DO DISPOSITIVO']), nameInput]),
 					E('label', {class:'ex-field', style:'margin:0;'}, [E('span', {style:'font-size:0.75rem; font-weight:600; opacity:.75;'}, ['IP NA VPN']), ipInput]),
-					E('label', {class:'ex-field', style:'margin:0;'}, [E('span', {style:'font-size:0.75rem; font-weight:600; opacity:.75;'}, ['ENDPOINT (IP/DDNS DO ROTEADOR)']), endpointInput]),
+					E('label', {class:'ex-field', style:'margin:0;'}, [E('span', {style:'font-size:0.75rem; font-weight:600; opacity:.75;'}, ['ENDPOINT (IP/DDNS DO ROTEADOR)']), endpointInput, endpointSuggestions]),
 					E('label', {class:'ex-field', style:'margin:0;'}, [E('span', {style:'font-size:0.75rem; font-weight:600; opacity:.75;'}, ['TIPO DE TÚNEL']), tunnelSelect])
 				]),
 				E('div', {style:'display:flex; justify-content:flex-end;'}, [
@@ -5957,10 +6179,11 @@ return view.extend({
 							'Inicia os túneis e carrega as regras de firewall do WireGuard automaticamente ao ligar o roteador.'
 						])
 					]),
-					E('label', { class: 'ex-switch', style: 'flex: 0 0 auto;' }, [
-						E('input', {
+					(function(){
+						const wgAutostart = !!f.autostart;
+						const wgInput = E('input', {
 							type: 'checkbox',
-							checked: !!f.autostart,
+							checked: wgAutostart ? '' : null,
 							change: function(ev) {
 								const input = ev.currentTarget;
 								const val = input.checked ? '1' : '0';
@@ -5974,9 +6197,13 @@ return view.extend({
 									ui.addNotification(null, E('p', {}, [e.message]), 'danger');
 								});
 							}
-						}),
-						E('span', { class: 'ex-switch-slider' })
-					])
+						});
+						wgInput.checked = wgAutostart;
+						return E('label', { class: 'ex-switch', style: 'flex: 0 0 auto;' }, [
+							wgInput,
+							E('span', { class: 'ex-switch-slider' })
+						]);
+					})()
 				])
 			]) : '',
 			E('div', {class:'ex-speedify-actions'}, [
@@ -6029,7 +6256,7 @@ return view.extend({
 
 		const toggleInput = E('input', {
 			type: 'checkbox',
-			checked: active,
+			checked: active ? '' : null,
 			change: function(ev) {
 				const input = ev.currentTarget;
 				const desired = !!input.checked;
@@ -6042,6 +6269,7 @@ return view.extend({
 				});
 			}
 		});
+		toggleInput.checked = !!active;
 
 		const switchControl = E('div', { class: 'ex-device-switch-control' }, [
 			E('strong', { class: 'ex-device-switch-state' }, [active ? 'LIGADA' : 'DESLIGADA']),
@@ -7512,112 +7740,686 @@ return view.extend({
 	},
 	showEzSetup: function(){
 		return this.loadEzSetup().then(L.bind(function(saved){
-			const input=function(type,value,attrs){attrs=attrs||{};attrs.type=type;attrs.value=value||'';attrs.class=attrs.class||'cbi-input-text';return E('input',attrs);};
-			const select=function(value,items){const node=E('select',{class:'cbi-input-select'},items.map(function(item){return E('option',{value:item[0]},[item[1]]);}));node.value=value;return node;};
-			const checkbox=function(value){const node=E('input',{type:'checkbox'});node.checked=!!value;return node;};
-			const language=select(this.capabilities.language||dashboardLanguage||'pt-br',[['pt-br','Português (Brasil)'],['en','English']]);
-			const savedProfile=({event:'internet_failover',starlink:'internet_single',dualwan:'internet_failover',home:'internet_single'})[saved.profile]||saved.profile||'internet_failover';
-			const profile=select(savedProfile,[['internet_single','Uma internet — usar apenas WAN1'],['internet_failover','Duas internet — WAN1 principal e WAN2 reserva'],['internet_balance','Duas internet — balancear conexões'],['custom','Personalizado — eu ajusto manualmente']]);
-			const profileHelp=E('p',{class:'ex-ez-profile-help ex-muted'},['WAN2 usa a porta LAN1 como segunda internet por DHCP. Failover troca para WAN2 quando WAN1 cair; balanceamento distribui conexões, mas não soma a velocidade de um único envio.']);
-			const routerName=input('text',saved.router_name||'ARK Router',{maxlength:40});
-			const country=select(saved.country||'BR',[]);
-			const preferredCountries=[['BR','Brasil'],['US','Estados Unidos'],['PT','Portugal'],['AR','Argentina'],['CL','Chile'],['UY','Uruguai'],['PY','Paraguai'],['MX','México'],['CA','Canadá'],['GB','Reino Unido'],['DE','Alemanha'],['ES','Espanha'],['FR','França'],['IT','Itália'],['JP','Japão'],['AU','Austrália'],['00','Mundo / driver padrão']];
-			const seenCountries={};
-			preferredCountries.forEach(function(item){seenCountries[item[0]]=1;country.appendChild(E('option',{value:item[0]},[item[1]+' ('+item[0]+')']));});
-			(this.countries||[]).slice().sort(function(a,b){return String(a.country||a.code).localeCompare(String(b.country||b.code));}).forEach(function(item){const code=String(item.code||item.iso3166||'').toUpperCase();if(!code||seenCountries[code])return;seenCountries[code]=1;country.appendChild(E('option',{value:code},[(item.country||code)+' ('+code+')']));});
-			country.value=saved.country||'BR';
-			const wifiMode=select(saved.wifi_mode||'unified',[['unified','Unificar 2,4 GHz e 5 GHz'],['split','Separar com sufixos -2G e -5G']]);
-			const mainSsid=input('text',saved.main_ssid||'ARK Router',{maxlength:32});
-			const mainKey=input('password','',{placeholder:'mínimo 8 caracteres'});
-			const guestEnabled=checkbox(saved.guest_enabled!==false);
-			const guestSsid=input('text',saved.guest_ssid||'ARK Router Visitantes',{maxlength:32});
-			const guestKey=input('password','',{placeholder:'mínimo 8 caracteres'});
-			const guestLimitEnabled=checkbox(saved.guest_limit_enabled!==false);
-			const guestDownload=input('number',kbpsToMbpsInput(saved.guest_download_kbps||'0'),{min:0,max:100000,step:'0.1'});
-			const guestUpload=input('number',kbpsToMbpsInput(saved.guest_upload_kbps||'1500'),{min:0,max:100000,step:'0.1'});
+			const input = function(type, value, attrs){ attrs = attrs || {}; attrs.type = type; attrs.value = value || ''; attrs.class = attrs.class || 'cbi-input-text'; return E('input', attrs); };
+			const select = function(value, items){ const node = E('select', {class:'cbi-input-select'}, items.map(function(item){ return E('option', {value:item[0]}, [item[1]]); })); node.value = value; return node; };
+			const checkbox = function(value){ const node = E('input', {type:'checkbox'}); node.checked = !!value; return node; };
+
+			const passwordWithToggle = function(value, placeholder, onInput){
+				const passInput = E('input', {
+					type: 'password',
+					class: 'cbi-input-text',
+					value: value || '',
+					placeholder: placeholder || 'mínimo 8 caracteres',
+					style: 'flex: 1; min-width: 0;'
+				});
+				if(onInput) passInput.addEventListener('input', onInput);
+				const toggleBtn = E('button', {
+					type: 'button',
+					class: 'btn cbi-button cbi-button-neutral',
+					style: 'flex: 0 0 44px; min-height: 40px; padding: 0 10px; font-size: 1.1rem; display: inline-flex; align-items: center; justify-content: center; user-select: none; -webkit-tap-highlight-color: transparent;',
+					title: 'Mostrar / Ocultar Senha'
+				}, ['👁️']);
+				toggleBtn.addEventListener('click', function(e){
+					e.preventDefault();
+					e.stopPropagation();
+					if(passInput.type === 'password'){
+						passInput.type = 'text';
+						toggleBtn.style.opacity = '1';
+						toggleBtn.style.background = 'rgba(59,130,246,0.2)';
+						toggleBtn.style.borderColor = '#3b82f6';
+					} else {
+						passInput.type = 'password';
+						toggleBtn.style.opacity = '0.75';
+						toggleBtn.style.background = '';
+						toggleBtn.style.borderColor = '';
+					}
+				});
+				const wrap = E('div', { style: 'display: flex; gap: 6px; align-items: center; width: 100%; min-width: 0;' }, [
+					passInput,
+					toggleBtn
+				]);
+				wrap.getValue = function(){ return passInput.value; };
+				wrap.setValue = function(v){ passInput.value = v; };
+				wrap.input = passInput;
+				return wrap;
+			};
+
+			const language = select(this.capabilities.language||dashboardLanguage||'pt-br', [['pt-br','Português (Brasil)'],['en','English']]);
+			const routerName = input('text', saved.router_name || 'ARK Router', {maxlength:40});
+			const country = select(saved.country || 'BR', []);
+			const preferredCountries = [['BR','Brasil'],['US','Estados Unidos'],['PT','Portugal'],['AR','Argentina'],['CL','Chile'],['UY','Uruguai'],['PY','Paraguai'],['MX','México'],['CA','Canadá'],['GB','Reino Unido'],['DE','Alemanha'],['ES','Espanha'],['FR','França'],['IT','Itália'],['JP','Japão'],['AU','Austrália'],['00','Mundo / driver padrão']];
+			const seenCountries = {};
+			preferredCountries.forEach(function(item){ seenCountries[item[0]]=1; country.appendChild(E('option',{value:item[0]},[item[1]+' ('+item[0]+')'])); });
+			(this.countries||[]).slice().sort(function(a,b){ return String(a.country||a.code).localeCompare(String(b.country||b.code)); }).forEach(function(item){
+				const code = String(item.code||item.iso3166||'').toUpperCase();
+				if(!code || seenCountries[code]) return;
+				seenCountries[code]=1;
+				country.appendChild(E('option',{value:code},[(item.country||code)+' ('+code+')']));
+			});
+			country.value = saved.country || 'BR';
+
+			// WAN 1 Configuration
+			const wan1Proto = select(saved.wan1_proto || 'dhcp', [
+				['dhcp', 'Modem da Operadora / Starlink / Cabo (DHCP Automático - Plug & Play)'],
+				['pppoe', 'Fibra Ótica com Login (PPPoE - Usuário e Senha)'],
+				['static', 'IP Fixo / Manual (Estático)']
+			]);
+			const wan1Username = input('text', saved.wan1_username || '', { placeholder: 'ex: usuario@provedor' });
+			const wan1PasswordWrap = passwordWithToggle(saved.wan1_password || '', 'senha PPPoE do provedor');
+			const wan1Ip = input('text', saved.wan1_ipaddr || '', { placeholder: 'ex: 192.168.1.50' });
+			const wan1Mask = input('text', saved.wan1_netmask || '255.255.255.0', { placeholder: '255.255.255.0' });
+			const wan1Gw = input('text', saved.wan1_gateway || '', { placeholder: 'ex: 192.168.1.1' });
+			const wan1Dns = input('text', saved.wan1_dns || '', { placeholder: 'ex: 1.1.1.1 8.8.8.8' });
+
+			const pppoeBox = E('div', { class: 'ex-ez-grid', style: 'margin-top: 10px; display: none;' }, [
+				this.ezField('Usuário PPPoE', wan1Username, 'Fornecido pelo seu provedor de internet.'),
+				this.ezField('Senha PPPoE', wan1PasswordWrap, 'Senha do seu provedor de internet.')
+			]);
+			const staticBox = E('div', { class: 'ex-ez-grid', style: 'margin-top: 10px; display: none;' }, [
+				this.ezField('Endereço IPv4 Fixo', wan1Ip),
+				this.ezField('Máscara de Rede', wan1Mask),
+				this.ezField('Gateway Padrão', wan1Gw),
+				this.ezField('Servidores DNS', wan1Dns)
+			]);
+
+			const syncWan1Proto = function(){
+				if(wan1Proto.value === 'pppoe'){
+					pppoeBox.style.display = '';
+					staticBox.style.display = 'none';
+				} else if(wan1Proto.value === 'static'){
+					pppoeBox.style.display = 'none';
+					staticBox.style.display = '';
+				} else {
+					pppoeBox.style.display = 'none';
+					staticBox.style.display = 'none';
+				}
+			};
+			wan1Proto.addEventListener('change', syncWan1Proto);
+			syncWan1Proto();
+
+			// WAN 2 Configuration (Optional)
+			const wan2Enabled = checkbox(saved.wan2_enabled === true);
 			const availableLanPorts = (this.currentData && this.currentData.lanPorts && this.currentData.lanPorts.length) ? this.currentData.lanPorts : ['lan1', 'lan2', 'lan3'];
 			const portOptions = availableLanPorts.map(function(p) { return [p, portLabel(p) + ' (porta física ' + p + ')']; });
-			const wan2Port=select(saved.wan2_port||'lan1', portOptions);
-			const wan2Enabled=checkbox(saved.wan2_enabled!==false);
-			const wanMode=select(saved.wan_mode||'failover',[['single','Somente WAN1'],['failover','Failover WAN1 → WAN2'],['balanced','Balanceamento'],['wan1','Forçar WAN1'],['wan2','Forçar WAN2']]);
-			const syncInternetProfile=function(){
-				if(profile.value==='internet_single'){wan2Enabled.checked=false;wanMode.value='single';wan2Port.disabled=true;}
-				else if(profile.value==='internet_failover'){wan2Enabled.checked=true;wanMode.value='failover';wan2Port.disabled=false;}
-				else if(profile.value==='internet_balance'){wan2Enabled.checked=true;wanMode.value='balanced';wan2Port.disabled=false;}
+			const wan2Port = select(saved.wan2_port || 'lan1', portOptions);
+			const wanMode = select(saved.wan_mode || 'failover', [
+				['failover', 'Failover (WAN1 principal, WAN2 reserva se cair)'],
+				['balanced', 'Balanceamento (dividir conexões entre as duas)'],
+				['single', 'Somente WAN1'],
+				['wan2', 'Forçar somente WAN2']
+			]);
+			const wan2Proto = select(saved.wan2_proto || 'dhcp', [
+				['dhcp', 'Modem da Operadora / Starlink / Cabo (DHCP Automático)'],
+				['pppoe', 'Fibra Ótica com Login (PPPoE - Usuário e Senha)'],
+				['static', 'IP Fixo / Manual (Estático)']
+			]);
+			const wan2Username = input('text', saved.wan2_username || '', { placeholder: 'ex: usuario@provedor2' });
+			const wan2PasswordWrap = passwordWithToggle(saved.wan2_password || '', 'senha PPPoE da WAN2');
+			const wan2Ip = input('text', saved.wan2_ipaddr || '', { placeholder: 'ex: 192.168.2.50' });
+			const wan2Mask = input('text', saved.wan2_netmask || '255.255.255.0', { placeholder: '255.255.255.0' });
+			const wan2Gw = input('text', saved.wan2_gateway || '', { placeholder: 'ex: 192.168.2.1' });
+			const wan2Dns = input('text', saved.wan2_dns || '', { placeholder: 'ex: 1.1.1.1 8.8.8.8' });
+
+			const wan2PppoeBox = E('div', { class: 'ex-ez-grid', style: 'margin-top: 10px; display: none;' }, [
+				this.ezField('Usuário PPPoE (WAN2)', wan2Username, 'Fornecido pelo segundo provedor de internet.'),
+				this.ezField('Senha PPPoE (WAN2)', wan2PasswordWrap, 'Senha do segundo provedor.')
+			]);
+			const wan2StaticBox = E('div', { class: 'ex-ez-grid', style: 'margin-top: 10px; display: none;' }, [
+				this.ezField('Endereço IPv4 Fixo (WAN2)', wan2Ip),
+				this.ezField('Máscara de Rede (WAN2)', wan2Mask),
+				this.ezField('Gateway Padrão (WAN2)', wan2Gw),
+				this.ezField('Servidores DNS (WAN2)', wan2Dns)
+			]);
+
+			const syncWan2Proto = function(){
+				if(wan2Proto.value === 'pppoe'){
+					wan2PppoeBox.style.display = '';
+					wan2StaticBox.style.display = 'none';
+				} else if(wan2Proto.value === 'static'){
+					wan2PppoeBox.style.display = 'none';
+					wan2StaticBox.style.display = '';
+				} else {
+					wan2PppoeBox.style.display = 'none';
+					wan2StaticBox.style.display = 'none';
+				}
 			};
-			profile.addEventListener('change',syncInternetProfile);
-			wan2Enabled.addEventListener('change',function(){wan2Port.disabled=!wan2Enabled.checked;});
-			syncInternetProfile();
-			const sqmEnabled=checkbox(!!saved.sqm_enabled);
-			const sqmStrategy=select(saved.sqm_strategy||'manual',[['manual','Definir limites manualmente'],['calibrate_later','Medir depois pelo painel'],['off','Não configurar SQM agora']]);
-			const sqmWanUp=input('number',kbpsToMbpsInput(saved.sqm_wan_upload),{placeholder:'ex.: 15',min:0,max:100000,step:'0.1'});
-			const sqmWanDown=input('number',kbpsToMbpsInput(saved.sqm_wan_download),{placeholder:'ex.: 1200',min:0,max:100000,step:'0.1'});
-			const sqmWan2Up=input('number',kbpsToMbpsInput(saved.sqm_wan2_upload),{placeholder:'opcional',min:0,max:100000,step:'0.1'});
-			const sqmWan2Down=input('number',kbpsToMbpsInput(saved.sqm_wan2_download),{placeholder:'opcional',min:0,max:100000,step:'0.1'});
-			const dnsMode=select(saved.dns_mode||'recommended',[['recommended','DNS recomendado'],['operator','DNS da operadora'],['custom','DNS personalizado']]);
-			const savedDns=String(saved.dns_servers||'1.1.1.1 1.0.0.1 8.8.8.8').split(/\s+/);
-			const dns1=input('text',savedDns[0]||'1.1.1.1',{placeholder:'DNS 1'}), dns2=input('text',savedDns[1]||'1.0.0.1',{placeholder:'DNS 2'}), dns3=input('text',savedDns[2]||'8.8.8.8',{placeholder:'DNS 3 opcional'});
+			wan2Proto.addEventListener('change', syncWan2Proto);
+			syncWan2Proto();
+
+			const wan2Box = E('div', { style: 'margin-top: 12px; display: ' + (wan2Enabled.checked ? '' : 'none') + ';' }, [
+				E('div', { class: 'ex-ez-grid ex-ez-grid-3' }, [
+					this.ezField('Modo de Operação', wanMode, 'Failover troca se a WAN1 cair; Balanceamento divide tráfego.'),
+					this.ezField('Porta Física para WAN2', wan2Port, 'Porta do aparelho que receberá a segunda internet.'),
+					this.ezField('Tipo de Conexão (WAN2)', wan2Proto, 'Protocolo de internet da segunda porta.')
+				]),
+				wan2PppoeBox,
+				wan2StaticBox,
+				E('div', { class: 'alert-message info', style: 'margin-top: 10px; font-size: 0.8rem; line-height: 1.4;' }, [
+					E('strong', {}, ['📌 Dica: ']),
+					'Confira a numeração das portas na carcaça do aparelho (ex: LAN1, LAN2) para conectar o cabo do segundo modem.'
+				])
+			]);
+			wan2Enabled.addEventListener('change', function(){
+				wan2Box.style.display = wan2Enabled.checked ? '' : 'none';
+			});
+
+			// Wi-Fi Principal (Suporte a Unificado ou Redes Separadas 2.4G e 5G)
+			const wifiMode = select(saved.wifi_mode || 'unified', [
+				['unified', 'Unificar 2,4 GHz e 5 GHz (Recomendado - Band Steering)'],
+				['split', 'Separar redes em 2,4 GHz e 5 GHz independentes']
+			]);
+			const mainSsid = input('text', saved.main_ssid || 'ARK Router', { maxlength: 32 });
+			const mainKeyWrap = passwordWithToggle(saved.main_key || '', saved.main_key ? 'manter senha atual (' + saved.main_key + ')' : 'mínimo 8 caracteres');
+
+			const mainSsid2g = input('text', saved.main_ssid_2g || saved.main_ssid || 'ARK Router-2.4G', { maxlength: 32 });
+			const mainKey2gWrap = passwordWithToggle(saved.main_key_2g || saved.main_key || '', saved.main_key ? 'manter senha atual' : 'mínimo 8 caracteres');
+			const mainSsid5g = input('text', saved.main_ssid_5g || (saved.main_ssid ? saved.main_ssid + '_5G' : 'ARK Router-5G'), { maxlength: 32 });
+			const mainKey5gWrap = passwordWithToggle(saved.main_key_5g || saved.main_key || '', (saved.main_key_5g || saved.main_key) ? 'manter senha atual' : 'mínimo 8 caracteres');
+
+			const unifiedWifiBox = E('div', { class: 'ex-ez-grid' }, [
+				this.ezField('Nome da Rede (SSID Único)', mainSsid, 'Mesmo nome para 2,4 GHz e 5 GHz.'),
+				this.ezField('Senha do Wi-Fi', mainKeyWrap, saved.main_key ? 'Deixe em branco para manter a senha atual (' + saved.main_key + ') ou digite uma nova.' : 'Mínimo 8 caracteres.')
+			]);
+
+			const splitWifiBox = E('div', {}, [
+				E('div', { class: 'alert-message info', style: 'font-size: 0.82rem; line-height: 1.4; margin-bottom: 10px;' }, [
+					E('strong', {}, ['📡 Redes Separadas: ']),
+					'As frequências 2,4 GHz (maior alcance) e 5 GHz (maior velocidade) possuem nomes e senhas independentes.'
+				]),
+				E('div', { class: 'ex-ez-grid', style: 'margin-bottom: 12px;' }, [
+					this.ezField('Nome da Rede 2,4 GHz (SSID)', mainSsid2g, 'Dispositivos IoT e conexões de longo alcance.'),
+					this.ezField('Senha 2,4 GHz', mainKey2gWrap, saved.main_key ? 'Deixe em branco para manter a senha atual ou digite nova.' : 'Mínimo 8 caracteres.')
+				]),
+				E('div', { class: 'ex-ez-grid' }, [
+					this.ezField('Nome da Rede 5 GHz (SSID)', mainSsid5g, 'Smartphones, PCs e TVs com máxima velocidade.'),
+					this.ezField('Senha 5 GHz', mainKey5gWrap, (saved.main_key_5g || saved.main_key) ? 'Deixe em branco para manter ou digite nova.' : 'Mínimo 8 caracteres.')
+				])
+			]);
+
+			const syncWifiMode = function(){
+				if(wifiMode.value === 'split'){
+					unifiedWifiBox.style.display = 'none';
+					splitWifiBox.style.display = '';
+				} else {
+					unifiedWifiBox.style.display = '';
+					splitWifiBox.style.display = 'none';
+				}
+			};
+			wifiMode.addEventListener('change', syncWifiMode);
+			syncWifiMode();
+
+			// Wi-Fi Visitante
+			const guestEnabled = checkbox(saved.guest_enabled === true);
+			const guestSsid = input('text', saved.guest_ssid || 'ARK Router Visitantes', { maxlength: 32 });
+			const guestKeyWrap = passwordWithToggle(saved.guest_key || '', 'mínimo 8 caracteres');
+			const guestLimitEnabled = checkbox(saved.guest_limit_enabled !== false);
+			const guestDownload = input('number', kbpsToMbpsInput(saved.guest_download_kbps || '0'), { min: 0, max: 100000, step: '0.1' });
+			const guestUpload = input('number', kbpsToMbpsInput(saved.guest_upload_kbps || '1500'), { min: 0, max: 100000, step: '0.1' });
+
+			const guestBox = E('div', { style: 'margin-top: 12px; display: ' + (guestEnabled.checked ? '' : 'none') + ';' }, [
+				E('div', { class: 'ex-ez-grid' }, [
+					this.ezField('Nome da Rede Visitante', guestSsid),
+					this.ezField('Senha da Rede Visitante', guestKeyWrap, 'Mínimo 8 caracteres.'),
+					this.ezField('Limitar Velocidade dos Visitantes', guestLimitEnabled, 'Evita que visitantes sobrecarreguem sua internet.'),
+					this.ezField('Download Máximo Visitante (Mbps)', guestDownload, '0 = sem limite.'),
+					this.ezField('Upload Máximo Visitante (Mbps)', guestUpload, '0 = sem limite.')
+				])
+			]);
+			guestEnabled.addEventListener('change', function(){
+				guestBox.style.display = guestEnabled.checked ? '' : 'none';
+			});
+
+			// Senha do Administrador (root)
+			const adminToggle = checkbox(false);
+			const adminPassWrap = passwordWithToggle('', 'nova senha do administrador (root)');
+			const adminConfirmWrap = passwordWithToggle('', 'digite a senha novamente');
+			const adminMatchAlert = E('small', { style: 'color: #ef4444; display: none; font-weight: 600;' }, ['As senhas não coincidem.']);
+
+			const checkAdminMatch = function(){
+				if(!adminToggle.checked){
+					adminMatchAlert.style.display = 'none';
+					return true;
+				}
+				const p1 = adminPassWrap.getValue();
+				const p2 = adminConfirmWrap.getValue();
+				if(p1 && p2 && p1 !== p2){
+					adminMatchAlert.style.display = 'block';
+					return false;
+				}
+				adminMatchAlert.style.display = 'none';
+				return true;
+			};
+			adminPassWrap.input.addEventListener('input', checkAdminMatch);
+			adminConfirmWrap.input.addEventListener('input', checkAdminMatch);
+
+			const adminBox = E('div', { style: 'margin-top: 12px; display: none;' }, [
+				E('div', { class: 'ex-ez-grid' }, [
+					this.ezField('Nova Senha do Administrador', adminPassWrap, 'Mínimo 6 caracteres para acesso ao painel.'),
+					this.ezField('Confirmar Nova Senha', adminConfirmWrap, adminMatchAlert)
+				])
+			]);
+			adminToggle.addEventListener('change', function(){
+				adminBox.style.display = adminToggle.checked ? '' : 'none';
+				checkAdminMatch();
+			});
+
+			// SQM CAKE
+			const sqmEnabled = checkbox(!!saved.sqm_enabled);
+			const sqmStrategy = select(saved.sqm_strategy || 'manual', [
+				['manual', 'Definir limites manualmente'],
+				['calibrate_later', 'Medir depois pelo painel'],
+				['off', 'Não configurar SQM agora']
+			]);
+			const sqmWanUp = input('number', kbpsToMbpsInput(saved.sqm_wan_upload), { placeholder: 'ex.: 15', min: 0, max: 100000, step: '0.1' });
+			const sqmWanDown = input('number', kbpsToMbpsInput(saved.sqm_wan_download), { placeholder: 'ex.: 1200', min: 0, max: 100000, step: '0.1' });
+			const sqmWan2Up = input('number', kbpsToMbpsInput(saved.sqm_wan2_upload), { placeholder: 'opcional', min: 0, max: 100000, step: '0.1' });
+			const sqmWan2Down = input('number', kbpsToMbpsInput(saved.sqm_wan2_download), { placeholder: 'opcional', min: 0, max: 100000, step: '0.1' });
+
+			const sqmBox = E('div', { style: 'margin-top: 12px; display: ' + (sqmEnabled.checked ? '' : 'none') + ';' }, [
+				E('div', { class: 'alert-message info', style: 'font-size: 0.82rem; line-height: 1.45; margin-bottom: 12px;' }, [
+					E('strong', {}, ['⚡ Recomendação: ']),
+					'O SQM CAKE elimina o lag em jogos e reuniões durante downloads pesados. Para planos acima de 500 Mbps, recomenda-se deixar desativado para utilizar o Fastpath por hardware.'
+				]),
+				E('div', { class: 'ex-ez-grid' }, [
+					this.ezField('Estratégia', sqmStrategy),
+					this.ezField('Download da WAN1 (Mbps)', sqmWanDown, 'Insira 90% a 95% do seu plano contratado.'),
+					this.ezField('Upload da WAN1 (Mbps)', sqmWanUp, 'Insira 90% a 95% do upload contratado.'),
+					this.ezField('Download da WAN2 (Mbps)', sqmWan2Down, 'Opcional (se tiver WAN2 ativa).'),
+					this.ezField('Upload da WAN2 (Mbps)', sqmWan2Up, 'Opcional (se tiver WAN2 ativa).')
+				])
+			]);
+			sqmEnabled.addEventListener('change', function(){
+				sqmBox.style.display = sqmEnabled.checked ? '' : 'none';
+			});
+
+			// DNS e Segurança
+			const dnsMode = select(saved.dns_mode || 'recommended', [
+				['recommended', 'DNS Recomendado (Cloudflare + Google rápido)'],
+				['operator', 'DNS da Operadora (Automático via ISP)'],
+				['custom', 'DNS Personalizado']
+			]);
+			const savedDns = String(saved.dns_servers || '1.1.1.1 1.0.0.1 8.8.8.8').split(/\s+/);
+			const dns1 = input('text', savedDns[0] || '1.1.1.1', { placeholder: 'DNS 1' });
+			const dns2 = input('text', savedDns[1] || '1.0.0.1', { placeholder: 'DNS 2' });
+			const dns3 = input('text', savedDns[2] || '8.8.8.8', { placeholder: 'DNS 3 opcional' });
+
+			const customDnsBox = E('div', { class: 'ex-ez-grid ex-ez-grid-3', style: 'margin-top: 10px; display: none;' }, [
+				this.ezField('DNS Primário', dns1, 'Ex: 1.1.1.1 ou 2606:4700:4700::1111'),
+				this.ezField('DNS Secundário', dns2, 'Ex: 1.0.0.1 ou 2001:4860:4860::8888'),
+				this.ezField('DNS Terciário (Opcional)', dns3, 'Opcional')
+			]);
+			const syncDnsMode = function(){
+				customDnsBox.style.display = (dnsMode.value === 'custom') ? '' : 'none';
+			};
+			dnsMode.addEventListener('change', syncDnsMode);
+			syncDnsMode();
+
+			const ipv6Select = select(saved.disable_ipv6 ? 'disable' : 'enable', [
+				['enable', '🟢 Pilha Dupla Global (IPv6 Ativo - Recomendado)'],
+				['disable', '🟡 Desativar IPv6 (Operar Apenas em IPv4)']
+			]);
+
 			const isLegacy = !!(this.capabilities && this.capabilities.hardware && this.capabilities.hardware.is_legacy_owrt);
-			const disableIpv6=checkbox(saved.disable_ipv6!==false), disableWps=checkbox(saved.disable_wps!==false), useArgon=checkbox(!isLegacy && saved.use_argon!==false);
-			const defaultModules = isLegacy ? 'sqm mwan3 nlbwmon' : 'sqm mwan3 nlbwmon';
-			const modules=(saved.install_modules||defaultModules).split(/\s+/), moduleBoxes={};
-			const moduleNames={argon:'Tema Argon',sqm:'SQM / CAKE',mwan3:'Multi‑WAN',nlbwmon:'Consumo por dispositivo',upnp:'UPnP / NAT‑PMP',uhttpd:'HTTPS/uHTTPd'};
-			const modKeys = isLegacy ? ['sqm','mwan3','nlbwmon','upnp','uhttpd'] : ['argon','sqm','mwan3','nlbwmon','upnp','uhttpd'];
-			modKeys.forEach(L.bind(function(key){const f=this.feature(key)||{}, installed=f.installed;moduleBoxes[key]=checkbox(installed||modules.indexOf(key)>=0);moduleBoxes[key].disabled=installed;},this));
-			const progress=E('div',{class:'ex-ez-progress'},[E('strong',{},['Progresso salvo: etapa ',String(saved.applied_step||0),'/7']),E('small',{class:'ex-muted'},[saved.state==='applied'?'Configuração já aplicada.':(saved.last_step?'Última etapa: '+saved.last_step:'Rascunho pronto para editar.')]),saved.backup?E('code',{},[saved.backup]):'']);
-			const collect=L.bind(function(){
-				const selectedModules=Object.keys(moduleBoxes).filter(function(k){return moduleBoxes[k].checked&&!moduleBoxes[k].disabled;}).join(' ');
-				const dnsServers=[dns1.value.trim(),dns2.value.trim(),dns3.value.trim()].filter(Boolean).join(' ');
-				const args=['ez-setup-save',
-					'language='+language.value,'profile='+profile.value,'router_name='+routerName.value,'country='+country.value,'wifi_mode='+wifiMode.value,
-					'main_ssid='+mainSsid.value,'guest_enabled='+(guestEnabled.checked?'1':'0'),'guest_ssid='+guestSsid.value,
-					'guest_limit_enabled='+(guestLimitEnabled.checked?'1':'0'),'guest_download_kbps='+mbpsToKbps(guestDownload.value),'guest_upload_kbps='+mbpsToKbps(guestUpload.value),
-					'wan2_enabled='+(wan2Enabled.checked?'1':'0'),'wan2_port='+wan2Port.value,'wan_mode='+wanMode.value,
-					'sqm_enabled='+(sqmEnabled.checked?'1':'0'),'sqm_strategy='+sqmStrategy.value,
-					'sqm_wan_upload='+mbpsToKbps(sqmWanUp.value),'sqm_wan_download='+mbpsToKbps(sqmWanDown.value),'sqm_wan2_upload='+mbpsToKbps(sqmWan2Up.value),'sqm_wan2_download='+mbpsToKbps(sqmWan2Down.value),
-					'dns_mode='+dnsMode.value,'dns_servers='+dnsServers,'disable_ipv6='+(disableIpv6.checked?'1':'0'),'disable_wps='+(disableWps.checked?'1':'0'),'use_argon='+(useArgon.checked?'1':'0'),'install_modules='+selectedModules
+			const disableWps = checkbox(saved.disable_wps !== false);
+
+			// Módulos Opcionais (ARK Router usa tema nativo; Argon removido)
+			const defaultModules = 'sqm mwan3 nlbwmon';
+			const modules = (saved.install_modules || defaultModules).split(/\s+/), moduleBoxes = {};
+			const moduleNames = { sqm: 'SQM / CAKE', mwan3: 'Multi‑WAN', nlbwmon: 'Consumo por dispositivo', upnp: 'UPnP / NAT‑PMP', uhttpd: 'HTTPS/uHTTPd' };
+			const modKeys = ['sqm','mwan3','nlbwmon','upnp','uhttpd'];
+			modKeys.forEach(L.bind(function(key){
+				const f = this.feature(key) || {}, inst = f.installed;
+				moduleBoxes[key] = checkbox(inst || modules.indexOf(key) >= 0);
+				moduleBoxes[key].disabled = inst;
+			}, this));
+
+			const progress = E('div', { class: 'ex-ez-progress' }, [
+				E('strong', {}, ['Progresso salvo: etapa ', String(saved.applied_step || 0), '/7']),
+				E('small', { class: 'ex-muted' }, [
+					saved.state === 'applied' ? 'Configuração já aplicada anteriormente.' : (saved.last_step ? 'Última etapa: ' + saved.last_step : 'Rascunho pronto para editar.')
+				]),
+				saved.backup ? E('code', {}, [saved.backup]) : ''
+			]);
+
+			const validateForm = function(){
+				if(adminToggle.checked){
+					const p1 = adminPassWrap.getValue();
+					const p2 = adminConfirmWrap.getValue();
+					if(!p1 || p1.length < 6){
+						ui.addNotification(null, E('p', {}, ['A nova senha de administrador deve ter no mínimo 6 caracteres.']), 'warning');
+						return false;
+					}
+					if(p1 !== p2){
+						ui.addNotification(null, E('p', {}, ['As senhas de administrador digitadas não coincidem.']), 'warning');
+						return false;
+					}
+				}
+				if(wan1Proto.value === 'pppoe'){
+					if(!wan1Username.value.trim()){
+						ui.addNotification(null, E('p', {}, ['Informe o usuário da sua conexão de fibra PPPoE (WAN 1).']), 'warning');
+						return false;
+					}
+				}
+				if(wan2Enabled.checked && wan2Proto.value === 'pppoe'){
+					if(!wan2Username.value.trim()){
+						ui.addNotification(null, E('p', {}, ['Informe o usuário da conexão PPPoE da WAN 2.']), 'warning');
+						return false;
+					}
+				}
+				if(wan1Proto.value === 'static'){
+					if(!wan1Ip.value.trim() || !wan1Mask.value.trim()){
+						ui.addNotification(null, E('p', {}, ['Informe o endereço IPv4 e a máscara de rede da WAN 1.']), 'warning');
+						return false;
+					}
+				}
+				if(wan2Enabled.checked && wan2Proto.value === 'static'){
+					if(!wan2Ip.value.trim() || !wan2Mask.value.trim()){
+						ui.addNotification(null, E('p', {}, ['Informe o endereço IPv4 e a máscara de rede da WAN 2.']), 'warning');
+						return false;
+					}
+				}
+				if(wifiMode.value === 'split'){
+					if(!mainSsid2g.value.trim() || !mainSsid5g.value.trim()){
+						ui.addNotification(null, E('p', {}, ['Os nomes das redes Wi-Fi 2,4 GHz e 5 GHz não podem ficar em branco.']), 'warning');
+						return false;
+					}
+					const mk2 = mainKey2gWrap.getValue();
+					if(mk2 && mk2.length < 8){
+						ui.addNotification(null, E('p', {}, ['A senha do Wi-Fi 2,4 GHz deve ter no mínimo 8 caracteres.']), 'warning');
+						return false;
+					}
+					const mk5 = mainKey5gWrap.getValue();
+					if(mk5 && mk5.length < 8){
+						ui.addNotification(null, E('p', {}, ['A senha do Wi-Fi 5 GHz deve ter no mínimo 8 caracteres.']), 'warning');
+						return false;
+					}
+				} else {
+					if(!mainSsid.value.trim()){
+						ui.addNotification(null, E('p', {}, ['O nome do Wi-Fi principal não pode ficar em branco.']), 'warning');
+						return false;
+					}
+					const mk = mainKeyWrap.getValue();
+					if(mk && mk.length < 8){
+						ui.addNotification(null, E('p', {}, ['A senha do Wi-Fi principal deve ter no mínimo 8 caracteres.']), 'warning');
+						return false;
+					}
+				}
+				if(guestEnabled.checked){
+					const gk = guestKeyWrap.getValue();
+					if(gk && gk.length < 8){
+						ui.addNotification(null, E('p', {}, ['A senha da rede visitante deve ter no mínimo 8 caracteres.']), 'warning');
+						return false;
+					}
+				}
+				return true;
+			};
+
+			const collect = L.bind(function(){
+				const selectedModules = Object.keys(moduleBoxes).filter(function(k){ return moduleBoxes[k].checked && !moduleBoxes[k].disabled; }).join(' ');
+				const dnsServers = [dns1.value.trim(), dns2.value.trim(), dns3.value.trim()].filter(Boolean).join(' ');
+				const effectiveMainSsid = (wifiMode.value === 'split') ? mainSsid2g.value.trim() : mainSsid.value.trim();
+				const args = [
+					'ez-setup-save',
+					'language=' + language.value,
+					'router_name=' + routerName.value,
+					'country=' + country.value,
+					'wifi_mode=' + wifiMode.value,
+					'main_ssid=' + effectiveMainSsid,
+					'main_ssid_2g=' + mainSsid2g.value.trim(),
+					'main_ssid_5g=' + mainSsid5g.value.trim(),
+					'wan1_proto=' + wan1Proto.value,
+					'wan1_username=' + wan1Username.value.trim(),
+					'wan1_password=' + wan1PasswordWrap.getValue().trim(),
+					'wan1_ipaddr=' + wan1Ip.value.trim(),
+					'wan1_netmask=' + wan1Mask.value.trim(),
+					'wan1_gateway=' + wan1Gw.value.trim(),
+					'wan1_dns=' + wan1Dns.value.trim(),
+					'wan2_enabled=' + (wan2Enabled.checked ? '1' : '0'),
+					'wan2_port=' + wan2Port.value,
+					'wan_mode=' + wanMode.value,
+					'wan2_proto=' + wan2Proto.value,
+					'wan2_username=' + wan2Username.value.trim(),
+					'wan2_password=' + wan2PasswordWrap.getValue().trim(),
+					'wan2_ipaddr=' + wan2Ip.value.trim(),
+					'wan2_netmask=' + wan2Mask.value.trim(),
+					'wan2_gateway=' + wan2Gw.value.trim(),
+					'wan2_dns=' + wan2Dns.value.trim(),
+					'guest_enabled=' + (guestEnabled.checked ? '1' : '0'),
+					'guest_ssid=' + guestSsid.value,
+					'guest_limit_enabled=' + (guestLimitEnabled.checked ? '1' : '0'),
+					'guest_download_kbps=' + mbpsToKbps(guestDownload.value),
+					'guest_upload_kbps=' + mbpsToKbps(guestUpload.value),
+					'change_admin_password=' + (adminToggle.checked ? '1' : '0'),
+					'admin_password=' + (adminToggle.checked ? adminPassWrap.getValue().trim() : ''),
+					'sqm_enabled=' + (sqmEnabled.checked ? '1' : '0'),
+					'sqm_strategy=' + sqmStrategy.value,
+					'sqm_wan_upload=' + mbpsToKbps(sqmWanUp.value),
+					'sqm_wan_download=' + mbpsToKbps(sqmWanDown.value),
+					'sqm_wan2_upload=' + mbpsToKbps(sqmWan2Up.value),
+					'sqm_wan2_download=' + mbpsToKbps(sqmWan2Down.value),
+					'dns_mode=' + dnsMode.value,
+					'dns_servers=' + dnsServers,
+					'disable_ipv6=' + (ipv6Select.value === 'disable' ? '1' : '0'),
+					'disable_wps=' + (disableWps.checked ? '1' : '0'),
+					'install_modules=' + selectedModules
 				];
-				if(mainKey.value)args.push('main_key='+mainKey.value);
-				if(guestKey.value)args.push('guest_key='+guestKey.value);
+				if(wifiMode.value === 'split'){
+					if(mainKey2gWrap.getValue()) args.push('main_key_2g=' + mainKey2gWrap.getValue().trim(), 'main_key=' + mainKey2gWrap.getValue().trim());
+					if(mainKey5gWrap.getValue()) args.push('main_key_5g=' + mainKey5gWrap.getValue().trim());
+				} else {
+					if(mainKeyWrap.getValue()) args.push('main_key=' + mainKeyWrap.getValue().trim());
+				}
+				if(guestKeyWrap.getValue()) args.push('guest_key=' + guestKeyWrap.getValue().trim());
 				return args;
-			},this);
-			const saveDraft=L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',collect()).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar o Ark - Setup');ui.addNotification(null,E('p',{},['Rascunho do Ark - Setup salvo.']));}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this);
-			const applySetup=L.bind(function(){return saveDraft().then(L.bind(function(){
-				ui.showModal('Aplicar Ark - Setup',[E('p',{class:'alert-message warning'},['O roteador criará um backup em /tmp e aplicará as etapas salvas. Wi‑Fi, DNS, firewall, WAN ou SQM podem reiniciar durante o processo.']),E('p',{},['Se o painel cair, reconecte na nova rede e abra o ARK Router novamente; o progresso fica salvo.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['ez-setup-apply']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao aplicar o Ark - Setup');let out={};try{out=JSON.parse(r.stdout||'{}');}catch(e){}ui.hideModal();ui.addNotification(null,E('p',{},['Ark - Setup aplicado. Backup: ',out.backup||'/tmp/ark-router-ezsetup-backup-*.tar.gz']));window.setTimeout(function(){window.location.reload();},1800);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar e aplicar'])])]);
-			},this));},this);
-			const pollSetupModules=L.bind(function(attempt){return fs.exec('/usr/sbin/equipe-dashboard-control',['ez-setup-install-status']).then(L.bind(function(r){const state=String(r.stdout||'').trim();if(state==='done'){ui.addNotification(null,E('p',{},['Módulos do Ark - Setup instalados. Recarregando…']));window.setTimeout(function(){window.location.reload();},1200);return;}if(state==='error'||attempt>180){return fs.exec('/usr/sbin/equipe-dashboard-control',['ez-setup-install-log']).then(function(log){const lines=String(log.stdout||'').split(/\r?\n/).filter(Boolean);ui.addNotification(null,E('p',{},[lines.slice(-4).join(' | ')||'Falha ao instalar módulos.']),'danger');});}window.setTimeout(function(){pollSetupModules(attempt+1);},2000);},this));},this);
-			const installModules=L.bind(function(){return saveDraft().then(L.bind(function(){
-				ui.showModal('Instalar módulos do Ark - Setup',[E('p',{class:'alert-message warning'},['A lista de pacotes será atualizada e os módulos selecionados serão instalados um por um. Nenhuma configuração de rede será aplicada automaticamente.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['ez-setup-install-modules']).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao iniciar instalação');ui.hideModal();ui.addNotification(null,E('p',{},['Instalação dos módulos iniciada.']));pollSetupModules(0);},this)).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Confirmar instalação'])])]);
-			},this));},this);
-			const reset=L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['ez-setup-reset']).then(function(){ui.hideModal();ui.addNotification(null,E('p',{},['Rascunho do Ark - Setup apagado.']));}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this);
-			const moduleList=E('div',{class:'ex-ez-module-grid'},Object.keys(moduleBoxes).map(L.bind(function(k){const f=this.feature(k);if(f.installed)return E('div',{class:'ex-ez-module-installed'},[E('b',{},['✓']),E('span',{},[moduleNames[k]||k,E('small',{},['Já instalado'])])]);return E('label',{},[moduleBoxes[k],E('span',{},[moduleNames[k]||k,E('small',{},['Opcional'])])]);},this)));
-			ui.showModal('Ark - Setup',[E('div',{class:'ex-ez-setup'},[
+			}, this);
+
+			const saveDraft = L.bind(function(){
+				if(!validateForm()) return Promise.reject(new Error('Validação pendente'));
+				return fs.exec('/usr/sbin/equipe-dashboard-control', collect()).then(function(r){
+					if(r.code) throw new Error(r.stderr || 'Falha ao salvar o Ark - Setup');
+					ui.addNotification(null, E('p', {}, ['Rascunho do Ark - Setup salvo com sucesso.']));
+				}).catch(function(e){
+					if(reloadAfterExpectedDisconnect(e, 'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…', 4200)) return;
+					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+				});
+			}, this);
+
+			const applySetup = L.bind(function(){
+				if(!validateForm()) return;
+				return saveDraft().then(L.bind(function(){
+					ui.showModal('Aplicar Ark - Setup', [
+						E('p', { class: 'alert-message warning' }, ['O roteador criará um backup em /tmp e aplicará as etapas salvas. A internet, Wi‑Fi e DNS serão sincronizados.']),
+						E('p', {}, ['Se a conexão cair momentaneamente, reconecte no novo Wi-Fi e recarregue o painel; o progresso fica salvo.']),
+						(function(){
+							const applyBtn = E('button', {
+								class: 'btn cbi-button cbi-button-positive',
+								style: 'min-height:40px; min-width:180px; user-select:none; -webkit-tap-highlight-color:transparent;',
+								disabled: true
+							}, ['Confirmar e aplicar (2s)']);
+							let remaining = 2;
+							const interval = window.setInterval(function(){
+								remaining--;
+								if(remaining > 0){
+									applyBtn.textContent = 'Confirmar e aplicar (' + remaining + 's)';
+								} else {
+									window.clearInterval(interval);
+									applyBtn.textContent = 'Confirmar e aplicar';
+									applyBtn.disabled = false;
+								}
+							}, 1000);
+							applyBtn.addEventListener('click', function(ev){
+								ev.preventDefault();
+								ev.stopPropagation();
+								applyBtn.disabled = true;
+								applyBtn.textContent = 'Aplicando…';
+								return fs.exec('/usr/sbin/equipe-dashboard-control', ['ez-setup-apply']).then(function(r){
+									if(r.code) throw new Error(r.stderr || 'Falha ao aplicar o Ark - Setup');
+									let out = {};
+									try { out = JSON.parse(r.stdout || '{}'); } catch(e){}
+									ui.hideModal();
+									ui.addNotification(null, E('p', {}, ['Ark - Setup aplicado com sucesso! Backup: ', out.backup || '/tmp/ark-router-ezsetup-backup-*.tar.gz']));
+									window.setTimeout(function(){ window.location.reload(); }, 2000);
+								}).catch(function(e){
+									if(reloadAfterExpectedDisconnect(e, 'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…', 4200)) return;
+									ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+									applyBtn.disabled = false;
+									applyBtn.textContent = 'Confirmar e aplicar';
+								});
+							}, true);
+							return E('div', { class: 'right' }, [
+								E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': closeModal }, ['Cancelar']),
+								' ',
+								applyBtn
+							]);
+						})()
+					]);
+				}, this));
+			}, this);
+
+			const pollSetupModules = L.bind(function(attempt){
+				return fs.exec('/usr/sbin/equipe-dashboard-control', ['ez-setup-install-status']).then(L.bind(function(r){
+					const state = String(r.stdout || '').trim();
+					if(state === 'done'){
+						ui.addNotification(null, E('p', {}, ['Módulos do Ark - Setup instalados. Recarregando…']));
+						window.setTimeout(function(){ window.location.reload(); }, 1200);
+						return;
+					}
+					if(state === 'error' || attempt > 180){
+						return fs.exec('/usr/sbin/equipe-dashboard-control', ['ez-setup-install-log']).then(function(log){
+							const lines = String(log.stdout || '').split(/\r?\n/).filter(Boolean);
+							ui.addNotification(null, E('p', {}, [lines.slice(-4).join(' | ') || 'Falha ao instalar módulos.']), 'danger');
+						});
+					}
+					window.setTimeout(function(){ pollSetupModules(attempt + 1); }, 2000);
+				}, this));
+			}, this);
+
+			const installModules = L.bind(function(){
+				return saveDraft().then(L.bind(function(){
+					ui.showModal('Instalar módulos do Ark - Setup', [
+						E('p', { class: 'alert-message warning' }, ['A lista de pacotes será atualizada e os módulos selecionados serão instalados em segundo plano.']),
+						E('div', { class: 'right' }, [
+							E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': closeModal }, ['Cancelar']),
+							' ',
+							E('button', { class: 'btn cbi-button cbi-button-positive', 'click': L.bind(function(){
+								return fs.exec('/usr/sbin/equipe-dashboard-control', ['ez-setup-install-modules']).then(L.bind(function(r){
+									if(r.code) throw new Error(r.stderr || 'Falha ao iniciar instalação');
+									ui.hideModal();
+									ui.addNotification(null, E('p', {}, ['Instalação dos módulos iniciada.']));
+									pollSetupModules(0);
+								}, this)).catch(function(e){
+									if(reloadAfterExpectedDisconnect(e, 'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…', 4200)) return;
+									ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+								});
+							}, this) }, ['Confirmar instalação'])
+						])
+					]);
+				}, this));
+			}, this);
+
+			const reset = L.bind(function(){
+				return fs.exec('/usr/sbin/equipe-dashboard-control', ['ez-setup-reset']).then(function(){
+					ui.hideModal();
+					ui.addNotification(null, E('p', {}, ['Rascunho do Ark - Setup apagado.']));
+				}).catch(function(e){
+					if(reloadAfterExpectedDisconnect(e, 'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…', 4200)) return;
+					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+				});
+			}, this);
+
+			const moduleList = E('div', { class: 'ex-ez-module-grid' }, Object.keys(moduleBoxes).map(L.bind(function(k){
+				const f = this.feature(k);
+				if(f.installed) return E('div', { class: 'ex-ez-module-installed' }, [E('b', {}, ['✓']), E('span', {}, [moduleNames[k] || k, E('small', {}, ['Já instalado'])])]);
+				return E('label', {}, [moduleBoxes[k], E('span', {}, [moduleNames[k] || k, E('small', {}, ['Opcional'])])]);
+			}, this)));
+
+			ui.showModal('Ark - Setup', [E('div', { class: 'ex-ez-setup' }, [
 				progress,
-				E('section',{class:'ex-ez-section'},[E('h3',{},['1. Idioma, nome e país']),E('div',{class:'ex-ez-grid ex-ez-grid-3'},[this.ezField('Idioma',language),this.ezField('Nome do painel',routerName),this.ezField('País regulatório',country,'Escolha onde o equipamento está sendo usado.')])]),
-				E('section',{class:'ex-ez-section ex-ez-primary'},[
-					E('h3',{},['2. Como a internet entra no roteador?']),
-					E('div',{class:'ex-ez-grid ex-ez-grid-3'},[
-						this.ezField('Modo de internet',profile,profileHelp.textContent),
-						this.ezField('Modo Multi‑WAN',wanMode,'Usado quando há duas conexões ativas.'),
-						this.ezField('Habilitar segunda internet (WAN2)',wan2Enabled,'Ativa a segunda entrada de internet.')
-					]),
-					E('div',{class:'ex-ez-grid ex-ez-grid-2',style:'margin-top:12px;'},[
-						this.ezField('Porta física para WAN2',wan2Port,'Selecione qual porta do aparelho receberá a segunda internet.'),
-						this.ezField('Protocolo da WAN2',E('span',{class:'ex-muted',style:'display:block;padding:8px 0;font-size:0.85rem;'},['DHCP Automático (Starlink, 4G/5G ou segundo modem)']))
-					]),
-					E('div',{class:'alert-message info',style:'margin-top:12px;font-size:0.8rem;line-height:1.45;'},[
-						E('strong',{},['📌 Dica: ']),
-						'Confira a numeração das portas físicas gravada na carcaça do seu aparelho (ex: LAN1, LAN2, LAN3) caso tenha dúvida de onde conectar o cabo da segunda internet.'
+				E('section', { class: 'ex-ez-section' }, [
+					E('h3', {}, ['1. Idioma, nome e país']),
+					E('div', { class: 'ex-ez-grid ex-ez-grid-3' }, [
+						this.ezField('Idioma do Painel', language),
+						this.ezField('Nome do Roteador', routerName),
+						this.ezField('País Regulatório', country, 'Define os canais e limites de potência do Wi-Fi.')
 					])
 				]),
-				E('section',{class:'ex-ez-section'},[E('h3',{},['3. Wi‑Fi principal']),E('div',{class:'ex-ez-grid'},[this.ezField('Nome da rede principal',mainSsid),this.ezField('Senha principal',mainKey,'Mínimo 8 caracteres.'),this.ezField('2,4 GHz e 5 GHz',wifiMode)])]),
-				E('section',{class:'ex-ez-section'},[E('h3',{},['4. Rede visitante']),E('div',{class:'ex-ez-grid'},[this.ezField('Habilitar visitante',guestEnabled),this.ezField('Nome da rede visitante',guestSsid),this.ezField('Senha visitante',guestKey,'Mínimo 8 caracteres.'),this.ezField('Limitar visitante',guestLimitEnabled),this.ezField('Download total visitante em Mbps',guestDownload,'0 = ilimitado.'),this.ezField('Upload total visitante em Mbps',guestUpload,'Exemplo: 1,5 Mbps. Use 0 para ilimitado.')])]),
-				E('section',{class:'ex-ez-section'},[E('h3',{},['5. SQM / CAKE']),E('p',{class:'ex-muted'},['Ajuda a manter latência estável quando o link está cheio. Informe as velocidades em Mbps; 1,2 Gbps = 1200 Mbps.']),E('div',{class:'ex-ez-grid'},[this.ezField('Configurar SQM',sqmEnabled),this.ezField('Estratégia',sqmStrategy),this.ezField('WAN1 upload Mbps',sqmWanUp),this.ezField('WAN1 download Mbps',sqmWanDown),this.ezField('WAN2 upload Mbps',sqmWan2Up),this.ezField('WAN2 download Mbps',sqmWan2Down)])]),
-				E('section',{class:'ex-ez-section'},[E('h3',{},['6. DNS e segurança']),E('div',{class:'ex-ez-grid'},[this.ezField('Modo DNS',dnsMode),this.ezField('DNS 1',dns1),this.ezField('DNS 2',dns2),this.ezField('DNS 3',dns3,'Opcional'),this.ezField('Desativar IPv6',disableIpv6),this.ezField('Desativar WPS',disableWps),isLegacy?'':this.ezField('Usar Argon se instalado',useArgon)].filter(Boolean))]),
-				E('section',{class:'ex-ez-section'},[E('h3',{},['7. Recursos opcionais']),E('p',{class:'ex-muted'},['Marcados como “já instalado” já existem no roteador. Os demais são opcionais e só serão instalados se você confirmar.']),moduleList,E('button',{class:'ex-mini-button ex-ez-install-modules','click':installModules},['Instalar módulos selecionados'])]),
-				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar']),' ',E('button',{class:'btn cbi-button cbi-button-neutral','click':reset},['Apagar rascunho']),' ',E('button',{class:'btn cbi-button cbi-button-action','click':saveDraft},['Salvar rascunho']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':applySetup},['Salvar e aplicar'])])
+				E('section', { class: 'ex-ez-section ex-ez-primary' }, [
+					E('div', { style: 'display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:12px;' }, [
+						E('h3', { style: 'margin:0 !important;' }, ['2. Como a internet entra no roteador?']),
+						E('span', { class: 'ex-device-badge', style: 'background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); font-size:0.75rem; padding:3px 8px; border-radius:6px;' }, [
+							saved.wan1_online ? '🟢 Internet Principal Detectada' : '⚪ Aguardando Conexão'
+						])
+					]),
+					E('div', { class: 'ex-ez-grid' }, [
+						this.ezField('Tipo de Conexão (WAN1)', wan1Proto, 'Escolha como o cabo do modem ou fibra chega ao roteador.')
+					]),
+					pppoeBox,
+					staticBox,
+					E('hr', { style: 'margin: 16px 0; border: none; border-top: 1px solid rgba(127,127,127,0.15);' }),
+					E('div', { style: 'display:flex; align-items:center; gap:8px;' }, [
+						wan2Enabled,
+						E('span', { style: 'font-weight:700; font-size:0.9rem;' }, ['Possui uma segunda internet de reserva (WAN 2)?'])
+					]),
+					wan2Box
+				]),
+				E('section', { class: 'ex-ez-section' }, [
+					E('h3', {}, ['3. Wi‑Fi principal']),
+					E('div', { class: 'ex-ez-grid', style: 'margin-bottom: 12px;' }, [
+						this.ezField('Modo de Frequência Wi-Fi', wifiMode, 'Unificado usa Band Steering automático; Separado permite nomes e senhas distintos para 2,4 GHz e 5 GHz.')
+					]),
+					unifiedWifiBox,
+					splitWifiBox
+				]),
+				E('section', { class: 'ex-ez-section' }, [
+					E('div', { style: 'display:flex; align-items:center; gap:8px; margin-bottom: 6px;' }, [
+						guestEnabled,
+						E('h3', { style: 'margin:0 !important;' }, ['4. Habilitar rede de visitantes'])
+					]),
+					E('p', { class: 'ex-muted', style: 'margin:0 0 6px 0; font-size:0.82rem;' }, ['Cria uma rede isolada para visitas, sem acesso aos computadores e arquivos da sua rede interna.']),
+					guestBox
+				]),
+				E('section', { class: 'ex-ez-section' }, [
+					E('div', { style: 'display:flex; align-items:center; gap:8px; margin-bottom: 6px;' }, [
+						adminToggle,
+						E('h3', { style: 'margin:0 !important;' }, ['5. Alterar senha de administrador do roteador'])
+					]),
+					E('p', { class: 'ex-muted', style: 'margin:0 0 6px 0; font-size:0.82rem;' }, ['Ative para definir uma nova senha de acesso ao painel web e SSH (usuário root).']),
+					adminBox
+				]),
+				E('section', { class: 'ex-ez-section' }, [
+					E('h3', {}, ['6. DNS e segurança']),
+					E('div', { class: 'ex-ez-grid' }, [
+						this.ezField('Servidores DNS', dnsMode),
+						this.ezField('Conectividade IPv6', ipv6Select, 'Mantenha Pilha Dupla para jogos e sites modernos.'),
+						this.ezField('Desativar WPS', disableWps, 'Recomendado manter desativado por segurança.')
+					]),
+					customDnsBox
+				]),
+				E('section', { class: 'ex-ez-section' }, [
+					E('div', { style: 'display:flex; align-items:center; gap:8px; margin-bottom: 6px;' }, [
+						sqmEnabled,
+						E('h3', { style: 'margin:0 !important;' }, ['7. Anti-Lag para Jogos (SQM CAKE)'])
+					]),
+					E('p', { class: 'ex-muted', style: 'margin:0 0 6px 0; font-size:0.82rem;' }, ['Gerenciamento inteligente de fila de pacotes para manter ping estável mesmo com downloads pesados na casa.']),
+					sqmBox
+				]),
+				E('section', { class: 'ex-ez-section' }, [
+					E('h3', {}, ['8. Recursos opcionais']),
+					E('p', { class: 'ex-muted' }, ['Módulos adicionais do sistema. Os marcados como "Já instalado" já estão presentes na memória ROM.']),
+					moduleList,
+					E('button', { class: 'ex-mini-button ex-ez-install-modules', 'click': installModules }, ['Instalar módulos selecionados'])
+				]),
+				E('div', { class: 'right' }, [
+					E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': closeModal }, ['Fechar']),
+					' ',
+					E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': reset }, ['Apagar rascunho']),
+					' ',
+					E('button', { class: 'btn cbi-button cbi-button-action', 'click': saveDraft }, ['Salvar rascunho']),
+					' ',
+					E('button', { class: 'btn cbi-button cbi-button-positive', 'click': applySetup }, ['Salvar e aplicar'])
+				])
 			])]);
-		},this));
+		}, this));
 	},
 	showArkCleanup: function(){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['cleanup-status']).then(L.bind(function(r){
@@ -7683,6 +8485,430 @@ return view.extend({
 			}},['Criar backup e desativar IPv6'])])
 		]);
 	},
+
+	dmzCard: function() {
+		const self = this;
+		const pillEl = E('span', { id: 'ex-dmz-pill', class: 'ex-pill standby' }, ['CONSULTANDO…']);
+		const summaryTextEl = E('p', { id: 'ex-dmz-summary', class: 'ex-muted', style: 'margin: 6px 0 12px; line-height: 1.45; font-size: 13px;' }, [
+			'Encaminha todas as portas e conexões não mapeadas recebidas da internet diretamente para um único aparelho (PC Gamer, Console ou Servidor), garantindo NAT Tipo 1 / Aberto.'
+		]);
+
+		const hostPreviewEl = E('div', { id: 'ex-dmz-host-preview', style: 'margin-bottom: 14px;' }, [
+			E('div', { class: 'ex-muted', style: 'font-size: 13px; font-style: italic;' }, ['Carregando dados da DMZ…'])
+		]);
+
+		const toggleInput = E('input', { id: 'ex-dmz-toggle', type: 'checkbox', 'aria-label': 'Ativar ou Desativar DMZ' });
+		toggleInput.addEventListener('change', function(ev) {
+			const chk = ev.currentTarget;
+			const enable = chk.checked;
+			if (enable) {
+				chk.checked = false;
+				self.showDmzModal();
+			} else {
+				chk.disabled = true;
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['dmz-set', '0']).then(function(r) {
+					chk.disabled = false;
+					if (r.code) throw new Error(r.stderr || 'Falha ao desativar DMZ');
+					ui.addNotification(null, E('p', {}, ['DMZ desativada com sucesso.']));
+					self.updateDmzStatus();
+				}).catch(function(e) {
+					chk.disabled = false;
+					chk.checked = true;
+					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+				});
+			}
+		});
+
+		const toggleRow = E('div', { class: 'ex-channel-mode-control', style: 'margin-bottom: 12px;' }, [
+			E('div', {}, [
+				E('strong', {}, ['Zona Desmilitarizada Ativa']),
+				E('small', { id: 'ex-dmz-toggle-desc', class: 'ex-muted' }, ['Nenhum tráfego exposto no momento'])
+			]),
+			E('label', { class: 'ex-switch' }, [
+				toggleInput,
+				E('span', { class: 'ex-switch-slider' })
+			])
+		]);
+
+		const actionBtn = E('button', {
+			id: 'ex-dmz-action-btn',
+			class: 'btn cbi-button cbi-button-neutral',
+			style: 'width: 100%; min-height: 40px; font-weight: 700; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;',
+			click: function() { self.showDmzModal(); }
+		}, [ '🎯 Escolher Dispositivo para DMZ (Host Aberto)' ]);
+
+		window.setTimeout(function() { self.updateDmzStatus(); }, 300);
+
+		return E('section', { class: 'ex-card ex-dmz-card', style: 'margin-bottom: 20px;' }, [
+			E('div', { class: 'ex-card-title' }, [
+				E('div', {}, [
+					E('span', { class: 'ex-kicker' }, ['REDE & JOGOS • CONECTIVIDADE']),
+					E('h3', {}, ['Zona Desmilitarizada (DMZ)'])
+				]),
+				pillEl
+			]),
+			summaryTextEl,
+			toggleRow,
+			hostPreviewEl,
+			actionBtn
+		]);
+	},
+	updateDmzStatus: function() {
+		const self = this;
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['dmz-status']).then(function(r) {
+			let st = {};
+			try { st = JSON.parse(r.stdout || '{}'); } catch(e) {}
+			const isEnabled = !!st.enabled;
+			const destIp = st.dest_ip || '';
+			const mac = st.mac || '';
+			const devName = st.name || (destIp ? 'Host ' + destIp : '');
+
+			self.dmzActive = isEnabled;
+			self.dmzDestIp = destIp;
+			self.dmzMac = mac;
+
+			const pill = document.getElementById('ex-dmz-pill');
+			if (pill) {
+				pill.className = 'ex-pill ' + (isEnabled ? 'online' : 'standby');
+				pill.textContent = isEnabled ? ('ATIVO • ' + (devName || destIp)) : 'DESATIVADO';
+			}
+
+			const toggle = document.getElementById('ex-dmz-toggle');
+			if (toggle) {
+				toggle.checked = isEnabled;
+			}
+
+			const toggleDesc = document.getElementById('ex-dmz-toggle-desc');
+			if (toggleDesc) {
+				toggleDesc.textContent = isEnabled
+					? ('Direcionado para ' + (devName || destIp) + ' (' + destIp + ')')
+					: 'Nenhum tráfego exposto no momento';
+			}
+
+			const preview = document.getElementById('ex-dmz-host-preview');
+			if (preview) {
+				if (isEnabled && destIp) {
+					const icon = getDeviceIcon(devName);
+					preview.innerHTML = '';
+					preview.appendChild(E('div', { class: 'ex-dmz-host-box' }, [
+						E('div', { class: 'ex-dmz-host-info' }, [
+							E('span', { class: 'ex-dmz-host-icon' }, [ icon ]),
+							E('div', { class: 'ex-dmz-host-details' }, [
+								E('span', { class: 'ex-dmz-host-name' }, [
+									devName || 'Host DMZ',
+									E('span', { class: 'ex-device-badge badge-ipv6', style: 'background:rgba(244,63,94,0.18);color:#f43f5e;border:1px solid rgba(244,63,94,0.35);font-size:0.68rem;padding:2px 6px;border-radius:6px;' }, [ '⚡ NAT TIPO 1 / ABERTO' ])
+								]),
+								E('span', { class: 'ex-dmz-host-ip' }, [ destIp + (mac ? ' • ' + mac : '') ])
+							])
+						]),
+						E('button', {
+							class: 'ex-mini-button',
+							style: 'background:rgba(239,68,68,0.14);color:#f87171;border:1px solid rgba(239,68,68,0.3);min-height:36px;padding:6px 12px;',
+							title: 'Desativar DMZ',
+							click: function() {
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['dmz-set', '0']).then(function(res) {
+									if (res.code) throw new Error(res.stderr || 'Falha ao desativar DMZ');
+									ui.addNotification(null, E('p', {}, ['DMZ desativada.']));
+									self.updateDmzStatus();
+								}).catch(function(err) {
+									ui.addNotification(null, E('p', {}, [err.message]), 'danger');
+								});
+							}
+						}, [ 'Desativar' ])
+					]));
+				} else {
+					preview.innerHTML = '';
+					preview.appendChild(E('div', {
+						style: 'padding: 12px 14px; border-radius: 10px; background: rgba(127,127,127,0.06); border: 1px dashed rgba(127,127,127,0.22); font-size: 0.82rem; color: #94a3b8; display:flex; align-items:center; gap:8px;'
+					}, [
+						E('span', { style: 'font-size: 1rem;' }, ['🛡️']),
+						E('span', {}, ['Nenhum dispositivo na DMZ. Todas as conexões externas não solicitadas são bloqueadas pelo firewall do roteador.'])
+					]));
+				}
+			}
+
+			const actionBtn = document.getElementById('ex-dmz-action-btn');
+			if (actionBtn) {
+				actionBtn.textContent = isEnabled
+					? '🎯 Trocar Dispositivo DMZ (Host Aberto)'
+					: '🎯 Escolher Dispositivo para DMZ (Host Aberto)';
+			}
+		}).catch(function() {});
+	},
+	showDmzModal: function() {
+		const self = this;
+		ui.showModal('Zona Desmilitarizada (DMZ) • Host Gamer', [
+			E('p', { class: 'ex-muted' }, ['Carregando dados da rede e dispositivos…'])
+		]);
+
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['dmz-status']).then(function(r) {
+			let curDmz = {};
+			try { curDmz = JSON.parse(r.stdout || '{}'); } catch(e) {}
+			const isCurrentlyActive = !!curDmz.enabled;
+			let selectedIp = curDmz.dest_ip || '';
+			let selectedMac = curDmz.mac || '';
+			let selectedName = curDmz.name || '';
+
+			const knownDevices = [];
+			const seenMacs = {};
+
+			if (self.devices && self.devices.length) {
+				self.devices.forEach(function(d) {
+					const m = String(d.mac || '').toUpperCase();
+					if (m && !seenMacs[m]) {
+						seenMacs[m] = true;
+						const validIp = (d.ip && d.ip !== '—') ? d.ip : '';
+						knownDevices.push({
+							mac: m,
+							ip: validIp,
+							name: d.name || ('Dispositivo ' + (validIp || m)),
+							isWifi: !!d.isWifi,
+							band: d.band || ''
+						});
+					}
+				});
+			}
+
+			if (self.currentData) {
+				const leases = (self.currentData.leases && self.currentData.leases.dhcp_leases) || [];
+				const names = friendlyMap(self.currentData.names || {});
+				const dhcpValues = values(self.currentData.dhcpConfig || {});
+
+				leases.forEach(function(l) {
+					const m = String(l.mac || l.macaddr || '').toUpperCase();
+					const devIp = l.ipaddr || l.ip || '';
+					if (m && !seenMacs[m]) {
+						seenMacs[m] = true;
+						const devName = names[m] || l.hostname || ('Dispositivo ' + (devIp || m));
+						knownDevices.push({
+							mac: m,
+							ip: devIp,
+							name: devName,
+							isWifi: false
+						});
+					} else if (m && seenMacs[m] && devIp) {
+						const dev = knownDevices.find(function(d){ return d.mac === m; });
+						if (dev && !dev.ip) dev.ip = devIp;
+					}
+				});
+
+				const main = assocMap(self.currentData.mainAssoc || {});
+				Object.keys(main).forEach(function(m) {
+					const u = m.toUpperCase();
+					if (!seenMacs[u]) {
+						seenMacs[u] = true;
+						knownDevices.push({
+							mac: u,
+							ip: main[m].ip || '',
+							name: names[u] || 'Dispositivo Wi-Fi',
+							isWifi: true,
+							band: main[m].band || '5g'
+						});
+					} else {
+						const found = knownDevices.find(function(d){ return d.mac === u; });
+						if (found) { found.isWifi = true; found.band = main[m].band || '5g'; }
+					}
+				});
+
+				Object.keys(dhcpValues).forEach(function(k) {
+					const h = dhcpValues[k];
+					if (h && h['.type'] === 'host' && h.mac) {
+						const macs = Array.isArray(h.mac) ? h.mac : String(h.mac).split(/\s+/);
+						macs.forEach(function(m) {
+							const u = String(m).toUpperCase();
+							if (!seenMacs[u] && h.ip) {
+								seenMacs[u] = true;
+								knownDevices.push({
+									mac: u,
+									ip: h.ip,
+									name: names[u] || h.name || 'Dispositivo Fixo',
+									isWifi: false
+								});
+							} else if (seenMacs[u] && h.ip) {
+								const dev = knownDevices.find(function(d){ return d.mac === u; });
+								if (dev && !dev.ip) dev.ip = h.ip;
+							}
+						});
+					}
+				});
+
+				const arpText = String(self.currentData.arpTable || '');
+				if (arpText) {
+					const arpLines = arpText.split('\n');
+					for (let i = 1; i < arpLines.length; i++) {
+						const cols = arpLines[i].trim().split(/\s+/);
+						if (cols.length >= 6) {
+							const aIp = cols[0];
+							const aMac = String(cols[3] || '').toUpperCase();
+							if (aMac && aMac !== '00:00:00:00:00:00' && cols[2] === '0x2') {
+								const dev = knownDevices.find(function(d){ return d.mac === aMac; });
+								if (dev && !dev.ip) dev.ip = aIp;
+							}
+						}
+					}
+				}
+			}
+
+			if (selectedIp && !knownDevices.find(function(d){ return d.ip === selectedIp; })) {
+				knownDevices.unshift({
+					mac: selectedMac || '',
+					ip: selectedIp,
+					name: selectedName || ('Host DMZ (' + selectedIp + ')'),
+					isWifi: false
+				});
+			}
+
+			const infoBox = E('div', {
+				class: 'ex-priority-desc-box',
+				style: 'margin-bottom: 14px; border: 1px solid rgba(255,255,255,.1); padding: 14px; border-radius: 12px; background: rgba(15,23,42,.6);'
+			}, [
+				E('div', { style: 'display:flex; align-items:center; gap:8px; margin-bottom:8px;' }, [
+					E('span', { style: 'font-size:1.3rem;' }, ['🎮']),
+					E('strong', { style: 'font-size:0.95rem; color:#f8fafc;' }, ['Como Funciona a DMZ no ARK Router:'])
+				]),
+				E('p', { class: 'ex-muted', style: 'margin:0 0 10px; font-size:0.83rem; line-height:1.45;' }, [
+					'A DMZ (Zona Desmilitarizada) encaminha ',
+					E('strong', { style: 'color:#fff;' }, ['todas as portas e conexões não mapeadas']),
+					' recebidas da internet para o aparelho selecionado. Isso garante ',
+					E('strong', { style: 'color:#34d399;' }, ['NAT Tipo 1 / Aberto']),
+					' em consoles (PS5, Xbox Series, Switch) e jogos de PC (Call of Duty, FIFA, GTA), eliminando quedas em salas e partidas online.'
+				]),
+				E('div', { style: 'padding:8px 10px; border-radius:8px; background:rgba(244,63,94,0.12); border:1px solid rgba(244,63,94,0.3); font-size:0.8rem; color:#fca5a5; line-height:1.35;' }, [
+					'🛡️ ', E('strong', {}, ['Segurança Preservada:']), ' Apenas o aparelho escolhido recebe as conexões diretas da WAN. Todos os demais dispositivos da sua casa continuam 100% isolados e protegidos pelo firewall do roteador.'
+				])
+			]);
+
+			const ipInput = E('input', {
+				class: 'cbi-input-text',
+				value: selectedIp,
+				placeholder: 'Ex.: 192.168.73.90',
+				style: 'width: 100%; font-family: monospace; font-size: 0.95rem;',
+				inputmode: 'decimal'
+			});
+
+			const cardsContainer = E('div', { class: 'ex-dmz-device-grid' });
+			const deviceCardEls = [];
+
+			const updateSelection = function(targetIp, targetMac, targetName) {
+				selectedIp = targetIp || '';
+				selectedMac = targetMac || '';
+				selectedName = targetName || '';
+				ipInput.value = selectedIp;
+				deviceCardEls.forEach(function(item) {
+					const match = (selectedIp && item.ip && item.ip === selectedIp) ||
+					              (!selectedIp && selectedMac && item.mac && item.mac === selectedMac);
+					item.el.classList.toggle('is-active', !!match);
+				});
+				if (!selectedIp) {
+					ipInput.focus();
+				}
+			};
+
+			ipInput.addEventListener('input', function() {
+				selectedIp = ipInput.value.trim();
+				deviceCardEls.forEach(function(item) {
+					const match = (selectedIp && item.ip && item.ip === selectedIp);
+					item.el.classList.toggle('is-active', !!match);
+				});
+			});
+
+			knownDevices.forEach(function(d) {
+				const isIt = (d.ip && d.ip === selectedIp) || (!selectedIp && d.mac && d.mac === selectedMac);
+				const icon = getDeviceIcon(d.name);
+				const card = E('div', {
+					class: 'ex-dmz-device-card' + (isIt ? ' is-active' : ''),
+					click: function() { updateSelection(d.ip, d.mac, d.name); }
+				}, [
+					E('span', { class: 'ex-dmz-device-card-icon' }, [ icon ]),
+					E('div', { class: 'ex-dmz-device-card-details' }, [
+						E('span', { class: 'ex-dmz-device-card-name' }, [ d.name ]),
+						E('span', { class: 'ex-dmz-device-card-ip' }, [ d.ip ? d.ip : d.mac ]),
+						E('span', { class: 'ex-dmz-device-card-badge' }, [ d.isWifi ? ('Wi-Fi ' + (d.band === '5g' ? '5 GHz' : '2.4 GHz')) : 'Cabo / LAN' ])
+					])
+				]);
+				deviceCardEls.push({ ip: d.ip, mac: d.mac, name: d.name, el: card });
+				cardsContainer.appendChild(card);
+			});
+
+			const manualBlock = E('div', { style: 'margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08);' }, [
+				E('label', { style: 'display:flex; flex-direction:column; gap:4px; font-weight:650; font-size:0.85rem;' }, [
+					E('span', {}, ['Endereço IPv4 do Dispositivo em DMZ:']),
+					ipInput
+				]),
+				E('small', { class: 'ex-muted', style: 'display:block; margin-top:4px;' }, [
+					'Dica: Ao selecionar um dispositivo acima ou digitar o IP, o ARK Router manterá a concessão estática do DHCP para que o aparelho nunca mude de IP.'
+				])
+			]);
+
+			const btnCancel = E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Cancelar']);
+			const btnDisable = isCurrentlyActive ? E('button', {
+				class: 'btn cbi-button cbi-button-negative',
+				style: 'min-height: 40px;',
+				click: function(ev) {
+					const btn = ev.currentTarget;
+					btn.disabled = true;
+					btn.textContent = 'Desativando…';
+					fs.exec('/usr/sbin/equipe-dashboard-control', ['dmz-set', '0']).then(function(res) {
+						if (res.code) throw new Error(res.stderr || 'Falha ao desativar DMZ');
+						closeModal();
+						ui.addNotification(null, E('p', {}, ['DMZ desativada com sucesso.']));
+						self.updateDmzStatus();
+					}).catch(function(err) {
+						btn.disabled = false;
+						btn.textContent = 'Desativar DMZ';
+						ui.addNotification(null, E('p', {}, [err.message]), 'danger');
+					});
+				}
+			}, ['Desativar DMZ']) : '';
+
+			const btnSave = E('button', {
+				class: 'btn cbi-button cbi-button-positive',
+				style: 'min-height: 40px; font-weight: 700;',
+				click: function(ev) {
+					const btn = ev.currentTarget;
+					const finalIp = ipInput.value.trim();
+					if (!finalIp) {
+						ui.addNotification(null, E('p', {}, ['Informe o endereço IP do dispositivo para a DMZ.']), 'danger');
+						return;
+					}
+					btn.disabled = true;
+					btn.textContent = 'Aplicando DMZ…';
+
+					const matched = knownDevices.find(function(d){ return d.ip === finalIp; });
+					const finalMac = (matched && matched.mac) ? matched.mac : selectedMac;
+					const finalName = (matched && matched.name) ? matched.name : selectedName;
+
+					fs.exec('/usr/sbin/equipe-dashboard-control', ['dmz-set', '1', finalIp, finalMac, finalName]).then(function(res) {
+						if (res.code) throw new Error(res.stderr || 'Falha ao salvar DMZ');
+						closeModal();
+						ui.addNotification(null, E('p', {}, ['DMZ ativada com sucesso para ' + (finalName || finalIp) + '!']));
+						self.updateDmzStatus();
+					}).catch(function(err) {
+						btn.disabled = false;
+						btn.textContent = 'Salvar e Ativar DMZ';
+						ui.addNotification(null, E('p', {}, [err.message]), 'danger');
+					});
+				}
+			}, ['Salvar e Ativar DMZ']);
+
+			const modalBody = [
+				infoBox,
+				E('div', { style: 'font-weight:700; font-size:0.88rem; margin-bottom:6px;' }, ['Selecione o Dispositivo da Rede com 1 Clique:']),
+				cardsContainer,
+				manualBlock,
+				E('div', { class: 'right', style: 'display:flex; justify-content:flex-end; gap:8px; margin-top:16px;' }, [
+					btnCancel,
+					btnDisable,
+					btnSave
+				])
+			];
+
+			ui.showModal('Zona Desmilitarizada (DMZ) • Host Gamer', modalBody);
+		}).catch(function(e) {
+			ui.hideModal();
+			ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+		});
+	},
 	showIpv6Modal: function() {
 		const self = this;
 		ui.showModal('Central de Conectividade IPv6', [
@@ -7726,7 +8952,7 @@ return view.extend({
 					]),
 					E('div', {}, [
 						E('span', { class: 'ex-muted' }, ['Prefixo ULA Local: ']),
-						E('strong', { style: 'color: #cbd5e1; font-family: monospace;' }, [ st.ula_prefix && st.ula_prefix !== 'none' ? st.ula_prefix : 'fd00:ark:lan::/48' ])
+						E('strong', { style: 'color: #cbd5e1; font-family: monospace;' }, [ st.ula_prefix && st.ula_prefix !== 'none' ? st.ula_prefix : 'fd73:0192:0168::/48' ])
 					]),
 					E('div', {}, [
 						E('span', { class: 'ex-muted' }, ['Filtro AAAA no DNS: ']),
@@ -7799,7 +9025,7 @@ return view.extend({
 					'IPv4 e IPv6 nativos funcionando simultaneamente com máxima performance e compatibilidade global.',
 					[
 						'Compatível com PPPoE Fibra e conexões DHCPv6 dinâmicas (IA_PD automático).',
-						'Endereçamento ULA estático permanente (fd00:ark:lan::/48) blindando hostnames locais (.lan) contra trocas de IP da operadora.',
+						'Endereçamento ULA estático permanente (fd73:0192:0168::/48) blindando hostnames locais (.lan) contra trocas de IP da operadora.',
 						'Conformidade RFC 7084: expiração imediata de prefixos antigos (valid_lifetime=0) em quedas do PPPoE.'
 					],
 					curMode === 'dual_stack'
@@ -7834,7 +9060,7 @@ return view.extend({
 
 			const relayToggle = E('input', {
 				type: 'checkbox',
-				checked: isRelay,
+				checked: isRelay ? '' : null,
 				change: function(ev) {
 					const desired = ev.currentTarget.checked ? '1' : '0';
 					ev.currentTarget.disabled = true;
@@ -7848,6 +9074,7 @@ return view.extend({
 					});
 				}
 			});
+			relayToggle.checked = !!isRelay;
 
 			const cascadePanel = E('section', {
 				class: 'ex-cleanup-entry',
@@ -7895,7 +9122,7 @@ return view.extend({
 			ui.showModal('Sensores Térmicos', [
 				E('p', { class: 'ex-muted' }, ['Este roteador não possui sensores térmicos expostos pelo hardware ou kernel.']),
 				E('div', { class: 'right', style: 'margin-top: 20px;' }, [
-					E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': ui.hideModal }, ['Fechar'])
+					E('button', { class: 'btn cbi-button cbi-button-neutral', style: 'min-height: 40px; padding: 0 20px; user-select: none;', 'click': ui.hideModal }, ['Fechar'])
 				])
 			]);
 			return;
@@ -7922,7 +9149,7 @@ return view.extend({
 			E('p', { class: 'ex-muted' }, ['Leituras térmicas em tempo real coletadas diretamente dos sensores físicos da placa do roteador.']),
 			E('div', { style: 'display:flex;flex-direction:column;gap:6px;margin:16px 0;' }, sensorCards),
 			E('div', { class: 'right', style: 'margin-top: 15px;' }, [
-				E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': ui.hideModal }, ['Fechar'])
+				E('button', { class: 'btn cbi-button cbi-button-neutral', style: 'min-height: 40px; padding: 0 20px; user-select: none;', 'click': ui.hideModal }, ['Fechar'])
 			])
 		]);
 	},
@@ -7939,7 +9166,8 @@ return view.extend({
 			if (isCurrentlyAp) modeApRadio.checked = true;
 			else modeRouterRadio.checked = true;
 
-			const apIpDhcpRadio = E('input', { type: 'radio', name: 'ark_ap_ip_type', value: 'dhcp', id: 'ark-ap-ip-dhcp', checked: true });
+			const apIpDhcpRadio = E('input', { type: 'radio', name: 'ark_ap_ip_type', value: 'dhcp', id: 'ark-ap-ip-dhcp', checked: '' });
+			apIpDhcpRadio.checked = true;
 			const apIpStaticRadio = E('input', { type: 'radio', name: 'ark_ap_ip_type', value: 'static', id: 'ark-ap-ip-static' });
 			if (diag.lan_proto === 'static' && isCurrentlyAp) {
 				apIpStaticRadio.checked = true;
@@ -8396,24 +9624,28 @@ return view.extend({
 			const hasDnsBlocker = !!status.dns_blocker_active;
 			const blockerName = status.dns_blocker_name || 'AdGuard Home';
 
+			const allserversActive = hasDnsBlocker ? false : !!status.allservers;
 			const allserversToggle = E('input', {
 				type: 'checkbox',
-				checked: hasDnsBlocker ? false : !!status.allservers,
+				checked: allserversActive ? '' : null,
 				disabled: hasDnsBlocker,
 				style: 'width: 20px; height: 20px; cursor: ' + (hasDnsBlocker ? 'not-allowed' : 'pointer') + ';'
 			});
+			allserversToggle.checked = allserversActive;
 
+			const fallbackActive = !!status.dhcp_fallback;
 			const fallbackToggle = E('input', {
 				type: 'checkbox',
-				checked: !!status.dhcp_fallback,
+				checked: fallbackActive ? '' : null,
 				style: 'width: 20px; height: 20px; cursor: pointer;'
 			});
+			fallbackToggle.checked = fallbackActive;
 
 			const ipInputs = [
-				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[0] || '1.1.1.1', placeholder: 'ex: 1.1.1.1', style: 'width: 100%; box-sizing: border-box;' }),
-				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[1] || '8.8.8.8', placeholder: 'ex: 8.8.8.8', style: 'width: 100%; box-sizing: border-box;' }),
-				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[2] || '1.0.0.1', placeholder: 'ex: 1.0.0.1 (opcional)', style: 'width: 100%; box-sizing: border-box;' }),
-				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[3] || '8.8.4.4', placeholder: 'ex: 8.8.4.4 (opcional)', style: 'width: 100%; box-sizing: border-box;' })
+				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[0] || '1.1.1.1', placeholder: 'ex: 1.1.1.1 ou 2606:4700:4700::1111', style: 'width: 100%; box-sizing: border-box;' }),
+				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[1] || '8.8.8.8', placeholder: 'ex: 8.8.8.8 ou 2001:4860:4860::8888', style: 'width: 100%; box-sizing: border-box;' }),
+				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[2] || '1.0.0.1', placeholder: 'ex: 1.0.0.1 ou 2606:4700:4700::1001', style: 'width: 100%; box-sizing: border-box;' }),
+				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[3] || '8.8.4.4', placeholder: 'ex: 8.8.4.4 ou 2001:4860:4860::8844', style: 'width: 100%; box-sizing: border-box;' })
 			];
 
 			const latBadges = [
@@ -8436,26 +9668,44 @@ return view.extend({
 					type: 'button',
 					class: 'ex-priority-option-btn',
 					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
-					click: function(){ applyPreset(['1.1.1.1', '8.8.8.8', '1.0.0.1', '8.8.4.4']); }
-				}, ['🚀 Cloudflare + Google (4x)']),
+					click: function(){ applyPreset(['1.1.1.1', '2606:4700:4700::1111', '8.8.8.8', '2001:4860:4860::8888']); }
+				}, ['🚀 Dual-Stack (IPv4 + IPv6)']),
 				E('button', {
 					type: 'button',
 					class: 'ex-priority-option-btn',
 					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
-					click: function(){ applyPreset(['1.1.1.1', '8.8.8.8', '', '']); }
-				}, ['⚡ Apenas 2 Principais']),
+					click: function(){ applyPreset(['2606:4700:4700::1111', '2001:4860:4860::8888', '2606:4700:4700::1001', '2001:4860:4860::8844']); }
+				}, ['🌐 IPv6 Cloudflare + Google']),
+				E('button', {
+					type: 'button',
+					class: 'ex-priority-option-btn',
+					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
+					click: function(){ applyPreset(['2620:fe::fe', '2606:4700:4700::1112', '2620:fe::9', '2606:4700:4700::1002']); }
+				}, ['🛡️ IPv6 Segurança (Quad9 + Cloudflare)']),
+				E('button', {
+					type: 'button',
+					class: 'ex-priority-option-btn',
+					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
+					click: function(){ applyPreset(['1.1.1.1', '8.8.8.8', '1.0.0.1', '8.8.4.4']); }
+				}, ['⚡ Cloudflare + Google (IPv4)']),
 				E('button', {
 					type: 'button',
 					class: 'ex-priority-option-btn',
 					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
 					click: function(){ applyPreset(['1.1.1.2', '9.9.9.9', '1.0.0.2', '149.112.112.112']); }
-				}, ['🛡️ Segurança (Anti-Malware)']),
+				}, ['🛡️ Segurança (IPv4 Anti-Malware)']),
+				E('button', {
+					type: 'button',
+					class: 'ex-priority-option-btn',
+					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
+					click: function(){ applyPreset(['2a10:50c0::ad1:ff', '2a10:50c0::ad2:ff', '', '']); }
+				}, ['🚫 AdGuard DNS (IPv6)']),
 				E('button', {
 					type: 'button',
 					class: 'ex-priority-option-btn',
 					style: 'padding: 9px 10px; font-size: 0.82rem; font-weight: 600; text-align: center; white-space: normal; height: auto; min-height: 42px; display: flex; align-items: center; justify-content: center;',
 					click: function(){ applyPreset(['94.140.14.14', '94.140.15.15', '', '']); }
-				}, ['🚫 AdGuard DNS']),
+				}, ['🚫 AdGuard DNS (IPv4)']),
 				E('button', {
 					type: 'button',
 					class: 'ex-priority-option-btn',
@@ -9926,6 +11176,7 @@ return view.extend({
 				]),
 				E('p',{class:'ex-muted'},['Use para trocar entre redes 192.168.x.x, 10.0.x.x ou gerenciar a distribuição de IP, DNS e o protocolo IPv6.'])
 			]),
+			this.dmzCard(),
 			E('div',{class:'ex-lan-block'},[E('div',{class:'ex-lan-title'},[E('div',{},[E('span',{class:'ex-kicker'},['PORTAS CABEADAS']),E('h3',{},['LAN disponíveis'])]),E('small',{class:'ex-muted'},['Portas em modo LAN aparecem aqui; ao converter uma porta em '+nextWan.label+', ela sai desta lista e vira uma nova conexão de internet.'])]),E('div',{class:'ex-grid ex-grid-2'},lanCards.length?lanCards:[E('section',{class:'ex-card ex-lan-card ex-center-card'},[E('strong',{},['Nenhuma porta LAN disponível']),E('small',{class:'ex-muted'},['Todas as portas cabeadas livres estão em uso como WAN ou não foram detectadas.'])])])]),
 			wifiBlock,
 			E('div',{class:'ex-grid ex-grid-2',style:'margin:10px 0 16px;'},[
