@@ -48,6 +48,7 @@ build_ipk_variant() {
 	find "$data_dir" -type d -exec chmod 0755 {} +
 	find "$data_dir" -type f -exec chmod 0644 {} +
 	chmod 0755 "$data_dir/usr/sbin/equipe-dashboard-control" 2>/dev/null || true
+	chmod 0755 "$data_dir/usr/sbin/ark-doctor" 2>/dev/null || true
 	chmod 0755 "$data_dir/usr/sbin/equipe-traffic-history" 2>/dev/null || true
 	chmod 0755 "$data_dir/usr/sbin/ark-autowan-daemon" 2>/dev/null || true
 	chmod 0755 "$data_dir/usr/libexec/ark-starlink-telemetry" 2>/dev/null || true

@@ -1,0 +1,6 @@
+#!/bin/sh
+if [ $# -gt 0 ]; then
+	exec /usr/sbin/equipe-dashboard-control ark-doctor "$@"
+else
+	exec /usr/sbin/equipe-dashboard-control ark-doctor
+fi

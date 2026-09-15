@@ -51,6 +51,7 @@ fi
 find "$pkg_root" -type d -exec chmod 0755 {} +
 find "$pkg_root" -type f -exec chmod 0644 {} +
 chmod 0755 "$pkg_root/usr/sbin/equipe-dashboard-control" 2>/dev/null || true
+chmod 0755 "$pkg_root/usr/sbin/ark-doctor" 2>/dev/null || true
 chmod 0755 "$pkg_root/usr/sbin/equipe-traffic-history" 2>/dev/null || true
 chmod 0755 "$pkg_root/usr/sbin/ark-autowan-daemon" 2>/dev/null || true
 chmod 0755 "$pkg_root/usr/libexec/ark-starlink-telemetry" 2>/dev/null || true
