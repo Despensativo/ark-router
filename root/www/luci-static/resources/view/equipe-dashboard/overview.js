@@ -44,7 +44,7 @@ const EN={
 	'REDE WI‑FI':'WI-FI NETWORK','ATIVA':'ACTIVE','Ver senha':'Show password','Ocultar senha':'Hide password','Acesso principal':'Main access','Visitantes com upload limitado':'Guests with limited upload','Acesso principal • disponível em 2,4 e 5 GHz':'Main access • available on 2.4 and 5 GHz','Visitantes com upload limitado • disponível em 2,4 e 5 GHz':'Guests with limited upload • available on 2.4 and 5 GHz','Alterar senha nesta tela →':'Change password here →',
 	'AMBIENTE WI‑FI':'WI-FI ENVIRONMENT','Canais e interferência':'Channels and interference','Analisar canais agora':'Analyze channels now','PAÍS / DOMÍNIO REGULATÓRIO':'COUNTRY / REGULATORY DOMAIN','Alterar país':'Change country','Seleção automática de canais':'Automatic channel selection','Seleção automática inteligente de canais':'Smart automatic channel selection','Verificando…':'Checking…','Desligado • canais definidos manualmente':'Off • manually selected channels','Ligado • o roteador escolhe os canais':'On • the router selects channels','Ligado • Auto Inteligente (1, 6, 11 no 2,4 GHz • Sem radar DFS no 5 GHz)':'On • Smart Auto (1, 6, 11 on 2.4 GHz • Zero DFS radar on 5 GHz)','Ativar Seleção Automática Inteligente':'Enable Smart Auto Selection','Automático Inteligente (1, 6 ou 11)':'Smart Auto (1, 6 or 11)','Automático Inteligente (Sem DFS / Inicialização imediata)':'Smart Auto (Zero DFS / Instant startup)','Configuração mista entre as bandas':'Mixed configuration between bands','AUTO':'AUTO','MANUAL':'MANUAL',
 	'A análise é manual e apenas recomenda canais; não interrompe os usuários.':'Analysis is manual and only recommends channels; it does not interrupt users.','Analisar antes de aplicar':'Analyze before applying',
-	'DISPOSITIVOS':'DEVICES','Quem está conectado':'Connected devices','Ordenar':'Sort','Nome':'Name','Maior primeiro':'Largest first','Menor primeiro':'Smallest first','Expandir lista e ver tráfego individual':'Expand list and view per-device traffic','Dispositivo':'Device','Rede / sinal':'Network / signal','Agora':'Now','Total':'Total','Nenhum dispositivo conectado.':'No devices connected.','Configurar':'Configure','Visitantes / Wi-Fi':'Guests / Wi-Fi','Cabo / LAN':'Wired / LAN','Rede principal':'Main network','Visitantes':'Guests',
+	'DISPOSITIVOS':'DEVICES','Quem está conectado':'Connected devices','Ordenar':'Sort','Nome':'Name','Maior primeiro':'Largest first','Menor primeiro':'Smallest first','Expandir lista e ver tráfego individual':'Expand list and view per-device traffic','Dispositivo':'Device','Rede / sinal':'Network / signal','Agora':'Now','Total':'Total','Nenhum dispositivo conectado.':'No devices connected.','Configurar':'Configure','Visitantes / Wi-Fi':'Guests / Wi-Fi','Cabo / LAN':'Wired / LAN','Rede principal':'Main network','Visitantes':'Guests','Limpar inativos':'Flush inactive','Limpar concessões de aparelhos desconectados ou MACs antigos':'Flush leases of disconnected devices or old MAC addresses','concessão(ões) inativa(s) removida(s) com sucesso.':'inactive lease(s) removed successfully.','Nenhum dispositivo inativo encontrado no momento.':'No inactive devices found at this time.','Erro ao limpar inativos: ':'Error flushing inactive devices: ',
 	'A velocidade instantânea vem dos contadores do roteador; o total acumulado vem do nlbwmon e é atualizado a cada 3 segundos. Em Configurar, você pode renomear, reservar o IP e priorizar o aparelho.':'Instant speed comes from router counters; accumulated total comes from nlbwmon and refreshes every 3 seconds. Under Configure, you can rename, reserve the IP, and prioritize the device.',
 	'Configurar dispositivo':'Configure device','Carregando configurações…':'Loading settings…','Nome neste roteador':'Name on this router','Ex.: Celular da Joyce':'E.g. Joyce’s phone','Endereço IP':'IP address','Automático pelo DHCP':'Automatic via DHCP','Reservar este IP pelo MAC':'Reserve this IP by MAC','O aparelho poderá precisar reconectar para receber um IP reservado diferente.':'The device may need to reconnect to receive a different reserved IP.','Prioridade no SQM':'SQM priority','Priorizar os envios deste dispositivo':'Prioritize uploads from this device','Usa a classe de vídeo do CAKE (AF41), mantendo a divisão justa com os demais aparelhos prioritários.':'Uses CAKE’s video class (AF41), while preserving fair sharing with other prioritized devices.','A prioridade aparece somente na rede principal quando o SQM está ativo.':'Priority is shown only on the main network while SQM is active.','Salvar configurações':'Save settings','Configurações do dispositivo salvas.':'Device settings saved.',
 	'CONTROLE DE FILAS':'QUEUE MANAGEMENT','ATIVO':'ACTIVE','DESLIGADO':'OFF','WAN principal':'Primary WAN','Rede visitante':'Guest network','DNS do roteador':'Router DNS','Abrir controles do QoS':'Open QoS controls',
@@ -1490,10 +1490,49 @@ return view.extend({
 				]);
 			}
 		};
+		// Parse ARP table (/proc/net/arp) first to find active wired/LAN devices and dead ARPs
+		const arpMap = {};
+		const arpDeadMap = {};
+		const arpText = String(data.arpTable || '');
+		if (arpText) {
+			const arpLines = arpText.split('\n');
+			for (let i = 1; i < arpLines.length; i++) {
+				const cols = arpLines[i].trim().split(/\s+/);
+				if (cols.length >= 6) {
+					const aIp = cols[0];
+					const aFlags = cols[2];
+					const aMac = String(cols[3] || '').toUpperCase();
+					const aDev = cols[5];
+					if (aMac && aMac !== '00:00:00:00:00:00' && aIp !== lanStatus.ipaddr) {
+						if (aFlags === '0x2') {
+							arpMap[aMac] = { ip: aIp, device: aDev };
+						} else if (aFlags === '0x0') {
+							arpDeadMap[aMac] = true;
+						}
+					}
+				}
+			}
+		}
+
+		let staleLeasesCount = 0;
 		const devices=[];
 		leases.forEach(function(l) {
 			const mac=String(l.macaddr||'').toUpperCase();
 			if(!mac||seen[mac])return;
+
+			// Check if device is genuinely active / online:
+			// 1. Actively associated with Wi-Fi (main or guest)
+			// 2. Active in ARP table (flag 0x2)
+			// 3. Actively transmitting / receiving packets right now
+			const isWifi = !!(main[mac] || guest[mac]);
+			const isWired = !!(arpMap[mac]) || (rates[mac] && ((rates[mac].rx || 0) > 0 || (rates[mac].tx || 0) > 0));
+
+			if (!isWifi && !isWired) {
+				// Device disconnected or changed MAC address (ghost / stale lease)
+				staleLeasesCount++;
+				return;
+			}
+
 			seen[mac]=1;
 			const w = deviceWifiInfo(mac, l.ipaddr);
 			devices.push({
@@ -1516,7 +1555,7 @@ return view.extend({
 			const w = deviceWifiInfo(mac, '');
 			devices.push({
 				mac: mac,
-				ip: '—',
+				ip: (arpMap[mac] && arpMap[mac].ip) || '—',
 				name: names[mac] || 'Dispositivo sem nome',
 				network: w.network,
 				ssid: w.ssid,
@@ -1528,25 +1567,6 @@ return view.extend({
 				rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
 			});
 		});
-
-		// Parse ARP table (/proc/net/arp) to find active wired/LAN devices (e.g. TV, cameras, IoT)
-		const arpMap = {};
-		const arpText = String(data.arpTable || '');
-		if (arpText) {
-			const arpLines = arpText.split('\n');
-			for (let i = 1; i < arpLines.length; i++) {
-				const cols = arpLines[i].trim().split(/\s+/);
-				if (cols.length >= 6) {
-					const aIp = cols[0];
-					const aFlags = cols[2];
-					const aMac = String(cols[3] || '').toUpperCase();
-					const aDev = cols[5];
-					if (aMac && aMac !== '00:00:00:00:00:00' && aFlags === '0x2' && aIp !== lanStatus.ipaddr) {
-						arpMap[aMac] = { ip: aIp, device: aDev };
-					}
-				}
-			}
-		}
 
 		const hostHints = data.hostHints || {};
 
@@ -1578,7 +1598,7 @@ return view.extend({
 			});
 		});
 
-		// Include static DHCP hosts or devices with limits/traffic that have an active IP
+		// Include static DHCP hosts only if they are genuinely online right now
 		Object.keys(dhcpValues).forEach(function(k) {
 			const h = dhcpValues[k];
 			if (!h || h['.type'] !== 'host' || !h.mac || !h.ip) return;
@@ -1590,9 +1610,9 @@ return view.extend({
 				const isLan = (lanPrefix && devIp.indexOf(lanPrefix) === 0);
 				const isGuest = !!(guestPrefix && devIp.indexOf(guestPrefix) === 0);
 				if (!isLan && !isGuest) return;
-				const hasTraffic = rates[mac] && (rates[mac].totalRx > 0 || rates[mac].totalTx > 0);
-				const hasLimits = limitsMap[mac] && limitsMap[mac].enabled;
-				if (hasTraffic || hasLimits || arpMap[mac]) {
+				const isWifi = !!(main[mac] || guest[mac]);
+				const isWired = !!(arpMap[mac]) || (rates[mac] && ((rates[mac].rx || 0) > 0 || (rates[mac].tx || 0) > 0));
+				if (isWifi || isWired) {
 					seen[mac] = 1;
 					const hint = hostHints[mac] || {};
 					const devName = names[mac] || hint.name || h.name || 'Dispositivo sem nome';
@@ -1692,6 +1712,15 @@ return view.extend({
 				}
 			}, this));
 			text('ex-device-count', devices.length + ' conectado' + (devices.length === 1 ? '' : 's'));
+			const flushBtn = document.getElementById('ex-device-flush-btn');
+			if (flushBtn) {
+				if (staleLeasesCount > 0) {
+					flushBtn.style.display = 'inline-flex';
+					flushBtn.textContent = '🧹 ' + translateText('Limpar inativos') + ' (' + staleLeasesCount + ')';
+				} else {
+					flushBtn.style.display = 'none';
+				}
+			}
 			return;
 		}
 
@@ -1753,6 +1782,15 @@ return view.extend({
 		},this));
 		this.devices = devices;
 		text('ex-device-count',devices.length+' conectado'+(devices.length===1?'':'s'));
+		const flushBtn = document.getElementById('ex-device-flush-btn');
+		if (flushBtn) {
+			if (staleLeasesCount > 0) {
+				flushBtn.style.display = 'inline-flex';
+				flushBtn.textContent = '🧹 ' + translateText('Limpar inativos') + ' (' + staleLeasesCount + ')';
+			} else {
+				flushBtn.style.display = 'none';
+			}
+		}
 		const empty=document.getElementById('ex-device-empty'); if(empty)empty.style.display=devices.length?'none':'';
 	},
 	sortDevices: function(devices) {
@@ -1802,6 +1840,36 @@ return view.extend({
 		this.forceDeviceReorder = true;
 		this.lastDeviceReorderTime = 0;
 		if (this.currentData) this.renderDevices(this.currentData, this.lastDeviceRates || this.deviceRates(this.currentData));
+	},
+	flushStaleLeases: function() {
+		const btn = document.getElementById('ex-device-flush-btn');
+		if (btn) {
+			btn.disabled = true;
+			btn.textContent = translateText('Limpando…');
+		}
+		fs.exec('/usr/sbin/equipe-dashboard-control', ['flush-stale-leases']).then(L.bind(function(res) {
+			let count = 0;
+			try {
+				const json = JSON.parse(res.stdout || '{}');
+				count = json.purged || 0;
+			} catch(e) {}
+			ui.addNotification(null, E('p', {}, [
+				count > 0
+					? ('🧹 ' + count + ' ' + translateText('concessão(ões) inativa(s) removida(s) com sucesso.'))
+					: translateText('Nenhum dispositivo inativo encontrado no momento.')
+			]), 'info');
+			if (btn) {
+				btn.disabled = false;
+				btn.style.display = 'none';
+			}
+			this.scheduleAdaptiveRefresh(100);
+		}, this)).catch(L.bind(function(err) {
+			if (btn) {
+				btn.disabled = false;
+				btn.textContent = '🧹 ' + translateText('Limpar inativos');
+			}
+			ui.addNotification(null, E('p', {}, [translateText('Erro ao limpar inativos: ') + (err.message || err)]), 'danger');
+		}, this));
 	},
 	update: function(data) {
 		this.currentData=data; this.updateRefreshSummary(data); const r=this.calculateRates(data), dr=this.deviceRates(data); this.lastDeviceRates=dr; const wan=iface(data.interfaces,'wan'), mi=data.mwan.interfaces||{}, sqm=values(data.sqm), qosValues=values(data.qos), qos=qosValues.main||{}, qosGuest=qosValues.guest||{};
@@ -11408,6 +11476,13 @@ return view.extend({
 					]),
 					E('div',{class:'ex-device-title-actions'},[
 						deviceSortControls,
+						E('button',{
+							id:'ex-device-flush-btn',
+							class:'ex-mini-button ex-flush-btn',
+							style:'display:none;align-items:center;gap:4px;min-height:40px;padding:0 12px;cursor:pointer;font-weight:600;font-size:0.75rem;border-radius:8px;background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.25);user-select:none;-webkit-tap-highlight-color:transparent;',
+							'title':translateText('Limpar concessões de aparelhos desconectados ou MACs antigos'),
+							'click':L.bind(function(){this.flushStaleLeases();},this)
+						},['🧹 ' + translateText('Limpar inativos')]),
 						E('span',{id:'ex-device-count',class:'ex-pill online'},['0 conectados'])
 					])
 				]),

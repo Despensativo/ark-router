@@ -1070,6 +1070,81 @@ EOF
 	fi
 }
 
+flush_stale_leases() {
+	[ -f /tmp/dhcp.leases ] || { printf '{"ok":true,"purged":0}\n'; return 0; }
+	
+	local wifi_macs=""
+	if command -v iwinfo >/dev/null 2>&1; then
+		for wif in $(iwinfo 2>/dev/null | grep 'ESSID:' | cut -d' ' -f1); do
+			local wlist="$(iwinfo "$wif" assoclist 2>/dev/null | grep -oE '([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}' | tr 'a-f' 'A-F')"
+			[ -n "$wlist" ] && wifi_macs="$wifi_macs $wlist"
+		done
+	fi
+	if command -v iw >/dev/null 2>&1; then
+		for wif in $(iw dev 2>/dev/null | grep Interface | cut -d' ' -f2); do
+			local wlist="$(iw dev "$wif" station dump 2>/dev/null | grep -oE 'Station ([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}' | cut -d' ' -f2 | tr 'a-f' 'A-F')"
+			[ -n "$wlist" ] && wifi_macs="$wifi_macs $wlist"
+		done
+	fi
+
+	local active_arp=""
+	local dead_arp=""
+	if [ -f /proc/net/arp ]; then
+		while read -r a_ip a_hw a_flags a_mac a_mask a_dev; do
+			[ "$a_ip" = "IP" ] && continue
+			a_mac="$(printf '%s' "$a_mac" | tr 'a-f' 'A-F')"
+			[ "$a_mac" = "00:00:00:00:00:00" ] && continue
+			if [ "$a_flags" = "0x2" ]; then
+				active_arp="$active_arp $a_mac"
+			elif [ "$a_flags" = "0x0" ]; then
+				dead_arp="$dead_arp $a_mac"
+			fi
+		done < /proc/net/arp
+	fi
+
+	local tmp_leases="/tmp/dhcp.leases.tmp.$$"
+	local purged_count=0
+	rm -f "$tmp_leases"
+	while read -r ts mac ip name clid; do
+		[ -n "$mac" ] || continue
+		local umac="$(printf '%s' "$mac" | tr 'a-f' 'A-F')"
+		local is_dead=0
+		
+		case " $wifi_macs " in
+			*" $umac "*) ;;
+			*)
+				case " $active_arp " in
+					*" $umac "*) ;;
+					*)
+						case " $dead_arp " in
+							*" $umac "*) is_dead=1 ;;
+							*)
+								if ! ping -c 1 -W 1 "$ip" >/dev/null 2>&1; then
+									is_dead=1
+								fi
+								;;
+						esac
+						;;
+				esac
+				;;
+		esac
+
+		if [ "$is_dead" = "1" ]; then
+			purged_count=$((purged_count + 1))
+		else
+			printf '%s %s %s %s %s\n' "$ts" "$mac" "$ip" "$name" "$clid" >> "$tmp_leases"
+		fi
+	done < /tmp/dhcp.leases
+
+	if [ "$purged_count" -gt 0 ]; then
+		cat "$tmp_leases" > /tmp/dhcp.leases
+		killall -HUP dnsmasq 2>/dev/null || true
+	fi
+	rm -f "$tmp_leases"
+	printf '{"ok":true,"purged":%d}\n' "$purged_count"
+}
+
+
 set_ipv6_mode() {
 	mode="$1"
 	case "$mode" in
@@ -11072,6 +11147,9 @@ EOF
 	sync-ipv6-firewall)
 		sync_ipv6_selective_firewall
 		echo ok
+		;;
+	flush-stale-leases)
+		flush_stale_leases
 		;;
 	*)
 		echo 'Uso: equipe-dashboard-control {features|...|irqbalance-toggle 0|1|...}' >&2
