@@ -159,10 +159,10 @@ For field work, keep a local copy of:
 In the current development machine, the local organization used during the pilot was:
 
 ```text
-C:\Users\User\Desktop\ARK Router\GitHub\luci-app-ark-router
-C:\Users\User\Desktop\ARK Router\Offline\source
-C:\Users\User\Desktop\ARK Router\Offline\packages
-C:\Users\User\Desktop\ARK Router\Backups
+C:\Users\User\Desktop\FEITOS COM IA\Ark-Router\GitHub\luci-app-ark-router
+C:\Users\User\Desktop\FEITOS COM IA\Ark-Router\Offline\source
+C:\Users\User\Desktop\FEITOS COM IA\Ark-Router\Offline\packages
+C:\Users\User\Desktop\FEITOS COM IA\Ark-Router\Backups
 ```
 
 These paths are examples from the pilot machine, not project requirements.
