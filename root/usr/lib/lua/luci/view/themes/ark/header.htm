@@ -74,20 +74,27 @@
 		<% end %>
 		<header style="display:none;height:0;margin:0;padding:0;border:0;"></header>
 		<div id="maincontent" class="container ark-main-container">
-			<%- if luci.sys.process.info("uid") == 0 and luci.sys.user.getuser("root") and not luci.sys.user.getpasswd("root") then -%>
+			<%- if luci.sys.process.info("uid") == 0 and luci.sys.user.getuser("root") and not luci.sys.user.getpasswd("root") then
+				local ark_lang = "pt-br"
+				pcall(function()
+					local uci = require("luci.model.uci").cursor()
+					ark_lang = uci:get("equipe_dashboard", "main", "language") or "pt-br"
+				end)
+				local is_en = (ark_lang == "en")
+			-%>
 				<div class="alert-message warning">
-					<h4><%:No password set!%></h4>
-					<p><%:There is no password set on this router. Please configure a root password to protect the web interface.%></p>
+					<h4><%= is_en and translate("No password set!") or "Nenhuma senha definida!" %></h4>
+					<p><%= is_en and translate("There is no password set on this router. Please configure a root password to protect the web interface.") or "Não há nenhuma senha configurada neste roteador. Por favor, configure uma senha para o usuário root a fim de proteger o painel." %></p>
 					<% if disp.lookup("admin/system/admin") then %>
-					  <div class="right"><a class="btn cbi-button cbi-button-apply" href="<%=url("admin/system/admin")%>"><%:Go to password configuration...%></a></div>
+					  <div class="right"><a class="btn cbi-button cbi-button-apply" href="<%=url("admin/system/admin")%>"><%= is_en and translate("Go to password configuration...") or "Configurar senha de acesso…" %></a></div>
 					<% end %>
 				</div>
 			<%- end -%>
 
 			<noscript>
 				<div class="alert-message warning">
-					<h4><%:JavaScript required!%></h4>
-					<p><%:You must enable JavaScript in your browser or LuCI will not work properly.%></p>
+					<h4>JavaScript obrigatório!</h4>
+					<p>Você precisa habilitar o JavaScript no navegador para que o painel funcione corretamente.</p>
 				</div>
 			</noscript>
 

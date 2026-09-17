@@ -46,9 +46,15 @@ if [ -f /etc/init.d/adguardhome ] && ! grep -q -- '--logfile' /etc/init.d/adguar
 	sed -i '/procd_append_param command --config/a \	procd_append_param command --logfile /var/lib/adguardhome/adguardhome.log' /etc/init.d/adguardhome
 fi
 if [ -f /etc/adguardhome/adguardhome.yaml ]; then
-	sed -i 's|file: ""|file: "/var/lib/adguardhome/adguardhome.log"|g' /etc/adguardhome/adguardhome.yaml
-	sed -i 's|max_size: 100|max_size: 1|g' /etc/adguardhome/adguardhome.yaml
-	sed -i 's|max_backups: 0|max_backups: 1|g' /etc/adguardhome/adguardhome.yaml
+	# Reparar chaves de configuracao que possam ter sido corrompidas por sed sem ancora
+	sed -i -E 's/^[[:space:]]*(upstream_dns_file|ipset_file|dnscrypt_config_file):.*/  \1: ""/' /etc/adguardhome/adguardhome.yaml
+	# Isolar log apenas na declaracao propria do bloco log:
+	sed -i '/^[[:space:]]*file: ""/s|file: ""|file: "/var/lib/adguardhome/adguardhome.log"|' /etc/adguardhome/adguardhome.yaml
+	sed -i 's/^[[:space:]]*max_size: 100/  max_size: 1/' /etc/adguardhome/adguardhome.yaml
+	sed -i 's/^[[:space:]]*max_backups: 0/  max_backups: 1/' /etc/adguardhome/adguardhome.yaml
+	# Garantir permissao e ownership para o daemon rodando sob o usuario adguardhome (ujail)
+	chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
+	chmod 644 /etc/adguardhome/adguardhome.yaml 2>/dev/null || true
 fi
 
 exit 0

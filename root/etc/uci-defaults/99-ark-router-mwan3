@@ -5,7 +5,7 @@
 [ -f /etc/config/mwan3 ] || exit 0
 
 if [ -x /usr/sbin/equipe-dashboard-control ]; then
-	/usr/sbin/equipe-dashboard-control ensure_mwan3_ark_config >/dev/null 2>&1 || true
+	/usr/sbin/equipe-dashboard-control mwan3-ensure >/dev/null 2>&1 || /usr/sbin/equipe-dashboard-control ensure_mwan3_ark_config >/dev/null 2>&1 || true
 	uci commit mwan3 >/dev/null 2>&1 || true
 fi
 

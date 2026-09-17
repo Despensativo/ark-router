@@ -524,8 +524,34 @@
         'IPv6-Address': 'Endereço IPv6',
         'Transfer': 'Tráfego',
         'Transmit': 'Enviados (TX)',
-        'Receive': 'Recebidos (RX)'
+        'Receive': 'Recebidos (RX)',
+        'No password set!': 'Nenhuma senha definida!',
+        'There is no password set on this router. Please configure a root password to protect the web interface.': 'Não há nenhuma senha configurada neste roteador. Por favor, configure uma senha para o usuário root a fim de proteger o painel.',
+        'Go to password configuration...': 'Configurar senha de acesso…',
+        'JavaScript required!': 'JavaScript obrigatório!',
+        'You must enable JavaScript in your browser or LuCI will not work properly.': 'Você precisa habilitar o JavaScript no seu navegador para que o painel funcione corretamente.',
+        'Authorization Required': 'Autenticação Necessária',
+        'Please enter your username and password.': 'Por favor, digite seu usuário e senha.',
+        'Username': 'Usuário',
+        'Password': 'Senha',
+        'Log in': 'Entrar no Painel'
       };
+
+      var alertBanners = document.querySelectorAll('.alert-message');
+      alertBanners.forEach(function(banner) {
+        var h = banner.querySelector('h4');
+        if (h && dict[h.textContent.trim()]) h.textContent = dict[h.textContent.trim()];
+        var ps = banner.querySelectorAll('p');
+        ps.forEach(function(p) {
+          var pt = p.textContent.trim();
+          if (dict[pt]) p.textContent = dict[pt];
+        });
+        var as = banner.querySelectorAll('a');
+        as.forEach(function(a) {
+          var at = a.textContent.trim();
+          if (dict[at]) a.textContent = dict[at];
+        });
+      });
 
       var btns = document.querySelectorAll('button, input[type="submit"], input[type="button"], a.btn, a.cbi-button');
       btns.forEach(function(b) {
@@ -551,7 +577,7 @@
         }
       });
 
-      var headings = document.querySelectorAll('h2, h3, legend, .cbi-value-title, th, .th, .cbi-tab a');
+      var headings = document.querySelectorAll('h2, h3, h4, legend, .cbi-value-title, th, .th, .cbi-tab a');
       headings.forEach(function(h) {
         var t = h.textContent.trim();
         if (dict[t]) h.textContent = dict[t];

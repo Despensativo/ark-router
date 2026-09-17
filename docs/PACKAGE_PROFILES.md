@@ -46,9 +46,8 @@ Default dependencies:
 | `mwan3` | Multi-WAN backend | 140 KiB |
 | `luci-app-upnp` | UPnP LuCI UI | 13 KiB |
 | `miniupnpd-nftables` | UPnP/NAT-PMP daemon | 185 KiB |
-| `luci-app-uhttpd` | LuCI web server manager | 9103 B |
 | `kmod-tun` | VPN/tunnel support | 64 KiB |
-| `irqbalance` | distributes interrupts across CPU cores | 114 KiB |
+| `irqbalance` | distributes interrupts across CPU cores (in Makefile DEPENDS) | 114 KiB |
 | `iwinfo` / `libiwinfo-data` | Wi-Fi analysis/status | 1 B / 17 KiB on tested firmware |
 | `luci-i18n-*-pt-br` supported modules | Portuguese labels for installed LuCI modules | about 30 KiB total |
 

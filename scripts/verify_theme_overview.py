@@ -13,16 +13,23 @@ opts.add_argument('--ignore-certificate-errors')
 opts.binary_location = r'C:\Program Files\Google\Chrome\Application\chrome.exe'
 d = webdriver.Chrome(options=opts)
 d.set_window_size(1400, 1100)
-d.get('https://192.168.73.1/cgi-bin/luci/admin/status/overview')
+target_url = os.environ.get("ARK_ROUTER_URL", "https://192.168.73.1/cgi-bin/luci/admin/status/overview")
+password = os.environ.get("ARK_ROUTER_TEST_PASSWORD") or os.environ.get("ARK_ROUTER_PASSWORD")
+
+d.get(target_url)
 time.sleep(2)
 pw = d.find_elements(By.NAME, 'luci_password')
 if pw:
-    pw[0].send_keys('admin0100')
+    if not password:
+        print("Aviso: Tela de login detectada, mas ARK_ROUTER_TEST_PASSWORD não está configurada.", file=sys.stderr)
+        d.quit()
+        sys.exit(2)
+    pw[0].send_keys(password)
     pw[0].send_keys(Keys.ENTER)
     time.sleep(4)
 
 if '/admin/status/overview' not in d.current_url and '/admin/status' not in d.current_url:
-    d.get('https://192.168.73.1/cgi-bin/luci/admin/status/overview')
+    d.get(target_url)
     time.sleep(4)
 
 print('URL:', d.current_url)

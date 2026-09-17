@@ -11,7 +11,7 @@ import subprocess
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
-CONTROL_SCRIPT = os.path.join(REPO_DIR, "root", "usr", "sbin", "equipe-dashboard-control")
+CONTROL_SCRIPT = os.path.join(REPO_DIR, "root", "usr", "sbin", "equipe-dashboard-control").replace("\\", "/")
 
 class RouterSandbox:
     def __init__(self):
@@ -40,17 +40,18 @@ class RouterSandbox:
                 f.write("full\n")
 
         # 2. Setup mock UCI wrapper
-        mock_uci_src = os.path.join(SCRIPT_DIR, "mock_uci.py")
+        mock_uci_src = os.path.join(SCRIPT_DIR, "mock_uci.py").replace("\\", "/")
+        py_bin = sys.executable.replace("\\", "/")
         uci_wrapper = os.path.join(self.bin_dir, "uci")
         with open(uci_wrapper, "w") as f:
-            f.write(f"#!/bin/sh\nexport UCI_CONFIG_DIR='{self.etc_config}'\nexec python3 '{mock_uci_src}' \"$@\"\n")
+            f.write(f"#!/bin/sh\nexport UCI_CONFIG_DIR='{self.etc_config}'\nexec '{py_bin}' '{mock_uci_src}' \"$@\"\n")
         os.chmod(uci_wrapper, 0o755)
 
         # 3. Setup mock jsonfilter wrapper
-        mock_json_src = os.path.join(SCRIPT_DIR, "mock_jsonfilter.py")
+        mock_json_src = os.path.join(SCRIPT_DIR, "mock_jsonfilter.py").replace("\\", "/")
         json_wrapper = os.path.join(self.bin_dir, "jsonfilter")
         with open(json_wrapper, "w") as f:
-            f.write(f"#!/bin/sh\nexec python3 '{mock_json_src}' \"$@\"\n")
+            f.write(f"#!/bin/sh\nexec '{py_bin}' '{mock_json_src}' \"$@\"\n")
         os.chmod(json_wrapper, 0o755)
 
         # 4. Setup mock ubus wrapper
@@ -202,11 +203,21 @@ config wan_profiles 'wan_profiles'
 
     def run_control(self, *args):
         env = os.environ.copy()
-        env["PATH"] = self.bin_dir + ":" + env.get("PATH", "")
+        env["PATH"] = self.bin_dir + os.pathsep + env.get("PATH", "")
         env["UCI_CONFIG_DIR"] = self.etc_config
         env["ARK_ROOT"] = self.temp_dir
+        env["ARK_LIB_DIR"] = os.path.join(REPO_DIR, "root", "usr", "lib", "ark")
         
-        cmd = ["sh", CONTROL_SCRIPT] + list(args)
+        sh_bin = "sh"
+        for candidate in [r"C:\Program Files\Git\bin\sh.exe", r"C:\Program Files\Git\bin\bash.exe", "sh", "bash"]:
+            if os.path.isabs(candidate) and os.path.isfile(candidate):
+                sh_bin = candidate
+                break
+            elif shutil.which(candidate):
+                sh_bin = candidate
+                break
+
+        cmd = [sh_bin, CONTROL_SCRIPT] + list(args)
         proc = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
@@ -221,7 +232,7 @@ config wan_profiles 'wan_profiles'
         env["UCI_CONFIG_DIR"] = self.etc_config
         mock_uci_src = os.path.join(SCRIPT_DIR, "mock_uci.py")
         proc = subprocess.run(
-            ["python3", mock_uci_src, "-c", self.etc_config, "get", key],
+            [sys.executable, mock_uci_src, "-c", self.etc_config, "get", key],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -236,7 +247,7 @@ config wan_profiles 'wan_profiles'
         env["UCI_CONFIG_DIR"] = self.etc_config
         mock_uci_src = os.path.join(SCRIPT_DIR, "mock_uci.py")
         subprocess.run(
-            ["python3", mock_uci_src, "-c", self.etc_config, "set", expr],
+            [sys.executable, mock_uci_src, "-c", self.etc_config, "set", expr],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env=env

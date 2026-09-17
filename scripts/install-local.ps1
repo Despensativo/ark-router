@@ -24,7 +24,13 @@ if (-not (Test-Path -LiteralPath $Plink)) {
     throw "plink.exe not found at $Plink"
 }
 if ([string]::IsNullOrWhiteSpace($Password)) {
-    throw "Pass -Password for the router root user."
+    if (-not [string]::IsNullOrWhiteSpace($env:ARK_ROUTER_TEST_PASSWORD)) {
+        $Password = $env:ARK_ROUTER_TEST_PASSWORD
+    } elseif (-not [string]::IsNullOrWhiteSpace($env:ARK_ROUTER_PASSWORD)) {
+        $Password = $env:ARK_ROUTER_PASSWORD
+    } else {
+        throw "Pass -Password or define the ARK_ROUTER_TEST_PASSWORD environment variable for the router root user."
+    }
 }
 
 Write-Host "Building local ARK Router source package v$version" -ForegroundColor Cyan
@@ -65,8 +71,11 @@ for cfg in equipe_dashboard equipe_devices qos_equipe; do
 done
 chmod +x /usr/sbin/equipe-dashboard-control 2>/dev/null || true
 chmod +x /usr/sbin/equipe-traffic-history 2>/dev/null || true
+chmod +x /usr/lib/ark/ark-control /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh 2>/dev/null || true
 chmod +x /etc/init.d/equipe-traffic-history 2>/dev/null || true
 chmod +x /etc/init.d/ark-speedify 2>/dev/null || true
+chmod +x /usr/libexec/ark-starlink-telemetry 2>/dev/null || true
+chmod +x /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
 rm -f /tmp/luci-indexcache 2>/dev/null || true
 rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 [ -x /etc/init.d/equipe-traffic-history ] && /etc/init.d/equipe-traffic-history enable >/dev/null 2>&1 || true

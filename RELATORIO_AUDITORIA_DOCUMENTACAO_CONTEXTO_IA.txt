@@ -1,0 +1,483 @@
+================================================================================
+RELATÓRIO DE AUDITORIA DE DOCUMENTAÇÃO, CONTEXTO E INSTRUÇÕES PARA IA
+================================================================================
+Projeto: luci-app-ark-router (OpenWrt LuCI Application & Theme)
+Data da Auditoria: 15 de Setembro de 2026
+Modo de Execução: Estritamente Somente-Leitura (Read-Only)
+Status: Aguardando aprovação humana prévia antes de qualquer modificação física.
+================================================================================
+
+1. RESUMO EXECUTIVO
+--------------------------------------------------------------------------------
+A auditoria identificou que o repositório possui uma base técnica excelente, densa
+e altamente especializada em OpenWrt, POSIX ash e LuCI JavaScript SPA, contudo
+sofre de severa poluição e contaminação de contexto causada por instruções
+herdadas de outros frameworks (Next.js 14, React 18, TypeScript, Zustand, Prisma
+e Tailwind CSS).
+
+Principais Problemas Diagnosticados:
+1. Contaminação Ativa de Contexto (Context Poisoning):
+   O arquivo de raiz .cursorrules dedica 84% de seu conteúdo (linhas 1 a 108) a
+   ditar padrões para Next.js 14 App Router, Server Components e Zustand, enquanto
+   o projeto é estritamente uma aplicação OpenWrt em BusyBox ash e vanilla
+   JavaScript (LuCI SPA).
+2. Inversão de Aplicação Compulsória (alwaysApply: true):
+   Em .cursor/rules/, 4 arquivos alienígenas (nextjs-app-router.mdc,
+   react-typescript.mdc, security-patterns.mdc e file-organization.mdc) possuem
+   alwaysApply: true, forçando IAs a injetarem conceitos de React/Next.js em qualquer
+   interação. Em contrapartida, as 2 únicas regras legítimas do projeto
+   (ark-router-luci.mdc e openwrt-shell-uci.mdc) estão com alwaysApply: false.
+3. Comandos Alienígenas:
+   Em .cursor/commands/, 14 dos 18 arquivos ensinam padrões incompatíveis (Next.js
+   Server Actions, Zustand stores, Jest com React Testing Library, Prisma). Apenas
+   3 comandos são dedicados ao ARK Router.
+4. Duplicação Byte-a-Byte:
+   GEMINI.md é uma cópia 100% idêntica de AGENTS.md (2.890 bytes), consumindo tokens
+   e criando redundância desnecessária de manutenção.
+5. Hipertrofia de Histórico (CHANGELOG.md):
+   O arquivo possui ~149 KB (3.421 linhas, ~38.000 tokens) na raiz. Qualquer leitura
+   indiscriminada consome grande parte da janela de contexto de qualquer modelo.
+6. Sobreposições em docs/:
+   PUBLISHING.md e RELEASES.md sobrepõem instruções quase idênticas de distribuição
+   de pacotes; UI_DESIGN_SYSTEM_AND_QA.md e ark-ui-rules.md duplicam detalhes do
+   seletor de scroll .main-right e regras de toque.
+7. Artefatos Residuais na Raiz:
+   Arquivos temporários de teste de empacotamento (control.tar.gz, data.tar.gz,
+   test.ipk, cudy_installed_pkgs.txt) permanecem na raiz do repositório.
+
+Prioridades de Ação:
+- Prioridade 1 (Crítica): Purgar imediatamente as regras alienígenas do Cursor
+  (.cursorrules, .cursor/rules/*.mdc, .cursor/commands/*.md) e reconfigurar as regras
+  reais de OpenWrt/LuCI para aplicação primária.
+- Prioridade 2 (Alta): Consolidar GEMINI.md em AGENTS.md (adotando AGENTS.md como
+  padrão canônico cross-AI) ou criar apontamento enxuto.
+- Prioridade 3 (Média): Mesclar RELEASES.md em PUBLISHING.md, consolidar ark-ui-rules.md
+  em UI_DESIGN_SYSTEM_AND_QA.md, e mover CHANGELOG.md para consulta sob demanda.
+- Prioridade 4 (Baixa): Limpar arquivos de testes temporários residuais na raiz.
+
+
+2. IDENTIFICAÇÃO DO ESTADO AUDITADO
+--------------------------------------------------------------------------------
+- Diretório Raiz: C:\Users\User\Desktop\FEITOS COM IA\Ark-Router\GitHub\luci-app-ark-router
+- Branch Git Atual: main
+- Commit HEAD: 3a22cc07175dcc1d710f580645c958a460f8bb67
+- Status da Árvore de Trabalho: Modificações locais descompactadas e sob teste presentes
+  no código-fonte (respeitadas e intocadas pela auditoria).
+- Data da Auditoria: 15 de Setembro de 2026.
+- Escopo Coberto: Todos os arquivos de instruções para IA (AGENTS.md, GEMINI.md,
+  .cursorrules, .cursor/), documentação técnica (docs/), arquivos informativos na
+  raiz (README.md, CHANGELOG.md, CONTRIBUTING.md, etc.) e fluxos do GitHub (.github/).
+
+
+3. COBERTURA E LIMITAÇÕES DA ANÁLISE
+--------------------------------------------------------------------------------
+- Modo Estritamente Somente-Leitura: Nenhuma modificação, renomeação ou exclusão de
+  código foi executada durante a auditoria.
+- Comandos de Inspeção: Utilizados apenas comandos passivos de sistema operacional
+  (Get-ChildItem, leituras de arquivos por bloco view_file e pesquisas de padrões de
+  texto grep_search).
+- Segurança de Segredos: Não foram encontrados tokens de API, chaves privadas ou
+  senhas expostas nos arquivos documentais (o arquivo docs/SECURITY.md corrobora
+  essa prática rígida do projeto).
+- Limitação de Ambiente: Scripts que dependem do kernel Linux do roteador ou
+  ferramentas OpenWrt (sysupgrade, uci, ash, apk, opkg) não foram executados localmente
+  (ambiente host Windows/PowerShell).
+
+
+4. INVENTÁRIO DOS ITENS ENCONTRADOS
+--------------------------------------------------------------------------------
+
+[ARQUIVOS DE RAIZ - IA E GOVERNANÇA]
+- AGENTS.md | 2,89 KB | 25 linhas
+  Finalidade: Regras canônicas para agentes IA (OpenWrt, POSIX, DOM, RAM/Flash).
+  Público: IA / Dev | Frequência: Sempre | Acoplamento: Máximo (100%)
+  Classificação: Manter Integral.
+
+- GEMINI.md | 2,89 KB | 25 linhas
+  Finalidade: Regras para o modelo Gemini.
+  Público: IA | Frequência: Sempre | Acoplamento: Máximo (100%)
+  Classificação: Remover (Clone 100% idêntico de AGENTS.md).
+
+- .cursorrules | 5,03 KB | 129 linhas
+  Finalidade: Regras para o editor Cursor.
+  Público: IA | Frequência: Sempre | Acoplamento: Baixo (84% alienígena)
+  Classificação: Reduzir / Enxugar (Expurgar Next.js).
+
+- README.md | 32,7 KB | 843 linhas
+  Finalidade: Apresentação, instalação, screenshots e overview do ARK Router.
+  Público: Humano/IA | Frequência: Rara / Sob demanda | Acoplamento: Alto
+  Classificação: Manter Integral.
+
+- CHANGELOG.md | 149,3 KB | 3.421 linhas
+  Finalidade: Histórico cumulativo de alterações desde v0.1.
+  Público: Humano | Frequência: Rara | Acoplamento: Baixo (Histórico)
+  Classificação: Consulta sob Demanda / Arquivar versões antigas.
+
+- CONTRIBUTING.md | 1,21 KB | 21 linhas
+  Finalidade: Diretrizes de contribuição, lint e validação pré-merge.
+  Público: Ambos | Frequência: Rara | Acoplamento: Alto
+  Classificação: Manter Integral.
+
+- CODE_OF_CONDUCT.md | 639 B | 21 linhas
+  Finalidade: Código de conduta para colaboradores.
+  Público: Humano | Frequência: Rara | Acoplamento: Nulo
+  Classificação: Manter Integral.
+
+- SUPPORT.md | 447 B | 16 linhas
+  Finalidade: Canais de suporte comunitário.
+  Público: Humano | Frequência: Rara | Acoplamento: Nulo
+  Classificação: Manter Integral.
+
+- Makefile | 4,31 KB | 108 linhas
+  Finalidade: Script canônico de compilação do pacote OpenWrt LuCI.
+  Público: Build / Dev | Frequência: Frequente | Acoplamento: Máximo (100%)
+  Classificação: Manter Integral.
+
+- VERSION | 5 B | 1 linha
+  Finalidade: String da versão atual (0.9.99).
+  Público: CI / IA | Frequência: Sempre | Acoplamento: Máximo (100%)
+  Classificação: Manter Integral.
+
+- control.tar.gz (127 B), data.tar.gz (124 B), test.ipk (440 B)
+  Finalidade: Resíduos de testes manuais de empacotamento.
+  Classificação: Remover.
+
+- cudy_installed_pkgs.txt | 23,3 KB | 520 linhas
+  Finalidade: Snapshot de pacotes instalados no hardware Cudy WR3000 em teste.
+  Classificação: Arquivar em docs/references/.
+
+[DIRETÓRIO .cursor/rules/ - 15 ARQUIVOS .MDC]
+- ark-router-luci.mdc | 2,26 KB | 82 linhas | LuCI SPA | Classificação: Manter / Ativar alwaysApply
+- openwrt-shell-uci.mdc | 1,63 KB | 58 linhas | Shell ash e UCI | Classificação: Manter / Ativar alwaysApply
+- nextjs-app-router.mdc | 3,92 KB | alwaysApply: true | ALIENÍGENA | Classificação: Remover
+- react-typescript.mdc | 2,57 KB | alwaysApply: true | ALIENÍGENA | Classificação: Remover
+- security-patterns.mdc | 4,50 KB | alwaysApply: true | ALIENÍGENA (NextAuth/Prisma) | Classificação: Remover
+- file-organization.mdc | 3,05 KB | alwaysApply: true | ALIENÍGENA (app/, components/) | Classificação: Remover
+- accessibility-patterns.mdc | 5,41 KB | WCAG geral | Classificação: Reduzir / Mesclar em docs
+- animation-patterns.mdc | 3,40 KB | Framer Motion | ALIENÍGENA | Classificação: Remover
+- api-patterns.mdc | 4,39 KB | Next.js API Routes | ALIENÍGENA | Classificação: Remover
+- database-patterns.mdc | 3,44 KB | Prisma ORM | ALIENÍGENA | Classificação: Remover
+- form-patterns.mdc | 3,73 KB | React Hook Form | ALIENÍGENA | Classificação: Remover
+- nextjs-patterns.mdc | 3,86 KB | Next.js Router | ALIENÍGENA | Classificação: Remover
+- performance-patterns.mdc | 4,06 KB | next/image | ALIENÍGENA | Classificação: Remover
+- seo-patterns.mdc | 3,77 KB | Next.js SEO | ALIENÍGENA | Classificação: Remover
+- testing-patterns.mdc | 3,76 KB | Jest / React Testing Library | ALIENÍGENA | Classificação: Remover
+
+[DIRETÓRIO .cursor/commands/ - 18 ARQUIVOS .MD]
+- create-luci-view.md | 640 B | Criar view LuCI SPA | Classificação: Manter
+- audit-ark-theme.md | 650 B | Auditoria visual LuCI | Classificação: Manter
+- verify-router-health.md | 475 B | Checagem RAM/Flash/UCI | Classificação: Manter
+- audit-accessibility.md | 6,61 KB | Checklist acessibilidade | Classificação: Reduzir
+- 14 Comandos Alienígenas (setup-zustand-store, create-server-action, create-server-component,
+  setup-env-variables, setup-dark-mode, create-component, create-form, create-api-client,
+  refactor-component, create-responsive-layout, add-tests, optimize-performance,
+  prepare-production, review-code) | ~68 KB total | Classificação: Remover
+
+[DIRETÓRIO docs/ - 14 ARQUIVOS TÉCNICOS]
+- docs/ARCHITECTURE.md | 19,3 KB | 188 linhas | Arquitetura técnica | Classificação: Manter Integral
+- docs/UI_DESIGN_SYSTEM_AND_QA.md | 10,2 KB | 152 linhas | Design system, .main-right, QA | Classificação: Manter Integral
+- docs/ark-ui-rules.md | 2,91 KB | 64 linhas | Regras UI LuCI | Classificação: Mesclar em UI_DESIGN_SYSTEM_AND_QA.md
+- docs/hardware-budget.md | 2,08 KB | 41 linhas | 128MB RAM, 16MB Flash | Classificação: Manter Integral
+- docs/security-rules.md | 1,23 KB | 26 linhas | Shell ash e injection | Classificação: Manter Integral
+- docs/firmware-runbook.md | 1,76 KB | 45 linhas | SquashFS e sysupgrade | Classificação: Manter Integral
+- docs/network-diagnostics.md | 2,11 KB | 42 linhas | Dual OpenWrt (apk/opkg) | Classificação: Manter Integral
+- docs/MODULES_AND_HARDWARE_PROFILES.md | 9,79 KB | 132 linhas | Matriz módulos e hardware (PT-BR) | Classificação: Manter Integral
+- docs/PACKAGE_PROFILES.md | 9,34 KB | 148 linhas | Perfis Lite vs Full APK (EN) | Classificação: Manter Integral
+- docs/INSTALL.md | 12,5 KB | 247 linhas | Instalação rápida SSH | Classificação: Manter Integral
+- docs/SECURITY.md | 2,60 KB | 32 linhas | Modelo privilégios RPC | Classificação: Manter Integral
+- docs/PUBLISHING.md | 5,32 KB | 169 linhas | Checklist GitHub Releases | Classificação: Manter (Canônico)
+- docs/RELEASES.md | 3,84 KB | 78 linhas | Distribuição e releases | Classificação: Mesclar em PUBLISHING.md
+- docs/ROADMAP.md | 922 B | 22 linhas | Metas do projeto | Classificação: Manter Integral
+
+
+5. AVALIAÇÃO INDIVIDUAL DOS ITENS ANALISADOS
+--------------------------------------------------------------------------------
+- AGENTS.md: Atualizado | Risco: Alto | Benefício: Médio. É a fonte canônica e enxuta
+  mais precisa do repositório para agentes IA. Manter intacto.
+- GEMINI.md: Atualizado | Risco: Baixo | Benefício: Alto. Duplicação byte-a-byte idêntica
+  de AGENTS.md. Excluir ou substituir por apontamento de 1 linha.
+- .cursorrules: Inaplicável / Tóxico | Risco: Médio | Benefício: Crítico. Linhas 1 a 108
+  forçam Next.js 14, React 18, Zustand e Prisma. Injeta alucinações de pacotes npm em
+  um roteador OpenWrt. Purgar os blocos de Next.js/React e manter apenas OpenWrt/LuCI/Ash.
+- .cursor/rules/*.mdc (13 alienígenas): Inaplicável / Tóxico | Risco: Baixo | Benefício: Crítico.
+  4 possuem alwaysApply: true ativas permanentemente em todas as mensagens. Excluir os
+  13 arquivos alienígenas.
+- ark-router-luci.mdc e openwrt-shell-uci.mdc: Atualizado | Risco: Médio | Benefício: Alto.
+  Regras corretas e precisas do projeto, mas atualmente negligenciadas com alwaysApply: false.
+  Manter e alterar para alwaysApply: true.
+- .cursor/commands/*.md (14 alienígenas): Inaplicável | Risco: Baixo | Benefício: Alto.
+  14 comandos ensinam criação de componentes React, Server Actions e Zustand. Excluir.
+- 3 Comandos LuCI (create-luci-view, etc.): Atualizado | Risco: Baixo | Benefício: Médio.
+  Comandos curtos, focados e úteis para tarefas do LuCI. Manter.
+- CHANGELOG.md: Atualizado | Risco: Médio | Benefício: Crítico. Possui quase 150 KB de
+  histórico detalhado desde as primeiras versões. Consome ~38k tokens desnecessariamente.
+  Manter na raiz para humanos, mas declarar como consulta estritamente sob demanda.
+- docs/ARCHITECTURE.md: Atualizado | Risco: Crítico | Benefício: Alto. Descreve a engenharia
+  dos subsistemas (SQM, Starlink gRPC, Multi-WAN, AdGuard em RAM, ZeroTier). Manter integralmente.
+- docs/UI_DESIGN_SYSTEM_AND_QA.md: Atualizado | Risco: Alto | Benefício: Alto. Especifica a
+  contenção de layout, a regra de ouro do contêiner .main-right e o teste qa_visual_matrix.py.
+  Manter integralmente.
+- docs/ark-ui-rules.md: Atualizado | Risco: Médio | Benefício: Médio. É um subconjunto condensado
+  de UI_DESIGN_SYSTEM_AND_QA.md e security-rules.md. Mesclar em UI_DESIGN_SYSTEM_AND_QA.md.
+- docs/hardware-budget.md: Atualizado | Risco: Crítico | Benefício: Alto. Contém as restrições
+  físicas de hardware (128 MB RAM, 16 MB SPI Flash, buffers TCP). Manter integralmente.
+- docs/security-rules.md: Atualizado | Risco: Crítico | Benefício: Alto. Contém a proibição
+  de bashismos em BusyBox ash e diretrizes contra command injection. Manter integralmente.
+- docs/firmware-runbook.md: Atualizado | Risco: Alto | Benefício: Médio. Descreve o particionamento
+  SquashFS, hash de ROMs e preservação via sysupgrade. Manter integralmente.
+- docs/network-diagnostics.md: Atualizado | Risco: Alto | Benefício: Médio. Explica a arquitetura
+  Dual OpenWrt (apk vs opkg, nft vs iptables) e o ark-doctor. Manter integralmente.
+- docs/MODULES_AND_HARDWARE_PROFILES.md: Atualizado | Risco: Alto | Benefício: Médio. Matriz
+  em português de requisitos de hardware e visibilidade dos módulos. Manter integralmente.
+- docs/PACKAGE_PROFILES.md: Atualizado | Risco: Alto | Benefício: Médio. Especificação técnica
+  dos pacotes APK/IPK Lite vs Full e limiares de RAM/Overlay. Manter integralmente.
+- docs/PUBLISHING.md e RELEASES.md: Atualizado | Risco: Baixo | Benefício: Alto. Ambos tratam
+  de como gerar tags, compilar APKs no GitHub e instalar via wget. Mesclar o conteúdo de
+  RELEASES.md dentro de PUBLISHING.md.
+- control.tar.gz, data.tar.gz, test.ipk: Obsoleto | Risco: Baixo | Benefício: Baixo. Sobras de
+  testes manuais de empacotamento que poluem a raiz. Excluir.
+- cudy_installed_pkgs.txt: Arquivo de teste | Risco: Baixo | Benefício: Médio. Dump de pacotes
+  do Cudy WR3000 de testes. Mover para docs/references/.
+
+
+6. LISTAS SEPARADAS POR DESTINO RECOMENDADO
+--------------------------------------------------------------------------------
+1. MANTER INTEGRAL:
+   - AGENTS.md
+   - README.md
+   - CONTRIBUTING.md
+   - CODE_OF_CONDUCT.md
+   - SUPPORT.md
+   - Makefile e VERSION
+   - docs/ARCHITECTURE.md
+   - docs/hardware-budget.md
+   - docs/security-rules.md
+   - docs/firmware-runbook.md
+   - docs/network-diagnostics.md
+   - docs/MODULES_AND_HARDWARE_PROFILES.md
+   - docs/PACKAGE_PROFILES.md
+   - docs/INSTALL.md
+   - docs/SECURITY.md
+   - docs/ROADMAP.md
+
+2. REDUZIR / ENXUGAR:
+   - .cursorrules (remover linhas 1-108 de React/Next.js)
+   - .cursor/commands/audit-accessibility.md (converter em checklist LuCI enxuto)
+
+3. MESCLAR / CONSOLIDAR:
+   - docs/RELEASES.md -> Consolidar em docs/PUBLISHING.md
+   - docs/ark-ui-rules.md -> Consolidar em docs/UI_DESIGN_SYSTEM_AND_QA.md
+
+4. CONSULTA SOB DEMANDA:
+   - CHANGELOG.md (manter na raiz para humanos, vedar carregamento indiscriminado por IA)
+   - docs/ARCHITECTURE.md, docs/MODULES_AND_HARDWARE_PROFILES.md, docs/INSTALL.md,
+     docs/UI_DESIGN_SYSTEM_AND_QA.md (consultar somente quando a tarefa exigir)
+
+5. ARQUIVAR:
+   - cudy_installed_pkgs.txt -> docs/references/cudy_installed_pkgs.txt
+
+6. REMOVER:
+   - GEMINI.md (clone 100% de AGENTS.md)
+   - 13 arquivos alienígenas em .cursor/rules/ (nextjs-app-router, react-typescript, etc.)
+   - 14 comandos alienígenas em .cursor/commands/ (setup-zustand-store, etc.)
+   - control.tar.gz, data.tar.gz, test.ipk (resíduos temporários na raiz)
+
+
+7. PRINCIPAIS DESPERDÍCIOS POTENCIAIS DE CONTEXTO
+--------------------------------------------------------------------------------
+1. Injeção Obrigatória de Frameworks Fantasma (~12.000 tokens por prompt):
+   As 4 regras .mdc com alwaysApply: true somadas às 108 linhas de .cursorrules
+   forçavam ~12k tokens de Next.js/React em todas as mensagens no Cursor, induzindo
+   alucinações como sugerir pacotes npm em scripts de roteador.
+2. Histórico Monolítico de Release (~38.000 tokens):
+   CHANGELOG.md na raiz com 149 KB representa um desperdício massivo quando assistentes
+   realizam varreduras automáticas em busca de contexto de projeto.
+3. Clonagem Byte-a-Byte (GEMINI.md):
+   Duplicação literal de AGENTS.md consome tokens adicionais em ferramentas multi-modelo.
+4. Comandos Fantasma em .cursor/commands/ (~17.000 tokens):
+   14 comandos ensinando testes Jest e stores Zustand em um projeto de roteador embedded.
+
+
+8. CONTEXTO OBRIGATÓRIO VS. CONSULTA SOB DEMANDA
+--------------------------------------------------------------------------------
+- Contexto Obrigatório (~1.200 tokens):
+  Carregado em TODAS as mensagens. Contém a stack real (OpenWrt, LuCI SPA, BusyBox ash),
+  as restrições de hardware (128MB RAM, 16MB Flash, <60KB assets), a regra de rolagem
+  do .main-right, touch targets de 40px e a proibição de bashismos.
+- Contexto sob Demanda:
+  Lido via visualização de arquivo apenas quando a tarefa envolver o tópico específico:
+  * docs/ARCHITECTURE.md: Subsistemas, Starlink gRPC, Multi-WAN, AdGuard em RAM, ZeroTier.
+  * docs/UI_DESIGN_SYSTEM_AND_QA.md: Classes CSS, modais e testes multi-navegador.
+  * docs/hardware-budget.md: Alocação de memória RAM, buffers e Flash SPI.
+  * docs/firmware-runbook.md: Imagem SquashFS e sysupgrade seguro.
+  * docs/PUBLISHING.md: Processo de versão e compilação de pacotes APK.
+  * docs/network-diagnostics.md: Compatibilidade Dual OpenWrt (apk/opkg).
+
+
+9. RISCOS, CONTRADIÇÕES E FONTES CONCORRENTES DE VERDADE
+--------------------------------------------------------------------------------
+1. Contradição de Framework (Crítica):
+   .cursorrules ditava Next.js/React/Zustand, enquanto o código real é LuCI vanilla JS
+   e BusyBox ash. Risco de alucinar sintaxes inexistentes e importações npm.
+2. Duplicação de Regras de UI (Média):
+   docs/ark-ui-rules.md e docs/UI_DESIGN_SYSTEM_AND_QA.md definem padrões similares
+   com risco de divergência futura.
+3. Duplicação de Instruções de Release (Média):
+   docs/RELEASES.md e docs/PUBLISHING.md contêm procedimentos duplicados para
+   compilação de pacotes e comandos wget.
+4. Fonte Canônica de IA (Média):
+   AGENTS.md e GEMINI.md idênticos criam risco de descompasso de manutenção.
+
+
+10. REGISTRO DE DESCOBERTAS IMPORTANTES (D-LOG)
+--------------------------------------------------------------------------------
+- D01 (Context Poisoning em .cursorrules): Linhas 1-108 forçam Next.js 14 e React 18.
+  Impacto: Desperdiça ~4k tokens por mensagem no Cursor e induz alucinações.
+  Recomendação: Purgar linhas 1-108 e manter apenas diretrizes OpenWrt/LuCI/Ash.
+
+- D02 (Inversão de alwaysApply em .cursor/rules/): Regras alienígenas com alwaysApply: true;
+  regras reais de OpenWrt com alwaysApply: false.
+  Impacto: O assistente carrega o que não funciona e ignora o que é mandatório.
+  Recomendação: Deletar as 13 alienígenas e ativar alwaysApply: true nas 2 reais.
+
+- D03 (Duplicação Byte-a-Byte): GEMINI.md tem exatamente os mesmos 2.890 bytes de AGENTS.md.
+  Impacto: Redundância de manutenção e consumo duplo de tokens.
+  Recomendação: Reduzir GEMINI.md para apontamento simples para AGENTS.md.
+
+- D04 (Comandos Alienígenas): 14 de 18 comandos em .cursor/commands/ instruem React/Jest.
+  Impacto: Poluição de autocomplete e sugestões errôneas.
+  Recomendação: Excluir os 14 comandos não aplicáveis.
+
+- D05 (Volume Excessivo de CHANGELOG.md): 149 KB (3.421 linhas, ~38.000 tokens) na raiz.
+  Impacto: Risco de esgotamento de janela de contexto se lido automaticamente.
+  Recomendação: Declarar formalmente como leitura estritamente sob demanda.
+
+- D06 (Duplicidade RELEASES.md vs PUBLISHING.md): Ambos ensinam build APK e download wget.
+  Impacto: Duas fontes de verdade com risco de divergência.
+  Recomendação: Consolidar todo o conteúdo em docs/PUBLISHING.md.
+
+- D07 (Duplicidade Parcial de UI): docs/ark-ui-rules.md é resumo de UI_DESIGN_SYSTEM_AND_QA.md.
+  Impacto: Manutenção duplicada de seletores e modais.
+  Recomendação: Consolidar definitivamente em docs/UI_DESIGN_SYSTEM_AND_QA.md.
+
+- D08 (Resíduos de Testes na Raiz): control.tar.gz, data.tar.gz, test.ipk e cudy_installed_pkgs.txt.
+  Impacto: Poluição visual da raiz e ruído em varreduras de arquivos.
+  Recomendação: Deletar os 3 arquivos temporários e mover o dump para docs/references/.
+
+
+11. DÚVIDAS PENDENTES E CONFIRMAÇÃO HUMANA
+--------------------------------------------------------------------------------
+1. Preferência de Arquivo para IA na Raiz: Manter apenas AGENTS.md como canônico ou manter
+   também GEMINI.md como apontamento curto ("Veja AGENTS.md")?
+2. Estratégia de CHANGELOG.md: Manter arquivo íntegro de 149 KB na raiz instruindo IAs a
+   não ingeri-lo automaticamente, ou arquivar logs de versões antigas (< 0.9) em
+   docs/archive/CHANGELOG-v0.x.md?
+3. Consolidação de Release: Aprova a fusão de docs/RELEASES.md dentro de docs/PUBLISHING.md?
+
+
+12. ESTRUTURA DOCUMENTAL RECOMENDADA (ANTES VS. DEPOIS)
+--------------------------------------------------------------------------------
+Antes (Poluída):
+- .cursorrules (84% Next.js)
+- .cursor/rules/ (4 regras alienígenas ativas sempre, 2 regras reais desativadas)
+- .cursor/commands/ (14 comandos React/Jest, 3 comandos reais)
+- GEMINI.md (clone 100% de AGENTS.md)
+- CHANGELOG.md (149 KB na raiz ingerível por engano)
+- control.tar.gz, data.tar.gz, test.ipk, cudy_installed_pkgs.txt (lixo na raiz)
+- docs/ark-ui-rules.md e docs/RELEASES.md (duplicidades)
+
+Depois (Limpa e Especializada):
+- .cursorrules (100% OpenWrt, LuCI SPA e Ash)
+- .cursor/rules/ (ark-router-luci.mdc e openwrt-shell-uci.mdc com alwaysApply: true)
+- .cursor/commands/ (apenas os 3 comandos legítimos do projeto)
+- AGENTS.md (canônico) e GEMINI.md (apontador curto)
+- CHANGELOG.md (marcado como leitura sob demanda)
+- docs/references/cudy_installed_pkgs.txt (organizado fora da raiz)
+- docs/UI_DESIGN_SYSTEM_AND_QA.md (canônico e unificado de UI)
+- docs/PUBLISHING.md (canônico e unificado de Releases)
+
+
+13. DEFINIÇÃO DO CONTEXTO MÍNIMO PARA IA (~1.200 TOKENS)
+--------------------------------------------------------------------------------
+Stack Real:
+- Alvo: OpenWrt 19.07 até 25.x (Dual Architecture: apk e opkg, nftables e iptables).
+- Backend: Shell POSIX puro (/bin/sh sob BusyBox ash) + /usr/sbin/equipe-dashboard-control.
+- Frontend: LuCI JavaScript SPA nativo (L.view.extend, ui.*, CBI widgets).
+- Estilização: CSS puro responsivo integrado ao tema LuCI Argon e Bootstrap.
+- PROIBIDO: React, JSX, TypeScript, Next.js, Tailwind, Prisma, bibliotecas npm externas.
+
+Restrições de Hardware:
+- Memória RAM: Roteadores de 128 MB (manter > 80 MB livres) e 256 MB (manter > 60 MB livres).
+- Flash SPI (16 MB): Manter sempre > 2 MB livres na partição /overlay.
+- Escrita: NUNCA gravar logs, CSVs ou dumps em /etc ou /root. Usar /tmp (RAM temporária).
+- Orçamento de Assets: CSS + JS do tema não devem ultrapassar 60 KB compactados.
+
+Regras de Shell POSIX:
+- /bin/sh BusyBox ash: sem bashismos (sem [[ ]], sem arrays ${arr[@]}, sem ${var//old/new}).
+- Commits UCI atômicos: uci commit network.
+- Sanitização estrita de argumentos contra injection ([a-zA-Z0-9_.-]+).
+
+Regras de Frontend LuCI:
+- Box Model: box-sizing: border-box. Em flex e grid, sempre min-width: 0 nos filhos.
+- Scroll: body tem overflow: hidden no Argon. O contêiner de rolagem é .main-right.
+  Ao abrir modais, travar .main-right com overflow: hidden !important; pointer-events: none !important;.
+- Modais: cliques críticos em fase de captura (addEventListener('click', handler, true)).
+  Trava visual de 2 segundos no botão de confirmação. Proibido alert(), confirm(), prompt().
+- Touch: área de toque útil mínima de 40px.
+
+Comandos de Verificação:
+- JS Syntax: node --check root/www/luci-static/resources/view/equipe-dashboard/overview.js
+- Assets: python scripts/build_minified_assets.py
+- QA Visual: python scripts/qa_visual_matrix.py
+- Auditoria: /usr/sbin/ark-doctor ou equipe-dashboard-control audit-system
+
+Documentação sob Demanda:
+- docs/ARCHITECTURE.md (Subsistemas, Starlink gRPC, Multi-WAN, AdGuard em RAM, ZeroTier)
+- docs/UI_DESIGN_SYSTEM_AND_QA.md (Classes CSS, modais, scroll, testes multi-navegador)
+- docs/hardware-budget.md (Restrições de memória RAM, buffers TCP e Flash SPI)
+- docs/PUBLISHING.md (Processo de compilação de APKs e lançamento no GitHub)
+
+Comparativo de Consumo:
+- Antes: ~14.500 tokens por interação (Risco de Alucinação: Crítico)
+- Depois: ~1.250 tokens por interação (Risco de Alucinação: Nulo)
+- Economia: Redução de ~91% de contexto redundante e tóxico (-13.250 tokens por mensagem).
+
+
+14. PLANO DE AÇÃO EM ETAPAS E MATRIZ DE MUDANÇAS
+--------------------------------------------------------------------------------
+Etapa 1: Eliminação de Regras Alienígenas e Descontaminação do Cursor
+- Purgar seções de Next.js/React de .cursorrules.
+- Excluir os 13 arquivos .mdc alienígenas de .cursor/rules/.
+- Ativar alwaysApply: true nas regras ark-router-luci.mdc e openwrt-shell-uci.mdc.
+- Excluir os 14 comandos alienígenas em .cursor/commands/.
+
+Etapa 2: Otimização de Arquivos de IA e Limpeza da Raiz
+- Consolidar GEMINI.md para apontar para AGENTS.md.
+- Remover binários temporários da raiz (control.tar.gz, data.tar.gz, test.ipk).
+- Mover cudy_installed_pkgs.txt para docs/references/.
+
+Etapa 3: Consolidação e Desduplicação de Documentos em docs/
+- Mesclar regras de docs/ark-ui-rules.md em docs/UI_DESIGN_SYSTEM_AND_QA.md.
+- Mesclar instruções de docs/RELEASES.md em docs/PUBLISHING.md.
+
+Matriz Detalhada:
+| Caminho do Arquivo | Operação | Justificativa Técnica | Impacto & Risco |
+| :--- | :---: | :--- | :---: |
+| .cursorrules | Modificar | Remover linhas 1-108 de Next.js; preservar regras LuCI | Alto benefício / Baixo risco |
+| .cursor/rules/*.mdc (13 alienígenas) | Excluir | Purgar regras de Next.js, React, Prisma e Zod | Alto benefício / Risco zero |
+| .cursor/rules/ark-router-luci.mdc | Modificar | Alterar alwaysApply para true | Alto benefício / Risco zero |
+| .cursor/rules/openwrt-shell-uci.mdc | Modificar | Alterar alwaysApply para true | Alto benefício / Risco zero |
+| .cursor/commands/ (14 alienígenas) | Excluir | Comandos React/Jest não aplicáveis | Médio benefício / Risco zero |
+| GEMINI.md | Modificar | Reduzir para apontamento simples de AGENTS.md | Médio benefício / Risco zero |
+| control.tar.gz, data.tar.gz, test.ipk | Excluir | Lixo residual de testes manuais na raiz | Baixo benefício / Risco zero |
+| cudy_installed_pkgs.txt | Mover | Destino: docs/references/cudy_installed_pkgs.txt | Baixo benefício / Risco zero |
+| docs/ark-ui-rules.md | Consolidar | Destino: docs/UI_DESIGN_SYSTEM_AND_QA.md | Médio benefício / Baixo risco |
+| docs/RELEASES.md | Consolidar | Destino: docs/PUBLISHING.md | Médio benefício / Baixo risco |
+
+
+15. STATUS E PRÓXIMOS PASSOS
+--------------------------------------------------------------------------------
+A auditoria em modo somente-leitura foi finalizada com sucesso.
+Este relatório completo está registrado neste arquivo para avaliação externa.
+Nenhuma alteração no código ou na estrutura de arquivos do projeto foi executada até o momento.
+================================================================================

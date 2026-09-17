@@ -144,7 +144,7 @@ install_release() {
 		echo "DRY_RUN=1: would download $pkg_url to $pkg_file"
 	else
 		rm -f "$pkg_file"
-		wget -O "$pkg_file" "$pkg_url" || return 1
+		wget --no-check-certificate -O "$pkg_file" "$pkg_url" || return 1
 	fi
 
 	echo "Installing ARK Router $PROFILE package"
@@ -217,7 +217,7 @@ install_source() {
 	fi
 	rm -rf "$work" "$archive"
 	mkdir -p "$work"
-	wget -O "$archive" "$SOURCE_URL"
+	wget --no-check-certificate -O "$archive" "$SOURCE_URL"
 	tar -xzf "$archive" -C "$work"
 	rootdir="$(find "$work" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
 	[ -n "$rootdir" ] && [ -d "$rootdir/root" ] || { echo "Downloaded source does not contain root/" >&2; return 1; }

@@ -7,17 +7,20 @@
 				"/usr/sbin/equipe-dashboard-control": [ "exec" ],
 				"/usr/libexec/nlbwmon-action": [ "exec" ],
 				"/tmp/equipe-traffic-history.csv": [ "read" ],
+				"/tmp/equipe-wan-daily.csv": [ "read" ],
+				"/proc/net/arp": [ "read" ],
 				"/sys/class/thermal/thermal_zone0/temp": [ "read" ]
 			},
 			"ubus": {
 				"file": [ "exec", "read" ],
 				"iwinfo": [ "assoclist", "survey", "scan", "freqlist", "countrylist" ],
-				"luci-rpc": [ "getDHCPLeases" ],
+				"luci-rpc": [ "getDHCPLeases", "getHostHints" ],
 				"mwan3": [ "status" ],
 				"network.device": [ "status" ],
 				"network.interface": [ "dump" ],
 				"network.wireless": [ "status" ],
-				"system": [ "board", "info" ]
+				"system": [ "board", "info" ],
+				"uci": [ "changes", "get" ]
 			},
 			"uci": [ "dhcp", "equipe_dashboard", "equipe_devices", "equipe_perf", "firewall", "luci", "mwan3", "network", "qos_equipe", "sqm", "starlink_telemetry", "wireless" ]
 		},
@@ -26,7 +29,8 @@
 				"/usr/sbin/equipe-dashboard-control": [ "exec" ]
 			},
 			"ubus": {
-				"file": [ "exec" ]
+				"file": [ "exec" ],
+				"uci": [ "add", "apply", "commit", "delete", "set" ]
 			},
 			"uci": [ "dhcp", "equipe_dashboard", "equipe_devices", "equipe_perf", "firewall", "luci", "mwan3", "network", "qos_equipe", "sqm", "starlink_telemetry", "wireless" ]
 		}

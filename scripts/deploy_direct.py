@@ -4,11 +4,12 @@ import time
 import paramiko
 
 ROUTER_IP = os.environ.get('ARK_ROUTER_IP', '192.168.1.1')
+ROUTER_PORT = int(os.environ.get('ARK_ROUTER_PORT', '22'))
 USERNAME = os.environ.get('ARK_ROUTER_USER', 'root')
-PASSWORD = os.environ.get('ARK_ROUTER_PASSWORD')
+PASSWORD = os.environ.get('ARK_ROUTER_PASSWORD') or os.environ.get('ARK_ROUTER_TEST_PASSWORD') or ''
 
 if not PASSWORD:
-    print("Set ARK_ROUTER_PASSWORD before running direct deploy.", file=sys.stderr)
+    print("Set ARK_ROUTER_PASSWORD or ARK_ROUTER_TEST_PASSWORD before running direct deploy.", file=sys.stderr)
     sys.exit(2)
 
 repo_dir = os.environ.get('ARK_ROUTER_REPO_DIR', os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -23,12 +24,16 @@ except Exception as e:
 
 raw_files_to_upload = [
     (os.path.join(repo_dir, 'root', 'usr', 'sbin', 'equipe-dashboard-control'), '/usr/sbin/equipe-dashboard-control'),
+    (os.path.join(repo_dir, 'root', 'usr', 'sbin', 'ark-doctor'), '/usr/sbin/ark-doctor'),
     (os.path.join(repo_dir, 'root', 'usr', 'sbin', 'equipe-traffic-history'), '/usr/sbin/equipe-traffic-history'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'resources', 'view', 'equipe-dashboard', 'overview.js'), '/www/luci-static/resources/view/equipe-dashboard/overview.js'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'resources', 'view', 'equipe-dashboard', 'overview.css'), '/www/luci-static/resources/view/equipe-dashboard/overview.css'),
     (os.path.join(repo_dir, 'root', 'usr', 'share', 'rpcd', 'acl.d', 'luci-app-equipe-dashboard.json'), '/usr/share/rpcd/acl.d/luci-app-equipe-dashboard.json'),
+    (os.path.join(repo_dir, 'root', 'usr', 'share', 'luci', 'menu.d', 'luci-app-equipe-dashboard.json'), '/usr/share/luci/menu.d/luci-app-equipe-dashboard.json'),
+    (os.path.join(repo_dir, 'root', 'usr', 'share', 'ark-router', 'VERSION'), '/usr/share/ark-router/VERSION'),
     (os.path.join(repo_dir, 'root', 'usr', 'libexec', 'ark-starlink-telemetry'), '/usr/libexec/ark-starlink-telemetry'),
     (os.path.join(repo_dir, 'root', 'www', 'cgi-bin', 'ark-starlink-telemetry'), '/www/cgi-bin/ark-starlink-telemetry'),
+    (os.path.join(repo_dir, 'root', 'www', 'cgi-bin', 'ark-mesh-export'), '/www/cgi-bin/ark-mesh-export'),
     (os.path.join(repo_dir, 'root', 'www', 'starlink', 'index.html'), '/www/starlink/index.html'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'ark', 'ark-theme.js'), '/www/luci-static/ark/ark-theme.js'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'ark', 'cascade.css'), '/www/luci-static/ark/cascade.css'),
@@ -37,7 +42,19 @@ raw_files_to_upload = [
     (os.path.join(repo_dir, 'root', 'usr', 'lib', 'lua', 'luci', 'view', 'themes', 'ark', 'header.htm'), '/usr/lib/lua/luci/view/themes/ark/header.htm'),
     (os.path.join(repo_dir, 'root', 'usr', 'lib', 'lua', 'luci', 'view', 'themes', 'ark', 'footer.htm'), '/usr/lib/lua/luci/view/themes/ark/footer.htm'),
     (os.path.join(repo_dir, 'root', 'etc', 'init.d', 'ark-zerotier-ram'), '/etc/init.d/ark-zerotier-ram'),
+    (os.path.join(repo_dir, 'root', 'usr', 'sbin', 'starlink-telemetry-daemon'), '/usr/sbin/starlink-telemetry-daemon'),
+    (os.path.join(repo_dir, 'root', 'usr', 'sbin', 'starlink-telemetry-mailer'), '/usr/sbin/starlink-telemetry-mailer'),
+    (os.path.join(repo_dir, 'root', 'etc', 'init.d', 'starlink-telemetry'), '/etc/init.d/starlink-telemetry'),
 ]
+
+ark_lib_dir = os.path.join(repo_dir, 'root', 'usr', 'lib', 'ark')
+if os.path.isdir(ark_lib_dir):
+    for root_path, _, fnames in os.walk(ark_lib_dir):
+        for fname in fnames:
+            local_f = os.path.join(root_path, fname)
+            rel = os.path.relpath(local_f, os.path.join(repo_dir, 'root'))
+            remote_f = '/' + rel.replace('\\', '/')
+            raw_files_to_upload.append((local_f, remote_f))
 
 files_to_upload = [
     (minified_map.get(local_path, local_path), remote_path)
@@ -47,7 +64,7 @@ files_to_upload = [
 print(f"Conectando ao roteador {ROUTER_IP} via SSH...")
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-ssh.connect(ROUTER_IP, username=USERNAME, password=PASSWORD, timeout=10)
+ssh.connect(ROUTER_IP, port=ROUTER_PORT, username=USERNAME, password=PASSWORD, timeout=10)
 
 for local_path, remote_path in files_to_upload:
     print(f"Transferindo {os.path.basename(local_path)} ({os.path.getsize(local_path)} bytes) para {remote_path}...")
@@ -67,7 +84,8 @@ for local_path, remote_path in files_to_upload:
         print(f"  -> {os.path.basename(local_path)} gravado com sucesso.")
 
 cmds = [
-    'chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry /etc/init.d/ark-zerotier-ram',
+    'chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export /etc/init.d/ark-zerotier-ram /usr/sbin/starlink-telemetry-daemon /usr/sbin/starlink-telemetry-mailer /etc/init.d/starlink-telemetry /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh 2>/dev/null || true',
+    'touch /etc/config/starlink_telemetry 2>/dev/null || true',
     'killall equipe-traffic-history 2>/dev/null || true',
     'rm -f /tmp/equipe-traffic-history.state',
     '/usr/sbin/equipe-traffic-history &',

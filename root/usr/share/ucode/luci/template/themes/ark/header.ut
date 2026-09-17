@@ -70,19 +70,27 @@
 
 		<div id="maincontent" class="container ark-main-container">
 			{% if (getuid() == 0 && getspnam('root')?.pwdp === ''): %}
+				{%
+					let ark_lang = 'pt-br';
+					try {
+						let cursor = require('uci').cursor();
+						ark_lang = cursor.get('equipe_dashboard', 'main', 'language') || 'pt-br';
+					} catch(e) {}
+					let is_en = (ark_lang == 'en');
+				%}
 				<div class="alert-message warning">
-					<h4>{{ _('No password set!') }}</h4>
-					<p>{{ _('There is no password set on this router. Please configure a root password to protect the web interface.') }}</p>
+					<h4>{{ is_en ? _('No password set!') : 'Nenhuma senha definida!' }}</h4>
+					<p>{{ is_en ? _('There is no password set on this router. Please configure a root password to protect the web interface.') : 'Não há nenhuma senha configurada neste roteador. Por favor, configure uma senha para o usuário root a fim de proteger o painel.' }}</p>
 					{% if (dispatcher.lookup("admin/system/admin")): %}
-					  <div class="right"><a class="btn cbi-button cbi-button-apply" href="{{ dispatcher.build_url("admin/system/admin") }}">{{ _('Go to password configuration...') }}</a></div>
+					  <div class="right"><a class="btn cbi-button cbi-button-apply" href="{{ dispatcher.build_url("admin/system/admin") }}">{{ is_en ? _('Go to password configuration...') : 'Configurar senha de acesso…' }}</a></div>
 					{% endif %}
 				</div>
 			{% endif %}
 
 			<noscript>
 				<div class="alert-message warning">
-					<h4>{{ _('JavaScript required!') }}</h4>
-					<p>{{ _('You must enable JavaScript in your browser or LuCI will not work properly.') }}</p>
+					<h4>JavaScript obrigatório!</h4>
+					<p>Você precisa habilitar o JavaScript no navegador para que o painel funcione corretamente.</p>
 				</div>
 			</noscript>
 

@@ -38,12 +38,17 @@ ensure_msmtprc() {
 		return 1
 	}
 
+	local tls_trust="tls_certcheck off"
+	if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+		tls_trust="tls_trust_file /etc/ssl/certs/ca-certificates.crt"
+	fi
+
 	mkdir -p /etc
 	cat > /etc/msmtprc <<EOF
 defaults
 auth on
 tls $([ "$tls" = "1" ] && echo "on" || echo "off")
-tls_trust_file /etc/ssl/certs/ca-certificates.crt
+$tls_trust
 tls_starttls $([ "$port" = "587" ] && echo "on" || echo "off")
 logfile /var/log/msmtp.log
 
@@ -59,15 +64,20 @@ EOF
 }
 
 aggregate_stats() {
-	# Lê todos os .csv.gz de flash e .csv de RAM usando zcat / cat e awk
+	# Coleta todos os .csv.gz de flash e .csv de RAM usando zcat / cat em lote e awk
+	local gz_files=""
+	for f in "${FLASH_DIR}"/*.csv.gz; do
+		[ -f "$f" ] && gz_files="$gz_files $f"
+	done
+	local ram_files=""
+	for f in "${RAM_DIR}"/*.csv; do
+		[ -f "$f" ] && ram_files="$ram_files $f"
+	done
+
 	local stats
 	stats="$( (
-		for f in "${FLASH_DIR}"/*.csv.gz; do
-			[ -f "$f" ] && zcat "$f" 2>/dev/null
-		done
-		for f in "${RAM_DIR}"/*.csv; do
-			[ -f "$f" ] && cat "$f" 2>/dev/null
-		done
+		[ -n "$gz_files" ] && zcat $gz_files 2>/dev/null
+		[ -n "$ram_files" ] && cat $ram_files 2>/dev/null
 	) | awk -F',' '
 		NR==1 || $1 ~ /timestamp/ { next }
 		$1 !~ /^[0-9]+$/ { next }
@@ -113,28 +123,24 @@ build_attachment() {
 	mkdir -p /tmp
 	rm -f "$TMP_ATTACH"
 
-	# Consolida todos os arquivos das últimas 25h em um único .csv.gz
+	local gz_files=""
+	for f in "${FLASH_DIR}"/*.csv.gz; do
+		[ -f "$f" ] && gz_files="$gz_files $f"
+	done
+	local ram_files=""
+	for f in "${RAM_DIR}"/*.csv; do
+		[ -f "$f" ] && ram_files="$ram_files $f"
+	done
+
+	# Consolida todos os arquivos das últimas 25h em um único .csv.gz preservando apenas o 1o cabeçalho
 	(
-		local header_printed=0
-		for f in "${FLASH_DIR}"/*.csv.gz; do
-			if [ -f "$f" ]; then
-				if [ "$header_printed" -eq 0 ]; then
-					zcat "$f" 2>/dev/null | head -n 1
-					header_printed=1
-				fi
-				zcat "$f" 2>/dev/null | sed 1d
-			fi
-		done
-		for f in "${RAM_DIR}"/*.csv; do
-			if [ -f "$f" ]; then
-				if [ "$header_printed" -eq 0 ]; then
-					head -n 1 "$f" 2>/dev/null
-					header_printed=1
-				fi
-				sed 1d "$f" 2>/dev/null
-			fi
-		done
-	) | gzip -c > "$TMP_ATTACH"
+		[ -n "$gz_files" ] && zcat $gz_files 2>/dev/null
+		[ -n "$ram_files" ] && cat $ram_files 2>/dev/null
+	) | awk '
+		NR==1 { print; next }
+		$0 ~ /^timestamp,/ { next }
+		{ print }
+	' | gzip -c > "$TMP_ATTACH"
 }
 
 send_via_resend() {
@@ -186,13 +192,22 @@ send_via_resend() {
 	' "$from_email" "$to_email" "$subject" "$html_file" "$attach_file" "$attach_name" > "$tmp_json" 2>/dev/null
 
 	log "Enviando e-mail via Resend API (sem senha de e-mail)..."
-	local resp
+	local resp=""
 	local fetch_err="/tmp/resend_err_$$.log"
-	resp="$(uclient-fetch -q -O - \
-		--header="Authorization: Bearer $api_key" \
-		--header="Content-Type: application/json" \
-		--post-file="$tmp_json" \
-		https://api.resend.com/emails 2>"$fetch_err" || true)"
+	if command -v curl >/dev/null 2>&1; then
+		resp="$(curl -4 -s -S -m 20 \
+			-A "Mozilla/5.0 (ARK-Router; OpenWrt)" \
+			-H "Authorization: Bearer $api_key" \
+			-H "Content-Type: application/json" \
+			-d @"$tmp_json" \
+			https://api.resend.com/emails 2>"$fetch_err" || true)"
+	else
+		resp="$(uclient-fetch -4 -U "Mozilla/5.0 (ARK-Router; OpenWrt)" --no-check-certificate -T 20 -O - \
+			--header="Authorization: Bearer $api_key" \
+			--header="Content-Type: application/json" \
+			--post-file="$tmp_json" \
+			https://api.resend.com/emails 2>"$fetch_err" || true)"
+	fi
 
 	rm -f "$tmp_json"
 
@@ -206,7 +221,12 @@ send_via_resend() {
 	else
 		local err_detail
 		err_detail="$(cat "$fetch_err" 2>/dev/null || true)"
-		log "Erro ao enviar via Resend API: ${resp:-$err_detail}"
+		local api_msg
+		api_msg="$(printf '%s' "$resp" | jsonfilter -e '@.message' 2>/dev/null || true)"
+		[ -n "$api_msg" ] || api_msg="$(printf '%s' "$resp" | jsonfilter -e '@.error' 2>/dev/null || true)"
+		local final_err="${api_msg:-${resp:-$err_detail}}"
+		[ -n "$final_err" ] || final_err="Falha na conexão com a API Resend. Verifique se a chave de API (resend_api_key) é válida, se o e-mail de destino está autorizado e se o DNS resolve api.resend.com."
+		log "Erro ao enviar via Resend API: $final_err"
 		rm -f "$fetch_err"
 		return 1
 	fi
@@ -350,17 +370,11 @@ EOF
 	fi
 
 	# ================= ROTA SMTP (MSMTP) =================
-	command -v msmtp >/dev/null 2>&1 || {
-		log "msmtp não está instalado. Tentando instalar via apk..."
-		if command -v apk >/dev/null 2>&1; then
-			apk add msmtp >/dev/null 2>&1 || true
-		fi
-		if ! command -v msmtp >/dev/null 2>&1; then
-			log "Erro: msmtp não encontrado e não pôde ser instalado. Relatório não enviado."
-			rm -f "$TMP_HTML" "$TMP_ATTACH"
-			return 1
-		fi
-	}
+	if ! command -v msmtp >/dev/null 2>&1; then
+		log "Erro: pacote msmtp não está instalado no sistema. Instale msmtp para utilizar envio via SMTP tradicional."
+		rm -f "$TMP_HTML" "$TMP_ATTACH"
+		return 1
+	fi
 
 	ensure_msmtprc || { rm -f "$TMP_HTML" "$TMP_ATTACH"; return 1; }
 
@@ -420,7 +434,7 @@ EOF
 EOF
 
 	log "Disparando e-mail via SMTP para $email_to..."
-	if msmtp -a default "$email_to" < "$TMP_REPORT" 2>/tmp/msmtp_err; then
+	if msmtp --timeout=20 -a default "$email_to" < "$TMP_REPORT" 2>/tmp/msmtp_err; then
 		log "Relatório executivo enviado com sucesso para $email_to!"
 		date +%s > "$LAST_EPOCH_FILE"
 		rm -f "$TMP_REPORT" "$TMP_HTML" "$TMP_ATTACH" /tmp/msmtp_err
@@ -435,15 +449,23 @@ EOF
 }
 
 check_and_send() {
+	local interval_hours
+	interval_hours="$(uci -q get "${CONF}.email.email_interval" || printf '24')"
+	[ "$interval_hours" -gt 0 ] 2>/dev/null || {
+		log "Envio periódico por e-mail desativado (email_interval=0)."
+		return 0
+	}
+
 	local last_epoch=0
 	[ -f "$LAST_EPOCH_FILE" ] && last_epoch="$(cat "$LAST_EPOCH_FILE" 2>/dev/null || printf 0)"
 	local now_epoch
 	now_epoch="$(date +%s)"
 	local diff=$((now_epoch - last_epoch))
+	local interval_sec=$((interval_hours * 3600 - 300))
 
-	# Dispara se passou mais de 20 horas desde o último envio
-	if [ "$diff" -ge 72000 ]; then
-		log "Janela diária atingida ($diff segundos desde o último e-mail). Iniciando despacho..."
+	# Dispara se passou o intervalo configurado desde o último envio
+	if [ "$diff" -ge "$interval_sec" ]; then
+		log "Janela periódica atingida ($diff segundos desde o último e-mail, configurado ${interval_hours}h). Iniciando despacho..."
 		send_report 0
 	fi
 }

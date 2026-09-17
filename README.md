@@ -179,10 +179,10 @@ The package manager adapter supports both `apk` and `opkg` for optional package 
 | Starlink telemetry | Dedicated ARK module embedded in Lite and Full; Lite loads the small architecture-specific client into `/tmp` on demand, while Full keeps it persistently in `/usr/bin` |
 | Per-device usage | `nlbwmon`; `luci-app-nlbwmon` is optional if the original LuCI report page is desired |
 | Guest network full rate limit | `tc-full` and `kmod-sched-act-police`; pulled by Release package installs |
-| IRQ balance | `irqbalance` |
+| IRQ balance | `irqbalance` (included in release package `DEPENDS`) |
 | UPnP / NAT-PMP | `luci-app-upnp` |
 | Argon theme | `luci-theme-argon` |
-| uHTTPd LuCI manager | `luci-app-uhttpd` |
+| uHTTPd LuCI manager | `luci-app-uhttpd` (optional addon; web server is native to OpenWrt base) |
 | Link testing | `speedtest-go`, loaded into temporary memory |
 | Tunnel support | `kmod-tun`, required only when Speedify/VPN tunnel interfaces are enabled |
 | Real bonding | Speedify Router runtime, optional; can be loaded internally, from external storage or temporarily in RAM when supported |

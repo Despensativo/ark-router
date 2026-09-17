@@ -1,0 +1,147 @@
+#!/bin/sh
+# /www/cgi-bin/ark-mesh-export
+# Secure, read-only endpoint that allows authorized local satellites (LAN/Mesh only)
+# to import master Wi-Fi credentials, 802.11r mobility domain, and mesh keys.
+
+remote="${REMOTE_ADDR:-}"
+if [ -z "$remote" ]; then
+	printf 'Status: 403 Forbidden\r\nContent-Type: application/json\r\n\r\n{"ok":false,"error":"No remote IP"}\n'
+	exit 0
+fi
+
+# Anti-WAN / LAN isolation check
+is_authorized() {
+	[ "$remote" = "127.0.0.1" ] && return 0
+	[ "$remote" = "::1" ] && return 0
+
+	local dev=""
+	case "$remote" in
+		*:*) dev="$(ip -6 route get "$remote" 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1); exit}')" ;;
+		*)   dev="$(ip -4 route get "$remote" 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1); exit}')" ;;
+	esac
+
+	case "$dev" in
+		br-lan*|lan*|eth0|eth1|lo) return 0 ;;
+		wg*|wireguard*|zt*|zerotier*) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+if ! is_authorized; then
+	printf 'Status: 403 Forbidden\r\nContent-Type: application/json\r\n\r\n{"ok":false,"error":"Access restricted to local LAN/Mesh peers"}\n'
+	exit 0
+fi
+
+if [ "${QUERY_STRING:-}" = "leases" ] || [ "${QUERY_STRING:-}" = "action=leases" ]; then
+	printf 'Status: 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nCache-Control: no-store\r\n\r\n'
+	[ -f /tmp/dhcp.leases ] && cat /tmp/dhcp.leases
+	exit 0
+fi
+
+json_escape() {
+	printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/	/\\t/g'
+}
+
+# Identify radios
+r2=""
+r5=""
+for dev in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut -d= -f1); do
+	b="$(uci -q get wireless.$dev.band || true)"
+	[ -n "$b" ] || b="$(uci -q get wireless.$dev.hwmode || true)"
+	if [ -z "$r2" ] && echo "$b" | grep -qE '2g|11g|11b'; then
+		r2="$dev"
+	elif [ -z "$r5" ] && echo "$b" | grep -qE '5g|11a'; then
+		r5="$dev"
+	fi
+done
+[ -n "$r2" ] || r2="radio0"
+[ -n "$r5" ] || r5="radio1"
+
+ssid_2g=""
+key_2g=""
+enc_2g=""
+chan_2g="$(uci -q get wireless.$r2.channel || echo 'auto')"
+
+ssid_5g=""
+key_5g=""
+enc_5g=""
+chan_5g="$(uci -q get wireless.$r5.channel || echo 'auto')"
+mob_domain="a1b2"
+
+for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
+	dev="$(uci -q get wireless.$iface.device)"
+	mode="$(uci -q get wireless.$iface.mode || printf 'ap')"
+	net="$(uci -q get wireless.$iface.network)"
+	disabled="$(uci -q get wireless.$iface.disabled || printf '0')"
+
+	# Skip disabled or guest interfaces
+	[ "$disabled" = "0" ] || continue
+	[ "$mode" = "ap" ] || continue
+	if [ "$net" != "lan" ] && [ -n "$net" ]; then
+		continue
+	fi
+
+	if [ "$dev" = "$r2" ] && [ -z "$ssid_2g" ]; then
+		ssid_2g="$(uci -q get wireless.$iface.ssid || true)"
+		key_2g="$(uci -q get wireless.$iface.key || true)"
+		enc_2g="$(uci -q get wireless.$iface.encryption || echo 'psk2')"
+	elif [ "$dev" = "$r5" ] && [ -z "$ssid_5g" ]; then
+		ssid_5g="$(uci -q get wireless.$iface.ssid || true)"
+		key_5g="$(uci -q get wireless.$iface.key || true)"
+		enc_5g="$(uci -q get wireless.$iface.encryption || echo 'sae-mixed')"
+		md="$(uci -q get wireless.$iface.mobility_domain || true)"
+		[ -n "$md" ] && mob_domain="$md"
+	fi
+done
+
+mesh_id="$(uci -q get wireless.extra_mesh_r1.mesh_id || echo 'ark-mesh')"
+mesh_key="$(uci -q get wireless.extra_mesh_r1.key || echo 'arkmeshkey123')"
+master_ip="$(uci -q get network.lan.ipaddr || printf '192.168.73.1')"
+master_name="$(uci -q get equipe_dashboard.main.title || uci -q get system.@system[0].hostname || printf 'ARK Router')"
+wifi6_accel="$(uci -q get equipe_dashboard.wifi.wifi6_accel || echo 0)"
+txbalance_enabled="$(uci -q get equipe_dashboard.wifi.txpower_balanced || echo 0)"
+usteer_enabled="$(uci -q get equipe_dashboard.wifi.usteer_enabled || echo 0)"
+
+leases_json="["
+first_l=1
+if [ -f /tmp/dhcp.leases ]; then
+	while read -r l_ts l_mac l_ip l_name l_clid; do
+		[ -n "$l_mac" ] || continue
+		[ "$first_l" = 1 ] && first_l=0 || leases_json="${leases_json},"
+		leases_json="${leases_json}{\"ts\":${l_ts:-0},\"mac\":\"$(json_escape "$l_mac")\",\"ip\":\"$(json_escape "$l_ip")\",\"hostname\":\"$(json_escape "$l_name")\"}"
+	done < /tmp/dhcp.leases
+fi
+leases_json="${leases_json}]"
+
+names_json="{"
+first_n=1
+for sec in $(uci -q show equipe_devices 2>/dev/null | grep -E "=device$" | cut -d. -f2 | cut -d= -f1); do
+	n_mac="$(uci -q get equipe_devices.$sec.mac 2>/dev/null | tr 'a-f' 'A-F')"
+	n_name="$(uci -q get equipe_devices.$sec.name 2>/dev/null)"
+	if [ -n "$n_mac" ] && [ -n "$n_name" ]; then
+		[ "$first_n" = 1 ] && first_n=0 || names_json="${names_json},"
+		names_json="${names_json}\"$(json_escape "$n_mac")\":\"$(json_escape "$n_name")\""
+	fi
+done
+names_json="${names_json}}"
+
+printf 'Status: 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nCache-Control: no-store\r\n\r\n'
+printf '{"ok":true,"ssid_2g":"%s","key_2g":"%s","enc_2g":"%s","chan_2g":"%s","ssid_5g":"%s","key_5g":"%s","enc_5g":"%s","chan_5g":"%s","mobility_domain":"%s","mesh_id":"%s","mesh_key":"%s","master_ip":"%s","master_name":"%s","wifi6_accel":%s,"txbalance_enabled":%s,"usteer_enabled":%s,"leases":%s,"device_names":%s}\n' \
+	"$(json_escape "$ssid_2g")" \
+	"$(json_escape "$key_2g")" \
+	"$(json_escape "$enc_2g")" \
+	"$(json_escape "$chan_2g")" \
+	"$(json_escape "$ssid_5g")" \
+	"$(json_escape "$key_5g")" \
+	"$(json_escape "$enc_5g")" \
+	"$(json_escape "$chan_5g")" \
+	"$(json_escape "$mob_domain")" \
+	"$(json_escape "$mesh_id")" \
+	"$(json_escape "$mesh_key")" \
+	"$(json_escape "$master_ip")" \
+	"$(json_escape "$master_name")" \
+	"$([ "$wifi6_accel" = 1 ] && echo true || echo false)" \
+	"$([ "$txbalance_enabled" = 1 ] && echo true || echo false)" \
+	"$([ "$usteer_enabled" = 1 ] && echo true || echo false)" \
+	"$leases_json" \
+	"$names_json"

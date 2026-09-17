@@ -244,3 +244,9 @@ To preview what would happen without changing the router:
 ```sh
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/uninstall.sh | DRY_RUN=1 sh
 ```
+
+## Optional Package Lifecycle & Safe Uninstall Guide
+
+For in-depth details on how optional heavy components (such as **Speedify** and **AdGuard Home**) are installed, how flash memory exhaustion is prevented, how LuCI RPC drops are mitigated, and how DNS and network states are cleanly restored upon removal, refer to:
+👉 [Guia de Ciclo de Vida: Instalação e Desinstalação Segura](file:///c:/Users/User/Desktop/FEITOS%20COM%20IA/Ark-Router/GitHub/luci-app-ark-router/docs/LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md)
+

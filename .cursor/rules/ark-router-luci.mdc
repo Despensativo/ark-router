@@ -2,6 +2,7 @@
 description: ARK Router LuCI JavaScript and View Standards
 globs: 
   - "root/www/**/*.js"
+  - "src/**/*.js"
   - "root/usr/lib/lua/luci/**/*.lua"
   - "root/usr/share/luci/**/*.ut"
   - "root/usr/share/luci/**/*.htm"

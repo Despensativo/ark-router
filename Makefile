@@ -14,7 +14,7 @@ define Package/luci-app-ark-router
   SUBMENU:=3. Applications
   TITLE:=ARK Router Lite operational dashboard
   PKGARCH:=all
-  DEPENDS:=+luci-base +rpcd +nlbwmon +luci-app-nlbwmon +tc-full +kmod-sched-act-police +irqbalance +luci-app-package-manager +luci-app-attendedsysupgrade +attendedsysupgrade-common +owut +luci-app-sqm +kmod-ifb +kmod-sched-cake +luci-app-mwan3 +luci-app-upnp +miniupnpd-nftables +luci-app-uhttpd +kmod-tun +iwinfo +luci-i18n-mwan3-pt-br +luci-i18n-nlbwmon-pt-br +luci-i18n-sqm-pt-br +luci-i18n-upnp-pt-br +luci-i18n-uhttpd-pt-br
+  DEPENDS:=+luci-base +rpcd +nlbwmon +luci-app-nlbwmon +tc-full +kmod-sched-act-police +irqbalance +luci-app-package-manager +luci-app-attendedsysupgrade +attendedsysupgrade-common +owut +luci-app-sqm +kmod-ifb +kmod-sched-cake +luci-app-mwan3 +luci-app-upnp +miniupnpd-nftables +kmod-tun +iwinfo +curl +luci-i18n-mwan3-pt-br +luci-i18n-nlbwmon-pt-br +luci-i18n-sqm-pt-br +luci-i18n-upnp-pt-br
 endef
 
 define Package/luci-app-ark-router/description
@@ -22,9 +22,9 @@ define Package/luci-app-ark-router/description
   It includes the dashboard, per-device accounting and complete guest
   upload/download limiting, package management, OpenWrt update helpers
   and sub-1 MB operational modules such as SQM/CAKE, Multi-WAN, UPnP,
-  uHTTPd management, Wi-Fi info, tunnel support and supported PT-BR
-  LuCI translations. Heavier modules such as ZeroTier and speed testing
-  remain installable from the panel.
+  Wi-Fi info, tunnel support and supported PT-BR LuCI translations.
+  Heavier modules such as ZeroTier and speed testing remain installable
+  from the panel.
 endef
 
 define Package/luci-app-ark-router-full
@@ -33,14 +33,14 @@ define Package/luci-app-ark-router-full
   SUBMENU:=3. Applications
   TITLE:=ARK Router Full operational dashboard
   PKGARCH:=all
-  DEPENDS:=+luci-base +rpcd +nlbwmon +luci-app-nlbwmon +tc-full +kmod-sched-act-police +irqbalance +luci-app-sqm +kmod-ifb +kmod-sched-cake +luci-app-mwan3 +luci-app-upnp +miniupnpd-nftables +luci-app-uhttpd +zerotier +speedtest-go +kmod-tun +iwinfo +luci-app-package-manager +luci-app-attendedsysupgrade +attendedsysupgrade-common +owut +luci-i18n-mwan3-pt-br +luci-i18n-nlbwmon-pt-br +luci-i18n-sqm-pt-br +luci-i18n-upnp-pt-br +luci-i18n-uhttpd-pt-br
+  DEPENDS:=+luci-base +rpcd +nlbwmon +luci-app-nlbwmon +tc-full +kmod-sched-act-police +irqbalance +luci-app-sqm +kmod-ifb +kmod-sched-cake +luci-app-mwan3 +luci-app-upnp +miniupnpd-nftables +zerotier +speedtest-go +kmod-tun +iwinfo +luci-app-package-manager +luci-app-attendedsysupgrade +attendedsysupgrade-common +owut +curl +luci-i18n-mwan3-pt-br +luci-i18n-nlbwmon-pt-br +luci-i18n-sqm-pt-br +luci-i18n-upnp-pt-br
 endef
 
 define Package/luci-app-ark-router-full/description
   Full ARK Router package for routers with 512 MB RAM or more. It pulls
   the dashboard plus the common operational modules used by ARK Router:
   traffic accounting, guest limiting, SQM/CAKE, Multi-WAN, UPnP,
-  uHTTPd management, ZeroTier, speed testing and VPN tunnel support.
+  ZeroTier, speed testing and VPN tunnel support.
 endef
 
 define Package/luci-app-ark-router/conffiles
@@ -68,6 +68,13 @@ define Package/luci-app-ark-router/install
 	# Lite downloads the optional telemetry client on first use into /tmp.
 	# Keep the persistent binary out of the small-flash package.
 	rm -f $(1)/usr/bin/starlink-dish
+	$(INSTALL_DIR) $(1)/usr/sbin
+	$(INSTALL_BIN) ./root/usr/sbin/equipe-dashboard-control $(1)/usr/sbin/equipe-dashboard-control
+	$(INSTALL_BIN) ./root/usr/sbin/equipe-traffic-history $(1)/usr/sbin/equipe-traffic-history
+	$(INSTALL_DIR) $(1)/usr/lib/ark
+	$(INSTALL_BIN) ./root/usr/lib/ark/ark-control $(1)/usr/lib/ark/ark-control
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./root/etc/init.d/equipe-traffic-history $(1)/etc/init.d/equipe-traffic-history
 	$(INSTALL_DIR) $(1)/usr/libexec
 	$(INSTALL_BIN) ./root/usr/libexec/ark-starlink-telemetry $(1)/usr/libexec/ark-starlink-telemetry
 	$(INSTALL_DIR) $(1)/www/cgi-bin
@@ -80,6 +87,13 @@ define Package/luci-app-ark-router-full/install
 	# Full carries the architecture-specific Starlink client persistently.
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) ./root/usr/bin/starlink-dish $(1)/usr/bin/starlink-dish
+	$(INSTALL_DIR) $(1)/usr/sbin
+	$(INSTALL_BIN) ./root/usr/sbin/equipe-dashboard-control $(1)/usr/sbin/equipe-dashboard-control
+	$(INSTALL_BIN) ./root/usr/sbin/equipe-traffic-history $(1)/usr/sbin/equipe-traffic-history
+	$(INSTALL_DIR) $(1)/usr/lib/ark
+	$(INSTALL_BIN) ./root/usr/lib/ark/ark-control $(1)/usr/lib/ark/ark-control
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./root/etc/init.d/equipe-traffic-history $(1)/etc/init.d/equipe-traffic-history
 	$(INSTALL_DIR) $(1)/usr/libexec
 	$(INSTALL_BIN) ./root/usr/libexec/ark-starlink-telemetry $(1)/usr/libexec/ark-starlink-telemetry
 	$(INSTALL_DIR) $(1)/www/cgi-bin
@@ -89,6 +103,7 @@ endef
 define Package/luci-app-ark-router/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
+	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/lib/ark/ark-control /etc/init.d/equipe-traffic-history /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
 	[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme
 	rm -f /tmp/luci-indexcache
 	rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
@@ -99,6 +114,7 @@ endef
 define Package/luci-app-ark-router-full/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
+	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/lib/ark/ark-control /etc/init.d/equipe-traffic-history /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
 	[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme
 	rm -f /tmp/luci-indexcache
 	rm -rf /tmp/luci-modulecache/* 2>/dev/null || true

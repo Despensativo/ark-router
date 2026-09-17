@@ -51,6 +51,8 @@ build_ipk_variant() {
 	chmod 0755 "$data_dir/usr/sbin/ark-doctor" 2>/dev/null || true
 	chmod 0755 "$data_dir/usr/sbin/equipe-traffic-history" 2>/dev/null || true
 	chmod 0755 "$data_dir/usr/sbin/ark-autowan-daemon" 2>/dev/null || true
+	chmod 0755 "$data_dir/usr/lib/ark/"*.sh 2>/dev/null || true
+	chmod 0755 "$data_dir/usr/lib/ark/modules/"*.sh 2>/dev/null || true
 	chmod 0755 "$data_dir/usr/libexec/ark-starlink-telemetry" 2>/dev/null || true
 	chmod 0755 "$data_dir/www/cgi-bin/ark-starlink-telemetry" 2>/dev/null || true
 	chmod 0755 "$data_dir/etc/init.d/equipe-traffic-history" 2>/dev/null || true
@@ -87,6 +89,8 @@ EOF
 chmod +x /usr/sbin/equipe-dashboard-control 2>/dev/null || true
 chmod +x /usr/sbin/equipe-traffic-history 2>/dev/null || true
 chmod +x /usr/sbin/ark-autowan-daemon 2>/dev/null || true
+chmod +x /usr/lib/ark/*.sh 2>/dev/null || true
+chmod +x /usr/lib/ark/modules/*.sh 2>/dev/null || true
 chmod +x /usr/libexec/ark-starlink-telemetry 2>/dev/null || true
 chmod +x /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
 chmod +x /etc/init.d/equipe-traffic-history 2>/dev/null || true

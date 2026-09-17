@@ -131,7 +131,32 @@ if [ -n "$radio6" ]; then
 	fi
 fi
 
-[ "$changed" = "1" ] && uci commit wireless
+# 6. Otimizações de Aceleração Wi-Fi 6 Out-of-the-Box (se hardware suportar)
+for dev in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut -d= -f1); do
+	cur_ht="$(uci -q get wireless.$dev.htmode || true)"
+	case "$cur_ht" in
+		HE*|EHT*)
+			uci -q set "wireless.$dev.bss_color=auto"
+			uci -q set "wireless.$dev.he_bss_color=1"
+			uci -q set "wireless.$dev.he_spatial_reuse=1"
+			uci -q set "wireless.$dev.twt_responder=1"
+			uci -q set "wireless.$dev.he_su_beamformer=1"
+			uci -q set "wireless.$dev.he_su_beamformee=1"
+			uci -q set "wireless.$dev.he_mu_beamformer=1"
+			uci -q set "wireless.$dev.he_ul_mumimo=1"
+			uci -q set "wireless.$dev.he_ul_ofdma=1"
+			uci -q set "wireless.$dev.he_puncturing=1"
+			uci -q set equipe_dashboard.wifi=settings 2>/dev/null || true
+			uci -q set equipe_dashboard.wifi.wifi6_accel=1
+			changed=1
+			;;
+	esac
+done
+
+[ "$changed" = "1" ] && {
+	uci commit wireless
+	uci commit equipe_dashboard 2>/dev/null || true
+}
 
 # Regra de persistência MQTT para Alexa e Casa Inteligente (portas 8883/8886 no Multi-WAN)
 if [ -f /etc/config/mwan3 ] && ! uci -q get mwan3.iot_alexa_mqtt >/dev/null; then

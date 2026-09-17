@@ -7,7 +7,8 @@ from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.common.by import By
 
-ROUTER_URL = "https://192.168.73.1/cgi-bin/luci/"
+ROUTER_URL = os.environ.get("ARK_ROUTER_URL", "https://192.168.73.1/cgi-bin/luci/")
+PASSWORD = os.environ.get("ARK_ROUTER_TEST_PASSWORD") or os.environ.get("ARK_ROUTER_PASSWORD")
 SCREENSHOT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs", "qa_screenshots")
 os.makedirs(SCREENSHOT_DIR, exist_ok=True)
 
@@ -140,13 +141,17 @@ def create_driver(cfg):
 def login_if_needed(driver):
     pw_inputs = driver.find_elements(By.NAME, "luci_password")
     if pw_inputs:
-        pw_inputs[0].send_keys("admin0100")
+        if not PASSWORD:
+            print("Aviso: Tela de login detectada, mas ARK_ROUTER_TEST_PASSWORD não está configurada. Pulando autenticação.", file=sys.stderr)
+            return False
+        pw_inputs[0].send_keys(PASSWORD)
         submit_btn = driver.find_elements(By.CSS_SELECTOR, "form button[type='submit'], form input[type='submit'], .cbi-button-apply")
         if submit_btn:
             driver.execute_script("arguments[0].click();", submit_btn[0])
         else:
             driver.find_element(By.TAG_NAME, "form").submit()
         time.sleep(2.5)
+        return True
 
 def run_tests():
     print("=======================================================================")

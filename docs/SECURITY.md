@@ -15,14 +15,14 @@ Important properties:
 - Router restart requires a one-time token, two seconds of server-side delay and use within 60 seconds.
 - SQM is restored before a speed-test result is marked complete or failed.
 - Applying a measured SQM value is separate from testing and requires confirmation.
-- Package upgrades preserve the two UCI configuration files declared as `conffiles`.
+- Package upgrades preserve the five UCI configuration files declared as `conffiles` in the Makefile (`/etc/config/equipe_dashboard`, `/etc/config/equipe_devices`, `/etc/config/qos_equipe`, `/etc/config/equipe_perf`, and `/etc/config/starlink_telemetry`).
 - The SSH source installer creates a temporary backup and preserves existing ARK Router UCI configuration files before copying source files into place.
 - Dashboard self-update downloads only the package asset that matches the detected package manager and runs only after administrator confirmation.
 - The standalone uninstaller creates a small preference backup under `/tmp` before removing files.
 - The standalone uninstaller removes only ARK Router files by default and preserves optional packages and saved preferences unless `PURGE=1` is explicitly set.
 - HTTPS redirection accepts only `0` or `1`, verifies the HTTPS listener and certificate files before enabling, and requires UI confirmation.
 - When a local CA is prepared by the administrator, the dashboard exposes only its public certificate for download. The uHTTPd private key is never returned by the dashboard or included in the source package.
-- No credentials are stored in the source tree.
+- No static or default credentials are baked into scripts or the source tree. Automation, test, and verification scripts require credentials to be supplied explicitly via ephemeral environment variables (`ARK_ROUTER_TEST_PASSWORD` / `ARK_ROUTER_PASSWORD`) and will abort immediately if missing.
 
 The package has administrative LuCI privileges and should be installed only from a trusted build or signed repository.
 

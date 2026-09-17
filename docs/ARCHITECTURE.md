@@ -4,10 +4,13 @@ ARK Router is composed of a LuCI JavaScript view, a scoped CSS file, an RPC ACL,
 
 ## Main components
 
-- `root/www/luci-static/resources/view/equipe-dashboard/overview.js`: UI, polling and RPC orchestration.
-- `root/www/luci-static/resources/view/equipe-dashboard/overview.css`: responsive presentation and theme variables.
-- `root/www/luci-static/ark/ark-theme.js`: visual injection, dynamic tables, modals and hardware badges.
-- `root/usr/sbin/equipe-dashboard-control`: validated write operations, capability detection and LED engine.
+- `src/core/` & `src/modules/`: modular frontend source files structured in clean, single-responsibility components (< 4,000 lines).
+- `scripts/build_frontend_bundle.py`: deterministic build script assembling modular frontend sources into `overview.js`.
+- `root/www/luci-static/resources/view/equipe-dashboard/overview.js`: generated LuCI SPA view bundle handling UI, polling, CBI components, and RPC orchestration.
+- `root/www/luci-static/resources/view/equipe-dashboard/overview.css`: responsive presentation, dark theme variables, cards, and modal styles.
+- `root/www/luci-static/ark/ark-theme.js`: visual injection, dynamic tables, modals, touch interactions, and hardware badges.
+- `root/usr/sbin/equipe-dashboard-control`: primary RPC dispatcher, capability detection, and system operations.
+- `root/usr/lib/ark/modules/*.sh`: modular shell subsystem handlers (WAN, Wi-Fi, mesh, hardware detection, LED control) called by the dispatcher.
 - `root/usr/sbin/ark-autowan-daemon`: continuous background auto-sensing daemon for port promotion/reversion.
 - `root/etc/hotplug.d/iface/99-ark-led-wan`: dynamic interface-driven WAN/Planet LED status updater.
 - `root/etc/hotplug.d/net/99-ark-led-wan`: dynamic device-driven WAN/Planet LED status updater.
@@ -77,6 +80,8 @@ The RAM/external installer first checks `/tmp/ark-speedify-cache/speedify.apk`. 
 
 Before the daemon starts, ARK Router verifies `/dev/net/tun` and attempts to install `kmod-tun` when a package manager is available. The runtime network preparation always sets the `speedify` firewall zone with `masq=1` and `mtu_fix=1`, keeps LAN-to-Speedify and Speedify-to-LAN forwarding present, and re-runs after daemon start to catch recreated `connectify*` tunnel devices.
 
+For uninstallation and anti-brick storage safeguards, see [LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md](file:///c:/Users/User/Desktop/FEITOS%20COM%20IA/Ark-Router/GitHub/luci-app-ark-router/docs/LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md).
+
 ## SQM controls
 
 The dashboard exposes a confirmed SQM/CAKE toggle and a small limit editor. It enumerates every currently configured IPv4 WAN and keeps a separate queue, enable state and download/upload rates for each interface; a rate of `0` means unlimited for that direction. Guest download/upload policing is independent of WAN SQM. Flow Offloading is offered only when no SQM queue is active, because Fastpath would bypass CAKE classification.
@@ -123,6 +128,7 @@ The ad blocking and parental subsystem uses a dual-engine architecture:
   - *Control D Full Blocker* (~15ms);
   - *NextDNS with dynamic profile ID* (~12ms).
 - **Per-Device Parental Filters**: When AdGuard Home is active, individual client profiles can enforce or exempt parental control, adult blocking, SafeSearch, and quick blocking chips for high-bandwidth apps (TikTok, YouTube, Instagram, Netflix, Roblox, etc.).
+- **DNS Recovery on Uninstall**: Removing AdGuard Home automatically restores `dnsmasq` to parallel DNS Turbo (`allservers=1`) and standard upstreams (`1.1.1.1`, `8.8.8.8`), preventing DNS blackholes. See [LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md](file:///c:/Users/User/Desktop/FEITOS%20COM%20IA/Ark-Router/GitHub/luci-app-ark-router/docs/LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md).
 
 ## Custom domain blacklist ("X or Y")
 
@@ -150,13 +156,13 @@ The restart flow has two UI confirmations. After the first confirmation, the bac
 ## UI Design System and Cross-Browser QA Automation
 
 To guarantee visual containment, zero layout breaking, and cross-browser stability across all devices:
-- **Design System Standards**: Codified in [`docs/UI_DESIGN_SYSTEM_AND_QA.md`](file:///c:/Users/User/Desktop/ARK%20Router/GitHub/luci-app-ark-router/docs/UI_DESIGN_SYSTEM_AND_QA.md), enforcing strict box-sizing, fluid min/max containment, 40px minimum touch targets, and LuCI-specific scroll container isolation (`.main-right` scroll locking during mobile menu and modal states).
+- **Design System Standards**: Codified in [`docs/UI_DESIGN_SYSTEM_AND_QA.md`](UI_DESIGN_SYSTEM_AND_QA.md), enforcing strict box-sizing, fluid min/max containment, 40px minimum touch targets, and LuCI-specific scroll container isolation (`.main-right` scroll locking during mobile menu and modal states).
 - **Automated QA Matrix (`scripts/qa_visual_matrix.py`)**: Runs automated headless test runs across 8 environments and viewports:
   1. Google Chrome (Blink) Desktop Full HD (1920×1080);
   2. Google Chrome Laptop (1366×768);
   3. Mozilla Firefox (Gecko) Desktop Full HD (1920×1080);
   4. Microsoft Edge (Chromium) Desktop Full HD (1920×1080);
-  5. Chrome Mobile iPhone Viewport (390×844) with WebKit touch emulation;
+  5. Chrome Mobile iPhone Viewport (390×844) with mobile touch emulation;
   6. Chrome Mobile Android Galaxy Viewport (412×915);
   7. Compact Mobile Viewport (360×740);
   8. Tablet Viewport (768×1024).

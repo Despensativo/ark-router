@@ -100,7 +100,7 @@ python scripts/qa_visual_matrix.py
 2. **Chrome Laptop** (1366×768)
 3. **Firefox Desktop Full HD** (1920×1080 - Motor Gecko)
 4. **Edge Desktop Full HD** (1920×1080 - Motor Chromium)
-5. **Chrome Mobile iPhone 14/15/16** (390×844 - Viewport WebKit iOS & Touch)
+5. **Chrome Mobile iPhone 14/15/16** (390×844 - Viewport Mobile & Touch Emulation)
 6. **Chrome Mobile Android Galaxy** (412×915 - Viewport Android High-DPI & Touch)
 7. **Chrome Mobile Compact** (360×740 - Dispositivos de Entrada)
 8. **Chrome Tablet / iPad** (768×1024 - Modo Tablet)

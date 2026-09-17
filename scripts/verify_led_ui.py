@@ -5,7 +5,8 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 
-URL = "https://192.168.73.1/cgi-bin/luci/admin/system/leds"
+URL = os.environ.get("ARK_ROUTER_URL", "https://192.168.73.1/cgi-bin/luci/admin/system/leds")
+PASSWORD = os.environ.get("ARK_ROUTER_TEST_PASSWORD") or os.environ.get("ARK_ROUTER_PASSWORD")
 SCREENSHOT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs", "screenshots")
 os.makedirs(SCREENSHOT_DIR, exist_ok=True)
 SCREENSHOT_PATH = os.path.join(SCREENSHOT_DIR, "led_hardware_intelligent.png")
@@ -29,8 +30,11 @@ try:
     # Login se necessário
     pw_inputs = driver.find_elements(By.NAME, "luci_password")
     if pw_inputs:
+        if not PASSWORD:
+            print("Aviso: Tela de login detectada, mas ARK_ROUTER_TEST_PASSWORD não está configurada.", file=sys.stderr)
+            sys.exit(2)
         print("Realizando login...")
-        pw_inputs[0].send_keys("admin0100")
+        pw_inputs[0].send_keys(PASSWORD)
         submit_btn = driver.find_elements(By.CSS_SELECTOR, "form button[type='submit'], form input[type='submit'], .cbi-button-apply")
         if submit_btn:
             driver.execute_script("arguments[0].click();", submit_btn[0])
