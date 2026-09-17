@@ -3,10 +3,10 @@
 ![OpenWrt](https://img.shields.io/badge/OpenWrt-24.x%20%2F%2025.x-00B5E2?logo=openwrt&logoColor=white)
 ![Release](https://img.shields.io/badge/release-v1.0.2-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
-![Language](https://img.shields.io/badge/UI-PT--BR%20%2F%20EN-blue)
+![Language](https://img.shields.io/badge/UI-PT--BR%20%2F%20EN%20%2F%20ES-blue)
 ![Platform](https://img.shields.io/badge/arch-all%20%2F%20noarch-orange)
 
-ARK Router is a modern, responsive, bilingual, modular operational dashboard and control center for **OpenWrt / LuCI**. It turns the default LuCI home screen into a powerful, clean, executive control center for home, gaming, office, event, field, Starlink and mobile multi-WAN routers with SQM/CAKE QoS, real-time per-device bandwidth monitoring, per-device rate limiting with local LAN bypass, AdBlock/Parental Control (AdGuard Home in RAM + Anycast Cloud), DNS Turbo benchmark, ZeroTier remote access, automated system tuning, and automated multi-browser cross-device visual QA.
+ARK Router is a modern, responsive, trilingual (PT-BR / EN / ES), modular operational dashboard and control center for **OpenWrt / LuCI**. It turns the default LuCI home screen into a powerful, clean, executive control center for home, gaming, office, event, field, Starlink and mobile multi-WAN routers with SQM/CAKE QoS, real-time per-device bandwidth monitoring, per-device rate limiting with local LAN bypass, AdBlock/Parental Control (AdGuard Home in RAM + Anycast Cloud), DNS Turbo benchmark, ZeroTier remote access, automated system tuning, and automated multi-browser cross-device visual QA.
 
 The project does not replace OpenWrt or LuCI — it operates on top of LuCI as an advanced operations suite (`luci-app-ark-router`) with safer shortcuts, real-time telemetry and zero-bloat architecture.
 
@@ -61,6 +61,16 @@ O **ARK Router** transforma roteadores com **OpenWrt** em verdadeiras centrais d
     - Detecção automática de processadores MIPS vs. ARM64, alerta preventivo de sobrecarga acima de 100 Mbps e botão 1-clique para limitar somente o upload, eliminando bufferbloat e economizando 95% de CPU em hardware de 128 MB.
 15. **📡 Seleção Automática de Canais Wi-Fi Inteligente (Sem Radares DFS e Sem Sobreposição)**:
     - Restringe a banda de 2.4 GHz exclusivamente aos canais padrão ouro 1, 6 e 11, e a banda de 5 GHz a canais estáveis livres de interferência e bloqueios por radar meteorológico DFS.
+16. **🕸️ Rede Mesh Wi-Fi 802.11s & Roaming Rápido 802.11r/k/v com Auto-Sync**:
+    - Conexão e sincronização mestre/satélite com importação de credenciais via `/www/cgi-bin/ark-mesh-export`, transição ágil entre nós sem interrupção de voz e vídeo e isolamento de segurança com Satellite Shield.
+17. **🧹 Purgador Ativo de Interfaces Órfãs (Kernel Mesh Purge)**:
+    - Limpeza dinâmica e desacoplamento do bridge (`br-lan`) de interfaces mesh/sta residuais (`wifi_cleanup_mesh_interfaces` via `iw dev`), eliminando tempestades de pacotes e pings instáveis.
+18. **🩺 ARK Doctor (Auditor de Integridade e Autocura)**:
+    - Diagnóstico de saúde do roteador em 9 camadas críticas (rádios, bridge, DHCP, nftables, SQM, sintaxe hostapd) com reparo automatizado em tempo real (`ark-doctor --fix`).
+19. **👥 Telemetria Multi-AP e Descoberta de Clientes em Tempo Real**:
+    - Agregação de estações em todas as interfaces ativas (`device_get_stations`), garantindo precisão total na contagem de clientes conectados sem zerar o medidor.
+20. **🌎 Internacionalização Tripla com 100% de Paridade (i18n Triplo)**:
+    - Cobertura integral e auditada em Português do Brasil, Inglês e Espanhol neutro em todos os componentes e diálogos do sistema.
 
 ---
 
@@ -82,7 +92,10 @@ O **ARK Router** transforma roteadores com **OpenWrt** em verdadeiras centrais d
 - **Starlink diagnostics:** Both panels organize packet loss, current obstruction, uptime, obstruction duration, SNR, Ethernet negotiation and hardware alerts when the dish firmware exposes them. The read-only page automatically loads the first detected Starlink and retries transient queries.
 - **Small-flash friendly:** Avoid filling router flash by loading `speedtest-go` into temporary RAM when enough space exists.
 - **Optional Speedify recovery:** When Speedify is used in RAM or external storage mode, ARK Router can remember the chosen mode and try to reload it automatically after reboot.
-- **Bilingual UI:** Use Portuguese (Brazil) or English.
+- **Trilingual UI (100% audited parity):** Use Portuguese (Brazil), English or neutral Spanish.
+- **802.11s Wi-Fi Mesh & 802.11r/k/v Roaming:** Easy one-click mesh sync with automatic credential export, Satellite Shield, and kernel-level orphan interface purge (`wifi_cleanup_mesh_interfaces`).
+- **ARK Doctor Diagnostic Suite:** Integrated system integrity auditor with 9-layer automated health checks and instant self-repair (`ark-doctor --fix`).
+- **Multi-AP Station Telemetry:** Aggregated station polling (`device_get_stations`) across all active Wi-Fi interfaces for zero-error client counting.
 - **Theme aware:** Follow the active LuCI theme automatically, use ARK Router colors or choose custom colors.
 - **Safe by design:** Installation writes only ARK Router files; network changes happen only after an administrator confirms an action. Backups, resumable setup checkpoints and rollback-oriented helpers are included.
 

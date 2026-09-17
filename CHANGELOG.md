@@ -2,6 +2,25 @@
 
 ## 1.0.2
 
+- **🚀 Arquitetura Modular, Purga Ativa de Mesh, Segurança Hostapd e Telemetria Multi-AP (17/09/2026)**:
+  - **🧩 Modularização Completa de Backend e Frontend (< 4.000 linhas por arquivo)**:
+    - O backend monolítico `equipe-dashboard-control` foi modularizado em módulos concisos sob `/usr/lib/ark/modules/` (`wifi.sh`, `devices.sh`, `network.sh`, `doctor.sh`, `adblock.sh`, `vpn.sh`, `sqm.sh`, `starlink.sh`, `speedify.sh`, `system.sh`, `ezsetup.sh`).
+    - O frontend LuCI SPA foi decomposto em módulos modulares em `src/modules/` com empacotamento automatizado via `scripts/build_frontend_bundle.py` e minificação via esbuild.
+  - **🧹 Purgador Ativo de Interfaces Órfãs de Mesh no Kernel (`wifi_cleanup_mesh_interfaces`)**:
+    - Detecção dinâmica de interfaces do tipo `mesh point` via `iw dev` e `ip link`, desacoplamento imediato da bridge (`nomaster`), desligamento e destruição da interface no driver (`iw dev <iface> del`).
+    - Elimina completamente o problema de interfaces fantasmas residuais que provocavam loops de broadcast e pings instáveis de 70ms+ na rede local após desativação pelo botão.
+  - **🛡️ Blindagem de Sintaxe Hostapd para `wpad-basic-mbedtls`**:
+    - Remoção de diretivas cruas problemáticas (`bss_transition`, `wnm_sleep_mode`) que impediam compilação do arquivo de configuração pelo hostapd do OpenWrt.
+    - Padronização estrita com os parâmetros oficiais suportados: `ieee80211v=1`, `ieee80211k=1`, `rrm_neighbor_report=1` e `ieee80211r=1`.
+    - Suíte de 22 testes unitários (`tests/test_wifi_hostapd_safety.py`) validando todas as combinações de segurança.
+  - **👥 Correção da Telemetria de Estações Wi-Fi Multi-AP (`device_get_stations`)**:
+    - Implementação de polling agregado sobre todas as interfaces sem fio (`iwinfo assoclist` e `iw dev <iface> station dump`).
+    - Resolução definitiva do contador que marcava incorretamente "0 conectados" na interface quando dispositivos estavam associados.
+  - **🩺 ARK Doctor: Check #9 e Autocura (`--fix`)**:
+    - Inclusão da checagem e saneamento automático de interfaces mesh ativas no `ark-doctor`.
+  - **🌎 Internacionalização Tripla Integral (PT-BR, EN, ES)**:
+    - Auditoria automatizada (`scripts/audit_i18n.py`) aprovando 100% de paridade entre Português (Brasil), Inglês e Espanhol neutro em todos os módulos e strings de interface.
+
 - **🌐 Blindagem Dual-WAN, Correção do DNS Turbo e Robustez IPv6 (14/09/2026)**:
   - **🛡️ Prevenção Ativa de Buraco Negro IPv6 (Apple / Multi-OS Black Hole)**:
     - Validação e imposição de métricas distintas de rota IPv4 e IPv6: Métrica `10` na WAN 1 primária (`pppoe-wan`) e Métrica `20` na WAN 2 secundária (`pppoe-wan2`).
