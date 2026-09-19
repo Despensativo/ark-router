@@ -16,6 +16,12 @@
     - Modal de progresso com contador de passos dinâmico, barra de gradiente animada, console monospaçado de log real e contagem regressiva de recarga.
   - **🔄 Reinicialização Segura com Proteção em Dupla Camada (Double-Shield Storage Reboot)**:
     - Gancho de encerramento seguro (`ark-safe-shutdown`), parada graciosa de daemons/servidores web e descarga tripla de buffers de memória RAM (`sync; sync; sync`) para proteção de mídias USB/SD contra corrupção.
+  - **🌐 Sincronização Bidirecional e UX de DNS LAN (`dns_dhcp_option6_sync`)**:
+    - Sincronização automática e transparente entre `uci network.lan.dns` e a opção de DHCP para clientes locais (`dhcp.lan.dhcp_option='6,...'`), garantindo que servidores DNS customizados configurados pelo usuário na aba de Rede Local sejam imediatamente refletidos na interface e anunciados a todos os dispositivos clientes sem dessincronização visual.
+  - **🚀 Otimização de Buffers de Armazenamento para Downloads Ultrarrápidos (`sysctl vm.dirty_*`)**:
+    - Calibração de `vm.dirty_background_ratio` e `vm.dirty_ratio` no kernel para gravações intensivas em SSDs e mídias externas via Aria2/BitTorrent, eliminando gargalos de I/O em taxas de transferência de 200MB/s+ sem engasgos de CPU.
+  - **📦 Arquitetura Limpa e Standalone para Integrações de Terceiros (`contrib/alldebrid/`)**:
+    - Desacoplamento estrutural: integrações experimentais ou de serviços externos de download (como AllDebrid bridge/API) foram encapsuladas em diretório autônomo `contrib/alldebrid/` com daemon de inicialização e documentação próprios, mantendo a árvore base do ARK Router leve, enxuta e focada em telecomunicações puras.
 
 ## 1.0.2
 

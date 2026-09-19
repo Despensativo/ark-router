@@ -7,6 +7,6 @@
 
 document.querySelector('head').appendChild(E('link', {
 	'rel': 'stylesheet', 'type': 'text/css',
-	'href': L.resource('view/equipe-dashboard/overview.css') + '?v=' + (window.ARK_VERSION || '1.0.2')
+	'href': L.resource('view/equipe-dashboard/overview.css') + '?v=' + (window.ARK_VERSION || '1.5.1')
 }));
 

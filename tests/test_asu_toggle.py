@@ -107,7 +107,7 @@ class TestAsuToggle(unittest.TestCase):
         }};
 
         const sandbox = {{
-            window: {{ ARK_VERSION: '1.0.2', addEventListener: () => {{}} }},
+            window: {{ ARK_VERSION: '1.5.1', addEventListener: () => {{}} }},
             document: documentMock,
             E: createEl,
             L: {{ bind: (fn, ctx, ...args) => fn.bind(ctx, ...args), resource: (p) => '/' + p, url: (p) => '/' + p }},
@@ -123,14 +123,14 @@ class TestAsuToggle(unittest.TestCase):
         const v = new ViewClass();
 
         // 1. Teste com asu_check = false
-        v.capabilities = {{ update: {{ asu_check: false, manager: 'apk', current: '1.0.2' }} }};
+        v.capabilities = {{ update: {{ asu_check: false, manager: 'apk', current: '1.5.1' }} }};
         const htmlOff = v.selfUpdatePanel().toString();
         if (!htmlOff.includes('Verificação do OpenWrt Base')) throw new Error('Não encontrou título do toggle');
         if (!htmlOff.includes('Attended Sysupgrade')) throw new Error('Não encontrou badge do Attended Sysupgrade');
         if (!htmlOff.includes('DESLIGADA')) throw new Error('Deveria reportar DESLIGADA');
 
         // 2. Teste com asu_check = true
-        v.capabilities = {{ update: {{ asu_check: true, manager: 'apk', current: '1.0.2' }} }};
+        v.capabilities = {{ update: {{ asu_check: true, manager: 'apk', current: '1.5.1' }} }};
         const htmlOn = v.selfUpdatePanel().toString();
         if (!htmlOn.includes('LIGADA')) throw new Error('Deveria reportar LIGADA');
 

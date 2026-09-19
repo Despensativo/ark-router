@@ -11,8 +11,8 @@ $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoDir = Split-Path -Parent $scriptDir
-$distDir = Join-Path $repoDir "dist"
-$payloadArchive = Join-Path $distDir "ark_payload_1.0.2.tar.gz"
+$version = (Get-Content (Join-Path $repoDir "VERSION") -Raw).Trim()
+$payloadArchive = Join-Path $distDir "ark_payload_$version.tar.gz"
 
 Write-Host "=== 1. Validando código e gerando bundle determinístico... ==="
 & python "$repoDir\scripts\build_frontend_bundle.py"

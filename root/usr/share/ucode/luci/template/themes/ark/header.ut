@@ -7,7 +7,7 @@
 	import { getuid, getspnam } from 'luci.core';
 	import * as fs from 'fs';
 	const boardinfo = ubus.call('system', 'board');
-	const ark_v = trim(fs.readfile('/usr/share/ark-router/VERSION') ?? '1.0.2');
+	const ark_v = trim(fs.readfile('/usr/share/ark-router/VERSION') ?? '1.5.1');
 	http.prepare_content('text/html; charset=UTF-8');
 -%}
 

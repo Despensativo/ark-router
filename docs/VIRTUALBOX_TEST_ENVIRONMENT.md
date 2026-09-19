@@ -173,7 +173,7 @@ Cada execução de teste no ambiente virtual deve ser documentada utilizando a s
 ```markdown
 ### Relatório de Ciclo de Teste Virtual (ARK Router)
 - **Data e Hora**: AAAA-MM-DD HH:MM
-- **Versão do ARK Router**: 1.0.2
+- **Versão do ARK Router**: 1.5.1
 - **Ambiente Virtual**: VirtualBox x86_64 - OpenWrt 24.10.0 (Kernel 6.6)
 - **Topologia Testada**: Dual-WAN (NIC 1 NAT + NIC 2 Host-Only) + Mocks Wi-Fi 7
 - **Recursos Validados Integralmente no VirtualBox**:

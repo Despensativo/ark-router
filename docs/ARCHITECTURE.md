@@ -80,7 +80,7 @@ The RAM/external installer first checks `/tmp/ark-speedify-cache/speedify.apk`. 
 
 Before the daemon starts, ARK Router verifies `/dev/net/tun` and attempts to install `kmod-tun` when a package manager is available. The runtime network preparation always sets the `speedify` firewall zone with `masq=1` and `mtu_fix=1`, keeps LAN-to-Speedify and Speedify-to-LAN forwarding present, and re-runs after daemon start to catch recreated `connectify*` tunnel devices.
 
-For uninstallation and anti-brick storage safeguards, see [LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md](file:///c:/Users/User/Desktop/FEITOS%20COM%20IA/Ark-Router/GitHub/luci-app-ark-router/docs/LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md).
+For uninstallation and anti-brick storage safeguards, see [LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md](LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md).
 
 ## SQM controls
 
@@ -128,7 +128,7 @@ The ad blocking and parental subsystem uses a dual-engine architecture:
   - *Control D Full Blocker* (~15ms);
   - *NextDNS with dynamic profile ID* (~12ms).
 - **Per-Device Parental Filters**: When AdGuard Home is active, individual client profiles can enforce or exempt parental control, adult blocking, SafeSearch, and quick blocking chips for high-bandwidth apps (TikTok, YouTube, Instagram, Netflix, Roblox, etc.).
-- **DNS Recovery on Uninstall**: Removing AdGuard Home automatically restores `dnsmasq` to parallel DNS Turbo (`allservers=1`) and standard upstreams (`1.1.1.1`, `8.8.8.8`), preventing DNS blackholes. See [LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md](file:///c:/Users/User/Desktop/FEITOS%20COM%20IA/Ark-Router/GitHub/luci-app-ark-router/docs/LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md).
+- **DNS Recovery on Uninstall**: Removing AdGuard Home automatically restores `dnsmasq` to parallel DNS Turbo (`allservers=1`) and standard upstreams (`1.1.1.1`, `8.8.8.8`), preventing DNS blackholes. See [LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md](LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md).
 
 ## Custom domain blacklist ("X or Y")
 

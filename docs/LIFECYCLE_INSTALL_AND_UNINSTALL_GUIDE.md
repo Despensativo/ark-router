@@ -143,17 +143,17 @@ Instalar e remover pacotes com binários pré-compilados pesados (como Speedify 
 
 | Arquivo | Função / Responsabilidade |
 | --- | --- |
-| [`root/usr/lib/ark/modules/speedify.sh`](file:///c:/Users/User/Desktop/FEITOS%20COM%20IA/Ark-Router/GitHub/luci-app-ark-router/root/usr/lib/ark/modules/speedify.sh) | Orquestração do Speedify: auditoria de storage, instalação em RAM/Overlay/USB, detecção multi-arquitetura, desinstalação limpa com liberação de portas, rotas, symlinks e remoção de pacote (`opkg remove speedify` / `apk del speedify`). |
-| [`root/usr/lib/ark/modules/adblock.sh`](file:///c:/Users/User/Desktop/FEITOS%20COM%20IA/Ark-Router/GitHub/luci-app-ark-router/root/usr/lib/ark/modules/adblock.sh) | Orquestração do AdGuard Home: encerramento de serviço, desinstalação do pacote, recuperação de flash e restauração imediata do `dnsmasq` para o modo DNS Turbo com upstreams públicos. |
-| [`root/usr/lib/ark/modules/ezsetup.sh`](file:///c:/Users/User/Desktop/FEITOS%20COM%20IA/Ark-Router/GitHub/luci-app-ark-router/root/usr/lib/ark/modules/ezsetup.sh) | Assistente de configuração inicial: orquestração de módulos pesados selecionados, salvaguarda de backups em `/tmp` e aplicação não-bloqueante. |
-| [`root/usr/sbin/equipe-dashboard-control`](file:///c:/Users/User/Desktop/FEITOS%20COM%20IA/Ark-Router/GitHub/luci-app-ark-router/root/usr/sbin/equipe-dashboard-control) | Ponto de entrada RPC do LuCI; despacha os comandos de instalação e desinstalação e formata retornos em JSON padronizado. |
+| [`root/usr/lib/ark/modules/speedify.sh`](../root/usr/lib/ark/modules/speedify.sh) | Orquestração do Speedify: auditoria de storage, instalação em RAM/Overlay/USB, detecção multi-arquitetura, desinstalação limpa com liberação de portas, rotas, symlinks e remoção de pacote (`opkg remove speedify` / `apk del speedify`). |
+| [`root/usr/lib/ark/modules/adblock.sh`](../root/usr/lib/ark/modules/adblock.sh) | Orquestração do AdGuard Home: encerramento de serviço, desinstalação do pacote, recuperação de flash e restauração imediata do `dnsmasq` para o modo DNS Turbo com upstreams públicos. |
+| [`root/usr/lib/ark/modules/ezsetup.sh`](../root/usr/lib/ark/modules/ezsetup.sh) | Assistente de configuração inicial: orquestração de módulos pesados selecionados, salvaguarda de backups em `/tmp` e aplicação não-bloqueante. |
+| [`root/usr/sbin/equipe-dashboard-control`](../root/usr/sbin/equipe-dashboard-control) | Ponto de entrada RPC do LuCI; despacha os comandos de instalação e desinstalação e formata retornos em JSON padronizado. |
 
 ### 3.2 Camada Frontend (LuCI JavaScript SPA)
 
 | Arquivo | Componente / Responsabilidade |
 | --- | --- |
-| [`src/modules/speedify.js`](file:///c:/Users/User/Desktop/FEITOS%20COM%20IA/Ark-Router/GitHub/luci-app-ark-router/src/modules/speedify.js) | Renderização do painel Speedify, exibição de badge de status de armazenamento (Interno, RAM, USB), modal de desinstalação com contagem regressiva de 5s e polling dinâmico de status. |
-| [`src/modules/adblock.js`](file:///c:/Users/User/Desktop/FEITOS%20COM%20IA/Ark-Router/GitHub/luci-app-ark-router/src/modules/adblock.js) | Renderização do painel de segurança, modal de remoção do AdGuard Home local com timer de 5s, visualização de listas e recuperação do estado Anycast. |
+| [`src/modules/speedify.js`](../src/modules/speedify.js) | Renderização do painel Speedify, exibição de badge de status de armazenamento (Interno, RAM, USB), modal de desinstalação com contagem regressiva de 5s e polling dinâmico de status. |
+| [`src/modules/adblock.js`](../src/modules/adblock.js) | Renderização do painel de segurança, modal de remoção do AdGuard Home local com timer de 5s, visualização de listas e recuperação do estado Anycast. |
 
 ---
 
