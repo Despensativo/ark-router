@@ -22,7 +22,7 @@
 				"system": [ "board", "info" ],
 				"uci": [ "changes", "get" ]
 			},
-			"uci": [ "dhcp", "equipe_dashboard", "equipe_devices", "equipe_perf", "firewall", "luci", "mwan3", "network", "qos_equipe", "sqm", "starlink_telemetry", "wireless" ]
+			"uci": [ "attendedsysupgrade", "dhcp", "equipe_dashboard", "equipe_devices", "equipe_perf", "firewall", "luci", "mwan3", "network", "qos_equipe", "sqm", "starlink_telemetry", "transmission", "wireless" ]
 		},
 		"write": {
 			"file": {
@@ -32,7 +32,7 @@
 				"file": [ "exec" ],
 				"uci": [ "add", "apply", "commit", "delete", "set" ]
 			},
-			"uci": [ "dhcp", "equipe_dashboard", "equipe_devices", "equipe_perf", "firewall", "luci", "mwan3", "network", "qos_equipe", "sqm", "starlink_telemetry", "wireless" ]
+			"uci": [ "attendedsysupgrade", "dhcp", "equipe_dashboard", "equipe_devices", "equipe_perf", "firewall", "luci", "mwan3", "network", "qos_equipe", "sqm", "starlink_telemetry", "transmission", "wireless" ]
 		}
 	}
 }

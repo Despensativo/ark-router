@@ -1768,3 +1768,107 @@ body.modal-overlay-active #modal_overlay {
 	width: fit-content;
 }
 
+/* ARK Router - Package & Feature Installation Progress UI */
+.ex-install-progress-wrap {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	width: 100%;
+}
+
+.ex-install-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.ex-install-step-badge {
+	font-size: 0.8rem;
+	font-weight: 700;
+	padding: 4px 10px;
+	border-radius: 9999px;
+	background: rgba(59, 130, 246, 0.2);
+	color: #60a5fa;
+	border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+.ex-install-step-badge.done {
+	background: rgba(16, 185, 129, 0.2);
+	color: #34d399;
+	border-color: rgba(16, 185, 129, 0.4);
+}
+
+.ex-install-step-badge.error {
+	background: rgba(239, 68, 68, 0.2);
+	color: #f87171;
+	border-color: rgba(239, 68, 68, 0.4);
+}
+
+.ex-install-progress-track {
+	width: 100%;
+	height: 12px;
+	background: rgba(255, 255, 255, 0.08);
+	border-radius: 9999px;
+	overflow: hidden;
+	position: relative;
+	box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.ex-install-progress-fill {
+	height: 100%;
+	width: 0%;
+	background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+	border-radius: 9999px;
+	transition: width 0.4s ease, background 0.4s ease;
+	position: relative;
+}
+
+.ex-install-progress-fill.done {
+	background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.ex-install-progress-fill.error {
+	background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.ex-install-current-action {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 0.95rem;
+	font-weight: 600;
+	color: #f8fafc;
+}
+
+.ex-install-terminal {
+	background: #090d16;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 8px;
+	padding: 10px 14px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+	font-size: 0.78rem;
+	line-height: 1.45;
+	color: #cbd5e1;
+	max-height: 160px;
+	overflow-y: auto;
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.ex-install-terminal::-webkit-scrollbar {
+	width: 6px;
+}
+.ex-install-terminal::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.2);
+	border-radius: 3px;
+}
+
+.ex-install-note {
+	font-size: 0.82rem;
+	color: #94a3b8;
+	line-height: 1.4;
+}
+
+

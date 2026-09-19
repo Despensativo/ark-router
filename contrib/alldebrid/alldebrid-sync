@@ -1,0 +1,183 @@
+#!/bin/sh
+# /usr/sbin/alldebrid-sync — Sincronizador Automático AllDebrid -> Aria2 para ARK Router
+
+CFG_FILE="/etc/config/alldebrid"
+[ -f "$CFG_FILE" ] || exit 0
+
+ENABLED=$(uci -q get alldebrid.config.enabled || echo 0)
+[ "$ENABLED" = "1" ] || exit 0
+
+APIKEY=$(uci -q get alldebrid.config.apikey)
+[ -n "$APIKEY" ] || exit 0
+
+DOWNLOAD_DIR=$(uci -q get alldebrid.config.download_dir || echo "/mnt/ssd/downloads")
+STATE_FILE="/mnt/ssd/aria2-config/alldebrid_downloaded.txt"
+[ -d "/mnt/ssd/aria2-config" ] || mkdir -p "/mnt/ssd/aria2-config"
+[ -f "$STATE_FILE" ] || touch "$STATE_FILE"
+
+TARGET_ARG="$1"
+SPECIFIC_ID=""
+if [ -n "$TARGET_ARG" ]; then
+	SPECIFIC_ID=$(echo "$TARGET_ARG" | grep -oE '[0-9]+' | tail -n 1)
+fi
+
+# 1. Consulta o status dos magnets no AllDebrid
+if [ -n "$SPECIFIC_ID" ]; then
+	RESPONSE=$(curl -s -m 15 "https://api.alldebrid.com/v4.1/magnet/status?agent=ark-router&apikey=${APIKEY}&id=${SPECIFIC_ID}")
+else
+	RESPONSE=$(curl -s -m 15 "https://api.alldebrid.com/v4.1/magnet/status?agent=ark-router&apikey=${APIKEY}")
+fi
+[ -n "$RESPONSE" ] || exit 0
+
+STATUS=$(echo "$RESPONSE" | jsonfilter -e '@.status' 2>/dev/null)
+if [ "$STATUS" != "success" ]; then
+	ERR_MSG=$(echo "$RESPONSE" | jsonfilter -e '@.error.message' 2>/dev/null || echo "Falha na API AllDebrid")
+	logger -t alldebrid-sync "Erro AllDebrid: $ERR_MSG"
+	exit 1
+fi
+
+echo "$RESPONSE" > /tmp/alldebrid_resp.json
+
+# 2. Processa os magnets prontos com ucode
+ucode -e '
+let fs = require("fs");
+let respFile = fs.open("/tmp/alldebrid_resp.json", "r");
+let resp = null;
+if (respFile) {
+	resp = json(respFile.read("all"));
+	respFile.close();
+	fs.unlink("/tmp/alldebrid_resp.json");
+}
+
+let apikey = ARGV[0];
+let baseDir = ARGV[1];
+let stateFile = ARGV[2];
+let forcedId = ARGV[3] || "";
+
+if (!resp || resp.status != "success" || !resp.data || !resp.data.magnets) exit(0);
+
+let processed = {};
+let f = fs.open(stateFile, "r");
+if (f) {
+	let line;
+	while ((line = f.read("line")) != null) {
+		line = trim(line);
+		if (length(line) > 0) processed[line] = true;
+	}
+	f.close();
+}
+
+function extractFiles(files, prefix) {
+	let res = [];
+	if (!files) return res;
+	for (let item in files) {
+		let name = item.n || "";
+		let p = prefix ? (prefix + "/" + name) : name;
+		if (item.e && length(item.e) > 0) {
+			let sub = extractFiles(item.e, p);
+			for (let s in sub) push(res, s);
+		} else if (item.l) {
+			push(res, { path: prefix || "", name: name, link: item.l, size: item.s || 0 });
+		}
+	}
+	return res;
+}
+
+let magnets = resp.data.magnets;
+let magnetList = [];
+if (type(magnets) == "array") {
+	magnetList = magnets;
+} else if (type(magnets) == "object") {
+	push(magnetList, magnets);
+}
+
+let fOut = fs.open(stateFile, "a");
+
+for (let m in magnetList) {
+	let mId = sprintf("%s", m.id);
+	if (m.statusCode != 4) continue;
+	if (length(forcedId) == 0 && processed[mId]) continue;
+
+	// Se for lista geral e nao tiver files detalhados, busca os detalhes deste magnet
+	let fullMagnet = m;
+	if (!m.files && !m.links) {
+		let pDetail = fs.popen("curl -s -m 15 \"https://api.alldebrid.com/v4.1/magnet/status?agent=ark-router&apikey=" + apikey + "&id=" + mId + "\"");
+		let dRes = json(pDetail.read("all"));
+		pDetail.close();
+		if (dRes && dRes.status == "success" && dRes.data && dRes.data.magnets) {
+			fullMagnet = dRes.data.magnets;
+		}
+	}
+
+	let fileList = [];
+	if (fullMagnet.files) {
+		fileList = extractFiles(fullMagnet.files, "");
+	} else if (fullMagnet.links) {
+		for (let lnk in fullMagnet.links) {
+			let rawL = lnk.link || lnk;
+			let fn = lnk.filename || "";
+			push(fileList, { path: "", name: fn, link: rawL, size: 0 });
+		}
+	}
+
+	if (length(fileList) == 0) continue;
+
+	let allQueued = true;
+	let targetFolder = baseDir;
+	if (fullMagnet.filename) {
+		targetFolder = baseDir + "/" + fullMagnet.filename;
+	}
+
+	for (let item in fileList) {
+		let rawLink = item.link;
+		if (!rawLink) continue;
+
+		let pUnl = fs.popen("curl -s -m 15 \"https://api.alldebrid.com/v4/link/unlock?agent=ark-router&apikey=" + apikey + "&link=" + rawLink + "\"");
+		let unl = json(pUnl.read("all"));
+		pUnl.close();
+
+		if (unl && unl.status == "success" && unl.data && unl.data.link) {
+			let dlUrl = unl.data.link;
+			let filename = unl.data.filename || item.name || "";
+			let subDir = targetFolder;
+			if (item.path && length(item.path) > 0) {
+				subDir = baseDir + "/" + item.path;
+			}
+
+			let rpcPayload = {
+				jsonrpc: "2.0",
+				id: "ad_" + mId,
+				method: "aria2.addUri",
+				params: [
+					[dlUrl],
+					{
+						dir: subDir,
+						out: filename
+					}
+				]
+			};
+
+			let jsonStr = sprintf("%J", rpcPayload);
+			let pRpc = fs.popen("curl -s -m 10 -H \"Content-Type: application/json\" --data-binary @- http://127.0.0.1:6800/jsonrpc", "w");
+			if (pRpc) {
+				pRpc.write(jsonStr);
+				pRpc.close();
+				system("logger -t alldebrid-sync \"[Aria2] Novo arquivo adicionado: " + filename + " em " + subDir + "\"");
+			} else {
+				allQueued = false;
+			}
+		} else {
+			allQueued = false;
+		}
+	}
+
+	if (allQueued && fOut && length(forcedId) == 0) {
+		fOut.write(mId + "\n");
+		processed[mId] = true;
+	}
+}
+
+if (fOut) fOut.close();
+' "$APIKEY" "$DOWNLOAD_DIR" "$STATE_FILE" "$SPECIFIC_ID"
+
+exit 0

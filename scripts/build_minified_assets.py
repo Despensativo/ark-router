@@ -61,7 +61,7 @@ def resolve_tools():
 
 def to_tool_path(p, is_win_tool):
     if is_win_tool and sys.platform != "win32":
-        res = subprocess.run(["wslpath", "-w", p], capture_output=True, text=True)
+        res = subprocess.run(["wslpath", "-w", p], capture_output=True, text=True, errors="replace")
         if res.returncode == 0:
             return res.stdout.strip()
     return p
@@ -70,7 +70,7 @@ def build_minified():
     # 1. Build frontend bundle from src/
     bundler_script = os.path.join(SCRIPT_DIR, "build_frontend_bundle.py")
     if os.path.isfile(bundler_script):
-        res = subprocess.run([sys.executable, bundler_script], capture_output=True, text=True)
+        res = subprocess.run([sys.executable, bundler_script], capture_output=True, text=True, errors="replace")
         if res.returncode != 0:
             print(f"ERRO ao gerar bundle frontend:\n{res.stderr}", file=sys.stderr)
             sys.exit(res.returncode)
@@ -106,7 +106,7 @@ def build_minified():
         if item["type"] == "js":
             cmd.extend(["--legal-comments=none"])
 
-        res = subprocess.run(cmd, capture_output=True, text=True, shell=(sys.platform == "win32"))
+        res = subprocess.run(cmd, capture_output=True, text=True, errors="replace", shell=(sys.platform == "win32"))
         if res.returncode != 0:
             print(f"ERRO ao minificar {os.path.basename(src)}:\n{res.stderr}", file=sys.stderr)
             sys.exit(res.returncode)
@@ -114,7 +114,7 @@ def build_minified():
         # Node syntax check for JS
         if item["type"] == "js":
             check_path = to_tool_path(out_path, is_win_tool)
-            node_check = subprocess.run([node_cmd, "--check", check_path], capture_output=True, text=True)
+            node_check = subprocess.run([node_cmd, "--check", check_path], capture_output=True, text=True, errors="replace")
             if node_check.returncode != 0:
                 print(f"ERRO de sintaxe detectado após minificar {os.path.basename(src)}:\n{node_check.stderr}", file=sys.stderr)
                 sys.exit(node_check.returncode)

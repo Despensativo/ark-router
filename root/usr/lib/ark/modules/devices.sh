@@ -1401,8 +1401,7 @@ handle_devices() {
 		[ "$now" -ge "$ready" ] || { echo 'Aguarde os 2 segundos de seguranca' >&2; exit 3; }
 		[ "$now" -le "$expires" ] || { rm -f /tmp/ark-router-reboot-token; echo 'A confirmacao expirou; tente novamente' >&2; exit 3; }
 		rm -f /tmp/ark-router-reboot-token
-		sync
-		(sleep 1; /sbin/reboot) >/dev/null 2>&1 &
+		( ark_safe_storage_reboot; sleep 1; /sbin/reboot ) >/dev/null 2>&1 &
 		echo restarting
 		;;
 	device-reserve-secondary)

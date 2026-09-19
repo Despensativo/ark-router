@@ -268,6 +268,76 @@ const systemMethods = {
 	},
 	selfUpdatePanel: function(){
 		const update=this.capabilities.update||{}, manager=update.manager||this.capabilities.package_manager||'—';
+		const asuEnabled = !!(update.asu_check);
+
+		const asuStatePill = E('strong', { class: 'ex-device-switch-state ' + (asuEnabled ? 'online' : 'standby') }, [
+			asuEnabled ? _t('LIGADA (AVISOS ATIVOS)') : _t('DESLIGADA (RECOMENDADO)')
+		]);
+
+		const asuDesc = E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, [
+			asuEnabled 
+				? _t('⚠️ O painel buscará atualizações do OpenWrt genérico a cada login. Atenção: atualizar por lá remove o ARK Router.')
+				: _t('✅ Pop-ups do OpenWrt genérico bloqueados para evitar que o ARK Router seja sobrescrito por engano.')
+		]);
+
+		const asuToggleInput = E('input', {
+			type: 'checkbox',
+			checked: asuEnabled ? '' : null,
+			change: L.bind(function(ev) {
+				const input = ev.currentTarget;
+				const desired = !!input.checked;
+				input.disabled = true;
+				asuStatePill.textContent = desired ? _t('LIGADA (AVISOS ATIVOS)') : _t('DESLIGADA (RECOMENDADO)');
+				asuStatePill.className = 'ex-device-switch-state ' + (desired ? 'online' : 'standby');
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['asu-check-toggle', desired ? '1' : '0']).then(L.bind(function(r) {
+					if (r.code) throw new Error(r.stderr || 'Falha ao alterar preferência');
+					if (this.capabilities && this.capabilities.update) {
+						this.capabilities.update.asu_check = desired;
+					}
+					input.disabled = false;
+					asuDesc.textContent = desired 
+						? _t('⚠️ O painel buscará atualizações do OpenWrt genérico a cada login. Atenção: atualizar por lá remove o ARK Router.')
+						: _t('✅ Pop-ups do OpenWrt genérico bloqueados para evitar que o ARK Router seja sobrescrito por engano.');
+					ui.addNotification(null, E('p', {}, [desired ? _t('Verificação do OpenWrt ativada. Pop-ups do OpenWrt genérico serão exibidos no login.') : _t('Verificação do OpenWrt desativada. O ARK Router está protegido contra sobrescrita.')]));
+				}, this)).catch(L.bind(function(err) {
+					input.checked = !desired;
+					input.disabled = false;
+					asuStatePill.textContent = (!desired) ? _t('LIGADA (AVISOS ATIVOS)') : _t('DESLIGADA (RECOMENDADO)');
+					asuStatePill.className = 'ex-device-switch-state ' + ((!desired) ? 'online' : 'standby');
+					ui.addNotification(null, E('p', {}, [err.message]), 'danger');
+				}, this));
+			}, this)
+		});
+
+		const asuSwitchControl = E('div', {
+			class: 'ex-device-switch-control',
+			style: 'cursor: pointer; user-select: none;',
+			click: function(ev) {
+				ev.preventDefault();
+				ev.stopPropagation();
+				if (asuToggleInput.disabled) return;
+				asuToggleInput.checked = !asuToggleInput.checked;
+				asuToggleInput.dispatchEvent(new Event('change', { bubbles: true }));
+			}
+		}, [
+			asuStatePill,
+			E('label', { class: 'ex-switch', style: 'pointer-events: none;' }, [
+				asuToggleInput,
+				E('span', { class: 'ex-switch-slider' })
+			])
+		]);
+
+		const asuRow = E('div', { class: 'ex-asu-toggle-row', style: 'margin-top: 14px; padding: 12px 14px; background: rgba(127,127,127,0.06); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px;' }, [
+			E('div', { style: 'flex: 1;' }, [
+				E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
+					E('strong', {}, [_t('Verificação do OpenWrt Base')]),
+					E('span', { class: 'ex-pill standby', style: 'font-size: 0.7rem;' }, ['Attended Sysupgrade'])
+				]),
+				asuDesc
+			]),
+			asuSwitchControl
+		]);
+
 		return E('section',{class:'ex-update-panel'},[
 			E('div',{class:'ex-update-header'},[
 				E('div',{},[
@@ -303,7 +373,8 @@ const systemMethods = {
 						])
 					])
 				])
-			])
+			]),
+			asuRow
 		]);
 	},
 	pollFeatureInstall: function(key,attempt){
@@ -324,26 +395,164 @@ const systemMethods = {
 			window.setTimeout(L.bind(this.pollFeatureInstall,this,key,attempt+1),2000);
 		},this));
 	},
+	showPackageInstallProgressModal: function(opts){
+		opts = opts || {};
+		const title = opts.title || 'Instalando Pacotes e Recursos';
+		const stageCmd = opts.stageCmd || 'feature-install-missing-stage';
+		const logCmd = opts.logCmd || 'feature-install-missing-log';
+		const statusCmd = opts.statusCmd || 'feature-install-missing-status';
+		const successMsg = opts.successMsg || 'Instalação concluída com sucesso!';
+
+		const stepBadge = E('span', { class: 'ex-install-step-badge' }, ['Iniciando…']);
+		const percentLabel = E('span', { style: 'font-size:0.85rem; font-weight:700; color:#94a3b8;' }, ['0%']);
+		const progressBar = E('div', { class: 'ex-install-progress-fill', style: 'width: 5%' });
+		const progressTrack = E('div', { class: 'ex-install-progress-track' }, [progressBar]);
+		const actionText = E('div', { class: 'ex-install-current-action' }, [
+			E('span', { class: 'ex-spinner', style: 'font-size:1.1rem;' }, ['⏳']),
+			E('span', { id: 'ex-install-msg' }, ['Preparando gerenciador de pacotes…'])
+		]);
+		const terminalBox = E('pre', { class: 'ex-install-terminal' }, ['Aguardando saída do gerenciador de pacotes…']);
+		const noteText = E('p', { class: 'ex-install-note' }, [
+			'O roteador está baixando e configurando os pacotes necessários. Isso pode levar de 30 segundos a alguns minutos dependendo da sua velocidade de internet. Por favor, mantenha esta tela aberta.'
+		]);
+
+		const actionBtn = E('button', { class: 'btn cbi-button cbi-button-neutral', disabled: true }, ['Instalação em andamento…']);
+		let isFinished = false;
+		let pollTimer = null;
+
+		const updateTerminalLog = function(){
+			return fs.exec('/usr/sbin/equipe-dashboard-control', [logCmd]).then(function(r){
+				const text = String(r.stdout || '').trim();
+				if(text){
+					terminalBox.textContent = text;
+					terminalBox.scrollTop = terminalBox.scrollHeight;
+				}
+			}).catch(function(){});
+		};
+
+		const finishSuccess = function(msg){
+			if(isFinished) return;
+			isFinished = true;
+			if(pollTimer) window.clearTimeout(pollTimer);
+			stepBadge.textContent = 'Concluído';
+			stepBadge.className = 'ex-install-step-badge done';
+			percentLabel.textContent = '100%';
+			percentLabel.style.color = '#34d399';
+			progressBar.style.width = '100%';
+			progressBar.className = 'ex-install-progress-fill done';
+			actionText.innerHTML = '<span>✅</span> <span>' + (msg || successMsg) + '</span>';
+			updateTerminalLog();
+
+			let countdown = 3;
+			actionBtn.disabled = false;
+			actionBtn.className = 'btn cbi-button cbi-button-positive';
+			actionBtn.textContent = 'Concluir e recarregar (' + countdown + 's)';
+			actionBtn.onclick = function(){
+				window.location.reload();
+			};
+
+			const cdInterval = window.setInterval(function(){
+				countdown--;
+				if(countdown > 0){
+					actionBtn.textContent = 'Concluir e recarregar (' + countdown + 's)';
+				} else {
+					window.clearInterval(cdInterval);
+					window.location.reload();
+				}
+			}, 1000);
+		};
+
+		const finishError = function(errMsg){
+			if(isFinished) return;
+			isFinished = true;
+			if(pollTimer) window.clearTimeout(pollTimer);
+			stepBadge.textContent = 'Erro';
+			stepBadge.className = 'ex-install-step-badge error';
+			progressBar.className = 'ex-install-progress-fill error';
+			actionText.innerHTML = '<span>❌</span> <span style="color:#f87171;">' + (errMsg || 'Falha na instalação dos pacotes.') + '</span>';
+			updateTerminalLog();
+
+			actionBtn.disabled = false;
+			actionBtn.className = 'btn cbi-button cbi-button-neutral';
+			actionBtn.textContent = 'Fechar';
+			actionBtn.onclick = function(){
+				ui.hideModal();
+			};
+		};
+
+		const poll = function(attempt){
+			if(isFinished) return;
+			if(attempt > 240){
+				finishError('Tempo limite excedido na instalação.');
+				return;
+			}
+
+			Promise.all([
+				fs.exec('/usr/sbin/equipe-dashboard-control', [statusCmd]).catch(function(){ return { stdout: '' }; }),
+				fs.exec('/usr/sbin/equipe-dashboard-control', [stageCmd]).catch(function(){ return { stdout: '{}' }; })
+			]).then(function(results){
+				if(isFinished) return;
+				const statusStr = String(results[0].stdout || '').trim();
+				let stageData = {};
+				try { stageData = JSON.parse(results[1].stdout || '{}'); } catch(e){}
+
+				const step = stageData.step || 0;
+				const total = stageData.total || 0;
+				const pct = stageData.percent || 10;
+				const message = stageData.message || 'Instalando pacotes…';
+
+				if(total > 0 && step > 0){
+					stepBadge.textContent = 'Etapa ' + step + ' de ' + total;
+				}
+				percentLabel.textContent = pct + '%';
+				progressBar.style.width = pct + '%';
+				const msgSpan = actionText.querySelector('#ex-install-msg');
+				if(msgSpan && message) msgSpan.textContent = message;
+
+				updateTerminalLog();
+
+				if(statusStr === 'done' || stageData.stage === 'done'){
+					finishSuccess(stageData.message || successMsg);
+					return;
+				}
+				if(statusStr === 'error' || stageData.stage === 'error'){
+					finishError(stageData.message || 'Falha durante o processo de instalação.');
+					return;
+				}
+
+				pollTimer = window.setTimeout(function(){ poll(attempt + 1); }, 1500);
+			}).catch(function(e){
+				if(reloadAfterExpectedDisconnect(e, 'O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…', 4200)) return;
+				pollTimer = window.setTimeout(function(){ poll(attempt + 1); }, 2000);
+			});
+		};
+
+		const modalContent = E('div', { class: 'ex-install-progress-wrap' }, [
+			E('div', { class: 'ex-install-header' }, [
+				stepBadge,
+				percentLabel
+			]),
+			progressTrack,
+			actionText,
+			terminalBox,
+			noteText,
+			E('div', { class: 'right', style: 'margin-top:10px;' }, [actionBtn])
+		]);
+
+		ui.showModal(title, [modalContent]);
+		poll(0);
+	},
 	loadMissingInstallLog: function(){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-install-missing-log']).then(function(r){return String(r.stdout||'').trim();}).catch(function(){return '';});
 	},
 	pollMissingInstall: function(attempt){
-		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-install-missing-status']).then(L.bind(function(r){
-			const state=String(r.stdout||'').trim();
-			if(state==='done'){
-				ui.addNotification(null,E('p',{},['Recursos faltantes instalados. Recarregando o painel…']));
-				window.setTimeout(function(){window.location.reload();},1400);
-				return;
-			}
-			if(state==='error'||attempt>240){
-				return this.loadMissingInstallLog().then(function(log){
-					const lines=(log||'').split(/\r?\n/).map(function(line){return line.trim();}).filter(Boolean);
-					const detail=lines.length?lines.slice(-6).join(' | '):'A instalação em lote não foi concluída.';
-					ui.addNotification(null,E('p',{},[detail]),'danger');
-				});
-			}
-			window.setTimeout(L.bind(this.pollMissingInstall,this,attempt+1),2500);
-		},this));
+		this.showPackageInstallProgressModal({
+			title: 'Instalação de Recursos em Lote',
+			stageCmd: 'feature-install-missing-stage',
+			logCmd: 'feature-install-missing-log',
+			statusCmd: 'feature-install-missing-status',
+			successMsg: 'Todos os recursos foram instalados com sucesso! Recarregando painel…'
+		});
 	},
 	installMissingFeatures: function(keys){
 		keys=keys||[];
@@ -357,10 +566,19 @@ const systemMethods = {
 				return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-install-missing']).then(L.bind(function(r){
 					const state=String(r.stdout||'').trim();
 					if(r.code)throw new Error(r.stderr||'Falha ao iniciar instalação em lote');
-					ui.hideModal();
-					if(state==='installed'){ui.addNotification(null,E('p',{},['Todos os recursos leves já estavam instalados.']));window.setTimeout(function(){window.location.reload();},900);return;}
-					ui.addNotification(null,E('p',{},[state==='running'?'A instalação em lote já está em andamento.':'Instalação em lote iniciada. O painel avisará quando terminar.']));
-					this.pollMissingInstall(0);
+					if(state==='installed'){
+						ui.hideModal();
+						ui.addNotification(null,E('p',{},['Todos os recursos leves já estavam instalados.']));
+						window.setTimeout(function(){window.location.reload();},900);
+						return;
+					}
+					this.showPackageInstallProgressModal({
+						title: 'Instalação de Recursos em Lote',
+						stageCmd: 'feature-install-missing-stage',
+						logCmd: 'feature-install-missing-log',
+						statusCmd: 'feature-install-missing-status',
+						successMsg: 'Todos os recursos foram instalados com sucesso! Recarregando painel…'
+					});
 				},this)).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});
 			},this)},['Instalar tudo'])])
 		]);
@@ -431,8 +649,12 @@ const systemMethods = {
 	showRebootConfirmation: function(token){
 		const finalButton=E('button',{class:'btn cbi-button cbi-button-negative',disabled:true},['Aguarde 2 s']);
 		const started=Date.now(), timer=window.setInterval(function(){const left=Math.ceil((2000-(Date.now()-started))/1000);if(left>0){finalButton.textContent='Aguarde '+left+' s';return;}window.clearInterval(timer);finalButton.disabled=false;finalButton.textContent='Reiniciar agora';},100);
-		finalButton.addEventListener('click',L.bind(function(){finalButton.disabled=true;finalButton.textContent='Reiniciando…';return fs.exec('/usr/sbin/equipe-dashboard-control',['reboot-confirm',token]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao reiniciar');ui.hideModal();ui.addNotification(null,E('p',{},['Roteador reiniciando. A conexão será interrompida.']));}).catch(function(e){finalButton.disabled=false;finalButton.textContent='Reiniciar agora';ui.addNotification(null,E('p',{},[e.message]),'danger');});},this));
-		ui.showModal('Confirmação final',[E('p',{class:'alert-message warning'},['O roteador será reiniciado imediatamente. Aguarde a rede voltar antes de abrir o painel novamente.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':function(){window.clearInterval(timer);ui.hideModal();}},['Cancelar']),' ',finalButton])]);
+		finalButton.addEventListener('click',L.bind(function(){finalButton.disabled=true;finalButton.textContent='Salvando dados e reiniciando…';return fs.exec('/usr/sbin/equipe-dashboard-control',['reboot-confirm',token]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao reiniciar');ui.hideModal();ui.addNotification(null,E('p',{},['Protegendo unidades externas e reiniciando o roteador. A conexão será interrompida.']));}).catch(function(e){finalButton.disabled=false;finalButton.textContent='Reiniciar agora';ui.addNotification(null,E('p',{},[e.message]),'danger');});},this));
+		ui.showModal('Confirmação final',[
+			E('p',{class:'alert-message warning'},['O roteador será reiniciado imediatamente. Aguarde a rede voltar antes de abrir o painel novamente.']),
+			E('p',{class:'alert-message info',style:'margin-top:8px;font-size:0.9rem;'},['Proteção de armazenamento ativa: o roteador pausará serviços em execução (servidores, downloads e compartilhamentos), descarregará dados da memória RAM e protegerá unidades externas contra corrupção antes de reiniciar.']),
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':function(){window.clearInterval(timer);ui.hideModal();}},['Cancelar']),' ',finalButton])
+		]);
 	},
 	loadEzSetup: function(){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['ez-setup-status']).then(function(r){try{return JSON.parse(r.stdout||'{}');}catch(e){return {};}}).catch(function(){return {};});
@@ -1031,22 +1253,14 @@ const systemMethods = {
 				}, this));
 			}, this);
 
-			const pollSetupModules = L.bind(function(attempt){
-				return fs.exec('/usr/sbin/equipe-dashboard-control', ['ez-setup-install-status']).then(L.bind(function(r){
-					const state = String(r.stdout || '').trim();
-					if(state === 'done'){
-						ui.addNotification(null, E('p', {}, ['Módulos do Ark - Setup instalados. Recarregando…']));
-						window.setTimeout(function(){ window.location.reload(); }, 1200);
-						return;
-					}
-					if(state === 'error' || attempt > 180){
-						return fs.exec('/usr/sbin/equipe-dashboard-control', ['ez-setup-install-log']).then(function(log){
-							const lines = String(log.stdout || '').split(/\r?\n/).filter(Boolean);
-							ui.addNotification(null, E('p', {}, [lines.slice(-4).join(' | ') || 'Falha ao instalar módulos.']), 'danger');
-						});
-					}
-					window.setTimeout(function(){ pollSetupModules(attempt + 1); }, 2000);
-				}, this));
+			const pollSetupModules = L.bind(function(){
+				this.showPackageInstallProgressModal({
+					title: 'Instalando Módulos do Ark - Setup',
+					stageCmd: 'ez-setup-install-stage',
+					logCmd: 'ez-setup-install-log',
+					statusCmd: 'ez-setup-install-status',
+					successMsg: 'Módulos do Ark - Setup instalados com sucesso! Recarregando painel…'
+				});
 			}, this);
 
 			const installModules = L.bind(function(){
@@ -1059,9 +1273,19 @@ const systemMethods = {
 							E('button', { class: 'btn cbi-button cbi-button-positive', 'click': L.bind(function(){
 								return fs.exec('/usr/sbin/equipe-dashboard-control', ['ez-setup-install-modules']).then(L.bind(function(r){
 									if(r.code) throw new Error(r.stderr || 'Falha ao iniciar instalação');
-									ui.hideModal();
-									ui.addNotification(null, E('p', {}, ['Instalação dos módulos iniciada.']));
-									pollSetupModules(0);
+									const state = String(r.stdout || '').trim();
+									if(state === 'installed'){
+										ui.hideModal();
+										ui.addNotification(null, E('p', {}, ['Nenhum módulo pendente para instalar.']));
+										return;
+									}
+									this.showPackageInstallProgressModal({
+										title: 'Instalando Módulos do Ark - Setup',
+										stageCmd: 'ez-setup-install-stage',
+										logCmd: 'ez-setup-install-log',
+										statusCmd: 'ez-setup-install-status',
+										successMsg: 'Módulos do Ark - Setup instalados com sucesso! Recarregando painel…'
+									});
 								}, this)).catch(function(e){
 									if(reloadAfterExpectedDisconnect(e, 'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…', 4200)) return;
 									ui.addNotification(null, E('p', {}, [e.message]), 'danger');
@@ -2059,9 +2283,12 @@ const systemMethods = {
 		};
 
 		const profileName = (this.capabilities.actual_profile || this.capabilities.profile || 'full').toUpperCase();
+		const fwEngine = (hwInfo.firewall && hwInfo.firewall.engine) || 'fw4';
+		const fwDesc = (hwInfo.firewall && hwInfo.firewall.desc) || (fwEngine === 'fw4' ? 'Moderno (nftables puro)' : 'Legado (iptables)');
 		const sysRows = [
 			infoItem('Modelo do Equipamento', hwInfo.model || this.board.model || 'ARK Router'),
 			infoItem('Perfil ARK Router', profileName === 'FULL' ? 'FULL (Alto Desempenho)' : 'LITE (Compacto)', 'ATIVO'),
+			infoItem('Motor de Firewall', fwDesc, fwEngine.toUpperCase()),
 			infoItem('Placa / Target', (hwInfo.board || this.board.board_name || '') + ' (' + (hwInfo.target || '') + ')'),
 			infoItem('Sistema Operacional', hwInfo.release || 'OpenWrt'),
 			infoItem('Versão do Kernel', hwInfo.kernel || this.board.kernel || 'Linux')
@@ -2143,10 +2370,15 @@ const systemMethods = {
 					let res = {};
 					try { res = JSON.parse(r.stdout || '{}'); } catch(e){}
 					if (res.ok) {
+						let svcsText = '';
+						if (res.services_detected && res.services_detected.length > 0) {
+							svcsText = ' • Serviços: ' + res.services_detected.join(', ');
+						}
 						ui.addNotification(null, E('p', {}, [
 							'Hardware calibrado com sucesso! Perfil: ' + (res.tuning_profile || res.silicon_name) +
 							' • ' + res.offload_reason +
-							' • ' + res.irq_action
+							' • ' + res.irq_action +
+							svcsText
 						]));
 						ui.hideModal();
 						self.triggerImmediateRefresh('Hardware calibrado com sucesso!', 'info', false);
@@ -2314,7 +2546,6 @@ const systemMethods = {
 			this.selfUpdatePanel(),
 			bulkPanel,
 			ipv6Panel,
-			E('section',{class:'ex-cleanup-entry'},[E('div',{},[E('strong',{},['Otimização modo ARK']),E('small',{class:'ex-muted'},['Remove painéis e serviços dispensáveis para manter o OpenWrt enxuto. Sempre cria backup antes de remover.'])]),E('button',{class:'ex-mini-button','click':L.bind(this.showArkCleanup,this)},['Analisar e limpar'])]),
 			starlinkModalPanel,
 			E('section',{class:'ex-appearance-panel'},[E('div',{class:'ex-appearance-heading'},[E('div',{},[E('strong',{},['Aparência']),E('small',{class:'ex-muted'},['No modo automático, o painel acompanha as cores e o modo claro ou escuro do tema LuCI.'])]),appearanceMode]),appearanceColors,E('button',{class:'ex-mini-button ex-save-appearance','click':L.bind(function(){this.setAppearance(appearanceMode.value,primary.value,secondary.value);},this)},['Salvar aparência']),themeRow]),
 			E('div',{class:'ex-feature-list'},rows),
@@ -2335,6 +2566,7 @@ const systemMethods = {
 			const defaultServers = ['1.1.1.1', '8.8.8.8', '1.0.0.1', '8.8.4.4'];
 			const serverList = rawList.length ? rawList : defaultServers;
 			const blockerName = status.dns_blocker_name || 'AdGuard Home';
+			const hasDnsBlocker = !!status.dns_blocker_active;
 
 			const allserversActive = !!status.allservers;
 			const allserversToggle = E('input', {
@@ -2841,9 +3073,14 @@ const systemMethods = {
 				fs.exec('/usr/sbin/equipe-dashboard-control', ['system-hardware-auto-tune']).then(function(r) {
 					let info = {};
 					try { info = JSON.parse(r.stdout || '{}'); } catch(e){}
+					let svcsText = '';
+					if (info.services_detected && info.services_detected.length > 0) {
+						svcsText = ' • Serviços: ' + info.services_detected.join(', ');
+					}
 					ui.addNotification(null, E('p', {}, [
 						'Hardware otimizado com sucesso! Perfil: ' + (info.tuning_profile || info.silicon_name || 'Personalizado') +
-						(info.offload_reason ? ' (' + info.offload_reason + ')' : '')
+						(info.offload_reason ? ' (' + info.offload_reason + ')' : '') +
+						svcsText
 					]));
 					self.triggerImmediateRefresh('Hardware calibrado com sucesso!', 'info', false);
 				}).catch(function(e) {
@@ -3057,11 +3294,15 @@ const systemMethods = {
 		const rows = [
 			makePerfRow(
 				'⚡',
-				'DNS Turbo Paralelo (All-Servers)',
+				hasDnsBlocker ? 'DNS Protegido por Bloqueador' : 'DNS Turbo Paralelo (All-Servers)',
 				hasDnsBlocker ? 'BLOQUEADOR ATIVO' : 'RESPOSTA EM 0ms',
 				hasDnsBlocker ? 'badge-blue' : 'badge-green',
-				'Dispara consultas simultaneamente para 2 a 4 servidores em paralelo (Cloudflare, Google, etc.). O primeiro que responder entrega a página sem fila nem atraso de rota.',
-				hasDnsBlocker ? ('🔒 Desativado para proteger o ' + blockerName + '. Em modo All-Servers, consultas paralelas contornariam o bloqueador e os anúncios voltariam.') : 'Elimina engasgos na abertura de sites e downloads. Toque em “Servidores” para testar e escolher até 4 DNS.',
+				hasDnsBlocker
+					? ('Resolução local gerenciada pelo ' + blockerName + '. O modo All-Servers está desativado para impedir que servidores públicos recebam requisições simultâneas e burlem suas listas de filtros.')
+					: 'Dispara consultas simultaneamente para 2 a 4 servidores em paralelo (Cloudflare, Google, etc.). O primeiro que responder entrega a página sem fila nem atraso de rota.',
+				hasDnsBlocker
+					? 'Toque em “Servidores” para visualizar a rota de resolução e status de fallback.'
+					: 'Elimina engasgos na abertura de sites e downloads. Toque em “Servidores” para testar e escolher até 4 DNS.',
 				hasDnsBlocker ? false : !!this.perfState.dns_allservers,
 				!hasDnsBlocker,
 				'dns_allservers',

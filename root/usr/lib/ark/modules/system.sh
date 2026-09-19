@@ -1627,15 +1627,86 @@ detect_hardware_silicon_profile() {
 system_hardware_auto_tune() {
 	detect_hardware_silicon_profile
 
-	# 1. Verificar se SQM esta ativo em alguma interface
+	# --- 1. Varredura de Serviços Ativos (Context-Aware Matrix) ---
 	sqm_active=0
-	if [ -f /etc/config/sqm ]; then
+	mwan3_active=0
+	vpn_active=0
+	nlbwmon_active=0
+	storage_active=0
+	heavy_daemon_active=0
+
+	# 1.1 SQM / CAKE
+	if [ -f /etc/config/sqm ] || [ -n "${ARK_ROOT}" -a -f "${ARK_ROOT}/etc/config/sqm" ] || [ -n "${UCI_CONFIG_DIR}" -a -f "${UCI_CONFIG_DIR}/sqm" ]; then
 		for s in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\([a-zA-Z0-9_]*\)=queue$/\1/p'); do
 			[ "$(uci -q get "sqm.$s.enabled")" = "1" ] && sqm_active=1
 		done
 	fi
 
-	# 2. Flow Offloading
+	# 1.2 Multi-WAN (mwan3)
+	if [ -f /etc/config/mwan3 ] || [ -n "${ARK_ROOT}" -a -f "${ARK_ROOT}/etc/config/mwan3" ] || [ -n "${UCI_CONFIG_DIR}" -a -f "${UCI_CONFIG_DIR}/mwan3" ]; then
+		mwan_enabled_count=0
+		for iface in $(uci -q show mwan3 2>/dev/null | sed -n 's/^mwan3\.\([a-zA-Z0-9_]*\)=interface$/\1/p'); do
+			[ "$(uci -q get "mwan3.$iface.enabled")" = "1" ] && mwan_enabled_count=$((mwan_enabled_count + 1))
+		done
+		[ "$mwan_enabled_count" -ge 2 ] && mwan3_active=1
+	fi
+
+	# 1.3 VPNs (WireGuard / OpenVPN / ZeroTier / Tailscale)
+	sys_net_dir="/sys/class/net"
+	[ -n "${ARK_ROOT}" ] && [ -d "${ARK_ROOT}/sys/class/net" ] && sys_net_dir="${ARK_ROOT}/sys/class/net"
+	for vpn_dev in "$sys_net_dir"/wg* "$sys_net_dir"/tun* "$sys_net_dir"/zt* "$sys_net_dir"/tailscale*; do
+		[ -d "$vpn_dev" ] && vpn_active=1 && break
+	done
+	if [ "$vpn_active" = 0 ]; then
+		if uci -q show network 2>/dev/null | grep -q 'proto=.wireguard.'; then
+			vpn_active=1
+		elif [ "$(uci -q get zerotier.sample_config.enabled 2>/dev/null)" = "1" ] || [ "$(uci -q get zerotier.@zerotier[0].enabled 2>/dev/null)" = "1" ]; then
+			vpn_active=1
+		elif uci -q show openvpn 2>/dev/null | grep -q 'enabled=.1.'; then
+			vpn_active=1
+		fi
+	fi
+
+	# 1.4 Monitor de Tráfego por Aparelho (nlbwmon)
+	if pidof nlbwmon >/dev/null 2>&1 || [ -x /etc/init.d/nlbwmon ] || [ -f /etc/config/nlbwmon ] || [ -n "${ARK_ROOT}" -a -f "${ARK_ROOT}/etc/config/nlbwmon" ]; then
+		nlbwmon_active=1
+	fi
+
+	# 1.5 Armazenamento / NAS / USB
+	if pidof smbd >/dev/null 2>&1 || pidof nfsd >/dev/null 2>&1 || [ -f /etc/config/samba ] || [ -f /etc/config/samba4 ]; then
+		storage_active=1
+	elif grep -qE '/mnt/|/media/' /proc/mounts 2>/dev/null; then
+		storage_active=1
+	fi
+
+	# 1.6 Daemons Pesados e Checagem de RAM Disponível
+	if pidof AdGuardHome >/dev/null 2>&1 || [ -x /usr/bin/dockerd ] || pidof speedify >/dev/null 2>&1; then
+		heavy_daemon_active=1
+	fi
+
+	# Lista de serviços detectados para retorno e auditoria
+	services_detected=""
+	[ "$sqm_active" = 1 ] && services_detected="${services_detected}sqm,"
+	[ "$mwan3_active" = 1 ] && services_detected="${services_detected}mwan3,"
+	[ "$vpn_active" = 1 ] && services_detected="${services_detected}vpn,"
+	[ "$nlbwmon_active" = 1 ] && services_detected="${services_detected}nlbwmon,"
+	[ "$storage_active" = 1 ] && services_detected="${services_detected}storage,"
+	[ "$heavy_daemon_active" = 1 ] && services_detected="${services_detected}heavy_daemons,"
+	services_detected="${services_detected%,}"
+
+	# --- 2. Proteção de Memória Real (MemAvailable) ---
+	effective_ram_tier="$silicon_ram_tier"
+	mem_avail_kb="$(awk '/MemAvailable:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+	mem_avail_mb=$((mem_avail_kb / 1024))
+	if [ "$heavy_daemon_active" = 1 ] || { [ "$mem_avail_mb" -gt 0 ] && [ "$mem_avail_mb" -lt 80 ]; }; then
+		case "$silicon_ram_tier" in
+			extreme) effective_ram_tier="high" ;;
+			high) effective_ram_tier="standard" ;;
+			standard) effective_ram_tier="low" ;;
+		esac
+	fi
+
+	# --- 3. Flow Offloading ---
 	uci -q set firewall.@defaults[0].flow_offloading=1
 	if [ "$sqm_active" = 1 ]; then
 		uci -q set firewall.@defaults[0].flow_offloading_hw=0
@@ -1650,7 +1721,7 @@ system_hardware_auto_tune() {
 	uci commit firewall
 	/etc/init.d/firewall reload >/dev/null 2>&1 || true
 
-	# 3. Multicore & IRQ Balance
+	# --- 4. Multicore & IRQ Balance ---
 	irq_action="none"
 	if [ "$silicon_multicore" = 1 ]; then
 		if [ -x /etc/init.d/irqbalance ]; then
@@ -1677,12 +1748,12 @@ system_hardware_auto_tune() {
 		irq_action="Desativado (CPU de 1 núcleo dispensa troca de contexto)"
 	fi
 
-	# 4. Parametros de Sysctl por Faixa de Memoria (RAM Tier)
+	# --- 5. Parametros de Sysctl por Faixa de Memoria (RAM Tier) & Serviços ---
 	sysctl_dir="/etc/sysctl.d"
 	[ -n "${ARK_ROOT}" ] && sysctl_dir="${ARK_ROOT}/etc/sysctl.d"
 	mkdir -p "$sysctl_dir"
 
-	case "$silicon_ram_tier" in
+	case "$effective_ram_tier" in
 		ultra_low)
 			ct_max=16384
 			rmem=262144
@@ -1735,6 +1806,17 @@ system_hardware_auto_tune() {
 			;;
 	esac
 
+	# Garantir rmem suficiente para o nlbwmon (minimo 1MB para evitar netlink overrun)
+	if [ "$nlbwmon_active" = 1 ] && [ "$rmem" -lt 1048576 ]; then
+		rmem=1048576
+	fi
+
+	# Ajustar dirty pages para evitar sobrecarga de RAM com Storage/Samba
+	if [ "$storage_active" = 1 ]; then
+		[ "$dirty" -gt 15 ] && dirty=15
+		[ "$dirty_bg" -gt 5 ] && dirty_bg=5
+	fi
+
 	cat <<-EOF > "${sysctl_dir}/99-ark-hardware-tune.conf"
 net.netfilter.nf_conntrack_max=$ct_max
 net.core.rmem_max=$rmem
@@ -1744,10 +1826,28 @@ vm.vfs_cache_pressure=$vfs_cache
 vm.dirty_ratio=$dirty
 vm.dirty_background_ratio=$dirty_bg
 EOF
+
+	# Ajustes especificos para VPN
+	if [ "$vpn_active" = 1 ]; then
+		cat <<-EOF >> "${sysctl_dir}/99-ark-hardware-tune.conf"
+net.ipv4.ip_forward=1
+net.ipv4.tcp_mtu_probing=1
+EOF
+	fi
+
+	# Ajustes especificos para Multi-WAN (mwan3)
+	if [ "$mwan3_active" = 1 ]; then
+		cat <<-EOF >> "${sysctl_dir}/99-ark-hardware-tune.conf"
+net.netfilter.nf_conntrack_tcp_timeout_established=1200
+net.netfilter.nf_conntrack_udp_timeout=30
+net.netfilter.nf_conntrack_udp_timeout_stream=120
+EOF
+	fi
+
 	sysctl -p "${sysctl_dir}/99-ark-hardware-tune.conf" >/dev/null 2>&1 || true
 
-	# 5. Dimensionamento de Cache do DNSmasq
-	if [ -f /etc/config/dhcp ]; then
+	# --- 6. Dimensionamento de Cache do DNSmasq ---
+	if [ -f /etc/config/dhcp ] || [ -n "${ARK_ROOT}" -a -f "${ARK_ROOT}/etc/config/dhcp" ] || [ -n "${UCI_CONFIG_DIR}" -a -f "${UCI_CONFIG_DIR}/dhcp" ]; then
 		cur_dns_cache="$(uci -q get dhcp.@dnsmasq[0].cachesize || true)"
 		if [ "$cur_dns_cache" != "$dns_cache" ]; then
 			uci -q set "dhcp.@dnsmasq[0].cachesize=$dns_cache"
@@ -1756,20 +1856,34 @@ EOF
 		fi
 	fi
 
-	# 6. Gravar estado
+	# --- 7. Gravar estado ---
 	mkdir -p /etc/config
 	[ -f /etc/config/equipe_perf ] || touch /etc/config/equipe_perf
 	uci -q set equipe_perf.settings=performance
 	uci -q set "equipe_perf.settings.hardware_profile=$silicon_class"
 	uci -q set "equipe_perf.settings.tuning_profile=$silicon_tuning_profile"
-	uci -q set "equipe_perf.settings.ram_tier=$silicon_ram_tier"
+	uci -q set "equipe_perf.settings.ram_tier=$effective_ram_tier"
+	uci -q set "equipe_perf.settings.services_detected=$services_detected"
 	uci -q set "equipe_perf.settings.last_auto_tune=$(date +%s 2>/dev/null || echo 0)"
 	uci commit equipe_perf
 
-	printf '{"ok":true,"silicon_class":"%s","silicon_name":"%s","tuning_profile":"%s","ram_tier":"%s","cores":%s,"offload_reason":"%s","irq_action":"%s","conntrack_max":%s,"rmem_max":%s,"dns_cache":%s}\n' \
+	# Converter services_detected em JSON array
+	services_json="[]"
+	if [ -n "$services_detected" ]; then
+		old_ifs="$IFS"
+		IFS=','
+		services_json="["
+		for svc in $services_detected; do
+			services_json="${services_json}\"$(json_escape "$svc")\","
+		done
+		IFS="$old_ifs"
+		services_json="${services_json%,}]"
+	fi
+
+	printf '{"ok":true,"silicon_class":"%s","silicon_name":"%s","tuning_profile":"%s","ram_tier":"%s","effective_ram_tier":"%s","cores":%s,"offload_reason":"%s","irq_action":"%s","conntrack_max":%s,"rmem_max":%s,"dns_cache":%s,"services_detected":%s}\n' \
 		"$(json_escape "$silicon_class")" "$(json_escape "$silicon_name")" "$(json_escape "$silicon_tuning_profile")" \
-		"$(json_escape "$silicon_ram_tier")" "$silicon_cpu_cores" "$(json_escape "$offload_reason")" \
-		"$(json_escape "$irq_action")" "$ct_max" "$rmem" "$dns_cache"
+		"$(json_escape "$silicon_ram_tier")" "$(json_escape "$effective_ram_tier")" "$silicon_cpu_cores" "$(json_escape "$offload_reason")" \
+		"$(json_escape "$irq_action")" "$ct_max" "$rmem" "$dns_cache" "$services_json"
 }
 
 get_system_hardware_info() {
@@ -2069,7 +2183,10 @@ get_system_hardware_info() {
 				"$alias" "$p_speed" "$p_carrier" "$p_duplex" "$p_max"
 		done
 	fi
-	printf '}}\n'
+	fw_engine="$(ark_firewall_engine)"
+	fw_desc="Moderno (nftables puro)"
+	[ "$fw_engine" = "fw3" ] && fw_desc="Legado (iptables)"
+	printf '},"firewall":{"engine":"%s","desc":"%s"}}\n' "$(json_escape "$fw_engine")" "$(json_escape "$fw_desc")"
 }
 
 
@@ -2140,6 +2257,22 @@ handle_system() {
 		(sleep 1; /etc/init.d/uhttpd restart) >/dev/null 2>&1 &
 		echo ok
 		;;
+	asu-check-status)
+		val="$(uci -q get attendedsysupgrade.client.login_check_for_upgrades || echo '0')"
+		case "$val" in
+			1) printf '{"enabled":true,"status":"enabled"}\n' ;;
+			*) printf '{"enabled":false,"status":"disabled"}\n' ;;
+		esac
+		;;
+	asu-check-toggle)
+		case "$2" in 0|1) ;; *) echo 'Preferencia invalida' >&2; exit 2 ;; esac
+		mkdir -p /etc/config
+		[ -f /etc/config/attendedsysupgrade ] || touch /etc/config/attendedsysupgrade
+		uci -q set "attendedsysupgrade.client=client"
+		uci -q set "attendedsysupgrade.client.login_check_for_upgrades=$2"
+		uci commit attendedsysupgrade
+		echo ok
+		;;
 	cleanup-orphan-leds)
 		cleanup_orphan_leds
 		echo 'ok'
@@ -2167,6 +2300,28 @@ handle_system() {
 		;;
 	update-wan-led)
 		update_wan_led
+		;;
+	transmission-harden)
+		ark_harden_transmission_config
+		echo ok
+		;;
+	transmission-audit)
+		cfg="/etc/config/transmission"
+		[ -n "${ARK_ROOT}" ] && cfg="${ARK_ROOT}/etc/config/transmission"
+		if [ ! -f "$cfg" ]; then
+			printf '{"installed":false}\n'
+		else
+			port_fwd="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get transmission.@transmission[0].port_forwarding_enabled || echo 1)"
+			enc="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get transmission.@transmission[0].encryption || echo 0)"
+			lpd="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get transmission.@transmission[0].lpd_enabled || echo 1)"
+			utp="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get transmission.@transmission[0].utp_enabled || echo true)"
+			p_torrent="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get transmission.@transmission[0].peer_limit_per_torrent || echo 250)"
+			printf '{"installed":true,"port_forwarding_enabled":"%s","encryption":"%s","lpd_enabled":"%s","utp_enabled":"%s","peer_limit_per_torrent":"%s"}\n' "$port_fwd" "$enc" "$lpd" "$utp" "$p_torrent"
+		fi
+		;;
+	safe-storage-reboot)
+		ark_safe_storage_reboot
+		echo ok
 		;;
 
 	*)

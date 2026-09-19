@@ -26,6 +26,8 @@ function translateText(value){
 		s=s.replace(/Flash Interna • livre ([\d\.]+\s+[KMGTP]?B)/g,'Internal Flash • free $1');
 		s=s.replace(/^CRÍTICO PARA (.*)$/,'CRITICAL FOR $1').replace(/^RECOMENDADO PARA (.*)$/,'RECOMMENDED FOR $1');
 		s=s.replace(/^ROTEADORES <= 16MB(.*)$/,'ROUTERS <= 16MB$1');
+		s=s.replace(/Resolução local gerenciada pelo (.+?)\. O modo All-Servers está desativado para impedir que servidores públicos recebam requisições simultâneas e burlem suas listas de filtros\./g,'Local resolution managed by $1. All-Servers mode is disabled to prevent public servers from receiving simultaneous requests and bypassing filter lists.');
+		s=s.replace(/A distribuição já está ativa na (WAN\d*)\. Desative na \1 primeiro para ativar aqui\./g,'IPv6 distribution is already active on $1. Disable it on $1 first to enable here.');
 		return s;
 	}
 	if (dashboardLanguage === 'es') {
@@ -49,6 +51,8 @@ function translateText(value){
 		s=s.replace(/Flash Interna • livre ([\d\.]+\s+[KMGTP]?B)/g,'Flash Interna • libre $1');
 		s=s.replace(/^CRÍTICO PARA (.*)$/,'CRÍTICO PARA $1').replace(/^RECOMENDADO PARA (.*)$/,'RECOMENDADO PARA $1');
 		s=s.replace(/^ROTEADORES <= 16MB(.*)$/,'ENRUTADORES <= 16MB$1');
+		s=s.replace(/Resolução local gerenciada pelo (.+?)\. O modo All-Servers está desativado para impedir que servidores públicos recebam requisições simultâneas e burlem suas listas de filtros\./g,'Resolución local gestionada por $1. El modo All-Servers está desactivado para evitar que servidores públicos reciban solicitudes simultáneas y evadan sus listas de filtros.');
+		s=s.replace(/A distribuição já está ativa na (WAN\d*)\. Desative na \1 primeiro para ativar aqui\./g,'La distribución ya está activa en $1. Desactívela en $1 primero para activarla aquí.');
 		return s;
 	}
 	return s;

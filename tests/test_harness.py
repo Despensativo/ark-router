@@ -106,6 +106,27 @@ exit 0
             f.write("#!/bin/sh\nexit 1\n")
         os.chmod(sw_wrapper, 0o755)
 
+        # 7b. Setup mock firewall wrappers (defaulting to fw4 / modern OpenWrt)
+        self.fw4_wrapper = os.path.join(self.bin_dir, "fw4")
+        with open(self.fw4_wrapper, "w") as f:
+            f.write("#!/bin/sh\nexit 0\n")
+        os.chmod(self.fw4_wrapper, 0o755)
+
+        self.nft_wrapper = os.path.join(self.bin_dir, "nft")
+        with open(self.nft_wrapper, "w") as f:
+            f.write("#!/bin/sh\nexit 0\n")
+        os.chmod(self.nft_wrapper, 0o755)
+
+        self.iptables_wrapper = os.path.join(self.bin_dir, "iptables")
+        with open(self.iptables_wrapper, "w") as f:
+            f.write("#!/bin/sh\nexit 0\n")
+        os.chmod(self.iptables_wrapper, 0o755)
+
+        self.iptables_save_wrapper = os.path.join(self.bin_dir, "iptables-save")
+        with open(self.iptables_save_wrapper, "w") as f:
+            f.write("#!/bin/sh\nexit 0\n")
+        os.chmod(self.iptables_save_wrapper, 0o755)
+
         # 8. Setup mock init.d scripts
         init_dir = os.path.join(self.temp_dir, "etc", "init.d")
         os.makedirs(init_dir, exist_ok=True)
@@ -226,6 +247,24 @@ config wan_profiles 'wan_profiles'
             env=env
         )
         return proc
+
+    def run_sh(self, script_str):
+        env = os.environ.copy()
+        env["PATH"] = self.bin_dir + os.pathsep + env.get("PATH", "")
+        env["UCI_CONFIG_DIR"] = self.etc_config
+        env["ARK_ROOT"] = self.temp_dir
+        env["ARK_LIB_DIR"] = os.path.join(REPO_DIR, "root", "usr", "lib", "ark")
+        
+        sh_bin = "sh"
+        for candidate in [r"C:\Program Files\Git\bin\sh.exe", r"C:\Program Files\Git\bin\bash.exe", "sh", "bash"]:
+            if os.path.isabs(candidate) and os.path.isfile(candidate):
+                sh_bin = candidate
+                break
+            elif shutil.which(candidate):
+                sh_bin = candidate
+                break
+
+        return subprocess.run([sh_bin, "-c", script_str], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
 
     def uci_get(self, key):
         env = os.environ.copy()

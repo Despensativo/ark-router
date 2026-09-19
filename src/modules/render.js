@@ -754,7 +754,8 @@ const renderMethods = {
 								E('div',{class:'ex-mode-grid'},mwanModeButtons),
 								E('small',{class:'ex-muted'},['Balanceamento distribui conexões entre os links; não soma a velocidade de um único envio.'])
 							])
-						])
+						]),
+						self.renderMwanRulesSection(data)
 					])
 				]);
 				const mwanCard = E('section',{class:'ex-card ex-mwan-control'},[
@@ -784,7 +785,7 @@ const renderMethods = {
 					E('div',{},[E('span',{class:'ex-kicker'},['CONTROLE DE FILAS']),E('h3',{},['CAKE / SQM'])]),
 					sqmTitleActions
 				]);
-				const sqmToggleInput = E('input',{id:'ex-qos-toggle',type:'checkbox','change':L.bind(function(ev){this.toggleSqm(ev.currentTarget);},this)});
+				const sqmToggleInput = E('input',{id:'ex-qos-toggle',type:'checkbox','change':L.bind(function(ev){self.toggleSqm(ev.currentTarget);},self)});
 				if (isSatNode) {
 					sqmToggleInput.disabled = true;
 					sqmToggleInput.checked = false;
@@ -808,7 +809,7 @@ const renderMethods = {
 						]),
 						E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},qosWanRows.concat([infoRow('Rede visitante','ex-qos-guest'),infoRow('DNS do roteador','ex-dns')])),
 						E('div',{class:'ex-grid ex-grid-2',style:'margin-top:14px;gap:12px;'},[
-							E('button',{class:'ex-button ex-qos-edit-button',style:'margin-top:0;','click':L.bind(function(){try{this.editSqmLimits();}catch(e){ui.addNotification(null,E('p',{},[e.message||String(e)]),'danger');}},this)},['Editar limites']),
+							E('button',{class:'ex-button ex-qos-edit-button',style:'margin-top:0;','click':L.bind(function(){try{self.editSqmLimits();}catch(e){ui.addNotification(null,E('p',{},[e.message||String(e)]),'danger');}},self)},['Editar limites']),
 							E('button',{class:'ex-button',style:'margin-top:0;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.1);font-weight:650;cursor:pointer;','click':L.bind(self.openFastCom,self)},['🎬 Testar velocidade da internet'])
 						])
 					])
@@ -1483,6 +1484,133 @@ const renderMethods = {
 			}, this));
 		}
 		this.update(data); this.scheduleAdaptiveRefresh(); return root;
+	},
+	renderMwanRulesSection: function(data) {
+		const self = this;
+		const mwanCfg = values(data && data.mwanConfig);
+		const torrentRule = mwanCfg.tor_src_tcp || mwanCfg.torrent_rule;
+		const isTorrentActive = !!(torrentRule && String(torrentRule.enabled) !== '0');
+
+		const seen = {};
+		const customRules = [];
+		Object.keys(mwanCfg).forEach(function(k) {
+			if (k.indexOf('ark_rule_') !== 0 && k.indexOf('pbr_') !== 0) return;
+			const baseId = k.replace(/_[tu]$/, '');
+			if (seen[baseId]) return;
+			seen[baseId] = true;
+			const r = Object.assign({}, mwanCfg[k]);
+			r._id = baseId;
+			if (k.match(/_[tu]$/)) {
+				r.proto = 'tcp udp';
+			}
+			customRules.push(r);
+		});
+
+		const policyLabels = {
+			'balanced': '⚖️ Balanceado (2 Links)',
+			'wan_only': '🔵 Somente WAN1',
+			'wan2_only': '🟣 Somente WAN2',
+			'wan_then_wan2': '🛡️ WAN1 ➔ WAN2',
+			'wan2_then_wan': '🛡️ WAN2 ➔ WAN1'
+		};
+
+		const rulesElements = [];
+		if (customRules.length === 0) {
+			rulesElements.push(E('div', { class: 'ex-empty-state', style: 'padding: 14px; text-align: center; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px dashed rgba(255,255,255,0.08); margin-top: 8px;' }, [
+				E('small', { class: 'ex-muted' }, ['Nenhuma regra personalizada cadastrada. Clique em "+ Nova Regra" para direcionar portas ou aparelhos específicos.'])
+			]));
+		} else {
+			customRules.forEach(function(r) {
+				const isEnabled = String(r.enabled) !== '0';
+				const name = r.description || r._id.replace('ark_rule_', '').replace('pbr_', '');
+				const proto = (r.proto || 'tcp udp').toUpperCase();
+				const portText = r.dest_port ? ('Portas: ' + r.dest_port) : (r.src_port ? ('Porta Origem: ' + r.src_port) : 'Todas as portas');
+				const ipText = r.src_ip ? ('IP: ' + r.src_ip) : 'Todos os aparelhos';
+				const polLabel = policyLabels[r.use_policy] || r.use_policy;
+
+				rulesElements.push(E('div', {
+					class: 'ex-channel-mode-control',
+					style: 'margin-top: 8px; padding: 10px 12px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;'
+				}, [
+					E('div', { style: 'flex: 1 1 auto; min-width: 200px;' }, [
+						E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 3px;' }, [
+							E('strong', { style: 'font-size: 13px; color: #f8fafc;' }, [name]),
+							E('span', { class: 'ex-pill ' + (r.use_policy === 'balanced' ? 'online' : 'standby'), style: 'font-size: 11px; padding: 2px 8px;' }, [polLabel])
+						]),
+						E('small', { class: 'ex-muted', style: 'display: block; font-size: 12px;' }, [
+							ipText + ' • ' + proto + ' • ' + portText
+						])
+					]),
+					E('div', { style: 'display: flex; align-items: center; gap: 12px; flex: 0 0 auto;' }, [
+						E('label', { class: 'ex-switch', style: 'margin: 0;' }, [
+							E('input', {
+								type: 'checkbox',
+								checked: isEnabled ? '' : null,
+								'aria-label': 'Ativar ou desativar regra ' + name,
+								change: L.bind(function(ev){
+									if (typeof self.toggleMwanRule === 'function') {
+										self.toggleMwanRule(r._id, ev.currentTarget.checked);
+									}
+								}, self)
+							}),
+							E('span', { class: 'ex-switch-slider' })
+						]),
+						E('button', {
+							class: 'ex-mini-button',
+							style: 'padding: 4px 8px; min-height: 28px; background: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 6px;',
+							title: 'Excluir regra ' + name,
+							click: L.bind(function(){
+								if (typeof self.deleteMwanRule === 'function') {
+									self.deleteMwanRule(r._id, name);
+								}
+							}, self)
+						}, ['🗑️'])
+					])
+				]));
+			}, self);
+		}
+
+		return E('details', { class: 'ex-mwan-rules-editor', style: 'margin-top: 14px;' }, [
+			E('summary', {}, ['Regras Avançadas de Roteamento (Portas e IPs)']),
+			E('div', { class: 'ex-mwan-rules-body', style: 'padding: 12px 0 4px;' }, [
+				E('div', { style: 'display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap;' }, [
+					E('div', {}, [
+						E('strong', { style: 'display:block;font-size:13px;' }, ['Roteamento por Política (PBR)']),
+						E('small', { class: 'ex-muted' }, ['Direcione portas específicas ou aparelhos para balanceamento ou para um link dedicado.'])
+					]),
+					E('button', {
+						class: 'ex-mini-button',
+						style: 'font-weight:700;padding:6px 14px;',
+						click: L.bind(function() {
+							if (typeof self.showAddMwanRuleModal === 'function') {
+								self.showAddMwanRuleModal();
+							}
+						}, self)
+					}, ['+ Nova Regra'])
+				]),
+				E('div', { class: 'ex-channel-mode-control', style: 'margin-bottom:10px;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;display:flex;align-items:center;justify-content:space-between;' }, [
+					E('div', {}, [
+						E('strong', {}, ['⚡ Acelerar BitTorrent / P2P nas 2 Internets']),
+						E('small', { class: 'ex-muted', style: 'display:block;margin-top:2px;' }, ['Balanceia conexões BitTorrent (portas 51413 e 6881-6999) pelas 2 conexões simultaneamente.'])
+					]),
+					E('label', { class: 'ex-switch', style: 'margin:0;' }, [
+						E('input', {
+							id: 'ex-mwan-torrent-toggle',
+							type: 'checkbox',
+							checked: isTorrentActive ? '' : null,
+							'aria-label': 'Ativar ou desativar aceleração P2P',
+							change: L.bind(function(ev){
+								if (typeof self.toggleMwanTorrentPreset === 'function') {
+									self.toggleMwanTorrentPreset(ev.currentTarget);
+								}
+							}, self)
+						}),
+						E('span', { class: 'ex-switch-slider' })
+					])
+				]),
+				E('div', { id: 'ex-mwan-custom-rules-list' }, rulesElements)
+			])
+		]);
 	},
 	handleSaveApply:null, handleSave:null, handleReset:null
 };

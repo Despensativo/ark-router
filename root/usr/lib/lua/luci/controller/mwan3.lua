@@ -328,8 +328,18 @@ function troubleshootingData()
 
 	luci.http.write("\n")
 	luci.http.write("\n")
-	local output = ut.trim(sys.exec("iptables -L -t mangle -v -n"))
-	luci.http.write("Output of \"iptables -L -t mangle -v -n\"")
+	local has_fw4 = nixio.fs.access("/sbin/fw4") or (sys.exec("nft list table inet fw4 2>/dev/null") ~= "")
+	local output = ""
+	if has_fw4 then
+		output = ut.trim(sys.exec("nft list table inet mwan3 2>/dev/null"))
+		if output == "" then
+			output = ut.trim(sys.exec("nft list chain inet fw4 mangle_forward 2>/dev/null"))
+		end
+		luci.http.write("Output of \"nft list table inet mwan3\"")
+	else
+		output = ut.trim(sys.exec("iptables -L -t mangle -v -n 2>/dev/null"))
+		luci.http.write("Output of \"iptables -L -t mangle -v -n\"")
+	end
 	luci.http.write("\n")
 	luci.http.write(dash)
 	luci.http.write("\n")

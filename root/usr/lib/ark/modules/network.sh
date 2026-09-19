@@ -536,17 +536,20 @@ enable_ipv6_dual_stack() {
 }
 
 clean_ipv6_selective_firewall() {
-	if command -v nft >/dev/null 2>&1; then
-		nft delete table inet ark_ipv6_selective 2>/dev/null || true
-		for t in $(nft list tables 2>/dev/null | grep 'table netdev ark_ipv6_' | awk '{print $3}'); do
-			nft delete table netdev "$t" 2>/dev/null || true
-		done
-	fi
-	if command -v ip6tables >/dev/null 2>&1; then
-		lan_dev="$(uci -q get network.lan.device || uci -q get network.lan.ifname || echo br-lan)"
-		ip6tables -D FORWARD -i "$lan_dev" -j ARK_IPV6_SEL 2>/dev/null || true
-		ip6tables -F ARK_IPV6_SEL 2>/dev/null || true
-		ip6tables -X ARK_IPV6_SEL 2>/dev/null || true
+	if is_fw4; then
+		if command -v nft >/dev/null 2>&1; then
+			nft delete table inet ark_ipv6_selective 2>/dev/null || true
+			for t in $(nft list tables 2>/dev/null | grep 'table netdev ark_ipv6_' | awk '{print $3}'); do
+				nft delete table netdev "$t" 2>/dev/null || true
+			done
+		fi
+	elif is_fw3; then
+		if command -v ip6tables >/dev/null 2>&1; then
+			lan_dev="$(uci -q get network.lan.device || uci -q get network.lan.ifname || echo br-lan)"
+			ip6tables -D FORWARD -i "$lan_dev" -j ARK_IPV6_SEL 2>/dev/null || true
+			ip6tables -F ARK_IPV6_SEL 2>/dev/null || true
+			ip6tables -X ARK_IPV6_SEL 2>/dev/null || true
+		fi
 	fi
 	rm -f /etc/ark/ark_ipv6_selective.* 2>/dev/null || true
 	uci -q delete firewall.ark_ipv6_selective
@@ -579,7 +582,7 @@ sync_ipv6_selective_firewall() {
 		return 0
 	fi
 
-	if command -v nft >/dev/null 2>&1; then
+	if is_fw4; then
 		tmp_nft="/tmp/ark_ipv6_selective.nft"
 		nft_file="/etc/ark/ark_ipv6_selective.nft"
 		apply_sh="/etc/ark/ark_ipv6_selective.sh"
@@ -708,7 +711,7 @@ EOF
 		uci -q set firewall.ark_ipv6_selective.fw4_compatible='1'
 		uci commit firewall
 
-	elif command -v ip6tables >/dev/null 2>&1; then
+	elif is_fw3 && command -v ip6tables >/dev/null 2>&1; then
 		apply_sh="/etc/ark/ark_ipv6_selective.sh"
 		if [ "$cur_mode" = "selective" ]; then
 			cat << EOF > "$apply_sh"
@@ -1016,6 +1019,10 @@ mwan3_reorder_rules() {
 	uci -q reorder "mwan3.whatsapp_udp=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
 	uci -q reorder "mwan3.https=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
 	uci -q reorder "mwan3.https_quic=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
+	for r in $(uci -q show mwan3 2>/dev/null | grep '=rule$' | cut -d. -f2 | cut -d= -f1 | grep -E '^ark_rule_|^ark_pbr_|^torrent_|^tor_|^pbr_'); do
+		uci -q reorder "mwan3.$r=$order_idx" 2>/dev/null || true
+		order_idx=$((order_idx + 1))
+	done
 	uci -q reorder "mwan3.default_rule_v4=99" 2>/dev/null || true
 }
 
@@ -1061,7 +1068,7 @@ ensure_mwan3_ark_config() {
 		[ "$auto" != "0" ] || continue
 		p="$(uci -q get "network.$w.proto" || printf 'none')"
 		d="$(uci -q get "network.$w.device" || uci -q get "network.$w.ifname" || printf '')"
-		if [ "$p" != "none" ] && [ -n "$d" ]; then
+		if [ "$p" != "none" ] && [ "$p" != "dhcpv6" ] && [ "$w" != "wan6" ] && [ -n "$d" ]; then
 			active_wans="$active_wans $w"
 		fi
 	done
@@ -1497,11 +1504,12 @@ mwan3_toggle() {
 handle_network() {
 	case "$1" in
 	wan-save)
-		iface='' mode='wan' device='' proto='dhcp' username='' password='' ipaddr='' netmask='' gateway='' dns='' macaddr='' modem_ip='' metric='' ipv6=''
+		iface='' mode='wan' device='' proto='dhcp' username='' password='' ipaddr='' netmask='' gateway='' dns='' macaddr='' modem_ip='' metric='' ipv6='' delegate=''
 		shift
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
+				delegate) case "$value" in 1|true|yes) delegate=1 ;; 0|false|no) delegate=0 ;; *) echo 'Delegate IPv6 invalido' >&2; exit 2 ;; esac ;;
 				ipv6) case "$value" in 1|true|yes) ipv6=1 ;; 0|false|no) ipv6=0 ;; *) echo 'IPv6 WAN invalido' >&2; exit 2 ;; esac ;;
 				metric)
 					case "$value" in
@@ -1660,6 +1668,26 @@ handle_network() {
 				uci -q set "network.$iface.send_rs=0"
 			fi
 		fi
+		if [ -n "$delegate" ]; then
+			if [ "$delegate" = "1" ]; then
+				uci -q set "network.$iface.delegate=1"
+				[ -n "$(uci -q get "network.${iface}6")" ] && uci -q set "network.${iface}6.delegate=1"
+				[ -n "$(uci -q get "network.${iface}_6")" ] && uci -q set "network.${iface}_6.delegate=1"
+				# Exclusividade mutua: apenas uma WAN distribui bloco IPv6 para a LAN por vez
+				for other_w in $(uci -q show network 2>/dev/null | grep -E '^network\.wan[0-9_]*=interface' | cut -d. -f2 | cut -d= -f1); do
+					case "$other_w" in
+						"$iface"|"${iface}6"|"${iface}_6") ;;
+						*)
+							uci -q set "network.$other_w.delegate=0"
+							;;
+					esac
+				done
+			else
+				uci -q set "network.$iface.delegate=0"
+				[ -n "$(uci -q get "network.${iface}6")" ] && uci -q set "network.${iface}6.delegate=0"
+				[ -n "$(uci -q get "network.${iface}_6")" ] && uci -q set "network.${iface}_6.delegate=0"
+			fi
+		fi
 		sqm_sec="$(sqm_section_for_network "$iface" 2>/dev/null || true)"
 		if [ -n "$sqm_sec" ] && uci -q get "sqm.$sqm_sec" >/dev/null 2>&1; then
 			if [ "$proto" = pppoe ]; then
@@ -1769,6 +1797,17 @@ handle_network() {
 		ez_backup >/dev/null || { echo 'Falha ao criar backup antes da alteracao da LAN' >&2; exit 3; }
 		start_host="$(ipv4_host "$start_ip")"; end_host="$(ipv4_host "$end_ip")"; limit=$((end_host - start_host + 1))
 		old_ip="$(uci -q get network.lan.ipaddr || true)"
+		if [ -n "$old_ip" ] && [ "$old_ip" != "$router_ip" ]; then
+			new_dns=""
+			for s in $dns; do
+				if [ "$s" = "$old_ip" ]; then
+					new_dns="${new_dns:+${new_dns} }$router_ip"
+				else
+					new_dns="${new_dns:+${new_dns} }$s"
+				fi
+			done
+			dns="$new_dns"
+		fi
 		uci -q set network.lan.ipaddr="$router_ip"
 		uci -q set network.lan.netmask="$netmask"
 		uci -q set dhcp.lan=dhcp
@@ -1856,6 +1895,148 @@ handle_network() {
 		uci commit mwan3
 		mwan3_sync_lifecycle &
 		echo "$2"
+		;;
+	mwan-rule-add)
+		shift
+		r_name=''; r_ip=''; r_proto='tcp udp'; r_pstart=''; r_pend=''; r_policy='balanced'
+		for pair in "$@"; do
+			key="${pair%%=*}"; value="${pair#*=}"
+			case "$key" in
+				name) r_name="$value" ;;
+				src_ip) r_ip="$value" ;;
+				proto) r_proto="$value" ;;
+				port_start) r_pstart="$value" ;;
+				port_end) r_pend="$value" ;;
+				policy) r_policy="$value" ;;
+			esac
+		done
+		[ -n "$r_name" ] || { echo 'Nome da regra obrigatorio' >&2; exit 2; }
+		raw_slug="$(printf '%s' "$r_name" | tr -c 'a-zA-Z0-9' '_' | tr 'A-Z' 'a-z' | sed 's/^_//; s/_$//' | cut -c1-8)"
+		[ -n "$raw_slug" ] || raw_slug="$(date +%s | cut -c5-10)"
+		sec_base="pbr_$raw_slug"
+
+		port_spec=""
+		if [ -n "$r_pstart" ] && [ -n "$r_pend" ] && [ "$r_pend" -gt "$r_pstart" ] 2>/dev/null; then
+			port_spec="$r_pstart:$r_pend"
+		elif [ -n "$r_pstart" ]; then
+			port_spec="$r_pstart"
+		fi
+
+		write_mwan_pbr_rule() {
+			local sid="$1"
+			local p="$2"
+			uci -q set "mwan3.$sid=rule"
+			uci -q set "mwan3.$sid.description=$r_name"
+			uci -q set "mwan3.$sid.family=ipv4"
+			uci -q set "mwan3.$sid.proto=$p"
+			uci -q set "mwan3.$sid.use_policy=$r_policy"
+			uci -q set "mwan3.$sid.sticky=0"
+			uci -q set "mwan3.$sid.enabled=1"
+			[ -n "$r_ip" ] && uci -q set "mwan3.$sid.src_ip=$r_ip"
+			[ -n "$port_spec" ] && uci -q set "mwan3.$sid.dest_port=$port_spec"
+		}
+
+		if [ -n "$port_spec" ]; then
+			case "$r_proto" in
+				tcp)
+					write_mwan_pbr_rule "$sec_base" "tcp"
+					;;
+				udp)
+					write_mwan_pbr_rule "$sec_base" "udp"
+					;;
+				*)
+					write_mwan_pbr_rule "${sec_base}_t" "tcp"
+					write_mwan_pbr_rule "${sec_base}_u" "udp"
+					;;
+			esac
+		else
+			case "$r_proto" in
+				tcp) write_mwan_pbr_rule "$sec_base" "tcp" ;;
+				udp) write_mwan_pbr_rule "$sec_base" "udp" ;;
+				*) write_mwan_pbr_rule "$sec_base" "all" ;;
+			esac
+		fi
+
+		mwan3_reorder_rules
+		uci commit mwan3
+		mwan3_sync_lifecycle &
+		printf '{"status":"ok","id":"%s"}\n' "$sec_base"
+		;;
+	mwan-rule-delete)
+		sec_id="$2"
+		[ -n "$sec_id" ] || { echo 'ID da regra obrigatorio' >&2; exit 2; }
+		base_id="$(printf '%s' "$sec_id" | sed 's/_[tu]$//')"
+		uci -q delete "mwan3.$sec_id"
+		uci -q delete "mwan3.$base_id"
+		uci -q delete "mwan3.${base_id}_t"
+		uci -q delete "mwan3.${base_id}_u"
+		mwan3_reorder_rules
+		uci commit mwan3
+		mwan3_sync_lifecycle &
+		echo 'ok'
+		;;
+	mwan-rule-toggle)
+		sec_id="$2"
+		state="${3:-1}"
+		[ -n "$sec_id" ] || { echo 'ID da regra obrigatorio' >&2; exit 2; }
+		base_id="$(printf '%s' "$sec_id" | sed 's/_[tu]$//')"
+		[ -n "$(uci -q get "mwan3.$sec_id")" ] && uci -q set "mwan3.$sec_id.enabled=$state"
+		[ -n "$(uci -q get "mwan3.$base_id")" ] && uci -q set "mwan3.$base_id.enabled=$state"
+		[ -n "$(uci -q get "mwan3.${base_id}_t")" ] && uci -q set "mwan3.${base_id}_t.enabled=$state"
+		[ -n "$(uci -q get "mwan3.${base_id}_u")" ] && uci -q set "mwan3.${base_id}_u.enabled=$state"
+		uci commit mwan3
+		mwan3_sync_lifecycle &
+		echo 'ok'
+		;;
+	mwan-torrent-toggle)
+		state="${2:-1}"
+		if [ "$state" = "1" ]; then
+			uci -q set mwan3.tor_src_tcp=rule
+			uci -q set mwan3.tor_src_tcp.family=ipv4
+			uci -q set mwan3.tor_src_tcp.proto=tcp
+			uci -q set mwan3.tor_src_tcp.src_port="51413,6881:6999"
+			uci -q set mwan3.tor_src_tcp.use_policy=balanced
+			uci -q set mwan3.tor_src_tcp.sticky=0
+			uci -q set mwan3.tor_src_tcp.enabled=1
+
+			uci -q set mwan3.tor_src_udp=rule
+			uci -q set mwan3.tor_src_udp.family=ipv4
+			uci -q set mwan3.tor_src_udp.proto=udp
+			uci -q set mwan3.tor_src_udp.src_port="51413,6881:6999"
+			uci -q set mwan3.tor_src_udp.use_policy=balanced
+			uci -q set mwan3.tor_src_udp.sticky=0
+			uci -q set mwan3.tor_src_udp.enabled=1
+
+			uci -q set mwan3.tor_dst_tcp=rule
+			uci -q set mwan3.tor_dst_tcp.family=ipv4
+			uci -q set mwan3.tor_dst_tcp.proto=tcp
+			uci -q set mwan3.tor_dst_tcp.dest_port="51413,6881:6999"
+			uci -q set mwan3.tor_dst_tcp.use_policy=balanced
+			uci -q set mwan3.tor_dst_tcp.sticky=0
+			uci -q set mwan3.tor_dst_tcp.enabled=1
+
+			uci -q set mwan3.tor_dst_udp=rule
+			uci -q set mwan3.tor_dst_udp.family=ipv4
+			uci -q set mwan3.tor_dst_udp.proto=udp
+			uci -q set mwan3.tor_dst_udp.dest_port="51413,6881:6999"
+			uci -q set mwan3.tor_dst_udp.use_policy=balanced
+			uci -q set mwan3.tor_dst_udp.sticky=0
+			uci -q set mwan3.tor_dst_udp.enabled=1
+
+			uci -q delete mwan3.torrent_rule
+			uci -q delete mwan3.torrent_dest_rule
+		else
+			uci -q set mwan3.tor_src_tcp.enabled=0
+			uci -q set mwan3.tor_src_udp.enabled=0
+			uci -q set mwan3.tor_dst_tcp.enabled=0
+			uci -q set mwan3.tor_dst_udp.enabled=0
+			uci -q delete mwan3.torrent_rule
+			uci -q delete mwan3.torrent_dest_rule
+		fi
+		mwan3_reorder_rules
+		uci commit mwan3
+		mwan3_sync_lifecycle &
+		echo 'ok'
 		;;
 	mwan3-toggle)
 		mwan3_toggle "$2"
@@ -2228,6 +2409,10 @@ handle_network() {
 			atm) linklayer_profile='atm' ;;
 			*) linklayer_profile='none' ;;
 		esac
+		sqm_download="$(uci -q get "sqm.$sqm_section.download" 2>/dev/null || echo 0)"
+		sqm_upload="$(uci -q get "sqm.$sqm_section.upload" 2>/dev/null || echo 0)"
+		printf '%s' "$sqm_download" | grep -Eq '^[0-9]+$' || sqm_download=0
+		printf '%s' "$sqm_upload" | grep -Eq '^[0-9]+$' || sqm_upload=0
 		baby_jumbo=0
 		cur_mtu="$(cat "${ARK_ROOT}/sys/class/net/$wan_dev/mtu" 2>/dev/null || cat /sys/class/net/$wan_dev/mtu 2>/dev/null || echo 1500)"
 		cur_speed="$(cat "${ARK_ROOT}/sys/class/net/$wan_dev/speed" 2>/dev/null || cat /sys/class/net/$wan_dev/speed 2>/dev/null || echo 0)"
@@ -2237,12 +2422,12 @@ handle_network() {
 		irq_installed=0; irq_active=0
 		{ [ -x "${ARK_ROOT}/etc/init.d/irqbalance" ] || [ -x /etc/init.d/irqbalance ]; } && irq_installed=1
 		[ "$irq_installed" = 1 ] && { pidof irqbalance >/dev/null 2>&1 || { [ -x /etc/init.d/irqbalance ] && /etc/init.d/irqbalance enabled >/dev/null 2>&1; }; } && irq_active=1
-		printf '{"iface":"%s","label":"%s","proto":"%s","wan_dev":"%s","l3_device":"%s","link_speed_mbps":%s,"duplex":"%s","ip":"%s","gateway":"%s","starlink":%s,"detected_profile":"%s","saved_profile":"%s","tcp_turbo":%s,"flow_offloading":%s,"linklayer_profile":"%s","baby_jumbo":%s,"current_mtu":%s,"sqm_section":"%s","sqm_installed":%s,"sqm_active":%s,"sqm_any_active":%s,"sqm_wan_count":%s,"irqbalance_installed":%s,"irqbalance_active":%s,"mwan_active_wans":%s}\n' \
-			"$(json_escape "$iface")" "$(json_escape "$wan_label")" "$(json_escape "$proto")" "$(json_escape "$wan_dev")" "$(json_escape "$wan_l3_dev")" "$cur_speed" "$(json_escape "$cur_duplex")" "$(json_escape "$wan_ip")" "$(json_escape "$wan_gateway")" "$starlink" "$(json_escape "$detected_profile")" "$(json_escape "$saved_profile")" "$tcp_turbo" "$flow_offload" "$linklayer_profile" "$baby_jumbo" "$cur_mtu" "$(json_escape "$sqm_section")" "$sqm_installed" "$sqm_active" "$sqm_any_active" "$sqm_wan_count" "$irq_installed" "$irq_active" "$mwan_active_wans"
+		printf '{"iface":"%s","label":"%s","proto":"%s","wan_dev":"%s","l3_device":"%s","link_speed_mbps":%s,"duplex":"%s","ip":"%s","gateway":"%s","starlink":%s,"detected_profile":"%s","saved_profile":"%s","tcp_turbo":%s,"flow_offloading":%s,"linklayer_profile":"%s","baby_jumbo":%s,"current_mtu":%s,"sqm_section":"%s","sqm_installed":%s,"sqm_active":%s,"sqm_any_active":%s,"sqm_wan_count":%s,"sqm_download":%s,"sqm_upload":%s,"irqbalance_installed":%s,"irqbalance_active":%s,"mwan_active_wans":%s}\n' \
+			"$(json_escape "$iface")" "$(json_escape "$wan_label")" "$(json_escape "$proto")" "$(json_escape "$wan_dev")" "$(json_escape "$wan_l3_dev")" "$cur_speed" "$(json_escape "$cur_duplex")" "$(json_escape "$wan_ip")" "$(json_escape "$wan_gateway")" "$starlink" "$(json_escape "$detected_profile")" "$(json_escape "$saved_profile")" "$tcp_turbo" "$flow_offload" "$linklayer_profile" "$baby_jumbo" "$cur_mtu" "$(json_escape "$sqm_section")" "$sqm_installed" "$sqm_active" "$sqm_any_active" "$sqm_wan_count" "$sqm_download" "$sqm_upload" "$irq_installed" "$irq_active" "$mwan_active_wans"
 		;;
 	wan-optimize-set)
 		shift
-		iface='wan' preset='' tcp_turbo='' flow_offload='' linklayer_profile='' baby_jumbo='' enable_sqm='' irqbalance=''
+		iface='wan' preset='' tcp_turbo='' flow_offload='' linklayer_profile='' baby_jumbo='' enable_sqm='' irqbalance='' sqm_upload='' sqm_download=''
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
@@ -2254,6 +2439,8 @@ handle_network() {
 				baby_jumbo) baby_jumbo="$value" ;;
 				enable_sqm) enable_sqm="$value" ;;
 				irqbalance) irqbalance="$value" ;;
+				sqm_upload) sqm_upload="$value" ;;
+				sqm_download) sqm_download="$value" ;;
 			esac
 		done
 		printf '%s' "$iface" | grep -Eq '^wan([0-9]+)?$' || { echo 'Interface WAN invalida' >&2; exit 2; }
@@ -2298,9 +2485,10 @@ handle_network() {
 			exit 2
 		fi
 		[ "$enable_sqm" != 1 ] || { { [ -f "${ARK_ROOT}/etc/config/sqm" ] || [ -f /etc/config/sqm ]; } && { [ -x "${ARK_ROOT}/etc/init.d/sqm" ] || [ -x /etc/init.d/sqm ]; }; } || { echo 'SQM / CAKE nao instalado' >&2; exit 3; }
-		if [ "$flow_offload" = 1 ] && uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
-			echo 'Software Flow Offloading e SQM / CAKE ativo podem entrar em conflito. Desative o SQM antes de ligar o Fastpath.' >&2
-			exit 3
+		# Modo Híbrido: Software Flow Offloading (Fastpath) acelera download no kernel;
+		# SQM / CAKE gerencia o upload para blindar contra Bufferbloat sem gargalo de CPU.
+		if [ "$flow_offload" = 1 ] && [ -z "$sqm_download" ]; then
+			sqm_download=0
 		fi
 		if [ "$tcp_turbo" = 1 ]; then
 			sysctl_conf="/etc/sysctl.d/99-ark-performance.conf"
@@ -2342,7 +2530,7 @@ EOF
 			   grep -qiE 'mt7981|mt7986|mt7988|mt7621|mt7622|filogic' /tmp/sysinfo/board_name /tmp/sysinfo/model 2>/dev/null; then
 				has_ppe=1
 			fi
-			if [ "$has_ppe" = 1 ] && [ "$enable_sqm" != 1 ]; then
+			if [ "$has_ppe" = 1 ] && [ "$enable_sqm" != 1 ] && ! uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
 				uci -q set firewall.@defaults[0].flow_offloading_hw=1
 			else
 				uci -q set firewall.@defaults[0].flow_offloading_hw=0
@@ -2376,6 +2564,28 @@ EOF
 				uci -q set "sqm.$sqm_section.interface=$wan_device"
 				sqm_changed=1
 			fi
+		fi
+		if [ -n "$sqm_upload" ] && uci -q get "sqm.$sqm_section" >/dev/null 2>&1; then
+			ensure_sqm_section "$sqm_section" "$wan_device"
+			uci -q set "sqm.$sqm_section.upload=$sqm_upload"
+			sqm_changed=1
+		fi
+		if [ -n "$sqm_download" ] && uci -q get "sqm.$sqm_section" >/dev/null 2>&1; then
+			ensure_sqm_section "$sqm_section" "$wan_device"
+			uci -q set "sqm.$sqm_section.download=$sqm_download"
+			sqm_changed=1
+		elif [ "$flow_offload" = 1 ] && uci -q get "sqm.$sqm_section" >/dev/null 2>&1; then
+			uci -q set "sqm.$sqm_section.download=0"
+			sqm_changed=1
+		fi
+		if [ "$flow_offload" = 1 ]; then
+			for s in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\([^.]*\)\.enabled=.1.$/\1/p'); do
+				cur_dl="$(uci -q get "sqm.$s.download" 2>/dev/null || echo 0)"
+				if [ "$cur_dl" != "0" ]; then
+					uci -q set "sqm.$s.download=0"
+					sqm_changed=1
+				fi
+			done
 		fi
 		if [ -n "$linklayer_profile" ]; then
 			if uci -q get "sqm.$sqm_section" >/dev/null 2>&1; then

@@ -35,8 +35,26 @@ else
 	fi
 fi
 
-uci commit luci
-uci commit equipe_dashboard 2>/dev/null || true
+# Silencia popup do attendedsysupgrade por padrao para proteger instalacao do ARK Router
+if [ -f /etc/config/attendedsysupgrade ]; then
+	cur_asu="$(uci -q get attendedsysupgrade.client.login_check_for_upgrades)"
+	if [ -z "$cur_asu" ]; then
+		uci -q set attendedsysupgrade.client.login_check_for_upgrades='0'
+		uci commit attendedsysupgrade 2>/dev/null || true
+	fi
+fi
+
+# Ativa gancho de encerramento seguro e protecao de armazenamento USB
+[ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable 2>/dev/null || true
+
+# Dupla Blindagem Automatica: Sanitizacao de WAN6/DHCPv6 e Auto-Ativacao de Wi-Fi virgem
+if [ -f /usr/lib/ark/common.sh ]; then
+	. /usr/lib/ark/common.sh
+	ark_sanitize_wan6_config 2>/dev/null || true
+	ark_cleanup_dhcpv6_orphans 2>/dev/null || true
+	ark_auto_enable_factory_wifi 2>/dev/null || true
+fi
+
 rm -f /tmp/luci-indexcache
 rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 exit 0

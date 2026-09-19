@@ -58,7 +58,7 @@ case "$action" in
 		. "${ARK_LIB_DIR}/modules/adblock.sh"
 		handle_adblock "$@"
 		;;
-	system-perf*|ram-purge-now|dmz*|dns-turbo*|network-capacity*|system-memory-purge|system-storage-purge|fast-targets|https-redirect|cleanup-orphan-leds|get-led-*|set-led-*|update-led-alert|update-wan-led|system-hardware-*)
+	system-perf*|ram-purge-now|dmz*|dns-turbo*|network-capacity*|system-memory-purge|system-storage-purge|fast-targets|https-redirect|asu-check-*|cleanup-orphan-leds|get-led-*|set-led-*|update-led-alert|update-wan-led|system-hardware-*|transmission-*|safe-storage-reboot)
 		. "${ARK_LIB_DIR}/modules/system.sh"
 		handle_system "$@"
 		;;

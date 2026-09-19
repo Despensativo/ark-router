@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ark-router
-PKG_VERSION:=1.0.2
+PKG_VERSION:=1.5.1
 PKG_RELEASE:=1
 PKG_MAINTAINER:=ARK Router contributors
 PKG_LICENSE:=MIT
@@ -75,6 +75,7 @@ define Package/luci-app-ark-router/install
 	$(INSTALL_BIN) ./root/usr/lib/ark/ark-control $(1)/usr/lib/ark/ark-control
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./root/etc/init.d/equipe-traffic-history $(1)/etc/init.d/equipe-traffic-history
+	$(INSTALL_BIN) ./root/etc/init.d/ark-safe-shutdown $(1)/etc/init.d/ark-safe-shutdown
 	$(INSTALL_DIR) $(1)/usr/libexec
 	$(INSTALL_BIN) ./root/usr/libexec/ark-starlink-telemetry $(1)/usr/libexec/ark-starlink-telemetry
 	$(INSTALL_DIR) $(1)/www/cgi-bin
@@ -94,6 +95,7 @@ define Package/luci-app-ark-router-full/install
 	$(INSTALL_BIN) ./root/usr/lib/ark/ark-control $(1)/usr/lib/ark/ark-control
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./root/etc/init.d/equipe-traffic-history $(1)/etc/init.d/equipe-traffic-history
+	$(INSTALL_BIN) ./root/etc/init.d/ark-safe-shutdown $(1)/etc/init.d/ark-safe-shutdown
 	$(INSTALL_DIR) $(1)/usr/libexec
 	$(INSTALL_BIN) ./root/usr/libexec/ark-starlink-telemetry $(1)/usr/libexec/ark-starlink-telemetry
 	$(INSTALL_DIR) $(1)/www/cgi-bin
@@ -103,7 +105,8 @@ endef
 define Package/luci-app-ark-router/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
-	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/lib/ark/ark-control /etc/init.d/equipe-traffic-history /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
+	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/lib/ark/ark-control /etc/init.d/equipe-traffic-history /etc/init.d/ark-safe-shutdown /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
+	[ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable 2>/dev/null || true
 	[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme
 	rm -f /tmp/luci-indexcache
 	rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
@@ -114,7 +117,8 @@ endef
 define Package/luci-app-ark-router-full/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
-	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/lib/ark/ark-control /etc/init.d/equipe-traffic-history /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
+	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/lib/ark/ark-control /etc/init.d/equipe-traffic-history /etc/init.d/ark-safe-shutdown /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
+	[ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable 2>/dev/null || true
 	[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme
 	rm -f /tmp/luci-indexcache
 	rm -rf /tmp/luci-modulecache/* 2>/dev/null || true

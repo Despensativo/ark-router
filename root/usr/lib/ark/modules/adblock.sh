@@ -171,9 +171,13 @@ except Exception:
 		[ -n "$agh_bl" ] && custom_blacklist="$agh_bl"
 		[ -n "$agh_wl" ] && custom_whitelist="$agh_wl"
 	fi
+	dns_intercept=false
+	if [ "$(uci -q get equipe_perf.settings.dns_intercept || printf 1)" = "1" ] && [ "$(uci -q get firewall.dns_intercept_udp.enabled || printf 0)" = "1" ]; then
+		dns_intercept=true
+	fi
 
-	printf '{"installed":%s,"active":%s,"mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s","mem_total_mb":%d,"overlay_free_mb":%d,"overlay_free_kb":%d,"cache_size_mb":%d,"recommended_cache_mb":%d,"parental_enabled":%s,"protection_enabled":%s,"safesearch_enabled":%s,"cloud_cache":%s,"web_port":%d,"zerotier_access":%s,"zt_web_url":"%s","custom_blacklist":"%s","custom_whitelist":"%s","nextdns_id":"%s"}\n' \
-		"$local_installed" "$active" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url" "$mem_total_mb" "$overlay_free_mb" "$overlay_free_kb" "$cache_size_mb" "$recommended_cache_mb" "$parental_enabled" "$protection_enabled" "$safesearch_enabled" "$cloud_cache" "$web_port" "$zt_access" "$zt_web_url" "$(json_escape "$custom_blacklist")" "$(json_escape "$custom_whitelist")" "$(json_escape "$nextdns_id")"
+	printf '{"installed":%s,"active":%s,"mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s","mem_total_mb":%d,"overlay_free_mb":%d,"overlay_free_kb":%d,"cache_size_mb":%d,"recommended_cache_mb":%d,"parental_enabled":%s,"protection_enabled":%s,"safesearch_enabled":%s,"cloud_cache":%s,"web_port":%d,"zerotier_access":%s,"zt_web_url":"%s","custom_blacklist":"%s","custom_whitelist":"%s","nextdns_id":"%s","dns_intercept":%s}\n' \
+		"$local_installed" "$active" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url" "$mem_total_mb" "$overlay_free_mb" "$overlay_free_kb" "$cache_size_mb" "$recommended_cache_mb" "$parental_enabled" "$protection_enabled" "$safesearch_enabled" "$cloud_cache" "$web_port" "$zt_access" "$zt_web_url" "$(json_escape "$custom_blacklist")" "$(json_escape "$custom_whitelist")" "$(json_escape "$nextdns_id")" "$dns_intercept"
 }
 
 adblock_apply_rules() {
@@ -695,6 +699,40 @@ except Exception:
 		"$added_count" "$total_count" "$all_wl"
 }
 
+sync_dns_intercept() {
+	local enabled="${1:-1}"
+	case "$enabled" in 1|true) enabled=1 ;; *) enabled=0 ;; esac
+
+	if [ "$enabled" = "1" ]; then
+		local lan_ip="$(uci -q get network.lan.ipaddr || echo 192.168.73.1)"
+
+		uci -q set firewall.dns_intercept_udp=redirect
+		uci -q set firewall.dns_intercept_udp.name='DNS-Intercept-UDP'
+		uci -q set firewall.dns_intercept_udp.src='lan'
+		uci -q set firewall.dns_intercept_udp.proto='udp'
+		uci -q set firewall.dns_intercept_udp.src_dport='53'
+		uci -q set firewall.dns_intercept_udp.dest_ip="$lan_ip"
+		uci -q set firewall.dns_intercept_udp.dest_port='53'
+		uci -q set firewall.dns_intercept_udp.target='DNAT'
+		uci -q set firewall.dns_intercept_udp.enabled='1'
+
+		uci -q set firewall.dns_intercept_tcp=redirect
+		uci -q set firewall.dns_intercept_tcp.name='DNS-Intercept-TCP'
+		uci -q set firewall.dns_intercept_tcp.src='lan'
+		uci -q set firewall.dns_intercept_tcp.proto='tcp'
+		uci -q set firewall.dns_intercept_tcp.src_dport='53'
+		uci -q set firewall.dns_intercept_tcp.dest_ip="$lan_ip"
+		uci -q set firewall.dns_intercept_tcp.dest_port='53'
+		uci -q set firewall.dns_intercept_tcp.target='DNAT'
+		uci -q set firewall.dns_intercept_tcp.enabled='1'
+	else
+		uci -q delete firewall.dns_intercept_udp
+		uci -q delete firewall.dns_intercept_tcp
+	fi
+	uci commit firewall
+	/etc/init.d/firewall reload >/dev/null 2>&1 || true
+}
+
 adblock_configure() {
 	mode="${1:-local}"
 	cache_mb="${2:-64}"
@@ -708,6 +746,7 @@ adblock_configure() {
 	custom_blacklist="${10:-__KEEP_EXISTING__}"
 	nextdns_id="${11:-}"
 	custom_whitelist="${12:-__KEEP_EXISTING__}"
+	dns_intercept="${13:-1}"
 
 	case "$cache_mb" in ''|*[!0-9]*) cache_mb=64 ;; esac
 	[ "$cache_mb" -lt 4 ] && cache_mb=4
@@ -722,6 +761,14 @@ adblock_configure() {
 	case "$parental" in 1|true) parental_bool="true" ;; *) parental_bool="false" ;; esac
 	case "$safesearch" in 1|true) safesearch_bool="true" ;; *) safesearch_bool="false" ;; esac
 	case "$zt_access" in 0|false) zt_access_val="0" ;; *) zt_access_val="1" ;; esac
+	case "$dns_intercept" in 0|false) dns_intercept_val="0" ;; *) dns_intercept_val="1" ;; esac
+
+	mkdir -p /etc/config
+	[ -f /etc/config/equipe_perf ] || touch /etc/config/equipe_perf
+	uci -q set equipe_perf.settings=performance
+	uci -q set "equipe_perf.settings.dns_intercept=$dns_intercept_val"
+	uci commit equipe_perf
+	sync_dns_intercept "$dns_intercept_val"
 
 	if [ "$mode" = "local" ]; then
 		cache_bytes=$((cache_mb * 1048576))
@@ -879,6 +926,23 @@ adblock_enable() {
 	custom_blacklist="${10:-__KEEP_EXISTING__}"
 	nextdns_id="${11:-}"
 	custom_whitelist="${12:-__KEEP_EXISTING__}"
+	dns_intercept="${13:-1}"
+
+	# Suporta chamada do frontend com cache_mb na segunda posicao quando modo local
+	if [ "$chosen_mode" = "local" ] && [ -n "$2" ] && echo "$2" | grep -Eq '^[0-9]+$'; then
+		cache_mb="$2"
+		protection="${3:-1}"
+		parental="${4:-0}"
+		safesearch="${5:-0}"
+		provider="${6:-adguard_dns}"
+		cloud_cache="${7:-25000}"
+		web_port="${8:-3000}"
+		zt_access="${9:-1}"
+		custom_blacklist="${10:-__KEEP_EXISTING__}"
+		nextdns_id="${11:-}"
+		custom_whitelist="${12:-__KEEP_EXISTING__}"
+		dns_intercept="${13:-1}"
+	fi
 
 	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
 	overlay_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"
@@ -968,7 +1032,7 @@ adblock_enable() {
 		uci -q set equipe_perf.settings.adblock_cloud='0'
 		uci commit equipe_perf
 
-		adblock_configure local "$cache_mb" "$protection" "$parental" "$safesearch" "$provider" "$cloud_cache" "$web_port" "$zt_access" "$custom_blacklist" "$nextdns_id" "$custom_whitelist" >/dev/null 2>&1 || true
+		adblock_configure local "$cache_mb" "$protection" "$parental" "$safesearch" "$provider" "$cloud_cache" "$web_port" "$zt_access" "$custom_blacklist" "$nextdns_id" "$custom_whitelist" "$dns_intercept" >/dev/null 2>&1 || true
 
 		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 		echo ok
@@ -998,7 +1062,7 @@ adblock_enable() {
 	fi
 	uci commit dhcp
 
-	adblock_configure cloud "$cache_mb" "$protection" "$parental" "$safesearch" "$provider" "$cloud_cache" "$web_port" "$zt_access" "$custom_blacklist" "$nextdns_id" "$custom_whitelist"
+	adblock_configure cloud "$cache_mb" "$protection" "$parental" "$safesearch" "$provider" "$cloud_cache" "$web_port" "$zt_access" "$custom_blacklist" "$nextdns_id" "$custom_whitelist" "$dns_intercept"
 	return 0
 }
 
@@ -1086,6 +1150,7 @@ adblock_restore_dns() {
 		uci commit equipe_perf
 	fi
 
+	sync_dns_intercept 0
 	/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 }
 
@@ -1255,10 +1320,10 @@ handle_adblock() {
 		adblock_status_json
 		;;
 	adblock-enable)
-		adblock_enable "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}" "${13}"
+		adblock_enable "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}" "${13}" "${14}"
 		;;
 	adblock-configure)
-		adblock_configure "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}" "${13}"
+		adblock_configure "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}" "${12}" "${13}" "${14}"
 		;;
 	adblock-blacklist)
 		if [ "$#" -ge 2 ]; then

@@ -60,6 +60,7 @@ const adblockMethods = {
 		if (f.protection_enabled !== false) activeProtections.push('🛡️ Malware');
 		if (f.parental_enabled) activeProtections.push('👨‍👩‍👧 Adulto');
 		if (f.safesearch_enabled) activeProtections.push('🔍 SafeSearch');
+		if (f.dns_intercept !== false) activeProtections.push('📺 Smart TVs');
 		const protectionsText = activeProtections.length ? activeProtections.join(' • ') : 'Padrão';
 
 		const adblockPill = E('span', { class: 'ex-pill ' + pillClass }, [statusText]);
@@ -369,10 +370,12 @@ const adblockMethods = {
 				input,
 				E('span', { class: 'ex-switch-slider' })
 			]);
+			const titleNodes = Array.isArray(title) ? title : [title];
+			const descNodes = Array.isArray(desc) ? desc : [desc];
 			const row = E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; padding: 10px 12px; background: rgba(255,255,255,.03); border-radius: 8px;' }, [
 				E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
-					E('strong', { style: 'font-size: 0.88rem; display: block;' }, [title]),
-					E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px; line-height: 1.35;' }, [desc])
+					E('strong', { style: 'font-size: 0.88rem; display: block;' }, titleNodes),
+					E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px; line-height: 1.35;' }, descNodes)
 				]),
 				label
 			]);
@@ -380,21 +383,60 @@ const adblockMethods = {
 		};
 
 		const protMalware = makeToggleRow(
-			'🛡️ Navegação Segura (Anti-Malware & Phishing)',
-			'Bloqueia sites maliciosos, golpes financeiros e endereços perigosos antes que sejam abertos.',
+			[
+				_t('🛡️ Navegação Segura (Anti-Malware & Phishing)'),
+				' ',
+				E('span', {
+					class: 'ex-pill warning',
+					style: 'font-size: 0.68rem; margin-left: 6px; padding: 2px 7px; vertical-align: middle; background: rgba(234,179,8,0.18); border: 1px solid rgba(234,179,8,0.4); color: #facc15; font-weight: 700; border-radius: 4px;'
+				}, [_t('Nuvem Externa')])
+			],
+			[
+				_t('Bloqueia sites maliciosos e golpes antes que sejam abertos via checagem em servidores online.'),
+				' ',
+				E('span', { style: 'color: #f59e0b; font-weight: 600;' }, [_t('Atenção:')]),
+				' ',
+				E('span', { style: 'color: #fbbf24;' }, [_t('Pode elevar o tempo de resposta do DNS e reduzir a velocidade durante uso pesado de torrents.')])
+			],
 			f.protection_enabled !== false
 		);
 
 		const protParental = makeToggleRow(
-			'👨‍👩‍👧 Controle Parental (Bloqueio Adulto)',
-			'Bloqueia automaticamente pornografia e conteúdos impróprios para menores na rede toda.',
+			[
+				_t('👨‍👩‍👧 Controle Parental (Bloqueio Adulto)'),
+				' ',
+				E('span', {
+					class: 'ex-pill warning',
+					style: 'font-size: 0.68rem; margin-left: 6px; padding: 2px 7px; vertical-align: middle; background: rgba(234,179,8,0.18); border: 1px solid rgba(234,179,8,0.4); color: #facc15; font-weight: 700; border-radius: 4px;'
+				}, [_t('Nuvem Externa')])
+			],
+			[
+				_t('Bloqueia automaticamente pornografia e conteúdos impróprios para menores na rede toda via servidores online.'),
+				' ',
+				E('span', { style: 'color: #f59e0b; font-weight: 600;' }, [_t('Atenção:')]),
+				' ',
+				E('span', { style: 'color: #fbbf24;' }, [_t('Pode causar lentidão no DNS em redes com alto volume de conexões.')])
+			],
 			!!f.parental_enabled
 		);
 
 		const protSafeSearch = makeToggleRow(
-			'🔍 Busca Segura Forçada (SafeSearch)',
-			'Obriga o filtro de família no Google, Bing, YouTube e DuckDuckGo para proteger crianças.',
+			_t('🔍 Busca Segura Forçada (SafeSearch)'),
+			_t('Obriga o filtro de família no Google, Bing, YouTube e DuckDuckGo para proteger crianças.'),
 			!!f.safesearch_enabled
+		);
+
+		const protDnsIntercept = makeToggleRow(
+			[
+				_t('📺 Blindagem de Smart TVs (Interceptar Porta 53)'),
+				' ',
+				E('span', {
+					class: 'ex-pill online',
+					style: 'font-size: 0.68rem; margin-left: 6px; padding: 2px 7px; vertical-align: middle; background: rgba(16,185,129,0.18); border: 1px solid rgba(16,185,129,0.4); color: #34d399; font-weight: 700; border-radius: 4px;'
+				}, [_t('DNAT Transparente')])
+			],
+			_t('Força Smart TVs, Chromecasts e aparelhos com DNS embutido a passarem pelo AdGuard. Redireciona consultas externas da porta 53 para o roteador em 0ms.'),
+			f.dns_intercept !== false
 		);
 
 		const portInput = E('input', {
@@ -434,7 +476,8 @@ const adblockMethods = {
 			E('div', { style: 'margin-top: 14px; font-size: 0.85rem; font-weight: 600;' }, ['Proteções Essenciais']),
 			protMalware.row,
 			protParental.row,
-			protSafeSearch.row
+			protSafeSearch.row,
+			protDnsIntercept.row
 		]);
 
 		// Nuvem (Lite)
@@ -710,9 +753,10 @@ const adblockMethods = {
 						const rawBlacklist = blacklistTextarea.value.trim();
 						const rawWhitelist = whitelistTextarea.value.trim();
 						const nextdnsId = nextdnsIdInput.value.trim();
+						const dnsIntercept = protDnsIntercept.input.checked ? '1' : '0';
 
 						const cmd = active ? 'adblock-configure' : 'adblock-enable';
-						const args = [cmd, mode, (mode === 'local' ? cacheMb : prov), prot, par, ss, prov, cCache, String(webPort), ztAcc, rawBlacklist, nextdnsId, rawWhitelist];
+						const args = [cmd, mode, (mode === 'local' ? cacheMb : prov), prot, par, ss, prov, cCache, String(webPort), ztAcc, rawBlacklist, nextdnsId, rawWhitelist, dnsIntercept];
 
 						fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 							if (r.code) throw new Error(r.stderr || 'Falha ao configurar bloqueador');

@@ -80,6 +80,15 @@ feature_missing_installable() {
 			[ "$tmp_avail" -ge "${ARK_SPEEDTEST_RAM_MIN_KB:-25600}" ] || return 1
 			return 0
 			;;
+		upnp)
+			if is_fw4 && ark_upnp_is_legacy_iptables; then
+				return 0
+			elif is_fw3 && ark_upnp_is_legacy_nftables_on_fw3; then
+				return 0
+			fi
+			installed "$package" && return 1
+			return 0
+			;;
 		*)
 			installed "$package" && return 1
 			return 0
@@ -93,7 +102,13 @@ cleanup_packages() {
 		package_manager) printf 'luci-app-package-manager' ;;
 		ipv6) printf 'luci-proto-ipv6 odhcp6c odhcpd-ipv6only' ;;
 		translations) printf 'luci-i18n-mwan3-pt-br luci-i18n-nlbwmon-pt-br luci-i18n-sqm-pt-br luci-i18n-upnp-pt-br' ;;
-		upnp) printf 'luci-app-upnp miniupnpd-nftables' ;;
+		upnp)
+			if is_fw4; then
+				printf 'luci-app-upnp miniupnpd-nftables miniupnpd'
+			else
+				printf 'luci-app-upnp miniupnpd'
+			fi
+			;;
 		speedify_residue) printf '' ;;
 		*) return 1 ;;
 	esac
@@ -1201,18 +1216,31 @@ handle_ezsetup() {
 		;;
 	ez-setup-install-modules)
 		status="/tmp/ark-ezsetup-modules.status"; log="/tmp/ark-ezsetup-modules.log"
+		stage_file="/tmp/ark-ezsetup-modules.stage"
 		[ "$(cat "$status" 2>/dev/null)" != running ] || { echo running; exit 0; }
 		modules="$(ez_get install_modules '')"
-		[ -n "$modules" ] || { echo done >"$status"; echo installed; exit 0; }
+		if [ -z "$modules" ]; then
+			echo done >"$status"
+			printf '{"stage":"done","step":1,"total":1,"percent":100,"message":"Nenhum módulo pendente para instalar.","package":""}\n' >"$stage_file"
+			echo installed; exit 0
+		fi
 		command -v apk >/dev/null 2>&1 || command -v opkg >/dev/null 2>&1 || { echo 'Gerenciador de pacotes indisponivel' >&2; exit 3; }
 		echo running >"$status"
 		(
 			ok=1
+			mod_count=$(echo "$modules" | wc -w)
+			total_steps=$((mod_count + 2))
+			curr_step=1
+			printf '{"stage":"update","step":%d,"total":%d,"percent":10,"message":"Atualizando índice de pacotes...","package":""}\n' "$curr_step" "$total_steps" > "$stage_file"
 			if command -v apk >/dev/null 2>&1; then apk update || ok=0
 			else opkg update || ok=0
 			fi
 			for key in $modules; do
+				curr_step=$((curr_step + 1))
 				package="$(feature_package "$key" 2>/dev/null)" || { echo "Modulo invalido: $key"; ok=0; continue; }
+				pct=$(( 15 + ((curr_step - 1) * 75 / mod_count) ))
+				[ "$pct" -gt 92 ] && pct=92
+				printf '{"stage":"installing","step":%d,"total":%d,"percent":%d,"message":"Instalando %s (%s)...","package":"%s","key":"%s"}\n' "$curr_step" "$total_steps" "$pct" "$key" "$package" "$package" "$key" > "$stage_file"
 				if [ "$key" = speedtest ]; then
 					feature_active speedtest || prepare_speedtest || ok=0
 					continue
@@ -1226,7 +1254,13 @@ handle_ezsetup() {
 					/etc/init.d/mwan3 disable >/dev/null 2>&1 || true
 				fi
 			done
-			[ "$ok" = 1 ] && echo done >"$status" || echo error >"$status"
+			if [ "$ok" = 1 ]; then
+				echo done >"$status"
+				printf '{"stage":"done","step":%d,"total":%d,"percent":100,"message":"Módulos do Ark - Setup instalados com sucesso!","package":""}\n' "$total_steps" "$total_steps" > "$stage_file"
+			else
+				echo error >"$status"
+				printf '{"stage":"error","step":%d,"total":%d,"percent":%d,"message":"Ocorreu uma falha ao instalar módulos. Verifique o log.","package":""}\n' "$curr_step" "$total_steps" "$pct" > "$stage_file"
+			fi
 		) >"$log" 2>&1 &
 		echo started
 		;;
@@ -1235,6 +1269,9 @@ handle_ezsetup() {
 		;;
 	ez-setup-install-log)
 		cat /tmp/ark-ezsetup-modules.log 2>/dev/null
+		;;
+	ez-setup-install-stage)
+		cat /tmp/ark-ezsetup-modules.stage 2>/dev/null || printf '{"stage":"idle","step":0,"total":0,"percent":0,"message":""}\n'
 		;;
 	features)
 		cache="/tmp/ark-features.cache"
@@ -1423,8 +1460,10 @@ handle_ezsetup() {
 		wifi_maxpower_enabled=false
 		cur_country="$(uci -q get wireless.radio0.country || uci -q get wireless.radio1.country || echo 'BR')"
 		[ "$cur_country" = "PA" ] && wifi_maxpower_enabled=true
-		printf '},"hardware":{"cpu_cores":%s,"cpu_freq_mhz":%s,"cpu_freq_str":"%s","cpu_arch":"%s","mem_total_mb":%s,"flash_type":"%s","wifi_160_supported":%s,"wifi_ax_supported":%s,"wifi_be_supported":%s,"wifi_6g_supported":%s,"wifi_320_supported":%s,"wifi_wed_supported":%s,"wifi_wed_enabled":%s,"wifi_maxpower_enabled":%s,"is_legacy_owrt":%s},"https":{"available":%s,"redirect":%s,"certificate":"local","ca_available":%s,"ca_fingerprint":"%s","ca_download":"/ark-router/ark-router-ca.crt"},"update":{"current":"%s","repo":"%s","manager":"%s"}}\n' \
-			"$cpu_cores" "$cpu_freq_mhz" "$(json_escape "$cpu_freq_str")" "$(json_escape "$cpu_arch")" "$mem_total_mb" "$(json_escape "$flash_type")" "$wifi_160" "$wifi_ax" "$wifi_be" "$wifi_6g" "$wifi_320" "$wifi_wed_supported" "$wifi_wed_enabled" "$wifi_maxpower_enabled" "$is_legacy_owrt" "$https_available" "$(bool "$https_redirect")" "$ca_available" "$ca_fingerprint" "$(json_escape "$current_version")" "$(json_escape "$update_repo")" "$(json_escape "$manager")"
+		asu_check=false
+		[ "$(uci -q get attendedsysupgrade.client.login_check_for_upgrades || echo 0)" = "1" ] && asu_check=true
+		printf '},"hardware":{"cpu_cores":%s,"cpu_freq_mhz":%s,"cpu_freq_str":"%s","cpu_arch":"%s","mem_total_mb":%s,"flash_type":"%s","wifi_160_supported":%s,"wifi_ax_supported":%s,"wifi_be_supported":%s,"wifi_6g_supported":%s,"wifi_320_supported":%s,"wifi_wed_supported":%s,"wifi_wed_enabled":%s,"wifi_maxpower_enabled":%s,"is_legacy_owrt":%s},"https":{"available":%s,"redirect":%s,"certificate":"local","ca_available":%s,"ca_fingerprint":"%s","ca_download":"/ark-router/ark-router-ca.crt"},"update":{"current":"%s","repo":"%s","manager":"%s","asu_check":%s}}\n' \
+			"$cpu_cores" "$cpu_freq_mhz" "$(json_escape "$cpu_freq_str")" "$(json_escape "$cpu_arch")" "$mem_total_mb" "$(json_escape "$flash_type")" "$wifi_160" "$wifi_ax" "$wifi_be" "$wifi_6g" "$wifi_320" "$wifi_wed_supported" "$wifi_wed_enabled" "$wifi_maxpower_enabled" "$is_legacy_owrt" "$https_available" "$(bool "$https_redirect")" "$ca_available" "$ca_fingerprint" "$(json_escape "$current_version")" "$(json_escape "$update_repo")" "$(json_escape "$manager")" "$asu_check"
 		}
 		features_out="$(features_payload)"
 		printf '%s\n' "$features_out" > "$cache" 2>/dev/null
@@ -1690,7 +1729,10 @@ handle_ezsetup() {
 				echo done >"$status"; echo installed; exit 0
 			fi
 		elif [ "$key" = upnp ]; then
-			if installed "$package"; then
+			if (is_fw4 && ark_upnp_is_legacy_iptables) || (is_fw3 && ark_upnp_is_legacy_nftables_on_fw3); then
+				ark_migrate_upnp_variant
+				echo done >"$status"; echo installed; exit 0
+			elif installed "$package"; then
 				[ -x /etc/init.d/miniupnpd ] && { /etc/init.d/miniupnpd enable >/dev/null 2>&1 || true; /etc/init.d/miniupnpd restart >/dev/null 2>&1 || true; }
 				echo done >"$status"; echo installed; exit 0
 			fi
@@ -1765,6 +1807,12 @@ handle_ezsetup() {
 				uci commit equipe_dashboard 2>/dev/null || true
 			elif [ "$key" = argon ] && command -v apk >/dev/null 2>&1 && ! apk search luci-theme-argon 2>/dev/null | grep -qx 'luci-theme-argon.*'; then
 				install_argon_release || ok=0
+			elif [ "$key" = upnp ] && is_fw4; then
+				if command -v apk >/dev/null 2>&1; then
+					apk update && apk add luci-app-upnp miniupnpd-nftables || ok=0
+				else
+					opkg update && opkg install luci-app-upnp miniupnpd-nftables || ok=0
+				fi
 			elif command -v apk >/dev/null 2>&1; then
 				apk update && apk add "$package" || ok=0
 			else
@@ -1815,6 +1863,7 @@ handle_ezsetup() {
 		;;
 	feature-install-missing)
 		status="/tmp/equipe-dashboard-install-missing.status"; log="/tmp/equipe-dashboard-install-missing.log"
+		stage_file="/tmp/equipe-dashboard-install-missing.stage"
 		pid_file="/tmp/equipe-dashboard-install-missing.pid"
 		if [ "$(cat "$status" 2>/dev/null)" = running ] && [ -f "$pid_file" ]; then
 			bg_pid="$(cat "$pid_file" 2>/dev/null)"
@@ -1827,21 +1876,47 @@ handle_ezsetup() {
 		for key in $(bulk_feature_keys); do
 			feature_missing_installable "$key" && keys="$keys $key"
 		done
-		[ -n "$keys" ] || { echo done >"$status"; echo installed; exit 0; }
+		if [ -z "$keys" ]; then
+			echo done >"$status"
+			printf '{"stage":"done","step":1,"total":1,"percent":100,"message":"Todos os recursos leves já estavam instalados.","package":""}\n' >"$stage_file"
+			echo installed; exit 0
+		fi
 		echo running >"$status"
 		(
 			ok=1
+			key_count=$(echo "$keys" | wc -w)
+			total_steps=$((key_count + 2))
+			curr_step=1
+			printf '{"stage":"update","step":%d,"total":%d,"percent":10,"message":"Atualizando índice de pacotes...","package":""}\n' "$curr_step" "$total_steps" > "$stage_file"
 			echo "Instalando recursos:$keys"
 			if command -v apk >/dev/null 2>&1; then apk update || ok=0
 			else opkg update || ok=0
 			fi
 			for key in $keys; do
+				curr_step=$((curr_step + 1))
 				package="$(feature_package "$key")" || { echo "Recurso invalido: $key"; ok=0; continue; }
+				pct=$(( 15 + ((curr_step - 1) * 75 / key_count) ))
+				[ "$pct" -gt 92 ] && pct=92
+				printf '{"stage":"installing","step":%d,"total":%d,"percent":%d,"message":"Instalando %s (%s)...","package":"%s","key":"%s"}\n' "$curr_step" "$total_steps" "$pct" "$key" "$package" "$package" "$key" > "$stage_file"
 				echo "==> $key ($package)"
 				if [ "$key" = speedtest ]; then
 					prepare_speedtest || ok=0
 				elif [ "$key" = argon ] && command -v apk >/dev/null 2>&1 && ! apk search luci-theme-argon 2>/dev/null | grep -qx 'luci-theme-argon.*'; then
 					install_argon_release || ok=0
+				elif [ "$key" = upnp ]; then
+					if (is_fw4 && ark_upnp_is_legacy_iptables) || (is_fw3 && ark_upnp_is_legacy_nftables_on_fw3); then
+						ark_migrate_upnp_variant || ok=0
+					elif is_fw4; then
+						if command -v apk >/dev/null 2>&1; then
+							installed "$package" || apk add luci-app-upnp miniupnpd-nftables || ok=0
+						else
+							installed "$package" || opkg install luci-app-upnp miniupnpd-nftables || ok=0
+						fi
+					elif command -v apk >/dev/null 2>&1; then
+						installed "$package" || apk add "$package" || ok=0
+					else
+						installed "$package" || opkg install "$package" || ok=0
+					fi
 				elif command -v apk >/dev/null 2>&1; then
 					installed "$package" || apk add "$package" || ok=0
 				else
@@ -1854,7 +1929,13 @@ handle_ezsetup() {
 				fi
 			done
 			rm -f "$pid_file"
-			[ "$ok" = 1 ] && echo done >"$status" || echo error >"$status"
+			if [ "$ok" = 1 ]; then
+				echo done >"$status"
+				printf '{"stage":"done","step":%d,"total":%d,"percent":100,"message":"Todos os recursos foram instalados com sucesso!","package":""}\n' "$total_steps" "$total_steps" > "$stage_file"
+			else
+				echo error >"$status"
+				printf '{"stage":"error","step":%d,"total":%d,"percent":%d,"message":"Ocorreu uma falha durante a instalação. Verifique o log.","package":""}\n' "$curr_step" "$total_steps" "$pct" > "$stage_file"
+			fi
 		) >"$log" 2>&1 &
 		echo $! > "$pid_file"
 		echo started
@@ -1877,6 +1958,9 @@ handle_ezsetup() {
 		;;
 	feature-install-missing-log)
 		cat "/tmp/equipe-dashboard-install-missing.log" 2>/dev/null
+		;;
+	feature-install-missing-stage)
+		cat "/tmp/equipe-dashboard-install-missing.stage" 2>/dev/null || printf '{"stage":"idle","step":0,"total":0,"percent":0,"message":""}\n'
 		;;
 	cleanup-status)
 		cleanup_status_json

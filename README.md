@@ -1,7 +1,7 @@
 # ARK Router
 
 ![OpenWrt](https://img.shields.io/badge/OpenWrt-24.x%20%2F%2025.x-00B5E2?logo=openwrt&logoColor=white)
-![Release](https://img.shields.io/badge/release-v1.0.2-blue.svg)
+![Release](https://img.shields.io/badge/release-v1.5.1-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![Language](https://img.shields.io/badge/UI-PT--BR%20%2F%20EN%20%2F%20ES-blue)
 ![Platform](https://img.shields.io/badge/arch-all%20%2F%20noarch-orange)
@@ -12,7 +12,7 @@ The project does not replace OpenWrt or LuCI — it operates on top of LuCI as a
 
 > **Keywords / SEO**: ARK Router, OpenWrt dashboard, LuCI dashboard, OpenWrt moderno, monitorar tráfego por dispositivo, per-device bandwidth monitor, OpenWrt Starlink telemetry, ZeroTier OpenWrt autostart, DNS benchmark router, SQM CAKE bufferbloat QoS, Multi-WAN failover load balancing, Speedify OpenWrt bonding, OpenWrt mobile UI, painel roteador OpenWrt, network bandwidth limiter, real-time router monitoring, adguard home openwrt ram, dns blacklist openwrt, cross-browser responsive openwrt.
 
-The current official release is **v1.0.2**. ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
+The current official release is **v1.5.1**. ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
 
 ---
 
@@ -137,6 +137,8 @@ The current pilot has been tested on:
 | Wi-Fi names used in the pilot | Custom, router-local names; not project defaults |
 
 The Wi-Fi names above are not requirements. They document the pilot environment only. ARK Router reads and manages whichever Wi-Fi names are configured on the router. Pilot passwords, private IPs, backups and router-specific secrets are intentionally not included in this repository.
+
+> 💡 **Cudy WR3000 v1 Recovery & Flash Guide**: Para o procedimento detalhado e validado de recuperação de emergência via TFTP e migração entre o firmware OEM e OpenWrt, consulte [`docs/CUDY_WR3000_TFTP_RECOVERY.md`](docs/CUDY_WR3000_TFTP_RECOVERY.md).
 
 ## Compatibility
 
@@ -402,7 +404,7 @@ tar -xzf /tmp/ark-router-config-backup-YYYYMMDD-HHMMSS.tar.gz -C /
 
 ## Project Status
 
-Version **1.0.2** is the current official release. It consolidates universal compatibility for both OpenWrt generations (OpenWrt Antigo 19.07-23.05 via IPK and OpenWrt Novo 24.x-25.x via APK and native SquashFS ROM builds). It features an in-place anti-jitter update engine with an integrated Total consumed column (MB/GB), real-time per-device hardware rates (Wi-Fi DMA), a built-in multi-provider DNS Turbo benchmark, ZeroTier remote-access with hybrid flash/RAM execution, a System Performance and Stability center (12h flash wear protection, RAM autopurge, conntrack connection recycling, IRQ Balance), full mobile touch responsiveness (iOS/Android) with 40px+ touch targets and ghost modal overlay prevention, dynamic Multi-WAN failover/balancing, multi-Starlink telemetry, CAKE/SQM upload and download queue management, guest rate limits, and safe rollback checkpoints. Suitable for home, office, mobile, event, gaming and production OpenWrt setups.
+Version **1.5.1** is the current official release. It consolidates universal compatibility for both OpenWrt generations (OpenWrt Antigo 19.07-23.05 via IPK and OpenWrt Novo 24.x-25.x via APK and native SquashFS ROM builds). It features an in-place anti-jitter update engine with an integrated Total consumed column (MB/GB), real-time per-device hardware rates (Wi-Fi DMA), a built-in multi-provider DNS Turbo benchmark, ZeroTier remote-access with hybrid flash/RAM execution, a System Performance and Stability center (12h flash wear protection, RAM autopurge, conntrack connection recycling, IRQ Balance), full mobile touch responsiveness (iOS/Android) with 40px+ touch targets and ghost modal overlay prevention, dynamic Multi-WAN failover/balancing, multi-Starlink telemetry, CAKE/SQM upload and download queue management, guest rate limits, and safe rollback checkpoints. Suitable for home, office, mobile, event, gaming and production OpenWrt setups.
 
 ## Native ROM Builds (ImageBuilder)
 

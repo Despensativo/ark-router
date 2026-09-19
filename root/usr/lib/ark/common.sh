@@ -61,11 +61,27 @@ ark_has_opkg() {
 }
 
 ark_has_fw4() {
-	command -v fw4 >/dev/null 2>&1 || [ -x "${ARK_ROOT}/sbin/fw4" ]
+	command -v fw4 >/dev/null 2>&1 || [ -x "${ARK_ROOT}/sbin/fw4" ] || [ -x "/sbin/fw4" ]
 }
 
 ark_has_nftables() {
-	command -v nft >/dev/null 2>&1 || [ -x "${ARK_ROOT}/usr/sbin/nft" ]
+	command -v nft >/dev/null 2>&1 || [ -x "${ARK_ROOT}/usr/sbin/nft" ] || [ -x "/usr/sbin/nft" ]
+}
+
+ark_firewall_engine() {
+	if ark_has_fw4 || { ark_has_nftables && nft list table inet fw4 >/dev/null 2>&1; }; then
+		printf 'fw4'
+	else
+		printf 'fw3'
+	fi
+}
+
+is_fw4() {
+	[ "$(ark_firewall_engine)" = "fw4" ]
+}
+
+is_fw3() {
+	[ "$(ark_firewall_engine)" = "fw3" ]
 }
 
 is_swconfig() {
@@ -248,3 +264,384 @@ detect_dns_blocker() {
 	return 1
 }
 
+# Firewall-aware Addon Reconcilers and Variant Migration (fw4 vs fw3)
+ark_upnp_is_legacy_iptables() {
+	local opkg_info="/usr/lib/opkg/info"
+	local upnp_bin="/usr/sbin/miniupnpd"
+	[ -n "${ARK_ROOT}" ] && {
+		opkg_info="${ARK_ROOT}/usr/lib/opkg/info"
+		upnp_bin="${ARK_ROOT}/usr/sbin/miniupnpd"
+	}
+	if ark_has_apk; then
+		apk info -e miniupnpd-iptables >/dev/null 2>&1 && return 0
+	elif [ -f "${opkg_info}/miniupnpd-iptables.control" ] || [ -f "${opkg_info}/miniupnpd-iptables.list" ]; then
+		return 0
+	fi
+	if [ -x "$upnp_bin" ]; then
+		if command -v readelf >/dev/null 2>&1; then
+			readelf -d "$upnp_bin" 2>/dev/null | grep -q 'libip4tc' && return 0
+		elif command -v strings >/dev/null 2>&1; then
+			strings "$upnp_bin" 2>/dev/null | grep -q 'libip4tc' && return 0
+		fi
+	fi
+	if is_fw4; then
+		if ark_has_apk; then
+			apk info -e miniupnpd >/dev/null 2>&1 && ! apk info -e miniupnpd-nftables >/dev/null 2>&1 && return 0
+		elif [ -f "${opkg_info}/miniupnpd.control" ] && [ ! -f "${opkg_info}/miniupnpd-nftables.control" ]; then
+			return 0
+		fi
+	fi
+	return 1
+}
+
+ark_upnp_is_legacy_nftables_on_fw3() {
+	is_fw3 || return 1
+	local opkg_info="/usr/lib/opkg/info"
+	local upnp_bin="/usr/sbin/miniupnpd"
+	[ -n "${ARK_ROOT}" ] && {
+		opkg_info="${ARK_ROOT}/usr/lib/opkg/info"
+		upnp_bin="${ARK_ROOT}/usr/sbin/miniupnpd"
+	}
+	if ark_has_apk; then
+		apk info -e miniupnpd-nftables >/dev/null 2>&1 && return 0
+	elif [ -f "${opkg_info}/miniupnpd-nftables.control" ] || [ -f "${opkg_info}/miniupnpd-nftables.list" ]; then
+		return 0
+	fi
+	if [ -x "$upnp_bin" ]; then
+		if command -v readelf >/dev/null 2>&1; then
+			readelf -d "$upnp_bin" 2>/dev/null | grep -q 'libnftnl' && return 0
+		elif command -v strings >/dev/null 2>&1; then
+			strings "$upnp_bin" 2>/dev/null | grep -q 'libnftnl' && return 0
+		fi
+	fi
+	return 1
+}
+
+ark_migrate_upnp_variant() {
+	local target_engine="$(ark_firewall_engine)"
+	local root_prefix="${ARK_ROOT:-}"
+	local cfg_file="${root_prefix}/etc/config/upnpd"
+	local init_script="${root_prefix}/etc/init.d/miniupnpd"
+	local fw4_bin="${root_prefix}/sbin/fw4"
+	local bak_file="/tmp/upnpd.conf.bak"
+
+	if [ "$target_engine" = "fw4" ]; then
+		ark_upnp_is_legacy_iptables || return 0
+		logger -t ark-reconcile "Detectado miniupnpd legado (iptables) em motor fw4. Migrando para miniupnpd-nftables puro..."
+		
+		# 1. Parar servico ativo
+		[ -x "$init_script" ] && "$init_script" stop >/dev/null 2>&1 || true
+		killall miniupnpd 2>/dev/null || true
+		
+		# 2. Preservar configuracoes UCI
+		[ -f "$cfg_file" ] && cp -f "$cfg_file" "$bak_file" 2>/dev/null || true
+		
+		# 3. Remover pacote incompativel
+		if ark_has_apk; then
+			apk del miniupnpd-iptables miniupnpd >/dev/null 2>&1 || true
+		else
+			opkg remove --force-depends miniupnpd-iptables miniupnpd >/dev/null 2>&1 || true
+		fi
+		
+		# 4. No fw4 puro (nftables), nao invocamos iptables/ip6tables para evitar instanciacao de tabelas legadas indesejadas no kernel
+		
+		# 5. Instalar pacote oficial nftables
+		if ark_has_apk; then
+			apk update >/dev/null 2>&1 || true
+			apk add luci-app-upnp miniupnpd-nftables >/dev/null 2>&1 || true
+		else
+			opkg update >/dev/null 2>&1 || true
+			opkg install luci-app-upnp miniupnpd-nftables >/dev/null 2>&1 || true
+		fi
+		
+		# 6. Restaurar config se necessario
+		if [ -f "$bak_file" ]; then
+			[ -s "$cfg_file" ] || cp -f "$bak_file" "$cfg_file" 2>/dev/null || true
+			rm -f "$bak_file" 2>/dev/null || true
+		fi
+		
+		# 7. Recarregar fw4 e reiniciar daemon
+		[ -x "$fw4_bin" ] && "$fw4_bin" reload >/dev/null 2>&1 || true
+		[ -x "$init_script" ] && {
+			"$init_script" enable >/dev/null 2>&1 || true
+			"$init_script" start >/dev/null 2>&1 || true
+		}
+		logger -t ark-reconcile "Migracao UPnP concluida: miniupnpd-nftables ativo no fw4."
+		return 0
+
+	elif [ "$target_engine" = "fw3" ]; then
+		ark_upnp_is_legacy_nftables_on_fw3 || return 0
+		logger -t ark-reconcile "Detectado miniupnpd-nftables em motor fw3 legado. Restaurando versao iptables retrocompativel..."
+		
+		[ -x "$init_script" ] && "$init_script" stop >/dev/null 2>&1 || true
+		killall miniupnpd 2>/dev/null || true
+		[ -f "$cfg_file" ] && cp -f "$cfg_file" "$bak_file" 2>/dev/null || true
+		
+		if ark_has_apk; then
+			apk del miniupnpd-nftables >/dev/null 2>&1 || true
+			apk add luci-app-upnp miniupnpd >/dev/null 2>&1 || true
+		else
+			opkg remove --force-depends miniupnpd-nftables >/dev/null 2>&1 || true
+			opkg install luci-app-upnp miniupnpd >/dev/null 2>&1 || true
+		fi
+		
+		if [ -f "$bak_file" ]; then
+			[ -s "$cfg_file" ] || cp -f "$bak_file" "$cfg_file" 2>/dev/null || true
+			rm -f "$bak_file" 2>/dev/null || true
+		fi
+		
+		[ -x "${root_prefix}/etc/init.d/firewall" ] && "${root_prefix}/etc/init.d/firewall" reload >/dev/null 2>&1 || true
+		[ -x "$init_script" ] && {
+			"$init_script" enable >/dev/null 2>&1 || true
+			"$init_script" start >/dev/null 2>&1 || true
+		}
+		logger -t ark-reconcile "Restauracao UPnP concluida: miniupnpd compativel ativo no fw3."
+		return 0
+	fi
+	return 1
+}
+
+# Safe Storage & Service Shutdown before Reboot
+# Interrompe graciosamente servicos que gravam em midias externas (servidores web,
+# bancos de dados, downloads, compartilhamentos de arquivos e midia),
+# e descarrega todos os buffers de RAM do kernel de forma segura antes do reinicio.
+ark_safe_storage_reboot() {
+	local root_prefix="${ARK_ROOT:-}"
+	logger -t ark-safe-storage "Iniciando sequencia de encerramento seguro e protecao de armazenamento..."
+
+	# 1. Pausa graciosa e encerramento de downloads (Transmission, Aria2)
+	if pidof transmission-daemon >/dev/null 2>&1; then
+		logger -t ark-safe-storage "Transmission ativo: pausando downloads e salvando metadados..."
+		if command -v transmission-remote >/dev/null 2>&1; then
+			local t_port="$(uci -q ${root_prefix:+-c "$root_prefix/etc/config"} get transmission.@transmission[0].rpc_port 2>/dev/null || echo 9091)"
+			local t_auth=""
+			local t_auth_req="$(uci -q ${root_prefix:+-c "$root_prefix/etc/config"} get transmission.@transmission[0].rpc_authentication_required 2>/dev/null || echo 0)"
+			if [ "$t_auth_req" = "1" ] || [ "$t_auth_req" = "true" ]; then
+				local t_user="$(uci -q ${root_prefix:+-c "$root_prefix/etc/config"} get transmission.@transmission[0].rpc_username 2>/dev/null || echo '')"
+				local t_pass="$(uci -q ${root_prefix:+-c "$root_prefix/etc/config"} get transmission.@transmission[0].rpc_password 2>/dev/null || echo '')"
+				[ -n "$t_user" ] && t_auth="-n ${t_user}:${t_pass}"
+			fi
+			transmission-remote "$t_port" $t_auth -t all --stop >/dev/null 2>&1 || true
+		fi
+
+		if [ -x "${root_prefix}/etc/init.d/transmission" ]; then
+			"${root_prefix}/etc/init.d/transmission" stop >/dev/null 2>&1 || true
+		else
+			killall -TERM transmission-daemon 2>/dev/null || true
+		fi
+
+		local wait_cnt=0
+		while pidof transmission-daemon >/dev/null 2>&1 && [ "$wait_cnt" -lt 6 ]; do
+			usleep 500000 2>/dev/null || sleep 1
+			wait_cnt=$((wait_cnt + 1))
+		done
+		if pidof transmission-daemon >/dev/null 2>&1; then
+			killall -9 transmission-daemon 2>/dev/null || true
+		fi
+	fi
+
+	if pidof aria2c >/dev/null 2>&1; then
+		logger -t ark-safe-storage "Aria2 ativo: salvando sessao e encerrando downloads..."
+		if [ -x "${root_prefix}/etc/init.d/aria2" ]; then
+			"${root_prefix}/etc/init.d/aria2" stop >/dev/null 2>&1 || true
+		else
+			killall -TERM aria2c 2>/dev/null || true
+		fi
+		local wait_cnt=0
+		while pidof aria2c >/dev/null 2>&1 && [ "$wait_cnt" -lt 6 ]; do
+			usleep 500000 2>/dev/null || sleep 1
+			wait_cnt=$((wait_cnt + 1))
+		done
+		if pidof aria2c >/dev/null 2>&1; then
+			killall -9 aria2c 2>/dev/null || true
+		fi
+	fi
+
+	# 2. Interromper daemons de servidores web e bancos de dados (fechar conexoes e locks)
+	for srv in nginx lighttpd apache2 mysqld mariadb uwsgi php-fpm; do
+		if [ -x "${root_prefix}/etc/init.d/$srv" ]; then
+			"${root_prefix}/etc/init.d/$srv" stop >/dev/null 2>&1 || true
+		fi
+	done
+
+	# 3. Interromper daemons de rede com escrita em disco (Samba, FTP, DLNA)
+	for srv in smbd nmbd samba samba4 vsftpd minidlna gerbera; do
+		if [ -x "${root_prefix}/etc/init.d/$srv" ]; then
+			"${root_prefix}/etc/init.d/$srv" stop >/dev/null 2>&1 || true
+		fi
+	done
+
+	# 4. Forcar nlbwmon a gravar estatisticas de trafego acumuladas
+	if pidof nlbwmon >/dev/null 2>&1; then
+		killall -USR1 nlbwmon 2>/dev/null || true
+	fi
+
+	# 5. Sincronizacao de memoria RAM para os discos fisicos (sync multiplo)
+	sync
+	sync
+	sync
+
+	logger -t ark-safe-storage "Protecao de armazenamento concluida. Buffers descarregados com sucesso."
+	return 0
+}
+
+# Auditoria e endurecimento do Transmission contra vazamentos de protocolo
+ark_harden_transmission_config() {
+	local root_prefix="${ARK_ROOT:-}"
+	local cfg="${root_prefix}/etc/config/transmission"
+	[ -f "$cfg" ] || return 0
+
+	local changed=0
+	# 1. UPnP: desativar para evitar chamadas de miniupnpd/iptables no fw4
+	if [ "$(uci -q ${root_prefix:+-c "$root_prefix/etc/config"} get transmission.@transmission[0].port_forwarding_enabled)" != "0" ]; then
+		uci -q ${root_prefix:+-c "$root_prefix/etc/config"} set transmission.@transmission[0].port_forwarding_enabled='0'
+		changed=1
+	fi
+
+	# 2. Criptografia: forcar criptografia (1=prefer, 2=require) para eliminar vazamento em texto claro
+	local enc="$(uci -q ${root_prefix:+-c "$root_prefix/etc/config"} get transmission.@transmission[0].encryption)"
+	if [ "$enc" = "0" ] || [ -z "$enc" ]; then
+		uci -q ${root_prefix:+-c "$root_prefix/etc/config"} set transmission.@transmission[0].encryption='1'
+		changed=1
+	fi
+
+	# 3. LPD: desativar multicast local na LAN para evitar vazamento de hashes e acordar Wi-Fi
+	if [ "$(uci -q ${root_prefix:+-c "$root_prefix/etc/config"} get transmission.@transmission[0].lpd_enabled)" != "0" ]; then
+		uci -q ${root_prefix:+-c "$root_prefix/etc/config"} set transmission.@transmission[0].lpd_enabled='0'
+		changed=1
+	fi
+
+	# 4. Desativar uTP (LEDBAT) para evitar estrangulamento de banda e tempestade UDP em userspace
+	if [ "$(uci -q ${root_prefix:+-c "$root_prefix/etc/config"} get transmission.@transmission[0].utp_enabled)" != "false" ]; then
+		uci -q ${root_prefix:+-c "$root_prefix/etc/config"} set transmission.@transmission[0].utp_enabled='false'
+		changed=1
+	fi
+
+	# 5. Otimizacao de limites de peers para conexoes de alta velocidade (evita sobrecarga de CPU single-thread)
+	local p_torrent="$(uci -q ${root_prefix:+-c "$root_prefix/etc/config"} get transmission.@transmission[0].peer_limit_per_torrent)"
+	if [ -z "$p_torrent" ] || [ "$p_torrent" -gt 80 ]; then
+		uci -q ${root_prefix:+-c "$root_prefix/etc/config"} set transmission.@transmission[0].peer_limit_per_torrent='60'
+		changed=1
+	fi
+
+	local p_global="$(uci -q ${root_prefix:+-c "$root_prefix/etc/config"} get transmission.@transmission[0].peer_limit_global)"
+	if [ -z "$p_global" ] || [ "$p_global" -gt 250 ]; then
+		uci -q ${root_prefix:+-c "$root_prefix/etc/config"} set transmission.@transmission[0].peer_limit_global='180'
+		changed=1
+	fi
+
+	# 6. Prioridade normal no agendador do Kernel (elimina nice 10)
+	if [ "$(uci -q ${root_prefix:+-c "$root_prefix/etc/config"} get transmission.@transmission[0].nice)" = "10" ]; then
+		uci -q ${root_prefix:+-c "$root_prefix/etc/config"} set transmission.@transmission[0].nice='0'
+		changed=1
+	fi
+
+	if [ "$changed" -eq 1 ]; then
+		uci ${root_prefix:+-c "$root_prefix/etc/config"} commit transmission 2>/dev/null || true
+		logger -t ark-transmission "Configuracoes de seguranca, desempenho Gigabit e blindagem uTP aplicadas no Transmission."
+	fi
+	return 0
+}
+
+# Limpeza de processos odhcp6c órfãos (PPID 1) para prevenir avalanches de recargas no netifd
+ark_cleanup_dhcpv6_orphans() {
+	local cleaned=0
+	for pid in $(pgrep -x odhcp6c 2>/dev/null || ps w 2>/dev/null | awk '/[o]dhcp6c/ {print $1}'); do
+		[ -n "$pid" ] || continue
+		local ppid=""
+		if [ -f "/proc/$pid/status" ]; then
+			ppid="$(awk '/^PPid:/ {print $2}' "/proc/$pid/status" 2>/dev/null)"
+		fi
+		if [ "$ppid" = "1" ]; then
+			logger -t ark-anti-zombie "Encerrando processo odhcp6c orfao (PID $pid, PPID 1) para evitar loops de recarga..."
+			kill -15 "$pid" 2>/dev/null || true
+			sleep 0.2
+			kill -9 "$pid" 2>/dev/null || true
+			cleaned=$((cleaned + 1))
+		fi
+	done
+	return $cleaned
+}
+
+# Sanitizacao Canonica de Interfaces WAN6 (prevencao contra device fisico bruto em vez de alias @wan)
+ark_sanitize_wan6_config() {
+	local root_prefix="${ARK_ROOT:-}"
+	local cfg="${root_prefix}/etc/config/network"
+	[ -f "$cfg" ] || return 0
+
+	local changed=0
+	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+
+	for sec in $($uci_cmd show network 2>/dev/null | sed -n 's/^network\.\([a-zA-Z0-9_]*\)=interface$/\1/p'); do
+		local proto="$($uci_cmd get "network.$sec.proto" || echo '')"
+		[ "$proto" = "dhcpv6" ] || continue
+
+		local dev="$($uci_cmd get "network.$sec.device" || echo '')"
+		[ -n "$dev" ] || dev="$($uci_cmd get "network.$sec.ifname" || echo '')"
+
+		case "$dev" in
+			@*) ;; # Ja e alias logico canonico (@wan, @wan2, etc.)
+			*)
+				if [ -n "$dev" ]; then
+					$uci_cmd set "network.$sec.device=@$dev"
+					$uci_cmd delete "network.$sec.ifname" 2>/dev/null || true
+					changed=1
+					logger -t ark-network-sanitize "Interface $sec: corrigido device de '$dev' para '@$dev' para compatibilidade netifd."
+				fi
+				;;
+		esac
+
+		local reqaddr="$($uci_cmd get "network.$sec.reqaddress" || echo '')"
+		if [ -z "$reqaddr" ]; then
+			$uci_cmd set "network.$sec.reqaddress=try"
+			changed=1
+		fi
+		local reqpfx="$($uci_cmd get "network.$sec.reqprefix" || echo '')"
+		if [ -z "$reqpfx" ]; then
+			$uci_cmd set "network.$sec.reqprefix=auto"
+			changed=1
+		fi
+	done
+
+	if [ "$changed" -eq 1 ]; then
+		uci ${root_prefix:+-c "$root_prefix/etc/config"} commit network 2>/dev/null || true
+		logger -t ark-network-sanitize "Configuracao de rede WAN6 sanitizada com sucesso no UCI."
+	fi
+	return 0
+}
+
+# Auto-ativacao inteligente de radios Wi-Fi de fabrica com preservacao estrita de escolha do usuario
+ark_auto_enable_factory_wifi() {
+	local root_prefix="${ARK_ROOT:-}"
+	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+
+	local user_disabled="$($uci_cmd get equipe_dashboard.main.wifi_user_disabled 2>/dev/null || echo 0)"
+	if [ "$user_disabled" = "1" ]; then
+		return 0
+	fi
+
+	local w_cfg="${root_prefix}/etc/config/wireless"
+	[ -f "$w_cfg" ] || return 0
+
+	local total_radios=0
+	local disabled_radios=0
+
+	for r in $($uci_cmd show wireless 2>/dev/null | sed -n 's/^wireless\.\([a-zA-Z0-9_]*\)=wifi-device$/\1/p'); do
+		total_radios=$((total_radios + 1))
+		local dis="$($uci_cmd get "wireless.$r.disabled" || echo 0)"
+		[ "$dis" = "1" ] && disabled_radios=$((disabled_radios + 1))
+	done
+
+	if [ "$total_radios" -gt 0 ] && [ "$total_radios" -eq "$disabled_radios" ]; then
+		for r in $($uci_cmd show wireless 2>/dev/null | sed -n 's/^wireless\.\([a-zA-Z0-9_]*\)=wifi-device$/\1/p'); do
+			$uci_cmd set "wireless.$r.disabled=0"
+		done
+		uci ${root_prefix:+-c "$root_prefix/etc/config"} commit wireless 2>/dev/null || true
+		logger -t ark-wifi-guard "Radios Wi-Fi ativados do padrao virgem de fabrica do OpenWrt ($total_radios radios habilitados)."
+		if [ -z "$root_prefix" ]; then
+			(sleep 1; wifi reload >/dev/null 2>&1 || wifi up >/dev/null 2>&1 || true) &
+		fi
+		return 0
+	fi
+	return 1
+}

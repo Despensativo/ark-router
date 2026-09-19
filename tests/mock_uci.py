@@ -252,6 +252,51 @@ def main():
                         print(f"{cfg_name}.{s_id}.{k}='{v}'")
         sys.exit(0)
 
+    elif cmd == "add_list":
+        if not subargs:
+            sys.exit(1)
+        expr = subargs[0]
+        if "=" not in expr:
+            sys.exit(1)
+        target, val = expr.split("=", 1)
+        parts = target.split(".")
+        cfg_name = parts[0]
+        uf = get_uci_file(cfg_name)
+        if len(parts) >= 3:
+            sec_name = parts[1]
+            opt_name = parts[2]
+            sec = uf.find_section(sec_name)
+            if not sec:
+                sec = Section("section", sec_name)
+                uf.sections.append(sec)
+            if opt_name not in sec.options or not isinstance(sec.options[opt_name], list):
+                sec.options[opt_name] = []
+            sec.options[opt_name].append(val)
+            uf.save()
+            sys.exit(0)
+        sys.exit(1)
+
+    elif cmd == "del_list":
+        if not subargs:
+            sys.exit(1)
+        expr = subargs[0]
+        if "=" not in expr:
+            sys.exit(1)
+        target, val = expr.split("=", 1)
+        parts = target.split(".")
+        cfg_name = parts[0]
+        uf = get_uci_file(cfg_name)
+        if len(parts) >= 3:
+            sec_name = parts[1]
+            opt_name = parts[2]
+            sec = uf.find_section(sec_name)
+            if sec and opt_name in sec.options and isinstance(sec.options[opt_name], list):
+                if val in sec.options[opt_name]:
+                    sec.options[opt_name].remove(val)
+                    uf.save()
+            sys.exit(0)
+        sys.exit(1)
+
     elif cmd == "commit":
         sys.exit(0)
 

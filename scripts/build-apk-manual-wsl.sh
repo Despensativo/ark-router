@@ -54,13 +54,12 @@ chmod 0755 "$pkg_root/usr/sbin/equipe-dashboard-control" 2>/dev/null || true
 chmod 0755 "$pkg_root/usr/sbin/ark-doctor" 2>/dev/null || true
 chmod 0755 "$pkg_root/usr/sbin/equipe-traffic-history" 2>/dev/null || true
 chmod 0755 "$pkg_root/usr/sbin/ark-autowan-daemon" 2>/dev/null || true
+chmod 0755 "$pkg_root/usr/lib/ark/"*.sh 2>/dev/null || true
+chmod 0755 "$pkg_root/usr/lib/ark/modules/"*.sh 2>/dev/null || true
 chmod 0755 "$pkg_root/usr/libexec/ark-starlink-telemetry" 2>/dev/null || true
 chmod 0755 "$pkg_root/www/cgi-bin/ark-starlink-telemetry" 2>/dev/null || true
-chmod 0755 "$pkg_root/etc/init.d/equipe-traffic-history" 2>/dev/null || true
-chmod 0755 "$pkg_root/etc/init.d/ark-speedify" 2>/dev/null || true
-chmod 0755 "$pkg_root/etc/init.d/ark-zerotier-ram" 2>/dev/null || true
-chmod 0755 "$pkg_root/etc/init.d/ark-firewall-guard" 2>/dev/null || true
-chmod 0755 "$pkg_root/etc/init.d/ark-autowan" 2>/dev/null || true
+chmod 0755 "$pkg_root/www/cgi-bin/ark-mesh-export" 2>/dev/null || true
+chmod 0755 "$pkg_root/etc/init.d/"* 2>/dev/null || true
 chmod 0755 "$pkg_root/etc/uci-defaults/"* 2>/dev/null || true
 
 mkdir -p "$pkg_root/lib/apk/packages"
@@ -69,15 +68,16 @@ cat > "$post_install" <<'EOF'
 #!/bin/sh
 [ "${IPKG_NO_SCRIPT}" = "1" ] && exit 0
 chmod +x /usr/sbin/equipe-dashboard-control 2>/dev/null || true
+chmod +x /usr/sbin/ark-doctor 2>/dev/null || true
 chmod +x /usr/sbin/equipe-traffic-history 2>/dev/null || true
 chmod +x /usr/sbin/ark-autowan-daemon 2>/dev/null || true
+chmod +x /usr/lib/ark/*.sh 2>/dev/null || true
+chmod +x /usr/lib/ark/modules/*.sh 2>/dev/null || true
 chmod +x /usr/libexec/ark-starlink-telemetry 2>/dev/null || true
 chmod +x /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
-chmod +x /etc/init.d/equipe-traffic-history 2>/dev/null || true
-chmod +x /etc/init.d/ark-speedify 2>/dev/null || true
-chmod +x /etc/init.d/ark-zerotier-ram 2>/dev/null || true
-chmod +x /etc/init.d/ark-firewall-guard 2>/dev/null || true
-chmod +x /etc/init.d/ark-autowan 2>/dev/null || true
+chmod +x /www/cgi-bin/ark-mesh-export 2>/dev/null || true
+chmod +x /etc/init.d/* 2>/dev/null || true
+[ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable >/dev/null 2>&1 || true
 [ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true
 [ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram start >/dev/null 2>&1 || true
 [ -x /etc/init.d/ark-firewall-guard ] && /etc/init.d/ark-firewall-guard enable >/dev/null 2>&1 || true
@@ -85,6 +85,9 @@ chmod +x /etc/init.d/ark-autowan 2>/dev/null || true
 if [ "$(uci -q get network.autowan.enabled || echo 0)" = "1" ]; then
 	[ -x /etc/init.d/ark-autowan ] && /etc/init.d/ark-autowan enable >/dev/null 2>&1 || true
 	[ -x /etc/init.d/ark-autowan ] && /etc/init.d/ark-autowan restart >/dev/null 2>&1 || true
+fi
+if [ -f /etc/config/attendedsysupgrade ]; then
+	[ -z "$(uci -q get attendedsysupgrade.client.login_check_for_upgrades)" ] && uci -q set attendedsysupgrade.client.login_check_for_upgrades='0' && uci commit attendedsysupgrade 2>/dev/null || true
 fi
 rm -f /tmp/luci-indexcache 2>/dev/null || true
 rm -rf /tmp/luci-modulecache/* 2>/dev/null || true

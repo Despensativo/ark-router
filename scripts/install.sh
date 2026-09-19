@@ -233,9 +233,16 @@ install_source() {
 		rm -f /usr/bin/starlink-dish 2>/dev/null || true
 	fi
 	chmod +x /usr/sbin/equipe-dashboard-control 2>/dev/null || true
+	chmod +x /usr/sbin/ark-doctor 2>/dev/null || true
 	chmod +x /usr/sbin/equipe-traffic-history 2>/dev/null || true
+	chmod +x /usr/sbin/ark-autowan-daemon 2>/dev/null || true
+	chmod +x /usr/lib/ark/*.sh 2>/dev/null || true
+	chmod +x /usr/lib/ark/modules/*.sh 2>/dev/null || true
 	chmod +x /etc/init.d/equipe-traffic-history 2>/dev/null || true
 	chmod +x /etc/init.d/ark-speedify 2>/dev/null || true
+	chmod +x /etc/init.d/ark-zerotier-ram 2>/dev/null || true
+	chmod +x /etc/init.d/ark-firewall-guard 2>/dev/null || true
+	chmod +x /etc/init.d/ark-autowan 2>/dev/null || true
 	if [ -f "$rootdir/VERSION" ]; then
 		mkdir -p /usr/share/ark-router
 		cp "$rootdir/VERSION" /usr/share/ark-router/VERSION
@@ -261,6 +268,11 @@ case "$MODE" in
 		exit 2
 		;;
 esac
+
+if [ "$DRY_RUN" != 1 ] && [ -f /usr/lib/ark/common.sh ]; then
+	. /usr/lib/ark/common.sh
+	ark_migrate_upnp_variant >/dev/null 2>&1 || true
+fi
 
 if [ "$DRY_RUN" = 1 ]; then
 	echo "Dry run complete. No changes were made."

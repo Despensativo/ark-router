@@ -1,0 +1,28 @@
+#!/bin/sh /etc/rc.common
+# ARK Router - Safe Storage Shutdown & USB Protection Init Hook
+# Copyright (C) 2024-2026 ARK Router Project
+# Intercepta qualquer desligamento ou reinicialização do sistema operacional
+# para pausar o Transmission, descarregar buffers e remontar unidades USB em modo seguro (ro).
+
+START=99
+STOP=01
+USE_PROCD=0
+
+start() {
+	if [ -f /usr/lib/ark/common.sh ]; then
+		. /usr/lib/ark/common.sh
+		ark_cleanup_dhcpv6_orphans 2>/dev/null || true
+		ark_sanitize_wan6_config 2>/dev/null || true
+	fi
+	return 0
+}
+
+stop() {
+	if [ -f /usr/lib/ark/common.sh ]; then
+		. /usr/lib/ark/common.sh
+		ark_safe_storage_reboot
+	else
+		sync
+		sync
+	fi
+}

@@ -489,6 +489,7 @@ const EN = {
   "ENDPOINT (IP/DDNS DO ROTEADOR)": "ENDPOINT (ROUTER IP/DDNS)",
   "Editar SQM / CAKE": "Edit SQM / CAKE",
   "Editar internet": "Edit internet",
+  "Acompanha o IP do roteador se não personalizado": "Follows router IP unless customized",
   "Editar modo do Multi‑WAN": "Edit Multi-WAN mode",
   "Editar porta / internet": "Edit port / internet",
   "Editar rede principal / DHCP": "Edit primary network / DHCP",
@@ -1387,7 +1388,129 @@ const EN = {
   "INATIVO NO SATÉLITE": "INACTIVE ON SATELLITE",
   "Inativo (Modo Satélite)": "Inactive (Satellite Mode)",
   "Desativado no Satélite": "Disabled on Satellite",
-  "🛡️ Modo Satélite / Ponto de Acesso": "🛡️ Satellite / Access Point Mode"
+  "🛡️ Modo Satélite / Ponto de Acesso": "🛡️ Satellite / Access Point Mode",
+  "⚡ Modo Híbrido Ativo": "⚡ Active Hybrid Mode",
+  "⚡ Modo Híbrido Ativo (Fastpath + CAKE)": "⚡ Active Hybrid Mode (Fastpath + CAKE)",
+  "Modo Híbrido: O Download opera com velocidade total liberada no Fastpath e o Upload é gerenciado pelo CAKE para blindar a rede contra lag em jogos e chamadas.": "Hybrid Mode: Download operates at full speed via Fastpath and Upload is managed by CAKE to shield the network against lag in games and calls.",
+  "🧮 Calculadora de Upload (-7% Bufferbloat)": "🧮 Upload Calculator (-7% Bufferbloat)",
+  "Margem de 7% aplicada para impedir acúmulo de fila no modem.": "7% margin applied to prevent queue buildup on the modem.",
+  "Aplicar -7%": "Apply -7%",
+  "Velocidade nominal (Mbps)": "Nominal speed (Mbps)",
+  "✓ Pronto e ativo: downloads e tráfego geral acelerados no kernel com menor uso de CPU.": "✓ Ready and active: downloads and general traffic accelerated in the kernel with lower CPU usage.",
+  "Modo Híbrido disponível: o Fastpath acelera downloads no kernel enquanto o CAKE gerencia uploads.": "Hybrid Mode available: Fastpath accelerates downloads in kernel while CAKE manages uploads.",
+  "DNS Protegido por Bloqueador": "DNS Protected by Blocker",
+  "Toque em “Servidores” para visualizar a rota de resolução e status de fallback.": "Tap “Servers” to view resolution route and fallback status.",
+  "Modo Híbrido: O Download opera com velocidade total no Fastpath e o Upload é gerenciado pelo CAKE contra lag.": "Hybrid Mode: Download operates at full speed on Fastpath and Upload is managed by CAKE against lag.",
+  "Margem de 7% aplicada para impedir acúmulo de fila no modem e eliminar lag.": "7% margin applied to prevent modem queue buildup and eliminate lag.",
+  "No Modo Híbrido, o download opera sem limite artificial no kernel.": "In Hybrid Mode, download operates without artificial limit in the kernel.",
+  "Indispensável informar a velocidade real de upload para o CAKE estabilizar a latência.": "Essential to enter actual upload speed so CAKE can stabilize latency.",
+  "0 (Ilimitado / Fastpath)": "0 (Unlimited / Fastpath)",
+  "Modo Híbrido ativado: Fastpath no Download e CAKE no Upload aplicados com sucesso!": "Hybrid Mode activated: Fastpath on Download and CAKE on Upload applied successfully!",
+  "Nuvem Externa": "External Cloud",
+  "🛡️ Navegação Segura (Anti-Malware & Phishing)": "🛡️ Safe Browsing (Anti-Malware & Phishing)",
+  "Bloqueia sites maliciosos e golpes antes que sejam abertos via checagem em servidores online.": "Blocks malicious sites and scams before they are opened via online server checks.",
+  "Atenção:": "Attention:",
+  "Pode elevar o tempo de resposta do DNS e reduzir a velocidade durante uso pesado de torrents.": "May increase DNS response times and reduce speeds during heavy torrent usage.",
+  "👨‍👩‍👧 Controle Parental (Bloqueio Adulto)": "👨‍👩‍👧 Parental Control (Adult Content Block)",
+  "Bloqueia automaticamente pornografia e conteúdos impróprios para menores na rede toda via servidores online.": "Automatically blocks pornography and adult content across the entire network via online servers.",
+  "Pode causar lentidão no DNS em redes com alto volume de conexões.": "May cause DNS latency on networks with high connection volume.",
+  "🔍 Busca Segura Forçada (SafeSearch)": "🔍 Enforce SafeSearch",
+  "Obriga o filtro de família no Google, Bing, YouTube e DuckDuckGo para proteger crianças.": "Enforces family filter on Google, Bing, YouTube and DuckDuckGo to protect children.",
+  "📺 Blindagem de Smart TVs (Interceptar Porta 53)": "📺 Smart TV Shield (Intercept Port 53)",
+  "DNAT Transparente": "Transparent DNAT",
+  "Força Smart TVs, Chromecasts e aparelhos com DNS embutido a passarem pelo AdGuard. Redireciona consultas externas da porta 53 para o roteador em 0ms.": "Forces Smart TVs, Chromecasts, and devices with hardcoded DNS through AdGuard. Redirects external port 53 queries to router in 0ms.",
+  "📺 Smart TVs": "📺 Smart TVs",
+  "📺 Smart TVs Blindadas": "📺 Shielded Smart TVs",
+  "Regras Avançadas de Roteamento (Portas e IPs)": "Advanced Routing Rules (Ports & IPs)",
+  "Roteamento por Política (PBR)": "Policy-Based Routing (PBR)",
+  "Direcione portas específicas ou aparelhos para balanceamento ou para um link dedicado.": "Route specific ports or devices for load balancing or to a dedicated link.",
+  "+ Nova Regra": "+ New Rule",
+  "⚡ Acelerar BitTorrent / P2P nas 2 Internets": "⚡ Accelerate BitTorrent / P2P across 2 Internet Links",
+  "Balanceia conexões BitTorrent (portas 51413 e 6881-6999) pelas 2 conexões simultaneamente.": "Balances BitTorrent connections (ports 51413 and 6881-6999) across both links simultaneously.",
+  "Nenhuma regra personalizada cadastrada. Clique em \"+ Nova Regra\" para direcionar portas ou aparelhos específicos.": "No custom rules configured. Click \"+ New Rule\" to route specific ports or devices.",
+  "Ex: PC Gamer Torrent, Steam, Console": "Ex: Gamer PC Torrent, Steam, Console",
+  "Todos os aparelhos da rede (Qualquer IP)": "All network devices (Any IP)",
+  "Digitar IP manualmente…": "Enter IP manually…",
+  "TCP e UDP (Recomendado)": "TCP and UDP (Recommended)",
+  "Apenas TCP": "TCP Only",
+  "Apenas UDP": "UDP Only",
+  "Ex: 51413 ou 6881": "Ex: 51413 or 6881",
+  "Ex: 6999 (opcional)": "Ex: 6999 (optional)",
+  "⚖️ Balancear pelas 2 Internets (Multi-WAN)": "⚖️ Load Balance across 2 Internet Links (Multi-WAN)",
+  "🔵 Somente WAN1 (Claro)": "🔵 WAN1 Only",
+  "🟣 Somente WAN2 (Link Telecom)": "🟣 WAN2 Only",
+  "🛡️ WAN1 principal (Failover para WAN2)": "🛡️ Primary WAN1 (Failover to WAN2)",
+  "🛡️ WAN2 principal (Failover para WAN1)": "🛡️ Primary WAN2 (Failover to WAN1)",
+  "Crie uma regra personalizada para direcionar portas específicas ou aparelhos para o balanceamento ou um link exclusivo.": "Create a custom rule to direct specific ports or devices to load balancing or an exclusive link.",
+  "Nome da Regra:": "Rule Name:",
+  "Aparelho ou IP de Origem:": "Source Device or IP:",
+  "Protocolo:": "Protocol:",
+  "Faixa de Portas (Destino):": "Port Range (Destination):",
+  "Porta Inicial:": "Start Port:",
+  "Porta Final (Faixa):": "End Port (Range):",
+  "Deixe a porta final vazia para aplicar apenas a uma única porta, ou preencha as duas para criar uma faixa contínua.": "Leave the end port empty to apply to a single port, or fill both to create a continuous range.",
+  "Ação / Rota de Saída:": "Action / Outbound Route:",
+  "Digite um nome para a regra.": "Please enter a name for the rule.",
+  "Endereço IP inválido.": "Invalid IP address.",
+  "Porta inicial deve estar entre 1 e 65535.": "Start port must be between 1 and 65535.",
+  "Porta final deve estar entre 1 e 65535.": "End port must be between 1 and 65535.",
+  "A porta final deve ser maior que a porta inicial.": "End port must be greater than start port.",
+  "Salvando…": "Saving…",
+  "Salvar Regra": "Save Rule",
+  "Regra criada com sucesso!": "Rule created successfully!",
+  "➕ Nova Regra de Roteamento Multi-WAN": "➕ New Multi-WAN Routing Rule",
+  "Excluir Regra de Roteamento": "Delete Routing Rule",
+  "Tem certeza que deseja excluir a regra “": "Are you sure you want to delete rule “",
+  "Excluindo…": "Deleting…",
+  "Regra excluída com sucesso!": "Rule deleted successfully!",
+  "Regra ativada com sucesso!": "Rule enabled successfully!",
+  "Regra desativada!": "Rule disabled!",
+  "Aceleração BitTorrent/P2P nas 2 conexões ATIVADA!": "BitTorrent/P2P acceleration across 2 connections ACTIVATED!",
+  "Aceleração BitTorrent/P2P DESATIVADA.": "BitTorrent/P2P acceleration DEACTIVATED.",
+  "⚖️ Balanceado (2 Links)": "⚖️ Balanced (2 Links)",
+  "Todas as portas": "All ports",
+  "Todos os aparelhos": "All devices",
+  "Falha ao adicionar regra": "Failed to add rule",
+  "Falha ao excluir regra": "Failed to delete rule",
+  "Falha ao alternar regra": "Failed to toggle rule",
+  "Falha ao alternar aceleração P2P": "Failed to toggle P2P acceleration",
+  "Ativar ou desativar regra": "Enable or disable rule",
+  "Ativar ou desativar aceleração P2P": "Enable or disable P2P acceleration",
+  "Excluir regra": "Delete rule",
+  "Verificação do OpenWrt Base": "Base OpenWrt Upgrade Checking",
+  "LIGADA (AVISOS ATIVOS)": "ENABLED (ALERTS ON)",
+  "DESLIGADA (RECOMENDADO)": "DISABLED (RECOMMENDED)",
+  "⚠️ O painel buscará atualizações do OpenWrt genérico a cada login. Atenção: atualizar por lá remove o ARK Router.": "⚠️ The panel will check for generic OpenWrt updates on each login. Warning: upgrading from there will overwrite the ARK Router.",
+  "✅ Pop-ups do OpenWrt genérico bloqueados para evitar que o ARK Router seja sobrescrito por engano.": "✅ Generic OpenWrt pop-ups blocked to prevent accidental overwriting of the ARK Router.",
+  "Verificação do OpenWrt ativada. Pop-ups do OpenWrt genérico serão exibidos no login.": "OpenWrt update check enabled. Generic OpenWrt pop-ups will appear upon login.",
+  "Verificação do OpenWrt desativada. O ARK Router está protegido contra sobrescrita.": "OpenWrt update check disabled. ARK Router is protected against overwriting.",
+  "O LuCI verifica nos servidores oficiais do OpenWrt a cada carregamento de página.": "LuCI checks official OpenWrt servers on every page load.",
+  "Desativado para evitar pop-ups invasivos e proteger o ARK Router.": "Disabled to avoid intrusive pop-ups and protect ARK Router.",
+  "Verificação do OpenWrt ativada.": "OpenWrt update checking enabled.",
+  "Verificação do OpenWrt desativada.": "OpenWrt update checking disabled.",
+  "Distribuir IPv6 na LAN": "Distribute IPv6 to LAN",
+  "Distribui o bloco IPv6 público desta operadora para os dispositivos locais (DHCPv6-PD). Apenas uma WAN pode distribuir por vez para evitar conflitos.": "Distributes this ISP's public IPv6 block to local devices (DHCPv6-PD). Only one WAN can distribute at a time to prevent conflicts.",
+  "Requer 'Conectividade IPv6' ativa nesta WAN.": "Requires 'IPv6 Connectivity' enabled on this WAN.",
+  "A distribuição já está ativa na %s. Desative na %s primeiro para ativar aqui.": "IPv6 distribution is already active on %s. Disable it on %s first to enable here.",
+  "Proteção de armazenamento ativa: o roteador pausará serviços em execução (servidores, downloads e compartilhamentos), descarregará dados da memória RAM e protegerá unidades externas contra corrupção antes de reiniciar.": "Active storage protection: the router will pause running services (servers, downloads, and shares), flush pending RAM data, and protect external drives against corruption before rebooting.",
+  "Salvando dados e reiniciando…": "Saving data and rebooting…",
+  "Protegendo unidades externas e reiniciando o roteador. A conexão será interrompida.": "Protecting external storage and rebooting router. Connection will drop.",
+  "Instalando Pacotes e Recursos": "Installing Packages and Features",
+  "Instalação de Recursos em Lote": "Batch Feature Installation",
+  "Instalando Módulos do Ark - Setup": "Installing Ark - Setup Modules",
+  "Iniciando…": "Starting…",
+  "Preparando gerenciador de pacotes…": "Preparing package manager…",
+  "Aguardando saída do gerenciador de pacotes…": "Waiting for package manager output…",
+  "O roteador está baixando e configurando os pacotes necessários. Isso pode levar de 30 segundos a alguns minutos dependendo da sua velocidade de internet. Por favor, mantenha esta tela aberta.": "The router is downloading and configuring required packages. This may take 30 seconds to a few minutes depending on your internet speed. Please keep this screen open.",
+  "Instalação em andamento…": "Installation in progress…",
+  "Todos os recursos foram instalados com sucesso! Recarregando painel…": "All features installed successfully! Reloading dashboard…",
+  "Módulos do Ark - Setup instalados com sucesso! Recarregando painel…": "Ark - Setup modules installed successfully! Reloading dashboard…",
+  "Instalando pacotes…": "Installing packages…",
+  "Falha durante o processo de instalação.": "Failure during installation process.",
+  "Tempo limite excedido na instalação.": "Installation timed out.",
+  "Falha na instalação dos pacotes.": "Failed to install packages.",
+  "Concluir e recarregar": "Complete and reload",
+  "Nenhum módulo pendente para instalar.": "No pending modules to install."
 };
 
 const ES = {
@@ -1852,6 +1975,7 @@ const ES = {
   "ENDPOINT (IP/DDNS DO ROTEADOR)": "ENDPOINT (IP/DDNS DEL ROUTER)",
   "Editar SQM / CAKE": "Editar SQM / CAKE",
   "Editar internet": "Editar internet",
+  "Acompanha o IP do roteador se não personalizado": "Sigue la IP del router si no se personaliza",
   "Editar modo do Multi‑WAN": "Editar modo de Multi‑WAN",
   "Editar porta / internet": "Editar puerto / internet",
   "Editar rede principal / DHCP": "Editar red principal / DHCP",
@@ -2750,7 +2874,324 @@ const ES = {
   "INATIVO NO SATÉLITE": "INACTIVO EN SATÉLITE",
   "Inativo (Modo Satélite)": "Inactivo (Modo Satélite)",
   "Desativado no Satélite": "Desactivado en Satélite",
-  "🛡️ Modo Satélite / Ponto de Acesso": "🛡️ Modo Satélite / Punto de Acceso"
+  "🛡️ Modo Satélite / Ponto de Acesso": "🛡️ Modo Satélite / Punto de Acceso",
+  "⚡ Modo Híbrido Ativo": "⚡ Modo Híbrido Activo",
+  "⚡ Modo Híbrido Ativo (Fastpath + CAKE)": "⚡ Modo Híbrido Activo (Fastpath + CAKE)",
+  "Modo Híbrido: O Download opera com velocidade total liberada no Fastpath e o Upload é gerenciado pelo CAKE para blindar a rede contra lag em jogos e chamadas.": "Modo Híbrido: La descarga opera a máxima velocidad liberada en Fastpath y la subida es gestionada por CAKE para blindar la red contra el lag en juegos y llamadas.",
+  "🧮 Calculadora de Upload (-7% Bufferbloat)": "🧮 Calculadora de Subida (-7% Bufferbloat)",
+  "Margem de 7% aplicada para impedir acúmulo de fila no modem.": "Margen del 7% aplicado para evitar acumulación de cola en el módem.",
+  "Aplicar -7%": "Aplicar -7%",
+  "Velocidade nominal (Mbps)": "Velocidad nominal (Mbps)",
+  "✓ Pronto e ativo: downloads e tráfego geral acelerados no kernel com menor uso de CPU.": "✓ Listo y activo: descargas y tráfico general acelerados en el kernel con menor uso de CPU.",
+  "Modo Híbrido disponível: o Fastpath acelera downloads no kernel enquanto o CAKE gerencia uploads.": "Modo Híbrido disponible: Fastpath acelera descargas en el kernel mientras CAKE gestiona subidas.",
+  "DNS Protegido por Bloqueador": "DNS Protegido por Bloqueador",
+  "Toque em “Servidores” para visualizar a rota de resolução e status de fallback.": "Toque en “Servidores” para ver la ruta de resolución y estado de fallback.",
+  "Modo Híbrido: O Download opera com velocidade total no Fastpath e o Upload é gerenciado pelo CAKE contra lag.": "Modo Híbrido: La descarga funciona a máxima velocidad con Fastpath y la subida es gestionada por CAKE contra el lag.",
+  "Margem de 7% aplicada para impedir acúmulo de fila no modem e eliminar lag.": "Margen del 7% aplicado para evitar acumulación de colas en el módem y eliminar el lag.",
+  "No Modo Híbrido, o download opera sem limite artificial no kernel.": "En Modo Híbrido, la descarga opera sin límite artificial en el kernel.",
+  "Indispensável informar a velocidade real de upload para o CAKE estabilizar a latência.": "Indispensable ingresar la velocidad real de subida para que CAKE estabilice la latencia.",
+  "0 (Ilimitado / Fastpath)": "0 (Ilimitado / Fastpath)",
+  "Modo Híbrido ativado: Fastpath no Download e CAKE no Upload aplicados com sucesso!": "¡Modo Híbrido activado: Fastpath en Descarga y CAKE en Subida aplicados con éxito!",
+  "Nuvem Externa": "Nube Externa",
+  "🛡️ Navegação Segura (Anti-Malware & Phishing)": "🛡️ Navegación Segura (Anti-Malware y Phishing)",
+  "Bloqueia sites maliciosos e golpes antes que sejam abertos via checagem em servidores online.": "Bloquea sitios maliciosos y estafas antes de que se abran mediante comprobación en servidores online.",
+  "Atenção:": "Atención:",
+  "Pode elevar o tempo de resposta do DNS e reduzir a velocidade durante uso pesado de torrents.": "Puede aumentar el tiempo de respuesta de DNS y reducir la velocidad durante el uso intensivo de torrents.",
+  "👨‍👩‍👧 Controle Parental (Bloqueio Adulto)": "👨‍👩‍👧 Control Parental (Bloqueo Adultos)",
+  "Bloqueia automaticamente pornografia e conteúdos impróprios para menores na rede toda via servidores online.": "Bloquea automáticamente pornografía y contenido inapropiado para menores en toda la red mediante servidores online.",
+  "Pode causar lentidão no DNS em redes com alto volume de conexões.": "Puede causar lentitud en DNS en redes con alto volumen de conexiones.",
+  "🔍 Busca Segura Forçada (SafeSearch)": "🔍 Búsqueda Segura Forzada (SafeSearch)",
+  "Obriga o filtro de família no Google, Bing, YouTube e DuckDuckGo para proteger crianças.": "Obliga el filtro familiar en Google, Bing, YouTube y DuckDuckGo para proteger a los niños.",
+  "📺 Blindagem de Smart TVs (Interceptar Porta 53)": "📺 Blindaje de Smart TVs (Interceptar Puerto 53)",
+  "DNAT Transparente": "DNAT Transparente",
+  "Força Smart TVs, Chromecasts e aparelhos com DNS embutido a passarem pelo AdGuard. Redireciona consultas externas da porta 53 para o roteador em 0ms.": "Fuerza a Smart TVs, Chromecasts y dispositivos con DNS integrado a pasar por AdGuard. Redirige consultas externas del puerto 53 al router en 0ms.",
+  "📺 Smart TVs": "📺 Smart TVs",
+  "📺 Smart TVs Blindadas": "📺 Smart TVs Blindadas",
+  "Regras Avançadas de Roteamento (Portas e IPs)": "Reglas Avanzadas de Enrutamiento (Puertos e IPs)",
+  "Roteamento por Política (PBR)": "Enrutamiento Basado en Políticas (PBR)",
+  "Direcione portas específicas ou aparelhos para balanceamento ou para um link dedicado.": "Enrute puertos específicos o dispositivos para balanceo de carga o a un enlace dedicado.",
+  "+ Nova Regra": "+ Nueva Regla",
+  "⚡ Acelerar BitTorrent / P2P nas 2 Internets": "⚡ Acelerar BitTorrent / P2P en las 2 Conexiones",
+  "Balanceia conexões BitTorrent (portas 51413 e 6881-6999) pelas 2 conexões simultaneamente.": "Balancea conexiones BitTorrent (puertos 51413 y 6881-6999) en ambas conexiones simultáneamente.",
+  "Nenhuma regra personalizada cadastrada. Clique em \"+ Nova Regra\" para direcionar portas ou aparelhos específicos.": "No hay reglas personalizadas configuradas. Haga clic en \"+ Nueva Regla\" para enrutar puertos o dispositivos específicos.",
+  "Ex: PC Gamer Torrent, Steam, Console": "Ej: PC Gamer Torrent, Steam, Consola",
+  "Todos os aparelhos da rede (Qualquer IP)": "Todos los dispositivos de la red (Cualquier IP)",
+  "Digitar IP manualmente…": "Ingresar IP manualmente…",
+  "TCP e UDP (Recomendado)": "TCP y UDP (Recomendado)",
+  "Apenas TCP": "Solo TCP",
+  "Apenas UDP": "Solo UDP",
+  "Ex: 51413 ou 6881": "Ej: 51413 o 6881",
+  "Ex: 6999 (opcional)": "Ej: 6999 (opcional)",
+  "⚖️ Balancear pelas 2 Internets (Multi-WAN)": "⚖️ Balancear por las 2 Conexiones (Multi-WAN)",
+  "🔵 Somente WAN1 (Claro)": "🔵 Solo WAN1",
+  "🟣 Somente WAN2 (Link Telecom)": "🟣 Solo WAN2",
+  "🛡️ WAN1 principal (Failover para WAN2)": "🛡️ WAN1 principal (Conmutación por error a WAN2)",
+  "🛡️ WAN2 principal (Failover para WAN1)": "🛡️ WAN2 principal (Conmutación por error a WAN1)",
+  "Crie uma regra personalizada para direcionar portas específicas ou aparelhos para o balanceamento ou um link exclusivo.": "Cree una regla personalizada para dirigir puertos específicos o dispositivos al balanceo o a un enlace exclusivo.",
+  "Nome da Regra:": "Nombre de la Regla:",
+  "Aparelho ou IP de Origem:": "Dispositivo o IP de Origen:",
+  "Protocolo:": "Protocolo:",
+  "Faixa de Portas (Destino):": "Rango de Puertos (Destino):",
+  "Porta Inicial:": "Puerto Inicial:",
+  "Porta Final (Faixa):": "Puerto Final (Rango):",
+  "Deixe a porta final vazia para aplicar apenas a uma única porta, ou preencha as duas para criar uma faixa contínua.": "Deje el puerto final vacío para aplicar solo a un puerto, o complete ambos para crear un rango continuo.",
+  "Ação / Rota de Saída:": "Acción / Ruta de Salida:",
+  "Digite um nome para a regra.": "Ingrese un nombre para la regla.",
+  "Endereço IP inválido.": "Dirección IP inválida.",
+  "Porta inicial deve estar entre 1 e 65535.": "El puerto inicial debe estar entre 1 y 65535.",
+  "Porta final deve estar entre 1 e 65535.": "El puerto final debe estar entre 1 y 65535.",
+  "A porta final deve ser maior que a porta inicial.": "El puerto final debe ser mayor que el puerto inicial.",
+  "Salvando…": "Guardando…",
+  "Salvar Regra": "Guardar Regla",
+  "Regra criada com sucesso!": "¡Regla creada con éxito!",
+  "➕ Nova Regra de Roteamento Multi-WAN": "➕ Nueva Regla de Enrutamiento Multi-WAN",
+  "Excluir Regra de Roteamento": "Eliminar Regla de Enrutamiento",
+  "Tem certeza que deseja excluir a regra “": "¿Está seguro de que desea eliminar la regla “",
+  "Excluindo…": "Eliminando…",
+  "Regra excluída com sucesso!": "¡Regla eliminada con éxito!",
+  "Regra ativada com sucesso!": "¡Regla activada con éxito!",
+  "Regra desativada!": "¡Regla desactivada!",
+  "Aceleração BitTorrent/P2P nas 2 conexões ATIVADA!": "¡Aceleración BitTorrent/P2P en las 2 conexiones ACTIVADA!",
+  "Aceleração BitTorrent/P2P DESATIVADA.": "Aceleración BitTorrent/P2P DESACTIVADA.",
+  "⚖️ Balanceado (2 Links)": "⚖️ Balanceado (2 Enlaces)",
+  "Todas as portas": "Todos los puertos",
+  "Todos os aparelhos": "Todos los dispositivos",
+  "Falha ao adicionar regra": "Error al añadir regla",
+  "Falha ao excluir regra": "Error al eliminar regla",
+  "Falha ao alternar regra": "Error al alternar regla",
+  "Falha ao alternar aceleração P2P": "Error al alternar aceleración P2P",
+  "Ativar ou desativar regra": "Activar o desactivar regla",
+  "Ativar ou desativar aceleração P2P": "Activar o desactivar aceleración P2P",
+  "Excluir regra": "Eliminar regla",
+  "Verificação do OpenWrt Base": "Comprobación de OpenWrt Base",
+  "O LuCI verifica nos servidores oficiais do OpenWrt a cada carregamento de página.": "LuCI consulta los servidores oficiales de OpenWrt en cada carga de página.",
+  "Desativado para evitar pop-ups invasivos e proteger o ARK Router.": "Desactivado para evitar ventanas emergentes invasivas y proteger ARK Router.",
+  "Verificação do OpenWrt ativada.": "Comprobación de OpenWrt activada.",
+  "Verificação do OpenWrt desativada.": "Comprobación de OpenWrt desactivada.",
+  "Distribuir IPv6 na LAN": "Distribuir IPv6 en la LAN",
+  "💾 Salvar Perfil PPPoE Atual": "💾 Guardar Perfil PPPoE Actual",
+  "📌 IP Estático Recomendado (Ex:": "📌 IP Estática Recomendada (Ej:",
+  "📜 Logs PPPoE": "📜 Registros PPPoE",
+  "📜 Logs e Diagnóstico PPPoE —": "📜 Registros y Diagnóstico PPPoE —",
+  "📡 Assistente de Roteador Secundário (Ponto Adicional de Wi-Fi)": "📡 Asistente de Router Secundario (Punto Adicional de Wi-Fi)",
+  "📡 Painel Starlink e Central de Telemetria": "📡 Panel Starlink y Central de Telemetría",
+  "📡 ROTEADOR SECUNDÁRIO • PONTO ADICIONAL & SWITCH": "📡 ROUTER SECUNDARIO • PUNTO ADICIONAL Y SWITCH",
+  "📡 Redes Separadas:": "📡 Redes Separadas:",
+  "📡 Roteador": "📡 Router",
+  "📡 Roteador Secundário": "📡 Router Secundario",
+  "📡 Roteador Secundário / AP": "📡 Router Secundario / AP",
+  "📡 Roteador Secundário / Ponto Adicional (Extensor de Wi-Fi)": "📡 Router Secundario / Punto Adicional (Extensor Wi-Fi)",
+  "📡 Roteador Secundário Detectado": "📡 Router Secundario Detectado",
+  "📦 Instalar manual/offline": "📦 Instalar manual/offline",
+  "📦 Instalar pacote baixado": "📦 Instalar paquete descargado",
+  "📺 Vídeo": "📺 Vídeo",
+  "🔄 Atualizar": "🔄 Actualizar",
+  "🔄 IP Automático (DHCP Cliente do Mestre)": "🔄 IP Automática (Cliente DHCP del Maestro)",
+  "🔌 Cabo de Rede (Backhaul Ethernet Gigabit - Recomendado)": "🔌 Cable de Red (Backhaul Ethernet Gigabit - Recomendado)",
+  "🔌 Porta Web do AdGuard": "🔌 Puerto Web de AdGuard",
+  "🔍 Escanear Redes do Mestre no Ar": "🔍 Escanear Redes del Maestro por Aire",
+  "🔍 Especificações": "🔍 Especificaciones",
+  "🔒 Amarração e Reserva de MAC no Roteador Principal:": "🔒 Vinculación y Reserva de MAC en el Router Maestro:",
+  "🔒 Desativado para proteger o": "🔒 Desactivado para proteger el",
+  "🔒 Este IP ficará gravado nas concessões estáticas do DHCP para o MAC": "🔒 Esta IP quedará guardada en concesiones estáticas DHCP para la MAC",
+  "🔗 Abrir GitHub Releases": "🔗 Abrir GitHub Releases",
+  "🔗 Roteador em Cascata / NDP Relay": "🔗 Router en Cascada / NDP Relay",
+  "🖨️ Impressora / Scanner de Rede": "🖨️ Impresora / Escáner de Red",
+  "🗑️ Desinstalar Speedify": "🗑️ Desinstalar Speedify",
+  "🗑️ Excluir esta rede Wi‑Fi": "🗑️ Eliminar esta red Wi‑Fi",
+  "🚀 API Resend (Gratuito, Sem Senha)": "🚀 API Resend (Gratuita, Sin Contraseña)",
+  "🚀 Aceleração de Tráfego (Fastpath / Flow Offloading)": "🚀 Aceleración de Tráfico (Fastpath / Flow Offloading)",
+  "🚀 Teste de Velocidade Turbo (Netflix OCA)": "🚀 Prueba de Velocidad Turbo (Netflix OCA)",
+  "🚫 Bloquear Sites Específicos (Lista Negra da Rede)": "🚫 Bloquear Dominios Específicos (Lista Negra)",
+  "🚫 Bloqueio de Apps e Serviços:": "🚫 Bloqueo de Apps y Servicios:",
+  "🛡️ Controle Parental & Filtros Deste Aparelho": "🛡️ Control Parental y Filtros de Este Equipo",
+  "🛡️ Filtro Ativo": "🛡️ Filtro Activo",
+  "🛡️ Salvaguarda Anti-Lockout (IP de Resgate Permanente):": "🛡️ Salvaguarda Anti-Bloqueo (IP de Rescate Permanente):",
+  "🛰️ Automático (antena real / probes WAN)": "🛰️ Automático (antena real / sondeos WAN)",
+  "🧪 Simulação (gerar dados Starlink para testes)": "🧪 Simulación (generar datos Starlink para pruebas)",
+  "🧹 Liberar Memória RAM Agora": "🧹 Liberar Memoria RAM Ahora",
+  "🪶 Proteção em Nuvem (Anycast Brasil)": "🪶 Protección en la Nube (Anycast Baja Latencia)",
+  "Apenas Enlaces Mesh": "Solo Enlaces Mesh",
+  "Todas as Redes Wi-Fi": "Todas las Redes Wi-Fi",
+  "Enlace 802.11s": "Enlace 802.11s",
+  "Conectar a este Enlace": "Conectar a este Enlace",
+  "Nenhum enlace Mesh 802.11s detectado no ar no momento.": "No se detectó ningún enlace Mesh 802.11s en el aire en este momento.",
+  "Certifique-se de que o Enlace Mesh Sem Fio (802.11s) está ativado no Roteador Principal. Você também pode visualizar todas as redes Wi-Fi normais ou simular:": "Asegúrese de que el Enlace Mesh Inalámbrico (802.11s) esté activado en el Router Maestro. También puede ver todas las redes Wi-Fi normales o simular:",
+  "Ver Todas as Redes Wi-Fi": "Ver Todas las Redes Wi-Fi",
+  "Simular Enlace Mesh ark-mesh (Canal 36 / -45 dBm)": "Simular Enlace Mesh ark-mesh (Canal 36 / -45 dBm)",
+  "Enlace Mesh Selecionado:": "Enlace Mesh Seleccionado:",
+  "🌐 Roteador Principal": "🌐 Router Principal",
+  "Roteador Principal (Gateway)": "Router Principal (Gateway)",
+  "🌐 Painel Mestre": "🌐 Panel Maestro",
+  "Abrir Painel do Roteador Principal (Gateway)": "Abrir Panel del Router Principal (Gateway)",
+  "Enlace Mesh / Mestre": "Enlace Mesh / Maestro",
+  "Rede Mesh / Roteador Mestre": "Red Mesh / Router Maestro",
+  "Backhaul": "Backhaul",
+  "Mesh / Mestre": "Mesh / Maestro",
+  " (Neste Ponto)": " (En este punto)",
+  "Roteador Principal da residência conectado ao modem/fibra": "Router Principal del hogar conectado al módem/fibra",
+  "Hardware otimizado com sucesso! Perfil:": "¡Hardware optimizado con éxito! Perfil:",
+  "Calibração Automática de Hardware": "Calibración Automática de Hardware",
+  "Ajusta automaticamente Offload, IRQ Balance, buffers TCP e Conntrack para o silício deste roteador": "Ajusta automáticamente Offload, IRQ Balance, búferes TCP y Conntrack para el silicio de este router",
+  "Hardware calibrado com sucesso! Perfil:": "¡Hardware calibrado con éxito! Perfil:",
+  "Aceleração em Silício & Perfil de Ajuste": "Aceleración en Silicio y Perfil de Ajuste",
+  "Família de Silício": "Familia de Silicio",
+  "Aceleração em Silício (PPE)": "Aceleración en Silicio (PPE)",
+  "Despacho Wi-Fi Direto (WED)": "Despacho Wi-Fi Directo (WED)",
+  "Faixa de Memória (Tier)": "Nivel de Memoria (Tier)",
+  "Perfil de Ajuste Recomendado": "Perfil de Ajuste Recomendado",
+  "⚡ Otimizar Automaticamente por Hardware": "⚡ Optimizar Automáticamente por Hardware",
+  "⚡ Calibrar por Hardware": "⚡ Calibrar por Hardware",
+  "Otimizando hardware…": "Optimizando hardware…",
+  "Calibrando hardware…": "Calibrando hardware…",
+  "Calibrando…": "Calibrando…",
+  "Ajusta automaticamente Offload (PPE/Flowtable), IRQ Balance, buffers TCP e limites de Conntrack sob medida para o processador e a memória deste roteador.": "Ajusta automáticamente Offload (PPE/Flowtable), IRQ Balance, búferes TCP y límites de Conntrack a medida para el procesador y la memoria de este router.",
+  "Blindagem de Modo Satélite": "Blindaje de Modo Satélite",
+  "🛡️ O controle de Bufferbloat (SQM / CAKE) é exclusivo do Roteador Mestre.": "🛡️ El control de Bufferbloat (SQM / CAKE) es exclusivo del Router Maestro.",
+  "🛡️ Speedify Gerenciado no Mestre": "🛡️ Speedify Administrado en Maestro",
+  "🛡️ Multi-WAN Gerenciado no Mestre": "🛡️ Multi-WAN Administrado en Maestro",
+  "🛡️ Exclusivo do Roteador Mestre (Gateway principal).": "🛡️ Exclusivo del Router Maestro (Gateway principal).",
+  "🛡️ O serviço Multi-WAN é exclusivo do Roteador Mestre.": "🛡️ El servicio Multi-WAN es exclusivo del Router Maestro.",
+  "🛡️ O serviço Speedify (Bonding de WANs) é exclusivo do Roteador Mestre.": "🛡️ El servicio Speedify (Bonding de WANs) es exclusivo del Router Maestro.",
+  "O controle SQM / CAKE é exclusivo do Roteador Mestre e permanece desativado neste satélite.": "El control SQM / CAKE es exclusivo del Router Maestro y permanece desactivado en este satélite.",
+  "🛡️ Fila Exclusiva do Roteador Mestre": "🛡️ Cola Exclusiva del Router Maestro",
+  "Modo Satélite / Ponto de Acesso": "Modo Satélite / Punto de Acceso",
+  "Este roteador opera como nó Satélite / Ponto de Acesso em ponte transparente. O gerenciamento de tráfego de internet e filas SQM deve ser feito diretamente no roteador principal para evitar degradação de desempenho local.": "Este router opera como nodo Satélite / Punto de Acceso en puente transparente. La gestión de tráfico de internet y colas SQM debe realizarse en el router principal para evitar degradación de rendimiento local.",
+  "Nós Satélites e Pontos de Acesso operam em ponte transparente e não realizam balanceamento ou failover de conexões WAN. Configure o Multi-WAN diretamente no roteador principal.": "Los nodos Satélites y Puntos de Acceso operan en puente transparente y no realizan balanceo ni failover de conexiones WAN. Configure Multi-WAN en el router principal.",
+  "Nós Satélites e Pontos de Acesso operam como pontes transparentes na rede local. A agregação de links de internet (Speedify Bonding) deve rodar diretamente no roteador de borda principal (Gateway).": "Los nodos Satélites y Puntos de Acceso operan como puentes transparentes en la red local. La agregación de enlaces de internet (Speedify Bonding) debe ejecutarse directamente en el router gateway principal.",
+  "Este nó opera como extensor em ponte transparente. O tráfego de saída, Multi-WAN e controle de Bufferbloat (SQM) são centralizados no Roteador Mestre.": "Este nodo opera como extensor en puente transparente. El tráfico de salida, Multi-WAN y control de Bufferbloat (SQM) están centralizados en el Router Maestro.",
+  "O controle de Bufferbloat (SQM / CAKE) atua exclusivamente na porta de internet (WAN) do Roteador Mestre (Gateway). Em nós satélites, todo o tráfego passa em ponte direta (L2) para não limitar nem degradar a velocidade local do Wi-Fi.": "El control de Bufferbloat (SQM / CAKE) actúa exclusivamente en el puerto de internet (WAN) del Router Maestro (Gateway). En nodos satélites, todo el tráfico pasa en puente directo (L2) para no limitar ni degradar la velocidad local del Wi-Fi.",
+  "O balanceamento e failover de conexões de internet pertencem ao Roteador Mestre (Gateway). Em nós satélites, todo o tráfego é encaminhado diretamente via enlace local.": "El balanceo y failover de conexiones de internet pertenecen al Router Maestro (Gateway). En nodos satélites, todo el tráfico se reenvía directamente vía enlace local.",
+  "A agregação de links de internet (Speedify Bonding) atua nas portas WAN do Roteador Mestre (Gateway). Nós satélites mantêm tráfego local transparente.": "La agregación de enlaces de internet (Speedify Bonding) actúa en los puertos WAN del Router Maestro (Gateway). Los nodos satélites mantienen tráfico local transparente.",
+  "Desativado e gerenciado centralmente pelo Roteador Mestre": "Desactivado y administrado centralmente por el Router Maestro",
+  "MESTRE GERENCIA": "MAESTRO GESTIONA",
+  "GERENCIADO PELO MESTRE": "ADMINISTRADO POR MAESTRO",
+  "INATIVO NO SATÉLITE": "INACTIVO EN SATÉLITE",
+  "Inativo (Modo Satélite)": "Inactivo (Modo Satélite)",
+  "Desativado no Satélite": "Desactivado en Satélite",
+  "🛡️ Modo Satélite / Ponto de Acesso": "🛡️ Modo Satélite / Punto de Acceso",
+  "⚡ Modo Híbrido Ativo": "⚡ Modo Híbrido Activo",
+  "⚡ Modo Híbrido Ativo (Fastpath + CAKE)": "⚡ Modo Híbrido Activo (Fastpath + CAKE)",
+  "Modo Híbrido: O Download opera com velocidade total liberada no Fastpath e o Upload é gerenciado pelo CAKE para blindar a rede contra lag em jogos e chamadas.": "Modo Híbrido: La descarga opera a máxima velocidad liberada en Fastpath y la subida es gestionada por CAKE para blindar la red contra el lag en juegos y llamadas.",
+  "🧮 Calculadora de Upload (-7% Bufferbloat)": "🧮 Calculadora de Subida (-7% Bufferbloat)",
+  "Margem de 7% aplicada para impedir acúmulo de fila no modem.": "Margen del 7% aplicado para evitar acumulación de cola en el módem.",
+  "Aplicar -7%": "Aplicar -7%",
+  "Velocidade nominal (Mbps)": "Velocidad nominal (Mbps)",
+  "✓ Pronto e ativo: downloads e tráfego geral acelerados no kernel com menor uso de CPU.": "✓ Listo y activo: descargas y tráfico general acelerados en el kernel con menor uso de CPU.",
+  "Modo Híbrido disponível: o Fastpath acelera downloads no kernel enquanto o CAKE gerencia uploads.": "Modo Híbrido disponible: Fastpath acelera descargas en el kernel mientras CAKE gestiona subidas.",
+  "DNS Protegido por Bloqueador": "DNS Protegido por Bloqueador",
+  "Toque em “Servidores” para visualizar a rota de resolução e status de fallback.": "Toque en “Servidores” para ver la ruta de resolución y estado de fallback.",
+  "Modo Híbrido: O Download opera com velocidade total no Fastpath e o Upload é gerenciado pelo CAKE contra lag.": "Modo Híbrido: La descarga funciona a máxima velocidad con Fastpath y la subida es gestionada por CAKE contra el lag.",
+  "Margem de 7% aplicada para impedir acúmulo de fila no modem e eliminar lag.": "Margen del 7% aplicado para evitar acumulación de colas en el módem y eliminar el lag.",
+  "No Modo Híbrido, o download opera sem limite artificial no kernel.": "En Modo Híbrido, la descarga opera sin límite artificial en el kernel.",
+  "Indispensável informar a velocidade real de upload para o CAKE estabilizar a latência.": "Indispensable ingresar la velocidad real de subida para que CAKE estabilice la latencia.",
+  "0 (Ilimitado / Fastpath)": "0 (Ilimitado / Fastpath)",
+  "Modo Híbrido ativado: Fastpath no Download e CAKE no Upload aplicados com sucesso!": "¡Modo Híbrido activado: Fastpath en Descarga y CAKE en Subida aplicados con éxito!",
+  "Nuvem Externa": "Nube Externa",
+  "🛡️ Navegação Segura (Anti-Malware & Phishing)": "🛡️ Navegación Segura (Anti-Malware y Phishing)",
+  "Bloqueia sites maliciosos e golpes antes que sejam abertos via checagem em servidores online.": "Bloquea sitios maliciosos y estafas antes de que se abran mediante comprobación en servidores online.",
+  "Atenção:": "Atención:",
+  "Pode elevar o tempo de resposta do DNS e reduzir a velocidade durante uso pesado de torrents.": "Puede aumentar el tiempo de respuesta de DNS y reducir la velocidad durante el uso intensivo de torrents.",
+  "👨‍👩‍👧 Controle Parental (Bloqueio Adulto)": "👨‍👩‍👧 Control Parental (Bloqueo Adultos)",
+  "Bloqueia automaticamente pornografia e conteúdos impróprios para menores na rede toda via servidores online.": "Bloquea automáticamente pornografía y contenido inapropiado para menores en toda la red mediante servidores online.",
+  "Pode causar lentidão no DNS em redes com alto volume de conexões.": "Puede causar lentitud en DNS en redes con alto volumen de conexiones.",
+  "🔍 Busca Segura Forçada (SafeSearch)": "🔍 Búsqueda Segura Forzada (SafeSearch)",
+  "Obriga o filtro de família no Google, Bing, YouTube e DuckDuckGo para proteger crianças.": "Obliga el filtro familiar en Google, Bing, YouTube y DuckDuckGo para proteger a los niños.",
+  "📺 Blindagem de Smart TVs (Interceptar Porta 53)": "📺 Blindaje de Smart TVs (Interceptar Puerto 53)",
+  "DNAT Transparente": "DNAT Transparente",
+  "Força Smart TVs, Chromecasts e aparelhos com DNS embutido a passarem pelo AdGuard. Redireciona consultas externas da porta 53 para o roteador em 0ms.": "Fuerza a Smart TVs, Chromecasts y dispositivos con DNS integrado a pasar por AdGuard. Redirige consultas externas del puerto 53 al router en 0ms.",
+  "📺 Smart TVs": "📺 Smart TVs",
+  "📺 Smart TVs Blindadas": "📺 Smart TVs Blindadas",
+  "Regras Avançadas de Roteamento (Portas e IPs)": "Reglas Avanzadas de Enrutamiento (Puertos e IPs)",
+  "Roteamento por Política (PBR)": "Enrutamiento Basado en Políticas (PBR)",
+  "Direcione portas específicas ou aparelhos para balanceamento ou para um link dedicado.": "Enrute puertos específicos o dispositivos para balanceo de carga o a un enlace dedicado.",
+  "+ Nova Regra": "+ Nueva Regla",
+  "⚡ Acelerar BitTorrent / P2P nas 2 Internets": "⚡ Acelerar BitTorrent / P2P en las 2 Conexiones",
+  "Balanceia conexões BitTorrent (portas 51413 e 6881-6999) pelas 2 conexões simultaneamente.": "Balancea conexiones BitTorrent (puertos 51413 y 6881-6999) en ambas conexiones simultáneamente.",
+  "Nenhuma regra personalizada cadastrada. Clique em \"+ Nova Regra\" para direcionar portas ou aparelhos específicos.": "No hay reglas personalizadas configuradas. Haga clic en \"+ Nueva Regla\" para enrutar puertos o dispositivos específicos.",
+  "Ex: PC Gamer Torrent, Steam, Console": "Ej: PC Gamer Torrent, Steam, Consola",
+  "Todos os aparelhos da rede (Qualquer IP)": "Todos los dispositivos de la red (Cualquier IP)",
+  "Digitar IP manualmente…": "Ingresar IP manualmente…",
+  "TCP e UDP (Recomendado)": "TCP y UDP (Recomendado)",
+  "Apenas TCP": "Solo TCP",
+  "Apenas UDP": "Solo UDP",
+  "Ex: 51413 ou 6881": "Ej: 51413 o 6881",
+  "Ex: 6999 (opcional)": "Ej: 6999 (opcional)",
+  "⚖️ Balancear pelas 2 Internets (Multi-WAN)": "⚖️ Balancear por las 2 Conexiones (Multi-WAN)",
+  "🔵 Somente WAN1 (Claro)": "🔵 Solo WAN1",
+  "🟣 Somente WAN2 (Link Telecom)": "🟣 Solo WAN2",
+  "🛡️ WAN1 principal (Failover para WAN2)": "🛡️ WAN1 principal (Conmutación por error a WAN2)",
+  "🛡️ WAN2 principal (Failover para WAN1)": "🛡️ WAN2 principal (Conmutación por error a WAN1)",
+  "Crie uma regra personalizada para direcionar portas específicas ou aparelhos para o balanceamento ou um link exclusivo.": "Cree una regla personalizada para dirigir puertos específicos o dispositivos al balanceo o a un enlace exclusivo.",
+  "Nome da Regra:": "Nombre de la Regla:",
+  "Aparelho ou IP de Origem:": "Dispositivo o IP de Origen:",
+  "Protocolo:": "Protocolo:",
+  "Faixa de Portas (Destino):": "Rango de Puertos (Destino):",
+  "Porta Inicial:": "Puerto Inicial:",
+  "Porta Final (Faixa):": "Puerto Final (Rango):",
+  "Deixe a porta final vazia para aplicar apenas a uma única porta, ou preencha as duas para criar uma faixa contínua.": "Deje el puerto final vacío para aplicar solo a un puerto, o complete ambos para crear un rango continuo.",
+  "Ação / Rota de Saída:": "Acción / Ruta de Salida:",
+  "Digite um nome para a regra.": "Ingrese un nombre para la regla.",
+  "Endereço IP inválido.": "Dirección IP inválida.",
+  "Porta inicial deve estar entre 1 e 65535.": "El puerto inicial debe estar entre 1 y 65535.",
+  "Porta final deve estar entre 1 e 65535.": "El puerto final debe estar entre 1 y 65535.",
+  "A porta final deve ser maior que a porta inicial.": "El puerto final debe ser mayor que el puerto inicial.",
+  "Salvando…": "Guardando…",
+  "Salvar Regra": "Guardar Regla",
+  "Regra criada com sucesso!": "¡Regla creada con éxito!",
+  "➕ Nova Regra de Roteamento Multi-WAN": "➕ Nueva Regla de Enrutamiento Multi-WAN",
+  "Excluir Regra de Roteamento": "Eliminar Regla de Enrutamiento",
+  "Tem certeza que deseja excluir a regra “": "¿Está seguro de que desea eliminar la regla “",
+  "Excluindo…": "Eliminando…",
+  "Regra excluída com sucesso!": "¡Regla eliminada con éxito!",
+  "Regra ativada com sucesso!": "¡Regla activada con éxito!",
+  "Regra desativada!": "¡Regla desactivada!",
+  "Aceleração BitTorrent/P2P nas 2 conexões ATIVADA!": "¡Aceleración BitTorrent/P2P en las 2 conexiones ACTIVADA!",
+  "Aceleração BitTorrent/P2P DESATIVADA.": "Aceleración BitTorrent/P2P DESACTIVADA.",
+  "⚖️ Balanceado (2 Links)": "⚖️ Balanceado (2 Enlaces)",
+  "Todas as portas": "Todos los puertos",
+  "Todos os aparelhos": "Todos los dispositivos",
+  "Falha ao adicionar regra": "Error al añadir regla",
+  "Falha ao excluir regra": "Error al eliminar regla",
+  "Falha ao alternar regra": "Error al alternar regla",
+  "Falha ao alternar aceleração P2P": "Error al alternar aceleración P2P",
+  "Ativar ou desativar regra": "Activar o desactivar regla",
+  "Ativar ou desativar aceleração P2P": "Activar o desactivar aceleración P2P",
+  "Excluir regra": "Eliminar regla",
+  "Verificação do OpenWrt Base": "Comprobación de OpenWrt Base",
+  "LIGADA (AVISOS ATIVOS)": "ACTIVADA (AVISOS ACTIVOS)",
+  "DESLIGADA (RECOMENDADO)": "DESACTIVADA (RECOMENDADO)",
+  "⚠️ O painel buscará atualizações do OpenWrt genérico a cada login. Atenção: atualizar por lá remove o ARK Router.": "⚠️ El panel buscará actualizaciones genéricas de OpenWrt en cada inicio de sesión. Atención: actualizar desde allí sobrescribirá el ARK Router.",
+  "✅ Pop-ups do OpenWrt genérico bloqueados para evitar que o ARK Router seja sobrescrito por engano.": "✅ Ventanas emergentes de OpenWrt genérico bloqueadas para evitar la sobrescritura accidental del ARK Router.",
+  "Verificação do OpenWrt ativada. Pop-ups do OpenWrt genérico serão exibidos no login.": "Comprobación de OpenWrt activada. Se mostrarán avisos de OpenWrt genérico al iniciar sesión.",
+  "Verificação do OpenWrt desativada. O ARK Router está protegido contra sobrescrita.": "Comprobación de OpenWrt desactivada. El ARK Router está protegido contra sobrescritura.",
+  "O LuCI verifica nos servidores oficiais do OpenWrt a cada carregamento de página.": "LuCI consulta los servidores oficiales de OpenWrt en cada carga de página.",
+  "Desativado para evitar pop-ups invasivos e proteger o ARK Router.": "Desactivado para evitar ventanas emergentes invasivas y proteger ARK Router.",
+  "Verificação do OpenWrt ativada.": "Comprobación de OpenWrt activada.",
+  "Verificação do OpenWrt desativada.": "Comprobación de OpenWrt desactivada.",
+  "Distribuir IPv6 na LAN": "Distribuir IPv6 en la LAN",
+  "Distribui o bloco IPv6 público desta operadora para os dispositivos locais (DHCPv6-PD). Apenas uma WAN pode distribuir por vez para evitar conflitos.": "Distribuye el bloque IPv6 público de este operador a los dispositivos locales (DHCPv6-PD). Solo una WAN puede distribuir a la vez para evitar conflictos.",
+  "Requer 'Conectividade IPv6' ativa nesta WAN.": "Requiere 'Conectividade IPv6' activa en esta WAN.",
+  "A distribuição já está ativa na %s. Desative na %s primeiro para ativar aqui.": "La distribución ya está activa en %s. Desactívela en %s primero para activarla aquí.",
+  "Proteção de armazenamento ativa: o roteador pausará serviços em execução (servidores, downloads e compartilhamentos), descarregará dados da memória RAM e protegerá unidades externas contra corrupção antes de reiniciar.": "Protección de almacenamiento activa: el router pausará los servicios en ejecución (servidores, descargas y comparticiones), guardará los datos de la memoria RAM y protegerá las unidades externas contra la corrupción antes de reiniciar.",
+  "Salvando dados e reiniciando…": "Guardando datos y reiniciando…",
+  "Protegendo unidades externas e reiniciando o roteador. A conexão será interrompida.": "Protegiendo las unidades externas y reiniciando el router. La conexión se interrumpirá.",
+  "Instalando Pacotes e Recursos": "Instalando Paquetes y Recursos",
+  "Instalação de Recursos em Lote": "Instalación de Recursos en Lote",
+  "Instalando Módulos do Ark - Setup": "Instalando Módulos de Ark - Setup",
+  "Iniciando…": "Iniciando…",
+  "Preparando gerenciador de pacotes…": "Preparando gestor de paquetes…",
+  "Aguardando saída do gerenciador de pacotes…": "Esperando salida del gestor de paquetes…",
+  "O roteador está baixando e configurando os pacotes necessários. Isso pode levar de 30 segundos a alguns minutos dependendo da sua velocidade de internet. Por favor, mantenha esta tela aberta.": "El router está descargando y configurando los paquetes necesarios. Esto puede demorar de 30 segundos a algunos minutos según su velocidad de internet. Por favor, mantenga esta pantalla abierta.",
+  "Instalação em andamento…": "Instalación en progreso…",
+  "Todos os recursos foram instalados com sucesso! Recarregando painel…": "¡Todos los recursos se instalaron con éxito! Recargando panel…",
+  "Módulos do Ark - Setup instalados com sucesso! Recarregando painel…": "¡Módulos de Ark - Setup instalados con éxito! Recargando panel…",
+  "Instalando pacotes…": "Instalando paquetes…",
+  "Falha durante o processo de instalação.": "Fallo durante el proceso de instalación.",
+  "Tempo limite excedido na instalação.": "Tiempo límite excedido en la instalación.",
+  "Falha na instalação dos pacotes.": "Fallo en la instalación de paquetes.",
+  "Concluir e recarregar": "Completar y recargar",
+  "Nenhum módulo pendente para instalar.": "No hay módulos pendientes para instalar."
 };
 
 function _t(text){
@@ -2823,6 +3264,8 @@ function translateText(value){
 		s=s.replace(/Flash Interna • livre ([\d\.]+\s+[KMGTP]?B)/g,'Internal Flash • free $1');
 		s=s.replace(/^CRÍTICO PARA (.*)$/,'CRITICAL FOR $1').replace(/^RECOMENDADO PARA (.*)$/,'RECOMMENDED FOR $1');
 		s=s.replace(/^ROTEADORES <= 16MB(.*)$/,'ROUTERS <= 16MB$1');
+		s=s.replace(/Resolução local gerenciada pelo (.+?)\. O modo All-Servers está desativado para impedir que servidores públicos recebam requisições simultâneas e burlem suas listas de filtros\./g,'Local resolution managed by $1. All-Servers mode is disabled to prevent public servers from receiving simultaneous requests and bypassing filter lists.');
+		s=s.replace(/A distribuição já está ativa na (WAN\d*)\. Desative na \1 primeiro para ativar aqui\./g,'IPv6 distribution is already active on $1. Disable it on $1 first to enable here.');
 		return s;
 	}
 	if (dashboardLanguage === 'es') {
@@ -2846,6 +3289,8 @@ function translateText(value){
 		s=s.replace(/Flash Interna • livre ([\d\.]+\s+[KMGTP]?B)/g,'Flash Interna • libre $1');
 		s=s.replace(/^CRÍTICO PARA (.*)$/,'CRÍTICO PARA $1').replace(/^RECOMENDADO PARA (.*)$/,'RECOMENDADO PARA $1');
 		s=s.replace(/^ROTEADORES <= 16MB(.*)$/,'ENRUTADORES <= 16MB$1');
+		s=s.replace(/Resolução local gerenciada pelo (.+?)\. O modo All-Servers está desativado para impedir que servidores públicos recebam requisições simultâneas e burlem suas listas de filtros\./g,'Resolución local gestionada por $1. El modo All-Servers está desactivado para evitar que servidores públicos reciban solicitudes simultáneas y evadan sus listas de filtros.');
+		s=s.replace(/A distribuição já está ativa na (WAN\d*)\. Desative na \1 primeiro para ativar aqui\./g,'La distribución ya está activa en $1. Desactívela en $1 primero para activarla aquí.');
 		return s;
 	}
 	return s;
@@ -6423,7 +6868,69 @@ const networkMethods = {
 			const field=function(label,value,hint){const node=E('input',{type:'number',class:'cbi-input-text',min:0,max:100000,step:'0.1',placeholder:'0 (ilimitado)',value:kbpsToMbpsInput(value)});return {node:node,row:E('label',{class:'ex-qos-edit-field'},[E('span',{},[label+' (Mbps)']),node,E('small',{class:'ex-muted'},[hint||'Mbps • 0 ou vazio = ilimitado'])])};};
 			const profiles=sqmWanProfiles(data);if(!profiles.length)throw new Error('Nenhuma interface configurada como WAN foi encontrada.');
 			const guestDownloadLimit=qosGuest.download_kbps||qos.guest_download_kbps||0, guestUploadLimit=qosGuest.upload_kbps||qos.guest_upload_kbps||0;
-			const editors=profiles.map(function(profile){const queue=sqm[profile.section]||{},enabled=E('input',{type:'checkbox'}),download=field(profile.label+' download',queue.download),upload=field(profile.label+' upload',queue.upload);enabled.checked=queue.enabled==='1';return {profile:profile,enabled:enabled,download:download,upload:upload,section:E('section',{},[E('h3',{},[profile.label]),E('small',{class:'ex-muted'},['Interface '+profile.network+' • dispositivo '+profile.device+(profile.online?' • online':' • sem link')]),E('label',{class:'ex-qos-edit-toggle'},[enabled,E('span',{},['Ativar fila '+profile.label])]),download.row,upload.row])};});
+			const fwDefs = Object.values(data.firewallConfig || {}).find(function(s) { return s && s['.type'] === 'defaults'; }) || {};
+			const isFlowOffloadActive = fwDefs.flow_offloading === '1';
+
+			const editors=profiles.map(function(profile){
+				const queue=sqm[profile.section]||{},enabled=E('input',{type:'checkbox'}),download=field(profile.label+' download',queue.download),upload=field(profile.label+' upload',queue.upload);
+				enabled.checked=queue.enabled==='1';
+
+				const calcInput = E('input', {
+					type: 'number',
+					class: 'cbi-input-text',
+					min: 1,
+					max: 100000,
+					step: '1',
+					placeholder: 'Velocidade nominal (Mbps)',
+					style: 'max-width: 170px; margin-right: 6px;'
+				});
+				const calcNotice = E('small', { class: 'ex-muted', style: 'display: block; margin-top: 4px; font-size: 11px; line-height: 1.3;' }, [
+					'Margem de 7% aplicada para impedir acúmulo de fila no modem.'
+				]);
+				const applyCalcBtn = E('button', {
+					type: 'button',
+					class: 'btn cbi-button cbi-button-action ex-mini-button',
+					style: 'font-weight: 600;',
+					click: function() {
+						const nominal = parseFloat(calcInput.value || 0);
+						if (nominal > 0) {
+							const discounted = Math.round(nominal * 0.93 * 10) / 10;
+							upload.node.value = discounted;
+							if (isFlowOffloadActive || download.node.value === '' || download.node.value === '0') {
+								download.node.value = '0';
+							}
+							calcNotice.style.color = '#10b981';
+							calcNotice.textContent = '✓ ' + discounted + ' Mbps aplicado ao Upload (-7% contra Bufferbloat).';
+						}
+					}
+				}, ['Aplicar -7%']);
+
+				const calcBox = E('div', { class: 'ex-qos-calc-box', style: 'margin-top: 8px; margin-bottom: 8px; padding: 8px 10px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 8px;' }, [
+					E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;' }, [
+						E('strong', { style: 'font-size: 11.5px;' }, ['🧮 Calculadora de Upload (-7% Bufferbloat)'])
+					]),
+					E('div', { style: 'display: flex; align-items: center; flex-wrap: wrap; gap: 4px;' }, [
+						calcInput,
+						applyCalcBtn
+					]),
+					calcNotice
+				]);
+
+				return {
+					profile: profile,
+					enabled: enabled,
+					download: download,
+					upload: upload,
+					section: E('section', {}, [
+						E('h3', {}, [profile.label]),
+						E('small', { class: 'ex-muted' }, ['Interface '+profile.network+' • dispositivo '+profile.device+(profile.online?' • online':' • sem link')]),
+						E('label', { class: 'ex-qos-edit-toggle' }, [enabled, E('span', {}, ['Ativar fila '+profile.label])]),
+						download.row,
+						upload.row,
+						calcBox
+					])
+				};
+			});
 			const guestDown=field('Visitantes download total',guestDownloadLimit,'Mbps • 0 ou vazio = ilimitado'), guestUp=field('Visitantes upload total',guestUploadLimit,'Mbps • exemplo: 1,5 • 0 ou vazio = ilimitado');
 			const mipsNotice = audit.is_low_end_mips ? E('div', { class: 'alert-message warning', style: 'margin-bottom: 12px; font-size: 12.5px; line-height: 1.5;' }, [
 				E('strong', { style: 'display:block; margin-bottom:4px;' }, ['⚠️ Recomendação de Hardware: Processador MIPS (' + (audit.cpu_model || 'Single-Core 720 MHz') + ')']),
@@ -6441,11 +6948,17 @@ const networkMethods = {
 				])
 			]) : '';
 
+			const hybridBanner = isFlowOffloadActive ? E('div', { class: 'alert-message info', style: 'margin-bottom: 12px; font-size: 12.5px; line-height: 1.45;' }, [
+				E('strong', { style: 'display: block; margin-bottom: 3px;' }, ['⚡ Modo Híbrido Ativo (Fastpath + CAKE)']),
+				'Modo Híbrido: O Download opera com velocidade total liberada no Fastpath e o Upload é gerenciado pelo CAKE para blindar a rede contra lag em jogos e chamadas.'
+			]) : '';
+
 			ui.showModal('Editar SQM / CAKE',[
 				E('div',{style:'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;'},[
 					E('p',{class:'ex-muted',style:'margin:0;'},['Defina os limites em Mbps. Exemplo: 1,2 Gbps = 1200 Mbps. Use 0 ou deixe em branco quando não quiser limitar aquela direção (ilimitado).']),
 					E('button',{class:'ex-mini-button','click':L.bind(function(){ui.hideModal();this.openFastCom();},this)},['🎬 Medir no Fast.com'])
 				]),
+				hybridBanner,
 				mipsNotice,
 				E('div',{class:'ex-qos-edit-grid'},editors.map(function(editor){return editor.section;}).concat([E('section',{},[E('h3',{},['Visitantes']),guestDown.row,guestUp.row])])),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
 			const btn = ev.currentTarget;
@@ -6524,6 +7037,57 @@ const networkMethods = {
 			const ipv6Input=E('input',{type:'checkbox',class:'cbi-input-checkbox',checked:ipv6Enabled ? '' : null});
 			ipv6Input.checked = !!ipv6Enabled;
 			const ipv6Switch=E('label',{class:'ex-switch'},[ipv6Input,E('span',{class:'ex-switch-slider'})]);
+
+			const which6Cfg = net[which === 'wan' ? 'wan6' : (which + '_6')] || net[which + '6'] || {};
+			let otherDelegatingWan = null;
+			for (let ifaceKey in net) {
+				if (ifaceKey !== which && /^wan[0-9]*$/.test(ifaceKey) && ifaceKey !== 'wan6') {
+					const otherCfg = net[ifaceKey] || {};
+					const other6Key = (ifaceKey === 'wan' ? 'wan6' : (ifaceKey + '_6'));
+					const other6Cfg = net[other6Key] || net[ifaceKey + '6'] || {};
+					const otherProto = otherCfg.proto;
+					if (otherProto && otherProto !== 'none') {
+						const isOtherPrimary = (ifaceKey === 'wan' || ifaceKey === 'wan1');
+						const otherDelegated = (otherCfg.delegate === '1' || otherCfg.delegate === 1 || other6Cfg.delegate === '1' || other6Cfg.delegate === 1 ||
+							(isOtherPrimary && otherCfg.delegate !== '0' && other6Cfg.delegate !== '0' && otherCfg.ipv6 !== '0' && cfg.delegate !== '1' && which6Cfg.delegate !== '1'));
+						if (otherDelegated) {
+							const otherNum = ifaceKey.replace(/\D/g, '') || '1';
+							otherDelegatingWan = 'WAN' + otherNum;
+							break;
+						}
+					}
+				}
+			}
+
+			const isCurrentlyDelegating = (cfg.delegate === '1' || cfg.delegate === 1 || cfg.delegate === true ||
+				which6Cfg.delegate === '1' || which6Cfg.delegate === 1 || which6Cfg.delegate === true ||
+				(isPrimary && cfg.delegate !== '0' && which6Cfg.delegate !== '0' && ipv6Enabled && !otherDelegatingWan));
+
+			const delegateInput = E('input', { type: 'checkbox', class: 'cbi-input-checkbox', checked: (isCurrentlyDelegating && !otherDelegatingWan) ? '' : null });
+			delegateInput.checked = !!(isCurrentlyDelegating && !otherDelegatingWan);
+			const delegateSwitch = E('label', { class: 'ex-switch' }, [delegateInput, E('span', { class: 'ex-switch-slider' })]);
+			const delegateHint = E('small', { class: 'ex-muted' }, ['']);
+
+			const updateDelegateState = function() {
+				if (!ipv6Input.checked) {
+					delegateInput.checked = false;
+					delegateInput.disabled = true;
+					delegateHint.textContent = _t("Requer 'Conectividade IPv6' ativa nesta WAN.");
+					delegateHint.style.color = 'var(--text-muted, #94a3b8)';
+				} else if (otherDelegatingWan) {
+					delegateInput.checked = false;
+					delegateInput.disabled = true;
+					const template = _t("A distribuição já está ativa na %s. Desative na %s primeiro para ativar aqui.");
+					delegateHint.textContent = template.replace(/%s/g, otherDelegatingWan);
+					delegateHint.style.color = '#f59e0b';
+				} else {
+					delegateInput.disabled = false;
+					delegateHint.textContent = _t("Distribui o bloco IPv6 público desta operadora para os dispositivos locais (DHCPv6-PD). Apenas uma WAN pode distribuir por vez para evitar conflitos.");
+					delegateHint.style.color = '';
+				}
+			};
+			ipv6Input.addEventListener('change', updateDelegateState);
+			updateDelegateState();
 
 			const pppoeProfileSelect = E('select', { class: 'cbi-input-select', style: 'flex:1;' }, [
 				E('option', { value: '' }, ['-- Escolher perfil PPPoE salvo --'])
@@ -6727,7 +7291,7 @@ const networkMethods = {
 				savePromptBox
 			]);
 
-			const field=function(label,node,hint,extraClass){return E('label',{class:'ex-wan-edit-field'+(extraClass?(' '+extraClass):'')},[E('span',{},[label]),node,hint?E('small',{class:'ex-muted'},[hint]):'']);};
+			const field=function(label,node,hint,extraClass){return E('label',{class:'ex-wan-edit-field'+(extraClass?(' '+extraClass):'')},[E('span',{},[label]),node,(hint instanceof Node)?hint:(hint?E('small',{class:'ex-muted'},[hint]):'')]);};
 			const pppoeBlock=E('div',{class:'ex-wan-proto-block'},[
 				pppoeProfileBar,
 				field('Usuário PPPoE',username),
@@ -6764,6 +7328,7 @@ const networkMethods = {
 				field('Tipo de conexão',proto),
 				field('Prioridade / Métrica (Peso)',metricInput,'Menor número = maior prioridade (ex: WAN1=10, WAN2=20). Não pode haver WANs com o mesmo peso.'),
 				field('Conectividade IPv6',ipv6Switch,'Habilita requisição de endereço e rota IPv6 nesta conexão WAN.'),
+				field(_t('Distribuir IPv6 na LAN'),delegateSwitch,delegateHint),
 				pppoeBlock,
 				staticBlock,
 				field('DNS 1',dns1),
@@ -6801,8 +7366,9 @@ const networkMethods = {
 							}
 						}
 						const chosenIpv6 = ipv6Input.checked ? '1' : '0';
+						const chosenDelegate = (ipv6Input.checked && delegateInput.checked) ? '1' : '0';
 						const dns = [dns1.value.trim(), dns2.value.trim(), dns3.value.trim()].filter(Boolean).join(' ');
-						const args = ['wan-save', 'iface=' + which, 'mode=' + role.value, 'device=' + device.value, 'proto=' + proto.value, 'metric=' + chosenMetric, 'ipv6=' + chosenIpv6, 'username=' + username.value, 'password=' + password.value, 'ipaddr=' + ipaddr.value, 'netmask=' + netmask.value, 'gateway=' + gateway.value, 'dns=' + dns, 'macaddr=' + macaddr.value.trim(), 'modem_ip=' + modemIp.value.trim()];
+						const args = ['wan-save', 'iface=' + which, 'mode=' + role.value, 'device=' + device.value, 'proto=' + proto.value, 'metric=' + chosenMetric, 'ipv6=' + chosenIpv6, 'delegate=' + chosenDelegate, 'username=' + username.value, 'password=' + password.value, 'ipaddr=' + ipaddr.value, 'netmask=' + netmask.value, 'gateway=' + gateway.value, 'dns=' + dns, 'macaddr=' + macaddr.value.trim(), 'modem_ip=' + modemIp.value.trim()];
 						return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 							if (r.code) throw new Error(r.stderr || 'Falha ao salvar WAN');
 							ui.hideModal();
@@ -7432,6 +7998,92 @@ const networkMethods = {
 			const tcpNotice = E('small', { style: 'font-weight:600;display:block;margin-top:4px;' });
 			let saveButton = null;
 
+			let initialUploadMbps = 0;
+			if (Number(opt.sqm_upload || 0) > 0) {
+				initialUploadMbps = Math.round((Number(opt.sqm_upload) / 1000) * 10) / 10;
+			}
+			const flowNotice = E('small', { class: 'ex-opt-requirement ready', style: 'display:none;margin-top:6px;' });
+			const hybridContainer = E('div', { class: 'ex-opt-hybrid-container', style: 'display:none;margin-top:10px;' });
+
+			const hybridNotice = E('div', { class: 'alert-message info', style: 'margin-bottom:8px;padding:8px 12px;font-size:12px;line-height:1.45;' }, [
+				E('strong', { style: 'display:block;margin-bottom:2px;font-size:12.5px;' }, ['⚡ Modo Híbrido Ativo']),
+				'Modo Híbrido: O Download opera com velocidade total no Fastpath e o Upload é gerenciado pelo CAKE contra lag.'
+			]);
+
+			const calcInput = E('input', {
+				type: 'number',
+				class: 'cbi-input-text',
+				min: 1,
+				max: 100000,
+				step: '1',
+				placeholder: 'Velocidade nominal (Mbps)',
+				style: 'max-width: 170px; margin-right: 6px;'
+			});
+			const calcNotice = E('small', { class: 'ex-muted', style: 'display:block;margin-top:4px;font-size:11px;line-height:1.3;' }, [
+				'Margem de 7% aplicada para impedir acúmulo de fila no modem e eliminar lag.'
+			]);
+			const uploadInput = E('input', {
+				type: 'number',
+				class: 'cbi-input-text',
+				min: 0,
+				max: 100000,
+				step: '0.1',
+				value: initialUploadMbps > 0 ? initialUploadMbps : 0,
+				placeholder: '0'
+			});
+			const downloadInput = E('input', {
+				type: 'text',
+				class: 'cbi-input-text',
+				value: '0 (Ilimitado / Fastpath)',
+				disabled: true,
+				style: 'opacity:0.85;'
+			});
+
+			const applyCalcBtn = E('button', {
+				type: 'button',
+				class: 'btn cbi-button cbi-button-action ex-mini-button',
+				style: 'font-weight: 600;',
+				click: function() {
+					const nominal = parseFloat(calcInput.value || 0);
+					if (nominal > 0) {
+						const discounted = Math.round(nominal * 0.93 * 10) / 10;
+						uploadInput.value = discounted;
+						calcNotice.style.color = '#10b981';
+						calcNotice.textContent = '✓ ' + discounted + ' Mbps aplicado ao Upload (-7% contra Bufferbloat).';
+					}
+				}
+			}, ['Aplicar -7%']);
+
+			const calcBox = E('div', { class: 'ex-qos-calc-box', style: 'margin-bottom:10px;padding:8px 12px;background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.15);border-radius:8px;' }, [
+				E('div', { style: 'display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;' }, [
+					E('strong', { style: 'font-size:11.5px;' }, ['🧮 Calculadora de Upload (-7% Bufferbloat)'])
+				]),
+				E('div', { style: 'display:flex;align-items:center;flex-wrap:wrap;gap:4px;' }, [
+					calcInput,
+					applyCalcBtn
+				]),
+				calcNotice
+			]);
+
+			const downloadField = E('label', { class: 'ex-wan-edit-field', style: 'margin-bottom:6px;' }, [
+				E('span', {}, ['Download (' + opt.label + ') • Mbps']),
+				downloadInput,
+				E('small', { class: 'ex-muted' }, ['No Modo Híbrido, o download opera sem limite artificial no kernel.'])
+			]);
+
+			const uploadField = E('label', { class: 'ex-wan-edit-field', style: 'margin-bottom:6px;' }, [
+				E('span', {}, ['Upload (' + opt.label + ') • Mbps']),
+				uploadInput,
+				E('small', { class: 'ex-muted' }, ['Indispensável informar a velocidade real de upload para o CAKE estabilizar a latência.'])
+			]);
+
+			hybridContainer.appendChild(hybridNotice);
+			hybridContainer.appendChild(calcBox);
+			hybridContainer.appendChild(E('div', { style: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;' }, [
+				downloadField,
+				uploadField
+			]));
+
 			const updateSqmDependency = function() {
 				const isSatNode = isSatelliteOrAp(self.currentData);
 				if (isSatNode) {
@@ -7481,7 +8133,7 @@ const networkMethods = {
 				jumboInput.checked = babyJumbo;
 				irqInput.checked = !isSingleCore && irqBalance;
 				irqInput.disabled = isSingleCore || !opt.irqbalance_installed;
-				flowInput.disabled = sqmAnyActive && !flowOffload;
+				flowInput.disabled = false;
 				const effective = effectiveProfile();
 				while (selectedSummary.firstChild) selectedSummary.removeChild(selectedSummary.firstChild);
 				selectedSummary.style.display = 'block';
@@ -7511,7 +8163,22 @@ const networkMethods = {
 					tcpNotice.textContent = 'Recomendado para conexões de alta velocidade em roteadores com 256 MB ou mais de RAM.';
 				}
 
-				globalWarning.textContent = sqmAnyActive ? 'Fastpath fica inativo enquanto houver filas SQM/CAKE ativas, garantindo a priorização de pacotes.' : 'Estas opções de desempenho beneficiam o roteador como um todo.';
+				const isSatNode = isSatelliteOrAp(self.currentData);
+				const isSqmOn = !isSatNode && (sqmActive || sqmAnyActive || enableSqmInput.checked);
+				if (flowOffload && isSqmOn) {
+					hybridContainer.style.display = 'block';
+					flowNotice.style.display = 'none';
+				} else if (flowOffload) {
+					hybridContainer.style.display = 'none';
+					flowNotice.style.display = 'block';
+					flowNotice.className = 'ex-opt-requirement ready';
+					flowNotice.textContent = '✓ Pronto e ativo: downloads e tráfego geral acelerados no kernel com menor uso de CPU.';
+				} else {
+					hybridContainer.style.display = 'none';
+					flowNotice.style.display = 'none';
+				}
+
+				globalWarning.textContent = (flowOffload && sqmAnyActive) ? 'Modo Híbrido disponível: o Fastpath acelera downloads no kernel enquanto o CAKE gerencia uploads.' : 'Estas opções de desempenho beneficiam o roteador como um todo.';
 				updateSqmDependency();
 			};
 
@@ -7561,7 +8228,7 @@ const networkMethods = {
 			flowInput.addEventListener('change', function() { flowOffload = flowInput.checked; updateUI(); });
 			jumboInput.addEventListener('change', function() { selectedPreset = 'custom'; babyJumbo = jumboInput.checked; updateUI(); });
 			irqInput.addEventListener('change', function() { irqBalance = irqInput.checked; updateUI(); });
-			enableSqmInput.addEventListener('change', updateSqmDependency);
+			enableSqmInput.addEventListener('change', function() { updateSqmDependency(); updateUI(); });
 			applyPreset(selectedPreset);
 
 			const protoHuman = { dhcp: 'Modem da Operadora (DHCP)', pppoe: 'Fibra Ótica Direta (PPPoE)', static: 'IP Fixo Estático' };
@@ -7626,8 +8293,8 @@ const networkMethods = {
 							E('div', { class: 'ex-opt-module-info' }, [
 								E('strong', {}, ['🚀 Aceleração de Tráfego (Fastpath / Flow Offloading)']),
 								E('p', {}, ['Processa o tráfego de dados diretamente pelo kernel do Linux, reduzindo o uso da CPU para a internet rodar na velocidade máxima sem aquecer o roteador.']),
-								(Number(opt.mwan_active_wans || 0) >= 2) ? E('small', { class: 'ex-opt-requirement warning', style: 'color:#f59e0b;display:block;margin-top:4px;' }, ['⚠️ Multi-WAN ativo: O Flow Offloading (Fastpath) ignora balanceamento e failover do mwan3. Recomenda-se manter desligado com 2 ou mais conexões ativas.']) : '',
-								E('small', { class: 'ex-opt-requirement' + (sqmAnyActive ? ' blocked' : ' ready') }, [sqmAnyActive ? '⚠ Requer SQM / CAKE desligado em todas as WANs.' : '✓ Pronto e ativo: downloads acelerados com menor uso de CPU.'])
+								flowNotice,
+								hybridContainer
 							]),
 							E('label', { class: 'ex-switch' }, [ flowInput, E('span', { class: 'ex-switch-slider' }) ])
 						]),
@@ -7650,8 +8317,9 @@ const networkMethods = {
 							this.installFeature('sqm');
 							return;
 						}
-						const activateSqm = !isSatelliteOrAp(this.currentData) && requiresSqm && !sqmActive && enableSqmInput.checked;
-						if (flowOffload && sqmAnyActive) { ui.addNotification(null, E('p', {}, ['Desative as filas SQM / CAKE antes de ligar o Fastpath.']), 'danger'); return; }
+						const isSatNode = isSatelliteOrAp(this.currentData);
+						const isSqmOn = !isSatNode && (sqmActive || sqmAnyActive || enableSqmInput.checked);
+						const activateSqm = !isSatNode && requiresSqm && !sqmActive && enableSqmInput.checked;
 						btn.disabled = true;
 						btn.textContent = activateSqm ? 'Ativando CAKE e aplicando…' : 'Aplicando otimizações…';
 						const args = [
@@ -7665,9 +8333,14 @@ const networkMethods = {
 							'enable_sqm=' + (activateSqm ? '1' : '0'),
 							'irqbalance=' + (irqBalance ? '1' : '0')
 						];
+						if (flowOffload && isSqmOn) {
+							const upVal = parseFloat(uploadInput.value || 0);
+							args.push('sqm_upload=' + Math.round(upVal * 1000));
+							args.push('sqm_download=0');
+						}
 						return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(L.bind(function(res) {
 							if (res.code) throw new Error(res.stderr || 'Falha ao aplicar otimizações');
-							this.triggerImmediateRefresh(activateSqm ? 'SQM / CAKE ativado e otimizações aplicadas com sucesso!' : 'Otimizações de internet aplicadas com sucesso!', 'info');
+							this.triggerImmediateRefresh((flowOffload && isSqmOn) ? 'Modo Híbrido ativado: Fastpath no Download e CAKE no Upload aplicados com sucesso!' : (activateSqm ? 'SQM / CAKE ativado e otimizações aplicadas com sucesso!' : 'Otimizações de internet aplicadas com sucesso!'), 'info');
 						}, this)).catch(function(err) {
 							btn.disabled = false;
 							btn.textContent = 'Salvar e Aplicar Otimizações';
@@ -7688,36 +8361,88 @@ const networkMethods = {
 		let state={};try{state=JSON.parse(((this.currentData||{}).lanStatus&&this.currentData.lanStatus.stdout)||'{}');}catch(e){}
 		const makeSelect=function(value,items){const s=E('select',{class:'cbi-input-select'},items.map(function(i){return E('option',{value:i[0]},[i[1]]);}));s.value=value;return s;};
 		const mode=makeSelect(state.preset==='10'?'preset10':(state.preset==='192'?'preset192':'manual'),[['preset192','Padrão 192.168.x.x'],['preset10','Padrão 10.0.x.x'],['manual','Informar manualmente']]);
-		const routerIp=E('input',{class:'cbi-input-text',value:state.ipaddr||'192.168.1.1',placeholder:'192.168.1.1',inputmode:'decimal'});
+		const initialRouterIp=state.ipaddr||'192.168.1.1';
+		let lastRouterIp=initialRouterIp;
+		const routerIp=E('input',{class:'cbi-input-text',value:initialRouterIp,placeholder:initialRouterIp,inputmode:'decimal'});
 		const netmask=E('input',{class:'cbi-input-text',value:state.netmask||'255.255.255.0',placeholder:'255.255.255.0',inputmode:'decimal'});
 		const dhcpStart=E('input',{class:'cbi-input-text',value:state.dhcp_start||'192.168.1.100',placeholder:'192.168.1.100',inputmode:'decimal'});
 		const dhcpEnd=E('input',{class:'cbi-input-text',value:state.dhcp_end||'192.168.1.249',placeholder:'192.168.1.249',inputmode:'decimal'});
 		const dnsList=Array.isArray(state.dns)?state.dns:String(state.dns||'').split(/\s+/).filter(Boolean);
-		const dns1=E('input',{class:'cbi-input-text',value:dnsList[0]||'1.1.1.1',placeholder:'1.1.1.1',inputmode:'decimal'});
-		const dns2=E('input',{class:'cbi-input-text',value:dnsList[1]||'8.8.8.8',placeholder:'8.8.8.8',inputmode:'decimal'});
+		const initialDns1=dnsList[0]||initialRouterIp;
+		const dns1=E('input',{class:'cbi-input-text',value:initialDns1,placeholder:initialRouterIp,inputmode:'decimal'});
+		const dns2=E('input',{class:'cbi-input-text',value:dnsList[1]||'1.1.1.1',placeholder:'1.1.1.1',inputmode:'decimal'});
 		const dns3=E('input',{class:'cbi-input-text',value:dnsList[2]||'9.9.9.9',placeholder:'9.9.9.9',inputmode:'decimal'});
 		const field=function(label,node,hint){return E('label',{class:'ex-wan-edit-field'},[E('span',{},[label]),node,hint?E('small',{class:'ex-muted'},[hint]):'']);};
 		let dhcpTouched=false;
+		let dns1Touched=false;
+
+		const isSameSubnet24=function(ipA,ipB){
+			if(!ipA||!ipB)return false;
+			const pA=String(ipA).trim().split('.'), pB=String(ipB).trim().split('.');
+			return pA.length===4&&pB.length===4&&pA[0]===pB[0]&&pA[1]===pB[1]&&pA[2]===pB[2];
+		};
+
+		const suggestDns=function(newIp){
+			if(!newIp)return;
+			const trimmed=String(newIp).trim();
+			if(!trimmed)return;
+			const curDns1=dns1.value.trim();
+			if(!dns1Touched||curDns1===lastRouterIp||curDns1===initialRouterIp||isSameSubnet24(curDns1,lastRouterIp)){
+				dns1.value=trimmed;
+				dns1.placeholder=trimmed;
+			}
+			if(dns2.value.trim()===lastRouterIp)dns2.value=trimmed;
+			if(dns3.value.trim()===lastRouterIp)dns3.value=trimmed;
+			lastRouterIp=trimmed;
+		};
+
 		const suggestDhcp=function(force){
 			const start=dhcpStartSuggestion(routerIp.value), end=dhcpEndSuggestion(routerIp.value);
 			if(!start||!end)return;
 			if(force||!dhcpTouched){dhcpStart.value=start;dhcpEnd.value=end;}
 			dhcpStart.placeholder=start;dhcpEnd.placeholder=end;
 		};
+
+		const onRouterIpChange=function(force){
+			if(mode.value==='manual'||force){
+				suggestDhcp(force);
+				suggestDns(routerIp.value);
+			}
+		};
+
 		const applyPreset=function(changed){
-			if(changed&&mode.value==='preset192'){routerIp.value='192.168.1.1';netmask.value='255.255.255.0';dhcpStart.value='192.168.1.10';dhcpEnd.value='192.168.1.254';dhcpTouched=false;}
-			else if(changed&&mode.value==='preset10'){routerIp.value='10.0.0.1';netmask.value='255.255.255.0';dhcpStart.value='10.0.0.10';dhcpEnd.value='10.0.0.254';dhcpTouched=false;}
+			if(changed&&mode.value==='preset192'){
+				routerIp.value='192.168.1.1';netmask.value='255.255.255.0';
+				dhcpStart.value='192.168.1.10';dhcpEnd.value='192.168.1.254';
+				dhcpTouched=false;
+				suggestDns('192.168.1.1');
+			}
+			else if(changed&&mode.value==='preset10'){
+				routerIp.value='10.0.0.1';netmask.value='255.255.255.0';
+				dhcpStart.value='10.0.0.10';dhcpEnd.value='10.0.0.254';
+				dhcpTouched=false;
+				suggestDns('10.0.0.1');
+			}
 			const manual=mode.value==='manual';routerIp.disabled=netmask.disabled=dhcpStart.disabled=dhcpEnd.disabled=!manual;
-			if(manual)suggestDhcp(false);else suggestDhcp(changed);
+			if(manual){
+				suggestDhcp(false);
+				suggestDns(routerIp.value);
+			}else{
+				suggestDhcp(changed);
+			}
 		};
 		dhcpStart.addEventListener('input',function(){dhcpTouched=true;});
 		dhcpEnd.addEventListener('input',function(){dhcpTouched=true;});
-		routerIp.addEventListener('input',function(){if(mode.value==='manual')suggestDhcp(false);});
-		routerIp.addEventListener('blur',function(){if(mode.value==='manual')suggestDhcp(false);});
+		dns1.addEventListener('input',function(){
+			const val=dns1.value.trim();
+			dns1Touched=(val!==''&&val!==routerIp.value.trim());
+		});
+		routerIp.addEventListener('input',function(){onRouterIpChange(false);});
+		routerIp.addEventListener('blur',function(){onRouterIpChange(false);});
 		mode.addEventListener('change',function(){applyPreset(true);});applyPreset(false);
 		ui.showModal('Editar rede principal / DHCP',[
 			E('p',{class:'alert-message warning'},['Alterar o IP principal muda o endereço de acesso do painel e pode desconectar dispositivos. O ARK cria um backup em /tmp antes de aplicar.']),
-			E('div',{class:'ex-wan-edit-grid'},[field('Modelo de rede',mode),field('IP do roteador',routerIp,'Endereço usado para abrir o painel'),field('Máscara',netmask,'Nesta versão, use /24: 255.255.255.0'),field('DHCP começa em',dhcpStart),field('DHCP termina em',dhcpEnd),field('DNS enviado 1',dns1),field('DNS enviado 2',dns2),field('DNS enviado 3',dns3,'Opcional. Apague os três para não enviar DNS fixo.')]),
+			E('div',{class:'ex-wan-edit-grid'},[field('Modelo de rede',mode),field('IP do roteador',routerIp,'Endereço usado para abrir o painel'),field('Máscara',netmask,'Nesta versão, use /24: 255.255.255.0'),field('DHCP começa em',dhcpStart),field('DHCP termina em',dhcpEnd),field('DNS enviado 1',dns1,'Acompanha o IP do roteador se não personalizado'),field('DNS enviado 2',dns2),field('DNS enviado 3',dns3,'Opcional. Apague os três para não enviar DNS fixo.')]),
 			E('p',{class:'ex-muted'},['Exemplo: roteador 192.168.25.1 sugere automaticamente DHCP 192.168.25.10 até 192.168.25.254. Depois você pode ajustar só o final. O DHCP não pode incluir o IP do roteador. DNS preenchido será enviado aos aparelhos via DHCP.']),
 			E('div',{class:'ex-cleanup-entry',style:'margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.03);'},[
 				E('div',{},[
@@ -7957,6 +8682,247 @@ const networkMethods = {
 					E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Fechar'])
 				])
 			]);
+		});
+	},
+
+	showAddMwanRuleModal: function() {
+		const self = this;
+		const closeModal = function() { ui.hideModal(); };
+		const clients = (this.lastData && this.lastData.clients) || [];
+		
+		const nameInput = E('input', {
+			type: 'text',
+			class: 'cbi-input-text',
+			placeholder: _t('Ex: PC Gamer Torrent, Steam, Console'),
+			style: 'width: 100%;'
+		});
+
+		const clientOptions = [
+			E('option', { value: '' }, [_t('Todos os aparelhos da rede (Qualquer IP)')]),
+			E('option', { value: 'custom' }, [_t('Digitar IP manualmente…')])
+		];
+
+		clients.forEach(function(c) {
+			const label = (c.hostname || c.name || _t('Dispositivo')) + ' (' + (c.ip || c.mac) + ')';
+			clientOptions.push(E('option', { value: c.ip }, [label]));
+		});
+
+		const deviceSelect = E('select', {
+			class: 'cbi-input-select',
+			style: 'width: 100%;'
+		}, clientOptions);
+
+		const customIpInput = E('input', {
+			type: 'text',
+			class: 'cbi-input-text',
+			placeholder: '192.168.73.181',
+			style: 'width: 100%; margin-top: 8px; display: none;'
+		});
+
+		deviceSelect.addEventListener('change', function() {
+			customIpInput.style.display = (deviceSelect.value === 'custom') ? 'block' : 'none';
+			if (deviceSelect.value === 'custom') customIpInput.focus();
+		});
+
+		const protoSelect = E('select', {
+			class: 'cbi-input-select',
+			style: 'width: 100%;'
+		}, [
+			E('option', { value: 'tcp udp' }, [_t('TCP e UDP (Recomendado)')]),
+			E('option', { value: 'tcp' }, [_t('Apenas TCP')]),
+			E('option', { value: 'udp' }, [_t('Apenas UDP')])
+		]);
+
+		const portStartInput = E('input', {
+			type: 'number',
+			class: 'cbi-input-text',
+			min: '1',
+			max: '65535',
+			placeholder: _t('Ex: 51413 ou 6881'),
+			style: 'width: 100%;'
+		});
+
+		const portEndInput = E('input', {
+			type: 'number',
+			class: 'cbi-input-text',
+			min: '1',
+			max: '65535',
+			placeholder: _t('Ex: 6999 (opcional)'),
+			style: 'width: 100%;'
+		});
+
+		const policySelect = E('select', {
+			class: 'cbi-input-select',
+			style: 'width: 100%;'
+		}, [
+			E('option', { value: 'balanced' }, [_t('⚖️ Balancear pelas 2 Internets (Multi-WAN)')]),
+			E('option', { value: 'wan_only' }, [_t('🔵 Somente WAN1 (Claro)')]),
+			E('option', { value: 'wan2_only' }, [_t('🟣 Somente WAN2 (Link Telecom)')]),
+			E('option', { value: 'wan_then_wan2' }, [_t('🛡️ WAN1 principal (Failover para WAN2)')]),
+			E('option', { value: 'wan2_then_wan' }, [_t('🛡️ WAN2 principal (Failover para WAN1)')])
+		]);
+
+		const modalContent = [
+			E('p', { class: 'ex-muted', style: 'margin-bottom: 14px;' }, [
+				_t('Crie uma regra personalizada para direcionar portas específicas ou aparelhos para o balanceamento ou um link exclusivo.')
+			]),
+			E('div', { style: 'display:flex;flex-direction:column;gap:12px;' }, [
+				E('div', {}, [
+					E('label', { style: 'font-weight:600;display:block;margin-bottom:4px;' }, [_t('Nome da Regra:')]),
+					nameInput
+				]),
+				E('div', {}, [
+					E('label', { style: 'font-weight:600;display:block;margin-bottom:4px;' }, [_t('Aparelho ou IP de Origem:')]),
+					deviceSelect,
+					customIpInput
+				]),
+				E('div', {}, [
+					E('label', { style: 'font-weight:600;display:block;margin-bottom:4px;' }, [_t('Protocolo:')]),
+					protoSelect
+				]),
+				E('div', {}, [
+					E('label', { style: 'font-weight:600;display:block;margin-bottom:4px;' }, [_t('Faixa de Portas (Destino):')]),
+					E('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:10px;' }, [
+						E('div', {}, [
+							E('small', { class: 'ex-muted', style: 'display:block;margin-bottom:3px;' }, [_t('Porta Inicial:')]),
+							portStartInput
+						]),
+						E('div', {}, [
+							E('small', { class: 'ex-muted', style: 'display:block;margin-bottom:3px;' }, [_t('Porta Final (Faixa):')]),
+							portEndInput
+						])
+					]),
+					E('small', { class: 'ex-muted', style: 'display:block;margin-top:4px;' }, [
+						_t('Deixe a porta final vazia para aplicar apenas a uma única porta, ou preencha as duas para criar uma faixa contínua.')
+					])
+				]),
+				E('div', {}, [
+					E('label', { style: 'font-weight:600;display:block;margin-bottom:4px;' }, [_t('Ação / Rota de Saída:')]),
+					policySelect
+				])
+			]),
+			E('div', { class: 'right', style: 'margin-top: 18px;' }, [
+				E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, [_t('Cancelar')]),
+				' ',
+				E('button', {
+					class: 'btn cbi-button cbi-button-positive',
+					click: function(ev) {
+						const btn = ev.currentTarget;
+						const name = (nameInput.value || '').trim();
+						if (!name) {
+							ui.addNotification(null, E('p', {}, [_t('Digite um nome para a regra.')]), 'warning');
+							nameInput.focus();
+							return;
+						}
+						let ip = deviceSelect.value;
+						if (ip === 'custom') {
+							ip = (customIpInput.value || '').trim();
+							if (ip && !/^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$/.test(ip)) {
+								ui.addNotification(null, E('p', {}, [_t('Endereço IP inválido.')]), 'danger');
+								customIpInput.focus();
+								return;
+							}
+						}
+						const pStart = (portStartInput.value || '').trim();
+						const pEnd = (portEndInput.value || '').trim();
+						if (pStart && (parseInt(pStart, 10) < 1 || parseInt(pStart, 10) > 65535)) {
+							ui.addNotification(null, E('p', {}, [_t('Porta inicial deve estar entre 1 e 65535.')]), 'danger');
+							portStartInput.focus();
+							return;
+						}
+						if (pEnd && (parseInt(pEnd, 10) < 1 || parseInt(pEnd, 10) > 65535)) {
+							ui.addNotification(null, E('p', {}, [_t('Porta final deve estar entre 1 e 65535.')]), 'danger');
+							portEndInput.focus();
+							return;
+						}
+						if (pStart && pEnd && parseInt(pEnd, 10) <= parseInt(pStart, 10)) {
+							ui.addNotification(null, E('p', {}, [_t('A porta final deve ser maior que a porta inicial.')]), 'danger');
+							portEndInput.focus();
+							return;
+						}
+
+						btn.disabled = true;
+						btn.textContent = _t('Salvando…');
+						return fs.exec('/usr/sbin/equipe-dashboard-control', [
+							'mwan-rule-add',
+							'name=' + name,
+							'src_ip=' + ip,
+							'proto=' + protoSelect.value,
+							'port_start=' + pStart,
+							'port_end=' + pEnd,
+							'policy=' + policySelect.value
+						]).then(function(res) {
+							if (res.code) throw new Error(res.stderr || _t('Falha ao adicionar regra'));
+							ui.hideModal();
+							ui.addNotification(null, E('p', {}, [_t('Regra criada com sucesso!')]), 'info');
+							return self.fetchData().then(L.bind(self.update, self));
+						}).catch(function(err) {
+							btn.disabled = false;
+							btn.textContent = _t('Salvar Regra');
+							ui.addNotification(null, E('p', {}, [err.message]), 'danger');
+						});
+					}
+				}, [_t('Salvar Regra')])
+			])
+		];
+
+		ui.showModal(_t('➕ Nova Regra de Roteamento Multi-WAN'), modalContent);
+	},
+
+	deleteMwanRule: function(ruleId, ruleName) {
+		const self = this;
+		const closeModal = function() { ui.hideModal(); };
+		ui.showModal(_t('Excluir Regra de Roteamento'), [
+			E('p', {}, [_t('Tem certeza que deseja excluir a regra “') + (ruleName || ruleId) + _t('”?')]),
+			E('div', { class: 'right', style: 'margin-top: 14px;' }, [
+				E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, [_t('Cancelar')]),
+				' ',
+				E('button', {
+					class: 'btn cbi-button cbi-button-negative',
+					click: function(ev) {
+						const btn = ev.currentTarget;
+						btn.disabled = true;
+						btn.textContent = _t('Excluindo…');
+						return fs.exec('/usr/sbin/equipe-dashboard-control', ['mwan-rule-delete', ruleId]).then(function(res) {
+							if (res.code) throw new Error(res.stderr || _t('Falha ao excluir regra'));
+							ui.hideModal();
+							ui.addNotification(null, E('p', {}, [_t('Regra excluída com sucesso!')]), 'info');
+							return self.fetchData().then(L.bind(self.update, self));
+						}).catch(function(err) {
+							btn.disabled = false;
+							btn.textContent = _t('Excluir');
+							ui.addNotification(null, E('p', {}, [err.message]), 'danger');
+						});
+					}
+				}, [_t('Excluir')])
+			])
+		]);
+	},
+
+	toggleMwanRule: function(ruleId, isChecked) {
+		const self = this;
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['mwan-rule-toggle', ruleId, isChecked ? '1' : '0']).then(function(res) {
+			if (res.code) throw new Error(res.stderr || _t('Falha ao alternar regra'));
+			ui.addNotification(null, E('p', {}, [isChecked ? _t('Regra ativada com sucesso!') : _t('Regra desativada!')]), 'info');
+			return self.fetchData().then(L.bind(self.update, self));
+		}).catch(function(err) {
+			ui.addNotification(null, E('p', {}, [err.message]), 'danger');
+		});
+	},
+
+	toggleMwanTorrentPreset: function(input) {
+		const self = this;
+		const isChecked = input.checked;
+		input.disabled = true;
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['mwan-torrent-toggle', isChecked ? '1' : '0']).then(function(res) {
+			input.disabled = false;
+			if (res.code) throw new Error(res.stderr || _t('Falha ao alternar aceleração P2P'));
+			ui.addNotification(null, E('p', {}, [isChecked ? _t('Aceleração BitTorrent/P2P nas 2 conexões ATIVADA!') : _t('Aceleração BitTorrent/P2P DESATIVADA.')]), 'info');
+			return self.fetchData().then(L.bind(self.update, self));
+		}).catch(function(err) {
+			input.disabled = false;
+			input.checked = !isChecked;
+			ui.addNotification(null, E('p', {}, [err.message]), 'danger');
 		});
 	}
 };
@@ -10978,6 +11944,7 @@ const adblockMethods = {
 		if (f.protection_enabled !== false) activeProtections.push('🛡️ Malware');
 		if (f.parental_enabled) activeProtections.push('👨‍👩‍👧 Adulto');
 		if (f.safesearch_enabled) activeProtections.push('🔍 SafeSearch');
+		if (f.dns_intercept !== false) activeProtections.push('📺 Smart TVs');
 		const protectionsText = activeProtections.length ? activeProtections.join(' • ') : 'Padrão';
 
 		const adblockPill = E('span', { class: 'ex-pill ' + pillClass }, [statusText]);
@@ -11287,10 +12254,12 @@ const adblockMethods = {
 				input,
 				E('span', { class: 'ex-switch-slider' })
 			]);
+			const titleNodes = Array.isArray(title) ? title : [title];
+			const descNodes = Array.isArray(desc) ? desc : [desc];
 			const row = E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; padding: 10px 12px; background: rgba(255,255,255,.03); border-radius: 8px;' }, [
 				E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
-					E('strong', { style: 'font-size: 0.88rem; display: block;' }, [title]),
-					E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px; line-height: 1.35;' }, [desc])
+					E('strong', { style: 'font-size: 0.88rem; display: block;' }, titleNodes),
+					E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px; line-height: 1.35;' }, descNodes)
 				]),
 				label
 			]);
@@ -11298,21 +12267,60 @@ const adblockMethods = {
 		};
 
 		const protMalware = makeToggleRow(
-			'🛡️ Navegação Segura (Anti-Malware & Phishing)',
-			'Bloqueia sites maliciosos, golpes financeiros e endereços perigosos antes que sejam abertos.',
+			[
+				_t('🛡️ Navegação Segura (Anti-Malware & Phishing)'),
+				' ',
+				E('span', {
+					class: 'ex-pill warning',
+					style: 'font-size: 0.68rem; margin-left: 6px; padding: 2px 7px; vertical-align: middle; background: rgba(234,179,8,0.18); border: 1px solid rgba(234,179,8,0.4); color: #facc15; font-weight: 700; border-radius: 4px;'
+				}, [_t('Nuvem Externa')])
+			],
+			[
+				_t('Bloqueia sites maliciosos e golpes antes que sejam abertos via checagem em servidores online.'),
+				' ',
+				E('span', { style: 'color: #f59e0b; font-weight: 600;' }, [_t('Atenção:')]),
+				' ',
+				E('span', { style: 'color: #fbbf24;' }, [_t('Pode elevar o tempo de resposta do DNS e reduzir a velocidade durante uso pesado de torrents.')])
+			],
 			f.protection_enabled !== false
 		);
 
 		const protParental = makeToggleRow(
-			'👨‍👩‍👧 Controle Parental (Bloqueio Adulto)',
-			'Bloqueia automaticamente pornografia e conteúdos impróprios para menores na rede toda.',
+			[
+				_t('👨‍👩‍👧 Controle Parental (Bloqueio Adulto)'),
+				' ',
+				E('span', {
+					class: 'ex-pill warning',
+					style: 'font-size: 0.68rem; margin-left: 6px; padding: 2px 7px; vertical-align: middle; background: rgba(234,179,8,0.18); border: 1px solid rgba(234,179,8,0.4); color: #facc15; font-weight: 700; border-radius: 4px;'
+				}, [_t('Nuvem Externa')])
+			],
+			[
+				_t('Bloqueia automaticamente pornografia e conteúdos impróprios para menores na rede toda via servidores online.'),
+				' ',
+				E('span', { style: 'color: #f59e0b; font-weight: 600;' }, [_t('Atenção:')]),
+				' ',
+				E('span', { style: 'color: #fbbf24;' }, [_t('Pode causar lentidão no DNS em redes com alto volume de conexões.')])
+			],
 			!!f.parental_enabled
 		);
 
 		const protSafeSearch = makeToggleRow(
-			'🔍 Busca Segura Forçada (SafeSearch)',
-			'Obriga o filtro de família no Google, Bing, YouTube e DuckDuckGo para proteger crianças.',
+			_t('🔍 Busca Segura Forçada (SafeSearch)'),
+			_t('Obriga o filtro de família no Google, Bing, YouTube e DuckDuckGo para proteger crianças.'),
 			!!f.safesearch_enabled
+		);
+
+		const protDnsIntercept = makeToggleRow(
+			[
+				_t('📺 Blindagem de Smart TVs (Interceptar Porta 53)'),
+				' ',
+				E('span', {
+					class: 'ex-pill online',
+					style: 'font-size: 0.68rem; margin-left: 6px; padding: 2px 7px; vertical-align: middle; background: rgba(16,185,129,0.18); border: 1px solid rgba(16,185,129,0.4); color: #34d399; font-weight: 700; border-radius: 4px;'
+				}, [_t('DNAT Transparente')])
+			],
+			_t('Força Smart TVs, Chromecasts e aparelhos com DNS embutido a passarem pelo AdGuard. Redireciona consultas externas da porta 53 para o roteador em 0ms.'),
+			f.dns_intercept !== false
 		);
 
 		const portInput = E('input', {
@@ -11352,7 +12360,8 @@ const adblockMethods = {
 			E('div', { style: 'margin-top: 14px; font-size: 0.85rem; font-weight: 600;' }, ['Proteções Essenciais']),
 			protMalware.row,
 			protParental.row,
-			protSafeSearch.row
+			protSafeSearch.row,
+			protDnsIntercept.row
 		]);
 
 		// Nuvem (Lite)
@@ -11628,9 +12637,10 @@ const adblockMethods = {
 						const rawBlacklist = blacklistTextarea.value.trim();
 						const rawWhitelist = whitelistTextarea.value.trim();
 						const nextdnsId = nextdnsIdInput.value.trim();
+						const dnsIntercept = protDnsIntercept.input.checked ? '1' : '0';
 
 						const cmd = active ? 'adblock-configure' : 'adblock-enable';
-						const args = [cmd, mode, (mode === 'local' ? cacheMb : prov), prot, par, ss, prov, cCache, String(webPort), ztAcc, rawBlacklist, nextdnsId, rawWhitelist];
+						const args = [cmd, mode, (mode === 'local' ? cacheMb : prov), prot, par, ss, prov, cCache, String(webPort), ztAcc, rawBlacklist, nextdnsId, rawWhitelist, dnsIntercept];
 
 						fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 							if (r.code) throw new Error(r.stderr || 'Falha ao configurar bloqueador');
@@ -13540,6 +14550,76 @@ const systemMethods = {
 	},
 	selfUpdatePanel: function(){
 		const update=this.capabilities.update||{}, manager=update.manager||this.capabilities.package_manager||'—';
+		const asuEnabled = !!(update.asu_check);
+
+		const asuStatePill = E('strong', { class: 'ex-device-switch-state ' + (asuEnabled ? 'online' : 'standby') }, [
+			asuEnabled ? _t('LIGADA (AVISOS ATIVOS)') : _t('DESLIGADA (RECOMENDADO)')
+		]);
+
+		const asuDesc = E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, [
+			asuEnabled 
+				? _t('⚠️ O painel buscará atualizações do OpenWrt genérico a cada login. Atenção: atualizar por lá remove o ARK Router.')
+				: _t('✅ Pop-ups do OpenWrt genérico bloqueados para evitar que o ARK Router seja sobrescrito por engano.')
+		]);
+
+		const asuToggleInput = E('input', {
+			type: 'checkbox',
+			checked: asuEnabled ? '' : null,
+			change: L.bind(function(ev) {
+				const input = ev.currentTarget;
+				const desired = !!input.checked;
+				input.disabled = true;
+				asuStatePill.textContent = desired ? _t('LIGADA (AVISOS ATIVOS)') : _t('DESLIGADA (RECOMENDADO)');
+				asuStatePill.className = 'ex-device-switch-state ' + (desired ? 'online' : 'standby');
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['asu-check-toggle', desired ? '1' : '0']).then(L.bind(function(r) {
+					if (r.code) throw new Error(r.stderr || 'Falha ao alterar preferência');
+					if (this.capabilities && this.capabilities.update) {
+						this.capabilities.update.asu_check = desired;
+					}
+					input.disabled = false;
+					asuDesc.textContent = desired 
+						? _t('⚠️ O painel buscará atualizações do OpenWrt genérico a cada login. Atenção: atualizar por lá remove o ARK Router.')
+						: _t('✅ Pop-ups do OpenWrt genérico bloqueados para evitar que o ARK Router seja sobrescrito por engano.');
+					ui.addNotification(null, E('p', {}, [desired ? _t('Verificação do OpenWrt ativada. Pop-ups do OpenWrt genérico serão exibidos no login.') : _t('Verificação do OpenWrt desativada. O ARK Router está protegido contra sobrescrita.')]));
+				}, this)).catch(L.bind(function(err) {
+					input.checked = !desired;
+					input.disabled = false;
+					asuStatePill.textContent = (!desired) ? _t('LIGADA (AVISOS ATIVOS)') : _t('DESLIGADA (RECOMENDADO)');
+					asuStatePill.className = 'ex-device-switch-state ' + ((!desired) ? 'online' : 'standby');
+					ui.addNotification(null, E('p', {}, [err.message]), 'danger');
+				}, this));
+			}, this)
+		});
+
+		const asuSwitchControl = E('div', {
+			class: 'ex-device-switch-control',
+			style: 'cursor: pointer; user-select: none;',
+			click: function(ev) {
+				ev.preventDefault();
+				ev.stopPropagation();
+				if (asuToggleInput.disabled) return;
+				asuToggleInput.checked = !asuToggleInput.checked;
+				asuToggleInput.dispatchEvent(new Event('change', { bubbles: true }));
+			}
+		}, [
+			asuStatePill,
+			E('label', { class: 'ex-switch', style: 'pointer-events: none;' }, [
+				asuToggleInput,
+				E('span', { class: 'ex-switch-slider' })
+			])
+		]);
+
+		const asuRow = E('div', { class: 'ex-asu-toggle-row', style: 'margin-top: 14px; padding: 12px 14px; background: rgba(127,127,127,0.06); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px;' }, [
+			E('div', { style: 'flex: 1;' }, [
+				E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
+					E('strong', {}, [_t('Verificação do OpenWrt Base')]),
+					E('span', { class: 'ex-pill standby', style: 'font-size: 0.7rem;' }, ['Attended Sysupgrade'])
+				]),
+				asuDesc
+			]),
+			asuSwitchControl
+		]);
+
 		return E('section',{class:'ex-update-panel'},[
 			E('div',{class:'ex-update-header'},[
 				E('div',{},[
@@ -13575,7 +14655,8 @@ const systemMethods = {
 						])
 					])
 				])
-			])
+			]),
+			asuRow
 		]);
 	},
 	pollFeatureInstall: function(key,attempt){
@@ -13596,26 +14677,164 @@ const systemMethods = {
 			window.setTimeout(L.bind(this.pollFeatureInstall,this,key,attempt+1),2000);
 		},this));
 	},
+	showPackageInstallProgressModal: function(opts){
+		opts = opts || {};
+		const title = opts.title || 'Instalando Pacotes e Recursos';
+		const stageCmd = opts.stageCmd || 'feature-install-missing-stage';
+		const logCmd = opts.logCmd || 'feature-install-missing-log';
+		const statusCmd = opts.statusCmd || 'feature-install-missing-status';
+		const successMsg = opts.successMsg || 'Instalação concluída com sucesso!';
+
+		const stepBadge = E('span', { class: 'ex-install-step-badge' }, ['Iniciando…']);
+		const percentLabel = E('span', { style: 'font-size:0.85rem; font-weight:700; color:#94a3b8;' }, ['0%']);
+		const progressBar = E('div', { class: 'ex-install-progress-fill', style: 'width: 5%' });
+		const progressTrack = E('div', { class: 'ex-install-progress-track' }, [progressBar]);
+		const actionText = E('div', { class: 'ex-install-current-action' }, [
+			E('span', { class: 'ex-spinner', style: 'font-size:1.1rem;' }, ['⏳']),
+			E('span', { id: 'ex-install-msg' }, ['Preparando gerenciador de pacotes…'])
+		]);
+		const terminalBox = E('pre', { class: 'ex-install-terminal' }, ['Aguardando saída do gerenciador de pacotes…']);
+		const noteText = E('p', { class: 'ex-install-note' }, [
+			'O roteador está baixando e configurando os pacotes necessários. Isso pode levar de 30 segundos a alguns minutos dependendo da sua velocidade de internet. Por favor, mantenha esta tela aberta.'
+		]);
+
+		const actionBtn = E('button', { class: 'btn cbi-button cbi-button-neutral', disabled: true }, ['Instalação em andamento…']);
+		let isFinished = false;
+		let pollTimer = null;
+
+		const updateTerminalLog = function(){
+			return fs.exec('/usr/sbin/equipe-dashboard-control', [logCmd]).then(function(r){
+				const text = String(r.stdout || '').trim();
+				if(text){
+					terminalBox.textContent = text;
+					terminalBox.scrollTop = terminalBox.scrollHeight;
+				}
+			}).catch(function(){});
+		};
+
+		const finishSuccess = function(msg){
+			if(isFinished) return;
+			isFinished = true;
+			if(pollTimer) window.clearTimeout(pollTimer);
+			stepBadge.textContent = 'Concluído';
+			stepBadge.className = 'ex-install-step-badge done';
+			percentLabel.textContent = '100%';
+			percentLabel.style.color = '#34d399';
+			progressBar.style.width = '100%';
+			progressBar.className = 'ex-install-progress-fill done';
+			actionText.innerHTML = '<span>✅</span> <span>' + (msg || successMsg) + '</span>';
+			updateTerminalLog();
+
+			let countdown = 3;
+			actionBtn.disabled = false;
+			actionBtn.className = 'btn cbi-button cbi-button-positive';
+			actionBtn.textContent = 'Concluir e recarregar (' + countdown + 's)';
+			actionBtn.onclick = function(){
+				window.location.reload();
+			};
+
+			const cdInterval = window.setInterval(function(){
+				countdown--;
+				if(countdown > 0){
+					actionBtn.textContent = 'Concluir e recarregar (' + countdown + 's)';
+				} else {
+					window.clearInterval(cdInterval);
+					window.location.reload();
+				}
+			}, 1000);
+		};
+
+		const finishError = function(errMsg){
+			if(isFinished) return;
+			isFinished = true;
+			if(pollTimer) window.clearTimeout(pollTimer);
+			stepBadge.textContent = 'Erro';
+			stepBadge.className = 'ex-install-step-badge error';
+			progressBar.className = 'ex-install-progress-fill error';
+			actionText.innerHTML = '<span>❌</span> <span style="color:#f87171;">' + (errMsg || 'Falha na instalação dos pacotes.') + '</span>';
+			updateTerminalLog();
+
+			actionBtn.disabled = false;
+			actionBtn.className = 'btn cbi-button cbi-button-neutral';
+			actionBtn.textContent = 'Fechar';
+			actionBtn.onclick = function(){
+				ui.hideModal();
+			};
+		};
+
+		const poll = function(attempt){
+			if(isFinished) return;
+			if(attempt > 240){
+				finishError('Tempo limite excedido na instalação.');
+				return;
+			}
+
+			Promise.all([
+				fs.exec('/usr/sbin/equipe-dashboard-control', [statusCmd]).catch(function(){ return { stdout: '' }; }),
+				fs.exec('/usr/sbin/equipe-dashboard-control', [stageCmd]).catch(function(){ return { stdout: '{}' }; })
+			]).then(function(results){
+				if(isFinished) return;
+				const statusStr = String(results[0].stdout || '').trim();
+				let stageData = {};
+				try { stageData = JSON.parse(results[1].stdout || '{}'); } catch(e){}
+
+				const step = stageData.step || 0;
+				const total = stageData.total || 0;
+				const pct = stageData.percent || 10;
+				const message = stageData.message || 'Instalando pacotes…';
+
+				if(total > 0 && step > 0){
+					stepBadge.textContent = 'Etapa ' + step + ' de ' + total;
+				}
+				percentLabel.textContent = pct + '%';
+				progressBar.style.width = pct + '%';
+				const msgSpan = actionText.querySelector('#ex-install-msg');
+				if(msgSpan && message) msgSpan.textContent = message;
+
+				updateTerminalLog();
+
+				if(statusStr === 'done' || stageData.stage === 'done'){
+					finishSuccess(stageData.message || successMsg);
+					return;
+				}
+				if(statusStr === 'error' || stageData.stage === 'error'){
+					finishError(stageData.message || 'Falha durante o processo de instalação.');
+					return;
+				}
+
+				pollTimer = window.setTimeout(function(){ poll(attempt + 1); }, 1500);
+			}).catch(function(e){
+				if(reloadAfterExpectedDisconnect(e, 'O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…', 4200)) return;
+				pollTimer = window.setTimeout(function(){ poll(attempt + 1); }, 2000);
+			});
+		};
+
+		const modalContent = E('div', { class: 'ex-install-progress-wrap' }, [
+			E('div', { class: 'ex-install-header' }, [
+				stepBadge,
+				percentLabel
+			]),
+			progressTrack,
+			actionText,
+			terminalBox,
+			noteText,
+			E('div', { class: 'right', style: 'margin-top:10px;' }, [actionBtn])
+		]);
+
+		ui.showModal(title, [modalContent]);
+		poll(0);
+	},
 	loadMissingInstallLog: function(){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-install-missing-log']).then(function(r){return String(r.stdout||'').trim();}).catch(function(){return '';});
 	},
 	pollMissingInstall: function(attempt){
-		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-install-missing-status']).then(L.bind(function(r){
-			const state=String(r.stdout||'').trim();
-			if(state==='done'){
-				ui.addNotification(null,E('p',{},['Recursos faltantes instalados. Recarregando o painel…']));
-				window.setTimeout(function(){window.location.reload();},1400);
-				return;
-			}
-			if(state==='error'||attempt>240){
-				return this.loadMissingInstallLog().then(function(log){
-					const lines=(log||'').split(/\r?\n/).map(function(line){return line.trim();}).filter(Boolean);
-					const detail=lines.length?lines.slice(-6).join(' | '):'A instalação em lote não foi concluída.';
-					ui.addNotification(null,E('p',{},[detail]),'danger');
-				});
-			}
-			window.setTimeout(L.bind(this.pollMissingInstall,this,attempt+1),2500);
-		},this));
+		this.showPackageInstallProgressModal({
+			title: 'Instalação de Recursos em Lote',
+			stageCmd: 'feature-install-missing-stage',
+			logCmd: 'feature-install-missing-log',
+			statusCmd: 'feature-install-missing-status',
+			successMsg: 'Todos os recursos foram instalados com sucesso! Recarregando painel…'
+		});
 	},
 	installMissingFeatures: function(keys){
 		keys=keys||[];
@@ -13629,10 +14848,19 @@ const systemMethods = {
 				return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-install-missing']).then(L.bind(function(r){
 					const state=String(r.stdout||'').trim();
 					if(r.code)throw new Error(r.stderr||'Falha ao iniciar instalação em lote');
-					ui.hideModal();
-					if(state==='installed'){ui.addNotification(null,E('p',{},['Todos os recursos leves já estavam instalados.']));window.setTimeout(function(){window.location.reload();},900);return;}
-					ui.addNotification(null,E('p',{},[state==='running'?'A instalação em lote já está em andamento.':'Instalação em lote iniciada. O painel avisará quando terminar.']));
-					this.pollMissingInstall(0);
+					if(state==='installed'){
+						ui.hideModal();
+						ui.addNotification(null,E('p',{},['Todos os recursos leves já estavam instalados.']));
+						window.setTimeout(function(){window.location.reload();},900);
+						return;
+					}
+					this.showPackageInstallProgressModal({
+						title: 'Instalação de Recursos em Lote',
+						stageCmd: 'feature-install-missing-stage',
+						logCmd: 'feature-install-missing-log',
+						statusCmd: 'feature-install-missing-status',
+						successMsg: 'Todos os recursos foram instalados com sucesso! Recarregando painel…'
+					});
 				},this)).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});
 			},this)},['Instalar tudo'])])
 		]);
@@ -13703,8 +14931,12 @@ const systemMethods = {
 	showRebootConfirmation: function(token){
 		const finalButton=E('button',{class:'btn cbi-button cbi-button-negative',disabled:true},['Aguarde 2 s']);
 		const started=Date.now(), timer=window.setInterval(function(){const left=Math.ceil((2000-(Date.now()-started))/1000);if(left>0){finalButton.textContent='Aguarde '+left+' s';return;}window.clearInterval(timer);finalButton.disabled=false;finalButton.textContent='Reiniciar agora';},100);
-		finalButton.addEventListener('click',L.bind(function(){finalButton.disabled=true;finalButton.textContent='Reiniciando…';return fs.exec('/usr/sbin/equipe-dashboard-control',['reboot-confirm',token]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao reiniciar');ui.hideModal();ui.addNotification(null,E('p',{},['Roteador reiniciando. A conexão será interrompida.']));}).catch(function(e){finalButton.disabled=false;finalButton.textContent='Reiniciar agora';ui.addNotification(null,E('p',{},[e.message]),'danger');});},this));
-		ui.showModal('Confirmação final',[E('p',{class:'alert-message warning'},['O roteador será reiniciado imediatamente. Aguarde a rede voltar antes de abrir o painel novamente.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':function(){window.clearInterval(timer);ui.hideModal();}},['Cancelar']),' ',finalButton])]);
+		finalButton.addEventListener('click',L.bind(function(){finalButton.disabled=true;finalButton.textContent='Salvando dados e reiniciando…';return fs.exec('/usr/sbin/equipe-dashboard-control',['reboot-confirm',token]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao reiniciar');ui.hideModal();ui.addNotification(null,E('p',{},['Protegendo unidades externas e reiniciando o roteador. A conexão será interrompida.']));}).catch(function(e){finalButton.disabled=false;finalButton.textContent='Reiniciar agora';ui.addNotification(null,E('p',{},[e.message]),'danger');});},this));
+		ui.showModal('Confirmação final',[
+			E('p',{class:'alert-message warning'},['O roteador será reiniciado imediatamente. Aguarde a rede voltar antes de abrir o painel novamente.']),
+			E('p',{class:'alert-message info',style:'margin-top:8px;font-size:0.9rem;'},['Proteção de armazenamento ativa: o roteador pausará serviços em execução (servidores, downloads e compartilhamentos), descarregará dados da memória RAM e protegerá unidades externas contra corrupção antes de reiniciar.']),
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':function(){window.clearInterval(timer);ui.hideModal();}},['Cancelar']),' ',finalButton])
+		]);
 	},
 	loadEzSetup: function(){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['ez-setup-status']).then(function(r){try{return JSON.parse(r.stdout||'{}');}catch(e){return {};}}).catch(function(){return {};});
@@ -14303,22 +15535,14 @@ const systemMethods = {
 				}, this));
 			}, this);
 
-			const pollSetupModules = L.bind(function(attempt){
-				return fs.exec('/usr/sbin/equipe-dashboard-control', ['ez-setup-install-status']).then(L.bind(function(r){
-					const state = String(r.stdout || '').trim();
-					if(state === 'done'){
-						ui.addNotification(null, E('p', {}, ['Módulos do Ark - Setup instalados. Recarregando…']));
-						window.setTimeout(function(){ window.location.reload(); }, 1200);
-						return;
-					}
-					if(state === 'error' || attempt > 180){
-						return fs.exec('/usr/sbin/equipe-dashboard-control', ['ez-setup-install-log']).then(function(log){
-							const lines = String(log.stdout || '').split(/\r?\n/).filter(Boolean);
-							ui.addNotification(null, E('p', {}, [lines.slice(-4).join(' | ') || 'Falha ao instalar módulos.']), 'danger');
-						});
-					}
-					window.setTimeout(function(){ pollSetupModules(attempt + 1); }, 2000);
-				}, this));
+			const pollSetupModules = L.bind(function(){
+				this.showPackageInstallProgressModal({
+					title: 'Instalando Módulos do Ark - Setup',
+					stageCmd: 'ez-setup-install-stage',
+					logCmd: 'ez-setup-install-log',
+					statusCmd: 'ez-setup-install-status',
+					successMsg: 'Módulos do Ark - Setup instalados com sucesso! Recarregando painel…'
+				});
 			}, this);
 
 			const installModules = L.bind(function(){
@@ -14331,9 +15555,19 @@ const systemMethods = {
 							E('button', { class: 'btn cbi-button cbi-button-positive', 'click': L.bind(function(){
 								return fs.exec('/usr/sbin/equipe-dashboard-control', ['ez-setup-install-modules']).then(L.bind(function(r){
 									if(r.code) throw new Error(r.stderr || 'Falha ao iniciar instalação');
-									ui.hideModal();
-									ui.addNotification(null, E('p', {}, ['Instalação dos módulos iniciada.']));
-									pollSetupModules(0);
+									const state = String(r.stdout || '').trim();
+									if(state === 'installed'){
+										ui.hideModal();
+										ui.addNotification(null, E('p', {}, ['Nenhum módulo pendente para instalar.']));
+										return;
+									}
+									this.showPackageInstallProgressModal({
+										title: 'Instalando Módulos do Ark - Setup',
+										stageCmd: 'ez-setup-install-stage',
+										logCmd: 'ez-setup-install-log',
+										statusCmd: 'ez-setup-install-status',
+										successMsg: 'Módulos do Ark - Setup instalados com sucesso! Recarregando painel…'
+									});
 								}, this)).catch(function(e){
 									if(reloadAfterExpectedDisconnect(e, 'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…', 4200)) return;
 									ui.addNotification(null, E('p', {}, [e.message]), 'danger');
@@ -15331,9 +16565,12 @@ const systemMethods = {
 		};
 
 		const profileName = (this.capabilities.actual_profile || this.capabilities.profile || 'full').toUpperCase();
+		const fwEngine = (hwInfo.firewall && hwInfo.firewall.engine) || 'fw4';
+		const fwDesc = (hwInfo.firewall && hwInfo.firewall.desc) || (fwEngine === 'fw4' ? 'Moderno (nftables puro)' : 'Legado (iptables)');
 		const sysRows = [
 			infoItem('Modelo do Equipamento', hwInfo.model || this.board.model || 'ARK Router'),
 			infoItem('Perfil ARK Router', profileName === 'FULL' ? 'FULL (Alto Desempenho)' : 'LITE (Compacto)', 'ATIVO'),
+			infoItem('Motor de Firewall', fwDesc, fwEngine.toUpperCase()),
 			infoItem('Placa / Target', (hwInfo.board || this.board.board_name || '') + ' (' + (hwInfo.target || '') + ')'),
 			infoItem('Sistema Operacional', hwInfo.release || 'OpenWrt'),
 			infoItem('Versão do Kernel', hwInfo.kernel || this.board.kernel || 'Linux')
@@ -15415,10 +16652,15 @@ const systemMethods = {
 					let res = {};
 					try { res = JSON.parse(r.stdout || '{}'); } catch(e){}
 					if (res.ok) {
+						let svcsText = '';
+						if (res.services_detected && res.services_detected.length > 0) {
+							svcsText = ' • Serviços: ' + res.services_detected.join(', ');
+						}
 						ui.addNotification(null, E('p', {}, [
 							'Hardware calibrado com sucesso! Perfil: ' + (res.tuning_profile || res.silicon_name) +
 							' • ' + res.offload_reason +
-							' • ' + res.irq_action
+							' • ' + res.irq_action +
+							svcsText
 						]));
 						ui.hideModal();
 						self.triggerImmediateRefresh('Hardware calibrado com sucesso!', 'info', false);
@@ -15586,7 +16828,6 @@ const systemMethods = {
 			this.selfUpdatePanel(),
 			bulkPanel,
 			ipv6Panel,
-			E('section',{class:'ex-cleanup-entry'},[E('div',{},[E('strong',{},['Otimização modo ARK']),E('small',{class:'ex-muted'},['Remove painéis e serviços dispensáveis para manter o OpenWrt enxuto. Sempre cria backup antes de remover.'])]),E('button',{class:'ex-mini-button','click':L.bind(this.showArkCleanup,this)},['Analisar e limpar'])]),
 			starlinkModalPanel,
 			E('section',{class:'ex-appearance-panel'},[E('div',{class:'ex-appearance-heading'},[E('div',{},[E('strong',{},['Aparência']),E('small',{class:'ex-muted'},['No modo automático, o painel acompanha as cores e o modo claro ou escuro do tema LuCI.'])]),appearanceMode]),appearanceColors,E('button',{class:'ex-mini-button ex-save-appearance','click':L.bind(function(){this.setAppearance(appearanceMode.value,primary.value,secondary.value);},this)},['Salvar aparência']),themeRow]),
 			E('div',{class:'ex-feature-list'},rows),
@@ -15607,6 +16848,7 @@ const systemMethods = {
 			const defaultServers = ['1.1.1.1', '8.8.8.8', '1.0.0.1', '8.8.4.4'];
 			const serverList = rawList.length ? rawList : defaultServers;
 			const blockerName = status.dns_blocker_name || 'AdGuard Home';
+			const hasDnsBlocker = !!status.dns_blocker_active;
 
 			const allserversActive = !!status.allservers;
 			const allserversToggle = E('input', {
@@ -16113,9 +17355,14 @@ const systemMethods = {
 				fs.exec('/usr/sbin/equipe-dashboard-control', ['system-hardware-auto-tune']).then(function(r) {
 					let info = {};
 					try { info = JSON.parse(r.stdout || '{}'); } catch(e){}
+					let svcsText = '';
+					if (info.services_detected && info.services_detected.length > 0) {
+						svcsText = ' • Serviços: ' + info.services_detected.join(', ');
+					}
 					ui.addNotification(null, E('p', {}, [
 						'Hardware otimizado com sucesso! Perfil: ' + (info.tuning_profile || info.silicon_name || 'Personalizado') +
-						(info.offload_reason ? ' (' + info.offload_reason + ')' : '')
+						(info.offload_reason ? ' (' + info.offload_reason + ')' : '') +
+						svcsText
 					]));
 					self.triggerImmediateRefresh('Hardware calibrado com sucesso!', 'info', false);
 				}).catch(function(e) {
@@ -16329,11 +17576,15 @@ const systemMethods = {
 		const rows = [
 			makePerfRow(
 				'⚡',
-				'DNS Turbo Paralelo (All-Servers)',
+				hasDnsBlocker ? 'DNS Protegido por Bloqueador' : 'DNS Turbo Paralelo (All-Servers)',
 				hasDnsBlocker ? 'BLOQUEADOR ATIVO' : 'RESPOSTA EM 0ms',
 				hasDnsBlocker ? 'badge-blue' : 'badge-green',
-				'Dispara consultas simultaneamente para 2 a 4 servidores em paralelo (Cloudflare, Google, etc.). O primeiro que responder entrega a página sem fila nem atraso de rota.',
-				hasDnsBlocker ? ('🔒 Desativado para proteger o ' + blockerName + '. Em modo All-Servers, consultas paralelas contornariam o bloqueador e os anúncios voltariam.') : 'Elimina engasgos na abertura de sites e downloads. Toque em “Servidores” para testar e escolher até 4 DNS.',
+				hasDnsBlocker
+					? ('Resolução local gerenciada pelo ' + blockerName + '. O modo All-Servers está desativado para impedir que servidores públicos recebam requisições simultâneas e burlem suas listas de filtros.')
+					: 'Dispara consultas simultaneamente para 2 a 4 servidores em paralelo (Cloudflare, Google, etc.). O primeiro que responder entrega a página sem fila nem atraso de rota.',
+				hasDnsBlocker
+					? 'Toque em “Servidores” para visualizar a rota de resolução e status de fallback.'
+					: 'Elimina engasgos na abertura de sites e downloads. Toque em “Servidores” para testar e escolher até 4 DNS.',
 				hasDnsBlocker ? false : !!this.perfState.dns_allservers,
 				!hasDnsBlocker,
 				'dns_allservers',
@@ -17279,7 +18530,8 @@ const renderMethods = {
 								E('div',{class:'ex-mode-grid'},mwanModeButtons),
 								E('small',{class:'ex-muted'},['Balanceamento distribui conexões entre os links; não soma a velocidade de um único envio.'])
 							])
-						])
+						]),
+						self.renderMwanRulesSection(data)
 					])
 				]);
 				const mwanCard = E('section',{class:'ex-card ex-mwan-control'},[
@@ -17309,7 +18561,7 @@ const renderMethods = {
 					E('div',{},[E('span',{class:'ex-kicker'},['CONTROLE DE FILAS']),E('h3',{},['CAKE / SQM'])]),
 					sqmTitleActions
 				]);
-				const sqmToggleInput = E('input',{id:'ex-qos-toggle',type:'checkbox','change':L.bind(function(ev){this.toggleSqm(ev.currentTarget);},this)});
+				const sqmToggleInput = E('input',{id:'ex-qos-toggle',type:'checkbox','change':L.bind(function(ev){self.toggleSqm(ev.currentTarget);},self)});
 				if (isSatNode) {
 					sqmToggleInput.disabled = true;
 					sqmToggleInput.checked = false;
@@ -17333,7 +18585,7 @@ const renderMethods = {
 						]),
 						E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},qosWanRows.concat([infoRow('Rede visitante','ex-qos-guest'),infoRow('DNS do roteador','ex-dns')])),
 						E('div',{class:'ex-grid ex-grid-2',style:'margin-top:14px;gap:12px;'},[
-							E('button',{class:'ex-button ex-qos-edit-button',style:'margin-top:0;','click':L.bind(function(){try{this.editSqmLimits();}catch(e){ui.addNotification(null,E('p',{},[e.message||String(e)]),'danger');}},this)},['Editar limites']),
+							E('button',{class:'ex-button ex-qos-edit-button',style:'margin-top:0;','click':L.bind(function(){try{self.editSqmLimits();}catch(e){ui.addNotification(null,E('p',{},[e.message||String(e)]),'danger');}},self)},['Editar limites']),
 							E('button',{class:'ex-button',style:'margin-top:0;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.1);font-weight:650;cursor:pointer;','click':L.bind(self.openFastCom,self)},['🎬 Testar velocidade da internet'])
 						])
 					])
@@ -18008,6 +19260,133 @@ const renderMethods = {
 			}, this));
 		}
 		this.update(data); this.scheduleAdaptiveRefresh(); return root;
+	},
+	renderMwanRulesSection: function(data) {
+		const self = this;
+		const mwanCfg = values(data && data.mwanConfig);
+		const torrentRule = mwanCfg.tor_src_tcp || mwanCfg.torrent_rule;
+		const isTorrentActive = !!(torrentRule && String(torrentRule.enabled) !== '0');
+
+		const seen = {};
+		const customRules = [];
+		Object.keys(mwanCfg).forEach(function(k) {
+			if (k.indexOf('ark_rule_') !== 0 && k.indexOf('pbr_') !== 0) return;
+			const baseId = k.replace(/_[tu]$/, '');
+			if (seen[baseId]) return;
+			seen[baseId] = true;
+			const r = Object.assign({}, mwanCfg[k]);
+			r._id = baseId;
+			if (k.match(/_[tu]$/)) {
+				r.proto = 'tcp udp';
+			}
+			customRules.push(r);
+		});
+
+		const policyLabels = {
+			'balanced': '⚖️ Balanceado (2 Links)',
+			'wan_only': '🔵 Somente WAN1',
+			'wan2_only': '🟣 Somente WAN2',
+			'wan_then_wan2': '🛡️ WAN1 ➔ WAN2',
+			'wan2_then_wan': '🛡️ WAN2 ➔ WAN1'
+		};
+
+		const rulesElements = [];
+		if (customRules.length === 0) {
+			rulesElements.push(E('div', { class: 'ex-empty-state', style: 'padding: 14px; text-align: center; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px dashed rgba(255,255,255,0.08); margin-top: 8px;' }, [
+				E('small', { class: 'ex-muted' }, ['Nenhuma regra personalizada cadastrada. Clique em "+ Nova Regra" para direcionar portas ou aparelhos específicos.'])
+			]));
+		} else {
+			customRules.forEach(function(r) {
+				const isEnabled = String(r.enabled) !== '0';
+				const name = r.description || r._id.replace('ark_rule_', '').replace('pbr_', '');
+				const proto = (r.proto || 'tcp udp').toUpperCase();
+				const portText = r.dest_port ? ('Portas: ' + r.dest_port) : (r.src_port ? ('Porta Origem: ' + r.src_port) : 'Todas as portas');
+				const ipText = r.src_ip ? ('IP: ' + r.src_ip) : 'Todos os aparelhos';
+				const polLabel = policyLabels[r.use_policy] || r.use_policy;
+
+				rulesElements.push(E('div', {
+					class: 'ex-channel-mode-control',
+					style: 'margin-top: 8px; padding: 10px 12px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;'
+				}, [
+					E('div', { style: 'flex: 1 1 auto; min-width: 200px;' }, [
+						E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 3px;' }, [
+							E('strong', { style: 'font-size: 13px; color: #f8fafc;' }, [name]),
+							E('span', { class: 'ex-pill ' + (r.use_policy === 'balanced' ? 'online' : 'standby'), style: 'font-size: 11px; padding: 2px 8px;' }, [polLabel])
+						]),
+						E('small', { class: 'ex-muted', style: 'display: block; font-size: 12px;' }, [
+							ipText + ' • ' + proto + ' • ' + portText
+						])
+					]),
+					E('div', { style: 'display: flex; align-items: center; gap: 12px; flex: 0 0 auto;' }, [
+						E('label', { class: 'ex-switch', style: 'margin: 0;' }, [
+							E('input', {
+								type: 'checkbox',
+								checked: isEnabled ? '' : null,
+								'aria-label': 'Ativar ou desativar regra ' + name,
+								change: L.bind(function(ev){
+									if (typeof self.toggleMwanRule === 'function') {
+										self.toggleMwanRule(r._id, ev.currentTarget.checked);
+									}
+								}, self)
+							}),
+							E('span', { class: 'ex-switch-slider' })
+						]),
+						E('button', {
+							class: 'ex-mini-button',
+							style: 'padding: 4px 8px; min-height: 28px; background: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 6px;',
+							title: 'Excluir regra ' + name,
+							click: L.bind(function(){
+								if (typeof self.deleteMwanRule === 'function') {
+									self.deleteMwanRule(r._id, name);
+								}
+							}, self)
+						}, ['🗑️'])
+					])
+				]));
+			}, self);
+		}
+
+		return E('details', { class: 'ex-mwan-rules-editor', style: 'margin-top: 14px;' }, [
+			E('summary', {}, ['Regras Avançadas de Roteamento (Portas e IPs)']),
+			E('div', { class: 'ex-mwan-rules-body', style: 'padding: 12px 0 4px;' }, [
+				E('div', { style: 'display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap;' }, [
+					E('div', {}, [
+						E('strong', { style: 'display:block;font-size:13px;' }, ['Roteamento por Política (PBR)']),
+						E('small', { class: 'ex-muted' }, ['Direcione portas específicas ou aparelhos para balanceamento ou para um link dedicado.'])
+					]),
+					E('button', {
+						class: 'ex-mini-button',
+						style: 'font-weight:700;padding:6px 14px;',
+						click: L.bind(function() {
+							if (typeof self.showAddMwanRuleModal === 'function') {
+								self.showAddMwanRuleModal();
+							}
+						}, self)
+					}, ['+ Nova Regra'])
+				]),
+				E('div', { class: 'ex-channel-mode-control', style: 'margin-bottom:10px;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;display:flex;align-items:center;justify-content:space-between;' }, [
+					E('div', {}, [
+						E('strong', {}, ['⚡ Acelerar BitTorrent / P2P nas 2 Internets']),
+						E('small', { class: 'ex-muted', style: 'display:block;margin-top:2px;' }, ['Balanceia conexões BitTorrent (portas 51413 e 6881-6999) pelas 2 conexões simultaneamente.'])
+					]),
+					E('label', { class: 'ex-switch', style: 'margin:0;' }, [
+						E('input', {
+							id: 'ex-mwan-torrent-toggle',
+							type: 'checkbox',
+							checked: isTorrentActive ? '' : null,
+							'aria-label': 'Ativar ou desativar aceleração P2P',
+							change: L.bind(function(ev){
+								if (typeof self.toggleMwanTorrentPreset === 'function') {
+									self.toggleMwanTorrentPreset(ev.currentTarget);
+								}
+							}, self)
+						}),
+						E('span', { class: 'ex-switch-slider' })
+					])
+				]),
+				E('div', { id: 'ex-mwan-custom-rules-list' }, rulesElements)
+			])
+		]);
 	},
 	handleSaveApply:null, handleSave:null, handleReset:null
 };

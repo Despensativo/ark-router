@@ -30,6 +30,7 @@ EXCLUSION_PATTERNS = [
     r'system\.[a-zA-Z0-9_]+\.trigger=\'none\'',
     r'dhcp\.@dnsmasq\[0\]\.cachesize=\'1000\'',
     r'mwan3\.[a-zA-Z0-9_]+\.use_policy=\'wan_then_wan2\'',
+    r'mwan3\.tor_[a-zA-Z0-9_]+\.[a-zA-Z0-9_]+',
 ]
 
 def parse_code_blocks(filepath):

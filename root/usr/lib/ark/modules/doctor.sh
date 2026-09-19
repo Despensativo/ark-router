@@ -320,6 +320,170 @@ ark_doctor_audit() {
 		add_check "Interfaces Mesh Orfas" "OK" "Sem interfaces de enlace mesh residuais no Kernel."
 	fi
 
+	# 10. Checagem de Pureza e Integridade do Firewall (fw4 vs fw3 / iptables)
+	if is_fw4; then
+		legacy_rules=""
+		if command -v iptables-save >/dev/null 2>&1; then
+			legacy_rules="$(iptables-save 2>/dev/null | grep -E '^(\*|:|-A)' | grep -vE ':(INPUT|OUTPUT|FORWARD) (ACCEPT|DROP)' || true)"
+		fi
+		if [ -z "$legacy_rules" ] && command -v ip6tables-save >/dev/null 2>&1; then
+			legacy_rules="$(ip6tables-save 2>/dev/null | grep -E '^(\*|:|-A)' | grep -vE ':(INPUT|OUTPUT|FORWARD) (ACCEPT|DROP)' || true)"
+		fi
+
+		fw_user_file="/etc/firewall.user"
+		[ -n "${ARK_ROOT}" ] && [ -f "${ARK_ROOT}/etc/firewall.user" ] && fw_user_file="${ARK_ROOT}/etc/firewall.user"
+		fw_user_has_iptables=0
+		if [ -f "$fw_user_file" ] && grep -qE 'iptables|ip6tables' "$fw_user_file" 2>/dev/null; then
+			fw_user_has_iptables=1
+		fi
+
+		upnp_is_legacy=0
+		ark_upnp_is_legacy_iptables && upnp_is_legacy=1
+
+		sqm_is_legacy=0
+		if uci -q show sqm 2>/dev/null | grep -q "\.script='simple.qos'"; then
+			sqm_is_legacy=1
+		fi
+
+		if [ -n "$legacy_rules" ] || [ "$fw_user_has_iptables" = 1 ] || [ "$upnp_is_legacy" = 1 ] || [ "$sqm_is_legacy" = 1 ]; then
+			culprit="scripts/modulos legados"
+			if [ "$upnp_is_legacy" = 1 ]; then
+				culprit="miniupnpd (pacote iptables incompativel com fw4)"
+			elif [ "$sqm_is_legacy" = 1 ]; then
+				culprit="SQM simple.qos (injeta regras iptables)"
+			elif echo "$legacy_rules" | grep -qiE 'miniupnpd|upnp'; then
+				culprit="miniupnpd (UPnP legado)"
+			elif echo "$legacy_rules" | grep -qi 'docker'; then
+				culprit="Docker (dockerd)"
+			elif echo "$legacy_rules" | grep -qi 'mwan3'; then
+				culprit="mwan3"
+			elif [ "$fw_user_has_iptables" = 1 ]; then
+				culprit="/etc/firewall.user"
+			fi
+
+			if [ "$auto_fix" = 1 ]; then
+				if [ "$upnp_is_legacy" = 1 ]; then
+					ark_migrate_upnp_variant >/dev/null 2>&1 || true
+				fi
+				if [ "$sqm_is_legacy" = 1 ]; then
+					for sec in $(uci -q show sqm 2>/dev/null | grep '=queue$' | cut -d. -f2 | cut -d= -f1); do
+						[ "$(uci -q get "sqm.$sec.script")" = "simple.qos" ] && uci -q set "sqm.$sec.script=piece_of_cake.qos"
+					done
+					uci commit sqm 2>/dev/null || true
+					/etc/init.d/sqm restart >/dev/null 2>&1 || true
+				fi
+				if [ "$fw_user_has_iptables" = 1 ]; then
+					q_dir="/etc/ark/quarantine"
+					[ -n "${ARK_ROOT}" ] && q_dir="${ARK_ROOT}/etc/ark/quarantine"
+					mkdir -p "$q_dir"
+					mv "$fw_user_file" "${q_dir}/firewall.user.legacy.$(date +%s 2>/dev/null || echo 0)" 2>/dev/null || true
+					touch "$fw_user_file"
+				fi
+				if command -v iptables >/dev/null 2>&1; then
+					iptables -F 2>/dev/null || true
+					iptables -X 2>/dev/null || true
+					iptables -t nat -F 2>/dev/null || true
+					iptables -t nat -X 2>/dev/null || true
+					iptables -t mangle -F 2>/dev/null || true
+					iptables -t mangle -X 2>/dev/null || true
+				fi
+				if command -v ip6tables >/dev/null 2>&1; then
+					ip6tables -F 2>/dev/null || true
+					ip6tables -X 2>/dev/null || true
+					ip6tables -t mangle -F 2>/dev/null || true
+					ip6tables -t mangle -X 2>/dev/null || true
+				fi
+				/sbin/fw4 reload >/dev/null 2>&1 || true
+				fixes_applied=$((fixes_applied + 1))
+				add_check "Pureza do Firewall (fw4 Puro)" "FIXED" "Regras legadas iptables ($culprit) saneadas e pacote migrado para nftables puro."
+			else
+				warnings=$((warnings + 1))
+				add_check "Pureza do Firewall (fw4 Puro)" "WARN" "Regras legadas iptables ou pacote incompativel detectado em fw4 (Origem provavel: $culprit)."
+			fi
+		else
+			add_check "Pureza do Firewall (fw4 Puro)" "OK" "Firewall operando puramente via nftables (zero regras legadas iptables)."
+		fi
+	else
+		if ark_upnp_is_legacy_nftables_on_fw3; then
+			if [ "$auto_fix" = 1 ]; then
+				ark_migrate_upnp_variant >/dev/null 2>&1 || true
+				fixes_applied=$((fixes_applied + 1))
+				add_check "Integridade do Firewall (fw3 iptables)" "FIXED" "Pacote miniupnpd-nftables corrigido para versao iptables retrocompativel no fw3."
+			else
+				warnings=$((warnings + 1))
+				add_check "Integridade do Firewall (fw3 iptables)" "WARN" "Pacote miniupnpd-nftables detectado em fw3 legado. Requer migracao para miniupnpd compativel."
+			fi
+		elif command -v iptables >/dev/null 2>&1 && iptables -n -L FORWARD >/dev/null 2>&1; then
+			add_check "Integridade do Firewall (fw3 iptables)" "OK" "Firewall fw3/iptables ativo e cadeias validas para arquitetura legada."
+		else
+			errors=$((errors + 1))
+			add_check "Integridade do Firewall (fw3 iptables)" "FAIL" "Firewall fw3 com falha nas cadeias ou binario iptables ausente."
+		fi
+	fi
+
+	# 11. Blindagem WAN6 e Processos DHCPv6
+	root_prefix="${ARK_ROOT:-}"
+	uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+	has_zombie_dhcp=0
+	for pid in $(pgrep -x odhcp6c 2>/dev/null || ps w 2>/dev/null | awk '/[o]dhcp6c/ {print $1}'); do
+		[ -n "$pid" ] || continue
+		if [ -f "/proc/$pid/status" ] && [ "$(awk '/^PPid:/ {print $2}' "/proc/$pid/status" 2>/dev/null)" = "1" ]; then
+			has_zombie_dhcp=1
+			break
+		fi
+	done
+
+	has_bad_wan6_dev=0
+	for sec in $($uci_cmd show network 2>/dev/null | sed -n 's/^network\.\([a-zA-Z0-9_]*\)=interface$/\1/p'); do
+		[ "$($uci_cmd get "network.$sec.proto" || echo '')" = "dhcpv6" ] || continue
+		dev="$($uci_cmd get "network.$sec.device" || echo '')"
+		[ -n "$dev" ] || dev="$($uci_cmd get "network.$sec.ifname" || echo '')"
+		case "$dev" in
+			@*|'') ;;
+			*) has_bad_wan6_dev=1; break ;;
+		esac
+	done
+
+	if [ "$has_zombie_dhcp" = 1 ] || [ "$has_bad_wan6_dev" = 1 ]; then
+		if [ "$auto_fix" = 1 ]; then
+			ark_cleanup_dhcpv6_orphans >/dev/null 2>&1 || true
+			ark_sanitize_wan6_config >/dev/null 2>&1 || true
+			fixes_applied=$((fixes_applied + 1))
+			add_check "Blindagem WAN6 e DHCPv6" "FIXED" "Processo zumbi eliminado e device @wan sanitizado sem loops."
+		else
+			warnings=$((warnings + 1))
+			add_check "Blindagem WAN6 e DHCPv6" "WARN" "Configuracao WAN6 sem alias @wan ou processos odhcp6c orfaos detectados."
+		fi
+	else
+		add_check "Blindagem WAN6 e DHCPv6" "OK" "Interfaces IPv6 canonicas (@wan) e zero processos orfaos."
+	fi
+
+	# 12. Blindagem de Radios Wi-Fi (Auto-Ativacao de Fabrica com Preservacao de Escolha)
+	user_wifi_disabled="$($uci_cmd get equipe_dashboard.main.wifi_user_disabled 2>/dev/null || echo 0)"
+	if [ "$user_wifi_disabled" = "1" ]; then
+		add_check "Blindagem de Radios Wi-Fi" "OK" "Radios Wi-Fi desativados voluntariamente pelo usuario (preservado)."
+	else
+		total_radios=0
+		disabled_radios=0
+		for r in $($uci_cmd show wireless 2>/dev/null | sed -n 's/^wireless\.\([a-zA-Z0-9_]*\)=wifi-device$/\1/p'); do
+			total_radios=$((total_radios + 1))
+			[ "$($uci_cmd get "wireless.$r.disabled" || echo 0)" = "1" ] && disabled_radios=$((disabled_radios + 1))
+		done
+
+		if [ "$total_radios" -gt 0 ] && [ "$total_radios" -eq "$disabled_radios" ]; then
+			if [ "$auto_fix" = 1 ]; then
+				ark_auto_enable_factory_wifi >/dev/null 2>&1 || true
+				fixes_applied=$((fixes_applied + 1))
+				add_check "Blindagem de Radios Wi-Fi" "FIXED" "Radios Wi-Fi ativados do padrao virgem de fabrica do OpenWrt."
+			else
+				warnings=$((warnings + 1))
+				add_check "Blindagem de Radios Wi-Fi" "WARN" "Radios Wi-Fi bloqueados pelo padrao virgem de fabrica do OpenWrt."
+			fi
+		else
+			add_check "Blindagem de Radios Wi-Fi" "OK" "Radios Wi-Fi operacionais e transmitindo."
+		fi
+	fi
+
 	if [ "$format" = "json" ]; then
 		printf '{"errors":%s,"warnings":%s,"fixes_applied":%s,"checks":[%s]}\n' \
 			"$errors" "$warnings" "$fixes_applied" "$checks"

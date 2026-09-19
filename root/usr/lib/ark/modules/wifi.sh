@@ -161,6 +161,10 @@ handle_wifi() {
 		fi
 
 		if [ "$desired_state" = "1" ]; then
+			[ "$wifi_kind" = "main" ] && {
+				uci -q set equipe_dashboard.main.wifi_user_disabled='0'
+				uci commit equipe_dashboard 2>/dev/null || true
+			}
 			for r in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut -d= -f1); do
 				[ "$(uci -q get "wireless.$r.disabled")" = "1" ] && uci -q set "wireless.$r.disabled=0"
 			done
@@ -176,6 +180,13 @@ handle_wifi() {
 			done
 			[ "$wifi_kind" = "guest" ] && uci -q delete dhcp.guest.ignore && uci commit dhcp 2>/dev/null || true
 		else
+			[ "$wifi_kind" = "main" ] && {
+				uci -q set equipe_dashboard.main.wifi_user_disabled='1'
+				uci commit equipe_dashboard 2>/dev/null || true
+				for r in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut -d= -f1); do
+					uci -q set "wireless.$r.disabled=1"
+				done
+			}
 			for section in $sections; do
 				uci -q set "wireless.$section.disabled=1"
 			done

@@ -374,7 +374,69 @@ const networkMethods = {
 			const field=function(label,value,hint){const node=E('input',{type:'number',class:'cbi-input-text',min:0,max:100000,step:'0.1',placeholder:'0 (ilimitado)',value:kbpsToMbpsInput(value)});return {node:node,row:E('label',{class:'ex-qos-edit-field'},[E('span',{},[label+' (Mbps)']),node,E('small',{class:'ex-muted'},[hint||'Mbps • 0 ou vazio = ilimitado'])])};};
 			const profiles=sqmWanProfiles(data);if(!profiles.length)throw new Error('Nenhuma interface configurada como WAN foi encontrada.');
 			const guestDownloadLimit=qosGuest.download_kbps||qos.guest_download_kbps||0, guestUploadLimit=qosGuest.upload_kbps||qos.guest_upload_kbps||0;
-			const editors=profiles.map(function(profile){const queue=sqm[profile.section]||{},enabled=E('input',{type:'checkbox'}),download=field(profile.label+' download',queue.download),upload=field(profile.label+' upload',queue.upload);enabled.checked=queue.enabled==='1';return {profile:profile,enabled:enabled,download:download,upload:upload,section:E('section',{},[E('h3',{},[profile.label]),E('small',{class:'ex-muted'},['Interface '+profile.network+' • dispositivo '+profile.device+(profile.online?' • online':' • sem link')]),E('label',{class:'ex-qos-edit-toggle'},[enabled,E('span',{},['Ativar fila '+profile.label])]),download.row,upload.row])};});
+			const fwDefs = Object.values(data.firewallConfig || {}).find(function(s) { return s && s['.type'] === 'defaults'; }) || {};
+			const isFlowOffloadActive = fwDefs.flow_offloading === '1';
+
+			const editors=profiles.map(function(profile){
+				const queue=sqm[profile.section]||{},enabled=E('input',{type:'checkbox'}),download=field(profile.label+' download',queue.download),upload=field(profile.label+' upload',queue.upload);
+				enabled.checked=queue.enabled==='1';
+
+				const calcInput = E('input', {
+					type: 'number',
+					class: 'cbi-input-text',
+					min: 1,
+					max: 100000,
+					step: '1',
+					placeholder: 'Velocidade nominal (Mbps)',
+					style: 'max-width: 170px; margin-right: 6px;'
+				});
+				const calcNotice = E('small', { class: 'ex-muted', style: 'display: block; margin-top: 4px; font-size: 11px; line-height: 1.3;' }, [
+					'Margem de 7% aplicada para impedir acúmulo de fila no modem.'
+				]);
+				const applyCalcBtn = E('button', {
+					type: 'button',
+					class: 'btn cbi-button cbi-button-action ex-mini-button',
+					style: 'font-weight: 600;',
+					click: function() {
+						const nominal = parseFloat(calcInput.value || 0);
+						if (nominal > 0) {
+							const discounted = Math.round(nominal * 0.93 * 10) / 10;
+							upload.node.value = discounted;
+							if (isFlowOffloadActive || download.node.value === '' || download.node.value === '0') {
+								download.node.value = '0';
+							}
+							calcNotice.style.color = '#10b981';
+							calcNotice.textContent = '✓ ' + discounted + ' Mbps aplicado ao Upload (-7% contra Bufferbloat).';
+						}
+					}
+				}, ['Aplicar -7%']);
+
+				const calcBox = E('div', { class: 'ex-qos-calc-box', style: 'margin-top: 8px; margin-bottom: 8px; padding: 8px 10px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 8px;' }, [
+					E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;' }, [
+						E('strong', { style: 'font-size: 11.5px;' }, ['🧮 Calculadora de Upload (-7% Bufferbloat)'])
+					]),
+					E('div', { style: 'display: flex; align-items: center; flex-wrap: wrap; gap: 4px;' }, [
+						calcInput,
+						applyCalcBtn
+					]),
+					calcNotice
+				]);
+
+				return {
+					profile: profile,
+					enabled: enabled,
+					download: download,
+					upload: upload,
+					section: E('section', {}, [
+						E('h3', {}, [profile.label]),
+						E('small', { class: 'ex-muted' }, ['Interface '+profile.network+' • dispositivo '+profile.device+(profile.online?' • online':' • sem link')]),
+						E('label', { class: 'ex-qos-edit-toggle' }, [enabled, E('span', {}, ['Ativar fila '+profile.label])]),
+						download.row,
+						upload.row,
+						calcBox
+					])
+				};
+			});
 			const guestDown=field('Visitantes download total',guestDownloadLimit,'Mbps • 0 ou vazio = ilimitado'), guestUp=field('Visitantes upload total',guestUploadLimit,'Mbps • exemplo: 1,5 • 0 ou vazio = ilimitado');
 			const mipsNotice = audit.is_low_end_mips ? E('div', { class: 'alert-message warning', style: 'margin-bottom: 12px; font-size: 12.5px; line-height: 1.5;' }, [
 				E('strong', { style: 'display:block; margin-bottom:4px;' }, ['⚠️ Recomendação de Hardware: Processador MIPS (' + (audit.cpu_model || 'Single-Core 720 MHz') + ')']),
@@ -392,11 +454,17 @@ const networkMethods = {
 				])
 			]) : '';
 
+			const hybridBanner = isFlowOffloadActive ? E('div', { class: 'alert-message info', style: 'margin-bottom: 12px; font-size: 12.5px; line-height: 1.45;' }, [
+				E('strong', { style: 'display: block; margin-bottom: 3px;' }, ['⚡ Modo Híbrido Ativo (Fastpath + CAKE)']),
+				'Modo Híbrido: O Download opera com velocidade total liberada no Fastpath e o Upload é gerenciado pelo CAKE para blindar a rede contra lag em jogos e chamadas.'
+			]) : '';
+
 			ui.showModal('Editar SQM / CAKE',[
 				E('div',{style:'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;'},[
 					E('p',{class:'ex-muted',style:'margin:0;'},['Defina os limites em Mbps. Exemplo: 1,2 Gbps = 1200 Mbps. Use 0 ou deixe em branco quando não quiser limitar aquela direção (ilimitado).']),
 					E('button',{class:'ex-mini-button','click':L.bind(function(){ui.hideModal();this.openFastCom();},this)},['🎬 Medir no Fast.com'])
 				]),
+				hybridBanner,
 				mipsNotice,
 				E('div',{class:'ex-qos-edit-grid'},editors.map(function(editor){return editor.section;}).concat([E('section',{},[E('h3',{},['Visitantes']),guestDown.row,guestUp.row])])),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
 			const btn = ev.currentTarget;
@@ -475,6 +543,57 @@ const networkMethods = {
 			const ipv6Input=E('input',{type:'checkbox',class:'cbi-input-checkbox',checked:ipv6Enabled ? '' : null});
 			ipv6Input.checked = !!ipv6Enabled;
 			const ipv6Switch=E('label',{class:'ex-switch'},[ipv6Input,E('span',{class:'ex-switch-slider'})]);
+
+			const which6Cfg = net[which === 'wan' ? 'wan6' : (which + '_6')] || net[which + '6'] || {};
+			let otherDelegatingWan = null;
+			for (let ifaceKey in net) {
+				if (ifaceKey !== which && /^wan[0-9]*$/.test(ifaceKey) && ifaceKey !== 'wan6') {
+					const otherCfg = net[ifaceKey] || {};
+					const other6Key = (ifaceKey === 'wan' ? 'wan6' : (ifaceKey + '_6'));
+					const other6Cfg = net[other6Key] || net[ifaceKey + '6'] || {};
+					const otherProto = otherCfg.proto;
+					if (otherProto && otherProto !== 'none') {
+						const isOtherPrimary = (ifaceKey === 'wan' || ifaceKey === 'wan1');
+						const otherDelegated = (otherCfg.delegate === '1' || otherCfg.delegate === 1 || other6Cfg.delegate === '1' || other6Cfg.delegate === 1 ||
+							(isOtherPrimary && otherCfg.delegate !== '0' && other6Cfg.delegate !== '0' && otherCfg.ipv6 !== '0' && cfg.delegate !== '1' && which6Cfg.delegate !== '1'));
+						if (otherDelegated) {
+							const otherNum = ifaceKey.replace(/\D/g, '') || '1';
+							otherDelegatingWan = 'WAN' + otherNum;
+							break;
+						}
+					}
+				}
+			}
+
+			const isCurrentlyDelegating = (cfg.delegate === '1' || cfg.delegate === 1 || cfg.delegate === true ||
+				which6Cfg.delegate === '1' || which6Cfg.delegate === 1 || which6Cfg.delegate === true ||
+				(isPrimary && cfg.delegate !== '0' && which6Cfg.delegate !== '0' && ipv6Enabled && !otherDelegatingWan));
+
+			const delegateInput = E('input', { type: 'checkbox', class: 'cbi-input-checkbox', checked: (isCurrentlyDelegating && !otherDelegatingWan) ? '' : null });
+			delegateInput.checked = !!(isCurrentlyDelegating && !otherDelegatingWan);
+			const delegateSwitch = E('label', { class: 'ex-switch' }, [delegateInput, E('span', { class: 'ex-switch-slider' })]);
+			const delegateHint = E('small', { class: 'ex-muted' }, ['']);
+
+			const updateDelegateState = function() {
+				if (!ipv6Input.checked) {
+					delegateInput.checked = false;
+					delegateInput.disabled = true;
+					delegateHint.textContent = _t("Requer 'Conectividade IPv6' ativa nesta WAN.");
+					delegateHint.style.color = 'var(--text-muted, #94a3b8)';
+				} else if (otherDelegatingWan) {
+					delegateInput.checked = false;
+					delegateInput.disabled = true;
+					const template = _t("A distribuição já está ativa na %s. Desative na %s primeiro para ativar aqui.");
+					delegateHint.textContent = template.replace(/%s/g, otherDelegatingWan);
+					delegateHint.style.color = '#f59e0b';
+				} else {
+					delegateInput.disabled = false;
+					delegateHint.textContent = _t("Distribui o bloco IPv6 público desta operadora para os dispositivos locais (DHCPv6-PD). Apenas uma WAN pode distribuir por vez para evitar conflitos.");
+					delegateHint.style.color = '';
+				}
+			};
+			ipv6Input.addEventListener('change', updateDelegateState);
+			updateDelegateState();
 
 			const pppoeProfileSelect = E('select', { class: 'cbi-input-select', style: 'flex:1;' }, [
 				E('option', { value: '' }, ['-- Escolher perfil PPPoE salvo --'])
@@ -678,7 +797,7 @@ const networkMethods = {
 				savePromptBox
 			]);
 
-			const field=function(label,node,hint,extraClass){return E('label',{class:'ex-wan-edit-field'+(extraClass?(' '+extraClass):'')},[E('span',{},[label]),node,hint?E('small',{class:'ex-muted'},[hint]):'']);};
+			const field=function(label,node,hint,extraClass){return E('label',{class:'ex-wan-edit-field'+(extraClass?(' '+extraClass):'')},[E('span',{},[label]),node,(hint instanceof Node)?hint:(hint?E('small',{class:'ex-muted'},[hint]):'')]);};
 			const pppoeBlock=E('div',{class:'ex-wan-proto-block'},[
 				pppoeProfileBar,
 				field('Usuário PPPoE',username),
@@ -715,6 +834,7 @@ const networkMethods = {
 				field('Tipo de conexão',proto),
 				field('Prioridade / Métrica (Peso)',metricInput,'Menor número = maior prioridade (ex: WAN1=10, WAN2=20). Não pode haver WANs com o mesmo peso.'),
 				field('Conectividade IPv6',ipv6Switch,'Habilita requisição de endereço e rota IPv6 nesta conexão WAN.'),
+				field(_t('Distribuir IPv6 na LAN'),delegateSwitch,delegateHint),
 				pppoeBlock,
 				staticBlock,
 				field('DNS 1',dns1),
@@ -752,8 +872,9 @@ const networkMethods = {
 							}
 						}
 						const chosenIpv6 = ipv6Input.checked ? '1' : '0';
+						const chosenDelegate = (ipv6Input.checked && delegateInput.checked) ? '1' : '0';
 						const dns = [dns1.value.trim(), dns2.value.trim(), dns3.value.trim()].filter(Boolean).join(' ');
-						const args = ['wan-save', 'iface=' + which, 'mode=' + role.value, 'device=' + device.value, 'proto=' + proto.value, 'metric=' + chosenMetric, 'ipv6=' + chosenIpv6, 'username=' + username.value, 'password=' + password.value, 'ipaddr=' + ipaddr.value, 'netmask=' + netmask.value, 'gateway=' + gateway.value, 'dns=' + dns, 'macaddr=' + macaddr.value.trim(), 'modem_ip=' + modemIp.value.trim()];
+						const args = ['wan-save', 'iface=' + which, 'mode=' + role.value, 'device=' + device.value, 'proto=' + proto.value, 'metric=' + chosenMetric, 'ipv6=' + chosenIpv6, 'delegate=' + chosenDelegate, 'username=' + username.value, 'password=' + password.value, 'ipaddr=' + ipaddr.value, 'netmask=' + netmask.value, 'gateway=' + gateway.value, 'dns=' + dns, 'macaddr=' + macaddr.value.trim(), 'modem_ip=' + modemIp.value.trim()];
 						return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 							if (r.code) throw new Error(r.stderr || 'Falha ao salvar WAN');
 							ui.hideModal();
@@ -1383,6 +1504,92 @@ const networkMethods = {
 			const tcpNotice = E('small', { style: 'font-weight:600;display:block;margin-top:4px;' });
 			let saveButton = null;
 
+			let initialUploadMbps = 0;
+			if (Number(opt.sqm_upload || 0) > 0) {
+				initialUploadMbps = Math.round((Number(opt.sqm_upload) / 1000) * 10) / 10;
+			}
+			const flowNotice = E('small', { class: 'ex-opt-requirement ready', style: 'display:none;margin-top:6px;' });
+			const hybridContainer = E('div', { class: 'ex-opt-hybrid-container', style: 'display:none;margin-top:10px;' });
+
+			const hybridNotice = E('div', { class: 'alert-message info', style: 'margin-bottom:8px;padding:8px 12px;font-size:12px;line-height:1.45;' }, [
+				E('strong', { style: 'display:block;margin-bottom:2px;font-size:12.5px;' }, ['⚡ Modo Híbrido Ativo']),
+				'Modo Híbrido: O Download opera com velocidade total no Fastpath e o Upload é gerenciado pelo CAKE contra lag.'
+			]);
+
+			const calcInput = E('input', {
+				type: 'number',
+				class: 'cbi-input-text',
+				min: 1,
+				max: 100000,
+				step: '1',
+				placeholder: 'Velocidade nominal (Mbps)',
+				style: 'max-width: 170px; margin-right: 6px;'
+			});
+			const calcNotice = E('small', { class: 'ex-muted', style: 'display:block;margin-top:4px;font-size:11px;line-height:1.3;' }, [
+				'Margem de 7% aplicada para impedir acúmulo de fila no modem e eliminar lag.'
+			]);
+			const uploadInput = E('input', {
+				type: 'number',
+				class: 'cbi-input-text',
+				min: 0,
+				max: 100000,
+				step: '0.1',
+				value: initialUploadMbps > 0 ? initialUploadMbps : 0,
+				placeholder: '0'
+			});
+			const downloadInput = E('input', {
+				type: 'text',
+				class: 'cbi-input-text',
+				value: '0 (Ilimitado / Fastpath)',
+				disabled: true,
+				style: 'opacity:0.85;'
+			});
+
+			const applyCalcBtn = E('button', {
+				type: 'button',
+				class: 'btn cbi-button cbi-button-action ex-mini-button',
+				style: 'font-weight: 600;',
+				click: function() {
+					const nominal = parseFloat(calcInput.value || 0);
+					if (nominal > 0) {
+						const discounted = Math.round(nominal * 0.93 * 10) / 10;
+						uploadInput.value = discounted;
+						calcNotice.style.color = '#10b981';
+						calcNotice.textContent = '✓ ' + discounted + ' Mbps aplicado ao Upload (-7% contra Bufferbloat).';
+					}
+				}
+			}, ['Aplicar -7%']);
+
+			const calcBox = E('div', { class: 'ex-qos-calc-box', style: 'margin-bottom:10px;padding:8px 12px;background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.15);border-radius:8px;' }, [
+				E('div', { style: 'display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;' }, [
+					E('strong', { style: 'font-size:11.5px;' }, ['🧮 Calculadora de Upload (-7% Bufferbloat)'])
+				]),
+				E('div', { style: 'display:flex;align-items:center;flex-wrap:wrap;gap:4px;' }, [
+					calcInput,
+					applyCalcBtn
+				]),
+				calcNotice
+			]);
+
+			const downloadField = E('label', { class: 'ex-wan-edit-field', style: 'margin-bottom:6px;' }, [
+				E('span', {}, ['Download (' + opt.label + ') • Mbps']),
+				downloadInput,
+				E('small', { class: 'ex-muted' }, ['No Modo Híbrido, o download opera sem limite artificial no kernel.'])
+			]);
+
+			const uploadField = E('label', { class: 'ex-wan-edit-field', style: 'margin-bottom:6px;' }, [
+				E('span', {}, ['Upload (' + opt.label + ') • Mbps']),
+				uploadInput,
+				E('small', { class: 'ex-muted' }, ['Indispensável informar a velocidade real de upload para o CAKE estabilizar a latência.'])
+			]);
+
+			hybridContainer.appendChild(hybridNotice);
+			hybridContainer.appendChild(calcBox);
+			hybridContainer.appendChild(E('div', { style: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;' }, [
+				downloadField,
+				uploadField
+			]));
+
 			const updateSqmDependency = function() {
 				const isSatNode = isSatelliteOrAp(self.currentData);
 				if (isSatNode) {
@@ -1432,7 +1639,7 @@ const networkMethods = {
 				jumboInput.checked = babyJumbo;
 				irqInput.checked = !isSingleCore && irqBalance;
 				irqInput.disabled = isSingleCore || !opt.irqbalance_installed;
-				flowInput.disabled = sqmAnyActive && !flowOffload;
+				flowInput.disabled = false;
 				const effective = effectiveProfile();
 				while (selectedSummary.firstChild) selectedSummary.removeChild(selectedSummary.firstChild);
 				selectedSummary.style.display = 'block';
@@ -1462,7 +1669,22 @@ const networkMethods = {
 					tcpNotice.textContent = 'Recomendado para conexões de alta velocidade em roteadores com 256 MB ou mais de RAM.';
 				}
 
-				globalWarning.textContent = sqmAnyActive ? 'Fastpath fica inativo enquanto houver filas SQM/CAKE ativas, garantindo a priorização de pacotes.' : 'Estas opções de desempenho beneficiam o roteador como um todo.';
+				const isSatNode = isSatelliteOrAp(self.currentData);
+				const isSqmOn = !isSatNode && (sqmActive || sqmAnyActive || enableSqmInput.checked);
+				if (flowOffload && isSqmOn) {
+					hybridContainer.style.display = 'block';
+					flowNotice.style.display = 'none';
+				} else if (flowOffload) {
+					hybridContainer.style.display = 'none';
+					flowNotice.style.display = 'block';
+					flowNotice.className = 'ex-opt-requirement ready';
+					flowNotice.textContent = '✓ Pronto e ativo: downloads e tráfego geral acelerados no kernel com menor uso de CPU.';
+				} else {
+					hybridContainer.style.display = 'none';
+					flowNotice.style.display = 'none';
+				}
+
+				globalWarning.textContent = (flowOffload && sqmAnyActive) ? 'Modo Híbrido disponível: o Fastpath acelera downloads no kernel enquanto o CAKE gerencia uploads.' : 'Estas opções de desempenho beneficiam o roteador como um todo.';
 				updateSqmDependency();
 			};
 
@@ -1512,7 +1734,7 @@ const networkMethods = {
 			flowInput.addEventListener('change', function() { flowOffload = flowInput.checked; updateUI(); });
 			jumboInput.addEventListener('change', function() { selectedPreset = 'custom'; babyJumbo = jumboInput.checked; updateUI(); });
 			irqInput.addEventListener('change', function() { irqBalance = irqInput.checked; updateUI(); });
-			enableSqmInput.addEventListener('change', updateSqmDependency);
+			enableSqmInput.addEventListener('change', function() { updateSqmDependency(); updateUI(); });
 			applyPreset(selectedPreset);
 
 			const protoHuman = { dhcp: 'Modem da Operadora (DHCP)', pppoe: 'Fibra Ótica Direta (PPPoE)', static: 'IP Fixo Estático' };
@@ -1577,8 +1799,8 @@ const networkMethods = {
 							E('div', { class: 'ex-opt-module-info' }, [
 								E('strong', {}, ['🚀 Aceleração de Tráfego (Fastpath / Flow Offloading)']),
 								E('p', {}, ['Processa o tráfego de dados diretamente pelo kernel do Linux, reduzindo o uso da CPU para a internet rodar na velocidade máxima sem aquecer o roteador.']),
-								(Number(opt.mwan_active_wans || 0) >= 2) ? E('small', { class: 'ex-opt-requirement warning', style: 'color:#f59e0b;display:block;margin-top:4px;' }, ['⚠️ Multi-WAN ativo: O Flow Offloading (Fastpath) ignora balanceamento e failover do mwan3. Recomenda-se manter desligado com 2 ou mais conexões ativas.']) : '',
-								E('small', { class: 'ex-opt-requirement' + (sqmAnyActive ? ' blocked' : ' ready') }, [sqmAnyActive ? '⚠ Requer SQM / CAKE desligado em todas as WANs.' : '✓ Pronto e ativo: downloads acelerados com menor uso de CPU.'])
+								flowNotice,
+								hybridContainer
 							]),
 							E('label', { class: 'ex-switch' }, [ flowInput, E('span', { class: 'ex-switch-slider' }) ])
 						]),
@@ -1601,8 +1823,9 @@ const networkMethods = {
 							this.installFeature('sqm');
 							return;
 						}
-						const activateSqm = !isSatelliteOrAp(this.currentData) && requiresSqm && !sqmActive && enableSqmInput.checked;
-						if (flowOffload && sqmAnyActive) { ui.addNotification(null, E('p', {}, ['Desative as filas SQM / CAKE antes de ligar o Fastpath.']), 'danger'); return; }
+						const isSatNode = isSatelliteOrAp(this.currentData);
+						const isSqmOn = !isSatNode && (sqmActive || sqmAnyActive || enableSqmInput.checked);
+						const activateSqm = !isSatNode && requiresSqm && !sqmActive && enableSqmInput.checked;
 						btn.disabled = true;
 						btn.textContent = activateSqm ? 'Ativando CAKE e aplicando…' : 'Aplicando otimizações…';
 						const args = [
@@ -1616,9 +1839,14 @@ const networkMethods = {
 							'enable_sqm=' + (activateSqm ? '1' : '0'),
 							'irqbalance=' + (irqBalance ? '1' : '0')
 						];
+						if (flowOffload && isSqmOn) {
+							const upVal = parseFloat(uploadInput.value || 0);
+							args.push('sqm_upload=' + Math.round(upVal * 1000));
+							args.push('sqm_download=0');
+						}
 						return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(L.bind(function(res) {
 							if (res.code) throw new Error(res.stderr || 'Falha ao aplicar otimizações');
-							this.triggerImmediateRefresh(activateSqm ? 'SQM / CAKE ativado e otimizações aplicadas com sucesso!' : 'Otimizações de internet aplicadas com sucesso!', 'info');
+							this.triggerImmediateRefresh((flowOffload && isSqmOn) ? 'Modo Híbrido ativado: Fastpath no Download e CAKE no Upload aplicados com sucesso!' : (activateSqm ? 'SQM / CAKE ativado e otimizações aplicadas com sucesso!' : 'Otimizações de internet aplicadas com sucesso!'), 'info');
 						}, this)).catch(function(err) {
 							btn.disabled = false;
 							btn.textContent = 'Salvar e Aplicar Otimizações';
@@ -1639,36 +1867,88 @@ const networkMethods = {
 		let state={};try{state=JSON.parse(((this.currentData||{}).lanStatus&&this.currentData.lanStatus.stdout)||'{}');}catch(e){}
 		const makeSelect=function(value,items){const s=E('select',{class:'cbi-input-select'},items.map(function(i){return E('option',{value:i[0]},[i[1]]);}));s.value=value;return s;};
 		const mode=makeSelect(state.preset==='10'?'preset10':(state.preset==='192'?'preset192':'manual'),[['preset192','Padrão 192.168.x.x'],['preset10','Padrão 10.0.x.x'],['manual','Informar manualmente']]);
-		const routerIp=E('input',{class:'cbi-input-text',value:state.ipaddr||'192.168.1.1',placeholder:'192.168.1.1',inputmode:'decimal'});
+		const initialRouterIp=state.ipaddr||'192.168.1.1';
+		let lastRouterIp=initialRouterIp;
+		const routerIp=E('input',{class:'cbi-input-text',value:initialRouterIp,placeholder:initialRouterIp,inputmode:'decimal'});
 		const netmask=E('input',{class:'cbi-input-text',value:state.netmask||'255.255.255.0',placeholder:'255.255.255.0',inputmode:'decimal'});
 		const dhcpStart=E('input',{class:'cbi-input-text',value:state.dhcp_start||'192.168.1.100',placeholder:'192.168.1.100',inputmode:'decimal'});
 		const dhcpEnd=E('input',{class:'cbi-input-text',value:state.dhcp_end||'192.168.1.249',placeholder:'192.168.1.249',inputmode:'decimal'});
 		const dnsList=Array.isArray(state.dns)?state.dns:String(state.dns||'').split(/\s+/).filter(Boolean);
-		const dns1=E('input',{class:'cbi-input-text',value:dnsList[0]||'1.1.1.1',placeholder:'1.1.1.1',inputmode:'decimal'});
-		const dns2=E('input',{class:'cbi-input-text',value:dnsList[1]||'8.8.8.8',placeholder:'8.8.8.8',inputmode:'decimal'});
+		const initialDns1=dnsList[0]||initialRouterIp;
+		const dns1=E('input',{class:'cbi-input-text',value:initialDns1,placeholder:initialRouterIp,inputmode:'decimal'});
+		const dns2=E('input',{class:'cbi-input-text',value:dnsList[1]||'1.1.1.1',placeholder:'1.1.1.1',inputmode:'decimal'});
 		const dns3=E('input',{class:'cbi-input-text',value:dnsList[2]||'9.9.9.9',placeholder:'9.9.9.9',inputmode:'decimal'});
 		const field=function(label,node,hint){return E('label',{class:'ex-wan-edit-field'},[E('span',{},[label]),node,hint?E('small',{class:'ex-muted'},[hint]):'']);};
 		let dhcpTouched=false;
+		let dns1Touched=false;
+
+		const isSameSubnet24=function(ipA,ipB){
+			if(!ipA||!ipB)return false;
+			const pA=String(ipA).trim().split('.'), pB=String(ipB).trim().split('.');
+			return pA.length===4&&pB.length===4&&pA[0]===pB[0]&&pA[1]===pB[1]&&pA[2]===pB[2];
+		};
+
+		const suggestDns=function(newIp){
+			if(!newIp)return;
+			const trimmed=String(newIp).trim();
+			if(!trimmed)return;
+			const curDns1=dns1.value.trim();
+			if(!dns1Touched||curDns1===lastRouterIp||curDns1===initialRouterIp||isSameSubnet24(curDns1,lastRouterIp)){
+				dns1.value=trimmed;
+				dns1.placeholder=trimmed;
+			}
+			if(dns2.value.trim()===lastRouterIp)dns2.value=trimmed;
+			if(dns3.value.trim()===lastRouterIp)dns3.value=trimmed;
+			lastRouterIp=trimmed;
+		};
+
 		const suggestDhcp=function(force){
 			const start=dhcpStartSuggestion(routerIp.value), end=dhcpEndSuggestion(routerIp.value);
 			if(!start||!end)return;
 			if(force||!dhcpTouched){dhcpStart.value=start;dhcpEnd.value=end;}
 			dhcpStart.placeholder=start;dhcpEnd.placeholder=end;
 		};
+
+		const onRouterIpChange=function(force){
+			if(mode.value==='manual'||force){
+				suggestDhcp(force);
+				suggestDns(routerIp.value);
+			}
+		};
+
 		const applyPreset=function(changed){
-			if(changed&&mode.value==='preset192'){routerIp.value='192.168.1.1';netmask.value='255.255.255.0';dhcpStart.value='192.168.1.10';dhcpEnd.value='192.168.1.254';dhcpTouched=false;}
-			else if(changed&&mode.value==='preset10'){routerIp.value='10.0.0.1';netmask.value='255.255.255.0';dhcpStart.value='10.0.0.10';dhcpEnd.value='10.0.0.254';dhcpTouched=false;}
+			if(changed&&mode.value==='preset192'){
+				routerIp.value='192.168.1.1';netmask.value='255.255.255.0';
+				dhcpStart.value='192.168.1.10';dhcpEnd.value='192.168.1.254';
+				dhcpTouched=false;
+				suggestDns('192.168.1.1');
+			}
+			else if(changed&&mode.value==='preset10'){
+				routerIp.value='10.0.0.1';netmask.value='255.255.255.0';
+				dhcpStart.value='10.0.0.10';dhcpEnd.value='10.0.0.254';
+				dhcpTouched=false;
+				suggestDns('10.0.0.1');
+			}
 			const manual=mode.value==='manual';routerIp.disabled=netmask.disabled=dhcpStart.disabled=dhcpEnd.disabled=!manual;
-			if(manual)suggestDhcp(false);else suggestDhcp(changed);
+			if(manual){
+				suggestDhcp(false);
+				suggestDns(routerIp.value);
+			}else{
+				suggestDhcp(changed);
+			}
 		};
 		dhcpStart.addEventListener('input',function(){dhcpTouched=true;});
 		dhcpEnd.addEventListener('input',function(){dhcpTouched=true;});
-		routerIp.addEventListener('input',function(){if(mode.value==='manual')suggestDhcp(false);});
-		routerIp.addEventListener('blur',function(){if(mode.value==='manual')suggestDhcp(false);});
+		dns1.addEventListener('input',function(){
+			const val=dns1.value.trim();
+			dns1Touched=(val!==''&&val!==routerIp.value.trim());
+		});
+		routerIp.addEventListener('input',function(){onRouterIpChange(false);});
+		routerIp.addEventListener('blur',function(){onRouterIpChange(false);});
 		mode.addEventListener('change',function(){applyPreset(true);});applyPreset(false);
 		ui.showModal('Editar rede principal / DHCP',[
 			E('p',{class:'alert-message warning'},['Alterar o IP principal muda o endereço de acesso do painel e pode desconectar dispositivos. O ARK cria um backup em /tmp antes de aplicar.']),
-			E('div',{class:'ex-wan-edit-grid'},[field('Modelo de rede',mode),field('IP do roteador',routerIp,'Endereço usado para abrir o painel'),field('Máscara',netmask,'Nesta versão, use /24: 255.255.255.0'),field('DHCP começa em',dhcpStart),field('DHCP termina em',dhcpEnd),field('DNS enviado 1',dns1),field('DNS enviado 2',dns2),field('DNS enviado 3',dns3,'Opcional. Apague os três para não enviar DNS fixo.')]),
+			E('div',{class:'ex-wan-edit-grid'},[field('Modelo de rede',mode),field('IP do roteador',routerIp,'Endereço usado para abrir o painel'),field('Máscara',netmask,'Nesta versão, use /24: 255.255.255.0'),field('DHCP começa em',dhcpStart),field('DHCP termina em',dhcpEnd),field('DNS enviado 1',dns1,'Acompanha o IP do roteador se não personalizado'),field('DNS enviado 2',dns2),field('DNS enviado 3',dns3,'Opcional. Apague os três para não enviar DNS fixo.')]),
 			E('p',{class:'ex-muted'},['Exemplo: roteador 192.168.25.1 sugere automaticamente DHCP 192.168.25.10 até 192.168.25.254. Depois você pode ajustar só o final. O DHCP não pode incluir o IP do roteador. DNS preenchido será enviado aos aparelhos via DHCP.']),
 			E('div',{class:'ex-cleanup-entry',style:'margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.03);'},[
 				E('div',{},[
@@ -1908,6 +2188,247 @@ const networkMethods = {
 					E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Fechar'])
 				])
 			]);
+		});
+	},
+
+	showAddMwanRuleModal: function() {
+		const self = this;
+		const closeModal = function() { ui.hideModal(); };
+		const clients = (this.lastData && this.lastData.clients) || [];
+		
+		const nameInput = E('input', {
+			type: 'text',
+			class: 'cbi-input-text',
+			placeholder: _t('Ex: PC Gamer Torrent, Steam, Console'),
+			style: 'width: 100%;'
+		});
+
+		const clientOptions = [
+			E('option', { value: '' }, [_t('Todos os aparelhos da rede (Qualquer IP)')]),
+			E('option', { value: 'custom' }, [_t('Digitar IP manualmente…')])
+		];
+
+		clients.forEach(function(c) {
+			const label = (c.hostname || c.name || _t('Dispositivo')) + ' (' + (c.ip || c.mac) + ')';
+			clientOptions.push(E('option', { value: c.ip }, [label]));
+		});
+
+		const deviceSelect = E('select', {
+			class: 'cbi-input-select',
+			style: 'width: 100%;'
+		}, clientOptions);
+
+		const customIpInput = E('input', {
+			type: 'text',
+			class: 'cbi-input-text',
+			placeholder: '192.168.73.181',
+			style: 'width: 100%; margin-top: 8px; display: none;'
+		});
+
+		deviceSelect.addEventListener('change', function() {
+			customIpInput.style.display = (deviceSelect.value === 'custom') ? 'block' : 'none';
+			if (deviceSelect.value === 'custom') customIpInput.focus();
+		});
+
+		const protoSelect = E('select', {
+			class: 'cbi-input-select',
+			style: 'width: 100%;'
+		}, [
+			E('option', { value: 'tcp udp' }, [_t('TCP e UDP (Recomendado)')]),
+			E('option', { value: 'tcp' }, [_t('Apenas TCP')]),
+			E('option', { value: 'udp' }, [_t('Apenas UDP')])
+		]);
+
+		const portStartInput = E('input', {
+			type: 'number',
+			class: 'cbi-input-text',
+			min: '1',
+			max: '65535',
+			placeholder: _t('Ex: 51413 ou 6881'),
+			style: 'width: 100%;'
+		});
+
+		const portEndInput = E('input', {
+			type: 'number',
+			class: 'cbi-input-text',
+			min: '1',
+			max: '65535',
+			placeholder: _t('Ex: 6999 (opcional)'),
+			style: 'width: 100%;'
+		});
+
+		const policySelect = E('select', {
+			class: 'cbi-input-select',
+			style: 'width: 100%;'
+		}, [
+			E('option', { value: 'balanced' }, [_t('⚖️ Balancear pelas 2 Internets (Multi-WAN)')]),
+			E('option', { value: 'wan_only' }, [_t('🔵 Somente WAN1 (Claro)')]),
+			E('option', { value: 'wan2_only' }, [_t('🟣 Somente WAN2 (Link Telecom)')]),
+			E('option', { value: 'wan_then_wan2' }, [_t('🛡️ WAN1 principal (Failover para WAN2)')]),
+			E('option', { value: 'wan2_then_wan' }, [_t('🛡️ WAN2 principal (Failover para WAN1)')])
+		]);
+
+		const modalContent = [
+			E('p', { class: 'ex-muted', style: 'margin-bottom: 14px;' }, [
+				_t('Crie uma regra personalizada para direcionar portas específicas ou aparelhos para o balanceamento ou um link exclusivo.')
+			]),
+			E('div', { style: 'display:flex;flex-direction:column;gap:12px;' }, [
+				E('div', {}, [
+					E('label', { style: 'font-weight:600;display:block;margin-bottom:4px;' }, [_t('Nome da Regra:')]),
+					nameInput
+				]),
+				E('div', {}, [
+					E('label', { style: 'font-weight:600;display:block;margin-bottom:4px;' }, [_t('Aparelho ou IP de Origem:')]),
+					deviceSelect,
+					customIpInput
+				]),
+				E('div', {}, [
+					E('label', { style: 'font-weight:600;display:block;margin-bottom:4px;' }, [_t('Protocolo:')]),
+					protoSelect
+				]),
+				E('div', {}, [
+					E('label', { style: 'font-weight:600;display:block;margin-bottom:4px;' }, [_t('Faixa de Portas (Destino):')]),
+					E('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:10px;' }, [
+						E('div', {}, [
+							E('small', { class: 'ex-muted', style: 'display:block;margin-bottom:3px;' }, [_t('Porta Inicial:')]),
+							portStartInput
+						]),
+						E('div', {}, [
+							E('small', { class: 'ex-muted', style: 'display:block;margin-bottom:3px;' }, [_t('Porta Final (Faixa):')]),
+							portEndInput
+						])
+					]),
+					E('small', { class: 'ex-muted', style: 'display:block;margin-top:4px;' }, [
+						_t('Deixe a porta final vazia para aplicar apenas a uma única porta, ou preencha as duas para criar uma faixa contínua.')
+					])
+				]),
+				E('div', {}, [
+					E('label', { style: 'font-weight:600;display:block;margin-bottom:4px;' }, [_t('Ação / Rota de Saída:')]),
+					policySelect
+				])
+			]),
+			E('div', { class: 'right', style: 'margin-top: 18px;' }, [
+				E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, [_t('Cancelar')]),
+				' ',
+				E('button', {
+					class: 'btn cbi-button cbi-button-positive',
+					click: function(ev) {
+						const btn = ev.currentTarget;
+						const name = (nameInput.value || '').trim();
+						if (!name) {
+							ui.addNotification(null, E('p', {}, [_t('Digite um nome para a regra.')]), 'warning');
+							nameInput.focus();
+							return;
+						}
+						let ip = deviceSelect.value;
+						if (ip === 'custom') {
+							ip = (customIpInput.value || '').trim();
+							if (ip && !/^([0-9]{1,3}\.){3}[0-9]{1,3}(\/[0-9]{1,2})?$/.test(ip)) {
+								ui.addNotification(null, E('p', {}, [_t('Endereço IP inválido.')]), 'danger');
+								customIpInput.focus();
+								return;
+							}
+						}
+						const pStart = (portStartInput.value || '').trim();
+						const pEnd = (portEndInput.value || '').trim();
+						if (pStart && (parseInt(pStart, 10) < 1 || parseInt(pStart, 10) > 65535)) {
+							ui.addNotification(null, E('p', {}, [_t('Porta inicial deve estar entre 1 e 65535.')]), 'danger');
+							portStartInput.focus();
+							return;
+						}
+						if (pEnd && (parseInt(pEnd, 10) < 1 || parseInt(pEnd, 10) > 65535)) {
+							ui.addNotification(null, E('p', {}, [_t('Porta final deve estar entre 1 e 65535.')]), 'danger');
+							portEndInput.focus();
+							return;
+						}
+						if (pStart && pEnd && parseInt(pEnd, 10) <= parseInt(pStart, 10)) {
+							ui.addNotification(null, E('p', {}, [_t('A porta final deve ser maior que a porta inicial.')]), 'danger');
+							portEndInput.focus();
+							return;
+						}
+
+						btn.disabled = true;
+						btn.textContent = _t('Salvando…');
+						return fs.exec('/usr/sbin/equipe-dashboard-control', [
+							'mwan-rule-add',
+							'name=' + name,
+							'src_ip=' + ip,
+							'proto=' + protoSelect.value,
+							'port_start=' + pStart,
+							'port_end=' + pEnd,
+							'policy=' + policySelect.value
+						]).then(function(res) {
+							if (res.code) throw new Error(res.stderr || _t('Falha ao adicionar regra'));
+							ui.hideModal();
+							ui.addNotification(null, E('p', {}, [_t('Regra criada com sucesso!')]), 'info');
+							return self.fetchData().then(L.bind(self.update, self));
+						}).catch(function(err) {
+							btn.disabled = false;
+							btn.textContent = _t('Salvar Regra');
+							ui.addNotification(null, E('p', {}, [err.message]), 'danger');
+						});
+					}
+				}, [_t('Salvar Regra')])
+			])
+		];
+
+		ui.showModal(_t('➕ Nova Regra de Roteamento Multi-WAN'), modalContent);
+	},
+
+	deleteMwanRule: function(ruleId, ruleName) {
+		const self = this;
+		const closeModal = function() { ui.hideModal(); };
+		ui.showModal(_t('Excluir Regra de Roteamento'), [
+			E('p', {}, [_t('Tem certeza que deseja excluir a regra “') + (ruleName || ruleId) + _t('”?')]),
+			E('div', { class: 'right', style: 'margin-top: 14px;' }, [
+				E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, [_t('Cancelar')]),
+				' ',
+				E('button', {
+					class: 'btn cbi-button cbi-button-negative',
+					click: function(ev) {
+						const btn = ev.currentTarget;
+						btn.disabled = true;
+						btn.textContent = _t('Excluindo…');
+						return fs.exec('/usr/sbin/equipe-dashboard-control', ['mwan-rule-delete', ruleId]).then(function(res) {
+							if (res.code) throw new Error(res.stderr || _t('Falha ao excluir regra'));
+							ui.hideModal();
+							ui.addNotification(null, E('p', {}, [_t('Regra excluída com sucesso!')]), 'info');
+							return self.fetchData().then(L.bind(self.update, self));
+						}).catch(function(err) {
+							btn.disabled = false;
+							btn.textContent = _t('Excluir');
+							ui.addNotification(null, E('p', {}, [err.message]), 'danger');
+						});
+					}
+				}, [_t('Excluir')])
+			])
+		]);
+	},
+
+	toggleMwanRule: function(ruleId, isChecked) {
+		const self = this;
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['mwan-rule-toggle', ruleId, isChecked ? '1' : '0']).then(function(res) {
+			if (res.code) throw new Error(res.stderr || _t('Falha ao alternar regra'));
+			ui.addNotification(null, E('p', {}, [isChecked ? _t('Regra ativada com sucesso!') : _t('Regra desativada!')]), 'info');
+			return self.fetchData().then(L.bind(self.update, self));
+		}).catch(function(err) {
+			ui.addNotification(null, E('p', {}, [err.message]), 'danger');
+		});
+	},
+
+	toggleMwanTorrentPreset: function(input) {
+		const self = this;
+		const isChecked = input.checked;
+		input.disabled = true;
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['mwan-torrent-toggle', isChecked ? '1' : '0']).then(function(res) {
+			input.disabled = false;
+			if (res.code) throw new Error(res.stderr || _t('Falha ao alternar aceleração P2P'));
+			ui.addNotification(null, E('p', {}, [isChecked ? _t('Aceleração BitTorrent/P2P nas 2 conexões ATIVADA!') : _t('Aceleração BitTorrent/P2P DESATIVADA.')]), 'info');
+			return self.fetchData().then(L.bind(self.update, self));
+		}).catch(function(err) {
+			input.disabled = false;
+			input.checked = !isChecked;
+			ui.addNotification(null, E('p', {}, [err.message]), 'danger');
 		});
 	}
 };
