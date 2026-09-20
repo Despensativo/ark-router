@@ -1001,6 +1001,10 @@ adblock_enable() {
 	uci commit equipe_perf
 
 	if [ "$chosen_mode" = "local" ]; then
+		uci -q set equipe_perf.settings.adblock_enabled='1'
+		uci -q set equipe_perf.settings.adguard_enabled='1'
+		uci -q set equipe_perf.settings.adblock_cloud='0'
+		uci commit equipe_perf
 		if [ ! -x /usr/bin/AdGuardHome ]; then
 			if command -v apk >/dev/null 2>&1; then
 				apk add adguardhome >/dev/null 2>&1 || true
