@@ -1499,7 +1499,19 @@ const EN = {
   "Tempo limite excedido na instalação.": "Installation timed out.",
   "Falha na instalação dos pacotes.": "Failed to install packages.",
   "Concluir e recarregar": "Complete and reload",
-  "Nenhum módulo pendente para instalar.": "No pending modules to install."
+  "Nenhum módulo pendente para instalar.": "No pending modules to install.",
+  "Toda a Rede (0.0.0.0)": "Entire Network (0.0.0.0)",
+  "Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets.": "Safe Wide Mode (1024-65535 except Web/DNS) active on both internets.",
+  "✏️ Digitar IP manualmente…": "✏️ Enter IP manually…",
+  "Digite um endereço IP válido para o aparelho.": "Enter a valid IP address for the device.",
+  "Configurações de BitTorrent/P2P atualizadas com sucesso!": "BitTorrent/P2P settings updated successfully!",
+  "🌐 Toda a Rede (0.0.0.0) — Padrão": "🌐 Entire Network (0.0.0.0) — Default",
+  "Configurar portas e aparelho de aceleração BitTorrent": "Configure BitTorrent acceleration ports and device",
+  "Modo Clássico (portas 51413 e 6881-6999) ativo nas 2 internets.": "Classic Mode (ports 51413 and 6881-6999) active on both internets.",
+  "🎯 Aparelho Alvo (IP de Origem)": "🎯 Target Device (Source IP)",
+  "Escolha se a aceleração BitTorrent se aplica a toda a casa ou apenas a uma máquina específica (protegendo Alexas e outros dispositivos de qualquer interferência):": "Choose whether BitTorrent acceleration applies to the entire home or only to a specific machine (protecting Alexas and other devices from any interference):",
+  "Configure o balanceamento de BitTorrent/P2P nas 2 conexões para acelerar downloads. Você pode acelerar para toda a rede ou direcionar exclusivamente para seu PC ou console.": "Configure BitTorrent/P2P balancing across 2 connections to accelerate downloads. You can accelerate for the entire network or direct exclusively to your PC or console.",
+  "Aparelho:": "Device:"
 };
 
 const ES = {
@@ -3196,7 +3208,19 @@ const ES = {
   "Tempo limite excedido na instalação.": "Tiempo límite excedido en la instalación.",
   "Falha na instalação dos pacotes.": "Fallo en la instalación de paquetes.",
   "Concluir e recarregar": "Completar y recargar",
-  "Nenhum módulo pendente para instalar.": "No hay módulos pendientes para instalar."
+  "Nenhum módulo pendente para instalar.": "No hay módulos pendientes para instalar.",
+  "Toda a Rede (0.0.0.0)": "Toda la Red (0.0.0.0)",
+  "Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets.": "Modo Amplio Seguro (1024-65535 excepto Web/DNS) activo en ambas conexiones.",
+  "✏️ Digitar IP manualmente…": "✏️ Ingresar IP manualmente…",
+  "Digite um endereço IP válido para o aparelho.": "Ingrese una dirección IP válida para el dispositivo.",
+  "Configurações de BitTorrent/P2P atualizadas com sucesso!": "¡Configuración de BitTorrent/P2P actualizada con éxito!",
+  "🌐 Toda a Rede (0.0.0.0) — Padrão": "🌐 Toda la Red (0.0.0.0) — Predeterminado",
+  "Configurar portas e aparelho de aceleração BitTorrent": "Configurar puertos y dispositivo de aceleración BitTorrent",
+  "Modo Clássico (portas 51413 e 6881-6999) ativo nas 2 internets.": "Modo Clásico (puertos 51413 y 6881-6999) activo en ambas conexiones.",
+  "🎯 Aparelho Alvo (IP de Origem)": "🎯 Dispositivo Destino (IP de Origen)",
+  "Escolha se a aceleração BitTorrent se aplica a toda a casa ou apenas a uma máquina específica (protegendo Alexas e outros dispositivos de qualquer interferência):": "Elija si la aceleración BitTorrent se aplica a toda la casa o solo a un equipo específico (protegiendo Alexas y otros dispositivos de cualquier interferencia):",
+  "Configure o balanceamento de BitTorrent/P2P nas 2 conexões para acelerar downloads. Você pode acelerar para toda a rede ou direcionar exclusivamente para seu PC ou console.": "Configure el balanceo de BitTorrent/P2P en 2 conexiones para acelerar descargas. Puede acelerar para toda la red o dirigir exclusivamente a su PC o consola.",
+  "Aparelho:": "Dispositivo:"
 };
 
 function _t(text){

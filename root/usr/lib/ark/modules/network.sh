@@ -1019,6 +1019,12 @@ mwan3_reorder_rules() {
 	uci -q reorder "mwan3.whatsapp_udp=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
 	uci -q reorder "mwan3.https=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
 	uci -q reorder "mwan3.https_quic=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
+	uci -q reorder "mwan3.http=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
+	uci -q reorder "mwan3.iot_alexa_mqtt=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
+	uci -q reorder "mwan3.bypass_loopback_v4=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
+	uci -q reorder "mwan3.bypass_loopback_v6=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
+	uci -q reorder "mwan3.bypass_fe80=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
+	uci -q reorder "mwan3.bypass_fc00=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
 	for r in $(uci -q show mwan3 2>/dev/null | grep '=rule$' | cut -d. -f2 | cut -d= -f1 | grep -E '^ark_rule_|^ark_pbr_|^torrent_|^tor_|^pbr_'); do
 		uci -q reorder "mwan3.$r=$order_idx" 2>/dev/null || true
 		order_idx=$((order_idx + 1))
@@ -1242,6 +1248,22 @@ ensure_mwan3_ark_config() {
 	uci -q set mwan3.https_quic.sticky=1
 	uci -q set mwan3.https_quic.timeout=3600
 	[ -n "$(uci -q get mwan3.https_quic.use_policy)" ] || uci -q set mwan3.https_quic.use_policy=wan_then_wan2
+
+	uci -q set mwan3.http=rule
+	uci -q set mwan3.http.family=ipv4
+	uci -q set mwan3.http.proto=tcp
+	uci -q set mwan3.http.dest_port='80'
+	uci -q set mwan3.http.sticky=1
+	uci -q set mwan3.http.timeout=600
+	[ -n "$(uci -q get mwan3.http.use_policy)" ] || uci -q set mwan3.http.use_policy=wan_then_wan2
+
+	uci -q set mwan3.iot_alexa_mqtt=rule
+	uci -q set mwan3.iot_alexa_mqtt.family=ipv4
+	uci -q set mwan3.iot_alexa_mqtt.proto=tcp
+	uci -q set mwan3.iot_alexa_mqtt.dest_port='8883,8886'
+	uci -q set mwan3.iot_alexa_mqtt.sticky=1
+	uci -q set mwan3.iot_alexa_mqtt.timeout=3600
+	[ -n "$(uci -q get mwan3.iot_alexa_mqtt.use_policy)" ] || uci -q set mwan3.iot_alexa_mqtt.use_policy=wan_then_wan2
 
 	# 4. Regra Geral Catch-All (SEMPRE A ULTIMA REGRA)
 	uci -q set mwan3.default_rule_v4=rule
@@ -1991,6 +2013,7 @@ handle_network() {
 	mwan-torrent-toggle)
 		state="${2:-1}"
 		ports="${3:-}"
+		target_ip="${4:-}"
 		if [ "$state" = "1" ]; then
 			if [ -z "$ports" ]; then
 				ports="$(uci -q get mwan3.globals.torrent_ports || uci -q get mwan3.tor_dst_tcp.dest_port || printf '1024:8079,8081:8442,8444:65535')"
@@ -2001,8 +2024,17 @@ handle_network() {
 			ports="$(printf '%s' "$ports" | tr -cd '0-9,:-')"
 			ports="$(printf '%s' "$ports" | tr '-' ':')"
 
+			# Se target_ip nao foi informado na chamada, tentar recuperar do uci existente
+			if [ -z "$target_ip" ]; then
+				target_ip="$(uci -q get mwan3.globals.torrent_ip || uci -q get mwan3.tor_dst_tcp.src_ip || printf '0.0.0.0')"
+			fi
+			# Sanitizar target_ip (apenas digitos, pontos e barras para cidr)
+			target_ip="$(printf '%s' "$target_ip" | tr -cd '0-9./')"
+			[ -n "$target_ip" ] || target_ip="0.0.0.0"
+
 			[ -n "$(uci -q get mwan3.globals)" ] || uci -q set mwan3.globals=globals
 			uci -q set "mwan3.globals.torrent_ports=$ports"
+			uci -q set "mwan3.globals.torrent_ip=$target_ip"
 
 			uci -q set mwan3.tor_src_tcp=rule
 			uci -q set mwan3.tor_src_tcp.family=ipv4
@@ -2035,6 +2067,18 @@ handle_network() {
 			uci -q set mwan3.tor_dst_udp.use_policy=balanced
 			uci -q set mwan3.tor_dst_udp.sticky=0
 			uci -q set mwan3.tor_dst_udp.enabled=1
+
+			if [ "$target_ip" = "0.0.0.0" ] || [ "$target_ip" = "0.0.0.0/0" ]; then
+				uci -q delete mwan3.tor_src_tcp.src_ip 2>/dev/null || true
+				uci -q delete mwan3.tor_src_udp.src_ip 2>/dev/null || true
+				uci -q delete mwan3.tor_dst_tcp.src_ip 2>/dev/null || true
+				uci -q delete mwan3.tor_dst_udp.src_ip 2>/dev/null || true
+			else
+				uci -q set "mwan3.tor_src_tcp.src_ip=$target_ip"
+				uci -q set "mwan3.tor_src_udp.src_ip=$target_ip"
+				uci -q set "mwan3.tor_dst_tcp.src_ip=$target_ip"
+				uci -q set "mwan3.tor_dst_udp.src_ip=$target_ip"
+			fi
 
 			uci -q delete mwan3.torrent_rule
 			uci -q delete mwan3.torrent_dest_rule

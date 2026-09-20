@@ -87,19 +87,20 @@ html_template = """<!DOCTYPE html>
 </head>
 <body>
     <div class="test-container">
-        <h1 style="font-size: 1.5rem; margin-bottom: 6px; font-weight: 800;">ARK Router — Validação Visual de Aceleração BitTorrent / P2P</h1>
-        <p style="color: #94a3b8; margin-bottom: 28px;">Demonstração da chave de aceleração com o novo botão "⚙️ Portas" e o modal de seleção do Modo Amplo Seguro.</p>
+        <h1 style="font-size: 1.5rem; margin-bottom: 6px; font-weight: 800;">ARK Router — Validação Visual: Aceleração BitTorrent / P2P com Seletor de Aparelho</h1>
+        <p style="color: #94a3b8; margin-bottom: 28px;">Demonstração da aceleração BitTorrent com o seletor de Aparelho Alvo (dropdown) e proteção de dispositivos inteligentes como Alexa.</p>
 
-        <!-- Cenário 1: O Card na Tela Principal com Botão de Configuração e Subtítulo Dinâmico -->
+        <!-- Cenário 1: O Card na Tela Principal com Botão de Configuração e Subtítulo com Aparelho Alvo -->
         <div class="scenario-card">
-            <div class="scenario-title">1. Card com Botão "⚙️ Portas" e Subtítulo do Modo Amplo Seguro</div>
-            <div class="scenario-desc">O usuário agora pode visualizar que o Modo Amplo Seguro está ativo e clicar em "⚙️ Portas" para customizar ou alternar modos a qualquer momento.</div>
+            <div class="scenario-title">1. Card com Subtítulo Dinâmico (Aparelho Alvo Específico vs Toda a Rede)</div>
+            <div class="scenario-desc">Quando direcionado ao PC Gamer, apenas ele recebe balanceamento agressivo de portas, isolando e blindando as Alexas e outros dispositivos da casa de qualquer oscilação.</div>
 
-            <div class="ex-channel-mode-control" style="padding: 12px 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+            <!-- Exemplo A: Aparelho Específico (PC GAMER) -->
+            <div class="ex-channel-mode-control" style="padding: 12px 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;">
                 <div style="flex: 1 1 auto; min-width: 240px;">
                     <strong style="font-size: 14px; color: #f8fafc;">⚡ Acelerar BitTorrent / P2P nas 2 Internets</strong>
                     <small class="ex-muted" style="display: block; margin-top: 4px; color: #38bdf8; font-weight: 500;">
-                        Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets simultaneamente.
+                        Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets. • 🎯 Aparelho: 192.168.73.90
                     </small>
                 </div>
                 <div style="display: flex; align-items: center; gap: 12px; flex: 0 0 auto;">
@@ -114,12 +115,33 @@ html_template = """<!DOCTYPE html>
                     </label>
                 </div>
             </div>
+
+            <!-- Exemplo B: Toda a Rede (0.0.0.0) -->
+            <div class="ex-channel-mode-control" style="padding: 12px 16px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                <div style="flex: 1 1 auto; min-width: 240px;">
+                    <strong style="font-size: 14px; color: #f8fafc;">⚡ Acelerar BitTorrent / P2P nas 2 Internets</strong>
+                    <small class="ex-muted" style="display: block; margin-top: 4px; color: #94a3b8; font-weight: 500;">
+                        Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets. • 🌐 Toda a Rede (0.0.0.0)
+                    </small>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px; flex: 0 0 auto;">
+                    <button class="ex-mini-button" style="padding: 5px 12px; font-size: 12px; font-weight: 700; background: rgba(255, 255, 255, 0.08); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 6px; cursor: pointer;">
+                        ⚙️ Portas
+                    </button>
+                    <label class="ex-switch" style="margin: 0; position: relative; display: inline-block; width: 44px; height: 24px;">
+                        <input type="checkbox" checked style="opacity: 0; width: 0; height: 0;">
+                        <span class="ex-switch-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #2563eb; transition: .3s; border-radius: 24px;">
+                            <span style="position: absolute; content: ''; height: 18px; width: 18px; left: 22px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; display: block;"></span>
+                        </span>
+                    </label>
+                </div>
+            </div>
         </div>
 
-        <!-- Cenário 2: O Modal de Configuração de Portas Aberto -->
+        <!-- Cenário 2: O Modal de Configuração com Seletor de Aparelho (Drop) -->
         <div class="scenario-card">
-            <div class="scenario-title">2. Modal Interativo: Configuração de Portas BitTorrent / P2P</div>
-            <div class="scenario-desc">Permite escolher entre a abertura máxima segura (sem colidir com portas de navegação) ou o modo clássico legado, além de digitação manual de faixas.</div>
+            <div class="scenario-title">2. Modal Interativo: Configuração de Portas e Aparelho Alvo</div>
+            <div class="scenario-desc">Permite direcionar para toda a rede (0.0.0.0) ou selecionar diretamente o aparelho conectado pelo menu suspenso ou IP manual.</div>
 
             <div class="modal-preview-wrapper">
                 <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; margin-bottom: 16px;">
@@ -128,8 +150,22 @@ html_template = """<!DOCTYPE html>
                 </div>
 
                 <p class="ex-muted" style="margin-bottom: 16px; font-size: 13px; line-height: 1.45; color: #94a3b8;">
-                    Configure quais portas de rede serão balanceadas pelas 2 internets simultaneamente para acelerar o download e envio de BitTorrent/P2P.
+                    Configure o balanceamento de BitTorrent/P2P nas 2 conexões para acelerar downloads. Você pode acelerar para toda a rede ou direcionar exclusivamente para seu PC ou console.
                 </p>
+
+                <!-- Seção 1: Seletor de Aparelho Alvo (Dropdown / Drop) -->
+                <div style="margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;">
+                    <strong style="display: block; color: #38bdf8; margin-bottom: 4px; font-size: 13.5px;">🎯 Aparelho Alvo (IP de Origem)</strong>
+                    <small class="ex-muted" style="display: block; margin-bottom: 8px; line-height: 1.4; color: #94a3b8; font-size: 12px;">
+                        Escolha se a aceleração BitTorrent se aplica a toda a casa ou apenas a uma máquina específica (protegendo Alexas e outros dispositivos de qualquer interferência):
+                    </small>
+                    <select class="cbi-input-select" style="width: 100%; font-size: 13px; font-weight: 500; padding: 8px 10px; background: #1e293b; color: #f8fafc; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 6px;">
+                        <option value="0.0.0.0">🌐 Toda a Rede (0.0.0.0) — Padrão</option>
+                        <option value="192.168.73.90" selected>🖥️ PC-GAMER (192.168.73.90)</option>
+                        <option value="192.168.73.86">📱 Samsung Galaxy S24 (192.168.73.86)</option>
+                        <option value="custom">✏️ Digitar IP manualmente…</option>
+                    </select>
+                </div>
 
                 <div style="display: flex; flex-direction: column; gap: 12px;">
                     <!-- Opção 1: Modo Amplo Seguro (Selecionado) -->

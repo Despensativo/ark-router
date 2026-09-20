@@ -2416,12 +2416,13 @@ const networkMethods = {
 		});
 	},
 
-	toggleMwanTorrentPreset: function(input, currentPorts) {
+	toggleMwanTorrentPreset: function(input, currentPorts, currentIp) {
 		const self = this;
 		const isChecked = input.checked;
 		input.disabled = true;
 		const ports = currentPorts || '1024:8079,8081:8442,8444:65535';
-		return fs.exec('/usr/sbin/equipe-dashboard-control', ['mwan-torrent-toggle', isChecked ? '1' : '0', ports]).then(function(res) {
+		const targetIp = currentIp || '0.0.0.0';
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['mwan-torrent-toggle', isChecked ? '1' : '0', ports, targetIp]).then(function(res) {
 			input.disabled = false;
 			if (res.code) throw new Error(res.stderr || _t('Falha ao alternar aceleração P2P'));
 			ui.addNotification(null, E('p', {}, [isChecked ? _t('Aceleração BitTorrent/P2P nas 2 conexões ATIVADA!') : _t('Aceleração BitTorrent/P2P DESATIVADA.')]), 'info');
@@ -2433,11 +2434,12 @@ const networkMethods = {
 		});
 	},
 
-	showMwanTorrentModal: function(currentPorts) {
+	showMwanTorrentModal: function(currentPorts, currentIp) {
 		const self = this;
 		const closeModal = function() { ui.hideModal(); };
 		const WIDE_PORTS = '1024:8079,8081:8442,8444:65535';
 		const CLASSIC_PORTS = '51413,6881:6999';
+		const clients = (this.lastData && this.lastData.clients) || [];
 
 		let activePorts = currentPorts || WIDE_PORTS;
 		let initialPreset = 'custom';
@@ -2446,6 +2448,8 @@ const networkMethods = {
 		} else if (activePorts === CLASSIC_PORTS) {
 			initialPreset = 'classic';
 		}
+
+		let activeIp = (currentIp && currentIp !== '0.0.0.0' && currentIp !== '0.0.0.0/0') ? currentIp : '0.0.0.0';
 
 		const customInput = E('input', {
 			type: 'text',
@@ -2474,9 +2478,60 @@ const networkMethods = {
 			r.addEventListener('change', updateInputVisibility);
 		});
 
+		// Seletor de Aparelho Alvo (IP)
+		const clientOptions = [
+			E('option', { value: '0.0.0.0' }, [_t('🌐 Toda a Rede (0.0.0.0) — Padrão')])
+		];
+
+		let foundInClients = false;
+		clients.forEach(function(c) {
+			if (!c.ip) return;
+			const label = (c.hostname || c.name || _t('Dispositivo')) + ' (' + c.ip + ')';
+			clientOptions.push(E('option', { value: c.ip }, [label]));
+			if (c.ip === activeIp) foundInClients = true;
+		});
+
+		clientOptions.push(E('option', { value: 'custom' }, [_t('✏️ Digitar IP manualmente…')]));
+
+		const deviceSelect = E('select', {
+			class: 'cbi-input-select',
+			style: 'width: 100%; font-size: 13px; font-weight: 500;'
+		}, clientOptions);
+
+		const customIpInput = E('input', {
+			type: 'text',
+			class: 'cbi-input-text',
+			placeholder: '192.168.73.90',
+			value: (activeIp !== '0.0.0.0' && !foundInClients) ? activeIp : '',
+			style: 'width: 100%; margin-top: 8px; display: ' + ((activeIp !== '0.0.0.0' && !foundInClients) ? 'block' : 'none') + ';'
+		});
+
+		if (activeIp === '0.0.0.0') {
+			deviceSelect.value = '0.0.0.0';
+		} else if (foundInClients) {
+			deviceSelect.value = activeIp;
+		} else {
+			deviceSelect.value = 'custom';
+		}
+
+		deviceSelect.addEventListener('change', function() {
+			customIpInput.style.display = (deviceSelect.value === 'custom') ? 'block' : 'none';
+			if (deviceSelect.value === 'custom') customIpInput.focus();
+		});
+
 		const content = [
-			E('p', { class: 'ex-muted', style: 'margin-bottom: 14px;' }, [
-				_t('Configure quais portas de rede serão balanceadas pelas 2 internets simultaneamente para acelerar o download e envio de BitTorrent/P2P.')
+			E('p', { class: 'ex-muted', style: 'margin-bottom: 14px; font-size: 13px; line-height: 1.45;' }, [
+				_t('Configure o balanceamento de BitTorrent/P2P nas 2 conexões para acelerar downloads. Você pode acelerar para toda a rede ou direcionar exclusivamente para seu PC ou console.')
+			]),
+			E('div', { style: 'margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;' }, [
+				E('strong', { style: 'display: block; color: #38bdf8; margin-bottom: 4px; font-size: 13.5px;' }, [
+					_t('🎯 Aparelho Alvo (IP de Origem)')
+				]),
+				E('small', { class: 'ex-muted', style: 'display: block; margin-bottom: 8px; line-height: 1.4;' }, [
+					_t('Escolha se a aceleração BitTorrent se aplica a toda a casa ou apenas a uma máquina específica (protegendo Alexas e outros dispositivos de qualquer interferência):')
+				]),
+				deviceSelect,
+				customIpInput
 			]),
 			E('div', { style: 'display: flex; flex-direction: column; gap: 12px;' }, [
 				E('label', { style: 'display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;' }, [
@@ -2528,10 +2583,22 @@ const networkMethods = {
 							return;
 						}
 
-						return fs.exec('/usr/sbin/equipe-dashboard-control', ['mwan-torrent-toggle', '1', selectedPorts]).then(function(res) {
+						let selectedIp = deviceSelect.value;
+						if (selectedIp === 'custom') {
+							selectedIp = customIpInput.value.trim();
+							if (!selectedIp) {
+								btn.disabled = false;
+								btn.textContent = _t('Salvar e Aplicar');
+								ui.addNotification(null, E('p', {}, [_t('Digite um endereço IP válido para o aparelho.')]), 'warning');
+								return;
+							}
+						}
+						if (!selectedIp) selectedIp = '0.0.0.0';
+
+						return fs.exec('/usr/sbin/equipe-dashboard-control', ['mwan-torrent-toggle', '1', selectedPorts, selectedIp]).then(function(res) {
 							if (res.code) throw new Error(res.stderr || _t('Falha ao aplicar portas de BitTorrent'));
 							ui.hideModal();
-							ui.addNotification(null, E('p', {}, [_t('Portas de BitTorrent/P2P atualizadas com sucesso!')]), 'info');
+							ui.addNotification(null, E('p', {}, [_t('Configurações de BitTorrent/P2P atualizadas com sucesso!')]), 'info');
 							return self.fetchData().then(L.bind(self.update, self));
 						}).catch(function(err) {
 							btn.disabled = false;

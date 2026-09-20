@@ -1491,15 +1491,22 @@ const renderMethods = {
 		const torrentRule = mwanCfg.tor_src_tcp || mwanCfg.torrent_rule;
 		const isTorrentActive = !!(torrentRule && String(torrentRule.enabled) !== '0');
 		const rawTorrentPorts = (torrentRule && (torrentRule.dest_port || torrentRule.src_port)) || (mwanCfg.globals && mwanCfg.globals.torrent_ports) || '1024:8079,8081:8442,8444:65535';
+		const rawTorrentIp = (torrentRule && torrentRule.src_ip) || (mwanCfg.globals && mwanCfg.globals.torrent_ip) || '0.0.0.0';
 		const isWideMode = rawTorrentPorts.indexOf('1024') >= 0 && rawTorrentPorts.indexOf('65535') >= 0;
 		const isClassicMode = rawTorrentPorts === '51413,6881:6999';
 		let torrentSubtitle = '';
 		if (isWideMode) {
-			torrentSubtitle = _t('Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets simultaneamente.');
+			torrentSubtitle = _t('Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets.');
 		} else if (isClassicMode) {
-			torrentSubtitle = _t('Modo Clássico (portas 51413 e 6881-6999) ativo nas 2 internets simultaneamente.');
+			torrentSubtitle = _t('Modo Clássico (portas 51413 e 6881-6999) ativo nas 2 internets.');
 		} else {
 			torrentSubtitle = _t('Portas personalizadas ativas:') + ' ' + rawTorrentPorts;
+		}
+
+		if (rawTorrentIp && rawTorrentIp !== '0.0.0.0' && rawTorrentIp !== '0.0.0.0/0') {
+			torrentSubtitle += ' • 🎯 ' + _t('Aparelho:') + ' ' + rawTorrentIp;
+		} else {
+			torrentSubtitle += ' • 🌐 ' + _t('Toda a Rede (0.0.0.0)');
 		}
 
 		const seen = {};
@@ -1610,10 +1617,10 @@ const renderMethods = {
 						E('button', {
 							class: 'ex-mini-button',
 							style: 'padding: 4px 10px; font-size: 11.5px; font-weight: 700;',
-							title: _t('Configurar portas de aceleração BitTorrent'),
+							title: _t('Configurar portas e aparelho de aceleração BitTorrent'),
 							click: L.bind(function() {
 								if (typeof self.showMwanTorrentModal === 'function') {
-									self.showMwanTorrentModal(rawTorrentPorts);
+									self.showMwanTorrentModal(rawTorrentPorts, rawTorrentIp);
 								}
 							}, self)
 						}, [_t('⚙️ Portas')]),
@@ -1625,7 +1632,7 @@ const renderMethods = {
 								'aria-label': _t('Ativar ou desativar aceleração P2P'),
 								change: L.bind(function(ev){
 									if (typeof self.toggleMwanTorrentPreset === 'function') {
-										self.toggleMwanTorrentPreset(ev.currentTarget, rawTorrentPorts);
+										self.toggleMwanTorrentPreset(ev.currentTarget, rawTorrentPorts, rawTorrentIp);
 									}
 								}, self)
 							}),
