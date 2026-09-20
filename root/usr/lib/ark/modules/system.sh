@@ -563,13 +563,11 @@ system_perf_save() {
 		if [ "$nlbwmon_lite" = 1 ]; then
 			uci -q set nlbwmon.@nlbwmon[0].compress_interval=1h
 			uci -q set nlbwmon.@nlbwmon[0].database_limit=2000
-		else
-			uci -q delete nlbwmon.@nlbwmon[0].database_limit
 		fi
-		uci -q set nlbwmon.@nlbwmon[0].refresh_interval='2s'
-		uci commit nlbwmon
 		/etc/init.d/nlbwmon restart >/dev/null 2>&1 || true
 	fi
+
+	[ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune start >/dev/null 2>&1 || true
 
 	echo ok
 }
@@ -1731,12 +1729,8 @@ system_hardware_auto_tune() {
 		else
 			irq_action="Multicore detectado ($silicon_cpu_cores núcleos)"
 		fi
-		# Mascara RPS
-		rps_mask=1
-		if [ "$silicon_cpu_cores" -eq 2 ]; then rps_mask=3
-		elif [ "$silicon_cpu_cores" -eq 4 ]; then rps_mask="f"
-		elif [ "$silicon_cpu_cores" -ge 8 ]; then rps_mask="ff"
-		fi
+		# Mascara RPS calculada dinamicamente para 1 a 64 nucleos
+		rps_mask="$(ark_calculate_rps_mask "$silicon_cpu_cores")"
 		for rps_f in /sys/class/net/*/queues/rx-*/rps_cpus; do
 			[ -w "$rps_f" ] && echo "$rps_mask" > "$rps_f" 2>/dev/null || true
 		done
@@ -1763,6 +1757,9 @@ system_hardware_auto_tune() {
 			dirty=10
 			dirty_bg=5
 			dns_cache=150
+			budget=300
+			budget_usecs=4000
+			rps_entries=0
 			;;
 		low)
 			ct_max=32768
@@ -1773,6 +1770,9 @@ system_hardware_auto_tune() {
 			dirty=15
 			dirty_bg=7
 			dns_cache=500
+			budget=300
+			budget_usecs=4000
+			rps_entries=0
 			;;
 		standard)
 			ct_max=65536
@@ -1783,6 +1783,9 @@ system_hardware_auto_tune() {
 			dirty=20
 			dirty_bg=10
 			dns_cache=1000
+			budget=300
+			budget_usecs=2000
+			rps_entries=16384
 			;;
 		high)
 			ct_max=131072
@@ -1793,16 +1796,22 @@ system_hardware_auto_tune() {
 			dirty=20
 			dirty_bg=10
 			dns_cache=2500
+			budget=600
+			budget_usecs=2000
+			rps_entries=32768
 			;;
 		extreme)
 			ct_max=262144
-			rmem=16777216
-			wmem=16777216
-			backlog=10000
+			rmem=33554432
+			wmem=33554432
+			backlog=25000
 			vfs_cache=100
 			dirty=20
 			dirty_bg=10
 			dns_cache=5000
+			budget=1000
+			budget_usecs=4000
+			rps_entries=65536
 			;;
 	esac
 
@@ -1822,10 +1831,16 @@ net.netfilter.nf_conntrack_max=$ct_max
 net.core.rmem_max=$rmem
 net.core.wmem_max=$wmem
 net.core.netdev_max_backlog=$backlog
+net.core.netdev_budget=$budget
+net.core.netdev_budget_usecs=$budget_usecs
+net.core.dev_weight=64
 vm.vfs_cache_pressure=$vfs_cache
 vm.dirty_ratio=$dirty
 vm.dirty_background_ratio=$dirty_bg
 EOF
+	if [ "$rps_entries" -gt 0 ]; then
+		echo "net.core.rps_sock_flow_entries=$rps_entries" >> "${sysctl_dir}/99-ark-hardware-tune.conf"
+	fi
 
 	# Ajustes especificos para VPN
 	if [ "$vpn_active" = 1 ]; then
@@ -1879,6 +1894,8 @@ EOF
 		IFS="$old_ifs"
 		services_json="${services_json%,}]"
 	fi
+
+	[ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune start >/dev/null 2>&1 || true
 
 	printf '{"ok":true,"silicon_class":"%s","silicon_name":"%s","tuning_profile":"%s","ram_tier":"%s","effective_ram_tier":"%s","cores":%s,"offload_reason":"%s","irq_action":"%s","conntrack_max":%s,"rmem_max":%s,"dns_cache":%s,"services_detected":%s}\n' \
 		"$(json_escape "$silicon_class")" "$(json_escape "$silicon_name")" "$(json_escape "$silicon_tuning_profile")" \
@@ -2235,6 +2252,12 @@ handle_system() {
 		;;
 	system-storage-purge)
 		system_storage_purge
+		;;
+	hardware-tune)
+		if [ -x /etc/init.d/ark-hardware-tune ]; then
+			/etc/init.d/ark-hardware-tune start
+		fi
+		printf '{"ok":true,"message":"Hardware tuning applied"}\n'
 		;;
 	fast-targets)
 		count="${2:-8}"

@@ -18,6 +18,8 @@ ARK Router is composed of a LuCI JavaScript view, a scoped CSS file, an RPC ACL,
 - `root/etc/init.d/equipe-traffic-history`: collector service.
 - `root/etc/config/equipe_dashboard`: dashboard preferences.
 - `root/etc/config/equipe_devices`: administrator-assigned device names.
+- `root/etc/init.d/ark-hardware-tune`: adaptive hardware calibration daemon that tunes buffer sizes, queue lengths, RPS masks, and RFS flow limits based on CPU cores and RAM size.
+- `root/etc/nftables.d/15-ark-dscp-priority.nft`: pure nftables hook classifying latency-critical packets (ICMP, DNS, TCP handshake) with DSCP CS6/CS5 into the CAKE Voice tin for zero-drop performance.
 - `root/usr/share/ark-router/VERSION`: installed version marker used by the dashboard updater.
 - `scripts/install.sh`: SSH installer/updater for release, source and automatic fallback modes.
 - `scripts/uninstall.sh`: conservative uninstaller with optional preference purge.

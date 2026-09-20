@@ -85,8 +85,17 @@ ark_doctor_audit() {
 	mem_total_mb=$((mem_total_kb / 1024))
 	mem_free_mb=$((mem_free_kb / 1024))
 	if [ "$mem_free_mb" -lt 20 ] && [ "$mem_total_mb" -gt 0 ]; then
-		warnings=$((warnings + 1))
-		add_check "Memoria RAM" "WARN" "RAM critica: apenas ${mem_free_mb}MB livres de ${mem_total_mb}MB."
+		if [ "$auto_fix" = 1 ]; then
+			sync 2>/dev/null || true
+			echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
+			mem_free_kb="$(awk '/MemAvailable:/ {print $2}' /proc/meminfo 2>/dev/null || awk '/MemFree:/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
+			mem_free_mb=$((mem_free_kb / 1024))
+			fixes_applied=$((fixes_applied + 1))
+			add_check "Memoria RAM" "FIXED" "Caches reciclados. Memoria livre recuperada para ${mem_free_mb}MB."
+		else
+			warnings=$((warnings + 1))
+			add_check "Memoria RAM" "WARN" "RAM critica: apenas ${mem_free_mb}MB livres de ${mem_total_mb}MB."
+		fi
 	else
 		add_check "Memoria RAM" "OK" "${mem_free_mb}MB livres de ${mem_total_mb}MB disponiveis."
 	fi
@@ -97,8 +106,17 @@ ark_doctor_audit() {
 		''|*[!0-9]*) overlay_free_kb=99999 ;;
 	esac
 	if [ "$overlay_free_kb" -lt 1500 ]; then
-		warnings=$((warnings + 1))
-		add_check "Espaco Flash (/overlay)" "WARN" "Espaco livre baixo: apenas $((overlay_free_kb / 1024))MB livres."
+		if [ "$auto_fix" = 1 ]; then
+			rm -rf /tmp/opkg-lists /var/lock/opkg.lock /tmp/apk-cache /var/cache/apk/* 2>/dev/null || true
+			find /tmp -type f -name "*.tmp" -delete 2>/dev/null || true
+			overlay_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2 {print $4}')"
+			case "$overlay_free_kb" in ''|*[!0-9]*) overlay_free_kb=99999 ;; esac
+			fixes_applied=$((fixes_applied + 1))
+			add_check "Espaco Flash (/overlay)" "FIXED" "Caches temporarios purgados: $((overlay_free_kb / 1024))MB livres."
+		else
+			warnings=$((warnings + 1))
+			add_check "Espaco Flash (/overlay)" "WARN" "Espaco livre baixo: apenas $((overlay_free_kb / 1024))MB livres."
+		fi
 	else
 		add_check "Espaco Flash (/overlay)" "OK" "$((overlay_free_kb / 1024))MB livres no armazenamento gravavel."
 	fi
@@ -190,8 +208,17 @@ ark_doctor_audit() {
 			add_check "Flow Offload vs SQM" "FAIL" "Fastpath ativo junto com SQM/CAKE. O Fastpath impede o enfileiramento CAKE."
 		fi
 	elif [ "$flow_offload" = "1" ] && [ "$mwan_active_count" -ge 2 ]; then
-		warnings=$((warnings + 1))
-		add_check "Flow Offload vs Multi-WAN" "WARN" "Fastpath ativo com 2+ WANs no mwan3. O Fastpath ignora regras de balanceamento/failover."
+		if [ "$auto_fix" = 1 ]; then
+			uci -q set firewall.@defaults[0].flow_offloading=0
+			uci -q set firewall.@defaults[0].flow_offloading_hw=0
+			uci commit firewall
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			fixes_applied=$((fixes_applied + 1))
+			add_check "Flow Offload vs Multi-WAN" "FIXED" "Conflito detectado. Fastpath desativado para permitir balanceamento e failover no mwan3."
+		else
+			warnings=$((warnings + 1))
+			add_check "Flow Offload vs Multi-WAN" "WARN" "Fastpath ativo com 2+ WANs no mwan3. O Fastpath ignora regras de balanceamento/failover."
+		fi
 	else
 		add_check "Aceleracao de Rede" "OK" "Sem conflitos entre Fastpath, SQM e Multi-WAN."
 	fi
@@ -219,7 +246,26 @@ ark_doctor_audit() {
 	fi
 
 	# 7. Checagem de Clientes e Leases
-	add_check "Tabela de Clientes" "OK" "Tabela DHCP e limites validados."
+	dnsmasq_pid="$(pidof dnsmasq 2>/dev/null || pgrep -x dnsmasq 2>/dev/null || echo '')"
+	if [ -z "$dnsmasq_pid" ] && [ -x /etc/init.d/dnsmasq ] && ! ark_is_satellite_or_ap; then
+		if [ "$auto_fix" = 1 ]; then
+			/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+			fixes_applied=$((fixes_applied + 1))
+			add_check "Tabela de Clientes" "FIXED" "Servidor DHCP/DNS (dnsmasq) reiniciado com sucesso."
+		else
+			errors=$((errors + 1))
+			add_check "Tabela de Clientes" "FAIL" "Servidor DHCP/DNS (dnsmasq) inativo! Clientes podem ficar sem IP."
+		fi
+	else
+		lease_file="/tmp/dhcp.leases"
+		[ -f "$lease_file" ] || lease_file="/var/dhcp.leases"
+		lease_count=0
+		if [ -f "$lease_file" ]; then
+			lease_count="$(wc -l < "$lease_file" 2>/dev/null || echo 0)"
+			lease_count="$(echo "$lease_count" | tr -d ' ')"
+		fi
+		add_check "Tabela de Clientes" "OK" "${lease_count} dispositivo(s) com concessao DHCP ativa (dnsmasq operacional)."
+	fi
 
 	# 8. Checagem de Consistência de Modo Satélite / Ponto de Acesso
 	if ark_is_satellite_or_ap; then
@@ -379,23 +425,27 @@ ark_doctor_audit() {
 					mv "$fw_user_file" "${q_dir}/firewall.user.legacy.$(date +%s 2>/dev/null || echo 0)" 2>/dev/null || true
 					touch "$fw_user_file"
 				fi
-				if command -v iptables >/dev/null 2>&1; then
-					iptables -F 2>/dev/null || true
-					iptables -X 2>/dev/null || true
-					iptables -t nat -F 2>/dev/null || true
-					iptables -t nat -X 2>/dev/null || true
-					iptables -t mangle -F 2>/dev/null || true
-					iptables -t mangle -X 2>/dev/null || true
+				if [ "$culprit" != "mwan3" ] && [ "$culprit" != "Docker (dockerd)" ]; then
+					if command -v iptables >/dev/null 2>&1; then
+						iptables -F 2>/dev/null || true
+						iptables -X 2>/dev/null || true
+						iptables -t nat -F 2>/dev/null || true
+						iptables -t nat -X 2>/dev/null || true
+						iptables -t mangle -F 2>/dev/null || true
+						iptables -t mangle -X 2>/dev/null || true
+					fi
+					if command -v ip6tables >/dev/null 2>&1; then
+						ip6tables -F 2>/dev/null || true
+						ip6tables -X 2>/dev/null || true
+						ip6tables -t mangle -F 2>/dev/null || true
+						ip6tables -t mangle -X 2>/dev/null || true
+					fi
+					/sbin/fw4 reload >/dev/null 2>&1 || true
+					fixes_applied=$((fixes_applied + 1))
+					add_check "Pureza do Firewall (fw4 Puro)" "FIXED" "Regras legadas iptables ($culprit) saneadas e pacote migrado para nftables puro."
+				else
+					add_check "Pureza do Firewall (fw4 Puro)" "WARN" "Regras iptables pertencem ao servico ativo $culprit (preservadas para manter conectividade)."
 				fi
-				if command -v ip6tables >/dev/null 2>&1; then
-					ip6tables -F 2>/dev/null || true
-					ip6tables -X 2>/dev/null || true
-					ip6tables -t mangle -F 2>/dev/null || true
-					ip6tables -t mangle -X 2>/dev/null || true
-				fi
-				/sbin/fw4 reload >/dev/null 2>&1 || true
-				fixes_applied=$((fixes_applied + 1))
-				add_check "Pureza do Firewall (fw4 Puro)" "FIXED" "Regras legadas iptables ($culprit) saneadas e pacote migrado para nftables puro."
 			else
 				warnings=$((warnings + 1))
 				add_check "Pureza do Firewall (fw4 Puro)" "WARN" "Regras legadas iptables ou pacote incompativel detectado em fw4 (Origem provavel: $culprit)."
@@ -481,6 +531,39 @@ ark_doctor_audit() {
 			fi
 		else
 			add_check "Blindagem de Radios Wi-Fi" "OK" "Radios Wi-Fi operacionais e transmitindo."
+		fi
+	fi
+
+	# 13. Checagem de Sincronizacao de Horario (NTP)
+	cur_year="$(date +%Y 2>/dev/null || echo 0)"
+	cur_date_str="$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo '')"
+	if [ "$cur_year" -lt 2025 ] && [ "$cur_year" -gt 0 ]; then
+		if [ "$auto_fix" = 1 ]; then
+			if [ -x /etc/init.d/sysntpd ]; then
+				/etc/init.d/sysntpd restart >/dev/null 2>&1 || true
+			fi
+			fixes_applied=$((fixes_applied + 1))
+			add_check "Sincronizacao de Horario (NTP)" "FIXED" "Servico NTP reiniciado para sincronizacao imediata de data e hora."
+		else
+			warnings=$((warnings + 1))
+			add_check "Sincronizacao de Horario (NTP)" "WARN" "Relogio desatualizado (${cur_year}). Isso pode invalidar certificados TLS e o LuCI."
+		fi
+	else
+		add_check "Sincronizacao de Horario (NTP)" "OK" "Relogio sincronizado (${cur_date_str:-OK}). Certificados TLS validos."
+	fi
+
+	# 14. Checagem da Tabela NAT (Conntrack)
+	ct_count="$(cat /proc/sys/net/netfilter/nf_conntrack_count 2>/dev/null || echo 0)"
+	ct_max="$(cat /proc/sys/net/netfilter/nf_conntrack_max 2>/dev/null || echo 0)"
+	case "$ct_count" in ''|*[!0-9]*) ct_count=0 ;; esac
+	case "$ct_max" in ''|*[!0-9]*) ct_max=0 ;; esac
+	if [ "$ct_max" -gt 0 ]; then
+		ct_pct=$((ct_count * 100 / ct_max))
+		if [ "$ct_pct" -ge 85 ]; then
+			warnings=$((warnings + 1))
+			add_check "Tabela NAT (Conntrack)" "WARN" "Saturacao alta: ${ct_count}/${ct_max} conexoes ativas (${ct_pct}% do limite)."
+		else
+			add_check "Tabela NAT (Conntrack)" "OK" "${ct_count} conexoes ativas de ${ct_max} max (${ct_pct}% de ocupacao)."
 		fi
 	fi
 

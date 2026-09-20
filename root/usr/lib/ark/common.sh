@@ -5,7 +5,7 @@
 [ -z "${_ARK_COMMON_SH_LOADED:-}" ] || return 0
 _ARK_COMMON_SH_LOADED=1
 
-ARK_ROUTER_VERSION="1.5.1"
+ARK_ROUTER_VERSION="1.5.2"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 ARK_ROOT="${ARK_ROOT:-}"
 
@@ -263,6 +263,25 @@ detect_dns_blocker() {
 	fi
 	return 1
 }
+
+ark_calculate_rps_mask() {
+	local cores="$1"
+	[ -z "$cores" ] || [ "$cores" -lt 1 ] 2>/dev/null && cores=1
+
+	awk -v cores="$cores" 'BEGIN {
+		full_f = int(cores / 4);
+		rem = cores % 4;
+		prefix = "";
+		if (rem == 1) prefix = "1";
+		else if (rem == 2) prefix = "3";
+		else if (rem == 3) prefix = "7";
+		mask = prefix;
+		for (i = 0; i < full_f; i++) mask = mask "f";
+		if (mask == "") mask = "1";
+		print mask;
+	}' 2>/dev/null || echo "f"
+}
+
 
 # Firewall-aware Addon Reconcilers and Variant Migration (fw4 vs fw3)
 ark_upnp_is_legacy_iptables() {

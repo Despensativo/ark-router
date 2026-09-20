@@ -55,6 +55,12 @@ if [ -f /usr/lib/ark/common.sh ]; then
 	ark_auto_enable_factory_wifi 2>/dev/null || true
 fi
 
+# Ativa calibracao inteligente de hardware e otimizacao de latencia
+[ -x /etc/init.d/ark-hardware-tune ] && {
+	/etc/init.d/ark-hardware-tune enable 2>/dev/null || true
+	/etc/init.d/ark-hardware-tune start 2>/dev/null || true
+}
+
 rm -f /tmp/luci-indexcache
 rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 exit 0

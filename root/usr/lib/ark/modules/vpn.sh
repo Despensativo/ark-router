@@ -544,6 +544,7 @@ wireguard_status_json() {
 
 wireguard_firewall_setup() {
 	port="${1:-51820}"
+	no_reload="${2:-0}"
 	changed=0
 
 	zg="$(uci -q show firewall 2>/dev/null | grep -E "\\.name='wireguard'" | head -n1 | cut -d. -f2)"
@@ -701,7 +702,9 @@ wireguard_firewall_setup() {
 
 	if [ "$changed" = 1 ]; then
 		uci commit firewall
-		/etc/init.d/firewall reload >/dev/null 2>&1 || true
+		if [ "$no_reload" != "1" ]; then
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+		fi
 	fi
 }
 
@@ -1171,7 +1174,7 @@ wireguard_client_import() {
 			uci -q del_list "firewall.$z.network=wgclient" 2>/dev/null || true
 		fi
 	done
-	wireguard_firewall_setup
+	wireguard_firewall_setup "" "1"
 
 	mkdir -p /etc/wireguard
 	cp -f "$tmp_conf" /etc/wireguard/wgclient.conf 2>/dev/null
@@ -1181,11 +1184,14 @@ wireguard_client_import() {
 	uci commit network
 	uci commit firewall
 	rm -f /tmp/ark-features.cache 2>/dev/null || true
-	/etc/init.d/firewall reload >/dev/null 2>&1 || true
-	/sbin/ifup wgclient >/dev/null 2>&1 || true
-	/usr/sbin/ark-wireguard-wan-sync >/dev/null 2>&1 &
 
 	echo 'ok'
+
+	(
+		/etc/init.d/firewall reload >/dev/null 2>&1 || true
+		/sbin/ifup wgclient >/dev/null 2>&1 || true
+		/usr/sbin/ark-wireguard-wan-sync >/dev/null 2>&1 || true
+	) </dev/null >/dev/null 2>&1 &
 }
 
 wireguard_client_status_json() {
@@ -1240,27 +1246,29 @@ wireguard_client_toggle() {
 		uci -q set network.wgclient.disabled='0'
 		uci -q set network.wgclient.auto='1'
 		uci commit network
-		wireguard_firewall_setup
-		/sbin/ifup wgclient >/dev/null 2>&1 || true
-		/usr/sbin/ark-wireguard-wan-sync >/dev/null 2>&1 &
+		wireguard_firewall_setup "" "1"
 		echo 'ok'
+		(
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			/sbin/ifup wgclient >/dev/null 2>&1 || true
+			/usr/sbin/ark-wireguard-wan-sync >/dev/null 2>&1 || true
+		) </dev/null >/dev/null 2>&1 &
 	else
 		uci -q set network.wgclient.disabled='1'
 		uci -q set network.wgclient.auto='0'
 		uci commit network
-		/sbin/ifdown wgclient >/dev/null 2>&1 || true
-		ip route flush dev wgclient 2>/dev/null || true
-		ip link delete dev wgclient 2>/dev/null || true
-		wireguard_firewall_cleanup
 		echo 'ok'
+		(
+			/sbin/ifdown wgclient >/dev/null 2>&1 || true
+			ip route flush dev wgclient 2>/dev/null || true
+			ip link delete dev wgclient 2>/dev/null || true
+			wireguard_firewall_cleanup
+		) </dev/null >/dev/null 2>&1 &
 	fi
 }
 
 wireguard_client_delete() {
 	rm -f /tmp/ark-features.cache 2>/dev/null || true
-	/sbin/ifdown wgclient >/dev/null 2>&1 || true
-	ip route flush dev wgclient 2>/dev/null || true
-	ip link delete dev wgclient 2>/dev/null || true
 	uci -q delete network.wgclient
 	for s in $(uci -q show network | grep '=wireguard_wgclient$' | cut -d. -f2 | cut -d= -f1); do
 		uci -q delete "network.$s"
@@ -1272,8 +1280,13 @@ wireguard_client_delete() {
 	done
 	rm -f /etc/wireguard/wgclient.conf 2>/dev/null
 	uci commit network
-	wireguard_firewall_cleanup
 	echo 'ok'
+	(
+		/sbin/ifdown wgclient >/dev/null 2>&1 || true
+		ip route flush dev wgclient 2>/dev/null || true
+		ip link delete dev wgclient 2>/dev/null || true
+		wireguard_firewall_cleanup
+	) </dev/null >/dev/null 2>&1 &
 }
 
 

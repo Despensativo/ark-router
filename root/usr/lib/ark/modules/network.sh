@@ -407,7 +407,7 @@ sync_adguard_ipv6() {
 	chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
 	chmod 644 "$yaml" 2>/dev/null || true
 
-	if [ -x /usr/bin/AdGuardHome ]; then
+	if [ -x /usr/bin/AdGuardHome ] && pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 1)" != "0" ]; then
 		if /usr/bin/AdGuardHome --config "$yaml" --check-config >/dev/null 2>&1; then
 			/etc/init.d/adguardhome reload >/dev/null 2>&1 || /etc/init.d/adguardhome restart >/dev/null 2>&1 || true
 		else
@@ -1990,11 +1990,24 @@ handle_network() {
 		;;
 	mwan-torrent-toggle)
 		state="${2:-1}"
+		ports="${3:-}"
 		if [ "$state" = "1" ]; then
+			if [ -z "$ports" ]; then
+				ports="$(uci -q get mwan3.globals.torrent_ports || uci -q get mwan3.tor_dst_tcp.dest_port || printf '1024:8079,8081:8442,8444:65535')"
+			fi
+			[ -n "$ports" ] || ports="1024:8079,8081:8442,8444:65535"
+
+			# Sanitizar portas (apenas digitos, virgulas e dois-pontos)
+			ports="$(printf '%s' "$ports" | tr -cd '0-9,:-')"
+			ports="$(printf '%s' "$ports" | tr '-' ':')"
+
+			[ -n "$(uci -q get mwan3.globals)" ] || uci -q set mwan3.globals=globals
+			uci -q set "mwan3.globals.torrent_ports=$ports"
+
 			uci -q set mwan3.tor_src_tcp=rule
 			uci -q set mwan3.tor_src_tcp.family=ipv4
 			uci -q set mwan3.tor_src_tcp.proto=tcp
-			uci -q set mwan3.tor_src_tcp.src_port="51413,6881:6999"
+			uci -q set "mwan3.tor_src_tcp.src_port=$ports"
 			uci -q set mwan3.tor_src_tcp.use_policy=balanced
 			uci -q set mwan3.tor_src_tcp.sticky=0
 			uci -q set mwan3.tor_src_tcp.enabled=1
@@ -2002,7 +2015,7 @@ handle_network() {
 			uci -q set mwan3.tor_src_udp=rule
 			uci -q set mwan3.tor_src_udp.family=ipv4
 			uci -q set mwan3.tor_src_udp.proto=udp
-			uci -q set mwan3.tor_src_udp.src_port="51413,6881:6999"
+			uci -q set "mwan3.tor_src_udp.src_port=$ports"
 			uci -q set mwan3.tor_src_udp.use_policy=balanced
 			uci -q set mwan3.tor_src_udp.sticky=0
 			uci -q set mwan3.tor_src_udp.enabled=1
@@ -2010,7 +2023,7 @@ handle_network() {
 			uci -q set mwan3.tor_dst_tcp=rule
 			uci -q set mwan3.tor_dst_tcp.family=ipv4
 			uci -q set mwan3.tor_dst_tcp.proto=tcp
-			uci -q set mwan3.tor_dst_tcp.dest_port="51413,6881:6999"
+			uci -q set "mwan3.tor_dst_tcp.dest_port=$ports"
 			uci -q set mwan3.tor_dst_tcp.use_policy=balanced
 			uci -q set mwan3.tor_dst_tcp.sticky=0
 			uci -q set mwan3.tor_dst_tcp.enabled=1
@@ -2018,7 +2031,7 @@ handle_network() {
 			uci -q set mwan3.tor_dst_udp=rule
 			uci -q set mwan3.tor_dst_udp.family=ipv4
 			uci -q set mwan3.tor_dst_udp.proto=udp
-			uci -q set mwan3.tor_dst_udp.dest_port="51413,6881:6999"
+			uci -q set "mwan3.tor_dst_udp.dest_port=$ports"
 			uci -q set mwan3.tor_dst_udp.use_policy=balanced
 			uci -q set mwan3.tor_dst_udp.sticky=0
 			uci -q set mwan3.tor_dst_udp.enabled=1

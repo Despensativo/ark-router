@@ -7,7 +7,7 @@
 
 document.querySelector('head').appendChild(E('link', {
 	'rel': 'stylesheet', 'type': 'text/css',
-	'href': L.resource('view/equipe-dashboard/overview.css') + '?v=' + (window.ARK_VERSION || '1.5.1')
+	'href': L.resource('view/equipe-dashboard/overview.css') + '?v=' + (window.ARK_VERSION || '1.5.2')
 }));
 
 const callSystemBoard = rpc.declare({ object: 'system', method: 'board' });
@@ -1427,6 +1427,22 @@ const EN = {
   "+ Nova Regra": "+ New Rule",
   "⚡ Acelerar BitTorrent / P2P nas 2 Internets": "⚡ Accelerate BitTorrent / P2P across 2 Internet Links",
   "Balanceia conexões BitTorrent (portas 51413 e 6881-6999) pelas 2 conexões simultaneamente.": "Balances BitTorrent connections (ports 51413 and 6881-6999) across both links simultaneously.",
+  "Balanceia conexões BitTorrent/P2P pelas 2 conexões simultaneamente.": "Balances BitTorrent/P2P connections across 2 connections simultaneously.",
+  "Configurar portas de aceleração BitTorrent": "Configure BitTorrent acceleration ports",
+  "Configuração de Portas BitTorrent / P2P": "BitTorrent / P2P Port Configuration",
+  "Digite as portas separadas por vírgula ou faixas separadas por dois-pontos/hífen:": "Enter ports separated by commas or ranges separated by colons/hyphens:",
+  "Digite pelo menos uma porta ou faixa.": "Enter at least one port or range.",
+  "Falha ao aplicar portas de BitTorrent": "Failed to apply BitTorrent ports",
+  "Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets simultaneamente.": "Safe Wide Mode (1024-65535 except Web/DNS) active across 2 internet links simultaneously.",
+  "Modo Clássico (portas 51413 e 6881-6999) ativo nas 2 internets simultaneamente.": "Classic Mode (ports 51413 and 6881-6999) active across 2 internet links simultaneously.",
+  "Portas 51413 e 6881-6999 apenas. Modo restrito legado do BitTorrent.": "Ports 51413 and 6881-6999 only. Legacy restricted BitTorrent mode.",
+  "Portas de BitTorrent/P2P atualizadas com sucesso!": "BitTorrent/P2P ports updated successfully!",
+  "Portas personalizadas ativas:": "Custom active ports:",
+  "Salvar e Aplicar": "Save and Apply",
+  "⚙️ Portas": "⚙️ Ports",
+  "✏️ Portas Personalizadas": "✏️ Custom Ports",
+  "📦 Modo Padrão Clássico": "📦 Classic Standard Mode",
+  "🚀 Modo Amplo Seguro (Recomendado)": "🚀 Safe Wide Mode (Recommended)",
   "Nenhuma regra personalizada cadastrada. Clique em \"+ Nova Regra\" para direcionar portas ou aparelhos específicos.": "No custom rules configured. Click \"+ New Rule\" to route specific ports or devices.",
   "Ex: PC Gamer Torrent, Steam, Console": "Ex: Gamer PC Torrent, Steam, Console",
   "Todos os aparelhos da rede (Qualquer IP)": "All network devices (Any IP)",
@@ -3108,6 +3124,22 @@ const ES = {
   "+ Nova Regra": "+ Nueva Regla",
   "⚡ Acelerar BitTorrent / P2P nas 2 Internets": "⚡ Acelerar BitTorrent / P2P en las 2 Conexiones",
   "Balanceia conexões BitTorrent (portas 51413 e 6881-6999) pelas 2 conexões simultaneamente.": "Balancea conexiones BitTorrent (puertos 51413 y 6881-6999) en ambas conexiones simultáneamente.",
+  "Balanceia conexões BitTorrent/P2P pelas 2 conexões simultaneamente.": "Balancea conexiones BitTorrent/P2P en las 2 conexiones simultáneamente.",
+  "Configurar portas de aceleração BitTorrent": "Configurar puertos de aceleración BitTorrent",
+  "Configuração de Portas BitTorrent / P2P": "Configuración de Puertos BitTorrent / P2P",
+  "Digite as portas separadas por vírgula ou faixas separadas por dois-pontos/hífen:": "Ingrese los puertos separados por coma o rangos separados por dos puntos/guion:",
+  "Digite pelo menos uma porta ou faixa.": "Ingrese al menos un puerto o rango.",
+  "Falha ao aplicar portas de BitTorrent": "Error al aplicar puertos de BitTorrent",
+  "Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets simultaneamente.": "Modo Amplio Seguro (1024-65535 excepto Web/DNS) activo en las 2 conexiones simultáneamente.",
+  "Modo Clássico (portas 51413 e 6881-6999) ativo nas 2 internets simultaneamente.": "Modo Clásico (puertos 51413 y 6881-6999) activo en las 2 conexiones simultáneamente.",
+  "Portas 51413 e 6881-6999 apenas. Modo restrito legado do BitTorrent.": "Puertos 51413 y 6881-6999 únicamente. Modo restringido legado de BitTorrent.",
+  "Portas de BitTorrent/P2P atualizadas com sucesso!": "¡Puertos de BitTorrent/P2P actualizados con éxito!",
+  "Portas personalizadas ativas:": "Puertos personalizados activos:",
+  "Salvar e Aplicar": "Guardar y Aplicar",
+  "⚙️ Portas": "⚙️ Puertos",
+  "✏️ Portas Personalizadas": "✏️ Puertos Personalizados",
+  "📦 Modo Padrão Clássico": "📦 Modo Estándar Clásico",
+  "🚀 Modo Amplo Seguro (Recomendado)": "🚀 Modo Amplio Seguro (Recomendado)",
   "Nenhuma regra personalizada cadastrada. Clique em \"+ Nova Regra\" para direcionar portas ou aparelhos específicos.": "No hay reglas personalizadas configuradas. Haga clic en \"+ Nueva Regla\" para enrutar puertos o dispositivos específicos.",
   "Ex: PC Gamer Torrent, Steam, Console": "Ej: PC Gamer Torrent, Steam, Consola",
   "Todos os aparelhos da rede (Qualquer IP)": "Todos los dispositivos de la red (Cualquier IP)",
@@ -8910,11 +8942,12 @@ const networkMethods = {
 		});
 	},
 
-	toggleMwanTorrentPreset: function(input) {
+	toggleMwanTorrentPreset: function(input, currentPorts) {
 		const self = this;
 		const isChecked = input.checked;
 		input.disabled = true;
-		return fs.exec('/usr/sbin/equipe-dashboard-control', ['mwan-torrent-toggle', isChecked ? '1' : '0']).then(function(res) {
+		const ports = currentPorts || '1024:8079,8081:8442,8444:65535';
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['mwan-torrent-toggle', isChecked ? '1' : '0', ports]).then(function(res) {
 			input.disabled = false;
 			if (res.code) throw new Error(res.stderr || _t('Falha ao alternar aceleração P2P'));
 			ui.addNotification(null, E('p', {}, [isChecked ? _t('Aceleração BitTorrent/P2P nas 2 conexões ATIVADA!') : _t('Aceleração BitTorrent/P2P DESATIVADA.')]), 'info');
@@ -8924,6 +8957,119 @@ const networkMethods = {
 			input.checked = !isChecked;
 			ui.addNotification(null, E('p', {}, [err.message]), 'danger');
 		});
+	},
+
+	showMwanTorrentModal: function(currentPorts) {
+		const self = this;
+		const closeModal = function() { ui.hideModal(); };
+		const WIDE_PORTS = '1024:8079,8081:8442,8444:65535';
+		const CLASSIC_PORTS = '51413,6881:6999';
+
+		let activePorts = currentPorts || WIDE_PORTS;
+		let initialPreset = 'custom';
+		if (activePorts === WIDE_PORTS || (activePorts.indexOf('1024') >= 0 && activePorts.indexOf('65535') >= 0)) {
+			initialPreset = 'wide';
+		} else if (activePorts === CLASSIC_PORTS) {
+			initialPreset = 'classic';
+		}
+
+		const customInput = E('input', {
+			type: 'text',
+			class: 'cbi-input-text',
+			value: activePorts,
+			placeholder: _t('Ex: 51413, 6881:6999 ou 1024:65535'),
+			style: 'width: 100%; margin-top: 8px;'
+		});
+
+		const radioWide = E('input', { type: 'radio', name: 'torrent_mode', value: 'wide', id: 'ex-tor-mode-wide' });
+		const radioClassic = E('input', { type: 'radio', name: 'torrent_mode', value: 'classic', id: 'ex-tor-mode-classic' });
+		const radioCustom = E('input', { type: 'radio', name: 'torrent_mode', value: 'custom', id: 'ex-tor-mode-custom' });
+
+		if (initialPreset === 'wide') radioWide.checked = true;
+		else if (initialPreset === 'classic') radioClassic.checked = true;
+		else radioCustom.checked = true;
+
+		const updateInputVisibility = function() {
+			customInput.disabled = !radioCustom.checked;
+			if (radioWide.checked) customInput.value = WIDE_PORTS;
+			else if (radioClassic.checked) customInput.value = CLASSIC_PORTS;
+		};
+		updateInputVisibility();
+
+		[radioWide, radioClassic, radioCustom].forEach(function(r) {
+			r.addEventListener('change', updateInputVisibility);
+		});
+
+		const content = [
+			E('p', { class: 'ex-muted', style: 'margin-bottom: 14px;' }, [
+				_t('Configure quais portas de rede serão balanceadas pelas 2 internets simultaneamente para acelerar o download e envio de BitTorrent/P2P.')
+			]),
+			E('div', { style: 'display: flex; flex-direction: column; gap: 12px;' }, [
+				E('label', { style: 'display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;' }, [
+					radioWide,
+					E('div', {}, [
+						E('strong', { style: 'display: block; color: #f8fafc;' }, [_t('🚀 Modo Amplo Seguro (Recomendado)')]),
+						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, [
+							_t('Abre 1024-8079, 8081-8442, 8444-65535 (>64.500 portas). Cobre 100% dos clientes e peers de torrent sem tocar em portas web (80, 443, 8080, 8443) nem portas de sistema (1-1023).')
+						])
+					])
+				]),
+				E('label', { style: 'display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;' }, [
+					radioClassic,
+					E('div', {}, [
+						E('strong', { style: 'display: block; color: #f8fafc;' }, [_t('📦 Modo Padrão Clássico')]),
+						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, [
+							_t('Portas 51413 e 6881-6999 apenas. Modo restrito legado do BitTorrent.')
+						])
+					])
+				]),
+				E('label', { style: 'display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;' }, [
+					radioCustom,
+					E('div', { style: 'width: 100%;' }, [
+						E('strong', { style: 'display: block; color: #f8fafc;' }, [_t('✏️ Portas Personalizadas')]),
+						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, [
+							_t('Digite as portas separadas por vírgula ou faixas separadas por dois-pontos/hífen:')
+						]),
+						customInput
+					])
+				])
+			]),
+			E('div', { class: 'right', style: 'margin-top: 18px;' }, [
+				E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, [_t('Cancelar')]),
+				' ',
+				E('button', {
+					class: 'btn cbi-button cbi-button-positive',
+					click: function(ev) {
+						const btn = ev.currentTarget;
+						btn.disabled = true;
+						btn.textContent = _t('Aplicando…');
+						let selectedPorts = customInput.value.trim();
+						if (radioWide.checked) selectedPorts = WIDE_PORTS;
+						else if (radioClassic.checked) selectedPorts = CLASSIC_PORTS;
+
+						if (!selectedPorts) {
+							btn.disabled = false;
+							btn.textContent = _t('Salvar e Aplicar');
+							ui.addNotification(null, E('p', {}, [_t('Digite pelo menos uma porta ou faixa.')]), 'warning');
+							return;
+						}
+
+						return fs.exec('/usr/sbin/equipe-dashboard-control', ['mwan-torrent-toggle', '1', selectedPorts]).then(function(res) {
+							if (res.code) throw new Error(res.stderr || _t('Falha ao aplicar portas de BitTorrent'));
+							ui.hideModal();
+							ui.addNotification(null, E('p', {}, [_t('Portas de BitTorrent/P2P atualizadas com sucesso!')]), 'info');
+							return self.fetchData().then(L.bind(self.update, self));
+						}).catch(function(err) {
+							btn.disabled = false;
+							btn.textContent = _t('Salvar e Aplicar');
+							ui.addNotification(null, E('p', {}, [err.message]), 'danger');
+						});
+					}
+				}, [_t('Salvar e Aplicar')])
+			])
+		];
+
+		ui.showModal(_t('Configuração de Portas BitTorrent / P2P'), content);
 	}
 };
 
@@ -11070,6 +11216,7 @@ const vpnMethods = {
 			ui.hideModal();
 			self.triggerImmediateRefresh('WireGuard ativado com sucesso!', 'info');
 		}).catch(function(e){
+			if(reloadAfterExpectedDisconnect(e, 'Servidor WireGuard ativado. Recarregando…', 2500)) return;
 			ui.showModal('Ativar WireGuard', [E('p', {class:'alert-message warning'}, [e.message]), E('div', {class:'right'}, [E('button', {class:'btn cbi-button cbi-button-neutral', 'click':closeModal}, ['Fechar'])])]);
 		});
 	},
@@ -11086,6 +11233,7 @@ const vpnMethods = {
 						ui.hideModal();
 						self.triggerImmediateRefresh('WireGuard desligado com sucesso!', 'info');
 					}).catch(function(e){
+						if(reloadAfterExpectedDisconnect(e, 'Servidor WireGuard desligado. Recarregando…', 2500)) return;
 						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
 					});
 				}}, ['Desligar'])
@@ -11478,6 +11626,7 @@ const vpnMethods = {
 							});
 							setTimeout(function(){ self.showWireGuardClientModal(false); }, 800);
 						}).catch(function(err){
+							if(reloadAfterExpectedDisconnect(err, 'Comando enviado ao cliente WireGuard. Recarregando…', 2500)) return;
 							ui.showModal('Erro', [E('p', {class:'alert-message warning'}, [err.message]), E('div', {class:'right'}, [E('button', {class:'btn cbi-button cbi-button-neutral', click:closeModal}, ['Fechar'])])]);
 						});
 					}
@@ -11507,6 +11656,7 @@ const vpnMethods = {
 											if(delRes.code) throw new Error(delRes.stderr || 'Falha ao remover cliente');
 											self.triggerImmediateRefresh('Configuração do cliente WireGuard removida com sucesso!', 'info');
 										}).catch(function(err){
+											if(reloadAfterExpectedDisconnect(err, 'Cliente WireGuard removido. Recarregando o painel…', 2500)) return;
 											ui.showModal('Erro ao excluir', [E('p', {class:'alert-message warning'}, [err.message]), E('div', {class:'right'}, [E('button', {class:'btn cbi-button cbi-button-neutral', click:closeModal}, ['Fechar'])])]);
 										});
 									}
@@ -11683,6 +11833,7 @@ const vpnMethods = {
 						});
 						setTimeout(function(){ self.showWireGuardClientModal(false); }, 1200);
 					}).catch(function(err){
+						if(reloadAfterExpectedDisconnect(err, 'Cliente WireGuard salvo. Reconectando ao roteador enquanto a rede é reconfigurada…', 3000)) return;
 						ui.showModal('Erro ao salvar cliente', [E('p', {class:'alert-message warning'}, [err.message]), E('div', {class:'right'}, [E('button', {class:'btn cbi-button cbi-button-neutral', click:closeModal}, ['Fechar'])])]);
 					});
 				}
@@ -14633,7 +14784,7 @@ const systemMethods = {
 					E('div',{class:'ex-feature-copy'},[
 						E('div',{class:'ex-feature-name-row'},[
 							E('strong',{},['Versão instalada: ']),
-							E('span',{class:'ex-pill online'},[update.current||window.ARK_VERSION||'1.5.1'])
+							E('span',{class:'ex-pill online'},[update.current||window.ARK_VERSION||'1.5.2'])
 						]),
 						E('small',{class:'ex-muted'},['Repositório: ',update.repo||'Despensativo/ark-router']),
 						E('small',{class:'ex-muted'},['Gerenciador: ',manager])
@@ -19266,6 +19417,17 @@ const renderMethods = {
 		const mwanCfg = values(data && data.mwanConfig);
 		const torrentRule = mwanCfg.tor_src_tcp || mwanCfg.torrent_rule;
 		const isTorrentActive = !!(torrentRule && String(torrentRule.enabled) !== '0');
+		const rawTorrentPorts = (torrentRule && (torrentRule.dest_port || torrentRule.src_port)) || (mwanCfg.globals && mwanCfg.globals.torrent_ports) || '1024:8079,8081:8442,8444:65535';
+		const isWideMode = rawTorrentPorts.indexOf('1024') >= 0 && rawTorrentPorts.indexOf('65535') >= 0;
+		const isClassicMode = rawTorrentPorts === '51413,6881:6999';
+		let torrentSubtitle = '';
+		if (isWideMode) {
+			torrentSubtitle = _t('Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets simultaneamente.');
+		} else if (isClassicMode) {
+			torrentSubtitle = _t('Modo Clássico (portas 51413 e 6881-6999) ativo nas 2 internets simultaneamente.');
+		} else {
+			torrentSubtitle = _t('Portas personalizadas ativas:') + ' ' + rawTorrentPorts;
+		}
 
 		const seen = {};
 		const customRules = [];
@@ -19364,24 +19526,38 @@ const renderMethods = {
 						}, self)
 					}, ['+ Nova Regra'])
 				]),
-				E('div', { class: 'ex-channel-mode-control', style: 'margin-bottom:10px;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;display:flex;align-items:center;justify-content:space-between;' }, [
-					E('div', {}, [
-						E('strong', {}, ['⚡ Acelerar BitTorrent / P2P nas 2 Internets']),
-						E('small', { class: 'ex-muted', style: 'display:block;margin-top:2px;' }, ['Balanceia conexões BitTorrent (portas 51413 e 6881-6999) pelas 2 conexões simultaneamente.'])
+				E('div', { class: 'ex-channel-mode-control', style: 'margin-bottom:10px;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;' }, [
+					E('div', { style: 'flex: 1 1 auto; min-width: 220px;' }, [
+						E('strong', {}, ['⚡ ' + _t('Acelerar BitTorrent / P2P nas 2 Internets')]),
+						E('small', { class: 'ex-muted', style: 'display:block;margin-top:2px;' }, [
+							isTorrentActive ? torrentSubtitle : _t('Balanceia conexões BitTorrent/P2P pelas 2 conexões simultaneamente.')
+						])
 					]),
-					E('label', { class: 'ex-switch', style: 'margin:0;' }, [
-						E('input', {
-							id: 'ex-mwan-torrent-toggle',
-							type: 'checkbox',
-							checked: isTorrentActive ? '' : null,
-							'aria-label': 'Ativar ou desativar aceleração P2P',
-							change: L.bind(function(ev){
-								if (typeof self.toggleMwanTorrentPreset === 'function') {
-									self.toggleMwanTorrentPreset(ev.currentTarget);
+					E('div', { style: 'display:flex;align-items:center;gap:10px;flex:0 0 auto;' }, [
+						E('button', {
+							class: 'ex-mini-button',
+							style: 'padding: 4px 10px; font-size: 11.5px; font-weight: 700;',
+							title: _t('Configurar portas de aceleração BitTorrent'),
+							click: L.bind(function() {
+								if (typeof self.showMwanTorrentModal === 'function') {
+									self.showMwanTorrentModal(rawTorrentPorts);
 								}
 							}, self)
-						}),
-						E('span', { class: 'ex-switch-slider' })
+						}, [_t('⚙️ Portas')]),
+						E('label', { class: 'ex-switch', style: 'margin:0;' }, [
+							E('input', {
+								id: 'ex-mwan-torrent-toggle',
+								type: 'checkbox',
+								checked: isTorrentActive ? '' : null,
+								'aria-label': _t('Ativar ou desativar aceleração P2P'),
+								change: L.bind(function(ev){
+									if (typeof self.toggleMwanTorrentPreset === 'function') {
+										self.toggleMwanTorrentPreset(ev.currentTarget, rawTorrentPorts);
+									}
+								}, self)
+							}),
+							E('span', { class: 'ex-switch-slider' })
+						])
 					])
 				]),
 				E('div', { id: 'ex-mwan-custom-rules-list' }, rulesElements)

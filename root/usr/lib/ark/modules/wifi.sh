@@ -671,14 +671,20 @@ EOF
 		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
 			mkdir -p /etc/modules.d
 			touch /etc/modules.conf
-			grep -q "options mt7915e wed_enable=Y" /etc/modules.conf || echo "options mt7915e wed_enable=Y" >> /etc/modules.conf
-			echo "mt7915e wed_enable=Y" > /etc/modules.d/mt7915e
-			echo Y > /sys/module/mt7915e/parameters/wed_enable 2>/dev/null || true
+			for mod in mt7915e mt7996e mt7921e; do
+				if [ -e "/sys/module/$mod/parameters/wed_enable" ] || lsmod 2>/dev/null | grep -q "$mod"; then
+					grep -q "options $mod wed_enable=Y" /etc/modules.conf || echo "options $mod wed_enable=Y" >> /etc/modules.conf
+					echo "$mod wed_enable=Y" > "/etc/modules.d/$mod"
+					echo Y > "/sys/module/$mod/parameters/wed_enable" 2>/dev/null || true
+				fi
+			done
 			echo 'enabled'
 		else
-			sed -i '/options mt7915e wed_enable/d' /etc/modules.conf 2>/dev/null || true
-			echo "mt7915e wed_enable=N" > /etc/modules.d/mt7915e
-			echo N > /sys/module/mt7915e/parameters/wed_enable 2>/dev/null || true
+			for mod in mt7915e mt7996e mt7921e; do
+				sed -i "/options $mod wed_enable/d" /etc/modules.conf 2>/dev/null || true
+				echo "$mod wed_enable=N" > "/etc/modules.d/$mod"
+				echo N > "/sys/module/$mod/parameters/wed_enable" 2>/dev/null || true
+			done
 			echo 'disabled'
 		fi
 		;;
@@ -924,6 +930,7 @@ EOF
 		state="${2:-1}"
 		radio2="$(wifi_radio_2g)"
 		radio5="$(wifi_radio_5g)"
+		radio6="$(wifi_radio_6g)"
 		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
 			mkdir -p /etc/config
 			[ -f /etc/config/equipe_dashboard ] || touch /etc/config/equipe_dashboard
@@ -937,8 +944,13 @@ EOF
 				cur_tx5="$(uci -q get "wireless.$radio5.txpower" || true)"
 				[ -n "$cur_tx5" ] && uci -q set "equipe_dashboard.wifi.saved_txpower_5g=$cur_tx5"
 			fi
+			if [ -n "$radio6" ] && [ -z "$(uci -q get equipe_dashboard.wifi.saved_txpower_6g)" ]; then
+				cur_tx6="$(uci -q get "wireless.$radio6.txpower" || true)"
+				[ -n "$cur_tx6" ] && uci -q set "equipe_dashboard.wifi.saved_txpower_6g=$cur_tx6"
+			fi
 			[ -n "$radio2" ] && uci -q set "wireless.$radio2.txpower=15"
 			[ -n "$radio5" ] && uci -q set "wireless.$radio5.txpower=20"
+			[ -n "$radio6" ] && uci -q set "wireless.$radio6.txpower=23"
 			uci -q set equipe_dashboard.wifi.txpower_balanced=1
 			uci commit equipe_dashboard 2>/dev/null || true
 			uci commit wireless
@@ -948,6 +960,7 @@ EOF
 			# Restaura potências originais salvas do usuário; se clean slate (sem valor anterior), apaga para auto
 			saved_tx2="$(uci -q get equipe_dashboard.wifi.saved_txpower_2g || true)"
 			saved_tx5="$(uci -q get equipe_dashboard.wifi.saved_txpower_5g || true)"
+			saved_tx6="$(uci -q get equipe_dashboard.wifi.saved_txpower_6g || true)"
 			if [ -n "$saved_tx2" ] && [ -n "$radio2" ]; then
 				uci -q set "wireless.$radio2.txpower=$saved_tx2"
 			elif [ -n "$radio2" ]; then
@@ -958,9 +971,15 @@ EOF
 			elif [ -n "$radio5" ]; then
 				uci -q delete "wireless.$radio5.txpower"
 			fi
+			if [ -n "$saved_tx6" ] && [ -n "$radio6" ]; then
+				uci -q set "wireless.$radio6.txpower=$saved_tx6"
+			elif [ -n "$radio6" ]; then
+				uci -q delete "wireless.$radio6.txpower"
+			fi
 			uci -q set equipe_dashboard.wifi.txpower_balanced=0
 			uci -q delete equipe_dashboard.wifi.saved_txpower_2g
 			uci -q delete equipe_dashboard.wifi.saved_txpower_5g
+			uci -q delete equipe_dashboard.wifi.saved_txpower_6g
 			uci commit equipe_dashboard 2>/dev/null || true
 			uci commit wireless
 			(sleep 1; wifi reload) >/dev/null 2>&1 &

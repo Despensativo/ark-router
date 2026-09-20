@@ -1490,6 +1490,17 @@ const renderMethods = {
 		const mwanCfg = values(data && data.mwanConfig);
 		const torrentRule = mwanCfg.tor_src_tcp || mwanCfg.torrent_rule;
 		const isTorrentActive = !!(torrentRule && String(torrentRule.enabled) !== '0');
+		const rawTorrentPorts = (torrentRule && (torrentRule.dest_port || torrentRule.src_port)) || (mwanCfg.globals && mwanCfg.globals.torrent_ports) || '1024:8079,8081:8442,8444:65535';
+		const isWideMode = rawTorrentPorts.indexOf('1024') >= 0 && rawTorrentPorts.indexOf('65535') >= 0;
+		const isClassicMode = rawTorrentPorts === '51413,6881:6999';
+		let torrentSubtitle = '';
+		if (isWideMode) {
+			torrentSubtitle = _t('Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets simultaneamente.');
+		} else if (isClassicMode) {
+			torrentSubtitle = _t('Modo Clássico (portas 51413 e 6881-6999) ativo nas 2 internets simultaneamente.');
+		} else {
+			torrentSubtitle = _t('Portas personalizadas ativas:') + ' ' + rawTorrentPorts;
+		}
 
 		const seen = {};
 		const customRules = [];
@@ -1588,24 +1599,38 @@ const renderMethods = {
 						}, self)
 					}, ['+ Nova Regra'])
 				]),
-				E('div', { class: 'ex-channel-mode-control', style: 'margin-bottom:10px;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;display:flex;align-items:center;justify-content:space-between;' }, [
-					E('div', {}, [
-						E('strong', {}, ['⚡ Acelerar BitTorrent / P2P nas 2 Internets']),
-						E('small', { class: 'ex-muted', style: 'display:block;margin-top:2px;' }, ['Balanceia conexões BitTorrent (portas 51413 e 6881-6999) pelas 2 conexões simultaneamente.'])
+				E('div', { class: 'ex-channel-mode-control', style: 'margin-bottom:10px;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;' }, [
+					E('div', { style: 'flex: 1 1 auto; min-width: 220px;' }, [
+						E('strong', {}, ['⚡ ' + _t('Acelerar BitTorrent / P2P nas 2 Internets')]),
+						E('small', { class: 'ex-muted', style: 'display:block;margin-top:2px;' }, [
+							isTorrentActive ? torrentSubtitle : _t('Balanceia conexões BitTorrent/P2P pelas 2 conexões simultaneamente.')
+						])
 					]),
-					E('label', { class: 'ex-switch', style: 'margin:0;' }, [
-						E('input', {
-							id: 'ex-mwan-torrent-toggle',
-							type: 'checkbox',
-							checked: isTorrentActive ? '' : null,
-							'aria-label': 'Ativar ou desativar aceleração P2P',
-							change: L.bind(function(ev){
-								if (typeof self.toggleMwanTorrentPreset === 'function') {
-									self.toggleMwanTorrentPreset(ev.currentTarget);
+					E('div', { style: 'display:flex;align-items:center;gap:10px;flex:0 0 auto;' }, [
+						E('button', {
+							class: 'ex-mini-button',
+							style: 'padding: 4px 10px; font-size: 11.5px; font-weight: 700;',
+							title: _t('Configurar portas de aceleração BitTorrent'),
+							click: L.bind(function() {
+								if (typeof self.showMwanTorrentModal === 'function') {
+									self.showMwanTorrentModal(rawTorrentPorts);
 								}
 							}, self)
-						}),
-						E('span', { class: 'ex-switch-slider' })
+						}, [_t('⚙️ Portas')]),
+						E('label', { class: 'ex-switch', style: 'margin:0;' }, [
+							E('input', {
+								id: 'ex-mwan-torrent-toggle',
+								type: 'checkbox',
+								checked: isTorrentActive ? '' : null,
+								'aria-label': _t('Ativar ou desativar aceleração P2P'),
+								change: L.bind(function(ev){
+									if (typeof self.toggleMwanTorrentPreset === 'function') {
+										self.toggleMwanTorrentPreset(ev.currentTarget, rawTorrentPorts);
+									}
+								}, self)
+							}),
+							E('span', { class: 'ex-switch-slider' })
+						])
 					])
 				]),
 				E('div', { id: 'ex-mwan-custom-rules-list' }, rulesElements)

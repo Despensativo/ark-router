@@ -1,0 +1,213 @@
+#!/bin/sh /etc/rc.common
+# /etc/init.d/ark-hardware-tune - ARK Router Hardware-Adaptive Network & Latency Optimization
+# Automatically scales bufferbloat, queuing, RPS, RFS, and network parameters
+# according to router CPU cores, RAM size, and firewall architecture (fw4 vs fw3).
+
+START=98
+
+boot() {
+	start
+}
+
+ark_calculate_rps_mask() {
+	local cores="$1"
+	[ -z "$cores" ] || [ "$cores" -lt 1 ] 2>/dev/null && cores=1
+
+	awk -v cores="$cores" 'BEGIN {
+		full_f = int(cores / 4);
+		rem = cores % 4;
+		prefix = "";
+		if (rem == 1) prefix = "1";
+		else if (rem == 2) prefix = "3";
+		else if (rem == 3) prefix = "7";
+		mask = prefix;
+		for (i = 0; i < full_f; i++) mask = mask "f";
+		if (mask == "") mask = "1";
+		print mask;
+	}' 2>/dev/null || echo "f"
+}
+
+start() {
+	# Source common runtime if available
+	[ -f /usr/lib/ark/common.sh ] && . /usr/lib/ark/common.sh
+
+	local cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
+	[ "$cpu_cores" -lt 1 ] 2>/dev/null && cpu_cores=1
+	local mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 131072)"
+	local rps_mask="$(ark_calculate_rps_mask "$cpu_cores")"
+
+	logger -t ark-hardware-tune "Iniciando calibracao de hardware: ${cpu_cores} CPUs (RPS Mask: ${rps_mask}), $((mem_total_kb / 1024)) MB RAM."
+
+	# -------------------------------------------------------------------------
+	# PERFIL 1: LOW-SPEC (RAM <= 192 MB ou 1 Núcleo de CPU)
+	# Exemplo: D-Link DGL-5500 (128 MB RAM, MIPS 720 MHz single-core, 16 MB Flash)
+	# Prioridade: Economia estrita de RAM para evitar OOM e zero overhead de RPS
+	# -------------------------------------------------------------------------
+	if [ "$mem_total_kb" -le 196608 ] || [ "$cpu_cores" -le 1 ]; then
+		logger -t ark-hardware-tune "Aplicando Perfil Low-Spec (Economia de RAM & CPU mono-core)."
+
+		sysctl -q -w net.core.netdev_max_backlog=1000 2>/dev/null || true
+		sysctl -q -w net.core.netdev_budget=300 2>/dev/null || true
+		sysctl -q -w net.core.netdev_budget_usecs=4000 2>/dev/null || true
+		sysctl -q -w net.ipv4.tcp_rmem="4096 87380 1048576" 2>/dev/null || true
+		sysctl -q -w net.ipv4.tcp_wmem="4096 65536 1048576" 2>/dev/null || true
+
+		# Qdisc leve (2 MB de memória máxima por interface, limite 1024 pacotes)
+		for iface in $(ls /sys/class/net 2>/dev/null); do
+			case "$iface" in
+				eth*|lan*)
+					[ -d "/sys/class/net/$iface" ] || continue
+					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \
+					tc qdisc replace dev "$iface" root fq_codel memory_limit 2Mb limit 1024 target 5ms quantum 1514 2>/dev/null || true
+					;;
+			esac
+		done
+
+		# Regras de DSCP para firewall legado fw3 / iptables
+		if command -v is_fw3 >/dev/null 2>&1 && is_fw3 && command -v iptables >/dev/null 2>&1; then
+			iptables -t mangle -C PREROUTING -p icmp -j DSCP --set-dscp-class cs6 >/dev/null 2>&1 || \
+			iptables -t mangle -A PREROUTING -p icmp -j DSCP --set-dscp-class cs6 2>/dev/null || true
+			iptables -t mangle -C PREROUTING -p udp --dport 53 -j DSCP --set-dscp-class cs6 >/dev/null 2>&1 || \
+			iptables -t mangle -A PREROUTING -p udp --dport 53 -j DSCP --set-dscp-class cs6 2>/dev/null || true
+			iptables -t mangle -C PREROUTING -p tcp --dport 53 -j DSCP --set-dscp-class cs6 >/dev/null 2>&1 || \
+			iptables -t mangle -A PREROUTING -p tcp --dport 53 -j DSCP --set-dscp-class cs6 2>/dev/null || true
+			iptables -t mangle -C PREROUTING -p tcp --tcp-flags SYN,RST,FIN SYN -j DSCP --set-dscp-class cs5 >/dev/null 2>&1 || \
+			iptables -t mangle -A PREROUTING -p tcp --tcp-flags SYN,RST,FIN SYN -j DSCP --set-dscp-class cs5 2>/dev/null || true
+		fi
+
+	# -------------------------------------------------------------------------
+	# PERFIL 2: MID-SPEC (192 MB < RAM <= 512 MB, 2 Núcleos de CPU)
+	# Exemplo: Cudy WR3000 v1 (MediaTek MT7981 Dual-Core 1.3 GHz, 256 MB RAM)
+	# -------------------------------------------------------------------------
+	elif [ "$mem_total_kb" -le 524288 ] || [ "$cpu_cores" -le 2 ]; then
+		logger -t ark-hardware-tune "Aplicando Perfil Mid-Spec (Dual-Core equilibrado, RPS Mask: ${rps_mask})."
+
+		sysctl -q -w net.core.netdev_max_backlog=5000 2>/dev/null || true
+		sysctl -q -w net.core.netdev_budget=300 2>/dev/null || true
+		sysctl -q -w net.core.netdev_budget_usecs=2000 2>/dev/null || true
+		sysctl -q -w net.ipv4.tcp_rmem="4096 87380 4194304" 2>/dev/null || true
+		sysctl -q -w net.ipv4.tcp_wmem="4096 65536 4194304" 2>/dev/null || true
+
+		# RFS com 16k entradas
+		sysctl -q -w net.core.rps_sock_flow_entries=16384 2>/dev/null || true
+
+		# RPS dinâmico nos 2 núcleos
+		for q in /sys/class/net/*/queues/rx-*/rps_cpus; do
+			[ -f "$q" ] && echo "$rps_mask" > "$q" 2>/dev/null || true
+		done
+		for q in /sys/class/net/*/queues/rx-*/rps_flow_cnt; do
+			[ -f "$q" ] && echo 2048 > "$q" 2>/dev/null || true
+		done
+
+		for iface in $(ls /sys/class/net 2>/dev/null); do
+			case "$iface" in
+				eth*|lan*)
+					[ -d "/sys/class/net/$iface" ] || continue
+					ip link set dev "$iface" txqueuelen 1500 2>/dev/null || true
+					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || true
+					for subq in 1 2 3 4 5 6 7 8 9 a b c d e f 10; do
+						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit 8Mb limit 10240 target 5ms quantum 1514 2>/dev/null || true
+					done
+					;;
+			esac
+		done
+
+	# -------------------------------------------------------------------------
+	# PERFIL 3: HIGH-SPEC (512 MB < RAM <= 1536 MB, 3 a 6 Núcleos de CPU)
+	# Exemplo: Acer Predator W6x (MT7986 Quad-Core 2.0 GHz, 1 GB RAM)
+	# Prioridade: Desempenho gigabit máximo, RPS distribuído em 4 a 6 núcleos, RFS 32k
+	# -------------------------------------------------------------------------
+	elif [ "$mem_total_kb" -le 1572864 ] && [ "$cpu_cores" -lt 8 ]; then
+		logger -t ark-hardware-tune "Aplicando Perfil High-Spec (Quad/Hexa-Core 1GB RAM, RPS Mask: ${rps_mask})."
+
+		sysctl -q -w net.core.netdev_max_backlog=10000 2>/dev/null || true
+		sysctl -q -w net.core.netdev_budget=600 2>/dev/null || true
+		sysctl -q -w net.core.netdev_budget_usecs=2000 2>/dev/null || true
+		sysctl -q -w net.ipv4.tcp_rmem="4096 87380 8388608" 2>/dev/null || true
+		sysctl -q -w net.ipv4.tcp_wmem="4096 65536 8388608" 2>/dev/null || true
+
+		# RFS com 32k entradas para acelerar conexões locais (DNS, uhttpd, ping)
+		sysctl -q -w net.core.rps_sock_flow_entries=32768 2>/dev/null || true
+
+		for q in /sys/class/net/*/queues/rx-*/rps_cpus; do
+			[ -f "$q" ] && echo "$rps_mask" > "$q" 2>/dev/null || true
+		done
+		for q in /sys/class/net/*/queues/rx-*/rps_flow_cnt; do
+			[ -f "$q" ] && echo 4096 > "$q" 2>/dev/null || true
+		done
+
+		# txqueuelen 2048 para evitar NETDEV_TX_BUSY / requeues sob rajadas
+		for iface in $(ls /sys/class/net 2>/dev/null); do
+			case "$iface" in
+				eth*|lan*)
+					[ -d "/sys/class/net/$iface" ] || continue
+					ip link set dev "$iface" txqueuelen 2048 2>/dev/null || true
+					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || true
+					for subq in 1 2 3 4 5 6 7 8 9 a b c d e f 10; do
+						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit 16Mb limit 20480 target 5ms quantum 1514 2>/dev/null || true
+					done
+					;;
+			esac
+		done
+
+	# -------------------------------------------------------------------------
+	# PERFIL 4: ULTRA-SPEC / ENTERPRISE / X86 (RAM > 1.5 GB ou >= 8 Núcleos)
+	# Exemplos: Mini PCs x86 (Intel N100/N305, Core i5/i7/i9, AMD Ryzen), Banana Pi BPI-R4 (4GB RAM, SFP+ 10G)
+	# Servidores Proxmox / Bare Metal com portas 2.5 Gbps, 10 Gbps ou 25 Gbps
+	# Prioridade: Multi-Gigabit pleno, buffers gigantes para alto BDP, filas ultra-rápidas
+	# -------------------------------------------------------------------------
+	else
+		logger -t ark-hardware-tune "Aplicando Perfil Ultra-Spec / Enterprise (${cpu_cores} Cores, RPS Mask: ${rps_mask}, $((mem_total_kb / 1024)) MB RAM)."
+
+		local tcp_buf=16777216
+		local qdisc_mem="32Mb"
+		local qdisc_limit=40960
+		local txq=4096
+		local rfs_entries=65536
+		local rfs_flow_cnt=8192
+		local backlog=25000
+
+		# Se máquina tiver 3.5 GB+ de RAM (servidores / x86 dedicados de 4GB a 64GB)
+		if [ "$mem_total_kb" -ge 3670016 ]; then
+			tcp_buf=33554432
+			qdisc_mem="64Mb"
+			qdisc_limit=65536
+			txq=8192
+			rfs_entries=131072
+			rfs_flow_cnt=16384
+			backlog=50000
+		fi
+
+		sysctl -q -w net.core.netdev_max_backlog="$backlog" 2>/dev/null || true
+		sysctl -q -w net.core.netdev_budget=1000 2>/dev/null || true
+		sysctl -q -w net.core.netdev_budget_usecs=4000 2>/dev/null || true
+		sysctl -q -w net.ipv4.tcp_rmem="4096 87380 $tcp_buf" 2>/dev/null || true
+		sysctl -q -w net.ipv4.tcp_wmem="4096 65536 $tcp_buf" 2>/dev/null || true
+
+		sysctl -q -w net.core.rps_sock_flow_entries="$rfs_entries" 2>/dev/null || true
+
+		# RPS dinâmico distribuído em todos os N núcleos (8, 12, 16, 32, 64 cores)
+		for q in /sys/class/net/*/queues/rx-*/rps_cpus; do
+			[ -f "$q" ] && echo "$rps_mask" > "$q" 2>/dev/null || true
+		done
+		for q in /sys/class/net/*/queues/rx-*/rps_flow_cnt; do
+			[ -f "$q" ] && echo "$rfs_flow_cnt" > "$q" 2>/dev/null || true
+		done
+
+		for iface in $(ls /sys/class/net 2>/dev/null); do
+			case "$iface" in
+				eth*|lan*|en*|igb*|ixgbe*|i40e*)
+					[ -d "/sys/class/net/$iface" ] || continue
+					ip link set dev "$iface" txqueuelen "$txq" 2>/dev/null || true
+					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || true
+					for subq in 1 2 3 4 5 6 7 8 9 a b c d e f 10 11 12 13 14 15 16 17 18 19 1a 1b 1c 1d 1e 1f 20; do
+						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit "$qdisc_mem" limit "$qdisc_limit" target 5ms quantum 1514 2>/dev/null || true
+					done
+					;;
+			esac
+		done
+	fi
+
+	logger -t ark-hardware-tune "Calibracao de hardware e latencia finalizada com sucesso."
+	return 0
+}

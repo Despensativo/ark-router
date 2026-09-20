@@ -2416,11 +2416,12 @@ const networkMethods = {
 		});
 	},
 
-	toggleMwanTorrentPreset: function(input) {
+	toggleMwanTorrentPreset: function(input, currentPorts) {
 		const self = this;
 		const isChecked = input.checked;
 		input.disabled = true;
-		return fs.exec('/usr/sbin/equipe-dashboard-control', ['mwan-torrent-toggle', isChecked ? '1' : '0']).then(function(res) {
+		const ports = currentPorts || '1024:8079,8081:8442,8444:65535';
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['mwan-torrent-toggle', isChecked ? '1' : '0', ports]).then(function(res) {
 			input.disabled = false;
 			if (res.code) throw new Error(res.stderr || _t('Falha ao alternar aceleração P2P'));
 			ui.addNotification(null, E('p', {}, [isChecked ? _t('Aceleração BitTorrent/P2P nas 2 conexões ATIVADA!') : _t('Aceleração BitTorrent/P2P DESATIVADA.')]), 'info');
@@ -2430,5 +2431,118 @@ const networkMethods = {
 			input.checked = !isChecked;
 			ui.addNotification(null, E('p', {}, [err.message]), 'danger');
 		});
+	},
+
+	showMwanTorrentModal: function(currentPorts) {
+		const self = this;
+		const closeModal = function() { ui.hideModal(); };
+		const WIDE_PORTS = '1024:8079,8081:8442,8444:65535';
+		const CLASSIC_PORTS = '51413,6881:6999';
+
+		let activePorts = currentPorts || WIDE_PORTS;
+		let initialPreset = 'custom';
+		if (activePorts === WIDE_PORTS || (activePorts.indexOf('1024') >= 0 && activePorts.indexOf('65535') >= 0)) {
+			initialPreset = 'wide';
+		} else if (activePorts === CLASSIC_PORTS) {
+			initialPreset = 'classic';
+		}
+
+		const customInput = E('input', {
+			type: 'text',
+			class: 'cbi-input-text',
+			value: activePorts,
+			placeholder: _t('Ex: 51413, 6881:6999 ou 1024:65535'),
+			style: 'width: 100%; margin-top: 8px;'
+		});
+
+		const radioWide = E('input', { type: 'radio', name: 'torrent_mode', value: 'wide', id: 'ex-tor-mode-wide' });
+		const radioClassic = E('input', { type: 'radio', name: 'torrent_mode', value: 'classic', id: 'ex-tor-mode-classic' });
+		const radioCustom = E('input', { type: 'radio', name: 'torrent_mode', value: 'custom', id: 'ex-tor-mode-custom' });
+
+		if (initialPreset === 'wide') radioWide.checked = true;
+		else if (initialPreset === 'classic') radioClassic.checked = true;
+		else radioCustom.checked = true;
+
+		const updateInputVisibility = function() {
+			customInput.disabled = !radioCustom.checked;
+			if (radioWide.checked) customInput.value = WIDE_PORTS;
+			else if (radioClassic.checked) customInput.value = CLASSIC_PORTS;
+		};
+		updateInputVisibility();
+
+		[radioWide, radioClassic, radioCustom].forEach(function(r) {
+			r.addEventListener('change', updateInputVisibility);
+		});
+
+		const content = [
+			E('p', { class: 'ex-muted', style: 'margin-bottom: 14px;' }, [
+				_t('Configure quais portas de rede serão balanceadas pelas 2 internets simultaneamente para acelerar o download e envio de BitTorrent/P2P.')
+			]),
+			E('div', { style: 'display: flex; flex-direction: column; gap: 12px;' }, [
+				E('label', { style: 'display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;' }, [
+					radioWide,
+					E('div', {}, [
+						E('strong', { style: 'display: block; color: #f8fafc;' }, [_t('🚀 Modo Amplo Seguro (Recomendado)')]),
+						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, [
+							_t('Abre 1024-8079, 8081-8442, 8444-65535 (>64.500 portas). Cobre 100% dos clientes e peers de torrent sem tocar em portas web (80, 443, 8080, 8443) nem portas de sistema (1-1023).')
+						])
+					])
+				]),
+				E('label', { style: 'display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;' }, [
+					radioClassic,
+					E('div', {}, [
+						E('strong', { style: 'display: block; color: #f8fafc;' }, [_t('📦 Modo Padrão Clássico')]),
+						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, [
+							_t('Portas 51413 e 6881-6999 apenas. Modo restrito legado do BitTorrent.')
+						])
+					])
+				]),
+				E('label', { style: 'display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;' }, [
+					radioCustom,
+					E('div', { style: 'width: 100%;' }, [
+						E('strong', { style: 'display: block; color: #f8fafc;' }, [_t('✏️ Portas Personalizadas')]),
+						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, [
+							_t('Digite as portas separadas por vírgula ou faixas separadas por dois-pontos/hífen:')
+						]),
+						customInput
+					])
+				])
+			]),
+			E('div', { class: 'right', style: 'margin-top: 18px;' }, [
+				E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, [_t('Cancelar')]),
+				' ',
+				E('button', {
+					class: 'btn cbi-button cbi-button-positive',
+					click: function(ev) {
+						const btn = ev.currentTarget;
+						btn.disabled = true;
+						btn.textContent = _t('Aplicando…');
+						let selectedPorts = customInput.value.trim();
+						if (radioWide.checked) selectedPorts = WIDE_PORTS;
+						else if (radioClassic.checked) selectedPorts = CLASSIC_PORTS;
+
+						if (!selectedPorts) {
+							btn.disabled = false;
+							btn.textContent = _t('Salvar e Aplicar');
+							ui.addNotification(null, E('p', {}, [_t('Digite pelo menos uma porta ou faixa.')]), 'warning');
+							return;
+						}
+
+						return fs.exec('/usr/sbin/equipe-dashboard-control', ['mwan-torrent-toggle', '1', selectedPorts]).then(function(res) {
+							if (res.code) throw new Error(res.stderr || _t('Falha ao aplicar portas de BitTorrent'));
+							ui.hideModal();
+							ui.addNotification(null, E('p', {}, [_t('Portas de BitTorrent/P2P atualizadas com sucesso!')]), 'info');
+							return self.fetchData().then(L.bind(self.update, self));
+						}).catch(function(err) {
+							btn.disabled = false;
+							btn.textContent = _t('Salvar e Aplicar');
+							ui.addNotification(null, E('p', {}, [err.message]), 'danger');
+						});
+					}
+				}, [_t('Salvar e Aplicar')])
+			])
+		];
+
+		ui.showModal(_t('Configuração de Portas BitTorrent / P2P'), content);
 	}
 };

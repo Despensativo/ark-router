@@ -1455,8 +1455,12 @@ handle_ezsetup() {
 		update_repo="$(ark_update_repo)"
 		wifi_wed_supported=false
 		wifi_wed_enabled=false
-		[ -e /sys/module/mt7915e/parameters/wed_enable ] && wifi_wed_supported=true
-		[ "$(cat /sys/module/mt7915e/parameters/wed_enable 2>/dev/null)" = "Y" ] && wifi_wed_enabled=true
+		for mod in mt7915e mt7996e mt7921e; do
+			if [ -e "/sys/module/$mod/parameters/wed_enable" ]; then
+				wifi_wed_supported=true
+				[ "$(cat "/sys/module/$mod/parameters/wed_enable" 2>/dev/null)" = "Y" ] && wifi_wed_enabled=true
+			fi
+		done
 		wifi_maxpower_enabled=false
 		cur_country="$(uci -q get wireless.radio0.country || uci -q get wireless.radio1.country || echo 'BR')"
 		[ "$cur_country" = "PA" ] && wifi_maxpower_enabled=true

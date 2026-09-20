@@ -330,8 +330,9 @@ except Exception:
     pass
 " "${raw_blacklist:-$clean_bl}" "${raw_whitelist:-$clean_wl}"
 		chown -R adguardhome:adguardhome /etc/adguardhome 2>/dev/null || true
-		chmod 644 /etc/adguardhome/adguardhome.yaml 2>/dev/null || true
-		/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+		if pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 1)" != "0" ]; then
+			/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+		fi
 	fi
 
 	/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
@@ -462,8 +463,9 @@ except Exception:
 		fi
 
 		chown -R adguardhome:adguardhome /etc/adguardhome 2>/dev/null || true
-		chmod 644 /etc/adguardhome/adguardhome.yaml 2>/dev/null || true
-		/etc/init.d/adguardhome reload >/dev/null 2>&1 || /etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+		if pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 1)" != "0" ]; then
+			/etc/init.d/adguardhome reload >/dev/null 2>&1 || /etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+		fi
 		/etc/init.d/dnsmasq reload >/dev/null 2>&1 || /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 		return 0
 	fi
@@ -653,8 +655,9 @@ except Exception:
 		fi
 
 		chown -R adguardhome:adguardhome /etc/adguardhome 2>/dev/null || true
-		chmod 644 /etc/adguardhome/adguardhome.yaml 2>/dev/null || true
-		/etc/init.d/adguardhome reload >/dev/null 2>&1 || /etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+		if pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 1)" != "0" ]; then
+			/etc/init.d/adguardhome reload >/dev/null 2>&1 || /etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+		fi
 		/etc/init.d/dnsmasq reload >/dev/null 2>&1 || /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 		return 0
 	fi
@@ -815,7 +818,10 @@ adblock_configure() {
 			[ -f /etc/config/equipe_perf ] || touch /etc/config/equipe_perf
 			uci -q set equipe_perf.settings=performance
 			uci -q set "equipe_perf.settings.adblock_zerotier_access=$zt_access_val"
+			uci -q set equipe_perf.settings.adblock_enabled='1'
+			uci -q set equipe_perf.settings.adguard_enabled='1'
 			uci commit equipe_perf
+			[ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome enable >/dev/null 2>&1 || true
 
 			if [ "$zt_access_val" = "1" ]; then
 				uci -q set firewall.zt_adguard=rule
@@ -1155,6 +1161,13 @@ adblock_restore_dns() {
 }
 
 adblock_disable() {
+	mkdir -p /etc/config
+	[ -f /etc/config/equipe_perf ] || touch /etc/config/equipe_perf
+	uci -q set equipe_perf.settings=performance
+	uci -q set equipe_perf.settings.adblock_enabled='0'
+	uci -q set equipe_perf.settings.adguard_enabled='0'
+	uci commit equipe_perf
+
 	killall -9 AdGuardHome 2>/dev/null || true
 	killall -9 adguardhome 2>/dev/null || true
 	pkill -9 -f 'AdGuardHome' 2>/dev/null || true
@@ -1165,6 +1178,7 @@ adblock_disable() {
 		/etc/init.d/adguardhome stop >/dev/null 2>&1 || true
 		/etc/init.d/adguardhome disable >/dev/null 2>&1 || true
 	fi
+	rm -f /etc/rc.d/*adguardhome* 2>/dev/null || true
 
 	adblock_restore_dns
 	/etc/init.d/firewall reload >/dev/null 2>&1 || true

@@ -1,0 +1,39 @@
+# ARK Router: High-Priority Zero-Drop DSCP Classification (fw4 / nftables)
+# Prioritizes latency-sensitive packets (ICMP, DNS, TCP handshakes) into CAKE/fq_codel
+# high-priority tins without dropping bulk or torrent traffic.
+
+chain ark_dscp_prerouting {
+	type filter hook prerouting priority mangle - 5; policy accept;
+
+	# ICMP & ICMPv6 Ping Echo Requests -> CS6 (Network Control / Ultra-Low Latency)
+	ip protocol icmp ip dscp set cs6 comment "ARK: ICMP Echo priority"
+	ip6 nexthdr ipv6-icmp ip6 dscp set cs6 comment "ARK: ICMPv6 Echo priority"
+
+	# DNS Queries (UDP & TCP port 53, 853, 5353) -> CS6
+	udp dport { 53, 853, 5353 } ip dscp set cs6 comment "ARK: DNS IPv4 priority"
+	tcp dport { 53, 853, 5353 } ip dscp set cs6 comment "ARK: DNS TCP IPv4 priority"
+	udp dport { 53, 853, 5353 } ip6 dscp set cs6 comment "ARK: DNS IPv6 priority"
+	tcp dport { 53, 853, 5353 } ip6 dscp set cs6 comment "ARK: DNS TCP IPv6 priority"
+
+	# TCP Connection Control (SYN, RST, FIN) -> CS5 (Immediate handshake/teardown)
+	tcp flags & (syn | rst | fin) != 0 ip dscp set cs5 comment "ARK: TCP Control IPv4 priority"
+	tcp flags & (syn | rst | fin) != 0 ip6 dscp set cs5 comment "ARK: TCP Control IPv6 priority"
+}
+
+chain ark_dscp_output {
+	type filter hook output priority mangle - 5; policy accept;
+
+	# Router Local ICMP & ICMPv6 Replies -> CS6
+	ip protocol icmp ip dscp set cs6 comment "ARK: Local ICMP Reply priority"
+	ip6 nexthdr ipv6-icmp ip6 dscp set cs6 comment "ARK: Local ICMPv6 Reply priority"
+
+	# Router Local DNS Responses -> CS6
+	udp sport { 53, 853, 5353 } ip dscp set cs6 comment "ARK: Local DNS Reply priority"
+	tcp sport { 53, 853, 5353 } ip dscp set cs6 comment "ARK: Local DNS TCP Reply priority"
+	udp sport { 53, 853, 5353 } ip6 dscp set cs6 comment "ARK: Local DNS IPv6 Reply priority"
+	tcp sport { 53, 853, 5353 } ip6 dscp set cs6 comment "ARK: Local DNS TCP IPv6 Reply priority"
+
+	# Router Local TCP Connection Control -> CS5
+	tcp flags & (syn | rst | fin) != 0 ip dscp set cs5 comment "ARK: Local TCP Control IPv4 priority"
+	tcp flags & (syn | rst | fin) != 0 ip6 dscp set cs5 comment "ARK: Local TCP Control IPv6 priority"
+}

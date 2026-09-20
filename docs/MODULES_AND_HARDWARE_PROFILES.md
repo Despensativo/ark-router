@@ -1,4 +1,4 @@
-﻿# Matriz de Módulos e Perfis de Hardware — ARK Router
+# Matriz de Módulos e Perfis de Hardware — ARK Router
 
 Este documento detalha todos os módulos ativos do ARK Router, suas dependências, requisitos de hardware (CPU, RAM, Flash e Arquitetura), regras de visibilidade na interface web (LuCI SPA) e matriz de compatibilidade por categoria de dispositivo.
 
@@ -40,6 +40,7 @@ O ARK Router adota uma arquitetura em camadas otimizada para sistemas embarcados
 | `speedify` | `speedify` | `/usr/share/speedify` | Proprietário | RAM: 256 MB - 512 MB<br>Armazenamento: 80 MB+ | Bonding de múltiplos links de internet (WAN + Wi-Fi + 4G). Suporta instalação em RAM, Overlay interno ou pen drive USB externo. |
 | `argon` | `luci-theme-argon` | Tema LuCI | Cosmético | Overlay: ~500 KB | Tema moderno escuro para a interface nativa do LuCI. Opcional. |
 | `adblock` | Integrado via `dnsmasq` / `adguardhome` | `dnsmasq` / `/tmp/adguardhome` | Integrado | RAM: 128 MB (Cloud Anycast)<br>RAM: 512 MB+ (AdGuard Home RAM) | Em aparelhos de 128 MB opera em modo Cloud Anycast (zero consumo local de CPU/RAM). Em 512 MB+ permite AdGuard Home em RAM na porta 3000. |
+| `hardware-tune` | Integrado no ARK Router | `/etc/init.d/ark-hardware-tune` | Core / Sistema | RAM: Universal<br>Flash: 0 KB (Shell puro) | Calibração adaptativa de rede: escala buffers, RPS (multi-core), RFS, txqueuelen e regras DSCP Zero-Drop de acordo com o hardware. |
 
 > [!NOTE]
 > **HTTPS / uHTTPd**: Anteriormente listado como pacote opcional, o `uhttpd` é componente nativo do OpenWrt base. Foi consolidado no núcleo e removido da lista de pacotes dinâmicos do EZ Setup, eliminando falhas de pacote inexistente no instalador.
@@ -67,6 +68,11 @@ O ARK Router adota uma arquitetura em camadas otimizada para sistemas embarcados
   - `speedtest-go`: Evitar na flash; executar apenas sob demanda na RAM se `/tmp` tiver >= 25 MB livres.
   - `tailscale` e `speedify`: Não recomendados devido ao consumo de RAM (> 25 MB).
   - `AdGuard Home Local`: Bloqueado (causaria Out-Of-Memory).
+- **Calibração de Hardware (`ark-hardware-tune`)**:
+  - Buffers de rede leves: `netdev_max_backlog=1000`, `netdev_budget=300`, `tcp_rmem/wmem=1MB`.
+  - Qdisc econômico: `fq_codel memory_limit 2Mb limit 1024 target 5ms`.
+  - RPS desativado (zero overhead em CPU mono-core).
+  - Compatibilidade pura com firewall legado `fw3 / iptables` (Regras DSCP CS6/CS5 injetadas nativamente sem invocar `fw4`).
 
 ---
 
@@ -84,21 +90,39 @@ O ARK Router adota uma arquitetura em camadas otimizada para sistemas embarcados
   - `zerotier` / `tailscale`: Suportados confortavelmente.
   - `speedtest-go`: Executável volátil em RAM ou instalado na flash.
   - TCP Turbo: Buffers estendidos para conexões Gigabit de baixa latência.
+- **Calibração de Hardware (`ark-hardware-tune`)**:
+  - Buffers balanceados: `netdev_max_backlog=5000`, `netdev_budget=300`, `tcp_rmem/wmem=4MB`.
+  - Qdisc intermediário: `fq_codel memory_limit 8Mb limit 10240 target 5ms` em subfilas `mq`.
+  - `txqueuelen = 1500`.
+  - RPS distribuído em 2 núcleos (máscara `3`) e RFS com 16.384 entradas de fluxo.
 
 ---
 
-### Perfil 3: High Performance / Enthusiast (1 GB+ RAM / eMMC / NVMe / x86_64)
-- **Dispositivos Típicos**: Acer Predator W6x, Banana Pi BPI-R3 / R4, Mini PCs x86_64 (Intel N100 / J4125 / i3), Máquinas Virtuais (Proxmox / ESXi / VirtualBox).
-- **CPU**: 4 a 8 núcleos de alta velocidade.
-- **Orçamento de RAM**:
-  - RAM Total: 1 GB a 16 GB+.
-  - Restrições desnecessárias: todos os recursos liberados.
-- **Módulos Permitidos / Recomendados**:
-  - Todos os recursos do ARK Router Full.
-  - `speedify`: Bonding profissional com multi-WAN bonding via CPU de alta performance.
-  - `AdGuard Home Local`: Executado em `/tmp` na porta 3000 com cache de 64 MB e listas completas (>1 milhão de regras).
-  - SQM CAKE com overhead gigabit completo em ambas as WANs.
-  - Registro detalhado de tráfego e diagnósticos contínuos sem impacto de I/O na flash.
+### Perfil 3: High Performance / Quad-Core (512 MB a 1.5 GB RAM / 4 a 6 núcleos)
+- **Dispositivos Típicos**: Acer Predator W6x (MT7986 Quad-Core 2.0 GHz, 1 GB RAM), Banana Pi BPI-R3, GL.iNet GL-MT6000 (Flint 2).
+- **CPU**: 4 a 6 núcleos (Cortex-A53 2.0 GHz).
+- **Orçamento de RAM**: 1 GB a 1.5 GB.
+- **Calibração de Hardware (`ark-hardware-tune`)**:
+  - Buffers de alto desempenho: `netdev_max_backlog=10000`, `netdev_budget=600`, `tcp_rmem/wmem=8MB`.
+  - Multi-Queue de 16 subfilas com `fq_codel memory_limit 16Mb limit 20480 target 5ms`.
+  - `txqueuelen = 2048` para eliminar requeues sob rajadas pesadas de tráfego.
+  - RPS dinâmico distribuído em todos os núcleos da CPU (máscara `f` para 4 cores, `3f` para 6 cores).
+  - RFS com 32.768 entradas de fluxo (`rps_sock_flow_entries=32768`, `rps_flow_cnt=4096`).
+  - Nftables DSCP Zero-Drop (`15-ark-dscp-priority.nft`) direcionando ICMP/DNS para o tin Voice do CAKE em < 10 µs.
+
+---
+
+### Perfil 4: Ultra-Spec / Enterprise / x86 Multi-Gigabit (RAM > 1.5 GB ou $\ge$ 8 núcleos)
+- **Dispositivos Típicos**: Mini PCs x86_64 (Intel N100 / N305, Core i5/i7/i9, AMD Ryzen), Servidores Bare Metal / Proxmox / ESXi, Banana Pi BPI-R4 (MediaTek MT7988A Quad-Core 2.6 GHz, 4 GB RAM, 2x 10GbE SFP+).
+- **CPU**: 4 a 64 núcleos de altíssima velocidade.
+- **Orçamento de RAM**: 2 GB a 64 GB+.
+- **Calibração de Hardware (`ark-hardware-tune`)**:
+  - **Cálculo Matemático Dinâmico de Bitmask**: A máscara de CPU para RPS é calculada dinamicamente para qualquer quantidade $N$ de núcleos (`ff` para 8 cores, `fff` para 12, `ffff` para 16, `ffffffff` para 32, até 64 cores).
+  - **Buffers Gigantes para Alto BDP (Bandwidth-Delay Product)**:
+    - RAM 2 GB a 3.5 GB: `tcp_rmem/wmem = 16MB`, `txqueuelen = 4096`, `netdev_max_backlog = 25000`, `fq_codel memory_limit 32Mb limit 40960`.
+    - RAM 4 GB+: `tcp_rmem/wmem = 32MB`, `txqueuelen = 8192`, `netdev_max_backlog = 50000`, `netdev_budget = 1000`, `fq_codel memory_limit 64Mb limit 65536`.
+  - **RFS Expandido**: **65.536 a 131.072 fluxos** (`rps_sock_flow_entries=65536..131072`, `rps_flow_cnt=8192..16384`), garantindo saturação real de placas de 2.5 Gbps, 10 Gbps e 25 Gbps com zero latência.
+  - Multi-Queue de até 32 subfilas independentes para portas Ethernet de alta velocidade (`eth*`, `lan*`, `en*`, `igb*`, `ixgbe*`, `i40e*`).
 
 ---
 

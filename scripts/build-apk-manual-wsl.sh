@@ -82,6 +82,8 @@ chmod +x /etc/init.d/* 2>/dev/null || true
 [ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram start >/dev/null 2>&1 || true
 [ -x /etc/init.d/ark-firewall-guard ] && /etc/init.d/ark-firewall-guard enable >/dev/null 2>&1 || true
 [ -x /etc/init.d/ark-firewall-guard ] && /etc/init.d/ark-firewall-guard start >/dev/null 2>&1 || true
+[ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune enable >/dev/null 2>&1 || true
+[ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune start >/dev/null 2>&1 || true
 if [ "$(uci -q get network.autowan.enabled || echo 0)" = "1" ]; then
 	[ -x /etc/init.d/ark-autowan ] && /etc/init.d/ark-autowan enable >/dev/null 2>&1 || true
 	[ -x /etc/init.d/ark-autowan ] && /etc/init.d/ark-autowan restart >/dev/null 2>&1 || true

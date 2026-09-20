@@ -21,8 +21,8 @@ boot() {
 		fi
 	fi
 
-	# 2. Verify AdGuard Home status if enabled
-	if [ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome enabled >/dev/null 2>&1; then
+	# 2. Verify AdGuard Home status if explicitly enabled
+	if [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 1)" != "0" ] && [ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome enabled >/dev/null 2>&1; then
 		if ! pgrep -f 'AdGuardHome' >/dev/null 2>&1; then
 			logger -t ark-guard "AdGuard Home habilitado mas inativo no boot. Iniciando servico..."
 			/etc/init.d/adguardhome restart >/dev/null 2>&1 || true

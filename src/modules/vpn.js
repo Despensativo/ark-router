@@ -178,6 +178,7 @@ const vpnMethods = {
 			ui.hideModal();
 			self.triggerImmediateRefresh('WireGuard ativado com sucesso!', 'info');
 		}).catch(function(e){
+			if(reloadAfterExpectedDisconnect(e, 'Servidor WireGuard ativado. Recarregando…', 2500)) return;
 			ui.showModal('Ativar WireGuard', [E('p', {class:'alert-message warning'}, [e.message]), E('div', {class:'right'}, [E('button', {class:'btn cbi-button cbi-button-neutral', 'click':closeModal}, ['Fechar'])])]);
 		});
 	},
@@ -194,6 +195,7 @@ const vpnMethods = {
 						ui.hideModal();
 						self.triggerImmediateRefresh('WireGuard desligado com sucesso!', 'info');
 					}).catch(function(e){
+						if(reloadAfterExpectedDisconnect(e, 'Servidor WireGuard desligado. Recarregando…', 2500)) return;
 						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
 					});
 				}}, ['Desligar'])
@@ -586,6 +588,7 @@ const vpnMethods = {
 							});
 							setTimeout(function(){ self.showWireGuardClientModal(false); }, 800);
 						}).catch(function(err){
+							if(reloadAfterExpectedDisconnect(err, 'Comando enviado ao cliente WireGuard. Recarregando…', 2500)) return;
 							ui.showModal('Erro', [E('p', {class:'alert-message warning'}, [err.message]), E('div', {class:'right'}, [E('button', {class:'btn cbi-button cbi-button-neutral', click:closeModal}, ['Fechar'])])]);
 						});
 					}
@@ -615,6 +618,7 @@ const vpnMethods = {
 											if(delRes.code) throw new Error(delRes.stderr || 'Falha ao remover cliente');
 											self.triggerImmediateRefresh('Configuração do cliente WireGuard removida com sucesso!', 'info');
 										}).catch(function(err){
+											if(reloadAfterExpectedDisconnect(err, 'Cliente WireGuard removido. Recarregando o painel…', 2500)) return;
 											ui.showModal('Erro ao excluir', [E('p', {class:'alert-message warning'}, [err.message]), E('div', {class:'right'}, [E('button', {class:'btn cbi-button cbi-button-neutral', click:closeModal}, ['Fechar'])])]);
 										});
 									}
@@ -791,6 +795,7 @@ const vpnMethods = {
 						});
 						setTimeout(function(){ self.showWireGuardClientModal(false); }, 1200);
 					}).catch(function(err){
+						if(reloadAfterExpectedDisconnect(err, 'Cliente WireGuard salvo. Reconectando ao roteador enquanto a rede é reconfigurada…', 3000)) return;
 						ui.showModal('Erro ao salvar cliente', [E('p', {class:'alert-message warning'}, [err.message]), E('div', {class:'right'}, [E('button', {class:'btn cbi-button cbi-button-neutral', click:closeModal}, ['Fechar'])])]);
 					});
 				}

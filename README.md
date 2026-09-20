@@ -1,7 +1,7 @@
 # ARK Router
 
 ![OpenWrt](https://img.shields.io/badge/OpenWrt-24.x%20%2F%2025.x-00B5E2?logo=openwrt&logoColor=white)
-![Release](https://img.shields.io/badge/release-v1.5.1-blue.svg)
+![Release](https://img.shields.io/badge/release-v1.5.2-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![Language](https://img.shields.io/badge/UI-PT--BR%20%2F%20EN%20%2F%20ES-blue)
 ![Platform](https://img.shields.io/badge/arch-all%20%2F%20noarch-orange)
@@ -12,7 +12,7 @@ The project does not replace OpenWrt or LuCI — it operates on top of LuCI as a
 
 > **Keywords / SEO**: ARK Router, OpenWrt dashboard, LuCI dashboard, OpenWrt moderno, monitorar tráfego por dispositivo, per-device bandwidth monitor, OpenWrt Starlink telemetry, ZeroTier OpenWrt autostart, DNS benchmark router, SQM CAKE bufferbloat QoS, Multi-WAN failover load balancing, Speedify OpenWrt bonding, OpenWrt mobile UI, painel roteador OpenWrt, network bandwidth limiter, real-time router monitoring, adguard home openwrt ram, dns blacklist openwrt, cross-browser responsive openwrt.
 
-The current official release is **v1.5.1**. ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
+The current official release is **v1.5.2**. ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
 
 ---
 
@@ -71,6 +71,11 @@ O **ARK Router** transforma roteadores com **OpenWrt** em verdadeiras centrais d
     - Agregação de estações em todas as interfaces ativas (`device_get_stations`), garantindo precisão total na contagem de clientes conectados sem zerar o medidor.
 20. **🌎 Internacionalização Tripla com 100% de Paridade (i18n Triplo)**:
     - Cobertura integral e auditada em Português do Brasil, Inglês e Espanhol neutro em todos os componentes e diálogos do sistema.
+21. **🎯 Latência Interna Zero-Drop & Calibração de Hardware Inteligente (`ark-hardware-tune`)**:
+    - Priorização cirúrgica no kernel via DSCP CS6 para ICMP (Ping) e DNS, e CS5 para controle TCP, despachando direto no tin Voice do CAKE com latência de 2 a 9 µs sem dropar nenhum pacote.
+    - Calibração adaptativa em 3 níveis (Low, Mid e High Spec): distribui pacotes em todos os núcleos da CPU (RPS multi-core `f`), acelera o RFS para 32.768 fluxos e expande o buffer para 2048, garantindo ping médio de 0 ms mesmo sob carga pesada de 500+ Mbps de BitTorrent.
+22. **🌐 Balanceamento PBR BitTorrent em Modo Amplo Seguro (Dual-WAN)**:
+    - Balanceia dinamicamente conexões P2P em mais de 64.500 portas (`1024:8079, 8081:8442, 8444:65535`) entre as WANs, mantendo portas de sistema (80, 443, 53, etc.) blindadas na WAN primária estável.
 
 ---
 

@@ -34,7 +34,7 @@ FEATURES = [
         "hw_limitations": "Execução leve no cliente (<60 KB transferidos, zero runtime npm), compatível com navegadores móveis e desktop.",
         "openwrt_limitations": "Dual OpenWrt 19.07 a 25.x (LuCI client-side JavaScript view L.view.extend).",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py", "scripts/verify_dom_progressive.mjs"],
         "real_hw_required": False
     },
@@ -59,7 +59,7 @@ FEATURES = [
         "hw_limitations": "Orçamento estrito < 60 KB CSS+JS compactado para dispositivos com 16 MB SPI Flash.",
         "openwrt_limitations": "Compatível com ucode (24.x+) e Lua (19.07 a 23.05).",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["scripts/verify_theme_overview.py", "scripts/qa_visual_matrix.py"],
         "real_hw_required": False
     },
@@ -84,7 +84,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -111,7 +111,7 @@ FEATURES = [
         "hw_limitations": "Depende do switch/PHY físico (ex: eth1, wan, eth0.2).",
         "openwrt_limitations": "Compatível com todas as versões.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -136,7 +136,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -161,7 +161,7 @@ FEATURES = [
         "hw_limitations": "Exige hardware de rede com suporte a frames de 1508 bytes no driver Ethernet (MTK, Atheros Gigabit).",
         "openwrt_limitations": "Universal em OpenWrt com DSA ou swconfig moderno.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -186,7 +186,7 @@ FEATURES = [
         "hw_limitations": "Requer roteador com 2 ou mais portas físicas (DSA ou swconfig).",
         "openwrt_limitations": "Compatível com 19.07 a 25.x.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -211,7 +211,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Requer suporte do mwan3 para o backend de firewall ativo (iptables ou nftables).",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -236,7 +236,7 @@ FEATURES = [
         "hw_limitations": "Mínimo 2 interfaces WAN ativas.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -261,7 +261,7 @@ FEATURES = [
         "hw_limitations": "2+ uplinks.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -286,7 +286,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -311,7 +311,7 @@ FEATURES = [
         "hw_limitations": "Em roteadores com 128 MB RAM, usa valores conservadores para evitar OOM.",
         "openwrt_limitations": "Universal em kernels Linux 4.19 a 6.x.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -336,7 +336,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -363,7 +363,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -388,7 +388,7 @@ FEATURES = [
         "hw_limitations": "Diferenciação automática entre DSA moderno (kernel 5.10+) e swconfig legado.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -413,7 +413,7 @@ FEATURES = [
         "hw_limitations": "Cachesize auto-escalado pela memória RAM disponível.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -438,7 +438,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -463,7 +463,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -490,7 +490,7 @@ FEATURES = [
         "hw_limitations": "Depende de suporte do provedor de acesso.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -515,7 +515,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -540,7 +540,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -567,7 +567,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "fw3 no OpenWrt 19.07 a 21.02 / 22.03; fw4 no 23.05 a 25.x.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -592,7 +592,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -617,7 +617,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -642,7 +642,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -667,7 +667,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -692,7 +692,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -719,7 +719,7 @@ FEATURES = [
         "hw_limitations": "Em roteadores single-core legados, limita velocidade a ~150-200 Mbps; em quad-core Filogic atinge 1 Gbps+.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -744,7 +744,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -769,7 +769,7 @@ FEATURES = [
         "hw_limitations": "Consumo proporcional de CPU por interface ativa com CAKE.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -794,7 +794,7 @@ FEATURES = [
         "hw_limitations": "Efetivo apenas em CPUs multi-core (MediaTek MT7981/MT7986, Filogic 820/830/880, Cudy WR3000, Predator W6x).",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -821,7 +821,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -848,7 +848,7 @@ FEATURES = [
         "hw_limitations": "Exige hardware Wi-Fi físico (ou driver mac80211_hwsim no laboratório virtual).",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": True
     },
@@ -873,7 +873,7 @@ FEATURES = [
         "hw_limitations": "Bandas 5 GHz e 6 GHz.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": True
     },
@@ -898,7 +898,7 @@ FEATURES = [
         "hw_limitations": "Rádio 2.4 GHz.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": True
     },
@@ -923,7 +923,7 @@ FEATURES = [
         "hw_limitations": "Exige pacote wpad com suporte a 802.11r.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": True
     },
@@ -948,7 +948,7 @@ FEATURES = [
         "hw_limitations": "Necessita de múltiplos rádios (2.4G + 5G/6G).",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": True
     },
@@ -973,7 +973,7 @@ FEATURES = [
         "hw_limitations": "Disponível exclusivamente em SoCs com rádio Wi-Fi 6/7 físico (ex: Predator W6x, Cudy WR3000, Filogic 880). No laboratório virtual é mantido em estado simulado.",
         "openwrt_limitations": "OpenWrt 23.05+ (Wi-Fi 6) e 24.x/25.x (Wi-Fi 7 EHT).",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": True
     },
@@ -998,7 +998,7 @@ FEATURES = [
         "hw_limitations": "Requer suporte do driver mac80211 a modo mesh.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": True
     },
@@ -1023,7 +1023,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": True
     },
@@ -1048,7 +1048,7 @@ FEATURES = [
         "hw_limitations": "Exclusivo para chipsets MediaTek MT7981/MT7986/MT7988. No VirtualBox é simulado via flag UCI.",
         "openwrt_limitations": "OpenWrt 23.05+.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": True
     },
@@ -1075,7 +1075,7 @@ FEATURES = [
         "hw_limitations": "flow_offloading_hw depende de suporte do SoC (MTK PPE, Qualcomm NSS).",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": True
     },
@@ -1100,7 +1100,7 @@ FEATURES = [
         "hw_limitations": "Depende de LEDs presentes na placa do roteador.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["scripts/verify_led_ui.py"],
         "real_hw_required": True
     },
@@ -1125,7 +1125,7 @@ FEATURES = [
         "hw_limitations": "Roteadores com LED de internet dedicado.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["scripts/verify_led_ui.py"],
         "real_hw_required": True
     },
@@ -1150,7 +1150,7 @@ FEATURES = [
         "hw_limitations": "Especialmente crítico para roteadores de 128 MB RAM (DGL-5500).",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1175,7 +1175,7 @@ FEATURES = [
         "hw_limitations": "Essencial para flash SPI de 16 MB.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1202,7 +1202,7 @@ FEATURES = [
         "hw_limitations": "Requer terminal Starlink conectado na porta WAN ou WAN2.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": True
     },
@@ -1227,7 +1227,7 @@ FEATURES = [
         "hw_limitations": "Requer espaço em flash para backup comprimido (~500 KB).",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1252,7 +1252,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1277,7 +1277,7 @@ FEATURES = [
         "hw_limitations": "Requer acesso WAN ativo para envio.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1304,7 +1304,7 @@ FEATURES = [
         "hw_limitations": "Excelente desempenho em ARM/MIPS com criptografia no kernel.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1329,7 +1329,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1354,7 +1354,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1379,7 +1379,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1404,7 +1404,7 @@ FEATURES = [
         "hw_limitations": "Exige roteadores com > 256 MB RAM e armazenamento adequado (binário Go volumoso).",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1429,7 +1429,7 @@ FEATURES = [
         "hw_limitations": "Permite executar ZeroTier até mesmo em 16 MB SPI Flash.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1454,7 +1454,7 @@ FEATURES = [
         "hw_limitations": "Requer arquitetura compatível (ARM64 ou x86_64) e > 512 MB RAM.",
         "openwrt_limitations": "OpenWrt 21.02+.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1481,7 +1481,7 @@ FEATURES = [
         "hw_limitations": "Em roteadores de 128 MB RAM utiliza listas otimizadas (< 20.000 regras) para preservar memória.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1506,7 +1506,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1533,7 +1533,7 @@ FEATURES = [
         "hw_limitations": "Zero escrita em flash: preserva integridade de memórias SPI NOR.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1560,7 +1560,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1585,7 +1585,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1610,7 +1610,7 @@ FEATURES = [
         "hw_limitations": "Medição pode saturar CPU em roteadores single-core durante o teste.",
         "openwrt_limitations": "Universal.",
         "profiles": ["full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1637,7 +1637,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1662,7 +1662,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1687,7 +1687,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1712,7 +1712,7 @@ FEATURES = [
         "hw_limitations": "Perfil Lite otimizado para <= 128 MB RAM / 16 MB Flash; Full para 256 MB+.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1737,7 +1737,7 @@ FEATURES = [
         "hw_limitations": "Requer ~1.5 MB livres em /tmp para download do pacote.",
         "openwrt_limitations": "Suporta tanto opkg (legado) quanto apk (OpenWrt 25.x moderno).",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1762,7 +1762,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     },
@@ -1787,7 +1787,7 @@ FEATURES = [
         "hw_limitations": "Nenhuma.",
         "openwrt_limitations": "Universal.",
         "profiles": ["lite", "full"],
-        "version": "1.5.1",
+        "version": "1.5.2",
         "tests": ["tests/test_wan_matrix.py"],
         "real_hw_required": False
     }
@@ -1797,7 +1797,7 @@ def main():
     print(f"Generating feature contracts for {len(FEATURES)} features...")
     data = {
         "metadata": {
-            "version": "1.5.1",
+            "version": "1.5.2",
             "schema_version": "1.0",
             "total_features": len(FEATURES),
             "canonical_repo": "C:/Users/User/Desktop/FEITOS COM IA/Ark-Router/GitHub/luci-app-ark-router"

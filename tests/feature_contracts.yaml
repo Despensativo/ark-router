@@ -1,5 +1,5 @@
 metadata:
-  version: 1.5.1
+  version: 1.5.2
   schema_version: '1.0'
   total_features: 70
   canonical_repo: C:/Users/User/Desktop/FEITOS COM IA/Ark-Router/GitHub/luci-app-ark-router
@@ -60,7 +60,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   - scripts/verify_dom_progressive.mjs
@@ -113,7 +113,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - scripts/verify_theme_overview.py
   - scripts/qa_visual_matrix.py
@@ -164,7 +164,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -216,7 +216,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -272,7 +272,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -320,7 +320,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -377,7 +377,7 @@ features:
   openwrt_limitations: Compatível com 19.07 a 25.x.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -434,7 +434,7 @@ features:
   openwrt_limitations: Requer suporte do mwan3 para o backend de firewall ativo (iptables ou nftables).
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -480,7 +480,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -526,7 +526,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -575,7 +575,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -620,7 +620,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -663,7 +663,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -714,7 +714,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -762,7 +762,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -806,7 +806,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -849,7 +849,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -888,7 +888,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -941,7 +941,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -984,7 +984,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -1034,7 +1034,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -1086,7 +1086,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -1128,7 +1128,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -1169,7 +1169,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -1212,7 +1212,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -1253,7 +1253,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -1299,7 +1299,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -1350,7 +1350,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -1393,7 +1393,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -1437,7 +1437,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -1478,7 +1478,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -1520,7 +1520,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -1574,7 +1574,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: true
@@ -1620,7 +1620,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: true
@@ -1663,7 +1663,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: true
@@ -1706,7 +1706,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: true
@@ -1748,7 +1748,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: true
@@ -1792,7 +1792,7 @@ features:
   openwrt_limitations: OpenWrt 23.05+ (Wi-Fi 6) e 24.x/25.x (Wi-Fi 7 EHT).
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: true
@@ -1835,7 +1835,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: true
@@ -1875,7 +1875,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: true
@@ -1916,7 +1916,7 @@ features:
   openwrt_limitations: OpenWrt 23.05+.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: true
@@ -1960,7 +1960,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: true
@@ -2007,7 +2007,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - scripts/verify_led_ui.py
   real_hw_required: true
@@ -2049,7 +2049,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - scripts/verify_led_ui.py
   real_hw_required: true
@@ -2086,7 +2086,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2130,7 +2130,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2177,7 +2177,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: true
@@ -2221,7 +2221,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2262,7 +2262,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2307,7 +2307,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2359,7 +2359,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2403,7 +2403,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2450,7 +2450,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2487,7 +2487,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2525,7 +2525,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2575,7 +2575,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2624,7 +2624,7 @@ features:
   openwrt_limitations: OpenWrt 21.02+.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2673,7 +2673,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2716,7 +2716,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2762,7 +2762,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2818,7 +2818,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2853,7 +2853,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2898,7 +2898,7 @@ features:
   openwrt_limitations: Universal.
   profiles:
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2941,7 +2941,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -2980,7 +2980,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -3034,7 +3034,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -3080,7 +3080,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -3126,7 +3126,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -3173,7 +3173,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
@@ -3218,7 +3218,7 @@ features:
   profiles:
   - lite
   - full
-  version: 1.5.1
+  version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
