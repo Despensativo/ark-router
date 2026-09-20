@@ -1025,7 +1025,13 @@ mwan3_reorder_rules() {
 	uci -q reorder "mwan3.bypass_loopback_v6=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
 	uci -q reorder "mwan3.bypass_fe80=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
 	uci -q reorder "mwan3.bypass_fc00=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
-	for r in $(uci -q show mwan3 2>/dev/null | grep '=rule$' | cut -d. -f2 | cut -d= -f1 | grep -E '^ark_rule_|^ark_pbr_|^torrent_|^tor_|^pbr_'); do
+	# 1. Regras PBR customizadas do usuario (White/Black especificas tem prioridade sobre BitTorrent amplo)
+	for r in $(uci -q show mwan3 2>/dev/null | grep '=rule$' | cut -d. -f2 | cut -d= -f1 | grep -E '^ark_rule_|^ark_pbr_|^pbr_'); do
+		uci -q reorder "mwan3.$r=$order_idx" 2>/dev/null || true
+		order_idx=$((order_idx + 1))
+	done
+	# 2. Regras gerais de BitTorrent / P2P
+	for r in $(uci -q show mwan3 2>/dev/null | grep '=rule$' | cut -d. -f2 | cut -d= -f1 | grep -E '^torrent_|^tor_'); do
 		uci -q reorder "mwan3.$r=$order_idx" 2>/dev/null || true
 		order_idx=$((order_idx + 1))
 	done

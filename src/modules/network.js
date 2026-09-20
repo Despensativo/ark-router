@@ -2410,8 +2410,16 @@ const networkMethods = {
 		return fs.exec('/usr/sbin/equipe-dashboard-control', ['mwan-rule-toggle', ruleId, isChecked ? '1' : '0']).then(function(res) {
 			if (res.code) throw new Error(res.stderr || _t('Falha ao alternar regra'));
 			ui.addNotification(null, E('p', {}, [isChecked ? _t('Regra ativada com sucesso!') : _t('Regra desativada!')]), 'info');
-			return self.fetchData().then(L.bind(self.update, self));
+			setTimeout(function() {
+				self.fetchData().then(L.bind(self.update, self)).catch(function(){});
+			}, 800);
 		}).catch(function(err) {
+			if (err && (err.message || '').toLowerCase().indexOf('xhr') >= 0) {
+				setTimeout(function() {
+					self.fetchData().then(L.bind(self.update, self)).catch(function(){});
+				}, 1500);
+				return;
+			}
 			ui.addNotification(null, E('p', {}, [err.message]), 'danger');
 		});
 	},
@@ -2426,10 +2434,18 @@ const networkMethods = {
 			input.disabled = false;
 			if (res.code) throw new Error(res.stderr || _t('Falha ao alternar aceleração P2P'));
 			ui.addNotification(null, E('p', {}, [isChecked ? _t('Aceleração BitTorrent/P2P nas 2 conexões ATIVADA!') : _t('Aceleração BitTorrent/P2P DESATIVADA.')]), 'info');
-			return self.fetchData().then(L.bind(self.update, self));
+			setTimeout(function() {
+				self.fetchData().then(L.bind(self.update, self)).catch(function(){});
+			}, 800);
 		}).catch(function(err) {
 			input.disabled = false;
 			input.checked = !isChecked;
+			if (err && (err.message || '').toLowerCase().indexOf('xhr') >= 0) {
+				setTimeout(function() {
+					self.fetchData().then(L.bind(self.update, self)).catch(function(){});
+				}, 1500);
+				return;
+			}
 			ui.addNotification(null, E('p', {}, [err.message]), 'danger');
 		});
 	},
@@ -2599,10 +2615,20 @@ const networkMethods = {
 							if (res.code) throw new Error(res.stderr || _t('Falha ao aplicar portas de BitTorrent'));
 							ui.hideModal();
 							ui.addNotification(null, E('p', {}, [_t('Configurações de BitTorrent/P2P atualizadas com sucesso!')]), 'info');
-							return self.fetchData().then(L.bind(self.update, self));
+							setTimeout(function() {
+								self.fetchData().then(L.bind(self.update, self)).catch(function(){});
+							}, 800);
 						}).catch(function(err) {
 							btn.disabled = false;
 							btn.textContent = _t('Salvar e Aplicar');
+							if (err && (err.message || '').toLowerCase().indexOf('xhr') >= 0) {
+								ui.hideModal();
+								ui.addNotification(null, E('p', {}, [_t('Configurações de BitTorrent/P2P atualizadas com sucesso!')]), 'info');
+								setTimeout(function() {
+									self.fetchData().then(L.bind(self.update, self)).catch(function(){});
+								}, 1500);
+								return;
+							}
 							ui.addNotification(null, E('p', {}, [err.message]), 'danger');
 						});
 					}

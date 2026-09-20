@@ -3428,9 +3428,9 @@ function getDeviceIcon(name) {
 	if (n.indexOf('gamer') >= 0 || n.indexOf('playstation') >= 0 || n.indexOf('ps5') >= 0 || n.indexOf('ps4') >= 0 || n.indexOf('xbox') >= 0 || n.indexOf('nintendo') >= 0 || n.indexOf('switch') >= 0 || n.indexOf('game') >= 0) return '🎮';
 	if (n.indexOf('tv') >= 0 || n.indexOf('box') >= 0 || n.indexOf('chromecast') >= 0 || n.indexOf('roku') >= 0 || n.indexOf('fire') >= 0 || n.indexOf('smart') >= 0) return '📺';
 	if (n.indexOf('pc') >= 0 || n.indexOf('desktop') >= 0 || n.indexOf('computador') >= 0 || n.indexOf('notebook') >= 0 || n.indexOf('macbook') >= 0 || n.indexOf('laptop') >= 0 || n.indexOf('dell') >= 0 || n.indexOf('lenovo') >= 0) return '💻';
-	if (n.indexOf('iphone') >= 0 || n.indexOf('ipad') >= 0 || n.indexOf('galaxy') >= 0 || n.indexOf('s23') >= 0 || n.indexOf('celular') >= 0 || n.indexOf('phone') >= 0 || n.indexOf('redmi') >= 0 || n.indexOf('xiaomi') >= 0 || n.indexOf('motorola') >= 0) return '📱';
+	if (n.indexOf('iphone') >= 0 || n.indexOf('ipad') >= 0 || n.indexOf('galaxy') >= 0 || n.indexOf('s23') >= 0 || n.indexOf('celular') >= 0 || n.indexOf('phone') >= 0 || n.indexOf('redmi') >= 0 || n.indexOf('xiaomi') >= 0 || n.indexOf('motorola') >= 0 || n.indexOf('apple') >= 0) return '📱';
 	if (n.indexOf('alexa') >= 0 || n.indexOf('echo') >= 0 || n.indexOf('sound') >= 0 || n.indexOf('som') >= 0) return '🔊';
-	if (n.indexOf('camera') >= 0 || n.indexOf('porteiro') >= 0 || n.indexOf('intelbras') >= 0) return '📹';
+	if (n.indexOf('camera') >= 0 || n.indexOf('câmera') >= 0 || n.indexOf('porteiro') >= 0 || n.indexOf('intelbras') >= 0 || n.indexOf('icomm') >= 0) return '📹';
 	if (n.indexOf('lamp') >= 0 || n.indexOf('luz') >= 0 || n.indexOf('apagador') >= 0 || n.indexOf('tomada') >= 0 || n.indexOf('medidor') >= 0) return '💡';
 	return '🖥️';
 }
@@ -4939,9 +4939,16 @@ const devicesMethods = {
 			// Philips Hue
 			'00:17:88', 'EC:B5:FA',
 			// Xiaomi / Yeelight
-			'04:CF:8C', '28:6C:07', '64:90:C1', '7C:49:EB', 'F0:B4:29'
+			'04:CF:8C', '28:6C:07', '64:90:C1', '7C:49:EB', 'F0:B4:29',
+			// Shenzhen iComm Semiconductor (Câmeras Wi-Fi / Smart Home / Doorbells)
+			'84:B4:D2', '08:1A:1E', '14:95:69', '20:67:E0', '84:EA:97', '98:17:3C'
 		];
 		const iotNameRegex = /(?:^|[\s_-])(?:ESP[_-]|TUYA[_-]|midea[_-]|smart|sonoff|shelly|tasmota|wled|zigbee|broadlink|yeelight|home[_-]?assistant|echo|alexa|google[_-]?home|nest[_-]?mini|camera|intelbras|interfone|interruptor|l[aâ]mpada|tomada|fechadura|climatizador|ar[_-]?condicionado|lwip)/i;
+
+		const appleOuiPrefixes = [
+			// Apple, Inc. (iPhone, iPad, Mac, Apple TV, Apple Watch)
+			'C0:C7:DB', '28:CF:E9', 'A4:83:E7', '00:25:00', '3C:07:54', '40:6C:8F', '70:3E:AC', '8C:85:90', 'F4:0F:24'
+		];
 
 		const tvOuiPrefixes = [
 			// Samsung Electronics (Smart TVs, Tizen)
@@ -5053,7 +5060,15 @@ const devicesMethods = {
 				return 'phone';
 			}
 
-			// 9. Cabo de rede sem classificação específica -> Computador
+			// 9. Dispositivos Apple identificados por OUI (padrão portátil / celular se Wi-Fi)
+			if (appleOuiPrefixes.indexOf(prefix) >= 0) {
+				if (pcRegex.test(n) || isWired) return 'computer';
+				if (tabletRegex.test(n)) return 'tablet';
+				if (tvRegex.test(n)) return 'tv';
+				return 'phone';
+			}
+
+			// 10. Cabo de rede sem classificação específica -> Computador
 			if (isWired) {
 				return 'computer';
 			}
@@ -5384,6 +5399,14 @@ const devicesMethods = {
 			d.fingerprint = fp;
 			d.isIot = (d.category === 'iot');
 			d.isPrivateMac = isPrivateMac(d.mac);
+			if (!d.name || d.name === 'Dispositivo sem nome') {
+				const uPrefix = String(d.mac || '').toUpperCase().slice(0, 8);
+				if (['84:B4:D2', '08:1A:1E', '14:95:69', '20:67:E0', '84:EA:97', '98:17:3C'].indexOf(uPrefix) >= 0) {
+					d.name = 'Câmera Wi-Fi / Smart';
+				} else if (appleOuiPrefixes.indexOf(uPrefix) >= 0) {
+					d.name = d.category === 'computer' ? 'Computador Mac' : (d.category === 'tablet' ? 'iPad' : 'Dispositivo Apple');
+				}
+			}
 		});
 		this.sortDevices(devices);
 		const existingRows = body.querySelectorAll('tr[data-mac]');
@@ -5780,7 +5803,8 @@ const devicesMethods = {
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['device-status',device.mac]).then(L.bind(function(result){
 			if(result.code)throw new Error(result.stderr||'Falha ao consultar o dispositivo');
 			let state={};try{state=JSON.parse(result.stdout||'{}');}catch(e){throw new Error('Resposta inválida do roteador');}
-			const name=E('input',{class:'cbi-input-text',value:device.name==='Dispositivo sem nome'?'':device.name,placeholder:'Ex.: Celular da Joyce',maxlength:48,style:'width:100%'});
+			const isAutoName = (!device.name || device.name === 'Dispositivo sem nome' || device.name === 'Câmera Wi-Fi / Smart' || device.name === 'Dispositivo Apple' || device.name === 'Computador Mac' || device.name === 'iPad');
+			const name=E('input',{class:'cbi-input-text',value:isAutoName?'':device.name,placeholder:device.name||'Ex.: Celular da Joyce',maxlength:48,style:'width:100%'});
 			const ipInput=E('input',{class:'cbi-input-text',value:state.ip||(/^(?:\d{1,3}\.){3}\d{1,3}$/.test(device.ip)?device.ip:''),placeholder:'192.168.73.120',inputmode:'decimal',style:'width:100%'});
 
 			let isReserved = !!state.reserved;
@@ -8960,8 +8984,16 @@ const networkMethods = {
 		return fs.exec('/usr/sbin/equipe-dashboard-control', ['mwan-rule-toggle', ruleId, isChecked ? '1' : '0']).then(function(res) {
 			if (res.code) throw new Error(res.stderr || _t('Falha ao alternar regra'));
 			ui.addNotification(null, E('p', {}, [isChecked ? _t('Regra ativada com sucesso!') : _t('Regra desativada!')]), 'info');
-			return self.fetchData().then(L.bind(self.update, self));
+			setTimeout(function() {
+				self.fetchData().then(L.bind(self.update, self)).catch(function(){});
+			}, 800);
 		}).catch(function(err) {
+			if (err && (err.message || '').toLowerCase().indexOf('xhr') >= 0) {
+				setTimeout(function() {
+					self.fetchData().then(L.bind(self.update, self)).catch(function(){});
+				}, 1500);
+				return;
+			}
 			ui.addNotification(null, E('p', {}, [err.message]), 'danger');
 		});
 	},
@@ -8976,10 +9008,18 @@ const networkMethods = {
 			input.disabled = false;
 			if (res.code) throw new Error(res.stderr || _t('Falha ao alternar aceleração P2P'));
 			ui.addNotification(null, E('p', {}, [isChecked ? _t('Aceleração BitTorrent/P2P nas 2 conexões ATIVADA!') : _t('Aceleração BitTorrent/P2P DESATIVADA.')]), 'info');
-			return self.fetchData().then(L.bind(self.update, self));
+			setTimeout(function() {
+				self.fetchData().then(L.bind(self.update, self)).catch(function(){});
+			}, 800);
 		}).catch(function(err) {
 			input.disabled = false;
 			input.checked = !isChecked;
+			if (err && (err.message || '').toLowerCase().indexOf('xhr') >= 0) {
+				setTimeout(function() {
+					self.fetchData().then(L.bind(self.update, self)).catch(function(){});
+				}, 1500);
+				return;
+			}
 			ui.addNotification(null, E('p', {}, [err.message]), 'danger');
 		});
 	},
@@ -9149,10 +9189,20 @@ const networkMethods = {
 							if (res.code) throw new Error(res.stderr || _t('Falha ao aplicar portas de BitTorrent'));
 							ui.hideModal();
 							ui.addNotification(null, E('p', {}, [_t('Configurações de BitTorrent/P2P atualizadas com sucesso!')]), 'info');
-							return self.fetchData().then(L.bind(self.update, self));
+							setTimeout(function() {
+								self.fetchData().then(L.bind(self.update, self)).catch(function(){});
+							}, 800);
 						}).catch(function(err) {
 							btn.disabled = false;
 							btn.textContent = _t('Salvar e Aplicar');
+							if (err && (err.message || '').toLowerCase().indexOf('xhr') >= 0) {
+								ui.hideModal();
+								ui.addNotification(null, E('p', {}, [_t('Configurações de BitTorrent/P2P atualizadas com sucesso!')]), 'info');
+								setTimeout(function() {
+									self.fetchData().then(L.bind(self.update, self)).catch(function(){});
+								}, 1500);
+								return;
+							}
 							ui.addNotification(null, E('p', {}, [err.message]), 'danger');
 						});
 					}
