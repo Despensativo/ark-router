@@ -45,6 +45,59 @@ fi
 if [ -f /etc/init.d/adguardhome ] && ! grep -q -- '--logfile' /etc/init.d/adguardhome; then
 	sed -i '/procd_append_param command --config/a \	procd_append_param command --logfile /var/lib/adguardhome/adguardhome.log' /etc/init.d/adguardhome
 fi
+
+# Circuit breaker defensivo no init do AdGuard Home (impede religamento indevido quando desativado)
+if [ -f /etc/init.d/adguardhome ] && ! grep -q 'ARK Router Circuit Breaker' /etc/init.d/adguardhome; then
+	awk '
+		/^start_service\(\) \{/ {
+			print $0
+			print "\t# ARK Router Circuit Breaker: Nunca iniciar se AdGuard/Adblock estiver desativado"
+			print "\tif [ \"$(uci -q get equipe_perf.settings.adblock_enabled)\" = \"0\" ] || [ \"$(uci -q get equipe_perf.settings.adguard_enabled)\" = \"0\" ]; then"
+			print "\t\treturn 0"
+			print "\tfi"
+			next
+		}
+		/^boot\(\) \{/ {
+			print $0
+			print "\t# ARK Router Circuit Breaker"
+			print "\tif [ \"$(uci -q get equipe_perf.settings.adblock_enabled)\" = \"0\" ] || [ \"$(uci -q get equipe_perf.settings.adguard_enabled)\" = \"0\" ]; then"
+			print "\t\treturn 0"
+			print "\tfi"
+			next
+		}
+		{ print }
+	' /etc/init.d/adguardhome > /etc/init.d/adguardhome.tmp && mv -f /etc/init.d/adguardhome.tmp /etc/init.d/adguardhome
+	chmod 755 /etc/init.d/adguardhome
+fi
+
+# Sanitizacao defensiva do /etc/mwan3.user contra religamento indevido do AdGuard por hotplug
+if [ -f /etc/mwan3.user ] && grep -q '/etc/init.d/adguardhome' /etc/mwan3.user && ! grep -q 'equipe_perf.settings.adblock_enabled' /etc/mwan3.user; then
+	awk '
+		/\/etc\/init\.d\/adguardhome restart/ {
+			print "\t# Reinicia AdGuard Home APENAS se estiver explicitamente habilitado e ativo"
+			print "\tif [ \"$(uci -q get equipe_perf.settings.adblock_enabled)\" != \"0\" ] && \\"
+			print "\t   [ \"$(uci -q get equipe_perf.settings.adguard_enabled)\" != \"0\" ] && \\"
+			print "\t   [ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome enabled >/dev/null 2>&1 && \\"
+			print "\t   pgrep -f \"AdGuardHome\" >/dev/null 2>&1; then"
+			print "\t\t/etc/init.d/adguardhome restart >/dev/null 2>&1 &"
+			print "\tfi"
+			next
+		}
+		{ print }
+	' /etc/mwan3.user > /etc/mwan3.user.tmp && mv -f /etc/mwan3.user.tmp /etc/mwan3.user
+	chmod 755 /etc/mwan3.user
+fi
+
+# Se o AdGuard Home / Adblock estiver desativado, assegurar que nenhum processo fantasma persista
+if [ "$(uci -q get equipe_perf.settings.adblock_enabled)" = "0" ] || [ "$(uci -q get equipe_perf.settings.adguard_enabled)" = "0" ]; then
+	killall -9 AdGuardHome adguardhome 2>/dev/null || true
+	pkill -9 -f 'AdGuardHome' 2>/dev/null || true
+	pkill -9 -f 'adguardhome' 2>/dev/null || true
+	ubus call service delete '{"name":"adguardhome"}' >/dev/null 2>&1 || true
+	[ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome disable >/dev/null 2>&1 || true
+	rm -f /etc/rc.d/*adguardhome* 2>/dev/null || true
+fi
+
 if [ -f /etc/adguardhome/adguardhome.yaml ]; then
 	# Reparar chaves de configuracao que possam ter sido corrompidas por sed sem ancora
 	sed -i -E 's/^[[:space:]]*(upstream_dns_file|ipset_file|dnscrypt_config_file):.*/  \1: ""/' /etc/adguardhome/adguardhome.yaml

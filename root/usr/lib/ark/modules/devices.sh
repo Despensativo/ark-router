@@ -736,7 +736,7 @@ except Exception:
 " "$p_mac" "$p_ip" "$p_name" "$p_mode" "$p_block" "$p_safe" "$p_services"
 		chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
 		chmod 644 /etc/adguardhome/adguardhome.yaml 2>/dev/null || true
-		if pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 1)" != "0" ]; then
+		if pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 0)" = "1" ] && [ "$(uci -q get equipe_perf.settings.adguard_enabled || echo 0)" = "1" ]; then
 			/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
 		fi
 	fi

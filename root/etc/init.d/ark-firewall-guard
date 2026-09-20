@@ -21,8 +21,19 @@ boot() {
 		fi
 	fi
 
-	# 2. Verify AdGuard Home status if explicitly enabled
-	if [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 1)" != "0" ] && [ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome enabled >/dev/null 2>&1; then
+	# 2. Verify AdGuard Home status: enforce disabled state or restart if enabled
+	adblock_en="$(uci -q get equipe_perf.settings.adblock_enabled || echo 0)"
+	adguard_en="$(uci -q get equipe_perf.settings.adguard_enabled || echo 0)"
+	if [ "$adblock_en" = "0" ] || [ "$adguard_en" = "0" ]; then
+		if pgrep -f 'AdGuardHome' >/dev/null 2>&1 || pgrep -f 'adguardhome' >/dev/null 2>&1; then
+			logger -t ark-guard "AdGuard Home desativado mas ativo no boot. Encerrando processo..."
+			killall -9 AdGuardHome adguardhome 2>/dev/null || true
+			pkill -9 -f 'adguardhome' 2>/dev/null || true
+			ubus call service delete '{"name":"adguardhome"}' >/dev/null 2>&1 || true
+		fi
+		[ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome disable >/dev/null 2>&1 || true
+		rm -f /etc/rc.d/*adguardhome* 2>/dev/null || true
+	elif [ "$adblock_en" = "1" ] && [ "$adguard_en" = "1" ] && [ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome enabled >/dev/null 2>&1; then
 		if ! pgrep -f 'AdGuardHome' >/dev/null 2>&1; then
 			logger -t ark-guard "AdGuard Home habilitado mas inativo no boot. Iniciando servico..."
 			/etc/init.d/adguardhome restart >/dev/null 2>&1 || true

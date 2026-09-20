@@ -330,7 +330,7 @@ except Exception:
     pass
 " "${raw_blacklist:-$clean_bl}" "${raw_whitelist:-$clean_wl}"
 		chown -R adguardhome:adguardhome /etc/adguardhome 2>/dev/null || true
-		if pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 1)" != "0" ]; then
+		if pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 0)" = "1" ] && [ "$(uci -q get equipe_perf.settings.adguard_enabled || echo 0)" = "1" ]; then
 			/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
 		fi
 	fi
@@ -463,7 +463,7 @@ except Exception:
 		fi
 
 		chown -R adguardhome:adguardhome /etc/adguardhome 2>/dev/null || true
-		if pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 1)" != "0" ]; then
+		if pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 0)" = "1" ] && [ "$(uci -q get equipe_perf.settings.adguard_enabled || echo 0)" = "1" ]; then
 			/etc/init.d/adguardhome reload >/dev/null 2>&1 || /etc/init.d/adguardhome restart >/dev/null 2>&1 || true
 		fi
 		/etc/init.d/dnsmasq reload >/dev/null 2>&1 || /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
@@ -655,7 +655,7 @@ except Exception:
 		fi
 
 		chown -R adguardhome:adguardhome /etc/adguardhome 2>/dev/null || true
-		if pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 1)" != "0" ]; then
+		if pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 0)" = "1" ] && [ "$(uci -q get equipe_perf.settings.adguard_enabled || echo 0)" = "1" ]; then
 			/etc/init.d/adguardhome reload >/dev/null 2>&1 || /etc/init.d/adguardhome restart >/dev/null 2>&1 || true
 		fi
 		/etc/init.d/dnsmasq reload >/dev/null 2>&1 || /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
@@ -1179,6 +1179,48 @@ adblock_disable() {
 		/etc/init.d/adguardhome disable >/dev/null 2>&1 || true
 	fi
 	rm -f /etc/rc.d/*adguardhome* 2>/dev/null || true
+
+	# Aplicar trava de seguranca absoluta (Circuit Breaker) no /etc/init.d/adguardhome
+	if [ -f /etc/init.d/adguardhome ] && ! grep -q 'ARK Router Circuit Breaker' /etc/init.d/adguardhome; then
+		awk '
+			/^start_service\(\) \{/ {
+				print $0
+				print "\t# ARK Router Circuit Breaker: Nunca iniciar se AdGuard/Adblock estiver desativado"
+				print "\tif [ \"$(uci -q get equipe_perf.settings.adblock_enabled)\" = \"0\" ] || [ \"$(uci -q get equipe_perf.settings.adguard_enabled)\" = \"0\" ]; then"
+				print "\t\treturn 0"
+				print "\tfi"
+				next
+			}
+			/^boot\(\) \{/ {
+				print $0
+				print "\t# ARK Router Circuit Breaker"
+				print "\tif [ \"$(uci -q get equipe_perf.settings.adblock_enabled)\" = \"0\" ] || [ \"$(uci -q get equipe_perf.settings.adguard_enabled)\" = \"0\" ]; then"
+				print "\t\treturn 0"
+				print "\tfi"
+				next
+			}
+			{ print }
+		' /etc/init.d/adguardhome > /etc/init.d/adguardhome.tmp && mv -f /etc/init.d/adguardhome.tmp /etc/init.d/adguardhome
+		chmod 755 /etc/init.d/adguardhome
+	fi
+
+	# Sanitizar /etc/mwan3.user se existir para evitar religamento por hotplug
+	if [ -f /etc/mwan3.user ] && grep -q '/etc/init.d/adguardhome' /etc/mwan3.user && ! grep -q 'equipe_perf.settings.adblock_enabled' /etc/mwan3.user; then
+		awk '
+			/\/etc\/init\.d\/adguardhome restart/ {
+				print "\t# Reinicia AdGuard Home APENAS se estiver explicitamente habilitado e ativo"
+				print "\tif [ \"$(uci -q get equipe_perf.settings.adblock_enabled)\" != \"0\" ] && \\"
+				print "\t   [ \"$(uci -q get equipe_perf.settings.adguard_enabled)\" != \"0\" ] && \\"
+				print "\t   [ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome enabled >/dev/null 2>&1 && \\"
+				print "\t   pgrep -f \"AdGuardHome\" >/dev/null 2>&1; then"
+				print "\t\t/etc/init.d/adguardhome restart >/dev/null 2>&1 &"
+				print "\tfi"
+				next
+			}
+			{ print }
+		' /etc/mwan3.user > /etc/mwan3.user.tmp && mv -f /etc/mwan3.user.tmp /etc/mwan3.user
+		chmod 755 /etc/mwan3.user
+	fi
 
 	adblock_restore_dns
 	/etc/init.d/firewall reload >/dev/null 2>&1 || true

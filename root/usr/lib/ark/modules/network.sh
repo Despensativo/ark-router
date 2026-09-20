@@ -407,7 +407,7 @@ sync_adguard_ipv6() {
 	chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
 	chmod 644 "$yaml" 2>/dev/null || true
 
-	if [ -x /usr/bin/AdGuardHome ] && pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 1)" != "0" ]; then
+	if [ -x /usr/bin/AdGuardHome ] && pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 0)" = "1" ] && [ "$(uci -q get equipe_perf.settings.adguard_enabled || echo 0)" = "1" ]; then
 		if /usr/bin/AdGuardHome --config "$yaml" --check-config >/dev/null 2>&1; then
 			/etc/init.d/adguardhome reload >/dev/null 2>&1 || /etc/init.d/adguardhome restart >/dev/null 2>&1 || true
 		else
