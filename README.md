@@ -76,6 +76,10 @@ O **ARK Router** transforma roteadores com **OpenWrt** em verdadeiras centrais d
     - Calibração adaptativa em 3 níveis (Low, Mid e High Spec): distribui pacotes em todos os núcleos da CPU (RPS multi-core `f`), acelera o RFS para 32.768 fluxos e expande o buffer para 2048, garantindo ping médio de 0 ms mesmo sob carga pesada de 500+ Mbps de BitTorrent.
 22. **🌐 Balanceamento PBR BitTorrent em Modo Amplo Seguro (Dual-WAN)**:
     - Balanceia dinamicamente conexões P2P em mais de 64.500 portas (`1024:8079, 8081:8442, 8444:65535`) entre as WANs, mantendo portas de sistema (80, 443, 53, etc.) blindadas na WAN primária estável.
+23. **⚡ WireGuard Client Ultrarrápido e Desacoplado (Zero Timeout)**:
+    - Importação de `.conf` e alteração de servidor/endpoint (`Endpoint = ...`) com resposta imediata ao LuCI RPC (< 100ms) e execução assíncrona desacoplada de firewall e rotas em segundo plano, reduzindo o tempo de salvamento de 12s para **0.730s**.
+24. **🛡️ Blindagem Definitiva Anti-Religamento do AdGuard Home**:
+    - Proteção estrita de estado com eliminação de processos fantasmas e bloqueio de disparos acidentais de `restart` durante modificações de rede ou dispositivos.
 
 ---
 
