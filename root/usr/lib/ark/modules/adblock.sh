@@ -10,36 +10,6 @@ _ARK_ADBLOCK_SH_LOADED=1
 . "${ARK_LIB_DIR}/logging.sh"
 . "${ARK_LIB_DIR}/validation.sh"
 
-detect_dns_blocker() {
-	if pgrep -x 'AdGuardHome' >/dev/null 2>&1 || pgrep -x 'adguardhome' >/dev/null 2>&1; then
-		echo "AdGuard Home"
-		return 0
-	fi
-	if [ "$(uci -q get equipe_perf.settings.adblock_cloud || printf 0)" = 1 ]; then
-		echo "Bloqueador em Nuvem"
-		return 0
-	fi
-	if [ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome status 2>/dev/null | grep -v 'not running' | grep -q 'running'; then
-		echo "AdGuard Home"
-		return 0
-	fi
-	if [ -f /etc/init.d/adblock-fast ] && /etc/init.d/adblock-fast status 2>/dev/null | grep -v 'not running' | grep -q 'running'; then
-		echo "Adblock Fast"
-		return 0
-	fi
-	if [ -f /etc/init.d/adblock ] && /etc/init.d/adblock status 2>/dev/null | grep -v 'not running' | grep -q 'running'; then
-		echo "Adblock"
-		return 0
-	fi
-	if pgrep -x 'pihole-FTL' >/dev/null 2>&1; then
-		echo "Pi-hole"
-		return 0
-	fi
-	return 1
-}
-
-
-
 adblock_status_json() {
 	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
 	overlay_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"

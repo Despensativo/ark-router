@@ -6,47 +6,16 @@
 [ -z "${_ARK_DOCTOR_SH_LOADED:-}" ] || return 0
 _ARK_DOCTOR_SH_LOADED=1
 
-# Ensure common library is loaded
-if ! command -v json_escape >/dev/null 2>&1; then
-	_lib="${ARK_LIB_DIR:-/usr/lib/ark}"
-	if [ -f "${_lib}/common.sh" ]; then
-		. "${_lib}/common.sh"
-	elif [ -f "$(dirname "$0")/../common.sh" ]; then
-		. "$(dirname "$0")/../common.sh"
-	fi
-	unset _lib
+# Ensure common and sqm libraries are loaded
+_lib="${ARK_LIB_DIR:-/usr/lib/ark}"
+[ -d "$_lib" ] || _lib="$(dirname "$0")/.."
+if [ -f "${_lib}/common.sh" ] && ! command -v json_escape >/dev/null 2>&1; then
+	. "${_lib}/common.sh"
 fi
-
-# Helper functions for network & SQM resolution if not already defined
-if ! command -v active_wan_networks >/dev/null 2>&1; then
-	active_wan_networks() {
-		uci -q show network 2>/dev/null | sed -n 's/^network\.\(wan[0-9]*\)=interface$/\1/p' | while IFS= read -r network_section; do
-			proto="$(uci -q get "network.$network_section.proto")"
-			case "$proto" in dhcp|pppoe|static) printf '%s\n' "$network_section" ;; esac
-		done
-	}
+if [ -f "${_lib}/modules/sqm.sh" ] && ! command -v sqm_section_for_network >/dev/null 2>&1; then
+	. "${_lib}/modules/sqm.sh"
 fi
-
-if ! command -v sqm_section_for_network >/dev/null 2>&1; then
-	sqm_section_for_network() {
-		case "$1" in wan) printf wan1 ;; wan[0-9]*) printf '%s' "$1" ;; *) return 1 ;; esac
-	}
-fi
-
-if ! command -v sqm_device_for_network >/dev/null 2>&1; then
-	sqm_device_for_network() {
-		network_section="$1"
-		proto="$(uci -q get "network.$network_section.proto")"
-		if [ "$proto" = pppoe ]; then
-			printf 'pppoe-%s' "$network_section"
-			return 0
-		fi
-		device="$(ubus call "network.interface.$network_section" status 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null)"
-		[ -n "$device" ] || device="$(uci -q get "network.$network_section.device")"
-		[ -n "$device" ] || device="$network_section"
-		printf '%s' "$device"
-	}
-fi
+unset _lib
 
 ark_doctor_audit() {
 	auto_fix="${1:-0}"
@@ -459,20 +428,8 @@ ark_doctor_audit() {
 					touch "$fw_user_file"
 				fi
 				if [ "$culprit" != "mwan3" ] && [ "$culprit" != "Docker (dockerd)" ]; then
-					if command -v iptables >/dev/null 2>&1; then
-						iptables -F 2>/dev/null || true
-						iptables -X 2>/dev/null || true
-						iptables -t nat -F 2>/dev/null || true
-						iptables -t nat -X 2>/dev/null || true
-						iptables -t mangle -F 2>/dev/null || true
-						iptables -t mangle -X 2>/dev/null || true
-					fi
-					if command -v ip6tables >/dev/null 2>&1; then
-						ip6tables -F 2>/dev/null || true
-						ip6tables -X 2>/dev/null || true
-						ip6tables -t mangle -F 2>/dev/null || true
-						ip6tables -t mangle -X 2>/dev/null || true
-					fi
+					# No fw4 puro, nunca invocamos iptables/ip6tables (Regra 11 de seguranca).
+					# O reload do fw4 reconstitui as regras nftables puras e elimina o aviso do LuCI.
 					/sbin/fw4 reload >/dev/null 2>&1 || true
 					fixes_applied=$((fixes_applied + 1))
 					add_check "Pureza do Firewall (fw4 Puro)" "FIXED" "Regras legadas iptables ($culprit) saneadas e pacote migrado para nftables puro."

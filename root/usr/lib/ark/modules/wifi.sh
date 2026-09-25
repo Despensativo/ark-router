@@ -1298,12 +1298,16 @@ EOF
 		saved_ra="$(uci -q get equipe_dashboard.mesh.saved_dhcp_ra || true)"
 		if [ -n "$saved_ra" ]; then
 			uci -q set "dhcp.lan.ra=$saved_ra"
+		elif [ "$(uci -q get equipe_dashboard.ipv6.mode)" != "ipv4_only" ]; then
+			uci -q set dhcp.lan.ra='server'
 		else
 			uci -q delete dhcp.lan.ra
 		fi
 		saved_v6="$(uci -q get equipe_dashboard.mesh.saved_dhcpv6 || true)"
 		if [ -n "$saved_v6" ]; then
 			uci -q set "dhcp.lan.dhcpv6=$saved_v6"
+		elif [ "$(uci -q get equipe_dashboard.ipv6.mode)" != "ipv4_only" ]; then
+			uci -q set dhcp.lan.dhcpv6='server'
 		else
 			uci -q delete dhcp.lan.dhcpv6
 		fi

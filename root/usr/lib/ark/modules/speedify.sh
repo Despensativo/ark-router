@@ -594,29 +594,6 @@ speedify_restore_mwan3() {
 	uci -q commit equipe_dashboard
 }
 
-mwan3_toggle() {
-	case "$1" in 1|on|true|enabled) desired=1 ;; 0|off|false|disabled) desired=0 ;; *) echo 'Estado do Multi-WAN invalido' >&2; return 2 ;; esac
-	[ -x /etc/init.d/mwan3 ] || { echo 'Multi-WAN nao instalado' >&2; return 3; }
-	if [ "$(uci -q get equipe_dashboard.speedify.desired_state || true)" = connected ]; then
-		uci -q set equipe_dashboard.speedify.mwan3_previous="$desired"
-		uci -q set equipe_dashboard.speedify.mwan3_state_saved=1
-		uci -q commit equipe_dashboard
-		/etc/init.d/mwan3 stop >/dev/null 2>&1 || true
-		echo paused
-		return 0
-	fi
-	if [ "$desired" = 1 ]; then
-		ensure_mwan3_ark_config
-		uci commit mwan3 >/dev/null 2>&1 || true
-		/etc/init.d/mwan3 enable >/dev/null 2>&1
-		/etc/init.d/mwan3 restart >/dev/null 2>&1
-	else
-		/etc/init.d/mwan3 stop >/dev/null 2>&1
-		/etc/init.d/mwan3 disable >/dev/null 2>&1
-	fi
-	echo "$desired"
-}
-
 speedify_configure_downstream_subnets() {
 	cli="$1"
 	args=""

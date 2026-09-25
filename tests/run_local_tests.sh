@@ -4,6 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Limpa metadados do macOS em filesystem ExFAT para evitar artefatos de teste
+find "$REPO_DIR" -name "._*" -delete 2>/dev/null || true
+
 GREEN='\033[1;32m'
 RED='\033[1;31m'
 CYAN='\033[1;36m'
@@ -13,16 +16,6 @@ NC='\033[0m'
 printf "${CYAN}============================================================${NC}\n"
 printf "${CYAN}        ARK ROUTER: BATERIA DE TESTES LOCAIS (SEM ROTEADOR) ${NC}\n"
 printf "${CYAN}============================================================${NC}\n\n"
-
-# 1. Validação de Sintaxe Shell
-printf "${YELLOW}[1/5] Verificando sintaxe BusyBox ash...${NC}\n"
-sh -n "$REPO_DIR/root/usr/sbin/equipe-dashboard-control"
-sh -n "$REPO_DIR/root/usr/sbin/ark-doctor"
-for sh_file in "$REPO_DIR"/root/usr/lib/ark/*.sh "$REPO_DIR"/root/usr/lib/ark/modules/*.sh "$REPO_DIR"/tests/lab/*.sh; do
-	[ -f "$sh_file" ] || continue
-	sh -n "$sh_file"
-done
-printf "${GREEN}✓ Sintaxe de scripts 100%% limpa!${NC}\n\n"
 
 NODE_CMD="node"
 if ! command -v node >/dev/null 2>&1; then
@@ -41,6 +34,11 @@ if ! "$PYTHON_CMD" -c "import sys" >/dev/null 2>&1; then
 		PYTHON_CMD="py"
 	fi
 fi
+
+# 1. Validação de Sintaxe Shell e Auditoria Preventiva Anti-Colisão
+printf "${YELLOW}[1/5] Verificando sintaxe BusyBox ash e colisões entre módulos (.sh)...${NC}\n"
+"$PYTHON_CMD" "$REPO_DIR/scripts/audit_shell_scripts.py"
+printf "${GREEN}✓ Scripts shell e módulos 100%% íntegros e sem colisões!${NC}\n\n"
 
 check_node_syntax() {
 	local f="$1"

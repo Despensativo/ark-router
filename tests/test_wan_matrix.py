@@ -6,6 +6,7 @@ Runs 100% locally on PC/WSL without needing a physical router.
 import unittest
 import json
 import os
+import sys
 from test_harness import RouterSandbox, REPO_DIR
 
 class TestWanMatrix(unittest.TestCase):
@@ -534,6 +535,13 @@ config device 'wan_eth1'
         self.assertEqual(self.sb.run_sh("uci -q get dhcp.lan.ra").stdout.strip(), "disabled")
         self.assertEqual(self.sb.run_sh("uci -q get dhcp.lan.dhcpv6").stdout.strip(), "disabled")
         self.assertEqual(self.sb.run_sh("uci -q get dhcp.@dnsmasq[0].filter_aaaa").stdout.strip(), "1")
+
+    def test_17_shell_scripts_integrity_and_collision_audit(self):
+        """Audita preventivamente todos os scripts .sh contra sobreposição de funções, sintaxe e regras de firewall"""
+        audit_script = os.path.join(REPO_DIR, "scripts", "audit_shell_scripts.py")
+        import subprocess
+        res = subprocess.run([sys.executable, audit_script], capture_output=True, text=True)
+        self.assertEqual(res.returncode, 0, f"Falha na auditoria de scripts shell:\n{res.stdout}\n{res.stderr}")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

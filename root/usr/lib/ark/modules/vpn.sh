@@ -10,6 +10,10 @@ _ARK_VPN_SH_LOADED=1
 . "${ARK_LIB_DIR}/logging.sh"
 . "${ARK_LIB_DIR}/validation.sh"
 
+json_text_escape() {
+	sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g' | tr '\r' ' ' | awk '{ if (NR>1) printf "\\n"; printf "%s", $0 }'
+}
+
 tailscale_lan_cidr() {
 	ipaddr="$(uci -q get network.lan.ipaddr || true)"
 	netmask="$(uci -q get network.lan.netmask || printf 255.255.255.0)"
@@ -968,9 +972,6 @@ EOF
 	fi
 	ifup wg0 >/dev/null 2>&1 || true
 
-	json_text_escape() {
-		sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g' | tr '\r' ' ' | awk '{ if (NR>1) printf "\\n"; printf "%s", $0 }'
-	}
 	conf_txt="$(cat "$cfg_file" | json_text_escape)"
 	qr_svg=""
 	if command -v qrencode >/dev/null 2>&1; then
@@ -1030,9 +1031,6 @@ wireguard_peer_qr() {
 		return 1
 	fi
 
-	json_text_escape() {
-		sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g' | tr '\r' ' ' | awk '{ if (NR>1) printf "\\n"; printf "%s", $0 }'
-	}
 	conf_txt="$(cat "$cfg_file" | json_text_escape)"
 	qr_svg=""
 	if command -v qrencode >/dev/null 2>&1; then

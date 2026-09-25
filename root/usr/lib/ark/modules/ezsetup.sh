@@ -299,12 +299,6 @@ feature_active() {
 	esac
 }
 
-ark_current_version() { cat /usr/share/ark-router/VERSION 2>/dev/null || printf '%s' "$ARK_ROUTER_VERSION"; }
-
-ark_update_repo() { uci -q get equipe_dashboard.update.repo 2>/dev/null || printf '%s' "$ARK_UPDATE_REPO_DEFAULT"; }
-
-normalize_version() { printf '%s' "$1" | sed 's/^v//; s/[^0-9.].*$//'; }
-
 version_gt() {
 	awk -v a="$(normalize_version "$1")" -v b="$(normalize_version "$2")" 'BEGIN {
 		split(a, A, "."); split(b, B, ".");
@@ -510,35 +504,6 @@ apply_operation_profile() {
 ez_get() { uci -q get "equipe_dashboard.setup.$1" 2>/dev/null || printf '%s' "$2"; }
 
 ez_set() { uci -q set equipe_dashboard.setup=ezsetup; uci -q set "equipe_dashboard.setup.$1=$2"; }
-
-ez_bool() { case "$1" in 1|true|yes|on) printf 1 ;; *) printf 0 ;; esac; }
-
-ez_backup() {
-	stamp="$(date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)"
-	file="/tmp/ark-router-ezsetup-backup-$stamp.tar.gz"
-	stage="/tmp/ark-router-ezsetup-backup-$stamp"
-	rm -rf "$stage"
-	mkdir -p "$stage/etc/config" "$stage/metadata" || return 1
-	for cfg in network wireless dhcp firewall sqm mwan3 uhttpd luci equipe_dashboard equipe_devices qos_equipe; do
-		[ -f "/etc/config/$cfg" ] && cp "/etc/config/$cfg" "$stage/etc/config/$cfg"
-	done
-	{
-		echo "ARK Router EZ Setup backup"
-		echo "Created: $(date 2>/dev/null || true)"
-		echo "Restore command:"
-		echo "  tar -xzf $file -C /"
-		echo "  /etc/init.d/network reload"
-		echo "  /etc/init.d/dnsmasq restart"
-		echo "  /etc/init.d/firewall restart"
-	} > "$stage/metadata/README.txt"
-	tar -czf "$file" -C "$stage" . || return 1
-	rm -rf "$stage"
-	# Retenção inteligente em /tmp: mantém no máximo os 3 backups mais recentes para economizar RAM
-	ls -1t /tmp/ark-router-ezsetup-backup-*.tar.gz 2>/dev/null | tail -n +4 | xargs rm -f 2>/dev/null || true
-	ls -1t /tmp/ark-profile-backup-*.tar.gz 2>/dev/null | tail -n +4 | xargs rm -f 2>/dev/null || true
-	ez_set backup "$file"
-	printf '%s' "$file"
-}
 
 ez_progress() { ez_set applied_step "$1"; ez_set last_step "$2"; uci commit equipe_dashboard; }
 
@@ -1046,6 +1011,8 @@ handle_ezsetup() {
 		if [ "$(ez_get applied_step 0)" -lt 3 ]; then
 			if [ "$(ez_get disable_ipv6 0)" = 1 ]; then
 				disable_ipv6_full
+			else
+				enable_ipv6_dual_stack
 			fi
 			dns_mode="$(ez_get dns_mode recommended)"
 			if [ "$dns_mode" != operator ]; then
@@ -1126,6 +1093,9 @@ handle_ezsetup() {
 				effective_dev1="$(uci -q get network.wan.device || uci -q get network.wan.ifname || echo wan)"
 				apply_wan_modem_access wan "$wan1_proto" "$wan1_modem" "$effective_dev1"
 				uci -q set network.wan.metric=10
+				if [ "$(uci -q get network.wan.device_mtu)" = "1508" ] || [ "$(uci -q get network.wan.mtu)" = "1500" -a "$wan1_proto" = "pppoe" ]; then
+					ark_ensure_phys_device_mtu "$effective_dev1" 1508
+				fi
 			fi
 
 			# WAN 2 Configuration
@@ -1145,6 +1115,9 @@ handle_ezsetup() {
 				uci -q set "network.wan2.device=$wan2_port"
 				apply_wan_modem_access wan2 "$wan2_proto" "$wan2_modem" "$wan2_port"
 				uci -q set network.wan2.metric=20
+				if [ "$(uci -q get network.wan2.device_mtu)" = "1508" ] || [ "$(uci -q get network.wan2.mtu)" = "1500" -a "$wan2_proto" = "pppoe" ]; then
+					ark_ensure_phys_device_mtu "$wan2_port" 1508
+				fi
 				zone="$(firewall_wan_zone_section)"
 				[ -n "$zone" ] && firewall_zone_has_network "$zone" wan2 || uci -q add_list "firewall.$zone.network=wan2"
 			else

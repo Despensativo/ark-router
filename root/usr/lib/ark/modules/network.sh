@@ -13,24 +13,6 @@ _ARK_NETWORK_SH_LOADED=1
 [ -f "${ARK_LIB_DIR}/modules/sqm.sh" ] && . "${ARK_LIB_DIR}/modules/sqm.sh"
 [ -f "${ARK_LIB_DIR}/modules/starlink.sh" ] && . "${ARK_LIB_DIR}/modules/starlink.sh"
 
-lan_dhcp_dns_values() {
-	for opt in $(uci -q get dhcp.lan.dhcp_option 2>/dev/null); do
-		case "$opt" in
-			6,*) printf '%s\n' "$opt" | cut -d, -f2- | tr ',' '\n' ;;
-		esac
-	done
-}
-
-validate_dns_list() {
-	count=0
-	for server in $1; do
-		valid_ipv4 "$server" || return 1
-		count=$((count + 1))
-		[ "$count" -le 3 ] || return 1
-	done
-	return 0
-}
-
 apply_lan_dhcp_dns() {
 	dns="$1"
 	old_options="$(uci -q get dhcp.lan.dhcp_option 2>/dev/null || true)"
@@ -527,6 +509,9 @@ enable_ipv6_dual_stack() {
 
 	restore_ipv6_firewall_rules
 
+	uci -q set equipe_dashboard.ipv6=ipv6
+	uci -q set equipe_dashboard.ipv6.mode='dual_stack'
+	uci commit equipe_dashboard
 	uci commit network
 	uci commit dhcp
 	uci commit firewall
@@ -936,6 +921,9 @@ disable_ipv6_full() {
 		[ -n "$sec" ] || break
 		uci -q delete "firewall.$sec"
 	done
+	uci -q set equipe_dashboard.ipv6=ipv6
+	uci -q set equipe_dashboard.ipv6.mode='ipv4_only'
+	uci commit equipe_dashboard
 	uci commit network
 	uci commit dhcp
 	uci commit firewall
@@ -976,30 +964,6 @@ lan_bridge_port_count() {
 	br="$(lan_bridge_section)"
 	[ -n "$br" ] || { printf 0; return 0; }
 	uci -q get "network.$br.ports" 2>/dev/null | wc -w
-}
-
-active_wan_networks() {
-	uci -q show network 2>/dev/null | sed -n 's/^network\.\(wan[0-9]*\)=interface$/\1/p' | while IFS= read -r network_section; do
-		proto="$(uci -q get "network.$network_section.proto")"
-		case "$proto" in dhcp|pppoe|static) printf '%s\n' "$network_section" ;; esac
-	done
-}
-
-sqm_section_for_network() {
-	case "$1" in wan) printf wan1 ;; wan[0-9]*) printf '%s' "$1" ;; *) return 1 ;; esac
-}
-
-sqm_device_for_network() {
-	network_section="$1"
-	proto="$(uci -q get "network.$network_section.proto")"
-	if [ "$proto" = pppoe ]; then
-		printf 'pppoe-%s' "$network_section"
-		return 0
-	fi
-	device="$(ubus call "network.interface.$network_section" status 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null)"
-	[ -n "$device" ] || device="$(uci -q get "network.$network_section.device")"
-	[ -n "$device" ] || device="$network_section"
-	printf '%s' "$device"
 }
 
 mwan3_reorder_rules() {
@@ -1494,12 +1458,28 @@ apply_wan_proto() {
 		uci -q set "network.$iface.username=$username"
 		uci -q delete "network.$iface.password"
 		[ -n "$password" ] && uci -q set "network.$iface.password=$password"
+		if [ "$(uci -q get "network.$iface.device_mtu")" = "1508" ]; then
+			uci -q set "network.$iface.mtu=1500"
+		elif [ "$(uci -q get "network.$iface.mtu")" = "1500" ]; then
+			uci -q set "network.$iface.mtu=1492"
+		fi
 	elif [ "$proto" = static ]; then
 		valid_ipv4 "$ipaddr" && valid_ipv4 "$netmask" || { echo 'IPv4 estatico invalido' >&2; return 2; }
 		[ -z "$gateway" ] || valid_ipv4 "$gateway" || { echo 'Gateway invalido' >&2; return 2; }
 		uci -q set "network.$iface.ipaddr=$ipaddr"
 		uci -q set "network.$iface.netmask=$netmask"
 		[ -z "$gateway" ] || uci -q set "network.$iface.gateway=$gateway"
+		[ "$(uci -q get "network.$iface.mtu")" = "1492" ] && uci -q delete "network.$iface.mtu"
+	elif [ "$proto" = dhcp ]; then
+		[ "$(uci -q get "network.$iface.mtu")" = "1492" ] && uci -q delete "network.$iface.mtu"
+	fi
+	local cur_dev_mtu="$(uci -q get "network.$iface.device_mtu")"
+	local wan_phys_dev="$(uci -q get "network.$iface.device" || uci -q get "network.$iface.ifname" || echo "$iface")"
+	case "$wan_phys_dev" in
+		@*) wan_phys_dev="$(uci -q get "network.${wan_phys_dev#@}.device" || echo "$wan_phys_dev")" ;;
+	esac
+	if [ "$cur_dev_mtu" = "1508" ] && [ -n "$wan_phys_dev" ]; then
+		ark_ensure_phys_device_mtu "$wan_phys_dev" 1508
 	fi
 	uci -q set "network.$iface.peerdns=0"
 	uci -q delete "network.$iface.dns"

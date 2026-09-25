@@ -57,7 +57,7 @@ def scan_module_strings():
     pt_pattern = re.compile(r'[\u00C0-\u00FF]|(?:conectar|desconectar|dispositivo|roteador|configur|ativ|ligad|desligad|recolh|expand|limp|otimiz|servidor|saúde|memória|armazen|velocidade|carreg|salv|cancel|reinici|bloque|liber|atenção|padrão|segundo|minuto|hora|dia|semana|mês|ano|automático|manual|abrir|fechar|voltar|avançar|excluir|remover|aplicar|ajust|taxa|rede|porta|canal|segurança|senha|usuário|cliente|conex|histórico|tráfego|gráfico|painel|detalhe|ajuda|aviso|erro|sucesso|falha|instal|recurso|modo|início|gerenc|atualiz|opç|estatística|endereço|filtro|prioridade)', re.IGNORECASE)
 
     for fname in os.listdir(MODULES_DIR):
-        if not fname.endswith(".js"):
+        if not fname.endswith(".js") or fname.startswith("."):
             continue
         filepath = os.path.join(MODULES_DIR, fname)
         with open(filepath, "r", encoding="utf-8") as f:
