@@ -351,7 +351,7 @@ const systemMethods = {
 					E('div',{class:'ex-feature-copy'},[
 						E('div',{class:'ex-feature-name-row'},[
 							E('strong',{},['Versão instalada: ']),
-							E('span',{class:'ex-pill online'},[update.current||window.ARK_VERSION||'1.5.2'])
+							E('span',{class:'ex-pill online'},[update.current||window.ARK_VERSION||'1.5.3'])
 						]),
 						E('small',{class:'ex-muted'},['Repositório: ',update.repo||'Despensativo/ark-router']),
 						E('small',{class:'ex-muted'},['Gerenciador: ',manager])
