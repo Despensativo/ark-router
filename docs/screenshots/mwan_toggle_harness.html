@@ -1,3 +1,3262 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARK Router - Verificação Visual: Toggle de Regras Avançadas de Roteamento (Portas e IPs)</title>
+    <style>
+/* ==========================================================================
+   ARK Theme — Modern Dark Theme for OpenWrt LuCI (Inspired by Argon)
+   Compatible with OpenWrt 19.07, 21.02, 22.03, 23.05, 24.10, 25.x
+   ========================================================================== */
+
+:root {
+	--ark-bg: #0b1120;
+	--ark-surface-1: #111c30;
+	--ark-surface-2: #192742;
+	--ark-surface-3: #223455;
+	--ark-border: rgba(255, 255, 255, 0.09);
+	--ark-border-hover: rgba(255, 255, 255, 0.18);
+	--ark-text-main: #f8fafc;
+	--ark-text-muted: #94a3b8;
+	--ark-text-dim: #64748b;
+	--ark-primary: #3b82f6;
+	--ark-primary-glow: rgba(59, 130, 246, 0.25);
+	--ark-secondary: #8b5cf6;
+	--ark-cyan: #06b6d4;
+	--ark-success: #10b981;
+	--ark-warning: #f59e0b;
+	--ark-danger: #ef4444;
+	--ark-radius: 10px;
+	--ark-radius-lg: 14px;
+	--ark-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+	--ark-shadow-lg: 0 12px 35px rgba(0, 0, 0, 0.5);
+}
+
+/* Global Reset & Base */
+html, body {
+	background-color: var(--ark-bg) !important;
+	color: var(--ark-text-main) !important;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif !important;
+	font-size: 14px;
+	line-height: 1.5;
+	margin: 0;
+	padding: 0;
+	min-height: 100vh;
+	-webkit-font-smoothing: antialiased;
+}
+
+a {
+	color: var(--ark-primary);
+	text-decoration: none;
+	transition: color 0.15s ease;
+}
+a:hover {
+	color: var(--ark-cyan);
+	text-decoration: none;
+}
+
+/* Left Sidebar Navigation (Desktop) */
+.ark-mobile-bar {
+	display: none !important;
+}
+.ark-sidebar-backdrop {
+	display: none;
+}
+
+aside.ark-sidebar {
+	position: fixed !important;
+	top: 0 !important;
+	left: 0 !important;
+	bottom: 0 !important;
+	width: 230px !important;
+	background: #0f172a !important;
+	background: rgba(15, 23, 42, 0.96) !important;
+	backdrop-filter: blur(20px) !important;
+	-webkit-backdrop-filter: blur(20px) !important;
+	border-right: 1px solid var(--ark-border) !important;
+	display: flex !important;
+	flex-direction: column !important;
+	z-index: 1050 !important;
+	box-shadow: 2px 0 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+.ark-sidebar-header {
+	padding: 18px 16px !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: space-between !important;
+	border-bottom: 1px solid var(--ark-border) !important;
+}
+
+.ark-sidebar-close {
+	display: none !important;
+}
+
+.ark-sidebar-nav {
+	flex: 1 1 auto !important;
+	overflow-y: auto !important;
+	overflow-x: hidden !important;
+	padding: 12px 8px !important;
+}
+.ark-sidebar-nav::-webkit-scrollbar {
+	width: 4px;
+}
+.ark-sidebar-nav::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.12);
+	border-radius: 4px;
+}
+
+.ark-sidebar-nav ul.nav,
+.ark-sidebar-nav .nav {
+	display: flex !important;
+	flex-direction: column !important;
+	gap: 4px !important;
+	width: 100% !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	list-style: none !important;
+}
+
+.ark-sidebar-nav ul.nav > li,
+.ark-sidebar-nav .nav > li {
+	position: relative !important;
+	width: 100% !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	list-style: none !important;
+}
+
+.ark-sidebar-nav ul.nav > li > a,
+.ark-sidebar-nav .nav > li > a {
+	display: flex !important;
+	align-items: center !important;
+	justify-content: space-between !important;
+	color: var(--ark-text-muted) !important;
+	font-weight: 600 !important;
+	font-size: 13.5px !important;
+	padding: 10px 14px !important;
+	border-radius: 8px !important;
+	transition: all 0.18s ease !important;
+	text-decoration: none !important;
+}
+
+.ark-sidebar-nav ul.nav > li > a:hover,
+.ark-sidebar-nav ul.nav > li.active > a,
+.ark-sidebar-nav .nav > li.active > a,
+.ark-sidebar-nav ul.nav > li.open > a,
+.ark-sidebar-nav .nav > li.open > a {
+	color: #fff !important;
+	background: var(--ark-surface-2) !important;
+	box-shadow: inset 3px 0 0 var(--ark-primary) !important;
+}
+
+/* Expandable menu items + / − indicator */
+.ark-sidebar-nav .nav > li.dropdown > a.menu {
+	cursor: pointer !important;
+	user-select: none !important;
+	position: relative !important;
+}
+
+.ark-sidebar-nav .nav > li.dropdown > a.menu::after {
+	content: '+' !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	width: 20px !important;
+	height: 20px !important;
+	font-size: 15px !important;
+	font-weight: 700 !important;
+	line-height: 1 !important;
+	color: var(--ark-text-muted) !important;
+	margin-left: auto !important;
+	border-radius: 4px !important;
+	transition: all 0.2s ease !important;
+}
+
+.ark-sidebar-nav .nav > li.dropdown > a.menu:hover::after {
+	color: #fff !important;
+	background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.ark-sidebar-nav .nav > li.dropdown.open > a.menu::after {
+	content: '−' !important;
+	color: #38bdf8 !important;
+	background: rgba(56, 189, 248, 0.15) !important;
+	font-weight: 800 !important;
+}
+
+.ark-sidebar-footer {
+	padding: 12px 14px !important;
+	border-top: 1px solid var(--ark-border) !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: space-between !important;
+}
+
+.container {
+	max-width: 1400px;
+	width: 100%;
+	margin: 0 auto;
+	padding: 0 16px;
+	box-sizing: border-box;
+}
+
+/* Brand styling */
+.brand.ark-brand, .brand {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 18px;
+	font-weight: 800;
+	color: #fff !important;
+	letter-spacing: -0.02em;
+	padding: 4px 8px;
+	border-radius: 8px;
+	transition: opacity 0.2s;
+	text-decoration: none !important;
+}
+.brand.ark-brand:hover, .brand:hover {
+	opacity: 0.9;
+}
+.ark-brand-icon {
+	color: #38bdf8;
+	font-size: 20px;
+}
+.ark-brand-accent {
+	background: linear-gradient(135deg, #38bdf8, #818cf8);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+}
+
+/* Main Content with Left Sidebar Offset */
+#maincontent.ark-main-container,
+.ark-app-page #maincontent,
+body.ark-theme:not(.ark-login-page) #maincontent,
+body.ark-theme:not(.ark-login-page) .main {
+	margin-left: 230px !important;
+	max-width: calc(100vw - 230px) !important;
+	padding: 24px 32px !important;
+	box-sizing: border-box !important;
+	transition: margin-left 0.25s ease !important;
+}
+body.ark-login-page #maincontent {
+	margin-left: 0 !important;
+	max-width: 100% !important;
+}
+
+/* Accordion Submenus (Inline inside sidebar, never flies out or closes on hover) */
+.ark-sidebar .dropdown-menu,
+.ark-sidebar .menu-dropdown,
+.ark-sidebar ul.dropdown {
+	position: static !important;
+	display: none !important;
+	width: 100% !important;
+	box-sizing: border-box !important;
+	min-width: 0 !important;
+	box-shadow: none !important;
+	border: none !important;
+	border-left: 2px solid rgba(56, 189, 248, 0.4) !important;
+	background: rgba(0, 0, 0, 0.25) !important;
+	border-radius: 0 8px 8px 0 !important;
+	margin: 3px 0 6px 12px !important;
+	padding: 4px 0 !important;
+	list-style: none !important;
+	backdrop-filter: none !important;
+	-webkit-backdrop-filter: none !important;
+}
+
+/* Open state: display as block inside sidebar */
+.ark-sidebar-nav ul.nav > li.open > .dropdown-menu,
+.ark-sidebar-nav .nav > li.open > .dropdown-menu,
+.ark-sidebar-nav li.dropdown.open > ul {
+	display: block !important;
+	animation: arkAccordionFadeIn 0.2s ease !important;
+}
+
+@keyframes arkAccordionFadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.ark-sidebar .dropdown-menu > li,
+.ark-sidebar .menu-dropdown > li {
+	list-style: none !important;
+	margin: 0 !important;
+	padding: 0 !important;
+}
+
+.ark-sidebar .dropdown-menu > li > a,
+.ark-sidebar .menu-dropdown > li > a,
+.ark-sidebar .dropdown > li > a {
+	display: block !important;
+	color: var(--ark-text-muted) !important;
+	padding: 7px 12px 7px 14px !important;
+	border-radius: 6px !important;
+	font-size: 12.5px !important;
+	font-weight: 500 !important;
+	white-space: normal !important;
+	text-decoration: none !important;
+	transition: all 0.15s ease !important;
+	cursor: pointer !important;
+	pointer-events: auto !important;
+}
+
+.ark-sidebar .dropdown-menu > li > a:hover,
+.ark-sidebar .menu-dropdown > li > a:hover,
+.ark-sidebar .dropdown > li > a:hover,
+.ark-sidebar .dropdown-menu > li.active > a,
+.ark-sidebar .dropdown-menu > li > a.active {
+	background: rgba(56, 189, 248, 0.12) !important;
+	color: #fff !important;
+}
+
+/* Tabs & CBI Tabmenu (Form, Section and Subnavigation Tabs) */
+ul.cbi-tabmenu, .cbi-tabmenu, #tabmenu, ul.tabs, .tabs {
+	display: flex !important;
+	flex-wrap: wrap !important;
+	list-style: none !important;
+	padding: 0 !important;
+	margin: 0 0 20px 0 !important;
+	gap: 8px !important;
+	border-bottom: 1px solid var(--ark-border) !important;
+	padding-bottom: 12px !important;
+}
+
+ul.cbi-tabmenu > li, .cbi-tabmenu > li, #tabmenu > li, ul.tabs > li, .tabs > li {
+	display: inline-flex !important;
+	list-style: none !important;
+	margin: 0 !important;
+	padding: 0 !important;
+}
+
+ul.cbi-tabmenu > li::before, .cbi-tabmenu > li::before, #tabmenu > li::before, ul.tabs > li::before, .tabs > li::before {
+	content: none !important;
+	display: none !important;
+}
+
+/* Tab Items Base */
+ul.cbi-tabmenu > li > a, .cbi-tabmenu > li > a, #tabmenu > li > a, ul.tabs > li > a, .tabs > li > a,
+#tabmenu a, .tabs a {
+	display: inline-flex !important;
+	align-items: center !important;
+	padding: 8px 16px !important;
+	font-size: 13px !important;
+	font-weight: 600 !important;
+	color: var(--ark-text-muted) !important;
+	background: var(--ark-surface-2) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: 8px !important;
+	text-decoration: none !important;
+	transition: all 0.2s ease !important;
+	cursor: pointer !important;
+}
+
+ul.cbi-tabmenu > li > a:hover, .cbi-tabmenu > li > a:hover, #tabmenu > li > a:hover, ul.tabs > li > a:hover, .tabs > li > a:hover,
+#tabmenu a:hover, .tabs a:hover {
+	color: #fff !important;
+	background: var(--ark-surface-3) !important;
+	border-color: var(--ark-border-hover) !important;
+}
+
+/* Active Tab (LuCI CBI uses .cbi-tab for active and .cbi-tab-disabled for inactive) */
+ul.cbi-tabmenu > li.cbi-tab:not(.cbi-tab-disabled) > a, 
+.cbi-tabmenu > li.cbi-tab:not(.cbi-tab-disabled) > a, 
+ul.cbi-tabmenu > li.cbi-tab-active > a, 
+.cbi-tabmenu > li.cbi-tab-active > a, 
+#tabmenu > li.active > a, 
+ul.tabs > li.active > a,
+.tabs > li.active > a,
+li[data-tab].cbi-tab > a,
+li[data-tab]:not(.cbi-tab-disabled) > a {
+	background: linear-gradient(135deg, #3b82f6, #6366f1) !important;
+	color: #fff !important;
+	border-color: #3b82f6 !important;
+	box-shadow: 0 2px 10px rgba(59, 130, 246, 0.4) !important;
+}
+
+/* Inactive Tab */
+ul.cbi-tabmenu > li.cbi-tab-disabled > a,
+.cbi-tabmenu > li.cbi-tab-disabled > a,
+ul.tabs > li:not(.active) > a,
+.tabs > li:not(.active) > a,
+li[data-tab].cbi-tab-disabled > a {
+	background: var(--ark-surface-2) !important;
+	color: var(--ark-text-muted) !important;
+	border-color: var(--ark-border) !important;
+	box-shadow: none !important;
+	opacity: 0.85 !important;
+}
+
+/* Tab Content Visibility (Hide Inactive Tab Panes, Show Active Pane) */
+[data-tab-title]:not([data-tab-active="true"]):not(li),
+div[data-tab]:not([data-tab-active="true"]):not(li) {
+	display: none !important;
+	height: 0 !important;
+	opacity: 0 !important;
+	overflow: hidden !important;
+}
+
+[data-tab-title][data-tab-active="true"],
+div[data-tab][data-tab-active="true"]:not(li),
+[data-tab-active="true"]:not(li) {
+	display: block !important;
+	height: auto !important;
+	opacity: 1 !important;
+	overflow: visible !important;
+	animation: arkTabFade 0.2s ease-in-out;
+}
+
+@keyframes arkTabFade {
+	from { opacity: 0; transform: translateY(4px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+/* Modern Network Interface & Wireless Badges (Compact & Proportional) */
+.ifacebadge {
+	display: inline-flex !important;
+	flex-direction: row !important;
+	align-items: center !important;
+	gap: 6px !important;
+	background: var(--ark-surface-2) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: 6px !important;
+	padding: 4px 10px !important;
+	margin: 2px 4px !important;
+	min-width: 0 !important;
+	width: auto !important;
+	max-width: fit-content !important;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+	transition: all 0.2s ease !important;
+	color: var(--ark-text-main) !important;
+	font-size: 12px !important;
+	font-weight: 600 !important;
+	line-height: 1.3 !important;
+	vertical-align: middle !important;
+}
+.ifacebadge:hover {
+	border-color: var(--ark-primary) !important;
+	box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2) !important;
+}
+.ifacebadge img {
+	display: none !important; /* Hide old blurry 90s bitmaps */
+}
+
+/* Specific inside table cells */
+td .ifacebadge,
+.td .ifacebadge,
+table .ifacebadge,
+.table .ifacebadge,
+.cbi-section-table .ifacebadge {
+	padding: 3px 8px !important;
+	font-size: 11px !important;
+	margin: 0 !important;
+}
+
+/* Prevent tooltip popups from rendering inline and breaking interface cells */
+.cbi-tooltip.ifacebadge {
+	display: none !important;
+}
+.cbi-tooltip-container:hover .cbi-tooltip.ifacebadge {
+	display: block !important;
+	position: absolute !important;
+	z-index: 1000 !important;
+	background: #0f172a !important;
+	border: 1px solid #334155 !important;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+	padding: 10px 14px !important;
+	border-radius: 8px !important;
+}
+
+.ifacebox {
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius-lg) !important;
+	margin-bottom: 20px !important;
+	padding: 20px !important;
+	box-shadow: var(--ark-shadow) !important;
+}
+.ifacebox-head {
+	background: linear-gradient(135deg, #1e3a8a, #3b82f6) !important;
+	color: #fff !important;
+	font-weight: 700 !important;
+	border-radius: 6px !important;
+	padding: 6px 14px !important;
+	margin-bottom: 14px !important;
+	display: inline-block !important;
+	font-size: 13px !important;
+	letter-spacing: 0.03em;
+}
+.ifacebox-body {
+	display: flex !important;
+	flex-wrap: wrap !important;
+	gap: 12px !important;
+	background: transparent !important;
+	padding: 4px 0 !important;
+}
+.ark-iface-icon {
+	font-size: 13px !important;
+	margin: 0 !important;
+	display: inline-block !important;
+	line-height: 1 !important;
+}
+
+/* Main Content Area */
+#maincontent {
+	width: 100% !important;
+	max-width: 1400px !important;
+	margin: 0 auto !important;
+	padding: 24px 16px 48px !important;
+	box-sizing: border-box !important;
+	min-height: calc(100vh - 140px);
+}
+
+/* Cards & Containers */
+.cbi-map, .cbi-section, .table, fieldset {
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius-lg) !important;
+	padding: 20px !important;
+	margin-bottom: 20px !important;
+	box-shadow: var(--ark-shadow);
+}
+
+h2, h3, h4, legend {
+	color: #fff !important;
+	font-weight: 700 !important;
+	letter-spacing: -0.01em;
+	border-bottom: 1px solid var(--ark-border) !important;
+	padding-bottom: 8px;
+	margin-top: 0;
+}
+.cbi-map-descr, .cbi-section-descr {
+	color: var(--ark-text-muted);
+	font-size: 13px;
+	margin-bottom: 16px;
+}
+
+/* Form Fields */
+.cbi-value {
+	padding: 12px 0;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+}
+.cbi-value:last-child {
+	border-bottom: none;
+}
+.cbi-value-title {
+	width: 240px;
+	color: var(--ark-text-main);
+	font-weight: 600;
+	font-size: 13px;
+}
+.cbi-value-field {
+	flex: 1;
+	min-width: 250px;
+}
+/* Ensure table cells inheriting .cbi-value-field do not blow up table width */
+.td.cbi-value-field,
+.th.cbi-value-field,
+.table .cbi-value-field,
+.cbi-section-table .cbi-value-field {
+	min-width: 0 !important;
+	flex: none !important;
+}
+.cbi-value-description {
+	color: var(--ark-text-dim);
+	font-size: 12px;
+	margin-top: 4px;
+}
+
+/* Inputs & Controls */
+input.cbi-input-text, input[type="text"], input[type="password"], textarea, select.cbi-input-select, select {
+	background: var(--ark-surface-2) !important;
+	color: var(--ark-text-main) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: 8px !important;
+	padding: 8px 12px !important;
+	font-size: 13px !important;
+	outline: none !important;
+	transition: all 0.15s ease !important;
+	box-sizing: border-box;
+}
+input.cbi-input-text:focus, input[type="text"]:focus, input[type="password"]:focus, textarea:focus, select:focus {
+	border-color: var(--ark-primary) !important;
+	box-shadow: 0 0 0 3px var(--ark-primary-glow) !important;
+}
+
+/* Buttons */
+.btn, .cbi-button {
+	background: var(--ark-surface-2);
+	color: var(--ark-text-main);
+	border: 1px solid var(--ark-border);
+	border-radius: 8px;
+	padding: 8px 16px;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	text-decoration: none;
+}
+.btn:hover, .cbi-button:hover {
+	background: var(--ark-surface-3);
+	border-color: var(--ark-border-hover);
+	color: #fff;
+}
+
+.btn-primary, .cbi-button-apply, .cbi-button-positive {
+	background: linear-gradient(135deg, #2563eb, #3b82f6) !important;
+	border-color: #3b82f6 !important;
+	color: #fff !important;
+	font-weight: 700 !important;
+	box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35) !important;
+}
+.btn-primary:hover, .cbi-button-apply:hover, .cbi-button-positive:hover {
+	background: linear-gradient(135deg, #1d4ed8, #2563eb) !important;
+	box-shadow: 0 4px 15px rgba(37, 99, 235, 0.5) !important;
+	color: #fff !important;
+}
+
+.cbi-button-save, .cbi-button-action {
+	background: rgba(56, 189, 248, 0.18) !important;
+	border: 1px solid rgba(56, 189, 248, 0.45) !important;
+	color: #38bdf8 !important;
+	border-radius: 8px !important;
+	padding: 8px 18px !important;
+	font-weight: 700 !important;
+	transition: all 0.2s ease !important;
+}
+.cbi-button-save:hover, .cbi-button-action:hover {
+	background: #0284c7 !important;
+	border-color: #0284c7 !important;
+	color: #fff !important;
+	box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4) !important;
+}
+
+.cbi-button-reset, .cbi-button-neutral {
+	background: rgba(255, 255, 255, 0.08) !important;
+	border: 1px solid rgba(255, 255, 255, 0.2) !important;
+	color: #f1f5f9 !important;
+	font-weight: 600 !important;
+}
+.cbi-button-reset:hover, .cbi-button-neutral:hover {
+	background: rgba(255, 255, 255, 0.18) !important;
+	border-color: rgba(255, 255, 255, 0.35) !important;
+	color: #fff !important;
+}
+
+.cbi-button-remove, .cbi-button-negative {
+	background: rgba(239, 68, 68, 0.18) !important;
+	border-color: rgba(239, 68, 68, 0.45) !important;
+	color: #fca5a5 !important;
+	font-weight: 700 !important;
+}
+.cbi-button-remove:hover, .cbi-button-negative:hover {
+	background: #ef4444 !important;
+	border-color: #ef4444 !important;
+	color: #fff !important;
+}
+
+/* Specific Dashboard Action Buttons - High Contrast Guarantees */
+.ex-hero-setup-button {
+	background: #ffffff !important;
+	color: #0f172a !important;
+	border: 1px solid rgba(255, 255, 255, 0.9) !important;
+	font-weight: 800 !important;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
+	padding: 7px 16px !important;
+	border-radius: 9px !important;
+	cursor: pointer !important;
+	transition: all 0.18s ease !important;
+}
+.ex-hero-setup-button:hover {
+	background: #f1f5f9 !important;
+	color: #0284c7 !important;
+	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+.ex-hero-feature-button {
+	background: rgba(255, 255, 255, 0.16) !important;
+	color: #ffffff !important;
+	border: 1px solid rgba(255, 255, 255, 0.4) !important;
+	font-weight: 750 !important;
+	padding: 7px 14px !important;
+	border-radius: 9px !important;
+	cursor: pointer !important;
+	transition: all 0.18s ease !important;
+	backdrop-filter: blur(8px) !important;
+	-webkit-backdrop-filter: blur(8px) !important;
+}
+.ex-hero-feature-button:hover {
+	background: rgba(255, 255, 255, 0.28) !important;
+	border-color: rgba(255, 255, 255, 0.7) !important;
+	color: #ffffff !important;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25) !important;
+}
+
+.ex-mini-button {
+	background: rgba(56, 189, 248, 0.15) !important;
+	color: #38bdf8 !important;
+	border: 1px solid rgba(56, 189, 248, 0.45) !important;
+	font-weight: 750 !important;
+	border-radius: 8px !important;
+	padding: 6px 12px !important;
+	font-size: 0.82rem !important;
+	cursor: pointer !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	gap: 5px !important;
+	transition: all 0.15s ease !important;
+}
+.ex-mini-button:hover {
+	background: #0284c7 !important;
+	border-color: #38bdf8 !important;
+	color: #ffffff !important;
+	box-shadow: 0 0 14px rgba(56, 189, 248, 0.5) !important;
+}
+
+.ex-perf-expand-btn {
+	background: rgba(56, 189, 248, 0.14) !important;
+	color: #38bdf8 !important;
+	border: 1px solid rgba(56, 189, 248, 0.4) !important;
+	font-weight: 750 !important;
+	border-radius: 9px !important;
+	padding: 7px 14px !important;
+	cursor: pointer !important;
+	transition: all 0.15s ease !important;
+}
+.ex-perf-expand-btn:hover {
+	background: #0284c7 !important;
+	border-color: #38bdf8 !important;
+	color: #ffffff !important;
+	box-shadow: 0 0 12px rgba(56, 189, 248, 0.4) !important;
+}
+
+/* Multi-WAN and Mode Selection Buttons - High Contrast Active / Inactive States */
+.ex-mode-button,
+button.ex-mode-button,
+.cbi-button.ex-mode-button {
+	min-height: 44px !important;
+	padding: 8px 14px !important;
+	border: 1px solid rgba(255, 255, 255, 0.14) !important;
+	border-radius: 11px !important;
+	color: #94a3b8 !important;
+	background: rgba(15, 23, 42, 0.6) !important;
+	cursor: pointer !important;
+	font-weight: 650 !important;
+	box-shadow: none !important;
+	transition: all 0.18s ease !important;
+}
+.ex-mode-button:hover,
+button.ex-mode-button:hover,
+.cbi-button.ex-mode-button:hover {
+	background: rgba(255, 255, 255, 0.12) !important;
+	border-color: rgba(255, 255, 255, 0.35) !important;
+	color: #ffffff !important;
+}
+.ex-mode-button.active,
+button.ex-mode-button.active,
+.cbi-button.ex-mode-button.active,
+.cbi-button-neutral.ex-mode-button.active {
+	background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+	border: 2px solid #38bdf8 !important;
+	color: #ffffff !important;
+	font-weight: 800 !important;
+	box-shadow: 0 0 20px rgba(56, 189, 248, 0.6), 0 4px 14px rgba(2, 132, 199, 0.45) !important;
+	transform: translateY(-1px) !important;
+}
+.ex-mode-button.active::before,
+button.ex-mode-button.active::before,
+.cbi-button.ex-mode-button.active::before {
+	content: '✓ ' !important;
+	color: #a5f3fc !important;
+	font-weight: 900 !important;
+	margin-right: 5px !important;
+}
+
+/* Modal Top-Right Close Button */
+.modal, #modal_overlay > .modal {
+	position: relative !important;
+}
+.ark-modal-close-btn {
+	position: absolute !important;
+	top: 14px !important;
+	right: 14px !important;
+	width: 32px !important;
+	height: 32px !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	background: rgba(255, 255, 255, 0.08) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: 8px !important;
+	color: #94a3b8 !important;
+	font-size: 22px !important;
+	line-height: 1 !important;
+	cursor: pointer !important;
+	z-index: 20 !important;
+	transition: all 0.15s ease !important;
+}
+.ark-modal-close-btn:hover {
+	background: rgba(239, 68, 68, 0.25) !important;
+	border-color: #ef4444 !important;
+	color: #f87171 !important;
+}
+
+/* Aggressively suppress hidden inputs and LuCI Enter-key traps */
+.hidden,
+input.hidden,
+input[type="submit"].hidden,
+input[type="button"].hidden,
+button.hidden,
+form > div > input[type="submit"].hidden,
+form > input[type="submit"].hidden {
+	display: none !important;
+	visibility: hidden !important;
+	opacity: 0 !important;
+	position: absolute !important;
+	left: -99999px !important;
+	top: -99999px !important;
+	width: 0 !important;
+	height: 0 !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	border: 0 !important;
+	pointer-events: none !important;
+}
+
+/* Suppress legacy LuCI password toggle buttons (*) when ARK eye toggle exists */
+.ark-pwd-wrap + button.cbi-button-neutral,
+div[id*="password"] > button.cbi-button-neutral,
+div[id*="pw"] > button.cbi-button-neutral {
+	display: none !important;
+}
+
+/* Tables (Both traditional <table> and modern LuCI <div class="table">) */
+.table, table.cbi-section-table, table.table {
+	display: table !important;
+	width: 100% !important;
+	border-collapse: separate !important;
+	border-spacing: 0 !important;
+	margin: 14px 0 !important;
+	background: var(--ark-surface-1);
+	border: 1px solid var(--ark-border);
+	border-radius: var(--ark-radius);
+	overflow: hidden;
+}
+
+.tr, tr {
+	display: table-row !important;
+	transition: background-color 0.15s ease;
+}
+.tr:hover, tr:hover {
+	background: rgba(255, 255, 255, 0.03) !important;
+}
+
+.table-titles, thead tr {
+	display: table-row !important;
+	background: var(--ark-surface-2) !important;
+}
+
+.th, th, table.cbi-section-table th, table.table th {
+	display: table-cell !important;
+	background: var(--ark-surface-2) !important;
+	color: var(--ark-text-muted) !important;
+	font-size: 11px !important;
+	font-weight: 700 !important;
+	text-transform: uppercase !important;
+	letter-spacing: 0.06em !important;
+	padding: 12px 14px !important;
+	border-bottom: 1px solid var(--ark-border) !important;
+	text-align: left;
+	vertical-align: middle !important;
+}
+
+.td, td, table.cbi-section-table td, table.table td {
+	display: table-cell !important;
+	padding: 12px 14px !important;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+	color: var(--ark-text-main) !important;
+	font-size: 13px !important;
+	vertical-align: middle !important;
+}
+
+.tr:last-child .td, tr:last-child td {
+	border-bottom: none !important;
+}
+
+/* LuCI Named Table Sections (Row Titles / Names, e.g. MWAN3 Interfaces, Members, Policies) */
+.tr.named::before,
+.tr[data-title]::before {
+	display: table-cell !important;
+	content: attr(data-title) !important;
+	vertical-align: middle !important;
+	padding: 12px 14px !important;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+	font-weight: 700 !important;
+	color: #60a5fa !important;
+	font-family: monospace !important;
+	font-size: 13px !important;
+	white-space: nowrap !important;
+}
+
+.tr.cbi-section-table-titles.named::before,
+.tr.cbi-section-table-titles[data-title]::before {
+	background: var(--ark-surface-2) !important;
+	color: var(--ark-text-muted) !important;
+	font-size: 11px !important;
+	text-transform: uppercase !important;
+	letter-spacing: 0.06em !important;
+	font-family: inherit !important;
+	border-bottom: 1px solid var(--ark-border) !important;
+}
+
+/* Ensure wide tables scroll smoothly horizontally instead of clipping action buttons */
+.cbi-section, .cbi-tblsection, .cbi-section-node {
+	overflow-x: auto !important;
+	-webkit-overflow-scrolling: touch !important;
+}
+
+/* Hide LuCI form dummy/hidden submit inputs that float as orphaned buttons */
+input.hidden, .hidden {
+	display: none !important;
+}
+
+/* Alerts & Notices */
+.alert-message {
+	padding: 12px 16px;
+	border-radius: var(--ark-radius);
+	margin-bottom: 16px;
+	border-left: 4px solid var(--ark-primary);
+	background: var(--ark-surface-2);
+}
+.alert-message.warning {
+	border-left-color: var(--ark-warning);
+	background: rgba(245, 158, 11, 0.1);
+}
+.alert-message.danger, .alert-message.error {
+	border-left-color: var(--ark-danger);
+	background: rgba(239, 68, 68, 0.1);
+}
+.alert-message.success, .alert-message.info {
+	border-left-color: var(--ark-success);
+	background: rgba(16, 185, 129, 0.1);
+}
+.alert-message h4 {
+	margin: 0 0 4px 0;
+	border-bottom: none !important;
+	font-size: 14px;
+}
+.alert-message p {
+	margin: 0;
+	font-size: 13px;
+	color: var(--ark-text-muted);
+}
+
+/* ==========================================================================
+   MODERN LOGIN SCREEN (SYSAUTH) — Argon Concept Refined
+   ========================================================================== */
+body.ark-login-page aside.ark-sidebar,
+body.ark-login-page .ark-sidebar-backdrop,
+body.ark-login-page .ark-mobile-bar,
+body.ark-login-page #ark-sidebar,
+body:has(input[name="luci_password"]) aside.ark-sidebar,
+body:has(input[name="luci_password"]) .ark-sidebar-backdrop,
+body:has(input[name="luci_password"]) .ark-mobile-bar,
+body:has(input[name="luci_password"]) #ark-sidebar {
+	display: none !important;
+}
+
+body.ark-login-page #maincontent,
+body.ark-login-page #maincontent.ark-main-container,
+body:has(input[name="luci_password"]) #maincontent,
+body:has(input[name="luci_password"]) #maincontent.ark-main-container,
+#maincontent:has(input[name="luci_password"]) {
+	max-width: 460px !important;
+	width: 100% !important;
+	margin: 80px auto !important;
+	margin-left: auto !important;
+	margin-right: auto !important;
+	padding: 0 16px !important;
+}
+
+body.ark-login-page .cbi-map::before,
+form:has(input[name="luci_password"]) .cbi-map::before {
+	content: '⚡ ARK Router';
+	display: block;
+	text-align: center;
+	font-size: 24px;
+	font-weight: 800;
+	letter-spacing: -0.02em;
+	margin-bottom: 14px;
+	background: linear-gradient(135deg, #60a5fa, #a855f7);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+}
+
+body.ark-login-page .cbi-map,
+.cbi-map:has(input[name="luci_password"]),
+form[action=""] .cbi-map,
+form[method="post"] .cbi-map:has(input[name="luci_password"]) {
+	background: rgba(19, 29, 49, 0.85) !important;
+	backdrop-filter: blur(20px) !important;
+	-webkit-backdrop-filter: blur(20px) !important;
+	border: 1px solid rgba(255, 255, 255, 0.12) !important;
+	border-radius: 18px !important;
+	box-shadow: 0 24px 50px rgba(0, 0, 0, 0.6), 0 0 40px rgba(59, 130, 246, 0.18) !important;
+	padding: 32px 28px !important;
+}
+
+form[action=""] .cbi-map h2,
+#maincontent:has(input[name="luci_password"]) h2 {
+	text-align: center;
+	border-bottom: none !important;
+	font-size: 20px;
+	font-weight: 800;
+	margin-bottom: 4px;
+	background: linear-gradient(135deg, #ffffff, #94a3b8);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+}
+form[action=""] .cbi-map .cbi-map-descr,
+#maincontent:has(input[name="luci_password"]) .cbi-map-descr {
+	text-align: center;
+	color: var(--ark-text-dim);
+	margin-bottom: 24px;
+	font-size: 13px;
+}
+
+form[action=""] .cbi-value,
+form:has(input[name="luci_password"]) .cbi-value {
+	flex-direction: column !important;
+	align-items: flex-start !important;
+	border-bottom: none !important;
+	padding: 8px 0 !important;
+}
+form[action=""] .cbi-value-title,
+form:has(input[name="luci_password"]) .cbi-value-title {
+	width: 100% !important;
+	margin-bottom: 6px;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--ark-text-muted);
+}
+form[action=""] .cbi-value-field,
+form:has(input[name="luci_password"]) .cbi-value-field {
+	width: 100% !important;
+}
+form[action=""] input.cbi-input-text,
+form:has(input[name="luci_password"]) input.cbi-input-text {
+	width: 100% !important;
+	padding: 12px 14px !important;
+	font-size: 14px !important;
+	border-radius: 10px !important;
+	background: rgba(11, 17, 32, 0.8) !important;
+}
+
+.cbi-page-actions {
+	border-top: none !important;
+	padding-top: 16px !important;
+	display: flex;
+	gap: 10px;
+	justify-content: center;
+}
+form:has(input[name="luci_password"]) .cbi-page-actions input[type="submit"] {
+	width: 100% !important;
+	padding: 12px 20px !important;
+	font-size: 15px !important;
+	font-weight: 700 !important;
+	border-radius: 10px !important;
+	background: linear-gradient(135deg, #3b82f6, #8b5cf6) !important;
+	border: none !important;
+	color: #fff !important;
+	cursor: pointer;
+	box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4) !important;
+	transition: all 0.2s ease;
+}
+form:has(input[name="luci_password"]) .cbi-page-actions input[type="submit"]:hover {
+	background: linear-gradient(135deg, #2563eb, #7c3aed) !important;
+	box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6) !important;
+}
+form:has(input[name="luci_password"]) .cbi-page-actions input[type="reset"] {
+	display: none !important;
+}
+
+/* Footer */
+footer.ark-footer, footer {
+	border-top: 1px solid var(--ark-border) !important;
+	padding: 16px 0 !important;
+	margin-top: 40px !important;
+	font-size: 12px !important;
+	color: var(--ark-text-dim) !important;
+	text-align: center;
+}
+.ark-footer-wrap {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	max-width: 1200px;
+	margin: 0 auto;
+	padding: 0 16px;
+}
+
+/* ==========================================================================
+   Modals & Overlays (ui.showModal)
+   ========================================================================== */
+#modal_overlay {
+	visibility: hidden;
+	position: fixed !important;
+	top: 0 !important;
+	bottom: 0 !important;
+	left: 0 !important;
+	right: 0 !important;
+	width: 100vw !important;
+	height: 100vh !important;
+	background: rgba(11, 17, 32, 0.85) !important;
+	backdrop-filter: blur(8px) !important;
+	-webkit-backdrop-filter: blur(8px) !important;
+	z-index: 10000 !important;
+	overflow-y: auto !important;
+	-webkit-overflow-scrolling: touch !important;
+	transition: opacity .15s ease-in !important;
+	opacity: 0;
+	pointer-events: none !important;
+}
+body:not(.modal-overlay-active) #modal_overlay,
+body.ark-login-page #modal_overlay,
+body.ark-login-page .modal,
+body.ark-login-page .cbi-modal {
+	display: none !important;
+	opacity: 0 !important;
+	pointer-events: none !important;
+	visibility: hidden !important;
+}
+
+body.modal-overlay-active:not(.ark-login-page) {
+	overflow: hidden !important;
+	height: 100vh !important;
+}
+body.modal-overlay-active:not(.ark-login-page) #modal_overlay {
+	visibility: visible !important;
+	opacity: 1 !important;
+	pointer-events: auto !important;
+	z-index: 10000 !important;
+}
+.modal, #modal_overlay > .modal {
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius-lg) !important;
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(56, 189, 248, 0.1) !important;
+	color: var(--ark-text-main) !important;
+	max-width: 720px;
+	min-height: 32px;
+	min-width: 280px;
+	width: 90%;
+	margin: 4em auto;
+	padding: 24px;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	box-sizing: border-box;
+}
+#modal_overlay > .modal.uci-dialog, #modal_overlay > .modal.cbi-modal {
+	max-width: 900px;
+}
+.modal > * {
+	flex-basis: 100%;
+	line-height: normal;
+	margin-bottom: 0.75em;
+	max-width: 100%;
+}
+.modal h4, .modal h3 {
+	font-size: 18px;
+	font-weight: 700;
+	color: #fff;
+	margin-bottom: 16px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid var(--ark-border);
+}
+.modal .right {
+	text-align: right;
+	margin-top: 16px;
+	margin-bottom: 0;
+}
+.modal > pre, .modal > textarea, #modal_overlay .modal > pre, #modal_overlay .modal > textarea {
+	overflow: auto;
+	white-space: pre-wrap;
+	background: var(--ark-bg);
+	border: 1px solid var(--ark-border);
+	border-radius: 8px;
+	padding: 12px;
+	color: var(--ark-text-muted);
+}
+
+/* ==========================================================================
+   ARK Feature Guide System (Para que serve • O que fazer • Recomendações)
+   ========================================================================== */
+.ark-guide-box {
+	background: linear-gradient(135deg, rgba(30, 41, 59, 0.75) 0%, rgba(15, 23, 42, 0.95) 100%) !important;
+	border: 1px solid rgba(59, 130, 246, 0.25) !important;
+	border-left: 4px solid #3b82f6 !important;
+	border-radius: var(--ark-radius, 12px) !important;
+	padding: 16px 20px !important;
+	margin: 16px 0 22px !important;
+	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25) !important;
+	display: flex !important;
+	flex-direction: column !important;
+	gap: 10px !important;
+}
+.ark-guide-title {
+	font-size: 14px !important;
+	font-weight: 700 !important;
+	color: #fff !important;
+	display: flex !important;
+	align-items: center !important;
+	gap: 8px !important;
+	margin: 0 0 4px 0 !important;
+}
+.ark-guide-item {
+	font-size: 12px !important;
+	line-height: 1.6 !important;
+	color: var(--ark-text-muted) !important;
+	display: flex !important;
+	align-items: flex-start !important;
+	gap: 8px !important;
+}
+.ark-guide-item strong {
+	color: #f1f5f9 !important;
+	white-space: nowrap !important;
+}
+.ark-guide-item.rec {
+	background: rgba(16, 185, 129, 0.1) !important;
+	border: 1px solid rgba(16, 185, 129, 0.25) !important;
+	border-radius: 8px !important;
+	padding: 8px 12px !important;
+	color: #a7f3d0 !important;
+	margin-top: 4px !important;
+}
+.ark-guide-item.rec strong {
+	color: #34d399 !important;
+}
+
+/* ==========================================================================
+   Password Toggle & Strength Meter
+   ========================================================================== */
+.ark-pwd-wrap {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	width: 100%;
+	max-width: 360px;
+}
+.ark-pwd-wrap input.cbi-input-text,
+.ark-pwd-wrap input[type="password"],
+.ark-pwd-wrap input[type="text"] {
+	width: 100% !important;
+	padding-right: 42px !important;
+	box-sizing: border-box;
+}
+.ark-pwd-toggle {
+	position: absolute;
+	right: 6px;
+	background: transparent;
+	border: none;
+	color: var(--ark-text-muted);
+	cursor: pointer;
+	padding: 6px 8px;
+	font-size: 16px;
+	border-radius: 6px;
+	line-height: 1;
+	transition: opacity 0.2s ease;
+}
+.ark-pwd-toggle:hover {
+	opacity: 0.8;
+}
+.ark-pwd-meter {
+	margin-top: 8px;
+	max-width: 360px;
+	width: 100%;
+}
+.ark-meter-bar {
+	height: 6px;
+	background: var(--ark-surface-2);
+	border-radius: 3px;
+	overflow: hidden;
+	margin-bottom: 6px;
+}
+.ark-meter-fill {
+	height: 100%;
+	width: 0%;
+	transition: width 0.3s ease, background-color 0.3s ease;
+}
+.ark-meter-fill.weak { background-color: var(--ark-danger); }
+.ark-meter-fill.medium { background-color: var(--ark-warning); }
+.ark-meter-fill.good { background-color: var(--ark-cyan); }
+.ark-meter-fill.strong { background-color: var(--ark-success); }
+.ark-meter-label {
+	font-size: 12px;
+	color: var(--ark-text-muted);
+	margin-bottom: 6px;
+}
+.ark-meter-rules {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.ark-meter-rules span {
+	font-size: 11px;
+	padding: 2px 8px;
+	border-radius: 4px;
+	background: var(--ark-surface-2);
+	color: var(--ark-text-dim);
+	border: 1px solid var(--ark-border);
+	transition: all 0.2s ease;
+}
+.ark-meter-rules span.ok {
+	background: rgba(16, 185, 129, 0.15);
+	color: #34d399;
+	border-color: rgba(16, 185, 129, 0.3);
+	font-weight: 600;
+}
+
+/* ==========================================================================
+   Table & Log Search Filters
+   ========================================================================== */
+.ark-table-search-bar {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	background: var(--ark-surface-1);
+	border: 1px solid var(--ark-border);
+	border-radius: var(--ark-radius);
+	padding: 8px 14px;
+	margin-bottom: 12px;
+}
+.ark-search-icon {
+	font-size: 14px;
+	opacity: 0.7;
+}
+.ark-search-input {
+	background: transparent !important;
+	border: none !important;
+	color: #fff !important;
+	font-size: 13px !important;
+	flex: 1;
+	outline: none !important;
+	box-shadow: none !important;
+	padding: 0 !important;
+}
+.ark-search-count {
+	font-size: 12px;
+	color: var(--ark-text-dim);
+	white-space: nowrap;
+}
+.ark-log-header-bar {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+	margin-bottom: 12px;
+	flex-wrap: wrap;
+}
+.ark-copy-log-btn {
+	padding: 8px 16px !important;
+	font-size: 13px !important;
+	white-space: nowrap;
+}
+
+/* ==========================================================================
+   Safety Confirmation Modals & Countdown
+   ========================================================================== */
+.ark-modal-backdrop {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(11, 17, 32, 0.85);
+	backdrop-filter: blur(10px);
+	-webkit-backdrop-filter: blur(10px);
+	z-index: 10000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 16px;
+	box-sizing: border-box;
+	animation: arkFadeIn 0.2s ease-out;
+}
+.ark-modal-box {
+	background: var(--ark-surface-1);
+	border: 1px solid var(--ark-border);
+	border-radius: var(--ark-radius-lg);
+	max-width: 520px;
+	width: 100%;
+	padding: 24px;
+	box-shadow: var(--ark-shadow-lg);
+	box-sizing: border-box;
+	animation: arkScaleUp 0.25s ease-out;
+}
+.ark-modal-box.danger {
+	border-color: rgba(239, 68, 68, 0.35);
+	box-shadow: 0 12px 40px rgba(239, 68, 68, 0.25);
+}
+.ark-modal-box.warning {
+	border-color: rgba(245, 158, 11, 0.35);
+	box-shadow: 0 12px 40px rgba(245, 158, 11, 0.25);
+}
+.ark-modal-header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 16px;
+	padding-bottom: 12px;
+	border-bottom: 1px solid var(--ark-border);
+}
+.ark-modal-icon {
+	font-size: 24px;
+}
+.ark-modal-header h3 {
+	font-size: 17px;
+	margin: 0;
+	color: #fff;
+	font-weight: 700;
+}
+.ark-modal-body {
+	font-size: 14px;
+	color: var(--ark-text-muted);
+	line-height: 1.6;
+	margin-bottom: 24px;
+}
+.ark-modal-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 12px;
+}
+.ark-fullscreen-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: #0b1120;
+	z-index: 99999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+}
+.ark-countdown-card {
+	background: var(--ark-surface-1);
+	border: 1px solid var(--ark-border);
+	border-radius: var(--ark-radius-lg);
+	padding: 36px 28px;
+	text-align: center;
+	max-width: 460px;
+	width: 100%;
+	box-shadow: var(--ark-shadow-lg);
+}
+.ark-spinner-ring {
+	width: 48px;
+	height: 48px;
+	border: 4px solid var(--ark-surface-3);
+	border-top-color: var(--ark-primary);
+	border-radius: 50%;
+	animation: arkSpin 1s linear infinite;
+	margin: 0 auto 20px;
+}
+.ark-countdown-num {
+	font-size: 36px;
+	font-weight: 800;
+	color: var(--ark-cyan);
+	margin: 16px 0;
+	letter-spacing: -0.02em;
+}
+.ark-countdown-progress {
+	height: 8px;
+	background: var(--ark-surface-2);
+	border-radius: 4px;
+	overflow: hidden;
+	margin-bottom: 16px;
+}
+.ark-progress-bar {
+	height: 100%;
+	width: 0%;
+	background: linear-gradient(90deg, #3b82f6, #06b6d4);
+	transition: width 0.5s ease;
+}
+.ark-countdown-note {
+	font-size: 13px;
+	color: var(--ark-text-dim);
+	margin: 0;
+}
+@keyframes arkSpin {
+	to { transform: rotate(360deg); }
+}
+@keyframes arkFadeIn {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+@keyframes arkScaleUp {
+	from { transform: scale(0.95); opacity: 0; }
+	to { transform: scale(1); opacity: 1; }
+}
+
+/* ==========================================================================
+   ARK Structural Layout Engine (Hero Banners, Metrics Grid & Action Cards)
+   ========================================================================== */
+
+/* 1. Hero Banner */
+.ark-hero-banner {
+	background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(17, 28, 48, 0.95) 50%, rgba(139, 92, 246, 0.08) 100%) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius-lg, 16px) !important;
+	padding: 22px 26px !important;
+	margin-bottom: 20px !important;
+	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3) !important;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+}
+.ark-hero-left {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+}
+.ark-hero-badge-icon {
+	width: 52px;
+	height: 52px;
+	border-radius: 14px;
+	background: linear-gradient(135deg, #2563eb, #3b82f6);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 26px;
+	box-shadow: 0 4px 16px rgba(37, 99, 235, 0.4);
+	color: #fff;
+}
+.ark-hero-details h2 {
+	margin: 0 0 4px !important;
+	font-size: 20px !important;
+	font-weight: 700 !important;
+	color: #fff !important;
+}
+.ark-hero-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 6px;
+}
+.ark-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 3px 10px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 600;
+	background: rgba(255, 255, 255, 0.08);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	color: var(--ark-text-muted);
+}
+.ark-chip.online {
+	background: rgba(16, 185, 129, 0.15);
+	border-color: rgba(16, 185, 129, 0.35);
+	color: #34d399;
+}
+.ark-chip.primary {
+	background: rgba(59, 130, 246, 0.15);
+	border-color: rgba(59, 130, 246, 0.35);
+	color: #60a5fa;
+}
+
+/* 2. Metrics Grid (CPU, RAM, Flash) */
+.ark-metrics-grid {
+	display: grid !important;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) !important;
+	gap: 16px !important;
+	margin-bottom: 22px !important;
+}
+.ark-metric-tile {
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius, 12px) !important;
+	padding: 18px 20px !important;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.ark-metric-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+.ark-metric-title {
+	font-size: 12px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--ark-text-muted);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.ark-metric-value {
+	font-size: 18px;
+	font-weight: 800;
+	color: #fff;
+	font-variant-numeric: tabular-nums;
+}
+.ark-meter-bar-lg {
+	height: 8px;
+	background: rgba(255, 255, 255, 0.08);
+	border-radius: 999px;
+	overflow: hidden;
+}
+.ark-meter-bar-fill {
+	height: 100%;
+	border-radius: 999px;
+	transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.ark-meter-bar-fill.green {
+	background: linear-gradient(90deg, #10b981, #34d399);
+}
+.ark-meter-bar-fill.blue {
+	background: linear-gradient(90deg, #2563eb, #38bdf8);
+}
+.ark-meter-bar-fill.amber {
+	background: linear-gradient(90deg, #d97706, #fbbf24);
+}
+.ark-meter-bar-fill.red {
+	background: linear-gradient(90deg, #dc2626, #f87171);
+}
+.ark-metric-subtext {
+	font-size: 11px;
+	color: var(--ark-text-dim);
+	display: flex;
+	justify-content: space-between;
+}
+
+/* 3. Action Cards Grid (Backup, Restore, Flash, Reset) */
+.ark-action-grid {
+	display: grid !important;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+	gap: 18px !important;
+	margin: 20px 0 !important;
+}
+.ark-action-card {
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius-lg, 14px) !important;
+	padding: 22px !important;
+	display: flex !important;
+	flex-direction: column !important;
+	justify-content: space-between !important;
+	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25) !important;
+	position: relative !important;
+	overflow: hidden !important;
+	transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.ark-action-card:hover {
+	transform: translateY(-2px);
+	border-color: var(--ark-border-hover);
+}
+.ark-action-card:before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 3px;
+}
+.ark-action-card.primary:before { background: linear-gradient(90deg, #2563eb, #38bdf8); }
+.ark-action-card.success:before { background: linear-gradient(90deg, #059669, #34d399); }
+.ark-action-card.purple:before { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
+.ark-action-card.danger:before { background: linear-gradient(90deg, #dc2626, #f87171); }
+
+.ark-action-header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 12px;
+}
+.ark-action-icon {
+	font-size: 24px;
+	width: 44px;
+	height: 44px;
+	border-radius: 10px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(255, 255, 255, 0.06);
+}
+.ark-action-card.primary .ark-action-icon { background: rgba(37, 99, 235, 0.15); color: #60a5fa; }
+.ark-action-card.success .ark-action-icon { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.ark-action-card.purple .ark-action-icon { background: rgba(139, 92, 246, 0.15); color: #c084fc; }
+.ark-action-card.danger .ark-action-icon { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+.ark-action-header h3 {
+	margin: 0 !important;
+	font-size: 15px !important;
+	font-weight: 700 !important;
+	color: #fff !important;
+}
+.ark-action-desc {
+	font-size: 12px;
+	color: var(--ark-text-muted);
+	line-height: 1.5;
+	margin-bottom: 16px;
+	flex: 1;
+}
+.ark-action-btn-wrap {
+	margin-top: auto;
+}
+.ark-action-btn-wrap button, 
+.ark-action-btn-wrap input[type="submit"] {
+	width: 100% !important;
+	min-height: 42px !important;
+	justify-content: center !important;
+	font-weight: 600 !important;
+	border-radius: 8px !important;
+}
+
+/* 4. Diagnostics Presets */
+.ark-preset-pills {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 10px 0 14px;
+}
+.ark-preset-btn {
+	background: rgba(255, 255, 255, 0.08) !important;
+	border: 1px solid rgba(255, 255, 255, 0.14) !important;
+	color: #e2e8f0 !important;
+	font-size: 12px !important;
+	padding: 5px 12px !important;
+	border-radius: 8px !important;
+	cursor: pointer !important;
+	transition: all 0.15s ease !important;
+}
+.ark-preset-btn:hover {
+	background: rgba(59, 130, 246, 0.2) !important;
+	border-color: #3b82f6 !important;
+	color: #fff !important;
+}
+
+/* 5. Clean Card Splitting (Form Grid) */
+.ark-grid-2 {
+	display: grid !important;
+	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) !important;
+	gap: 16px !important;
+}
+
+/* 6. Wireless Dual-Band Command Center */
+.ark-wireless-grid {
+	display: grid !important;
+	grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)) !important;
+	gap: 20px !important;
+	margin: 20px 0 !important;
+}
+body:not([data-interface-mode="advanced"]) #cbi-wireless-wifi-device > .table.cbi-section-table,
+body:not([data-interface-mode="advanced"]) #cbi-wireless-wifi-device > .cbi-section-table {
+	display: none !important;
+}
+.ark-radio-card {
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius-lg, 16px) !important;
+	padding: 24px !important;
+	display: flex !important;
+	flex-direction: column !important;
+	gap: 16px !important;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+	position: relative !important;
+	overflow: hidden !important;
+}
+.ark-radio-card.radio-5g {
+	border-top: 3px solid #8b5cf6 !important;
+}
+.ark-radio-card.radio-2g {
+	border-top: 3px solid #3b82f6 !important;
+}
+.ark-radio-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+	padding-bottom: 14px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.ark-radio-title-wrap h3 {
+	margin: 0 0 4px !important;
+	font-size: 17px !important;
+	font-weight: 700 !important;
+	color: #fff !important;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.ark-radio-meta {
+	font-size: 12px;
+	color: var(--ark-text-muted);
+}
+.ark-radio-badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 8px;
+}
+.ark-radio-actions {
+	display: flex;
+	gap: 6px;
+}
+.ark-radio-actions button {
+	font-size: 11px !important;
+	padding: 6px 12px !important;
+	height: 34px !important;
+}
+.ark-ssid-list {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+.ark-ssid-card {
+	background: rgba(255, 255, 255, 0.03) !important;
+	border: 1px solid rgba(255, 255, 255, 0.08) !important;
+	border-radius: 12px !important;
+	padding: 14px 16px !important;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	transition: background 0.15s ease, border-color 0.15s ease;
+}
+.ark-ssid-card:hover {
+	background: rgba(255, 255, 255, 0.05) !important;
+	border-color: rgba(255, 255, 255, 0.14) !important;
+}
+.ark-ssid-info {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+.ark-ssid-icon {
+	width: 36px;
+	height: 36px;
+	border-radius: 10px;
+	background: rgba(59, 130, 246, 0.15);
+	color: #60a5fa;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 18px;
+}
+.ark-radio-card.radio-5g .ark-ssid-icon {
+	background: rgba(139, 92, 246, 0.15);
+	color: #c084fc;
+}
+.ark-ssid-details strong {
+	font-size: 14px;
+	color: #fff;
+	display: block;
+}
+.ark-ssid-details span {
+	font-size: 11px;
+	color: var(--ark-text-dim);
+}
+.ark-ssid-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.ark-ssid-actions button {
+	padding: 4px 10px !important;
+	font-size: 11px !important;
+	height: 30px !important;
+}
+
+/* 7. Interfaces Command Grid */
+.ark-iface-grid {
+	display: grid !important;
+	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) !important;
+	gap: 18px !important;
+	margin: 20px 0 !important;
+}
+.ark-iface-card {
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius-lg, 16px) !important;
+	padding: 22px !important;
+	display: flex !important;
+	flex-direction: column !important;
+	gap: 14px !important;
+	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22) !important;
+	position: relative !important;
+	overflow: hidden !important;
+}
+.ark-iface-card.lan { border-top: 3px solid #10b981 !important; }
+.ark-iface-card.wan { border-top: 3px solid #3b82f6 !important; }
+.ark-iface-card.wan6 { border-top: 3px solid #8b5cf6 !important; }
+
+.ark-iface-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+.ark-iface-name {
+	font-size: 17px;
+	font-weight: 700;
+	color: #fff;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.ark-iface-device {
+	font-size: 11px;
+	padding: 2px 8px;
+	border-radius: 6px;
+	background: rgba(255, 255, 255, 0.08);
+	color: var(--ark-text-muted);
+	font-family: monospace;
+}
+.ark-iface-stats {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 10px;
+	background: rgba(255, 255, 255, 0.02);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	border-radius: 10px;
+	padding: 12px;
+}
+.ark-iface-stat-tile {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+.ark-iface-stat-tile .label {
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--ark-text-dim);
+}
+.ark-iface-stat-tile .val {
+	font-size: 13px;
+	font-weight: 600;
+	color: #f1f5f9;
+	font-family: monospace;
+	word-break: break-all;
+}
+.ark-iface-actions {
+	display: flex;
+	gap: 8px;
+	margin-top: auto;
+}
+.ark-iface-actions button {
+	flex: 1 !important;
+	justify-content: center !important;
+	font-size: 11px !important;
+	height: 34px !important;
+}
+
+/* Interface Header Chips & Metadata */
+.ark-iface-chips {
+	display: flex !important;
+	gap: 6px !important;
+	align-items: center !important;
+	flex-wrap: wrap !important;
+}
+.ark-chip.proto {
+	background: rgba(59, 130, 246, 0.12) !important;
+	color: #93c5fd !important;
+	border: 1px solid rgba(59, 130, 246, 0.25) !important;
+	font-size: 11px !important;
+	font-weight: 600 !important;
+	padding: 2px 8px !important;
+	border-radius: 6px !important;
+}
+
+/* Sub-devices and physical member ports */
+.ark-iface-members {
+	background: rgba(0, 0, 0, 0.22) !important;
+	border: 1px solid rgba(255, 255, 255, 0.06) !important;
+	border-radius: 10px !important;
+	padding: 12px 14px !important;
+	display: flex !important;
+	flex-direction: column !important;
+	gap: 8px !important;
+}
+.ark-iface-members-title {
+	font-size: 11px !important;
+	font-weight: 700 !important;
+	text-transform: uppercase !important;
+	letter-spacing: 0.04em !important;
+	color: var(--ark-text-dim) !important;
+}
+.ark-iface-member-list {
+	display: flex !important;
+	flex-wrap: wrap !important;
+	gap: 8px !important;
+}
+.ark-member-badge {
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 6px !important;
+	background: var(--ark-surface-2) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: 6px !important;
+	padding: 4px 10px !important;
+	font-size: 11px !important;
+	color: #e2e8f0 !important;
+	transition: all 0.2s ease !important;
+}
+.ark-member-badge.active {
+	border-color: rgba(16, 185, 129, 0.4) !important;
+	background: rgba(16, 185, 129, 0.08) !important;
+}
+.ark-member-badge .dot {
+	font-size: 9px !important;
+	font-weight: 700 !important;
+	padding: 1px 6px !important;
+	border-radius: 4px !important;
+}
+.ark-member-badge .dot.online {
+	color: #34d399 !important;
+	background: rgba(16, 185, 129, 0.2) !important;
+}
+.ark-member-badge .dot.offline {
+	color: #94a3b8 !important;
+	background: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Hide raw LuCI interface table when transformed to ARK cards */
+#cbi-network-interface .table.cbi-section-table,
+#cbi-network-interface .cbi-section-table,
+.ark-hidden-table {
+	display: none !important;
+}
+
+/* 8. Diagnostics 3-Card Grid */
+.ark-diag-grid {
+	display: grid !important;
+	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+	gap: 18px !important;
+	margin: 20px 0 !important;
+}
+.ark-diag-card {
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius-lg, 14px) !important;
+	padding: 20px !important;
+	display: flex !important;
+	flex-direction: column !important;
+	gap: 12px !important;
+	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22) !important;
+}
+.ark-diag-card-title {
+	font-size: 15px;
+	font-weight: 700;
+	color: #fff;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0;
+}
+.ark-diag-card-desc {
+	font-size: 11px;
+	color: var(--ark-text-muted);
+	margin: 0;
+}
+
+/* 9. System Administration Password Card */
+.ark-admin-card {
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius-lg, 16px) !important;
+	padding: 24px !important;
+	margin: 20px 0 !important;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+}
+.ark-admin-card-head {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	margin-bottom: 20px;
+	padding-bottom: 14px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.ark-admin-card-head .icon {
+	width: 44px;
+	height: 44px;
+	border-radius: 12px;
+	background: rgba(37, 99, 235, 0.15);
+	color: #60a5fa;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 22px;
+}
+.ark-admin-card-head h3 {
+	margin: 0 0 2px !important;
+	font-size: 17px !important;
+	font-weight: 700 !important;
+	color: #fff !important;
+}
+.ark-admin-card-head p {
+	margin: 0 !important;
+	font-size: 12px !important;
+	color: var(--ark-text-muted) !important;
+}
+
+.ark-admin-card .cbi-value {
+	display: flex !important;
+	flex-direction: column !important;
+	align-items: flex-start !important;
+	gap: 6px !important;
+	width: 100% !important;
+	border: none !important;
+	padding: 8px 0 !important;
+}
+.ark-admin-card .cbi-value-title {
+	text-align: left !important;
+	font-weight: 700 !important;
+	color: #e2e8f0 !important;
+	width: 100% !important;
+	margin-bottom: 4px !important;
+	font-size: 13px !important;
+}
+.ark-admin-card .cbi-value-field {
+	width: 100% !important;
+}
+.ark-admin-card .cbi-input-password {
+	width: 100% !important;
+	min-width: 0 !important;
+}
+
+/* 10. Hacker Terminal & Full-Width Log Viewer */
+#syslog,
+textarea[name="syslog"],
+pre.command-output,
+pre.syslog,
+#view pre,
+#view form[action*="crontab"] textarea,
+#view form[action*="custom"] textarea,
+#view form[action*="startup"] textarea {
+	width: 100% !important;
+	min-height: 420px !important;
+	max-width: 100% !important;
+	box-sizing: border-box !important;
+	background: #080d1a !important;
+	color: #a5f3fc !important;
+	border: 1px solid rgba(255, 255, 255, 0.1) !important;
+	border-radius: var(--ark-radius, 12px) !important;
+	padding: 18px 20px !important;
+	font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace !important;
+	font-size: 12px !important;
+	line-height: 1.65 !important;
+	white-space: pre-wrap !important;
+	word-break: break-all !important;
+	overflow-x: auto !important;
+	box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* CBI Form Textareas (Compact & Proportional for Notes, Descriptions, etc.) */
+.cbi-value-field textarea,
+.cbi-value textarea.cbi-input-textarea,
+textarea.cbi-input-textarea,
+textarea[id*="notes"],
+textarea[name*="notes"] {
+	width: 100% !important;
+	max-width: 480px !important;
+	height: 80px !important;
+	min-height: 60px !important;
+	max-height: 220px !important;
+	background: var(--ark-surface-2) !important;
+	color: var(--ark-text-main) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: 8px !important;
+	padding: 8px 12px !important;
+	font-family: inherit !important;
+	font-size: 13px !important;
+	line-height: 1.5 !important;
+	box-shadow: none !important;
+	resize: vertical !important;
+	box-sizing: border-box !important;
+}
+
+.cbi-value-field textarea:focus,
+.cbi-value textarea.cbi-input-textarea:focus,
+textarea.cbi-input-textarea:focus,
+textarea[id*="notes"]:focus,
+textarea[name*="notes"]:focus {
+	border-color: var(--ark-primary) !important;
+	box-shadow: 0 0 0 3px var(--ark-primary-glow) !important;
+}
+
+.cbi-value:has(textarea) {
+	align-items: flex-start !important;
+}
+.cbi-value:has(textarea) .cbi-value-title {
+	padding-top: 6px !important;
+}
+
+/* 11. Mobile Breakpoint Adjustments */
+@media (max-width: 768px) {
+	.ark-wireless-grid,
+	.ark-action-grid,
+	.ark-iface-grid,
+	.ark-diag-grid,
+	.ark-metrics-grid,
+	.ark-grid-2 {
+		grid-template-columns: 1fr !important;
+	}
+	.ark-hero-banner {
+		flex-direction: column !important;
+		align-items: flex-start !important;
+	}
+	.ark-radio-header {
+		flex-direction: column !important;
+	}
+	.ark-ssid-card {
+		flex-direction: column !important;
+		align-items: flex-start !important;
+	}
+	.ark-ssid-actions {
+		width: 100% !important;
+		justify-content: flex-end !important;
+	}
+}
+
+/* 12. Educational Feature Guides & Recommendations (PT-BR) */
+.ark-guide-box {
+	background: linear-gradient(135deg, rgba(17, 28, 48, 0.95) 0%, rgba(11, 17, 32, 0.98) 100%) !important;
+	border: 1px solid rgba(56, 189, 248, 0.25) !important;
+	border-radius: var(--ark-radius-lg, 14px) !important;
+	padding: 16px 20px !important;
+	margin: 0 0 20px 0 !important;
+	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+	display: flex !important;
+	flex-direction: column !important;
+	gap: 10px !important;
+	position: relative !important;
+	overflow: hidden !important;
+}
+
+.ark-guide-box::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 4px;
+	height: 100%;
+	background: linear-gradient(to bottom, #38bdf8, #3b82f6);
+}
+
+.ark-guide-title {
+	font-size: 15px !important;
+	font-weight: 700 !important;
+	color: #38bdf8 !important;
+	display: flex !important;
+	align-items: center !important;
+	gap: 8px !important;
+	margin: 0 0 4px 0 !important;
+	padding-bottom: 8px !important;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+	letter-spacing: -0.01em !important;
+}
+
+.ark-guide-item {
+	font-size: 13px !important;
+	line-height: 1.6 !important;
+	color: #cbd5e1 !important;
+	display: flex !important;
+	flex-direction: column !important;
+	gap: 2px !important;
+}
+
+.ark-guide-item strong {
+	color: #f1f5f9 !important;
+	font-weight: 600 !important;
+}
+
+.ark-guide-item span {
+	color: #94a3b8 !important;
+}
+
+.ark-guide-item.rec {
+	background: rgba(16, 185, 129, 0.08) !important;
+	border: 1px solid rgba(16, 185, 129, 0.25) !important;
+	border-radius: var(--ark-radius, 10px) !important;
+	padding: 10px 14px !important;
+	margin-top: 4px !important;
+}
+
+.ark-guide-item.rec strong {
+	color: #34d399 !important;
+}
+
+.ark-guide-item.rec span {
+	color: #a7f3d0 !important;
+}
+
+/* 13. Overview Page Streamlining */
+body[data-page="admin-status-overview"] #maincontent > h2,
+body[data-page="admin-status-overview"] #view > h2 {
+	display: none !important;
+}
+
+/* 14. Status Iptables Layout & Overlap Prevention */
+body[data-page="admin-status-iptables"] #view > div.right,
+body[data-page="admin-status-iptables"] #maincontent > div.right,
+#view > div.right[style*="margin-bottom"] {
+	margin-bottom: 14px !important;
+	display: flex !important;
+	flex-wrap: wrap !important;
+	gap: 8px !important;
+	justify-content: flex-end !important;
+	float: none !important;
+	clear: both !important;
+}
+
+body[data-page="admin-status-iptables"] .cbi-tabmenu,
+body[data-page="admin-status-iptables"] ul.cbi-tabmenu {
+	clear: both !important;
+	margin-top: 14px !important;
+	margin-bottom: 20px !important;
+}
+
+/* 15. Process Table & Service Navigation (admin/status/processes) */
+.ark-proc-top-bar {
+	display: flex !important;
+	flex-wrap: wrap !important;
+	align-items: center !important;
+	justify-content: space-between !important;
+	gap: 14px !important;
+	margin: 14px 0 !important;
+	padding: 14px 18px !important;
+	background: var(--ark-surface-2) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: var(--ark-radius) !important;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+}
+
+.ark-proc-top-left {
+	display: flex !important;
+	align-items: center !important;
+	gap: 14px !important;
+	flex: 1 1 340px !important;
+}
+
+.ark-proc-top-icon {
+	font-size: 24px !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	width: 44px !important;
+	height: 44px !important;
+	background: rgba(59, 130, 246, 0.15) !important;
+	border: 1px solid rgba(59, 130, 246, 0.3) !important;
+	border-radius: 10px !important;
+	flex-shrink: 0 !important;
+}
+
+.ark-proc-top-text strong {
+	display: block !important;
+	font-size: 15px !important;
+	font-weight: 700 !important;
+	color: #fff !important;
+	margin-bottom: 2px !important;
+}
+
+.ark-proc-top-text span {
+	font-size: 12px !important;
+	color: var(--ark-text-muted) !important;
+	line-height: 1.4 !important;
+}
+
+.ark-proc-srv-btn {
+	padding: 9px 18px !important;
+	font-size: 13px !important;
+	font-weight: 700 !important;
+	border-radius: 8px !important;
+	white-space: nowrap !important;
+	text-decoration: none !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 8px !important;
+	box-shadow: 0 2px 10px rgba(59, 130, 246, 0.35) !important;
+}
+
+/* Process Live Status Badges */
+.ark-proc-status {
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 4px !important;
+	font-size: 11px !important;
+	font-weight: 700 !important;
+	padding: 3px 8px !important;
+	border-radius: 12px !important;
+	margin-right: 8px !important;
+	text-transform: uppercase !important;
+	letter-spacing: 0.04em !important;
+	vertical-align: middle !important;
+}
+
+.ark-proc-status.active {
+	background: rgba(16, 185, 129, 0.15) !important;
+	border: 1px solid rgba(16, 185, 129, 0.35) !important;
+	color: #34d399 !important;
+}
+
+.ark-proc-status.kernel {
+	background: rgba(14, 165, 233, 0.15) !important;
+	border: 1px solid rgba(14, 165, 233, 0.35) !important;
+	color: #38bdf8 !important;
+}
+
+/* Horizontal Action Buttons Group in Process Row */
+.ark-proc-actions-group,
+.cbi-section-actions > div {
+	display: inline-flex !important;
+	flex-direction: row !important;
+	flex-wrap: nowrap !important;
+	align-items: center !important;
+	justify-content: flex-end !important;
+	gap: 6px !important;
+	white-space: nowrap !important;
+}
+
+.ark-proc-btn {
+	padding: 5px 10px !important;
+	font-size: 11px !important;
+	font-weight: 600 !important;
+	border-radius: 6px !important;
+	margin: 0 !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 4px !important;
+	transition: all 0.15s ease !important;
+	cursor: pointer !important;
+	white-space: nowrap !important;
+}
+
+.ark-proc-btn .ark-btn-icon {
+	font-size: 12px !important;
+	display: inline-block !important;
+	line-height: 1 !important;
+}
+
+/* Distinct Semantic Colors for Process Signals */
+.ark-btn-hup {
+	background: rgba(14, 165, 233, 0.12) !important;
+	border: 1px solid rgba(14, 165, 233, 0.35) !important;
+	color: #38bdf8 !important;
+}
+.ark-btn-hup:hover {
+	background: #0ea5e9 !important;
+	color: #fff !important;
+	border-color: #0ea5e9 !important;
+}
+
+.ark-btn-term {
+	background: rgba(245, 158, 11, 0.12) !important;
+	border: 1px solid rgba(245, 158, 11, 0.35) !important;
+	color: #fbbf24 !important;
+}
+.ark-btn-term:hover {
+	background: #f59e0b !important;
+	color: #1e293b !important;
+	border-color: #f59e0b !important;
+}
+
+.ark-btn-kill {
+	background: rgba(239, 68, 68, 0.15) !important;
+	border: 1px solid rgba(239, 68, 68, 0.4) !important;
+	color: #fca5a5 !important;
+}
+.ark-btn-kill:hover {
+	background: #ef4444 !important;
+	color: #fff !important;
+	border-color: #ef4444 !important;
+}
+
+/* 16. CBI Section Tables & Containment (ACLs, Rules, Port Forwarding) */
+.cbi-section,
+.cbi-section-node {
+	max-width: 100% !important;
+	overflow-x: auto !important;
+}
+
+.cbi-section-table {
+	max-width: 100% !important;
+}
+
+/* Actions column in CBI tables: stay compact, single line, no wrapping */
+.cbi-section-table .cbi-section-actions,
+.table .cbi-section-actions,
+.cbi-tblsection .cbi-section-actions {
+	width: 1% !important;
+	white-space: nowrap !important;
+	text-align: right !important;
+}
+.cbi-section-actions > div {
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: flex-end !important;
+	gap: 4px !important;
+	flex-wrap: nowrap !important;
+}
+
+.cbi-section-actions input.cbi-button-up,
+.cbi-section-actions input.cbi-button-down,
+.cbi-section-actions input.cbi-button-remove,
+.cbi-section-actions input.cbi-button-edit {
+	padding: 5px 12px !important;
+	font-size: 12px !important;
+	margin: 0 !important;
+	border-radius: 6px !important;
+	white-space: nowrap !important;
+}
+
+.cbi-section-actions input.cbi-button-up,
+.cbi-section-actions input.cbi-button-down {
+	background: var(--ark-surface-2) !important;
+	border-color: var(--ark-border) !important;
+	color: var(--ark-text-muted) !important;
+}
+
+.cbi-section-actions input.cbi-button-up:hover,
+.cbi-section-actions input.cbi-button-down:hover {
+	background: var(--ark-surface-3) !important;
+	color: #fff !important;
+}
+
+.cbi-section-table .cbi-value-field input[type="text"],
+.cbi-section-table .cbi-value-field select {
+	min-width: 70px !important;
+	max-width: 100% !important;
+	box-sizing: border-box !important;
+}
+
+/* 17. Real-Time SVG Graphs & Dark Mode Canvas (admin/status/realtime/*) */
+div[style*="height: 300px"],
+div[style*="height:300px"],
+div[style*="height: 250px"],
+div[style*="height:250px"],
+div[style*="background: rgb(255, 255, 255)"],
+div[style*="background: rgb(255,255,255)"],
+div[style*="background: #ffffff"],
+div[style*="background:#ffffff"],
+div[style*="background: white"],
+div[style*="background:#fff"],
+.ark-realtime-chart-card {
+	background: var(--ark-surface-1, #111c35) !important;
+	border: 1px solid var(--ark-border, #223455) !important;
+	border-radius: var(--ark-radius, 10px) !important;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+	overflow: hidden !important;
+	margin: 16px 0 !important;
+}
+
+svg {
+	background: transparent !important;
+}
+
+/* Subtle Grid Lines */
+svg line {
+	stroke: rgba(255, 255, 255, 0.08) !important;
+	stroke-width: 1px !important;
+}
+
+/* Axis Labels & Time Indicators */
+svg text {
+	fill: var(--ark-text-muted, #94a3b8) !important;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+	font-size: 11px !important;
+	font-weight: 600 !important;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9) !important;
+}
+
+/* Vibrant Neon Polylines (Dark Theme Visual Clarity) */
+#udp, polyline[style*="blue"], path[style*="blue"] {
+	fill: #0ea5e9 !important;
+	fill-opacity: 0.3 !important;
+	stroke: #38bdf8 !important;
+	stroke-width: 2px !important;
+}
+
+#tcp, polyline[style*="green"], path[style*="green"] {
+	fill: #10b981 !important;
+	fill-opacity: 0.3 !important;
+	stroke: #34d399 !important;
+	stroke-width: 2px !important;
+}
+
+#other, #noise, polyline[style*="red"], path[style*="red"] {
+	fill: #f43f5e !important;
+	fill-opacity: 0.3 !important;
+	stroke: #fb7185 !important;
+	stroke-width: 2px !important;
+}
+
+#load01 {
+	fill: #f43f5e !important;
+	fill-opacity: 0.35 !important;
+	stroke: #fb7185 !important;
+	stroke-width: 2px !important;
+}
+#load05 {
+	fill: #f97316 !important;
+	fill-opacity: 0.35 !important;
+	stroke: #fb923c !important;
+	stroke-width: 2px !important;
+}
+#load15 {
+	fill: #eab308 !important;
+	fill-opacity: 0.35 !important;
+	stroke: #facc15 !important;
+	stroke-width: 2px !important;
+}
+
+#rx {
+	fill: #3b82f6 !important;
+	fill-opacity: 0.35 !important;
+	stroke: #60a5fa !important;
+	stroke-width: 2px !important;
+}
+#tx {
+	fill: #10b981 !important;
+	fill-opacity: 0.35 !important;
+	stroke: #34d399 !important;
+	stroke-width: 2px !important;
+}
+#rssi {
+	fill: #3b82f6 !important;
+	fill-opacity: 0.35 !important;
+	stroke: #60a5fa !important;
+	stroke-width: 2px !important;
+}
+
+/* Metric Legend Cards under Real-time Graphs */
+div[style*="table-layout:fixed"],
+.table[style*="table-layout:fixed"] {
+	background: var(--ark-surface-2, #16223f) !important;
+	border: 1px solid var(--ark-border, #223455) !important;
+	border-radius: var(--ark-radius, 10px) !important;
+	padding: 8px 14px !important;
+	margin-top: 14px !important;
+}
+
+div[style*="table-layout:fixed"] .td,
+.table[style*="table-layout:fixed"] .td {
+	font-size: 13px !important;
+	color: var(--ark-text-main, #e2e8f0) !important;
+	border: none !important;
+}
+
+/* Colored Metric Labels Matching Graph Curves */
+strong[style*="blue"] {
+	border-bottom: 2px solid #38bdf8 !important;
+	color: #38bdf8 !important;
+}
+strong[style*="green"] {
+	border-bottom: 2px solid #34d399 !important;
+	color: #34d399 !important;
+}
+strong[style*="red"] {
+	border-bottom: 2px solid #fb7185 !important;
+	color: #fb7185 !important;
+}
+strong[style*="rgb(255, 102, 0)"], strong[style*="orange"] {
+	border-bottom: 2px solid #fb923c !important;
+	color: #fb923c !important;
+}
+strong[style*="rgb(255, 170, 0)"], strong[style*="yellow"] {
+	border-bottom: 2px solid #facc15 !important;
+	color: #facc15 !important;
+}
+
+/* 18. LuCI UI Dropdowns (.cbi-dropdown) — Modern Obsidian Styling */
+.cbi-dropdown {
+	display: inline-flex !important;
+	cursor: pointer !important;
+	height: auto !important;
+	min-height: 34px !important;
+	position: relative !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	background: var(--ark-surface-2) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: 8px !important;
+	color: var(--ark-text-main) !important;
+	box-sizing: border-box !important;
+	user-select: none !important;
+	vertical-align: middle !important;
+	font-size: 13px !important;
+}
+.cbi-dropdown:hover {
+	border-color: var(--ark-border-hover) !important;
+}
+.cbi-dropdown:focus {
+	outline: none !important;
+	border-color: var(--ark-primary) !important;
+	box-shadow: 0 0 0 2px var(--ark-primary-glow) !important;
+}
+.cbi-dropdown > ul {
+	list-style: none !important;
+	overflow-x: hidden !important;
+	overflow-y: auto !important;
+	display: flex !important;
+	width: 100% !important;
+	margin: 0 !important;
+	padding: 0 !important;
+}
+.cbi-dropdown > ul > li {
+	display: none !important;
+	list-style: none !important;
+	white-space: nowrap !important;
+	overflow: hidden !important;
+	text-overflow: ellipsis !important;
+	flex-shrink: 1 !important;
+	flex-grow: 1 !important;
+	align-items: center !important;
+	align-self: center !important;
+	color: inherit !important;
+	padding: 6px 12px !important;
+	font-size: 13px !important;
+	line-height: 20px !important;
+}
+.cbi-dropdown > ul > li[display] {
+	display: flex !important;
+	align-items: center !important;
+	gap: 6px !important;
+}
+.cbi-dropdown > .open,
+.cbi-dropdown > .more {
+	flex-grow: 0 !important;
+	flex-shrink: 0 !important;
+	display: flex !important;
+	flex-direction: column !important;
+	justify-content: center !important;
+	text-align: center !important;
+	padding: 0 10px !important;
+	color: var(--ark-text-muted) !important;
+	font-size: 11px !important;
+	border-left: 1px solid var(--ark-border) !important;
+}
+.cbi-dropdown > .open::after {
+	content: "▾" !important;
+	font-size: 12px !important;
+}
+.cbi-dropdown.btn,
+.cbi-dropdown.cbi-button {
+	background: var(--ark-surface-2) !important;
+	border: 1px solid var(--ark-border) !important;
+	border-radius: 8px !important;
+	color: var(--ark-text-main) !important;
+}
+.cbi-dropdown.cbi-button-apply,
+.cbi-dropdown.btn-primary {
+	background: linear-gradient(135deg, #3b82f6, #6366f1) !important;
+	border-color: #3b82f6 !important;
+	color: #fff !important;
+	box-shadow: 0 2px 10px rgba(59, 130, 246, 0.35) !important;
+}
+.cbi-dropdown.cbi-button-apply > .open,
+.cbi-dropdown.btn-primary > .open {
+	color: #fff !important;
+	border-left-color: rgba(255, 255, 255, 0.25) !important;
+}
+/* Floating Dropdown Menu when Open */
+.cbi-dropdown[open] > ul.dropdown {
+	display: block !important;
+	background: var(--ark-surface-2, #192742) !important;
+	border: 1px solid var(--ark-border, rgba(255, 255, 255, 0.15)) !important;
+	border-radius: 8px !important;
+	box-shadow: var(--ark-shadow-lg, 0 12px 35px rgba(0, 0, 0, 0.5)) !important;
+	position: absolute !important;
+	top: calc(100% + 4px) !important;
+	left: 0 !important;
+	z-index: 1100 !important;
+	min-width: 100% !important;
+	width: max-content !important;
+	max-height: 280px !important;
+	overflow-y: auto !important;
+	padding: 4px 0 !important;
+}
+.cbi-dropdown[open] > ul.dropdown > li {
+	display: flex !important;
+	align-items: center !important;
+	padding: 8px 14px !important;
+	color: var(--ark-text-main, #f8fafc) !important;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+	cursor: pointer !important;
+	transition: background 0.12s ease !important;
+}
+.cbi-dropdown[open] > ul.dropdown > li:last-child {
+	border-bottom: none !important;
+}
+.cbi-dropdown[open] > ul.dropdown > li:hover,
+.cbi-dropdown[open] > ul.dropdown > li.focus {
+	background: var(--ark-surface-3, #223455) !important;
+	color: #fff !important;
+}
+.cbi-dropdown[open] > ul.dropdown > li[selected] {
+	background: rgba(59, 130, 246, 0.25) !important;
+	color: #60a5fa !important;
+	font-weight: 600 !important;
+}
+
+/* 19. LuCI Bottom Action Bar (.cbi-page-actions) */
+.cbi-page-actions, .actions {
+	display: flex !important;
+	flex-wrap: wrap !important;
+	align-items: center !important;
+	justify-content: flex-end !important;
+	gap: 10px !important;
+	background: var(--ark-surface-1, #111c30) !important;
+	border: 1px solid var(--ark-border, rgba(255, 255, 255, 0.09)) !important;
+	border-radius: var(--ark-radius, 10px) !important;
+	padding: 14px 18px !important;
+	margin: 24px 0 !important;
+	box-shadow: var(--ark-shadow, 0 4px 20px rgba(0, 0, 0, 0.35)) !important;
+}
+.cbi-page-actions form, .actions form {
+	display: inline-flex !important;
+	margin: 0 !important;
+}
+.cbi-page-actions button, .cbi-page-actions .btn, .cbi-page-actions .cbi-button,
+.cbi-page-actions input[type="submit"], .cbi-page-actions input[type="button"],
+.actions button, .actions .btn, .actions .cbi-button {
+	height: 36px !important;
+	padding: 0 16px !important;
+	font-size: 13px !important;
+	font-weight: 600 !important;
+	border-radius: 8px !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	gap: 6px !important;
+	box-sizing: border-box !important;
+}
+.cbi-page-actions .cbi-dropdown {
+	height: 36px !important;
+	min-height: 36px !important;
+}
+
+/* 20. Anti-Leak & Global Table Containment */
+.cbi-map, .cbi-section, fieldset, .table, table {
+	max-width: 100% !important;
+	box-sizing: border-box !important;
+}
+.cbi-section.cbi-tblsection {
+	overflow-x: auto !important;
+	-webkit-overflow-scrolling: touch !important;
+	max-width: 100% !important;
+}
+.cbi-section-table, .table {
+	max-width: 100% !important;
+	box-sizing: border-box !important;
+}
+.cbi-section-table .td input[type="text"],
+.table .td input[type="text"] {
+	max-width: 160px !important;
+	min-width: 50px !important;
+	box-sizing: border-box !important;
+}
+[data-page="admin-services-upnp"] .table,
+[data-page="admin-services-upnp"] table,
+[data-page="admin-services-upnp"] .cbi-section {
+	overflow-x: auto !important;
+	max-width: 100% !important;
+}
+[data-page="admin-services-upnp"] .cbi-value-field input[type="text"] {
+	max-width: 100% !important;
+}
+
+/* 21. Netlink Bandwidth Monitor Dark Cyberpunk Theme */
+path[fill="#ff0000"], polygon[fill="#ff0000"] { fill: #38bdf8 !important; }
+path[fill="#00ff00"], polygon[fill="#00ff00"] { fill: #818cf8 !important; }
+path[fill="#0000ff"], polygon[fill="#0000ff"] { fill: #34d399 !important; }
+path[fill="#ffff00"], polygon[fill="#ffff00"] { fill: #f59e0b !important; }
+path[fill="#ff00ff"], polygon[fill="#ff00ff"] { fill: #ec4899 !important; }
+path[fill="#00ffff"], polygon[fill="#00ffff"] { fill: #06b6d4 !important; }
+
+/* 22. Interactive Process Table Sorting */
+.ark-sortable-th {
+	cursor: pointer !important;
+	user-select: none !important;
+	transition: background 0.15s ease, color 0.15s ease !important;
+}
+.ark-sortable-th:hover {
+	background: var(--ark-surface-3) !important;
+	color: #fff !important;
+}
+.ark-sort-icon {
+	margin-left: 6px !important;
+	font-size: 11px !important;
+	opacity: 0.6 !important;
+}
+.ark-sort-icon.active {
+	opacity: 1 !important;
+	color: var(--ark-primary) !important;
+}
+
+/* 23. ARK LED Control Center */
+.ark-led-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: 16px;
+	margin: 18px 0;
+}
+.ark-led-card {
+	background: var(--ark-surface-1);
+	border: 1px solid var(--ark-border);
+	border-radius: var(--ark-radius-lg);
+	padding: 18px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	box-shadow: var(--ark-shadow);
+	transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.ark-led-card:hover {
+	border-color: var(--ark-border-hover);
+	transform: translateY(-2px);
+}
+.ark-led-header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+.ark-led-indicator {
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	display: inline-block;
+	box-shadow: 0 0 10px currentColor;
+}
+.ark-led-indicator.green {
+	background: #10b981;
+	color: #10b981;
+}
+.ark-led-indicator.orange {
+	background: #f59e0b;
+	color: #f59e0b;
+}
+.ark-led-indicator.blue {
+	background: #3b82f6;
+	color: #3b82f6;
+}
+.ark-led-indicator.white {
+	background: #f8fafc;
+	color: #f8fafc;
+	box-shadow: 0 0 10px rgba(248, 250, 252, 0.8);
+}
+.ark-led-indicator.off {
+	background: #334155;
+	color: transparent;
+	box-shadow: none;
+}
+.ark-led-indicator.rgb {
+	background: linear-gradient(135deg, #06b6d4, #8b5cf6, #ec4899);
+	color: #06b6d4;
+	box-shadow: 0 0 12px rgba(6, 182, 212, 0.7);
+	animation: rgbShift 5s infinite linear;
+}
+@keyframes rgbShift {
+	0% { filter: hue-rotate(0deg); }
+	100% { filter: hue-rotate(360deg); }
+}
+.ark-led-indicator.blink {
+	animation: ledPulse 1.2s infinite ease-in-out;
+}
+@keyframes ledPulse {
+	0%, 100% { opacity: 1; transform: scale(1); }
+	50% { opacity: 0.35; transform: scale(0.9); }
+}
+.ark-led-title {
+	font-weight: 700;
+	font-size: 14px;
+	color: #fff;
+}
+.ark-led-sub {
+	font-size: 11px;
+	color: var(--ark-text-muted);
+}
+.ark-presets-box {
+	background: var(--ark-surface-1);
+	border: 1px solid var(--ark-border);
+	border-radius: var(--ark-radius-lg);
+	padding: 20px;
+	margin-bottom: 20px;
+}
+.ark-preset-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 12px;
+	margin-top: 14px;
+}
+.ark-preset-tile {
+	display: flex;
+	flex-direction: column;
+	background: var(--ark-surface-2);
+	border: 1px solid var(--ark-border);
+	border-radius: 10px;
+	padding: 14px;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	text-align: left;
+}
+.ark-preset-tile:hover {
+	background: var(--ark-surface-3);
+	border-color: var(--ark-primary);
+	transform: translateY(-2px);
+}
+.ark-preset-tile-title {
+	font-weight: 700;
+	font-size: 13px;
+	color: #fff;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-bottom: 4px;
+}
+.ark-preset-tile-desc {
+	font-size: 11px;
+	color: var(--ark-text-muted);
+	line-height: 1.4;
+}
+
+/* 23b. RGB Color Picker & Palette */
+.ark-rgb-box {
+	margin-top: 18px;
+	padding-top: 18px;
+	border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.ark-color-swatch-btn {
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 6px;
+	padding: 4px 10px;
+	font-size: 11px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.ark-color-swatch-btn:hover {
+	transform: scale(1.06);
+	box-shadow: 0 0 10px currentColor;
+}
+.ark-color-swatch-btn:active {
+	transform: scale(0.96);
+}
+
+/* 24. Firewall / iptables Telemetry Styling (admin/status/iptables) */
+[data-chain] {
+	background: var(--ark-surface-1, #111c35) !important;
+	border: 1px solid var(--ark-border, #223455) !important;
+	border-radius: var(--ark-radius, 10px) !important;
+	padding: 16px 20px !important;
+	margin-bottom: 20px !important;
+	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25) !important;
+	transition: border-color 0.15s ease !important;
+}
+[data-chain]:hover {
+	border-color: var(--ark-border-hover, rgba(59, 130, 246, 0.4)) !important;
+}
+[data-chain] h4 {
+	display: flex !important;
+	flex-wrap: wrap !important;
+	align-items: center !important;
+	gap: 10px !important;
+	margin: 0 0 8px 0 !important;
+	font-size: 15px !important;
+	font-weight: 700 !important;
+	color: #fff !important;
+}
+.ark-chain-desc {
+	font-size: 12px !important;
+	color: #94a3b8 !important;
+	margin: 4px 0 14px 0 !important;
+	line-height: 1.6 !important;
+	background: rgba(255, 255, 255, 0.03) !important;
+	padding: 8px 12px !important;
+	border-radius: 6px !important;
+	border-left: 3px solid #38bdf8 !important;
+}
+.references {
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 6px !important;
+	font-size: 12px !important;
+	color: var(--ark-text-muted) !important;
+}
+.references .cbi-tooltip.ifacebadge {
+	display: inline-flex !important;
+	background: rgba(255, 255, 255, 0.06) !important;
+	border: 1px solid rgba(255, 255, 255, 0.12) !important;
+	color: #94a3b8 !important;
+	font-size: 11px !important;
+	padding: 2px 8px !important;
+	border-radius: 6px !important;
+	margin-left: 8px !important;
+	vertical-align: middle !important;
+}
+.references .cbi-tooltip ul, .references .cbi-tooltip li {
+	display: inline !important;
+	margin: 0 !important;
+	padding: 0 !important;
+}
+span.jump {
+	color: #38bdf8 !important;
+	font-weight: 600 !important;
+	border-bottom: 1px dashed #38bdf8 !important;
+	cursor: pointer !important;
+}
+span.jump:hover {
+	color: #60a5fa !important;
+	border-bottom-style: solid !important;
+}
+
+/* ==========================================================================
+   LuCI CBI Section Actions & Form Controls Fixes
+   ========================================================================== */
+
+/* 1. Suppress LuCI hidden submit inputs (eliminates loose buttons at top) */
+.hidden,
+input.hidden,
+input[type="submit"].hidden,
+input[type="button"].hidden,
+button.hidden {
+	display: none !important;
+	visibility: hidden !important;
+	opacity: 0 !important;
+	position: absolute !important;
+	left: -99999px !important;
+	pointer-events: none !important;
+}
+
+/* 2. Named Section Remove Button (Aligned in header with red danger tint) */
+.cbi-section-remove {
+	float: right;
+	margin-top: 0;
+	margin-bottom: 12px;
+}
+.cbi-section-remove input[type="submit"],
+.cbi-section-remove button {
+	background: rgba(239, 68, 68, 0.12) !important;
+	border: 1px solid rgba(239, 68, 68, 0.3) !important;
+	color: #fca5a5 !important;
+	border-radius: 6px !important;
+	padding: 5px 12px !important;
+	font-size: 12px !important;
+	font-weight: 600 !important;
+	cursor: pointer !important;
+	transition: all 0.2s ease !important;
+}
+.cbi-section-remove input[type="submit"]:hover,
+.cbi-section-remove button:hover {
+	background: #ef4444 !important;
+	border-color: #ef4444 !important;
+	color: #fff !important;
+	box-shadow: 0 2px 10px rgba(239, 68, 68, 0.4) !important;
+}
+
+/* 3. Section Create Container (Cleanly separated at bottom) */
+.cbi-section-create {
+	clear: both !important;
+	margin-top: 24px !important;
+	padding: 16px 20px !important;
+	background: var(--ark-surface-2) !important;
+	border: 1px dashed var(--ark-border) !important;
+	border-radius: var(--ark-radius) !important;
+	display: flex !important;
+	align-items: center !important;
+	gap: 12px !important;
+	flex-wrap: wrap !important;
+}
+.cbi-section-create::before {
+	content: "➕ Criar nova instância:";
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--ark-text-muted);
+	width: 100%;
+	margin-bottom: 4px;
+	display: block;
+}
+.cbi-section-create div {
+	margin: 0 !important;
+}
+.cbi-section-create input[type="text"],
+.cbi-section-create input.cbi-section-create-name {
+	min-width: 220px !important;
+	padding: 8px 12px !important;
+}
+.cbi-section-create input[type="submit"],
+.cbi-section-create .cbi-button-add {
+	padding: 8px 18px !important;
+	font-size: 13px !important;
+	font-weight: 600 !important;
+}
+
+/* 4. CBI Page Actions (Bottom Bar & Action Buttons) */
+.cbi-page-actions {
+	border-top: 1px solid var(--ark-border) !important;
+	margin-top: 28px !important;
+	padding-top: 20px !important;
+	margin-bottom: 24px !important;
+	display: flex !important;
+	align-items: center !important;
+	gap: 12px !important;
+	flex-wrap: wrap !important;
+}
+.cbi-page-actions .cbi-button,
+.cbi-page-actions input[type="submit"],
+.cbi-page-actions input[type="button"],
+.cbi-page-actions input[type="reset"] {
+	height: 42px !important;
+	min-width: 90px !important;
+	padding: 0 20px !important;
+	font-size: 13px !important;
+	font-weight: 600 !important;
+	border-radius: 8px !important;
+	cursor: pointer !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	box-sizing: border-box !important;
+	transition: all 0.2s ease !important;
+}
+.cbi-button-reset {
+	background: rgba(148, 163, 184, 0.12) !important;
+	border: 1px solid rgba(148, 163, 184, 0.25) !important;
+	color: #cbd5e1 !important;
+	font-weight: 600 !important;
+	transition: all 0.2s ease !important;
+}
+.cbi-button-reset:hover {
+	background: rgba(148, 163, 184, 0.25) !important;
+	color: #fff !important;
+	border-color: rgba(148, 163, 184, 0.45) !important;
+}
+
+
+
+
 :root, body, .modal, .cbi-modal, #modal_overlay, .modal-overlay, .ex-dashboard { --ex-primary-safe: var(--ex-primary, #3b82f6); --ex-secondary-safe: var(--ex-secondary, #8b5cf6); }
 .ex-dashboard { display: block !important; max-width: 1280px; margin: 0 auto; padding: 4px 0 28px; color: inherit; }
 .ex-dashboard * { box-sizing: border-box; }
@@ -1961,3 +5220,117 @@ body.modal-overlay-active #modal_overlay {
 
 
 
+
+        body {
+            background: #0b1120;
+            color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 30px;
+            margin: 0;
+        }
+        .test-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .scenario-card {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+        .scenario-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: #38bdf8;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .scenario-desc {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-bottom: 18px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1 style="font-size: 1.5rem; margin-bottom: 6px; font-weight: 800;">ARK Router — Verificação Visual: Toggle de Regras Avançadas de Roteamento</h1>
+        <p style="color: #94a3b8; margin-bottom: 28px;">Demonstração do novo cabeçalho de expansão com destaque visual, ícone, badge de ação e indicador de estado.</p>
+
+        <!-- Cenário 1: Toggle Fechado (Recolhido) -->
+        <div class="scenario-card">
+            <div class="scenario-title">1. Estado Fechado (Recolhido) — Alta Visibilidade e Área de Clique Clara</div>
+            <div class="scenario-desc">Em vez de um texto simples quase invisível com triângulo minúsculo, agora é um cartão interativo destacado com ícone 🔀, badge "CONFIGURAR" e seta indicadora.</div>
+
+            <details class="ex-mwan-rules-editor">
+                <summary class="ex-mwan-rules-summary">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="ex-mwan-summary-icon">🔀</span>
+                        <strong>Regras Avançadas de Roteamento (Portas e IPs)</strong>
+                    </div>
+                    <span class="ex-mwan-summary-toggle">
+                        <span class="ex-mwan-summary-badge">Configurar</span>
+                        <span class="ex-mwan-summary-arrow">▾</span>
+                    </span>
+                </summary>
+                <div class="ex-mwan-rules-body">
+                    <!-- Conteúdo recolhido -->
+                </div>
+            </details>
+        </div>
+
+        <!-- Cenário 2: Toggle Aberto (Expandido) -->
+        <div class="scenario-card">
+            <div class="scenario-title">2. Estado Aberto (Expandido) — Linha Divisória e Conteúdo Organizado</div>
+            <div class="scenario-desc">Ao abrir, a borda e fundo recebem iluminação suave, a seta gira 180°, e o conteúdo interno (PBR e BitTorrent) é apresentado de forma limpa.</div>
+
+            <details class="ex-mwan-rules-editor" open>
+                <summary class="ex-mwan-rules-summary">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="ex-mwan-summary-icon">🔀</span>
+                        <strong>Regras Avançadas de Roteamento (Portas e IPs)</strong>
+                    </div>
+                    <span class="ex-mwan-summary-toggle">
+                        <span class="ex-mwan-summary-badge">Configurar</span>
+                        <span class="ex-mwan-summary-arrow">▾</span>
+                    </span>
+                </summary>
+                <div class="ex-mwan-rules-body">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+                        <div>
+                            <strong style="display:block;font-size:13px;color:#f8fafc;">Roteamento por Política (PBR)</strong>
+                            <small class="ex-muted" style="color:#94a3b8;">Direcione portas específicas ou aparelhos para balanceamento ou para um link dedicado.</small>
+                        </div>
+                        <button class="ex-mini-button" style="font-weight:700;padding:6px 14px;background:rgba(56,189,248,0.15);color:#38bdf8;border:1px solid rgba(56,189,248,0.35);border-radius:6px;cursor:pointer;">+ Nova Regra</button>
+                    </div>
+
+                    <!-- BitTorrent Aceleração Card -->
+                    <div class="ex-channel-mode-control" style="margin-bottom:10px;padding:12px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                        <div style="flex: 1 1 auto; min-width: 220px;">
+                            <strong style="color:#f8fafc;">⚡ Acelerar BitTorrent / P2P nas 2 Internets</strong>
+                            <small class="ex-muted" style="display:block;margin-top:2px;color:#94a3b8;">Modo Amplo Seguro (>64.500 portas) ativo nas 2 conexões simultaneamente.</small>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px;flex:0 0 auto;">
+                            <button class="ex-mini-button" style="padding: 5px 12px; font-size: 11.5px; font-weight: 700; background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.35); border-radius:6px; cursor:pointer;">
+                                ⚙️ Portas
+                            </button>
+                            <label class="ex-switch" style="margin: 0; position: relative; display: inline-block; width: 44px; height: 24px;">
+                                <input type="checkbox" checked style="opacity: 0; width: 0; height: 0;">
+                                <span class="ex-switch-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #2563eb; transition: .3s; border-radius: 24px;">
+                                    <span style="position: absolute; content: ''; height: 18px; width: 18px; left: 22px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; display: block;"></span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </details>
+        </div>
+    </div>
+</body>
+</html>

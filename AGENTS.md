@@ -1,5 +1,13 @@
 # ARK Router — Diretrizes de Desenvolvimento
 
+## Entrada da auditoria incremental
+
+- Ao iniciar ou retomar uma auditoria, leia `docs/audit/README.md` e `docs/audit/STATUS.md`; abra somente as decisões, contratos e fontes relevantes ao lote.
+- Toda mudança funcional deve atualizar os contratos existentes, a documentação afetada e os testes de persistência, idempotência e interferência. Registre o fechamento em `docs/audit/STATUS.md`.
+- Antes de corrigir, leia a função, seus chamadores e subchamadas relevantes. Não altere padrões do produto sem decisão explícita.
+- Resultados devem identificar o código/pacote testado. Texto gerado ou estado `funcional` no catálogo não comprova reboot, segurança nem aprovação de release.
+- Testes operacionais primeiro no VirtualBox, com alvo e snapshot verificados. Não reinicie o hospedeiro. Deploy físico, commit, push e publicação requerem autorização explícita; aprovação virtual não os autoriza.
+
 ## 1. Escopo e Identificação
 - **Repositório**: Canônico oficial do ARK Router (OpenWrt LuCI Application & Theme).
 - **Versão Ativa**: `1.5.2` (declarada em `VERSION` e `Makefile:PKG_VERSION:=1.5.2`).

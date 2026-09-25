@@ -133,6 +133,7 @@ const EN = {
   "ATIVO ATUALMENTE": "CURRENTLY ACTIVE",
   "ATIVO NO ROTEADOR": "ACTIVE ON ROUTER",
   "AUTO": "AUTO",
+  "Abre >64.500 portas (1024-65535) para BitTorrent e P2P. Serviços essenciais (Bancos, Alexa, Consoles, Jogos, VoIP e Trabalho) são blindados automaticamente antes na conexão principal.": "Opens >64,500 ports (1024-65535) for BitTorrent and P2P. Essential services (Banking, Alexa, Consoles, Gaming, VoIP, and Remote Work) are automatically shielded beforehand on the primary connection.",
   "Abra o link abaixo, faça login e autorize este roteador:": "Open the link below, log in, and authorize this router:",
   "Abrir ARK remoto": "Open remote ARK",
   "Abrir Central Starlink / Speedify →": "Open Starlink / Speedify Hub →",
@@ -271,6 +272,7 @@ const EN = {
   "Balanceamento distribui conexões entre os links; não soma a velocidade de um único envio.": "Load balancing distributes connections between links; it does not combine the speed of a single transfer.",
   "Balancear": "Balance",
   "Blindagem de Automação IoT:": "IoT Automation Shielding:",
+  "Blindagem Inteligente de Portas Seguras": "Intelligent Safe Ports Shield",
   "Bloqueador de Anúncios": "Ad Blocker",
   "Bloqueador de DNS Detectado (": "DNS Blocker Detected (",
   "Buscando redes de 5 GHz ao redor…": "Scanning for nearby 5 GHz networks…",
@@ -471,7 +473,10 @@ const EN = {
   "Dispara relatórios executivos consolidados com tabela formatada e planilha compactada (.csv.gz) em anexo.": "Sends consolidated executive reports with formatted table and compressed spreadsheet (.csv.gz) attached.",
   "Disponível": "Available",
   "Dispositivo": "Device",
+  "Dispositivo Apple": "Apple Device",
   "Dispositivo Smart Home / Automação Residencial (Tuya, Sonoff, Espressif, Alexa, Midea, etc.)": "Smart Home / Home Automation Device (Tuya, Sonoff, Espressif, Alexa, Midea, etc.)",
+  "Câmera Wi-Fi / Smart": "Wi-Fi Camera / Smart",
+  "Computador Mac": "Mac Computer",
   "Dispositivos": "Devices",
   "Dispositivos Pareados (": "Paired Devices (",
   "Dispositivos Seletivos:": "Selective Devices:",
@@ -741,6 +746,7 @@ const EN = {
   "Modo IPv6 / Relay": "IPv6 / Relay Mode",
   "Modo Leve do Monitor de Tráfego (nlbwmon Lite)": "Lightweight Traffic Monitor Mode (nlbwmon Lite)",
   "Modo Multi‑WAN alterado para": "Multi-WAN mode changed to",
+  "Modo Amplo Seguro (>64.500 portas com blindagem de serviços nobres) ativo nas 2 internets.": "Safe Wide Mode (>64,500 ports with shield for essential services) active on both internet connections.",
   "Modo Padrão / Equilibrado": "Standard / Balanced Mode",
   "Modo Padrão restaurado. Recarregando…": "Standard Mode restored. Reloading…",
   "Modo Potência Máxima de Transmissão Wi-Fi": "Wi-Fi Maximum Transmit Power Mode",
@@ -764,6 +770,7 @@ const EN = {
   "Máscara de Rede": "Subnet Mask",
   "Máscara:": "Netmask:",
   "Média: ↓": "Average: ↓",
+  "Mesmo com o modo amplo ativo para toda a rede, assistentes de voz (Alexa, Google, Apple), jogos (PSN, Xbox, Steam), chamadas/VoIP (Zoom, Teams, Meet) e acessos de trabalho são automaticamente blindados na conexão principal.": "Even with wide mode active for the entire network, voice assistants (Alexa, Google, Apple), games (PSN, Xbox, Steam), VoIP/calls (Zoom, Teams, Meet), and remote work access are automatically shielded on the primary connection.",
   "Módulo Multi-WAN (mwan3) Não Instalado": "Multi-WAN Module (mwan3) Not Installed",
   "Módulos adicionais do sistema. Os marcados como": "Additional system modules. Those marked as",
   "Módulos do Ark - Setup instalados. Recarregando…": "Ark - Setup modules installed. Reloading…",
@@ -1422,6 +1429,7 @@ const EN = {
   "📺 Smart TVs": "📺 Smart TVs",
   "📺 Smart TVs Blindadas": "📺 Shielded Smart TVs",
   "Regras Avançadas de Roteamento (Portas e IPs)": "Advanced Routing Rules (Ports & IPs)",
+  "Configurar": "Configure",
   "Roteamento por Política (PBR)": "Policy-Based Routing (PBR)",
   "Direcione portas específicas ou aparelhos para balanceamento ou para um link dedicado.": "Route specific ports or devices for load balancing or to a dedicated link.",
   "+ Nova Regra": "+ New Rule",
@@ -1647,6 +1655,7 @@ const ES = {
   "ATIVO ATUALMENTE": "ACTIVO ACTUALMENTE",
   "ATIVO NO ROTEADOR": "ACTIVO EN EL ROUTER",
   "AUTO": "AUTO",
+  "Abre >64.500 portas (1024-65535) para BitTorrent e P2P. Serviços essenciais (Bancos, Alexa, Consoles, Jogos, VoIP e Trabalho) são blindados automaticamente antes na conexão principal.": "Abre >64.500 puertos (1024-65535) para BitTorrent y P2P. Los servicios esenciales (Bancos, Alexa, Consolas, Juegos, VoIP y Trabajo) se blindan automáticamente antes en la conexión principal.",
   "Abra o link abaixo, faça login e autorize este roteador:": "Abra el enlace abajo, inicie sesión y autorice este router:",
   "Abrir ARK remoto": "Abrir ARK remoto",
   "Abrir Central Starlink / Speedify →": "Abrir Centro Starlink / Speedify →",
@@ -1785,6 +1794,7 @@ const ES = {
   "Balanceamento distribui conexões entre os links; não soma a velocidade de um único envio.": "El balanceo distribuye las conexiones entre enlaces; no suma la velocidad de una sola transferencia.",
   "Balancear": "Balancear",
   "Blindagem de Automação IoT:": "Blindaje de Domótica IoT:",
+  "Blindagem Inteligente de Portas Seguras": "Blindaje Inteligente de Puertos Seguros",
   "Bloqueador de Anúncios": "Bloqueador de Anuncios",
   "Bloqueador de DNS Detectado (": "Bloqueador DNS Detectado (",
   "Buscando redes de 5 GHz ao redor…": "Buscando redes de 5 GHz cercanas…",
@@ -1985,7 +1995,10 @@ const ES = {
   "Dispara relatórios executivos consolidados com tabela formatada e planilha compactada (.csv.gz) em anexo.": "Envía informes ejecutivos con tabla y hoja de cálculo comprimida (.csv.gz) adjunta.",
   "Disponível": "Disponible",
   "Dispositivo": "Dispositivo",
+  "Dispositivo Apple": "Dispositivo Apple",
   "Dispositivo Smart Home / Automação Residencial (Tuya, Sonoff, Espressif, Alexa, Midea, etc.)": "Dispositivo Smart Home / Domótica (Tuya, Sonoff, Espressif, Alexa, Midea, etc.)",
+  "Câmera Wi-Fi / Smart": "Cámara Wi-Fi / Smart",
+  "Computador Mac": "Computadora Mac",
   "Dispositivos": "Dispositivos",
   "Dispositivos Pareados (": "Dispositivos Emparejados (",
   "Dispositivos Seletivos:": "Dispositivos Selectivos:",
@@ -2255,6 +2268,7 @@ const ES = {
   "Modo IPv6 / Relay": "Modo IPv6 / Relay",
   "Modo Leve do Monitor de Tráfego (nlbwmon Lite)": "Modo Ligero del Monitor de Tráfico (nlbwmon Lite)",
   "Modo Multi‑WAN alterado para": "Modo Multi‑WAN cambiado a",
+  "Modo Amplo Seguro (>64.500 portas com blindagem de serviços nobres) ativo nas 2 internets.": "Modo Amplio Seguro (>64.500 puertos con blindaje de servicios esenciales) activo en ambas conexiones a Internet.",
   "Modo Padrão / Equilibrado": "Modo Estándar / Equilibrado",
   "Modo Padrão restaurado. Recarregando…": "Modo Estándar restaurado. Recargando…",
   "Modo Potência Máxima de Transmissão Wi-Fi": "Modo Potencia Máxima de Transmisión Wi-Fi",
@@ -2278,6 +2292,7 @@ const ES = {
   "Máscara de Rede": "Máscara de Red",
   "Máscara:": "Máscara:",
   "Média: ↓": "Media: ↓",
+  "Mesmo com o modo amplo ativo para toda a rede, assistentes de voz (Alexa, Google, Apple), jogos (PSN, Xbox, Steam), chamadas/VoIP (Zoom, Teams, Meet) e acessos de trabalho são automaticamente blindados na conexão principal.": "Incluso con el modo amplio activo para toda la red, asistentes de voz (Alexa, Google, Apple), juegos (PSN, Xbox, Steam), llamadas/VoIP (Zoom, Teams, Meet) y accesos de trabajo se blindan automáticamente en la conexión principal.",
   "Módulo Multi-WAN (mwan3) Não Instalado": "Módulo Multi-WAN (mwan3) No Instalado",
   "Módulos adicionais do sistema. Os marcados como": "Módulos adicionales del sistema. Los marcados como",
   "Módulos do Ark - Setup instalados. Recarregando…": "Módulos de Ark - Setup instalados. Recargando…",
@@ -2936,6 +2951,7 @@ const ES = {
   "📺 Smart TVs": "📺 Smart TVs",
   "📺 Smart TVs Blindadas": "📺 Smart TVs Blindadas",
   "Regras Avançadas de Roteamento (Portas e IPs)": "Reglas Avanzadas de Enrutamiento (Puertos e IPs)",
+  "Configurar": "Configurar",
   "Roteamento por Política (PBR)": "Enrutamiento Basado en Políticas (PBR)",
   "Direcione portas específicas ou aparelhos para balanceamento ou para um link dedicado.": "Enrute puertos específicos o dispositivos para balanceo de carga o a un enlace dedicado.",
   "+ Nova Regra": "+ Nueva Regla",
@@ -6609,14 +6625,36 @@ const networkMethods = {
 		let ip6Str = '—';
 		const ip6Arr = i['ipv6-address'];
 		if (Array.isArray(ip6Arr) && ip6Arr.length > 0) {
-			ip6Str = ip6Arr[0].address;
-		} else if (this.currentData && this.currentData.interfaces) {
+			const globalV6 = ip6Arr.find(function(a) { return a && a.address && !a.address.toLowerCase().startsWith('fe80:'); });
+			if (globalV6) ip6Str = globalV6.address;
+		}
+		if (ip6Str === '—' && this.currentData && this.currentData.interfaces) {
 			const ifaceName = (cfg && (cfg.section || cfg.iface)) || (prefix.replace(/^ex-/, '').replace(/1$/, ''));
-			const compName = (ifaceName === 'wan' ? 'wan6' : (ifaceName + '_6'));
-			const comp = iface(this.currentData.interfaces, compName) || (ifaceName === 'wan' ? iface(this.currentData.interfaces, 'wan6') : null);
-			if (comp && Array.isArray(comp['ipv6-address']) && comp['ipv6-address'].length > 0) {
-				ip6Str = comp['ipv6-address'][0].address;
+			const candidates = [
+				(ifaceName === 'wan' ? 'wan6' : (ifaceName + '_6')),
+				ifaceName + '6',
+				ifaceName
+			];
+			for (let idx = 0; idx < candidates.length; idx++) {
+				const candidate = iface(this.currentData.interfaces, candidates[idx]);
+				if (candidate && candidate.interface) {
+					const compArr = candidate['ipv6-address'];
+					if (Array.isArray(compArr)) {
+						const compGlobalV6 = compArr.find(function(a) { return a && a.address && !a.address.toLowerCase().startsWith('fe80:'); });
+						if (compGlobalV6) {
+							ip6Str = compGlobalV6.address;
+							break;
+						}
+					}
+					if (ip6Str === '—' && Array.isArray(candidate['ipv6-prefix']) && candidate['ipv6-prefix'].length > 0) {
+						ip6Str = candidate['ipv6-prefix'][0].address + '/' + candidate['ipv6-prefix'][0].mask;
+						break;
+					}
+				}
 			}
+		}
+		if (ip6Str === '—' && Array.isArray(ip6Arr) && ip6Arr.length > 0) {
+			ip6Str = ip6Arr[0].address;
 		}
 		const pInfo = getPingTargetInfo(this.currentData);
 		const pTargetLabel = getPingTargetShortLabel(pInfo.target, pInfo.customIp);
@@ -9129,7 +9167,7 @@ const networkMethods = {
 					E('div', {}, [
 						E('strong', { style: 'display: block; color: #f8fafc;' }, [_t('🚀 Modo Amplo Seguro (Recomendado)')]),
 						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, [
-							_t('Abre 1024-8079, 8081-8442, 8444-65535 (>64.500 portas). Cobre 100% dos clientes e peers de torrent sem tocar em portas web (80, 443, 8080, 8443) nem portas de sistema (1-1023).')
+							_t('Abre >64.500 portas (1024-65535) para BitTorrent e P2P. Serviços essenciais (Bancos, Alexa, Consoles, Jogos, VoIP e Trabalho) são blindados automaticamente antes na conexão principal.')
 						])
 					])
 				]),
@@ -9152,6 +9190,10 @@ const networkMethods = {
 						customInput
 					])
 				])
+			]),
+			E('div', { style: 'margin-top: 14px; padding: 10px 12px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px; font-size: 12px; line-height: 1.45; color: #94a3b8;' }, [
+				E('strong', { style: 'color: #38bdf8; display: block; margin-bottom: 2px;' }, ['🛡️ ' + _t('Blindagem Inteligente de Portas Seguras')]),
+				_t('Mesmo com o modo amplo ativo para toda a rede, assistentes de voz (Alexa, Google, Apple), jogos (PSN, Xbox, Steam), chamadas/VoIP (Zoom, Teams, Meet) e acessos de trabalho são automaticamente blindados na conexão principal.')
 			]),
 			E('div', { class: 'right', style: 'margin-top: 18px;' }, [
 				E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, [_t('Cancelar')]),
@@ -19564,7 +19606,7 @@ const renderMethods = {
 		const isClassicMode = rawTorrentPorts === '51413,6881:6999';
 		let torrentSubtitle = '';
 		if (isWideMode) {
-			torrentSubtitle = _t('Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets.');
+			torrentSubtitle = _t('Modo Amplo Seguro (>64.500 portas com blindagem de serviços nobres) ativo nas 2 internets.');
 		} else if (isClassicMode) {
 			torrentSubtitle = _t('Modo Clássico (portas 51413 e 6881-6999) ativo nas 2 internets.');
 		} else {
@@ -19656,9 +19698,18 @@ const renderMethods = {
 			}, self);
 		}
 
-		return E('details', { class: 'ex-mwan-rules-editor', style: 'margin-top: 14px;' }, [
-			E('summary', {}, ['Regras Avançadas de Roteamento (Portas e IPs)']),
-			E('div', { class: 'ex-mwan-rules-body', style: 'padding: 12px 0 4px;' }, [
+		return E('details', { class: 'ex-mwan-rules-editor' }, [
+			E('summary', { class: 'ex-mwan-rules-summary' }, [
+				E('div', { style: 'display: flex; align-items: center; gap: 10px;' }, [
+					E('span', { class: 'ex-mwan-summary-icon' }, ['🔀']),
+					E('strong', {}, [_t('Regras Avançadas de Roteamento (Portas e IPs)')])
+				]),
+				E('span', { class: 'ex-mwan-summary-toggle' }, [
+					E('span', { class: 'ex-mwan-summary-badge' }, [_t('Configurar')]),
+					E('span', { class: 'ex-mwan-summary-arrow' }, ['▾'])
+				])
+			]),
+			E('div', { class: 'ex-mwan-rules-body' }, [
 				E('div', { style: 'display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap;' }, [
 					E('div', {}, [
 						E('strong', { style: 'display:block;font-size:13px;' }, ['Roteamento por Política (PBR)']),

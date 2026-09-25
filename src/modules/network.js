@@ -35,14 +35,36 @@ const networkMethods = {
 		let ip6Str = '—';
 		const ip6Arr = i['ipv6-address'];
 		if (Array.isArray(ip6Arr) && ip6Arr.length > 0) {
-			ip6Str = ip6Arr[0].address;
-		} else if (this.currentData && this.currentData.interfaces) {
+			const globalV6 = ip6Arr.find(function(a) { return a && a.address && !a.address.toLowerCase().startsWith('fe80:'); });
+			if (globalV6) ip6Str = globalV6.address;
+		}
+		if (ip6Str === '—' && this.currentData && this.currentData.interfaces) {
 			const ifaceName = (cfg && (cfg.section || cfg.iface)) || (prefix.replace(/^ex-/, '').replace(/1$/, ''));
-			const compName = (ifaceName === 'wan' ? 'wan6' : (ifaceName + '_6'));
-			const comp = iface(this.currentData.interfaces, compName) || (ifaceName === 'wan' ? iface(this.currentData.interfaces, 'wan6') : null);
-			if (comp && Array.isArray(comp['ipv6-address']) && comp['ipv6-address'].length > 0) {
-				ip6Str = comp['ipv6-address'][0].address;
+			const candidates = [
+				(ifaceName === 'wan' ? 'wan6' : (ifaceName + '_6')),
+				ifaceName + '6',
+				ifaceName
+			];
+			for (let idx = 0; idx < candidates.length; idx++) {
+				const candidate = iface(this.currentData.interfaces, candidates[idx]);
+				if (candidate && candidate.interface) {
+					const compArr = candidate['ipv6-address'];
+					if (Array.isArray(compArr)) {
+						const compGlobalV6 = compArr.find(function(a) { return a && a.address && !a.address.toLowerCase().startsWith('fe80:'); });
+						if (compGlobalV6) {
+							ip6Str = compGlobalV6.address;
+							break;
+						}
+					}
+					if (ip6Str === '—' && Array.isArray(candidate['ipv6-prefix']) && candidate['ipv6-prefix'].length > 0) {
+						ip6Str = candidate['ipv6-prefix'][0].address + '/' + candidate['ipv6-prefix'][0].mask;
+						break;
+					}
+				}
 			}
+		}
+		if (ip6Str === '—' && Array.isArray(ip6Arr) && ip6Arr.length > 0) {
+			ip6Str = ip6Arr[0].address;
 		}
 		const pInfo = getPingTargetInfo(this.currentData);
 		const pTargetLabel = getPingTargetShortLabel(pInfo.target, pInfo.customIp);
@@ -2555,7 +2577,7 @@ const networkMethods = {
 					E('div', {}, [
 						E('strong', { style: 'display: block; color: #f8fafc;' }, [_t('🚀 Modo Amplo Seguro (Recomendado)')]),
 						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, [
-							_t('Abre 1024-8079, 8081-8442, 8444-65535 (>64.500 portas). Cobre 100% dos clientes e peers de torrent sem tocar em portas web (80, 443, 8080, 8443) nem portas de sistema (1-1023).')
+							_t('Abre >64.500 portas (1024-65535) para BitTorrent e P2P. Serviços essenciais (Bancos, Alexa, Consoles, Jogos, VoIP e Trabalho) são blindados automaticamente antes na conexão principal.')
 						])
 					])
 				]),
@@ -2578,6 +2600,10 @@ const networkMethods = {
 						customInput
 					])
 				])
+			]),
+			E('div', { style: 'margin-top: 14px; padding: 10px 12px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px; font-size: 12px; line-height: 1.45; color: #94a3b8;' }, [
+				E('strong', { style: 'color: #38bdf8; display: block; margin-bottom: 2px;' }, ['🛡️ ' + _t('Blindagem Inteligente de Portas Seguras')]),
+				_t('Mesmo com o modo amplo ativo para toda a rede, assistentes de voz (Alexa, Google, Apple), jogos (PSN, Xbox, Steam), chamadas/VoIP (Zoom, Teams, Meet) e acessos de trabalho são automaticamente blindados na conexão principal.')
 			]),
 			E('div', { class: 'right', style: 'margin-top: 18px;' }, [
 				E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, [_t('Cancelar')]),

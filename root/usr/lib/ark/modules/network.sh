@@ -518,6 +518,7 @@ enable_ipv6_dual_stack() {
 		uci -q set dhcp.lan.dhcpv6='server'
 		uci -q set dhcp.lan.ra='server'
 		uci -q set dhcp.lan.ndp='disabled'
+		uci -q set dhcp.lan.ra_prefer_old='0'
 		uci -q delete dhcp.wan.dhcpv6
 		uci -q delete dhcp.wan.ra
 		uci -q delete dhcp.wan.ndp
@@ -825,6 +826,7 @@ set_ipv6_relay() {
 			uci -q set dhcp.lan.dhcpv6='server'
 			uci -q set dhcp.lan.ra='server'
 			uci -q set dhcp.lan.ndp='disabled'
+			uci -q set dhcp.lan.ra_prefer_old='0'
 			uci -q delete dhcp.wan.dhcpv6
 			uci -q delete dhcp.wan.ra
 			uci -q delete dhcp.wan.ndp
@@ -1025,6 +1027,15 @@ mwan3_reorder_rules() {
 	uci -q reorder "mwan3.bypass_loopback_v6=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
 	uci -q reorder "mwan3.bypass_fe80=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
 	uci -q reorder "mwan3.bypass_fc00=$order_idx" 2>/dev/null || true; order_idx=$((order_idx + 1))
+	# Regras de Blindagem de Portas Seguras (Safe Ports Shield - Prioridade WAN 1 com Sticky)
+	for r in safe_iot safe_voip_udp safe_voip_tcp safe_gaming_udp safe_gaming_tcp safe_remote_tcp safe_remote_udp; do
+		uci -q reorder "mwan3.$r=$order_idx" 2>/dev/null || true
+		order_idx=$((order_idx + 1))
+	done
+	for r in $(uci -q show mwan3 2>/dev/null | grep '=rule$' | cut -d. -f2 | cut -d= -f1 | grep -E '^safe_'); do
+		uci -q reorder "mwan3.$r=$order_idx" 2>/dev/null || true
+		order_idx=$((order_idx + 1))
+	done
 	# 1. Regras PBR customizadas do usuario (White/Black especificas tem prioridade sobre BitTorrent amplo)
 	for r in $(uci -q show mwan3 2>/dev/null | grep '=rule$' | cut -d. -f2 | cut -d= -f1 | grep -E '^ark_rule_|^ark_pbr_|^pbr_'); do
 		uci -q reorder "mwan3.$r=$order_idx" 2>/dev/null || true
@@ -1190,20 +1201,29 @@ ensure_mwan3_ark_config() {
 		uci -q delete mwan3.dev_pool2
 	fi
 
+	# Politica primaria dinamica (identifica automaticamente se a WAN 1 ou WAN 2 e a principal)
+	primary_policy="wan_then_wan2"
+	case "$current_mwan_mode" in
+		failover_wan2|wan2_then_wan) primary_policy="wan2_then_wan" ;;
+		wan2|wan2_only) primary_policy="wan2_only" ;;
+		wan1|wan|wan_only) primary_policy="wan_only" ;;
+		*) primary_policy="wan_then_wan2" ;;
+	esac
+
 	# Regras de DNS de Ultra-Baixa Latencia (Sem Sticky / Failover Instantaneo)
 	uci -q set mwan3.dns_udp=rule
 	uci -q set mwan3.dns_udp.family=ipv4
 	uci -q set mwan3.dns_udp.proto=udp
 	uci -q set mwan3.dns_udp.dest_port=53
 	uci -q set mwan3.dns_udp.sticky=0
-	[ -n "$(uci -q get mwan3.dns_udp.use_policy)" ] || uci -q set mwan3.dns_udp.use_policy=wan_then_wan2
+	[ -n "$(uci -q get mwan3.dns_udp.use_policy)" ] || uci -q set mwan3.dns_udp.use_policy="$primary_policy"
 
 	uci -q set mwan3.dns_tcp=rule
 	uci -q set mwan3.dns_tcp.family=ipv4
 	uci -q set mwan3.dns_tcp.proto=tcp
 	uci -q set mwan3.dns_tcp.dest_port='53,853'
 	uci -q set mwan3.dns_tcp.sticky=0
-	[ -n "$(uci -q get mwan3.dns_tcp.use_policy)" ] || uci -q set mwan3.dns_tcp.use_policy=wan_then_wan2
+	[ -n "$(uci -q get mwan3.dns_tcp.use_policy)" ] || uci -q set mwan3.dns_tcp.use_policy="$primary_policy"
 
 	# Regra de WireGuard VPN (Resiliente / Sem Sticky / Failover Imediato)
 	uci -q set mwan3.wireguard_udp=rule
@@ -1212,7 +1232,7 @@ ensure_mwan3_ark_config() {
 	uci -q set mwan3.wireguard_udp.dest_port='51820,51821'
 	uci -q set mwan3.wireguard_udp.sticky=0
 	uci -q set mwan3.wireguard_udp.timeout=60
-	[ -n "$(uci -q get mwan3.wireguard_udp.use_policy)" ] || uci -q set mwan3.wireguard_udp.use_policy=wan_then_wan2
+	[ -n "$(uci -q get mwan3.wireguard_udp.use_policy)" ] || uci -q set mwan3.wireguard_udp.use_policy="$primary_policy"
 
 	# 3. Regras Criticas Essenciais
 	uci -q set mwan3.ssh=rule
@@ -1221,7 +1241,7 @@ ensure_mwan3_ark_config() {
 	uci -q set mwan3.ssh.proto=tcp
 	uci -q set mwan3.ssh.sticky=1
 	uci -q set mwan3.ssh.timeout=3600
-	[ -n "$(uci -q get mwan3.ssh.use_policy)" ] || uci -q set mwan3.ssh.use_policy=wan_then_wan2
+	[ -n "$(uci -q get mwan3.ssh.use_policy)" ] || uci -q set mwan3.ssh.use_policy="$primary_policy"
 
 	uci -q set mwan3.whatsapp_tcp=rule
 	uci -q set mwan3.whatsapp_tcp.dest_port='5222,5228,5242'
@@ -1229,7 +1249,7 @@ ensure_mwan3_ark_config() {
 	uci -q set mwan3.whatsapp_tcp.proto=tcp
 	uci -q set mwan3.whatsapp_tcp.sticky=1
 	uci -q set mwan3.whatsapp_tcp.timeout=3600
-	[ -n "$(uci -q get mwan3.whatsapp_tcp.use_policy)" ] || uci -q set mwan3.whatsapp_tcp.use_policy=wan_then_wan2
+	[ -n "$(uci -q get mwan3.whatsapp_tcp.use_policy)" ] || uci -q set mwan3.whatsapp_tcp.use_policy="$primary_policy"
 
 	uci -q set mwan3.whatsapp_udp=rule
 	uci -q set mwan3.whatsapp_udp.dest_port=3478
@@ -1237,7 +1257,7 @@ ensure_mwan3_ark_config() {
 	uci -q set mwan3.whatsapp_udp.proto=udp
 	uci -q set mwan3.whatsapp_udp.sticky=1
 	uci -q set mwan3.whatsapp_udp.timeout=3600
-	[ -n "$(uci -q get mwan3.whatsapp_udp.use_policy)" ] || uci -q set mwan3.whatsapp_udp.use_policy=wan_then_wan2
+	[ -n "$(uci -q get mwan3.whatsapp_udp.use_policy)" ] || uci -q set mwan3.whatsapp_udp.use_policy="$primary_policy"
 
 	uci -q set mwan3.https=rule
 	uci -q set mwan3.https.dest_port=443
@@ -1245,7 +1265,7 @@ ensure_mwan3_ark_config() {
 	uci -q set mwan3.https.proto=tcp
 	uci -q set mwan3.https.sticky=1
 	uci -q set mwan3.https.timeout=600
-	[ -n "$(uci -q get mwan3.https.use_policy)" ] || uci -q set mwan3.https.use_policy=wan_then_wan2
+	[ -n "$(uci -q get mwan3.https.use_policy)" ] || uci -q set mwan3.https.use_policy="$primary_policy"
 
 	uci -q set mwan3.https_quic=rule
 	uci -q set mwan3.https_quic.dest_port=443
@@ -1253,7 +1273,7 @@ ensure_mwan3_ark_config() {
 	uci -q set mwan3.https_quic.proto=udp
 	uci -q set mwan3.https_quic.sticky=1
 	uci -q set mwan3.https_quic.timeout=3600
-	[ -n "$(uci -q get mwan3.https_quic.use_policy)" ] || uci -q set mwan3.https_quic.use_policy=wan_then_wan2
+	[ -n "$(uci -q get mwan3.https_quic.use_policy)" ] || uci -q set mwan3.https_quic.use_policy="$primary_policy"
 
 	uci -q set mwan3.http=rule
 	uci -q set mwan3.http.family=ipv4
@@ -1261,7 +1281,7 @@ ensure_mwan3_ark_config() {
 	uci -q set mwan3.http.dest_port='80'
 	uci -q set mwan3.http.sticky=1
 	uci -q set mwan3.http.timeout=600
-	[ -n "$(uci -q get mwan3.http.use_policy)" ] || uci -q set mwan3.http.use_policy=wan_then_wan2
+	[ -n "$(uci -q get mwan3.http.use_policy)" ] || uci -q set mwan3.http.use_policy="$primary_policy"
 
 	uci -q set mwan3.iot_alexa_mqtt=rule
 	uci -q set mwan3.iot_alexa_mqtt.family=ipv4
@@ -1269,14 +1289,75 @@ ensure_mwan3_ark_config() {
 	uci -q set mwan3.iot_alexa_mqtt.dest_port='8883,8886'
 	uci -q set mwan3.iot_alexa_mqtt.sticky=1
 	uci -q set mwan3.iot_alexa_mqtt.timeout=3600
-	[ -n "$(uci -q get mwan3.iot_alexa_mqtt.use_policy)" ] || uci -q set mwan3.iot_alexa_mqtt.use_policy=wan_then_wan2
+	[ -n "$(uci -q get mwan3.iot_alexa_mqtt.use_policy)" ] || uci -q set mwan3.iot_alexa_mqtt.use_policy="$primary_policy"
 
-	# 4. Regra Geral Catch-All (SEMPRE A ULTIMA REGRA)
+	# 4. Regras de Blindagem de Portas Seguras (Safe Ports Shield - Prioridade WAN Primaria com Sticky)
+	# 4.1 Assistentes de Voz e Smart Home (Alexa, Google Nest/FCM, Apple APNs, MQTT Tuya/Sonoff)
+	uci -q set mwan3.safe_iot=rule
+	uci -q set mwan3.safe_iot.family=ipv4
+	uci -q set mwan3.safe_iot.proto=tcp
+	uci -q set mwan3.safe_iot.dest_port='1883,5223,5228:5230,8883,8886'
+	uci -q set mwan3.safe_iot.sticky=1
+	uci -q set mwan3.safe_iot.timeout=3600
+	[ -n "$(uci -q get mwan3.safe_iot.use_policy)" ] || uci -q set mwan3.safe_iot.use_policy="$primary_policy"
+
+	# 4.2 Chamadas de Voz, Videoconferencias e VoIP (SIP, WhatsApp, STUN, Zoom, Google Meet, Teams, Discord)
+	uci -q set mwan3.safe_voip_udp=rule
+	uci -q set mwan3.safe_voip_udp.family=ipv4
+	uci -q set mwan3.safe_voip_udp.proto=udp
+	uci -q set mwan3.safe_voip_udp.dest_port='3478:3481,5060:5061,8801:8810,19302:19309,50000:50059,50001:50004,50318'
+	uci -q set mwan3.safe_voip_udp.sticky=1
+	uci -q set mwan3.safe_voip_udp.timeout=3600
+	[ -n "$(uci -q get mwan3.safe_voip_udp.use_policy)" ] || uci -q set mwan3.safe_voip_udp.use_policy="$primary_policy"
+
+	uci -q set mwan3.safe_voip_tcp=rule
+	uci -q set mwan3.safe_voip_tcp.family=ipv4
+	uci -q set mwan3.safe_voip_tcp.proto=tcp
+	uci -q set mwan3.safe_voip_tcp.dest_port='5060,5061'
+	uci -q set mwan3.safe_voip_tcp.sticky=1
+	uci -q set mwan3.safe_voip_tcp.timeout=3600
+	[ -n "$(uci -q get mwan3.safe_voip_tcp.use_policy)" ] || uci -q set mwan3.safe_voip_tcp.use_policy="$primary_policy"
+
+	# 4.3 Consoles e Jogos Online (PlayStation Network, Xbox Live, Steam, Riot, Battle.net, EA Sports)
+	uci -q set mwan3.safe_gaming_udp=rule
+	uci -q set mwan3.safe_gaming_udp.family=ipv4
+	uci -q set mwan3.safe_gaming_udp.proto=udp
+	uci -q set mwan3.safe_gaming_udp.dest_port='88,500,1119,3074,3478:3480,3544,3659,4500,5000:5500,8393:8400,27000:27036'
+	uci -q set mwan3.safe_gaming_udp.sticky=1
+	uci -q set mwan3.safe_gaming_udp.timeout=3600
+	[ -n "$(uci -q get mwan3.safe_gaming_udp.use_policy)" ] || uci -q set mwan3.safe_gaming_udp.use_policy="$primary_policy"
+
+	uci -q set mwan3.safe_gaming_tcp=rule
+	uci -q set mwan3.safe_gaming_tcp.family=ipv4
+	uci -q set mwan3.safe_gaming_tcp.proto=tcp
+	uci -q set mwan3.safe_gaming_tcp.dest_port='1119,2099,3074,3724,6112:6114,8393:8400,27015,27036'
+	uci -q set mwan3.safe_gaming_tcp.sticky=1
+	uci -q set mwan3.safe_gaming_tcp.timeout=3600
+	[ -n "$(uci -q get mwan3.safe_gaming_tcp.use_policy)" ] || uci -q set mwan3.safe_gaming_tcp.use_policy="$primary_policy"
+
+	# 4.4 Trabalho Remoto e Streaming de Musica (RDP, TeamViewer, AnyDesk, Spotify Connect)
+	uci -q set mwan3.safe_remote_tcp=rule
+	uci -q set mwan3.safe_remote_tcp.family=ipv4
+	uci -q set mwan3.safe_remote_tcp.proto=tcp
+	uci -q set mwan3.safe_remote_tcp.dest_port='3389,4070,5938,6568'
+	uci -q set mwan3.safe_remote_tcp.sticky=1
+	uci -q set mwan3.safe_remote_tcp.timeout=3600
+	[ -n "$(uci -q get mwan3.safe_remote_tcp.use_policy)" ] || uci -q set mwan3.safe_remote_tcp.use_policy="$primary_policy"
+
+	uci -q set mwan3.safe_remote_udp=rule
+	uci -q set mwan3.safe_remote_udp.family=ipv4
+	uci -q set mwan3.safe_remote_udp.proto=udp
+	uci -q set mwan3.safe_remote_udp.dest_port='3389,4070,5938'
+	uci -q set mwan3.safe_remote_udp.sticky=1
+	uci -q set mwan3.safe_remote_udp.timeout=3600
+	[ -n "$(uci -q get mwan3.safe_remote_udp.use_policy)" ] || uci -q set mwan3.safe_remote_udp.use_policy="$primary_policy"
+
+	# 5. Regra Geral Catch-All (SEMPRE A ULTIMA REGRA)
 	uci -q set mwan3.default_rule_v4=rule
 	uci -q set mwan3.default_rule_v4.dest_ip='0.0.0.0/0'
 	uci -q set mwan3.default_rule_v4.family=ipv4
 	uci -q set mwan3.default_rule_v4.sticky=1
-	[ -n "$(uci -q get mwan3.default_rule_v4.use_policy)" ] || uci -q set mwan3.default_rule_v4.use_policy=wan_then_wan2
+	[ -n "$(uci -q get mwan3.default_rule_v4.use_policy)" ] || uci -q set mwan3.default_rule_v4.use_policy="$primary_policy"
 
 	# Reordenacao estrita de prioridade no UCI
 	mwan3_reorder_rules
@@ -1918,6 +1999,14 @@ handle_network() {
 		uci -q set mwan3.whatsapp_udp.use_policy="$policy"
 		uci -q set mwan3.https.use_policy="$policy"
 		uci -q set mwan3.https_quic.use_policy="$policy"
+		uci -q set mwan3.http.use_policy="$policy"
+		uci -q set mwan3.iot_alexa_mqtt.use_policy="$policy"
+		for r in safe_iot safe_voip_udp safe_voip_tcp safe_gaming_udp safe_gaming_tcp safe_remote_tcp safe_remote_udp; do
+			uci -q set "mwan3.$r.use_policy=$policy"
+		done
+		for r in $(uci -q show mwan3 2>/dev/null | grep '=rule$' | cut -d. -f2 | cut -d= -f1 | grep -E '^safe_'); do
+			uci -q set "mwan3.$r.use_policy=$policy"
+		done
 		uci -q set mwan3.default_rule_v4.use_policy="$policy"
 		mwan3_reorder_rules
 		uci commit mwan3
@@ -2042,10 +2131,19 @@ handle_network() {
 			uci -q set "mwan3.globals.torrent_ports=$ports"
 			uci -q set "mwan3.globals.torrent_ip=$target_ip"
 
+			# Se toda a rede (0.0.0.0) em modo amplo, as portas de escuta de entrada (src_port) sao 51413,6881:6999
+			# evitando capturar portas efemeras (>1024) de outros clientes na LAN
+			src_ports="$ports"
+			if [ "$target_ip" = "0.0.0.0" ] || [ "$target_ip" = "0.0.0.0/0" ]; then
+				case "$ports" in
+					*1024*65535*) src_ports="51413,6881:6999" ;;
+				esac
+			fi
+
 			uci -q set mwan3.tor_src_tcp=rule
 			uci -q set mwan3.tor_src_tcp.family=ipv4
 			uci -q set mwan3.tor_src_tcp.proto=tcp
-			uci -q set "mwan3.tor_src_tcp.src_port=$ports"
+			uci -q set "mwan3.tor_src_tcp.src_port=$src_ports"
 			uci -q set mwan3.tor_src_tcp.use_policy=balanced
 			uci -q set mwan3.tor_src_tcp.sticky=0
 			uci -q set mwan3.tor_src_tcp.enabled=1
@@ -2053,7 +2151,7 @@ handle_network() {
 			uci -q set mwan3.tor_src_udp=rule
 			uci -q set mwan3.tor_src_udp.family=ipv4
 			uci -q set mwan3.tor_src_udp.proto=udp
-			uci -q set "mwan3.tor_src_udp.src_port=$ports"
+			uci -q set "mwan3.tor_src_udp.src_port=$src_ports"
 			uci -q set mwan3.tor_src_udp.use_policy=balanced
 			uci -q set mwan3.tor_src_udp.sticky=0
 			uci -q set mwan3.tor_src_udp.enabled=1
@@ -2202,7 +2300,10 @@ handle_network() {
 			uci -q set equipe_dashboard.mwan=config
 			uci -q set equipe_dashboard.mwan.mode=failover
 			uci commit equipe_dashboard
-			for r in ssh whatsapp_tcp whatsapp_udp https https_quic default_rule_v4; do
+			for r in ssh whatsapp_tcp whatsapp_udp https https_quic http iot_alexa_mqtt default_rule_v4; do
+				uci -q set "mwan3.$r.use_policy=wan_then_wan2"
+			done
+			for r in $(uci -q show mwan3 2>/dev/null | grep '=rule$' | cut -d. -f2 | cut -d= -f1 | grep -E '^safe_'); do
 				uci -q set "mwan3.$r.use_policy=wan_then_wan2"
 			done
 			mwan3_reorder_rules
@@ -2689,31 +2790,17 @@ EOF
 		wan_dev="$(uci -q get "network.$iface.device")"
 		[ -n "$wan_dev" ] || wan_dev="$(sqm_device_for_network "$iface")"
 		valid_net_device "$wan_dev" || { echo "Dispositivo fisico invalido para $iface" >&2; exit 2; }
-		dev_sec=""
-		for s in $(uci -q show network 2>/dev/null | sed -n 's/^network\.\(@device\[[0-9]*\]\|[a-zA-Z0-9_]*\)=device$/\1/p'); do
-			if [ "$(uci -q get "network.$s.name")" = "$wan_dev" ]; then
-				dev_sec="$s"
-				break
-			fi
-		done
-		if [ -z "$dev_sec" ]; then
-			uci add network device >/dev/null 2>&1
-			dev_sec="@device[-1]"
-			uci -q set "network.$dev_sec.name=$wan_dev"
-		fi
 		if [ "$baby_jumbo" = 1 ]; then
-			ip link set "$wan_dev" mtu 1508 >/dev/null 2>&1 || true
-			uci -q set "network.$dev_sec.mtu=1508"
+			ark_ensure_phys_device_mtu "$wan_dev" 1508
 			uci -q set "network.$iface.mtu=1500"
 			uci -q set "network.$iface.device_mtu=1508"
-			[ "$(uci -q get "network.$iface.proto")" = pppoe ] && ip link set "pppoe-$iface" mtu 1500 >/dev/null 2>&1 || true
+			[ "$(uci -q get "network.$iface.proto")" = pppoe ] && [ -z "${ARK_ROOT}" ] && ip link set "pppoe-$iface" mtu 1500 >/dev/null 2>&1 || true
 			uci commit network
 		elif [ "$baby_jumbo" = 0 ]; then
-			ip link set "$wan_dev" mtu 1500 >/dev/null 2>&1 || true
-			uci -q set "network.$dev_sec.mtu=1500"
+			ark_ensure_phys_device_mtu "$wan_dev" 1500
 			if [ "$(uci -q get "network.$iface.proto")" = pppoe ]; then
 				uci -q set "network.$iface.mtu=1492"
-				ip link set "pppoe-$iface" mtu 1492 >/dev/null 2>&1 || true
+				[ -z "${ARK_ROOT}" ] && ip link set "pppoe-$iface" mtu 1492 >/dev/null 2>&1 || true
 			else
 				uci -q delete "network.$iface.mtu"
 			fi

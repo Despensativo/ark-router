@@ -19,6 +19,12 @@ if [ "$(uci -q get dhcp.lan.force)" != "1" ]; then
 	changed=1
 fi
 
+# Depreciacao imediata de prefixos IPv6 antigos no odhcpd (RFC 9096 - elimina IPs fantasmas em reconexoes PPPoE)
+if [ "$(uci -q get dhcp.lan.ra_prefer_old)" != "0" ]; then
+	uci -q set dhcp.lan.ra_prefer_old='0'
+	changed=1
+fi
+
 # Otimizacao inteligente do cachesize do dnsmasq conforme a RAM do hardware
 mem_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 131072)"
 if [ "$mem_kb" -le 135000 ]; then

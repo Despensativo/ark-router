@@ -1496,7 +1496,7 @@ const renderMethods = {
 		const isClassicMode = rawTorrentPorts === '51413,6881:6999';
 		let torrentSubtitle = '';
 		if (isWideMode) {
-			torrentSubtitle = _t('Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets.');
+			torrentSubtitle = _t('Modo Amplo Seguro (>64.500 portas com blindagem de serviços nobres) ativo nas 2 internets.');
 		} else if (isClassicMode) {
 			torrentSubtitle = _t('Modo Clássico (portas 51413 e 6881-6999) ativo nas 2 internets.');
 		} else {
@@ -1588,9 +1588,18 @@ const renderMethods = {
 			}, self);
 		}
 
-		return E('details', { class: 'ex-mwan-rules-editor', style: 'margin-top: 14px;' }, [
-			E('summary', {}, ['Regras Avançadas de Roteamento (Portas e IPs)']),
-			E('div', { class: 'ex-mwan-rules-body', style: 'padding: 12px 0 4px;' }, [
+		return E('details', { class: 'ex-mwan-rules-editor' }, [
+			E('summary', { class: 'ex-mwan-rules-summary' }, [
+				E('div', { style: 'display: flex; align-items: center; gap: 10px;' }, [
+					E('span', { class: 'ex-mwan-summary-icon' }, ['🔀']),
+					E('strong', {}, [_t('Regras Avançadas de Roteamento (Portas e IPs)')])
+				]),
+				E('span', { class: 'ex-mwan-summary-toggle' }, [
+					E('span', { class: 'ex-mwan-summary-badge' }, [_t('Configurar')]),
+					E('span', { class: 'ex-mwan-summary-arrow' }, ['▾'])
+				])
+			]),
+			E('div', { class: 'ex-mwan-rules-body' }, [
 				E('div', { style: 'display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap;' }, [
 					E('div', {}, [
 						E('strong', { style: 'display:block;font-size:13px;' }, ['Roteamento por Política (PBR)']),

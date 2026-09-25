@@ -100,7 +100,7 @@ html_template = """<!DOCTYPE html>
                 <div style="flex: 1 1 auto; min-width: 240px;">
                     <strong style="font-size: 14px; color: #f8fafc;">⚡ Acelerar BitTorrent / P2P nas 2 Internets</strong>
                     <small class="ex-muted" style="display: block; margin-top: 4px; color: #38bdf8; font-weight: 500;">
-                        Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets. • 🎯 Aparelho: 192.168.73.90
+                        Modo Amplo Seguro (>64.500 portas com blindagem de serviços nobres) ativo nas 2 internets. • 🎯 Aparelho: 192.168.73.90
                     </small>
                 </div>
                 <div style="display: flex; align-items: center; gap: 12px; flex: 0 0 auto;">
@@ -121,11 +121,11 @@ html_template = """<!DOCTYPE html>
                 <div style="flex: 1 1 auto; min-width: 240px;">
                     <strong style="font-size: 14px; color: #f8fafc;">⚡ Acelerar BitTorrent / P2P nas 2 Internets</strong>
                     <small class="ex-muted" style="display: block; margin-top: 4px; color: #94a3b8; font-weight: 500;">
-                        Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets. • 🌐 Toda a Rede (0.0.0.0)
+                        Modo Amplo Seguro (>64.500 portas com blindagem de serviços nobres) ativo nas 2 internets. • 🌐 Toda a Rede (0.0.0.0)
                     </small>
                 </div>
                 <div style="display: flex; align-items: center; gap: 12px; flex: 0 0 auto;">
-                    <button class="ex-mini-button" style="padding: 5px 12px; font-size: 12px; font-weight: 700; background: rgba(255, 255, 255, 0.08); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 6px; cursor: pointer;">
+                    <button class="ex-mini-button" style="padding: 5px 12px; font-size: 12px; font-weight: 700; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 6px; cursor: pointer;">
                         ⚙️ Portas
                     </button>
                     <label class="ex-switch" style="margin: 0; position: relative; display: inline-block; width: 44px; height: 24px;">
@@ -174,7 +174,7 @@ html_template = """<!DOCTYPE html>
                         <div>
                             <strong style="display: block; color: #38bdf8; font-size: 13.5px;">🚀 Modo Amplo Seguro (Recomendado)</strong>
                             <small class="ex-muted" style="display: block; margin-top: 3px; font-size: 12px; line-height: 1.4; color: #cbd5e1;">
-                                Abre 1024-8079, 8081-8442, 8444-65535 (>64.500 portas). Cobre 100% dos clientes e peers de torrent sem tocar em portas web (80, 443, 8080, 8443) nem portas de sistema (1-1023).
+                                Abre &gt;64.500 portas (1024-65535) para BitTorrent e P2P. Serviços essenciais (Bancos, Alexa, Consoles, Jogos, VoIP e Trabalho) são blindados automaticamente antes na conexão principal.
                             </small>
                         </div>
                     </label>
@@ -203,6 +203,12 @@ html_template = """<!DOCTYPE html>
                     </label>
                 </div>
 
+                <!-- Banner Informativo: Blindagem Inteligente de Portas Seguras -->
+                <div style="margin-top: 14px; padding: 10px 12px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 8px; font-size: 12px; line-height: 1.45; color: #94a3b8;">
+                    <strong style="color: #38bdf8; display: block; margin-bottom: 2px;">🛡️ Blindagem Inteligente de Portas Seguras</strong>
+                    Mesmo com o modo amplo ativo para toda a rede, assistentes de voz (Alexa, Google, Apple), jogos (PSN, Xbox, Steam), chamadas/VoIP (Zoom, Teams, Meet) e acessos de trabalho são automaticamente blindados na conexão principal.
+                </div>
+
                 <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px;">
                     <button class="btn cbi-button cbi-button-neutral" style="padding: 7px 16px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #e2e8f0; font-weight: 600; cursor: pointer;">Cancelar</button>
                     <button class="btn cbi-button cbi-button-positive" style="padding: 7px 18px; background: #10b981; border: 1px solid #059669; border-radius: 6px; color: #ffffff; font-weight: 700; cursor: pointer;">Salvar e Aplicar</button>
@@ -222,7 +228,7 @@ with open(temp_html_path, "w", encoding="utf-8") as f:
 
 opts = Options()
 opts.add_argument("--headless=new")
-opts.add_argument("--window-size=1200,1150")
+opts.add_argument("--window-size=1200,1450")
 opts.add_argument("--disable-gpu")
 opts.add_argument("--no-sandbox")
 opts.binary_location = r"C:\Program Files\Google\Chrome\Application\chrome.exe"

@@ -429,6 +429,112 @@ config wifi-iface 'default_radio1'
         self.assertIn("6,192.168.30.1,1.1.1.1,9.9.9.9", dhcp_opt)
         self.assertNotIn("192.168.1.1", dhcp_opt)
 
+    def test_15_mtu_duplicate_device_sanitization_and_kernel_audit(self):
+        """Verifica se secoes device duplicadas sao detectadas pelo ark-doctor e saneadas com --fix"""
+        # 1. Cria propositalmente a condicao de duplicata (anonima com 1508 + nomeada sem MTU)
+        net_cfg = os.path.join(self.sb.etc_config, "network")
+        with open(net_cfg, "a", encoding="utf-8") as f:
+            f.write("""
+config device
+	option name 'eth1'
+	option mtu '1508'
+
+config device 'wan_eth1'
+	option name 'eth1'
+	option macaddr '34:66:79:68:E6:97'
+""")
+        self.sb.uci_set("network.wan=interface")
+        self.sb.uci_set("network.wan.device=eth1")
+        self.sb.uci_set("network.wan.proto=pppoe")
+        self.sb.uci_set("network.wan.mtu=1500")
+
+        # 2. Executa ark-doctor sem fix -> DEVE falhar acusando secoes duplicadas
+        res = self.sb.run_control("ark-doctor", "--json")
+        self.assertEqual(res.returncode, 0)
+        report = json.loads(res.stdout)
+        mtu_checks = [c for c in report.get("checks", []) if "MTU Baby Jumbo (wan)" in c.get("name", "")]
+        self.assertTrue(len(mtu_checks) > 0, "Checagem de MTU Baby Jumbo nao encontrada!")
+        self.assertEqual(mtu_checks[0].get("status"), "FAIL")
+        self.assertIn("duplicadas", mtu_checks[0].get("message", ""))
+
+        # 3. Executa ark-doctor com --fix -> DEVE sanear
+        res_fix = self.sb.run_control("ark-doctor", "--fix", "--json")
+        self.assertEqual(res_fix.returncode, 0)
+        report_fix = json.loads(res_fix.stdout)
+        mtu_fix_checks = [c for c in report_fix.get("checks", []) if "MTU Baby Jumbo (wan)" in c.get("name", "")]
+        self.assertEqual(mtu_fix_checks[0].get("status"), "FIXED")
+
+        # 4. Verifica se a duplicata foi eliminada e se MTU 1508 foi preservado
+        dev_count = 0
+        res_show = self.sb.run_sh("uci show network | grep -E '\\.name=.eth1.'")
+        dev_count = len([l for l in res_show.stdout.strip().split("\n") if l.strip()])
+        self.assertEqual(dev_count, 1, f"Ainda ha duplicatas de device para eth1! Encontradas: {dev_count}")
+
+        # 5. Executa auditoria novamente -> DEVE dar OK
+        res_ok = self.sb.run_control("ark-doctor", "--json")
+        report_ok = json.loads(res_ok.stdout)
+        mtu_ok_checks = [c for c in report_ok.get("checks", []) if "MTU Baby Jumbo (wan)" in c.get("name", "")]
+        self.assertEqual(mtu_ok_checks[0].get("status"), "OK")
+
+    def test_16_ipv6_coherence_dashboard_wan_lan_audit_and_autofix(self):
+        """Verifica se o ark-doctor valida e auto-corrige a coerencia entre Dashboard, WAN e LAN IPv6"""
+        # 1. Simula cenário real: Dashboard dual_stack + WAN IPv6 ativa, mas LAN com RA/DHCPv6 disabled (Blackhole)
+        self.sb.uci_set("network.wan=interface")
+        self.sb.uci_set("network.wan.proto=pppoe")
+        self.sb.uci_set("network.wan.ipv6=1")
+        self.sb.uci_set("network.wan.delegate=1")
+        self.sb.uci_set("dhcp.lan.ra=disabled")
+        self.sb.uci_set("dhcp.lan.dhcpv6=disabled")
+
+        # Doctor sem fix -> DEVE falhar
+        res = self.sb.run_control("ark-doctor", "--json")
+        self.assertEqual(res.returncode, 0)
+        report = json.loads(res.stdout)
+        v6_checks = [c for c in report.get("checks", []) if "Coerência IPv6" in c.get("name", "")]
+        self.assertTrue(len(v6_checks) > 0, "Checagem de Coerência IPv6 nao encontrada!")
+        self.assertEqual(v6_checks[0].get("status"), "FAIL")
+
+        # Doctor com --fix -> DEVE reparar e reativar server na LAN
+        res_fix = self.sb.run_control("ark-doctor", "--fix", "--json")
+        self.assertEqual(res_fix.returncode, 0)
+        report_fix = json.loads(res_fix.stdout)
+        v6_fix_checks = [c for c in report_fix.get("checks", []) if "Coerência IPv6" in c.get("name", "")]
+        self.assertEqual(v6_fix_checks[0].get("status"), "FIXED")
+
+        # Confere valores no UCI
+        res_ra = self.sb.run_sh("uci -q get dhcp.lan.ra").stdout.strip()
+        res_dhcpv6 = self.sb.run_sh("uci -q get dhcp.lan.dhcpv6").stdout.strip()
+        self.assertEqual(res_ra, "server")
+        self.assertEqual(res_dhcpv6, "server")
+
+        # Auditoria subsequente -> DEVE dar OK
+        res_ok = self.sb.run_control("ark-doctor", "--json")
+        report_ok = json.loads(res_ok.stdout)
+        v6_ok = [c for c in report_ok.get("checks", []) if "Coerência IPv6" in c.get("name", "")]
+        self.assertEqual(v6_ok[0].get("status"), "OK")
+
+        # 2. Testa cenário oposto: Modo IPv4 Puro configurado, mas LAN com RA 'server' ativo
+        self.sb.uci_set("equipe_dashboard.ipv6=ipv6")
+        self.sb.uci_set("equipe_dashboard.ipv6.mode=ipv4_only")
+        self.sb.uci_set("dhcp.lan.ra=server")
+        self.sb.uci_set("dhcp.lan.dhcpv6=server")
+        self.sb.run_sh("uci -q delete dhcp.@dnsmasq[0].filter_aaaa")
+
+        res_v4_fail = self.sb.run_control("ark-doctor", "--json")
+        report_v4_fail = json.loads(res_v4_fail.stdout)
+        v6_v4_fail = [c for c in report_v4_fail.get("checks", []) if "Coerência IPv6" in c.get("name", "")]
+        self.assertEqual(v6_v4_fail[0].get("status"), "FAIL")
+
+        # Doctor com --fix no modo IPv4 Puro -> DEVE desativar anúncios e ativar filter_aaaa
+        res_v4_fix = self.sb.run_control("ark-doctor", "--fix", "--json")
+        report_v4_fix = json.loads(res_v4_fix.stdout)
+        v6_v4_fixed = [c for c in report_v4_fix.get("checks", []) if "Coerência IPv6" in c.get("name", "")]
+        self.assertEqual(v6_v4_fixed[0].get("status"), "FIXED")
+
+        self.assertEqual(self.sb.run_sh("uci -q get dhcp.lan.ra").stdout.strip(), "disabled")
+        self.assertEqual(self.sb.run_sh("uci -q get dhcp.lan.dhcpv6").stdout.strip(), "disabled")
+        self.assertEqual(self.sb.run_sh("uci -q get dhcp.@dnsmasq[0].filter_aaaa").stdout.strip(), "1")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 

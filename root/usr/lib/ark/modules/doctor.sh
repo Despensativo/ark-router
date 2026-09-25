@@ -155,30 +155,63 @@ ark_doctor_audit() {
 		if [ "$dev_mtu" = 1508 ] || [ "$cur_mtu" = 1500 -a "$proto" = pppoe ]; then
 			phys_dev="$wan_dev"
 			[ -n "$phys_dev" ] || phys_dev="$(uci -q get "network.$wan.ifname")"
-			dev_sec=""
-			for s in $(uci -q show network 2>/dev/null | sed -n 's/^network\.\(@device\[[0-9]*\]\|[a-zA-Z0-9_]*\)=device$/\1/p'); do
+			[ -n "$phys_dev" ] || phys_dev="$(uci -q get "network.$wan.ark_phys_port")"
+
+			dev_sec_count=0
+			dev_has_non_1508=0
+			for s in $(uci -q show network 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1); do
 				if [ "$(uci -q get "network.$s.name")" = "$phys_dev" ]; then
-					dev_sec="$s"
-					break
+					dev_sec_count=$((dev_sec_count + 1))
+					s_mtu="$(uci -q get "network.$s.mtu")"
+					[ "$s_mtu" = "1508" ] || dev_has_non_1508=1
 				fi
 			done
-			configured_dev_mtu="$(uci -q get "network.$dev_sec.mtu")"
-			if [ "$configured_dev_mtu" != "1508" ]; then
+
+			real_phys_mtu=""
+			[ -f "${ARK_ROOT}/sys/class/net/$phys_dev/mtu" ] && real_phys_mtu="$(cat "${ARK_ROOT}/sys/class/net/$phys_dev/mtu" 2>/dev/null || true)"
+			[ -z "$real_phys_mtu" ] && [ -f "/sys/class/net/$phys_dev/mtu" ] && [ -z "${ARK_ROOT}" ] && real_phys_mtu="$(cat "/sys/class/net/$phys_dev/mtu" 2>/dev/null || true)"
+
+			real_ppp_mtu=""
+			if [ "$proto" = pppoe ]; then
+				[ -f "${ARK_ROOT}/sys/class/net/pppoe-$wan/mtu" ] && real_ppp_mtu="$(cat "${ARK_ROOT}/sys/class/net/pppoe-$wan/mtu" 2>/dev/null || true)"
+				[ -z "$real_ppp_mtu" ] && [ -f "/sys/class/net/pppoe-$wan/mtu" ] && [ -z "${ARK_ROOT}" ] && real_ppp_mtu="$(cat "/sys/class/net/pppoe-$wan/mtu" 2>/dev/null || true)"
+			fi
+
+			mtu_defect=0
+			mtu_err_msg=""
+
+			if [ "$dev_sec_count" -gt 1 ]; then
+				mtu_defect=1
+				mtu_err_msg="Detectadas $dev_sec_count secoes device duplicadas para a porta $phys_dev."
+			elif [ "$dev_sec_count" -eq 0 ] || [ "$dev_has_non_1508" = 1 ]; then
+				mtu_defect=1
+				mtu_err_msg="Porta fisica $phys_dev nao possui mtu=1508 em config device."
+			elif [ -n "$real_phys_mtu" ] && [ "$real_phys_mtu" -lt 1508 ] 2>/dev/null; then
+				mtu_defect=1
+				mtu_err_msg="Porta fisica $phys_dev opera em MTU $real_phys_mtu no kernel (esperado: 1508)."
+			elif [ "$proto" = pppoe ] && [ -n "$real_ppp_mtu" ] && [ "$real_ppp_mtu" -lt 1500 ] 2>/dev/null; then
+				mtu_defect=1
+				mtu_err_msg="Interface pppoe-$wan opera em MTU $real_ppp_mtu no kernel (esperado: 1500)."
+			fi
+
+			if [ "$mtu_defect" = 1 ]; then
 				if [ "$auto_fix" = 1 ]; then
-					if [ -z "$dev_sec" ]; then
-						uci add network device >/dev/null 2>&1
-						dev_sec="@device[-1]"
-						uci -q set "network.$dev_sec.name=$phys_dev"
-					fi
-					uci -q set "network.$dev_sec.mtu=1508"
+					ark_ensure_phys_device_mtu "$phys_dev" 1508
+					uci -q set "network.$wan.mtu=1500"
+					uci -q set "network.$wan.device_mtu=1508"
 					uci commit network
-					ip link set "$phys_dev" mtu 1508 2>/dev/null || true
-					[ "$proto" = pppoe ] && ip link set "pppoe-$wan" mtu 1500 2>/dev/null || true
+					if [ -n "${ARK_ROOT}" ] && [ -f "${ARK_ROOT}/sys/class/net/$phys_dev/mtu" ]; then
+						printf '1508\n' > "${ARK_ROOT}/sys/class/net/$phys_dev/mtu" 2>/dev/null || true
+						[ "$proto" = pppoe ] && [ -f "${ARK_ROOT}/sys/class/net/pppoe-$wan/mtu" ] && printf '1500\n' > "${ARK_ROOT}/sys/class/net/pppoe-$wan/mtu" 2>/dev/null || true
+					elif [ -z "${ARK_ROOT}" ]; then
+						ip link set "$phys_dev" mtu 1508 2>/dev/null || true
+						[ "$proto" = pppoe ] && ip link set "pppoe-$wan" mtu 1500 2>/dev/null || true
+					fi
 					fixes_applied=$((fixes_applied + 1))
-					add_check "MTU Baby Jumbo ($wan)" "FIXED" "Porta $phys_dev ajustada para MTU 1508 em config device."
+					add_check "MTU Baby Jumbo ($wan)" "FIXED" "Porta $phys_dev ajustada para MTU 1508 e duplicatas saneadas."
 				else
 					errors=$((errors + 1))
-					add_check "MTU Baby Jumbo ($wan)" "FAIL" "Baby Jumbo ativo, mas porta fisica $phys_dev nao possui mtu=1508 em config device."
+					add_check "MTU Baby Jumbo ($wan)" "FAIL" "$mtu_err_msg"
 				fi
 			else
 				add_check "MTU Baby Jumbo ($wan)" "OK" "Porta $phys_dev e interface $wan alinhadas em 1508/1500 bytes."
@@ -506,6 +539,112 @@ ark_doctor_audit() {
 		fi
 	else
 		add_check "Blindagem WAN6 e DHCPv6" "OK" "Interfaces IPv6 canonicas (@wan) e zero processos orfaos."
+	fi
+
+	# 11b. Depreciação de Prefixos IPv6 na LAN (RFC 9096 - Prevenção de IPs Fantasmas)
+	lan_ra_prefer_old="$($uci_cmd get dhcp.lan.ra_prefer_old || echo 1)"
+	if [ "$lan_ra_prefer_old" != "0" ]; then
+		if [ "$auto_fix" = 1 ]; then
+			$uci_cmd set dhcp.lan.ra_prefer_old='0'
+			$uci_cmd commit dhcp
+			fixes_applied=$((fixes_applied + 1))
+			add_check "Depreciação IPv6 (RFC 9096)" "FIXED" "ra_prefer_old configurado para 0 (eliminação imediata de prefixos fantasmas)."
+		else
+			warnings=$((warnings + 1))
+			add_check "Depreciação IPv6 (RFC 9096)" "WARN" "ra_prefer_old não está ativo (aparelhos podem reter IPs antigos em trocas de PPPoE)."
+		fi
+	else
+		add_check "Depreciação IPv6 (RFC 9096)" "OK" "Depreciação ativa no odhcpd (SLAAC limpa prefixos antigos automaticamente)."
+	fi
+
+	# 11c. Coerência do Protocolo IPv6 (Dashboard vs WAN vs LAN)
+	if ! ark_is_satellite_or_ap; then
+		ipv6_mode="$($uci_cmd get equipe_dashboard.ipv6.mode 2>/dev/null || echo '')"
+		[ -n "$ipv6_mode" ] || ipv6_mode="dual_stack"
+
+		wan_has_ipv6=0
+		for w in wan wan2 wan3 wan4; do
+			if [ "$($uci_cmd get "network.$w.ipv6" 2>/dev/null || echo '')" = "1" ] || \
+			   [ "$($uci_cmd get "network.$w.delegate" 2>/dev/null || echo '')" = "1" ]; then
+				wan_has_ipv6=1
+				break
+			fi
+		done
+		if [ "$wan_has_ipv6" = 0 ]; then
+			wan6_proto="$($uci_cmd get network.wan6.proto 2>/dev/null || echo '')"
+			if [ -n "$wan6_proto" ] && [ "$wan6_proto" != "none" ]; then
+				wan_has_ipv6=1
+			fi
+		fi
+
+		lan_ra="$($uci_cmd get dhcp.lan.ra 2>/dev/null || echo '')"
+		lan_dhcpv6="$($uci_cmd get dhcp.lan.dhcpv6 2>/dev/null || echo '')"
+		filter_aaaa="$($uci_cmd get dhcp.@dnsmasq[0].filter_aaaa 2>/dev/null || echo '0')"
+		relay="$($uci_cmd get equipe_dashboard.ipv6.relay 2>/dev/null || echo '0')"
+
+		if [ "$ipv6_mode" = "ipv4_only" ]; then
+			# Modo IPv4 Puro: anúncios na LAN devem estar desativados e DNSmasq deve filtrar AAAA
+			if [ "$lan_ra" = "server" ] || [ "$lan_ra" = "relay" ] || [ "$lan_dhcpv6" = "server" ] || [ "$lan_dhcpv6" = "relay" ] || [ "$filter_aaaa" != "1" ]; then
+				if [ "$auto_fix" = 1 ]; then
+					$uci_cmd set dhcp.lan.ra='disabled'
+					$uci_cmd set dhcp.lan.dhcpv6='disabled'
+					$uci_cmd set dhcp.lan.ndp='disabled'
+					$uci_cmd set dhcp.@dnsmasq[0].filter_aaaa='1'
+					$uci_cmd commit dhcp
+					[ -z "$root_prefix" ] && [ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq reload >/dev/null 2>&1 || true
+					[ -z "$root_prefix" ] && [ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
+					fixes_applied=$((fixes_applied + 1))
+					add_check "Coerência IPv6 (Dashboard vs LAN)" "FIXED" "Modo IPv4 Puro: anúncios desativados na LAN e filtro AAAA ativado no DNSmasq."
+				else
+					errors=$((errors + 1))
+					add_check "Coerência IPv6 (Dashboard vs LAN)" "FAIL" "Modo IPv4 Puro ativo no painel, mas anúncios RA/DHCPv6 ativos ou filtro AAAA inativo na LAN."
+				fi
+			else
+				add_check "Coerência IPv6 (Dashboard vs LAN)" "OK" "Modo IPv4 Puro: anúncios desativados na LAN e filtro AAAA ativo no DNSmasq."
+			fi
+		elif [ "$wan_has_ipv6" = "1" ]; then
+			# Modo dual_stack ou selective com WAN IPv6 ativa: anúncios na LAN DEVEM estar operacionais
+			expected_service="server"
+			[ "$relay" = "1" ] && expected_service="relay"
+
+			if [ "$lan_ra" != "$expected_service" ] || [ "$lan_dhcpv6" != "$expected_service" ] || [ "$filter_aaaa" = "1" ]; then
+				if [ "$auto_fix" = 1 ]; then
+					if [ "$relay" = "1" ]; then
+						$uci_cmd set dhcp.lan.ra='relay'
+						$uci_cmd set dhcp.lan.dhcpv6='relay'
+						$uci_cmd set dhcp.lan.ndp='relay'
+					else
+						$uci_cmd set dhcp.lan.ra='server'
+						$uci_cmd set dhcp.lan.dhcpv6='server'
+						$uci_cmd set dhcp.lan.ndp='disabled'
+					fi
+					$uci_cmd set dhcp.lan.ra_prefer_old='0'
+					$uci_cmd delete dhcp.@dnsmasq[0].filter_aaaa 2>/dev/null || true
+					$uci_cmd set equipe_dashboard.ipv6=ipv6
+					$uci_cmd set equipe_dashboard.ipv6.mode="$ipv6_mode"
+					$uci_cmd commit dhcp
+					$uci_cmd commit equipe_dashboard
+					[ -z "$root_prefix" ] && [ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq reload >/dev/null 2>&1 || true
+					[ -z "$root_prefix" ] && [ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd enable >/dev/null 2>&1 || true
+					[ -z "$root_prefix" ] && [ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
+					fixes_applied=$((fixes_applied + 1))
+					add_check "Coerência IPv6 (Dashboard vs LAN)" "FIXED" "Anúncios RA/DHCPv6 reativados na LAN ($expected_service) e filtro AAAA removido."
+				else
+					errors=$((errors + 1))
+					add_check "Coerência IPv6 (Dashboard vs LAN)" "FAIL" "Modo $ipv6_mode ativo com IPv6 na WAN, mas anúncios RA/DHCPv6 na LAN estão desativados (blackhole de IPv6)."
+				fi
+			else
+				add_check "Coerência IPv6 (Dashboard vs LAN)" "OK" "Modo $ipv6_mode devidamente alinhado entre WAN e anúncios da LAN ($expected_service)."
+			fi
+		else
+			# Modo dual_stack ou selective, mas WAN sem IPv6
+			if [ "$lan_ra" = "server" ] || [ "$lan_dhcpv6" = "server" ]; then
+				warnings=$((warnings + 1))
+				add_check "Coerência IPv6 (Dashboard vs LAN)" "WARN" "Modo $ipv6_mode ativo na LAN, mas nenhuma WAN possui IPv6 configurado."
+			else
+				add_check "Coerência IPv6 (Dashboard vs LAN)" "OK" "Modo $ipv6_mode preservado aguardando conectividade IPv6 na WAN."
+			fi
+		fi
 	fi
 
 	# 12. Blindagem de Radios Wi-Fi (Auto-Ativacao de Fabrica com Preservacao de Escolha)

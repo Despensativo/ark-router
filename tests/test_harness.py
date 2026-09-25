@@ -222,6 +222,23 @@ config wan_profiles 'wan_profiles'
 	option wan2 'xpon_bridge'
 """)
 
+        # /etc/config/dhcp
+        with open(os.path.join(self.etc_config, "dhcp"), "w") as f:
+            f.write("""
+config dnsmasq
+	option domainneeded '1'
+	option localise_queries '1'
+
+config dhcp 'lan'
+	option interface 'lan'
+	option start '100'
+	option limit '150'
+	option leasetime '12h'
+	option dhcpv4 'server'
+	option dhcpv6 'server'
+	option ra 'server'
+""")
+
     def run_control(self, *args):
         env = os.environ.copy()
         env["PATH"] = self.bin_dir + os.pathsep + env.get("PATH", "")

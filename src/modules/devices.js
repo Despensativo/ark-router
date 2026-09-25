@@ -86,9 +86,16 @@ const devicesMethods = {
 			// Philips Hue
 			'00:17:88', 'EC:B5:FA',
 			// Xiaomi / Yeelight
-			'04:CF:8C', '28:6C:07', '64:90:C1', '7C:49:EB', 'F0:B4:29'
+			'04:CF:8C', '28:6C:07', '64:90:C1', '7C:49:EB', 'F0:B4:29',
+			// Shenzhen iComm Semiconductor (Câmeras Wi-Fi / Smart Home / Doorbells)
+			'84:B4:D2', '08:1A:1E', '14:95:69', '20:67:E0', '84:EA:97', '98:17:3C'
 		];
 		const iotNameRegex = /(?:^|[\s_-])(?:ESP[_-]|TUYA[_-]|midea[_-]|smart|sonoff|shelly|tasmota|wled|zigbee|broadlink|yeelight|home[_-]?assistant|echo|alexa|google[_-]?home|nest[_-]?mini|camera|intelbras|interfone|interruptor|l[aâ]mpada|tomada|fechadura|climatizador|ar[_-]?condicionado|lwip)/i;
+
+		const appleOuiPrefixes = [
+			// Apple, Inc. (iPhone, iPad, Mac, Apple TV, Apple Watch)
+			'C0:C7:DB', '28:CF:E9', 'A4:83:E7', '00:25:00', '3C:07:54', '40:6C:8F', '70:3E:AC', '8C:85:90', 'F4:0F:24'
+		];
 
 		const tvOuiPrefixes = [
 			// Samsung Electronics (Smart TVs, Tizen)
@@ -200,7 +207,15 @@ const devicesMethods = {
 				return 'phone';
 			}
 
-			// 9. Cabo de rede sem classificação específica -> Computador
+			// 9. Dispositivos Apple identificados por OUI (padrão portátil / celular se Wi-Fi)
+			if (appleOuiPrefixes.indexOf(prefix) >= 0) {
+				if (pcRegex.test(n) || isWired) return 'computer';
+				if (tabletRegex.test(n)) return 'tablet';
+				if (tvRegex.test(n)) return 'tv';
+				return 'phone';
+			}
+
+			// 10. Cabo de rede sem classificação específica -> Computador
 			if (isWired) {
 				return 'computer';
 			}
@@ -531,6 +546,14 @@ const devicesMethods = {
 			d.fingerprint = fp;
 			d.isIot = (d.category === 'iot');
 			d.isPrivateMac = isPrivateMac(d.mac);
+			if (!d.name || d.name === 'Dispositivo sem nome') {
+				const uPrefix = String(d.mac || '').toUpperCase().slice(0, 8);
+				if (['84:B4:D2', '08:1A:1E', '14:95:69', '20:67:E0', '84:EA:97', '98:17:3C'].indexOf(uPrefix) >= 0) {
+					d.name = 'Câmera Wi-Fi / Smart';
+				} else if (appleOuiPrefixes.indexOf(uPrefix) >= 0) {
+					d.name = d.category === 'computer' ? 'Computador Mac' : (d.category === 'tablet' ? 'iPad' : 'Dispositivo Apple');
+				}
+			}
 		});
 		this.sortDevices(devices);
 		const existingRows = body.querySelectorAll('tr[data-mac]');
@@ -927,7 +950,8 @@ const devicesMethods = {
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['device-status',device.mac]).then(L.bind(function(result){
 			if(result.code)throw new Error(result.stderr||'Falha ao consultar o dispositivo');
 			let state={};try{state=JSON.parse(result.stdout||'{}');}catch(e){throw new Error('Resposta inválida do roteador');}
-			const name=E('input',{class:'cbi-input-text',value:device.name==='Dispositivo sem nome'?'':device.name,placeholder:'Ex.: Celular da Joyce',maxlength:48,style:'width:100%'});
+			const isAutoName = (!device.name || device.name === 'Dispositivo sem nome' || device.name === 'Câmera Wi-Fi / Smart' || device.name === 'Dispositivo Apple' || device.name === 'Computador Mac' || device.name === 'iPad');
+			const name=E('input',{class:'cbi-input-text',value:isAutoName?'':device.name,placeholder:device.name||'Ex.: Celular da Joyce',maxlength:48,style:'width:100%'});
 			const ipInput=E('input',{class:'cbi-input-text',value:state.ip||(/^(?:\d{1,3}\.){3}\d{1,3}$/.test(device.ip)?device.ip:''),placeholder:'192.168.73.120',inputmode:'decimal',style:'width:100%'});
 
 			let isReserved = !!state.reserved;

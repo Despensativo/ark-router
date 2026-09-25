@@ -664,3 +664,53 @@ ark_auto_enable_factory_wifi() {
 	fi
 	return 1
 }
+
+# Consolidacao e Blindagem de MTU em secoes config device (Baby Jumbo 1508 / Padrao 1500)
+# Elimina secoes duplicadas para a mesma porta fisica e garante aplicacao no kernel e UCI.
+ark_ensure_phys_device_mtu() {
+	local phys_dev="$1"
+	local target_mtu="${2:-1508}"
+	[ -n "$phys_dev" ] || return 1
+
+	local root_prefix="${ARK_ROOT:-}"
+	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+
+	local matched_sections=""
+	local mac_to_keep=""
+	local primary_sec=""
+
+	for s in $($uci_cmd show network 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1); do
+		if [ "$($uci_cmd get "network.$s.name")" = "$phys_dev" ]; then
+			matched_sections="$matched_sections $s"
+			local m="$($uci_cmd get "network.$s.macaddr")"
+			[ -n "$m" ] && [ -z "$mac_to_keep" ] && mac_to_keep="$m"
+		fi
+	done
+
+	if [ -n "$matched_sections" ]; then
+		local is_first=1
+		for s in $matched_sections; do
+			if [ "$is_first" = 1 ]; then
+				primary_sec="$s"
+				is_first=0
+			else
+				$uci_cmd delete "network.$s"
+			fi
+		done
+	else
+		$uci_cmd add network device >/dev/null 2>&1
+		primary_sec="@device[-1]"
+		$uci_cmd set "network.$primary_sec.name=$phys_dev"
+	fi
+
+	$uci_cmd set "network.$primary_sec.name=$phys_dev"
+	$uci_cmd set "network.$primary_sec.mtu=$target_mtu"
+	[ -n "$mac_to_keep" ] && $uci_cmd set "network.$primary_sec.macaddr=$mac_to_keep"
+	uci ${root_prefix:+-c "$root_prefix/etc/config"} commit network 2>/dev/null || true
+
+	if [ -n "$root_prefix" ] && [ -f "$root_prefix/sys/class/net/$phys_dev/mtu" ]; then
+		printf '%s\n' "$target_mtu" > "$root_prefix/sys/class/net/$phys_dev/mtu" 2>/dev/null || true
+	elif [ -z "$root_prefix" ]; then
+		ip link set "$phys_dev" mtu "$target_mtu" 2>/dev/null || true
+	fi
+}
