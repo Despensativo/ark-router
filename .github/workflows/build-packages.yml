@@ -31,6 +31,8 @@ jobs:
           WORK_ROOT: ${{ github.workspace }}/.openwrt-build
           SDK_LINK: ${{ github.workspace }}/.openwrt-sdk-filogic
         run: |
+          rm -rf dist/sdk release-artifacts
+          mkdir -p dist/sdk release-artifacts
           chmod +x scripts/build-apk-wsl.sh scripts/build-apk-manual-wsl.sh scripts/build-ipk-wsl.sh
           scripts/build-apk-wsl.sh
           scripts/build-ipk-wsl.sh
