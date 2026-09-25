@@ -97,16 +97,47 @@ def audit_firewall_guards():
                                 f"AVISO FIREWALL: Invocação direta de iptables em {rel_path}:{line_no} "
                                 f"sem verificação condicional explícita is_fw3/is_fw4!"
                             )
+def audit_version_coherence():
+    errors = []
+    versions = {}
+    
+    root_version_file = os.path.join(REPO_ROOT, "VERSION")
+    if os.path.exists(root_version_file):
+        with open(root_version_file, "r", encoding="utf-8") as f:
+            versions["VERSION"] = f.read().strip()
+            
+    share_version_file = os.path.join(REPO_ROOT, "root/usr/share/ark-router/VERSION")
+    if os.path.exists(share_version_file):
+        with open(share_version_file, "r", encoding="utf-8") as f:
+            versions["root/usr/share/ark-router/VERSION"] = f.read().strip()
+            
+    makefile_file = os.path.join(REPO_ROOT, "Makefile")
+    if os.path.exists(makefile_file):
+        with open(makefile_file, "r", encoding="utf-8") as f:
+            m = re.search(r"PKG_VERSION\s*:=\s*([0-9\.]+)", f.read())
+            if m:
+                versions["Makefile:PKG_VERSION"] = m.group(1).strip()
+                
+    common_sh_file = os.path.join(REPO_ROOT, "root/usr/lib/ark/common.sh")
+    if os.path.exists(common_sh_file):
+        with open(common_sh_file, "r", encoding="utf-8") as f:
+            m = re.search(r'ARK_ROUTER_VERSION\s*=\s*["\']([0-9\.]+)["\']', f.read())
+            if m:
+                versions["common.sh:ARK_ROUTER_VERSION"] = m.group(1).strip()
+                
+    unique_versions = set(versions.values())
+    if len(unique_versions) > 1:
+        errors.append(f"Incoerência de versão detectada entre arquivos do projeto: {versions}")
     return errors
 
 def main():
     print("=" * 70)
-    print("ARK Router — Auditoria Preventiva de Shell Scripts (.sh)")
+    print("ARK Router — Auditoria Preventiva de Shell Scripts & Release")
     print("=" * 70)
 
     total_errors = []
 
-    print("[1/3] Checando colisões e funções duplicadas entre módulos...")
+    print("[1/4] Checando colisões e funções duplicadas entre módulos...")
     func_errors = audit_duplicate_functions()
     if func_errors:
         print(f"  ❌ Encontradas {len(func_errors)} colisões de funções:")
@@ -116,7 +147,7 @@ def main():
     else:
         print("  ✅ Zero colisões de função encontradas nos módulos ARK.")
 
-    print("[2/3] Checando sintaxe POSIX sh -n de todos os scripts...")
+    print("[2/4] Checando sintaxe POSIX sh -n de todos os scripts...")
     syntax_errors = audit_shell_syntax()
     if syntax_errors:
         print(f"  ❌ Encontrados {len(syntax_errors)} erros de sintaxe:")
@@ -126,7 +157,7 @@ def main():
     else:
         print("  ✅ Todos os scripts shell possuem sintaxe 100% válida.")
 
-    print("[3/3] Checando proteção e isolamento de firewall (Regra 11)...")
+    print("[3/4] Checando proteção e isolamento de firewall (Regra 11)...")
     fw_errors = audit_firewall_guards()
     if fw_errors:
         print(f"  ⚠️  Encontrados {len(fw_errors)} avisos de firewall:")
@@ -135,6 +166,16 @@ def main():
         total_errors.extend(fw_errors)
     else:
         print("  ✅ Comandos de firewall devidamente isolados por arquitetura.")
+
+    print("[4/4] Checando coerência estrita de versão em todo o ecossistema...")
+    ver_errors = audit_version_coherence()
+    if ver_errors:
+        print(f"  ❌ Encontrados {len(ver_errors)} erros de versão:")
+        for err in ver_errors:
+            print(f"     - {err}")
+        total_errors.extend(ver_errors)
+    else:
+        print("  ✅ Versões em VERSION, root VERSION, Makefile e common.sh 100% idênticas.")
 
     print("=" * 70)
     if total_errors:
