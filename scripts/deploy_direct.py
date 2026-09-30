@@ -46,6 +46,7 @@ raw_files_to_upload = [
     (os.path.join(repo_dir, 'root', 'etc', 'init.d', 'starlink-telemetry'), '/etc/init.d/starlink-telemetry'),
     (os.path.join(repo_dir, 'root', 'etc', 'init.d', 'ark-hardware-tune'), '/etc/init.d/ark-hardware-tune'),
     (os.path.join(repo_dir, 'root', 'etc', 'init.d', 'ark-firewall-guard'), '/etc/init.d/ark-firewall-guard'),
+    (os.path.join(repo_dir, 'root', 'etc', 'init.d', 'ark-safe-shutdown'), '/etc/init.d/ark-safe-shutdown'),
     (os.path.join(repo_dir, 'root', 'etc', 'uci-defaults', '99-ark-router-dhcp-sanitize'), '/etc/uci-defaults/99-ark-router-dhcp-sanitize'),
     (os.path.join(repo_dir, 'root', 'etc', 'nftables.d', '15-ark-dscp-priority.nft'), '/etc/nftables.d/15-ark-dscp-priority.nft'),
     (os.path.join(repo_dir, 'root', 'etc', 'hotplug.d', 'net', '90-ark-rps-tune'), '/etc/hotplug.d/net/90-ark-rps-tune'),
@@ -88,7 +89,7 @@ for local_path, remote_path in files_to_upload:
         print(f"  -> {os.path.basename(local_path)} gravado com sucesso.")
 
 cmds = [
-    'chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export /etc/init.d/ark-zerotier-ram /etc/init.d/ark-hardware-tune /etc/init.d/ark-firewall-guard /etc/uci-defaults/99-ark-router-dhcp-sanitize /usr/sbin/starlink-telemetry-daemon /usr/sbin/starlink-telemetry-mailer /etc/init.d/starlink-telemetry /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh 2>/dev/null || true',
+    'chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export /etc/init.d/ark-zerotier-ram /etc/init.d/ark-hardware-tune /etc/init.d/ark-firewall-guard /etc/init.d/ark-safe-shutdown /etc/uci-defaults/99-ark-router-dhcp-sanitize /usr/sbin/starlink-telemetry-daemon /usr/sbin/starlink-telemetry-mailer /etc/init.d/starlink-telemetry /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh 2>/dev/null || true',
     'touch /etc/config/starlink_telemetry 2>/dev/null || true',
     'rm -f /etc/rc.d/S99ark-qdisc-tune /etc/init.d/ark-qdisc-tune 2>/dev/null || true',
     'killall equipe-traffic-history 2>/dev/null || true',
@@ -99,6 +100,7 @@ cmds = [
     'uci commit equipe_dashboard',
     '/etc/init.d/ark-hardware-tune enable 2>/dev/null || true',
     '/etc/init.d/ark-hardware-tune start 2>/dev/null || true',
+    '/etc/init.d/ark-safe-shutdown enable 2>/dev/null || true',
     '/sbin/fw4 reload 2>/dev/null || true',
     'rm -rf /tmp/luci-*',
     '/etc/init.d/rpcd restart',

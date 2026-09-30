@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.5.5
+
+- **🛡️ Blindagem Quádrupla IPv6 SLAAC Apple, Isolamento de Sub-redes WAN/LAN e Auto-Cura de Boot (30/09/2026)**:
+  - **Compatibilidade Apple iOS / macOS (RFC 4862 & RFC 8106)**:
+    - **Expurgo Automático de `managed-config` (M-bit)**: O iOS/macOS não suporta DHCPv6 com estado para atribuição de endereços em redes locais. Forçamento de `other-config` (O-bit) com `ra_slaac=1` e `ra_default=1`, garantindo entrega de endereços globais via SLAAC puro e DNS stateless (RDNSS).
+    - **Intervalos de RA Acelerados para APs e Mobile**: Ajuste de `ra_mininterval='20'` e `ra_maxinterval='60'` no `odhcpd`, assegurando recuperação imediata de prefixos globais por celulares e APs satélites (ex: Acer Predator T7).
+  - **Isolamento Estrito de Sub-redes WAN na Bridge LAN**:
+    - **Detecção e Expurgo de Prefixos de WAN PPPoE na LAN**: Purga automática de qualquer endereço estático pertencente à WAN (`feca:e2a2` etc.) indevidamente adicionado a `network.lan.ip6addr`, eliminando blackholes de tráfego. Suporte simultâneo a opções escalares (`option`) e listas (`list`) no UCI.
+  - **Proteção e Preservação de Modos Operacionais**:
+    - **Respeito a IPv4 Puro (`ipv4_only`)**: Rotinas de boot e auditoria agora respeitam quando o usuário desativa o IPv6, não ativando flags de RA e não interferindo no `odhcpd`.
+    - **Modo IPv6 Full e Seletivo**: Total compatibilidade e coerência garantida em `ipv6_only`, `dual_stack`, `selective` e `relay`.
+  - **Auditoria e Auto-Cura Viva (`ark-doctor`)**:
+    - Novas checagens `11b.2` (*Compatibilidade SLAAC Apple*) e `11b.3` (*Isolamento de Sub-rede WAN/LAN*) com auto-reparo instantâneo via `ark-doctor --fix`.
+  - **Persistência de Boot no Kernel (`ark-safe-shutdown` / `common.sh`)**:
+    - Invocação de `ark_sanitize_lan_ipv6` em todo boot do roteador (`START=99`), garantindo que nenhuma alteração manual externa possa reintroduzir as falhas.
+
 ## 1.5.2
 
 - **⚡ WireGuard Client Instantâneo, BitTorrent PBR Amplo Seguro, Calibração de Hardware e Blindagem AdGuard Home (20/09/2026)**:
