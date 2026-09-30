@@ -13,6 +13,7 @@ start() {
 		. /usr/lib/ark/common.sh
 		ark_cleanup_dhcpv6_orphans 2>/dev/null || true
 		ark_sanitize_wan6_config 2>/dev/null || true
+		ark_sanitize_lan_ipv6 2>/dev/null || true
 	fi
 	return 0
 }

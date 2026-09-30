@@ -8,6 +8,7 @@ Strictly POSIX and embedded compliant. Max file size < 4000 lines.
 
 import os
 import sys
+import json
 try:
     import yaml
 except ImportError:

@@ -629,6 +629,71 @@ ark_sanitize_wan6_config() {
 	return 0
 }
 
+# Sanitizacao Canonica de IPv6 da LAN (compatibilidade Apple SLAAC e blindagem anti-colisao WAN)
+ark_sanitize_lan_ipv6() {
+	local root_prefix="${ARK_ROOT:-}"
+	local dhcp_cfg="${root_prefix}/etc/config/dhcp"
+	local net_cfg="${root_prefix}/etc/config/network"
+	[ -f "$dhcp_cfg" ] || return 0
+
+	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+	local changed_dhcp=0
+	local changed_net=0
+
+	# 1. Blindagem Apple iOS / SLAAC: remove 'managed-config' e forca 'other-config'
+	for flag in $($uci_cmd get dhcp.lan.ra_flags); do
+		if [ "$flag" = "managed-config" ]; then
+			$uci_cmd del_list dhcp.lan.ra_flags='managed-config'
+			changed_dhcp=1
+		fi
+	done
+	if ! $uci_cmd get dhcp.lan.ra_flags | grep -q 'other-config'; then
+		$uci_cmd add_list dhcp.lan.ra_flags='other-config'
+		changed_dhcp=1
+	fi
+	if [ "$($uci_cmd get dhcp.lan.ra_slaac)" != "1" ]; then
+		$uci_cmd set dhcp.lan.ra_slaac='1'
+		changed_dhcp=1
+	fi
+	if [ "$($uci_cmd get dhcp.lan.ra_default)" != "1" ]; then
+		$uci_cmd set dhcp.lan.ra_default='1'
+		changed_dhcp=1
+	fi
+	if [ "$($uci_cmd get dhcp.lan.ra_prefer_old)" != "0" ]; then
+		$uci_cmd set dhcp.lan.ra_prefer_old='0'
+		changed_dhcp=1
+	fi
+	if [ "$($uci_cmd get dhcp.lan.ra_mininterval)" != "20" ] || [ "$($uci_cmd get dhcp.lan.ra_maxinterval)" != "60" ]; then
+		$uci_cmd set dhcp.lan.ra_mininterval='20'
+		$uci_cmd set dhcp.lan.ra_maxinterval='60'
+		changed_dhcp=1
+	fi
+
+	# 2. Expurga prefixos estaticos de WAN PPPoE indevidamente atribuidos a bridge LAN
+	if [ -f "$net_cfg" ]; then
+		local lan_ip6_entries="$($uci_cmd get network.lan.ip6addr || true)"
+		for pfx in $lan_ip6_entries; do
+			case "$pfx" in
+				*feca:e2a2*|*FECA:E2A2*)
+					$uci_cmd del_list network.lan.ip6addr="$pfx"
+					changed_net=1
+					logger -t ark-ipv6-sanitize "Prefixo de WAN '$pfx' removido da interface LAN para evitar blackhole."
+					;;
+			esac
+		done
+	fi
+
+	if [ "$changed_dhcp" -eq 1 ]; then
+		uci ${root_prefix:+-c "$root_prefix/etc/config"} commit dhcp 2>/dev/null || true
+		[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd reload >/dev/null 2>&1 || true
+		logger -t ark-ipv6-sanitize "Flags de Router Advertisement (SLAAC) sanitizadas para compatibilidade Apple iOS/macOS."
+	fi
+	if [ "$changed_net" -eq 1 ]; then
+		uci ${root_prefix:+-c "$root_prefix/etc/config"} commit network 2>/dev/null || true
+	fi
+	return 0
+}
+
 # Auto-ativacao inteligente de radios Wi-Fi de fabrica com preservacao estrita de escolha do usuario
 ark_auto_enable_factory_wifi() {
 	local root_prefix="${ARK_ROOT:-}"
