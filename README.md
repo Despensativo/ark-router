@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/screenshots/ark-router-banner.jpg" alt="ARK Router Hero Banner" width="100%">
+</p>
+
 # ARK Router
 
 ![OpenWrt](https://img.shields.io/badge/OpenWrt-24.x%20%2F%2025.x-00B5E2?logo=openwrt&logoColor=white)
