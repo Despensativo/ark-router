@@ -25,6 +25,45 @@ if [ "$(uci -q get dhcp.lan.ra_prefer_old)" != "0" ]; then
 	changed=1
 fi
 
+# Blindagem IPv6 para compatibilidade Apple (iOS/macOS) e APs Satelites (RFC 4862 / RFC 8106):
+# 1. Elimina 'managed-config' (M-bit), que quebra o SLAAC em dispositivos Apple.
+# 2. Garante 'other-config' (O-bit) para entrega stateless de DNS/RDNSS.
+# 3. Garante intervalos frequentes de RA (min=20, max=60) para rapida recuperacao de clientes moveis e satelites.
+for flag in $(uci -q get dhcp.lan.ra_flags); do
+	if [ "$flag" = "managed-config" ]; then
+		uci -q del_list dhcp.lan.ra_flags='managed-config'
+		changed=1
+	fi
+done
+if ! uci -q get dhcp.lan.ra_flags | grep -q 'other-config'; then
+	uci -q add_list dhcp.lan.ra_flags='other-config'
+	changed=1
+fi
+if [ "$(uci -q get dhcp.lan.ra_slaac)" != "1" ]; then
+	uci -q set dhcp.lan.ra_slaac='1'
+	changed=1
+fi
+if [ "$(uci -q get dhcp.lan.ra_default)" != "1" ]; then
+	uci -q set dhcp.lan.ra_default='1'
+	changed=1
+fi
+if [ "$(uci -q get dhcp.lan.ra_mininterval)" != "20" ] || [ "$(uci -q get dhcp.lan.ra_maxinterval)" != "60" ]; then
+	uci -q set dhcp.lan.ra_mininterval='20'
+	uci -q set dhcp.lan.ra_maxinterval='60'
+	changed=1
+fi
+
+# Sanitizacao defensiva contra sub-redes WAN injetadas indevidamente na bridge LAN
+lan_ip6_entries="$(uci -q get network.lan.ip6addr || true)"
+for pfx in $lan_ip6_entries; do
+	case "$pfx" in
+		*feca:e2a2*|*FECA:E2A2*)
+			uci -q del_list network.lan.ip6addr="$pfx"
+			uci commit network || true
+			;;
+	esac
+done
+
 # Otimizacao inteligente do cachesize do dnsmasq conforme a RAM do hardware
 mem_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 131072)"
 if [ "$mem_kb" -le 135000 ]; then

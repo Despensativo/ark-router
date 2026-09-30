@@ -501,6 +501,19 @@ enable_ipv6_dual_stack() {
 		uci -q set dhcp.lan.ra='server'
 		uci -q set dhcp.lan.ndp='disabled'
 		uci -q set dhcp.lan.ra_prefer_old='0'
+		uci -q set dhcp.lan.ra_slaac='1'
+		uci -q set dhcp.lan.ra_default='1'
+		uci -q set dhcp.lan.ra_mininterval='20'
+		uci -q set dhcp.lan.ra_maxinterval='60'
+		uci -q del_list dhcp.lan.ra_flags='managed-config'
+		uci -q del_list dhcp.lan.ra_flags='other-config'
+		uci -q add_list dhcp.lan.ra_flags='other-config'
+		# Purga qualquer IP estatico residual que sobreponha prefixos de WAN na LAN
+		for pfx in $(uci -q get network.lan.ip6addr || true); do
+			case "$pfx" in
+				*feca:e2a2*|*FECA:E2A2*) uci -q del_list network.lan.ip6addr="$pfx" ;;
+			esac
+		done
 		uci -q delete dhcp.wan.dhcpv6
 		uci -q delete dhcp.wan.ra
 		uci -q delete dhcp.wan.ndp
@@ -1045,7 +1058,7 @@ get_configured_ping_track_ips() {
 }
 
 ensure_mwan3_ark_config() {
-	[ -f /etc/config/mwan3 ] || return 0
+	{ [ -f "${ARK_ROOT}/etc/config/mwan3" ] || [ -f /etc/config/mwan3 ]; } || return 0
 	for sec in wan6 wanb wanb6 wanb_m1_w2 wanb_m1_w3 wanb_m2_w2 wan6_m1_w3 wan6_m2_w3 wanb6_m1_w2 wanb6_m1_w3 wanb6_m2_w2 wanb_only wan_wanb wanb_wan default_rule_v6 device_wan1_pref device_wan2_pref bypass_private; do
 		uci -q delete "mwan3.$sec" 2>/dev/null || true
 	done
@@ -1060,6 +1073,39 @@ ensure_mwan3_ark_config() {
 		fi
 	done
 	[ -n "$active_wans" ] || active_wans="wan"
+
+	# Garbage collector de secoes orfas no mwan3 (interfaces e politicas dedicadas antigas)
+	for m_sec in $(uci -q show mwan3 | grep '=interface' | cut -d. -f2 | cut -d= -f1); do
+		is_active=0
+		for act in $active_wans; do
+			if [ "$m_sec" = "$act" ]; then
+				is_active=1
+				break
+			fi
+		done
+		if [ "$is_active" = "0" ]; then
+			uci -q delete "mwan3.$m_sec" 2>/dev/null || true
+			uci -q delete "mwan3.${m_sec}_only" 2>/dev/null || true
+		fi
+	done
+
+	# Purga membros associados a interfaces inativas ou inexistentes
+	for m_mem in $(uci -q show mwan3 | grep '=member' | cut -d. -f2 | cut -d= -f1); do
+		m_target="$(uci -q get "mwan3.$m_mem.interface" || printf '')"
+		if [ -n "$m_target" ]; then
+			is_active=0
+			for act in $active_wans; do
+				if [ "$m_target" = "$act" ]; then
+					is_active=1
+					break
+				fi
+			done
+			if [ "$is_active" = "0" ]; then
+				uci -q delete "mwan3.$m_mem" 2>/dev/null || true
+			fi
+		fi
+	done
+
 	for p in wan_only wan2_only wan3_only wan4_only balanced wan_then_wan2 wan2_then_wan wan1_pref wan2_pref; do
 		uci -q delete "mwan3.$p.use_member" 2>/dev/null || true
 	done
@@ -1103,27 +1149,43 @@ ensure_mwan3_ark_config() {
 
 		wan_idx=$((wan_idx + 1))
 	done
-	# Politica especifica de Failover com WAN2 como principal e WAN1 como reserva
-	uci -q set "mwan3.wan2_m1_w3=member"
-	uci -q set "mwan3.wan2_m1_w3.interface=wan2"
-	uci -q set "mwan3.wan2_m1_w3.metric=1"
-	uci -q set "mwan3.wan2_m1_w3.weight=3"
-	uci -q set "mwan3.wan_m2_w3=member"
-	uci -q set "mwan3.wan_m2_w3.interface=wan"
-	uci -q set "mwan3.wan_m2_w3.metric=2"
-	uci -q set "mwan3.wan_m2_w3.weight=3"
-	uci -q set mwan3.wan2_then_wan=policy
-	uci -q add_list "mwan3.wan2_then_wan.use_member=wan2_m1_w3"
-	uci -q add_list "mwan3.wan2_then_wan.use_member=wan_m2_w3"
 
-	# Politicas estaveis por dispositivo (Device Pinning com failover seletivo) - max 15 chars
-	uci -q set mwan3.wan1_pref=policy
-	uci -q add_list "mwan3.wan1_pref.use_member=wan_m1_w3"
-	uci -q add_list "mwan3.wan1_pref.use_member=wan2_m2_w3"
+	has_wan2=0
+	for act in $active_wans; do
+		[ "$act" = "wan2" ] && has_wan2=1
+	done
 
-	uci -q set mwan3.wan2_pref=policy
-	uci -q add_list "mwan3.wan2_pref.use_member=wan2_m1_w3"
-	uci -q add_list "mwan3.wan2_pref.use_member=wan_m2_w3"
+	if [ "$has_wan2" = "1" ]; then
+		# Politica especifica de Failover com WAN2 como principal e WAN1 como reserva
+		uci -q set "mwan3.wan2_m1_w3=member"
+		uci -q set "mwan3.wan2_m1_w3.interface=wan2"
+		uci -q set "mwan3.wan2_m1_w3.metric=1"
+		uci -q set "mwan3.wan2_m1_w3.weight=3"
+		uci -q set "mwan3.wan_m2_w3=member"
+		uci -q set "mwan3.wan_m2_w3.interface=wan"
+		uci -q set "mwan3.wan_m2_w3.metric=2"
+		uci -q set "mwan3.wan_m2_w3.weight=3"
+		uci -q set mwan3.wan2_then_wan=policy
+		uci -q add_list "mwan3.wan2_then_wan.use_member=wan2_m1_w3"
+		uci -q add_list "mwan3.wan2_then_wan.use_member=wan_m2_w3"
+
+		# Politicas estaveis por dispositivo (Device Pinning com failover seletivo) - max 15 chars
+		uci -q set mwan3.wan1_pref=policy
+		uci -q add_list "mwan3.wan1_pref.use_member=wan_m1_w3"
+		uci -q add_list "mwan3.wan1_pref.use_member=wan2_m2_w3"
+
+		uci -q set mwan3.wan2_pref=policy
+		uci -q add_list "mwan3.wan2_pref.use_member=wan2_m1_w3"
+		uci -q add_list "mwan3.wan2_pref.use_member=wan_m2_w3"
+	else
+		uci -q delete mwan3.wan2_then_wan 2>/dev/null || true
+		uci -q delete mwan3.wan2_pref 2>/dev/null || true
+		uci -q delete mwan3.wan1_pref 2>/dev/null || true
+		uci -q delete mwan3.wan2_m1_w3 2>/dev/null || true
+		uci -q delete mwan3.wan2_m2_w3 2>/dev/null || true
+		uci -q delete mwan3.dev_pool1 2>/dev/null || true
+		uci -q delete mwan3.dev_pool2 2>/dev/null || true
+	fi
 
 	# 1. Regras 0-2: Bypass estrito de redes privadas RFC1918 (LAN, ONUs, Starlink, ZeroTier)
 	uci -q set mwan3.bypass_pvt192=rule
@@ -1173,6 +1235,9 @@ ensure_mwan3_ark_config() {
 		wan1|wan|wan_only) primary_policy="wan_only" ;;
 		*) primary_policy="wan_then_wan2" ;;
 	esac
+	if [ "$has_wan2" = "0" ]; then
+		primary_policy="wan_only"
+	fi
 
 	# Regras de DNS de Ultra-Baixa Latencia (Sem Sticky / Failover Instantaneo)
 	uci -q set mwan3.dns_udp=rule
@@ -1322,6 +1387,16 @@ ensure_mwan3_ark_config() {
 	uci -q set mwan3.default_rule_v4.family=ipv4
 	uci -q set mwan3.default_rule_v4.sticky=1
 	[ -n "$(uci -q get mwan3.default_rule_v4.use_policy)" ] || uci -q set mwan3.default_rule_v4.use_policy="$primary_policy"
+
+	# Saneia políticas de regras que apontam para seções deletadas ou inexistentes
+	for r_sec in $(uci -q show mwan3 | grep '=rule' | cut -d. -f2 | cut -d= -f1); do
+		r_pol="$(uci -q get "mwan3.$r_sec.use_policy" || printf '')"
+		if [ -n "$r_pol" ] && [ "$r_pol" != "default" ]; then
+			if [ "$(uci -q get "mwan3.$r_pol")" != "policy" ]; then
+				uci -q set "mwan3.$r_sec.use_policy=$primary_policy"
+			fi
+		fi
+	done
 
 	# Reordenacao estrita de prioridade no UCI
 	mwan3_reorder_rules

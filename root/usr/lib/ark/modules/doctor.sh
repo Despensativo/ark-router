@@ -15,6 +15,9 @@ fi
 if [ -f "${_lib}/modules/sqm.sh" ] && ! command -v sqm_section_for_network >/dev/null 2>&1; then
 	. "${_lib}/modules/sqm.sh"
 fi
+if [ -f "${_lib}/modules/network.sh" ] && ! command -v ensure_mwan3_ark_config >/dev/null 2>&1; then
+	. "${_lib}/modules/network.sh"
+fi
 unset _lib
 
 ark_doctor_audit() {
@@ -514,6 +517,60 @@ ark_doctor_audit() {
 		add_check "Depreciação IPv6 (RFC 9096)" "OK" "Depreciação ativa no odhcpd (SLAAC limpa prefixos antigos automaticamente)."
 	fi
 
+	# 11b.2 Compatibilidade SLAAC Apple (iOS/macOS) e APs Satélites (RFC 4862 / RFC 8106)
+	has_managed_ra=0
+	for flg in $($uci_cmd get dhcp.lan.ra_flags 2>/dev/null); do
+		[ "$flg" = "managed-config" ] && has_managed_ra=1
+	done
+	lan_slaac_active="$($uci_cmd get dhcp.lan.ra_slaac 2>/dev/null || echo 1)"
+	
+	if [ "$has_managed_ra" = 1 ] || [ "$lan_slaac_active" = "0" ]; then
+		if [ "$auto_fix" = 1 ]; then
+			$uci_cmd del_list dhcp.lan.ra_flags='managed-config' 2>/dev/null || true
+			$uci_cmd del_list dhcp.lan.ra_flags='other-config' 2>/dev/null || true
+			$uci_cmd add_list dhcp.lan.ra_flags='other-config'
+			$uci_cmd set dhcp.lan.ra_slaac='1'
+			$uci_cmd set dhcp.lan.ra_default='1'
+			$uci_cmd set dhcp.lan.ra_mininterval='20'
+			$uci_cmd set dhcp.lan.ra_maxinterval='60'
+			$uci_cmd commit dhcp
+			[ -z "$root_prefix" ] && [ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
+			fixes_applied=$((fixes_applied + 1))
+			add_check "Compatibilidade SLAAC Apple" "FIXED" "managed-config removido e SLAAC puro reativado (SLAAC + other-config para DNS)."
+		else
+			errors=$((errors + 1))
+			add_check "Compatibilidade SLAAC Apple" "FAIL" "managed-config ativo ou SLAAC desativado na LAN (incompatível com dispositivos Apple/iOS)."
+		fi
+	else
+		add_check "Compatibilidade SLAAC Apple" "OK" "SLAAC puro ativo sem managed-config (total compatibilidade com iOS, macOS e APs)."
+	fi
+
+	# 11b.3 Checagem de Sub-redes WAN Conflitantes na Bridge LAN
+	lan_wan_pfx_conflict=0
+	for pfx in $($uci_cmd get network.lan.ip6addr 2>/dev/null); do
+		case "$pfx" in
+			*feca:e2a2*|*FECA:E2A2*) lan_wan_pfx_conflict=1 ;;
+		esac
+	done
+	if [ "$lan_wan_pfx_conflict" = 1 ]; then
+		if [ "$auto_fix" = 1 ]; then
+			for pfx in $($uci_cmd get network.lan.ip6addr 2>/dev/null); do
+				case "$pfx" in
+					*feca:e2a2*|*FECA:E2A2*) $uci_cmd del_list network.lan.ip6addr="$pfx" ;;
+				esac
+			done
+			$uci_cmd commit network
+			[ -z "$root_prefix" ] && [ -x /etc/init.d/network ] && /etc/init.d/network reload >/dev/null 2>&1 || true
+			fixes_applied=$((fixes_applied + 1))
+			add_check "Isolamento de Sub-rede WAN/LAN" "FIXED" "Sub-rede ponto-a-ponto da WAN removida da bridge LAN."
+		else
+			errors=$((errors + 1))
+			add_check "Isolamento de Sub-rede WAN/LAN" "FAIL" "Sub-rede ponto-a-ponto da WAN configurada estaticamente na LAN (conflito de RA)."
+		fi
+	else
+		add_check "Isolamento de Sub-rede WAN/LAN" "OK" "Sem sobreposição de sub-redes da WAN na bridge LAN."
+	fi
+
 	# 11c. Coerência do Protocolo IPv6 (Dashboard vs WAN vs LAN)
 	if ! ark_is_satellite_or_ap; then
 		ipv6_mode="$($uci_cmd get equipe_dashboard.ipv6.mode 2>/dev/null || echo '')"
@@ -602,6 +659,52 @@ ark_doctor_audit() {
 				add_check "Coerência IPv6 (Dashboard vs LAN)" "OK" "Modo $ipv6_mode preservado aguardando conectividade IPv6 na WAN."
 			fi
 		fi
+	fi
+
+	# 11d. Integridade do Multi-WAN (mwan3 - Interfaces e Políticas Órfãs)
+	mwan3_conf="/etc/config/mwan3"
+	[ -n "$root_prefix" ] && mwan3_conf="$root_prefix/etc/config/mwan3"
+	if [ -f "$mwan3_conf" ]; then
+		orphan_mwan_found=0
+		orphan_names=""
+		for m_iface in $($uci_cmd show mwan3 2>/dev/null | sed -n 's/^mwan3\.\([a-zA-Z0-9_]*\)=interface$/\1/p'); do
+			net_proto="$($uci_cmd get "network.$m_iface.proto" 2>/dev/null || echo '')"
+			net_auto="$($uci_cmd get "network.$m_iface.auto" 2>/dev/null || echo '1')"
+			net_dev="$($uci_cmd get "network.$m_iface.device" 2>/dev/null || $uci_cmd get "network.$m_iface.ifname" 2>/dev/null || echo '')"
+			if [ -z "$net_proto" ] || [ "$net_proto" = "none" ] || [ "$net_auto" = "0" ] || [ -z "$net_dev" ]; then
+				orphan_mwan_found=1
+				orphan_names="${orphan_names:+$orphan_names, }$m_iface"
+			fi
+		done
+
+		for m_mem in $($uci_cmd show mwan3 2>/dev/null | sed -n 's/^mwan3\.\([a-zA-Z0-9_]*\)=member$/\1/p'); do
+			target_if="$($uci_cmd get "mwan3.$m_mem.interface" 2>/dev/null || echo '')"
+			if [ -n "$target_if" ]; then
+				t_proto="$($uci_cmd get "network.$target_if.proto" 2>/dev/null || echo '')"
+				t_dev="$($uci_cmd get "network.$target_if.device" 2>/dev/null || $uci_cmd get "network.$target_if.ifname" 2>/dev/null || echo '')"
+				if [ -z "$t_proto" ] || [ "$t_proto" = "none" ] || [ -z "$t_dev" ]; then
+					orphan_mwan_found=1
+					orphan_names="${orphan_names:+$orphan_names, }member:$m_mem"
+				fi
+			fi
+		done
+
+		if [ "$orphan_mwan_found" = 1 ]; then
+			if [ "$auto_fix" = 1 ]; then
+				ensure_mwan3_ark_config >/dev/null 2>&1 || true
+				$uci_cmd commit mwan3 >/dev/null 2>&1 || true
+				[ -z "$root_prefix" ] && [ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 reload >/dev/null 2>&1 || true
+				fixes_applied=$((fixes_applied + 1))
+				add_check "Integridade do Multi-WAN (mwan3)" "FIXED" "Configurações órfãs do mwan3 ($orphan_names) removidas e saneadas."
+			else
+				warnings=$((warnings + 1))
+				add_check "Integridade do Multi-WAN (mwan3)" "WARN" "Interfaces/membros órfãos detectados no mwan3 ($orphan_names) sem interface de rede correspondente."
+			fi
+		else
+			add_check "Integridade do Multi-WAN (mwan3)" "OK" "Multi-WAN (mwan3) devidamente alinhado com as interfaces de rede ativas."
+		fi
+	else
+		add_check "Integridade do Multi-WAN (mwan3)" "OK" "Multi-WAN (mwan3) não configurado (operação em Single-WAN pura)."
 	fi
 
 	# 12. Blindagem de Radios Wi-Fi (Auto-Ativacao de Fabrica com Preservacao de Escolha)
