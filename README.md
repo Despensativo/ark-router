@@ -320,6 +320,9 @@ The generated packages are `noarch` and preserve `/etc/config/equipe_dashboard`,
 
 For public releases, this repository already includes a GitHub Actions workflow that builds the OpenWrt package when a version tag such as `v0.9.39` is pushed. See [`docs/PUBLISHING.md`](docs/PUBLISHING.md) for the full GitHub publishing flow.
 
+> [!TIP]
+> **Repository Hygiene & Releases:** Compiled packages (`dist/sdk/*.apk`, `.ipk`) and build artifacts are excluded via `.gitignore` to keep this repository lean and fast to clone. All official builds are published exclusively as assets on **[GitHub Releases](https://github.com/Despensativo/ark-router/releases)** (which supports files up to 2 GB for free), keeping the Git tree lightweight (< 50 MB) and strictly adhering to GitHub storage best practices.
+
 ## Installation
 
 Install the generated package using the package manager appropriate for the OpenWrt release. After installation, clear the LuCI cache or restart `rpcd`, then open ARK Router in the LuCI menu.
