@@ -640,33 +640,37 @@ ark_sanitize_lan_ipv6() {
 	local changed_dhcp=0
 	local changed_net=0
 
-	# 1. Blindagem Apple iOS / SLAAC: remove 'managed-config' e forca 'other-config'
-	for flag in $($uci_cmd get dhcp.lan.ra_flags); do
-		if [ "$flag" = "managed-config" ]; then
-			$uci_cmd del_list dhcp.lan.ra_flags='managed-config'
+	# 1. Blindagem Apple iOS / SLAAC: apenas atua se o modo IPv6 estiver ativo como servidor de RA
+	local cur_ra="$($uci_cmd get dhcp.lan.ra || echo 'disabled')"
+	local ipv6_mode="$($uci_cmd get equipe_dashboard.ipv6.mode || echo '')"
+	if [ "$cur_ra" = "server" ] && [ "$ipv6_mode" != "ipv4_only" ]; then
+		for flag in $($uci_cmd get dhcp.lan.ra_flags); do
+			if [ "$flag" = "managed-config" ]; then
+				$uci_cmd del_list dhcp.lan.ra_flags='managed-config'
+				changed_dhcp=1
+			fi
+		done
+		if ! $uci_cmd get dhcp.lan.ra_flags | grep -q 'other-config'; then
+			$uci_cmd add_list dhcp.lan.ra_flags='other-config'
 			changed_dhcp=1
 		fi
-	done
-	if ! $uci_cmd get dhcp.lan.ra_flags | grep -q 'other-config'; then
-		$uci_cmd add_list dhcp.lan.ra_flags='other-config'
-		changed_dhcp=1
-	fi
-	if [ "$($uci_cmd get dhcp.lan.ra_slaac)" != "1" ]; then
-		$uci_cmd set dhcp.lan.ra_slaac='1'
-		changed_dhcp=1
-	fi
-	if [ "$($uci_cmd get dhcp.lan.ra_default)" != "1" ]; then
-		$uci_cmd set dhcp.lan.ra_default='1'
-		changed_dhcp=1
-	fi
-	if [ "$($uci_cmd get dhcp.lan.ra_prefer_old)" != "0" ]; then
-		$uci_cmd set dhcp.lan.ra_prefer_old='0'
-		changed_dhcp=1
-	fi
-	if [ "$($uci_cmd get dhcp.lan.ra_mininterval)" != "20" ] || [ "$($uci_cmd get dhcp.lan.ra_maxinterval)" != "60" ]; then
-		$uci_cmd set dhcp.lan.ra_mininterval='20'
-		$uci_cmd set dhcp.lan.ra_maxinterval='60'
-		changed_dhcp=1
+		if [ "$($uci_cmd get dhcp.lan.ra_slaac)" != "1" ]; then
+			$uci_cmd set dhcp.lan.ra_slaac='1'
+			changed_dhcp=1
+		fi
+		if [ "$($uci_cmd get dhcp.lan.ra_default)" != "1" ]; then
+			$uci_cmd set dhcp.lan.ra_default='1'
+			changed_dhcp=1
+		fi
+		if [ "$($uci_cmd get dhcp.lan.ra_prefer_old)" != "0" ]; then
+			$uci_cmd set dhcp.lan.ra_prefer_old='0'
+			changed_dhcp=1
+		fi
+		if [ "$($uci_cmd get dhcp.lan.ra_mininterval)" != "20" ] || [ "$($uci_cmd get dhcp.lan.ra_maxinterval)" != "60" ]; then
+			$uci_cmd set dhcp.lan.ra_mininterval='20'
+			$uci_cmd set dhcp.lan.ra_maxinterval='60'
+			changed_dhcp=1
+		fi
 	fi
 
 	# 2. Expurga prefixos estaticos de WAN PPPoE indevidamente atribuidos a bridge LAN
@@ -675,7 +679,10 @@ ark_sanitize_lan_ipv6() {
 		for pfx in $lan_ip6_entries; do
 			case "$pfx" in
 				*feca:e2a2*|*FECA:E2A2*)
-					$uci_cmd del_list network.lan.ip6addr="$pfx"
+					$uci_cmd del_list network.lan.ip6addr="$pfx" 2>/dev/null || true
+					if [ "$($uci_cmd get network.lan.ip6addr 2>/dev/null)" = "$pfx" ]; then
+						$uci_cmd delete network.lan.ip6addr 2>/dev/null || true
+					fi
 					changed_net=1
 					logger -t ark-ipv6-sanitize "Prefixo de WAN '$pfx' removido da interface LAN para evitar blackhole."
 					;;

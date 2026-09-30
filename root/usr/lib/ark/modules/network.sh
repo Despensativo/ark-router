@@ -511,7 +511,12 @@ enable_ipv6_dual_stack() {
 		# Purga qualquer IP estatico residual que sobreponha prefixos de WAN na LAN
 		for pfx in $(uci -q get network.lan.ip6addr || true); do
 			case "$pfx" in
-				*feca:e2a2*|*FECA:E2A2*) uci -q del_list network.lan.ip6addr="$pfx" ;;
+				*feca:e2a2*|*FECA:E2A2*)
+					uci -q del_list network.lan.ip6addr="$pfx" 2>/dev/null || true
+					if [ "$(uci -q get network.lan.ip6addr)" = "$pfx" ]; then
+						uci -q delete network.lan.ip6addr 2>/dev/null || true
+					fi
+					;;
 			esac
 		done
 		uci -q delete dhcp.wan.dhcpv6

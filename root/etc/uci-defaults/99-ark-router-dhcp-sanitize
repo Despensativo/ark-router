@@ -19,38 +19,41 @@ if [ "$(uci -q get dhcp.lan.force)" != "1" ]; then
 	changed=1
 fi
 
-# Depreciacao imediata de prefixos IPv6 antigos no odhcpd (RFC 9096 - elimina IPs fantasmas em reconexoes PPPoE)
-if [ "$(uci -q get dhcp.lan.ra_prefer_old)" != "0" ]; then
-	uci -q set dhcp.lan.ra_prefer_old='0'
-	changed=1
-fi
-
 # Blindagem IPv6 para compatibilidade Apple (iOS/macOS) e APs Satelites (RFC 4862 / RFC 8106):
-# 1. Elimina 'managed-config' (M-bit), que quebra o SLAAC em dispositivos Apple.
-# 2. Garante 'other-config' (O-bit) para entrega stateless de DNS/RDNSS.
-# 3. Garante intervalos frequentes de RA (min=20, max=60) para rapida recuperacao de clientes moveis e satelites.
-for flag in $(uci -q get dhcp.lan.ra_flags); do
-	if [ "$flag" = "managed-config" ]; then
-		uci -q del_list dhcp.lan.ra_flags='managed-config'
+# Apenas aplica se o servico de Router Advertisement nao estiver explicitamente desativado (ipv4_only)
+if [ "$(uci -q get dhcp.lan.ra)" != "disabled" ] && [ "$(uci -q get equipe_dashboard.ipv6.mode)" != "ipv4_only" ]; then
+	# Depreciacao imediata de prefixos IPv6 antigos no odhcpd (RFC 9096 - elimina IPs fantasmas em reconexoes PPPoE)
+	if [ "$(uci -q get dhcp.lan.ra_prefer_old)" != "0" ]; then
+		uci -q set dhcp.lan.ra_prefer_old='0'
 		changed=1
 	fi
-done
-if ! uci -q get dhcp.lan.ra_flags | grep -q 'other-config'; then
-	uci -q add_list dhcp.lan.ra_flags='other-config'
-	changed=1
-fi
-if [ "$(uci -q get dhcp.lan.ra_slaac)" != "1" ]; then
-	uci -q set dhcp.lan.ra_slaac='1'
-	changed=1
-fi
-if [ "$(uci -q get dhcp.lan.ra_default)" != "1" ]; then
-	uci -q set dhcp.lan.ra_default='1'
-	changed=1
-fi
-if [ "$(uci -q get dhcp.lan.ra_mininterval)" != "20" ] || [ "$(uci -q get dhcp.lan.ra_maxinterval)" != "60" ]; then
-	uci -q set dhcp.lan.ra_mininterval='20'
-	uci -q set dhcp.lan.ra_maxinterval='60'
-	changed=1
+
+	# 1. Elimina 'managed-config' (M-bit), que quebra o SLAAC em dispositivos Apple.
+	# 2. Garante 'other-config' (O-bit) para entrega stateless de DNS/RDNSS.
+	# 3. Garante intervalos frequentes de RA (min=20, max=60) para rapida recuperacao de clientes moveis e satelites.
+	for flag in $(uci -q get dhcp.lan.ra_flags); do
+		if [ "$flag" = "managed-config" ]; then
+			uci -q del_list dhcp.lan.ra_flags='managed-config'
+			changed=1
+		fi
+	done
+	if ! uci -q get dhcp.lan.ra_flags | grep -q 'other-config'; then
+		uci -q add_list dhcp.lan.ra_flags='other-config'
+		changed=1
+	fi
+	if [ "$(uci -q get dhcp.lan.ra_slaac)" != "1" ]; then
+		uci -q set dhcp.lan.ra_slaac='1'
+		changed=1
+	fi
+	if [ "$(uci -q get dhcp.lan.ra_default)" != "1" ]; then
+		uci -q set dhcp.lan.ra_default='1'
+		changed=1
+	fi
+	if [ "$(uci -q get dhcp.lan.ra_mininterval)" != "20" ] || [ "$(uci -q get dhcp.lan.ra_maxinterval)" != "60" ]; then
+		uci -q set dhcp.lan.ra_mininterval='20'
+		uci -q set dhcp.lan.ra_maxinterval='60'
+		changed=1
+	fi
 fi
 
 # Sanitizacao defensiva contra sub-redes WAN injetadas indevidamente na bridge LAN
@@ -58,7 +61,10 @@ lan_ip6_entries="$(uci -q get network.lan.ip6addr || true)"
 for pfx in $lan_ip6_entries; do
 	case "$pfx" in
 		*feca:e2a2*|*FECA:E2A2*)
-			uci -q del_list network.lan.ip6addr="$pfx"
+			uci -q del_list network.lan.ip6addr="$pfx" 2>/dev/null || true
+			if [ "$(uci -q get network.lan.ip6addr)" = "$pfx" ]; then
+				uci -q delete network.lan.ip6addr 2>/dev/null || true
+			fi
 			uci commit network || true
 			;;
 	esac

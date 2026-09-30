@@ -501,48 +501,61 @@ ark_doctor_audit() {
 		add_check "Blindagem WAN6 e DHCPv6" "OK" "Interfaces IPv6 canonicas (@wan) e zero processos orfaos."
 	fi
 
+	lan_cur_ra="$($uci_cmd get dhcp.lan.ra 2>/dev/null || echo '')"
+	ipv6_mode_chk="$($uci_cmd get equipe_dashboard.ipv6.mode 2>/dev/null || echo '')"
+
 	# 11b. Depreciação de Prefixos IPv6 na LAN (RFC 9096 - Prevenção de IPs Fantasmas)
-	lan_ra_prefer_old="$($uci_cmd get dhcp.lan.ra_prefer_old || echo 1)"
-	if [ "$lan_ra_prefer_old" != "0" ]; then
-		if [ "$auto_fix" = 1 ]; then
-			$uci_cmd set dhcp.lan.ra_prefer_old='0'
-			$uci_cmd commit dhcp
-			fixes_applied=$((fixes_applied + 1))
-			add_check "Depreciação IPv6 (RFC 9096)" "FIXED" "ra_prefer_old configurado para 0 (eliminação imediata de prefixos fantasmas)."
-		else
-			warnings=$((warnings + 1))
-			add_check "Depreciação IPv6 (RFC 9096)" "WARN" "ra_prefer_old não está ativo (aparelhos podem reter IPs antigos em trocas de PPPoE)."
-		fi
+	if [ "$lan_cur_ra" = "disabled" ] || [ "$ipv6_mode_chk" = "ipv4_only" ]; then
+		add_check "Depreciação IPv6 (RFC 9096)" "OK" "Modo IPv4 Puro ativo (anúncios IPv6 desativados na LAN)."
 	else
-		add_check "Depreciação IPv6 (RFC 9096)" "OK" "Depreciação ativa no odhcpd (SLAAC limpa prefixos antigos automaticamente)."
+		lan_ra_prefer_old="$($uci_cmd get dhcp.lan.ra_prefer_old || echo 1)"
+		if [ "$lan_ra_prefer_old" != "0" ]; then
+			if [ "$auto_fix" = 1 ]; then
+				$uci_cmd set dhcp.lan.ra_prefer_old='0'
+				$uci_cmd commit dhcp
+				fixes_applied=$((fixes_applied + 1))
+				add_check "Depreciação IPv6 (RFC 9096)" "FIXED" "ra_prefer_old configurado para 0 (eliminação imediata de prefixos fantasmas)."
+			else
+				warnings=$((warnings + 1))
+				add_check "Depreciação IPv6 (RFC 9096)" "WARN" "ra_prefer_old não está ativo (aparelhos podem reter IPs antigos em trocas de PPPoE)."
+			fi
+		else
+			add_check "Depreciação IPv6 (RFC 9096)" "OK" "Depreciação ativa no odhcpd (SLAAC limpa prefixos antigos automaticamente)."
+		fi
 	fi
 
 	# 11b.2 Compatibilidade SLAAC Apple (iOS/macOS) e APs Satélites (RFC 4862 / RFC 8106)
-	has_managed_ra=0
-	for flg in $($uci_cmd get dhcp.lan.ra_flags 2>/dev/null); do
-		[ "$flg" = "managed-config" ] && has_managed_ra=1
-	done
-	lan_slaac_active="$($uci_cmd get dhcp.lan.ra_slaac 2>/dev/null || echo 1)"
-	
-	if [ "$has_managed_ra" = 1 ] || [ "$lan_slaac_active" = "0" ]; then
-		if [ "$auto_fix" = 1 ]; then
-			$uci_cmd del_list dhcp.lan.ra_flags='managed-config' 2>/dev/null || true
-			$uci_cmd del_list dhcp.lan.ra_flags='other-config' 2>/dev/null || true
-			$uci_cmd add_list dhcp.lan.ra_flags='other-config'
-			$uci_cmd set dhcp.lan.ra_slaac='1'
-			$uci_cmd set dhcp.lan.ra_default='1'
-			$uci_cmd set dhcp.lan.ra_mininterval='20'
-			$uci_cmd set dhcp.lan.ra_maxinterval='60'
-			$uci_cmd commit dhcp
-			[ -z "$root_prefix" ] && [ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
-			fixes_applied=$((fixes_applied + 1))
-			add_check "Compatibilidade SLAAC Apple" "FIXED" "managed-config removido e SLAAC puro reativado (SLAAC + other-config para DNS)."
-		else
-			errors=$((errors + 1))
-			add_check "Compatibilidade SLAAC Apple" "FAIL" "managed-config ativo ou SLAAC desativado na LAN (incompatível com dispositivos Apple/iOS)."
-		fi
+	if [ "$lan_cur_ra" = "disabled" ] || [ "$ipv6_mode_chk" = "ipv4_only" ]; then
+		add_check "Compatibilidade SLAAC Apple" "OK" "Modo IPv4 Puro ativo (serviço de anúncios de roteador desativado conforme esperado)."
+	elif [ "$lan_cur_ra" = "relay" ]; then
+		add_check "Compatibilidade SLAAC Apple" "OK" "Modo Relay IPv6 ativo (anúncios repassados diretamente da WAN)."
 	else
-		add_check "Compatibilidade SLAAC Apple" "OK" "SLAAC puro ativo sem managed-config (total compatibilidade com iOS, macOS e APs)."
+		has_managed_ra=0
+		for flg in $($uci_cmd get dhcp.lan.ra_flags 2>/dev/null); do
+			[ "$flg" = "managed-config" ] && has_managed_ra=1
+		done
+		lan_slaac_active="$($uci_cmd get dhcp.lan.ra_slaac 2>/dev/null || echo 1)"
+		
+		if [ "$has_managed_ra" = 1 ] || [ "$lan_slaac_active" = "0" ]; then
+			if [ "$auto_fix" = 1 ]; then
+				$uci_cmd del_list dhcp.lan.ra_flags='managed-config' 2>/dev/null || true
+				$uci_cmd del_list dhcp.lan.ra_flags='other-config' 2>/dev/null || true
+				$uci_cmd add_list dhcp.lan.ra_flags='other-config'
+				$uci_cmd set dhcp.lan.ra_slaac='1'
+				$uci_cmd set dhcp.lan.ra_default='1'
+				$uci_cmd set dhcp.lan.ra_mininterval='20'
+				$uci_cmd set dhcp.lan.ra_maxinterval='60'
+				$uci_cmd commit dhcp
+				[ -z "$root_prefix" ] && [ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
+				fixes_applied=$((fixes_applied + 1))
+				add_check "Compatibilidade SLAAC Apple" "FIXED" "managed-config removido e SLAAC puro reativado (SLAAC + other-config para DNS)."
+			else
+				errors=$((errors + 1))
+				add_check "Compatibilidade SLAAC Apple" "FAIL" "managed-config ativo ou SLAAC desativado na LAN (incompatível com dispositivos Apple/iOS)."
+			fi
+		else
+			add_check "Compatibilidade SLAAC Apple" "OK" "SLAAC puro ativo sem managed-config (total compatibilidade com iOS, macOS e APs)."
+		fi
 	fi
 
 	# 11b.3 Checagem de Sub-redes WAN Conflitantes na Bridge LAN
@@ -556,7 +569,12 @@ ark_doctor_audit() {
 		if [ "$auto_fix" = 1 ]; then
 			for pfx in $($uci_cmd get network.lan.ip6addr 2>/dev/null); do
 				case "$pfx" in
-					*feca:e2a2*|*FECA:E2A2*) $uci_cmd del_list network.lan.ip6addr="$pfx" ;;
+					*feca:e2a2*|*FECA:E2A2*)
+						$uci_cmd del_list network.lan.ip6addr="$pfx" 2>/dev/null || true
+						if [ "$($uci_cmd get network.lan.ip6addr 2>/dev/null)" = "$pfx" ]; then
+							$uci_cmd delete network.lan.ip6addr 2>/dev/null || true
+						fi
+						;;
 				esac
 			done
 			$uci_cmd commit network

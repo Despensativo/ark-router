@@ -540,10 +540,110 @@ config device 'wan_eth1'
         """Audita preventivamente todos os scripts .sh contra sobreposição de funções, sintaxe e regras de firewall"""
         audit_script = os.path.join(REPO_DIR, "scripts", "audit_shell_scripts.py")
         import subprocess
-        res = subprocess.run([sys.executable, audit_script], capture_output=True, text=True)
+        res = subprocess.run([sys.executable, audit_script], capture_output=True, text=True, encoding="utf-8", errors="replace")
         self.assertEqual(res.returncode, 0, f"Falha na auditoria de scripts shell:\n{res.stdout}\n{res.stderr}")
+
+    def test_18_mwan3_orphan_garbage_collector_and_audit(self):
+        """Verifica se seções, membros e políticas órfãs do mwan3 são detectadas e eliminadas pelo ark-doctor"""
+        # Garante wan e wan2 ativas no network
+        self.sb.uci_set("network.wan=interface")
+        self.sb.uci_set("network.wan.proto=pppoe")
+        self.sb.uci_set("network.wan.device=lan4")
+        self.sb.uci_set("network.wan2=interface")
+        self.sb.uci_set("network.wan2.proto=pppoe")
+        self.sb.uci_set("network.wan2.device=lan3")
+
+        # Injeta lixo/órfãos no mwan3 (como a wan3 que foi removida)
+        self.sb.uci_set("mwan3.wan3=interface")
+        self.sb.uci_set("mwan3.wan3.enabled=1")
+        self.sb.uci_set("mwan3.wan3_m1_w3=member")
+        self.sb.uci_set("mwan3.wan3_m1_w3.interface=wan3")
+        self.sb.uci_set("mwan3.wan3_only=policy")
+        self.sb.uci_set("mwan3.test_orphan_rule=rule")
+        self.sb.uci_set("mwan3.test_orphan_rule.dest_port=9999")
+        self.sb.uci_set("mwan3.test_orphan_rule.use_policy=wan3_only")
+
+        # Doctor sem fix -> DEVE avisar a presença de órfãos
+        res = self.sb.run_control("ark-doctor", "--json")
+        self.assertEqual(res.returncode, 0)
+        report = json.loads(res.stdout)
+        mwan_checks = [c for c in report.get("checks", []) if "Multi-WAN" in c.get("name", "")]
+        self.assertTrue(len(mwan_checks) > 0, "Checagem de Integridade do Multi-WAN não encontrada!")
+        self.assertEqual(mwan_checks[0].get("status"), "WARN")
+
+        # Doctor com --fix -> DEVE purgar os órfãos
+        res_fix = self.sb.run_control("ark-doctor", "--fix", "--json")
+        self.assertEqual(res_fix.returncode, 0)
+        report_fix = json.loads(res_fix.stdout)
+        mwan_fix_checks = [c for c in report_fix.get("checks", []) if "Multi-WAN" in c.get("name", "")]
+        self.assertEqual(mwan_fix_checks[0].get("status"), "FIXED")
+
+        # Verifica se o lixo foi removido do UCI
+        self.assertIsNone(self.sb.uci_get("mwan3.wan3"))
+        self.assertIsNone(self.sb.uci_get("mwan3.wan3_m1_w3"))
+        self.assertIsNone(self.sb.uci_get("mwan3.wan3_only"))
+        
+        # A regra que apontava para wan3_only deve ter sido saneada para wan_then_wan2
+        rule_pol = self.sb.uci_get("mwan3.test_orphan_rule.use_policy")
+        self.assertEqual(rule_pol, "wan_then_wan2")
+
+        # Nova auditoria -> DEVE estar OK
+        res_ok = self.sb.run_control("ark-doctor", "--json")
+        report_ok = json.loads(res_ok.stdout)
+        mwan_ok = [c for c in report_ok.get("checks", []) if "Multi-WAN" in c.get("name", "")]
+        self.assertEqual(mwan_ok[0].get("status"), "OK")
+
+    def test_19_ipv6_modes_switching_and_slaac_safety(self):
+        """Valida que alternar modos (ipv4_only, dual_stack, ipv6_only) preserva coerencia de SLAAC e nao ressuscita RA em IPv4 puro."""
+        # 1. Modo IPv4 Puro: RA e DHCPv6 desativados
+        self.sb.uci_set("equipe_dashboard.ipv6=ipv6")
+        self.sb.uci_set("equipe_dashboard.ipv6.mode=ipv4_only")
+        self.sb.uci_set("dhcp.lan.ra=disabled")
+        self.sb.uci_set("dhcp.lan.dhcpv6=disabled")
+        self.sb.uci_set("dhcp.@dnsmasq[0].filter_aaaa=1")
+        
+        # Doctor DEVE aprovar IPv4 Puro como OK
+        res_v4 = self.sb.run_control("ark-doctor", "--json")
+        self.assertEqual(res_v4.returncode, 0)
+        rep_v4 = json.loads(res_v4.stdout)
+        slaac_v4 = [c for c in rep_v4.get("checks", []) if "Compatibilidade SLAAC Apple" in c.get("name", "")]
+        self.assertTrue(len(slaac_v4) > 0)
+        self.assertEqual(slaac_v4[0].get("status"), "OK")
+        self.assertIn("Modo IPv4 Puro", slaac_v4[0].get("message", ""))
+
+        # 2. Modo Dual Stack com tentativa de managed-config e WAN IP na LAN
+        self.sb.uci_set("equipe_dashboard.ipv6.mode=dual_stack")
+        self.sb.uci_set("dhcp.lan.ra=server")
+        self.sb.uci_set("dhcp.lan.dhcpv6=server")
+        self.sb.uci_set("dhcp.@dnsmasq[0].filter_aaaa=0")
+        self.sb.uci_set("dhcp.lan.ra_flags=managed-config")
+        self.sb.uci_set("network.lan.ip6addr=2804:c88:feca:e2a2::1/64")
+
+        # Doctor DEVE acusar FAIL para managed-config e FAIL para WAN IP na LAN
+        res_fail = self.sb.run_control("ark-doctor", "--json")
+        self.assertEqual(res_fail.returncode, 0)
+        rep_fail = json.loads(res_fail.stdout)
+        slaac_fail = [c for c in rep_fail.get("checks", []) if "Compatibilidade SLAAC Apple" in c.get("name", "")]
+        pfx_fail = [c for c in rep_fail.get("checks", []) if "Isolamento de Sub-rede WAN/LAN" in c.get("name", "")]
+        self.assertEqual(slaac_fail[0].get("status"), "FAIL")
+        self.assertEqual(pfx_fail[0].get("status"), "FAIL")
+
+        # Doctor com --fix DEVE auto-reparar ambos
+        res_fix = self.sb.run_control("ark-doctor", "--fix", "--json")
+        self.assertEqual(res_fix.returncode, 0)
+        rep_fix = json.loads(res_fix.stdout)
+        slaac_fix = [c for c in rep_fix.get("checks", []) if "Compatibilidade SLAAC Apple" in c.get("name", "")]
+        pfx_fix = [c for c in rep_fix.get("checks", []) if "Isolamento de Sub-rede WAN/LAN" in c.get("name", "")]
+        self.assertEqual(slaac_fix[0].get("status"), "FIXED")
+        self.assertEqual(pfx_fix[0].get("status"), "FIXED")
+
+        # 3. Garante que managed-config sumiu e WAN IP sumiu
+        self.assertNotIn("managed-config", self.sb.uci_get("dhcp.lan.ra_flags") or "")
+        self.assertIn("other-config", self.sb.uci_get("dhcp.lan.ra_flags") or "")
+        self.assertIsNone(self.sb.uci_get("network.lan.ip6addr"))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
 
 
