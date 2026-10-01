@@ -27,12 +27,16 @@ This installs the automatically selected profile by default. The script defaults
 
 Automatic profile selection:
 
-| Detected router resources | Selected profile |
-| --- | --- |
-| RAM >= 480000 KB and `/overlay` free >= 35000 KB | Full |
-| Anything below that | Lite |
+| Detected router resources | Selected profile | Storage Requirement |
+| --- | --- | --- |
+| RAM >= 480000 KB and /overlay free >= 35000 KB | Full | >= 35 MB free /overlay |
+| Anything below that | Lite | >= 3.5 MB free /overlay (warning under 6 MB) |
 
-The thresholds can be overridden by maintainers with `ARK_ROUTER_FULL_MIN_RAM_KB` and `ARK_ROUTER_FULL_MIN_OVERLAY_KB`.
+The installer and package preinst scripts enforce pre-flight storage safety checks:
+- **Full**: Aborts if /overlay has less than 35 MB free (prevents speedtest-go from exhausting flash).
+- **Lite**: Aborts if /overlay has less than 3.5 MB free. Displays an advisory warning when free space is between 3.5 MB and 6.0 MB (typical for 16 MB SPI flash devices like Cudy WR3000 v1).
+
+The thresholds can be overridden with ARK_ROUTER_FULL_MIN_RAM_KB, ARK_ROUTER_FULL_MIN_OVERLAY_KB, ARK_ROUTER_LITE_MIN_OVERLAY_KB, and ARK_ROUTER_LITE_WARN_OVERLAY_KB.
 
 To force Lite:
 

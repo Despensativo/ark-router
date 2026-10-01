@@ -9,6 +9,8 @@ TMP_DIR="${TMPDIR:-/tmp}"
 DRY_RUN="${DRY_RUN:-0}"
 FULL_MIN_RAM_KB="${ARK_ROUTER_FULL_MIN_RAM_KB:-480000}"
 FULL_MIN_OVERLAY_KB="${ARK_ROUTER_FULL_MIN_OVERLAY_KB:-35000}"
+LITE_MIN_OVERLAY_KB="${ARK_ROUTER_LITE_MIN_OVERLAY_KB:-3500}"
+LITE_WARN_OVERLAY_KB="${ARK_ROUTER_LITE_WARN_OVERLAY_KB:-6000}"
 BASE_URL="https://github.com/$REPO/releases/latest/download"
 SOURCE_URL="https://github.com/$REPO/archive/refs/heads/$BRANCH.tar.gz"
 
@@ -45,6 +47,41 @@ mem_total_kb() {
 overlay_avail_kb() {
 	v="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4; exit}' || true)"
 	[ -n "$v" ] && echo "$v" || echo 0
+}
+
+check_storage_safety() {
+	target="$1"
+	avail="$(overlay_avail_kb)"
+	[ -n "$avail" ] || avail=0
+	# If /overlay is not mounted or returns 0, df might be in a rootfs-only or ramfs environment (e.g. x86 full disk)
+	[ "$avail" -gt 0 ] || return 0
+
+	case "$target" in
+		full)
+			if [ "$avail" -lt "$FULL_MIN_OVERLAY_KB" ]; then
+				echo "ERROR: Insufficient /overlay space for Full profile." >&2
+				echo "Required: at least $((FULL_MIN_OVERLAY_KB / 1024)) MB free. Available: $((avail / 1024)) MB." >&2
+				echo "ARK Router Full includes heavy binaries (like speedtest-go and zerotier) which will exhaust your storage." >&2
+				echo "Please use the Lite profile instead: ARK_ROUTER_PROFILE=lite" >&2
+				return 1
+			fi
+			;;
+		lite)
+			if [ "$avail" -lt "$LITE_MIN_OVERLAY_KB" ]; then
+				echo "ERROR: Insufficient /overlay space for ARK Router Lite." >&2
+				echo "Required: at least $((LITE_MIN_OVERLAY_KB / 1024)) MB free. Available: $((avail / 1024)) MB." >&2
+				echo "Installing now would exhaust flash storage and risk corrupting LuCI and UCI settings." >&2
+				echo "Please remove unused packages or free up space before installing." >&2
+				return 1
+			fi
+			if [ "$avail" -lt "$LITE_WARN_OVERLAY_KB" ]; then
+				echo "WARNING: Limited /overlay space detected ($((avail / 1024)) MB free)." >&2
+				echo "This is typical for 16MB SPI flash routers (e.g. Cudy WR3000, D-Link DGL-5500)." >&2
+				echo "ARK Router Lite will install (~1.8 MB), but avoid installing heavy optional packages afterwards." >&2
+			fi
+			;;
+	esac
+	return 0
 }
 
 best_profile() {
@@ -122,6 +159,7 @@ install_release() {
 			;;
 		*) echo "Invalid ARK_ROUTER_PROFILE: $PROFILE. Use auto, lite or full." >&2; return 2 ;;
 	esac
+	check_storage_safety "$PROFILE" || return 1
 	case "$pm" in
 		apk)
 			pkg_url="$BASE_URL/$pkg_base.apk"
@@ -224,11 +262,13 @@ install_source() {
 	backup_ark_configs
 	preserve_existing_configs "$rootdir/root"
 
-	copy_tree "$rootdir/root" /
 	# Source installs follow the same hardware profile policy as releases.
 	# Keep the ~1.4 MiB client only on Full; Lite downloads it on demand.
 	source_profile="$PROFILE"
 	[ "$source_profile" = auto ] && source_profile="$(best_profile)"
+	check_storage_safety "$source_profile" || return 1
+
+	copy_tree "$rootdir/root" /
 	if [ "$source_profile" != full ]; then
 		rm -f /usr/bin/starlink-dish 2>/dev/null || true
 	fi

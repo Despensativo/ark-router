@@ -102,6 +102,31 @@ define Package/luci-app-ark-router-full/install
 	$(INSTALL_BIN) ./root/www/cgi-bin/ark-starlink-telemetry $(1)/www/cgi-bin/ark-starlink-telemetry
 endef
 
+define Package/luci-app-ark-router/preinst
+#!/bin/sh
+[ -n "$${IPKG_INSTROOT}" ] && exit 0
+avail=$$(df -k /overlay 2>/dev/null | awk 'NR==2{print $$4; exit}')
+if [ -n "$$avail" ] && [ "$$avail" -gt 0 ] && [ "$$avail" -lt 3500 ]; then
+	echo "ARK Router: Insufficient /overlay space ($$((avail / 1024)) MB available, >= 3.5 MB required)." >&2
+	echo "Installation aborted to prevent filesystem and LuCI corruption." >&2
+	exit 1
+fi
+exit 0
+endef
+
+define Package/luci-app-ark-router-full/preinst
+#!/bin/sh
+[ -n "$${IPKG_INSTROOT}" ] && exit 0
+avail=$$(df -k /overlay 2>/dev/null | awk 'NR==2{print $$4; exit}')
+if [ -n "$$avail" ] && [ "$$avail" -gt 0 ] && [ "$$avail" -lt 35000 ]; then
+	echo "ARK Router Full: Insufficient /overlay space ($$((avail / 1024)) MB available, >= 35 MB required)." >&2
+	echo "ARK Router Full includes heavy binaries (like speedtest-go and zerotier)." >&2
+	echo "Please install 'luci-app-ark-router' (Lite profile) instead." >&2
+	exit 1
+fi
+exit 0
+endef
+
 define Package/luci-app-ark-router/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {

@@ -9,6 +9,25 @@ Automatic install/update profile selection:
 | RAM >= 480000 KB and `/overlay` free >= 35000 KB | Full |
 | Anything below that | Lite |
 
+### Storage Guardrails (`install.sh` & package `preinst`)
+
+To eliminate risks of flash exhaustion, filesystem write locks and LuCI corruption, strict pre-flight checks are enforced both in the shell installer and inside package `preinst` scripts:
+
+- **Full Profile (`luci-app-ark-router-full`)**:
+  - Hard cutoff: requires **>= 35 MB free `/overlay`** (`FULL_MIN_OVERLAY_KB=35000`).
+  - If free space is below 35 MB, installation immediately aborts before downloading or unpacking. This prevents heavy Go/Rust binaries (notably `speedtest-go` ~24 MiB and `zerotier` ~3.5 MiB) from filling the flash.
+- **Lite Profile (`luci-app-ark-router`)**:
+  - Hard cutoff: requires **>= 3.5 MB free `/overlay`** (`LITE_MIN_OVERLAY_KB=3500`).
+  - Warning zone (**3.5 MB to 6.0 MB free**): Designed for **16 MB SPI Flash** devices (e.g., Cudy WR3000 v1, D-Link DGL-5500, TP-Link Archer C6/C7) whose clean factory overlay space is typically ~4.0 MB to 5.2 MB. The installer displays an advisory warning and safely installs the ~1.8 MB package while preserving > 1.5 MB of critical overlay space for UCI configuration persistence.
+  - Hard block (**< 3.5 MB free**): Installation is rejected with an error instructing the user to free space before proceeding.
+
+### Module Evolution & Resource Budgeting Rules
+
+When adding, removing, or refactoring ARK Router modules:
+1. **Adding Modules to Lite**: Any new module must be lightweight (POSIX shell or minified JS < 150 KB). Compiled binaries MUST NOT be made mandatory flash dependencies in Lite; they must execute from volatile `/tmp` (RAM). If unpacked Lite footprint grows beyond 2.0 MB, the 3.5 MB cutoff must be adjusted upwards.
+2. **Adding Modules to Full**: Modules must fit comfortably within the 35 MB overlay ceiling.
+3. **Removing Modules**: When removing dependencies from `Makefile` (`DEPENDS`), update package size measurements, remove orphaned conffiles, and adjust thresholds if significant space is reclaimed.
+
 The SSH installer accepts `ARK_ROUTER_PROFILE=auto|lite|full`; `auto` is the default. The dashboard self-updater uses the same check and keeps Full when Full is already installed. Older pre-profile installs can move to Full automatically when the router meets the Full thresholds; otherwise they update to Lite.
 
 ## Lite: routers with less than 256 MB RAM

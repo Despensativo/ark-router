@@ -12,6 +12,12 @@ import os
 import re
 import subprocess
 import sys
+import shutil
+
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 ARK_LIB_DIR = os.path.join(REPO_ROOT, "root", "usr", "lib", "ark")
@@ -68,7 +74,15 @@ def audit_shell_syntax():
                         pass
 
                 if is_sh:
-                    res = subprocess.run(["sh", "-n", path], capture_output=True, text=True)
+                    sh_bin = shutil.which("sh")
+                    if not sh_bin:
+                        for cand in [r"C:\Program Files\Git\bin\sh.exe", r"C:\Program Files\Git\usr\bin\sh.exe", r"C:\Program Files (x86)\Git\bin\sh.exe"]:
+                            if os.path.exists(cand):
+                                sh_bin = cand
+                                break
+                    if not sh_bin:
+                        sh_bin = "sh"
+                    res = subprocess.run([sh_bin, "-n", path], capture_output=True, text=True, encoding="utf-8", errors="replace")
                     if res.returncode != 0:
                         errors.append(f"ERRO DE SINTAXE em {rel_path}: {res.stderr.strip()}")
     return errors

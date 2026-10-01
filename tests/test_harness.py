@@ -260,7 +260,8 @@ config dhcp 'lan'
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             env=env
         )
         return proc
@@ -281,7 +282,7 @@ config dhcp 'lan'
                 sh_bin = candidate
                 break
 
-        return subprocess.run([sh_bin, "-c", script_str], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+        return subprocess.run([sh_bin, "-c", script_str], stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8", errors="replace", env=env)
 
     def uci_get(self, key):
         env = os.environ.copy()
@@ -291,7 +292,8 @@ config dhcp 'lan'
             [sys.executable, mock_uci_src, "-c", self.etc_config, "get", key],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             env=env
         )
         if proc.returncode == 0:
