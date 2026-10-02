@@ -809,13 +809,14 @@ adblock_configure() {
 			uci commit firewall
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
 
-			uci -q delete dhcp.@dnsmasq[0].server
-			uci -q add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
-			uci -q set dhcp.@dnsmasq[0].noresolv='1'
-			uci commit dhcp
-
-			/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
-			/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+			if pgrep -f 'AdGuardHome' >/dev/null 2>&1 || pgrep -f 'adguardhome' >/dev/null 2>&1 || nc -z 127.0.0.1 5335 >/dev/null 2>&1; then
+				uci -q delete dhcp.@dnsmasq[0].server
+				uci -q add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
+				uci -q set dhcp.@dnsmasq[0].noresolv='1'
+				uci commit dhcp
+				/etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+				/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+			fi
 		fi
 		adblock_apply_rules "$custom_blacklist" "${custom_whitelist:-__KEEP_EXISTING__}"
 		echo ok
@@ -971,11 +972,7 @@ adblock_enable() {
 	uci commit equipe_perf
 
 	if [ "$chosen_mode" = "local" ]; then
-		uci -q set equipe_perf.settings.adblock_enabled='1'
-		uci -q set equipe_perf.settings.adguard_enabled='1'
-		uci -q set equipe_perf.settings.adblock_cloud='0'
-		uci commit equipe_perf
-		if [ ! -x /usr/bin/AdGuardHome ]; then
+		if [ ! -x /usr/bin/AdGuardHome ] && [ ! -x /usr/bin/adguardhome ]; then
 			if command -v apk >/dev/null 2>&1; then
 				apk add adguardhome >/dev/null 2>&1 || true
 			elif command -v opkg >/dev/null 2>&1; then
@@ -983,6 +980,44 @@ adblock_enable() {
 				opkg install adguardhome >/dev/null 2>&1 || true
 			fi
 		fi
+
+		# Circuito de proteção: se o binário não existe, aborta sem quebrar DNS
+		if [ ! -x /usr/bin/AdGuardHome ] && [ ! -x /usr/bin/adguardhome ]; then
+			logger -t ark-adguard "Circuit Breaker: Binario do AdGuard Home nao encontrado. Abortando ativacao para evitar queda de DNS."
+			adblock_disable >/dev/null 2>&1 || true
+			echo 'Erro: AdGuard Home nao pode ser instalado. O pacote nao esta disponivel nos repositorios. O DNS padrao foi mantido.' >&2
+			return 1
+		fi
+
+		# Garante arquivo de configuracao inicial com porta 5335 para evitar colisao com a porta 53 do dnsmasq
+		mkdir -p /etc/adguardhome /var/lib/adguardhome
+		if [ ! -f /etc/adguardhome/adguardhome.yaml ]; then
+			cat << 'EOF' > /etc/adguardhome/adguardhome.yaml
+schema_version: 29
+dns:
+  bind_hosts:
+    - 127.0.0.1
+  port: 5335
+  upstream_dns:
+    - https://dns.cloudflare.com/dns-query
+    - https://dns.google/dns-query
+  bootstrap_dns:
+    - 1.1.1.1
+    - 8.8.8.8
+  all_servers: false
+  fastest_addr: true
+  cache_size: 67108864
+  cache_ttl_min: 0
+  cache_ttl_max: 0
+  cache_optimistic: true
+  filtering_enabled: true
+http:
+  address: 0.0.0.0:3000
+EOF
+			chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
+			chmod 644 /etc/adguardhome/adguardhome.yaml 2>/dev/null || true
+		fi
+
 		if [ -f /etc/init.d/adguardhome ] && ! grep -q -- '--logfile' /etc/init.d/adguardhome; then
 			sed -i '/procd_append_param command --config/a \	procd_append_param command --logfile /var/lib/adguardhome/adguardhome.log' /etc/init.d/adguardhome
 		fi
@@ -993,6 +1028,30 @@ adblock_enable() {
 		fi
 		[ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome enable >/dev/null 2>&1 || true
 		[ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+
+		# Circuito de validação: verifica se AdGuard Home subiu e responde na porta 5335
+		agh_ready=0
+		for _i in 1 2 3 4 5; do
+			if (pgrep -f 'AdGuardHome' >/dev/null 2>&1 || pgrep -f 'adguardhome' >/dev/null 2>&1); then
+				if nc -z 127.0.0.1 5335 >/dev/null 2>&1 || netstat -ln 2>/dev/null | grep -q ':5335 '; then
+					agh_ready=1
+					break
+				fi
+			fi
+			sleep 1
+		done
+
+		if [ "$agh_ready" = "0" ]; then
+			logger -t ark-adguard "Circuit Breaker: AdGuard Home nao respondeu na porta 5335. Cancelando redirecionamento de DNS."
+			adblock_disable >/dev/null 2>&1 || true
+			echo 'Erro: AdGuard Home falhou ao iniciar na porta 5335. O DNS padrao foi mantido para evitar queda de conexao.' >&2
+			return 1
+		fi
+
+		uci -q set equipe_perf.settings.adblock_enabled='1'
+		uci -q set equipe_perf.settings.adguard_enabled='1'
+		uci -q set equipe_perf.settings.adblock_cloud='0'
+		uci commit equipe_perf
 
 		uci -q delete dhcp.@dnsmasq[0].server
 		uci -q add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'

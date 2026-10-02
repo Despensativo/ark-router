@@ -7,7 +7,7 @@
 
 document.querySelector('head').appendChild(E('link', {
 	'rel': 'stylesheet', 'type': 'text/css',
-	'href': L.resource('view/equipe-dashboard/overview.css') + '?v=' + (window.ARK_VERSION || '1.5.5')
+	'href': L.resource('view/equipe-dashboard/overview.css') + '?v=' + (window.ARK_VERSION || '1.5.6')
 }));
 
 const callSystemBoard = rpc.declare({ object: 'system', method: 'board' });
@@ -3310,14 +3310,23 @@ installDashboardNotifications();
 
 function translateText(value){
 	let s=String(value==null?'':value);
-	if (dashboardLanguage === 'pt-br') return s;
-	const iconMatch = s.match(/^([\uD800-\uDBFF][\uDC00-\uDFFF]|\uFE0F|[\u2000-\u3300]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDE4F]|\uD83E[\uDD00-\uDDFF]|[\u2600-\u27BF])\s*/);
+	if (dashboardLanguage === 'pt-br' || !s) return s;
+
+	const leadMatch = s.match(/^\s*/);
+	const trailMatch = s.match(/\s*$/);
+	const lead = leadMatch ? leadMatch[0] : '';
+	const trail = trailMatch ? trailMatch[0] : '';
+	const trimmed = s.slice(lead.length, s.length - (trail ? trail.length : 0));
+	if (!trimmed) return s;
+
+	const iconMatch = trimmed.match(/^([\uD800-\uDBFF][\uDC00-\uDFFF]|\uFE0F|[\u2000-\u3300]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDE4F]|\uD83E[\uDD00-\uDDFF]|[\u2600-\u27BF])\s*/);
 	const iconPrefix = iconMatch ? iconMatch[0] : '';
-	const coreText = iconPrefix ? s.slice(iconPrefix.length) : s;
+	const coreText = iconPrefix ? trimmed.slice(iconPrefix.length) : trimmed;
 
 	if (dashboardLanguage === 'en') {
 		if (EN[s]) return EN[s];
-		if (iconPrefix && EN[coreText]) return iconPrefix + EN[coreText];
+		if (EN[trimmed]) return lead + EN[trimmed] + trail;
+		if (iconPrefix && EN[coreText]) return lead + iconPrefix + EN[coreText] + trail;
 		s=s.replace(/^Total recebido: /,'Total received: ').replace(/^Total enviado: /,'Total sent: ').replace(/^Pico /,'Peak ').replace(/ amostras • /,' samples • ').replace(/ amostra • /,' sample • ').replace(/ até agora$/,' to now');
 		s=s.replace(/ conectado(s)?$/,' connected').replace(/ conectado(s)? no Wi-Fi$/,' connected on Wi-Fi').replace(/ neste ponto • /,' on this node • ').replace(/ na rede$/,' on network').replace(/ no Wi-Fi$/,' on Wi-Fi').replace(/Canal /g,'Channel ').replace(/ • automático/g,' • automatic').replace(/ • manual/g,' • manual').replace(/ • ocupação /g,' • occupancy ').replace(/^Ruído:/,'Noise:').replace(/ visitantes$/,' guests').replace(/ ATIVA$/,' ACTIVE').replace(/ ATIVAS$/,' ACTIVE');
 		s=s.replace(/^Ligado • /,'On • ').replace(/^Desligado • /,'Off • ').replace(/ canais definidos manualmente/,' manually selected channels').replace(/ o roteador escolhe os canais/,' the router selects channels');
@@ -3342,7 +3351,8 @@ function translateText(value){
 	}
 	if (dashboardLanguage === 'es') {
 		if (ES[s]) return ES[s];
-		if (iconPrefix && ES[coreText]) return iconPrefix + ES[coreText];
+		if (ES[trimmed]) return lead + ES[trimmed] + trail;
+		if (iconPrefix && ES[coreText]) return lead + iconPrefix + ES[coreText] + trail;
 		s=s.replace(/^Total recebido: /,'Total recibido: ').replace(/^Total enviado: /,'Total enviado: ').replace(/^Pico /,'Pico ').replace(/ amostras • /,' muestras • ').replace(/ amostra • /,' muestra • ').replace(/ até agora$/,' hasta ahora');
 		s=s.replace(/ conectado(s)?$/,' conectado(s)').replace(/ conectado(s)? no Wi-Fi$/,' conectado(s) en Wi-Fi').replace(/ neste ponto • /,' en este nodo • ').replace(/ na rede$/,' en red').replace(/ no Wi-Fi$/,' en Wi-Fi').replace(/Canal /g,'Canal ').replace(/ • automático/g,' • automático').replace(/ • manual/g,' • manual').replace(/ • ocupação /g,' • ocupación ').replace(/^Ruído:/,'Ruido:').replace(/ visitantes$/,' invitados').replace(/ ATIVA$/,' ACTIVA').replace(/ ATIVAS$/,' ACTIVAS');
 		s=s.replace(/^Ligado • /,'Encendido • ').replace(/^Desligado • /,'Apagado • ').replace(/ canais definidos manualmente/,' canales seleccionados manualmente').replace(/ o roteador escolhe os canais/,' el router elige los canales');
@@ -3380,6 +3390,10 @@ function translateAttributes(el){
 	if(el.hasAttribute('aria-label')){
 		const a=translateText(el.getAttribute('aria-label'));
 		if(a!==el.getAttribute('aria-label'))el.setAttribute('aria-label',a);
+	}
+	if(el.tagName === 'INPUT' && /^(button|submit|reset)$/i.test(el.type) && el.value){
+		const v=translateText(el.value);
+		if(v!==el.value)el.value=v;
 	}
 }
 function translateTree(root){
@@ -10041,10 +10055,78 @@ const wifiMethods = {
 			});
 			select.value=current;
 		};
-		const preferred = [['BR','Brasil'],['US','Estados Unidos'],['PT','Portugal'],['AR','Argentina'],['CL','Chile'],['UY','Uruguai'],['PY','Paraguai'],['MX','México'],['CA','Canadá'],['GB','Reino Unido'],['DE','Alemanha'],['ES','Espanha'],['FR','França'],['IT','Itália'],['JP','Japão'],['AU','Austrália'],['00','Mundo / driver padrão']].map(function(p){ return {code:p[0], country:p[1]}; });
+		const preferred = [
+			['00','Mundo / driver padrão'],
+			['PK','Paquistão (Pakistan)'],
+			['BR','Brasil'],
+			['US','Estados Unidos (United States)'],
+			['PT','Portugal'],
+			['ES','Espanha (Spain)'],
+			['AR','Argentina'],
+			['CL','Chile'],
+			['UY','Uruguai'],
+			['PY','Paraguai'],
+			['BO','Bolívia'],
+			['PE','Peru'],
+			['CO','Colômbia'],
+			['VE','Venezuela'],
+			['EC','Equador'],
+			['MX','México'],
+			['CA','Canadá'],
+			['GB','Reino Unido (United Kingdom)'],
+			['DE','Alemanha (Germany)'],
+			['FR','França (France)'],
+			['IT','Itália (Italy)'],
+			['NL','Holanda (Netherlands)'],
+			['BE','Bélgica (Belgium)'],
+			['CH','Suíça (Switzerland)'],
+			['AT','Áustria (Austria)'],
+			['SE','Suécia (Sweden)'],
+			['NO','Noruega (Norway)'],
+			['DK','Dinamarca (Denmark)'],
+			['FI','Finlândia (Finland)'],
+			['IE','Irlanda (Ireland)'],
+			['PL','Polônia (Poland)'],
+			['CZ','República Tcheca (Czechia)'],
+			['RO','Romênia (Romania)'],
+			['GR','Grécia (Greece)'],
+			['TR','Turquia (Türkiye)'],
+			['RU','Rússia (Russia)'],
+			['UA','Ucrânia (Ukraine)'],
+			['IN','Índia (India)'],
+			['BD','Bangladesh'],
+			['ID','Indonésia (Indonesia)'],
+			['MY','Malásia (Malaysia)'],
+			['SG','Singapura (Singapore)'],
+			['PH','Filipinas (Philippines)'],
+			['TH','Tailândia (Thailand)'],
+			['VN','Vietnã (Vietnam)'],
+			['JP','Japão (Japan)'],
+			['KR','Coreia do Sul (South Korea)'],
+			['CN','China'],
+			['HK','Hong Kong'],
+			['TW','Taiwan'],
+			['AU','Austrália (Australia)'],
+			['NZ','Nova Zelândia (New Zealand)'],
+			['SA','Arábia Saudita (Saudi Arabia)'],
+			['AE','Emirados Árabes (UAE)'],
+			['QA','Catar (Qatar)'],
+			['KW','Kuwait'],
+			['IL','Israel'],
+			['EG','Egito (Egypt)'],
+			['ZA','África do Sul (South Africa)'],
+			['NG','Nigéria (Nigeria)'],
+			['KE','Quênia (Kenya)'],
+			['MA','Marrocos (Morocco)'],
+			['PA','Panamá (Max Power)']
+		].map(function(p){ return {code:p[0], country:p[1]}; });
 		populate(this.countries && this.countries.length ? this.countries : preferred);
 		if(!this.countries || !this.countries.length) {
-			safe(callCountryList('phy0-ap0'), {results:[]}).then(L.bind(function(res){
+			const dev = (this.currentData && this.currentData.wireless && (
+				(this.currentData.wireless.radio0 && (this.currentData.wireless.radio0.device || 'radio0')) ||
+				(this.currentData.wireless.interfaces && this.currentData.wireless.interfaces[0] && this.currentData.wireless.interfaces[0].ifname)
+			)) || 'phy0-ap0';
+			safe(callCountryList(dev), {results:[]}).then(L.bind(function(res){
 				if(res && res.results && res.results.length) {
 					this.countries = res.results;
 					populate(res.results);
@@ -14967,7 +15049,7 @@ const systemMethods = {
 					E('div',{class:'ex-feature-copy'},[
 						E('div',{class:'ex-feature-name-row'},[
 							E('strong',{},['Versão instalada: ']),
-							E('span',{class:'ex-pill online'},[update.current||window.ARK_VERSION||'1.5.5'])
+							E('span',{class:'ex-pill online'},[update.current||window.ARK_VERSION||'1.5.6'])
 						]),
 						E('small',{class:'ex-muted'},['Repositório: ',update.repo||'Despensativo/ark-router']),
 						E('small',{class:'ex-muted'},['Gerenciador: ',manager])
@@ -15327,7 +15409,71 @@ const systemMethods = {
 			const language = select(this.capabilities.language||dashboardLanguage||'pt-br', [['pt-br','Português (Brasil)'],['en','English'],['es','Español']]);
 			const routerName = input('text', saved.router_name || 'ARK Router', {maxlength:40});
 			const country = select(saved.country || 'BR', []);
-			const preferredCountries = [['BR','Brasil'],['US','Estados Unidos'],['PT','Portugal'],['AR','Argentina'],['CL','Chile'],['UY','Uruguai'],['PY','Paraguai'],['MX','México'],['CA','Canadá'],['GB','Reino Unido'],['DE','Alemanha'],['ES','Espanha'],['FR','França'],['IT','Itália'],['JP','Japão'],['AU','Austrália'],['00','Mundo / driver padrão']];
+			const preferredCountries = [
+				['00','Mundo / driver padrão'],
+				['PK','Paquistão (Pakistan)'],
+				['BR','Brasil'],
+				['US','Estados Unidos (United States)'],
+				['PT','Portugal'],
+				['ES','Espanha (Spain)'],
+				['AR','Argentina'],
+				['CL','Chile'],
+				['UY','Uruguai'],
+				['PY','Paraguai'],
+				['BO','Bolívia'],
+				['PE','Peru'],
+				['CO','Colômbia'],
+				['VE','Venezuela'],
+				['EC','Equador'],
+				['MX','México'],
+				['CA','Canadá'],
+				['GB','Reino Unido (United Kingdom)'],
+				['DE','Alemanha (Germany)'],
+				['FR','França (France)'],
+				['IT','Itália (Italy)'],
+				['NL','Holanda (Netherlands)'],
+				['BE','Bélgica (Belgium)'],
+				['CH','Suíça (Switzerland)'],
+				['AT','Áustria (Austria)'],
+				['SE','Suécia (Sweden)'],
+				['NO','Noruega (Norway)'],
+				['DK','Dinamarca (Denmark)'],
+				['FI','Finlândia (Finland)'],
+				['IE','Irlanda (Ireland)'],
+				['PL','Polônia (Poland)'],
+				['CZ','República Tcheca (Czechia)'],
+				['RO','Romênia (Romania)'],
+				['GR','Grécia (Greece)'],
+				['TR','Turquia (Türkiye)'],
+				['RU','Rússia (Russia)'],
+				['UA','Ucrânia (Ukraine)'],
+				['IN','Índia (India)'],
+				['BD','Bangladesh'],
+				['ID','Indonésia (Indonesia)'],
+				['MY','Malásia (Malaysia)'],
+				['SG','Singapura (Singapore)'],
+				['PH','Filipinas (Philippines)'],
+				['TH','Tailândia (Thailand)'],
+				['VN','Vietnã (Vietnam)'],
+				['JP','Japão (Japan)'],
+				['KR','Coreia do Sul (South Korea)'],
+				['CN','China'],
+				['HK','Hong Kong'],
+				['TW','Taiwan'],
+				['AU','Austrália (Australia)'],
+				['NZ','Nova Zelândia (New Zealand)'],
+				['SA','Arábia Saudita (Saudi Arabia)'],
+				['AE','Emirados Árabes (UAE)'],
+				['QA','Catar (Qatar)'],
+				['KW','Kuwait'],
+				['IL','Israel'],
+				['EG','Egito (Egypt)'],
+				['ZA','África do Sul (South Africa)'],
+				['NG','Nigéria (Nigeria)'],
+				['KE','Quênia (Kenya)'],
+				['MA','Marrocos (Morocco)'],
+				['PA','Panamá (Max Power)']
+			];
 			const seenCountries = {};
 			preferredCountries.forEach(function(item){ seenCountries[item[0]]=1; country.appendChild(E('option',{value:item[0]},[item[1]+' ('+item[0]+')'])); });
 			(this.countries||[]).slice().sort(function(a,b){ return String(a.country||a.code).localeCompare(String(b.country||b.code)); }).forEach(function(item){

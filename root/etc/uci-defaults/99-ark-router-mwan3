@@ -1,12 +1,32 @@
 #!/bin/sh
 # ARK Router - Inicialização Automática do Multi-WAN (mwan3)
-# Garante targets de ping e políticas ativas sem deixar track_ip vazio
+# Garante targets de ping e políticas ativas apenas se houver 2 ou mais WANs
 
 [ -f /etc/config/mwan3 ] || exit 0
 
-if [ -x /usr/sbin/equipe-dashboard-control ]; then
-	/usr/sbin/equipe-dashboard-control mwan3-ensure >/dev/null 2>&1 || /usr/sbin/equipe-dashboard-control ensure_mwan3_ark_config >/dev/null 2>&1 || true
-	uci commit mwan3 >/dev/null 2>&1 || true
+active_wans=0
+for w in $(uci -q show network | grep '=interface' | cut -d. -f2 | cut -d= -f1 | grep -E '^wan([0-9]+)?$'); do
+	auto="$(uci -q get "network.$w.auto" || printf '1')"
+	[ "$auto" != "0" ] || continue
+	p="$(uci -q get "network.$w.proto" || printf 'none')"
+	d="$(uci -q get "network.$w.device" || uci -q get "network.$w.ifname" || printf '')"
+	if [ "$p" != "none" ] && [ "$p" != "dhcpv6" ] && [ "$w" != "wan6" ] && [ -n "$d" ]; then
+		active_wans=$((active_wans + 1))
+	fi
+done
+
+if [ "$active_wans" -ge 2 ]; then
+	if [ -x /usr/sbin/equipe-dashboard-control ]; then
+		/usr/sbin/equipe-dashboard-control mwan3-ensure >/dev/null 2>&1 || /usr/sbin/equipe-dashboard-control ensure_mwan3_ark_config >/dev/null 2>&1 || true
+		uci commit mwan3 >/dev/null 2>&1 || true
+	fi
+	[ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 enable >/dev/null 2>&1 || true
+else
+	# Single-WAN: Desativa mwan3 para garantir roteamento puro pelo kernel
+	if [ -x /etc/init.d/mwan3 ]; then
+		/etc/init.d/mwan3 stop >/dev/null 2>&1 || true
+		/etc/init.d/mwan3 disable >/dev/null 2>&1 || true
+	fi
 fi
 
 exit 0

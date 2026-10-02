@@ -13,7 +13,7 @@
 	local boardinfo = util.ubus("system", "board")
 	local node = disp.context.dispatched
 	local is_login = not disp.context.authsession
-	local ark_v = (fs.readfile("/usr/share/ark-router/VERSION") or "1.5.5"):gsub("%s+", "")
+	local ark_v = (fs.readfile("/usr/share/ark-router/VERSION") or "1.5.6"):gsub("%s+", "")
 
 	http.prepare_content("text/html")
 -%>
@@ -78,7 +78,13 @@
 				local ark_lang = "pt-br"
 				pcall(function()
 					local uci = require("luci.model.uci").cursor()
-					ark_lang = uci:get("equipe_dashboard", "main", "language") or "pt-br"
+					ark_lang = uci:get("equipe_dashboard", "main", "language")
+					if not ark_lang or ark_lang == "auto" or ark_lang == "" then
+						local l_lang = uci:get("luci", "main", "lang") or "en"
+						if l_lang:sub(1, 2) == "pt" then ark_lang = "pt-br"
+						elseif l_lang:sub(1, 2) == "es" then ark_lang = "es"
+						else ark_lang = "en" end
+					end
 				end)
 				local is_en = (ark_lang == "en")
 			-%>

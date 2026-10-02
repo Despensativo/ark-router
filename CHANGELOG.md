@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.5.6
+
+- **🌐 Compatibilidade Internacional, Blindagem Anti-Blackout Multi-WAN e Resiliência SQM/AdGuard (02/10/2026)**:
+  - **i18n & Normalização Global de Tradução**:
+    - Normalização com `.trim()` e preservação estrita de espaçamento em nós de texto do DOM no `translateText()`, garantindo tradução integral para Inglês e Espanhol em todos os cards, seções e modais.
+    - Detecção dinâmica de idioma via `ark_language()` no `common.sh`, herdando automaticamente `luci.main.lang` em novas instalações internacionais e respeitando escolhas explícitas do usuário.
+  - **Blindagem Anti-Blackout de Internet no Multi-WAN (mwan3)**:
+    - Desativação automática do serviço `mwan3` quando o roteador opera em Single-WAN (1 única WAN ativa), eliminando sequestro de rotas padrão por falsos positivos.
+    - Transição do alvo de ping padrão de `registro_br` (200.160.2.3 no Brasil) para Anycast global Cloudflare (`1.1.1.1 1.0.0.1 8.8.8.8`).
+    - Configuração de `initial_state=online`, relaxamento do timeout de ping de 2s para 4s e intervalo de 10s para acomodar latências internacionais sem quedas de rota.
+  - **Domínio Regulatório Wi-Fi Abrangente**:
+    - Expansão do seletor regulatório para lista global completa ISO 3166-1 (incluindo Paquistão `PK`, Índia `IN`, Arábia Saudita `SA`, Turquia `TR`, etc.) no Assistente Inicial e no modal Wi-Fi.
+    - Detecção dinâmica do dispositivo de rádio (`radio0`/`wlan0`) sem amarras a drivers proprietários MediaTek.
+  - **Calibração Universal de SQM com Fallback HTTP Multi-Stream**:
+    - Suporte a medição de velocidade em sistemas `opkg` ou sem binário `speedtest-go`, utilizando o motor nativo paralelo Fast.com/Cloudflare (`speedtest_download_fallback_mbps` e `speedtest_upload_fallback_mbps`).
+    - O SQM automático não falha mais por dependência de pacotes externos, calculando taxas de shaper em qualquer arquitetura.
+  - **Circuit Breaker Estrito para AdGuard Home**:
+    - Validação de execução prévia antes de qualquer redirecionamento de DNS no `dnsmasq`: se o binário não puder ser instalado ou o AdGuard Home não estiver escutando na porta `5335`, a ativação é abortada e o DNS padrão é mantido intacto.
+    - Geração automática de arquivo YAML inicial configurado para a porta `5335` e porta web `3000`, evitando colisões com a porta 53 do dnsmasq e impedindo blackouts na rede local.
+
 ## 1.5.5
 
 - **🛡️ Blindagem Quádrupla IPv6 SLAAC Apple, Isolamento de Sub-redes WAN/LAN e Auto-Cura de Boot (30/09/2026)**:

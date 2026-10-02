@@ -1033,32 +1033,32 @@ mwan3_reorder_rules() {
 
 get_configured_ping_track_ips() {
 	local target="$(uci -q get equipe_dashboard.main.ping_target 2>/dev/null)"
-	[ -n "$target" ] || target="registro_br"
+	[ -n "$target" ] || target="cloudflare"
 	local custom_ip="$(uci -q get equipe_dashboard.main.ping_custom_ip 2>/dev/null)"
 	local primary=""
 	case "$target" in
-		registro_br) primary="200.160.2.3" ;;
 		cloudflare)  primary="1.1.1.1" ;;
 		google)      primary="8.8.8.8" ;;
 		quad9)       primary="9.9.9.9" ;;
-		custom)      primary="${custom_ip:-200.160.2.3}" ;;
+		registro_br) primary="200.160.2.3" ;;
+		custom)      primary="${custom_ip:-1.1.1.1}" ;;
 		isp)
 			primary="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@.route[@.target="0.0.0.0"].nexthop' 2>/dev/null | head -n 1)"
 			[ -n "$primary" ] || primary="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].ptpaddress' 2>/dev/null)"
 			[ -n "$primary" ] || primary="$(uci -q get network.wan.gateway || true)"
 			;;
-		*)           primary="200.160.2.3" ;;
+		*)           primary="1.1.1.1" ;;
 	esac
 
 	local ips=""
 	[ -n "$primary" ] && ips="$primary"
-	for fallback in 200.160.2.3 1.1.1.1 8.8.8.8 9.9.9.9 208.67.222.222; do
+	for fallback in 1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4 9.9.9.9 208.67.222.222 200.160.2.3; do
 		case " $ips " in
 			*" $fallback "*) ;;
 			*) ips="${ips:+$ips }$fallback" ;;
 		esac
 	done
-	[ -n "$ips" ] || ips="200.160.2.3 1.1.1.1 8.8.8.8 9.9.9.9 208.67.222.222"
+	[ -n "$ips" ] || ips="1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4 9.9.9.9"
 	printf '%s\n' "$ips"
 }
 
@@ -1068,6 +1068,7 @@ ensure_mwan3_ark_config() {
 		uci -q delete "mwan3.$sec" 2>/dev/null || true
 	done
 	active_wans=""
+	active_wan_count=0
 	for w in $(uci -q show network | grep '=interface' | cut -d. -f2 | cut -d= -f1 | grep -E '^wan([0-9]+)?$'); do
 		auto="$(uci -q get "network.$w.auto" || printf '1')"
 		[ "$auto" != "0" ] || continue
@@ -1075,9 +1076,22 @@ ensure_mwan3_ark_config() {
 		d="$(uci -q get "network.$w.device" || uci -q get "network.$w.ifname" || printf '')"
 		if [ "$p" != "none" ] && [ "$p" != "dhcpv6" ] && [ "$w" != "wan6" ] && [ -n "$d" ]; then
 			active_wans="$active_wans $w"
+			active_wan_count=$((active_wan_count + 1))
 		fi
 	done
 	[ -n "$active_wans" ] || active_wans="wan"
+
+	if [ "$active_wan_count" -lt 2 ]; then
+		# Roteador com apenas 1 WAN: desativa servico mwan3 para garantir rotas puras do kernel e zero falsos positivos
+		if [ -x /etc/init.d/mwan3 ]; then
+			/etc/init.d/mwan3 stop >/dev/null 2>&1 || true
+			/etc/init.d/mwan3 disable >/dev/null 2>&1 || true
+		fi
+	else
+		if [ -x /etc/init.d/mwan3 ]; then
+			/etc/init.d/mwan3 enable >/dev/null 2>&1 || true
+		fi
+	fi
 
 	# Garbage collector de secoes orfas no mwan3 (interfaces e politicas dedicadas antigas)
 	for m_sec in $(uci -q show mwan3 | grep '=interface' | cut -d. -f2 | cut -d= -f1); do
@@ -1116,16 +1130,16 @@ ensure_mwan3_ark_config() {
 	done
 	wan_idx=1
 	track_ips="$(get_configured_ping_track_ips)"
-	[ -n "$track_ips" ] || track_ips="200.160.2.3 1.1.1.1 8.8.8.8 9.9.9.9 208.67.222.222"
+	[ -n "$track_ips" ] || track_ips="1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4 9.9.9.9"
 	for w in $active_wans; do
 		uci -q set "mwan3.$w=interface"
 		uci -q set "mwan3.$w.enabled=1"
 		uci -q set "mwan3.$w.family=ipv4"
-		uci -q set "mwan3.$w.initial_state=offline"
-		uci -q set "mwan3.$w.reliability=2"
+		uci -q set "mwan3.$w.initial_state=online"
+		uci -q set "mwan3.$w.reliability=1"
 		uci -q set "mwan3.$w.count=1"
-		uci -q set "mwan3.$w.timeout=2"
-		uci -q set "mwan3.$w.interval=5"
+		uci -q set "mwan3.$w.timeout=4"
+		uci -q set "mwan3.$w.interval=10"
 		uci -q set "mwan3.$w.down=3"
 		uci -q set "mwan3.$w.up=3"
 		uci -q delete "mwan3.$w.track_ip" 2>/dev/null || true

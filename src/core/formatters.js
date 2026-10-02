@@ -1,13 +1,22 @@
 function translateText(value){
 	let s=String(value==null?'':value);
-	if (dashboardLanguage === 'pt-br') return s;
-	const iconMatch = s.match(/^([\uD800-\uDBFF][\uDC00-\uDFFF]|\uFE0F|[\u2000-\u3300]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDE4F]|\uD83E[\uDD00-\uDDFF]|[\u2600-\u27BF])\s*/);
+	if (dashboardLanguage === 'pt-br' || !s) return s;
+
+	const leadMatch = s.match(/^\s*/);
+	const trailMatch = s.match(/\s*$/);
+	const lead = leadMatch ? leadMatch[0] : '';
+	const trail = trailMatch ? trailMatch[0] : '';
+	const trimmed = s.slice(lead.length, s.length - (trail ? trail.length : 0));
+	if (!trimmed) return s;
+
+	const iconMatch = trimmed.match(/^([\uD800-\uDBFF][\uDC00-\uDFFF]|\uFE0F|[\u2000-\u3300]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDE4F]|\uD83E[\uDD00-\uDDFF]|[\u2600-\u27BF])\s*/);
 	const iconPrefix = iconMatch ? iconMatch[0] : '';
-	const coreText = iconPrefix ? s.slice(iconPrefix.length) : s;
+	const coreText = iconPrefix ? trimmed.slice(iconPrefix.length) : trimmed;
 
 	if (dashboardLanguage === 'en') {
 		if (EN[s]) return EN[s];
-		if (iconPrefix && EN[coreText]) return iconPrefix + EN[coreText];
+		if (EN[trimmed]) return lead + EN[trimmed] + trail;
+		if (iconPrefix && EN[coreText]) return lead + iconPrefix + EN[coreText] + trail;
 		s=s.replace(/^Total recebido: /,'Total received: ').replace(/^Total enviado: /,'Total sent: ').replace(/^Pico /,'Peak ').replace(/ amostras • /,' samples • ').replace(/ amostra • /,' sample • ').replace(/ até agora$/,' to now');
 		s=s.replace(/ conectado(s)?$/,' connected').replace(/ conectado(s)? no Wi-Fi$/,' connected on Wi-Fi').replace(/ neste ponto • /,' on this node • ').replace(/ na rede$/,' on network').replace(/ no Wi-Fi$/,' on Wi-Fi').replace(/Canal /g,'Channel ').replace(/ • automático/g,' • automatic').replace(/ • manual/g,' • manual').replace(/ • ocupação /g,' • occupancy ').replace(/^Ruído:/,'Noise:').replace(/ visitantes$/,' guests').replace(/ ATIVA$/,' ACTIVE').replace(/ ATIVAS$/,' ACTIVE');
 		s=s.replace(/^Ligado • /,'On • ').replace(/^Desligado • /,'Off • ').replace(/ canais definidos manualmente/,' manually selected channels').replace(/ o roteador escolhe os canais/,' the router selects channels');
@@ -32,7 +41,8 @@ function translateText(value){
 	}
 	if (dashboardLanguage === 'es') {
 		if (ES[s]) return ES[s];
-		if (iconPrefix && ES[coreText]) return iconPrefix + ES[coreText];
+		if (ES[trimmed]) return lead + ES[trimmed] + trail;
+		if (iconPrefix && ES[coreText]) return lead + iconPrefix + ES[coreText] + trail;
 		s=s.replace(/^Total recebido: /,'Total recibido: ').replace(/^Total enviado: /,'Total enviado: ').replace(/^Pico /,'Pico ').replace(/ amostras • /,' muestras • ').replace(/ amostra • /,' muestra • ').replace(/ até agora$/,' hasta ahora');
 		s=s.replace(/ conectado(s)?$/,' conectado(s)').replace(/ conectado(s)? no Wi-Fi$/,' conectado(s) en Wi-Fi').replace(/ neste ponto • /,' en este nodo • ').replace(/ na rede$/,' en red').replace(/ no Wi-Fi$/,' en Wi-Fi').replace(/Canal /g,'Canal ').replace(/ • automático/g,' • automático').replace(/ • manual/g,' • manual').replace(/ • ocupação /g,' • ocupación ').replace(/^Ruído:/,'Ruido:').replace(/ visitantes$/,' invitados').replace(/ ATIVA$/,' ACTIVA').replace(/ ATIVAS$/,' ACTIVAS');
 		s=s.replace(/^Ligado • /,'Encendido • ').replace(/^Desligado • /,'Apagado • ').replace(/ canais definidos manualmente/,' canales seleccionados manualmente').replace(/ o roteador escolhe os canais/,' el router elige los canales');
@@ -70,6 +80,10 @@ function translateAttributes(el){
 	if(el.hasAttribute('aria-label')){
 		const a=translateText(el.getAttribute('aria-label'));
 		if(a!==el.getAttribute('aria-label'))el.setAttribute('aria-label',a);
+	}
+	if(el.tagName === 'INPUT' && /^(button|submit|reset)$/i.test(el.type) && el.value){
+		const v=translateText(el.value);
+		if(v!==el.value)el.value=v;
 	}
 }
 function translateTree(root){

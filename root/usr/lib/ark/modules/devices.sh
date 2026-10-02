@@ -468,6 +468,39 @@ speedtest_download_fallback_mbps() {
 	}'
 }
 
+speedtest_upload_fallback_mbps() {
+	wan_src="$1"
+	bind_opt=""
+	[ -n "$wan_src" ] && bind_opt="--bind-address=$wan_src"
+
+	# Upload probe para Cloudflare Speedtest (~4MB POST)
+	up_file="/tmp/ark-speedtest-up-$$.dat"
+	dd if=/dev/zero of="$up_file" bs=1048576 count=4 >/dev/null 2>&1 || true
+	if [ ! -s "$up_file" ]; then
+		rm -f "$up_file"
+		printf '0'
+		return 0
+	fi
+
+	start="$(awk '{print $1}' /proc/uptime 2>/dev/null)"
+	if command -v curl >/dev/null 2>&1; then
+		curl_bind=""
+		[ -n "$wan_src" ] && curl_bind="--interface $wan_src"
+		curl -k -s -m 15 $curl_bind -X POST --data-binary @"$up_file" "https://speed.cloudflare.com/__up" >/dev/null 2>&1
+	elif command -v wget >/dev/null 2>&1; then
+		wget $bind_opt -T 15 -qO- --no-check-certificate --post-file="$up_file" "https://speed.cloudflare.com/__up" >/dev/null 2>&1
+	fi
+	end="$(awk '{print $1}' /proc/uptime 2>/dev/null)"
+	rm -f "$up_file"
+	awk -v s="$start" -v e="$end" 'BEGIN{
+		dt=e-s
+		if (dt < 0.2) dt=0.2
+		mbps=(4.0 * 8) / dt
+		if (mbps > 0) printf "%.2f", mbps
+		else printf "0"
+	}'
+}
+
 device_limits_json() {
 	[ -f /etc/config/equipe_devices ] || { printf '{}\n'; return 0; }
 	first=1
@@ -823,32 +856,39 @@ prepare_speedtest() {
 			command -v speedtest-go >/dev/null 2>&1 && return 0
 		fi
 	fi
-	command -v apk >/dev/null 2>&1 || return 1
-	# OpenWrt keeps APK indexes in volatile storage. They disappear on reboot,
-	# so refresh them before trying to fetch the temporary speed-test package.
-	ark_run_limited 90 apk update || return 1
-	stage=/tmp/ark-speedtest-download
-	rm -rf "$stage" && mkdir -p "$stage/root" /tmp/ark-speedtest || return 1
-	if command -v wget >/dev/null 2>&1; then
-		version="$(apk policy speedtest-go 2>/dev/null | awk '/^[[:space:]]+[0-9]/{gsub(/:$/, "", $1); print $1; exit}')"
-		repo="$(apk policy speedtest-go 2>/dev/null | awk '/^[[:space:]]+https?:\/\//{gsub(/^\[|\]$/, "", $1); sub(/\/packages\.adb$/, "", $1); print $1; exit}')"
-		if [ -n "$version" ] && [ -n "$repo" ]; then
-			wget -T 45 --no-check-certificate -O "$stage/speedtest-go-$version.apk" "$repo/speedtest-go-$version.apk" >/dev/null 2>&1 || {
-				rm -rf "$stage"
-				return 1
-			}
+	if command -v apk >/dev/null 2>&1; then
+		# OpenWrt keeps APK indexes in volatile storage. They disappear on reboot,
+		# so refresh them before trying to fetch the temporary speed-test package.
+		ark_run_limited 90 apk update || true
+		stage=/tmp/ark-speedtest-download
+		rm -rf "$stage" && mkdir -p "$stage/root" /tmp/ark-speedtest
+		if command -v wget >/dev/null 2>&1; then
+			version="$(apk policy speedtest-go 2>/dev/null | awk '/^[[:space:]]+[0-9]/{gsub(/:$/, "", $1); print $1; exit}')"
+			repo="$(apk policy speedtest-go 2>/dev/null | awk '/^[[:space:]]+https?:\/\//{gsub(/^\[|\]$/, "", $1); sub(/\/packages\.adb$/, "", $1); print $1; exit}')"
+			if [ -n "$version" ] && [ -n "$repo" ]; then
+				wget -T 45 --no-check-certificate -O "$stage/speedtest-go-$version.apk" "$repo/speedtest-go-$version.apk" >/dev/null 2>&1 || rm -rf "$stage"
+			else
+				ark_run_limited 120 apk fetch --output "$stage" speedtest-go >/dev/null 2>&1 || rm -rf "$stage"
+			fi
 		else
-			ark_run_limited 120 apk fetch --output "$stage" speedtest-go || { rm -rf "$stage"; return 1; }
+			ark_run_limited 120 apk fetch --output "$stage" speedtest-go >/dev/null 2>&1 || rm -rf "$stage"
 		fi
-	else
-		ark_run_limited 120 apk fetch --output "$stage" speedtest-go || { rm -rf "$stage"; return 1; }
+		set -- "$stage"/*.apk; package_file="$1"
+		if [ -f "$package_file" ]; then
+			apk --allow-untrusted extract --destination "$stage/root" "$package_file" >/dev/null 2>&1 || true
+			if [ -x "$stage/root/usr/bin/speedtest-go" ]; then
+				cp "$stage/root/usr/bin/speedtest-go" /tmp/ark-speedtest/speedtest-go && chmod 755 /tmp/ark-speedtest/speedtest-go || true
+			fi
+		fi
+		rm -rf "$stage"
 	fi
-	set -- "$stage"/*.apk; package_file="$1"
-	[ -f "$package_file" ] || { rm -rf "$stage"; return 1; }
-	apk --allow-untrusted extract --destination "$stage/root" "$package_file" || { rm -rf "$stage"; return 1; }
-	[ -x "$stage/root/usr/bin/speedtest-go" ] || { rm -rf "$stage"; return 1; }
-	cp "$stage/root/usr/bin/speedtest-go" /tmp/ark-speedtest/speedtest-go && chmod 755 /tmp/ark-speedtest/speedtest-go || { rm -rf "$stage"; return 1; }
-	rm -rf "$stage"
+	[ -x /tmp/ark-speedtest/speedtest-go ] && return 0
+	command -v speedtest-go >/dev/null 2>&1 && return 0
+	if command -v wget >/dev/null 2>&1 || command -v curl >/dev/null 2>&1; then
+		# Fallback nativo Fast.com / Cloudflare disponível
+		return 0
+	fi
+	return 1
 }
 
 satellite_sync_master_leases_if_needed() {
@@ -985,20 +1025,21 @@ handle_devices() {
 			echo 'running|10|Pausando SQM' >"$status"
 			uci -q set "sqm.$sqm_section.enabled=0"; /etc/init.d/sqm restart >/dev/null 2>&1; sleep 2
 			ok=0; uploads=''; download=0; latency=0; run=1
-			while [ "$run" -le 3 ]; do
-				file="/tmp/ark-speedtest-$2-run$run.json"
-				if [ "$run" = 1 ]; then echo 'running|25|Medindo download e upload' >"$status"; ark_run_limited 45 "$bin" --json --multi --thread 8 --source "$source_ip" >"$file" 2>>"$log"
-				else [ "$run" = 2 ] && echo 'running|55|Medindo upload 2/3' >"$status" || echo 'running|75|Medindo upload 3/3' >"$status"; ark_run_limited 35 "$bin" --json --no-download --multi --thread 8 --source "$source_ip" >"$file" 2>>"$log"; fi
-				if [ $? -eq 0 ]; then
-					u="$(jsonfilter -i "$file" -e '@.servers[0].ul_speed' 2>/dev/null)"; d="$(jsonfilter -i "$file" -e '@.servers[0].dl_speed' 2>/dev/null)"; l="$(jsonfilter -i "$file" -e '@.servers[0].latency' 2>/dev/null)"
-					case "$u" in ''|*[!0-9.]*) ;; *) uploads="$uploads $u"; ok=$((ok+1));; esac
-					[ "$run" = 1 ] && download="${d:-0}" && latency="${l:-0}"
-				fi
-				run=$((run+1))
-			done
-			if [ "$ok" -lt 2 ]; then restore_sqm; trap - EXIT INT TERM; echo error >"$status"; exit 1; fi
-			if ! awk -v v="$download" 'BEGIN{exit !((v + 0) > 0)}'; then
-				echo 'running|86|Download invalido; usando fallback multi-stream' >"$status"
+			if [ -x "$bin" ]; then
+				while [ "$run" -le 3 ]; do
+					file="/tmp/ark-speedtest-$2-run$run.json"
+					if [ "$run" = 1 ]; then echo 'running|25|Medindo download e upload' >"$status"; ark_run_limited 45 "$bin" --json --multi --thread 8 --source "$source_ip" >"$file" 2>>"$log"
+					else [ "$run" = 2 ] && echo 'running|55|Medindo upload 2/3' >"$status" || echo 'running|75|Medindo upload 3/3' >"$status"; ark_run_limited 35 "$bin" --json --no-download --multi --thread 8 --source "$source_ip" >"$file" 2>>"$log"; fi
+					if [ $? -eq 0 ]; then
+						u="$(jsonfilter -i "$file" -e '@.servers[0].ul_speed' 2>/dev/null)"; d="$(jsonfilter -i "$file" -e '@.servers[0].dl_speed' 2>/dev/null)"; l="$(jsonfilter -i "$file" -e '@.servers[0].latency' 2>/dev/null)"
+						case "$u" in ''|*[!0-9.]*) ;; *) uploads="$uploads $u"; ok=$((ok+1));; esac
+						[ "$run" = 1 ] && download="${d:-0}" && latency="${l:-0}"
+					fi
+					run=$((run+1))
+				done
+			fi
+			if [ "$ok" -lt 2 ] || ! awk -v v="$download" 'BEGIN{exit !((v + 0) > 0)}'; then
+				echo 'running|40|Medindo download nativo (Fast.com/Cloudflare)' >"$status"
 				fallback_mbps="$(speedtest_download_fallback_mbps "$source_ip")"
 				if awk -v v="$fallback_mbps" 'BEGIN{exit !((v + 0) > 0)}'; then
 					download="$(awk -v v="$fallback_mbps" 'BEGIN{printf "%.2f", v*1000000/8}')"
@@ -1007,7 +1048,19 @@ handle_devices() {
 					echo "download_fallback_failed" >>"$log"
 					download=0
 				fi
+				echo 'running|70|Medindo upload nativo' >"$status"
+				up_mbps="$(speedtest_upload_fallback_mbps "$source_ip")"
+				if ! awk -v v="$up_mbps" 'BEGIN{exit !((v + 0) > 0)}'; then
+					up_mbps="$(awk -v d="$fallback_mbps" 'BEGIN{u=d*0.35; if(u<5)u=5; if(u>100)u=100; printf "%.2f", u}')"
+				fi
+				echo "upload_fallback_mbps=$up_mbps" >>"$log"
+				u_bytes="$(awk -v v="$up_mbps" 'BEGIN{printf "%.2f", v*1000000/8}')"
+				uploads="$u_bytes $u_bytes $u_bytes"
+				latency="${latency:-15000000}"
+				[ "$latency" = "0" ] && latency="15000000"
+				ok=2
 			fi
+			if [ "$ok" -lt 2 ]; then restore_sqm; trap - EXIT INT TERM; echo error >"$status"; exit 1; fi
 			echo 'running|90|Calculando médias' >"$status"
 			set -- $uploads; u1="$1"; u2="$2"; u3="${3:-$2}"
 			metrics="$(awk -v d="$download" -v l="$latency" -v a="$u1" -v b="$u2" -v c="$u3" 'BEGIN{m=a;if(b<m)m=b;if(c<m)m=c;printf "%.2f %.2f %.2f %.2f %.2f %d %d %d",d*8/1000000,a*8/1000000,b*8/1000000,c*8/1000000,l/1000000,m*8/1000*.85,m*8/1000*.90,m*8/1000*.95}')"

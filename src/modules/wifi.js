@@ -783,10 +783,78 @@ const wifiMethods = {
 			});
 			select.value=current;
 		};
-		const preferred = [['BR','Brasil'],['US','Estados Unidos'],['PT','Portugal'],['AR','Argentina'],['CL','Chile'],['UY','Uruguai'],['PY','Paraguai'],['MX','México'],['CA','Canadá'],['GB','Reino Unido'],['DE','Alemanha'],['ES','Espanha'],['FR','França'],['IT','Itália'],['JP','Japão'],['AU','Austrália'],['00','Mundo / driver padrão']].map(function(p){ return {code:p[0], country:p[1]}; });
+		const preferred = [
+			['00','Mundo / driver padrão'],
+			['PK','Paquistão (Pakistan)'],
+			['BR','Brasil'],
+			['US','Estados Unidos (United States)'],
+			['PT','Portugal'],
+			['ES','Espanha (Spain)'],
+			['AR','Argentina'],
+			['CL','Chile'],
+			['UY','Uruguai'],
+			['PY','Paraguai'],
+			['BO','Bolívia'],
+			['PE','Peru'],
+			['CO','Colômbia'],
+			['VE','Venezuela'],
+			['EC','Equador'],
+			['MX','México'],
+			['CA','Canadá'],
+			['GB','Reino Unido (United Kingdom)'],
+			['DE','Alemanha (Germany)'],
+			['FR','França (France)'],
+			['IT','Itália (Italy)'],
+			['NL','Holanda (Netherlands)'],
+			['BE','Bélgica (Belgium)'],
+			['CH','Suíça (Switzerland)'],
+			['AT','Áustria (Austria)'],
+			['SE','Suécia (Sweden)'],
+			['NO','Noruega (Norway)'],
+			['DK','Dinamarca (Denmark)'],
+			['FI','Finlândia (Finland)'],
+			['IE','Irlanda (Ireland)'],
+			['PL','Polônia (Poland)'],
+			['CZ','República Tcheca (Czechia)'],
+			['RO','Romênia (Romania)'],
+			['GR','Grécia (Greece)'],
+			['TR','Turquia (Türkiye)'],
+			['RU','Rússia (Russia)'],
+			['UA','Ucrânia (Ukraine)'],
+			['IN','Índia (India)'],
+			['BD','Bangladesh'],
+			['ID','Indonésia (Indonesia)'],
+			['MY','Malásia (Malaysia)'],
+			['SG','Singapura (Singapore)'],
+			['PH','Filipinas (Philippines)'],
+			['TH','Tailândia (Thailand)'],
+			['VN','Vietnã (Vietnam)'],
+			['JP','Japão (Japan)'],
+			['KR','Coreia do Sul (South Korea)'],
+			['CN','China'],
+			['HK','Hong Kong'],
+			['TW','Taiwan'],
+			['AU','Austrália (Australia)'],
+			['NZ','Nova Zelândia (New Zealand)'],
+			['SA','Arábia Saudita (Saudi Arabia)'],
+			['AE','Emirados Árabes (UAE)'],
+			['QA','Catar (Qatar)'],
+			['KW','Kuwait'],
+			['IL','Israel'],
+			['EG','Egito (Egypt)'],
+			['ZA','África do Sul (South Africa)'],
+			['NG','Nigéria (Nigeria)'],
+			['KE','Quênia (Kenya)'],
+			['MA','Marrocos (Morocco)'],
+			['PA','Panamá (Max Power)']
+		].map(function(p){ return {code:p[0], country:p[1]}; });
 		populate(this.countries && this.countries.length ? this.countries : preferred);
 		if(!this.countries || !this.countries.length) {
-			safe(callCountryList('phy0-ap0'), {results:[]}).then(L.bind(function(res){
+			const dev = (this.currentData && this.currentData.wireless && (
+				(this.currentData.wireless.radio0 && (this.currentData.wireless.radio0.device || 'radio0')) ||
+				(this.currentData.wireless.interfaces && this.currentData.wireless.interfaces[0] && this.currentData.wireless.interfaces[0].ifname)
+			)) || 'phy0-ap0';
+			safe(callCountryList(dev), {results:[]}).then(L.bind(function(res){
 				if(res && res.results && res.results.length) {
 					this.countries = res.results;
 					populate(res.results);

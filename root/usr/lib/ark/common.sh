@@ -5,7 +5,7 @@
 [ -z "${_ARK_COMMON_SH_LOADED:-}" ] || return 0
 _ARK_COMMON_SH_LOADED=1
 
-ARK_ROUTER_VERSION="1.5.5"
+ARK_ROUTER_VERSION="1.5.6"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 ARK_ROOT="${ARK_ROOT:-}"
 
@@ -103,6 +103,28 @@ ark_is_satellite_or_ap() {
 	local lan_gw="$(uci -q get network.lan.gateway || true)"
 	[ "$dhcp_ignore" = "1" ] && [ -n "$lan_gw" ] && return 0
 	return 1
+}
+
+ark_language() {
+	local lang="$(uci -q get equipe_dashboard.main.language || true)"
+	if [ -z "$lang" ] || [ "$lang" = "auto" ]; then
+		local luci_lang="$(uci -q get luci.main.lang || true)"
+		case "$luci_lang" in
+			en*|C|POSIX) lang="en" ;;
+			es*) lang="es" ;;
+			pt*) lang="pt-br" ;;
+			*)
+				local sys_lang="${LANG:-${LC_ALL:-}}"
+				case "$sys_lang" in
+					pt*) lang="pt-br" ;;
+					es*) lang="es" ;;
+					*) lang="en" ;;
+				esac
+				;;
+		esac
+	fi
+	[ -n "$lang" ] || lang="en"
+	printf '%s' "$lang"
 }
 
 # Package and service status queries

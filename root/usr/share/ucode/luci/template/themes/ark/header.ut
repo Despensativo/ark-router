@@ -7,7 +7,7 @@
 	import { getuid, getspnam } from 'luci.core';
 	import * as fs from 'fs';
 	const boardinfo = ubus.call('system', 'board');
-	const ark_v = trim(fs.readfile('/usr/share/ark-router/VERSION') ?? '1.5.5');
+	const ark_v = trim(fs.readfile('/usr/share/ark-router/VERSION') ?? '1.5.6');
 	http.prepare_content('text/html; charset=UTF-8');
 -%}
 
@@ -74,7 +74,13 @@
 					let ark_lang = 'pt-br';
 					try {
 						let cursor = require('uci').cursor();
-						ark_lang = cursor.get('equipe_dashboard', 'main', 'language') || 'pt-br';
+						ark_lang = cursor.get('equipe_dashboard', 'main', 'language');
+						if (!ark_lang || ark_lang == 'auto') {
+							let l_lang = cursor.get('luci', 'main', 'lang') || 'en';
+							if (index(l_lang, 'pt') == 0) ark_lang = 'pt-br';
+							else if (index(l_lang, 'es') == 0) ark_lang = 'es';
+							else ark_lang = 'en';
+						}
 					} catch(e) {}
 					let is_en = (ark_lang == 'en');
 				%}

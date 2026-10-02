@@ -288,7 +288,7 @@ feature_active() {
 			;;
 		history) pgrep -f equipe-traffic-history >/dev/null 2>&1 || running equipe-traffic-history ;;
 		custom_qos) [ -f /etc/config/qos_equipe ] && [ "$(uci -q get qos_equipe.guest.enabled)" = 1 ] ;;
-		speedtest) command -v speedtest-go >/dev/null 2>&1 || [ -x /tmp/ark-speedtest/speedtest-go ] ;;
+		speedtest) command -v speedtest-go >/dev/null 2>&1 || [ -x /tmp/ark-speedtest/speedtest-go ] || command -v wget >/dev/null 2>&1 || command -v curl >/dev/null 2>&1 ;;
 		speedify) [ -x /usr/share/speedify/speedify_cli ] || installed speedify ;;
 		tailscale) command -v tailscale >/dev/null 2>&1 ;;
 		zerotier) pidof zerotier-one >/dev/null 2>&1 && [ "$(uci -q get zerotier.global.enabled)" = 1 ] ;;
@@ -1258,7 +1258,7 @@ handle_ezsetup() {
 		fi
 		features_payload() {
 		manager="$(ark_package_manager)"
-		speedtest_installable=false; [ "$manager" = apk ] && speedtest_installable=true
+		speedtest_installable=true
 		appearance="$(uci -q get equipe_dashboard.main.appearance || printf auto)"
 		primary="$(uci -q get equipe_dashboard.main.primary || printf '#3b82f6')"
 		secondary="$(uci -q get equipe_dashboard.main.secondary || printf '#8b5cf6')"
@@ -1382,7 +1382,7 @@ handle_ezsetup() {
 			speedify_reason="Exclusivo do Roteador Mestre. O agrupamento de links de operadora deve ser executado no Gateway."
 		fi
 
-		printf '{"language":"%s","title":"%s","operation_profile":"%s","network_mode":"%s","package_manager":"%s","current_theme":"%s","theme_customized":%s,"user_theme":"%s","ping_target":"%s","ping_custom_ip":"%s","appearance":{"mode":"%s","primary":"%s","secondary":"%s"},"features":{' "$(uci -q get equipe_dashboard.main.language || printf pt-br)" "$(json_escape "$title")" "$(json_escape "$operation_profile")" "$network_mode" "$manager" "$current_theme" "$(bool $((theme_customized == 1)))" "$(json_escape "$user_theme")" "$(json_escape "$ping_target")" "$(json_escape "$ping_custom_ip")" "$appearance" "$primary" "$secondary"
+		printf '{"language":"%s","title":"%s","operation_profile":"%s","network_mode":"%s","package_manager":"%s","current_theme":"%s","theme_customized":%s,"user_theme":"%s","ping_target":"%s","ping_custom_ip":"%s","appearance":{"mode":"%s","primary":"%s","secondary":"%s"},"features":{' "$(ark_language)" "$(json_escape "$title")" "$(json_escape "$operation_profile")" "$network_mode" "$manager" "$current_theme" "$(bool $((theme_customized == 1)))" "$(json_escape "$user_theme")" "$(json_escape "$ping_target")" "$(json_escape "$ping_custom_ip")" "$appearance" "$primary" "$secondary"
 		feature_json sqm luci-app-sqm "$sqm_installable" "$sqm_reason"; printf ','
 		feature_json mwan3 luci-app-mwan3 "$mwan3_installable" "$mwan3_reason"; printf ','
 		feature_json nlbwmon luci-app-nlbwmon true; printf ','
