@@ -115,31 +115,6 @@
         });
         obs.observe(topmenu, { childList: true, subtree: true });
       }
-
-      var footer = document.querySelector('.ark-sidebar-footer');
-      if (footer && !document.getElementById('ark-mode-switch')) {
-        var modeWrap = document.createElement('div');
-        modeWrap.id = 'ark-mode-switch';
-        modeWrap.className = 'ark-mode-switch-wrap';
-        var curMode = localStorage.getItem('ark_interface_mode') || 'basic';
-        modeWrap.innerHTML = '' +
-          '<button type="button" class="ark-mode-pill ' + (curMode === 'basic' ? 'active' : '') + '" data-mode="basic" title="Modo Simplificado com cartões visuais e navegação ágil">⚡ Básico</button>' +
-          '<button type="button" class="ark-mode-pill ' + (curMode === 'advanced' ? 'active' : '') + '" data-mode="advanced" title="Modo Avançado com tabelas e parâmetros nativos do LuCI">🛠️ Avançado</button>';
-
-        modeWrap.addEventListener('click', function(e) {
-          var pill = e.target.closest('.ark-mode-pill');
-          if (!pill) return;
-          var newMode = pill.getAttribute('data-mode') || 'basic';
-          localStorage.setItem('ark_interface_mode', newMode);
-          if (document.body) document.body.setAttribute('data-interface-mode', newMode);
-          modeWrap.querySelectorAll('.ark-mode-pill').forEach(function(p) {
-            p.classList.toggle('active', p.getAttribute('data-mode') === newMode);
-          });
-          ArkTheme.applyPageTransforms();
-        });
-
-        footer.insertBefore(modeWrap, footer.firstChild);
-      }
     },
 
     initGlobalEscHandler: function() {
@@ -1637,10 +1612,6 @@
     },
 
     applyPageTransforms: function() {
-      var mode = localStorage.getItem('ark_interface_mode') || 'basic';
-      if (document.body && document.body.getAttribute('data-interface-mode') !== mode) {
-        document.body.setAttribute('data-interface-mode', mode);
-      }
       var path = location.pathname;
       if (path.indexOf('/status/overview') !== -1) {
         this.transformStatusOverview();
@@ -2111,14 +2082,13 @@
 
     hideRedundantOverviewSections: function() {
       if (location.pathname.indexOf('/status/overview') === -1) return;
-      var mode = localStorage.getItem('ark_interface_mode') || 'basic';
       var h3s = document.querySelectorAll('h3, legend');
       h3s.forEach(function(h) {
         var txt = h.textContent.trim().toLowerCase();
         if (txt === 'sistema' || txt.indexOf('mem') === 0 || (txt.indexOf('rede') === 0 && txt.indexOf('sem fio') === -1 && txt.indexOf('wireless') === -1)) {
           var sec = h.closest('.cbi-section') || h.parentElement;
           if (sec) {
-            sec.style.display = (mode === 'advanced') ? '' : 'none';
+            sec.style.display = 'none';
           }
         }
       });
@@ -2857,16 +2827,9 @@
         }
       });
 
-      var mode = localStorage.getItem('ark_interface_mode') || 'basic';
-      if (mode === 'advanced') {
-        table.style.removeProperty('display');
-        var oldSearch = wifiSec.querySelector('.ark-table-search-bar');
-        if (oldSearch) oldSearch.style.display = '';
-      } else {
-        table.style.setProperty('display', 'none', 'important');
-        var oldSearch = wifiSec.querySelector('.ark-table-search-bar');
-        if (oldSearch) oldSearch.style.display = 'none';
-      }
+      table.style.setProperty('display', 'none', 'important');
+      var oldSearch = wifiSec.querySelector('.ark-table-search-bar');
+      if (oldSearch) oldSearch.style.display = 'none';
     },
 
     transformNetworkInterfaces: function() {
@@ -3451,15 +3414,9 @@
         });
       }
 
-      var mode = localStorage.getItem('ark_interface_mode') || 'basic';
+      table.style.display = 'none';
       var addBtn = view.querySelector('.cbi-section-create');
-      if (mode === 'advanced') {
-        table.style.display = '';
-        if (addBtn) addBtn.style.display = '';
-      } else {
-        table.style.display = 'none';
-        if (addBtn) addBtn.style.display = 'none';
-      }
+      if (addBtn) addBtn.style.display = 'none';
     },
 
     cleanupButtons: function() {

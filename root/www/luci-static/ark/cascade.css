@@ -1781,8 +1781,8 @@ body.modal-overlay-active:not(.ark-login-page) #modal_overlay {
 	gap: 20px !important;
 	margin: 20px 0 !important;
 }
-body:not([data-interface-mode="advanced"]) #cbi-wireless-wifi-device > .table.cbi-section-table,
-body:not([data-interface-mode="advanced"]) #cbi-wireless-wifi-device > .cbi-section-table {
+#cbi-wireless-wifi-device > .table.cbi-section-table,
+#cbi-wireless-wifi-device > .cbi-section-table {
 	display: none !important;
 }
 .ark-radio-card {
@@ -1921,44 +1921,6 @@ body:not([data-interface-mode="advanced"]) #cbi-wireless-wifi-device > .cbi-sect
 	padding: 4px 10px !important;
 }
 
-/* Sidebar Interface Mode Switcher */
-.ark-mode-switch-wrap {
-	display: flex;
-	align-items: center;
-	background: rgba(0, 0, 0, 0.35);
-	border: 1px solid var(--ark-border);
-	border-radius: 8px;
-	padding: 2px;
-	gap: 2px;
-	width: 100%;
-	margin-bottom: 8px;
-}
-.ark-mode-pill {
-	flex: 1;
-	border: none;
-	background: transparent;
-	color: var(--ark-text-muted);
-	font-size: 11.5px;
-	font-weight: 600;
-	padding: 5px 8px;
-	border-radius: 6px;
-	cursor: pointer;
-	transition: all 0.15s ease;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	gap: 4px;
-	user-select: none;
-}
-.ark-mode-pill:hover {
-	color: #fff;
-	background: rgba(255, 255, 255, 0.06);
-}
-.ark-mode-pill.active {
-	background: var(--ark-primary);
-	color: #fff;
-	box-shadow: 0 2px 8px var(--ark-primary-glow);
-}
 
 /* 7. Interfaces Command Grid */
 .ark-iface-grid {
