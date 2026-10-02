@@ -198,9 +198,20 @@ handle_wifi() {
 		;;
 	wifi-settings)
 		wifi_kind="$2"
+		radio2="$(wifi_radio_2g)"; radio5="$(wifi_radio_5g)"; radio6="$(wifi_radio_6g)"
+		[ -n "$radio2" ] || radio2='radio0'
+		[ -n "$radio5" ] || radio5="$radio2"
 		case "$2" in
-			main) sections='default_radio0 default_radio1'; allow_toggle=0 ;;
-			guest) sections='guest_radio0 guest_radio1'; allow_toggle=1 ;;
+			main)
+				sections='default_radio0 default_radio1'
+				[ -n "$radio6" ] && [ -n "$(uci -q get wireless.default_radio2)" ] && sections="$sections default_radio2"
+				allow_toggle=0
+				;;
+			guest)
+				sections='guest_radio0 guest_radio1'
+				[ -n "$radio6" ] && [ -n "$(uci -q get wireless.guest_radio2)" ] && sections="$sections guest_radio2"
+				allow_toggle=1
+				;;
 			*)
 				clean_prefix="$(printf '%s' "$wifi_kind" | sed 's/^extra_//')"
 				sections="$(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1 | grep -E "^(extra_)?${clean_prefix}")"
@@ -208,7 +219,8 @@ handle_wifi() {
 				allow_toggle=1
 				;;
 		esac
-		ssid=''; ssid2=''; ssid5=''; password=''; enabled='keep'; split='0'; guest_download=''; guest_upload=''; encryption=''
+		ssid=''; ssid2=''; ssid5=''; ssid6=''; password=''; enabled='keep'; split='0'; guest_download=''; guest_upload=''; encryption=''
+		enable_2g='keep'; enable_5g='keep'; enable_6g='keep'
 		shift 2
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
@@ -216,39 +228,53 @@ handle_wifi() {
 				ssid) ssid="$value" ;;
 				ssid2) ssid2="$value" ;;
 				ssid5) ssid5="$value" ;;
+				ssid6) ssid6="$value" ;;
 				password) password="$value" ;;
 				encryption) case "$value" in psk2|sae-mixed|sae|none) encryption="$value" ;; esac ;;
 				enabled) case "$value" in 0|1|keep) enabled="$value" ;; *) echo 'Estado da rede invalido' >&2; exit 2 ;; esac ;;
+				enable_2g) case "$value" in 0|1|keep) enable_2g="$value" ;; *) echo 'Estado 2,4 GHz invalido' >&2; exit 2 ;; esac ;;
+				enable_5g) case "$value" in 0|1|keep) enable_5g="$value" ;; *) echo 'Estado 5 GHz invalido' >&2; exit 2 ;; esac ;;
+				enable_6g) case "$value" in 0|1|keep) enable_6g="$value" ;; *) echo 'Estado 6 GHz invalido' >&2; exit 2 ;; esac ;;
 				split) case "$value" in 0|1) split="$value" ;; *) echo 'Modo Wi-Fi invalido' >&2; exit 2 ;; esac ;;
 				guest_download) guest_download="$value" ;;
 				guest_upload) guest_upload="$value" ;;
 				*) echo "Campo Wi-Fi invalido: $key" >&2; exit 2 ;;
 			esac
 		done
+		if [ "$enable_2g" = 0 ] && [ "$enable_5g" = 0 ]; then
+			if [ -z "$radio6" ] || [ "$enable_6g" = 0 ]; then
+				echo 'Ao menos uma frequencia de Wi-Fi deve permanecer ativa' >&2
+				exit 2
+			fi
+		fi
 		if [ "$split" = 1 ]; then
 			[ -n "$ssid2" ] || ssid2="$ssid"
 			[ -n "$ssid5" ] || ssid5="$ssid"
+			[ -n "$ssid6" ] || ssid6="$ssid5"
 			valid_ssid "$ssid2" && valid_ssid "$ssid5" || { echo 'Os nomes das redes 2,4 GHz e 5 GHz devem ter entre 1 e 32 caracteres' >&2; exit 2; }
+			[ -z "$radio6" ] || valid_ssid "$ssid6" || { echo 'O nome da rede 6 GHz deve ter entre 1 e 32 caracteres' >&2; exit 2; }
 		else
 			valid_ssid "$ssid" || { echo 'O nome da rede deve ter entre 1 e 32 caracteres' >&2; exit 2; }
-			ssid2="$ssid"; ssid5="$ssid"
+			ssid2="$ssid"; ssid5="$ssid"; ssid6="$ssid"
 		fi
 		if [ "$encryption" != none ] && [ -n "$password" ]; then
 			valid_wifi_password "$password" || { echo 'A senha deve ter entre 8 e 63 caracteres' >&2; exit 2; }
 		fi
 		[ "$allow_toggle" = 1 ] || [ "$enabled" = keep ] || { echo 'A rede principal nao pode ser desligada por este atalho' >&2; exit 2; }
 		ez_backup >/dev/null || { echo 'Falha ao criar backup antes da alteracao do Wi-Fi' >&2; exit 3; }
-		radio2="$(wifi_radio_2g)"; radio5="$(wifi_radio_5g)"
-		[ -n "$radio2" ] || radio2='radio0'
-		[ -n "$radio5" ] || radio5="$radio2"
+		[ "$enable_2g" = 1 ] && uci -q set "wireless.$radio2.disabled=0"
+		[ "$enable_5g" = 1 ] && uci -q set "wireless.$radio5.disabled=0"
+		[ -n "$radio6" ] && [ "$enable_6g" = 1 ] && uci -q set "wireless.$radio6.disabled=0"
+		[ "$wifi_kind" = main ] && uci -q set equipe_dashboard.main.wifi_user_disabled='0'
 		if [ "$wifi_kind" = guest ]; then
 			ez_apply_guest_network 1
 		fi
 		for section in $sections; do
 			uci -q get "wireless.$section" >/dev/null 2>&1 && continue
 			case "$section" in
-				*radio0) device="$radio2"; section_ssid="$ssid2" ;;
-				*radio1) device="$radio5"; section_ssid="$ssid5" ;;
+				*radio0|*_r0) device="$radio2"; section_ssid="$ssid2" ;;
+				*radio1|*_r1) device="$radio5"; section_ssid="$ssid5" ;;
+				*radio2|*_r2) device="${radio6:-$radio5}"; section_ssid="$ssid6" ;;
 				*) device="$radio2"; section_ssid="$ssid" ;;
 			esac
 			network='lan'; [ "$wifi_kind" = guest ] && network='guest'
@@ -268,10 +294,13 @@ handle_wifi() {
 				uci -q set "wireless.$section.ssid=$ssid2"
 			elif [ "$sec_dev" = "$radio5" ]; then
 				uci -q set "wireless.$section.ssid=$ssid5"
+			elif [ -n "$radio6" ] && [ "$sec_dev" = "$radio6" ]; then
+				uci -q set "wireless.$section.ssid=$ssid6"
 			else
 				case "$section" in
-					*radio0) uci -q set "wireless.$section.ssid=$ssid2" ;;
-					*radio1) uci -q set "wireless.$section.ssid=$ssid5" ;;
+					*radio0|*_r0) uci -q set "wireless.$section.ssid=$ssid2" ;;
+					*radio1|*_r1) uci -q set "wireless.$section.ssid=$ssid5" ;;
+					*radio2|*_r2) uci -q set "wireless.$section.ssid=$ssid6" ;;
 					*) uci -q set "wireless.$section.ssid=$ssid" ;;
 				esac
 			fi
@@ -283,13 +312,46 @@ handle_wifi() {
 				if opkg list-installed 2>/dev/null | grep -q "^wpad-basic -" && { [ "$sec_enc" = "sae" ] || [ "$sec_enc" = "sae-mixed" ]; }; then
 					sec_enc="psk2"
 				fi
+				if { [ -n "$radio6" ] && [ "$sec_dev" = "$radio6" ]; } || case "$section" in *radio2|*_r2) true;; *) false;; esac; then
+					[ "$sec_enc" = "psk2" ] && sec_enc="sae"
+				fi
 				uci -q set "wireless.$section.encryption=$sec_enc"
 				[ -n "$password" ] && uci -q set "wireless.$section.key=$password"
 			elif [ -n "$password" ]; then
 				uci -q set "wireless.$section.key=$password"
 			fi
-			if [ "$enabled" != keep ]; then
-				if [ "$enabled" = 1 ]; then uci -q set "wireless.$section.disabled=0"; else uci -q set "wireless.$section.disabled=1"; fi
+			if [ "$enabled" = 0 ]; then
+				uci -q set "wireless.$section.disabled=1"
+			elif [ "$enabled" = 1 ] && [ "$enable_2g" = keep ] && [ "$enable_5g" = keep ] && [ "$enable_6g" = keep ]; then
+				uci -q set "wireless.$section.disabled=0"
+			else
+				if [ "$sec_dev" = "$radio2" ] || case "$section" in *radio0|*_r0) true;; *) false;; esac; then
+					if [ "$enable_2g" = 1 ]; then
+						uci -q set "wireless.$section.disabled=0"
+					elif [ "$enable_2g" = 0 ]; then
+						uci -q set "wireless.$section.disabled=1"
+					elif [ "$enabled" = 1 ]; then
+						uci -q set "wireless.$section.disabled=0"
+					fi
+				elif [ "$sec_dev" = "$radio5" ] || case "$section" in *radio1|*_r1) true;; *) false;; esac; then
+					if [ "$enable_5g" = 1 ]; then
+						uci -q set "wireless.$section.disabled=0"
+					elif [ "$enable_5g" = 0 ]; then
+						uci -q set "wireless.$section.disabled=1"
+					elif [ "$enabled" = 1 ]; then
+						uci -q set "wireless.$section.disabled=0"
+					fi
+				elif { [ -n "$radio6" ] && [ "$sec_dev" = "$radio6" ]; } || case "$section" in *radio2|*_r2) true;; *) false;; esac; then
+					if [ "$enable_6g" = 1 ]; then
+						uci -q set "wireless.$section.disabled=0"
+					elif [ "$enable_6g" = 0 ]; then
+						uci -q set "wireless.$section.disabled=1"
+					elif [ "$enabled" = 1 ]; then
+						uci -q set "wireless.$section.disabled=0"
+					fi
+				elif [ "$enabled" != keep ]; then
+					[ "$enabled" = 1 ] && uci -q set "wireless.$section.disabled=0" || uci -q set "wireless.$section.disabled=1"
+				fi
 			fi
 		done
 		uci commit wireless

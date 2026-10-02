@@ -28,6 +28,7 @@ function translateText(value){
 		s=s.replace(/Tabela dimensionada para ([\d\.]+) conexões\./g,'Table sized for $1 connections.');
 		s=s.replace(/Expande a tabela para ([\d\.]+) conexões simultâneas\./g,'Expands table to $1 concurrent connections.');
 		s=s.replace(/• lista aberta/g,'• open list').replace(/• lista recolhida/g,'• collapsed list');
+		s=s.replace(/• modo econômico/g,'• eco mode').replace(/• modo turbo/g,'• turbo mode');
 		s=s.replace(/sessão de (\d+) horas • atualização a cada (\d+) segundo(s)?/g,'$1-hour session • updates every $2 second$3');
 		s=s.replace(/Encendido hace /g,'Up for ').replace(/Ligado há /g,'Up for ');
 		s=s.replace(/(\d+)% em uso • (.+)/g,'$1% in use • $2');
@@ -54,6 +55,7 @@ function translateText(value){
 		s=s.replace(/Tabela dimensionada para ([\d\.]+) conexões\./g,'Tabla dimensionada para $1 conexiones.');
 		s=s.replace(/Expande a tabela para ([\d\.]+) conexões simultâneas\./g,'Expande la tabla a $1 conexiones simultáneas.');
 		s=s.replace(/• lista aberta/g,'• lista abierta').replace(/• lista recolhida/g,'• lista plegada');
+		s=s.replace(/• modo econômico/g,'• modo económico').replace(/• modo turbo/g,'• modo turbo');
 		s=s.replace(/sessão de (\d+) horas • atualização a cada (\d+) segundo(s)?/g,'sesión de $1 horas • actualización cada $2 segundo$3');
 		s=s.replace(/Ligado há /g,'Encendido hace ');
 		s=s.replace(/(\d+)% em uso • (.+)/g,'$1% en uso • $2');
@@ -207,6 +209,10 @@ function closeModal(ev) {
 	if (ev && ev.stopPropagation) ev.stopPropagation();
 	try { ui.hideModal(); } catch (e) {}
 	document.body.classList.remove('modal-open');
+	document.body.classList.remove('modal-overlay-active');
+	if (window.ArkTheme && typeof window.ArkTheme.restoreScroll === 'function') {
+		window.ArkTheme.restoreScroll();
+	}
 }
 function redirectToRouter(ip, message, delay) {
 	const path = window.location.pathname || '/cgi-bin/luci/admin/equipe-dashboard';

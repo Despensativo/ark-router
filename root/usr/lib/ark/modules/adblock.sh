@@ -84,7 +84,41 @@ adblock_status_json() {
 	fi
 
 	lan_ip="$(uci -q get network.lan.ipaddr || echo 192.168.73.1)"
+	lan_ip="${lan_ip%%/*}"
 	web_url="http://${lan_ip}:${web_port}"
+
+	stat_queries=0
+	stat_blocked=0
+	stat_blocked_pct=0
+	stat_avg_ms="0.0"
+	stat_running=false
+	if $local_active; then
+		stat_running=true
+		stats_raw=""
+		agh_auth_arg=""
+		stored_pass="$(uci -q get equipe_perf.settings.adguard_pass || true)"
+		if [ -n "$stored_pass" ]; then
+			agh_auth_arg="--user=admin --password=$stored_pass"
+		fi
+		if command -v uclient-fetch >/dev/null 2>&1; then
+			stats_raw="$(uclient-fetch -q -O - --timeout=2 $agh_auth_arg "http://127.0.0.1:${web_port}/control/stats" 2>/dev/null || true)"
+		elif command -v wget >/dev/null 2>&1; then
+			stats_raw="$(wget -q -O - -T 2 $agh_auth_arg "http://127.0.0.1:${web_port}/control/stats" 2>/dev/null || true)"
+		fi
+		if [ -n "$stats_raw" ]; then
+			stat_queries="$(printf '%s' "$stats_raw" | awk -F'"num_dns_queries":' '{print $2}' | awk -F'[,}]' '{print $1}' | tr -d ' ')"
+			stat_blocked="$(printf '%s' "$stats_raw" | awk -F'"num_blocked_filtering":' '{print $2}' | awk -F'[,}]' '{print $1}' | tr -d ' ')"
+			stat_time="$(printf '%s' "$stats_raw" | awk -F'"avg_processing_time":' '{print $2}' | awk -F'[,}]' '{print $1}' | tr -d ' ')"
+			case "$stat_queries" in ''|*[!0-9]*) stat_queries=0 ;; esac
+			case "$stat_blocked" in ''|*[!0-9]*) stat_blocked=0 ;; esac
+			if [ "$stat_queries" -gt 0 ] && [ "$stat_blocked" -gt 0 ]; then
+				stat_blocked_pct=$(( (stat_blocked * 100) / stat_queries ))
+			fi
+			if [ -n "$stat_time" ]; then
+				stat_avg_ms="$(awk -v t="$stat_time" 'BEGIN { printf "%.1f", (t * 1000) }' 2>/dev/null || echo "0.0")"
+			fi
+		fi
+	fi
 
 	zt_access=true
 	if [ "$(uci -q get equipe_perf.settings.adblock_zerotier_access)" = "0" ]; then
@@ -146,8 +180,8 @@ except Exception:
 		dns_intercept=true
 	fi
 
-	printf '{"installed":%s,"active":%s,"mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s","mem_total_mb":%d,"overlay_free_mb":%d,"overlay_free_kb":%d,"cache_size_mb":%d,"recommended_cache_mb":%d,"parental_enabled":%s,"protection_enabled":%s,"safesearch_enabled":%s,"cloud_cache":%s,"web_port":%d,"zerotier_access":%s,"zt_web_url":"%s","custom_blacklist":"%s","custom_whitelist":"%s","nextdns_id":"%s","dns_intercept":%s}\n' \
-		"$local_installed" "$active" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url" "$mem_total_mb" "$overlay_free_mb" "$overlay_free_kb" "$cache_size_mb" "$recommended_cache_mb" "$parental_enabled" "$protection_enabled" "$safesearch_enabled" "$cloud_cache" "$web_port" "$zt_access" "$zt_web_url" "$(json_escape "$custom_blacklist")" "$(json_escape "$custom_whitelist")" "$(json_escape "$nextdns_id")" "$dns_intercept"
+	printf '{"installed":%s,"active":%s,"mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s","mem_total_mb":%d,"overlay_free_mb":%d,"overlay_free_kb":%d,"cache_size_mb":%d,"recommended_cache_mb":%d,"parental_enabled":%s,"protection_enabled":%s,"safesearch_enabled":%s,"cloud_cache":%s,"web_port":%d,"zerotier_access":%s,"zt_web_url":"%s","custom_blacklist":"%s","custom_whitelist":"%s","nextdns_id":"%s","dns_intercept":%s,"stat_queries":%d,"stat_blocked":%d,"stat_blocked_pct":%d,"stat_avg_ms":"%s","stat_running":%s}\n' \
+		"$local_installed" "$active" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url" "$mem_total_mb" "$overlay_free_mb" "$overlay_free_kb" "$cache_size_mb" "$recommended_cache_mb" "$parental_enabled" "$protection_enabled" "$safesearch_enabled" "$cloud_cache" "$web_port" "$zt_access" "$zt_web_url" "$(json_escape "$custom_blacklist")" "$(json_escape "$custom_whitelist")" "$(json_escape "$nextdns_id")" "$dns_intercept" "$stat_queries" "$stat_blocked" "$stat_blocked_pct" "$stat_avg_ms" "$stat_running"
 }
 
 adblock_apply_rules() {
@@ -678,6 +712,7 @@ sync_dns_intercept() {
 
 	if [ "$enabled" = "1" ]; then
 		local lan_ip="$(uci -q get network.lan.ipaddr || echo 192.168.73.1)"
+		lan_ip="${lan_ip%%/*}"
 
 		uci -q set firewall.dns_intercept_udp=redirect
 		uci -q set firewall.dns_intercept_udp.name='DNS-Intercept-UDP'
@@ -999,6 +1034,8 @@ dns:
     - 127.0.0.1
   port: 5335
   upstream_dns:
+    - 1.1.1.1
+    - 8.8.8.8
     - https://dns.cloudflare.com/dns-query
     - https://dns.google/dns-query
   bootstrap_dns:
@@ -1013,7 +1050,12 @@ dns:
   filtering_enabled: true
 http:
   address: 0.0.0.0:3000
+users: []
 EOF
+			chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
+			chmod 644 /etc/adguardhome/adguardhome.yaml 2>/dev/null || true
+		elif ! grep -q '^users:' /etc/adguardhome/adguardhome.yaml 2>/dev/null; then
+			printf '\nusers: []\n' >> /etc/adguardhome/adguardhome.yaml
 			chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
 			chmod 644 /etc/adguardhome/adguardhome.yaml 2>/dev/null || true
 		fi
@@ -1143,6 +1185,7 @@ adblock_restore_dns() {
 		target_dhcp_fallback="$(uci -q get equipe_perf.settings.saved_dhcp_fallback || true)"
 	fi
 	lan_ip="$(uci -q get network.lan.ipaddr || echo 192.168.73.1)"
+	lan_ip="${lan_ip%%/*}"
 	if ! command -v apply_lan_dhcp_dns >/dev/null 2>&1; then
 		[ -f "${ARK_LIB_DIR:-/usr/lib/ark}/modules/network.sh" ] && . "${ARK_LIB_DIR:-/usr/lib/ark}/modules/network.sh"
 	fi

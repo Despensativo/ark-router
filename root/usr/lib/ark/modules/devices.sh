@@ -122,6 +122,27 @@ device_get_stations() {
 		return 0
 	fi
 
+	local st_cache="/tmp/ark-stations-cache.json"
+	local st_ts="/tmp/ark-stations-cache.ts"
+	local now cache_time
+
+	now="$(date +%s 2>/dev/null || echo 0)"
+	if [ -s "$st_cache" ] && [ -f "$st_ts" ]; then
+		cache_time="$(head -n 1 "$st_ts" 2>/dev/null || echo 0)"
+		case "$cache_time" in ''|*[!0-9]*) cache_time=0 ;; esac
+		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ $((now - cache_time)) -lt 120 ]; then
+			cat "$st_cache"
+			return 0
+		fi
+	fi
+
+	device_get_stations_raw > "$st_cache.tmp"
+	mv "$st_cache.tmp" "$st_cache"
+	echo "$now" > "$st_ts"
+	cat "$st_cache"
+}
+
+device_get_stations_raw() {
 	local main_ssid=""
 	local guest_ssid=""
 	local r2g_ssid=""
@@ -931,7 +952,7 @@ satellite_sync_master_leases_if_needed() {
 	fi
 }
 
-get_device_fingerprints() {
+get_device_fingerprints_raw() {
 	satellite_sync_master_leases_if_needed
 
 	local fp_dir="/tmp/ark_fp"
@@ -971,6 +992,27 @@ get_device_fingerprints() {
 			"${fts:-0}"
 	done
 	printf '}\n'
+}
+
+get_device_fingerprints() {
+	local fp_cache="/tmp/ark-fp-cache.json"
+	local fp_ts="/tmp/ark-fp-cache.ts"
+	local now cache_time
+
+	now="$(date +%s 2>/dev/null || echo 0)"
+	if [ -s "$fp_cache" ] && [ -f "$fp_ts" ]; then
+		cache_time="$(head -n 1 "$fp_ts" 2>/dev/null || echo 0)"
+		case "$cache_time" in ''|*[!0-9]*) cache_time=0 ;; esac
+		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ $((now - cache_time)) -lt 120 ]; then
+			cat "$fp_cache"
+			return 0
+		fi
+	fi
+
+	get_device_fingerprints_raw > "$fp_cache.tmp"
+	mv "$fp_cache.tmp" "$fp_cache"
+	echo "$now" > "$fp_ts"
+	cat "$fp_cache"
 }
 
 setup_dhcp_fingerprint_hook() {

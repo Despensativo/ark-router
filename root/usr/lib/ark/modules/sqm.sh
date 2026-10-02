@@ -35,11 +35,21 @@ get_system_hardware_sqm_audit() {
 		fastpath_active="true"
 	fi
 
+	local hw_flowoffload_capable=0
+	if [ -d /sys/kernel/debug/ppe0 ] || [ -d /sys/kernel/debug/ppe1 ] || [ -f /sys/kernel/debug/ppe/offload_stats ] || [ -d /sys/devices/platform/soc/*ppe* ]; then
+		hw_flowoffload_capable=1
+	fi
+
+	local hw_flowoffload_active=0
+	if [ "$(uci -q get firewall.@defaults[0].flow_offloading_hw || echo 0)" = "1" ]; then
+		hw_flowoffload_active=1
+	fi
+
 	local cpu_model="$(awk -F': ' '/model name|machine|Hardware|Processor/{print $2; exit}' /proc/cpuinfo 2>/dev/null || echo '')"
 	[ -n "$cpu_model" ] || cpu_model="$(cat /proc/device-tree/model 2>/dev/null | tr -d '\0' || cat /tmp/sysinfo/model 2>/dev/null || echo 'MIPS Processor')"
 
-	printf '{"is_low_end_mips":%s,"cpu_arch":"%s","cpu_cores":%d,"cpu_model":"%s","suggested_cut_off_mbps":%d,"fastpath_active":%s}\n' \
-		"$(bool "$is_low_end_mips")" "$cpu_arch" "$cpu_cores" "$(json_escape "$cpu_model")" "$suggested_cut_off_mbps" "$fastpath_active"
+	printf '{"is_low_end_mips":%s,"cpu_arch":"%s","cpu_cores":%d,"cpu_model":"%s","suggested_cut_off_mbps":%d,"fastpath_active":%s,"hw_flowoffload_capable":%s,"hw_flowoffload_active":%s}\n' \
+		"$(bool "$is_low_end_mips")" "$cpu_arch" "$cpu_cores" "$(json_escape "$cpu_model")" "$suggested_cut_off_mbps" "$fastpath_active" "$(bool "$hw_flowoffload_capable")" "$(bool "$hw_flowoffload_active")"
 }
 
 sqm_apply_upload_only() {
@@ -181,7 +191,8 @@ handle_sqm() {
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
 				wan)
-					[ "$(printf '%s' "$value" | awk -F'|' '{print NF}')" = 6 ] || { echo 'Perfil WAN SQM invalido' >&2; exit 2; }
+					wan_fields="$(printf '%s' "$value" | awk -F'|' '{print NF}')"
+					[ "$wan_fields" -ge 6 ] && [ "$wan_fields" -le 10 ] || { echo 'Perfil WAN SQM invalido' >&2; exit 2; }
 					section="$(printf '%s' "$value" | cut -d '|' -f1)"; network_section="$(printf '%s' "$value" | cut -d '|' -f2)"; device="$(printf '%s' "$value" | cut -d '|' -f3)"; enabled="$(printf '%s' "$value" | cut -d '|' -f4)"; download="$(printf '%s' "$value" | cut -d '|' -f5)"; upload="$(printf '%s' "$value" | cut -d '|' -f6)"
 					[ -n "$download" ] || download=0
 					[ -n "$upload" ] || upload=0
@@ -224,12 +235,23 @@ handle_sqm() {
 			case "$key" in
 				wan)
 					section="$(printf '%s' "$value" | cut -d '|' -f1)"; device="$(printf '%s' "$value" | cut -d '|' -f3)"; enabled="$(printf '%s' "$value" | cut -d '|' -f4)"; download="$(printf '%s' "$value" | cut -d '|' -f5)"; upload="$(printf '%s' "$value" | cut -d '|' -f6)"
+					linklayer="$(printf '%s' "$value" | cut -d '|' -f7)"
+					overhead="$(printf '%s' "$value" | cut -d '|' -f8)"
+					eqdisc_opts="$(printf '%s' "$value" | cut -d '|' -f9)"
+					iqdisc_opts="$(printf '%s' "$value" | cut -d '|' -f10)"
 					[ -n "$download" ] || download=0
 					[ -n "$upload" ] || upload=0
 					ensure_sqm_section "$section" "$device"
 					uci -q set "sqm.$section.enabled=$enabled"
 					uci -q set "sqm.$section.download=$download"
 					uci -q set "sqm.$section.upload=$upload"
+					[ -n "$linklayer" ] && uci -q set "sqm.$section.linklayer=$linklayer"
+					[ -n "$overhead" ] && uci -q set "sqm.$section.overhead=$overhead"
+					if [ -n "$eqdisc_opts" ] || [ -n "$iqdisc_opts" ]; then
+						uci -q set "sqm.$section.qdisc_advanced=1"
+						[ -n "$eqdisc_opts" ] && uci -q set "sqm.$section.eqdisc_opts=$eqdisc_opts"
+						[ -n "$iqdisc_opts" ] && uci -q set "sqm.$section.iqdisc_opts=$iqdisc_opts"
+					fi
 					;;
 				guest_upload)
 					ensure_qos_equipe; uci -q set qos_equipe.guest=guest_limit; uci -q set qos_equipe.guest.enabled=1; [ -n "$value" ] || value=0; uci -q set "qos_equipe.guest.upload_kbps=$value"

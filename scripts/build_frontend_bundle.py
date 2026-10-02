@@ -19,7 +19,7 @@ OUTPUT_FILE = os.path.join(REPO_DIR, "root", "www", "luci-static", "resources", 
 CORE_FILES = [
     "header.js",
     "rpc.js",
-    "i18n.js",
+    "i18n/loader.js",
     "constants.js",
     "notifications.js",
     "formatters.js",
@@ -49,13 +49,23 @@ def find_node():
 def assemble_bundle():
     parts = []
     
+    version_file = os.path.join(REPO_DIR, "root", "usr", "share", "ark-router", "VERSION")
+    version_val = "1.5.6"
+    if os.path.isfile(version_file):
+        with open(version_file, "r", encoding="utf-8") as vf:
+            version_val = vf.read().strip()
+
     # 1. Append Core files
     for f_name in CORE_FILES:
         path = os.path.join(SRC_DIR, "core", f_name)
         if not os.path.isfile(path):
             raise FileNotFoundError(f"Missing core file: {path}")
         with open(path, "r", encoding="utf-8") as f:
-            parts.append(f.read().strip())
+            content = f.read().strip()
+            if f_name == "header.js":
+                import re
+                content = re.sub(r"const ARK_BUILD_VERSION = '[^']+';", f"const ARK_BUILD_VERSION = '{version_val}';", content)
+            parts.append(content)
 
     # 2. Append Modules
     for f_name, _ in MODULE_FILES:
@@ -94,11 +104,36 @@ def validate_syntax(file_path):
         return False
     return True
 
+def build_i18n_assets(version_val):
+    i18n_dir = os.path.join(SRC_DIR, "core", "i18n")
+    out_dir = os.path.join(REPO_DIR, "root", "www", "luci-static", "resources", "view", "equipe-dashboard")
+    os.makedirs(out_dir, exist_ok=True)
+    generated = []
+    for lang in ["en", "es"]:
+        src_p = os.path.join(i18n_dir, f"{lang}.js")
+        dst_p = os.path.join(out_dir, f"i18n.{lang}.js")
+        if os.path.isfile(src_p):
+            with open(src_p, "r", encoding="utf-8") as sf:
+                c = sf.read()
+            import re
+            c = re.sub(r"const ARK_I18N_VERSION = '[^']+';", f"const ARK_I18N_VERSION = '{version_val}';", c)
+            with open(dst_p, "w", encoding="utf-8") as df:
+                df.write(c)
+            validate_syntax(dst_p)
+            generated.append(dst_p)
+    return generated
+
 def main():
     parser = argparse.ArgumentParser(description="ARK Router Frontend Bundler")
     parser.add_argument("--check", action="store_true", help="Verify if target overview.js matches src/ bundle")
     parser.add_argument("--quiet", action="store_true", help="Quiet output")
     args = parser.parse_args()
+
+    version_file = os.path.join(REPO_DIR, "root", "usr", "share", "ark-router", "VERSION")
+    version_val = "1.5.6"
+    if os.path.isfile(version_file):
+        with open(version_file, "r", encoding="utf-8") as vf:
+            version_val = vf.read().strip()
 
     bundle_content = assemble_bundle()
 
@@ -119,6 +154,8 @@ def main():
     os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write(bundle_content)
+
+    build_i18n_assets(version_val)
 
     if not validate_syntax(OUTPUT_FILE):
         sys.exit(1)

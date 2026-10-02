@@ -22,8 +22,22 @@ I18N_FILE = os.path.join(REPO_DIR, "src", "core", "i18n.js")
 MODULES_DIR = os.path.join(REPO_DIR, "src", "modules")
 
 def load_dictionaries():
+    i18n_dir = os.path.join(REPO_DIR, "src", "core", "i18n")
+    en_file = os.path.join(i18n_dir, "en.js")
+    es_file = os.path.join(i18n_dir, "es.js")
+
+    if os.path.isfile(en_file) and os.path.isfile(es_file):
+        content_en = open(en_file, "r", encoding="utf-8").read()
+        content_es = open(es_file, "r", encoding="utf-8").read()
+        en_match = re.search(r'window\.ARK_I18N_EN\s*=\s*(\{[\s\S]*?\n\s*\};?)', content_en) or re.search(r'const\s+EN\s*=\s*(\{[\s\S]*?\n\};)', content_en)
+        es_match = re.search(r'window\.ARK_I18N_ES\s*=\s*(\{[\s\S]*?\n\s*\};?)', content_es) or re.search(r'const\s+ES\s*=\s*(\{[\s\S]*?\n\};)', content_es)
+        if en_match and es_match:
+            en_keys = set(re.findall(r'["\']([^"\']+)["\']\s*:\s*["\']', en_match.group(1)))
+            es_keys = set(re.findall(r'["\']([^"\']+)["\']\s*:\s*["\']', es_match.group(1)))
+            return en_keys, es_keys
+
     if not os.path.isfile(I18N_FILE):
-        print(f"ERRO: Arquivo i18n não encontrado em {I18N_FILE}", file=sys.stderr)
+        print(f"ERRO: Arquivos i18n não encontrados em {i18n_dir} nem em {I18N_FILE}", file=sys.stderr)
         sys.exit(1)
 
     content = open(I18N_FILE, "r", encoding="utf-8").read()
@@ -34,7 +48,7 @@ def load_dictionaries():
     es_match = re.search(r'const\s+ES\s*=\s*(\{[\s\S]*?\n\};)', content)
 
     if not en_match or not es_match:
-        print("ERRO: Dicionários EN ou ES não encontrados em src/core/i18n.js", file=sys.stderr)
+        print("ERRO: Dicionários EN ou ES não encontrados", file=sys.stderr)
         sys.exit(1)
 
     en_keys = set(re.findall(r'["\']([^"\']+)["\']\s*:\s*["\']', en_match.group(1)))

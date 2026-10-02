@@ -28,6 +28,8 @@ raw_files_to_upload = [
     (os.path.join(repo_dir, 'root', 'usr', 'sbin', 'equipe-traffic-history'), '/usr/sbin/equipe-traffic-history'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'resources', 'view', 'equipe-dashboard', 'overview.js'), '/www/luci-static/resources/view/equipe-dashboard/overview.js'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'resources', 'view', 'equipe-dashboard', 'overview.css'), '/www/luci-static/resources/view/equipe-dashboard/overview.css'),
+    (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'resources', 'view', 'equipe-dashboard', 'i18n.en.js'), '/www/luci-static/resources/view/equipe-dashboard/i18n.en.js'),
+    (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'resources', 'view', 'equipe-dashboard', 'i18n.es.js'), '/www/luci-static/resources/view/equipe-dashboard/i18n.es.js'),
     (os.path.join(repo_dir, 'root', 'usr', 'share', 'rpcd', 'acl.d', 'luci-app-equipe-dashboard.json'), '/usr/share/rpcd/acl.d/luci-app-equipe-dashboard.json'),
     (os.path.join(repo_dir, 'root', 'usr', 'share', 'luci', 'menu.d', 'luci-app-equipe-dashboard.json'), '/usr/share/luci/menu.d/luci-app-equipe-dashboard.json'),
     (os.path.join(repo_dir, 'root', 'usr', 'share', 'ark-router', 'VERSION'), '/usr/share/ark-router/VERSION'),
@@ -37,6 +39,7 @@ raw_files_to_upload = [
     (os.path.join(repo_dir, 'root', 'www', 'starlink', 'index.html'), '/www/starlink/index.html'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'ark', 'ark-theme.js'), '/www/luci-static/ark/ark-theme.js'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'ark', 'cascade.css'), '/www/luci-static/ark/cascade.css'),
+    (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'ark', 'mobile.css'), '/www/luci-static/ark/mobile.css'),
     (os.path.join(repo_dir, 'root', 'usr', 'share', 'ucode', 'luci', 'template', 'themes', 'ark', 'header.ut'), '/usr/share/ucode/luci/template/themes/ark/header.ut'),
     (os.path.join(repo_dir, 'root', 'usr', 'share', 'ucode', 'luci', 'template', 'themes', 'ark', 'footer.ut'), '/usr/share/ucode/luci/template/themes/ark/footer.ut'),
     (os.path.join(repo_dir, 'root', 'usr', 'lib', 'lua', 'luci', 'view', 'themes', 'ark', 'header.htm'), '/usr/lib/lua/luci/view/themes/ark/header.htm'),
@@ -50,6 +53,8 @@ raw_files_to_upload = [
     (os.path.join(repo_dir, 'root', 'etc', 'uci-defaults', '99-ark-router-dhcp-sanitize'), '/etc/uci-defaults/99-ark-router-dhcp-sanitize'),
     (os.path.join(repo_dir, 'root', 'etc', 'nftables.d', '15-ark-dscp-priority.nft'), '/etc/nftables.d/15-ark-dscp-priority.nft'),
     (os.path.join(repo_dir, 'root', 'etc', 'hotplug.d', 'net', '90-ark-rps-tune'), '/etc/hotplug.d/net/90-ark-rps-tune'),
+    (os.path.join(repo_dir, 'root', 'etc', 'hotplug.d', 'net', '95-ark-cache-invalidate'), '/etc/hotplug.d/net/95-ark-cache-invalidate'),
+    (os.path.join(repo_dir, 'root', 'etc', 'hotplug.d', 'iface', '95-ark-cache-invalidate'), '/etc/hotplug.d/iface/95-ark-cache-invalidate'),
 ]
 
 ark_lib_dir = os.path.join(repo_dir, 'root', 'usr', 'lib', 'ark')
@@ -89,7 +94,7 @@ for local_path, remote_path in files_to_upload:
         print(f"  -> {os.path.basename(local_path)} gravado com sucesso.")
 
 cmds = [
-    'chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export /etc/init.d/ark-zerotier-ram /etc/init.d/ark-hardware-tune /etc/init.d/ark-firewall-guard /etc/init.d/ark-safe-shutdown /etc/uci-defaults/99-ark-router-dhcp-sanitize /usr/sbin/starlink-telemetry-daemon /usr/sbin/starlink-telemetry-mailer /etc/init.d/starlink-telemetry /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh 2>/dev/null || true',
+    'chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export /etc/init.d/ark-zerotier-ram /etc/init.d/ark-hardware-tune /etc/init.d/ark-firewall-guard /etc/init.d/ark-safe-shutdown /etc/uci-defaults/99-ark-router-dhcp-sanitize /usr/sbin/starlink-telemetry-daemon /usr/sbin/starlink-telemetry-mailer /etc/init.d/starlink-telemetry /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh /etc/hotplug.d/*/* 2>/dev/null || true',
     'touch /etc/config/starlink_telemetry 2>/dev/null || true',
     'rm -f /etc/rc.d/S99ark-qdisc-tune /etc/init.d/ark-qdisc-tune 2>/dev/null || true',
     'killall equipe-traffic-history 2>/dev/null || true',

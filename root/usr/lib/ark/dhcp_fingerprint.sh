@@ -18,6 +18,7 @@ fp_dir="/tmp/ark_fp"
 case "$action" in
 	del)
 		[ -d "$fp_dir" ] && rm -f "${fp_dir}/${clean_mac}" 2>/dev/null
+		rm -f /tmp/ark-fp-cache.ts /tmp/ark-stations-cache.ts 2>/dev/null || true
 		exit 0
 		;;
 	add|old)
@@ -40,6 +41,7 @@ case "$action" in
 			printf 'client_id=%s\n' "$client_id"
 			printf 'ts=%s\n' "$ts"
 		} > "$tmp_file" 2>/dev/null && mv -f "$tmp_file" "$target_file" 2>/dev/null
+		rm -f /tmp/ark-fp-cache.ts /tmp/ark-stations-cache.ts 2>/dev/null || true
 		;;
 esac
 

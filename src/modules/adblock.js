@@ -98,6 +98,30 @@ const adblockMethods = {
 						E('strong', {}, [protectionsText])
 					])
 				]) : '',
+				(active && mode === 'local' && f.stat_running) ? E('div', {
+					class: 'ex-grid ex-grid-4 ex-qos-grid',
+					style: 'margin-bottom: 12px; background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 10px 12px;'
+				}, [
+					E('div', { class: 'ex-row' }, [
+						E('span', {}, ['Status DNS']),
+						E('strong', { style: 'color: #10b981;' }, ['🟢 Online (127.0.0.1:5335)'])
+					]),
+					E('div', { class: 'ex-row' }, [
+						E('span', {}, ['Consultas DNS']),
+						E('strong', {}, [(Number(f.stat_queries || 0)).toLocaleString('pt-BR')])
+					]),
+					E('div', { class: 'ex-row' }, [
+						E('span', {}, ['Anúncios Bloqueados']),
+						E('strong', { style: 'color: #ef4444;' }, [
+							(Number(f.stat_blocked || 0)).toLocaleString('pt-BR') + 
+							(f.stat_blocked_pct ? (' (' + f.stat_blocked_pct + '%)') : '')
+						])
+					]),
+					E('div', { class: 'ex-row' }, [
+						E('span', {}, ['Tempo de Resposta']),
+						E('strong', {}, [(f.stat_avg_ms || '0.0') + ' ms'])
+					])
+				]) : '',
 				E('div', { class: 'ex-speedify-actions' }, [
 					!active ? E('button', {
 						class: 'ex-mini-button',
@@ -151,9 +175,13 @@ const adblockMethods = {
 	},
 	openAdguardWithSSO: function(f) {
 		const self = this;
-		const targetUrl = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') ?
-			('http://' + window.location.hostname + ':' + (f.web_port || 3000)) :
-			(f.web_url || ('http://' + window.location.hostname + ':' + (f.web_port || 3000)));
+		const rawHost = window.location.hostname || '192.168.1.1';
+		const cleanHost = rawHost.replace(/\/.*$/, '').replace(/%[0-9a-zA-Z]+$/, '');
+		const port = f.web_port || 3000;
+		let targetUrl = 'http://' + cleanHost + ':' + port;
+		if (f.web_url && !f.web_url.includes('/24') && !f.web_url.includes('/16')) {
+			targetUrl = f.web_url.replace(/\/[0-9]+:/, ':');
+		}
 
 		fs.exec('/usr/sbin/equipe-dashboard-control', ['adblock-sso-login']).then(function(r) {
 			let res = {};

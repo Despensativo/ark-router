@@ -1,0 +1,4 @@
+#!/bin/sh
+# /etc/hotplug.d/net/95-ark-cache-invalidate
+# Invalidates semistatic hardware, station, and performance caches on network link events
+rm -f /tmp/ark-hw-cache.ts /tmp/ark-stations-cache.ts /tmp/ark-perf-cache.ts 2>/dev/null || true

@@ -21,7 +21,23 @@ const renderMethods = {
 				}
 			});
 		}
-		this.board=loaded[0]||{}; this.countries=(loaded[1]&&loaded[1].results)||[]; this.capabilities=loaded[2]||{features:{}}; dashboardLanguage=this.capabilities.language||'pt-br';this.applyAppearance();this.applyBrand(this.capabilities.title);enableTranslation(); const data=loaded[3], w=wifiConfig(data.wireless), release=((this.board.release||{}).description||'').split(' ').slice(0,2).join(' '), panelTitle=this.capabilities.title||'ARK Router';
+		this.board=loaded[0]||{}; this.countries=(loaded[1]&&loaded[1].results)||[]; this.capabilities=loaded[2]||{features:{}}; dashboardLanguage=this.capabilities.language||'pt-br';this.applyAppearance();this.applyBrand(this.capabilities.title);if(typeof loadDashboardLanguage==='function'){loadDashboardLanguage(dashboardLanguage).then(enableTranslation);}else{enableTranslation();} const data=loaded[3], w=wifiConfig(data.wireless), release=((this.board.release||{}).description||'').split(' ').slice(0,2).join(' '), panelTitle=this.capabilities.title||'ARK Router';
+		const serverVersion = (this.capabilities && this.capabilities.update && this.capabilities.update.current) || '';
+		if (serverVersion && typeof ARK_BUILD_VERSION !== 'undefined' && serverVersion !== '—' && serverVersion !== ARK_BUILD_VERSION && !window._arkReloading) {
+			window._arkReloading = true;
+			console.warn('[ARK Router] Versão do sistema (' + serverVersion + ') difere da versão em cache JS (' + ARK_BUILD_VERSION + '). Atualizando painel...');
+			try {
+				if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
+			} catch(e) {}
+			if (typeof ui !== 'undefined' && ui.addNotification) {
+				ui.addNotification(null, E('p', { class: 'alert-message notice' }, [
+					_t('Nova versão do ARK Router instalada! Atualizando painel...')
+				]), 'info');
+			}
+			window.setTimeout(function() {
+				window.location.reload(true);
+			}, 1000);
+		}
 		if (dashboardLanguage === 'pt-br') {
 			var noPassH4 = document.querySelector('.alert-message.warning h4');
 			if (noPassH4 && noPassH4.textContent.indexOf('No password set') !== -1) {
@@ -65,18 +81,51 @@ const renderMethods = {
 				E('span',{class:'ex-kicker'},[kickerText]),
 				E('h3',{id:'ex-'+kind+'-ssid'},[ssid])
 			];
-			const bandContent = cfg.split ? E('div',{class:'ex-wifi-split-grid'},[
-				E('div',{class:'ex-wifi-band-chip band-24'},[
-					E('span',{class:'ex-wifi-band-badge'},['2.4 GHz']),
-					E('strong',{class:'ex-wifi-band-name'},[cfg.ssid2 || '—'])
+			let bandSubtitle = '';
+			const is2gOff = cfg.disabled2 === '1';
+			const is5gOff = cfg.disabled5 === '1';
+			const is6gOff = cfg.has6g && cfg.disabled6 === '1';
+
+			if (is2gOff && !is5gOff && !is6gOff) {
+				bandSubtitle = _t('apenas 5 GHz (2,4 GHz desativado)') + ' • ';
+			} else if (is5gOff && !is2gOff && !is6gOff) {
+				bandSubtitle = _t('apenas 2,4 GHz (5 GHz desativado)') + ' • ';
+			} else if (cfg.has6g && !is6gOff && is2gOff && is5gOff) {
+				bandSubtitle = _t('apenas 6 GHz (2,4 e 5 GHz desativados)') + ' • ';
+			} else if (cfg.has6g && !is6gOff && !is2gOff && is5gOff) {
+				bandSubtitle = _t('disponível em 2,4 e 6 GHz (5 GHz desativado)') + ' • ';
+			} else if (cfg.has6g && !is6gOff && is2gOff && !is5gOff) {
+				bandSubtitle = _t('disponível em 5 e 6 GHz (2,4 GHz desativado)') + ' • ';
+			} else if (cfg.has6g && !is6gOff) {
+				bandSubtitle = _t('disponível em 2,4, 5 e 6 GHz') + ' • ';
+			} else if (cfg.has2g && cfg.has5g) {
+				bandSubtitle = _t('disponível em 2,4 e 5 GHz') + ' • ';
+			} else if (cfg.has5g) {
+				bandSubtitle = _t('apenas 5 GHz') + ' • ';
+			} else {
+				bandSubtitle = _t('apenas 2,4 GHz') + ' • ';
+			}
+
+			const splitChips = [
+				E('div', { class: 'ex-wifi-band-chip band-24' + (is2gOff ? ' is-disabled' : '') }, [
+					E('span', { class: 'ex-wifi-band-badge' }, ['2.4 GHz' + (is2gOff ? ' (' + _t('Desativada') + ')' : '')]),
+					E('strong', { class: 'ex-wifi-band-name' }, [is2gOff ? _t('Desativada') : (cfg.ssid2 || '—')])
 				]),
-				E('div',{class:'ex-wifi-band-chip band-50'},[
-					E('span',{class:'ex-wifi-band-badge'},['5 GHz']),
-					E('strong',{class:'ex-wifi-band-name'},[cfg.ssid5 || '—'])
+				E('div', { class: 'ex-wifi-band-chip band-50' + (is5gOff ? ' is-disabled' : '') }, [
+					E('span', { class: 'ex-wifi-band-badge' }, ['5 GHz' + (is5gOff ? ' (' + _t('Desativada') + ')' : '')]),
+					E('strong', { class: 'ex-wifi-band-name' }, [is5gOff ? _t('Desativada') : (cfg.ssid5 || '—')])
 				])
-			]) : E('small',{class:'ex-muted ex-wifi-subtitle'},[
-				title + ' • ' + (cfg.has2g && cfg.has5g ? 'disponível em 2,4 e 5 GHz • ' : (cfg.has5g ? 'apenas 5 GHz • ' : 'apenas 2,4 GHz • ')),
-				E('span',{class:'ex-wifi-unified-pill'},[cfg.network === 'guest' ? 'Isolada' : 'Rede Unificada'])
+			];
+			if (cfg.has6g) {
+				splitChips.push(E('div', { class: 'ex-wifi-band-chip band-60' + (is6gOff ? ' is-disabled' : '') }, [
+					E('span', { class: 'ex-wifi-band-badge' }, ['6 GHz' + (is6gOff ? ' (' + _t('Desativada') + ')' : '')]),
+					E('strong', { class: 'ex-wifi-band-name' }, [is6gOff ? _t('Desativada') : (cfg.ssid6 || cfg.ssid || '—')])
+				]));
+			}
+
+			const bandContent = cfg.split ? E('div', { class: 'ex-wifi-split-grid' }, splitChips) : E('small', { class: 'ex-muted ex-wifi-subtitle' }, [
+				title + ' • ' + bandSubtitle,
+				E('span', { class: 'ex-wifi-unified-pill' }, [cfg.network === 'guest' ? _t('Isolada') : _t('Rede Unificada')])
 			]);
 			const extraGuestRow = (kind === 'guest') ? E('div',{class:'ex-wifi-guest-limit-row'},[
 				E('span',{},['Limite de velocidade']),
@@ -807,6 +856,24 @@ const renderMethods = {
 						E('p',{class:'ex-muted',style:'margin:6px 0 10px;line-height:1.45;'},[
 							'O CAKE (Smart Queue Management) combate o bufferbloat, gerencia a latência em tempo real e impede que downloads ou vídeos pesados aumentem o ping de jogos e travem chamadas de voz de toda a rede.'
 						]),
+						(function(){
+							if (isSatNode) return '';
+							const isEco = self.isEconomicHardware ? self.isEconomicHardware(data) : false;
+							const hw = (data && data.hardwareInfo) || {};
+							const sil = hw.silicon || {};
+							if (isEco) {
+								return E('div', { class: 'alert-message warning', style: 'margin: 6px 0 10px; font-size: 11.5px; line-height: 1.4;' }, [
+									E('strong', {}, ['⚠️ ' + _t('Hardware Single-Core Detectado:') + ' ']),
+									_t('O SQM por software nesta CPU é recomendado para conexões de até ~80–100 Mbps. Em planos superiores, prefira limitar apenas o Upload para manter o ping baixo sem afunilar a CPU.')
+								]);
+							} else if (sil.hw_offload_capable) {
+								return E('div', { class: 'alert-message info', style: 'margin: 6px 0 10px; font-size: 11.5px; line-height: 1.4;' }, [
+									E('strong', {}, ['⚡ ' + _t('Processador Multicore com Silício PPE:') + ' ']),
+									_t('Capacidade total para moldagem de tráfego CAKE em alta velocidade com proteção anti-lag.')
+								]);
+							}
+							return '';
+						})(),
 						E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},qosWanRows.concat([infoRow('Rede visitante','ex-qos-guest'),infoRow('DNS do roteador','ex-dns')])),
 						E('div',{class:'ex-grid ex-grid-2',style:'margin-top:14px;gap:12px;'},[
 							E('button',{class:'ex-button ex-qos-edit-button',style:'margin-top:0;','click':L.bind(function(){try{self.editSqmLimits();}catch(e){ui.addNotification(null,E('p',{},[e.message||String(e)]),'danger');}},self)},['Editar limites']),

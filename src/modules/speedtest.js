@@ -19,10 +19,11 @@ const speedtestMethods = {
 		const progressBar = E('div', {style:'width:0%;height:4px;background:linear-gradient(90deg,#3b82f6,#a855f7);border-radius:2px;transition:width 0.2s linear;'});
 		const progressWrap = E('div', {style:'width:100%;height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin:16px 0 14px;overflow:hidden;'}, [progressBar]);
 		
+		let lastDown = 0, lastUp = 0;
 		const applySqmBtn = E('button', {class:'btn cbi-button cbi-button-action', style:'display:none;font-weight:700;', 'click': L.bind(function(){
 			ui.hideModal();
-			this.editSqmLimits();
-		}, this)}, ['⚙️ Aplicar limites no SQM']);
+			this.editSqmLimits(lastDown, lastUp);
+		}, this)}, ['⚙️ Aplicar limites no SQM (-7%)']);
 		
 		const restartBtn = E('button', {class:'btn cbi-button cbi-button-neutral', disabled:true, 'click': function(){
 			runEngine();
@@ -174,6 +175,10 @@ const speedtestMethods = {
 				speedNumber.style.color = '#10b981';
 				progressBar.style.width = '100%';
 				
+				lastDown = finalDownMbps;
+				lastUp = finalUpMbps;
+				window._lastSpeedtestResult = { down: finalDownMbps, up: finalUpMbps, ping: avgPing };
+
 				phaseBadge.textContent = '✅ Teste Completo Finalizado!';
 				statusPill.className = 'ex-pill online';
 				statusPill.textContent = 'CONCLUÍDO';

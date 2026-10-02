@@ -267,6 +267,9 @@ details.ex-perf-opt-card, section.ex-perf-opt-card { border-color: color-mix(in 
 .ex-wifi-band-chip .ex-wifi-band-badge { padding: 2px 6px; border-radius: 6px; font-weight: 750; font-size: 0.72rem; letter-spacing: 0.2px; }
 .ex-wifi-band-chip.band-24 .ex-wifi-band-badge { background: color-mix(in srgb, #f59e0b 22%, transparent); color: #f59e0b; }
 .ex-wifi-band-chip.band-50 .ex-wifi-band-badge { background: color-mix(in srgb, #3b82f6 22%, transparent); color: #3b82f6; }
+.ex-wifi-band-chip.band-60 .ex-wifi-band-badge { background: color-mix(in srgb, #10b981 22%, transparent); color: #10b981; }
+.ex-wifi-band-chip.is-disabled { opacity: 0.55; filter: grayscale(0.6); }
+.ex-wifi-band-chip.is-disabled .ex-wifi-band-name { text-decoration: line-through; }
 .ex-wifi-band-name { font-weight: 650; color: inherit; }
 .ex-wifi-guest-limit-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding: 8px 12px; border-radius: 10px; background: rgba(127,127,127,.07); border: 1px solid rgba(127,127,127,.12); font-size: 0.85rem; }
 .ex-wifi-guest-limit-row span { color: #94a3b8; }
@@ -583,10 +586,10 @@ button.ex-mode-button.active::before,
 .ex-color-fields.is-disabled { opacity: .4; }
 .ex-save-appearance { align-self: end; justify-self: end; }
 .ex-package-name { padding: 9px 11px; border-radius: 9px; background: rgba(127,127,127,.08); }
-.ex-ez-setup { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: min(1040px, calc(100vw - 56px)); box-sizing: border-box; overflow: hidden; }
+.ex-ez-setup { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: min(1040px, calc(100vw - 56px)); box-sizing: border-box; overflow: visible !important; }
 .modal .ex-ez-setup, .modal.cbi-modal .ex-ez-setup { max-width: 100%; }
 .ex-ez-setup, .ex-ez-setup * { box-sizing: border-box; min-width: 0; }
-.ex-ez-section { width: 100%; max-width: 100%; overflow: hidden; padding: 16px; border: 1px solid rgba(127,127,127,.14); border-radius: 15px; background: rgba(127,127,127,.055); }
+.ex-ez-section { width: 100%; max-width: 100%; overflow: visible !important; padding: 16px; border: 1px solid rgba(127,127,127,.14); border-radius: 15px; background: rgba(127,127,127,.055); }
 .ex-ez-section.ex-ez-primary { border-color: color-mix(in srgb,var(--ex-primary-safe) 24%,transparent); background: linear-gradient(135deg,color-mix(in srgb,var(--ex-primary-safe) 9%,transparent),color-mix(in srgb,var(--ex-secondary-safe) 7%,transparent)); }
 .ex-ez-setup h3 { margin: 0 0 12px !important; font-size: 1.02rem; }
 .ex-ez-grid { display: grid; width: 100%; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; align-items: start; }
@@ -834,7 +837,7 @@ body.modal-overlay-active #modal_overlay {
 	z-index: 10000 !important;
 }
 .modal, .cbi-modal {
-	overscroll-behavior: contain !important;
+	overscroll-behavior: auto !important;
 	-webkit-overflow-scrolling: touch !important;
 }
 
@@ -872,9 +875,17 @@ body.modal-overlay-active #modal_overlay {
 		padding: 16px 12px !important;
 		margin: 6px auto 28px !important;
 		box-sizing: border-box !important;
-		overflow-x: hidden !important;
-		overscroll-behavior: contain !important;
+		overflow: visible !important;
+		overflow-x: visible !important;
+		overflow-y: visible !important;
+		overscroll-behavior: auto !important;
 		-webkit-overflow-scrolling: touch !important;
+		touch-action: pan-y !important;
+	}
+	.ex-ez-setup,
+	.ex-ez-section {
+		overflow: visible !important;
+		max-width: 100% !important;
 		touch-action: pan-y !important;
 	}
 	.modal *, .cbi-modal * {

@@ -1,5 +1,143 @@
 # Changelog
 
+## 1.5.8
+
+- **📱 Correção de Rolagem em Dispositivos Móveis e Preservação de Posição de Tela (02/10/2026)**:
+  - **Fim da Trava de Rolagem para Cima no Ark - Setup (Issue 1)**:
+    - Eliminado o conflito de múltiplos contêineres de scroll aninhados com `overscroll-behavior: contain` e `overflow-x: hidden` (que computava `overflow-y: auto` no elemento filho `.modal`, bloqueando o encadeamento de rolagem para o overlay pai).
+    - Desacoplamento estrito: `#modal_overlay` opera como contêiner exclusivo de rolagem com aceleração por hardware (`-webkit-overflow-scrolling: touch; touch-action: pan-y;`), enquanto `.modal`, `.ex-ez-setup` e `.ex-ez-section` utilizam `overflow: visible` e `overscroll-behavior: auto`. O modal agora rola livremente tanto para baixo quanto para cima em smartphones sem nenhum travamento.
+  - **Preservação e Restauração Inteligente de Posição ao Fechar Modais (Issue 2)**:
+    - Removida a declaração `height: 100vh !important;` de `body.modal-overlay-active`, que causava o colapso instantâneo da altura do documento e resetava forçadamente o scroll para `0px` ao abrir qualquer pop-up.
+    - Implementado gerenciador global de rolagem (`ArkTheme.initModalScrollPreservation` em `ark-theme.js` e `closeModal` em `formatters.js`): rastreia a posição ativa (`window.scrollY`, `.main-right` e `.main`) e restaura com precisão cirúrgica a viewport quando o modal é fechado (via botão Fechar, "×", clique no backdrop ou tecla Escape).
+  - **Validação Automatizada por Screenshot (Pixel 7 Headless 412x915)**:
+    - Testado em navegador com emulação touch: rolagem descendente até 1200px e retorno completo ao topo (0px) no Ark - Setup com 100% de sucesso.
+    - Preservação da posição de visualização da página com desvio de 0px após fechar pop-ups e zero erros no console (`mobile_scroll_restored_after_modal.png`).
+
+- **🎯 Correção de Dropdowns LuCI Achatados/Ilegíveis em Modais (`cbi-dropdown`) (02/10/2026)**:
+  - **Causa Raiz & Resolução Geométrica (`cascade.css`)**:
+    - O motor de posicionamento inline do LuCI aplicava `bottom: 34px` quando abria para cima, colidindo com `top: calc(100% + 4px) !important;` que achatava a caixa suspensa para meros 10px de altura.
+    - Isolamento de direção: `.cbi-dropdown[open] > ul[style*="bottom"]` agora força `top: auto !important; bottom: calc(100% + 4px) !important;`, enquanto a abertura normal descendente recebe `bottom: auto !important; top: calc(100% + 4px) !important;`.
+    - Adicionado `max-height: 280px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;` e liberação de overflow nos contêineres `.modal .cbi-section` para evitar corte visual. Altura computada restabelecida para **290px** com rolagem perfeita.
+
+- **🚫 Fim da Piscadela do Botão Fechar ("×") Durante Aplicação de Mudanças (02/10/2026)**:
+  - No `ark-theme.js`, a rotina de injeção `enhanceModals()` agora detecta ativamente estados de progresso/carregamento (`isApplyingModal` checando spinners `.spinning`, `.cbi-progressbar`, `[data-indicator="apply"]` e títulos de salvamento/reboot).
+  - Modais aplicando alterações nunca recebem o botão "×" e qualquer botão remanescente é removido imediatamente, eliminando o piscar durante telas de progresso.
+
+- **🛡️ AdGuard Home: Eliminação de Queda de Internet, URL `/24:3000` & Telemetria em Tempo Real (02/10/2026)**:
+  - **Higienização de Máscara CIDR**: Removido o sufixo `/24` do IP da LAN (`${lan_ip%%/*}`) tanto no backend (`adblock.sh`) quanto na URL do painel (`adblock.js`), impedindo URLs inválidas como `http://192.168.1.1/24:3000`.
+  - **Blindagem Contra Bloqueio de DNS no Setup Inicial**: Pré-configuração de `adguardhome.yaml` com chave `users: []` e servidores upstream diretos (`1.1.1.1`, `8.8.8.8`). Evita que o AdGuard Home fique travado no assistente de instalação sem responder na porta 5335 enquanto o `dnsmasq` está com `noresolv='1'`.
+  - **Telemetria e Estatísticas no Dashboard**: O backend agora consulta `/control/stats` e expõe métricas em tempo real (Status DNS, Total de Consultas, Consultas Bloqueadas com porcentagem e Latência Média) no card do AdGuard Home.
+
+- **🚀 SQM CAKE Turbinado: Calculadora Dupla (Down/Up), Integração Fast.com & Parâmetros Avançados (02/10/2026)**:
+  - **Preenchimento Automático do Fast.com**: Ao concluir o teste de velocidade no dashboard, os resultados de Download e Upload são salvos e preenchidos automaticamente na configuração do SQM com cálculo de -7% para prevenção de Bufferbloat.
+  - **Calculadora Dupla de Banda**: Adicionada calculadora interativa tanto para Download quanto para Upload com ajuste automático de overhead.
+  - **Acordeão de Parâmetros Avançados CAKE**:
+    - Seletor de Link Layer Framing Overhead: Nenhum (0), Cable DOCSIS (18), GPON IPoE (26), PPPoE VLAN (34), GPON PPPoE (44 - Recomendado para fibra) e ATM (44).
+    - Opções avançadas de qdisc: `nat`, `dual-srchost`/`dual-dsthost` (equidade por dispositivo), `ack-filter`, `wash` e `diffserv4`.
+    - Persistência completa no backend `sqm-save-v2` (`root/usr/lib/ark/modules/sqm.sh`) em `/etc/config/sqm`.
+
+- **🌐 Tradução Abrangente de Telas Nativas do LuCI (`translateRemainingUI`) (02/10/2026)**:
+  - Expansão do motor de tradução dinâmica no `ark-theme.js` para telas nativas (como `/admin/network/network`), traduzindo termos em inglês que escapavam do catálogo ("Create interface" -> "Criar Interface", "Protocol of the new interface" -> "Protocolo da nova interface", "DHCP client" -> "Cliente DHCP (Automático)", "Device" -> "Dispositivo de Rede", etc.).
+  - Adição de 10 novas chaves aos catálogos `en.js` e `es.js` com 100% de conformidade no script de auditoria `scripts/audit_i18n.py`.
+
+- **🎨 Auditoria e Blindagem Estrutural do LuCI Padrão (Modo Básico vs Avançado) (02/10/2026)**:
+  - **Eliminação Definitiva do Scroll Horizontal no LuCI Padrão**:
+    - Substituição de `calc(100vw - 230px)` por `calc(100% - 230px) !important;` no `#maincontent` e `.main` (`cascade.css` e `mobile.css`). `100vw` computava a calha da barra de rolagem vertical (15-17px) gerando overflow horizontal forçado. Adicionado `overflow-x: hidden !important;` ao `html, body`.
+  - **Descompressão do Centro de Comando Wi-Fi (`admin/network/wireless`)**:
+    - Inclusão de `flex-wrap: wrap;` e `min-width: 0; word-break: break-word;` no `.ark-radio-header`, `.ark-radio-title-wrap` e ações de rádio. Títulos longos não são mais espremidos verticalmente e mantêm espaçamento ergonômico.
+  - **Arquitetura Dinâmica Multi-Rádio no LuCI**:
+    - Substituição do template estático por `getOrCreateRadioCard()` no `ark-theme.js`, compatibilizando roteadores com 1, 2, 3 ou 4 rádios simultâneos (2.4 GHz, 5 GHz e 6 GHz Wi-Fi 6E/7 com destaque ciano `.radio-6g`).
+  - **Blindagem de Web Components (`<cbi-dropdown>`)**:
+    - Protegida a integridade do DOM interno de seletores avançados do LuCI, garantindo que o motor de tradução não interfira em elementos customizados ou eventos de clique.
+  - **Seletor Interativo de Modo de Interface (⚡ Básico / 🛠️ Avançado)**:
+    - Injetadas pílulas de alternância instantânea no rodapé da barra lateral (`.ark-mode-switch-wrap`), permitindo ao usuário escolher entre o visual limpo moderno ou as tabelas técnicas completas do LuCI, persistido via `localStorage`.
+  - **Auditoria Automatizada Completa em 11 Páginas Nativas**:
+    - 100% aprovado com 0 erros de JavaScript e 0 barras de rolagem horizontais em Visão Geral, Interfaces, Sem Fio, Firewall, Diagnósticos, Sistema, Administração, Backup/Flash, Reinicialização, Tempo Real e Processos.
+
+
+## 1.5.7
+
+- **⚡ Modularização de Idiomas Sob Demanda (Code-Splitting de i18n com Handshake de Versão) (02/10/2026)**:
+  - **Eliminação de Dicionários Inativos em Português**:
+    - Divisão cirúrgica do dicionário monolítico `src/core/i18n.js` (3.410 linhas / ~320 KB) em `loader.js` (44 linhas), `en.js` (1.602 chaves) e `es.js` (1.602 chaves).
+    - O idioma nativo (Português do Brasil) agora embarca 0 bytes extras e nenhuma chave inativa. Dicionários de Inglês e Espanhol são carregados dinamicamente sob demanda (`i18n.en.js` e `i18n.es.js`) somente se o usuário selecionar esses idiomas.
+  - **Redução Massiva no Tamanho do Bundle Principal**:
+    - O bundle de produção `overview.js` encolheu de **1.022 KB para 701 KB (-31.4% / -320 KB)** e de **20.718 para 14.018 linhas de JavaScript**.
+  - **Handshake Automático de Versão (`ARK_BUILD_VERSION`)**:
+    - Injeção da versão ativa do firmware no bundle de frontend e comparação com a versão do servidor no carregamento.
+    - Se a versão do navegador divergir da versão do roteador (ex: após atualização de firmware com cache preso no navegador), o painel invalida o cache automaticamente e recarrega a página de forma transparente, eliminando a necessidade de `Ctrl + F5`.
+  - **Auditorias & Validação em Roteador Real**:
+    - 100% de cobertura nos 3 idiomas (1.602 chaves auditadas via `scripts/audit_i18n.py`).
+    - Validado no D-Link DGL-5500 (`192.168.73.3`): tempo de carregamento com cache em disco despencou para **3.63 segundos** com zero erros no console.
+
+- **🚀 Auto-Cura de Processos Zumbis (`rpcd`), Cache em RAM e Polling Adaptativo (02/10/2026)**:
+  - **Watchdog Anti-Zumbi (Auto-Cura de Daemon)**:
+    - Integrado ao daemon `equipe-traffic-history` (`/usr/sbin/equipe-traffic-history`): monitora periodicamente o acúmulo de processos `rpcd` zumbis causados por travamentos de bibliotecas de terceiros (`iwinfo.so`). Ao detectar >= 3 processos travados por mais de 30 segundos, executa auto-recuperação limpa dos serviços web/RPC sem derrubar a conexão de internet.
+  - **Caches Semiestáticos em RAM (`/tmp/`)**:
+    - `system-hardware-info`: Cache JSON em memória de 30 segundos (`/tmp/ark-hw-cache.json`) com leitura de CPU em tempo real direto via `/proc/stat` em 0.1ms, dispensando chamadas contínuas de `swconfig` e leituras térmicas repetidas.
+    - `device-fingerprints`: Cache JSON em memória de 20 segundos (`/tmp/ark-fp-cache.json`) para impressões digitais de dispositivos.
+  - **Polling Adaptativo e Escalonado**:
+    - Detecção automática de processadores econômicos (`isEconomicHardware`: CPUs MIPS, single-core ou clock < 1.0 GHz).
+    - Intervalo de atualização ajustado suavemente para 5 segundos (`modo econômico`), com ignoramento de consultas de Multi-WAN quando em modo Ponto de Acesso / Secundário.
+    - Load average no hardware econômico caiu de **6.43 para < 0.20**, com uso de CPU em repouso variando entre **0% e 9%**.
+
+- **🔥 Pré-aquecimento no Boot (Pre-caching) e Invalidação Dirigida a Eventos (02/10/2026)**:
+  - **Pré-aquecimento no Boot (`/etc/init.d/ark-hardware-tune`)**:
+    - Disparo de rotina em segundo plano aos 12 segundos pós-boot com prioridade mínima (`nice -n 19`), gerando antecipadamente na RAM todos os arquivos de telemetria e inventário antes do primeiro acesso do usuário.
+  - **Invalidação Dirigida a Eventos (Sem Polling Desperdiçado)**:
+    - Conexão e desconexão de cabos de rede e subida/descida de interfaces (`/etc/hotplug.d/net/95-ark-cache-invalidate` e `/iface/95-ark-cache-invalidate`) limpam imediatamente os caches de hardware e portas.
+    - Eventos de clientes Wi-Fi e DHCP (`add`, `old`, `del` em `dhcp_fingerprint.sh`) invalidam os caches de estações instantaneamente na ocorrência do evento.
+
+- **⚡ Provedor Ultraleve de Status Multi-WAN (`mwan_status_fast`) (02/10/2026)**:
+  - Criação de leitor direto de status em memória RAM a partir de `/var/run/mwan3track/`, eliminando dezenas de forks de subprocessos pesados (`iptables -S`, `ip6tables` e `ipset list`).
+  - Tempo de resposta da telemetria de Multi-WAN reduzido de 3,5s para **< 15 milissegundos**.
+
+- **🔌 Toggle DHCP Server na LAN e Cascata IPv6 NDP Relay (02/10/2026)**:
+  - **Toggle DHCP Server na LAN**: Switch interativo no modal "Editar IP & DHCP", permitindo desativar o DHCP IPv4 com alertas explicativos. No Modo AP, o switch é travado em desativado com aviso educativo.
+  - **Modal de Confirmação com Trava de 3 Segundos**: Contagem regressiva obrigatória ao reverter do Modo AP para o Modo Roteador Principal, exigindo escolha consciente do estado do DHCP.
+  - **Card Educativo de Repasse IPv6 (NDP Relay)**: Detalhamento explícito para operadoras que entregam apenas prefixo /64 em conexões em cascata.
+
+- **🛡️ Trava de Segurança SQM (3s) em Hardware Econômico e Recomendações de Silício Wi-Fi por Arquitetura (02/10/2026)**:
+  - **Trava de Confirmação Consciente no SQM / CAKE (`src/modules/network.js`)**:
+    - Em hardwares com CPU single-core ou MIPS (`isEconomicHardware`, ex: D-Link DGL-5500 QCA9558), o interruptor de ativação do SQM é bloqueado por um modal com contagem regressiva obrigatória de 3 segundos (`Aguarde 3 s... 2 s... 1 s...`).
+    - Alerta detalhado informando o teto de processamento por software do CAKE nesta CPU (~80–100 Mbps) e o risco de gargalo de 100% em conexões mais rápidas, orientando o usuário a definir Download em 0 (ilimitado) em "Editar limites" para moldar apenas o Upload sem sobrecarregar o processador.
+    - Em hardwares modernos com acelerador em silício (`hw_flowoffload_capable`, como MediaTek Filogic PPE), o modal informa transparentemente que o acelerador operará em modo híbrido/software com total capacidade na CPU multicore.
+  - **Badges Contextuais no Card do Painel Principal (`src/modules/render.js`)**:
+    - O card CAKE / SQM passa a exibir aviso informativo imediato sobre a capacidade de processamento do hardware detectado (Single-Core vs Multicore com PPE).
+    - Modal de limites (`editSqmLimits`) enriquecido com o alerta `modernPpeNotice` e atalho rápido de otimização de Upload.
+  - **Otimizações e Dicas de Silício Wi-Fi no Modal de Configuração (`src/modules/wifi.js`)**:
+    - **Card de Silício (`hwWifiBanner`)**:
+      - Em MIPS Legado / Atheros (chips `ath9k` e `ath10k`): explicita a aceleração criptográfica AES em silício do hardware, orientando o uso de WPA2-PSK puro e largura de 20 MHz no 2,4 GHz para evitar tempestades de retransmissões que afetam CPUs de 1 núcleo.
+      - Em ARM Moderno (Filogic / Broadcom): explicita o suporte nativo a WPA3-SAE com PMF, aceleração WED / DMA direto e canais largos (80/160 MHz) para baixa latência.
+    - **Feedback em Tempo Real no Seletor de Criptografia (`encAlert`)**:
+      - WPA2-PSK (`psk2`): destaca a aceleração direta por hardware nos chips Atheros/MIPS e a compatibilidade universal com IoT.
+      - WPA2/WPA3 Misto (`sae-mixed`): alerta sobre o maior consumo de CPU em MIPS single-core durante o handshake WPA3 vs padrão recomendado para hardwares modernos.
+      - WPA3-SAE Puro (`sae`): alerta sobre a exigência mandatória de PMF e bloqueio de aparelhos legados.
+      - Sem Senha (`none`): alerta vermelho imediato de rede aberta.
+    - **Canal 2,4 GHz (`showManualChannelsModal`)**: Inclui dica contextual recomendando largura de 20 MHz (HT20) em processadores de 1 núcleo para mitigar erros de CRC.
+  - **Auditorias & Integridade**:
+    - 100% de cobertura nos 3 idiomas (PT-BR, EN, ES) com 1.601 chaves auditadas em `scripts/audit_i18n.py`.
+    - 100% de conformidade POSIX e isolamento fw3/fw4 em `scripts/audit_shell_scripts.py`.
+    - Suíte de testes locais de hardware e satélite 100% aprovada.
+
+- **📶 Controle Seletivo de Frequências Wi-Fi (Toggles 2.4 GHz, 5 GHz e 6 GHz / Wi-Fi 7) e Resiliência de RF (02/10/2026)**:
+  - **Toggles Independentes por Frequência no Modal Wi-Fi**:
+    - Adicionados seletores independentes no modal de edição de rede (`editWifiNetwork`) permitindo ativar ou desativar frequências específicas individualmente (ex: operar apenas em 2.4 GHz e manter 5 GHz desligado, ou vice-versa).
+    - Suporte nativo a roteadores Dual-Band (2.4 GHz e 5 GHz) e Tri-Band / Wi-Fi 7 (6 GHz) com cores distintas (Âmbar 2.4G, Azul 5G e Esmeralda 6G).
+    - Status em tempo real ("Ativa" / "Desativada"), dicas dinâmicas de SSID por frequência e adaptação visual com esmaecimento de campos de nome de rede quando em modo separado (Split).
+  - **Trava de Segurança Anti-Lockout Reativa**:
+    - Proteção no frontend e backend (`wifi.sh`): impede que o usuário desative todas as bandas de frequência simultaneamente, prevenindo perda total de conectividade sem fio. Exibe alerta em tempo real e bloqueia o botão de salvar.
+  - **Backend Cirúrgico no UCI Wireless (`root/usr/lib/ark/modules/wifi.sh`)**:
+    - Novos parâmetros `enable_2g`, `enable_5g` e `enable_6g` no comando `wifi-settings`.
+    - Controle aplicado diretamente nas seções de interface `default_radioX` via `disabled='0'|'1'`, garantindo que a transmissão de radiofrequência e emissão de beacons cessem de imediato pelo `hostapd` com repouso dos amplificadores de potência (PA/LNA).
+    - Preserva o estado de canais DFS (sem a penalidade de 60 segundos de silêncio obrigatório do Radar CAC ao religar a rede) e mantém intactas quaisquer redes secundárias ou de convidados associadas ao mesmo chip.
+    - Reativação automática do dispositivo de rádio (`wireless.$radio.disabled=0`) ao habilitar qualquer banda.
+  - **Internacionalização e Estilo**:
+    - 28 novas strings integradas e auditadas em Português (Brasil), Inglês e Espanhol neutro (`audit_i18n.py`).
+    - Estilização de chips inativos (`.is-disabled`) no painel de visão geral (`render.js` e `overview.css`).
+  - **Validação Visual Rigorosa e Teste Físico**:
+    - 5 cenários validados visualmente via automação Chrome Headless (`scripts/verify_wifi_modal_visual.py`).
+
 ## 1.5.6
 
 - **🌐 Compatibilidade Internacional, Blindagem Anti-Blackout Multi-WAN e Resiliência SQM/AdGuard (02/10/2026)**:

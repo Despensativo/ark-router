@@ -1698,8 +1698,81 @@ mwan3_toggle() {
 	echo "$desired"
 }
 
+mwan_status_fast() {
+	local mwan_cache="/tmp/ark-mwan-cache.json"
+	local mwan_ts="/tmp/ark-mwan-cache.ts"
+	local now cache_time
+
+	now="$(date +%s 2>/dev/null || echo 0)"
+	if [ -s "$mwan_cache" ] && [ -f "$mwan_ts" ]; then
+		cache_time="$(head -n 1 "$mwan_ts" 2>/dev/null || echo 0)"
+		case "$cache_time" in ''|*[!0-9]*) cache_time=0 ;; esac
+		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ $((now - cache_time)) -lt 3 ]; then
+			cat "$mwan_cache"
+			return 0
+		fi
+	fi
+
+	local mwan_track_dir="/var/run/mwan3track"
+	local ifaces=""
+	ifaces="$(uci -q show mwan3 2>/dev/null | grep '=interface$' | cut -d. -f2 | cut -d= -f1)"
+	[ -n "$ifaces" ] || ifaces="wan wan2"
+
+	local first_if=1
+	printf '{"interfaces":{'
+	for iface in $ifaces; do
+		[ -n "$iface" ] || continue
+		local idir="$mwan_track_dir/$iface"
+		local status="offline"
+		local score=0 lost=0 turn=0
+		local running=false enabled=true up=false
+
+		[ -f "$idir/STATUS" ] && status="$(cat "$idir/STATUS" 2>/dev/null || echo offline)"
+		[ -f "$idir/SCORE" ] && score="$(cat "$idir/SCORE" 2>/dev/null || echo 0)"
+		[ -f "$idir/LOST" ] && lost="$(cat "$idir/LOST" 2>/dev/null || echo 0)"
+		[ -f "$idir/TURN" ] && turn="$(cat "$idir/TURN" 2>/dev/null || echo 0)"
+
+		case "$score" in ''|*[!0-9]*) score=0 ;; esac
+		case "$lost" in ''|*[!0-9]*) lost=0 ;; esac
+		case "$turn" in ''|*[!0-9]*) turn=0 ;; esac
+
+		pgrep -f "mwan3track $iface" >/dev/null 2>&1 && running=true
+		[ "$status" = "online" ] && up=true
+
+		local track_json=""
+		local first_tr=1
+		if [ -d "$idir" ]; then
+			for tf in "$idir"/TRACK_*; do
+				[ -f "$tf" ] || continue
+				local tip="${tf##*TRACK_}"
+				[ -n "$tip" ] || continue
+				local tstatus="$(cat "$tf" 2>/dev/null || echo down)"
+				local tlatency=0 tloss=0
+				[ -f "$idir/LATENCY_$tip" ] && tlatency="$(cat "$idir/LATENCY_$tip" 2>/dev/null || echo 0)"
+				[ -f "$idir/LOSS_$tip" ] && tloss="$(cat "$idir/LOSS_$tip" 2>/dev/null || echo 0)"
+				case "$tlatency" in ''|*[!0-9]*) tlatency=0 ;; esac
+				case "$tloss" in ''|*[!0-9]*) tloss=0 ;; esac
+
+				[ "$first_tr" = 1 ] && first_tr=0 || track_json="${track_json},"
+				track_json="${track_json}{\"ip\":\"$tip\",\"status\":\"$tstatus\",\"latency\":$tlatency,\"packetloss\":$tloss}"
+			done
+		fi
+
+		[ "$first_if" = 1 ] && first_if=0 || printf ','
+		printf '"%s":{"status":"%s","running":%s,"enabled":%s,"up":%s,"score":%s,"lost":%s,"turn":%s,"track_ip":[%s]}' \
+			"$iface" "$status" "$running" "$enabled" "$up" "$score" "$lost" "$turn" "$track_json"
+	done
+	printf '},"connected":{"ipv4":[],"ipv6":[]},"policies":{"ipv4":{},"ipv6":{}}}\n' > "$mwan_cache.tmp"
+	mv "$mwan_cache.tmp" "$mwan_cache"
+	echo "$now" > "$mwan_ts"
+	cat "$mwan_cache"
+}
+
 handle_network() {
 	case "$1" in
+	mwan-status-fast|mwan-status)
+		mwan_status_fast
+		;;
 	wan-save)
 		iface='' mode='wan' device='' proto='dhcp' username='' password='' ipaddr='' netmask='' gateway='' dns='' macaddr='' modem_ip='' metric='' ipv6='' delegate=''
 		shift

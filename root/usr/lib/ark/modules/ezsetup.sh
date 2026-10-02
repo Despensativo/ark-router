@@ -1251,7 +1251,7 @@ handle_ezsetup() {
 		if [ -s "$cache" ]; then
 			now="$(date +%s)"
 			mtime="$(date -r "$cache" +%s 2>/dev/null || echo 0)"
-			if [ $((now - mtime)) -lt 15 ] 2>/dev/null; then
+			if [ $((now - mtime)) -lt 300 ] 2>/dev/null; then
 				cat "$cache"
 				exit 0
 			fi

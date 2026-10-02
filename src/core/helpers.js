@@ -447,32 +447,42 @@ function wifiConfig(config) {
 				return false;
 			});
 		}
-		if (!found) {
-			const prefKey = (network === 'guest' ? 'guest_' : 'default_') + (targetDevice || 'radio0');
+		if (!found && targetDevice) {
+			const prefKey = (network === 'guest' ? 'guest_' : 'default_') + targetDevice;
 			if (v[prefKey] && v[prefKey].mode === 'ap' && v[prefKey].ssid) found = v[prefKey];
 		}
 		return found || {};
 	};
 
-	const main2 = pick('lan', dev2g, '2g'), main5 = pick('lan', dev5g, '5g'), guest2 = pick('guest', dev2g, '2g'), guest5 = pick('guest', dev5g, '5g');
-	const mergeWifi=function(a,b,id,kindLabel){
-		const out=Object.assign({}, b || {}, a || {});
+	const main2 = pick('lan', dev2g, '2g'), main5 = pick('lan', dev5g, '5g'), main6 = dev6g ? pick('lan', dev6g, '6g') : null, guest2 = pick('guest', dev2g, '2g'), guest5 = pick('guest', dev5g, '5g'), guest6 = dev6g ? pick('guest', dev6g, '6g') : null;
+	const mergeWifi=function(a,b,id,kindLabel,c){
+		const out=Object.assign({}, c || {}, b || {}, a || {});
 		out.id = id;
 		out.kind = kindLabel || 'extra';
 		out.sec2=(a&&a['.name'])||'';
 		out.sec5=(b&&b['.name'])||'';
+		out.sec6=(c&&c['.name'])||'';
 		out.dev2=(a&&a.device)||dev2g;
 		out.dev5=(b&&b.device)||dev5g;
+		out.dev6=(c&&c.device)||dev6g;
 		out.ssid2=(a&&a.ssid)||'';
 		out.ssid5=(b&&b.ssid)||'';
-		out.key=(a&&a.key)||(b&&b.key)||'';
-		out.disabled=(a&&a.disabled!=null)?a.disabled:((b&&b.disabled!=null)?b.disabled:'0');
-		out.encryption=(b&&b.encryption)||(a&&a.encryption)||'sae-mixed';
-		out.ssid=out.ssid2||out.ssid5||out.ssid||'';
+		out.ssid6=(c&&c.ssid)||'';
+		out.key=(a&&a.key)||(b&&b.key)||(c&&c.key)||'';
+		out.disabled2=String((a&&a.disabled!=null)?a.disabled:'0');
+		out.disabled5=String((b&&b.disabled!=null)?b.disabled:'0');
+		out.disabled6=String((c&&c.disabled!=null)?c.disabled:'0');
+		const anyEnabled = (a && a.ssid && out.disabled2 !== '1') ||
+		                   (b && b.ssid && out.disabled5 !== '1') ||
+		                   (c && c.ssid && out.disabled6 !== '1');
+		out.disabled = anyEnabled ? '0' : '1';
+		out.encryption=(b&&b.encryption)||(a&&a.encryption)||(c&&c.encryption)||'sae-mixed';
+		out.ssid=out.ssid2||out.ssid5||out.ssid6||out.ssid||'';
 		out.split=!!(out.ssid2&&out.ssid5&&out.ssid2!==out.ssid5);
-		out.network=(a&&a.network)||(b&&b.network)||'lan';
+		out.network=(a&&a.network)||(b&&b.network)||(c&&c.network)||'lan';
 		out.has2g=!!(a&&a.ssid);
 		out.has5g=!!(b&&b.ssid);
+		out.has6g=!!(c&&c.ssid);
 		return out;
 	};
 	const hasRadios = devList.length > 0;
@@ -480,18 +490,21 @@ function wifiConfig(config) {
 	Object.keys(v).forEach(function(k){
 		const s = v[k] || {};
 		if(s['.type'] !== 'wifi-iface' || s.mode !== 'ap' || !s.ssid) return;
-		if(k === 'default_radio0' || k === 'default_radio1' || k === 'guest_radio0' || k === 'guest_radio1' ||
+		if(k === 'default_radio0' || k === 'default_radio1' || k === 'default_radio2' ||
+		   k === 'guest_radio0' || k === 'guest_radio1' || k === 'guest_radio2' ||
 		   (dev2g && (k === 'default_' + dev2g || k === 'guest_' + dev2g)) ||
-		   (dev5g && (k === 'default_' + dev5g || k === 'guest_' + dev5g))) return;
-		const groupKey = k.replace(/_r[01]$/, '').replace(/_radio[01]$/, '');
-		if(!extrasMap[groupKey]) extrasMap[groupKey] = { r0: null, r1: null, name: groupKey };
+		   (dev5g && (k === 'default_' + dev5g || k === 'guest_' + dev5g)) ||
+		   (dev6g && (k === 'default_' + dev6g || k === 'guest_' + dev6g))) return;
+		const groupKey = k.replace(/_r[012]$/, '').replace(/_radio[012]$/, '');
+		if(!extrasMap[groupKey]) extrasMap[groupKey] = { r0: null, r1: null, r2: null, name: groupKey };
 		const band = bandOfSection(s);
 		if(band === '2g' || s.device === dev2g) extrasMap[groupKey].r0 = s;
+		else if(band === '6g' || s.device === dev6g) extrasMap[groupKey].r2 = s;
 		else extrasMap[groupKey].r1 = s;
 	});
 	const extras = Object.keys(extrasMap).map(function(gk){
 		const g = extrasMap[gk];
-		return mergeWifi(g.r0, g.r1, gk, 'extra');
+		return mergeWifi(g.r0, g.r1, gk, 'extra', g.r2);
 	});
 	const radio2g = (dev2g && v[dev2g]) || {};
 	const radio5g = (dev5g && v[dev5g]) || {};
@@ -502,8 +515,8 @@ function wifiConfig(config) {
 	const isTxBalanced = !!(radio2g.txpower && radio5g.txpower && String(radio2g.txpower) === '15' && String(radio5g.txpower) === '20');
 	return {
 		hasRadios: hasRadios,
-		main: mergeWifi(main2, main5, 'main', 'main'),
-		guest: mergeWifi(guest2, guest5, 'guest', 'guest'),
+		main: mergeWifi(main2, main5, 'main', 'main', main6),
+		guest: mergeWifi(guest2, guest5, 'guest', 'guest', guest6),
 		extras: extras,
 		dev2g: dev2g,
 		dev5g: dev5g,

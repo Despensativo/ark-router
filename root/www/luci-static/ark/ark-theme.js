@@ -23,6 +23,7 @@
       this.enhanceTabs();
       this.enhanceSafetyModals();
       this.enhanceModals();
+      this.initModalScrollPreservation();
       this.enhanceInterfaceBadges();
       this.initGlobalEscHandler();
       this.enhanceNetlinkCharts();
@@ -114,6 +115,31 @@
         });
         obs.observe(topmenu, { childList: true, subtree: true });
       }
+
+      var footer = document.querySelector('.ark-sidebar-footer');
+      if (footer && !document.getElementById('ark-mode-switch')) {
+        var modeWrap = document.createElement('div');
+        modeWrap.id = 'ark-mode-switch';
+        modeWrap.className = 'ark-mode-switch-wrap';
+        var curMode = localStorage.getItem('ark_interface_mode') || 'basic';
+        modeWrap.innerHTML = '' +
+          '<button type="button" class="ark-mode-pill ' + (curMode === 'basic' ? 'active' : '') + '" data-mode="basic" title="Modo Simplificado com cartões visuais e navegação ágil">⚡ Básico</button>' +
+          '<button type="button" class="ark-mode-pill ' + (curMode === 'advanced' ? 'active' : '') + '" data-mode="advanced" title="Modo Avançado com tabelas e parâmetros nativos do LuCI">🛠️ Avançado</button>';
+
+        modeWrap.addEventListener('click', function(e) {
+          var pill = e.target.closest('.ark-mode-pill');
+          if (!pill) return;
+          var newMode = pill.getAttribute('data-mode') || 'basic';
+          localStorage.setItem('ark_interface_mode', newMode);
+          if (document.body) document.body.setAttribute('data-interface-mode', newMode);
+          modeWrap.querySelectorAll('.ark-mode-pill').forEach(function(p) {
+            p.classList.toggle('active', p.getAttribute('data-mode') === newMode);
+          });
+          ArkTheme.applyPageTransforms();
+        });
+
+        footer.insertBefore(modeWrap, footer.firstChild);
+      }
     },
 
     initGlobalEscHandler: function() {
@@ -132,6 +158,7 @@
             try { luciUi.hideModal(); } catch (err) {}
           }
           document.body.classList.remove('modal-overlay-active');
+          if (typeof ArkTheme.restoreScroll === 'function') ArkTheme.restoreScroll();
 
           // 3. Close open custom overlays in DOM (never remove #modal_overlay or native modal divs)
           var customOverlays = document.querySelectorAll('.ark-custom-overlay, .ex-modal-overlay');
@@ -162,13 +189,38 @@
               try { luciUi.hideModal(); } catch (e) {}
             }
             document.body.classList.remove('modal-overlay-active');
+            if (typeof ArkTheme.restoreScroll === 'function') ArkTheme.restoreScroll();
           }
         });
       }
 
+      // Helper: detect if modal is applying changes, restarting, or showing a non-closable progress state
+      var isApplyingModal = function(m) {
+        if (!m) return false;
+        if (m.querySelector('.spinning, .cbi-progressbar, [data-indicator="apply"], .btn-spinner, .ark-spinner')) return true;
+        var headings = m.querySelectorAll('h3, h4, h5, .modal-title, legend');
+        for (var i = 0; i < headings.length; i++) {
+          var hText = (headings[i].textContent || '').toLowerCase();
+          if (hText.indexOf('apply') !== -1 || hText.indexOf('aplican') !== -1 ||
+              hText.indexOf('reboot') !== -1 || hText.indexOf('reinici') !== -1 ||
+              hText.indexOf('saving') !== -1 || hText.indexOf('salvan') !== -1 ||
+              hText.indexOf('rollback') !== -1 || hText.indexOf('revers') !== -1 ||
+              hText.indexOf('checking') !== -1 || hText.indexOf('verifican') !== -1) {
+            return true;
+          }
+        }
+        return false;
+      };
+
       // 2. Add top-right sticky close '×' button to active populated modals (desktop & mobile)
       var modals = document.querySelectorAll('.modal, .cbi-modal');
       modals.forEach(function(m) {
+        // If modal is actively applying changes or progress, do NOT show or inject close button; remove if present
+        if (isApplyingModal(m)) {
+          var existingBtn = m.querySelector('.ark-modal-close-btn');
+          if (existingBtn && existingBtn.parentNode) existingBtn.parentNode.removeChild(existingBtn);
+          return;
+        }
         // Ignore empty hidden modal skeleton in DOM
         if (m.children.length === 0 || (m.children.length === 1 && m.children[0].classList.contains('ark-modal-close-btn'))) return;
         if (!m.querySelector('.ark-modal-close-btn')) {
@@ -186,10 +238,120 @@
               try { luciUi.hideModal(); } catch (e) {}
             }
             document.body.classList.remove('modal-overlay-active');
+            if (typeof ArkTheme.restoreScroll === 'function') ArkTheme.restoreScroll();
           });
           m.insertBefore(closeBtn, m.firstChild);
         }
       });
+    },
+
+    savedScrollY: 0,
+    savedMrScrollY: 0,
+    savedMainScrollY: 0,
+    isModalActive: false,
+
+    recordScroll: function() {
+      if (this.isModalActive || document.body.classList.contains('modal-overlay-active')) return;
+      var winY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      if (winY > 0) this.savedScrollY = winY;
+      var mr = document.querySelector('.main-right');
+      if (mr && mr.scrollTop > 0) this.savedMrScrollY = mr.scrollTop;
+      var m = document.querySelector('.main');
+      if (m && m.scrollTop > 0) this.savedMainScrollY = m.scrollTop;
+    },
+
+    restoreScroll: function() {
+      this.isModalActive = false;
+      var targetY = this.savedScrollY;
+      var targetMrY = this.savedMrScrollY;
+      var targetMainY = this.savedMainScrollY;
+
+      var doRestore = function() {
+        if (targetY > 0) {
+          window.scrollTo(0, targetY);
+          if (document.documentElement) document.documentElement.scrollTop = targetY;
+          if (document.body) document.body.scrollTop = targetY;
+        }
+        if (targetMrY > 0) {
+          var mr = document.querySelector('.main-right');
+          if (mr) mr.scrollTop = targetMrY;
+        }
+        if (targetMainY > 0) {
+          var m = document.querySelector('.main');
+          if (m) m.scrollTop = targetMainY;
+        }
+      };
+
+      doRestore();
+      if (window.requestAnimationFrame) {
+        window.requestAnimationFrame(function() {
+          doRestore();
+          window.requestAnimationFrame(doRestore);
+        });
+      }
+      setTimeout(doRestore, 30);
+      setTimeout(doRestore, 100);
+      setTimeout(doRestore, 250);
+    },
+
+    initModalScrollPreservation: function() {
+      var self = this;
+      if (self._scrollPreserveInit) return;
+      self._scrollPreserveInit = true;
+
+      // 1. Listen continuously to user scroll while no modal is active
+      var onScroll = function() {
+        self.recordScroll();
+      };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      document.addEventListener('scroll', onScroll, { passive: true, capture: true });
+
+      // 2. Hook into window.L.ui or window.ui showModal / hideModal if present
+      var hookUi = function() {
+        var luciUi = (window.L && window.L.ui) || window.ui;
+        if (!luciUi || luciUi._arkScrollHooked) return;
+        luciUi._arkScrollHooked = true;
+
+        var origShow = luciUi.showModal;
+        if (typeof origShow === 'function') {
+          luciUi.showModal = function() {
+            self.recordScroll();
+            self.isModalActive = true;
+            return origShow.apply(this, arguments);
+          };
+        }
+
+        var origHide = luciUi.hideModal;
+        if (typeof origHide === 'function') {
+          luciUi.hideModal = function() {
+            var res = origHide.apply(this, arguments);
+            self.restoreScroll();
+            return res;
+          };
+        }
+      };
+
+      hookUi();
+      setTimeout(hookUi, 500);
+      setTimeout(hookUi, 1500);
+
+      // 3. MutationObserver on document.body class to catch modal-overlay-active additions/removals
+      if (window.MutationObserver) {
+        var bodyObs = new MutationObserver(function(mutations) {
+          mutations.forEach(function(mut) {
+            if (mut.attributeName === 'class') {
+              var isActive = document.body.classList.contains('modal-overlay-active');
+              if (isActive && !self.isModalActive) {
+                self.recordScroll();
+                self.isModalActive = true;
+              } else if (!isActive && self.isModalActive) {
+                self.restoreScroll();
+              }
+            }
+          });
+        });
+        bodyObs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      }
     },
 
     injectFeatureGuides: function() {
@@ -443,6 +605,11 @@
     },
 
     translateRemainingUI: function() {
+      var lang = (document.documentElement.lang || 'pt').toLowerCase();
+      if (lang.indexOf('en') === 0) return;
+
+      var isEs = (lang.indexOf('es') === 0);
+
       var dict = {
         'Save & Apply': 'Salvar e Aplicar',
         'Apply unchecked': 'Aplicar sem verificar',
@@ -456,6 +623,24 @@
         'Scan': 'Escanear Redes',
         'Add': 'Adicionar',
         'Add new interface...': 'Adicionar Nova Interface...',
+        'New interface name...': 'Nome da nova interface...',
+        'Protocol of the new interface': 'Protocolo da nova interface',
+        'Create interface': 'Criar Interface',
+        'DHCP client': 'Cliente DHCP (Automático)',
+        'Static address': 'Endereço IP Estático',
+        'unspecified': 'Não especificado',
+        'Device': 'Dispositivo de Rede',
+        'Devices': 'Dispositivos de Rede',
+        'Global network options': 'Opções Globais de Rede',
+        'Bring up on boot': 'Iniciar na inicialização do sistema',
+        'Use default gateway': 'Usar gateway padrão',
+        'Use DNS servers advertised by peer': 'Usar servidores DNS do provedor',
+        'Use custom DNS servers': 'Usar servidores DNS personalizados',
+        'Override MAC address': 'Substituir endereço MAC',
+        'Advanced Settings': 'Configurações Avançadas',
+        'Physical Settings': 'Configurações Físicas',
+        'Firewall Settings': 'Configurações de Firewall',
+        'DHCP Server': 'Servidor DHCP',
         'Generate archive': 'Gerar Cópia de Segurança',
         'Perform reset': 'Restaurar de Fábrica',
         'Upload archive...': 'Enviar Cópia...',
@@ -468,6 +653,14 @@
         'Dismiss': 'Fechar',
         'Cancel': 'Cancelar',
         'Confirm': 'Confirmar',
+        'Back to overview': 'Voltar à Visão Geral',
+        'Applying changes': 'Aplicando alterações…',
+        'Configuration applied': 'Configuração aplicada!',
+        'Waiting for changes to take effect...': 'Aguardando aplicação das alterações…',
+        'Changes applied.': 'Alterações aplicadas com sucesso.',
+        'Roll back': 'Reverter',
+        'Rollback': 'Reversão de Segurança',
+        'Checking connectivity': 'Verificando conectividade…',
         'Wireless Overview': 'Centro de Comando Wi-Fi',
         'Associated Stations': 'Dispositivos Conectados no Wi-Fi',
         'Active DHCP Leases': 'Dispositivos Conectados na Rede Local (DHCP)',
@@ -478,13 +671,13 @@
         'SSH-Keys': 'Chaves Públicas SSH',
         'General Settings': 'Configurações Gerais',
         'Time Synchronization': 'Sincronização de Data e Hora',
+        'Language and Style': 'Idioma e Tema',
         'Download backup': 'Baixar Cópia de Segurança',
         'Reset to defaults': 'Restaurar Padrões de Fábrica',
         'Restore backup': 'Restaurar Cópia de Segurança',
         'Flash new firmware image': 'Gravar Nova Imagem de Firmware',
         'Actions': 'Ações Principais',
         'Configuration': 'Ajustes Salvos',
-        'Global network options': 'Opções Globais de Rede',
         'Interfaces': 'Interfaces de Rede',
         'Hostname': 'Nome do Roteador',
         'Model': 'Modelo',
@@ -505,14 +698,56 @@
         'Kernel Log': 'Registros de Eventos do Kernel',
         'Processes': 'Processos em Execução',
         'Routing Table': 'Tabela de Rotas',
+        'Routing': 'Tabela de Roteamento',
+        'System Log': 'Registros do Sistema',
+        'Channel Analysis': 'Análise de Canais Wi-Fi',
+        'Realtime Graphs': 'Gráficos em Tempo Real',
+        'WireGuard': 'VPN WireGuard',
+        'Status': 'Status',
+        'System': 'Sistema',
+        'Administration': 'Administração e Senha',
+        'Software': 'Gerenciador de Pacotes',
+        'Startup': 'Inicialização de Serviços',
+        'Scheduled Tasks': 'Tarefas Agendadas (Cron)',
+        'Mount Points': 'Pontos de Montagem',
+        'Attended Sysupgrade': 'Atualização Assistida',
+        'LED Configuration': 'Configuração de LEDs',
+        'Reboot': 'Reinicialização',
+        'Services': 'Serviços Adicionais',
+        'Wireless': 'Redes Sem Fio (Wi-Fi)',
+        'DHCP': 'Servidor DHCP',
+        'DNS': 'Servidor DNS',
+        'Firewall': 'Firewall e Segurança',
+        'Log out': 'Sair do Painel',
+        'Refreshing': 'Atualizando...',
+        'Load': 'Carga da CPU',
+        'Bandwidth': 'Largura de Banda',
+        'Connections': 'Sessões Ativas',
+        'Conexões': 'Sessões Ativas',
+        'NAT Rules': 'Regras de NAT',
+        'IP Sets': 'Conjuntos de IPs (IPset)',
+        'Sync with browser': 'Sincronizar com Navegador',
+        'Sync with NTP-Server': 'Sincronizar com Servidor NTP',
+        'Perform reboot': 'Reiniciar Roteador',
+        'Hang Up': 'Recarregar (HUP)',
+        'Terminate': 'Finalizar (TERM)',
+        'Kill': 'Forçar Parada (KILL)',
+        'System load': 'Carga do Sistema (CPU)',
+        'System Properties': 'Propriedades do Sistema',
+        'Enable SYN-flood protection': 'Proteção contra SYN-Flood',
+        'Drop invalid packets': 'Descartar pacotes inválidos',
+        'Input': 'Entrada (Input)',
+        'Output': 'Saída (Output)',
+        'Forward': 'Encaminhamento (Forward)',
+        'accept': 'Aceitar (Accept)',
+        'reject': 'Rejeitar (Reject)',
+        'drop': 'Descartar (Drop)',
         'Firewall - Zone Settings': 'Firewall - Zonas de Segurança',
         'Port Forwards': 'Redirecionamento de Portas',
         'Traffic Rules': 'Regras de Tráfego',
         'Custom Rules': 'Regras Personalizadas',
         'Diagnostics': 'Diagnósticos de Rede',
-        'Reboot': 'Reinicialização do Sistema',
-        'Backup / Flash Firmware': 'Backup e Gravação de Firmware',
-        'Administration': 'Administração e Senhas',
+        'Backup / Flash Firmware': 'Backup e Firmware',
         'DHCP and DNS': 'Servidor DHCP e DNS',
         'Static Leases': 'Endereços IP Fixos (Leases Estáticos)',
         'IP Address': 'Endereço IP',
@@ -534,60 +769,281 @@
         'Please enter your username and password.': 'Por favor, digite seu usuário e senha.',
         'Username': 'Usuário',
         'Password': 'Senha',
-        'Log in': 'Entrar no Painel'
+        'Log in': 'Entrar no Painel',
+        'An optional, short description for this device': 'Uma descrição breve e opcional para este dispositivo',
+        'Here you can configure the basic aspects of your device like its hostname or the timezone.': 'Aqui você pode configurar os aspectos básicos do seu roteador, como nome de rede (hostname) e fuso horário.',
+        'This list gives an overview over currently running system processes and their status.': 'Esta lista exibe os processos atualmente em execução na memória RAM e seus respectivos status.',
+        'Load Average is a metric that is used by Linux to keep track of system resources.': 'A carga média (Load Average) indica a demanda de processamento da CPU ao longo do tempo.'
       };
 
+      var dictEs = {
+        'Save & Apply': 'Guardar y Aplicar',
+        'Apply unchecked': 'Aplicar sin comprobar',
+        'Save': 'Guardar Ajustes',
+        'Reset': 'Restablecer',
+        'Restart': 'Reiniciar',
+        'Stop': 'Detener',
+        'Edit': 'Editar',
+        'Delete': 'Eliminar',
+        'Remove': 'Eliminar',
+        'Scan': 'Escanear Redes',
+        'Add': 'Añadir',
+        'Add new interface...': 'Añadir Nueva Interfaz...',
+        'New interface name...': 'Nombre de la nueva interfaz...',
+        'Protocol of the new interface': 'Protocolo de la nueva interfaz',
+        'Create interface': 'Crear Interfaz',
+        'DHCP client': 'Cliente DHCP (Automático)',
+        'Static address': 'Dirección IP Estática',
+        'unspecified': 'No especificado',
+        'Device': 'Dispositivo de Red',
+        'Devices': 'Dispositivos de Red',
+        'Global network options': 'Opciones Globales de Red',
+        'Bring up on boot': 'Iniciar en el arranque del sistema',
+        'Use default gateway': 'Usar puerta de enlace predeterminada',
+        'Use DNS servers advertised by peer': 'Usar servidores DNS del proveedor',
+        'Use custom DNS servers': 'Usar servidores DNS personalizados',
+        'Override MAC address': 'Reemplazar dirección MAC',
+        'Advanced Settings': 'Configuración Avanzada',
+        'Physical Settings': 'Configuración Física',
+        'Firewall Settings': 'Configuración del Cortafuegos',
+        'DHCP Server': 'Servidor DHCP',
+        'Generate archive': 'Generar Copia de Seguridad',
+        'Perform reset': 'Restablecer de Fábrica',
+        'Upload archive...': 'Subir Copia...',
+        'Flash image...': 'Grabar Imagen...',
+        'Save mtdblock': 'Guardar Bloque MTD',
+        'Open list...': 'Abrir Lista...',
+        'Enable': 'Activar',
+        'Disable': 'Desactivar',
+        'Back': 'Volver',
+        'Dismiss': 'Cerrar',
+        'Cancel': 'Cancelar',
+        'Confirm': 'Confirmar',
+        'Back to overview': 'Volver al Estado General',
+        'Applying changes': 'Aplicando cambios…',
+        'Configuration applied': '¡Configuración aplicada!',
+        'Waiting for changes to take effect...': 'Esperando a que se apliquen los cambios…',
+        'Changes applied.': 'Cambios aplicados con éxito.',
+        'Roll back': 'Revertir',
+        'Rollback': 'Reversión de Seguridad',
+        'Checking connectivity': 'Comprobando conectividad…',
+        'Wireless Overview': 'Centro de Mando Wi-Fi',
+        'Associated Stations': 'Dispositivos Conectados a la Wi-Fi',
+        'Active DHCP Leases': 'Dispositivos Conectados en Red Local (DHCP)',
+        'Active DHCPv6 Leases': 'Dispositivos Conectados mediante IPv6',
+        'Network Utilities': 'Utilidades y Diagnósticos de Red',
+        'Router Password': 'Contraseña del Administrador',
+        'SSH Access': 'Acceso Remoto SSH',
+        'SSH-Keys': 'Claves Públicas SSH',
+        'General Settings': 'Configuración General',
+        'Time Synchronization': 'Sincronización de Fecha y Hora',
+        'Language and Style': 'Idioma y Tema',
+        'Download backup': 'Descargar Copia de Seguridad',
+        'Reset to defaults': 'Restablecer Valores de Fábrica',
+        'Restore backup': 'Restaurar Copia de Seguridad',
+        'Flash new firmware image': 'Grabar Nueva Imagen de Firmware',
+        'Actions': 'Acciones Principales',
+        'Configuration': 'Ajustes Guardados',
+        'Interfaces': 'Interfaces de Red',
+        'Hostname': 'Nombre del Router',
+        'Model': 'Modelo',
+        'Architecture': 'Procesador / Arquitectura',
+        'Firmware Version': 'Versión del Sistema',
+        'Kernel Version': 'Versión del Kernel',
+        'Local Time': 'Hora Local',
+        'Uptime': 'Tiempo de Actividad',
+        'Load Average': 'Carga de la CPU',
+        'MAC-Address': 'Dirección MAC',
+        'Network': 'Red',
+        'Signal / Noise': 'Señal / Ruido',
+        'RX Rate / TX Rate': 'Descarga / Subida',
+        'No information available': 'No hay dispositivos conectados en este momento.',
+        'Auto Refresh': 'Actualización Automática',
+        'Collecting data...': 'Recopilando información...',
+        'System log': 'Registros de Mensajes del Sistema',
+        'Kernel Log': 'Registros de Eventos del Kernel',
+        'Processes': 'Procesos en Ejecución',
+        'Routing Table': 'Tabla de Enrutamiento',
+        'Routing': 'Tabla de Enrutamiento',
+        'System Log': 'Registros del Sistema',
+        'Channel Analysis': 'Análisis de Canales Wi-Fi',
+        'Realtime Graphs': 'Gráficos en Tiempo Real',
+        'WireGuard': 'VPN WireGuard',
+        'Status': 'Estado',
+        'System': 'Sistema',
+        'Administration': 'Administración y Contraseña',
+        'Software': 'Gestor de Paquetes',
+        'Startup': 'Inicio de Servicios',
+        'Scheduled Tasks': 'Tareas Programadas (Cron)',
+        'Mount Points': 'Puntos de Montaje',
+        'Attended Sysupgrade': 'Actualización Asistida',
+        'LED Configuration': 'Configuración de LEDs',
+        'Reboot': 'Reinicio del Sistema',
+        'Services': 'Servicios Adicionales',
+        'Wireless': 'Redes Inalámbricas (Wi-Fi)',
+        'DHCP': 'Servidor DHCP',
+        'DNS': 'Servidor DNS',
+        'Firewall': 'Cortafuegos y Seguridad',
+        'Log out': 'Cerrar Sesión',
+        'Refreshing': 'Actualizando...',
+        'Load': 'Carga de CPU',
+        'Bandwidth': 'Ancho de Banda',
+        'Connections': 'Conexiones Activas',
+        'Conexões': 'Conexiones Activas',
+        'NAT Rules': 'Regras de NAT',
+        'IP Sets': 'Conjuntos de IP (IPset)',
+        'Sync with browser': 'Sincronizar con el Navegador',
+        'Sync with NTP-Server': 'Sincronizar con Servidor NTP',
+        'Perform reboot': 'Reiniciar Router',
+        'Hang Up': 'Recargar (HUP)',
+        'Terminate': 'Finalizar (TERM)',
+        'Kill': 'Forzar Parada (KILL)',
+        'System load': 'Carga del Sistema (CPU)',
+        'System Properties': 'Propiedades del Sistema',
+        'Enable SYN-flood protection': 'Protección contra ataques SYN-Flood',
+        'Drop invalid packets': 'Descartar paquetes inválidos',
+        'Input': 'Entrada (Input)',
+        'Output': 'Salida (Output)',
+        'Forward': 'Reenvío (Forward)',
+        'accept': 'Aceptar (Accept)',
+        'reject': 'Rechazar (Reject)',
+        'drop': 'Descartar (Drop)',
+        'Firewall - Zone Settings': 'Cortafuegos - Zonas de Seguridad',
+        'Port Forwards': 'Reenvío de Puertos',
+        'Traffic Rules': 'Reglas de Tráfico',
+        'Custom Rules': 'Reglas Personalizadas',
+        'Diagnostics': 'Diagnósticos de Red',
+        'Backup / Flash Firmware': 'Copia de Seguridad y Firmware',
+        'DHCP and DNS': 'Servidor DHCP y DNS',
+        'Static Leases': 'Direcciones IP Fijas (Leases Estáticos)',
+        'IP Address': 'Dirección IP',
+        'IP address': 'Dirección IP',
+        'Netmask': 'Máscara de Red',
+        'Gateway': 'Puerta de Enlace Predeterminada',
+        'DNS server': 'Servidor DNS',
+        'DNS servers': 'Servidores DNS',
+        'IPv6-Address': 'Dirección IPv6',
+        'Transfer': 'Tráfico',
+        'Transmit': 'Transmitidos (TX)',
+        'Receive': 'Recibidos (RX)',
+        'No password set!': '¡Ninguna contraseña configurada!',
+        'There is no password set on this router. Please configure a root password to protect the web interface.': 'No hay contraseña configurada en este router. Por favor configure una contraseña para el usuario root para proteger la interfaz web.',
+        'Go to password configuration...': 'Configurar contraseña de acceso…',
+        'JavaScript required!': '¡JavaScript requerido!',
+        'You must enable JavaScript in your browser or LuCI will not work properly.': 'Debe habilitar JavaScript en su navegador para que LuCI funcione correctamente.',
+        'Authorization Required': 'Autenticación Requerida',
+        'Please enter your username and password.': 'Por favor ingrese su usuario y contraseña.',
+        'Username': 'Usuario',
+        'Password': 'Contraseña',
+        'Log in': 'Entrar al Panel',
+        'An optional, short description for this device': 'Una descripción breve y opcional para este dispositivo',
+        'Here you can configure the basic aspects of your device like its hostname or the timezone.': 'Aquí puede configurar los aspectos básicos de su dispositivo como su nombre de host o la zona horaria.',
+        'This list gives an overview over currently running system processes and their status.': 'Esta lista muestra los procesos que se están ejecutando actualmente en la memoria RAM y su estado.',
+        'Load Average is a metric that is used by Linux to keep track of system resources.': 'La carga promedio (Load Average) es una métrica utilizada para monitorear el uso de la CPU a lo largo del tiempo.'
+      };
+
+      var activeDict = isEs ? dictEs : dict;
+
+      // 1. Sidebar & Menu Navigation Links
+      var navLinks = document.querySelectorAll('#topmenu a, .ark-sidebar-nav a, .nav > li > a, .dropdown-menu > li > a');
+      navLinks.forEach(function(a) {
+        var t = a.textContent.trim();
+        if (activeDict[t]) {
+          if (a.children.length === 0) {
+            a.textContent = activeDict[t];
+          } else {
+            for (var i = 0; i < a.childNodes.length; i++) {
+              var n = a.childNodes[i];
+              if (n.nodeType === Node.TEXT_NODE && n.textContent.trim() === t) {
+                n.textContent = activeDict[t];
+                break;
+              }
+            }
+          }
+        }
+      });
+
+      // 2. Alert Banners
       var alertBanners = document.querySelectorAll('.alert-message');
       alertBanners.forEach(function(banner) {
         var h = banner.querySelector('h4');
-        if (h && dict[h.textContent.trim()]) h.textContent = dict[h.textContent.trim()];
+        if (h && activeDict[h.textContent.trim()]) h.textContent = activeDict[h.textContent.trim()];
         var ps = banner.querySelectorAll('p');
         ps.forEach(function(p) {
           var pt = p.textContent.trim();
-          if (dict[pt]) p.textContent = dict[pt];
+          if (activeDict[pt]) p.textContent = activeDict[pt];
         });
         var as = banner.querySelectorAll('a');
         as.forEach(function(a) {
           var at = a.textContent.trim();
-          if (dict[at]) a.textContent = dict[at];
+          if (activeDict[at]) a.textContent = activeDict[at];
         });
       });
 
+      // 3. Buttons & Inputs
       var btns = document.querySelectorAll('button, input[type="submit"], input[type="button"], a.btn, a.cbi-button');
       btns.forEach(function(b) {
         if (b.tagName === 'INPUT') {
           var val = (b.value || '').trim();
           if (val === 'Limpar' || val === 'Reset') {
-            b.value = '↩️ Desfazer Alterações';
-            b.title = 'Descarta as alterações não salvas nesta tela e recarrega os dados originais salvos no roteador';
+            b.value = isEs ? '↩️ Deshacer Cambios' : '↩️ Desfazer Alterações';
+            b.title = isEs ? 'Descarta los cambios no guardados' : 'Descarta as alterações não salvas nesta tela e recarrega os dados originais';
           } else if (val === 'Apagar' && b.closest('.cbi-section-remove')) {
-            b.value = '🗑️ Apagar Instância';
-            b.title = 'Exclui esta instância de serviço';
-          } else if (dict[val]) {
-            b.value = dict[val];
+            b.value = isEs ? '🗑️ Eliminar Instancia' : '🗑️ Apagar Instância';
+            b.title = isEs ? 'Elimina esta instancia' : 'Exclui esta instância de serviço';
+          } else if (activeDict[val]) {
+            b.value = activeDict[val];
           }
         } else {
           var t = b.textContent.trim();
           if (t === 'Limpar' || t === 'Reset') {
-            b.textContent = '↩️ Desfazer Alterações';
-            b.title = 'Descarta as alterações não salvas nesta tela e recarrega os dados originais salvos no roteador';
-          } else if (dict[t]) {
-            b.textContent = dict[t];
+            b.textContent = isEs ? '↩️ Deshacer Cambios' : '↩️ Desfazer Alterações';
+            b.title = isEs ? 'Descarta los cambios no guardados' : 'Descarta as alterações não salvas nesta tela e recarrega os dados originais';
+          } else if (activeDict[t]) {
+            b.textContent = activeDict[t];
           }
         }
       });
 
-      var headings = document.querySelectorAll('h2, h3, h4, legend, .cbi-value-title, th, .th, .cbi-tab a');
+      // 4. Headings & Tabs
+      var headings = document.querySelectorAll('h2, h3, h4, legend, .cbi-value-title, th, .th, .cbi-tab a, ul.tabs > li > a, ul.cbi-tabmenu > li > a, .modal h3, .modal h4, .cbi-modal h3, .cbi-modal h4');
       headings.forEach(function(h) {
         var t = h.textContent.trim();
-        if (dict[t]) h.textContent = dict[t];
+        if (activeDict[t]) h.textContent = activeDict[t];
       });
 
+      // 5. Placeholders & Descriptions
       var placeholders = document.querySelectorAll('.tr.placeholder td, .tr.placeholder .td, em');
       placeholders.forEach(function(p) {
         var t = p.textContent.trim();
-        if (dict[t]) p.textContent = dict[t];
+        if (activeDict[t]) p.textContent = activeDict[t];
       });
+
+      var inputs = document.querySelectorAll('input[placeholder], textarea[placeholder]');
+      inputs.forEach(function(inp) {
+        var ph = (inp.getAttribute('placeholder') || '').trim();
+        if (activeDict[ph]) inp.setAttribute('placeholder', activeDict[ph]);
+      });
+
+      // 6. Safe Dropdown Option Items ONLY (never wipe root custom element)
+      var dropdownItems = document.querySelectorAll('.cbi-dropdown > ul > li');
+      dropdownItems.forEach(function(item) {
+        var t = (item.textContent || '').trim();
+        if (activeDict[t]) item.textContent = activeDict[t];
+      });
+
+      var descrs = document.querySelectorAll('.cbi-value-description, .cbi-section-descr');
+      descrs.forEach(function(d) {
+        var t = d.textContent.trim();
+        if (activeDict[t]) d.textContent = activeDict[t];
+      });
+
+      // 7. Refreshing indicator
+      var ind = document.getElementById('indicators') || document.querySelector('.ark-indicators');
+      if (ind) {
+        var it = ind.textContent.trim();
+        if (activeDict[it]) ind.textContent = activeDict[it];
+      }
 
       // 4. Empty Section Revert Warning Banner (e.g. if an instance was deleted by mistake)
       var emptyNotices = document.querySelectorAll('.cbi-section-empty, .cbi-section-node-empty, em');
@@ -1655,12 +2111,15 @@
 
     hideRedundantOverviewSections: function() {
       if (location.pathname.indexOf('/status/overview') === -1) return;
+      var mode = localStorage.getItem('ark_interface_mode') || 'basic';
       var h3s = document.querySelectorAll('h3, legend');
       h3s.forEach(function(h) {
         var txt = h.textContent.trim().toLowerCase();
         if (txt === 'sistema' || txt.indexOf('mem') === 0 || (txt.indexOf('rede') === 0 && txt.indexOf('sem fio') === -1 && txt.indexOf('wireless') === -1)) {
           var sec = h.closest('.cbi-section') || h.parentElement;
-          if (sec) sec.style.display = 'none';
+          if (sec) {
+            sec.style.display = (mode === 'advanced') ? '' : 'none';
+          }
         }
       });
     },
@@ -2197,81 +2656,87 @@
       if (!dash) {
         dash = document.createElement('div');
         dash.id = 'ark-wireless-dashboard';
-        dash.innerHTML = '' +
-          '<div class="ark-wireless-grid">' +
-            '<div class="ark-radio-card radio-5g" id="ark-radio-5g-card">' +
-              '<div class="ark-radio-header">' +
-                '<div class="ark-radio-title-wrap">' +
-                  '<h3><span>⚡</span> Rádio 5 GHz (Ultra Velocidade)</h3>' +
-                  '<div class="ark-radio-meta" id="ark-r5g-meta">Identificando hardware...</div>' +
-                  '<div class="ark-radio-badges" id="ark-r5g-badges">' +
-                    '<span class="ark-chip primary" id="ark-r5g-chan-chip">Canal --</span>' +
-                    '<span class="ark-chip info" id="ark-r5g-bitrate-chip" style="display:none;"></span>' +
-                    '<span class="ark-chip online" id="ark-r5g-status-chip">🟢 Rádio Ativo</span>' +
-                  '</div>' +
-                '</div>' +
-                '<div class="ark-radio-actions" id="ark-r5g-actions"></div>' +
-              '</div>' +
-              '<div style="font-size:12px;font-weight:700;color:#94a3b8;margin-top:8px;">Redes Wi-Fi Transmitidas (5 GHz):</div>' +
-              '<div class="ark-ssid-list" id="ark-r5g-ssids"></div>' +
-            '</div>' +
-            '<div class="ark-radio-card radio-2g" id="ark-radio-2g-card">' +
-              '<div class="ark-radio-header">' +
-                '<div class="ark-radio-title-wrap">' +
-                  '<h3><span>📡</span> Rádio 2.4 GHz (Longo Alcance)</h3>' +
-                  '<div class="ark-radio-meta" id="ark-r2g-meta">Identificando hardware...</div>' +
-                  '<div class="ark-radio-badges" id="ark-r2g-badges">' +
-                    '<span class="ark-chip primary" id="ark-r2g-chan-chip">Canal --</span>' +
-                    '<span class="ark-chip info" id="ark-r2g-bitrate-chip" style="display:none;"></span>' +
-                    '<span class="ark-chip online" id="ark-r2g-status-chip">🟢 Rádio Ativo</span>' +
-                  '</div>' +
-                '</div>' +
-                '<div class="ark-radio-actions" id="ark-r2g-actions"></div>' +
-              '</div>' +
-              '<div style="font-size:12px;font-weight:700;color:#94a3b8;margin-top:8px;">Redes Wi-Fi Transmitidas (2.4 GHz):</div>' +
-              '<div class="ark-ssid-list" id="ark-r2g-ssids"></div>' +
-            '</div>' +
-          '</div>';
-
+        dash.innerHTML = '<div class="ark-wireless-grid" id="ark-wireless-grid"></div>';
         table.parentNode.insertBefore(dash, table);
+      }
+
+      var grid = document.getElementById('ark-wireless-grid') || dash;
+
+      function getOrCreateRadioCard(rKey, titleText, cardClass) {
+        var cardId = 'ark-radio-' + rKey + '-card';
+        var card = document.getElementById(cardId);
+        if (!card) {
+          card = document.createElement('div');
+          card.id = cardId;
+          card.className = 'ark-radio-card ' + cardClass;
+          card.innerHTML = '' +
+            '<div class="ark-radio-header">' +
+              '<div class="ark-radio-title-wrap">' +
+                '<h3>' + titleText + '</h3>' +
+                '<div class="ark-radio-meta" id="ark-r' + rKey + '-meta">Identificando hardware...</div>' +
+                '<div class="ark-radio-badges" id="ark-r' + rKey + '-badges">' +
+                  '<span class="ark-chip primary" id="ark-r' + rKey + '-chan-chip">Canal --</span>' +
+                  '<span class="ark-chip info" id="ark-r' + rKey + '-bitrate-chip" style="display:none;"></span>' +
+                  '<span class="ark-chip online" id="ark-r' + rKey + '-status-chip">🟢 Rádio Ativo</span>' +
+                '</div>' +
+              '</div>' +
+              '<div class="ark-radio-actions" id="ark-r' + rKey + '-actions"></div>' +
+            '</div>' +
+            '<div style="font-size:12px;font-weight:700;color:#94a3b8;margin-top:8px;">Redes Wi-Fi Transmitidas:</div>' +
+            '<div class="ark-ssid-list" id="ark-r' + rKey + '-ssids"></div>';
+          grid.appendChild(card);
+        }
+        return card;
       }
 
       var rows = table.querySelectorAll('.tr.cbi-section-table-row, tr.cbi-section-table-row');
       var currentRadio = null;
-
-      var r5gSsids = document.getElementById('ark-r5g-ssids');
-      var r2gSsids = document.getElementById('ark-r2g-ssids');
-      if (r5gSsids) r5gSsids.innerHTML = '';
-      if (r2gSsids) r2gSsids.innerHTML = '';
+      var currentRadioSid = null;
 
       rows.forEach(function(r) {
         var sid = r.getAttribute('data-sid') || '';
-        var isRadio = (sid === 'radio0' || sid === 'radio1' || (sid.indexOf('radio') === 0 && sid.indexOf('_') === -1));
+        var isRadio = (sid === 'radio0' || sid === 'radio1' || sid === 'radio2' || (sid.indexOf('radio') === 0 && sid.indexOf('_') === -1));
 
         if (isRadio) {
           var rowText = (r.textContent || '');
           var rowLower = rowText.toLowerCase();
 
-          // Detecção precisa da banda (802.11ax existe em 2.4G e 5G simultaneamente no Wi-Fi 6)
-          var is2g = false;
-          var is5g = false;
+          var rKey = '2g';
+          var titleText = '<span>📡</span> Rádio 2.4 GHz (Longo Alcance)';
+          var cardClass = 'radio-2g';
 
-          if (rowLower.indexOf('2.4') !== -1 || /channel:\s*([1-9]|1[0-4])\b/i.test(rowLower) || rowLower.indexOf('b/g/n') !== -1) {
-            is2g = true;
+          if (rowLower.indexOf('6ghz') !== -1 || rowLower.indexOf('6 ghz') !== -1 || (/channel:\s*(1|5|9|13|17|21|25|29|33)\b/i.test(rowLower) && rowLower.indexOf('6.') !== -1)) {
+            rKey = '6g';
+            titleText = '<span>⚡</span> Rádio 6 GHz (Wi-Fi 6E/7 Ultra)';
+            cardClass = 'radio-6g';
           } else if (rowLower.indexOf('5.') !== -1 || rowLower.indexOf('5ghz') !== -1 || rowLower.indexOf('5 ghz') !== -1 || /channel:\s*(3[6-9]|[4-9][0-9]|1[0-9]{2})\b/i.test(rowLower) || rowLower.indexOf('ac/ax/n') !== -1 || rowLower.indexOf('ac/an') !== -1) {
-            is5g = true;
-          } else {
-            is2g = (sid === 'radio0');
-            is5g = (sid === 'radio1');
+            rKey = '5g';
+            titleText = '<span>⚡</span> Rádio 5 GHz (Alta Velocidade)';
+            cardClass = 'radio-5g';
+          } else if (sid === 'radio1' && rKey === '2g') {
+            rKey = '5g';
+            titleText = '<span>⚡</span> Rádio 5 GHz (Alta Velocidade)';
+            cardClass = 'radio-5g';
           }
 
-          currentRadio = is5g ? '5g' : '2g';
+          if (document.getElementById('ark-radio-' + rKey + '-card') && currentRadioSid && currentRadioSid !== sid) {
+            rKey = rKey + '-2';
+            titleText = '<span>⚡</span> Rádio ' + rKey.toUpperCase() + ' (Secundário/Gaming)';
+          }
+
+          currentRadio = rKey;
+          currentRadioSid = sid;
+
+          getOrCreateRadioCard(rKey, titleText, cardClass);
+
+          var ssidListEl = document.getElementById('ark-r' + currentRadio + '-ssids');
+          if (ssidListEl) ssidListEl.innerHTML = '';
 
           // Mapeamento dinâmico de hardware e velocidade teórica
           var metaEl = document.getElementById('ark-r' + currentRadio + '-meta');
           if (metaEl) {
             if (rowText.indexOf('MT7986') !== -1 || rowText.indexOf('mt7986') !== -1) {
-              if (currentRadio === '5g') {
+              if (currentRadio.indexOf('5g') !== -1) {
                 metaEl.textContent = 'MediaTek MT7986 (Filogic 830) • Wi-Fi 6 (802.11ax/ac/n) • Até 2402 Mbps';
               } else {
                 metaEl.textContent = 'MediaTek MT7986 (Filogic 830) • Wi-Fi 6 (802.11ax/b/g/n) • Até 574 Mbps';
@@ -2282,7 +2747,7 @@
               metaEl.textContent = 'Qualcomm Atheros QCA9558 • 802.11bgn • Até 450 Mbps';
             } else {
               var mDev = rowText.match(/(MediaTek\s+[A-Za-z0-9]+|Qualcomm\s+[A-Za-z0-9]+|[A-Za-z0-9_-]+\s+802\.11[a-z/]+)/i);
-              metaEl.textContent = (mDev ? mDev[1] : sid) + ' • Wi-Fi ' + (currentRadio === '5g' ? '5 GHz' : '2.4 GHz');
+              metaEl.textContent = (mDev ? mDev[1] : sid) + ' • Wi-Fi ' + (currentRadio.indexOf('6g') !== -1 ? '6 GHz' : (currentRadio.indexOf('5g') !== -1 ? '5 GHz' : '2.4 GHz'));
             }
           }
 
@@ -2323,7 +2788,7 @@
           var actions = r.querySelector('.cbi-section-actions');
           var targetSlot = document.getElementById('ark-r' + currentRadio + '-actions');
           if (actions && targetSlot && targetSlot.children.length === 0) {
-            var btns = actions.querySelectorAll('button');
+            var btns = actions.querySelectorAll('button, input[type="button"], a.cbi-button');
             btns.forEach(function(b) {
               var clone = b.cloneNode(true);
               clone.addEventListener('click', function(e) { e.preventDefault(); b.click(); });
@@ -2379,7 +2844,7 @@
           ssidCard.appendChild(info);
           ssidCard.appendChild(actWrap);
           if (actionsCell) {
-            var sbtns = actionsCell.querySelectorAll('button');
+            var sbtns = actionsCell.querySelectorAll('button, input[type="button"], a.cbi-button');
             sbtns.forEach(function(sb) {
               var sclone = sb.cloneNode(true);
               sclone.addEventListener('click', function(e) { e.preventDefault(); sb.click(); });
@@ -2393,11 +2858,15 @@
       });
 
       var mode = localStorage.getItem('ark_interface_mode') || 'basic';
-      if (mode !== 'advanced') {
+      if (mode === 'advanced') {
+        table.style.removeProperty('display');
+        var oldSearch = wifiSec.querySelector('.ark-table-search-bar');
+        if (oldSearch) oldSearch.style.display = '';
+      } else {
         table.style.setProperty('display', 'none', 'important');
+        var oldSearch = wifiSec.querySelector('.ark-table-search-bar');
+        if (oldSearch) oldSearch.style.display = 'none';
       }
-      var oldSearch = wifiSec.querySelector('.ark-table-search-bar');
-      if (oldSearch && mode !== 'advanced') oldSearch.style.display = 'none';
     },
 
     transformNetworkInterfaces: function() {
@@ -2983,9 +3452,12 @@
       }
 
       var mode = localStorage.getItem('ark_interface_mode') || 'basic';
-      if (mode !== 'advanced') {
+      var addBtn = view.querySelector('.cbi-section-create');
+      if (mode === 'advanced') {
+        table.style.display = '';
+        if (addBtn) addBtn.style.display = '';
+      } else {
         table.style.display = 'none';
-        var addBtn = view.querySelector('.cbi-section-create');
         if (addBtn) addBtn.style.display = 'none';
       }
     },

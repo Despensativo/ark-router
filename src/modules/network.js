@@ -335,43 +335,112 @@ const networkMethods = {
 		}
 		const desired=!!input.checked;input.checked=!desired;
 		const isGamerActive=(this.capabilities&&this.capabilities.operation_profile)==='gamer';
-		const title = desired ? 'Ativar SQM / CAKE' : 'Desativar SQM / CAKE';
+		const isEconomic = this.isEconomicHardware ? this.isEconomicHardware(this.currentData) : false;
+		const hw = (this.currentData && this.currentData.hardwareInfo) || (this.capabilities && this.capabilities.hardware) || {};
+		const silicon = hw.silicon || {};
+		const hasHwOffload = !!silicon.hw_offload_capable;
+		const cpuModel = (hw.cpu && (hw.cpu.model || hw.cpu.arch)) || 'Single-Core';
+		const title = desired ? (isEconomic ? _t('⚠️ Atenção: Impacto de CPU em Hardware Econômico') : _t('Ativar SQM / CAKE')) : _t('Desativar SQM / CAKE');
 		const elements = [];
+		let timer = null;
+
+		const clearSqmTimer = function() {
+			if (timer) {
+				window.clearInterval(timer);
+				timer = null;
+			}
+		};
+
 		if (desired) {
-			elements.push(E('p', {class:'alert-message warning'}, ['O SQM será ligado nas filas configuradas e o serviço será reiniciado. A internet pode pausar por alguns segundos.']));
+			if (isEconomic) {
+				elements.push(E('div', { class: 'alert-message warning', style: 'margin-bottom: 12px; font-size: 13px; line-height: 1.55;' }, [
+					E('strong', { style: 'display: block; margin-bottom: 6px; font-size: 14px;' }, [
+						'⚠️ ' + _t('Processador de 1 Núcleo / MIPS Detectado') + ' (' + cpuModel + ')'
+					]),
+					E('p', { style: 'margin: 0 0 8px 0;' }, [
+						_t('O algoritmo CAKE roda via software e nesta CPU é recomendado para conexões de até ~80–100 Mbps. Em planos mais rápidos (200M, 500M+), o SQM causará gargalo de CPU a 100% e limitará a velocidade do seu link.')
+					]),
+					E('div', { style: 'padding: 8px 10px; background: rgba(0,0,0,0.18); border-radius: 6px; border-left: 3px solid #3b82f6;' }, [
+						E('strong', { style: 'color: #60a5fa;' }, ['💡 ' + _t('Dica Recomendada:') + ' ']),
+						_t('Se o seu plano for de alta velocidade e você quiser eliminar lag em jogos (Bufferbloat), ative e defina o Download em 0 (ilimitado) em "Editar limites" para moldar apenas o Upload, mantendo a CPU livre.')
+					])
+				]));
+			} else if (hasHwOffload) {
+				elements.push(E('div', { class: 'alert-message info', style: 'margin-bottom: 12px; font-size: 12.5px; line-height: 1.5;' }, [
+					E('strong', { style: 'display: block; margin-bottom: 4px;' }, [
+						'⚡ ' + _t('Hardware Moderno com Aceleração em Silício')
+					]),
+					_t('Ao ativar o SQM / CAKE, o acelerador de pacotes em silício (Hardware PPE) operará em modo híbrido/software. Isso permite que cada pacote seja inspecionado para combater bufferbloat, com total capacidade na sua CPU multicore.')
+				]));
+			} else {
+				elements.push(E('p', { class: 'alert-message warning' }, [
+					_t('O SQM será ligado nas filas configuradas e o serviço será reiniciado. A internet pode pausar por alguns segundos.')
+				]));
+			}
 		} else {
 			if (isGamerActive) {
-				elements.push(E('p', {class:'alert-message danger'}, ['⚠️ Atenção: O Modo Gamer está ATIVO! Ao desligar o SQM / CAKE, a proteção anti-bufferbloat será desativada e o painel retornará automaticamente ao Modo Padrão.']));
+				elements.push(E('p', {class:'alert-message danger'}, ['⚠️ ' + _t('Atenção: O Modo Gamer está ATIVO! Ao desligar o SQM / CAKE, a proteção anti-bufferbloat será desativada e o painel retornará automaticamente ao Modo Padrão.')]));
 			} else {
-				elements.push(E('p', {class:'alert-message warning'}, ['O SQM será desligado e o serviço será reiniciado. A internet pode pausar por alguns segundos.']));
+				elements.push(E('p', {class:'alert-message warning'}, [_t('O SQM será desligado e o serviço será reiniciado. A internet pode pausar por alguns segundos.')]));
 			}
 		}
-		elements.push(E('div', {class:'right'}, [
-			E('button', {class:'btn cbi-button cbi-button-neutral', 'click':closeModal}, ['Cancelar']), ' ',
-			E('button', {class:'btn cbi-button '+(desired?'cbi-button-positive':'cbi-button-negative'), 'click':L.bind(function(ev){
-				const btn = ev.currentTarget;
-				btn.disabled = true;
-				btn.textContent = 'Aplicando…';
-				const actions = [fs.exec('/usr/sbin/equipe-dashboard-control', ['sqm-toggle', desired?'1':'0'])];
-				if (!desired && isGamerActive) {
-					actions.push(fs.exec('/usr/sbin/equipe-dashboard-control', ['profile', 'standard']));
+
+		const confirmBtn = E('button', {
+			class: 'btn cbi-button ' + (desired ? 'cbi-button-positive' : 'cbi-button-negative'),
+			style: 'font-weight: bold;',
+			disabled: (desired && isEconomic)
+		}, [(desired && isEconomic) ? _t('Aguarde 3 s') : (desired ? _t('Confirmar') : (isGamerActive ? _t('Desativar SQM e Desligar Gamer') : _t('Confirmar')))]);
+
+		if (desired && isEconomic) {
+			const started = Date.now();
+			timer = window.setInterval(function() {
+				const left = Math.ceil((3000 - (Date.now() - started)) / 1000);
+				if (left > 0) {
+					confirmBtn.textContent = _t('Aguarde') + ' ' + left + ' s';
+					return;
 				}
-				return Promise.all(actions).then(L.bind(function(r){
-					const res = r[0] || {};
-					if(res.code) throw new Error(res.stderr || 'Falha ao alterar o SQM');
-					const msg = desired ? 'SQM ativado com sucesso!' : (isGamerActive ? 'SQM desativado. Modo Gamer desligado e perfil retornado ao Modo Padrão.' : 'SQM desativado com sucesso!');
-					this.triggerImmediateRefresh(msg, 'info');
-				}, this)).catch(function(e){
-					btn.disabled = false;
-					btn.textContent = desired ? 'Confirmar' : (isGamerActive ? 'Desativar SQM e Desligar Gamer' : 'Confirmar');
-					if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
-					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
-				});
-			}, this)}, [desired ? 'Confirmar' : (isGamerActive ? 'Desativar SQM e Desligar Gamer' : 'Confirmar')])
+				clearSqmTimer();
+				confirmBtn.disabled = false;
+				confirmBtn.textContent = '⚠️ ' + _t('Estou ciente e quero ativar SQM');
+			}, 100);
+		}
+
+		const cancelBtn = E('button', {
+			class: 'btn cbi-button cbi-button-neutral',
+			click: function() {
+				clearSqmTimer();
+				closeModal();
+			}
+		}, [_t('Cancelar')]);
+
+		confirmBtn.addEventListener('click', L.bind(function(ev){
+			clearSqmTimer();
+			const btn = ev.currentTarget;
+			btn.disabled = true;
+			btn.textContent = _t('Aplicando…');
+			const actions = [fs.exec('/usr/sbin/equipe-dashboard-control', ['sqm-toggle', desired?'1':'0'])];
+			if (!desired && isGamerActive) {
+				actions.push(fs.exec('/usr/sbin/equipe-dashboard-control', ['profile', 'standard']));
+			}
+			return Promise.all(actions).then(L.bind(function(r){
+				const res = r[0] || {};
+				if(res.code) throw new Error(res.stderr || 'Falha ao alterar o SQM');
+				const msg = desired ? 'SQM ativado com sucesso!' : (isGamerActive ? 'SQM desativado. Modo Gamer desligado e perfil retornado ao Modo Padrão.' : 'SQM desativado com sucesso!');
+				this.triggerImmediateRefresh(msg, 'info');
+			}, this)).catch(function(e){
+				btn.disabled = false;
+				btn.textContent = desired ? (isEconomic ? '⚠️ ' + _t('Estou ciente e quero ativar SQM') : _t('Confirmar')) : (isGamerActive ? _t('Desativar SQM e Desligar Gamer') : _t('Confirmar'));
+				if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
+				ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+			});
+		}, this));
+
+		elements.push(E('div', { class: 'right', style: 'margin-top: 14px;' }, [
+			cancelBtn, ' ', confirmBtn
 		]));
 		ui.showModal(title, elements);
 	},
-	editSqmLimits: function(){
+	editSqmLimits: function(presetDown, presetUp){
 		if (isSatelliteOrAp(this.currentData)) {
 			ui.showModal('Blindagem de Modo Satélite', [
 				E('div', { class: 'alert-message warning' }, [
@@ -388,6 +457,10 @@ const networkMethods = {
 			]);
 			return Promise.resolve();
 		}
+		if ((!presetDown || !presetUp) && window._lastSpeedtestResult) {
+			presetDown = presetDown || window._lastSpeedtestResult.down;
+			presetUp = presetUp || window._lastSpeedtestResult.up;
+		}
 		return fs.exec('/usr/sbin/equipe-dashboard-control', ['system-hardware-sqm-audit'])
 		.then(L.bind(function(auditRes) {
 			let audit = {};
@@ -403,6 +476,46 @@ const networkMethods = {
 				const queue=sqm[profile.section]||{},enabled=E('input',{type:'checkbox'}),download=field(profile.label+' download',queue.download),upload=field(profile.label+' upload',queue.upload);
 				enabled.checked=queue.enabled==='1';
 
+				// 1. Download Calculator
+				const calcDownInput = E('input', {
+					type: 'number',
+					class: 'cbi-input-text',
+					min: 1,
+					max: 100000,
+					step: '1',
+					placeholder: 'Velocidade nominal (Mbps)',
+					style: 'max-width: 170px; margin-right: 6px;'
+				});
+				const calcDownNotice = E('small', { class: 'ex-muted', style: 'display: block; margin-top: 4px; font-size: 11px; line-height: 1.3;' }, [
+					'Margem recomendada de 7% para absorver variações do modem.'
+				]);
+				const applyCalcDownBtn = E('button', {
+					type: 'button',
+					class: 'btn cbi-button cbi-button-action ex-mini-button',
+					style: 'font-weight: 600;',
+					click: function() {
+						const nominal = parseFloat(calcDownInput.value || 0);
+						if (nominal > 0) {
+							const discounted = Math.round(nominal * 0.93 * 10) / 10;
+							download.node.value = discounted;
+							calcDownNotice.style.color = '#10b981';
+							calcDownNotice.textContent = '✓ ' + discounted + ' Mbps aplicado ao Download (-7% contra Bufferbloat).';
+						}
+					}
+				}, ['Aplicar -7%']);
+
+				const calcDownBox = E('div', { class: 'ex-qos-calc-box', style: 'margin-top: 8px; margin-bottom: 8px; padding: 8px 10px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 8px;' }, [
+					E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;' }, [
+						E('strong', { style: 'font-size: 11.5px;' }, ['🧮 Calculadora de Download (-7% Bufferbloat)'])
+					]),
+					E('div', { style: 'display: flex; align-items: center; flex-wrap: wrap; gap: 4px;' }, [
+						calcDownInput,
+						applyCalcDownBtn
+					]),
+					calcDownNotice
+				]);
+
+				// 2. Upload Calculator
 				const calcInput = E('input', {
 					type: 'number',
 					class: 'cbi-input-text',
@@ -444,25 +557,87 @@ const networkMethods = {
 					calcNotice
 				]);
 
+				// 3. Link Layer Overhead & CAKE Parameters
+				const curLinklayer = queue.linklayer || 'none';
+				const curOverhead = parseInt(queue.overhead || 0, 10);
+				const curEqdisc = queue.eqdisc_opts || 'diffserv4 nat dual-srchost ack-filter memlimit 32M';
+				const curIqdisc = queue.iqdisc_opts || 'diffserv4 nat dual-dsthost ingress memlimit 32M';
+
+				const overheadSelect = E('select', { class: 'cbi-input-select', style: 'width: 100%; margin-top: 4px;' }, [
+					E('option', { value: 'none|0', selected: (curLinklayer === 'none' && curOverhead === 0) }, ['Nenhum / Ethernet Pura (0 bytes overhead)']),
+					E('option', { value: 'ethernet|18', selected: (curLinklayer === 'ethernet' && curOverhead === 18) }, ['Cabo DOCSIS / Ethernet Padrão (18 bytes)']),
+					E('option', { value: 'ethernet|26', selected: (curLinklayer === 'ethernet' && curOverhead === 26) }, ['Fibra GPON / IPoE Padrão (26 bytes)']),
+					E('option', { value: 'ethernet|34', selected: (curLinklayer === 'ethernet' && curOverhead === 34) }, ['Fibra PPPoE / VLAN (34 bytes)']),
+					E('option', { value: 'ethernet|44', selected: (curLinklayer === 'ethernet' && curOverhead === 44) || (!queue.overhead && curLinklayer !== 'none') }, ['Fibra GPON / PPPoE Conservador (44 bytes — Recomendado)']),
+					E('option', { value: 'atm|44', selected: (curLinklayer === 'atm') }, ['Linha ADSL Antiga (ATM 44 bytes)'])
+				]);
+
+				const chkNat = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('nat') !== -1 });
+				const chkHostFair = E('input', { type: 'checkbox', checked: (curEqdisc.indexOf('dual-srchost') !== -1 || curIqdisc.indexOf('dual-dsthost') !== -1) });
+				const chkAck = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('ack-filter') !== -1 });
+				const chkWash = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('wash') !== -1 });
+				const chkDiffserv = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('diffserv4') !== -1 });
+
+				const advancedDetails = E('details', { style: 'margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;' }, [
+					E('summary', { style: 'cursor: pointer; font-weight: 700; font-size: 12px; color: #93c5fd;' }, ['⚙️ Parâmetros Avançados do CAKE & Enquadramento (Overhead)']),
+					E('div', { style: 'margin-top: 10px; display: flex; flex-direction: column; gap: 8px;' }, [
+						E('label', { style: 'display: block;' }, [
+							E('span', { style: 'font-weight: 600; font-size: 11.5px; display: block;' }, ['Tipo de Link / Overhead de Linha:']),
+							overheadSelect,
+							E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Compensa os cabeçalhos de fibra/cabo no shaper para precisão absoluta anti-bufferbloat.'])
+						]),
+						E('div', { style: 'display: flex; flex-direction: column; gap: 6px; margin-top: 4px;' }, [
+							E('label', { style: 'display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;' }, [
+								chkNat,
+								E('span', {}, [E('strong', {}, ['NAT Lookup (nat): ']), 'Permite ao CAKE ver o IP real de cada aparelho da casa antes do NAT.'])
+							]),
+							E('label', { style: 'display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;' }, [
+								chkHostFair,
+								E('span', {}, [E('strong', {}, ['Host Isolation (dual-srchost/dsthost): ']), 'Divisão igualitária de banda por dispositivo (impede que um download sufoque os outros).'])
+							]),
+							E('label', { style: 'display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;' }, [
+								chkAck,
+								E('span', {}, [E('strong', {}, ['Filtro de ACK TCP (ack-filter): ']), 'Acelera o upload filtrando ACKs redundantes durante downloads pesados.'])
+							]),
+							E('label', { style: 'display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;' }, [
+								chkWash,
+								E('span', {}, [E('strong', {}, ['Limpeza DSCP (wash): ']), 'Higieniza marcações DSCP incorretas vindas da operadora.'])
+							]),
+							E('label', { style: 'display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;' }, [
+								chkDiffserv,
+								E('span', {}, [E('strong', {}, ['Diffserv 4-Tiers (diffserv4): ']), 'Priorização automática: Voz/Jogos > Vídeo/Streaming > Normal > Torrents.'])
+							])
+						])
+					])
+				]);
+
 				return {
 					profile: profile,
 					enabled: enabled,
 					download: download,
 					upload: upload,
+					overheadSelect: overheadSelect,
+					chkNat: chkNat,
+					chkHostFair: chkHostFair,
+					chkAck: chkAck,
+					chkWash: chkWash,
+					chkDiffserv: chkDiffserv,
 					section: E('section', {}, [
 						E('h3', {}, [profile.label]),
 						E('small', { class: 'ex-muted' }, ['Interface '+profile.network+' • dispositivo '+profile.device+(profile.online?' • online':' • sem link')]),
 						E('label', { class: 'ex-qos-edit-toggle' }, [enabled, E('span', {}, ['Ativar fila '+profile.label])]),
 						download.row,
+						calcDownBox,
 						upload.row,
-						calcBox
+						calcBox,
+						advancedDetails
 					])
 				};
 			});
 			const guestDown=field('Visitantes download total',guestDownloadLimit,'Mbps • 0 ou vazio = ilimitado'), guestUp=field('Visitantes upload total',guestUploadLimit,'Mbps • exemplo: 1,5 • 0 ou vazio = ilimitado');
 			const mipsNotice = audit.is_low_end_mips ? E('div', { class: 'alert-message warning', style: 'margin-bottom: 12px; font-size: 12.5px; line-height: 1.5;' }, [
-				E('strong', { style: 'display:block; margin-bottom:4px;' }, ['⚠️ Recomendação de Hardware: Processador MIPS (' + (audit.cpu_model || 'Single-Core 720 MHz') + ')']),
-				'Para velocidades de download superiores a 100 Mbps, o algoritmo CAKE pode saturar a CPU (100%), reduzindo a velocidade real do link. ',
+				E('strong', { style: 'display:block; margin-bottom:4px;' }, ['⚠️ ' + _t('Recomendação de Hardware: Processador MIPS') + ' (' + (audit.cpu_model || 'Single-Core 720 MHz') + ')']),
+				_t('Para velocidades de download superiores a 100 Mbps, o algoritmo CAKE pode saturar a CPU (100%), reduzindo a velocidade real do link.') + ' ',
 				E('div', { style: 'margin-top: 8px;' }, [
 					E('button', {
 						type: 'button',
@@ -470,24 +645,56 @@ const networkMethods = {
 						style: 'font-weight: 600; font-size: 11.5px; padding: 3px 8px;',
 						'click': function() {
 							editors.forEach(function(ed) { ed.download.node.value = '0'; });
-							ui.addNotification(null, E('p', {}, ['Download ajustado para 0 (ilimitado). O SQM atuará apenas no Upload, eliminando o bufferbloat sem sobrecarregar a CPU.']), 'info');
+							ui.addNotification(null, E('p', {}, [_t('Download ajustado para 0 (ilimitado). O SQM atuará apenas no Upload, eliminando o bufferbloat sem sobrecarregar a CPU.')]), 'info');
 						}
-					}, ['⚡ Otimizar: Limitar somente Upload (Zero lag sem gargalo de CPU)'])
+					}, ['⚡ ' + _t('Otimizar: Limitar somente Upload (Zero lag sem gargalo de CPU)')])
 				])
 			]) : '';
 
+			const modernPpeNotice = (audit.hw_flowoffload_capable) ? E('div', { class: 'alert-message info', style: 'margin-bottom: 12px; font-size: 12.5px; line-height: 1.45;' }, [
+				E('strong', { style: 'display: block; margin-bottom: 3px;' }, ['⚡ ' + _t('Hardware Moderno com Silício PPE')]),
+				_t('Processador com capacidade total para modulação de pacotes CAKE. O silício PPE opera em modo híbrido para garantir vazão máxima com proteção anti-bufferbloat.')
+			]) : '';
+
 			const hybridBanner = isFlowOffloadActive ? E('div', { class: 'alert-message info', style: 'margin-bottom: 12px; font-size: 12.5px; line-height: 1.45;' }, [
-				E('strong', { style: 'display: block; margin-bottom: 3px;' }, ['⚡ Modo Híbrido Ativo (Fastpath + CAKE)']),
-				'Modo Híbrido: O Download opera com velocidade total liberada no Fastpath e o Upload é gerenciado pelo CAKE para blindar a rede contra lag em jogos e chamadas.'
+				E('strong', { style: 'display: block; margin-bottom: 3px;' }, ['⚡ ' + _t('Modo Híbrido Ativo (Fastpath + CAKE)')]),
+				_t('Modo Híbrido: O Download opera com velocidade total liberada no Fastpath e o Upload é gerenciado pelo CAKE para blindar a rede contra lag em jogos e chamadas.')
+			]) : '';
+
+			const hasSpeedtest = (presetDown > 0 || presetUp > 0);
+			const speedtestBanner = hasSpeedtest ? E('div', {
+				class: 'alert-message info',
+				style: 'margin-bottom: 12px; background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.35); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-radius: 8px; padding: 10px 14px;'
+			}, [
+				E('div', {}, [
+					E('strong', { style: 'display: block; color: #60a5fa; font-size: 13px;' }, ['🎬 Medição Recente do Fast.com']),
+					E('span', { style: 'font-size: 12.5px;' }, [
+						'Download: ', E('strong', {}, [presetDown + ' Mbps']), ' • Upload: ', E('strong', {}, [presetUp + ' Mbps'])
+					])
+				]),
+				E('button', {
+					type: 'button',
+					class: 'btn cbi-button cbi-button-action ex-mini-button',
+					style: 'font-weight: 700; padding: 6px 12px;',
+					click: function() {
+						editors.forEach(function(ed) {
+							if (presetDown > 0) ed.download.node.value = Math.round(presetDown * 0.93 * 10) / 10;
+							if (presetUp > 0) ed.upload.node.value = Math.round(presetUp * 0.93 * 10) / 10;
+						});
+						ui.addNotification(null, E('p', {}, ['✓ Limites anti-bufferbloat (-7%) aplicados a partir da medição do Fast.com!']), 'info');
+					}
+				}, ['🎯 Aplicar nos Limites (-7%)'])
 			]) : '';
 
 			ui.showModal('Editar SQM / CAKE',[
 				E('div',{style:'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;'},[
-					E('p',{class:'ex-muted',style:'margin:0;'},['Defina os limites em Mbps. Exemplo: 1,2 Gbps = 1200 Mbps. Use 0 ou deixe em branco quando não quiser limitar aquela direção (ilimitado).']),
-					E('button',{class:'ex-mini-button','click':L.bind(function(){ui.hideModal();this.openFastCom();},this)},['🎬 Medir no Fast.com'])
+					E('p',{class:'ex-muted',style:'margin:0;'},[_t('Defina os limites em Mbps. Exemplo: 1,2 Gbps = 1200 Mbps. Use 0 ou deixe em branco quando não quiser limitar aquela direção (ilimitado).')]),
+					E('button',{class:'ex-mini-button','click':L.bind(function(){ui.hideModal();this.openFastCom();},this)},['🎬 ' + _t('Medir no Fast.com')])
 				]),
+				speedtestBanner,
 				hybridBanner,
 				mipsNotice,
+				modernPpeNotice,
 				E('div',{class:'ex-qos-edit-grid'},editors.map(function(editor){return editor.section;}).concat([E('section',{},[E('h3',{},['Visitantes']),guestDown.row,guestUp.row])])),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
 			const btn = ev.currentTarget;
 			const args=['sqm-save-v2'];let invalid=false;
@@ -498,7 +705,34 @@ const networkMethods = {
 				const download=(dRaw===''||dRaw==='0')?'0':mbpsToKbps(dRaw);
 				const upload=(uRaw===''||uRaw==='0')?'0':mbpsToKbps(uRaw);
 				if(download==null||upload==null)invalid=true;
-				args.push('wan='+[profile.section,profile.network,profile.device,editor.enabled.checked?'1':'0',download,upload].join('|'));
+
+				const parts = (editor.overheadSelect.value || 'none|0').split('|');
+				const linklayer = parts[0] || 'none';
+				const overhead = parts[1] || '0';
+				let eqOpts = [];
+				let iqOpts = [];
+				if (editor.chkDiffserv.checked) { eqOpts.push('diffserv4'); iqOpts.push('diffserv4'); }
+				if (editor.chkNat.checked) { eqOpts.push('nat'); iqOpts.push('nat'); }
+				if (editor.chkHostFair.checked) { eqOpts.push('dual-srchost'); iqOpts.push('dual-dsthost'); }
+				if (editor.chkAck.checked) { eqOpts.push('ack-filter'); }
+				if (editor.chkWash.checked) { eqOpts.push('wash'); iqOpts.push('wash'); }
+				eqOpts.push('memlimit 32M');
+				iqOpts.push('ingress memlimit 32M');
+				const eqStr = eqOpts.join(' ');
+				const iqStr = iqOpts.join(' ');
+
+				args.push('wan='+[
+					profile.section,
+					profile.network,
+					profile.device,
+					editor.enabled.checked?'1':'0',
+					download,
+					upload,
+					linklayer,
+					overhead,
+					eqStr,
+					iqStr
+				].join('|'));
 			});
 			const gDRaw=String(guestDown.node.value||'').trim();
 			const gURaw=String(guestUp.node.value||'').trim();
@@ -2294,11 +2528,11 @@ const networkMethods = {
 			}, [
 				E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
 					E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;' }, [
-						E('strong', { style: 'font-size: 0.92rem; color: #f8fafc;' }, ['🔗 Roteador em Cascata / NDP Relay']),
-						E('span', { class: 'ex-pill ' + (isRelay ? 'online' : 'standby'), style: 'font-size: 0.7rem;' }, [ isRelay ? 'RELAY ATIVO' : 'SERVIDOR DIRETO' ])
+						E('strong', { style: 'font-size: 0.92rem; color: #f8fafc;' }, ['🔗 Roteador em Cascata (Repasse IPv6 / NDP Relay)']),
+						E('span', { class: 'ex-pill ' + (isRelay ? 'online' : 'standby'), style: 'font-size: 0.7rem;' }, [ isRelay ? 'RELAY IPV6 ATIVO' : 'SERVIDOR IPV6 DIRETO' ])
 					]),
 					E('p', { class: 'ex-muted', style: 'font-size: 0.8rem; line-height: 1.4; margin: 4px 0 0;' }, [
-						'Ative se este ARK Router estiver conectado atrás de outro roteador principal (operadora) e receber apenas um prefixo /64. O odhcpd repassa os anúncios de vizinhança (NDP) transparentemente para os seus clientes, sem necessidade de DMZ no mestre.'
+						'Ative se este ARK Router estiver conectado atrás do modem da operadora (ou outro roteador) e seus aparelhos não estiverem recebendo IPv6 (quando a operadora entrega apenas um prefixo /64). O odhcpd repassa os anúncios de vizinhança IPv6 (NDP) transparentemente para os seus clientes, sem necessidade de DMZ no mestre.'
 					])
 				]),
 				E('div', { style: 'flex: 0 0 auto; margin-left: 14px; display: flex; flex-direction: row; align-items: center; gap: 10px;' }, [

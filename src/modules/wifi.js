@@ -313,28 +313,158 @@ const wifiMethods = {
 		current=current||{};
 		const isGuest=kind==='guest', enabled=E('input', { type:'checkbox' });
 		enabled.checked=String(current.disabled||'0')!=='1';
+		const has6g = !!(current.has6g || current.dev6 || (this.currentData && this.currentData.has6g) || (this.capabilities && this.capabilities.has6g));
+
+		const hw = (this.currentData && this.currentData.hardwareInfo) || (this.capabilities && this.capabilities.hardware) || {};
+		const silicon = hw.silicon || {};
+		const cpu = hw.cpu || {};
+		const isLegacyMips = (cpu.arch && cpu.arch.indexOf('mips') >= 0) || silicon.class === 'mips_legacy';
+		const isFilogic = silicon.class === 'mediatek_filogic';
+		const hasWed = !!silicon.wed_capable;
+		const isModernArm = isFilogic || silicon.class === 'broadcom_arm' || (cpu.cores > 1) || (cpu.arch === 'aarch64' || cpu.arch === 'arm');
+
+		let hwWifiBanner = null;
+		if (isLegacyMips) {
+			hwWifiBanner = E('div', { class: 'alert-message info', style: 'margin-bottom: 12px; font-size: 12px; line-height: 1.45;' }, [
+				E('strong', { style: 'display: block; margin-bottom: 3px;' }, ['🔒 ' + _t('Silício MIPS / Atheros Detectado')]),
+				_t('Os chips Atheros possuem aceleração de criptografia AES em hardware. O modo WPA2-PSK (AES) entrega a velocidade máxima da rede sem sobrecarregar a CPU. Em 2,4 GHz, recomendamos manter a largura em 20 MHz para evitar retransmissões que afetam a CPU de 1 núcleo.')
+			]);
+		} else if (isModernArm) {
+			hwWifiBanner = E('div', { class: 'alert-message info', style: 'margin-bottom: 12px; font-size: 12px; line-height: 1.45;' }, [
+				E('strong', { style: 'display: block; margin-bottom: 3px;' }, ['⚡ ' + _t('Silício Wi-Fi de Alta Performance') + (hasWed ? ' (WED / DMA Direto)' : '')]),
+				_t('Processador com capacidade multicore e aceleração moderna. Suporte nativo a WPA3-SAE com PMF e canais de alta velocidade (80/160 MHz) com baixa latência.')
+			]);
+		}
+
+		let init2g = String(current.disabled2 || '0') !== '1';
+		let init5g = String(current.disabled5 || '0') !== '1';
+		let init6g = has6g && String(current.disabled6 || '0') !== '1';
+		if (!init2g && !init5g && !init6g) {
+			init2g = true;
+			init5g = true;
+			if (has6g) init6g = true;
+		}
+
+		const band2Input = E('input', { type: 'checkbox' });
+		band2Input.checked = init2g;
+		const band5Input = E('input', { type: 'checkbox' });
+		band5Input.checked = init5g;
+		const band6Input = has6g ? E('input', { type: 'checkbox' }) : null;
+		if (band6Input) band6Input.checked = init6g;
+
+		const state2Text = E('strong', { class: 'ex-device-switch-state' }, [band2Input.checked ? _t('Ativa') : _t('Desativada')]);
+		const state5Text = E('strong', { class: 'ex-device-switch-state' }, [band5Input.checked ? _t('Ativa') : _t('Desativada')]);
+		const state6Text = has6g ? E('strong', { class: 'ex-device-switch-state' }, [band6Input.checked ? _t('Ativa') : _t('Desativada')]) : null;
+
 		const split=E('input',{type:'checkbox'});
 		split.checked=!!current.split;
 		const curEnc=current.encryption||'sae-mixed';
 		const encSelect = E('select', { class: 'cbi-input-select', style: 'width:100%' }, [
-			E('option', { value: 'sae-mixed' }, ['WPA2 / WPA3 Misto (Mais Seguro)']),
-			E('option', { value: 'psk2' }, ['WPA2-PSK (Máxima Compatibilidade IoT)']),
-			E('option', { value: 'sae' }, ['WPA3-SAE Puro (Máxima Segurança Moderna)']),
-			E('option', { value: 'none' }, ['Sem Senha (Rede Aberta)'])
+			E('option', { value: 'sae-mixed' }, [_t('WPA2 / WPA3 Misto (Mais Seguro)')]),
+			E('option', { value: 'psk2' }, [_t('WPA2-PSK (Máxima Compatibilidade IoT)')]),
+			E('option', { value: 'sae' }, [_t('WPA3-SAE Puro (Máxima Segurança Moderna)')]),
+			E('option', { value: 'none' }, [_t('Sem Senha (Rede Aberta)')])
 		]);
 		encSelect.value = curEnc;
 		const ssid=E('input',{class:'cbi-input-text',value:current.ssid||'',placeholder:isGuest?'Visitantes':'Rede principal',maxlength:32,style:'width:100%'});
 		const ssid2=E('input',{class:'cbi-input-text',value:current.ssid2||current.ssid||'',placeholder:isGuest?'Visitantes-2G':'Rede-2G',maxlength:32,style:'width:100%'});
 		const ssid5=E('input',{class:'cbi-input-text',value:current.ssid5||current.ssid||'',placeholder:isGuest?'Visitantes-5G':'Rede-5G',maxlength:32,style:'width:100%'});
+		const ssid6=has6g ? E('input',{class:'cbi-input-text',value:current.ssid6||current.ssid||'',placeholder:isGuest?'Visitantes-6G':'Rede-6G',maxlength:32,style:'width:100%'}) : null;
 		const password=E('input',{type:'password',class:'cbi-input-text',value:'',placeholder:'deixe vazio para manter a senha atual',maxlength:63,autocomplete:'new-password',style:'width:100%'});
 		const password2=E('input',{type:'password',class:'cbi-input-text',value:'',placeholder:'repita a nova senha se preencher',maxlength:63,autocomplete:'new-password',style:'width:100%'});
 		const show=E('input',{type:'checkbox'});
 		show.addEventListener('change',function(){password.type=password2.type=show.checked?'text':'password';});
-		const unifiedRow=E('label',{class:'ex-device-config-block'},[E('strong',{},['Nome da rede WiFi']),ssid,E('small',{class:'ex-muted'},['Aplicado ao 2,4 GHz e ao 5 GHz.'])]);
-		const splitRows=E('div',{},[E('label',{class:'ex-device-config-block'},[E('strong',{},['Nome 2,4 GHz']),ssid2]),E('label',{class:'ex-device-config-block'},[E('strong',{},['Nome 5 GHz']),ssid5])]);
+
+		const unifiedHint = E('small', { class: 'ex-muted' }, [_t('Aplicado ao 2,4 GHz e ao 5 GHz.')]);
+		const unifiedRow=E('label',{class:'ex-device-config-block'},[E('strong',{},[_t('Nome da rede WiFi')]),ssid,unifiedHint]);
+
+		const labelSsid2 = E('strong', {}, [_t('Nome 2,4 GHz')]);
+		const labelSsid5 = E('strong', {}, [_t('Nome 5 GHz')]);
+		const labelSsid6 = has6g ? E('strong', {}, [_t('Nome 6 GHz')]) : null;
+
+		const splitElements = [
+			E('label',{class:'ex-device-config-block'},[labelSsid2,ssid2]),
+			E('label',{class:'ex-device-config-block'},[labelSsid5,ssid5])
+		];
+		if (has6g && labelSsid6 && ssid6) {
+			splitElements.push(E('label',{class:'ex-device-config-block'},[labelSsid6,ssid6]));
+		}
+		const splitRows=E('div',{},splitElements);
+
+		const updateWifiHints = function() {
+			const b2 = band2Input.checked;
+			const b5 = band5Input.checked;
+			const b6 = band6Input ? band6Input.checked : false;
+
+			if (b2 && b5 && b6) {
+				unifiedHint.textContent = _t('Transmitindo em 2,4 GHz, 5 GHz e 6 GHz.');
+			} else if (b2 && b5) {
+				unifiedHint.textContent = _t('Aplicado ao 2,4 GHz e ao 5 GHz.');
+			} else if (b2 && !b5 && !b6) {
+				unifiedHint.textContent = _t('Transmitindo apenas em 2,4 GHz (5 GHz desativado).');
+			} else if (!b2 && b5 && !b6) {
+				unifiedHint.textContent = _t('Transmitindo apenas em 5 GHz (2,4 GHz desativado).');
+			} else if (!b2 && !b5 && b6) {
+				unifiedHint.textContent = _t('Transmitindo apenas em 6 GHz.');
+			} else if (b2 && b6) {
+				unifiedHint.textContent = _t('Transmitindo em 2,4 GHz e 6 GHz (5 GHz desativado).');
+			} else if (b5 && b6) {
+				unifiedHint.textContent = _t('Transmitindo em 5 GHz e 6 GHz (2,4 GHz desativado).');
+			}
+
+			labelSsid2.textContent = _t('Nome 2,4 GHz') + (b2 ? '' : ' (' + _t('Desativada') + ')');
+			ssid2.disabled = !b2;
+			ssid2.style.opacity = b2 ? '1' : '0.55';
+
+			labelSsid5.textContent = _t('Nome 5 GHz') + (b5 ? '' : ' (' + _t('Desativada') + ')');
+			ssid5.disabled = !b5;
+			ssid5.style.opacity = b5 ? '1' : '0.55';
+
+			if (labelSsid6 && ssid6) {
+				labelSsid6.textContent = _t('Nome 6 GHz') + (b6 ? '' : ' (' + _t('Desativada') + ')');
+				ssid6.disabled = !b6;
+				ssid6.style.opacity = b6 ? '1' : '0.55';
+			}
+		};
+
+		const updateBandStates = function() {
+			state2Text.textContent = band2Input.checked ? _t('Ativa') : _t('Desativada');
+			state5Text.textContent = band5Input.checked ? _t('Ativa') : _t('Desativada');
+			if (state6Text && band6Input) state6Text.textContent = band6Input.checked ? _t('Ativa') : _t('Desativada');
+			updateWifiHints();
+		};
+
+		const validateBandUncheck = function(changedInput) {
+			const b2 = band2Input.checked;
+			const b5 = band5Input.checked;
+			const b6 = band6Input ? band6Input.checked : false;
+			if (!b2 && !b5 && !b6) {
+				changedInput.checked = true;
+				updateBandStates();
+				ui.addNotification(null, E('p', {}, [_t('Ao menos uma frequência deve permanecer ativa nesta rede Wi‑Fi.')]), 'warning');
+				return false;
+			}
+			updateBandStates();
+			return true;
+		};
+
+		band2Input.addEventListener('change', function() { validateBandUncheck(band2Input); });
+		band5Input.addEventListener('change', function() { validateBandUncheck(band5Input); });
+		if (band6Input) band6Input.addEventListener('change', function() { validateBandUncheck(band6Input); });
+
 		const updateSplit=function(){unifiedRow.style.display=split.checked?'none':'block';splitRows.style.display=split.checked?'block':'none';};
-		split.addEventListener('change',function(){if(split.checked){ssid2.value=ssid2.value||ssid.value;ssid5.value=ssid5.value||ssid.value;}else{ssid.value=ssid.value||ssid2.value||ssid5.value;}updateSplit();});
+		split.addEventListener('change',function(){
+			if(split.checked){
+				ssid2.value=ssid2.value||ssid.value;
+				ssid5.value=ssid5.value||ssid.value;
+				if(ssid6) ssid6.value=ssid6.value||ssid.value;
+			} else {
+				ssid.value=ssid.value||ssid2.value||ssid5.value||(ssid6?ssid6.value:'');
+			}
+			updateSplit();
+		});
 		updateSplit();
+		updateWifiHints();
 
 		const passRow1 = E('label',{class:'ex-device-config-block'},[E('strong',{},['Nova senha']),password,E('small',{class:'ex-muted'},['Opcional. Se preencher, use entre 8 e 63 caracteres.'])]);
 		const passRow2 = E('label',{class:'ex-device-config-block'},[E('strong',{},['Confirmar nova senha']),password2]);
@@ -350,11 +480,27 @@ const wifiMethods = {
 			if (encVal === 'psk2') {
 				encAlert.className = 'alert-message success';
 				encAlert.style.display = 'block';
-				encAlert.innerHTML = '<strong>PMF Desativado:</strong> Recomendado para Casa Inteligente. Garante a conexão de dispositivos IoT antigos e modernos (Tuya/Sonoff) sem falhas de autenticação 802.11w.';
-			} else if (encVal === 'sae-mixed' || encVal === 'sae') {
+				if (isLegacyMips) {
+					encAlert.innerHTML = '<strong>' + _t('Aceleração em Silício (AES):') + '</strong> ' + _t('Criptografia processada diretamente pelo hardware Atheros/MIPS. Máxima velocidade no ar e 100% compatível com IoT (Tuya/Sonoff) e celulares.');
+				} else {
+					encAlert.innerHTML = '<strong>' + _t('WPA2-PSK (Compatibilidade Geral):') + '</strong> ' + _t('Recomendado para Casa Inteligente (IoT) e aparelhos legados. Garante conexão estável sem exigir PMF 802.11w.');
+				}
+			} else if (encVal === 'sae-mixed') {
+				encAlert.className = isLegacyMips ? 'alert-message warning' : 'alert-message success';
+				encAlert.style.display = 'block';
+				if (isLegacyMips) {
+					encAlert.innerHTML = '<strong>' + _t('WPA2/WPA3 Misto:') + '</strong> ' + _t('Aparelhos novos usam WPA3 e antigos usam WPA2. Nota: em CPU de 1 núcleo, a autenticação WPA3 consome mais processamento.');
+				} else {
+					encAlert.innerHTML = '<strong>' + _t('WPA2/WPA3 Misto (Recomendado):') + '</strong> ' + _t('Padrão recomendado para redes modernas. Segurança avançada WPA3 com compatibilidade retroativa para aparelhos WPA2.');
+				}
+			} else if (encVal === 'sae') {
 				encAlert.className = 'alert-message warning';
 				encAlert.style.display = 'block';
-				encAlert.innerHTML = '<strong>Atenção ao WPA3 e PMF:</strong> A segurança WPA3 exige/ativa o PMF (Protected Management Frames). Vários dispositivos Smart Home/IoT recusarão a conexão.';
+				encAlert.innerHTML = '<strong>' + _t('WPA3-SAE Puro (Máxima Segurança):') + '</strong> ' + _t('Exige Protected Management Frames (PMF). Dispositivos Smart Home/IoT ou aparelhos legados que não suportam WPA3 não conseguirão se conectar.');
+			} else if (encVal === 'none') {
+				encAlert.className = 'alert-message danger';
+				encAlert.style.display = 'block';
+				encAlert.innerHTML = '<strong>' + _t('⚠️ Rede Aberta (Sem Senha):') + '</strong> ' + _t('Qualquer pessoa próxima poderá se conectar e o tráfego não será criptografado.');
 			} else {
 				encAlert.style.display = 'none';
 			}
@@ -362,12 +508,83 @@ const wifiMethods = {
 		encSelect.addEventListener('change', updateEncVisibility);
 		updateEncVisibility();
 
+		const bandBlock = E('div', { class: 'ex-device-config-block', style: 'gap: 10px;' }, [
+			E('div', {}, [
+				E('strong', {}, [_t('Frequências de transmissão ativas')]),
+				E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, [
+					_t('Escolha quais faixas de rádio transmitem esta rede. Ao menos uma deve permanecer ligada.')
+				])
+			]),
+			E('div', {
+				class: 'ex-device-config-heading',
+				style: 'padding: 10px 12px; border-radius: 8px; background: rgba(127,127,127,.06); border: 1px solid rgba(127,127,127,.12);'
+			}, [
+				E('div', { style: 'display: flex; flex-direction: column; gap: 2px; min-width: 0;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
+						E('span', { class: 'ex-wifi-band-badge', style: 'font-size: 11px; padding: 2px 7px; background: rgba(245,158,11,.15); color: #f59e0b; border-radius: 4px; font-weight: 750;' }, ['2.4 GHz']),
+						E('strong', { style: 'font-size: 13.5px;' }, ['2,4 GHz'])
+					]),
+					E('small', { class: 'ex-muted', style: 'font-size: 11.5px; line-height: 1.3;' }, [_t('Maior alcance e travessia de paredes. Ideal para Smart Home / IoT.')])
+				]),
+				E('div', { class: 'ex-device-switch-control', style: 'flex: 0 0 auto;' }, [
+					state2Text,
+					E('label', { class: 'ex-switch', 'aria-label': _t('Ativar frequência 2,4 GHz') }, [
+						band2Input,
+						E('span', { class: 'ex-switch-slider' })
+					])
+				])
+			]),
+			E('div', {
+				class: 'ex-device-config-heading',
+				style: 'padding: 10px 12px; border-radius: 8px; background: rgba(127,127,127,.06); border: 1px solid rgba(127,127,127,.12);'
+			}, [
+				E('div', { style: 'display: flex; flex-direction: column; gap: 2px; min-width: 0;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
+						E('span', { class: 'ex-wifi-band-badge', style: 'font-size: 11px; padding: 2px 7px; background: rgba(59,130,246,.15); color: #3b82f6; border-radius: 4px; font-weight: 750;' }, ['5 GHz']),
+						E('strong', { style: 'font-size: 13.5px;' }, ['5 GHz'])
+					]),
+					E('small', { class: 'ex-muted', style: 'font-size: 11.5px; line-height: 1.3;' }, [_t('Maior velocidade e menor interferência. Recomendado para celulares, PCs e TVs.')])
+				]),
+				E('div', { class: 'ex-device-switch-control', style: 'flex: 0 0 auto;' }, [
+					state5Text,
+					E('label', { class: 'ex-switch', 'aria-label': _t('Ativar frequência 5 GHz') }, [
+						band5Input,
+						E('span', { class: 'ex-switch-slider' })
+					])
+				])
+			])
+		]);
+
+		if (has6g && band6Input) {
+			bandBlock.appendChild(E('div', {
+				class: 'ex-device-config-heading',
+				style: 'padding: 10px 12px; border-radius: 8px; background: rgba(127,127,127,.06); border: 1px solid rgba(127,127,127,.12);'
+			}, [
+				E('div', { style: 'display: flex; flex-direction: column; gap: 2px; min-width: 0;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
+						E('span', { class: 'ex-wifi-band-badge', style: 'font-size: 11px; padding: 2px 7px; background: rgba(16,185,129,.15); color: #10b981; border-radius: 4px; font-weight: 750;' }, ['6 GHz']),
+						E('strong', { style: 'font-size: 13.5px;' }, ['6 GHz (Wi‑Fi 6E / 7)'])
+					]),
+					E('small', { class: 'ex-muted', style: 'font-size: 11.5px; line-height: 1.3;' }, [_t('Ultra velocidade com canais de 320 MHz e baixíssima latência.')])
+				]),
+				E('div', { class: 'ex-device-switch-control', style: 'flex: 0 0 auto;' }, [
+					state6Text,
+					E('label', { class: 'ex-switch', 'aria-label': _t('Ativar frequência 6 GHz') }, [
+						band6Input,
+						E('span', { class: 'ex-switch-slider' })
+					])
+				])
+			]));
+		}
+
 		const rows=[
-			E('label',{class:'ex-device-config-block'},[E('strong',{},['Segurança / Criptografia']),encSelect,encAlert]),
-			E('label',{class:'ex-show-password'},[split,E('span',{},['Separar nomes 2,4 GHz e 5 GHz'])]),
+			hwWifiBanner,
+			E('label',{class:'ex-device-config-block'},[E('strong',{},[_t('Segurança / Criptografia')]),encSelect,encAlert]),
+			bandBlock,
+			E('label',{class:'ex-show-password'},[split,E('span',{},[_t('Separar nomes 2,4 GHz e 5 GHz')])]),
 			unifiedRow,
 			splitRows
-		];
+		].filter(Boolean);
 		let guestDownInput=null, guestUpInput=null;
 		if(isGuest){
 			rows.push(E('div',{class:'ex-device-config-block'},[E('div',{class:'ex-device-config-heading'},[E('div',{},[E('strong',{},['Rede visitante']),E('small',{class:'ex-muted'},['Liga ou desliga o SSID visitante sem apagar a configuração.'])]),E('div',{class:'ex-device-switch-control'},[E('strong',{class:'ex-device-switch-state'},[enabled.checked?'Ligada':'Desligada']),E('label',{class:'ex-switch'},[enabled,E('span',{class:'ex-switch-slider'})])])])]));
@@ -439,15 +656,44 @@ const wifiMethods = {
 		rows.push(E('p',{class:'alert-message warning'},['Ao salvar, o Wi‑Fi reiniciará e aparelhos dessa rede poderão precisar reconectar.']));
 		rows.push(E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
 			const btn = ev.currentTarget;
-			const name=ssid.value.trim(), name2=ssid2.value.trim(), name5=ssid5.value.trim(), pass=password.value, isSplit=split.checked, enc=encSelect.value;
-			if((!isSplit&&(!name||name.length>32))||(isSplit&&(!name2||name2.length>32||!name5||name5.length>32))){ui.addNotification(null,E('p',{},['O nome da rede precisa ter entre 1 e 32 caracteres.']),'danger');return;}
+			const b2 = band2Input.checked;
+			const b5 = band5Input.checked;
+			const b6 = band6Input ? band6Input.checked : false;
+			if (!b2 && !b5 && !b6) {
+				ui.addNotification(null, E('p', {}, [_t('Ao menos uma frequência deve permanecer ativa nesta rede Wi‑Fi.')]), 'danger');
+				return;
+			}
+			const name=ssid.value.trim(), name2=ssid2.value.trim(), name5=ssid5.value.trim(), name6=(ssid6?ssid6.value.trim():''), pass=password.value, isSplit=split.checked, enc=encSelect.value;
+			if (!isSplit) {
+				if (!name || name.length > 32) {
+					ui.addNotification(null, E('p', {}, [_t('O nome da rede precisa ter entre 1 e 32 caracteres.')]), 'danger');
+					return;
+				}
+			} else {
+				if (b2 && (!name2 || name2.length > 32)) {
+					ui.addNotification(null, E('p', {}, [_t('O nome da rede 2,4 GHz precisa ter entre 1 e 32 caracteres.')]), 'danger');
+					return;
+				}
+				if (b5 && (!name5 || name5.length > 32)) {
+					ui.addNotification(null, E('p', {}, [_t('O nome da rede 5 GHz precisa ter entre 1 e 32 caracteres.')]), 'danger');
+					return;
+				}
+				if (b6 && (!name6 || name6.length > 32)) {
+					ui.addNotification(null, E('p', {}, [_t('O nome da rede 6 GHz precisa ter entre 1 e 32 caracteres.')]), 'danger');
+					return;
+				}
+			}
 			if(enc !== 'none' && (pass||password2.value)){
 				if(pass.length<8||pass.length>63){ui.addNotification(null,E('p',{},['A senha precisa ter entre 8 e 63 caracteres.']),'danger');return;}
 				if(pass!==password2.value){ui.addNotification(null,E('p',{},['As duas senhas digitadas não são iguais.']),'danger');return;}
 			}
 			btn.disabled = true;
 			btn.textContent = 'Salvando Wi‑Fi…';
-			const args=['wifi-settings',kind,'split='+(isSplit?'1':'0'),'ssid='+name,'ssid2='+name2,'ssid5='+name5,'encryption='+enc,'enabled='+(isGuest?(enabled.checked?'1':'0'):'keep')];
+			const args=['wifi-settings',kind,'split='+(isSplit?'1':'0'),'ssid='+name,'ssid2='+name2,'ssid5='+name5,'encryption='+enc,'enabled='+(isGuest?(enabled.checked?'1':'0'):'keep'),'enable_2g='+(b2?'1':'0'),'enable_5g='+(b5?'1':'0')];
+			if (has6g) {
+				args.push('enable_6g=' + (b6 ? '1' : '0'));
+				if (name6) args.push('ssid6=' + name6);
+			}
 			if(pass)args.push('password='+pass);
 			if(isGuest&&guestDownInput&&guestUpInput){
 				const gDown=mbpsToKbps(guestDownInput.value)||'0', gUp=mbpsToKbps(guestUpInput.value)||'0';
@@ -593,11 +839,18 @@ const wifiMethods = {
 			? 'Canais 36-48 e 149-165 não usam DFS (sem pausas por radar). Canais 36-48 suportam 160 MHz; canais 149-165 operam em até 80 MHz.'
 			: 'Canais 36-48 e 149-165 não usam DFS (sem pausas por radar). Este hardware opera com canais de até 80 MHz (VHT80) para máxima estabilidade.';
 
+		const isEcoHw = this.isEconomicHardware ? this.isEconomicHardware(this.currentData) : false;
+		const ecoWifiTip = isEcoHw ? E('div', { class: 'alert-message info', style: 'margin-top: 6px; font-size: 11.5px; line-height: 1.4;' }, [
+			E('strong', {}, ['💡 ' + _t('Dica para CPU de 1 Núcleo / MIPS:') + ' ']),
+			_t('Em 2,4 GHz, manter a largura em 20 MHz (HT20) evita colisões de canal de 40 MHz que sobrecarregam a CPU com erros de CRC.')
+		]) : '';
+
 		const rows = [
 			E('label', { class: 'ex-device-config-block' }, [
 				E('strong', {}, ['Canal 2,4 GHz']),
 				ch2Select,
 				ch2Note,
+				ecoWifiTip,
 				E('small', { class: 'ex-muted' }, ['Canais 1, 6 e 11 são os únicos sem sobreposição no 2,4 GHz. Dica: use 20 MHz (HT20) para total estabilidade de automação residencial e IoT.'])
 			]),
 			E('label', { class: 'ex-device-config-block' }, [

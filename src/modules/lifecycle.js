@@ -2,14 +2,53 @@
 const lifecycleMethods = {
 	board: {}, countries: [], capabilities: {features:{}}, previous: {}, trafficPrevious: {}, trafficAt: 0, currentData: null, recommendedChannels: null, speedResults: {}, refreshTimer: null, dashboardRoot: null, deviceSortKey: 'total', deviceSortDir: 'desc', starlinkTelemetryTimer: null, starlinkTelemetryStopTimer: null, starlinkTelemetryActive: false, starlinkTelemetryWan: null, starlinkWanOrder: [], starlinkResults: {},
 	fetchCapabilities: function(){
+		if (typeof window !== 'undefined' && window._arkCapabilities && window._arkCapabilities.features) {
+			return Promise.resolve(window._arkCapabilities);
+		}
+		if (typeof sessionStorage !== 'undefined') {
+			try {
+				const cached = JSON.parse(sessionStorage.getItem('ark_caps') || '{}');
+				if (cached && cached.features && Object.keys(cached.features).length > 0) {
+					if (typeof window !== 'undefined') window._arkCapabilities = cached;
+					const lang = cached.language || 'pt-br';
+					dashboardLanguage = lang;
+					fs.exec('/usr/sbin/equipe-dashboard-control', ['features']).then(function(r) {
+						try {
+							const c = JSON.parse((r && r.stdout) || '{}');
+							if (c && c.features) {
+								sessionStorage.setItem('ark_caps', JSON.stringify(c));
+								if (typeof window !== 'undefined') window._arkCapabilities = c;
+							}
+						} catch(e) {}
+					}).catch(function(){});
+					if (typeof loadDashboardLanguage === 'function') {
+						return loadDashboardLanguage(lang).then(function() { return cached; });
+					}
+					return Promise.resolve(cached);
+				}
+			} catch(e) {}
+		}
 		return safe(fs.exec('/usr/sbin/equipe-dashboard-control',['features']),{}, 15000).then(function(r){
 			try{
 				const c=JSON.parse((r&&r.stdout)||'{}');
 				if(c && c.features && Object.keys(c.features).length > 0){
-					if(typeof window!=='undefined'){window._arkCapabilities=c;}
+					if(typeof window!=='undefined'){
+						window._arkCapabilities=c;
+						try { sessionStorage.setItem('ark_caps', JSON.stringify(c)); } catch(e){}
+					}
+					const lang = c.language || 'pt-br';
+					dashboardLanguage = lang;
+					if (typeof loadDashboardLanguage === 'function') {
+						return loadDashboardLanguage(lang).then(function() { return c; });
+					}
 					return c;
 				}
 				if(typeof window!=='undefined' && window._arkCapabilities && window._arkCapabilities.features){
+					const lang = window._arkCapabilities.language || 'pt-br';
+					dashboardLanguage = lang;
+					if (typeof loadDashboardLanguage === 'function') {
+						return loadDashboardLanguage(lang).then(function() { return window._arkCapabilities; });
+					}
 					return window._arkCapabilities;
 				}
 				return c;
@@ -125,16 +164,37 @@ const lifecycleMethods = {
 		]);
 	},
 	fetchData: function(isInitial) {
+		const self = this;
+		const isApMode = (this.capabilities && this.capabilities.network_mode === 'ap') ||
+			(typeof window !== 'undefined' && window._arkCapabilities && window._arkCapabilities.network_mode === 'ap') ||
+			(this.currentData && this.currentData.networkConfig && this.currentData.networkConfig.lan && this.currentData.networkConfig.lan.proto === 'dhcp');
+		const activeWansCount = (this.currentData && this.currentData.activeWans) ? this.currentData.activeWans.length : 1;
+		const mwanPromise = (!isApMode && activeWansCount > 1)
+			? safe(fs.exec('/usr/sbin/equipe-dashboard-control', [ 'mwan-status-fast' ]).then(function(res){
+				try {
+					const parsed = JSON.parse(res.stdout || '{}');
+					if (parsed && parsed.interfaces && Object.keys(parsed.interfaces).length > 0) return parsed;
+				} catch(e) {}
+				return safe(callMwanStatus(), {});
+			}), {})
+			: Promise.resolve((this.currentData && this.currentData.mwan) || {});
+		const hasNlbwmon = !(this.capabilities && this.capabilities.features && this.capabilities.features.nlbwmon && this.capabilities.features.nlbwmon.active === false);
+		const nlbwmonPromise = (!isInitial && hasNlbwmon)
+			? safe(fs.exec('/usr/libexec/nlbwmon-action', [ 'download', '-g', 'family,mac,ip', '-o', '-rx_bytes,-tx_bytes' ]).then(function(res) {
+				try { return JSON.parse(res.stdout || '{}'); } catch(e) { return { columns: [], data: [] }; }
+			}), { columns: [], data: [] })
+			: Promise.resolve((this.currentData && this.currentData.traffic) || { columns: [], data: [] });
+		const mwanUciPromise = (isApMode || activeWansCount <= 1)
+			? Promise.resolve((this.currentData && this.currentData.mwanConfig) || { values: {} })
+			: safe(callUciGet('mwan3'), { values: {} });
 		return Promise.all([
 			safe(callSystemInfo(), {}), safe(callInterfaceDump(), { interface: [] }),
-			safe(callMwanStatus(), {}), safe(callDHCPLeases(), { dhcp_leases: [] }),
-			safe(callUciGet('sqm'), { values: {} }), safe(callUciGet('qos_equipe'), { values: {} }), safe(callUciGet('wireless'), { values: {} }), safe(callUciGet('mwan3'), { values: {} }), safe(callUciGet('equipe_devices'), { values: {} }), safe(callUciGet('network'), { values: {} }),
+			mwanPromise, safe(callDHCPLeases(), { dhcp_leases: [] }),
+			safe(callUciGet('sqm'), { values: {} }), safe(callUciGet('qos_equipe'), { values: {} }), safe(callUciGet('wireless'), { values: {} }), mwanUciPromise, safe(callUciGet('equipe_devices'), { values: {} }), safe(callUciGet('network'), { values: {} }),
 			safe(fs.exec('/usr/sbin/equipe-dashboard-control', [ 'lan-status' ]), {}),
 			safe(fs.read('/sys/class/thermal/thermal_zone0/temp'), '0'),
 			safe(fs.exec('/usr/sbin/equipe-dashboard-control', [ 'system-perf-status' ]), {}),
-			safe(fs.exec('/usr/libexec/nlbwmon-action', [ 'download', '-g', 'family,mac,ip', '-o', '-rx_bytes,-tx_bytes' ]).then(function(res) {
-				try { return JSON.parse(res.stdout || '{}'); } catch(e) { return { columns: [], data: [] }; }
-			}), { columns: [], data: [] }),
+			nlbwmonPromise,
 			safe(fs.read('/tmp/equipe-traffic-history.csv'), ''),
 			safe(callWirelessStatus(), {}),
 			safe(callUciGet('dhcp'), { values: {} }),
@@ -178,8 +238,8 @@ const lifecycleMethods = {
 						return { ifname: n, meta: (topology.ifaceMeta && topology.ifaceMeta[n]) || {}, results: (res && res.results) || [] };
 					});
 				})),
-				isInitial ? Promise.resolve({ results: [] }) : safe(callSurvey(topology.survey2), { results: [] }),
-				isInitial ? Promise.resolve({ results: [] }) : safe(callSurvey(topology.survey5), { results: [] }),
+				(isInitial || self.isEconomicHardware(self.currentData)) ? Promise.resolve({ results: [] }) : safe(callSurvey(topology.survey2), { results: [] }),
+				(isInitial || self.isEconomicHardware(self.currentData)) ? Promise.resolve({ results: [] }) : safe(callSurvey(topology.survey5), { results: [] }),
 				Promise.all(lanPorts.map(function(port){ return safe(callDeviceStatus(port), {}); }))
 			]).then(function(x) {
 				const deviceStations = (function(){ try { return JSON.parse((r[24] && r[24].stdout) || '{}'); } catch(e){ return {}; } })();
@@ -326,16 +386,41 @@ const lifecycleMethods = {
 		const details=document.getElementById('ex-device-details');
 		return !!(details&&details.open);
 	},
+	isEconomicHardware: function(data) {
+		const hw = (data && data.hardwareInfo) || (this.currentData && this.currentData.hardwareInfo) || {};
+		const cpu = hw.cpu || {};
+		const silicon = hw.silicon || {};
+		const mem = (data && data.system && data.system.memory) || (this.currentData && this.currentData.system && this.currentData.system.memory) || {};
+		const totalMemMb = (Number(mem.total) || 0) / (1024 * 1024);
+
+		if (cpu.cores === 1) return true;
+		if (cpu.arch && cpu.arch.indexOf('mips') >= 0) return true;
+		if (silicon.class === 'mips_legacy') return true;
+		if (cpu.freq_mhz && cpu.freq_mhz < 1000) return true;
+		if (totalMemMb > 0 && totalMemMb <= 140) return true;
+		return false;
+	},
 	adaptiveRefreshSeconds: function(data) {
-		if(!this.devicesExpanded())return 3;
-		const mem=(data&&data.system&&data.system.memory)||{}, total=Number(mem.total)||0, free=Number(mem.available||mem.free)||0, mib=1024*1024;
-		if(total>=224*mib&&free>=96*mib)return 1;
-		if(total>=96*mib&&free>=40*mib)return 2;
+		if (this.isEconomicHardware(data)) {
+			return 5;
+		}
+		if (!this.devicesExpanded()) return 3;
+		const mem = (data && data.system && data.system.memory) || {}, total = Number(mem.total) || 0, free = Number(mem.available || mem.free) || 0, mib = 1024 * 1024;
+		if (total >= 224 * mib && free >= 96 * mib) return 2;
+		if (total >= 96 * mib && free >= 40 * mib) return 2;
 		return 3;
 	},
 	updateRefreshSummary: function(data) {
-		const sec=this.adaptiveRefreshSeconds(data), suffix=this.devicesExpanded()?' • lista aberta':'';
-		text('ex-refresh-summary','sessão de 12 horas • atualização a cada '+sec+' segundo'+(sec===1?'':'s')+suffix);
+		const isEco = this.isEconomicHardware(data);
+		const sec = this.adaptiveRefreshSeconds(data);
+		const suffix = this.devicesExpanded() ? ' • lista aberta' : '';
+		let modeTag = '';
+		if (isEco) {
+			modeTag = ' • modo econômico';
+		} else if (data && data.hardwareInfo && data.hardwareInfo.cpu && data.hardwareInfo.cpu.cores >= 4 && sec <= 3) {
+			modeTag = ' • modo turbo';
+		}
+		text('ex-refresh-summary', 'sessão de 12 horas • atualização a cada ' + sec + ' segundo' + (sec === 1 ? '' : 's') + modeTag + suffix);
 	},
 	scheduleAdaptiveRefresh: function(delay) {
 		if(this.refreshTimer){window.clearTimeout(this.refreshTimer);this.refreshTimer=null;}

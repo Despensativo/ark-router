@@ -127,7 +127,8 @@
 	body.ark-theme:not(.ark-login-page) #maincontent,
 	body.ark-theme:not(.ark-login-page) .main {
 		margin-left: 0 !important;
-		max-width: 100vw !important;
+		width: 100% !important;
+		max-width: 100% !important;
 		padding: 16px 10px 32px !important;
 	}
 
@@ -157,7 +158,8 @@
 
 	html, body {
 		overflow-x: hidden !important;
-		max-width: 100vw !important;
+		width: 100% !important;
+		max-width: 100% !important;
 	}
 
 	.table, table.cbi-section-table, table.table {

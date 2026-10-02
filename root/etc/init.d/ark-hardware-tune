@@ -209,5 +209,21 @@ start() {
 	fi
 
 	logger -t ark-hardware-tune "Calibracao de hardware e latencia finalizada com sucesso."
+
+	# Background Pre-caching for Dashboard (WARMUP)
+	# Pre-populates semistatic RAM caches in /tmp 12s after boot
+	# with minimum priority (nice 19) so first LuCI dashboard access is instant.
+	(
+		sleep 12
+		if [ -x /usr/sbin/equipe-dashboard-control ]; then
+			nice -n 19 /usr/sbin/equipe-dashboard-control system-hardware-info >/dev/null 2>&1
+			nice -n 19 /usr/sbin/equipe-dashboard-control system-perf-status >/dev/null 2>&1
+			nice -n 19 /usr/sbin/equipe-dashboard-control device-fingerprints >/dev/null 2>&1
+			nice -n 19 /usr/sbin/equipe-dashboard-control device-stations >/dev/null 2>&1
+			nice -n 19 /usr/sbin/equipe-dashboard-control features >/dev/null 2>&1
+			logger -t ark-hardware-tune "Dashboard pre-caching completado com sucesso."
+		fi
+	) >/dev/null 2>&1 &
+
 	return 0
 }

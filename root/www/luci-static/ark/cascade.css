@@ -37,6 +37,7 @@ html, body {
 	padding: 0;
 	min-height: 100vh;
 	-webkit-font-smoothing: antialiased;
+	overflow-x: hidden !important;
 }
 
 a {
@@ -228,13 +229,15 @@ aside.ark-sidebar {
 body.ark-theme:not(.ark-login-page) #maincontent,
 body.ark-theme:not(.ark-login-page) .main {
 	margin-left: 230px !important;
-	max-width: calc(100vw - 230px) !important;
+	width: calc(100% - 230px) !important;
+	max-width: calc(100% - 230px) !important;
 	padding: 24px 32px !important;
 	box-sizing: border-box !important;
 	transition: margin-left 0.25s ease !important;
 }
 body.ark-login-page #maincontent {
 	margin-left: 0 !important;
+	width: 100% !important;
 	max-width: 100% !important;
 }
 
@@ -922,6 +925,21 @@ div[id*="pw"] > button.cbi-button-neutral {
 	-webkit-overflow-scrolling: touch !important;
 }
 
+/* Modals must allow dropdown menus to overflow without being clipped by section boxes */
+.modal .cbi-section,
+.modal .cbi-tblsection,
+.modal .cbi-section-node,
+.modal .cbi-value,
+.cbi-modal .cbi-section,
+.cbi-modal .cbi-tblsection,
+.cbi-modal .cbi-section-node,
+.cbi-modal .cbi-value,
+#modal_overlay .cbi-section,
+#modal_overlay .cbi-section-node {
+	overflow-x: visible !important;
+	overflow-y: visible !important;
+}
+
 /* Hide LuCI form dummy/hidden submit inputs that float as orphaned buttons */
 input.hidden, .hidden {
 	display: none !important;
@@ -1140,7 +1158,6 @@ body.ark-login-page .cbi-modal {
 
 body.modal-overlay-active:not(.ark-login-page) {
 	overflow: hidden !important;
-	height: 100vh !important;
 }
 body.modal-overlay-active:not(.ark-login-page) #modal_overlay {
 	visibility: visible !important;
@@ -1780,6 +1797,9 @@ body:not([data-interface-mode="advanced"]) #cbi-wireless-wifi-device > .cbi-sect
 	position: relative !important;
 	overflow: hidden !important;
 }
+.ark-radio-card.radio-6g {
+	border-top: 3px solid #06b6d4 !important;
+}
 .ark-radio-card.radio-5g {
 	border-top: 3px solid #8b5cf6 !important;
 }
@@ -1788,20 +1808,26 @@ body:not([data-interface-mode="advanced"]) #cbi-wireless-wifi-device > .cbi-sect
 }
 .ark-radio-header {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: flex-start;
 	justify-content: space-between;
 	gap: 12px;
 	padding-bottom: 14px;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
+.ark-radio-title-wrap {
+	flex: 1 1 200px;
+	min-width: 0;
+}
 .ark-radio-title-wrap h3 {
 	margin: 0 0 4px !important;
-	font-size: 17px !important;
+	font-size: 16px !important;
 	font-weight: 700 !important;
 	color: #fff !important;
 	display: flex;
 	align-items: center;
 	gap: 8px;
+	word-break: break-word;
 }
 .ark-radio-meta {
 	font-size: 12px;
@@ -1815,12 +1841,17 @@ body:not([data-interface-mode="advanced"]) #cbi-wireless-wifi-device > .cbi-sect
 }
 .ark-radio-actions {
 	display: flex;
+	flex-wrap: wrap;
 	gap: 6px;
+	margin-left: auto;
 }
 .ark-radio-actions button {
-	font-size: 11px !important;
+	font-size: 11.5px !important;
 	padding: 6px 12px !important;
-	height: 34px !important;
+	min-height: 36px !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
 }
 .ark-ssid-list {
 	display: flex;
@@ -1831,8 +1862,9 @@ body:not([data-interface-mode="advanced"]) #cbi-wireless-wifi-device > .cbi-sect
 	background: rgba(255, 255, 255, 0.03) !important;
 	border: 1px solid rgba(255, 255, 255, 0.08) !important;
 	border-radius: 12px !important;
-	padding: 14px 16px !important;
+	padding: 12px 14px !important;
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
 	gap: 12px;
@@ -1846,6 +1878,8 @@ body:not([data-interface-mode="advanced"]) #cbi-wireless-wifi-device > .cbi-sect
 	display: flex;
 	align-items: center;
 	gap: 12px;
+	flex: 1 1 200px;
+	min-width: 0;
 }
 .ark-ssid-icon {
 	width: 36px;
@@ -1857,6 +1891,10 @@ body:not([data-interface-mode="advanced"]) #cbi-wireless-wifi-device > .cbi-sect
 	align-items: center;
 	justify-content: center;
 	font-size: 18px;
+}
+.ark-radio-card.radio-6g .ark-ssid-icon {
+	background: rgba(6, 182, 212, 0.15);
+	color: #22d3ee;
 }
 .ark-radio-card.radio-5g .ark-ssid-icon {
 	background: rgba(139, 92, 246, 0.15);
@@ -1873,13 +1911,53 @@ body:not([data-interface-mode="advanced"]) #cbi-wireless-wifi-device > .cbi-sect
 }
 .ark-ssid-actions {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	gap: 6px;
 }
 .ark-ssid-actions button {
+	min-height: 34px !important;
+	font-size: 11.5px !important;
 	padding: 4px 10px !important;
-	font-size: 11px !important;
-	height: 30px !important;
+}
+
+/* Sidebar Interface Mode Switcher */
+.ark-mode-switch-wrap {
+	display: flex;
+	align-items: center;
+	background: rgba(0, 0, 0, 0.35);
+	border: 1px solid var(--ark-border);
+	border-radius: 8px;
+	padding: 2px;
+	gap: 2px;
+	width: 100%;
+	margin-bottom: 8px;
+}
+.ark-mode-pill {
+	flex: 1;
+	border: none;
+	background: transparent;
+	color: var(--ark-text-muted);
+	font-size: 11.5px;
+	font-weight: 600;
+	padding: 5px 8px;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	user-select: none;
+}
+.ark-mode-pill:hover {
+	color: #fff;
+	background: rgba(255, 255, 255, 0.06);
+}
+.ark-mode-pill.active {
+	background: var(--ark-primary);
+	color: #fff;
+	box-shadow: 0 2px 8px var(--ark-primary-glow);
 }
 
 /* 7. Interfaces Command Grid */
@@ -2782,14 +2860,26 @@ strong[style*="rgb(255, 170, 0)"], strong[style*="yellow"] {
 	border-radius: 8px !important;
 	box-shadow: var(--ark-shadow-lg, 0 12px 35px rgba(0, 0, 0, 0.5)) !important;
 	position: absolute !important;
-	top: calc(100% + 4px) !important;
 	left: 0 !important;
 	z-index: 1100 !important;
 	min-width: 100% !important;
 	width: max-content !important;
+	max-width: calc(100vw - 32px) !important;
 	max-height: 280px !important;
 	overflow-y: auto !important;
+	-webkit-overflow-scrolling: touch !important;
 	padding: 4px 0 !important;
+}
+
+/* Default position below when LuCI doesn't specify bottom */
+.cbi-dropdown[open] > ul.dropdown:not([style*="bottom"]) {
+	top: calc(100% + 4px) !important;
+	bottom: auto !important;
+}
+
+/* Upward opening position when LuCI detects bottom overflow */
+.cbi-dropdown[open] > ul.dropdown[style*="bottom"] {
+	top: auto !important;
 }
 .cbi-dropdown[open] > ul.dropdown > li {
 	display: flex !important;

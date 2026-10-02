@@ -130,9 +130,28 @@ fi
 echo "$$" > "$pidfile"
 trap 'flush_to_persist; rm -f "$pidfile" 2>/dev/null; exit 0' INT TERM HUP EXIT
 
+rpcd_stuck_cycles=0
+check_rpcd_health() {
+	local rpcd_count
+	rpcd_count="$(pgrep -c rpcd 2>/dev/null || echo 1)"
+	if [ "$rpcd_count" -ge 3 ]; then
+		rpcd_stuck_cycles=$((rpcd_stuck_cycles + 1))
+		if [ "$rpcd_stuck_cycles" -ge 6 ]; then
+			logger -t ark-watchdog "Detectados $rpcd_count processos rpcd acumulados por mais de 30s. Auto-recuperando servicos web..."
+			killall -9 rpcd uhttpd 2>/dev/null || true
+			/etc/init.d/rpcd start >/dev/null 2>&1 || true
+			/etc/init.d/uhttpd start >/dev/null 2>&1 || true
+			rpcd_stuck_cycles=0
+		fi
+	else
+		rpcd_stuck_cycles=0
+	fi
+}
+
 [ -s "$history" ] || { [ -s "$persist" ] && cp "$persist" "$history" || : > "$history"; }
 [ -s "$wan_daily" ] || { [ -s "$wan_daily_persist" ] && cp "$wan_daily_persist" "$wan_daily" || : > "$wan_daily"; }
 while true; do
 	sample
+	check_rpcd_health
 	sleep 5
 done

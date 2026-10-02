@@ -11,6 +11,29 @@ _ARK_SYSTEM_SH_LOADED=1
 . "${ARK_LIB_DIR}/validation.sh"
 
 system_perf_status_json() {
+	local perf_cache="/tmp/ark-perf-cache.json"
+	local perf_ts="/tmp/ark-perf-cache.ts"
+	local now cache_time
+
+	now="$(date +%s 2>/dev/null || echo 0)"
+	if [ -s "$perf_cache" ] && [ -f "$perf_ts" ]; then
+		cache_time="$(head -n 1 "$perf_ts" 2>/dev/null || echo 0)"
+		case "$cache_time" in ''|*[!0-9]*) cache_time=0 ;; esac
+		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ $((now - cache_time)) -lt 120 ]; then
+			local cc="$(cat /proc/sys/net/netfilter/nf_conntrack_count 2>/dev/null || echo 0)"
+			local ma="$(awk '/MemAvailable:/ {print $2; exit}' /proc/meminfo 2>/dev/null || awk '/MemFree:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+			sed -e "s/\"conntrack_count\":[0-9]*/\"conntrack_count\":$cc/" -e "s/\"mem_avail_kb\":[0-9]*/\"mem_avail_kb\":$ma/" "$perf_cache"
+			return 0
+		fi
+	fi
+
+	system_perf_status_raw > "$perf_cache.tmp"
+	mv "$perf_cache.tmp" "$perf_cache"
+	echo "$now" > "$perf_ts"
+	cat "$perf_cache"
+}
+
+system_perf_status_raw() {
 	conntrack_recycle=false
 	[ "$(uci -q get equipe_perf.settings.conntrack_recycle || printf 0)" = 1 ] && conntrack_recycle=true
 
@@ -1903,7 +1926,7 @@ EOF
 		"$(json_escape "$irq_action")" "$ct_max" "$rmem" "$dns_cache" "$services_json"
 }
 
-get_system_hardware_info() {
+get_system_hardware_info_raw() {
 	model="$(cat /tmp/sysinfo/model 2>/dev/null || cat /proc/cpuinfo 2>/dev/null | awk -F': ' '/model name|machine|Hardware/{print $2; exit}' || echo 'ARK Router')"
 	board="$(cat /tmp/sysinfo/board_name 2>/dev/null || echo 'generic')"
 	target="$(grep 'DISTRIB_TARGET' /etc/openwrt_release 2>/dev/null | cut -d"'" -f2 || echo '')"
@@ -2206,6 +2229,43 @@ get_system_hardware_info() {
 	printf '},"firewall":{"engine":"%s","desc":"%s"}}\n' "$(json_escape "$fw_engine")" "$(json_escape "$fw_desc")"
 }
 
+get_system_hardware_info() {
+	local hw_cache="/tmp/ark-hw-cache.json"
+	local hw_ts="/tmp/ark-hw-cache.ts"
+	local now cache_time
+
+	now="$(date +%s 2>/dev/null || echo 0)"
+	if [ -s "$hw_cache" ] && [ -f "$hw_ts" ]; then
+		cache_time="$(head -n 1 "$hw_ts" 2>/dev/null || echo 0)"
+		case "$cache_time" in ''|*[!0-9]*) cache_time=0 ;; esac
+		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ $((now - cache_time)) -lt 120 ]; then
+			local stat_file="/tmp/ark-cpu-usage.prev"
+			local curr_stat curr_total curr_idle prev_stat prev_total prev_idle diff_total diff_idle diff_used cpu_pct=0
+			curr_stat="$(awk '/^cpu / {print $2+$3+$4+$5+$6+$7+$8, $5}' /proc/stat 2>/dev/null || echo '0 0')"
+			curr_total="${curr_stat%% *}"; curr_idle="${curr_stat#* }"
+			if [ -f "$stat_file" ]; then
+				prev_stat="$(cat "$stat_file" 2>/dev/null || echo '0 0')"
+				prev_total="${prev_stat%% *}"; prev_idle="${prev_stat#* }"
+				diff_total=$((curr_total - prev_total))
+				diff_idle=$((curr_idle - prev_idle))
+				if [ "$diff_total" -gt 0 ]; then
+					diff_used=$((diff_total - diff_idle))
+					[ "$diff_used" -lt 0 ] && diff_used=0
+					cpu_pct=$(( (diff_used * 100) / diff_total ))
+				fi
+			fi
+			echo "$curr_stat" > "$stat_file"
+			sed -e "s/\"usage_pct\":[0-9]*/\"usage_pct\":$cpu_pct/" "$hw_cache"
+			return 0
+		fi
+	fi
+
+	get_system_hardware_info_raw > "$hw_cache.tmp"
+	mv "$hw_cache.tmp" "$hw_cache"
+	echo "$now" > "$hw_ts"
+	cat "$hw_cache"
+}
+
 
 
 handle_system() {
@@ -2217,11 +2277,13 @@ handle_system() {
 		;;
 	system-perf-save)
 		shift
+		rm -f /tmp/ark-perf-cache.ts 2>/dev/null || true
 		system_perf_save "$@"
 		;;
 	ram-purge-now)
 		sync
 		echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
+		rm -f /tmp/ark-perf-cache.ts 2>/dev/null || true
 		mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
 		mem_avail_kb="$(awk '/MemAvailable:/ {print $2; exit}' /proc/meminfo 2>/dev/null || awk '/MemFree:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
 		printf '{"ok":true,"mem_total_kb":%s,"mem_avail_kb":%s}\n' "$mem_total_kb" "$mem_avail_kb"
@@ -2238,6 +2300,7 @@ handle_system() {
 		;;
 	dns-turbo-save)
 		shift
+		rm -f /tmp/ark-perf-cache.ts 2>/dev/null || true
 		dns_turbo_save "$@"
 		;;
 	network-capacity-status)
@@ -2248,6 +2311,7 @@ handle_system() {
 		network_capacity_save "$@"
 		;;
 	system-memory-purge)
+		rm -f /tmp/ark-perf-cache.ts 2>/dev/null || true
 		system_memory_purge
 		;;
 	system-storage-purge)
