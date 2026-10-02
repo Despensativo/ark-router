@@ -101,7 +101,7 @@ cmds = [
     '/etc/init.d/ark-hardware-tune enable 2>/dev/null || true',
     '/etc/init.d/ark-hardware-tune start 2>/dev/null || true',
     '/etc/init.d/ark-safe-shutdown enable 2>/dev/null || true',
-    '/sbin/fw4 reload 2>/dev/null || true',
+    '/etc/init.d/firewall reload 2>/dev/null || /sbin/fw4 reload 2>/dev/null || true',
     'rm -rf /tmp/luci-*',
     '/etc/init.d/rpcd restart',
     '/etc/init.d/uhttpd restart',

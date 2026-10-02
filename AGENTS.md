@@ -57,6 +57,10 @@
           # Comandos de retrocompatibilidade iptables / fw3 legado
       fi
       ```
+11. **Geração e Empacotamento Local Obrigatório (Fim do gargalo do CI/CD)**:
+    - O workflow automático do GitHub Actions na nuvem é lento e não deve ser o método primário para aguardar pacotes.
+    - Toda geração dos pacotes `.ipk` e `.apk` deve ser realizada **localmente** no host/WSL através dos scripts de build (`scripts/build-ipk-wsl.sh`, `scripts/build-apk-manual-wsl.sh` ou utilitários locais).
+    - O deploy ou publicação nas Releases do GitHub deve subir os binários já empacotados localmente (via `gh release upload` ou upload manual de artefatos), eliminando tempos mortos de espera e garantindo validação local antes de qualquer anúncio público.
 
 ---
 

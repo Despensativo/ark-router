@@ -153,6 +153,10 @@ system_network_mode_get() {
 	[ -n "$current_ip" ] || current_ip="$lan_ip"
 	local current_gw="$(ip route show default 2>/dev/null | awk '{print $3; exit}')"
 	[ -n "$current_gw" ] || current_gw="$lan_gw"
+	if [ -z "$current_gw" ] || [ "$current_gw" = "$lan_ip" ]; then
+		local wan_gw="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@.route[@.target="0.0.0.0"].nexthop' 2>/dev/null | head -n 1)"
+		[ -n "$wan_gw" ] && current_gw="$wan_gw"
+	fi
 
 	local mesh_disabled="$(uci -q get wireless.extra_mesh_r1.disabled || echo '1')"
 	local cur_mesh_id="$(uci -q get wireless.extra_mesh_r1.mesh_id || echo '')"
@@ -162,8 +166,8 @@ system_network_mode_get() {
 	fi
 	local master_ip="$(uci -q get equipe_dashboard.general.master_ip || echo "$lan_gw")"
 
-	printf '{"mode":"%s","role":"%s","backhaul":"%s","mesh_id":"%s","master_ip":"%s","lan_proto":"%s","lan_ip":"%s","current_ip":"%s","netmask":"%s","gateway":"%s","current_gw":"%s","dns":"%s","rescue_ip":"%s","dhcp_disabled":%s}\n' \
-		"$mode" "$role" "$backhaul" "$cur_mesh_id" "$master_ip" "$lan_proto" "$lan_ip" "$current_ip" "$lan_mask" "$lan_gw" "$current_gw" "$lan_dns" "$rescue_ip" "$([ "$dhcp_disabled" = "1" ] && echo true || echo false)"
+	printf '{"mode":"%s","role":"%s","backhaul":"%s","mesh_id":"%s","master_ip":"%s","lan_proto":"%s","lan_ip":"%s","current_ip":"%s","netmask":"%s","gateway":"%s","current_gw":"%s","dns":"%s","rescue_ip":"%s","dhcp_disabled":%s,"dhcp_enabled":%s}\n' \
+		"$mode" "$role" "$backhaul" "$cur_mesh_id" "$master_ip" "$lan_proto" "$lan_ip" "$current_ip" "$lan_mask" "$lan_gw" "$current_gw" "$lan_dns" "$rescue_ip" "$([ "$dhcp_disabled" = "1" ] && echo true || echo false)" "$([ "$dhcp_disabled" = "1" ] && echo false || echo true)"
 }
 
 system_network_mode_set() {
@@ -173,6 +177,7 @@ system_network_mode_set() {
 	local ap_mask="${4:-255.255.255.0}"
 	local ap_gw="${5:-}"
 	local ap_dns="${6:-}"
+	local router_dhcp_enabled="${2:-1}"
 
 	local default_rescue_ip="192.168.12.1"
 	if [ -f /tmp/sysinfo/board_name ] && grep -qi "predator" /tmp/sysinfo/board_name 2>/dev/null; then
@@ -319,9 +324,14 @@ system_network_mode_set() {
 		[ -z "$(uci -q get network.wan_modem)" ] || uci -q set network.wan_modem.auto='1'
 		[ -z "$(uci -q get network.wan_mgmt)" ] || uci -q set network.wan_mgmt.auto='1'
 
-		# 5. Reativa DHCP local na LAN
-		uci -q delete dhcp.lan.ignore
-		uci -q set dhcp.lan.force='1'
+		# 5. Configura DHCP local na LAN conforme escolha do usuario
+		if [ "$router_dhcp_enabled" = "0" ] || [ "$router_dhcp_enabled" = "false" ]; then
+			uci -q set dhcp.lan.ignore='1'
+			uci -q delete dhcp.lan.force
+		else
+			uci -q delete dhcp.lan.ignore
+			uci -q set dhcp.lan.force='1'
+		fi
 
 		# 6. Salva modo
 		uci -q set equipe_dashboard.main.network_mode='router'
@@ -762,6 +772,10 @@ set_ipv6_mode() {
 		ipv4_only)
 			disable_ipv6_full
 			clean_ipv6_selective_firewall
+			if [ "$(uci -q get equipe_dashboard.main.network_mode)" != "ap" ]; then
+				local prev_v6="$(uci -q get equipe_dashboard.ipv6.mode || true)"
+				[ "$prev_v6" = "ipv6_only" ] && uci -q delete dhcp.lan.ignore && uci commit dhcp
+			fi
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='ipv4_only'
 			uci commit equipe_dashboard
@@ -1040,7 +1054,7 @@ get_configured_ping_track_ips() {
 		cloudflare)  primary="1.1.1.1" ;;
 		google)      primary="8.8.8.8" ;;
 		quad9)       primary="9.9.9.9" ;;
-		registro_br) primary="200.160.2.3" ;;
+		registro_br) primary="1.1.1.1" ;;
 		custom)      primary="${custom_ip:-1.1.1.1}" ;;
 		isp)
 			primary="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@.route[@.target="0.0.0.0"].nexthop' 2>/dev/null | head -n 1)"
@@ -1052,7 +1066,7 @@ get_configured_ping_track_ips() {
 
 	local ips=""
 	[ -n "$primary" ] && ips="$primary"
-	for fallback in 1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4 9.9.9.9 208.67.222.222 200.160.2.3; do
+	for fallback in 1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4 9.9.9.9 208.67.222.222; do
 		case " $ips " in
 			*" $fallback "*) ;;
 			*) ips="${ips:+$ips }$fallback" ;;
@@ -1935,10 +1949,12 @@ handle_network() {
 			first=0
 			printf '"%s"' "$(json_escape "$server")"
 		done
-		printf ']}\n'
+		local dhcp_disabled="$(uci -q get dhcp.lan.ignore || echo '0')"
+		local op_mode="$(uci -q get equipe_dashboard.main.network_mode || echo 'router')"
+		printf '],"dhcp_enabled":%s,"network_mode":"%s"}\n' "$([ "$dhcp_disabled" = "1" ] && echo false || echo true)" "$op_mode"
 		;;
 	lan-save)
-		mode='manual'; router_ip=''; start_ip=''; end_ip=''; netmask='255.255.255.0'; dns=''
+		mode='manual'; router_ip=''; start_ip=''; end_ip=''; netmask='255.255.255.0'; dns=''; dhcp_enabled=''
 		shift
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
@@ -1949,6 +1965,7 @@ handle_network() {
 				end_ip) end_ip="$value" ;;
 				netmask) netmask="$value" ;;
 				dns) dns="$(printf '%s' "$value" | tr ',' ' ')" ;;
+				dhcp_enabled) case "$value" in 1|true|yes) dhcp_enabled='1' ;; 0|false|no) dhcp_enabled='0' ;; esac ;;
 				*) echo "Campo LAN invalido: $key" >&2; exit 2 ;;
 			esac
 		done
@@ -1998,6 +2015,13 @@ handle_network() {
 		uci -q set dhcp.lan.start="$start_host"
 		uci -q set dhcp.lan.limit="$limit"
 		uci -q set dhcp.lan.leasetime="${DHCP_LEASETIME:-12h}"
+		if [ "$dhcp_enabled" = "0" ]; then
+			uci -q set dhcp.lan.ignore='1'
+			uci -q delete dhcp.lan.force
+		else
+			uci -q delete dhcp.lan.ignore
+			uci -q set dhcp.lan.force='1'
+		fi
 		if [ -z "$dns" ] && [ "$(uci -q get dhcp.@dnsmasq[0].allservers)" = 1 ]; then
 			apply_lan_dhcp_dns "$router_ip"
 		else
@@ -2993,12 +3017,13 @@ EOF
 		fi
 		;;
 	ping-target-get)
-		target="$(uci -q get equipe_dashboard.main.ping_target || printf 'registro_br')"
+		target="$(uci -q get equipe_dashboard.main.ping_target || printf 'cloudflare')"
 		custom_ip="$(uci -q get equipe_dashboard.main.ping_custom_ip || true)"
 		case "$target" in
-			registro_br) resolved="200.160.2.3"; label="Registro.br / NIC.br (200.160.2.3)" ;;
 			cloudflare) resolved="1.1.1.1"; label="Cloudflare (1.1.1.1)" ;;
 			google) resolved="8.8.8.8"; label="Google (8.8.8.8)" ;;
+			quad9) resolved="9.9.9.9"; label="Quad9 (9.9.9.9)" ;;
+			custom) resolved="${custom_ip:-1.1.1.1}"; label="Custom ($resolved)" ;;
 			isp)
 				resolved="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@.route[@.target="0.0.0.0"].nexthop' 2>/dev/null | head -n 1)"
 				[ -n "$resolved" ] || resolved="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].ptpaddress' 2>/dev/null)"
@@ -3006,7 +3031,8 @@ EOF
 				[ -n "$resolved" ] || resolved="dinamico"
 				label="Gateway da Operadora ($resolved)"
 				;;
-			*) target="registro_br"; resolved="200.160.2.3"; label="Registro.br / NIC.br (200.160.2.3)" ;;
+			registro_br) target="cloudflare"; resolved="1.1.1.1"; label="Cloudflare (1.1.1.1)" ;;
+			*) target="cloudflare"; resolved="1.1.1.1"; label="Cloudflare (1.1.1.1)" ;;
 		esac
 		printf '{"target":"%s","custom_ip":"%s","resolved_ip":"%s","label":"%s"}\n' \
 			"$(json_escape "$target")" "$(json_escape "$custom_ip")" "$(json_escape "$resolved")" "$(json_escape "$label")"
@@ -3015,8 +3041,9 @@ EOF
 		target="$2"
 		custom_ip="$3"
 		case "$target" in
-			registro_br|cloudflare|google|quad9|isp|custom) ;;
-			*) target="registro_br" ;;
+			cloudflare|google|quad9|isp|custom) ;;
+			registro_br) target="cloudflare" ;;
+			*) target="cloudflare" ;;
 		esac
 		uci -q set equipe_dashboard.main=settings
 		uci -q set equipe_dashboard.main.ping_target="$target"

@@ -4,28 +4,24 @@ This document describes the recommended public release flow for ARK Router.
 
 ARK Router is an OpenWrt/LuCI package. It is not an ISO image and it is not an Android APK. On newer OpenWrt builds, `.apk` means the OpenWrt package format used by the router package manager.
 
-## Recommended Release Model
+## Recommended Release Model (Local-First Packaging)
 
-Use GitHub Releases as the public distribution channel:
+Build packages locally to avoid slow CI/CD cloud queues, verify them immediately, and upload them directly to GitHub Releases:
 
 1. Keep source code on the `main` branch.
 2. Update `VERSION`, `Makefile`, `CHANGELOG.md` and runtime version files.
-3. Commit and push to GitHub.
-4. Create and push a version tag matching `VERSION`, such as `v1.5.1`.
-5. Let GitHub Actions build the OpenWrt package.
-6. Confirm that the Release contains:
-   - `luci-app-ark-router.apk`
-   - `luci-app-ark-router-lite.apk`
-   - `luci-app-ark-router-full.apk`
-   - versioned `.apk`, such as `luci-app-ark-router-lite-1.5.1-r1.apk`
-   - versioned Full `.apk`, such as `luci-app-ark-router-full-1.5.1-r1.apk`
-   - `.ipk` assets when the workflow/build target produces them.
-7. Test the SSH installer from a router.
-
-The current workflow is `.github/workflows/build-packages.yml`. It runs on:
-
-- manual `workflow_dispatch`;
-- pushed tags matching `v*`.
+3. Build the packages **locally** in seconds:
+   - IPK packages: run `scripts/build-ipk-wsl.sh` (or `python scripts/pack_ipk_local.py`).
+   - APK packages: run `scripts/build-apk-manual-wsl.sh` (under WSL or build host).
+   - Artifacts will be generated in `dist/sdk/`.
+4. Validate packages locally in VirtualBox (`OpenWrt-ARK-Dev`).
+5. Commit and push source to GitHub.
+6. Create the release and upload the pre-built packages directly:
+   ```sh
+   gh release create v1.5.x dist/sdk/luci-app-ark-router* --title "ARK Router v1.5.x" --notes-file CHANGELOG.md
+   ```
+   *(Or attach the files directly in the GitHub Release web UI).*
+7. The cloud GitHub Actions workflow (`.github/workflows/build-packages.yml`) is kept only as an optional background fallback (`workflow_dispatch`), eliminating the slow cloud build queue.
 
 ## Before Publishing
 
@@ -60,34 +56,29 @@ Update these files for each release:
 | `CHANGELOG.md` | release notes |
 | `README.md` / docs | only when behavior or install instructions changed |
 
-## Git Commands
+## Release Commands (Local Build & Direct Upload)
 
-Typical release flow:
+Typical release flow with pre-built local packages:
 
 ```sh
+# 1. Build packages locally in seconds
+scripts/build-ipk-wsl.sh
+scripts/build-apk-manual-wsl.sh
+
+# 2. Check and commit
 git status
 git add .
-git commit -m "Release ARK Router v1.5.1"
+git commit -m "Release ARK Router v1.5.x"
 git push origin main
-git tag -a v1.5.1 -m "ARK Router v1.5.1"
-git push origin v1.5.1
+git tag -a v1.5.x -m "ARK Router v1.5.x"
+git push origin v1.5.x
+
+# 3. Upload pre-built packages directly to the release
+gh release create v1.5.x dist/sdk/luci-app-ark-router* --title "ARK Router v1.5.x" --notes-file CHANGELOG.md
+# (Or drag and drop files from dist/sdk/ into GitHub Release web editor)
 ```
 
-After the tag is pushed, open:
-
-```text
-https://github.com/Despensativo/ark-router/actions
-```
-
-Confirm that **Build OpenWrt package** finishes successfully.
-
-Then open:
-
-```text
-https://github.com/Despensativo/ark-router/releases/tag/v1.5.1
-```
-
-Confirm that package assets were attached.
+Direct upload completes in seconds and eliminates waiting for the cloud runner.
 
 ## Public Install Commands
 

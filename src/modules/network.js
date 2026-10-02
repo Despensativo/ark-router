@@ -1126,7 +1126,7 @@ const networkMethods = {
 	},
 	showLatencyTargetModal: function() {
 		const currentInfo = getPingTargetInfo(this.currentData);
-		let selectedTarget = currentInfo.target || 'registro_br';
+		let selectedTarget = currentInfo.target || 'cloudflare';
 		let customIpVal = currentInfo.customIp || '';
 
 		const activeWans = getActiveWanList(this.currentData || {});
@@ -1134,9 +1134,9 @@ const networkMethods = {
 		const modalBody = [];
 
 		modalBody.push(E('p', { class: 'ex-muted', style: 'margin-bottom:12px; font-size:0.86rem; line-height:1.45;' }, [
-			'Selecione o servidor de destino para a medição contínua de latência (ping) das conexões WAN no painel. O ',
-			E('strong', { style: 'color:#60a5fa;' }, ['Registro.br / NIC.br']),
-			' é a referência oficial recomendada para aferir rotas nacionais e estabilidade no Brasil.'
+			'Selecione o servidor de destino para a medição contínua de latência (ping) das conexões WAN no painel. Servidores Anycast globais como ',
+			E('strong', { style: 'color:#60a5fa;' }, ['Cloudflare (1.1.1.1)']),
+			' garantem a menor latência conectando-se ao ponto de presença mais próximo da sua região.'
 		]));
 
 		const cardsContainer = E('div', { class: 'ex-ping-target-grid' });
@@ -1150,7 +1150,7 @@ const networkMethods = {
 				type: 'text',
 				class: 'cbi-input-text',
 				style: 'width:100%; min-height:40px; font-size:0.92rem; padding:8px 12px; border-radius:8px;',
-				placeholder: 'ex: 200.160.2.3, 1.0.0.1 ou ping.seuservidor.com',
+				placeholder: 'ex: 1.0.0.1, 8.8.4.4 ou ping.seuservidor.com',
 				value: customIpVal
 			}),
 			E('small', { class: 'ex-muted', style: 'display:block; margin-top:4px;' }, [
@@ -1904,6 +1904,39 @@ const networkMethods = {
 		let dhcpTouched=false;
 		let dns1Touched=false;
 
+		const isApMode = isSatelliteOrAp(this.currentData) || state.network_mode === 'ap';
+		const initialDhcpEnabled = !isApMode && (state.dhcp_enabled !== false);
+
+		const dhcpInput = E('input', { type: 'checkbox', class: 'cbi-input-checkbox', checked: initialDhcpEnabled ? '' : null });
+		dhcpInput.checked = initialDhcpEnabled;
+		if (isApMode) {
+			dhcpInput.disabled = true;
+		}
+
+		const dhcpStateText = E('strong', { class: 'ex-device-switch-state' }, [initialDhcpEnabled ? 'LIGADO' : 'DESLIGADO']);
+		const dhcpSwitch = E('label', { class: 'ex-switch' + (isApMode ? ' disabled' : '') }, [dhcpInput, E('span', { class: 'ex-switch-slider' })]);
+		const dhcpControl = E('div', { class: 'ex-device-switch-control' }, [dhcpStateText, dhcpSwitch]);
+
+		const dhcpNotice = isApMode ? E('p', { class: 'alert-message notice', style: 'margin-top: 10px;' }, [
+			'Modo Roteador Secundário / Ponto Adicional ativo: o servidor DHCP local está desativado para evitar conflitos de IP na rede. Toda a distribuição de IPs é coordenada exclusivamente pelo roteador principal.'
+		]) : null;
+
+		const dhcpWarning = E('p', { class: 'alert-message warning', style: 'margin-top: 10px; display: ' + (initialDhcpEnabled || isApMode ? 'none' : 'block') + ';' }, [
+			'Atenção: Com o servidor DHCP desativado, computadores e celulares conectados não receberão endereço IP automaticamente e exigirão configuração manual de IP estático.'
+		]);
+
+		const dhcpEntry = E('div', { class: 'ex-cleanup-entry', style: 'margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,.03);' }, [
+			E('div', {}, [
+				E('strong', {}, ['Distribuição de IPs (Servidor DHCP IPv4)']),
+				E('small', { class: 'ex-muted' }, [
+					isApMode
+						? 'Desativado obrigatoriamente no Modo Secundário / Ponto Adicional para evitar conflitos com o Roteador Principal.'
+						: 'Distribui endereços IP automaticamente para celulares, computadores e dispositivos conectados.'
+				])
+			]),
+			dhcpControl
+		]);
+
 		const isSameSubnet24=function(ipA,ipB){
 			if(!ipA||!ipB)return false;
 			const pA=String(ipA).trim().split('.'), pB=String(ipB).trim().split('.');
@@ -1938,6 +1971,23 @@ const networkMethods = {
 			}
 		};
 
+		const updateDhcpFields=function(){
+			const isDhcpOn = dhcpInput.checked && !isApMode;
+			dhcpStateText.textContent = isDhcpOn ? 'LIGADO' : 'DESLIGADO';
+			if (dhcpWarning) {
+				dhcpWarning.style.display = (isDhcpOn || isApMode) ? 'none' : 'block';
+			}
+			const manual = mode.value === 'manual';
+			dhcpStart.disabled = dhcpEnd.disabled = (!manual || !isDhcpOn);
+			if (!isDhcpOn) {
+				dhcpStart.style.opacity = '0.4';
+				dhcpEnd.style.opacity = '0.4';
+			} else {
+				dhcpStart.style.opacity = '';
+				dhcpEnd.style.opacity = '';
+			}
+		};
+
 		const applyPreset=function(changed){
 			if(changed&&mode.value==='preset192'){
 				routerIp.value='192.168.1.1';netmask.value='255.255.255.0';
@@ -1951,7 +2001,17 @@ const networkMethods = {
 				dhcpTouched=false;
 				suggestDns('10.0.0.1');
 			}
-			const manual=mode.value==='manual';routerIp.disabled=netmask.disabled=dhcpStart.disabled=dhcpEnd.disabled=!manual;
+			const manual=mode.value==='manual';
+			const isDhcpOn = dhcpInput.checked && !isApMode;
+			routerIp.disabled=netmask.disabled=!manual;
+			dhcpStart.disabled=dhcpEnd.disabled=(!manual || !isDhcpOn);
+			if(!isDhcpOn){
+				dhcpStart.style.opacity='0.4';
+				dhcpEnd.style.opacity='0.4';
+			} else {
+				dhcpStart.style.opacity='';
+				dhcpEnd.style.opacity='';
+			}
 			if(manual){
 				suggestDhcp(false);
 				suggestDns(routerIp.value);
@@ -1959,6 +2019,7 @@ const networkMethods = {
 				suggestDhcp(changed);
 			}
 		};
+		dhcpInput.addEventListener('change', updateDhcpFields);
 		dhcpStart.addEventListener('input',function(){dhcpTouched=true;});
 		dhcpEnd.addEventListener('input',function(){dhcpTouched=true;});
 		dns1.addEventListener('input',function(){
@@ -1968,9 +2029,22 @@ const networkMethods = {
 		routerIp.addEventListener('input',function(){onRouterIpChange(false);});
 		routerIp.addEventListener('blur',function(){onRouterIpChange(false);});
 		mode.addEventListener('change',function(){applyPreset(true);});applyPreset(false);
-		ui.showModal('Editar rede principal / DHCP',[
+
+		const modalContent = [
 			E('p',{class:'alert-message warning'},['Alterar o IP principal muda o endereço de acesso do painel e pode desconectar dispositivos. O ARK cria um backup em /tmp antes de aplicar.']),
-			E('div',{class:'ex-wan-edit-grid'},[field('Modelo de rede',mode),field('IP do roteador',routerIp,'Endereço usado para abrir o painel'),field('Máscara',netmask,'Nesta versão, use /24: 255.255.255.0'),field('DHCP começa em',dhcpStart),field('DHCP termina em',dhcpEnd),field('DNS enviado 1',dns1,'Acompanha o IP do roteador se não personalizado'),field('DNS enviado 2',dns2),field('DNS enviado 3',dns3,'Opcional. Apague os três para não enviar DNS fixo.')]),
+			dhcpNotice,
+			dhcpWarning,
+			dhcpEntry,
+			E('div',{class:'ex-wan-edit-grid'},[
+				field('Modelo de rede',mode),
+				field('IP do roteador',routerIp,'Endereço usado para abrir o painel'),
+				field('Máscara',netmask,'Nesta versão, use /24: 255.255.255.0'),
+				field('DHCP começa em',dhcpStart, isApMode ? 'Desativado (Modo Secundário)' : ''),
+				field('DHCP termina em',dhcpEnd, isApMode ? 'Desativado (Modo Secundário)' : ''),
+				field('DNS enviado 1',dns1,'Acompanha o IP do roteador se não personalizado'),
+				field('DNS enviado 2',dns2),
+				field('DNS enviado 3',dns3,'Opcional. Apague os três para não enviar DNS fixo.')
+			]),
 			E('p',{class:'ex-muted'},['Exemplo: roteador 192.168.25.1 sugere automaticamente DHCP 192.168.25.10 até 192.168.25.254. Depois você pode ajustar só o final. O DHCP não pode incluir o IP do roteador. DNS preenchido será enviado aos aparelhos via DHCP.']),
 			E('div',{class:'ex-cleanup-entry',style:'margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.03);'},[
 				E('div',{},[
@@ -1979,15 +2053,56 @@ const networkMethods = {
 				]),
 				E('button',{class:'ex-mini-button btn-ipv6',style:'min-height:38px;padding:6px 14px;','click':L.bind(function(){closeModal();this.showIpv6Modal();},this)},['🌐 Ajustes IPv6 / Relay'])
 			]),
-			E('div',{class:'right',style:'margin-top:16px;'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
-				const dns=[dns1.value.trim(),dns2.value.trim(),dns3.value.trim()].filter(Boolean);
-				const next={mode:mode.value,routerIp:routerIp.value.trim(),netmask:netmask.value.trim(),startIp:dhcpStart.value.trim(),endIp:dhcpEnd.value.trim(),dns:dns,oldIp:state.ipaddr||''};
-				ui.showModal('Confirmar alteração da LAN',[E('p',{class:'alert-message warning'},['Essa alteração reinicia a rede/portas LAN e DHCP. O painel pode cair por alguns segundos e os dispositivos podem precisar renovar IP.']),E('div',{class:'ex-qos-edit-grid'},[E('section',{},[E('h3',{},['Novo acesso']),E('p',{},['Roteador: ',E('strong',{},[next.routerIp])]),E('p',{},['Máscara: ',E('strong',{},[next.netmask])])]),E('section',{},[E('h3',{},['Nova faixa DHCP']),E('p',{},[next.startIp,' → ',next.endIp])]),E('section',{},[E('h3',{},['DNS via DHCP']),E('p',{},[next.dns.length?next.dns.join(' • '):'Sem DNS fixo'])])]),E('p',{class:'ex-muted'},['O ARK cria backup em /tmp antes de aplicar. Se o IP principal mudar, tentarei abrir automaticamente o painel no novo endereço.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Voltar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
-					const args=['lan-save','mode='+next.mode,'router_ip='+next.routerIp,'netmask='+next.netmask,'start_ip='+next.startIp,'end_ip='+next.endIp,'dns='+next.dns.join(' ')];
-					return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar LAN');let out={};try{out=JSON.parse(r.stdout||'{}');}catch(e){}ui.hideModal();if((out.new_ip||next.routerIp)!==(out.old_ip||next.oldIp))redirectToRouter(out.new_ip||next.routerIp,'LAN salva. Tentando abrir o painel no novo IP '+(out.new_ip||next.routerIp)+'…',1000);else reloadSoon('Faixa DHCP salva. Recarregando o painel…',1000);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});
-				},this)},['Aplicar agora'])])]);
-			},this)},['Continuar'])])
-		]);
+			E('div',{class:'right',style:'margin-top:16px;'},[
+				E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',
+				E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+					const dns=[dns1.value.trim(),dns2.value.trim(),dns3.value.trim()].filter(Boolean);
+					const isDhcpOn = dhcpInput.checked && !isApMode;
+					const next={mode:mode.value,routerIp:routerIp.value.trim(),netmask:netmask.value.trim(),startIp:dhcpStart.value.trim(),endIp:dhcpEnd.value.trim(),dns:dns,dhcpEnabled:isDhcpOn,oldIp:state.ipaddr||''};
+					ui.showModal('Confirmar alteração da LAN',[
+						E('p',{class:'alert-message warning'},['Essa alteração reinicia a rede/portas LAN e DHCP. O painel pode cair por alguns segundos e os dispositivos podem precisar renovar IP.']),
+						E('div',{class:'ex-qos-edit-grid'},[
+							E('section',{},[
+								E('h3',{},['Novo acesso']),
+								E('p',{},['Roteador: ',E('strong',{},[next.routerIp])]),
+								E('p',{},['Máscara: ',E('strong',{},[next.netmask])])
+							]),
+							E('section',{},[
+								E('h3',{},['Servidor DHCP']),
+								E('p',{},[
+									next.dhcpEnabled
+										? E('span',{class:'ex-badge ok'},['Ativado: ' + next.startIp + ' → ' + next.endIp])
+										: E('span',{class:'ex-badge warn'},['Desativado (IP Fixo / Manual)'])
+								])
+							]),
+							E('section',{},[
+								E('h3',{},['DNS via DHCP']),
+								E('p',{},[next.dns.length?next.dns.join(' • '):'Sem DNS fixo'])
+							])
+						]),
+						E('p',{class:'ex-muted'},['O ARK cria backup em /tmp antes de aplicar. Se o IP principal mudar, tentarei abrir automaticamente o painel no novo endereço.']),
+						E('div',{class:'right'},[
+							E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Voltar']),' ',
+							E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+								const args=['lan-save','mode='+next.mode,'router_ip='+next.routerIp,'netmask='+next.netmask,'start_ip='+next.startIp,'end_ip='+next.endIp,'dns='+next.dns.join(' '),'dhcp_enabled='+(next.dhcpEnabled?'1':'0')];
+								return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){
+									if(r.code)throw new Error(r.stderr||'Falha ao salvar LAN');
+									let out={};try{out=JSON.parse(r.stdout||'{}');}catch(e){}
+									ui.hideModal();
+									if((out.new_ip||next.routerIp)!==(out.old_ip||next.oldIp))redirectToRouter(out.new_ip||next.routerIp,'LAN salva. Tentando abrir o painel no novo IP '+(out.new_ip||next.routerIp)+'…',1000);
+									else reloadSoon('Faixa DHCP salva. Recarregando o painel…',1000);
+								}).catch(function(e){
+									if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
+									ui.addNotification(null,E('p',{},[e.message]),'danger');
+								});
+							},this)},['Aplicar agora'])
+						])
+					]);
+				},this)},['Continuar'])
+			])
+		].filter(Boolean);
+
+		ui.showModal('Editar rede principal / DHCP', modalContent);
 	},
 
 	disableIpv6Full: function(){

@@ -141,20 +141,12 @@ function sqmWanProfiles(data) {
 function parsePing(r) { const m = ((r && r.stdout) || '').match(/time[=<]([0-9.]+)/); return r && r.code === 0 && m ? Number(m[1]) : null; }
 const PING_TARGET_PRESETS = [
 	{
-		id: 'registro_br',
-		title: 'Registro.br / NIC.br (Brasil)',
-		shortLabel: '🇧🇷 Registro.br',
-		ip: '200.160.2.3',
-		desc: 'Ponto Central IX.br (São Paulo). Referência recomendada e mais precisa para aferir a qualidade da rota e latência nacional.',
-		badge: 'Recomendado BR'
-	},
-	{
 		id: 'cloudflare',
 		title: 'Cloudflare DNS',
 		shortLabel: '⚡ Cloudflare',
 		ip: '1.1.1.1',
-		desc: 'Rede Anycast global com PoPs nas capitais brasileiras e altíssima velocidade para CDN.',
-		badge: 'Ultra-rápido'
+		desc: 'Rede Anycast global com centenas de PoPs mundiais e altíssima velocidade para CDN e web.',
+		badge: 'Recomendado'
 	},
 	{
 		id: 'google',
@@ -185,7 +177,7 @@ const PING_TARGET_PRESETS = [
 		title: 'Servidor Personalizado',
 		shortLabel: '✍️ Custom',
 		ip: 'personalizado',
-		desc: 'Insira qualquer IP ou domínio (servidores de jogos como Riot/Steam, filiais corporativas ou VPNs).',
+		desc: 'Insira qualquer IP ou domínio (ex: 1.0.0.1, 8.8.4.4, servidores de jogos, filiais corporativas ou VPNs).',
 		badge: 'Manual'
 	}
 ];
@@ -195,6 +187,9 @@ function getPingTargetInfo(data) {
 		(typeof window !== 'undefined' && window._arkCapabilities && window._arkCapabilities.ping_target ? window._arkCapabilities : null);
 	let target = (eqCfg && eqCfg.ping_target) || '';
 	let customIp = (eqCfg && eqCfg.ping_custom_ip != null) ? eqCfg.ping_custom_ip : '';
+
+	// Migrate legacy registro_br to cloudflare
+	if (target === 'registro_br') target = 'cloudflare';
 
 	// Router UCI config is the authoritative single source of truth across reboots & devices
 	if (target) {
@@ -214,10 +209,11 @@ function getPingTargetInfo(data) {
 			const sc = window.localStorage.getItem('ark_wan_ping_custom_ip');
 			if (st) target = st;
 			if (sc != null) customIp = sc;
+			if (target === 'registro_br') target = 'cloudflare';
 		}
 	} catch(e) {}
 
-	return { target: target || 'registro_br', customIp: customIp || '' };
+	return { target: target || 'cloudflare', customIp: customIp || '' };
 }
 function getPingTargetShortLabel(target, customIp) {
 	if (target === 'custom') {
@@ -225,11 +221,10 @@ function getPingTargetShortLabel(target, customIp) {
 		return clean ? ('✍️ ' + clean) : '✍️ Custom';
 	}
 	const p = PING_TARGET_PRESETS.find(function(item) { return item.id === target; });
-	return p ? p.shortLabel : '🇧🇷 Registro.br';
+	return p ? p.shortLabel : '⚡ Cloudflare';
 }
 function resolvePingTarget(target, customIp, live, cfg) {
-	if (target === 'registro_br') return '200.160.2.3';
-	if (target === 'cloudflare') return '1.1.1.1';
+	if (target === 'cloudflare' || target === 'registro_br') return '1.1.1.1';
 	if (target === 'google') return '8.8.8.8';
 	if (target === 'quad9') return '9.9.9.9';
 	if (target === 'custom' && customIp && customIp.trim()) return customIp.trim();
@@ -253,9 +248,9 @@ function resolvePingTarget(target, customIp, live, cfg) {
 		if (Array.isArray(dnsList) && dnsList.length && dnsList[0] && dnsList[0] !== '0.0.0.0') {
 			return dnsList[0];
 		}
-		return '200.160.2.3';
+		return '1.1.1.1';
 	}
-	return '200.160.2.3';
+	return '1.1.1.1';
 }
 function bigIcon(svgHtml) { const span = E('span', { 'class': 'ex-big-icon', 'aria-hidden': 'true' }); span.innerHTML = svgHtml; return span; }
 function infoRow(label, id) { return E('div', { 'class': 'ex-row' }, [ E('span', {}, [ label ]), E('strong', { 'id': id }, [ '—' ]) ]); }

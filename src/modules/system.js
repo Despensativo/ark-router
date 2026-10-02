@@ -2281,6 +2281,38 @@ const systemMethods = {
 			finalButton.textContent = isAp ? '⚠️ Confirmar e Ativar Modo Ponto de Acesso' : 'Confirmar e Restaurar Modo Roteador';
 		}, 100);
 
+		let dhcpRestoreChoice = '1';
+		let dhcpChoiceBox = null;
+
+		if (!isAp) {
+			const radioDhcpOn = E('input', { type: 'radio', name: 'ark_restore_dhcp', value: '1', checked: true });
+			const radioDhcpOff = E('input', { type: 'radio', name: 'ark_restore_dhcp', value: '0' });
+			radioDhcpOn.addEventListener('change', function() { if (radioDhcpOn.checked) dhcpRestoreChoice = '1'; });
+			radioDhcpOff.addEventListener('change', function() { if (radioDhcpOff.checked) dhcpRestoreChoice = '0'; });
+
+			dhcpChoiceBox = E('div', {
+				style: 'margin-top: 14px; padding: 12px 14px; background: rgba(0,0,0,0.25); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);'
+			}, [
+				E('strong', { style: 'display:block; font-size:13px; margin-bottom:8px; color:#38bdf8;' }, ['Configuração do Servidor DHCP ao Restaurar:']),
+				E('div', { style: 'display:flex; flex-direction:column; gap:8px;' }, [
+					E('label', { style: 'display:flex; align-items:flex-start; gap:8px; cursor:pointer;' }, [
+						radioDhcpOn,
+						E('div', {}, [
+							E('span', { style: 'font-weight:600; font-size:13px; color:#10b981;' }, ['Reativar Servidor DHCP local (Recomendado)']),
+							E('small', { class: 'ex-muted', style: 'display:block;' }, ['O roteador volta a distribuir endereços IP automaticamente para os seus aparelhos conectados via cabo ou Wi-Fi.'])
+						])
+					]),
+					E('label', { style: 'display:flex; align-items:flex-start; gap:8px; cursor:pointer;' }, [
+						radioDhcpOff,
+						E('div', {}, [
+							E('span', { style: 'font-weight:600; font-size:13px; color:#f59e0b;' }, ['Manter Servidor DHCP desativado']),
+							E('small', { class: 'ex-muted', style: 'display:block;' }, ['A porta WAN e o NAT voltam a operar como Gateway, mas nenhum IP será distribuído localmente. Ideal se você possui outro servidor DHCP na rede ou usa IPs estáticos.'])
+						])
+					])
+				])
+			]);
+		}
+
 		const cancelModal = function() {
 			if (timer) window.clearInterval(timer);
 			ui.hideModal();
@@ -2292,7 +2324,8 @@ const systemMethods = {
 			finalButton.textContent = 'Aplicando alteração de modo…';
 
 			ui.hideModal();
-			fs.exec('/usr/sbin/equipe-dashboard-control', cmdArgs)
+			const finalCmdArgs = isAp ? cmdArgs : ['system-network-mode-set', 'router', dhcpRestoreChoice];
+			fs.exec('/usr/sbin/equipe-dashboard-control', finalCmdArgs)
 			.then(function(r) {
 				reloadSoon(loadingMsg, 1500);
 			}).catch(function(e) {
@@ -2301,18 +2334,21 @@ const systemMethods = {
 			});
 		}, this), true);
 
-		ui.showModal(isAp ? '⚠️ Confirmação Final: Modo Ponto de Acesso & Switch' : 'Confirmação Final: Restaurar Modo Roteador Principal', [
+		const modalContent = [
 			E('div', { class: 'alert-message ' + (isAp ? 'warning' : 'info'), style: 'margin-bottom: 14px; font-size: 13px; line-height: 1.55;' }, [
 				E('strong', { style: 'display:block; margin-bottom:8px; font-size:14px;' }, [
 					isAp ? 'Atenção aos efeitos da conversão em Ponto de Acesso (Dumb AP):' : 'Restaurar modo padrão de roteador mestre:'
 				]),
 				E('ul', { style: 'margin: 0; padding-left: 18px;' }, warningItems)
-			]),
-			E('div', { style: 'display:flex; justify-content:flex-end; gap:10px; margin-top:16px;' }, [
-				E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': cancelModal }, ['Cancelar']),
-				finalButton
 			])
-		]);
+		];
+		if (dhcpChoiceBox) modalContent.push(dhcpChoiceBox);
+		modalContent.push(E('div', { style: 'display:flex; justify-content:flex-end; gap:10px; margin-top:16px;' }, [
+			E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': cancelModal }, ['Cancelar']),
+			finalButton
+		]));
+
+		ui.showModal(isAp ? '⚠️ Confirmação Final: Modo Ponto de Acesso & Switch' : 'Confirmação Final: Restaurar Modo Roteador Principal', modalContent);
 	},
 	showHardwareModal: function() {
 		const hwInfo = (this.currentData && this.currentData.hardwareInfo) || {};

@@ -183,7 +183,7 @@ const renderMethods = {
 				E('div', {
 					class: 'ex-row ex-row-clickable',
 					style: 'cursor:pointer; min-height:40px; user-select:none; -webkit-tap-highlight-color:transparent;',
-					title: 'Clique para escolher o servidor de teste de latência (Registro.br, Cloudflare, Google, etc.)',
+					title: 'Clique para escolher o servidor de teste de latência (Cloudflare, Google, Quad9, etc.)',
 					click: L.bind(function(){ this.showLatencyTargetModal(); }, this)
 				}, [
 					E('span', { style: 'display:inline-flex; align-items:center; gap:6px; min-width:0;' }, [

@@ -251,6 +251,7 @@ ark_doctor_audit() {
 	fi
 
 	# 7. Checagem de Clientes e Leases
+	local lan_dhcp_ignore="$(uci -q get dhcp.lan.ignore || echo 0)"
 	dnsmasq_pid="$(pidof dnsmasq 2>/dev/null || pgrep -x dnsmasq 2>/dev/null || echo '')"
 	if [ -z "$dnsmasq_pid" ] && [ -x /etc/init.d/dnsmasq ] && ! ark_is_satellite_or_ap; then
 		if [ "$auto_fix" = 1 ]; then
@@ -261,6 +262,9 @@ ark_doctor_audit() {
 			errors=$((errors + 1))
 			add_check "Tabela de Clientes" "FAIL" "Servidor DHCP/DNS (dnsmasq) inativo! Clientes podem ficar sem IP."
 		fi
+	elif ! ark_is_satellite_or_ap && [ "$lan_dhcp_ignore" = "1" ]; then
+		warnings=$((warnings + 1))
+		add_check "Tabela de Clientes" "WARN" "Servidor DHCP local desativado (dhcp.lan.ignore=1). Aparelhos locais exigem IP estatico."
 	else
 		lease_file="/tmp/dhcp.leases"
 		[ -f "$lease_file" ] || lease_file="/var/dhcp.leases"

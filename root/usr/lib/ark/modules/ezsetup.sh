@@ -1368,7 +1368,9 @@ handle_ezsetup() {
 				network_mode="router"
 			fi
 		fi
-		ping_target="$(uci -q get equipe_dashboard.main.ping_target || printf 'registro_br')"
+		ping_target="$(uci -q get equipe_dashboard.main.ping_target || printf 'cloudflare')"
+		[ "$ping_target" = "registro_br" ] && ping_target="cloudflare"
+		[ -n "$ping_target" ] || ping_target="cloudflare"
 		ping_custom_ip="$(uci -q get equipe_dashboard.main.ping_custom_ip || true)"
 		sqm_installable=true; sqm_reason=""
 		mwan3_installable=true; mwan3_reason=""

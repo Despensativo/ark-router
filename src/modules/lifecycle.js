@@ -407,7 +407,19 @@ const lifecycleMethods = {
 				);
 			}
 		}
-		text('ex-lan-ip',lanStatus.ipaddr||'—'); text('ex-lan-dhcp',(lanStatus.dhcp_start&&lanStatus.dhcp_end)?lanStatus.dhcp_start+' → '+lanStatus.dhcp_end:'—'); text('ex-lan-mask',lanStatus.netmask||'—'); text('ex-lan-dns',Array.isArray(lanStatus.dns)&&lanStatus.dns.length?lanStatus.dns.join('  •  '):'Sem DNS fixo');
+		const isApLan = isSatelliteOrAp(data) || lanStatus.network_mode === 'ap';
+		let dhcpDisplay = '—';
+		if (isApLan) {
+			dhcpDisplay = 'Desativado (Modo Ponto de Acesso)';
+		} else if (lanStatus.dhcp_enabled === false || lanStatus.dhcp_disabled === true) {
+			dhcpDisplay = 'Desativado (IP Fixo)';
+		} else if (lanStatus.dhcp_start && lanStatus.dhcp_end) {
+			dhcpDisplay = lanStatus.dhcp_start + ' → ' + lanStatus.dhcp_end;
+		}
+		text('ex-lan-ip', lanStatus.ipaddr || '—');
+		text('ex-lan-dhcp', dhcpDisplay);
+		text('ex-lan-mask', lanStatus.netmask || '—');
+		text('ex-lan-dns', Array.isArray(lanStatus.dns) && lanStatus.dns.length ? lanStatus.dns.join('  •  ') : 'Sem DNS fixo');
 		let ipv6Label = lanStatus.ipv6_label;
 		if (!ipv6Label) {
 			const dhcpLan=(data.dhcpConfig&&data.dhcpConfig.values&&data.dhcpConfig.values.lan)||(data.dhcpConfig&&data.dhcpConfig.lan)||{};
