@@ -50,7 +50,7 @@ case "$action" in
 		. "${ARK_LIB_DIR}/modules/speedify.sh"
 		handle_speedify "$@"
 		;;
-	tailscale*|zerotier*|wireguard*)
+	zerotier*|wireguard*)
 		. "${ARK_LIB_DIR}/modules/vpn.sh"
 		handle_vpn "$@"
 		;;
@@ -58,7 +58,7 @@ case "$action" in
 		. "${ARK_LIB_DIR}/modules/adblock.sh"
 		handle_adblock "$@"
 		;;
-	system-perf*|ram-purge-now|dmz*|dns-turbo*|network-capacity*|system-memory-purge|system-storage-purge|fast-targets|https-redirect|asu-check-*|cleanup-orphan-leds|get-led-*|set-led-*|update-led-alert|update-wan-led|system-hardware-*|transmission-*|safe-storage-reboot)
+	system-perf*|ram-purge-now|dmz*|dns-turbo*|network-capacity*|system-memory-purge|system-storage-purge|fast-targets|https-redirect|asu-check-*|cleanup-orphan-leds|get-led-*|set-led-*|led-*|update-led-alert|update-wan-led|system-hardware-*|transmission-*|safe-storage-reboot)
 		. "${ARK_LIB_DIR}/modules/system.sh"
 		handle_system "$@"
 		;;
@@ -66,7 +66,7 @@ case "$action" in
 		. "${ARK_LIB_DIR}/modules/devices.sh"
 		handle_devices "$@"
 		;;
-	ez-setup-*|features|feature-*|self-update-*|manual-update-*|cleanup-*|theme|language|title|profile|appearance)
+	ez-setup-*|features|feature-*|self-update-*|manual-update-*|cleanup-*|theme|language|title|profile|appearance|card-state-*)
 		. "${ARK_LIB_DIR}/modules/ezsetup.sh"
 		handle_ezsetup "$@"
 		;;

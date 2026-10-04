@@ -1,5 +1,5 @@
 #!/bin/sh
-# /usr/lib/ark/modules/vpn.sh - WireGuard, Tailscale & ZeroTier VPN Module
+# /usr/lib/ark/modules/vpn.sh - WireGuard & ZeroTier VPN Module
 # Compatible with BusyBox /bin/ash, OpenWrt 19.07 to 25.12
 
 [ -z "${_ARK_VPN_SH_LOADED:-}" ] || return 0
@@ -14,7 +14,7 @@ json_text_escape() {
 	sed 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g' | tr '\r' ' ' | awk '{ if (NR>1) printf "\\n"; printf "%s", $0 }'
 }
 
-tailscale_lan_cidr() {
+ark_vpn_lan_cidr() {
 	ipaddr="$(uci -q get network.lan.ipaddr || true)"
 	netmask="$(uci -q get network.lan.netmask || printf 255.255.255.0)"
 	[ -n "$ipaddr" ] || return 1
@@ -38,94 +38,6 @@ tailscale_lan_cidr() {
 		else printf "%s.%s.%s.0",$1,$2,$3;
 	}')"
 	printf '%s/%s' "$network" "$prefix"
-}
-
-tailscale_state_json() {
-	if ! command -v tailscale >/dev/null 2>&1; then
-		printf '{"installed":false,"active":false,"logged_in":false,"ip":"—","hostname":"—","lan_cidr":"%s"}\n' "$(json_escape "$(tailscale_lan_cidr 2>/dev/null || true)")"
-		return 0
-	fi
-	active=false; logged=false; ip=''; hostname=''
-	status="$(tailscale status --json 2>/dev/null || true)"
-	backend="$(printf '%s' "$status" | jsonfilter -e '@.BackendState' 2>/dev/null || true)"
-	ip="$(printf '%s' "$status" | jsonfilter -e '@.Self.TailscaleIPs[0]' 2>/dev/null || true)"
-	hostname="$(printf '%s' "$status" | jsonfilter -e '@.Self.HostName' 2>/dev/null || true)"
-	case "$backend" in Running) active=true; logged=true ;; Stopped|NeedsLogin|NoState|Starting|'') active=false ;; *) active=true ;; esac
-	[ -n "$ip" ] && logged=true
-		printf '{"installed":true,"active":%s,"logged_in":%s,"backend":"%s","ip":"%s","hostname":"%s","lan_cidr":"%s"}\n' \
-		"$active" "$logged" "$(json_escape "$backend")" "$(json_escape "${ip:-—}")" "$(json_escape "${hostname:-—}")" "$(json_escape "$(tailscale_lan_cidr 2>/dev/null || true)")"
-}
-
-tailscale_firewall_prepare() {
-	zone="$(uci -q show firewall 2>/dev/null | awk -F= "/\\.name='tailscale'/{s=\$1; sub(/^firewall\\./,\"\",s); sub(/\\.name$/, \"\", s); print s; exit}")"
-	if [ -z "$zone" ]; then
-		zone="$(uci -q add firewall zone)"
-		uci -q set "firewall.$zone.name=tailscale"
-	fi
-	uci -q set "firewall.$zone.input=ACCEPT"
-	uci -q set "firewall.$zone.output=ACCEPT"
-	uci -q set "firewall.$zone.forward=ACCEPT"
-	uci -q delete "firewall.$zone.network"
-	uci -q delete "firewall.$zone.device"
-	uci -q add_list "firewall.$zone.device=tailscale0"
-	if ! speedify_firewall_forwarding_exists tailscale lan; then
-		fwd="$(uci -q add firewall forwarding)"
-		uci -q set "firewall.$fwd.src=tailscale"
-		uci -q set "firewall.$fwd.dest=lan"
-	fi
-	uci commit firewall
-	/etc/init.d/firewall reload >/dev/null 2>&1 || true
-}
-
-tailscale_install() {
-	command -v tailscale >/dev/null 2>&1 && return 0
-	command -v apk >/dev/null 2>&1 || command -v opkg >/dev/null 2>&1 || { echo 'Gerenciador de pacotes indisponivel' >&2; return 3; }
-	if command -v apk >/dev/null 2>&1; then
-		apk update && apk add tailscale
-	else
-		opkg update && opkg install tailscale
-	fi
-	command -v tailscale >/dev/null 2>&1 || { echo 'Tailscale instalado parcialmente ou indisponivel neste firmware.' >&2; return 1; }
-	[ -x /etc/init.d/tailscale ] && { /etc/init.d/tailscale enable >/dev/null 2>&1 || true; /etc/init.d/tailscale start >/dev/null 2>&1 || true; }
-	tailscale_firewall_prepare
-	return 0
-}
-
-tailscale_up_lan() {
-	command -v tailscale >/dev/null 2>&1 || { echo 'Tailscale nao instalado' >&2; return 3; }
-	[ -x /etc/init.d/tailscale ] && { /etc/init.d/tailscale enable >/dev/null 2>&1 || true; /etc/init.d/tailscale start >/dev/null 2>&1 || true; }
-	tailscale_firewall_prepare
-	cidr="$(tailscale_lan_cidr)" || { echo 'LAN sem IP valido para anunciar rota' >&2; return 3; }
-	tmp="/tmp/ark-tailscale-up.$$"
-	tailscale up --advertise-routes="$cidr" --accept-dns=false >"$tmp" 2>&1 &
-	pid="$!"
-	i=0
-	while kill -0 "$pid" 2>/dev/null; do
-		grep -Eq 'https://(login\.)?tailscale\.com/a/[^[:space:]]+' "$tmp" 2>/dev/null && break
-		[ "$i" -ge 25 ] && break
-		sleep 1
-		i=$((i+1))
-	done
-	if kill -0 "$pid" 2>/dev/null; then
-		kill "$pid" 2>/dev/null || true
-		wait "$pid" 2>/dev/null
-		rc=124
-	else
-		wait "$pid"; rc=$?
-	fi
-	out="$(cat "$tmp" 2>/dev/null || true)"
-	rm -f "$tmp"
-	uci -q set equipe_dashboard.tailscale=feature
-	uci -q set equipe_dashboard.tailscale.lan_cidr="$cidr"
-	uci commit equipe_dashboard
-	url="$(printf '%s' "$out" | grep -Eo 'https://(login\.)?tailscale\.com/a/[^[:space:]]+' | head -n1)"
-	[ "$rc" -eq 0 ] || [ "$rc" -eq 124 ] || [ -n "$url" ] || { printf '%s\n' "$out" >&2; return "$rc"; }
-	printf '{"ok":%s,"lan_cidr":"%s","login_url":"%s","message":"%s"}\n' "$(bool $((rc == 0)))" "$(json_escape "$cidr")" "$(json_escape "$url")" "$(json_escape "$out")"
-}
-
-tailscale_down() {
-	command -v tailscale >/dev/null 2>&1 || return 0
-	tailscale down
 }
 
 zerotier_device_name() {
@@ -427,7 +339,7 @@ zerotier_status_json() {
 		ip='—'
 	fi
 	printf '{"installed":true,"active":%s,"online":%s,"autostart":%s,"node_id":"%s","network_id":"%s","network_status":"%s","ip":"%s","lan_cidr":"%s"}\n' \
-		"$active" "$online" "$autostart" "$(json_escape "${node:-—}")" "$(json_escape "$netid")" "$(json_escape "${nstatus:-—}")" "$(json_escape "${ip:-—}")" "$(json_escape "$(tailscale_lan_cidr 2>/dev/null || true)")"
+		"$active" "$online" "$autostart" "$(json_escape "${node:-—}")" "$(json_escape "$netid")" "$(json_escape "${nstatus:-—}")" "$(json_escape "${ip:-—}")" "$(json_escape "$(ark_vpn_lan_cidr 2>/dev/null || true)")"
 }
 
 zerotier_autostart_toggle() {
@@ -1293,15 +1205,6 @@ handle_vpn() {
 	action="$1"
 	[ -n "$action" ] || { echo "Uso: $0 <comando> [args...]" >&2; exit 1; }
 	case "$action" in
-	tailscale-status)
-		tailscale_state_json
-		;;
-	tailscale-up)
-		tailscale_up_lan
-		;;
-	tailscale-down)
-		tailscale_down
-		;;
 	zerotier-status)
 		zerotier_status_json
 		;;

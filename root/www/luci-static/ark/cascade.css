@@ -3034,6 +3034,52 @@ path[fill="#00ffff"], polygon[fill="#00ffff"] { fill: #06b6d4 !important; }
 	0%, 100% { opacity: 1; transform: scale(1); }
 	50% { opacity: 0.35; transform: scale(0.9); }
 }
+.ark-led-indicator.breathing {
+	animation: ledBreath 2.6s infinite ease-in-out;
+}
+.ark-led-indicator.breathing.speed-slow {
+	animation-duration: 6s !important;
+}
+.ark-led-indicator.breathing.speed-normal {
+	animation-duration: 2.6s !important;
+}
+.ark-led-indicator.breathing.speed-fast {
+	animation-duration: 1.2s !important;
+}
+.ark-led-indicator.blink.speed-slow {
+	animation-duration: 2s !important;
+}
+.ark-led-indicator.blink.speed-normal {
+	animation-duration: 1s !important;
+}
+.ark-led-indicator.blink.speed-fast {
+	animation-duration: 0.4s !important;
+}
+@keyframes ledBreath {
+	0%, 100% { opacity: 0.35; transform: scale(0.9); }
+	50% { opacity: 1; transform: scale(1.1); filter: brightness(1.25); box-shadow: 0 0 16px currentColor; }
+}
+.ark-led-indicator.rainbow {
+	animation: ledRainbow 5s infinite linear;
+}
+.ark-led-indicator.rainbow.speed-slow {
+	animation-duration: 10s !important;
+}
+.ark-led-indicator.rainbow.speed-normal {
+	animation-duration: 5s !important;
+}
+.ark-led-indicator.rainbow.speed-fast {
+	animation-duration: 2s !important;
+}
+@keyframes ledRainbow {
+	0%   { background-color: #ff0000; box-shadow: 0 0 12px #ff0000; }
+	17%  { background-color: #ffff00; box-shadow: 0 0 12px #ffff00; }
+	33%  { background-color: #00ff00; box-shadow: 0 0 12px #00ff00; }
+	50%  { background-color: #00ffff; box-shadow: 0 0 12px #00ffff; }
+	67%  { background-color: #0000ff; box-shadow: 0 0 12px #0000ff; }
+	83%  { background-color: #ff00ff; box-shadow: 0 0 12px #ff00ff; }
+	100% { background-color: #ff0000; box-shadow: 0 0 12px #ff0000; }
+}
 .ark-led-title {
 	font-weight: 700;
 	font-size: 14px;

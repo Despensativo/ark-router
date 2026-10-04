@@ -619,7 +619,7 @@ const systemMethods = {
 		]);
 	},
 	useTheme: function(key){
-		const names = { ark: 'Tema ARK (Nativo)', bootstrap: 'Tema Bootstrap (Padrão)', argon: 'Tema Argon' };
+		const names = { ark: 'Tema ARK (Nativo)', bootstrap: 'Tema Bootstrap (Padrão)' };
 		const name = names[key] || key;
 		ui.showModal('Usar tema',[
 			E('p',{},[name]),
@@ -1081,9 +1081,14 @@ const systemMethods = {
 				upnp: 'UPnP / NAT‑PMP',
 				irqbalance: 'Multicore IRQ Balance'
 			};
-			const modKeys = ['sqm', 'mwan3', 'nlbwmon', 'upnp'];
+			const candidateKeys = ['sqm', 'mwan3', 'nlbwmon', 'upnp'];
 			const cpuCores = ((this.capabilities && this.capabilities.hardware && this.capabilities.hardware.cpu_cores) || 1);
-			if (cpuCores > 1) modKeys.push('irqbalance');
+			const irqFeat = this.feature('irqbalance') || {};
+			if (cpuCores > 1 && irqFeat.installable) candidateKeys.push('irqbalance');
+			const modKeys = candidateKeys.filter(L.bind(function(key){
+				const f = this.feature(key) || {};
+				return f.installed || f.installable;
+			}, this));
 			modKeys.forEach(L.bind(function(key){
 				const f = this.feature(key) || {}, inst = !!f.installed;
 				moduleBoxes[key] = checkbox(inst || modules.indexOf(key) >= 0);
@@ -1511,7 +1516,7 @@ const systemMethods = {
 						E('div',{},[E('span',{class:'ex-kicker'},['ARMAZENAMENTO']),E('strong',{},[used+'% usado']),E('small',{class:'ex-muted'},[Math.round(avail/1024)+' MB livres de '+Math.round(total/1024)+' MB'])]),
 						data.last_backup?E('code',{},['Último backup: '+data.last_backup]):''
 					]),
-					E('p',{class:'ex-muted'},['Modo ARK remove painéis e serviços dispensáveis para deixar o OpenWrt como base enxuta. SQM, Multi‑WAN, NLBWMon, Argon e uHTTPd são mantidos.']),
+					E('p',{class:'ex-muted'},['Modo ARK remove painéis e serviços dispensáveis para deixar o OpenWrt como base enxuta. SQM, Multi‑WAN, NLBWMon e uHTTPd são mantidos.']),
 					rows.length?E('div',{class:'ex-cleanup-list'},rows):E('p',{class:'ex-muted'},['Nenhum item seguro de otimização encontrado agora.']),
 					E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar']),' ',E('button',applyAttrs,['Aplicar selecionados'])])
 				])
@@ -1981,15 +1986,20 @@ const systemMethods = {
 		}
 		const sensorCards = sensors.map(function(s) {
 			const temp = s.temp_c || 0;
-			const color = temp >= 80 ? '#ef4444' : (temp >= 65 ? '#f59e0b' : '#10b981');
-			const statusText = temp >= 80 ? 'Temperatura crítica' : (temp >= 65 ? 'Temperatura elevada' : 'Temperatura ideal / estável');
+			const warn = Number(s.warn_c) || 75;
+			const crit = Number(s.crit_c) || 90;
+			const isCrit = temp >= crit;
+			const isWarn = temp >= warn;
+			const color = isCrit ? '#ef4444' : (isWarn ? '#f59e0b' : '#10b981');
+			const statusText = isCrit ? _t('Temperatura crítica') : (isWarn ? _t('Temperatura elevada') : _t('Temperatura ideal / estável'));
+			const limitText = (s.warn_c && s.crit_c) ? (' • ' + _t('alerta %s°C / limite %s°C').replace('%s', s.warn_c).replace('%s', s.crit_c)) : '';
 			return E('div', {
 				class: 'ex-card',
 				style: 'padding:14px 16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;'
 			}, [
 				E('div', {}, [
 					E('strong', { style: 'display:block;font-size:0.95rem;color:#fff;' }, [s.name]),
-					E('small', { style: 'color:var(--ark-text-muted, #94a3b8);' }, ['Tipo: ' + (s.type || 'genérico') + ' • ' + statusText])
+					E('small', { style: 'color:var(--ark-text-muted, #94a3b8);' }, ['Tipo: ' + (s.type || 'genérico') + ' • ' + statusText + limitText])
 				]),
 				E('div', { style: 'text-align:right;' }, [
 					E('span', { style: 'font-size:1.45rem;font-weight:800;color:' + color + ';' }, [temp + ' °C'])
@@ -2418,7 +2428,9 @@ const systemMethods = {
 
 		const thermalRows = sensors.length ? sensors.map(function(s) {
 			const temp = s.temp_c || 0;
-			const badge = temp >= 80 ? 'CRÍTICO' : (temp >= 65 ? 'ELEVADO' : 'NORMAL');
+			const warn = Number(s.warn_c) || 75;
+			const crit = Number(s.crit_c) || 90;
+			const badge = temp >= crit ? 'CRÍTICO' : (temp >= warn ? 'ELEVADO' : 'NORMAL');
 			return infoItem(s.name, temp + ' °C', badge);
 		}) : [ infoItem('Sensores Térmicos', 'Nenhum sensor físico integrado neste modelo') ];
 
@@ -2524,9 +2536,6 @@ const systemMethods = {
 			themeOptions.push(E('option',{value:'ark'},['⚡ Tema ARK (Nativo)']));
 		}
 		themeOptions.push(E('option',{value:'bootstrap'},['Tema Bootstrap (Padrão)']));
-		if (!isLegacy && this.feature('argon') && this.feature('argon').installed) {
-			themeOptions.push(E('option',{value:'argon'},['Tema Argon (Externo)']));
-		}
 		const themeSelect = E('select',{class:'cbi-input-select'}, themeOptions);
 		themeSelect.value = currentTheme;
 		const themeRow = E('div',{class:'ex-brand-row',style:'margin-top:12px;padding-top:12px;border-top:1px solid rgba(127,127,127,0.14);'},[
@@ -2538,24 +2547,23 @@ const systemMethods = {
 		]);
 
 		const isSat = isSatelliteOrAp(this.currentData || (this.capabilities && this.capabilities));
-		const rows=Object.keys(FEATURE_META).filter(L.bind(function(key){
-			if (key === 'argon') {
-				if (isLegacy) return false;
-				const f = this.feature('argon') || {};
-				if (!f.installed && (f.hidden || !f.installable)) return false;
-			}
-			return true;
-		}, this)).map(L.bind(function(key){
+		const rows=Object.keys(FEATURE_META).map(L.bind(function(key){
 			const meta=FEATURE_META[key],f=this.feature(key)||{};
-			const isShieldedOnSat = isSat && (key === 'sqm' || key === 'mwan3' || key === 'speedify');
-			let state=f.installed?(f.temporary?'Pronto na memória':(f.active?(key==='argon'?'Tema ativo':'Instalado e ativo'):(key==='argon'?'Instalado, mas não selecionado':'Instalado, mas inativo'))):(f.installable?'Não instalado':'Não disponível');
-			if (isShieldedOnSat) {
-				state = f.installed ? 'Inativo (Modo Satélite)' : 'Desativado no Satélite';
+			const isShieldedOnSat = isSat && (key === 'sqm' || key === 'mwan3' || key === 'speedify' || key === 'upnp' || key === 'adblock' || key === 'nlbwmon');
+			const isNativeHw = key === 'irqbalance' && !f.installed && (f.native_hw || (!f.installable && f.reason && f.reason.indexOf('nativamente') !== -1));
+			let state=f.installed?(f.temporary?'Pronto na memória':(f.active?'Instalado e ativo':'Instalado, mas inativo')):(f.installable?'Não instalado':'Não disponível');
+			let pillClass=f.installed?(isShieldedOnSat?'standby':(f.active?'online':'standby')):(f.hidden?'standby':'offline');
+			if (isNativeHw) {
+				state = 'Nativo por Hardware';
+				pillClass = 'online';
+			} else if (isShieldedOnSat) {
+				state = f.installed ? _t('Inativo (Modo AP)') : _t('Desativado em Modo AP');
+				pillClass = 'standby';
 			} else if(!f.installed&&f.hidden) {
 				state='Sugestão oculta';
 			}
 			const actions=[];
-			if (!isShieldedOnSat) {
+			if (!isShieldedOnSat && !isNativeHw) {
 				if(!f.installed&&f.installable){
 					if(f.hidden)actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.setFeatureHidden,this,key,false)},['Mostrar sugestão']));
 					else{
@@ -2563,16 +2571,21 @@ const systemMethods = {
 						actions.push(E('button',{class:'ex-feature-link','click':L.bind(this.setFeatureHidden,this,key,true)},['Ocultar sugestão']));
 					}
 				}
-				if(key==='argon'&&f.installed&&!f.active)actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.useTheme,this,key)},['Usar tema']));
 				if(key==='irqbalance'&&f.installed)actions.push(E('button',{class:'ex-mini-button','click':L.bind(function(){const desired=!f.active;return fs.exec('/usr/sbin/equipe-dashboard-control',['irqbalance-toggle',desired?'1':'0']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar IRQ Balance');ui.addNotification(null,E('p',{},[desired?'IRQ Balance ativado.':'IRQ Balance desativado.']));window.setTimeout(function(){window.location.reload();},900);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},[f.active?'Desativar':'Ativar']));
 				if(key==='usteer'&&f.installed)actions.push(E('button',{class:'ex-mini-button','click':L.bind(function(){const desired=!f.active;return fs.exec('/usr/sbin/equipe-dashboard-control',['wifi-usteer-toggle',desired?'1':'0']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar usteer');ui.addNotification(null,E('p',{},[desired?'Assistente usteer ativado com sucesso.':'Assistente usteer desativado.']));window.setTimeout(function(){window.location.reload();},900);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},[f.active?'Desativar':'Ativar']));
 			}
-			const reasonEl = isShieldedOnSat
-				? E('small',{class:'ex-feature-reason',style:'color:#3b82f6;font-weight:600;display:block;margin-top:4px;'},['🛡️ Exclusivo do Roteador Mestre (Gateway principal).'])
-				: ((!f.installed&&f.reason)?E('small',{class:'ex-feature-reason',style:'color:#ef4444;font-weight:600;display:block;margin-top:4px;'},['⚠️ '+f.reason]):'');
-			return E('div',{class:'ex-feature-row'},[E('div',{class:'ex-feature-copy'},[E('div',{class:'ex-feature-name-row'},[E('strong',{},[meta.name]),(meta.recommended?E('span',{class:'ex-recommended-badge'},['RECOMENDADO']):'')]),E('small',{class:'ex-muted'},[meta.description]),f.package?E('code',{},[f.package]):'',reasonEl]),E('div',{class:'ex-feature-state'},[E('span',{class:'ex-pill '+(f.installed?(isShieldedOnSat?'standby':(f.active?'online':'standby')):(f.hidden?'standby':'offline'))},[state]),E('div',{class:'ex-feature-actions'},actions)])]);
+			let reasonEl = '';
+			if (isNativeHw) {
+				reasonEl = E('small',{class:'ex-feature-reason',style:'color:#10b981;font-weight:600;display:block;margin-top:4px;'},['✨ '+(f.reason||'Processamento multicore já distribuído nativamente por hardware/driver.')]);
+			} else if (isShieldedOnSat) {
+				const satReason = f.reason || 'Exclusivo do Roteador Mestre (Gateway principal).';
+				reasonEl = E('small',{class:'ex-feature-reason',style:'color:#3b82f6;font-weight:600;display:block;margin-top:4px;'},[(satReason.startsWith('🛡️')||satReason.startsWith('Desnecessário'))?satReason:('🛡️ '+satReason)]);
+			} else if (!f.installed&&f.reason) {
+				reasonEl = E('small',{class:'ex-feature-reason',style:'color:#ef4444;font-weight:600;display:block;margin-top:4px;'},['⚠️ '+f.reason]);
+			}
+			return E('div',{class:'ex-feature-row'},[E('div',{class:'ex-feature-copy'},[E('div',{class:'ex-feature-name-row'},[E('strong',{},[meta.name]),(meta.recommended?E('span',{class:'ex-recommended-badge'},['RECOMENDADO']):'')]),E('small',{class:'ex-muted'},[meta.description]),f.package?E('code',{},[f.package]):'',reasonEl]),E('div',{class:'ex-feature-state'},[E('span',{class:'ex-pill '+pillClass},[state]),E('div',{class:'ex-feature-actions'},actions)])]);
 		},this));
-		const bulkKeys=['sqm','mwan3','nlbwmon','upnp'].filter(L.bind(function(key){const f=this.feature(key)||{};return !f.installed&&f.installable&&!(isSat&&(key==='sqm'||key==='mwan3'||key==='speedify'));},this));
+		const bulkKeys=['sqm','mwan3','nlbwmon','upnp'].filter(L.bind(function(key){const f=this.feature(key)||{};return !f.installed&&f.installable&&!(isSat&&(key==='sqm'||key==='mwan3'||key==='speedify'||key==='upnp'||key==='adblock'||key==='nlbwmon'));},this));
 		const bulkPanel=E('section',{class:'ex-cleanup-entry'},[E('div',{},[E('strong',{},['Instalação rápida']),E('small',{class:'ex-muted'},[bulkKeys.length?('Instala todos os recursos leves faltantes: '+bulkKeys.map(function(k){return (FEATURE_META[k]&&FEATURE_META[k].name)||k;}).join(', ')):'Todos os recursos leves compatíveis já estão instalados ou indisponíveis neste roteador.'])]),E('button',{class:'ex-mini-button','click':L.bind(this.installMissingFeatures,this,bulkKeys),disabled:!bulkKeys.length},['Instalar tudo'])]);
 		const ipv6Panel=E('section',{class:'ex-cleanup-entry'},[
 			E('div',{},[
@@ -3100,8 +3113,8 @@ const systemMethods = {
 			if (hasSpeedify && !self.perfState.speedify_encryption) c++;
 			if (hasSpeedify && self.perfState.speedify_log_cap) c++;
 			if (self.perfState.nlbwmon_lite) c++;
-			if (self.perfState.dns_allservers) c++;
-			if (cpuCores > 1 && irqbalance.installed && irqbalance.active) c++;
+			const isNativeIrq = !irqbalance.installed && (!irqbalance.installable && (irqbalance.native_hw || (irqbalance.reason && irqbalance.reason.indexOf('nativamente') !== -1)));
+			if ((cpuCores > 1 && irqbalance.installed && irqbalance.active) || isNativeIrq) c++;
 			return c;
 		};
 
@@ -3204,7 +3217,8 @@ const systemMethods = {
 				self.perfState.nlbwmon_lite ? '1' : '0',
 				self.perfState.dns_allservers ? '1' : '0',
 				'0',
-				self.perfState.ram_trim_interval || '0'
+				self.perfState.ram_trim_interval || '0',
+				self.perfState.igmp_snooping ? '1' : '0'
 			];
 			console.log('[PERF_SAVE] Iniciando:', key, '=', val, 'args:', args);
 			return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
@@ -3281,16 +3295,22 @@ const systemMethods = {
 			]);
 		};
 
+		const isNativeIrq = !irqbalance.installed && (!irqbalance.installable && (irqbalance.native_hw || (irqbalance.reason && irqbalance.reason.indexOf('nativamente') !== -1)));
 		let irqControl;
 		let irqBadge = 'DUAL-CORE / QUAD-CORE';
 		let irqBadgeClass = 'badge-blue';
-		let irqAdvice = (irqbalance.installed ? 'Recomendado para processadores Dual-Core e Quad-Core (Filogic 820/830, MediaTek, x86).' : 'Instale o pacote IRQ Balance na Central de Recursos para habilitar.');
+		let irqAdvice = (irqbalance.installed ? 'Recomendado para processadores Dual-Core e Quad-Core (x86, Raspberry Pi, plataformas sem DMA steering).' : 'Instale o pacote IRQ Balance na Central de Recursos para habilitar.');
 		
 		if (cpuCores <= 1) {
 			irqBadge = 'SINGLE-CORE (1 NÚCLEO)';
 			irqBadgeClass = 'badge-muted';
 			irqAdvice = 'Indisponível em CPUs de 1 núcleo (' + (hwInfo.model || 'Qualcomm QCA9558') + '). O IRQ Balance requer processadores Multicore (Dual-Core ou Quad-Core) para distribuir tarefas.';
 			irqControl = E('span', { class: 'ex-pill standby', style: 'padding: 6px 12px; font-weight: 700; cursor: default;' }, ['SINGLE-CORE']);
+		} else if (isNativeIrq) {
+			irqBadge = 'NATIVO POR HARDWARE';
+			irqBadgeClass = 'badge-green';
+			irqAdvice = irqbalance.reason || 'Processamento multicore de rede e Wi-Fi já distribuído nativamente por anéis de DMA e interrupções dedicados no hardware.';
+			irqControl = E('span', { class: 'ex-pill online', style: 'padding: 6px 12px; font-weight: 700; cursor: default; background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);' }, ['NATIVO']);
 		} else {
 			const irqStatePill = E('strong', {
 				class: 'ex-device-switch-state',
@@ -3546,6 +3566,19 @@ const systemMethods = {
 		));
 
 		rows.push(irqRow);
+
+		rows.push(makePerfRow(
+			'📶',
+			'Proteção Multicast & Wi-Fi (IGMP Snooping)',
+			this.perfState.igmp_snooping ? 'LIGADO' : 'DESLIGADO',
+			this.perfState.igmp_snooping ? 'badge-green' : 'badge-yellow',
+			'Evita que transmissões multicast (IPTV, Chromecast, Apple AirPlay, streaming local e mDNS) sejam propagadas como broadcast para todas as antenas Wi-Fi. Direciona os dados exclusivamente para o dispositivo que solicitou a transmissão, economizando tempo de antena (airtime) e mantendo a taxa máxima do Wi-Fi 7.',
+			'💡 Recomendado manter ATIVADO em todos os roteadores e Pontos de Acesso.',
+			!!this.perfState.igmp_snooping,
+			true,
+			'igmp_snooping',
+			false
+		));
 
 		const initialActive = countActive();
 		const summarySubtitle = initialActive > 0 ? (initialActive + ' otimizaç' + (initialActive === 1 ? 'ão ativa' : 'ões ativas') + ' • toque para configurar') : 'Controles de estabilidade e memória para eventos • toque para configurar';

@@ -9,6 +9,7 @@ _ARK_SYSTEM_SH_LOADED=1
 . "${ARK_LIB_DIR}/common.sh"
 . "${ARK_LIB_DIR}/logging.sh"
 . "${ARK_LIB_DIR}/validation.sh"
+[ -f "${ARK_LIB_DIR}/led.sh" ] && . "${ARK_LIB_DIR}/led.sh"
 
 system_perf_status_json() {
 	local perf_cache="/tmp/ark-perf-cache.json"
@@ -118,8 +119,12 @@ system_perf_status_raw() {
 
 	ram_trim_interval="$(uci -q get equipe_perf.settings.ram_trim_interval || printf 0)"
 
-	printf '{"conntrack_recycle":%s,"ram_autopurge":%s,"speedify_encryption":%s,"speedify_installed":%s,"speedify_log_cap":%s,"nlbwmon_lite":%s,"irqbalance_installed":%s,"irqbalance_active":%s,"conntrack_count":%s,"conntrack_max":%s,"mem_total_kb":%s,"mem_avail_kb":%s,"root_total_kb":%s,"root_used_kb":%s,"root_avail_kb":%s,"dns_allservers":%s,"dns_servers":"%s","dns_blocker_active":%s,"dns_blocker_name":"%s","wifi_supplicant_disable":%s,"ram_trim_interval":"%s"}\n' \
-		"$conntrack_recycle" "$ram_autopurge" "$speedify_encryption" "$speedify_installed" "$speedify_log_cap" "$nlbwmon_lite" "$irq_installed" "$irq_active" "$conntrack_count" "$conntrack_max" "$mem_total_kb" "$mem_avail_kb" "$root_total_kb" "$root_used_kb" "$root_avail_kb" "$dns_allservers" "$(json_escape "$dns_servers")" "$dns_blocker_active" "$(json_escape "$blocker_name")" "$wifi_supplicant_disable" "$(json_escape "$ram_trim_interval")"
+	igmp_snooping=false
+	[ "$(uci -q get network.lan.igmp_snooping || printf 0)" = 1 ] && igmp_snooping=true
+	[ -f /sys/class/net/br-lan/bridge/multicast_snooping ] && [ "$(cat /sys/class/net/br-lan/bridge/multicast_snooping 2>/dev/null)" = 1 ] && igmp_snooping=true
+
+	printf '{"conntrack_recycle":%s,"ram_autopurge":%s,"speedify_encryption":%s,"speedify_installed":%s,"speedify_log_cap":%s,"nlbwmon_lite":%s,"irqbalance_installed":%s,"irqbalance_active":%s,"conntrack_count":%s,"conntrack_max":%s,"mem_total_kb":%s,"mem_avail_kb":%s,"root_total_kb":%s,"root_used_kb":%s,"root_avail_kb":%s,"dns_allservers":%s,"dns_servers":"%s","dns_blocker_active":%s,"dns_blocker_name":"%s","wifi_supplicant_disable":%s,"ram_trim_interval":"%s","igmp_snooping":%s}\n' \
+		"$conntrack_recycle" "$ram_autopurge" "$speedify_encryption" "$speedify_installed" "$speedify_log_cap" "$nlbwmon_lite" "$irq_installed" "$irq_active" "$conntrack_count" "$conntrack_max" "$mem_total_kb" "$mem_avail_kb" "$root_total_kb" "$root_used_kb" "$root_avail_kb" "$dns_allservers" "$(json_escape "$dns_servers")" "$dns_blocker_active" "$(json_escape "$blocker_name")" "$wifi_supplicant_disable" "$(json_escape "$ram_trim_interval")" "$igmp_snooping"
 }
 
 dmz_status_json() {
@@ -451,6 +456,7 @@ system_perf_save() {
 	dns_allservers="${6:-0}"
 	wifi_supplicant_disable="${7:-0}"
 	ram_trim_interval="${8:-0}"
+	igmp_snooping="${9:-}"
 
 	case "$conntrack_recycle" in 1|true) conntrack_recycle=1 ;; *) conntrack_recycle=0 ;; esac
 	case "$ram_autopurge" in 1|true) ram_autopurge=1 ;; *) ram_autopurge=0 ;; esac
@@ -590,6 +596,13 @@ system_perf_save() {
 		/etc/init.d/nlbwmon restart >/dev/null 2>&1 || true
 	fi
 
+	if [ -n "$igmp_snooping" ]; then
+		case "$igmp_snooping" in 1|true) igmp_val=1 ;; *) igmp_val=0 ;; esac
+		uci -q set "network.lan.igmp_snooping=$igmp_val"
+		uci commit network 2>/dev/null || true
+		[ -f /sys/class/net/br-lan/bridge/multicast_snooping ] && echo "$igmp_val" > /sys/class/net/br-lan/bridge/multicast_snooping 2>/dev/null || true
+	fi
+
 	[ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune start >/dev/null 2>&1 || true
 
 	echo ok
@@ -615,9 +628,6 @@ system_storage_purge() {
 	fi
 	overlay_total="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $2}')"
 	case "$overlay_total" in ''|*[!0-9]*) overlay_total=65536 ;; esac
-	if [ "$overlay_total" -le 16384 ]; then
-		rm -f /www/luci-static/argon/img/bg1.jpg 2>/dev/null || true
-	fi
 	rm -f /tmp/*.tmp /tmp/*.log.1 2>/dev/null || true
 	sync
 	overlay_free="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"
@@ -782,6 +792,11 @@ get_internet_alert_led_sysfs() {
 }
 
 update_wan_led() {
+	if command -v ark_led_update_wan_status >/dev/null 2>&1; then
+		ark_led_update_wan_status
+		return 0
+	fi
+
 	local active_dev="$(get_active_online_wan_dev)"
 	local inet_led="$(get_internet_led_sysfs || echo "")"
 	local alert_led="$(get_internet_alert_led_sysfs || echo "")"
@@ -910,8 +925,11 @@ get_led_hardware_info() {
 	rgb_trio_g=""
 	rgb_trio_b=""
 
+	local led_base="/sys/class/leds"
+	[ -n "${ARK_ROOT}" ] && [ -d "${ARK_ROOT}/sys/class/leds" ] && led_base="${ARK_ROOT}/sys/class/leds"
+
 	# 1. Checagem de nó RGB Multicolor nativo (multi_intensity)
-	for p in /sys/class/leds/*/multi_intensity; do
+	for p in "$led_base"/*/multi_intensity; do
 		if [ -e "$p" ]; then
 			has_rgb=true
 			rgb_multi_node="$(basename "$(dirname "$p")")"
@@ -921,12 +939,12 @@ get_led_hardware_info() {
 
 	# 2. Checagem de Trio RGB Discreto
 	if [ "$has_rgb" = false ]; then
-		for r_led in /sys/class/leds/*red* /sys/class/leds/*:r:* /sys/class/leds/*_r; do
+		for r_led in "$led_base"/*red* "$led_base"/*:r:* "$led_base"/*_r; do
 			[ -d "$r_led" ] || continue
 			r_base="$(basename "$r_led")"
-			g_base="$(printf '%s' "$r_base" | sed 's/red/green/; s/:r:/:g:/; s/_r$/_g/')"
+			g_base="$(printf '%s' "$r_base" | sed 's/red/green/; s/:r:/:g:/; s/_r$/_b/')"
 			b_base="$(printf '%s' "$r_base" | sed 's/red/blue/; s/:r:/:b:/; s/_r$/_b/')"
-			if [ -d "/sys/class/leds/$g_base" ] && [ -d "/sys/class/leds/$b_base" ]; then
+			if [ -d "$led_base/$g_base" ] && [ -d "$led_base/$b_base" ]; then
 				has_rgb=true
 				rgb_trio_r="$r_base"
 				rgb_trio_g="$g_base"
@@ -936,21 +954,30 @@ get_led_hardware_info() {
 		done
 	fi
 
+	# 3. Checagem de Controlador RGB I2C (ex: AW21018 no Acer Predator Connect T7)
+	if [ "$has_rgb" = false ] && [ -d "$led_base/aw21018_led" ]; then
+		has_rgb=true
+		rgb_multi_node="aw21018_led"
+	fi
+
 	cur_rgb_hex="$(uci -q get system.led_status.hex_color || echo '#00FF00')"
+	cur_effect="$(uci -q get system.led_status.effect || echo 'breathe')"
+	cur_speed="$(uci -q get system.led_status.speed || echo 'normal')"
+	local topol="$(ark_led_detect_topology 2>/dev/null || echo TOPOLOGY_GPIO)"
 
 	first_led=1
-	printf '{"model":"%s","board":"%s","wan_dev":"%s","has_rgb":%s,"rgb_multi_node":"%s","rgb_trio_r":"%s","current_rgb_hex":"%s","leds":[' \
-		"$(json_escape "$model")" "$(json_escape "$board")" "$(json_escape "$wan_dev")" "$has_rgb" "$(json_escape "$rgb_multi_node")" "$(json_escape "$rgb_trio_r")" "$(json_escape "$cur_rgb_hex")"
+	printf '{"model":"%s","board":"%s","wan_dev":"%s","topology":"%s","has_rgb":%s,"rgb_multi_node":"%s","rgb_trio_r":"%s","current_rgb_hex":"%s","current_effect":"%s","current_speed":"%s","leds":[' \
+		"$(json_escape "$model")" "$(json_escape "$board")" "$(json_escape "$wan_dev")" "$(json_escape "$topol")" "$has_rgb" "$(json_escape "$rgb_multi_node")" "$(json_escape "$rgb_trio_r")" "$(json_escape "$cur_rgb_hex")" "$(json_escape "$cur_effect")" "$(json_escape "$cur_speed")"
 
-	for led in $(ls /sys/class/leds/ 2>/dev/null); do
-		[ -d "/sys/class/leds/$led" ] || continue
+	for led in $(ls "$led_base" 2>/dev/null); do
+		[ -d "$led_base/$led" ] || continue
 
 		if [ -n "$rgb_trio_g" ] && { [ "$led" = "$rgb_trio_g" ] || [ "$led" = "$rgb_trio_b" ]; }; then
 			continue
 		fi
 
-		cur_trigger="$(cat "/sys/class/leds/$led/trigger" 2>/dev/null | grep -o '\[.*\]' | tr -d '[]' || echo 'none')"
-		cur_brightness="$(cat "/sys/class/leds/$led/brightness" 2>/dev/null || echo '0')"
+		cur_trigger="$(cat "$led_base/$led/trigger" 2>/dev/null | grep -o '\[.*\]' | tr -d '[]' || echo 'none')"
+		cur_brightness="$(cat "$led_base/$led/brightness" 2>/dev/null || echo '0')"
 
 		name="$led"
 		sub="LED Físico"
@@ -958,6 +985,32 @@ get_led_hardware_info() {
 		color="green"
 
 		case "$led" in
+			"aw21018_led")
+				# Acer Predator Connect T7 - Controlador Dual RGB I2C (Frontal Fixo + Superior Pulsante)
+				local aw_bri="$(cat "$led_base/aw21018_led/brightness" 2>/dev/null || echo 0)"
+				local aw_front_trig="solid"
+				local aw_top_trig="breathing"
+				if [ "$aw_bri" = "0" ]; then
+					aw_front_trig="none"
+					aw_top_trig="none"
+				fi
+				local aw_color="green"
+				if [ -n "$cur_rgb_hex" ] && [ "$cur_rgb_hex" != "#00FF00" ] && [ "$cur_rgb_hex" != "#00ff00" ]; then
+					aw_color="rgb"
+				fi
+
+				# 1º Card: Painel Frontal (Verde Fixo)
+				[ "$first_led" = 1 ] && first_led=0 || printf ','
+				printf '{"sysfs":"%s","name":"%s","sub":"%s","type":"%s","color":"%s","trigger":"%s","brightness":%s,"hex_color":"%s"}' \
+					"aw21018_front" "Painel Frontal (Verde Fixo)" "LED Frontal de Conectividade / Status" \
+					"status_rgb" "$aw_color" "$aw_front_trig" "$aw_bri" "$cur_rgb_hex"
+
+				# 2º Card: Painel Superior (Predator Shield - Verde Pulsante)
+				printf ',{"sysfs":"%s","name":"%s","sub":"%s","type":"%s","color":"%s","trigger":"%s","brightness":%s,"hex_color":"%s"}' \
+					"aw21018_top" "Painel Superior (Predator Shield - Verde Pulsante)" "Efeito Respiração / Iluminação Superior" \
+					"status_rgb" "$aw_color" "$aw_top_trig" "$aw_bri" "$cur_rgb_hex"
+				continue
+				;;
 			"d-link:orange:planet"|"d-link:orange:power"|*orange:wan*|*red:wan*|*amber:wan*|*orange:internet*|*red:internet*)
 				# Bicolor/Alerta secundário: consolidado no card representativo para evitar duplicatas
 				continue
@@ -1167,8 +1220,73 @@ update_led_alert() {
 	update_wan_led
 }
 
+apply_aw21018_leds() {
+	local color="${1:-00ff00}"
+	local top_mode="${2:-3}"    # 3 = autonomous hardware breathing (Acer OEM), 1 = fixo, 0 = apagado
+	local front_mode="${3:-1}"  # 1 = fixo, 3 = breathing, 0 = apagado
+
+	if command -v ark_led_set_effect >/dev/null 2>&1; then
+		local top_effect="solid"
+		[ "$top_mode" = "3" ] && top_effect="breathe"
+		[ "$top_mode" = "2" ] && top_effect="blink"
+		[ "$top_mode" = "0" ] && top_effect="off"
+
+		local front_effect="solid"
+		[ "$front_mode" = "3" ] && front_effect="breathe"
+		[ "$front_mode" = "2" ] && front_effect="blink"
+		[ "$front_mode" = "0" ] && front_effect="off"
+
+		ark_led_calibrate_curves
+		ark_led_set_effect "front" "$color" "$front_effect"
+		ark_led_set_effect "top" "$color" "$top_effect"
+		return 0
+	fi
+
+	local clean_hex="$(printf '%s' "$color" | tr -d '#' | tr 'A-Z' 'a-z')"
+	[ -n "$clean_hex" ] || clean_hex="00ff00"
+
+	[ -d "/sys/class/leds/aw21018_led" ] || return 0
+	[ -x /etc/init.d/ledd ] && { /etc/init.d/ledd stop >/dev/null 2>&1 || true; /etc/init.d/ledd disable >/dev/null 2>&1 || true; }
+
+	# Calibra curva de respiracao senoidal suave continua (T0=5 ~2s subida, T1=0, T2=5 ~2s descida, T3=0)
+	echo "50 50" > "/sys/class/leds/aw21018_led/breath_time" 2>/dev/null || true
+	echo "100 100" > "/sys/class/leds/aw21018_led/blink_time" 2>/dev/null || true
+
+	# Inicializa monitor de portas NIC ark-port-ledd (se disponivel)
+	if [ -x /etc/init.d/ark-port-ledd ]; then
+		/etc/init.d/ark-port-ledd enable >/dev/null 2>&1 || true
+		/etc/init.d/ark-port-ledd start >/dev/null 2>&1 || true
+	fi
+
+	if [ "$front_mode" = "0" ]; then
+		echo "1 0 1" > "/sys/class/leds/aw21018_led/led" 2>/dev/null || true
+	else
+		echo "1 $clean_hex $front_mode" > "/sys/class/leds/aw21018_led/led" 2>/dev/null || true
+	fi
+
+	if [ "$top_mode" = "0" ]; then
+		echo "0 0 1" > "/sys/class/leds/aw21018_led/led" 2>/dev/null || true
+	else
+		# Target 0 (Mask/Shield) gravado por ultimo para preservar modo autonomo no registrador 0x8b
+		echo "0 $clean_hex $top_mode" > "/sys/class/leds/aw21018_led/led" 2>/dev/null || true
+	fi
+}
+
 set_led_rgb_color() {
-	raw_color="${1:-#00FF00}"
+	local raw_color="${1:-#00FF00}"
+	local chosen_effect="${2:-}"
+	local chosen_speed="${3:-}"
+	if command -v ark_led_apply_preset >/dev/null 2>&1; then
+		ark_led_normalize_hex "$raw_color"
+		[ -z "$chosen_speed" ] || ark_led_set_speed "$chosen_speed" >/dev/null 2>&1
+		ark_led_apply_preset custom "$raw_color" "$chosen_effect" "$chosen_speed" >/dev/null 2>&1
+		local cur_eff="$(uci -q get system.led_status.effect || echo 'breathe')"
+		local cur_spd="$(uci -q get system.led_status.speed || echo 'normal')"
+		printf '{"success":true,"hex":"%s","r":%d,"g":%d,"b":%d,"hw_intensity":"%d %d %d","effect":"%s","speed":"%s"}\n' \
+			"$hex_display" "$r_val" "$g_val" "$b_val" "$g_val" "$r_val" "$b_val" "$cur_eff" "$cur_spd"
+		return 0
+	fi
+
 	rm -f /etc/config/ark_led_alert_mode /etc/hotplug.d/iface/99-ark-led-alert /etc/hotplug.d/net/99-ark-led-alert
 	wan_dev="$(get_active_online_wan_dev)"
 
@@ -1218,11 +1336,6 @@ set_led_rgb_color() {
 	[ "$g_val" -gt 255 ] && g_val=255; [ "$g_val" -lt 0 ] && g_val=0
 	[ "$b_val" -gt 255 ] && b_val=255; [ "$b_val" -lt 0 ] && b_val=0
 
-	# WS2812B GRB no SPI: Byte 0 = Verde (G), Byte 1 = Vermelho (R), Byte 2 = Azul (B)
-	hw_byte0="$g_val"
-	hw_byte1="$r_val"
-	hw_byte2="$b_val"
-
 	local rgb_multi_node=""
 	local rgb_trio_r=""
 	local rgb_trio_g=""
@@ -1234,6 +1347,22 @@ set_led_rgb_color() {
 		fi
 	done
 	[ -n "$rgb_multi_node" ] || [ ! -e /sys/class/leds/rgb:status ] || rgb_multi_node="rgb:status"
+
+	local mc_order="rgb"
+	if [ -n "$rgb_multi_node" ] && [ -e "/sys/class/leds/$rgb_multi_node/multi_index" ]; then
+		case "$(cat "/sys/class/leds/$rgb_multi_node/multi_index" 2>/dev/null)" in
+			*green*red*blue*) mc_order="grb" ;;
+			*blue*green*red*) mc_order="bgr" ;;
+			*) mc_order="rgb" ;;
+		esac
+	fi
+	if [ "$mc_order" = "grb" ]; then
+		hw_byte0="$g_val"; hw_byte1="$r_val"; hw_byte2="$b_val"
+	elif [ "$mc_order" = "bgr" ]; then
+		hw_byte0="$b_val"; hw_byte1="$g_val"; hw_byte2="$r_val"
+	else
+		hw_byte0="$r_val"; hw_byte1="$g_val"; hw_byte2="$b_val"
+	fi
 
 	if [ -z "$rgb_multi_node" ]; then
 		for r_led in /sys/class/leds/*red* /sys/class/leds/*:r:* /sys/class/leds/*_r; do
@@ -1250,7 +1379,19 @@ set_led_rgb_color() {
 		done
 	fi
 
-	if [ -n "$rgb_multi_node" ]; then
+	if [ -d "/sys/class/leds/aw21018_led" ]; then
+		local clean_hex="$(printf '%s' "$hex_display" | tr -d '#' | tr 'A-Z' 'a-z')"
+		[ -n "$clean_hex" ] || clean_hex="00ff00"
+		apply_aw21018_leds "$clean_hex" 3 1
+
+		[ -n "$(uci -q get system.led_status)" ] || uci -q set system.led_status=led
+		uci -q set "system.led_status.name=Iluminação RGB (AW21018)"
+		uci -q set "system.led_status.sysfs=aw21018_led"
+		uci -q set "system.led_status.hex_color=$hex_display"
+		uci -q set "system.led_status.enabled=1"
+		uci -q set "system.led_status.default=1"
+		uci commit system
+	elif [ -n "$rgb_multi_node" ]; then
 		[ -n "$(uci -q get system.led_status)" ] || uci -q set system.led_status=led
 		uci -q set "system.led_status.name=Status / Conexão (RGB)"
 		uci -q set "system.led_status.sysfs=$rgb_multi_node"
@@ -1289,6 +1430,11 @@ set_led_preset() {
 	preset="${1:-smart}"
 	cleanup_orphan_leds
 
+	if command -v ark_led_apply_preset >/dev/null 2>&1; then
+		ark_led_apply_preset "$preset"
+		return 0
+	fi
+
 	wan_dev="$(get_active_online_wan_dev)"
 	inet_led="$(get_internet_led_sysfs || echo "")"
 	alert_led="$(get_internet_alert_led_sysfs || echo "")"
@@ -1306,6 +1452,11 @@ set_led_preset() {
 				echo none > "/sys/class/leds/$led/trigger" 2>/dev/null || true
 				echo 0 > "/sys/class/leds/$led/brightness" 2>/dev/null || true
 			done
+			if [ -d "/sys/class/leds/aw21018_led" ]; then
+				apply_aw21018_leds "000000" 0 0
+				uci -q set "system.led_status.enabled=0" 2>/dev/null || true
+				uci commit system 2>/dev/null || true
+			fi
 			;;
 		alert)
 			mkdir -p /etc/config /etc/hotplug.d/iface /etc/hotplug.d/net
@@ -1332,6 +1483,11 @@ EOF
 						;;
 				esac
 			done
+
+			if [ -d "/sys/class/leds/aw21018_led" ]; then
+				apply_aw21018_leds "ff0000" 3 1
+			fi
+
 			uci commit system 2>/dev/null || true
 			update_wan_led
 			;;
@@ -1342,6 +1498,20 @@ EOF
 				for sec in $(uci -q show system 2>/dev/null | grep '=led$' | cut -d. -f2 | cut -d= -f1); do
 					uci -q delete "system.$sec"
 				done
+			fi
+
+			if [ -d "/sys/class/leds/aw21018_led" ]; then
+				local cur_col="$(uci -q get system.led_status.hex_color || echo '#00FF00')"
+				local raw_hex="$(printf '%s' "$cur_col" | tr -d '#' | tr 'A-Z' 'a-z')"
+				[ -n "$raw_hex" ] || raw_hex="00ff00"
+				apply_aw21018_leds "$raw_hex" 3 1
+
+				[ -n "$(uci -q get system.led_status)" ] || uci -q set system.led_status=led
+				uci -q set "system.led_status.name=Iluminação RGB (AW21018)"
+				uci -q set "system.led_status.sysfs=aw21018_led"
+				uci -q set "system.led_status.hex_color=$cur_col"
+				uci -q set "system.led_status.enabled=1"
+				uci -q set "system.led_status.default=1"
 			fi
 
 			local rgb_multi_cand=""
@@ -1495,6 +1665,12 @@ EOF
 			/etc/init.d/led restart >/dev/null 2>&1 || true
 
 			# Resposta visual imediata no hardware
+			if [ -d "/sys/class/leds/aw21018_led" ]; then
+				local cur_col="$(uci -q get system.led_status.hex_color || echo '#00FF00')"
+				local raw_hex="$(printf '%s' "$cur_col" | tr -d '#' | tr 'A-Z' 'a-z')"
+				[ -n "$raw_hex" ] || raw_hex="00ff00"
+				apply_aw21018_leds "$raw_hex" 3 1
+			fi
 			update_wan_led
 			;;
 	esac
@@ -1588,7 +1764,7 @@ detect_hardware_silicon_profile() {
 			silicon_hw_offload_capable=1
 			silicon_tuning_profile="MT7621A (PPE v1 HW NAT + Multicore)"
 			;;
-		*ipq807*|*ipq60*|*ipq50*|*ipq9574*|*ipq9554*)
+		*ipq53*|*qualcommax*|*ipq807*|*ipq60*|*ipq50*|*ipq9574*|*ipq9554*)
 			silicon_class="qualcomm_ipq"
 			silicon_name="Qualcomm IPQ (ARMv8 Multicore High-Speed)"
 			silicon_tuning_profile="Qualcomm IPQ (SFE / Flowtable Multicore)"
@@ -1672,10 +1848,10 @@ system_hardware_auto_tune() {
 		[ "$mwan_enabled_count" -ge 2 ] && mwan3_active=1
 	fi
 
-	# 1.3 VPNs (WireGuard / OpenVPN / ZeroTier / Tailscale)
+	# 1.3 VPNs (WireGuard / OpenVPN / ZeroTier)
 	sys_net_dir="/sys/class/net"
 	[ -n "${ARK_ROOT}" ] && [ -d "${ARK_ROOT}/sys/class/net" ] && sys_net_dir="${ARK_ROOT}/sys/class/net"
-	for vpn_dev in "$sys_net_dir"/wg* "$sys_net_dir"/tun* "$sys_net_dir"/zt* "$sys_net_dir"/tailscale*; do
+	for vpn_dev in "$sys_net_dir"/wg* "$sys_net_dir"/tun* "$sys_net_dir"/zt*; do
 		[ -d "$vpn_dev" ] && vpn_active=1 && break
 	done
 	if [ "$vpn_active" = 0 ]; then
@@ -1713,6 +1889,9 @@ system_hardware_auto_tune() {
 	[ "$nlbwmon_active" = 1 ] && services_detected="${services_detected}nlbwmon,"
 	[ "$storage_active" = 1 ] && services_detected="${services_detected}storage,"
 	[ "$heavy_daemon_active" = 1 ] && services_detected="${services_detected}heavy_daemons,"
+	if ark_is_satellite_or_ap; then
+		services_detected="${services_detected}ap_mode,"
+	fi
 	services_detected="${services_detected%,}"
 
 	# --- 2. Proteção de Memória Real (MemAvailable) ---
@@ -1728,14 +1907,21 @@ system_hardware_auto_tune() {
 	fi
 
 	# --- 3. Flow Offloading ---
-	uci -q set firewall.@defaults[0].flow_offloading=1
-	if [ "$sqm_active" = 1 ]; then
+	if ark_is_satellite_or_ap; then
+		uci -q set firewall.@defaults[0].flow_offloading=0
+		uci -q set firewall.@defaults[0].flow_offloading_hw=0
+		offload_reason="Comutação L2 Pura (Modo Ponte / AP dispensa Flowtable L3)"
+		silicon_tuning_profile="Ponto de Acesso / Ponte L2 Otimizada"
+	elif [ "$sqm_active" = 1 ]; then
+		uci -q set firewall.@defaults[0].flow_offloading=1
 		uci -q set firewall.@defaults[0].flow_offloading_hw=0
 		offload_reason="Software Flowtable (SQM/CAKE ativo prioriza combate a Bufferbloat)"
 	elif [ "$silicon_hw_offload_capable" = 1 ]; then
+		uci -q set firewall.@defaults[0].flow_offloading=1
 		uci -q set firewall.@defaults[0].flow_offloading_hw=1
 		offload_reason="Hardware PPE em Silício (Vazão máxima com CPU livre)"
 	else
+		uci -q set firewall.@defaults[0].flow_offloading=1
 		uci -q set firewall.@defaults[0].flow_offloading_hw=0
 		offload_reason="Software Flowtable (Estável e otimizado para a arquitetura)"
 	fi
@@ -1882,10 +2068,34 @@ net.netfilter.nf_conntrack_udp_timeout_stream=120
 EOF
 	fi
 
+	# Ajustes especificos para Modo AP / Ponte L2
+	if ark_is_satellite_or_ap; then
+		cat <<-EOF >> "${sysctl_dir}/99-ark-hardware-tune.conf"
+net.bridge.bridge-nf-call-iptables=0
+net.bridge.bridge-nf-call-ip6tables=0
+net.bridge.bridge-nf-call-arptables=0
+EOF
+		# Otimizacao de IGMP Snooping na bridge LAN
+		if [ -f /etc/config/network ] || [ -n "${ARK_ROOT}" -a -f "${ARK_ROOT}/etc/config/network" ]; then
+			uci -q set network.lan.igmp_snooping=1
+			uci commit network 2>/dev/null || true
+		fi
+		# Otimizacao de multicast para unicast no Wi-Fi
+		if [ -f /etc/config/wireless ] || [ -n "${ARK_ROOT}" -a -f "${ARK_ROOT}/etc/config/wireless" ]; then
+			for w_sec in $(uci -q show wireless 2>/dev/null | sed -n 's/^wireless\.\([a-zA-Z0-9_]*\)=wifi-iface$/\1/p'); do
+				uci -q set "wireless.$w_sec.multicast_to_unicast=1"
+			done
+			uci commit wireless 2>/dev/null || true
+		fi
+	fi
+
 	sysctl -p "${sysctl_dir}/99-ark-hardware-tune.conf" >/dev/null 2>&1 || true
 
 	# --- 6. Dimensionamento de Cache do DNSmasq ---
 	if [ -f /etc/config/dhcp ] || [ -n "${ARK_ROOT}" -a -f "${ARK_ROOT}/etc/config/dhcp" ] || [ -n "${UCI_CONFIG_DIR}" -a -f "${UCI_CONFIG_DIR}/dhcp" ]; then
+		if ark_is_satellite_or_ap; then
+			dns_cache=150
+		fi
 		cur_dns_cache="$(uci -q get dhcp.@dnsmasq[0].cachesize || true)"
 		if [ "$cur_dns_cache" != "$dns_cache" ]; then
 			uci -q set "dhcp.@dnsmasq[0].cachesize=$dns_cache"
@@ -2060,13 +2270,13 @@ get_system_hardware_info_raw() {
 	if [ ! -s "$iw_cache" ]; then
 		iw list 2>/dev/null > "$iw_cache" || true
 	fi
-	if grep -qE 'EHT Capabilities|EHT-PHY|EHT Iftypes' "$iw_cache" 2>/dev/null; then wifi_be=true; fi
-	if grep -q 'HE Iftypes' "$iw_cache" 2>/dev/null; then wifi_ax=true; fi
-	if grep -q 'VHT Capabilities' "$iw_cache" 2>/dev/null; then wifi_ac=true; fi
-	if grep -q 'HT20/HT40' "$iw_cache" 2>/dev/null; then wifi_n=true; fi
-	if [ "$wifi_be" = true ] && grep -qE 'Supported Channel Width: 320 MHz|EHT320' "$iw_cache" 2>/dev/null; then wifi_320=true; fi
-	if grep -qE 'Supported Channel Width: 160 MHz|HE160|VHT160|EHT160' "$iw_cache" 2>/dev/null; then wifi_160=true; fi
-	if grep -qE 'Band 4:|Band 6GHz|/6GHz|5955 MHz' "$iw_cache" 2>/dev/null; then wifi_6g=true; fi
+	if grep -qE 'EHT Capabilities|EHT-PHY|EHT Iftypes|EHT MAC Capabilities|EHT PHY Capabilities' "$iw_cache" 2>/dev/null || grep -qE '11be|HT320|EHT320' /etc/config/wireless 2>/dev/null; then wifi_be=true; fi
+	if grep -q 'HE Iftypes' "$iw_cache" 2>/dev/null || grep -q '11ax' /etc/config/wireless 2>/dev/null; then wifi_ax=true; fi
+	if grep -q 'VHT Capabilities' "$iw_cache" 2>/dev/null || grep -q '11ac' /etc/config/wireless 2>/dev/null; then wifi_ac=true; fi
+	if grep -q 'HT20/HT40' "$iw_cache" 2>/dev/null || grep -qE '11n|11g' /etc/config/wireless 2>/dev/null; then wifi_n=true; fi
+	if [ "$wifi_be" = true ] && (grep -qE 'Supported Channel Width: 320 MHz|320 MHz in 6 GHz|EHT320|HT320' "$iw_cache" 2>/dev/null || grep -qE 'HT320|EHT320' /etc/config/wireless 2>/dev/null); then wifi_320=true; fi
+	if grep -qE 'Supported Channel Width: 160 MHz|HE160|VHT160|EHT160' "$iw_cache" 2>/dev/null || grep -qE 'HT160|VHT160|HE160' /etc/config/wireless 2>/dev/null; then wifi_160=true; fi
+	if grep -qE 'Band 4:|Band 6GHz|/6GHz|5955 MHz' "$iw_cache" 2>/dev/null || grep -qE 'band=.3.|HT320' /etc/config/wireless 2>/dev/null; then wifi_6g=true; fi
 
 	detect_hardware_silicon_profile
 	hw_offload_bool="false"; [ "$silicon_hw_offload_capable" = 1 ] && hw_offload_bool="true"
@@ -2099,6 +2309,41 @@ get_system_hardware_info_raw() {
 	printf '"wifi":{"wifi_be":%s,"wifi_ax":%s,"wifi_ac":%s,"wifi_n":%s,"wifi_320":%s,"wifi_160":%s,"wifi_6g":%s},' \
 		"$wifi_be" "$wifi_ax" "$wifi_ac" "$wifi_n" "$wifi_320" "$wifi_160" "$wifi_6g"
 
+	# Thermal Profile & Dynamic Sensor Trip Points
+	default_warn_c=75
+	default_crit_c=90
+	default_max_c=105
+	case "$silicon_class" in
+		qualcomm_ipq)
+			default_warn_c=95
+			default_crit_c=105
+			default_max_c=125
+			;;
+		mediatek_filogic)
+			default_warn_c=85
+			default_crit_c=105
+			default_max_c=125
+			;;
+		rockchip_arm|broadcom_arm)
+			default_warn_c=85
+			default_crit_c=95
+			default_max_c=110
+			;;
+		mips_legacy|mediatek_mips)
+			default_warn_c=75
+			default_crit_c=88
+			default_max_c=105
+			;;
+		x86_pc)
+			default_warn_c=75
+			default_crit_c=90
+			default_max_c=105
+			;;
+	esac
+
+	printf '"thermal_profile":{"silicon_class":"%s","warn_c":%s,"crit_c":%s,"max_c":%s},' \
+		"$(json_escape "$silicon_class")" "$default_warn_c" "$default_crit_c" "$default_max_c"
+
 	# Thermal Sensors List
 	first_t=1
 	has_cpu_thermal=0
@@ -2111,14 +2356,57 @@ get_system_hardware_info_raw() {
 		[ "$ztemp" -gt 1000 ] && ztemp_c=$((ztemp / 1000)) || ztemp_c="$ztemp"
 		label="Processador (CPU)"
 		case "$ztype" in
-			*cpu*) label="Processador (CPU)"; has_cpu_thermal=1 ;;
+			*cpu*|*core*|*soc*) label="Processador (CPU)"; has_cpu_thermal=1 ;;
+			tsens_tz_sensor11) label="CPU (Núcleo 0)"; has_cpu_thermal=1 ;;
+			tsens_tz_sensor12) label="CPU (Núcleo 1)"; has_cpu_thermal=1 ;;
+			tsens_tz_sensor13) label="CPU (Núcleo 2)"; has_cpu_thermal=1 ;;
+			tsens_tz_sensor14) label="CPU (Núcleo 3)"; has_cpu_thermal=1 ;;
+			tsens_tz_sensor15) label="Cluster SoC / NPU"; has_cpu_thermal=1 ;;
+			tsens_tz_sensor*) label="Sensor de Silício ($ztype)"; has_cpu_thermal=1 ;;
 			*wifi*|*wlan*) label="Wi-Fi" ;;
 			*switch*|*phy*|*mdio*) label="Switch de Rede" ;;
 			*) label="$ztype" ;;
 		esac
+
+		zwarn_c=0
+		zcrit_c=0
+		zmax_c=0
+		for ttype_file in "$z"/trip_point_*_type; do
+			[ -f "$ttype_file" ] || continue
+			tidx="$(basename "$ttype_file" | sed -e 's/^trip_point_//' -e 's/_type$//')"
+			ttemp_file="$z/trip_point_${tidx}_temp"
+			[ -r "$ttemp_file" ] || continue
+			tt_val="$(cat "$ttemp_file" 2>/dev/null || echo 0)"
+			[ "$tt_val" -gt 1000 ] 2>/dev/null && tt_c=$((tt_val / 1000)) || tt_c="$tt_val"
+			[ "$tt_c" -le 0 ] 2>/dev/null && continue
+			tt_type="$(cat "$ttype_file" 2>/dev/null || echo '')"
+			case "$tt_type" in
+				critical)
+					[ "$zmax_c" -eq 0 ] && zmax_c="$tt_c"
+					if [ "$tt_c" -ge 115 ]; then
+						[ "$zcrit_c" -eq 0 ] && zcrit_c=105
+					else
+						[ "$zcrit_c" -eq 0 ] && zcrit_c="$tt_c"
+					fi
+					;;
+				configurable_hi|hot)
+					zcrit_c="$tt_c"
+					;;
+				configurable_low|passive)
+					[ "$zwarn_c" -eq 0 ] && zwarn_c="$tt_c"
+					;;
+			esac
+		done
+
+		[ "$zwarn_c" -gt 0 ] 2>/dev/null || zwarn_c="$default_warn_c"
+		[ "$zcrit_c" -gt 0 ] 2>/dev/null || zcrit_c="$default_crit_c"
+		[ "$zmax_c" -gt 0 ] 2>/dev/null || zmax_c="$default_max_c"
+		[ "$zcrit_c" -gt 105 ] && [ "$zmax_c" -ge 120 ] && zcrit_c=105
+		[ "$zwarn_c" -ge "$zcrit_c" ] && zwarn_c=$((zcrit_c - 10))
+
 		[ "$first_t" = 1 ] && first_t=0 || printf ','
-		printf '{"name":"%s","type":"%s","temp_c":%s}' \
-			"$(json_escape "$label")" "$(json_escape "$ztype")" "$ztemp_c"
+		printf '{"name":"%s","type":"%s","temp_c":%s,"warn_c":%s,"crit_c":%s,"max_c":%s}' \
+			"$(json_escape "$label")" "$(json_escape "$ztype")" "$ztemp_c" "$zwarn_c" "$zcrit_c" "$zmax_c"
 	done
 	for h in /sys/class/hwmon/hwmon*; do
 		[ -d "$h" ] || continue
@@ -2152,9 +2440,29 @@ get_system_hardware_info_raw() {
 				fi
 				has_cpu_thermal=1
 			fi
+
+			hwarn_c=0
+			hcrit_c=0
+			hmax_c=0
+			crit_file="$(printf '%s' "$tf" | sed 's/_input$/_crit/')"
+			max_file="$(printf '%s' "$tf" | sed 's/_input$/_max/')"
+			if [ -r "$crit_file" ]; then
+				cval="$(cat "$crit_file" 2>/dev/null || echo 0)"
+				[ "$cval" -gt 1000 ] 2>/dev/null && hcrit_c=$((cval / 1000)) || hcrit_c="$cval"
+			fi
+			if [ -r "$max_file" ]; then
+				mval="$(cat "$max_file" 2>/dev/null || echo 0)"
+				[ "$mval" -gt 1000 ] 2>/dev/null && hwarn_c=$((mval / 1000)) || hwarn_c="$mval"
+			fi
+			[ "$hwarn_c" -gt 0 ] 2>/dev/null || hwarn_c="$default_warn_c"
+			[ "$hcrit_c" -gt 0 ] 2>/dev/null || hcrit_c="$default_crit_c"
+			[ "$hmax_c" -gt 0 ] 2>/dev/null || hmax_c="$default_max_c"
+			[ "$hcrit_c" -gt 105 ] && [ "$hmax_c" -ge 120 ] && hcrit_c=105
+			[ "$hwarn_c" -ge "$hcrit_c" ] && hwarn_c=$((hcrit_c - 10))
+
 			[ "$first_t" = 1 ] && first_t=0 || printf ','
-			printf '{"name":"%s","type":"%s","temp_c":%s}' \
-				"$(json_escape "$hlabel")" "$(json_escape "$htype")" "$htemp_c"
+			printf '{"name":"%s","type":"%s","temp_c":%s,"warn_c":%s,"crit_c":%s,"max_c":%s}' \
+				"$(json_escape "$hlabel")" "$(json_escape "$htype")" "$htemp_c" "$hwarn_c" "$hcrit_c" "$hmax_c"
 		done
 	done
 	printf '],'
@@ -2167,18 +2475,69 @@ get_system_hardware_info_raw() {
 		pname="$(basename "$ppath")"
 		case "$pname" in
 			lan*|eth*|wan*)
+				# Se for dispositivo pai/tronco que possui sub-interfaces VLAN (ex: eth1 tendo eth1.1 e eth1.2),
+				# ele é um canal interno de comunicação com o switch, não uma porta física externa na carcaça!
+				if ls -d /sys/class/net/"${pname}".* >/dev/null 2>&1; then
+					continue
+				fi
+
 				speed="$(cat "$ppath/speed" 2>/dev/null || echo '')"
 				carrier="$(cat "$ppath/carrier" 2>/dev/null || echo 0)"
 				duplex="$(cat "$ppath/duplex" 2>/dev/null || echo '')"
 				max_speed="1G"
 				dev_status="$(ubus call network.device status "{\"name\":\"$pname\"}" 2>/dev/null || true)"
-				case "$dev_status" in
+				dev_eth="$(ethtool "$pname" 2>/dev/null || true)"
+				case "$dev_status $dev_eth" in
 					*2500base*|*2500F*) max_speed="2.5G" ;;
 					*10000base*) max_speed="10G" ;;
+					*5000base*) max_speed="5G" ;;
 					*1000base*|*1000F*) max_speed="1G" ;;
 					*100base*|*100F*) max_speed="100M" ;;
 					*) [ "$speed" = 2500 ] && max_speed="2.5G" ;;
 				esac
+
+				# Em roteadores com swconfig e VLANs particionadas (ex: Qualcomm IPQ5332 / Acer Predator T7):
+				# O carrier do kernel em interfaces VLAN é sempre 1 enquanto o tronco estiver ativo.
+				# O status físico real de conexão do cabo reside na porta correspondente do switch!
+				if is_swconfig; then
+					case "$pname" in
+						eth1.1)
+							sw_link="$(swconfig dev switch1 port 1 get link 2>/dev/null || swconfig dev switch0 port 1 get link 2>/dev/null || true)"
+							if [ -n "$sw_link" ]; then
+								carrier=0; speed=""
+								if printf '%s' "$sw_link" | grep -q 'link:up'; then
+									carrier=1
+									case "$sw_link" in
+										*2500base*) speed="2500"; max_speed="2.5G" ;;
+										*1000base*) speed="1000"; max_speed="1G" ;;
+										*100base*) speed="100"; max_speed="100M" ;;
+										*10base*) speed="10"; max_speed="10M" ;;
+										*) speed="1000"; max_speed="1G" ;;
+									esac
+									printf '%s' "$sw_link" | grep -q 'full-duplex' && duplex="Full duplex" || duplex="Half duplex"
+								fi
+							fi
+							;;
+						eth1.2)
+							sw_link="$(swconfig dev switch1 port 2 get link 2>/dev/null || swconfig dev switch0 port 2 get link 2>/dev/null || true)"
+							if [ -n "$sw_link" ]; then
+								carrier=0; speed=""
+								if printf '%s' "$sw_link" | grep -q 'link:up'; then
+									carrier=1
+									case "$sw_link" in
+										*2500base*) speed="2500"; max_speed="2.5G" ;;
+										*1000base*) speed="1000"; max_speed="1G" ;;
+										*100base*) speed="100"; max_speed="100M" ;;
+										*10base*) speed="10"; max_speed="10M" ;;
+										*) speed="1000"; max_speed="1G" ;;
+									esac
+									printf '%s' "$sw_link" | grep -q 'full-duplex' && duplex="Full duplex" || duplex="Half duplex"
+								fi
+							fi
+							;;
+					esac
+				fi
+
 				[ "$first_p" = 1 ] && first_p=0 || printf ','
 				printf '"%s":{"speed":"%s","carrier":%s,"duplex":"%s","max_speed":"%s"}' \
 					"$(json_escape "$pname")" "$(json_escape "$speed")" "$carrier" \
@@ -2186,13 +2545,18 @@ get_system_hardware_info_raw() {
 				;;
 		esac
 	done
-	if is_swconfig; then
+
+	# Apenas para roteadores legados onde o kernel NÃO expõe interfaces individuais
+	# e as portas LAN/WAN existem exclusivamente registradas no switch0
+	if is_swconfig && [ "$first_p" = 1 ]; then
 		for p in 1 2 3 4; do
 			sw_link="$(swconfig dev switch0 port "$p" get link 2>/dev/null || true)"
+			[ -n "$sw_link" ] || continue
 			p_carrier=0; p_speed=""; p_duplex="Automático"; p_max="1G"
 			if printf '%s' "$sw_link" | grep -q 'link:up'; then
 				p_carrier=1
 				case "$sw_link" in
+					*2500base*) p_speed="2500"; p_max="2.5G" ;;
 					*1000base*) p_speed="1000"; p_max="1G" ;;
 					*100base*) p_speed="100"; p_max="100M" ;;
 					*10base*) p_speed="10"; p_max="10M" ;;
@@ -2200,28 +2564,27 @@ get_system_hardware_info_raw() {
 				esac
 				printf '%s' "$sw_link" | grep -q 'full-duplex' && p_duplex="Full duplex" || p_duplex="Half duplex"
 			fi
-			for alias in "lan$p" "port$p"; do
-				[ "$first_p" = 1 ] && first_p=0 || printf ','
-				printf '"%s":{"speed":"%s","carrier":%s,"duplex":"%s","max_speed":"%s"}' \
-					"$alias" "$p_speed" "$p_carrier" "$p_duplex" "$p_max"
-			done
+			[ "$first_p" = 1 ] && first_p=0 || printf ','
+			printf '"lan%s":{"speed":"%s","carrier":%s,"duplex":"%s","max_speed":"%s"}' \
+				"$p" "$p_speed" "$p_carrier" "$p_duplex" "$p_max"
 		done
 		sw_wan="$(swconfig dev switch0 port 5 get link 2>/dev/null || true)"
-		p_carrier=0; p_speed=""; p_duplex="Automático"; p_max="1G"
-		if printf '%s' "$sw_wan" | grep -q 'link:up'; then
-			p_carrier=1
-			case "$sw_wan" in
-				*1000base*) p_speed="1000"; p_max="1G" ;;
-				*100base*) p_speed="100"; p_max="100M" ;;
-				*) p_speed="100"; p_max="100M" ;;
-			esac
-			printf '%s' "$sw_wan" | grep -q 'full-duplex' && p_duplex="Full duplex" || p_duplex="Half duplex"
-		fi
-		for alias in "wan" "wan1" "port5" "lan5" "eth0.2"; do
+		if [ -n "$sw_wan" ]; then
+			p_carrier=0; p_speed=""; p_duplex="Automático"; p_max="1G"
+			if printf '%s' "$sw_wan" | grep -q 'link:up'; then
+				p_carrier=1
+				case "$sw_wan" in
+					*2500base*) p_speed="2500"; p_max="2.5G" ;;
+					*1000base*) p_speed="1000"; p_max="1G" ;;
+					*100base*) p_speed="100"; p_max="100M" ;;
+					*) p_speed="100"; p_max="100M" ;;
+				esac
+				printf '%s' "$sw_wan" | grep -q 'full-duplex' && p_duplex="Full duplex" || p_duplex="Half duplex"
+			fi
 			[ "$first_p" = 1 ] && first_p=0 || printf ','
-			printf '"%s":{"speed":"%s","carrier":%s,"duplex":"%s","max_speed":"%s"}' \
-				"$alias" "$p_speed" "$p_carrier" "$p_duplex" "$p_max"
-		done
+			printf '"wan":{"speed":"%s","carrier":%s,"duplex":"%s","max_speed":"%s"}' \
+				"$p_speed" "$p_carrier" "$p_duplex" "$p_max"
+		fi
 	fi
 	fw_engine="$(ark_firewall_engine)"
 	fw_desc="Moderno (nftables puro)"
@@ -2375,6 +2738,19 @@ handle_system() {
 		;;
 	get-led-status)
 		get_led_status
+		;;
+	led-detect-topology)
+		ark_led_detect_topology
+		;;
+	led-calibrate-curves)
+		ark_led_calibrate_curves
+		echo 'ok'
+		;;
+	set-led-effect)
+		ark_led_set_effect "$2" "$3" "$4" "$5"
+		;;
+	set-led-speed)
+		ark_led_set_speed "$2"
 		;;
 	system-hardware-info)
 		get_system_hardware_info

@@ -1,45 +1,5 @@
 // /src/modules/vpn.js - ARK Router LuCI View Module
 const vpnMethods = {
-	pairTailscale: function(){
-		const f=this.feature('tailscale')||{};
-		if(!f.installed){this.installFeature('tailscale');return;}
-		ui.showModal('Parear Tailscale',[E('p',{},['Preparando Tailscale e anunciando a rede LAN atual…'])]);
-		return fs.exec('/usr/sbin/equipe-dashboard-control',['tailscale-up']).then(function(r){
-			if(r.code)throw new Error(r.stderr||'Falha ao iniciar Tailscale');
-			let data={};try{data=JSON.parse(r.stdout||'{}');}catch(e){}
-			const url=data.login_url||'', cidr=data.lan_cidr||f.lan_cidr||'—';
-			ui.showModal('Parear Tailscale',[
-				E('p',{},['Rota LAN anunciada: ',E('strong',{},[cidr])]),
-				url?E('p',{},['Abra o link abaixo, faça login e autorize este roteador:']):E('p',{},['Tailscale respondeu sem pedir novo login. Se a rota ainda não aparecer nos dispositivos, aprove a Subnet Route no painel Tailscale.']),
-				url?E('p',{},[E('a',{class:'ex-text-link',href:url,target:'_blank',rel:'noopener noreferrer'},[url])]):'',
-				E('p',{class:'alert-message warning'},['No painel Tailscale, aprove a rota anunciada para acessar IPs da LAN de fora. Não abra LuCI/SSH direto na WAN.']),
-				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar']),' ',url?E('button',{class:'btn cbi-button cbi-button-positive','click':function(){window.open(url,'_blank','noopener');}},['Abrir login']):''])
-			]);
-		}).catch(function(e){ui.showModal('Parear Tailscale',[E('p',{class:'alert-message warning'},[e.message]),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])]);});
-	},
-	disconnectTailscale: function(){
-		const self = this;
-		ui.showModal('Desligar Tailscale',[E('p',{},['Desligar o Tailscale neste roteador? O acesso remoto pela VPN vai parar, mas a configuração/login local permanecem.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-negative','click':function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['tailscale-down']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao desligar Tailscale');ui.hideModal();self.triggerImmediateRefresh('Tailscale desligado com sucesso!', 'info');}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});}},['Desligar'])])]);
-	},
-	tailscaleCard: function(){
-		const f=this.feature('tailscale')||{}, installed=!!f.installed, active=!!f.active, logged=!!f.logged_in;
-		return E('section',{class:'ex-card ex-remote-card'},[
-			E('div',{class:'ex-card-title'},[E('div',{},[E('span',{class:'ex-kicker'},['ACESSO REMOTO SEGURO']),E('h3',{},['Tailscale'])]),E('span',{class:'ex-pill '+(active?'online':(installed?'standby':'offline'))},[active?'ATIVO':(installed?'INSTALADO':'OPCIONAL')])]),
-			E('p',{class:'ex-muted'},['Acesso remoto gratuito para uso pessoal, sem abrir portas na WAN. Ideal para iPhone, Windows e redes com Starlink/CGNAT.']),
-			E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},[
-				E('div',{class:'ex-row'},[E('span',{},['Login']),E('strong',{},[logged?'Logado':'Não logado'])]),
-				E('div',{class:'ex-row'},[E('span',{},['IP Tailscale']),E('strong',{},[f.ip||'—'])]),
-				E('div',{class:'ex-row'},[E('span',{},['Rota LAN']),E('strong',{},[f.lan_cidr||'—'])])
-			]),
-			E('div',{class:'ex-speedify-actions'},[
-				installed?'':E('button',{class:'ex-mini-button','click':L.bind(this.installFeature,this,'tailscale')},['Instalar Tailscale']),
-				E('button',{class:'ex-mini-button','click':L.bind(this.pairTailscale,this)},[installed?'Parear / anunciar LAN':'Instalar e parear']),
-				installed?E('button',{class:'ex-feature-link','click':L.bind(this.disconnectTailscale,this)},['Desligar']):'',
-				E('a',{class:'ex-text-link',href:'https://login.tailscale.com/admin/machines',target:'_blank',rel:'noopener noreferrer'},['Painel Tailscale →'])
-			]),
-			E('small',{class:'ex-muted'},['Depois do pareamento, aprove a Subnet Route no painel Tailscale. Use faixas LAN diferentes em cada roteador para evitar conflito.'])
-		]);
-	},
 	enableZerotier: function(){
 		const self = this;
 		ui.showModal('Ativar ZeroTier',[E('p',{},['Iniciando serviço ZeroTier e conectando à rede virtual…'])]);
@@ -145,7 +105,7 @@ const vpnMethods = {
 					])
 				]) : '',
 				E('div',{class:'ex-speedify-actions'},[
-					installed?'':E('button',{class:'ex-mini-button','click':L.bind(this.installFeature,this,'zerotier')},['Instalar ZeroTier']),
+					installed?'':(f.installable!==false?E('button',{class:'ex-mini-button','click':L.bind(this.installFeature,this,'zerotier')},['Instalar ZeroTier']):E('span',{class:'ex-pill standby',style:'padding:6px 12px;font-weight:700;',title:f.reason||''},['Flash insuficiente'])),
 					installed && !active ? E('button',{class:'ex-mini-button','click':L.bind(this.enableZerotier,this)},['▶ Ativar ZeroTier']) : '',
 					installed && active ? E('button',{class:'ex-mini-button','click':L.bind(this.joinZerotier,this)},['Entrar / trocar rede']) : '',
 					(active && f.ip && f.ip!=='—') ? E('a',{class:'ex-mini-button',href:'http://'+String(f.ip).replace(/\/.*$/,''),target:'_blank',rel:'noopener noreferrer'},['Abrir ARK remoto']) : '',
@@ -153,6 +113,7 @@ const vpnMethods = {
 					installed ? E('button',{class:'ex-feature-link','click':L.bind(this.leaveZerotier,this)},['Sair da rede']) : '',
 					E('a',{class:'ex-text-link',href:'https://my.zerotier.com/network',target:'_blank',rel:'noopener noreferrer'},['ZeroTier Central →'])
 				]),
+				(!installed && f.reason)?E('small',{class:'ex-feature-reason',style:'color:#ef4444;font-weight:600;display:block;margin-top:6px;'},['⚠️ '+f.reason]):'',
 				E('small',{class:'ex-muted'},[active ? 'ZeroTier ativo. Use o IP acima para acessar o roteador remotamente.' : 'ZeroTier desligado (processo finalizado, zero uso de CPU e RAM). Clique em Ativar para conectar.'])
 			])
 		]);

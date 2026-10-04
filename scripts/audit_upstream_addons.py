@@ -37,7 +37,6 @@ TARGET_PACKAGES = [
     "luci-app-nlbwmon",
     "nlbwmon",
     "wireguard-tools",
-    "tailscale",
     "zerotier",
     "adblock",
     "luci-app-adblock",
@@ -220,7 +219,6 @@ def main():
         "luci-app-mwan3",
         "sqm-scripts",
         "luci-app-sqm",
-        "tailscale",
         "wireguard-tools",
         "nlbwmon",
         "adblock"

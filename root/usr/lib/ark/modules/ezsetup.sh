@@ -53,10 +53,8 @@ feature_package() {
 		mwan3) printf luci-app-mwan3 ;;
 		nlbwmon) printf luci-app-nlbwmon ;;
 		upnp) printf luci-app-upnp ;;
-		argon) printf luci-theme-argon ;;
 		speedtest) printf speedtest-go ;;
 		speedify) printf speedify ;;
-		tailscale) printf tailscale ;;
 		zerotier) printf zerotier ;;
 		wireguard) printf 'wireguard-tools' ;;
 		adblock) printf 'adblock' ;;
@@ -73,7 +71,7 @@ bulk_feature_keys() {
 feature_missing_installable() {
 	key="$1"; package="$(feature_package "$key" 2>/dev/null)" || return 1
 	case "$key" in
-		speedify|tailscale|zerotier) return 1 ;;
+		speedify|zerotier) return 1 ;;
 		speedtest)
 			feature_active speedtest && return 1
 			tmp_avail="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"; [ -n "$tmp_avail" ] || tmp_avail=0
@@ -240,37 +238,6 @@ cleanup_apply_keys() {
 	echo ok
 }
 
-install_argon_release() {
-	version="${ARK_ARGON_VERSION:-2.4.6}"
-	release="v$version"
-	tmp="${TMPDIR:-/tmp}/ark-router-argon"
-	rm -rf "$tmp" && mkdir -p "$tmp" || return 1
-	if command -v apk >/dev/null 2>&1; then
-		theme="$tmp/luci-theme-argon-$version-r1.apk"
-		config="$tmp/luci-app-argon-config-$version-r1.apk"
-		wget -q --no-check-certificate -O "$theme" "https://github.com/jerrykuku/luci-theme-argon/releases/download/$release/luci-theme-argon-$version-r1.apk" || return 1
-		wget -q --no-check-certificate -O "$config" "https://github.com/jerrykuku/luci-theme-argon/releases/download/$release/luci-app-argon-config-$version-r1.apk" || return 1
-		apk add --allow-untrusted "$theme" "$config" || return 1
-	else
-		theme="$tmp/luci-theme-argon_$version-1_all.ipk"
-		config="$tmp/luci-app-argon-config_$version-1_all.ipk"
-		wget -q --no-check-certificate -O "$theme" "https://github.com/jerrykuku/luci-theme-argon/releases/download/$release/luci-theme-argon_$version-1_all.ipk" || return 1
-		wget -q --no-check-certificate -O "$config" "https://github.com/jerrykuku/luci-theme-argon/releases/download/$release/luci-app-argon-config_$version-1_all.ipk" || return 1
-		opkg install "$theme" "$config" || return 1
-	fi
-	uci -q set luci.main.mediaurlbase='/luci-static/argon'
-	uci -q set equipe_dashboard.main.theme_customized='1'
-	uci -q set equipe_dashboard.main.user_theme='argon'
-	uci -q set luci.main.theme_customized='1'
-	uci -q set luci.main.user_theme='argon'
-	uci commit luci
-	uci commit equipe_dashboard 2>/dev/null || true
-	rm -f /tmp/luci-indexcache
-	rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
-	[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
-	return 0
-}
-
 feature_active() {
 	case "$1" in
 		sqm) uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'" ;;
@@ -278,7 +245,6 @@ feature_active() {
 		nlbwmon) pidof nlbwmon >/dev/null 2>&1 || running nlbwmon ;;
 		upnp) pidof miniupnpd >/dev/null 2>&1 || running miniupnpd ;;
 		ark) [ -d /www/luci-static/ark ] && [ "$(uci -q get luci.main.mediaurlbase)" = /luci-static/ark ] ;;
-		argon) [ -d /www/luci-static/argon ] && [ "$(uci -q get luci.main.mediaurlbase)" = /luci-static/argon ] ;;
 		uhttpd) [ -f /usr/share/luci/menu.d/luci-app-uhttpd.json ] ;;
 		wifi) [ -f /etc/config/wireless ] ;;
 		temperature)
@@ -290,7 +256,6 @@ feature_active() {
 		custom_qos) [ -f /etc/config/qos_equipe ] && [ "$(uci -q get qos_equipe.guest.enabled)" = 1 ] ;;
 		speedtest) command -v speedtest-go >/dev/null 2>&1 || [ -x /tmp/ark-speedtest/speedtest-go ] || command -v wget >/dev/null 2>&1 || command -v curl >/dev/null 2>&1 ;;
 		speedify) [ -x /usr/share/speedify/speedify_cli ] || installed speedify ;;
-		tailscale) command -v tailscale >/dev/null 2>&1 ;;
 		zerotier) pidof zerotier-one >/dev/null 2>&1 && [ "$(uci -q get zerotier.global.enabled)" = 1 ] ;;
 		wireguard) [ -d /sys/class/net/wg0 ] || [ -d /sys/class/net/wgclient ] || (command -v wg >/dev/null 2>&1 && [ -n "$(wg show interfaces 2>/dev/null)" ]) ;;
 		irqbalance) pidof irqbalance >/dev/null 2>&1 || { [ -x /etc/init.d/irqbalance ] && /etc/init.d/irqbalance enabled >/dev/null 2>&1; } ;;
@@ -766,28 +731,14 @@ feature_json() {
 					reason="Incompativel: Speedify requer arquitetura 64-bit (ARM64/x86_64). Este hardware possui arquitetura ${arch} (32-bit)."
 					;;
 			esac
+		elif [ -n "$4" ]; then
+			reason="$4"
+			supported="$3"
 		fi
 		printf '"speedify":{"installed":%s,"active":%s,"runtime_running":%s,"hidden":%s,"installable":%s,"reason":"%s","package":"Runtime Speedify opcional: interno, externo ou RAM","luci":%s,"state":"%s","supported":%s,"prepared":%s,"install_mode":"%s","saved_config":%s,"autostart":%s,"desired_state":"%s","bonding_mode":"%s","runtime_mode":"%s","tunnel_ip":"%s","last_autostart":"%s","account_logged_in":%s,"account_licensed":%s,"account_email_masked":"%s","adapters":%s,"settings":%s,' \
 			"$present" "$active" "$runtime" "$(bool $((concealed == 0)))" "$supported" "$(json_escape "$reason")" "$luci" "$(json_escape "$state")" "$supported" "$(bool "$prepared")" "$(json_escape "$mode")" "$(bool "$saved")" "$(bool "$autostart")" "$(json_escape "$desired")" "$(json_escape "$bonding_mode")" "$(json_escape "$runtime_mode")" "$(json_escape "$tunnel_ip")" "$(json_escape "$last_autostart")" "$account_logged" "$account_licensed" "$(json_escape "$account_masked")" "$adapters_json" "$settings_json"
 		speedify_storage_json
 		printf '}'
-		return 0
-	fi
-	if [ "$key" = tailscale ]; then
-		installed_ts=false; command -v tailscale >/dev/null 2>&1 && installed_ts=true
-		active_ts=false; logged_ts=false; backend=''; ip=''; hostname=''
-		if $installed_ts && pidof tailscaled >/dev/null 2>&1; then
-			status="$(tailscale status --json 2>/dev/null || true)"
-			backend="$(printf '%s' "$status" | jsonfilter -e '@.BackendState' 2>/dev/null || true)"
-			ip="$(printf '%s' "$status" | jsonfilter -e '@.Self.TailscaleIPs[0]' 2>/dev/null || true)"
-			hostname="$(printf '%s' "$status" | jsonfilter -e '@.Self.HostName' 2>/dev/null || true)"
-			case "$backend" in Running) active_ts=true; logged_ts=true ;; Starting) active_ts=true ;; esac
-			[ -n "$ip" ] && logged_ts=true
-		fi
-		hidden "$key"; concealed=$?
-		route="$(tailscale_lan_cidr 2>/dev/null || true)"
-		printf '"tailscale":{"installed":%s,"active":%s,"hidden":%s,"installable":true,"package":"tailscale","logged_in":%s,"backend":"%s","ip":"%s","hostname":"%s","lan_cidr":"%s"}' \
-			"$installed_ts" "$active_ts" "$(bool $((concealed == 0)))" "$logged_ts" "$(json_escape "$backend")" "$(json_escape "${ip:-—}")" "$(json_escape "${hostname:-—}")" "$(json_escape "$route")"
 		return 0
 	fi
 	if [ "$key" = zerotier ]; then
@@ -811,9 +762,9 @@ feature_json() {
 		netid="$(printf '%s' "$state" | jsonfilter -e '@.network_id' 2>/dev/null || true)"
 		nstatus="$(printf '%s' "$state" | jsonfilter -e '@.network_status' 2>/dev/null || true)"
 		ip="$(printf '%s' "$state" | jsonfilter -e '@.ip' 2>/dev/null || true)"
-		lan_cidr="$(printf '%s' "$state" | jsonfilter -e '@.lan_cidr' 2>/dev/null || tailscale_lan_cidr 2>/dev/null || true)"
-		printf '"zerotier":{"installed":%s,"active":%s,"autostart":%s,"hidden":%s,"installable":true,"package":"zerotier","node_id":"%s","network_id":"%s","network_status":"%s","ip":"%s","lan_cidr":"%s"}' \
-			"$installed_zt" "$active_zt" "$autostart_zt" "$(bool $((concealed == 0)))" "$(json_escape "${node:-—}")" "$(json_escape "$netid")" "$(json_escape "${nstatus:-—}")" "$(json_escape "${ip:-—}")" "$(json_escape "$lan_cidr")"
+		lan_cidr="$(printf '%s' "$state" | jsonfilter -e '@.lan_cidr' 2>/dev/null || ark_vpn_lan_cidr 2>/dev/null || true)"
+		printf '"zerotier":{"installed":%s,"active":%s,"autostart":%s,"hidden":%s,"installable":%s,"reason":"%s","package":"zerotier","node_id":"%s","network_id":"%s","network_status":"%s","ip":"%s","lan_cidr":"%s"}' \
+			"$installed_zt" "$active_zt" "$autostart_zt" "$(bool $((concealed == 0)))" "$installable" "$(json_escape "$reason")" "$(json_escape "${node:-—}")" "$(json_escape "$netid")" "$(json_escape "${nstatus:-—}")" "$(json_escape "${ip:-—}")" "$(json_escape "$lan_cidr")"
 		return 0
 	fi
 	if [ "$key" = wireguard ]; then
@@ -860,8 +811,8 @@ feature_json() {
 			fi
 		fi
 
-		printf '"wireguard":{"installed":%s,"active":%s,"autostart":%s,"hidden":%s,"installable":true,"package":"wireguard-tools","ip":"%s","listen_port":"%s","public_key":"%s","endpoint":"%s","peers_count":%d,"peers_active":%d,"client_configured":%s,"client_active":%s,"client_online":%s,"client_endpoint":"%s"}' \
-			"$installed_wg" "$active_wg" "$autostart_wg" "$(bool $((concealed == 0)))" "$(json_escape "$wg_ip")" "$(json_escape "$listen_port")" "$(json_escape "$pubkey")" "$(json_escape "$endpoint")" "$peers_count" "$peers_active" \
+		printf '"wireguard":{"installed":%s,"active":%s,"autostart":%s,"hidden":%s,"installable":%s,"reason":"%s","package":"wireguard-tools","ip":"%s","listen_port":"%s","public_key":"%s","endpoint":"%s","peers_count":%d,"peers_active":%d,"client_configured":%s,"client_active":%s,"client_online":%s,"client_endpoint":"%s"}' \
+			"$installed_wg" "$active_wg" "$autostart_wg" "$(bool $((concealed == 0)))" "$installable" "$(json_escape "$reason")" "$(json_escape "$wg_ip")" "$(json_escape "$listen_port")" "$(json_escape "$pubkey")" "$(json_escape "$endpoint")" "$peers_count" "$peers_active" \
 			"$client_configured" "$client_active" "$client_online" "$(json_escape "$client_endpoint")"
 		return 0
 	fi
@@ -872,6 +823,7 @@ feature_json() {
 		"$key" "$(bool $((present == 0)))" "$(bool $((enabled == 0)))" "$(bool $((concealed == 0)))" "$installable"
 	[ -n "$package" ] && printf ',"package":"%s"' "$package"
 	[ -n "$reason" ] && printf ',"reason":"%s"' "$(json_escape "$reason")"
+	[ "$key" = irqbalance ] && [ "$has_native_hw_queues" = true ] && printf ',"native_hw":true'
 	printf '}'
 }
 
@@ -1340,16 +1292,18 @@ handle_ezsetup() {
 			19.*|18.*) is_legacy_owrt=true ;;
 		esac
 
-		argon_installable=true; argon_reason=''
-		if $is_legacy_owrt; then
-			argon_installable=false
-			argon_reason='Incompatível com OpenWrt 19.07 (o ARK Router já possui visual moderno nativo).'
+		has_native_hw_queues=false
+		if ark_has_native_hw_queues; then
+			has_native_hw_queues=true
 		fi
 
 		irq_installable=true; irq_reason=''
 		if [ "$cpu_cores" -le 1 ]; then
 			irq_installable=false
-			irq_reason='Requer processador multi-core (este roteador possui 1 núcleo).'
+			irq_reason='Requer processador multi-core (este roteador possui apenas 1 núcleo).'
+		elif [ "$has_native_hw_queues" = true ]; then
+			irq_installable=false
+			irq_reason='Desnecessário: este processador já possui anéis de DMA e interrupções divididos nativamente entre os núcleos de hardware.'
 		fi
 
 		current_theme="$(uci -q get luci.main.mediaurlbase | sed 's|/luci-static/||')"
@@ -1372,35 +1326,63 @@ handle_ezsetup() {
 		[ "$ping_target" = "registro_br" ] && ping_target="cloudflare"
 		[ -n "$ping_target" ] || ping_target="cloudflare"
 		ping_custom_ip="$(uci -q get equipe_dashboard.main.ping_custom_ip || true)"
+
 		sqm_installable=true; sqm_reason=""
 		mwan3_installable=true; mwan3_reason=""
 		speedify_installable=true; speedify_reason=""
+		upnp_installable=true; upnp_reason=""
+		adblock_installable=true; adblock_reason=""
+		nlbwmon_installable=true; nlbwmon_reason=""
 		if ark_is_satellite_or_ap; then
 			sqm_installable=false
 			sqm_reason="Exclusivo do Roteador Mestre. O enfileiramento CAKE deve rodar onde a internet entra fisicamente."
 			mwan3_installable=false
-			mwan3_reason="Exclusivo do Roteador Mestre. Nó Satélite opera em ponte transparente (Bridge L2)."
+			mwan3_reason="Exclusivo do Roteador Mestre. Ponto de Acesso (AP) opera em ponte transparente (Bridge L2)."
 			speedify_installable=false
 			speedify_reason="Exclusivo do Roteador Mestre. O agrupamento de links de operadora deve ser executado no Gateway."
+			upnp_installable=false
+			upnp_reason="Exclusivo do Roteador Mestre (Gateway com NAT). Em modo Ponto de Acesso, todas as portas são transparentes."
+			adblock_installable=false
+			adblock_reason="Exclusivo do Roteador Mestre (onde roda o servidor DNS local). No modo Ponto de Acesso, os clientes consultam diretamente o DNS do Mestre."
+			nlbwmon_installable=false
+			nlbwmon_reason="Desnecessário em modo Ponto de Acesso: o ARK Router já mede o tráfego individual de cada cliente Wi-Fi diretamente pelo chip de rádio."
+		fi
+
+		root_avail_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2 {print $4}')"
+		[ -n "$root_avail_kb" ] || root_avail_kb="$(df -k / 2>/dev/null | awk 'NR==2 {print $4}')"
+		[ -n "$root_avail_kb" ] || root_avail_kb=0
+		zerotier_installable=true; zerotier_reason=""
+		wireguard_installable=true; wireguard_reason=""
+		if [ "$root_avail_kb" -lt 6000 ] 2>/dev/null; then
+			zerotier_installable=false
+			zerotier_reason="Espaço insuficiente na Flash: ZeroTier exige ~8 MB livres (disponível: $((root_avail_kb / 1024)) MB). Recomendado utilizar WireGuard nativo do kernel."
+		fi
+		if [ "$root_avail_kb" -lt 800 ] 2>/dev/null; then
+			wireguard_installable=false
+			wireguard_reason="Espaço insuficiente na Flash para pacotes VPN (disponível: $((root_avail_kb / 1024)) MB)."
+		fi
+
+		usteer_installable=true; usteer_reason=""
+		if [ ! -s "$iw_cache" ] && ! iw list 2>/dev/null | grep -q 'Wiphy'; then
+			usteer_installable=false
+			usteer_reason="Incompatível: este dispositivo não possui interfaces de rádio Wi-Fi para gerenciar roaming."
 		fi
 
 		printf '{"language":"%s","title":"%s","operation_profile":"%s","network_mode":"%s","package_manager":"%s","current_theme":"%s","theme_customized":%s,"user_theme":"%s","ping_target":"%s","ping_custom_ip":"%s","appearance":{"mode":"%s","primary":"%s","secondary":"%s"},"features":{' "$(ark_language)" "$(json_escape "$title")" "$(json_escape "$operation_profile")" "$network_mode" "$manager" "$current_theme" "$(bool $((theme_customized == 1)))" "$(json_escape "$user_theme")" "$(json_escape "$ping_target")" "$(json_escape "$ping_custom_ip")" "$appearance" "$primary" "$secondary"
 		feature_json sqm luci-app-sqm "$sqm_installable" "$sqm_reason"; printf ','
 		feature_json mwan3 luci-app-mwan3 "$mwan3_installable" "$mwan3_reason"; printf ','
-		feature_json nlbwmon luci-app-nlbwmon true; printf ','
-		feature_json upnp luci-app-upnp true; printf ','
-		feature_json argon luci-theme-argon "$argon_installable" "$argon_reason"; printf ','
+		feature_json nlbwmon luci-app-nlbwmon "$nlbwmon_installable" "$nlbwmon_reason"; printf ','
+		feature_json upnp luci-app-upnp "$upnp_installable" "$upnp_reason"; printf ','
 		feature_json wifi '' false; printf ','
 		feature_json history history false; printf ','
 		feature_json temperature '' false; printf ','
 		feature_json custom_qos custom_qos false; printf ','
 		feature_json speedify speedify "$speedify_installable" "$speedify_reason"; printf ','
-		feature_json tailscale tailscale true; printf ','
-		feature_json zerotier zerotier true; printf ','
-		feature_json wireguard wireguard-tools true; printf ','
-		feature_json adblock adblock true
+		feature_json zerotier zerotier "$zerotier_installable" "$zerotier_reason"; printf ','
+		feature_json wireguard wireguard-tools "$wireguard_installable" "$wireguard_reason"; printf ','
+		feature_json adblock adblock "$adblock_installable" "$adblock_reason"
 		printf ','; feature_json irqbalance irqbalance "$irq_installable" "$irq_reason"
-		printf ','; feature_json usteer usteer true
+		printf ','; feature_json usteer usteer "$usteer_installable" "$usteer_reason"
 		cli="$(speedify_cli_path)"
 		bypass='{}'; speedify_runtime_running && [ -n "$cli" ] && bypass="$("$cli" -s show streamingbypass 2>/dev/null || printf '{}')"
 		printf ',"speedify_bypass":%s' "$bypass"
@@ -1677,7 +1659,6 @@ handle_ezsetup() {
 		pid_file="/tmp/equipe-dashboard-install-$key.pid"
 		if [ "$key" = speedtest ]; then feature_active "$key" && { echo done >"$status"; echo installed; exit 0; }
 		elif [ "$key" = speedify ]; then feature_active "$key" && { echo done >"$status"; echo installed; exit 0; }
-		elif [ "$key" = tailscale ]; then feature_active "$key" && { echo done >"$status"; echo installed; exit 0; }
 		elif [ "$key" = usteer ]; then
 			if installed "$package"; then
 				if [ ! -s /etc/config/usteer ]; then
@@ -1738,7 +1719,6 @@ handle_ezsetup() {
 			ok=1
 			if [ "$key" = speedtest ]; then prepare_speedtest || ok=0
 			elif [ "$key" = speedify ]; then speedify_install_auto_safe || ok=0
-			elif [ "$key" = tailscale ]; then tailscale_install || ok=0
 			elif [ "$key" = zerotier ]; then zerotier_enable || ok=0
 			elif [ "$key" = wireguard ]; then
 				if command -v apk >/dev/null 2>&1; then
@@ -1784,8 +1764,6 @@ handle_ezsetup() {
 				uci -q set equipe_dashboard.wifi=settings 2>/dev/null || true
 				uci -q set equipe_dashboard.wifi.usteer_enabled=1
 				uci commit equipe_dashboard 2>/dev/null || true
-			elif [ "$key" = argon ] && command -v apk >/dev/null 2>&1 && ! apk search luci-theme-argon 2>/dev/null | grep -qx 'luci-theme-argon.*'; then
-				install_argon_release || ok=0
 			elif [ "$key" = upnp ] && is_fw4; then
 				if command -v apk >/dev/null 2>&1; then
 					apk update && apk add luci-app-upnp miniupnpd-nftables || ok=0
@@ -1793,9 +1771,18 @@ handle_ezsetup() {
 					opkg update && opkg install luci-app-upnp miniupnpd-nftables || ok=0
 				fi
 			elif command -v apk >/dev/null 2>&1; then
-				apk update && apk add "$package" || ok=0
+				apk update >/dev/null 2>&1 || true
+				apk add "$package" || ok=0
 			else
-				opkg update && opkg install "$package" || ok=0
+				ark_ensure_working_distfeeds 2>/dev/null || true
+				opkg update >/dev/null 2>&1 || true
+				opkg install "$package" || {
+					if [ "$package" = irqbalance ]; then
+						opkg install http://downloads.openwrt.org/releases/19.07.10/packages/arm_cortex-a7_neon-vfpv4/packages/irqbalance_1.8.0-1_arm_cortex-a7_neon-vfpv4.ipk || ok=0
+					else
+						ok=0
+					fi
+				}
 			fi
 			if [ "$key" = mwan3 ] && [ -x /etc/init.d/mwan3 ]; then
 				/etc/init.d/mwan3 stop >/dev/null 2>&1 || true
@@ -1880,8 +1867,6 @@ handle_ezsetup() {
 				echo "==> $key ($package)"
 				if [ "$key" = speedtest ]; then
 					prepare_speedtest || ok=0
-				elif [ "$key" = argon ] && command -v apk >/dev/null 2>&1 && ! apk search luci-theme-argon 2>/dev/null | grep -qx 'luci-theme-argon.*'; then
-					install_argon_release || ok=0
 				elif [ "$key" = upnp ]; then
 					if (is_fw4 && ark_upnp_is_legacy_iptables) || (is_fw3 && ark_upnp_is_legacy_nftables_on_fw3); then
 						ark_migrate_upnp_variant || ok=0
@@ -1980,24 +1965,86 @@ handle_ezsetup() {
 				rm -f /tmp/ark-features.cache 2>/dev/null || true
 				echo ok
 				;;
-			argon)
-				[ -d /www/luci-static/argon ] || { echo 'Tema Argon nao instalado' >&2; exit 3; }
-				uci -q set luci.main.mediaurlbase='/luci-static/argon'
-				uci -q set equipe_dashboard.main.theme_customized='1'
-				uci -q set equipe_dashboard.main.user_theme='argon'
-				uci -q set luci.main.theme_customized='1'
-				uci -q set luci.main.user_theme='argon'
-				uci commit luci
-				uci commit equipe_dashboard 2>/dev/null || true
-				rm -f /tmp/luci-indexcache
-				rm -rf /tmp/luci-modulecache/* 2>/dev/null
-				rm -f /tmp/ark-features.cache 2>/dev/null || true
-				echo ok
-				;;
 			*)
 				echo 'Tema invalido' >&2; exit 2
 				;;
 		esac
+		;;
+	card-state-save)
+		card_id="$2"
+		card_val="$3"
+		if [ -n "$card_id" ]; then
+			uci -q get equipe_dashboard.main >/dev/null || uci -q set equipe_dashboard.main=settings
+			current_states="$(uci -q get equipe_dashboard.main.card_states 2>/dev/null || true)"
+			new_states=""
+			if [ -z "$card_val" ] && [ "${card_id#*:}" != "$card_id" ]; then
+				new_states="$(printf '%s' "$card_id" | tr -cd 'a-zA-Z0-9_:,')"
+			else
+				card_id="$(printf '%s' "$card_id" | tr -cd 'a-zA-Z0-9_')"
+				[ "$card_val" = "1" ] || card_val="0"
+				found=0
+				old_ifs="$IFS"
+				IFS=','
+				for pair in $current_states; do
+					k="${pair%%:*}"
+					if [ "$k" = "$card_id" ]; then
+						[ -n "$new_states" ] && new_states="${new_states},"
+						new_states="${new_states}${card_id}:${card_val}"
+						found=1
+					elif [ -n "$k" ]; then
+						[ -n "$new_states" ] && new_states="${new_states},"
+						new_states="${new_states}${pair}"
+					fi
+				done
+				IFS="$old_ifs"
+				if [ "$found" -eq 0 ]; then
+					[ -n "$new_states" ] && new_states="${new_states},"
+					new_states="${new_states}${card_id}:${card_val}"
+				fi
+			fi
+			uci -q set "equipe_dashboard.main.card_states=$new_states"
+			uci commit equipe_dashboard 2>/dev/null || true
+			echo ok
+		else
+			echo "error: missing card_id" >&2
+			exit 1
+		fi
+		;;
+	card-state-get)
+		card_id="$2"
+		current_states="$(uci -q get equipe_dashboard.main.card_states 2>/dev/null || true)"
+		if [ -n "$card_id" ]; then
+			card_id="$(printf '%s' "$card_id" | tr -cd 'a-zA-Z0-9_')"
+			found=""
+			old_ifs="$IFS"
+			IFS=','
+			for pair in $current_states; do
+				k="${pair%%:*}"
+				v="${pair#*:}"
+				if [ "$k" = "$card_id" ]; then
+					found="$v"
+					break
+				fi
+			done
+			IFS="$old_ifs"
+			echo "$found"
+		else
+			printf '{'
+			first=1
+			old_ifs="$IFS"
+			IFS=','
+			for pair in $current_states; do
+				k="${pair%%:*}"
+				v="${pair#*:}"
+				if [ -n "$k" ]; then
+					[ "$first" -eq 0 ] && printf ','
+					first=0
+					printf '"%s":%s' "$k" "${v:-0}"
+				fi
+			done
+			IFS="$old_ifs"
+			printf '}\n'
+		fi
 		;;
 	esac
 }

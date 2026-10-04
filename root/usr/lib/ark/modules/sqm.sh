@@ -54,7 +54,7 @@ get_system_hardware_sqm_audit() {
 
 sqm_apply_upload_only() {
 	if ark_is_satellite_or_ap; then
-		echo "O controle de Bufferbloat (SQM/CAKE) é exclusivo do Roteador Mestre (Gateway). Desativado em modo Satélite/Ponto de Acesso." >&2
+		echo "O controle de Bufferbloat (SQM/CAKE) é exclusivo do Roteador Mestre (Gateway). Desativado em modo Ponto de Acesso (AP)." >&2
 		exit 2
 	fi
 	local wan="${1:-wan}"

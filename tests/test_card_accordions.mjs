@@ -19,7 +19,7 @@ console.log('--- 1. STATIC VERIFICATION: Overview JS & CSS ---');
 const jsContent = fs.readFileSync(OVERVIEW_JS, 'utf-8');
 const cssContent = fs.readFileSync(OVERVIEW_CSS, 'utf-8');
 
-// 12 Required Cards
+// 13 Required Cards
 const TARGET_CARDS = [
   'multiwan',
   'sqm',
@@ -32,7 +32,8 @@ const TARGET_CARDS = [
   'adblock',
   'wireguard',
   'zerotier',
-  'speedify'
+  'speedify',
+  'desempenho'
 ];
 
 for (const cardId of TARGET_CARDS) {
@@ -167,16 +168,37 @@ class MockElement {
 }
 
 const mockStorage = new Map();
+let _cookieStore = '';
+
 global.window = {
   localStorage: {
     getItem: (k) => mockStorage.get(k) ?? null,
     setItem: (k, v) => mockStorage.set(k, String(v)),
     removeItem: (k) => mockStorage.delete(k),
     clear: () => mockStorage.clear()
+  },
+  setTimeout: (fn, ms) => fn(),
+  clearTimeout: () => {}
+};
+
+global.document = {
+  createElement: (tag) => new MockElement(tag),
+  get cookie() { return _cookieStore; },
+  set cookie(val) {
+    const pair = val.split(';')[0].trim();
+    const eq = pair.indexOf('=');
+    if (eq > 0) {
+      const k = pair.substring(0, eq).trim();
+      const v = pair.substring(eq + 1).trim();
+      const existing = _cookieStore ? _cookieStore.split('; ').filter(p => p && !p.startsWith(k + '=')) : [];
+      existing.push(k + '=' + v);
+      _cookieStore = existing.join('; ');
+    }
   }
 };
-global.document = {
-  createElement: (tag) => new MockElement(tag)
+
+global.fs = {
+  exec: (cmd, args) => Promise.resolve({ code: 0, stdout: 'ok' })
 };
 
 function E(tag, attrs = {}, children = []) {
@@ -205,9 +227,11 @@ function E(tag, attrs = {}, children = []) {
 }
 global.E = E;
 
-// Extract setupCardAccordion from helpers.js
+// Extract helpers from helpers.js
 const helpersCode = fs.readFileSync(path.join(ROOT_DIR, 'src', 'core', 'helpers.js'), 'utf-8');
-const setupAccordionFn = new Function('window', 'document', 'E', `${helpersCode}; return setupCardAccordion;`)(global.window, global.document, global.E);
+const helpersFn = new Function('window', 'document', 'E', 'fs', `${helpersCode}; return { setupCardAccordion, getCardAccordionState, saveCardAccordionState, initCardStatesFromUci, parseCardStatesString, serializeCardStates };`);
+const helpers = helpersFn(global.window, global.document, global.E, global.fs);
+const setupAccordionFn = helpers.setupCardAccordion;
 
 // Test 2.1: First visit, service ACTIVE -> expanded by default
 {
@@ -370,4 +394,73 @@ const setupAccordionFn = new Function('window', 'document', 'E', `${helpersCode}
   console.log('  [OK] Header click delegation correctly handles and ignores interactive children');
 }
 
-console.log('\n>>> ALL 12 CARD ACCORDION TESTS PASSED! <<<');
+// Test 2.6: Desempenho card with initialActive > 0 starts expanded, toggles to collapsed, persists
+{
+  mockStorage.clear();
+  _cookieStore = '';
+  const cardEl = new MockElement('section', { class: 'ex-card ex-perf-opt-card' });
+  const titleEl = new MockElement('div', { class: 'ex-card-title ex-perf-summary' });
+  const bodyEl = new MockElement('div', { class: 'ex-card-collapse-body' });
+  cardEl.appendChild(titleEl);
+  cardEl.appendChild(bodyEl);
+
+  const initialActive = 2; // e.g., 2 ATIVAS
+  const perfAcc = setupAccordionFn({
+    id: 'desempenho',
+    cardEl,
+    titleEl,
+    bodyEl,
+    isActive: initialActive > 0
+  });
+
+  assert.strictEqual(perfAcc.isExpanded(), true, 'Desempenho card starts expanded when active');
+  assert.strictEqual(cardEl.classList.contains('is-expanded'), true);
+
+  // User toggles to collapsed
+  perfAcc.toggle();
+  assert.strictEqual(perfAcc.isExpanded(), false, 'Desempenho card collapses');
+  assert.strictEqual(cardEl.classList.contains('is-collapsed'), true);
+  assert.strictEqual(mockStorage.get('ark_card_desempenho'), '0', 'Saved to localStorage as 0');
+  assert(decodeURIComponent(_cookieStore).includes('desempenho:0'), 'Saved to cookie as 0');
+  console.log('  [OK] Desempenho card starts expanded when active and collapses with persistent 0');
+}
+
+// Test 2.7: Cookie fallback restores state when localStorage is cleared (e.g. browser restart with clear data)
+{
+  mockStorage.clear(); // LocalStorage is empty!
+  _cookieStore = 'ark_card_states=' + encodeURIComponent('desempenho:0,multiwan:1,sqm:0'); // Cookie preserved
+
+  const stateDesempenho = helpers.getCardAccordionState('desempenho', true);
+  assert.strictEqual(stateDesempenho.isExpanded, false, 'Cookie fallback correctly reads collapsed state');
+  assert.strictEqual(stateDesempenho.hasUserPreference, true);
+
+  const stateMwan = helpers.getCardAccordionState('multiwan', false);
+  assert.strictEqual(stateMwan.isExpanded, true, 'Cookie fallback correctly reads expanded state');
+  assert.strictEqual(stateMwan.hasUserPreference, true);
+  console.log('  [OK] Cookie fallback successfully restores state when localStorage is cleared');
+}
+
+// Test 2.8: Router UCI state initialization (cross-device & clean browser persistence)
+{
+  mockStorage.clear();
+  _cookieStore = '';
+
+  const mockUciConfig = {
+    values: {
+      main: {
+        card_states: 'desempenho:0,devices:1,mesh:0'
+      }
+    }
+  };
+
+  helpers.initCardStatesFromUci(mockUciConfig);
+
+  const statePerf = helpers.getCardAccordionState('desempenho', true);
+  assert.strictEqual(statePerf.isExpanded, false, 'UCI initializes desempenho as collapsed');
+
+  const stateMesh = helpers.getCardAccordionState('mesh', true);
+  assert.strictEqual(stateMesh.isExpanded, false, 'UCI initializes mesh as collapsed');
+  console.log('  [OK] Router UCI configuration successfully initializes card states across clean sessions');
+}
+
+console.log('\n>>> ALL 13 CARD ACCORDION TESTS PASSED! <<<');

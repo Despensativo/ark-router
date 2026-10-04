@@ -330,19 +330,23 @@ const wifiMethods = {
 				_t('Os chips Atheros possuem aceleração de criptografia AES em hardware. O modo WPA2-PSK (AES) entrega a velocidade máxima da rede sem sobrecarregar a CPU. Em 2,4 GHz, recomendamos manter a largura em 20 MHz para evitar retransmissões que afetam a CPU de 1 núcleo.')
 			]);
 		} else if (isModernArm) {
+			const has320 = !!(hw.wifi && hw.wifi.wifi_320) || (current.has6g && current.htmode && current.htmode.indexOf('320') >= 0);
+			const bannerDesc = has320
+				? _t('Processador com capacidade multicore e aceleração moderna. Suporte nativo a WPA3-SAE com PMF e canais de alta velocidade (80/160/320 MHz) com baixa latência.')
+				: _t('Processador com capacidade multicore e aceleração moderna. Suporte nativo a WPA3-SAE com PMF e canais de alta velocidade (80/160 MHz) com baixa latência.');
 			hwWifiBanner = E('div', { class: 'alert-message info', style: 'margin-bottom: 12px; font-size: 12px; line-height: 1.45;' }, [
 				E('strong', { style: 'display: block; margin-bottom: 3px;' }, ['⚡ ' + _t('Silício Wi-Fi de Alta Performance') + (hasWed ? ' (WED / DMA Direto)' : '')]),
-				_t('Processador com capacidade multicore e aceleração moderna. Suporte nativo a WPA3-SAE com PMF e canais de alta velocidade (80/160 MHz) com baixa latência.')
+				bannerDesc
 			]);
 		}
 
-		let init2g = String(current.disabled2 || '0') !== '1';
-		let init5g = String(current.disabled5 || '0') !== '1';
-		let init6g = has6g && String(current.disabled6 || '0') !== '1';
+		let init2g = String(current.disabled2 || '0') !== '1' && (current.has2g !== false);
+		let init5g = String(current.disabled5 || '0') !== '1' && (current.has5g !== false);
+		let init6g = has6g && String(current.disabled6 || '0') !== '1' && (current.has6g !== false);
 		if (!init2g && !init5g && !init6g) {
-			init2g = true;
-			init5g = true;
-			if (has6g) init6g = true;
+			if (current.has6g) init6g = true;
+			else if (current.has5g) init5g = true;
+			else init2g = true;
 		}
 
 		const band2Input = E('input', { type: 'checkbox' });
@@ -434,6 +438,7 @@ const wifiMethods = {
 			updateWifiHints();
 		};
 
+		let bandNotificationActive = false;
 		const validateBandUncheck = function(changedInput) {
 			const b2 = band2Input.checked;
 			const b5 = band5Input.checked;
@@ -441,7 +446,11 @@ const wifiMethods = {
 			if (!b2 && !b5 && !b6) {
 				changedInput.checked = true;
 				updateBandStates();
-				ui.addNotification(null, E('p', {}, [_t('Ao menos uma frequência deve permanecer ativa nesta rede Wi‑Fi.')]), 'warning');
+				if (!bandNotificationActive) {
+					bandNotificationActive = true;
+					ui.addNotification(null, E('p', {}, [_t('Ao menos uma frequência deve permanecer ativa nesta rede Wi‑Fi.')]), 'warning');
+					setTimeout(function() { bandNotificationActive = false; }, 3000);
+				}
 				return false;
 			}
 			updateBandStates();
@@ -462,6 +471,13 @@ const wifiMethods = {
 				ssid.value=ssid.value||ssid2.value||ssid5.value||(ssid6?ssid6.value:'');
 			}
 			updateSplit();
+		});
+		ssid.addEventListener('input', function(){
+			if(!split.checked){
+				ssid2.value = ssid.value;
+				ssid5.value = ssid.value;
+				if(ssid6) ssid6.value = ssid.value;
+			}
 		});
 		updateSplit();
 		updateWifiHints();
@@ -581,7 +597,7 @@ const wifiMethods = {
 			hwWifiBanner,
 			E('label',{class:'ex-device-config-block'},[E('strong',{},[_t('Segurança / Criptografia')]),encSelect,encAlert]),
 			bandBlock,
-			E('label',{class:'ex-show-password'},[split,E('span',{},[_t('Separar nomes 2,4 GHz e 5 GHz')])]),
+			E('label',{class:'ex-show-password'},[split,E('span',{},[has6g ? _t('Separar nomes 2,4 GHz, 5 GHz e 6 GHz') : _t('Separar nomes 2,4 GHz e 5 GHz')])]),
 			unifiedRow,
 			splitRows
 		].filter(Boolean);
@@ -689,10 +705,10 @@ const wifiMethods = {
 			}
 			btn.disabled = true;
 			btn.textContent = 'Salvando Wi‑Fi…';
-			const args=['wifi-settings',kind,'split='+(isSplit?'1':'0'),'ssid='+name,'ssid2='+name2,'ssid5='+name5,'encryption='+enc,'enabled='+(isGuest?(enabled.checked?'1':'0'):'keep'),'enable_2g='+(b2?'1':'0'),'enable_5g='+(b5?'1':'0')];
+			const args=['wifi-settings',kind,'split='+(isSplit?'1':'0'),'ssid='+name,'ssid2='+(isSplit?name2:name),'ssid5='+(isSplit?name5:name),'encryption='+enc,'enabled='+(isGuest?(enabled.checked?'1':'0'):'keep'),'enable_2g='+(b2?'1':'0'),'enable_5g='+(b5?'1':'0')];
 			if (has6g) {
 				args.push('enable_6g=' + (b6 ? '1' : '0'));
-				if (name6) args.push('ssid6=' + name6);
+				args.push('ssid6=' + (isSplit ? name6 : name));
 			}
 			if(pass)args.push('password='+pass);
 			if(isGuest&&guestDownInput&&guestUpInput){

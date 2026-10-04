@@ -1,0 +1,15 @@
+{
+	"luci-access": {
+		"description": "ARK Router Theme global controls",
+		"read": {
+			"file": {
+				"/usr/sbin/equipe-dashboard-control": [ "exec" ]
+			}
+		},
+		"write": {
+			"file": {
+				"/usr/sbin/equipe-dashboard-control": [ "exec" ]
+			}
+		}
+	}
+}

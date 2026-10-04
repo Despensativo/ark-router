@@ -13,9 +13,6 @@ if [ "$customized" = "1" ] && [ -n "$user_theme" ]; then
 		ark)
 			[ -d /www/luci-static/ark ] && uci -q set luci.main.mediaurlbase='/luci-static/ark'
 			;;
-		argon)
-			[ -d /www/luci-static/argon ] && uci -q set luci.main.mediaurlbase='/luci-static/argon'
-			;;
 		bootstrap)
 			[ -d /www/luci-static/bootstrap ] && uci -q set luci.main.mediaurlbase='/luci-static/bootstrap'
 			;;

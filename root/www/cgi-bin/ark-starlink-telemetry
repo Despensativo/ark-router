@@ -34,7 +34,6 @@ client_is_authorized() {
 		br-lan*|lan*|eth0|lo) return 0 ;; # Local LAN (IPv4 / IPv6)
 		wg*|wireguard*)       return 0 ;; # WireGuard VPN
 		zt*|zerotier*)        return 0 ;; # ZeroTier VPN
-		tailscale*)           return 0 ;; # Tailscale VPN
 	esac
 
 	# Fallback checks

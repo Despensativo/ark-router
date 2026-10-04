@@ -5,7 +5,7 @@
 [ -z "${_ARK_COMMON_SH_LOADED:-}" ] || return 0
 _ARK_COMMON_SH_LOADED=1
 
-ARK_ROUTER_VERSION="1.5.8"
+ARK_ROUTER_VERSION="1.5.9"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 ARK_ROOT="${ARK_ROOT:-}"
 
@@ -60,6 +60,20 @@ ark_has_opkg() {
 	command -v opkg >/dev/null 2>&1
 }
 
+ark_ensure_working_distfeeds() {
+	[ -f /etc/opkg/distfeeds.conf ] || return 0
+	if grep -q "19.07-SNAPSHOT" /etc/opkg/distfeeds.conf 2>/dev/null; then
+		[ -f /etc/opkg/distfeeds.conf.orig ] || cp /etc/opkg/distfeeds.conf /etc/opkg/distfeeds.conf.orig 2>/dev/null || true
+		cat << 'EOF' > /etc/opkg/distfeeds.conf
+src/gz openwrt_base http://downloads.openwrt.org/releases/19.07.10/packages/arm_cortex-a7_neon-vfpv4/base
+src/gz openwrt_packages http://downloads.openwrt.org/releases/19.07.10/packages/arm_cortex-a7_neon-vfpv4/packages
+src/gz openwrt_luci http://downloads.openwrt.org/releases/19.07.10/packages/arm_cortex-a7_neon-vfpv4/luci
+src/gz openwrt_routing http://downloads.openwrt.org/releases/19.07.10/packages/arm_cortex-a7_neon-vfpv4/routing
+src/gz openwrt_telephony http://downloads.openwrt.org/releases/19.07.10/packages/arm_cortex-a7_neon-vfpv4/telephony
+EOF
+	fi
+}
+
 ark_has_fw4() {
 	command -v fw4 >/dev/null 2>&1 || [ -x "${ARK_ROOT}/sbin/fw4" ] || [ -x "/sbin/fw4" ]
 }
@@ -88,6 +102,57 @@ is_swconfig() {
 	command -v swconfig >/dev/null 2>&1 && swconfig dev switch0 show >/dev/null 2>&1
 }
 
+ark_cpu_cores() {
+	local cores
+	cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
+	[ "$cores" -ge 1 ] 2>/dev/null || cores=1
+	printf '%s' "$cores"
+}
+
+ark_has_native_hw_queues() {
+	# 1. Checagem direta de drivers de anel de DMA / PPE / WED no kernel em execução (/proc/interrupts)
+	# Cobre universalmente qualquer versão (estável, snapshot, beta ou OEM fork)
+	if [ -r /proc/interrupts ]; then
+		if grep -Eq 'edma_rxdesc|wlan_grp_dp|qca-nss|mtk_soc_eth|mtk-wed|qdma|mvneta|mvpp2|dpaa|runner' /proc/interrupts 2>/dev/null; then
+			return 0
+		fi
+	fi
+
+	# 2. Device Tree Compatible (SoCs enterprise com aceleração de hardware)
+	if [ -d /proc/device-tree ]; then
+		local dt_comp=''
+		dt_comp="$(cat /proc/device-tree/compatible 2>/dev/null | tr '\0' ' ' || true)"
+		case "$dt_comp" in
+			*qcom,ipq*|*qcom,nss*|*qcom,appe*|*qcom,edma*|*mediatek,mt798*|*mediatek,mt79*|*mediatek,mt7622*|*mediatek,mt7623*|*mediatek,filogic*|*marvell,armada*|*fsl,ls*|*fsl,dpaa*|*brcm,bcm49*|*cavium,octeon*)
+				return 0
+				;;
+		esac
+	fi
+
+	# 3. Target oficial do OpenWrt (/etc/openwrt_release e ubus)
+	local dist_target
+	dist_target="$(grep 'DISTRIB_TARGET' /etc/openwrt_release 2>/dev/null | cut -d"'" -f2 || echo '')"
+	[ -n "$dist_target" ] || dist_target="$(ubus call system board 2>/dev/null | grep -o '"target":"[^"]*"' | cut -d'"' -f4 || echo '')"
+	case "$dist_target" in
+		mediatek/filogic*|mediatek/mt7622*|mediatek/mt7623*|ipq*|qualcommax*|qca*|mvebu*|layerscape*|qoriq*|bcm4908*|octeon*|realtek/rtl93*)
+			return 0
+			;;
+	esac
+
+	# 4. Multi-queue hardware NICs com 2 ou mais filas RX no hardware
+	local q_cnt=0
+	for rx_q in /sys/class/net/*/queues/rx-1; do
+		if [ -d "$rx_q" ]; then
+			q_cnt=$((q_cnt + 1))
+		fi
+	done
+	if [ "$q_cnt" -gt 0 ] && [ "$(ark_cpu_cores)" -gt 1 ]; then
+		return 0
+	fi
+
+	return 1
+}
+
 ark_is_satellite_or_ap() {
 	local role="$(uci -q get equipe_dashboard.general.role || uci -q get equipe_dashboard.mesh.role || true)"
 	case "$role" in
@@ -101,8 +166,37 @@ ark_is_satellite_or_ap() {
 	esac
 	local dhcp_ignore="$(uci -q get dhcp.lan.ignore || echo 0)"
 	local lan_gw="$(uci -q get network.lan.gateway || true)"
-	[ "$dhcp_ignore" = "1" ] && [ -n "$lan_gw" ] && return 0
+	local lan_proto="$(uci -q get network.lan.proto || true)"
+	[ "$dhcp_ignore" = "1" ] && { [ -n "$lan_gw" ] || [ "$lan_proto" = "dhcp" ]; } && return 0
 	return 1
+}
+
+ark_ap_uplink_dev() {
+	local cached=''
+	if [ -f /tmp/ark-ap-uplink ]; then
+		cached="$(cat /tmp/ark-ap-uplink 2>/dev/null)"
+		[ -n "$cached" ] && [ -d "/sys/class/net/$cached" ] && { printf '%s' "$cached"; return 0; }
+	fi
+	local gw_ip gw_mac uplink=''
+	gw_ip="$(ip route show default 2>/dev/null | awk '/default/ {print $3}' | head -n 1)"
+	[ -n "$gw_ip" ] || gw_ip="$(uci -q get network.lan.gateway)"
+	if [ -n "$gw_ip" ]; then
+		gw_mac="$(ip neigh show "$gw_ip" 2>/dev/null | awk '{print $5}' | head -n 1)"
+		[ -n "$gw_mac" ] || gw_mac="$(grep "$gw_ip " /proc/net/arp 2>/dev/null | awk '{print $4}' | head -n 1)"
+		if [ -n "$gw_mac" ]; then
+			uplink="$(bridge fdb show 2>/dev/null | grep -i "$gw_mac" | awk '{print $3}' | head -n 1)"
+		fi
+	fi
+	if [ -z "$uplink" ] || [ ! -d "/sys/class/net/$uplink" ]; then
+		local wan_dev="$(uci -q get network.wan.ark_phys_port || uci -q get network.wan.device || echo eth0)"
+		if [ -n "$wan_dev" ] && [ -d "/sys/class/net/$wan_dev" ]; then
+			uplink="$wan_dev"
+		else
+			uplink='br-lan'
+		fi
+	fi
+	[ -n "$uplink" ] && printf '%s' "$uplink" > /tmp/ark-ap-uplink 2>/dev/null
+	printf '%s' "$uplink"
 }
 
 ark_language() {
@@ -134,9 +228,7 @@ installed() {
 		luci-app-mwan3) [ -f /etc/config/mwan3 ] || [ -f /usr/share/luci/menu.d/luci-app-mwan3.json ] && return 0 ;;
 		luci-app-nlbwmon) [ -f /etc/config/nlbwmon ] || [ -f /usr/share/luci/menu.d/luci-app-nlbwmon.json ] && return 0 ;;
 		luci-app-upnp) [ -f /etc/config/upnpd ] || [ -f /usr/share/luci/menu.d/luci-app-upnp.json ] && return 0 ;;
-		luci-theme-argon) [ -d /www/luci-static/argon ] && return 0 ;;
 		luci-app-uhttpd) [ -f /usr/share/luci/menu.d/luci-app-uhttpd.json ] && return 0 ;;
-		tailscale) [ -x /usr/sbin/tailscale ] && return 0 ;;
 		zerotier) ([ -x /usr/sbin/zerotier-one ] || [ -f /etc/init.d/zerotier ]) && return 0 ;;
 		wireguard) ([ -x /usr/bin/wg ] || [ -f /lib/netifd/proto/wireguard.sh ]) && return 0 ;;
 		irqbalance) ([ -x /usr/sbin/irqbalance ] || [ -f /etc/init.d/irqbalance ]) && return 0 ;;

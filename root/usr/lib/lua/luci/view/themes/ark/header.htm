@@ -35,8 +35,8 @@
 		<% end -%>
 		<script src="<%=url('admin/translations', luci.i18n.context.lang)%>?v=<%=ark_v%>"></script>
 		<script src="<%=resource%>/cbi.js?v=<%=ark_v%>"></script>
-		<script src="<%=media%>/ark-theme.js?v=<%=ark_v%>"></script>
 		<script>window.ARK_VERSION = "<%=ark_v%>";</script>
+		<script src="<%=media%>/ark-theme.js?v=<%=ark_v%>"></script>
 	</head>
 
 	<body class="lang_<%=luci.i18n.context.lang%> <% if node then %><%= striptags( node.title ) %><%- end %> <%= is_login and 'ark-login-page' or 'ark-app-page' %> ark-theme" data-page="<%= pcdata(table.concat(disp.context.requestpath, "-")) %>">

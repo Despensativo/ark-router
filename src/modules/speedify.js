@@ -77,13 +77,13 @@ const speedifyMethods = {
 		if (isSatelliteOrAp(this.currentData)) {
 			input.checked = false;
 			input.disabled = true;
-			ui.showModal('Blindagem de Modo Satélite', [
+			ui.showModal(_t('Blindagem de Ponto de Acesso'), [
 				E('div', { class: 'alert-message warning' }, [
 					E('p', { style: 'margin-bottom: 8px; font-weight: 600;' }, [
 						'🛡️ O serviço Speedify (Bonding de WANs) é exclusivo do Roteador Mestre.'
 					]),
 					E('p', {}, [
-						'Nós Satélites e Pontos de Acesso operam como pontes transparentes na rede local. A agregação de links de internet (Speedify Bonding) deve rodar diretamente no roteador de borda principal (Gateway).'
+						_t('Pontos de Acesso (APs) operam como pontes transparentes na rede local. A agregação de links de internet (Speedify Bonding) deve rodar diretamente no roteador de borda principal (Gateway).')
 					])
 				]),
 				E('div', { class: 'right', style: 'margin-top: 14px;' }, [
@@ -355,7 +355,7 @@ const speedifyMethods = {
 		const starlinkAdapters=adapters.filter(function(a){
 			return /starlink|spacex/i.test([a.isp,a.ispType,a.description,a.name,a.connectedNetworkName].join(' '));
 		});
-		const allNetworkInterfaces=((detectionData.interfaces&&detectionData.interfaces.interface)||[]), wanCandidates=allNetworkInterfaces.filter(function(i){const routes=Array.isArray(i.route)?i.route:[],hasDefault=routes.some(function(r){return r&&(r.target==='0.0.0.0'||Number(r.mask)===0);}),name=String(i.interface||'');return !!i.up&&hasDefault&&Array.isArray(i['ipv4-address'])&&i['ipv4-address'].length>0&&!/^(lan|loopback|guest|wg|zerotier|tailscale)/i.test(name);}).map(function(i){const name=String(i.interface||''),address=String(i['ipv4-address'][0].address||''),gateway=wanGateway(i),dns=(i['dns-server']||i.dns_server||[]),ipParts=address.split('.').map(Number),cgnatIp=ipParts.length===4&&ipParts[0]===100&&ipParts[1]>=64&&ipParts[1]<=127,starlinkGateway=String(gateway)==='100.64.0.1',starlinkDns=Array.isArray(dns)&&dns.some(function(server){return /^198\.54\.100\./.test(String(server));}),device=String(i.l3_device||i.device||''),confirmed=starlinkDns||(cgnatIp&&starlinkGateway);return {name:name,label:name.toUpperCase(),address:address,gateway:gateway,dns:dns,device:device,likely:confirmed,strong:confirmed};});
+		const allNetworkInterfaces=((detectionData.interfaces&&detectionData.interfaces.interface)||[]), wanCandidates=allNetworkInterfaces.filter(function(i){const routes=Array.isArray(i.route)?i.route:[],hasDefault=routes.some(function(r){return r&&(r.target==='0.0.0.0'||Number(r.mask)===0);}),name=String(i.interface||'');return !!i.up&&hasDefault&&Array.isArray(i['ipv4-address'])&&i['ipv4-address'].length>0&&!/^(lan|loopback|guest|wg|zerotier)/i.test(name);}).map(function(i){const name=String(i.interface||''),address=String(i['ipv4-address'][0].address||''),gateway=wanGateway(i),dns=(i['dns-server']||i.dns_server||[]),ipParts=address.split('.').map(Number),cgnatIp=ipParts.length===4&&ipParts[0]===100&&ipParts[1]>=64&&ipParts[1]<=127,starlinkGateway=String(gateway)==='100.64.0.1',starlinkDns=Array.isArray(dns)&&dns.some(function(server){return /^198\.54\.100\./.test(String(server));}),device=String(i.l3_device||i.device||''),confirmed=starlinkDns||(cgnatIp&&starlinkGateway);return {name:name,label:name.toUpperCase(),address:address,gateway:gateway,dns:dns,device:device,likely:confirmed,strong:confirmed};});
 		let starlinkWans=wanCandidates.filter(function(w){if(w.likely)return true;return starlinkAdapters.some(function(a){const haystack=[a.adapterID,a.name,a.description,a.connectedNetworkName].join(' ').toLowerCase();return haystack.indexOf(w.name.toLowerCase())>=0||(w.device&&haystack.indexOf(w.device.toLowerCase())>=0);});});
 		if(!starlinkWans.length&&starlinkAdapters.length)starlinkWans=wanCandidates.slice(0,Math.max(1,starlinkAdapters.length));
 		const starlinkDetected=starlinkWans.length>0,starlinkProblem=starlinkAdapters.length>0&&!starlinkAdapters.some(function(a){return !a.offline&&String(a.state||'').toLowerCase()==='connected';});this.starlinkWanOrder=starlinkWans.map(function(w){return w.name;});
@@ -545,7 +545,7 @@ const speedifyMethods = {
 			E('div', { class: 'ex-card-collapse-inner' }, [
 				isSatNode ? E('div', { class: 'alert-message warning', style: 'margin-bottom: 12px; font-size: 12px; line-height: 1.45;' }, [
 					E('strong', { style: 'display: block; margin-bottom: 3px;' }, ['🛡️ Speedify Gerenciado no Mestre']),
-					'A agregação de links de internet (Speedify Bonding) atua nas portas WAN do Roteador Mestre (Gateway). Nós satélites mantêm tráfego local transparente.'
+					_t('A agregação de links de internet (Speedify Bonding) atua nas portas WAN do Roteador Mestre (Gateway). Pontos de Acesso (APs) mantêm tráfego local transparente.')
 				]) : '',
 				E('p',{class:'ex-muted'},['Opcional. Permite somar WAN1/WAN2 usando a licença Speedify Router. Sem ele, o ARK Router continua usando failover/balanceamento normal.']),
 				E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},[

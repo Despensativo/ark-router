@@ -24,8 +24,9 @@ cat << 'EOF' > /etc/hotplug.d/net/99-ark-led-wan
 EOF
 chmod 0755 /etc/hotplug.d/net/99-ark-led-wan 2>/dev/null || true
 
-# Executa o preset inteligente nativo para o hardware detectado
+# Executa calibração de curvas e ativação do preset inteligente HAL
 if [ -x /usr/sbin/equipe-dashboard-control ]; then
+	/usr/sbin/equipe-dashboard-control led-calibrate-curves >/dev/null 2>&1 || true
 	/usr/sbin/equipe-dashboard-control set-led-preset smart >/dev/null 2>&1 || true
 	/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 || true
 fi

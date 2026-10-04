@@ -51,6 +51,8 @@ build_ipk_variant() {
 	chmod 0755 "$data_dir/usr/sbin/ark-doctor" 2>/dev/null || true
 	chmod 0755 "$data_dir/usr/sbin/equipe-traffic-history" 2>/dev/null || true
 	chmod 0755 "$data_dir/usr/sbin/ark-autowan-daemon" 2>/dev/null || true
+	chmod 0755 "$data_dir/usr/sbin/ark-port-ledd" 2>/dev/null || true
+	chmod 0755 "$data_dir/usr/sbin/ark-rainbowd" 2>/dev/null || true
 	chmod 0755 "$data_dir/usr/lib/ark/"*.sh 2>/dev/null || true
 	chmod 0755 "$data_dir/usr/lib/ark/modules/"*.sh 2>/dev/null || true
 	chmod 0755 "$data_dir/usr/libexec/ark-starlink-telemetry" 2>/dev/null || true
@@ -102,10 +104,13 @@ chmod +x /etc/init.d/ark-autowan 2>/dev/null || true
 [ -x /etc/init.d/ark-firewall-guard ] && /etc/init.d/ark-firewall-guard start >/dev/null 2>&1 || true
 [ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune enable >/dev/null 2>&1 || true
 [ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune start >/dev/null 2>&1 || true
+[ -x /etc/init.d/ark-port-ledd ] && /etc/init.d/ark-port-ledd enable >/dev/null 2>&1 || true
+[ -x /etc/init.d/ark-port-ledd ] && /etc/init.d/ark-port-ledd restart >/dev/null 2>&1 || true
 if [ "$(uci -q get network.autowan.enabled || echo 0)" = "1" ]; then
 	[ -x /etc/init.d/ark-autowan ] && /etc/init.d/ark-autowan enable >/dev/null 2>&1 || true
 	[ -x /etc/init.d/ark-autowan ] && /etc/init.d/ark-autowan restart >/dev/null 2>&1 || true
 fi
+[ -f /etc/uci-defaults/99-ark-router-leds ] && /bin/sh /etc/uci-defaults/99-ark-router-leds >/dev/null 2>&1 || true
 [ -f /etc/uci-defaults/99-ark-router-uhttpd ] && /bin/sh /etc/uci-defaults/99-ark-router-uhttpd >/dev/null 2>&1 || true
 [ -f /etc/uci-defaults/99-ark-router-dhcp-sanitize ] && /bin/sh /etc/uci-defaults/99-ark-router-dhcp-sanitize >/dev/null 2>&1 || true
 rm -f /tmp/luci-indexcache 2>/dev/null || true

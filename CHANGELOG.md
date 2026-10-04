@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.5.9
+
+- **🛡️ Blindagem Anti-MAC Collision, Desbloqueio Netdev & Restauração Completa de IPv6 (04/10/2026)**:
+  - **Eliminação de Conflito de MAC na Bridge LAN**:
+    - Corrigido conflito em que portas LAN (como `eth1` interconectada a APs secundários) mantinham endereços MAC clonados de WANs migradas, confundindo a tabela de roteamento e comutação do hardware switch / PPE (MediaTek Filogic 830) e descartando quadros multicast e Router Advertisements (RA).
+    - `add_lan_port()` em `network.sh` agora remove automaticamente qualquer `option macaddr` residual ao adicionar qualquer interface à bridge `br-lan`.
+  - **Fim do Bloqueio Netdev Destrutivo no Firewall IPv6 Seletivo**:
+    - Eliminada a geração incorreta de tabelas `table netdev ark_ipv6_${bname} { ether type ip6 drop }` que derrubavam o tráfego IPv6 de portas físicas inteiras quando um único dispositivo atrás de um AP ou switch tinha o IPv6 desativado no painel.
+    - O filtro seletivo de dispositivos passa a operar com 100% de pureza e precisão na tabela `inet` (`@blocked_macs`), preservando o tráfego IPv6 de todos os demais aparelhos na mesma porta.
+  - **Blindagem em 3 Camadas no Doctor ARK e Interface Gráfica**:
+    - **Doctor ARK (`doctor.sh`)**: Adicionada checagem `11b.4 Anti-MAC Collision` que detecta portas LAN com MAC duplicado da WAN e tabelas netdev parasitas, aplicando auto-correção imediata e restauração do MAC de fábrica do `board.json`.
+    - **Interface Web (`network.js` & `overview.js`)**: Validação ativa na modal de WAN que bloqueia a clonagem de um MAC já em uso por outra conexão WAN ativa.
+    - **Auditoria de i18n**: 100% de cobertura nos 3 idiomas (PT-BR, EN, ES) validada via `scripts/audit_i18n.py`.
+
+- **📶 IGMP Snooping Nativo Integrado no Dashboard ARK Router (04/10/2026)**:
+  - Adicionado toggle nativo de **Proteção Multicast & Wi-Fi (IGMP Snooping)** diretamente no card de Rede Principal (LAN / DHCP) do Overview e na modal de configurações de rede.
+  - Mitigação transparente de saturação de Wi-Fi por tráfego multicast (IPTV / AirPlay / mDNS).
+  - Testado e validado em tempo real em hardware real com persistência completa pós-reboot e verificação visual por screenshot headless.
+
+- **💡 HAL de LEDs e Daemons de Iluminação Dinâmica (`ark-rainbowd` / `ark-port-ledd`)**:
+  - Implementação de daemons para controle de LEDs de portas físicas e iluminação RGB para plataformas Acer Predator W6x e T7.
+
 ## 1.5.8
 
 - **📱 Correção de Rolagem em Dispositivos Móveis e Preservação de Posição de Tela (02/10/2026)**:

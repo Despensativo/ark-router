@@ -1,5 +1,4 @@
 const FEATURE_META={
-	argon:{name:'Tema Argon',description:'Tema visual externo do LuCI.',recommended:false},
 	sqm:{name:'SQM / CAKE',description:'Organiza as filas e reduz a latência quando o link está ocupado.'},
 	mwan3:{name:'Multi‑WAN',description:'Adiciona failover e balanceamento entre dois ou mais links.'},
 	nlbwmon:{name:'Consumo por dispositivo',description:'Adiciona tráfego individual e histórico detalhado de consumo.'},

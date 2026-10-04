@@ -31,6 +31,20 @@ start() {
 	# Source common runtime if available
 	[ -f /usr/lib/ark/common.sh ] && . /usr/lib/ark/common.sh
 
+	# Normalização defensiva de modelo OEM em RAM (/tmpfs)
+	local cur_model="$(cat /tmp/sysinfo/model 2>/dev/null || echo '')"
+	case "$cur_model" in
+		*"Qualcomm Technologies"*|*"IPQ5332"*|*"AP-MI01"*)
+			if [ -f /tmp/model ] && grep -qi "T7" /tmp/model 2>/dev/null; then
+				echo "Acer Predator Connect T7" > /tmp/sysinfo/model
+				logger -t ark-hardware-tune "Modelo OEM normalizado para 'Acer Predator Connect T7'."
+			elif [ -f /etc/version ] && grep -q "^T7_" /etc/version 2>/dev/null; then
+				echo "Acer Predator Connect T7" > /tmp/sysinfo/model
+				logger -t ark-hardware-tune "Modelo OEM normalizado para 'Acer Predator Connect T7'."
+			fi
+			;;
+	esac
+
 	local cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
 	[ "$cpu_cores" -lt 1 ] 2>/dev/null && cpu_cores=1
 	local mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 131072)"
@@ -206,6 +220,19 @@ start() {
 					;;
 			esac
 		done
+	fi
+
+	# Calibração e Proteção de Iluminação HAL (ex: AW21018 no Acer Predator T7)
+	if [ -x /usr/sbin/equipe-dashboard-control ]; then
+		/usr/sbin/equipe-dashboard-control led-calibrate-curves >/dev/null 2>&1 || true
+		local led_pwr="$(uci -q get system.led_status.enabled || echo 1)"
+		local cur_preset="$(uci -q get system.led_status.preset || echo smart)"
+		if [ "$led_pwr" = "0" ] || [ "$cur_preset" = "night" ]; then
+			/usr/sbin/equipe-dashboard-control set-led-preset night >/dev/null 2>&1 || true
+		else
+			local cur_col="$(uci -q get system.led_status.hex_color || echo '#00FF00')"
+			/usr/sbin/equipe-dashboard-control set-led-rgb-color "$cur_col" >/dev/null 2>&1 || true
+		fi
 	fi
 
 	logger -t ark-hardware-tune "Calibracao de hardware e latencia finalizada com sucesso."

@@ -16,24 +16,55 @@ _ARK_WIFI_SH_LOADED=1
 wifi_radio_by_band() {
 	wanted="$1"
 	uci -q show wireless 2>/dev/null | awk -F= -v wanted="$wanted" '
-		/^[^.]+\.[^.]+=wifi-device/ { section=$1; sub(/^wireless\./, "", section); radios[section]=1 }
+		/^[^.]+\.[^.]+=wifi-device/ { section=$1; sub(/^wireless\./, "", section); radios[++count]=section }
 		/\.band=/ {
 			section=$1; sub(/^wireless\./, "", section); sub(/\.band$/, "", section)
 			value=$2; gsub(/^\047|\047$/, "", value)
-			band[section]=value
+			band[section]=tolower(value)
 		}
 		/\.hwmode=/ {
 			section=$1; sub(/^wireless\./, "", section); sub(/\.hwmode$/, "", section)
 			value=$2; gsub(/^\047|\047$/, "", value)
-			hwmode[section]=value
+			hwmode[section]=tolower(value)
+		}
+		/\.htmode=/ {
+			section=$1; sub(/^wireless\./, "", section); sub(/\.htmode$/, "", section)
+			value=$2; gsub(/^\047|\047$/, "", value)
+			htmode[section]=tolower(value)
 		}
 		END {
-			for (r in radios) {
-				b=band[r]
-				if (wanted=="2g" && (b ~ /^2/ || hwmode[r]=="11g" || hwmode[r]=="11b")) { print r; exit }
-				if (wanted=="5g" && (b ~ /^5/ || hwmode[r]=="11a")) { print r; exit }
-				if (wanted=="6g" && (b ~ /^6/ || hwmode[r]=="11ax_6g" || hwmode[r]=="11be_6g")) { print r; exit }
-				if (wanted=="60g" && (b ~ /^60/ || hwmode[r]=="11ad")) { print r; exit }
+			for (i=1; i<=count; i++) {
+				r=radios[i];
+				b=band[r]; hw=hwmode[r]; ht=htmode[r];
+				if (b ~ /^60/ || hw ~ /11ad/) {
+					is_60g[r]=1;
+				} else if (b ~ /^6/ || b=="3" || hw ~ /6g/ || ht ~ /320/ || r ~ /6g$/) {
+					is_6g[r]=1;
+				} else if (b ~ /^2/ || b=="1" || hw=="11g" || hw=="11b" || hw ~ /beg/ || hw ~ /axg/ || r ~ /2g$/) {
+					is_2g[r]=1;
+				} else if (b ~ /^5/ || b=="2" || hw=="11a" || hw ~ /bea/ || hw ~ /axa/ || hw ~ /11ac/ || ht ~ /80/ || ht ~ /160/ || r ~ /5g$/) {
+					is_5g[r]=1;
+				}
+			}
+			for (i=1; i<=count; i++) {
+				r=radios[i];
+				if (!is_60g[r] && !is_6g[r] && !is_2g[r] && !is_5g[r]) {
+					if (r=="radio0" || r=="wifi0") is_2g[r]=1;
+					else if (r=="radio1" || r=="wifi1") is_5g[r]=1;
+					else if (r=="radio2" || r=="wifi2") is_6g[r]=1;
+				}
+			}
+			if (wanted=="2g") {
+				for (i=1; i<=count; i++) { if (is_2g[radios[i]]) { print radios[i]; exit; } }
+				if (count >= 1) { print radios[1]; exit; }
+			} else if (wanted=="5g") {
+				for (i=1; i<=count; i++) { if (is_5g[radios[i]]) { print radios[i]; exit; } }
+				if (count >= 2) { print radios[2]; exit; }
+			} else if (wanted=="6g") {
+				for (i=1; i<=count; i++) { if (is_6g[radios[i]]) { print radios[i]; exit; } }
+				if (count >= 3) { print radios[3]; exit; }
+			} else if (wanted=="60g") {
+				for (i=1; i<=count; i++) { if (is_60g[radios[i]]) { print radios[i]; exit; } }
 			}
 		}'
 }
@@ -204,18 +235,25 @@ handle_wifi() {
 		case "$2" in
 			main)
 				sections='default_radio0 default_radio1'
-				[ -n "$radio6" ] && [ -n "$(uci -q get wireless.default_radio2)" ] && sections="$sections default_radio2"
+				[ -n "$radio6" ] && sections="$sections default_radio2"
 				allow_toggle=0
 				;;
 			guest)
 				sections='guest_radio0 guest_radio1'
-				[ -n "$radio6" ] && [ -n "$(uci -q get wireless.guest_radio2)" ] && sections="$sections guest_radio2"
+				[ -n "$radio6" ] && sections="$sections guest_radio2"
 				allow_toggle=1
 				;;
 			*)
 				clean_prefix="$(printf '%s' "$wifi_kind" | sed 's/^extra_//')"
 				sections="$(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1 | grep -E "^(extra_)?${clean_prefix}")"
 				[ -n "$sections" ] || { echo 'Rede adicional nao encontrada' >&2; exit 2; }
+				case "$wifi_kind" in
+					extra_*)
+						[ -n "$radio2" ] && case " $sections " in *" extra_${clean_prefix}_r0 "*) ;; *) sections="$sections extra_${clean_prefix}_r0" ;; esac
+						[ -n "$radio5" ] && case " $sections " in *" extra_${clean_prefix}_r1 "*) ;; *) sections="$sections extra_${clean_prefix}_r1" ;; esac
+						[ -n "$radio6" ] && case " $sections " in *" extra_${clean_prefix}_r2 "*) ;; *) sections="$sections extra_${clean_prefix}_r2" ;; esac
+						;;
+				esac
 				allow_toggle=1
 				;;
 		esac
@@ -307,6 +345,7 @@ handle_wifi() {
 			if [ "$encryption" = none ]; then
 				uci -q set "wireless.$section.encryption=none"
 				uci -q delete "wireless.$section.key"
+				uci -q delete "wireless.$section.sae_password" 2>/dev/null || true
 			elif [ -n "$encryption" ]; then
 				sec_enc="$encryption"
 				if opkg list-installed 2>/dev/null | grep -q "^wpad-basic -" && { [ "$sec_enc" = "sae" ] || [ "$sec_enc" = "sae-mixed" ]; }; then
@@ -317,8 +356,10 @@ handle_wifi() {
 				fi
 				uci -q set "wireless.$section.encryption=$sec_enc"
 				[ -n "$password" ] && uci -q set "wireless.$section.key=$password"
+				[ -n "$password" ] && [ -n "$(uci -q get "wireless.$section.sae_password")" ] && uci -q set "wireless.$section.sae_password=$password"
 			elif [ -n "$password" ]; then
 				uci -q set "wireless.$section.key=$password"
+				[ -n "$(uci -q get "wireless.$section.sae_password")" ] && uci -q set "wireless.$section.sae_password=$password"
 			fi
 			if [ "$enabled" = 0 ]; then
 				uci -q set "wireless.$section.disabled=1"

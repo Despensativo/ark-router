@@ -1,0 +1,172 @@
+#!/bin/sh
+# ARK Router — Smart Hardware Port LED Monitor for AW21018 Matrix Controller
+# Controls RJ45 LEDs following the standard NIC behavior:
+# - Link DOWN: LEDs OFF
+# - Link UP: Link LED solid ON, Activity LED blinks on network traffic
+# - Night Mode / Disabled: All port LEDs 100% OFF
+# - Zero I2C Flood: Writes to bus ONLY on state changes (cached in-memory)
+# - Dual Network Switch Support: swconfig (QSDK/OpenWrt clássico) and DSA/sysfs (OpenWrt moderno)
+
+_get_led_sys() {
+	if [ -n "${ARK_ROOT}" ] && [ -d "${ARK_ROOT}/sys/class/leds" ]; then
+		printf '%s' "${ARK_ROOT}/sys/class/leds"
+	else
+		printf '/sys/class/leds'
+	fi
+}
+
+_get_net_sys() {
+	if [ -n "${ARK_ROOT}" ] && [ -d "${ARK_ROOT}/sys/class/net" ]; then
+		printf '%s' "${ARK_ROOT}/sys/class/net"
+	else
+		printf '/sys/class/net'
+	fi
+}
+
+LED_BASE="$(_get_led_sys)"
+[ -d "$LED_BASE/aw21018_led" ] || exit 0
+LED_NODE="$LED_BASE/aw21018_led/led"
+
+PIDFILE="/var/run/ark-port-ledd.pid"
+if [ -f "$PIDFILE" ]; then
+	oldpid="$(cat "$PIDFILE" 2>/dev/null)"
+	if [ -n "$oldpid" ] && [ -d "/proc/$oldpid" ] && [ "$oldpid" != "$$" ]; then
+		kill -9 "$oldpid" 2>/dev/null || true
+	fi
+fi
+echo "$$" > "$PIDFILE" 2>/dev/null || true
+
+trap 'rm -f "$PIDFILE"; exit 0' TERM INT HUP QUIT
+
+prev_w_link=""
+prev_l1_link=""
+prev_l2_link=""
+prev_enabled=""
+
+# Consulta status físico do link (suporte dual: swconfig vs DSA / sysfs)
+get_link_state() {
+	local port_type="$1" # wan, lan1, lan2
+	local net_base="$(_get_net_sys)"
+
+	# 1. Swconfig (OpenWrt clássico / QSDK)
+	if command -v swconfig >/dev/null 2>&1; then
+		case "$port_type" in
+			wan)
+				if swconfig dev switch0 port 1 get link 2>/dev/null | grep -q "link:up"; then
+					printf 'up'; return 0
+				fi
+				;;
+			lan1)
+				if swconfig dev switch1 port 1 get link 2>/dev/null | grep -q "link:up"; then
+					printf 'up'; return 0
+				fi
+				;;
+			lan2)
+				if swconfig dev switch1 port 2 get link 2>/dev/null | grep -q "link:up"; then
+					printf 'up'; return 0
+				fi
+				;;
+		esac
+	fi
+
+	# 2. DSA / Netdev sysfs carrier (OpenWrt moderno / DSA)
+	case "$port_type" in
+		wan)
+			for d in wan eth1 pppoe-wan eth0; do
+				if [ -e "$net_base/$d/carrier" ]; then
+					if [ "$(cat "$net_base/$d/carrier" 2>/dev/null)" = "1" ]; then
+						printf 'up'; return 0
+					fi
+				fi
+			done
+			;;
+		lan1)
+			for d in lan1 eth2 eth0.1; do
+				if [ -e "$net_base/$d/carrier" ]; then
+					if [ "$(cat "$net_base/$d/carrier" 2>/dev/null)" = "1" ]; then
+						printf 'up'; return 0
+					fi
+				fi
+			done
+			;;
+		lan2)
+			for d in lan2 eth3 eth0.2; do
+				if [ -e "$net_base/$d/carrier" ]; then
+					if [ "$(cat "$net_base/$d/carrier" 2>/dev/null)" = "1" ]; then
+						printf 'up'; return 0
+					fi
+				fi
+			done
+			;;
+	esac
+
+	printf 'down'
+	return 0
+}
+
+while true; do
+	# Checagem de Governança: Modo Noturno apaga todas as portas e suspende updates
+	enabled="$(uci -q get system.led_status.enabled || echo 1)"
+	if [ "$enabled" = "0" ]; then
+		if [ "$prev_enabled" != "0" ]; then
+			# Apaga todas as portas de rede (Targets 2..7) uma única vez
+			echo "6 0 1" >> "$LED_NODE" 2>/dev/null || true
+			echo "7 0 1" >> "$LED_NODE" 2>/dev/null || true
+			echo "2 0 1" >> "$LED_NODE" 2>/dev/null || true
+			echo "3 0 1" >> "$LED_NODE" 2>/dev/null || true
+			echo "4 0 1" >> "$LED_NODE" 2>/dev/null || true
+			echo "5 0 1" >> "$LED_NODE" 2>/dev/null || true
+			prev_enabled="0"
+			prev_w_link=""
+			prev_l1_link=""
+			prev_l2_link=""
+		fi
+		sleep 2
+		continue
+	fi
+	prev_enabled="1"
+
+	# WAN (Targets 6=Link, 7=Activity)
+	w_link="$(get_link_state wan)"
+	if [ "$w_link" != "$prev_w_link" ]; then
+		if [ "$w_link" = "up" ]; then
+			echo "6 ff 1" >> "$LED_NODE" 2>/dev/null || true
+			echo "7 ff 2" >> "$LED_NODE" 2>/dev/null || true
+		else
+			echo "6 0 1" >> "$LED_NODE" 2>/dev/null || true
+			echo "7 0 1" >> "$LED_NODE" 2>/dev/null || true
+		fi
+		prev_w_link="$w_link"
+	fi
+
+	# LAN1 (Targets 2=Link, 3=Activity)
+	l1_link="$(get_link_state lan1)"
+	if [ "$l1_link" != "$prev_l1_link" ]; then
+		if [ "$l1_link" = "up" ]; then
+			echo "2 ff 1" >> "$LED_NODE" 2>/dev/null || true
+			echo "3 ff 2" >> "$LED_NODE" 2>/dev/null || true
+		else
+			echo "2 0 1" >> "$LED_NODE" 2>/dev/null || true
+			echo "3 0 1" >> "$LED_NODE" 2>/dev/null || true
+		fi
+		prev_l1_link="$l1_link"
+	fi
+
+	# LAN2 (Targets 4=Link, 5=Activity)
+	l2_link="$(get_link_state lan2)"
+	if [ "$l2_link" != "$prev_l2_link" ]; then
+		if [ "$l2_link" = "up" ]; then
+			echo "4 ff 1" >> "$LED_NODE" 2>/dev/null || true
+			echo "5 ff 2" >> "$LED_NODE" 2>/dev/null || true
+		else
+			echo "4 0 1" >> "$LED_NODE" 2>/dev/null || true
+			echo "5 0 1" >> "$LED_NODE" 2>/dev/null || true
+		fi
+		prev_l2_link="$l2_link"
+	fi
+
+	# Se executado em teste não-daemon com uma iteração (ARK_TEST_SINGLE_PASS=1), finaliza
+	[ "${ARK_TEST_SINGLE_PASS:-0}" = "1" ] && break
+
+	sleep 1
+done

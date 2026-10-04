@@ -48,7 +48,7 @@ def generate_doc():
     lines.append("        MOD_DOC[\"doctor.sh (ARK Doctor Auto-Cura)\"]")
     lines.append("        MOD_SYS[\"system.sh (LEDs/RAM/Storage/Fastpath)\"]")
     lines.append("        MOD_DEV[\"devices.sh (QoS/Leases/Reboot Lock)\"]")
-    lines.append("        MOD_VPN[\"vpn.sh (WireGuard/Tailscale/ZeroTier)\"]")
+    lines.append("        MOD_VPN[\"vpn.sh (WireGuard/ZeroTier)\"]")
     lines.append("        MOD_STAR[\"starlink.sh (Telemetria/Buffer 25h)\"]")
     lines.append("        MOD_EZ[\"ezsetup.sh (Assistente/OTA Update/Perfis)\"]")
     lines.append("    end")

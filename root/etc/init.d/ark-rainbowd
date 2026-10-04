@@ -1,0 +1,26 @@
+#!/bin/sh /etc/rc.common
+# ARK Router — Smooth Multi-Color Spectrum (Rainbow) Daemon Service
+# Procd service for OpenWrt 19.07 through 25.12+
+
+START=98
+STOP=10
+USE_PROCD=1
+
+start_service() {
+	local eff="$(uci -q get system.led_status.effect || echo rainbow)"
+	[ "$eff" = "rainbow" ] || return 0
+
+	procd_open_instance
+	procd_set_param command /bin/sh /usr/sbin/ark-rainbowd
+	procd_set_param respawn 3600 5 0
+	procd_close_instance
+}
+
+stop_service() {
+	killall ark-rainbowd 2>/dev/null || true
+	pkill -f "/usr/sbin/ark-rainbowd" 2>/dev/null || true
+}
+
+service_triggers() {
+	procd_add_reload_trigger "system"
+}

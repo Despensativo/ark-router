@@ -276,9 +276,9 @@ ark_doctor_audit() {
 		add_check "Tabela de Clientes" "OK" "${lease_count} dispositivo(s) com concessao DHCP ativa (dnsmasq operacional)."
 	fi
 
-	# 8. Checagem de Consistência de Modo Satélite / Ponto de Acesso
+	# 8. Checagem de Consistência de Modo Ponto de Acesso (AP)
 	if ark_is_satellite_or_ap; then
-		# 8a. DHCP Server no Satélite (Risco de Rogue DHCP e Duplo NAT)
+		# 8a. DHCP Server no Ponto de Acesso (Risco de Rogue DHCP e Duplo NAT)
 		dhcp_ignore="$(uci -q get dhcp.lan.ignore || echo 0)"
 		if [ "$dhcp_ignore" != "1" ]; then
 			if [ "$auto_fix" = 1 ]; then
@@ -288,16 +288,16 @@ ark_doctor_audit() {
 				uci commit dhcp
 				/etc/init.d/dnsmasq reload >/dev/null 2>&1 || true
 				fixes_applied=$((fixes_applied + 1))
-				add_check "Blindagem Satélite: DHCP" "FIXED" "Servidor DHCP desativado no Satélite para evitar Rogue DHCP e Duplo NAT."
+				add_check "Blindagem AP: DHCP" "FIXED" "Servidor DHCP desativado no Ponto de Acesso (AP) para evitar Rogue DHCP e Duplo NAT."
 			else
 				errors=$((errors + 1))
-				add_check "Blindagem Satélite: DHCP" "FAIL" "Servidor DHCP ativo em nó Satélite/AP (Risco de Rogue DHCP e Duplo NAT)."
+				add_check "Blindagem AP: DHCP" "FAIL" "Servidor DHCP ativo em Ponto de Acesso (AP) (Risco de Rogue DHCP e Duplo NAT)."
 			fi
 		else
-			add_check "Blindagem Satélite: DHCP" "OK" "Servidor DHCP local devidamente desativado (Mestre distribui IPs)."
+			add_check "Blindagem AP: DHCP" "OK" "Servidor DHCP local devidamente desativado (Mestre distribui IPs)."
 		fi
 
-		# 8b. SQM Residual no Satélite
+		# 8b. SQM Residual no Ponto de Acesso
 		sat_sqm_active=0
 		for s in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\([a-zA-Z0-9_]*\)=queue$/\1/p'); do
 			[ "$(uci -q get "sqm.$s.enabled")" = "1" ] && sat_sqm_active=1
@@ -310,16 +310,16 @@ ark_doctor_audit() {
 				uci commit sqm
 				/etc/init.d/sqm stop >/dev/null 2>&1 || true
 				fixes_applied=$((fixes_applied + 1))
-				add_check "Blindagem Satélite: SQM" "FIXED" "SQM residual desativado no Satélite. O CAKE deve atuar exclusivamente no Mestre."
+				add_check "Blindagem AP: SQM" "FIXED" "SQM residual desativado no Ponto de Acesso (AP). O CAKE deve atuar exclusivamente no Mestre."
 			else
 				errors=$((errors + 1))
-				add_check "Blindagem Satélite: SQM" "FAIL" "SQM ativo em nó Satélite/AP (desperdiça CPU e limita a bridge local)."
+				add_check "Blindagem AP: SQM" "FAIL" "SQM ativo em Ponto de Acesso (AP) (desperdiça CPU e limita a bridge local)."
 			fi
 		else
-			add_check "Blindagem Satélite: SQM" "OK" "Sem filas SQM no Satélite (Bufferbloat gerenciado pelo Mestre)."
+			add_check "Blindagem AP: SQM" "OK" "Sem filas SQM no Ponto de Acesso (AP) (Bufferbloat gerenciado pelo Mestre)."
 		fi
 
-		# 8c. Multi-WAN no Satélite
+		# 8c. Multi-WAN no Ponto de Acesso
 		sat_mwan_active=0
 		for w in $(uci -q show mwan3 2>/dev/null | sed -n 's/^mwan3\.\([a-zA-Z0-9_]*\)=interface$/\1/p'); do
 			[ "$(uci -q get "mwan3.$w.enabled")" = "1" ] && sat_mwan_active=1
@@ -332,13 +332,31 @@ ark_doctor_audit() {
 				uci commit mwan3
 				/etc/init.d/mwan3 stop >/dev/null 2>&1 || true
 				fixes_applied=$((fixes_applied + 1))
-				add_check "Blindagem Satélite: Multi-WAN" "FIXED" "Multi-WAN desativado no Satélite para manter ponte de rede direta."
+				add_check "Blindagem AP: Multi-WAN" "FIXED" "Multi-WAN desativado no Ponto de Acesso (AP) para manter ponte de rede direta."
 			else
 				warnings=$((warnings + 1))
-				add_check "Blindagem Satélite: Multi-WAN" "WARN" "Multi-WAN ativo em nó Satélite/AP. Deve ser desativado."
+				add_check "Blindagem AP: Multi-WAN" "WARN" "Multi-WAN ativo em Ponto de Acesso (AP). Deve ser desativado."
 			fi
 		else
-			add_check "Blindagem Satélite: Multi-WAN" "OK" "Multi-WAN inativo no Satélite (ponte L2 direta)."
+			add_check "Blindagem AP: Multi-WAN" "OK" "Multi-WAN inativo no Ponto de Acesso (AP) (ponte L2 direta)."
+		fi
+
+		# 8d. Proteção Multicast (IGMP Snooping)
+		igmp_snoop="$(uci -q get network.lan.igmp_snooping || echo 0)"
+		[ -f /sys/class/net/br-lan/bridge/multicast_snooping ] && [ "$(cat /sys/class/net/br-lan/bridge/multicast_snooping 2>/dev/null)" = "1" ] && igmp_snoop=1
+		if [ "$igmp_snoop" = "1" ]; then
+			add_check "Blindagem AP: IGMP Snooping" "OK" "IGMP Snooping ativo na bridge LAN (preserva o tempo de antena do Wi-Fi)."
+		else
+			if [ "$auto_fix" = 1 ]; then
+				uci -q set network.lan.igmp_snooping=1
+				uci commit network 2>/dev/null || true
+				[ -f /sys/class/net/br-lan/bridge/multicast_snooping ] && echo 1 > /sys/class/net/br-lan/bridge/multicast_snooping 2>/dev/null || true
+				fixes_applied=$((fixes_applied + 1))
+				add_check "Blindagem AP: IGMP Snooping" "FIXED" "IGMP Snooping ativado na bridge LAN para evitar saturação do Wi-Fi."
+			else
+				warnings=$((warnings + 1))
+				add_check "Blindagem AP: IGMP Snooping" "WARN" "IGMP Snooping desativado na bridge LAN. Recomenda-se ativar para proteger o Wi-Fi."
+			fi
 		fi
 	fi
 
@@ -528,7 +546,7 @@ ark_doctor_audit() {
 		fi
 	fi
 
-	# 11b.2 Compatibilidade SLAAC Apple (iOS/macOS) e APs Satélites (RFC 4862 / RFC 8106)
+	# 11b.2 Compatibilidade SLAAC Apple (iOS/macOS) e Pontos de Acesso (AP) (RFC 4862 / RFC 8106)
 	if [ "$lan_cur_ra" = "disabled" ] || [ "$ipv6_mode_chk" = "ipv4_only" ]; then
 		add_check "Compatibilidade SLAAC Apple" "OK" "Modo IPv4 Puro ativo (serviço de anúncios de roteador desativado conforme esperado)."
 	elif [ "$lan_cur_ra" = "relay" ]; then
@@ -591,6 +609,78 @@ ark_doctor_audit() {
 		fi
 	else
 		add_check "Isolamento de Sub-rede WAN/LAN" "OK" "Sem sobreposição de sub-redes da WAN na bridge LAN."
+	fi
+
+	# 11b.4 Checagem de Conflito de Endereços MAC (Anti-MAC Collision)
+	mac_collision_found=0
+	mac_collision_dev=""
+	mac_collision_val=""
+	wan_macs=""
+	for w_iface in wan wan2 wan3 wan4; do
+		w_dev="$($uci_cmd get network.$w_iface.device 2>/dev/null || $uci_cmd get network.$w_iface.ifname 2>/dev/null || true)"
+		[ -n "$w_dev" ] || continue
+		w_mac="$($uci_cmd get network.$w_iface.macaddr 2>/dev/null || true)"
+		if [ -z "$w_mac" ]; then
+			for d_sec in $($uci_cmd show network 2>/dev/null | grep "=device" | cut -d. -f2 | cut -d= -f1); do
+				if [ "$($uci_cmd get network.$d_sec.name 2>/dev/null)" = "$w_dev" ]; then
+					w_mac="$($uci_cmd get network.$d_sec.macaddr 2>/dev/null || true)"
+					break
+				fi
+			done
+		fi
+		[ -n "$w_mac" ] && wan_macs="$wan_macs $(echo "$w_mac" | tr 'A-Z' 'a-z')"
+	done
+
+	lan_ports="$($uci_cmd get network.lan.ports 2>/dev/null || $uci_cmd get network.@device[0].ports 2>/dev/null || true)"
+	for p in $lan_ports; do
+		for d_sec in $($uci_cmd show network 2>/dev/null | grep "=device" | cut -d. -f2 | cut -d= -f1); do
+			if [ "$($uci_cmd get network.$d_sec.name 2>/dev/null)" = "$p" ]; then
+				p_mac="$($uci_cmd get network.$d_sec.macaddr 2>/dev/null || true)"
+				if [ -n "$p_mac" ]; then
+					p_mac_lower="$(echo "$p_mac" | tr 'A-Z' 'a-z')"
+					for wm in $wan_macs; do
+						if [ "$p_mac_lower" = "$wm" ]; then
+							mac_collision_found=1
+							mac_collision_dev="$p"
+							mac_collision_val="$p_mac"
+							if [ "$auto_fix" = 1 ]; then
+								$uci_cmd delete "network.$d_sec.macaddr" 2>/dev/null || true
+								$uci_cmd commit network
+								fact_mac="$(jsonfilter -i /etc/board.json -e "@.network.wan.macaddr" 2>/dev/null || true)"
+								[ -n "$fact_mac" ] && ip link set dev "$p" address "$fact_mac" 2>/dev/null || true
+								fixes_applied=$((fixes_applied + 1))
+							fi
+							break 2
+						fi
+					done
+				fi
+			fi
+		done
+	done
+
+	# Limpeza de tabelas netdev que bloqueiam IPv6 na bridge
+	rogue_netdev_found=0
+	if command -v nft >/dev/null 2>&1; then
+		for t in $(nft list tables 2>/dev/null | grep 'table netdev ark_ipv6_' | awk '{print $3}'); do
+			rogue_netdev_found=1
+			if [ "$auto_fix" = 1 ]; then
+				nft delete table netdev "$t" 2>/dev/null || true
+				fixes_applied=$((fixes_applied + 1))
+			fi
+		done
+	fi
+
+	if [ "$mac_collision_found" = 1 ]; then
+		if [ "$auto_fix" = 1 ]; then
+			add_check "Unicidade de MAC WAN/LAN" "FIXED" "Conflito resolvido: MAC duplicado da porta LAN '$mac_collision_dev' removido e restaurado de fábrica."
+		else
+			errors=$((errors + 1))
+			add_check "Unicidade de MAC WAN/LAN" "FAIL" "Conflito crítico: Porta LAN '$mac_collision_dev' compartilha MAC ($mac_collision_val) com interface WAN."
+		fi
+	elif [ "$rogue_netdev_found" = 1 ] && [ "$auto_fix" = 1 ]; then
+		add_check "Unicidade de MAC WAN/LAN" "FIXED" "Tabelas netdev parasitas removidas do firewall de bridge."
+	else
+		add_check "Unicidade de MAC WAN/LAN" "OK" "Sem colisão de endereços MAC entre portas da bridge LAN e WAN."
 	fi
 
 	# 11c. Coerência do Protocolo IPv6 (Dashboard vs WAN vs LAN)
@@ -785,6 +875,101 @@ ark_doctor_audit() {
 			add_check "Tabela NAT (Conntrack)" "WARN" "Saturacao alta: ${ct_count}/${ct_max} conexoes ativas (${ct_pct}% do limite)."
 		else
 			add_check "Tabela NAT (Conntrack)" "OK" "${ct_count} conexoes ativas de ${ct_max} max (${ct_pct}% de ocupacao)."
+		fi
+	fi
+
+	# 15. Governanca de Interrupcoes de CPU (IRQ Balance vs Silicio Nativo)
+	dist_target="$(grep 'DISTRIB_TARGET' /etc/openwrt_release 2>/dev/null | cut -d"'" -f2 || echo '')"
+	[ -n "$dist_target" ] || dist_target="$(ubus call system board 2>/dev/null | grep -o '"target":"[^"]*"' | cut -d'"' -f4 || echo '')"
+	has_native_hw_queues=false
+	if ark_has_native_hw_queues; then
+		has_native_hw_queues=true
+	fi
+	cpu_cores_chk="$(ark_cpu_cores)"
+
+	irq_running=0
+	if pidof irqbalance >/dev/null 2>&1 || { [ -x /etc/init.d/irqbalance ] && /etc/init.d/irqbalance enabled >/dev/null 2>&1; }; then
+		irq_running=1
+	fi
+
+	if [ "$irq_running" = 1 ]; then
+		if [ "$cpu_cores_chk" -le 1 ] || [ "$has_native_hw_queues" = true ]; then
+			if [ "$auto_fix" = 1 ]; then
+				[ -x /etc/init.d/irqbalance ] && /etc/init.d/irqbalance stop >/dev/null 2>&1 || true
+				[ -x /etc/init.d/irqbalance ] && /etc/init.d/irqbalance disable >/dev/null 2>&1 || true
+				killall -9 irqbalance >/dev/null 2>&1 || true
+				fixes_applied=$((fixes_applied + 1))
+				if [ "$has_native_hw_queues" = true ]; then
+					add_check "Governanca de CPU (IRQ Balance)" "FIXED" "IRQ Balance desativado. Processador possui anéis de DMA nativos por hardware ($dist_target), eliminando jitter."
+				else
+					add_check "Governanca de CPU (IRQ Balance)" "FIXED" "IRQ Balance desativado em processador single-core (economiza memória e ciclos de CPU)."
+				fi
+			else
+				warnings=$((warnings + 1))
+				if [ "$has_native_hw_queues" = true ]; then
+					add_check "Governanca de CPU (IRQ Balance)" "WARN" "IRQ Balance ativo em SoC com anéis de hardware ($dist_target). Causa perda de afinidade e jitter desnecessário."
+				else
+					add_check "Governanca de CPU (IRQ Balance)" "WARN" "IRQ Balance ativo em processador de apenas 1 núcleo (inútil e consome recursos)."
+				fi
+			fi
+		else
+			add_check "Governanca de CPU (IRQ Balance)" "OK" "IRQ Balance ativo em hardware compatível (${cpu_cores_chk} núcleos)."
+		fi
+	else
+		if [ "$has_native_hw_queues" = true ]; then
+			add_check "Governanca de CPU (IRQ Balance)" "OK" "Processamento multicore nativo por hardware ($dist_target). Zero processos extras rodando."
+		else
+			add_check "Governanca de CPU (IRQ Balance)" "OK" "Distribuição de interrupções alinhada com a CPU (${cpu_cores_chk} núcleos)."
+		fi
+	fi
+
+	# 16. Blindagem de Modo Ponto de Acesso (AP / Secundário)
+	if ark_is_satellite_or_ap; then
+		ap_conflict_found=0
+		ap_conflict_svcs=""
+		if pidof miniupnpd >/dev/null 2>&1 || { [ -x /etc/init.d/miniupnpd ] && /etc/init.d/miniupnpd enabled >/dev/null 2>&1; }; then
+			ap_conflict_found=1
+			ap_conflict_svcs="${ap_conflict_svcs:+$ap_conflict_svcs, }miniupnpd"
+		fi
+		if pidof mwan3 >/dev/null 2>&1 || { [ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 enabled >/dev/null 2>&1; }; then
+			ap_conflict_found=1
+			ap_conflict_svcs="${ap_conflict_svcs:+$ap_conflict_svcs, }mwan3"
+		fi
+		if [ -x /etc/init.d/sqm ] && /etc/init.d/sqm enabled >/dev/null 2>&1; then
+			ap_conflict_found=1
+			ap_conflict_svcs="${ap_conflict_svcs:+$ap_conflict_svcs, }sqm"
+		fi
+		if [ -x /etc/init.d/nlbwmon ] && /etc/init.d/nlbwmon enabled >/dev/null 2>&1; then
+			ap_conflict_found=1
+			ap_conflict_svcs="${ap_conflict_svcs:+$ap_conflict_svcs, }nlbwmon"
+		fi
+
+		if [ "$ap_conflict_found" = 1 ]; then
+			if [ "$auto_fix" = 1 ]; then
+				if [ -x /etc/init.d/miniupnpd ]; then
+					/etc/init.d/miniupnpd stop >/dev/null 2>&1 || true
+					/etc/init.d/miniupnpd disable >/dev/null 2>&1 || true
+				fi
+				if [ -x /etc/init.d/mwan3 ]; then
+					/etc/init.d/mwan3 stop >/dev/null 2>&1 || true
+					/etc/init.d/mwan3 disable >/dev/null 2>&1 || true
+				fi
+				if [ -x /etc/init.d/sqm ]; then
+					/etc/init.d/sqm stop >/dev/null 2>&1 || true
+					/etc/init.d/sqm disable >/dev/null 2>&1 || true
+				fi
+				if [ -x /etc/init.d/nlbwmon ]; then
+					/etc/init.d/nlbwmon stop >/dev/null 2>&1 || true
+					/etc/init.d/nlbwmon disable >/dev/null 2>&1 || true
+				fi
+				fixes_applied=$((fixes_applied + 1))
+				add_check "Blindagem de Ponto de Acesso (AP)" "FIXED" "Serviços exclusivos de Gateway ($ap_conflict_svcs) desativados no Ponto de Acesso."
+			else
+				warnings=$((warnings + 1))
+				add_check "Blindagem de Ponto de Acesso (AP)" "WARN" "Serviços exclusivos de Gateway ($ap_conflict_svcs) ativos em Modo Ponto de Acesso."
+			fi
+		else
+			add_check "Blindagem de Ponto de Acesso (AP)" "OK" "Ponto de Acesso (AP) operando em ponte transparente L2 sem daemons concorrentes."
 		fi
 	fi
 

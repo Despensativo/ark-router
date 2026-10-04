@@ -7,7 +7,10 @@ function lanPortsFromNetwork(networkConfig) {
 		if(s['.type']==='device'&&s.name==='br-lan') {
 			const p=Array.isArray(s.ports)?s.ports:String(s.ports||'').split(/\s+/);
 			p.forEach(function(port){ if(port&&!seen[port]){seen[port]=1;ports.push(port);} });
-		} else if(s['.type']==='switch_vlan'&&String(s.vlan)==='1') {
+		} else if(s['.type']==='interface'&&k==='lan'&&s.ifname) {
+			const p=Array.isArray(s.ifname)?s.ifname:String(s.ifname||'').split(/\s+/);
+			p.forEach(function(port){ if(port&&!seen[port]){seen[port]=1;ports.push(port);} });
+		} else if(s['.type']==='switch_vlan') {
 			const p=Array.isArray(s.ports)?s.ports:String(s.ports||'').split(/\s+/);
 			p.forEach(function(port){
 				const clean=String(port||'').replace(/t$/,'');
@@ -18,7 +21,14 @@ function lanPortsFromNetwork(networkConfig) {
 			});
 		}
 	});
-	if(!ports.length) ['lan1','lan2','lan3','lan4'].forEach(function(port){ports.push(port);});
+	// Se existirem interfaces físicas particionadas (ex: eth1.1 e eth1.2 no IPQ5332)
+	// remove os aliases redundantes de switch (lan1, lan2) mantendo os nomes reais de interface
+	const hasVlanDevs = ports.some(function(p){ return /^eth[0-9]+\.[0-9]+$/i.test(p); });
+	let result = ports;
+	if (hasVlanDevs) {
+		result = ports.filter(function(p){ return !/^lan[0-9]+$/i.test(p); });
+	}
+	if(!result.length) ['lan1','lan2','lan3','lan4'].forEach(function(port){result.push(port);});
 	const isWanToLan = !!(net.autowan && String(net.autowan.wan_to_lan) === '1');
 	const isWanPromoted = !!(net.autowan && String(net.autowan.wan_promoted) === '1');
 	if (isWanToLan && !isWanPromoted) {
@@ -26,15 +36,18 @@ function lanPortsFromNetwork(networkConfig) {
 		const targetPort = (wanDev === 'eth0.2' || !wanDev) ? 'lan5' : wanDev;
 		if (!seen[targetPort] && !seen.lan5 && !seen.eth1) {
 			seen[targetPort] = 1;
-			ports.push(targetPort);
+			result.push(targetPort);
 		}
 	}
-	return ports;
+	return result;
 }
 function portLabel(port) {
+	if (port === 'eth0') return 'PORTA 2.5G';
+	if (port === 'eth1.1') return 'LAN 1';
+	if (port === 'eth1.2') return 'LAN 2';
 	if (port === 'eth1' || port === 'lan5' || port === 'port5' || port === 'wan' || port === 'eth0.2') return 'PORTA WAN (LAN)';
 	const m=String(port||'').match(/^lan([0-9]+)$/i);
-	return m?'LAN'+m[1]:String(port||'porta').toUpperCase();
+	return m?'LAN '+m[1]:String(port||'porta').toUpperCase();
 }
 function portDomId(port) { return String(port||'port').replace(/[^A-Za-z0-9_-]/g,'_'); }
 function isCompanionOrVirtualIpv6Wan(name, cfg, live) {
@@ -47,6 +60,8 @@ function isCompanionOrVirtualIpv6Wan(name, cfg, live) {
 	return false;
 }
 function getActiveWanList(data) {
+	if (isSatelliteOrAp(data)) return [];
+	if (data && Array.isArray(data.activeWans) && data.activeWans.length > 0) return data.activeWans;
 	const net=values((data||{}).networkConfig), dump=(data||{}).interfaces||{}, list=[], seen={};
 	const isWanToLan = !!(net.autowan && String(net.autowan.wan_to_lan) === '1');
 	const isWanPromoted = !!(net.autowan && String(net.autowan.wan_promoted) === '1');
@@ -112,18 +127,25 @@ function isSatelliteOrAp(data) {
 	const dashboardCfg = values((data || {}).equipeDashboardConfig || (data || {}).dashboardConfig);
 	const generalRole = (dashboardCfg.general && dashboardCfg.general.role) || (dashboardCfg.mesh && dashboardCfg.mesh.role) || (dashboardCfg.main && dashboardCfg.main.role) || '';
 	if (generalRole === 'master' || generalRole === 'primary' || generalRole === 'gateway') return false;
-	if (generalRole === 'secondary' || generalRole === 'satellite') return true;
+	if (generalRole === 'secondary' || generalRole === 'satellite' || generalRole === 'ap') return true;
 	const dashNetMode = (dashboardCfg.main && dashboardCfg.main.network_mode) || (dashboardCfg.general && dashboardCfg.general.network_mode) || '';
 	if (dashNetMode === 'router') return false;
 	if (dashNetMode === 'ap') return true;
 	const netCfg = values((data || {}).networkConfig);
 	if (netCfg && netCfg.general && netCfg.general.network_mode === 'router') return false;
 	if (netCfg && netCfg.general && netCfg.general.network_mode === 'ap') return true;
-	const lanStatus = (data || {}).lanStatus;
+	let lanStatus = (data || {}).lanStatus;
+	if (lanStatus && typeof lanStatus.stdout === 'string') {
+		try { lanStatus = JSON.parse(lanStatus.stdout); } catch(e) {}
+	}
 	if (lanStatus && (lanStatus.dhcp_disabled || lanStatus.mode === 'ap') && lanStatus.gateway) return true;
+	const dhcpCfg = values((data || {}).dhcpLeasesConfig || (data || {}).dhcp);
+	const dhcpLanIgnore = dhcpCfg && dhcpCfg.lan && String(dhcpCfg.lan.ignore) === '1';
+	const lanGw = netCfg && netCfg.lan && netCfg.lan.gateway;
+	if (dhcpLanIgnore && lanGw) return true;
 	if (globalCaps) {
 		if (globalCaps.role === 'master' || globalCaps.role === 'primary' || globalCaps.role === 'gateway' || globalCaps.network_mode === 'router') return false;
-		if (globalCaps.role === 'secondary' || globalCaps.role === 'satellite' || globalCaps.network_mode === 'ap') return true;
+		if (globalCaps.role === 'secondary' || globalCaps.role === 'satellite' || globalCaps.role === 'ap' || globalCaps.network_mode === 'ap') return true;
 	}
 	return false;
 }
@@ -387,9 +409,9 @@ function wifiConfig(config) {
 	const v = values(config);
 	const bandOfSection=function(section){
 		const radio=v[section.device]||{}, band=String(radio.band||'').toLowerCase(), ht=String(radio.htmode||'').toLowerCase(), hw=String(radio.hwmode||'').toLowerCase(), dev=String(section.device||'').toLowerCase();
-		if(band.indexOf('6')===0||hw.indexOf('6g')>=0||ht.indexOf('320')>=0||dev.indexOf('6g')>=0)return '6g';
-		if(band.indexOf('2')===0||hw==='11g'||hw==='11b'||ht.indexOf('g')>=0||dev.indexOf('2g')>=0)return '2g';
-		if(band.indexOf('5')===0||hw==='11a'||ht.indexOf('80')>=0||ht.indexOf('160')>=0||dev.indexOf('5g')>=0)return '5g';
+		if(band.indexOf('6')===0||band==='3'||hw.indexOf('6g')>=0||ht.indexOf('320')>=0||dev.indexOf('6g')>=0||dev==='wifi2'||dev==='radio2')return '6g';
+		if(band.indexOf('2')===0||band==='1'||hw==='11g'||hw==='11b'||hw.indexOf('beg')>=0||hw.indexOf('g')>=0||ht.indexOf('g')>=0||dev.indexOf('2g')>=0||dev==='wifi0'||dev==='radio0')return '2g';
+		if(band.indexOf('5')===0||band==='2'||hw==='11a'||hw.indexOf('bea')>=0||ht.indexOf('80')>=0||ht.indexOf('160')>=0||dev.indexOf('5g')>=0||dev==='wifi1'||dev==='radio1')return '5g';
 		return '';
 	};
 
@@ -401,11 +423,11 @@ function wifiConfig(config) {
 		const hw = String(s.hwmode || '').toLowerCase();
 		const ht = String(s.htmode || '').toLowerCase();
 		const name = String(k).toLowerCase();
-		if (band.indexOf('6') === 0 || hw.indexOf('6g') >= 0 || ht.indexOf('320') >= 0 || name.indexOf('6g') >= 0) {
+		if (band.indexOf('6') === 0 || band === '3' || hw.indexOf('6g') >= 0 || ht.indexOf('320') >= 0 || name.indexOf('6g') >= 0 || name === 'wifi2' || name === 'radio2') {
 			if (!dev6g) dev6g = k;
-		} else if (band.indexOf('2') === 0 || hw === '11g' || hw === '11b' || ht.indexOf('g') >= 0 || name.indexOf('2g') >= 0) {
+		} else if (band.indexOf('2') === 0 || band === '1' || hw === '11g' || hw === '11b' || hw.indexOf('beg') >= 0 || hw.indexOf('g') >= 0 || ht.indexOf('g') >= 0 || name.indexOf('2g') >= 0 || name === 'wifi0' || name === 'radio0') {
 			if (!dev2g) dev2g = k;
-		} else if (band.indexOf('5') === 0 || hw === '11a' || ht.indexOf('80') >= 0 || ht.indexOf('160') >= 0 || name.indexOf('5g') >= 0) {
+		} else if (band.indexOf('5') === 0 || band === '2' || hw === '11a' || hw.indexOf('bea') >= 0 || ht.indexOf('80') >= 0 || ht.indexOf('160') >= 0 || name.indexOf('5g') >= 0 || name === 'wifi1' || name === 'radio1') {
 			if (!dev5g) dev5g = k;
 		}
 	});
@@ -469,9 +491,15 @@ function wifiConfig(config) {
 		out.ssid5=(b&&b.ssid)||'';
 		out.ssid6=(c&&c.ssid)||'';
 		out.key=(a&&a.key)||(b&&b.key)||(c&&c.key)||'';
-		out.disabled2=String((a&&a.disabled!=null)?a.disabled:'0');
-		out.disabled5=String((b&&b.disabled!=null)?b.disabled:'0');
-		out.disabled6=String((c&&c.disabled!=null)?c.disabled:'0');
+
+		const r2Disabled = !!(dev2g && v[dev2g] && v[dev2g].disabled === '1');
+		const r5Disabled = !!(dev5g && v[dev5g] && v[dev5g].disabled === '1');
+		const r6Disabled = !!(dev6g && v[dev6g] && v[dev6g].disabled === '1');
+
+		out.disabled2 = (r2Disabled || !a || !a.ssid || a.disabled === '1') ? '1' : '0';
+		out.disabled5 = (r5Disabled || !b || !b.ssid || b.disabled === '1') ? '1' : '0';
+		out.disabled6 = (r6Disabled || !c || !c.ssid || c.disabled === '1') ? '1' : '0';
+
 		const anyEnabled = (a && a.ssid && out.disabled2 !== '1') ||
 		                   (b && b.ssid && out.disabled5 !== '1') ||
 		                   (c && c.ssid && out.disabled6 !== '1');
@@ -727,6 +755,168 @@ function currentChannelValue(configured, survey) {
 	return survey && survey.channel ? String(survey.channel) : c;
 }
 
+function getCookie(name) {
+	try {
+		if (typeof document === 'undefined' || !document.cookie) return null;
+		const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + '=([^;]*)'));
+		return m ? decodeURIComponent(m[1]) : null;
+	} catch(e) {
+		return null;
+	}
+}
+
+function setCookie(name, val, maxAgeSeconds) {
+	try {
+		if (typeof document === 'undefined') return;
+		const maxAge = maxAgeSeconds || 31536000;
+		document.cookie = name + '=' + encodeURIComponent(val) + '; max-age=' + maxAge + '; path=/; SameSite=Lax';
+	} catch(e) {}
+}
+
+const _arkCardStatesCache = {};
+let _arkUciCardStatesInitialized = false;
+let _saveCardStateTimer = null;
+
+function parseCardStatesString(str) {
+	const res = {};
+	if (!str || typeof str !== 'string') return res;
+	const parts = str.split(',');
+	for (let i = 0; i < parts.length; i++) {
+		const pair = parts[i].trim();
+		if (!pair) continue;
+		const colon = pair.indexOf(':');
+		if (colon > 0) {
+			const k = pair.substring(0, colon).trim();
+			const v = pair.substring(colon + 1).trim();
+			res[k] = (v === '1' || v === 'true' || v === 'expanded') ? 1 : 0;
+		}
+	}
+	return res;
+}
+
+function serializeCardStates(obj) {
+	if (!obj || typeof obj !== 'object') return '';
+	const pairs = [];
+	for (const k in obj) {
+		if (Object.prototype.hasOwnProperty.call(obj, k)) {
+			pairs.push(k + ':' + (obj[k] ? '1' : '0'));
+		}
+	}
+	return pairs.join(',');
+}
+
+function initCardStatesFromUci(equipeDashboardConfig) {
+	try {
+		const vals = (equipeDashboardConfig && equipeDashboardConfig.values) ? equipeDashboardConfig.values : (equipeDashboardConfig || {});
+		const main = vals.main || {};
+		const uciStr = main.card_states || '';
+		if (uciStr) {
+			const parsed = parseCardStatesString(uciStr);
+			for (const k in parsed) {
+				if (_arkCardStatesCache[k] === undefined) {
+					_arkCardStatesCache[k] = parsed[k];
+				}
+			}
+		}
+		_arkUciCardStatesInitialized = true;
+	} catch(e) {}
+}
+
+function getCardAccordionState(cardId, defaultActive) {
+	// 1. In-memory cache
+	if (_arkCardStatesCache[cardId] !== undefined) {
+		return { isExpanded: _arkCardStatesCache[cardId] === 1, hasUserPreference: true };
+	}
+
+	// 2. LocalStorage individual key
+	if (typeof window !== 'undefined' && window.localStorage) {
+		try {
+			const saved = window.localStorage.getItem('ark_card_' + cardId);
+			if (saved === '1' || saved === 'expanded' || saved === 'true' || saved === true) {
+				_arkCardStatesCache[cardId] = 1;
+				return { isExpanded: true, hasUserPreference: true };
+			} else if (saved === '0' || saved === 'collapsed' || saved === 'false' || saved === false) {
+				_arkCardStatesCache[cardId] = 0;
+				return { isExpanded: false, hasUserPreference: true };
+			}
+		} catch(e) {}
+
+		// LocalStorage bulk dictionary
+		try {
+			const bulk = JSON.parse(window.localStorage.getItem('ark_card_states') || '{}');
+			if (bulk && bulk[cardId] !== undefined) {
+				const exp = (bulk[cardId] === 1 || bulk[cardId] === true || bulk[cardId] === '1');
+				_arkCardStatesCache[cardId] = exp ? 1 : 0;
+				return { isExpanded: exp, hasUserPreference: true };
+			}
+		} catch(e) {}
+	}
+
+	// 3. Cookie fallback
+	const cookieStr = getCookie('ark_card_states');
+	if (cookieStr) {
+		const parsed = parseCardStatesString(cookieStr);
+		if (parsed[cardId] !== undefined) {
+			const exp = (parsed[cardId] === 1);
+			_arkCardStatesCache[cardId] = exp ? 1 : 0;
+			try {
+				if (typeof window !== 'undefined' && window.localStorage) {
+					window.localStorage.setItem('ark_card_' + cardId, exp ? '1' : '0');
+				}
+			} catch(e) {}
+			return { isExpanded: exp, hasUserPreference: true };
+		}
+	}
+
+	// 4. Default active fallback
+	return { isExpanded: !!defaultActive, hasUserPreference: false };
+}
+
+function saveCardAccordionState(cardId, isExpanded) {
+	const val = isExpanded ? 1 : 0;
+	_arkCardStatesCache[cardId] = val;
+
+	// 1. LocalStorage
+	if (typeof window !== 'undefined' && window.localStorage) {
+		try {
+			window.localStorage.setItem('ark_card_' + cardId, val ? '1' : '0');
+			let bulk = {};
+			try { bulk = JSON.parse(window.localStorage.getItem('ark_card_states') || '{}'); } catch(e) {}
+			bulk[cardId] = val;
+			window.localStorage.setItem('ark_card_states', JSON.stringify(bulk));
+		} catch(e) {}
+	}
+
+	// 2. Cookie (1 year)
+	try {
+		const cookieStr = getCookie('ark_card_states') || '';
+		const currentObj = parseCardStatesString(cookieStr);
+		for (const k in _arkCardStatesCache) {
+			currentObj[k] = _arkCardStatesCache[k];
+		}
+		currentObj[cardId] = val;
+		const serialized = serializeCardStates(currentObj);
+		setCookie('ark_card_states', serialized, 31536000);
+	} catch(e) {}
+
+	// 3. Router UCI (debounced background RPC)
+	if (typeof fs !== 'undefined' && typeof fs.exec === 'function') {
+		if (_saveCardStateTimer && typeof window !== 'undefined') {
+			window.clearTimeout(_saveCardStateTimer);
+		}
+		const saveTask = function() {
+			try {
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['card-state-save', cardId, val ? '1' : '0']).catch(function() {});
+			} catch(e) {}
+		};
+		if (typeof window !== 'undefined' && typeof window.setTimeout === 'function') {
+			_saveCardStateTimer = window.setTimeout(saveTask, 300);
+		} else {
+			saveTask();
+		}
+	}
+}
+
 function setupCardAccordion(options) {
 	const cardId = options.id;
 	const cardEl = options.cardEl;
@@ -735,37 +925,29 @@ function setupCardAccordion(options) {
 	const isActive = !!options.isActive;
 	const onToggle = options.onToggle;
 
-	let isExpanded = false;
-	let hasSavedState = false;
-	if (typeof window !== 'undefined' && window.localStorage) {
-		try {
-			const saved = window.localStorage.getItem('ark_card_' + cardId);
-			if (saved === '1' || saved === 'expanded') {
-				isExpanded = true;
-				hasSavedState = true;
-			} else if (saved === '0' || saved === 'collapsed') {
-				isExpanded = false;
-				hasSavedState = true;
-			}
-		} catch(e) {}
-	}
-	if (!hasSavedState) {
-		isExpanded = isActive;
-	}
+	const stateInfo = getCardAccordionState(cardId, isActive);
+	let isExpanded = stateInfo.isExpanded;
+	let hasSavedState = stateInfo.hasUserPreference;
+
+	const labelRecolher = (typeof _t === 'function' ? _t('Recolher painel') : 'Recolher painel');
+	const labelExpandir = (typeof _t === 'function' ? _t('Expandir painel') : 'Expandir painel');
+	const textRecolher = (typeof _t === 'function' ? _t('Recolher ▴') : 'Recolher ▴');
+	const textExpandir = (typeof _t === 'function' ? _t('Expandir ▾') : 'Expandir ▾');
 
 	const expandBtn = E('button', {
 		class: 'ex-mini-button ex-accordion-toggle-btn',
 		type: 'button',
 		'aria-expanded': isExpanded ? 'true' : 'false',
-		'aria-label': isExpanded ? 'Recolher painel' : 'Expandir painel'
-	}, [isExpanded ? 'Recolher ▴' : 'Expandir ▾']);
+		'aria-label': isExpanded ? labelRecolher : labelExpandir
+	}, [isExpanded ? textRecolher : textExpandir]);
 
 	function applyState(expanded, userInitiated) {
 		isExpanded = !!expanded;
 		if (expandBtn) {
-			expandBtn.textContent = isExpanded ? 'Recolher ▴' : 'Expandir ▾';
+			expandBtn.textContent = isExpanded ? textRecolher : textExpandir;
 			if (typeof expandBtn.setAttribute === 'function') {
 				expandBtn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+				expandBtn.setAttribute('aria-label', isExpanded ? labelRecolher : labelExpandir);
 			}
 		}
 
@@ -802,11 +984,7 @@ function setupCardAccordion(options) {
 	function toggle() {
 		const nextState = !isExpanded;
 		hasSavedState = true;
-		if (typeof window !== 'undefined' && window.localStorage) {
-			try {
-				window.localStorage.setItem('ark_card_' + cardId, nextState ? '1' : '0');
-			} catch(e) {}
-		}
+		saveCardAccordionState(cardId, nextState);
 		applyState(nextState, true);
 	}
 

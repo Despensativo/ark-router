@@ -2,6 +2,14 @@ import os
 import sys
 import time
 import paramiko
+import paramiko.rsakey
+try:
+    from cryptography.hazmat.primitives import hashes
+    paramiko.rsakey.RSAKey.HASHES['ssh-rsa'] = hashes.SHA1
+    paramiko.Transport._key_info['ssh-rsa'] = paramiko.RSAKey
+    paramiko.Transport._preferred_keys = ('ssh-ed25519', 'ecdsa-sha2-nistp256', 'rsa-sha2-512', 'rsa-sha2-256', 'ssh-rsa')
+except Exception:
+    pass
 
 ROUTER_IP = os.environ.get('ARK_ROUTER_IP', '192.168.1.1')
 ROUTER_PORT = int(os.environ.get('ARK_ROUTER_PORT', '22'))
@@ -31,6 +39,7 @@ raw_files_to_upload = [
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'resources', 'view', 'equipe-dashboard', 'i18n.en.js'), '/www/luci-static/resources/view/equipe-dashboard/i18n.en.js'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'resources', 'view', 'equipe-dashboard', 'i18n.es.js'), '/www/luci-static/resources/view/equipe-dashboard/i18n.es.js'),
     (os.path.join(repo_dir, 'root', 'usr', 'share', 'rpcd', 'acl.d', 'luci-app-equipe-dashboard.json'), '/usr/share/rpcd/acl.d/luci-app-equipe-dashboard.json'),
+    (os.path.join(repo_dir, 'root', 'usr', 'share', 'rpcd', 'acl.d', 'ark-theme.json'), '/usr/share/rpcd/acl.d/ark-theme.json'),
     (os.path.join(repo_dir, 'root', 'usr', 'share', 'luci', 'menu.d', 'luci-app-equipe-dashboard.json'), '/usr/share/luci/menu.d/luci-app-equipe-dashboard.json'),
     (os.path.join(repo_dir, 'root', 'usr', 'share', 'ark-router', 'VERSION'), '/usr/share/ark-router/VERSION'),
     (os.path.join(repo_dir, 'root', 'usr', 'libexec', 'ark-starlink-telemetry'), '/usr/libexec/ark-starlink-telemetry'),
@@ -50,6 +59,11 @@ raw_files_to_upload = [
     (os.path.join(repo_dir, 'root', 'etc', 'init.d', 'ark-hardware-tune'), '/etc/init.d/ark-hardware-tune'),
     (os.path.join(repo_dir, 'root', 'etc', 'init.d', 'ark-firewall-guard'), '/etc/init.d/ark-firewall-guard'),
     (os.path.join(repo_dir, 'root', 'etc', 'init.d', 'ark-safe-shutdown'), '/etc/init.d/ark-safe-shutdown'),
+    (os.path.join(repo_dir, 'root', 'usr', 'sbin', 'ark-port-ledd'), '/usr/sbin/ark-port-ledd'),
+    (os.path.join(repo_dir, 'root', 'etc', 'init.d', 'ark-port-ledd'), '/etc/init.d/ark-port-ledd'),
+    (os.path.join(repo_dir, 'root', 'usr', 'sbin', 'ark-rainbowd'), '/usr/sbin/ark-rainbowd'),
+    (os.path.join(repo_dir, 'root', 'etc', 'init.d', 'ark-rainbowd'), '/etc/init.d/ark-rainbowd'),
+    (os.path.join(repo_dir, 'root', 'etc', 'uci-defaults', '99-ark-router-leds'), '/etc/uci-defaults/99-ark-router-leds'),
     (os.path.join(repo_dir, 'root', 'etc', 'uci-defaults', '99-ark-router-dhcp-sanitize'), '/etc/uci-defaults/99-ark-router-dhcp-sanitize'),
     (os.path.join(repo_dir, 'root', 'etc', 'nftables.d', '15-ark-dscp-priority.nft'), '/etc/nftables.d/15-ark-dscp-priority.nft'),
     (os.path.join(repo_dir, 'root', 'etc', 'hotplug.d', 'net', '90-ark-rps-tune'), '/etc/hotplug.d/net/90-ark-rps-tune'),
@@ -94,7 +108,7 @@ for local_path, remote_path in files_to_upload:
         print(f"  -> {os.path.basename(local_path)} gravado com sucesso.")
 
 cmds = [
-    'chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export /etc/init.d/ark-zerotier-ram /etc/init.d/ark-hardware-tune /etc/init.d/ark-firewall-guard /etc/init.d/ark-safe-shutdown /etc/uci-defaults/99-ark-router-dhcp-sanitize /usr/sbin/starlink-telemetry-daemon /usr/sbin/starlink-telemetry-mailer /etc/init.d/starlink-telemetry /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh /etc/hotplug.d/*/* 2>/dev/null || true',
+    'chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export /etc/init.d/ark-zerotier-ram /etc/init.d/ark-hardware-tune /etc/init.d/ark-firewall-guard /etc/init.d/ark-safe-shutdown /etc/uci-defaults/99-ark-router-dhcp-sanitize /usr/sbin/starlink-telemetry-daemon /usr/sbin/starlink-telemetry-mailer /etc/init.d/starlink-telemetry /usr/sbin/ark-port-ledd /usr/sbin/ark-rainbowd /etc/init.d/ark-port-ledd /etc/init.d/ark-rainbowd /etc/uci-defaults/99-ark-router-leds /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh /etc/hotplug.d/*/* 2>/dev/null || true',
     'touch /etc/config/starlink_telemetry 2>/dev/null || true',
     'rm -f /etc/rc.d/S99ark-qdisc-tune /etc/init.d/ark-qdisc-tune 2>/dev/null || true',
     'killall equipe-traffic-history 2>/dev/null || true',
@@ -105,6 +119,9 @@ cmds = [
     'uci commit equipe_dashboard',
     '/etc/init.d/ark-hardware-tune enable 2>/dev/null || true',
     '/etc/init.d/ark-hardware-tune start 2>/dev/null || true',
+    '/etc/init.d/ark-port-ledd enable 2>/dev/null || true',
+    '/etc/init.d/ark-port-ledd restart 2>/dev/null || true',
+    '/usr/sbin/equipe-dashboard-control led-calibrate-curves 2>/dev/null || true',
     '/etc/init.d/ark-safe-shutdown enable 2>/dev/null || true',
     '/etc/init.d/firewall reload 2>/dev/null || /sbin/fw4 reload 2>/dev/null || true',
     'rm -rf /tmp/luci-*',

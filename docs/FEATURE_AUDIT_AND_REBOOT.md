@@ -1103,24 +1103,24 @@ flowchart TD
 - **2. Nome**: Detecção de Perfil de Hardware e Presets Inteligentes de LEDs
 - **3. Objetivo**: Detectar modelo da placa (/tmp/sysinfo/board_name) e configurar cores RGB, brilho e alertas visuais de status nos LEDs físicos.
 - **4. Estado Atual**: `funcional`
-- **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/system.sh`, `root/etc/uci-defaults/99-ark-router-leds`
+- **5. Arquivos Responsáveis**: `root/usr/lib/ark/led.sh`, `root/usr/lib/ark/modules/system.sh`, `root/usr/sbin/ark-port-ledd`, `root/usr/sbin/ark-rainbowd`, `root/etc/init.d/ark-port-ledd`, `root/etc/init.d/ark-rainbowd`, `root/etc/uci-defaults/99-ark-router-leds`, `root/www/luci-static/ark/ark-theme.js`
 - **6. Comandos e Ações**: `get-led-hardware-info`, `set-led-preset`, `set-led-rgb-color`, `get-led-status`, `cleanup-orphan-leds`
 - **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control set-led-*`, `/usr/sbin/equipe-dashboard-control get-led-*`
-- **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
+- **8. ACLs Necessárias**: `luci-app-equipe-dashboard`, `ark-theme`
 - **9. Dependências e Pacotes**: `kmod-leds-gpio ou kmod-ledtrig-netdev`
 - **10. Configurações UCI**: `system`
-- **11. Serviços e Daemons**: `led`
+- **11. Serviços e Daemons**: `led`, `ark-port-ledd`, `ark-rainbowd`
 - **12. Dados Persistentes**: `/etc/config/system`
 - **13. Dados Temporários em /tmp ou Memória**: `/sys/class/leds/`
-- **14. Comportamento no Boot**: 99-ark-router-leds configura preset inteligente (smart) no primeiro boot.
-- **15. Recursos que Pode Alterar**: system.@led[]
+- **14. Comportamento no Boot**: 99-ark-router-leds configura preset inteligente (smart) no primeiro boot; ark-port-ledd monitora links de rede.
+- **15. Recursos que Pode Alterar**: system.@led[], system.led_status
 - **16. Recursos que NÃO Pode Alterar**: configurações de rede
 - **17. Relações e Dependências**: `ARK-HW-003`
-- **18. Limitações por Hardware**: Depende de LEDs presentes na placa do roteador.
-- **19. Limitações por Versão do OpenWrt**: Universal.
+- **18. Limitações por Hardware**: Suporta topologias GPIO, Direct PHY e Matrix I2C (AW21018).
+- **19. Limitações por Versão do OpenWrt**: Universal (19.07 a 25.x+).
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
-- **22. Testes Relacionados**: `scripts/verify_led_ui.py`
+- **21. Versão de Criação/Alteração**: `1.5.9`
+- **22. Testes Relacionados**: `tests/test_led_hal.py`, `tests/verify_feature_contracts.py`
 - **23. Necessidade de Validação em Hardware Real**: `Sim`
 
 ### `ARK-HW-003` — Hotplug Dinâmico de Link WAN e Alerta de LED de Internet

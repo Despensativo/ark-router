@@ -11,6 +11,42 @@
 (function() {
   'use strict';
 
+  // LuCI Core Cache-Buster: Ensure LuCI's class loader fetches views/scripts with the active ARK Router version
+  try {
+    var arkVersion = window.ARK_VERSION;
+    if (!arkVersion) {
+      var selfScript = document.querySelector('script[src*="ark-theme.js"]');
+      if (selfScript) {
+        var vm = (selfScript.getAttribute('src') || '').match(/[?&]v=([^&]+)/);
+        if (vm) arkVersion = decodeURIComponent(vm[1]);
+      }
+    }
+    if (!arkVersion) arkVersion = '1.5.9';
+    window.ARK_VERSION = arkVersion;
+
+    var hookLuciScript = function() {
+      var luciScript = document.querySelector('script[src*="/luci.js"]');
+      if (luciScript) {
+        var cur = luciScript.getAttribute('src');
+        if (cur && cur.indexOf('ark=') === -1) {
+          var sep = (cur.indexOf('?') === -1) ? '?' : '&';
+          var newSrc = cur + sep + 'ark=' + encodeURIComponent(arkVersion);
+          luciScript.setAttribute('src', newSrc);
+          luciScript.src = newSrc;
+          return true;
+        }
+      }
+      return false;
+    };
+
+    if (!hookLuciScript()) {
+      var obs = new MutationObserver(function() {
+        if (hookLuciScript()) obs.disconnect();
+      });
+      obs.observe(document.documentElement, { childList: true, subtree: true });
+    }
+  } catch(e) {}
+
   var ArkTheme = {
     mode: 'basic',
 
@@ -330,19 +366,88 @@
     },
 
     injectFeatureGuides: function() {
+      if (document.body.classList.contains('ark-login-page') || document.querySelector('input[name="luci_password"]')) return;
+
       var view = document.getElementById('view') || document.getElementById('maincontent');
-      if (!view || document.getElementById('ark-feature-guide')) return;
+      if (!view) return;
 
       var path = location.pathname;
       var guide = null;
+      var lang = (document.documentElement.lang || 'pt').toLowerCase();
+      var isEn = (lang.indexOf('en') === 0);
+      var isEs = (lang.indexOf('es') === 0);
+
+      var existingGuide = document.getElementById('ark-feature-guide');
 
       if (path.indexOf('/network/wireless') !== -1) {
-        guide = {
-          title: 'Guia de Redes Wi-Fi (Dual-Band)',
-          serve: 'Controla a transmissão sem fio nas faixas de 5 GHz (máxima velocidade para vídeos e jogos) e 2.4 GHz (maior alcance através de paredes e compatibilidade com dispositivos inteligentes).',
-          fazer: 'Defina nomes (SSID) fáceis de reconhecer e senhas fortes. Se o sinal estiver instável por interferência de vizinhos, troque o canal nas configurações do rádio.',
-          rec: 'Mantenha o rádio 5 GHz no Canal 36 (80 MHz) e o 2.4 GHz no Canal 11 (20 MHz) com segurança WPA2-PSK (AES).'
-        };
+        var sec = document.getElementById('cbi-wireless-wifi-device') || document.body;
+        var secText = (sec ? (sec.textContent || '') : '').toLowerCase();
+        var has6g = !!document.getElementById('ark-radio-6g-card') ||
+                    !!document.querySelector('[data-sid="wifi2"], [data-sid="radio2"], [id*="wifi2"], [id*="radio2"]') ||
+                    secText.indexOf('6ghz') !== -1 || secText.indexOf('6 ghz') !== -1 ||
+                    secText.indexOf('320 mhz') !== -1 || secText.indexOf('ht320') !== -1;
+        var has5g = !!document.getElementById('ark-radio-5g-card') ||
+                    !!document.querySelector('[data-sid="wifi1"], [data-sid="radio1"], [id*="wifi1"], [id*="radio1"]') ||
+                    secText.indexOf('5ghz') !== -1 || secText.indexOf('5 ghz') !== -1 ||
+                    secText.indexOf('160 mhz') !== -1 || secText.indexOf('vht80') !== -1;
+        var has2g = !!document.getElementById('ark-radio-2g-card') ||
+                    !!document.querySelector('[data-sid="wifi0"], [data-sid="radio0"], [id*="wifi0"], [id*="radio0"]') ||
+                    secText.indexOf('2.4ghz') !== -1 || secText.indexOf('2.4 ghz') !== -1;
+
+        var bandKey = has6g ? 'tri' : (has5g ? 'dual' : 'single');
+        if (existingGuide && existingGuide.getAttribute('data-ark-band') === bandKey) return;
+
+        if (has6g) {
+          guide = {
+            band: 'tri',
+            title: isEn ? 'Wi-Fi Networks Guide (Tri-Band • Wi-Fi 7 / 6E)' :
+                   (isEs ? 'Guía de Redes Wi-Fi (Tri-Band • Wi-Fi 7 / 6E)' :
+                           'Guia de Redes Wi-Fi (Tri-Band • Wi-Fi 7 / 6E)'),
+            serve: isEn ? 'Controls wireless transmission across 6 GHz (maximum throughput and ultra-low latency with channels up to 320 MHz), 5 GHz (high performance for gaming and streaming), and 2.4 GHz (maximum range through walls and IoT devices).' :
+                   (isEs ? 'Controla la transmisión inalámbrica en las bandas de 6 GHz (máxima velocidad y ultrabaja latencia con canales de hasta 320 MHz), 5 GHz (alto rendimiento para streaming y juegos) y 2.4 GHz (mayor alcance a través de paredes y dispositivos IoT).' :
+                           'Controla a transmissão sem fio nas faixas de 6 GHz (máxima velocidade e ultrabaixa latência com canais até 320 MHz), 5 GHz (alta performance para vídeos e jogos) e 2.4 GHz (maior alcance através de paredes e dispositivos IoT).'),
+            fazer: isEn ? 'Set easy-to-recognize network names (SSID) and strong passwords. If signal is unstable due to neighbor interference, adjust channel or channel width in radio settings.' :
+                   (isEs ? 'Defina nombres (SSID) fáciles de reconocer y contraseñas seguras. Si la señal es inestable por interferencias, cambie el canal o ajuste el ancho de banda en los ajustes de cada radio.' :
+                           'Defina nomes (SSID) fáceis de reconhecer e senhas fortes. Se o sinal estiver instável por interferência de vizinhos, troque o canal ou ajuste a largura de banda nas configurações de cada rádio.'),
+            rec:   isEn ? 'On the 6 GHz band, use mandatory WPA3-SAE security with ultra-wide channels (160/320 MHz). On the 5 GHz radio, use Channel 36 or higher (80/160 MHz) and on 2.4 GHz keep clean Channels 1, 6, or 11 (20 MHz) with WPA2/WPA3 Mixed security.' :
+                   (isEs ? 'En la banda de 6 GHz, use seguridad obligatoria WPA3-SAE con canales ultra-anchos (160/320 MHz). En la radio de 5 GHz, use Canal 36 o superior (80/160 MHz) y en 2.4 GHz mantenga Canales 1, 6 u 11 (20 MHz) con seguridad WPA2/WPA3 Mixta.' :
+                           'Na faixa de 6 GHz, utilize segurança obrigatória WPA3-SAE com canais ultra-largos (160/320 MHz). No rádio 5 GHz, utilize Canal 36 ou superior (80/160 MHz) e no 2.4 GHz mantenha Canais 1, 6 ou 11 (20 MHz) com segurança WPA2/WPA3 Mixed.')
+          };
+        } else if (has5g && has2g) {
+          guide = {
+            band: 'dual',
+            title: isEn ? 'Wi-Fi Networks Guide (Dual-Band)' :
+                   (isEs ? 'Guía de Redes Wi-Fi (Dual-Band)' :
+                           'Guia de Redes Wi-Fi (Dual-Band)'),
+            serve: isEn ? 'Controls wireless transmission across 5 GHz (maximum speed for video and gaming) and 2.4 GHz (longer range through walls and smart devices compatibility).' :
+                   (isEs ? 'Controla la transmisión inalámbrica en las bandas de 5 GHz (máxima velocidad para vídeos y juegos) y 2.4 GHz (mayor alcance a través de paredes y compatibilidad con dispositivos inteligentes).' :
+                           'Controla a transmissão sem fio nas faixas de 5 GHz (máxima velocidade para vídeos e jogos) e 2.4 GHz (maior alcance através de paredes e compatibilidade com dispositivos inteligentes).'),
+            fazer: isEn ? 'Set easy-to-recognize network names (SSID) and strong passwords. If the signal is unstable due to interference, change the channel in radio settings.' :
+                   (isEs ? 'Defina nombres (SSID) fáciles de reconocer y contraseñas seguras. Si la señal es inestable por interferencias, cambie el canal en los ajustes de la radio.' :
+                           'Defina nomes (SSID) fáceis de reconhecer e senhas fortes. Se o sinal estiver instável por interferência de vizinhos, troque o canal nas configurações do rádio.'),
+            rec:   isEn ? 'Keep 5 GHz on Channel 36 or higher (80/160 MHz) and 2.4 GHz on Channel 1, 6, or 11 (20 MHz) with WPA2-PSK (AES) or WPA2/WPA3 Mixed security.' :
+                   (isEs ? 'Mantenga la radio de 5 GHz en el Canal 36 o superior (80/160 MHz) y la de 2.4 GHz en el Canal 1, 6 u 11 (20 MHz) con seguridad WPA2-PSK (AES) o WPA2/WPA3 Mixta.' :
+                           'Mantenha o rádio 5 GHz no Canal 36 ou superior (80/160 MHz) e o 2.4 GHz no Canal 1, 6 ou 11 (20 MHz) com segurança WPA2-PSK (AES) ou WPA2/WPA3 Mixed.')
+          };
+        } else {
+          guide = {
+            band: 'single',
+            title: isEn ? 'Wi-Fi Networks Guide (2.4 GHz)' :
+                   (isEs ? 'Guía de Redes Wi-Fi (2.4 GHz)' :
+                           'Guia de Redes Wi-Fi (2.4 GHz)'),
+            serve: isEn ? 'Controls wireless transmission on the 2.4 GHz band for stable connection of computers, smartphones, and IoT devices.' :
+                   (isEs ? 'Controla la transmisión inalámbrica en la banda de 2.4 GHz para conexión estable de ordenadores, smartphones e dispositivos IoT.' :
+                           'Controla a transmissão sem fio na faixa de 2.4 GHz para conexão de computadores, smartphones e dispositivos inteligentes.'),
+            fazer: isEn ? 'Set easy-to-recognize network names (SSID) and strong passwords. If the signal is unstable due to neighbor interference, change the channel.' :
+                   (isEs ? 'Defina nombres (SSID) fáciles de reconocer y contraseñas seguras. Si la señal es inestable por interferencias de vecinos, cambie el canal.' :
+                           'Defina nomes (SSID) fáceis de reconhecer e senhas fortes. Se o sinal estiver instável por interferência de vizinhos, troque o canal nas configurações do rádio.'),
+            rec:   isEn ? 'Keep 2.4 GHz on non-overlapping Channels 1, 6, or 11 (20 MHz) with WPA2-PSK (AES) security.' :
+                   (isEs ? 'Mantenga la radio de 2.4 GHz en los canales 1, 6 u 11 (20 MHz) con seguridad WPA2-PSK (AES).' :
+                           'Mantenha o rádio 2.4 GHz nos canais não sobrepostos 1, 6 ou 11 (20 MHz) com segurança WPA2-PSK (AES).')
+          };
+        }
+      } else if (existingGuide) {
+        return;
       } else if (path.indexOf('/network/network') !== -1) {
         guide = {
           title: 'Guia de Conexão: WAN (Internet) e LAN (Rede Local)',
@@ -487,20 +592,23 @@
 
       if (!guide) return;
 
-      var box = document.createElement('div');
+      var box = existingGuide || document.createElement('div');
       box.id = 'ark-feature-guide';
       box.className = 'ark-guide-box';
+      if (guide.band) box.setAttribute('data-ark-band', guide.band);
       box.innerHTML = '' +
         '<div class="ark-guide-title">📘 ' + guide.title + '</div>' +
-        '<div class="ark-guide-item"><strong>📌 Para que serve:</strong> <span>' + guide.serve + '</span></div>' +
-        '<div class="ark-guide-item"><strong>🛠️ O que fazer:</strong> <span>' + guide.fazer + '</span></div>' +
-        '<div class="ark-guide-item rec"><strong>💡 Recomendação ARK:</strong> <span>' + guide.rec + '</span></div>';
+        '<div class="ark-guide-item"><strong>📌 ' + (isEn ? 'What it is:' : (isEs ? 'Para qué sirve:' : 'Para que serve:')) + '</strong> <span>' + guide.serve + '</span></div>' +
+        '<div class="ark-guide-item"><strong>🛠️ ' + (isEn ? 'What to do:' : (isEs ? 'Qué hacer:' : 'O que fazer:')) + '</strong> <span>' + guide.fazer + '</span></div>' +
+        '<div class="ark-guide-item rec"><strong>💡 ' + (isEn ? 'ARK Recommendation:' : (isEs ? 'Recomendación ARK:' : 'Recomendação ARK:')) + '</strong> <span>' + guide.rec + '</span></div>';
 
-      var target = view.querySelector('.ark-hero-banner, .ark-action-grid, .ark-wireless-grid, .ark-iface-grid, .ark-admin-card, .ark-diag-grid, .cbi-map, h2') || view.firstChild;
-      if (target && target.parentNode) {
-        target.parentNode.insertBefore(box, target);
-      } else {
-        view.insertBefore(box, view.firstChild);
+      if (!existingGuide) {
+        var target = view.querySelector('.ark-hero-banner, .ark-action-grid, .ark-wireless-grid, .ark-iface-grid, .ark-admin-card, .ark-diag-grid, .cbi-map, h2') || view.firstChild;
+        if (target && target.parentNode) {
+          target.parentNode.insertBefore(box, target);
+        } else {
+          view.insertBefore(box, view.firstChild);
+        }
       }
     },
 
@@ -2262,14 +2370,19 @@
                 var tTile = document.createElement('div');
                 tTile.className = 'ark-metric-tile';
                 tTile.id = 'ark-dash-thermal-tile';
-                var tColor = s0.temp_c >= 80 ? 'red' : (s0.temp_c >= 65 ? 'amber' : 'green');
+                var warn0 = Number(s0.warn_c) || 75;
+                var crit0 = Number(s0.crit_c) || 90;
+                var max0 = Number(s0.max_c) || 105;
+                var tColor = s0.temp_c >= crit0 ? 'red' : (s0.temp_c >= warn0 ? 'amber' : 'green');
+                var valColor = s0.temp_c >= crit0 ? '#ef4444' : (s0.temp_c >= warn0 ? '#f59e0b' : '#34d399');
+                var pct = Math.min(100, Math.round((s0.temp_c / max0) * 100));
                 tTile.innerHTML = '' +
                   '<div class="ark-metric-head">' +
                     '<span class="ark-metric-title">🌡️ Temperatura</span>' +
-                    '<span class="ark-metric-value" style="color:' + (s0.temp_c >= 70 ? '#f59e0b' : '#34d399') + ';">' + s0.temp_c + ' °C</span>' +
+                    '<span class="ark-metric-value" style="color:' + valColor + ';">' + s0.temp_c + ' °C</span>' +
                   '</div>' +
                   '<div class="ark-meter-bar-lg">' +
-                    '<div class="ark-meter-bar-fill ' + tColor + '" style="width:' + Math.min(100, s0.temp_c) + '%;"></div>' +
+                    '<div class="ark-meter-bar-fill ' + tColor + '" style="width:' + pct + '%;"></div>' +
                   '</div>' +
                   '<div class="ark-metric-subtext">' +
                     '<span>' + s0.name + '</span>' +
@@ -2616,6 +2729,10 @@
       var view = document.getElementById('view') || document.getElementById('maincontent');
       if (!view) return;
 
+      var lang = (document.documentElement.lang || 'pt').toLowerCase();
+      var isEn = (lang.indexOf('en') === 0);
+      var isEs = (lang.indexOf('es') === 0);
+
       var wifiSec = document.getElementById('cbi-wireless-wifi-device');
       if (!wifiSec) return;
 
@@ -2643,16 +2760,16 @@
             '<div class="ark-radio-header">' +
               '<div class="ark-radio-title-wrap">' +
                 '<h3>' + titleText + '</h3>' +
-                '<div class="ark-radio-meta" id="ark-r' + rKey + '-meta">Identificando hardware...</div>' +
+                '<div class="ark-radio-meta" id="ark-r' + rKey + '-meta">' + (isEn ? 'Identifying hardware...' : (isEs ? 'Identificando hardware...' : 'Identificando hardware...')) + '</div>' +
                 '<div class="ark-radio-badges" id="ark-r' + rKey + '-badges">' +
-                  '<span class="ark-chip primary" id="ark-r' + rKey + '-chan-chip">Canal --</span>' +
+                  '<span class="ark-chip primary" id="ark-r' + rKey + '-chan-chip">' + (isEn ? 'Channel --' : (isEs ? 'Canal --' : 'Canal --')) + '</span>' +
                   '<span class="ark-chip info" id="ark-r' + rKey + '-bitrate-chip" style="display:none;"></span>' +
-                  '<span class="ark-chip online" id="ark-r' + rKey + '-status-chip">🟢 Rádio Ativo</span>' +
+                  '<span class="ark-chip online" id="ark-r' + rKey + '-status-chip">🟢 ' + (isEn ? 'Radio Active' : (isEs ? 'Radio Activa' : 'Rádio Ativo')) + '</span>' +
                 '</div>' +
               '</div>' +
               '<div class="ark-radio-actions" id="ark-r' + rKey + '-actions"></div>' +
             '</div>' +
-            '<div style="font-size:12px;font-weight:700;color:#94a3b8;margin-top:8px;">Redes Wi-Fi Transmitidas:</div>' +
+            '<div style="font-size:12px;font-weight:700;color:#94a3b8;margin-top:8px;">' + (isEn ? 'Broadcasted Wi-Fi Networks:' : (isEs ? 'Redes Wi-Fi Transmitidas:' : 'Redes Wi-Fi Transmitidas:')) + '</div>' +
             '<div class="ark-ssid-list" id="ark-r' + rKey + '-ssids"></div>';
           grid.appendChild(card);
         }
@@ -2665,33 +2782,33 @@
 
       rows.forEach(function(r) {
         var sid = r.getAttribute('data-sid') || '';
-        var isRadio = (sid === 'radio0' || sid === 'radio1' || sid === 'radio2' || (sid.indexOf('radio') === 0 && sid.indexOf('_') === -1));
+        var isRadio = (/^radio\d+$/i.test(sid) || /^wifi\d+$/i.test(sid) || (sid.indexOf('radio') === 0 && sid.indexOf('_') === -1) || (sid.indexOf('wifi') === 0 && !sid.startsWith('wifinet')));
 
         if (isRadio) {
           var rowText = (r.textContent || '');
           var rowLower = rowText.toLowerCase();
 
           var rKey = '2g';
-          var titleText = '<span>📡</span> Rádio 2.4 GHz (Longo Alcance)';
+          var titleText = '<span>📡</span> ' + (isEn ? '2.4 GHz Radio (Long Range)' : (isEs ? 'Radio 2.4 GHz (Largo Alcance)' : 'Rádio 2.4 GHz (Longo Alcance)'));
           var cardClass = 'radio-2g';
 
-          if (rowLower.indexOf('6ghz') !== -1 || rowLower.indexOf('6 ghz') !== -1 || (/channel:\s*(1|5|9|13|17|21|25|29|33)\b/i.test(rowLower) && rowLower.indexOf('6.') !== -1)) {
+          if (rowLower.indexOf('6ghz') !== -1 || rowLower.indexOf('6 ghz') !== -1 || sid === 'wifi2' || sid === 'radio2' || (/channel:\s*(1|5|9|13|17|21|25|29|33)\b/i.test(rowLower) && rowLower.indexOf('6.') !== -1)) {
             rKey = '6g';
-            titleText = '<span>⚡</span> Rádio 6 GHz (Wi-Fi 6E/7 Ultra)';
+            titleText = '<span>⚡</span> ' + (isEn ? '6 GHz Radio (Wi-Fi 6E/7 Ultra)' : (isEs ? 'Radio 6 GHz (Wi-Fi 6E/7 Ultra)' : 'Rádio 6 GHz (Wi-Fi 6E/7 Ultra)'));
             cardClass = 'radio-6g';
-          } else if (rowLower.indexOf('5.') !== -1 || rowLower.indexOf('5ghz') !== -1 || rowLower.indexOf('5 ghz') !== -1 || /channel:\s*(3[6-9]|[4-9][0-9]|1[0-9]{2})\b/i.test(rowLower) || rowLower.indexOf('ac/ax/n') !== -1 || rowLower.indexOf('ac/an') !== -1) {
+          } else if (rowLower.indexOf('5.') !== -1 || rowLower.indexOf('5ghz') !== -1 || rowLower.indexOf('5 ghz') !== -1 || sid === 'wifi1' || sid === 'radio1' || /channel:\s*(3[6-9]|[4-9][0-9]|1[0-9]{2})\b/i.test(rowLower) || rowLower.indexOf('ac/ax/n') !== -1 || rowLower.indexOf('ac/an') !== -1) {
             rKey = '5g';
-            titleText = '<span>⚡</span> Rádio 5 GHz (Alta Velocidade)';
+            titleText = '<span>⚡</span> ' + (isEn ? '5 GHz Radio (High Speed)' : (isEs ? 'Radio 5 GHz (Alta Velocidad)' : 'Rádio 5 GHz (Alta Velocidade)'));
             cardClass = 'radio-5g';
-          } else if (sid === 'radio1' && rKey === '2g') {
+          } else if ((sid === 'radio1' || sid === 'wifi1') && rKey === '2g') {
             rKey = '5g';
-            titleText = '<span>⚡</span> Rádio 5 GHz (Alta Velocidade)';
+            titleText = '<span>⚡</span> ' + (isEn ? '5 GHz Radio (High Speed)' : (isEs ? 'Radio 5 GHz (Alta Velocidad)' : 'Rádio 5 GHz (Alta Velocidade)'));
             cardClass = 'radio-5g';
           }
 
           if (document.getElementById('ark-radio-' + rKey + '-card') && currentRadioSid && currentRadioSid !== sid) {
             rKey = rKey + '-2';
-            titleText = '<span>⚡</span> Rádio ' + rKey.toUpperCase() + ' (Secundário/Gaming)';
+            titleText = '<span>⚡</span> ' + (isEn ? 'Radio ' + rKey.toUpperCase() + ' (Secondary/Gaming)' : (isEs ? 'Radio ' + rKey.toUpperCase() + ' (Secundario/Gaming)' : 'Rádio ' + rKey.toUpperCase() + ' (Secundário/Gaming)'));
           }
 
           currentRadio = rKey;
@@ -2705,19 +2822,35 @@
           // Mapeamento dinâmico de hardware e velocidade teórica
           var metaEl = document.getElementById('ark-r' + currentRadio + '-meta');
           if (metaEl) {
-            if (rowText.indexOf('MT7986') !== -1 || rowText.indexOf('mt7986') !== -1) {
-              if (currentRadio.indexOf('5g') !== -1) {
-                metaEl.textContent = 'MediaTek MT7986 (Filogic 830) • Wi-Fi 6 (802.11ax/ac/n) • Até 2402 Mbps';
+            var upToStr = isEn ? 'Up to ' : (isEs ? 'Hasta ' : 'Até ');
+            var isQcaQsdk = (sid === 'wifi0' || sid === 'wifi1' || sid === 'wifi2' || rowLower.indexOf('ipq5332') !== -1 || (rowLower.indexOf('generic 802.11') !== -1 && sid.indexOf('wifi') === 0));
+
+            if (isQcaQsdk) {
+              if (currentRadio.indexOf('6g') !== -1) {
+                metaEl.textContent = 'Qualcomm Wi-Fi 7 (802.11be/ax) • 6 GHz (320 MHz) • ' + upToStr + '5764 Mbps';
+              } else if (currentRadio.indexOf('5g') !== -1) {
+                metaEl.textContent = 'Qualcomm Wi-Fi 7 (802.11be/ax/ac/n) • 5 GHz (160 MHz) • ' + upToStr + '4324 Mbps';
               } else {
-                metaEl.textContent = 'MediaTek MT7986 (Filogic 830) • Wi-Fi 6 (802.11ax/b/g/n) • Até 574 Mbps';
+                metaEl.textContent = 'Qualcomm Wi-Fi 7 (802.11be/ax/b/g/n) • 2.4 GHz • ' + upToStr + '688 Mbps';
+              }
+            } else if (rowText.indexOf('MT7986') !== -1 || rowText.indexOf('mt7986') !== -1) {
+              if (currentRadio.indexOf('5g') !== -1) {
+                metaEl.textContent = 'MediaTek MT7986 (Filogic 830) • Wi-Fi 6 (802.11ax/ac/n) • ' + upToStr + '2402 Mbps';
+              } else {
+                metaEl.textContent = 'MediaTek MT7986 (Filogic 830) • Wi-Fi 6 (802.11ax/b/g/n) • ' + upToStr + '574 Mbps';
               }
             } else if (rowText.indexOf('QCA9880') !== -1) {
-              metaEl.textContent = 'Qualcomm Atheros QCA9880 • 802.11ac/an • Até 1300 Mbps';
+              metaEl.textContent = 'Qualcomm Atheros QCA9880 • 802.11ac/an • ' + upToStr + '1300 Mbps';
             } else if (rowText.indexOf('QCA9558') !== -1) {
-              metaEl.textContent = 'Qualcomm Atheros QCA9558 • 802.11bgn • Até 450 Mbps';
+              metaEl.textContent = 'Qualcomm Atheros QCA9558 • 802.11bgn • ' + upToStr + '450 Mbps';
             } else {
               var mDev = rowText.match(/(MediaTek\s+[A-Za-z0-9]+|Qualcomm\s+[A-Za-z0-9]+|[A-Za-z0-9_-]+\s+802\.11[a-z/]+)/i);
-              metaEl.textContent = (mDev ? mDev[1] : sid) + ' • Wi-Fi ' + (currentRadio.indexOf('6g') !== -1 ? '6 GHz' : (currentRadio.indexOf('5g') !== -1 ? '5 GHz' : '2.4 GHz'));
+              var devName = mDev ? mDev[1] : sid;
+              devName = devName.replace(/^(?:wifi|radio)\d+/i, '').replace(/Device$/i, '').trim();
+              if (!devName || devName.indexOf('Generic') === 0) {
+                devName = (currentRadio.indexOf('6g') !== -1 ? 'Wi-Fi 7 / 6E (802.11be/ax)' : (currentRadio.indexOf('5g') !== -1 ? 'Wi-Fi 6 / 5 (802.11ax/ac/n)' : 'Wi-Fi 6 / 4 (802.11ax/b/g/n)'));
+              }
+              metaEl.textContent = devName + ' • Wi-Fi ' + (currentRadio.indexOf('6g') !== -1 ? '6 GHz' : (currentRadio.indexOf('5g') !== -1 ? '5 GHz' : '2.4 GHz'));
             }
           }
 
@@ -2729,7 +2862,7 @@
           if (chanBadge && chanMatch) {
             var ch = chanMatch[1];
             var f = chanMatch[2] ? ' (' + chanMatch[2] + ')' : '';
-            chanBadge.textContent = 'Canal ' + ch + f;
+            chanBadge.textContent = (isEn ? 'Channel ' : (isEs ? 'Canal ' : 'Canal ')) + ch + f;
           }
 
           var bitBadge = document.getElementById('ark-r' + currentRadio + '-bitrate-chip');
@@ -2747,10 +2880,10 @@
             var isOff = (rowLower.indexOf('disabled') !== -1 || rowLower.indexOf('desativado') !== -1 || (chanMatch && chanMatch[1] === '0'));
             if (isOff) {
               statusBadge.className = 'ark-chip offline';
-              statusBadge.textContent = '🔴 Rádio Desativado';
+              statusBadge.textContent = '🔴 ' + (isEn ? 'Radio Disabled' : (isEs ? 'Radio Desactivada' : 'Rádio Desativado'));
             } else {
               statusBadge.className = 'ark-chip online';
-              statusBadge.textContent = '🟢 Rádio Ativo';
+              statusBadge.textContent = '🟢 ' + (isEn ? 'Radio Active' : (isEs ? 'Radio Activa' : 'Rádio Ativo'));
             }
           }
 
@@ -3127,8 +3260,24 @@
                 '<input type="color" id="ark-rgb-color-native" value="#00ff00" style="width:40px;height:36px;padding:2px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:transparent;cursor:pointer;" title="Clique para abrir a paleta de cores completa">' +
                 '<input type="text" id="ark-rgb-hex-manual" value="#00FF00" maxlength="20" style="width:120px;height:36px;padding:0 10px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:rgba(0,0,0,0.3);color:#fff;font-family:monospace;font-weight:700;font-size:13px;text-transform:uppercase;" placeholder="#00FF00">' +
               '</div>' +
+              '<div style="display:flex;align-items:center;gap:6px;">' +
+                '<label for="ark-rgb-effect-select" style="font-size:12px;color:var(--ark-text-muted);font-weight:600;">Efeito:</label>' +
+                '<select id="ark-rgb-effect-select" style="height:36px;padding:0 10px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:rgba(0,0,0,0.4);color:#fff;font-size:12px;cursor:pointer;">' +
+                  '<option value="breathe" selected>🌊 Respiração Suave (Breathing)</option>' +
+                  '<option value="solid">💡 Estático (Fixo)</option>' +
+                  '<option value="rainbow">🌈 Arco-Íris Fluido (Rainbow)</option>' +
+                '</select>' +
+              '</div>' +
+              '<div id="ark-rgb-speed-group" style="display:flex;align-items:center;gap:6px;">' +
+                '<label for="ark-rgb-speed-select" style="font-size:12px;color:var(--ark-text-muted);font-weight:600;">Velocidade:</label>' +
+                '<select id="ark-rgb-speed-select" style="height:36px;padding:0 10px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:rgba(0,0,0,0.4);color:#fff;font-size:12px;cursor:pointer;">' +
+                  '<option value="slow">🐢 Lenta (Zen)</option>' +
+                  '<option value="normal" selected>⚖️ Normal</option>' +
+                  '<option value="fast">⚡ Rápida (Dinâmica)</option>' +
+                '</select>' +
+              '</div>' +
               '<button type="button" id="ark-rgb-apply-btn" class="cbi-button cbi-button-apply" style="height:36px;display:flex;align-items:center;gap:6px;font-weight:600;font-size:12px;padding:0 16px;">' +
-                '<span>✨</span> Aplicar Cor no LED' +
+                '<span>✨</span> Aplicar no LED' +
               '</button>' +
             '</div>' +
 
@@ -3160,7 +3309,45 @@
       var hexManual = container.querySelector('#ark-rgb-hex-manual');
       var previewDot = container.querySelector('#ark-rgb-preview-dot');
       var previewText = container.querySelector('#ark-rgb-preview-text');
+      var effectSelect = container.querySelector('#ark-rgb-effect-select');
+      var speedSelect = container.querySelector('#ark-rgb-speed-select');
+      var speedGroup = container.querySelector('#ark-rgb-speed-group');
       var applyColorBtn = container.querySelector('#ark-rgb-apply-btn');
+
+      function updateEffectUI() {
+        var eff = (effectSelect && effectSelect.value) || 'breathe';
+        var spd = (speedSelect && speedSelect.value) || 'normal';
+        var col = (hexManual && hexManual.value) || (colorNative && colorNative.value) || '#00FF00';
+
+        if (eff === 'solid') {
+          if (speedGroup) speedGroup.style.display = 'none';
+          if (previewDot) {
+            previewDot.className = '';
+            previewDot.style.background = col;
+            previewDot.style.boxShadow = '0 0 10px ' + col;
+          }
+          if (previewText) previewText.textContent = col;
+        } else if (eff === 'rainbow') {
+          if (speedGroup) speedGroup.style.display = 'flex';
+          if (previewDot) {
+            previewDot.className = 'rainbow speed-' + spd;
+            previewDot.style.background = '';
+            previewDot.style.boxShadow = '';
+          }
+          if (previewText) previewText.textContent = '🌈 ARCO-ÍRIS';
+        } else {
+          if (speedGroup) speedGroup.style.display = 'flex';
+          if (previewDot) {
+            previewDot.className = 'breathing speed-' + spd;
+            previewDot.style.background = col;
+            previewDot.style.boxShadow = '0 0 10px ' + col;
+          }
+          if (previewText) previewText.textContent = col;
+        }
+      }
+
+      if (effectSelect) effectSelect.addEventListener('change', updateEffectUI);
+      if (speedSelect) speedSelect.addEventListener('change', updateEffectUI);
 
       function syncColor(val, source) {
         if (!val) return;
@@ -3173,11 +3360,7 @@
           hex = hex.toUpperCase();
           if (source !== 'native' && colorNative) colorNative.value = hex.toLowerCase();
           if (source !== 'manual' && hexManual) hexManual.value = hex;
-          if (previewDot) {
-            previewDot.style.background = hex;
-            previewDot.style.boxShadow = '0 0 10px ' + hex;
-          }
-          if (previewText) previewText.textContent = hex;
+          updateEffectUI();
         } else if (source === 'manual' && hexManual) {
           hexManual.value = val;
           if (previewText) previewText.textContent = val;
@@ -3210,32 +3393,83 @@
       if (applyColorBtn) {
         applyColorBtn.addEventListener('click', function() {
           var chosenColor = (hexManual && hexManual.value) || (colorNative && colorNative.value) || '#00FF00';
+          var chosenEffect = (effectSelect && effectSelect.value) || 'breathe';
+          var chosenSpeed = (speedSelect && speedSelect.value) || 'normal';
+          var effectLabels = {
+            solid: 'Estático (Fixo)',
+            breathe: 'Respiração Suave',
+            rainbow: 'Arco-Íris Fluido'
+          };
+          var effectLabel = effectLabels[chosenEffect] || chosenEffect;
+          var speedLabels = { slow: 'Lenta', normal: 'Normal', fast: 'Rápida' };
+          var speedLabel = speedLabels[chosenSpeed] || chosenSpeed;
           var fb = document.getElementById('ark-led-feedback');
           if (fb) {
             fb.style.display = 'block';
             fb.style.background = 'rgba(59, 130, 246, 0.15)';
             fb.style.color = '#60a5fa';
-            fb.textContent = '⏳ Aplicando cor ' + chosenColor + ' no LED RGB frontal...';
+            var msg = (chosenEffect === 'rainbow')
+              ? ('⏳ Ativando efeito Arco-Íris Fluido (Velocidade ' + speedLabel + ')...')
+              : ('⏳ Aplicando cor ' + chosenColor + ' (' + effectLabel + ' - ' + speedLabel + ') no LED RGB...');
+            fb.textContent = msg;
           }
           if (callExec) {
-            callExec('/usr/sbin/equipe-dashboard-control', ['set-led-rgb-color', chosenColor]).then(function(res) {
+            callExec('/usr/sbin/equipe-dashboard-control', ['set-led-rgb-color', chosenColor, chosenEffect, chosenSpeed]).then(function(res) {
               if (fb) {
                 fb.style.background = 'rgba(16, 185, 129, 0.2)';
                 fb.style.color = '#34d399';
-                fb.textContent = '✅ Cor ' + chosenColor + ' aplicada com sucesso no LED frontal!';
+                var okMsg = (chosenEffect === 'rainbow')
+                  ? ('✅ Efeito Arco-Íris Fluido ativado com sucesso!')
+                  : ('✅ Cor ' + chosenColor + ' (' + effectLabel + ') aplicada com sucesso!');
+                fb.textContent = okMsg;
                 setTimeout(function() { fb.style.display = 'none'; }, 4000);
               }
+
+              var indCls = 'ark-led-indicator';
+              if (chosenEffect === 'rainbow') {
+                indCls += ' rainbow speed-' + chosenSpeed;
+              } else if (chosenEffect === 'breathe') {
+                indCls += ' breathing speed-' + chosenSpeed;
+              }
+
               var rgbInd = document.getElementById('ind-rgb_status');
               if (rgbInd) {
-                rgbInd.className = 'ark-led-indicator';
-                rgbInd.style.background = chosenColor;
-                rgbInd.style.boxShadow = '0 0 12px ' + chosenColor;
+                rgbInd.className = indCls;
+                if (chosenEffect === 'rainbow') {
+                  rgbInd.style.background = '';
+                  rgbInd.style.boxShadow = '';
+                } else {
+                  rgbInd.style.background = chosenColor;
+                  rgbInd.style.boxShadow = '0 0 12px ' + chosenColor;
+                }
+              }
+              var awFront = document.getElementById('ind-aw21018_front');
+              if (awFront) {
+                awFront.className = (chosenEffect === 'rainbow') ? ('ark-led-indicator rainbow speed-' + chosenSpeed) : 'ark-led-indicator';
+                if (chosenEffect === 'rainbow') {
+                  awFront.style.background = '';
+                  awFront.style.boxShadow = '';
+                } else {
+                  awFront.style.background = chosenColor;
+                  awFront.style.boxShadow = '0 0 12px ' + chosenColor;
+                }
+              }
+              var awTop = document.getElementById('ind-aw21018_top');
+              if (awTop) {
+                awTop.className = indCls;
+                if (chosenEffect === 'rainbow') {
+                  awTop.style.background = '';
+                  awTop.style.boxShadow = '';
+                } else {
+                  awTop.style.background = chosenColor;
+                  awTop.style.boxShadow = '0 0 12px ' + chosenColor;
+                }
               }
             }).catch(function(err) {
               if (fb) {
                 fb.style.background = 'rgba(239, 68, 68, 0.2)';
                 fb.style.color = '#f87171';
-                fb.textContent = '⚠️ Erro ao aplicar cor: ' + err;
+                fb.textContent = '⚠️ Erro ao aplicar: ' + err;
               }
             });
           }
@@ -3278,11 +3512,21 @@
           if (info.current_rgb_hex) {
             syncColor(info.current_rgb_hex, 'init');
           }
+          if (effectSelect && info.current_effect) {
+            effectSelect.value = info.current_effect;
+          }
+          if (speedSelect && info.current_speed) {
+            speedSelect.value = info.current_speed;
+          }
+          updateEffectUI();
         }
 
         var grid = document.getElementById('ark-led-tiles');
         if (!grid) return;
         grid.innerHTML = '';
+
+        var activeEffect = (info && info.current_effect) || 'breathe';
+        var activeSpeed = (info && info.current_speed) || 'normal';
 
         (info.leds || []).forEach(function(l) {
           var domId = l.sysfs.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -3292,6 +3536,11 @@
 
           var indClass = 'ark-led-indicator ' + (l.color || 'green');
           if (l.trigger === 'none' && l.brightness === 0) indClass = 'ark-led-indicator off';
+          if (activeEffect === 'rainbow' && (l.type === 'status_rgb' || l.sysfs === 'rgb:status' || l.color === 'rgb' || domId === 'aw21018_front' || domId === 'aw21018_top')) {
+            indClass = 'ark-led-indicator rainbow speed-' + activeSpeed;
+          } else if (l.trigger === 'breathing') {
+            indClass += ' breathing speed-' + activeSpeed;
+          }
 
           card.innerHTML = '' +
             '<div class="ark-led-header">' +
@@ -3302,7 +3551,7 @@
               '</div>' +
             '</div>' +
             '<div style="font-size:12px;color:var(--ark-text-muted);">' +
-              'Gatilho ativo: <code style="color:var(--ark-text);">' + (l.trigger || 'padrão') + '</code>' +
+              'Gatilho ativo: <code style="color:var(--ark-text);">' + (activeEffect === 'rainbow' ? 'arco-íris' : (l.trigger || 'padrão')) + '</code>' +
             '</div>';
 
           grid.appendChild(card);
@@ -3310,8 +3559,13 @@
           if ((l.type === 'status_rgb' || l.sysfs === 'rgb:status' || l.color === 'rgb') && l.hex_color) {
             var el = card.querySelector('#ind-' + domId);
             if (el && indClass.indexOf('off') === -1) {
-              el.style.background = l.hex_color;
-              el.style.boxShadow = '0 0 10px ' + l.hex_color;
+              if (activeEffect === 'rainbow') {
+                el.style.background = '';
+                el.style.boxShadow = '';
+              } else {
+                el.style.background = l.hex_color;
+                el.style.boxShadow = '0 0 10px ' + l.hex_color;
+              }
             }
           }
         });
@@ -3330,8 +3584,11 @@
             el.className = 'ark-led-indicator off';
             el.style.background = '';
             el.style.boxShadow = '';
+            el.classList.remove('breathing', 'rainbow');
           } else { // smart ou default
-            el.className = 'ark-led-indicator ' + (l.color || 'green');
+            var curSpd = (speedSelect && speedSelect.value) || (hardwareInfo && hardwareInfo.current_speed) || 'normal';
+            var extraCls = (l.trigger === 'breathing') ? (' breathing speed-' + curSpd) : '';
+            el.className = 'ark-led-indicator ' + (l.color || 'green') + extraCls;
             if (l.type === 'status_rgb' || l.sysfs === 'rgb:status' || l.color === 'rgb') {
               var col = (hardwareInfo && hardwareInfo.current_rgb_hex) || '#00FF00';
               el.style.background = col;

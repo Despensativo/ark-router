@@ -168,7 +168,8 @@ const lifecycleMethods = {
 		const isApMode = (this.capabilities && this.capabilities.network_mode === 'ap') ||
 			(typeof window !== 'undefined' && window._arkCapabilities && window._arkCapabilities.network_mode === 'ap') ||
 			(this.currentData && this.currentData.networkConfig && this.currentData.networkConfig.lan && this.currentData.networkConfig.lan.proto === 'dhcp');
-		const activeWansCount = (this.currentData && this.currentData.activeWans) ? this.currentData.activeWans.length : 1;
+		const activeWansList = (this.currentData && (this.currentData.activeWans || getActiveWanList(this.currentData))) || null;
+		const activeWansCount = activeWansList ? activeWansList.length : 2;
 		const mwanPromise = (!isApMode && activeWansCount > 1)
 			? safe(fs.exec('/usr/sbin/equipe-dashboard-control', [ 'mwan-status-fast' ]).then(function(res){
 				try {
@@ -213,6 +214,18 @@ const lifecycleMethods = {
 			const activeWans=getActiveWanList({networkConfig:networkConfig, interfaces:interfaces});
 			const wanDevicesMap={}, wanPhysicalDevicesMap={}, wanPingsMap={};
 			const wanPromises=[];
+			let lanStatusObj = {};
+			try { lanStatusObj = JSON.parse((r[10] && r[10].stdout) || '{}'); } catch(e) {}
+			const apUplink = lanStatusObj.uplink_dev || '';
+			if (activeWans.length === 0) {
+				const lanLive = iface(interfaces, 'lan');
+				const lanDevName = lanLive.l3_device || lanLive.device || 'br-lan';
+				wanPromises.push(safe(callDeviceStatus(lanDevName),{}).then(function(s){wanDevicesMap['lan']=s;}));
+				wanPromises.push(safe(callDeviceStatus('eth0'),{}).then(function(s){wanDevicesMap['eth0']=s;}));
+				if (apUplink && apUplink !== lanDevName && apUplink !== 'eth0') {
+					wanPromises.push(safe(callDeviceStatus(apUplink),{}).then(function(s){wanDevicesMap[apUplink]=s;}));
+				}
+			}
 			activeWans.forEach(function(w){
 				const live=iface(interfaces,w.iface), cfg=networkValues[w.iface]||{};
 				const logicalDev=live.l3_device||live.device||cfg.device||w.iface;
@@ -268,6 +281,7 @@ const lifecycleMethods = {
 				return {
 				system:r[0], interfaces:interfaces, wanDevice:wanDevicesMap.wan||{}, wan2Device:wanDevicesMap.wan2||{}, wanPhysicalDevice:wanPhysicalDevicesMap.wan||{}, wan2PhysicalDevice:wanPhysicalDevicesMap.wan2||{},
 				wanDevicesMap:wanDevicesMap, wanPhysicalDevicesMap:wanPhysicalDevicesMap, wanPingsMap:wanPingsMap,
+				activeWans: activeWans,
 				mwan:r[2], leases:r[3], mainAssoc:x[1], guestAssoc:x[2],
 				survey2:x[3], survey5:x[4], sqm:r[4], qos:r[5], wireless:r[6], mwanConfig:r[7], names:r[8], networkConfig:r[9], lanStatus:r[10], temperature:r[11], pingWan:wanPingsMap.wan||null, pingWan2:wanPingsMap.wan2||null,
 				perfStatus: (function(){ try { return JSON.parse((r[12] && r[12].stdout) || '{}'); } catch(e){ return {}; } })(),
@@ -278,6 +292,7 @@ const lifecycleMethods = {
 				equipeDashboardConfig: equipeDashboardConfig,
 				deviceFingerprints: (function(){ try { return JSON.parse((r[23] && r[23].stdout) || '{}'); } catch(e){ return {}; } })(),
 				deviceStations: deviceStations,
+				apUplink: apUplink,
 				timestamp:Date.now()
 			}; });
 		});
@@ -292,14 +307,46 @@ const lifecycleMethods = {
 	calculateRates: function(data) {
 		const activeWans = getActiveWanList(data);
 		let rx = 0, tx = 0, down = 0, up = 0;
-		activeWans.forEach(function(w){
-			const dev = (data.wanDevicesMap && data.wanDevicesMap[w.iface]) || (w.iface==='wan'?data.wanDevice:(w.iface==='wan2'?data.wan2Device:{})) || {};
-			const stats = dev.statistics || {};
-			rx += Number(stats.rx_bytes) || 0;
-			tx += Number(stats.tx_bytes) || 0;
-		});
-		if (this.previous.timestamp && data.timestamp > this.previous.timestamp) { const e=(data.timestamp-this.previous.timestamp)/1000; down=Math.max(0,(rx-this.previous.rx)*8/e); up=Math.max(0,(tx-this.previous.tx)*8/e); }
-		this.previous={timestamp:data.timestamp,rx:rx,tx:tx}; return {down:down,up:up,rx:rx,tx:tx};
+		if (activeWans.length > 0) {
+			activeWans.forEach(function(w){
+				const dev = (data.wanDevicesMap && data.wanDevicesMap[w.iface]) || (w.iface==='wan'?data.wanDevice:(w.iface==='wan2'?data.wan2Device:{})) || {};
+				const stats = dev.statistics || {};
+				rx += Number(stats.rx_bytes) || 0;
+				tx += Number(stats.tx_bytes) || 0;
+			});
+		} else {
+			// Modo Ponto de Acesso (AP Mode): mede o tráfego do uplink ou bridge
+			let lanStatus = {};
+			try { lanStatus = JSON.parse((data.lanStatus && data.lanStatus.stdout) || '{}'); } catch(e) {}
+			const uplink = lanStatus.uplink_dev || data.apUplink || 'eth0';
+			let dev = null;
+			if (uplink && data.wanDevicesMap && data.wanDevicesMap[uplink]) {
+				dev = data.wanDevicesMap[uplink];
+			} else if (uplink && data.lanPorts && data.lanDevices) {
+				const idx = data.lanPorts.indexOf(uplink);
+				if (idx >= 0) dev = data.lanDevices[idx];
+			}
+			if (!dev) {
+				dev = (data.wanDevicesMap && data.wanDevicesMap['lan']) || {};
+			}
+			const stats = (dev && dev.statistics) || {};
+			rx = Number(stats.rx_bytes) || 0;
+			tx = Number(stats.tx_bytes) || 0;
+		}
+		const ifaceKey = activeWans.length > 0 ? activeWans.map(function(w){return w.iface;}).join('+') : ('ap:' + (data.apUplink || 'lan'));
+		if (this.previous.ifaceKey && this.previous.ifaceKey !== ifaceKey) {
+			this.previous = { timestamp: data.timestamp, rx: rx, tx: tx, ifaceKey: ifaceKey };
+			return { down: 0, up: 0, rx: rx, tx: tx };
+		}
+		if (this.previous.timestamp && data.timestamp > this.previous.timestamp) {
+			const e = (data.timestamp - this.previous.timestamp) / 1000;
+			if (e > 0 && e <= 30 && rx >= this.previous.rx && tx >= this.previous.tx) {
+				down = (rx - this.previous.rx) * 8 / e;
+				up = (tx - this.previous.tx) * 8 / e;
+			}
+		}
+		this.previous = { timestamp: data.timestamp, rx: rx, tx: tx, ifaceKey: ifaceKey };
+		return { down: down, up: up, rx: rx, tx: tx };
 	},
 	deviceRates: function(data) {
 		const now = trafficMap(data.traffic), out = {}, elapsed = this.trafficAt ? (data.timestamp - this.trafficAt) / 1000 : 0;
@@ -453,13 +500,15 @@ const lifecycleMethods = {
 		}, this));
 		(data.lanPorts||[]).forEach(L.bind(function(port,idx){
 			let dev = (data.lanDevices||[])[idx] || {};
-			if (!dev.carrier && data.hardwareInfo && data.hardwareInfo.ports) {
+			if (data.hardwareInfo && data.hardwareInfo.ports) {
 				const hwPorts = data.hardwareInfo.ports;
 				const isWanPort = (port === 'lan5' || port === 'port5' || port === 'eth1' || port === 'wan' || port === 'eth0.2');
-				const hw = hwPorts[port] || (isWanPort ? (hwPorts.lan5 || hwPorts.port5 || hwPorts.wan || hwPorts.wan1 || hwPorts.eth1) : null);
-				if (hw && hw.carrier) {
+				let hw = hwPorts[port] || (isWanPort ? (hwPorts.lan5 || hwPorts.port5 || hwPorts.wan || hwPorts.wan1 || hwPorts.eth1) : null);
+				if (!hw && port === 'eth1.1') hw = hwPorts.lan1 || hwPorts.port1;
+				if (!hw && port === 'eth1.2') hw = hwPorts.lan2 || hwPorts.port2;
+				if (hw && (hw.carrier !== undefined || hw.speed)) {
 					dev = Object.assign({}, dev, {
-						carrier: true,
+						carrier: !!hw.carrier,
 						speed: hw.speed || dev.speed,
 						duplex: hw.duplex || dev.duplex
 					});
@@ -467,6 +516,30 @@ const lifecycleMethods = {
 			}
 			this.updateLan('ex-lan-'+portDomId(port), dev);
 		},this));
+		if (isSatelliteOrAp(data)) {
+			let lanStatus = {};
+			try { lanStatus = JSON.parse((data.lanStatus && data.lanStatus.stdout) || '{}'); } catch(e) {}
+			const uplink = lanStatus.uplink_dev || data.apUplink || 'eth0';
+			const dev = (data.wanDevicesMap && (data.wanDevicesMap[uplink] || data.wanDevicesMap['eth0'] || data.wanDevicesMap['lan'])) || {};
+			const hwPorts = (data.hardwareInfo && data.hardwareInfo.ports) || {};
+			const hw = hwPorts[uplink] || hwPorts.eth0 || {};
+			const isLinkUp = !!(dev.carrier || hw.carrier || (dev.speed && dev.speed !== '0'));
+			const speedStr = (hw.speed || dev.speed || '1000') + ' Mbps';
+			const duplexStr = hw.duplex || dev.duplex || 'Full duplex';
+			setPill('ex-ap-uplink-status', isLinkUp ? 'online' : 'offline', isLinkUp ? _t('CONECTADO') : _t('SEM CABO'));
+			text('ex-ap-uplink-mode', _t('Ponto de Acesso (Ponte L2 transparente)'));
+			const gwIp = lanStatus.gateway || (data.networkConfig && data.networkConfig.values && data.networkConfig.values.lan && data.networkConfig.values.lan.gateway) || '192.168.73.1';
+			const localIp = (data.networkConfig && data.networkConfig.values && data.networkConfig.values.lan && data.networkConfig.values.lan.ipaddr) || '192.168.73.2';
+			text('ex-ap-uplink-gw', gwIp + ' (' + _t('Roteador Mestre') + ')');
+			text('ex-ap-uplink-ip', localIp);
+			text('ex-ap-uplink-port', (uplink === 'eth0' ? 'Porta 2.5 Gbps (eth0)' : uplink) + ' • ' + (hw.max_speed || '2.5G'));
+			text('ex-ap-uplink-link', isLinkUp ? (speedStr + ' • ' + duplexStr) : _t('sem link físico'));
+			const stats = dev.statistics || {};
+			text('ex-ap-uplink-rx-day', formatBytes(Number(stats.rx_bytes) || 0));
+			text('ex-ap-uplink-tx-day', formatBytes(Number(stats.tx_bytes) || 0));
+			const uptimeSec = (data.systemInfo && data.systemInfo.uptime) || 0;
+			text('ex-ap-uplink-uptime', formatUptime(uptimeSec));
+		}
 		const mwanRunning=Object.keys(mi).some(function(k){return !!mi[k].running;});
 		const activeWanLabels=[];
 		activeWans.forEach(function(w){
@@ -475,8 +548,14 @@ const lifecycleMethods = {
 			const isOnline = mwanRunning ? (m && m.status === 'online') : !!i.up;
 			if (isOnline) activeWanLabels.push(w.label);
 		});
-		const active = activeWanLabels.length ? activeWanLabels.join(' + ') : 'SEM INTERNET';
-		setPill('ex-global-status',active==='SEM INTERNET'?'offline':'online',active+' ATIVA');
+		if (isSatelliteOrAp(data)) {
+			const lanLive = iface(data.interfaces, 'lan');
+			const isOnline = !!(lanLive && lanLive.up);
+			setPill('ex-global-status', isOnline ? 'online' : 'offline', isOnline ? _t('MODO AP • ATIVO') : _t('SEM CONEXÃO'));
+		} else {
+			const active = activeWanLabels.length ? activeWanLabels.join(' + ') : 'SEM INTERNET';
+			setPill('ex-global-status',active==='SEM INTERNET'?'offline':'online',active+' ATIVA');
+		}
 		const sf=this.feature('speedify')||{}, sfTop=document.getElementById('ex-speedify-top');
 		if(sfTop){
 			const sfDesired = String(sf.desired_state || '') === 'connected';
@@ -528,6 +607,19 @@ const lifecycleMethods = {
 			ipv6Prefix = 'Desativado';
 		}
 		text('ex-lan-ipv6-prefix', ipv6Prefix);
+		const igmpActive = !!lanStatus.igmp_snooping;
+		const igmpToggle = document.getElementById('ex-lan-igmp-toggle');
+		if (igmpToggle && !igmpToggle.disabled) {
+			igmpToggle.checked = igmpActive;
+		}
+		text('ex-lan-igmp-state', igmpActive ? _t('ATIVO') : _t('DESLIGADO'));
+		setPill('ex-lan-igmp-pill', igmpActive ? 'online' : 'standby', igmpActive ? _t('ATIVO (PROTEGIDO)') : _t('DESATIVADO'));
+		const igmpDescEl = document.getElementById('ex-lan-igmp-desc');
+		if (igmpDescEl) {
+			igmpDescEl.textContent = igmpActive
+				? _t('Ativado • Tráfego multicast (IPTV/AirPlay) filtrado e direcionado apenas aos dispositivos solicitantes, protegendo o Wi-Fi contra saturação.')
+				: _t('Desativado • Tráfego multicast transmitido em broadcast para todas as portas e antenas Wi-Fi (pode causar lentidão em streaming/IPTV).');
+		}
 		const lanPrefix=prefix24(lanStatus.ipaddr), guestPrefix=prefix24(((values(data.networkConfig).guest)||{}).ipaddr);
 		const leases=data.leases.dhcp_leases||[], main=assocMap(data.mainAssoc), guest=assocMap(data.guestAssoc);
 		const isApOrSecondary = isSatelliteOrAp(data);
@@ -563,10 +655,17 @@ const lifecycleMethods = {
 		text('ex-cpu-detail',cpuUsage+'% em uso • '+(cpuInfo.arch_desc||'CPU'));
 		const cb=document.getElementById('ex-cpu-bar');if(cb)cb.style.width=Math.min(100,Math.max(2,cpuUsage))+'%';
 		text('ex-uptime',formatUptime(data.system.uptime));
+		const tempCrit = (thermalSensors.length && Number(thermalSensors[0].crit_c)) ? Number(thermalSensors[0].crit_c) : 90;
+		const tempWarn = (thermalSensors.length && Number(thermalSensors[0].warn_c)) ? Number(thermalSensors[0].warn_c) : 75;
+		const isTempCrit = isFinite(temp) && temp >= tempCrit;
+		const isTempWarn = isFinite(temp) && temp >= tempWarn;
 		text('ex-temperature',isFinite(temp)?temp.toFixed(0)+' °C':(thermalSensors.length?thermalSensors[0].temp_c+' °C':'—'));
-		if(thermalSensors.length>1){text('ex-temperature-detail',thermalSensors.length+' sensores • ver todos');}
-		else if(isFinite(temp)){text('ex-temperature-detail','Sensor de CPU');}
-		else{text('ex-temperature-detail','Sem sensor térmico');}
+		const tempEl=document.getElementById('ex-temperature');if(tempEl&&isFinite(temp)){tempEl.style.color=isTempCrit?'#ef4444':(isTempWarn?'#f59e0b':'');}
+		if(isTempCrit){text('ex-temperature-detail',_t('Temperatura crítica'));}
+		else if(isTempWarn){text('ex-temperature-detail',_t('Temperatura elevada'));}
+		else if(thermalSensors.length>1){text('ex-temperature-detail',thermalSensors.length+' sensores • '+_t('estável'));}
+		else if(isFinite(temp)){text('ex-temperature-detail',_t('Sensor de CPU • estável'));}
+		else{text('ex-temperature-detail',_t('Sem sensor térmico'));}
 		text('ex-memory',mu.toFixed(0)+'%');
 		text('ex-memory-detail','livre '+formatBytes(memFree)+' / total '+formatBytes(mem.total||0));
 		text('ex-load',load.toFixed(2));
@@ -578,13 +677,13 @@ const lifecycleMethods = {
 		const mb=document.getElementById('ex-memory-bar'),db=document.getElementById('ex-storage-bar');
 		if(mb)mb.style.width=Math.min(100,mu)+'%';
 		if(db)db.style.width=Math.min(100,du)+'%';
-		const healthWarning=(isFinite(temp)&&temp>=85)||mu>=85||du>=85||load>=1.5;
+		const healthWarning=isTempCrit||mu>=85||du>=85||load>=1.5;
 		setPill('ex-health-status',healthWarning?'standby':'online',healthWarning?'ATENÇÃO':'NORMAL');
 		const qosWanProfiles=sqmWanProfiles(data), qe=qosWanProfiles.some(function(profile){return !!(sqm[profile.section]&&sqm[profile.section].enabled==='1');}), qosToggle=document.getElementById('ex-qos-toggle'), qosToggleState=document.getElementById('ex-qos-toggle-state');
 		const isSat = isSatelliteOrAp(data);
 		if (isSat) {
 			setPill('ex-qos-status', 'standby', 'MESTRE GERENCIA');
-			if (qosToggle) { qosToggle.checked = false; qosToggle.disabled = true; qosToggle.title = 'SQM / CAKE é exclusivo do Roteador Mestre em nós Satélite / Ponto de Acesso.'; }
+			if (qosToggle) { qosToggle.checked = false; qosToggle.disabled = true; qosToggle.title = _t('SQM / CAKE é exclusivo do Roteador Mestre em Modo Ponto de Acesso (AP).'); }
 			if (qosToggleState) qosToggleState.textContent = 'MESTRE GERENCIA';
 		} else {
 			setPill('ex-qos-status',qe?'online':'standby',qe?'ATIVO':'DESLIGADO');

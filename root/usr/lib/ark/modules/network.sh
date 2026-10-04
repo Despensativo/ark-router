@@ -665,42 +665,9 @@ $elements_line
 EOF
 		fi
 
-		blocked_netdev_ports=""
-		for bm in $blocked_macs; do
-			pnum="$(brctl showmacs "$lan_dev" 2>/dev/null | grep -i "$bm" | awk '{print $1}' | head -n 1)"
-			[ -n "$pnum" ] || continue
-			for bp in "/sys/class/net/$lan_dev/brif"/*; do
-				[ -f "$bp/port_no" ] || continue
-				ifp="$(cat "$bp/port_no" 2>/dev/null)"
-				if [ "$((ifp))" -eq "$pnum" ] 2>/dev/null; then
-					bname="$(basename "$bp")"
-					case " $blocked_netdev_ports " in
-						*" $bname "*) ;;
-						*) blocked_netdev_ports="$blocked_netdev_ports $bname" ;;
-					esac
-				fi
-			done
-		done
-
-		for bname in $blocked_netdev_ports; do
-			case "$bname" in
-				lan*|eth*)
-					cat << NETDEV_EOF >> "$tmp_nft"
-table netdev ark_ipv6_${bname}
-delete table netdev ark_ipv6_${bname}
-table netdev ark_ipv6_${bname} {
-	chain egress {
-		type filter hook egress device "${bname}" priority 0;
-		ether type ip6 drop
-	}
-	chain ingress {
-		type filter hook ingress device "${bname}" priority 0;
-		ether type ip6 drop
-	}
-}
-NETDEV_EOF
-					;;
-			esac
+		# Limpeza preventiva de tabelas netdev legadas que bloqueavam portas inteiras da bridge
+		for t in $(nft list tables 2>/dev/null | grep 'table netdev ark_ipv6_' | awk '{print $3}'); do
+			nft delete table netdev "$t" 2>/dev/null || true
 		done
 
 		if ! /usr/sbin/nft -c -f "$tmp_nft" 2>/dev/null; then
@@ -1536,6 +1503,12 @@ add_lan_port() {
 	br="$(lan_bridge_section)"
 	[ -n "$br" ] || return 0
 	bridge_has_port "$br" "$port" || uci -q add_list "network.$br.ports=$port"
+	# Blindagem Anti-MAC Colisao: remove macaddr residual de device retornado a LAN
+	for d_sec in $(uci -q show network | grep "=device" | cut -d. -f2 | cut -d= -f1); do
+		if [ "$(uci -q get "network.$d_sec.name")" = "$port" ]; then
+			uci -q delete "network.$d_sec.macaddr"
+		fi
+	done
 }
 
 remove_lan_port() {
@@ -2024,10 +1997,44 @@ handle_network() {
 		done
 		local dhcp_disabled="$(uci -q get dhcp.lan.ignore || echo '0')"
 		local op_mode="$(uci -q get equipe_dashboard.main.network_mode || echo 'router')"
-		printf '],"dhcp_enabled":%s,"network_mode":"%s"}\n' "$([ "$dhcp_disabled" = "1" ] && echo false || echo true)" "$op_mode"
+		local ap_uplink="$(ark_ap_uplink_dev 2>/dev/null || echo br-lan)"
+		local igmp_snoop_val=0
+		[ "$(uci -q get network.lan.igmp_snooping)" = "1" ] && igmp_snoop_val=1
+		[ -f /sys/class/net/br-lan/bridge/multicast_snooping ] && [ "$(cat /sys/class/net/br-lan/bridge/multicast_snooping 2>/dev/null)" = "1" ] && igmp_snoop_val=1
+		printf '],"dhcp_enabled":%s,"network_mode":"%s","uplink_dev":"%s","igmp_snooping":%s}\n' "$([ "$dhcp_disabled" = "1" ] && echo false || echo true)" "$op_mode" "$ap_uplink" "$([ "$igmp_snoop_val" = "1" ] && echo true || echo false)"
+		;;
+	lan-igmp-toggle)
+		shift
+		val="$1"
+		if [ -z "$val" ]; then
+			cur="$(uci -q get network.lan.igmp_snooping || echo 0)"
+			[ "$cur" = "1" ] && val=0 || val=1
+		fi
+		case "$val" in
+			1|true|on|enable) val=1 ;;
+			*) val=0 ;;
+		esac
+		uci -q set "network.lan.igmp_snooping=$val"
+		dev_name="$(uci -q get network.lan.device || echo "")"
+		if [ -n "$dev_name" ]; then
+			for s in $(uci show network 2>/dev/null | grep "network.@device\[.*\]\.name='$dev_name'" | cut -d. -f2); do
+				uci -q set "network.$s.igmp_snooping=$val"
+			done
+		fi
+		uci commit network 2>/dev/null || true
+		if [ -f /sys/class/net/br-lan/bridge/multicast_snooping ]; then
+			echo "$val" > /sys/class/net/br-lan/bridge/multicast_snooping 2>/dev/null || true
+		fi
+		if [ "$val" = "1" ]; then
+			for w_sec in $(uci show wireless 2>/dev/null | grep '=wifi-iface' | cut -d. -f2 | cut -d= -f1); do
+				uci -q set "wireless.$w_sec.multicast_to_unicast=1"
+			done
+			uci commit wireless 2>/dev/null || true
+		fi
+		printf '{"success":true,"igmp_snooping":%s}\n' "$val"
 		;;
 	lan-save)
-		mode='manual'; router_ip=''; start_ip=''; end_ip=''; netmask='255.255.255.0'; dns=''; dhcp_enabled=''
+		mode='manual'; router_ip=''; start_ip=''; end_ip=''; netmask='255.255.255.0'; dns=''; dhcp_enabled=''; igmp_snooping=''
 		shift
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
@@ -2039,6 +2046,7 @@ handle_network() {
 				netmask) netmask="$value" ;;
 				dns) dns="$(printf '%s' "$value" | tr ',' ' ')" ;;
 				dhcp_enabled) case "$value" in 1|true|yes) dhcp_enabled='1' ;; 0|false|no) dhcp_enabled='0' ;; esac ;;
+				igmp_snooping) case "$value" in 1|true|yes) igmp_snooping='1' ;; 0|false|no) igmp_snooping='0' ;; esac ;;
 				*) echo "Campo LAN invalido: $key" >&2; exit 2 ;;
 			esac
 		done
@@ -2083,6 +2091,12 @@ handle_network() {
 		fi
 		uci -q set network.lan.ipaddr="$router_ip"
 		uci -q set network.lan.netmask="$netmask"
+		if [ -n "$igmp_snooping" ]; then
+			uci -q set network.lan.igmp_snooping="$igmp_snooping"
+			if [ -f /sys/class/net/br-lan/bridge/multicast_snooping ]; then
+				echo "$igmp_snooping" > /sys/class/net/br-lan/bridge/multicast_snooping 2>/dev/null || true
+			fi
+		fi
 		uci -q set dhcp.lan=dhcp
 		uci -q set dhcp.lan.interface=lan
 		uci -q set dhcp.lan.start="$start_host"
@@ -2754,15 +2768,22 @@ handle_network() {
 		cur_duplex="$(cat "${ARK_ROOT}/sys/class/net/$wan_dev/duplex" 2>/dev/null || cat /sys/class/net/$wan_dev/duplex 2>/dev/null || true)"
 		printf '%s' "$cur_speed" | grep -Eq '^[0-9]+$' || cur_speed=0
 		[ "$cur_mtu" -ge 1508 ] 2>/dev/null && baby_jumbo=1
-		irq_installed=0; irq_active=0
+		irq_installed=0; irq_active=0; irq_native=0
+		dist_target="$(grep 'DISTRIB_TARGET' /etc/openwrt_release 2>/dev/null | cut -d"'" -f2 || echo '')"
+		case "$dist_target" in
+			mediatek/filogic*|ipq*|qualcommax*|qca*|mvebu*|layerscape*) irq_native=1 ;;
+		esac
 		{ [ -x "${ARK_ROOT}/etc/init.d/irqbalance" ] || [ -x /etc/init.d/irqbalance ]; } && irq_installed=1
 		[ "$irq_installed" = 1 ] && { pidof irqbalance >/dev/null 2>&1 || { [ -x /etc/init.d/irqbalance ] && /etc/init.d/irqbalance enabled >/dev/null 2>&1; }; } && irq_active=1
-		printf '{"iface":"%s","label":"%s","proto":"%s","wan_dev":"%s","l3_device":"%s","link_speed_mbps":%s,"duplex":"%s","ip":"%s","gateway":"%s","starlink":%s,"detected_profile":"%s","saved_profile":"%s","tcp_turbo":%s,"flow_offloading":%s,"linklayer_profile":"%s","baby_jumbo":%s,"current_mtu":%s,"sqm_section":"%s","sqm_installed":%s,"sqm_active":%s,"sqm_any_active":%s,"sqm_wan_count":%s,"sqm_download":%s,"sqm_upload":%s,"irqbalance_installed":%s,"irqbalance_active":%s,"mwan_active_wans":%s}\n' \
-			"$(json_escape "$iface")" "$(json_escape "$wan_label")" "$(json_escape "$proto")" "$(json_escape "$wan_dev")" "$(json_escape "$wan_l3_dev")" "$cur_speed" "$(json_escape "$cur_duplex")" "$(json_escape "$wan_ip")" "$(json_escape "$wan_gateway")" "$starlink" "$(json_escape "$detected_profile")" "$(json_escape "$saved_profile")" "$tcp_turbo" "$flow_offload" "$linklayer_profile" "$baby_jumbo" "$cur_mtu" "$(json_escape "$sqm_section")" "$sqm_installed" "$sqm_active" "$sqm_any_active" "$sqm_wan_count" "$sqm_download" "$sqm_upload" "$irq_installed" "$irq_active" "$mwan_active_wans"
+		igmp_snooping=0
+		[ "$(uci -q get network.lan.igmp_snooping)" = "1" ] && igmp_snooping=1
+		[ -f /sys/class/net/br-lan/bridge/multicast_snooping ] && [ "$(cat /sys/class/net/br-lan/bridge/multicast_snooping 2>/dev/null)" = "1" ] && igmp_snooping=1
+		printf '{"iface":"%s","label":"%s","proto":"%s","wan_dev":"%s","l3_device":"%s","link_speed_mbps":%s,"duplex":"%s","ip":"%s","gateway":"%s","starlink":%s,"detected_profile":"%s","saved_profile":"%s","tcp_turbo":%s,"flow_offloading":%s,"linklayer_profile":"%s","baby_jumbo":%s,"current_mtu":%s,"sqm_section":"%s","sqm_installed":%s,"sqm_active":%s,"sqm_any_active":%s,"sqm_wan_count":%s,"sqm_download":%s,"sqm_upload":%s,"irqbalance_installed":%s,"irqbalance_active":%s,"irqbalance_native":%s,"mwan_active_wans":%s,"igmp_snooping":%s}\n' \
+			"$(json_escape "$iface")" "$(json_escape "$wan_label")" "$(json_escape "$proto")" "$(json_escape "$wan_dev")" "$(json_escape "$wan_l3_dev")" "$cur_speed" "$(json_escape "$cur_duplex")" "$(json_escape "$wan_ip")" "$(json_escape "$wan_gateway")" "$starlink" "$(json_escape "$detected_profile")" "$(json_escape "$saved_profile")" "$tcp_turbo" "$flow_offload" "$linklayer_profile" "$baby_jumbo" "$cur_mtu" "$(json_escape "$sqm_section")" "$sqm_installed" "$sqm_active" "$sqm_any_active" "$sqm_wan_count" "$sqm_download" "$sqm_upload" "$irq_installed" "$irq_active" "$irq_native" "$mwan_active_wans" "$igmp_snooping"
 		;;
 	wan-optimize-set)
 		shift
-		iface='wan' preset='' tcp_turbo='' flow_offload='' linklayer_profile='' baby_jumbo='' enable_sqm='' irqbalance='' sqm_upload='' sqm_download=''
+		iface='wan' preset='' tcp_turbo='' flow_offload='' linklayer_profile='' baby_jumbo='' enable_sqm='' irqbalance='' sqm_upload='' sqm_download='' igmp_snooping=''
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
@@ -2776,6 +2797,7 @@ handle_network() {
 				irqbalance) irqbalance="$value" ;;
 				sqm_upload) sqm_upload="$value" ;;
 				sqm_download) sqm_download="$value" ;;
+				igmp_snooping) igmp_snooping="$value" ;;
 			esac
 		done
 		printf '%s' "$iface" | grep -Eq '^wan([0-9]+)?$' || { echo 'Interface WAN invalida' >&2; exit 2; }
@@ -2816,7 +2838,7 @@ handle_network() {
 				;;
 		esac
 		if ark_is_satellite_or_ap && [ "$enable_sqm" = 1 ]; then
-			echo 'O controle de Bufferbloat (SQM/CAKE) é exclusivo do Roteador Mestre (Gateway). Desativado em modo Satélite/Ponto de Acesso.' >&2
+			echo 'O controle de Bufferbloat (SQM/CAKE) é exclusivo do Roteador Mestre (Gateway). Desativado em modo Ponto de Acesso (AP).' >&2
 			exit 2
 		fi
 		[ "$enable_sqm" != 1 ] || { { [ -f "${ARK_ROOT}/etc/config/sqm" ] || [ -f /etc/config/sqm ]; } && { [ -x "${ARK_ROOT}/etc/init.d/sqm" ] || [ -x /etc/init.d/sqm ]; }; } || { echo 'SQM / CAKE nao instalado' >&2; exit 3; }
@@ -2977,6 +2999,14 @@ EOF
 			fi
 			uci -q delete "network.$iface.device_mtu"
 			uci commit network
+		fi
+		if [ -n "$igmp_snooping" ]; then
+			case "$igmp_snooping" in 1|true) igmp_val=1 ;; *) igmp_val=0 ;; esac
+			uci -q set "network.lan.igmp_snooping=$igmp_val"
+			uci commit network 2>/dev/null || true
+			if [ -f /sys/class/net/br-lan/bridge/multicast_snooping ]; then
+				echo "$igmp_val" > /sys/class/net/br-lan/bridge/multicast_snooping 2>/dev/null || true
+			fi
 		fi
 		uci -q get equipe_dashboard.wan_profiles >/dev/null 2>&1 || uci -q set equipe_dashboard.wan_profiles=wan_profiles
 		[ -n "$preset" ] && uci -q set "equipe_dashboard.wan_profiles.$iface=$preset"

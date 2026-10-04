@@ -94,4 +94,4 @@ if [ -n "$BACKUP_FILE" ]; then
 	echo "Backup available until the next reboot: $BACKUP_FILE"
 	echo "Download it with: scp root@ROUTER_IP:$BACKUP_FILE ."
 fi
-echo "Optional packages such as SQM, mwan3, nlbwmon, UPnP, Argon, uHTTPd and speedtest-go were not removed."
+echo "Optional packages such as SQM, mwan3, nlbwmon, UPnP, uHTTPd and speedtest-go were not removed."

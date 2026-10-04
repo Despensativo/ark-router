@@ -180,8 +180,18 @@ except Exception:
 		dns_intercept=true
 	fi
 
-	printf '{"installed":%s,"active":%s,"mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s","mem_total_mb":%d,"overlay_free_mb":%d,"overlay_free_kb":%d,"cache_size_mb":%d,"recommended_cache_mb":%d,"parental_enabled":%s,"protection_enabled":%s,"safesearch_enabled":%s,"cloud_cache":%s,"web_port":%d,"zerotier_access":%s,"zt_web_url":"%s","custom_blacklist":"%s","custom_whitelist":"%s","nextdns_id":"%s","dns_intercept":%s,"stat_queries":%d,"stat_blocked":%d,"stat_blocked_pct":%d,"stat_avg_ms":"%s","stat_running":%s}\n' \
-		"$local_installed" "$active" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url" "$mem_total_mb" "$overlay_free_mb" "$overlay_free_kb" "$cache_size_mb" "$recommended_cache_mb" "$parental_enabled" "$protection_enabled" "$safesearch_enabled" "$cloud_cache" "$web_port" "$zt_access" "$zt_web_url" "$(json_escape "$custom_blacklist")" "$(json_escape "$custom_whitelist")" "$(json_escape "$nextdns_id")" "$dns_intercept" "$stat_queries" "$stat_blocked" "$stat_blocked_pct" "$stat_avg_ms" "$stat_running"
+	adblock_installable=true
+	adblock_reason=""
+	if ark_is_satellite_or_ap 2>/dev/null; then
+		adblock_installable=false
+		adblock_reason="Exclusivo do Roteador Mestre (onde roda o servidor DNS local). No modo Ponto de Acesso, os clientes consultam diretamente o DNS do Mestre."
+	elif [ "$mem_total_mb" -lt 64 ] 2>/dev/null; then
+		adblock_installable=false
+		adblock_reason="Memória RAM insuficiente (< 64 MB). Listas de bloqueio de anúncios podem esgotar a RAM do roteador."
+	fi
+
+	printf '{"installed":%s,"active":%s,"installable":%s,"reason":"%s","mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s","mem_total_mb":%d,"overlay_free_mb":%d,"overlay_free_kb":%d,"cache_size_mb":%d,"recommended_cache_mb":%d,"parental_enabled":%s,"protection_enabled":%s,"safesearch_enabled":%s,"cloud_cache":%s,"web_port":%d,"zerotier_access":%s,"zt_web_url":"%s","custom_blacklist":"%s","custom_whitelist":"%s","nextdns_id":"%s","dns_intercept":%s,"stat_queries":%d,"stat_blocked":%d,"stat_blocked_pct":%d,"stat_avg_ms":"%s","stat_running":%s}\n' \
+		"$local_installed" "$active" "$adblock_installable" "$(json_escape "$adblock_reason")" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url" "$mem_total_mb" "$overlay_free_mb" "$overlay_free_kb" "$cache_size_mb" "$recommended_cache_mb" "$parental_enabled" "$protection_enabled" "$safesearch_enabled" "$cloud_cache" "$web_port" "$zt_access" "$zt_web_url" "$(json_escape "$custom_blacklist")" "$(json_escape "$custom_whitelist")" "$(json_escape "$nextdns_id")" "$dns_intercept" "$stat_queries" "$stat_blocked" "$stat_blocked_pct" "$stat_avg_ms" "$stat_running"
 }
 
 adblock_apply_rules() {

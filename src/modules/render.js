@@ -21,22 +21,41 @@ const renderMethods = {
 				}
 			});
 		}
-		this.board=loaded[0]||{}; this.countries=(loaded[1]&&loaded[1].results)||[]; this.capabilities=loaded[2]||{features:{}}; dashboardLanguage=this.capabilities.language||'pt-br';this.applyAppearance();this.applyBrand(this.capabilities.title);if(typeof loadDashboardLanguage==='function'){loadDashboardLanguage(dashboardLanguage).then(enableTranslation);}else{enableTranslation();} const data=loaded[3], w=wifiConfig(data.wireless), release=((this.board.release||{}).description||'').split(' ').slice(0,2).join(' '), panelTitle=this.capabilities.title||'ARK Router';
+		this.board=loaded[0]||{}; this.countries=(loaded[1]&&loaded[1].results)||[]; this.capabilities=loaded[2]||{features:{}}; dashboardLanguage=this.capabilities.language||'pt-br';this.applyAppearance();this.applyBrand(this.capabilities.title);if(typeof loadDashboardLanguage==='function'){loadDashboardLanguage(dashboardLanguage).then(enableTranslation);}else{enableTranslation();} const data=loaded[3]; if(typeof initCardStatesFromUci==='function'&&data&&data.equipeDashboardConfig){initCardStatesFromUci(data.equipeDashboardConfig);} const w=wifiConfig(data.wireless), release=((this.board.release||{}).description||'').split(' ').slice(0,2).join(' '), panelTitle=this.capabilities.title||'ARK Router';
 		const serverVersion = (this.capabilities && this.capabilities.update && this.capabilities.update.current) || '';
-		if (serverVersion && typeof ARK_BUILD_VERSION !== 'undefined' && serverVersion !== '—' && serverVersion !== ARK_BUILD_VERSION && !window._arkReloading) {
-			window._arkReloading = true;
-			console.warn('[ARK Router] Versão do sistema (' + serverVersion + ') difere da versão em cache JS (' + ARK_BUILD_VERSION + '). Atualizando painel...');
-			try {
-				if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
-			} catch(e) {}
-			if (typeof ui !== 'undefined' && ui.addNotification) {
-				ui.addNotification(null, E('p', { class: 'alert-message notice' }, [
-					_t('Nova versão do ARK Router instalada! Atualizando painel...')
-				]), 'info');
+		if (serverVersion && typeof ARK_BUILD_VERSION !== 'undefined' && serverVersion !== '—' && serverVersion !== ARK_BUILD_VERSION) {
+			const reloadKey = 'ark_version_reload_' + serverVersion;
+			const reloadCount = parseInt((typeof sessionStorage !== 'undefined' && sessionStorage.getItem(reloadKey)) || '0', 10);
+			if (reloadCount >= 1) {
+				console.warn('[ARK Router] Cache persistente do navegador detectado (JS ' + ARK_BUILD_VERSION + ' vs Sistema ' + serverVersion + '). Loop evitado.');
+				if (typeof ui !== 'undefined' && ui.addNotification) {
+					ui.addNotification(null, E('div', { class: 'alert-message warning' }, [
+						E('strong', {}, [_t('Atualização detectada (%s)!').replace('%s', 'v' + serverVersion)]),
+						E('p', { style: 'margin: 4px 0 0;' }, [
+							_t('Seu navegador ainda está executando arquivos em cache da versão anterior (%s). Pressione Ctrl + F5 para atualizar.').replace('%s', 'v' + ARK_BUILD_VERSION)
+						])
+					]), 'warning');
+				}
+			} else if (!window._arkReloading) {
+				window._arkReloading = true;
+				try {
+					if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(reloadKey, '1');
+				} catch(e) {}
+				console.warn('[ARK Router] Versão do sistema (' + serverVersion + ') difere da versão em cache JS (' + ARK_BUILD_VERSION + '). Atualizando painel...');
+				if (typeof ui !== 'undefined' && ui.addNotification) {
+					ui.addNotification(null, E('p', { class: 'alert-message notice' }, [
+						_t('Nova versão do ARK Router instalada! Atualizando painel...')
+					]), 'info');
+				}
+				window.setTimeout(function() {
+					var cleanPath = window.location.pathname;
+					window.location.replace(cleanPath + '?_v=' + encodeURIComponent(serverVersion) + '&_ts=' + Date.now());
+				}, 1000);
 			}
-			window.setTimeout(function() {
-				window.location.reload(true);
-			}, 1000);
+		} else if (typeof sessionStorage !== 'undefined' && serverVersion && serverVersion === ARK_BUILD_VERSION) {
+			try {
+				sessionStorage.removeItem('ark_version_reload_' + serverVersion);
+			} catch(e) {}
 		}
 		if (dashboardLanguage === 'pt-br') {
 			var noPassH4 = document.querySelector('.alert-message.warning h4');
@@ -176,9 +195,6 @@ const renderMethods = {
 		const sortSelect=E('select',{id:'ex-device-sort-key',class:'cbi-input-select ex-device-sort-select','change':L.bind(function(ev){this.setDeviceSort(ev.currentTarget.value);},this)},[E('option',{value:'total'},['Total consumido']),E('option',{value:'now'},['Agora (velocidade)']),E('option',{value:'name'},['Nome do aparelho'])]);sortSelect.value=this.deviceSortKey||'total';
 		const deviceSortControls=E('div',{class:'ex-device-sort-controls'},[E('span',{class:'ex-muted ex-device-sort-label'},['Ordenar']),sortSelect,E('button',{id:'ex-device-sort-dir',class:'ex-mini-button','click':L.bind(function(ev){this.toggleDeviceSortDirection(ev.currentTarget);},this)},[this.deviceSortKey==='name'?(this.deviceSortDir==='asc'?'A → Z':'Z → A'):(this.deviceSortDir==='desc'?'Maior primeiro':'Menor primeiro')])]);
 		const arkVersion=((this.capabilities.update||{}).current)||'—';
-		const irqbalance = this.feature('irqbalance') || {};
-		const irqbalanceInput=E('input',{type:'checkbox','aria-label':'Ativar IRQ Balance','change':L.bind(function(ev){const input=ev.currentTarget,desired=!!input.checked;return fs.exec('/usr/sbin/equipe-dashboard-control',['irqbalance-toggle',desired?'1':'0']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar IRQ Balance');self.triggerImmediateRefresh(desired?'IRQ Balance ativado com sucesso!':'IRQ Balance desativado com sucesso!','info');}).catch(function(e){input.checked=!desired;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)});irqbalanceInput.checked=!!irqbalance.active;irqbalanceInput.disabled=!irqbalance.installed;
-		const irqbalanceControl=irqbalance.installed?E('div',{class:'ex-device-switch-control'},[E('strong',{class:'ex-device-switch-state'},[irqbalance.active?'LIGADA':'DESLIGADA']),E('label',{class:'ex-switch'},[irqbalanceInput,E('span',{class:'ex-switch-slider'})])]):E('button',{class:'ex-mini-button','click':L.bind(this.installFeature,this,'irqbalance')},['Instalar IRQ Balance']);
 		const mwanInterfaces=(data.mwan&&data.mwan.interfaces)||{}, mwanRunning=Object.keys(mwanInterfaces).some(function(k){return !!mwanInterfaces[k].running;});
 		const speedifyFeature=(this.capabilities.features&&this.capabilities.features.speedify)||{};
 		const mwanPaused=String(speedifyFeature.desired_state||'')==='connected'&&!mwanRunning;
@@ -264,11 +280,15 @@ const renderMethods = {
 				].filter(Boolean))
 			]);
 		},this));
-		const lanPorts=(data.lanPorts&&data.lanPorts.length)?data.lanPorts:lanPortsFromNetwork(data.networkConfig);
+		const isApNode = isSatelliteOrAp(data);
+		const lanStatusObj = (function(){ try { return JSON.parse((data.lanStatus && data.lanStatus.stdout) || '{}'); } catch(e) { return {}; } })();
+		const apUplinkDev = lanStatusObj.uplink_dev || data.apUplink || 'eth0';
+		const rawLanPorts = (data.lanPorts && data.lanPorts.length) ? data.lanPorts : lanPortsFromNetwork(data.networkConfig);
+		const lanPorts = isApNode ? rawLanPorts.filter(function(port){ return port !== apUplinkDev && port !== 'eth0'; }) : rawLanPorts;
 		const lanCards=lanPorts.map(L.bind(function(port){
 			const id='ex-lan-'+portDomId(port), label=portLabel(port);
 			const isPhysicalWanAsLan = (port === 'eth1' || port === 'lan5' || port === 'port5' || port === 'wan' || port === 'eth0.2');
-			const actionBtn = isPhysicalWanAsLan ? E('button', {
+			const actionBtn = isApNode ? null : (isPhysicalWanAsLan ? E('button', {
 				class: 'ex-mini-button ex-wan-edit-button',
 				click: function() {
 					fs.exec('/usr/sbin/equipe-dashboard-control', ['autowan-wan-to-lan', '0']).then(function() {
@@ -278,7 +298,7 @@ const renderMethods = {
 			}, ['Restaurar como WAN1']) : E('button', {
 				class: 'ex-mini-button ex-wan-edit-button',
 				click: L.bind(function(){this.editWan(nextWan.iface,port);},this)
-			}, ['Usar como '+nextWan.label]);
+			}, ['Usar como '+nextWan.label]));
 			return E('section',{class:'ex-card ex-lan-card'},[
 				E('div',{class:'ex-card-title'},[
 					E('div',{style:'display:flex;align-items:center;gap:6px;'},[
@@ -291,9 +311,43 @@ const renderMethods = {
 				infoRow('Modo',id+'-duplex'),
 				infoRow('Recebido',id+'-rx'),
 				infoRow('Enviado',id+'-tx'),
-				actionBtn
+				actionBtn || ''
 			]);
 		},this));
+		const apUplinkCard = (function(){
+			if (!isApNode) return '';
+			const uplinkDev = apUplinkDev;
+			const gwIp = lanStatusObj.gateway || (data.networkConfig && data.networkConfig.values && data.networkConfig.values.lan && data.networkConfig.values.lan.gateway) || '192.168.73.1';
+			const localIp = (data.networkConfig && data.networkConfig.values && data.networkConfig.values.lan && data.networkConfig.values.lan.ipaddr) || '192.168.73.2';
+			const uplinkPortInfo = (data.hardwareInfo && data.hardwareInfo.ports && (data.hardwareInfo.ports[uplinkDev] || data.hardwareInfo.ports.eth0)) || {};
+			const maxSpeed = uplinkPortInfo.max_speed || '2.5G';
+			const speedBadge = E('span', { class: 'ex-port-badge ' + (maxSpeed === '2.5G' ? 'speed-2500' : 'speed-1000') }, [maxSpeed]);
+			
+			return E('section', { class: 'ex-card ex-wan-card ex-ap-uplink-card' }, [
+				E('div', { class: 'ex-card-title' }, [
+					E('div', { style: 'display:flex;align-items:center;gap:6px;' }, [
+						E('h3', {}, [_t('Enlace de Entrada (Uplink)')]),
+						speedBadge
+					]),
+					E('span', { id: 'ex-ap-uplink-status', class: 'ex-pill online' }, [_t('CONECTADO')])
+				]),
+				infoRow(_t('Modo de operação'), 'ex-ap-uplink-mode'),
+				infoRow(_t('Roteador Mestre (Gateway)'), 'ex-ap-uplink-gw'),
+				infoRow(_t('Endereço IP deste AP'), 'ex-ap-uplink-ip'),
+				infoRow(_t('Porta física de entrada'), 'ex-ap-uplink-port'),
+				infoRow(_t('Velocidade e link'), 'ex-ap-uplink-link'),
+				infoRow(_t('Tráfego recebido hoje'), 'ex-ap-uplink-rx-day'),
+				infoRow(_t('Tráfego enviado hoje'), 'ex-ap-uplink-tx-day'),
+				infoRow(_t('Tempo ativo em rede'), 'ex-ap-uplink-uptime'),
+				E('div', { class: 'ex-wan-card-actions', style: 'display:flex; gap:6px; margin-top:8px;' }, [
+					E('button', {
+						class: 'ex-mini-button ex-wan-edit-button',
+						style: 'flex:1;',
+						click: L.bind(function(){ self.editLan(); }, self)
+					}, [_t('Editar IP & Gateway deste AP')])
+				])
+			]);
+		})();
 		const mwanModeButtons = [];
 		if (activeWans.length >= 2) {
 			mwanModeButtons.push(modeButton('balanced_devices', '⚖️ Balancear por Aparelho (Recomendado)'));
@@ -712,13 +766,13 @@ const renderMethods = {
 			}, [
 				E('span', { style: 'font-size: 22px;' }, ['🛡️']),
 				E('div', {}, [
-					E('strong', { style: 'display: block; font-size: 13.5px; margin-bottom: 2px;' }, ['Modo Satélite / Ponto de Acesso']),
+					E('strong', { style: 'display: block; font-size: 13.5px; margin-bottom: 2px;' }, [_t('Modo Ponto de Acesso (AP)')]),
 					E('span', { class: 'ex-muted', style: 'font-size: 12px; line-height: 1.4;' }, [
-						'Este nó opera como extensor em ponte transparente. O tráfego de saída, Multi-WAN e controle de Bufferbloat (SQM) são centralizados no Roteador Mestre.'
+						_t('Este nó opera como extensor em ponte transparente. O tráfego de saída, Multi-WAN e controle de Bufferbloat (SQM) são centralizados no Roteador Mestre.')
 					])
 				])
 			]) : '',
-			E('div',{class:'ex-grid ex-grid-2'},wanCards),
+			isApNode ? E('div', { class: 'ex-grid ex-grid-2' }, [apUplinkCard]) : E('div', { class: 'ex-grid ex-grid-2' }, wanCards),
 			(function(){
 				const connectedWansInitial = activeWans.filter(function(w){
 					const live = iface(data.interfaces, w.iface);
@@ -732,14 +786,14 @@ const renderMethods = {
 
 				const isSatNode = isSatelliteOrAp(data);
 				if (isSatNode) {
-					initialMwanModeLabel = 'Modo Satélite / Ponto de Acesso (Bridge)';
+					initialMwanModeLabel = _t('Modo Ponto de Acesso (Bridge)');
 					initialMwanPillClass = 'standby';
-					initialMwanPillText = 'MESTRE GERENCIA';
-					initialMwanToggleState = 'INATIVO NO SATÉLITE';
-					initialMwanToggleDesc = 'Este roteador atua como extensor de rede (bridge transparente). O balanceamento e failover de internet operam exclusivamente no Roteador Mestre.';
+					initialMwanPillText = _t('MESTRE GERENCIA');
+					initialMwanToggleState = _t('INATIVO EM MODO AP');
+					initialMwanToggleDesc = _t('Este roteador atua como extensor de rede (bridge transparente). O balanceamento e failover de internet operam exclusivamente no Roteador Mestre.');
 					mwanInput.disabled = true;
 					mwanInput.checked = false;
-					mwanInput.title = 'Multi-WAN desativado em nós Satélites e Pontos de Acesso.';
+					mwanInput.title = _t('Multi-WAN desativado em nós em Modo Ponto de Acesso (AP).');
 				} else if (!hasMultipleWans) {
 					initialMwanModeLabel = 'Link Único (Single-WAN)';
 					initialMwanPillClass = 'standby';
@@ -783,8 +837,8 @@ const renderMethods = {
 				const mwanBody = E('div', { class: 'ex-card-collapse-body' }, [
 					E('div', { class: 'ex-card-collapse-inner' }, [
 						isSatNode ? E('div', { class: 'alert-message warning', style: 'margin-bottom: 12px; font-size: 12px; line-height: 1.45;' }, [
-							E('strong', { style: 'display: block; margin-bottom: 3px;' }, ['🛡️ Multi-WAN Gerenciado no Mestre']),
-							'O balanceamento e failover de conexões de internet pertencem ao Roteador Mestre (Gateway). Em nós satélites, todo o tráfego é encaminhado diretamente via enlace local.'
+							E('strong', { style: 'display: block; margin-bottom: 3px;' }, ['🛡️ ' + _t('Multi-WAN Gerenciado no Mestre')]),
+							_t('O balanceamento e failover de conexões de internet pertencem ao Roteador Mestre (Gateway). Em nós em Modo Ponto de Acesso (AP), todo o tráfego é encaminhado diretamente via enlace local.')
 						]) : '',
 						E('div',{class:'ex-qos-toggle-row ex-mwan-toggle-row'},[
 							E('div',{},[
@@ -838,13 +892,13 @@ const renderMethods = {
 				if (isSatNode) {
 					sqmToggleInput.disabled = true;
 					sqmToggleInput.checked = false;
-					sqmToggleInput.title = 'SQM / CAKE é exclusivo do Roteador Mestre em nós Satélite / Ponto de Acesso.';
+					sqmToggleInput.title = _t('SQM / CAKE é exclusivo do Roteador Mestre em Modo Ponto de Acesso (AP).');
 				}
 				const sqmBody = E('div', { class: 'ex-card-collapse-body' }, [
 					E('div', { class: 'ex-card-collapse-inner' }, [
 						isSatNode ? E('div', { class: 'alert-message warning', style: 'margin-bottom: 12px; font-size: 12px; line-height: 1.45;' }, [
-							E('strong', { style: 'display: block; margin-bottom: 3px;' }, ['🛡️ Fila Exclusiva do Roteador Mestre']),
-							'O controle de Bufferbloat (SQM / CAKE) atua exclusivamente na porta de internet (WAN) do Roteador Mestre (Gateway). Em nós satélites, todo o tráfego passa em ponte direta (L2) para não limitar nem degradar a velocidade local do Wi-Fi.'
+							E('strong', { style: 'display: block; margin-bottom: 3px;' }, ['🛡️ ' + _t('Fila Exclusiva do Roteador Mestre')]),
+							_t('O controle de Bufferbloat (SQM / CAKE) atua exclusivamente na porta de internet (WAN) do Roteador Mestre (Gateway). Em nós em Modo Ponto de Acesso (AP), todo o tráfego passa em ponte direta (L2) para não limitar nem degradar a velocidade local do Wi-Fi.')
 						]) : '',
 						E('div',{class:'ex-qos-toggle-row'},[
 							E('div',{},[E('strong',{},['SQM / CAKE']),E('small',{class:'ex-muted'},[isSatNode ? 'Desativado e gerenciado centralmente pelo Roteador Mestre' : 'Liga ou desliga as filas configuradas'])]),
@@ -926,10 +980,39 @@ const renderMethods = {
 					]),
 					infoRow('Prefixo IPv6 (PD)', 'ex-lan-ipv6-prefix')
 				]),
-				E('p',{class:'ex-muted'},['Use para trocar entre redes 192.168.x.x, 10.0.x.x ou gerenciar a distribuição de IP, DNS e o protocolo IPv6.'])
+				E('p',{class:'ex-muted'},['Use para trocar entre redes 192.168.x.x, 10.0.x.x ou gerenciar a distribuição de IP, DNS e o protocolo IPv6.']),
+				E('div', { class: 'ex-qos-toggle-row', style: 'margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08);' }, [
+					E('div', {}, [
+						E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
+							E('strong', {}, ['🛡️ ' + _t('Proteção Multicast & Wi-Fi (IGMP Snooping)')]),
+							E('span', { id: 'ex-lan-igmp-pill', class: 'ex-pill standby' }, [_t('DESLIGADO')])
+						]),
+						E('small', { id: 'ex-lan-igmp-desc', class: 'ex-muted', style: 'display: block; margin-top: 4px; line-height: 1.45;' }, [
+							_t('Monitora e filtra fluxos multicast (IPTV, TV Box, transmissões de vídeo, AirPlay e Chromecast). Ao ligar, o roteador envia o sinal apenas aos dispositivos solicitantes, impedindo que o tráfego inunde a rede local e degrade o Wi-Fi.')
+						])
+					]),
+					E('div', { class: 'ex-device-switch-control' }, [
+						E('strong', { id: 'ex-lan-igmp-state', class: 'ex-device-switch-state' }, ['—']),
+						E('label', { class: 'ex-switch' }, [
+							E('input', {
+								id: 'ex-lan-igmp-toggle',
+								type: 'checkbox',
+								'aria-label': _t('Alternar IGMP Snooping'),
+								change: L.bind(function(ev) {
+									self.toggleIgmp(ev.currentTarget);
+								}, self)
+							}),
+							E('span', { class: 'ex-switch-slider' })
+						])
+					])
+				]),
+				E('div', { style: 'margin-top: 10px; padding: 10px 12px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 6px; font-size: 12px; line-height: 1.45; color: rgba(255, 255, 255, 0.85);' }, [
+					E('strong', { style: 'color: #60a5fa;' }, ['💡 ' + _t('Por que ativar o IGMP Snooping?') + ' ']),
+					_t('Em redes com TV Box, IPTV ou caixas de som inteligentes, sem o IGMP Snooping a ponte L2 (br-lan) replica todo o fluxo multimídia como broadcast para todas as portas e antenas simultaneamente, causando saturação severa e travamentos no Wi-Fi.')
+				])
 			]),
-			this.dmzCard(),
-			E('div',{class:'ex-lan-block'},[E('div',{class:'ex-lan-title'},[E('div',{},[E('span',{class:'ex-kicker'},['PORTAS CABEADAS']),E('h3',{},['LAN disponíveis'])]),E('small',{class:'ex-muted'},['Portas em modo LAN aparecem aqui; ao converter uma porta em '+nextWan.label+', ela sai desta lista e vira uma nova conexão de internet.'])]),E('div',{class:'ex-grid ex-grid-2'},lanCards.length?lanCards:[E('section',{class:'ex-card ex-lan-card ex-center-card'},[E('strong',{},['Nenhuma porta LAN disponível']),E('small',{class:'ex-muted'},['Todas as portas cabeadas livres estão em uso como WAN ou não foram detectadas.'])])])]),
+			isApNode ? '' : this.dmzCard(),
+			E('div',{class:'ex-lan-block'},[E('div',{class:'ex-lan-title'},[E('div',{},[E('span',{class:'ex-kicker'},['PORTAS CABEADAS']),E('h3',{},['LAN disponíveis'])]),E('small',{class:'ex-muted'},[isApNode ? _t('Portas locais em modo switch transparente conectadas aos seus aparelhos.') : (_t('Portas em modo LAN aparecem aqui; ao converter uma porta em ') + nextWan.label + _t(', ela sai desta lista e vira uma nova conexão de internet.'))])]),E('div',{class:'ex-grid ex-grid-2'},lanCards.length?lanCards:[E('section',{class:'ex-card ex-lan-card ex-center-card'},[E('strong',{},[_t('Nenhuma porta LAN disponível')]),E('small',{class:'ex-muted'},[_t('Todas as portas cabeadas livres estão em uso como WAN ou não foram detectadas.')])])])]),
 			wifiBlock,
 			E('div',{class:'ex-grid ex-grid-2',style:'margin:10px 0 16px;'},[
 				E('section',{class:'ex-card ex-center-card'},[bigIcon('<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1.2" fill="currentColor"/></svg>'),E('span',{class:'ex-label'},[w.main.ssid||'Rede principal']),E('strong',{id:'ex-main-clients',class:'ex-number'},['0']),E('small',{id:'ex-main-wifi',class:'ex-muted'},['0 no Wi-Fi'])]),

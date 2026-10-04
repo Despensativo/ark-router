@@ -1,0 +1,241 @@
+#!/bin/sh
+# ARK Router — Smooth Multi-Color Spectrum (Rainbow) Daemon
+# 100% POSIX /bin/ash compliant for OpenWrt 19.07 through 25.12+
+# Autonomous hue rotation with zero CPU overhead (120 micro-steps, analog smoothness)
+
+# If ucode is available (OpenWrt 23.05+), delegate to native uloop daemon (0% CPU, 0 subshell forks)
+if [ -z "${ARK_TEST_FORCE_SH:-}" ] && command -v ucode >/dev/null 2>&1; then
+	if [ -f "/usr/lib/ark/ark-rainbowd.uc" ]; then
+		exec ucode /usr/lib/ark/ark-rainbowd.uc "$@"
+	elif [ -n "${ARK_ROOT:-}" ] && [ -f "${ARK_ROOT}/usr/lib/ark/ark-rainbowd.uc" ]; then
+		exec ucode "${ARK_ROOT}/usr/lib/ark/ark-rainbowd.uc" "$@"
+	fi
+fi
+
+trap 'exit 0' TERM INT HUP QUIT
+
+_get_led_sys() {
+	if [ -n "${ARK_ROOT}" ] && [ -d "${ARK_ROOT}/sys/class/leds" ]; then
+		printf '%s' "${ARK_ROOT}/sys/class/leds"
+	else
+		printf '/sys/class/leds'
+	fi
+}
+
+LED_BASE="$(_get_led_sys)"
+
+TARGET_AW=""
+TARGET_RGB_MULTI=""
+
+if [ -d "$LED_BASE/aw21018_led" ]; then
+	TARGET_AW="$LED_BASE/aw21018_led/led"
+fi
+
+for p in "$LED_BASE"/*/multi_intensity; do
+	if [ -e "$p" ]; then
+		TARGET_RGB_MULTI="$(basename "$(dirname "$p")")"
+		break
+	fi
+done
+[ -n "$TARGET_RGB_MULTI" ] || [ ! -e "$LED_BASE/rgb:status" ] || TARGET_RGB_MULTI="rgb:status"
+
+TARGET_RGB_ORDER="rgb"
+if [ -n "$TARGET_RGB_MULTI" ] && [ -e "$LED_BASE/$TARGET_RGB_MULTI/multi_index" ]; then
+	case "$(cat "$LED_BASE/$TARGET_RGB_MULTI/multi_index" 2>/dev/null)" in
+		*green*red*blue*) TARGET_RGB_ORDER="grb" ;;
+		*blue*green*red*) TARGET_RGB_ORDER="bgr" ;;
+		*) TARGET_RGB_ORDER="rgb" ;;
+	esac
+fi
+
+# Precomputed 120-step High-Definition Rainbow Look-Up Table (3° angle resolution)
+# Ensures 100% analog-like continuous transition with zero visual jumps
+RAINBOW_STEPS="
+ff0000:255:0:0
+ff0d00:255:13:0
+ff1900:255:25:0
+ff2600:255:38:0
+ff3300:255:51:0
+ff4000:255:64:0
+ff4d00:255:77:0
+ff5900:255:89:0
+ff6600:255:102:0
+ff7300:255:115:0
+ff8000:255:128:0
+ff8c00:255:140:0
+ff9900:255:153:0
+ffa600:255:166:0
+ffb200:255:178:0
+ffbf00:255:191:0
+ffcc00:255:204:0
+ffd900:255:217:0
+ffe500:255:229:0
+fff200:255:242:0
+ffff00:255:255:0
+f2ff00:242:255:0
+e6ff00:230:255:0
+d9ff00:217:255:0
+ccff00:204:255:0
+bfff00:191:255:0
+b2ff00:178:255:0
+a6ff00:166:255:0
+99ff00:153:255:0
+8cff00:140:255:0
+80ff00:128:255:0
+73ff00:115:255:0
+66ff00:102:255:0
+59ff00:89:255:0
+4dff00:77:255:0
+40ff00:64:255:0
+33ff00:51:255:0
+26ff00:38:255:0
+1aff00:26:255:0
+0dff00:13:255:0
+00ff00:0:255:0
+00ff0d:0:255:13
+00ff19:0:255:25
+00ff26:0:255:38
+00ff33:0:255:51
+00ff40:0:255:64
+00ff4d:0:255:77
+00ff59:0:255:89
+00ff66:0:255:102
+00ff73:0:255:115
+00ff80:0:255:128
+00ff8c:0:255:140
+00ff99:0:255:153
+00ffa6:0:255:166
+00ffb3:0:255:179
+00ffbf:0:255:191
+00ffcc:0:255:204
+00ffd9:0:255:217
+00ffe5:0:255:229
+00fff2:0:255:242
+00ffff:0:255:255
+00f2ff:0:242:255
+00e5ff:0:229:255
+00d9ff:0:217:255
+00ccff:0:204:255
+00bfff:0:191:255
+00b2ff:0:178:255
+00a6ff:0:166:255
+0099ff:0:153:255
+008cff:0:140:255
+0080ff:0:128:255
+0073ff:0:115:255
+0066ff:0:102:255
+0059ff:0:89:255
+004cff:0:76:255
+0040ff:0:64:255
+0033ff:0:51:255
+0026ff:0:38:255
+0019ff:0:25:255
+000dff:0:13:255
+0000ff:0:0:255
+0d00ff:13:0:255
+1900ff:25:0:255
+2600ff:38:0:255
+3300ff:51:0:255
+4000ff:64:0:255
+4c00ff:76:0:255
+5900ff:89:0:255
+6600ff:102:0:255
+7300ff:115:0:255
+8000ff:128:0:255
+8c00ff:140:0:255
+9900ff:153:0:255
+a600ff:166:0:255
+b300ff:179:0:255
+bf00ff:191:0:255
+cc00ff:204:0:255
+d900ff:217:0:255
+e600ff:230:0:255
+f200ff:242:0:255
+ff00ff:255:0:255
+ff00f2:255:0:242
+ff00e6:255:0:230
+ff00d9:255:0:217
+ff00cc:255:0:204
+ff00bf:255:0:191
+ff00b3:255:0:179
+ff00a6:255:0:166
+ff0099:255:0:153
+ff008c:255:0:140
+ff0080:255:0:128
+ff0073:255:0:115
+ff0066:255:0:102
+ff0059:255:0:89
+ff004d:255:0:77
+ff0040:255:0:64
+ff0033:255:0:51
+ff0026:255:0:38
+ff001a:255:0:26
+ff000d:255:0:13
+"
+
+_sleep_step() {
+	[ -z "${ARK_TEST_SINGLE_PASS:-}" ] || return 0
+	local spd="$1"
+	local ms=40
+	case "$spd" in
+		fast) ms=20 ;;
+		slow) ms=70 ;;
+		*) ms=40 ;;
+	esac
+
+	if command -v usleep >/dev/null 2>&1; then
+		usleep $((ms * 1000)) 2>/dev/null || sleep 1
+	elif command -v lua >/dev/null 2>&1; then
+		lua -e "local n=require('nixio'); n.nanosleep(0, ${ms}000000)" 2>/dev/null || sleep 1
+	else
+		sleep 1
+	fi
+}
+
+# Configura nó de hardware uma única vez antes de iniciar a rotação de espectro
+if [ -n "$TARGET_RGB_MULTI" ]; then
+	echo default-on > "$LED_BASE/$TARGET_RGB_MULTI/trigger" 2>/dev/null || true
+	echo 255 > "$LED_BASE/$TARGET_RGB_MULTI/brightness" 2>/dev/null || true
+fi
+
+while true; do
+	local_enabled="$(uci -q get system.led_status.enabled || echo 1)"
+	local_effect="$(uci -q get system.led_status.effect || echo rainbow)"
+	if [ "$local_enabled" = "0" ] || [ "$local_effect" != "rainbow" ]; then
+		break
+	fi
+
+	local_speed="$(uci -q get system.led_status.speed || echo normal)"
+
+	for entry in $RAINBOW_STEPS; do
+		hex="${entry%%:*}"
+		rest="${entry#*:}"
+		r="${rest%%:*}"
+		rest="${rest#*:}"
+		g="${rest%%:*}"
+		b="${rest#*:}"
+
+		# 1. Hardware Matrix AW21018 (Mode 1: Solid RGB direct write per channel)
+		if [ -n "$TARGET_AW" ]; then
+			echo "1 $hex 1" >> "$TARGET_AW" 2>/dev/null || true
+			echo "0 $hex 1" >> "$TARGET_AW" 2>/dev/null || true
+		fi
+
+		# 2. Hardware WS2812B / multi_intensity (Respeita ordem definida pelo multi_index do driver)
+		if [ -n "$TARGET_RGB_MULTI" ]; then
+			if [ "$TARGET_RGB_ORDER" = "grb" ]; then
+				echo "$g $r $b" > "$LED_BASE/$TARGET_RGB_MULTI/multi_intensity" 2>/dev/null || true
+			elif [ "$TARGET_RGB_ORDER" = "bgr" ]; then
+				echo "$b $g $r" > "$LED_BASE/$TARGET_RGB_MULTI/multi_intensity" 2>/dev/null || true
+			else
+				echo "$r $g $b" > "$LED_BASE/$TARGET_RGB_MULTI/multi_intensity" 2>/dev/null || true
+			fi
+		fi
+
+		_sleep_step "$local_speed"
+	done
+
+	[ -z "${ARK_TEST_SINGLE_PASS:-}" ] || break
+done
+
+exit 0

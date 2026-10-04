@@ -14,15 +14,26 @@ read_counter() {
 }
 
 wan_interfaces() {
-	local w status dev
+	local w status dev found=0
 	for w in $(uci -q show network | grep '=interface' | cut -d. -f2 | cut -d= -f1 | grep -E '^wan([0-9]+)?$'); do
 		[ "$(uci -q get "network.$w.proto")" != "none" ] || continue
 		status="$(ifstatus "$w" 2>/dev/null)"
 		dev="$(printf '%s\n' "$status" | jsonfilter -e '@.l3_device' 2>/dev/null)"
 		[ -n "$dev" ] && [ -d "/sys/class/net/$dev" ] || dev="$(printf '%s\n' "$status" | jsonfilter -e '@.device' 2>/dev/null)"
 		[ -n "$dev" ] && [ -d "/sys/class/net/$dev" ] || dev="$(uci -q get "network.$w.device")"
-		[ -n "$dev" ] && [ -d "/sys/class/net/$dev" ] && printf '%s,%s\n' "$w" "$dev"
+		if [ -n "$dev" ] && [ -d "/sys/class/net/$dev" ]; then
+			printf '%s,%s\n' "$w" "$dev"
+			found=1
+		fi
 	done
+	if [ "$found" -eq 0 ]; then
+		# Modo Satélite / Ponto de Acesso (sem interface WAN dedicada):
+		# Mede o tráfego da porta de uplink conectada ao Gateway mestre
+		. /usr/lib/ark/common.sh 2>/dev/null || true
+		dev="$(ark_ap_uplink_dev 2>/dev/null)"
+		[ -n "$dev" ] && [ -d "/sys/class/net/$dev" ] || dev='br-lan'
+		[ -d "/sys/class/net/$dev" ] && printf 'lan,%s\n' "$dev"
+	fi
 }
 
 flush_to_persist() {

@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ark-router
-PKG_VERSION:=1.5.8
+PKG_VERSION:=1.5.9
 PKG_RELEASE:=1
 PKG_MAINTAINER:=ARK Router contributors
 PKG_LICENSE:=MIT
@@ -130,9 +130,11 @@ endef
 define Package/luci-app-ark-router/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
-	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/lib/ark/ark-control /etc/init.d/equipe-traffic-history /etc/init.d/ark-safe-shutdown /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
+	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/sbin/ark-port-ledd /usr/sbin/ark-rainbowd /usr/lib/ark/ark-control /usr/lib/ark/*.sh /etc/init.d/equipe-traffic-history /etc/init.d/ark-safe-shutdown /etc/init.d/ark-port-ledd /etc/init.d/ark-rainbowd /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
 	[ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable 2>/dev/null || true
+	[ -x /etc/init.d/ark-port-ledd ] && /etc/init.d/ark-port-ledd enable 2>/dev/null || true
 	[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme
+	[ -x /etc/uci-defaults/99-ark-router-leds ] && /etc/uci-defaults/99-ark-router-leds
 	rm -f /tmp/luci-indexcache
 	rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 }
@@ -142,9 +144,11 @@ endef
 define Package/luci-app-ark-router-full/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
-	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/lib/ark/ark-control /etc/init.d/equipe-traffic-history /etc/init.d/ark-safe-shutdown /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
+	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/sbin/ark-port-ledd /usr/sbin/ark-rainbowd /usr/lib/ark/ark-control /usr/lib/ark/*.sh /etc/init.d/equipe-traffic-history /etc/init.d/ark-safe-shutdown /etc/init.d/ark-port-ledd /etc/init.d/ark-rainbowd /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
 	[ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable 2>/dev/null || true
+	[ -x /etc/init.d/ark-port-ledd ] && /etc/init.d/ark-port-ledd enable 2>/dev/null || true
 	[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme
+	[ -x /etc/uci-defaults/99-ark-router-leds ] && /etc/uci-defaults/99-ark-router-leds
 	rm -f /tmp/luci-indexcache
 	rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 }

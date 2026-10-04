@@ -12,23 +12,39 @@ for dev in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut 
 	band="$(uci -q get wireless.$dev.band 2>/dev/null)"
 	htmode="$(uci -q get wireless.$dev.htmode 2>/dev/null)"
 	case "$band" in
-		2g|2.4g) [ -z "$radio2" ] && radio2="$dev" ;;
-		5g) [ -z "$radio5" ] && radio5="$dev" ;;
-		6g) [ -z "$radio6" ] && radio6="$dev" ;;
+		2g|2.4g|1) [ -z "$radio2" ] && radio2="$dev" ;;
+		5g|2) [ -z "$radio5" ] && radio5="$dev" ;;
+		6g|3) [ -z "$radio6" ] && radio6="$dev" ;;
 		*)
 			case "$hwmode" in
-				11g|11b) [ -z "$radio2" ] && radio2="$dev" ;;
-				11a) [ -z "$radio5" ] && radio5="$dev" ;;
+				11g|11b|*beg*|*axg*) [ -z "$radio2" ] && radio2="$dev" ;;
+				11a|*bea*|*axa*)
+					case "$htmode" in
+						*320*) [ -z "$radio6" ] && radio6="$dev" ;;
+						*) [ -z "$radio5" ] && radio5="$dev" ;;
+					esac
+					;;
+				*6g*) [ -z "$radio6" ] && radio6="$dev" ;;
 				*)
 					case "$htmode" in
-						EHT320|EHT160) [ -z "$radio6" ] && radio6="$dev" || radio5="$dev" ;;
-						VHT*|HE160|HE80) [ -z "$radio5" ] && radio5="$dev" || radio6="$dev" ;;
+						*320*) [ -z "$radio6" ] && radio6="$dev" ;;
+						EHT160|VHT*|HE160|HE80) [ -z "$radio5" ] && radio5="$dev" || radio6="$dev" ;;
 						HT20|HT40) [ -z "$radio2" ] && radio2="$dev" || radio5="$dev" ;;
 					esac
 					;;
 			esac
 			;;
 	esac
+done
+# Fallback caso algum rádio não tenha sido mapeado
+for dev in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut -d= -f1); do
+	if [ "$dev" != "$radio2" ] && [ "$dev" != "$radio5" ] && [ "$dev" != "$radio6" ]; then
+		case "$dev" in
+			radio0|wifi0) [ -z "$radio2" ] && radio2="$dev" ;;
+			radio1|wifi1) [ -z "$radio5" ] && radio5="$dev" ;;
+			radio2|wifi2) [ -z "$radio6" ] && radio6="$dev" ;;
+		esac
+	fi
 done
 
 changed=0
