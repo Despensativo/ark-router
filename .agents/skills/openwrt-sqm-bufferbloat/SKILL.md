@@ -60,4 +60,6 @@ EOF
 
 ## 4. Auditoria e Validação
 - **Teste de Carga:** Rodar o teste em `waveform.com/tools/bufferbloat` antes e depois da ativação.
-- **Nota Alvo no ARK Router:** **A+** (acréscimo de ping < 5ms durante saturação total).
+- **Meta de avaliação:** Compare latência, vazão e uso de CPU sob carga; uma nota de teste ou teto de Mbps não é garantida por modelo de roteador.
+- **Offload:** Confirme por medição se os fluxos moldados atravessam o qdisc. PPE/WED, offload de fluxo e SQM têm caminhos distintos; não prometa que CAKE e aceleração de hardware atuem sobre o mesmo fluxo.
+- **Compromisso de upload:** Limitar só o upload pode preservar download em CPU lenta quando o gargalo medido é a fila de subida. Teste também download sob saturação antes de recomendar esse perfil.

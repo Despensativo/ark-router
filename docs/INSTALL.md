@@ -13,7 +13,7 @@ ARK Router is distributed as an OpenWrt LuCI package. It should be built with th
 - BusyBox `ash`.
 - Enough free RAM in `/tmp` if temporary speed-test calibration is used.
 
-The pilot installation was tested on Cudy WR3000 v1 with OpenWrt 25.12.5 and the Argon theme.
+The pilot installation was tested on Cudy WR3000 v1 with OpenWrt 25.12.5 and standard LuCI / ARK Theme.
 
 ## Quick Install From GitHub Releases
 
@@ -132,7 +132,7 @@ Open LuCI and choose ARK Router from the menu. Installing the package only adds 
 For a new router, use **Ark - Setup** from the dashboard or configure manually in this order:
 
 1. Confirm that the router is reachable and LuCI is working normally.
-2. Install only the optional modules needed for the scenario, such as SQM, Multi-WAN, nlbwmon or Argon.
+2. Install only the optional modules needed for the scenario, such as SQM, Multi-WAN, or nlbwmon.
 3. Configure WAN, LAN and Wi-Fi according to the site plan.
 4. If SQM is used, run speed calibration or manually set conservative upload/download values.
 5. Apply guest limits, device priority, Wi-Fi channel suggestions or Multi-WAN mode only after reviewing the confirmation prompts.
@@ -153,19 +153,16 @@ Optional cards appear when the corresponding module is available. The dashboard 
 
 When a supported module is already installed, Ark - Setup and the feature center show it as installed instead of offering a checkbox to install it again.
 
-### Optional Tailscale remote access
+### Optional ZeroTier remote access
 
-Use **ARK Router → Recursos → Tailscale remoto** when remote administration is needed from iOS, Windows or another network. The dashboard can install the package, start it and generate the official login flow.
+Use **ARK Router → Recursos → ZeroTier remoto** when remote administration is needed from iOS, Windows or another network behind NAT/CGNAT or Starlink without exposing LuCI/SSH to the WAN:
 
-The flow is:
+1. Install ZeroTier from the dashboard.
+2. Enter your 16-character Network ID and join.
+3. Authorize the router node in ZeroTier Central.
+4. Add a managed route for your router LAN subnet in ZeroTier Central.
 
-1. Install Tailscale from the dashboard.
-2. Click **Parear / anunciar LAN**.
-3. Open the generated login URL.
-4. Approve the router in Tailscale.
-5. Approve the advertised subnet route in the Tailscale admin panel.
-
-ARK Router does not open LuCI or SSH on the WAN. It advertises the current LAN subnet through Tailscale so administrators can access the router LAN over the private Tailscale network.
+WireGuard is also available for point-to-point and site-to-site VPN tunnels. Note that Tailscale was removed in v1.5.9 due to high binary footprint on flash-constrained devices.
 
 OpenWrt `luci-i18n-*` language packages are optional. ARK Router ships an English fallback and uses its own selected runtime language, so the dashboard does not depend on LuCI translation packages. On space-constrained routers, keeping only the selected ARK language plus English is the recommended model; original LuCI module pages may remain in English when their `luci-i18n-*` packages are not installed.
 
@@ -203,7 +200,6 @@ This removes ARK Router files, menu entries, helper scripts and temporary runtim
 - `luci-app-mwan3`
 - `luci-app-nlbwmon`
 - `luci-app-upnp`
-- `luci-theme-argon`
 - `luci-app-uhttpd`
 - `speedtest-go`
 

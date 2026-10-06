@@ -39,6 +39,25 @@ manager() {
 	fi
 }
 
+cpu_arch() {
+	v="$(uname -m 2>/dev/null || true)"
+	[ -n "$v" ] && echo "$v" || echo "unknown"
+}
+
+cpu_bitness() {
+	case "$(cpu_arch)" in
+		aarch64*|arm64*|x86_64*|amd64*|mips64*|riscv64*|ppc64*) echo "64" ;;
+		*) echo "32" ;;
+	esac
+}
+
+can_run_aarch64() {
+	case "$(cpu_arch)" in
+		aarch64*|arm64*) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
 mem_total_kb() {
 	v="$(awk '/^MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || true)"
 	[ -n "$v" ] && echo "$v" || echo 0
@@ -58,6 +77,11 @@ check_storage_safety() {
 
 	case "$target" in
 		full)
+			if ! can_run_aarch64; then
+				echo "WARNING: CPU architecture is $(cpu_arch) ($(cpu_bitness)-bit), not AArch64 64-bit." >&2
+				echo "The Full profile contains pre-bundled 64-bit AArch64 binaries which cannot run on this CPU." >&2
+				echo "Recommend using the Lite profile instead: ARK_ROUTER_PROFILE=lite" >&2
+			fi
 			if [ "$avail" -lt "$FULL_MIN_OVERLAY_KB" ]; then
 				echo "ERROR: Insufficient /overlay space for Full profile." >&2
 				echo "Required: at least $((FULL_MIN_OVERLAY_KB / 1024)) MB free. Available: $((avail / 1024)) MB." >&2
@@ -87,6 +111,14 @@ check_storage_safety() {
 best_profile() {
 	ram="$(mem_total_kb)"; [ -n "$ram" ] || ram=0
 	overlay="$(overlay_avail_kb)"; [ -n "$overlay" ] || overlay=0
+
+	# Never auto-select Full profile on 32-bit or non-AArch64 CPU,
+	# even if the router has massive RAM/storage, because Full bundles 64-bit AArch64 binaries.
+	if ! can_run_aarch64; then
+		echo lite
+		return 0
+	fi
+
 	if [ "$ram" -ge "$FULL_MIN_RAM_KB" ] && [ "$overlay" -ge "$FULL_MIN_OVERLAY_KB" ]; then
 		echo full
 	else
@@ -115,6 +147,104 @@ restart_luci() {
 	[ -x /etc/init.d/equipe-traffic-history ] && /etc/init.d/equipe-traffic-history restart >/dev/null 2>&1 || true
 	[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
 	[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+}
+
+preflight_check_and_fix() {
+	[ "$DRY_RUN" = 1 ] && return 0
+
+	# 1. Clock sanity check (RTC check)
+	# Router hardware lacks RTC battery. If year < 2024 (e.g. 1970), TLS handshake fails
+	# because GitHub's certificate validity period appears to be in the distant future.
+	curr_year="$(date +%Y 2>/dev/null || echo 1970)"
+	case "$curr_year" in
+		""|*[!0-9]*) curr_year=1970 ;;
+	esac
+	if [ "$curr_year" -lt 2024 ]; then
+		echo "[Pre-flight] Router clock uninitialized (year $curr_year). Attempting NTP synchronization..."
+		if command -v ntpd >/dev/null 2>&1; then
+			ntpd -q -n -p pool.ntp.org -p time.google.com -p time.cloudflare.com 2>/dev/null || true
+		fi
+		curr_year="$(date +%Y 2>/dev/null || echo 1970)"
+		case "$curr_year" in
+			""|*[!0-9]*) curr_year=1970 ;;
+		esac
+		if [ "$curr_year" -lt 2024 ]; then
+			echo "[Pre-flight] NTP unreachable. Setting provisional clock baseline (2026-01-01) for SSL compatibility..."
+			date -s "2026-01-01 00:00:00" >/dev/null 2>&1 || true
+		else
+			echo "[Pre-flight] Clock synchronized: $(date 2>/dev/null || true)"
+		fi
+	fi
+
+	# 2. Check if a working TLS download client exists (curl or wget/uclient-fetch)
+	has_fetcher=0
+	if command -v curl >/dev/null 2>&1; then
+		has_fetcher=1
+	elif command -v wget >/dev/null 2>&1 || command -v uclient-fetch >/dev/null 2>&1; then
+		has_fetcher=1
+	fi
+
+	pm="$(manager)"
+	# If no fetcher or if wget lacks SSL backend, auto-heal using package manager
+	if [ "$has_fetcher" = 0 ]; then
+		echo "[Pre-flight] No HTTP/HTTPS download client found. Installing prerequisites..."
+		case "$pm" in
+			apk)
+				apk update >/dev/null 2>&1 || true
+				apk add ca-bundle libustream-mbedtls curl >/dev/null 2>&1 || true
+				;;
+			opkg)
+				opkg update >/dev/null 2>&1 || true
+				opkg install ca-bundle libustream-mbedtls curl >/dev/null 2>&1 || true
+				;;
+		esac
+	fi
+}
+
+download_file() {
+	url="$1"
+	dest="$2"
+	if [ "$DRY_RUN" = 1 ]; then
+		echo "DRY_RUN=1: would download $url to $dest"
+		return 0
+	fi
+	rm -f "$dest"
+
+	# Try curl with -k (insecure/resilient) and -fsSL
+	if command -v curl >/dev/null 2>&1; then
+		if curl -kfsSL "$url" -o "$dest" 2>/dev/null; then
+			return 0
+		fi
+	fi
+
+	# Fallback to wget with --no-check-certificate
+	if command -v wget >/dev/null 2>&1; then
+		if wget --no-check-certificate -q -O "$dest" "$url" 2>/dev/null; then
+			return 0
+		fi
+	fi
+
+	# Fallback to uclient-fetch with --no-check-certificate
+	if command -v uclient-fetch >/dev/null 2>&1; then
+		if uclient-fetch --no-check-certificate -q -O "$dest" "$url" 2>/dev/null; then
+			return 0
+		fi
+	fi
+
+	# If all quiet attempts failed, run once with full output for debugging
+	echo "Retrying download with visible output..." >&2
+	if command -v curl >/dev/null 2>&1; then
+		curl -kfsSL "$url" -o "$dest" && return 0
+	fi
+	if command -v wget >/dev/null 2>&1; then
+		wget --no-check-certificate -O "$dest" "$url" && return 0
+	fi
+	if command -v uclient-fetch >/dev/null 2>&1; then
+		uclient-fetch --no-check-certificate -O "$dest" "$url" && return 0
+	fi
+
+	echo "Error: Failed to download $url using curl, wget or uclient-fetch." >&2
+	return 1
 }
 
 remove_opposite_profile() {
@@ -154,8 +284,15 @@ install_release() {
 		full) pkg_base="luci-app-ark-router-full" ;;
 		auto)
 			PROFILE="$(installed_profile 2>/dev/null || best_profile)"
+			bits="$(cpu_bitness)"
+			arch="$(cpu_arch)"
+			if [ "$PROFILE" = full ] && ! can_run_aarch64; then
+				echo "Notice: Non-AArch64 CPU detected ($arch, ${bits}-bit). Full profile contains 64-bit AArch64 binaries."
+				echo "Selecting Lite profile for optimal CPU compatibility and zero wasted storage."
+				PROFILE=lite
+			fi
 			if [ "$PROFILE" = full ]; then pkg_base="luci-app-ark-router-full"; else pkg_base="luci-app-ark-router"; fi
-			echo "Auto profile selected: $PROFILE (Full is preserved when already installed; otherwise hardware decides. RAM $(mem_total_kb) KB, overlay free $(overlay_avail_kb) KB)"
+			echo "Auto profile selected: $PROFILE (CPU $arch ${bits}-bit, RAM $(mem_total_kb) KB, overlay free $(overlay_avail_kb) KB)"
 			;;
 		*) echo "Invalid ARK_ROUTER_PROFILE: $PROFILE. Use auto, lite or full." >&2; return 2 ;;
 	esac
@@ -178,12 +315,7 @@ install_release() {
 	esac
 
 	echo "Downloading ARK Router $PROFILE package from $pkg_url"
-	if [ "$DRY_RUN" = 1 ]; then
-		echo "DRY_RUN=1: would download $pkg_url to $pkg_file"
-	else
-		rm -f "$pkg_file"
-		wget --no-check-certificate -O "$pkg_file" "$pkg_url" || return 1
-	fi
+	download_file "$pkg_url" "$pkg_file" || return 1
 
 	echo "Installing ARK Router $PROFILE package"
 	if [ "$DRY_RUN" = 1 ]; then
@@ -242,7 +374,10 @@ copy_tree() {
 }
 
 install_source() {
-	command -v wget >/dev/null 2>&1 || { echo "wget is required for source install." >&2; return 1; }
+	if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1 && ! command -v uclient-fetch >/dev/null 2>&1; then
+		echo "A download client (curl, wget or uclient-fetch) is required for source install." >&2
+		return 1
+	fi
 	command -v tar >/dev/null 2>&1 || { echo "tar is required for source install." >&2; return 1; }
 	[ -d /usr/share/luci ] || echo "Warning: LuCI files were not detected. Install LuCI before using the dashboard." >&2
 	work="$TMP_DIR/ark-router-source-install"
@@ -255,7 +390,7 @@ install_source() {
 	fi
 	rm -rf "$work" "$archive"
 	mkdir -p "$work"
-	wget --no-check-certificate -O "$archive" "$SOURCE_URL"
+	download_file "$SOURCE_URL" "$archive" || return 1
 	tar -xzf "$archive" -C "$work"
 	rootdir="$(find "$work" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
 	[ -n "$rootdir" ] && [ -d "$rootdir/root" ] || { echo "Downloaded source does not contain root/" >&2; return 1; }
@@ -269,7 +404,7 @@ install_source() {
 	check_storage_safety "$source_profile" || return 1
 
 	copy_tree "$rootdir/root" /
-	if [ "$source_profile" != full ]; then
+	if [ "$source_profile" != full ] || ! can_run_aarch64; then
 		rm -f /usr/bin/starlink-dish 2>/dev/null || true
 	fi
 	chmod +x /usr/sbin/equipe-dashboard-control 2>/dev/null || true
@@ -289,6 +424,8 @@ install_source() {
 	fi
 	restart_luci
 }
+
+preflight_check_and_fix
 
 case "$MODE" in
 	release)

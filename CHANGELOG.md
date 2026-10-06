@@ -22,6 +22,10 @@
 - **💡 HAL de LEDs e Daemons de Iluminação Dinâmica (`ark-rainbowd` / `ark-port-ledd`)**:
   - Implementação de daemons para controle de LEDs de portas físicas e iluminação RGB para plataformas Acer Predator W6x e T7.
 
+- **🚀 Instalador Shell Universal (`scripts/install.sh`) com Detecção de Arquitetura**:
+  - Detecção inteligente de CPU (`can_run_aarch64`) selecionando automaticamente perfil Lite em roteadores ARM 32-bit (como Acer Predator T7 `armv7l`), prevenindo erros de execução com binários 64-bit.
+  - Suporte resiliente a download com fallback em cascata entre `curl`, `wget` e `uclient-fetch`, além de auto-correção de relógio RTC/NTP para evitar falhas de certificado TLS.
+
 ## 1.5.8
 
 - **📱 Correção de Rolagem em Dispositivos Móveis e Preservação de Posição de Tela (02/10/2026)**:

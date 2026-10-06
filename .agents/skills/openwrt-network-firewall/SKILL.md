@@ -7,14 +7,14 @@ description: Specialist in OpenWrt networking, routing, DSA switch, wireless, an
 
 ## Visão Geral e Arquitetura Dual
 Esta skill orienta o assistente no desenvolvimento, auditoria e configuração de redes e firewall para o ecossistema ARK Router (OpenWrt).
-O ambiente suporta duas gerações com motores e características distintas:
+As gerações abaixo descrevem padrões de distribuição; confirme o backend e a topologia no dispositivo:
 
-- **Geração Antiga (OpenWrt 19.07 - 22.03)**:
+- **Firewall legado (padrão até OpenWrt 21.02)**:
   - Hardware de referência: D-Link DGL-5500 (Atheros QCA9558, 128 MB RAM, 16 MB Flash).
   - Firewall: `firewall3` (`fw3`) baseado em `iptables`.
   - Switch: `swconfig` legado (`switch0`, `eth0.1`).
   - Regras customizadas: `/etc/firewall.user`.
-- **Geração Nova (OpenWrt 23.05 - 25.x / master)**:
+- **Firewall4 (padrão desde OpenWrt 22.03)**:
   - Hardware de referência: Cudy WR3000 v1 (MediaTek MT7981 Filogic 820, 256 MB RAM, 16 MB Flash).
   - Firewall: `firewall4` (`fw4`) baseado em `nftables`.
   - Switch: **DSA** (*Distributed Switch Architecture*, `br-lan`, `br-lan.1`, `ports lan1 lan2 lan3`).
@@ -24,24 +24,33 @@ O ambiente suporta duas gerações com motores e características distintas:
 
 ## 1. Regras do Motor de Firewall (fw3 vs fw4)
 
-### Detecção Dinâmica Obrigatória
-Sempre detecte o motor ativo no roteador antes de sugerir comandos de depuração de firewall:
+### Detecção Dinâmica Universal Obrigatória
+No ecossistema ARK Router, a detecção de firewall está centralizada em `/usr/lib/ark/common.sh`.
+**NUNCA** escolha o motor apenas pela presença de `iptables` ou `ip6tables` no path: pacotes de compatibilidade podem coexistir com `fw4`. Verifique o serviço/configuração ativa antes de alterar regras.
+
+Use sempre:
 ```sh
-if command -v nft >/dev/null 2>&1 && nft list tables 2>/dev/null | grep -q 'inet fw4'; then
-    FW_ENGINE="fw4"
-else
-    FW_ENGINE="fw3"
+. /usr/lib/ark/common.sh
+
+if is_fw4; then
+    # fw4: nftables e UCI
+    # TERMINANTEMENTE PROIBIDO invocar comandos iptables/ip6tables!
+elif is_fw3; then
+    # fw3: iptables e UCI
 fi
 ```
+Fora do ARK Router, confirme o backend com inspeção somente leitura. Se nenhum backend puder ser confirmado, pare antes de escrever regras.
 
-### Sintaxe e Comandos de Inspeção
-- **No fw4 (nftables):**
-  - Listar regras ativas: `nft list ruleset` ou `nft list chain inet fw4 srcnat_wan`.
-  - Validar sintaxe sem aplicar: `nft -c -f /arquivo/teste.nft`.
-  - Tabelas nativas: tabela `inet fw4` com chains `input`, `output`, `forward`, `dstnat`, `srcnat`.
-- **No fw3 (iptables):**
-  - Listar regras ativas: `iptables -vnL` e `iptables -t nat -vnL`.
-  - Validar sintaxe: `iptables-save -t filter`.
+### Regra de Ouro de Isolamento dos Motores:
+1. **Ambiente Moderno (`fw4` / nftables)**:
+   - Zero comandos `iptables` ou `ip6tables` (nem mesmo para verificação ou flush).
+   - Elimina em definitivo o alerta do LuCI: *"Legacy rules detected: There are legacy iptables rules present on the system"*.
+   - Tabelas nativas: tabela `inet fw4` com chains `input`, `output`, `forward`, `dstnat`, `srcnat`.
+   - Inspeção: `nft list ruleset` ou `nft list chain inet fw4 srcnat_wan`.
+2. **Ambiente Legado (`fw3` / iptables)**:
+   - Suporte mantido integralmente para routers compactos com 16 MB Flash / 128 MB RAM (ex: D-Link DGL-5500, Archer C60).
+   - Tabelas Netfilter clássicas: `filter`, `nat`, `mangle`.
+   - Inspeção: `iptables -vnL` e `iptables -t nat -vnL`.
 
 ### Configuração Declarativa via UCI (`/etc/config/firewall`)
 Ambas as gerações consomem o UCI. Priorize SEMPRE o UCI em vez de comandos manuais no terminal:
@@ -137,3 +146,9 @@ Prefira sempre consultas estruturadas via `ubus` em vez de `ifconfig` ou `grep`:
 4. **Reinicialização Segura:**
    - Prefira `/etc/init.d/firewall reload` em vez de `restart`.
    - Utilize `/etc/init.d/network reload` em vez de comandos destrutivos como `ifdown -a`.
+
+## 6. Descobertas operacionais reutilizáveis
+
+- `mwan3` distribui conexões conforme política; uma transferência isolada não comprova soma de banda. `/var/run/mwan3track` fornece status barato, mas não comprova failover ou conectividade fim a fim. Verifique rota e tráfego por WAN.
+- Se a interface oferece desligamento por banda Wi-Fi, reflita o estado do UCI e rejeite no backend uma tentativa de desligar todas as bandas de gerência. Preserve também um caminho cabeado de recuperação.
+- DSA e `swconfig` dependem do target e driver. Confira as portas reais e a configuração de bridge antes de escrever VLANs.

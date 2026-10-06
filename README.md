@@ -5,7 +5,7 @@
 # ARK Router
 
 ![OpenWrt](https://img.shields.io/badge/OpenWrt-24.x%20%2F%2025.x-00B5E2?logo=openwrt&logoColor=white)
-![Release](https://img.shields.io/badge/release-v1.5.2-blue.svg)
+![Release](https://img.shields.io/badge/release-v1.5.9-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![Language](https://img.shields.io/badge/UI-PT--BR%20%2F%20EN%20%2F%20ES-blue)
 ![Platform](https://img.shields.io/badge/arch-all%20%2F%20noarch-orange)
@@ -16,7 +16,7 @@ The project does not replace OpenWrt or LuCI — it operates on top of LuCI as a
 
 > **Keywords / SEO**: ARK Router, OpenWrt dashboard, LuCI dashboard, OpenWrt moderno, monitorar tráfego por dispositivo, per-device bandwidth monitor, OpenWrt Starlink telemetry, ZeroTier OpenWrt autostart, DNS benchmark router, SQM CAKE bufferbloat QoS, Multi-WAN failover load balancing, Speedify OpenWrt bonding, OpenWrt mobile UI, painel roteador OpenWrt, network bandwidth limiter, real-time router monitoring, adguard home openwrt ram, dns blacklist openwrt, cross-browser responsive openwrt.
 
-The current official release is **v1.5.2**. ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
+The current official release is **v1.5.9** (see [`VERSION`](VERSION)). ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
 
 ---
 
@@ -146,7 +146,7 @@ The current pilot has been tested on:
 | Firmware | OpenWrt 25.12.5 r33051-f5dae5ece4 (pilot builds) |
 | Target | `mediatek/filogic` on Cudy; target-specific build on Acer |
 | Package manager | `apk` |
-| LuCI theme used during testing | Argon and stock LuCI layout |
+| LuCI theme used during testing | ARK Theme and standard LuCI layout |
 | Wi-Fi names used in the pilot | Custom, router-local names; not project defaults |
 
 The Wi-Fi names above are not requirements. They document the pilot environment only. ARK Router reads and manages whichever Wi-Fi names are configured on the router. Pilot passwords, private IPs, backups and router-specific secrets are intentionally not included in this repository.
@@ -209,27 +209,20 @@ The package manager adapter supports both `apk` and `opkg` for optional package 
 | Guest network full rate limit | `tc-full` and `kmod-sched-act-police`; pulled by Release package installs |
 | IRQ balance | `irqbalance` (included in release package `DEPENDS`) |
 | UPnP / NAT-PMP | `luci-app-upnp` |
-| Argon theme | `luci-theme-argon` |
 | uHTTPd LuCI manager | `luci-app-uhttpd` (optional addon; web server is native to OpenWrt base) |
 | Link testing | `speedtest-go`, loaded into temporary memory |
 | Tunnel support | `kmod-tun`, required only when Speedify/VPN tunnel interfaces are enabled |
 | Real bonding | Speedify Router runtime, optional; can be loaded internally, from external storage or temporarily in RAM when supported |
-| Remote access | Tailscale and ZeroTier optional overlays; ARK Router can install/configure them without exposing LuCI/SSH on the WAN |
+| Remote access | WireGuard and ZeroTier optional overlays; ARK Router can install/configure them without exposing LuCI/SSH on the WAN |
 | Lightweight remote access | ZeroTier, optional; smaller remote-access alternative for constrained routers |
 
 Most optional packages are not hard dependencies. Cards are displayed only when the corresponding capability exists. The dashboard asks for confirmation before installing an optional package. Package installation does not automatically alter network configuration.
 
 See [`docs/PACKAGE_PROFILES.md`](docs/PACKAGE_PROFILES.md) for the Lite and Full package profiles, including measured package sizes, service RAM notes and the tested addon version baseline.
 
-### Tailscale remote access
-
-Tailscale is an optional free personal remote-access overlay for Starlink, mobile links and CGNAT. ARK Router can install the package, start the service, generate the `tailscale up` login flow, show the Tailscale IP and advertise the current LAN subnet route from the dashboard.
-
-If subnet routing is used, approve the route in the Tailscale admin panel. Keep each router LAN on a different subnet, such as `192.168.10.0/24`, `192.168.20.0/24` and `192.168.73.0/24`, to avoid route conflicts. Do not expose LuCI or SSH directly to the WAN.
-
 ### ZeroTier remote access
 
-ZeroTier is the lightweight remote-access alternative for routers where Tailscale is too large. ARK Router can install and enable ZeroTier, join a configured Network ID, prepare firewall access from ZeroTier to LAN and show node/network/IP status.
+ZeroTier is the lightweight remote-access overlay for routers behind CGNAT, Starlink or mobile links. ARK Router can install and enable ZeroTier, join a configured Network ID, prepare firewall access from ZeroTier to LAN and show node/network/IP status.
 
 After joining, authorize the router in ZeroTier Central. To access the LAN behind the router, configure a managed route in ZeroTier Central for the router LAN subnet through the router's ZeroTier IP.
 
@@ -397,7 +390,7 @@ ARK Router includes a conservative uninstaller:
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/uninstall.sh | sh
 ```
 
-By default it removes only ARK Router files and temporary runtime files. It does not remove optional packages that may have been installed or used with the dashboard, such as SQM, Multi-WAN, nlbwmon, UPnP, Argon, uHTTPd or `speedtest-go`.
+By default it removes only ARK Router files and temporary runtime files. It does not remove optional packages that may have been installed or used with the dashboard, such as SQM, Multi-WAN, nlbwmon, UPnP, uHTTPd or `speedtest-go`.
 
 Before removing anything, the script creates a small backup in `/tmp` with ARK Router preferences and friendly device names. Download it before rebooting the router if you want to keep a copy:
 
@@ -420,7 +413,7 @@ tar -xzf /tmp/ark-router-config-backup-YYYYMMDD-HHMMSS.tar.gz -C /
 
 ## Project Status
 
-Version **1.5.1** is the current official release. It consolidates universal compatibility for both OpenWrt generations (OpenWrt Antigo 19.07-23.05 via IPK and OpenWrt Novo 24.x-25.x via APK and native SquashFS ROM builds). It features an in-place anti-jitter update engine with an integrated Total consumed column (MB/GB), real-time per-device hardware rates (Wi-Fi DMA), a built-in multi-provider DNS Turbo benchmark, ZeroTier remote-access with hybrid flash/RAM execution, a System Performance and Stability center (12h flash wear protection, RAM autopurge, conntrack connection recycling, IRQ Balance), full mobile touch responsiveness (iOS/Android) with 40px+ touch targets and ghost modal overlay prevention, dynamic Multi-WAN failover/balancing, multi-Starlink telemetry, CAKE/SQM upload and download queue management, guest rate limits, and safe rollback checkpoints. Suitable for home, office, mobile, event, gaming and production OpenWrt setups.
+Version **1.5.9** is the current active release (see [`VERSION`](VERSION) and [`CHANGELOG.md`](CHANGELOG.md)). It consolidates universal compatibility for both OpenWrt generations (OpenWrt Legado 19.07-21.02 via IPK and OpenWrt Moderno 22.03-25.x via APK/IPK and native SquashFS ROM builds). It features an in-place anti-jitter update engine with an integrated Total consumed column (MB/GB), real-time per-device hardware rates (Wi-Fi DMA), a built-in multi-provider DNS Turbo benchmark, ZeroTier remote-access with hybrid flash/RAM execution, a System Performance and Stability center (12h flash wear protection, RAM autopurge, conntrack connection recycling, IRQ Balance), full mobile touch responsiveness (iOS/Android) with 40px+ touch targets and ghost modal overlay prevention, dynamic Multi-WAN failover/balancing, multi-Starlink telemetry, CAKE/SQM upload and download queue management, guest rate limits, and safe rollback checkpoints. Suitable for home, office, mobile, event, gaming and production OpenWrt setups.
 
 ## Native ROM Builds (ImageBuilder)
 

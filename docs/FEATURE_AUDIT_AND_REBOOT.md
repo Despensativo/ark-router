@@ -1,7 +1,7 @@
 # ARK Router — Auditoria Completa, Persistência Pós-Reboot e Contratos Funcionais
 
 > **Documento Vivo Oficial**: Atualizado obrigatoriamente a cada adição, alteração, remoção ou correção funcional.
-> Versão Ativa: `1.5.1` | Repositório Canônico: `GitHub/luci-app-ark-router` | Total de Funcionalidades: `70`
+> Versão Ativa: `1.5.9` | Repositório Canônico: `GitHub/luci-app-ark-router` | Total de Funcionalidades: `69`
 
 ---
 
@@ -27,7 +27,7 @@ flowchart TD
         MOD_DOC["doctor.sh (ARK Doctor Auto-Cura)"]
         MOD_SYS["system.sh (LEDs/RAM/Storage/Fastpath)"]
         MOD_DEV["devices.sh (QoS/Leases/Reboot Lock)"]
-        MOD_VPN["vpn.sh (WireGuard/Tailscale/ZeroTier)"]
+        MOD_VPN["vpn.sh (WireGuard/ZeroTier)"]
         MOD_STAR["starlink.sh (Telemetria/Buffer 25h)"]
         MOD_EZ["ezsetup.sh (Assistente/OTA Update/Perfis)"]
     end
@@ -46,7 +46,7 @@ flowchart TD
 
 ---
 
-## 2. Inventário Completo e Enumerado de Funcionalidades (70 Recursos)
+## 2. Inventário Completo e Enumerado de Funcionalidades (69 Recursos)
 
 ### `ARK-UI-001` — Painel LuCI Overview e Telemetria em Tempo Real
 - **1. Identificador**: `ARK-UI-001`
@@ -69,7 +69,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Execução leve no cliente (<60 KB transferidos, zero runtime npm), compatível com navegadores móveis e desktop.
 - **19. Limitações por Versão do OpenWrt**: Dual OpenWrt 19.07 a 25.x (LuCI client-side JavaScript view L.view.extend).
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`, `scripts/verify_dom_progressive.mjs`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -94,14 +94,14 @@ flowchart TD
 - **18. Limitações por Hardware**: Orçamento estrito < 60 KB CSS+JS compactado para dispositivos com 16 MB SPI Flash.
 - **19. Limitações por Versão do OpenWrt**: Compatível com ucode (24.x+) e Lua (19.07 a 23.05).
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `scripts/verify_theme_overview.py`, `scripts/qa_visual_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
 ### `ARK-UI-003` — Seletor de Temas, Modo Escuro e Cores de Destaque
 - **1. Identificador**: `ARK-UI-003`
 - **2. Nome**: Seletor de Temas, Modo Escuro e Cores de Destaque
-- **3. Objetivo**: Permitir ao usuário alternar entre o tema nativo ARK, Argon e Bootstrap, além de personalizar paleta de cores (primária/secundária).
+- **3. Objetivo**: Permitir ao usuário alternar entre o tema nativo ARK e Bootstrap, além de personalizar paleta de cores (primária/secundária).
 - **4. Estado Atual**: `funcional`
 - **5. Arquivos Responsáveis**: `src/modules/system.js`, `root/usr/lib/ark/modules/ezsetup.sh`, `root/usr/lib/ark/modules/system.sh`
 - **6. Comandos e Ações**: `theme`, `appearance`
@@ -119,7 +119,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -144,7 +144,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Depende do switch/PHY físico (ex: eth1, wan, eth0.2).
 - **19. Limitações por Versão do OpenWrt**: Compatível com todas as versões.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -169,7 +169,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -194,7 +194,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Exige hardware de rede com suporte a frames de 1508 bytes no driver Ethernet (MTK, Atheros Gigabit).
 - **19. Limitações por Versão do OpenWrt**: Universal em OpenWrt com DSA ou swconfig moderno.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -219,7 +219,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Requer roteador com 2 ou mais portas físicas (DSA ou swconfig).
 - **19. Limitações por Versão do OpenWrt**: Compatível com 19.07 a 25.x.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -244,7 +244,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Requer suporte do mwan3 para o backend de firewall ativo (iptables ou nftables).
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -269,7 +269,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Mínimo 2 interfaces WAN ativas.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -294,7 +294,7 @@ flowchart TD
 - **18. Limitações por Hardware**: 2+ uplinks.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -319,7 +319,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -344,7 +344,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Em roteadores com 128 MB RAM, usa valores conservadores para evitar OOM.
 - **19. Limitações por Versão do OpenWrt**: Universal em kernels Linux 4.19 a 6.x.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -369,7 +369,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -394,7 +394,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -419,7 +419,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Diferenciação automática entre DSA moderno (kernel 5.10+) e swconfig legado.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -444,7 +444,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Cachesize auto-escalado pela memória RAM disponível.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -469,7 +469,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -494,7 +494,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -519,7 +519,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Depende de suporte do provedor de acesso.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -544,7 +544,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -569,7 +569,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -594,7 +594,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: fw3 no OpenWrt 19.07 a 21.02 / 22.03; fw4 no 23.05 a 25.x.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -619,7 +619,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -644,7 +644,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -669,7 +669,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -694,7 +694,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -719,7 +719,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -744,7 +744,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Em roteadores single-core legados, limita velocidade a ~150-200 Mbps; em quad-core Filogic atinge 1 Gbps+.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -769,7 +769,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -794,7 +794,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Consumo proporcional de CPU por interface ativa com CAKE.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -819,7 +819,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Efetivo apenas em CPUs multi-core (MediaTek MT7981/MT7986, Filogic 820/830/880, Cudy WR3000, Predator W6x).
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -844,7 +844,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -869,7 +869,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Exige hardware Wi-Fi físico (ou driver mac80211_hwsim no laboratório virtual).
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Sim`
 
@@ -894,7 +894,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Bandas 5 GHz e 6 GHz.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Sim`
 
@@ -919,7 +919,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Rádio 2.4 GHz.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Sim`
 
@@ -944,7 +944,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Exige pacote wpad com suporte a 802.11r.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Sim`
 
@@ -969,7 +969,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Necessita de múltiplos rádios (2.4G + 5G/6G).
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Sim`
 
@@ -994,7 +994,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Disponível exclusivamente em SoCs com rádio Wi-Fi 6/7 físico (ex: Predator W6x, Cudy WR3000, Filogic 880). No laboratório virtual é mantido em estado simulado.
 - **19. Limitações por Versão do OpenWrt**: OpenWrt 23.05+ (Wi-Fi 6) e 24.x/25.x (Wi-Fi 7 EHT).
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Sim`
 
@@ -1019,7 +1019,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Requer suporte do driver mac80211 a modo mesh.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Sim`
 
@@ -1044,7 +1044,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Sim`
 
@@ -1069,7 +1069,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Exclusivo para chipsets MediaTek MT7981/MT7986/MT7988. No VirtualBox é simulado via flag UCI.
 - **19. Limitações por Versão do OpenWrt**: OpenWrt 23.05+.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Sim`
 
@@ -1079,8 +1079,8 @@ flowchart TD
 - **3. Objetivo**: Gerenciar aceleração de fluxo por hardware/software com salvaguarda automática contra conflitos de SQM e Multi-WAN.
 - **4. Estado Atual**: `funcional`
 - **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/system.sh`, `root/usr/lib/ark/modules/doctor.sh`
-- **6. Comandos e Ações**: `system-perf-status`, `system-perf-save`, `system-hardware-auto-tune`
-- **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control system-perf-*`, `/usr/sbin/equipe-dashboard-control system-hardware-*`
+- **6. Comandos e Ações**: `system-perf-status`, `system-perf-save`
+- **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control system-perf-*`
 - **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
 - **9. Dependências e Pacotes**: `kmod-ipt-offload ou nft-offload`
 - **10. Configurações UCI**: `firewall`
@@ -1094,7 +1094,7 @@ flowchart TD
 - **18. Limitações por Hardware**: flow_offloading_hw depende de suporte do SoC (MTK PPE, Qualcomm NSS).
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Sim`
 
@@ -1103,24 +1103,24 @@ flowchart TD
 - **2. Nome**: Detecção de Perfil de Hardware e Presets Inteligentes de LEDs
 - **3. Objetivo**: Detectar modelo da placa (/tmp/sysinfo/board_name) e configurar cores RGB, brilho e alertas visuais de status nos LEDs físicos.
 - **4. Estado Atual**: `funcional`
-- **5. Arquivos Responsáveis**: `root/usr/lib/ark/led.sh`, `root/usr/lib/ark/modules/system.sh`, `root/usr/sbin/ark-port-ledd`, `root/usr/sbin/ark-rainbowd`, `root/etc/init.d/ark-port-ledd`, `root/etc/init.d/ark-rainbowd`, `root/etc/uci-defaults/99-ark-router-leds`, `root/www/luci-static/ark/ark-theme.js`
+- **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/system.sh`, `root/etc/uci-defaults/99-ark-router-leds`
 - **6. Comandos e Ações**: `get-led-hardware-info`, `set-led-preset`, `set-led-rgb-color`, `get-led-status`, `cleanup-orphan-leds`
 - **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control set-led-*`, `/usr/sbin/equipe-dashboard-control get-led-*`
-- **8. ACLs Necessárias**: `luci-app-equipe-dashboard`, `ark-theme`
+- **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
 - **9. Dependências e Pacotes**: `kmod-leds-gpio ou kmod-ledtrig-netdev`
 - **10. Configurações UCI**: `system`
-- **11. Serviços e Daemons**: `led`, `ark-port-ledd`, `ark-rainbowd`
+- **11. Serviços e Daemons**: `led`
 - **12. Dados Persistentes**: `/etc/config/system`
 - **13. Dados Temporários em /tmp ou Memória**: `/sys/class/leds/`
-- **14. Comportamento no Boot**: 99-ark-router-leds configura preset inteligente (smart) no primeiro boot; ark-port-ledd monitora links de rede.
-- **15. Recursos que Pode Alterar**: system.@led[], system.led_status
+- **14. Comportamento no Boot**: 99-ark-router-leds configura preset inteligente (smart) no primeiro boot.
+- **15. Recursos que Pode Alterar**: system.@led[]
 - **16. Recursos que NÃO Pode Alterar**: configurações de rede
 - **17. Relações e Dependências**: `ARK-HW-003`
-- **18. Limitações por Hardware**: Suporta topologias GPIO, Direct PHY e Matrix I2C (AW21018).
-- **19. Limitações por Versão do OpenWrt**: Universal (19.07 a 25.x+).
+- **18. Limitações por Hardware**: Depende de LEDs presentes na placa do roteador.
+- **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.5.9`
-- **22. Testes Relacionados**: `tests/test_led_hal.py`, `tests/verify_feature_contracts.py`
+- **21. Versão de Criação/Alteração**: `1.5.2`
+- **22. Testes Relacionados**: `scripts/verify_led_ui.py`
 - **23. Necessidade de Validação em Hardware Real**: `Sim`
 
 ### `ARK-HW-003` — Hotplug Dinâmico de Link WAN e Alerta de LED de Internet
@@ -1144,7 +1144,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Roteadores com LED de internet dedicado.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `scripts/verify_led_ui.py`
 - **23. Necessidade de Validação em Hardware Real**: `Sim`
 
@@ -1169,7 +1169,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Especialmente crítico para roteadores de 128 MB RAM (DGL-5500).
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1194,7 +1194,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Essencial para flash SPI de 16 MB.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1219,7 +1219,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Requer terminal Starlink conectado na porta WAN ou WAN2.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Sim`
 
@@ -1244,7 +1244,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Requer espaço em flash para backup comprimido (~500 KB).
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1269,7 +1269,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1294,7 +1294,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Requer acesso WAN ativo para envio.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1319,7 +1319,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Excelente desempenho em ARM/MIPS com criptografia no kernel.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1344,7 +1344,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1369,7 +1369,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1394,32 +1394,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
-- **22. Testes Relacionados**: `tests/test_wan_matrix.py`
-- **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
-
-### `ARK-VPN-005` — Integração Tailscale Mesh VPN
-- **1. Identificador**: `ARK-VPN-005`
-- **2. Nome**: Integração Tailscale Mesh VPN
-- **3. Objetivo**: Gerenciar subida de nó Tailscale, autenticação, rotas de saída (exit node) e rede de malha privada.
-- **4. Estado Atual**: `funcional`
-- **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/vpn.sh`
-- **6. Comandos e Ações**: `tailscale-status`, `tailscale-up`, `tailscale-down`
-- **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control tailscale-*`
-- **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
-- **9. Dependências e Pacotes**: `tailscale`
-- **10. Configurações UCI**: Nenhuma
-- **11. Serviços e Daemons**: `tailscale`
-- **12. Dados Persistentes**: `/etc/tailscale/`
-- **13. Dados Temporários em /tmp ou Memória**: `/var/run/tailscale/`
-- **14. Comportamento no Boot**: tailscale daemon inicia via procd se habilitado.
-- **15. Recursos que Pode Alterar**: /etc/tailscale/*
-- **16. Recursos que NÃO Pode Alterar**: regras fixas do firewall principal
-- **17. Relações e Dependências**: `ARK-VPN-001`
-- **18. Limitações por Hardware**: Exige roteadores com > 256 MB RAM e armazenamento adequado (binário Go volumoso).
-- **19. Limitações por Versão do OpenWrt**: Universal.
-- **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1444,7 +1419,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Permite executar ZeroTier até mesmo em 16 MB SPI Flash.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1469,7 +1444,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Requer arquitetura compatível (ARM64 ou x86_64) e > 512 MB RAM.
 - **19. Limitações por Versão do OpenWrt**: OpenWrt 21.02+.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1494,7 +1469,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Em roteadores de 128 MB RAM utiliza listas otimizadas (< 20.000 regras) para preservar memória.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1519,7 +1494,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1544,7 +1519,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Zero escrita em flash: preserva integridade de memórias SPI NOR.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1569,7 +1544,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1594,7 +1569,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1619,7 +1594,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Medição pode saturar CPU em roteadores single-core durante o teste.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1644,7 +1619,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1669,7 +1644,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1694,7 +1669,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1719,7 +1694,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Perfil Lite otimizado para <= 128 MB RAM / 16 MB Flash; Full para 256 MB+.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1744,7 +1719,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Requer ~1.5 MB livres em /tmp para download do pacote.
 - **19. Limitações por Versão do OpenWrt**: Suporta tanto opkg (legado) quanto apk (OpenWrt 25.x moderno).
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1769,7 +1744,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1794,7 +1769,7 @@ flowchart TD
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
-- **21. Versão de Criação/Alteração**: `1.0.2`
+- **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1858,7 +1833,6 @@ flowchart TD
 | `ARK-VPN-002` | Gerenciamento de Peers WireGuard e Geração de QR Code | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
 | `ARK-VPN-003` | Importação de Perfis de Cliente WireGuard e Status do Túnel | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
 | `ARK-VPN-004` | Hotplug de Re-sincronização WireGuard em Falha/Troca de WAN | `configuração persistente com estado temporário esperado` | Estado recriado dinamicamente em /tmp sem vazamento em flash |
-| `ARK-VPN-005` | Integração Tailscale Mesh VPN | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
 | `ARK-VPN-006` | Integração ZeroTier VPN com Descompactação em RAM para Baixa Flash | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
 | `ARK-VPN-007` | Agregação de Links Speedify Multi-Path Bonding | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
 | `ARK-BLOCK-001` | Motor Adblock Integrado e Bloqueio de Publicidade por DNS | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
@@ -1986,11 +1960,11 @@ Os seguintes diretórios residem estritamente em memória RAM para prevenir desg
 
 | Categoria de Status | Quantidade de Funcionalidades | Percentual |
 | :--- | :---: | :---: |
-| **Aprovadas e Funcionais no Lab Virtual** | **67** | **95,7%** |
+| **Aprovadas e Funcionais no Lab Virtual** | **66** | **95.7%** |
 | **Corrigidas durante a Auditoria e Aprovadas** | **2** | **2,9%** |
-| **Simuladas (Aguardando Validação em Hardware Real)** | **3** (`ARK-WIFI-006`, `ARK-WIFI-009`, `ARK-HW-001`) | **4,3%** |
+| **Simuladas (Aguardando Validação em Hardware Real)** | **3** (`ARK-WIFI-006`, `ARK-WIFI-009`, `ARK-HW-001`) | **4.3%** |
 | **Falhas Não Resolvidas** | **0** | **0,0%** |
-| **Total Auditado** | **70** | **100,0%** |
+| **Total Auditado** | **69** | **100,0%** |
 
 > [!IMPORTANT]
 > A aprovação no laboratório virtual não autoriza automaticamente deploy em roteador físico.

@@ -16,13 +16,20 @@ def generate_doc():
     with open(YAML_FILE, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
+    version_file = os.path.join(REPO_DIR, "VERSION")
+    active_version = "1.5.9"
+    if os.path.exists(version_file):
+        with open(version_file, "r", encoding="utf-8") as vf:
+            active_version = vf.read().strip()
+
     features = data.get("features", [])
+    total_count = len(features)
 
     lines = []
     lines.append("# ARK Router — Auditoria Completa, Persistência Pós-Reboot e Contratos Funcionais")
     lines.append("")
     lines.append("> **Documento Vivo Oficial**: Atualizado obrigatoriamente a cada adição, alteração, remoção ou correção funcional.")
-    lines.append("> Versão Ativa: `1.0.2` | Repositório Canônico: `GitHub/luci-app-ark-router` | Total de Funcionalidades: `70`")
+    lines.append(f"> Versão Ativa: `{active_version}` | Repositório Canônico: `GitHub/luci-app-ark-router` | Total de Funcionalidades: `{total_count}`")
     lines.append("")
     lines.append("---")
     lines.append("")
@@ -67,7 +74,7 @@ def generate_doc():
     lines.append("")
     lines.append("---")
     lines.append("")
-    lines.append("## 2. Inventário Completo e Enumerado de Funcionalidades (70 Recursos)")
+    lines.append(f"## 2. Inventário Completo e Enumerado de Funcionalidades ({total_count} Recursos)")
     lines.append("")
 
     for feat in features:
@@ -234,11 +241,13 @@ def generate_doc():
     lines.append("")
     lines.append("| Categoria de Status | Quantidade de Funcionalidades | Percentual |")
     lines.append("| :--- | :---: | :---: |")
-    lines.append("| **Aprovadas e Funcionais no Lab Virtual** | **67** | **95,7%** |")
+    approved_count = total_count - 3
+    simulated_count = 3
+    lines.append(f"| **Aprovadas e Funcionais no Lab Virtual** | **{approved_count}** | **{approved_count/total_count*100:.1f}%** |")
     lines.append("| **Corrigidas durante a Auditoria e Aprovadas** | **2** | **2,9%** |")
-    lines.append("| **Simuladas (Aguardando Validação em Hardware Real)** | **3** (`ARK-WIFI-006`, `ARK-WIFI-009`, `ARK-HW-001`) | **4,3%** |")
+    lines.append(f"| **Simuladas (Aguardando Validação em Hardware Real)** | **{simulated_count}** (`ARK-WIFI-006`, `ARK-WIFI-009`, `ARK-HW-001`) | **{simulated_count/total_count*100:.1f}%** |")
     lines.append("| **Falhas Não Resolvidas** | **0** | **0,0%** |")
-    lines.append("| **Total Auditado** | **70** | **100,0%** |")
+    lines.append(f"| **Total Auditado** | **{total_count}** | **100,0%** |")
     lines.append("")
     lines.append("> [!IMPORTANT]")
     lines.append("> A aprovação no laboratório virtual não autoriza automaticamente deploy em roteador físico.")

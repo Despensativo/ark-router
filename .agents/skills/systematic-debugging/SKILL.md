@@ -51,3 +51,10 @@ Ative esta skill diante de qualquer falha técnica:
 1. Testar o comportamento antes e depois da correção.
 2. Garantir que a alteração não aumentou o consumo de memória RAM nem gravou lixo permanente na Flash.
 3. Confirmar que o serviço afetado reiniciou de forma limpa.
+
+## Evidência por ambiente e revisão
+
+- Registre modelo, versão do firmware, revisão do código ou pacote, ação reproduzida e resultado observado. Separe inspeção estática, mock, navegador, VM e roteador físico.
+- Para melhorias de desempenho, meça o caminho frio e o cache aquecido sob carga comparável; informe latência e CPU em vez de prometer uma porcentagem universal.
+- Teste invalidação de cache após evento relevante e após reboot. Arquivos sob `/tmp` são temporários; trate ausência, timestamp inválido e escrita interrompida.
+- Um teste estrutural ou relatório gerado não confirma tráfego, recuperação após reboot ou aprovação de release.

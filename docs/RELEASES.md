@@ -7,8 +7,8 @@ For the complete maintainer publishing checklist, see [PUBLISHING.md](PUBLISHING
 The easiest public distribution path is:
 
 1. Push the source code to GitHub.
-2. Create a version tag matching `VERSION`, for example `v1.5.1`.
-3. Let GitHub Actions build the package with the OpenWrt SDK.
+2. Create a version tag matching `VERSION`, for example `v1.5.9`.
+3. Build the package locally using `scripts/build-apk-manual-wsl.sh` / `scripts/build-ipk-wsl.sh` (or let GitHub Actions build with the OpenWrt SDK).
 4. Publish the generated `.apk` or `.ipk` files as GitHub Release assets.
 5. Install or update from the router with the SSH one-liner in `scripts/install.sh`.
 
@@ -64,7 +64,7 @@ The pilot router uses OpenWrt with APK v3 packages, so a normal `.tar.gz` archiv
 | Target | `mediatek/filogic`; `ath79/generic` |
 | CPU/package arch | `aarch64_cortex-a53`; `mips_24kc` |
 | Package manager | `apk` / `opkg` |
-| Theme used in pilot | Argon, Bootstrap and stock LuCI layout |
+| Theme used in pilot | ARK Theme, Bootstrap and stock LuCI layout |
 
 The package is expected to work on recent OpenWrt/LuCI versions, but public releases should collect test reports by device and firmware before calling it stable.
 

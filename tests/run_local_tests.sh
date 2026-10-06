@@ -63,13 +63,14 @@ printf "${YELLOW}[3/5] Executando matriz de testes de WAN, SQM, MTU, ARK Doctor 
 "$PYTHON_CMD" "$SCRIPT_DIR/test_lite_vs_full_scenarios.py"
 printf "${GREEN}✓ Todos os testes unitários e de cenários passaram com sucesso!${NC}\n\n"
 
-# 4. Auditoria de Contratos Funcionais, Preservação de Estado, Não-Interferência e i18n
-printf "${YELLOW}[4/5] Verificando contratos, preservação de estado, i18n e não-interferência...${NC}\n"
+# 4. Auditoria de Contratos Funcionais, Preservação de Estado, Documentação e i18n
+printf "${YELLOW}[4/5] Verificando contratos, documentação, preservação de estado e i18n...${NC}\n"
 "$PYTHON_CMD" "$SCRIPT_DIR/verify_feature_contracts.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/lab/test_interference_matrix.py"
 "$PYTHON_CMD" "$REPO_DIR/scripts/audit_state_preservation.py" --strict
 "$PYTHON_CMD" "$REPO_DIR/scripts/audit_i18n.py"
-printf "${GREEN}✓ Contratos funcionais, cobertura i18n, preservação de estado e co-existência aprovados!${NC}\n\n"
+"$PYTHON_CMD" "$REPO_DIR/scripts/audit_docs.py"
+printf "${GREEN}✓ Contratos funcionais, documentação viva, i18n e preservação aprovados!${NC}\n\n"
 
 # 5. Auditoria de Minificação
 printf "${YELLOW}[5/5] Testando pipeline de minificação...${NC}\n"

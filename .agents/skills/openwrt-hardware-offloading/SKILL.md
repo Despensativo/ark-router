@@ -14,11 +14,11 @@ Configurar e auditar os mecanismos de aceleração de encaminhamento de pacotes 
 
 1. **Encaminhamento Padrão por Kernel (Sem Offload):**
    - Cada pacote passa por todo o stack do Netfilter (`prerouting`, `forward`, `postrouting`).
-   - Limite de throughput: ~300 Mbps a 450 Mbps em CPUs MIPS antigas (100% de CPU).
+   - A vazão depende de CPU, driver, encapsulamento e tamanho dos pacotes; meça o teto no equipamento.
 2. **Software Flow Offloading (`flow_offloading=1`):**
    - Cria um atalho na tabela de conexões (*flowtable*) após o handshake TCP/UDP inicial.
    - Os pacotes seguintes pulam a maior parte do Netfilter diretamente para a camada de saída.
-   - Reduz o consumo de CPU pela metade.
+   - Pode reduzir uso de CPU para fluxos elegíveis; quantifique com testes antes/depois.
 3. **Hardware Flow Offloading (`flow_offloading_hw=1`):**
    - Transfere o encaminhamento de fluxos estabelecidos para o acelerador em silício do SoC.
    - No **MediaTek Filogic MT7981 (ex.: Cudy WR3000)**:
@@ -30,7 +30,7 @@ Configurar e auditar os mecanismos de aceleração de encaminhamento de pacotes 
 ## 2. Configuração por Família de Roteador
 
 ### MediaTek Filogic 820 (Cudy WR3000 v1 / MT7981)
-Compatível com aceleração total em hardware:
+Exemplo de configuração para uma imagem cujo driver, firewall e tráfego suportem offload. Confirme capacidade e faça backup da configuração antes de aplicar:
 ```sh
 uci -q batch <<EOF
 set firewall.@defaults[0].flow_offloading='1'
@@ -57,9 +57,6 @@ EOF
 
 > [!WARNING]
 > **Incompatibilidade com SQM (Smart Queue Management):**
-> O Hardware Offload ignora completamente as filas de controle de banda.
-> Se o usuário ativar **SQM / CAKE** para combater Bufferbloat, o `flow_offloading_hw` DEVE ser desativado imediatamente (`flow_offloading_hw='0'`), caso contrário o SQM não conseguirá limitar os pacotes!
+> Fluxos com offload podem contornar o qdisc usado pelo SQM. Antes de combinar offload e CAKE, teste se os fluxos relevantes são moldados e se a latência melhora sob saturação; desative o offload para esses fluxos quando o SQM não atuar.
 
-- **Regra de Decisão:**
-  - Link de Internet > 500 Mbps sem problemas de latência → Ativar **Hardware Offload**.
-  - Link de Internet com Bufferbloat ou latência instável em jogos → Desativar Hardware Offload e Ativar **SQM (CAKE)**.
+- **Regra de decisão:** Compare vazão, CPU e latência sob carga com e sem offload. Escolha o perfil que atende à meta de tráfego real; um limite de Mbps isolado não decide a configuração.

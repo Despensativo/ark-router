@@ -72,15 +72,16 @@ O firmware de fábrica da Cudy bloqueia arquivos genéricos do OpenWrt com a men
 
 ---
 
-## 4. Como Instalar o ARK Router v1.5.1 com Segurança Total
+## 4. Como Instalar o ARK Router com Segurança Total
 
 Com o OpenWrt limpo em execução em `192.168.1.1`:
 
-1. **Método Recomendado (Pacote APK sem mexer na Flash)**:
+1. **Método Recomendado (Pacote APK/IPK via LuCI/SSH)**:
    * Acesse o LuCI em `http://192.168.1.1` ➔ **System > Software**.
-   * Faça upload do pacote:
-     📦 `dist/sdk/luci-app-ark-router-1.5.1-r1.apk`
-   * O ARK Router, temas e telemetria são ativados em segundos, sem risco de corrupção de kernel.
+   * Faça upload do pacote pré-compilado:
+     📦 `dist/sdk/luci-app-ark-router-<VERSION>-r1.apk` (ex: `1.5.9-r1.apk`)
+   * O pacote é instalado diretamente no `/overlay` gravável sem necessidade de regravação integral do firmware, preservando as partições de boot e calibração de rádio (ART).
+   * O ARK Router, temas e telemetria são ativados em segundos.
 
 2. **Método Sysupgrade Nativo**:
    * O script canônico `scripts/build_cudy_firmware.py` agora possui o **Portão de Invariantes de Boot** (`audit_bootability_invariants`), que verifica `/bin/busybox`, `/sbin/init` e `/sbin/procd` antes de gerar a ROM, garantindo que qualquer imagem gerada seja 100% bootável.

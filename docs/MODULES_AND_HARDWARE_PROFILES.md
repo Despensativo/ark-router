@@ -34,11 +34,9 @@ O ARK Router adota uma arquitetura em camadas otimizada para sistemas embarcados
 | `upnp` | `luci-app-upnp` + `miniupnpd-nftables` | `/etc/init.d/miniupnpd` | Opcional | RAM: 128 MB (~1.2 MB RSS)<br>Overlay: ~200 KB | Abertura automática de portas para consoles e jogos (UPnP / NAT-PMP). |
 | `irqbalance` | `irqbalance` | `/etc/init.d/irqbalance` | Opcional (Dinâmico) | CPU: **> 1 núcleo**<br>RAM: 128 MB<br>Overlay: ~120 KB | **Oculto em CPUs single-core**. Exibido apenas em roteadores com 2 ou mais núcleos para distribuir interrupções de rede entre os núcleos da CPU. |
 | `wireguard` | `wireguard-tools` + `kmod-wireguard` | Kernel module | Opcional | RAM: 128 MB<br>Overlay: ~150 KB | Túnel VPN de altíssima performance e baixo consumo de CPU. |
-| `tailscale` | `tailscale` | `/etc/init.d/tailscale` | Opcional | RAM: 256 MB<br>Overlay: ~15 MB | Rede mesh WireGuard corporativa/pessoal sem necessidade de IP público. Requer arquitetura suportada (aarch64, x86, mips). |
-| `zerotier` | `zerotier` | `/etc/init.d/zerotier` | Opcional | RAM: 256 MB (~8 MB RSS)<br>Overlay: ~1 MB | VPN peer-to-peer leve para acesso remoto. |
+| `zerotier` | `zerotier` | `/etc/init.d/zerotier` | Opcional | RAM: 256 MB (~8 MB RSS)<br>Overlay: ~1 MB | VPN peer-to-peer leve para acesso remoto. Substituto oficial para Tailscale (removido na v1.5.9). |
 | `speedtest` | `speedtest-go` | Executável em `/tmp` | Volátil / RAM | RAM livre em `/tmp`: **>= 25 MB** | O executável é baixado para a RAM temporária ou embutido na ROM (Full). Não desgasta a memória flash. |
 | `speedify` | `speedify` | `/usr/share/speedify` | Proprietário | RAM: 256 MB - 512 MB<br>Armazenamento: 80 MB+ | Bonding de múltiplos links de internet (WAN + Wi-Fi + 4G). Suporta instalação em RAM, Overlay interno ou pen drive USB externo. |
-| `argon` | `luci-theme-argon` | Tema LuCI | Cosmético | Overlay: ~500 KB | Tema moderno escuro para a interface nativa do LuCI. Opcional. |
 | `adblock` | Integrado via `dnsmasq` / `adguardhome` | `dnsmasq` / `/tmp/adguardhome` | Integrado | RAM: 128 MB (Cloud Anycast)<br>RAM: 512 MB+ (AdGuard Home RAM) | Em aparelhos de 128 MB opera em modo Cloud Anycast (zero consumo local de CPU/RAM). Em 512 MB+ permite AdGuard Home em RAM na porta 3000. |
 | `hardware-tune` | Integrado no ARK Router | `/etc/init.d/ark-hardware-tune` | Core / Sistema | RAM: Universal<br>Flash: 0 KB (Shell puro) | Calibração adaptativa de rede: escala buffers, RPS (multi-core), RFS, txqueuelen e regras DSCP Zero-Drop de acordo com o hardware. |
 
@@ -66,7 +64,7 @@ O ARK Router adota uma arquitetura em camadas otimizada para sistemas embarcados
 - **Módulos Restritos / Desativados**:
   - `irqbalance`: Desativado (CPU de 1 núcleo).
   - `speedtest-go`: Evitar na flash; executar apenas sob demanda na RAM se `/tmp` tiver >= 25 MB livres.
-  - `tailscale` e `speedify`: Não recomendados devido ao consumo de RAM (> 25 MB).
+  - `speedify`: Não recomendado devido ao consumo de RAM (> 25 MB).
   - `AdGuard Home Local`: Bloqueado (causaria Out-Of-Memory).
 - **Calibração de Hardware (`ark-hardware-tune`)**:
   - Buffers de rede leves: `netdev_max_backlog=1000`, `netdev_budget=300`, `tcp_rmem/wmem=1MB`.
@@ -87,7 +85,7 @@ O ARK Router adota uma arquitetura em camadas otimizada para sistemas embarcados
   - `irqbalance`: **Recomendado e Ativo** (distribui interrupções de WAN e Wi-Fi 6 entre os núcleos).
   - `mwan3`: Multi-WAN com balanceamento de carga e failover automático de 2 a 3 provedores.
   - `wireguard`: Servidor ou cliente VPN com throughput de 300-800 Mbps.
-  - `zerotier` / `tailscale`: Suportados confortavelmente.
+  - `zerotier`: Suportado confortavelmente para acesso remoto sem IP público.
   - `speedtest-go`: Executável volátil em RAM ou instalado na flash.
   - TCP Turbo: Buffers estendidos para conexões Gigabit de baixa latência.
 - **Calibração de Hardware (`ark-hardware-tune`)**:

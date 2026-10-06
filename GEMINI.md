@@ -2,7 +2,7 @@
 
 ## 1. Identificação do Projeto
 - **Nome**: ARK Router (`luci-app-ark-router`).
-- **Versão Ativa**: `1.5.1`.
+- **Versão Ativa**: `1.5.9` (declarada em `VERSION`).
 - **Ambiente**: Dual OpenWrt (19.07 a 25.x). Backend em BusyBox `ash` (`/bin/sh`) e frontend em LuCI JavaScript SPA nativo.
 - **Repositório Canônico**: Este repositório (`GitHub/luci-app-ark-router/`).
 

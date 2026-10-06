@@ -83,7 +83,7 @@ Runtime notes:
 - AdBlock on Lite runs in Cloud Anycast mode: it leverages upstream specialized Anycast DNS providers (Cloudflare Family, Quad9 Security, OpenDNS, CleanBrowsing, Control D, NextDNS) combined with dnsmasq's 10,000-entry memory super-cache (~1.5 MB RAM) and a zero-overhead custom domain blacklist.
 - Per-device bandwidth limits are managed via `nftables` in the `forward` chain, featuring an automated RFC 1918 private subnet bypass so local LAN transfers (NAS, Plex, printers) run unthrottled at full physical wire/Wi-Fi speed.
 - The package manager, OpenWrt update helpers, SQM/CAKE, Multi-WAN, UPnP, uHTTPd management, Wi-Fi info, tunnel support and supported PT-BR translations are included because each item is under 1 MB on the tested firmware.
-- ZeroTier, speed tests and Argon remain installable from the dashboard.
+- ZeroTier and speed tests remain installable from the dashboard.
 
 ## Full: routers with 512 MB RAM or more
 
@@ -111,7 +111,6 @@ Runtime notes:
 - `speedtest-go` is large on flash and should be avoided in Lite.
 - AdGuard Home runs locally entirely in volatile RAM (`/tmp/adguardhome`) on port 3000 with a 64 MB memory cache and >1M rules, eliminating flash write fatigue and providing comprehensive per-device parental and SafeSearch controls.
 - Speedify is not bundled. It is a licensed external runtime and remains managed by ARK Router as an optional RAM/internal/external install.
-- Argon is not in the tested OpenWrt APK feed. Full keeps ARK Router's Argon installer available, but Argon cannot be a hard package dependency unless the target feed provides `luci-theme-argon`.
 
 ## Tested addon version baseline
 

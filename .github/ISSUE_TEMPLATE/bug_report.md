@@ -24,7 +24,6 @@ Describe the problem clearly.
 - Multi-WAN:
 - nlbwmon:
 - UPnP:
-- Argon:
 
 ## Steps to reproduce
 

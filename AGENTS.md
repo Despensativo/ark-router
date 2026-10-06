@@ -11,14 +11,14 @@
 ## 1. Escopo e Identificação
 - **Repositório**: Canônico oficial do ARK Router (OpenWrt LuCI Application & Theme).
 - **Versão Ativa**: `1.5.9` (declarada em `VERSION` e `Makefile:PKG_VERSION:=1.5.9`).
-- **Arquitetura Alvo**: Dual OpenWrt — Legado (19.07 a 23.05, `opkg`, `iptables`/`fw3`) e Moderno (24.x a 25.x, `apk`, `nftables`/`fw4`).
+- **Arquitetura Alvo**: Dual OpenWrt — Legado (19.07 a 21.02, `opkg`, `iptables`/`fw3`) e Moderno (22.03 a 25.x, `opkg`/`apk`, `nftables`/`fw4`). Detalhes em `docs/COMPATIBILITY_MATRIX.md`.
 - **Hardware Suportado**: De 128 MB RAM / 16 MB SPI Flash (DGL-5500) até 256 MB a 1 GB+ RAM (Cudy WR3000, Predator W6x, Filogic).
 
 ---
 
 ## 2. Regras Obrigatórias do Sistema
 1. **Shell POSIX Puro**: Todos os scripts de backend e daemons executam sob `/bin/sh` puro (BusyBox `ash`). É expressamente PROIBIDO o uso de bashismos (`[[ ]]`, `${var//}`, `${arr[@]}`, `type -p`). Commits UCI devem ser atômicos (`uci commit network`).
-2. **Dual OpenWrt Dinâmico**: Detecte dinamicamente gerenciador de pacotes (`which apk opkg`) e mecanismo de firewall (`nft` vs `iptables`).
+2. **Dual OpenWrt Dinâmico**: Detecte dinamicamente o mecanismo de firewall exclusivamente via `/usr/lib/ark/common.sh` (`ark_firewall_engine`, `is_fw4`, `is_fw3`) e o gerenciador de pacotes via `command -v apk` / `command -v opkg`. Detalhes em `docs/COMPATIBILITY_MATRIX.md`.
 3. **Limites de Flash & RAM**:
    - Manter sempre **> 2 MB livres** no `/overlay`.
    - NUNCA gravar arquivos crescentes de log, CSVs ou dumps em `/etc` ou `/root`. Use `/tmp` (RAM temporária com rotação).
@@ -48,8 +48,8 @@
    - Sempre que implementar ou modificar qualquer funcionalidade, componente, modal ou fluxo da interface (UI / frontend), é ESTRITAMENTE OBRIGATÓRIO executar validação visual no navegador (via automação headless/CDP em `scripts/browser_test_as_user.mjs` ou script de inspeção) com captura real de screenshot/print e checagem de erros no console do navegador (`Runtime.exceptionThrown`, `console.error`) antes de finalizar a entrega.
 10. **Regra de Ouro de Isolamento Absoluto de Motores de Firewall (`fw4` vs `fw3`)**:
     - **Detecção Centralizada Universal**: Toda lógica de firewall, script ou módulo deve utilizar impreterivelmente as funções utilitárias em `/usr/lib/ark/common.sh`: `ark_firewall_engine()`, `is_fw4()` e `is_fw3()`. É TERMINANTEMENTE PROIBIDO verificar motores de firewall testando apenas binários soltos via `command -v iptables` ou `command -v ip6tables`, pois em sistemas modernos eles operam como wrappers de compatibilidade que, ao serem chamados, induzem o kernel a instanciar tabelas legadas indesejadas.
-    - **Roteadores Modernos (`fw4` / nftables — OpenWrt 23.05 a 25.x+)**: Operação **100% pura em nftables e UCI firewall**. É expressamente PROIBIDO invocar ou referenciar qualquer comando `iptables`, `ip6tables`, `iptables-save`, `iptables-save` ou módulos Netfilter legados em produção, diagnósticos ou scripts de limpeza/flush. Isso garante que a instalação permaneça imaculada e elimina em definitivo o alerta do LuCI (*"Legacy rules detected"*).
-    - **Roteadores Legados (`fw3` / iptables — OpenWrt 19.07 a 22.03)**: Manter **100% de retrocompatibilidade** com `iptables` em hardware compacto (como D-Link DGL-5500, Archer C60, 16 MB Flash / 128 MB RAM). Toda função que interage com camadas de rede ou firewall deve implementar ramificação condicional explícita:
+    - **Roteadores Modernos (`fw4` / nftables — OpenWrt 22.03 a 25.x+)**: Operação **100% pura em nftables e UCI firewall**. É expressamente PROIBIDO invocar ou referenciar qualquer comando `iptables`, `ip6tables`, `iptables-save` ou módulos Netfilter legados em produção, diagnósticos ou scripts de limpeza/flush. Isso garante que a instalação permaneça imaculada e elimina em definitivo o alerta do LuCI (*"Legacy rules detected"*).
+    - **Roteadores Legados (`fw3` / iptables — OpenWrt 19.07 a 21.02)**: Manter **100% de retrocompatibilidade** com `iptables` em hardware compacto (como D-Link DGL-5500, Archer C60, 16 MB Flash / 128 MB RAM). Toda função que interage com camadas de rede ou firewall deve implementar ramificação condicional explícita:
       ```sh
       if is_fw4; then
           # Comandos puros nftables ou UCI firewall

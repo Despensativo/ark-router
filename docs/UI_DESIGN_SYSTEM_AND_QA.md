@@ -25,10 +25,10 @@ Este documento estabelece o padrão oficial de engenharia visual, contenção de
 
 ---
 
-## 2. Arquitetura de Rolagem no LuCI (Tema Argon / Bootstrap)
+## 2. Arquitetura de Rolagem no LuCI (Tema Ark / Padrão Bootstrap)
 
 ### 2.1 Quem Rola no LuCI?
-* No tema Argon do LuCI, o `document.body` e o `window` **NÃO sofrem rolagem**. Eles possuem `height: 100vh; overflow: hidden;`.
+* No LuCI (Tema Ark / Padrão), o `document.body` e o `window` **NÃO sofrem rolagem**. Eles possuem `height: 100vh; overflow: hidden;`.
 * O contêiner que abriga todo o conteúdo e rola verticalmente é o **`<div class="main-right">`**.
 * O menu lateral mobile fica em **`<div class="main-left">`**, acompanhado da máscara **`<div class="darkMask">`**.
 
@@ -144,7 +144,7 @@ Este guia consolida as lições aprendidas durante o desenvolvimento do ARK Rout
 | **Confirmação de Ações** | Modais assíncronos com confirmação em duas etapas e contador de 2s. | `confirm()` ou `alert()` síncronos do browser (congelam o loop do LuCI e falham no iOS/Safari). |
 | **Manipulação de Eventos** | `addEventListener('click', fn, true)` na fase de captura. | Eventos inline `onclick="..."` ou listeners em fase de propagação (podem ser ignorados pelo LuCI). |
 | **Dimensionamento de Telas** | `width: 100%`, `max-width: ...`, `min-width: 0` em filhos de flex/grid. | `width: 600px` fixo em cartões ou botões (causa transbordamento horizontal imediato em celulares). |
-| **Rolagem no LuCI** | Travar `.main-right` (`overflow: hidden`) ao abrir modais ou menu lateral. | Tentar travar `document.body` (no LuCI Argon o body já tem `overflow: hidden`, quem rola é `.main-right`). |
+| **Rolagem no LuCI** | Travar `.main-right` (`overflow: hidden`) ao abrir modais ou menu lateral. | Tentar travar `document.body` (no LuCI o body já tem `overflow: hidden`, quem rola é `.main-right`). |
 | **Renderização de Tabelas** | Selecionar tanto `table` quanto `.table`, `.tr`, `.td` via JS/CSS. | Assumir que o LuCI só gera tags `<table>` (OpenWrt 19.07+ usa divs para tabelas responsivas). |
 | **Senhas e Formulários** | Ignorar campos ocultos de bypass (`position: absolute; left: -100000px`). | Tentar ler valores de formulário pegando o primeiro `input[type=password]` sem verificar se está visível. |
 | **Assets de Frontend** | Manter código fonte legível e minificar para envio ao roteador (`scripts/build_minified_assets.py`). | Subir arquivos descompactados com 500 KB+ direto para o `/overlay` do roteador de 16 MB. |

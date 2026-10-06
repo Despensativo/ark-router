@@ -90,6 +90,11 @@ Orientar o desenvolvimento, refatoração e auditoria visual da interface web do
     }
     ```
 
+### Largura da área principal e componentes do LuCI
+
+- Em desktop, `100vw` inclui a calha da barra de rolagem em alguns navegadores. Para uma área principal ao lado do menu, prefira uma largura relativa ao contêiner (`100%`) e confira se há scroll horizontal nas páginas nativas do LuCI.
+- Descubra quantos rádios existem antes de montar cartões Wi-Fi; não presuma sempre 2,4 e 5 GHz. Evite modificar o DOM interno de componentes LuCI como `<cbi-dropdown>`.
+
 ---
 
 ## 4. Confirmação de Segurança em Ações Críticas (Safety Interception)
@@ -113,6 +118,11 @@ Orientar o desenvolvimento, refatoração e auditoria visual da interface web do
 - **Orçamento de Peso:**
   - O bundle combinado de CSS + JS do tema nunca deve exceder **60 KB** compactado (SquashFS).
   - Proibido importar bibliotecas pesadas de npm (Lodash, jQuery, React, Moment.js). O LuCI roda em vanilla JavaScript.
+
+### Carregamento e versões
+
+- Gere a versão do bundle principal e dos arquivos de idioma a partir da mesma fonte. Teste idioma padrão e idiomas sob demanda em um navegador, inclusive após atualizar o pacote com arquivos antigos em cache.
+- Evite carregar consultas caras e recursos opcionais antes da primeira renderização. Quando usar cache no navegador, defina quando ele expira ou é invalidado e teste o caso de versão divergente.
 
 ---
 

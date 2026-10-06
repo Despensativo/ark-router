@@ -73,7 +73,13 @@ make image \
      ```sh
      sysupgrade -T /tmp/firmware.bin
      ```
-   - O teste valida as assinaturas de metadata do dispositivo (`board_name`), tamanho máximo da imagem e integridade do tar/squashfs.
+   - O teste verifica a imagem e a configuração de backup sem gravar a flash. Ele não substitui a comparação do SHA-256 com uma fonte confiável, nem demonstra que o novo firmware fará boot ou manterá os serviços funcionando.
 3. **Flashing Seguro:**
    - Preservando configurações: `sysupgrade -v /tmp/firmware.bin`
    - Limpeza de fábrica (Clean Flash): `sysupgrade -v -n /tmp/firmware.bin`
+
+## 4. Pacote, perfil e espaço livre
+
+- Diferencie arquivos integrados em SquashFS de um `.apk`/`.ipk` instalado depois do boot; o segundo pode consumir `/overlay`.
+- Perfis Lite/Full devem usar limites de instalação calculados do tamanho descompactado, dependências e reserva para UCI. No ARK Router, `scripts/install.sh` contém os limites atuais; não aplique esses números a outro pacote sem recalcular.
+- Um backup de instalação em `/tmp` desaparece no reboot. Copie-o para local persistente quando fizer parte do plano de retorno.

@@ -36,3 +36,10 @@ Atuar na prevenção, detecção e mitigação de vulnerabilidades de segurança
 ### 5. Integridade do Sistema de Arquivos
 - Garantir que permissões de arquivos de configuração em `/etc/config/` não sejam `world-writable` (`chmod 600` ou `644`).
 - Verificar que binários e scripts em `/etc/init.d/` ou `/usr/libexec/` pertençam ao `root:root` com permissão `755`.
+
+### 6. Instalação, Desinstalação e Recuperação
+- Antes de instalar um pacote, compare o espaço livre com o tamanho descompactado, dependências e uma reserva para UCI; confirme o espaço novamente depois. Um `.apk` ou `.ipk` instalado no sistema em execução pode ocupar `/overlay`.
+- Se `df` ou a identificação do mount falhar, não interprete espaço desconhecido como espaço suficiente em um alvo com flash; investigue o tipo de filesystem antes de liberar a instalação.
+- Backups sob `/tmp` são voláteis. Se a recuperação precisar sobreviver a um reboot, copie o backup para fora do roteador e confira sua integridade.
+- Ao substituir DNS por um resolvedor local, registre o estado anterior de servidores, `noresolv`, `allservers` e opções DHCP. Na desativação, restaure as escolhas do usuário e teste resolução de nomes para clientes. Um fallback público exige decisão explícita de produto.
+- Se uma ação RPC reiniciar `rpcd` ou `uhttpd`, evite encerrar a conexão antes da resposta. Após reconectar, consulte o estado real do serviço ou pacote; não trate toda falha XHR como sucesso.
