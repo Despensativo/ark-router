@@ -283,6 +283,18 @@ ark_package_manager() {
 	fi
 }
 
+ark_cpu_arch() {
+	v="$(uname -m 2>/dev/null || true)"
+	[ -n "$v" ] && printf '%s' "$v" || printf unknown
+}
+
+ark_can_run_aarch64() {
+	case "$(ark_cpu_arch)" in
+		aarch64*|arm64*) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
 ark_mem_total_kb() {
 	v="$(awk '/^MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || true)"
 	[ -n "$v" ] && printf '%s' "$v" || printf 0
@@ -294,6 +306,11 @@ ark_overlay_avail_kb() {
 }
 
 ark_best_profile() {
+	# Never select Full on 32-bit / non-AArch64 architectures (e.g. armv7l, mips)
+	if ! ark_can_run_aarch64; then
+		printf lite
+		return 0
+	fi
 	ram="$(ark_mem_total_kb)"; [ -n "$ram" ] || ram=0
 	overlay="$(ark_overlay_avail_kb)"; [ -n "$overlay" ] || overlay=0
 	min_ram="${ARK_ROUTER_FULL_MIN_RAM_KB:-480000}"
@@ -311,7 +328,10 @@ ark_actual_profile() {
 
 ark_installed_profile() {
 	actual="$(ark_actual_profile)"
-	[ "$actual" = full ] && { printf full; return 0; }
+	if [ "$actual" = full ] && ark_can_run_aarch64; then
+		printf full
+		return 0
+	fi
 	ark_best_profile
 }
 
@@ -356,18 +376,58 @@ ark_remove_opposite_profile() {
 	rm -rf "$backup_dir"
 }
 
+ark_http_get() {
+	url="$1"
+	header="${2:-}"
+	if command -v curl >/dev/null 2>&1; then
+		if [ -n "$header" ]; then
+			curl -kfsSL -m 10 -H "$header" "$url" 2>/dev/null && return 0
+		else
+			curl -kfsSL -m 10 "$url" 2>/dev/null && return 0
+		fi
+	fi
+	if command -v wget >/dev/null 2>&1; then
+		if [ -n "$header" ]; then
+			wget -T 10 -qO- --no-check-certificate --header="$header" "$url" 2>/dev/null && return 0
+		else
+			wget -T 10 -qO- --no-check-certificate "$url" 2>/dev/null && return 0
+		fi
+	fi
+	if command -v uclient-fetch >/dev/null 2>&1; then
+		uclient-fetch -T 10 -qO- --no-check-certificate "$url" 2>/dev/null && return 0
+	fi
+	return 1
+}
+
+ark_http_download() {
+	url="$1"
+	dest="$2"
+	timeout="${3:-35}"
+	rm -f "$dest"
+	if command -v curl >/dev/null 2>&1; then
+		curl -kfsSL -m "$timeout" "$url" -o "$dest" 2>/dev/null && [ -s "$dest" ] && return 0
+	fi
+	if command -v wget >/dev/null 2>&1; then
+		wget -T "$timeout" --no-check-certificate -q -O "$dest" "$url" 2>/dev/null && [ -s "$dest" ] && return 0
+	fi
+	if command -v uclient-fetch >/dev/null 2>&1; then
+		uclient-fetch -T "$timeout" --no-check-certificate -q -O "$dest" "$url" 2>/dev/null && [ -s "$dest" ] && return 0
+	fi
+	return 1
+}
+
 ark_latest_release() {
 	repo="$(ark_update_repo)"
 	tag=""
 	# 1. Tentativa primária ultra-rápida via raw.githubusercontent.com (sem rate limit e sem jsonfilter)
-	tag="$(wget -T 10 -qO- --no-check-certificate "https://raw.githubusercontent.com/$repo/main/VERSION" 2>/dev/null | tr -d '\r\n v')"
-	# 2. Fallback via tags da API do GitHub
+	tag="$(ark_http_get "https://raw.githubusercontent.com/$repo/main/VERSION" | tr -d '\r\n v')"
+	# 2. Fallback via releases/latest da API do GitHub
 	if [ -z "$tag" ]; then
-		tag="$(wget -T 10 -qO- --no-check-certificate --header='User-Agent: ARK-Router' "https://api.github.com/repos/$repo/tags" 2>/dev/null | jsonfilter -e '@[0].name' 2>/dev/null | head -n 1 | tr -d '\r\n v')"
+		tag="$(ark_http_get "https://api.github.com/repos/$repo/releases/latest" "User-Agent: ARK-Router" | jsonfilter -e '@.tag_name' 2>/dev/null | head -n 1 | tr -d '\r\n v')"
 	fi
-	# 3. Fallback via releases/latest da API do GitHub
+	# 3. Fallback via tags da API do GitHub
 	if [ -z "$tag" ]; then
-		tag="$(wget -T 10 -qO- --no-check-certificate --header='User-Agent: ARK-Router' "https://api.github.com/repos/$repo/releases/latest" 2>/dev/null | jsonfilter -e '@.tag_name' 2>/dev/null | head -n 1 | tr -d '\r\n v')"
+		tag="$(ark_http_get "https://api.github.com/repos/$repo/tags" "User-Agent: ARK-Router" | jsonfilter -e '@[0].name' 2>/dev/null | head -n 1 | tr -d '\r\n v')"
 	fi
 	printf '%s' "$tag"
 }
@@ -1466,24 +1526,24 @@ handle_ezsetup() {
 			clean_latest="$(normalize_version "$latest")"
 			download_ok=0
 			echo "Downloading primary: $url"
-			if wget -T 35 --no-check-certificate -O "$tmp/$asset" "$url" 2>&1 && [ -s "$tmp/$asset" ]; then
+			if ark_http_download "$url" "$tmp/$asset" 35; then
 				download_ok=1
 			fi
 			if [ "$download_ok" -eq 0 ] && [ -n "$clean_latest" ]; then
 				echo "Fallback downloading from releases tag v$clean_latest..."
-				if wget -T 35 --no-check-certificate -O "$tmp/$asset" "https://github.com/$repo/releases/download/v$clean_latest/$asset" 2>&1 && [ -s "$tmp/$asset" ]; then
+				if ark_http_download "https://github.com/$repo/releases/download/v$clean_latest/$asset" "$tmp/$asset" 35; then
 					download_ok=1
 				fi
 			fi
 			if [ "$download_ok" -eq 0 ]; then
 				echo "Fallback downloading from releases/latest..."
-				if wget -T 35 --no-check-certificate -O "$tmp/$asset" "https://github.com/$repo/releases/latest/download/$asset" 2>&1 && [ -s "$tmp/$asset" ]; then
+				if ark_http_download "https://github.com/$repo/releases/latest/download/$asset" "$tmp/$asset" 35; then
 					download_ok=1
 				fi
 			fi
 			if [ "$download_ok" -eq 0 ]; then
 				echo "Fallback downloading direct from raw..."
-				if wget -T 35 --no-check-certificate -O "$tmp/$asset" "https://raw.githubusercontent.com/$repo/main/dist/sdk/$asset" 2>&1 && [ -s "$tmp/$asset" ]; then
+				if ark_http_download "https://raw.githubusercontent.com/$repo/main/dist/sdk/$asset" "$tmp/$asset" 35; then
 					download_ok=1
 				fi
 			fi
