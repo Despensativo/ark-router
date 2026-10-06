@@ -131,9 +131,11 @@ installed_profile() {
 	case "$pm" in
 		apk)
 			apk info -e luci-app-ark-router-full >/dev/null 2>&1 && { echo full; return 0; }
+			apk info -e luci-app-ark-router >/dev/null 2>&1 && { echo lite; return 0; }
 			;;
 		opkg)
 			opkg status luci-app-ark-router-full 2>/dev/null | grep -q '^Status:.* installed' && { echo full; return 0; }
+			opkg status luci-app-ark-router 2>/dev/null | grep -q '^Status:.* installed' && { echo lite; return 0; }
 			;;
 	esac
 	return 1
@@ -147,6 +149,32 @@ restart_luci() {
 	[ -x /etc/init.d/equipe-traffic-history ] && /etc/init.d/equipe-traffic-history restart >/dev/null 2>&1 || true
 	[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
 	[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+}
+
+can_download_https() {
+	# 1. Test wget (uclient-fetch or GNU wget)
+	if command -v wget >/dev/null 2>&1; then
+		err="$(wget --no-check-certificate -q -O /dev/null -T 2 https://127.0.0.1 2>&1 || true)"
+		case "$err" in
+			*"SSL support not available"*|*"not supported"*) ;;
+			*) return 0 ;;
+		esac
+	fi
+	# 2. Test curl
+	if command -v curl >/dev/null 2>&1; then
+		if curl -V 2>/dev/null | grep -qi "https"; then
+			return 0
+		fi
+	fi
+	# 3. Test uclient-fetch directly
+	if command -v uclient-fetch >/dev/null 2>&1; then
+		err="$(uclient-fetch --no-check-certificate -q -O /dev/null -T 2 https://127.0.0.1 2>&1 || true)"
+		case "$err" in
+			*"SSL support not available"*|*"not supported"*) ;;
+			*) return 0 ;;
+		esac
+	fi
+	return 1
 }
 
 preflight_check_and_fix() {
@@ -176,18 +204,10 @@ preflight_check_and_fix() {
 		fi
 	fi
 
-	# 2. Check if a working TLS download client exists (curl or wget/uclient-fetch)
-	has_fetcher=0
-	if command -v curl >/dev/null 2>&1; then
-		has_fetcher=1
-	elif command -v wget >/dev/null 2>&1 || command -v uclient-fetch >/dev/null 2>&1; then
-		has_fetcher=1
-	fi
-
+	# 2. Check if a working HTTPS download client exists (wget with SSL backend or curl)
 	pm="$(manager)"
-	# If no fetcher or if wget lacks SSL backend, auto-heal using package manager
-	if [ "$has_fetcher" = 0 ]; then
-		echo "[Pre-flight] No HTTP/HTTPS download client found. Installing prerequisites..."
+	if ! can_download_https; then
+		echo "[Pre-flight] Wget lacks SSL support and curl is unavailable. Installing SSL prerequisites..."
 		case "$pm" in
 			apk)
 				apk update >/dev/null 2>&1 || true
@@ -210,40 +230,66 @@ download_file() {
 	fi
 	rm -f "$dest"
 
-	# Try curl with -k (insecure/resilient) and -fsSL
-	if command -v curl >/dev/null 2>&1; then
-		if curl -kfsSL "$url" -o "$dest" 2>/dev/null; then
-			return 0
-		fi
-	fi
-
-	# Fallback to wget with --no-check-certificate
+	# 1. Try wget with --no-check-certificate first (standard OpenWrt default)
 	if command -v wget >/dev/null 2>&1; then
 		if wget --no-check-certificate -q -O "$dest" "$url" 2>/dev/null; then
-			return 0
+			[ -s "$dest" ] && return 0
+			rm -f "$dest"
 		fi
 	fi
 
-	# Fallback to uclient-fetch with --no-check-certificate
+	# 2. Fallback to curl with -kfsSL (if wget lacks SSL or fails)
+	if command -v curl >/dev/null 2>&1; then
+		if curl -kfsSL "$url" -o "$dest" 2>/dev/null; then
+			[ -s "$dest" ] && return 0
+			rm -f "$dest"
+		fi
+	fi
+
+	# 3. Fallback to uclient-fetch directly
 	if command -v uclient-fetch >/dev/null 2>&1; then
 		if uclient-fetch --no-check-certificate -q -O "$dest" "$url" 2>/dev/null; then
-			return 0
+			[ -s "$dest" ] && return 0
+			rm -f "$dest"
 		fi
 	fi
 
-	# If all quiet attempts failed, run once with full output for debugging
+	# If all quiet attempts failed, try auto-healing SSL support via opkg/apk
+	pm="$(manager)"
+	echo "[Download] Initial download failed. Attempting to install SSL prerequisites..." >&2
+	case "$pm" in
+		apk)
+			apk update >/dev/null 2>&1 || true
+			apk add ca-bundle libustream-mbedtls curl >/dev/null 2>&1 || true
+			;;
+		opkg)
+			opkg update >/dev/null 2>&1 || true
+			opkg install ca-bundle libustream-mbedtls curl >/dev/null 2>&1 || true
+			;;
+	esac
+
+	# Retry with visible output for full debugging
 	echo "Retrying download with visible output..." >&2
-	if command -v curl >/dev/null 2>&1; then
-		curl -kfsSL "$url" -o "$dest" && return 0
-	fi
 	if command -v wget >/dev/null 2>&1; then
-		wget --no-check-certificate -O "$dest" "$url" && return 0
+		if wget --no-check-certificate -O "$dest" "$url"; then
+			[ -s "$dest" ] && return 0
+			rm -f "$dest"
+		fi
+	fi
+	if command -v curl >/dev/null 2>&1; then
+		if curl -kfsSL "$url" -o "$dest"; then
+			[ -s "$dest" ] && return 0
+			rm -f "$dest"
+		fi
 	fi
 	if command -v uclient-fetch >/dev/null 2>&1; then
-		uclient-fetch --no-check-certificate -O "$dest" "$url" && return 0
+		if uclient-fetch --no-check-certificate -O "$dest" "$url"; then
+			[ -s "$dest" ] && return 0
+			rm -f "$dest"
+		fi
 	fi
 
-	echo "Error: Failed to download $url using curl, wget or uclient-fetch." >&2
+	echo "Error: Failed to download $url using wget, curl or uclient-fetch." >&2
 	return 1
 }
 
@@ -306,7 +352,7 @@ install_release() {
 		opkg)
 			pkg_url="$BASE_URL/$pkg_base.ipk"
 			pkg_file="$TMP_DIR/$pkg_base.ipk"
-			install_cmd="opkg install"
+			install_cmd="opkg install --force-reinstall --force-overwrite"
 			;;
 		*)
 			echo "No supported OpenWrt package manager found. Expected apk or opkg." >&2
@@ -316,6 +362,8 @@ install_release() {
 
 	echo "Downloading ARK Router $PROFILE package from $pkg_url"
 	download_file "$pkg_url" "$pkg_file" || return 1
+
+	backup_ark_configs
 
 	echo "Installing ARK Router $PROFILE package"
 	if [ "$DRY_RUN" = 1 ]; then
