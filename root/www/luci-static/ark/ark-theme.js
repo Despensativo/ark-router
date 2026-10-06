@@ -462,13 +462,6 @@
           fazer: 'Gere um arquivo de backup antes de fazer qualquer alteração técnica. Para voltar ao estado original de fábrica, use o botão "Restaurar de Fábrica".',
           rec: 'Sempre baixe um backup (.tar.gz) para o seu computador antes de instalar atualizações. Nunca desligue o aparelho da tomada durante uma gravação de firmware.'
         };
-      } else if (path.indexOf('/system/admin') !== -1) {
-        guide = {
-          title: 'Guia de Senhas e Segurança Administrativa',
-          serve: 'Define a senha da conta mestra "root", necessária para entrar neste painel de controle web e para conexões seguras de terminal SSH.',
-          fazer: 'Digite a nova senha nos dois campos abaixo e acompanhe as 4 regras no medidor de força para garantir proteção máxima.',
-          rec: 'Crie uma senha de pelo menos 8 dígitos combinando letras maiúsculas, minúsculas, números e um símbolo especial (@, #, $).'
-        };
       } else if (path.indexOf('/network/diagnostics') !== -1) {
         guide = {
           title: 'Guia de Diagnósticos de Rede',
@@ -1236,16 +1229,20 @@
 
         if (isPrimary && !document.querySelector('.ark-pwd-meter')) {
           firstProcessed = true;
+          var lang = (document.documentElement.lang || 'pt').toLowerCase();
+          var isEn = (lang.indexOf('en') === 0);
+          var isEs = (lang.indexOf('es') === 0);
+
+          var lblRule = isEn ? 'Minimum 4 Characters' : (isEs ? 'Mínimo 4 Caracteres' : 'Mínimo 4 Caracteres');
+          var lblPrompt = isEn ? 'Password Strength: Enter new password (min. 4 characters)' : (isEs ? 'Fuerza de la Contraseña: Ingrese su nueva contraseña (mín. 4 caracteres)' : 'Força da Senha: Mínimo de 4 caracteres');
+
           var meter = document.createElement('div');
           meter.className = 'ark-pwd-meter';
           meter.innerHTML = '' +
             '<div class="ark-meter-bar"><div class="ark-meter-fill"></div></div>' +
-            '<div class="ark-meter-label"><span class="ark-meter-text">Força da Senha: Digite sua nova senha</span></div>' +
+            '<div class="ark-meter-label"><span class="ark-meter-text">' + lblPrompt + '</span></div>' +
             '<div class="ark-meter-rules">' +
-              '<span class="rule-len">8+ Caracteres</span>' +
-              '<span class="rule-case">Maiúsculas e Minúsculas</span>' +
-              '<span class="rule-num">Números</span>' +
-              '<span class="rule-sym">Símbolos (@, #, $)</span>' +
+              '<span class="rule-len">' + lblRule + '</span>' +
             '</div>';
 
           var fieldContainer = input.closest('.cbi-value-field') || input.parentElement;
@@ -1256,48 +1253,40 @@
           var fill = meter.querySelector('.ark-meter-fill');
           var text = meter.querySelector('.ark-meter-text');
           var rLen = meter.querySelector('.rule-len');
-          var rCase = meter.querySelector('.rule-case');
-          var rNum = meter.querySelector('.rule-num');
-          var rSym = meter.querySelector('.rule-sym');
 
           input.addEventListener('input', function() {
             var val = input.value;
             if (!val) {
               fill.style.width = '0%';
               fill.className = 'ark-meter-fill';
-              text.textContent = 'Força da Senha: Digite sua nova senha';
+              text.textContent = lblPrompt;
               rLen.classList.remove('ok');
-              rCase.classList.remove('ok');
-              rNum.classList.remove('ok');
-              rSym.classList.remove('ok');
+              input.setCustomValidity('');
               return;
             }
 
-            var score = 0;
-            var hasLen = val.length >= 8;
-            var hasCase = /[a-z]/.test(val) && /[A-Z]/.test(val);
-            var hasNum = /[0-9]/.test(val);
-            var hasSym = /[^a-zA-Z0-9]/.test(val);
-
-            if (hasLen) { score += 25; rLen.classList.add('ok'); } else { rLen.classList.remove('ok'); }
-            if (hasCase) { score += 25; rCase.classList.add('ok'); } else { rCase.classList.remove('ok'); }
-            if (hasNum) { score += 25; rNum.classList.add('ok'); } else { rNum.classList.remove('ok'); }
-            if (hasSym) { score += 25; rSym.classList.add('ok'); } else { rSym.classList.remove('ok'); }
-
-            fill.style.width = score + '%';
-            fill.className = 'ark-meter-fill';
-            if (score <= 25) {
-              fill.classList.add('weak');
-              text.textContent = 'Força: Fraca (Vulnerável)';
-            } else if (score <= 50) {
-              fill.classList.add('medium');
-              text.textContent = 'Força: Média (Razoável)';
-            } else if (score <= 75) {
-              fill.classList.add('good');
-              text.textContent = 'Força: Boa (Recomendada)';
+            if (val.length < 4) {
+              fill.style.width = '25%';
+              fill.className = 'ark-meter-fill weak';
+              text.textContent = isEn ? 'Too short (minimum 4 characters required)' : (isEs ? 'Demasiado corta (mínimo 4 caracteres requeridos)' : 'Muito curta (mínimo de 4 caracteres exigido)');
+              rLen.classList.remove('ok');
+              input.setCustomValidity(isEn ? 'Password must have at least 4 characters.' : (isEs ? 'La contraseña debe tener al menos 4 caracteres.' : 'A senha deve ter no mínimo 4 caracteres.'));
             } else {
-              fill.classList.add('strong');
-              text.textContent = 'Força: Excelente (ARK Shield 🛡️)';
+              rLen.classList.add('ok');
+              input.setCustomValidity('');
+              if (val.length < 6) {
+                fill.style.width = '50%';
+                fill.className = 'ark-meter-fill medium';
+                text.textContent = isEn ? 'Password OK (minimum met)' : (isEs ? 'Contraseña válida (requisito cumplido)' : 'Senha válida (mínimo de 4 caracteres atingido)');
+              } else if (val.length < 8) {
+                fill.style.width = '75%';
+                fill.className = 'ark-meter-fill good';
+                text.textContent = isEn ? 'Strength: Good' : (isEs ? 'Fuerza: Buena' : 'Força: Boa');
+              } else {
+                fill.style.width = '100%';
+                fill.className = 'ark-meter-fill strong';
+                text.textContent = isEn ? 'Strength: Strong 🛡️' : (isEs ? 'Fuerza: Fuerte 🛡️' : 'Força: Forte 🛡️');
+              }
             }
           });
         }
@@ -3183,6 +3172,13 @@
       var pw2 = document.getElementById('cbi-json-password-pw2');
       if (!pw1 || !pw2) return;
 
+      var lang = (document.documentElement.lang || 'pt').toLowerCase();
+      var isEn = (lang.indexOf('en') === 0);
+      var isEs = (lang.indexOf('es') === 0);
+
+      var title = isEn ? 'Administrator Access Credentials (Root)' : (isEs ? 'Credenciales de Acceso del Administrador (Root)' : 'Credenciais de Acesso do Administrador (Root)');
+      var desc = isEn ? 'Change the access password for the "root" account. The same password is required for the Web panel and secure SSH connections.' : (isEs ? 'Cambie la contraseña de la cuenta "root". Se requiere para el panel Web y terminal SSH seguro.' : 'Altere a senha de acesso da conta "root". Esta mesma senha é exigida para o painel Web e para conexão SSH segura.');
+
       var card = document.createElement('div');
       card.id = 'ark-admin-card';
       card.className = 'ark-admin-card';
@@ -3190,8 +3186,8 @@
         '<div class="ark-admin-card-head">' +
           '<div class="icon">🔐</div>' +
           '<div>' +
-            '<h3>Credenciais de Acesso do Administrador (Root)</h3>' +
-            '<p>Altere a senha de acesso da conta "root". Esta mesma senha é exigida para o painel Web e para conexão SSH segura.</p>' +
+            '<h3>' + title + '</h3>' +
+            '<p>' + desc + '</p>' +
           '</div>' +
         '</div>' +
         '<div class="ark-grid-2" id="ark-pw-grid-slot"></div>';
@@ -3201,6 +3197,16 @@
       var slot = card.querySelector('#ark-pw-grid-slot');
       slot.appendChild(pw1);
       slot.appendChild(pw2);
+
+      var lbl2 = pw2.querySelector('label');
+      if (lbl2 && (lbl2.textContent.trim() === 'Confirmation' || lbl2.textContent.trim() === 'Confirmation:')) {
+        lbl2.textContent = isEn ? 'Confirmation' : (isEs ? 'Confirmar Contraseña' : 'Confirmar Senha');
+      }
+
+      var legacyDescrs = card.querySelectorAll('.cbi-value-description');
+      legacyDescrs.forEach(function(d) {
+        d.style.setProperty('display', 'none', 'important');
+      });
 
       var oldMapDescr = view.querySelector('.cbi-map-descr');
       if (oldMapDescr) oldMapDescr.style.display = 'none';

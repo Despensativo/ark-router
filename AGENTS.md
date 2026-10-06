@@ -10,7 +10,7 @@
 
 ## 1. Escopo e Identificação
 - **Repositório**: Canônico oficial do ARK Router (OpenWrt LuCI Application & Theme).
-- **Versão Ativa**: `1.5.9` (declarada em `VERSION` e `Makefile:PKG_VERSION:=1.5.9`).
+- **Versão Ativa**: `1.5.10` (declarada em `VERSION` e `Makefile:PKG_VERSION:=1.5.10`).
 - **Arquitetura Alvo**: Dual OpenWrt — Legado (19.07 a 21.02, `opkg`, `iptables`/`fw3`) e Moderno (22.03 a 25.x, `opkg`/`apk`, `nftables`/`fw4`). Detalhes em `docs/COMPATIBILITY_MATRIX.md`.
 - **Hardware Suportado**: De 128 MB RAM / 16 MB SPI Flash (DGL-5500) até 256 MB a 1 GB+ RAM (Cudy WR3000, Predator W6x, Filogic).
 

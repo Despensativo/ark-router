@@ -2179,6 +2179,9 @@ body.modal-overlay-active:not(.ark-login-page) #modal_overlay {
 	width: 100% !important;
 	min-width: 0 !important;
 }
+.ark-admin-card .cbi-value-description {
+	display: none !important;
+}
 
 /* 10. Hacker Terminal & Full-Width Log Viewer */
 #syslog,

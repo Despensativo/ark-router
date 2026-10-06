@@ -1,6 +1,6 @@
 // ARK Router i18n English (EN) Dictionary
 (function(){
-	const ARK_I18N_VERSION = '1.5.9';
+	const ARK_I18N_VERSION = '1.5.10';
 	if (typeof window.ARK_BUILD_VERSION !== 'undefined' && window.ARK_BUILD_VERSION !== ARK_I18N_VERSION) {
 		console.warn('[ARK Router] i18n.en.js version mismatch (' + ARK_I18N_VERSION + ' vs ' + window.ARK_BUILD_VERSION + ')');
 	}

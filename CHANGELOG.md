@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.10
+
+- **🔐 Simplificação da Tela de Senhas do Administrador (06/10/2026)**:
+  - **Remoção do Card Superior Informativo**: Removido o banner de guia redundante da tela de administração de senhas (`admin/system/admin`), deixando a interface mais limpa e focada.
+  - **Requisito Mínimo de 4 Caracteres**: Substituídas as regras complexas (maiúsculas, minúsculas, números e símbolos especiais) por uma validação clara e objetiva com requisito mínimo de 4 caracteres (`Mínimo 4 Caracteres`), aceitando senhas simples com validação imediata.
+  - **Ocultação de Texto Legado e i18n Completo**: Ocultada a mensagem legada não traduzida do LuCI (*"Password strength: More Characters"*) e traduzido o rótulo de confirmação para *"Confirmar Senha"*.
+  - **Auditoria de i18n e Validação Visual**: Cobertura i18n mantida em 100% (PT-BR, EN, ES) e interface validada no ambiente virtual VirtualBox com screenshots headless.
+
 ## 1.5.9
 
 - **🛡️ Blindagem Anti-MAC Collision, Desbloqueio Netdev & Restauração Completa de IPv6 (04/10/2026)**:
