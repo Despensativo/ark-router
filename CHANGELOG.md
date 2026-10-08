@@ -2,6 +2,14 @@
 
 ## 1.5.10
 
+- **⚡ Auto-Enforcement Condicional de MTU 1500 em PPPoE com Baby Jumbo (RFC 4638) (08/10/2026)**:
+  - **Hook Nativo de Hotplug (`05-ark-pppoe-babyjumbo`)**: Adicionado hook dinâmico em `/etc/hotplug.d/iface/` disparado pelo `netifd` a cada subida de link (`ifup`).
+  - **Execução Estritamente Condicional**: O ajuste é acionado única e exclusivamente quando a chave **Baby Jumbo / MTU 1508** estiver ativada na respectiva interface no UCI (`device_mtu='1508'`). Se desativada, encerra imediatamente sem alterar o MTU negociado pela operadora.
+  - **Superação de Restrições LCP em BNGs**: Corrige o problema em que concentradores de operadoras (ex.: Juniper/Huawei) forçam 1492 no aperto de mão LCP mesmo com a porta física suportando 1508 bytes, elevando o túnel para 1500 bytes de forma transparente e registrando log no sistema.
+  - **Multi-WAN & Nomes Arbitrários**: Identifica qualquer interface PPPoE dinamicamente, suportando Dual-WAN/Triple-WAN e nomes customizados de interface.
+  - **Auditoria no Doctor ARK**: Validação de integridade e permissões executáveis do hook integrada ao `doctor.sh`.
+  - **Empacotamento Nativo**: Permissões e inclusão integradas aos scripts de build local `build-ipk-wsl.sh` e `build-apk-manual-wsl.sh`.
+
 - **🔐 Simplificação da Tela de Senhas do Administrador (06/10/2026)**:
   - **Remoção do Card Superior Informativo**: Removido o banner de guia redundante da tela de administração de senhas (`admin/system/admin`), deixando a interface mais limpa e focada.
   - **Requisito Mínimo de 4 Caracteres**: Substituídas as regras complexas (maiúsculas, minúsculas, números e símbolos especiais) por uma validação clara e objetiva com requisito mínimo de 4 caracteres (`Mínimo 4 Caracteres`), aceitando senhas simples com validação imediata.

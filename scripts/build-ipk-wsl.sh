@@ -59,6 +59,7 @@ build_ipk_variant() {
 	chmod 0755 "$data_dir/www/cgi-bin/ark-starlink-telemetry" 2>/dev/null || true
 	chmod 0755 "$data_dir/etc/init.d/"* 2>/dev/null || true
 	chmod 0755 "$data_dir/etc/uci-defaults/"* 2>/dev/null || true
+	chmod 0755 "$data_dir/etc/hotplug.d/iface/"* 2>/dev/null || true
 
 	# Pack data.tar.gz
 	(cd "$data_dir" && tar -czf "$work_dir/data.tar.gz" .)
@@ -92,6 +93,7 @@ chmod +x /usr/lib/ark/modules/*.sh 2>/dev/null || true
 chmod +x /usr/libexec/ark-starlink-telemetry 2>/dev/null || true
 chmod +x /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
 chmod +x /etc/init.d/* 2>/dev/null || true
+chmod +x /etc/hotplug.d/iface/* 2>/dev/null || true
 [ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable >/dev/null 2>&1 || true
 chmod +x /etc/init.d/equipe-traffic-history 2>/dev/null || true
 chmod +x /etc/init.d/ark-speedify 2>/dev/null || true

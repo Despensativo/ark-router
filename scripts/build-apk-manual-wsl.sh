@@ -62,6 +62,7 @@ chmod 0755 "$pkg_root/www/cgi-bin/ark-starlink-telemetry" 2>/dev/null || true
 chmod 0755 "$pkg_root/www/cgi-bin/ark-mesh-export" 2>/dev/null || true
 chmod 0755 "$pkg_root/etc/init.d/"* 2>/dev/null || true
 chmod 0755 "$pkg_root/etc/uci-defaults/"* 2>/dev/null || true
+chmod 0755 "$pkg_root/etc/hotplug.d/iface/"* 2>/dev/null || true
 
 mkdir -p "$pkg_root/lib/apk/packages"
 
@@ -78,6 +79,7 @@ chmod +x /usr/libexec/ark-starlink-telemetry 2>/dev/null || true
 chmod +x /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
 chmod +x /www/cgi-bin/ark-mesh-export 2>/dev/null || true
 chmod +x /etc/init.d/* 2>/dev/null || true
+chmod +x /etc/hotplug.d/iface/* 2>/dev/null || true
 [ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable >/dev/null 2>&1 || true
 [ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true
 [ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram start >/dev/null 2>&1 || true

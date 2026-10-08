@@ -1,0 +1,29 @@
+#!/bin/sh
+# /etc/hotplug.d/iface/05-ark-pppoe-babyjumbo
+# ARK Router — Auto-enforcement condicional de MTU 1500 para PPPoE (RFC 4638)
+# Disparado automaticamente pelo netifd no evento ifup.
+
+[ "$ACTION" = "ifup" ] || exit 0
+[ -n "$INTERFACE" ] || exit 0
+[ -n "$DEVICE" ] || exit 0
+
+# Apenas para interfaces PPPoE
+case "$DEVICE" in
+	pppoe-*) ;;
+	*) exit 0 ;;
+esac
+
+# Trava de seguranca estrita: executa SOMENTE se a opcao Baby Jumbo estiver ATIVA para esta interface no UCI
+dev_mtu="$(uci -q get "network.$INTERFACE.device_mtu")"
+req_mtu="$(uci -q get "network.$INTERFACE.mtu")"
+
+if [ "$dev_mtu" != "1508" ] && [ "$req_mtu" != "1500" ]; then
+	exit 0
+fi
+
+# Se Baby Jumbo estiver ativo mas a interface negociou MTU inferior a 1500 (ex: LCP do BNG), eleva para 1500
+cur_mtu="$(cat "/sys/class/net/$DEVICE/mtu" 2>/dev/null)"
+if [ -n "$cur_mtu" ] && [ "$cur_mtu" -lt 1500 ] 2>/dev/null; then
+	ip link set "$DEVICE" mtu 1500 2>/dev/null && \
+		logger -t ark-babyjumbo "Baby Jumbo ativo para $INTERFACE: interface $DEVICE elevada para MTU 1500"
+fi

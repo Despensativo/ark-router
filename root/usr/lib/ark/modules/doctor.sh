@@ -178,7 +178,9 @@ ark_doctor_audit() {
 					elif [ -z "${ARK_ROOT}" ]; then
 						ip link set "$phys_dev" mtu 1508 2>/dev/null || true
 						[ "$proto" = pppoe ] && ip link set "pppoe-$wan" mtu 1500 2>/dev/null || true
+						[ -f "/etc/hotplug.d/iface/05-ark-pppoe-babyjumbo" ] && chmod +x "/etc/hotplug.d/iface/05-ark-pppoe-babyjumbo" 2>/dev/null || true
 					fi
+					[ -n "${ARK_ROOT}" ] && [ -f "${ARK_ROOT}/etc/hotplug.d/iface/05-ark-pppoe-babyjumbo" ] && chmod +x "${ARK_ROOT}/etc/hotplug.d/iface/05-ark-pppoe-babyjumbo" 2>/dev/null || true
 					fixes_applied=$((fixes_applied + 1))
 					add_check "MTU Baby Jumbo ($wan)" "FIXED" "Porta $phys_dev ajustada para MTU 1508 e duplicatas saneadas."
 				else
