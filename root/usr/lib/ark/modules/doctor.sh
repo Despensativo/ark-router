@@ -342,22 +342,35 @@ ark_doctor_audit() {
 		else
 			add_check "Blindagem AP: Multi-WAN" "OK" "Multi-WAN inativo no Ponto de Acesso (AP) (ponte L2 direta)."
 		fi
+	fi
 
-		# 8d. Proteção Multicast (IGMP Snooping)
-		igmp_snoop="$(uci -q get network.lan.igmp_snooping || echo 0)"
-		[ -f /sys/class/net/br-lan/bridge/multicast_snooping ] && [ "$(cat /sys/class/net/br-lan/bridge/multicast_snooping 2>/dev/null)" = "1" ] && igmp_snoop=1
-		if [ "$igmp_snoop" = "1" ]; then
-			add_check "Blindagem AP: IGMP Snooping" "OK" "IGMP Snooping ativo na bridge LAN (preserva o tempo de antena do Wi-Fi)."
+	# 8d. Proteção Multicast (IGMP Snooping) — Universal (Master e AP)
+	igmp_cfg="$(uci -q get network.lan.igmp_snooping || echo 0)"
+	igmp_dev=0
+	for s in $(uci -q show network 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1); do
+		if [ "$(uci -q get "network.$s.name")" = "br-lan" ] && [ "$(uci -q get "network.$s.igmp_snooping")" = "1" ]; then
+			igmp_dev=1
+			break
+		fi
+	done
+	real_igmp="$(cat /sys/class/net/br-lan/bridge/multicast_snooping 2>/dev/null || echo 0)"
+
+	if [ "$igmp_cfg" = "1" ] || [ "$igmp_dev" = "1" ]; then
+		if [ "$real_igmp" = "1" ] && [ "$igmp_dev" = "1" ]; then
+			add_check "Protecao Multicast (IGMP Snooping)" "OK" "IGMP Snooping ativo no kernel e persistido na secao device da bridge br-lan."
 		else
 			if [ "$auto_fix" = 1 ]; then
 				uci -q set network.lan.igmp_snooping=1
+				for s in $(uci -q show network 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1); do
+					[ "$(uci -q get "network.$s.name")" = "br-lan" ] && uci -q set "network.$s.igmp_snooping=1"
+				done
 				uci commit network 2>/dev/null || true
 				[ -f /sys/class/net/br-lan/bridge/multicast_snooping ] && echo 1 > /sys/class/net/br-lan/bridge/multicast_snooping 2>/dev/null || true
 				fixes_applied=$((fixes_applied + 1))
-				add_check "Blindagem AP: IGMP Snooping" "FIXED" "IGMP Snooping ativado na bridge LAN para evitar saturação do Wi-Fi."
+				add_check "Protecao Multicast (IGMP Snooping)" "FIXED" "IGMP Snooping ativado no kernel e persistido na secao device da br-lan."
 			else
-				warnings=$((warnings + 1))
-				add_check "Blindagem AP: IGMP Snooping" "WARN" "IGMP Snooping desativado na bridge LAN. Recomenda-se ativar para proteger o Wi-Fi."
+				errors=$((errors + 1))
+				add_check "Protecao Multicast (IGMP Snooping)" "FAIL" "IGMP Snooping configurado mas inativo no kernel da bridge br-lan."
 			fi
 		fi
 	fi
