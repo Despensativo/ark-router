@@ -491,7 +491,7 @@ function sqmWanProfiles(data) {
 		const cfg=net[name]||{}, live=iface(dump,name), proto=String(cfg.proto||''), hasIpv4=Array.isArray(live['ipv4-address'])&&live['ipv4-address'].length>0;
 		if(isCompanionOrVirtualIpv6Wan(name, cfg, live) || proto==='none'||proto==='dhcpv6'||(!/^(dhcp|pppoe|static)$/i.test(proto)&&!hasIpv4))return;
 		const section=name==='wan'?'wan1':name.toLowerCase();if(seen[section])return;seen[section]=1;
-		result.push({network:name,section:section,label:name==='wan'?'WAN1':name.toUpperCase(),device:String(live.l3_device||live.device||cfg.device||name),online:!!live.up});
+		result.push({network:name,section:section,label:name==='wan'?'WAN1':name.toUpperCase(),device:String(live.l3_device||live.device||cfg.device||name),online:!!live.up,proto:proto});
 	});
 	return result;
 }
@@ -4407,12 +4407,13 @@ const networkMethods = {
 				const curEqdisc = queue.eqdisc_opts || 'diffserv4 nat dual-srchost ack-filter memlimit 32M';
 				const curIqdisc = queue.iqdisc_opts || 'diffserv4 nat dual-dsthost ingress memlimit 32M';
 
+				const isPppoe = profile.proto === 'pppoe';
 				const overheadSelect = E('select', { class: 'cbi-input-select', style: 'width: 100%; margin-top: 4px;' }, [
 					E('option', { value: 'none|0', selected: (curLinklayer === 'none' && curOverhead === 0) }, ['Nenhum / Ethernet Pura (0 bytes overhead)']),
-					E('option', { value: 'ethernet|18', selected: (curLinklayer === 'ethernet' && curOverhead === 18) }, ['Cabo DOCSIS / Ethernet Padrão (18 bytes)']),
-					E('option', { value: 'ethernet|26', selected: (curLinklayer === 'ethernet' && curOverhead === 26) }, ['Fibra GPON / IPoE Padrão (26 bytes)']),
+					E('option', { value: 'ethernet|18', selected: (curLinklayer === 'ethernet' && curOverhead === 18) }, ['Cabo DOCSIS / Ethernet Padrão (18 bytes)' + (!isPppoe ? ' — Recomendado Cabo/DHCP' : '')]),
+					E('option', { value: 'ethernet|28', selected: (curLinklayer === 'ethernet' && curOverhead === 28) || (!queue.overhead && isPppoe) }, ['Fibra GPON / PPPoE Direto (28 bytes' + (isPppoe ? ' — Recomendado para esta WAN' : '') + ')']),
 					E('option', { value: 'ethernet|34', selected: (curLinklayer === 'ethernet' && curOverhead === 34) }, ['Fibra PPPoE / VLAN (34 bytes)']),
-					E('option', { value: 'ethernet|44', selected: (curLinklayer === 'ethernet' && curOverhead === 44) || (!queue.overhead && curLinklayer !== 'none') }, ['Fibra GPON / PPPoE Conservador (44 bytes — Recomendado)']),
+					E('option', { value: 'ethernet|44', selected: (curLinklayer === 'ethernet' && curOverhead === 44) }, ['Fibra GPON / PPPoE Conservador (44 bytes)']),
 					E('option', { value: 'atm|44', selected: (curLinklayer === 'atm') }, ['Linha ADSL Antiga (ATM 44 bytes)'])
 				]);
 

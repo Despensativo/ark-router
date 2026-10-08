@@ -156,7 +156,7 @@ function sqmWanProfiles(data) {
 		const cfg=net[name]||{}, live=iface(dump,name), proto=String(cfg.proto||''), hasIpv4=Array.isArray(live['ipv4-address'])&&live['ipv4-address'].length>0;
 		if(isCompanionOrVirtualIpv6Wan(name, cfg, live) || proto==='none'||proto==='dhcpv6'||(!/^(dhcp|pppoe|static)$/i.test(proto)&&!hasIpv4))return;
 		const section=name==='wan'?'wan1':name.toLowerCase();if(seen[section])return;seen[section]=1;
-		result.push({network:name,section:section,label:name==='wan'?'WAN1':name.toUpperCase(),device:String(live.l3_device||live.device||cfg.device||name),online:!!live.up});
+		result.push({network:name,section:section,label:name==='wan'?'WAN1':name.toUpperCase(),device:String(live.l3_device||live.device||cfg.device||name),online:!!live.up,proto:proto});
 	});
 	return result;
 }
