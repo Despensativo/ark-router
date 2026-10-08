@@ -466,6 +466,7 @@ install_source() {
 	chmod +x /etc/init.d/ark-zerotier-ram 2>/dev/null || true
 	chmod +x /etc/init.d/ark-firewall-guard 2>/dev/null || true
 	chmod +x /etc/init.d/ark-autowan 2>/dev/null || true
+	chmod +x /etc/hotplug.d/iface/* 2>/dev/null || true
 	if [ -f "$rootdir/VERSION" ]; then
 		mkdir -p /usr/share/ark-router
 		cp "$rootdir/VERSION" /usr/share/ark-router/VERSION
