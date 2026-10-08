@@ -77,6 +77,11 @@ sqm_apply_upload_only() {
 	uci -q set "sqm.$sec.script=piece_of_cake.qos"
 	uci -q set "sqm.$sec.eqdisc_opts=diffserv4 ack-filter memlimit 32M"
 	uci commit sqm
+	# Trava de exclusao mutua: SQM/CAKE ativo desliga Fastpath
+	uci -q set firewall.@defaults[0].flow_offloading=0
+	uci -q set firewall.@defaults[0].flow_offloading_hw=0
+	uci commit firewall 2>/dev/null || true
+	/etc/init.d/firewall reload >/dev/null 2>&1 || true
 	/etc/init.d/sqm restart >/dev/null 2>&1 || true
 	echo 'ok'
 }
@@ -169,6 +174,13 @@ handle_sqm() {
 		done
 		[ "$wan_count" -gt 0 ] || { echo 'Nenhuma WAN ativa encontrada' >&2; exit 3; }
 		uci commit sqm
+		if [ "$2" = 1 ]; then
+			# Trava de exclusao mutua: SQM/CAKE ativo desliga Fastpath
+			uci -q set firewall.@defaults[0].flow_offloading=0
+			uci -q set firewall.@defaults[0].flow_offloading_hw=0
+			uci commit firewall 2>/dev/null || true
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+		fi
 		/etc/init.d/sqm restart
 		echo ok
 		;;
@@ -263,6 +275,16 @@ handle_sqm() {
 		done
 		uci commit sqm
 		uci commit qos_equipe 2>/dev/null || true
+		# Trava de exclusao mutua: se qualquer fila SQM foi ativada, desativa Fastpath/Flow Offloading no firewall
+		if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
+			if [ "$(uci -q get firewall.@defaults[0].flow_offloading || echo 0)" = "1" ] || \
+			   [ "$(uci -q get firewall.@defaults[0].flow_offloading_hw || echo 0)" = "1" ]; then
+				uci -q set firewall.@defaults[0].flow_offloading=0
+				uci -q set firewall.@defaults[0].flow_offloading_hw=0
+				uci commit firewall 2>/dev/null || true
+				/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			fi
+		fi
 		/etc/init.d/sqm restart
 		apply_guest_tc_limit >/dev/null 2>&1 || true
 		echo ok

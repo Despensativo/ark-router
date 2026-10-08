@@ -3482,7 +3482,9 @@ const ES = {
   "Editar IP & Gateway deste AP": "Editar IP y Puerta de enlace de este AP",
   "Blindagem de Ponto de Acesso": "Protección de Punto de Acceso",
   "O balanceamento e failover de conexões de internet pertencem ao Roteador Mestre (Gateway). Em nós em Modo Ponto de Acesso (AP), todo o tráfego é encaminhado diretamente via enlace local.": "El equilibrio de carga y failover de internet pertenecen al Router Maestro (Puerta de enlace). En nodos en Modo Punto de Acceso (AP), todo el tráfico se reenvía directamente por el enlace local.",
-  "O controle de Bufferbloat (SQM / CAKE) atua exclusivamente na porta de internet (WAN) do Roteador Mestre (Gateway). Em nós em Modo Ponto de Acesso (AP), todo o tráfego passa em ponte direta (L2) para não limitar nem degradar a velocidade local do Wi-Fi.": "El control de Bufferbloat (SQM / CAKE) actúa exclusivamente en el puerto de internet (WAN) del Router Maestro (Puerta de enlace). En nodos en Modo Punto de Acceso (AP), todo el tráfico pasa por puente directo (L2) para no limitar ni degradar la velocidad Wi-Fi local."
+  "O controle de Bufferbloat (SQM / CAKE) atua exclusivamente na porta de internet (WAN) do Roteador Mestre (Gateway). Em nós em Modo Ponto de Acesso (AP), todo o tráfego passa em ponte direta (L2) para não limitar nem degradar a velocidade local do Wi-Fi.": "El control de Bufferbloat (SQM / CAKE) actúa exclusivamente en el puerto de internet (WAN) del Router Maestro (Puerta de enlace). En nodos en Modo Punto de Acceso (AP), todo el tráfico pasa por puente directo (L2) para no limitar ni degradar la velocidad Wi-Fi local.",
+  "Fastpath (Flow Offload) Ativo no Firewall": "Fastpath (Flow Offload) Activo en el Firewall",
+  "O Fastpath desvia os pacotes do kernel e impede o funcionamento do SQM/CAKE. Ao salvar o SQM, o Fastpath será automaticamente desativado para garantir o controle anti-bufferbloat.": "Fastpath desvía los paquetes del kernel e impide el funcionamiento de SQM/CAKE. Al guardar SQM, Fastpath se desactivará automáticamente para garantizar el control anti-bufferbloat."
 };
 
 function _t(text){

@@ -642,6 +642,31 @@ config device 'wan_eth1'
         self.assertIn("other-config", self.sb.uci_get("dhcp.lan.ra_flags") or "")
         self.assertIsNone(self.sb.uci_get("network.lan.ip6addr"))
 
+    def test_20_sqm_flow_offload_mutual_exclusion(self):
+        """Verifica a trava de exclusao mutua estrita entre Fastpath (Flow Offload) e SQM/CAKE"""
+        # 1. Ativa SQM na WAN
+        res_sqm = self.sb.run_control("wan-optimize-set", "iface=wan", "linklayer_profile=pppoe_28", "enable_sqm=1")
+        self.assertEqual(res_sqm.returncode, 0)
+        self.assertEqual(self.sb.uci_get("sqm.wan1.enabled"), "1")
+        self.assertEqual(self.sb.uci_get("firewall.@defaults[0].flow_offloading"), "0")
+        self.assertEqual(self.sb.uci_get("firewall.@defaults[0].flow_offloading_hw"), "0")
+
+        # 2. Agora o usuario ativa Flow Offload (Fastpath)
+        res_flow = self.sb.run_control("wan-optimize-set", "iface=wan", "flow_offload=1")
+        self.assertEqual(res_flow.returncode, 0)
+        # Fastpath deve estar 1
+        self.assertEqual(self.sb.uci_get("firewall.@defaults[0].flow_offloading"), "1")
+        # Mas SQM deve ter sido desligado pela trava para evitar conflito/bugs!
+        self.assertEqual(self.sb.uci_get("sqm.wan1.enabled"), "0")
+
+        # 3. Agora o usuario reativa SQM via sqm-save-v2
+        res_sqm2 = self.sb.run_control("sqm-save-v2", "wan=wan1|wan|eth1|1|950000|950000|ethernet|28|diffserv4|diffserv4")
+        self.assertEqual(res_sqm2.returncode, 0)
+        self.assertEqual(self.sb.uci_get("sqm.wan1.enabled"), "1")
+        # Trava: Fastpath no firewall deve ter sido desligado automaticamente!
+        self.assertEqual(self.sb.uci_get("firewall.@defaults[0].flow_offloading"), "0")
+        self.assertEqual(self.sb.uci_get("firewall.@defaults[0].flow_offloading_hw"), "0")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 

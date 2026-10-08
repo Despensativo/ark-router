@@ -4495,14 +4495,9 @@ const networkMethods = {
 				])
 			]) : '';
 
-			const modernPpeNotice = (audit.hw_flowoffload_capable) ? E('div', { class: 'alert-message info', style: 'margin-bottom: 12px; font-size: 12.5px; line-height: 1.45;' }, [
-				E('strong', { style: 'display: block; margin-bottom: 3px;' }, ['⚡ ' + _t('Hardware Moderno com Silício PPE')]),
-				_t('Processador com capacidade total para modulação de pacotes CAKE. O silício PPE opera em modo híbrido para garantir vazão máxima com proteção anti-bufferbloat.')
-			]) : '';
-
-			const hybridBanner = isFlowOffloadActive ? E('div', { class: 'alert-message info', style: 'margin-bottom: 12px; font-size: 12.5px; line-height: 1.45;' }, [
-				E('strong', { style: 'display: block; margin-bottom: 3px;' }, ['⚡ ' + _t('Modo Híbrido Ativo (Fastpath + CAKE)')]),
-				_t('Modo Híbrido: O Download opera com velocidade total liberada no Fastpath e o Upload é gerenciado pelo CAKE para blindar a rede contra lag em jogos e chamadas.')
+			const flowOffloadNotice = isFlowOffloadActive ? E('div', { class: 'alert-message warning', style: 'margin-bottom: 12px; font-size: 12.5px; line-height: 1.45;' }, [
+				E('strong', { style: 'display: block; margin-bottom: 3px;' }, ['⚠️ ' + _t('Fastpath (Flow Offload) Ativo no Firewall')]),
+				_t('O Fastpath desvia os pacotes do kernel e impede o funcionamento do SQM/CAKE. Ao salvar o SQM, o Fastpath será automaticamente desativado para garantir o controle anti-bufferbloat.')
 			]) : '';
 
 			const hasSpeedtest = (presetDown > 0 || presetUp > 0);
@@ -4536,9 +4531,8 @@ const networkMethods = {
 					E('button',{class:'ex-mini-button','click':L.bind(function(){ui.hideModal();this.openFastCom();},this)},['🎬 ' + _t('Medir no Fast.com')])
 				]),
 				speedtestBanner,
-				hybridBanner,
+				flowOffloadNotice,
 				mipsNotice,
-				modernPpeNotice,
 				E('div',{class:'ex-qos-edit-grid'},editors.map(function(editor){return editor.section;}).concat([E('section',{},[E('h3',{},['Visitantes']),guestDown.row,guestUp.row])])),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
 			const btn = ev.currentTarget;
 			const args=['sqm-save-v2'];let invalid=false;
@@ -5621,87 +5615,7 @@ const networkMethods = {
 			if (Number(opt.sqm_upload || 0) > 0) {
 				initialUploadMbps = Math.round((Number(opt.sqm_upload) / 1000) * 10) / 10;
 			}
-			const flowNotice = E('small', { class: 'ex-opt-requirement ready', style: 'display:none;margin-top:6px;' });
-			const hybridContainer = E('div', { class: 'ex-opt-hybrid-container', style: 'display:none;margin-top:10px;' });
-
-			const hybridNotice = E('div', { class: 'alert-message info', style: 'margin-bottom:8px;padding:8px 12px;font-size:12px;line-height:1.45;' }, [
-				E('strong', { style: 'display:block;margin-bottom:2px;font-size:12.5px;' }, ['⚡ Modo Híbrido Ativo']),
-				'Modo Híbrido: O Download opera com velocidade total no Fastpath e o Upload é gerenciado pelo CAKE contra lag.'
-			]);
-
-			const calcInput = E('input', {
-				type: 'number',
-				class: 'cbi-input-text',
-				min: 1,
-				max: 100000,
-				step: '1',
-				placeholder: 'Velocidade nominal (Mbps)',
-				style: 'max-width: 170px; margin-right: 6px;'
-			});
-			const calcNotice = E('small', { class: 'ex-muted', style: 'display:block;margin-top:4px;font-size:11px;line-height:1.3;' }, [
-				'Margem de 7% aplicada para impedir acúmulo de fila no modem e eliminar lag.'
-			]);
-			const uploadInput = E('input', {
-				type: 'number',
-				class: 'cbi-input-text',
-				min: 0,
-				max: 100000,
-				step: '0.1',
-				value: initialUploadMbps > 0 ? initialUploadMbps : 0,
-				placeholder: '0'
-			});
-			const downloadInput = E('input', {
-				type: 'text',
-				class: 'cbi-input-text',
-				value: '0 (Ilimitado / Fastpath)',
-				disabled: true,
-				style: 'opacity:0.85;'
-			});
-
-			const applyCalcBtn = E('button', {
-				type: 'button',
-				class: 'btn cbi-button cbi-button-action ex-mini-button',
-				style: 'font-weight: 600;',
-				click: function() {
-					const nominal = parseFloat(calcInput.value || 0);
-					if (nominal > 0) {
-						const discounted = Math.round(nominal * 0.93 * 10) / 10;
-						uploadInput.value = discounted;
-						calcNotice.style.color = '#10b981';
-						calcNotice.textContent = '✓ ' + discounted + ' Mbps aplicado ao Upload (-7% contra Bufferbloat).';
-					}
-				}
-			}, ['Aplicar -7%']);
-
-			const calcBox = E('div', { class: 'ex-qos-calc-box', style: 'margin-bottom:10px;padding:8px 12px;background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.15);border-radius:8px;' }, [
-				E('div', { style: 'display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;' }, [
-					E('strong', { style: 'font-size:11.5px;' }, ['🧮 Calculadora de Upload (-7% Bufferbloat)'])
-				]),
-				E('div', { style: 'display:flex;align-items:center;flex-wrap:wrap;gap:4px;' }, [
-					calcInput,
-					applyCalcBtn
-				]),
-				calcNotice
-			]);
-
-			const downloadField = E('label', { class: 'ex-wan-edit-field', style: 'margin-bottom:6px;' }, [
-				E('span', {}, ['Download (' + opt.label + ') • Mbps']),
-				downloadInput,
-				E('small', { class: 'ex-muted' }, ['No Modo Híbrido, o download opera sem limite artificial no kernel.'])
-			]);
-
-			const uploadField = E('label', { class: 'ex-wan-edit-field', style: 'margin-bottom:6px;' }, [
-				E('span', {}, ['Upload (' + opt.label + ') • Mbps']),
-				uploadInput,
-				E('small', { class: 'ex-muted' }, ['Indispensável informar a velocidade real de upload para o CAKE estabilizar a latência.'])
-			]);
-
-			hybridContainer.appendChild(hybridNotice);
-			hybridContainer.appendChild(calcBox);
-			hybridContainer.appendChild(E('div', { style: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;' }, [
-				downloadField,
-				uploadField
-			]));
+			const flowNotice = E('small', { class: 'ex-opt-requirement', style: 'display:none;margin-top:6px;' });
 
 			const updateSqmDependency = function() {
 				const isSatNode = isSatelliteOrAp(self.currentData);
@@ -5793,21 +5707,24 @@ const networkMethods = {
 				}
 
 				const isSatNode = isSatelliteOrAp(self.currentData);
-				const isSqmOn = !isSatNode && (sqmActive || sqmAnyActive || enableSqmInput.checked);
+				const isSqmOn = !isSatNode && (sqmActive || sqmAnyActive || enableSqmInput.checked || linklayerProfile !== 'none');
 				if (flowOffload && isSqmOn) {
-					hybridContainer.style.display = 'block';
-					flowNotice.style.display = 'none';
-				} else if (flowOffload) {
-					hybridContainer.style.display = 'none';
+					flowOffload = false;
+					flowInput.checked = false;
+				}
+				if (flowOffload) {
 					flowNotice.style.display = 'block';
 					flowNotice.className = 'ex-opt-requirement ready';
-					flowNotice.textContent = '✓ Pronto e ativo: downloads e tráfego geral acelerados no kernel com menor uso de CPU.';
+					flowNotice.textContent = '✓ Pronto e ativo: tráfego acelerado no kernel com menor uso de CPU. SQM/CAKE mantido desligado para evitar conflitos.';
+				} else if (isSqmOn) {
+					flowNotice.style.display = 'block';
+					flowNotice.className = 'ex-opt-requirement warning';
+					flowNotice.textContent = '🛡️ Desativado: SQM / CAKE ativo. Fastpath desabilitado para não desviar pacotes da fila anti-bufferbloat.';
 				} else {
-					hybridContainer.style.display = 'none';
 					flowNotice.style.display = 'none';
 				}
 
-				globalWarning.textContent = (flowOffload && sqmAnyActive) ? 'Modo Híbrido disponível: o Fastpath acelera downloads no kernel enquanto o CAKE gerencia uploads.' : 'Estas opções de desempenho beneficiam o roteador como um todo.';
+				globalWarning.textContent = 'Estas opções de desempenho beneficiam o roteador como um todo.';
 				updateSqmDependency();
 			};
 
@@ -5818,6 +5735,11 @@ const networkMethods = {
 				if (effective && presetId !== 'custom') {
 					linklayerProfile = effective.ll || 'none';
 					babyJumbo = !!effective.jumbo;
+					if (linklayerProfile !== 'none') {
+						flowOffload = false;
+						flowInput.checked = false;
+						enableSqmInput.checked = true;
+					}
 				}
 				updateUI();
 			};
@@ -5847,17 +5769,40 @@ const networkMethods = {
 				const b = E('button', {
 					type: 'button',
 					class: 'ex-opt-chip',
-					click: function() { selectedPreset = 'custom'; linklayerProfile = c.id; updateUI(); }
+					click: function() {
+						selectedPreset = 'custom';
+						linklayerProfile = c.id;
+						if (c.id !== 'none') {
+							flowOffload = false;
+							flowInput.checked = false;
+							enableSqmInput.checked = true;
+						}
+						updateUI();
+					}
 				}, [c.label]);
 				chipBtns.push({ id: c.id, btn: b });
 				chipGrid.appendChild(b);
 			});
 
 			tcpInput.addEventListener('change', function() { tcpTurbo = tcpInput.checked; updateUI(); });
-			flowInput.addEventListener('change', function() { flowOffload = flowInput.checked; updateUI(); });
+			flowInput.addEventListener('change', function() {
+				flowOffload = flowInput.checked;
+				if (flowOffload) {
+					linklayerProfile = 'none';
+					enableSqmInput.checked = false;
+				}
+				updateUI();
+			});
 			jumboInput.addEventListener('change', function() { selectedPreset = 'custom'; babyJumbo = jumboInput.checked; updateUI(); });
 			irqInput.addEventListener('change', function() { irqBalance = irqInput.checked; updateUI(); });
-			enableSqmInput.addEventListener('change', function() { updateSqmDependency(); updateUI(); });
+			enableSqmInput.addEventListener('change', function() {
+				if (enableSqmInput.checked) {
+					flowOffload = false;
+					flowInput.checked = false;
+				}
+				updateSqmDependency();
+				updateUI();
+			});
 			applyPreset(selectedPreset);
 
 			const protoHuman = { dhcp: 'Modem da Operadora (DHCP)', pppoe: 'Fibra Ótica Direta (PPPoE)', static: 'IP Fixo Estático' };
@@ -5922,8 +5867,7 @@ const networkMethods = {
 							E('div', { class: 'ex-opt-module-info' }, [
 								E('strong', {}, ['🚀 Aceleração de Tráfego (Fastpath / Flow Offloading)']),
 								E('p', {}, ['Processa o tráfego de dados diretamente pelo kernel do Linux, reduzindo o uso da CPU para a internet rodar na velocidade máxima sem aquecer o roteador.']),
-								flowNotice,
-								hybridContainer
+								flowNotice
 							]),
 							E('label', { class: 'ex-switch' }, [ flowInput, E('span', { class: 'ex-switch-slider' }) ])
 						]),
@@ -5955,8 +5899,10 @@ const networkMethods = {
 							return;
 						}
 						const isSatNode = isSatelliteOrAp(this.currentData);
-						const isSqmOn = !isSatNode && (sqmActive || sqmAnyActive || enableSqmInput.checked);
+						const isSqmOn = !isSatNode && (requiresSqm || (sqmActive && enableSqmInput.checked) || enableSqmInput.checked);
 						const activateSqm = !isSatNode && requiresSqm && !sqmActive && enableSqmInput.checked;
+						const effectiveFlowOffload = (!isSqmOn && flowOffload);
+
 						btn.disabled = true;
 						btn.textContent = activateSqm ? 'Ativando CAKE e aplicando…' : 'Aplicando otimizações…';
 						const args = [
@@ -5964,21 +5910,16 @@ const networkMethods = {
 							'iface=' + opt.iface,
 							'preset=' + selectedPreset,
 							'tcp_turbo=' + (tcpTurbo ? '1' : '0'),
-							'flow_offload=' + (flowOffload ? '1' : '0'),
-							'linklayer_profile=' + linklayerProfile,
+							'flow_offload=' + (effectiveFlowOffload ? '1' : '0'),
+							'linklayer_profile=' + (effectiveFlowOffload ? 'none' : linklayerProfile),
 							'baby_jumbo=' + (babyJumbo ? '1' : '0'),
-							'enable_sqm=' + (activateSqm ? '1' : '0'),
+							'enable_sqm=' + (isSqmOn ? '1' : '0'),
 							'irqbalance=' + (irqBalance ? '1' : '0'),
 							'igmp_snooping=' + (igmpSnooping ? '1' : '0')
 						];
-						if (flowOffload && isSqmOn) {
-							const upVal = parseFloat(uploadInput.value || 0);
-							args.push('sqm_upload=' + Math.round(upVal * 1000));
-							args.push('sqm_download=0');
-						}
 						return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(L.bind(function(res) {
 							if (res.code) throw new Error(res.stderr || 'Falha ao aplicar otimizações');
-							this.triggerImmediateRefresh((flowOffload && isSqmOn) ? 'Modo Híbrido ativado: Fastpath no Download e CAKE no Upload aplicados com sucesso!' : (activateSqm ? 'SQM / CAKE ativado e otimizações aplicadas com sucesso!' : 'Otimizações de internet aplicadas com sucesso!'), 'info');
+							this.triggerImmediateRefresh(activateSqm ? 'SQM / CAKE ativado e otimizações aplicadas com sucesso!' : 'Otimizações de internet aplicadas com sucesso!', 'info');
 						}, this)).catch(function(err) {
 							btn.disabled = false;
 							btn.textContent = 'Salvar e Aplicar Otimizações';

@@ -2880,6 +2880,15 @@ EOF
 			sysctl -w net.ipv4.tcp_fastopen=1 >/dev/null 2>&1 || true
 		fi
 		if [ "$flow_offload" = 1 ]; then
+			# Trava de exclusao mutua: Fastpath/Flow Offloading desvia o trafego do kernel e quebra o SQM/CAKE.
+			# Desativa SQM em todas as filas ativas para garantir estabilidade.
+			for s in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\([^.]*\)\.enabled=.1.$/\1/p'); do
+				uci -q set "sqm.$s.enabled=0"
+			done
+			uci commit sqm 2>/dev/null || true
+			/etc/init.d/sqm stop >/dev/null 2>&1 || true
+			enable_sqm=0
+
 			uci -q set firewall.@defaults[0].flow_offloading=1
 			# Detecta aceleracao em silicio MediaTek Filogic PPE / WED ou MT7621 PPE
 			has_ppe=0
@@ -2887,7 +2896,7 @@ EOF
 			   grep -qiE 'mt7981|mt7986|mt7988|mt7621|mt7622|filogic' /tmp/sysinfo/board_name /tmp/sysinfo/model 2>/dev/null; then
 				has_ppe=1
 			fi
-			if [ "$has_ppe" = 1 ] && [ "$enable_sqm" != 1 ] && ! uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
+			if [ "$has_ppe" = 1 ]; then
 				uci -q set firewall.@defaults[0].flow_offloading_hw=1
 			else
 				uci -q set firewall.@defaults[0].flow_offloading_hw=0
@@ -2912,6 +2921,12 @@ EOF
 		wan_device="$(sqm_device_for_network "$iface")"
 		valid_net_device "$wan_device" || { echo "Dispositivo SQM invalido para $iface" >&2; exit 2; }
 		if [ "$enable_sqm" = 1 ]; then
+			# Trava de exclusao mutua: SQM/CAKE ativo desliga Fastpath
+			uci -q set firewall.@defaults[0].flow_offloading=0
+			uci -q set firewall.@defaults[0].flow_offloading_hw=0
+			uci commit firewall
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+
 			ensure_sqm_section "$sqm_section" "$wan_device"
 			uci -q set "sqm.$sqm_section.enabled=1"
 			sqm_changed=1
@@ -2931,18 +2946,6 @@ EOF
 			ensure_sqm_section "$sqm_section" "$wan_device"
 			uci -q set "sqm.$sqm_section.download=$sqm_download"
 			sqm_changed=1
-		elif [ "$flow_offload" = 1 ] && uci -q get "sqm.$sqm_section" >/dev/null 2>&1; then
-			uci -q set "sqm.$sqm_section.download=0"
-			sqm_changed=1
-		fi
-		if [ "$flow_offload" = 1 ]; then
-			for s in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\([^.]*\)\.enabled=.1.$/\1/p'); do
-				cur_dl="$(uci -q get "sqm.$s.download" 2>/dev/null || echo 0)"
-				if [ "$cur_dl" != "0" ]; then
-					uci -q set "sqm.$s.download=0"
-					sqm_changed=1
-				fi
-			done
 		fi
 		if [ -n "$linklayer_profile" ]; then
 			if uci -q get "sqm.$sqm_section" >/dev/null 2>&1; then
