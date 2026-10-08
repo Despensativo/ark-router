@@ -1,7 +1,22 @@
 // /src/modules/system.js - ARK Router LuCI View Module
 const systemMethods = {
 	setDashboardLanguage: function(language){
-		return fs.exec('/usr/sbin/equipe-dashboard-control',['language',language]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar o idioma');window.location.reload();}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]));});
+		try {
+			if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('ark_caps');
+			if (typeof window !== 'undefined') {
+				delete window._arkCapabilities;
+				window.dashboardLanguage = language;
+			}
+			dashboardLanguage = language;
+			if (this.capabilities) this.capabilities.language = language;
+		} catch(e) {}
+		return fs.exec('/usr/sbin/equipe-dashboard-control',['language',language]).then(function(r){
+			if(r.code)throw new Error(r.stderr||'Falha ao salvar o idioma');
+			window.location.reload();
+		}).catch(function(e){
+			if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
+			ui.addNotification(null,E('p',{},[e.message]));
+		});
 	},
 	showLanguageModal: function(){
 		const current = this.capabilities.language || dashboardLanguage || 'pt-br';

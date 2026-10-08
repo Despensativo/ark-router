@@ -12,6 +12,7 @@ const lifecycleMethods = {
 					if (typeof window !== 'undefined') window._arkCapabilities = cached;
 					const lang = cached.language || 'pt-br';
 					dashboardLanguage = lang;
+					if (typeof window !== 'undefined') window.dashboardLanguage = lang;
 					fs.exec('/usr/sbin/equipe-dashboard-control', ['features']).then(function(r) {
 						try {
 							const c = JSON.parse((r && r.stdout) || '{}');
@@ -38,6 +39,7 @@ const lifecycleMethods = {
 					}
 					const lang = c.language || 'pt-br';
 					dashboardLanguage = lang;
+					if (typeof window !== 'undefined') window.dashboardLanguage = lang;
 					if (typeof loadDashboardLanguage === 'function') {
 						return loadDashboardLanguage(lang).then(function() { return c; });
 					}
@@ -46,6 +48,7 @@ const lifecycleMethods = {
 				if(typeof window!=='undefined' && window._arkCapabilities && window._arkCapabilities.features){
 					const lang = window._arkCapabilities.language || 'pt-br';
 					dashboardLanguage = lang;
+					if (typeof window !== 'undefined') window.dashboardLanguage = lang;
 					if (typeof loadDashboardLanguage === 'function') {
 						return loadDashboardLanguage(lang).then(function() { return window._arkCapabilities; });
 					}

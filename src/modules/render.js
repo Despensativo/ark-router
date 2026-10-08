@@ -21,7 +21,7 @@ const renderMethods = {
 				}
 			});
 		}
-		this.board=loaded[0]||{}; this.countries=(loaded[1]&&loaded[1].results)||[]; this.capabilities=loaded[2]||{features:{}}; dashboardLanguage=this.capabilities.language||'pt-br';this.applyAppearance();this.applyBrand(this.capabilities.title);if(typeof loadDashboardLanguage==='function'){loadDashboardLanguage(dashboardLanguage).then(enableTranslation);}else{enableTranslation();} const data=loaded[3]; if(typeof initCardStatesFromUci==='function'&&data&&data.equipeDashboardConfig){initCardStatesFromUci(data.equipeDashboardConfig);} const w=wifiConfig(data.wireless), release=((this.board.release||{}).description||'').split(' ').slice(0,2).join(' '), panelTitle=this.capabilities.title||'ARK Router';
+		this.board=loaded[0]||{}; this.countries=(loaded[1]&&loaded[1].results)||[]; this.capabilities=loaded[2]||{features:{}}; dashboardLanguage=this.capabilities.language||'pt-br';if(typeof window!=='undefined'){window.dashboardLanguage=dashboardLanguage;}this.applyAppearance();this.applyBrand(this.capabilities.title);if(typeof loadDashboardLanguage==='function'){loadDashboardLanguage(dashboardLanguage).then(enableTranslation);}else{enableTranslation();} const data=loaded[3]; if(typeof initCardStatesFromUci==='function'&&data&&data.equipeDashboardConfig){initCardStatesFromUci(data.equipeDashboardConfig);} const w=wifiConfig(data.wireless), release=((this.board.release||{}).description||'').split(' ').slice(0,2).join(' '), panelTitle=this.capabilities.title||'ARK Router';
 		const serverVersion = (this.capabilities && this.capabilities.update && this.capabilities.update.current) || '';
 		if (serverVersion && typeof ARK_BUILD_VERSION !== 'undefined' && serverVersion !== '—' && serverVersion !== ARK_BUILD_VERSION) {
 			const reloadKey = 'ark_version_reload_' + serverVersion;
@@ -1633,7 +1633,11 @@ const renderMethods = {
 				}
 			}, this));
 		}
-		this.update(data); this.scheduleAdaptiveRefresh(); return root;
+		this.update(data); this.scheduleAdaptiveRefresh();
+		if (dashboardLanguage !== 'pt-br' && typeof translateTree === 'function') {
+			translateTree(root);
+		}
+		return root;
 	},
 	renderMwanRulesSection: function(data) {
 		const self = this;

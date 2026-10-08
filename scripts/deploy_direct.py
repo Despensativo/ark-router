@@ -80,6 +80,16 @@ if os.path.isdir(ark_lib_dir):
             remote_f = '/' + rel.replace('\\', '/')
             raw_files_to_upload.append((local_f, remote_f))
 
+hotplug_dir = os.path.join(repo_dir, 'root', 'etc', 'hotplug.d')
+if os.path.isdir(hotplug_dir):
+    for root_path, _, fnames in os.walk(hotplug_dir):
+        for fname in fnames:
+            local_f = os.path.join(root_path, fname)
+            rel = os.path.relpath(local_f, os.path.join(repo_dir, 'root'))
+            remote_f = '/' + rel.replace('\\', '/')
+            if (local_f, remote_f) not in raw_files_to_upload:
+                raw_files_to_upload.append((local_f, remote_f))
+
 files_to_upload = [
     (minified_map.get(local_path, local_path), remote_path)
     for local_path, remote_path in raw_files_to_upload

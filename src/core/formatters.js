@@ -9,18 +9,29 @@ function translateText(value){
 	const trimmed = s.slice(lead.length, s.length - (trail ? trail.length : 0));
 	if (!trimmed) return s;
 
-	const iconMatch = trimmed.match(/^([\uD800-\uDBFF][\uDC00-\uDFFF]|\uFE0F|[\u2000-\u3300]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDE4F]|\uD83E[\uDD00-\uDDFF]|[\u2600-\u27BF])\s*/);
+	const iconMatch = trimmed.match(/^((?:[\uD800-\uDBFF][\uDC00-\uDFFF]|\uFE0F|[\u2000-\u3300]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDE4F]|\uD83E[\uDD00-\uDDFF]|[\u2600-\u27BF]|●|↓|↑)\s*)+/);
 	const iconPrefix = iconMatch ? iconMatch[0] : '';
 	const coreText = iconPrefix ? trimmed.slice(iconPrefix.length) : trimmed;
+	const normCore = coreText.replace(/\u2011/g, '-');
+	const normTrimmed = trimmed.replace(/\u2011/g, '-');
 
 	if (dashboardLanguage === 'en') {
 		if (EN[s]) return EN[s];
 		if (EN[trimmed]) return lead + EN[trimmed] + trail;
+		if (EN[normTrimmed]) return lead + EN[normTrimmed] + trail;
 		if (iconPrefix && EN[coreText]) return lead + iconPrefix + EN[coreText] + trail;
+		if (iconPrefix && EN[normCore]) return lead + iconPrefix + EN[normCore] + trail;
 		s=s.replace(/^Total recebido: /,'Total received: ').replace(/^Total enviado: /,'Total sent: ').replace(/^Pico /,'Peak ').replace(/ amostras • /,' samples • ').replace(/ amostra • /,' sample • ').replace(/ até agora$/,' to now');
 		s=s.replace(/ conectado(s)?$/,' connected').replace(/ conectado(s)? no Wi-Fi$/,' connected on Wi-Fi').replace(/ neste ponto • /,' on this node • ').replace(/ na rede$/,' on network').replace(/ no Wi-Fi$/,' on Wi-Fi').replace(/Canal /g,'Channel ').replace(/ • automático/g,' • automatic').replace(/ • manual/g,' • manual').replace(/ • ocupação /g,' • occupancy ').replace(/^Ruído:/,'Noise:').replace(/ visitantes$/,' guests').replace(/ ATIVA$/,' ACTIVE').replace(/ ATIVAS$/,' ACTIVE');
 		s=s.replace(/^Ligado • /,'On • ').replace(/^Desligado • /,'Off • ').replace(/ canais definidos manualmente/,' manually selected channels').replace(/ o roteador escolhe os canais/,' the router selects channels');
 		s=s.replace(/^LIGADA$/,'ON').replace(/^DESLIGADA$/,'OFF').replace(/Recolher\s*[▴▲^]?/g,'Collapse ▴').replace(/Expandir\s*[▾▼v]?/g,'Expand ▾').replace(/^PADRÃO$/,'DEFAULT');
+		s=s.replace(/^Ativo • /,'Active • ').replace(/^Desativado • /,'Disabled • ');
+		s=s.replace(/^● Conectado$/,'● Connected').replace(/^Ativo \((:\d+)\)$/,'Active ($1)').replace(/^(\d+) ativos \((\d+) total\)$/,'$1 active ($2 total)');
+		s=s.replace(/^🌐 Cliente VPN \(Conectado\)$/,'🌐 VPN Client (Connected)');
+		s=s.replace(/^Túnel Cliente conectado a (.+?)\. O tráfego do roteador está protegido via VPN\.$/,'Client tunnel connected to $1. Router traffic is protected via VPN.');
+		s=s.replace(/^WAN(\d+) limites$/,'WAN$1 limits');
+		s=s.replace(/^Visitantes com upload limitado/,'Guests with limited upload');
+		s=s.replace(/^ATIVO \(LOCAL\)$/,'ACTIVE (LOCAL)').replace(/^CLIENTE CONECTADO$/,'CLIENT CONNECTED');
 		s=s.replace(/(\d+)\s+otimizaç(ão ativa|ões ativas) • toque para configurar/g,'$1 active optimizations • tap to configure');
 		s=s.replace(/Controles de estabilidade e memória para eventos • toque para configurar/g,'Stability and memory controls for events • tap to configure');
 		s=s.replace(/(\d+)\s+conexões ativas no NAT • (\d+)% da tabela/g,'$1 active NAT connections • $2% of table');
@@ -43,11 +54,20 @@ function translateText(value){
 	if (dashboardLanguage === 'es') {
 		if (ES[s]) return ES[s];
 		if (ES[trimmed]) return lead + ES[trimmed] + trail;
+		if (ES[normTrimmed]) return lead + ES[normTrimmed] + trail;
 		if (iconPrefix && ES[coreText]) return lead + iconPrefix + ES[coreText] + trail;
+		if (iconPrefix && ES[normCore]) return lead + iconPrefix + ES[normCore] + trail;
 		s=s.replace(/^Total recebido: /,'Total recibido: ').replace(/^Total enviado: /,'Total enviado: ').replace(/^Pico /,'Pico ').replace(/ amostras • /,' muestras • ').replace(/ amostra • /,' muestra • ').replace(/ até agora$/,' hasta ahora');
 		s=s.replace(/ conectado(s)?$/,' conectado(s)').replace(/ conectado(s)? no Wi-Fi$/,' conectado(s) en Wi-Fi').replace(/ neste ponto • /,' en este nodo • ').replace(/ na rede$/,' en red').replace(/ no Wi-Fi$/,' en Wi-Fi').replace(/Canal /g,'Canal ').replace(/ • automático/g,' • automático').replace(/ • manual/g,' • manual').replace(/ • ocupação /g,' • ocupación ').replace(/^Ruído:/,'Ruido:').replace(/ visitantes$/,' invitados').replace(/ ATIVA$/,' ACTIVA').replace(/ ATIVAS$/,' ACTIVAS');
 		s=s.replace(/^Ligado • /,'Encendido • ').replace(/^Desligado • /,'Apagado • ').replace(/ canais definidos manualmente/,' canales seleccionados manualmente').replace(/ o roteador escolhe os canais/,' el router elige los canales');
 		s=s.replace(/^LIGADA$/,'ACTIVADA').replace(/^DESLIGADA$/,'DESACTIVADA').replace(/Recolher\s*[▴▲^]?/g,'Colapsar ▴').replace(/Expandir\s*[▾▼v]?/g,'Expandir ▾').replace(/^PADRÃO$/,'POR DEFECTO');
+		s=s.replace(/^Ativo • /,'Activo • ').replace(/^Desativado • /,'Desactivado • ');
+		s=s.replace(/^● Conectado$/,'● Conectado').replace(/^Ativo \((:\d+)\)$/,'Activo ($1)').replace(/^(\d+) ativos \((\d+) total\)$/,'$1 activos ($2 total)');
+		s=s.replace(/^🌐 Cliente VPN \(Conectado\)$/,'🌐 Cliente VPN (Conectado)');
+		s=s.replace(/^Túnel Cliente conectado a (.+?)\. O tráfego do roteador está protegido via VPN\.$/,'Túnel Cliente conectado a $1. El tráfico del enrutador está protegido vía VPN.');
+		s=s.replace(/^WAN(\d+) limites$/,'Límites WAN$1');
+		s=s.replace(/^Visitantes com upload limitado/,'Invitados con subida limitada');
+		s=s.replace(/^ATIVO \(LOCAL\)$/,'ACTIVO (LOCAL)').replace(/^CLIENTE CONECTADO$/,'CLIENTE CONECTADO');
 		s=s.replace(/(\d+)\s+otimizaç(ão ativa|ões ativas) • toque para configurar/g,'$1 optimizaciones activas • toque para configurar');
 		s=s.replace(/Controles de estabilidade e memória para eventos • toque para configurar/g,'Controles de estabilidad y memoria para eventos • toque para configurar');
 		s=s.replace(/(\d+)\s+conexões ativas no NAT • (\d+)% da tabela/g,'$1 conexiones activas en NAT • $2% de la tabla');
@@ -218,4 +238,10 @@ function redirectToRouter(ip, message, delay) {
 	const path = window.location.pathname || '/cgi-bin/luci/admin/equipe-dashboard';
 	ui.addNotification(null, E('p', {}, [ message || ('Abrindo novo endereço: ' + ip) ]));
 	window.setTimeout(function() { window.location.href = window.location.protocol + '//' + ip + path; }, delay || 1000);
+}
+
+if (typeof window !== 'undefined') {
+	window.translateText = translateText;
+	window.translateTree = translateTree;
+	window.enableTranslation = enableTranslation;
 }
