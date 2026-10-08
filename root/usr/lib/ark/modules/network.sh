@@ -1935,8 +1935,20 @@ handle_network() {
 		if [ -n "$sqm_sec" ] && uci -q get "sqm.$sqm_sec" >/dev/null 2>&1; then
 			if [ "$proto" = pppoe ]; then
 				uci -q set "sqm.$sqm_sec.interface=pppoe-$iface"
+				cur_ov="$(uci -q get "sqm.$sqm_sec.overhead" || echo 0)"
+				if [ "$cur_ov" = "18" ] || [ "$cur_ov" = "0" ] || [ -z "$cur_ov" ]; then
+					uci -q set "sqm.$sqm_sec.linklayer=ethernet"
+					uci -q set "sqm.$sqm_sec.overhead=28"
+					uci -q set "sqm.$sqm_sec.mpu=64"
+				fi
 			else
 				uci -q set "sqm.$sqm_sec.interface=$effective_dev"
+				cur_ov="$(uci -q get "sqm.$sqm_sec.overhead" || echo 0)"
+				if [ "$cur_ov" = "28" ]; then
+					uci -q set "sqm.$sqm_sec.linklayer=ethernet"
+					uci -q set "sqm.$sqm_sec.overhead=18"
+					uci -q set "sqm.$sqm_sec.mpu=64"
+				fi
 			fi
 		fi
 		apply_wan_proto "$iface" "$proto" "$username" "$password" "$ipaddr" "$netmask" "$gateway" "$dns" "$macaddr" || exit $?

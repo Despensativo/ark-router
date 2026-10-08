@@ -246,19 +246,39 @@ handle_sqm() {
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
 				wan)
-					section="$(printf '%s' "$value" | cut -d '|' -f1)"; device="$(printf '%s' "$value" | cut -d '|' -f3)"; enabled="$(printf '%s' "$value" | cut -d '|' -f4)"; download="$(printf '%s' "$value" | cut -d '|' -f5)"; upload="$(printf '%s' "$value" | cut -d '|' -f6)"
+					section="$(printf '%s' "$value" | cut -d '|' -f1)"
+					net_name="$(printf '%s' "$value" | cut -d '|' -f2)"
+					device="$(printf '%s' "$value" | cut -d '|' -f3)"
+					enabled="$(printf '%s' "$value" | cut -d '|' -f4)"
+					download="$(printf '%s' "$value" | cut -d '|' -f5)"
+					upload="$(printf '%s' "$value" | cut -d '|' -f6)"
 					linklayer="$(printf '%s' "$value" | cut -d '|' -f7)"
 					overhead="$(printf '%s' "$value" | cut -d '|' -f8)"
 					eqdisc_opts="$(printf '%s' "$value" | cut -d '|' -f9)"
 					iqdisc_opts="$(printf '%s' "$value" | cut -d '|' -f10)"
 					[ -n "$download" ] || download=0
 					[ -n "$upload" ] || upload=0
+					if [ -n "$net_name" ]; then
+						target_sqm_dev="$(sqm_device_for_network "$net_name" 2>/dev/null || true)"
+						[ -n "$target_sqm_dev" ] && device="$target_sqm_dev"
+					fi
 					ensure_sqm_section "$section" "$device"
 					uci -q set "sqm.$section.enabled=$enabled"
 					uci -q set "sqm.$section.download=$download"
 					uci -q set "sqm.$section.upload=$upload"
-					[ -n "$linklayer" ] && uci -q set "sqm.$section.linklayer=$linklayer"
-					[ -n "$overhead" ] && uci -q set "sqm.$section.overhead=$overhead"
+					if [ "$linklayer" = "none" ] || [ -z "$linklayer" ]; then
+						uci -q set "sqm.$section.linklayer=none"
+						uci -q delete "sqm.$section.overhead"
+						uci -q delete "sqm.$section.mpu"
+					else
+						uci -q set "sqm.$section.linklayer=$linklayer"
+						[ -n "$overhead" ] && uci -q set "sqm.$section.overhead=$overhead"
+						if [ "$linklayer" = "ethernet" ]; then
+							uci -q set "sqm.$section.mpu=64"
+						else
+							uci -q delete "sqm.$section.mpu"
+						fi
+					fi
 					if [ -n "$eqdisc_opts" ] || [ -n "$iqdisc_opts" ]; then
 						uci -q set "sqm.$section.qdisc_advanced=1"
 						[ -n "$eqdisc_opts" ] && uci -q set "sqm.$section.eqdisc_opts=$eqdisc_opts"
