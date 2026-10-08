@@ -10,18 +10,23 @@ Build packages locally to avoid slow CI/CD cloud queues, verify them immediately
 
 1. Keep source code on the `main` branch.
 2. Update `VERSION`, `Makefile`, `CHANGELOG.md` and runtime version files.
-3. Build the packages **locally** in seconds:
+3. **Pre-Release Translation Gate (Token-Efficient i18n)**:
+   - Run `python scripts/audit_i18n.py --extract docs/missing_i18n.json` to identify any untranslated user-facing strings added during development.
+   - Inject the batch translations into `src/core/i18n/en.js` and `es.js`.
+   - Run `python scripts/audit_i18n.py --strict` to ensure 100% triple coverage (PT-BR, EN, ES) and dictionary symmetry. (See `docs/I18N_TRANSLATION_GUIDE.md`).
+4. Build the packages **locally** in seconds:
+   - Compile bundle & assets: `python scripts/build_frontend_bundle.py && python scripts/build_minified_assets.py`.
    - IPK packages: run `scripts/build-ipk-wsl.sh` (or `python scripts/pack_ipk_local.py`).
    - APK packages: run `scripts/build-apk-manual-wsl.sh` (under WSL or build host).
    - Artifacts will be generated in `dist/sdk/`.
-4. Validate packages locally in VirtualBox (`OpenWrt-ARK-Dev`).
-5. Commit and push source to GitHub.
-6. Create the release and upload the pre-built packages directly:
+5. Validate packages locally in VirtualBox (`OpenWrt-ARK-Dev`).
+6. Commit and push source to GitHub.
+7. Create the release and upload the pre-built packages directly:
    ```sh
    gh release create v1.5.x dist/sdk/luci-app-ark-router* --title "ARK Router v1.5.x" --notes-file CHANGELOG.md
    ```
    *(Or attach the files directly in the GitHub Release web UI).*
-7. The cloud GitHub Actions workflow (`.github/workflows/build-packages.yml`) is kept only as an optional background fallback (`workflow_dispatch`), eliminating the slow cloud build queue.
+8. The cloud GitHub Actions workflow (`.github/workflows/build-packages.yml`) is kept only as an optional background fallback (`workflow_dispatch`), eliminating the slow cloud build queue.
 
 ## Before Publishing
 
@@ -29,6 +34,7 @@ Build packages locally to avoid slow CI/CD cloud queues, verify them immediately
   - `VERSION` is bumped;
   - `CHANGELOG.md` describes the release;
   - `Makefile` matches `VERSION`;
+  - i18n pre-release audit passes with 100% coverage: `python scripts/audit_i18n.py --strict`;
   - assets are minified and valid (`scripts/build_minified_assets.py`);
   - `git status` is clean or changes are intentionally included.
 

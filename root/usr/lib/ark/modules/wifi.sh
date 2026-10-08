@@ -342,22 +342,38 @@ handle_wifi() {
 					*) uci -q set "wireless.$section.ssid=$ssid" ;;
 				esac
 			fi
+			is_sec_6g=0
+			if { [ -n "$radio6" ] && [ "$sec_dev" = "$radio6" ]; } || case "$section" in *radio2|*_r2) true;; *) false;; esac; then
+				is_sec_6g=1
+			fi
 			if [ "$encryption" = none ]; then
-				uci -q set "wireless.$section.encryption=none"
-				uci -q delete "wireless.$section.key"
-				uci -q delete "wireless.$section.sae_password" 2>/dev/null || true
+				if [ "$is_sec_6g" = 1 ]; then
+					# Banda de 6 GHz NÃO suporta rede aberta sem OWE; desabilita interface para não quebrar o hostapd
+					uci -q set "wireless.$section.disabled=1"
+					uci -q delete "wireless.$section.key"
+					logger -t equipe-dashboard-control "Aviso: Banda 6 GHz desativada na rede aberta pois padrao Wi-Fi 6E/7 exige WPA3/OWE."
+				else
+					uci -q set "wireless.$section.encryption=none"
+					uci -q delete "wireless.$section.key"
+					uci -q delete "wireless.$section.sae_password" 2>/dev/null || true
+				fi
 			elif [ -n "$encryption" ]; then
 				sec_enc="$encryption"
 				if opkg list-installed 2>/dev/null | grep -q "^wpad-basic -" && { [ "$sec_enc" = "sae" ] || [ "$sec_enc" = "sae-mixed" ]; }; then
 					sec_enc="psk2"
 				fi
-				if { [ -n "$radio6" ] && [ "$sec_dev" = "$radio6" ]; } || case "$section" in *radio2|*_r2) true;; *) false;; esac; then
-					[ "$sec_enc" = "psk2" ] && sec_enc="sae"
+				if [ "$is_sec_6g" = 1 ]; then
+					sec_enc="sae"
+					uci -q set "wireless.$section.ieee80211w=2"
 				fi
 				uci -q set "wireless.$section.encryption=$sec_enc"
 				[ -n "$password" ] && uci -q set "wireless.$section.key=$password"
 				[ -n "$password" ] && [ -n "$(uci -q get "wireless.$section.sae_password")" ] && uci -q set "wireless.$section.sae_password=$password"
 			elif [ -n "$password" ]; then
+				if [ "$is_sec_6g" = 1 ]; then
+					uci -q set "wireless.$section.encryption=sae"
+					uci -q set "wireless.$section.ieee80211w=2"
+				fi
 				uci -q set "wireless.$section.key=$password"
 				[ -n "$(uci -q get "wireless.$section.sae_password")" ] && uci -q set "wireless.$section.sae_password=$password"
 			fi
@@ -474,17 +490,18 @@ handle_wifi() {
 				uci -q set "wireless.$sec.mode=ap"
 				uci -q set "wireless.$sec.ssid=$new_ssid"
 				if [ "$new_encryption" = none ]; then
-					uci -q set "wireless.$sec.encryption=none"
+					# Em 6 GHz rede aberta exige OWE; desativa interface 6G para evitar crash do hostapd
+					uci -q set "wireless.$sec.disabled=1"
 					uci -q delete "wireless.$sec.key"
+					logger -t equipe-dashboard-control "Aviso: 6 GHz desativado na nova rede aberta pois padrao exige WPA3/OWE."
 				else
-					# Em 6 GHz, WPA3-SAE e mandatorio pelo padrao Wi-Fi 6E/7
-					enc6="$new_encryption"
-					[ "$enc6" = "psk2" ] && enc6="sae"
-					uci -q set "wireless.$sec.encryption=$enc6"
+					# Em 6 GHz, WPA3-SAE e PMF (ieee80211w=2) sao mandatorios pelo padrao Wi-Fi 6E/7
+					uci -q set "wireless.$sec.encryption=sae"
+					uci -q set "wireless.$sec.ieee80211w=2"
 					[ -n "$new_password" ] && uci -q set "wireless.$sec.key=$new_password"
+					uci -q set "wireless.$sec.disabled=0"
 				fi
 				[ "$target_network" = guest ] && uci -q set "wireless.$sec.isolate=1"
-				uci -q set "wireless.$sec.disabled=0"
 			fi
 		fi
 		uci commit wireless
@@ -552,6 +569,10 @@ handle_wifi() {
 					if [ "$channel5" != auto ] && [ "$channel5" -ge 132 ] 2>/dev/null; then
 						cur_ht5="$(uci -q get "wireless.$radio5.htmode" || echo HE80)"
 						case "$cur_ht5" in
+							EHT160)
+								uci -q set "wireless.$radio5.htmode=EHT80"
+								logger -t equipe-dashboard-control "Aviso: canal $channel5 nao suporta 160 MHz; htmode ajustado para EHT80."
+								;;
 							HE160)
 								uci -q set "wireless.$radio5.htmode=HE80"
 								logger -t equipe-dashboard-control "Aviso: canal $channel5 nao suporta 160 MHz; htmode ajustado para HE80."
@@ -578,6 +599,7 @@ handle_wifi() {
 				case "$cur_ht5" in
 					*160)
 						case "$cur_ht5" in
+							EHT160) uci -q set "wireless.$radio5.htmode=EHT80" ;;
 							HE160) uci -q set "wireless.$radio5.htmode=HE80" ;;
 							VHT160) uci -q set "wireless.$radio5.htmode=VHT80" ;;
 						esac
@@ -635,17 +657,18 @@ handle_wifi() {
 			*) pfx5="HT" ;;
 		esac
 		case "$width2" in 20|40) ht2="${pfx2}${width2}" ;; *) echo 'Largura 2,4 GHz invalida' >&2; exit 2 ;; esac
-		case "$width5" in 20|40|80|160|320) ht5="${pfx5}${width5}" ;; *) echo 'Largura 5 GHz invalida' >&2; exit 2 ;; esac
+		case "$width5" in 20|40|80|160) ht5="${pfx5}${width5}" ;; *) echo 'Largura 5 GHz invalida' >&2; exit 2 ;; esac
 		changed2=0
 		changed5=0
+		changed6=0
 		[ "$ht2" != "$current_ht2" ] && changed2=1
 		[ "$ht5" != "$current_ht5" ] && changed5=1
 
 		[ "$changed2" = 1 ] && uci set "wireless.$radio2.htmode=$ht2"
 		[ "$changed5" = 1 ] && uci set "wireless.$radio5.htmode=$ht5"
 
-		# Se a largura de 5 GHz for colocada em 160 MHz ou 320 MHz, garantir que o canal seja compativel (canais < 132)
-		if [ "$width5" = 160 ] || [ "$width5" = 320 ]; then
+		# Se a largura de 5 GHz for colocada em 160 MHz, garantir que o canal seja compativel (canais < 132)
+		if [ "$width5" = 160 ]; then
 			cur_ch5="$(uci -q get "wireless.$radio5.channel" || echo auto)"
 			if [ "$cur_ch5" != auto ] && [ "$cur_ch5" -ge 132 ] 2>/dev/null; then
 				uci -q set "wireless.$radio5.channel=36"
@@ -663,19 +686,23 @@ handle_wifi() {
 			case "$width6" in 20|40|80|160|320) ht6="${pfx6}${width6}" ;; *) ht6="HE160" ;; esac
 			if [ "$ht6" != "$current_ht6" ]; then
 				uci set "wireless.$radio6.htmode=$ht6"
+				changed6=1
 			fi
 		fi
 		uci commit wireless
 		(
 			sleep 1
-			if [ "$changed2" = 0 ] && [ "$changed5" = 1 ]; then
+			if [ "$changed2" = 0 ] && [ "$changed5" = 1 ] && [ "$changed6" = 0 ]; then
 				logger -t equipe-dashboard-control "Reiniciando seletivamente apenas o radio 5 GHz ($radio5)..."
 				wifi reconf "$radio5" >/dev/null 2>&1 || wifi reload >/dev/null 2>&1 || true
-			elif [ "$changed2" = 1 ] && [ "$changed5" = 0 ]; then
+			elif [ "$changed2" = 1 ] && [ "$changed5" = 0 ] && [ "$changed6" = 0 ]; then
 				logger -t equipe-dashboard-control "Reiniciando seletivamente apenas o radio 2,4 GHz ($radio2)..."
 				wifi reconf "$radio2" >/dev/null 2>&1 || wifi reload >/dev/null 2>&1 || true
+			elif [ "$changed2" = 0 ] && [ "$changed5" = 0 ] && [ "$changed6" = 1 ]; then
+				logger -t equipe-dashboard-control "Reiniciando seletivamente apenas o radio 6 GHz ($radio6)..."
+				wifi reconf "$radio6" >/dev/null 2>&1 || wifi reload >/dev/null 2>&1 || true
 			else
-				logger -t equipe-dashboard-control "Reiniciando ambos os radios Wi-Fi..."
+				logger -t equipe-dashboard-control "Reiniciando os radios Wi-Fi..."
 				wifi reload >/dev/null 2>&1 || true
 			fi
 			sleep 5
@@ -816,12 +843,21 @@ EOF
 		;;
 	wifi-wps-toggle)
 		state="${2:-1}"
+		radio2="$(wifi_radio_2g)"
 		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
 			for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
 				mode="$(uci -q get wireless.$iface.mode || echo ap)"
 				[ "$mode" = "ap" ] || continue
-				uci -q set "wireless.$iface.wps_pushbutton=1"
-				uci -q set "wireless.$iface.wps_label=0"
+				dev="$(uci -q get wireless.$iface.device || echo '')"
+				enc="$(uci -q get wireless.$iface.encryption || echo '')"
+				# WPS só é seguro e suportado no 2.4 GHz sem SAE (incompatível com WPA3-SAE e 6 GHz)
+				if { [ -z "$radio2" ] || [ "$dev" = "$radio2" ]; } && [ "$enc" != "sae" ] && [ "$enc" != "none" ]; then
+					uci -q set "wireless.$iface.wps_pushbutton=1"
+					uci -q set "wireless.$iface.wps_label=0"
+				else
+					uci -q set "wireless.$iface.wps_pushbutton=0"
+					uci -q set "wireless.$iface.wps_label=0"
+				fi
 			done
 			uci commit wireless
 			(sleep 1; wifi reload) >/dev/null 2>&1 &
@@ -885,6 +921,7 @@ EOF
 		state="${2:-1}"
 		mob_dom="a1b2"
 		radio5="$(wifi_radio_5g)"
+		radio6="$(wifi_radio_6g)"
 		[ -n "$radio5" ] || radio5='radio1'
 		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
 			for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
@@ -892,7 +929,7 @@ EOF
 				[ "$mode" = "ap" ] || continue
 				dev="$(uci -q get wireless.$iface.device || echo '')"
 
-				# 802.11k e 802.11v operam em ambos os rádios (2.4G e 5G)
+				# 802.11k e 802.11v operam em todos os rádios (2.4G, 5G e 6G)
 				# Orientam celulares na troca de nós sem alterar o handshake WPA2
 				uci -q set "wireless.$iface.ieee80211k=1"
 				uci -q set "wireless.$iface.rrm_neighbor_report=1"
@@ -900,8 +937,8 @@ EOF
 				uci -q delete "wireless.$iface.bss_transition"
 				uci -q delete "wireless.$iface.wnm_sleep_mode"
 
-				# 802.11r (Fast Transition) exclusivo no 5 GHz para blindar IoT no 2.4 GHz
-				if [ "$dev" = "$radio5" ] || [ "$dev" = "radio1" ]; then
+				# 802.11r (Fast Transition) no 5 GHz e 6 GHz para blindar IoT no 2.4 GHz
+				if [ "$dev" = "$radio5" ] || [ "$dev" = "radio1" ] || { [ -n "$radio6" ] && [ "$dev" = "$radio6" ]; } || [ "$dev" = "radio2" ]; then
 					uci -q set "wireless.$iface.ieee80211r=1"
 					uci -q set "wireless.$iface.ft_over_ds=1"
 					uci -q set "wireless.$iface.ft_psk_generate_local=1"
@@ -1537,6 +1574,7 @@ EOF
 				uci -q set "wireless.$r.he_bss_color=1"
 				uci -q set "wireless.$r.he_spatial_reuse=1"
 				uci -q set "wireless.$r.twt_responder=1"
+				uci -q set "wireless.$r.airtime_fairness=1"
 				uci -q set "wireless.$r.he_su_beamformer=1"
 				uci -q set "wireless.$r.he_su_beamformee=1"
 				uci -q set "wireless.$r.he_mu_beamformer=1"
@@ -1564,6 +1602,7 @@ EOF
 				uci -q delete "wireless.$r.he_bss_color"
 				uci -q delete "wireless.$r.he_spatial_reuse"
 				uci -q delete "wireless.$r.twt_responder"
+				uci -q delete "wireless.$r.airtime_fairness"
 				uci -q delete "wireless.$r.he_puncturing"
 				uci -q delete "wireless.$r.eht_puncturing"
 			done

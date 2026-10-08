@@ -20,3 +20,7 @@ dist/minified/
 *.key
 *.conf
 root/etc/wireguard/
+._*
+*.exp
+*.log
+

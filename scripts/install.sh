@@ -471,6 +471,7 @@ install_source() {
 		mkdir -p /usr/share/ark-router
 		cp "$rootdir/VERSION" /usr/share/ark-router/VERSION
 	fi
+	rm -rf "$work" "$archive" 2>/dev/null || true
 	restart_luci
 }
 

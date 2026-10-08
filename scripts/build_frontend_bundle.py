@@ -105,18 +105,35 @@ def validate_syntax(file_path):
     return True
 
 def build_i18n_assets(version_val):
-    i18n_dir = os.path.join(SRC_DIR, "core", "i18n")
+    po_dir = os.path.join(REPO_DIR, "po")
     out_dir = os.path.join(REPO_DIR, "root", "www", "luci-static", "resources", "view", "equipe-dashboard")
     os.makedirs(out_dir, exist_ok=True)
     generated = []
-    for lang in ["en", "es"]:
-        src_p = os.path.join(i18n_dir, f"{lang}.js")
+    
+    import json
+    for lang in ["en", "es", "pt-br"]:
+        src_p = os.path.join(po_dir, lang, "ark.po")
         dst_p = os.path.join(out_dir, f"i18n.{lang}.js")
+        
         if os.path.isfile(src_p):
             with open(src_p, "r", encoding="utf-8") as sf:
-                c = sf.read()
-            import re
-            c = re.sub(r"const ARK_I18N_VERSION = '[^']+';", f"const ARK_I18N_VERSION = '{version_val}';", c)
+                lines = sf.readlines()
+                
+            entries = {}
+            current_id = None
+            for line in lines:
+                line = line.strip()
+                if line.startswith('msgid "'):
+                    current_id = line[7:-1].replace('\\"', '"').replace('\\n', '\n')
+                elif line.startswith('msgstr "') and current_id is not None:
+                    current_str = line[8:-1].replace('\\"', '"').replace('\\n', '\n')
+                    if current_id and current_str: # ignore header
+                        entries[current_id] = current_str
+                    current_id = None
+                    
+            json_str = json.dumps(entries, ensure_ascii=False, indent=2)
+            c = f"// ARK Router i18n {lang.upper()} Dictionary (Auto-generated from .po)\n(function(){{\n\tconst ARK_I18N_VERSION = '{version_val}';\n\tif (typeof window.ARK_BUILD_VERSION !== 'undefined' && window.ARK_BUILD_VERSION !== ARK_I18N_VERSION) {{\n\t\tconsole.warn('[ARK Router] i18n.{lang}.js version mismatch (' + ARK_I18N_VERSION + ' vs ' + window.ARK_BUILD_VERSION + ')');\n\t}}\n\twindow.ARK_I18N_{lang.upper().replace('-', '_')} = {json_str};\n}})();\n"
+            
             with open(dst_p, "w", encoding="utf-8") as df:
                 df.write(c)
             validate_syntax(dst_p)

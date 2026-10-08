@@ -5,7 +5,7 @@
 [ -z "${_ARK_COMMON_SH_LOADED:-}" ] || return 0
 _ARK_COMMON_SH_LOADED=1
 
-ARK_ROUTER_VERSION="1.5.10"
+ARK_ROUTER_VERSION="1.5.11"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 ARK_ROOT="${ARK_ROOT:-}"
 
@@ -237,6 +237,7 @@ installed() {
 		history) ([ -x /usr/sbin/equipe-traffic-history ] || [ -f /etc/init.d/equipe-traffic-history ]) && return 0 ;;
 		custom_qos) (command -v tc >/dev/null 2>&1 || [ -f /etc/config/qos_equipe ]) && return 0 ;;
 		usteer|luci-app-usteer) ([ -x /sbin/usteerd ] || [ -x /usr/sbin/usteerd ] || [ -f /etc/init.d/usteer ] || [ -f /usr/lib/opkg/info/usteer.control ]) && return 0 ;;
+		htop) ([ -x /usr/bin/htop ] || [ -x /usr/sbin/htop ]) && return 0 ;;
 	esac
 	if ark_has_apk; then
 		apk info -e "$1" >/dev/null 2>&1

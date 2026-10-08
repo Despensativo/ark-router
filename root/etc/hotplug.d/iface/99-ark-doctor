@@ -1,0 +1,10 @@
+#!/bin/sh
+# Aciona o Ark Doctor (modo silencioso/auto-cura) quando uma interface sobe
+# ou quando ocorrem reconfiguracoes de rede significativas.
+
+[ "$ACTION" = "ifup" ] || exit 0
+[ "$INTERFACE" = "loopback" ] && exit 0
+
+# Apenas inicia o doctor em background para nao travar o processo de hotplug
+/usr/sbin/ark-doctor --auto &
+exit 0

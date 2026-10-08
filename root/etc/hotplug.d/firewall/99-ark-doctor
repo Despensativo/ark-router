@@ -1,0 +1,7 @@
+#!/bin/sh
+# Aciona o Ark Doctor (modo silencioso/auto-cura) quando o firewall e recarregado.
+# Necessario para re-verificar conflitos de Flow Offloading vs SQM.
+
+# Apenas inicia o doctor em background para nao travar o processo de hotplug
+/usr/sbin/ark-doctor --auto &
+exit 0

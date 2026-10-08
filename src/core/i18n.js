@@ -1712,7 +1712,32 @@ const EN = {
   "Hardware Wi‑Fi não detectado": "Wi‑Fi hardware not detected",
   "Este dispositivo opera como roteador / gateway cabeado. Nenhuma placa de rede sem fio foi encontrada no sistema.": "This device operates as a wired router / gateway. No wireless network card was detected in the system.",
   "🔍 Especificações": "🔍 Specifications",
-  "Ver especificações técnicas completas do hardware": "View complete hardware technical specifications"
+  "Ver especificações técnicas completas do hardware": "View complete hardware technical specifications",
+  "Acelerar BitTorrent / P2P nas 2 Internets": "Accelerate BitTorrent / P2P across both Internet links",
+  "Aguarde": "Please wait",
+  "Aparelhos novos usam WPA3 e antigos usam WPA2. Nota: em CPU de 1 núcleo, a autenticação WPA3 consome mais processamento.": "Newer devices will use WPA3 while older ones use WPA2. Note: on single-core CPUs, WPA3 authentication increases CPU usage.",
+  "Aplicado ao 2,4 GHz e ao 5 GHz.": "Applied to 2.4 GHz and 5 GHz.",
+  "Aplicando…": "Applying…",
+  "CONECTADO": "CONNECTED",
+  "Confirmar": "Confirm",
+  "DNS da Operadora (Dinâmico)": "ISP DNS (Dynamic)",
+  "Defina os limites em Mbps. Exemplo: 1,2 Gbps = 1200 Mbps. Use 0 ou deixe em branco quando não quiser limitar aquela direção (ilimitado).": "Set limits in Mbps. Example: 1.2 Gbps = 1200 Mbps. Use 0 or leave blank to keep that direction unlimited.",
+  "Ex: 51413, 6881:6999 ou 1024:65535": "e.g. 51413, 6881:6999 or 1024:65535",
+  "Medir no Fast.com": "Test on Fast.com",
+  "Nome 2,4 GHz": "2.4 GHz SSID / Name",
+  "Nome 5 GHz": "5 GHz SSID / Name",
+  "Nome 6 GHz": "6 GHz SSID / Name",
+  "O controle SQM / CAKE é exclusivo do Roteador Mestre e permanece desativado neste Ponto de Acesso (AP).": "SQM / CAKE control is exclusive to the Master Router and remains disabled on this Access Point (AP).",
+  "O roteador volta a distribuir endereços IP automaticamente para os seus aparelhos conectados via cabo ou Wi-Fi.": "The router resumes automatically distributing IP addresses to devices connected via Ethernet or Wi-Fi.",
+  "Padrão recomendado para redes modernas. Segurança avançada WPA3 com compatibilidade retroativa para aparelhos WPA2.": "Recommended standard for modern networks. Advanced WPA3 security with backward compatibility for WPA2 devices.",
+  "Para velocidades de download superiores a 100 Mbps, o algoritmo CAKE pode saturar a CPU (100%), reduzindo a velocidade real do link.": "For download speeds exceeding 100 Mbps, the CAKE algorithm may saturate the CPU (100%), reducing throughput.",
+  "Ponto de Acesso (Ponte L2 transparente)": "Access Point (Transparent L2 Bridge)",
+  "Requer": "Requires",
+  "Se o seu plano for de alta velocidade e você quiser eliminar lag em jogos (Bufferbloat), ative e defina o Download em 0 (ilimitado) em": "If you have a high-speed plan and want to eliminate gaming lag (Bufferbloat), enable and set Download to 0 (unlimited) on",
+  "Servidor Personalizado": "Custom Server",
+  "WPA2 / WPA3 Misto (Mais Seguro)": "WPA2 / WPA3 Mixed (More Secure)",
+  "”?": "\"?"
+
 };
 
 const ES = {
@@ -3622,7 +3647,32 @@ const ES = {
   "Hardware Wi‑Fi não detectado": "Hardware Wi‑Fi no detectado",
   "Este dispositivo opera como roteador / gateway cabeado. Nenhuma placa de rede sem fio foi encontrada no sistema.": "Este dispositivo opera como enrutador / pasarela cableada. No se encontró ninguna tarjeta de red inalámbrica en el sistema.",
   "🔍 Especificações": "🔍 Especificaciones",
-  "Ver especificações técnicas completas do hardware": "Ver especificaciones técnicas completas del hardware"
+  "Ver especificações técnicas completas do hardware": "Ver especificaciones técnicas completas del hardware",
+  "Acelerar BitTorrent / P2P nas 2 Internets": "Acelerar BitTorrent / P2P en ambas conexiones a Internet",
+  "Aguarde": "Espere por favor",
+  "Aparelhos novos usam WPA3 e antigos usam WPA2. Nota: em CPU de 1 núcleo, a autenticação WPA3 consome mais processamento.": "Los dispositivos nuevos usarán WPA3 y los antiguos WPA2. Nota: en CPUs de un solo núcleo, la autenticación WPA3 consume más procesamiento.",
+  "Aplicado ao 2,4 GHz e ao 5 GHz.": "Aplicado a 2,4 GHz y 5 GHz.",
+  "Aplicando…": "Aplicando…",
+  "CONECTADO": "CONECTADO",
+  "Confirmar": "Confirmar",
+  "DNS da Operadora (Dinâmico)": "DNS del Proveedor (Dinámico)",
+  "Defina os limites em Mbps. Exemplo: 1,2 Gbps = 1200 Mbps. Use 0 ou deixe em branco quando não quiser limitar aquela direção (ilimitado).": "Defina los límites en Mbps. Ejemplo: 1,2 Gbps = 1200 Mbps. Use 0 o deje en blanco para mantener esa dirección ilimitada.",
+  "Ex: 51413, 6881:6999 ou 1024:65535": "Ej: 51413, 6881:6999 o 1024:65535",
+  "Medir no Fast.com": "Medir en Fast.com",
+  "Nome 2,4 GHz": "Nombre 2,4 GHz",
+  "Nome 5 GHz": "Nombre 5 GHz",
+  "Nome 6 GHz": "Nombre 6 GHz",
+  "O controle SQM / CAKE é exclusivo do Roteador Mestre e permanece desativado neste Ponto de Acesso (AP).": "El control SQM / CAKE es exclusivo del Enrutador Maestro y permanece desactivado en este Punto de Acceso (AP).",
+  "O roteador volta a distribuir endereços IP automaticamente para os seus aparelhos conectados via cabo ou Wi-Fi.": "El enrutador vuelve a distribuir direcciones IP automáticamente a sus dispositivos conectados por cable o Wi-Fi.",
+  "Padrão recomendado para redes modernas. Segurança avançada WPA3 com compatibilidade retroativa para aparelhos WPA2.": "Estándar recomendado para redes modernas. Seguridad avanzada WPA3 con compatibilidad retroactiva para dispositivos WPA2.",
+  "Para velocidades de download superiores a 100 Mbps, o algoritmo CAKE pode saturar a CPU (100%), reduzindo a velocidade real do link.": "Para velocidades de descarga superiores a 100 Mbps, el algoritmo CAKE puede saturar la CPU (100%), reduciendo la velocidad real del enlace.",
+  "Ponto de Acesso (Ponte L2 transparente)": "Punto de Acceso (Puente L2 transparente)",
+  "Requer": "Requiere",
+  "Se o seu plano for de alta velocidade e você quiser eliminar lag em jogos (Bufferbloat), ative e defina o Download em 0 (ilimitado) em": "Si su plan es de alta velocidad y desea eliminar el retraso en juegos (Bufferbloat), actívelo y establezca la Descarga en 0 (ilimitada) en",
+  "Servidor Personalizado": "Servidor Personalizado",
+  "WPA2 / WPA3 Misto (Mais Seguro)": "WPA2 / WPA3 Mixto (Más Seguro)",
+  "”?": "\"?"
+
 };
 
 function _t(text){

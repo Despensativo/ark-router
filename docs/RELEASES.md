@@ -7,7 +7,7 @@ For the complete maintainer publishing checklist, see [PUBLISHING.md](PUBLISHING
 The easiest public distribution path is:
 
 1. Push the source code to GitHub.
-2. Create a version tag matching `VERSION`, for example `v1.5.9`.
+2. Create a version tag matching `VERSION`, for example `v1.5.11`.
 3. Build the package locally using `scripts/build-apk-manual-wsl.sh` / `scripts/build-ipk-wsl.sh` (or let GitHub Actions build with the OpenWrt SDK).
 4. Publish the generated `.apk` or `.ipk` files as GitHub Release assets.
 5. Install or update from the router with the SSH one-liner in `scripts/install.sh`.

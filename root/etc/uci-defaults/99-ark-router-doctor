@@ -1,0 +1,23 @@
+#!/bin/sh
+# Configura o agendamento do Ark Doctor no cron
+
+cron_file="/etc/crontabs/root"
+mkdir -p /etc/crontabs
+touch "$cron_file"
+
+if ! grep -q "/usr/sbin/ark-doctor --auto" "$cron_file"; then
+	echo "0 * * * * /usr/sbin/ark-doctor --auto >/dev/null 2>&1" >> "$cron_file"
+	/etc/init.d/cron restart 2>/dev/null || true
+fi
+
+# Garante que a variavel auto_heal exista e esteja ativa por padrao no uci
+if ! uci -q get equipe_dashboard.doctor >/dev/null; then
+	uci set equipe_dashboard.doctor=doctor
+	uci set equipe_dashboard.doctor.auto_heal='1'
+	uci commit equipe_dashboard
+elif [ -z "$(uci -q get equipe_dashboard.doctor.auto_heal)" ]; then
+	uci set equipe_dashboard.doctor.auto_heal='1'
+	uci commit equipe_dashboard
+fi
+
+exit 0

@@ -60,6 +60,7 @@ feature_package() {
 		adblock) printf 'adblock' ;;
 		irqbalance) printf irqbalance ;;
 		usteer) printf usteer ;;
+		htop) printf htop ;;
 		*) return 1 ;;
 	esac
 }
@@ -260,6 +261,7 @@ feature_active() {
 		wireguard) [ -d /sys/class/net/wg0 ] || [ -d /sys/class/net/wgclient ] || (command -v wg >/dev/null 2>&1 && [ -n "$(wg show interfaces 2>/dev/null)" ]) ;;
 		irqbalance) pidof irqbalance >/dev/null 2>&1 || { [ -x /etc/init.d/irqbalance ] && /etc/init.d/irqbalance enabled >/dev/null 2>&1; } ;;
 		usteer) pidof usteerd >/dev/null 2>&1 || [ "$(uci -q get equipe_dashboard.wifi.usteer_enabled)" = "1" ] || { [ -x /etc/init.d/usteer ] && /etc/init.d/usteer enabled >/dev/null 2>&1; } ;;
+		htop) pidof htop >/dev/null 2>&1 || [ -x /usr/bin/htop ] || [ -x /usr/sbin/htop ] ;;
 		*) return 1 ;;
 	esac
 }
@@ -1368,6 +1370,19 @@ handle_ezsetup() {
 
 		current_theme="$(uci -q get luci.main.mediaurlbase | sed 's|/luci-static/||')"
 		[ -n "$current_theme" ] || current_theme="bootstrap"
+		avail_themes=""
+		for t_dir in /www/luci-static/*; do
+			[ -d "$t_dir" ] || continue
+			t_base="${t_dir##*/}"
+			case "$t_base" in
+				resources|cgi-bin|*.*) continue ;;
+				*)
+					[ -n "$avail_themes" ] && avail_themes="${avail_themes},"
+					avail_themes="${avail_themes}\"${t_base}\""
+					;;
+			esac
+		done
+		[ -n "$avail_themes" ] || avail_themes='"ark","bootstrap"'
 		theme_customized="$(uci -q get equipe_dashboard.main.theme_customized 2>/dev/null || uci -q get luci.main.theme_customized 2>/dev/null || echo 0)"
 		network_mode="$(uci -q get equipe_dashboard.main.network_mode || echo '')"
 		cur_role="$(uci -q get equipe_dashboard.general.role || echo '')"
@@ -1428,7 +1443,18 @@ handle_ezsetup() {
 			usteer_reason="Incompatível: este dispositivo não possui interfaces de rádio Wi-Fi para gerenciar roaming."
 		fi
 
-		printf '{"language":"%s","title":"%s","operation_profile":"%s","network_mode":"%s","package_manager":"%s","current_theme":"%s","theme_customized":%s,"user_theme":"%s","ping_target":"%s","ping_custom_ip":"%s","appearance":{"mode":"%s","primary":"%s","secondary":"%s"},"features":{' "$(ark_language)" "$(json_escape "$title")" "$(json_escape "$operation_profile")" "$network_mode" "$manager" "$current_theme" "$(bool $((theme_customized == 1)))" "$(json_escape "$user_theme")" "$(json_escape "$ping_target")" "$(json_escape "$ping_custom_ip")" "$appearance" "$primary" "$secondary"
+		mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+		mem_total_mb=$((mem_total_kb / 1024))
+		htop_installable=true; htop_reason=""
+		if [ "$mem_total_mb" -lt 256 ] 2>/dev/null; then
+			htop_installable=false
+			htop_reason="Exclusivo para roteadores de alto desempenho (requer no mínimo 256 MB de RAM total; atual: ${mem_total_mb} MB)."
+		elif [ "$root_avail_kb" -lt 1500 ] 2>/dev/null; then
+			htop_installable=false
+			htop_reason="Espaço insuficiente na Flash para utilitário de terminal (requer ~1.5 MB livres; disponível: $((root_avail_kb / 1024)) MB)."
+		fi
+
+		printf '{"language":"%s","title":"%s","operation_profile":"%s","network_mode":"%s","package_manager":"%s","current_theme":"%s","available_themes":[%s],"theme_customized":%s,"user_theme":"%s","ping_target":"%s","ping_custom_ip":"%s","appearance":{"mode":"%s","primary":"%s","secondary":"%s"},"features":{' "$(ark_language)" "$(json_escape "$title")" "$(json_escape "$operation_profile")" "$network_mode" "$manager" "$current_theme" "$avail_themes" "$(bool $((theme_customized == 1)))" "$(json_escape "$user_theme")" "$(json_escape "$ping_target")" "$(json_escape "$ping_custom_ip")" "$appearance" "$primary" "$secondary"
 		feature_json sqm luci-app-sqm "$sqm_installable" "$sqm_reason"; printf ','
 		feature_json mwan3 luci-app-mwan3 "$mwan3_installable" "$mwan3_reason"; printf ','
 		feature_json nlbwmon luci-app-nlbwmon "$nlbwmon_installable" "$nlbwmon_reason"; printf ','
@@ -1443,6 +1469,7 @@ handle_ezsetup() {
 		feature_json adblock adblock "$adblock_installable" "$adblock_reason"
 		printf ','; feature_json irqbalance irqbalance "$irq_installable" "$irq_reason"
 		printf ','; feature_json usteer usteer "$usteer_installable" "$usteer_reason"
+		printf ','; feature_json htop htop "$htop_installable" "$htop_reason"
 		cli="$(speedify_cli_path)"
 		bypass='{}'; speedify_runtime_running && [ -n "$cli" ] && bypass="$("$cli" -s show streamingbypass 2>/dev/null || printf '{}')"
 		printf ',"speedify_bypass":%s' "$bypass"
@@ -2026,7 +2053,21 @@ handle_ezsetup() {
 				echo ok
 				;;
 			*)
-				echo 'Tema invalido' >&2; exit 2
+				if [ -n "$target" ] && [ -d "/www/luci-static/$target" ]; then
+					uci -q set luci.main.mediaurlbase="/luci-static/$target"
+					uci -q set equipe_dashboard.main.theme_customized='1'
+					uci -q set equipe_dashboard.main.user_theme="$target"
+					uci -q set luci.main.theme_customized='1'
+					uci -q set luci.main.user_theme="$target"
+					uci commit luci
+					uci commit equipe_dashboard 2>/dev/null || true
+					rm -f /tmp/luci-indexcache
+					rm -rf /tmp/luci-modulecache/* 2>/dev/null
+					rm -f /tmp/ark-features.cache 2>/dev/null || true
+					echo ok
+				else
+					echo 'Tema invalido' >&2; exit 2
+				fi
 				;;
 		esac
 		;;

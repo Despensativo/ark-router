@@ -156,6 +156,7 @@ for dev in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut 
 			uci -q set "wireless.$dev.he_bss_color=1"
 			uci -q set "wireless.$dev.he_spatial_reuse=1"
 			uci -q set "wireless.$dev.twt_responder=1"
+			uci -q set "wireless.$dev.airtime_fairness=1"
 			uci -q set "wireless.$dev.he_su_beamformer=1"
 			uci -q set "wireless.$dev.he_su_beamformee=1"
 			uci -q set "wireless.$dev.he_mu_beamformer=1"

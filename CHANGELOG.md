@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.5.11
+
+- **🧠 Steering de IRQs Multicore de Rede e Correção de Sysctl Linux 6.x (08/10/2026)**:
+  - **Desafogamento Crítico da CPU0**: O controlador ARM GICv3 direcionava 100% das interrupções de hardware Wi-Fi (`mt7915e`, >167M eventos) e Ethernet (`15100000.ethernet`, >136M eventos) para a CPU0. Criada função `ark_tune_irq_affinity` no `/etc/init.d/ark-hardware-tune`:
+    - Wi-Fi fixado na CPU 2 (Core mask 0x4).
+    - Ethernet WAN/LAN fixada na CPU 1 (Core mask 0x2).
+    - CPU 0 aliviada para tarefas de SO, userspace, uhttpd e DNS.
+    - CPU 3 dedicada para SQM / CAKE e softirqs.
+  - **Correção de Sysctl no Linux 6.x (`Invalid argument`)**: `net.core.netdev_budget_usecs` ajustado universalmente de 2000 para 20000 (20 ms), eliminando o aborto de `sysctl -p` no kernel 6.x e garantindo a aplicação de todas as diretivas de rede.
+
+- **📊 Telemetria de Memória Real de Processos (RSS) & Habilitação de htop (08/10/2026)**:
+  - **Consumo Real de RAM (RSS)**: Integrada telemetria precisa de memória física real residente (RSS) via `/usr/sbin/equipe-dashboard-control system-processes-telemetry` na modal de Especificações Técnicas de Hardware.
+  - **Eliminação de Falsos Alertas**: Distinção clara entre memória virtual (`VSZ`) e memória residente (`RSS`), identificando corretamente binários Go/Rust (como `speedtest-go`) sem alarmismo falso de consumo de RAM.
+
+- **🎨 Seletor Dinâmico de Temas LuCI e Redesenho da Central de Recursos (08/10/2026)**:
+  - **Seletor Universal de Temas**: Suporte à alternância nativa entre o Tema ARK e o Tema Bootstrap/Material diretamente no painel de Aparência.
+  - **Layout Otimizado**: Reorganização dos blocos visuais da Central de Recursos para melhor usabilidade móvel e desktop.
+
+- **📶 Suporte e Guardrails para Wi-Fi 6E / Wi-Fi 7 (6 GHz até 320 MHz) (08/10/2026)**:
+  - **Canalização 6 GHz**: Separação estrita de canalização IEEE 802.11be, permitindo largura de 320 MHz exclusivamente na banda de 6 GHz e limitando 5 GHz ao teto físico de 160 MHz.
+  - **Fallback Seguro**: Comutação automática para canais seguros (ex.: Canal 36) ao selecionar 160 MHz em 5 GHz para máxima estabilidade operacional.
+
+- **🎯 Trava de Exclusão Mútua Estrita entre Fastpath (Flow Offload) e SQM/CAKE (08/10/2026)**:
+  - **Prevenção de Conflito de Kernel**: Desativação recíproca automática com feedback visual no painel para impedir que o offload de hardware/software desvie pacotes da fila de controle do SQM/CAKE.
+
+- **🌐 Portão de Pré-Release de Internacionalização (Pre-Release Gate) 100% i18n (08/10/2026)**:
+  - **Cobertura Completa nos 3 Idiomas**: 100% de paridade simétrica entre Português (Brasil), Inglês e Espanhol neutro em todos os componentes, modais e kickers do painel.
+
 ## 1.5.10
 
 - **⚡ Auto-Enforcement Condicional de MTU 1500 em PPPoE com Baby Jumbo (RFC 4638) (08/10/2026)**:

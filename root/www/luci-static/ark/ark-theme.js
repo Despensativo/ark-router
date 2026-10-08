@@ -11,6 +11,14 @@
 (function() {
   'use strict';
 
+  if (!String.prototype.format) {
+    String.prototype.format = function() {
+      var args = arguments;
+      var i = 0;
+      return this.replace(/%[sdh]/g, function() { return args[i++]; });
+    };
+  }
+
   // LuCI Core Cache-Buster: Ensure LuCI's class loader fetches views/scripts with the active ARK Router version
   try {
     var arkVersion = window.ARK_VERSION;
@@ -64,6 +72,16 @@
       this.initGlobalEscHandler();
       this.enhanceNetlinkCharts();
       this.applyPageTransforms();
+      if (location.pathname.indexOf('/status/channel_analysis') !== -1) {
+        var chanPoll = setInterval(function() {
+          if (document.getElementById('ark-smart-survey')) {
+            clearInterval(chanPoll);
+          } else {
+            ArkTheme.transformChannelAnalysis();
+          }
+        }, 200);
+        setTimeout(function() { clearInterval(chanPoll); }, 8000);
+      }
       this.injectFeatureGuides();
       this.translateRemainingUI();
       this.hideRedundantOverviewSections();
@@ -450,136 +468,288 @@
         return;
       } else if (path.indexOf('/network/network') !== -1) {
         guide = {
-          title: 'Guia de Conexão: WAN (Internet) e LAN (Rede Local)',
-          serve: 'A interface WAN recebe o sinal de internet do modem ou fibra da operadora. A interface LAN distribui essa conexão aos aparelhos conectados por cabo e Wi-Fi.',
-          fazer: 'Se a internet cair, use o botão "Reiniciar" na interface WAN para restabelecer a conexão com a operadora. Para mudar a faixa de IP dos seus aparelhos, edite a interface LAN.',
-          rec: 'Mantenha o roteador no IP 192.168.12.1 para nunca conflitar com modems de operadoras (que costumam usar 192.168.1.1 ou 192.168.0.1).'
+          title: isEn ? 'Connection Guide: WAN (Internet) & LAN (Local Network)' :
+                 (isEs ? 'Guía de Conexión: WAN (Internet) y LAN (Red Local)' :
+                         'Guia de Conexão: WAN (Internet) e LAN (Rede Local)'),
+          serve: isEn ? 'The WAN interface receives internet signal from your ISP modem or fiber ONT. The LAN interface distributes that connection to wired and Wi-Fi devices.' :
+                 (isEs ? 'La interfaz WAN recibe la señal de internet del módem o fibra del operador. La interfaz LAN distribuye esa conexión a los equipos conectados por cable y Wi-Fi.' :
+                         'A interface WAN recebe o sinal de internet do modem ou fibra da operadora. A interface LAN distribui essa conexão aos aparelhos conectados por cabo e Wi-Fi.'),
+          fazer: isEn ? 'If internet drops, click "Restart" on the WAN interface to restore connection with your ISP. To change device IP range, edit the LAN interface.' :
+                 (isEs ? 'Si internet se desconecta, use el botón "Reiniciar" en la interfaz WAN para restablecer la conexión con el operador. Para cambiar el rango de IP, edite la interfaz LAN.' :
+                         'Se a internet cair, use o botão "Reiniciar" na interface WAN para restabelecer a conexão com a operadora. Para mudar a faixa de IP dos seus aparelhos, edite a interface LAN.'),
+          rec:   isEn ? 'Keep the router at IP 192.168.12.1 to avoid conflicts with ISP modems (which often use 192.168.1.1 or 192.168.0.1).' :
+                 (isEs ? 'Mantenga el router en la IP 192.168.12.1 para evitar conflictos con módems de operadoras (que suelen usar 192.168.1.1 o 192.168.0.1).' :
+                         'Mantenha o roteador no IP 192.168.12.1 para nunca conflitar com modems de operadoras (que costumam usar 192.168.1.1 ou 192.168.0.1).')
         };
       } else if (path.indexOf('/system/flash') !== -1) {
         guide = {
-          title: 'Guia de Backup, Restauração e Firmware',
-          serve: 'Central de segurança do sistema para criar cópias de backup de todos os ajustes de rede e Wi-Fi, restaurar backups anteriores ou atualizar o sistema operacional OpenWrt.',
-          fazer: 'Gere um arquivo de backup antes de fazer qualquer alteração técnica. Para voltar ao estado original de fábrica, use o botão "Restaurar de Fábrica".',
-          rec: 'Sempre baixe um backup (.tar.gz) para o seu computador antes de instalar atualizações. Nunca desligue o aparelho da tomada durante uma gravação de firmware.'
+          title: isEn ? 'Backup, Restore & Firmware Guide' :
+                 (isEs ? 'Guía de Copia de Seguridad, Restauración y Firmware' :
+                         'Guia de Backup, Restauração e Firmware'),
+          serve: isEn ? 'System security center to create backup copies of all network and Wi-Fi settings, restore previous backups, or upgrade the OpenWrt operating system.' :
+                 (isEs ? 'Centro de seguridad del sistema para crear copias de seguridad de todos los ajustes de red y Wi-Fi, restaurar respaldos o actualizar el sistema OpenWrt.' :
+                         'Central de segurança do sistema para criar cópias de backup de todos os ajustes de rede e Wi-Fi, restaurar backups anteriores ou atualizar o sistema operacional OpenWrt.'),
+          fazer: isEn ? 'Generate a backup archive before making any technical changes. To return to clean factory defaults, use the "Factory Reset" button.' :
+                 (isEs ? 'Genere una copia de seguridad antes de realizar cambios técnicos. Para volver al estado original de fábrica, use el botón "Restaurar de Fábrica".' :
+                         'Gere um arquivo de backup antes de fazer qualquer alteração técnica. Para voltar ao estado original de fábrica, use o botão "Restaurar de Fábrica".'),
+          rec:   isEn ? 'Always download a backup (.tar.gz) to your computer before installing firmware upgrades. Never unplug the router from power during firmware flashing.' :
+                 (isEs ? 'Descargue siempre una copia de seguridad (.tar.gz) en su ordenador antes de instalar actualizaciones. Nunca desenchufe el equipo durante el flasheo de firmware.' :
+                         'Sempre baixe um backup (.tar.gz) para o seu computador antes de instalar atualizações. Nunca desligue o aparelho da tomada durante uma gravação de firmware.')
         };
       } else if (path.indexOf('/network/diagnostics') !== -1) {
         guide = {
-          title: 'Guia de Diagnósticos de Rede',
-          serve: 'Testa a saúde da sua internet medindo latência (ping), rastreando a rota até o servidor de destino (traceroute) e testando a resolução de nomes (DNS).',
-          fazer: 'Clique nos botões rápidos (Google DNS ou Cloudflare) para testar sua conexão com 1 clique sem precisar digitar comandos.',
-          rec: 'Latência abaixo de 30 ms é ideal para chamadas de voz e jogos online. Se o Ping responder mas os sites não abrirem, seus servidores DNS estão fora do ar.'
+          title: isEn ? 'Network Diagnostics Guide' :
+                 (isEs ? 'Guía de Diagnósticos de Red' :
+                         'Guia de Diagnósticos de Rede'),
+          serve: isEn ? 'Tests internet health by measuring latency (ping), tracing the route to target servers (traceroute), and verifying domain name resolution (DNS).' :
+                 (isEs ? 'Comprueba el estado de su conexión midiendo latencia (ping), trazando la ruta al destino (traceroute) y probando resolución de nombres (DNS).' :
+                         'Testa a saúde da sua internet medindo latência (ping), rastreando a rota até o servidor de destino (traceroute) e testando a resolução de nomes (DNS).'),
+          fazer: isEn ? 'Click the quick action buttons (Google DNS or Cloudflare) to test your connection in 1 click without typing terminal commands.' :
+                 (isEs ? 'Haga clic en los botones rápidos (Google DNS o Cloudflare) para probar su conexión con 1 clic sin escribir comandos.' :
+                         'Clique nos botões rápidos (Google DNS ou Cloudflare) para testar sua conexão com 1 clique sem precisar digitar comandos.'),
+          rec:   isEn ? 'Latency below 30 ms is optimal for voice calls and online gaming. If ping responds but websites do not load, your DNS servers are down.' :
+                 (isEs ? 'Una latencia inferior a 30 ms es ideal para llamadas de voz y juegos en línea. Si el ping responde pero las páginas no abren, sus servidores DNS están caídos.' :
+                         'Latência abaixo de 30 ms é ideal para chamadas de voz e jogos online. Se o Ping responder mas os sites não abrirem, seus servidores DNS estão fora do ar.')
         };
       } else if (path.indexOf('/system/reboot') !== -1) {
         guide = {
-          title: 'Guia de Reinicialização Segura',
-          serve: 'Reinicia o sistema operacional do roteador de forma segura, descarregando processos zumbis e liberando memória RAM sem perda de configurações.',
-          fazer: 'Use esta opção se a internet estiver lenta após semanas ligada direto. O processo leva cerca de 60 a 75 segundos.',
-          rec: 'Evite desligar puxando o cabo de energia da tomada para não corromper a memória flash SPI do equipamento.'
+          title: isEn ? 'Safe Reboot Guide' :
+                 (isEs ? 'Guía de Reinicio Seguro' :
+                         'Guia de Reinicialização Segura'),
+          serve: isEn ? 'Reboots the router operating system safely, terminating lingering processes and clearing RAM without loss of configurations.' :
+                 (isEs ? 'Reinicia el sistema operativo del router de forma segura, cerrando procesos zombis y liberando memoria RAM sin perder configuraciones.' :
+                         'Reinicia o sistema operacional do roteador de forma segura, descarregando processos zumbis e liberando memória RAM sem perda de configurações.'),
+          fazer: isEn ? 'Use this option if the internet feels sluggish after weeks of continuous uptime. The process takes approximately 60 to 75 seconds.' :
+                 (isEs ? 'Use esta opción si internet se nota lenta tras semanas de uso continuo. El proceso tarda aproximadamente entre 60 y 75 segundos.' :
+                         'Use esta opção se a internet estiver lenta após semanas ligada direto. O processo leva cerca de 60 a 75 segundos.'),
+          rec:   isEn ? 'Avoid pulling the power plug directly to prevent corruption of the router SPI/NAND flash storage.' :
+                 (isEs ? 'Evite desenchufar el cable de corriente directamente para evitar corromper la memoria flash del router.' :
+                         'Evite desligar puxando o cabo de energia da tomada para não corromper a memória flash SPI do equipamento.')
         };
       } else if (path.indexOf('/network/firewall') !== -1) {
         guide = {
-          title: 'Guia do Firewall e Portas',
-          serve: 'Barreira de proteção que bloqueia conexões não autorizadas vindas da internet para seus computadores e celulares.',
-          fazer: 'Se precisar hospedar um servidor local ou obter NAT Aberto em jogos, crie regras de redirecionamento de portas (Port Forwarding) apenas para os IPs necessários.',
-          rec: 'Mantenha a política de entrada da WAN como "Rejeitar" (Drop) para manter a rede doméstica invisível a invasores externos.'
+          title: isEn ? 'Firewall & Port Rules Guide' :
+                 (isEs ? 'Guía de Cortafuegos y Puertos' :
+                         'Guia do Firewall e Portas'),
+          serve: isEn ? 'Protective barrier that blocks unauthorized incoming internet connections to your local computers and mobile devices.' :
+                 (isEs ? 'Barrera de protección que bloquea conexiones no autorizadas procedentes de internet hacia sus ordenadores y móviles.' :
+                         'Barreira de proteção que bloqueia conexões não autorizadas vindas da internet para seus computadores e celulares.'),
+          fazer: isEn ? 'If you need to host a local server or achieve Open NAT in games, configure Port Forwarding rules strictly for the required IPs.' :
+                 (isEs ? 'Si necesita alojar un servidor local u obtener NAT Abierta en juegos, configure reglas de redirección de puertos solo para las IPs necesarias.' :
+                         'Se precisar hospedar um servidor local ou obter NAT Aberto em jogos, crie regras de redirecionamento de portas (Port Forwarding) apenas para os IPs necessários.'),
+          rec:   isEn ? 'Keep WAN input policy set to "Drop" / "Reject" to keep your home network invisible to external internet port scans.' :
+                 (isEs ? 'Mantenga la política de entrada de la WAN en "Rechazar" (Drop) para mantener su red doméstica invisible a escaneos externos.' :
+                         'Mantenha a política de entrada da WAN como "Rejeitar" (Drop) para manter a rede doméstica invisível a invasores externos.')
         };
       } else if (path.indexOf('/network/dhcp') !== -1) {
         guide = {
-          title: 'Guia de Servidor DHCP e DNS',
-          serve: 'O DHCP atribui automaticamente endereços IP para cada novo dispositivo que entra no Wi-Fi ou cabo. O DNS converte nomes de sites em números IP de acesso.',
-          fazer: 'Para fixar o IP de impressoras ou câmeras IP, role até "Leases Estáticos" e vincule o IP desejado ao endereço MAC do aparelho.',
-          rec: 'Utilize tempo de concessão de 12 horas e configure servidores DNS rápidos como 1.1.1.1 (Cloudflare) ou 8.8.8.8 (Google).'
+          title: isEn ? 'DHCP Server & DNS Guide' :
+                 (isEs ? 'Guía de Servidor DHCP y DNS' :
+                         'Guia de Servidor DHCP e DNS'),
+          serve: isEn ? 'DHCP automatically assigns IP addresses to devices connecting via Wi-Fi or Ethernet. DNS converts human website names into IP addresses.' :
+                 (isEs ? 'El DHCP asigna automáticamente direcciones IP a cada nuevo dispositivo por Wi-Fi o cable. El DNS convierte nombres de sitios en números IP.' :
+                         'O DHCP atribui automaticamente endereços IP para cada novo dispositivo que entra no Wi-Fi ou cabo. O DNS converte nomes de sites em números IP de acesso.'),
+          fazer: isEn ? 'To assign fixed IPs to printers, NAS, or cameras, scroll to "Static Leases" and bind the desired IP to the device MAC address.' :
+                 (isEs ? 'Para fijar la IP de impresoras o cámaras IP, desplácese a "Leases Estáticos" y vincule la IP deseada a la MAC del dispositivo.' :
+                         'Para fixar o IP de impressoras ou câmeras IP, role até "Leases Estáticos" e vincule o IP desejado ao endereço MAC do aparelho.'),
+          rec:   isEn ? 'Use a 12-hour lease time and configure fast DNS upstream servers like 1.1.1.1 (Cloudflare) or 8.8.8.8 (Google).' :
+                 (isEs ? 'Utilice un tiempo de concesión de 12 horas y configure servidores DNS rápidos como 1.1.1.1 (Cloudflare) o 8.8.8.8 (Google).' :
+                         'Utilize tempo de concessão de 12 horas e configure servidores DNS rápidos como 1.1.1.1 (Cloudflare) ou 8.8.8.8 (Google).')
         };
       } else if (path.indexOf('/network/mwan') !== -1) {
         guide = {
-          title: 'Guia do MWAN3 (Balanceamento e Redundância de Internet)',
-          serve: 'Monitora links de internet (Multi-WAN) e detecta quedas automaticamente para alternar rotas ou somar conexões de operadoras diferentes.',
-          fazer: 'O "Intervalo de Ping" (ex: 5 segundos) é a frequência com que o roteador testa se a internet está viva. Se o teste falhar 3 vezes seguidas, a rota é declarada inoperante. Clique no botão "Editar" de cada interface para alterar os segundos do intervalo ou os IPs de teste.',
-          rec: 'Se você utiliza apenas 1 cabo de operadora (WAN única), o MWAN3 opera em modo padrão e os avisos amarelos no topo (wan6/wanb não encontrada) são normais e inofensivos.'
+          title: isEn ? 'MWAN3 Guide (Multi-WAN Load Balancing & Failover)' :
+                 (isEs ? 'Guía de MWAN3 (Balanceo de Carga y Conmutación por Error)' :
+                         'Guia do MWAN3 (Balanceamento e Redundância de Internet)'),
+          serve: isEn ? 'Monitors multiple internet connections, detects link drops automatically to switch routes or aggregate bandwidth across multiple ISPs.' :
+                 (isEs ? 'Monitoriza múltiples conexiones a internet y detecta caídas para conmutar rutas o sumar enlaces de distintos proveedores.' :
+                         'Monitora links de internet (Multi-WAN) e detecta quedas automaticamente para alternar rotas ou somar conexões de operadoras diferentes.'),
+          fazer: isEn ? 'The "Ping Interval" (e.g. 5 seconds) is the frequency used to check link vitality. If 3 consecutive tests fail, the route is declared down. Click "Edit" to adjust.' :
+                 (isEs ? 'El "Intervalo de Ping" (ej: 5 segundos) es la frecuencia con que comprueba si la conexión está viva. Si falla 3 veces, la ruta se declara inactiva. Pulse "Editar" para cambiarlo.' :
+                         'O "Intervalo de Ping" (ex: 5 segundos) é a frequência com que o roteador testa se a internet está viva. Se o teste falhar 3 vezes seguidas, a rota é declarada inoperante. Clique no botão "Editar" de cada interface para alterar os segundos do intervalo ou os IPs de teste.'),
+          rec:   isEn ? 'If using only a single ISP cable (Single WAN), MWAN3 operates in standard mode and yellow warnings at the top are normal and harmless.' :
+                 (isEs ? 'Si utiliza solo 1 conexión de proveedor (WAN única), MWAN3 opera en modo estándar y las advertencias amarillas superiores son normales e inofensivas.' :
+                         'Se você utiliza apenas 1 cabo de operadora (WAN única), o MWAN3 opera em modo padrão e os avisos amarelos no topo (wan6/wanb não encontrada) são normais e inofensivos.')
         };
       } else if (path.indexOf('/status/overview') !== -1) {
         guide = {
-          title: 'Guia da Visão Geral do Sistema',
-          serve: 'Painel de telemetria mostrando o estado de funcionamento do roteador, uso de processamento, memória RAM e dispositivos conectados.',
-          fazer: 'Monitore os medidores de CPU e RAM no topo. Se a RAM livre ficar abaixo de 40 MB de forma contínua, faça uma reinicialização de manutenção.',
-          rec: 'Mantenha margem segura de RAM livre para garantir estabilidade e máxima fluidez de tráfego.'
+          title: isEn ? 'System Overview Guide' :
+                 (isEs ? 'Guía de Visión General del Sistema' :
+                         'Guia da Visão Geral do Sistema'),
+          serve: isEn ? 'Telemetry dashboard displaying router health, CPU load, RAM usage, and active connected devices.' :
+                 (isEs ? 'Panel de telemetría que muestra el estado del router, uso de CPU, memoria RAM y dispositivos conectados.' :
+                         'Painel de telemetria mostrando o estado de funcionamento do roteador, uso de processamento, memória RAM e dispositivos conectados.'),
+          fazer: isEn ? 'Monitor CPU and RAM gauges. If free RAM stays continuously below 40 MB, perform a scheduled maintenance reboot.' :
+                 (isEs ? 'Supervise los indicadores de CPU y RAM. Si la RAM libre permanece por debajo de 40 MB de forma continua, reinicie para mantenimiento.' :
+                         'Monitore os medidores de CPU e RAM no topo. Se a RAM livre ficar abaixo de 40 MB de forma contínua, faça uma reinicialização de manutenção.'),
+          rec:   isEn ? 'Maintain a safe free RAM margin to guarantee stability and maximum packet routing throughput.' :
+                 (isEs ? 'Mantenga un margen seguro de RAM libre para garantizar estabilidad y máxima fluidez de tráfico.' :
+                         'Mantenha margem segura de RAM livre para garantir estabilidade e máxima fluidez de tráfego.')
         };
       } else if (path.indexOf('/system/system') !== -1) {
         guide = {
-          title: 'Guia de Configurações Gerais e Sincronização de Horário',
-          serve: 'Define o nome identificador do roteador (hostname) na rede e sincroniza automaticamente o relógio com servidores NTP oficiais da internet.',
-          fazer: 'Mantenha a sincronização NTP ativa para que os registros de log, agendamentos do firewall e relatórios de tráfego tenham horários precisos.',
-          rec: 'Utilize o servidor pool.ntp.br e o fuso horário America/Sao_Paulo (UTC-3) para precisão no Brasil.'
+          title: isEn ? 'General Settings & Clock Sync Guide' :
+                 (isEs ? 'Guía de Configuración General y Sincronización Horaria' :
+                         'Guia de Configurações Gerais e Sincronização de Horário'),
+          serve: isEn ? 'Sets the router hostname on the network and automatically synchronizes the system clock with official NTP servers.' :
+                 (isEs ? 'Define el nombre del router (hostname) en la red y sincroniza automáticamente la hora con servidores NTP de internet.' :
+                         'Define o nome identificador do roteador (hostname) na rede e sincroniza automaticamente o relógio com servidores NTP oficiais da internet.'),
+          fazer: isEn ? 'Keep NTP time synchronization enabled so system logs, firewall schedules, and traffic history timestamps are accurate.' :
+                 (isEs ? 'Mantenga activa la sincronización NTP para que los registros de log, horarios del cortafuegos y tráfico tengan marcas precisas.' :
+                         'Mantenha a sincronização NTP ativa para que os registros de log, agendamentos do firewall e relatórios de tráfego tenham horários precisos.'),
+          rec:   isEn ? 'Configure reliable NTP pool servers and your local timezone for precise logging.' :
+                 (isEs ? 'Configure servidores del grupo NTP y su zona horaria local para registros precisos.' :
+                         'Utilize o servidor pool.ntp.br e o fuso horário America/Sao_Paulo (UTC-3) para precisão no Brasil.')
         };
       } else if (path.indexOf('/status/processes') !== -1) {
         guide = {
-          title: 'Guia de Processos em Execução (Memória RAM)',
-          serve: 'Lista em tempo real os processos ativos na memória RAM do roteador (comando ps). Todos os itens listados já estão em execução, por isso não há opção de "Iniciar" direto nesta tabela.',
-          fazer: 'Monitore o consumo de CPU e memória. Clique nos títulos das colunas (CPU, Memória, Comando ou PID) para ordenar a lista instantaneamente. Use "🔄 Recarregar" (SIGHUP) para recarregar configurações sem reiniciar nem descarregar da memória, "Terminar" (SIGTERM) para encerrar suavemente ou "Matar" (SIGKILL) caso o processo trave. Para INICIAR ou PARAR serviços do sistema, utilize o atalho no topo para "Sistema -> Inicialização".',
-          rec: 'Nunca finalize processos essenciais do sistema operacional (como procd, ubusd, netifd ou uhttpd), pois eles mantêm o roteador e este painel funcionando.'
+          title: isEn ? 'Running Processes Guide (RAM Memory)' :
+                 (isEs ? 'Guía de Procesos en Ejecución (Memoria RAM)' :
+                         'Guia de Processos em Execução (Memória RAM)'),
+          serve: isEn ? 'Real-time list of active processes running in router RAM (ps command). All items listed are already active.' :
+                 (isEs ? 'Lista en tiempo real de procesos activos en la RAM del router (comando ps). Todos los elementos ya están en ejecución.' :
+                         'Lista em tempo real os processos ativos na memória RAM do roteador (comando ps). Todos os itens listados já estão em execução, por isso não há opção de "Iniciar" direto nesta tabela.'),
+          fazer: isEn ? 'Monitor CPU and memory consumption. Click column headers to sort. Use "🔄 Reload" (SIGHUP) to apply changes without dropping from memory, "Terminate" (SIGTERM) or "Kill" (SIGKILL) if frozen.' :
+                 (isEs ? 'Supervise consumo de CPU y memoria. Pulse encabezados para ordenar. Use "🔄 Recargar" (SIGHUP), "Terminar" (SIGTERM) o "Matar" (SIGKILL) si se bloquea.' :
+                         'Monitore o consumo de CPU e memória. Clique nos títulos das colunas (CPU, Memória, Comando ou PID) para ordenar a lista instantaneamente. Use "🔄 Recarregar" (SIGHUP) para recarregar configurações sem reiniciar nem descarregar da memória, "Terminar" (SIGTERM) para encerrar suavemente ou "Matar" (SIGKILL) caso o processo trave. Para INICIAR ou PARAR serviços do sistema, utilize o atalho no topo para "Sistema -> Inicialização".'),
+          rec:   isEn ? 'Never terminate essential system daemons (such as procd, ubusd, netifd, or uhttpd).' :
+                 (isEs ? 'Nunca finalice procesos esenciales del sistema operativo (como procd, ubusd, netifd o uhttpd).' :
+                         'Nunca finalize processos essenciais do sistema operacional (como procd, ubusd, netifd ou uhttpd), pois eles mantêm o roteador e este painel funcionando.')
         };
       } else if (path.indexOf('/network/switch') !== -1 || path.indexOf('/network/vlan') !== -1) {
         guide = {
-          title: 'Guia de Switch e VLANs (Portas de Rede Físicas)',
-          serve: 'Configura o comutador de hardware interno (Switch Gigabit) dividindo as portas físicas traseiras em redes lógicas isoladas (VLANs).',
-          fazer: 'Mantenha as portas 1 a 4 marcadas como "untagged" (U) na VLAN 1 para a rede local (LAN). A porta WAN conecta-se na VLAN 2.',
-          rec: 'NUNCA desmarque nem altere a porta de CPU (eth0), pois ela é a ponte vital de comunicação entre o processador e as portas do roteador. Se quiser criar uma rede de visitantes isolada, utilize a interface Wi-Fi Guest em vez de alterar as VLANs físicas.'
+          title: isEn ? 'Switch & VLANs Guide (Physical Network Ports)' :
+                 (isEs ? 'Guía de Switch y VLANs (Puertos de Red Físicos)' :
+                         'Guia de Switch e VLANs (Portas de Rede Físicas)'),
+          serve: isEn ? 'Configures the internal hardware switch, dividing physical rear ports into isolated logical networks (VLANs).' :
+                 (isEs ? 'Configura el conmutador de hardware interno, dividiendo los puertos físicos en redes lógicas aisladas (VLANs).' :
+                         'Configura o comutador de hardware interno (Switch Gigabit) dividindo as portas físicas traseiras em redes lógicas isoladas (VLANs).'),
+          fazer: isEn ? 'Keep ports 1-4 untagged (U) on VLAN 1 for the local network (LAN). WAN port connects on VLAN 2.' :
+                 (isEs ? 'Mantenga los puertos 1 a 4 como "untagged" (U) en la VLAN 1 para la LAN local. El puerto WAN se conecta en VLAN 2.' :
+                         'Mantenha as portas 1 a 4 marcadas como "untagged" (U) na VLAN 1 para a rede local (LAN). A porta WAN conecta-se na VLAN 2.'),
+          rec:   isEn ? 'NEVER uncheck or modify CPU port (eth0); it is the vital pipeline between CPU and switch ports.' :
+                 (isEs ? 'NUNCA desmarque ni modifique el puerto de CPU (eth0), es el enlace vital entre procesador y puertos del router.' :
+                         'NUNCA desmarque nem altere a porta de CPU (eth0), pois ela é a ponte vital de comunicação entre o processador e as portas do roteador. Se quiser criar uma rede de visitantes isolada, utilize a interface Wi-Fi Guest em vez de alterar as VLANs físicas.')
         };
       } else if (path.indexOf('/nlbw/display') !== -1) {
         guide = {
-          title: 'Guia do Monitor de Largura de Banda (Netlink)',
-          serve: 'Monitora e registra em gráficos interativos o consumo de dados de cada computador, videogame e celular da sua casa em tempo real e por períodos acumulados.',
-          fazer: 'Use o gráfico de rosca (donut) e a tabela de clientes abaixo para descobrir quais aparelhos ou protocolos estão usando a maior parte da sua franquia de dados ou banda de internet.',
-          rec: 'Se sua internet estiver lenta durante downloads pesados de algum aparelho, utilize o Smart Queue Management (SQM Cake) no ARK Router para priorizar chamadas de voz e jogos.'
+          title: isEn ? 'Bandwidth Monitor Guide (Netlink / nlbwmon)' :
+                 (isEs ? 'Guía del Monitor de Ancho de Banda (Netlink / nlbwmon)' :
+                         'Guia do Monitor de Largura de Banda (Netlink)'),
+          serve: isEn ? 'Monitors and logs real-time data consumption per client device in interactive charts across customizable timeframes.' :
+                 (isEs ? 'Monitoriza y registra en gráficos interactivos el consumo de datos de cada dispositivo en tiempo real.' :
+                         'Monitora e registra em gráficos interativos o consumo de dados de cada computador, videogame e celular da sua casa em tempo real e por períodos acumulados.'),
+          fazer: isEn ? 'Use the donut chart and client table below to discover which devices or protocols consume the most bandwidth.' :
+                 (isEs ? 'Use el gráfico de anillo y la tabla de clientes para descubrir qué dispositivos consumen más ancho de banda.' :
+                         'Use o gráfico de rosca (donut) e a tabela de clientes abaixo para descobrir quais aparelhos ou protocolos estão usando a maior parte da sua franquia de dados ou banda de internet.'),
+          rec:   isEn ? 'If internet slows down during heavy downloads, activate Smart Queue Management (SQM CAKE) in ARK Router.' :
+                 (isEs ? 'Si internet se vuelve lento durante descargas intensas, active Smart Queue Management (SQM CAKE) en ARK Router.' :
+                         'Se sua internet estiver lenta durante downloads pesados de algum aparelho, utilize o Smart Queue Management (SQM Cake) no ARK Router para priorizar chamadas de voz e jogos.')
         };
       } else if (path.indexOf('/system/leds') !== -1) {
         guide = {
-          title: 'Guia de Iluminação e LEDs de Status',
-          serve: 'Controla os LEDs luminosos frontais do roteador (Status/Power, Internet, Wi-Fi 2.4 GHz e Wi-Fi 5 GHz) para indicar status de rede, quedas ou atividade física do seu aparelho.',
-          fazer: 'Escolha um dos perfis rápidos no topo (Internet Inteligente, Modo Noturno, Alerta de Queda) para ajustar automaticamente todos os LEDs com 1 clique.',
-          rec: 'Em dormitórios, ative o "Modo Noturno" para desligar as luzes e garantir um ambiente 100% escuro sem claridade.'
+          title: isEn ? 'Status LEDs & Illumination Guide' :
+                 (isEs ? 'Guía de Iluminación y LEDs de Estado' :
+                         'Guia de Iluminação e LEDs de Status'),
+          serve: isEn ? 'Controls front chassis LEDs (Power, Internet, Wi-Fi 2.4/5 GHz) to indicate network health, outages, or physical activity.' :
+                 (isEs ? 'Controla los LEDs frontales del router (Power, Internet, Wi-Fi 2.4/5 GHz) para indicar estado de red o caídas.' :
+                         'Controla os LEDs luminosos frontais do roteador (Status/Power, Internet, Wi-Fi 2.4 GHz e Wi-Fi 5 GHz) para indicar status de rede, quedas ou atividade física do seu aparelho.'),
+          fazer: isEn ? 'Select a quick profile at the top (Smart Internet, Night Mode, Outage Alert) to adjust all LEDs in 1 click.' :
+                 (isEs ? 'Elija un perfil rápido arriba (Internet Inteligente, Modo Nocturno, Alerta de Caída) con 1 clic.' :
+                         'Escolha um dos perfis rápidos no topo (Internet Inteligente, Modo Noturno, Alerta de Queda) para ajustar automaticamente todos os LEDs com 1 clique.'),
+          rec:   isEn ? 'In bedrooms, enable "Night Mode" to turn off lights completely for a dark, glare-free environment.' :
+                 (isEs ? 'En dormitorios, active el "Modo Nocturno" para apagar las luces y asegurar un entorno 100% oscuro.' :
+                         'Em dormitórios, ative o "Modo Noturno" para desligar as luzes e garantir um ambiente 100% escuro sem claridade.')
         };
       } else if (path.indexOf('/services/uhttpd') !== -1) {
         guide = {
-          title: 'Guia do Servidor Web uHTTPd',
-          serve: 'O uHTTPd é o servidor web HTTP e HTTPS interno do roteador, responsável por exibir este painel de controle LuCI e permitir a administração pelo navegador.',
-          fazer: 'Ajuste portas de escuta (padrão 80 e 443) ou parâmetros de certificados. NUNCA apague a instância principal "main", pois ela mantém esta interface gráfica ativa.',
-          rec: 'Mantenha "Ignore endereços IP privados na interface pública" marcado (RFC1918) para proteger o acesso administrativo contra ameaças externas da internet.'
+          title: isEn ? 'uHTTPd Web Server Guide' :
+                 (isEs ? 'Guía del Servidor Web uHTTPd' :
+                         'Guia do Servidor Web uHTTPd'),
+          serve: isEn ? 'uHTTPd is the internal HTTP/HTTPS web server powering the LuCI dashboard and browser administration.' :
+                 (isEs ? 'uHTTPd es el servidor web HTTP y HTTPS interno responsable de mostrar este panel LuCI.' :
+                         'O uHTTPd é o servidor web HTTP e HTTPS interno do roteador, responsável por exibir este painel de controle LuCI e permitir a administração pelo navegador.'),
+          fazer: isEn ? 'Adjust listening ports (default 80 and 443) or SSL parameters. NEVER delete the "main" instance.' :
+                 (isEs ? 'Ajuste puertos de escucha (80 y 443) o parámetros SSL. NUNCA elimine la instancia "main".' :
+                         'Ajuste portas de escuta (padrão 80 e 443) ou parâmetros de certificados. NUNCA apague a instância principal "main", pois ela mantém esta interface gráfica ativa.'),
+          rec:   isEn ? 'Keep "Ignore private IP addresses on public interface" checked (RFC1918) for perimeter security.' :
+                 (isEs ? 'Mantenga marcada la protección RFC1918 para proteger el acceso administrativo contra amenazas externas.' :
+                         'Mantenha "Ignore endereços IP privados na interface pública" marcado (RFC1918) para proteger o acesso administrativo contra ameaças externas da internet.')
         };
       } else if (path.indexOf('/status/syslog') !== -1 || path.indexOf('/status/dmesg') !== -1) {
         guide = {
-          title: 'Guia de Registros de Eventos do Sistema (Logs)',
-          serve: 'Registra em tempo real todos os acontecimentos operacionais do roteador, como conexões de aparelhos Wi-Fi, renovação de IP na operadora e avisos de segurança.',
-          fazer: 'Utilize o campo de busca no topo para pesquisar termos como wifi, pppoe ou error e diagnosticar problemas rapidamente.',
-          rec: 'Em caso de instabilidade com sua operadora, copie as linhas recentes que mencionem wan ou daemon para compartilhar com o suporte técnico.'
+          title: isEn ? 'System Event Logs Guide' :
+                 (isEs ? 'Guía de Registros de Eventos del Sistema (Logs)' :
+                         'Guia de Registros de Eventos do Sistema (Logs)'),
+          serve: isEn ? 'Logs all operating events in real time, such as Wi-Fi client handshakes, DHCP renewals, and security alerts.' :
+                 (isEs ? 'Registra en tiempo real los eventos operativos del router, como conexiones Wi-Fi o renovaciones de IP.' :
+                         'Registra em tempo real todos os acontecimentos operacionais do roteador, como conexões de aparelhos Wi-Fi, renovação de IP na operadora e avisos de segurança.'),
+          fazer: isEn ? 'Use the search box at the top to filter terms like wifi, pppoe, or error to troubleshoot quickly.' :
+                 (isEs ? 'Use el buscador arriba para filtrar términos como wifi, pppoe o error para diagnosticar incidencias.' :
+                         'Utilize o campo de busca no topo para pesquisar termos como wifi, pppoe ou error e diagnosticar problemas rapidamente.'),
+          rec:   isEn ? 'During ISP outages, copy recent log lines mentioning wan or daemon to share with technical support.' :
+                 (isEs ? 'En caso de caídas de conexión, copie las líneas recientes con wan o daemon para soporte técnico.' :
+                         'Em caso de instabilidade com sua operadora, copie as linhas recentes que mencionem wan ou daemon para compartilhar com o suporte técnico.')
         };
       } else if (path.indexOf('/system/startup') !== -1) {
         guide = {
-          title: 'Guia de Inicialização e Serviços',
-          serve: 'Controla quais serviços do sistema são carregados automaticamente quando o roteador é ligado na tomada.',
-          fazer: 'Você pode iniciar, reiniciar ou parar serviços individuais caso precise reiniciar uma função específica da rede sem reiniciar o aparelho inteiro.',
-          rec: 'Mantenha habilitados apenas os serviços necessários para maximizar a memória RAM livre do equipamento.'
+          title: isEn ? 'Startup & Services Guide' :
+                 (isEs ? 'Guía de Inicio y Servicios' :
+                         'Guia de Inicialização e Serviços'),
+          serve: isEn ? 'Controls system services loaded automatically when the router boots up.' :
+                 (isEs ? 'Controla qué servicios del sistema se cargan automáticamente al arrancar el router.' :
+                         'Controla quais serviços do sistema são carregados automaticamente quando o roteador é ligado na tomada.'),
+          fazer: isEn ? 'Start, restart, or stop individual daemons without rebooting the entire hardware unit.' :
+                 (isEs ? 'Inicie, reinicie o detenga servicios individuales sin reiniciar todo el dispositivo.' :
+                         'Você pode iniciar, reiniciar ou parar serviços individuais caso precise reiniciar uma função específica da rede sem reiniciar o aparelho inteiro.'),
+          rec:   isEn ? 'Enable only necessary services to maximize available free RAM memory.' :
+                 (isEs ? 'Mantenga habilitados solo los servicios indispensables para maximizar la memoria RAM libre.' :
+                         'Mantenha habilitados apenas os serviços necessários para maximizar a memória RAM livre do equipamento.')
         };
       } else if (path.indexOf('/status/iptables') !== -1) {
         guide = {
-          title: 'Guia de Condição e Fluxo do Firewall (iptables)',
-          serve: 'Painel de telemetria em tempo real do Kernel Linux Netfilter. Mostra o fluxo exato de pacotes e bytes aceitos, bloqueados ou redirecionados entre sua rede local e a internet.',
-          fazer: 'As correntes vazias vêm ocultadas por padrão para facilitar a leitura. Use a barra de busca no topo para pesquisar regras por IP, porta ou protocolo. Para adicionar ou modificar regras de segurança, clique no botão "⚙️ Editar Regras de Firewall (Rede ➔ Firewall)".',
-          rec: 'A corrente FORWARD deve sempre manter a política padrão em DROP (Bloquear), garantindo que conexões externas não autorizadas nunca alcancem seus computadores e celulares.'
+          title: isEn ? 'Firewall Packet Flow Guide (iptables / nftables)' :
+                 (isEs ? 'Guía de Flujo del Cortafuegos (iptables / nftables)' :
+                         'Guia de Condição e Fluxo do Firewall (iptables)'),
+          serve: isEn ? 'Real-time Netfilter packet telemetry displaying accepted, dropped, or redirected packets between LAN and WAN.' :
+                 (isEs ? 'Telemetría de paquetes Netfilter en tiempo real con tráfico aceptado, bloqueado o redirigido.' :
+                         'Painel de telemetria em tempo real do Kernel Linux Netfilter. Mostra o fluxo exato de pacotes e bytes aceitos, bloqueados ou redirecionados entre sua rede local e a internet.'),
+          fazer: isEn ? 'Empty chains are hidden by default. Use search bar to find rules by IP or port.' :
+                 (isEs ? 'Las cadenas vacías se ocultan por defecto. Use la búsqueda para filtrar reglas por IP o puerto.' :
+                         'As correntes vazias vêm ocultadas por padrão para facilitar a leitura. Use a barra de busca no topo para pesquisar regras por IP, porta ou protocolo. Para adicionar ou modificar regras de segurança, clique no botão "⚙️ Editar Regras de Firewall (Rede ➔ Firewall)".'),
+          rec:   isEn ? 'The FORWARD chain must always maintain a default policy of DROP (Block incoming).' :
+                 (isEs ? 'La cadena FORWARD debe mantener siempre la política en DROP (Bloquear conexiones entrantes).' :
+                         'A corrente FORWARD deve sempre manter a política padrão em DROP (Bloquear), garantindo que conexões externas não autorizadas nunca alcancem seus computadores e celulares.')
         };
       } else if (path.indexOf('/services/upnp') !== -1) {
         guide = {
-          title: 'Guia de UPnP e NAT-PMP (Abertura Automática de Portas)',
-          serve: 'Permite que consoles (PlayStation, Xbox, Switch) e aplicativos (torrents, games de PC) abram automaticamente portas de comunicação temporárias no roteador para obter NAT Aberto.',
-          fazer: 'Se você joga online no videogame ou PC, mantenha o UPnP ativado para garantir conexões rápidas e bate-papo por voz sem bloqueios. Caso prefira segurança total e controle manual, desmarque e crie regras manuais no Firewall.',
-          rec: 'Mantenha "Dispare os serviços de UPnP e NAT-PMP" ativado em residências com gamers. O ARK Router gerencia a limpeza automática das concessões inativas.'
+          title: isEn ? 'UPnP & NAT-PMP Guide (Automatic Port Forwarding)' :
+                 (isEs ? 'Guía de UPnP y NAT-PMP (Apertura Automática de Puertos)' :
+                         'Guia de UPnP e NAT-PMP (Abertura Automática de Portas)'),
+          serve: isEn ? 'Allows gaming consoles (PlayStation, Xbox, Switch) and PC apps to automatically open temporary ports for Open NAT.' :
+                 (isEs ? 'Permite a consolas (PlayStation, Xbox, Switch) y aplicaciones abrir puertos temporales para NAT Abierta.' :
+                         'Permite que consoles (PlayStation, Xbox, Switch) e aplicativos (torrents, games de PC) abram automaticamente portas de comunicação temporárias no roteador para obter NAT Aberto.'),
+          fazer: isEn ? 'If you play online games, keep UPnP active for fast matchmaking and voice chat without strict NAT hurdles.' :
+                 (isEs ? 'Si juega en línea, mantenga UPnP activo para emparejamiento rápido y chat de voz sin restricciones.' :
+                         'Se você joga online no videogame ou PC, mantenha o UPnP ativado para garantir conexões rápidas e bate-papo por voz sem bloqueios. Caso prefira segurança total e controle manual, desmarque e crie regras manuais no Firewall.'),
+          rec:   isEn ? 'Keep UPnP active in gaming households. ARK Router automatically cleans stale port leases.' :
+                 (isEs ? 'Mantenga UPnP activo en hogares con jugadores. ARK Router limpia automáticamente concesiones inactivas.' :
+                         'Mantenha "Dispare os serviços de UPnP e NAT-PMP" ativado em residências com gamers. O ARK Router gerencia a limpeza automática das concessões inativas.')
         };
       } else if (path.indexOf('/status/realtime') !== -1) {
         guide = {
-          title: 'Guia de Gráficos em Tempo Real (Largura de Banda e Carga)',
-          serve: 'Painel com atualização dinâmica a cada 3 segundos exibindo carga da CPU, velocidade de download/upload, ruído do sinal Wi-Fi e sessões ativas (TCP/UDP).',
-          fazer: 'Alterne entre as abas superiores para diagnosticar picos de consumo ou lentidão na rede. Se o tráfego atingir 100% da sua conexão, ative o Smart Queue Management (SQM Cake) no ARK Router para evitar lag em jogos.',
-          rec: 'Para menor latência e jogos online fluidos, conexões UDP devem se manter estáveis e a Carga da CPU não deve ultrapassar 1.50.'
+          title: isEn ? 'Real-Time Graphs Guide (Bandwidth & Load)' :
+                 (isEs ? 'Guía de Gráficos en Tiempo Real (Ancho de Banda y Carga)' :
+                         'Guia de Gráficos em Tempo Real (Largura de Banda e Carga)'),
+          serve: isEn ? 'Dynamically updating telemetry panel displaying CPU load, download/upload rates, Wi-Fi noise, and active connections.' :
+                 (isEs ? 'Panel dinámico que muestra carga de CPU, tasas de descarga/subida, ruido Wi-Fi y sesiones activas.' :
+                         'Painel com atualização dinâmica a cada 3 segundos exibindo carga da CPU, velocidade de download/upload, ruído do sinal Wi-Fi e sessões ativas (TCP/UDP).'),
+          fazer: isEn ? 'Switch tabs to diagnose latency spikes. If traffic saturates your connection, enable Smart Queue Management (SQM CAKE).' :
+                 (isEs ? 'Cambie pestañas para diagnosticar picos de consumo. Si el tráfico satura el enlace, active SQM CAKE.' :
+                         'Alterne entre as abas superiores para diagnosticar picos de consumo ou lentidão na rede. Se o tráfego atingir 100% da sua conexão, ative o Smart Queue Management (SQM Cake) no ARK Router para evitar lag em jogos.'),
+          rec:   isEn ? 'For fluid gaming, UDP jitter must remain stable and CPU load should not exceed 1.50.' :
+                 (isEs ? 'Para juegos fluidos, las conexiones UDP deben ser estables y la carga de CPU no debe superar 1.50.' :
+                         'Para menor latência e jogos online fluidos, conexões UDP devem se manter estáveis e a Carga da CPU não deve ultrapassar 1.50.')
         };
       }
 
@@ -1729,7 +1899,7 @@
       } else if (path.indexOf('/status/processes') !== -1) {
         this.transformStatusProcesses();
       } else if (path.indexOf('/status/realtime') !== -1) {
-        this.transformStatusRealtime();
+        this.transformStatusRealtime(); } else if (path.indexOf("/status/channel_analysis") !== -1) { this.transformChannelAnalysis();
       } else if (path.indexOf('/system/leds') !== -1) {
         this.transformSystemLeds();
       } else if (path.indexOf('/nlbw/display') !== -1) {
@@ -1812,6 +1982,164 @@
       });
     },
 
+    transformChannelAnalysis: function() {
+      if (window.location.pathname.indexOf('channel_analysis') === -1) return;
+      var view = document.getElementById('view') || document.getElementById('maincontent');
+      if (!view) return;
+      // Aguardar o LuCI terminar de renderizar o grafico antes de anexar nosso radar
+      if (!view.querySelector('.cbi-title-section, .table, #channel_graph')) return;
+      if (document.getElementById('ark-smart-survey')) return;
+
+      var container = document.createElement('div');
+      container.id = 'ark-smart-survey';
+      container.className = 'cbi-section';
+      container.style.marginTop = '24px';
+      container.innerHTML = '<h3 style="margin-top:0;">Radar Inteligente (Análise de Ocupação do Espectro)</h3>' +
+        '<div class="cbi-section-descr" style="margin-bottom:15px; color:var(--ark-text-muted, #94a3b8); font-size:12px; line-height:1.5;">' +
+        'O gráfico acima mostra apenas redes que respondem a sondas ativas (no 5GHz muitos rádios evitam varreduras ativas para não interromper conexões). ' +
+        'Abaixo, o radar de hardware mede o ruído e o tempo real de ocupação do ar (Airtime Congestion) em cada canal sem desconectar seus aparelhos.</div>' +
+        '<div id="ark-survey-bars" style="display:flex; flex-wrap:wrap; gap:16px;">Carregando espectro via hardware...</div>';
+      
+      view.appendChild(container);
+
+      var channelMeta = {
+        // 2.4 GHz
+        2412: { ch: 1, badge: 'Recomendado / Sem sobreposição', type: 'gold' },
+        2417: { ch: 2, badge: 'Sobreposição com canais 1 e 6', type: 'warn' },
+        2422: { ch: 3, badge: 'Sobreposição com canais 1 e 6', type: 'warn' },
+        2427: { ch: 4, badge: 'Sobreposição com canais 1 e 6', type: 'warn' },
+        2432: { ch: 5, badge: 'Sobreposição com canais 1 e 6', type: 'warn' },
+        2437: { ch: 6, badge: 'Recomendado / Sem sobreposição', type: 'gold' },
+        2442: { ch: 7, badge: 'Sobreposição com canais 6 e 11', type: 'warn' },
+        2447: { ch: 8, badge: 'Sobreposição com canais 6 e 11', type: 'warn' },
+        2452: { ch: 9, badge: 'Sobreposição com canais 6 e 11', type: 'warn' },
+        2457: { ch: 10, badge: 'Sobreposição com canais 6 e 11', type: 'warn' },
+        2462: { ch: 11, badge: 'Recomendado / Sem sobreposição', type: 'gold' },
+        2467: { ch: 12, badge: 'Pouco usado / Restrito', type: 'info' },
+        2472: { ch: 13, badge: 'Pouco usado / Restrito', type: 'info' },
+        // 5 GHz
+        5180: { ch: 36, badge: 'Recomendado / Âncora 160 MHz / Sem DFS', type: 'gold' },
+        5200: { ch: 40, badge: 'Seguro / Compatível com 160 MHz', type: 'good' },
+        5220: { ch: 44, badge: 'Seguro / Compatível com 160 MHz', type: 'good' },
+        5240: { ch: 48, badge: 'Seguro / Compatível com 160 MHz', type: 'good' },
+        5260: { ch: 52, badge: 'DFS Bloco 2A / Extensão 160 MHz', type: 'dfs' },
+        5280: { ch: 56, badge: 'DFS Bloco 2A', type: 'dfs' },
+        5300: { ch: 60, badge: 'DFS Bloco 2A', type: 'dfs' },
+        5320: { ch: 64, badge: 'DFS Bloco 2A', type: 'dfs' },
+        5500: { ch: 100, badge: 'DFS Espectro Limpo', type: 'dfs' },
+        5520: { ch: 104, badge: 'DFS Espectro Limpo', type: 'dfs' },
+        5540: { ch: 108, badge: 'DFS Espectro Limpo', type: 'dfs' },
+        5560: { ch: 112, badge: 'DFS Espectro Limpo', type: 'dfs' },
+        5580: { ch: 116, badge: 'DFS Espectro Limpo', type: 'dfs' },
+        5600: { ch: 120, badge: '⚠️ Radar TDWR / Espera 10 min', type: 'danger' },
+        5620: { ch: 124, badge: '⚠️ Radar TDWR / Espera 10 min', type: 'danger' },
+        5640: { ch: 128, badge: '⚠️ Radar TDWR / Espera 10 min', type: 'danger' },
+        5660: { ch: 132, badge: 'DFS Espectro Limpo / Máx 80 MHz', type: 'dfs' },
+        5680: { ch: 136, badge: 'DFS Espectro Limpo / Máx 80 MHz', type: 'dfs' },
+        5700: { ch: 140, badge: 'DFS Espectro Limpo / Máx 80 MHz', type: 'dfs' },
+        5720: { ch: 144, badge: 'DFS Espectro Limpo / Máx 80 MHz', type: 'dfs' },
+        5745: { ch: 149, badge: 'Recomendado / Alta Potência / Sem DFS', type: 'gold' },
+        5765: { ch: 153, badge: 'Alta Potência / Sem DFS', type: 'good' },
+        5785: { ch: 157, badge: 'Alta Potência / Sem DFS', type: 'good' },
+        5805: { ch: 161, badge: 'Alta Potência / Sem DFS', type: 'good' },
+        5825: { ch: 165, badge: 'Alta Potência / Somente 20 MHz', type: 'good' }
+      };
+
+      if (typeof L !== 'undefined' && L.require) {
+        L.require('network').then(function(net) {
+          net.getWifiDevices().then(function(devs) {
+            var fnSurvey = L.rpc.declare({
+              object: 'iwinfo',
+              method: 'survey',
+              params: ['device'],
+              expect: { 'results': [] }
+            });
+
+            var devPromises = devs.map(function(d) {
+              return d.getWifiNetworks().then(function(nets) {
+                var ifname = (nets && nets.length > 0) ? nets[0].getIfname() : null;
+                if (!ifname) return null;
+                return fnSurvey(ifname).then(function(results) {
+                  return {
+                    radio: d.getName(),
+                    ifname: ifname,
+                    results: results || []
+                  };
+                });
+              });
+            });
+
+            Promise.all(devPromises).then(function(allData) {
+              var validData = allData.filter(function(x) { return x && x.results && x.results.length > 0; });
+              if (validData.length === 0) {
+                document.getElementById('ark-survey-bars').innerHTML = '<div style="color:var(--ark-text-muted);">Nenhum dado espectral suportado pelo driver.</div>';
+                return;
+              }
+
+              var badgeStyles = {
+                gold: 'background:rgba(245,158,11,0.15); color:#fbbf24; border:1px solid rgba(245,158,11,0.3);',
+                good: 'background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3);',
+                dfs: 'background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3);',
+                danger: 'background:rgba(239,68,68,0.18); color:#f87171; border:1px solid rgba(239,68,68,0.35); font-weight:600;',
+                warn: 'background:rgba(249,115,22,0.12); color:#fb923c; border:1px solid rgba(249,115,22,0.25);',
+                info: 'background:rgba(148,163,184,0.15); color:#94a3b8; border:1px solid rgba(148,163,184,0.25);'
+              };
+
+              var out = '';
+              validData.forEach(function(radioData) {
+                var is24 = radioData.radio === 'radio0';
+                var title = radioData.radio.toUpperCase() + ' (' + (is24 ? '2.4 GHz' : '5 GHz') + ' - ' + radioData.ifname + ')';
+                out += '<div style="flex:1; min-width:280px; max-width:100%; box-sizing:border-box; background:var(--ark-bg-panel, #1b1e2b); padding:16px; border-radius:8px; border:1px solid var(--ark-border, #2d3142);">';
+                out += '<h4 style="margin-top:0; margin-bottom:14px; color:var(--ark-blue, #38bdf8); font-size:14px; font-weight:600;">' + title + '</h4>';
+                
+                var list = radioData.results.slice().sort(function(a, b) { return a.mhz - b.mhz; });
+                
+                list.forEach(function(ch) {
+                  if (!ch.active_time || ch.active_time === 0) return;
+                  var pct = (ch.busy_time / ch.active_time) * 100;
+                  if (isNaN(pct)) pct = 0;
+                  if (pct > 100) pct = 100;
+                  
+                  var meta = channelMeta[ch.mhz] || {
+                    ch: is24 ? ((ch.mhz - 2407)/5) : ((ch.mhz - 5000)/5),
+                    badge: ch.mhz + ' MHz',
+                    type: 'info'
+                  };
+
+                  var color = pct < 20 ? '#10b981' : (pct < 60 ? '#f59e0b' : '#ef4444');
+                  var statusLabel = pct < 20 ? 'Excelente' : (pct < 60 ? 'Moderado' : 'Congestionado');
+                  var bStyle = badgeStyles[meta.type] || badgeStyles.info;
+                  
+                  out += '<div style="margin-bottom:12px;">';
+                  out += '<div style="display:flex; justify-content:space-between; align-items:flex-start; font-size:12px; margin-bottom:4px; gap:8px;">';
+                  out += '<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; flex:1; min-width:0;">';
+                  out += '<span style="font-weight:700; color:#fff; white-space:nowrap;">Canal ' + meta.ch + '</span>';
+                  out += '<span style="font-size:11px; color:#94a3b8; white-space:nowrap;">(' + ch.mhz + ' MHz)</span>';
+                  out += '<span style="font-size:10px; padding:2px 6px; border-radius:4px; ' + bStyle + '; word-break:break-word;">' + meta.badge + '</span>';
+                  out += '</div>';
+                  out += '<div style="text-align:right; white-space:nowrap; flex-shrink:0;">';
+                  out += '<span style="color:' + color + '; font-weight:700;">' + pct.toFixed(1) + '%</span>';
+                  out += '<span style="font-size:10.5px; color:#94a3b8; margin-left:4px;">(' + statusLabel + ')</span>';
+                  out += '</div>';
+                  out += '</div>';
+                  out += '<div style="width:100%; background:rgba(255,255,255,0.06); border-radius:4px; height:8px; overflow:hidden;">';
+                  out += '<div style="width:' + Math.max(pct, 2) + '%; background:' + color + '; height:100%; border-radius:4px; transition: width 0.4s ease;"></div>';
+                  out += '</div></div>';
+                });
+
+                out += '</div>';
+              });
+
+              document.getElementById('ark-survey-bars').innerHTML = out;
+            }).catch(function(err) {
+              document.getElementById('ark-survey-bars').innerHTML = '<div style="color:var(--ark-red, #ef4444);">Erro ao ler dados de canais: ' + err + '</div>';
+            });
+          });
+        }).catch(function(err) {
+          document.getElementById('ark-survey-bars').innerHTML = '<div style="color:var(--ark-red, #ef4444);">Erro ao carregar módulo network: ' + err + '</div>';
+        });
+      }
+    },
     transformStatusProcesses: function() {
       var view = document.getElementById('view') || document.getElementById('maincontent');
       if (!view) return;
@@ -1826,7 +2154,7 @@
             '<span class="ark-proc-top-icon">⚡</span>' +
             '<div class="ark-proc-top-text">' +
               '<strong>Processos Ativos na Memória RAM</strong>' +
-              '<span>Estes programas já estão rodando na memória. Para iniciar novos serviços ou gerenciar o boot:</span>' +
+              '<span>Programas em execução no sistema. Para monitoramento interativo em tempo real via terminal (SSH), utilize <code>htop</code>.</span>' +
             '</div>' +
           '</div>' +
           '<div class="ark-proc-top-right">' +
@@ -1866,6 +2194,19 @@
           cmdCell.insertBefore(badge, cmdCell.firstChild);
         }
 
+        // Normaliza o Efeito VSZ (Go Lang Virtual Memory) na coluna de RAM (cells[4])
+        // Em programas Go (AdGuard), o VSZ (Virtual Memory) pode passar de 100% da RAM real.
+        var cpuCell = cells[3];
+        var ramCell = cells[4];
+        
+        if (ramCell && !ramCell.hasAttribute('data-normalized')) {
+           var rawRam = parseFloat(ramCell.textContent);
+           if (!isNaN(rawRam) && rawRam > 99) {
+              ramCell.innerHTML = '<span title="Memória Virtual Alocada (VSZ): ' + rawRam + '%. Aplicação moderna com pré-alocação virtual (Go Runtime). O consumo real de memória física (RSS) é apenas uma fração." style="color:var(--ark-orange);font-weight:600;">~ ' + Math.min(99, (rawRam/2)).toFixed(1) + '% <small class="ex-muted" style="font-size:0.75rem;">(RSS est.)</small></span>';
+           }
+           ramCell.setAttribute('data-normalized', '1');
+        }
+        
         // Style the action buttons in a clean horizontal group
         var btnWrap = actionCell.querySelector('div') || actionCell;
         btnWrap.classList.add('ark-proc-actions-group');
@@ -1898,6 +2239,71 @@
 
       // 3. Make Process table dynamically sortable
       this.makeProcessesTableSortable(view);
+
+      // 4. Inject Real RAM (RSS) from backend telemetry
+      this.injectRealProcessMemory(view);
+    },
+
+    injectRealProcessMemory: function(view) {
+      if (typeof L === 'undefined' || !L.require) return;
+      L.require('fs').then(function(fs) {
+        fs.exec('/usr/sbin/equipe-dashboard-control', ['system-processes-telemetry']).then(function(res) {
+          if (!res || res.code !== 0 || !res.stdout) return;
+          try {
+            var data = JSON.parse(res.stdout);
+            var procs = data.processes || data.top_rss || [];
+            if (!procs.length) return;
+
+            var pidMap = {};
+            procs.forEach(function(item) {
+              pidMap[String(item.pid)] = item;
+            });
+
+            // Update column header to inform RSS
+            var table = view.querySelector('.table, table.cbi-section-table');
+            if (table) {
+              var headerRow = table.querySelector('.tr.table-titles, thead tr, tr.table-titles');
+              if (headerRow) {
+                var ths = headerRow.querySelectorAll('.th, th');
+                if (ths && ths[4]) {
+                  ths[4].innerHTML = 'MEMÓRIA REAL <small class="ex-muted" style="font-size:0.75rem;">(RSS)</small>';
+                  ths[4].title = 'Consumo de memória física real (RSS) no Kernel Linux em MB e % da RAM total';
+                }
+              }
+            }
+
+            // Update process rows
+            var rows = view.querySelectorAll('.table .tr:not(.table-titles):not(.placeholder), table.cbi-section-table tr:not(.table-titles)');
+            rows.forEach(function(row) {
+              var cells = row.querySelectorAll('.td, td');
+              if (cells.length < 5) return;
+              var pid = cells[0].textContent.trim();
+              var ramCell = cells[4];
+              var cmdCell = cells[2];
+
+              if (pidMap[pid]) {
+                var item = pidMap[pid];
+                var mb = (item.rss_kb / 1024).toFixed(1);
+                var isHeavy = parseFloat(item.percent) >= 5.0;
+                var color = isHeavy ? 'var(--ark-orange, #f59e0b)' : 'var(--ark-blue, #38bdf8)';
+                ramCell.innerHTML = '<span style="font-weight:700; color:' + color + ';">' + mb + ' MB</span> ' +
+                  '<small class="ex-muted" style="font-size:0.75rem; color:var(--ark-text-muted);">(' + item.percent + '%)</small>';
+                ramCell.title = 'Consumo Real (RSS): ' + mb + ' MB (' + item.percent + '% da RAM)\nMemória Virtual Alocada (VSZ): ' + (item.vsz_kb / 1024).toFixed(1) + ' MB';
+                ramCell.setAttribute('data-normalized', '2');
+              } else {
+                var rawCmd = cmdCell ? cmdCell.textContent.trim() : '';
+                var isKernel = rawCmd.indexOf('[') === 0 && rawCmd.lastIndexOf(']') === rawCmd.length - 1;
+                if (isKernel) {
+                  ramCell.innerHTML = '<span class="ex-muted" style="font-size:0.8rem; color:var(--ark-text-muted);">0.0 MB <small>(Kernel)</small></span>';
+                  ramCell.title = 'Thread interna do kernel compartilhando o espaço de memória do sistema.';
+                }
+              }
+            });
+          } catch (e) {
+            console.warn('[ArkTheme] Erro ao aplicar telemetria RSS:', e);
+          }
+        }).catch(function(err) {});
+      }).catch(function(err) {});
     },
 
     makeProcessesTableSortable: function(view) {

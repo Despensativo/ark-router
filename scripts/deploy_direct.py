@@ -38,6 +38,7 @@ raw_files_to_upload = [
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'resources', 'view', 'equipe-dashboard', 'overview.css'), '/www/luci-static/resources/view/equipe-dashboard/overview.css'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'resources', 'view', 'equipe-dashboard', 'i18n.en.js'), '/www/luci-static/resources/view/equipe-dashboard/i18n.en.js'),
     (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'resources', 'view', 'equipe-dashboard', 'i18n.es.js'), '/www/luci-static/resources/view/equipe-dashboard/i18n.es.js'),
+    (os.path.join(repo_dir, 'root', 'www', 'luci-static', 'resources', 'view', 'equipe-dashboard', 'i18n.pt-br.js'), '/www/luci-static/resources/view/equipe-dashboard/i18n.pt-br.js'),
     (os.path.join(repo_dir, 'root', 'usr', 'share', 'rpcd', 'acl.d', 'luci-app-equipe-dashboard.json'), '/usr/share/rpcd/acl.d/luci-app-equipe-dashboard.json'),
     (os.path.join(repo_dir, 'root', 'usr', 'share', 'rpcd', 'acl.d', 'ark-theme.json'), '/usr/share/rpcd/acl.d/ark-theme.json'),
     (os.path.join(repo_dir, 'root', 'usr', 'share', 'luci', 'menu.d', 'luci-app-equipe-dashboard.json'), '/usr/share/luci/menu.d/luci-app-equipe-dashboard.json'),
@@ -71,24 +72,18 @@ raw_files_to_upload = [
     (os.path.join(repo_dir, 'root', 'etc', 'hotplug.d', 'iface', '95-ark-cache-invalidate'), '/etc/hotplug.d/iface/95-ark-cache-invalidate'),
 ]
 
-ark_lib_dir = os.path.join(repo_dir, 'root', 'usr', 'lib', 'ark')
-if os.path.isdir(ark_lib_dir):
-    for root_path, _, fnames in os.walk(ark_lib_dir):
-        for fname in fnames:
-            local_f = os.path.join(root_path, fname)
-            rel = os.path.relpath(local_f, os.path.join(repo_dir, 'root'))
-            remote_f = '/' + rel.replace('\\', '/')
-            raw_files_to_upload.append((local_f, remote_f))
-
-hotplug_dir = os.path.join(repo_dir, 'root', 'etc', 'hotplug.d')
-if os.path.isdir(hotplug_dir):
-    for root_path, _, fnames in os.walk(hotplug_dir):
-        for fname in fnames:
-            local_f = os.path.join(root_path, fname)
-            rel = os.path.relpath(local_f, os.path.join(repo_dir, 'root'))
-            remote_f = '/' + rel.replace('\\', '/')
-            if (local_f, remote_f) not in raw_files_to_upload:
-                raw_files_to_upload.append((local_f, remote_f))
+for auto_dir in ['etc/hotplug.d', 'etc/uci-defaults', 'etc/init.d', 'usr/lib/ark']:
+    full_d = os.path.join(repo_dir, 'root', auto_dir)
+    if os.path.isdir(full_d):
+        for root_path, _, fnames in os.walk(full_d):
+            for fname in fnames:
+                if fname.startswith('.') or fname.startswith('._'):
+                    continue
+                local_f = os.path.join(root_path, fname)
+                rel = os.path.relpath(local_f, os.path.join(repo_dir, 'root'))
+                remote_f = '/' + rel.replace('\\', '/')
+                if (local_f, remote_f) not in raw_files_to_upload:
+                    raw_files_to_upload.append((local_f, remote_f))
 
 files_to_upload = [
     (minified_map.get(local_path, local_path), remote_path)

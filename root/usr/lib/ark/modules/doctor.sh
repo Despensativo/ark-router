@@ -57,16 +57,34 @@ ark_doctor_audit() {
 	mem_total_mb=$((mem_total_kb / 1024))
 	mem_free_mb=$((mem_free_kb / 1024))
 	if [ "$mem_free_mb" -lt 20 ] && [ "$mem_total_mb" -gt 0 ]; then
+		top_proc="$(awk '
+		FNR == 1 {
+			if (FILENAME ~ /\/statm$/) {
+				split(FILENAME, p, "/"); pid=p[3]; r[pid]=$2*4; if (pid>0) pids[c++]=pid;
+			} else if (FILENAME ~ /\/comm$/) {
+				split(FILENAME, p, "/"); pid=p[3]; comm[pid]=$0;
+			}
+		}
+		END {
+			max_p=0; max_r=0
+			for (i=0; i<c; i++) {
+				p=pids[i]
+				if (r[p] > max_r) { max_r=r[p]; max_p=p; }
+			}
+			if (max_r > 0) printf "%s (%d MB RSS)", (comm[max_p] ? comm[max_p] : "PID " max_p), int(max_r/1024)
+		}
+		' /proc/[0-9]*/statm /proc/[0-9]*/comm 2>/dev/null)"
+		[ -n "$top_proc" ] && top_info=" Maior consumidor: $top_proc." || top_info=""
 		if [ "$auto_fix" = 1 ]; then
 			sync 2>/dev/null || true
 			echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
 			mem_free_kb="$(awk '/MemAvailable:/ {print $2}' /proc/meminfo 2>/dev/null || awk '/MemFree:/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
 			mem_free_mb=$((mem_free_kb / 1024))
 			fixes_applied=$((fixes_applied + 1))
-			add_check "Memoria RAM" "FIXED" "Caches reciclados. Memoria livre recuperada para ${mem_free_mb}MB."
+			add_check "Memoria RAM" "FIXED" "Caches reciclados. Memoria livre recuperada para ${mem_free_mb}MB.${top_info}"
 		else
 			warnings=$((warnings + 1))
-			add_check "Memoria RAM" "WARN" "RAM critica: apenas ${mem_free_mb}MB livres de ${mem_total_mb}MB."
+			add_check "Memoria RAM" "WARN" "RAM critica: apenas ${mem_free_mb}MB livres de ${mem_total_mb}MB.${top_info}"
 		fi
 	else
 		add_check "Memoria RAM" "OK" "${mem_free_mb}MB livres de ${mem_total_mb}MB disponiveis."
@@ -91,6 +109,26 @@ ark_doctor_audit() {
 		fi
 	else
 		add_check "Espaco Flash (/overlay)" "OK" "$((overlay_free_kb / 1024))MB livres no armazenamento gravavel."
+	fi
+
+	# 2b. Checagem de Saude do Storage (Read-Only)
+	if awk '$2 == "/overlay" {print $4}' /proc/mounts 2>/dev/null | grep -q "^ro,"; then
+		errors=$((errors + 1))
+		add_check "Saude do Storage (/overlay)" "FAIL" "SISTEMA READ-ONLY DETECTADO! Possivel falha no chip Flash. Faca backup imediatamente."
+	elif awk '$2 == "/" {print $4}' /proc/mounts 2>/dev/null | grep -q "^ro," && grep -q "/overlay" /proc/mounts 2>/dev/null; then
+		# fallback if overlay is somehow masked
+		errors=$((errors + 1))
+		add_check "Saude do Storage (/overlay)" "FAIL" "SISTEMA ROOT READ-ONLY DETECTADO! Possivel corrupcao na Flash."
+	else
+		add_check "Saude do Storage (/overlay)" "OK" "Sistema de arquivos operando de forma saudavel (Read/Write)."
+	fi
+
+	# 2c. Checagem de OOM Killer no Kernel
+	if dmesg 2>/dev/null | grep -qi "Out of memory: Killed process"; then
+		warnings=$((warnings + 1))
+		add_check "OOM Killer (Kernel)" "WARN" "Eventos de falta de memoria (Out of memory) registrados recentemente no dmesg."
+	else
+		add_check "OOM Killer (Kernel)" "OK" "Kernel estavel. Sem registros de OOM Killer."
 	fi
 
 	# 3. Checagem de Interfaces WAN & SQM Alignment & Baby Jumbo
@@ -193,6 +231,12 @@ ark_doctor_audit() {
 		fi
 	done
 
+	has_ppe=0
+	if [ -e /sys/kernel/debug/ppe0 ] || [ -e /sys/kernel/debug/ppe1 ] || [ -d /sys/devices/platform/soc/15010000.wed ] || \
+	   grep -qiE 'mt7981|mt7986|mt7988|mt7621|mt7622|filogic' /tmp/sysinfo/board_name /tmp/sysinfo/model 2>/dev/null; then
+		has_ppe=1
+	fi
+
 	# 5. Checagem de Conflitos: Flow Offloading vs SQM vs Multi-WAN
 	flow_offload="$(uci -q get firewall.@defaults[0].flow_offloading || echo 0)"
 	mwan_active_count=0
@@ -226,17 +270,26 @@ ark_doctor_audit() {
 			warnings=$((warnings + 1))
 			add_check "Flow Offload vs Multi-WAN" "WARN" "Fastpath ativo com 2+ WANs no mwan3. O Fastpath ignora regras de balanceamento/failover."
 		fi
+	elif [ "$flow_offload" = "0" ] && [ "$sqm_has_active" = "0" ] && [ "$mwan_active_count" -lt 2 ]; then
+		if [ "$auto_fix" = 1 ]; then
+			uci -q set firewall.@defaults[0].flow_offloading=1
+			if [ "$has_ppe" = "1" ]; then
+				uci -q set firewall.@defaults[0].flow_offloading_hw=1
+			fi
+			uci commit firewall
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			fixes_applied=$((fixes_applied + 1))
+			add_check "Aceleracao de Rede" "FIXED" "Sem SQM ou Multi-WAN detectado. Fastpath e Hardware Offload religados para maxima vazao."
+		else
+			warnings=$((warnings + 1))
+			add_check "Aceleracao de Rede" "WARN" "Fastpath desativado, mas nao ha SQM nem Multi-WAN para justifica-lo. Habilite-o para ganhar maxima vazao."
+		fi
 	else
 		add_check "Aceleracao de Rede" "OK" "Sem conflitos entre Fastpath, SQM e Multi-WAN."
 	fi
 
 	# 6. Checagem de Hardware Offload vs Capacidade do Silicio
 	flow_offload_hw="$(uci -q get firewall.@defaults[0].flow_offloading_hw || echo 0)"
-	has_ppe=0
-	if [ -e /sys/kernel/debug/ppe0 ] || [ -e /sys/kernel/debug/ppe1 ] || [ -d /sys/devices/platform/soc/15010000.wed ] || \
-	   grep -qiE 'mt7981|mt7986|mt7988|mt7621|mt7622|filogic' /tmp/sysinfo/board_name /tmp/sysinfo/model 2>/dev/null; then
-		has_ppe=1
-	fi
 	if [ "$flow_offload_hw" = "1" ] && [ "$has_ppe" = "0" ]; then
 		if [ "$auto_fix" = 1 ]; then
 			uci -q set firewall.@defaults[0].flow_offloading_hw=0
@@ -1011,13 +1064,50 @@ ark_doctor_audit() {
 handle_doctor() {
 	_auto_fix=0
 	_format="text"
+	_is_auto=0
 	for _arg in "$@"; do
 		case "$_arg" in
 			--fix|fix|fix=1) _auto_fix=1 ;;
 			--json|format=json|json) _format="json" ;;
+			--auto|auto) _is_auto=1 ; _auto_fix=1 ;;
 		esac
 	done
-	ark_doctor_audit "$_auto_fix" "$_format"
+
+	if [ "$_is_auto" = 1 ]; then
+		# Toggle UCI check for auto-heal
+		local _enabled="$(uci -q get equipe_dashboard.doctor.auto_heal || echo 1)"
+		[ "$_enabled" = "1" ] || return 0
+	fi
+
+	local _lock_dir="${ARK_LOCK_DIR:-/tmp}"
+	[ -d "$_lock_dir" ] || _lock_dir="/tmp"
+	local _lock_path="${_lock_dir}/ark-doctor.lock"
+
+	# Non-blocking lock (OpenWrt lock utility)
+	if command -v lock >/dev/null 2>&1; then
+		lock -n "$_lock_path" || return 0
+		trap "lock -u '$_lock_path'" EXIT INT TERM
+	else
+		mkdir "$_lock_path" 2>/dev/null || return 0
+		trap "rm -rf '$_lock_path'" EXIT INT TERM
+	fi
+
+	if [ "$_is_auto" = 1 ]; then
+		# Redirect output to log file
+		local _log_file="/var/log/ark-doctor.log"
+		[ -w "/var/log" ] || _log_file="${_lock_dir}/ark-doctor.log"
+		local _ts="$(date '+%Y-%m-%d %H:%M:%S')"
+		printf "[%s] Ark Doctor Iniciado (Auto-Heal)...\n" "$_ts" >> "$_log_file" 2>/dev/null || true
+		ark_doctor_audit "$_auto_fix" "$_format" >> "$_log_file" 2>&1
+		
+		# Log rotation (256KB limit)
+		local _size="$(wc -c < "$_log_file" 2>/dev/null || echo 0)"
+		if [ "$_size" -gt 256000 ]; then
+			mv "$_log_file" "${_log_file}.old" 2>/dev/null || true
+		fi
+	else
+		ark_doctor_audit "$_auto_fix" "$_format"
+	fi
 }
 
 # If executed directly as a script

@@ -610,6 +610,71 @@ system_perf_save() {
 
 
 
+system_processes_telemetry() {
+	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+	mem_avail_kb="$(awk '/MemAvailable:/ {print $2; exit}' /proc/meminfo 2>/dev/null || awk '/MemFree:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+	[ -n "$mem_total_kb" ] || mem_total_kb=0
+	[ -n "$mem_avail_kb" ] || mem_avail_kb=0
+
+	procs_json="$(awk -v mem_tot="$mem_total_kb" '
+	FNR == 1 {
+		file = FILENAME
+		if (file ~ /\/statm$/) {
+			split(file, parts, "/")
+			pid = parts[3]
+			rss_kb = $2 * 4
+			vsz_kb = $1 * 4
+			if (pid > 0 && rss_kb > 0) {
+				rss[pid] = rss_kb
+				vsz[pid] = vsz_kb
+				pids[count++] = pid
+			}
+		} else if (file ~ /\/comm$/) {
+			split(file, parts, "/")
+			pid = parts[3]
+			comm[pid] = $0
+		}
+	}
+	END {
+		for (i = 0; i < count; i++) {
+			for (j = i + 1; j < count; j++) {
+				if (rss[pids[j]] > rss[pids[i]]) {
+					tmp = pids[i]
+					pids[i] = pids[j]
+					pids[j] = tmp
+				}
+			}
+		}
+		top_out = "["
+		all_out = "["
+		for (k = 0; k < count; k++) {
+			p = pids[k]
+			c = comm[p] ? comm[p] : ("proc_" p)
+			gsub(/["\\]/, "", c)
+			pct = (mem_tot > 0) ? sprintf("%.1f", (rss[p] / mem_tot) * 100) : "0.0"
+			entry = sprintf("{\"pid\":%d,\"name\":\"%s\",\"rss_kb\":%d,\"vsz_kb\":%d,\"percent\":%s}", p, c, rss[p], vsz[p], pct)
+			if (k > 0) all_out = all_out ","
+			all_out = all_out entry
+			if (k < 5) {
+				if (k > 0) top_out = top_out ","
+				top_out = top_out entry
+			}
+		}
+		top_out = top_out "]"
+		all_out = all_out "]"
+		print "{\"top_rss\":" top_out ",\"processes\":" all_out "}"
+	}
+	' /proc/[0-9]*/statm /proc/[0-9]*/comm 2>/dev/null)"
+
+	[ -n "$procs_json" ] || procs_json='{"top_rss":[],"processes":[]}'
+
+	htop_inst=false
+	{ [ -x /usr/bin/htop ] || [ -x /usr/sbin/htop ]; } && htop_inst=true
+
+	printf '{"ok":true,"mem_total_kb":%s,"mem_avail_kb":%s,"htop_installed":%s,%s\n' \
+		"$mem_total_kb" "$mem_avail_kb" "$htop_inst" "${procs_json#\{}"
+}
+
 system_memory_purge() {
 	sync
 	echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
@@ -1967,7 +2032,7 @@ system_hardware_auto_tune() {
 			dirty_bg=5
 			dns_cache=150
 			budget=300
-			budget_usecs=4000
+			budget_usecs=20000
 			rps_entries=0
 			;;
 		low)
@@ -1980,7 +2045,7 @@ system_hardware_auto_tune() {
 			dirty_bg=7
 			dns_cache=500
 			budget=300
-			budget_usecs=4000
+			budget_usecs=20000
 			rps_entries=0
 			;;
 		standard)
@@ -1993,7 +2058,7 @@ system_hardware_auto_tune() {
 			dirty_bg=10
 			dns_cache=1000
 			budget=300
-			budget_usecs=2000
+			budget_usecs=20000
 			rps_entries=16384
 			;;
 		high)
@@ -2006,7 +2071,7 @@ system_hardware_auto_tune() {
 			dirty_bg=10
 			dns_cache=2500
 			budget=600
-			budget_usecs=2000
+			budget_usecs=20000
 			rps_entries=32768
 			;;
 		extreme)
@@ -2019,7 +2084,7 @@ system_hardware_auto_tune() {
 			dirty_bg=10
 			dns_cache=5000
 			budget=1000
-			budget_usecs=4000
+			budget_usecs=20000
 			rps_entries=65536
 			;;
 	esac
@@ -2672,6 +2737,9 @@ handle_system() {
 	network-capacity-save)
 		shift
 		network_capacity_save "$@"
+		;;
+	system-processes-telemetry)
+		system_processes_telemetry
 		;;
 	system-memory-purge)
 		rm -f /tmp/ark-perf-cache.ts 2>/dev/null || true

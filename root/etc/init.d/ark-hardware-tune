@@ -27,7 +27,58 @@ ark_calculate_rps_mask() {
 	}' 2>/dev/null || echo "f"
 }
 
+ark_tune_irq_affinity() {
+	local cores="$1"
+	[ -z "$cores" ] || [ "$cores" -lt 2 ] 2>/dev/null && return 0
+	[ -f /proc/interrupts ] && [ -d /proc/irq ] || return 0
+
+	local eth_mask=2
+	local wifi_mask=2
+
+	if [ "$cores" -ge 8 ]; then
+		# 8+ Cores (x86 Mini-PCs, BPi-R4, Servidores Proxmox/Bare-Metal):
+		# Core 0: SO / Userspace / LuCI / Web
+		# Core 1: Ethernet WAN (0x2)
+		# Core 2: Ethernet LAN (0x4)
+		# Core 3: Wi-Fi (0x8)
+		# Cores 4+: Softirqs, RPS, CAKE SQM, Crypto
+		eth_mask=2
+		wifi_mask=8
+	elif [ "$cores" -ge 4 ]; then
+		# Quad/Hexa-Core (Acer Predator W6x MT7986, T7 IPQ5332, x86 Quad):
+		# Core 0: SO / Userspace / AdGuard / DNS
+		# Core 1: Ethernet WAN/LAN (0x2)
+		# Core 2: Wi-Fi 2.4/5/6 GHz (0x4)
+		# Core 3: SQM / CAKE e Softirqs
+		eth_mask=2
+		wifi_mask=4
+	elif [ "$cores" -ge 2 ]; then
+		# Dual-Core (Cudy WR3000 v1 MT7981, IPQ5018, etc.):
+		# Core 0: SO / Userspace
+		# Core 1: Rede completa (Ethernet + Wi-Fi) (0x2)
+		eth_mask=2
+		wifi_mask=2
+	fi
+
+	# Filtro universal abrangendo MediaTek, Qualcomm, Realtek, Broadcom, Intel e VirtIO
+	awk '/ethernet|mtk_eth|edma|nss|igb|ixgbe|i40e|e1000|r8169|r8125|virtio|mt76|mt79|ath|qca|rtw|rtl|brcm|wifi|wlan/ {sub(/:/, "", $1); print $1, $NF}' /proc/interrupts 2>/dev/null | while read -r irq name; do
+		[ -n "$irq" ] && [ -f "/proc/irq/$irq/smp_affinity" ] || continue
+		case "$name" in
+			*ethernet*|mtk_eth|*eth*|*edma*|*nss*|*igb*|*ixgbe*|*i40e*|*e1000*|*r8169*|*r8125*|*virtio*)
+				echo "$eth_mask" > "/proc/irq/$irq/smp_affinity" 2>/dev/null || true
+				;;
+			mt76*|mt79*|ath*|qca*|rtw*|rtl*|brcm*|*wifi*|*wlan*)
+				echo "$wifi_mask" > "/proc/irq/$irq/smp_affinity" 2>/dev/null || true
+				;;
+		esac
+	done
+	logger -t ark-hardware-tune "Afinidade de IRQ distribuida dinamicamente (${cores} cores): Ethernet (Core mask 0x${eth_mask}), Wi-Fi (Core mask 0x${wifi_mask})."
+}
+
 start() {
+	local _enabled="$(uci -q get equipe_dashboard.hardware_tune.enabled || echo 1)"
+	[ "$_enabled" = "1" ] || return 0
+
 	# Source common runtime if available
 	[ -f /usr/lib/ark/common.sh ] && . /usr/lib/ark/common.sh
 
@@ -52,6 +103,24 @@ start() {
 
 	logger -t ark-hardware-tune "Iniciando calibracao de hardware: ${cpu_cores} CPUs (RPS Mask: ${rps_mask}), $((mem_total_kb / 1024)) MB RAM."
 
+	# Distribuir interrupções de hardware (evita afunilar 100% dos pacotes no Core 0)
+	ark_tune_irq_affinity "$cpu_cores"
+
+	# Ativar ZRAM se a memória for baixa (< 256MB) para segurar AdGuardHome
+	if [ "$mem_total_kb" -le 262144 ]; then
+		if ! grep -q zram /proc/swaps 2>/dev/null; then
+			modprobe zram num_devices=1 2>/dev/null || true
+			if [ -b /dev/zram0 ]; then
+				echo lz4 > /sys/block/zram0/comp_algorithm 2>/dev/null || echo zstd > /sys/block/zram0/comp_algorithm 2>/dev/null || true
+				local zram_size=$(( mem_total_kb * 1024 / 2 ))
+				echo $zram_size > /sys/block/zram0/disksize 2>/dev/null || true
+				mkswap /dev/zram0 2>/dev/null || true
+				swapon -p 10 /dev/zram0 2>/dev/null || true
+				logger -t ark-hardware-tune "ZRAM Swap ativado de $((zram_size / 1048576)) MB."
+			fi
+		fi
+	fi
+
 	# -------------------------------------------------------------------------
 	# PERFIL 1: LOW-SPEC (RAM <= 192 MB ou 1 Núcleo de CPU)
 	# Exemplo: D-Link DGL-5500 (128 MB RAM, MIPS 720 MHz single-core, 16 MB Flash)
@@ -59,10 +128,13 @@ start() {
 	# -------------------------------------------------------------------------
 	if [ "$mem_total_kb" -le 196608 ] || [ "$cpu_cores" -le 1 ]; then
 		logger -t ark-hardware-tune "Aplicando Perfil Low-Spec (Economia de RAM & CPU mono-core)."
+		# uhttpd dinamico
+		[ "$(uci -q get uhttpd.main.max_connections)" != "30" ] && { uci -q set uhttpd.main.max_connections='30'; uci -q set uhttpd.main.tcp_keepalive='1'; uci commit uhttpd; /etc/init.d/uhttpd restart >/dev/null 2>&1 || true; }
 
 		sysctl -q -w net.core.netdev_max_backlog=1000 2>/dev/null || true
+		sysctl -q -w vm.min_free_kbytes=4096 2>/dev/null || true
 		sysctl -q -w net.core.netdev_budget=300 2>/dev/null || true
-		sysctl -q -w net.core.netdev_budget_usecs=4000 2>/dev/null || true
+		sysctl -q -w net.core.netdev_budget_usecs=20000 2>/dev/null || true
 		sysctl -q -w net.ipv4.tcp_rmem="4096 87380 1048576" 2>/dev/null || true
 		sysctl -q -w net.ipv4.tcp_wmem="4096 65536 1048576" 2>/dev/null || true
 
@@ -71,6 +143,8 @@ start() {
 			case "$iface" in
 				eth*|lan*)
 					[ -d "/sys/class/net/$iface" ] || continue
+					tc qdisc show dev "$iface" 2>/dev/null | grep -q "cake" && continue
+					[ "$(uci -q get firewall.@defaults[0].flow_offloading_hw)" = "1" ] && continue
 					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \
 					tc qdisc replace dev "$iface" root fq_codel memory_limit 2Mb limit 1024 target 5ms quantum 1514 2>/dev/null || true
 					;;
@@ -95,10 +169,13 @@ start() {
 	# -------------------------------------------------------------------------
 	elif [ "$mem_total_kb" -le 524288 ] || [ "$cpu_cores" -le 2 ]; then
 		logger -t ark-hardware-tune "Aplicando Perfil Mid-Spec (Dual-Core equilibrado, RPS Mask: ${rps_mask})."
+		# uhttpd dinamico
+		[ "$(uci -q get uhttpd.main.max_connections)" != "80" ] && { uci -q set uhttpd.main.max_connections='80'; uci -q set uhttpd.main.tcp_keepalive='1'; uci commit uhttpd; /etc/init.d/uhttpd restart >/dev/null 2>&1 || true; }
 
 		sysctl -q -w net.core.netdev_max_backlog=5000 2>/dev/null || true
+		sysctl -q -w vm.min_free_kbytes=16384 2>/dev/null || true
 		sysctl -q -w net.core.netdev_budget=300 2>/dev/null || true
-		sysctl -q -w net.core.netdev_budget_usecs=2000 2>/dev/null || true
+		sysctl -q -w net.core.netdev_budget_usecs=20000 2>/dev/null || true
 		sysctl -q -w net.ipv4.tcp_rmem="4096 87380 4194304" 2>/dev/null || true
 		sysctl -q -w net.ipv4.tcp_wmem="4096 65536 4194304" 2>/dev/null || true
 
@@ -117,7 +194,10 @@ start() {
 			case "$iface" in
 				eth*|lan*)
 					[ -d "/sys/class/net/$iface" ] || continue
+					ethtool -K "$iface" gro on gso on 2>/dev/null || true
 					ip link set dev "$iface" txqueuelen 1500 2>/dev/null || true
+					tc qdisc show dev "$iface" 2>/dev/null | grep -q "cake" && continue
+					[ "$(uci -q get firewall.@defaults[0].flow_offloading_hw)" = "1" ] && continue
 					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || true
 					for subq in 1 2 3 4 5 6 7 8 9 a b c d e f 10; do
 						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit 8Mb limit 10240 target 5ms quantum 1514 2>/dev/null || true
@@ -133,10 +213,13 @@ start() {
 	# -------------------------------------------------------------------------
 	elif [ "$mem_total_kb" -le 1572864 ] && [ "$cpu_cores" -lt 8 ]; then
 		logger -t ark-hardware-tune "Aplicando Perfil High-Spec (Quad/Hexa-Core 1GB RAM, RPS Mask: ${rps_mask})."
+		# uhttpd dinamico
+		[ "$(uci -q get uhttpd.main.max_connections)" != "150" ] && { uci -q set uhttpd.main.max_connections='150'; uci -q set uhttpd.main.tcp_keepalive='1'; uci commit uhttpd; /etc/init.d/uhttpd restart >/dev/null 2>&1 || true; }
 
 		sysctl -q -w net.core.netdev_max_backlog=10000 2>/dev/null || true
+		sysctl -q -w vm.min_free_kbytes=65536 2>/dev/null || true
 		sysctl -q -w net.core.netdev_budget=600 2>/dev/null || true
-		sysctl -q -w net.core.netdev_budget_usecs=2000 2>/dev/null || true
+		sysctl -q -w net.core.netdev_budget_usecs=20000 2>/dev/null || true
 		sysctl -q -w net.ipv4.tcp_rmem="4096 87380 8388608" 2>/dev/null || true
 		sysctl -q -w net.ipv4.tcp_wmem="4096 65536 8388608" 2>/dev/null || true
 
@@ -155,7 +238,10 @@ start() {
 			case "$iface" in
 				eth*|lan*)
 					[ -d "/sys/class/net/$iface" ] || continue
+					ethtool -K "$iface" gro on gso on 2>/dev/null || true
 					ip link set dev "$iface" txqueuelen 2048 2>/dev/null || true
+					tc qdisc show dev "$iface" 2>/dev/null | grep -q "cake" && continue
+					[ "$(uci -q get firewall.@defaults[0].flow_offloading_hw)" = "1" ] && continue
 					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || true
 					for subq in 1 2 3 4 5 6 7 8 9 a b c d e f 10; do
 						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit 16Mb limit 20480 target 5ms quantum 1514 2>/dev/null || true
@@ -172,6 +258,8 @@ start() {
 	# -------------------------------------------------------------------------
 	else
 		logger -t ark-hardware-tune "Aplicando Perfil Ultra-Spec / Enterprise (${cpu_cores} Cores, RPS Mask: ${rps_mask}, $((mem_total_kb / 1024)) MB RAM)."
+		# uhttpd dinamico
+		[ "$(uci -q get uhttpd.main.max_connections)" != "150" ] && { uci -q set uhttpd.main.max_connections='150'; uci -q set uhttpd.main.tcp_keepalive='1'; uci commit uhttpd; /etc/init.d/uhttpd restart >/dev/null 2>&1 || true; }
 
 		local tcp_buf=16777216
 		local qdisc_mem="32Mb"
@@ -193,8 +281,9 @@ start() {
 		fi
 
 		sysctl -q -w net.core.netdev_max_backlog="$backlog" 2>/dev/null || true
+		sysctl -q -w vm.min_free_kbytes=131072 2>/dev/null || true
 		sysctl -q -w net.core.netdev_budget=1000 2>/dev/null || true
-		sysctl -q -w net.core.netdev_budget_usecs=4000 2>/dev/null || true
+		sysctl -q -w net.core.netdev_budget_usecs=20000 2>/dev/null || true
 		sysctl -q -w net.ipv4.tcp_rmem="4096 87380 $tcp_buf" 2>/dev/null || true
 		sysctl -q -w net.ipv4.tcp_wmem="4096 65536 $tcp_buf" 2>/dev/null || true
 
@@ -212,7 +301,10 @@ start() {
 			case "$iface" in
 				eth*|lan*|en*|igb*|ixgbe*|i40e*)
 					[ -d "/sys/class/net/$iface" ] || continue
+					ethtool -K "$iface" gro on gso on 2>/dev/null || true
 					ip link set dev "$iface" txqueuelen "$txq" 2>/dev/null || true
+					tc qdisc show dev "$iface" 2>/dev/null | grep -q "cake" && continue
+					[ "$(uci -q get firewall.@defaults[0].flow_offloading_hw)" = "1" ] && continue
 					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || true
 					for subq in 1 2 3 4 5 6 7 8 9 a b c d e f 10 11 12 13 14 15 16 17 18 19 1a 1b 1c 1d 1e 1f 20; do
 						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit "$qdisc_mem" limit "$qdisc_limit" target 5ms quantum 1514 2>/dev/null || true

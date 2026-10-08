@@ -2027,6 +2027,7 @@ handle_network() {
 			*) val=0 ;;
 		esac
 		uci -q set "network.lan.igmp_snooping=$val"
+		uci -q set "network.lan.multicast_querier=$val"
 		dev_name="$(uci -q get network.lan.device || echo "")"
 		if [ -n "$dev_name" ]; then
 			for s in $(uci show network 2>/dev/null | grep "network.@device\[.*\]\.name='$dev_name'" | cut -d. -f2); do
@@ -2105,8 +2106,10 @@ handle_network() {
 		uci -q set network.lan.netmask="$netmask"
 		if [ -n "$igmp_snooping" ]; then
 			uci -q set network.lan.igmp_snooping="$igmp_snooping"
+			uci -q set network.lan.multicast_querier="$igmp_snooping"
 			if [ -f /sys/class/net/br-lan/bridge/multicast_snooping ]; then
 				echo "$igmp_snooping" > /sys/class/net/br-lan/bridge/multicast_snooping 2>/dev/null || true
+				echo "$igmp_snooping" > /sys/class/net/br-lan/bridge/multicast_querier 2>/dev/null || true
 			fi
 		fi
 		uci -q set dhcp.lan=dhcp
@@ -2864,7 +2867,11 @@ handle_network() {
 			[ -n "${ARK_ROOT}" ] && sysctl_conf="${ARK_ROOT}/etc/sysctl.d/99-ark-performance.conf"
 			mkdir -p "$(dirname "$sysctl_conf")"
 			cca="cubic"
-			grep -qw bbr /proc/sys/net/ipv4/tcp_available_congestion_control 2>/dev/null && cca="bbr"
+			if grep -qw bbr3 /proc/sys/net/ipv4/tcp_available_congestion_control 2>/dev/null; then
+				cca="bbr3"
+			elif grep -qw bbr /proc/sys/net/ipv4/tcp_available_congestion_control 2>/dev/null; then
+				cca="bbr"
+			fi
 			cat <<EOF > "$sysctl_conf"
 net.core.rmem_max=8388608
 net.core.wmem_max=8388608
@@ -2872,6 +2879,7 @@ net.ipv4.tcp_rmem=4096 87380 8388608
 net.ipv4.tcp_wmem=4096 65536 8388608
 net.core.netdev_max_backlog=5000
 net.ipv4.tcp_congestion_control=$cca
+net.ipv4.tcp_ecn=1
 net.ipv4.tcp_mtu_probing=1
 net.ipv4.tcp_slow_start_after_idle=0
 net.ipv4.tcp_fastopen=3
@@ -2887,6 +2895,7 @@ EOF
 			sysctl -w net.ipv4.tcp_wmem="4096 65536 212992" >/dev/null 2>&1 || true
 			sysctl -w net.core.netdev_max_backlog=1000 >/dev/null 2>&1 || true
 			sysctl -w net.ipv4.tcp_congestion_control=cubic >/dev/null 2>&1 || true
+			sysctl -w net.ipv4.tcp_ecn=0 >/dev/null 2>&1 || true
 			sysctl -w net.ipv4.tcp_mtu_probing=0 >/dev/null 2>&1 || true
 			sysctl -w net.ipv4.tcp_slow_start_after_idle=1 >/dev/null 2>&1 || true
 			sysctl -w net.ipv4.tcp_fastopen=1 >/dev/null 2>&1 || true
@@ -3018,6 +3027,7 @@ EOF
 		if [ -n "$igmp_snooping" ]; then
 			case "$igmp_snooping" in 1|true) igmp_val=1 ;; *) igmp_val=0 ;; esac
 			uci -q set "network.lan.igmp_snooping=$igmp_val"
+			uci -q set "network.lan.multicast_querier=$igmp_val"
 			for s in $(uci -q show network 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1); do
 				if [ "$(uci -q get "network.$s.name")" = "br-lan" ]; then
 					uci -q set "network.$s.igmp_snooping=$igmp_val"

@@ -13,4 +13,5 @@ const FEATURE_META={
 	,wireguard:{name:'WireGuard VPN',description:'VPN de alta velocidade integrada ao kernel Linux. Conecte o roteador a servidores externos (Cliente) ou crie túneis locais (Servidor) com QR Code.',recommended:true}
 	,adblock:{name:'Bloqueador de Anúncios',description:'Protege a rede inteira contra propagandas invasivas, anúncios de Smart TV e rastreadores.',recommended:true}
 	,usteer:{name:'Assistente de Roaming (usteer)',description:'Orquestra troca rápida de sinal (AP Steering) e Band Steering entre múltiplos roteadores e bandas Wi-Fi.',recommended:true}
+	,htop:{name:'Gerenciador de Processos (htop)',description:'Monitor interativo avançado em tempo real via terminal (SSH) com suporte a cores e uso do mouse.'}
 };

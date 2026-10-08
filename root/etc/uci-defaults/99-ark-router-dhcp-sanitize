@@ -156,6 +156,13 @@ if [ -f /etc/adguardhome/adguardhome.yaml ]; then
 	sed -i '/^[[:space:]]*file: ""/s|file: ""|file: "/var/lib/adguardhome/adguardhome.log"|' /etc/adguardhome/adguardhome.yaml
 	sed -i 's/^[[:space:]]*max_size: 100/  max_size: 1/' /etc/adguardhome/adguardhome.yaml
 	sed -i 's/^[[:space:]]*max_backups: 0/  max_backups: 1/' /etc/adguardhome/adguardhome.yaml
+	
+	# Proteger memoria Flash (NAND/SPI) redirecionando QueryLog e Stats para o tmpfs (RAM)
+	mkdir -p /tmp/adguardhome 2>/dev/null || true
+	chown adguardhome:adguardhome /tmp/adguardhome 2>/dev/null || true
+	# Como o macOS/Busybox sed varia, usamos awk para injetar com seguranca as paths do tmpfs
+	awk '/^querylog:/{in_q=1} /^statistics:/{in_s=1} /^[^ ]/{if($1!="querylog:" && $1!="statistics:") {in_q=0; in_s=0}} in_q && /^[[:space:]]*file_path:/ {sub(/file_path:.*/, "file_path: \"/tmp/adguardhome/querylog.json\"");} in_s && /^[[:space:]]*file_path:/ {sub(/file_path:.*/, "file_path: \"/tmp/adguardhome/stats.db\"");} {print}' /etc/adguardhome/adguardhome.yaml > /tmp/adg_tmp.yaml && mv /tmp/adg_tmp.yaml /etc/adguardhome/adguardhome.yaml 2>/dev/null || true
+
 	# Garantir permissao e ownership para o daemon rodando sob o usuario adguardhome (ujail)
 	chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
 	chmod 644 /etc/adguardhome/adguardhome.yaml 2>/dev/null || true

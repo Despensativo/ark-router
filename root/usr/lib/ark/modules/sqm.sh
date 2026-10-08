@@ -304,6 +304,21 @@ handle_sqm() {
 				uci commit firewall 2>/dev/null || true
 				/etc/init.d/firewall reload >/dev/null 2>&1 || true
 			fi
+		else
+			local mwan_count=0
+			if [ -f /etc/config/mwan3 ]; then
+				for w in $(uci -q show mwan3 2>/dev/null | grep "\.enabled='1'" | cut -d. -f2 | grep -v "\."); do
+					mwan_count=$((mwan_count + 1))
+				done
+			fi
+			if [ "$(uci -q get firewall.@defaults[0].flow_offloading || echo 0)" = "0" ] && [ "$mwan_count" -lt 2 ]; then
+				uci -q set firewall.@defaults[0].flow_offloading=1
+				if [ -d /sys/kernel/debug/ppe0 ] || [ -d /sys/kernel/debug/ppe1 ] || [ -f /sys/kernel/debug/ppe/offload_stats ] || [ -d /sys/devices/platform/soc/*ppe* ]; then
+					uci -q set firewall.@defaults[0].flow_offloading_hw=1
+				fi
+				uci commit firewall 2>/dev/null || true
+				/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			fi
 		fi
 		/etc/init.d/sqm restart
 		apply_guest_tc_limit >/dev/null 2>&1 || true
@@ -351,6 +366,31 @@ handle_sqm() {
 		done
 		uci commit sqm
 		uci commit qos_equipe 2>/dev/null || true
+		# Trava de exclusao mutua: SQM desativa Fastpath/Flow Offloading; ausência de SQM reativa o Hardware Offloading se o silício suportar.
+		if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
+			if [ "$(uci -q get firewall.@defaults[0].flow_offloading || echo 0)" = "1" ] || \
+			   [ "$(uci -q get firewall.@defaults[0].flow_offloading_hw || echo 0)" = "1" ]; then
+				uci -q set firewall.@defaults[0].flow_offloading=0
+				uci -q set firewall.@defaults[0].flow_offloading_hw=0
+				uci commit firewall 2>/dev/null || true
+				/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			fi
+		else
+			local mwan_count=0
+			if [ -f /etc/config/mwan3 ]; then
+				for w in $(uci -q show mwan3 2>/dev/null | grep "\.enabled='1'" | cut -d. -f2 | grep -v "\."); do
+					mwan_count=$((mwan_count + 1))
+				done
+			fi
+			if [ "$(uci -q get firewall.@defaults[0].flow_offloading || echo 0)" = "0" ] && [ "$mwan_count" -lt 2 ]; then
+				uci -q set firewall.@defaults[0].flow_offloading=1
+				if [ -d /sys/kernel/debug/ppe0 ] || [ -d /sys/kernel/debug/ppe1 ] || [ -f /sys/kernel/debug/ppe/offload_stats ] || [ -d /sys/devices/platform/soc/*ppe* ]; then
+					uci -q set firewall.@defaults[0].flow_offloading_hw=1
+				fi
+				uci commit firewall 2>/dev/null || true
+				/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			fi
+		fi
 		/etc/init.d/sqm restart
 		apply_guest_tc_limit >/dev/null 2>&1 || true
 		echo ok

@@ -2521,6 +2521,31 @@ const systemMethods = {
 			}
 		}, ['⚡ Otimizar Automaticamente por Hardware']);
 
+		const topProcContainer = E('div', {
+			style: 'display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px;width:100%;'
+		}, [
+			E('small', { class: 'ex-muted' }, ['Carregando consumo real de processos…'])
+		]);
+
+		fs.exec('/usr/sbin/equipe-dashboard-control', ['system-processes-telemetry']).then(function(r) {
+			if (!r || r.code !== 0 || !r.stdout) return;
+			try {
+				const d = JSON.parse(r.stdout);
+				const top = d.top_rss || [];
+				if (!top.length) {
+					topProcContainer.innerHTML = '<span class="ex-muted">Nenhum processo em execução registrado.</span>';
+					return;
+				}
+				topProcContainer.innerHTML = '';
+				top.slice(0, 6).forEach(function(p) {
+					const mb = (p.rss_kb / 1024).toFixed(1) + ' MB';
+					const isGoOrHeavy = p.vsz_kb > 200000;
+					const badge = isGoOrHeavy ? 'GO: ' + (p.vsz_kb / 1024).toFixed(0) + 'MB VSZ' : p.percent + '% RAM';
+					topProcContainer.appendChild(infoItem(p.name + ' (PID ' + p.pid + ')', mb, badge));
+				});
+			} catch(e) {}
+		});
+
 		ui.showModal('Especificações Técnicas do Hardware', [
 			E('p', { class: 'ex-muted' }, ['Diagnóstico abrangente e dinâmico dos componentes físicos, sensores térmicos e capacidades do seu roteador.']),
 			E('div', { style: 'max-height: 72vh; overflow-y: auto; padding-right: 4px;' }, [
@@ -2529,6 +2554,12 @@ const systemMethods = {
 				sectionBlock('Processador e Desempenho', '⚡', cpuRows),
 				sectionBlock('Sensores Térmicos ao Vivo', '🌡️', thermalRows),
 				sectionBlock('Memória RAM', '💾', memRows),
+				sectionBlock('Maiores Consumidores de RAM (Memória Real RSS)', '⚡', [
+					topProcContainer,
+					E('div', { style: 'margin-top:8px;text-align:right;' }, [
+						E('a', { class: 'ex-mini-button', href: '/cgi-bin/luci/admin/status/processes', style: 'text-decoration:none;' }, ['Ver Tabela Completa de Processos ➔'])
+					])
+				]),
 				sectionBlock('Armazenamento Flash & RAM', '💽', stRows),
 				sectionBlock('Portas Físicas Ethernet', '🌐', portRows),
 				sectionBlock('Recursos de Rede Sem Fio (Wi-Fi)', '📶', wifiRows)
@@ -2546,19 +2577,46 @@ const systemMethods = {
 		const appearanceColors=E('div',{class:'ex-color-fields'},[E('label',{},[E('span',{},['Cor principal']),primary]),E('label',{},[E('span',{},['Cor secundária']),secondary])]);
 		const isLegacy = !!(this.capabilities && this.capabilities.hardware && this.capabilities.hardware.is_legacy_owrt);
 		const currentTheme = this.capabilities.current_theme || 'bootstrap';
-		const themeOptions = [];
-		if (currentTheme === 'ark') {
-			themeOptions.push(E('option',{value:'ark'},['⚡ Tema ARK (Nativo)']));
-		}
-		themeOptions.push(E('option',{value:'bootstrap'},['Tema Bootstrap (Padrão)']));
-		const themeSelect = E('select',{class:'cbi-input-select'}, themeOptions);
+		const rawAvailable = (this.capabilities.available_themes && this.capabilities.available_themes.length) ? this.capabilities.available_themes.slice() : ['ark', 'bootstrap'];
+		if (rawAvailable.indexOf('ark') === -1) rawAvailable.unshift('ark');
+		if (rawAvailable.indexOf('bootstrap') === -1) rawAvailable.push('bootstrap');
+
+		const themeLabels = {
+			ark: '⚡ Tema ARK (Nativo)',
+			bootstrap: 'Tema Bootstrap (Padrão)',
+			material: 'Tema Material',
+			openwrt: 'Tema OpenWrt'
+		};
+		const themeOptions = rawAvailable.map(function(t) {
+			const label = themeLabels[t] || ('Tema ' + t.charAt(0).toUpperCase() + t.slice(1));
+			return E('option', { value: t }, [label]);
+		});
+		const themeSelect = E('select', { class: 'cbi-input-select' }, themeOptions);
 		themeSelect.value = currentTheme;
-		const themeRow = E('div',{class:'ex-brand-row',style:'margin-top:12px;padding-top:12px;border-top:1px solid rgba(127,127,127,0.14);'},[
-			E('label',{},['Tema do LuCI']),
-			themeSelect,
-			E('button',{class:'ex-mini-button','click':L.bind(function(){
-				this.useTheme(themeSelect.value);
-			},this)},['Aplicar tema'])
+
+		const updateColorFields = function() {
+			const isCustom = appearanceMode.value === 'custom';
+			primary.disabled = !isCustom;
+			secondary.disabled = !isCustom;
+			if (appearanceColors) appearanceColors.classList.toggle('is-disabled', !isCustom);
+		};
+		appearanceMode.addEventListener('change', updateColorFields);
+		updateColorFields();
+
+		const themeRow = E('div', { class: 'ex-theme-row' }, [
+			E('div', {}, [
+				E('strong', {}, ['Tema da Interface (LuCI)']),
+				E('small', { class: 'ex-muted' }, ['Alterne entre o Tema ARK e o Tema Bootstrap padrão do sistema.'])
+			]),
+			E('div', { class: 'ex-theme-actions' }, [
+				themeSelect,
+				E('button', {
+					class: 'ex-mini-button',
+					'click': L.bind(function() {
+						this.useTheme(themeSelect.value);
+					}, this)
+				}, ['Aplicar tema'])
+			])
 		]);
 
 		const isSat = isSatelliteOrAp(this.currentData || (this.capabilities && this.capabilities));
@@ -2675,7 +2733,26 @@ const systemMethods = {
 			bulkPanel,
 			ipv6Panel,
 			starlinkModalPanel,
-			E('section',{class:'ex-appearance-panel'},[E('div',{class:'ex-appearance-heading'},[E('div',{},[E('strong',{},['Aparência']),E('small',{class:'ex-muted'},['No modo automático, o painel acompanha as cores e o modo claro ou escuro do tema LuCI.'])]),appearanceMode]),appearanceColors,E('button',{class:'ex-mini-button ex-save-appearance','click':L.bind(function(){this.setAppearance(appearanceMode.value,primary.value,secondary.value);},this)},['Salvar aparência']),themeRow]),
+			E('section', { class: 'ex-appearance-panel' }, [
+				E('div', { class: 'ex-appearance-heading' }, [
+					E('div', {}, [
+						E('strong', {}, ['Aparência']),
+						E('small', { class: 'ex-muted' }, ['No modo automático, o painel acompanha as cores e o modo claro ou escuro do tema LuCI.'])
+					]),
+					appearanceMode
+				]),
+				E('div', { class: 'ex-appearance-colors-row' }, [
+					appearanceColors,
+					E('button', {
+						class: 'ex-mini-button ex-save-appearance',
+						'click': L.bind(function() {
+							this.setAppearance(appearanceMode.value, primary.value, secondary.value);
+						}, this)
+					}, ['Salvar aparência'])
+				]),
+				E('div', { class: 'ex-appearance-divider' }),
+				themeRow
+			]),
 			E('div',{class:'ex-feature-list'},rows),
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])
 		]);

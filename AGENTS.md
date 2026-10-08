@@ -10,7 +10,7 @@
 
 ## 1. Escopo e Identificação
 - **Repositório**: Canônico oficial do ARK Router (OpenWrt LuCI Application & Theme).
-- **Versão Ativa**: `1.5.10` (declarada em `VERSION` e `Makefile:PKG_VERSION:=1.5.10`).
+- **Versão Ativa**: `1.5.11` (declarada em `VERSION` e `Makefile:PKG_VERSION:=1.5.11`).
 - **Arquitetura Alvo**: Dual OpenWrt — Legado (19.07 a 21.02, `opkg`, `iptables`/`fw3`) e Moderno (22.03 a 25.x, `opkg`/`apk`, `nftables`/`fw4`). Detalhes em `docs/COMPATIBILITY_MATRIX.md`.
 - **Hardware Suportado**: De 128 MB RAM / 16 MB SPI Flash (DGL-5500) até 256 MB a 1 GB+ RAM (Cudy WR3000, Predator W6x, Filogic).
 
@@ -40,10 +40,12 @@
    - Testes devem ser executados primeiro no VirtualBox.
    - Deploy físico ocorre somente após autorização e confirmação manual explícita escrevendo **SIM**.
    - Nenhuma aprovação virtual autoriza automaticamente publicação em roteador real.
-8. **Regra de Ouro de Internacionalização (i18n Triplo: PT-BR / EN / ES)**:
-   - Todo novo modal, botão, título de card, kicker, opção de seletor ou mensagem de status/erro DEVE ser obrigatoriamente registrado no motor de tradução (`src/core/i18n.js`) com cobertura completa e simétrica nos 3 idiomas suportados: **Português (Brasil)**, **Inglês** e **Espanhol neutro**.
+8. **Regra de Ouro de Internacionalização (i18n Triplo: PT-BR / EN / ES) & Pre-Release Gate**:
+   - **Desenvolvimento Token-Efficient**: Durante a fase de criação, prototipagem e refatoração de código/telas em `src/modules/`, o desenvolvimento é conduzido **100% em Português do Brasil (PT-BR)** nativo (idioma padrão do projeto). É terminantemente proibido gastar tokens traduzindo componentes intermediários ou experimentais que ainda podem ser alterados ou descartados.
+   - **Pre-Release Translation Gate**: A catalogação e geração das traduções para **Inglês (EN)** e **Espanhol neutro (ES)** ocorrem de forma concentrada em lote imediatamente antes do fechamento da versão e publicação no GitHub. Executa-se `python scripts/audit_i18n.py --extract` para exportar strings pendentes e integrá-las de uma só vez aos dicionários (`src/core/i18n/en.js` e `es.js`).
    - **Termos Técnicos Universais Intocáveis**: Protocolos e conceitos consagrados da indústria de telecomunicações (`Bufferbloat`, `Failover`, `Load Balancing`, `Throughput`, `Ping`, `Jitter`, `Full Duplex`, `Lease`, `CAKE`, `SQM`, `DHCP`, `DNS`, `IPv4`, `IPv6`, `DSCP`, `UPnP`, `WPA3`, `SSID`, `MAC`, `MTU`, `VLAN`, `Starlink`, `Speedify`, `WireGuard`, `OpenVPN`, `ZeroTier`, `Modo Gamer`) devem ser mantidos sem tradução forçada em todos os idiomas.
-   - **Trava de Validação Contínua**: O utilitário `python scripts/audit_i18n.py` é executado obrigatoriamente na bateria de testes locais (`tests/run_local_tests.sh`). Qualquer string crítica sem correspondência em `EN` e `ES` resulta em falha imediata dos testes e bloqueia conclusões ou deploys.
+   - **Qualidade Nativa**: O inglês deve seguir terminologia padrão internacional de telecomunicações (ex: *Port Forwarding*, *Traffic Rules*, *Reboot*); o espanhol deve ser neutro e compreensível na América Latina e internacionalmente, sem regionalismos restritos.
+   - **Trava de Validação Contínua**: O utilitário `python scripts/audit_i18n.py --strict` é executado obrigatoriamente na bateria de testes locais (`tests/run_local_tests.sh`). Qualquer string crítica sem correspondência em `EN` e `ES` resulta em falha imediata dos testes e bloqueia conclusões ou deploys. Guia canônico completo: `docs/I18N_TRANSLATION_GUIDE.md`.
 9. **Validação Visual Obrigatória por Screenshot / Print de Interface**:
    - Sempre que implementar ou modificar qualquer funcionalidade, componente, modal ou fluxo da interface (UI / frontend), é ESTRITAMENTE OBRIGATÓRIO executar validação visual no navegador (via automação headless/CDP em `scripts/browser_test_as_user.mjs` ou script de inspeção) com captura real de screenshot/print e checagem de erros no console do navegador (`Runtime.exceptionThrown`, `console.error`) antes de finalizar a entrega.
 10. **Regra de Ouro de Isolamento Absoluto de Motores de Firewall (`fw4` vs `fw3`)**:
@@ -148,6 +150,7 @@ O ambiente principal de desenvolvimento e validação do ARK Router deve ser uma
 - **Segurança, Permissões e Shell POSIX**: `docs/security-rules.md` e `docs/SECURITY.md`
 - **Dual OpenWrt, SQM e ark-doctor**: `docs/network-diagnostics.md`
 - **Firmware SquashFS, Hashes e Sysupgrade**: `docs/firmware-runbook.md`
+- **Internacionalização (i18n), Catálogo de UI e Pre-Release Gate**: `docs/I18N_TRANSLATION_GUIDE.md`
 - **Publicação, Build de APKs e GitHub Releases**: `docs/PUBLISHING.md`
 - **Histórico Cumulativo de Alterações**: `CHANGELOG.md` (consulta sob demanda; não carregar no contexto inicial).
 

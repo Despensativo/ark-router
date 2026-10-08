@@ -4,7 +4,7 @@
 'require poll';
 'require fs';
 'require ui';
-const ARK_BUILD_VERSION = '1.5.10';
+const ARK_BUILD_VERSION = '1.5.11';
 if (typeof window !== 'undefined') {
 	window.ARK_BUILD_VERSION = ARK_BUILD_VERSION;
 	window.ARK_VERSION = ARK_BUILD_VERSION;
@@ -104,6 +104,7 @@ const FEATURE_META={
 	,wireguard:{name:'WireGuard VPN',description:'VPN de alta velocidade integrada ao kernel Linux. Conecte o roteador a servidores externos (Cliente) ou crie túneis locais (Servidor) com QR Code.',recommended:true}
 	,adblock:{name:'Bloqueador de Anúncios',description:'Protege a rede inteira contra propagandas invasivas, anúncios de Smart TV e rastreadores.',recommended:true}
 	,usteer:{name:'Assistente de Roaming (usteer)',description:'Orquestra troca rápida de sinal (AP Steering) e Band Steering entre múltiplos roteadores e bandas Wi-Fi.',recommended:true}
+	,htop:{name:'Gerenciador de Processos (htop)',description:'Monitor interativo avançado em tempo real via terminal (SSH) com suporte a cores e uso do mouse.'}
 };
 
 function installDashboardNotifications(){
@@ -7110,19 +7111,34 @@ const wifiMethods = {
 			passRow2.style.display = isNone ? 'none' : 'block';
 			showRow.style.display = isNone ? 'none' : 'flex';
 			
+			const is6gActive = (bandSelect.value === '6g') || (bandSelect.value === 'both' && has6g);
+			let note6g = '';
+			if (is6gActive) {
+				if (encVal === 'psk2') {
+					note6g = '<div style="margin-top: 5px; font-weight: 600; color: #38bdf8;">' + _t('ℹ️ Banda de 6 GHz: por exigência do padrão Wi-Fi 6E/7, operará automaticamente em WPA3-SAE com PMF obrigatório.') + '</div>';
+				} else if (encVal === 'none') {
+					note6g = '<div style="margin-top: 5px; font-weight: 600; color: #ef4444;">' + _t('⚠️ Aviso 6 GHz: redes sem senha são proibidas no 6 GHz. A transmissão em 6 GHz será mantida desativada para esta rede.') + '</div>';
+				}
+			}
+
 			if (encVal === 'psk2') {
 				encAlert.className = 'alert-message success';
 				encAlert.style.display = 'block';
-				encAlert.innerHTML = '<strong>PMF Desativado:</strong> Recomendado para Casa Inteligente. Garante a conexão de dispositivos IoT antigos e modernos sem falhas de autenticação.';
+				encAlert.innerHTML = '<strong>' + _t('PMF Desativado:') + '</strong> ' + _t('Recomendado para Casa Inteligente. Garante a conexão de dispositivos IoT antigos e modernos sem falhas de autenticação.') + note6g;
 			} else if (encVal === 'sae-mixed' || encVal === 'sae') {
 				encAlert.className = 'alert-message warning';
 				encAlert.style.display = 'block';
-				encAlert.innerHTML = '<strong>Atenção ao WPA3 e PMF:</strong> A segurança WPA3 exige o uso de PMF. Vários dispositivos IoT/Smart Home recusarão conexão na rede.';
+				encAlert.innerHTML = '<strong>' + _t('Atenção ao WPA3 e PMF:') + '</strong> ' + _t('A segurança WPA3 exige o uso de PMF. Vários dispositivos IoT/Smart Home recusarão conexão na rede.');
+			} else if (encVal === 'none') {
+				encAlert.className = 'alert-message danger';
+				encAlert.style.display = is6gActive ? 'block' : 'none';
+				encAlert.innerHTML = '<strong>' + _t('Rede Aberta:') + '</strong> ' + _t('Sem senha.') + note6g;
 			} else {
 				encAlert.style.display = 'none';
 			}
 		};
 		encSelect.addEventListener('change', updateEncVisibility);
+		bandSelect.addEventListener('change', updateEncVisibility);
 		updateEncVisibility();
 
 		const rows = [
@@ -7414,13 +7430,22 @@ const wifiMethods = {
 			passRow1.style.display = isNone ? 'none' : 'block';
 			passRow2.style.display = isNone ? 'none' : 'block';
 			showRow.style.display = isNone ? 'none' : 'flex';
+			const is6gActive = !!(has6g && band6Input && band6Input.checked);
+			let note6g = '';
+			if (is6gActive) {
+				if (encVal === 'psk2') {
+					note6g = '<div style="margin-top: 6px; font-weight: 600; color: #38bdf8;">' + _t('ℹ️ Banda de 6 GHz: por exigência do padrão Wi-Fi 6E/7, operará automaticamente em WPA3-SAE com PMF obrigatório.') + '</div>';
+				} else if (encVal === 'none') {
+					note6g = '<div style="margin-top: 6px; font-weight: 600; color: #ef4444;">' + _t('⚠️ Aviso 6 GHz: redes sem senha são proibidas no 6 GHz. A transmissão em 6 GHz será mantida desativada para esta rede.') + '</div>';
+				}
+			}
 			if (encVal === 'psk2') {
 				encAlert.className = 'alert-message success';
 				encAlert.style.display = 'block';
 				if (isLegacyMips) {
 					encAlert.innerHTML = '<strong>' + _t('Aceleração em Silício (AES):') + '</strong> ' + _t('Criptografia processada diretamente pelo hardware Atheros/MIPS. Máxima velocidade no ar e 100% compatível com IoT (Tuya/Sonoff) e celulares.');
 				} else {
-					encAlert.innerHTML = '<strong>' + _t('WPA2-PSK (Compatibilidade Geral):') + '</strong> ' + _t('Recomendado para Casa Inteligente (IoT) e aparelhos legados. Garante conexão estável sem exigir PMF 802.11w.');
+					encAlert.innerHTML = '<strong>' + _t('WPA2-PSK (Compatibilidade Geral):') + '</strong> ' + _t('Recomendado para Casa Inteligente (IoT) e aparelhos legados. Garante conexão estável sem exigir PMF 802.11w.') + note6g;
 				}
 			} else if (encVal === 'sae-mixed') {
 				encAlert.className = isLegacyMips ? 'alert-message warning' : 'alert-message success';
@@ -7437,12 +7462,13 @@ const wifiMethods = {
 			} else if (encVal === 'none') {
 				encAlert.className = 'alert-message danger';
 				encAlert.style.display = 'block';
-				encAlert.innerHTML = '<strong>' + _t('⚠️ Rede Aberta (Sem Senha):') + '</strong> ' + _t('Qualquer pessoa próxima poderá se conectar e o tráfego não será criptografado.');
+				encAlert.innerHTML = '<strong>' + _t('⚠️ Rede Aberta (Sem Senha):') + '</strong> ' + _t('Qualquer pessoa próxima poderá se conectar e o tráfego não será criptografado.') + note6g;
 			} else {
 				encAlert.style.display = 'none';
 			}
 		};
 		encSelect.addEventListener('change', updateEncVisibility);
+		if (band6Input) band6Input.addEventListener('change', updateEncVisibility);
 		updateEncVisibility();
 
 		const bandBlock = E('div', { class: 'ex-device-config-block', style: 'gap: 10px;' }, [
@@ -7916,31 +7942,39 @@ const wifiMethods = {
 		]);
 	},
 	changeWifiWidth: function() {
-		const w=wifiConfig(this.currentData.wireless);
-		const radio2 = (w.r0.hwmode === '11g' || String(w.r0.band||'').indexOf('2') === 0) ? w.r0 : w.r1;
-		const radio5 = (radio2 === w.r0) ? w.r1 : w.r0;
+		const w = wifiConfig(this.currentData.wireless);
+		const radio2 = w.r2g || w.r0 || {};
+		const radio5 = w.r5g || w.r1 || {};
+		const radio6 = w.r6g || w.r2 || {};
 		const curCh5 = Number(radio5.channel || 0);
-		const widthFrom=function(ht){const m=String(ht||'').match(/(20|40|80|160|320)/);return m?m[1]:'';};
-		const select=function(value,items){const s=E('select',{class:'cbi-input-select'},items.map(function(i){return E('option',{value:i[0]},[i[1]]);}));s.value=value;return s;};
-		const w2=select(widthFrom(radio2.htmode)||'20',[['20','20 MHz — mais alcance/estabilidade'],['40','40 MHz — mais rápido, mais interferência']]);
+		const widthFrom = function(ht){ const m = String(ht || '').match(/(20|40|80|160|320)/); return m ? m[1] : ''; };
+		const select = function(value, items){
+			const s = E('select', { class: 'cbi-input-select' }, items.map(function(i){ return E('option', { value: i[0] }, [i[1]]); }));
+			s.value = value;
+			return s;
+		};
+		const w2 = select(widthFrom(radio2.htmode) || '20', [
+			['20', '20 MHz — mais alcance/estabilidade'],
+			['40', '40 MHz — mais rápido, mais interferência']
+		]);
 		
 		const hw = this.capabilities.hardware || {};
 		const has160 = !!(hw.wifi_160_supported || (hw.wifi && hw.wifi.wifi_160));
 		const has320 = !!(hw.wifi_320_supported || (hw.wifi && hw.wifi.wifi_320));
-		const items5 = [['80','80 MHz — mais compatível/estável']];
+		const has6g = !!(w.has6g || hw.wifi_6g_supported || (hw.wifi && hw.wifi.wifi_6g));
+
+		// 5 GHz: No padrão IEEE 802.11, 5 GHz suporta no máximo 160 MHz (320 MHz existe apenas em 6 GHz)
+		const items5 = [['80', '80 MHz — mais compatível/estável']];
 		if (has160) {
-			items5.push(['160','160 MHz — velocidade máxima perto do roteador']);
-		}
-		if (has320) {
-			items5.push(['320','320 MHz — taxa extrema de dados (Wi-Fi 7)']);
+			items5.push(['160', '160 MHz — velocidade máxima perto do roteador']);
 		}
 		const curWidth5 = widthFrom(radio5.htmode);
-		const default5 = (has320 && curWidth5 === '320') ? '320' : ((has160 && curWidth5 === '160') ? '160' : '80');
-		const w5=select(curWidth5 || default5, items5);
+		const default5 = (has160 && curWidth5 === '160') ? '160' : '80';
+		const w5 = select(curWidth5 || default5, items5);
 		const w5Note = E('div', { class: 'alert-message info', style: 'margin-top: 8px; font-size: 12px; display: none;' });
 		const updateW5Note = function() {
-			if ((w5.value === '160' || w5.value === '320') && curCh5 >= 132) {
-				w5Note.textContent = 'ℹ️ O canal 5 GHz atual (Canal ' + curCh5 + ') opera em até 80 MHz. Ao selecionar ' + w5.value + ' MHz, o canal será comutado automaticamente para o Canal 36 para total estabilidade.';
+			if (w5.value === '160' && curCh5 >= 132) {
+				w5Note.textContent = 'ℹ️ O canal 5 GHz atual (Canal ' + curCh5 + ') opera em até 80 MHz. Ao selecionar 160 MHz, o canal será comutado automaticamente para o Canal 36 para total estabilidade.';
 				w5Note.style.display = 'block';
 			} else {
 				w5Note.style.display = 'none';
@@ -7948,15 +7982,51 @@ const wifiMethods = {
 		};
 		w5.addEventListener('change', updateW5Note);
 		updateW5Note();
-		const field=function(label,node,hint){return E('label',{class:'ex-wan-edit-field'},[E('span',{},[label]),node,E('small',{class:'ex-muted'},[hint])]);};
-		ui.showModal('Largura e desempenho do Wi‑Fi',[
-			E('p',{class:'ex-muted'},['A largura maior aumenta velocidade máxima, mas também aumenta interferência e pode reduzir alcance estável. Alterar reinicia o Wi‑Fi.']),
-			E('div',{class:'ex-wan-edit-grid'},[
-				field('2,4 GHz',w2,'Recomendado: 20 MHz para maior alcance e menos interferência.'),
-				field('5 GHz',E('div',{},[w5,w5Note]), has320 ? 'Suporta até 320 MHz (Wi-Fi 7).' : (has160 ? '80 MHz é mais estável e compatível com todos os canais; 160 MHz oferece velocidade máxima nos canais 36-64.' : '80 MHz é a largura máxima suportada pelo hardware deste roteador (VHT80).'))
-			]),
-			E('p',{class:'alert-message warning'},['A alteração reinicia seletivamente o rádio modificado (aparelhos na outra frequência permanecem conectados).']),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['wifi-width',w2.value,w5.value]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar largura do Wi‑Fi');ui.hideModal();reloadSoon('Largura salva. Aplicando alteração no Wi‑Fi…',1500);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Wi‑Fi reiniciando. Recarregando o painel…',2000))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},['Salvar e aplicar'])])
+
+		// 6 GHz (Wi-Fi 6E / Wi-Fi 7): Suporte dedicado a 80 MHz, 160 MHz e 320 MHz
+		let w6 = null;
+		if (has6g) {
+			const items6 = [
+				['80', '80 MHz — mais compatível'],
+				['160', '160 MHz — ultra velocidade']
+			];
+			if (has320) {
+				items6.push(['320', '320 MHz — taxa extrema de dados (Wi-Fi 7)']);
+			}
+			const curWidth6 = widthFrom(radio6.htmode);
+			const default6 = (has320 && curWidth6 === '320') ? '320' : ((curWidth6 === '160') ? '160' : (has320 ? '320' : '160'));
+			w6 = select(curWidth6 || default6, items6);
+		}
+
+		const field = function(label, node, hint){ return E('label', { class: 'ex-wan-edit-field' }, [E('span', {}, [label]), node, E('small', { class: 'ex-muted' }, [hint])]); };
+		const gridFields = [
+			field('2,4 GHz', w2, 'Recomendado: 20 MHz para maior alcance e menos interferência.'),
+			field('5 GHz', E('div', {}, [w5, w5Note]), has160 ? '80 MHz é mais estável e compatível com todos os canais; 160 MHz oferece velocidade máxima nos canais 36-64.' : '80 MHz é a largura máxima suportada pelo hardware deste roteador (VHT80).')
+		];
+		if (has6g && w6) {
+			gridFields.push(field('6 GHz (Wi-Fi 6E/7)', w6, has320 ? 'Suporta até 320 MHz para throughput extremo no Wi-Fi 7.' : 'Banda de 6 GHz com canais limpos de até 160 MHz.'));
+		}
+
+		ui.showModal('Largura e desempenho do Wi‑Fi', [
+			E('p', { class: 'ex-muted' }, ['A largura maior aumenta velocidade máxima, mas também aumenta interferência e pode reduzir alcance estável. Alterar reinicia o Wi‑Fi.']),
+			E('div', { class: 'ex-wan-edit-grid' }, gridFields),
+			E('p', { class: 'alert-message warning' }, ['A alteração reinicia seletivamente o rádio modificado (aparelhos na outra frequência permanecem conectados).']),
+			E('div', { class: 'right' }, [
+				E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': closeModal }, ['Cancelar']),
+				' ',
+				E('button', { class: 'btn cbi-button cbi-button-positive', 'click': L.bind(function(){
+					const args = ['wifi-width', w2.value, w5.value];
+					if (w6) args.push(w6.value);
+					return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r){
+						if (r.code) throw new Error(r.stderr || 'Falha ao alterar largura do Wi‑Fi');
+						ui.hideModal();
+						reloadSoon('Largura salva. Aplicando alteração no Wi‑Fi…', 1500);
+					}).catch(function(e){
+						if (reloadAfterExpectedDisconnect(e, 'Wi‑Fi reiniciando. Recarregando o painel…', 2000)) return;
+						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+					});
+				}, this) }, ['Salvar e aplicar'])
+			])
 		]);
 	},
 	changeCountry: function() {
@@ -15131,6 +15201,31 @@ const systemMethods = {
 			}
 		}, ['⚡ Otimizar Automaticamente por Hardware']);
 
+		const topProcContainer = E('div', {
+			style: 'display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px;width:100%;'
+		}, [
+			E('small', { class: 'ex-muted' }, ['Carregando consumo real de processos…'])
+		]);
+
+		fs.exec('/usr/sbin/equipe-dashboard-control', ['system-processes-telemetry']).then(function(r) {
+			if (!r || r.code !== 0 || !r.stdout) return;
+			try {
+				const d = JSON.parse(r.stdout);
+				const top = d.top_rss || [];
+				if (!top.length) {
+					topProcContainer.innerHTML = '<span class="ex-muted">Nenhum processo em execução registrado.</span>';
+					return;
+				}
+				topProcContainer.innerHTML = '';
+				top.slice(0, 6).forEach(function(p) {
+					const mb = (p.rss_kb / 1024).toFixed(1) + ' MB';
+					const isGoOrHeavy = p.vsz_kb > 200000;
+					const badge = isGoOrHeavy ? 'GO: ' + (p.vsz_kb / 1024).toFixed(0) + 'MB VSZ' : p.percent + '% RAM';
+					topProcContainer.appendChild(infoItem(p.name + ' (PID ' + p.pid + ')', mb, badge));
+				});
+			} catch(e) {}
+		});
+
 		ui.showModal('Especificações Técnicas do Hardware', [
 			E('p', { class: 'ex-muted' }, ['Diagnóstico abrangente e dinâmico dos componentes físicos, sensores térmicos e capacidades do seu roteador.']),
 			E('div', { style: 'max-height: 72vh; overflow-y: auto; padding-right: 4px;' }, [
@@ -15139,6 +15234,12 @@ const systemMethods = {
 				sectionBlock('Processador e Desempenho', '⚡', cpuRows),
 				sectionBlock('Sensores Térmicos ao Vivo', '🌡️', thermalRows),
 				sectionBlock('Memória RAM', '💾', memRows),
+				sectionBlock('Maiores Consumidores de RAM (Memória Real RSS)', '⚡', [
+					topProcContainer,
+					E('div', { style: 'margin-top:8px;text-align:right;' }, [
+						E('a', { class: 'ex-mini-button', href: '/cgi-bin/luci/admin/status/processes', style: 'text-decoration:none;' }, ['Ver Tabela Completa de Processos ➔'])
+					])
+				]),
 				sectionBlock('Armazenamento Flash & RAM', '💽', stRows),
 				sectionBlock('Portas Físicas Ethernet', '🌐', portRows),
 				sectionBlock('Recursos de Rede Sem Fio (Wi-Fi)', '📶', wifiRows)
@@ -15156,19 +15257,46 @@ const systemMethods = {
 		const appearanceColors=E('div',{class:'ex-color-fields'},[E('label',{},[E('span',{},['Cor principal']),primary]),E('label',{},[E('span',{},['Cor secundária']),secondary])]);
 		const isLegacy = !!(this.capabilities && this.capabilities.hardware && this.capabilities.hardware.is_legacy_owrt);
 		const currentTheme = this.capabilities.current_theme || 'bootstrap';
-		const themeOptions = [];
-		if (currentTheme === 'ark') {
-			themeOptions.push(E('option',{value:'ark'},['⚡ Tema ARK (Nativo)']));
-		}
-		themeOptions.push(E('option',{value:'bootstrap'},['Tema Bootstrap (Padrão)']));
-		const themeSelect = E('select',{class:'cbi-input-select'}, themeOptions);
+		const rawAvailable = (this.capabilities.available_themes && this.capabilities.available_themes.length) ? this.capabilities.available_themes.slice() : ['ark', 'bootstrap'];
+		if (rawAvailable.indexOf('ark') === -1) rawAvailable.unshift('ark');
+		if (rawAvailable.indexOf('bootstrap') === -1) rawAvailable.push('bootstrap');
+
+		const themeLabels = {
+			ark: '⚡ Tema ARK (Nativo)',
+			bootstrap: 'Tema Bootstrap (Padrão)',
+			material: 'Tema Material',
+			openwrt: 'Tema OpenWrt'
+		};
+		const themeOptions = rawAvailable.map(function(t) {
+			const label = themeLabels[t] || ('Tema ' + t.charAt(0).toUpperCase() + t.slice(1));
+			return E('option', { value: t }, [label]);
+		});
+		const themeSelect = E('select', { class: 'cbi-input-select' }, themeOptions);
 		themeSelect.value = currentTheme;
-		const themeRow = E('div',{class:'ex-brand-row',style:'margin-top:12px;padding-top:12px;border-top:1px solid rgba(127,127,127,0.14);'},[
-			E('label',{},['Tema do LuCI']),
-			themeSelect,
-			E('button',{class:'ex-mini-button','click':L.bind(function(){
-				this.useTheme(themeSelect.value);
-			},this)},['Aplicar tema'])
+
+		const updateColorFields = function() {
+			const isCustom = appearanceMode.value === 'custom';
+			primary.disabled = !isCustom;
+			secondary.disabled = !isCustom;
+			if (appearanceColors) appearanceColors.classList.toggle('is-disabled', !isCustom);
+		};
+		appearanceMode.addEventListener('change', updateColorFields);
+		updateColorFields();
+
+		const themeRow = E('div', { class: 'ex-theme-row' }, [
+			E('div', {}, [
+				E('strong', {}, ['Tema da Interface (LuCI)']),
+				E('small', { class: 'ex-muted' }, ['Alterne entre o Tema ARK e o Tema Bootstrap padrão do sistema.'])
+			]),
+			E('div', { class: 'ex-theme-actions' }, [
+				themeSelect,
+				E('button', {
+					class: 'ex-mini-button',
+					'click': L.bind(function() {
+						this.useTheme(themeSelect.value);
+					}, this)
+				}, ['Aplicar tema'])
+			])
 		]);
 
 		const isSat = isSatelliteOrAp(this.currentData || (this.capabilities && this.capabilities));
@@ -15285,7 +15413,26 @@ const systemMethods = {
 			bulkPanel,
 			ipv6Panel,
 			starlinkModalPanel,
-			E('section',{class:'ex-appearance-panel'},[E('div',{class:'ex-appearance-heading'},[E('div',{},[E('strong',{},['Aparência']),E('small',{class:'ex-muted'},['No modo automático, o painel acompanha as cores e o modo claro ou escuro do tema LuCI.'])]),appearanceMode]),appearanceColors,E('button',{class:'ex-mini-button ex-save-appearance','click':L.bind(function(){this.setAppearance(appearanceMode.value,primary.value,secondary.value);},this)},['Salvar aparência']),themeRow]),
+			E('section', { class: 'ex-appearance-panel' }, [
+				E('div', { class: 'ex-appearance-heading' }, [
+					E('div', {}, [
+						E('strong', {}, ['Aparência']),
+						E('small', { class: 'ex-muted' }, ['No modo automático, o painel acompanha as cores e o modo claro ou escuro do tema LuCI.'])
+					]),
+					appearanceMode
+				]),
+				E('div', { class: 'ex-appearance-colors-row' }, [
+					appearanceColors,
+					E('button', {
+						class: 'ex-mini-button ex-save-appearance',
+						'click': L.bind(function() {
+							this.setAppearance(appearanceMode.value, primary.value, secondary.value);
+						}, this)
+					}, ['Salvar aparência'])
+				]),
+				E('div', { class: 'ex-appearance-divider' }),
+				themeRow
+			]),
 			E('div',{class:'ex-feature-list'},rows),
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])
 		]);

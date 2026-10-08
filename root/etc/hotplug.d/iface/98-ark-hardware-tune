@@ -1,0 +1,17 @@
+#!/bin/sh
+# Reaplica as otimizacoes de hardware (RPS, filas, txqueuelen) 
+# caso uma porta de rede fisica suba novamente apos queda de cabo (hotplug).
+
+[ "$ACTION" = "ifup" ] || exit 0
+
+# Ignora loopback e pppoe (para nao causar gargalo no CPU em reconnects de provedor rapido)
+case "$INTERFACE" in
+	loopback|pppoe*) exit 0 ;;
+esac
+
+# Verifica se a sintonia esta habilitada no sistema
+[ -x /etc/init.d/ark-hardware-tune ] || exit 0
+
+# Inicia em background silencioso
+/etc/init.d/ark-hardware-tune start >/dev/null 2>&1 &
+exit 0

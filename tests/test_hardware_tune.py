@@ -150,14 +150,20 @@ class TestHardwareTune(unittest.TestCase):
         }
 
         for cores, exp_mask in expected_masks.items():
-            awk_cmd = f"awk -v cores={cores} 'BEGIN {{ full_f = int(cores / 4); rem = cores % 4; prefix = \"\"; if (rem == 1) prefix = \"1\"; else if (rem == 2) prefix = \"3\"; else if (rem == 3) prefix = \"7\"; mask = prefix; for (i = 0; i < full_f; i++) mask = mask \"f\"; if (mask == \"\") mask = \"1\"; print mask; }}'"
-            # Usa subprocess simples para testar a logica
-            calc_mask = ""
             full_f = cores // 4
             rem = cores % 4
             pfx = {0: "", 1: "1", 2: "3", 3: "7"}[rem]
             calc_mask = pfx + ("f" * full_f)
             self.assertEqual(calc_mask, exp_mask, f"Falha no calculo de mascara para {cores} cores")
+
+    def test_08_irq_affinity_function_presence_and_logic(self):
+        """Valida se ark_tune_irq_affinity está presente e configurado para balancear IRQs em múltiplos cores"""
+        tune_script = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "root", "etc", "init.d", "ark-hardware-tune")
+        with open(tune_script, "r", encoding="utf-8") as f:
+            content = f.read()
+        self.assertIn("ark_tune_irq_affinity", content)
+        self.assertIn("smp_affinity", content)
+        self.assertIn("net.core.netdev_budget_usecs=20000", content)
 
 if __name__ == "__main__":
     unittest.main()

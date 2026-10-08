@@ -1,0 +1,5252 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: ARK Router\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid " (Neste Ponto)"
+msgstr " (Neste Ponto)"
+
+msgid "(Canal"
+msgstr "(Canal"
+
+msgid "+ Adicionar Novo Dispositivo / Gerar QR Code"
+msgstr "+ Adicionar Novo Dispositivo / Gerar QR Code"
+
+msgid "+ Adicionar Rede Wi‑Fi"
+msgstr "+ Adicionar Rede Wi‑Fi"
+
+msgid "+ Nova Regra"
+msgstr "+ Nova Regra"
+
+msgid ", ela sai desta lista e vira uma nova conexão de internet."
+msgstr ", ela sai desta lista e vira uma nova conexão de internet."
+
+msgid "-- Escolher perfil PPPoE salvo ("
+msgstr "-- Escolher perfil PPPoE salvo ("
+
+msgid "-- Escolher perfil PPPoE salvo --"
+msgstr "-- Escolher perfil PPPoE salvo --"
+
+msgid "0 (Ilimitado / Fastpath)"
+msgstr "0 (Ilimitado / Fastpath)"
+
+msgid "0 ativos (0 total)"
+msgstr "0 ativos (0 total)"
+
+msgid "1 hora (Alta Rotatividade / Eventos / 250+ clientes)"
+msgstr "1 hora (Alta Rotatividade / Eventos / 250+ clientes)"
+
+msgid "1 hora (Equilibrado para Escritórios / 100-250 usuários)"
+msgstr "1 hora (Equilibrado para Escritórios / 100-250 usuários)"
+
+msgid "1. IP deste Aparelho (Secundário/AP):"
+msgstr "1. IP deste Aparelho (Secundário/AP):"
+
+msgid "1. IP do Roteador Principal (Mestre na Rede)"
+msgstr "1. IP do Roteador Principal (Mestre na Rede)"
+
+msgid "1. Idioma, nome e país"
+msgstr "1. Idioma, nome e país"
+
+msgid "1. TIPO DE CONEXÃO COM A OPERADORA ("
+msgstr "1. TIPO DE CONEXÃO COM A OPERADORA ("
+
+msgid "10.000 domínios (~1 MB RAM — Roteadores de 128MB)"
+msgstr "10.000 domínios (~1 MB RAM — Roteadores de 128MB)"
+
+msgid "12 horas (Padrão Residencial - pouca rotatividade)"
+msgstr "12 horas (Padrão Residencial - pouca rotatividade)"
+
+msgid "12 horas (~400 KB na flash)"
+msgstr "12 horas (~400 KB na flash)"
+
+msgid "128 MB (PADRÃO 16K)"
+msgstr "128 MB (PADRÃO 16K)"
+
+msgid "16 MB em RAM (Equilibrado — Roteadores de 300MB a 512MB)"
+msgstr "16 MB em RAM (Equilibrado — Roteadores de 300MB a 512MB)"
+
+msgid "2 horas (Recomendado para Escritórios / Comércio)"
+msgstr "2 horas (Recomendado para Escritórios / Comércio)"
+
+msgid "2 horas (Seguro para Redes Médias)"
+msgstr "2 horas (Seguro para Redes Médias)"
+
+msgid "2 ou mais roteadores"
+msgstr "2 ou mais roteadores"
+
+msgid "2. ACELERAÇÃO DE DESEMPENHO DO ROTEADOR"
+msgstr "2. ACELERAÇÃO DE DESEMPENHO DO ROTEADOR"
+
+msgid "2. Como a internet entra no roteador?"
+msgstr "2. Como a internet entra no roteador?"
+
+msgid "2. Máscara de sub-rede:"
+msgstr "2. Máscara de sub-rede:"
+
+msgid "2. Tipo de Conexão deste Roteador Secundário"
+msgstr "2. Tipo de Conexão deste Roteador Secundário"
+
+msgid "24 horas (Apenas redes estáticas com poucos aparelhos)"
+msgstr "24 horas (Apenas redes estáticas com poucos aparelhos)"
+
+msgid "25 horas (Padrão recomendado ~850 KB na flash)"
+msgstr "25 horas (Padrão recomendado ~850 KB na flash)"
+
+msgid "25.000 domínios (~2.5 MB RAM — Recomendado)"
+msgstr "25.000 domínios (~2.5 MB RAM — Recomendado)"
+
+msgid "3. Gateway (IP do Roteador Mestre):"
+msgstr "3. Gateway (IP do Roteador Mestre):"
+
+msgid "3. Modo de Endereço IP do Roteador Secundário"
+msgstr "3. Modo de Endereço IP do Roteador Secundário"
+
+msgid "3. Wi‑Fi principal"
+msgstr "3. Wi‑Fi principal"
+
+msgid "30 minutos (Modo Eventos / Alta Rotatividade)"
+msgstr "30 minutos (Modo Eventos / Alta Rotatividade)"
+
+msgid "32 MB em RAM (Ideal para roteadores de 512MB)"
+msgstr "32 MB em RAM (Ideal para roteadores de 512MB)"
+
+msgid "4. Habilitar rede de visitantes"
+msgstr "4. Habilitar rede de visitantes"
+
+msgid "4. Servidor(es) DNS:"
+msgstr "4. Servidor(es) DNS:"
+
+msgid "4. Sincronização Wi-Fi & Roaming (802.11k/v/r)"
+msgstr "4. Sincronização Wi-Fi & Roaming (802.11k/v/r)"
+
+msgid "48 horas (~1.6 MB na flash)"
+msgstr "48 horas (~1.6 MB na flash)"
+
+msgid "5 dias (Padrão Linux / Residencial - sem descarte precoce)"
+msgstr "5 dias (Padrão Linux / Residencial - sem descarte precoce)"
+
+msgid "5. Alterar senha de administrador do roteador"
+msgstr "5. Alterar senha de administrador do roteador"
+
+msgid "50.000 domínios (~5 MB RAM — Roteadores com folga)"
+msgstr "50.000 domínios (~5 MB RAM — Roteadores com folga)"
+
+msgid "512MB / 1GB RAM"
+msgstr "512MB / 1GB RAM"
+
+msgid "6 horas (Misto)"
+msgstr "6 horas (Misto)"
+
+msgid "6. DNS e segurança"
+msgstr "6. DNS e segurança"
+
+msgid "64 MB em RAM (Alto Desempenho — Roteadores de 1GB)"
+msgstr "64 MB em RAM (Alto Desempenho — Roteadores de 1GB)"
+
+msgid "72 horas (~2.4 MB na flash)"
+msgstr "72 horas (~2.4 MB na flash)"
+
+msgid "8 MB em RAM (Econômico — Roteadores de 256MB a 300MB)"
+msgstr "8 MB em RAM (Econômico — Roteadores de 256MB a 300MB)"
+
+msgid "8. Recursos opcionais"
+msgstr "8. Recursos opcionais"
+
+msgid "A LAN1 está configurada como WAN2"
+msgstr "A LAN1 está configurada como WAN2"
+
+msgid "A agregação de links de internet (Speedify Bonding) atua nas portas WAN do Roteador Mestre (Gateway). Nós satélites mantêm tráfego local transparente."
+msgstr "A agregação de links de internet (Speedify Bonding) atua nas portas WAN do Roteador Mestre (Gateway). Nós satélites mantêm tráfego local transparente."
+
+msgid "A alteração reinicia seletivamente o rádio modificado (aparelhos na outra frequência permanecem conectados)."
+msgstr "A alteração reinicia seletivamente o rádio modificado (aparelhos na outra frequência permanecem conectados)."
+
+msgid "A alteração reiniciará as duas bandas do Wi‑Fi e desconectará temporariamente os aparelhos conectados."
+msgstr "A alteração reiniciará as duas bandas do Wi‑Fi e desconectará temporariamente os aparelhos conectados."
+
+msgid "A análise é manual e apenas recomenda canais; não interrompe os usuários."
+msgstr "A análise é manual e apenas recomenda canais; não interrompe os usuários."
+
+msgid "A cada 1 hora"
+msgstr "A cada 1 hora"
+
+msgid "A cada 12 horas"
+msgstr "A cada 12 horas"
+
+msgid "A cada 2 horas"
+msgstr "A cada 2 horas"
+
+msgid "A cada 24 horas (Relatório Diário)"
+msgstr "A cada 24 horas (Relatório Diário)"
+
+msgid "A cada 6 horas"
+msgstr "A cada 6 horas"
+
+msgid "A configuração precisa conter pelo menos PrivateKey, PublicKey e Endpoint"
+msgstr "A configuração precisa conter pelo menos PrivateKey, PublicKey e Endpoint"
+
+msgid "A distribuição já está ativa na %s. Desative na %s primeiro para ativar aqui."
+msgstr "A distribuição já está ativa na %s. Desative na %s primeiro para ativar aqui."
+
+msgid "A fila será ativada somente para"
+msgstr "A fila será ativada somente para"
+
+msgid "A instalação já está em andamento."
+msgstr "A instalação já está em andamento."
+
+msgid "A instalação não foi concluída. Consulte os registros do sistema."
+msgstr "A instalação não foi concluída. Consulte os registros do sistema."
+
+msgid "A internet e o painel ficarão indisponíveis por alguns minutos."
+msgstr "A internet e o painel ficarão indisponíveis por alguns minutos."
+
+msgid "A lista de pacotes será atualizada e os módulos selecionados serão instalados em segundo plano."
+msgstr "A lista de pacotes será atualizada e os módulos selecionados serão instalados em segundo plano."
+
+msgid "A métrica / prioridade da WAN deve ser um número entre 1 e 255."
+msgstr "A métrica / prioridade da WAN deve ser um número entre 1 e 255."
+
+msgid "A nova senha de administrador deve ter no mínimo 6 caracteres."
+msgstr "A nova senha de administrador deve ter no mínimo 6 caracteres."
+
+msgid "A nova senha será aplicada ao 2,4 e ao 5 GHz desta rede."
+msgstr "A nova senha será aplicada ao 2,4 e ao 5 GHz desta rede."
+
+msgid "A porta"
+msgstr "A porta"
+
+msgid "A porta WAN física será adicionada à rede local (LAN), podendo ser usada para conectar computadores, TVs ou switches."
+msgstr "A porta WAN física será adicionada à rede local (LAN), podendo ser usada para conectar computadores, TVs ou switches."
+
+msgid "A porta WAN física voltará a operar como entrada de internet dedicada e o firewall com NAT será restabelecido."
+msgstr "A porta WAN física voltará a operar como entrada de internet dedicada e o firewall com NAT será restabelecido."
+
+msgid "A porta final deve ser maior que a porta inicial."
+msgstr "A porta final deve ser maior que a porta inicial."
+
+msgid "A primeira amostra aparecerá em até 1 minuto"
+msgstr "A primeira amostra aparecerá em até 1 minuto"
+
+msgid "A prioridade aparece somente na rede principal quando o SQM está ativo."
+msgstr "A prioridade aparece somente na rede principal quando o SQM está ativo."
+
+msgid "A rede pode pausar por alguns segundos. Isso não instala nem conecta o Speedify."
+msgstr "A rede pode pausar por alguns segundos. Isso não instala nem conecta o Speedify."
+
+msgid "A senha da rede visitante deve ter no mínimo 8 caracteres."
+msgstr "A senha da rede visitante deve ter no mínimo 8 caracteres."
+
+msgid "A senha do Wi-Fi 2,4 GHz deve ter no mínimo 8 caracteres."
+msgstr "A senha do Wi-Fi 2,4 GHz deve ter no mínimo 8 caracteres."
+
+msgid "A senha do Wi-Fi 5 GHz deve ter no mínimo 8 caracteres."
+msgstr "A senha do Wi-Fi 5 GHz deve ter no mínimo 8 caracteres."
+
+msgid "A senha do Wi-Fi principal deve ter no mínimo 8 caracteres."
+msgstr "A senha do Wi-Fi principal deve ter no mínimo 8 caracteres."
+
+msgid "A senha precisa ter entre 8 e 63 caracteres."
+msgstr "A senha precisa ter entre 8 e 63 caracteres."
+
+msgid "A velocidade instantânea vem dos contadores do roteador; o total acumulado vem do nlbwmon e é atualizado a cada 3 segundos. Em Configurar, você pode renomear, reservar o IP e priorizar o aparelho."
+msgstr "A velocidade instantânea vem dos contadores do roteador; o total acumulado vem do nlbwmon e é atualizado a cada 3 segundos. Em Configurar, você pode renomear, reservar o IP e priorizar o aparelho."
+
+msgid "A velocidade instantânea vem dos contadores do roteador; o total acumulado vem do nlbwmon. Quando esta lista está aberta, o ARK Router acelera a atualização automaticamente conforme a RAM disponível."
+msgstr "A velocidade instantânea vem dos contadores do roteador; o total acumulado vem do nlbwmon. Quando esta lista está aberta, o ARK Router acelera a atualização automaticamente conforme a RAM disponível."
+
+msgid "ACESSO REMOTO LEVE"
+msgstr "ACESSO REMOTO LEVE"
+
+msgid "ACESSO REMOTO SEGURO"
+msgstr "ACESSO REMOTO SEGURO"
+
+msgid "AMBIENTE WI‑FI"
+msgstr "AMBIENTE WI‑FI"
+
+msgid "API REST Resend (sem necessidade de senhas) ou SMTP tradicional."
+msgstr "API REST Resend (sem necessidade de senhas) ou SMTP tradicional."
+
+msgid "ARK Router"
+msgstr "ARK Router"
+
+msgid "ARMAZENAMENTO"
+msgstr "ARMAZENAMENTO"
+
+msgid "ATENÇÃO"
+msgstr "ATENÇÃO"
+
+msgid "ATIVA"
+msgstr "ATIVA"
+
+msgid "ATIVO"
+msgstr "ATIVO"
+
+msgid "ATIVO (LOCAL)"
+msgstr "ATIVO (LOCAL)"
+
+msgid "ATIVO (PROTEGIDO)"
+msgstr "ATIVO (PROTEGIDO)"
+
+msgid "ATIVO ATUALMENTE"
+msgstr "ATIVO ATUALMENTE"
+
+msgid "ATIVO NO ROTEADOR"
+msgstr "ATIVO NO ROTEADOR"
+
+msgid "AUTO"
+msgstr "AUTO"
+
+msgid "Abra o link abaixo, faça login e autorize este roteador:"
+msgstr "Abra o link abaixo, faça login e autorize este roteador:"
+
+msgid "Abre >64.500 portas (1024-65535) para BitTorrent e P2P. Serviços essenciais (Bancos, Alexa, Consoles, Jogos, VoIP e Trabalho) são blindados automaticamente antes na conexão principal."
+msgstr "Abre >64.500 portas (1024-65535) para BitTorrent e P2P. Serviços essenciais (Bancos, Alexa, Consoles, Jogos, VoIP e Trabalho) são blindados automaticamente antes na conexão principal."
+
+msgid "Abrir ARK remoto"
+msgstr "Abrir ARK remoto"
+
+msgid "Abrir Central Starlink / Speedify →"
+msgstr "Abrir Central Starlink / Speedify →"
+
+msgid "Abrir Painel do Roteador Principal (Gateway)"
+msgstr "Abrir Painel do Roteador Principal (Gateway)"
+
+msgid "Abrir Painel do Roteador Secundário"
+msgstr "Abrir Painel do Roteador Secundário"
+
+msgid "Abrir controles do QoS"
+msgstr "Abrir controles do QoS"
+
+msgid "Abrir endereço HTTPS"
+msgstr "Abrir endereço HTTPS"
+
+msgid "Abrir painel oficial Speedify →"
+msgstr "Abrir painel oficial Speedify →"
+
+msgid "Abrir painel somente leitura →"
+msgstr "Abrir painel somente leitura →"
+
+msgid "Abrir tela de login tradicional ↗"
+msgstr "Abrir tela de login tradicional ↗"
+
+msgid "Abrir via ZeroTier ↗"
+msgstr "Abrir via ZeroTier ↗"
+
+msgid "Acelerar BitTorrent / P2P nas 2 Internets"
+msgstr "Acelerar BitTorrent / P2P nas 2 Internets"
+
+msgid "Aceleração BitTorrent/P2P DESATIVADA."
+msgstr "Aceleração BitTorrent/P2P DESATIVADA."
+
+msgid "Aceleração BitTorrent/P2P nas 2 conexões ATIVADA!"
+msgstr "Aceleração BitTorrent/P2P nas 2 conexões ATIVADA!"
+
+msgid "Aceleração Completa"
+msgstr "Aceleração Completa"
+
+msgid "Aceleração de Hardware Wi-Fi (MediaTek WED)"
+msgstr "Aceleração de Hardware Wi-Fi (MediaTek WED)"
+
+msgid "Aceleração de Hardware Wi-Fi MediaTek WED"
+msgstr "Aceleração de Hardware Wi-Fi MediaTek WED"
+
+msgid "Aceleração em Silício & Perfil de Ajuste"
+msgstr "Aceleração em Silício & Perfil de Ajuste"
+
+msgid "Aceleração em Silício (AES):"
+msgstr "Aceleração em Silício (AES):"
+
+msgid "Aceleração em Silício (PPE)"
+msgstr "Aceleração em Silício (PPE)"
+
+msgid "Acesso & Rede"
+msgstr "Acesso & Rede"
+
+msgid "Acesso Direto AdGuard Home (1-Clique)"
+msgstr "Acesso Direto AdGuard Home (1-Clique)"
+
+msgid "Acesso principal"
+msgstr "Acesso principal"
+
+msgid "Acesso principal • disponível em 2,4 e 5 GHz"
+msgstr "Acesso principal • disponível em 2,4 e 5 GHz"
+
+msgid "Acesso remoto gratuito para uso pessoal, sem abrir portas na WAN. Ideal para iPhone, Windows e redes com Starlink/CGNAT."
+msgstr "Acesso remoto gratuito para uso pessoal, sem abrir portas na WAN. Ideal para iPhone, Windows e redes com Starlink/CGNAT."
+
+msgid "Acesso remoto leve para iOS e Windows sem abrir portas na WAN. Quando desligado, o serviço não roda e não consome recursos."
+msgstr "Acesso remoto leve para iOS e Windows sem abrir portas na WAN. Quando desligado, o serviço não roda e não consome recursos."
+
+msgid "Acompanha o IP do roteador se não personalizado"
+msgstr "Acompanha o IP do roteador se não personalizado"
+
+msgid "AdGuard DNS (Anúncios + Rastreadores — Anycast SP ~14ms)"
+msgstr "AdGuard DNS (Anúncios + Rastreadores — Anycast SP ~14ms)"
+
+msgid "AdGuard Home desinstalado com sucesso. DNS padrão e DNS Turbo (All-Servers) religados. Recarregando painel…"
+msgstr "AdGuard Home desinstalado com sucesso. DNS padrão e DNS Turbo (All-Servers) religados. Recarregando painel…"
+
+msgid "AdGuard Home desinstalado com sucesso. Recarregando painel…"
+msgstr "AdGuard Home desinstalado com sucesso. Recarregando painel…"
+
+msgid "Adiciona failover e balanceamento entre dois ou mais links."
+msgstr "Adiciona failover e balanceamento entre dois ou mais links."
+
+msgid "Adiciona tráfego individual e histórico detalhado de consumo."
+msgstr "Adiciona tráfego individual e histórico detalhado de consumo."
+
+msgid "Adicionar nova rede Wi‑Fi"
+msgstr "Adicionar nova rede Wi‑Fi"
+
+msgid "Agora"
+msgstr "Agora"
+
+msgid "Agora (velocidade)"
+msgstr "Agora (velocidade)"
+
+msgid "Agora não"
+msgstr "Agora não"
+
+msgid "Agrupa métricas apenas por dispositivo (MAC/IP local), sem salvar o histórico detalhado de cada IP externo remoto da internet na memória."
+msgstr "Agrupa métricas apenas por dispositivo (MAC/IP local), sem salvar o histórico detalhado de cada IP externo remoto da internet na memória."
+
+msgid "Aguardando dados da Starlink…"
+msgstr "Aguardando dados da Starlink…"
+
+msgid "Aguardando inserção de configuração válida…"
+msgstr "Aguardando inserção de configuração válida…"
+
+msgid "Aguardando saída do gerenciador de pacotes…"
+msgstr "Aguardando saída do gerenciador de pacotes…"
+
+msgid "Aguarde"
+msgstr "Aguarde"
+
+msgid "Aguarde 1 s"
+msgstr "Aguarde 1 s"
+
+msgid "Aguarde 2 s"
+msgstr "Aguarde 2 s"
+
+msgid "Aguarde 3 s"
+msgstr "Aguarde 3 s"
+
+msgid "Ajusta automaticamente Offload (PPE/Flowtable), IRQ Balance, buffers TCP e limites de Conntrack sob medida para o processador e a memória deste roteador."
+msgstr "Ajusta automaticamente Offload (PPE/Flowtable), IRQ Balance, buffers TCP e limites de Conntrack sob medida para o processador e a memória deste roteador."
+
+msgid "Ajusta automaticamente Offload, IRQ Balance, buffers TCP e Conntrack para o silício deste roteador"
+msgstr "Ajusta automaticamente Offload, IRQ Balance, buffers TCP e Conntrack para o silício deste roteador"
+
+msgid "Ajusta o gerenciador de memória do kernel (vfs_cache_pressure=150, dirty_ratio=10, swappiness=30) para reciclar caches de arquivos lidos e gravar na flash em blocos menores, mantendo a maior quantidade de RAM livre para tráfego intenso."
+msgstr "Ajusta o gerenciador de memória do kernel (vfs_cache_pressure=150, dirty_ratio=10, swappiness=30) para reciclar caches de arquivos lidos e gravar na flash em blocos menores, mantendo a maior quantidade de RAM livre para tráfego intenso."
+
+msgid "Ajuste de desempenho aplicado!"
+msgstr "Ajuste de desempenho aplicado!"
+
+msgid "Ajuste os limites de conexões simultâneas, cache e rajada de DNS para roteadores fortes (512MB / 1GB)"
+msgstr "Ajuste os limites de conexões simultâneas, cache e rajada de DNS para roteadores fortes (512MB / 1GB)"
+
+msgid "Ajustes IPv6"
+msgstr "Ajustes IPv6"
+
+msgid "Ajustes IPv6 / Relay"
+msgstr "Ajustes IPv6 / Relay"
+
+msgid "Alterar Idioma do Painel"
+msgstr "Alterar Idioma do Painel"
+
+msgid "Alterar idioma do painel"
+msgstr "Alterar idioma do painel"
+
+msgid "Alterar internet/porta pode derrubar o painel por alguns segundos. O ARK cria um backup antes de aplicar."
+msgstr "Alterar internet/porta pode derrubar o painel por alguns segundos. O ARK cria um backup antes de aplicar."
+
+msgid "Alterar o Multi‑WAN"
+msgstr "Alterar o Multi‑WAN"
+
+msgid "Alterar país"
+msgstr "Alterar país"
+
+msgid "Alterar senha nesta tela →"
+msgstr "Alterar senha nesta tela →"
+
+msgid "Alterar senha —"
+msgstr "Alterar senha —"
+
+msgid "Alternar IGMP Snooping"
+msgstr "Alternar IGMP Snooping"
+
+msgid "Alternar modo IPv6 (Pilha Dupla, Seletivo por MAC, Cascata NDP Relay ou IPv4)"
+msgstr "Alternar modo IPv6 (Pilha Dupla, Seletivo por MAC, Cascata NDP Relay ou IPv4)"
+
+msgid "Alterne como este ARK Router atua na topologia da sua rede residencial ou corporativa."
+msgstr "Alterne como este ARK Router atua na topologia da sua rede residencial ou corporativa."
+
+msgid "Amostras em RAM sincronizadas e compactadas na Flash com sucesso!"
+msgstr "Amostras em RAM sincronizadas e compactadas na Flash com sucesso!"
+
+msgid "Amplie o painel"
+msgstr "Amplie o painel"
+
+msgid "Analisar antes de aplicar"
+msgstr "Analisar antes de aplicar"
+
+msgid "Analisar canais agora"
+msgstr "Analisar canais agora"
+
+msgid "Analisar e limpar"
+msgstr "Analisar e limpar"
+
+msgid "Android: em Segurança, procure Instalar certificado de CA e selecione o arquivo."
+msgstr "Android: em Segurança, procure Instalar certificado de CA e selecione o arquivo."
+
+msgid "Antena Starlink"
+msgstr "Antena Starlink"
+
+msgid "Anterior"
+msgstr "Anterior"
+
+msgid "Anúncios Bloqueados"
+msgstr "Anúncios Bloqueados"
+
+msgid "Anúncios bloqueados hoje"
+msgstr "Anúncios bloqueados hoje"
+
+msgid "Ao aplicar, os rádios Wi‑Fi reiniciarão no novo canal selecionado."
+msgstr "Ao aplicar, os rádios Wi‑Fi reiniciarão no novo canal selecionado."
+
+msgid "Ao ativar o SQM / CAKE, o acelerador de pacotes em silício (Hardware PPE) operará em modo híbrido/software. Isso permite que cada pacote seja inspecionado para combater bufferbloat, com total capacidade na sua CPU multicore."
+msgstr "Ao ativar o SQM / CAKE, o acelerador de pacotes em silício (Hardware PPE) operará em modo híbrido/software. Isso permite que cada pacote seja inspecionado para combater bufferbloat, com total capacidade na sua CPU multicore."
+
+msgid "Ao ativar, o roteador passará a monitorar continuamente a inserção de novos cabos nas portas de rede livres."
+msgstr "Ao ativar, o roteador passará a monitorar continuamente a inserção de novos cabos nas portas de rede livres."
+
+msgid "Ao menos uma frequência deve permanecer ativa nesta rede Wi‑Fi."
+msgstr "Ao menos uma frequência deve permanecer ativa nesta rede Wi‑Fi."
+
+msgid "Ao salvar, o Wi‑Fi reiniciará e aparelhos dessa rede poderão precisar reconectar."
+msgstr "Ao salvar, o Wi‑Fi reiniciará e aparelhos dessa rede poderão precisar reconectar."
+
+msgid "Ao salvar, o Wi‑Fi reiniciará para criar os novos pontos de acesso sem fio."
+msgstr "Ao salvar, o Wi‑Fi reiniciará para criar os novos pontos de acesso sem fio."
+
+msgid "Aparelho ou IP de Origem:"
+msgstr "Aparelho ou IP de Origem:"
+
+msgid "Aparelho:"
+msgstr "Aparelho:"
+
+msgid "Aparelhos novos usam WPA3 e antigos usam WPA2. Nota: em CPU de 1 núcleo, a autenticação WPA3 consome mais processamento."
+msgstr "Aparelhos novos usam WPA3 e antigos usam WPA2. Nota: em CPU de 1 núcleo, a autenticação WPA3 consome mais processamento."
+
+msgid "Aparência"
+msgstr "Aparência"
+
+msgid "Aparência salva. Recarregando o painel…"
+msgstr "Aparência salva. Recarregando o painel…"
+
+msgid "Apenas Enlaces Mesh"
+msgstr "Apenas Enlaces Mesh"
+
+msgid "Apenas TCP"
+msgstr "Apenas TCP"
+
+msgid "Apenas UDP"
+msgstr "Apenas UDP"
+
+msgid "Aplicado ao 2,4 GHz e ao 5 GHz."
+msgstr "Aplicado ao 2,4 GHz e ao 5 GHz."
+
+msgid "Aplicando configuração de IGMP Snooping…"
+msgstr "Aplicando configuração de IGMP Snooping…"
+
+msgid "Aplicando…"
+msgstr "Aplicando…"
+
+msgid "Aplicar"
+msgstr "Aplicar"
+
+msgid "Aplicar -7%"
+msgstr "Aplicar -7%"
+
+msgid "Aplicar 85%"
+msgstr "Aplicar 85%"
+
+msgid "Aplicar 90%"
+msgstr "Aplicar 90%"
+
+msgid "Aplicar 95%"
+msgstr "Aplicar 95%"
+
+msgid "Aplicar Ark - Setup"
+msgstr "Aplicar Ark - Setup"
+
+msgid "Aplicar Configurações"
+msgstr "Aplicar Configurações"
+
+msgid "Aplicar perfil"
+msgstr "Aplicar perfil"
+
+msgid "Aplicar sugestão ao SQM"
+msgstr "Aplicar sugestão ao SQM"
+
+msgid "Aplicar “"
+msgstr "Aplicar “"
+
+msgid "Após aplicar, acesse este painel pelo novo IP:"
+msgstr "Após aplicar, acesse este painel pelo novo IP:"
+
+msgid "Após quedas de energia, quando dezenas de smart TVs, assistentes e celulares ligam no mesmo segundo."
+msgstr "Após quedas de energia, quando dezenas de smart TVs, assistentes e celulares ligam no mesmo segundo."
+
+msgid "Ark - Setup"
+msgstr "Ark - Setup"
+
+msgid "Ark - Setup aplicado com sucesso! Backup:"
+msgstr "Ark - Setup aplicado com sucesso! Backup:"
+
+msgid "Armazenamento"
+msgstr "Armazenamento"
+
+msgid "Armazenamento interno otimizado com sucesso!"
+msgstr "Armazenamento interno otimizado com sucesso!"
+
+msgid "Arquitetura não suportada. Requer aarch64 ou x86_64."
+msgstr "Arquitetura não suportada. Requer aarch64 ou x86_64."
+
+msgid "Arquivo carregado com sucesso:"
+msgstr "Arquivo carregado com sucesso:"
+
+msgid "Arquivo de Configuração:"
+msgstr "Arquivo de Configuração:"
+
+msgid "As duas senhas digitadas não conferem."
+msgstr "As duas senhas digitadas não conferem."
+
+msgid "As duas senhas digitadas não são iguais."
+msgstr "As duas senhas digitadas não são iguais."
+
+msgid "As senhas de administrador digitadas não coincidem."
+msgstr "As senhas de administrador digitadas não coincidem."
+
+msgid "As senhas não coincidem."
+msgstr "As senhas não coincidem."
+
+msgid "Assistente de Configuração"
+msgstr "Assistente de Configuração"
+
+msgid "Assistente usteer ativado! O download e inicialização estão ocorrendo em segundo plano."
+msgstr "Assistente usteer ativado! O download e inicialização estão ocorrendo em segundo plano."
+
+msgid "Atenção:"
+msgstr "Atenção:"
+
+msgid "Atenção: Com o servidor DHCP desativado, computadores e celulares conectados não receberão endereço IP automaticamente e exigirão configuração manual de IP estático."
+msgstr "Atenção: Com o servidor DHCP desativado, computadores e celulares conectados não receberão endereço IP automaticamente e exigirão configuração manual de IP estático."
+
+msgid "Ativa"
+msgstr "Ativa"
+
+msgid "Ativa BSS Coloring, Target Wake Time (TWT), OFDMA, Beamforming e Preamble Puncturing nos rádios."
+msgstr "Ativa BSS Coloring, Target Wake Time (TWT), OFDMA, Beamforming e Preamble Puncturing nos rádios."
+
+msgid "Ativa o protocolo"
+msgstr "Ativa o protocolo"
+
+msgid "Ativado"
+msgstr "Ativado"
+
+msgid "Ativado (Proteção Wi-Fi)"
+msgstr "Ativado (Proteção Wi-Fi)"
+
+msgid "Ativado • Tráfego multicast (IPTV/AirPlay) filtrado e direcionado apenas aos dispositivos solicitantes, protegendo o Wi-Fi contra saturação."
+msgstr "Ativado • Tráfego multicast (IPTV/AirPlay) filtrado e direcionado apenas aos dispositivos solicitantes, protegendo o Wi-Fi contra saturação."
+
+msgid "Ativado:"
+msgstr "Ativado:"
+
+msgid "Ativar Aceleração Wi-Fi 6 / Wi-Fi 7"
+msgstr "Ativar Aceleração Wi-Fi 6 / Wi-Fi 7"
+
+msgid "Ativar Assistente de Roaming usteer"
+msgstr "Ativar Assistente de Roaming usteer"
+
+msgid "Ativar Bypass geral"
+msgstr "Ativar Bypass geral"
+
+msgid "Ativar CAKE em"
+msgstr "Ativar CAKE em"
+
+msgid "Ativar DMZ para este dispositivo"
+msgstr "Ativar DMZ para este dispositivo"
+
+msgid "Ativar IRQ Balance"
+msgstr "Ativar IRQ Balance"
+
+msgid "Ativar Modo Gamer"
+msgstr "Ativar Modo Gamer"
+
+msgid "Ativar Multi-WAN"
+msgstr "Ativar Multi-WAN"
+
+msgid "Ativar Piloto Automático de Portas (Auto-WAN)?"
+msgstr "Ativar Piloto Automático de Portas (Auto-WAN)?"
+
+msgid "Ativar Potência Balanceada"
+msgstr "Ativar Potência Balanceada"
+
+msgid "Ativar Rede Neural Mesh"
+msgstr "Ativar Rede Neural Mesh"
+
+msgid "Ativar Roaming Rápido 802.11k/v/r"
+msgstr "Ativar Roaming Rápido 802.11k/v/r"
+
+msgid "Ativar SQM / CAKE"
+msgstr "Ativar SQM / CAKE"
+
+msgid "Ativar Seleção Automática Inteligente"
+msgstr "Ativar Seleção Automática Inteligente"
+
+msgid "Ativar WireGuard"
+msgstr "Ativar WireGuard"
+
+msgid "Ativar ZeroTier"
+msgstr "Ativar ZeroTier"
+
+msgid "Ativar aquecimento para neve"
+msgstr "Ativar aquecimento para neve"
+
+msgid "Ativar fila"
+msgstr "Ativar fila"
+
+msgid "Ativar frequência 2,4 GHz"
+msgstr "Ativar frequência 2,4 GHz"
+
+msgid "Ativar frequência 5 GHz"
+msgstr "Ativar frequência 5 GHz"
+
+msgid "Ativar frequência 6 GHz"
+msgstr "Ativar frequência 6 GHz"
+
+msgid "Ativar o Modo Gamer (Baixa Latência)?"
+msgstr "Ativar o Modo Gamer (Baixa Latência)?"
+
+msgid "Ativar ou Desativar DMZ"
+msgstr "Ativar ou Desativar DMZ"
+
+msgid "Ativar ou desativar WPS"
+msgstr "Ativar ou desativar WPS"
+
+msgid "Ativar ou desativar aceleração P2P"
+msgstr "Ativar ou desativar aceleração P2P"
+
+msgid "Ativar ou desativar regra"
+msgstr "Ativar ou desativar regra"
+
+msgid "Ativar redirecionamento HTTPS"
+msgstr "Ativar redirecionamento HTTPS"
+
+msgid "Ativar registro e coleta de telemetria"
+msgstr "Ativar registro e coleta de telemetria"
+
+msgid "Ative para definir uma nova senha de acesso ao painel web e SSH (usuário root)."
+msgstr "Ative para definir uma nova senha de acesso ao painel web e SSH (usuário root)."
+
+msgid "Ative se este ARK Router estiver conectado atrás do modem da operadora (ou outro roteador) e seus aparelhos não estiverem recebendo IPv6 (quando a operadora entrega apenas um prefixo /64). O odhcpd repassa os anúncios de vizinhança IPv6 (NDP) transparentemente para os seus clientes, sem necessidade de DMZ no mestre."
+msgstr "Ative se este ARK Router estiver conectado atrás do modem da operadora (ou outro roteador) e seus aparelhos não estiverem recebendo IPv6 (quando a operadora entrega apenas um prefixo /64). O odhcpd repassa os anúncios de vizinhança IPv6 (NDP) transparentemente para os seus clientes, sem necessidade de DMZ no mestre."
+
+msgid "Atividade do sistema"
+msgstr "Atividade do sistema"
+
+msgid "Ativo (:51820)"
+msgstr "Ativo (:51820)"
+
+msgid "Ativo • BSS Coloring, TWT, OFDMA, Beamforming e Puncturing operando nos rádios."
+msgstr "Ativo • BSS Coloring, TWT, OFDMA, Beamforming e Puncturing operando nos rádios."
+
+msgid "Ativo • Despacho direto de pacotes Wi-Fi via DMA/PPE no hardware MediaTek, aliviando a CPU."
+msgstr "Ativo • Despacho direto de pacotes Wi-Fi via DMA/PPE no hardware MediaTek, aliviando a CPU."
+
+msgid "Ativo • Detecção automática de internet e cabos nas portas Ethernet."
+msgstr "Ativo • Detecção automática de internet e cabos nas portas Ethernet."
+
+msgid "Ativo • Proteção anti-desconexão (disassoc_low_ack=0), DTIM sincronizado e rota estável AWS IoT."
+msgstr "Ativo • Proteção anti-desconexão (disassoc_low_ack=0), DTIM sincronizado e rota estável AWS IoT."
+
+msgid "Ativo • Protocolo 802.11h CSA migra aparelhos sem desconectar ao detectar radar nos canais DFS (52 a 144)."
+msgstr "Ativo • Protocolo 802.11h CSA migra aparelhos sem desconectar ao detectar radar nos canais DFS (52 a 144)."
+
+msgid "Atualizar ARK Router"
+msgstr "Atualizar ARK Router"
+
+msgid "Atualizar agora"
+msgstr "Atualizar agora"
+
+msgid "Atualizar listas agora"
+msgstr "Atualizar listas agora"
+
+msgid "Atualização detectada (%s)!"
+msgstr "Atualização detectada (%s)!"
+
+msgid "Atualização do ARK Router"
+msgstr "Atualização do ARK Router"
+
+msgid "Atualização iniciada. O painel avisará quando terminar."
+msgstr "Atualização iniciada. O painel avisará quando terminar."
+
+msgid "Aumenta a estabilidade geral da rede Wi-Fi."
+msgstr "Aumenta a estabilidade geral da rede Wi-Fi."
+
+msgid "Auto recuperar Speedify após reboot"
+msgstr "Auto recuperar Speedify após reboot"
+
+msgid "Auto recuperar após reboot"
+msgstr "Auto recuperar após reboot"
+
+msgid "Auto-Trim Periódico de Cache de RAM"
+msgstr "Auto-Trim Periódico de Cache de RAM"
+
+msgid "Automático"
+msgstr "Automático"
+
+msgid "Automático (seguir o tema)"
+msgstr "Automático (seguir o tema)"
+
+msgid "Automático Inteligente (1, 6 ou 11)"
+msgstr "Automático Inteligente (1, 6 ou 11)"
+
+msgid "Automático Inteligente (Sem DFS / Inicialização imediata)"
+msgstr "Automático Inteligente (Sem DFS / Inicialização imediata)"
+
+msgid "Automático pelo DHCP"
+msgstr "Automático pelo DHCP"
+
+msgid "Automático via DHCP (Recomendado)"
+msgstr "Automático via DHCP (Recomendado)"
+
+msgid "AÇÃO IMEDIATA"
+msgstr "AÇÃO IMEDIATA"
+
+msgid "Ação / Rota de Saída:"
+msgstr "Ação / Rota de Saída:"
+
+msgid "BLINDAGEM DE MEMÓRIA"
+msgstr "BLINDAGEM DE MEMÓRIA"
+
+msgid "BLOQUEADO"
+msgstr "BLOQUEADO"
+
+msgid "BLOQUEADOR ATIVO"
+msgstr "BLOQUEADOR ATIVO"
+
+msgid "BLOQUEADOR DE ANÚNCIOS"
+msgstr "BLOQUEADOR DE ANÚNCIOS"
+
+msgid "BONDING REAL"
+msgstr "BONDING REAL"
+
+msgid "BONDING REAL (SPEEDIFY)"
+msgstr "BONDING REAL (SPEEDIFY)"
+
+msgid "BONDING REAL ativo agora"
+msgstr "BONDING REAL ativo agora"
+
+msgid "Backhaul"
+msgstr "Backhaul"
+
+msgid "Baixar certificado confiável"
+msgstr "Baixar certificado confiável"
+
+msgid "Balanceamento"
+msgstr "Balanceamento"
+
+msgid "Balanceamento distribui conexões entre os links; não soma a velocidade de um único envio."
+msgstr "Balanceamento distribui conexões entre os links; não soma a velocidade de um único envio."
+
+msgid "Balancear"
+msgstr "Balancear"
+
+msgid "Balancear por Conexão"
+msgstr "Balancear por Conexão"
+
+msgid "Balanceia conexões BitTorrent (portas 51413 e 6881-6999) pelas 2 conexões simultaneamente."
+msgstr "Balanceia conexões BitTorrent (portas 51413 e 6881-6999) pelas 2 conexões simultaneamente."
+
+msgid "Balanceia conexões BitTorrent/P2P pelas 2 conexões simultaneamente."
+msgstr "Balanceia conexões BitTorrent/P2P pelas 2 conexões simultaneamente."
+
+msgid "Blindagem Inteligente de Portas Seguras"
+msgstr "Blindagem Inteligente de Portas Seguras"
+
+msgid "Blindagem de Automação IoT:"
+msgstr "Blindagem de Automação IoT:"
+
+msgid "Blindagem de Modo Satélite"
+msgstr "Blindagem de Modo Satélite"
+
+msgid "Blindagem de Ponto de Acesso"
+msgstr "Blindagem de Ponto de Acesso"
+
+msgid "Bloqueador de Anúncios"
+msgstr "Bloqueador de Anúncios"
+
+msgid "Bloqueador de DNS Detectado ("
+msgstr "Bloqueador de DNS Detectado ("
+
+msgid "Bloqueia automaticamente pornografia e conteúdos impróprios para menores na rede toda via servidores online."
+msgstr "Bloqueia automaticamente pornografia e conteúdos impróprios para menores na rede toda via servidores online."
+
+msgid "Bloqueia propagandas, popups invasivos, anúncios em Smart TVs e rastreadores na rede inteira antes mesmo de chegarem aos aparelhos."
+msgstr "Bloqueia propagandas, popups invasivos, anúncios em Smart TVs e rastreadores na rede inteira antes mesmo de chegarem aos aparelhos."
+
+msgid "Bloqueia sites maliciosos e golpes antes que sejam abertos via checagem em servidores online."
+msgstr "Bloqueia sites maliciosos e golpes antes que sejam abertos via checagem em servidores online."
+
+msgid "Buscando redes de 5 GHz ao redor…"
+msgstr "Buscando redes de 5 GHz ao redor…"
+
+msgid "Bypass AdGuard: DNS liberado direto para a Internet (1.1.1.1) sem bloqueio de anúncios ou filtros"
+msgstr "Bypass AdGuard: DNS liberado direto para a Internet (1.1.1.1) sem bloqueio de anúncios ou filtros"
+
+msgid "Bypass de Serviços (Streaming & Apps)"
+msgstr "Bypass de Serviços (Streaming & Apps)"
+
+msgid "CENTRAL DE OPERAÇÕES"
+msgstr "CENTRAL DE OPERAÇÕES"
+
+msgid "CHAVE PÚBLICA DO SERVIDOR"
+msgstr "CHAVE PÚBLICA DO SERVIDOR"
+
+msgid "CLIENTE CONECTADO"
+msgstr "CLIENTE CONECTADO"
+
+msgid "CONCESSÃO ESTÁTICA"
+msgstr "CONCESSÃO ESTÁTICA"
+
+msgid "CONECTADA"
+msgstr "CONECTADA"
+
+msgid "CONECTADO"
+msgstr "CONECTADO"
+
+msgid "CONECTIVIDADE FÍSICA"
+msgstr "CONECTIVIDADE FÍSICA"
+
+msgid "CONECTIVIDADE SEM FIO"
+msgstr "CONECTIVIDADE SEM FIO"
+
+msgid "CONEXÃO SIMPLIFICADA"
+msgstr "CONEXÃO SIMPLIFICADA"
+
+msgid "CONTROLE DE FILAS"
+msgstr "CONTROLE DE FILAS"
+
+msgid "CRÍTICO PARA 128 MB RAM"
+msgstr "CRÍTICO PARA 128 MB RAM"
+
+msgid "Cabo / LAN"
+msgstr "Cabo / LAN"
+
+msgid "Cabo DOCSIS / Ethernet Padrão (18 bytes)"
+msgstr "Cabo DOCSIS / Ethernet Padrão (18 bytes)"
+
+msgid "Cabos garantem 100% da velocidade. Use sem fio apenas se não houver cabos passando pelas paredes."
+msgstr "Cabos garantem 100% da velocidade. Use sem fio apenas se não houver cabos passando pelas paredes."
+
+msgid "Calibrando hardware…"
+msgstr "Calibrando hardware…"
+
+msgid "Calibrando…"
+msgstr "Calibrando…"
+
+msgid "Calibração Automática de Hardware"
+msgstr "Calibração Automática de Hardware"
+
+msgid "Calibração do upload"
+msgstr "Calibração do upload"
+
+msgid "Calibração inteligente para Modem/DHCP, Fibra PPPoE, 4G/5G e Starlink. Aceleração Fastpath e proteção de memória RAM."
+msgstr "Calibração inteligente para Modem/DHCP, Fibra PPPoE, 4G/5G e Starlink. Aceleração Fastpath e proteção de memória RAM."
+
+msgid "Canais e interferência"
+msgstr "Canais e interferência"
+
+msgid "Canal"
+msgstr "Canal"
+
+msgid "Canal 1 (2412 MHz — Recomendado / Sem sobreposição)"
+msgstr "Canal 1 (2412 MHz — Recomendado / Sem sobreposição)"
+
+msgid "Canal 10 (2457 MHz — Sobreposição com canais 6 e 11)"
+msgstr "Canal 10 (2457 MHz — Sobreposição com canais 6 e 11)"
+
+msgid "Canal 100 (5500 MHz — DFS Espectro Limpo)"
+msgstr "Canal 100 (5500 MHz — DFS Espectro Limpo)"
+
+msgid "Canal 104 (5520 MHz — DFS Espectro Limpo)"
+msgstr "Canal 104 (5520 MHz — DFS Espectro Limpo)"
+
+msgid "Canal 108 (5540 MHz — DFS Espectro Limpo)"
+msgstr "Canal 108 (5540 MHz — DFS Espectro Limpo)"
+
+msgid "Canal 11 (2462 MHz — Recomendado / Sem sobreposição)"
+msgstr "Canal 11 (2462 MHz — Recomendado / Sem sobreposição)"
+
+msgid "Canal 112 (5560 MHz — DFS Espectro Limpo)"
+msgstr "Canal 112 (5560 MHz — DFS Espectro Limpo)"
+
+msgid "Canal 116 (5580 MHz — DFS Espectro Limpo)"
+msgstr "Canal 116 (5580 MHz — DFS Espectro Limpo)"
+
+msgid "Canal 120 (5600 MHz — ⚠️ Radar TDWR / Espera obrigatória de 10 min)"
+msgstr "Canal 120 (5600 MHz — ⚠️ Radar TDWR / Espera obrigatória de 10 min)"
+
+msgid "Canal 124 (5620 MHz — ⚠️ Radar TDWR / Espera obrigatória de 10 min)"
+msgstr "Canal 124 (5620 MHz — ⚠️ Radar TDWR / Espera obrigatória de 10 min)"
+
+msgid "Canal 128 (5640 MHz — ⚠️ Radar TDWR / Espera obrigatória de 10 min)"
+msgstr "Canal 128 (5640 MHz — ⚠️ Radar TDWR / Espera obrigatória de 10 min)"
+
+msgid "Canal 132 (5660 MHz — DFS Espectro Limpo / Máx 80 MHz)"
+msgstr "Canal 132 (5660 MHz — DFS Espectro Limpo / Máx 80 MHz)"
+
+msgid "Canal 136 (5680 MHz — DFS Espectro Limpo / Máx 80 MHz)"
+msgstr "Canal 136 (5680 MHz — DFS Espectro Limpo / Máx 80 MHz)"
+
+msgid "Canal 140 (5700 MHz — DFS Espectro Limpo / Máx 80 MHz)"
+msgstr "Canal 140 (5700 MHz — DFS Espectro Limpo / Máx 80 MHz)"
+
+msgid "Canal 144 (5720 MHz — DFS Espectro Limpo / Máx 80 MHz)"
+msgstr "Canal 144 (5720 MHz — DFS Espectro Limpo / Máx 80 MHz)"
+
+msgid "Canal 149 (5745 MHz — Recomendado / Maior Potência / Sem DFS)"
+msgstr "Canal 149 (5745 MHz — Recomendado / Maior Potência / Sem DFS)"
+
+msgid "Canal 153 (5765 MHz — Alta Potência / Sem DFS)"
+msgstr "Canal 153 (5765 MHz — Alta Potência / Sem DFS)"
+
+msgid "Canal 157 (5785 MHz — Alta Potência / Sem DFS)"
+msgstr "Canal 157 (5785 MHz — Alta Potência / Sem DFS)"
+
+msgid "Canal 161 (5805 MHz — Alta Potência / Sem DFS)"
+msgstr "Canal 161 (5805 MHz — Alta Potência / Sem DFS)"
+
+msgid "Canal 165 (5825 MHz — Alta Potência / Somente 20 MHz)"
+msgstr "Canal 165 (5825 MHz — Alta Potência / Somente 20 MHz)"
+
+msgid "Canal 2 (2417 MHz — Sobreposição com canais 1 e 6)"
+msgstr "Canal 2 (2417 MHz — Sobreposição com canais 1 e 6)"
+
+msgid "Canal 2,4 GHz"
+msgstr "Canal 2,4 GHz"
+
+msgid "Canal 3 (2422 MHz — Sobreposição com canais 1 e 6)"
+msgstr "Canal 3 (2422 MHz — Sobreposição com canais 1 e 6)"
+
+msgid "Canal 4 (2427 MHz — Sobreposição com canais 1 e 6)"
+msgstr "Canal 4 (2427 MHz — Sobreposição com canais 1 e 6)"
+
+msgid "Canal 5 (2432 MHz — Sobreposição com canais 1 e 6)"
+msgstr "Canal 5 (2432 MHz — Sobreposição com canais 1 e 6)"
+
+msgid "Canal 5 GHz"
+msgstr "Canal 5 GHz"
+
+msgid "Canal 5 GHz do Mestre"
+msgstr "Canal 5 GHz do Mestre"
+
+msgid "Canal 56 (5280 MHz — DFS Bloco 2A)"
+msgstr "Canal 56 (5280 MHz — DFS Bloco 2A)"
+
+msgid "Canal 5G"
+msgstr "Canal 5G"
+
+msgid "Canal 6 (2437 MHz — Recomendado / Sem sobreposição)"
+msgstr "Canal 6 (2437 MHz — Recomendado / Sem sobreposição)"
+
+msgid "Canal 60 (5300 MHz — DFS Bloco 2A)"
+msgstr "Canal 60 (5300 MHz — DFS Bloco 2A)"
+
+msgid "Canal 64 (5320 MHz — DFS Bloco 2A)"
+msgstr "Canal 64 (5320 MHz — DFS Bloco 2A)"
+
+msgid "Canal 7 (2442 MHz — Sobreposição com canais 6 e 11)"
+msgstr "Canal 7 (2442 MHz — Sobreposição com canais 6 e 11)"
+
+msgid "Canal 8 (2447 MHz — Sobreposição com canais 6 e 11)"
+msgstr "Canal 8 (2447 MHz — Sobreposição com canais 6 e 11)"
+
+msgid "Canal 9 (2452 MHz — Sobreposição com canais 6 e 11)"
+msgstr "Canal 9 (2452 MHz — Sobreposição com canais 6 e 11)"
+
+msgid "Cancelar"
+msgstr "Cancelar"
+
+msgid "Cancelar (Uso apenas 1 roteador)"
+msgstr "Cancelar (Uso apenas 1 roteador)"
+
+msgid "Capacidade & Conexões NAT (Conntrack)"
+msgstr "Capacidade & Conexões NAT (Conntrack)"
+
+msgid "Capacidade total para moldagem de tráfego CAKE em alta velocidade com proteção anti-lag."
+msgstr "Capacidade total para moldagem de tráfego CAKE em alta velocidade com proteção anti-lag."
+
+msgid "Carga"
+msgstr "Carga"
+
+msgid "Carregando Capacidade da Rede…"
+msgstr "Carregando Capacidade da Rede…"
+
+msgid "Carregando DNS Turbo…"
+msgstr "Carregando DNS Turbo…"
+
+msgid "Carregando QR Code"
+msgstr "Carregando QR Code"
+
+msgid "Carregando WireGuard"
+msgstr "Carregando WireGuard"
+
+msgid "Carregando configurações…"
+msgstr "Carregando configurações…"
+
+msgid "Carregando dados da DMZ…"
+msgstr "Carregando dados da DMZ…"
+
+msgid "Carregando dados da rede e dispositivos…"
+msgstr "Carregando dados da rede e dispositivos…"
+
+msgid "Carregando logs do PPPoE…"
+msgstr "Carregando logs do PPPoE…"
+
+msgid "Central de Conectividade IPv6"
+msgstr "Central de Conectividade IPv6"
+
+msgid "Certificado ARK preparado para este endereço. Instale a autoridade somente nos dispositivos administrativos."
+msgstr "Certificado ARK preparado para este endereço. Instale a autoridade somente nos dispositivos administrativos."
+
+msgid "Certificado local/autossinado: a conexão é criptografada, mas navegadores não confiam nele automaticamente."
+msgstr "Certificado local/autossinado: a conexão é criptografada, mas navegadores não confiam nele automaticamente."
+
+msgid "Certifique-se de que o Enlace Mesh Sem Fio (802.11s) está ativado no Roteador Principal. Você também pode visualizar todas as redes Wi-Fi normais ou simular:"
+msgstr "Certifique-se de que o Enlace Mesh Sem Fio (802.11s) está ativado no Roteador Principal. Você também pode visualizar todas as redes Wi-Fi normais ou simular:"
+
+msgid "Chave de Segurança do Enlace (WPA3-SAE)"
+msgstr "Chave de Segurança do Enlace (WPA3-SAE)"
+
+msgid "Chave pública copiada!"
+msgstr "Chave pública copiada!"
+
+msgid "Chave secreta compartilhada para proteger o tráfego entre os roteadores."
+msgstr "Chave secreta compartilhada para proteger o tráfego entre os roteadores."
+
+msgid "CleanBrowsing Adult Filter (Pornografia e Explícito — ~18ms)"
+msgstr "CleanBrowsing Adult Filter (Pornografia e Explícito — ~18ms)"
+
+msgid "Cliente"
+msgstr "Cliente"
+
+msgid "Cliente VPN"
+msgstr "Cliente VPN"
+
+msgid "Cliente WireGuard"
+msgstr "Cliente WireGuard"
+
+msgid "Cliente WireGuard (Conexão VPN)"
+msgstr "Cliente WireGuard (Conexão VPN)"
+
+msgid "Cliente WireGuard importado e conectado com sucesso!"
+msgstr "Cliente WireGuard importado e conectado com sucesso!"
+
+msgid "Clique em um perfil para pré-preencher os limites recomendados:"
+msgstr "Clique em um perfil para pré-preencher os limites recomendados:"
+
+msgid "Clique para alternar modos IPv6 (Pilha Dupla, Seletivo por MAC, Cascata ou IPv4 Puro)"
+msgstr "Clique para alternar modos IPv6 (Pilha Dupla, Seletivo por MAC, Cascata ou IPv4 Puro)"
+
+msgid "Clique para escolher o servidor de teste de latência (Cloudflare, Google, Quad9, etc.)"
+msgstr "Clique para escolher o servidor de teste de latência (Cloudflare, Google, Quad9, etc.)"
+
+msgid "Cloudflare 1.1.1.2 Segurança (Malware & Phishing — ~6ms)"
+msgstr "Cloudflare 1.1.1.2 Segurança (Malware & Phishing — ~6ms)"
+
+msgid "Cloudflare 1.1.1.3 Família (Malware + Pornografia/Adulto — ~6ms)"
+msgstr "Cloudflare 1.1.1.3 Família (Malware + Pornografia/Adulto — ~6ms)"
+
+msgid "Cole o Network ID criado no ZeroTier Central. O roteador será autorizado no painel online do ZeroTier depois do join."
+msgstr "Cole o Network ID criado no ZeroTier Central. O roteador será autorizado no painel online do ZeroTier depois do join."
+
+msgid "Coletando…"
+msgstr "Coletando…"
+
+msgid "Coletor leve incluído no painel."
+msgstr "Coletor leve incluído no painel."
+
+msgid "Como instalar"
+msgstr "Como instalar"
+
+msgid "Compacta bibliotecas pesadas em RAM, limpa caches e remove redundâncias na partição Flash"
+msgstr "Compacta bibliotecas pesadas em RAM, limpa caches e remove redundâncias na partição Flash"
+
+msgid "Compacta pacotes pesados para descompressão em RAM no boot, limpa caches do APK e remove redundâncias na partição Flash."
+msgstr "Compacta pacotes pesados para descompressão em RAM no boot, limpa caches do APK e remove redundâncias na partição Flash."
+
+msgid "Compacta pacotes pesados para descompressão em RAM no boot, limpa caches do OPKG e remove redundâncias na partição Flash."
+msgstr "Compacta pacotes pesados para descompressão em RAM no boot, limpa caches do OPKG e remove redundâncias na partição Flash."
+
+msgid "Compatível com qualquer celular ou placa de rede dos últimos 10 anos."
+msgstr "Compatível com qualquer celular ou placa de rede dos últimos 10 anos."
+
+msgid "Compensa os cabeçalhos de fibra/cabo no shaper para precisão absoluta anti-bufferbloat."
+msgstr "Compensa os cabeçalhos de fibra/cabo no shaper para precisão absoluta anti-bufferbloat."
+
+msgid "Comportamento Multi-WAN automático"
+msgstr "Comportamento Multi-WAN automático"
+
+msgid "Computador Mac"
+msgstr "Computador Mac"
+
+msgid "Concluir e recarregar"
+msgstr "Concluir e recarregar"
+
+msgid "Conectar"
+msgstr "Conectar"
+
+msgid "Conectar Cliente:"
+msgstr "Conectar Cliente:"
+
+msgid "Conectar a este Enlace"
+msgstr "Conectar a este Enlace"
+
+msgid "Conexão"
+msgstr "Conexão"
+
+msgid "Conexão IPv4 em CGNAT ("
+msgstr "Conexão IPv4 em CGNAT ("
+
+msgid "Conexão Segura TLS"
+msgstr "Conexão Segura TLS"
+
+msgid "Conexão segura obrigatória para Gmail, Outlook e provedores modernos."
+msgstr "Conexão segura obrigatória para Gmail, Outlook e provedores modernos."
+
+msgid "Conexões NAT ativas no momento:"
+msgstr "Conexões NAT ativas no momento:"
+
+msgid "Configurando interface wgclient, chaves e firewall…"
+msgstr "Configurando interface wgclient, chaves e firewall…"
+
+msgid "Configurar"
+msgstr "Configurar"
+
+msgid "Configurar DNS Turbo"
+msgstr "Configurar DNS Turbo"
+
+msgid "Configurar Enlace Mesh Sem Fio (802.11s)"
+msgstr "Configurar Enlace Mesh Sem Fio (802.11s)"
+
+msgid "Configurar dispositivo"
+msgstr "Configurar dispositivo"
+
+msgid "Configurar portas de aceleração BitTorrent"
+msgstr "Configurar portas de aceleração BitTorrent"
+
+msgid "Configurar portas e aparelho de aceleração BitTorrent"
+msgstr "Configurar portas e aparelho de aceleração BitTorrent"
+
+msgid "Configuração copiada para a área de transferência!"
+msgstr "Configuração copiada para a área de transferência!"
+
+msgid "Configuração de Portas BitTorrent / P2P"
+msgstr "Configuração de Portas BitTorrent / P2P"
+
+msgid "Configuração do Servidor DHCP ao Restaurar:"
+msgstr "Configuração do Servidor DHCP ao Restaurar:"
+
+msgid "Configuração mista entre as bandas"
+msgstr "Configuração mista entre as bandas"
+
+msgid "Configurações Speedify salvas quando disponíveis."
+msgstr "Configurações Speedify salvas quando disponíveis."
+
+msgid "Configurações aplicadas com sucesso!"
+msgstr "Configurações aplicadas com sucesso!"
+
+msgid "Configurações avançadas do Speedify"
+msgstr "Configurações avançadas do Speedify"
+
+msgid "Configurações de BitTorrent/P2P atualizadas com sucesso!"
+msgstr "Configurações de BitTorrent/P2P atualizadas com sucesso!"
+
+msgid "Configurações de DNS Turbo salvas e aplicadas com sucesso!"
+msgstr "Configurações de DNS Turbo salvas e aplicadas com sucesso!"
+
+msgid "Configurações de telemetria e e-mail salvas com sucesso!"
+msgstr "Configurações de telemetria e e-mail salvas com sucesso!"
+
+msgid "Configurações do dispositivo salvas."
+msgstr "Configurações do dispositivo salvas."
+
+msgid "Configure o balanceamento de BitTorrent/P2P nas 2 conexões para acelerar downloads. Você pode acelerar para toda a rede ou direcionar exclusivamente para seu PC ou console."
+msgstr "Configure o balanceamento de BitTorrent/P2P nas 2 conexões para acelerar downloads. Você pode acelerar para toda a rede ou direcionar exclusivamente para seu PC ou console."
+
+msgid "Configure o protocolo IPv6 para esta rede local (Pilha Dupla Global, Seletivo por MAC, Cascata/NDP Relay ou IPv4 Puro)."
+msgstr "Configure o protocolo IPv6 para esta rede local (Pilha Dupla Global, Seletivo por MAC, Cascata/NDP Relay ou IPv4 Puro)."
+
+msgid "Confirmar"
+msgstr "Confirmar"
+
+msgid "Confirmar Instalação Manual"
+msgstr "Confirmar Instalação Manual"
+
+msgid "Confirmar alteração"
+msgstr "Confirmar alteração"
+
+msgid "Confirmar alteração da LAN"
+msgstr "Confirmar alteração da LAN"
+
+msgid "Confirmar desligamento do Wi‑Fi"
+msgstr "Confirmar desligamento do Wi‑Fi"
+
+msgid "Confirmar e Ativar Gamer"
+msgstr "Confirmar e Ativar Gamer"
+
+msgid "Confirmar e aplicar (2s)"
+msgstr "Confirmar e aplicar (2s)"
+
+msgid "Confirmar instalação"
+msgstr "Confirmar instalação"
+
+msgid "Confirmar nova senha"
+msgstr "Confirmar nova senha"
+
+msgid "Confirmar otimização ARK"
+msgstr "Confirmar otimização ARK"
+
+msgid "Confirmar senha"
+msgstr "Confirmar senha"
+
+msgid "Confirmação final"
+msgstr "Confirmação final"
+
+msgid "Conflito de MAC: O endereço"
+msgstr "Conflito de MAC: O endereço"
+
+msgid "Conflito de prioridade: A conexão"
+msgstr "Conflito de prioridade: A conexão"
+
+msgid "Consultando configurações Wi-Fi e Mesh no Roteador Mestre ("
+msgstr "Consultando configurações Wi-Fi e Mesh no Roteador Mestre ("
+
+msgid "Consultando limites de conexões e buffers…"
+msgstr "Consultando limites de conexões e buffers…"
+
+msgid "Consultando servidores e configurações atuais…"
+msgstr "Consultando servidores e configurações atuais…"
+
+msgid "Consultando status de rede IPv6 do roteador…"
+msgstr "Consultando status de rede IPv6 do roteador…"
+
+msgid "Consultando topologia de rede e procurando roteador principal…"
+msgstr "Consultando topologia de rede e procurando roteador principal…"
+
+msgid "Consumo"
+msgstr "Consumo"
+
+msgid "Consumo por dispositivo"
+msgstr "Consumo por dispositivo"
+
+msgid "Conta Speedify"
+msgstr "Conta Speedify"
+
+msgid "Continuar"
+msgstr "Continuar"
+
+msgid "Control D Full Blocker (Anúncios + Pornografia + Cassinos/Apostas — ~15ms)"
+msgstr "Control D Full Blocker (Anúncios + Pornografia + Cassinos/Apostas — ~15ms)"
+
+msgid "Converter porta WAN em LAN"
+msgstr "Converter porta WAN em LAN"
+
+msgid "Converter porta WAN em LAN (Auto-Sensing Total)"
+msgstr "Converter porta WAN em LAN (Auto-Sensing Total)"
+
+msgid "Converter porta WAN em LAN?"
+msgstr "Converter porta WAN em LAN?"
+
+msgid "Converter porta WAN física em LAN (Auto-Sensing)?"
+msgstr "Converter porta WAN física em LAN (Auto-Sensing)?"
+
+msgid "Cor principal"
+msgstr "Cor principal"
+
+msgid "Cor secundária"
+msgstr "Cor secundária"
+
+msgid "Cria uma rede isolada para visitas, sem acesso aos computadores e arquivos da sua rede interna."
+msgstr "Cria uma rede isolada para visitas, sem acesso aos computadores e arquivos da sua rede interna."
+
+msgid "Criando credenciais criptográficas WireGuard…"
+msgstr "Criando credenciais criptográficas WireGuard…"
+
+msgid "Crie uma regra personalizada para direcionar portas específicas ou aparelhos para o balanceamento ou um link exclusivo."
+msgstr "Crie uma regra personalizada para direcionar portas específicas ou aparelhos para o balanceamento ou um link exclusivo."
+
+msgid "Criptografia processada diretamente pelo hardware Atheros/MIPS. Máxima velocidade no ar e 100% compatível com IoT (Tuya/Sonoff) e celulares."
+msgstr "Criptografia processada diretamente pelo hardware Atheros/MIPS. Máxima velocidade no ar e 100% compatível com IoT (Tuya/Sonoff) e celulares."
+
+msgid "Câmera Wi-Fi / Smart"
+msgstr "Câmera Wi-Fi / Smart"
+
+msgid "Código"
+msgstr "Código"
+
+msgid "DESATIVADO"
+msgstr "DESATIVADO"
+
+msgid "DESLIGADA"
+msgstr "DESLIGADA"
+
+msgid "DESLIGADA (RECOMENDADO)"
+msgstr "DESLIGADA (RECOMENDADO)"
+
+msgid "DESLIGADO"
+msgstr "DESLIGADO"
+
+msgid "DESLIGADOS"
+msgstr "DESLIGADOS"
+
+msgid "DHCP DINÂMICO"
+msgstr "DHCP DINÂMICO"
+
+msgid "DHCP automático"
+msgstr "DHCP automático"
+
+msgid "DISPOSITIVOS"
+msgstr "DISPOSITIVOS"
+
+msgid "DMZ ativada com sucesso para"
+msgstr "DMZ ativada com sucesso para"
+
+msgid "DMZ desativada com sucesso."
+msgstr "DMZ desativada com sucesso."
+
+msgid "DMZ desativada."
+msgstr "DMZ desativada."
+
+msgid "DNAT Transparente"
+msgstr "DNAT Transparente"
+
+msgid "DNS 2 (Secundário):"
+msgstr "DNS 2 (Secundário):"
+
+msgid "DNS Protegido por Bloqueador"
+msgstr "DNS Protegido por Bloqueador"
+
+msgid "DNS Turbo Paralelo (All-Servers)"
+msgstr "DNS Turbo Paralelo (All-Servers)"
+
+msgid "DNS Turbo Paralelo (All-Servers) será reativado"
+msgstr "DNS Turbo Paralelo (All-Servers) será reativado"
+
+msgid "DNS da Operadora (Dinâmico)"
+msgstr "DNS da Operadora (Dinâmico)"
+
+msgid "DNS do roteador"
+msgstr "DNS do roteador"
+
+msgid "DNS recebidos"
+msgstr "DNS recebidos"
+
+msgid "DUAL-CORE / QUAD-CORE"
+msgstr "DUAL-CORE / QUAD-CORE"
+
+msgid "Defina os limites em Mbps. Exemplo: 1,2 Gbps = 1200 Mbps. Use 0 ou deixe em branco quando não quiser limitar aquela direção (ilimitado)."
+msgstr "Defina os limites em Mbps. Exemplo: 1,2 Gbps = 1200 Mbps. Use 0 ou deixe em branco quando não quiser limitar aquela direção (ilimitado)."
+
+msgid "Defina quais placas são Primárias/Secundárias e limites opcionais. Deixe ilimitado para não aplicar teto."
+msgstr "Defina quais placas são Primárias/Secundárias e limites opcionais. Deixe ilimitado para não aplicar teto."
+
+msgid "Defina regras individuais de proteção e restrição para este dispositivo:"
+msgstr "Defina regras individuais de proteção e restrição para este dispositivo:"
+
+msgid "Deixe a porta final vazia para aplicar apenas a uma única porta, ou preencha as duas para criar uma faixa contínua."
+msgstr "Deixe a porta final vazia para aplicar apenas a uma única porta, ou preencha as duas para criar uma faixa contínua."
+
+msgid "Depois da instalação, feche e abra novamente o navegador e acesse novamente o endereço HTTPS do roteador."
+msgstr "Depois da instalação, feche e abra novamente o navegador e acesse novamente o endereço HTTPS do roteador."
+
+msgid "Depois de ativar, o navegador abrirá o painel em HTTPS e poderá exibir um aviso sobre o certificado local."
+msgstr "Depois de ativar, o navegador abrirá o painel em HTTPS e poderá exibir um aviso sobre o certificado local."
+
+msgid "Desativa a camada extra de criptografia no Speedify. Como 99% da internet já usa HTTPS/TLS e jogos usam pacotes próprios, desligar isso corta o uso de CPU e RAM pela metade e aumenta a velocidade máxima."
+msgstr "Desativa a camada extra de criptografia no Speedify. Como 99% da internet já usa HTTPS/TLS e jogos usam pacotes próprios, desligar isso corta o uso de CPU e RAM pela metade e aumenta a velocidade máxima."
+
+msgid "Desativada"
+msgstr "Desativada"
+
+msgid "Desativado"
+msgstr "Desativado"
+
+msgid "Desativado (Apenas manual ou pós-boot)"
+msgstr "Desativado (Apenas manual ou pós-boot)"
+
+msgid "Desativado (Broadcast)"
+msgstr "Desativado (Broadcast)"
+
+msgid "Desativado (IP Fixo / Manual)"
+msgstr "Desativado (IP Fixo / Manual)"
+
+msgid "Desativado (IP Fixo)"
+msgstr "Desativado (IP Fixo)"
+
+msgid "Desativado (Modo Ponto de Acesso)"
+msgstr "Desativado (Modo Ponto de Acesso)"
+
+msgid "Desativado (Sem NAT Duplo / Modo Bridge)"
+msgstr "Desativado (Sem NAT Duplo / Modo Bridge)"
+
+msgid "Desativado e gerenciado centralmente pelo Roteador Mestre"
+msgstr "Desativado e gerenciado centralmente pelo Roteador Mestre"
+
+msgid "Desativado em Modo AP"
+msgstr "Desativado em Modo AP"
+
+msgid "Desativado no Satélite"
+msgstr "Desativado no Satélite"
+
+msgid "Desativado obrigatoriamente no Modo Secundário / Ponto Adicional para evitar conflitos com o Roteador Principal."
+msgstr "Desativado obrigatoriamente no Modo Secundário / Ponto Adicional para evitar conflitos com o Roteador Principal."
+
+msgid "Desativado para evitar pop-ups invasivos e proteger o ARK Router."
+msgstr "Desativado para evitar pop-ups invasivos e proteger o ARK Router."
+
+msgid "Desativado • Aparelhos realizam reautenticação completa WPA ao trocar de ponto de acesso."
+msgstr "Desativado • Aparelhos realizam reautenticação completa WPA ao trocar de ponto de acesso."
+
+msgid "Desativado • As portas físicas permanecem fixas conforme a topologia padrão."
+msgstr "Desativado • As portas físicas permanecem fixas conforme a topologia padrão."
+
+msgid "Desativado • Conexões exigem senha manualmente."
+msgstr "Desativado • Conexões exigem senha manualmente."
+
+msgid "Desativado • Limite regulatório padrão Brasil (BR) aplicado."
+msgstr "Desativado • Limite regulatório padrão Brasil (BR) aplicado."
+
+msgid "Desativado • O roteador não realiza assistência ativa de roaming."
+msgstr "Desativado • O roteador não realiza assistência ativa de roaming."
+
+msgid "Desativado • Rádios operando na potência padrão máxima do país."
+msgstr "Desativado • Rádios operando na potência padrão máxima do país."
+
+msgid "Desativado • Tráfego multicast transmitido em broadcast para todas as portas e antenas Wi-Fi (pode causar lentidão em streaming/IPTV)."
+msgstr "Desativado • Tráfego multicast transmitido em broadcast para todas as portas e antenas Wi-Fi (pode causar lentidão em streaming/IPTV)."
+
+msgid "Desativar DMZ"
+msgstr "Desativar DMZ"
+
+msgid "Desativar IPv6 totalmente"
+msgstr "Desativar IPv6 totalmente"
+
+msgid "Desativar SQM / CAKE"
+msgstr "Desativar SQM / CAKE"
+
+msgid "Desativar SQM e Desligar Gamer"
+msgstr "Desativar SQM e Desligar Gamer"
+
+msgid "Desativar redirecionamento HTTPS"
+msgstr "Desativar redirecionamento HTTPS"
+
+msgid "Desative as filas SQM / CAKE antes de ligar o Fastpath."
+msgstr "Desative as filas SQM / CAKE antes de ligar o Fastpath."
+
+msgid "Descarte buffers inativos do kernel e apague arquivos temporários órfãos em /tmp para recuperar memória livre instantaneamente."
+msgstr "Descarte buffers inativos do kernel e apague arquivos temporários órfãos em /tmp para recuperar memória livre instantaneamente."
+
+msgid "Desconectar"
+msgstr "Desconectar"
+
+msgid "Deseja aplicar o Modo Roteador Secundário agora?"
+msgstr "Deseja aplicar o Modo Roteador Secundário agora?"
+
+msgid "Deseja baixar e instalar o pacote oficial do Multi-WAN agora pelo repositório do roteador?"
+msgstr "Deseja baixar e instalar o pacote oficial do Multi-WAN agora pelo repositório do roteador?"
+
+msgid "Deseja continuar e ativar o Mesh sem fio pelo ar?"
+msgstr "Deseja continuar e ativar o Mesh sem fio pelo ar?"
+
+msgid "Deseja encerrar imediatamente o processo do Speedify e liberar a memória RAM alocada?"
+msgstr "Deseja encerrar imediatamente o processo do Speedify e liberar a memória RAM alocada?"
+
+msgid "Deseja manter o mesmo nome de Wi-Fi e a mesma senha do Mestre neste ponto adicional?"
+msgstr "Deseja manter o mesmo nome de Wi-Fi e a mesma senha do Mestre neste ponto adicional?"
+
+msgid "Deseja preparar o reinício do roteador? Nenhuma configuração será apagada."
+msgstr "Deseja preparar o reinício do roteador? Nenhuma configuração será apagada."
+
+msgid "Desempenho & Blindagem de Memória"
+msgstr "Desempenho & Blindagem de Memória"
+
+msgid "Desguardar antena (Unstow)"
+msgstr "Desguardar antena (Unstow)"
+
+msgid "Desinstalando AdGuard Home"
+msgstr "Desinstalando AdGuard Home"
+
+msgid "Desinstalando Speedify"
+msgstr "Desinstalando Speedify"
+
+msgid "Desinstalar BONDING REAL (Speedify)"
+msgstr "Desinstalar BONDING REAL (Speedify)"
+
+msgid "Desligado • HTTP e HTTPS disponíveis"
+msgstr "Desligado • HTTP e HTTPS disponíveis"
+
+msgid "Desligado • canais definidos manualmente"
+msgstr "Desligado • canais definidos manualmente"
+
+msgid "Desligar WireGuard"
+msgstr "Desligar WireGuard"
+
+msgid "Desligar ZeroTier"
+msgstr "Desligar ZeroTier"
+
+msgid "Despacho Wi-Fi Direto (WED)"
+msgstr "Despacho Wi-Fi Direto (WED)"
+
+msgid "Deve ser idêntico em todos os nós da sua rede Mesh."
+msgstr "Deve ser idêntico em todos os nós da sua rede Mesh."
+
+msgid "Deve ser idêntico em todos os roteadores da casa"
+msgstr "Deve ser idêntico em todos os roteadores da casa"
+
+msgid "Diagnóstico abrangente e dinâmico dos componentes físicos, sensores térmicos e capacidades do seu roteador."
+msgstr "Diagnóstico abrangente e dinâmico dos componentes físicos, sensores térmicos e capacidades do seu roteador."
+
+msgid "Dica Recomendada:"
+msgstr "Dica Recomendada:"
+
+msgid "Dica para CPU de 1 Núcleo / MIPS:"
+msgstr "Dica para CPU de 1 Núcleo / MIPS:"
+
+msgid "Dica: Útil para testar a rota direta até o servidor do seu jogo favorito (Riot/Steam), VPN corporativa ou filial."
+msgstr "Dica: Útil para testar a rota direta até o servidor do seu jogo favorito (Riot/Steam), VPN corporativa ou filial."
+
+msgid "Digitar IP manualmente…"
+msgstr "Digitar IP manualmente…"
+
+msgid "Digite a senha do AdGuard / Roteador"
+msgstr "Digite a senha do AdGuard / Roteador"
+
+msgid "Digite as portas separadas por vírgula ou faixas separadas por dois-pontos/hífen:"
+msgstr "Digite as portas separadas por vírgula ou faixas separadas por dois-pontos/hífen:"
+
+msgid "Digite pelo menos uma porta ou faixa."
+msgstr "Digite pelo menos uma porta ou faixa."
+
+msgid "Digite um endereço IP válido para o aparelho."
+msgstr "Digite um endereço IP válido para o aparelho."
+
+msgid "Digite um nome para a regra."
+msgstr "Digite um nome para a regra."
+
+msgid "Dimensionamento de Rede"
+msgstr "Dimensionamento de Rede"
+
+msgid "Direcione portas específicas ou aparelhos para balanceamento ou para um link dedicado."
+msgstr "Direcione portas específicas ou aparelhos para balanceamento ou para um link dedicado."
+
+msgid "Dispara consultas simultaneamente para 2 a 4 servidores em paralelo (Cloudflare, Google, etc.). O primeiro que responder entrega a página sem fila nem atraso de rota."
+msgstr "Dispara consultas simultaneamente para 2 a 4 servidores em paralelo (Cloudflare, Google, etc.). O primeiro que responder entrega a página sem fila nem atraso de rota."
+
+msgid "Dispara para todos os servidores ao mesmo tempo. O primeiro que responder entrega a página sem esperar filas."
+msgstr "Dispara para todos os servidores ao mesmo tempo. O primeiro que responder entrega a página sem esperar filas."
+
+msgid "Dispara relatórios executivos consolidados com tabela formatada e planilha compactada (.csv.gz) em anexo."
+msgstr "Dispara relatórios executivos consolidados com tabela formatada e planilha compactada (.csv.gz) em anexo."
+
+msgid "Disponível"
+msgstr "Disponível"
+
+msgid "Dispositivo"
+msgstr "Dispositivo"
+
+msgid "Dispositivo Apple"
+msgstr "Dispositivo Apple"
+
+msgid "Dispositivo Smart Home / Automação Residencial (Tuya, Sonoff, Espressif, Alexa, Midea, etc.)"
+msgstr "Dispositivo Smart Home / Automação Residencial (Tuya, Sonoff, Espressif, Alexa, Midea, etc.)"
+
+msgid "Dispositivos"
+msgstr "Dispositivos"
+
+msgid "Dispositivos Pareados ("
+msgstr "Dispositivos Pareados ("
+
+msgid "Dispositivos Seletivos:"
+msgstr "Dispositivos Seletivos:"
+
+msgid "Dispositivos Servidor"
+msgstr "Dispositivos Servidor"
+
+msgid "Dispositivos móveis com MAC randômico (Android/iOS) que trocam de endereço e esgotam o pool DHCP rapidamente."
+msgstr "Dispositivos móveis com MAC randômico (Android/iOS) que trocam de endereço e esgotam o pool DHCP rapidamente."
+
+msgid "Distribui endereços IP automaticamente para celulares, computadores e dispositivos conectados."
+msgstr "Distribui endereços IP automaticamente para celulares, computadores e dispositivos conectados."
+
+msgid "Distribui o bloco IPv6 público desta operadora para os dispositivos locais (DHCPv6-PD). Apenas uma WAN pode distribuir por vez para evitar conflitos."
+msgstr "Distribui o bloco IPv6 público desta operadora para os dispositivos locais (DHCPv6-PD). Apenas uma WAN pode distribuir por vez para evitar conflitos."
+
+msgid "Distribuir IPv6 na LAN"
+msgstr "Distribuir IPv6 na LAN"
+
+msgid "Distribuição de IPs (Servidor DHCP IPv4)"
+msgstr "Distribuição de IPs (Servidor DHCP IPv4)"
+
+msgid "Distribuição de Interrupções Multicore (IRQ Balance)"
+msgstr "Distribuição de Interrupções Multicore (IRQ Balance)"
+
+msgid "Diário (04:30 - Recomendado)"
+msgstr "Diário (04:30 - Recomendado)"
+
+msgid "Domínios em lista negra"
+msgstr "Domínios em lista negra"
+
+msgid "Download agora"
+msgstr "Download agora"
+
+msgid "Download ajustado para 0 (ilimitado). O SQM atuará apenas no Upload, eliminando o bufferbloat sem sobrecarregar a CPU."
+msgstr "Download ajustado para 0 (ilimitado). O SQM atuará apenas no Upload, eliminando o bufferbloat sem sobrecarregar a CPU."
+
+msgid "Download ao longo do dia"
+msgstr "Download ao longo do dia"
+
+msgid "Download medido"
+msgstr "Download medido"
+
+msgid "Dê um nome para salvar estas credenciais (usuário, senha, MAC e IP da ONU):"
+msgstr "Dê um nome para salvar estas credenciais (usuário, senha, MAC e IP da ONU):"
+
+msgid "ECONOMIA EM EVENTOS"
+msgstr "ECONOMIA EM EVENTOS"
+
+msgid "ENDPOINT (IP/DDNS DO ROTEADOR)"
+msgstr "ENDPOINT (IP/DDNS DO ROTEADOR)"
+
+msgid "Editar IP & Gateway deste AP"
+msgstr "Editar IP & Gateway deste AP"
+
+msgid "Editar SQM / CAKE"
+msgstr "Editar SQM / CAKE"
+
+msgid "Editar internet"
+msgstr "Editar internet"
+
+msgid "Editar limites"
+msgstr "Editar limites"
+
+msgid "Editar modo do Multi‑WAN"
+msgstr "Editar modo do Multi‑WAN"
+
+msgid "Editar porta / internet"
+msgstr "Editar porta / internet"
+
+msgid "Editar rede principal / DHCP"
+msgstr "Editar rede principal / DHCP"
+
+msgid "Ela NÃO altera seu usuário, senha nem tipo de conexão"
+msgstr "Ela NÃO altera seu usuário, senha nem tipo de conexão"
+
+msgid "Elimina engasgos na abertura de sites e downloads. Toque em “Servidores” para testar e escolher até 4 DNS."
+msgstr "Elimina engasgos na abertura de sites e downloads. Toque em “Servidores” para testar e escolher até 4 DNS."
+
+msgid "Em 2,4 GHz, manter a largura em 20 MHz (HT20) evita colisões de canal de 40 MHz que sobrecarregam a CPU com erros de CRC."
+msgstr "Em 2,4 GHz, manter a largura em 20 MHz (HT20) evita colisões de canal de 40 MHz que sobrecarregam a CPU com erros de CRC."
+
+msgid "Em casas com mais de um roteador, manter o 2,4 GHz no volume máximo faz com que o sinal atravesse várias paredes e"
+msgstr "Em casas com mais de um roteador, manter o 2,4 GHz no volume máximo faz com que o sinal atravesse várias paredes e"
+
+msgid "Em casas com mais de um roteador, manter o 2,4 GHz no volume máximo faz com que o sinal atravesse várias paredes e \\"prenda\\" o celular em conexões lentas. Esta opção reduz a potência do 2,4 GHz para um nível moderado e eleva o 5 GHz para a potência máxima, equilibrando a cobertura e incentivando os aparelhos a utilizarem a banda mais rápida."
+msgstr "Em casas com mais de um roteador, manter o 2,4 GHz no volume máximo faz com que o sinal atravesse várias paredes e \\"prenda\\" o celular em conexões lentas. Esta opção reduz a potência do 2,4 GHz para um nível moderado e eleva o 5 GHz para a potência máxima, equilibrando a cobertura e incentivando os aparelhos a utilizarem a banda mais rápida."
+
+msgid "Em redes com TV Box, IPTV ou caixas de som inteligentes, sem o IGMP Snooping a ponte L2 (br-lan) replica todo o fluxo multimídia como broadcast para todas as portas e antenas simultaneamente, causando saturação severa e travamentos no Wi-Fi."
+msgstr "Em redes com TV Box, IPTV ou caixas de som inteligentes, sem o IGMP Snooping a ponte L2 (br-lan) replica todo o fluxo multimídia como broadcast para todas as portas e antenas simultaneamente, causando saturação severa e travamentos no Wi-Fi."
+
+msgid "Encerrando serviços, removendo pacotes/arquivos e religando o DNS padrão e DNS Turbo (All-Servers)…"
+msgstr "Encerrando serviços, removendo pacotes/arquivos e religando o DNS padrão e DNS Turbo (All-Servers)…"
+
+msgid "Encerrar Speedify"
+msgstr "Encerrar Speedify"
+
+msgid "Endereço IP"
+msgstr "Endereço IP"
+
+msgid "Endereço IP deste AP"
+msgstr "Endereço IP deste AP"
+
+msgid "Endereço IP inválido."
+msgstr "Endereço IP inválido."
+
+msgid "Endereço IP ou Domínio Personalizado:"
+msgstr "Endereço IP ou Domínio Personalizado:"
+
+msgid "Endereço IP para fixar exclusivamente para este aparelho:"
+msgstr "Endereço IP para fixar exclusivamente para este aparelho:"
+
+msgid "Endereço IPv4"
+msgstr "Endereço IPv4"
+
+msgid "Endereço IPv4 do Dispositivo em DMZ:"
+msgstr "Endereço IPv4 do Dispositivo em DMZ:"
+
+msgid "Endereço MAC:"
+msgstr "Endereço MAC:"
+
+msgid "Endereço fixo e exclusivo para você acessar o painel deste aparelho na sua rede."
+msgstr "Endereço fixo e exclusivo para você acessar o painel deste aparelho na sua rede."
+
+msgid "Endereço onde o roteador principal está operando (ex: 192.168.1.1)."
+msgstr "Endereço onde o roteador principal está operando (ex: 192.168.1.1)."
+
+msgid "Endereço que receberá o relatório executivo com os anexos."
+msgstr "Endereço que receberá o relatório executivo com os anexos."
+
+msgid "Endereço(s) DNS personalizado(s):"
+msgstr "Endereço(s) DNS personalizado(s):"
+
+msgid "Enlace 802.11s"
+msgstr "Enlace 802.11s"
+
+msgid "Enlace Mesh / Mestre"
+msgstr "Enlace Mesh / Mestre"
+
+msgid "Enlace Mesh Selecionado:"
+msgstr "Enlace Mesh Selecionado:"
+
+msgid "Enlace de Entrada (Uplink)"
+msgstr "Enlace de Entrada (Uplink)"
+
+msgid "Entrar / trocar rede"
+msgstr "Entrar / trocar rede"
+
+msgid "Entrar na rede ZeroTier"
+msgstr "Entrar na rede ZeroTier"
+
+msgid "Envia 1.1.1.1 como DNS secundário no DHCP. Se o roteador reiniciar, os aparelhos continuam navegando sem interrupção."
+msgstr "Envia 1.1.1.1 como DNS secundário no DHCP. Se o roteador reiniciar, os aparelhos continuam navegando sem interrupção."
+
+msgid "Enviado"
+msgstr "Enviado"
+
+msgid "Enviado hoje"
+msgstr "Enviado hoje"
+
+msgid "Enviando comando à interface…"
+msgstr "Enviando comando à interface…"
+
+msgid "Enviar relatórios e logs por e-mail"
+msgstr "Enviar relatórios e logs por e-mail"
+
+msgid "Equilibra o processamento dos pacotes Wi-Fi, Ethernet e placa de rede entre os núcleos da CPU."
+msgstr "Equilibra o processamento dos pacotes Wi-Fi, Ethernet e placa de rede entre os núcleos da CPU."
+
+msgid "Erro"
+msgstr "Erro"
+
+msgid "Erro ao adicionar cliente"
+msgstr "Erro ao adicionar cliente"
+
+msgid "Erro ao amarrar MAC:"
+msgstr "Erro ao amarrar MAC:"
+
+msgid "Erro ao buscar dados do Mestre:"
+msgstr "Erro ao buscar dados do Mestre:"
+
+msgid "Erro ao codificar configuração"
+msgstr "Erro ao codificar configuração"
+
+msgid "Erro ao consultar logs:"
+msgstr "Erro ao consultar logs:"
+
+msgid "Erro ao consultar mestre:"
+msgstr "Erro ao consultar mestre:"
+
+msgid "Erro ao desinstalar AdGuard Home:"
+msgstr "Erro ao desinstalar AdGuard Home:"
+
+msgid "Erro ao disparar e-mail:"
+msgstr "Erro ao disparar e-mail:"
+
+msgid "Erro ao excluir"
+msgstr "Erro ao excluir"
+
+msgid "Erro ao fixar IP:"
+msgstr "Erro ao fixar IP:"
+
+msgid "Erro ao limpar inativos: "
+msgstr "Erro ao limpar inativos: "
+
+msgid "Erro ao salvar cliente"
+msgstr "Erro ao salvar cliente"
+
+msgid "Erro ao sincronizar lista branca:"
+msgstr "Erro ao sincronizar lista branca:"
+
+msgid "Erro ao sincronizar lista negra:"
+msgstr "Erro ao sincronizar lista negra:"
+
+msgid "Escaneia e sintoniza no mesmo canal 5 GHz do Mestre para o Mesh fechar pelo ar."
+msgstr "Escaneia e sintoniza no mesmo canal 5 GHz do Mestre para o Mesh fechar pelo ar."
+
+msgid "Escolha até 4 servidores DNS e teste a latência de cada um em tempo real"
+msgstr "Escolha até 4 servidores DNS e teste a latência de cada um em tempo real"
+
+msgid "Escolha entre consultar antenas físicas reais ou simular comportamento Starlink com handovers para testes em bancada."
+msgstr "Escolha entre consultar antenas físicas reais ou simular comportamento Starlink com handovers para testes em bancada."
+
+msgid "Escolha o idioma de exibição do ARK Router e da interface administrativa do LuCI:"
+msgstr "Escolha o idioma de exibição do ARK Router e da interface administrativa do LuCI:"
+
+msgid "Escolha o nível de prioridade deste dispositivo na internet:"
+msgstr "Escolha o nível de prioridade deste dispositivo na internet:"
+
+msgid "Escolha o país onde o roteador está sendo utilizado. Isso controla legalmente canais e potências disponíveis."
+msgstr "Escolha o país onde o roteador está sendo utilizado. Isso controla legalmente canais e potências disponíveis."
+
+msgid "Escolha por qual link de internet este dispositivo deve sair:"
+msgstr "Escolha por qual link de internet este dispositivo deve sair:"
+
+msgid "Escolha quais faixas de rádio transmitem esta rede. Ao menos uma deve permanecer ligada."
+msgstr "Escolha quais faixas de rádio transmitem esta rede. Ao menos uma deve permanecer ligada."
+
+msgid "Escolha se a aceleração BitTorrent se aplica a toda a casa ou apenas a uma máquina específica (protegendo Alexas e outros dispositivos de qualquer interferência):"
+msgstr "Escolha se a aceleração BitTorrent se aplica a toda a casa ou apenas a uma máquina específica (protegendo Alexas e outros dispositivos de qualquer interferência):"
+
+msgid "Escolha se o dispositivo usa IP dinâmico ou se terá um IP fixo reservado:"
+msgstr "Escolha se o dispositivo usa IP dinâmico ou se terá um IP fixo reservado:"
+
+msgid "Escolha se os aparelhos desta rede podem conversar com outros computadores da casa ou se ficam isolados."
+msgstr "Escolha se os aparelhos desta rede podem conversar com outros computadores da casa ou se ficam isolados."
+
+msgid "Escolha um modo abaixo. Depois do clique, ainda será necessário confirmar antes que qualquer alteração seja aplicada."
+msgstr "Escolha um modo abaixo. Depois do clique, ainda será necessário confirmar antes que qualquer alteração seja aplicada."
+
+msgid "Escolher canais Wi‑Fi manualmente"
+msgstr "Escolher canais Wi‑Fi manualmente"
+
+msgid "Espanhol"
+msgstr "Espanhol"
+
+msgid "Español"
+msgstr "Español"
+
+msgid "Español neutro para routers y administración de red"
+msgstr "Español neutro para routers y administración de red"
+
+msgid "Especificações Técnicas do Hardware"
+msgstr "Especificações Técnicas do Hardware"
+
+msgid "Especificações Técnicas do Roteador"
+msgstr "Especificações Técnicas do Roteador"
+
+msgid "Essa ação atualizará a lista de pacotes e instalará somente o pacote indicado e suas dependências. Nenhuma configuração de rede será alterada automaticamente."
+msgstr "Essa ação atualizará a lista de pacotes e instalará somente o pacote indicado e suas dependências. Nenhuma configuração de rede será alterada automaticamente."
+
+msgid "Essa ação chama o Speedify CLI local. É necessário que o Speedify esteja instalado e ativado/licenciado."
+msgstr "Essa ação chama o Speedify CLI local. É necessário que o Speedify esteja instalado e ativado/licenciado."
+
+msgid "Essencial para o D-Link DGL-5500 (128 MB) para manter margem segura de RAM livre (> 60 MB) e evitar esgotamento de memória sob carga contínua."
+msgstr "Essencial para o D-Link DGL-5500 (128 MB) para manter margem segura de RAM livre (> 60 MB) e evitar esgotamento de memória sob carga contínua."
+
+msgid "Essencial para roteadores com 256MB ou 512MB de RAM (ex: Cudy WR3000) para evitar esgotamento em uso contínuo de várias horas."
+msgstr "Essencial para roteadores com 256MB ou 512MB de RAM (ex: Cudy WR3000) para evitar esgotamento em uso contínuo de várias horas."
+
+msgid "Esta opção só deve ser ativada se você possuir"
+msgstr "Esta opção só deve ser ativada se você possuir"
+
+msgid "Esta rede Wi‑Fi adicional pode ser removida se não for mais necessária."
+msgstr "Esta rede Wi‑Fi adicional pode ser removida se não for mais necessária."
+
+msgid "Estado da Antena"
+msgstr "Estado da Antena"
+
+msgid "Este Roteador Secundário assumirá o IP fixo configurado acima (ex:"
+msgstr "Este Roteador Secundário assumirá o IP fixo configurado acima (ex:"
+
+msgid "Este aparelho (iOS ou Android) está gerando um MAC privado aleatório nas configurações de Wi-Fi."
+msgstr "Este aparelho (iOS ou Android) está gerando um MAC privado aleatório nas configurações de Wi-Fi."
+
+msgid "Este aparelho é um nó secundário expandindo a rede Wi-Fi e portas LAN. É crucial manter o IP amarrado ao MAC (ex:"
+msgstr "Este aparelho é um nó secundário expandindo a rede Wi-Fi e portas LAN. É crucial manter o IP amarrado ao MAC (ex:"
+
+msgid "Este dispositivo opera como roteador / gateway cabeado. Nenhuma placa de rede sem fio foi encontrada no sistema."
+msgstr "Este dispositivo opera como roteador / gateway cabeado. Nenhuma placa de rede sem fio foi encontrada no sistema."
+
+msgid "Este nó opera como extensor em ponte transparente. O tráfego de saída, Multi-WAN e controle de Bufferbloat (SQM) são centralizados no Roteador Mestre."
+msgstr "Este nó opera como extensor em ponte transparente. O tráfego de saída, Multi-WAN e controle de Bufferbloat (SQM) são centralizados no Roteador Mestre."
+
+msgid "Este roteador deixará de distribuir IPs (servidor DHCP desativado) e atuará como extensão do roteador principal"
+msgstr "Este roteador deixará de distribuir IPs (servidor DHCP desativado) e atuará como extensão do roteador principal"
+
+msgid "Este roteador já está configurado como Roteador Secundário (Ponto Adicional)."
+msgstr "Este roteador já está configurado como Roteador Secundário (Ponto Adicional)."
+
+msgid "Este roteador não possui sensores térmicos expostos pelo hardware ou kernel."
+msgstr "Este roteador não possui sensores térmicos expostos pelo hardware ou kernel."
+
+msgid "Este roteador não suporta Speedify. Requer aarch64 ou x86_64."
+msgstr "Este roteador não suporta Speedify. Requer aarch64 ou x86_64."
+
+msgid "Este roteador opera como nó Satélite / Ponto de Acesso em ponte transparente. O gerenciamento de tráfego de internet e filas SQM deve ser feito diretamente no roteador principal para evitar degradação de desempenho local."
+msgstr "Este roteador opera como nó Satélite / Ponto de Acesso em ponte transparente. O gerenciamento de tráfego de internet e filas SQM deve ser feito diretamente no roteador principal para evitar degradação de desempenho local."
+
+msgid "Estilo do painel"
+msgstr "Estilo do painel"
+
+msgid "Estou ciente e quero ativar SQM"
+msgstr "Estou ciente e quero ativar SQM"
+
+msgid "Ex.: Celular da Joyce"
+msgstr "Ex.: Celular da Joyce"
+
+msgid "Ex: 51413 ou 6881"
+msgstr "Ex: 51413 ou 6881"
+
+msgid "Ex: 51413, 6881:6999 ou 1024:65535"
+msgstr "Ex: 51413, 6881:6999 ou 1024:65535"
+
+msgid "Ex: 6999 (opcional)"
+msgstr "Ex: 6999 (opcional)"
+
+msgid "Ex: MinhaRede_IoT"
+msgstr "Ex: MinhaRede_IoT"
+
+msgid "Ex: PC Gamer Torrent, Steam, Console"
+msgstr "Ex: PC Gamer Torrent, Steam, Console"
+
+msgid "Excelente! O cabo (Backhaul Ethernet) já entrega velocidade máxima Gigabit com zero perda pelo ar."
+msgstr "Excelente! O cabo (Backhaul Ethernet) já entrega velocidade máxima Gigabit com zero perda pelo ar."
+
+msgid "Excluindo Cliente WireGuard"
+msgstr "Excluindo Cliente WireGuard"
+
+msgid "Excluindo…"
+msgstr "Excluindo…"
+
+msgid "Excluir"
+msgstr "Excluir"
+
+msgid "Excluir Conexão VPN"
+msgstr "Excluir Conexão VPN"
+
+msgid "Excluir Regra de Roteamento"
+msgstr "Excluir Regra de Roteamento"
+
+msgid "Excluir perfil salvo"
+msgstr "Excluir perfil salvo"
+
+msgid "Excluir regra"
+msgstr "Excluir regra"
+
+msgid "Executar teste"
+msgstr "Executar teste"
+
+msgid "Execute a análise de canais antes de aplicar uma sugestão."
+msgstr "Execute a análise de canais antes de aplicar uma sugestão."
+
+msgid "Exibe a leitura térmica quando o hardware oferece um sensor."
+msgstr "Exibe a leitura térmica quando o hardware oferece um sensor."
+
+msgid "Exige Protected Management Frames (PMF). Dispositivos Smart Home/IoT ou aparelhos legados que não suportam WPA3 não conseguirão se conectar."
+msgstr "Exige Protected Management Frames (PMF). Dispositivos Smart Home/IoT ou aparelhos legados que não suportam WPA3 não conseguirão se conectar."
+
+msgid "Expandir"
+msgstr "Expandir"
+
+msgid "Expandir lista e ver tráfego individual"
+msgstr "Expandir lista e ver tráfego individual"
+
+msgid "Expandir painel"
+msgstr "Expandir painel"
+
+msgid "Expandir ▾"
+msgstr "Expandir ▾"
+
+msgid "Failover WAN1 → WAN2"
+msgstr "Failover WAN1 → WAN2"
+
+msgid "Faixa de Memória (Tier)"
+msgstr "Faixa de Memória (Tier)"
+
+msgid "Faixa de Portas (Destino):"
+msgstr "Faixa de Portas (Destino):"
+
+msgid "Falha ao adicionar regra"
+msgstr "Falha ao adicionar regra"
+
+msgid "Falha ao alternar aceleração P2P"
+msgstr "Falha ao alternar aceleração P2P"
+
+msgid "Falha ao alternar regra"
+msgstr "Falha ao alternar regra"
+
+msgid "Falha ao aplicar portas de BitTorrent"
+msgstr "Falha ao aplicar portas de BitTorrent"
+
+msgid "Falha ao carregar estado:"
+msgstr "Falha ao carregar estado:"
+
+msgid "Falha ao carregar modos de rede:"
+msgstr "Falha ao carregar modos de rede:"
+
+msgid "Falha ao consultar estado IPv6:"
+msgstr "Falha ao consultar estado IPv6:"
+
+msgid "Falha ao excluir regra"
+msgstr "Falha ao excluir regra"
+
+msgid "Falha ao varrer redes:"
+msgstr "Falha ao varrer redes:"
+
+msgid "Falha ao verificar status da porta WAN:"
+msgstr "Falha ao verificar status da porta WAN:"
+
+msgid "Falha durante o processo de instalação."
+msgstr "Falha durante o processo de instalação."
+
+msgid "Falha na instalação dos pacotes."
+msgstr "Falha na instalação dos pacotes."
+
+msgid "Família de Silício"
+msgstr "Família de Silício"
+
+msgid "Fastpath (Flow Offload) Ativo no Firewall"
+msgstr "Fastpath (Flow Offload) Ativo no Firewall"
+
+msgid "Fechar"
+msgstr "Fechar"
+
+msgid "Fechar aviso"
+msgstr "Fechar aviso"
+
+msgid "Fibra GPON / IPoE Padrão (26 bytes)"
+msgstr "Fibra GPON / IPoE Padrão (26 bytes)"
+
+msgid "Fila Exclusiva do Roteador Mestre"
+msgstr "Fila Exclusiva do Roteador Mestre"
+
+msgid "Fila Gamer / PUBG Mobile (DSCP EF - Tempo Real)"
+msgstr "Fila Gamer / PUBG Mobile (DSCP EF - Tempo Real)"
+
+msgid "Fila Gamer / Prioridade Máxima (AF41)"
+msgstr "Fila Gamer / Prioridade Máxima (AF41)"
+
+msgid "Fila Normal (DSCP AF41 - Vídeo)"
+msgstr "Fila Normal (DSCP AF41 - Vídeo)"
+
+msgid "Fila de Vídeo / Multimídia (AF31)"
+msgstr "Fila de Vídeo / Multimídia (AF31)"
+
+msgid "Filtro AAAA no DNS:"
+msgstr "Filtro AAAA no DNS:"
+
+msgid "Filtro Individual / Parental ativo para este aparelho"
+msgstr "Filtro Individual / Parental ativo para este aparelho"
+
+msgid "Filtro de ACK TCP (ack-filter):"
+msgstr "Filtro de ACK TCP (ack-filter):"
+
+msgid "Finalizar e ir para próxima"
+msgstr "Finalizar e ir para próxima"
+
+msgid "Fique atento para não perder o acesso ao roteador:"
+msgstr "Fique atento para não perder o acesso ao roteador:"
+
+msgid "Flash insuficiente"
+msgstr "Flash insuficiente"
+
+msgid "Flush inativos"
+msgstr "Flush inativos"
+
+msgid "Focaliza o sinal de rádio diretamente na direção dos seus aparelhos em vez de espalhar em círculo."
+msgstr "Focaliza o sinal de rádio diretamente na direção dos seus aparelhos em vez de espalhar em círculo."
+
+msgid "Força Smart TVs, Chromecasts e aparelhos com DNS embutido a passarem pelo AdGuard. Redireciona consultas externas da porta 53 para o roteador em 0ms."
+msgstr "Força Smart TVs, Chromecasts e aparelhos com DNS embutido a passarem pelo AdGuard. Redireciona consultas externas da porta 53 para o roteador em 0ms."
+
+msgid "Frequência / Bandas"
+msgstr "Frequência / Bandas"
+
+msgid "Frequência com que o relatório consolidado das últimas horas será enviado."
+msgstr "Frequência com que o relatório consolidado das últimas horas será enviado."
+
+msgid "Frequências de transmissão ativas"
+msgstr "Frequências de transmissão ativas"
+
+msgid "Full duplex"
+msgstr "Full duplex"
+
+msgid "GERENCIADO PELO MESTRE"
+msgstr "GERENCIADO PELO MESTRE"
+
+msgid "Gateway"
+msgstr "Gateway"
+
+msgid "Gateway Padrão (Roteador Principal)"
+msgstr "Gateway Padrão (Roteador Principal)"
+
+msgid "Geralmente 255.255.255.0 para redes residenciais."
+msgstr "Geralmente 255.255.255.0 para redes residenciais."
+
+msgid "Gerando Chaves & QR Code"
+msgstr "Gerando Chaves & QR Code"
+
+msgid "Gerando código de ativação no roteador…"
+msgstr "Gerando código de ativação no roteador…"
+
+msgid "Gerenciador HTTPS"
+msgstr "Gerenciador HTTPS"
+
+msgid "Gerenciador:"
+msgstr "Gerenciador:"
+
+msgid "Gerenciamento inteligente de fila de pacotes para manter ping estável mesmo com downloads pesados na casa."
+msgstr "Gerenciamento inteligente de fila de pacotes para manter ping estável mesmo com downloads pesados na casa."
+
+msgid "Gerenciar Servidor WireGuard"
+msgstr "Gerenciar Servidor WireGuard"
+
+msgid "Grava métricas segundo a segundo na RAM (/tmp/starlink_telemetry) e compacta na Flash a cada 15 min. Protege a vida útil da memória."
+msgstr "Grava métricas segundo a segundo na RAM (/tmp/starlink_telemetry) e compacta na Flash a cada 15 min. Protege a vida útil da memória."
+
+msgid "Gráficos"
+msgstr "Gráficos"
+
+msgid "Guardar antena (Stow)"
+msgstr "Guardar antena (Stow)"
+
+msgid "HISTÓRICO 24 HORAS"
+msgstr "HISTÓRICO 24 HORAS"
+
+msgid "HTTPS e segurança"
+msgstr "HTTPS e segurança"
+
+msgid "Hardware Incompatível"
+msgstr "Hardware Incompatível"
+
+msgid "Hardware Moderno com Aceleração em Silício"
+msgstr "Hardware Moderno com Aceleração em Silício"
+
+msgid "Hardware Moderno com Silício PPE"
+msgstr "Hardware Moderno com Silício PPE"
+
+msgid "Hardware Single-Core Detectado:"
+msgstr "Hardware Single-Core Detectado:"
+
+msgid "Hardware Wi‑Fi não detectado"
+msgstr "Hardware Wi‑Fi não detectado"
+
+msgid "Hardware calibrado com sucesso! Perfil:"
+msgstr "Hardware calibrado com sucesso! Perfil:"
+
+msgid "Hardware otimizado com sucesso! Perfil:"
+msgstr "Hardware otimizado com sucesso! Perfil:"
+
+msgid "Histórico de 24 horas"
+msgstr "Histórico de 24 horas"
+
+msgid "Histórico de Conexão & Sessão"
+msgstr "Histórico de Conexão & Sessão"
+
+msgid "Histórico: consultando…"
+msgstr "Histórico: consultando…"
+
+msgid "ID de Configuração do NextDNS"
+msgstr "ID de Configuração do NextDNS"
+
+msgid "IGMP Snooping desativado."
+msgstr "IGMP Snooping desativado."
+
+msgid "INATIVO EM MODO AP"
+msgstr "INATIVO EM MODO AP"
+
+msgid "INATIVO NO SATÉLITE"
+msgstr "INATIVO NO SATÉLITE"
+
+msgid "INDISPONÍVEL"
+msgstr "INDISPONÍVEL"
+
+msgid "INSTALAÇÃO DO CERTIFICADO"
+msgstr "INSTALAÇÃO DO CERTIFICADO"
+
+msgid "IP Atribuído Automaticamente"
+msgstr "IP Atribuído Automaticamente"
+
+msgid "IP DO CLIENTE"
+msgstr "IP DO CLIENTE"
+
+msgid "IP Fixo / Estático"
+msgstr "IP Fixo / Estático"
+
+msgid "IP deste Roteador Secundário (IP do Aparelho)"
+msgstr "IP deste Roteador Secundário (IP do Aparelho)"
+
+msgid "IP do roteador"
+msgstr "IP do roteador"
+
+msgid "IP fixo / estático"
+msgstr "IP fixo / estático"
+
+msgid "IP público ou DDNS"
+msgstr "IP público ou DDNS"
+
+msgid "IPs fixos"
+msgstr "IPs fixos"
+
+msgid "IPv6 desativado. Backup:"
+msgstr "IPv6 desativado. Backup:"
+
+msgid "Identifica e ignora redes de vizinhos no mesmo canal, multiplicando a capacidade em locais movimentados."
+msgstr "Identifica e ignora redes de vizinhos no mesmo canal, multiplicando a capacidade em locais movimentados."
+
+msgid "Identificado como Smart TV ou dispositivo de streaming."
+msgstr "Identificado como Smart TV ou dispositivo de streaming."
+
+msgid "Identificado como dispositivo de automação (Tuya, Sonoff, Espressif, Alexa, etc.)."
+msgstr "Identificado como dispositivo de automação (Tuya, Sonoff, Espressif, Alexa, etc.)."
+
+msgid "Identificado como impressora de rede."
+msgstr "Identificado como impressora de rede."
+
+msgid "Identificador do grupo de roaming rápido (802.11r). Deve ter"
+msgstr "Identificador do grupo de roaming rápido (802.11r). Deve ter"
+
+msgid "Idioma do Painel"
+msgstr "Idioma do Painel"
+
+msgid "Idioma do painel"
+msgstr "Idioma do painel"
+
+msgid "Idioma nativo padrão do ARK Router"
+msgstr "Idioma nativo padrão do ARK Router"
+
+msgid "Idioma salvo com sucesso! Recarregando…"
+msgstr "Idioma salvo com sucesso! Recarregando…"
+
+msgid "Impressora / Multifuncional de Rede (HP, Epson, Brother, Canon, etc.)"
+msgstr "Impressora / Multifuncional de Rede (HP, Epson, Brother, Canon, etc.)"
+
+msgid "Impressão digital SHA-256"
+msgstr "Impressão digital SHA-256"
+
+msgid "Inativo (Modo AP)"
+msgstr "Inativo (Modo AP)"
+
+msgid "Inativo (Modo Satélite)"
+msgstr "Inativo (Modo Satélite)"
+
+msgid "Inclui arquivo compactado segundo a segundo com todos os dados da viagem."
+msgstr "Inclui arquivo compactado segundo a segundo com todos os dados da viagem."
+
+msgid "Indispensável informar a velocidade real de upload para o CAKE estabilizar a latência."
+msgstr "Indispensável informar a velocidade real de upload para o CAKE estabilizar a latência."
+
+msgid "Indisponível"
+msgstr "Indisponível"
+
+msgid "Informe o IP estático desejado para este Roteador Secundário."
+msgstr "Informe o IP estático desejado para este Roteador Secundário."
+
+msgid "Informe o endereço IP do dispositivo para a DMZ."
+msgstr "Informe o endereço IP do dispositivo para a DMZ."
+
+msgid "Informe o endereço IP do roteador principal."
+msgstr "Informe o endereço IP do roteador principal."
+
+msgid "Informe o endereço IPv4 e a máscara de rede da WAN 1."
+msgstr "Informe o endereço IPv4 e a máscara de rede da WAN 1."
+
+msgid "Informe o endereço IPv4 e a máscara de rede da WAN 2."
+msgstr "Informe o endereço IPv4 e a máscara de rede da WAN 2."
+
+msgid "Informe o nome do dispositivo"
+msgstr "Informe o nome do dispositivo"
+
+msgid "Informe o usuário da conexão PPPoE da WAN 2."
+msgstr "Informe o usuário da conexão PPPoE da WAN 2."
+
+msgid "Informe o usuário da sua conexão de fibra PPPoE (WAN 1)."
+msgstr "Informe o usuário da sua conexão de fibra PPPoE (WAN 1)."
+
+msgid "Informe um IP ou domínio válido para o servidor personalizado."
+msgstr "Informe um IP ou domínio válido para o servidor personalizado."
+
+msgid "Informe um endereço IP válido para o modo estático."
+msgstr "Informe um endereço IP válido para o modo estático."
+
+msgid "Informe velocidades válidas em Mbps ou 0 para ilimitado."
+msgstr "Informe velocidades válidas em Mbps ou 0 para ilimitado."
+
+msgid "Inglês"
+msgstr "Inglês"
+
+msgid "Inicia o ZeroTier automaticamente ao ligar o roteador. Em aparelhos compactos, prepara o binário na RAM sem ocupar a flash."
+msgstr "Inicia o ZeroTier automaticamente ao ligar o roteador. Em aparelhos compactos, prepara o binário na RAM sem ocupar a flash."
+
+msgid "Inicia os túneis e carrega as regras de firewall do WireGuard automaticamente ao ligar o roteador."
+msgstr "Inicia os túneis e carrega as regras de firewall do WireGuard automaticamente ao ligar o roteador."
+
+msgid "Iniciando servidor WireGuard no kernel Linux…"
+msgstr "Iniciando servidor WireGuard no kernel Linux…"
+
+msgid "Iniciando serviço ZeroTier e conectando à rede virtual…"
+msgstr "Iniciando serviço ZeroTier e conectando à rede virtual…"
+
+msgid "Iniciando…"
+msgstr "Iniciando…"
+
+msgid "Iniciar teste"
+msgstr "Iniciar teste"
+
+msgid "Insira ou carregue o arquivo de configuração"
+msgstr "Insira ou carregue o arquivo de configuração"
+
+msgid "Instala pelo instalador oficial usando a memória interna/overlay."
+msgstr "Instala pelo instalador oficial usando a memória interna/overlay."
+
+msgid "Instalada:"
+msgstr "Instalada:"
+
+msgid "Instalado e ativo"
+msgstr "Instalado e ativo"
+
+msgid "Instalado, mas inativo"
+msgstr "Instalado, mas inativo"
+
+msgid "Instalado, mas não selecionado"
+msgstr "Instalado, mas não selecionado"
+
+msgid "Instalando Módulos do Ark - Setup"
+msgstr "Instalando Módulos do Ark - Setup"
+
+msgid "Instalando Pacotes e Recursos"
+msgstr "Instalando Pacotes e Recursos"
+
+msgid "Instalando pacotes…"
+msgstr "Instalando pacotes…"
+
+msgid "Instalar"
+msgstr "Instalar"
+
+msgid "Instalar IRQ Balance"
+msgstr "Instalar IRQ Balance"
+
+msgid "Instalar WireGuard"
+msgstr "Instalar WireGuard"
+
+msgid "Instalar ZeroTier"
+msgstr "Instalar ZeroTier"
+
+msgid "Instalar e ativar BONDING REAL"
+msgstr "Instalar e ativar BONDING REAL"
+
+msgid "Instalar módulos do Ark - Setup"
+msgstr "Instalar módulos do Ark - Setup"
+
+msgid "Instalar módulos selecionados"
+msgstr "Instalar módulos selecionados"
+
+msgid "Instalar pacote offline"
+msgstr "Instalar pacote offline"
+
+msgid "Instalar recurso"
+msgstr "Instalar recurso"
+
+msgid "Instalar todos os recursos"
+msgstr "Instalar todos os recursos"
+
+msgid "Instalar tudo"
+msgstr "Instalar tudo"
+
+msgid "Instalação Manual / Offline do ARK Router"
+msgstr "Instalação Manual / Offline do ARK Router"
+
+msgid "Instalação de Recursos em Lote"
+msgstr "Instalação de Recursos em Lote"
+
+msgid "Instalação do BONDING REAL iniciada. Ao terminar, o painel tentará atualizar o estado."
+msgstr "Instalação do BONDING REAL iniciada. Ao terminar, o painel tentará atualizar o estado."
+
+msgid "Instalação dos módulos iniciada."
+msgstr "Instalação dos módulos iniciada."
+
+msgid "Instalação em andamento…"
+msgstr "Instalação em andamento…"
+
+msgid "Instalação iniciada. O painel avisará quando terminar."
+msgstr "Instalação iniciada. O painel avisará quando terminar."
+
+msgid "Instalação manual iniciada. O painel avisará quando terminar."
+msgstr "Instalação manual iniciada. O painel avisará quando terminar."
+
+msgid "Instalação rápida"
+msgstr "Instalação rápida"
+
+msgid "Instale apenas em aparelhos administrativos nos quais você confia. Nunca é necessário instalar a chave privada."
+msgstr "Instale apenas em aparelhos administrativos nos quais você confia. Nunca é necessário instalar a chave privada."
+
+msgid "Instale o módulo para ativar controle de filas e prioridades de tráfego."
+msgstr "Instale o módulo para ativar controle de filas e prioridades de tráfego."
+
+msgid "Instale o pacote IRQ Balance na Central de Recursos para habilitar."
+msgstr "Instale o pacote IRQ Balance na Central de Recursos para habilitar."
+
+msgid "Integra as regras específicas de prioridade e visitantes."
+msgstr "Integra as regras específicas de prioridade e visitantes."
+
+msgid "Interface leve para administrar o uHTTPd e seus certificados."
+msgstr "Interface leve para administrar o uHTTPd e seus certificados."
+
+msgid "International English with technical networking terms"
+msgstr "International English with technical networking terms"
+
+msgid "Interrompe a internet por alguns minutos e encerra as sessões abertas."
+msgstr "Interrompe a internet por alguns minutos e encerra as sessões abertas."
+
+msgid "Intervalo de Envio Automático"
+msgstr "Intervalo de Envio Automático"
+
+msgid "Isolada"
+msgstr "Isolada"
+
+msgid "Já instalado"
+msgstr "Já instalado"
+
+msgid "LAN disponíveis"
+msgstr "LAN disponíveis"
+
+msgid "LIGADA"
+msgstr "LIGADA"
+
+msgid "LIGADA (AVISOS ATIVOS)"
+msgstr "LIGADA (AVISOS ATIVOS)"
+
+msgid "LIMPEZA PROGRAMADA"
+msgstr "LIMPEZA PROGRAMADA"
+
+msgid "Largura e desempenho do Wi‑Fi"
+msgstr "Largura e desempenho do Wi‑Fi"
+
+msgid "Latência"
+msgstr "Latência"
+
+msgid "Latência do Satélite"
+msgstr "Latência do Satélite"
+
+msgid "Leituras térmicas em tempo real coletadas diretamente dos sensores físicos da placa do roteador."
+msgstr "Leituras térmicas em tempo real coletadas diretamente dos sensores físicos da placa do roteador."
+
+msgid "Lendo dados do cliente…"
+msgstr "Lendo dados do cliente…"
+
+msgid "Libera apenas telemetria e alinhamento em /starlink/ para dispositivos da LAN. Não permite alterar nenhuma configuração."
+msgstr "Libera apenas telemetria e alinhamento em /starlink/ para dispositivos da LAN. Não permite alterar nenhuma configuração."
+
+msgid "Libera até 40% a mais de tempo de antena (airtime)."
+msgstr "Libera até 40% a mais de tempo de antena (airtime)."
+
+msgid "Libera caches de memória RAM e arquivos temporários órfãos em /tmp"
+msgstr "Libera caches de memória RAM e arquivos temporários órfãos em /tmp"
+
+msgid "Licença"
+msgstr "Licença"
+
+msgid "Liga failover/balanceamento sem alterar o modo escolhido."
+msgstr "Liga failover/balanceamento sem alterar o modo escolhido."
+
+msgid "Liga ou desliga as filas configuradas"
+msgstr "Liga ou desliga as filas configuradas"
+
+msgid "Liga ou desliga o SSID visitante sem apagar a configuração."
+msgstr "Liga ou desliga o SSID visitante sem apagar a configuração."
+
+msgid "Ligado há"
+msgstr "Ligado há"
+
+msgid "Ligado há "
+msgstr "Ligado há "
+
+msgid "Ligado • Auto Inteligente (1, 6, 11 no 2,4 GHz • Sem radar DFS no 5 GHz)"
+msgstr "Ligado • Auto Inteligente (1, 6, 11 no 2,4 GHz • Sem radar DFS no 5 GHz)"
+
+msgid "Ligado • o roteador escolhe os canais"
+msgstr "Ligado • o roteador escolhe os canais"
+
+msgid "Ligado • todo acesso HTTP vai para HTTPS"
+msgstr "Ligado • todo acesso HTTP vai para HTTPS"
+
+msgid "Ligar e ativar o SQM / CAKE automaticamente"
+msgstr "Ligar e ativar o SQM / CAKE automaticamente"
+
+msgid "Limita a velocidade total compartilhada entre todos os visitantes. 0 = Ilimitado."
+msgstr "Limita a velocidade total compartilhada entre todos os visitantes. 0 = Ilimitado."
+
+msgid "Limita os arquivos de log de telemetria do Speedify a 2MB com rotação automática, impedindo que horas de tráfego intenso encham a partição /tmp (RAM)."
+msgstr "Limita os arquivos de log de telemetria do Speedify a 2MB com rotação automática, impedindo que horas de tráfego intenso encham a partição /tmp (RAM)."
+
+msgid "Limite de Banda Ativo:"
+msgstr "Limite de Banda Ativo:"
+
+msgid "Limite de velocidade"
+msgstr "Limite de velocidade"
+
+msgid "Limites de capacidade aplicados e persistidos com sucesso!"
+msgstr "Limites de capacidade aplicados e persistidos com sucesso!"
+
+msgid "Limites personalizados"
+msgstr "Limites personalizados"
+
+msgid "Limpando memória…"
+msgstr "Limpando memória…"
+
+msgid "Limpar concessões de aparelhos desconectados ou MACs antigos"
+msgstr "Limpar concessões de aparelhos desconectados ou MACs antigos"
+
+msgid "Limpar inativos"
+msgstr "Limpar inativos"
+
+msgid "Limpeza DSCP (wash):"
+msgstr "Limpeza DSCP (wash):"
+
+msgid "Link físico"
+msgstr "Link físico"
+
+msgid "Logs PPPoE copiados para a área de transferência!"
+msgstr "Logs PPPoE copiados para a área de transferência!"
+
+msgid "MAC físico deste aparelho:"
+msgstr "MAC físico deste aparelho:"
+
+msgid "MANUAL"
+msgstr "MANUAL"
+
+msgid "MESTRE GERENCIA"
+msgstr "MESTRE GERENCIA"
+
+msgid "MODO AP • ATIVO"
+msgstr "MODO AP • ATIVO"
+
+msgid "MULTI‑WAN"
+msgstr "MULTI‑WAN"
+
+msgid "Maior alcance e travessia de paredes. Ideal para Smart Home / IoT."
+msgstr "Maior alcance e travessia de paredes. Ideal para Smart Home / IoT."
+
+msgid "Maior primeiro"
+msgstr "Maior primeiro"
+
+msgid "Maior velocidade e menor interferência. Recomendado para celulares, PCs e TVs."
+msgstr "Maior velocidade e menor interferência. Recomendado para celulares, PCs e TVs."
+
+msgid "Manter Servidor DHCP desativado"
+msgstr "Manter Servidor DHCP desativado"
+
+msgid "Mantém chamadas, jogos e downloads ativos mesmo durante mudança forçada de canal."
+msgstr "Mantém chamadas, jogos e downloads ativos mesmo durante mudança forçada de canal."
+
+msgid "Mantém este painel e as ferramentas Starlink visíveis no Visão Geral mesmo sem antena física detectada na WAN."
+msgstr "Mantém este painel e as ferramentas Starlink visíveis no Visão Geral mesmo sem antena física detectada na WAN."
+
+msgid "Margem de 7% aplicada para impedir acúmulo de fila no modem e eliminar lag."
+msgstr "Margem de 7% aplicada para impedir acúmulo de fila no modem e eliminar lag."
+
+msgid "Margem de 7% aplicada para impedir acúmulo de fila no modem."
+msgstr "Margem de 7% aplicada para impedir acúmulo de fila no modem."
+
+msgid "Margem recomendada de 7% para absorver variações do modem."
+msgstr "Margem recomendada de 7% para absorver variações do modem."
+
+msgid "Mede cada WAN e sugere limites seguros para o SQM."
+msgstr "Mede cada WAN e sugere limites seguros para o SQM."
+
+msgid "Medidor leve / Fast.com"
+msgstr "Medidor leve / Fast.com"
+
+msgid "Medir no Fast.com"
+msgstr "Medir no Fast.com"
+
+msgid "Medições de upload"
+msgstr "Medições de upload"
+
+msgid "Memória"
+msgstr "Memória"
+
+msgid "Memória RAM reciclada e buffers temporários limpos com sucesso!"
+msgstr "Memória RAM reciclada e buffers temporários limpos com sucesso!"
+
+msgid "Menor primeiro"
+msgstr "Menor primeiro"
+
+msgid "Mesh / Mestre"
+msgstr "Mesh / Mestre"
+
+msgid "Mesh ID (Nome do enlace privado entre roteadores):"
+msgstr "Mesh ID (Nome do enlace privado entre roteadores):"
+
+msgid "Mesmo com o modo amplo ativo para toda a rede, assistentes de voz (Alexa, Google, Apple), jogos (PSN, Xbox, Steam), chamadas/VoIP (Zoom, Teams, Meet) e acessos de trabalho são automaticamente blindados na conexão principal."
+msgstr "Mesmo com o modo amplo ativo para toda a rede, assistentes de voz (Alexa, Google, Apple), jogos (PSN, Xbox, Steam), chamadas/VoIP (Zoom, Teams, Meet) e acessos de trabalho são automaticamente blindados na conexão principal."
+
+msgid "Modem móvel (MBIM)"
+msgstr "Modem móvel (MBIM)"
+
+msgid "Modem móvel (NCM)"
+msgstr "Modem móvel (NCM)"
+
+msgid "Modem móvel (QMI)"
+msgstr "Modem móvel (QMI)"
+
+msgid "Modo"
+msgstr "Modo"
+
+msgid "Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets simultaneamente."
+msgstr "Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets simultaneamente."
+
+msgid "Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets."
+msgstr "Modo Amplo Seguro (1024-65535 exceto Web/DNS) ativo nas 2 internets."
+
+msgid "Modo Amplo Seguro (>64.500 portas com blindagem de serviços nobres) ativo nas 2 internets."
+msgstr "Modo Amplo Seguro (>64.500 portas com blindagem de serviços nobres) ativo nas 2 internets."
+
+msgid "Modo Ativo"
+msgstr "Modo Ativo"
+
+msgid "Modo Clássico (portas 51413 e 6881-6999) ativo nas 2 internets simultaneamente."
+msgstr "Modo Clássico (portas 51413 e 6881-6999) ativo nas 2 internets simultaneamente."
+
+msgid "Modo Clássico (portas 51413 e 6881-6999) ativo nas 2 internets."
+msgstr "Modo Clássico (portas 51413 e 6881-6999) ativo nas 2 internets."
+
+msgid "Modo Estabilidade Casa Inteligente / Alexas (2,4 GHz)"
+msgstr "Modo Estabilidade Casa Inteligente / Alexas (2,4 GHz)"
+
+msgid "Modo Estabilidade Casa Inteligente Alexas"
+msgstr "Modo Estabilidade Casa Inteligente Alexas"
+
+msgid "Modo Gamer (Baixa Latência & PUBG Mobile)"
+msgstr "Modo Gamer (Baixa Latência & PUBG Mobile)"
+
+msgid "Modo Gamer ativado com sucesso! Carregando tema Vermelho Gamer…"
+msgstr "Modo Gamer ativado com sucesso! Carregando tema Vermelho Gamer…"
+
+msgid "Modo Híbrido Ativo (Fastpath + CAKE)"
+msgstr "Modo Híbrido Ativo (Fastpath + CAKE)"
+
+msgid "Modo Híbrido ativado: Fastpath no Download e CAKE no Upload aplicados com sucesso!"
+msgstr "Modo Híbrido ativado: Fastpath no Download e CAKE no Upload aplicados com sucesso!"
+
+msgid "Modo Híbrido disponível: o Fastpath acelera downloads no kernel enquanto o CAKE gerencia uploads."
+msgstr "Modo Híbrido disponível: o Fastpath acelera downloads no kernel enquanto o CAKE gerencia uploads."
+
+msgid "Modo Híbrido: O Download opera com velocidade total liberada no Fastpath e o Upload é gerenciado pelo CAKE para blindar a rede contra lag em jogos e chamadas."
+msgstr "Modo Híbrido: O Download opera com velocidade total liberada no Fastpath e o Upload é gerenciado pelo CAKE para blindar a rede contra lag em jogos e chamadas."
+
+msgid "Modo Híbrido: O Download opera com velocidade total no Fastpath e o Upload é gerenciado pelo CAKE contra lag."
+msgstr "Modo Híbrido: O Download opera com velocidade total no Fastpath e o Upload é gerenciado pelo CAKE contra lag."
+
+msgid "Modo IPv6"
+msgstr "Modo IPv6"
+
+msgid "Modo IPv6 / Relay"
+msgstr "Modo IPv6 / Relay"
+
+msgid "Modo Leve do Monitor de Tráfego (nlbwmon Lite)"
+msgstr "Modo Leve do Monitor de Tráfego (nlbwmon Lite)"
+
+msgid "Modo Multi‑WAN alterado para"
+msgstr "Modo Multi‑WAN alterado para"
+
+msgid "Modo Padrão / Equilibrado"
+msgstr "Modo Padrão / Equilibrado"
+
+msgid "Modo Padrão restaurado. Recarregando…"
+msgstr "Modo Padrão restaurado. Recarregando…"
+
+msgid "Modo Ponto de Acesso (AP)"
+msgstr "Modo Ponto de Acesso (AP)"
+
+msgid "Modo Ponto de Acesso (Bridge)"
+msgstr "Modo Ponto de Acesso (Bridge)"
+
+msgid "Modo Potência Máxima de Transmissão Wi-Fi"
+msgstr "Modo Potência Máxima de Transmissão Wi-Fi"
+
+msgid "Modo Potência Máxima de Transmissão Wi-Fi (1 Watt / Panamá)"
+msgstr "Modo Potência Máxima de Transmissão Wi-Fi (1 Watt / Panamá)"
+
+msgid "Modo Roteador Secundário / Ponto Adicional ativo: o servidor DHCP local está desativado para evitar conflitos de IP na rede. Toda a distribuição de IPs é coordenada exclusivamente pelo roteador principal."
+msgstr "Modo Roteador Secundário / Ponto Adicional ativo: o servidor DHCP local está desativado para evitar conflitos de IP na rede. Toda a distribuição de IPs é coordenada exclusivamente pelo roteador principal."
+
+msgid "Modo Satélite / Ponto de Acesso"
+msgstr "Modo Satélite / Ponto de Acesso"
+
+msgid "Modo Turbo Speedify (Desligar Criptografia Interna)"
+msgstr "Modo Turbo Speedify (Desligar Criptografia Interna)"
+
+msgid "Modo ativo"
+msgstr "Modo ativo"
+
+msgid "Modo atual:"
+msgstr "Modo atual:"
+
+msgid "Modo atual: "
+msgstr "Modo atual: "
+
+msgid "Modo da Telemetria"
+msgstr "Modo da Telemetria"
+
+msgid "Modo de Operação de Rede"
+msgstr "Modo de Operação de Rede"
+
+msgid "Modo de conexão"
+msgstr "Modo de conexão"
+
+msgid "Modo de operação"
+msgstr "Modo de operação"
+
+msgid "Modo de uso"
+msgstr "Modo de uso"
+
+msgid "Modo do Endereço IP"
+msgstr "Modo do Endereço IP"
+
+msgid "Monitora e filtra fluxos multicast (IPTV, TV Box, transmissões de vídeo, AirPlay e Chromecast). Ao ligar, o roteador envia o sinal apenas aos dispositivos solicitantes, impedindo que o tráfego inunde a rede local e degrade o Wi-Fi."
+msgstr "Monitora e filtra fluxos multicast (IPTV, TV Box, transmissões de vídeo, AirPlay e Chromecast). Ao ligar, o roteador envia o sinal apenas aos dispositivos solicitantes, impedindo que o tráfego inunde a rede local e degrade o Wi-Fi."
+
+msgid "Mostrar / Ocultar Senha"
+msgstr "Mostrar / Ocultar Senha"
+
+msgid "Mostrar senha digitada"
+msgstr "Mostrar senha digitada"
+
+msgid "Mostrar sugestão"
+msgstr "Mostrar sugestão"
+
+msgid "Multi-WAN Gerenciado no Mestre"
+msgstr "Multi-WAN Gerenciado no Mestre"
+
+msgid "Multi-WAN desativado em Pontos de Acesso (AP)."
+msgstr "Multi-WAN desativado em Pontos de Acesso (AP)."
+
+msgid "Multi-WAN desativado em nós em Modo Ponto de Acesso (AP)."
+msgstr "Multi-WAN desativado em nós em Modo Ponto de Acesso (AP)."
+
+msgid "Multi-WAN requer pelo menos 2 conexões WAN ativas (ex: Fibra + Starlink ou Auto-WAN) para operar."
+msgstr "Multi-WAN requer pelo menos 2 conexões WAN ativas (ex: Fibra + Starlink ou Auto-WAN) para operar."
+
+msgid "Multi‑WAN"
+msgstr "Multi‑WAN"
+
+msgid "MÚLTIPLOS ROTEADORES & PERFORMANCE"
+msgstr "MÚLTIPLOS ROTEADORES & PERFORMANCE"
+
+msgid "Máscara"
+msgstr "Máscara"
+
+msgid "Máscara de Rede"
+msgstr "Máscara de Rede"
+
+msgid "Máscara:"
+msgstr "Máscara:"
+
+msgid "Média: ↓"
+msgstr "Média: ↓"
+
+msgid "Módulo Multi-WAN (mwan3) Não Instalado"
+msgstr "Módulo Multi-WAN (mwan3) Não Instalado"
+
+msgid "Módulos adicionais do sistema. Os marcados como"
+msgstr "Módulos adicionais do sistema. Os marcados como"
+
+msgid "Módulos do Ark - Setup instalados com sucesso! Recarregando painel…"
+msgstr "Módulos do Ark - Setup instalados com sucesso! Recarregando painel…"
+
+msgid "Módulos do Ark - Setup instalados. Recarregando…"
+msgstr "Módulos do Ark - Setup instalados. Recarregando…"
+
+msgid "NATIVO"
+msgstr "NATIVO"
+
+msgid "NATIVO POR HARDWARE"
+msgstr "NATIVO POR HARDWARE"
+
+msgid "NOME DO DISPOSITIVO"
+msgstr "NOME DO DISPOSITIVO"
+
+msgid "NORMAL"
+msgstr "NORMAL"
+
+msgid "Nativo por Hardware"
+msgstr "Nativo por Hardware"
+
+msgid "Negocia horários de transmissão para celulares e IoT dormirem quando ociosos, poupando até 67% de bateria."
+msgstr "Negocia horários de transmissão para celulares e IoT dormirem quando ociosos, poupando até 67% de bateria."
+
+msgid "Nenhum dispositivo cliente cadastrado ainda. Use o formulário acima para conectar seu celular ou PC."
+msgstr "Nenhum dispositivo cliente cadastrado ainda. Use o formulário acima para conectar seu celular ou PC."
+
+msgid "Nenhum dispositivo conectado."
+msgstr "Nenhum dispositivo conectado."
+
+msgid "Nenhum dispositivo inativo encontrado no momento."
+msgstr "Nenhum dispositivo inativo encontrado no momento."
+
+msgid "Nenhum dispositivo na DMZ. Todas as conexões externas não solicitadas são bloqueadas pelo firewall do roteador."
+msgstr "Nenhum dispositivo na DMZ. Todas as conexões externas não solicitadas são bloqueadas pelo firewall do roteador."
+
+msgid "Nenhum enlace Mesh 802.11s detectado no ar no momento."
+msgstr "Nenhum enlace Mesh 802.11s detectado no ar no momento."
+
+msgid "Nenhum item seguro de otimização encontrado agora."
+msgstr "Nenhum item seguro de otimização encontrado agora."
+
+msgid "Nenhum módulo pendente para instalar."
+msgstr "Nenhum módulo pendente para instalar."
+
+msgid "Nenhum tráfego exposto no momento"
+msgstr "Nenhum tráfego exposto no momento"
+
+msgid "Nenhuma porta LAN disponível"
+msgstr "Nenhuma porta LAN disponível"
+
+msgid "Nenhuma queda, timeout ou erro de autenticação registrado no log."
+msgstr "Nenhuma queda, timeout ou erro de autenticação registrado no log."
+
+msgid "Nenhuma rede 5 GHz detectada no rádio no momento."
+msgstr "Nenhuma rede 5 GHz detectada no rádio no momento."
+
+msgid "Nenhuma regra personalizada cadastrada. Clique em \\"+ Nova Regra\\" para direcionar portas ou aparelhos específicos."
+msgstr "Nenhuma regra personalizada cadastrada. Clique em \\"+ Nova Regra\\" para direcionar portas ou aparelhos específicos."
+
+msgid "Nenhuma verificação executada nesta sessão."
+msgstr "Nenhuma verificação executada nesta sessão."
+
+msgid "No Modo Híbrido, o download opera sem limite artificial no kernel."
+msgstr "No Modo Híbrido, o download opera sem limite artificial no kernel."
+
+msgid "No modo Gamer (EF), pacotes do dispositivo passam à frente de downloads e streams. No modo Normal (AF41), usa a classe de vídeo."
+msgstr "No modo Gamer (EF), pacotes do dispositivo passam à frente de downloads e streams. No modo Normal (AF41), usa a classe de vídeo."
+
+msgid "No modo automático, o painel acompanha as cores e o modo claro ou escuro do tema LuCI."
+msgstr "No modo automático, o painel acompanha as cores e o modo claro ou escuro do tema LuCI."
+
+msgid "Nome"
+msgstr "Nome"
+
+msgid "Nome 2,4 GHz"
+msgstr "Nome 2,4 GHz"
+
+msgid "Nome 5 GHz"
+msgstr "Nome 5 GHz"
+
+msgid "Nome 6 GHz"
+msgstr "Nome 6 GHz"
+
+msgid "Nome da Regra:"
+msgstr "Nome da Regra:"
+
+msgid "Nome da nova rede Wi‑Fi (SSID)"
+msgstr "Nome da nova rede Wi‑Fi (SSID)"
+
+msgid "Nome da rede 2.4G"
+msgstr "Nome da rede 2.4G"
+
+msgid "Nome da rede 5G"
+msgstr "Nome da rede 5G"
+
+msgid "Nome da rede WiFi"
+msgstr "Nome da rede WiFi"
+
+msgid "Nome do Roteador"
+msgstr "Nome do Roteador"
+
+msgid "Nome do aparelho"
+msgstr "Nome do aparelho"
+
+msgid "Nome do painel"
+msgstr "Nome do painel"
+
+msgid "Nome neste roteador"
+msgstr "Nome neste roteador"
+
+msgid "Nome salvo. Recarregando o painel…"
+msgstr "Nome salvo. Recarregando o painel…"
+
+msgid "Nova função"
+msgstr "Nova função"
+
+msgid "Nova senha"
+msgstr "Nova senha"
+
+msgid "Nova versão do ARK Router instalada! Atualizando painel..."
+msgstr "Nova versão do ARK Router instalada! Atualizando painel..."
+
+msgid "Nuvem Externa"
+msgstr "Nuvem Externa"
+
+msgid "NÃO SUPORTADO"
+msgstr "NÃO SUPORTADO"
+
+msgid "NÃO ative o Mesh sem fio neste caso"
+msgstr "NÃO ative o Mesh sem fio neste caso"
+
+msgid "NÃO está conectado nesta porta"
+msgstr "NÃO está conectado nesta porta"
+
+msgid "Não (Nome/Senha Diferente)"
+msgstr "Não (Nome/Senha Diferente)"
+
+msgid "Não afeta dispositivos modernos ou a maioria esmagadora de equipamentos Casa Inteligente (que usam o padrão"
+msgstr "Não afeta dispositivos modernos ou a maioria esmagadora de equipamentos Casa Inteligente (que usam o padrão"
+
+msgid "Não ative o Mesh sem fio pelo ar"
+msgstr "Não ative o Mesh sem fio pelo ar"
+
+msgid "Não coloque senha aqui. O login acontece no portal da Speedify; o ARK Router só recebe o resultado do pareamento."
+msgstr "Não coloque senha aqui. O login acontece no portal da Speedify; o ARK Router só recebe o resultado do pareamento."
+
+msgid "Não disponível"
+msgstr "Não disponível"
+
+msgid "Não feche esta tela se quiser acompanhar o progresso. O teste continua no roteador."
+msgstr "Não feche esta tela se quiser acompanhar o progresso. O teste continua no roteador."
+
+msgid "Não foi possível identificar o IP atual do dispositivo."
+msgstr "Não foi possível identificar o IP atual do dispositivo."
+
+msgid "Não há recursos leves faltando para instalar."
+msgstr "Não há recursos leves faltando para instalar."
+
+msgid "Não instalado"
+msgstr "Não instalado"
+
+msgid "Não mostrar"
+msgstr "Não mostrar"
+
+msgid "Não, cancelar"
+msgstr "Não, cancelar"
+
+msgid "Nós Satélites e Pontos de Acesso operam como pontes transparentes na rede local. A agregação de links de internet (Speedify Bonding) deve rodar diretamente no roteador de borda principal (Gateway)."
+msgstr "Nós Satélites e Pontos de Acesso operam como pontes transparentes na rede local. A agregação de links de internet (Speedify Bonding) deve rodar diretamente no roteador de borda principal (Gateway)."
+
+msgid "Nós Satélites e Pontos de Acesso operam em ponte transparente e não realizam balanceamento ou failover de conexões WAN. Configure o Multi-WAN diretamente no roteador principal."
+msgstr "Nós Satélites e Pontos de Acesso operam em ponte transparente e não realizam balanceamento ou failover de conexões WAN. Configure o Multi-WAN diretamente no roteador principal."
+
+msgid "O 802.11r opera no rádio de 5 GHz (para roaming ultrarrápido em smartphones), enquanto a rede 2,4 GHz mantém 802.11k/v ativos com compatibilidade WPA2 padrão. Isso garante que celulares antigos troquem de ponto suavemente e que 100% das lâmpadas e tomadas inteligentes continuem conectadas sem quedas."
+msgstr "O 802.11r opera no rádio de 5 GHz (para roaming ultrarrápido em smartphones), enquanto a rede 2,4 GHz mantém 802.11k/v ativos com compatibilidade WPA2 padrão. Isso garante que celulares antigos troquem de ponto suavemente e que 100% das lâmpadas e tomadas inteligentes continuem conectadas sem quedas."
+
+msgid "O ARK Router ativará o tema Vermelho Gamer, aplicará otimizações de baixa latência e anti-bufferbloat (CAKE ack-filter) e priorizará pacotes de jogos em tempo real (DSCP EF)."
+msgstr "O ARK Router ativará o tema Vermelho Gamer, aplicará otimizações de baixa latência e anti-bufferbloat (CAKE ack-filter) e priorizará pacotes de jogos em tempo real (DSCP EF)."
+
+msgid "O ARK Router cria um backup automático antes de aplicar. Deseja prosseguir com a conversão desta porta em WAN?"
+msgstr "O ARK Router cria um backup automático antes de aplicar. Deseja prosseguir com a conversão desta porta em WAN?"
+
+msgid "O ARK Router retornará ao tema visual padrão e aplicará o equilíbrio padrão de tráfego."
+msgstr "O ARK Router retornará ao tema visual padrão e aplicará o equilíbrio padrão de tráfego."
+
+msgid "O CAKE (Smart Queue Management) combate o bufferbloat, gerencia a latência em tempo real e impede que downloads ou vídeos pesados aumentem o ping de jogos e travem chamadas de voz de toda a rede."
+msgstr "O CAKE (Smart Queue Management) combate o bufferbloat, gerencia a latência em tempo real e impede que downloads ou vídeos pesados aumentem o ping de jogos e travem chamadas de voz de toda a rede."
+
+msgid "O DGL-5500 opera perfeitamente com a tabela padrão de 16.384 conexões (apenas"
+msgstr "O DGL-5500 opera perfeitamente com a tabela padrão de 16.384 conexões (apenas"
+
+msgid "O DNS do sistema será religado automaticamente"
+msgstr "O DNS do sistema será religado automaticamente"
+
+msgid "O Fastpath desvia os pacotes do kernel e impede o funcionamento do SQM/CAKE. Ao salvar o SQM, o Fastpath será automaticamente desativado para garantir o controle anti-bufferbloat."
+msgstr "O Fastpath desvia os pacotes do kernel e impede o funcionamento do SQM/CAKE. Ao salvar o SQM, o Fastpath será automaticamente desativado para garantir o controle anti-bufferbloat."
+
+msgid "O HTTP continuará disponível sem redirecionamento. O HTTPS permanecerá funcionando."
+msgstr "O HTTP continuará disponível sem redirecionamento. O HTTPS permanecerá funcionando."
+
+msgid "O IP do Modem / ONU da WAN 1 é inválido (ex: 192.168.1.1)."
+msgstr "O IP do Modem / ONU da WAN 1 é inválido (ex: 192.168.1.1)."
+
+msgid "O IP do Modem / ONU da WAN 2 é inválido (ex: 192.168.2.1)."
+msgstr "O IP do Modem / ONU da WAN 2 é inválido (ex: 192.168.2.1)."
+
+msgid "O IP que este roteador terá na rede local do mestre."
+msgstr "O IP que este roteador terá na rede local do mestre."
+
+msgid "O LuCI verifica nos servidores oficiais do OpenWrt a cada carregamento de página."
+msgstr "O LuCI verifica nos servidores oficiais do OpenWrt a cada carregamento de página."
+
+msgid "O MAC clonado da WAN 1 é inválido (formato: AA:BB:CC:DD:EE:FF)."
+msgstr "O MAC clonado da WAN 1 é inválido (formato: AA:BB:CC:DD:EE:FF)."
+
+msgid "O MAC clonado da WAN 2 é inválido (formato: AA:BB:CC:DD:EE:FF)."
+msgstr "O MAC clonado da WAN 2 é inválido (formato: AA:BB:CC:DD:EE:FF)."
+
+msgid "O SQM por software nesta CPU é recomendado para conexões de até ~80–100 Mbps. Em planos superiores, prefira limitar apenas o Upload para manter o ping baixo sem afunilar a CPU."
+msgstr "O SQM por software nesta CPU é recomendado para conexões de até ~80–100 Mbps. Em planos superiores, prefira limitar apenas o Upload para manter o ping baixo sem afunilar a CPU."
+
+msgid "O SQM será desligado e o serviço será reiniciado. A internet pode pausar por alguns segundos."
+msgstr "O SQM será desligado e o serviço será reiniciado. A internet pode pausar por alguns segundos."
+
+msgid "O SQM será ligado nas filas configuradas e o serviço será reiniciado. A internet pode pausar por alguns segundos."
+msgstr "O SQM será ligado nas filas configuradas e o serviço será reiniciado. A internet pode pausar por alguns segundos."
+
+msgid "O Speedify ainda não está instalado. O ARK Router pode instalar no modo recomendado:"
+msgstr "O Speedify ainda não está instalado. O ARK Router pode instalar no modo recomendado:"
+
+msgid "O algoritmo CAKE roda via software e nesta CPU é recomendado para conexões de até ~80–100 Mbps. Em planos mais rápidos (200M, 500M+), o SQM causará gargalo de CPU a 100% e limitará a velocidade do seu link."
+msgstr "O algoritmo CAKE roda via software e nesta CPU é recomendado para conexões de até ~80–100 Mbps. Em planos mais rápidos (200M, 500M+), o SQM causará gargalo de CPU a 100% e limitará a velocidade do seu link."
+
+msgid "O aparelho poderá precisar reconectar para receber um IP reservado diferente."
+msgstr "O aparelho poderá precisar reconectar para receber um IP reservado diferente."
+
+msgid "O balanceamento e failover de conexões de internet pertencem ao Roteador Mestre (Gateway). Em nós em Modo Ponto de Acesso (AP), todo o tráfego é encaminhado diretamente via enlace local."
+msgstr "O balanceamento e failover de conexões de internet pertencem ao Roteador Mestre (Gateway). Em nós em Modo Ponto de Acesso (AP), todo o tráfego é encaminhado diretamente via enlace local."
+
+msgid "O balanceamento e failover de conexões de internet pertencem ao Roteador Mestre (Gateway). Em nós satélites, todo o tráfego é encaminhado diretamente via enlace local."
+msgstr "O balanceamento e failover de conexões de internet pertencem ao Roteador Mestre (Gateway). Em nós satélites, todo o tráfego é encaminhado diretamente via enlace local."
+
+msgid "O binário executável, configurações, regras salvas e diretórios em Flash/RAM serão excluídos."
+msgstr "O binário executável, configurações, regras salvas e diretórios em Flash/RAM serão excluídos."
+
+msgid "O controle SQM / CAKE é exclusivo do Roteador Mestre e permanece desativado neste Ponto de Acesso (AP)."
+msgstr "O controle SQM / CAKE é exclusivo do Roteador Mestre e permanece desativado neste Ponto de Acesso (AP)."
+
+msgid "O controle SQM / CAKE é exclusivo do Roteador Mestre e permanece desativado neste satélite."
+msgstr "O controle SQM / CAKE é exclusivo do Roteador Mestre e permanece desativado neste satélite."
+
+msgid "O controle de Bufferbloat (SQM / CAKE) atua exclusivamente na porta de internet (WAN) do Roteador Mestre (Gateway). Em nós em Modo Ponto de Acesso (AP), todo o tráfego passa em ponte direta (L2) para não limitar nem degradar a velocidade local do Wi-Fi."
+msgstr "O controle de Bufferbloat (SQM / CAKE) atua exclusivamente na porta de internet (WAN) do Roteador Mestre (Gateway). Em nós em Modo Ponto de Acesso (AP), todo o tráfego passa em ponte direta (L2) para não limitar nem degradar a velocidade local do Wi-Fi."
+
+msgid "O controle de Bufferbloat (SQM / CAKE) atua exclusivamente na porta de internet (WAN) do Roteador Mestre (Gateway). Em nós satélites, todo o tráfego passa em ponte direta (L2) para não limitar nem degradar a velocidade local do Wi-Fi."
+msgstr "O controle de Bufferbloat (SQM / CAKE) atua exclusivamente na porta de internet (WAN) do Roteador Mestre (Gateway). Em nós satélites, todo o tráfego passa em ponte direta (L2) para não limitar nem degradar a velocidade local do Wi-Fi."
+
+msgid "O endereço IP do roteador será restaurado para o padrão ("
+msgstr "O endereço IP do roteador será restaurado para o padrão ("
+
+msgid "O endereço do roteador principal onde a internet chega."
+msgstr "O endereço do roteador principal onde a internet chega."
+
+msgid "O endereço inserido contém caracteres inválidos."
+msgstr "O endereço inserido contém caracteres inválidos."
+
+msgid "O enlace Mesh sem fio (802.11s) permite interligar múltiplos roteadores ARK Router pelo ar, sem cabos de rede."
+msgstr "O enlace Mesh sem fio (802.11s) permite interligar múltiplos roteadores ARK Router pelo ar, sem cabos de rede."
+
+msgid "O executável oficial será baixado para a memória temporária. Ele não ocupará a flash e desaparecerá ao reiniciar."
+msgstr "O executável oficial será baixado para a memória temporária. Ele não ocupará a flash e desaparecerá ao reiniciar."
+
+msgid "O modo All-Servers do DNS Turbo permanece protegido para que consultas paralelas não vazem requisições não filtradas."
+msgstr "O modo All-Servers do DNS Turbo permanece protegido para que consultas paralelas não vazem requisições não filtradas."
+
+msgid "O modo WPS por PIN vulnerável a invasões permanece permanentemente desativado; apenas o pareamento físico temporário é permitido."
+msgstr "O modo WPS por PIN vulnerável a invasões permanece permanentemente desativado; apenas o pareamento físico temporário é permitido."
+
+msgid "O monitor de consumo não está instalado; a lista de dispositivos continua disponível, sem velocidade individual."
+msgstr "O monitor de consumo não está instalado; a lista de dispositivos continua disponível, sem velocidade individual."
+
+msgid "O nome da rede 2,4 GHz precisa ter entre 1 e 32 caracteres."
+msgstr "O nome da rede 2,4 GHz precisa ter entre 1 e 32 caracteres."
+
+msgid "O nome da rede 5 GHz precisa ter entre 1 e 32 caracteres."
+msgstr "O nome da rede 5 GHz precisa ter entre 1 e 32 caracteres."
+
+msgid "O nome da rede 6 GHz precisa ter entre 1 e 32 caracteres."
+msgstr "O nome da rede 6 GHz precisa ter entre 1 e 32 caracteres."
+
+msgid "O nome da rede precisa ter entre 1 e 32 caracteres."
+msgstr "O nome da rede precisa ter entre 1 e 32 caracteres."
+
+msgid "O nome do Wi-Fi principal não pode ficar em branco."
+msgstr "O nome do Wi-Fi principal não pode ficar em branco."
+
+msgid "O novo limite será salvo e o SQM será reiniciado."
+msgstr "O novo limite será salvo e o SQM será reiniciado."
+
+msgid "O overhead será ajustado somente na fila"
+msgstr "O overhead será ajustado somente na fila"
+
+msgid "O roteador criará um backup em /tmp e aplicará as etapas salvas. A internet, Wi‑Fi e DNS serão sincronizados."
+msgstr "O roteador criará um backup em /tmp e aplicará as etapas salvas. A internet, Wi‑Fi e DNS serão sincronizados."
+
+msgid "O roteador entrega um IP temporário livre da rede. O IP em uso agora é"
+msgstr "O roteador entrega um IP temporário livre da rede. O IP em uso agora é"
+
+msgid "O roteador está baixando e configurando os pacotes necessários. Isso pode levar de 30 segundos a alguns minutos dependendo da sua velocidade de internet. Por favor, mantenha esta tela aberta."
+msgstr "O roteador está baixando e configurando os pacotes necessários. Isso pode levar de 30 segundos a alguns minutos dependendo da sua velocidade de internet. Por favor, mantenha esta tela aberta."
+
+msgid "O roteador será reiniciado imediatamente. Aguarde a rede voltar antes de abrir o painel novamente."
+msgstr "O roteador será reiniciado imediatamente. Aguarde a rede voltar antes de abrir o painel novamente."
+
+msgid "O roteador volta a distribuir endereços IP automaticamente para os seus aparelhos conectados via cabo ou Wi-Fi."
+msgstr "O roteador volta a distribuir endereços IP automaticamente para os seus aparelhos conectados via cabo ou Wi-Fi."
+
+msgid "O servidor DHCP deste roteador será DESLIGADO. Os aparelhos passarão a receber IP diretamente do roteador mestre."
+msgstr "O servidor DHCP deste roteador será DESLIGADO. Os aparelhos passarão a receber IP diretamente do roteador mestre."
+
+msgid "O servidor DHCP local deste roteador será REATIVADO na rede local."
+msgstr "O servidor DHCP local deste roteador será REATIVADO na rede local."
+
+msgid "O serviço"
+msgstr "O serviço"
+
+msgid "O serviço AdGuard Home será encerrado e desativado imediatamente."
+msgstr "O serviço AdGuard Home será encerrado e desativado imediatamente."
+
+msgid "O sistema analisa os cabos conectados nas portas Ethernet. Se uma porta receber sinal de internet/modem (DHCP), ela é automaticamente configurada como WAN adicional para Multi-WAN. Se for um computador, videogame ou TV, opera normalmente como rede local (LAN)."
+msgstr "O sistema analisa os cabos conectados nas portas Ethernet. Se uma porta receber sinal de internet/modem (DHCP), ela é automaticamente configurada como WAN adicional para Multi-WAN. Se for um computador, videogame ou TV, opera normalmente como rede local (LAN)."
+
+msgid "O tema visual do LuCI será alterado para"
+msgstr "O tema visual do LuCI será alterado para"
+
+msgid "O tema visual do LuCI será alterado. As configurações de rede não serão modificadas."
+msgstr "O tema visual do LuCI será alterado. As configurações de rede não serão modificadas."
+
+msgid "O teste faz uma medição completa e mais duas de upload. O SQM desta WAN será pausado e restaurado automaticamente. Durante o teste, o link ficará ocupado."
+msgstr "O teste faz uma medição completa e mais duas de upload. O SQM desta WAN será pausado e restaurado automaticamente. Durante o teste, o link ficará ocupado."
+
+msgid "O teste não foi concluído. O SQM já foi restaurado."
+msgstr "O teste não foi concluído. O SQM já foi restaurado."
+
+msgid "OFFLINE"
+msgstr "OFFLINE"
+
+msgid "ONLINE"
+msgstr "ONLINE"
+
+msgid "Obriga o filtro de família no Google, Bing, YouTube e DuckDuckGo para proteger crianças."
+msgstr "Obriga o filtro de família no Google, Bing, YouTube e DuckDuckGo para proteger crianças."
+
+msgid "Obstrução"
+msgstr "Obstrução"
+
+msgid "Obtendo estado dos pares e configurações…"
+msgstr "Obtendo estado dos pares e configurações…"
+
+msgid "Obtendo status da conexão VPN…"
+msgstr "Obtendo status da conexão VPN…"
+
+msgid "Ocultar senha"
+msgstr "Ocultar senha"
+
+msgid "Ocultar sugestão"
+msgstr "Ocultar sugestão"
+
+msgid "OpenVPN"
+msgstr "OpenVPN"
+
+msgid "Ordenar"
+msgstr "Ordenar"
+
+msgid "Organiza as filas e reduz a latência quando o link está ocupado."
+msgstr "Organiza as filas e reduz a latência quando o link está ocupado."
+
+msgid "Os canais sugeridos já estão aplicados. Nenhuma alteração foi feita."
+msgstr "Os canais sugeridos já estão aplicados. Nenhuma alteração foi feita."
+
+msgid "Os chips Atheros possuem aceleração de criptografia AES em hardware. O modo WPA2-PSK (AES) entrega a velocidade máxima da rede sem sobrecarregar a CPU. Em 2,4 GHz, recomendamos manter a largura em 20 MHz para evitar retransmissões que afetam a CPU de 1 núcleo."
+msgstr "Os chips Atheros possuem aceleração de criptografia AES em hardware. O modo WPA2-PSK (AES) entrega a velocidade máxima da rede sem sobrecarregar a CPU. Em 2,4 GHz, recomendamos manter a largura em 20 MHz para evitar retransmissões que afetam a CPU de 1 núcleo."
+
+msgid "Os mostradores aparecerão após consultar esta antena."
+msgstr "Os mostradores aparecerão após consultar esta antena."
+
+msgid "Os nomes das redes Wi-Fi 2,4 GHz e 5 GHz não podem ficar em branco."
+msgstr "Os nomes das redes Wi-Fi 2,4 GHz e 5 GHz não podem ficar em branco."
+
+msgid "Otimizando hardware…"
+msgstr "Otimizando hardware…"
+
+msgid "Otimizando…"
+msgstr "Otimizando…"
+
+msgid "Otimizar: Limitar somente Upload (Zero lag sem gargalo de CPU)"
+msgstr "Otimizar: Limitar somente Upload (Zero lag sem gargalo de CPU)"
+
+msgid "Otimização Automática por IA"
+msgstr "Otimização Automática por IA"
+
+msgid "Otimização IoT (Casa Inteligente)"
+msgstr "Otimização IoT (Casa Inteligente)"
+
+msgid "Otimização IoT aplicada com sucesso! Seu Wi-Fi de 2.4 GHz agora roda com maior eficiência no ar."
+msgstr "Otimização IoT aplicada com sucesso! Seu Wi-Fi de 2.4 GHz agora roda com maior eficiência no ar."
+
+msgid "Otimização aplicada. Backup:"
+msgstr "Otimização aplicada. Backup:"
+
+msgid "Otimização de Armazenamento Flash"
+msgstr "Otimização de Armazenamento Flash"
+
+msgid "Otimização de Conexão —"
+msgstr "Otimização de Conexão —"
+
+msgid "Otimização de Quedas (Radar DFS)"
+msgstr "Otimização de Quedas (Radar DFS)"
+
+msgid "Otimização modo ARK"
+msgstr "Otimização modo ARK"
+
+msgid "Otimizações de protocolo para redes densas e aparelhos modernos. Aumenta a velocidade real, reduz a latência e estende a bateria de celulares e laptops compatíveis."
+msgstr "Otimizações de protocolo para redes densas e aparelhos modernos. Aumenta a velocidade real, reduz a latência e estende a bateria de celulares e laptops compatíveis."
+
+msgid "PADRÃO"
+msgstr "PADRÃO"
+
+msgid "PARA CPUS DUAL-CORE / MÁXIMA VELOCIDADE"
+msgstr "PARA CPUS DUAL-CORE / MÁXIMA VELOCIDADE"
+
+msgid "PAÍS / DOMÍNIO REGULATÓRIO"
+msgstr "PAÍS / DOMÍNIO REGULATÓRIO"
+
+msgid "PENDENTE DE AMARRAÇÃO"
+msgstr "PENDENTE DE AMARRAÇÃO"
+
+msgid "PORTAS CABEADAS"
+msgstr "PORTAS CABEADAS"
+
+msgid "Pacote"
+msgstr "Pacote"
+
+msgid "Pacote compatível com este roteador:"
+msgstr "Pacote compatível com este roteador:"
+
+msgid "Padrão 512M/1G: 10.000 entradas (~1 MB de RAM)"
+msgstr "Padrão 512M/1G: 10.000 entradas (~1 MB de RAM)"
+
+msgid "Padrão 512M/1G: 131.072 (evita queda em torrent/p2p)"
+msgstr "Padrão 512M/1G: 131.072 (evita queda em torrent/p2p)"
+
+msgid "Padrão 512M/1G: 2.000 consultas simultâneas no boot"
+msgstr "Padrão 512M/1G: 2.000 consultas simultâneas no boot"
+
+msgid "Padrão ativo em 1 hora (ideal para 100 a 250 clientes). Toque em “Limites” para dimensionar conexões NAT, rajada e pool DHCP."
+msgstr "Padrão ativo em 1 hora (ideal para 100 a 250 clientes). Toque em “Limites” para dimensionar conexões NAT, rajada e pool DHCP."
+
+msgid "Padrão da rede (vazio) ou ex.: 8.8.8.8, 8.8.4.4"
+msgstr "Padrão da rede (vazio) ou ex.: 8.8.8.8, 8.8.4.4"
+
+msgid "Padrão de testes: onboarding@resend.dev ou seu usuário SMTP."
+msgstr "Padrão de testes: onboarding@resend.dev ou seu usuário SMTP."
+
+msgid "Padrão recomendado para redes modernas. Segurança avançada WPA3 com compatibilidade retroativa para aparelhos WPA2."
+msgstr "Padrão recomendado para redes modernas. Segurança avançada WPA3 com compatibilidade retroativa para aparelhos WPA2."
+
+msgid "Padrão: 255.255.255.0 (/24)."
+msgstr "Padrão: 255.255.255.0 (/24)."
+
+msgid "Padrão: Velocidade. Escolha antes de conectar ou altere durante o uso."
+msgstr "Padrão: Velocidade. Escolha antes de conectar ou altere durante o uso."
+
+msgid "Para desligar o automático, analise os canais primeiro. Depois, desligue esta chave ou use “Aplicar sugestão”."
+msgstr "Para desligar o automático, analise os canais primeiro. Depois, desligue esta chave ou use “Aplicar sugestão”."
+
+msgid "Para este roteador sincronizar horário e checar atualizações."
+msgstr "Para este roteador sincronizar horário e checar atualizações."
+
+msgid "Para evitar cliques acidentais, aguarde 5 segundos para liberar a confirmação."
+msgstr "Para evitar cliques acidentais, aguarde 5 segundos para liberar a confirmação."
+
+msgid "Para sincronizar o acesso direto com 1 clique a partir do ARK Router, digite a senha da conta"
+msgstr "Para sincronizar o acesso direto com 1 clique a partir do ARK Router, digite a senha da conta"
+
+msgid "Para velocidades de download superiores a 100 Mbps, o algoritmo CAKE pode saturar a CPU (100%), reduzindo a velocidade real do link."
+msgstr "Para velocidades de download superiores a 100 Mbps, o algoritmo CAKE pode saturar a CPU (100%), reduzindo a velocidade real do link."
+
+msgid "Para voltar a acessar o painel ou religar o sinal Wi‑Fi, você precisará conectar um cabo de rede em uma das portas LAN."
+msgstr "Para voltar a acessar o painel ou religar o sinal Wi‑Fi, você precisará conectar um cabo de rede em uma das portas LAN."
+
+msgid "Para voltar a utilizá-lo como roteador principal (reativando DHCP e WAN), clique no botão de reversão abaixo."
+msgstr "Para voltar a utilizá-lo como roteador principal (reativando DHCP e WAN), clique no botão de reversão abaixo."
+
+msgid "Pareamento Rápido por Botão (WPS PBC)"
+msgstr "Pareamento Rápido por Botão (WPS PBC)"
+
+msgid "Pareamento WPS ativado! Pressione o botão WPS no seu aparelho (impressora/TV) nos próximos 2 minutos."
+msgstr "Pareamento WPS ativado! Pressione o botão WPS no seu aparelho (impressora/TV) nos próximos 2 minutos."
+
+msgid "Parear Speedify Router"
+msgstr "Parear Speedify Router"
+
+msgid "Parâmetros Personalizados (Ajuste Manual)"
+msgstr "Parâmetros Personalizados (Ajuste Manual)"
+
+msgid "Parâmetros do Enlace Mesh Sem Fio (802.11s)"
+msgstr "Parâmetros do Enlace Mesh Sem Fio (802.11s)"
+
+msgid "Passou cabo de rede entre os cômodos?"
+msgstr "Passou cabo de rede entre os cômodos?"
+
+msgid "Pausar por 5 minutos"
+msgstr "Pausar por 5 minutos"
+
+msgid "País / Região Wi-Fi"
+msgstr "País / Região Wi-Fi"
+
+msgid "País e domínio regulatório"
+msgstr "País e domínio regulatório"
+
+msgid "Perfil PPPoE excluído."
+msgstr "Perfil PPPoE excluído."
+
+msgid "Perfil ativo para"
+msgstr "Perfil ativo para"
+
+msgid "Perfil de Ajuste Recomendado"
+msgstr "Perfil de Ajuste Recomendado"
+
+msgid "Perfil de Memória do Kernel (Sysctl Tuning)"
+msgstr "Perfil de Memória do Kernel (Sysctl Tuning)"
+
+msgid "Perfil operacional"
+msgstr "Perfil operacional"
+
+msgid "Permanece ativo no Wi-Fi e nas demais portas LAN"
+msgstr "Permanece ativo no Wi-Fi e nas demais portas LAN"
+
+msgid "Permite a este roteador consultar relógio NTP e verificar atualizações."
+msgstr "Permite a este roteador consultar relógio NTP e verificar atualizações."
+
+msgid "Permite canais largos (80/160/320 MHz) mesmo se houver interferência pontual em uma sub-faixa."
+msgstr "Permite canais largos (80/160/320 MHz) mesmo se houver interferência pontual em uma sub-faixa."
+
+msgid "Permite conectar novos aparelhos (como impressoras Wi-Fi, smart TVs, repetidores ou celulares) sem digitar senha, bastando pressionar o botão acima e o botão no aparelho em até 2 minutos."
+msgstr "Permite conectar novos aparelhos (como impressoras Wi-Fi, smart TVs, repetidores ou celulares) sem digitar senha, bastando pressionar o botão acima e o botão no aparelho em até 2 minutos."
+
+msgid "Permite que aplicativos compatíveis solicitem portas automaticamente."
+msgstr "Permite que aplicativos compatíveis solicitem portas automaticamente."
+
+msgid "Permite que celulares, tablets e notebooks troquem de roteador em menos de 50 milissegundos enquanto você anda pela casa, sem cortar chamadas de voz e vídeo (WhatsApp, Teams, Zoom) e sem desconectar jogos online."
+msgstr "Permite que celulares, tablets e notebooks troquem de roteador em menos de 50 milissegundos enquanto você anda pela casa, sem cortar chamadas de voz e vídeo (WhatsApp, Teams, Zoom) e sem desconectar jogos online."
+
+msgid "Permite transportar MTU 1500 sem fragmentação em conexões de fibra PPPoE. Não é necessário em conexões DHCP/Modem."
+msgstr "Permite transportar MTU 1500 sem fragmentação em conexões de fibra PPPoE. Não é necessário em conexões DHCP/Modem."
+
+msgid "Permitir visualização Starlink sem login"
+msgstr "Permitir visualização Starlink sem login"
+
+msgid "Personalizado"
+msgstr "Personalizado"
+
+msgid "Piloto Automático (Auto-WAN) ativado com sucesso!"
+msgstr "Piloto Automático (Auto-WAN) ativado com sucesso!"
+
+msgid "Piloto Automático Auto-WAN"
+msgstr "Piloto Automático Auto-WAN"
+
+msgid "Piloto Automático de Portas (Auto-WAN)"
+msgstr "Piloto Automático de Portas (Auto-WAN)"
+
+msgid "Plano"
+msgstr "Plano"
+
+msgid "Pode causar lentidão no DNS em redes com alto volume de conexões."
+msgstr "Pode causar lentidão no DNS em redes com alto volume de conexões."
+
+msgid "Pode elevar o tempo de resposta do DNS e reduzir a velocidade durante uso pesado de torrents."
+msgstr "Pode elevar o tempo de resposta do DNS e reduzir a velocidade durante uso pesado de torrents."
+
+msgid "Ponto de Acesso (Ponte L2 transparente)"
+msgstr "Ponto de Acesso (Ponte L2 transparente)"
+
+msgid "Por que ativar o IGMP Snooping?"
+msgstr "Por que ativar o IGMP Snooping?"
+
+msgid "Porta Final (Faixa):"
+msgstr "Porta Final (Faixa):"
+
+msgid "Porta Inicial:"
+msgstr "Porta Inicial:"
+
+msgid "Porta SMTP"
+msgstr "Porta SMTP"
+
+msgid "Porta final deve estar entre 1 e 65535."
+msgstr "Porta final deve estar entre 1 e 65535."
+
+msgid "Porta física de entrada"
+msgstr "Porta física de entrada"
+
+msgid "Porta inicial deve estar entre 1 e 65535."
+msgstr "Porta inicial deve estar entre 1 e 65535."
+
+msgid "Porta que será convertida"
+msgstr "Porta que será convertida"
+
+msgid "Porta usada para acessar a interface administrativa local (padrão: 3000)."
+msgstr "Porta usada para acessar a interface administrativa local (padrão: 3000)."
+
+msgid "Portas 51413 e 6881-6999 apenas. Modo restrito legado do BitTorrent."
+msgstr "Portas 51413 e 6881-6999 apenas. Modo restrito legado do BitTorrent."
+
+msgid "Portas de BitTorrent/P2P atualizadas com sucesso!"
+msgstr "Portas de BitTorrent/P2P atualizadas com sucesso!"
+
+msgid "Portas e Auto-WAN"
+msgstr "Portas e Auto-WAN"
+
+msgid "Portas em modo LAN aparecem aqui; ao converter uma porta em"
+msgstr "Portas em modo LAN aparecem aqui; ao converter uma porta em"
+
+msgid "Portas locais em modo switch transparente conectadas aos seus aparelhos."
+msgstr "Portas locais em modo switch transparente conectadas aos seus aparelhos."
+
+msgid "Portas personalizadas ativas:"
+msgstr "Portas personalizadas ativas:"
+
+msgid "Português (Brasil)"
+msgstr "Português (Brasil)"
+
+msgid "Potência Balanceada Anti-Sobreposição (Anti-Sticky Client)"
+msgstr "Potência Balanceada Anti-Sobreposição (Anti-Sticky Client)"
+
+msgid "Prazo para guardar logs (Retenção na Flash)"
+msgstr "Prazo para guardar logs (Retenção na Flash)"
+
+msgid "Predefinições Rápidas"
+msgstr "Predefinições Rápidas"
+
+msgid "Predefinições Rápidas por Cenário"
+msgstr "Predefinições Rápidas por Cenário"
+
+msgid "Preencha ao menos o Usuário PPPoE antes de salvar o perfil."
+msgstr "Preencha ao menos o Usuário PPPoE antes de salvar o perfil."
+
+msgid "Preparando gerenciador de pacotes…"
+msgstr "Preparando gerenciador de pacotes…"
+
+msgid "Preparar WANs para Speedify"
+msgstr "Preparar WANs para Speedify"
+
+msgid "Preparar medidor"
+msgstr "Preparar medidor"
+
+msgid "Prevenção de Quedas Radar DFS"
+msgstr "Prevenção de Quedas Radar DFS"
+
+msgid "Prevenção de Quedas Radar DFS (5 GHz)"
+msgstr "Prevenção de Quedas Radar DFS (5 GHz)"
+
+msgid "Primeira confirmação"
+msgstr "Primeira confirmação"
+
+msgid "Prioridade"
+msgstr "Prioridade"
+
+msgid "Prioridade de"
+msgstr "Prioridade de"
+
+msgid "Prioridade no SQM"
+msgstr "Prioridade no SQM"
+
+msgid "Prioridade no SQM / QoS"
+msgstr "Prioridade no SQM / QoS"
+
+msgid "Priorizar os envios deste dispositivo"
+msgstr "Priorizar os envios deste dispositivo"
+
+msgid "Processador"
+msgstr "Processador"
+
+msgid "Processador Multicore com Silício PPE:"
+msgstr "Processador Multicore com Silício PPE:"
+
+msgid "Processador com capacidade multicore e aceleração moderna. Suporte nativo a WPA3-SAE com PMF e canais de alta velocidade (80/160 MHz) com baixa latência."
+msgstr "Processador com capacidade multicore e aceleração moderna. Suporte nativo a WPA3-SAE com PMF e canais de alta velocidade (80/160 MHz) com baixa latência."
+
+msgid "Processador com capacidade multicore e aceleração moderna. Suporte nativo a WPA3-SAE com PMF e canais de alta velocidade (80/160/320 MHz) com baixa latência."
+msgstr "Processador com capacidade multicore e aceleração moderna. Suporte nativo a WPA3-SAE com PMF e canais de alta velocidade (80/160/320 MHz) com baixa latência."
+
+msgid "Processador com capacidade total para modulação de pacotes CAKE. O silício PPE opera em modo híbrido para garantir vazão máxima com proteção anti-bufferbloat."
+msgstr "Processador com capacidade total para modulação de pacotes CAKE. O silício PPE opera em modo híbrido para garantir vazão máxima com proteção anti-bufferbloat."
+
+msgid "Processador de 1 Núcleo / MIPS Detectado"
+msgstr "Processador de 1 Núcleo / MIPS Detectado"
+
+msgid "Processo do Speedify encerrado e memória liberada. Recarregando…"
+msgstr "Processo do Speedify encerrado e memória liberada. Recarregando…"
+
+msgid "Progresso salvo: etapa"
+msgstr "Progresso salvo: etapa"
+
+msgid "Pronto na memória"
+msgstr "Pronto na memória"
+
+msgid "Protegendo unidades externas e reiniciando o roteador. A conexão será interrompida."
+msgstr "Protegendo unidades externas e reiniciando o roteador. A conexão será interrompida."
+
+msgid "Proteção Multicast & Wi-Fi (IGMP Snooping)"
+msgstr "Proteção Multicast & Wi-Fi (IGMP Snooping)"
+
+msgid "Proteção Multicast (IGMP Snooping) ativada com sucesso!"
+msgstr "Proteção Multicast (IGMP Snooping) ativada com sucesso!"
+
+msgid "Proteção contra Anúncios e Rastreadores"
+msgstr "Proteção contra Anúncios e Rastreadores"
+
+msgid "Proteção de armazenamento ativa: o roteador pausará serviços em execução (servidores, downloads e compartilhamentos), descarregará dados da memória RAM e protegerá unidades externas contra corrupção antes de reiniciar."
+msgstr "Proteção de armazenamento ativa: o roteador pausará serviços em execução (servidores, downloads e compartilhamentos), descarregará dados da memória RAM e protegerá unidades externas contra corrupção antes de reiniciar."
+
+msgid "Proteções"
+msgstr "Proteções"
+
+msgid "Proteções Essenciais"
+msgstr "Proteções Essenciais"
+
+msgid "Protocolo 802.11h CSA ativado com sucesso no 5 GHz! Sua rede agora fará transição inteligente em caso de radares."
+msgstr "Protocolo 802.11h CSA ativado com sucesso no 5 GHz! Sua rede agora fará transição inteligente em caso de radares."
+
+msgid "Protocolo:"
+msgstr "Protocolo:"
+
+msgid "Próximo"
+msgstr "Próximo"
+
+msgid "QR Code não disponível (instale o pacote qrencode). Use a configuração abaixo."
+msgstr "QR Code não disponível (instale o pacote qrencode). Use a configuração abaixo."
+
+msgid "Quad9 9.9.9.9 Segurança (Cibersegurança +20 Órgãos Globais — ~8ms)"
+msgstr "Quad9 9.9.9.9 Segurança (Cibersegurança +20 Órgãos Globais — ~8ms)"
+
+msgid "Qualquer pessoa próxima poderá se conectar e o tráfego não será criptografado."
+msgstr "Qualquer pessoa próxima poderá se conectar e o tráfego não será criptografado."
+
+msgid "Quando bytesAvailable aparece como -1 no Speedify, a licença está liberada para uso contínuo."
+msgstr "Quando bytesAvailable aparece como -1 no Speedify, a licença está liberada para uso contínuo."
+
+msgid "Quando houver 2 ou mais conexões de internet ativas detectadas."
+msgstr "Quando houver 2 ou mais conexões de internet ativas detectadas."
+
+msgid "Quem está conectado"
+msgstr "Quem está conectado"
+
+msgid "RECOMENDADO"
+msgstr "RECOMENDADO"
+
+msgid "RECOMENDADO PARA 256 MB"
+msgstr "RECOMENDADO PARA 256 MB"
+
+msgid "RECOMENDADO PARA 512 MB"
+msgstr "RECOMENDADO PARA 512 MB"
+
+msgid "RECURSOS E COMPATIBILIDADE"
+msgstr "RECURSOS E COMPATIBILIDADE"
+
+msgid "RECURSOS OPCIONAIS"
+msgstr "RECURSOS OPCIONAIS"
+
+msgid "REDE & JOGOS • CONECTIVIDADE"
+msgstr "REDE & JOGOS • CONECTIVIDADE"
+
+msgid "REDE PRINCIPAL"
+msgstr "REDE PRINCIPAL"
+
+msgid "REDE WI‑FI"
+msgstr "REDE WI‑FI"
+
+msgid "RELAY IPV6 ATIVO"
+msgstr "RELAY IPV6 ATIVO"
+
+msgid "RESPOSTA EM 0ms"
+msgstr "RESPOSTA EM 0ms"
+
+msgid "ROTEADORES <= 16MB"
+msgstr "ROTEADORES <= 16MB"
+
+msgid "ROTEADORES <= 16MB (DGL-5500)"
+msgstr "ROTEADORES <= 16MB (DGL-5500)"
+
+msgid "Rascunho do Ark - Setup salvo com sucesso."
+msgstr "Rascunho do Ark - Setup salvo com sucesso."
+
+msgid "Reativar Servidor DHCP local (Recomendado)"
+msgstr "Reativar Servidor DHCP local (Recomendado)"
+
+msgid "Recarregando a página em 3 segundos…"
+msgstr "Recarregando a página em 3 segundos…"
+
+msgid "Recebe IP, Gateway e DNS do roteador principal como um cliente. O IP de Resgate permanece sempre ativo."
+msgstr "Recebe IP, Gateway e DNS do roteador principal como um cliente. O IP de Resgate permanece sempre ativo."
+
+msgid "Recebido"
+msgstr "Recebido"
+
+msgid "Recebido hoje"
+msgstr "Recebido hoje"
+
+msgid "Recicla periodicamente caches de arquivos lidos da flash retidos na memória pelo kernel (drop_caches). Seguro e transparente: zero impacto em conexões ativas, downloads e jogos."
+msgstr "Recicla periodicamente caches de arquivos lidos da flash retidos na memória pelo kernel (drop_caches). Seguro e transparente: zero impacto em conexões ativas, downloads e jogos."
+
+msgid "Reciclagem Rápida de Memória RAM"
+msgstr "Reciclagem Rápida de Memória RAM"
+
+msgid "Recolher"
+msgstr "Recolher"
+
+msgid "Recolher painel"
+msgstr "Recolher painel"
+
+msgid "Recolher ▴"
+msgstr "Recolher ▴"
+
+msgid "Recomendado em eventos e redes públicas para evitar crescimento do banco de dados na RAM."
+msgstr "Recomendado em eventos e redes públicas para evitar crescimento do banco de dados na RAM."
+
+msgid "Recomendado manter ATIVADO em todos os roteadores e Pontos de Acesso."
+msgstr "Recomendado manter ATIVADO em todos os roteadores e Pontos de Acesso."
+
+msgid "Recomendado para Casa Inteligente (IoT) e aparelhos legados. Garante conexão estável sem exigir PMF 802.11w."
+msgstr "Recomendado para Casa Inteligente (IoT) e aparelhos legados. Garante conexão estável sem exigir PMF 802.11w."
+
+msgid "Recomendado para processadores Dual-Core e Quad-Core (Filogic 820/830, MediaTek, x86)."
+msgstr "Recomendado para processadores Dual-Core e Quad-Core (Filogic 820/830, MediaTek, x86)."
+
+msgid "Recomendado para processadores Dual-Core e Quad-Core (x86, Raspberry Pi, plataformas sem DMA steering)."
+msgstr "Recomendado para processadores Dual-Core e Quad-Core (x86, Raspberry Pi, plataformas sem DMA steering)."
+
+msgid "Recomendado para roteadores com CPUs modestas (Dual-Core) que queiram agregar internet com menor aquecimento e menor consumo de RAM."
+msgstr "Recomendado para roteadores com CPUs modestas (Dual-Core) que queiram agregar internet com menor aquecimento e menor consumo de RAM."
+
+msgid "Recomendado sempre que o Speedify estiver instalado."
+msgstr "Recomendado sempre que o Speedify estiver instalado."
+
+msgid "Recomendamos usar o Endpoint IPv6 Global para conexão direta sem bloqueio."
+msgstr "Recomendamos usar o Endpoint IPv6 Global para conexão direta sem bloqueio."
+
+msgid "Recomendação de Hardware: Processador MIPS"
+msgstr "Recomendação de Hardware: Processador MIPS"
+
+msgid "Recomendação: Cabos Ethernet entre os roteadores garantem velocidade Gigabit total sem perda de rádio."
+msgstr "Recomendação: Cabos Ethernet entre os roteadores garantem velocidade Gigabit total sem perda de rádio."
+
+msgid "Recurso instalado com sucesso. Recarregando o painel…"
+msgstr "Recurso instalado com sucesso. Recarregando o painel…"
+
+msgid "Recursos"
+msgstr "Recursos"
+
+msgid "Recursos avançados para residências e escritórios com múltiplos pontos de acesso. Garante transições instantâneas entre cômodos sem queda de chamadas e impede que aparelhos fiquem presos em sinais fracos."
+msgstr "Recursos avançados para residências e escritórios com múltiplos pontos de acesso. Garante transições instantâneas entre cômodos sem queda de chamadas e impede que aparelhos fiquem presos em sinais fracos."
+
+msgid "Recursos faltantes instalados. Recarregando o painel…"
+msgstr "Recursos faltantes instalados. Recarregando o painel…"
+
+msgid "Rede / sinal"
+msgstr "Rede / sinal"
+
+msgid "Rede Isolada / Visitantes (sem acesso aos computadores locais)"
+msgstr "Rede Isolada / Visitantes (sem acesso aos computadores locais)"
+
+msgid "Rede Mesh & Roaming Rápido"
+msgstr "Rede Mesh & Roaming Rápido"
+
+msgid "Rede Mesh / Roteador Mestre"
+msgstr "Rede Mesh / Roteador Mestre"
+
+msgid "Rede Principal / LAN (mesma faixa de computadores e impressoras)"
+msgstr "Rede Principal / LAN (mesma faixa de computadores e impressoras)"
+
+msgid "Rede Unificada"
+msgstr "Rede Unificada"
+
+msgid "Rede principal"
+msgstr "Rede principal"
+
+msgid "Rede visitante"
+msgstr "Rede visitante"
+
+msgid "Redes 5 GHz detectadas no ar (clique para selecionar e sintonizar canal):"
+msgstr "Redes 5 GHz detectadas no ar (clique para selecionar e sintonizar canal):"
+
+msgid "Redes Wi‑Fi"
+msgstr "Redes Wi‑Fi"
+
+msgid "Redes com mais de 50 a 254 dispositivos ativos (comércio, clínicas, eventos, escolas)."
+msgstr "Redes com mais de 50 a 254 dispositivos ativos (comércio, clínicas, eventos, escolas)."
+
+msgid "Redirecionar HTTP para HTTPS"
+msgstr "Redirecionar HTTP para HTTPS"
+
+msgid "Redundância de Fallback no DHCP (1.1.1.1)"
+msgstr "Redundância de Fallback no DHCP (1.1.1.1)"
+
+msgid "Regra ativada com sucesso!"
+msgstr "Regra ativada com sucesso!"
+
+msgid "Regra criada com sucesso!"
+msgstr "Regra criada com sucesso!"
+
+msgid "Regra desativada!"
+msgstr "Regra desativada!"
+
+msgid "Regra excluída com sucesso!"
+msgstr "Regra excluída com sucesso!"
+
+msgid "Regras Avançadas de Roteamento (Portas e IPs)"
+msgstr "Regras Avançadas de Roteamento (Portas e IPs)"
+
+msgid "Reiniciando…"
+msgstr "Reiniciando…"
+
+msgid "Reiniciar agora"
+msgstr "Reiniciar agora"
+
+msgid "Reiniciar antena"
+msgstr "Reiniciar antena"
+
+msgid "Reiniciar o roteador"
+msgstr "Reiniciar o roteador"
+
+msgid "Reiniciar…"
+msgstr "Reiniciar…"
+
+msgid "Remove painéis e serviços dispensáveis para manter o OpenWrt enxuto. Sempre cria backup antes de remover."
+msgstr "Remove painéis e serviços dispensáveis para manter o OpenWrt enxuto. Sempre cria backup antes de remover."
+
+msgid "Removendo configurações…"
+msgstr "Removendo configurações…"
+
+msgid "Removendo pacotes, arquivos e restaurando configurações de rede…"
+msgstr "Removendo pacotes, arquivos e restaurando configurações de rede…"
+
+msgid "Remover este roteador da rede ZeroTier atual?"
+msgstr "Remover este roteador da rede ZeroTier atual?"
+
+msgid "Remover o dispositivo"
+msgstr "Remover o dispositivo"
+
+msgid "Repita a nova senha"
+msgstr "Repita a nova senha"
+
+msgid "Repositório:"
+msgstr "Repositório:"
+
+msgid "Requer"
+msgstr "Requer"
+
+msgid "Requer 'Conectividade IPv6' ativa nesta WAN."
+msgstr "Requer 'Conectividade IPv6' ativa nesta WAN."
+
+msgid "Reservar este IP pelo MAC"
+msgstr "Reservar este IP pelo MAC"
+
+msgid "Restaurar como WAN1"
+msgstr "Restaurar como WAN1"
+
+msgid "Restrinja a velocidade máxima de download e upload deste aparelho:"
+msgstr "Restrinja a velocidade máxima de download e upload deste aparelho:"
+
+msgid "Roaming Rápido Inteligente (802.11k / 802.11v / 802.11r)"
+msgstr "Roaming Rápido Inteligente (802.11k / 802.11v / 802.11r)"
+
+msgid "Rota de Saída de Internet (Policy Routing)"
+msgstr "Rota de Saída de Internet (Policy Routing)"
+
+msgid "Roteador Mestre"
+msgstr "Roteador Mestre"
+
+msgid "Roteador Mestre (Gateway)"
+msgstr "Roteador Mestre (Gateway)"
+
+msgid "Roteador Mestre:"
+msgstr "Roteador Mestre:"
+
+msgid "Roteador Principal (Gateway)"
+msgstr "Roteador Principal (Gateway)"
+
+msgid "Roteador Principal da residência conectado ao modem/fibra"
+msgstr "Roteador Principal da residência conectado ao modem/fibra"
+
+msgid "Roteador Secundário / Ponto Adicional expandindo a rede Wi-Fi e portas LAN"
+msgstr "Roteador Secundário / Ponto Adicional expandindo a rede Wi-Fi e portas LAN"
+
+msgid "Roteador Secundário configurado com sucesso! Redirecionando para"
+msgstr "Roteador Secundário configurado com sucesso! Redirecionando para"
+
+msgid "Roteador reiniciando. A conexão será interrompida."
+msgstr "Roteador reiniciando. A conexão será interrompida."
+
+msgid "Roteador:"
+msgstr "Roteador:"
+
+msgid "Roteamento por Política (PBR)"
+msgstr "Roteamento por Política (PBR)"
+
+msgid "SALVAGUARDA ANTI-LOCKOUT: O IP de Resgate ("
+msgstr "SALVAGUARDA ANTI-LOCKOUT: O IP de Resgate ("
+
+msgid "SAÚDE DO ROTEADOR"
+msgstr "SAÚDE DO ROTEADOR"
+
+msgid "SEGURANÇA & PRIVACIDADE"
+msgstr "SEGURANÇA & PRIVACIDADE"
+
+msgid "SEM CABO"
+msgstr "SEM CABO"
+
+msgid "SEM CONEXÃO"
+msgstr "SEM CONEXÃO"
+
+msgid "SERVIDOR (ENDPOINT)"
+msgstr "SERVIDOR (ENDPOINT)"
+
+msgid "SERVIDOR IPV6 DIRETO"
+msgstr "SERVIDOR IPV6 DIRETO"
+
+msgid "SERVIDOR REMOTO (ENDPOINT)"
+msgstr "SERVIDOR REMOTO (ENDPOINT)"
+
+msgid "SINGLE-CORE"
+msgstr "SINGLE-CORE"
+
+msgid "SINGLE-CORE (1 NÚCLEO)"
+msgstr "SINGLE-CORE (1 NÚCLEO)"
+
+msgid "SISTEMA"
+msgstr "SISTEMA"
+
+msgid "SQM / CAKE"
+msgstr "SQM / CAKE"
+
+msgid "SQM / CAKE é exclusivo do Roteador Mestre em Modo Ponto de Acesso (AP)."
+msgstr "SQM / CAKE é exclusivo do Roteador Mestre em Modo Ponto de Acesso (AP)."
+
+msgid "SUA CONEXÃO"
+msgstr "SUA CONEXÃO"
+
+msgid "SUA CONEXÃO ATUAL"
+msgstr "SUA CONEXÃO ATUAL"
+
+msgid "Sair da rede"
+msgstr "Sair da rede"
+
+msgid "Sair da rede ZeroTier"
+msgstr "Sair da rede ZeroTier"
+
+msgid "Salva e preenche Usuário, Senha, MAC Clonado e IP da ONU em 1 clique para qualquer WAN."
+msgstr "Salva e preenche Usuário, Senha, MAC Clonado e IP da ONU em 1 clique para qualquer WAN."
+
+msgid "Salvando Cliente VPN"
+msgstr "Salvando Cliente VPN"
+
+msgid "Salvando dados e reiniciando…"
+msgstr "Salvando dados e reiniciando…"
+
+msgid "Salvando…"
+msgstr "Salvando…"
+
+msgid "Salvar Regra"
+msgstr "Salvar Regra"
+
+msgid "Salvar aparência"
+msgstr "Salvar aparência"
+
+msgid "Salvar config"
+msgstr "Salvar config"
+
+msgid "Salvar configurações"
+msgstr "Salvar configurações"
+
+msgid "Salvar e Aplicar"
+msgstr "Salvar e Aplicar"
+
+msgid "Salvar e aplicar"
+msgstr "Salvar e aplicar"
+
+msgid "Salvar idioma"
+msgstr "Salvar idioma"
+
+msgid "Salvar nome"
+msgstr "Salvar nome"
+
+msgid "Salvar rascunho"
+msgstr "Salvar rascunho"
+
+msgid "Satélites Visíveis"
+msgstr "Satélites Visíveis"
+
+msgid "Se a conexão cair momentaneamente, reconecte no novo Wi-Fi e recarregue o painel; o progresso fica salvo."
+msgstr "Se a conexão cair momentaneamente, reconecte no novo Wi-Fi e recarregue o painel; o progresso fica salvo."
+
+msgid "Se o seu plano for de alta velocidade e você quiser eliminar lag em jogos (Bufferbloat), ative e defina o Download em 0 (ilimitado) em"
+msgstr "Se o seu plano for de alta velocidade e você quiser eliminar lag em jogos (Bufferbloat), ative e defina o Download em 0 (ilimitado) em"
+
+msgid "Se o seu plano for de alta velocidade e você quiser eliminar lag em jogos (Bufferbloat), ative e defina o Download em 0 (ilimitado) em \\"Editar limites\\" para moldar apenas o Upload, mantendo a CPU livre."
+msgstr "Se o seu plano for de alta velocidade e você quiser eliminar lag em jogos (Bufferbloat), ative e defina o Download em 0 (ilimitado) em \\"Editar limites\\" para moldar apenas o Upload, mantendo a CPU livre."
+
+msgid "Se você conectou um cabo de rede entre os roteadores (Backhaul Ethernet), você já tem a velocidade máxima Gigabit."
+msgstr "Se você conectou um cabo de rede entre os roteadores (Backhaul Ethernet), você já tem a velocidade máxima Gigabit."
+
+msgid "Se você estiver conectado ao roteador através desta rede Wi‑Fi, sua conexão sem fio cairá imediatamente."
+msgstr "Se você estiver conectado ao roteador através desta rede Wi‑Fi, sua conexão sem fio cairá imediatamente."
+
+msgid "Se você possui apenas 1 roteador ou se seus roteadores já estão interligados por cabo de rede,"
+msgstr "Se você possui apenas 1 roteador ou se seus roteadores já estão interligados por cabo de rede,"
+
+msgid "Se você puder passar um cabo de rede entre os roteadores (Backhaul Ethernet), essa sempre será a melhor opção. Se não houver como passar cabos, o enlace Mesh sem fio 802.11s interliga os aparelhos ARK Router automaticamente pelo ar."
+msgstr "Se você puder passar um cabo de rede entre os roteadores (Backhaul Ethernet), essa sempre será a melhor opção. Se não houver como passar cabos, o enlace Mesh sem fio 802.11s interliga os aparelhos ARK Router automaticamente pelo ar."
+
+msgid "Se você utiliza"
+msgstr "Se você utiliza"
+
+msgid "Segurança / Criptografia"
+msgstr "Segurança / Criptografia"
+
+msgid "Segurança ARK:"
+msgstr "Segurança ARK:"
+
+msgid "Segurança Preservada:"
+msgstr "Segurança Preservada:"
+
+msgid "Selecionado"
+msgstr "Selecionado"
+
+msgid "Selecionar"
+msgstr "Selecionar"
+
+msgid "Selecione o Dispositivo da Rede com 1 Clique:"
+msgstr "Selecione o Dispositivo da Rede com 1 Clique:"
+
+msgid "Selecione o servidor de destino para a medição contínua de latência (ping) das conexões WAN no painel. Servidores Anycast globais como"
+msgstr "Selecione o servidor de destino para a medição contínua de latência (ping) das conexões WAN no painel. Servidores Anycast globais como"
+
+msgid "Selecione uma combinação pronta ou digite seus próprios IPs:"
+msgstr "Selecione uma combinação pronta ou digite seus próprios IPs:"
+
+msgid "Seleção automática de canais"
+msgstr "Seleção automática de canais"
+
+msgid "Seleção automática inteligente de canais"
+msgstr "Seleção automática inteligente de canais"
+
+msgid "Sem Senha (Rede Aberta)"
+msgstr "Sem Senha (Rede Aberta)"
+
+msgid "Sem armazenamento suficiente para instalar o Speedify neste momento."
+msgstr "Sem armazenamento suficiente para instalar o Speedify neste momento."
+
+msgid "Sem espaço suficiente para instalar o BONDING REAL / Speedify agora."
+msgstr "Sem espaço suficiente para instalar o BONDING REAL / Speedify agora."
+
+msgid "Sem obstrução"
+msgstr "Sem obstrução"
+
+msgid "Sem resultado nesta sessão."
+msgstr "Sem resultado nesta sessão."
+
+msgid "Sem sensor térmico"
+msgstr "Sem sensor térmico"
+
+msgid "Sempre exibir o painel Starlink no início, permitindo testar e configurar telemetria mesmo sem antena física detectada."
+msgstr "Sempre exibir o painel Starlink no início, permitindo testar e configurar telemetria mesmo sem antena física detectada."
+
+msgid "Sempre exibir painel Starlink"
+msgstr "Sempre exibir painel Starlink"
+
+msgid "Senha"
+msgstr "Senha"
+
+msgid "Senha 2,4 GHz"
+msgstr "Senha 2,4 GHz"
+
+msgid "Senha 5 GHz"
+msgstr "Senha 5 GHz"
+
+msgid "Senha Mesh WPA3 (mínimo 8 caracteres)"
+msgstr "Senha Mesh WPA3 (mínimo 8 caracteres)"
+
+msgid "Senha de Aplicativo (SMTP Password)"
+msgstr "Senha de Aplicativo (SMTP Password)"
+
+msgid "Senha de app (16 dígitos)"
+msgstr "Senha de app (16 dígitos)"
+
+msgid "Senha do AdGuard:"
+msgstr "Senha do AdGuard:"
+
+msgid "Senha do Wi-Fi 2.4G"
+msgstr "Senha do Wi-Fi 2.4G"
+
+msgid "Senha do Wi-Fi 5G"
+msgstr "Senha do Wi-Fi 5G"
+
+msgid "Senha salva. O Wi‑Fi reiniciará em alguns segundos."
+msgstr "Senha salva. O Wi‑Fi reiniciará em alguns segundos."
+
+msgid "Sensor de CPU • estável"
+msgstr "Sensor de CPU • estável"
+
+msgid "Sensor de temperatura"
+msgstr "Sensor de temperatura"
+
+msgid "Sensores Térmicos"
+msgstr "Sensores Térmicos"
+
+msgid "Sensores Térmicos do Hardware"
+msgstr "Sensores Térmicos do Hardware"
+
+msgid "Separar nomes 2,4 GHz e 5 GHz"
+msgstr "Separar nomes 2,4 GHz e 5 GHz"
+
+msgid "Separar nomes 2,4 GHz, 5 GHz e 6 GHz"
+msgstr "Separar nomes 2,4 GHz, 5 GHz e 6 GHz"
+
+msgid "Servidor CDN Netflix OCA"
+msgstr "Servidor CDN Netflix OCA"
+
+msgid "Servidor DHCP"
+msgstr "Servidor DHCP"
+
+msgid "Servidor Local"
+msgstr "Servidor Local"
+
+msgid "Servidor Personalizado"
+msgstr "Servidor Personalizado"
+
+msgid "Servidor Remoto"
+msgstr "Servidor Remoto"
+
+msgid "Servidor SMTP (Host)"
+msgstr "Servidor SMTP (Host)"
+
+msgid "Servidor WireGuard ativo no kernel com criptografia Noise Protocol Framework. Chave Pública do Servidor:"
+msgstr "Servidor WireGuard ativo no kernel com criptografia Noise Protocol Framework. Chave Pública do Servidor:"
+
+msgid "Servidor de teste de latência ativo"
+msgstr "Servidor de teste de latência ativo"
+
+msgid "Servidor de teste de latência e monitoramento configurado para:"
+msgstr "Servidor de teste de latência e monitoramento configurado para:"
+
+msgid "Servidores DNS"
+msgstr "Servidores DNS"
+
+msgid "Servidores DNS Ativos (2 a 4)"
+msgstr "Servidores DNS Ativos (2 a 4)"
+
+msgid "Serviço Multi-WAN"
+msgstr "Serviço Multi-WAN"
+
+msgid "Serão instalados os recursos recomendados que ainda faltam:"
+msgstr "Serão instalados os recursos recomendados que ainda faltam:"
+
+msgid "Serão removidos todos os binários, daemons em execução, configurações salvas e arquivos de login."
+msgstr "Serão removidos todos os binários, daemons em execução, configurações salvas e arquivos de login."
+
+msgid "Serão testadas individualmente:"
+msgstr "Serão testadas individualmente:"
+
+msgid "Sessão atual"
+msgstr "Sessão atual"
+
+msgid "Seu endereço completo de e-mail da conta de envio."
+msgstr "Seu endereço completo de e-mail da conta de envio."
+
+msgid "Seu navegador ainda está executando arquivos em cache da versão anterior (%s). Pressione Ctrl + F5 para atualizar."
+msgstr "Seu navegador ainda está executando arquivos em cache da versão anterior (%s). Pressione Ctrl + F5 para atualizar."
+
+msgid "Silício MIPS / Atheros Detectado"
+msgstr "Silício MIPS / Atheros Detectado"
+
+msgid "Silício Wi-Fi de Alta Performance"
+msgstr "Silício Wi-Fi de Alta Performance"
+
+msgid "Sim (Mesh Unificado Recomendado)"
+msgstr "Sim (Mesh Unificado Recomendado)"
+
+msgid "Sim, excluir permanentemente"
+msgstr "Sim, excluir permanentemente"
+
+msgid "Simular Enlace Mesh ark-mesh (Canal 36 / -45 dBm)"
+msgstr "Simular Enlace Mesh ark-mesh (Canal 36 / -45 dBm)"
+
+msgid "Sintonizado automaticamente pelo scanner de redes acima."
+msgstr "Sintonizado automaticamente pelo scanner de redes acima."
+
+msgid "Sintonização Automática de Canal no Ar"
+msgstr "Sintonização Automática de Canal no Ar"
+
+msgid "Smart TV ou Dispositivo de Streaming (Samsung, LG, Roku, Apple TV, Fire TV, Chromecast, etc.)"
+msgstr "Smart TV ou Dispositivo de Streaming (Samsung, LG, Roku, Apple TV, Fire TV, Chromecast, etc.)"
+
+msgid "Somente WAN1"
+msgstr "Somente WAN1"
+
+msgid "Somente WAN2"
+msgstr "Somente WAN2"
+
+msgid "Speedify"
+msgstr "Speedify"
+
+msgid "Speedify ainda não instalado. Ao ligar, o ARK Router oferece instalar no modo recomendado."
+msgstr "Speedify ainda não instalado. Ao ligar, o ARK Router oferece instalar no modo recomendado."
+
+msgid "Speedify desinstalado com sucesso. Memória e espaço em disco liberados. Recarregando painel…"
+msgstr "Speedify desinstalado com sucesso. Memória e espaço em disco liberados. Recarregando painel…"
+
+msgid "Speedify desinstalado com sucesso. Recarregando painel…"
+msgstr "Speedify desinstalado com sucesso. Recarregando painel…"
+
+msgid "Speedify está conectado. Para calibrar WAN/SQM real, desconecte antes de rodar os testes."
+msgstr "Speedify está conectado. Para calibrar WAN/SQM real, desconecte antes de rodar os testes."
+
+msgid "Split Tunnel (apenas rede do roteador) - Leve"
+msgstr "Split Tunnel (apenas rede do roteador) - Leve"
+
+msgid "Status da Rede"
+msgstr "Status da Rede"
+
+msgid "Status de atualização"
+msgstr "Status de atualização"
+
+msgid "Sua operadora coloca o roteador atrás de CGNAT. Dispositivos externos (celular 4G/5G) não conseguem conectar por IPv4."
+msgstr "Sua operadora coloca o roteador atrás de CGNAT. Dispositivos externos (celular 4G/5G) não conseguem conectar por IPv4."
+
+msgid "Sugestão conservadora"
+msgstr "Sugestão conservadora"
+
+msgid "Sugestão oculta"
+msgstr "Sugestão oculta"
+
+msgid "Sugestões:"
+msgstr "Sugestões:"
+
+msgid "Só WAN1"
+msgstr "Só WAN1"
+
+msgid "Só WAN2"
+msgstr "Só WAN2"
+
+msgid "Só conta em silêncio total; downloads/uploads ativos nunca caem"
+msgstr "Só conta em silêncio total; downloads/uploads ativos nunca caem"
+
+msgid "TCP e UDP (Recomendado)"
+msgstr "TCP e UDP (Recomendado)"
+
+msgid "TECNOLOGIA DE PRÓXIMA GERAÇÃO"
+msgstr "TECNOLOGIA DE PRÓXIMA GERAÇÃO"
+
+msgid "TELEMETRIA STARLINK"
+msgstr "TELEMETRIA STARLINK"
+
+msgid "TESTE DE LINK"
+msgstr "TESTE DE LINK"
+
+msgid "TIPO DE TÚNEL"
+msgstr "TIPO DE TÚNEL"
+
+msgid "TRÁFEGO DO TÚNEL"
+msgstr "TRÁFEGO DO TÚNEL"
+
+msgid "Tabela Conntrack NAT (Máx Conexões):"
+msgstr "Tabela Conntrack NAT (Máx Conexões):"
+
+msgid "Tem certeza que deseja excluir a regra “"
+msgstr "Tem certeza que deseja excluir a regra “"
+
+msgid "Tema Argon"
+msgstr "Tema Argon"
+
+msgid "Tema Bootstrap (Padrão)"
+msgstr "Tema Bootstrap (Padrão)"
+
+msgid "Tema ativo"
+msgstr "Tema ativo"
+
+msgid "Tema do LuCI"
+msgstr "Tema do LuCI"
+
+msgid "Tema visual recomendado para a melhor experiência com o ARK Router."
+msgstr "Tema visual recomendado para a melhor experiência com o ARK Router."
+
+msgid "Temperatura"
+msgstr "Temperatura"
+
+msgid "Temperatura crítica"
+msgstr "Temperatura crítica"
+
+msgid "Temperatura elevada"
+msgstr "Temperatura elevada"
+
+msgid "Temperatura ideal / estável"
+msgstr "Temperatura ideal / estável"
+
+msgid "Tempo ativo em rede"
+msgstr "Tempo ativo em rede"
+
+msgid "Tempo de Concessão DHCP (leasetime):"
+msgstr "Tempo de Concessão DHCP (leasetime):"
+
+msgid "Tempo de Expiração TCP (Inatividade):"
+msgstr "Tempo de Expiração TCP (Inatividade):"
+
+msgid "Tempo de retenção de IP antes de reciclar o pool de IPs locais"
+msgstr "Tempo de retenção de IP antes de reciclar o pool de IPs locais"
+
+msgid "Tempo limite excedido na instalação."
+msgstr "Tempo limite excedido na instalação."
+
+msgid "Tempo máximo de histórico preservado na memória interna do roteador."
+msgstr "Tempo máximo de histórico preservado na memória interna do roteador."
+
+msgid "Tempo online"
+msgstr "Tempo online"
+
+msgid "Testando latência…"
+msgstr "Testando latência…"
+
+msgid "Testar WANs conectadas"
+msgstr "Testar WANs conectadas"
+
+msgid "Teste concluído."
+msgstr "Teste concluído."
+
+msgid "Teste e calibração"
+msgstr "Teste e calibração"
+
+msgid "Teste em andamento…"
+msgstr "Teste em andamento…"
+
+msgid "Tipo de Conexão:"
+msgstr "Tipo de Conexão:"
+
+msgid "Tipo de rede e isolamento"
+msgstr "Tipo de rede e isolamento"
+
+msgid "Toda a Rede (0.0.0.0)"
+msgstr "Toda a Rede (0.0.0.0)"
+
+msgid "Todas as Redes Wi-Fi"
+msgstr "Todas as Redes Wi-Fi"
+
+msgid "Todas as portas"
+msgstr "Todas as portas"
+
+msgid "Todas as portas Ethernet (inclusive a porta WAN) e o Wi-Fi se tornarão um único switch local transparente."
+msgstr "Todas as portas Ethernet (inclusive a porta WAN) e o Wi-Fi se tornarão um único switch local transparente."
+
+msgid "Todas as portas cabeadas livres estão em uso como WAN ou não foram detectadas."
+msgstr "Todas as portas cabeadas livres estão em uso como WAN ou não foram detectadas."
+
+msgid "Todas as regras personalizadas e portas de firewall serão limpas sem resíduos."
+msgstr "Todas as regras personalizadas e portas de firewall serão limpas sem resíduos."
+
+msgid "Todos os aparelhos"
+msgstr "Todos os aparelhos"
+
+msgid "Todos os aparelhos da rede (Qualquer IP)"
+msgstr "Todos os aparelhos da rede (Qualquer IP)"
+
+msgid "Todos os recursos foram instalados com sucesso! Recarregando painel…"
+msgstr "Todos os recursos foram instalados com sucesso! Recarregando painel…"
+
+msgid "Todos os recursos leves já estavam instalados."
+msgstr "Todos os recursos leves já estavam instalados."
+
+msgid "Toque em “Servidores” para visualizar a rota de resolução e status de fallback."
+msgstr "Toque em “Servidores” para visualizar a rota de resolução e status de fallback."
+
+msgid "Total"
+msgstr "Total"
+
+msgid "Total consumido"
+msgstr "Total consumido"
+
+msgid "Transmitindo apenas em 2,4 GHz (5 GHz desativado)."
+msgstr "Transmitindo apenas em 2,4 GHz (5 GHz desativado)."
+
+msgid "Transmitindo apenas em 5 GHz (2,4 GHz desativado)."
+msgstr "Transmitindo apenas em 5 GHz (2,4 GHz desativado)."
+
+msgid "Transmitindo apenas em 6 GHz."
+msgstr "Transmitindo apenas em 6 GHz."
+
+msgid "Transmitindo em 2,4 GHz e 6 GHz (5 GHz desativado)."
+msgstr "Transmitindo em 2,4 GHz e 6 GHz (5 GHz desativado)."
+
+msgid "Transmitindo em 2,4 GHz, 5 GHz e 6 GHz."
+msgstr "Transmitindo em 2,4 GHz, 5 GHz e 6 GHz."
+
+msgid "Transmitindo em 5 GHz e 6 GHz (2,4 GHz desativado)."
+msgstr "Transmitindo em 5 GHz e 6 GHz (2,4 GHz desativado)."
+
+msgid "Trava de Logs do Speedify (Capping 2MB)"
+msgstr "Trava de Logs do Speedify (Capping 2MB)"
+
+msgid "Tráfego"
+msgstr "Tráfego"
+
+msgid "Tráfego enviado hoje"
+msgstr "Tráfego enviado hoje"
+
+msgid "Tráfego recebido hoje"
+msgstr "Tráfego recebido hoje"
+
+msgid "TÚNEIS E REDES PRIVADAS (VPN)"
+msgstr "TÚNEIS E REDES PRIVADAS (VPN)"
+
+msgid "Túnel ativo"
+msgstr "Túnel ativo"
+
+msgid "Túnel inativo"
+msgstr "Túnel inativo"
+
+msgid "UPnP / NAT‑PMP"
+msgstr "UPnP / NAT‑PMP"
+
+msgid "Ultra velocidade com canais de 320 MHz e baixíssima latência."
+msgstr "Ultra velocidade com canais de 320 MHz e baixíssima latência."
+
+msgid "Upload agora"
+msgstr "Upload agora"
+
+msgid "Upload ao longo do dia"
+msgstr "Upload ao longo do dia"
+
+msgid "Upload cancelado ou falhou:"
+msgstr "Upload cancelado ou falhou:"
+
+msgid "Usa a classe de vídeo do CAKE (AF41), mantendo a divisão justa com os demais aparelhos prioritários."
+msgstr "Usa a classe de vídeo do CAKE (AF41), mantendo a divisão justa com os demais aparelhos prioritários."
+
+msgid "Usa a memória temporária. Precisa recarregar após reiniciar e preserva apenas a configuração."
+msgstr "Usa a memória temporária. Precisa recarregar após reiniciar e preserva apenas a configuração."
+
+msgid "Usa apenas 1 roteador?"
+msgstr "Usa apenas 1 roteador?"
+
+msgid "Usa os recursos sem fio e regulatórios fornecidos pelo driver."
+msgstr "Usa os recursos sem fio e regulatórios fornecidos pelo driver."
+
+msgid "Usar como "
+msgstr "Usar como "
+
+msgid "Usar tema"
+msgstr "Usar tema"
+
+msgid "Use para trocar entre redes 192.168.x.x, 10.0.x.x ou gerenciar a distribuição de IP, DNS e o protocolo IPv6."
+msgstr "Use para trocar entre redes 192.168.x.x, 10.0.x.x ou gerenciar a distribuição de IP, DNS e o protocolo IPv6."
+
+msgid "Use quando o roteador deve operar somente em IPv4. A internet IPv4, Wi‑Fi e DHCP IPv4 continuam funcionando."
+msgstr "Use quando o roteador deve operar somente em IPv4. A internet IPv4, Wi‑Fi e DHCP IPv4 continuam funcionando."
+
+msgid "Uso intenso de P2P / Torrents ou gamers, que abrem centenas de portas de conexão ao mesmo tempo."
+msgstr "Uso intenso de P2P / Torrents ou gamers, que abrem centenas de portas de conexão ao mesmo tempo."
+
+msgid "Usuário / E-mail de Login SMTP"
+msgstr "Usuário / E-mail de Login SMTP"
+
+msgid "VERIFICANDO"
+msgstr "VERIFICANDO"
+
+msgid "VPN Completa (todo o tráfego 0.0.0.0/0) - Mais seguro"
+msgstr "VPN Completa (todo o tráfego 0.0.0.0/0) - Mais seguro"
+
+msgid "VPN DE ALTA PERFORMANCE (KERNEL)"
+msgstr "VPN DE ALTA PERFORMANCE (KERNEL)"
+
+msgid "VPN ultrarrápida integrada diretamente ao kernel Linux. Conecte este roteador a um servidor externo (Cliente VPN) ou configure seu próprio servidor local com geração de QR Code para celulares e computadores."
+msgstr "VPN ultrarrápida integrada diretamente ao kernel Linux. Conecte este roteador a um servidor externo (Cliente VPN) ou configure seu próprio servidor local com geração de QR Code para celulares e computadores."
+
+msgid "Velocidade"
+msgstr "Velocidade"
+
+msgid "Velocidade da porta:"
+msgstr "Velocidade da porta:"
+
+msgid "Velocidade de Descida"
+msgstr "Velocidade de Descida"
+
+msgid "Velocidade de Subida"
+msgstr "Velocidade de Subida"
+
+msgid "Velocidade e link"
+msgstr "Velocidade e link"
+
+msgid "Velocidade nominal (Mbps)"
+msgstr "Velocidade nominal (Mbps)"
+
+msgid "Ver Todas as Redes Wi-Fi"
+msgstr "Ver Todas as Redes Wi-Fi"
+
+msgid "Ver detalhes →"
+msgstr "Ver detalhes →"
+
+msgid "Ver especificações técnicas completas do hardware"
+msgstr "Ver especificações técnicas completas do hardware"
+
+msgid "Ver histórico e diagnóstico da conexão PPPoE"
+msgstr "Ver histórico e diagnóstico da conexão PPPoE"
+
+msgid "Ver senha"
+msgstr "Ver senha"
+
+msgid "Verifica o GitHub Releases e instala com segurança após confirmação."
+msgstr "Verifica o GitHub Releases e instala com segurança após confirmação."
+
+msgid "Verificando…"
+msgstr "Verificando…"
+
+msgid "Verificação do OpenWrt Base"
+msgstr "Verificação do OpenWrt Base"
+
+msgid "Verificação do OpenWrt ativada."
+msgstr "Verificação do OpenWrt ativada."
+
+msgid "Verificação do OpenWrt ativada. Pop-ups do OpenWrt genérico serão exibidos no login."
+msgstr "Verificação do OpenWrt ativada. Pop-ups do OpenWrt genérico serão exibidos no login."
+
+msgid "Verificação do OpenWrt desativada."
+msgstr "Verificação do OpenWrt desativada."
+
+msgid "Verificação do OpenWrt desativada. O ARK Router está protegido contra sobrescrita."
+msgstr "Verificação do OpenWrt desativada. O ARK Router está protegido contra sobrescrita."
+
+msgid "Versão instalada:"
+msgstr "Versão instalada:"
+
+msgid "Visitantes"
+msgstr "Visitantes"
+
+msgid "Visitantes / Wi-Fi"
+msgstr "Visitantes / Wi-Fi"
+
+msgid "Visitantes com upload limitado"
+msgstr "Visitantes com upload limitado"
+
+msgid "Visitantes com upload limitado • disponível em 2,4 e 5 GHz"
+msgstr "Visitantes com upload limitado • disponível em 2,4 e 5 GHz"
+
+msgid "Visualização sem login"
+msgstr "Visualização sem login"
+
+msgid "Você define manualmente o IP deste aparelho, gateway do mestre e DNS."
+msgstr "Você define manualmente o IP deste aparelho, gateway do mestre e DNS."
+
+msgid "Você está prestes a ativar o enlace Mesh sem fio no rádio de 5 GHz."
+msgstr "Você está prestes a ativar o enlace Mesh sem fio no rádio de 5 GHz."
+
+msgid "Você pode baixar o arquivo do pacote no seu dispositivo e instalá-lo manualmente sem precisar de internet no roteador:"
+msgstr "Você pode baixar o arquivo do pacote no seu dispositivo e instalá-lo manualmente sem precisar de internet no roteador:"
+
+msgid "Você pode preencher de 1 a 4 servidores. Campos vazios serão desconsiderados."
+msgstr "Você pode preencher de 1 a 4 servidores. Campos vazios serão desconsiderados."
+
+msgid "Voltar"
+msgstr "Voltar"
+
+msgid "Voltar ao Modo Padrão"
+msgstr "Voltar ao Modo Padrão"
+
+msgid "Voltar ao Modo Padrão / Controlado?"
+msgstr "Voltar ao Modo Padrão / Controlado?"
+
+msgid "WAN principal"
+msgstr "WAN principal"
+
+msgid "WAN1 limites"
+msgstr "WAN1 limites"
+
+msgid "WAN2 limites"
+msgstr "WAN2 limites"
+
+msgid "WPA2 / WPA3 Misto (Mais Seguro)"
+msgstr "WPA2 / WPA3 Misto (Mais Seguro)"
+
+msgid "WPA2-PSK (Compatibilidade Geral):"
+msgstr "WPA2-PSK (Compatibilidade Geral):"
+
+msgid "WPA2-PSK (Máxima Compatibilidade IoT)"
+msgstr "WPA2-PSK (Máxima Compatibilidade IoT)"
+
+msgid "WPA2/WPA3 Misto (Recomendado):"
+msgstr "WPA2/WPA3 Misto (Recomendado):"
+
+msgid "WPA2/WPA3 Misto:"
+msgstr "WPA2/WPA3 Misto:"
+
+msgid "WPA3-SAE Puro (Máxima Segurança Moderna)"
+msgstr "WPA3-SAE Puro (Máxima Segurança Moderna)"
+
+msgid "WPA3-SAE Puro (Máxima Segurança):"
+msgstr "WPA3-SAE Puro (Máxima Segurança):"
+
+msgid "Wi-Fi como internet"
+msgstr "Wi-Fi como internet"
+
+msgid "Windows: abra o arquivo e instale-o em Autoridades de Certificação Raiz Confiáveis."
+msgstr "Windows: abra o arquivo e instale-o em Autoridades de Certificação Raiz Confiáveis."
+
+msgid "WireGuard"
+msgstr "WireGuard"
+
+msgid "Wi‑Fi e análise de canais"
+msgstr "Wi‑Fi e análise de canais"
+
+msgid "ZeroTier"
+msgstr "ZeroTier"
+
+msgid "ZeroTier desligado (processo finalizado, zero uso de CPU e RAM). Clique em Ativar para conectar."
+msgstr "ZeroTier desligado (processo finalizado, zero uso de CPU e RAM). Clique em Ativar para conectar."
+
+msgid "Zona Desmilitarizada (DMZ) • Host Gamer"
+msgstr "Zona Desmilitarizada (DMZ) • Host Gamer"
+
+msgid "Zona Desmilitarizada (DMZ): Todas as portas da WAN direcionadas para este dispositivo"
+msgstr "Zona Desmilitarizada (DMZ): Todas as portas da WAN direcionadas para este dispositivo"
+
+msgid "Zona Desmilitarizada Ativa"
+msgstr "Zona Desmilitarizada Ativa"
+
+msgid "Zona de exclusão"
+msgstr "Zona de exclusão"
+
+msgid "aguardando leitura"
+msgstr "aguardando leitura"
+
+msgid "alerta %s°C / limite %s°C"
+msgstr "alerta %s°C / limite %s°C"
+
+msgid "apenas 2,4 GHz"
+msgstr "apenas 2,4 GHz"
+
+msgid "apenas 2,4 GHz (5 GHz desativado)"
+msgstr "apenas 2,4 GHz (5 GHz desativado)"
+
+msgid "apenas 5 GHz"
+msgstr "apenas 5 GHz"
+
+msgid "apenas 5 GHz (2,4 GHz desativado)"
+msgstr "apenas 5 GHz (2,4 GHz desativado)"
+
+msgid "apenas 6 GHz (2,4 e 5 GHz desativados)"
+msgstr "apenas 6 GHz (2,4 e 5 GHz desativados)"
+
+msgid "apenas este roteador"
+msgstr "apenas este roteador"
+
+msgid "atividade do sistema"
+msgstr "atividade do sistema"
+
+msgid "chave do mesh (mínimo 8 caracteres)"
+msgstr "chave do mesh (mínimo 8 caracteres)"
+
+msgid "concessão(ões) inativa(s) removida(s) com sucesso."
+msgstr "concessão(ões) inativa(s) removida(s) com sucesso."
+
+msgid "conectado"
+msgstr "conectado"
+
+msgid "deixe vazio para manter a senha atual"
+msgstr "deixe vazio para manter a senha atual"
+
+msgid "disponível em 2,4 e 5 GHz"
+msgstr "disponível em 2,4 e 5 GHz"
+
+msgid "disponível em 2,4 e 6 GHz (5 GHz desativado)"
+msgstr "disponível em 2,4 e 6 GHz (5 GHz desativado)"
+
+msgid "disponível em 2,4, 5 e 6 GHz"
+msgstr "disponível em 2,4, 5 e 6 GHz"
+
+msgid "disponível em 5 e 6 GHz (2,4 GHz desativado)"
+msgstr "disponível em 5 e 6 GHz (2,4 GHz desativado)"
+
+msgid "estado detalhado"
+msgstr "estado detalhado"
+
+msgid "estável"
+msgstr "estável"
+
+msgid "ex: 1.0.0.1, 8.8.4.4 ou ping.seuservidor.com"
+msgstr "ex: 1.0.0.1, 8.8.4.4 ou ping.seuservidor.com"
+
+msgid "ex: AA:BB:CC:DD:EE:FF (vazio = MAC de fábrica)"
+msgstr "ex: AA:BB:CC:DD:EE:FF (vazio = MAC de fábrica)"
+
+msgid "garantem a menor latência conectando-se ao ponto de presença mais próximo da sua região."
+msgstr "garantem a menor latência conectando-se ao ponto de presença mais próximo da sua região."
+
+msgid "histórico completo"
+msgstr "histórico completo"
+
+msgid "iPhone/iPad: instale o perfil baixado e depois habilite confiança total nos Ajustes de Certificados."
+msgstr "iPhone/iPad: instale o perfil baixado e depois habilite confiança total nos Ajustes de Certificados."
+
+msgid "interface ativa"
+msgstr "interface ativa"
+
+msgid "interfaces em tempo real"
+msgstr "interfaces em tempo real"
+
+msgid "maior velocidade possível"
+msgstr "maior velocidade possível"
+
+msgid "neste caso — basta usar o Roaming Rápido com o mesmo nome de rede e senha em ambos os aparelhos!"
+msgstr "neste caso — basta usar o Roaming Rápido com o mesmo nome de rede e senha em ambos os aparelhos!"
+
+msgid "não ative este recurso"
+msgstr "não ative este recurso"
+
+msgid "outra porta LAN"
+msgstr "outra porta LAN"
+
+msgid "repita a nova senha se preencher"
+msgstr "repita a nova senha se preencher"
+
+msgid "repita a senha"
+msgstr "repita a senha"
+
+msgid "reservas DHCP"
+msgstr "reservas DHCP"
+
+msgid "sem link"
+msgstr "sem link"
+
+msgid "sem link físico"
+msgstr "sem link físico"
+
+msgid "sem senha"
+msgstr "sem senha"
+
+msgid "senha (mínimo 8 caracteres)"
+msgstr "senha (mínimo 8 caracteres)"
+
+msgid "senha PPPoE"
+msgstr "senha PPPoE"
+
+msgid "sessão de 12 horas • atualização a cada 3 segundos"
+msgstr "sessão de 12 horas • atualização a cada 3 segundos"
+
+msgid "todas as portas e conexões não mapeadas"
+msgstr "todas as portas e conexões não mapeadas"
+
+msgid "usuário PPPoE"
+msgstr "usuário PPPoE"
+
+msgid "vazio = MAC físico do roteador"
+msgstr "vazio = MAC físico do roteador"
+
+msgid "ÚLTIMO HANDSHAKE"
+msgstr "ÚLTIMO HANDSHAKE"
+
+msgid "Últimas 120 linhas"
+msgstr "Últimas 120 linhas"
+
+msgid "Últimas 250 linhas"
+msgstr "Últimas 250 linhas"
+
+msgid "Últimas 50 linhas"
+msgstr "Últimas 50 linhas"
+
+msgid "Últimas 500 linhas"
+msgstr "Últimas 500 linhas"
+
+msgid "Último backup:"
+msgstr "Último backup:"
+
+msgid "Último boot:"
+msgstr "Último boot:"
+
+msgid "Últimos"
+msgstr "Últimos"
+
+msgid "”?"
+msgstr "”?"
+
+msgid "⏱️ Armazenamento e Retenção"
+msgstr "⏱️ Armazenamento e Retenção"
+
+msgid "⏹ Desligar Servidor"
+msgstr "⏹ Desligar Servidor"
+
+msgid "▶ Ativar ZeroTier"
+msgstr "▶ Ativar ZeroTier"
+
+msgid "▶ Ligar Servidor"
+msgstr "▶ Ligar Servidor"
+
+msgid "● Conectado"
+msgstr "● Conectado"
+
+msgid "⚖️ Balanceado (2 Links)"
+msgstr "⚖️ Balanceado (2 Links)"
+
+msgid "⚖️ Balancear pelas 2 Internets (Multi-WAN)"
+msgstr "⚖️ Balancear pelas 2 Internets (Multi-WAN)"
+
+msgid "⚙ Configurar Wi‑Fi (Nome, Senha e Status)"
+msgstr "⚙ Configurar Wi‑Fi (Nome, Senha e Status)"
+
+msgid "⚙️ Configuração de IP no Modo Ponto de Acesso"
+msgstr "⚙️ Configuração de IP no Modo Ponto de Acesso"
+
+msgid "⚙️ Configurações Técnicas de Pacotes e MTU (Avançado - Opcional)"
+msgstr "⚙️ Configurações Técnicas de Pacotes e MTU (Avançado - Opcional)"
+
+msgid "⚙️ Limites"
+msgstr "⚙️ Limites"
+
+msgid "⚙️ Parâmetros Avançados do CAKE & Enquadramento (Overhead)"
+msgstr "⚙️ Parâmetros Avançados do CAKE & Enquadramento (Overhead)"
+
+msgid "⚙️ Portas"
+msgstr "⚙️ Portas"
+
+msgid "⚙️ Servidores"
+msgstr "⚙️ Servidores"
+
+msgid "⚠️ A porta deixará de ser LAN e virará WAN!"
+msgstr "⚠️ A porta deixará de ser LAN e virará WAN!"
+
+msgid "⚠️ ATENÇÃO: RECURSO EXCLUSIVO PARA 2 OU MAIS ROTEADORES"
+msgstr "⚠️ ATENÇÃO: RECURSO EXCLUSIVO PARA 2 OU MAIS ROTEADORES"
+
+msgid "⚠️ ATENÇÃO: RECURSOS RECOMENDADOS PARA RESIDÊNCIAS COM 2 OU MAIS ROTEADORES"
+msgstr "⚠️ ATENÇÃO: RECURSOS RECOMENDADOS PARA RESIDÊNCIAS COM 2 OU MAIS ROTEADORES"
+
+msgid "⚠️ Atenção:"
+msgstr "⚠️ Atenção:"
+
+msgid "⚠️ Atenção: A porta"
+msgstr "⚠️ Atenção: A porta"
+
+msgid "⚠️ Atenção: Impacto de CPU em Hardware Econômico"
+msgstr "⚠️ Atenção: Impacto de CPU em Hardware Econômico"
+
+msgid "⚠️ Confirmar Conversão da Porta"
+msgstr "⚠️ Confirmar Conversão da Porta"
+
+msgid "⚠️ Desinstalar AdGuard Home Completamente"
+msgstr "⚠️ Desinstalar AdGuard Home Completamente"
+
+msgid "⚠️ Desligar a rede Wi‑Fi principal?"
+msgstr "⚠️ Desligar a rede Wi‑Fi principal?"
+
+msgid "⚠️ Detectamos cabo conectado na porta WAN no momento. Certifique-se de que possui acesso via Wi-Fi ou outra porta LAN."
+msgstr "⚠️ Detectamos cabo conectado na porta WAN no momento. Certifique-se de que possui acesso via Wi-Fi ou outra porta LAN."
+
+msgid "⚠️ Este roteador não atende aos requisitos mínimos para Bonding Real (Speedify)."
+msgstr "⚠️ Este roteador não atende aos requisitos mínimos para Bonding Real (Speedify)."
+
+msgid "⚠️ Falha ao Importar do Mestre"
+msgstr "⚠️ Falha ao Importar do Mestre"
+
+msgid "⚠️ IP Dinâmico"
+msgstr "⚠️ IP Dinâmico"
+
+msgid "⚠️ Importante: Entenda como o Auto-WAN opera"
+msgstr "⚠️ Importante: Entenda como o Auto-WAN opera"
+
+msgid "⚠️ MAC Não Amarrado"
+msgstr "⚠️ MAC Não Amarrado"
+
+msgid "⚠️ O painel buscará atualizações do OpenWrt genérico a cada login. Atenção: atualizar por lá remove o ARK Router."
+msgstr "⚠️ O painel buscará atualizações do OpenWrt genérico a cada login. Atenção: atualizar por lá remove o ARK Router."
+
+msgid "⚠️ Recomendação de Hardware: Processador MIPS ("
+msgstr "⚠️ Recomendação de Hardware: Processador MIPS ("
+
+msgid "⚠️ Recurso Opcional Indisponível"
+msgstr "⚠️ Recurso Opcional Indisponível"
+
+msgid "⚠️ Rede Aberta (Sem Senha):"
+msgstr "⚠️ Rede Aberta (Sem Senha):"
+
+msgid "⚠️ SQM / CAKE ainda não está instalado"
+msgstr "⚠️ SQM / CAKE ainda não está instalado"
+
+msgid "⚡ Acelerar BitTorrent / P2P nas 2 Internets"
+msgstr "⚡ Acelerar BitTorrent / P2P nas 2 Internets"
+
+msgid "⚡ Bypass de Rede Local"
+msgstr "⚡ Bypass de Rede Local"
+
+msgid "⚡ Calibrar por Hardware"
+msgstr "⚡ Calibrar por Hardware"
+
+msgid "⚡ Configurar DNS Turbo Paralelo"
+msgstr "⚡ Configurar DNS Turbo Paralelo"
+
+msgid "⚡ Latência"
+msgstr "⚡ Latência"
+
+msgid "⚡ Modo Direto sem Filtragem (Bypass)"
+msgstr "⚡ Modo Direto sem Filtragem (Bypass)"
+
+msgid "⚡ Modo Híbrido Ativo"
+msgstr "⚡ Modo Híbrido Ativo"
+
+msgid "⚡ Modo Híbrido Ativo (Fastpath + CAKE)"
+msgstr "⚡ Modo Híbrido Ativo (Fastpath + CAKE)"
+
+msgid "⚡ Otimizar Automaticamente por Hardware"
+msgstr "⚡ Otimizar Automaticamente por Hardware"
+
+msgid "⚡ Otimização de Conexão e Desempenho da Internet"
+msgstr "⚡ Otimização de Conexão e Desempenho da Internet"
+
+msgid "⚡ Recomendação:"
+msgstr "⚡ Recomendação:"
+
+msgid "⚡ Tema ARK (Nativo)"
+msgstr "⚡ Tema ARK (Nativo)"
+
+msgid "✅ Lista Branca de Serviços Essenciais (Brasil & Mundial)"
+msgstr "✅ Lista Branca de Serviços Essenciais (Brasil & Mundial)"
+
+msgid "✅ Pop-ups do OpenWrt genérico bloqueados para evitar que o ARK Router seja sobrescrito por engano."
+msgstr "✅ Pop-ups do OpenWrt genérico bloqueados para evitar que o ARK Router seja sobrescrito por engano."
+
+msgid "✅ SQM / CAKE ativo em"
+msgstr "✅ SQM / CAKE ativo em"
+
+msgid "✏️ Canal e enlace técnico sincronizados. Digite abaixo o nome e a senha desejados para este roteador."
+msgstr "✏️ Canal e enlace técnico sincronizados. Digite abaixo o nome e a senha desejados para este roteador."
+
+msgid "✏️ Digitar IP manualmente…"
+msgstr "✏️ Digitar IP manualmente…"
+
+msgid "✏️ Não, Usar Nome ou Senha Diferentes neste Aparelho"
+msgstr "✏️ Não, Usar Nome ou Senha Diferentes neste Aparelho"
+
+msgid "✏️ Portas Personalizadas"
+msgstr "✏️ Portas Personalizadas"
+
+msgid "✓ Limites anti-bufferbloat (-7%) aplicados a partir da medição do Fast.com!"
+msgstr "✓ Limites anti-bufferbloat (-7%) aplicados a partir da medição do Fast.com!"
+
+msgid "✓ Pronto e ativo: downloads e tráfego geral acelerados no kernel com menor uso de CPU."
+msgstr "✓ Pronto e ativo: downloads e tráfego geral acelerados no kernel com menor uso de CPU."
+
+msgid "✓ Sessão PPPoE Ativa e 100% Estável"
+msgstr "✓ Sessão PPPoE Ativa e 100% Estável"
+
+msgid "✓ Todos os módulos recomendados já estão integrados e prontos para uso."
+msgstr "✓ Todos os módulos recomendados já estão integrados e prontos para uso."
+
+msgid "✔ Enlace Mesh 802.11s Ativo:"
+msgstr "✔ Enlace Mesh 802.11s Ativo:"
+
+msgid "✔ Wi-Fi Unificado configurado! Nomes, senhas e roaming 802.11r sincronizados com o Mestre."
+msgstr "✔ Wi-Fi Unificado configurado! Nomes, senhas e roaming 802.11r sincronizados com o Mestre."
+
+msgid "➕ Nova Regra de Roteamento Multi-WAN"
+msgstr "➕ Nova Regra de Roteamento Multi-WAN"
+
+msgid "🌐 Abrir Painel"
+msgstr "🌐 Abrir Painel"
+
+msgid "🌐 Ajustes IPv6 / Relay"
+msgstr "🌐 Ajustes IPv6 / Relay"
+
+msgid "🌐 Cliente VPN (Conectado)"
+msgstr "🌐 Cliente VPN (Conectado)"
+
+msgid "🌐 Conectividade IPv6 e Modo Cascata (NDP Relay)"
+msgstr "🌐 Conectividade IPv6 e Modo Cascata (NDP Relay)"
+
+msgid "🌐 Dimensionamento de Rede & Conexões (512MB / 1GB)"
+msgstr "🌐 Dimensionamento de Rede & Conexões (512MB / 1GB)"
+
+msgid "🌐 Modo Roteador"
+msgstr "🌐 Modo Roteador"
+
+msgid "🌐 Modo Roteador Principal (Gateway)"
+msgstr "🌐 Modo Roteador Principal (Gateway)"
+
+msgid "🌐 Painel"
+msgstr "🌐 Painel"
+
+msgid "🌐 Painel Mestre"
+msgstr "🌐 Painel Mestre"
+
+msgid "🌐 Roteador Principal"
+msgstr "🌐 Roteador Principal"
+
+msgid "🌐 Servidor DNS Deste Aparelho (DHCP Opção 6)"
+msgstr "🌐 Servidor DNS Deste Aparelho (DHCP Opção 6)"
+
+msgid "🌐 Toda a Rede (0.0.0.0) — Padrão"
+msgstr "🌐 Toda a Rede (0.0.0.0) — Padrão"
+
+msgid "🎬 Medição Recente do Fast.com"
+msgstr "🎬 Medição Recente do Fast.com"
+
+msgid "🎬 Testar velocidade da internet"
+msgstr "🎬 Testar velocidade da internet"
+
+msgid "🎭 Endereço MAC Privado / Aleatório Detectado"
+msgstr "🎭 Endereço MAC Privado / Aleatório Detectado"
+
+msgid "🎮 GAMER ATIVO"
+msgstr "🎮 GAMER ATIVO"
+
+msgid "🎮 MODO GAMER • BAIXA LATÊNCIA"
+msgstr "🎮 MODO GAMER • BAIXA LATÊNCIA"
+
+msgid "🎮 Modo Gamer"
+msgstr "🎮 Modo Gamer"
+
+msgid "🎯 Aparelho Alvo (IP de Origem)"
+msgstr "🎯 Aparelho Alvo (IP de Origem)"
+
+msgid "🎯 DMZ Ativa"
+msgstr "🎯 DMZ Ativa"
+
+msgid "🎯 ROTA ATIVA (192.168.100.1)"
+msgstr "🎯 ROTA ATIVA (192.168.100.1)"
+
+msgid "🎯 Servidor de Teste de Latência da WAN"
+msgstr "🎯 Servidor de Teste de Latência da WAN"
+
+msgid "🏋️ Motor Local (AdGuard Home) — Versão Completa"
+msgstr "🏋️ Motor Local (AdGuard Home) — Versão Completa"
+
+msgid "🏢 Servidor / ISP"
+msgstr "🏢 Servidor / ISP"
+
+msgid "🏷️ Identificação Passiva via DHCP (Option 60)"
+msgstr "🏷️ Identificação Passiva via DHCP (Option 60)"
+
+msgid "🏷️ Perfis PPPoE Salvos"
+msgstr "🏷️ Perfis PPPoE Salvos"
+
+msgid "👨‍👩‍👧 Controle Parental (Bloqueio Adulto)"
+msgstr "👨‍👩‍👧 Controle Parental (Bloqueio Adulto)"
+
+msgid "💡 Dispositivo Smart Home / Automação"
+msgstr "💡 Dispositivo Smart Home / Automação"
+
+msgid "💡 Escolha a frequência de reciclagem desejada para manter a memória RAM sempre livre."
+msgstr "💡 Escolha a frequência de reciclagem desejada para manter a memória RAM sempre livre."
+
+msgid "💡 Não conseguiu conectar ao GitHub?"
+msgstr "💡 Não conseguiu conectar ao GitHub?"
+
+msgid "💡 O SQM / CAKE está desligado no momento."
+msgstr "💡 O SQM / CAKE está desligado no momento."
+
+msgid "💡 Por que um Nome de Enlace (Mesh ID) separado em vez da sua rede Wi-Fi comum?"
+msgstr "💡 Por que um Nome de Enlace (Mesh ID) separado em vez da sua rede Wi-Fi comum?"
+
+msgid "💾 Otimizar Espaço Flash"
+msgstr "💾 Otimizar Espaço Flash"
+
+msgid "💾 Salvar Configurações"
+msgstr "💾 Salvar Configurações"
+
+msgid "💾 Salvar Perfil PPPoE Atual"
+msgstr "💾 Salvar Perfil PPPoE Atual"
+
+msgid "📌 IP Estático Recomendado (Ex:"
+msgstr "📌 IP Estático Recomendado (Ex:"
+
+msgid "📜 Logs PPPoE"
+msgstr "📜 Logs PPPoE"
+
+msgid "📜 Logs e Diagnóstico PPPoE —"
+msgstr "📜 Logs e Diagnóstico PPPoE —"
+
+msgid "📡 Assistente de Roteador Secundário (Ponto Adicional de Wi-Fi)"
+msgstr "📡 Assistente de Roteador Secundário (Ponto Adicional de Wi-Fi)"
+
+msgid "📡 Painel Starlink e Central de Telemetria"
+msgstr "📡 Painel Starlink e Central de Telemetria"
+
+msgid "📡 ROTEADOR SECUNDÁRIO • PONTO ADICIONAL & SWITCH"
+msgstr "📡 ROTEADOR SECUNDÁRIO • PONTO ADICIONAL & SWITCH"
+
+msgid "📡 Redes Separadas:"
+msgstr "📡 Redes Separadas:"
+
+msgid "📡 Roteador"
+msgstr "📡 Roteador"
+
+msgid "📡 Roteador Secundário"
+msgstr "📡 Roteador Secundário"
+
+msgid "📡 Roteador Secundário / AP"
+msgstr "📡 Roteador Secundário / AP"
+
+msgid "📡 Roteador Secundário / Ponto Adicional (Extensor de Wi-Fi)"
+msgstr "📡 Roteador Secundário / Ponto Adicional (Extensor de Wi-Fi)"
+
+msgid "📡 Roteador Secundário Detectado"
+msgstr "📡 Roteador Secundário Detectado"
+
+msgid "📥 Dados do Roteador Mestre Obtidos com Sucesso!"
+msgstr "📥 Dados do Roteador Mestre Obtidos com Sucesso!"
+
+msgid "📥 Importar Dados do Mestre"
+msgstr "📥 Importar Dados do Mestre"
+
+msgid "📥 Importar Wi-Fi e Senhas do Mestre Agora"
+msgstr "📥 Importar Wi-Fi e Senhas do Mestre Agora"
+
+msgid "📦 Instalar manual/offline"
+msgstr "📦 Instalar manual/offline"
+
+msgid "📦 Instalar pacote baixado"
+msgstr "📦 Instalar pacote baixado"
+
+msgid "📦 Modo Padrão Clássico"
+msgstr "📦 Modo Padrão Clássico"
+
+msgid "📶 Otimização Multicast / Wi-Fi (IGMP Snooping)"
+msgstr "📶 Otimização Multicast / Wi-Fi (IGMP Snooping)"
+
+msgid "📺 Blindagem de Smart TVs (Interceptar Porta 53)"
+msgstr "📺 Blindagem de Smart TVs (Interceptar Porta 53)"
+
+msgid "📺 Smart TVs"
+msgstr "📺 Smart TVs"
+
+msgid "📺 Smart TVs Blindadas"
+msgstr "📺 Smart TVs Blindadas"
+
+msgid "📺 Vídeo"
+msgstr "📺 Vídeo"
+
+msgid "🔄 Atualizar"
+msgstr "🔄 Atualizar"
+
+msgid "🔄 IP Automático (DHCP Cliente do Mestre)"
+msgstr "🔄 IP Automático (DHCP Cliente do Mestre)"
+
+msgid "🔌 Cabo de Rede (Backhaul Ethernet Gigabit - Recomendado)"
+msgstr "🔌 Cabo de Rede (Backhaul Ethernet Gigabit - Recomendado)"
+
+msgid "🔌 Porta Web do AdGuard"
+msgstr "🔌 Porta Web do AdGuard"
+
+msgid "🔍 Busca Segura Forçada (SafeSearch)"
+msgstr "🔍 Busca Segura Forçada (SafeSearch)"
+
+msgid "🔍 Escanear Redes do Mestre no Ar"
+msgstr "🔍 Escanear Redes do Mestre no Ar"
+
+msgid "🔍 Especificações"
+msgstr "🔍 Especificações"
+
+msgid "🔒 Amarração e Reserva de MAC no Roteador Principal:"
+msgstr "🔒 Amarração e Reserva de MAC no Roteador Principal:"
+
+msgid "🔒 Desativado para proteger o"
+msgstr "🔒 Desativado para proteger o"
+
+msgid "🔒 Este IP ficará gravado nas concessões estáticas do DHCP para o MAC"
+msgstr "🔒 Este IP ficará gravado nas concessões estáticas do DHCP para o MAC"
+
+msgid "🔗 Abrir GitHub Releases"
+msgstr "🔗 Abrir GitHub Releases"
+
+msgid "🔗 Roteador em Cascata (Repasse IPv6 / NDP Relay)"
+msgstr "🔗 Roteador em Cascata (Repasse IPv6 / NDP Relay)"
+
+msgid "🔗 Roteador em Cascata / NDP Relay"
+msgstr "🔗 Roteador em Cascata / NDP Relay"
+
+msgid "🔵 Somente WAN1 (Claro)"
+msgstr "🔵 Somente WAN1 (Claro)"
+
+msgid "🖨️ Impressora / Scanner de Rede"
+msgstr "🖨️ Impressora / Scanner de Rede"
+
+msgid "🗑️ Desinstalar Speedify"
+msgstr "🗑️ Desinstalar Speedify"
+
+msgid "🗑️ Excluir esta rede Wi‑Fi"
+msgstr "🗑️ Excluir esta rede Wi‑Fi"
+
+msgid "🚀 API Resend (Gratuito, Sem Senha)"
+msgstr "🚀 API Resend (Gratuito, Sem Senha)"
+
+msgid "🚀 Aceleração de Tráfego (Fastpath / Flow Offloading)"
+msgstr "🚀 Aceleração de Tráfego (Fastpath / Flow Offloading)"
+
+msgid "🚀 Modo Amplo Seguro (Recomendado)"
+msgstr "🚀 Modo Amplo Seguro (Recomendado)"
+
+msgid "🚀 Sim, Usar Mesmo Wi-Fi e Mesma Senha (Recomendado)"
+msgstr "🚀 Sim, Usar Mesmo Wi-Fi e Mesma Senha (Recomendado)"
+
+msgid "🚀 Teste de Velocidade Turbo (Netflix OCA)"
+msgstr "🚀 Teste de Velocidade Turbo (Netflix OCA)"
+
+msgid "🚫 Bloquear Sites Específicos (Lista Negra da Rede)"
+msgstr "🚫 Bloquear Sites Específicos (Lista Negra da Rede)"
+
+msgid "🚫 Bloqueio de Apps e Serviços:"
+msgstr "🚫 Bloqueio de Apps e Serviços:"
+
+msgid "🛡️ Controle Parental & Filtros Deste Aparelho"
+msgstr "🛡️ Controle Parental & Filtros Deste Aparelho"
+
+msgid "🛡️ Exclusivo do Roteador Mestre (Gateway principal)."
+msgstr "🛡️ Exclusivo do Roteador Mestre (Gateway principal)."
+
+msgid "🛡️ Fila Exclusiva do Roteador Mestre"
+msgstr "🛡️ Fila Exclusiva do Roteador Mestre"
+
+msgid "🛡️ Filtro Ativo"
+msgstr "🛡️ Filtro Ativo"
+
+msgid "🛡️ Modo Satélite / Ponto de Acesso"
+msgstr "🛡️ Modo Satélite / Ponto de Acesso"
+
+msgid "🛡️ Multi-WAN Gerenciado no Mestre"
+msgstr "🛡️ Multi-WAN Gerenciado no Mestre"
+
+msgid "🛡️ Navegação Segura (Anti-Malware & Phishing)"
+msgstr "🛡️ Navegação Segura (Anti-Malware & Phishing)"
+
+msgid "🛡️ O controle de Bufferbloat (SQM / CAKE) é exclusivo do Roteador Mestre."
+msgstr "🛡️ O controle de Bufferbloat (SQM / CAKE) é exclusivo do Roteador Mestre."
+
+msgid "🛡️ O serviço Multi-WAN é exclusivo do Roteador Mestre."
+msgstr "🛡️ O serviço Multi-WAN é exclusivo do Roteador Mestre."
+
+msgid "🛡️ O serviço Speedify (Bonding de WANs) é exclusivo do Roteador Mestre."
+msgstr "🛡️ O serviço Speedify (Bonding de WANs) é exclusivo do Roteador Mestre."
+
+msgid "🛡️ Salvaguarda Anti-Lockout (IP de Resgate Permanente):"
+msgstr "🛡️ Salvaguarda Anti-Lockout (IP de Resgate Permanente):"
+
+msgid "🛡️ Speedify Gerenciado no Mestre"
+msgstr "🛡️ Speedify Gerenciado no Mestre"
+
+msgid "🛡️ WAN1 principal (Failover para WAN2)"
+msgstr "🛡️ WAN1 principal (Failover para WAN2)"
+
+msgid "🛡️ WAN2 principal (Failover para WAN1)"
+msgstr "🛡️ WAN2 principal (Failover para WAN1)"
+
+msgid "🛰️ Automático (antena real / probes WAN)"
+msgstr "🛰️ Automático (antena real / probes WAN)"
+
+msgid "🟣 Somente WAN2 (Link Telecom)"
+msgstr "🟣 Somente WAN2 (Link Telecom)"
+
+msgid "🧪 Simulação (gerar dados Starlink para testes)"
+msgstr "🧪 Simulação (gerar dados Starlink para testes)"
+
+msgid "🧮 Calculadora de Upload (-7% Bufferbloat)"
+msgstr "🧮 Calculadora de Upload (-7% Bufferbloat)"
+
+msgid "🧹 Liberar Memória RAM Agora"
+msgstr "🧹 Liberar Memória RAM Agora"
+
+msgid "🪶 Proteção em Nuvem (Anycast Brasil)"
+msgstr "🪶 Proteção em Nuvem (Anycast Brasil)"
+
+msgid "Alterne entre o Tema ARK e o Tema Bootstrap padrão do sistema."
+msgstr "Alterne entre o Tema ARK e o Tema Bootstrap padrão do sistema."
+
