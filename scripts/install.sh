@@ -372,7 +372,16 @@ install_release() {
 	else
 		remove_opposite_profile "$pm" "$pkg_base" || return 1
 		# shellcheck disable=SC2086
-		$install_cmd "$pkg_file" || return 1
+		if ! $install_cmd "$pkg_file"; then
+			echo "Aviso: '$install_cmd' falhou. Aplicando extração direta e segura do pacote..."
+			stage_unpack="$TMP_DIR/ark-install-unpack"
+			rm -rf "$stage_unpack" && mkdir -p "$stage_unpack"
+			tar -xzf "$pkg_file" -C "$stage_unpack" 2>/dev/null || tar -xf "$pkg_file" -C "$stage_unpack" 2>/dev/null || return 1
+			rm -f "$stage_unpack/.PKGINFO" "$stage_unpack/.post-install" "$stage_unpack/.control"* 2>/dev/null || true
+			preserve_existing_configs "$stage_unpack"
+			copy_tree "$stage_unpack" /
+			rm -rf "$stage_unpack"
+		fi
 	fi
 	restart_luci
 }
