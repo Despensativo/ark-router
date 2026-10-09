@@ -321,7 +321,21 @@ config dnsmasq
         wan6_ok_checks = [c for c in report_ok.get("checks", []) if "Blindagem WAN6" in c.get("name", "")]
         self.assertEqual(wan6_ok_checks[0].get("status"), "OK")
 
-        # 6. Testa execucao direta de ark_cleanup_dhcpv6_orphans e ark_sanitize_wan6_config via shell
+        # 6. Testa caso especifico de device fisico prefixado com arroba (@eth0 em vez de @wan)
+        self.sb.uci_set("network.wan6.device=@eth0")
+        res_eth = self.sb.run_control("ark-doctor", "--json")
+        rep_eth = json.loads(res_eth.stdout)
+        wan6_eth = [c for c in rep_eth.get("checks", []) if "Blindagem WAN6" in c.get("name", "")]
+        self.assertEqual(wan6_eth[0].get("status"), "WARN")
+
+        # Fix deve corrigir @eth0 para @wan
+        res_eth_fix = self.sb.run_control("ark-doctor", "--fix", "--json")
+        rep_eth_fix = json.loads(res_eth_fix.stdout)
+        wan6_eth_fixed = [c for c in rep_eth_fix.get("checks", []) if "Blindagem WAN6" in c.get("name", "")]
+        self.assertEqual(wan6_eth_fixed[0].get("status"), "FIXED")
+        self.assertEqual(self.sb.uci_get("network.wan6.device"), "@wan")
+
+        # 7. Testa execucao direta de ark_cleanup_dhcpv6_orphans e ark_sanitize_wan6_config via shell
         res_sh = self.sb.run_sh('. "$ARK_LIB_DIR/common.sh" && ark_sanitize_wan6_config && ark_cleanup_dhcpv6_orphans')
         self.assertEqual(res_sh.returncode, 0, f"Falha ao executar funcoes diretamente: {res_sh.stderr}")
 
@@ -666,6 +680,169 @@ config device 'wan_eth1'
         # Trava: Fastpath no firewall deve ter sido desligado automaticamente!
         self.assertEqual(self.sb.uci_get("firewall.@defaults[0].flow_offloading"), "0")
         self.assertEqual(self.sb.uci_get("firewall.@defaults[0].flow_offloading_hw"), "0")
+
+    def test_21_ark_doctor_sqm_overhead_audit_and_autofix(self):
+        """Verifica se o ark-doctor audita e auto-corrige o enquadramento e overhead do SQM/CAKE"""
+        # 1. Corrompe overhead e mpu na WAN1 (PPPoE) para valores incorretos (ex: 18B sem mpu)
+        self.sb.uci_set("sqm.wan1.overhead=18")
+        self.sb.uci_set("sqm.wan1.mpu=0")
+        self.sb.uci_set("sqm.wan1.linklayer=none")
+
+        # Auditoria sem fix -> DEVE acusar FAIL
+        res = self.sb.run_control("ark-doctor", "--json")
+        self.assertEqual(res.returncode, 0)
+        report = json.loads(res.stdout)
+        ov_checks = [c for c in report.get("checks", []) if "SQM Overhead wan" in c.get("name", "")]
+        self.assertTrue(len(ov_checks) > 0, "Checagem de SQM Overhead nao encontrada!")
+        self.assertEqual(ov_checks[0].get("status"), "FAIL")
+
+        # Auditoria com --fix -> DEVE reparar para 44B ethernet mpu 64
+        res_fix = self.sb.run_control("ark-doctor", "--fix", "--json")
+        self.assertEqual(res_fix.returncode, 0)
+        report_fix = json.loads(res_fix.stdout)
+        ov_fixed = [c for c in report_fix.get("checks", []) if "SQM Overhead wan" in c.get("name", "")]
+        self.assertEqual(ov_fixed[0].get("status"), "FIXED")
+
+        # Valida que as chaves UCI foram persistidas com o padrao canonico GPON
+        self.assertEqual(self.sb.uci_get("sqm.wan1.overhead"), "44")
+        self.assertEqual(self.sb.uci_get("sqm.wan1.linklayer"), "ethernet")
+        self.assertEqual(self.sb.uci_get("sqm.wan1.mpu"), "64")
+
+        # Nova auditoria -> DEVE estar OK
+        res_ok = self.sb.run_control("ark-doctor", "--json")
+        report_ok = json.loads(res_ok.stdout)
+        ov_ok = [c for c in report_ok.get("checks", []) if "SQM Overhead wan" in c.get("name", "")]
+        self.assertEqual(ov_ok[0].get("status"), "OK")
+
+        # 2. Testa mudanca para DHCP com overhead desalinhado de PPPoE (44B)
+        self.sb.uci_set("network.wan.proto=dhcp")
+        res_dhcp_fail = self.sb.run_control("ark-doctor", "--json")
+        rep_dhcp_fail = json.loads(res_dhcp_fail.stdout)
+        ov_dhcp_fail = [c for c in rep_dhcp_fail.get("checks", []) if "SQM Overhead wan" in c.get("name", "")]
+        self.assertEqual(ov_dhcp_fail[0].get("status"), "FAIL")
+
+        # Fix no DHCP -> DEVE calibrar para 18B ethernet mpu 64
+        res_dhcp_fix = self.sb.run_control("ark-doctor", "--fix", "--json")
+        rep_dhcp_fix = json.loads(res_dhcp_fix.stdout)
+        ov_dhcp_fix = [c for c in rep_dhcp_fix.get("checks", []) if "SQM Overhead wan" in c.get("name", "")]
+        self.assertEqual(ov_dhcp_fix[0].get("status"), "FIXED")
+        self.assertEqual(self.sb.uci_get("sqm.wan1.overhead"), "18")
+        self.assertEqual(self.sb.uci_get("sqm.wan1.linklayer"), "ethernet")
+        self.assertEqual(self.sb.uci_get("sqm.wan1.mpu"), "64")
+
+    def test_22_ping_targets_ipv6_and_mwan3_isolation(self):
+        """Valida selecao de alvos IPv6 e isolamento estrito contra mwan3 IPv4 track_ip"""
+        # 1. Configura mwan3 basico simulado
+        self.sb.uci_set("mwan3.wan=interface")
+        self.sb.uci_set("mwan3.wan.enabled=1")
+
+        # 2. Testa Cloudflare IPv6
+        res_set = self.sb.run_control("ping-target-set", "cloudflare_v6")
+        self.assertEqual(res_set.returncode, 0, f"Falha no ping-target-set: {res_set.stderr}")
+        data_set = json.loads(res_set.stdout)
+        self.assertTrue(data_set.get("ok"))
+        self.assertEqual(data_set.get("target"), "cloudflare_v6")
+
+        # Checa ping-target-get
+        res_get = self.sb.run_control("ping-target-get")
+        self.assertEqual(res_get.returncode, 0)
+        data_get = json.loads(res_get.stdout)
+        self.assertEqual(data_get.get("target"), "cloudflare_v6")
+        self.assertEqual(data_get.get("resolved_ip"), "2606:4700:4700::1111")
+        self.assertIn("Cloudflare IPv6", data_get.get("label", ""))
+
+        # Valida que mwan3 track_ip nao recebeu enderecos IPv6 com ":"
+        mwan_tracks = self.sb.uci_get("mwan3.wan.track_ip")
+        if mwan_tracks:
+            for ip in mwan_tracks.split():
+                self.assertNotIn(":", ip, f"Endereco IPv6 vazou para mwan3 IPv4 track_ip: {ip}")
+
+        # 3. Testa Google IPv6 e Quad9 IPv6
+        for v6_target, expected_ip in [("google_v6", "2001:4860:4860::8888"), ("quad9_v6", "2620:fe::fe")]:
+            res = self.sb.run_control("ping-target-set", v6_target)
+            self.assertEqual(res.returncode, 0)
+            res_g = self.sb.run_control("ping-target-get")
+            d_g = json.loads(res_g.stdout)
+            self.assertEqual(d_g.get("target"), v6_target)
+            self.assertEqual(d_g.get("resolved_ip"), expected_ip)
+
+        # 4. Testa custom com IPv6
+        res_custom = self.sb.run_control("ping-target-set", "custom", "2804:cafe::1")
+        self.assertEqual(res_custom.returncode, 0)
+        res_cg = self.sb.run_control("ping-target-get")
+        d_cg = json.loads(res_cg.stdout)
+        self.assertEqual(d_cg.get("target"), "custom")
+        self.assertEqual(d_cg.get("resolved_ip"), "2804:cafe::1")
+
+        # mwan3 ainda limpo de ':'
+        mwan_tracks = self.sb.uci_get("mwan3.wan.track_ip")
+        if mwan_tracks:
+            for ip in mwan_tracks.split():
+                self.assertNotIn(":", ip, f"IPv6 customizado vazou para mwan3: {ip}")
+
+    def test_23_doctor_status_log_and_persistence(self):
+        """Valida comandos do Ark Doctor: doctor-status, doctor-log, doctor-run e persistencia de estado."""
+        # 1. Executa doctor-run
+        res_run = self.sb.run_control("doctor-run")
+        self.assertEqual(res_run.returncode, 0, f"Falha no doctor-run: {res_run.stderr}")
+        data_run = json.loads(res_run.stdout)
+        self.assertIn("status", data_run)
+        self.assertIn("checks", data_run)
+        self.assertIn("timestamp", data_run)
+        self.assertIn("date", data_run)
+
+        # 2. Executa doctor-status -> DEVE retornar estado identico ou compativel
+        res_status = self.sb.run_control("doctor-status")
+        self.assertEqual(res_status.returncode, 0, f"Falha no doctor-status: {res_status.stderr}")
+        data_status = json.loads(res_status.stdout)
+        self.assertEqual(data_status.get("status"), data_run.get("status"))
+        self.assertEqual(data_status.get("timestamp"), data_run.get("timestamp"))
+        self.assertEqual(len(data_status.get("checks", [])), len(data_run.get("checks", [])))
+
+        # 3. Executa doctor-log -> DEVE conter historico de execucao do Ark Doctor
+        res_log = self.sb.run_control("doctor-log")
+        self.assertEqual(res_log.returncode, 0, f"Falha no doctor-log: {res_log.stderr}")
+        self.assertIn("Ark Doctor Audit", res_log.stdout)
+
+        # 4. Executa doctor-fix
+        res_fix = self.sb.run_control("doctor-fix")
+        self.assertEqual(res_fix.returncode, 0, f"Falha no doctor-fix: {res_fix.stderr}")
+        data_fix = json.loads(res_fix.stdout)
+        self.assertIn("fixes_applied", data_fix)
+
+    def test_24_upnp_stun_cgnat_auto_activation(self):
+        """Valida que quando UPnP esta ativo, o Ark Doctor audita e ativa STUN (stun.cloudflare.com) para atravessamento de CGNAT."""
+        # 1. Cria config do upnpd com use_stun=0
+        upnp_cfg = os.path.join(self.sb.etc_config, "upnpd")
+        with open(upnp_cfg, "w", encoding="utf-8") as f:
+            f.write("config upnpd 'config'\n\toption enabled '1'\n\toption use_stun '0'\n\toption stun_host ''\n")
+
+        # 2. Executa doctor-run (modo auditoria sem fix) -> DEVE gerar WARN na checagem de STUN
+        res_audit = self.sb.run_control("doctor-run")
+        self.assertEqual(res_audit.returncode, 0)
+        data_audit = json.loads(res_audit.stdout)
+        stun_check = next((c for c in data_audit.get("checks", []) if "STUN" in c.get("name", "")), None)
+        self.assertIsNotNone(stun_check, "Checagem de STUN UPnP nao encontrada")
+        self.assertEqual(stun_check.get("status"), "WARN")
+
+        # 3. Executa doctor-fix -> DEVE autoconsertar e ativar STUN Cloudflare
+        res_fix = self.sb.run_control("doctor-fix")
+        self.assertEqual(res_fix.returncode, 0)
+        data_fix = json.loads(res_fix.stdout)
+        stun_check_fix = next((c for c in data_fix.get("checks", []) if "STUN" in c.get("name", "")), None)
+        self.assertIsNotNone(stun_check_fix)
+        self.assertEqual(stun_check_fix.get("status"), "FIXED")
+
+        # 4. Verifica persistencia no UCI
+        self.assertEqual(self.sb.uci_get("upnpd.config.use_stun"), "1")
+        self.assertEqual(self.sb.uci_get("upnpd.config.stun_host"), "stun.cloudflare.com")
+        self.assertEqual(self.sb.uci_get("upnpd.config.stun_port"), "3478")
+
+        # 5. Nova auditoria deve reportar OK
+        res_ok = self.sb.run_control("doctor-run")
+        data_ok = json.loads(res_ok.stdout)
+        stun_check_ok = next((c for c in data_ok.get("checks", []) if "STUN" in c.get("name", "")), None)
+        self.assertEqual(stun_check_ok.get("status"), "OK")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

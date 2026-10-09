@@ -141,13 +141,51 @@ wifi_cleanup_mesh_interfaces() {
 	done
 	uci commit wireless
 }
+ 
+wifi_get_ap_sections() {
+	local kind="${1:-main}"
+	local sections=""
+	local r6="$(wifi_radio_6g)"
+
+	if [ "$kind" = "main" ]; then
+		sections="$(uci -q show wireless 2>/dev/null | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1 | while read -r s; do
+			case "$s" in *guest*) continue ;; esac
+			net="$(uci -q get "wireless.$s.network")"
+			mode="$(uci -q get "wireless.$s.mode" || echo ap)"
+			[ "$mode" = "ap" ] && { [ "$net" = "lan" ] || [ -z "$net" ]; } && echo "$s"
+		done)"
+		if [ -z "$sections" ]; then
+			if uci -q get wireless.wifi0_ap >/dev/null || uci -q get wireless.wifi0 >/dev/null; then
+				sections="wifi0_ap wifi1_ap"
+				[ -n "$r6" ] && sections="$sections wifi2_ap"
+			else
+				sections="default_radio0 default_radio1"
+				[ -n "$r6" ] && sections="$sections default_radio2"
+			fi
+		fi
+	elif [ "$kind" = "guest" ]; then
+		sections="$(uci -q show wireless 2>/dev/null | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1 | while read -r s; do
+			net="$(uci -q get "wireless.$s.network")"
+			[ "$net" = "guest" ] && echo "$s"
+		done)"
+		if [ -z "$sections" ]; then
+			if uci -q get wireless.wifi0_guest >/dev/null || uci -q get wireless.wifi0 >/dev/null; then
+				sections="wifi0_guest wifi1_guest"
+				[ -n "$r6" ] && sections="$sections wifi2_guest"
+			else
+				sections="guest_radio0 guest_radio1"
+				[ -n "$r6" ] && sections="$sections guest_radio2"
+			fi
+		fi
+	fi
+	printf '%s\n' "$sections"
+}
 
 handle_wifi() {
 	case "$1" in
 	wifi)
 		case "$2" in
-			main) sections='default_radio0 default_radio1' ;;
-			guest) sections='guest_radio0 guest_radio1' ;;
+			main|guest) sections="$(wifi_get_ap_sections "$2")" ;;
 			*) echo 'Rede invalida' >&2; exit 2 ;;
 		esac
 		password="$3"
@@ -165,19 +203,8 @@ handle_wifi() {
 		wifi_kind="$2"
 		desired_state="${3:-1}"
 		case "$wifi_kind" in
-			main)
-				sections="$(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1 | while read -r s; do
-					net="$(uci -q get "wireless.$s.network")"
-					[ "$net" = "lan" ] || [ -z "$net" ] && echo "$s"
-				done)"
-				[ -n "$sections" ] || sections='default_radio0 default_radio1'
-				;;
-			guest)
-				sections="$(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1 | while read -r s; do
-					net="$(uci -q get "wireless.$s.network")"
-					[ "$net" = "guest" ] && echo "$s"
-				done)"
-				[ -n "$sections" ] || sections='guest_radio0 guest_radio1'
+			main|guest)
+				sections="$(wifi_get_ap_sections "$wifi_kind")"
 				;;
 			*)
 				clean_prefix="$(printf '%s' "$wifi_kind" | sed 's/^extra_//')"
@@ -234,13 +261,11 @@ handle_wifi() {
 		[ -n "$radio5" ] || radio5="$radio2"
 		case "$2" in
 			main)
-				sections='default_radio0 default_radio1'
-				[ -n "$radio6" ] && sections="$sections default_radio2"
+				sections="$(wifi_get_ap_sections main)"
 				allow_toggle=0
 				;;
 			guest)
-				sections='guest_radio0 guest_radio1'
-				[ -n "$radio6" ] && sections="$sections guest_radio2"
+				sections="$(wifi_get_ap_sections guest)"
 				allow_toggle=1
 				;;
 			*)
@@ -309,18 +334,29 @@ handle_wifi() {
 		fi
 		for section in $sections; do
 			uci -q get "wireless.$section" >/dev/null 2>&1 && continue
-			case "$section" in
-				*radio0|*_r0) device="$radio2"; section_ssid="$ssid2" ;;
-				*radio1|*_r1) device="$radio5"; section_ssid="$ssid5" ;;
-				*radio2|*_r2) device="${radio6:-$radio5}"; section_ssid="$ssid6" ;;
-				*) device="$radio2"; section_ssid="$ssid" ;;
-			esac
+			sec_dev="$(uci -q get "wireless.$section.device")"
+			if [ "$sec_dev" = "$radio2" ]; then
+				device="$radio2"; section_ssid="$ssid2"
+			elif [ "$sec_dev" = "$radio5" ]; then
+				device="$radio5"; section_ssid="$ssid5"
+			elif [ -n "$radio6" ] && [ "$sec_dev" = "$radio6" ]; then
+				device="$radio6"; section_ssid="$ssid6"
+			else
+				case "$section" in
+					*radio0|*_r0|*wifi0*|*2g*) device="$radio2"; section_ssid="$ssid2" ;;
+					*radio1|*_r1|*wifi1*|*5g*) device="$radio5"; section_ssid="$ssid5" ;;
+					*radio2|*_r2|*wifi2*|*6g*) device="${radio6:-$radio5}"; section_ssid="$ssid6" ;;
+					*) device="$radio2"; section_ssid="$ssid" ;;
+				esac
+			fi
 			network='lan'; [ "$wifi_kind" = guest ] && network='guest'
 			section_key="$password"
 			[ -n "$section_key" ] || section_key="$(uci -q get wireless.guest_radio0.key)"
 			[ -n "$section_key" ] || section_key="$(uci -q get wireless.guest_radio1.key)"
+			[ -n "$section_key" ] || section_key="$(uci -q get wireless.wifi0_guest.key)"
 			[ -n "$section_key" ] || section_key="$(uci -q get wireless.default_radio0.key)"
 			[ -n "$section_key" ] || section_key="$(uci -q get wireless.default_radio1.key)"
+			[ -n "$section_key" ] || section_key="$(uci -q get wireless.wifi0_ap.key)"
 			[ -n "$section_key" ] || section_key='arkrouter0100'
 			section_disabled='0'
 			[ "$enabled" = 0 ] && section_disabled='1'
@@ -336,14 +372,14 @@ handle_wifi() {
 				uci -q set "wireless.$section.ssid=$ssid6"
 			else
 				case "$section" in
-					*radio0|*_r0) uci -q set "wireless.$section.ssid=$ssid2" ;;
-					*radio1|*_r1) uci -q set "wireless.$section.ssid=$ssid5" ;;
-					*radio2|*_r2) uci -q set "wireless.$section.ssid=$ssid6" ;;
+					*radio0|*_r0|*wifi0*|*2g*) uci -q set "wireless.$section.ssid=$ssid2" ;;
+					*radio1|*_r1|*wifi1*|*5g*) uci -q set "wireless.$section.ssid=$ssid5" ;;
+					*radio2|*_r2|*wifi2*|*6g*) uci -q set "wireless.$section.ssid=$ssid6" ;;
 					*) uci -q set "wireless.$section.ssid=$ssid" ;;
 				esac
 			fi
 			is_sec_6g=0
-			if { [ -n "$radio6" ] && [ "$sec_dev" = "$radio6" ]; } || case "$section" in *radio2|*_r2) true;; *) false;; esac; then
+			if { [ -n "$radio6" ] && [ "$sec_dev" = "$radio6" ]; } || case "$section" in *radio2|*_r2|*wifi2*|*6g*) true;; *) false;; esac; then
 				is_sec_6g=1
 			fi
 			if [ "$encryption" = none ]; then
@@ -680,10 +716,24 @@ handle_wifi() {
 			current_ht6="$(uci -q get "wireless.$radio6.htmode" || echo HE160)"
 			case "$current_ht6" in
 				EHT*) pfx6="EHT" ;;
+				HT320*) pfx6="HT" ;;
 				HE*) pfx6="HE" ;;
 				*) pfx6="HE" ;;
 			esac
-			case "$width6" in 20|40|80|160|320) ht6="${pfx6}${width6}" ;; *) ht6="HE160" ;; esac
+			case "$width6" in
+				320)
+					case "$current_ht6" in
+						HT320*) ht6="HT320" ;;
+						*) ht6="EHT320" ;;
+					esac
+					;;
+				20|40|80|160)
+					ht6="${pfx6}${width6}"
+					;;
+				*)
+					ht6="HE160"
+					;;
+			esac
 			if [ "$ht6" != "$current_ht6" ]; then
 				uci set "wireless.$radio6.htmode=$ht6"
 				changed6=1

@@ -17,11 +17,17 @@ esac
 dev_mtu="$(uci -q get "network.$INTERFACE.device_mtu")"
 req_mtu="$(uci -q get "network.$INTERFACE.mtu")"
 
-if [ "$dev_mtu" != "1508" ] && [ "$req_mtu" != "1500" ]; then
+# Se o usuario fixou explicitamente o MTU (ex: 1492), respeita estritamente a configuracao do usuario e nunca eleva
+if [ -n "$req_mtu" ] && [ "$req_mtu" -lt 1500 ]; then
+	ip link set "$DEVICE" mtu "$req_mtu" 2>/dev/null || true
 	exit 0
 fi
 
-# Se Baby Jumbo estiver ativo mas a interface negociou MTU inferior a 1500 (ex: LCP do BNG), eleva para 1500
+if [ "$dev_mtu" != "1508" ] || [ "$req_mtu" != "1500" ]; then
+	exit 0
+fi
+
+# Se Baby Jumbo estiver explicitamente ativo (mtu=1500 e device_mtu=1508)
 cur_mtu="$(cat "/sys/class/net/$DEVICE/mtu" 2>/dev/null)"
 if [ -n "$cur_mtu" ] && [ "$cur_mtu" -lt 1500 ] 2>/dev/null; then
 	ip link set "$DEVICE" mtu 1500 2>/dev/null && \

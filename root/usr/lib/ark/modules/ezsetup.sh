@@ -1125,8 +1125,9 @@ handle_ezsetup() {
 				wan2_dns="$(ez_get wan2_dns '')"
 				wan2_mac="$(ez_get wan2_macaddr '')"
 				wan2_modem="$(ez_get wan2_modem_ip '')"
-				apply_wan_proto wan2 "$wan2_proto" "$wan2_user" "$wan2_pass" "$wan2_ip" "$wan2_mask" "$wan2_gw" "$wan2_dns" "$wan2_mac"
 				uci -q set "network.wan2.device=$wan2_port"
+				uci -q set "network.wan2.ifname=$wan2_port"
+				apply_wan_proto wan2 "$wan2_proto" "$wan2_user" "$wan2_pass" "$wan2_ip" "$wan2_mask" "$wan2_gw" "$wan2_dns" "$wan2_mac"
 				apply_wan_modem_access wan2 "$wan2_proto" "$wan2_modem" "$wan2_port"
 				uci -q set network.wan2.metric=20
 				if [ "$(uci -q get network.wan2.device_mtu)" = "1508" ] || [ "$(uci -q get network.wan2.mtu)" = "1500" -a "$wan2_proto" = "pppoe" ]; then
@@ -1343,11 +1344,15 @@ handle_ezsetup() {
 		if [ ! -s "$iw_cache" ]; then
 			iw list 2>/dev/null > "$iw_cache" || true
 		fi
-		if grep -qE 'EHT Capabilities|EHT-PHY|EHT Iftypes' "$iw_cache" 2>/dev/null; then wifi_be=true; fi
-		if grep -q 'HE Iftypes' "$iw_cache" 2>/dev/null; then wifi_ax=true; fi
-		if [ "$wifi_be" = true ] && grep -qE 'Supported Channel Width: 320 MHz|EHT320' "$iw_cache" 2>/dev/null; then wifi_320=true; fi
-		if grep -qE 'Supported Channel Width: 160 MHz|HE160|VHT160|EHT160' "$iw_cache" 2>/dev/null; then wifi_160=true; fi
-		if grep -qE 'Band 4:|Band 6GHz|/6GHz|5955 MHz' "$iw_cache" 2>/dev/null; then wifi_6g=true; fi
+		if grep -qE 'EHT Capabilities|EHT-PHY|EHT Iftypes' "$iw_cache" 2>/dev/null || grep -qE '11be|EHT|qcawificfg80211' /etc/config/wireless 2>/dev/null; then wifi_be=true; fi
+		if grep -q 'HE Iftypes' "$iw_cache" 2>/dev/null || grep -qE '11ax|HE' /etc/config/wireless 2>/dev/null; then wifi_ax=true; fi
+		if [ "$wifi_be" = true ] || grep -qE 'Supported Channel Width: 320 MHz|EHT320|HT320' "$iw_cache" 2>/dev/null || grep -qE '320' /etc/config/wireless 2>/dev/null; then
+			if grep -qE 'Supported Channel Width: 320 MHz|EHT320|HT320|320' "$iw_cache" 2>/dev/null || grep -qE '320' /etc/config/wireless 2>/dev/null || [ "$wifi_be" = true ]; then
+				wifi_320=true
+			fi
+		fi
+		if grep -qE 'Supported Channel Width: 160 MHz|HE160|VHT160|EHT160' "$iw_cache" 2>/dev/null || grep -qE '160' /etc/config/wireless 2>/dev/null; then wifi_160=true; fi
+		if grep -qE 'Band 4:|Band 6GHz|/6GHz|5955 MHz' "$iw_cache" 2>/dev/null || grep -qE "band=['\"]?6g['\"]?|band=['\"]?3['\"]?" /etc/config/wireless 2>/dev/null; then wifi_6g=true; fi
 		owrt_ver="$(grep 'DISTRIB_RELEASE' /etc/openwrt_release 2>/dev/null | cut -d"'" -f2 || echo '')"
 		is_legacy_owrt=false
 		case "$owrt_ver" in

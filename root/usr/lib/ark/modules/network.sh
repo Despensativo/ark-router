@@ -1018,17 +1018,25 @@ get_configured_ping_track_ips() {
 	local custom_ip="$(uci -q get equipe_dashboard.main.ping_custom_ip 2>/dev/null)"
 	local primary=""
 	case "$target" in
-		cloudflare)  primary="1.1.1.1" ;;
-		google)      primary="8.8.8.8" ;;
-		quad9)       primary="9.9.9.9" ;;
-		registro_br) primary="1.1.1.1" ;;
-		custom)      primary="${custom_ip:-1.1.1.1}" ;;
+		cloudflare)    primary="1.1.1.1" ;;
+		google)        primary="8.8.8.8" ;;
+		quad9)         primary="9.9.9.9" ;;
+		cloudflare_v6) primary="" ;;
+		google_v6)     primary="" ;;
+		quad9_v6)      primary="" ;;
+		registro_br)   primary="1.1.1.1" ;;
+		custom)
+			case "$custom_ip" in
+				*:*) primary="" ;;
+				*)   primary="${custom_ip:-1.1.1.1}" ;;
+			esac
+			;;
 		isp)
 			primary="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@.route[@.target="0.0.0.0"].nexthop' 2>/dev/null | head -n 1)"
 			[ -n "$primary" ] || primary="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].ptpaddress' 2>/dev/null)"
 			[ -n "$primary" ] || primary="$(uci -q get network.wan.gateway || true)"
 			;;
-		*)           primary="1.1.1.1" ;;
+		*)             primary="1.1.1.1" ;;
 	esac
 
 	local ips=""
@@ -1503,12 +1511,8 @@ add_lan_port() {
 	br="$(lan_bridge_section)"
 	[ -n "$br" ] || return 0
 	bridge_has_port "$br" "$port" || uci -q add_list "network.$br.ports=$port"
-	# Blindagem Anti-MAC Colisao: remove macaddr residual de device retornado a LAN
-	for d_sec in $(uci -q show network | grep "=device" | cut -d. -f2 | cut -d= -f1); do
-		if [ "$(uci -q get "network.$d_sec.name")" = "$port" ]; then
-			uci -q delete "network.$d_sec.macaddr"
-		fi
-	done
+	# Blindagem Anti-MAC Colisao: remove macaddr residual e restaura MAC nativo do dispositivo retornado a LAN
+	ark_ensure_phys_device_mac "$port" ""
 }
 
 remove_lan_port() {
@@ -1539,9 +1543,8 @@ apply_wan_proto() {
 		uci -q set "network.$iface.username=$username"
 		uci -q delete "network.$iface.password"
 		[ -n "$password" ] && uci -q set "network.$iface.password=$password"
-		if [ "$(uci -q get "network.$iface.device_mtu")" = "1508" ]; then
-			uci -q set "network.$iface.mtu=1500"
-		elif [ "$(uci -q get "network.$iface.mtu")" = "1500" ]; then
+		local cur_mtu="$(uci -q get "network.$iface.mtu")"
+		if [ -z "$cur_mtu" ] || [ "$cur_mtu" = "1500" ]; then
 			uci -q set "network.$iface.mtu=1492"
 		fi
 	elif [ "$proto" = static ]; then
@@ -1569,18 +1572,10 @@ apply_wan_proto() {
 	fi
 	if [ -n "$macaddr" ]; then
 		uci -q set "network.$iface.macaddr=$macaddr"
-	elif [ "$iface" != "wan" ]; then
-		local base_mac="$(cat /sys/class/net/eth0/address 2>/dev/null || cat /sys/class/net/br-lan/address 2>/dev/null || echo "")"
-		if [ -n "$base_mac" ]; then
-			local idx="$(printf '%s' "$iface" | tr -cd '0-9')"
-			[ -n "$idx" ] || idx=2
-			local prefix="$(printf '%s' "$base_mac" | cut -d: -f1-5)"
-			local last_hex="$(printf '%s' "$base_mac" | cut -d: -f6)"
-			local last_dec=$(( 0x$last_hex + idx ))
-			[ "$last_dec" -le 254 ] || last_dec=$(( 0x$last_hex - idx ))
-			local new_hex="$(printf '%02x' "$last_dec")"
-			uci -q set "network.$iface.macaddr=${prefix}:${new_hex}"
-		fi
+		[ -n "$wan_phys_dev" ] && ark_ensure_phys_device_mac "$wan_phys_dev" "$macaddr"
+	else
+		uci -q delete "network.$iface.macaddr"
+		[ -n "$wan_phys_dev" ] && ark_ensure_phys_device_mac "$wan_phys_dev" ""
 	fi
 }
 
@@ -1936,15 +1931,15 @@ handle_network() {
 			if [ "$proto" = pppoe ]; then
 				uci -q set "sqm.$sqm_sec.interface=pppoe-$iface"
 				cur_ov="$(uci -q get "sqm.$sqm_sec.overhead" || echo 0)"
-				if [ "$cur_ov" = "18" ] || [ "$cur_ov" = "0" ] || [ -z "$cur_ov" ]; then
+				if [ "$cur_ov" = "18" ] || [ "$cur_ov" = "0" ] || [ "$cur_ov" = "28" ] || [ -z "$cur_ov" ]; then
 					uci -q set "sqm.$sqm_sec.linklayer=ethernet"
-					uci -q set "sqm.$sqm_sec.overhead=28"
+					uci -q set "sqm.$sqm_sec.overhead=44"
 					uci -q set "sqm.$sqm_sec.mpu=64"
 				fi
 			else
 				uci -q set "sqm.$sqm_sec.interface=$effective_dev"
 				cur_ov="$(uci -q get "sqm.$sqm_sec.overhead" || echo 0)"
-				if [ "$cur_ov" = "28" ]; then
+				if [ "$cur_ov" = "28" ] || [ "$cur_ov" = "44" ]; then
 					uci -q set "sqm.$sqm_sec.linklayer=ethernet"
 					uci -q set "sqm.$sqm_sec.overhead=18"
 					uci -q set "sqm.$sqm_sec.mpu=64"
@@ -2840,9 +2835,9 @@ handle_network() {
 				effective_preset="$preset"
 			fi
 			case "$effective_preset" in
-				xpon_bridge) linklayer_profile='pppoe_28'; baby_jumbo=1 ;;
-				xpon_vlan) linklayer_profile='vlan_34'; baby_jumbo=1 ;;
-				dhcp_cable|mobile_starlink|dedicated_static) linklayer_profile='none'; baby_jumbo=0 ;;
+				xpon_bridge) linklayer_profile='vdsl_44'; [ -z "$baby_jumbo" ] && baby_jumbo=0 ;;
+				xpon_vlan) linklayer_profile='vlan_34'; [ -z "$baby_jumbo" ] && baby_jumbo=0 ;;
+				dhcp_cable|mobile_starlink|dedicated_static) linklayer_profile='none'; [ -z "$baby_jumbo" ] && baby_jumbo=0 ;;
 				custom) ;;
 				*) echo 'Preset invalido' >&2; exit 2 ;;
 			esac
@@ -3153,10 +3148,13 @@ EOF
 		target="$(uci -q get equipe_dashboard.main.ping_target || printf 'cloudflare')"
 		custom_ip="$(uci -q get equipe_dashboard.main.ping_custom_ip || true)"
 		case "$target" in
-			cloudflare) resolved="1.1.1.1"; label="Cloudflare (1.1.1.1)" ;;
-			google) resolved="8.8.8.8"; label="Google (8.8.8.8)" ;;
-			quad9) resolved="9.9.9.9"; label="Quad9 (9.9.9.9)" ;;
-			custom) resolved="${custom_ip:-1.1.1.1}"; label="Custom ($resolved)" ;;
+			cloudflare)    resolved="1.1.1.1"; label="Cloudflare (1.1.1.1)" ;;
+			google)        resolved="8.8.8.8"; label="Google (8.8.8.8)" ;;
+			quad9)         resolved="9.9.9.9"; label="Quad9 (9.9.9.9)" ;;
+			cloudflare_v6) resolved="2606:4700:4700::1111"; label="Cloudflare IPv6 (2606:4700:4700::1111)" ;;
+			google_v6)     resolved="2001:4860:4860::8888"; label="Google IPv6 (2001:4860:4860::8888)" ;;
+			quad9_v6)      resolved="2620:fe::fe"; label="Quad9 IPv6 (2620:fe::fe)" ;;
+			custom)        resolved="${custom_ip:-1.1.1.1}"; label="Custom ($resolved)" ;;
 			isp)
 				resolved="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@.route[@.target="0.0.0.0"].nexthop' 2>/dev/null | head -n 1)"
 				[ -n "$resolved" ] || resolved="$(ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].ptpaddress' 2>/dev/null)"
@@ -3174,7 +3172,7 @@ EOF
 		target="$2"
 		custom_ip="$3"
 		case "$target" in
-			cloudflare|google|quad9|isp|custom) ;;
+			cloudflare|google|quad9|cloudflare_v6|google_v6|quad9_v6|isp|custom) ;;
 			registro_br) target="cloudflare" ;;
 			*) target="cloudflare" ;;
 		esac

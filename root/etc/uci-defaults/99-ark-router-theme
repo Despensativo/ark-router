@@ -57,6 +57,19 @@ fi
 	/etc/init.d/ark-hardware-tune enable 2>/dev/null || true
 	/etc/init.d/ark-hardware-tune start 2>/dev/null || true
 }
+# Define idioma padrao para Portugues do Brasil (PT-BR) se nao configurado
+[ -f /etc/config/equipe_dashboard ] || touch /etc/config/equipe_dashboard
+cur_lang="$(uci -q get equipe_dashboard.main.language 2>/dev/null || true)"
+if [ -z "$cur_lang" ] || [ "$cur_lang" = "auto" ]; then
+	uci -q set equipe_dashboard.main=settings
+	uci -q set equipe_dashboard.main.language='pt-br'
+	uci commit equipe_dashboard 2>/dev/null || true
+fi
+cur_luci_lang="$(uci -q get luci.main.lang 2>/dev/null || true)"
+if [ -z "$cur_luci_lang" ] || [ "$cur_luci_lang" = "auto" ]; then
+	uci -q set luci.main.lang='pt_br'
+	uci commit luci 2>/dev/null || true
+fi
 
 rm -f /tmp/luci-indexcache
 rm -rf /tmp/luci-modulecache/* 2>/dev/null || true

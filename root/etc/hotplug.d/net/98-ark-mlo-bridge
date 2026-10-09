@@ -1,0 +1,22 @@
+#!/bin/sh
+# /etc/hotplug.d/net/98-ark-mlo-bridge
+# Garante a vinculação automática e idempotente da interface MLD (Wi-Fi 7) à bridge LAN
+
+case "$INTERFACE" in
+	mld*)
+		case "$ACTION" in
+			add|bind)
+				bridge="$(uci -q get network.lan.device)"
+				[ -n "$bridge" ] || bridge="br-lan"
+				[ -d "/sys/class/net/$bridge" ] || exit 0
+				[ -d "/sys/class/net/$bridge/brif/$INTERFACE" ] && exit 0
+
+				ip link set dev "$INTERFACE" up 2>/dev/null || true
+				if ! ip link set dev "$INTERFACE" master "$bridge" 2>/dev/null; then
+					command -v brctl >/dev/null 2>&1 && brctl addif "$bridge" "$INTERFACE" 2>/dev/null || true
+				fi
+				logger -t ark-mlo "Hotplug: Interface MLD $INTERFACE vinculada com sucesso a $bridge"
+				;;
+		esac
+		;;
+esac

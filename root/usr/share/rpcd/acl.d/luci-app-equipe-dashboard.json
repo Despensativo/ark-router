@@ -8,12 +8,14 @@
 				"/usr/libexec/nlbwmon-action": [ "exec" ],
 				"/tmp/equipe-traffic-history.csv": [ "read" ],
 				"/tmp/equipe-wan-daily.csv": [ "read" ],
+				"/tmp/ark-doctor-last.json": [ "read" ],
+				"/var/log/ark-doctor.log": [ "read" ],
 				"/proc/net/arp": [ "read" ],
 				"/sys/class/thermal/thermal_zone0/temp": [ "read" ]
 			},
 			"ubus": {
 				"file": [ "exec", "read" ],
-				"iwinfo": [ "assoclist", "survey", "scan", "freqlist", "countrylist" ],
+				"iwinfo": [ "assoclist", "survey", "scan", "freqlist", "countrylist", "info", "txpowerlist", "phyname" ],
 				"luci-rpc": [ "getDHCPLeases", "getHostHints" ],
 				"mwan3": [ "status" ],
 				"network.device": [ "status" ],

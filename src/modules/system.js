@@ -2465,7 +2465,7 @@ const systemMethods = {
 		if (!wifiStandards.length) wifiStandards.push('Wi-Fi Padrão');
 
 		let maxWidthStr = '80 MHz (VHT80)';
-		if (wf.wifi_320) maxWidthStr = '320 MHz (EHT320 / Wi-Fi 7)';
+		if (wf.wifi_320 || wf.wifi_be || (wf.wifi_6g && wf.wifi_ax)) maxWidthStr = '320 MHz (EHT320 / Wi-Fi 7)';
 		else if (wf.wifi_160) maxWidthStr = '160 MHz (Ultra Rápido)';
 
 		let bandsStr = '2.4 GHz + 5.0 GHz (Dual-Band)';
@@ -2693,6 +2693,22 @@ const systemMethods = {
 				this.showWanOptimizationsModal();
 			},this)},['Otimizar internet'])
 		]);
+		const doctorPanel=E('section',{class:'ex-cleanup-entry'},[
+			E('div',{},[
+				E('strong',{},['🩺 Diagnóstico do Sistema & Logs (Ark Doctor)']),
+				E('small',{class:'ex-muted'},['Auditoria contínua de 25+ itens vitais do roteador, visualizador de logs (/var/log/ark-doctor.log) e ferramentas de autocura.'])
+			]),
+			E('div',{style:'display:flex;gap:8px;align-items:center;'},[
+				E('button',{class:'ex-mini-button','click':L.bind(function(){
+					closeModal();
+					this.showDoctorModal('diagnosis');
+				},this)},[_t('Diagnóstico')]),
+				E('button',{class:'ex-mini-button',style:'background:rgba(59,130,246,0.15);color:#3b82f6;border:1px solid rgba(59,130,246,0.3);font-weight:700;','click':L.bind(function(){
+					closeModal();
+					this.showDoctorModal('log');
+				},this)},[_t('📜 Ver Logs')])
+			])
+		]);
 		const starlinkAlwaysShowModalVal = !!(this.capabilities.features && (this.capabilities.features.starlink_always_show === 1 || this.capabilities.features.starlink_always_show === true || this.capabilities.features.starlink_always_show === '1')) || (localStorage.getItem('ark_starlink_always_show') === '1');
 		const starlinkAlwaysShowModalInput = E('input', {
 			id: 'ex-starlink-always-show-modal-input',
@@ -2727,6 +2743,7 @@ const systemMethods = {
 		ui.showModal('RECURSOS E COMPATIBILIDADE',[
 			profilePanel,
 			wanOptPanel,
+			doctorPanel,
 			E('div',{class:'ex-brand-row'},[E('label',{},['Nome do painel']),brandName,E('button',{class:'ex-mini-button','click':L.bind(function(){this.setDashboardTitle(brandName.value);},this)},['Salvar nome'])]),
 			E('div',{class:'ex-language-row'},[E('label',{},['Idioma do painel']),language,E('button',{class:'ex-mini-button','click':L.bind(function(){this.setDashboardLanguage(language.value);},this)},['Salvar idioma'])]),
 			this.selfUpdatePanel(),
@@ -2762,6 +2779,7 @@ const systemMethods = {
 		ui.showModal('Carregando DNS Turbo…', [ E('p', {}, ['Consultando servidores e configurações atuais…']) ]);
 		fs.exec('/usr/sbin/equipe-dashboard-control', ['dns-turbo-status']).then(function(r) {
 			let status = { allservers: true, servers: '1.1.1.1 8.8.8.8 1.0.0.1 8.8.4.4' };
+			try { Object.assign(status, JSON.parse(r.stdout || '{}')); } catch(e){}
 			const rawList = (status.servers || '1.1.1.1 8.8.8.8 1.0.0.1 8.8.4.4').split(' ').filter(function(s){
 				if (!s) return false;
 				if (s.indexOf('/') !== -1) return false; // Descartar rotas de dominio (/domain/ip)
@@ -3714,5 +3732,222 @@ const systemMethods = {
 		summaryHead.appendChild(perfAccordion.expandBtn);
 
 		return perfCard;
+	},
+
+	showDoctorModal: function(initialTab) {
+		const self = this;
+		let activeTab = initialTab === 'log' ? 'log' : 'diagnosis';
+		const doc = (self.currentData && self.currentData.doctorStatus) || {};
+		const isOk = doc.status === 'OK' || (Number(doc.errors || 0) === 0 && Number(doc.warnings || 0) === 0);
+		const hasErrors = Number(doc.errors || 0) > 0;
+		const statusPillClass = isOk ? 'online' : (hasErrors ? 'offline' : 'standby');
+		const statusLabel = isOk ? _t('SISTEMA 100% SAUDÁVEL') : (hasErrors ? (_t('FALHA DETECTADA') + ' (' + doc.errors + ')') : (_t('AVISO DETECTADO') + ' (' + doc.warnings + ')'));
+
+		// Header Summary Bar
+		const summaryBar = E('div', {
+			style: 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; padding: 12px 16px; border-radius: 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08);'
+		}, [
+			E('div', {}, [
+				E('strong', { style: 'display: block; font-size: 0.95rem; color: #fff;' }, [_t('Status Geral da Auditoria')]),
+				E('small', { class: 'ex-muted' }, [
+					doc.date ? (_t('Última auditoria: ') + doc.date) : _t('Auditoria em tempo de execução'),
+					' • ',
+					((doc.checks && doc.checks.length) || 0) + ' ' + _t('checagens'),
+					' • ',
+					(doc.fixes_applied || 0) + ' ' + _t('reparos aplicados')
+				])
+			]),
+			E('span', { class: 'ex-pill ' + statusPillClass, style: 'font-size: 0.78rem; font-weight: 750;' }, [statusLabel])
+		]);
+
+		// Tabs buttons
+		const tabBtnDiagnosis = E('button', {
+			class: 'ex-doctor-tab-btn' + (activeTab === 'diagnosis' ? ' is-active' : ''),
+			click: function() { switchTab('diagnosis'); }
+		}, ['📋 ' + _t('Diagnóstico Detalhado')]);
+
+		const tabBtnLog = E('button', {
+			class: 'ex-doctor-tab-btn' + (activeTab === 'log' ? ' is-active' : ''),
+			click: function() { switchTab('log'); }
+		}, ['📜 ' + _t('Log do Sistema (/var/log/ark-doctor.log)')]);
+
+		const tabsNav = E('div', { class: 'ex-doctor-tabs' }, [tabBtnDiagnosis, tabBtnLog]);
+
+		// Tab 1 Container (Diagnóstico)
+		const checksListEl = E('div', { class: 'ex-doctor-check-list' });
+		const checks = doc.checks || [];
+		if (checks.length === 0) {
+			checksListEl.appendChild(E('div', { style: 'padding: 20px; text-align: center; opacity: 0.7;' }, [
+				_t('Nenhum dado de diagnóstico disponível. Clique em "Executar Diagnóstico" abaixo.')
+			]));
+		} else {
+			checks.forEach(function(c) {
+				let badgeClass = 'ok', badgeText = 'OK';
+				if (c.status === 'FAIL') { badgeClass = 'fail'; badgeText = 'FALHA'; }
+				else if (c.status === 'WARN') { badgeClass = 'warn'; badgeText = 'AVISO'; }
+				else if (c.status === 'FIXED') { badgeClass = 'fixed'; badgeText = 'REPARADO'; }
+
+				checksListEl.appendChild(E('div', { class: 'ex-doctor-check-card' }, [
+					E('span', { class: 'ex-doctor-badge ' + badgeClass }, [badgeText]),
+					E('div', { style: 'flex: 1; min-width: 0;' }, [
+						E('strong', { style: 'display: block; font-size: 0.88rem; color: #fff; margin-bottom: 2px;' }, [c.name]),
+						E('small', { class: 'ex-muted', style: 'line-height: 1.4; display: block;' }, [c.message])
+					])
+				]));
+			});
+		}
+
+		// Tab 2 Container (Log)
+		const logPreEl = E('pre', { class: 'ex-doctor-log-box' }, [_t('Carregando histórico de logs…')]);
+		const copyLogBtn = E('button', {
+			class: 'cbi-button cbi-button-neutral',
+			style: 'padding: 5px 12px; font-size: 0.8rem; font-weight: 700;',
+			click: function(ev) {
+				const txt = logPreEl.textContent || '';
+				if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+					navigator.clipboard.writeText(txt).then(function() {
+						ev.currentTarget.textContent = '✅ ' + _t('Copiado!');
+						setTimeout(function() { ev.currentTarget.textContent = '📋 ' + _t('Copiar Log'); }, 2000);
+					}).catch(function() {
+						prompt(_t('Copie o log abaixo:'), txt);
+					});
+				} else {
+					prompt(_t('Copie o log abaixo:'), txt);
+				}
+			}
+		}, ['📋 ' + _t('Copiar Log')]);
+
+		const refreshLogBtn = E('button', {
+			class: 'cbi-button cbi-button-action',
+			style: 'padding: 5px 12px; font-size: 0.8rem; font-weight: 700;',
+			click: function() { loadLogContent(); }
+		}, ['🔄 ' + _t('Atualizar Log')]);
+
+		const logActionsBar = E('div', {
+			style: 'display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 10px;'
+		}, [copyLogBtn, refreshLogBtn]);
+
+		const tabLogContainer = E('div', { style: activeTab === 'log' ? '' : 'display:none;' }, [
+			logActionsBar,
+			logPreEl
+		]);
+
+		const tabDiagnosisContainer = E('div', { style: activeTab === 'diagnosis' ? '' : 'display:none;' }, [
+			checksListEl
+		]);
+
+		function loadLogContent() {
+			logPreEl.textContent = _t('Lendo /var/log/ark-doctor.log…');
+			safe(fs.exec('/usr/sbin/equipe-dashboard-control', ['doctor-log']), {}).then(function(res) {
+				const raw = (res && res.stdout) ? res.stdout.trim() : '';
+				const out = raw ? raw.replace(/\u001b\[[0-9;]*[a-zA-Z]/g, '').replace(/\[[0-9;]+m/g, '') : '';
+				logPreEl.textContent = out || _t('Nenhum registro de log do Ark Doctor disponível.');
+			}).catch(function() {
+				logPreEl.textContent = _t('Não foi possível ler o log do Ark Doctor.');
+			});
+		}
+
+		function switchTab(t) {
+			activeTab = t;
+			tabBtnDiagnosis.classList.toggle('is-active', t === 'diagnosis');
+			tabBtnLog.classList.toggle('is-active', t === 'log');
+			tabDiagnosisContainer.style.display = t === 'diagnosis' ? '' : 'none';
+			tabLogContainer.style.display = t === 'log' ? '' : 'none';
+			if (t === 'log') {
+				loadLogContent();
+			}
+		}
+
+		if (activeTab === 'log') {
+			loadLogContent();
+		}
+
+		// Action Buttons in Footer
+		const auditBtn = E('button', {
+			class: 'cbi-button cbi-button-action',
+			style: 'padding: 8px 16px; font-weight: 750;',
+			click: function(ev) { self.runDoctorAudit(ev.currentTarget); }
+		}, ['🔍 ' + _t('Executar Diagnóstico')]);
+
+		const fixBtn = E('button', {
+			class: 'cbi-button cbi-button-positive',
+			style: 'padding: 8px 16px; font-weight: 750;',
+			click: function(ev) { self.runDoctorFix(ev.currentTarget); }
+		}, ['🔧 ' + _t('Reparar Tudo (--fix)')]);
+
+		const closeBtn = E('button', {
+			class: 'cbi-button cbi-button-neutral',
+			style: 'padding: 8px 16px; font-weight: 750;',
+			click: function() { ui.hideModal(); }
+		}, [_t('Fechar')]);
+
+		const footerEl = E('div', {
+			style: 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 20px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.1);'
+		}, [
+			E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap;' }, [auditBtn, fixBtn]),
+			closeBtn
+		]);
+
+		const modalBody = E('div', { style: 'max-width: 820px; width: 100%;' }, [
+			summaryBar,
+			tabsNav,
+			tabDiagnosisContainer,
+			tabLogContainer,
+			footerEl
+		]);
+
+		ui.showModal('🩺 ' + _t('Ark Doctor — Diagnóstico & Autocura do Sistema'), modalBody);
+	},
+
+	runDoctorAudit: function(btn) {
+		const self = this;
+		if (btn) {
+			btn.disabled = true;
+			btn.textContent = '⏳ ' + _t('Auditando…');
+		}
+		ui.addNotification(null, E('p', {}, [_t('Executando auditoria completa com Ark Doctor…')]), 'info');
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['doctor-run']).then(function(r) {
+			let doc = null;
+			try { doc = JSON.parse(r.stdout || '{}'); } catch(e){}
+			if (doc && self.currentData) {
+				self.currentData.doctorStatus = doc;
+				self.updateDoctorStatus(doc);
+			}
+			ui.addNotification(null, E('p', {}, [_t('Auditoria do Ark Doctor concluída!')]), 'info');
+			self.showDoctorModal('diagnosis');
+		}).catch(function(err) {
+			ui.addNotification(null, E('p', {}, [_t('Falha ao executar auditoria: ') + (err.message || err)]), 'danger');
+			if (btn) {
+				btn.disabled = false;
+				btn.textContent = '🔍 ' + _t('Executar Diagnóstico');
+			}
+		});
+	},
+
+	runDoctorFix: function(btn) {
+		const self = this;
+		if (btn) {
+			btn.disabled = true;
+			btn.textContent = '⏳ ' + _t('Reparando…');
+		}
+		ui.addNotification(null, E('p', {}, [_t('Executando autocura com Ark Doctor (--fix)…')]), 'info');
+		localStorage.removeItem('ark_doctor_banner_dismissed_ts');
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['doctor-fix']).then(function(r) {
+			let doc = null;
+			try { doc = JSON.parse(r.stdout || '{}'); } catch(e){}
+			if (doc && self.currentData) {
+				self.currentData.doctorStatus = doc;
+				self.updateDoctorStatus(doc);
+			}
+			const fixes = (doc && doc.fixes_applied) || 0;
+			ui.addNotification(null, E('p', {}, [_t('Ark Doctor aplicou ') + fixes + _t(' reparos com sucesso!')]), 'info');
+			self.showDoctorModal('diagnosis');
+		}).catch(function(err) {
+			ui.addNotification(null, E('p', {}, [_t('Falha ao aplicar autocura: ') + (err.message || err)]), 'danger');
+			if (btn) {
+				btn.disabled = false;
+				btn.textContent = '🔧 ' + _t('Reparar Tudo (--fix)');
+			}
+		});
 	}
 };

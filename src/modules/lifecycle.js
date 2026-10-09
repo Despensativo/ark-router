@@ -209,7 +209,8 @@ const lifecycleMethods = {
 			safe(fs.exec('/usr/sbin/equipe-dashboard-control', [ 'system-hardware-info' ]), {}),
 			safe(callUciGet('equipe_dashboard'), { values: {} }),
 			safe(fs.exec('/usr/sbin/equipe-dashboard-control', [ 'device-fingerprints' ]), {}),
-			safe(fs.exec('/usr/sbin/equipe-dashboard-control', [ 'device-stations' ]), {})
+			safe(fs.exec('/usr/sbin/equipe-dashboard-control', [ 'device-stations' ]), {}),
+			safe(fs.read('/tmp/ark-doctor-last.json'), '')
 		]).then(function(r) {
 			const interfaces=r[1], networkConfig=r[9], networkValues=values(networkConfig), topology=wifiTopology(r[15], r[6]), lanPorts=lanPortsFromNetwork(networkConfig);
 			const equipeDashboardConfig=r[22] || { values: {} };
@@ -236,9 +237,10 @@ const lifecycleMethods = {
 				wanPromises.push(safe(callDeviceStatus(logicalDev),{}).then(function(s){wanDevicesMap[w.iface]=s;}));
 				wanPromises.push(safe(callDeviceStatus(physicalDev),{}).then(function(s){wanPhysicalDevicesMap[w.iface]=s;}));
 				if(!isInitial && live.up && logicalDev){
-					const ip = (live['ipv4-address'] && live['ipv4-address'][0] && live['ipv4-address'][0].address) || '';
-					const bindTarget = ip || logicalDev;
 					const pingTarget = resolvePingTarget(pingCfg.target, pingCfg.customIp, live, cfg);
+					const isV6 = pingTarget && pingTarget.indexOf(':') !== -1;
+					const ip = (live['ipv4-address'] && live['ipv4-address'][0] && live['ipv4-address'][0].address) || '';
+					const bindTarget = isV6 ? logicalDev : (ip || logicalDev);
 					wanPromises.push(safe(fs.exec('/bin/ping',['-c','1','-W','2','-I',bindTarget,pingTarget]),{}).then(function(p){wanPingsMap[w.iface]=p;}));
 				}
 			});
@@ -296,8 +298,21 @@ const lifecycleMethods = {
 				deviceFingerprints: (function(){ try { return JSON.parse((r[23] && r[23].stdout) || '{}'); } catch(e){ return {}; } })(),
 				deviceStations: deviceStations,
 				apUplink: apUplink,
+				doctorStatus: (function(){ try { return (r[25] && r[25].trim()) ? JSON.parse(r[25]) : null; } catch(e){ return null; } })(),
 				timestamp:Date.now()
-			}; });
+			};
+			if ((!r[25] || !r[25].trim()) && isInitial) {
+				safe(fs.exec('/usr/sbin/equipe-dashboard-control', ['doctor-status']), {}).then(function(res) {
+					try {
+						const parsed = JSON.parse(res.stdout || '{}');
+						if (self.currentData && parsed && parsed.status) {
+							self.currentData.doctorStatus = parsed;
+							self.updateDoctorStatus(parsed);
+						}
+					} catch(e) {}
+				});
+			}
+			return retObj; });
 		});
 	},
 	fetchDataTimed: function(timeoutMs) {
@@ -715,6 +730,100 @@ const lifecycleMethods = {
 			const slAlwaysShow=!!(this.capabilities.features&&this.capabilities.features.starlink_always_show)||(localStorage.getItem('ark_starlink_always_show')==='1');
 			starlinkPanelEl.style.display=(hasStarlink||slPub.enabled||slAlwaysShow)?'':'none';
 		}
+		this.updateDoctorStatus(data.doctorStatus);
 		this.updateWifi(data); this.updateMwanMode(data); this.updateHistory(data.history); this.renderDevices(data,dr); text('ex-clock',new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+	},
+	updateDoctorStatus: function(doc) {
+		const pill = document.getElementById('ex-doctor-pill');
+		const pillText = document.getElementById('ex-doctor-pill-text');
+		const banner = document.getElementById('ex-doctor-banner');
+
+		if (!doc || !doc.status) {
+			if (pillText) pillText.textContent = _t('Ark Doctor: Auditando…');
+			if (pill) {
+				pill.className = 'ex-pill standby ex-doctor-pill-btn';
+				pill.title = _t('Auditoria contínua do sistema em andamento…');
+			}
+			return;
+		}
+
+		const isOk = doc.status === 'OK' || (Number(doc.errors || 0) === 0 && Number(doc.warnings || 0) === 0);
+		const hasErrors = Number(doc.errors || 0) > 0;
+		const hasWarnings = !hasErrors && Number(doc.warnings || 0) > 0;
+
+		if (pill && pillText) {
+			if (isOk) {
+				pill.className = 'ex-pill online ex-doctor-pill-btn';
+				pillText.textContent = _t('Ark Doctor: Saudável ↗');
+				pill.title = _t('Sistema 100% saudável e otimizado. Clique para ver diagnósticos e logs.');
+			} else if (hasErrors) {
+				pill.className = 'ex-pill offline ex-doctor-pill-btn';
+				const errCount = Number(doc.errors || 1);
+				pillText.textContent = _t('Ark Doctor: ') + errCount + ' ' + (errCount === 1 ? _t('Falha') : _t('Falhas')) + ' ↗';
+				const firstFail = (doc.checks || []).find(function(c){ return c.status === 'FAIL'; });
+				pill.title = _t('Falha detectada: ') + (firstFail ? (firstFail.name + ' - ' + firstFail.message) : _t('Clique para reparar'));
+			} else if (hasWarnings) {
+				pill.className = 'ex-pill standby ex-doctor-pill-btn';
+				const warnCount = Number(doc.warnings || 1);
+				pillText.textContent = _t('Ark Doctor: ') + warnCount + ' ' + (warnCount === 1 ? _t('Aviso') : _t('Avisos')) + ' ↗';
+				const firstWarn = (doc.checks || []).find(function(c){ return c.status === 'WARN'; });
+				pill.title = _t('Aviso: ') + (firstWarn ? (firstWarn.name + ' - ' + firstWarn.message) : _t('Clique para verificar'));
+			}
+		}
+
+		// Atualização do Banner Fixo na Home
+		if (banner) {
+			if (isOk) {
+				banner.style.display = 'none';
+				banner.replaceChildren();
+			} else {
+				const dismissedTs = localStorage.getItem('ark_doctor_banner_dismissed_ts');
+				if (dismissedTs && Number(dismissedTs) >= Number(doc.timestamp || 0)) {
+					banner.style.display = 'none';
+				} else {
+					banner.style.display = 'flex';
+					const bannerSeverity = hasErrors ? 'danger' : 'warning';
+					const bannerIcon = hasErrors ? '🚨' : '⚠️';
+					const bannerTitle = hasErrors ? _t('Ark Doctor: Falha de Integridade Detectada') : _t('Ark Doctor: Alerta de Otimização');
+					
+					const nonOkChecks = (doc.checks || []).filter(function(c){ return c.status === 'FAIL' || c.status === 'WARN'; });
+					let summaryMsg = '';
+					if (nonOkChecks.length > 0) {
+						summaryMsg = nonOkChecks.slice(0, 2).map(function(c){ return c.name + ': ' + c.message; }).join(' • ');
+					} else {
+						summaryMsg = _t('Inconsistências encontradas que exigem atenção.');
+					}
+
+					banner.className = 'ex-doctor-banner ' + bannerSeverity;
+					banner.replaceChildren(
+						E('div', { class: 'ex-doctor-banner-content' }, [
+							E('span', { class: 'ex-doctor-banner-icon' }, [bannerIcon]),
+							E('div', {}, [
+								E('strong', { class: 'ex-doctor-banner-title' }, [bannerTitle]),
+								E('p', { class: 'ex-doctor-banner-desc' }, [summaryMsg])
+							])
+						]),
+						E('div', { class: 'ex-doctor-banner-actions' }, [
+							E('button', {
+								class: 'cbi-button cbi-button-action ex-doctor-banner-btn',
+								click: L.bind(this.showDoctorModal, this, 'diagnosis')
+							}, [_t('Ver Diagnóstico')]),
+							E('button', {
+								class: 'cbi-button cbi-button-positive ex-doctor-banner-btn',
+								click: L.bind(this.runDoctorFix, this)
+							}, [_t('Reparar Agora')]),
+							E('button', {
+								class: 'cbi-button cbi-button-neutral ex-doctor-banner-btn ex-doctor-banner-close',
+								title: _t('Ocultar aviso até a próxima auditoria'),
+								click: function() {
+									localStorage.setItem('ark_doctor_banner_dismissed_ts', String(doc.timestamp || Date.now()));
+									banner.style.display = 'none';
+								}
+							}, ['✕ ' + _t('Ocultar')])
+						])
+					);
+				}
+			}
+		}
 	}
 };

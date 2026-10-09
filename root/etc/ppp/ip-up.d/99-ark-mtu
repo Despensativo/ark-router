@@ -1,0 +1,16 @@
+#!/bin/sh
+# /etc/ppp/ip-up.d/99-ark-mtu
+# ARK Router — Garante MTU seguro (1492) em conexoes PPPoE quando Baby Jumbo nao estiver habilitado
+iface="${6:-wan}"
+dev_mtu="$(uci -q get "network.$iface.device_mtu")"
+req_mtu="$(uci -q get "network.$iface.mtu")"
+
+# Se Baby Jumbo estiver habilitado no UCI (1508/1500), nao rebaixa
+if [ "$dev_mtu" = "1508" ] && [ "$req_mtu" = "1500" ]; then
+	exit 0
+fi
+
+[ -n "$1" ] && [ -e "/sys/class/net/$1" ] && {
+	cur="$(cat "/sys/class/net/$1/mtu" 2>/dev/null || echo 1500)"
+	[ "$cur" -gt 1492 ] && ip link set dev "$1" mtu 1492 2>/dev/null || true
+}

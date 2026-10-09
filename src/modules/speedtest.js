@@ -1,10 +1,120 @@
 // /src/modules/speedtest.js - ARK Router LuCI View Module
 const speedtestMethods = {
 	openFastCom: function(){
-		this.showEmbedSpeedtest();
+		const data = this.currentData || {};
+		const activeWans = getActiveWanList(data);
+		const connectedWans = activeWans.filter(function(w) {
+			const ifc = iface(data.interfaces, w.iface);
+			return ifc && ifc.up;
+		});
+
+		if (connectedWans.length <= 1) {
+			const target = connectedWans.length === 1 ? connectedWans[0].iface : ((activeWans[0] && activeWans[0].iface) || 'wan');
+			this.showEmbedSpeedtest(target);
+			return;
+		}
+
+		this.promptSelectWanForSpeedtest(connectedWans);
 	},
-	showEmbedSpeedtest: function(){
+	promptSelectWanForSpeedtest: function(connectedWans){
+		const self = this;
+		const net = values((this.currentData || {}).networkConfig);
+		const dump = (this.currentData || {}).interfaces || {};
+
+		const wanCards = connectedWans.map(function(w){
+			const ifc = iface(dump, w.iface) || {};
+			const cfg = net[w.iface] || {};
+			const proto = String(cfg.proto || ifc.proto || 'dhcp').toLowerCase();
+			const ip = (ifc['ipv4-address'] && ifc['ipv4-address'][0] && ifc['ipv4-address'][0].address) || (ifc.ipv4_address && ifc.ipv4_address[0] && ifc.ipv4_address[0].address) || '';
+			const port = portLabel(w.device || ifc.l3_device || ifc.device || 'eth1');
+
+			let icon = '🌐';
+			let typeLabel = _t('Modem da Operadora (DHCP)');
+			if (proto === 'pppoe') {
+				icon = '⚡';
+				typeLabel = _t('Fibra Óptica Direta (PPPoE)');
+			} else if (proto === 'static') {
+				icon = '🏢';
+				typeLabel = _t('IP Fixo Estático');
+			}
+
+			const titleSpan = E('span', {style:'font-weight:700;font-size:14px;color:#fff;display:flex;align-items:center;gap:6px;'}, [
+				icon + ' ' + w.label + ' — ' + typeLabel
+			]);
+
+			const detailSpan = E('span', {class:'ex-muted', style:'font-size:11.5px;display:block;margin-top:3px;'}, [
+				(ip ? 'IP: ' + ip + ' • ' : '') + _t('Porta') + ': ' + port + (ifc.l3_device ? ' (' + ifc.l3_device + ')' : '')
+			]);
+
+			const actionBtn = E('button', {
+				class:'ex-mini-button',
+				type:'button',
+				style:'margin:0;pointer-events:none;font-weight:600;'
+			}, [_t('Testar esta conexão →')]);
+
+			const card = E('div', {
+				class:'ex-wan-test-choice',
+				style:'display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;cursor:pointer;transition:all 0.15s ease;margin-bottom:8px;',
+				'click': function(){
+					self.showEmbedSpeedtest(w.iface);
+				}
+			}, [
+				E('div', {}, [titleSpan, detailSpan]),
+				actionBtn
+			]);
+
+			card.addEventListener('mouseenter', function(){
+				card.style.background = 'rgba(59,130,246,0.12)';
+				card.style.borderColor = 'rgba(59,130,246,0.4)';
+			});
+			card.addEventListener('mouseleave', function(){
+				card.style.background = 'rgba(255,255,255,.05)';
+				card.style.borderColor = 'rgba(255,255,255,.1)';
+			});
+
+			return card;
+		});
+
+		ui.showModal(_t('🎬 Testar Velocidade da Internet'), [
+			E('p', {class:'ex-muted', style:'margin-bottom:14px;line-height:1.45;'}, [
+				_t('Identificamos múltiplas conexões de internet ativas no roteador. Selecione qual conexão você deseja testar agora:')
+			]),
+			E('div', {style:'display:flex;flex-direction:column;gap:4px;'}, wanCards),
+			E('div', {class:'right', style:'margin-top:14px;'}, [
+				E('button', {class:'btn cbi-button cbi-button-neutral', click:closeModal}, [_t('Cancelar')])
+			])
+		]);
+	},
+	showEmbedSpeedtest: function(targetWan){
+		targetWan = targetWan || 'wan';
+		const self = this;
+		const data = this.currentData || {};
+		const activeWans = getActiveWanList(data);
+		const targetWanObj = activeWans.find(function(w){ return w.iface === targetWan; });
+		const targetWanLabel = (targetWanObj && targetWanObj.label) || (targetWan === 'wan2' ? 'WAN2' : 'WAN1');
+		const targetIface = iface(data.interfaces, targetWan);
+		const targetWanIp = (targetIface && targetIface['ipv4-address'] && targetIface['ipv4-address'][0] && targetIface['ipv4-address'][0].address) || (targetIface && targetIface.ipv4_address && targetIface.ipv4_address[0] && targetIface.ipv4_address[0].address) || '';
+		const connectedWans = activeWans.filter(function(w) {
+			const ifc = iface(data.interfaces, w.iface);
+			return ifc && ifc.up;
+		});
+
 		const statusPill = E('span', {class:'ex-pill standby'}, ['⏳ CONECTANDO']);
+		const wanBadge = E('span', {
+			class:'ex-pill online',
+			style:'font-size:11px;font-weight:700;letter-spacing:0.5px;'
+		}, ['🎯 ' + targetWanLabel + (targetWanIp ? ' (' + targetWanIp + ')' : '')]);
+
+		const switchWanBtn = connectedWans.length >= 2 ? E('button', {
+			class: 'btn cbi-button cbi-button-neutral',
+			style: 'font-size:11px;font-weight:600;padding:2px 8px;',
+			title: _t('Selecionar outra conexão WAN para testar'),
+			'click': L.bind(function(){
+				if (activeAbort) activeAbort.abort();
+				this.promptSelectWanForSpeedtest(connectedWans);
+			}, this)
+		}, ['🔄 ' + _t('Trocar WAN')]) : null;
+
 		const clientInfo = E('span', {class:'ex-muted', style:'font-size:12px;'}, ['Identificando rota…']);
 		
 		const speedNumber = E('span', {style:'font-size:64px;font-weight:850;font-family:monospace;letter-spacing:-1px;color:#3b82f6;line-height:1;'}, ['0']);
@@ -22,8 +132,8 @@ const speedtestMethods = {
 		let lastDown = 0, lastUp = 0;
 		const applySqmBtn = E('button', {class:'btn cbi-button cbi-button-action', style:'display:none;font-weight:700;', 'click': L.bind(function(){
 			ui.hideModal();
-			this.editSqmLimits(lastDown, lastUp);
-		}, this)}, ['⚙️ Aplicar limites no SQM (-7%)']);
+			this.editSqmLimits(lastDown, lastUp, targetWan);
+		}, this)}, ['⚙️ Aplicar limites no SQM (' + targetWanLabel + ' -7%)']);
 		
 		const restartBtn = E('button', {class:'btn cbi-button cbi-button-neutral', disabled:true, 'click': function(){
 			runEngine();
@@ -48,7 +158,7 @@ const speedtestMethods = {
 			activeAbort = abortCtrl;
 			
 			try {
-				const metaRes = await fs.exec('/usr/sbin/equipe-dashboard-control', ['fast-targets', '8']);
+				const metaRes = await fs.exec('/usr/sbin/equipe-dashboard-control', ['fast-targets', '8', targetWan]);
 				let metaData = {};
 				try { metaData = JSON.parse(metaRes.stdout || '{}'); } catch(e) {}
 				const targets = (metaData.targets || []).map(function(t){ return t.url; });
@@ -193,12 +303,14 @@ const speedtestMethods = {
 			}
 		};
 
-		ui.showModal('🚀 Teste de Velocidade Turbo (Netflix OCA)', [
+		ui.showModal('🚀 ' + _t('Teste de Velocidade Turbo') + ' — ' + targetWanLabel, [
 			E('div', {style:'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;'}, [
-				E('div', {}, [
-					E('strong', {style:'color:#e2e8f0;font-size:14px;'}, ['Servidor CDN Netflix OCA']),
-					statusPill
-				]),
+				E('div', {style:'display:flex;align-items:center;gap:6px;flex-wrap:wrap;'}, [
+					E('strong', {style:'color:#e2e8f0;font-size:14px;'}, [_t('Servidor CDN Netflix OCA')]),
+					wanBadge,
+					statusPill,
+					switchWanBtn
+				].filter(Boolean)),
 				E('div', {style:'display:flex;gap:6px;'}, [
 					E('button', {class:'btn cbi-button cbi-button-action', style:'font-size:11px;font-weight:650;', 'click': function(){ window.open('https://fast.com/', '_blank', 'noopener'); }}, ['↗ Fast.com']),
 					E('button', {class:'btn cbi-button cbi-button-neutral', style:'font-size:11px;', 'click': function(){ window.open('https://www.speedtest.net/', '_blank', 'noopener'); }}, ['🌐 Ookla'])

@@ -2,6 +2,7 @@
 const renderMethods = {
 	render: function(loaded) {
 		const self = this;
+		if (typeof window !== 'undefined') window._arkViewInstance = this;
 		if (!window._arkEscModalAttached) {
 			window._arkEscModalAttached = true;
 			document.addEventListener('keydown', function(ev) {
@@ -447,14 +448,19 @@ const renderMethods = {
 
 		const root=E('div',{class:'ex-dashboard'},[
 			E('section',{class:'ex-hero'+(isGamer?' ex-hero-gamer':'')},[E('div',{},[E('span',{class:'ex-eyebrow'},[heroEyebrow]),E('h2',{},[panelTitle]),E('p',{},[this.board.model||'OpenWrt','  •  ',release,'  •  ARK Router ',arkVersion]),E('div',{id:'ex-speedify-top',class:'ex-hero-speedify standby',style:'display:none'},[E('span',{},['Speedify']),E('strong',{},['—']),E('small',{},['—'])])]),E('div',{class:'ex-hero-status'},[E('span',{id:'ex-global-status',class:'ex-pill standby'},['VERIFICANDO']),E('strong',{id:'ex-clock'},['--:--:--']),E('small',{id:'ex-refresh-summary'},['sessão de 12 horas • atualização a cada 3 segundos']),E('div',{class:'ex-hero-actions'},[gamerButton,opModeButton,languageButton,E('button',{class:'ex-hero-feature-button ex-hero-setup-button','click':L.bind(this.showEzSetup,this)},['Ark - Setup']),E('button',{class:'ex-hero-feature-button','click':L.bind(this.showFeatureCenter,this)},['Recursos'])])])]),
+			E('div',{id:'ex-doctor-banner',class:'ex-doctor-banner',style:'display:none;'}),
 			E('section',{class:'ex-card ex-health-strip'},[
 				E('div',{class:'ex-health-head'},[
 					E('div',{},[
 						E('span',{class:'ex-kicker'},['SAÚDE DO ROTEADOR']),
 						E('small',{},['Ligado há ',E('strong',{id:'ex-uptime'},['—'])])
 					]),
-					E('div',{style:'display:flex;align-items:center;gap:10px;'},[
+					E('div',{style:'display:flex;align-items:center;gap:10px;flex-wrap:wrap;'},[
 						E('button',{class:'ex-health-specs-btn','click':L.bind(this.showHardwareModal,this),title:'Ver especificações técnicas completas do hardware'},['🔍 Especificações']),
+						E('button',{id:'ex-doctor-pill',class:'ex-pill standby ex-doctor-pill-btn','click':L.bind(this.showDoctorModal,this,'diagnosis'),title:_t('Auditoria contínua e autocura do sistema (Ark Doctor)')},[
+							E('span',{id:'ex-doctor-pill-icon'},['🩺 ']),
+							E('span',{id:'ex-doctor-pill-text'},['Ark Doctor: …'])
+						]),
 						E('span',{id:'ex-health-status',class:'ex-pill standby'},['VERIFICANDO'])
 					])
 				]),

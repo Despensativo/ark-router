@@ -12060,3 +12060,372 @@ msgstr "⚠️ Aviso 6 GHz: las redes sin contraseña están prohibidas en 6 GHz
 msgid "Carregando consumo real de processos…"
 msgstr "Cargando consumo real de procesos…"
 
+msgid "Fibra Óptica Direta (PPPoE)"
+msgstr "Fibra Óptica Directa (PPPoE)"
+
+msgid "Porta"
+msgstr "Puerto"
+
+msgid "Testar esta conexão →"
+msgstr "Probar esta conexión →"
+
+msgid "🎬 Testar Velocidade da Internet"
+msgstr "🎬 Probar Velocidad de Internet"
+
+msgid "Identificamos múltiplas conexões de internet ativas no roteador. Selecione qual conexão você deseja testar agora:"
+msgstr "Se detectaron múltiples conexiones de internet activas en el enrutador. Seleccione qué conexión desea probar ahora:"
+
+msgid "Selecionar outra conexão WAN para testar"
+msgstr "Seleccionar otra conexión WAN para probar"
+
+msgid "Trocar WAN"
+msgstr "Cambiar WAN"
+
+msgid "Teste de Velocidade Turbo"
+msgstr "Prueba de Velocidad Turbo"
+
+
+msgid "AVISO DETECTADO"
+msgstr "AVISO DETECTADO"
+
+msgid "Ark Doctor aplicou"
+msgstr "Ark Doctor aplicó"
+
+msgid "Ark Doctor — Diagnóstico & Autocura do Sistema"
+msgstr "Ark Doctor — Diagnóstico y Autocuración del Sistema"
+
+msgid "Ark Doctor:"
+msgstr "Ark Doctor:"
+
+msgid "Ark Doctor: Alerta de Otimização"
+msgstr "Ark Doctor: Alerta de Optimización"
+
+msgid "Ark Doctor: Auditando…"
+msgstr "Ark Doctor: Auditando…"
+
+msgid "Ark Doctor: Falha de Integridade Detectada"
+msgstr "Ark Doctor: Falla de Integridad Detectada"
+
+msgid "Ark Doctor: Saudável ↗"
+msgstr "Ark Doctor: Saludable ↗"
+
+msgid "Atualizar Log"
+msgstr "Actualizar Registro"
+
+msgid "Auditando…"
+msgstr "Auditando…"
+
+msgid "Auditoria contínua do sistema em andamento…"
+msgstr "Auditoría continua del sistema en curso…"
+
+msgid "Auditoria contínua e autocura do sistema (Ark Doctor)"
+msgstr "Auditoría continua y autocuración del sistema (Ark Doctor)"
+
+msgid "Auditoria do Ark Doctor concluída!"
+msgstr "¡Auditoría de Ark Doctor completada!"
+
+msgid "Auditoria em tempo de execução"
+msgstr "Auditoría en tiempo de ejecución"
+
+msgid "Aviso"
+msgstr "Aviso"
+
+msgid "Aviso:"
+msgstr "Aviso:"
+
+msgid "Avisos"
+msgstr "Avisos"
+
+msgid "Carregando histórico de logs…"
+msgstr "Cargando historial de registros…"
+
+msgid "Clique para reparar"
+msgstr "Haga clic para reparar"
+
+msgid "Clique para verificar"
+msgstr "Haga clic para verificar"
+
+msgid "Copiado!"
+msgstr "¡Copiado!"
+
+msgid "Copiar Log"
+msgstr "Copiar Registro"
+
+msgid "Copie o log abaixo:"
+msgstr "Copie el registro a continuación:"
+
+msgid "Diagnóstico Detalhado"
+msgstr "Diagnóstico Detallado"
+
+msgid "Executando auditoria completa com Ark Doctor…"
+msgstr "Ejecutando auditoría completa con Ark Doctor…"
+
+msgid "Executando autocura com Ark Doctor (--fix)…"
+msgstr "Ejecutando autocuración con Ark Doctor (--fix)…"
+
+msgid "Executar Diagnóstico"
+msgstr "Ejecutar Diagnóstico"
+
+msgid "FALHA DETECTADA"
+msgstr "FALLA DETECTADA"
+
+msgid "Falha ao aplicar autocura:"
+msgstr "Fallo al aplicar autocuración:"
+
+msgid "Falha ao executar auditoria:"
+msgstr "Fallo al ejecutar auditoría:"
+
+msgid "Falha detectada:"
+msgstr "Falla detectada:"
+
+msgid "Falhas"
+msgstr "Fallas"
+
+msgid "Inconsistências encontradas que exigem atenção."
+msgstr "Inconsistencias encontradas que requieren atención."
+
+msgid "Lendo /var/log/ark-doctor.log…"
+msgstr "Leyendo /var/log/ark-doctor.log…"
+
+msgid "Log do Sistema (/var/log/ark-doctor.log)"
+msgstr "Registro del Sistema (/var/log/ark-doctor.log)"
+
+msgid "Nenhum dado de diagnóstico disponível. Clique em"
+msgstr "No hay datos de diagnóstico disponibles. Haga clic en"
+
+msgid "Nenhum registro de log do Ark Doctor disponível."
+msgstr "No hay registros de log de Ark Doctor disponibles."
+
+msgid "Não foi possível ler o log do Ark Doctor."
+msgstr "No se pudo leer el registro de Ark Doctor."
+
+msgid "Ocultar aviso até a próxima auditoria"
+msgstr "Ocultar aviso hasta la próxima auditoría"
+
+msgid "Reparando…"
+msgstr "Reparando…"
+
+msgid "Reparar Agora"
+msgstr "Reparar Ahora"
+
+msgid "Reparar Tudo (--fix)"
+msgstr "Reparar Todo (--fix)"
+
+msgid "SISTEMA 100% SAUDÁVEL"
+msgstr "SISTEMA 100% SALUDABLE"
+
+msgid "Sistema 100% saudável e otimizado. Clique para ver diagnósticos e logs."
+msgstr "Sistema 100% saludable y optimizado. Haga clic para ver diagnósticos y registros."
+
+msgid "Status Geral da Auditoria"
+msgstr "Estado General de la Auditoría"
+
+msgid "Ver Diagnóstico"
+msgstr "Ver Diagnóstico"
+
+msgid "checagens"
+msgstr "comprobaciones"
+
+msgid "reparos aplicados"
+msgstr "reparaciones aplicadas"
+
+msgid "reparos com sucesso!"
+msgstr "¡reparaciones aplicadas con éxito!"
+
+msgid "Última auditoria:"
+msgstr "Última auditoría:"
+
+msgid "🩺 Diagnóstico do Sistema & Logs (Ark Doctor)"
+msgstr "🩺 Diagnóstico del Sistema y Registros (Ark Doctor)"
+
+msgid "📜 Ver Logs"
+msgstr "📜 Ver Registros"
+
+msgid "⚡ Fibra GPON (44B)"
+msgstr "⚡ Fibra GPON (44B)"
+
+msgid "Maiores Consumidores de RAM (Memória Real RSS)"
+msgstr "Mayores Consumidores de RAM (Memoria Real RSS)"
+
+msgid "Ver Tabela Completa de Processos ➔"
+msgstr "Ver Tabla Completa de Procesos ➔"
+
+msgid "Tema da Interface (LuCI)"
+msgstr "Tema de la Interfaz (LuCI)"
+
+msgid "Suporta até 320 MHz para throughput extremo no Wi-Fi 7."
+msgstr "Soporta hasta 320 MHz para rendimiento extremo en Wi-Fi 7."
+
+msgid "Cloudflare DNS (IPv6)"
+msgstr "Cloudflare DNS (IPv6)"
+
+msgid "Google Public DNS (IPv6)"
+msgstr "Google Public DNS (IPv6)"
+
+msgid "Quad9 Security DNS (IPv6)"
+msgstr "Quad9 Security DNS (IPv6)"
+
+msgid "Rede Anycast global da Cloudflare via IPv6 nativo com altíssima velocidade para CDN e web."
+msgstr "Red Anycast global de Cloudflare mediante IPv6 nativo con altísima velocidad para CDN y web."
+
+msgid "Serviço Anycast do Google via IPv6, padrão mundial para aferição de rotas de próxima geração."
+msgstr "Servicio Anycast de Google mediante IPv6, estándar mundial para evaluación de rutas de próxima generación."
+
+msgid "Anycast seguro via IPv6 com proteção integrada contra malwares, phishing e ameaças."
+msgstr "Anycast seguro mediante IPv6 con protección integrada contra malware, phishing y amenazas."
+
+msgid "Insira qualquer IP ou domínio (IPv4 ou IPv6: 1.0.0.1, 2606:4700::1111, jogos ou VPNs)."
+msgstr "Ingrese cualquier IP o dominio (IPv4 o IPv6: 1.0.0.1, 2606:4700::1111, juegos o VPNs)."
+
+msgid "Auditoria contínua de 25+ itens vitais do roteador, visualizador de logs (/var/log/ark-doctor.log) e ferramentas de autocura."
+msgstr "Auditoría continua de más de 25 elementos vitales del router, visor de registros (/var/log/ark-doctor.log) y herramientas de autocuración."
+
+msgid "Permite transportar MTU 1500 sem fragmentação em fibra PPPoE caso a operadora suporte (RFC 4638). Desligado: opera no padrão universal seguro MTU 1492."
+msgstr "Permite transportar MTU 1500 sin fragmentación en fibra PPPoE si el ISP lo soporta (RFC 4638). Desactivado: opera en el estándar universal seguro MTU 1492."
+
+msgid "Priorização automática: Voz/Jogos > Vídeo/Streaming > Normal > Torrents."
+msgstr "Priorización automática: Voz/Juegos > Video/Streaming > Normal > Torrents."
+
+msgid "Conformidade RFC 7084: expiração imediata de prefixos antigos (valid_lifetime=0) em quedas do PPPoE."
+msgstr "Conformidad RFC 7084: expiración inmediata de prefijos antiguos (valid_lifetime=0) en caídas de PPPoE."
+
+msgid "Apenas aparelhos marcados com \"⚡ Permitir IPv6\" no painel utilizam IPv6. Dispositivos não autorizados têm o tráfego rejeitado instantaneamente em 0,1ms."
+msgstr "Solo los dispositivos marcados con \"⚡ Permitir IPv6\" en el panel utilizan IPv6. Los dispositivos no autorizados tienen el tráfico rechazado en 0,1ms."
+
+msgid "0 = Ilimitado"
+msgstr "0 = Ilimitado"
+
+msgid "160 MHz — ultra velocidade"
+msgstr "160 MHz — ultra velocidad"
+
+msgid "80 MHz — mais compatível"
+msgstr "80 MHz — más compatible"
+
+msgid "6 GHz (Wi-Fi 6E/7)"
+msgstr "6 GHz (Wi-Fi 6E/7)"
+
+msgid "Mbps • 0 ou vazio = ilimitado"
+msgstr "Mbps • 0 o vacío = ilimitado"
+
+msgid "Mbps • exemplo: 1,5 • 0 ou vazio = ilimitado"
+msgstr "Mbps • ejemplo: 1,5 • 0 o vacío = ilimitado"
+
+msgid "Fibra GPON / PPPoE Direto (28 bytes)"
+msgstr "Fibra GPON / PPPoE Directo (28 bytes)"
+
+msgid "Recomendado para esta WAN"
+msgstr "Recomendado para esta WAN"
+
+msgid "Recomendado Cabo/DHCP"
+msgstr "Recomendado Cable/DHCP"
+
+msgid "Nenhum dado de diagnóstico disponível. Clique em \"Executar Diagnóstico\" abaixo."
+msgstr "No hay datos de diagnóstico disponibles. Haga clic en \"Ejecutar Diagnóstico\" a continuación."
+
+msgid "Nenhum processo em execução registrado."
+msgstr "No hay procesos en ejecución registrados."
+
+msgid "Clique em \"Verificar atualização\" ou use a opção manual abaixo se estiver sem internet no aparelho."
+msgstr "Haga clic en \"Verificar actualización\" o use la opción manual a continuación si el dispositivo no tiene internet."
+
+msgid "Ligado = o tráfego do serviço sai diretamente por uma WAN física sem passar pelo túnel Speedify. Desligado = pode passar pelo túnel somado."
+msgstr "Encendido = el tráfico del servicio sale directamente por una WAN física sin pasar por el túnel Speedify. Apagado = puede pasar por el túnel combinado."
+
+msgid "Não afeta dispositivos modernos ou a maioria esmagadora de equipamentos Casa Inteligente (que usam o padrão \"G\" ou \"N\")."
+msgstr "No afecta a dispositivos modernos ni a la gran mayoría de equipos de Hogar Inteligente (que utilizan el estándar \"G\" o \"N\")."
+
+msgid "✅ Faixa UNII-1: 100% livre de DFS/radar (CAC = 0s, inicialização instantânea)."
+msgstr "✅ Banda UNII-1: 100% libre de DFS/radar (CAC = 0s, inicialización instantánea)."
+
+msgid "Ativo • Transições em < 50ms (802.11r), relatórios de vizinhos (802.11k) e migração de clientes teimosos (802.11v)."
+msgstr "Activo • Transiciones en < 50ms (802.11r), informes de vecinos (802.11k) y migración de clientes rebeldes (802.11v)."
+
+msgid "Ativo • Transições em < 50ms no 5 GHz (802.11r), relatórios de vizinhos (802.11k) e migração assistida (802.11v)."
+msgstr "Activo • Transiciones en < 50ms en 5 GHz (802.11r), informes de vecinos (802.11k) y migración asistida (802.11v)."
+
+msgid "Monitor interativo avançado em tempo real via terminal (SSH) com suporte a cores e uso do mouse."
+msgstr "Monitor interactivo avanzado en tiempo real vía terminal (SSH) con soporte de colores y ratón."
+
+msgid "Módulos adicionais do sistema. Os marcados como \"Já instalado\" já estão presentes na memória ROM."
+msgstr "Módulos adicionales del sistema. Los marcados como \"Ya instalado\" están presentes en ROM."
+
+msgid "Nenhuma regra personalizada cadastrada. Clique em \"+ Nova Regra\" para direcionar portas ou aparelhos específicos."
+msgstr "No hay reglas personalizadas configuradas. Haga clic en \"+ Nueva Regla\" para enrutar puertos o dispositivos específicos."
+
+msgid "No Gmail/Outlook, gere uma \"Senha de App\" de 16 caracteres nas configurações de segurança."
+msgstr "En Gmail/Outlook, genere una \"Contraseña de aplicación\" de 16 caracteres en la configuración de seguridad."
+
+msgid "Perfil PPPoE salvo com sucesso!"
+msgstr "¡Perfil PPPoE guardado con éxito!"
+
+msgid "salvo com sucesso!"
+msgstr "¡guardado con éxito!"
+
+msgid "Perfil PPPoE"
+msgstr "Perfil PPPoE"
+
+msgid "Mostrador de rotação horizontal"
+msgstr "Indicador de rotación horizontal"
+
+msgid "Vista lateral da inclinação da antena"
+msgstr "Vista lateral de la inclinación de la antena"
+
+msgid "Faixa sombreada = posição aceita • agulha laranja = posição atual"
+msgstr "Área sombreada = posición aceptada • aguja naranja = posición actual"
+
+msgid "1. ROTAÇÃO HORIZONTAL"
+msgstr "1. ROTACIÓN HORIZONTAL"
+
+msgid "2. INCLINAÇÃO VERTICAL"
+msgstr "2. INCLINACIÓN VERTICAL"
+
+msgid "Obstruída agora"
+msgstr "Obstruida ahora"
+
+msgid "Tempo obstrução"
+msgstr "Tiempo obstrucción"
+
+msgid "Perda"
+msgstr "Pérdida"
+
+msgid "Atitude"
+msgstr "Actitud"
+
+msgid "satélites"
+msgstr "satélites"
+
+msgid "AVISO"
+msgstr "AVISO"
+
+msgid "FALHA"
+msgstr "FALLA"
+
+msgid "Diagnóstico"
+msgstr "Diagnóstico"
+
+msgid "Ark Doctor: …"
+msgstr "Ark Doctor: …"
+
+msgid "Apenas aparelhos marcados com \"⚡ Permitir IPv6\" no painel utilizam IPv6. Dispositivos não autorizados têm o tráfego rejeitado instantaneamente em 0,1ms."
+msgstr "Solo los dispositivos marcados con \"⚡ Permitir IPv6\" en el panel utilizan IPv6. Los dispositivos no autorizados tienen el tráfico rechazado en 0,1ms."
+
+msgid "Clique em \"Verificar atualização\" ou use a opção manual abaixo se estiver sem internet no aparelho."
+msgstr "Haga clic en \"Verificar actualización\" o use la opción manual a continuación si el dispositivo no tiene internet."
+
+msgid "Módulos adicionais do sistema. Os marcados como \"Já instalado\" já estão presentes na memória ROM."
+msgstr "Módulos adicionales del sistema. Los marcados como \"Ya instalado\" están presentes en ROM."
+
+msgid "Nenhum dado de diagnóstico disponível. Clique em \"Executar Diagnóstico\" abaixo."
+msgstr "No hay datos de diagnóstico disponibles. Haga clic en \"Ejecutar Diagnóstico\" a continuación."
+
+msgid "Nenhuma regra personalizada cadastrada. Clique em \"+ Nova Regra\" para direcionar portas ou aparelhos específicos."
+msgstr "No hay reglas personalizadas configuradas. Haga clic en \"+ Nueva Regla\" para enrutar puertos o dispositivos específicos."
+
+msgid "No Gmail/Outlook, gere uma \"Senha de App\" de 16 caracteres nas configurações de segurança."
+msgstr "En Gmail/Outlook, genere una \"Contraseña de aplicación\" de 16 caracteres en la configuración de seguridad."
+
+msgid "Não afeta dispositivos modernos ou a maioria esmagadora de equipamentos Casa Inteligente (que usam o padrão \"G\" ou \"N\")."
+msgstr "No afecta a dispositivos modernos ni a la gran mayoría de equipos de Hogar Inteligente (que utilizan el estándar \"G\" o \"N\")."
+
+msgid ") opera em até 80 MHz. Ao selecionar 160 MHz, o canal será comutado automaticamente para o Canal 36 para total estabilidade."
+msgstr ") opera en hasta 80 MHz. Al seleccionar 160 MHz, el canal se cambiará automáticamente al Canal 36 para total estabilidad."

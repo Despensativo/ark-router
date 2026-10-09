@@ -27,6 +27,8 @@ class RouterSandbox:
         os.makedirs(self.bin_dir, exist_ok=True)
         os.makedirs(self.sys_net, exist_ok=True)
         os.makedirs(self.state_dir, exist_ok=True)
+        os.makedirs(os.path.join(self.temp_dir, "tmp"), exist_ok=True)
+        os.makedirs(os.path.join(self.temp_dir, "var", "log"), exist_ok=True)
 
         # 1. Create simulated network devices in sysfs
         for dev in ["eth1", "lan4", "pppoe-wan", "pppoe-wan2", "br-lan"]:
@@ -180,7 +182,8 @@ config queue 'wan1'
 	option script 'piece_of_cake.qos'
 	option enabled '1'
 	option linklayer 'ethernet'
-	option overhead '28'
+	option overhead '44'
+	option mpu '64'
 
 config queue 'wan2'
 	option interface 'pppoe-wan2'
@@ -188,7 +191,8 @@ config queue 'wan2'
 	option script 'piece_of_cake.qos'
 	option enabled '1'
 	option linklayer 'ethernet'
-	option overhead '28'
+	option overhead '44'
+	option mpu '64'
 """)
 
         # /etc/config/firewall

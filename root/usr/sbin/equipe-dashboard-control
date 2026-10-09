@@ -25,10 +25,14 @@ action="$1"
 [ -n "$action" ] || { echo "Uso: $0 <comando> [argumentos...]" >&2; exit 1; }
 
 case "$action" in
-	audit-system|ark-doctor)
+	audit-system|ark-doctor|doctor-*)
 		. "${ARK_LIB_DIR}/modules/doctor.sh"
-		shift
-		handle_doctor "$@"
+		if [ "$action" = "audit-system" ] || [ "$action" = "ark-doctor" ]; then
+			shift
+			handle_doctor "$@"
+		else
+			handle_doctor "$@"
+		fi
 		;;
 	sqm-*|irqbalance-*|system-hardware-sqm-audit)
 		. "${ARK_LIB_DIR}/modules/sqm.sh"

@@ -5,7 +5,7 @@
 [ -z "${_ARK_COMMON_SH_LOADED:-}" ] || return 0
 _ARK_COMMON_SH_LOADED=1
 
-ARK_ROUTER_VERSION="1.5.11"
+ARK_ROUTER_VERSION="1.5.12"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 ARK_ROOT="${ARK_ROOT:-}"
 
@@ -71,6 +71,21 @@ src/gz openwrt_luci http://downloads.openwrt.org/releases/19.07.10/packages/arm_
 src/gz openwrt_routing http://downloads.openwrt.org/releases/19.07.10/packages/arm_cortex-a7_neon-vfpv4/routing
 src/gz openwrt_telephony http://downloads.openwrt.org/releases/19.07.10/packages/arm_cortex-a7_neon-vfpv4/telephony
 EOF
+	fi
+	# Compatibility stub: when kernel has built-in or pre-installed sch_cake.ko (e.g. Acer T7 with kernel 5.4 on 19.07 base)
+	if [ -f "/lib/modules/$(uname -r)/sch_cake.ko" ] && [ -f /usr/lib/opkg/status ]; then
+		if ! grep -q "^Package: kmod-sched-cake" /usr/lib/opkg/status 2>/dev/null; then
+			cat << 'EOF' >> /usr/lib/opkg/status
+
+Package: kmod-sched-cake
+Version: 5.4.213-1
+Depends: kmod-sched
+Status: install user installed
+Architecture: arm_cortex-a7_neon-vfpv4
+Installed-Time: 1741683461
+EOF
+			touch /usr/lib/opkg/info/kmod-sched-cake.list 2>/dev/null || true
+		fi
 	fi
 }
 
@@ -204,20 +219,20 @@ ark_language() {
 	if [ -z "$lang" ] || [ "$lang" = "auto" ]; then
 		local luci_lang="$(uci -q get luci.main.lang || true)"
 		case "$luci_lang" in
-			en*|C|POSIX) lang="en" ;;
+			en*) lang="en" ;;
 			es*) lang="es" ;;
 			pt*) lang="pt-br" ;;
 			*)
 				local sys_lang="${LANG:-${LC_ALL:-}}"
 				case "$sys_lang" in
-					pt*) lang="pt-br" ;;
+					en*) lang="en" ;;
 					es*) lang="es" ;;
-					*) lang="en" ;;
+					*) lang="pt-br" ;;
 				esac
 				;;
 		esac
 	fi
-	[ -n "$lang" ] || lang="en"
+	[ -n "$lang" ] || lang="pt-br"
 	printf '%s' "$lang"
 }
 
@@ -535,6 +550,40 @@ ark_migrate_upnp_variant() {
 	return 1
 }
 
+ark_sanitize_upnp_config() {
+	local root_prefix="${ARK_ROOT:-}"
+	local cfg="${root_prefix}/etc/config/upnpd"
+	[ -f "$cfg" ] || return 0
+
+	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+	local changed=0
+
+	# Em modo Gateway/Roteador com UPnP ativo, assegurar STUN Anycast Cloudflare para travessia de CGNAT
+	if ! ark_is_satellite_or_ap; then
+		local enabled="$($uci_cmd get upnpd.config.enabled || echo 0)"
+		if [ "$enabled" = "1" ]; then
+			if [ "$($uci_cmd get upnpd.config.use_stun || echo 0)" != "1" ]; then
+				$uci_cmd set upnpd.config.use_stun='1'
+				changed=1
+			fi
+			if [ "$($uci_cmd get upnpd.config.stun_host || echo '')" != "stun.cloudflare.com" ]; then
+				$uci_cmd set upnpd.config.stun_host='stun.cloudflare.com'
+				changed=1
+			fi
+			if [ "$($uci_cmd get upnpd.config.stun_port || echo '')" != "3478" ]; then
+				$uci_cmd set upnpd.config.stun_port='3478'
+				changed=1
+			fi
+		fi
+	fi
+
+	if [ "$changed" = "1" ]; then
+		$uci_cmd commit upnpd
+		[ -z "$root_prefix" ] && [ -x /etc/init.d/miniupnpd ] && /etc/init.d/miniupnpd restart >/dev/null 2>&1 || true
+	fi
+	return 0
+}
+
 # Safe Storage & Service Shutdown before Reboot
 # Interrompe graciosamente servicos que gravam em midias externas (servidores web,
 # bancos de dados, downloads, compartilhamentos de arquivos e midia),
@@ -713,17 +762,30 @@ ark_sanitize_wan6_config() {
 		local dev="$($uci_cmd get "network.$sec.device" || echo '')"
 		[ -n "$dev" ] || dev="$($uci_cmd get "network.$sec.ifname" || echo '')"
 
-		case "$dev" in
-			@*) ;; # Ja e alias logico canonico (@wan, @wan2, etc.)
+		# Determina a interface WAN pai correspondente no netifd (ex: wan6 -> wan, wan2_6 -> wan2, etc.)
+		local parent_wan="wan"
+		case "$sec" in
+			wan2*|*wan2*|*wanb*) parent_wan="wan2" ;;
+			wan3*|*wan3*) parent_wan="wan3" ;;
+			wan4*|*wan4*) parent_wan="wan4" ;;
 			*)
-				if [ -n "$dev" ]; then
-					$uci_cmd set "network.$sec.device=@$dev"
-					$uci_cmd delete "network.$sec.ifname" 2>/dev/null || true
-					changed=1
-					logger -t ark-network-sanitize "Interface $sec: corrigido device de '$dev' para '@$dev' para compatibilidade netifd."
-				fi
+				parent_wan="${sec%_6}"
+				parent_wan="${parent_wan%6}"
+				[ -n "$parent_wan" ] || parent_wan="wan"
 				;;
 		esac
+		if [ -z "$($uci_cmd get "network.$parent_wan")" ] && [ -n "$($uci_cmd get "network.wan")" ]; then
+			parent_wan="wan"
+		fi
+
+		local canonical_dev="@${parent_wan}"
+		local cur_ifname="$($uci_cmd get "network.$sec.ifname" || echo '')"
+		if [ "$dev" != "$canonical_dev" ] || [ "$cur_ifname" != "$canonical_dev" ]; then
+			$uci_cmd set "network.$sec.device=$canonical_dev"
+			$uci_cmd set "network.$sec.ifname=$canonical_dev"
+			changed=1
+			logger -t ark-network-sanitize "Interface $sec: corrigido device/ifname de '${dev:-vazio}' para '$canonical_dev' para compatibilidade netifd universal."
+		fi
 
 		local reqaddr="$($uci_cmd get "network.$sec.reqaddress" || echo '')"
 		if [ -z "$reqaddr" ]; then
@@ -901,3 +963,78 @@ ark_ensure_phys_device_mtu() {
 		ip link set "$phys_dev" mtu "$target_mtu" 2>/dev/null || true
 	fi
 }
+
+# Consolidacao e Blindagem de MAC Clonado em secoes config device e porta fisica
+# Garante aplicacao 100% confiavel em PPPoE, DHCP, DSA switch e camada 2.
+# Quando target_mac estiver vazio, remove clonagem e restaura MAC nativo de fabrica.
+ark_ensure_phys_device_mac() {
+	local phys_dev="$1"
+	local target_mac="$2"
+	[ -n "$phys_dev" ] || return 1
+
+	local root_prefix="${ARK_ROOT:-}"
+	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+
+	local matched_sections=""
+	local primary_sec=""
+
+	for s in $($uci_cmd show network 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1); do
+		if [ "$($uci_cmd get "network.$s.name")" = "$phys_dev" ]; then
+			matched_sections="$matched_sections $s"
+		fi
+	done
+
+	if [ -n "$matched_sections" ]; then
+		local is_first=1
+		for s in $matched_sections; do
+			if [ "$is_first" = 1 ]; then
+				primary_sec="$s"
+				is_first=0
+			else
+				$uci_cmd delete "network.$s"
+			fi
+		done
+	fi
+
+	if [ -n "$target_mac" ]; then
+		# Normaliza para letras maiusculas
+		target_mac="$(printf '%s' "$target_mac" | tr 'a-f' 'A-F')"
+		if [ -z "$primary_sec" ]; then
+			$uci_cmd add network device >/dev/null 2>&1
+			primary_sec="@device[-1]"
+		fi
+		$uci_cmd set "network.$primary_sec.name=$phys_dev"
+		$uci_cmd set "network.$primary_sec.macaddr=$target_mac"
+		uci ${root_prefix:+-c "$root_prefix/etc/config"} commit network 2>/dev/null || true
+
+		if [ -z "$root_prefix" ]; then
+			ip link set dev "$phys_dev" address "$target_mac" 2>/dev/null || true
+		fi
+	else
+		# Clonagem DESATIVADA / VAZIA: restaura MAC nativo de fabrica
+		if [ -n "$primary_sec" ]; then
+			$uci_cmd delete "network.$primary_sec.macaddr"
+			# Se a secao device nao tiver outras configuracoes alem de name, limpa secao orfa
+			local dev_mtu="$($uci_cmd get "network.$primary_sec.mtu")"
+			local dev_ports="$($uci_cmd get "network.$primary_sec.ports")"
+			if [ -z "$dev_mtu" ] && [ -z "$dev_ports" ]; then
+				$uci_cmd delete "network.$primary_sec"
+			fi
+		fi
+		uci ${root_prefix:+-c "$root_prefix/etc/config"} commit network 2>/dev/null || true
+
+		if [ -z "$root_prefix" ]; then
+			local perm_mac=""
+			command -v ethtool >/dev/null 2>&1 && perm_mac="$(ethtool -P "$phys_dev" 2>/dev/null | awk '{print $NF}')"
+			[ -z "$perm_mac" ] && [ -f "/sys/class/net/$phys_dev/perm_addr" ] && perm_mac="$(cat "/sys/class/net/$phys_dev/perm_addr" 2>/dev/null || true)"
+			[ -z "$perm_mac" ] && perm_mac="$(ip -d link show "$phys_dev" 2>/dev/null | grep -o 'permaddr [0-9a-fA-F:]*' | awk '{print $2}' || true)"
+			if [ -z "$perm_mac" ] && [ -f /etc/board.json ] && command -v jsonfilter >/dev/null 2>&1; then
+				perm_mac="$(jsonfilter -i /etc/board.json -e "@.network.$phys_dev.macaddr" 2>/dev/null || jsonfilter -i /etc/board.json -e "@.network.wan.macaddr" 2>/dev/null || true)"
+			fi
+			if [ -n "$perm_mac" ] && [ "$perm_mac" != "00:00:00:00:00:00" ]; then
+				ip link set dev "$phys_dev" address "$perm_mac" 2>/dev/null || true
+			fi
+		fi
+	fi
+}
+

@@ -345,7 +345,7 @@ const wifiMethods = {
 				_t('Os chips Atheros possuem aceleração de criptografia AES em hardware. O modo WPA2-PSK (AES) entrega a velocidade máxima da rede sem sobrecarregar a CPU. Em 2,4 GHz, recomendamos manter a largura em 20 MHz para evitar retransmissões que afetam a CPU de 1 núcleo.')
 			]);
 		} else if (isModernArm) {
-			const has320 = !!(hw.wifi && hw.wifi.wifi_320) || (current.has6g && current.htmode && current.htmode.indexOf('320') >= 0);
+			const has320 = !!(hw.wifi && (hw.wifi.wifi_320 || hw.wifi.wifi_be)) || (current.has6g) || (current.htmode && current.htmode.indexOf('320') >= 0);
 			const bannerDesc = has320
 				? _t('Processador com capacidade multicore e aceleração moderna. Suporte nativo a WPA3-SAE com PMF e canais de alta velocidade (80/160/320 MHz) com baixa latência.')
 				: _t('Processador com capacidade multicore e aceleração moderna. Suporte nativo a WPA3-SAE com PMF e canais de alta velocidade (80/160 MHz) com baixa latência.');
@@ -1038,8 +1038,10 @@ const wifiMethods = {
 		
 		const hw = this.capabilities.hardware || {};
 		const has160 = !!(hw.wifi_160_supported || (hw.wifi && hw.wifi.wifi_160));
-		const has320 = !!(hw.wifi_320_supported || (hw.wifi && hw.wifi.wifi_320));
-		const has6g = !!(w.has6g || hw.wifi_6g_supported || (hw.wifi && hw.wifi.wifi_6g));
+		const curHt6 = String(radio6.htmode || '');
+		const curWidth6 = widthFrom(radio6.htmode);
+		const has6g = !!(w.has6g || hw.wifi_6g_supported || (hw.wifi && hw.wifi.wifi_6g) || curHt6.indexOf('320') >= 0 || radio6.device);
+		const has320 = !!(hw.wifi_320_supported || (hw.wifi && (hw.wifi.wifi_320 || hw.wifi.wifi_be)) || hw.wifi_be_supported || curWidth6 === '320' || curHt6.indexOf('320') >= 0 || has6g);
 
 		// 5 GHz: No padrão IEEE 802.11, 5 GHz suporta no máximo 160 MHz (320 MHz existe apenas em 6 GHz)
 		const items5 = [['80', '80 MHz — mais compatível/estável']];
@@ -1061,18 +1063,15 @@ const wifiMethods = {
 		w5.addEventListener('change', updateW5Note);
 		updateW5Note();
 
-		// 6 GHz (Wi-Fi 6E / Wi-Fi 7): Suporte dedicado a 80 MHz, 160 MHz e 320 MHz
+		// 6 GHz (Wi-Fi 6E / Wi-Fi 7): Suporte dedicado a 80 MHz, 160 MHz e 320 MHz (nunca ocultar 320 MHz no 6G)
 		let w6 = null;
 		if (has6g) {
 			const items6 = [
 				['80', '80 MHz — mais compatível'],
-				['160', '160 MHz — ultra velocidade']
+				['160', '160 MHz — ultra velocidade'],
+				['320', '320 MHz — taxa extrema de dados (Wi-Fi 7)']
 			];
-			if (has320) {
-				items6.push(['320', '320 MHz — taxa extrema de dados (Wi-Fi 7)']);
-			}
-			const curWidth6 = widthFrom(radio6.htmode);
-			const default6 = (has320 && curWidth6 === '320') ? '320' : ((curWidth6 === '160') ? '160' : (has320 ? '320' : '160'));
+			const default6 = (curWidth6 === '320') ? '320' : ((curWidth6 === '160') ? '160' : (has320 ? '320' : '160'));
 			w6 = select(curWidth6 || default6, items6);
 		}
 
@@ -1082,7 +1081,7 @@ const wifiMethods = {
 			field('5 GHz', E('div', {}, [w5, w5Note]), has160 ? '80 MHz é mais estável e compatível com todos os canais; 160 MHz oferece velocidade máxima nos canais 36-64.' : '80 MHz é a largura máxima suportada pelo hardware deste roteador (VHT80).')
 		];
 		if (has6g && w6) {
-			gridFields.push(field('6 GHz (Wi-Fi 6E/7)', w6, has320 ? 'Suporta até 320 MHz para throughput extremo no Wi-Fi 7.' : 'Banda de 6 GHz com canais limpos de até 160 MHz.'));
+			gridFields.push(field('6 GHz (Wi-Fi 6E/7)', w6, 'Suporta até 320 MHz para throughput extremo no Wi-Fi 7.'));
 		}
 
 		ui.showModal('Largura e desempenho do Wi‑Fi', [

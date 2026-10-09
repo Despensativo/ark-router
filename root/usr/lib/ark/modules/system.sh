@@ -2339,9 +2339,9 @@ get_system_hardware_info_raw() {
 	if grep -q 'HE Iftypes' "$iw_cache" 2>/dev/null || grep -q '11ax' /etc/config/wireless 2>/dev/null; then wifi_ax=true; fi
 	if grep -q 'VHT Capabilities' "$iw_cache" 2>/dev/null || grep -q '11ac' /etc/config/wireless 2>/dev/null; then wifi_ac=true; fi
 	if grep -q 'HT20/HT40' "$iw_cache" 2>/dev/null || grep -qE '11n|11g' /etc/config/wireless 2>/dev/null; then wifi_n=true; fi
-	if [ "$wifi_be" = true ] && (grep -qE 'Supported Channel Width: 320 MHz|320 MHz in 6 GHz|EHT320|HT320' "$iw_cache" 2>/dev/null || grep -qE 'HT320|EHT320' /etc/config/wireless 2>/dev/null); then wifi_320=true; fi
+	if [ "$wifi_be" = true ] || grep -qE 'Supported Channel Width: 320 MHz|320 MHz in 6 GHz|EHT320|HT320' "$iw_cache" 2>/dev/null || grep -qE 'HT320|EHT320|320' /etc/config/wireless 2>/dev/null; then wifi_320=true; fi
 	if grep -qE 'Supported Channel Width: 160 MHz|HE160|VHT160|EHT160' "$iw_cache" 2>/dev/null || grep -qE 'HT160|VHT160|HE160' /etc/config/wireless 2>/dev/null; then wifi_160=true; fi
-	if grep -qE 'Band 4:|Band 6GHz|/6GHz|5955 MHz' "$iw_cache" 2>/dev/null || grep -qE 'band=.3.|HT320' /etc/config/wireless 2>/dev/null; then wifi_6g=true; fi
+	if grep -qE 'Band 4:|Band 6GHz|/6GHz|5955 MHz' "$iw_cache" 2>/dev/null || grep -qE 'band=.3.|HT320|EHT320|band=.6g.' /etc/config/wireless 2>/dev/null; then wifi_6g=true; fi
 
 	detect_hardware_silicon_profile
 	hw_offload_bool="false"; [ "$silicon_hw_offload_capable" = 1 ] && hw_offload_bool="true"
@@ -2756,8 +2756,24 @@ handle_system() {
 		;;
 	fast-targets)
 		count="${2:-8}"
+		target_wan="${3:-}"
 		token="YXNkZmFzZGxmbnNkYWZoYXNkZmhrYWxm"
-		fast_meta="$(wget -T 4 -qO- --no-check-certificate "https://api.fast.com/netflix/speedtest/v2?https=true&token=${token}&urlCount=${count}" 2>/dev/null)"
+		source_ip=""
+		if [ -n "$target_wan" ]; then
+			source_ip="$(ubus call "network.interface.$target_wan" status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null || true)"
+		fi
+		fast_meta=""
+		if [ -n "$source_ip" ] && command -v curl >/dev/null 2>&1; then
+			fast_meta="$(curl -s --interface "$source_ip" --max-time 4 "https://api.fast.com/netflix/speedtest/v2?https=true&token=${token}&urlCount=${count}" 2>/dev/null || true)"
+		fi
+		if [ -z "$fast_meta" ]; then
+			bind_arg=""
+			[ -n "$source_ip" ] && bind_arg="--bind-address=$source_ip"
+			fast_meta="$(wget $bind_arg -T 4 -qO- --no-check-certificate "https://api.fast.com/netflix/speedtest/v2?https=true&token=${token}&urlCount=${count}" 2>/dev/null || true)"
+		fi
+		if [ -z "$fast_meta" ]; then
+			fast_meta="$(wget -T 4 -qO- --no-check-certificate "https://api.fast.com/netflix/speedtest/v2?https=true&token=${token}&urlCount=${count}" 2>/dev/null || true)"
+		fi
 		if [ -n "$fast_meta" ]; then
 			printf '%s\n' "$fast_meta"
 		else

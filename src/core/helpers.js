@@ -1,4 +1,10 @@
-function iface(dump, name) { return ((dump && dump.interface) || []).find(function(x) { return x && x.interface === name; }) || {}; }
+function iface(dump, name) {
+	if (!dump) return {};
+	if (Array.isArray(dump.interface)) return dump.interface.find(function(x) { return x && x.interface === name; }) || {};
+	if (Array.isArray(dump)) return dump.find(function(x) { return x && x.interface === name; }) || {};
+	if (dump[name] && typeof dump[name] === 'object') return dump[name];
+	return {};
+}
 function values(config) { return config && config.values || {}; }
 function lanPortsFromNetwork(networkConfig) {
 	const net=values(networkConfig), ports=[], seen={};
@@ -195,11 +201,35 @@ const PING_TARGET_PRESETS = [
 		badge: 'Local'
 	},
 	{
+		id: 'cloudflare_v6',
+		title: 'Cloudflare DNS (IPv6)',
+		shortLabel: '⚡ Cloudflare v6',
+		ip: '2606:4700:4700::1111',
+		desc: 'Rede Anycast global da Cloudflare via IPv6 nativo com altíssima velocidade para CDN e web.',
+		badge: 'IPv6'
+	},
+	{
+		id: 'google_v6',
+		title: 'Google Public DNS (IPv6)',
+		shortLabel: '🌐 Google v6',
+		ip: '2001:4860:4860::8888',
+		desc: 'Serviço Anycast do Google via IPv6, padrão mundial para aferição de rotas de próxima geração.',
+		badge: 'IPv6'
+	},
+	{
+		id: 'quad9_v6',
+		title: 'Quad9 Security DNS (IPv6)',
+		shortLabel: '🛡️ Quad9 v6',
+		ip: '2620:fe::fe',
+		desc: 'Anycast seguro via IPv6 com proteção integrada contra malwares, phishing e ameaças.',
+		badge: 'IPv6'
+	},
+	{
 		id: 'custom',
 		title: 'Servidor Personalizado',
 		shortLabel: '✍️ Custom',
 		ip: 'personalizado',
-		desc: 'Insira qualquer IP ou domínio (ex: 1.0.0.1, 8.8.4.4, servidores de jogos, filiais corporativas ou VPNs).',
+		desc: 'Insira qualquer IP ou domínio (IPv4 ou IPv6: 1.0.0.1, 2606:4700::1111, jogos ou VPNs).',
 		badge: 'Manual'
 	}
 ];
@@ -249,6 +279,9 @@ function resolvePingTarget(target, customIp, live, cfg) {
 	if (target === 'cloudflare' || target === 'registro_br') return '1.1.1.1';
 	if (target === 'google') return '8.8.8.8';
 	if (target === 'quad9') return '9.9.9.9';
+	if (target === 'cloudflare_v6') return '2606:4700:4700::1111';
+	if (target === 'google_v6') return '2001:4860:4860::8888';
+	if (target === 'quad9_v6') return '2620:fe::fe';
 	if (target === 'custom' && customIp && customIp.trim()) return customIp.trim();
 	if (target === 'isp') {
 		// 1. Point-to-point gateway (PPPoE concentrator / BRAS)
@@ -520,9 +553,11 @@ function wifiConfig(config) {
 		if(s['.type'] !== 'wifi-iface' || s.mode !== 'ap' || !s.ssid) return;
 		if(k === 'default_radio0' || k === 'default_radio1' || k === 'default_radio2' ||
 		   k === 'guest_radio0' || k === 'guest_radio1' || k === 'guest_radio2' ||
-		   (dev2g && (k === 'default_' + dev2g || k === 'guest_' + dev2g)) ||
-		   (dev5g && (k === 'default_' + dev5g || k === 'guest_' + dev5g)) ||
-		   (dev6g && (k === 'default_' + dev6g || k === 'guest_' + dev6g))) return;
+		   k === 'wifi0_ap' || k === 'wifi1_ap' || k === 'wifi2_ap' ||
+		   k === 'wifi0_guest' || k === 'wifi1_guest' || k === 'wifi2_guest' ||
+		   (dev2g && (k === 'default_' + dev2g || k === 'guest_' + dev2g || k === dev2g + '_ap' || k === dev2g + '_guest')) ||
+		   (dev5g && (k === 'default_' + dev5g || k === 'guest_' + dev5g || k === dev5g + '_ap' || k === dev5g + '_guest')) ||
+		   (dev6g && (k === 'default_' + dev6g || k === 'guest_' + dev6g || k === dev6g + '_ap' || k === dev6g + '_guest'))) return;
 		const groupKey = k.replace(/_r[012]$/, '').replace(/_radio[012]$/, '');
 		if(!extrasMap[groupKey]) extrasMap[groupKey] = { r0: null, r1: null, r2: null, name: groupKey };
 		const band = bandOfSection(s);

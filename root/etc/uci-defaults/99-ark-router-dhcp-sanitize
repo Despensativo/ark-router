@@ -45,8 +45,9 @@ if [ "$(uci -q get dhcp.lan.ra)" != "disabled" ] && [ "$(uci -q get equipe_dashb
 		uci -q set dhcp.lan.ra_slaac='1'
 		changed=1
 	fi
-	if [ "$(uci -q get dhcp.lan.ra_default)" != "1" ]; then
-		uci -q set dhcp.lan.ra_default='1'
+	# Modo auto (ra_default=2): apenas anuncia como gateway padrao se houver rota IPv6 upstream na WAN (evita black hole quando a WAN nao tem IPv6)
+	if [ "$(uci -q get dhcp.lan.ra_default)" != "2" ]; then
+		uci -q set dhcp.lan.ra_default='2'
 		changed=1
 	fi
 	if [ "$(uci -q get dhcp.lan.ra_mininterval)" != "20" ] || [ "$(uci -q get dhcp.lan.ra_maxinterval)" != "60" ]; then

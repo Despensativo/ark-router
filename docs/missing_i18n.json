@@ -1,5 +1,414 @@
 {
   "description": "ARK Router - Lote de Traduções Pendentes para Pré-Release",
-  "pending_count": 0,
-  "strings": {}
+  "pending_count": 51,
+  "strings": {
+    "AVISO DETECTADO": {
+      "en": "WARNING DETECTED",
+      "es": "AVISO DETECTADO",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Ark Doctor aplicou": {
+      "en": "Ark Doctor applied",
+      "es": "Ark Doctor aplicó",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Ark Doctor — Diagnóstico & Autocura do Sistema": {
+      "en": "Ark Doctor — System Diagnosis & Self-Healing",
+      "es": "Ark Doctor — Diagnóstico y Autocuración del Sistema",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Ark Doctor:": {
+      "en": "Ark Doctor:",
+      "es": "Ark Doctor:",
+      "category": "translation_call",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "Ark Doctor: Alerta de Otimização": {
+      "en": "Ark Doctor: Optimization Alert",
+      "es": "Ark Doctor: Alerta de Optimización",
+      "category": "translation_call",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "Ark Doctor: Auditando…": {
+      "en": "Ark Doctor: Auditing…",
+      "es": "Ark Doctor: Auditando…",
+      "category": "translation_call",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "Ark Doctor: Falha de Integridade Detectada": {
+      "en": "Ark Doctor: Integrity Failure Detected",
+      "es": "Ark Doctor: Falla de Integridad Detectada",
+      "category": "translation_call",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "Ark Doctor: Saudável ↗": {
+      "en": "Ark Doctor: Healthy ↗",
+      "es": "Ark Doctor: Saludable ↗",
+      "category": "translation_call",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "Atualizar Log": {
+      "en": "Refresh Log",
+      "es": "Actualizar Registro",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Auditando…": {
+      "en": "Auditing…",
+      "es": "Auditando…",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Auditoria contínua do sistema em andamento…": {
+      "en": "Continuous system audit in progress…",
+      "es": "Auditoría continua del sistema en curso…",
+      "category": "translation_call",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "Auditoria contínua e autocura do sistema (Ark Doctor)": {
+      "en": "Continuous system audit and self-healing (Ark Doctor)",
+      "es": "Auditoría continua y autocuración del sistema (Ark Doctor)",
+      "category": "translation_call",
+      "files": [
+        "src/modules/render.js"
+      ]
+    },
+    "Auditoria do Ark Doctor concluída!": {
+      "en": "Ark Doctor audit completed!",
+      "es": "¡Auditoría de Ark Doctor completada!",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Auditoria em tempo de execução": {
+      "en": "Runtime audit",
+      "es": "Auditoría en tiempo de ejecución",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Aviso": {
+      "en": "Warning",
+      "es": "Aviso",
+      "category": "translation_call",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "Aviso:": {
+      "en": "Warning:",
+      "es": "Aviso:",
+      "category": "translation_call",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "Avisos": {
+      "en": "Warnings",
+      "es": "Avisos",
+      "category": "translation_call",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "Carregando histórico de logs…": {
+      "en": "Loading log history…",
+      "es": "Cargando historial de registros…",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Clique para reparar": {
+      "en": "Click to repair",
+      "es": "Haga clic para reparar",
+      "category": "translation_call",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "Clique para verificar": {
+      "en": "Click to verify",
+      "es": "Haga clic para verificar",
+      "category": "translation_call",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "Copiado!": {
+      "en": "Copied!",
+      "es": "¡Copiado!",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Copiar Log": {
+      "en": "Copy Log",
+      "es": "Copiar Registro",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Copie o log abaixo:": {
+      "en": "Copy log below:",
+      "es": "Copie el registro a continuación:",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Diagnóstico Detalhado": {
+      "en": "Detailed Diagnosis",
+      "es": "Diagnóstico Detallado",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Executando auditoria completa com Ark Doctor…": {
+      "en": "Running full audit with Ark Doctor…",
+      "es": "Ejecutando auditoría completa con Ark Doctor…",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Executando autocura com Ark Doctor (--fix)…": {
+      "en": "Running self-healing with Ark Doctor (--fix)…",
+      "es": "Ejecutando autocuración con Ark Doctor (--fix)…",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Executar Diagnóstico": {
+      "en": "Run Diagnosis",
+      "es": "Ejecutar Diagnóstico",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "FALHA DETECTADA": {
+      "en": "FAILURE DETECTED",
+      "es": "FALLA DETECTADA",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Falha ao aplicar autocura:": {
+      "en": "Failed to apply self-healing:",
+      "es": "Fallo al aplicar autocuración:",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Falha ao executar auditoria:": {
+      "en": "Failed to execute audit:",
+      "es": "Fallo al ejecutar auditoría:",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Falha detectada:": {
+      "en": "Failure detected:",
+      "es": "Falla detectada:",
+      "category": "translation_call",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "Falhas": {
+      "en": "Failures",
+      "es": "Fallas",
+      "category": "translation_call",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "Inconsistências encontradas que exigem atenção.": {
+      "en": "Inconsistencies found that require attention.",
+      "es": "Inconsistencias encontradas que requieren atención.",
+      "category": "translation_call",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "Lendo /var/log/ark-doctor.log…": {
+      "en": "Reading /var/log/ark-doctor.log…",
+      "es": "Leyendo /var/log/ark-doctor.log…",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Log do Sistema (/var/log/ark-doctor.log)": {
+      "en": "System Log (/var/log/ark-doctor.log)",
+      "es": "Registro del Sistema (/var/log/ark-doctor.log)",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Nenhum dado de diagnóstico disponível. Clique em": {
+      "en": "No diagnostic data available. Click on",
+      "es": "No hay datos de diagnóstico disponibles. Haga clic en",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Nenhum registro de log do Ark Doctor disponível.": {
+      "en": "No Ark Doctor log entries available.",
+      "es": "No hay registros de log de Ark Doctor disponibles.",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Não foi possível ler o log do Ark Doctor.": {
+      "en": "Unable to read Ark Doctor log.",
+      "es": "No se pudo leer el registro de Ark Doctor.",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Ocultar aviso até a próxima auditoria": {
+      "en": "Hide warning until next audit",
+      "es": "Ocultar aviso hasta la próxima auditoría",
+      "category": "translation_call",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "Reparando…": {
+      "en": "Repairing…",
+      "es": "Reparando…",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Reparar Agora": {
+      "en": "Repair Now",
+      "es": "Reparar Ahora",
+      "category": "translation_call",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "Reparar Tudo (--fix)": {
+      "en": "Repair All (--fix)",
+      "es": "Reparar Todo (--fix)",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "SISTEMA 100% SAUDÁVEL": {
+      "en": "SYSTEM 100% HEALTHY",
+      "es": "SISTEMA 100% SALUDABLE",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Sistema 100% saudável e otimizado. Clique para ver diagnósticos e logs.": {
+      "en": "System 100% healthy and optimized. Click to view diagnostics and logs.",
+      "es": "Sistema 100% saludable y optimizado. Haga clic para ver diagnósticos y registros.",
+      "category": "translation_call",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "Status Geral da Auditoria": {
+      "en": "Overall Audit Status",
+      "es": "Estado General de la Auditoría",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Ver Diagnóstico": {
+      "en": "View Diagnosis",
+      "es": "Ver Diagnóstico",
+      "category": "translation_call",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "checagens": {
+      "en": "checks",
+      "es": "comprobaciones",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "reparos aplicados": {
+      "en": "repairs applied",
+      "es": "reparaciones aplicadas",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "reparos com sucesso!": {
+      "en": "repairs successfully applied!",
+      "es": "¡reparaciones aplicadas con éxito!",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Última auditoria:": {
+      "en": "Last audit:",
+      "es": "Última auditoría:",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "🩺 Diagnóstico do Sistema & Logs (Ark Doctor)": {
+      "en": "🩺 System Diagnostics & Logs (Ark Doctor)",
+      "es": "🩺 Diagnóstico del Sistema y Registros (Ark Doctor)",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/system.js"
+      ]
+    }
+  }
 }

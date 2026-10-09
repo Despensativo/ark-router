@@ -72,7 +72,7 @@ raw_files_to_upload = [
     (os.path.join(repo_dir, 'root', 'etc', 'hotplug.d', 'iface', '95-ark-cache-invalidate'), '/etc/hotplug.d/iface/95-ark-cache-invalidate'),
 ]
 
-for auto_dir in ['etc/hotplug.d', 'etc/uci-defaults', 'etc/init.d', 'usr/lib/ark']:
+for auto_dir in ['etc/hotplug.d', 'etc/uci-defaults', 'etc/init.d', 'etc/ppp', 'usr/lib/ark', 'usr/lib/lua', 'www/luci-static/resources/protocol']:
     full_d = os.path.join(repo_dir, 'root', auto_dir)
     if os.path.isdir(full_d):
         for root_path, _, fnames in os.walk(full_d):
@@ -129,6 +129,7 @@ cmds = [
     '/usr/sbin/equipe-dashboard-control led-calibrate-curves 2>/dev/null || true',
     '/etc/init.d/ark-safe-shutdown enable 2>/dev/null || true',
     '/etc/init.d/firewall reload 2>/dev/null || /sbin/fw4 reload 2>/dev/null || true',
+    '[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme 2>/dev/null || true',
     'rm -rf /tmp/luci-*',
     '/etc/init.d/rpcd restart',
     '/etc/init.d/uhttpd restart',

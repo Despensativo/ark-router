@@ -1971,5 +1971,178 @@ body.modal-overlay-active #modal_overlay {
 	padding: 14px 16px 8px;
 }
 
+/* --- ARK DOCTOR: BANNER, STATUS PILL & DIAGNOSTIC MODAL --- */
+.ex-doctor-banner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 14px;
+	flex-wrap: wrap;
+	padding: 14px 18px;
+	margin: 0 0 16px 0;
+	border-radius: 14px;
+	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22);
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+	transition: all 0.25s ease;
+}
+.ex-doctor-banner.warning {
+	background: linear-gradient(135deg, rgba(245, 158, 11, 0.16) 0%, rgba(217, 119, 6, 0.08) 100%);
+	border: 1px solid rgba(245, 158, 11, 0.45);
+	color: #fef3c7;
+}
+.ex-doctor-banner.danger {
+	background: linear-gradient(135deg, rgba(239, 68, 68, 0.18) 0%, rgba(185, 28, 28, 0.09) 100%);
+	border: 1px solid rgba(239, 68, 68, 0.5);
+	color: #fee2e2;
+}
+.ex-doctor-banner-content {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex: 1 1 320px;
+	min-width: 0;
+}
+.ex-doctor-banner-icon {
+	font-size: 1.6rem;
+	line-height: 1;
+	flex-shrink: 0;
+}
+.ex-doctor-banner-title {
+	display: block;
+	font-size: 0.95rem;
+	font-weight: 800;
+	letter-spacing: 0.02em;
+	color: #fff;
+	margin-bottom: 2px;
+}
+.ex-doctor-banner-desc {
+	margin: 0;
+	font-size: 0.82rem;
+	line-height: 1.4;
+	opacity: 0.9;
+	color: inherit;
+}
+.ex-doctor-banner-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+.ex-doctor-banner-btn {
+	min-height: 38px;
+	padding: 6px 14px !important;
+	font-size: 0.82rem !important;
+	font-weight: 750 !important;
+	border-radius: 8px !important;
+	cursor: pointer;
+	user-select: none;
+	touch-action: manipulation;
+}
+.ex-doctor-pill-btn {
+	cursor: pointer !important;
+	border: none !important;
+	user-select: none !important;
+	touch-action: manipulation !important;
+	transition: all 0.2s ease !important;
+}
+.ex-doctor-pill-btn:hover {
+	filter: brightness(1.15);
+	transform: translateY(-1px);
+}
+.ex-doctor-tabs {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 16px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+	padding-bottom: 8px;
+}
+.ex-doctor-tab-btn {
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	color: rgba(255, 255, 255, 0.65);
+	padding: 8px 16px;
+	font-size: 0.88rem;
+	font-weight: 700;
+	cursor: pointer;
+	transition: all 0.18s ease;
+}
+.ex-doctor-tab-btn:hover {
+	color: #fff;
+	background: rgba(255, 255, 255, 0.06);
+}
+.ex-doctor-tab-btn.is-active {
+	color: #fff;
+	background: rgba(59, 130, 246, 0.2);
+	border-color: rgba(59, 130, 246, 0.45);
+}
+.ex-doctor-check-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	max-height: 52vh;
+	overflow-y: auto;
+	padding-right: 4px;
+}
+.ex-doctor-check-card {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	padding: 10px 14px;
+	border-radius: 9px;
+	background: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.07);
+}
+.ex-doctor-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 3px 8px;
+	border-radius: 6px;
+	font-size: 0.72rem;
+	font-weight: 800;
+	letter-spacing: 0.04em;
+	flex-shrink: 0;
+	min-width: 68px;
+	text-align: center;
+}
+.ex-doctor-badge.ok {
+	background: rgba(16, 185, 129, 0.18);
+	color: #10b981;
+	border: 1px solid rgba(16, 185, 129, 0.35);
+}
+.ex-doctor-badge.fixed {
+	background: rgba(6, 182, 212, 0.18);
+	color: #06b6d4;
+	border: 1px solid rgba(6, 182, 212, 0.35);
+}
+.ex-doctor-badge.warn {
+	background: rgba(245, 158, 11, 0.18);
+	color: #f59e0b;
+	border: 1px solid rgba(245, 158, 11, 0.35);
+}
+.ex-doctor-badge.fail {
+	background: rgba(239, 68, 68, 0.18);
+	color: #ef4444;
+	border: 1px solid rgba(239, 68, 68, 0.35);
+}
+.ex-doctor-log-box {
+	background: #090d16;
+	color: #cbd5e1;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 9px;
+	padding: 14px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+	font-size: 11.5px;
+	line-height: 1.55;
+	max-height: 48vh;
+	overflow-y: auto;
+	white-space: pre-wrap;
+	word-break: break-all;
+	user-select: text;
+}
+
+
 
 

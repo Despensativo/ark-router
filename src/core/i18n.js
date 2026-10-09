@@ -1738,6 +1738,14 @@ const EN = {
   "WPA2 / WPA3 Misto (Mais Seguro)": "WPA2 / WPA3 Mixed (More Secure)",
   "”?": "\"?"
 
+  "Fibra Óptica Direta (PPPoE)": "Direct Fiber Optic (PPPoE)",
+  "Porta": "Port",
+  "Testar esta conexão →": "Test this connection →",
+  "🎬 Testar Velocidade da Internet": "🎬 Test Internet Speed",
+  "Identificamos múltiplas conexões de internet ativas no roteador. Selecione qual conexão você deseja testar agora:": "Multiple active internet connections were detected on the router. Select which connection you want to test now:",
+  "Selecionar outra conexão WAN para testar": "Select another WAN connection to test",
+  "Trocar WAN": "Switch WAN",
+  "Teste de Velocidade Turbo": "Turbo Speed Test",
 };
 
 const ES = {
@@ -3673,6 +3681,14 @@ const ES = {
   "WPA2 / WPA3 Misto (Mais Seguro)": "WPA2 / WPA3 Mixto (Más Seguro)",
   "”?": "\"?"
 
+  "Fibra Óptica Direta (PPPoE)": "Fibra Óptica Directa (PPPoE)",
+  "Porta": "Puerto",
+  "Testar esta conexão →": "Probar esta conexión →",
+  "🎬 Testar Velocidade da Internet": "🎬 Probar Velocidad de Internet",
+  "Identificamos múltiplas conexões de internet ativas no roteador. Selecione qual conexão você deseja testar agora:": "Se detectaron múltiples conexiones de internet activas en el enrutador. Seleccione qué conexión desea probar ahora:",
+  "Selecionar outra conexão WAN para testar": "Seleccionar otra conexión WAN para probar",
+  "Trocar WAN": "Cambiar WAN",
+  "Teste de Velocidade Turbo": "Prueba de Velocidad Turbo",
 };
 
 function _t(text){

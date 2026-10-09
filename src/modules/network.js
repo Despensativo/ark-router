@@ -619,18 +619,18 @@ const networkMethods = {
 				} else if (curLinklayer === 'atm' && curOverhead === 44) {
 					targetOverheadVal = 'atm|44';
 				} else if (isPppoe) {
-					targetOverheadVal = 'ethernet|28';
+					targetOverheadVal = 'ethernet|44';
 				} else if (curLinklayer === 'ethernet') {
 					targetOverheadVal = 'ethernet|18';
 				}
 
 				const overheadSelect = E('select', { class: 'cbi-input-select', style: 'width: 100%; margin-top: 4px;' }, [
-					E('option', { value: 'none|0' }, ['Nenhum / Ethernet Pura (0 bytes overhead)']),
-					E('option', { value: 'ethernet|18' }, ['Cabo DOCSIS / Ethernet Padrão (18 bytes)' + (!isPppoe ? ' — Recomendado Cabo/DHCP' : '')]),
-					E('option', { value: 'ethernet|28' }, ['Fibra GPON / PPPoE Direto (28 bytes' + (isPppoe ? ' — Recomendado para esta WAN' : '') + ')']),
-					E('option', { value: 'ethernet|34' }, ['Fibra PPPoE / VLAN (34 bytes)']),
-					E('option', { value: 'ethernet|44' }, ['Fibra GPON / PPPoE Conservador (44 bytes)']),
-					E('option', { value: 'atm|44' }, ['Linha ADSL Antiga (ATM 44 bytes)'])
+					E('option', { value: 'none|0' }, [_t('Nenhum / Ethernet Pura (0 bytes overhead)')]),
+					E('option', { value: 'ethernet|18' }, [_t('Cabo DOCSIS / Ethernet Padrão (18 bytes)') + (!isPppoe ? ' — ' + _t('Recomendado Cabo/DHCP') : '')]),
+					E('option', { value: 'ethernet|28' }, [_t('Fibra GPON / PPPoE Direto (28 bytes)')]),
+					E('option', { value: 'ethernet|34' }, [_t('Fibra PPPoE / VLAN (34 bytes)')]),
+					E('option', { value: 'ethernet|44' }, [_t('Fibra GPON / PPPoE Conservador (44 bytes)') + (isPppoe ? ' — ' + _t('Recomendado para esta WAN') : '')]),
+					E('option', { value: 'atm|44' }, [_t('Linha ADSL Antiga (ATM 44 bytes)')])
 				]);
 				overheadSelect.value = targetOverheadVal;
 
@@ -846,7 +846,17 @@ const networkMethods = {
 			const gateway=E('input',{class:'cbi-input-text',value:cfg.gateway||'',placeholder:'192.0.2.1'});
 			const dnsList=Array.isArray(cfg.dns)?cfg.dns:String(cfg.dns||'1.1.1.1 8.8.8.8').split(/\s+/);
 			const dns1=E('input',{class:'cbi-input-text',value:dnsList[0]||'1.1.1.1'}), dns2=E('input',{class:'cbi-input-text',value:dnsList[1]||'8.8.8.8'}), dns3=E('input',{class:'cbi-input-text',value:dnsList[2]||'',placeholder:'opcional'});
-			const clonedMac=cfg.macaddr||'', macaddr=E('input',{class:'cbi-input-text',value:clonedMac,placeholder:'vazio = MAC físico do roteador'});
+			let clonedMac=cfg.macaddr||'';
+			if(!clonedMac && targetDev) {
+				for(let k in net) {
+					const sec = net[k];
+					if(sec && (sec['.type'] === 'device' || sec.name) && sec.name === targetDev && sec.macaddr) {
+						clonedMac = sec.macaddr;
+						break;
+					}
+				}
+			}
+			const macaddr=E('input',{class:'cbi-input-text',value:clonedMac,placeholder:'vazio = MAC físico do roteador'});
 			const macClear=E('button',{class:'ex-feature-link',type:'button','click':function(){macaddr.value='';}},['Usar MAC físico']);
 			const modemIp=E('input',{class:'cbi-input-text',value:cfg.modem_ip||'',placeholder:'ex: 192.168.1.3 (opcional)'});
 			const defaultMetric=String(cfg.metric||(parseInt(whichNum,10)*10));
@@ -1054,12 +1064,12 @@ const networkMethods = {
 					profileStatus.textContent = '✓ ' + profName + ' salvo';
 					profileStatus.style.display = 'inline-block';
 					savePromptBox.style.display = 'none';
-					ui.addNotification(null, E('p', {}, ['Perfil PPPoE "' + profName + '" salvo com sucesso!']));
+					ui.addNotification(null, E('p', {}, [_t('Perfil PPPoE salvo com sucesso!') + ' ("' + profName + '")']));
 				}).catch(function(e){
 					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
 				}).finally(function(){
 					saveConfirmBtn.disabled = false;
-					saveConfirmBtn.textContent = 'Confirmar';
+					saveConfirmBtn.textContent = _t('Confirmar');
 					saveProfileBtn.disabled = false;
 				});
 			};
@@ -1502,7 +1512,10 @@ const networkMethods = {
 					]),
 					E('div', { style: 'display:flex; align-items:center; gap:6px; flex-shrink:0;' }, [
 						latencyBadge,
-						preset.badge ? E('span', { class: 'ex-ping-target-card-badge' }, [ preset.badge ]) : ''
+						preset.badge ? E('span', {
+							class: 'ex-ping-target-card-badge',
+							style: preset.badge === 'IPv6' ? 'background:rgba(168,85,247,0.2); color:#c084fc; border-color:rgba(168,85,247,0.35);' : ''
+						}, [ preset.badge ]) : ''
 					])
 				]),
 				E('div', { class: 'ex-ping-target-card-ip' }, [ 'Alvo: ' + preset.ip ]),
@@ -1555,9 +1568,10 @@ const networkMethods = {
 						const live = iface((this.currentData||{}).interfaces, w.iface);
 						const cfg = ((values((this.currentData||{}).networkConfig))[w.iface]) || {};
 						const logicalDev = live ? (live.l3_device || live.device || cfg.device || w.iface) : w.iface;
-						const ip = (live && live['ipv4-address'] && live['ipv4-address'][0] && live['ipv4-address'][0].address) || '';
-						const bindTarget = ip || logicalDev;
 						const targetHost = resolvePingTarget(preset.id, customVal, live, cfg);
+						const isV6 = targetHost && targetHost.indexOf(':') !== -1;
+						const ip = (live && live['ipv4-address'] && live['ipv4-address'][0] && live['ipv4-address'][0].address) || '';
+						const bindTarget = isV6 ? logicalDev : (ip || logicalDev);
 						return safe(fs.exec('/bin/ping', ['-c', '1', '-W', '2', '-I', bindTarget, targetHost]), {}).then(function(res) {
 							return { wan: w.label, ping: parsePing(res) };
 						});
@@ -1778,8 +1792,8 @@ const networkMethods = {
 					label: '⚡ Fibra Ótica Direta (PPPoE)',
 					tag: 'FIBRA PPPoE',
 					desc: 'Para conexões onde o usuário e a senha de fibra são autenticados diretamente neste roteador.',
-					ll: 'pppoe_28',
-					jumbo: true
+					ll: 'vdsl_44',
+					jumbo: false
 				},
 				{
 					id: 'xpon_vlan',
@@ -1787,7 +1801,7 @@ const networkMethods = {
 					tag: 'FIBRA VLAN',
 					desc: 'Para planos de fibra ótica onde a operadora exige configuração de ID de VLAN na conexão.',
 					ll: 'vlan_34',
-					jumbo: true
+					jumbo: false
 				},
 				{
 					id: 'mobile_starlink',
@@ -1809,7 +1823,7 @@ const networkMethods = {
 				{ id: 'none', label: '⚪ Padrão / DHCP (0B)' },
 				{ id: 'pppoe_28', label: '⚡ Fibra PPPoE (28B)' },
 				{ id: 'vlan_34', label: '🏷️ Fibra c/ VLAN (34B)' },
-				{ id: 'vdsl_44', label: '☎️ VDSL2 / DSL (44B)' }
+				{ id: 'vdsl_44', label: '⚡ Fibra GPON (44B)' }
 			];
 
 			const presetBtns = [];
@@ -2060,7 +2074,7 @@ const networkMethods = {
 						E('div', { class: 'ex-opt-module-card', style: 'margin-top:10px;' }, [
 							E('div', { class: 'ex-opt-module-info' }, [
 								E('strong', {}, ['Baby Jumbo / MTU 1508']),
-								E('p', {}, ['Permite transportar MTU 1500 sem fragmentação em conexões de fibra PPPoE. Não é necessário em conexões DHCP/Modem.'])
+								E('p', {}, ['Permite transportar MTU 1500 sem fragmentação em fibra PPPoE caso a operadora suporte (RFC 4638). Desligado: opera no padrão universal seguro MTU 1492.'])
 							]),
 							E('label', { class: 'ex-switch' }, [jumboInput, E('span', { class: 'ex-switch-slider' })])
 						]),

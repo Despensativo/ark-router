@@ -27,15 +27,20 @@ ark_doctor_audit() {
 	warnings=0
 	fixes_applied=0
 	checks=""
+	log_details=""
 
 	add_check() {
 		local c_name="$1" c_status="$2" c_msg="$3"
-		if [ "$format" = "json" ]; then
-			local c_json
-			c_json=$(printf '{"name":"%s","status":"%s","message":"%s"}' \
-				"$(json_escape "$c_name")" "$(json_escape "$c_status")" "$(json_escape "$c_msg")")
-			if [ -z "$checks" ]; then checks="$c_json"; else checks="$checks,$c_json"; fi
-		else
+		local c_json
+		c_json=$(printf '{"name":"%s","status":"%s","message":"%s"}' \
+			"$(json_escape "$c_name")" "$(json_escape "$c_status")" "$(json_escape "$c_msg")")
+		if [ -z "$checks" ]; then checks="$c_json"; else checks="$checks,$c_json"; fi
+
+		if [ "$c_status" != "OK" ]; then
+			log_details="${log_details}  [${c_status}] ${c_name}: ${c_msg}\n"
+		fi
+
+		if [ "$format" = "text" ]; then
 			case "$c_status" in
 				OK)    printf '\033[1;32m[  OK  ]\033[0m %s: %s\n' "$c_name" "$c_msg" ;;
 				WARN)  printf '\033[1;33m[ AVISO]\033[0m %s: %s\n' "$c_name" "$c_msg" ;;
@@ -156,6 +161,54 @@ ark_doctor_audit() {
 				fi
 			else
 				add_check "SQM $wan" "OK" "Fila vinculada corretamente a $cur_sqm_iface."
+			fi
+
+			# 3.1. Auditoria de Enquadramento e Overhead SQM (Bufferbloat Mitigation)
+			cur_ov="$(uci -q get "sqm.$sqm_sec.overhead")"
+			cur_ll="$(uci -q get "sqm.$sqm_sec.linklayer")"
+			cur_mpu="$(uci -q get "sqm.$sqm_sec.mpu")"
+
+			exp_ov=""
+			exp_ll="ethernet"
+			exp_mpu="64"
+			ov_reason=""
+
+			if [ "$proto" = "pppoe" ]; then
+				exp_ov="44"
+				ov_reason="Fibra GPON/PPPoE (cobertura total L1/L2 anti-bufferbloat)"
+			elif [ "$proto" = "dhcp" ] || [ "$proto" = "static" ]; then
+				exp_ov="18"
+				ov_reason="Cabo DOCSIS/Ethernet DHCP (enquadramento L2 padrao)"
+			fi
+
+			if [ -n "$exp_ov" ]; then
+				ov_mismatch=0
+				if [ "$proto" = "pppoe" ]; then
+					if [ "$cur_ov" != "44" ] || [ "$cur_ll" != "ethernet" ] || [ "$cur_mpu" != "64" ]; then
+						ov_mismatch=1
+					fi
+				elif [ "$proto" = "dhcp" ] || [ "$proto" = "static" ]; then
+					if { [ "$cur_ov" != "18" ] && [ "$cur_ov" != "38" ]; } || [ "$cur_ll" != "ethernet" ] || [ "$cur_mpu" != "64" ]; then
+						ov_mismatch=1
+					fi
+				fi
+
+				if [ "$ov_mismatch" = 1 ]; then
+					if [ "$auto_fix" = 1 ]; then
+						uci -q set "sqm.$sqm_sec.linklayer=$exp_ll"
+						uci -q set "sqm.$sqm_sec.overhead=$exp_ov"
+						uci -q set "sqm.$sqm_sec.mpu=$exp_mpu"
+						uci commit sqm
+						[ "$sqm_enabled" = 1 ] && [ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
+						fixes_applied=$((fixes_applied + 1))
+						add_check "SQM Overhead $wan" "FIXED" "Overhead corrigido de '${cur_ov:-0}B' para ${exp_ov}B ($exp_ll, mpu $exp_mpu) para $ov_reason."
+					else
+						errors=$((errors + 1))
+						add_check "SQM Overhead $wan" "FAIL" "Desalinhado: configurado '${cur_ov:-0}B' (${cur_ll:-none}, mpu=${cur_mpu:-0}), esperado ${exp_ov}B ($exp_ll, mpu $exp_mpu) para $ov_reason."
+					fi
+				else
+					add_check "SQM Overhead $wan" "OK" "Enquadramento calibrado: ${cur_ov}B ($cur_ll, mpu $cur_mpu)."
+				fi
 			fi
 		fi
 
@@ -571,16 +624,34 @@ ark_doctor_audit() {
 		[ "$($uci_cmd get "network.$sec.proto" || echo '')" = "dhcpv6" ] || continue
 		dev="$($uci_cmd get "network.$sec.device" || echo '')"
 		[ -n "$dev" ] || dev="$($uci_cmd get "network.$sec.ifname" || echo '')"
-		case "$dev" in
-			@*|'') ;;
-			*) has_bad_wan6_dev=1; break ;;
+		parent_wan="wan"
+		case "$sec" in
+			wan2*|*wan2*|*wanb*) parent_wan="wan2" ;;
+			wan3*|*wan3*) parent_wan="wan3" ;;
+			wan4*|*wan4*) parent_wan="wan4" ;;
+			*)
+				parent_wan="${sec%_6}"
+				parent_wan="${parent_wan%6}"
+				[ -n "$parent_wan" ] || parent_wan="wan"
+				;;
 		esac
+		if [ -z "$($uci_cmd get "network.$parent_wan")" ] && [ -n "$($uci_cmd get "network.wan")" ]; then
+			parent_wan="wan"
+		fi
+		if [ "$dev" != "@$parent_wan" ]; then
+			has_bad_wan6_dev=1
+			break
+		fi
 	done
 
 	if [ "$has_zombie_dhcp" = 1 ] || [ "$has_bad_wan6_dev" = 1 ]; then
 		if [ "$auto_fix" = 1 ]; then
 			ark_cleanup_dhcpv6_orphans >/dev/null 2>&1 || true
 			ark_sanitize_wan6_config >/dev/null 2>&1 || true
+			for s in $($uci_cmd show network 2>/dev/null | sed -n 's/^network\.\([a-zA-Z0-9_]*\)=interface$/\1/p'); do
+				[ "$($uci_cmd get "network.$s.proto" || echo '')" = "dhcpv6" ] || continue
+				[ -z "${ARK_ROOT}" ] && ifup "$s" >/dev/null 2>&1 || true
+			done
 			fixes_applied=$((fixes_applied + 1))
 			add_check "Blindagem WAN6 e DHCPv6" "FIXED" "Processo zumbi eliminado e device @wan sanitizado sem loops."
 		else
@@ -712,10 +783,7 @@ ark_doctor_audit() {
 							mac_collision_dev="$p"
 							mac_collision_val="$p_mac"
 							if [ "$auto_fix" = 1 ]; then
-								$uci_cmd delete "network.$d_sec.macaddr" 2>/dev/null || true
-								$uci_cmd commit network
-								fact_mac="$(jsonfilter -i /etc/board.json -e "@.network.wan.macaddr" 2>/dev/null || true)"
-								[ -n "$fact_mac" ] && ip link set dev "$p" address "$fact_mac" 2>/dev/null || true
+								ark_ensure_phys_device_mac "$p" ""
 								fixes_applied=$((fixes_applied + 1))
 							fi
 							break 2
@@ -1041,9 +1109,71 @@ ark_doctor_audit() {
 		fi
 	fi
 
+	# 17. Auditoria de Travessia CGNAT / STUN no UPnP (quando UPnP ativo no modo Gateway)
+	if ! ark_is_satellite_or_ap && [ -f "${ARK_ROOT}/etc/config/upnpd" -o -f /etc/config/upnpd ]; then
+		local upnp_enabled="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get upnpd.config.enabled || echo 0)"
+		if [ "$upnp_enabled" = "1" ]; then
+			local cur_stun="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get upnpd.config.use_stun || echo 0)"
+			local cur_host="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get upnpd.config.stun_host || echo '')"
+			if [ "$cur_stun" != "1" ] || [ -z "$cur_host" ]; then
+				if [ "$auto_fix" = 1 ]; then
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set upnpd.config.use_stun='1'
+					[ -z "$cur_host" ] && uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set upnpd.config.stun_host='stun.cloudflare.com'
+					[ "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get upnpd.config.stun_port)" = "3478" ] || uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set upnpd.config.stun_port='3478'
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} commit upnpd
+					[ -z "${ARK_ROOT}" ] && [ -x /etc/init.d/miniupnpd ] && /etc/init.d/miniupnpd restart >/dev/null 2>&1 || true
+					fixes_applied=$((fixes_applied + 1))
+					add_check "Travessia CGNAT UPnP (STUN)" "FIXED" "STUN Anycast (stun.cloudflare.com) ativado para travessia segura de CGNAT e prevencao de log spam."
+				else
+					warnings=$((warnings + 1))
+					add_check "Travessia CGNAT UPnP (STUN)" "WARN" "STUN desativado no UPnP. Conexoes sob CGNAT podem sofrer rejeicao de portas e log spam."
+				fi
+			else
+				add_check "Travessia CGNAT UPnP (STUN)" "OK" "STUN Anycast ativo ($cur_host) garantindo mapeamento de portas em CGNAT e IP publico."
+			fi
+		fi
+	fi
+
+	local _overall_status="OK"
+	if [ "$errors" -gt 0 ]; then
+		_overall_status="FAIL"
+	elif [ "$warnings" -gt 0 ]; then
+		_overall_status="WARN"
+	fi
+	local _epoch_now="$(date +%s 2>/dev/null || echo 0)"
+	local _date_now="$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo '')"
+	local _state_json
+	_state_json=$(printf '{"status":"%s","timestamp":%s,"date":"%s","errors":%s,"warnings":%s,"fixes_applied":%s,"checks":[%s]}' \
+		"$_overall_status" "$_epoch_now" "$_date_now" "$errors" "$warnings" "$fixes_applied" "$checks")
+
+	# Persistir estado em /tmp/ark-doctor-last.json de forma atômica
+	local _state_file="/tmp/ark-doctor-last.json"
+	[ -w "/tmp" ] || _state_file="${ARK_LOCK_DIR:-/tmp}/ark-doctor-last.json"
+	[ -d "$(dirname "$_state_file")" ] || mkdir -p "$(dirname "$_state_file")" 2>/dev/null || true
+	printf '%s\n' "$_state_json" > "${_state_file}.tmp" 2>/dev/null && mv "${_state_file}.tmp" "$_state_file" 2>/dev/null || true
+
+	# Registrar no log do sistema (/var/log/ark-doctor.log)
+	local _log_file="/var/log/ark-doctor.log"
+	[ -w "/var/log" ] || _log_file="${ARK_LOCK_DIR:-/tmp}/ark-doctor.log"
+	[ -d "$(dirname "$_log_file")" ] || mkdir -p "$(dirname "$_log_file")" 2>/dev/null || true
+	{
+		printf '[%s] Ark Doctor Audit: STATUS=%s (Erros=%s, Avisos=%s, Reparos=%s, AutoFix=%s)\n' \
+			"$_date_now" "$_overall_status" "$errors" "$warnings" "$fixes_applied" "$auto_fix"
+		if [ -n "$log_details" ]; then
+			printf '%b' "$log_details"
+		else
+			printf '  [OK] Todos os módulos auditados com sucesso e 100%% saudáveis.\n'
+		fi
+	} >> "$_log_file" 2>/dev/null || true
+
+	# Rotação de log (limite 256KB)
+	local _log_size="$(wc -c < "$_log_file" 2>/dev/null || echo 0)"
+	if [ "$_log_size" -gt 256000 ]; then
+		mv "$_log_file" "${_log_file}.old" 2>/dev/null || true
+	fi
+
 	if [ "$format" = "json" ]; then
-		printf '{"errors":%s,"warnings":%s,"fixes_applied":%s,"checks":[%s]}\n' \
-			"$errors" "$warnings" "$fixes_applied" "$checks"
+		printf '%s\n' "$_state_json"
 	else
 		printf '============================================================\n'
 		if [ "$errors" -eq 0 ] && [ "$warnings" -eq 0 ]; then
@@ -1061,7 +1191,46 @@ ark_doctor_audit() {
 	fi
 }
 
+doctor_get_status() {
+	local _state_file="/tmp/ark-doctor-last.json"
+	[ -s "$_state_file" ] || _state_file="${ARK_LOCK_DIR:-/tmp}/ark-doctor-last.json"
+	if [ -s "$_state_file" ]; then
+		cat "$_state_file"
+	else
+		ark_doctor_audit 0 json
+	fi
+}
+
+doctor_get_log() {
+	local _log_file="/var/log/ark-doctor.log"
+	[ -f "$_log_file" ] || _log_file="${ARK_LOCK_DIR:-/tmp}/ark-doctor.log"
+	if [ -f "$_log_file" ]; then
+		tail -n 150 "$_log_file" 2>/dev/null | sed -e 's/\[[0-9;]*m//g' 2>/dev/null || cat "$_log_file" 2>/dev/null
+	else
+		echo "Nenhum registro de log do Ark Doctor gerado até o momento."
+	fi
+}
+
 handle_doctor() {
+	case "$1" in
+		doctor-status|status)
+			doctor_get_status
+			return 0
+			;;
+		doctor-log|log)
+			doctor_get_log
+			return 0
+			;;
+		doctor-run|run)
+			ark_doctor_audit 0 json
+			return 0
+			;;
+		doctor-fix|fix-run)
+			ark_doctor_audit 1 json
+			return 0
+			;;
+	esac
+
 	_auto_fix=0
 	_format="text"
 	_is_auto=0
@@ -1093,18 +1262,7 @@ handle_doctor() {
 	fi
 
 	if [ "$_is_auto" = 1 ]; then
-		# Redirect output to log file
-		local _log_file="/var/log/ark-doctor.log"
-		[ -w "/var/log" ] || _log_file="${_lock_dir}/ark-doctor.log"
-		local _ts="$(date '+%Y-%m-%d %H:%M:%S')"
-		printf "[%s] Ark Doctor Iniciado (Auto-Heal)...\n" "$_ts" >> "$_log_file" 2>/dev/null || true
-		ark_doctor_audit "$_auto_fix" "$_format" >> "$_log_file" 2>&1
-		
-		# Log rotation (256KB limit)
-		local _size="$(wc -c < "$_log_file" 2>/dev/null || echo 0)"
-		if [ "$_size" -gt 256000 ]; then
-			mv "$_log_file" "${_log_file}.old" 2>/dev/null || true
-		fi
+		ark_doctor_audit "$_auto_fix" "$_format" >/dev/null 2>&1
 	else
 		ark_doctor_audit "$_auto_fix" "$_format"
 	fi

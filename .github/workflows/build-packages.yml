@@ -1,10 +1,9 @@
 name: Build OpenWrt package
 
+# Desativado gatilho automatico de push por tag (Regra 12: geracao local e canonica e leva 2s)
+# Permite apenas disparo manual se necessario via interface web do GitHub
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - "v*"
 
 permissions:
   contents: write
