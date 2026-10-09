@@ -378,6 +378,73 @@ ark_remove_opposite_profile() {
 	rm -rf "$backup_dir"
 }
 
+ark_install_package_file() {
+	pkg="$1"
+	pm="$2"
+	asset_name="${3:-$(basename "$pkg")}"
+
+	ark_remove_opposite_profile "$asset_name" "$pm"
+
+	install_ok=0
+	case "$pm" in
+		apk)
+			if apk add --allow-untrusted --force-overwrite "$pkg" 2>&1; then
+				install_ok=1
+			fi
+			;;
+		opkg)
+			if opkg install --force-overwrite --force-reinstall "$pkg" 2>&1; then
+				install_ok=1
+			fi
+			;;
+	esac
+
+	# Contingência de autocura caso o gerenciador rejeite o binário (ex: erro de formato APKv2 no apk-tools v3)
+	if [ "$install_ok" -eq 0 ]; then
+		echo "Aviso: Gerenciador $pm rejeitou o pacote direto. Ativando contingência de extração atômica do payload..."
+		unpack_dir="/tmp/ark-router-unpack-stage"
+		rm -rf "$unpack_dir" && mkdir -p "$unpack_dir"
+
+		# Tenta descompactar como tar.gz direto ou extrair data.tar.gz de IPK
+		if tar -tzf "$pkg" >/dev/null 2>&1; then
+			if tar -tzf "$pkg" | grep -q 'data\.tar\.gz'; then
+				# Formato IPK clássico (tar contendo data.tar.gz)
+				tar -xzf "$pkg" data.tar.gz -O 2>/dev/null | tar -xzf - -C "$unpack_dir" 2>/dev/null || true
+			else
+				# Formato tar.gz direto (ex: APK empacotado como tar.gz)
+				tar -xzf "$pkg" -C "$unpack_dir" 2>/dev/null || true
+			fi
+		elif command -v ar >/dev/null 2>&1 && ar t "$pkg" >/dev/null 2>&1; then
+			ar p "$pkg" data.tar.gz 2>/dev/null | tar -xzf - -C "$unpack_dir" 2>/dev/null || true
+		fi
+
+		# Se descompactou arquivos válidos, aplica no sistema preservando configurações de usuário
+		if [ -d "$unpack_dir/usr" ] || [ -d "$unpack_dir/etc" ] || [ -d "$unpack_dir/www" ]; then
+			echo "Payload extraído com sucesso. Aplicando arquivos no sistema..."
+			rm -f "$unpack_dir/.PKGINFO" "$unpack_dir/.post-install" "$unpack_dir/.control"* "$unpack_dir/control.tar.gz" 2>/dev/null || true
+			# Preserva arquivos de configuração do usuário
+			for cfg in equipe_dashboard equipe_devices qos_equipe starlink_telemetry network wireless firewall; do
+				[ -f "/etc/config/$cfg" ] && rm -f "$unpack_dir/etc/config/$cfg" 2>/dev/null || true
+			done
+			cp -a "$unpack_dir/." / 2>/dev/null || cp -r "$unpack_dir"/* / 2>/dev/null || true
+			rm -rf "$unpack_dir"
+
+			# Garante permissões de execução corretas
+			chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history 2>/dev/null || true
+			chmod +x /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh 2>/dev/null || true
+			chmod +x /etc/init.d/ark-* /etc/init.d/equipe-* 2>/dev/null || true
+			chmod +x /etc/hotplug.d/iface/* /etc/hotplug.d/net/* 2>/dev/null || true
+			chmod +x /etc/uci-defaults/* 2>/dev/null || true
+			install_ok=1
+		else
+			rm -rf "$unpack_dir"
+			echo "Erro: Falha na extração de contingência do pacote." >&2
+			return 1
+		fi
+	fi
+	return 0
+}
+
 ark_http_get() {
 	url="$1"
 	header="${2:-}"
@@ -1584,20 +1651,7 @@ handle_ezsetup() {
 				exit 3
 			fi
 			echo '{"state":"running","percent":75,"message":"3/4 Instalando nova versão '"$latest"'..."}' >"$status"
-			case "$manager" in
-				apk)
-					ark_remove_opposite_profile "$asset" "$manager"
-					apk add --allow-untrusted --force-overwrite "$tmp/$asset"
-					;;
-				opkg)
-					ark_remove_opposite_profile "$asset" "$manager"
-					opkg install --force-overwrite --force-reinstall "$tmp/$asset"
-					;;
-				*)
-					echo 'Gerenciador de pacotes indisponivel' >&2
-					exit 3
-					;;
-			esac
+			ark_install_package_file "$tmp/$asset" "$manager" "$asset"
 			installed_after="$(ark_current_version)"
 			echo "Installed version after update: $installed_after"
 			clean_installed="$(normalize_version "$installed_after")"
@@ -1644,18 +1698,7 @@ handle_ezsetup() {
 			echo '{"state":"running","percent":50,"message":"2/4 Verificando pacote e preparando instalação..."}' >"$status"
 			echo "Arquivo: $pkg_file"
 			echo '{"state":"running","percent":75,"message":"3/4 Instalando pacote com '"$manager"'..."}' >"$status"
-			case "$manager" in
-				apk)
-					apk add --allow-untrusted --force-overwrite "$pkg_file"
-					;;
-				opkg)
-					opkg install --force-overwrite "$pkg_file"
-					;;
-				*)
-					echo 'Gerenciador de pacotes indisponivel' >&2
-					exit 3
-					;;
-			esac
+			ark_install_package_file "$pkg_file" "$manager"
 			rm -f "$pkg_file"
 			installed_after="$(ark_current_version)"
 			echo "Versão instalada: $installed_after"
