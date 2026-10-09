@@ -1,6 +1,6 @@
 // ARK Router i18n PT-BR Dictionary (Auto-generated from .po)
 (function(){
-	const ARK_I18N_VERSION = '1.5.12';
+	const ARK_I18N_VERSION = '1.5.13';
 	if (typeof window.ARK_BUILD_VERSION !== 'undefined' && window.ARK_BUILD_VERSION !== ARK_I18N_VERSION) {
 		console.warn('[ARK Router] i18n.pt-br.js version mismatch (' + ARK_I18N_VERSION + ' vs ' + window.ARK_BUILD_VERSION + ')');
 	}

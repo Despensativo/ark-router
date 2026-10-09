@@ -158,6 +158,45 @@ apply_guest_tc_limit() {
 	echo "guest-limit-applied dev=$dev download=${download}kbit upload=${upload}kbit"
 }
 
+sync_sqm_flow_offload() {
+	local sqm_active=0
+	if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
+		sqm_active=1
+	fi
+
+	if [ "$sqm_active" = "1" ]; then
+		# Trava de exclusao mutua: se SQM/CAKE esta ativo, desativa Fastpath/Flow Offloading no firewall
+		if [ "$(uci -q get firewall.@defaults[0].flow_offloading || echo 0)" = "1" ] || \
+		   [ "$(uci -q get firewall.@defaults[0].flow_offloading_hw || echo 0)" = "1" ]; then
+			uci -q set firewall.@defaults[0].flow_offloading=0
+			uci -q set firewall.@defaults[0].flow_offloading_hw=0
+			uci commit firewall 2>/dev/null || true
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+		fi
+	else
+		# SQM desativado: verifica se Multi-WAN esta REALMENTE ativo no sistema operacional
+		local mwan_count=0
+		if [ -f /etc/config/mwan3 ] && [ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 enabled >/dev/null 2>&1; then
+			for w in $(active_wan_networks); do
+				[ "$(uci -q get "mwan3.$w.enabled")" = "1" ] && mwan_count=$((mwan_count + 1))
+			done
+		fi
+
+		# Se Multi-WAN nao esta ativo (menos de 2 WANs), religa Fastpath e Hardware Offload (MediaTek PPE / Qualcomm NSS)
+		if [ "$mwan_count" -lt 2 ]; then
+			if [ "$(uci -q get firewall.@defaults[0].flow_offloading || echo 0)" = "0" ] || \
+			   [ "$(uci -q get firewall.@defaults[0].flow_offloading_hw || echo 0)" = "0" ]; then
+				uci -q set firewall.@defaults[0].flow_offloading=1
+				if [ -d /sys/kernel/debug/ppe0 ] || [ -d /sys/kernel/debug/ppe1 ] || [ -f /sys/kernel/debug/ppe/offload_stats ] || [ -d /sys/devices/platform/soc/*ppe* ]; then
+					uci -q set firewall.@defaults[0].flow_offloading_hw=1
+				fi
+				uci commit firewall 2>/dev/null || true
+				/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			fi
+		fi
+	fi
+}
+
 handle_sqm() {
 	case "$1" in
 	sqm-toggle)
@@ -174,14 +213,12 @@ handle_sqm() {
 		done
 		[ "$wan_count" -gt 0 ] || { echo 'Nenhuma WAN ativa encontrada' >&2; exit 3; }
 		uci commit sqm
+		sync_sqm_flow_offload
 		if [ "$2" = 1 ]; then
-			# Trava de exclusao mutua: SQM/CAKE ativo desliga Fastpath
-			uci -q set firewall.@defaults[0].flow_offloading=0
-			uci -q set firewall.@defaults[0].flow_offloading_hw=0
-			uci commit firewall 2>/dev/null || true
-			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			/etc/init.d/sqm restart
+		else
+			/etc/init.d/sqm stop >/dev/null 2>&1 || true
 		fi
-		/etc/init.d/sqm restart
 		echo ok
 		;;
 	irqbalance-toggle)
@@ -295,32 +332,12 @@ handle_sqm() {
 		done
 		uci commit sqm
 		uci commit qos_equipe 2>/dev/null || true
-		# Trava de exclusao mutua: se qualquer fila SQM foi ativada, desativa Fastpath/Flow Offloading no firewall
+		sync_sqm_flow_offload
 		if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
-			if [ "$(uci -q get firewall.@defaults[0].flow_offloading || echo 0)" = "1" ] || \
-			   [ "$(uci -q get firewall.@defaults[0].flow_offloading_hw || echo 0)" = "1" ]; then
-				uci -q set firewall.@defaults[0].flow_offloading=0
-				uci -q set firewall.@defaults[0].flow_offloading_hw=0
-				uci commit firewall 2>/dev/null || true
-				/etc/init.d/firewall reload >/dev/null 2>&1 || true
-			fi
+			/etc/init.d/sqm restart
 		else
-			local mwan_count=0
-			if [ -f /etc/config/mwan3 ]; then
-				for w in $(uci -q show mwan3 2>/dev/null | grep "\.enabled='1'" | cut -d. -f2 | grep -v "\."); do
-					mwan_count=$((mwan_count + 1))
-				done
-			fi
-			if [ "$(uci -q get firewall.@defaults[0].flow_offloading || echo 0)" = "0" ] && [ "$mwan_count" -lt 2 ]; then
-				uci -q set firewall.@defaults[0].flow_offloading=1
-				if [ -d /sys/kernel/debug/ppe0 ] || [ -d /sys/kernel/debug/ppe1 ] || [ -f /sys/kernel/debug/ppe/offload_stats ] || [ -d /sys/devices/platform/soc/*ppe* ]; then
-					uci -q set firewall.@defaults[0].flow_offloading_hw=1
-				fi
-				uci commit firewall 2>/dev/null || true
-				/etc/init.d/firewall reload >/dev/null 2>&1 || true
-			fi
+			/etc/init.d/sqm stop >/dev/null 2>&1 || true
 		fi
-		/etc/init.d/sqm restart
 		apply_guest_tc_limit >/dev/null 2>&1 || true
 		echo ok
 		;;

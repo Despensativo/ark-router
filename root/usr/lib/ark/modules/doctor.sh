@@ -294,9 +294,11 @@ ark_doctor_audit() {
 	flow_offload="$(uci -q get firewall.@defaults[0].flow_offloading || echo 0)"
 	mwan_active_count=0
 	if [ -f "${ARK_ROOT}/etc/config/mwan3" ] || [ -f /etc/config/mwan3 ]; then
-		for w in $(active_wan_networks); do
-			[ "$(uci -q get "mwan3.$w.enabled")" = 1 ] && mwan_active_count=$((mwan_active_count + 1))
-		done
+		if [ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 enabled >/dev/null 2>&1; then
+			for w in $(active_wan_networks); do
+				[ "$(uci -q get "mwan3.$w.enabled")" = 1 ] && mwan_active_count=$((mwan_active_count + 1))
+			done
+		fi
 	fi
 
 	if [ "$flow_offload" = "1" ] && [ "$sqm_has_active" = "1" ]; then
