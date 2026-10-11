@@ -23,6 +23,17 @@ const renderMethods = {
 			});
 		}
 		this.board=loaded[0]||{}; this.countries=(loaded[1]&&loaded[1].results)||[]; this.capabilities=loaded[2]||{features:{}}; dashboardLanguage=this.capabilities.language||'pt-br';if(typeof window!=='undefined'){window.dashboardLanguage=dashboardLanguage;}this.applyAppearance();this.applyBrand(this.capabilities.title);if(typeof loadDashboardLanguage==='function'){loadDashboardLanguage(dashboardLanguage).then(enableTranslation);}else{enableTranslation();} const data=loaded[3]; if(typeof initCardStatesFromUci==='function'&&data&&data.equipeDashboardConfig){initCardStatesFromUci(data.equipeDashboardConfig);} const w=wifiConfig(data.wireless), release=((this.board.release||{}).description||'').split(' ').slice(0,2).join(' '), panelTitle=this.capabilities.title||'ARK Router';
+		try {
+			if (typeof window !== 'undefined' && window.history && window.history.replaceState && window.location.search) {
+				var sp = new URLSearchParams(window.location.search);
+				if (sp.has('_v') || sp.has('_ts')) {
+					sp.delete('_v');
+					sp.delete('_ts');
+					var qs = sp.toString();
+					window.history.replaceState(null, document.title, window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+				}
+			}
+		} catch(e) {}
 		const serverVersion = (this.capabilities && this.capabilities.update && this.capabilities.update.current) || '';
 		if (serverVersion && typeof ARK_BUILD_VERSION !== 'undefined' && serverVersion !== '—' && serverVersion !== ARK_BUILD_VERSION) {
 			const reloadKey = 'ark_version_reload_' + serverVersion;
@@ -33,14 +44,31 @@ const renderMethods = {
 					ui.addNotification(null, E('div', { class: 'alert-message warning' }, [
 						E('strong', {}, [_t('Atualização detectada (%s)!').replace('%s', 'v' + serverVersion)]),
 						E('p', { style: 'margin: 4px 0 0;' }, [
-							_t('Seu navegador ainda está executando arquivos em cache da versão anterior (%s). Pressione Ctrl + F5 para atualizar.').replace('%s', 'v' + ARK_BUILD_VERSION)
-						])
+							_t('Seu navegador ainda está executando arquivos em cache da versão anterior (%s). Clique abaixo para carregar os novos arquivos.').replace('%s', 'v' + ARK_BUILD_VERSION)
+						]),
+						E('button', {
+							class: 'cbi-button cbi-button-action',
+							style: 'margin-top: 8px;',
+							click: function() {
+								try {
+									if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
+									if (typeof localStorage !== 'undefined') localStorage.removeItem('ark_caps');
+									if ('caches' in window) {
+										caches.keys().then(function(names) { names.forEach(function(n) { caches.delete(n); }); });
+									}
+								} catch(e) {}
+								window.location.reload(true);
+							}
+						}, [_t('🔄 Atualizar Agora')])
 					]), 'warning');
 				}
 			} else if (!window._arkReloading) {
 				window._arkReloading = true;
 				try {
-					if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(reloadKey, '1');
+					if (typeof sessionStorage !== 'undefined') {
+						sessionStorage.removeItem('ark_caps');
+						sessionStorage.setItem(reloadKey, '1');
+					}
 				} catch(e) {}
 				console.warn('[ARK Router] Versão do sistema (' + serverVersion + ') difere da versão em cache JS (' + ARK_BUILD_VERSION + '). Atualizando painel...');
 				if (typeof ui !== 'undefined' && ui.addNotification) {
@@ -49,8 +77,10 @@ const renderMethods = {
 					]), 'info');
 				}
 				window.setTimeout(function() {
-					var cleanPath = window.location.pathname;
-					window.location.replace(cleanPath + '?_v=' + encodeURIComponent(serverVersion) + '&_ts=' + Date.now());
+					if ('caches' in window) {
+						try { caches.keys().then(function(names) { names.forEach(function(n) { caches.delete(n); }); }); } catch(e) {}
+					}
+					window.location.reload(true);
 				}, 1000);
 			}
 		} else if (typeof sessionStorage !== 'undefined' && serverVersion && serverVersion === ARK_BUILD_VERSION) {

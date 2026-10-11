@@ -19,8 +19,17 @@
     };
   }
 
-  // LuCI Core Cache-Buster: Ensure LuCI's class loader fetches views/scripts with the active ARK Router version
+  // LuCI Core Cache-Buster & URL Self-Cleaning
   try {
+    if (window.history && window.history.replaceState && window.location.search) {
+      var sp = new URLSearchParams(window.location.search);
+      if (sp.has('_v') || sp.has('_ts')) {
+        sp.delete('_v');
+        sp.delete('_ts');
+        var qs = sp.toString();
+        window.history.replaceState(null, document.title, window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+      }
+    }
     var arkVersion = window.ARK_VERSION;
     if (!arkVersion) {
       var selfScript = document.querySelector('script[src*="ark-theme.js"]');
@@ -29,7 +38,7 @@
         if (vm) arkVersion = decodeURIComponent(vm[1]);
       }
     }
-    if (!arkVersion) arkVersion = '1.5.9';
+    if (!arkVersion) arkVersion = '1.5.13';
     window.ARK_VERSION = arkVersion;
 
     var hookLuciScript = function() {

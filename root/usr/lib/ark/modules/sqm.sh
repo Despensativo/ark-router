@@ -215,9 +215,11 @@ handle_sqm() {
 		uci commit sqm
 		sync_sqm_flow_offload
 		if [ "$2" = 1 ]; then
+			/etc/init.d/sqm enable >/dev/null 2>&1 || true
 			/etc/init.d/sqm restart
 		else
 			/etc/init.d/sqm stop >/dev/null 2>&1 || true
+			/etc/init.d/sqm disable >/dev/null 2>&1 || true
 		fi
 		echo ok
 		;;
@@ -334,9 +336,11 @@ handle_sqm() {
 		uci commit qos_equipe 2>/dev/null || true
 		sync_sqm_flow_offload
 		if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
+			/etc/init.d/sqm enable >/dev/null 2>&1 || true
 			/etc/init.d/sqm restart
 		else
 			/etc/init.d/sqm stop >/dev/null 2>&1 || true
+			/etc/init.d/sqm disable >/dev/null 2>&1 || true
 		fi
 		apply_guest_tc_limit >/dev/null 2>&1 || true
 		echo ok

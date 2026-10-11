@@ -18,6 +18,9 @@
 		<title>{{ striptags(`${boardinfo.hostname ?? 'ARK Router'}${dispatched?.title ? ` | ${_(dispatched.title)}` : ''}`) }}</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<meta name="theme-color" content="#0f172a">
+		<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+		<meta http-equiv="Pragma" content="no-cache">
+		<meta http-equiv="Expires" content="0">
 		<link rel="stylesheet" href="{{ media }}/cascade.css?v={{ ark_v }}">
 		<link rel="stylesheet" media="only screen and (max-width: 854px)" href="{{ media }}/mobile.css?v={{ ark_v }}" />
 		<link rel="icon" href="{{ media }}/favicon.png">
@@ -29,7 +32,20 @@
 		{% endif %}
 		<script src="{{ dispatcher.build_url('admin/translations', dispatcher.lang) }}"></script>
 		<script src="{{ resource }}/cbi.js?v={{ ark_v }}"></script>
-		<script>window.ARK_VERSION = "{{ ark_v }}";</script>
+		<script>
+			window.ARK_VERSION = "{{ ark_v }}";
+			try {
+				if (window.history && window.history.replaceState && window.location.search) {
+					var sp = new URLSearchParams(window.location.search);
+					if (sp.has('_v') || sp.has('_ts')) {
+						sp.delete('_v');
+						sp.delete('_ts');
+						var qs = sp.toString();
+						window.history.replaceState(null, document.title, window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+					}
+				}
+			} catch(e) {}
+		</script>
 		<script src="{{ media }}/ark-theme.js?v={{ ark_v }}"></script>
 	</head>
 	{% let is_login = !(ctx?.authsession || dispatcher?.context?.authsession); %}

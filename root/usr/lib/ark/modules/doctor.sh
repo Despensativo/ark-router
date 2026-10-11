@@ -149,66 +149,70 @@ ark_doctor_audit() {
 			sqm_enabled="$(uci -q get "sqm.$sqm_sec.enabled")"
 			cur_sqm_iface="$(uci -q get "sqm.$sqm_sec.interface")"
 			[ "$sqm_enabled" = 1 ] && sqm_has_active=1
-			if [ -n "$cur_sqm_iface" ] && [ "$cur_sqm_iface" != "$expected_sqm_dev" ]; then
-				if [ "$auto_fix" = 1 ]; then
-					uci -q set "sqm.$sqm_sec.interface=$expected_sqm_dev"
-					uci commit sqm
-					fixes_applied=$((fixes_applied + 1))
-					add_check "SQM $wan" "FIXED" "Corrigido dispositivo de '$cur_sqm_iface' para '$expected_sqm_dev'."
-				else
-					errors=$((errors + 1))
-					add_check "SQM $wan" "FAIL" "Desalinhado: configurado '$cur_sqm_iface', esperado '$expected_sqm_dev'."
-				fi
-			else
-				add_check "SQM $wan" "OK" "Fila vinculada corretamente a $cur_sqm_iface."
-			fi
-
-			# 3.1. Auditoria de Enquadramento e Overhead SQM (Bufferbloat Mitigation)
-			cur_ov="$(uci -q get "sqm.$sqm_sec.overhead")"
-			cur_ll="$(uci -q get "sqm.$sqm_sec.linklayer")"
-			cur_mpu="$(uci -q get "sqm.$sqm_sec.mpu")"
-
-			exp_ov=""
-			exp_ll="ethernet"
-			exp_mpu="64"
-			ov_reason=""
-
-			if [ "$proto" = "pppoe" ]; then
-				exp_ov="44"
-				ov_reason="Fibra GPON/PPPoE (cobertura total L1/L2 anti-bufferbloat)"
-			elif [ "$proto" = "dhcp" ] || [ "$proto" = "static" ]; then
-				exp_ov="18"
-				ov_reason="Cabo DOCSIS/Ethernet DHCP (enquadramento L2 padrao)"
-			fi
-
-			if [ -n "$exp_ov" ]; then
-				ov_mismatch=0
-				if [ "$proto" = "pppoe" ]; then
-					if [ "$cur_ov" != "44" ] || [ "$cur_ll" != "ethernet" ] || [ "$cur_mpu" != "64" ]; then
-						ov_mismatch=1
-					fi
-				elif [ "$proto" = "dhcp" ] || [ "$proto" = "static" ]; then
-					if { [ "$cur_ov" != "18" ] && [ "$cur_ov" != "38" ]; } || [ "$cur_ll" != "ethernet" ] || [ "$cur_mpu" != "64" ]; then
-						ov_mismatch=1
-					fi
-				fi
-
-				if [ "$ov_mismatch" = 1 ]; then
+			if [ "$sqm_enabled" = 1 ]; then
+				if [ -n "$cur_sqm_iface" ] && [ "$cur_sqm_iface" != "$expected_sqm_dev" ]; then
 					if [ "$auto_fix" = 1 ]; then
-						uci -q set "sqm.$sqm_sec.linklayer=$exp_ll"
-						uci -q set "sqm.$sqm_sec.overhead=$exp_ov"
-						uci -q set "sqm.$sqm_sec.mpu=$exp_mpu"
+						uci -q set "sqm.$sqm_sec.interface=$expected_sqm_dev"
 						uci commit sqm
-						[ "$sqm_enabled" = 1 ] && [ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
 						fixes_applied=$((fixes_applied + 1))
-						add_check "SQM Overhead $wan" "FIXED" "Overhead corrigido de '${cur_ov:-0}B' para ${exp_ov}B ($exp_ll, mpu $exp_mpu) para $ov_reason."
+						add_check "SQM $wan" "FIXED" "Corrigido dispositivo de '$cur_sqm_iface' para '$expected_sqm_dev'."
 					else
 						errors=$((errors + 1))
-						add_check "SQM Overhead $wan" "FAIL" "Desalinhado: configurado '${cur_ov:-0}B' (${cur_ll:-none}, mpu=${cur_mpu:-0}), esperado ${exp_ov}B ($exp_ll, mpu $exp_mpu) para $ov_reason."
+						add_check "SQM $wan" "FAIL" "Desalinhado: configurado '$cur_sqm_iface', esperado '$expected_sqm_dev'."
 					fi
 				else
-					add_check "SQM Overhead $wan" "OK" "Enquadramento calibrado: ${cur_ov}B ($cur_ll, mpu $cur_mpu)."
+					add_check "SQM $wan" "OK" "Fila vinculada corretamente a $cur_sqm_iface."
 				fi
+
+				# 3.1. Auditoria de Enquadramento e Overhead SQM (Bufferbloat Mitigation)
+				cur_ov="$(uci -q get "sqm.$sqm_sec.overhead")"
+				cur_ll="$(uci -q get "sqm.$sqm_sec.linklayer")"
+				cur_mpu="$(uci -q get "sqm.$sqm_sec.mpu")"
+
+				exp_ov=""
+				exp_ll="ethernet"
+				exp_mpu="64"
+				ov_reason=""
+
+				if [ "$proto" = "pppoe" ]; then
+					exp_ov="44"
+					ov_reason="Fibra GPON/PPPoE (cobertura total L1/L2 anti-bufferbloat)"
+				elif [ "$proto" = "dhcp" ] || [ "$proto" = "static" ]; then
+					exp_ov="18"
+					ov_reason="Cabo DOCSIS/Ethernet DHCP (enquadramento L2 padrao)"
+				fi
+
+				if [ -n "$exp_ov" ]; then
+					ov_mismatch=0
+					if [ "$proto" = "pppoe" ]; then
+						if [ "$cur_ov" != "44" ] || [ "$cur_ll" != "ethernet" ] || [ "$cur_mpu" != "64" ]; then
+							ov_mismatch=1
+						fi
+					elif [ "$proto" = "dhcp" ] || [ "$proto" = "static" ]; then
+						if { [ "$cur_ov" != "18" ] && [ "$cur_ov" != "38" ]; } || [ "$cur_ll" != "ethernet" ] || [ "$cur_mpu" != "64" ]; then
+							ov_mismatch=1
+						fi
+					fi
+
+					if [ "$ov_mismatch" = 1 ]; then
+						if [ "$auto_fix" = 1 ]; then
+							uci -q set "sqm.$sqm_sec.linklayer=$exp_ll"
+							uci -q set "sqm.$sqm_sec.overhead=$exp_ov"
+							uci -q set "sqm.$sqm_sec.mpu=$exp_mpu"
+							uci commit sqm
+							[ "$sqm_enabled" = 1 ] && [ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
+							fixes_applied=$((fixes_applied + 1))
+							add_check "SQM Overhead $wan" "FIXED" "Overhead corrigido de '${cur_ov:-0}B' para ${exp_ov}B ($exp_ll, mpu $exp_mpu) para $ov_reason."
+						else
+							errors=$((errors + 1))
+							add_check "SQM Overhead $wan" "FAIL" "Desalinhado: configurado '${cur_ov:-0}B' (${cur_ll:-none}, mpu=${cur_mpu:-0}), esperado ${exp_ov}B ($exp_ll, mpu $exp_mpu) para $ov_reason."
+						fi
+					else
+						add_check "SQM Overhead $wan" "OK" "Enquadramento calibrado: ${cur_ov}B ($cur_ll, mpu $cur_mpu)."
+					fi
+				fi
+			else
+				add_check "SQM $wan" "OK" "Desativado (toggle desligado no painel)."
 			fi
 		fi
 
