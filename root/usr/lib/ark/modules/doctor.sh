@@ -524,10 +524,10 @@ ark_doctor_audit() {
 	if is_fw4; then
 		legacy_rules=""
 		if command -v iptables-save >/dev/null 2>&1; then
-			legacy_rules="$(iptables-save 2>/dev/null | grep -E '^(\*|:|-A)' | grep -vE ':(INPUT|OUTPUT|FORWARD) (ACCEPT|DROP)' || true)"
+			legacy_rules="$(iptables-save 2>/dev/null | grep '^-A' || true)"
 		fi
 		if [ -z "$legacy_rules" ] && command -v ip6tables-save >/dev/null 2>&1; then
-			legacy_rules="$(ip6tables-save 2>/dev/null | grep -E '^(\*|:|-A)' | grep -vE ':(INPUT|OUTPUT|FORWARD) (ACCEPT|DROP)' || true)"
+			legacy_rules="$(ip6tables-save 2>/dev/null | grep '^-A' || true)"
 		fi
 
 		fw_user_file="/etc/firewall.user"
@@ -626,8 +626,10 @@ ark_doctor_audit() {
 	done
 
 	has_bad_wan6_dev=0
+	has_wan6_configured=0
 	for sec in $($uci_cmd show network 2>/dev/null | sed -n 's/^network\.\([a-zA-Z0-9_]*\)=interface$/\1/p'); do
 		[ "$($uci_cmd get "network.$sec.proto" || echo '')" = "dhcpv6" ] || continue
+		has_wan6_configured=1
 		dev="$($uci_cmd get "network.$sec.device" || echo '')"
 		[ -n "$dev" ] || dev="$($uci_cmd get "network.$sec.ifname" || echo '')"
 		parent_wan="wan"
@@ -650,7 +652,22 @@ ark_doctor_audit() {
 		fi
 	done
 
-	if [ "$has_zombie_dhcp" = 1 ] || [ "$has_bad_wan6_dev" = 1 ]; then
+	v6_mode="$($uci_cmd get equipe_dashboard.ipv6.mode 2>/dev/null || echo '')"
+	missing_wan6=0
+	if [ "$v6_mode" = "dual_stack" ] || [ "$v6_mode" = "selective" ] || [ "$v6_mode" = "ipv6_only" ]; then
+		[ "$has_wan6_configured" = 0 ] && missing_wan6=1
+	fi
+
+	if [ "$missing_wan6" = 1 ]; then
+		if [ "$auto_fix" = 1 ]; then
+			enable_ipv6_dual_stack >/dev/null 2>&1 || true
+			fixes_applied=$((fixes_applied + 1))
+			add_check "Blindagem WAN6 e DHCPv6" "FIXED" "Interface wan6 ausente em modo Dual-Stack. Criada e vinculada a @wan com DHCPv6 client ativo."
+		else
+			errors=$((errors + 1))
+			add_check "Blindagem WAN6 e DHCPv6" "FAIL" "Modo $v6_mode ativo, mas interface wan6 ausente em /etc/config/network (sem requisicao DHCPv6 na WAN)."
+		fi
+	elif [ "$has_zombie_dhcp" = 1 ] || [ "$has_bad_wan6_dev" = 1 ]; then
 		if [ "$auto_fix" = 1 ]; then
 			ark_cleanup_dhcpv6_orphans >/dev/null 2>&1 || true
 			ark_sanitize_wan6_config >/dev/null 2>&1 || true
