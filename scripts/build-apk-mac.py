@@ -44,83 +44,92 @@ def build_apk_variant(pkg_name, pkg_version, depends, description, is_full=False
         if not is_full and os.path.exists(starlink_bin):
             os.remove(starlink_bin)
 
-        # 5. Create .PKGINFO
-        pkginfo = f"""pkgname = {pkg_name}
-pkgver = {pkg_version}
-pkgdesc = {description}
-url = https://github.com/Despensativo/ark-router
-builddate = {int(time.time())}
-packager = ARK Mac Native Builder
-size = 2500000
-arch = noarch
-license = MIT
-origin = /feed/{pkg_name}
-maintainer = ARK Router contributors
-provides = luci-app-ark-router-any
-tags = openwrt:section=luci
-"""
-        for dep in depends.split():
-            pkginfo += f"depend = {dep}\n"
+        apk_bin = shutil.which("apk") or "/Users/user/.antigravity-tools-env/bin/apk"
+        if not os.path.isfile(apk_bin):
+            print(f"ERRO: Binário apk não encontrado em {apk_bin}", file=sys.stderr)
+            sys.exit(2)
 
-        # 6. Build tar.gz container
-        with tarfile.open(out_file, "w:gz") as tar:
-            # Add .PKGINFO
-            info = tarfile.TarInfo(name=".PKGINFO")
-            info.size = len(pkginfo.encode("utf-8"))
-            info.mode = 0o644
-            info.mtime = int(time.time())
-            info.uid = 0
-            info.gid = 0
-            info.uname = "root"
-            info.gname = "root"
-            tar.addfile(info, io.BytesIO(pkginfo.encode("utf-8")))
+        # 5. Criar script de post-install oficial
+        post_install = os.path.join(temp_dir, "post-install")
+        with open(post_install, "w", encoding="utf-8") as f:
+            f.write("""#!/bin/sh
+chmod 0755 /usr/share/ark-router/VERSION 2>/dev/null || true
+chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history 2>/dev/null || true
+chmod +x /usr/libexec/ark-starlink-telemetry 2>/dev/null || true
+chmod +x /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export 2>/dev/null || true
+chmod +x /etc/init.d/* 2>/dev/null || true
+chmod +x /etc/hotplug.d/iface/* 2>/dev/null || true
+[ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable >/dev/null 2>&1 || true
+[ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true
+[ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram start >/dev/null 2>&1 || true
+[ -x /etc/init.d/ark-firewall-guard ] && /etc/init.d/ark-firewall-guard enable >/dev/null 2>&1 || true
+[ -x /etc/init.d/ark-firewall-guard ] && /etc/init.d/ark-firewall-guard start >/dev/null 2>&1 || true
+[ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune enable >/dev/null 2>&1 || true
+[ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune start >/dev/null 2>&1 || true
+[ -x /etc/init.d/ark-port-ledd ] && /etc/init.d/ark-port-ledd enable >/dev/null 2>&1 || true
+[ -x /etc/init.d/ark-port-ledd ] && /etc/init.d/ark-port-ledd restart >/dev/null 2>&1 || true
+if [ "$(uci -q get network.autowan.enabled || echo 0)" = "1" ]; then
+	[ -x /etc/init.d/ark-autowan ] && /etc/init.d/ark-autowan enable >/dev/null 2>&1 || true
+	[ -x /etc/init.d/ark-autowan ] && /etc/init.d/ark-autowan restart >/dev/null 2>&1 || true
+fi
+[ -f /etc/uci-defaults/99-ark-router-leds ] && /bin/sh /etc/uci-defaults/99-ark-router-leds >/dev/null 2>&1 || true
+if [ -f /etc/config/attendedsysupgrade ]; then
+	[ -z "$(uci -q get attendedsysupgrade.client.login_check_for_upgrades)" ] && uci -q set attendedsysupgrade.client.login_check_for_upgrades='0' && uci commit attendedsysupgrade 2>/dev/null || true
+fi
+rm -f /tmp/luci-indexcache 2>/dev/null || true
+rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
+[ -x /etc/init.d/equipe-traffic-history ] && /etc/init.d/equipe-traffic-history enable >/dev/null 2>&1 || true
+[ -x /etc/init.d/equipe-traffic-history ] && /etc/init.d/equipe-traffic-history restart >/dev/null 2>&1 || true
+[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
+[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+exit 0
+""")
+        os.chmod(post_install, 0o755)
 
-            # Add payload files recursively
-            for dirpath, dirnames, filenames in os.walk(payload_dir):
-                dirnames.sort()
-                filenames.sort()
-                rel_dir = os.path.relpath(dirpath, payload_dir)
-                arc_dir = "" if rel_dir == "." else rel_dir
+        # 6. Limpar arquivos temporários do macOS e definir permissões corretas
+        for dirpath, dirnames, filenames in os.walk(payload_dir):
+            for f in filenames:
+                file_path = os.path.join(dirpath, f)
+                if f.startswith("._") or f == ".DS_Store":
+                    os.remove(file_path)
+                    continue
+                rel_path = os.path.relpath(file_path, payload_dir)
+                is_exec = (
+                    rel_path.startswith("usr/sbin/")
+                    or rel_path.startswith("usr/bin/")
+                    or rel_path.startswith("usr/libexec/")
+                    or rel_path.startswith("www/cgi-bin/")
+                    or rel_path.startswith("etc/init.d/")
+                    or rel_path.startswith("etc/uci-defaults/")
+                    or rel_path.startswith("etc/hotplug.d/")
+                    or rel_path.endswith(".sh")
+                )
+                os.chmod(file_path, 0o755 if is_exec else 0o644)
 
-                if arc_dir:
-                    d_info = tar.gettarinfo(dirpath, arcname=arc_dir)
-                    d_info.uid = 0
-                    d_info.gid = 0
-                    d_info.uname = "root"
-                    d_info.gname = "root"
-                    d_info.mode = 0o755
-                    tar.addfile(d_info)
+        # 7. Executar apk mkpkg nativo gerando pacote oficial ADB
+        import subprocess
+        cmd = [
+            apk_bin, "mkpkg",
+            "-I", f"name:{pkg_name}",
+            "-I", f"version:{pkg_version}",
+            "-I", "arch:noarch",
+            "-I", f"description:{description}",
+            "-I", "url:https://github.com/Despensativo/ark-router",
+            "-I", "license:GPL-2.0",
+            "-I", f"depends:{depends}",
+            "-I", "provides:luci-app-ark-router-any",
+            "-I", "tags:openwrt:section=luci",
+            "-s", f"post-install:{post_install}",
+            "-s", f"post-upgrade:{post_install}",
+            "-F", payload_dir,
+            "-o", out_file
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        if res.returncode != 0:
+            print(f"ERRO ao gerar pacote {pkg_name}: {res.stderr}", file=sys.stderr)
+            sys.exit(res.returncode)
 
-                for f in filenames:
-                    # Skip macOS AppleDouble or DS_Store files
-                    if f.startswith("._") or f == ".DS_Store":
-                        continue
-                    file_path = os.path.join(dirpath, f)
-                    arc_path = os.path.join(arc_dir, f) if arc_dir else f
-
-                    f_info = tar.gettarinfo(file_path, arcname=arc_path)
-                    f_info.uid = 0
-                    f_info.gid = 0
-                    f_info.uname = "root"
-                    f_info.gname = "root"
-
-                    # Execution permissions
-                    is_exec = (
-                        arc_path.startswith("usr/sbin/")
-                        or arc_path.startswith("usr/bin/")
-                        or arc_path.startswith("usr/libexec/")
-                        or arc_path.startswith("www/cgi-bin/")
-                        or arc_path.startswith("etc/init.d/")
-                        or arc_path.startswith("etc/uci-defaults/")
-                        or arc_path.startswith("etc/hotplug.d/")
-                        or arc_path.endswith(".sh")
-                    )
-                    f_info.mode = 0o755 if is_exec else 0o644
-
-                    with open(file_path, "rb") as fh:
-                        tar.addfile(f_info, fh)
-
-    print(f"  [OK] Criado: {out_file}")
+    print(f"  [OK] Criado pacote oficial nativo (ADB): {out_file}")
     return out_file
 
 def main():
