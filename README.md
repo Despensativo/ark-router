@@ -4,422 +4,184 @@
 
 # ARK Router
 
-![OpenWrt](https://img.shields.io/badge/OpenWrt-24.x%20%2F%2025.x-00B5E2?logo=openwrt&logoColor=white)
-![Release](https://img.shields.io/badge/release-v1.5.11-blue.svg)
-![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
-![Language](https://img.shields.io/badge/UI-PT--BR%20%2F%20EN%20%2F%20ES-blue)
-![Platform](https://img.shields.io/badge/arch-all%20%2F%20noarch-orange)
+<p align="center">
+  <a href="https://openwrt.org/"><img src="https://img.shields.io/badge/OpenWrt-19.07%20a%2025.x-00B5E2?logo=openwrt&logoColor=white" alt="OpenWrt"></a>
+  <a href="https://github.com/Despensativo/ark-router/releases/tag/v1.5.14"><img src="https://img.shields.io/badge/release-v1.5.14-blue.svg" alt="Release v1.5.14"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/UI-PT--BR%20%2F%20EN%20%2F%20ES-blue" alt="Trilingual UI">
+  <img src="https://img.shields.io/badge/arch-all%20%2F%20noarch-orange" alt="Architecture: All">
+</p>
 
-ARK Router is a modern, responsive, trilingual (PT-BR / EN / ES), modular operational dashboard and control center for **OpenWrt / LuCI**. It turns the default LuCI home screen into a powerful, clean, executive control center for home, gaming, office, event, field, Starlink and mobile multi-WAN routers with SQM/CAKE QoS, real-time per-device bandwidth monitoring, per-device rate limiting with local LAN bypass, AdBlock/Parental Control (AdGuard Home in RAM + Anycast Cloud), DNS Turbo benchmark, ZeroTier remote access, automated system tuning, and automated multi-browser cross-device visual QA.
-
-The project does not replace OpenWrt or LuCI — it operates on top of LuCI as an advanced operations suite (`luci-app-ark-router`) with safer shortcuts, real-time telemetry and zero-bloat architecture.
-
-> **Keywords / SEO**: ARK Router, OpenWrt dashboard, LuCI dashboard, OpenWrt moderno, monitorar tráfego por dispositivo, per-device bandwidth monitor, OpenWrt Starlink telemetry, ZeroTier OpenWrt autostart, DNS benchmark router, SQM CAKE bufferbloat QoS, Multi-WAN failover load balancing, Speedify OpenWrt bonding, OpenWrt mobile UI, painel roteador OpenWrt, network bandwidth limiter, real-time router monitoring, adguard home openwrt ram, dns blacklist openwrt, cross-browser responsive openwrt.
-
-The current official release is **v1.5.11** (see [`VERSION`](VERSION)). ARK Router is an add-on package (`luci-app-ark-router`), not a replacement firmware image or ISO.
+<p align="center">
+  <b>🌐 Idiomas / Languages / Idiomas:</b><br>
+  <a href="README.md">🇧🇷 <b>Português (Brasil)</b></a> &nbsp;•&nbsp;
+  <a href="README.en.md">🇺🇸 <b>English</b></a> &nbsp;•&nbsp;
+  <a href="README.es.md">🇪🇸 <b>Español</b></a>
+</p>
 
 ---
 
-## 🇧🇷 Visão Geral (Português do Brasil)
+O **ARK Router** transforma roteadores com **OpenWrt** em verdadeiras centrais de comando profissionais, substituindo a interface estática tradicional do LuCI por um painel executivo moderno, ultrarrápido, modular e 100% responsivo para smartphones e computadores.
 
-O **ARK Router** transforma roteadores com **OpenWrt** em verdadeiras centrais de comando profissionais, substituindo a interface estática tradicional por um painel executivo moderno, ultrarrápido e 100% responsivo para smartphones e computadores.
+Ele não substitui o OpenWrt nem o LuCI: ele opera como uma suíte avançada de controle (`luci-app-ark-router`) com telemetria em tempo real, zero bloatware, salvaguardas anti-lockout e recursos pioneiros de rede e blindagem de memória.
 
-### 🌟 Destaques Principais:
-1. **🛡️ Bloqueador de Anúncios & Controle Parental Híbrido (Local RAM / Nuvem)**:
-   - **Roteadores Full (512MB+ RAM)**: Motor AdGuard Home completo rodando direto na memória RAM (`/tmp/adguardhome`) na porta 3000, com mais de 1 milhão de regras locais, zero desgaste da flash e super-cache em RAM.
-   - **Roteadores Lite (128MB-256MB RAM)**: Modo Nuvem ultraleve via `dnsmasq` com 9 provedores Anycast especializados (Cloudflare Família 1.1.1.3, Quad9 Segurança 9.9.9.9, OpenDNS FamilyShield, CleanBrowsing Adult/Family, Control D Full Blocker e NextDNS com ID personalizado).
-2. **🚫 Lista Negra de Sites da Casa ("X ou Y") em 0ms**:
-   - Bloqueio imediato de domínios específicos (apostas, cassinos, sites indesejados) diretamente no painel. Responde `0.0.0.0` em 0ms com **zero bytes de consumo de RAM** no `dnsmasq` e regras `||dominio^` no AdGuard Home para toda a rede.
-3. **⚡ Limite de Banda Individual com Bypass Automático da LAN (RFC 1918)**:
-   - Controle individual de download e upload por dispositivo.
-   - **Bypass de Rede Local**: O limite se aplica com precisão cirúrgica apenas à Internet. Cópias para NAS, servidores locais (Plex/Emby), impressoras e outros PCs da casa continuam em velocidade máxima nativa (Gigabit, 2.5 Gbps ou Wi-Fi 6 a 1200+ Mbps).
-4. **🛑 Filtro Parental e SafeSearch Individual por Dispositivo**:
-   - Bloqueio de conteúdo adulto e imposição de SafeSearch (Google, Bing, YouTube) configurável por dispositivo (ex: celulares das crianças).
-   - Bloqueio rápido com feedback visual inconfundível para redes sociais e jogos (TikTok, Instagram, YouTube, Roblox, etc.).
-5. **📊 Tráfego por Dispositivo em Tempo Real (Hardware DMA & Anti-Jitter)**:
-   - Medição instantânea via contadores diretos do rádio Wi-Fi (`iwinfo`), sem atrasos e sem travar em 0 bps.
-   - Filtro inteligente de decaimento suave (EMA) que mantém a leitura estável na tela entre rajadas.
-   - Coluna de **Total Consumido** (MB/GB) e ordenação estável por Nome, Total ou Velocidade Atual sem fazer a lista pular debaixo do cursor.
-6. **🚀 DNS Turbo & Benchmark Mundial Integrado**:
-   - Teste de latência em tempo real comparando os principais provedores de DNS do mundo (Cloudflare, Google, Quad9, OpenDNS, AdGuard).
-   - Aplicação instantânea com 1 clique e auto-recuperação segura no roteador e nos clientes DHCP da rede.
-7. **🌐 Acesso Remoto ZeroTier Inteligente**:
-   - Chave seletora no painel para ligar ou desligar o início automático com o sistema (Boot).
-   - Arquitetura híbrida: executa nativamente em roteadores com muita memória flash (eMMC/NAND) e auto-extrai na RAM (`/tmp`) em apenas 0.3s em aparelhos compactos de 16MB/32MB.
-8. **🛰️ Central Multi-Starlink (Telemetria & Alinhamento)**:
-   - Diagnóstico em tempo real de múltiplas antenas Starlink: bússola de alinhamento 3D, obstruções, perda de pacotes, SNR e alertas de hardware.
-   - Página `/starlink/` de leitura rápida e segura para a rede local sem necessidade de login administrativo.
-9. **⚡ Otimizador de Desempenho & Memória (Kernel & RAM Tuning)**:
-   - Auto-purga periódica de caches de memória RAM, reciclagem agressiva de conexões conntrack TCP/UDP, balanceamento de interrupções de CPU multithread (`irqbalance`) e aceleração do `nlbwmon` para 2 segundos.
-10. **📱 100% Otimizado para Celular (Mobile-First)**:
-    - Layout fluido com botões grandes de toque (48px) para iPhones e Androids, sem rolagem horizontal ou quebras visuais.
-11. **🔀 Alternância 1-Click entre Modo Roteador e Modo Ponto de Acesso & Switch (Dumb AP)**:
-    - Converte portas e unifica interfaces em bridge (`br-lan`), desativa DHCP local e propaga transparentemente o DHCP do roteador mestre para portas LAN e Wi-Fi sem duplo NAT.
-    - Dupla proteção com temporizador de 3 segundos no modal de confirmação e salvaguarda permanente com IP de Resgate anti-lockout (`192.168.12.1` / `192.168.73.1`).
-12. **🔀 Conversão Dinâmica da Porta WAN em LAN (Auto-Sensing Total)**:
-    - Permite transformar a porta WAN física em uma porta LAN comum para switches, PCs ou TVs.
-    - Se um cabo com sinal de internet/DHCP for conectado a ela, o Piloto Automático de Portas (Auto-WAN) a promove dinamicamente a WAN em tempo real.
-13. **🌐 Motor Dinâmico de LED WAN / Planeta (Planet LED Solid Fix)**:
-    - Corrige o LED do planeta (🌐) em roteadores Cudy (WR3000/TR3000), D-Link e Acer, eliminando o piscar excessivo e mantendo-o **aceso e fixo (sólido)** enquanto a conexão estiver ativa. Reatribuição dinâmica em tempo real durante trocas de porta ou comutações Multi-WAN.
-14. **⚡ Otimização Inteligente de SQM (CAKE) em CPUs Fracas (Upload-Only SQM)**:
-    - Detecção automática de processadores MIPS vs. ARM64, alerta preventivo de sobrecarga acima de 100 Mbps e botão 1-clique para limitar somente o upload, eliminando bufferbloat e economizando 95% de CPU em hardware de 128 MB.
-15. **📡 Seleção Automática de Canais Wi-Fi Inteligente (Sem Radares DFS e Sem Sobreposição)**:
-    - Restringe a banda de 2.4 GHz exclusivamente aos canais padrão ouro 1, 6 e 11, e a banda de 5 GHz a canais estáveis livres de interferência e bloqueios por radar meteorológico DFS.
-16. **🕸️ Rede Mesh Wi-Fi 802.11s & Roaming Rápido 802.11r/k/v com Auto-Sync**:
-    - Conexão e sincronização mestre/satélite com importação de credenciais via `/www/cgi-bin/ark-mesh-export`, transição ágil entre nós sem interrupção de voz e vídeo e isolamento de segurança com Satellite Shield.
-17. **🧹 Purgador Ativo de Interfaces Órfãs (Kernel Mesh Purge)**:
-    - Limpeza dinâmica e desacoplamento do bridge (`br-lan`) de interfaces mesh/sta residuais (`wifi_cleanup_mesh_interfaces` via `iw dev`), eliminando tempestades de pacotes e pings instáveis.
-18. **🩺 ARK Doctor (Auditor de Integridade e Autocura)**:
-    - Diagnóstico de saúde do roteador em 9 camadas críticas (rádios, bridge, DHCP, nftables, SQM, sintaxe hostapd) com reparo automatizado em tempo real (`ark-doctor --fix`).
-19. **👥 Telemetria Multi-AP e Descoberta de Clientes em Tempo Real**:
-    - Agregação de estações em todas as interfaces ativas (`device_get_stations`), garantindo precisão total na contagem de clientes conectados sem zerar o medidor.
+> **Versão Oficial Ativa**: **`v1.5.14`** (consulte [`VERSION`](VERSION) e [Releases](https://github.com/Despensativo/ark-router/releases)).
+
+---
+
+## 🌟 Destaques Principais
+
+1. **⚡ Central de Desempenho & Blindagem de Memória**:
+   - Card unificado na Visão Geral com switches interativos de primeiro nível, contadores dinâmicos de otimizações ativas e aplicação em tempo de execução sem recarregar serviços desnecessários.
+2. **🗜️ Compressão de Memória RAM Inteligente (ZRAM / LZ4)**:
+   - Duplica a capacidade efetiva da memória RAM através de um disco de swap ultrarrápido em LZ4 com zero desgaste da memória Flash.
+   - **Trava de Segurança de 5 Segundos**: Em roteadores com $\ge 512$ MB de RAM física, o switch exige confirmação temporizada para evitar ciclos desnecessários de CPU.
+   - **Modo Protegido para CPUs Mononúcleo (MIPS)**: Detecta processadores modestos e limita o disco a 32 MB com `swappiness=15`, evitando afogamento da CPU.
+   - **Ativação Instantânea**: Em roteadores multicore $\le 256$ MB (como o Cudy WR3000), aloca dinamicamente 116 MB para absorver picos de tráfego.
+3. **🎮 Abertura Automática de Portas (UPnP / IGD) com Modo Seguro**:
+   - Alternância rápida com feedback visual imediato:
+     - **Modo Seguro (Desligado - Padrão)**: Nenhuma porta externa na WAN é aberta sem permissão explícita no firewall.
+     - **Modo Ativo**: Permite abertura sob demanda para jogos online (Xbox, PlayStation, PC), emitindo alerta de conscientização na tela.
+4. **🩺 ARK Doctor (Auditor de Integridade e Autocura)**:
+   - Diagnóstico contínuo do sistema em tempo de execução em 10 camadas críticas: rádios Wi-Fi, pontes de rede, DHCP, regras do firewall (fw4/nftables puro), integridade da ZRAM (`Check 1b`), SQM e sintaxe do hostapd, com botão de reparo automático de 1 clique (`ark-doctor --fix`).
+5. **🛡️ Bloqueador de Anúncios & Controle Parental Híbrido (Local RAM / Nuvem)**:
+   - **Roteadores Full ($\ge 512$ MB RAM)**: AdGuard Home nativo rodando direto na memória temporária (`/tmp/adguardhome`) na porta 3000, com mais de 1 milhão de regras locais, super-cache em RAM e zero escrita na flash.
+   - **Roteadores Lite (128 MB a 256 MB RAM)**: Modo Nuvem ultraleve via `dnsmasq` com 9 provedores Anycast especializados (Cloudflare Família, Quad9 Segurança, CleanBrowsing, Control D, OpenDNS e NextDNS).
+6. **🚫 Lista Negra de Sites da Casa em 0ms**:
+   - Bloqueio imediato de domínios específicos (apostas, cassinos, sites indesejados) com resposta `0.0.0.0` em 0ms e zero bytes de consumo adicional de memória.
+7. **⚡ Limite de Banda Individual com Bypass Automático da LAN (RFC 1918)**:
+   - Controle individual de download e upload por dispositivo. O limite se aplica com precisão cirúrgica exclusivamente à Internet — transferências locais para NAS, servidores Plex, impressoras e compartilhamento de arquivos continuam em velocidade nativa (Gigabit / Wi-Fi 6 a 1200+ Mbps).
+8. **🛑 Filtro Parental e SafeSearch Individual por Dispositivo**:
+   - Bloqueio de conteúdo adulto e imposição de SafeSearch (Google, Bing, YouTube) configurável por dispositivo (ex: tablets e celulares de crianças).
+9. **📊 Tráfego por Dispositivo em Tempo Real (Hardware DMA & Anti-Jitter)**:
+   - Medição instantânea via contadores diretos do driver Wi-Fi (`iwinfo`), sem atrasos e com filtro de decaimento suave (EMA) que elimina oscilações visuais bruscas.
+   - Coluna de **Total Consumido** (MB/GB) e ordenação interativa estável.
+10. **🚀 DNS Turbo & Benchmark Mundial Integrado**:
+    - Teste de latência em tempo real comparando Cloudflare, Google, Quad9, OpenDNS e AdGuard com aplicação segura em 1 clique.
+11. **🌐 Acesso Remoto ZeroTier Inteligente**:
+    - Executa nativamente em roteadores com armazenamento amplo e auto-extrai na RAM (`/tmp`) em 0.3s em aparelhos compactos de 16MB SPI flash.
+12. **🛰️ Central Multi-Starlink (Telemetria & Alinhamento)**:
+    - Diagnóstico de múltiplas antenas Starlink: bússola 3D, obstruções, perda de pacotes, SNR e visualizador público `/starlink/` para a rede local sem necessidade de login.
+13. **🔄 Ciclo Perfeito de Fastpath (Flow Offload / PPE) e SQM/CAKE**:
+    - Trava de exclusão mútua estrita entre Fastpath e SQM. Ao desligar o SQM no switch rápido do dashboard, o Fastpath de hardware é reativado automaticamente pelo procd.
+14. **🛡️ Baby Jumbo MTU 1500 em PPPoE (RFC 4638)**:
+    - Configura automaticamente MTU 1508/1512 na interface base física para garantir MTU 1500 pura no túnel PPPoE, eliminando fragmentação de pacotes em provedores de fibra modernos.
+15. **📱 100% Otimizado para Celular (Mobile-First)**:
+    - Interface fluida com botões táteis grandes (48px) para telas sensíveis ao toque (iOS e Android), sem rolagem horizontal nem quebras de layout.
+16. **🔀 Alternância 1-Click entre Modo Roteador e Modo Ponto de Acesso & Switch (Dumb AP)**:
+    - Converte portas em ponte transparente (`br-lan`), desativa DHCP local e protege o acesso administrativo com IP de Resgate anti-lockout permanente (`192.168.12.1` / `192.168.73.1`).
+17. **🕸️ Rede Mesh Wi-Fi 802.11s & Roaming Rápido 802.11r/k/v**:
+    - Sincronização mestre/satélite com exportação segura de credenciais, transição contínua entre nós sem quedas em chamadas de voz/vídeo e Satellite Shield.
+18. **🌐 Balanceamento PBR BitTorrent em Modo Amplo Seguro (Dual-WAN)**:
+    - Distribui conexões P2P em mais de 64.500 portas entre as WANs, preservando portas de sistema (80, 443, 53) prioritárias na WAN primária.
+19. **⚡ WireGuard Client Ultrarrápido e Desacoplado**:
+    - Importação de arquivos `.conf` com resposta imediata ao LuCI RPC (< 100ms) e execução assíncrona desacoplada de firewall e rotas.
 20. **🌎 Internacionalização Tripla com 100% de Paridade (i18n Triplo)**:
-    - Cobertura integral e auditada em Português do Brasil, Inglês e Espanhol neutro em todos os componentes e diálogos do sistema.
-21. **🎯 Latência Interna Zero-Drop & Calibração de Hardware Inteligente (`ark-hardware-tune`)**:
-    - Priorização cirúrgica no kernel via DSCP CS6 para ICMP (Ping) e DNS, e CS5 para controle TCP, despachando direto no tin Voice do CAKE com latência de 2 a 9 µs sem dropar nenhum pacote.
-    - Calibração adaptativa em 3 níveis (Low, Mid e High Spec): distribui pacotes em todos os núcleos da CPU (RPS multi-core `f`), acelera o RFS para 32.768 fluxos e expande o buffer para 2048, garantindo ping médio de 0 ms mesmo sob carga pesada de 500+ Mbps de BitTorrent.
-22. **🌐 Balanceamento PBR BitTorrent em Modo Amplo Seguro (Dual-WAN)**:
-    - Balanceia dinamicamente conexões P2P em mais de 64.500 portas (`1024:8079, 8081:8442, 8444:65535`) entre as WANs, mantendo portas de sistema (80, 443, 53, etc.) blindadas na WAN primária estável.
-23. **⚡ WireGuard Client Ultrarrápido e Desacoplado (Zero Timeout)**:
-    - Importação de `.conf` e alteração de servidor/endpoint (`Endpoint = ...`) com resposta imediata ao LuCI RPC (< 100ms) e execução assíncrona desacoplada de firewall e rotas em segundo plano, reduzindo o tempo de salvamento de 12s para **0.730s**.
-24. **🛡️ Blindagem Definitiva Anti-Religamento do AdGuard Home**:
-    - Proteção estrita de estado com eliminação de processos fantasmas e bloqueio de disparos acidentais de `restart` durante modificações de rede ou dispositivos.
+    - Cobertura integral, nativa e auditada em Português do Brasil (PT-BR), Inglês (EN) e Espanhol neutro (ES).
 
 ---
 
-## Why Use It
+## 📸 Capturas de Tela
 
-- **Operations view:** See WAN, LAN, Wi-Fi, device, traffic and router-health information on one screen.
-- **Hybrid AdBlock & Parental Control:** Built-in AdGuard Home running in RAM on Full profile (512MB+ RAM) with 1M+ local rules, plus lightweight Cloud Anycast mode on Lite profile (128MB-256MB RAM) with 9 specialized Anycast DNS providers (Cloudflare Family, Quad9, OpenDNS FamilyShield, CleanBrowsing, Control D, NextDNS).
-- **Network Custom Domain Blacklist:** Instant domain/subdomain blocking (gambling, betting, unwanted sites) in 0ms with zero extra RAM consumption.
-- **Per-Device Rate Limiting with Local LAN Bypass:** Set download and upload speed caps strictly for Internet traffic, while local LAN transfers (NAS, Plex, printers, PC file sharing) remain at full native speed (Gigabit / Wi-Fi 6) via RFC 1918 bypass rules.
-- **Per-Device Parental & SafeSearch:** Enforce SafeSearch and adult content filters individually for selected client devices (e.g. kids' tablets/phones).
-- **Modular cards:** Keep Multi-WAN, SQM/CAKE, UPnP, per-device usage and speed calibration visible only when those modules exist.
-- **Device handling:** Rename connected devices, reserve DHCP addresses by MAC and prioritize selected main-network devices.
-- **Wi-Fi control:** Manage a main network and a guest network from a simpler screen. The SSID names are fully configurable; the pilot names are only examples.
-- **Ark - Setup:** Guided first-configuration assistant with saved progress and final confirmation.
-- **Channel planning:** Analyze Wi-Fi channels manually, apply suggested channels with confirmation or return to automatic channel selection.
-- **SQM calibration:** Run per-WAN speed tests and generate SQM upload suggestions at 85%, 90% and 95%; on weak routers the panel keeps a Fast.com/manual fallback visible.
-- **Multi-Starlink telemetry:** Detect compatible WANs separately, inspect obstruction/GPS/alignment for each antenna and move through them one at a time with temporary isolated routes that do not replace the router default route.
-- **Optional read-only Starlink page:** The administrator can enable `/starlink/` from the Starlink card for LAN-only, no-login telemetry and alignment. It is GET-only and cannot change router settings; it remains disabled by default.
-- **Starlink diagnostics:** Both panels organize packet loss, current obstruction, uptime, obstruction duration, SNR, Ethernet negotiation and hardware alerts when the dish firmware exposes them. The read-only page automatically loads the first detected Starlink and retries transient queries.
-- **Small-flash friendly:** Avoid filling router flash by loading `speedtest-go` into temporary RAM when enough space exists.
-- **Optional Speedify recovery:** When Speedify is used in RAM or external storage mode, ARK Router can remember the chosen mode and try to reload it automatically after reboot.
-- **Trilingual UI (100% audited parity):** Use Portuguese (Brazil), English or neutral Spanish.
-- **802.11s Wi-Fi Mesh & 802.11r/k/v Roaming:** Easy one-click mesh sync with automatic credential export, Satellite Shield, and kernel-level orphan interface purge (`wifi_cleanup_mesh_interfaces`).
-- **ARK Doctor Diagnostic Suite:** Integrated system integrity auditor with 9-layer automated health checks and instant self-repair (`ark-doctor --fix`).
-- **Multi-AP Station Telemetry:** Aggregated station polling (`device_get_stations`) across all active Wi-Fi interfaces for zero-error client counting.
-- **Theme aware:** Follow the active LuCI theme automatically, use ARK Router colors or choose custom colors.
-- **Safe by design:** Installation writes only ARK Router files; network changes happen only after an administrator confirms an action. Backups, resumable setup checkpoints and rollback-oriented helpers are included.
+Capturas reais obtidas em ambiente de testes no roteador físico (Cudy WR3000 v1 / OpenWrt 25.12.5):
 
-### What is included in the ARK Router panel
+| Desempenho & Blindagem de Memória (ZRAM / UPnP) | Visão Geral do Dashboard |
+| :---: | :---: |
+| ![Desempenho e Blindagem de Memoria](docs/screenshots/perf-hardening-card.png) | ![Dashboard Overview](docs/screenshots/dashboard-overview.png) |
 
-The dashboard covers the operational tasks that are otherwise scattered across LuCI: WAN protocol and port-role editing (DHCP, PPPoE, static IPv4 and MAC clone), per-WAN gateway/mask/DNS/latency/link details, failover or load-balancing controls, LAN port status, main/guest Wi-Fi names/passwords, 2.4/5 GHz separation and channel width, country/channel analysis, IPv6 and WPS switches, CAKE/SQM master and per-WAN limits, guest download/upload caps, device naming/reservation/priority, live and 24-hour traffic, health (load/temperature/RAM/flash), HTTPS redirect/certificate guidance, optional modules, backups and safe restart.
+| Ark - Setup (Assistente Inicial) | Controle de WAN e Multi-WAN |
+| :---: | :---: |
+| ![Ark Setup](docs/screenshots/ark-setup.png) | ![WAN Editor](docs/screenshots/wan-editor.png) |
 
-The Starlink module adds dynamic detection of only Starlink-capable WANs, one card per antenna, read-only telemetry/alignment, multi-antenna sequencing, obstruction/alignment diagnostics and a LAN-only `/starlink/` viewer. ZeroTier is the integrated remote-access option; Speedify is an optional licensed bonding runtime and is never silently enabled or bundled with credentials.
+| Otimização de SQM / CAKE | Telemetria Starlink em Tempo Real |
+| :---: | :---: |
+| ![SQM Editor](docs/screenshots/sqm-editor.png) | ![Starlink Telemetry](docs/screenshots/starlink-telemetry-real.png) |
 
-## Screenshots
+| Interface Mobile Fluida | Diagnóstico do Ark Doctor |
+| :---: | :---: |
+| ![Mobile Overview](docs/screenshots/mobile-overview.png) | ![Ark Doctor](docs/screenshots/theme_switched_to_ark.png) |
 
-Real screenshots are stored in [`docs/screenshots`](docs/screenshots). The public screenshots are captured from an actual OpenWrt/LuCI router running ARK Router. Sensitive values such as passwords and MAC addresses must be hidden before publishing.
+---
 
-| Dashboard overview | Ark - Setup |
-| --- | --- |
-| ![Dashboard overview](docs/screenshots/dashboard-overview.png) | ![Ark Setup](docs/screenshots/ark-setup.png) |
+## 🖥️ Roteadores Validados
 
-| WAN/SQM controls | Mobile layout |
-| --- | --- |
-| ![WAN editor](docs/screenshots/wan-editor.png) | ![Mobile overview](docs/screenshots/mobile-overview.png) |
+| Dispositivo | Arquitetura | Memória / Armazenamento | Versão OpenWrt | Perfil ARK |
+| :--- | :--- | :--- | :--- | :--- |
+| **Cudy WR3000 v1** | MediaTek Filogic 820 (ARM64 Dual-Core) | 256 MB RAM / 16 MB Flash SPI | 25.12.5 / 24.x (`apk`) | Standard / Full |
+| **Acer Predator Connect W6x** | MediaTek Filogic 830 (ARM64 Quad-Core) | 1 GB RAM / 512 MB Flash | 25.12.x / 24.x (`apk`) | Full |
+| **D-Link DGL-5500** | Qualcomm Atheros QCA9558 (MIPS Single-Core) | 128 MB RAM / 16 MB Flash | 19.07 a 23.05 (`opkg`) | Lite |
+| **VirtualBox x86_64 (`OpenWrt-ARK-Dev`)** | Intel/AMD x86_64 Multicore | 512 MB a 2 GB RAM | 24.10 / 25.x | Full / Dev |
 
-| SQM editor | Starlink telemetry and alignment |
-| --- | --- |
-| ![SQM editor](docs/screenshots/sqm-editor.png) | ![Starlink telemetry and alignment](docs/screenshots/starlink-telemetry-real.png) |
+---
 
-The Starlink image above is a real capture from the live Cudy/OpenWrt test environment; no generated mock image is used. GitHub will render it inline after the repository page refreshes.
+## 📦 Instalação Rápida
 
-## Tested Device
+O ARK Router é instalado diretamente sobre qualquer instalação existente do OpenWrt com LuCI. Ele **não sobrescreve o kernel** nem altera suas configurações de rede automaticamente.
 
-The current pilot has been tested on:
+### Método 1: Instalador Automático de 1 Linha (Recomendado)
 
-| Item | Value |
-| --- | --- |
-| Router | Cudy WR3000 v1; Acer Predator Connect W6x |
-| Firmware | OpenWrt 25.12.5 r33051-f5dae5ece4 (pilot builds) |
-| Target | `mediatek/filogic` on Cudy; target-specific build on Acer |
-| Package manager | `apk` |
-| LuCI theme used during testing | ARK Theme and standard LuCI layout |
-| Wi-Fi names used in the pilot | Custom, router-local names; not project defaults |
-
-The Wi-Fi names above are not requirements. They document the pilot environment only. ARK Router reads and manages whichever Wi-Fi names are configured on the router. Pilot passwords, private IPs, backups and router-specific secrets are intentionally not included in this repository.
-
-> 💡 **Cudy WR3000 v1 Recovery & Flash Guide**: Para o procedimento detalhado e validado de recuperação de emergência via TFTP e migração entre o firmware OEM e OpenWrt, consulte [`docs/CUDY_WR3000_TFTP_RECOVERY.md`](docs/CUDY_WR3000_TFTP_RECOVERY.md).
-
-## Compatibility
-
-Known-good baseline:
-
-- OpenWrt 25.12.x with LuCI and `rpcd`.
-- `iwinfo` is recommended for Wi-Fi association, scan and channel analysis. If it is missing, those Wi-Fi intelligence features degrade, but the package is no longer blocked from installing.
-- BusyBox `ash`.
-- Standard LuCI JavaScript view environment.
-
-Expected but not yet fully certified:
-
-- Recent OpenWrt releases with LuCI and either `apk` or `opkg`.
-- Routers with enough RAM to temporarily extract `speedtest-go` into `/tmp`.
-
-Not guaranteed:
-
-- Old LuCI versions without the JavaScript view APIs used here.
-- Very small devices with too little RAM for temporary speed-test extraction.
-- Non-OpenWrt vendor firmware.
-
-The package manager adapter supports both `apk` and `opkg` for optional package detection and installation. The temporary `speedtest-go` preparation is optimized for OpenWrt `apk` repositories because the tested firmware stores package indexes in volatile storage.
-
-## Features
-
-| Area | What ARK Router Adds |
-| --- | --- |
-| Dashboard | Responsive overview for desktop, tablet and mobile |
-| Ark - Setup | Guided first setup with resumable draft, checkpoints and safety backup |
-| Traffic | Real-time download/upload counters and 24-hour history |
-| Health | Temperature, memory, storage and load strip |
-| WAN | Dynamic WAN status and Multi-WAN mode controls |
-| Internet setup | Dashboard WAN editors for DHCP, PPPoE, static IPv4, DNS and WAN2-to-LAN role changes |
-| LAN | Wired LAN port status |
-| Wi-Fi | Main and guest cards, password visibility, password editing, country selection and channel analysis |
-| Devices | Friendly names, per-device real-time rates (Wi-Fi DMA), smooth decay, total usage column and DHCP reservation by MAC |
-| DNS Turbo | Global DNS provider benchmark (Cloudflare, Google, Quad9, OpenDNS, AdGuard) with 1-click apply and zero-downtime safety |
-| Performance Center | Conntrack table recycling, automated RAM cache purging, IRQ balance multithreading and nlbwmon 2s acceleration |
-| ZeroTier | Hybrid architecture (direct flash execution or 0.3s RAM loader) with interactive boot autostart toggle |
-| Mobile UX | Native touch responsiveness for iOS and Android with 48px touch targets and zero horizontal scroll |
-| QoS | Optional CAKE priority marking for selected main-network devices |
-| SQM | Dynamic SQM/CAKE controls for every interface configured as an IPv4 WAN, plus guest download/upload limits; `0` means unlimited for that direction |
-| HTTPS | Redirect control and local CA download guidance |
-| System | Router restart button with two confirmations and a backend-enforced delay |
-| Modules | Optional feature center with install/hide suggestions |
-
-## Optional Integrations
-
-| Feature | Package |
-| --- | --- |
-| SQM / CAKE | `luci-app-sqm` |
-| Multi-WAN | `luci-app-mwan3` |
-| Starlink telemetry | Dedicated ARK module embedded in Lite and Full; Lite loads the small architecture-specific client into `/tmp` on demand, while Full keeps it persistently in `/usr/bin` |
-| Per-device usage | `nlbwmon`; `luci-app-nlbwmon` is optional if the original LuCI report page is desired |
-| Guest network full rate limit | `tc-full` and `kmod-sched-act-police`; pulled by Release package installs |
-| IRQ balance | `irqbalance` (included in release package `DEPENDS`) |
-| UPnP / NAT-PMP | `luci-app-upnp` |
-| uHTTPd LuCI manager | `luci-app-uhttpd` (optional addon; web server is native to OpenWrt base) |
-| Link testing | `speedtest-go`, loaded into temporary memory |
-| Tunnel support | `kmod-tun`, required only when Speedify/VPN tunnel interfaces are enabled |
-| Real bonding | Speedify Router runtime, optional; can be loaded internally, from external storage or temporarily in RAM when supported |
-| Remote access | WireGuard and ZeroTier optional overlays; ARK Router can install/configure them without exposing LuCI/SSH on the WAN |
-| Lightweight remote access | ZeroTier, optional; smaller remote-access alternative for constrained routers |
-
-Most optional packages are not hard dependencies. Cards are displayed only when the corresponding capability exists. The dashboard asks for confirmation before installing an optional package. Package installation does not automatically alter network configuration.
-
-See [`docs/PACKAGE_PROFILES.md`](docs/PACKAGE_PROFILES.md) for the Lite and Full package profiles, including measured package sizes, service RAM notes and the tested addon version baseline.
-
-### ZeroTier remote access
-
-ZeroTier is the lightweight remote-access overlay for routers behind CGNAT, Starlink or mobile links. ARK Router can install and enable ZeroTier, join a configured Network ID, prepare firewall access from ZeroTier to LAN and show node/network/IP status.
-
-After joining, authorize the router in ZeroTier Central. To access the LAN behind the router, configure a managed route in ZeroTier Central for the router LAN subnet through the router's ZeroTier IP.
-
-`nlbwmon`, `tc-full`, `kmod-sched-act-police` and `irqbalance` are intentional Release package dependencies. `nlbwmon` provides per-device traffic accounting, while `tc-full` plus `kmod-sched-act-police` allow the guest/visitor network to enforce both download and upload limits. `irqbalance` helps multicore routers spread interrupt load. `kmod-tun` is not a mandatory ARK Router dependency; it is checked and installed only when Speedify/VPN tunnel features are used. In source/fallback installs, ARK Router still detects runtime capabilities and degrades gracefully if one is missing.
-
-### Speedify
-
-Speedify is optional and is used only when the administrator wants real WAN bonding through a Speedify Router license. ARK Router can prepare WAN metrics, start the Speedify runtime, generate the official router activation link and expose basic CLI actions, but it does not include a license and does not force traffic through Speedify automatically.
-
-Router sign-in uses Speedify's activation-code flow. The dashboard calls `speedify_cli activationcode`, shows the generated URL and lets the administrator complete login in Speedify's own portal. ARK Router does not ask for, store or publish the Speedify account password. After activation, Speedify stores its router token locally on the router.
-
-On small-flash routers, ARK Router can run Speedify from RAM or from external storage. RAM mode is temporary: after a reboot the executable disappears, but the ARK Router configuration remains. If **auto recovery after reboot** is enabled, `/etc/init.d/ark-speedify` waits for boot/network readiness and attempts to reload the saved Speedify mode. External storage mode starts the already extracted runtime when the mount is available; RAM mode downloads and extracts the runtime again if enough `/tmp` space exists.
-
-Generic Speedify install actions use the same safe order as the dashboard recommendation: internal only when there is enough overlay space, then external storage, then RAM. This prevents the Lite profile from attempting the heavy official internal install on routers where it will not fit.
-
-The live **Speedify active now** switch controls the current daemon state separately from reboot recovery. Turning it on tries to recover the saved runtime mode first, then connects when possible. Turning it off disconnects/stops Speedify without deleting the saved configuration.
-
-If the last desired state was connected, ARK Router also tries `speedify_cli connect` after recovery. If the account is not logged in or licensed, Speedify may remain `LOGGED_OUT`; this is expected and must be resolved in Speedify itself.
-
-For zero-touch or offline-assisted routers, the reduced Speedify runtime can reuse a preloaded package at `/tmp/ark-speedify-cache/speedify.apk`. ARK Router also verifies `/dev/net/tun`/`kmod-tun` and reinforces NAT/MTU on the Speedify firewall zone so LAN clients keep Internet access through the tunnel.
-
-### Language packs
-
-ARK Router does not require OpenWrt `luci-i18n-*` packages. The dashboard keeps its own English fallback and the administrator-selected runtime language. If a selected translation is incomplete or unavailable, ARK Router falls back to English.
-
-For small-flash routers, LuCI application translations such as `luci-i18n-sqm-pt-br`, `luci-i18n-mwan3-pt-br`, `luci-i18n-nlbwmon-pt-br` and `luci-i18n-upnp-pt-br` can be treated as optional. Removing them may make the original LuCI module pages appear in English, but ARK Router remains usable in its selected language.
-
-## First Configuration
-
-Installing ARK Router only adds the dashboard and helper files. It does not automatically create WAN2, guest Wi-Fi limits, SQM queues, Multi-WAN policies or firewall priority rules.
-
-Those changes require administrator action inside LuCI/ARK Router. The easiest path is the **Ark - Setup** button at the top of the dashboard.
-
-Ark - Setup asks for the common first-run choices:
-
-- scenario/profile;
-- router and panel name;
-- regulatory country;
-- language;
-- unified or split 2.4/5 GHz Wi-Fi names;
-- main Wi-Fi SSID and password;
-- optional guest Wi-Fi with download and upload caps; `0` keeps a direction unlimited;
-- one WAN, WAN2 on LAN1 with failover, WAN2 on LAN1 with balancing or custom internet mode;
-- SQM strategy and optional manual speed limits;
-- DNS mode with separate DNS 1, DNS 2 and DNS 3 fields;
-- IPv6 and WPS preferences;
-- optional modules that the administrator may install separately;
-- confirmed installation of selected optional modules, with progress tracking.
-
-The assistant saves a draft in UCI and stores the last applied checkpoint. If the browser disconnects while Wi-Fi or network services reload, the administrator can reconnect and continue from the saved state. Optional modules can be installed from inside Ark - Setup, but only after confirmation. Before applying network changes, it creates a backup under `/tmp/ark-router-ezsetup-backup-*.tar.gz`.
-
-The manual flow remains:
-
-1. Install the dashboard.
-2. Install only the optional modules you want, such as SQM, Multi-WAN or per-device usage.
-3. Review the current router state in the dashboard.
-4. Run speed calibration if SQM limits are needed.
-5. Apply confirmed changes, such as guest upload limits, WAN mode, Wi-Fi channel suggestions or device priority.
-
-This keeps public installations safe while still allowing a guided setup similar to the tested pilot scenario.
-
-## Wi-Fi Names And QoS
-
-ARK Router does not require the pilot SSID names. It can be used with the administrator's own Wi-Fi names. The main/guest split is useful when the operator wants a more open trusted network and a limited guest network, but QoS/SQM and device priority remain optional. If SQM or the custom QoS rules are not present, those controls are hidden instead of forcing a configuration.
-
-## Safety Model
-
-Installing ARK Router does not automatically change WAN, LAN, Wi-Fi, firewall, DHCP, SQM or Multi-WAN settings. Monitoring and dashboard views are read-only. Network changes happen only after an administrator uses a confirmed action, such as changing Wi-Fi passwords, applying channel suggestions, changing Multi-WAN mode, applying SQM speed suggestions or restarting the router.
-
-When the LAN router IP is changed from the dashboard, ARK Router also rewrites LuCI/uHTTPd listeners to the new LAN IP instead of leaving HTTP/HTTPS on a stale fixed address. This avoids a project-specific `192.168.x.x` assumption and keeps the behavior portable across routers.
-
-See [`docs/SECURITY.md`](docs/SECURITY.md) for the command validation model.
-
-## Building
-
-For this LuCI-only package, the practical local path is to use the OpenWrt SDK `apk mkpkg` tool without compiling a full firmware target. On Windows, run the script from WSL after syncing the repository to `~/ark-router-work/luci-app-ark-router`:
-
-```sh
-scripts/build-apk-wsl.sh
-```
-
-It downloads/extracts the matching OpenWrt SDK if needed and writes:
-
-- `dist/sdk/luci-app-ark-router.apk`
-- `dist/sdk/luci-app-ark-router-<version>-r1.apk`
-- `dist/sdk/luci-app-ark-router-lite.apk`
-- `dist/sdk/luci-app-ark-router-lite-<version>-r1.apk`
-- `dist/sdk/luci-app-ark-router-full.apk`
-- `dist/sdk/luci-app-ark-router-full-<version>-r1.apk`
-
-The generated packages are `noarch` and preserve `/etc/config/equipe_dashboard`, `/etc/config/equipe_devices` and `/etc/config/qos_equipe`. The canonical `luci-app-ark-router.apk` is the Lite profile and keeps the original internal package name for updater compatibility. The Full profile is published as `luci-app-ark-router-full.apk`. Speedify remains an optional external runtime and is not bundled.
-
-For public releases, this repository already includes a GitHub Actions workflow that builds the OpenWrt package when a version tag such as `v0.9.39` is pushed. See [`docs/PUBLISHING.md`](docs/PUBLISHING.md) for the full GitHub publishing flow.
-
-> [!TIP]
-> **Repository Hygiene & Releases:** Compiled packages (`dist/sdk/*.apk`, `.ipk`) and build artifacts are excluded via `.gitignore` to keep this repository lean and fast to clone. All official builds are published exclusively as assets on **[GitHub Releases](https://github.com/Despensativo/ark-router/releases)** (which supports files up to 2 GB for free), keeping the Git tree lightweight (< 50 MB) and strictly adhering to GitHub storage best practices.
-
-## Installation
-
-Install the generated package using the package manager appropriate for the OpenWrt release. After installation, clear the LuCI cache or restart `rpcd`, then open ARK Router in the LuCI menu.
-
-When release packages are available, the simplest path is the installer script:
+Conecte-se via SSH ao seu roteador e execute:
 
 ```sh
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | sh
 ```
 
-The same command can be re-run later to update an existing installation. By default the installer uses `auto` mode: it detects `apk` or `opkg`, tries the latest compatible Release package first, and falls back to source installation if the router cannot resolve package dependencies while offline.
+O instalador detecta automaticamente se o roteador utiliza `apk` ou `opkg`, analisa a memória RAM livre e o espaço disponível em disco, selecionando o melhor perfil (**Lite**, **Standard** ou **Full**).
 
-By default, the installer auto-selects the profile. It chooses Full when RAM is at least 480000 KB and `/overlay` has at least 35000 KB free; otherwise it chooses Lite. To force Lite:
+### Forçar Perfil Específico:
+- **Perfil Lite** (para roteadores com 128 MB a 256 MB de RAM e 16 MB flash):
+  ```sh
+  wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_PROFILE=lite sh
+  ```
+- **Perfil Full** (para roteadores com 512 MB ou mais de RAM):
+  ```sh
+  wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_PROFILE=full sh
+  ```
 
-```sh
-wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_PROFILE=lite sh
-```
+---
 
-To force Full on larger routers:
+### Método 2: Instalação Manual de Pacotes Locais (`.apk` ou `.ipk`)
 
-```sh
-wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_PROFILE=full sh
-```
+Baixe os pacotes gerados diretamente na aba de **[Releases](https://github.com/Despensativo/ark-router/releases)**:
 
-Lite uses `luci-app-ark-router.apk`. Full uses `luci-app-ark-router-full.apk`. The dashboard self-updater uses the same hardware check and keeps Full when Full is already installed.
+- **OpenWrt Moderno (gerenciador APK)**:
+  ```sh
+  apk add ./luci-app-ark-router-1.5.14-r1.apk
+  /etc/init.d/rpcd restart
+  ```
+- **OpenWrt Tradicional / Legado (gerenciador OPKG)**:
+  ```sh
+  opkg install ./luci-app-ark-router-1.5.14-r1.ipk
+  /etc/init.d/rpcd restart
+  ```
 
-If a release package has not been published yet, install or update directly from the GitHub source tree:
+---
 
-```sh
-wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_INSTALL_MODE=source sh
-```
+## 🔄 Atualização Diretamente pelo Painel
 
-For a friendly first-run command that tries the package first and falls back to source if the release asset is missing:
+Após instalado, você pode verificar novas versões diretamente pelo painel em:
+**ARK Router → Recursos → Atualização do ARK Router**.
 
-```sh
-wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_INSTALL_MODE=auto sh
-```
+O atualizador verifica a versão mais recente publicada no GitHub, exibe as notas de lançamento e, após confirmação explícita do administrador, baixa e instala o pacote atualizado criando backup prévio automático das suas configurações em `/tmp`.
 
-The source mode creates a temporary backup under `/tmp/ark-router-install-backup-*.tar.gz`, preserves existing ARK Router configuration files and then copies ARK Router files into the router. It restarts LuCI services, but it does not register an `apk`/`opkg` package. For public/stable installs, publishing a release package is still preferred.
+---
 
-ARK Router is not an `.iso` image. It is a LuCI package installed on an existing OpenWrt router. See [`docs/RELEASES.md`](docs/RELEASES.md) for the GitHub Actions release flow.
+## 🗑️ Desinstalação Limpa e Segura
 
-Manual install with a generated package:
-
-```sh
-apk add ./luci-app-ark-router-*.apk
-/etc/init.d/rpcd restart
-```
-
-On `opkg` based releases, install the generated `.ipk` instead.
-
-## Updating from ARK Router
-
-After ARK Router is installed, open **ARK Router → Recursos → Atualização do ARK Router**.
-The dashboard can check the latest GitHub Release and, after administrator confirmation, download and install the matching package:
-
-- Lite APK: `luci-app-ark-router.apk`.
-- Full APK: `luci-app-ark-router-full.apk`.
-- OPKG equivalents when published: `luci-app-ark-router.ipk` or `luci-app-ark-router-full.ipk`.
-
-The updater creates a temporary configuration backup in `/tmp` before installing and restarts LuCI services afterward. It does not change WAN, LAN, Wi-Fi, firewall, DHCP, SQM or Multi-WAN settings. The updater requires published GitHub Release assets with the names above. It auto-selects Lite/Full from router resources and keeps Full when Full is already installed.
-
-## Uninstall
-
-ARK Router includes a conservative uninstaller:
+Para desinstalar o ARK Router preservando seus nomes amigáveis de dispositivos e preferências:
 
 ```sh
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/uninstall.sh | sh
 ```
 
-By default it removes only ARK Router files and temporary runtime files. It does not remove optional packages that may have been installed or used with the dashboard, such as SQM, Multi-WAN, nlbwmon, UPnP, uHTTPd or `speedtest-go`.
-
-Before removing anything, the script creates a small backup in `/tmp` with ARK Router preferences and friendly device names. Download it before rebooting the router if you want to keep a copy:
-
-```sh
-scp root@ROUTER_IP:/tmp/ark-router-config-backup-*.tar.gz .
-```
-
-Saved dashboard preferences and friendly device names are kept by default. To remove those too:
+Para remover completamente, incluindo arquivos de preferências e configurações salvas:
 
 ```sh
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/uninstall.sh | PURGE=1 sh
 ```
 
-To restore a saved ARK Router preference backup:
+---
 
-```sh
-tar -xzf /tmp/ark-router-config-backup-YYYYMMDD-HHMMSS.tar.gz -C /
-/etc/init.d/rpcd restart
-```
+## 📄 Licença
 
-## Project Status
-
-Version **1.5.9** is the current active release (see [`VERSION`](VERSION) and [`CHANGELOG.md`](CHANGELOG.md)). It consolidates universal compatibility for both OpenWrt generations (OpenWrt Legado 19.07-21.02 via IPK and OpenWrt Moderno 22.03-25.x via APK/IPK and native SquashFS ROM builds). It features an in-place anti-jitter update engine with an integrated Total consumed column (MB/GB), real-time per-device hardware rates (Wi-Fi DMA), a built-in multi-provider DNS Turbo benchmark, ZeroTier remote-access with hybrid flash/RAM execution, a System Performance and Stability center (12h flash wear protection, RAM autopurge, conntrack connection recycling, IRQ Balance), full mobile touch responsiveness (iOS/Android) with 40px+ touch targets and ghost modal overlay prevention, dynamic Multi-WAN failover/balancing, multi-Starlink telemetry, CAKE/SQM upload and download queue management, guest rate limits, and safe rollback checkpoints. Suitable for home, office, mobile, event, gaming and production OpenWrt setups.
-
-## Native ROM Builds (ImageBuilder)
-
-For routers with constrained 16 MB SPI flash (such as Cudy WR3000 v1 / MediaTek Filogic 820), ARK Router can be baked directly into the SquashFS `/rom` using the OpenWrt ImageBuilder. This reduces `/overlay` usage to less than 350 KB, leaving over 2.8 MB of writable flash permanently available. See `GUIA-INSTALACAO-ROM-CUDY-WR3000-OUTRA-IA.md` in the project root for complete automated flashing and compilation procedures.
-
-## License
-
-This project is released under the MIT License. See [`LICENSE`](LICENSE).
-
+Este projeto é disponibilizado sob a licença de código aberto **MIT License**. Consulte o arquivo [`LICENSE`](LICENSE) para mais detalhes.
