@@ -1996,7 +1996,13 @@ system_hardware_auto_tune() {
 	# --- 4. Multicore & IRQ Balance ---
 	irq_action="none"
 	if [ "$silicon_multicore" = 1 ]; then
-		if [ -x /etc/init.d/irqbalance ]; then
+		if ark_has_native_hw_queues; then
+			if [ -x /etc/init.d/irqbalance ]; then
+				/etc/init.d/irqbalance stop >/dev/null 2>&1 || true
+				/etc/init.d/irqbalance disable >/dev/null 2>&1 || true
+			fi
+			irq_action="Nativo por hardware (anéis de DMA dedicados, irqbalance dispensado)"
+		elif [ -x /etc/init.d/irqbalance ]; then
 			/etc/init.d/irqbalance enable >/dev/null 2>&1 || true
 			/etc/init.d/irqbalance restart >/dev/null 2>&1 || true
 			irq_action="Ativado (distribui tarefas entre os $silicon_cpu_cores núcleos)"

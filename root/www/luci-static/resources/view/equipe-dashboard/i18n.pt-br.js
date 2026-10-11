@@ -1752,6 +1752,8 @@
   "🧮 Calculadora de Upload (-7% Bufferbloat)": "🧮 Calculadora de Upload (-7% Bufferbloat)",
   "🧹 Liberar Memória RAM Agora": "🧹 Liberar Memória RAM Agora",
   "🪶 Proteção em Nuvem (Anycast Brasil)": "🪶 Proteção em Nuvem (Anycast Brasil)",
-  "Alterne entre o Tema ARK e o Tema Bootstrap padrão do sistema.": "Alterne entre o Tema ARK e o Tema Bootstrap padrão do sistema."
+  "Alterne entre o Tema ARK e o Tema Bootstrap padrão do sistema.": "Alterne entre o Tema ARK e o Tema Bootstrap padrão do sistema.",
+  "IRQ Balance desativado. Modo nativo por hardware restaurado.": "IRQ Balance desativado. Modo nativo por hardware restaurado.",
+  "⚠️ Alerta: IRQ Balance em execução em hardware que já possui anéis de DMA no silício. Desative para evitar jitter.": "⚠️ Alerta: IRQ Balance em execução em hardware que já possui anéis de DMA no silício. Desative para evitar jitter."
 };
 })();

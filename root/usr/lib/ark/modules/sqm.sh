@@ -226,6 +226,10 @@ handle_sqm() {
 	irqbalance-toggle)
 		case "$2" in 0|1) ;; *) echo 'Estado do irqbalance invalido' >&2; exit 2 ;; esac
 		installed irqbalance || { echo 'irqbalance nao instalado' >&2; exit 3; }
+		if [ "$2" = 1 ] && ark_has_native_hw_queues; then
+			echo 'IRQ Balance desnecessario e contraindicado neste hardware: a distribuicao de interrupcoes e aneis de DMA ja e realizada nativamente pelo silicio.' >&2
+			exit 4
+		fi
 		uci -q set "irqbalance.irqbalance.enabled=$2"
 		uci commit irqbalance
 		if [ "$2" = 1 ]; then /etc/init.d/irqbalance enable; /etc/init.d/irqbalance restart

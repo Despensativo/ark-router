@@ -5763,8 +5763,7 @@ const networkMethods = {
 			const hw = (self.capabilities && self.capabilities.hardware) || {};
 			const isSingleCore = hw.cpu_cores <= 1;
 			const isLowRam = (hw.mem_total_mb || 128) < 256;
-			const irqbalanceFeat = (typeof self.feature === 'function') ? (self.feature('irqbalance') || {}) : {};
-			const isNativeHwIrq = !isSingleCore && (!!opt.irqbalance_native || !!irqbalanceFeat.native_hw || (!opt.irqbalance_installed && !opt.irqbalance_installable && irqbalanceFeat.reason && irqbalanceFeat.reason.indexOf('nativamente') !== -1));
+			const isNativeHwIrq = !isSingleCore && (!!opt.irqbalance_native || !!irqbalanceFeat.native_hw || (irqbalanceFeat.reason && (irqbalanceFeat.reason.indexOf('nativamente') !== -1 || irqbalanceFeat.reason.indexOf('Desnecessário') !== -1)));
 
 			if (isLowRam && selectedPreset === 'auto') {
 				tcpTurbo = false;
@@ -15584,12 +15583,17 @@ const systemMethods = {
 		const rows=Object.keys(FEATURE_META).map(L.bind(function(key){
 			const meta=FEATURE_META[key],f=this.feature(key)||{};
 			const isShieldedOnSat = isSat && (key === 'sqm' || key === 'mwan3' || key === 'speedify' || key === 'upnp' || key === 'adblock' || key === 'nlbwmon');
-			const isNativeHw = key === 'irqbalance' && !f.installed && (f.native_hw || (!f.installable && f.reason && f.reason.indexOf('nativamente') !== -1));
+			const isNativeHw = key === 'irqbalance' && (!!f.native_hw || (!f.installable && f.reason && (f.reason.indexOf('nativamente') !== -1 || f.reason.indexOf('Desnecessário') !== -1)));
 			let state=f.installed?(f.temporary?'Pronto na memória':(f.active?'Instalado e ativo':'Instalado, mas inativo')):(f.installable?'Não instalado':'Não disponível');
 			let pillClass=f.installed?(isShieldedOnSat?'standby':(f.active?'online':'standby')):(f.hidden?'standby':'offline');
 			if (isNativeHw) {
-				state = 'Nativo por Hardware';
-				pillClass = 'online';
+				if (f.active) {
+					state = 'Nativo (IRQ Balance ativo)';
+					pillClass = 'standby';
+				} else {
+					state = 'Nativo por Hardware';
+					pillClass = 'online';
+				}
 			} else if (isShieldedOnSat) {
 				state = f.installed ? _t('Inativo (Modo AP)') : _t('Desativado em Modo AP');
 				pillClass = 'standby';
@@ -15625,10 +15629,22 @@ const systemMethods = {
 						window.setTimeout(function(){window.location.reload();},900);
 					}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});
 				},this)},[f.active?'Desativar':'Ativar']));
+			} else if (isNativeHw && f.installed && f.active) {
+				actions.push(E('button',{class:'ex-mini-button','click':L.bind(function(){
+					return fs.exec('/usr/sbin/equipe-dashboard-control',['irqbalance-toggle','0']).then(function(r){
+						if(r.code)throw new Error(r.stderr||'Falha ao alterar IRQ Balance');
+						ui.addNotification(null,E('p',{},['IRQ Balance desativado. Modo nativo por hardware restaurado.']));
+						window.setTimeout(function(){window.location.reload();},900);
+					}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});
+				},this)},['Desativar (Restaurar Nativo)']));
 			}
 			let reasonEl = '';
 			if (isNativeHw) {
-				reasonEl = E('small',{class:'ex-feature-reason',style:'color:#10b981;font-weight:600;display:block;margin-top:4px;'},['✨ '+(f.reason||'Processamento multicore já distribuído nativamente por hardware/driver.')]);
+				if (f.active) {
+					reasonEl = E('small',{class:'ex-feature-reason',style:'color:#f59e0b;font-weight:600;display:block;margin-top:4px;'},['⚠️ Alerta: IRQ Balance em execução em hardware que já possui anéis de DMA no silício. Desative para evitar jitter.']);
+				} else {
+					reasonEl = E('small',{class:'ex-feature-reason',style:'color:#10b981;font-weight:600;display:block;margin-top:4px;'},['✨ '+(f.reason||'Processamento multicore já distribuído nativamente por hardware/driver.')]);
+				}
 			} else if (isShieldedOnSat) {
 				const satReason = f.reason || 'Exclusivo do Roteador Mestre (Gateway principal).';
 				reasonEl = E('small',{class:'ex-feature-reason',style:'color:#3b82f6;font-weight:600;display:block;margin-top:4px;'},[(satReason.startsWith('🛡️')||satReason.startsWith('Desnecessário'))?satReason:('🛡️ '+satReason)]);
@@ -16315,7 +16331,7 @@ const systemMethods = {
 			if (hasSpeedify && !self.perfState.speedify_encryption) c++;
 			if (hasSpeedify && self.perfState.speedify_log_cap) c++;
 			if (self.perfState.nlbwmon_lite) c++;
-			const isNativeIrq = !irqbalance.installed && (!irqbalance.installable && (irqbalance.native_hw || (irqbalance.reason && irqbalance.reason.indexOf('nativamente') !== -1)));
+			const isNativeIrq = !!irqbalance.native_hw || (!irqbalance.installable && irqbalance.reason && (irqbalance.reason.indexOf('nativamente') !== -1 || irqbalance.reason.indexOf('Desnecessário') !== -1));
 			if ((cpuCores > 1 && irqbalance.installed && irqbalance.active) || isNativeIrq) c++;
 			if (self.perfState.dns_allservers) c++;
 			if (self.perfState.igmp_snooping) c++;
@@ -16501,7 +16517,7 @@ const systemMethods = {
 			]);
 		};
 
-		const isNativeIrq = !irqbalance.installed && (!irqbalance.installable && (irqbalance.native_hw || (irqbalance.reason && irqbalance.reason.indexOf('nativamente') !== -1)));
+		const isNativeIrq = !!irqbalance.native_hw || (!irqbalance.installable && irqbalance.reason && (irqbalance.reason.indexOf('nativamente') !== -1 || irqbalance.reason.indexOf('Desnecessário') !== -1));
 		let irqControl;
 		let irqBadge = 'DUAL-CORE / QUAD-CORE';
 		let irqBadgeClass = 'badge-blue';
@@ -16513,10 +16529,28 @@ const systemMethods = {
 			irqAdvice = 'Indisponível em CPUs de 1 núcleo (' + (hwInfo.model || 'Qualcomm QCA9558') + '). O IRQ Balance requer processadores Multicore (Dual-Core ou Quad-Core) para distribuir tarefas.';
 			irqControl = E('span', { class: 'ex-pill standby', style: 'padding: 6px 12px; font-weight: 700; cursor: default;' }, ['SINGLE-CORE']);
 		} else if (isNativeIrq) {
-			irqBadge = 'NATIVO POR HARDWARE';
-			irqBadgeClass = 'badge-green';
-			irqAdvice = irqbalance.reason || 'Processamento multicore de rede e Wi-Fi já distribuído nativamente por anéis de DMA e interrupções dedicados no hardware.';
-			irqControl = E('span', { class: 'ex-pill online', style: 'padding: 6px 12px; font-weight: 700; cursor: default; background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);' }, ['NATIVO']);
+			if (irqbalance.active) {
+				irqBadge = 'NATIVO (IRQ BALANCE ATIVO)';
+				irqBadgeClass = 'badge-orange';
+				irqAdvice = 'Atenção: IRQ Balance em execução em hardware que já gerencia interrupções no silício. Recomendado desativar para evitar jitter e disputa de núcleos.';
+				irqControl = E('button', {
+					class: 'ex-mini-button',
+					style: 'padding: 6px 12px; font-weight: 700;',
+					click: function() {
+						fs.exec('/usr/sbin/equipe-dashboard-control', ['irqbalance-toggle', '0']).then(function(r) {
+							if (r.code) throw new Error(r.stderr || 'Falha ao desativar IRQ Balance');
+							self.triggerImmediateRefresh('IRQ Balance desativado. Modo nativo por hardware restaurado!', 'info', false);
+						}).catch(function(e) {
+							ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+						});
+					}
+				}, ['Desativar (Restaurar Nativo)']);
+			} else {
+				irqBadge = 'NATIVO POR HARDWARE';
+				irqBadgeClass = 'badge-green';
+				irqAdvice = irqbalance.reason || 'Processamento multicore de rede e Wi-Fi já distribuído nativamente por anéis de DMA e interrupções dedicados no hardware.';
+				irqControl = E('span', { class: 'ex-pill online', style: 'padding: 6px 12px; font-weight: 700; cursor: default; background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);' }, ['NATIVO']);
+			}
 		} else {
 			const irqStatePill = E('strong', {
 				class: 'ex-device-switch-state',

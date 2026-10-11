@@ -5250,3 +5250,9 @@ msgstr "🪶 Proteção em Nuvem (Anycast Brasil)"
 msgid "Alterne entre o Tema ARK e o Tema Bootstrap padrão do sistema."
 msgstr "Alterne entre o Tema ARK e o Tema Bootstrap padrão do sistema."
 
+
+msgid "IRQ Balance desativado. Modo nativo por hardware restaurado."
+msgstr "IRQ Balance desativado. Modo nativo por hardware restaurado."
+
+msgid "⚠️ Alerta: IRQ Balance em execução em hardware que já possui anéis de DMA no silício. Desative para evitar jitter."
+msgstr "⚠️ Alerta: IRQ Balance em execução em hardware que já possui anéis de DMA no silício. Desative para evitar jitter."

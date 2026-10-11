@@ -1767,8 +1767,7 @@ const networkMethods = {
 			const hw = (self.capabilities && self.capabilities.hardware) || {};
 			const isSingleCore = hw.cpu_cores <= 1;
 			const isLowRam = (hw.mem_total_mb || 128) < 256;
-			const irqbalanceFeat = (typeof self.feature === 'function') ? (self.feature('irqbalance') || {}) : {};
-			const isNativeHwIrq = !isSingleCore && (!!opt.irqbalance_native || !!irqbalanceFeat.native_hw || (!opt.irqbalance_installed && !opt.irqbalance_installable && irqbalanceFeat.reason && irqbalanceFeat.reason.indexOf('nativamente') !== -1));
+			const isNativeHwIrq = !isSingleCore && (!!opt.irqbalance_native || !!irqbalanceFeat.native_hw || (irqbalanceFeat.reason && (irqbalanceFeat.reason.indexOf('nativamente') !== -1 || irqbalanceFeat.reason.indexOf('Desnecessário') !== -1)));
 
 			if (isLowRam && selectedPreset === 'auto') {
 				tcpTurbo = false;

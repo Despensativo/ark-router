@@ -12528,3 +12528,9 @@ msgstr "RAM Memory Compression (ZRAM / LZ4)"
 msgid "Compressão de Memória RAM (ZRAM)"
 msgstr "RAM Memory Compression (ZRAM)"
 
+
+msgid "IRQ Balance desativado. Modo nativo por hardware restaurado."
+msgstr "IRQ Balance disabled. Native hardware mode restored."
+
+msgid "⚠️ Alerta: IRQ Balance em execução em hardware que já possui anéis de DMA no silício. Desative para evitar jitter."
+msgstr "⚠️ Alert: IRQ Balance running on hardware that already has DMA rings in silicon. Disable to prevent jitter."

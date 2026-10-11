@@ -2779,10 +2779,9 @@ handle_network() {
 		printf '%s' "$cur_speed" | grep -Eq '^[0-9]+$' || cur_speed=0
 		[ "$cur_mtu" -ge 1508 ] 2>/dev/null && baby_jumbo=1
 		irq_installed=0; irq_active=0; irq_native=0
-		dist_target="$(grep 'DISTRIB_TARGET' /etc/openwrt_release 2>/dev/null | cut -d"'" -f2 || echo '')"
-		case "$dist_target" in
-			mediatek/filogic*|ipq*|qualcommax*|qca*|mvebu*|layerscape*) irq_native=1 ;;
-		esac
+		if ark_has_native_hw_queues; then
+			irq_native=1
+		fi
 		{ [ -x "${ARK_ROOT}/etc/init.d/irqbalance" ] || [ -x /etc/init.d/irqbalance ]; } && irq_installed=1
 		[ "$irq_installed" = 1 ] && { pidof irqbalance >/dev/null 2>&1 || { [ -x /etc/init.d/irqbalance ] && /etc/init.d/irqbalance enabled >/dev/null 2>&1; }; } && irq_active=1
 		igmp_snooping=0
@@ -2926,9 +2925,13 @@ EOF
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
 		fi
 		if [ "$irqbalance" = 1 ]; then
-			[ -x /etc/init.d/irqbalance ] || { echo 'IRQ Balance nao instalado' >&2; exit 3; }
-			/etc/init.d/irqbalance enable >/dev/null 2>&1 || true
-			/etc/init.d/irqbalance start >/dev/null 2>&1 || { echo 'Nao foi possivel iniciar IRQ Balance' >&2; exit 3; }
+			if ark_has_native_hw_queues; then
+				:
+			else
+				[ -x /etc/init.d/irqbalance ] || { echo 'IRQ Balance nao instalado' >&2; exit 3; }
+				/etc/init.d/irqbalance enable >/dev/null 2>&1 || true
+				/etc/init.d/irqbalance start >/dev/null 2>&1 || { echo 'Nao foi possivel iniciar IRQ Balance' >&2; exit 3; }
+			fi
 		elif [ "$irqbalance" = 0 ]; then
 			[ ! -x /etc/init.d/irqbalance ] || { /etc/init.d/irqbalance stop >/dev/null 2>&1 || true; /etc/init.d/irqbalance disable >/dev/null 2>&1 || true; }
 		fi

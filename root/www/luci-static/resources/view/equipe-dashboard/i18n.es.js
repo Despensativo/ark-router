@@ -4164,6 +4164,8 @@
   "Teto rígido de 32 MB:": "Límite estricto de 32 MB:",
   "Abertura Automática de Portas (UPnP / IGD)": "Apertura Automática de Puertos (UPnP / IGD)",
   "Compressão de Memória RAM (ZRAM / LZ4)": "Compresión de Memoria RAM (ZRAM / LZ4)",
-  "Compressão de Memória RAM (ZRAM)": "Compresión de Memoria RAM (ZRAM)"
+  "Compressão de Memória RAM (ZRAM)": "Compresión de Memoria RAM (ZRAM)",
+  "IRQ Balance desativado. Modo nativo por hardware restaurado.": "IRQ Balance desactivado. Modo nativo por hardware restaurado.",
+  "⚠️ Alerta: IRQ Balance em execução em hardware que já possui anéis de DMA no silício. Desative para evitar jitter.": "⚠️ Alerta: IRQ Balance en ejecución en hardware que ya cuenta con anillos de DMA en silicio. Desactive para evitar jitter."
 };
 })();
