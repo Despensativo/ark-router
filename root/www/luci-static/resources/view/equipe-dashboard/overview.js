@@ -13055,7 +13055,7 @@ const systemMethods = {
 		const stateClass=info.error?'offline':(info.available?'online':'standby');
 		const actions=[];
 		if(info.available){
-			actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.startSelfUpdate,this,info)},['Atualizar agora']));
+			actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.showUpdateConfirmModal,this,info)},['Atualizar agora']));
 		}
 		actions.push(E('button',{class:'ex-mini-button','style':'background: rgba(127,127,127,.12);','click':L.bind(this.openManualUpdateModal,this,info)},['📦 Instalar manual/offline']));
 
@@ -13097,13 +13097,18 @@ const systemMethods = {
 		]));
 		translateTree(node);
 	},
-	checkSelfUpdate: function(button){
+	checkSelfUpdate: function(button, force){
 		if(button){button.disabled=true;button.textContent='Verificando…';}
 		const node=document.getElementById('ex-self-update-result'); if(node)node.replaceChildren(E('div',{class:'ex-update-card'},[E('small',{class:'ex-muted'},['Consultando GitHub Releases…'])]));
-		return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-check'],20000).then(L.bind(function(r){
+		const args = ['self-update-check'];
+		if(force) args.push('force');
+		return fs.exec('/usr/sbin/equipe-dashboard-control',args,20000).then(L.bind(function(r){
 			if(r.code)throw new Error(r.stderr||'Falha ao verificar atualização');
 			let info={}; try{info=JSON.parse(r.stdout||'{}');}catch(e){throw new Error('Resposta de atualização inválida');}
 			this.renderSelfUpdateResult(info);
+			if(info.available){
+				this.showUpdateConfirmModal(info);
+			}
 		},this)).catch(function(e){if(node)node.replaceChildren(E('div',{class:'ex-update-card'},[E('p',{class:'alert-message warning'},[e.message])]));}).finally(function(){if(button){button.disabled=false;button.textContent='Verificar atualização';}});
 	},
 	pollSelfUpdate: function(attempt){
@@ -13162,21 +13167,237 @@ const systemMethods = {
 			window.setTimeout(L.bind(this.pollSelfUpdate, this, attempt + 1), 1500);
 		}, this));
 	},
-	startSelfUpdate: function(info){
+	showUpdateConfirmModal: function(info){
 		info=info||{};
-		const profileUpgrade=!!info.available&&info.profile==='full'&&info.actual_profile!=='full'&&(info.current||'')===(info.latest||'');
-		ui.showModal('Atualizar ARK Router',[
-			E('p',{},[profileUpgrade?'Upgrade de perfil: ':'Instalada: ',E('strong',{},[info.current||'—']),' • ',profileUpgrade?'Destino: ':'Nova: ',E('strong',{},[profileUpgrade?'Full':(info.latest||'—')])]),
-			E('p',{class:'alert-message warning'},['O pacote será baixado do GitHub Releases e instalado com o gerenciador de pacotes do OpenWrt. O painel pode reiniciar por alguns segundos. Configurações de rede não serão alteradas.']),
-			E('p',{class:'ex-package-name'},['Arquivo: ',E('code',{},[info.asset||'luci-app-ark-router'])]),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
-				return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-start']).then(L.bind(function(r){
-					if(r.code)throw new Error(r.stderr||'Falha ao iniciar atualização');
-					ui.hideModal(); ui.addNotification(null,E('p',{},['Atualização iniciada. O painel avisará quando terminar.']));
-					this.pollSelfUpdate(0);
-				},this)).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});
-			},this)},['Confirmar atualização'])])
+		const self=this;
+		const update=this.capabilities.update||{};
+		const current=info.current||update.current||'—';
+		const latest=info.latest||'—';
+		const manager=info.manager||update.manager||this.capabilities.package_manager||'apk';
+		const asset=info.asset||('luci-app-ark-router.'+(manager==='apk'?'apk':'ipk'));
+
+		const overlayFreeKb=Number(info.overlay_free_kb||0);
+		const overlayFreeMb=(overlayFreeKb/1024).toFixed(1);
+		const needOverlayKb=Number(info.need_overlay_kb||650);
+		const tmpFreeKb=Number(info.tmp_free_kb||0);
+		const tmpFreeMb=(tmpFreeKb/1024).toFixed(0);
+		const spaceOk=(info.space_ok!==false)&&(overlayFreeKb>=needOverlayKb);
+		const spaceWarning=info.space_warning||(overlayFreeKb>=needOverlayKb&&overlayFreeKb<1200);
+
+		// Formatador de Changelog
+		const rawChangelog=info.changelog||'';
+		let changelogEls=[];
+		if(rawChangelog.trim()){
+			const lines=rawChangelog.split(/\r?\n/).map(function(l){return l.trim();}).filter(Boolean);
+			lines.forEach(function(line){
+				if(line.startsWith('###')||line.startsWith('##')){
+					changelogEls.push(E('strong',{style:'display:block;margin:10px 0 4px 0;color:#3b82f6;font-size:0.95rem;'},[line.replace(/^#+\s*/,'')]));
+				}else if(line.startsWith('•')||line.startsWith('-')||line.startsWith('*')){
+					const clean=line.replace(/^[•\-\*]\s*/,'').replace(/\*\*(.*?)\*\*/g,'$1');
+					changelogEls.push(E('div',{style:'display:flex;gap:8px;margin:4px 0;font-size:0.85rem;line-height:1.4;'},[
+						E('span',{style:'color:#10b981;'},['•']),
+						E('span',{},[clean])
+					]));
+				}else{
+					changelogEls.push(E('p',{style:'margin:4px 0;font-size:0.85rem;line-height:1.4;'},[line.replace(/\*\*(.*?)\*\*/g,'$1')]));
+				}
+			});
+		}else{
+			changelogEls.push(E('p',{class:'ex-muted',style:'font-size:0.85rem;font-style:italic;'},[
+				'Melhorias de desempenho, estabilidade de conexão e correções gerais do ecossistema ARK Router.'
+			]));
+		}
+
+		// Diagnostico de Armazenamento Flash e RAM com ponto de corte no limite
+		let storageBadgeText = _t('ESPAÇO SUFICIENTE');
+		let storageBadgeClass = 'badge-green';
+		let storageDesc = _t('Armazenamento seguro: %s MB livres na partição Flash (ponto de corte mínimo: %s KB).').replace('%s', overlayFreeMb).replace('%s', needOverlayKb);
+		let storageBorderColor = 'rgba(16, 185, 129, 0.3)';
+		let storageBg = 'rgba(16, 185, 129, 0.06)';
+
+		if (!spaceOk) {
+			storageBadgeText = _t('ESPAÇO INSUFICIENTE NA FLASH');
+			storageBadgeClass = 'badge-red';
+			storageDesc = _t('Apenas %s KB livres na partição Flash. O ponto de corte mínimo é de %s KB para evitar travamento ou corrupção de sistema. Atualização bloqueada por segurança.').replace('%s', overlayFreeKb).replace('%s', needOverlayKb);
+			storageBorderColor = 'rgba(239, 68, 68, 0.4)';
+			storageBg = 'rgba(239, 68, 68, 0.08)';
+		} else if (spaceWarning) {
+			storageBadgeText = _t('NO LIMITE DE SEGURANÇA');
+			storageBadgeClass = 'badge-yellow';
+			storageDesc = _t('Armazenamento compacto: %s MB livres (ponto de corte mínimo: %s KB). A atualização prosseguirá substituindo os arquivos existentes.').replace('%s', overlayFreeMb).replace('%s', needOverlayKb);
+			storageBorderColor = 'rgba(245, 158, 11, 0.4)';
+			storageBg = 'rgba(245, 158, 11, 0.08)';
+		}
+
+		const storageCard = E('div', {
+			class: 'ex-device-config-block',
+			style: 'padding:12px 14px;margin:12px 0;border-radius:10px;border:1px solid ' + storageBorderColor + ';background:' + storageBg + ';'
+		}, [
+			E('div', { style: 'display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;' }, [
+				E('strong', { style: 'font-size:0.9rem;display:flex;align-items:center;gap:6px;' }, [
+					_t('💾 Diagnóstico de Espaço em Disco'),
+					E('span', { class: 'ex-perf-badge ' + storageBadgeClass }, [(spaceOk ? (spaceWarning ? '⚠️ ' : '✅ ') : '❌ ') + storageBadgeText])
+				]),
+				E('small', { class: 'ex-muted' }, [_t('RAM (/tmp): %s MB livres').replace('%s', tmpFreeMb)])
+			]),
+			E('p', { style: 'margin:8px 0 0 0;font-size:0.84rem;line-height:1.4;' }, [storageDesc]),
+			(!spaceOk) ? E('div', { style: 'margin-top:10px;display:flex;justify-content:flex-start;' }, [
+				E('button', {
+					class: 'ex-mini-button',
+					type: 'button',
+					style: 'padding:6px 14px;font-weight:700;',
+					click: function() {
+						ui.hideModal();
+						fs.exec('/usr/sbin/equipe-dashboard-control', ['system-storage-purge']).then(function() {
+							ui.addNotification(null, E('p', {}, [_t('Espaço Flash otimizado! Verificando novamente…')]));
+							self.checkSelfUpdate(null, true);
+						});
+					}
+				}, [_t('🧹 Otimizar Espaço Flash Agora')])
+			]) : ''
 		]);
+
+		const confirmBtn = E('button', {
+			class: 'btn cbi-button ' + (spaceOk ? 'cbi-button-positive' : 'cbi-button-neutral'),
+			disabled: !spaceOk,
+			style: 'font-weight:750;',
+			click: L.bind(function() {
+				ui.hideModal();
+				ui.addNotification(null, E('p', {}, [_t('Atualização do ARK Router iniciada. Acompanhe o progresso.')]));
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['self-update-start']).then(L.bind(function(r) {
+					if (r.code) throw new Error(r.stderr || 'Falha ao iniciar atualização');
+					this.pollSelfUpdate(0);
+				}, this)).catch(function(e) {
+					if (reloadAfterExpectedDisconnect(e, 'Comando enviado. O painel recarregará quando o roteador concluir a atualização.', 4500)) return;
+					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+				});
+			}, this)
+		}, [spaceOk ? _t('🚀 Confirmar e Atualizar') : _t('Espaço Insuficiente')]);
+
+		const modalContent = [
+			E('div', { style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08);flex-wrap:wrap;gap:8px;' }, [
+				E('div', { style: 'display:flex;align-items:center;gap:8px;' }, [
+					E('span', { style: 'font-size:0.85rem;color:#94a3b8;' }, [_t('Versão Instalada:')]),
+					E('strong', { class: 'ex-pill standby', style: 'padding:4px 10px;' }, ['v' + current]),
+					E('span', { style: 'color:#94a3b8;' }, ['➔']),
+					E('span', { style: 'font-size:0.85rem;color:#10b981;font-weight:700;' }, [_t('Nova Versão:')]),
+					E('strong', { class: 'ex-pill online', style: 'padding:4px 10px;' }, ['v' + latest])
+				]),
+				E('code', { style: 'font-size:0.82rem;font-weight:700;' }, [asset])
+			]),
+
+			E('div', { class: 'ex-device-config-block', style: 'margin-bottom:12px;' }, [
+				E('strong', { style: 'font-size:0.9rem;display:block;margin-bottom:6px;' }, [_t('📋 O que há de novo na versão v%s:').replace('%s', latest)]),
+				E('div', { style: 'max-height:220px;overflow-y:auto;padding:10px 14px;background:rgba(0,0,0,0.22);border-radius:8px;border:1px solid rgba(255,255,255,0.06);' }, changelogEls)
+			]),
+
+			storageCard,
+
+			E('div', { class: 'ex-device-config-block', style: 'margin-bottom:14px;background:rgba(59,130,246,0.06);border-color:rgba(59,130,246,0.2);' }, [
+				E('strong', { style: 'font-size:0.88rem;color:#3b82f6;' }, [_t('🛡️ Blindagem & Garantias de Segurança:')]),
+				E('ul', { style: 'margin:6px 0 0 16px;padding:0;font-size:0.82rem;color:#cbd5e1;line-height:1.45;' }, [
+					E('li', {}, [_t('Backup automático de segurança das configurações antes da gravação.')]),
+					E('li', {}, [_t('Senhas, redes Wi-Fi, regras de firewall e conexões são 100% preservadas.')]),
+					E('li', {}, [_t('Zero interrupção de tráfego de internet durante o processo.')])
+				])
+			]),
+
+			E('p', { style: 'font-size:0.92rem;font-weight:700;text-align:center;margin:14px 0 8px 0;' }, [
+				_t('Deseja realmente atualizar o ARK Router para a versão v%s agora?').replace('%s', latest)
+			]),
+
+			E('div', { style: 'display:flex;justify-content:flex-end;gap:10px;margin-top:14px;' }, [
+				E('button', { class: 'btn cbi-button cbi-button-neutral', click: ui.hideModal }, [_t('Cancelar')]),
+				confirmBtn
+			])
+		];
+
+		ui.showModal(_t('🚀 Atualização do ARK Router'), modalContent);
+		translateTree(document.querySelector('.cbi-modal') || document.body);
+	},
+	startSelfUpdate: function(info){
+		return this.showUpdateConfirmModal(info);
+	},
+	checkBackgroundUpdate: function(){
+		const self=this;
+		const now=Date.now();
+		const lastCheckTime=Number(localStorage.getItem('ark_last_update_check_time')||0);
+		const cachedDataStr=localStorage.getItem('ark_last_update_check_data');
+
+		if(now-lastCheckTime<43200000&&cachedDataStr){
+			try{
+				const data=JSON.parse(cachedDataStr);
+				if(data&&data.available){
+					self.renderUpdateBanner(data);
+				}
+				return;
+			}catch(e){}
+		}
+
+		window.setTimeout(function(){
+			fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-check']).then(function(r){
+				if(r.code)return;
+				let info={};
+				try{info=JSON.parse(r.stdout||'{}');}catch(e){return;}
+				localStorage.setItem('ark_last_update_check_time',String(Date.now()));
+				localStorage.setItem('ark_last_update_check_data',JSON.stringify(info));
+				if(info&&info.available){
+					self.renderUpdateBanner(info);
+				}
+			}).catch(function(){});
+		},4500);
+	},
+	renderUpdateBanner: function(info){
+		if(!info||!info.available||!info.latest)return;
+		const dismissed=localStorage.getItem('ark_dismissed_update');
+		if(dismissed===info.latest)return;
+
+		const container=document.getElementById('ex-update-banner-container');
+		if(!container)return;
+
+		const banner=E('div',{
+			class:'ex-update-banner',
+			style:'display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:12px 18px;margin:12px 0 16px 0;border-radius:12px;background:linear-gradient(90deg,rgba(59,130,246,0.12) 0%,rgba(139,92,246,0.12) 100%);border:1px solid rgba(59,130,246,0.35);box-shadow:0 4px 16px rgba(0,0,0,0.15);'
+		},[
+			E('div',{style:'display:flex;align-items:center;gap:12px;'},[
+				E('span',{style:'font-size:1.4rem;'},['🚀']),
+				E('div',{},[
+					E('div',{style:'display:flex;align-items:center;gap:8px;'},[
+						E('strong', { style: 'font-size:0.95rem;' }, [_t('Nova versão disponível: ARK Router v%s').replace('%s', info.latest)]),
+						E('span', { class: 'ex-pill online', style: 'padding:2px 8px;font-size:0.75rem;font-weight:700;' }, [_t('ATUALIZAÇÃO')])
+					]),
+					E('small', { class: 'ex-muted', style: 'display:block;margin-top:2px;' }, [
+						_t('Versão atual: v%s').replace('%s', info.current || '—') + ' • ' + _t('Atualização com backup de segurança automático.')
+					])
+				])
+			]),
+			E('div', { style: 'display:flex;align-items:center;gap:8px;' }, [
+				E('button', {
+					class: 'ex-mini-button',
+					type: 'button',
+					style: 'padding:8px 14px;font-weight:750;font-size:0.85rem;',
+					click: L.bind(function() {
+						this.showUpdateConfirmModal(info);
+					}, this)
+				}, [_t('Ver Novidades & Atualizar')]),
+				E('button', {
+					class: 'ex-mini-button',
+					type: 'button',
+					style: 'padding:8px 12px;background:rgba(127,127,127,0.15);color:#94a3b8;font-size:0.82rem;',
+					title: _t('Ocultar aviso para esta versão'),
+					click: function() {
+						localStorage.setItem('ark_dismissed_update', info.latest);
+						banner.style.transition = 'all 0.3s ease';
+						banner.style.opacity = '0';
+						banner.style.transform = 'translateY(-10px)';
+						window.setTimeout(function() { banner.remove(); }, 300);
+					}
+				}, [_t('Ocultar ✕')])
+			])
+		]);
+
+		container.replaceChildren(banner);
+		translateTree(container);
 	},
 	openManualUpdateModal: function(info){
 		info=info||{};
@@ -17720,6 +17941,7 @@ const renderMethods = {
 
 		const root=E('div',{class:'ex-dashboard'},[
 			E('section',{class:'ex-hero'+(isGamer?' ex-hero-gamer':'')},[E('div',{},[E('span',{class:'ex-eyebrow'},[heroEyebrow]),E('h2',{},[panelTitle]),E('p',{},[this.board.model||'OpenWrt','  •  ',release,'  •  ARK Router ',arkVersion]),E('div',{id:'ex-speedify-top',class:'ex-hero-speedify standby',style:'display:none'},[E('span',{},['Speedify']),E('strong',{},['—']),E('small',{},['—'])])]),E('div',{class:'ex-hero-status'},[E('span',{id:'ex-global-status',class:'ex-pill standby'},['VERIFICANDO']),E('strong',{id:'ex-clock'},['--:--:--']),E('small',{id:'ex-refresh-summary'},['sessão de 12 horas • atualização a cada 3 segundos']),E('div',{class:'ex-hero-actions'},[gamerButton,opModeButton,languageButton,E('button',{class:'ex-hero-feature-button ex-hero-setup-button','click':L.bind(this.showEzSetup,this)},['Ark - Setup']),E('button',{class:'ex-hero-feature-button','click':L.bind(this.showFeatureCenter,this)},['Recursos'])])])]),
+			E('div',{id:'ex-update-banner-container'}),
 			E('div',{id:'ex-doctor-banner',class:'ex-doctor-banner',style:'display:none;'}),
 			E('section',{class:'ex-card ex-health-strip'},[
 				E('div',{class:'ex-health-head'},[
@@ -18900,6 +19122,7 @@ const renderMethods = {
 		if(!(this.feature('nlbwmon')||{}).installed){const note=root.querySelector('.ex-table-note');if(note)note.textContent='O monitor de consumo não está instalado; a lista de dispositivos continua disponível, sem velocidade individual.';}
 		translateTree(root);
 		this.dashboardRoot=root;
+		if(typeof window !== 'undefined'){ window.arkDashboard = this; }
 		const deviceDetails=root.querySelector('#ex-device-details');
 		if(deviceDetails)deviceDetails.addEventListener('toggle',L.bind(function(){if(this.currentData)this.updateRefreshSummary(this.currentData);this.scheduleAdaptiveRefresh(0);},this));
 		if(typeof document !== 'undefined' && !window._arkVisibilityListenerAttached){
@@ -18914,6 +19137,11 @@ const renderMethods = {
 		this.update(data); this.scheduleAdaptiveRefresh();
 		if (dashboardLanguage !== 'pt-br' && typeof translateTree === 'function') {
 			translateTree(root);
+		}
+		if (typeof this.checkBackgroundUpdate === 'function') {
+			window.setTimeout(L.bind(function() {
+				this.checkBackgroundUpdate();
+			}, this), 1000);
 		}
 		return root;
 	},

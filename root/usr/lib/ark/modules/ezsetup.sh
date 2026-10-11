@@ -309,6 +309,11 @@ ark_overlay_avail_kb() {
 	[ -n "$v" ] && printf '%s' "$v" || printf 0
 }
 
+ark_tmp_avail_kb() {
+	v="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4; exit}' || true)"
+	[ -n "$v" ] && printf '%s' "$v" || printf 0
+}
+
 ark_best_profile() {
 	# Never select Full on 32-bit / non-AArch64 architectures (e.g. armv7l, mips)
 	if ! ark_can_run_aarch64; then
@@ -503,6 +508,18 @@ ark_latest_release() {
 	printf '%s' "$tag"
 }
 
+ark_latest_changelog() {
+	repo="$(ark_update_repo)"
+	body=""
+	# 1. Tentativa via GitHub API releases/latest
+	body="$(ark_http_get "https://api.github.com/repos/$repo/releases/latest" "User-Agent: ARK-Router" | jsonfilter -e '@.body' 2>/dev/null || true)"
+	# 2. Fallback via raw.githubusercontent.com docs/LATEST_CHANGELOG.md
+	if [ -z "$body" ]; then
+		body="$(ark_http_get "https://raw.githubusercontent.com/$repo/main/docs/LATEST_CHANGELOG.md" 2>/dev/null || true)"
+	fi
+	printf '%s' "$body"
+}
+
 ark_update_json() {
 	current="$(ark_current_version)"
 	repo="$(ark_update_repo)"
@@ -512,6 +529,7 @@ ark_update_json() {
 	best_profile="$(ark_best_profile)"
 	ram_kb="$(ark_mem_total_kb)"; [ -n "$ram_kb" ] || ram_kb=0
 	overlay_kb="$(ark_overlay_avail_kb)"; [ -n "$overlay_kb" ] || overlay_kb=0
+	tmp_kb="$(ark_tmp_avail_kb)"; [ -n "$tmp_kb" ] || tmp_kb=0
 	asset="$(ark_update_asset_name 2>/dev/null || true)"
 	latest="$(ark_latest_release)"
 	available=false; error=""
@@ -522,8 +540,25 @@ ark_update_json() {
 	elif [ "$profile" = full ] && [ "$actual_profile" != full ]; then available=true
 	fi
 	if [ -n "$asset" ]; then url="https://github.com/$repo/raw/main/dist/sdk/$asset"; else url=""; fi
-	printf '{"current":"%s","repo":"%s","manager":"%s","profile":"%s","actual_profile":"%s","best_profile":"%s","ram_kb":%s,"overlay_free_kb":%s,"latest":"%s","asset":"%s","url":"%s","available":%s,"error":"%s"}\n' \
-		"$(json_escape "$current")" "$(json_escape "$repo")" "$(json_escape "$manager")" "$(json_escape "$profile")" "$(json_escape "$actual_profile")" "$(json_escape "$best_profile")" "$ram_kb" "$overlay_kb" "$(json_escape "$latest")" "$(json_escape "$asset")" "$(json_escape "$url")" "$available" "$(json_escape "$error")"
+
+	# Calculo cirurgico de espaco em disco com ponto de corte no limite (650 KB flash / 1.5 MB RAM)
+	need_overlay_kb=650
+	need_tmp_kb=1500
+	space_ok=true
+	space_warning=false
+	if [ "$overlay_kb" -lt "$need_overlay_kb" ]; then
+		space_ok=false
+	elif [ "$overlay_kb" -lt 1200 ]; then
+		space_warning=true
+	fi
+	if [ "$tmp_kb" -lt "$need_tmp_kb" ]; then
+		space_ok=false
+	fi
+
+	changelog="$(ark_latest_changelog)"
+
+	printf '{"current":"%s","repo":"%s","manager":"%s","profile":"%s","actual_profile":"%s","best_profile":"%s","ram_kb":%s,"overlay_free_kb":%s,"tmp_free_kb":%s,"need_overlay_kb":%s,"need_tmp_kb":%s,"space_ok":%s,"space_warning":%s,"latest":"%s","asset":"%s","url":"%s","available":%s,"error":"%s","changelog":"%s"}\n' \
+		"$(json_escape "$current")" "$(json_escape "$repo")" "$(json_escape "$manager")" "$(json_escape "$profile")" "$(json_escape "$actual_profile")" "$(json_escape "$best_profile")" "$ram_kb" "$overlay_kb" "$tmp_kb" "$need_overlay_kb" "$need_tmp_kb" "$space_ok" "$space_warning" "$(json_escape "$latest")" "$(json_escape "$asset")" "$(json_escape "$url")" "$available" "$(json_escape "$error")" "$(json_escape "$changelog")"
 }
 
 ark_operation_profile() { uci -q get equipe_dashboard.main.operation_profile 2>/dev/null || printf 'standard'; }
@@ -1636,7 +1671,25 @@ handle_ezsetup() {
 		printf '%s\n' "$features_out"
 		;;
 	self-update-check)
-		ark_update_json
+		cache_file="/tmp/ark-router-update-check.json"
+		force=0
+		case "$2" in --force|force|1) force=1 ;; esac
+		now="$(date +%s 2>/dev/null || echo 0)"
+		cache_valid=0
+		if [ "$force" = 0 ] && [ -f "$cache_file" ]; then
+			cache_mtime="$(date -r "$cache_file" +%s 2>/dev/null || echo 0)"
+			cache_age=$((now - cache_mtime))
+			if [ "$cache_age" -ge 0 ] && [ "$cache_age" -lt 43200 ]; then
+				cache_valid=1
+			fi
+		fi
+		if [ "$cache_valid" = 1 ]; then
+			cat "$cache_file"
+		else
+			out="$(ark_update_json)"
+			printf '%s\n' "$out" > "$cache_file" 2>/dev/null
+			printf '%s\n' "$out"
+		fi
 		;;
 	self-update-status)
 		cat /tmp/ark-router-self-update.status 2>/dev/null || echo idle
@@ -1655,8 +1708,15 @@ handle_ezsetup() {
 		manager="$(printf '%s' "$info" | jsonfilter -e '@.manager' 2>/dev/null)"
 		latest="$(printf '%s' "$info" | jsonfilter -e '@.latest' 2>/dev/null)"
 		repo="$(printf '%s' "$info" | jsonfilter -e '@.repo' 2>/dev/null)"
+		space_ok="$(printf '%s' "$info" | jsonfilter -e '@.space_ok' 2>/dev/null)"
+		overlay_kb="$(printf '%s' "$info" | jsonfilter -e '@.overlay_free_kb' 2>/dev/null)"
+		need_overlay_kb="$(printf '%s' "$info" | jsonfilter -e '@.need_overlay_kb' 2>/dev/null)"
 		[ -n "$repo" ] || repo="$(ark_update_repo)"
 		[ "$available" = true ] || { echo 'Nenhuma atualizacao mais nova disponivel' >&2; exit 3; }
+		if [ "$space_ok" = false ]; then
+			echo "Espaco insuficiente na Flash (/overlay): apenas ${overlay_kb} KB livres. O ponto de corte minimo e de ${need_overlay_kb} KB para garantir a integridade do sistema." >&2
+			exit 5
+		fi
 		[ -n "$url" ] && [ -n "$asset" ] || { echo 'Arquivo de atualizacao indisponivel' >&2; exit 3; }
 		echo '{"state":"running","percent":10,"message":"Iniciando processo de atualização..."}' >"$status"
 		(

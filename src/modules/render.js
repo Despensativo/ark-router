@@ -478,6 +478,7 @@ const renderMethods = {
 
 		const root=E('div',{class:'ex-dashboard'},[
 			E('section',{class:'ex-hero'+(isGamer?' ex-hero-gamer':'')},[E('div',{},[E('span',{class:'ex-eyebrow'},[heroEyebrow]),E('h2',{},[panelTitle]),E('p',{},[this.board.model||'OpenWrt','  •  ',release,'  •  ARK Router ',arkVersion]),E('div',{id:'ex-speedify-top',class:'ex-hero-speedify standby',style:'display:none'},[E('span',{},['Speedify']),E('strong',{},['—']),E('small',{},['—'])])]),E('div',{class:'ex-hero-status'},[E('span',{id:'ex-global-status',class:'ex-pill standby'},['VERIFICANDO']),E('strong',{id:'ex-clock'},['--:--:--']),E('small',{id:'ex-refresh-summary'},['sessão de 12 horas • atualização a cada 3 segundos']),E('div',{class:'ex-hero-actions'},[gamerButton,opModeButton,languageButton,E('button',{class:'ex-hero-feature-button ex-hero-setup-button','click':L.bind(this.showEzSetup,this)},['Ark - Setup']),E('button',{class:'ex-hero-feature-button','click':L.bind(this.showFeatureCenter,this)},['Recursos'])])])]),
+			E('div',{id:'ex-update-banner-container'}),
 			E('div',{id:'ex-doctor-banner',class:'ex-doctor-banner',style:'display:none;'}),
 			E('section',{class:'ex-card ex-health-strip'},[
 				E('div',{class:'ex-health-head'},[
@@ -1658,6 +1659,7 @@ const renderMethods = {
 		if(!(this.feature('nlbwmon')||{}).installed){const note=root.querySelector('.ex-table-note');if(note)note.textContent='O monitor de consumo não está instalado; a lista de dispositivos continua disponível, sem velocidade individual.';}
 		translateTree(root);
 		this.dashboardRoot=root;
+		if(typeof window !== 'undefined'){ window.arkDashboard = this; }
 		const deviceDetails=root.querySelector('#ex-device-details');
 		if(deviceDetails)deviceDetails.addEventListener('toggle',L.bind(function(){if(this.currentData)this.updateRefreshSummary(this.currentData);this.scheduleAdaptiveRefresh(0);},this));
 		if(typeof document !== 'undefined' && !window._arkVisibilityListenerAttached){
@@ -1672,6 +1674,11 @@ const renderMethods = {
 		this.update(data); this.scheduleAdaptiveRefresh();
 		if (dashboardLanguage !== 'pt-br' && typeof translateTree === 'function') {
 			translateTree(root);
+		}
+		if (typeof this.checkBackgroundUpdate === 'function') {
+			window.setTimeout(L.bind(function() {
+				this.checkBackgroundUpdate();
+			}, this), 1000);
 		}
 		return root;
 	},

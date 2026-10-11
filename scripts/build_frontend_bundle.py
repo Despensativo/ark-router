@@ -46,8 +46,9 @@ def find_node():
             return cmd
     return None
 
-def assemble_bundle():
+def assemble_bundle(src_base_dir=None):
     parts = []
+    base_dir = src_base_dir if src_base_dir else SRC_DIR
     
     version_file = os.path.join(REPO_DIR, "root", "usr", "share", "ark-router", "VERSION")
     version_val = "1.5.6"
@@ -57,7 +58,7 @@ def assemble_bundle():
 
     # 1. Append Core files
     for f_name in CORE_FILES:
-        path = os.path.join(SRC_DIR, "core", f_name)
+        path = os.path.join(base_dir, "core", f_name)
         if not os.path.isfile(path):
             raise FileNotFoundError(f"Missing core file: {path}")
         with open(path, "r", encoding="utf-8") as f:
@@ -69,7 +70,7 @@ def assemble_bundle():
 
     # 2. Append Modules
     for f_name, _ in MODULE_FILES:
-        path = os.path.join(SRC_DIR, "modules", f_name)
+        path = os.path.join(base_dir, "modules", f_name)
         if not os.path.isfile(path):
             raise FileNotFoundError(f"Missing module file: {path}")
         with open(path, "r", encoding="utf-8") as f:
@@ -142,6 +143,7 @@ def build_i18n_assets(version_val):
 
 def main():
     parser = argparse.ArgumentParser(description="ARK Router Frontend Bundler")
+    parser.add_argument("--v2", action="store_true", help="Build V2 staging bundle from src/v2/ into overview_v2.js")
     parser.add_argument("--check", action="store_true", help="Verify if target overview.js matches src/ bundle")
     parser.add_argument("--quiet", action="store_true", help="Quiet output")
     args = parser.parse_args()
@@ -152,33 +154,41 @@ def main():
         with open(version_file, "r", encoding="utf-8") as vf:
             version_val = vf.read().strip()
 
-    bundle_content = assemble_bundle()
+    target_src = os.path.join(SRC_DIR, "v2") if args.v2 else SRC_DIR
+    target_output = os.path.join(REPO_DIR, "root", "www", "luci-static", "resources", "view", "equipe-dashboard", "overview_v2.js" if args.v2 else "overview.js")
+
+    bundle_content = assemble_bundle(target_src)
 
     if args.check:
-        if not os.path.isfile(OUTPUT_FILE):
-            print(f"ERRO: Arquivo alvo {OUTPUT_FILE} não existe!", file=sys.stderr)
+        if not os.path.isfile(target_output):
+            print(f"ERRO: Arquivo alvo {target_output} não existe!", file=sys.stderr)
             sys.exit(1)
-        with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
+        with open(target_output, "r", encoding="utf-8") as f:
             current_content = f.read()
         if current_content != bundle_content:
-            print("ERRO: O arquivo root/.../overview.js está desatualizado em relação a src/!", file=sys.stderr)
-            print("Execute: python3 scripts/build_frontend_bundle.py", file=sys.stderr)
+            label = "root/.../overview_v2.js está desatualizado em relação a src/v2/!" if args.v2 else "root/.../overview.js está desatualizado em relação a src/!"
+            print(f"ERRO: O arquivo {label}", file=sys.stderr)
+            flag = " --v2" if args.v2 else ""
+            print(f"Execute: python3 scripts/build_frontend_bundle.py{flag}", file=sys.stderr)
             sys.exit(1)
         if not args.quiet:
-            print("[OK] Bundle frontend em sincronia perfeita com src/!")
+            prefix = "[OK] Bundle V2 (staging)" if args.v2 else "[OK] Bundle frontend"
+            print(f"{prefix} em sincronia perfeita com as fontes!")
         return
 
-    os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+    os.makedirs(os.path.dirname(target_output), exist_ok=True)
+    with open(target_output, "w", encoding="utf-8") as f:
         f.write(bundle_content)
 
-    build_i18n_assets(version_val)
+    if not args.v2:
+        build_i18n_assets(version_val)
 
-    if not validate_syntax(OUTPUT_FILE):
+    if not validate_syntax(target_output):
         sys.exit(1)
 
     if not args.quiet:
-        print(f"[OK] Bundle frontend gerado com sucesso em: {OUTPUT_FILE}")
+        label = "Bundle V2 (Staging)" if args.v2 else "Bundle frontend oficial"
+        print(f"[OK] {label} gerado com sucesso em: {target_output}")
         print(f"     Tamanho: {len(bundle_content)/1024:.1f} KB ({bundle_content.count(chr(10))} linhas)")
 
 if __name__ == "__main__":

@@ -12534,3 +12534,90 @@ msgstr "IRQ Balance desactivado. Modo nativo por hardware restaurado."
 
 msgid "⚠️ Alerta: IRQ Balance em execução em hardware que já possui anéis de DMA no silício. Desative para evitar jitter."
 msgstr "⚠️ Alerta: IRQ Balance en ejecución en hardware que ya cuenta con anillos de DMA en silicio. Desactive para evitar jitter."
+msgid "ATUALIZAÇÃO"
+msgstr "ACTUALIZACIÓN"
+
+msgid "Armazenamento compacto: %s MB livres (ponto de corte mínimo: %s KB). A atualização prosseguirá substituindo os arquivos existentes."
+msgstr "Almacenamiento compacto: %s MB libres (umbral mínimo de corte: %s KB). La actualización continuará reemplazando los archivos existentes."
+
+msgid "Armazenamento seguro: %s MB livres na partição Flash (ponto de corte mínimo: %s KB)."
+msgstr "Almacenamiento seguro: %s MB libres en la partición Flash (umbral mínimo de corte: %s KB)."
+
+msgid "Atualização com backup de segurança automático."
+msgstr "Actualización con copia de seguridad automática."
+
+msgid "Atualização do ARK Router iniciada. Acompanhe o progresso."
+msgstr "Actualización de ARK Router iniciada. Siga el progreso."
+
+msgid "Backup automático de segurança das configurações antes da gravação."
+msgstr "Copia de seguridad automática de las configuraciones antes de escribir."
+
+msgid "Deseja realmente atualizar o ARK Router para a versão v%s agora?"
+msgstr "¿Realmente desea actualizar ARK Router a la versión v%s ahora?"
+
+msgid "ESPAÇO INSUFICIENTE NA FLASH"
+msgstr "ESPACIO INSUFICIENTE EN FLASH"
+
+msgid "ESPAÇO SUFICIENTE"
+msgstr "ESPACIO SUFICIENTE"
+
+msgid "Espaço Flash otimizado! Verificando novamente…"
+msgstr "¡Espacio Flash optimizado! Comprobando de nuevo…"
+
+msgid "Espaço Insuficiente"
+msgstr "Espacio Insuficiente"
+
+msgid "Melhorias de desempenho, estabilidade de conexão e correções gerais do ecossistema ARK Router."
+msgstr "Mejoras de rendimiento, estabilidad de conexión y correcciones generales del ecosistema ARK Router."
+
+msgid "NO LIMITE DE SEGURANÇA"
+msgstr "EN EL LÍMITE DE SEGURIDAD"
+
+msgid "Nova Versão:"
+msgstr "Nueva Versión:"
+
+msgid "Nova versão disponível: ARK Router v%s"
+msgstr "Nueva versión disponible: ARK Router v%s"
+
+msgid "Ocultar aviso para esta versão"
+msgstr "Ocultar aviso para esta versión"
+
+msgid "Ocultar ✕"
+msgstr "Ocultar ✕"
+
+msgid "RAM (/tmp): %s MB livres"
+msgstr "RAM (/tmp): %s MB libres"
+
+msgid "Senhas, redes Wi-Fi, regras de firewall e conexões são 100% preservadas."
+msgstr "Contraseñas, redes Wi-Fi, reglas de firewall y conexiones se conservan al 100%."
+
+msgid "Ver Novidades & Atualizar"
+msgstr "Ver Novedades y Actualizar"
+
+msgid "Versão Instalada:"
+msgstr "Versión Instalada:"
+
+msgid "Versão atual: v%s"
+msgstr "Versión actual: v%s"
+
+msgid "Zero interrupção de tráfego de internet durante o processo."
+msgstr "Cero interrupción del tráfico de internet durante el proceso."
+
+msgid "💾 Diagnóstico de Espaço em Disco"
+msgstr "💾 Diagnóstico de Espacio en Disco"
+
+msgid "📋 O que há de novo na versão v%s:"
+msgstr "📋 Novedades en la versión v%s:"
+
+msgid "🚀 Atualização do ARK Router"
+msgstr "🚀 Actualización de ARK Router"
+
+msgid "🚀 Confirmar e Atualizar"
+msgstr "🚀 Confirmar y Actualizar"
+
+msgid "🛡️ Blindagem & Garantias de Segurança:"
+msgstr "🛡️ Blindaje y Garantías de Seguridad:"
+
+msgid "🧹 Otimizar Espaço Flash Agora"
+msgstr "🧹 Optimizar Espacio Flash Ahora"
+
