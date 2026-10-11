@@ -106,18 +106,46 @@ start() {
 	# Distribuir interrupções de hardware (evita afunilar 100% dos pacotes no Core 0)
 	ark_tune_irq_affinity "$cpu_cores"
 
-	# Ativar ZRAM se a memória for baixa (< 256MB) para segurar AdGuardHome
-	if [ "$mem_total_kb" -le 262144 ]; then
+	# Calibracao Inteligente de ZRAM (Respeita escolha do usuario em equipe_perf e protege CPUs fracas)
+	local zram_cfg="$(uci -q get equipe_perf.settings.zram_enabled || echo 'auto')"
+	local is_mips_weak=0
+	case "$cpu_arch" in mips*) [ "$cpu_cores" -le 1 ] && is_mips_weak=1 ;; esac
+
+	local should_zram=0
+	case "$zram_cfg" in
+		1) should_zram=1 ;;
+		0) should_zram=0 ;;
+		auto)
+			# Auto: Se RAM <= 256 MB E CPU nao for mono-core fraca, liga por padrao
+			if [ "$mem_total_kb" -le 262144 ] && [ "$is_mips_weak" -eq 0 ]; then
+				should_zram=1
+			fi
+			;;
+	esac
+
+	if [ "$should_zram" -eq 1 ]; then
 		if ! grep -q zram /proc/swaps 2>/dev/null; then
 			modprobe zram num_devices=1 2>/dev/null || true
 			if [ -b /dev/zram0 ]; then
 				echo lz4 > /sys/block/zram0/comp_algorithm 2>/dev/null || echo zstd > /sys/block/zram0/comp_algorithm 2>/dev/null || true
 				local zram_size=$(( mem_total_kb * 1024 / 2 ))
+				if [ "$is_mips_weak" -eq 1 ] && [ "$zram_size" -gt 33554432 ]; then
+					zram_size=33554432
+				fi
 				echo $zram_size > /sys/block/zram0/disksize 2>/dev/null || true
-				mkswap /dev/zram0 2>/dev/null || true
-				swapon -p 10 /dev/zram0 2>/dev/null || true
+				mkswap /dev/zram0 >/dev/null 2>&1 || true
+				swapon -p 10 /dev/zram0 >/dev/null 2>&1 || true
 				logger -t ark-hardware-tune "ZRAM Swap ativado de $((zram_size / 1048576)) MB."
 			fi
+		fi
+		if [ "$is_mips_weak" -eq 1 ]; then
+			sysctl -q -w vm.swappiness=15 2>/dev/null || true
+		fi
+	else
+		if grep -q zram /proc/swaps 2>/dev/null; then
+			swapoff /dev/zram0 2>/dev/null || true
+			echo 1 > /sys/block/zram0/reset 2>/dev/null || true
+			logger -t ark-hardware-tune "ZRAM Swap desativado (economia de CPU)."
 		fi
 	fi
 

@@ -2,7 +2,7 @@ const FEATURE_META={
 	sqm:{name:'SQM / CAKE',description:'Organiza as filas e reduz a latência quando o link está ocupado.'},
 	mwan3:{name:'Multi‑WAN',description:'Adiciona failover e balanceamento entre dois ou mais links.'},
 	nlbwmon:{name:'Consumo por dispositivo',description:'Adiciona tráfego individual e histórico detalhado de consumo.'},
-	upnp:{name:'UPnP / NAT‑PMP',description:'Permite que aplicativos compatíveis solicitem portas automaticamente.'},
+	upnp:{name:'UPnP / NAT‑PMP',description:'Abertura automática de portas para jogos P2P (consoles/PC) e torrents. Permite mapeamento dinâmico sem configuração manual.'},
 	wifi:{name:'Wi‑Fi e análise de canais',description:'Usa os recursos sem fio e regulatórios fornecidos pelo driver.'},
 	history:{name:'Histórico de 24 horas',description:'Coletor leve incluído no painel.'},
 	temperature:{name:'Sensor de temperatura',description:'Exibe a leitura térmica quando o hardware oferece um sensor.'},
@@ -14,4 +14,5 @@ const FEATURE_META={
 	,adblock:{name:'Bloqueador de Anúncios',description:'Protege a rede inteira contra propagandas invasivas, anúncios de Smart TV e rastreadores.',recommended:true}
 	,usteer:{name:'Assistente de Roaming (usteer)',description:'Orquestra troca rápida de sinal (AP Steering) e Band Steering entre múltiplos roteadores e bandas Wi-Fi.',recommended:true}
 	,htop:{name:'Gerenciador de Processos (htop)',description:'Monitor interativo avançado em tempo real via terminal (SSH) com suporte a cores e uso do mouse.'}
+	,zram:{name:'Compressão de Memória (ZRAM)',description:'Compacta a memória RAM em tempo real com LZ4, multiplicando a capacidade útil em roteadores com 256 MB ou menos.'}
 };

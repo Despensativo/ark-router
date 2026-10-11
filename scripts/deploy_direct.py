@@ -114,6 +114,8 @@ for local_path, remote_path in files_to_upload:
 
 cmds = [
     'chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export /etc/init.d/ark-zerotier-ram /etc/init.d/ark-hardware-tune /etc/init.d/ark-firewall-guard /etc/init.d/ark-safe-shutdown /etc/uci-defaults/99-ark-router-dhcp-sanitize /usr/sbin/starlink-telemetry-daemon /usr/sbin/starlink-telemetry-mailer /etc/init.d/starlink-telemetry /usr/sbin/ark-port-ledd /usr/sbin/ark-rainbowd /etc/init.d/ark-port-ledd /etc/init.d/ark-rainbowd /etc/uci-defaults/99-ark-router-leds /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh /etc/hotplug.d/*/* 2>/dev/null || true',
+    'chmod -R a+r /www /usr/share/rpcd/acl.d /usr/share/luci/menu.d 2>/dev/null || true',
+    'find /www /usr/share /etc -name "._*" -delete 2>/dev/null || true',
     'touch /etc/config/starlink_telemetry 2>/dev/null || true',
     'rm -f /etc/rc.d/S99ark-qdisc-tune /etc/init.d/ark-qdisc-tune 2>/dev/null || true',
     'killall equipe-traffic-history 2>/dev/null || true',

@@ -1,6 +1,6 @@
 // ARK Router i18n ES Dictionary (Auto-generated from .po)
 (function(){
-	const ARK_I18N_VERSION = '1.5.13';
+	const ARK_I18N_VERSION = '1.5.14';
 	if (typeof window.ARK_BUILD_VERSION !== 'undefined' && window.ARK_BUILD_VERSION !== ARK_I18N_VERSION) {
 		console.warn('[ARK Router] i18n.es.js version mismatch (' + ARK_I18N_VERSION + ' vs ' + window.ARK_BUILD_VERSION + ')');
 	}
@@ -4131,6 +4131,39 @@
   "FALHA": "FALLA",
   "Diagnóstico": "Diagnóstico",
   "Ark Doctor: …": "Ark Doctor: …",
-  ") opera em até 80 MHz. Ao selecionar 160 MHz, o canal será comutado automaticamente para o Canal 36 para total estabilidade.": ") opera en hasta 80 MHz. Al seleccionar 160 MHz, el canal se cambiará automáticamente al Canal 36 para total estabilidad."
+  ") opera em até 80 MHz. Ao selecionar 160 MHz, o canal será comutado automaticamente para o Canal 36 para total estabilidade.": ") opera en hasta 80 MHz. Al seleccionar 160 MHz, el canal se cambiará automáticamente al Canal 36 para total estabilidad.",
+  "Seu navegador ainda está executando arquivos em cache da versão anterior (%s). Clique abaixo para carregar os novos arquivos.": "Su navegador todavía está ejecutando archivos en caché de la versión anterior (%s). Haga clic a continuación para cargar los nuevos archivos.",
+  "🔄 Atualizar Agora": "🔄 Actualizar Ahora",
+  "🛡️ Modo Seguro: Desativado. Nenhuma porta é aberta automaticamente. Máxima proteção e economia de RAM.": "🛡️ Modo Seguro: Desactivado. Ningún puerto se abre automáticamente. Máxima protección y ahorro de RAM.",
+  "Aguarde %s s": "Espere %s s",
+  "Aguarde 5 s": "Espere 5 s",
+  "Ativando ZRAM protegido…": "Activando ZRAM protegido…",
+  "Ativando ZRAM…": "Activando ZRAM…",
+  "Ativar em modo protegido (32 MB)": "Activar en modo protegido (32 MB)",
+  "Compressão ZRAM ativada em modo protegido (swappiness=15, máx 32 MB).": "Compresión ZRAM activada en modo protegido (swappiness=15, máx 32 MB).",
+  "Compressão de memória (ZRAM) ativada em modo forçado pelo usuário.": "Compresión de memoria (ZRAM) activada en modo forzado por el usuario.",
+  "Compressão de memória (ZRAM) ativada com sucesso.": "Compresión de memoria (ZRAM) activada con éxito.",
+  "Compressão de memória (ZRAM) desativada com sucesso.": "Compresión de memoria (ZRAM) desactivada con éxito.",
+  "Compressão de Memória (ZRAM)": "Compresión de Memoria (ZRAM)",
+  "Compacta a memória RAM em tempo real com LZ4, multiplicando a capacidade útil em roteadores com 256 MB ou menos.": "Comprime la memoria RAM en tiempo real con LZ4, multiplicando la capacidad útil en routers con 256 MB o menos.",
+  "Confirmar ativação mesmo assim": "Confirmar activación de todos modos",
+  "Para proteger o roteador contra travamentos e garantir latência baixa, o ARK Router aplicará proteção automática:": "Para proteger el router contra bloqueos y asegurar baja latencia, ARK Router aplicará protección automática:",
+  "Swappiness conservador (15): ": "Swappiness conservador (15): ",
+  "Teto rígido de 32 MB: ": "Límite estricto de 32 MB: ",
+  "evita que o kernel compacte memória preventivamente sem necessidade real.": "evita que el kernel comprima memoria preventivamente sin necesidad real.",
+  "impede que blocos comprimidos sobrecarreguem o cache de instruções da CPU.": "evita que bloques comprimidos sobrecarguen la caché de instrucciones de la CPU.",
+  "ℹ️ Desnecessário (RAM Abundante): Ativo manualmente. Este roteador possui %s de RAM física e dispensa compressão.": "ℹ️ Innecesario (RAM Abundante): Activo manualmente. Este router cuenta con %s de RAM física y prescinde de compresión.",
+  "⚠️ Compressão ZRAM em Processador Mononúcleo (MIPS)": "⚠️ Compresión ZRAM en Procesador Mononúcleo (MIPS)",
+  "⚠️ Confirmação: Compressão ZRAM em Alta Capacidade": "⚠️ Confirmación: Compresión ZRAM en Alta Capacidad",
+  "⚠️ Recomendado Desativado: Processador single-core MIPS. ZRAM pode causar lentidão se ativado sem extrema necessidade.": "⚠️ Recomendado Desactivado: Procesador mononúcleo MIPS. ZRAM puede causar lentitud si se activa sin extrema necesidad.",
+  "⚡ Modo Protegido (CPU Mononúcleo): Ativo com swappiness=15 e limite de %s para poupar a CPU.": "⚡ Modo Protegido (CPU Mononúcleo): Activo con swappiness=15 y límite de %s para ahorrar CPU.",
+  "✨ Recomendado Desativado: Memória abundante (%s). Manter desativado economiza 100% de CPU.": "✨ Recomendado Desactivado: Memoria abundante (%s). Mantenerlo desactivado ahorra el 100% de CPU.",
+  "💡 Altamente Recomendado: Roteador com %s de RAM. Ative para evitar falhas por falta de memória.": "💡 Altamente Recomendado: Router con %s de RAM. Actívalo para evitar fallos por memoria agotada.",
+  "🛡️ Proteção Ativa: Memória comprimida em tempo real (%s ZRAM). Evita falhas por memória cheia (OOM).": "🛡️ Protección Activa: Memoria comprimida en tiempo real (%s ZRAM). Previene bloqueos por falta de memoria (OOM).",
+  "Swappiness conservador (15):": "Swappiness conservador (15):",
+  "Teto rígido de 32 MB:": "Límite estricto de 32 MB:",
+  "Abertura Automática de Portas (UPnP / IGD)": "Apertura Automática de Puertos (UPnP / IGD)",
+  "Compressão de Memória RAM (ZRAM / LZ4)": "Compresión de Memoria RAM (ZRAM / LZ4)",
+  "Compressão de Memória RAM (ZRAM)": "Compresión de Memoria RAM (ZRAM)"
 };
 })();

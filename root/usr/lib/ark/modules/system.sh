@@ -2696,6 +2696,101 @@ get_system_hardware_info() {
 
 
 
+zram_status_json() {
+	local mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 262144)"
+	local mem_avail_kb="$(awk '/MemAvailable:/ {print $2; exit}' /proc/meminfo 2>/dev/null || awk '/MemFree:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+	local mem_total_mb=$((mem_total_kb / 1024))
+	local mem_avail_mb=$((mem_avail_kb / 1024))
+	local cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
+	[ "$cpu_cores" -ge 1 ] 2>/dev/null || cpu_cores=1
+	local cpu_arch="$(uname -m 2>/dev/null || echo 'generic')"
+	local is_low_end_mips=0
+	case "$cpu_arch" in
+		mips*) [ "$cpu_cores" -le 1 ] && is_low_end_mips=1 ;;
+	esac
+
+	local supported=0
+	if [ -b /dev/zram0 ] || [ -f "/lib/modules/$(uname -r 2>/dev/null)/zram.ko" ] || modprobe -n zram >/dev/null 2>&1 || apk list -I 2>/dev/null | grep -q kmod-zram || opkg list-installed 2>/dev/null | grep -q kmod-zram; then
+		supported=1
+	fi
+
+	local active=0
+	local zram_size_mb=0
+	local zram_used_mb=0
+	if grep -q zram /proc/swaps 2>/dev/null; then
+		active=1
+		local swap_line="$(grep zram /proc/swaps 2>/dev/null | head -n 1)"
+		local swap_size_kb="$(echo "$swap_line" | awk '{print $3}')"
+		local swap_used_kb="$(echo "$swap_line" | awk '{print $4}')"
+		[ -n "$swap_size_kb" ] && zram_size_mb=$((swap_size_kb / 1024))
+		[ -n "$swap_used_kb" ] && zram_used_mb=$((swap_used_kb / 1024))
+	fi
+
+	local is_high_ram=0
+	[ "$mem_total_mb" -ge 512 ] && is_high_ram=1
+
+	local is_low_ram=0
+	[ "$mem_total_mb" -le 256 ] && is_low_ram=1
+
+	local recommendation="recommended"
+	if [ "$is_high_ram" = 1 ]; then
+		recommendation="unnecessary"
+	elif [ "$is_low_end_mips" = 1 ]; then
+		recommendation="caution_weak_cpu"
+	fi
+
+	local swappiness="$(sysctl -n vm.swappiness 2>/dev/null || echo 60)"
+
+	printf '{"supported":%s,"active":%s,"mem_total_mb":%d,"mem_avail_mb":%d,"cpu_cores":%d,"is_low_end_mips":%s,"is_high_ram":%s,"is_low_ram":%s,"recommendation":"%s","zram_size_mb":%d,"zram_used_mb":%d,"swappiness":%d}\n' \
+		"$(bool "$supported")" "$(bool "$active")" "$mem_total_mb" "$mem_avail_mb" "$cpu_cores" "$(bool "$is_low_end_mips")" "$(bool "$is_high_ram")" "$(bool "$is_low_ram")" "$recommendation" "$zram_size_mb" "$zram_used_mb" "$swappiness"
+}
+
+zram_toggle() {
+	local state="${1:-0}"
+	case "$state" in 1|true) state=1 ;; *) state=0 ;; esac
+	local mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 262144)"
+	local cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
+	local cpu_arch="$(uname -m 2>/dev/null || echo 'generic')"
+	local is_low_end_mips=0
+	case "$cpu_arch" in
+		mips*) [ "$cpu_cores" -le 1 ] && is_low_end_mips=1 ;;
+	esac
+
+	if [ "$state" = 1 ]; then
+		if ! grep -q zram /proc/swaps 2>/dev/null; then
+			modprobe zram num_devices=1 2>/dev/null || true
+			if [ -b /dev/zram0 ]; then
+				echo lz4 > /sys/block/zram0/comp_algorithm 2>/dev/null || echo zstd > /sys/block/zram0/comp_algorithm 2>/dev/null || true
+				local zram_size_bytes=$((mem_total_kb * 1024 / 2))
+				if [ "$is_low_end_mips" = 1 ] && [ "$zram_size_bytes" -gt 33554432 ]; then
+					zram_size_bytes=33554432
+				fi
+				echo $zram_size_bytes > /sys/block/zram0/disksize 2>/dev/null || true
+				mkswap /dev/zram0 >/dev/null 2>&1 || true
+				swapon -p 10 /dev/zram0 >/dev/null 2>&1 || true
+			fi
+		fi
+
+		if [ "$is_low_end_mips" = 1 ]; then
+			sysctl -q -w vm.swappiness=15 2>/dev/null || true
+		else
+			sysctl -q -w vm.swappiness=60 2>/dev/null || true
+		fi
+
+		uci -q set equipe_perf.settings.zram_enabled='1'
+		uci commit equipe_perf 2>/dev/null || true
+	else
+		if grep -q zram /proc/swaps 2>/dev/null; then
+			swapoff /dev/zram0 2>/dev/null || true
+			echo 1 > /sys/block/zram0/reset 2>/dev/null || true
+		fi
+		uci -q set equipe_perf.settings.zram_enabled='0'
+		uci commit equipe_perf 2>/dev/null || true
+	fi
+	rm -f /tmp/ark-features.cache /tmp/ark-perf-cache.ts 2>/dev/null || true
+	echo ok
+}
+
 handle_system() {
 	action="$1"
 	[ -n "$action" ] || { echo "Uso: $0 <comando> [args...]" >&2; exit 1; }
@@ -2722,6 +2817,40 @@ handle_system() {
 	dmz-set)
 		shift
 		dmz_set "$@"
+		;;
+	upnp-status)
+		local upnp_enabled="$(uci -q get upnpd.config.enabled || echo 0)"
+		local upnp_running=0
+		pidof miniupnpd >/dev/null 2>&1 && upnp_running=1
+		printf '{"enabled":%s,"running":%s}\n' "$([ "$upnp_enabled" = 1 ] && echo true || echo false)" "$([ "$upnp_running" = 1 ] && echo true || echo false)"
+		;;
+	upnp-toggle)
+		shift
+		local state="${1:-0}"
+		case "$state" in 1|true) state=1 ;; *) state=0 ;; esac
+		if [ "$state" = 1 ]; then
+			uci -q set upnpd.config.enabled='1'
+			uci -q set upnpd.config.enable_upnp='1'
+			uci -q set upnpd.config.enable_natpmp='1'
+			[ "$(uci -q get upnpd.config.use_stun)" = "1" ] || uci -q set upnpd.config.use_stun='1'
+			[ -n "$(uci -q get upnpd.config.stun_host)" ] || uci -q set upnpd.config.stun_host='stun.cloudflare.com'
+			uci commit upnpd 2>/dev/null || true
+			[ -x /etc/init.d/miniupnpd ] && { /etc/init.d/miniupnpd enable >/dev/null 2>&1 || true; /etc/init.d/miniupnpd restart >/dev/null 2>&1 || true; }
+		else
+			uci -q set upnpd.config.enabled='0'
+			uci -q set upnpd.config.enable_upnp='0'
+			uci -q set upnpd.config.enable_natpmp='0'
+			uci commit upnpd 2>/dev/null || true
+			[ -x /etc/init.d/miniupnpd ] && { /etc/init.d/miniupnpd stop >/dev/null 2>&1 || true; /etc/init.d/miniupnpd disable >/dev/null 2>&1 || true; }
+		fi
+		echo ok
+		;;
+	zram-status)
+		zram_status_json
+		;;
+	zram-toggle)
+		shift
+		zram_toggle "$@"
 		;;
 	dns-turbo-status)
 		dns_turbo_status_json

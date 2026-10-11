@@ -5,7 +5,7 @@
 [ -z "${_ARK_COMMON_SH_LOADED:-}" ] || return 0
 _ARK_COMMON_SH_LOADED=1
 
-ARK_ROUTER_VERSION="1.5.13"
+ARK_ROUTER_VERSION="1.5.14"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 ARK_ROOT="${ARK_ROOT:-}"
 
@@ -579,7 +579,11 @@ ark_sanitize_upnp_config() {
 
 	if [ "$changed" = "1" ]; then
 		$uci_cmd commit upnpd
-		[ -z "$root_prefix" ] && [ -x /etc/init.d/miniupnpd ] && /etc/init.d/miniupnpd restart >/dev/null 2>&1 || true
+		if [ "$($uci_cmd get upnpd.config.enabled || echo 0)" = "1" ]; then
+			[ -z "$root_prefix" ] && [ -x /etc/init.d/miniupnpd ] && /etc/init.d/miniupnpd restart >/dev/null 2>&1 || true
+		else
+			[ -z "$root_prefix" ] && [ -x /etc/init.d/miniupnpd ] && /etc/init.d/miniupnpd stop >/dev/null 2>&1 || true
+		fi
 	fi
 	return 0
 }

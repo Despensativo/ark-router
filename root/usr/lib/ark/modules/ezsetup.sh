@@ -61,6 +61,7 @@ feature_package() {
 		irqbalance) printf irqbalance ;;
 		usteer) printf usteer ;;
 		htop) printf htop ;;
+		zram) printf kmod-zram ;;
 		*) return 1 ;;
 	esac
 }
@@ -244,7 +245,8 @@ feature_active() {
 		sqm) uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'" ;;
 		mwan3) pgrep -f mwan3rtmon >/dev/null 2>&1 || pgrep -f mwan3track >/dev/null 2>&1 ;;
 		nlbwmon) pidof nlbwmon >/dev/null 2>&1 || running nlbwmon ;;
-		upnp) pidof miniupnpd >/dev/null 2>&1 || running miniupnpd ;;
+		upnp) [ "$(uci -q get upnpd.config.enabled || echo 0)" = "1" ] && { pidof miniupnpd >/dev/null 2>&1 || running miniupnpd; } ;;
+		zram) grep -q zram /proc/swaps 2>/dev/null ;;
 		ark) [ -d /www/luci-static/ark ] && [ "$(uci -q get luci.main.mediaurlbase)" = /luci-static/ark ] ;;
 		uhttpd) [ -f /usr/share/luci/menu.d/luci-app-uhttpd.json ] ;;
 		wifi) [ -f /etc/config/wireless ] ;;
@@ -780,6 +782,49 @@ feature_json() {
 		hidden ark; concealed=$?
 		printf '"ark":{"installed":true,"active":%s,"hidden":%s,"installable":true,"package":"luci-theme-ark"}' \
 			"$(bool $((enabled == 0)))" "$(bool $((concealed == 0)))"
+		return 0
+	fi
+	if [ "$key" = zram ]; then
+		local mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 262144)"
+		local mem_total_mb=$((mem_total_kb / 1024))
+		local cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
+		[ "$cpu_cores" -ge 1 ] 2>/dev/null || cpu_cores=1
+		local cpu_arch="$(uname -m 2>/dev/null || echo 'generic')"
+		local is_low_end_mips=0
+		case "$cpu_arch" in
+			mips*) [ "$cpu_cores" -le 1 ] && is_low_end_mips=1 ;;
+		esac
+		local is_high_ram=0
+		[ "$mem_total_mb" -ge 512 ] && is_high_ram=1
+		local is_low_ram=0
+		[ "$mem_total_mb" -le 256 ] && is_low_ram=1
+		local supported=0
+		if [ -b /dev/zram0 ] || [ -f "/lib/modules/$(uname -r 2>/dev/null)/zram.ko" ] || modprobe -n zram >/dev/null 2>&1 || apk list -I 2>/dev/null | grep -q kmod-zram || opkg list-installed 2>/dev/null | grep -q kmod-zram; then
+			supported=1
+		fi
+		local active=0
+		local zram_size_mb=0
+		local zram_used_mb=0
+		if grep -q zram /proc/swaps 2>/dev/null; then
+			active=1
+			local swap_line="$(grep zram /proc/swaps 2>/dev/null | head -n 1)"
+			local swap_size_kb="$(echo "$swap_line" | awk '{print $3}')"
+			local swap_used_kb="$(echo "$swap_line" | awk '{print $4}')"
+			[ -n "$swap_size_kb" ] && zram_size_mb=$((swap_size_kb / 1024))
+			[ -n "$swap_used_kb" ] && zram_used_mb=$((swap_used_kb / 1024))
+		fi
+		local recommendation="recommended"
+		if [ "$is_high_ram" = 1 ]; then
+			recommendation="unnecessary"
+		elif [ "$is_low_end_mips" = 1 ]; then
+			recommendation="caution_weak_cpu"
+		fi
+		local swappiness="$(sysctl -n vm.swappiness 2>/dev/null || echo 60)"
+		hidden zram; concealed=$?
+		printf '"zram":{"installed":%s,"active":%s,"hidden":%s,"installable":%s,"package":"kmod-zram","mem_total_mb":%d,"cpu_cores":%d,"is_low_end_mips":%s,"is_high_ram":%s,"is_low_ram":%s,"recommendation":"%s","zram_size_mb":%d,"zram_used_mb":%d,"swappiness":%d}' \
+			"$(bool $((supported == 1)))" "$(bool $((active == 1)))" "$(bool $((concealed == 0)))" "$(bool $((supported == 1)))" \
+			"$mem_total_mb" "$cpu_cores" "$(bool $((is_low_end_mips == 1)))" "$(bool $((is_high_ram == 1)))" "$(bool $((is_low_ram == 1)))" \
+			"$recommendation" "$zram_size_mb" "$zram_used_mb" "$swappiness"
 		return 0
 	fi
 	if [ "$key" = adblock ]; then
@@ -1542,6 +1587,7 @@ handle_ezsetup() {
 		printf ','; feature_json irqbalance irqbalance "$irq_installable" "$irq_reason"
 		printf ','; feature_json usteer usteer "$usteer_installable" "$usteer_reason"
 		printf ','; feature_json htop htop "$htop_installable" "$htop_reason"
+		printf ','; feature_json zram kmod-zram true
 		cli="$(speedify_cli_path)"
 		bypass='{}'; speedify_runtime_running && [ -n "$cli" ] && bypass="$("$cli" -s show streamingbypass 2>/dev/null || printf '{}')"
 		printf ',"speedify_bypass":%s' "$bypass"
@@ -1839,6 +1885,10 @@ handle_ezsetup() {
 		elif [ "$key" = irqbalance ]; then
 			if installed "$package"; then
 				[ -x /etc/init.d/irqbalance ] && { /etc/init.d/irqbalance enable >/dev/null 2>&1 || true; /etc/init.d/irqbalance restart >/dev/null 2>&1 || true; }
+				echo done >"$status"; echo installed; exit 0
+			fi
+		elif [ "$key" = zram ]; then
+			if [ -b /dev/zram0 ] || [ -f "/lib/modules/$(uname -r 2>/dev/null)/zram.ko" ] || modprobe zram num_devices=1 >/dev/null 2>&1; then
 				echo done >"$status"; echo installed; exit 0
 			fi
 		else installed "$package" && { echo done >"$status"; echo installed; exit 0; }; fi

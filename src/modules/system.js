@@ -2632,6 +2632,9 @@ const systemMethods = {
 			} else if (isShieldedOnSat) {
 				state = f.installed ? _t('Inativo (Modo AP)') : _t('Desativado em Modo AP');
 				pillClass = 'standby';
+			} else if (key === 'zram' && f.installed) {
+				state = f.active ? ('Ativo' + (f.zram_size_mb ? ' (' + f.zram_size_mb + ' MB)' : '')) : 'Desativado';
+				pillClass = f.active ? 'online' : 'standby';
 			} else if(!f.installed&&f.hidden) {
 				state='Sugestão oculta';
 			}
@@ -2646,6 +2649,21 @@ const systemMethods = {
 				}
 				if(key==='irqbalance'&&f.installed)actions.push(E('button',{class:'ex-mini-button','click':L.bind(function(){const desired=!f.active;return fs.exec('/usr/sbin/equipe-dashboard-control',['irqbalance-toggle',desired?'1':'0']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar IRQ Balance');ui.addNotification(null,E('p',{},[desired?'IRQ Balance ativado.':'IRQ Balance desativado.']));window.setTimeout(function(){window.location.reload();},900);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},[f.active?'Desativar':'Ativar']));
 				if(key==='usteer'&&f.installed)actions.push(E('button',{class:'ex-mini-button','click':L.bind(function(){const desired=!f.active;return fs.exec('/usr/sbin/equipe-dashboard-control',['wifi-usteer-toggle',desired?'1':'0']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar usteer');ui.addNotification(null,E('p',{},[desired?'Assistente usteer ativado com sucesso.':'Assistente usteer desativado.']));window.setTimeout(function(){window.location.reload();},900);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},[f.active?'Desativar':'Ativar']));
+				if(key==='upnp'&&f.installed)actions.push(E('button',{class:'ex-mini-button','click':L.bind(function(){const desired=!f.active;return fs.exec('/usr/sbin/equipe-dashboard-control',['upnp-toggle',desired?'1':'0']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar UPnP');ui.addNotification(null,E('p',{},[desired?'UPnP ativado. Atenção: portas podem ser abertas sem autenticação.':'UPnP desativado com sucesso (modo seguro).']));window.setTimeout(function(){window.location.reload();},900);}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});},this)},[f.active?'Desativar':'Ativar']));
+				if(key==='zram'&&f.installed)actions.push(E('button',{class:'ex-mini-button','click':L.bind(function(){
+					const desired=!f.active;
+					if(desired && f.is_high_ram){
+						return this.showHighRamZramConfirmModal(f);
+					}
+					if(desired && f.is_low_end_mips){
+						return this.showLowEndMipsZramConfirmModal(f);
+					}
+					return fs.exec('/usr/sbin/equipe-dashboard-control',['zram-toggle',desired?'1':'0']).then(function(r){
+						if(r.code)throw new Error(r.stderr||'Falha ao alterar ZRAM');
+						ui.addNotification(null,E('p',{},[desired?'Compressão de memória (ZRAM) ativada com sucesso.':'Compressão de memória (ZRAM) desativada com sucesso.']));
+						window.setTimeout(function(){window.location.reload();},900);
+					}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});
+				},this)},[f.active?'Desativar':'Ativar']));
 			}
 			let reasonEl = '';
 			if (isNativeHw) {
@@ -2653,6 +2671,32 @@ const systemMethods = {
 			} else if (isShieldedOnSat) {
 				const satReason = f.reason || 'Exclusivo do Roteador Mestre (Gateway principal).';
 				reasonEl = E('small',{class:'ex-feature-reason',style:'color:#3b82f6;font-weight:600;display:block;margin-top:4px;'},[(satReason.startsWith('🛡️')||satReason.startsWith('Desnecessário'))?satReason:('🛡️ '+satReason)]);
+			} else if (key==='upnp'&&f.installed) {
+				if (f.active) {
+					reasonEl = E('small',{class:'ex-feature-reason',style:'color:#f59e0b;font-weight:600;display:block;margin-top:4px;'},['⚠️ Risco de Segurança: Ativo. Qualquer aplicativo na rede pode abrir portas na WAN sem senha. Desative se não usar jogos P2P.']);
+				} else {
+					reasonEl = E('small',{class:'ex-feature-reason',style:'color:#10b981;font-weight:600;display:block;margin-top:4px;'},['🛡️ Modo Seguro: Desativado. Nenhuma porta é aberta automaticamente. Máxima proteção e economia de RAM.']);
+				}
+			} else if (key==='zram'&&f.installed) {
+				const memStr = (f.mem_total_mb || '512+') + ' MB';
+				const sizeStr = (f.zram_size_mb || (f.is_low_end_mips ? '32' : '128')) + ' MB';
+				if (f.active) {
+					if (f.is_high_ram) {
+						reasonEl = E('small',{class:'ex-feature-reason',style:'color:#3b82f6;font-weight:600;display:block;margin-top:4px;'},[_t('ℹ️ Desnecessário (RAM Abundante): Ativo manualmente. Este roteador possui %s de RAM física e dispensa compressão.').replace('%s', memStr)]);
+					} else if (f.is_low_end_mips) {
+						reasonEl = E('small',{class:'ex-feature-reason',style:'color:#f59e0b;font-weight:600;display:block;margin-top:4px;'},[_t('⚡ Modo Protegido (CPU Mononúcleo): Ativo com swappiness=15 e limite de %s para poupar a CPU.').replace('%s', sizeStr)]);
+					} else {
+						reasonEl = E('small',{class:'ex-feature-reason',style:'color:#10b981;font-weight:600;display:block;margin-top:4px;'},[_t('🛡️ Proteção Ativa: Memória comprimida em tempo real (%s ZRAM). Evita falhas por memória cheia (OOM).').replace('%s', sizeStr)]);
+					}
+				} else {
+					if (f.is_high_ram) {
+						reasonEl = E('small',{class:'ex-feature-reason',style:'color:#3b82f6;font-weight:600;display:block;margin-top:4px;'},[_t('✨ Recomendado Desativado: Memória abundante (%s). Manter desativado economiza 100% de CPU.').replace('%s', memStr)]);
+					} else if (f.is_low_end_mips) {
+						reasonEl = E('small',{class:'ex-feature-reason',style:'color:#f59e0b;font-weight:600;display:block;margin-top:4px;'},[_t('⚠️ Recomendado Desativado: Processador single-core MIPS. ZRAM pode causar lentidão se ativado sem extrema necessidade.')]);
+					} else {
+						reasonEl = E('small',{class:'ex-feature-reason',style:'color:#10b981;font-weight:600;display:block;margin-top:4px;'},[_t('💡 Altamente Recomendado: Roteador com %s de RAM. Ative para evitar falhas por falta de memória.').replace('%s', memStr)]);
+					}
+				}
 			} else if (!f.installed&&f.reason) {
 				reasonEl = E('small',{class:'ex-feature-reason',style:'color:#ef4444;font-weight:600;display:block;margin-top:4px;'},['⚠️ '+f.reason]);
 			}
@@ -2772,6 +2816,91 @@ const systemMethods = {
 			]),
 			E('div',{class:'ex-feature-list'},rows),
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])
+		]);
+	},
+	showHighRamZramConfirmModal: function(f) {
+		const finalButton = E('button', { class: 'btn cbi-button cbi-button-negative', disabled: true }, [_t('Aguarde 5 s')]);
+		const started = Date.now();
+		const timer = window.setInterval(function() {
+			const left = Math.ceil((5000 - (Date.now() - started)) / 1000);
+			if (left > 0) {
+				finalButton.textContent = _t('Aguarde %s s').replace('%s', left);
+				return;
+			}
+			window.clearInterval(timer);
+			finalButton.disabled = false;
+			finalButton.textContent = _t('Confirmar ativação mesmo assim');
+		}, 100);
+
+		finalButton.addEventListener('click', L.bind(function() {
+			window.clearInterval(timer);
+			finalButton.disabled = true;
+			finalButton.textContent = _t('Ativando ZRAM…');
+			return fs.exec('/usr/sbin/equipe-dashboard-control', ['zram-toggle', '1']).then(function(r) {
+				if (r.code) throw new Error(r.stderr || 'Falha ao ativar ZRAM');
+				ui.hideModal();
+				ui.addNotification(null, E('p', {}, [_t('Compressão de memória (ZRAM) ativada em modo forçado pelo usuário.')]));
+				window.setTimeout(function() { window.location.reload(); }, 900);
+			}).catch(function(e) {
+				finalButton.disabled = false;
+				finalButton.textContent = _t('Confirmar ativação mesmo assim');
+				ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+			});
+		}, this));
+
+		ui.showModal(_t('⚠️ Confirmação: Compressão ZRAM em Alta Capacidade'), [
+			E('p', { class: 'alert-message warning' }, [
+				_t('Memória RAM física abundante detectada: este roteador possui %s de RAM. A memória é mais do que suficiente para o OpenWrt e todos os serviços sem qualquer risco de esgotamento.').replace('%s', (f.mem_total_mb || '512+') + ' MB')
+			]),
+			E('p', {}, [
+				_t('A compressão ZRAM forçará o processador a gastar ciclos contínuos de CPU comprimindo dados em tempo real desnecessariamente. Isso eleva o consumo elétrico e pode reduzir o rendimento máximo de banda (throughput).')
+			]),
+			E('p', { class: 'alert-message info', style: 'margin-top: 8px; font-size: 0.9rem;' }, [
+				_t('Trava de segurança de 5 segundos: projetada para evitar ativação acidental em equipamentos de ponta. Se você realmente deseja ativar para experimentos ou laboratório, aguarde a contagem.')
+			]),
+			E('div', { class: 'right' }, [
+				E('button', {
+					class: 'btn cbi-button cbi-button-neutral',
+					click: function() { window.clearInterval(timer); ui.hideModal(); }
+				}, [_t('Cancelar')]),
+				' ',
+				finalButton
+			])
+		]);
+	},
+	showLowEndMipsZramConfirmModal: function(f) {
+		const confirmBtn = E('button', { class: 'btn cbi-button cbi-button-positive' }, [_t('Ativar em modo protegido (32 MB)')]);
+		confirmBtn.addEventListener('click', L.bind(function() {
+			confirmBtn.disabled = true;
+			confirmBtn.textContent = _t('Ativando ZRAM protegido…');
+			return fs.exec('/usr/sbin/equipe-dashboard-control', ['zram-toggle', '1']).then(function(r) {
+				if (r.code) throw new Error(r.stderr || 'Falha ao ativar ZRAM');
+				ui.hideModal();
+				ui.addNotification(null, E('p', {}, [_t('Compressão ZRAM ativada em modo protegido (swappiness=15, máx 32 MB).')]));
+				window.setTimeout(function() { window.location.reload(); }, 900);
+			}).catch(function(e) {
+				confirmBtn.disabled = false;
+				confirmBtn.textContent = _t('Ativar em modo protegido (32 MB)');
+				ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+			});
+		}, this));
+
+		ui.showModal(_t('⚠️ Compressão ZRAM em Processador Mononúcleo (MIPS)'), [
+			E('p', { class: 'alert-message warning' }, [
+				_t('Processador mononúcleo (MIPS single-core) detectado. Comprimir dados em tempo real consome CPU e pode causar lentidão se a rede for exigida ao máximo.')
+			]),
+			E('p', {}, [
+				_t('Para proteger o roteador contra travamentos e garantir latência baixa, o ARK Router aplicará proteção automática:')
+			]),
+			E('ul', { style: 'margin: 8px 0 12px 20px; font-size: 0.9rem;' }, [
+				E('li', {}, [E('strong', {}, [_t('Swappiness conservador (15):'), ' ']), _t('evita que o kernel compacte memória preventivamente sem necessidade real.')]),
+				E('li', {}, [E('strong', {}, [_t('Teto rígido de 32 MB:'), ' ']), _t('impede que blocos comprimidos sobrecarreguem o cache de instruções da CPU.')])
+			]),
+			E('div', { class: 'right' }, [
+				E('button', { class: 'btn cbi-button cbi-button-neutral', click: ui.hideModal }, [_t('Cancelar')]),
+				' ',
+				confirmBtn
+			])
 		]);
 	},
 	openDnsTurboModal: function() {
@@ -3204,6 +3333,8 @@ const systemMethods = {
 		}, data.perfStatus || {});
 
 		const irqbalance = this.feature('irqbalance') || {};
+		const zramFeat = this.feature('zram') || {};
+		const upnpFeat = this.feature('upnp') || {};
 		const hwInfo = data.hardwareInfo || {};
 		const cpuInfo = hwInfo.cpu || {};
 		const cpuCores = cpuInfo.cores || 1;
@@ -3225,6 +3356,10 @@ const systemMethods = {
 			if (self.perfState.nlbwmon_lite) c++;
 			const isNativeIrq = !irqbalance.installed && (!irqbalance.installable && (irqbalance.native_hw || (irqbalance.reason && irqbalance.reason.indexOf('nativamente') !== -1)));
 			if ((cpuCores > 1 && irqbalance.installed && irqbalance.active) || isNativeIrq) c++;
+			if (self.perfState.dns_allservers) c++;
+			if (self.perfState.igmp_snooping) c++;
+			if (zramFeat.installed && zramFeat.active) c++;
+			if (upnpFeat.installed && upnpFeat.active) c++;
 			return c;
 		};
 
@@ -3521,6 +3656,162 @@ const systemMethods = {
 		const flashBadge = memTotalMb <= 150 ? 'ROTEADORES <= 16MB (DGL-5500)' : 'ROTEADORES <= 16MB';
 		const flashDesc = 'Compacta pacotes pesados para descompressão em RAM no boot, limpa caches do ' + (isOpkg ? 'OPKG' : 'APK') + ' e remove redundâncias na partição Flash.';
 
+		let zramRow = null;
+		if (zramFeat.installed || zramFeat.installable) {
+			let zramBadge = 'LZ4 EXPANSÃO';
+			let zramBadgeClass = 'badge-green';
+			let zramAdvice = 'Recomendado para expandir a memória útil e evitar travamentos sob tráfego pesado.';
+			if (zramFeat.is_high_ram) {
+				zramBadge = 'DESNECESSÁRIO (RAM ABUNDANTE)';
+				zramBadgeClass = 'badge-blue';
+				zramAdvice = 'Este roteador possui ' + (zramFeat.mem_total_mb || '512+') + ' MB de RAM física e dispensa compressão. Para ativar, há trava de segurança de 5s.';
+			} else if (zramFeat.is_low_end_mips) {
+				zramBadge = 'MODO PROTEGIDO (CPU 1-CORE)';
+				zramBadgeClass = 'badge-yellow';
+				zramAdvice = 'Em processadores mononúcleo lentos (MIPS), a ZRAM opera limitada a 32 MB com swappiness reduzido (15) para poupar a CPU.';
+			} else if (zramFeat.active) {
+				zramBadge = (zramFeat.zram_size_mb ? (zramFeat.zram_size_mb + ' MB ALOCADOS') : 'LZ4 ATIVO');
+				zramBadgeClass = 'badge-green';
+			}
+
+			const zramStatePill = E('strong', {
+				class: 'ex-device-switch-state',
+				style: 'margin-right: 12px;'
+			}, [zramFeat.active ? (zramFeat.zram_size_mb ? (zramFeat.zram_size_mb + ' MB') : 'LIGADA') : 'DESLIGADA']);
+
+			const zramInput = E('input', {
+				type: 'checkbox',
+				'aria-label': 'Compressão de Memória RAM (ZRAM)',
+				change: function(ev) {
+					const input = ev.currentTarget;
+					const desired = !!input.checked;
+					if (desired && zramFeat.is_high_ram) {
+						input.checked = false;
+						return self.showHighRamZramConfirmModal(zramFeat);
+					}
+					if (desired && zramFeat.is_low_end_mips) {
+						input.checked = false;
+						return self.showLowEndMipsZramConfirmModal(zramFeat);
+					}
+					zramStatePill.textContent = desired ? (zramFeat.zram_size_mb ? (zramFeat.zram_size_mb + ' MB') : 'LIGADA') : 'DESLIGADA';
+					fs.exec('/usr/sbin/equipe-dashboard-control', ['zram-toggle', desired ? '1' : '0']).then(function(r) {
+						if (r.code) throw new Error(r.stderr || 'Falha ao alterar ZRAM');
+						zramFeat.active = desired;
+						updateBadges();
+						self.triggerImmediateRefresh(desired ? 'Compressão de memória (ZRAM) ativada com sucesso!' : 'Compressão de memória (ZRAM) desativada com sucesso.', 'info', false);
+					}).catch(function(e) {
+						input.checked = !desired;
+						zramStatePill.textContent = !desired ? (zramFeat.zram_size_mb ? (zramFeat.zram_size_mb + ' MB') : 'LIGADA') : 'DESLIGADA';
+						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+					});
+				}
+			});
+			zramInput.checked = !!zramFeat.active;
+			if (!zramFeat.installed) zramInput.disabled = true;
+
+			const zramControl = zramFeat.installed ? E('div', {
+				class: 'ex-device-switch-control',
+				style: 'cursor: pointer; user-select: none;',
+				click: function(ev) {
+					ev.preventDefault();
+					ev.stopPropagation();
+					if (!zramFeat.installed || zramInput.disabled) return;
+					zramInput.checked = !zramInput.checked;
+					zramInput.dispatchEvent(new Event('change', { bubbles: true }));
+				}
+			}, [
+				zramStatePill,
+				E('label', { class: 'ex-switch', style: 'pointer-events: none;' }, [
+					zramInput,
+					E('span', { class: 'ex-switch-slider' })
+				])
+			]) : E('button', { class: 'ex-mini-button', click: L.bind(this.installFeature, this, 'zram') }, ['Instalar']);
+
+			zramRow = E('div', { class: 'ex-perf-item' }, [
+				E('div', { class: 'ex-perf-item-content' }, [
+					E('div', { class: 'ex-perf-item-head' }, [
+						E('span', { class: 'ex-perf-icon' }, ['🗜️']),
+						E('strong', {}, ['Compressão de Memória RAM (ZRAM / LZ4)']),
+						E('span', { class: 'ex-perf-badge ' + zramBadgeClass }, [zramBadge])
+					]),
+					E('p', { class: 'ex-perf-desc' }, [
+						'Cria um disco de memória comprimida em tempo real utilizando algoritmo LZ4 ultrarrápido, duplicando a capacidade efetiva da RAM sem gravar nem desgastar a memória Flash.'
+					]),
+					E('small', { class: 'ex-perf-hw-advice' }, ['💡 ' + zramAdvice])
+				]),
+				zramControl
+			]);
+		}
+
+		let upnpRow = null;
+		if (upnpFeat.installed || upnpFeat.installable) {
+			const upnpStatePill = E('strong', {
+				class: 'ex-device-switch-state',
+				style: 'margin-right: 12px;'
+			}, [upnpFeat.active ? 'LIGADA' : 'DESLIGADA']);
+
+			const upnpInput = E('input', {
+				type: 'checkbox',
+				'aria-label': 'Abertura Automática de Portas (UPnP / IGD)',
+				change: function(ev) {
+					const input = ev.currentTarget;
+					const desired = !!input.checked;
+					upnpStatePill.textContent = desired ? 'LIGADA' : 'DESLIGADA';
+					fs.exec('/usr/sbin/equipe-dashboard-control', ['upnp-toggle', desired ? '1' : '0']).then(function(r) {
+						if (r.code) throw new Error(r.stderr || 'Falha ao alterar UPnP');
+						upnpFeat.active = desired;
+						updateBadges();
+						self.triggerImmediateRefresh(desired ? 'UPnP ativado. Atenção: portas podem ser abertas na WAN sem autenticação.' : 'UPnP desativado com sucesso (modo seguro).', 'info', false);
+					}).catch(function(e) {
+						input.checked = !desired;
+						upnpStatePill.textContent = !desired ? 'LIGADA' : 'DESLIGADA';
+						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+					});
+				}
+			});
+			upnpInput.checked = !!upnpFeat.active;
+			if (!upnpFeat.installed) upnpInput.disabled = true;
+
+			const upnpControl = upnpFeat.installed ? E('div', {
+				class: 'ex-device-switch-control',
+				style: 'cursor: pointer; user-select: none;',
+				click: function(ev) {
+					ev.preventDefault();
+					ev.stopPropagation();
+					if (!upnpFeat.installed || upnpInput.disabled) return;
+					upnpInput.checked = !upnpInput.checked;
+					upnpInput.dispatchEvent(new Event('change', { bubbles: true }));
+				}
+			}, [
+				upnpStatePill,
+				E('label', { class: 'ex-switch', style: 'pointer-events: none;' }, [
+					upnpInput,
+					E('span', { class: 'ex-switch-slider' })
+				])
+			]) : E('button', { class: 'ex-mini-button', click: L.bind(this.installFeature, this, 'upnp') }, ['Instalar']);
+
+			upnpRow = E('div', { class: 'ex-perf-item' }, [
+				E('div', { class: 'ex-perf-item-content' }, [
+					E('div', { class: 'ex-perf-item-head' }, [
+						E('span', { class: 'ex-perf-icon' }, ['🎮']),
+						E('strong', {}, ['Abertura Automática de Portas (UPnP / IGD)']),
+						E('span', { class: 'ex-perf-badge ' + (upnpFeat.active ? 'badge-yellow' : 'badge-green') }, [upnpFeat.active ? 'PORTAS DINÂMICAS ATIVAS' : 'MODO SEGURO'])
+					]),
+					E('p', { class: 'ex-perf-desc' }, [
+						upnpFeat.active
+							? 'Permite que consoles e aplicativos abram portas na WAN automaticamente. ⚠️ Risco: qualquer software na rede pode criar regras de entrada sem senha.'
+							: 'Mantém portas protegidas contra abertura automática não autorizada. Nenhuma regra é criada na WAN sem permissão explícita no firewall.'
+					]),
+					E('small', { class: 'ex-perf-hw-advice' }, [
+						upnpFeat.active
+							? '💡 Desative se não utilizar jogos multiplayer que exijam NAT Aberto para máxima blindagem de segurança.'
+							: '💡 Recomendado manter DESATIVADO (Modo Seguro). Ative apenas se consoles de jogos acusarem NAT Estrito / Tipo 3.'
+					])
+				]),
+				upnpControl
+			]);
+		}
+
 		const rows = [
 			makePerfRow(
 				'⚡',
@@ -3585,6 +3876,7 @@ const systemMethods = {
 				false,
 				capacityBtn
 			),
+			upnpRow,
 			makePerfRow(
 				'⚡',
 				'Perfil de Memória do Kernel (Sysctl Tuning)',
@@ -3634,6 +3926,7 @@ const systemMethods = {
 		]);
 
 		rows.push(trimRow);
+		if (zramRow) rows.push(zramRow);
 
 		if (hasSpeedify) {
 			rows.push(makePerfRow(
@@ -3696,7 +3989,7 @@ const systemMethods = {
 		const bodyEl = E('div', { class: 'ex-card-collapse-body' }, [
 			E('div', { class: 'ex-card-collapse-inner' }, [
 				E('div', { class: 'ex-perf-body' }, [
-					E('div', { class: 'ex-perf-grid' }, rows)
+					E('div', { class: 'ex-perf-grid' }, rows.filter(Boolean))
 				])
 			])
 		]);

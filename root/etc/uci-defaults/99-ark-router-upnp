@@ -7,12 +7,20 @@ if [ -f /etc/config/upnpd ]; then
 	[ "$(uci -q get upnpd.config.use_stun)" = "1" ] || { uci -q set upnpd.config.use_stun='1'; changed=1; }
 	[ "$(uci -q get upnpd.config.stun_host)" = "stun.cloudflare.com" ] || { uci -q set upnpd.config.stun_host='stun.cloudflare.com'; changed=1; }
 	[ "$(uci -q get upnpd.config.stun_port)" = "3478" ] || { uci -q set upnpd.config.stun_port='3478'; changed=1; }
-	[ "$(uci -q get upnpd.config.enabled)" = "1" ] || { uci -q set upnpd.config.enabled='1'; changed=1; }
-	[ "$(uci -q get upnpd.config.enable_upnp)" = "1" ] || { uci -q set upnpd.config.enable_upnp='1'; changed=1; }
-	[ "$(uci -q get upnpd.config.enable_natpmp)" = "1" ] || { uci -q set upnpd.config.enable_natpmp='1'; changed=1; }
+	# Preserva a escolha do usuario: so define padrao desativado (modo seguro) se nunca configurado
+	if [ -z "$(uci -q get upnpd.config.enabled)" ]; then
+		uci -q set upnpd.config.enabled='0'
+		uci -q set upnpd.config.enable_upnp='0'
+		uci -q set upnpd.config.enable_natpmp='0'
+		changed=1
+	fi
 	if [ "$changed" = "1" ]; then
 		uci commit upnpd
-		[ -x /etc/init.d/miniupnpd ] && /etc/init.d/miniupnpd restart >/dev/null 2>&1 || true
+		if [ "$(uci -q get upnpd.config.enabled || echo 0)" = "1" ]; then
+			[ -x /etc/init.d/miniupnpd ] && /etc/init.d/miniupnpd restart >/dev/null 2>&1 || true
+		else
+			[ -x /etc/init.d/miniupnpd ] && /etc/init.d/miniupnpd stop >/dev/null 2>&1 || true
+		fi
 	fi
 fi
 

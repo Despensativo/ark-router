@@ -95,6 +95,46 @@ ark_doctor_audit() {
 		add_check "Memoria RAM" "OK" "${mem_free_mb}MB livres de ${mem_total_mb}MB disponiveis."
 	fi
 
+	# 1b. Coerencia de ZRAM e Compressao de RAM
+	local zram_active=0
+	grep -q zram /proc/swaps 2>/dev/null && zram_active=1
+	local doc_cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
+	local doc_is_mips=0
+	case "$(uname -m 2>/dev/null || echo '')" in mips*) doc_is_mips=1 ;; esac
+	local doc_is_low_end_mips=0
+	[ "$doc_is_mips" = 1 ] && [ "$doc_cpu_cores" -le 1 ] && doc_is_low_end_mips=1
+	local doc_swappiness="$(sysctl -n vm.swappiness 2>/dev/null || echo 60)"
+
+	if [ "$zram_active" = 1 ]; then
+		local swap_line="$(grep zram /proc/swaps 2>/dev/null | head -n 1)"
+		local swap_size_mb=$(( $(echo "$swap_line" | awk '{print $3}') / 1024 ))
+		local swap_used_mb=$(( $(echo "$swap_line" | awk '{print $4}') / 1024 ))
+
+		if [ "$mem_total_mb" -ge 512 ]; then
+			warnings=$((warnings + 1))
+			add_check "Coerencia de ZRAM" "WARN" "ZRAM ativo em hardware de alta capacidade (${mem_total_mb}MB RAM). Desnecessario; desative para poupar CPU."
+		elif [ "$doc_is_low_end_mips" = 1 ] && [ "$doc_swappiness" -gt 25 ]; then
+			if [ "$auto_fix" = 1 ]; then
+				sysctl -q -w vm.swappiness=15 2>/dev/null || true
+				fixes_applied=$((fixes_applied + 1))
+				add_check "Coerencia de ZRAM" "FIXED" "Agressividade do ZRAM reduzida (swappiness=15) para proteger CPU mono-core contra saturacao."
+			else
+				warnings=$((warnings + 1))
+				add_check "Coerencia de ZRAM" "WARN" "ZRAM ativo com swappiness alta (${doc_swappiness}) em processador mono-core. Risco de 100% CPU."
+			fi
+		else
+			add_check "Coerencia de ZRAM" "OK" "ZRAM ativo (${swap_size_mb}MB alocados, ${swap_used_mb}MB em uso) blindando o sistema contra OOM."
+		fi
+	else
+		if [ "$mem_total_mb" -ge 512 ]; then
+			add_check "Coerencia de ZRAM" "OK" "Hardware potente (${mem_total_mb}MB RAM). ZRAM desligado preservando 100% da CPU."
+		elif [ "$doc_is_low_end_mips" = 1 ]; then
+			add_check "Coerencia de ZRAM" "OK" "ZRAM desativado preservando CPU mono-core contra sobrecarga de compressao."
+		else
+			add_check "Coerencia de ZRAM" "OK" "ZRAM inativo em hardware modesto (${mem_free_mb}MB livres). Ative na Central se sofrer picos de RAM."
+		fi
+	fi
+
 	# 2. Checagem do Espaco em Flash (/overlay)
 	overlay_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2 {print $4}')"
 	case "$overlay_free_kb" in

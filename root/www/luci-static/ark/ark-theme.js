@@ -38,7 +38,7 @@
         if (vm) arkVersion = decodeURIComponent(vm[1]);
       }
     }
-    if (!arkVersion) arkVersion = '1.5.13';
+    if (!arkVersion) arkVersion = '1.5.14';
     window.ARK_VERSION = arkVersion;
 
     var hookLuciScript = function() {
