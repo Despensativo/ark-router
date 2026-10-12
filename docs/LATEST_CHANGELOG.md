@@ -1,17 +1,14 @@
-### Novidades e Destaques do ARK Router v1.5.15
+### Novidades e Destaques do ARK Router v1.5.16
 
-• **🚀 Checador Inteligente de Nova Versão & Diagnóstico de Espaço em Disco**:
-  - **Checagem em Segundo Plano com Cache Duplo**: Execução não intrusiva com cache de 12 horas no backend (`/tmp/ark-router-update-check.json`) e throttling no frontend (`localStorage`), evitando requisições desnecessárias.
-  - **Banner Dinâmico com Opção de Ocultar**: Notificação visual sutil logo abaixo do Hero, com botão "Ocultar ✕" que persiste por versão no navegador.
-  - **Modal Completa de Confirmação & Changelog**: Exibição da versão instalada vs nova versão (`v{current}` ➔ `v{latest}`), pacote de destino (`.apk`/`.ipk`) e lista detalhada de novidades.
-  - **Ponto de Corte de Armazenamento no Limite Físico (650 KB)**: Diagnóstico visual de espaço na partição Flash (`/overlay`) e RAM (`/tmp`). Se o espaço livre for inferior a 650 KB, o sistema alerta e bloqueia a gravação para evitar corrupção do JFFS2/UBIFS, oferecendo botão para purgar a flash. Entre 650 KB e 1200 KB, emite aviso de margem estreita e prossegue substituindo os arquivos.
-  - **Garantias de Blindagem**: Backup automático de configurações antes do update, preservando 100% das senhas, regras de firewall e redes Wi-Fi sem queda de conexão.
+• **🌐 Isolamento Canônico de IPv6 & Fim do Sequestro de Socket na WAN**:
+  - **Vinculação Estrita de Interfaces DHCPv6**: Pareamento canônico de interfaces IPv6 com seus respectivos dispositivos de WAN pai (`wan` ➔ `wan6` em `@wan`, `wan2` ➔ `wan2_6` em `@wan2`).
+  - **Expurgo Automático de Interfaces Órfãs**: Ao converter uma porta WAN secundária para LAN, suas interfaces de IPv6 e registros de firewall são cirurgicamente removidos, prevenindo loops de recarga no `netifd` e erros de `Invalid argument`.
+  - **Exclusividade Mútua na Delegação de Prefixo**: Em cenários Multi-WAN, a WAN primária delega o prefixo para a LAN (`delegate=1`), enquanto as WANs secundárias operam com `delegate=0`, eliminando colisões de roteamento e *blackholes* de tráfego.
 
-• **⚖️ Blindagem Multicore de Interrupções (IRQ Balance)**:
-  - Detecção nativa em nível de silício para MediaTek Filogic (WED/PPE) e Qualcomm IPQ/NSS. O toggle manual é protegido e substituído por selo verde Nativo por Hardware com anéis de DMA dedicados.
+• **🛡️ Blindagem de Modo Ponto de Acesso / Ponte (AP / Bridge Mode)**:
+  - **Passagem L2 Transparente**: Reconhecimento automático do tráfego IPv6 fluindo via switch bridge de Camada 2 a partir do roteador mestre upstream.
+  - **Bypass no Ark Doctor e Sanitizadores**: Sanitizadores e auditorias ignoram a exigência de `wan6` local quando o roteador opera como satélite/ponte/AP, reportando status verde sem alertas indevidos.
 
-• **🎛️ Toggles Inteligentes no Card Principal "Desempenho & Blindagem de Memória"**:
-  - Controles de Compressão de Memória RAM (ZRAM / LZ4) e Abertura Automática de Portas (UPnP / IGD) diretamente no card principal do dashboard com feedback em tempo real.
-
-• **🌐 Internacionalização Tripla (i18n)**:
-  - 100% de cobertura e paridade estrita nos 3 idiomas suportados: Português do Brasil (PT-BR), Inglês (EN) e Espanhol (ES).
+• **🔥 Pureza de Firewall fw4 no Multi-WAN (mwan3)**:
+  - **Contador Preciso de WANs Ativas**: O ciclo de vida do `mwan3` agora ignora interfaces companheiras de IPv6 (`wan6`, `*_6`, proto `dhcpv6`), identificando corretamente cenários com apenas 1 WAN física.
+  - **Standby Automático & Eliminação de Regras Legadas**: Em Single-WAN, o `mwan3` entra em standby imediato e o `fw4` é recarregado, eliminando 100% das regras legadas de `iptables` e operando com `nftables` puro.
