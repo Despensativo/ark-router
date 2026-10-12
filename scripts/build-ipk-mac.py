@@ -124,7 +124,7 @@ def build_ipk_variant(pkg_name, pkg_version, depends, description, is_full=False
 
         # 6. Build data.tar.gz in memory
         data_buf = io.BytesIO()
-        with tarfile.open(fileobj=data_buf, mode="w:gz") as tar:
+        with tarfile.open(fileobj=data_buf, mode="w:gz", format=tarfile.GNU_FORMAT) as tar:
             # Add root dir entry "."
             root_info = tarfile.TarInfo(name=".")
             root_info.type = tarfile.DIRTYPE
@@ -134,6 +134,7 @@ def build_ipk_variant(pkg_name, pkg_version, depends, description, is_full=False
             root_info.gid = 0
             root_info.uname = "root"
             root_info.gname = "root"
+            root_info.pax_headers = {}
             tar.addfile(root_info)
 
             for dirpath, dirnames, filenames in os.walk(payload_dir):
@@ -149,6 +150,8 @@ def build_ipk_variant(pkg_name, pkg_version, depends, description, is_full=False
                     d_info.uname = "root"
                     d_info.gname = "root"
                     d_info.mode = 0o755
+                    d_info.mtime = now
+                    d_info.pax_headers = {}
                     tar.addfile(d_info)
 
                 for f in filenames:
@@ -162,6 +165,8 @@ def build_ipk_variant(pkg_name, pkg_version, depends, description, is_full=False
                     f_info.gid = 0
                     f_info.uname = "root"
                     f_info.gname = "root"
+                    f_info.mtime = now
+                    f_info.pax_headers = {}
 
                     is_exec = (
                         arc_path.startswith("./usr/sbin/")
@@ -192,7 +197,7 @@ Description: {description}
 """
 
         control_buf = io.BytesIO()
-        with tarfile.open(fileobj=control_buf, mode="w:gz") as tar:
+        with tarfile.open(fileobj=control_buf, mode="w:gz", format=tarfile.GNU_FORMAT) as tar:
             # Entry: .
             root_info = tarfile.TarInfo(name=".")
             root_info.type = tarfile.DIRTYPE
@@ -202,6 +207,7 @@ Description: {description}
             root_info.gid = 0
             root_info.uname = "root"
             root_info.gname = "root"
+            root_info.pax_headers = {}
             tar.addfile(root_info)
 
             # File: ./control
@@ -214,6 +220,7 @@ Description: {description}
             c_info.gid = 0
             c_info.uname = "root"
             c_info.gname = "root"
+            c_info.pax_headers = {}
             tar.addfile(c_info, io.BytesIO(c_data))
 
             # File: ./conffiles
@@ -226,6 +233,7 @@ Description: {description}
             cf_info.gid = 0
             cf_info.uname = "root"
             cf_info.gname = "root"
+            cf_info.pax_headers = {}
             tar.addfile(cf_info, io.BytesIO(cf_data))
 
             # File: ./postinst
@@ -238,6 +246,7 @@ Description: {description}
             p_info.gid = 0
             p_info.uname = "root"
             p_info.gname = "root"
+            p_info.pax_headers = {}
             tar.addfile(p_info, io.BytesIO(p_data))
 
             # File: ./postrm
@@ -250,6 +259,7 @@ Description: {description}
             pr_info.gid = 0
             pr_info.uname = "root"
             pr_info.gname = "root"
+            pr_info.pax_headers = {}
             tar.addfile(pr_info, io.BytesIO(pr_data))
 
         control_bytes = control_buf.getvalue()
@@ -258,7 +268,7 @@ Description: {description}
         debian_binary = b"2.0\n"
 
         # 9. Pack final .ipk archive (tar.gz container)
-        with tarfile.open(out_file, mode="w:gz") as tar:
+        with tarfile.open(out_file, mode="w:gz", format=tarfile.GNU_FORMAT) as tar:
             # ./debian-binary
             db_info = tarfile.TarInfo(name="./debian-binary")
             db_info.size = len(debian_binary)
@@ -268,6 +278,7 @@ Description: {description}
             db_info.gid = 0
             db_info.uname = "root"
             db_info.gname = "root"
+            db_info.pax_headers = {}
             tar.addfile(db_info, io.BytesIO(debian_binary))
 
             # ./data.tar.gz
@@ -279,6 +290,7 @@ Description: {description}
             dt_info.gid = 0
             dt_info.uname = "root"
             dt_info.gname = "root"
+            dt_info.pax_headers = {}
             tar.addfile(dt_info, io.BytesIO(data_bytes))
 
             # ./control.tar.gz
@@ -290,6 +302,7 @@ Description: {description}
             ct_info.gid = 0
             ct_info.uname = "root"
             ct_info.gname = "root"
+            ct_info.pax_headers = {}
             tar.addfile(ct_info, io.BytesIO(control_bytes))
 
     print(f"  [OK] Criado: {out_file}")

@@ -4,7 +4,7 @@
 		"order": 0,
 		"action": {
 			"type": "view",
-			"path": "equipe-dashboard/overview_v2"
+			"path": "equipe-dashboard/overview"
 		},
 		"depends": {
 			"acl": [ "luci-app-equipe-dashboard" ]

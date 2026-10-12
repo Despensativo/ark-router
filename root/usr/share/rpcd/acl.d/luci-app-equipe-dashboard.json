@@ -14,7 +14,7 @@
 				"/sys/class/thermal/thermal_zone0/temp": [ "read" ]
 			},
 			"ubus": {
-				"file": [ "exec", "read" ],
+				"file": [ "exec", "read", "list" ],
 				"iwinfo": [ "assoclist", "survey", "scan", "freqlist", "countrylist", "info", "txpowerlist", "phyname" ],
 				"luci-rpc": [ "getDHCPLeases", "getHostHints" ],
 				"mwan3": [ "status" ],

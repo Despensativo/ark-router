@@ -164,6 +164,17 @@ function sqmWanProfiles(data) {
 		const section=name==='wan'?'wan1':name.toLowerCase();if(seen[section])return;seen[section]=1;
 		result.push({network:name,section:section,label:name==='wan'?'WAN1':name.toUpperCase(),device:String(live.l3_device||live.device||cfg.device||name),online:!!live.up,proto:proto});
 	});
+	if (!result.length) {
+		const defaultDev = (dump.wan && (dump.wan.l3_device || dump.wan.device)) || (net.wan && net.wan.device) || 'eth0';
+		result.push({
+			network: 'wan',
+			section: 'wan1',
+			label: 'WAN1',
+			device: String(defaultDev),
+			online: false,
+			proto: (net.wan && net.wan.proto) || 'dhcp'
+		});
+	}
 	return result;
 }
 function parsePing(r) { const m = ((r && r.stdout) || '').match(/time[=<]([0-9.]+)/); return r && r.code === 0 && m ? Number(m[1]) : null; }
