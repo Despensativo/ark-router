@@ -516,7 +516,7 @@ const networkMethods = {
 			try { audit = JSON.parse(auditRes.stdout || '{}'); } catch(e) {}
 			const data=this.currentData||{}, sqm=values(data.sqm), qosValues=values(data.qos), qos=qosValues.main||{}, qosGuest=qosValues.guest||{};
 			const field=function(label,value,hint){const node=E('input',{type:'number',class:'cbi-input-text',min:0,max:100000,step:'0.1',placeholder:'0 (ilimitado)',value:kbpsToMbpsInput(value)});return {node:node,row:E('label',{class:'ex-qos-edit-field'},[E('span',{},[label+' (Mbps)']),node,E('small',{class:'ex-muted'},[hint||'Mbps • 0 ou vazio = ilimitado'])])};};
-			const profiles=sqmWanProfiles(data);if(!profiles.length)throw new Error('Nenhuma interface configurada como WAN foi encontrada.');
+			const profiles=sqmWanProfiles(data);
 			const guestDownloadLimit=qosGuest.download_kbps||qos.guest_download_kbps||0, guestUploadLimit=qosGuest.upload_kbps||qos.guest_upload_kbps||0;
 			const fwDefs = Object.values(data.firewallConfig || {}).find(function(s) { return s && s['.type'] === 'defaults'; }) || {};
 			const isFlowOffloadActive = fwDefs.flow_offloading === '1';
