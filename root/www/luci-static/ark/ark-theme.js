@@ -764,15 +764,24 @@
 
       if (!guide) return;
 
-      var box = existingGuide || document.createElement('div');
+      var box = (existingGuide && existingGuide.tagName === 'DETAILS') ? existingGuide : document.createElement('details');
+      if (existingGuide && existingGuide.tagName !== 'DETAILS' && existingGuide.parentNode) {
+        existingGuide.parentNode.replaceChild(box, existingGuide);
+      }
       box.id = 'ark-feature-guide';
       box.className = 'ark-guide-box';
       if (guide.band) box.setAttribute('data-ark-band', guide.band);
+      var badgeText = isEn ? '💡 Tips & Guide ▾' : (isEs ? '💡 Consejos y Guía ▾' : '💡 Ajuda & Dicas ▾');
       box.innerHTML = '' +
-        '<div class="ark-guide-title">📘 ' + guide.title + '</div>' +
-        '<div class="ark-guide-item"><strong>📌 ' + (isEn ? 'What it is:' : (isEs ? 'Para qué sirve:' : 'Para que serve:')) + '</strong> <span>' + guide.serve + '</span></div>' +
-        '<div class="ark-guide-item"><strong>🛠️ ' + (isEn ? 'What to do:' : (isEs ? 'Qué hacer:' : 'O que fazer:')) + '</strong> <span>' + guide.fazer + '</span></div>' +
-        '<div class="ark-guide-item rec"><strong>💡 ' + (isEn ? 'ARK Recommendation:' : (isEs ? 'Recomendación ARK:' : 'Recomendação ARK:')) + '</strong> <span>' + guide.rec + '</span></div>';
+        '<summary class="ark-guide-title">' +
+          '<span>📘 ' + guide.title + '</span>' +
+          '<span class="ark-guide-badge">' + badgeText + '</span>' +
+        '</summary>' +
+        '<div class="ark-guide-content">' +
+          '<div class="ark-guide-item"><strong>📌 ' + (isEn ? 'What it is:' : (isEs ? 'Para qué sirve:' : 'Para que serve:')) + '</strong> <span>' + guide.serve + '</span></div>' +
+          '<div class="ark-guide-item"><strong>🛠️ ' + (isEn ? 'What to do:' : (isEs ? 'Qué hacer:' : 'O que fazer:')) + '</strong> <span>' + guide.fazer + '</span></div>' +
+          '<div class="ark-guide-item rec"><strong>💡 ' + (isEn ? 'ARK Recommendation:' : (isEs ? 'Recomendación ARK:' : 'Recomendação ARK:')) + '</strong> <span>' + guide.rec + '</span></div>' +
+        '</div>';
 
       if (!existingGuide) {
         var target = view.querySelector('.ark-hero-banner, .ark-action-grid, .ark-wireless-grid, .ark-iface-grid, .ark-admin-card, .ark-diag-grid, .cbi-map, h2') || view.firstChild;

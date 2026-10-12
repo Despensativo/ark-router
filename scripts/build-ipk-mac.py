@@ -89,7 +89,7 @@ def build_ipk_variant(pkg_name, pkg_version, depends, description, is_full=False
         if os.path.isdir(minified_dir):
             shutil.copytree(minified_dir, payload_dir, dirs_exist_ok=True)
 
-        # 3. Clean up non-package artifacts
+        # 3. Clean up non-package artifacts and v2 staging
         for dead_path in [
             os.path.join(payload_dir, "etc", "etc"),
             os.path.join(payload_dir, "usr", "usr"),
@@ -101,6 +101,14 @@ def build_ipk_variant(pkg_name, pkg_version, depends, description, is_full=False
                     shutil.rmtree(dead_path)
                 else:
                     os.remove(dead_path)
+
+        for dirpath, _, filenames in os.walk(payload_dir):
+            for fname in filenames:
+                if "_v2." in fname or fname.endswith("-v2.json") or fname.startswith("._") or fname == ".DS_Store":
+                    try:
+                        os.remove(os.path.join(dirpath, fname))
+                    except OSError:
+                        pass
 
         # 4. Set version file
         ver_dir = os.path.join(payload_dir, "usr", "share", "ark-router")

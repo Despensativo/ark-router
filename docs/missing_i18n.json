@@ -1,0 +1,238 @@
+{
+  "description": "ARK Router - Lote de Traduções Pendentes para Pré-Release",
+  "pending_count": 29,
+  "strings": {
+    "ATUALIZAÇÃO": {
+      "en": "UPDATE",
+      "es": "ACTUALIZACIÓN",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Armazenamento compacto: %s MB livres (ponto de corte mínimo: %s KB). A atualização prosseguirá substituindo os arquivos existentes.": {
+      "en": "Compact storage: %s MB free (minimum cutoff threshold: %s KB). The update will proceed by replacing existing files.",
+      "es": "Almacenamiento compacto: %s MB libres (umbral mínimo de corte: %s KB). La actualización continuará reemplazando los archivos existentes.",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Armazenamento seguro: %s MB livres na partição Flash (ponto de corte mínimo: %s KB).": {
+      "en": "Safe storage: %s MB free on Flash partition (minimum cutoff threshold: %s KB).",
+      "es": "Almacenamiento seguro: %s MB libres en la partición Flash (umbral mínimo de corte: %s KB).",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Atualização com backup de segurança automático.": {
+      "en": "Update with automatic safety backup.",
+      "es": "Actualización con copia de seguridad automática.",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Atualização do ARK Router iniciada. Acompanhe o progresso.": {
+      "en": "ARK Router update started. Monitor the progress.",
+      "es": "Actualización de ARK Router iniciada. Siga el progreso.",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Backup automático de segurança das configurações antes da gravação.": {
+      "en": "Automatic configuration safety backup before writing.",
+      "es": "Copia de seguridad automática de las configuraciones antes de escribir.",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Deseja realmente atualizar o ARK Router para a versão v%s agora?": {
+      "en": "Do you really want to update ARK Router to version v%s now?",
+      "es": "¿Realmente desea actualizar ARK Router a la versión v%s ahora?",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "ESPAÇO INSUFICIENTE NA FLASH": {
+      "en": "INSUFFICIENT FLASH SPACE",
+      "es": "ESPACIO INSUFICIENTE EN FLASH",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "ESPAÇO SUFICIENTE": {
+      "en": "SUFFICIENT SPACE",
+      "es": "ESPACIO SUFICIENTE",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Espaço Flash otimizado! Verificando novamente…": {
+      "en": "Flash space optimized! Checking again…",
+      "es": "¡Espacio Flash optimizado! Comprobando de nuevo…",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Espaço Insuficiente": {
+      "en": "Insufficient Space",
+      "es": "Espacio Insuficiente",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Melhorias de desempenho, estabilidade de conexão e correções gerais do ecossistema ARK Router.": {
+      "en": "Performance improvements, connection stability and general fixes for the ARK Router ecosystem.",
+      "es": "Mejoras de rendimiento, estabilidad de conexión y correcciones generales del ecosistema ARK Router.",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "NO LIMITE DE SEGURANÇA": {
+      "en": "AT SAFETY LIMIT",
+      "es": "EN EL LÍMITE DE SEGURIDAD",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Nova Versão:": {
+      "en": "New Version:",
+      "es": "Nueva Versión:",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Nova versão disponível: ARK Router v%s": {
+      "en": "New version available: ARK Router v%s",
+      "es": "Nueva versión disponible: ARK Router v%s",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Ocultar aviso para esta versão": {
+      "en": "Dismiss notice for this version",
+      "es": "Ocultar aviso para esta versión",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Ocultar ✕": {
+      "en": "Dismiss ✕",
+      "es": "Ocultar ✕",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "RAM (/tmp): %s MB livres": {
+      "en": "RAM (/tmp): %s MB free",
+      "es": "RAM (/tmp): %s MB libres",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Senhas, redes Wi-Fi, regras de firewall e conexões são 100% preservadas.": {
+      "en": "Passwords, Wi-Fi networks, firewall rules, and connections are 100% preserved.",
+      "es": "Contraseñas, redes Wi-Fi, reglas de firewall y conexiones se conservan al 100%.",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Ver Novidades & Atualizar": {
+      "en": "View Changelog & Update",
+      "es": "Ver Novedades y Actualizar",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Versão Instalada:": {
+      "en": "Installed Version:",
+      "es": "Versión Instalada:",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Versão atual: v%s": {
+      "en": "Current version: v%s",
+      "es": "Versión actual: v%s",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "Zero interrupção de tráfego de internet durante o processo.": {
+      "en": "Zero internet traffic interruption during the process.",
+      "es": "Cero interrupción del tráfico de internet durante el proceso.",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "💾 Diagnóstico de Espaço em Disco": {
+      "en": "💾 Disk Space Diagnostics",
+      "es": "💾 Diagnóstico de Espacio en Disco",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "📋 O que há de novo na versão v%s:": {
+      "en": "📋 What's new in version v%s:",
+      "es": "📋 Novedades en la versión v%s:",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "🚀 Atualização do ARK Router": {
+      "en": "🚀 ARK Router Update",
+      "es": "🚀 Actualización de ARK Router",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "🚀 Confirmar e Atualizar": {
+      "en": "🚀 Confirm & Update",
+      "es": "🚀 Confirmar y Actualizar",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "🛡️ Blindagem & Garantias de Segurança:": {
+      "en": "🛡️ Hardening & Safety Guarantees:",
+      "es": "🛡️ Blindaje y Garantías de Seguridad:",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "🧹 Otimizar Espaço Flash Agora": {
+      "en": "🧹 Optimize Flash Space Now",
+      "es": "🧹 Optimizar Espacio Flash Ahora",
+      "category": "translation_call",
+      "files": [
+        "src/modules/system.js"
+      ]
+    }
+  }
+}

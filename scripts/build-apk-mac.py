@@ -39,7 +39,16 @@ def build_apk_variant(pkg_name, pkg_version, depends, description, is_full=False
         with open(os.path.join(ver_dir, "VERSION"), "w", encoding="utf-8") as f:
             f.write(f"{version_num}\n")
 
-        # 4. Handle starlink-dish binary for Lite vs Full
+        # 4. Filter out staging / v2 and unwanted files
+        for dirpath, _, filenames in os.walk(payload_dir):
+            for fname in filenames:
+                if "_v2." in fname or fname.endswith("-v2.json") or fname.startswith("._") or fname == ".DS_Store":
+                    try:
+                        os.remove(os.path.join(dirpath, fname))
+                    except OSError:
+                        pass
+
+        # 5. Handle starlink-dish binary for Lite vs Full
         starlink_bin = os.path.join(payload_dir, "usr", "bin", "starlink-dish")
         if not is_full and os.path.exists(starlink_bin):
             os.remove(starlink_bin)

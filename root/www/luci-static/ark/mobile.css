@@ -162,10 +162,75 @@
 		max-width: 100% !important;
 	}
 
-	.table, table.cbi-section-table, table.table {
+	/* Single-Row Horizontal Scrollable Tabs on Mobile (Eliminates multi-line header clutter) */
+	ul.cbi-tabmenu, .cbi-tabmenu, #tabmenu, ul.tabs, .tabs {
+		display: flex !important;
+		flex-wrap: nowrap !important;
+		overflow-x: auto !important;
+		-webkit-overflow-scrolling: touch !important;
+		scrollbar-width: none !important;
+		padding-bottom: 6px !important;
+		margin-bottom: 14px !important;
+		gap: 6px !important;
+		max-width: 100% !important;
+		box-sizing: border-box !important;
+	}
+	ul.cbi-tabmenu::-webkit-scrollbar, .cbi-tabmenu::-webkit-scrollbar, ul.tabs::-webkit-scrollbar {
+		display: none !important;
+	}
+	ul.cbi-tabmenu > li, .cbi-tabmenu > li, ul.tabs > li {
+		flex: 0 0 auto !important;
+		white-space: nowrap !important;
+	}
+	ul.cbi-tabmenu > li > a, .cbi-tabmenu > li > a, ul.tabs > li > a {
+		white-space: nowrap !important;
+		padding: 7px 12px !important;
+		font-size: 12px !important;
+	}
+
+	/* Responsive Table Containers & Scroll on Mobile */
+	.cbi-section.cbi-tblsection,
+	.cbi-section-node,
+	.cbi-section-table-wrap,
+	.table-wrapper {
 		display: block !important;
 		overflow-x: auto !important;
 		-webkit-overflow-scrolling: touch !important;
+		max-width: 100% !important;
+		box-sizing: border-box !important;
+		scrollbar-width: thin !important;
+	}
+
+	.table, table.cbi-section-table, table.table, .cbi-tblsection table {
+		display: table !important;
+		min-width: 580px !important;
+		width: 100% !important;
+		box-sizing: border-box !important;
+	}
+
+	/* Software / Package Manager Mobile Overflow Fix */
+	.controls, .control-group {
+		display: flex !important;
+		flex-wrap: wrap !important;
+		max-width: 100% !important;
+		gap: 8px !important;
+		box-sizing: border-box !important;
+	}
+	.controls > *, .control-group > * {
+		max-width: 100% !important;
+	}
+	.controls input[type="text"], .control-group input[type="text"] {
+		width: 100% !important;
+		min-width: 0 !important;
+		box-sizing: border-box !important;
+	}
+	.controls .cbi-button, .controls button, .controls input[type="button"] {
+		flex: 1 1 auto !important;
+		white-space: nowrap !important;
+	}
+	#packages {
+		display: block !important;
+		overflow-x: auto !important;
 		max-width: 100% !important;
 		box-sizing: border-box !important;
 	}
@@ -176,15 +241,27 @@
 		padding: 10px 16px !important;
 	}
 
-	.ark-guide-box {
-		padding: 14px !important;
-		margin-bottom: 16px !important;
+	details.ark-guide-box {
+		padding: 8px 12px !important;
+		margin-bottom: 12px !important;
 	}
-	.ark-guide-title {
-		font-size: 14px !important;
-	}
-	.ark-guide-item {
+	details.ark-guide-box summary.ark-guide-title {
 		font-size: 12.5px !important;
+		gap: 6px !important;
+	}
+	details.ark-guide-box[open] {
+		padding: 12px 14px !important;
+	}
+	.ark-iface-actions {
+		display: grid !important;
+		grid-template-columns: 1fr 1fr !important;
+		gap: 8px !important;
+	}
+	.ark-iface-actions button {
+		width: 100% !important;
+		min-height: 38px !important;
+		height: 38px !important;
+		font-size: 12px !important;
 	}
 
 	.ark-pwd-wrap {

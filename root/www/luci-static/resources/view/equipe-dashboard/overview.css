@@ -2143,6 +2143,61 @@ body.modal-overlay-active #modal_overlay {
 	user-select: text;
 }
 
+/* Status Pill no Cabeçalho Hero: Contraste Máximo e Alta Legibilidade */
+.ex-hero #ex-global-status,
+.ex-hero .ex-pill {
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 8px !important;
+	padding: 6px 14px !important;
+	border-radius: 9999px !important;
+	font-size: 0.76rem !important;
+	font-weight: 850 !important;
+	letter-spacing: 0.06em !important;
+	text-transform: uppercase !important;
+	line-height: 1 !important;
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+	backdrop-filter: blur(10px) !important;
+	-webkit-backdrop-filter: blur(10px) !important;
+}
+
+.ex-hero #ex-global-status.offline,
+.ex-hero .ex-pill.offline {
+	background: rgba(185, 28, 28, 0.9) !important;
+	color: #ffffff !important;
+	border: 1px solid rgba(254, 202, 202, 0.5) !important;
+	box-shadow: 0 4px 16px rgba(185, 28, 28, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+}
+
+.ex-hero #ex-global-status.online,
+.ex-hero .ex-pill.online {
+	background: rgba(4, 120, 87, 0.9) !important;
+	color: #ffffff !important;
+	border: 1px solid rgba(167, 243, 208, 0.5) !important;
+	box-shadow: 0 4px 16px rgba(4, 120, 87, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+}
+
+.ex-hero #ex-global-status.standby,
+.ex-hero .ex-pill.standby {
+	background: rgba(180, 83, 9, 0.9) !important;
+	color: #ffffff !important;
+	border: 1px solid rgba(253, 230, 138, 0.5) !important;
+	box-shadow: 0 4px 16px rgba(180, 83, 9, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+}
+
+.ex-hero #ex-global-status:before,
+.ex-hero .ex-pill:before {
+	content: '' !important;
+	display: inline-block !important;
+	width: 8px !important;
+	height: 8px !important;
+	border-radius: 50% !important;
+	background: #ffffff !important;
+	box-shadow: 0 0 6px rgba(255, 255, 255, 0.9) !important;
+	flex-shrink: 0 !important;
+}
+
+
 
 
 

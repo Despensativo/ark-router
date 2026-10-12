@@ -1,13 +1,21 @@
 # Changelog
 
-## 1.5.14
+## 1.5.15
 
-- **🚀 Checador Inteligente de Nova Versão & Diagnóstico de Espaço em Disco (11/10/2026)**:
+- **🚀 Checador Inteligente de Nova Versão & Diagnóstico de Espaço em Disco (12/10/2026)**:
   - **Checagem em Segundo Plano com Cache Duplo**: Execução não intrusiva com cache de 12 horas no backend (`/tmp/ark-router-update-check.json`) e throttling no frontend (`localStorage`), evitando requisições desnecessárias.
   - **Banner Dinâmico com Opção de Ocultar**: Notificação visual sutil logo abaixo do Hero, com botão "Ocultar ✕" que persiste por versão no navegador.
   - **Modal Completa de Confirmação & Changelog**: Exibição da versão instalada vs nova versão (`v{current}` ➔ `v{latest}`), pacote de destino (`.apk`/`.ipk`) e lista detalhada de novidades.
   - **Ponto de Corte de Armazenamento no Limite Físico (650 KB)**: Diagnóstico visual de espaço na partição Flash (`/overlay`) e RAM (`/tmp`). Se o espaço livre for inferior a 650 KB, o sistema alerta e bloqueia a gravação para evitar corrupção do JFFS2/UBIFS, oferecendo botão para purgar a flash. Entre 650 KB e 1200 KB, emite aviso de margem estreita e prossegue substituindo os arquivos.
   - **Garantias de Blindagem**: Backup automático de configurações antes do update, preservando 100% das senhas, regras de firewall e redes Wi-Fi sem queda de conexão.
+
+- **⚖️ Blindagem Multicore de Interrupções (IRQ Balance) (12/10/2026)**:
+  - Detecção nativa em nível de silício para MediaTek Filogic (WED/PPE) e Qualcomm IPQ/NSS. O toggle manual é protegido e substituído por selo verde Nativo por Hardware com anéis de DMA dedicados.
+
+- **🌐 Internacionalização Tripla (i18n) (12/10/2026)**:
+  - 100% de cobertura e paridade estrita nos 3 idiomas suportados: Português do Brasil (PT-BR), Inglês (EN) e Espanhol (ES).
+
+## 1.5.14
 
 - **🎛️ Toggles Inteligentes no Card Principal "Desempenho & Blindagem de Memória" (11/10/2026)**:
   - Os controles de Compressão de Memória RAM (ZRAM) e Abertura Automática de Portas (UPnP / IGD) agora estão integrados como switches interativos de primeiro nível diretamente no card principal do dashboard.
@@ -23,15 +31,9 @@
   - Modo Seguro (Padrão): Mantém portas WAN protegidas contra abertura arbitrária e não autorizada por aplicativos na rede local.
   - Modo Dinâmico: Permite abertura sob demanda para consoles (Xbox/PlayStation) com alertas visuais explícitos de segurança e atualização imediata do contador de otimizações.
 
-- **⚖️ Blindagem Multicore de Interrupções (IRQ Balance) (11/10/2026)**:
-  - Detecção nativa em nível de silício para MediaTek Filogic (WED/PPE) e Qualcomm IPQ/NSS. O toggle manual é protegido e substituído por selo verde Nativo por Hardware com anéis de DMA dedicados.
-
 - **🩺 Ark Doctor (Auditoria & Autocura) (11/10/2026)**:
   - Adicionado teste de integridade da ZRAM (Check 1b: Coerência de ZRAM) com verificação de montagem LZ4 em /dev/zram0 e autocura de vm.swappiness.
   - Diagnóstico em tempo de execução 100% aprovado (0 erros, 0 avisos).
-
-- **🌐 Internacionalização Tripla (i18n) (11/10/2026)**:
-  - 100% de cobertura e paridade estrita nos 3 idiomas suportados: Português do Brasil (PT-BR), Inglês (EN) e Espanhol (ES).
 
 ## 1.5.11
 

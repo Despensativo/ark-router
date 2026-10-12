@@ -489,6 +489,22 @@ table .ifacebadge,
 	font-size: 13px !important;
 	letter-spacing: 0.03em;
 }
+.ifacebox .ifacebox-head.cbi-tooltip-container,
+.ifacebox .cbi-tooltip-container {
+	background: rgba(255, 255, 255, 0.04) !important;
+	border: 1px solid var(--ark-border) !important;
+	color: var(--ark-text-muted) !important;
+	font-size: 11px !important;
+	font-weight: 500 !important;
+	padding: 8px 10px !important;
+	border-radius: 6px !important;
+	line-height: 1.5 !important;
+	margin-top: 8px !important;
+	margin-bottom: 0 !important;
+	text-align: left !important;
+	display: block !important;
+	box-shadow: none !important;
+}
 .ifacebox-body {
 	display: flex !important;
 	flex-wrap: wrap !important;
@@ -940,40 +956,99 @@ div[id*="pw"] > button.cbi-button-neutral {
 	overflow-y: visible !important;
 }
 
+/* Modal Form Tightening & Space Economy */
+.modal .cbi-value,
+.cbi-modal .cbi-value {
+	padding: 7px 0 !important;
+}
+.modal .cbi-value-title,
+.cbi-modal .cbi-value-title {
+	width: 200px !important;
+	font-size: 12.5px !important;
+}
+.modal .cbi-value-field input.cbi-input-text,
+.modal .cbi-value-field select.cbi-input-select,
+.cbi-modal .cbi-value-field input.cbi-input-text,
+.cbi-modal .cbi-value-field select.cbi-input-select {
+	height: 34px !important;
+	padding: 4px 10px !important;
+	font-size: 12.5px !important;
+	border-radius: 8px !important;
+}
+.modal .cbi-tabmenu,
+.cbi-modal .cbi-tabmenu {
+	margin-bottom: 12px !important;
+	padding-bottom: 8px !important;
+	gap: 6px !important;
+}
+.modal .cbi-tabmenu > li > a,
+.cbi-modal .cbi-tabmenu > li > a {
+	padding: 6px 12px !important;
+	font-size: 12px !important;
+}
+
 /* Hide LuCI form dummy/hidden submit inputs that float as orphaned buttons */
 input.hidden, .hidden {
 	display: none !important;
 }
 
-/* Alerts & Notices */
+/* Alerts & Notices (Compact Ergonomic Banner) */
 .alert-message {
-	padding: 12px 16px;
-	border-radius: var(--ark-radius);
-	margin-bottom: 16px;
-	border-left: 4px solid var(--ark-primary);
-	background: var(--ark-surface-2);
+	padding: 8px 16px !important;
+	border-radius: var(--ark-radius, 10px) !important;
+	margin-bottom: 12px !important;
+	border-left: 4px solid var(--ark-primary) !important;
+	background: var(--ark-surface-2) !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: space-between !important;
+	flex-wrap: wrap !important;
+	gap: 10px !important;
 }
 .alert-message.warning {
-	border-left-color: var(--ark-warning);
-	background: rgba(245, 158, 11, 0.1);
+	border-left-color: var(--ark-warning) !important;
+	background: rgba(245, 158, 11, 0.1) !important;
+}
+/* Suppress redundant password warning on the password page itself */
+body[data-page="admin-system-admin"] .alert-message.warning,
+body[data-page^="admin-system-admin"] .alert-message.warning {
+	display: none !important;
 }
 .alert-message.danger, .alert-message.error {
-	border-left-color: var(--ark-danger);
-	background: rgba(239, 68, 68, 0.1);
+	border-left-color: var(--ark-danger) !important;
+	background: rgba(239, 68, 68, 0.1) !important;
 }
 .alert-message.success, .alert-message.info {
-	border-left-color: var(--ark-success);
-	background: rgba(16, 185, 129, 0.1);
+	border-left-color: var(--ark-success) !important;
+	background: rgba(16, 185, 129, 0.1) !important;
 }
 .alert-message h4 {
-	margin: 0 0 4px 0;
+	margin: 0 !important;
 	border-bottom: none !important;
-	font-size: 14px;
+	font-size: 13.5px !important;
+	font-weight: 700 !important;
+	display: inline-block !important;
+	margin-right: 8px !important;
+	color: #f59e0b !important;
 }
 .alert-message p {
-	margin: 0;
-	font-size: 13px;
-	color: var(--ark-text-muted);
+	margin: 0 !important;
+	font-size: 12.5px !important;
+	color: var(--ark-text-muted) !important;
+	display: inline !important;
+}
+.alert-message .right {
+	margin-left: auto !important;
+	flex-shrink: 0 !important;
+}
+.alert-message .right .btn,
+.alert-message .right .cbi-button {
+	padding: 6px 14px !important;
+	font-size: 12px !important;
+	min-height: 32px !important;
+	height: 32px !important;
+	border-radius: 8px !important;
+	white-space: nowrap !important;
 }
 
 /* ==========================================================================
@@ -1922,24 +1997,29 @@ body.modal-overlay-active:not(.ark-login-page) #modal_overlay {
 }
 
 
-/* 7. Interfaces Command Grid */
+/* 7. Interfaces Command Grid (Space-Efficient & Modernized) */
 .ark-iface-grid {
 	display: grid !important;
-	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) !important;
-	gap: 18px !important;
-	margin: 20px 0 !important;
+	grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)) !important;
+	gap: 14px !important;
+	margin: 12px 0 16px 0 !important;
 }
 .ark-iface-card {
-	background: var(--ark-surface-1) !important;
-	border: 1px solid var(--ark-border) !important;
-	border-radius: var(--ark-radius-lg, 16px) !important;
-	padding: 22px !important;
+	background: linear-gradient(135deg, rgba(30, 41, 59, 0.45) 0%, rgba(15, 23, 42, 0.75) 100%) !important;
+	border: 1px solid rgba(255, 255, 255, 0.08) !important;
+	border-radius: var(--ark-radius-lg, 14px) !important;
+	padding: 16px 18px !important;
 	display: flex !important;
 	flex-direction: column !important;
-	gap: 14px !important;
+	gap: 10px !important;
 	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.22) !important;
 	position: relative !important;
 	overflow: hidden !important;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease !important;
+}
+.ark-iface-card:hover {
+	border-color: rgba(59, 130, 246, 0.35) !important;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 14px rgba(59, 130, 246, 0.12) !important;
 }
 .ark-iface-card.lan { border-top: 3px solid #10b981 !important; }
 .ark-iface-card.wan { border-top: 3px solid #3b82f6 !important; }
@@ -1949,9 +2029,11 @@ body.modal-overlay-active:not(.ark-login-page) #modal_overlay {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	padding-bottom: 6px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 .ark-iface-name {
-	font-size: 17px;
+	font-size: 16px;
 	font-weight: 700;
 	color: #fff;
 	display: flex;
@@ -1968,12 +2050,12 @@ body.modal-overlay-active:not(.ark-login-page) #modal_overlay {
 }
 .ark-iface-stats {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 10px;
-	background: rgba(255, 255, 255, 0.02);
-	border: 1px solid rgba(255, 255, 255, 0.06);
-	border-radius: 10px;
-	padding: 12px;
+	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+	gap: 8px 12px;
+	background: rgba(15, 23, 42, 0.5);
+	border: 1px solid rgba(255, 255, 255, 0.05);
+	border-radius: 8px;
+	padding: 10px 12px;
 }
 .ark-iface-stat-tile {
 	display: flex;
@@ -1981,7 +2063,7 @@ body.modal-overlay-active:not(.ark-login-page) #modal_overlay {
 	gap: 2px;
 }
 .ark-iface-stat-tile .label {
-	font-size: 10px;
+	font-size: 9.5px;
 	font-weight: 700;
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
@@ -1997,13 +2079,20 @@ body.modal-overlay-active:not(.ark-login-page) #modal_overlay {
 .ark-iface-actions {
 	display: flex;
 	gap: 8px;
-	margin-top: auto;
+	margin-top: 4px;
 }
 .ark-iface-actions button {
 	flex: 1 !important;
 	justify-content: center !important;
-	font-size: 11px !important;
+	font-size: 11.5px !important;
+	font-weight: 600 !important;
 	height: 34px !important;
+	min-height: 34px !important;
+	border-radius: 8px !important;
+	transition: all 0.15s ease !important;
+}
+.ark-iface-actions button:active {
+	transform: scale(0.96) !important;
 }
 
 /* Interface Header Chips & Metadata */
@@ -2025,25 +2114,27 @@ body.modal-overlay-active:not(.ark-login-page) #modal_overlay {
 
 /* Sub-devices and physical member ports */
 .ark-iface-members {
-	background: rgba(0, 0, 0, 0.22) !important;
-	border: 1px solid rgba(255, 255, 255, 0.06) !important;
-	border-radius: 10px !important;
-	padding: 12px 14px !important;
+	background: rgba(0, 0, 0, 0.2) !important;
+	border: 1px solid rgba(255, 255, 255, 0.05) !important;
+	border-radius: 8px !important;
+	padding: 8px 12px !important;
 	display: flex !important;
-	flex-direction: column !important;
+	align-items: center !important;
 	gap: 8px !important;
+	flex-wrap: wrap !important;
 }
 .ark-iface-members-title {
-	font-size: 11px !important;
+	font-size: 10.5px !important;
 	font-weight: 700 !important;
 	text-transform: uppercase !important;
 	letter-spacing: 0.04em !important;
 	color: var(--ark-text-dim) !important;
+	margin-right: 4px !important;
 }
 .ark-iface-member-list {
 	display: flex !important;
 	flex-wrap: wrap !important;
-	gap: 8px !important;
+	gap: 6px !important;
 }
 .ark-member-badge {
 	display: inline-flex !important;
@@ -2277,22 +2368,22 @@ textarea[name*="notes"]:focus {
 	}
 }
 
-/* 12. Educational Feature Guides & Recommendations (PT-BR) */
-.ark-guide-box {
-	background: linear-gradient(135deg, rgba(17, 28, 48, 0.95) 0%, rgba(11, 17, 32, 0.98) 100%) !important;
+/* 12. Educational Feature Guides & Recommendations (Space-Saving Collapsible) */
+.ark-guide-box,
+details.ark-guide-box {
+	background: linear-gradient(135deg, rgba(17, 28, 48, 0.9) 0%, rgba(11, 17, 32, 0.95) 100%) !important;
 	border: 1px solid rgba(56, 189, 248, 0.25) !important;
-	border-radius: var(--ark-radius-lg, 14px) !important;
-	padding: 16px 20px !important;
-	margin: 0 0 20px 0 !important;
-	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-	display: flex !important;
-	flex-direction: column !important;
-	gap: 10px !important;
+	border-radius: var(--ark-radius-lg, 12px) !important;
+	padding: 8px 16px !important;
+	margin: 0 0 14px 0 !important;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
 	position: relative !important;
 	overflow: hidden !important;
+	transition: all 0.2s ease !important;
 }
 
-.ark-guide-box::before {
+.ark-guide-box::before,
+details.ark-guide-box::before {
 	content: '';
 	position: absolute;
 	top: 0;
@@ -2302,22 +2393,60 @@ textarea[name*="notes"]:focus {
 	background: linear-gradient(to bottom, #38bdf8, #3b82f6);
 }
 
-.ark-guide-title {
-	font-size: 15px !important;
+.ark-guide-title,
+details.ark-guide-box summary.ark-guide-title {
+	font-size: 13.5px !important;
 	font-weight: 700 !important;
 	color: #38bdf8 !important;
 	display: flex !important;
 	align-items: center !important;
-	gap: 8px !important;
-	margin: 0 0 4px 0 !important;
+	justify-content: space-between !important;
+	margin: 0 !important;
+	padding: 2px 0 !important;
+	cursor: pointer !important;
+	user-select: none !important;
+	list-style: none !important;
+	border-bottom: none !important;
+}
+
+details.ark-guide-box summary::-webkit-details-marker {
+	display: none !important;
+}
+
+.ark-guide-badge {
+	font-size: 11px !important;
+	font-weight: 600 !important;
+	background: rgba(56, 189, 248, 0.15) !important;
+	color: #38bdf8 !important;
+	border: 1px solid rgba(56, 189, 248, 0.3) !important;
+	padding: 2px 8px !important;
+	border-radius: 10px !important;
+	transition: all 0.2s ease !important;
+}
+
+details.ark-guide-box[open] {
+	padding: 14px 18px !important;
+}
+
+details.ark-guide-box[open] summary.ark-guide-title {
 	padding-bottom: 8px !important;
+	margin-bottom: 10px !important;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-	letter-spacing: -0.01em !important;
+}
+
+details.ark-guide-box[open] .ark-guide-badge {
+	background: rgba(56, 189, 248, 0.3) !important;
+}
+
+.ark-guide-content {
+	display: flex !important;
+	flex-direction: column !important;
+	gap: 8px !important;
 }
 
 .ark-guide-item {
-	font-size: 13px !important;
-	line-height: 1.6 !important;
+	font-size: 12.5px !important;
+	line-height: 1.5 !important;
 	color: #cbd5e1 !important;
 	display: flex !important;
 	flex-direction: column !important;
@@ -2336,9 +2465,9 @@ textarea[name*="notes"]:focus {
 .ark-guide-item.rec {
 	background: rgba(16, 185, 129, 0.08) !important;
 	border: 1px solid rgba(16, 185, 129, 0.25) !important;
-	border-radius: var(--ark-radius, 10px) !important;
-	padding: 10px 14px !important;
-	margin-top: 4px !important;
+	border-radius: var(--ark-radius, 8px) !important;
+	padding: 8px 12px !important;
+	margin-top: 2px !important;
 }
 
 .ark-guide-item.rec strong {
@@ -3270,53 +3399,74 @@ button.hidden {
 	box-shadow: 0 2px 10px rgba(239, 68, 68, 0.4) !important;
 }
 
-/* 3. Section Create Container (Cleanly separated at bottom) */
+/* 3. Section Create Container (Clean, compact & inline-friendly) */
 .cbi-section-create {
 	clear: both !important;
-	margin-top: 24px !important;
-	padding: 16px 20px !important;
-	background: var(--ark-surface-2) !important;
-	border: 1px dashed var(--ark-border) !important;
-	border-radius: var(--ark-radius) !important;
+	margin-top: 14px !important;
+	padding: 10px 14px !important;
+	background: rgba(15, 23, 42, 0.4) !important;
+	border: 1px dashed rgba(255, 255, 255, 0.12) !important;
+	border-radius: var(--ark-radius, 10px) !important;
 	display: flex !important;
 	align-items: center !important;
-	gap: 12px !important;
+	gap: 10px !important;
 	flex-wrap: wrap !important;
 }
 .cbi-section-create::before {
-	content: "➕ Criar nova instância:";
-	font-size: 13px;
-	font-weight: 600;
-	color: var(--ark-text-muted);
-	width: 100%;
-	margin-bottom: 4px;
-	display: block;
+	content: "➕ Criar nova instância:" !important;
+	font-size: 12px !important;
+	font-weight: 600 !important;
+	color: var(--ark-text-muted) !important;
+	display: inline-block !important;
+	margin-right: 4px !important;
+	margin-bottom: 0 !important;
+	width: auto !important;
 }
 .cbi-section-create div {
 	margin: 0 !important;
 }
 .cbi-section-create input[type="text"],
 .cbi-section-create input.cbi-section-create-name {
-	min-width: 220px !important;
-	padding: 8px 12px !important;
+	min-width: 180px !important;
+	padding: 6px 12px !important;
+	height: 32px !important;
 }
 .cbi-section-create input[type="submit"],
 .cbi-section-create .cbi-button-add {
-	padding: 8px 18px !important;
-	font-size: 13px !important;
+	padding: 6px 16px !important;
+	font-size: 12px !important;
 	font-weight: 600 !important;
+	height: 32px !important;
+	min-height: 32px !important;
+	border-radius: 8px !important;
+	transition: all 0.15s ease !important;
+}
+.cbi-section-create input[type="submit"]:active,
+.cbi-section-create .cbi-button-add:active {
+	transform: scale(0.96) !important;
 }
 
 /* 4. CBI Page Actions (Bottom Bar & Action Buttons) */
 .cbi-page-actions {
 	border-top: 1px solid var(--ark-border) !important;
-	margin-top: 28px !important;
-	padding-top: 20px !important;
-	margin-bottom: 24px !important;
+	margin-top: 18px !important;
+	padding-top: 14px !important;
+	margin-bottom: 16px !important;
 	display: flex !important;
 	align-items: center !important;
-	gap: 12px !important;
+	gap: 10px !important;
 	flex-wrap: wrap !important;
+}
+.cbi-page-actions .cbi-button {
+	height: 36px !important;
+	min-height: 36px !important;
+	padding: 6px 16px !important;
+	font-size: 12.5px !important;
+	border-radius: 8px !important;
+	transition: all 0.15s ease !important;
+}
+.cbi-page-actions .cbi-button:active {
+	transform: scale(0.96) !important;
 }
 .cbi-page-actions .cbi-button,
 .cbi-page-actions input[type="submit"],
@@ -3348,5 +3498,27 @@ button.hidden {
 	border-color: rgba(148, 163, 184, 0.45) !important;
 }
 
+/* 23. Backup & Flash Firmware - Clean UI (Hide redundant empty native CBI forms) */
+#cbi-json-actions-actions,
+#cbi-json-actions-actions .cbi-section {
+	display: none !important;
+}
 
-
+/* 24. Process List UX Polish & Command Truncation */
+body[data-page="admin-status-processes"] .table td[data-title="Command"] span[style*="word-break"],
+body[data-page="admin-status-processes"] .table td:nth-child(3) span[style*="word-break"] {
+	display: inline-block !important;
+	max-width: 280px !important;
+	white-space: nowrap !important;
+	overflow: hidden !important;
+	text-overflow: ellipsis !important;
+	vertical-align: middle !important;
+	cursor: pointer !important;
+}
+body[data-page="admin-status-processes"] .table td[data-title="Command"]:hover span[style*="word-break"],
+body[data-page="admin-status-processes"] .table td:nth-child(3):hover span[style*="word-break"],
+body[data-page="admin-status-processes"] .table td[data-title="Command"]:active span[style*="word-break"] {
+	white-space: normal !important;
+	word-break: break-all !important;
+	max-width: none !important;
+}
