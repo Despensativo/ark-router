@@ -769,6 +769,7 @@ ark_sanitize_wan6_config() {
 		# Determina a interface WAN pai correspondente no netifd (ex: wan6 -> wan, wan2_6 -> wan2, etc.)
 		local parent_wan="wan"
 		case "$sec" in
+			wan6|wan_6) parent_wan="wan" ;;
 			wan2*|*wan2*|*wanb*) parent_wan="wan2" ;;
 			wan3*|*wan3*) parent_wan="wan3" ;;
 			wan4*|*wan4*) parent_wan="wan4" ;;
@@ -778,9 +779,34 @@ ark_sanitize_wan6_config() {
 				[ -n "$parent_wan" ] || parent_wan="wan"
 				;;
 		esac
-		if [ -z "$($uci_cmd get "network.$parent_wan")" ] && [ -n "$($uci_cmd get "network.wan")" ]; then
-			parent_wan="wan"
+
+		# Se a WAN pai não existe, trata-se de interface órfã (ex: wan2 virou LAN). Exclui para evitar loop/sequestro!
+		if [ -z "$($uci_cmd get "network.$parent_wan")" ]; then
+			if [ "$parent_wan" = "wan" ]; then
+				continue
+			fi
+			$uci_cmd delete "network.$sec"
+			local z="$(firewall_wan_zone_section 2>/dev/null || echo '')"
+			[ -n "$z" ] && $uci_cmd del_list "firewall.$z.network=$sec" 2>/dev/null || true
+			changed=1
+			logger -t ark-network-sanitize "Interface IPv6 orfa $sec removida (WAN pai $parent_wan nao existe no network)."
+			continue
 		fi
+
+		# Previne que duas interfaces DHCPv6 reivindiquem o mesmo device pai (conflito netifd)
+		case " $claimed_parents " in
+			*" $parent_wan "*)
+				$uci_cmd delete "network.$sec"
+				local z="$(firewall_wan_zone_section 2>/dev/null || echo '')"
+				[ -n "$z" ] && $uci_cmd del_list "firewall.$z.network=$sec" 2>/dev/null || true
+				changed=1
+				logger -t ark-network-sanitize "Interface IPv6 duplicada $sec removida (dispositivo @$parent_wan ja reivindicado)."
+				continue
+				;;
+			*)
+				claimed_parents="$claimed_parents $parent_wan"
+				;;
+		esac
 
 		local canonical_dev="@${parent_wan}"
 		local cur_ifname="$($uci_cmd get "network.$sec.ifname" || echo '')"

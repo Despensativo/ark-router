@@ -1814,6 +1814,8 @@ handle_network() {
 				esac
 			fi
 			uci -q delete "network.${iface}_modem" 2>/dev/null || true
+			uci -q delete "network.${iface}_6" 2>/dev/null || true
+			uci -q delete "network.${iface}6" 2>/dev/null || true
 			uci -q delete "network.$iface"
 			sqm_del_sec="$(sqm_section_for_network "$iface" 2>/dev/null || printf '%s' "$iface")"
 			uci -q set "sqm.$sqm_del_sec.enabled=0" 2>/dev/null || true
@@ -1822,6 +1824,8 @@ handle_network() {
 			if [ -n "$zone" ]; then
 				uci -q del_list "firewall.$zone.network=$iface" 2>/dev/null || true
 				uci -q del_list "firewall.$zone.network=${iface}_modem" 2>/dev/null || true
+				uci -q del_list "firewall.$zone.network=${iface}_6" 2>/dev/null || true
+				uci -q del_list "firewall.$zone.network=${iface}6" 2>/dev/null || true
 			fi
 			[ -f /etc/config/mwan3 ] && {
 				uci -q delete "mwan3.$iface" 2>/dev/null || true

@@ -674,6 +674,7 @@ ark_doctor_audit() {
 		[ -n "$dev" ] || dev="$($uci_cmd get "network.$sec.ifname" || echo '')"
 		parent_wan="wan"
 		case "$sec" in
+			wan6|wan_6) parent_wan="wan" ;;
 			wan2*|*wan2*|*wanb*) parent_wan="wan2" ;;
 			wan3*|*wan3*) parent_wan="wan3" ;;
 			wan4*|*wan4*) parent_wan="wan4" ;;
@@ -683,9 +684,19 @@ ark_doctor_audit() {
 				[ -n "$parent_wan" ] || parent_wan="wan"
 				;;
 		esac
-		if [ -z "$($uci_cmd get "network.$parent_wan")" ] && [ -n "$($uci_cmd get "network.wan")" ]; then
-			parent_wan="wan"
+		if [ "$parent_wan" != "wan" ] && [ -z "$($uci_cmd get "network.$parent_wan")" ]; then
+			has_bad_wan6_dev=1
+			break
 		fi
+		case " $seen_wan6_parents " in
+			*" $parent_wan "*)
+				has_bad_wan6_dev=1
+				break
+				;;
+			*)
+				seen_wan6_parents="$seen_wan6_parents $parent_wan"
+				;;
+		esac
 		if [ "$dev" != "@$parent_wan" ]; then
 			has_bad_wan6_dev=1
 			break
