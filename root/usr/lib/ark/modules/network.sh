@@ -1415,16 +1415,23 @@ mwan3_sync_lifecycle() {
 	[ -f /etc/config/mwan3 ] || return 0
 	local active_cnt=0
 	for w in $(uci -q show network | grep '=interface' | cut -d. -f2 | cut -d= -f1 | grep -E '^wan([0-9]+)?$'); do
+		case "$w" in
+			wan6|*_6|*6) continue ;;
+		esac
 		local auto="$(uci -q get "network.$w.auto" || echo '1')"
 		[ "$auto" != "0" ] || continue
 		local p="$(uci -q get "network.$w.proto" || echo 'none')"
 		local d="$(uci -q get "network.$w.device" || uci -q get "network.$w.ifname" || echo '')"
-		[ "$p" != "none" ] && [ -n "$d" ] && active_cnt=$((active_cnt + 1))
+		case "$d" in @*) continue ;; esac
+		[ "$p" != "none" ] && [ "$p" != "dhcpv6" ] && [ -n "$d" ] && active_cnt=$((active_cnt + 1))
 	done
 	if [ "$active_cnt" -lt 2 ]; then
 		logger -t equipe-mwan "Single-WAN detectado ($active_cnt interface WAN ativa). MWAN3 pausado em standby para economizar CPU/RAM."
 		/etc/init.d/mwan3 stop >/dev/null 2>&1 || true
 		/etc/init.d/mwan3 disable >/dev/null 2>&1 || true
+		if is_fw4; then
+			/sbin/fw4 reload >/dev/null 2>&1 || true
+		fi
 	else
 		if [ "$(uci -q get equipe_dashboard.speedify.desired_state)" != "connected" ]; then
 			logger -t equipe-mwan "Multi-WAN detectado ($active_cnt interfaces WAN ativas). Ativando servico MWAN3."
@@ -1646,7 +1653,13 @@ mwan3_toggle() {
 	if [ "$desired" = 1 ]; then
 		wan_count=0
 		for ifc in $(uci show network 2>/dev/null | grep -E '^network\.wan[0-9]*=interface' | cut -d. -f2 | cut -d= -f1); do
+			case "$ifc" in
+				wan6|*_6|*6) continue ;;
+			esac
 			proto="$(uci -q get network.${ifc}.proto || true)"
+			dev="$(uci -q get network.${ifc}.device || uci -q get network.${ifc}.ifname || true)"
+			case "$dev" in @*) continue ;; esac
+			[ "$proto" = "dhcpv6" ] && continue
 			if [ -n "$proto" ] && [ "$proto" != "none" ]; then
 				wan_count=$((wan_count + 1))
 			fi
@@ -1662,6 +1675,9 @@ mwan3_toggle() {
 	else
 		/etc/init.d/mwan3 stop >/dev/null 2>&1
 		/etc/init.d/mwan3 disable >/dev/null 2>&1
+		if is_fw4; then
+			/sbin/fw4 reload >/dev/null 2>&1 || true
+		fi
 	fi
 	echo "$desired"
 }
