@@ -654,94 +654,98 @@ ark_doctor_audit() {
 	fi
 
 	# 11. Blindagem WAN6 e Processos DHCPv6
-	root_prefix="${ARK_ROOT:-}"
-	uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
-	has_zombie_dhcp=0
-	for pid in $(pgrep -x odhcp6c 2>/dev/null || ps w 2>/dev/null | awk '/[o]dhcp6c/ {print $1}'); do
-		[ -n "$pid" ] || continue
-		if [ -f "/proc/$pid/status" ] && [ "$(awk '/^PPid:/ {print $2}' "/proc/$pid/status" 2>/dev/null)" = "1" ]; then
-			has_zombie_dhcp=1
-			break
-		fi
-	done
+	if ark_is_satellite_or_ap; then
+		add_check "Blindagem WAN6 e DHCPv6" "OK" "Modo Ponto de Acesso / Ponte ativo (IPv6 repassado transparentemente via L2 bridge)."
+	else
+		root_prefix="${ARK_ROOT:-}"
+		uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+		has_zombie_dhcp=0
+		for pid in $(pgrep -x odhcp6c 2>/dev/null || ps w 2>/dev/null | awk '/[o]dhcp6c/ {print $1}'); do
+			[ -n "$pid" ] || continue
+			if [ -f "/proc/$pid/status" ] && [ "$(awk '/^PPid:/ {print $2}' "/proc/$pid/status" 2>/dev/null)" = "1" ]; then
+				has_zombie_dhcp=1
+				break
+			fi
+		done
 
-	has_bad_wan6_dev=0
-	has_wan6_configured=0
-	for sec in $($uci_cmd show network 2>/dev/null | sed -n 's/^network\.\([a-zA-Z0-9_]*\)=interface$/\1/p'); do
-		[ "$($uci_cmd get "network.$sec.proto" || echo '')" = "dhcpv6" ] || continue
-		has_wan6_configured=1
-		dev="$($uci_cmd get "network.$sec.device" || echo '')"
-		[ -n "$dev" ] || dev="$($uci_cmd get "network.$sec.ifname" || echo '')"
-		parent_wan="wan"
-		case "$sec" in
-			wan6|wan_6) parent_wan="wan" ;;
-			wan2*|*wan2*|*wanb*) parent_wan="wan2" ;;
-			wan3*|*wan3*) parent_wan="wan3" ;;
-			wan4*|*wan4*) parent_wan="wan4" ;;
-			*)
-				parent_wan="${sec%_6}"
-				parent_wan="${parent_wan%6}"
-				[ -n "$parent_wan" ] || parent_wan="wan"
-				;;
-		esac
-		if [ "$parent_wan" != "wan" ] && [ -z "$($uci_cmd get "network.$parent_wan")" ]; then
-			has_bad_wan6_dev=1
-			break
-		fi
-		case " $seen_wan6_parents " in
-			*" $parent_wan "*)
+		has_bad_wan6_dev=0
+		has_wan6_configured=0
+		for sec in $($uci_cmd show network 2>/dev/null | sed -n 's/^network\.\([a-zA-Z0-9_]*\)=interface$/\1/p'); do
+			[ "$($uci_cmd get "network.$sec.proto" || echo '')" = "dhcpv6" ] || continue
+			has_wan6_configured=1
+			dev="$($uci_cmd get "network.$sec.device" || echo '')"
+			[ -n "$dev" ] || dev="$($uci_cmd get "network.$sec.ifname" || echo '')"
+			parent_wan="wan"
+			case "$sec" in
+				wan6|wan_6) parent_wan="wan" ;;
+				wan2*|*wan2*|*wanb*) parent_wan="wan2" ;;
+				wan3*|*wan3*) parent_wan="wan3" ;;
+				wan4*|*wan4*) parent_wan="wan4" ;;
+				*)
+					parent_wan="${sec%_6}"
+					parent_wan="${parent_wan%6}"
+					[ -n "$parent_wan" ] || parent_wan="wan"
+					;;
+			esac
+			if [ "$parent_wan" != "wan" ] && [ -z "$($uci_cmd get "network.$parent_wan")" ]; then
 				has_bad_wan6_dev=1
 				break
-				;;
-			*)
-				seen_wan6_parents="$seen_wan6_parents $parent_wan"
-				;;
-		esac
-		if [ "$dev" != "@$parent_wan" ]; then
-			has_bad_wan6_dev=1
-			break
-		fi
-	done
+			fi
+			case " $seen_wan6_parents " in
+				*" $parent_wan "*)
+					has_bad_wan6_dev=1
+					break
+					;;
+				*)
+					seen_wan6_parents="$seen_wan6_parents $parent_wan"
+					;;
+			esac
+			if [ "$dev" != "@$parent_wan" ]; then
+				has_bad_wan6_dev=1
+				break
+			fi
+		done
 
-	v6_mode="$($uci_cmd get equipe_dashboard.ipv6.mode 2>/dev/null || echo '')"
-	missing_wan6=0
-	if [ "$v6_mode" = "dual_stack" ] || [ "$v6_mode" = "selective" ] || [ "$v6_mode" = "ipv6_only" ]; then
-		[ "$has_wan6_configured" = 0 ] && missing_wan6=1
-	fi
+		v6_mode="$($uci_cmd get equipe_dashboard.ipv6.mode 2>/dev/null || echo '')"
+		missing_wan6=0
+		if [ "$v6_mode" = "dual_stack" ] || [ "$v6_mode" = "selective" ] || [ "$v6_mode" = "ipv6_only" ]; then
+			[ "$has_wan6_configured" = 0 ] && missing_wan6=1
+		fi
 
-	if [ "$missing_wan6" = 1 ]; then
-		if [ "$auto_fix" = 1 ]; then
-			enable_ipv6_dual_stack >/dev/null 2>&1 || true
-			fixes_applied=$((fixes_applied + 1))
-			add_check "Blindagem WAN6 e DHCPv6" "FIXED" "Interface wan6 ausente em modo Dual-Stack. Criada e vinculada a @wan com DHCPv6 client ativo."
+		if [ "$missing_wan6" = 1 ]; then
+			if [ "$auto_fix" = 1 ]; then
+				enable_ipv6_dual_stack >/dev/null 2>&1 || true
+				fixes_applied=$((fixes_applied + 1))
+				add_check "Blindagem WAN6 e DHCPv6" "FIXED" "Interface wan6 ausente em modo Dual-Stack. Criada e vinculada a @wan com DHCPv6 client ativo."
+			else
+				errors=$((errors + 1))
+				add_check "Blindagem WAN6 e DHCPv6" "FAIL" "Modo $v6_mode ativo, mas interface wan6 ausente em /etc/config/network (sem requisicao DHCPv6 na WAN)."
+			fi
+		elif [ "$has_zombie_dhcp" = 1 ] || [ "$has_bad_wan6_dev" = 1 ]; then
+			if [ "$auto_fix" = 1 ]; then
+				ark_cleanup_dhcpv6_orphans >/dev/null 2>&1 || true
+				ark_sanitize_wan6_config >/dev/null 2>&1 || true
+				for s in $($uci_cmd show network 2>/dev/null | sed -n 's/^network\.\([a-zA-Z0-9_]*\)=interface$/\1/p'); do
+					[ "$($uci_cmd get "network.$s.proto" || echo '')" = "dhcpv6" ] || continue
+					[ -z "${ARK_ROOT}" ] && ifup "$s" >/dev/null 2>&1 || true
+				done
+				fixes_applied=$((fixes_applied + 1))
+				add_check "Blindagem WAN6 e DHCPv6" "FIXED" "Processo zumbi eliminado e device @wan sanitizado sem loops."
+			else
+				warnings=$((warnings + 1))
+				add_check "Blindagem WAN6 e DHCPv6" "WARN" "Configuracao WAN6 sem alias @wan ou processos odhcp6c orfaos detectados."
+			fi
 		else
-			errors=$((errors + 1))
-			add_check "Blindagem WAN6 e DHCPv6" "FAIL" "Modo $v6_mode ativo, mas interface wan6 ausente em /etc/config/network (sem requisicao DHCPv6 na WAN)."
+			add_check "Blindagem WAN6 e DHCPv6" "OK" "Interfaces IPv6 canonicas (@wan) e zero processos orfaos."
 		fi
-	elif [ "$has_zombie_dhcp" = 1 ] || [ "$has_bad_wan6_dev" = 1 ]; then
-		if [ "$auto_fix" = 1 ]; then
-			ark_cleanup_dhcpv6_orphans >/dev/null 2>&1 || true
-			ark_sanitize_wan6_config >/dev/null 2>&1 || true
-			for s in $($uci_cmd show network 2>/dev/null | sed -n 's/^network\.\([a-zA-Z0-9_]*\)=interface$/\1/p'); do
-				[ "$($uci_cmd get "network.$s.proto" || echo '')" = "dhcpv6" ] || continue
-				[ -z "${ARK_ROOT}" ] && ifup "$s" >/dev/null 2>&1 || true
-			done
-			fixes_applied=$((fixes_applied + 1))
-			add_check "Blindagem WAN6 e DHCPv6" "FIXED" "Processo zumbi eliminado e device @wan sanitizado sem loops."
-		else
-			warnings=$((warnings + 1))
-			add_check "Blindagem WAN6 e DHCPv6" "WARN" "Configuracao WAN6 sem alias @wan ou processos odhcp6c orfaos detectados."
-		fi
-	else
-		add_check "Blindagem WAN6 e DHCPv6" "OK" "Interfaces IPv6 canonicas (@wan) e zero processos orfaos."
 	fi
 
 	lan_cur_ra="$($uci_cmd get dhcp.lan.ra 2>/dev/null || echo '')"
 	ipv6_mode_chk="$($uci_cmd get equipe_dashboard.ipv6.mode 2>/dev/null || echo '')"
 
 	# 11b. Depreciação de Prefixos IPv6 na LAN (RFC 9096 - Prevenção de IPs Fantasmas)
-	if [ "$lan_cur_ra" = "disabled" ] || [ "$ipv6_mode_chk" = "ipv4_only" ]; then
-		add_check "Depreciação IPv6 (RFC 9096)" "OK" "Modo IPv4 Puro ativo (anúncios IPv6 desativados na LAN)."
+	if [ "$lan_cur_ra" = "disabled" ] || [ "$ipv6_mode_chk" = "ipv4_only" ] || ark_is_satellite_or_ap; then
+		add_check "Depreciação IPv6 (RFC 9096)" "OK" "Modo IPv4 Puro ou Modo Ponte ativo (anúncios locais desativados)."
 	else
 		lan_ra_prefer_old="$($uci_cmd get dhcp.lan.ra_prefer_old || echo 1)"
 		if [ "$lan_ra_prefer_old" != "0" ]; then
@@ -760,8 +764,8 @@ ark_doctor_audit() {
 	fi
 
 	# 11b.2 Compatibilidade SLAAC Apple (iOS/macOS) e Pontos de Acesso (AP) (RFC 4862 / RFC 8106)
-	if [ "$lan_cur_ra" = "disabled" ] || [ "$ipv6_mode_chk" = "ipv4_only" ]; then
-		add_check "Compatibilidade SLAAC Apple" "OK" "Modo IPv4 Puro ativo (serviço de anúncios de roteador desativado conforme esperado)."
+	if [ "$lan_cur_ra" = "disabled" ] || [ "$ipv6_mode_chk" = "ipv4_only" ] || ark_is_satellite_or_ap; then
+		add_check "Compatibilidade SLAAC Apple" "OK" "Modo IPv4 Puro ou Modo Ponte ativo (anúncios repassados via L2 bridge)."
 	elif [ "$lan_cur_ra" = "relay" ]; then
 		add_check "Compatibilidade SLAAC Apple" "OK" "Modo Relay IPv6 ativo (anúncios repassados diretamente da WAN)."
 	else

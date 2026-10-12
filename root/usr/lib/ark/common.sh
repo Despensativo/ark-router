@@ -755,6 +755,7 @@ ark_sanitize_wan6_config() {
 	local root_prefix="${ARK_ROOT:-}"
 	local cfg="${root_prefix}/etc/config/network"
 	[ -f "$cfg" ] || return 0
+	ark_is_satellite_or_ap && return 0
 
 	local changed=0
 	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
@@ -842,6 +843,7 @@ ark_sanitize_lan_ipv6() {
 	local dhcp_cfg="${root_prefix}/etc/config/dhcp"
 	local net_cfg="${root_prefix}/etc/config/network"
 	[ -f "$dhcp_cfg" ] || return 0
+	ark_is_satellite_or_ap && return 0
 
 	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
 	local changed_dhcp=0
