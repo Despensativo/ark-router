@@ -2,6 +2,12 @@
 
 ## 1.5.17
 
+- **📶 Inteligência Dinâmica Wi-Fi, 802.11v (WNM) e RNR (13/10/2026)**:
+  - **Detecção Universal de WNM (`ark_hostapd_has_wnm`)**: Identifica em tempo de execução a presença de suporte WNM no daemon `wpad`/`hostapd`, ativando `bss_transition=1` e `wnm_sleep_mode=1` com segurança sem quebrar builds com `wpad-basic`.
+  - **Reduced Neighbor Report (RNR) & 802.11k Ativos**: Anúncio proativo de vizinhança entre 2.4GHz, 5GHz e 6GHz, acelerando a descoberta de canais e transição transparente de clientes modernos.
+  - **Calibração Avançada do Assistente de Banda (`usteer`)**: Ajuste automático de limiares para velocidade máxima (`band_steering_min_snr '-70'`, `kick_threshold '-78'`), forçando migração para canais 5GHz HE160 de 2.4 Gbps.
+  - **Blindagem Qualcomm SON (`ark_has_qualcomm_son`)**: Detecção de módulos proprietários QSDK (`hyd`, `hyfi_bridging`), abortando daemons de steering conflitantes e prevenindo travamentos de kernel.
+
 - **📱 Padrão Arquitetural Mobile-First: Tabelas, Abas e Ações no LuCI (13/10/2026)**:
   - **Contenção Estrita de Viewport**: `#view` e `#maincontent` limitados a `max-width: 100% !important; box-sizing: border-box !important;`, eliminando 100% dos estouros laterais de até 1.018px em smartphones (360px a 390px).
   - **Desbloqueio de Scroll em Abas Ativas (`network/routes`)**: Remoção de `overflow: visible !important` em `[data-tab-active="true"]` e aplicação de regra de alta especificidade com rolagem touch (`overflow-x: auto !important; -webkit-overflow-scrolling: touch !important;`).

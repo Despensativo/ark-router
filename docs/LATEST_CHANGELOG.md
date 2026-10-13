@@ -1,14 +1,20 @@
-### Novidades e Destaques do ARK Router v1.5.16
+### Novidades e Destaques do ARK Router v1.5.17
 
-• **🌐 Isolamento Canônico de IPv6 & Fim do Sequestro de Socket na WAN**:
-  - **Vinculação Estrita de Interfaces DHCPv6**: Pareamento canônico de interfaces IPv6 com seus respectivos dispositivos de WAN pai (`wan` ➔ `wan6` em `@wan`, `wan2` ➔ `wan2_6` em `@wan2`).
-  - **Expurgo Automático de Interfaces Órfãs**: Ao converter uma porta WAN secundária para LAN, suas interfaces de IPv6 e registros de firewall são cirurgicamente removidos, prevenindo loops de recarga no `netifd` e erros de `Invalid argument`.
-  - **Exclusividade Mútua na Delegação de Prefixo**: Em cenários Multi-WAN, a WAN primária delega o prefixo para a LAN (`delegate=1`), enquanto as WANs secundárias operam com `delegate=0`, eliminando colisões de roteamento e *blackholes* de tráfego.
+• **📶 Inteligência Dinâmica Wi-Fi, 802.11v (WNM), RNR e Calibração Band Steering**:
+  - **Detecção Universal WNM (`ark_hostapd_has_wnm`)**: Detecta suporte a WNM no daemon `wpad` em tempo de execução, ativando `bss_transition=1` e `wnm_sleep_mode=1` de forma segura apenas quando suportado, sem quebrar compilações padrão do OpenWrt com `wpad-basic`.
+  - **Reduced Neighbor Report (RNR) & 802.11k Ativos**: Anúncio proativo de vizinhança entre 2.4GHz, 5GHz e 6GHz, acelerando a descoberta e migração rápida de dispositivos modernos (Samsung Galaxy, Apple iPhone).
+  - **Calibração de Alta Velocidade (`usteer`)**: Limiares de steering calibrados dinamicamente (`band_steering_min_snr '-70'`, `kick_threshold '-78'`), forçando os dispositivos a migrarem para as bandas de 5GHz HE160 com vazão de até 2.4 Gbps.
+  - **Blindagem Centralizada Qualcomm SON (`ark_has_qualcomm_son`)**: Detecção de drivers proprietários QSDK (`hyd`), prevenindo conflito de kernel e travamento de rede no Acer Predator T7 e SoCs Qualcomm.
 
-• **🛡️ Blindagem de Modo Ponto de Acesso / Ponte (AP / Bridge Mode)**:
-  - **Passagem L2 Transparente**: Reconhecimento automático do tráfego IPv6 fluindo via switch bridge de Camada 2 a partir do roteador mestre upstream.
-  - **Bypass no Ark Doctor e Sanitizadores**: Sanitizadores e auditorias ignoram a exigência de `wan6` local quando o roteador opera como satélite/ponte/AP, reportando status verde sem alertas indevidos.
+• **📱 Padrão Arquitetural Mobile-First: Tabelas, Abas e Ações no LuCI**:
+  - **Contenção Estrita de Viewport**: `#view` e `#maincontent` limitados a `max-width: 100% !important; box-sizing: border-box !important;`, eliminando 100% dos estouros laterais em smartphones (360px a 390px).
+  - **Desbloqueio de Scroll em Abas Ativas (`network/routes`)**: Remoção de `overflow: visible !important` em abas ativas, garantindo rolagem horizontal suave em tabelas de rotas e firewall.
+  - **Encapsulamento Dinâmico de Tabelas Órfãs (`network/wireless`)**: Encapsulamento de `#wifi_assoclist_table` em cartão dedicado `.ark-assoclist-card` com contador ao vivo e indicador tátil de deslize lateral.
+  - **Barra de Ações Ergonômica Mobile (`.cbi-page-actions`)**: Botão principal "Salvar e Aplicar" ocupando 100% da largura superior (44px de altura) e botões secundários em 50%/50% na linha inferior.
 
-• **🔥 Pureza de Firewall fw4 no Multi-WAN (mwan3)**:
-  - **Contador Preciso de WANs Ativas**: O ciclo de vida do `mwan3` agora ignora interfaces companheiras de IPv6 (`wan6`, `*_6`, proto `dhcpv6`), identificando corretamente cenários com apenas 1 WAN física.
-  - **Standby Automático & Eliminação de Regras Legadas**: Em Single-WAN, o `mwan3` entra em standby imediato e o `fw4` é recarregado, eliminando 100% das regras legadas de `iptables` e operando com `nftables` puro.
+• **⏱️ Preservador de Horário & Fake-RTC (`ark-clock-preserver`)**:
+  - Inicialização segura de relógio via época salva em Flash/RAM (`/etc/ark-clock.epoch`), evitando expiração de certificados TLS e falhas no LuCI antes do sincronismo NTP.
+  - Interceptação de tráfego NTP (UDP 123) com servidor local ativo para sincronismo transparente da LAN.
+
+• **🛡️ Auto-Recuperação de Telemetria e Processos (`status/processes`)**:
+  - Cooldown e trava de concorrência em `injectRealProcessMemory()`, eliminando loops do `MutationObserver` e exaustão de subprocessos do BusyBox.
