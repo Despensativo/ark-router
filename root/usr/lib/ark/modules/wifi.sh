@@ -1059,6 +1059,10 @@ EOF
 		;;
 	wifi-usteer-toggle)
 		state="${2:-1}"
+		if ark_has_qualcomm_son; then
+			echo 'qualcomm_son_active'
+			return 0
+		fi
 		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
 			uci -q set equipe_dashboard.wifi=settings 2>/dev/null || true
 			uci -q set equipe_dashboard.wifi.usteer_enabled=1

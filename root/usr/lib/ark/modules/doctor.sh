@@ -1223,7 +1223,7 @@ ark_doctor_audit() {
 
 	# 12c. Auditoria e Autocura de Band Steering (usteer / Qualcomm SON)
 	local has_qca_son=0
-	if lsmod 2>/dev/null | grep -qE 'hyfi_bridging|qca_mcs|qca_ssdk' || [ -d /sys/module/hyfi_bridging ] || pgrep -x hyd >/dev/null 2>&1 || [ -x /etc/init.d/hyd ]; then
+	if ark_has_qualcomm_son; then
 		has_qca_son=1
 	fi
 

@@ -77,6 +77,15 @@ ark_hostapd_has_wnm() {
 	return 0
 }
 
+# Detecta se o roteador roda drivers e daemons proprietários Qualcomm Wi-Fi SON (QSDK / IPQ5332 / Predator T7)
+# Nesses ambientes, o band steering e roaming são gerenciados nativamente por hyd/PPE; usteer deve ser estritamente bloqueado
+ark_has_qualcomm_son() {
+	lsmod 2>/dev/null | grep -qE 'hyfi_bridging|qca_mcs|qca_ssdk' || \
+	[ -d /sys/module/hyfi_bridging ] || \
+	pgrep -x hyd >/dev/null 2>&1 || \
+	[ -x /etc/init.d/hyd ]
+}
+
 ark_ensure_working_distfeeds() {
 	[ -f /etc/opkg/distfeeds.conf ] || return 0
 	if grep -q "19.07-SNAPSHOT" /etc/opkg/distfeeds.conf 2>/dev/null; then
