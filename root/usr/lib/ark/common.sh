@@ -60,6 +60,23 @@ ark_has_opkg() {
 	command -v opkg >/dev/null 2>&1
 }
 
+# Detecta se o binário hostapd/wpad em execução suporta 802.11v WNM (bss_transition)
+# No OpenWrt, imagens geradas com wpad-basic / hostapd-basic não compilam CONFIG_WNM e quebram se bss_transition for configurado
+ark_hostapd_has_wnm() {
+	if ark_has_apk; then
+		if apk list -I 2>/dev/null | grep -E '^(wpad|hostapd)' | grep -q 'basic'; then
+			return 1
+		fi
+		return 0
+	elif ark_has_opkg; then
+		if opkg list-installed 2>/dev/null | grep -E '^(wpad|hostapd)' | grep -q 'basic'; then
+			return 1
+		fi
+		return 0
+	fi
+	return 0
+}
+
 ark_ensure_working_distfeeds() {
 	[ -f /etc/opkg/distfeeds.conf ] || return 0
 	if grep -q "19.07-SNAPSHOT" /etc/opkg/distfeeds.conf 2>/dev/null; then

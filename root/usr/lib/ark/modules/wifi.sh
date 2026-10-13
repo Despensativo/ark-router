@@ -1005,13 +1005,21 @@ EOF
 				[ "$mode" = "ap" ] || continue
 				dev="$(uci -q get wireless.$iface.device || echo '')"
 
-				# 802.11k e 802.11v operam em todos os rádios (2.4G, 5G e 6G)
-				# Orientam celulares na troca de nós sem alterar o handshake WPA2
+				# 802.11k, 802.11v (bss_transition) e RNR operam em todos os rádios (2.4G, 5G e 6G)
+				# Orientam celulares na troca de nós e frequências sem alterar o handshake WPA2/WPA3
 				uci -q set "wireless.$iface.ieee80211k=1"
 				uci -q set "wireless.$iface.rrm_neighbor_report=1"
+				uci -q set "wireless.$iface.rrm_beacon_report=1"
+				uci -q set "wireless.$iface.rnr=1"
 				uci -q set "wireless.$iface.ieee80211v=1"
-				uci -q delete "wireless.$iface.bss_transition"
-				uci -q delete "wireless.$iface.wnm_sleep_mode"
+
+				if ark_hostapd_has_wnm; then
+					uci -q set "wireless.$iface.bss_transition=1"
+					uci -q set "wireless.$iface.wnm_sleep_mode=1"
+				else
+					uci -q delete "wireless.$iface.bss_transition"
+					uci -q delete "wireless.$iface.wnm_sleep_mode"
+				fi
 
 				# 802.11r (Fast Transition) no 5 GHz e 6 GHz para blindar IoT no 2.4 GHz
 				if [ "$dev" = "$radio5" ] || [ "$dev" = "radio1" ] || { [ -n "$radio6" ] && [ "$dev" = "$radio6" ]; } || [ "$dev" = "radio2" ]; then
@@ -1038,9 +1046,11 @@ EOF
 				uci -q delete "wireless.$iface.mobility_domain"
 				uci -q delete "wireless.$iface.ieee80211k"
 				uci -q delete "wireless.$iface.rrm_neighbor_report"
-				uci -q delete "wireless.$iface.ieee80211v"
+				uci -q delete "wireless.$iface.rrm_beacon_report"
 				uci -q delete "wireless.$iface.bss_transition"
 				uci -q delete "wireless.$iface.wnm_sleep_mode"
+				uci -q delete "wireless.$iface.rnr"
+				uci -q delete "wireless.$iface.ieee80211v"
 			done
 			uci commit wireless
 			(sleep 1; wifi reload) >/dev/null 2>&1 &
@@ -1083,19 +1093,17 @@ EOF
 
 					uci -q set equipe_dashboard.wifi.usteer_installing=0
 					if [ -x /etc/init.d/usteer ] || [ "$inst_ok" = "1" ]; then
-						if [ ! -s /etc/config/usteer ]; then
-							touch /etc/config/usteer
-							uci -q set usteer.@usteer[0]=usteer 2>/dev/null || uci -q add usteer usteer
-							uci -q set usteer.@usteer[0].network='lan'
-							uci -q set usteer.@usteer[0].syslog='1'
-							uci -q set usteer.@usteer[0].min_snr='15'
-							uci -q set usteer.@usteer[0].load_balancing_threshold='3'
-							uci -q set usteer.@usteer[0].band_steering_threshold='5'
-							uci -q set usteer.@usteer[0].band_steering_min_snr='-70'
-							uci -q set usteer.@usteer[0].kick_threshold='-78'
-							uci -q set usteer.@usteer[0].max_retries='3'
-							uci commit usteer 2>/dev/null || true
-						fi
+						touch /etc/config/usteer 2>/dev/null || true
+						[ -n "$(uci -q get usteer.@usteer[0] 2>/dev/null)" ] || uci -q add usteer usteer >/dev/null 2>&1 || true
+						uci -q set usteer.@usteer[0].network='lan'
+						uci -q set usteer.@usteer[0].syslog='1'
+						uci -q set usteer.@usteer[0].min_snr='15'
+						uci -q set usteer.@usteer[0].load_balancing_threshold='3'
+						uci -q set usteer.@usteer[0].band_steering_threshold='5'
+						uci -q set usteer.@usteer[0].band_steering_min_snr='-70'
+						uci -q set usteer.@usteer[0].kick_threshold='-78'
+						uci -q set usteer.@usteer[0].max_retries='3'
+						uci commit usteer 2>/dev/null || true
 						/etc/init.d/usteer enable >/dev/null 2>&1 || true
 						/etc/init.d/usteer restart >/dev/null 2>&1 || true
 						uci -q set equipe_dashboard.wifi.usteer_enabled=1
@@ -1105,27 +1113,32 @@ EOF
 			else
 				uci -q set equipe_dashboard.wifi.usteer_installing=0
 				uci commit equipe_dashboard 2>/dev/null || true
-				if [ ! -s /etc/config/usteer ]; then
-					touch /etc/config/usteer
-					uci -q set usteer.@usteer[0]=usteer 2>/dev/null || uci -q add usteer usteer
-					uci -q set usteer.@usteer[0].network='lan'
-					uci -q set usteer.@usteer[0].syslog='1'
-					uci -q set usteer.@usteer[0].min_snr='15'
-					uci -q set usteer.@usteer[0].load_balancing_threshold='3'
-					uci -q set usteer.@usteer[0].band_steering_threshold='5'
-					uci -q set usteer.@usteer[0].band_steering_min_snr='-70'
-					uci -q set usteer.@usteer[0].kick_threshold='-78'
-					uci -q set usteer.@usteer[0].max_retries='3'
-					uci commit usteer 2>/dev/null || true
-				fi
-				# Garante que 802.11v e 802.11k estejam ativos nos APs para o usteer operar
+				touch /etc/config/usteer 2>/dev/null || true
+				[ -n "$(uci -q get usteer.@usteer[0] 2>/dev/null)" ] || uci -q add usteer usteer >/dev/null 2>&1 || true
+				uci -q set usteer.@usteer[0].network='lan'
+				uci -q set usteer.@usteer[0].syslog='1'
+				uci -q set usteer.@usteer[0].min_snr='15'
+				uci -q set usteer.@usteer[0].load_balancing_threshold='3'
+				uci -q set usteer.@usteer[0].band_steering_threshold='5'
+				uci -q set usteer.@usteer[0].band_steering_min_snr='-70'
+				uci -q set usteer.@usteer[0].kick_threshold='-78'
+				uci -q set usteer.@usteer[0].max_retries='3'
+				uci commit usteer 2>/dev/null || true
+				# Garante que 802.11v (bss_transition se suportado), 802.11k e RNR estejam ativos nos APs para o usteer operar
 				for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
 					[ "$(uci -q get wireless.$iface.mode || echo ap)" = "ap" ] || continue
 					uci -q set "wireless.$iface.ieee80211k=1"
 					uci -q set "wireless.$iface.rrm_neighbor_report=1"
+					uci -q set "wireless.$iface.rrm_beacon_report=1"
+					uci -q set "wireless.$iface.rnr=1"
 					uci -q set "wireless.$iface.ieee80211v=1"
-					uci -q delete "wireless.$iface.bss_transition"
-					uci -q delete "wireless.$iface.wnm_sleep_mode"
+					if ark_hostapd_has_wnm; then
+						uci -q set "wireless.$iface.bss_transition=1"
+						uci -q set "wireless.$iface.wnm_sleep_mode=1"
+					else
+						uci -q delete "wireless.$iface.bss_transition"
+						uci -q delete "wireless.$iface.wnm_sleep_mode"
+					fi
 				done
 				uci commit wireless 2>/dev/null || true
 				[ -x /etc/init.d/usteer ] && {
@@ -1427,9 +1440,17 @@ EOF
 					uci -q set wireless.$iface.ssid="$ssid_2g"
 					[ -n "$key_2g" ] && uci -q set wireless.$iface.key="$key_2g"
 					uci -q set wireless.$iface.ieee80211k='1'
-					uci -q delete wireless.$iface.ieee80211v
-					uci -q delete wireless.$iface.wnm_sleep_mode
-					uci -q delete wireless.$iface.bss_transition
+					uci -q set wireless.$iface.rrm_neighbor_report='1'
+					uci -q set wireless.$iface.rrm_beacon_report='1'
+					uci -q set wireless.$iface.rnr='1'
+					uci -q set wireless.$iface.ieee80211v='1'
+					if ark_hostapd_has_wnm; then
+						uci -q set wireless.$iface.bss_transition='1'
+						uci -q set wireless.$iface.wnm_sleep_mode='1'
+					else
+						uci -q delete wireless.$iface.bss_transition
+						uci -q delete wireless.$iface.wnm_sleep_mode
+					fi
 					uci -q delete wireless.$iface.ieee80211r
 				fi
 			done
@@ -1444,9 +1465,17 @@ EOF
 					uci -q set wireless.$iface.ssid="$ssid_5g"
 					[ -n "$key_5g" ] && uci -q set wireless.$iface.key="$key_5g"
 					uci -q set wireless.$iface.ieee80211k='1'
-					uci -q delete wireless.$iface.ieee80211v
-					uci -q delete wireless.$iface.wnm_sleep_mode
-					uci -q delete wireless.$iface.bss_transition
+					uci -q set wireless.$iface.rrm_neighbor_report='1'
+					uci -q set wireless.$iface.rrm_beacon_report='1'
+					uci -q set wireless.$iface.rnr='1'
+					uci -q set wireless.$iface.ieee80211v='1'
+					if ark_hostapd_has_wnm; then
+						uci -q set wireless.$iface.bss_transition='1'
+						uci -q set wireless.$iface.wnm_sleep_mode='1'
+					else
+						uci -q delete wireless.$iface.bss_transition
+						uci -q delete wireless.$iface.wnm_sleep_mode
+					fi
 					uci -q set wireless.$iface.ieee80211r='1'
 					uci -q set wireless.$iface.ft_psk_generate_local='1'
 					uci -q set wireless.$iface.mobility_domain="${mobility_domain:-a1b2}"

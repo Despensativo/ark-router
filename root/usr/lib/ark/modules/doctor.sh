@@ -1250,60 +1250,110 @@ ark_doctor_audit() {
 			fi
 		fi
 
+		local wnm_capable=0
+		ark_hostapd_has_wnm && wnm_capable=1
+
 		if [ "$usteer_installed" = 1 ] && [ "$usteer_active" = 1 ]; then
-			# Verifica se 802.11k e 802.11v estão configurados nas seções AP
+			# Verifica se 802.11k (rrm), 802.11v (bss_transition se suportado) e RNR estão configurados nas seções AP
 			local missing_kv_secs=""
 			for chk_sec in $ap_sections; do
 				local k="$($uci_cmd get "wireless.$chk_sec.ieee80211k" 2>/dev/null || echo 0)"
-				local v="$($uci_cmd get "wireless.$chk_sec.ieee80211v" 2>/dev/null || echo 0)"
-				if [ "$k" != "1" ] || [ "$v" != "1" ]; then
+				local bt="$($uci_cmd get "wireless.$chk_sec.bss_transition" 2>/dev/null || echo 0)"
+				local rnr_v="$($uci_cmd get "wireless.$chk_sec.rnr" 2>/dev/null || echo 0)"
+				if [ "$k" != "1" ] || [ "$rnr_v" != "1" ]; then
+					missing_kv_secs="$missing_kv_secs $chk_sec"
+				elif [ "$wnm_capable" = 1 ] && [ "$bt" != "1" ]; then
+					missing_kv_secs="$missing_kv_secs $chk_sec"
+				elif [ "$wnm_capable" = 0 ] && [ "$bt" = "1" ]; then
+					# Proteção ativa: wpad-basic não suporta bss_transition e falharia no boot
 					missing_kv_secs="$missing_kv_secs $chk_sec"
 				fi
 			done
 
-			if [ -n "$missing_kv_secs" ]; then
+			# Verifica se a calibração de alta velocidade do usteer está presente (-70 dBm)
+			local usteer_snr="$($uci_cmd get usteer.@usteer[0].band_steering_min_snr 2>/dev/null || echo '')"
+			local usteer_needs_calib=0
+			if [ "$usteer_snr" != "-70" ]; then
+				usteer_needs_calib=1
+			fi
+
+			if [ -n "$missing_kv_secs" ] || [ "$usteer_needs_calib" = 1 ]; then
 				if [ "$auto_fix" = 1 ]; then
 					for kv_sec in $missing_kv_secs; do
 						$uci_cmd set "wireless.$kv_sec.ieee80211k=1"
 						$uci_cmd set "wireless.$kv_sec.rrm_neighbor_report=1"
+						$uci_cmd set "wireless.$kv_sec.rrm_beacon_report=1"
+						$uci_cmd set "wireless.$kv_sec.rnr=1"
 						$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
-						$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
-						$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
+						if [ "$wnm_capable" = 1 ]; then
+							$uci_cmd set "wireless.$kv_sec.bss_transition=1"
+							$uci_cmd set "wireless.$kv_sec.wnm_sleep_mode=1"
+						else
+							$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
+							$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
+						fi
 					done
-					$uci_cmd commit wireless 2>/dev/null || true
-					wifi_needs_reload=1
+					[ -n "$missing_kv_secs" ] && {
+						$uci_cmd commit wireless 2>/dev/null || true
+						wifi_needs_reload=1
+					}
+
+					if [ "$usteer_needs_calib" = 1 ]; then
+						touch /etc/config/usteer 2>/dev/null || true
+						[ -n "$($uci_cmd get usteer.@usteer[0] 2>/dev/null)" ] || $uci_cmd add usteer usteer >/dev/null 2>&1 || true
+						$uci_cmd set usteer.@usteer[0].network='lan'
+						$uci_cmd set usteer.@usteer[0].syslog='1'
+						$uci_cmd set usteer.@usteer[0].min_snr='15'
+						$uci_cmd set usteer.@usteer[0].load_balancing_threshold='3'
+						$uci_cmd set usteer.@usteer[0].band_steering_threshold='5'
+						$uci_cmd set usteer.@usteer[0].band_steering_min_snr='-70'
+						$uci_cmd set usteer.@usteer[0].kick_threshold='-78'
+						$uci_cmd set usteer.@usteer[0].max_retries='3'
+						$uci_cmd commit usteer 2>/dev/null || true
+						/etc/init.d/usteer restart >/dev/null 2>&1 || true
+					fi
+
 					fixes_applied=$((fixes_applied + 1))
-					add_check "Band Steering (usteer)" "FIXED" "Daemon usteer ativo; parâmetros 802.11k/v alinhados nas interfaces AP para balanceamento 5GHz."
+					add_check "Band Steering (usteer)" "FIXED" "Daemon usteer ativo; 802.11k, RNR e calibração de alta velocidade (-70 dBm) sincronizados."
 				else
 					warnings=$((warnings + 1))
-					add_check "Band Steering (usteer)" "WARN" "usteer ativo, mas 802.11k/v ausente em interfaces AP (assistência de roaming incompleta)."
+					add_check "Band Steering (usteer)" "WARN" "usteer ativo, mas parâmetros de roaming 802.11k/RNR ou calibração de alta velocidade (-70 dBm) ausentes."
 				fi
 			else
-				add_check "Band Steering (usteer)" "OK" "Assistente de Band Steering (usteer) ativo e balanceando clientes entre 2.4GHz e 5GHz."
+				if [ "$wnm_capable" = 1 ]; then
+					add_check "Band Steering (usteer)" "OK" "Assistente de Band Steering (usteer) ativo com 802.11k/v (bss_transition) e calibração de alta velocidade (-70 dBm)."
+				else
+					add_check "Band Steering (usteer)" "OK" "Assistente de Band Steering (usteer) ativo com 802.11k, RNR e calibração -70 dBm (wpad-basic ativo; bss_transition resguardado)."
+				fi
 			fi
 
 		elif [ "$usteer_installed" = 1 ]; then
 			# usteer está instalado mas desativado (cenário típico de aparelhos presos em 2.4GHz)
 			if [ "$auto_fix" = 1 ]; then
-				if [ ! -s /etc/config/usteer ]; then
-					touch /etc/config/usteer
-					$uci_cmd set usteer.@usteer[0]=usteer 2>/dev/null || $uci_cmd add usteer usteer
-					$uci_cmd set usteer.@usteer[0].network='lan'
-					$uci_cmd set usteer.@usteer[0].syslog='1'
-					$uci_cmd set usteer.@usteer[0].min_snr='15'
-					$uci_cmd set usteer.@usteer[0].load_balancing_threshold='3'
-					$uci_cmd set usteer.@usteer[0].band_steering_threshold='5'
-					$uci_cmd set usteer.@usteer[0].band_steering_min_snr='-70'
-					$uci_cmd set usteer.@usteer[0].kick_threshold='-78'
-					$uci_cmd set usteer.@usteer[0].max_retries='3'
-					$uci_cmd commit usteer 2>/dev/null || true
-				fi
+				touch /etc/config/usteer 2>/dev/null || true
+				[ -n "$($uci_cmd get usteer.@usteer[0] 2>/dev/null)" ] || $uci_cmd add usteer usteer >/dev/null 2>&1 || true
+				$uci_cmd set usteer.@usteer[0].network='lan'
+				$uci_cmd set usteer.@usteer[0].syslog='1'
+				$uci_cmd set usteer.@usteer[0].min_snr='15'
+				$uci_cmd set usteer.@usteer[0].load_balancing_threshold='3'
+				$uci_cmd set usteer.@usteer[0].band_steering_threshold='5'
+				$uci_cmd set usteer.@usteer[0].band_steering_min_snr='-70'
+				$uci_cmd set usteer.@usteer[0].kick_threshold='-78'
+				$uci_cmd set usteer.@usteer[0].max_retries='3'
+				$uci_cmd commit usteer 2>/dev/null || true
 				for kv_sec in $ap_sections; do
 					$uci_cmd set "wireless.$kv_sec.ieee80211k=1"
 					$uci_cmd set "wireless.$kv_sec.rrm_neighbor_report=1"
+					$uci_cmd set "wireless.$kv_sec.rrm_beacon_report=1"
+					$uci_cmd set "wireless.$kv_sec.rnr=1"
 					$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
-					$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
-					$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
+					if [ "$wnm_capable" = 1 ]; then
+						$uci_cmd set "wireless.$kv_sec.bss_transition=1"
+						$uci_cmd set "wireless.$kv_sec.wnm_sleep_mode=1"
+					else
+						$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
+						$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
+					fi
 				done
 				$uci_cmd commit wireless 2>/dev/null || true
 				/etc/init.d/usteer enable >/dev/null 2>&1 || true
@@ -1313,7 +1363,7 @@ ark_doctor_audit() {
 				$uci_cmd commit equipe_dashboard 2>/dev/null || true
 				wifi_needs_reload=1
 				fixes_applied=$((fixes_applied + 1))
-				add_check "Band Steering (usteer)" "FIXED" "Assistente usteer ativado e 802.11k/v configurados. Aparelhos agora são distribuídos dinamicamente para o 5GHz."
+				add_check "Band Steering (usteer)" "FIXED" "Assistente usteer ativado com calibração de alta velocidade (-70 dBm) e parâmetros 802.11k/RNR configurados."
 			else
 				warnings=$((warnings + 1))
 				add_check "Band Steering (usteer)" "WARN" "Rede Wi-Fi unificada (${unified_ssids# }) com Band Steering (usteer) inativo. Aparelhos tendem a ficar presos no 2.4GHz mais lento."
@@ -1342,25 +1392,30 @@ ark_doctor_audit() {
 						fi
 
 						if [ "$inst_ok" = 1 ]; then
-							if [ ! -s /etc/config/usteer ]; then
-								touch /etc/config/usteer
-								$uci_cmd set usteer.@usteer[0]=usteer 2>/dev/null || $uci_cmd add usteer usteer
-								$uci_cmd set usteer.@usteer[0].network='lan'
-								$uci_cmd set usteer.@usteer[0].syslog='1'
-								$uci_cmd set usteer.@usteer[0].min_snr='15'
-								$uci_cmd set usteer.@usteer[0].load_balancing_threshold='3'
-								$uci_cmd set usteer.@usteer[0].band_steering_threshold='5'
-								$uci_cmd set usteer.@usteer[0].band_steering_min_snr='-70'
-								$uci_cmd set usteer.@usteer[0].kick_threshold='-78'
-								$uci_cmd set usteer.@usteer[0].max_retries='3'
-								$uci_cmd commit usteer 2>/dev/null || true
-							fi
+							touch /etc/config/usteer 2>/dev/null || true
+							[ -n "$($uci_cmd get usteer.@usteer[0] 2>/dev/null)" ] || $uci_cmd add usteer usteer >/dev/null 2>&1 || true
+							$uci_cmd set usteer.@usteer[0].network='lan'
+							$uci_cmd set usteer.@usteer[0].syslog='1'
+							$uci_cmd set usteer.@usteer[0].min_snr='15'
+							$uci_cmd set usteer.@usteer[0].load_balancing_threshold='3'
+							$uci_cmd set usteer.@usteer[0].band_steering_threshold='5'
+							$uci_cmd set usteer.@usteer[0].band_steering_min_snr='-70'
+							$uci_cmd set usteer.@usteer[0].kick_threshold='-78'
+							$uci_cmd set usteer.@usteer[0].max_retries='3'
+							$uci_cmd commit usteer 2>/dev/null || true
 							for kv_sec in $ap_sections; do
 								$uci_cmd set "wireless.$kv_sec.ieee80211k=1"
 								$uci_cmd set "wireless.$kv_sec.rrm_neighbor_report=1"
+								$uci_cmd set "wireless.$kv_sec.rrm_beacon_report=1"
+								$uci_cmd set "wireless.$kv_sec.rnr=1"
 								$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
-								$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
-								$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
+								if [ "$wnm_capable" = 1 ]; then
+									$uci_cmd set "wireless.$kv_sec.bss_transition=1"
+									$uci_cmd set "wireless.$kv_sec.wnm_sleep_mode=1"
+								else
+									$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
+									$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
+								fi
 							done
 							$uci_cmd commit wireless 2>/dev/null || true
 							/etc/init.d/usteer enable >/dev/null 2>&1 || true
@@ -1370,7 +1425,7 @@ ark_doctor_audit() {
 							$uci_cmd commit equipe_dashboard 2>/dev/null || true
 							wifi_needs_reload=1
 							fixes_applied=$((fixes_applied + 1))
-							add_check "Band Steering (usteer)" "FIXED" "Módulo usteer instalado e ativado com sucesso! Balanceamento dinâmico 2.4GHz/5GHz ativo."
+							add_check "Band Steering (usteer)" "FIXED" "Módulo usteer instalado e ativado com calibração -70 dBm e 802.11k/RNR configurados."
 						else
 							warnings=$((warnings + 1))
 							add_check "Band Steering (usteer)" "WARN" "Rede Wi-Fi unificada sem usteer. Falha ao baixar o pacote dos repositórios OpenWrt."
