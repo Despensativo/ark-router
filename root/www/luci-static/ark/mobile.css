@@ -152,15 +152,60 @@
 		min-width: 0 !important;
 	}
 
-	input.cbi-input-text, input[type="text"], input[type="password"], textarea, select {
+	input,
+	input.cbi-input-text,
+	input[type="text"],
+	input[type="password"],
+	input[type="number"],
+	input[type="search"],
+	input[type="email"],
+	input[type="tel"],
+	input[type="url"],
+	textarea,
+	select,
+	select.cbi-input-select,
+	.cbi-value-field input,
+	.cbi-value-field select,
+	.cbi-value-field textarea,
+	.modal input,
+	.modal select,
+	.modal textarea,
+	.modal .cbi-value-field input.cbi-input-text,
+	.modal .cbi-value-field select.cbi-input-select,
+	#modal_overlay .modal input,
+	#modal_overlay .modal select,
+	#modal_overlay .modal textarea,
+	.ark-search-input {
+		font-size: 16px !important;
+		max-width: 100% !important;
+		min-width: 0 !important;
+		box-sizing: border-box !important;
+	}
+
+	input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="submit"]):not([type="button"]):not([type="reset"]),
+	input.cbi-input-text,
+	textarea,
+	select,
+	select.cbi-input-select {
 		width: 100% !important;
+		text-overflow: ellipsis !important;
 	}
 
 	html, body {
 		overflow-x: hidden !important;
 		width: 100% !important;
 		max-width: 100% !important;
+		touch-action: manipulation !important;
+		-webkit-text-size-adjust: 100% !important;
+		text-size-adjust: 100% !important;
 	}
+
+	button, input, select, textarea, label, summary, a, [role="button"],
+	.btn, .cbi-button, .ex-mini-button, .ex-hero-feature-button,
+	.ex-channel-action, .ex-switch, .ex-device-switch-control, .ark-menu-toggle {
+		touch-action: manipulation !important;
+	}
+
 
 	/* Single-Row Horizontal Scrollable Tabs on Mobile (Eliminates multi-line header clutter) */
 	ul.cbi-tabmenu, .cbi-tabmenu, #tabmenu, ul.tabs, .tabs {
@@ -190,9 +235,13 @@
 
 	/* Responsive Table Containers & Scroll on Mobile */
 	.cbi-section.cbi-tblsection,
+	.cbi-tblsection,
+	.cbi-section.cbi-tblsection[data-tab-active="true"],
+	.cbi-tblsection[data-tab-active="true"],
 	.cbi-section-node,
 	.cbi-section-table-wrap,
-	.table-wrapper {
+	.table-wrapper,
+	.ark-table-responsive {
 		display: block !important;
 		overflow-x: auto !important;
 		-webkit-overflow-scrolling: touch !important;
@@ -206,6 +255,12 @@
 		min-width: 580px !important;
 		width: 100% !important;
 		box-sizing: border-box !important;
+	}
+
+	#view > table,
+	#view > .table,
+	#wifi_assoclist_table {
+		max-width: 100% !important;
 	}
 
 	/* Software / Package Manager Mobile Overflow Fix */
@@ -308,6 +363,243 @@
 		flex-direction: column;
 		gap: 8px;
 		text-align: center;
+	}
+
+	/* Port Status Mobile Optimization */
+	div[style*="grid-template-columns"]:has(> .ifacebox) {
+		display: grid !important;
+		grid-template-columns: repeat(auto-fit, minmax(58px, 1fr)) !important;
+		gap: 5px !important;
+		padding: 8px 6px !important;
+		margin: 8px 0 16px !important;
+	}
+	div[style*="grid-template-columns"] > .ifacebox {
+		flex: none !important;
+		max-width: none !important;
+		min-width: 0 !important;
+		width: 100% !important;
+		padding: 6px 3px 5px !important;
+		min-height: 110px !important;
+	}
+	div[style*="grid-template-columns"] > .ifacebox > .ifacebox-head:first-child {
+		padding: 2px 5px !important;
+		font-size: 9.5px !important;
+		margin-bottom: 4px !important;
+	}
+	div[style*="grid-template-columns"] > .ifacebox > .ifacebox-body:nth-child(2) img {
+		width: 22px !important;
+		height: 22px !important;
+	}
+	div[style*="grid-template-columns"] > .ifacebox > .ifacebox-body:nth-child(2) span,
+	div[style*="grid-template-columns"] > .ifacebox > .ifacebox-body:nth-child(2) {
+		font-size: 9.5px !important;
+	}
+	div[style*="grid-template-columns"] > .ifacebox .cbi-tooltip-container {
+		font-size: 8.5px !important;
+		padding: 2px 2px !important;
+		line-height: 1.25 !important;
+	}
+
+	/* Wireless Overview & Stations Mobile */
+	.ark-wireless-grid {
+		grid-template-columns: 1fr !important;
+		gap: 14px !important;
+		margin: 12px 0 !important;
+	}
+	.ark-radio-card {
+		padding: 16px 14px !important;
+		min-width: 0 !important;
+	}
+	.ark-radio-header {
+		flex-direction: column !important;
+		align-items: stretch !important;
+		gap: 12px !important;
+	}
+	.ark-radio-title-wrap {
+		width: 100% !important;
+		min-width: 0 !important;
+	}
+	.ark-radio-actions {
+		width: 100% !important;
+		display: grid !important;
+		grid-template-columns: repeat(3, 1fr) !important;
+		gap: 6px !important;
+		margin: 8px 0 0 0 !important;
+	}
+	.ark-radio-actions button,
+	.ark-radio-actions .cbi-button {
+		width: 100% !important;
+		min-height: 40px !important;
+		font-size: 12px !important;
+		font-weight: 600 !important;
+		display: inline-flex !important;
+		align-items: center !important;
+		justify-content: center !important;
+		padding: 6px 4px !important;
+	}
+	.ark-ssid-card {
+		flex-direction: column !important;
+		align-items: stretch !important;
+		gap: 12px !important;
+		padding: 12px !important;
+	}
+	.ark-ssid-info {
+		width: 100% !important;
+		min-width: 0 !important;
+	}
+	.ark-ssid-actions {
+		width: 100% !important;
+		display: grid !important;
+		grid-template-columns: repeat(3, 1fr) !important;
+		gap: 6px !important;
+		margin-top: 4px !important;
+	}
+	.ark-ssid-actions button,
+	.ark-ssid-actions .cbi-button {
+		width: 100% !important;
+		min-height: 38px !important;
+		font-size: 12px !important;
+		font-weight: 600 !important;
+		display: inline-flex !important;
+		align-items: center !important;
+		justify-content: center !important;
+		padding: 6px 4px !important;
+	}
+
+	.ark-assoclist-card {
+		padding: 14px 10px !important;
+		margin-top: 16px !important;
+		border-radius: 12px !important;
+	}
+	.ark-assoclist-header {
+		flex-direction: column !important;
+		align-items: flex-start !important;
+		gap: 8px !important;
+	}
+	.ark-table-swipe-hint {
+		display: inline-block !important;
+	}
+	#wifi_assoclist_table {
+		min-width: 680px !important;
+		width: 100% !important;
+	}
+	#wifi_assoclist_table .th,
+	#wifi_assoclist_table th,
+	#wifi_assoclist_table .td,
+	#wifi_assoclist_table td {
+		padding: 8px 10px !important;
+		font-size: 12px !important;
+	}
+	#wifi_assoclist_table .cbi-button-remove {
+		min-height: 36px !important;
+		padding: 6px 12px !important;
+		font-size: 12px !important;
+		white-space: nowrap !important;
+	}
+
+	.ark-guide-badge {
+		white-space: nowrap !important;
+		flex-shrink: 0 !important;
+	}
+
+	/* Bottom Action Bar (.cbi-page-actions) Mobile */
+	.cbi-page-actions, .actions {
+		display: flex !important;
+		flex-wrap: wrap !important;
+		gap: 8px !important;
+		padding: 12px !important;
+		width: 100% !important;
+		box-sizing: border-box !important;
+	}
+	.cbi-page-actions .cbi-dropdown {
+		width: 100% !important;
+		min-width: 100% !important;
+		min-height: 44px !important;
+		display: flex !important;
+		justify-content: center !important;
+	}
+	.cbi-page-actions button,
+	.cbi-page-actions .btn:not(.cbi-dropdown),
+	.cbi-page-actions .cbi-button:not(.cbi-dropdown),
+	.actions button,
+	.actions .btn:not(.cbi-dropdown),
+	.actions .cbi-button:not(.cbi-dropdown) {
+		flex: 1 1 calc(50% - 6px) !important;
+		min-height: 42px !important;
+		font-size: 13px !important;
+		display: inline-flex !important;
+		align-items: center !important;
+		justify-content: center !important;
+	}
+
+	/* Routing & Generic CBI Table Sections Mobile */
+	.cbi-tblsection table {
+		min-width: 650px !important;
+	}
+	.cbi-tblsection .td,
+	.cbi-tblsection td {
+		padding: 8px 10px !important;
+		font-size: 12px !important;
+	}
+	.cbi-tblsection .cbi-section-actions button,
+	.cbi-tblsection .cbi-section-actions .cbi-button {
+		min-height: 32px !important;
+		padding: 4px 8px !important;
+		font-size: 11px !important;
+		white-space: nowrap !important;
+	}
+}
+
+@media (max-width: 480px) {
+	div[style*="grid-template-columns"]:has(> .ifacebox) {
+		grid-template-columns: repeat(auto-fit, minmax(54px, 1fr)) !important;
+		gap: 4px !important;
+		padding: 6px 4px !important;
+	}
+	div[style*="grid-template-columns"] > .ifacebox {
+		padding: 5px 2px 4px !important;
+		min-height: 104px !important;
+	}
+	div[style*="grid-template-columns"] > .ifacebox > .ifacebox-head:first-child {
+		font-size: 9px !important;
+		padding: 1px 4px !important;
+	}
+	div[style*="grid-template-columns"] > .ifacebox > .ifacebox-body:nth-child(2) img {
+		width: 20px !important;
+		height: 20px !important;
+	}
+	div[style*="grid-template-columns"] > .ifacebox > .ifacebox-body:nth-child(2) span {
+		font-size: 9px !important;
+	}
+	div[style*="grid-template-columns"] > .ifacebox .cbi-tooltip-container {
+		font-size: 8px !important;
+		padding: 2px 1px !important;
+		line-height: 1.2 !important;
+	}
+
+	/* Ultra-compact wireless mobile */
+	.ark-radio-card {
+		padding: 12px 10px !important;
+	}
+	.ark-radio-actions button,
+	.ark-radio-actions .cbi-button {
+		font-size: 11px !important;
+		padding: 6px 2px !important;
+	}
+	.ark-ssid-actions button,
+	.ark-ssid-actions .cbi-button {
+		font-size: 11px !important;
+		padding: 6px 2px !important;
+	}
+	.ark-assoclist-card {
+		padding: 12px 6px !important;
+	}
+	#wifi_assoclist_table .th,
+	#wifi_assoclist_table th,
+	#wifi_assoclist_table .td,
+	#wifi_assoclist_table td {
+		padding: 6px 6px !important;
+		font-size: 11.5px !important;
 	}
 }
 

@@ -1,0 +1,45 @@
+#!/bin/sh /etc/rc.common
+# ARK Router - Fake RTC Clock Preserver Init Script
+# Copyright (C) 2024-2026 ARK Router Project
+# Previne o bug de ano 1970 no boot quando o roteador inicia sem internet
+# Restaurando o ultimo timestamp conhecido antes de subir DNS, TLS e WireGuard.
+
+START=01
+STOP=02
+USE_PROCD=0
+
+EPOCH_FILE="/etc/ark-clock.epoch"
+
+save_clock() {
+	cur_epoch="$(date +%s 2>/dev/null || echo 0)"
+	cur_year="$(date +%Y 2>/dev/null || echo 0)"
+	case "$cur_epoch" in ''|*[!0-9]*) cur_epoch=0 ;; esac
+	case "$cur_year" in ''|*[!0-9]*) cur_year=0 ;; esac
+	# Apenas grava se o ano for plausivel (>= 2025 e epoch >= 1735689600)
+	if [ "$cur_year" -ge 2025 ] && [ "$cur_epoch" -ge 1735689600 ]; then
+		mkdir -p "$(dirname "$EPOCH_FILE")"
+		printf '%s\n' "$cur_epoch" > "$EPOCH_FILE"
+	fi
+}
+
+start() {
+	cur_year="$(date +%Y 2>/dev/null || echo 0)"
+	case "$cur_year" in ''|*[!0-9]*) cur_year=0 ;; esac
+	if [ -f "$EPOCH_FILE" ]; then
+		saved_epoch="$(cat "$EPOCH_FILE" 2>/dev/null | tr -d ' \r\n')"
+		case "$saved_epoch" in ''|*[!0-9]*) saved_epoch=0 ;; esac
+		if [ "$cur_year" -lt 2025 ] && [ "$saved_epoch" -ge 1735689600 ]; then
+			date -u -s "@$saved_epoch" >/dev/null 2>&1
+			logger -t ark-clock "Fake RTC Preserver: Horário do sistema restaurado para $(date) (epoch: $saved_epoch)"
+		fi
+	else
+		# Se nao houver arquivo salvo, grava o horario atual se ja for valido
+		save_clock
+	fi
+	return 0
+}
+
+stop() {
+	save_clock
+	return 0
+}

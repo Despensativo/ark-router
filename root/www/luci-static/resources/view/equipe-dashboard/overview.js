@@ -4,7 +4,7 @@
 'require poll';
 'require fs';
 'require ui';
-const ARK_BUILD_VERSION = '1.5.16';
+const ARK_BUILD_VERSION = '1.5.17';
 if (typeof window !== 'undefined') {
 	window.ARK_BUILD_VERSION = ARK_BUILD_VERSION;
 	window.ARK_VERSION = ARK_BUILD_VERSION;
@@ -21,10 +21,38 @@ if (typeof window !== 'undefined') {
 	} catch(e) {}
 }
 
-document.querySelector('head').appendChild(E('link', {
-	'rel': 'stylesheet', 'type': 'text/css',
-	'href': L.resource('view/equipe-dashboard/overview.css') + '?v=' + ARK_BUILD_VERSION
-}));
+if (typeof document !== 'undefined') {
+	try {
+		var _head = (document.querySelector && document.querySelector('head')) || document.documentElement || document.head;
+		if (_head) {
+			var _vpEl = document.querySelector ? document.querySelector('meta[name="viewport"]') : null;
+			if (!_vpEl) {
+				if (typeof E === 'function') {
+					_vpEl = E('meta', { 'name': 'viewport', 'content': 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover' });
+				} else if (typeof document.createElement === 'function') {
+					_vpEl = document.createElement('meta');
+					_vpEl.name = 'viewport';
+					_vpEl.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+				}
+				if (_vpEl && _head.appendChild) _head.appendChild(_vpEl);
+			} else if (_vpEl.setAttribute) {
+				_vpEl.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+			}
+
+			var _cssHref = (typeof L !== 'undefined' && L.resource ? L.resource('view/equipe-dashboard/overview.css') : '/luci-static/resources/view/equipe-dashboard/overview.css') + '?v=' + ARK_BUILD_VERSION;
+			var _linkEl = null;
+			if (typeof E === 'function') {
+				_linkEl = E('link', { 'rel': 'stylesheet', 'type': 'text/css', 'href': _cssHref });
+			} else if (typeof document.createElement === 'function') {
+				_linkEl = document.createElement('link');
+				_linkEl.rel = 'stylesheet';
+				_linkEl.type = 'text/css';
+				_linkEl.href = _cssHref;
+			}
+			if (_linkEl && _head.appendChild) _head.appendChild(_linkEl);
+		}
+	} catch(e) {}
+}
 
 const callSystemBoard = rpc.declare({ object: 'system', method: 'board' });
 const callSystemInfo = rpc.declare({ object: 'system', method: 'info' });
@@ -938,6 +966,10 @@ function wifiConfig(config) {
 		                   (c && c.ssid && out.disabled6 !== '1');
 		out.disabled = anyEnabled ? '0' : '1';
 		out.encryption=(b&&b.encryption)||(a&&a.encryption)||(c&&c.encryption)||'sae-mixed';
+		out.encryption2=(a&&a.encryption)||out.encryption||'sae-mixed';
+		out.encryption5=(b&&b.encryption)||out.encryption||'sae-mixed';
+		out.encryption6=(c&&c.encryption)||'sae';
+		out.splitEnc=!!(a&&b&&a.encryption&&b.encryption&&a.encryption!==b.encryption);
 		out.ssid=out.ssid2||out.ssid5||out.ssid6||out.ssid||'';
 		out.split=!!(out.ssid2&&out.ssid5&&out.ssid2!==out.ssid5);
 		out.network=(a&&a.network)||(b&&b.network)||(c&&c.network)||'lan';
@@ -996,7 +1028,9 @@ function wifiConfig(config) {
 		rawRadio0: v.radio0 || {},
 		rawRadio1: v.radio1 || {},
 		rawRadio2: (dev6g && v[dev6g]) || v.radio2 || {},
-		has6g: !!(dev6g && v[dev6g]),
+		has2g: !!(hasRadios && dev2g && v[dev2g] && v[dev2g]['.type'] === 'wifi-device'),
+		has5g: !!(hasRadios && dev5g && v[dev5g] && v[dev5g]['.type'] === 'wifi-device'),
+		has6g: !!(hasRadios && dev6g && v[dev6g] && v[dev6g]['.type'] === 'wifi-device'),
 		wpsEnabled: isWpsEnabled,
 		roamingEnabled: isRoamingEnabled,
 		meshActive: isMeshActive,
@@ -1454,9 +1488,53 @@ function setupCardAccordion(options) {
 	};
 }
 
+function withButtonFeedback(button, actionFn, options) {
+	if (!button || button.disabled) return Promise.resolve();
+	options = options || {};
+	const origHtml = button.innerHTML;
+	const loadingText = options.loadingText || (button.textContent.trim() + '…');
+	const successText = options.successText || '✓ ' + (options.doneText || 'Concluído');
+
+	button.disabled = true;
+	button.classList.add('is-busy');
+	button.innerHTML = '<span class="ex-spinner-inline"></span> ' + loadingText;
+
+	return Promise.resolve()
+		.then(function() { return actionFn(); })
+		.then(function(res) {
+			button.classList.remove('is-busy');
+			button.classList.add('is-success');
+			button.innerHTML = successText;
+			if (options.successToast) {
+				ui.addNotification(null, E('p', {}, [options.successToast]), 'info');
+			}
+			window.setTimeout(function() {
+				button.classList.remove('is-success');
+				button.innerHTML = origHtml;
+				button.disabled = false;
+				if (typeof options.onSuccess === 'function') options.onSuccess(res);
+			}, options.resetDelay || 1500);
+			return res;
+		})
+		.catch(function(err) {
+			button.classList.remove('is-busy');
+			button.classList.add('is-error');
+			button.innerHTML = '❌ ' + (options.errorText || 'Erro');
+			const msg = (err && (err.message || err.stderr)) || 'Falha ao executar operação';
+			ui.addNotification(null, E('p', {}, [msg]), 'danger');
+			window.setTimeout(function() {
+				button.classList.remove('is-error');
+				button.innerHTML = origHtml;
+				button.disabled = false;
+				if (typeof options.onError === 'function') options.onError(err);
+			}, 2500);
+			throw err;
+		});
+}
+
 // /src/modules/lifecycle.js - ARK Router LuCI View Module
 const lifecycleMethods = {
-	board: {}, countries: [], capabilities: {features:{}}, previous: {}, trafficPrevious: {}, trafficAt: 0, currentData: null, recommendedChannels: null, speedResults: {}, refreshTimer: null, dashboardRoot: null, deviceSortKey: 'total', deviceSortDir: 'desc', starlinkTelemetryTimer: null, starlinkTelemetryStopTimer: null, starlinkTelemetryActive: false, starlinkTelemetryWan: null, starlinkWanOrder: [], starlinkResults: {},
+	board: {}, countries: [], capabilities: {features:{}}, previous: {}, trafficPrevious: {}, trafficAt: 0, currentData: null, recommendedChannels: null, speedResults: {}, refreshTimer: null, clockTimer: null, dashboardRoot: null, deviceSortKey: 'total', deviceSortDir: 'desc', starlinkTelemetryTimer: null, starlinkTelemetryStopTimer: null, starlinkTelemetryActive: false, starlinkTelemetryWan: null, starlinkWanOrder: [], starlinkResults: {},
 	fetchCapabilities: function(){
 		if (typeof window !== 'undefined' && window._arkCapabilities && window._arkCapabilities.features) {
 			return Promise.resolve(window._arkCapabilities);
@@ -1947,6 +2025,9 @@ const lifecycleMethods = {
 		if(this.refreshTimer){window.clearTimeout(this.refreshTimer);this.refreshTimer=null;}
 		const wait=delay!=null?delay:(this.currentData?this.adaptiveRefreshSeconds(this.currentData)*1000:3000);
 		this.refreshTimer=window.setTimeout(L.bind(function(){
+			if (typeof location !== 'undefined' && location.pathname.indexOf('/equipe-dashboard') === -1 && location.pathname.indexOf('/admin/status/overview') === -1) {
+				return;
+			}
 			if(typeof document !== 'undefined' && document.hidden){
 				this.refreshPaused = true;
 				return;
@@ -2058,27 +2139,57 @@ const lifecycleMethods = {
 		text('ex-lan-dhcp', dhcpDisplay);
 		text('ex-lan-mask', lanStatus.netmask || '—');
 		text('ex-lan-dns', Array.isArray(lanStatus.dns) && lanStatus.dns.length ? lanStatus.dns.join('  •  ') : 'Sem DNS fixo');
+		const v6Mode = lanStatus.ipv6_mode || (data.equipeDashboardConfig && data.equipeDashboardConfig.values && data.equipeDashboardConfig.values.ipv6 && data.equipeDashboardConfig.values.ipv6.mode) || 'dual_stack';
+		const isRelay = lanStatus.ipv6_relay === '1' || (data.dhcpConfig && data.dhcpConfig.values && data.dhcpConfig.values.lan && data.dhcpConfig.values.lan.ndp === 'relay');
 		let ipv6Label = lanStatus.ipv6_label;
-		if (!ipv6Label) {
-			const dhcpLan=(data.dhcpConfig&&data.dhcpConfig.values&&data.dhcpConfig.values.lan)||(data.dhcpConfig&&data.dhcpConfig.lan)||{};
-			if(dhcpLan.ndp==='relay') ipv6Label = 'Cascata (NDP Relay)';
-			else if(dhcpLan.dhcpv6==='disabled'&&dhcpLan.ra==='disabled') ipv6Label = 'Desativado (IPv4 Puro)';
-			else ipv6Label = 'Pilha Dupla Global';
+		if (isRelay) {
+			ipv6Label = 'Cascata (NDP Relay)';
+		} else if (v6Mode === 'nptv6') {
+			ipv6Label = 'NPTv6 Inteligente (Multi-WAN)';
+		} else if (v6Mode === 'selective') {
+			ipv6Label = 'IPv6 Seletivo por MAC';
+		} else if (v6Mode === 'ipv4_only') {
+			ipv6Label = 'Desativado (IPv4 Puro)';
+		} else if (v6Mode === 'ipv6_only') {
+			ipv6Label = 'IPv6-Only (Futurista)';
+		} else if (!ipv6Label || ipv6Label === 'Pilha Dupla Global') {
+			ipv6Label = 'Pilha Dupla Global';
 		}
 		text('ex-lan-ipv6', ipv6Label);
+
 		let ipv6Prefix = '—';
 		const lanIface = iface(data.interfaces, 'lan');
 		const wan6Iface = iface(data.interfaces, 'wan6');
-		if (lanIface && Array.isArray(lanIface['ipv6-prefix-assignment']) && lanIface['ipv6-prefix-assignment'].length > 0) {
-			const p = lanIface['ipv6-prefix-assignment'][0];
-			ipv6Prefix = (p.address || '') + '/' + (p.mask || 64);
-		} else if (wan6Iface && Array.isArray(wan6Iface['ipv6-prefix']) && wan6Iface['ipv6-prefix'].length > 0) {
-			const p = wan6Iface['ipv6-prefix'][0];
-			ipv6Prefix = (p.address || '') + '/' + (p.mask || 64);
-		} else if (lanStatus.ipv6_relay === '1' || (ipv6Label && ipv6Label.indexOf('Relay') !== -1)) {
-			ipv6Prefix = 'Repasse NDP WAN ⇄ LAN';
-		} else if (lanStatus.ipv6_mode === 'ipv4_only' || (ipv6Label && ipv6Label.indexOf('Desativado') !== -1)) {
+		let pubPrefix = '';
+		let ulaPrefix = lanStatus.ula_prefix || (data.networkConfig && data.networkConfig.values && data.networkConfig.values.globals && data.networkConfig.values.globals.ula_prefix) || '';
+		if (lanIface && Array.isArray(lanIface['ipv6-prefix-assignment'])) {
+			lanIface['ipv6-prefix-assignment'].forEach(function(pa) {
+				const addr = String(pa.address || '');
+				if (addr.indexOf('fd') === 0 || addr.indexOf('fc') === 0) {
+					if (!ulaPrefix) ulaPrefix = addr + '/' + (pa.mask || 64);
+				} else if (!pubPrefix && addr) {
+					pubPrefix = addr + '/' + (pa.mask || 64);
+				}
+			});
+		}
+		if (!pubPrefix && wan6Iface && Array.isArray(wan6Iface['ipv6-prefix']) && wan6Iface['ipv6-prefix'].length > 0) {
+			const wp = wan6Iface['ipv6-prefix'][0];
+			pubPrefix = (wp.address || '') + '/' + (wp.mask || 64);
+		}
+		if (!pubPrefix && lanStatus.prefix_delegated) {
+			pubPrefix = lanStatus.prefix_delegated;
+		}
+
+		if (isRelay) {
+			ipv6Prefix = pubPrefix ? ('Repasse NDP • ' + pubPrefix) : 'Repasse NDP WAN ⇄ LAN';
+		} else if (v6Mode === 'ipv4_only' || (ipv6Label && ipv6Label.indexOf('Desativado') !== -1)) {
 			ipv6Prefix = 'Desativado';
+		} else if (v6Mode === 'nptv6') {
+			ipv6Prefix = (ulaPrefix || 'fd73:0192:0168::/48') + ' (NPTv6 1:1)';
+		} else if (v6Mode === 'selective') {
+			ipv6Prefix = pubPrefix ? (pubPrefix + ' (Seletivo)') : (ulaPrefix ? (ulaPrefix + ' (ULA)') : 'Sem prefixo da operadora');
+		} else {
+			ipv6Prefix = pubPrefix || (ulaPrefix ? (ulaPrefix + ' (ULA Local)') : 'Sem prefixo da operadora');
 		}
 		text('ex-lan-ipv6-prefix', ipv6Prefix);
 		const igmpActive = !!lanStatus.igmp_snooping;
@@ -2187,7 +2298,44 @@ const lifecycleMethods = {
 			starlinkPanelEl.style.display=(hasStarlink||slPub.enabled||slAlwaysShow)?'':'none';
 		}
 		this.updateDoctorStatus(data.doctorStatus);
-		this.updateWifi(data); this.updateMwanMode(data); this.updateHistory(data.history); this.renderDevices(data,dr); text('ex-clock',new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+		this.updateWifi(data); this.updateMwanMode(data); this.updateHistory(data.history); this.renderDevices(data,dr);
+		this.updateClockAndDate();
+	},
+	updateClockAndDate: function() {
+		const clockEl = document.getElementById('ex-clock');
+		const dateEl = document.getElementById('ex-date');
+		if (!clockEl && !dateEl) {
+			if (this.clockTimer) {
+				window.clearInterval(this.clockTimer);
+				this.clockTimer = null;
+			}
+			return;
+		}
+		const now = new Date();
+		if (clockEl) {
+			clockEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+		}
+		if (dateEl) {
+			const lang = (typeof dashboardLanguage !== 'undefined' && dashboardLanguage) || 'pt-br';
+			const locale = (lang === 'en') ? 'en-US' : (lang === 'es') ? 'es-ES' : 'pt-BR';
+			let dateStr = '';
+			try {
+				dateStr = now.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+				dateStr = dateStr.replace(/^([a-zçáéíóú]+)\./i, '$1');
+				dateStr = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+			} catch(e) {
+				dateStr = now.toLocaleDateString();
+			}
+			dateEl.textContent = dateStr;
+		}
+	},
+	startClockTicker: function() {
+		if (this.clockTimer) {
+			window.clearInterval(this.clockTimer);
+			this.clockTimer = null;
+		}
+		this.updateClockAndDate();
+		this.clockTimer = window.setInterval(L.bind(this.updateClockAndDate, this), 1000);
 	},
 	updateDoctorStatus: function(doc) {
 		const pill = document.getElementById('ex-doctor-pill');
@@ -4000,7 +4148,8 @@ const devicesMethods = {
 					return this.fetchData().then(L.bind(this.update,this));
 				},this)).catch(function(e){btn.disabled = false; btn.textContent = 'Salvar configurações'; if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});
 			},this)},['Salvar configurações'])]));
-			ui.showModal('Configurar dispositivo',sections);name.focus();
+			ui.showModal('Configurar dispositivo',sections);
+			if (window.innerWidth > 854 && !(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) name.focus();
 		},this)).catch(function(e){ui.hideModal();ui.addNotification(null,E('p',{},[e.message]),'danger');});
 	}
 };
@@ -4539,8 +4688,8 @@ const networkMethods = {
 					min: 1,
 					max: 100000,
 					step: '1',
-					placeholder: 'Velocidade nominal (Mbps)',
-					style: 'max-width: 170px; margin-right: 6px;'
+					placeholder: 'Plano (ex: 500)',
+					style: 'flex: 1 1 120px; min-width: 0; min-height: 38px;'
 				});
 				const calcDownNotice = E('small', { class: 'ex-muted', style: 'display: block; margin-top: 4px; font-size: 11px; line-height: 1.3;' }, [
 					'Margem recomendada de 7% para absorver variações do modem.'
@@ -4548,7 +4697,7 @@ const networkMethods = {
 				const applyCalcDownBtn = E('button', {
 					type: 'button',
 					class: 'btn cbi-button cbi-button-action ex-mini-button',
-					style: 'font-weight: 600;',
+					style: 'font-weight: 600; white-space: nowrap; flex-shrink: 0; min-height: 38px;',
 					click: function() {
 						const nominal = parseFloat(calcDownInput.value || 0);
 						if (nominal > 0) {
@@ -4560,11 +4709,11 @@ const networkMethods = {
 					}
 				}, ['Aplicar -7%']);
 
-				const calcDownBox = E('div', { class: 'ex-qos-calc-box', style: 'margin-top: 8px; margin-bottom: 8px; padding: 8px 10px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 8px;' }, [
+				const calcDownBox = E('div', { class: 'ex-qos-calc-box' }, [
 					E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;' }, [
-						E('strong', { style: 'font-size: 11.5px;' }, ['🧮 Calculadora de Download (-7% Bufferbloat)'])
+						E('strong', { style: 'font-size: 11.5px;' }, ['🧮 Calculadora de Download (-7%)'])
 					]),
-					E('div', { style: 'display: flex; align-items: center; flex-wrap: wrap; gap: 4px;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
 						calcDownInput,
 						applyCalcDownBtn
 					]),
@@ -4578,8 +4727,8 @@ const networkMethods = {
 					min: 1,
 					max: 100000,
 					step: '1',
-					placeholder: 'Velocidade nominal (Mbps)',
-					style: 'max-width: 170px; margin-right: 6px;'
+					placeholder: 'Plano (ex: 50)',
+					style: 'flex: 1 1 120px; min-width: 0; min-height: 38px;'
 				});
 				const calcNotice = E('small', { class: 'ex-muted', style: 'display: block; margin-top: 4px; font-size: 11px; line-height: 1.3;' }, [
 					'Margem de 7% aplicada para impedir acúmulo de fila no modem.'
@@ -4587,7 +4736,7 @@ const networkMethods = {
 				const applyCalcBtn = E('button', {
 					type: 'button',
 					class: 'btn cbi-button cbi-button-action ex-mini-button',
-					style: 'font-weight: 600;',
+					style: 'font-weight: 600; white-space: nowrap; flex-shrink: 0; min-height: 38px;',
 					click: function() {
 						const nominal = parseFloat(calcInput.value || 0);
 						if (nominal > 0) {
@@ -4602,11 +4751,11 @@ const networkMethods = {
 					}
 				}, ['Aplicar -7%']);
 
-				const calcBox = E('div', { class: 'ex-qos-calc-box', style: 'margin-top: 8px; margin-bottom: 8px; padding: 8px 10px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 8px;' }, [
+				const calcBox = E('div', { class: 'ex-qos-calc-box' }, [
 					E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;' }, [
-						E('strong', { style: 'font-size: 11.5px;' }, ['🧮 Calculadora de Upload (-7% Bufferbloat)'])
+						E('strong', { style: 'font-size: 11.5px;' }, ['🧮 Calculadora de Upload (-7%)'])
 					]),
-					E('div', { style: 'display: flex; align-items: center; flex-wrap: wrap; gap: 4px;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
 						calcInput,
 						applyCalcBtn
 					]),
@@ -4647,7 +4796,7 @@ const networkMethods = {
 				const chkWash = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('wash') !== -1 });
 				const chkDiffserv = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('diffserv4') !== -1 });
 
-				const advancedDetails = E('details', { style: 'margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;' }, [
+				const advancedDetails = E('details', { style: 'margin-top: 12px; padding: 12px 14px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;' }, [
 					E('summary', { style: 'cursor: pointer; font-weight: 700; font-size: 12px; color: #93c5fd;' }, ['⚙️ Parâmetros Avançados do CAKE & Enquadramento (Overhead)']),
 					E('div', { style: 'margin-top: 10px; display: flex; flex-direction: column; gap: 8px;' }, [
 						E('label', { style: 'display: block;' }, [
@@ -4655,7 +4804,7 @@ const networkMethods = {
 							overheadSelect,
 							E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Compensa os cabeçalhos de fibra/cabo no shaper para precisão absoluta anti-bufferbloat.'])
 						]),
-						E('div', { style: 'display: flex; flex-direction: column; gap: 6px; margin-top: 4px;' }, [
+						E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; margin-top: 4px;' }, [
 							E('label', { style: 'display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;' }, [
 								chkNat,
 								E('span', {}, [E('strong', {}, ['NAT Lookup (nat): ']), 'Permite ao CAKE ver o IP real de cada aparelho da casa antes do NAT.'])
@@ -4691,19 +4840,64 @@ const networkMethods = {
 					chkAck: chkAck,
 					chkWash: chkWash,
 					chkDiffserv: chkDiffserv,
-					section: E('section', {}, [
-						E('h3', {}, [profile.label]),
-						E('small', { class: 'ex-muted' }, ['Interface '+profile.network+' • dispositivo '+profile.device+(profile.online?' • online':' • sem link')]),
-						E('label', { class: 'ex-qos-edit-toggle' }, [enabled, E('span', {}, ['Ativar fila '+profile.label])]),
-						download.row,
-						calcDownBox,
-						upload.row,
-						calcBox,
+					section: E('section', { class: 'ex-qos-wan-section', style: 'padding: 16px; border: 1px solid rgba(127,127,127,.18); border-radius: 14px; background: rgba(127,127,127,.05); margin-bottom: 14px;' }, [
+						E('div', { style: 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(127,127,127,.12);' }, [
+							E('div', {}, [
+								E('h3', { style: 'margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;' }, [
+									'🌐 ' + profile.label,
+									E('span', { class: 'ex-pill ' + (profile.online ? 'online' : 'standby'), style: 'font-size: 0.75rem;' }, [
+										profile.online ? _t('Online') : _t('Sem link')
+									])
+								]),
+								E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, [
+									_t('Interface') + ' ' + profile.network + ' • ' + _t('dispositivo') + ' ' + profile.device
+								])
+							]),
+							E('label', { class: 'ex-qos-edit-toggle', style: 'margin: 0; cursor: pointer; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.04); padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);' }, [
+								enabled,
+								E('span', { style: 'font-weight: 650; font-size: 13px;' }, [_t('Ativar fila') + ' ' + profile.label])
+							])
+						]),
+						E('div', { class: 'ex-qos-dir-grid', style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;' }, [
+							E('div', { class: 'ex-qos-dir-box', style: 'background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 12px;' }, [
+								E('div', { style: 'display: flex; align-items: center; gap: 6px; margin-bottom: 6px;' }, [
+									E('span', { style: 'font-size: 15px;' }, ['📥']),
+									E('strong', { style: 'font-size: 13px; color: var(--ark-text-main, #fff);' }, [_t('Download')])
+								]),
+								download.row,
+								calcDownBox
+							]),
+							E('div', { class: 'ex-qos-dir-box', style: 'background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 12px;' }, [
+								E('div', { style: 'display: flex; align-items: center; gap: 6px; margin-bottom: 6px;' }, [
+									E('span', { style: 'font-size: 15px;' }, ['📤']),
+									E('strong', { style: 'font-size: 13px; color: var(--ark-text-main, #fff);' }, [_t('Upload')])
+								]),
+								upload.row,
+								calcBox
+							])
+						]),
 						advancedDetails
 					])
 				};
 			});
 			const guestDown=field('Visitantes download total',guestDownloadLimit,'Mbps • 0 ou vazio = ilimitado'), guestUp=field('Visitantes upload total',guestUploadLimit,'Mbps • exemplo: 1,5 • 0 ou vazio = ilimitado');
+			const guestSection = E('section', {
+				class: 'ex-qos-guest-section',
+				style: 'padding: 14px 16px; border: 1px solid rgba(127,127,127,.18); border-radius: 14px; background: rgba(127,127,127,.05); margin-bottom: 16px;'
+			}, [
+				E('div', { style: 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(127,127,127,.12);' }, [
+					E('div', {}, [
+						E('h3', { style: 'margin: 0; font-size: 1rem; display: flex; align-items: center; gap: 6px;' }, [
+							'👥 ' + _t('Rede de Visitantes (QoS Secundário)')
+						]),
+						E('small', { class: 'ex-muted' }, [_t('Limite máximo de velocidade que todos os aparelhos de visitas podem usar juntos.')])
+					])
+				]),
+				E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;' }, [
+					guestDown.row,
+					guestUp.row
+				])
+			]);
 			const mipsNotice = audit.is_low_end_mips ? E('div', { class: 'alert-message warning', style: 'margin-bottom: 12px; font-size: 12.5px; line-height: 1.5;' }, [
 				E('strong', { style: 'display:block; margin-bottom:4px;' }, ['⚠️ ' + _t('Recomendação de Hardware: Processador MIPS') + ' (' + (audit.cpu_model || 'Single-Core 720 MHz') + ')']),
 				_t('Para velocidades de download superiores a 100 Mbps, o algoritmo CAKE pode saturar a CPU (100%), reduzindo a velocidade real do link.') + ' ',
@@ -4758,7 +4952,9 @@ const networkMethods = {
 				speedtestBanner,
 				flowOffloadNotice,
 				mipsNotice,
-				E('div',{class:'ex-qos-edit-grid'},editors.map(function(editor){return editor.section;}).concat([E('section',{},[E('h3',{},['Visitantes']),guestDown.row,guestUp.row])])),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
+				E('div',{class:'ex-qos-wan-list',style:'display:flex;flex-direction:column;gap:14px;'},editors.map(function(editor){return editor.section;})),
+				guestSection,
+				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
 			const btn = ev.currentTarget;
 			const args=['sqm-save-v2'];let invalid=false;
 			editors.forEach(function(editor){
@@ -4803,18 +4999,26 @@ const networkMethods = {
 			const guestUpload=(gURaw===''||gURaw==='0')?'0':mbpsToKbps(gURaw);
 			if(invalid||guestDownload==null||guestUpload==null){ui.addNotification(null,E('p',{},['Informe velocidades válidas em Mbps ou 0 para ilimitado.']),'danger');return;}
 			btn.disabled = true;
-			btn.textContent = 'Salvando SQM…';
+			btn.classList.add('is-busy');
+			btn.innerHTML = '<span class="ex-spinner-inline"></span> ' + _t('Salvando SQM…');
 			args.push('guest_download='+guestDownload,'guest_upload='+guestUpload);
 			return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){
 				if(r.code)throw new Error(r.stderr||'Falha ao salvar limites');
-				this.triggerImmediateRefresh('Limites de velocidade SQM / CAKE salvos com sucesso!', 'info');
+				btn.classList.remove('is-busy');
+				btn.classList.add('is-success');
+				btn.innerHTML = '✓ ' + _t('SQM Salvo!');
+				window.setTimeout(L.bind(function() {
+					ui.hideModal();
+					this.triggerImmediateRefresh('Limites de velocidade SQM / CAKE salvos com sucesso!', 'info');
+				}, this), 600);
 			}, this)).catch(function(e){
+				btn.classList.remove('is-busy');
 				btn.disabled = false;
-				btn.textContent = 'Salvar e reiniciar SQM';
+				btn.textContent = _t('Salvar e reiniciar SQM');
 				if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
 				ui.addNotification(null,E('p',{},[e.message]),'danger');
 			});
-		},this)},['Salvar e reiniciar SQM'])])]);
+		},this)},[_t('Salvar e reiniciar SQM')])])]);
 		}, this));
 	},
 	editWan: function(which, preferredDevice){
@@ -6455,7 +6659,8 @@ const networkMethods = {
 				ipv4_only: { label: 'Modo 1: IPv4 Apenas', color: '#f59e0b', bg: 'rgba(245,158,11,.15)', border: 'rgba(245,158,11,.35)' },
 				dual_stack: { label: 'Modo 2: Pilha Dupla Global', color: '#10b981', bg: 'rgba(16,185,129,.15)', border: 'rgba(16,185,129,.35)' },
 				selective: { label: 'Modo 3: IPv6 Seletivo por MAC', color: '#38bdf8', bg: 'rgba(56,189,248,.15)', border: 'rgba(56,189,248,.35)' },
-				ipv6_only: { label: 'Modo 4: IPv6-Only (Single-Stack)', color: '#c084fc', bg: 'rgba(192,132,252,.15)', border: 'rgba(192,132,252,.35)' }
+				nptv6: { label: 'Modo 4: NPTv6 Inteligente (Multi-WAN)', color: '#06b6d4', bg: 'rgba(6,182,212,.15)', border: 'rgba(6,182,212,.35)' },
+				ipv6_only: { label: 'Modo 5: IPv6-Only (Single-Stack)', color: '#c084fc', bg: 'rgba(192,132,252,.15)', border: 'rgba(192,132,252,.35)' }
 			};
 			const curBadge = modeBadgeMeta[curMode] || modeBadgeMeta.dual_stack;
 
@@ -6561,6 +6766,15 @@ const networkMethods = {
 					],
 					curMode === 'dual_stack'
 				),
+				renderModeCard('nptv6', 'Modo 4: NPTv6 Inteligente (Multi-WAN & Estabilidade)', 'Estabilidade & Multi-WAN',
+					'Prefixo ULA local fixo (fd73:0192:0168::/48) com tradução 1:1 stateless para a WAN ativa (RFC 6296 / Masq6).',
+					[
+						'Perfeito para Dual-WAN (Fibra + Starlink): failover de IPv6 transparente sem desconexão.',
+						'Imunidade contra troca de prefixo da operadora: servidores, Docker e Home Assistant mantêm IPs estáveis.',
+						'Sem sobrecarga de portas: cada dispositivo preserva suas 65.535 portas 1:1 sem NAT restrito.'
+					],
+					curMode === 'nptv6'
+				),
 				renderModeCard('selective', 'Modo 3: IPv6 Seletivo por Aparelho', 'Escudo Gamer & IoT',
 					'Apenas aparelhos marcados com "⚡ Permitir IPv6" no painel utilizam IPv6. Dispositivos não autorizados têm o tráfego rejeitado instantaneamente em 0,1ms.',
 					[
@@ -6579,7 +6793,7 @@ const networkMethods = {
 					],
 					curMode === 'ipv4_only'
 				),
-				renderModeCard('ipv6_only', 'Modo 4: IPv6-Only (Futurista)', 'Single-Stack',
+				renderModeCard('ipv6_only', 'Modo 5: IPv6-Only (Futurista)', 'Single-Stack',
 					'LAN operando puramente em IPv6 sem concessões DHCP IPv4 locais, com síntese DNS64 no dnsmasq.',
 					[
 						'Ideal para laboratórios, testes de novas tecnologias e transição pura para a próxima geração.',
@@ -6589,10 +6803,16 @@ const networkMethods = {
 				)
 			];
 
+			const isNptv6 = curMode === 'nptv6';
+			const isIpv4Only = curMode === 'ipv4_only';
+			const isRelayLocked = isNptv6 || isIpv4Only;
+
 			const relayToggle = E('input', {
 				type: 'checkbox',
-				checked: isRelay ? '' : null,
+				checked: (!isRelayLocked && isRelay) ? '' : null,
+				disabled: isRelayLocked ? true : null,
 				change: function(ev) {
+					if (isRelayLocked) return;
 					const desired = ev.currentTarget.checked ? '1' : '0';
 					ev.currentTarget.disabled = true;
 					fs.exec('/usr/sbin/equipe-dashboard-control', ['ipv6-relay-toggle', desired]).then(function(res) {
@@ -6605,7 +6825,25 @@ const networkMethods = {
 					});
 				}
 			});
-			relayToggle.checked = !!isRelay;
+			relayToggle.checked = !isRelayLocked && !!isRelay;
+			if (isRelayLocked) relayToggle.disabled = true;
+
+			let pillText = isRelay ? 'RELAY IPV6 ATIVO' : 'SERVIDOR IPV6 DIRETO';
+			let pillClass = isRelay ? 'online' : 'standby';
+			let stateText = isRelay ? 'Ativado' : 'Desativado';
+			let stateColor = isRelay ? '#38bdf8' : '#94a3b8';
+
+			if (isNptv6) {
+				pillText = 'SERVIDOR DIRETO OBRIGATÓRIO (NPTv6)';
+				pillClass = 'standby';
+				stateText = 'Desativado (NPTv6)';
+				stateColor = '#94a3b8';
+			} else if (isIpv4Only) {
+				pillText = 'DESATIVADO (MODO IPV4)';
+				pillClass = 'standby';
+				stateText = 'Desativado';
+				stateColor = '#94a3b8';
+			}
 
 			const cascadePanel = E('section', {
 				class: 'ex-cleanup-entry',
@@ -6614,15 +6852,19 @@ const networkMethods = {
 				E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
 					E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;' }, [
 						E('strong', { style: 'font-size: 0.92rem; color: #f8fafc;' }, ['🔗 Roteador em Cascata (Repasse IPv6 / NDP Relay)']),
-						E('span', { class: 'ex-pill ' + (isRelay ? 'online' : 'standby'), style: 'font-size: 0.7rem;' }, [ isRelay ? 'RELAY IPV6 ATIVO' : 'SERVIDOR IPV6 DIRETO' ])
+						E('span', { class: 'ex-pill ' + pillClass, style: 'font-size: 0.7rem;' }, [ pillText ])
 					]),
 					E('p', { class: 'ex-muted', style: 'font-size: 0.8rem; line-height: 1.4; margin: 4px 0 0;' }, [
-						'Ative se este ARK Router estiver conectado atrás do modem da operadora (ou outro roteador) e seus aparelhos não estiverem recebendo IPv6 (quando a operadora entrega apenas um prefixo /64). O odhcpd repassa os anúncios de vizinhança IPv6 (NDP) transparentemente para os seus clientes, sem necessidade de DMZ no mestre.'
+						isNptv6
+							? 'No modo NPTv6, o ARK Router atua obrigatoriamente como Servidor Direto autoritativo (anunciando o prefixo ULA estável fd73:0192:0168::/48 para seus aparelhos e realizando a tradução 1:1 para a WAN ativa). O Repasse de vizinhança (Relay) fica automaticamente desligado.'
+							: isIpv4Only
+								? 'O Repasse IPv6 não pode ser utilizado enquanto o protocolo IPv6 estiver totalmente desligado (Modo IPv4 Apenas).'
+								: 'Ative se este ARK Router estiver conectado atrás do modem da operadora (ou outro roteador) e seus aparelhos não estiverem recebendo IPv6 (quando a operadora entrega apenas um prefixo /64). O odhcpd repassa os anúncios de vizinhança IPv6 (NDP) transparentemente para os seus clientes, sem necessidade de DMZ no mestre.'
 					])
 				]),
 				E('div', { style: 'flex: 0 0 auto; margin-left: 14px; display: flex; flex-direction: row; align-items: center; gap: 10px;' }, [
-					E('strong', { class: 'ex-device-switch-state', style: 'font-size: 0.8rem; font-weight: 700; color: ' + (isRelay ? '#38bdf8' : '#94a3b8') + ';' }, [ isRelay ? 'Ativado' : 'Desativado' ]),
-					E('label', { class: 'ex-switch', style: 'width: 48px; min-width: 48px; max-width: 48px; height: 26px; min-height: 26px; max-height: 26px; margin: 0;' }, [
+					E('strong', { class: 'ex-device-switch-state', style: 'font-size: 0.8rem; font-weight: 700; color: ' + stateColor + ';' }, [ stateText ]),
+					E('label', { class: 'ex-switch', style: 'width: 48px; min-width: 48px; max-width: 48px; height: 26px; min-height: 26px; max-height: 26px; margin: 0;' + (isRelayLocked ? ' opacity: 0.45; cursor: not-allowed;' : '') }, [
 						relayToggle,
 						E('span', { class: 'ex-switch-slider' })
 					])
@@ -7139,8 +7381,8 @@ const wifiMethods = {
 			const maxSummary = document.getElementById('ex-maxpower-mode-summary');
 			if(maxSummary){
 				maxSummary.textContent = isPA
-					? 'Ativo • Libera 100% da potência física dos amplificadores (até 1.000 mW / 30 dBm) usando o domínio Panamá (PA).'
-					: 'Desativado • Limite regulatório padrão Brasil (BR) aplicado.';
+					? 'Ativo • Libera 100% da potência física permitida pelos amplificadores de rádio (RF Frontend / FEM) do equipamento, utilizando perfil de potência irrestrito com salvaguarda térmica.'
+					: 'Desativado • Limite regulatório padrão aplicado (equilíbrio entre alcance e conformidade regional).';
 			}
 		}
 		const allAuto=auto2&&auto5, mixed=auto2!==auto5, toggle=document.getElementById('ex-channel-auto-toggle');
@@ -7249,7 +7491,7 @@ const wifiMethods = {
 				},this)},['Salvar nova senha'])
 			])
 		]);
-		first.focus();
+		if (window.innerWidth > 854 && !(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) first.focus();
 	},
 	showAddWifiModal: function() {
 		const ssid = E('input', { class: 'cbi-input-text', placeholder: 'Ex: MinhaRede_IoT', maxlength: 32, style: 'width:100%' });
@@ -7356,7 +7598,7 @@ const wifiMethods = {
 			])
 		];
 		ui.showModal('Adicionar nova rede Wi‑Fi', rows);
-		ssid.focus();
+		if (window.innerWidth > 854 && !(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) ssid.focus();
 	},
 	toggleWifiNetwork: function(chk, kind, cfg) {
 		const desired = chk.checked;
@@ -7480,13 +7722,44 @@ const wifiMethods = {
 		const split=E('input',{type:'checkbox'});
 		split.checked=!!current.split;
 		const curEnc=current.encryption||'sae-mixed';
-		const encSelect = E('select', { class: 'cbi-input-select', style: 'width:100%' }, [
-			E('option', { value: 'sae-mixed' }, [_t('WPA2 / WPA3 Misto (Mais Seguro)')]),
-			E('option', { value: 'psk2' }, [_t('WPA2-PSK (Máxima Compatibilidade IoT)')]),
-			E('option', { value: 'sae' }, [_t('WPA3-SAE Puro (Máxima Segurança Moderna)')]),
-			E('option', { value: 'none' }, [_t('Sem Senha (Rede Aberta)')])
-		]);
-		encSelect.value = curEnc;
+		const curEnc2=current.encryption2||curEnc;
+		const curEnc5=current.encryption5||curEnc;
+		const curEnc6=current.encryption6||'sae';
+		const splitEnc=E('input',{type:'checkbox'});
+		splitEnc.checked=!!current.splitEnc;
+
+		const makeEncSelect = function(val, bandType) {
+			const sel = E('select', { class: 'cbi-input-select', style: 'width:100%' });
+			if (bandType === '6g') {
+				sel.appendChild(E('option', { value: 'sae' }, [_t('WPA3 Pessoal Puro (Obrigatório Wi-Fi 6E/7)')]));
+				sel.appendChild(E('option', { value: 'none' }, [_t('Sem Senha (Desativa 6 GHz)')]));
+				sel.value = val || 'sae';
+			} else if (bandType === '2g') {
+				sel.appendChild(E('option', { value: 'psk2' }, [_t('WPA2 Pessoal (Recomendado para 2,4 GHz e IoT)')]));
+				sel.appendChild(E('option', { value: 'sae-mixed' }, [_t('WPA2 / WPA3 Transição (Modo Misto)')]));
+				sel.appendChild(E('option', { value: 'sae' }, [_t('WPA3 Pessoal Puro (Aparelhos Modernos - Incompatível com IoT)')]));
+				sel.appendChild(E('option', { value: 'none' }, [_t('Sem Senha (Rede Aberta)')]));
+				sel.value = val || 'psk2';
+			} else if (bandType === '5g') {
+				sel.appendChild(E('option', { value: 'sae-mixed' }, [_t('WPA2 / WPA3 Transição (Recomendado 5 GHz)')]));
+				sel.appendChild(E('option', { value: 'psk2' }, [_t('WPA2-PSK (Compatibilidade Geral)')]));
+				sel.appendChild(E('option', { value: 'sae' }, [_t('WPA3 Pessoal Puro (Máxima Segurança)')]));
+				sel.appendChild(E('option', { value: 'none' }, [_t('Sem Senha (Rede Aberta)')]));
+				sel.value = val || 'sae-mixed';
+			} else {
+				sel.appendChild(E('option', { value: 'sae-mixed' }, [_t('WPA2 / WPA3 Transição (Recomendado - Modo Misto)')]));
+				sel.appendChild(E('option', { value: 'psk2' }, [_t('WPA2-PSK (Compatibilidade IoT / Legado)')]));
+				sel.appendChild(E('option', { value: 'sae' }, [_t('WPA3 Pessoal Puro (Apenas Aparelhos Modernos)')]));
+				sel.appendChild(E('option', { value: 'none' }, [_t('Sem Senha (Rede Aberta)')]));
+				sel.value = val || 'sae-mixed';
+			}
+			return sel;
+		};
+
+		const encSelect = makeEncSelect(curEnc, 'unified');
+		const encSelect2 = makeEncSelect(curEnc2, '2g');
+		const encSelect5 = makeEncSelect(curEnc5, '5g');
+		const encSelect6 = has6g ? makeEncSelect(curEnc6, '6g') : null;
 		const ssid=E('input',{class:'cbi-input-text',value:current.ssid||'',placeholder:isGuest?'Visitantes':'Rede principal',maxlength:32,style:'width:100%'});
 		const ssid2=E('input',{class:'cbi-input-text',value:current.ssid2||current.ssid||'',placeholder:isGuest?'Visitantes-2G':'Rede-2G',maxlength:32,style:'width:100%'});
 		const ssid5=E('input',{class:'cbi-input-text',value:current.ssid5||current.ssid||'',placeholder:isGuest?'Visitantes-5G':'Rede-5G',maxlength:32,style:'width:100%'});
@@ -7604,50 +7877,200 @@ const wifiMethods = {
 		const showRow = E('label',{class:'ex-show-password'},[show,E('span',{},['Mostrar senha digitada'])]);
 
 		const encAlert = E('div', { class: 'alert-message', style: 'margin-top: 6px; font-size: 11.5px; display: none;' });
-		const updateEncVisibility = function() {
-			const encVal = encSelect.value;
-			const isNone = encVal === 'none';
-			passRow1.style.display = isNone ? 'none' : 'block';
-			passRow2.style.display = isNone ? 'none' : 'block';
-			showRow.style.display = isNone ? 'none' : 'flex';
-			const is6gActive = !!(has6g && band6Input && band6Input.checked);
-			let note6g = '';
-			if (is6gActive) {
-				if (encVal === 'psk2') {
-					note6g = '<div style="margin-top: 6px; font-weight: 600; color: #38bdf8;">' + _t('ℹ️ Banda de 6 GHz: por exigência do padrão Wi-Fi 6E/7, operará automaticamente em WPA3-SAE com PMF obrigatório.') + '</div>';
+		const encAlert2 = E('div', { class: 'alert-message', style: 'margin-top: 6px; font-size: 11.5px; display: none;' });
+		const encAlert5 = E('div', { class: 'alert-message', style: 'margin-top: 6px; font-size: 11.5px; display: none;' });
+		const encAlert6 = has6g ? E('div', { class: 'alert-message', style: 'margin-top: 6px; font-size: 11.5px; display: none;' }) : null;
+		const splitEncAlertTip = E('div', { class: 'alert-message info', style: 'margin-top: 6px; font-size: 11.5px; display: none;' });
+
+		const renderEncMessage = function(alertEl, encVal, bandType) {
+			if (!alertEl) return;
+			if (bandType === '6g') {
+				if (encVal === 'sae') {
+					alertEl.className = 'alert-message success';
+					alertEl.style.display = 'block';
+					alertEl.innerHTML = '<strong>' + _t('WPA3-SAE (Nativo 6 GHz):') + '</strong> ' + _t('Padrão obrigatório com Protected Management Frames (PMF).');
 				} else if (encVal === 'none') {
-					note6g = '<div style="margin-top: 6px; font-weight: 600; color: #ef4444;">' + _t('⚠️ Aviso 6 GHz: redes sem senha são proibidas no 6 GHz. A transmissão em 6 GHz será mantida desativada para esta rede.') + '</div>';
+					alertEl.className = 'alert-message danger';
+					alertEl.style.display = 'block';
+					alertEl.innerHTML = '<strong>' + _t('⚠️ Desativada no 6 GHz:') + '</strong> ' + _t('Rede aberta não é permitida pelo padrão Wi-Fi 6E/7.');
+				} else {
+					alertEl.style.display = 'none';
 				}
+				return;
 			}
+			if (bandType === '2g') {
+				if (encVal === 'psk2') {
+					alertEl.className = 'alert-message success';
+					alertEl.style.display = 'block';
+					if (isLegacyMips) {
+						alertEl.innerHTML = '<strong>' + _t('✅ Aceleração em Silício (AES):') + '</strong> ' + _t('Criptografia processada diretamente pelo hardware Atheros/MIPS. Máxima velocidade no ar e 100% compatível com IoT (Tuya/Sonoff) e celulares.');
+					} else {
+						alertEl.innerHTML = '<strong>' + _t('✅ Recomendado para 2,4 GHz:') + '</strong> ' + _t('WPA2-PSK com criptografia acelerada por hardware. 100% de estabilidade e compatibilidade com automação residencial (lâmpadas, tomadas Tuya/Sonoff, Alexa), impressoras e aparelhos legados.');
+					}
+				} else if (encVal === 'sae-mixed') {
+					alertEl.className = 'alert-message info';
+					alertEl.style.display = 'block';
+					alertEl.innerHTML = '<strong>' + _t('💡 Dica para Casa Inteligente:') + '</strong> ' + _t('Modo misto (WPA2 + WPA3). Aparelhos modernos usarão WPA3 e dispositivos comuns usarão WPA2. Nota: alguns aparelhos IoT antigos podem falhar devido à proteção de quadros PMF (802.11w). Se alguma lâmpada ou tomada falhar, selecione WPA2 Pessoal.');
+				} else if (encVal === 'sae') {
+					alertEl.className = 'alert-message warning';
+					alertEl.style.display = 'block';
+					alertEl.innerHTML = '<strong>' + _t('⚠️ Cuidado com Aparelhos IoT (2,4 GHz):') + '</strong> ' + _t('A quase totalidade das lâmpadas, tomadas inteligentes, robôs aspiradores e câmeras operam em 2,4 GHz com WPA2 e NÃO suportam WPA3. Ativar WPA3 Puro nesta frequência impedirá a conexão desses aparelhos. Para automação residencial, utilize WPA2 Pessoal.');
+				} else if (encVal === 'none') {
+					alertEl.className = 'alert-message danger';
+					alertEl.style.display = 'block';
+					alertEl.innerHTML = '<strong>' + _t('⚠️ Rede Aberta (Sem Senha):') + '</strong> ' + _t('Qualquer pessoa próxima poderá se conectar e o tráfego não será criptografado.');
+				} else {
+					alertEl.style.display = 'none';
+				}
+				return;
+			}
+			if (bandType === '5g') {
+				if (encVal === 'sae-mixed') {
+					alertEl.className = 'alert-message success';
+					alertEl.style.display = 'block';
+					alertEl.innerHTML = '<strong>' + _t('✅ Padrão Recomendado para 5 GHz:') + '</strong> ' + _t('WPA2/WPA3 Misto. Entrega criptografia avançada WPA3 para celulares e computadores modernos, mantendo compatibilidade com clientes 5 GHz comuns.');
+				} else if (encVal === 'psk2') {
+					alertEl.className = 'alert-message success';
+					alertEl.style.display = 'block';
+					alertEl.innerHTML = '<strong>' + _t('WPA2-PSK (5 GHz):') + '</strong> ' + _t('Compatibilidade clássica com todos os dispositivos compatíveis com 5 GHz.');
+				} else if (encVal === 'sae') {
+					alertEl.className = 'alert-message info';
+					alertEl.style.display = 'block';
+					alertEl.innerHTML = '<strong>' + _t('WPA3-SAE Puro (5 GHz):') + '</strong> ' + _t('Máxima segurança criptográfica moderna com PMF obrigatório. Apenas aparelhos modernos se conectarão nesta frequência.');
+				} else if (encVal === 'none') {
+					alertEl.className = 'alert-message danger';
+					alertEl.style.display = 'block';
+					alertEl.innerHTML = '<strong>' + _t('⚠️ Rede Aberta (Sem Senha):') + '</strong> ' + _t('Qualquer pessoa próxima poderá se conectar e o tráfego não será criptografado.');
+				} else {
+					alertEl.style.display = 'none';
+				}
+				return;
+			}
+			// Default / unified
 			if (encVal === 'psk2') {
-				encAlert.className = 'alert-message success';
-				encAlert.style.display = 'block';
-				if (isLegacyMips) {
-					encAlert.innerHTML = '<strong>' + _t('Aceleração em Silício (AES):') + '</strong> ' + _t('Criptografia processada diretamente pelo hardware Atheros/MIPS. Máxima velocidade no ar e 100% compatível com IoT (Tuya/Sonoff) e celulares.');
-				} else {
-					encAlert.innerHTML = '<strong>' + _t('WPA2-PSK (Compatibilidade Geral):') + '</strong> ' + _t('Recomendado para Casa Inteligente (IoT) e aparelhos legados. Garante conexão estável sem exigir PMF 802.11w.') + note6g;
-				}
+				alertEl.className = 'alert-message success';
+				alertEl.style.display = 'block';
+				alertEl.innerHTML = '<strong>' + _t('WPA2-PSK (Compatibilidade Geral):') + '</strong> ' + _t('Recomendado para ambientes com muitos aparelhos de automação (IoT) e legados. Garante conexão estável sem exigir PMF 802.11w.');
 			} else if (encVal === 'sae-mixed') {
-				encAlert.className = isLegacyMips ? 'alert-message warning' : 'alert-message success';
-				encAlert.style.display = 'block';
-				if (isLegacyMips) {
-					encAlert.innerHTML = '<strong>' + _t('WPA2/WPA3 Misto:') + '</strong> ' + _t('Aparelhos novos usam WPA3 e antigos usam WPA2. Nota: em CPU de 1 núcleo, a autenticação WPA3 consome mais processamento.');
-				} else {
-					encAlert.innerHTML = '<strong>' + _t('WPA2/WPA3 Misto (Recomendado):') + '</strong> ' + _t('Padrão recomendado para redes modernas. Segurança avançada WPA3 com compatibilidade retroativa para aparelhos WPA2.');
-				}
+				alertEl.className = isLegacyMips ? 'alert-message warning' : 'alert-message success';
+				alertEl.style.display = 'block';
+				alertEl.innerHTML = '<strong>' + _t('WPA2/WPA3 Misto (Recomendado):') + '</strong> ' + _t('Padrão recomendado para redes unificadas. Garante transição suave entre 2,4 GHz e 5 GHz (802.11k/v/usteer) e segurança moderna.');
 			} else if (encVal === 'sae') {
-				encAlert.className = 'alert-message warning';
-				encAlert.style.display = 'block';
-				encAlert.innerHTML = '<strong>' + _t('WPA3-SAE Puro (Máxima Segurança):') + '</strong> ' + _t('Exige Protected Management Frames (PMF). Dispositivos Smart Home/IoT ou aparelhos legados que não suportam WPA3 não conseguirão se conectar.');
+				alertEl.className = 'alert-message warning';
+				alertEl.style.display = 'block';
+				alertEl.innerHTML = '<strong>' + _t('⚠️ Cuidado com Aparelhos IoT na Rede Unificada:') + '</strong> ' + _t('Esta rede unificada transmite também em 2,4 GHz. Lâmpadas, tomadas inteligentes e aparelhos IoT que não suportam WPA3 não conseguirão se conectar. Para manter automação residencial nesta mesma rede, prefira WPA2/WPA3 Misto ou ative a rede de convidados/IoT em WPA2.');
 			} else if (encVal === 'none') {
-				encAlert.className = 'alert-message danger';
-				encAlert.style.display = 'block';
-				encAlert.innerHTML = '<strong>' + _t('⚠️ Rede Aberta (Sem Senha):') + '</strong> ' + _t('Qualquer pessoa próxima poderá se conectar e o tráfego não será criptografado.') + note6g;
+				alertEl.className = 'alert-message danger';
+				alertEl.style.display = 'block';
+				alertEl.innerHTML = '<strong>' + _t('⚠️ Rede Aberta (Sem Senha):') + '</strong> ' + _t('Qualquer pessoa próxima poderá se conectar e o tráfego não será criptografado.');
 			} else {
-				encAlert.style.display = 'none';
+				alertEl.style.display = 'none';
 			}
 		};
+
+		const unifiedEncRow = E('label', { class: 'ex-device-config-block' }, [
+			E('strong', {}, [_t('Segurança / Criptografia')]),
+			encSelect,
+			encAlert
+		]);
+
+		const splitEncElements = [
+			E('label', { class: 'ex-device-config-block' }, [
+				E('div', { style: 'display: flex; align-items: center; gap: 8px; margin-bottom: 4px;' }, [
+					E('span', { class: 'ex-wifi-band-badge', style: 'font-size: 11px; padding: 2px 7px; background: rgba(245,158,11,.15); color: #f59e0b; border-radius: 4px; font-weight: 750;' }, ['2.4 GHz']),
+					E('strong', {}, [_t('Segurança 2,4 GHz')])
+				]),
+				encSelect2,
+				encAlert2
+			]),
+			E('label', { class: 'ex-device-config-block' }, [
+				E('div', { style: 'display: flex; align-items: center; gap: 8px; margin-bottom: 4px;' }, [
+					E('span', { class: 'ex-wifi-band-badge', style: 'font-size: 11px; padding: 2px 7px; background: rgba(59,130,246,.15); color: #3b82f6; border-radius: 4px; font-weight: 750;' }, ['5 GHz']),
+					E('strong', {}, [_t('Segurança 5 GHz')])
+				]),
+				encSelect5,
+				encAlert5
+			])
+		];
+		if (has6g && encSelect6 && encAlert6) {
+			splitEncElements.push(E('label', { class: 'ex-device-config-block' }, [
+				E('div', { style: 'display: flex; align-items: center; gap: 8px; margin-bottom: 4px;' }, [
+					E('span', { class: 'ex-wifi-band-badge', style: 'font-size: 11px; padding: 2px 7px; background: rgba(16,185,129,.15); color: #10b981; border-radius: 4px; font-weight: 750;' }, ['6 GHz']),
+					E('strong', {}, [_t('Segurança 6 GHz')])
+				]),
+				encSelect6,
+				encAlert6
+			]));
+		}
+		splitEncElements.push(splitEncAlertTip);
+		const splitEncRows = E('div', {}, splitEncElements);
+
+		const splitEncToggleRow = E('label', { class: 'ex-show-password' }, [
+			splitEnc,
+			E('span', {}, [has6g ? _t('Separar segurança por frequência (2,4 GHz, 5 GHz e 6 GHz)') : _t('Separar segurança por frequência (2,4 GHz e 5 GHz)')])
+		]);
+
+		const updateEncVisibility = function() {
+			const isSplitEnc = splitEnc.checked;
+			unifiedEncRow.style.display = isSplitEnc ? 'none' : 'block';
+			splitEncRows.style.display = isSplitEnc ? 'block' : 'none';
+
+			const encVal = encSelect.value;
+			const is6gActive = !!(has6g && band6Input && band6Input.checked);
+
+			if (!isSplitEnc) {
+				let note6g = '';
+				if (is6gActive) {
+					if (encVal === 'psk2') {
+						note6g = '<div style="margin-top: 6px; font-weight: 600; color: #38bdf8;">' + _t('ℹ️ Banda de 6 GHz: por exigência do padrão Wi-Fi 6E/7, operará automaticamente em WPA3-SAE com PMF obrigatório.') + '</div>';
+					} else if (encVal === 'none') {
+						note6g = '<div style="margin-top: 6px; font-weight: 600; color: #ef4444;">' + _t('⚠️ Aviso 6 GHz: redes sem senha são proibidas no 6 GHz. A transmissão em 6 GHz será mantida desativada para esta rede.') + '</div>';
+					}
+				}
+				renderEncMessage(encAlert, encVal, 'unified');
+				if (note6g && encAlert.style.display !== 'none') {
+					encAlert.innerHTML += note6g;
+				}
+				splitEncAlertTip.style.display = 'none';
+				const isNone = encVal === 'none';
+				passRow1.style.display = isNone ? 'none' : 'block';
+				passRow2.style.display = isNone ? 'none' : 'block';
+				showRow.style.display = isNone ? 'none' : 'flex';
+			} else {
+				renderEncMessage(encAlert2, encSelect2.value, '2g');
+				renderEncMessage(encAlert5, encSelect5.value, '5g');
+				if (encSelect6 && encAlert6) {
+					renderEncMessage(encAlert6, encSelect6.value, '6g');
+				}
+				if (!split.checked && encSelect2.value !== encSelect5.value) {
+					splitEncAlertTip.className = 'alert-message info';
+					splitEncAlertTip.style.display = 'block';
+					splitEncAlertTip.innerHTML = '<strong>' + _t('💡 Dica de Compatibilidade:') + '</strong> ' + _t('Como o nome do Wi‑Fi é idêntico em 2,4 GHz e 5 GHz, usar seguranças distintas pode dificultar a transição suave de alguns aparelhos entre as faixas.');
+				} else {
+					splitEncAlertTip.style.display = 'none';
+				}
+				const allNone = (encSelect2.value === 'none') && (encSelect5.value === 'none') && (!has6g || !encSelect6 || encSelect6.value === 'none');
+				passRow1.style.display = allNone ? 'none' : 'block';
+				passRow2.style.display = allNone ? 'none' : 'block';
+				showRow.style.display = allNone ? 'none' : 'flex';
+			}
+		};
+
 		encSelect.addEventListener('change', updateEncVisibility);
+		encSelect2.addEventListener('change', updateEncVisibility);
+		encSelect5.addEventListener('change', updateEncVisibility);
+		if (encSelect6) encSelect6.addEventListener('change', updateEncVisibility);
+		splitEnc.addEventListener('change', function() {
+			if (splitEnc.checked) {
+				encSelect2.value = encSelect2.value || 'psk2';
+				encSelect5.value = encSelect5.value || encSelect.value || 'sae-mixed';
+				if (encSelect6) encSelect6.value = encSelect6.value || 'sae';
+			} else {
+				encSelect.value = encSelect5.value || encSelect2.value || 'sae-mixed';
+			}
+			updateEncVisibility();
+		});
+		split.addEventListener('change', updateEncVisibility);
 		if (band6Input) band6Input.addEventListener('change', updateEncVisibility);
 		updateEncVisibility();
 
@@ -7722,7 +8145,9 @@ const wifiMethods = {
 
 		const rows=[
 			hwWifiBanner,
-			E('label',{class:'ex-device-config-block'},[E('strong',{},[_t('Segurança / Criptografia')]),encSelect,encAlert]),
+			splitEncToggleRow,
+			unifiedEncRow,
+			splitEncRows,
 			bandBlock,
 			E('label',{class:'ex-show-password'},[split,E('span',{},[has6g ? _t('Separar nomes 2,4 GHz, 5 GHz e 6 GHz') : _t('Separar nomes 2,4 GHz e 5 GHz')])]),
 			unifiedRow,
@@ -7806,7 +8231,7 @@ const wifiMethods = {
 				ui.addNotification(null, E('p', {}, [_t('Ao menos uma frequência deve permanecer ativa nesta rede Wi‑Fi.')]), 'danger');
 				return;
 			}
-			const name=ssid.value.trim(), name2=ssid2.value.trim(), name5=ssid5.value.trim(), name6=(ssid6?ssid6.value.trim():''), pass=password.value, isSplit=split.checked, enc=encSelect.value;
+			const name=ssid.value.trim(), name2=ssid2.value.trim(), name5=ssid5.value.trim(), name6=(ssid6?ssid6.value.trim():''), pass=password.value, isSplit=split.checked, isSplitEnc=splitEnc.checked, enc=encSelect.value, enc2=encSelect2.value, enc5=encSelect5.value, enc6=(encSelect6?encSelect6.value:'sae');
 			if (!isSplit) {
 				if (!name || name.length > 32) {
 					ui.addNotification(null, E('p', {}, [_t('O nome da rede precisa ter entre 1 e 32 caracteres.')]), 'danger');
@@ -7826,16 +8251,18 @@ const wifiMethods = {
 					return;
 				}
 			}
-			if(enc !== 'none' && (pass||password2.value)){
+			const anyEnc = !isSplitEnc ? (enc !== 'none') : (enc2 !== 'none' || enc5 !== 'none' || (has6g && enc6 !== 'none'));
+			if(anyEnc && (pass||password2.value)){
 				if(pass.length<8||pass.length>63){ui.addNotification(null,E('p',{},['A senha precisa ter entre 8 e 63 caracteres.']),'danger');return;}
 				if(pass!==password2.value){ui.addNotification(null,E('p',{},['As duas senhas digitadas não são iguais.']),'danger');return;}
 			}
 			btn.disabled = true;
 			btn.textContent = 'Salvando Wi‑Fi…';
-			const args=['wifi-settings',kind,'split='+(isSplit?'1':'0'),'ssid='+name,'ssid2='+(isSplit?name2:name),'ssid5='+(isSplit?name5:name),'encryption='+enc,'enabled='+(isGuest?(enabled.checked?'1':'0'):'keep'),'enable_2g='+(b2?'1':'0'),'enable_5g='+(b5?'1':'0')];
+			const args=['wifi-settings',kind,'split='+(isSplit?'1':'0'),'ssid='+name,'ssid2='+(isSplit?name2:name),'ssid5='+(isSplit?name5:name),'encryption='+enc,'split_enc='+(isSplitEnc?'1':'0'),'encryption2='+(isSplitEnc?enc2:enc),'encryption5='+(isSplitEnc?enc5:enc),'enabled='+(isGuest?(enabled.checked?'1':'0'):'keep'),'enable_2g='+(b2?'1':'0'),'enable_5g='+(b5?'1':'0')];
 			if (has6g) {
 				args.push('enable_6g=' + (b6 ? '1' : '0'));
 				args.push('ssid6=' + (isSplit ? name6 : name));
+				args.push('encryption6=' + (isSplitEnc ? enc6 : enc));
 			}
 			if(pass)args.push('password='+pass);
 			if(isGuest&&guestDownInput&&guestUpInput){
@@ -7845,7 +8272,7 @@ const wifiMethods = {
 			return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar Wi‑Fi');ui.hideModal();reloadSoon('Configuração do Wi‑Fi salva. Recarregando após reiniciar o rádio…',1500);}).catch(function(e){btn.disabled = false; btn.textContent = 'Salvar Wi‑Fi'; const msg=String(e&&e.message||e||'');if(reloadAfterExpectedDisconnect(msg,'Wi‑Fi reiniciando. Se a alteração foi aplicada, reconecte na rede nova e recarregue o painel…',2000))return;ui.addNotification(null,E('p',{},[msg]),'danger');});
 		},this)},['Salvar Wi‑Fi'])]));
 		ui.showModal((isGuest?'Editar rede visitante':'Editar rede principal'),rows);
-		ssid.focus();
+		if (window.innerWidth > 854 && !(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) ssid.focus();
 		if(isGuest){enabled.addEventListener('change',function(){const st=enabled.closest('.ex-device-config-block').querySelector('.ex-device-switch-state');if(st)st.textContent=enabled.checked?'Ligada':'Desligada';});}
 	},
 	showManualChannelsModal: function() {
@@ -10695,7 +11122,7 @@ const adblockMethods = {
 				submitBtn
 			])
 		]);
-		pwdInput.focus();
+		if (window.innerWidth > 854 && !(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) pwdInput.focus();
 	},
 	openAdguardUninstallModal: function(f) {
 		const self = this;
@@ -13122,31 +13549,33 @@ const systemMethods = {
 			}
 		},this)).catch(function(e){if(node)node.replaceChildren(E('div',{class:'ex-update-card'},[E('p',{class:'alert-message warning'},[e.message])]));}).finally(function(){if(button){button.disabled=false;button.textContent='Verificar atualização';}});
 	},
-	pollSelfUpdate: function(attempt){
+	pollSelfUpdate: function(attempt, liveContainer, updateInfo){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-status']).then(L.bind(function(r){
 			let raw = String(r.stdout || '').trim();
 			let data = { state: raw, percent: 30, message: 'Atualização em andamento…' };
 			if (raw.startsWith('{')) {
 				try { data = JSON.parse(raw); } catch(e){}
 			}
-			const node = document.getElementById('ex-self-update-result');
+			const cardNode = document.getElementById('ex-self-update-result');
+			const node = liveContainer || cardNode;
+
 			if (data.state === 'done') {
 				if (node) {
-					node.replaceChildren(E('div', { class: 'ex-update-progress-wrap' }, [
-						E('div', { class: 'ex-update-progress-bar' }, [
-							E('div', { class: 'ex-update-progress-fill', style: 'width: 100%; background: #10b981;' })
+					node.replaceChildren(E('div', { class: 'ex-update-live-box', style: 'border-color:rgba(16,185,129,0.4);' }, [
+						E('div', { style: 'font-size:2.2rem;margin-bottom:8px;' }, ['🎉']),
+						E('strong', { style: 'color: #10b981; font-size: 1.15rem; display: block;' }, ['✅ ' + (data.message || 'Atualização concluída com sucesso!')]),
+						E('p', { class: 'ex-muted', style: 'font-size:0.86rem;margin:8px 0 16px 0;' }, [_t('A nova versão foi instalada e está operacional.')]),
+						E('div', { class: 'ex-update-progress-bar-lg' }, [
+							E('div', { class: 'ex-update-progress-fill-lg', style: 'width: 100%; background: #10b981;' })
 						]),
-						E('div', { style: 'margin-top: 10px; text-align: center;' }, [
-							E('strong', { style: 'color: #10b981; font-size: 0.95rem; display: block;' }, ['✅ ' + (data.message || 'Atualização concluída com sucesso!')]),
-							E('small', { id: 'ex-update-countdown', class: 'ex-muted', style: 'display: block; margin-top: 4px;' }, ['Recarregando a página em 3 segundos…'])
-						])
+						E('small', { id: 'ex-update-countdown', class: 'ex-muted', style: 'display: block; margin-top: 12px; font-weight:700; color:#38bdf8;' }, [_t('Recarregando a página em 3 segundos…')])
 					]));
 				}
 				let seconds = 3;
 				const timer = window.setInterval(function(){
 					seconds--;
 					const el = document.getElementById('ex-update-countdown');
-					if (el) el.textContent = 'Recarregando a página em ' + seconds + ' segundo' + (seconds === 1 ? '' : 's') + '…';
+					if (el) el.textContent = _t('Recarregando a página em %s segundo(s)…').replace('%s', seconds);
 					if (seconds <= 0) {
 						window.clearInterval(timer);
 						window.location.reload();
@@ -13155,27 +13584,51 @@ const systemMethods = {
 				return;
 			}
 			if (data.state === 'error' || attempt > 180) {
-				return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-log']).then(function(log){
+				return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-log']).then(L.bind(function(log){
 					const lines = String(log.stdout||'').split(/\r?\n/).map(function(line){return line.trim();}).filter(Boolean);
 					const detail = lines.length ? lines.slice(-5).join(' | ') : 'A atualização não foi concluída.';
-					if (node) node.replaceChildren(E('p',{class:'alert-message warning'},[detail]));
+					if (node) {
+						node.replaceChildren(E('div', { class: 'ex-update-live-box', style: 'border-color:rgba(239,68,68,0.4);' }, [
+							E('div', { style: 'font-size:2.2rem;margin-bottom:8px;' }, ['⚠️']),
+							E('strong', { style: 'color:#ef4444;font-size:1.1rem;display:block;' }, [_t('A atualização não pôde ser concluída')]),
+							E('p', { style: 'font-size:0.85rem;color:#fca5a5;margin:8px 0 16px 0;text-align:left;max-height:140px;overflow-y:auto;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;' }, [detail]),
+							E('div', { style: 'display:flex;justify-content:center;gap:10px;margin-top:14px;' }, [
+								E('button', { class: 'btn cbi-button cbi-button-neutral', click: ui.hideModal }, [_t('Fechar')]),
+								updateInfo ? E('button', { class: 'btn cbi-button cbi-button-action', click: L.bind(function() {
+									this.showUpdateConfirmModal(updateInfo);
+								}, this) }, [_t('Tentar Novamente')]) : ''
+							])
+						]));
+					}
 					ui.addNotification(null, E('p',{},[detail]), 'danger');
-				});
+				}, this));
 			}
 			if (node) {
 				const pct = data.percent || Math.min(15 + attempt * 2, 90);
 				const msg = data.message || 'Atualização em andamento…';
-				node.replaceChildren(E('div', { class: 'ex-update-progress-wrap' }, [
-					E('div', { class: 'ex-update-progress-bar' }, [
-						E('div', { class: 'ex-update-progress-fill', style: 'width: ' + pct + '%;' })
+				node.replaceChildren(E('div', { class: 'ex-update-live-box' }, [
+					E('div', { class: 'ex-update-live-title' }, [
+						E('span', { class: 'ex-spinner-inline', style: 'width:18px;height:18px;border-width:3px;' }),
+						E('strong', {}, [_t('Atualizando ARK Router…')])
 					]),
-					E('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-top: 8px;' }, [
-						E('small', { style: 'font-weight: 650;' }, [msg]),
-						E('small', { class: 'ex-muted', style: 'font-variant-numeric: tabular-nums; font-weight: 700;' }, [pct + '%'])
+					E('p', { class: 'ex-muted', style: 'font-size:0.86rem;margin:6px 0 14px 0;' }, [
+						_t('Por favor, não desligue o aparelho nem feche esta janela.')
+					]),
+					E('div', { class: 'ex-update-progress-bar-lg' }, [
+						E('div', { class: 'ex-update-progress-fill-lg', style: 'width: ' + pct + '%;' })
+					]),
+					E('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size:0.86rem;' }, [
+						E('small', { style: 'font-weight: 700; color:#38bdf8;' }, [msg]),
+						E('small', { class: 'ex-muted', style: 'font-variant-numeric: tabular-nums; font-weight: 750;' }, [pct + '%'])
+					]),
+					E('div', { style: 'margin-top:16px;padding:8px 12px;background:rgba(0,0,0,0.22);border-radius:8px;font-size:0.78rem;color:#94a3b8;display:flex;justify-content:space-around;' }, [
+						E('span', {}, ['🛡️ Backup ativo']),
+						E('span', {}, ['🔒 Configurações salvas']),
+						E('span', {}, ['🌐 Conexões operando'])
 					])
 				]));
 			}
-			window.setTimeout(L.bind(this.pollSelfUpdate, this, attempt + 1), 1500);
+			window.setTimeout(L.bind(this.pollSelfUpdate, this, attempt + 1, liveContainer, updateInfo), 1500);
 		}, this));
 	},
 	showUpdateConfirmModal: function(info){
@@ -13186,6 +13639,7 @@ const systemMethods = {
 		const latest=info.latest||'—';
 		const manager=info.manager||update.manager||this.capabilities.package_manager||'apk';
 		const asset=info.asset||('luci-app-ark-router.'+(manager==='apk'?'apk':'ipk'));
+		const isSameVersion = (current && latest && current !== '—' && latest !== '—' && current === latest);
 
 		const overlayFreeKb=Number(info.overlay_free_kb||0);
 		const overlayFreeMb=(overlayFreeKb/1024).toFixed(1);
@@ -13268,22 +13722,60 @@ const systemMethods = {
 			]) : ''
 		]);
 
+		const confirmLabel = spaceOk
+			? (isSameVersion ? _t('🔄 Reinstalar / Reparar v%s').replace('%s', latest) : _t('🚀 Confirmar e Atualizar'))
+			: _t('Espaço Insuficiente');
+
 		const confirmBtn = E('button', {
 			class: 'btn cbi-button ' + (spaceOk ? 'cbi-button-positive' : 'cbi-button-neutral'),
-			disabled: !spaceOk,
+			disabled: (!spaceOk) ? '' : null,
 			style: 'font-weight:750;',
-			click: L.bind(function() {
-				ui.hideModal();
-				ui.addNotification(null, E('p', {}, [_t('Atualização do ARK Router iniciada. Acompanhe o progresso.')]));
-				fs.exec('/usr/sbin/equipe-dashboard-control', ['self-update-start']).then(L.bind(function(r) {
+			click: L.bind(function(ev) {
+				const btn = ev.currentTarget;
+				btn.disabled = true;
+				btn.innerHTML = '<span class="ex-spinner-inline"></span> ' + _t('Iniciando…');
+
+				const modalDialog = document.querySelector('.cbi-modal') || document.querySelector('.modal');
+				let liveContainer = null;
+				if (modalDialog) {
+					const closeBtn = modalDialog.querySelector('.btn-close, .close, [aria-label="Close"], button.close');
+					if (closeBtn) closeBtn.style.display = 'none';
+					liveContainer = modalDialog.querySelector('.cbi-modal-body') || modalDialog;
+					liveContainer.replaceChildren(E('div', { class: 'ex-update-live-box' }, [
+						E('div', { class: 'ex-update-live-title' }, [
+							E('span', { class: 'ex-spinner-inline', style: 'width:18px;height:18px;border-width:3px;' }),
+							E('strong', {}, [_t('Iniciando atualização do ARK Router…')])
+						]),
+						E('p', { class: 'ex-muted', style: 'font-size:0.86rem;margin-top:6px;' }, [_t('Estabelecendo conexão e preparando ambiente…')])
+					]));
+				}
+
+				const cmdArgs = ['self-update-start'];
+				if (isSameVersion) {
+					cmdArgs.push('force');
+				}
+
+				fs.exec('/usr/sbin/equipe-dashboard-control', cmdArgs).then(L.bind(function(r) {
 					if (r.code) throw new Error(r.stderr || 'Falha ao iniciar atualização');
-					this.pollSelfUpdate(0);
-				}, this)).catch(function(e) {
+					this.pollSelfUpdate(0, liveContainer, info);
+				}, this)).catch(L.bind(function(e) {
 					if (reloadAfterExpectedDisconnect(e, 'Comando enviado. O painel recarregará quando o roteador concluir a atualização.', 4500)) return;
-					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
-				});
+					if (liveContainer) {
+						liveContainer.replaceChildren(E('div', { class: 'ex-update-live-box', style: 'border-color:rgba(239,68,68,0.4);' }, [
+							E('strong', { style: 'color:#ef4444;font-size:1.05rem;display:block;' }, [_t('Erro ao iniciar atualização')]),
+							E('p', { style: 'font-size:0.85rem;color:#fca5a5;margin:8px 0 16px 0;' }, [e.message]),
+							E('button', { class: 'btn cbi-button cbi-button-neutral', click: ui.hideModal }, [_t('Fechar')])
+						]));
+					} else {
+						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+					}
+				}, this));
 			}, this)
-		}, [spaceOk ? _t('🚀 Confirmar e Atualizar') : _t('Espaço Insuficiente')]);
+		}, [confirmLabel]);
+
+		const promptMsg = isSameVersion
+			? _t('Você já está com a versão v%s instalada. Deseja reinstalar ou reparar o pacote agora?').replace('%s', latest)
+			: _t('Deseja realmente atualizar o ARK Router para a versão v%s agora?').replace('%s', latest);
 
 		const modalContent = [
 			E('div', { style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08);flex-wrap:wrap;gap:8px;' }, [
@@ -13291,8 +13783,8 @@ const systemMethods = {
 					E('span', { style: 'font-size:0.85rem;color:#94a3b8;' }, [_t('Versão Instalada:')]),
 					E('strong', { class: 'ex-pill standby', style: 'padding:4px 10px;' }, ['v' + current]),
 					E('span', { style: 'color:#94a3b8;' }, ['➔']),
-					E('span', { style: 'font-size:0.85rem;color:#10b981;font-weight:700;' }, [_t('Nova Versão:')]),
-					E('strong', { class: 'ex-pill online', style: 'padding:4px 10px;' }, ['v' + latest])
+					E('span', { style: 'font-size:0.85rem;color:#10b981;font-weight:700;' }, [isSameVersion ? _t('Status:') : _t('Nova Versão:')]),
+					E('strong', { class: 'ex-pill online', style: 'padding:4px 10px;' }, [isSameVersion ? ('v' + latest + ' ' + _t('(Atual)')) : ('v' + latest)])
 				]),
 				E('code', { style: 'font-size:0.82rem;font-weight:700;' }, [asset])
 			]),
@@ -13313,9 +13805,7 @@ const systemMethods = {
 				])
 			]),
 
-			E('p', { style: 'font-size:0.92rem;font-weight:700;text-align:center;margin:14px 0 8px 0;' }, [
-				_t('Deseja realmente atualizar o ARK Router para a versão v%s agora?').replace('%s', latest)
-			]),
+			E('p', { style: 'font-size:0.92rem;font-weight:700;text-align:center;margin:14px 0 8px 0;' }, [promptMsg]),
 
 			E('div', { style: 'display:flex;justify-content:flex-end;gap:10px;margin-top:14px;' }, [
 				E('button', { class: 'btn cbi-button cbi-button-neutral', click: ui.hideModal }, [_t('Cancelar')]),
@@ -15670,10 +16160,22 @@ const systemMethods = {
 		];
 
 		const silicon = hwInfo.silicon || {};
+		const wedDesc = silicon.wed_capable
+			? 'Suportado (DMA Direto Wi-Fi/Ethernet)'
+			: (silicon.class === 'qualcomm_ipq'
+				? 'Integrado nativo (Qualcomm PPE / SFE Flow)'
+				: (silicon.class === 'x86_pc'
+					? 'Não aplicável (SMP Multicore x86_64)'
+					: (silicon.class === 'mips_legacy'
+						? 'Não aplicável (MIPS Fastpath Software)'
+						: 'Padrão mac80211')));
+		const wedBadge = silicon.wed_capable
+			? 'WED'
+			: (silicon.class === 'qualcomm_ipq' ? 'PPE' : null);
 		const siliconRows = [
 			infoItem('Família de Silício', silicon.name || 'Arquitetura Universal', 'DETECTADO'),
-			infoItem('Aceleração em Silício (PPE)', silicon.hw_offload_capable ? 'Suportada (PPE Hardware)' : 'Não aplicável (Software Flowtable)', silicon.hw_offload_capable ? 'ATIVO' : null),
-			infoItem('Despacho Wi-Fi Direto (WED)', silicon.wed_capable ? 'Suportado (DMA Direto Wi-Fi/Ethernet)' : 'Padrão mac80211', silicon.wed_capable ? 'WED' : null),
+			infoItem('Aceleração em Silício (PPE)', silicon.hw_offload_capable ? 'Suportada (PPE Hardware)' : (silicon.class === 'x86_pc' ? 'Processamento Multicore Nativo' : 'Não aplicável (Software Flowtable)'), silicon.hw_offload_capable ? 'ATIVO' : null),
+			infoItem('Despacho Wi-Fi Direto (WED)', wedDesc, wedBadge),
 			infoItem('Faixa de Memória (Tier)', silicon.ram_tier_desc || 'Padrão', (silicon.ram_tier || 'standard').toUpperCase()),
 			infoItem('Perfil de Ajuste Recomendado', silicon.tuning_profile || 'Universal Multicore')
 		];
@@ -15916,12 +16418,22 @@ const systemMethods = {
 		const ipv6Panel=E('section',{class:'ex-cleanup-entry'},[
 			E('div',{},[
 				E('strong',{},['🌐 Central de Conectividade IPv6']),
-				E('small',{class:'ex-muted'},['Modos de operação: Pilha Dupla Global, IPv6 Seletivo por MAC (Gamer/IoT), IPv4 Apenas ou IPv6-Only. Suporte a cascata NDP Relay.'])
+				E('small',{class:'ex-muted'},['Modos de operação: Pilha Dupla Global, NPTv6 Inteligente (Multi-WAN), IPv6 Seletivo por MAC, IPv4 Apenas ou IPv6-Only.'])
 			]),
 			E('button',{class:'ex-mini-button btn-ipv6','click':L.bind(function(){
 				closeModal();
 				this.showIpv6Modal();
 			},this)},['Ajustes IPv6'])
+		]);
+		const ntpPanel=E('section',{class:'ex-cleanup-entry'},[
+			E('div',{},[
+				E('strong',{},['⏰ Sincronização de Horário & NTP Inteligente']),
+				E('small',{class:'ex-muted'},['Pool resiliente (NTP.br + Cloudflare + Google), Interceptação UDP 123 na LAN (1ms para IoT) e Fake RTC Preserver contra ano 1970.'])
+			]),
+			E('button',{class:'ex-mini-button',style:'background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);font-weight:700;','click':L.bind(function(){
+				closeModal();
+				this.showNtpModal();
+			},this)},['Ajustes NTP & Fuso'])
 		]);
 		const profileSelect=E('select',{class:'cbi-input-select'},[
 			E('option',{value:'standard'},['Modo Padrão / Equilibrado']),
@@ -16002,6 +16514,7 @@ const systemMethods = {
 			this.selfUpdatePanel(),
 			bulkPanel,
 			ipv6Panel,
+			ntpPanel,
 			starlinkModalPanel,
 			E('section', { class: 'ex-appearance-panel' }, [
 				E('div', { class: 'ex-appearance-heading' }, [
@@ -16026,6 +16539,165 @@ const systemMethods = {
 			E('div',{class:'ex-feature-list'},rows),
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])
 		]);
+	},
+	showNtpModal: function() {
+		const self = this;
+		ui.showModal('⏰ Sincronização Inteligente de Horário & NTP', [
+			E('p', { class: 'ex-muted' }, ['Consultando status de relógio e servidores NTP do roteador…'])
+		]);
+
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['ntp-status']).then(function(r) {
+			let st = {};
+			try { st = JSON.parse(r.stdout || '{}'); } catch(e) {}
+
+			const browserTz = (Intl && Intl.DateTimeFormat) ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'America/Sao_Paulo';
+			const browserOffsetMin = new Date().getTimezoneOffset();
+			const browserDateStr = new Date().toLocaleString('pt-BR');
+
+			const statusBox = E('div', {
+				class: 'ex-priority-desc-box',
+				style: 'margin-bottom: 16px; border: 1px solid rgba(255,255,255,.1); padding: 14px; border-radius: 10px; background: rgba(15,23,42,.6);'
+			}, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
+						E('strong', { style: 'font-size: 0.95rem; color: #f8fafc;' }, ['Relógio do Roteador:']),
+						E('span', {
+							class: 'ex-device-badge',
+							style: 'font-weight: 700; font-size: 0.85rem; padding: 3px 10px; border-radius: 8px; color: #10b981; background: rgba(16,185,129,.15); border: 1px solid rgba(16,185,129,.35);'
+						}, [ st.date_formatted || 'Desconhecido' ])
+					]),
+					E('span', {
+						class: 'ex-pill ' + (st.server_active ? 'online' : 'standby'),
+						style: 'font-size: 0.75rem;'
+					}, [ st.server_active ? 'Servidor NTP Local Ativo (Porta 123)' : 'Modo Cliente Apenas' ])
+				]),
+				E('div', { class: 'ex-grid ex-grid-2', style: 'gap: 8px; font-size: 0.8rem;' }, [
+					E('div', {}, [
+						E('span', { class: 'ex-muted' }, ['Fuso Configurado: ']),
+						E('strong', { style: 'color: #38bdf8;' }, [ (st.zonename || 'America/Sao_Paulo') + ' (' + (st.timezone || '<-03>3') + ')' ])
+					]),
+					E('div', {}, [
+						E('span', { class: 'ex-muted' }, ['Fuso do seu Aparelho: ']),
+						E('strong', { style: 'color: #a78bfa;' }, [ browserTz + ' (' + browserDateStr + ')' ])
+					]),
+					E('div', {}, [
+						E('span', { class: 'ex-muted' }, ['Interceptação UDP 123: ']),
+						E('strong', { style: 'color: ' + (st.intercept_active ? '#10b981' : '#f59e0b') }, [ st.intercept_active ? 'Ativa (1ms de resposta p/ IoT)' : 'Desativada' ])
+					]),
+					E('div', {}, [
+						E('span', { class: 'ex-muted' }, ['Fake RTC Clock Preserver: ']),
+						E('strong', { style: 'color: ' + (st.clock_preserver_active ? '#10b981' : '#94a3b8') }, [ st.clock_preserver_active ? 'Ativo (timestamp salvo)' : 'Aguardando primeiro boot' ])
+					])
+				])
+			]);
+
+			const interceptCheckbox = E('input', {
+				type: 'checkbox',
+				checked: st.intercept_active ? '' : null,
+				change: function(ev) {
+					const desired = ev.currentTarget.checked ? '1' : '0';
+					ev.currentTarget.disabled = true;
+					fs.exec('/usr/sbin/equipe-dashboard-control', ['ntp-intercept-toggle', desired]).then(function(res) {
+						if (res.code) throw new Error(res.stderr || 'Falha ao alterar interceptação NTP');
+						ui.addNotification(null, E('p', {}, [desired === '1' ? 'Interceptação NTP UDP 123 ativada.' : 'Interceptação NTP desativada.']));
+						self.showNtpModal();
+					}).catch(function(e) {
+						ev.currentTarget.disabled = false;
+						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+					});
+				}
+			});
+			interceptCheckbox.checked = !!st.intercept_active;
+
+			const interceptCard = E('section', {
+				class: 'ex-cleanup-entry',
+				style: 'margin-bottom: 12px; padding: 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.02); align-items: center;'
+			}, [
+				E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;' }, [
+						E('strong', { style: 'font-size: 0.92rem; color: #f8fafc;' }, ['🛡️ Interceptação Anycast LAN (UDP 123)']),
+						E('span', { class: 'ex-pill ' + (st.intercept_active ? 'online' : 'standby'), style: 'font-size: 0.7rem;' }, [ st.intercept_active ? 'REDIRECIONAMENTO ATIVO' : 'DESLIGADO' ])
+					]),
+					E('p', { class: 'ex-muted', style: 'font-size: 0.8rem; line-height: 1.4; margin: 4px 0 0;' }, [
+						'Intercepta silenciosamente qualquer consulta NTP de câmeras IP, TVs e tomadas IoT na rede local e responde em menos de 1ms pelo próprio roteador. Aparelhos nunca mais perdem a hora mesmo com servidores externos bloqueados.'
+					])
+				]),
+				E('div', { style: 'flex: 0 0 auto; margin-left: 14px;' }, [
+					E('label', { class: 'ex-switch' }, [
+						interceptCheckbox,
+						E('span', { class: 'ex-switch-slider' })
+					])
+				])
+			]);
+
+			const serversList = (st.servers && st.servers.length) ? st.servers : ['a.st1.ntp.br', 'b.st1.ntp.br', 'time.cloudflare.com', 'time.google.com'];
+			const serversCard = E('div', {
+				class: 'ex-cleanup-entry',
+				style: 'margin-bottom: 16px; padding: 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.02);'
+			}, [
+				E('div', { style: 'flex: 1 1 auto;' }, [
+					E('strong', { style: 'font-size: 0.92rem; color: #f8fafc; display: block; margin-bottom: 4px;' }, ['🌐 Servidores Upstream em Uso (Pool Resiliente)']),
+					E('div', { style: 'display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;' }, serversList.map(function(srv) {
+						return E('code', { style: 'font-size: 0.78rem; padding: 3px 8px; border-radius: 6px; background: rgba(255,255,255,.06); color: #38bdf8;' }, [ srv ]);
+					}))
+				])
+			]);
+
+			const syncBrowserBtn = E('button', {
+				class: 'btn cbi-button cbi-button-positive',
+				style: 'min-height: 40px; font-weight: 700;',
+				click: function(ev) {
+					const b = ev.currentTarget;
+					b.disabled = true;
+					b.textContent = 'Sincronizando…';
+					const nowEpoch = Math.floor(Date.now() / 1000);
+					return fs.exec('/usr/sbin/equipe-dashboard-control', ['ntp-sync-browser', String(nowEpoch), browserTz, String(browserOffsetMin)]).then(function(res) {
+						if (res.code) throw new Error(res.stderr || 'Falha ao sincronizar relógio');
+						ui.addNotification(null, E('p', {}, ['Relógio do roteador e fuso horário (' + browserTz + ') sincronizados com sucesso.']));
+						self.showNtpModal();
+					}).catch(function(err) {
+						b.disabled = false;
+						b.textContent = '⏱️ Sincronizar com Navegador Agora';
+						ui.addNotification(null, E('p', {}, [err.message]), 'danger');
+					});
+				}
+			}, ['⏱️ Sincronizar Fuso & Relógio com este Navegador']);
+
+			const resetPoolBtn = E('button', {
+				class: 'btn cbi-button cbi-button-neutral',
+				style: 'min-height: 40px;',
+				click: function(ev) {
+					const b = ev.currentTarget;
+					b.disabled = true;
+					b.textContent = 'Aplicando…';
+					return fs.exec('/usr/sbin/equipe-dashboard-control', ['ntp-configure-smart']).then(function(res) {
+						if (res.code) throw new Error(res.stderr || 'Falha ao reconfigurar pool');
+						ui.addNotification(null, E('p', {}, ['Pool resiliente (NTP.br + Cloudflare + Google) e Interceptação aplicados.']));
+						self.showNtpModal();
+					}).catch(function(err) {
+						b.disabled = false;
+						b.textContent = '⚡ Aplicar Pool Resiliente Padrão';
+						ui.addNotification(null, E('p', {}, [err.message]), 'danger');
+					});
+				}
+			}, ['⚡ Aplicar Pool Resiliente Padrão']);
+
+			ui.showModal('⏰ Sincronização Inteligente de Horário & NTP', [
+				statusBox,
+				interceptCard,
+				serversCard,
+				E('div', { class: 'right', style: 'display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;' }, [
+					resetPoolBtn,
+					syncBrowserBtn,
+					E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Fechar'])
+				])
+			]);
+		}).catch(function(e) {
+			ui.showModal('⏰ Sincronização de Horário', [
+				E('p', { class: 'alert-message warning' }, [ e.message ]),
+				E('div', { class: 'right' }, [ E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Fechar']) ])
+			]);
+		});
 	},
 	showHighRamZramConfirmModal: function(f) {
 		const finalButton = E('button', { class: 'btn cbi-button cbi-button-negative', disabled: true }, [_t('Aguarde 5 s')]);
@@ -16145,6 +16817,84 @@ const systemMethods = {
 				style: 'width: 20px; height: 20px; cursor: pointer;'
 			});
 			fallbackToggle.checked = fallbackActive;
+
+			const memMb = Number(status.mem_total_mb || 0);
+			let recCache = 10000;
+			let memBadgeText = '1 GB RAM (Alta Capacidade)';
+			if (memMb > 0 && memMb < 200) {
+				recCache = 1000;
+				memBadgeText = (memMb ? memMb + ' MB' : '128 MB') + ' RAM (Econômico)';
+			} else if (memMb >= 200 && memMb < 400) {
+				recCache = 2500;
+				memBadgeText = (memMb ? memMb + ' MB' : '256 MB') + ' RAM (Médio)';
+			} else if (memMb >= 400 && memMb < 700) {
+				recCache = 5000;
+				memBadgeText = (memMb ? memMb + ' MB' : '512 MB') + ' RAM (Intermediário)';
+			} else if (memMb >= 700) {
+				recCache = 10000;
+				memBadgeText = (memMb ? memMb + ' MB' : '1 GB+') + ' RAM (Alta Capacidade)';
+			}
+
+			const currentCache = Number(status.cachesize || 150);
+			const standardOptions = [10000, 5000, 2500, 1000, 150];
+			const isKnownPreset = standardOptions.indexOf(currentCache) !== -1;
+
+			const cacheSelect = E('select', {
+				class: 'cbi-input-select',
+				style: 'width: 100%; box-sizing: border-box; font-size: 0.88rem; padding: 7px 10px; font-weight: 600;'
+			}, [
+				E('option', { value: '10000' }, ['🚀 10.000 domínios na RAM (~1,5 MB)' + (recCache === 10000 ? ' ⭐ (Recomendado para seu Hardware)' : '')]),
+				E('option', { value: '5000' }, ['⚡ 5.000 domínios na RAM (~800 KB)' + (recCache === 5000 ? ' ⭐ (Recomendado para seu Hardware)' : '')]),
+				E('option', { value: '2500' }, ['🔹 2.500 domínios na RAM (~400 KB)' + (recCache === 2500 ? ' ⭐ (Recomendado para seu Hardware)' : '')]),
+				E('option', { value: '1000' }, ['🔸 1.000 domínios na RAM (~160 KB)' + (recCache === 1000 ? ' ⭐ (Recomendado para seu Hardware)' : '')]),
+				E('option', { value: '150' }, ['🐢 150 domínios (Padrão de Fábrica OpenWrt / Mínimo)' + (recCache === 150 ? ' ⭐ (Recomendado)' : '')]),
+				E('option', { value: 'custom' }, ['✏️ Personalizado (Digitar valor manual)'])
+			]);
+
+			if (isKnownPreset) {
+				cacheSelect.value = String(currentCache);
+			} else {
+				cacheSelect.value = 'custom';
+			}
+
+			const customCacheInput = E('input', {
+				class: 'cbi-input-text',
+				type: 'number',
+				min: 150,
+				max: 50000,
+				step: 500,
+				value: currentCache,
+				style: 'width: 100%; box-sizing: border-box;'
+			});
+
+			const customCacheWrapper = E('div', {
+				style: 'margin-top: 8px; display: ' + (isKnownPreset ? 'none' : 'block') + ';'
+			}, [
+				E('small', { class: 'ex-muted', style: 'display: block; margin-bottom: 4px;' }, ['Digite a quantidade de domínios em cache (150 a 50.000):']),
+				customCacheInput
+			]);
+
+			cacheSelect.addEventListener('change', function() {
+				if (cacheSelect.value === 'custom') {
+					customCacheWrapper.style.display = 'block';
+				} else {
+					customCacheWrapper.style.display = 'none';
+					customCacheInput.value = cacheSelect.value;
+				}
+			});
+
+			const quickApplyRecBtn = (currentCache < recCache) ? E('div', { style: 'margin-top: 8px;' }, [
+				E('button', {
+					type: 'button',
+					class: 'ex-mini-button',
+					style: 'font-weight: 700; background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 5px 10px; border-radius: 6px; cursor: pointer;',
+					click: function() {
+						cacheSelect.value = String(recCache);
+						customCacheWrapper.style.display = 'none';
+						customCacheInput.value = String(recCache);
+					}
+				}, ['⚡ Aplicar Recomendado para seu Hardware (' + recCache.toLocaleString('pt-BR') + ' domínios)'])
+			]) : '';
 
 			const ipInputs = [
 				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[0] || '1.1.1.1', placeholder: 'ex: 1.1.1.1 ou 2606:4700:4700::1111', style: 'width: 100%; box-sizing: border-box;' }),
@@ -16318,6 +17068,19 @@ const systemMethods = {
 					])
 				]),
 				E('div', { class: 'ex-device-config-block' }, [
+					E('div', { style: 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;' }, [
+						E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
+							E('strong', {}, ['Tamanho do Cache DNS na Memória RAM (0ms)']),
+							E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Guarda domínios na memória do roteador. Sites acessados respondem instantaneamente sem consultar a internet.'])
+						]),
+						E('span', { class: 'ex-perf-badge badge-blue', style: 'font-weight: 700;' }, [memBadgeText])
+					]),
+					cacheSelect,
+					customCacheWrapper,
+					quickApplyRecBtn,
+					E('small', { class: 'ex-muted', style: 'display: block; margin-top: 6px;' }, ['O OpenWrt vem de fábrica com apenas 150 domínios. Em seu hardware, 10.000 domínios consomem menos de 2 MB de RAM e deixam a navegação em 0ms.'])
+				]),
+				E('div', { class: 'ex-device-config-block' }, [
 					E('strong', {}, ['Predefinições Rápidas']),
 					E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Selecione uma combinação pronta ou digite seus próprios IPs:']),
 					E('div', { class: 'ex-priority-button-grid', style: 'margin-top: 8px; gap: 8px;' }, presetBtns)
@@ -16350,7 +17113,8 @@ const systemMethods = {
 							const s4 = cleanIp(ipInputs[3].value);
 							const alls = hasDnsBlocker ? (status.allservers ? '1' : '0') : (allserversToggle.checked ? '1' : '0');
 							const fallback = fallbackToggle.checked ? '1' : '0';
-							const args = ['dns-turbo-save', alls, s1, s2, s3, s4, fallback];
+							const selectedCache = cacheSelect.value === 'custom' ? (parseInt(customCacheInput.value, 10) || 150) : (parseInt(cacheSelect.value, 10) || 10000);
+							const args = ['dns-turbo-save', alls, s1, s2, s3, s4, fallback, String(selectedCache)];
 							return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 								if (r.code) throw new Error(r.stderr || 'Falha ao salvar DNS');
 								ui.hideModal();
@@ -16381,7 +17145,54 @@ const systemMethods = {
 
 			const ctInput = E('input', { class: 'cbi-input-text', type: 'number', value: status.conntrack_max || 131072, min: 16384, max: 524288, step: 4096, style: 'width: 100%; box-sizing: border-box;' });
 			const fwdInput = E('input', { class: 'cbi-input-text', type: 'number', value: status.dns_forward_max || 2000, min: 150, max: 10000, step: 100, style: 'width: 100%; box-sizing: border-box;' });
-			const cacheInput = E('input', { class: 'cbi-input-text', type: 'number', value: status.cachesize || 10000, min: 150, max: 50000, step: 500, style: 'width: 100%; box-sizing: border-box;' });
+
+			const capMemMb = Number(status.mem_total_mb || 0);
+			let capRecCache = 10000;
+			if (capMemMb > 0 && capMemMb < 200) capRecCache = 1000;
+			else if (capMemMb >= 200 && capMemMb < 400) capRecCache = 2500;
+			else if (capMemMb >= 400 && capMemMb < 700) capRecCache = 5000;
+			else capRecCache = 10000;
+
+			const capCurCache = Number(status.cachesize || 10000);
+			const capPresets = [10000, 5000, 2500, 1000, 150];
+			const capIsKnown = capPresets.indexOf(capCurCache) !== -1;
+
+			const capCacheSelect = E('select', {
+				class: 'cbi-input-select',
+				style: 'width: 100%; box-sizing: border-box; font-size: 0.88rem; padding: 6px 10px; font-weight: 550;'
+			}, [
+				E('option', { value: '10000' }, ['🚀 10.000 domínios (~1,5 MB RAM)' + (capRecCache === 10000 ? ' ⭐ (Recomendado)' : '')]),
+				E('option', { value: '5000' }, ['⚡ 5.000 domínios (~800 KB RAM)' + (capRecCache === 5000 ? ' ⭐ (Recomendado)' : '')]),
+				E('option', { value: '2500' }, ['🔹 2.500 domínios (~400 KB RAM)' + (capRecCache === 2500 ? ' ⭐ (Recomendado)' : '')]),
+				E('option', { value: '1000' }, ['🔸 1.000 domínios (~160 KB RAM)' + (capRecCache === 1000 ? ' ⭐ (Recomendado)' : '')]),
+				E('option', { value: '150' }, ['🐢 150 domínios (Padrão OpenWrt)' + (capRecCache === 150 ? ' ⭐ (Recomendado)' : '')]),
+				E('option', { value: 'custom' }, ['✏️ Personalizado (Digitar valor)'])
+			]);
+
+			if (capIsKnown) {
+				capCacheSelect.value = String(capCurCache);
+			} else {
+				capCacheSelect.value = 'custom';
+			}
+
+			const cacheInput = E('input', {
+				class: 'cbi-input-text',
+				type: 'number',
+				value: capCurCache,
+				min: 150,
+				max: 50000,
+				step: 500,
+				style: 'width: 100%; box-sizing: border-box;' + (capIsKnown ? ' display: none;' : ' margin-top: 6px;')
+			});
+
+			capCacheSelect.addEventListener('change', function() {
+				if (capCacheSelect.value === 'custom') {
+					cacheInput.style.display = 'block';
+				} else {
+					cacheInput.style.display = 'none';
+					cacheInput.value = capCacheSelect.value;
+				}
+			});
 
 			const leaseSelect = E('select', { class: 'cbi-input-select', style: 'width: 100%; box-sizing: border-box;' }, [
 				E('option', { value: '1h', selected: status.dhcp_leasetime === '1h' }, ['1 hora (Alta Rotatividade / Eventos / 250+ clientes)']),
@@ -16402,6 +17213,13 @@ const systemMethods = {
 				ctInput.value = ct;
 				fwdInput.value = fwd;
 				cacheInput.value = cache;
+				if (capPresets.indexOf(Number(cache)) !== -1) {
+					capCacheSelect.value = String(cache);
+					cacheInput.style.display = 'none';
+				} else {
+					capCacheSelect.value = 'custom';
+					cacheInput.style.display = 'block';
+				}
 				leaseSelect.value = lease;
 				if (timeout) timeoutSelect.value = timeout;
 			};
@@ -16467,9 +17285,10 @@ const systemMethods = {
 							E('small', { class: 'ex-muted' }, ['Padrão 512M/1G: 2.000 consultas simultâneas no boot'])
 						]),
 						E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600;' }, [
-							E('span', {}, ['Tamanho do Cache DNS (cachesize):']),
+							E('span', {}, ['Tamanho do Cache DNS na Memória:']),
+							capCacheSelect,
 							cacheInput,
-							E('small', { class: 'ex-muted' }, ['Padrão 512M/1G: 10.000 entradas (~1 MB de RAM)'])
+							E('small', { class: 'ex-muted' }, ['Mantém consultas resolvidas em 0ms sem reconsultar a internet'])
 						]),
 						E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600; grid-column: 1 / -1;' }, [
 							E('span', {}, ['Tempo de Concessão DHCP (leasetime):']),
@@ -16503,7 +17322,7 @@ const systemMethods = {
 							btn.textContent = 'Aplicando…';
 							const ctVal = ctInput.value.trim() || '131072';
 							const fwdVal = fwdInput.value.trim() || '2000';
-							const cacheVal = cacheInput.value.trim() || '10000';
+							const cacheVal = capCacheSelect.value === 'custom' ? (cacheInput.value.trim() || '150') : capCacheSelect.value;
 							const leaseVal = leaseSelect.value || '2h';
 							const timeoutVal = timeoutSelect.value || '432000';
 							const args = ['network-capacity-save', ctVal, fwdVal, cacheVal, leaseVal, timeoutVal];
@@ -17578,12 +18397,14 @@ const renderMethods = {
 		}
 		const isGamer=(this.capabilities&&this.capabilities.operation_profile)==='gamer';
 		const isApMode=(this.capabilities&&this.capabilities.network_mode)==='ap';
-		const hw = (this.capabilities && this.capabilities.hardware) || {};
+		const hw = (data && data.hardwareInfo) || (this.capabilities && this.capabilities.hardware) || {};
+		const silicon = hw.silicon || (this.capabilities && this.capabilities.hardware && this.capabilities.hardware.silicon) || {};
+		const silClass = silicon.class || '';
 		const isMaxPower = !!(hw.wifi_maxpower_enabled || (w.r2g && w.r2g.country === 'PA') || (w.r5g && w.r5g.country === 'PA'));
-		const isWedSupported = !!hw.wifi_wed_supported;
+		const isWedSupported = !!(hw.wifi_wed_supported || silicon.wed_capable);
 		const isWedEnabled = !!hw.wifi_wed_enabled;
 		const isWifi6PlusSupported = !!(hw.wifi_ax_supported || hw.wifi_be_supported);
-		const isWifi7 = !!hw.wifi_be_supported;
+		const isWifi7 = !!(hw.wifi_be_supported || silClass === 'qualcomm_ipq');
 		const has6gBand = !!(hw.wifi_6g_supported || w.has6g);
 		const heroEyebrow=isApMode?_t('📡 ROTEADOR SECUNDÁRIO • PONTO ADICIONAL & SWITCH'):(isGamer?_t('🎮 MODO GAMER • BAIXA LATÊNCIA'):_t('CENTRAL DE OPERAÇÕES'));
 		const gamerButton=E('button',{class:'ex-hero-feature-button '+(isGamer?'ex-hero-gamer-active':'ex-hero-gamer-btn'),'click':L.bind(this.switchProfile,this,isGamer?'standard':'gamer')},[isGamer?'🎮 GAMER ATIVO':'🎮 Modo Gamer']);
@@ -17951,7 +18772,7 @@ const renderMethods = {
 		]);
 
 		const root=E('div',{class:'ex-dashboard'},[
-			E('section',{class:'ex-hero'+(isGamer?' ex-hero-gamer':'')},[E('div',{},[E('span',{class:'ex-eyebrow'},[heroEyebrow]),E('h2',{},[panelTitle]),E('p',{},[this.board.model||'OpenWrt','  •  ',release,'  •  ARK Router ',arkVersion]),E('div',{id:'ex-speedify-top',class:'ex-hero-speedify standby',style:'display:none'},[E('span',{},['Speedify']),E('strong',{},['—']),E('small',{},['—'])])]),E('div',{class:'ex-hero-status'},[E('span',{id:'ex-global-status',class:'ex-pill standby'},['VERIFICANDO']),E('strong',{id:'ex-clock'},['--:--:--']),E('small',{id:'ex-refresh-summary'},['sessão de 12 horas • atualização a cada 3 segundos']),E('div',{class:'ex-hero-actions'},[gamerButton,opModeButton,languageButton,E('button',{class:'ex-hero-feature-button ex-hero-setup-button','click':L.bind(this.showEzSetup,this)},['Ark - Setup']),E('button',{class:'ex-hero-feature-button','click':L.bind(this.showFeatureCenter,this)},['Recursos'])])])]),
+			E('section',{class:'ex-hero'+(isGamer?' ex-hero-gamer':'')},[E('div',{},[E('span',{class:'ex-eyebrow'},[heroEyebrow]),E('h2',{},[panelTitle]),E('p',{},[this.board.model||'OpenWrt','  •  ',release,'  •  ARK Router ',arkVersion]),E('div',{id:'ex-speedify-top',class:'ex-hero-speedify standby',style:'display:none'},[E('span',{},['Speedify']),E('strong',{},['—']),E('small',{},['—'])])]),E('div',{class:'ex-hero-status'},[E('span',{id:'ex-global-status',class:'ex-pill standby'},['VERIFICANDO']),E('div',{id:'ex-clock-wrap',class:'ex-clock-wrap',style:'cursor:pointer;display:flex;flex-direction:column;align-items:inherit;gap:2px;margin:2px 0;',title:'Ajustar relógio e fuso horário do roteador','click':L.bind(this.showNtpModal,this)},[E('span',{id:'ex-date',style:'font-size:0.78rem;font-weight:600;opacity:0.85;letter-spacing:0.02em;'},['--/--/----']),E('strong',{id:'ex-clock',style:'font-size:1.45rem;font-variant-numeric:tabular-nums;line-height:1.15;'},['--:--:--'])]),E('small',{id:'ex-refresh-summary'},['sessão de 12 horas • atualização a cada 3 segundos']),E('div',{class:'ex-hero-actions'},[gamerButton,opModeButton,languageButton,E('button',{class:'ex-hero-feature-button ex-hero-setup-button','click':L.bind(this.showEzSetup,this)},['Ark - Setup']),E('button',{class:'ex-hero-feature-button','click':L.bind(this.showFeatureCenter,this)},['Recursos'])])])]),
 			E('div',{id:'ex-update-banner-container'}),
 			E('div',{id:'ex-doctor-banner',class:'ex-doctor-banner',style:'display:none;'}),
 			E('section',{class:'ex-card ex-health-strip'},[
@@ -18487,13 +19308,21 @@ const renderMethods = {
 					E('div', {
 						class: 'ex-row ex-row-clickable',
 						style: 'cursor:pointer;',
-						title: 'Clique para alternar modos IPv6 (Pilha Dupla, Seletivo por MAC, Cascata ou IPv4 Puro)',
+						title: 'Clique para alternar modos IPv6 (Pilha Dupla, NPTv6, Seletivo por MAC, Cascata ou IPv4 Puro)',
 						click: L.bind(function(){ this.showIpv6Modal(); }, this)
 					}, [
 						E('span', {}, ['Modo IPv6']),
 						E('strong', { id: 'ex-lan-ipv6', style: 'color:#c084fc;font-weight:700;' }, ['—'])
 					]),
-					infoRow('Prefixo IPv6 (PD)', 'ex-lan-ipv6-prefix')
+					E('div', {
+						class: 'ex-row ex-row-clickable',
+						style: 'cursor:pointer;',
+						title: 'Clique para gerenciar o prefixo IPv6 e modos de rede',
+						click: L.bind(function(){ this.showIpv6Modal(); }, this)
+					}, [
+						E('span', {}, ['Prefixo IPv6 (PD)']),
+						E('strong', { id: 'ex-lan-ipv6-prefix', style: 'font-weight:600;' }, ['—'])
+					])
 				]),
 				E('p',{class:'ex-muted'},['Use para trocar entre redes 192.168.x.x, 10.0.x.x ou gerenciar a distribuição de IP, DNS e o protocolo IPv6.']),
 				E('div', { class: 'ex-qos-toggle-row', style: 'margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08);' }, [
@@ -18537,8 +19366,8 @@ const renderMethods = {
 				const isWifiEnvActive = !!(w.hasRadios && (w.main.ssid || (w.r2g && !w.r2g.disabled) || (w.r5g && !w.r5g.disabled)));
 				const wifiEnvPill = E('span', {
 					id: 'ex-wifi-env-status',
-					class: 'ex-pill ' + (isWifiEnvActive ? 'online' : 'standby')
-				}, [isWifiEnvActive ? 'ATIVO' : 'DESLIGADO']);
+					class: 'ex-pill ' + (w.hasRadios ? (isWifiEnvActive ? 'online' : 'standby') : 'neutral')
+				}, [w.hasRadios ? (isWifiEnvActive ? 'ATIVO' : 'DESLIGADO') : 'DISPOSITIVO CABEADO']);
 				const wifiEnvTitleActions = E('div', { class: 'ex-card-title-actions' }, [
 					wifiEnvPill
 				]);
@@ -18549,166 +19378,16 @@ const renderMethods = {
 					]),
 					wifiEnvTitleActions
 				]);
-				const wifiEnvBody = E('div', { class: 'ex-card-collapse-body' }, [
-					E('div', { class: 'ex-card-collapse-inner' }, [
-						E('div', { style: 'display:flex; justify-content:flex-end; margin-bottom:12px;' }, [
-							E('button',{class:'ex-button ex-inline-button','click':L.bind(function(ev){self.analyzeChannels(ev.currentTarget);},self)},['Analisar canais agora'])
-						]),
-						E('div',{class:'ex-country-control'},[
-							E('div',{},[
-								E('span',{class:'ex-label'},['PAÍS / DOMÍNIO REGULATÓRIO']),
-								E('strong',{id:'ex-country-current'},['—'])
-							]),
-							E('button',{class:'ex-mini-button','click':L.bind(function(){self.changeCountry();},self)},['Alterar país'])
-						]),
-						E('div',{class:'ex-channel-mode-control'},[
-							E('div',{},[
-								E('strong',{},['Seleção automática inteligente de canais']),
-								E('small',{id:'ex-channel-mode-summary',class:'ex-muted'},['Verificando…'])
-							]),
-							E('label',{class:'ex-switch'},[
-								E('input',{id:'ex-channel-auto-toggle',type:'checkbox','aria-label':translateText('Seleção automática inteligente de canais'),'change':L.bind(function(ev){self.toggleAutoChannels(ev.currentTarget);},self)}),
-								E('span',{class:'ex-switch-slider'})
-							])
-						]),
-						E('div',{class:'ex-channel-mode-control'},[
-							E('div',{},[
-								E('strong',{},['Modo Estabilidade Casa Inteligente / Alexas (2,4 GHz)']),
-								E('small',{id:'ex-iot-mode-summary',class:'ex-muted'},[
-									(String((w.r2g && w.r2g.iot_stability) || '') === '1' || (String((w.r2g && w.r2g.iot_stability) || '') !== '0' && !((w.r2g && w.r2g.legacy_rates) === '0') && !((w.r2g && w.r2g.basic_rate))))
-										? 'Ativo • Proteção anti-desconexão (disassoc_low_ack=0), DTIM sincronizado e rota estável AWS IoT.'
-										: 'Desativado • Configuração padrão do OpenWrt.'
-								])
-							]),
-							E('label',{class:'ex-switch'},[
-								E('input',{
-									id:'ex-iot-toggle',
-									type:'checkbox',
-									checked: (String((w.r2g && w.r2g.iot_stability) || '') === '1' || (String((w.r2g && w.r2g.iot_stability) || '') !== '0' && !((w.r2g && w.r2g.legacy_rates) === '0') && !((w.r2g && w.r2g.basic_rate)))) ? '' : null,
-									'aria-label':'Modo Estabilidade Casa Inteligente Alexas',
-									'change': L.bind(function(ev){
-										const chk = ev.currentTarget;
-										const enable = chk.checked;
-										chk.disabled = true;
-										const summary = document.getElementById('ex-iot-mode-summary');
-										if (summary) summary.textContent = 'Aplicando alteração…';
-										fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-iot-optimize', enable ? '1' : '0'])
-										.then(L.bind(function(r){
-											chk.disabled = false;
-											if (r.code) throw new Error(r.stderr || 'Falha ao alterar modo IoT');
-											if (summary) summary.textContent = enable
-												? 'Ativo • Proteção anti-desconexão (disassoc_low_ack=0), DTIM sincronizado e rota estável AWS IoT.'
-												: 'Desativado • Configuração padrão do OpenWrt.';
-											ui.addNotification(null, E('p', {}, [enable ? 'Modo Casa Inteligente ativado! Proteção anti-desconexão e estabilidade aplicadas para Alexas e IoT.' : 'Modo Casa Inteligente desativado.']), 'info');
-										}, self))
-										.catch(function(e){
-											chk.disabled = false;
-											chk.checked = !enable;
-											if (summary) summary.textContent = (!enable)
-												? 'Ativo • Proteção anti-desconexão (disassoc_low_ack=0), DTIM sincronizado e rota estável AWS IoT.'
-												: 'Desativado • Configuração padrão do OpenWrt.';
-											ui.addNotification(null, E('p', {}, [e.message]), 'danger');
-										});
-									}, self)
-								}),
-								E('span',{class:'ex-switch-slider'})
-							])
-						]),
-						E('div',{class:'ex-channel-mode-control'},[
-							E('div',{},[
-								E('strong',{},['Prevenção de Quedas Radar DFS (5 GHz)']),
-								E('small',{id:'ex-dfs-mode-summary',class:'ex-muted'},[
-									(String((w.r5g && w.r5g.ieee80211h) || '') === '1')
-										? 'Ativo • Protocolo 802.11h CSA migra aparelhos sem desconectar ao detectar radar nos canais DFS (52 a 144).'
-										: 'Desativado • Rádio pode interromper conexão ao detectar radar nos canais DFS (52 a 144). Canais 36-48 e 149-165 não usam radar.'
-								])
-							]),
-							E('label',{class:'ex-switch'},[
-								E('input',{
-									id:'ex-dfs-toggle',
-									type:'checkbox',
-									checked: (String((w.r5g && w.r5g.ieee80211h) || '') === '1') ? '' : null,
-									'aria-label':'Prevenção de Quedas Radar DFS',
-									'change': L.bind(function(ev){
-										const chk = ev.currentTarget;
-										const enable = chk.checked;
-										chk.disabled = true;
-										const summary = document.getElementById('ex-dfs-mode-summary');
-										if (summary) summary.textContent = 'Aplicando alteração…';
-										fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-dfs-optimize', enable ? '1' : '0'])
-										.then(L.bind(function(r){
-											chk.disabled = false;
-											if (r.code) throw new Error(r.stderr || 'Falha ao alterar proteção DFS');
-											if (summary) summary.textContent = enable
-												? 'Ativo • Protocolo 802.11h CSA migra aparelhos sem desconectar ao detectar radar nos canais DFS (52 a 144).'
-												: 'Desativado • Rádio pode interromper conexão ao detectar radar nos canais DFS (52 a 144). Canais 36-48 e 149-165 não usam radar.';
-											ui.addNotification(null, E('p', {}, [enable ? 'Proteção 802.11h CSA ativada no rádio 5 GHz (canais DFS 52-144).' : 'Proteção 802.11h CSA desativada.']), 'info');
-										}, self))
-										.catch(function(e){
-											chk.disabled = false;
-											chk.checked = !enable;
-											if (summary) summary.textContent = (!enable)
-												? 'Ativo • Protocolo 802.11h CSA migra aparelhos sem desconectar ao detectar radar nos canais DFS (52 a 144).'
-												: 'Desativado • Rádio pode interromper conexão ao detectar radar nos canais DFS (52 a 144). Canais 36-48 e 149-165 não usam radar.';
-											ui.addNotification(null, E('p', {}, [e.message]), 'danger');
-										});
-									}, self)
-								}),
-								E('span',{class:'ex-switch-slider'})
-							])
-						]),
-						E('div',{class:'ex-channel-mode-control'},[
-							E('div',{},[
-								E('strong',{},['Modo Potência Máxima de Transmissão Wi-Fi (1 Watt / Panamá)']),
-								E('small',{id:'ex-maxpower-mode-summary',class:'ex-muted'},[
-									isMaxPower
-										? 'Ativo • Libera 100% da potência física dos amplificadores (até 1.000 mW / 30 dBm) usando o domínio regulatório Panamá (PA).'
-										: 'Desativado • Limite regulatório padrão Brasil (BR) aplicado.'
-								])
-							]),
-							E('label',{class:'ex-switch'},[
-								E('input',{
-									id:'ex-maxpower-toggle',
-									type:'checkbox',
-									checked: isMaxPower ? '' : null,
-									'aria-label':'Modo Potência Máxima de Transmissão Wi-Fi',
-									'change': L.bind(function(ev){
-										const chk = ev.currentTarget;
-										const enable = chk.checked;
-										chk.disabled = true;
-										const summary = document.getElementById('ex-maxpower-mode-summary');
-										if (summary) summary.textContent = 'Aplicando alteração e reiniciando rádio…';
-										fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-maxpower-toggle', enable ? '1' : '0'])
-										.then(L.bind(function(r){
-											chk.disabled = false;
-											if (r.code) throw new Error(r.stderr || 'Falha ao alterar potência Wi-Fi');
-											if (summary) summary.textContent = enable
-												? 'Ativo • Libera 100% da potência física dos amplificadores (até 1.000 mW / 30 dBm) usando o domínio regulatório Panamá (PA).'
-												: 'Desativado • Limite regulatório padrão Brasil (BR) aplicado.';
-											ui.addNotification(null, E('p', {}, [enable ? 'Modo Potência Máxima ativado! Amplificadores liberados para até 1.000 mW (Panamá PA).' : 'Potência regulatória padrão Brasil (BR) restaurada.']), 'info');
-											const countryEl = document.getElementById('ex-country-current');
-											if (countryEl) countryEl.textContent = enable ? 'Panamá (PA)' : 'Brasil (BR)';
-										}, self))
-										.catch(function(e){
-											chk.disabled = false;
-											chk.checked = !enable;
-											if (summary) summary.textContent = (!enable)
-												? 'Ativo • Libera 100% da potência física dos amplificadores (até 1.000 mW / 30 dBm) usando o domínio regulatório Panamá (PA).'
-												: 'Desativado • Limite regulatório padrão Brasil (BR) aplicado.';
-											ui.addNotification(null, E('p', {}, [e.message]), 'danger');
-										});
-									}, self)
-								}),
-								E('span',{class:'ex-switch-slider'})
-							])
-						]),
-						isWedSupported ? E('div',{class:'ex-channel-mode-control'},[
+
+				const hwAccelControl = (function(){
+					if (isWedSupported) {
+						return E('div',{class:'ex-channel-mode-control'},[
 							E('div',{},[
 								E('strong',{},['Aceleração de Hardware Wi-Fi (MediaTek WED)']),
 								E('small',{id:'ex-wed-mode-summary',class:'ex-muted'},[
 									isWedEnabled
-										? 'Ativo • Despacho direto de pacotes Wi-Fi via DMA/PPE no hardware MediaTek, aliviando a CPU.'
-										: 'Desativado • Pacotes Wi-Fi processados pela pilha padrão de interrupções de CPU.'
+										? 'Ativo • Despacho direto de pacotes Wi-Fi via DMA/PPE no hardware MediaTek Filogic, liberando os núcleos de CPU.'
+										: 'Desativado • Pacotes Wi-Fi processados pelas filas de software da CPU.'
 								])
 							]),
 							E('label',{class:'ex-switch'},[
@@ -18728,45 +19407,289 @@ const renderMethods = {
 											chk.disabled = false;
 											if (r.code) throw new Error(r.stderr || 'Falha ao alterar aceleração WED');
 											if (summary) summary.textContent = enable
-												? 'Ativo • Despacho direto de pacotes Wi-Fi via DMA/PPE no hardware MediaTek, aliviando a CPU.'
-												: 'Desativado • Pacotes Wi-Fi processados pela pilha padrão de interrupções de CPU.';
+												? 'Ativo • Despacho direto de pacotes Wi-Fi via DMA/PPE no hardware MediaTek Filogic, liberando os núcleos de CPU.'
+												: 'Desativado • Pacotes Wi-Fi processados pelas filas de software da CPU.';
 											ui.addNotification(null, E('p', {}, [enable ? 'Aceleração de Hardware Wi-Fi (WED) ativada!' : 'Aceleração de Hardware Wi-Fi (WED) desativada.']), 'info');
 										}, self))
 										.catch(function(e){
 											chk.disabled = false;
 											chk.checked = !enable;
 											if (summary) summary.textContent = (!enable)
-												? 'Ativo • Despacho direto de pacotes Wi-Fi via DMA/PPE no hardware MediaTek, aliviando a CPU.'
-												: 'Desativado • Pacotes Wi-Fi processados pela pilha padrão de interrupções de CPU.';
+												? 'Ativo • Despacho direto de pacotes Wi-Fi via DMA/PPE no hardware MediaTek Filogic, liberando os núcleos de CPU.'
+												: 'Desativado • Pacotes Wi-Fi processados pelas filas de software da CPU.';
 											ui.addNotification(null, E('p', {}, [e.message]), 'danger');
 										});
 									}, self)
 								}),
 								E('span',{class:'ex-switch-slider'})
 							])
-						]) : '',
-						E('div',{class:'ex-grid ' + (has6gBand ? 'ex-grid-3' : 'ex-grid-2') + ' ex-channel-grid'},[
-							E('div',{},[
-								E('div',{class:'ex-channel-band-head'},[E('b',{},['2,4 GHz']),E('span',{id:'ex-wifi-2-mode',class:'ex-pill standby'},['—'])]),
-								E('span',{id:'ex-wifi-2'},['—'])
+						]);
+					}
+					if (silClass === 'qualcomm_ipq') {
+						return E('div', { class: 'ex-channel-mode-control' }, [
+							E('div', {}, [
+								E('strong', {}, ['Aceleração de Rede & Wi-Fi (Qualcomm PPE / SFE)']),
+								E('small', { class: 'ex-muted' }, [
+									'Ativo nativamente • O silício Qualcomm IPQ despacha tráfego de rede e Wi-Fi diretamente pelo motor de hardware Packet Processing Engine (PPE), com latência ultrabaixa e offload total de CPU.'
+								])
 							]),
-							E('div',{},[
-								E('div',{class:'ex-channel-band-head'},[E('b',{},['5 GHz']),E('span',{id:'ex-wifi-5-mode',class:'ex-pill standby'},['—'])]),
-								E('span',{id:'ex-wifi-5'},['—'])
+							E('span', { class: 'ex-pill online' }, ['⚡ NATIVO EM SILÍCIO'])
+						]);
+					}
+					if (silClass === 'x86_pc') {
+						return E('div', { class: 'ex-channel-mode-control' }, [
+							E('div', {}, [
+								E('strong', {}, ['Processamento de Rede (x86_64 Multicore)']),
+								E('small', { class: 'ex-muted' }, [
+									'Arquitetura x86_64 de alta performance. O processamento de pacotes é distribuído nativamente entre os núcleos de CPU via SMP/Fastpath, dispensando coprocessadores de aceleração embarcados.'
+								])
 							]),
-							has6gBand ? E('div',{},[
-								E('div',{class:'ex-channel-band-head'},[E('b',{},['6 GHz']),E('span',{id:'ex-wifi-6-mode',class:'ex-pill standby'},['—'])]),
-								E('span',{id:'ex-wifi-6'},['—'])
-							]) : ''
+							E('span', { class: 'ex-pill neutral' }, ['MULTICORE X86'])
+						]);
+					}
+					if (silClass === 'mips_legacy') {
+						return E('div', { class: 'ex-channel-mode-control' }, [
+							E('div', {}, [
+								E('strong', {}, ['Aceleração de Rede (Fastpath Software / MIPS)']),
+								E('small', { class: 'ex-muted' }, [
+									'Dispositivo MIPS com memória compacta. Opera com aceleração de fluxo por software (Software Flowtable). Motores de hardware offload não são aplicáveis para garantir estabilidade operacional.'
+								])
+							]),
+							E('span', { class: 'ex-pill standby' }, ['FASTPATH SOFTWARE'])
+						]);
+					}
+					return E('div', { class: 'ex-channel-mode-control' }, [
+						E('div', {}, [
+							E('strong', {}, ['Aceleração de Rede (' + (silicon.name || 'Arquitetura Universal') + ')']),
+							E('small', { class: 'ex-muted' }, [
+								silicon.hw_offload_capable
+									? 'Aceleração de pacotes em silício suportada e gerenciada pelo kernel.'
+									: 'Processamento de rede multithread com aceleração Software Flowtable.'
+							])
 						]),
-						E('p',{id:'ex-wifi-noise',class:'ex-muted'},['—']),
-						E('p',{id:'ex-scan-result',class:'ex-scan-result'},['A análise é manual e apenas recomenda canais; não interrompe os usuários.']),
-						E('div',{class:'ex-channel-actions'},[
-							E('button',{class:'ex-channel-action','click':L.bind(self.showManualChannelsModal,self)},['Escolher canais']),
-							E('button',{id:'ex-apply-channels',class:'ex-channel-action primary',disabled:true,'click':L.bind(function(){self.changeChannels('fixed');},self)},['Analisar antes de aplicar']),
-							E('button',{class:'ex-channel-action','click':L.bind(function(){self.changeWifiWidth();},self)},['Largura / desempenho'])
+						E('span', { class: 'ex-pill ' + (silicon.hw_offload_capable ? 'online' : 'standby') }, [silicon.hw_offload_capable ? 'ATIVO' : 'FLOWTABLE'])
+					]);
+				})();
+
+				const iotControl = w.has2g ? E('div',{class:'ex-channel-mode-control'},[
+					E('div',{},[
+						E('strong',{},['Modo Estabilidade Casa Inteligente / Alexas (2,4 GHz)']),
+						E('small',{id:'ex-iot-mode-summary',class:'ex-muted'},[
+							(String((w.r2g && w.r2g.iot_stability) || '') === '1' || (String((w.r2g && w.r2g.iot_stability) || '') !== '0' && !((w.r2g && w.r2g.legacy_rates) === '0') && !((w.r2g && w.r2g.basic_rate))))
+								? 'Ativo • Proteção anti-desconexão (disassoc_low_ack=0), DTIM sincronizado e rota estável AWS IoT.'
+								: 'Desativado • Configuração padrão do OpenWrt.'
 						])
+					]),
+					E('label',{class:'ex-switch'},[
+						E('input',{
+							id:'ex-iot-toggle',
+							type:'checkbox',
+							checked: (String((w.r2g && w.r2g.iot_stability) || '') === '1' || (String((w.r2g && w.r2g.iot_stability) || '') !== '0' && !((w.r2g && w.r2g.legacy_rates) === '0') && !((w.r2g && w.r2g.basic_rate)))) ? '' : null,
+							'aria-label':'Modo Estabilidade Casa Inteligente Alexas',
+							'change': L.bind(function(ev){
+								const chk = ev.currentTarget;
+								const enable = chk.checked;
+								chk.disabled = true;
+								const summary = document.getElementById('ex-iot-mode-summary');
+								if (summary) summary.textContent = 'Aplicando alteração…';
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-iot-optimize', enable ? '1' : '0'])
+								.then(L.bind(function(r){
+									chk.disabled = false;
+									if (r.code) throw new Error(r.stderr || 'Falha ao alterar modo IoT');
+									if (summary) summary.textContent = enable
+										? 'Ativo • Proteção anti-desconexão (disassoc_low_ack=0), DTIM sincronizado e rota estável AWS IoT.'
+										: 'Desativado • Configuração padrão do OpenWrt.';
+									ui.addNotification(null, E('p', {}, [enable ? 'Modo Casa Inteligente ativado! Proteção anti-desconexão e estabilidade aplicadas para Alexas e IoT.' : 'Modo Casa Inteligente desativado.']), 'info');
+								}, self))
+								.catch(function(e){
+									chk.disabled = false;
+									chk.checked = !enable;
+									if (summary) summary.textContent = (!enable)
+										? 'Ativo • Proteção anti-desconexão (disassoc_low_ack=0), DTIM sincronizado e rota estável AWS IoT.'
+										: 'Desativado • Configuração padrão do OpenWrt.';
+									ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+								});
+							}, self)
+						}),
+						E('span',{class:'ex-switch-slider'})
 					])
+				]) : E('div', { class: 'ex-channel-mode-control' }, [
+					E('div', {}, [
+						E('strong', {}, ['Modo Estabilidade Casa Inteligente / Alexas (2,4 GHz)']),
+						E('small', { class: 'ex-muted' }, ['Não aplicável • Dispositivo operando sem rádio 2,4 GHz ativo.'])
+					]),
+					E('span', { class: 'ex-pill standby' }, ['SEM RÁDIO 2.4G'])
+				]);
+
+				const dfsControl = w.has5g ? E('div',{class:'ex-channel-mode-control'},[
+					E('div',{},[
+						E('strong',{},['Prevenção de Quedas Radar DFS (5 GHz)']),
+						E('small',{id:'ex-dfs-mode-summary',class:'ex-muted'},[
+							(String((w.r5g && w.r5g.ieee80211h) || '') === '1')
+								? 'Ativo • Protocolo 802.11h CSA migra aparelhos sem desconectar ao detectar radar nos canais DFS (52 a 144).'
+								: 'Desativado • Rádio pode interromper conexão ao detectar radar nos canais DFS (52 a 144). Canais 36-48 e 149-165 não usam radar.'
+						])
+					]),
+					E('label',{class:'ex-switch'},[
+						E('input',{
+							id:'ex-dfs-toggle',
+							type:'checkbox',
+							checked: (String((w.r5g && w.r5g.ieee80211h) || '') === '1') ? '' : null,
+							'aria-label':'Prevenção de Quedas Radar DFS',
+							'change': L.bind(function(ev){
+								const chk = ev.currentTarget;
+								const enable = chk.checked;
+								chk.disabled = true;
+								const summary = document.getElementById('ex-dfs-mode-summary');
+								if (summary) summary.textContent = 'Aplicando alteração…';
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-dfs-optimize', enable ? '1' : '0'])
+								.then(L.bind(function(r){
+									chk.disabled = false;
+									if (r.code) throw new Error(r.stderr || 'Falha ao alterar proteção DFS');
+									if (summary) summary.textContent = enable
+										? 'Ativo • Protocolo 802.11h CSA migra aparelhos sem desconectar ao detectar radar nos canais DFS (52 a 144).'
+										: 'Desativado • Rádio pode interromper conexão ao detectar radar nos canais DFS (52 a 144). Canais 36-48 e 149-165 não usam radar.';
+									ui.addNotification(null, E('p', {}, [enable ? 'Proteção 802.11h CSA ativada no rádio 5 GHz (canais DFS 52-144).' : 'Proteção 802.11h CSA desativada.']), 'info');
+								}, self))
+								.catch(function(e){
+									chk.disabled = false;
+									chk.checked = !enable;
+									if (summary) summary.textContent = (!enable)
+										? 'Ativo • Protocolo 802.11h CSA migra aparelhos sem desconectar ao detectar radar nos canais DFS (52 a 144).'
+										: 'Desativado • Rádio pode interromper conexão ao detectar radar nos canais DFS (52 a 144). Canais 36-48 e 149-165 não usam radar.';
+									ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+								});
+							}, self)
+						}),
+						E('span',{class:'ex-switch-slider'})
+					])
+				]) : E('div', { class: 'ex-channel-mode-control' }, [
+					E('div', {}, [
+						E('strong', {}, ['Prevenção de Quedas Radar DFS (5 GHz)']),
+						E('small', { class: 'ex-muted' }, ['Não aplicável • Dispositivo mono-band 2,4 GHz (canais DFS existem apenas em 5 GHz).'])
+					]),
+					E('span', { class: 'ex-pill standby' }, ['MONO-BAND'])
+				]);
+
+				const maxPowerControl = E('div',{class:'ex-channel-mode-control'},[
+					E('div',{},[
+						E('strong',{},['Forçar Potência Máxima de Transmissão (Limite do Hardware)']),
+						E('small',{id:'ex-maxpower-mode-summary',class:'ex-muted'},[
+							isMaxPower
+								? 'Ativo • Libera 100% da potência física permitida pelos amplificadores de rádio (RF Frontend / FEM) do equipamento, utilizando perfil de potência irrestrito com salvaguarda térmica.'
+								: 'Desativado • Limite regulatório padrão aplicado (equilíbrio entre alcance e conformidade regional).'
+						])
+					]),
+					E('label',{class:'ex-switch'},[
+						E('input',{
+							id:'ex-maxpower-toggle',
+							type:'checkbox',
+							checked: isMaxPower ? '' : null,
+							'aria-label':'Forçar Potência Máxima de Transmissão (Limite do Hardware)',
+							'change': L.bind(function(ev){
+								const chk = ev.currentTarget;
+								const enable = chk.checked;
+								chk.disabled = true;
+								const summary = document.getElementById('ex-maxpower-mode-summary');
+								if (summary) summary.textContent = 'Aplicando alteração e reiniciando rádio…';
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-maxpower-toggle', enable ? '1' : '0'])
+								.then(L.bind(function(r){
+									chk.disabled = false;
+									if (r.code) throw new Error(r.stderr || 'Falha ao alterar potência Wi-Fi');
+									if (summary) summary.textContent = enable
+										? 'Ativo • Libera 100% da potência física permitida pelos amplificadores de rádio (RF Frontend / FEM) do equipamento, utilizando perfil de potência irrestrito com salvaguarda térmica.'
+										: 'Desativado • Limite regulatório padrão aplicado (equilíbrio entre alcance e conformidade regional).';
+									ui.addNotification(null, E('p', {}, [enable ? 'Potência máxima do hardware ativada! Rádios liberados no limite físico dos amplificadores.' : 'Potência regulatória padrão restaurada.']), 'info');
+									const countryEl = document.getElementById('ex-country-current');
+									if (countryEl) countryEl.textContent = enable ? 'Irrestrito (PA / 1000 mW)' : 'Brasil (BR)';
+								}, self))
+								.catch(function(e){
+									chk.disabled = false;
+									chk.checked = !enable;
+									if (summary) summary.textContent = (!enable)
+										? 'Ativo • Libera 100% da potência física permitida pelos amplificadores de rádio (RF Frontend / FEM) do equipamento, utilizando perfil de potência irrestrito com salvaguarda térmica.'
+										: 'Desativado • Limite regulatório padrão aplicado (equilíbrio entre alcance e conformidade regional).';
+									ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+								});
+							}, self)
+						}),
+						E('span',{class:'ex-switch-slider'})
+					])
+				]);
+
+				const channelGrid = (function(){
+					const cols = [];
+					if (w.has2g) {
+						cols.push(E('div',{},[
+							E('div',{class:'ex-channel-band-head'},[E('b',{},['2,4 GHz']),E('span',{id:'ex-wifi-2-mode',class:'ex-pill standby'},['—'])]),
+							E('span',{id:'ex-wifi-2'},['—'])
+						]));
+					}
+					if (w.has5g) {
+						cols.push(E('div',{},[
+							E('div',{class:'ex-channel-band-head'},[E('b',{},['5 GHz']),E('span',{id:'ex-wifi-5-mode',class:'ex-pill standby'},['—'])]),
+							E('span',{id:'ex-wifi-5'},['—'])
+						]));
+					}
+					if (has6gBand) {
+						cols.push(E('div',{},[
+							E('div',{class:'ex-channel-band-head'},[E('b',{},['6 GHz']),E('span',{id:'ex-wifi-6-mode',class:'ex-pill standby'},['—'])]),
+							E('span',{id:'ex-wifi-6'},['—'])
+						]));
+					}
+					if (cols.length === 0) {
+						return E('div', { class: 'ex-muted', style: 'padding: 8px 0;' }, ['Nenhum rádio Wi-Fi ativo para exibição de canais.']);
+					}
+					const gridClass = cols.length === 3 ? 'ex-grid-3' : (cols.length === 2 ? 'ex-grid-2' : 'ex-grid-1');
+					return E('div', { class: 'ex-grid ' + gridClass + ' ex-channel-grid' }, cols);
+				})();
+
+				const wifiEnvBody = E('div', { class: 'ex-card-collapse-body' }, [
+					E('div', { class: 'ex-card-collapse-inner' }, (function(){
+						if (!w.hasRadios) {
+							return [
+								E('div', { class: 'alert-message notice', style: 'margin: 6px 0 14px; font-size: 12.5px; line-height: 1.5; border-radius: 8px;' }, [
+									E('strong', {}, ['🖧 ' + _t('Dispositivo em Operação Cabeada / Sem Rádios Wi-Fi:') + ' ']),
+									_t('Este equipamento não possui interfaces de rádio Wi-Fi físicas ativas (ou está operando em máquina virtual / appliance cabeado). O gerenciamento de canais, espectro, radar DFS e potência sem fio aplica-se exclusivamente a Pontos de Acesso (APs) conectados à sua rede.')
+								]),
+								hwAccelControl
+							];
+						}
+						return [
+							E('div', { style: 'display:flex; justify-content:flex-end; margin-bottom:12px;' }, [
+								E('button',{class:'ex-button ex-inline-button','click':L.bind(function(ev){self.analyzeChannels(ev.currentTarget);},self)},['Analisar canais agora'])
+							]),
+							E('div',{class:'ex-country-control'},[
+								E('div',{},[
+									E('span',{class:'ex-label'},['PAÍS / DOMÍNIO REGULATÓRIO']),
+									E('strong',{id:'ex-country-current'},['—'])
+								]),
+								E('button',{class:'ex-mini-button','click':L.bind(function(){self.changeCountry();},self)},['Alterar país'])
+							]),
+							E('div',{class:'ex-channel-mode-control'},[
+								E('div',{},[
+									E('strong',{},['Seleção automática inteligente de canais']),
+									E('small',{id:'ex-channel-mode-summary',class:'ex-muted'},['Verificando…'])
+								]),
+								E('label',{class:'ex-switch'},[
+									E('input',{id:'ex-channel-auto-toggle',type:'checkbox','aria-label':translateText('Seleção automática inteligente de canais'),'change':L.bind(function(ev){self.toggleAutoChannels(ev.currentTarget);},self)}),
+									E('span',{class:'ex-switch-slider'})
+								])
+							]),
+							iotControl,
+							dfsControl,
+							maxPowerControl,
+							hwAccelControl,
+							channelGrid,
+							E('p',{id:'ex-wifi-noise',class:'ex-muted'},['—']),
+							E('p',{id:'ex-scan-result',class:'ex-scan-result'},['A análise é manual e apenas recomenda canais; não interrompe os usuários.']),
+							E('div',{class:'ex-channel-actions'},[
+								E('button',{class:'ex-channel-action','click':L.bind(self.showManualChannelsModal,self)},['Escolher canais']),
+								E('button',{id:'ex-apply-channels',class:'ex-channel-action primary',disabled:true,'click':L.bind(function(){self.changeChannels('fixed');},self)},['Analisar antes de aplicar']),
+								E('button',{class:'ex-channel-action','click':L.bind(function(){self.changeWifiWidth();},self)},['Largura / desempenho'])
+							])
+						];
+					})())
 				]);
 				const channelCard = E('section',{class:'ex-card ex-channel-card'},[
 					wifiEnvTitle,
@@ -19150,6 +20073,9 @@ const renderMethods = {
 			}, this));
 		}
 		this.update(data); this.scheduleAdaptiveRefresh();
+		if (typeof this.startClockTicker === 'function') {
+			this.startClockTicker();
+		}
 		if (dashboardLanguage !== 'pt-br' && typeof translateTree === 'function') {
 			translateTree(root);
 		}

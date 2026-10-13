@@ -532,8 +532,8 @@ const networkMethods = {
 					min: 1,
 					max: 100000,
 					step: '1',
-					placeholder: 'Velocidade nominal (Mbps)',
-					style: 'max-width: 170px; margin-right: 6px;'
+					placeholder: 'Plano (ex: 500)',
+					style: 'flex: 1 1 120px; min-width: 0; min-height: 38px;'
 				});
 				const calcDownNotice = E('small', { class: 'ex-muted', style: 'display: block; margin-top: 4px; font-size: 11px; line-height: 1.3;' }, [
 					'Margem recomendada de 7% para absorver variações do modem.'
@@ -541,7 +541,7 @@ const networkMethods = {
 				const applyCalcDownBtn = E('button', {
 					type: 'button',
 					class: 'btn cbi-button cbi-button-action ex-mini-button',
-					style: 'font-weight: 600;',
+					style: 'font-weight: 600; white-space: nowrap; flex-shrink: 0; min-height: 38px;',
 					click: function() {
 						const nominal = parseFloat(calcDownInput.value || 0);
 						if (nominal > 0) {
@@ -553,11 +553,11 @@ const networkMethods = {
 					}
 				}, ['Aplicar -7%']);
 
-				const calcDownBox = E('div', { class: 'ex-qos-calc-box', style: 'margin-top: 8px; margin-bottom: 8px; padding: 8px 10px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 8px;' }, [
+				const calcDownBox = E('div', { class: 'ex-qos-calc-box' }, [
 					E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;' }, [
-						E('strong', { style: 'font-size: 11.5px;' }, ['🧮 Calculadora de Download (-7% Bufferbloat)'])
+						E('strong', { style: 'font-size: 11.5px;' }, ['🧮 Calculadora de Download (-7%)'])
 					]),
-					E('div', { style: 'display: flex; align-items: center; flex-wrap: wrap; gap: 4px;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
 						calcDownInput,
 						applyCalcDownBtn
 					]),
@@ -571,8 +571,8 @@ const networkMethods = {
 					min: 1,
 					max: 100000,
 					step: '1',
-					placeholder: 'Velocidade nominal (Mbps)',
-					style: 'max-width: 170px; margin-right: 6px;'
+					placeholder: 'Plano (ex: 50)',
+					style: 'flex: 1 1 120px; min-width: 0; min-height: 38px;'
 				});
 				const calcNotice = E('small', { class: 'ex-muted', style: 'display: block; margin-top: 4px; font-size: 11px; line-height: 1.3;' }, [
 					'Margem de 7% aplicada para impedir acúmulo de fila no modem.'
@@ -580,7 +580,7 @@ const networkMethods = {
 				const applyCalcBtn = E('button', {
 					type: 'button',
 					class: 'btn cbi-button cbi-button-action ex-mini-button',
-					style: 'font-weight: 600;',
+					style: 'font-weight: 600; white-space: nowrap; flex-shrink: 0; min-height: 38px;',
 					click: function() {
 						const nominal = parseFloat(calcInput.value || 0);
 						if (nominal > 0) {
@@ -595,11 +595,11 @@ const networkMethods = {
 					}
 				}, ['Aplicar -7%']);
 
-				const calcBox = E('div', { class: 'ex-qos-calc-box', style: 'margin-top: 8px; margin-bottom: 8px; padding: 8px 10px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15); border-radius: 8px;' }, [
+				const calcBox = E('div', { class: 'ex-qos-calc-box' }, [
 					E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;' }, [
-						E('strong', { style: 'font-size: 11.5px;' }, ['🧮 Calculadora de Upload (-7% Bufferbloat)'])
+						E('strong', { style: 'font-size: 11.5px;' }, ['🧮 Calculadora de Upload (-7%)'])
 					]),
-					E('div', { style: 'display: flex; align-items: center; flex-wrap: wrap; gap: 4px;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
 						calcInput,
 						applyCalcBtn
 					]),
@@ -640,7 +640,7 @@ const networkMethods = {
 				const chkWash = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('wash') !== -1 });
 				const chkDiffserv = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('diffserv4') !== -1 });
 
-				const advancedDetails = E('details', { style: 'margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;' }, [
+				const advancedDetails = E('details', { style: 'margin-top: 12px; padding: 12px 14px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;' }, [
 					E('summary', { style: 'cursor: pointer; font-weight: 700; font-size: 12px; color: #93c5fd;' }, ['⚙️ Parâmetros Avançados do CAKE & Enquadramento (Overhead)']),
 					E('div', { style: 'margin-top: 10px; display: flex; flex-direction: column; gap: 8px;' }, [
 						E('label', { style: 'display: block;' }, [
@@ -648,7 +648,7 @@ const networkMethods = {
 							overheadSelect,
 							E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Compensa os cabeçalhos de fibra/cabo no shaper para precisão absoluta anti-bufferbloat.'])
 						]),
-						E('div', { style: 'display: flex; flex-direction: column; gap: 6px; margin-top: 4px;' }, [
+						E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; margin-top: 4px;' }, [
 							E('label', { style: 'display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;' }, [
 								chkNat,
 								E('span', {}, [E('strong', {}, ['NAT Lookup (nat): ']), 'Permite ao CAKE ver o IP real de cada aparelho da casa antes do NAT.'])
@@ -684,19 +684,64 @@ const networkMethods = {
 					chkAck: chkAck,
 					chkWash: chkWash,
 					chkDiffserv: chkDiffserv,
-					section: E('section', {}, [
-						E('h3', {}, [profile.label]),
-						E('small', { class: 'ex-muted' }, ['Interface '+profile.network+' • dispositivo '+profile.device+(profile.online?' • online':' • sem link')]),
-						E('label', { class: 'ex-qos-edit-toggle' }, [enabled, E('span', {}, ['Ativar fila '+profile.label])]),
-						download.row,
-						calcDownBox,
-						upload.row,
-						calcBox,
+					section: E('section', { class: 'ex-qos-wan-section', style: 'padding: 16px; border: 1px solid rgba(127,127,127,.18); border-radius: 14px; background: rgba(127,127,127,.05); margin-bottom: 14px;' }, [
+						E('div', { style: 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(127,127,127,.12);' }, [
+							E('div', {}, [
+								E('h3', { style: 'margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;' }, [
+									'🌐 ' + profile.label,
+									E('span', { class: 'ex-pill ' + (profile.online ? 'online' : 'standby'), style: 'font-size: 0.75rem;' }, [
+										profile.online ? _t('Online') : _t('Sem link')
+									])
+								]),
+								E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, [
+									_t('Interface') + ' ' + profile.network + ' • ' + _t('dispositivo') + ' ' + profile.device
+								])
+							]),
+							E('label', { class: 'ex-qos-edit-toggle', style: 'margin: 0; cursor: pointer; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.04); padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);' }, [
+								enabled,
+								E('span', { style: 'font-weight: 650; font-size: 13px;' }, [_t('Ativar fila') + ' ' + profile.label])
+							])
+						]),
+						E('div', { class: 'ex-qos-dir-grid', style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;' }, [
+							E('div', { class: 'ex-qos-dir-box', style: 'background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 12px;' }, [
+								E('div', { style: 'display: flex; align-items: center; gap: 6px; margin-bottom: 6px;' }, [
+									E('span', { style: 'font-size: 15px;' }, ['📥']),
+									E('strong', { style: 'font-size: 13px; color: var(--ark-text-main, #fff);' }, [_t('Download')])
+								]),
+								download.row,
+								calcDownBox
+							]),
+							E('div', { class: 'ex-qos-dir-box', style: 'background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 12px;' }, [
+								E('div', { style: 'display: flex; align-items: center; gap: 6px; margin-bottom: 6px;' }, [
+									E('span', { style: 'font-size: 15px;' }, ['📤']),
+									E('strong', { style: 'font-size: 13px; color: var(--ark-text-main, #fff);' }, [_t('Upload')])
+								]),
+								upload.row,
+								calcBox
+							])
+						]),
 						advancedDetails
 					])
 				};
 			});
 			const guestDown=field('Visitantes download total',guestDownloadLimit,'Mbps • 0 ou vazio = ilimitado'), guestUp=field('Visitantes upload total',guestUploadLimit,'Mbps • exemplo: 1,5 • 0 ou vazio = ilimitado');
+			const guestSection = E('section', {
+				class: 'ex-qos-guest-section',
+				style: 'padding: 14px 16px; border: 1px solid rgba(127,127,127,.18); border-radius: 14px; background: rgba(127,127,127,.05); margin-bottom: 16px;'
+			}, [
+				E('div', { style: 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(127,127,127,.12);' }, [
+					E('div', {}, [
+						E('h3', { style: 'margin: 0; font-size: 1rem; display: flex; align-items: center; gap: 6px;' }, [
+							'👥 ' + _t('Rede de Visitantes (QoS Secundário)')
+						]),
+						E('small', { class: 'ex-muted' }, [_t('Limite máximo de velocidade que todos os aparelhos de visitas podem usar juntos.')])
+					])
+				]),
+				E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;' }, [
+					guestDown.row,
+					guestUp.row
+				])
+			]);
 			const mipsNotice = audit.is_low_end_mips ? E('div', { class: 'alert-message warning', style: 'margin-bottom: 12px; font-size: 12.5px; line-height: 1.5;' }, [
 				E('strong', { style: 'display:block; margin-bottom:4px;' }, ['⚠️ ' + _t('Recomendação de Hardware: Processador MIPS') + ' (' + (audit.cpu_model || 'Single-Core 720 MHz') + ')']),
 				_t('Para velocidades de download superiores a 100 Mbps, o algoritmo CAKE pode saturar a CPU (100%), reduzindo a velocidade real do link.') + ' ',
@@ -751,7 +796,9 @@ const networkMethods = {
 				speedtestBanner,
 				flowOffloadNotice,
 				mipsNotice,
-				E('div',{class:'ex-qos-edit-grid'},editors.map(function(editor){return editor.section;}).concat([E('section',{},[E('h3',{},['Visitantes']),guestDown.row,guestUp.row])])),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
+				E('div',{class:'ex-qos-wan-list',style:'display:flex;flex-direction:column;gap:14px;'},editors.map(function(editor){return editor.section;})),
+				guestSection,
+				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
 			const btn = ev.currentTarget;
 			const args=['sqm-save-v2'];let invalid=false;
 			editors.forEach(function(editor){
@@ -796,18 +843,26 @@ const networkMethods = {
 			const guestUpload=(gURaw===''||gURaw==='0')?'0':mbpsToKbps(gURaw);
 			if(invalid||guestDownload==null||guestUpload==null){ui.addNotification(null,E('p',{},['Informe velocidades válidas em Mbps ou 0 para ilimitado.']),'danger');return;}
 			btn.disabled = true;
-			btn.textContent = 'Salvando SQM…';
+			btn.classList.add('is-busy');
+			btn.innerHTML = '<span class="ex-spinner-inline"></span> ' + _t('Salvando SQM…');
 			args.push('guest_download='+guestDownload,'guest_upload='+guestUpload);
 			return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(L.bind(function(r){
 				if(r.code)throw new Error(r.stderr||'Falha ao salvar limites');
-				this.triggerImmediateRefresh('Limites de velocidade SQM / CAKE salvos com sucesso!', 'info');
+				btn.classList.remove('is-busy');
+				btn.classList.add('is-success');
+				btn.innerHTML = '✓ ' + _t('SQM Salvo!');
+				window.setTimeout(L.bind(function() {
+					ui.hideModal();
+					this.triggerImmediateRefresh('Limites de velocidade SQM / CAKE salvos com sucesso!', 'info');
+				}, this), 600);
 			}, this)).catch(function(e){
+				btn.classList.remove('is-busy');
 				btn.disabled = false;
-				btn.textContent = 'Salvar e reiniciar SQM';
+				btn.textContent = _t('Salvar e reiniciar SQM');
 				if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
 				ui.addNotification(null,E('p',{},[e.message]),'danger');
 			});
-		},this)},['Salvar e reiniciar SQM'])])]);
+		},this)},[_t('Salvar e reiniciar SQM')])])]);
 		}, this));
 	},
 	editWan: function(which, preferredDevice){
@@ -2448,7 +2503,8 @@ const networkMethods = {
 				ipv4_only: { label: 'Modo 1: IPv4 Apenas', color: '#f59e0b', bg: 'rgba(245,158,11,.15)', border: 'rgba(245,158,11,.35)' },
 				dual_stack: { label: 'Modo 2: Pilha Dupla Global', color: '#10b981', bg: 'rgba(16,185,129,.15)', border: 'rgba(16,185,129,.35)' },
 				selective: { label: 'Modo 3: IPv6 Seletivo por MAC', color: '#38bdf8', bg: 'rgba(56,189,248,.15)', border: 'rgba(56,189,248,.35)' },
-				ipv6_only: { label: 'Modo 4: IPv6-Only (Single-Stack)', color: '#c084fc', bg: 'rgba(192,132,252,.15)', border: 'rgba(192,132,252,.35)' }
+				nptv6: { label: 'Modo 4: NPTv6 Inteligente (Multi-WAN)', color: '#06b6d4', bg: 'rgba(6,182,212,.15)', border: 'rgba(6,182,212,.35)' },
+				ipv6_only: { label: 'Modo 5: IPv6-Only (Single-Stack)', color: '#c084fc', bg: 'rgba(192,132,252,.15)', border: 'rgba(192,132,252,.35)' }
 			};
 			const curBadge = modeBadgeMeta[curMode] || modeBadgeMeta.dual_stack;
 
@@ -2554,6 +2610,15 @@ const networkMethods = {
 					],
 					curMode === 'dual_stack'
 				),
+				renderModeCard('nptv6', 'Modo 4: NPTv6 Inteligente (Multi-WAN & Estabilidade)', 'Estabilidade & Multi-WAN',
+					'Prefixo ULA local fixo (fd73:0192:0168::/48) com tradução 1:1 stateless para a WAN ativa (RFC 6296 / Masq6).',
+					[
+						'Perfeito para Dual-WAN (Fibra + Starlink): failover de IPv6 transparente sem desconexão.',
+						'Imunidade contra troca de prefixo da operadora: servidores, Docker e Home Assistant mantêm IPs estáveis.',
+						'Sem sobrecarga de portas: cada dispositivo preserva suas 65.535 portas 1:1 sem NAT restrito.'
+					],
+					curMode === 'nptv6'
+				),
 				renderModeCard('selective', 'Modo 3: IPv6 Seletivo por Aparelho', 'Escudo Gamer & IoT',
 					'Apenas aparelhos marcados com "⚡ Permitir IPv6" no painel utilizam IPv6. Dispositivos não autorizados têm o tráfego rejeitado instantaneamente em 0,1ms.',
 					[
@@ -2572,7 +2637,7 @@ const networkMethods = {
 					],
 					curMode === 'ipv4_only'
 				),
-				renderModeCard('ipv6_only', 'Modo 4: IPv6-Only (Futurista)', 'Single-Stack',
+				renderModeCard('ipv6_only', 'Modo 5: IPv6-Only (Futurista)', 'Single-Stack',
 					'LAN operando puramente em IPv6 sem concessões DHCP IPv4 locais, com síntese DNS64 no dnsmasq.',
 					[
 						'Ideal para laboratórios, testes de novas tecnologias e transição pura para a próxima geração.',
@@ -2582,10 +2647,16 @@ const networkMethods = {
 				)
 			];
 
+			const isNptv6 = curMode === 'nptv6';
+			const isIpv4Only = curMode === 'ipv4_only';
+			const isRelayLocked = isNptv6 || isIpv4Only;
+
 			const relayToggle = E('input', {
 				type: 'checkbox',
-				checked: isRelay ? '' : null,
+				checked: (!isRelayLocked && isRelay) ? '' : null,
+				disabled: isRelayLocked ? true : null,
 				change: function(ev) {
+					if (isRelayLocked) return;
 					const desired = ev.currentTarget.checked ? '1' : '0';
 					ev.currentTarget.disabled = true;
 					fs.exec('/usr/sbin/equipe-dashboard-control', ['ipv6-relay-toggle', desired]).then(function(res) {
@@ -2598,7 +2669,25 @@ const networkMethods = {
 					});
 				}
 			});
-			relayToggle.checked = !!isRelay;
+			relayToggle.checked = !isRelayLocked && !!isRelay;
+			if (isRelayLocked) relayToggle.disabled = true;
+
+			let pillText = isRelay ? 'RELAY IPV6 ATIVO' : 'SERVIDOR IPV6 DIRETO';
+			let pillClass = isRelay ? 'online' : 'standby';
+			let stateText = isRelay ? 'Ativado' : 'Desativado';
+			let stateColor = isRelay ? '#38bdf8' : '#94a3b8';
+
+			if (isNptv6) {
+				pillText = 'SERVIDOR DIRETO OBRIGATÓRIO (NPTv6)';
+				pillClass = 'standby';
+				stateText = 'Desativado (NPTv6)';
+				stateColor = '#94a3b8';
+			} else if (isIpv4Only) {
+				pillText = 'DESATIVADO (MODO IPV4)';
+				pillClass = 'standby';
+				stateText = 'Desativado';
+				stateColor = '#94a3b8';
+			}
 
 			const cascadePanel = E('section', {
 				class: 'ex-cleanup-entry',
@@ -2607,15 +2696,19 @@ const networkMethods = {
 				E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
 					E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;' }, [
 						E('strong', { style: 'font-size: 0.92rem; color: #f8fafc;' }, ['🔗 Roteador em Cascata (Repasse IPv6 / NDP Relay)']),
-						E('span', { class: 'ex-pill ' + (isRelay ? 'online' : 'standby'), style: 'font-size: 0.7rem;' }, [ isRelay ? 'RELAY IPV6 ATIVO' : 'SERVIDOR IPV6 DIRETO' ])
+						E('span', { class: 'ex-pill ' + pillClass, style: 'font-size: 0.7rem;' }, [ pillText ])
 					]),
 					E('p', { class: 'ex-muted', style: 'font-size: 0.8rem; line-height: 1.4; margin: 4px 0 0;' }, [
-						'Ative se este ARK Router estiver conectado atrás do modem da operadora (ou outro roteador) e seus aparelhos não estiverem recebendo IPv6 (quando a operadora entrega apenas um prefixo /64). O odhcpd repassa os anúncios de vizinhança IPv6 (NDP) transparentemente para os seus clientes, sem necessidade de DMZ no mestre.'
+						isNptv6
+							? 'No modo NPTv6, o ARK Router atua obrigatoriamente como Servidor Direto autoritativo (anunciando o prefixo ULA estável fd73:0192:0168::/48 para seus aparelhos e realizando a tradução 1:1 para a WAN ativa). O Repasse de vizinhança (Relay) fica automaticamente desligado.'
+							: isIpv4Only
+								? 'O Repasse IPv6 não pode ser utilizado enquanto o protocolo IPv6 estiver totalmente desligado (Modo IPv4 Apenas).'
+								: 'Ative se este ARK Router estiver conectado atrás do modem da operadora (ou outro roteador) e seus aparelhos não estiverem recebendo IPv6 (quando a operadora entrega apenas um prefixo /64). O odhcpd repassa os anúncios de vizinhança IPv6 (NDP) transparentemente para os seus clientes, sem necessidade de DMZ no mestre.'
 					])
 				]),
 				E('div', { style: 'flex: 0 0 auto; margin-left: 14px; display: flex; flex-direction: row; align-items: center; gap: 10px;' }, [
-					E('strong', { class: 'ex-device-switch-state', style: 'font-size: 0.8rem; font-weight: 700; color: ' + (isRelay ? '#38bdf8' : '#94a3b8') + ';' }, [ isRelay ? 'Ativado' : 'Desativado' ]),
-					E('label', { class: 'ex-switch', style: 'width: 48px; min-width: 48px; max-width: 48px; height: 26px; min-height: 26px; max-height: 26px; margin: 0;' }, [
+					E('strong', { class: 'ex-device-switch-state', style: 'font-size: 0.8rem; font-weight: 700; color: ' + stateColor + ';' }, [ stateText ]),
+					E('label', { class: 'ex-switch', style: 'width: 48px; min-width: 48px; max-width: 48px; height: 26px; min-height: 26px; max-height: 26px; margin: 0;' + (isRelayLocked ? ' opacity: 0.45; cursor: not-allowed;' : '') }, [
 						relayToggle,
 						E('span', { class: 'ex-switch-slider' })
 					])

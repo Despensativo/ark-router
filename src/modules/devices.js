@@ -1714,7 +1714,8 @@ const devicesMethods = {
 					return this.fetchData().then(L.bind(this.update,this));
 				},this)).catch(function(e){btn.disabled = false; btn.textContent = 'Salvar configurações'; if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});
 			},this)},['Salvar configurações'])]));
-			ui.showModal('Configurar dispositivo',sections);name.focus();
+			ui.showModal('Configurar dispositivo',sections);
+			if (window.innerWidth > 854 && !(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) name.focus();
 		},this)).catch(function(e){ui.hideModal();ui.addNotification(null,E('p',{},[e.message]),'danger');});
 	}
 };

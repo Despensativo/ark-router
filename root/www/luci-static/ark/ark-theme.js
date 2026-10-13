@@ -68,6 +68,10 @@
     mode: 'basic',
 
     init: function() {
+      try {
+        var vp = document.querySelector('meta[name="viewport"]');
+        if (vp) vp.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+      } catch (e) {}
       document.body.classList.remove('modal-overlay-active');
       this.initSidebarNavigation();
       this.cleanupButtons();
@@ -90,6 +94,17 @@
           }
         }, 200);
         setTimeout(function() { clearInterval(chanPoll); }, 8000);
+      }
+      if (location.pathname.indexOf('/status/processes') !== -1) {
+        var selfInit = this;
+        var procPoll = setInterval(function() {
+          if (document.querySelector('.ark-proc-btn')) {
+            clearInterval(procPoll);
+          } else {
+            selfInit.transformStatusProcesses();
+          }
+        }, 300);
+        setTimeout(function() { clearInterval(procPoll); }, 8000);
       }
       this.injectFeatureGuides();
       this.translateRemainingUI();
@@ -355,7 +370,18 @@
           luciUi.showModal = function() {
             self.recordScroll();
             self.isModalActive = true;
-            return origShow.apply(this, arguments);
+            var res = origShow.apply(this, arguments);
+            if (window.innerWidth <= 854 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) {
+              setTimeout(function() {
+                var act = document.activeElement;
+                if (act && /^(INPUT|SELECT|TEXTAREA)$/.test(act.tagName)) {
+                  try { act.blur(); } catch (e) {}
+                }
+                var ov = document.getElementById('modal_overlay');
+                if (ov) ov.scrollTop = 0;
+              }, 0);
+            }
+            return res;
           };
         }
 
@@ -382,6 +408,16 @@
               if (isActive && !self.isModalActive) {
                 self.recordScroll();
                 self.isModalActive = true;
+                if (window.innerWidth <= 854 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) {
+                  setTimeout(function() {
+                    var act = document.activeElement;
+                    if (act && /^(INPUT|SELECT|TEXTAREA)$/.test(act.tagName)) {
+                      try { act.blur(); } catch (e) {}
+                    }
+                    var ov = document.getElementById('modal_overlay');
+                    if (ov) ov.scrollTop = 0;
+                  }, 0);
+                }
               } else if (!isActive && self.isModalActive) {
                 self.restoreScroll();
               }
@@ -771,7 +807,7 @@
       box.id = 'ark-feature-guide';
       box.className = 'ark-guide-box';
       if (guide.band) box.setAttribute('data-ark-band', guide.band);
-      var badgeText = isEn ? '💡 Tips & Guide ▾' : (isEs ? '💡 Consejos y Guía ▾' : '💡 Ajuda & Dicas ▾');
+      var badgeText = isEn ? '💡 Tips & Guide\u00a0▾' : (isEs ? '💡 Consejos y Guía\u00a0▾' : '💡 Ajuda & Dicas\u00a0▾');
       box.innerHTML = '' +
         '<summary class="ark-guide-title">' +
           '<span>📘 ' + guide.title + '</span>' +
@@ -1897,6 +1933,7 @@
     },
 
     applyPageTransforms: function() {
+      if (document.body.classList.contains('ark-login-page') || document.querySelector('input[name="luci_password"]')) return;
       var path = location.pathname;
       if (path.indexOf('/status/overview') !== -1) {
         this.transformStatusOverview();
@@ -1908,6 +1945,8 @@
         this.transformNetworkDiagnostics();
       } else if (path.indexOf('/network/wireless') !== -1) {
         this.transformNetworkWireless();
+      } else if (path.indexOf('/network/routes') !== -1) {
+        this.transformNetworkRoutes();
       } else if (path.indexOf('/network/network') !== -1) {
         this.transformNetworkInterfaces();
       } else if (path.indexOf('/system/admin') !== -1) {
@@ -1916,6 +1955,18 @@
         this.transformStatusIptables();
       } else if (path.indexOf('/status/processes') !== -1) {
         this.transformStatusProcesses();
+        if (!document.querySelector('.ark-proc-btn') && !this._procPoll) {
+          var self = this;
+          this._procPoll = setInterval(function() {
+            if (document.querySelector('.ark-proc-btn')) {
+              clearInterval(self._procPoll);
+              self._procPoll = null;
+            } else {
+              self.transformStatusProcesses();
+            }
+          }, 300);
+          setTimeout(function() { if (self._procPoll) { clearInterval(self._procPoll); self._procPoll = null; } }, 8000);
+        }
       } else if (path.indexOf('/status/realtime') !== -1) {
         this.transformStatusRealtime(); } else if (path.indexOf("/status/channel_analysis") !== -1) { this.transformChannelAnalysis();
       } else if (path.indexOf('/system/leds') !== -1) {
@@ -2193,7 +2244,19 @@
       }
 
       // 2. Format process rows (status badge + horizontal button group)
-      var rows = view.querySelectorAll('.table .tr:not(.table-titles):not(.placeholder), table.cbi-section-table tr:not(.table-titles)');
+      var table = view.querySelector('.table, table.cbi-section-table');
+      if (!table) return;
+
+      var placeholder = table.querySelector('.tr.placeholder, .placeholder');
+      var rows = table.querySelectorAll('.tr:not(.table-titles):not(.placeholder), tr:not(.table-titles):not(.placeholder)');
+
+      // Auto-recovery: only if LuCI explicitly rendered the placeholder ("No information available")
+      if (placeholder && !this._recoveringProcesses) {
+        this.recoverProcessList(view);
+        return;
+      }
+      if (rows.length === 0) return;
+
       rows.forEach(function(row) {
         var cells = row.querySelectorAll('.td, td');
         if (cells.length < 6) return;
@@ -2227,10 +2290,13 @@
         
         // Style the action buttons in a clean horizontal group
         var btnWrap = actionCell.querySelector('div') || actionCell;
-        btnWrap.classList.add('ark-proc-actions-group');
+        if (!btnWrap.classList.contains('ark-proc-actions-group')) {
+          btnWrap.classList.add('ark-proc-actions-group');
+        }
 
         var btns = btnWrap.querySelectorAll('button, input[type="submit"]');
         btns.forEach(function(btn) {
+          if (btn.classList.contains('ark-proc-btn')) return;
           var text = (btn.textContent || btn.value || '').trim();
           var lower = text.toLowerCase();
           btn.classList.add('ark-proc-btn');
@@ -2262,10 +2328,93 @@
       this.injectRealProcessMemory(view);
     },
 
+    recoverProcessList: function(view) {
+      var self = this;
+      var now = Date.now();
+      if (this._lastProcessRecovery && (now - this._lastProcessRecovery < 6000)) return;
+      this._lastProcessRecovery = now;
+      this._recoveringProcesses = true;
+
+      if (typeof L === 'undefined' || !L.require) {
+        self._recoveringProcesses = false;
+        return;
+      }
+
+      L.require(['rpc', 'ui', 'fs']).then(function(deps) {
+        var rpc = deps[0], ui = deps[1], fs = deps[2];
+        var callLuciProcessList = rpc.declare({
+          object: 'luci',
+          method: 'getProcessList',
+          expect: { result: [] }
+        });
+
+        callLuciProcessList().then(function(processes) {
+          self._recoveringProcesses = false;
+          if (Array.isArray(processes) && processes.length > 0) {
+            var table = view.querySelector('.table, table.cbi-section-table');
+            if (table && typeof window.cbi_update_table === 'function') {
+              processes.sort(function(a, b) { return (a.PID - b.PID); });
+              var rows = [];
+              for (var i = 0; i < processes.length; i++) {
+                var proc = processes[i];
+                var makeSignalHandler = function(signum, pid) {
+                  return function() {
+                    return fs.exec('/bin/kill', ['-' + signum, String(pid)]).then(function() {
+                      return callLuciProcessList().then(function(newProcs) {
+                        self.recoverProcessList(view);
+                      });
+                    }).catch(function(e) {
+                      if (ui.addNotification) ui.addNotification(null, document.createTextNode(e.message));
+                    });
+                  };
+                };
+                var cmdEl = (typeof E === 'function') ? E('span', { 'style': 'word-break: break-word' }, proc.COMMAND) : proc.COMMAND;
+                var actionsEl = (typeof E === 'function') ? E('div', {}, [
+                  E('button', { 'class': 'btn cbi-button-action', 'click': makeSignalHandler(1, proc.PID) }, 'Recarregar'),
+                  ' ',
+                  E('button', { 'class': 'btn cbi-button-negative', 'click': makeSignalHandler(15, proc.PID) }, 'Terminar'),
+                  ' ',
+                  E('button', { 'class': 'btn cbi-button-negative', 'click': makeSignalHandler(9, proc.PID) }, 'Matar')
+                ]) : '';
+
+                rows.push([
+                  proc.PID,
+                  proc.USER,
+                  cmdEl,
+                  proc['%CPU'],
+                  proc['%MEM'],
+                  actionsEl
+                ]);
+              }
+              window.cbi_update_table(table, rows, (typeof E === 'function') ? E('em', 'Nenhum processo em execução') : 'Nenhum processo em execução');
+              self.transformStatusProcesses();
+            }
+          }
+        }).catch(function() {
+          self._recoveringProcesses = false;
+        });
+      }).catch(function() {
+        self._recoveringProcesses = false;
+      });
+    },
+
     injectRealProcessMemory: function(view) {
+      if (this._injectingMemory) return;
+      var now = Date.now();
+      if (this._lastProcessTelemetry && (now - this._lastProcessTelemetry < 5000)) return;
+
+      var rows = view.querySelectorAll('.table .tr:not(.table-titles):not(.placeholder), table.cbi-section-table tr:not(.table-titles):not(.placeholder)');
+      if (!rows || rows.length === 0) return;
+
       if (typeof L === 'undefined' || !L.require) return;
+
+      this._injectingMemory = true;
+      this._lastProcessTelemetry = now;
+      var self = this;
+
       L.require('fs').then(function(fs) {
         fs.exec('/usr/sbin/equipe-dashboard-control', ['system-processes-telemetry']).then(function(res) {
+          self._injectingMemory = false;
           if (!res || res.code !== 0 || !res.stdout) return;
           try {
             var data = JSON.parse(res.stdout);
@@ -2283,20 +2432,23 @@
               var headerRow = table.querySelector('.tr.table-titles, thead tr, tr.table-titles');
               if (headerRow) {
                 var ths = headerRow.querySelectorAll('.th, th');
-                if (ths && ths[4]) {
+                if (ths && ths[4] && !ths[4].hasAttribute('data-rss-labeled')) {
                   ths[4].innerHTML = 'MEMÓRIA REAL <small class="ex-muted" style="font-size:0.75rem;">(RSS)</small>';
                   ths[4].title = 'Consumo de memória física real (RSS) no Kernel Linux em MB e % da RAM total';
+                  ths[4].setAttribute('data-rss-labeled', '1');
                 }
               }
             }
 
             // Update process rows
-            var rows = view.querySelectorAll('.table .tr:not(.table-titles):not(.placeholder), table.cbi-section-table tr:not(.table-titles)');
-            rows.forEach(function(row) {
+            var currentRows = view.querySelectorAll('.table .tr:not(.table-titles):not(.placeholder), table.cbi-section-table tr:not(.table-titles):not(.placeholder)');
+            currentRows.forEach(function(row) {
               var cells = row.querySelectorAll('.td, td');
               if (cells.length < 5) return;
-              var pid = cells[0].textContent.trim();
               var ramCell = cells[4];
+              if (ramCell.getAttribute('data-normalized') === '2') return;
+
+              var pid = cells[0].textContent.trim();
               var cmdCell = cells[2];
 
               if (pidMap[pid]) {
@@ -2314,14 +2466,19 @@
                 if (isKernel) {
                   ramCell.innerHTML = '<span class="ex-muted" style="font-size:0.8rem; color:var(--ark-text-muted);">0.0 MB <small>(Kernel)</small></span>';
                   ramCell.title = 'Thread interna do kernel compartilhando o espaço de memória do sistema.';
+                  ramCell.setAttribute('data-normalized', '2');
                 }
               }
             });
           } catch (e) {
             console.warn('[ArkTheme] Erro ao aplicar telemetria RSS:', e);
           }
-        }).catch(function(err) {});
-      }).catch(function(err) {});
+        }).catch(function(err) {
+          self._injectingMemory = false;
+        });
+      }).catch(function(err) {
+        self._injectingMemory = false;
+      });
     },
 
     makeProcessesTableSortable: function(view) {
@@ -3138,6 +3295,39 @@
       });
     },
 
+    transformNetworkRoutes: function() {
+      var view = document.getElementById('view') || document.getElementById('maincontent');
+      if (!view) return;
+
+      var lang = (document.documentElement.lang || 'pt').toLowerCase();
+      var isEn = (lang.indexOf('en') === 0);
+      var isEs = (lang.indexOf('es') === 0);
+
+      var map = document.getElementById('cbi-network');
+      if (map) {
+        map.style.setProperty('max-width', '100%', 'important');
+        map.style.setProperty('box-sizing', 'border-box', 'important');
+      }
+
+      var secList = view.querySelectorAll('.cbi-section.cbi-tblsection');
+      secList.forEach(function(sec) {
+        sec.style.setProperty('overflow-x', 'auto', 'important');
+        sec.style.setProperty('max-width', '100%', 'important');
+        sec.style.setProperty('box-sizing', 'border-box', 'important');
+
+        if (!sec.querySelector('.ark-table-swipe-hint')) {
+          var hint = document.createElement('div');
+          hint.className = 'ark-table-swipe-hint';
+          hint.style.cssText = 'margin-bottom: 8px;';
+          hint.textContent = '↔ ' + (isEn ? 'Swipe table to view metric, table & actions' : (isEs ? 'Deslice para ver métrica, tabla y acciones' : 'Deslize para ver métrica, tabela e ações'));
+          var tbl = sec.querySelector('table, .table');
+          if (tbl) {
+            sec.insertBefore(hint, tbl);
+          }
+        }
+      });
+    },
+
     transformNetworkWireless: function() {
       var view = document.getElementById('view') || document.getElementById('maincontent');
       if (!view) return;
@@ -3376,6 +3566,58 @@
       table.style.setProperty('display', 'none', 'important');
       var oldSearch = wifiSec.querySelector('.ark-table-search-bar');
       if (oldSearch) oldSearch.style.display = 'none';
+
+      // Associated Stations Table Mobile Container
+      var assocTable = document.getElementById('wifi_assoclist_table');
+      if (assocTable && !document.getElementById('ark-assoclist-container')) {
+        var assocCard = document.createElement('div');
+        assocCard.id = 'ark-assoclist-container';
+        assocCard.className = 'cbi-section ark-assoclist-card';
+
+        var prevH3 = null;
+        var prevNode = assocTable.previousElementSibling;
+        while (prevNode) {
+          if (prevNode.tagName === 'H3') {
+            prevH3 = prevNode;
+            break;
+          }
+          prevNode = prevNode.previousElementSibling;
+        }
+
+        var titleStr = isEn ? 'Associated Stations (Connected Devices)' : (isEs ? 'Dispositivos Conectados (Estaciones Wi-Fi)' : 'Dispositivos Conectados no Wi-Fi');
+        if (prevH3) {
+          prevH3.style.display = 'none';
+        }
+
+        var aHeader = document.createElement('div');
+        aHeader.className = 'ark-assoclist-header';
+        aHeader.innerHTML = '' +
+          '<div class="ark-assoclist-title-wrap">' +
+            '<h3>📶 ' + titleStr + '</h3>' +
+            '<span class="ark-chip primary" id="ark-assoclist-count">' + (isEn ? 'Scanning...' : (isEs ? 'Buscando...' : 'Buscando...')) + '</span>' +
+          '</div>' +
+          '<div class="ark-table-swipe-hint">↔ ' + (isEn ? 'Swipe table to view signal & rates' : (isEs ? 'Deslice para ver señal y tasas' : 'Deslize para ver sinal e taxas')) + '</div>';
+
+        var respWrap = document.createElement('div');
+        respWrap.className = 'ark-table-responsive';
+
+        assocCard.appendChild(aHeader);
+        assocCard.appendChild(respWrap);
+
+        assocTable.parentNode.insertBefore(assocCard, assocTable);
+        respWrap.appendChild(assocTable);
+      }
+
+      var assocCountBadge = document.getElementById('ark-assoclist-count');
+      if (assocCountBadge && assocTable) {
+        var numRows = assocTable.querySelectorAll('.tr:not(.table-titles), tr:not(.table-titles)').length;
+        var emptyNotice = assocTable.querySelector('.spinning, em');
+        if (emptyNotice || numRows === 0) {
+          assocCountBadge.textContent = isEn ? 'Connecting...' : (isEs ? 'Conectando...' : 'Carregando...');
+        } else {
+          assocCountBadge.textContent = numRows + ' ' + (isEn ? (numRows === 1 ? 'device' : 'devices') : (isEs ? (numRows === 1 ? 'dispositivo' : 'dispositivos') : (numRows === 1 ? 'dispositivo' : 'dispositivos')));
+        }
+      }
     },
 
     transformNetworkInterfaces: function() {
@@ -4151,7 +4393,7 @@
       var self = this;
       var timeout = null;
       var isMutatingSelf = false;
-      var observer = new MutationObserver(function() {
+      var observer = new MutationObserver(function(mutations) {
         if (isMutatingSelf) return;
         clearTimeout(timeout);
         timeout = setTimeout(function() {

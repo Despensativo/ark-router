@@ -1736,7 +1736,7 @@ const EN = {
   "Se o seu plano for de alta velocidade e você quiser eliminar lag em jogos (Bufferbloat), ative e defina o Download em 0 (ilimitado) em": "If you have a high-speed plan and want to eliminate gaming lag (Bufferbloat), enable and set Download to 0 (unlimited) on",
   "Servidor Personalizado": "Custom Server",
   "WPA2 / WPA3 Misto (Mais Seguro)": "WPA2 / WPA3 Mixed (More Secure)",
-  "”?": "\"?"
+  "”?": "\"?",
 
   "Fibra Óptica Direta (PPPoE)": "Direct Fiber Optic (PPPoE)",
   "Porta": "Port",
@@ -3679,7 +3679,7 @@ const ES = {
   "Se o seu plano for de alta velocidade e você quiser eliminar lag em jogos (Bufferbloat), ative e defina o Download em 0 (ilimitado) em": "Si su plan es de alta velocidad y desea eliminar el retraso en juegos (Bufferbloat), actívelo y establezca la Descarga en 0 (ilimitada) en",
   "Servidor Personalizado": "Servidor Personalizado",
   "WPA2 / WPA3 Misto (Mais Seguro)": "WPA2 / WPA3 Mixto (Más Seguro)",
-  "”?": "\"?"
+  "”?": "\"?",
 
   "Fibra Óptica Direta (PPPoE)": "Fibra Óptica Directa (PPPoE)",
   "Porta": "Puerto",

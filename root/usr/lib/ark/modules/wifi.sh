@@ -282,7 +282,7 @@ handle_wifi() {
 				allow_toggle=1
 				;;
 		esac
-		ssid=''; ssid2=''; ssid5=''; ssid6=''; password=''; enabled='keep'; split='0'; guest_download=''; guest_upload=''; encryption=''
+		ssid=''; ssid2=''; ssid5=''; ssid6=''; password=''; enabled='keep'; split='0'; split_enc='0'; guest_download=''; guest_upload=''; encryption=''; encryption2=''; encryption5=''; encryption6=''
 		enable_2g='keep'; enable_5g='keep'; enable_6g='keep'
 		shift 2
 		for pair in "$@"; do
@@ -294,6 +294,10 @@ handle_wifi() {
 				ssid6) ssid6="$value" ;;
 				password) password="$value" ;;
 				encryption) case "$value" in psk2|sae-mixed|sae|none) encryption="$value" ;; esac ;;
+				encryption2) case "$value" in psk2|sae-mixed|sae|none) encryption2="$value" ;; esac ;;
+				encryption5) case "$value" in psk2|sae-mixed|sae|none) encryption5="$value" ;; esac ;;
+				encryption6) case "$value" in psk2|sae-mixed|sae|none) encryption6="$value" ;; esac ;;
+				split_enc) case "$value" in 0|1) split_enc="$value" ;; esac ;;
 				enabled) case "$value" in 0|1|keep) enabled="$value" ;; *) echo 'Estado da rede invalido' >&2; exit 2 ;; esac ;;
 				enable_2g) case "$value" in 0|1|keep) enable_2g="$value" ;; *) echo 'Estado 2,4 GHz invalido' >&2; exit 2 ;; esac ;;
 				enable_5g) case "$value" in 0|1|keep) enable_5g="$value" ;; *) echo 'Estado 5 GHz invalido' >&2; exit 2 ;; esac ;;
@@ -382,7 +386,26 @@ handle_wifi() {
 			if { [ -n "$radio6" ] && [ "$sec_dev" = "$radio6" ]; } || case "$section" in *radio2|*_r2|*wifi2*|*6g*) true;; *) false;; esac; then
 				is_sec_6g=1
 			fi
-			if [ "$encryption" = none ]; then
+
+			sec_enc="$encryption"
+			if [ "$split_enc" = "1" ]; then
+				if [ "$sec_dev" = "$radio2" ]; then
+					sec_enc="${encryption2:-$encryption}"
+				elif [ "$sec_dev" = "$radio5" ]; then
+					sec_enc="${encryption5:-$encryption}"
+				elif [ -n "$radio6" ] && [ "$sec_dev" = "$radio6" ]; then
+					sec_enc="${encryption6:-sae}"
+				else
+					case "$section" in
+						*radio0|*_r0|*wifi0*|*2g*) sec_enc="${encryption2:-$encryption}" ;;
+						*radio1|*_r1|*wifi1*|*5g*) sec_enc="${encryption5:-$encryption}" ;;
+						*radio2|*_r2|*wifi2*|*6g*) sec_enc="${encryption6:-sae}" ;;
+						*) sec_enc="$encryption" ;;
+					esac
+				fi
+			fi
+
+			if [ "$sec_enc" = none ]; then
 				if [ "$is_sec_6g" = 1 ]; then
 					# Banda de 6 GHz NÃO suporta rede aberta sem OWE; desabilita interface para não quebrar o hostapd
 					uci -q set "wireless.$section.disabled=1"
@@ -393,8 +416,7 @@ handle_wifi() {
 					uci -q delete "wireless.$section.key"
 					uci -q delete "wireless.$section.sae_password" 2>/dev/null || true
 				fi
-			elif [ -n "$encryption" ]; then
-				sec_enc="$encryption"
+			elif [ -n "$sec_enc" ]; then
 				if opkg list-installed 2>/dev/null | grep -q "^wpad-basic -" && { [ "$sec_enc" = "sae" ] || [ "$sec_enc" = "sae-mixed" ]; }; then
 					sec_enc="psk2"
 				fi
@@ -831,6 +853,8 @@ EOF
 	wifi-maxpower-toggle)
 		state="${2:-1}"
 		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
+			old_country="$(uci -q get wireless.radio0.country || uci -q get wireless.radio1.country || echo 'BR')"
+			[ "$old_country" != "PA" ] && uci -q set "equipe_dashboard.wifi.previous_country=$old_country" && uci commit equipe_dashboard 2>/dev/null || true
 			for r in $(uci -q show wireless | grep '=wifi-device' | cut -d. -f2 | cut -d= -f1); do
 				uci -q set "wireless.$r.country=PA"
 			done
@@ -838,8 +862,10 @@ EOF
 			(sleep 1; wifi reload) >/dev/null 2>&1 &
 			echo 'enabled'
 		else
+			restore_country="$(uci -q get equipe_dashboard.wifi.previous_country || echo 'BR')"
+			[ -n "$restore_country" ] || restore_country='BR'
 			for r in $(uci -q show wireless | grep '=wifi-device' | cut -d. -f2 | cut -d= -f1); do
-				uci -q set "wireless.$r.country=BR"
+				uci -q set "wireless.$r.country=$restore_country"
 			done
 			uci commit wireless
 			(sleep 1; wifi reload) >/dev/null 2>&1 &
@@ -1063,7 +1089,9 @@ EOF
 							uci -q set usteer.@usteer[0].network='lan'
 							uci -q set usteer.@usteer[0].syslog='1'
 							uci -q set usteer.@usteer[0].min_snr='15'
-							uci -q set usteer.@usteer[0].band_steering_threshold='20'
+							uci -q set usteer.@usteer[0].load_balancing_threshold='3'
+							uci -q set usteer.@usteer[0].band_steering_threshold='5'
+							uci -q set usteer.@usteer[0].band_steering_min_snr='-70'
 							uci -q set usteer.@usteer[0].kick_threshold='-78'
 							uci -q set usteer.@usteer[0].max_retries='3'
 							uci commit usteer 2>/dev/null || true
@@ -1083,7 +1111,9 @@ EOF
 					uci -q set usteer.@usteer[0].network='lan'
 					uci -q set usteer.@usteer[0].syslog='1'
 					uci -q set usteer.@usteer[0].min_snr='15'
-					uci -q set usteer.@usteer[0].band_steering_threshold='20'
+					uci -q set usteer.@usteer[0].load_balancing_threshold='3'
+					uci -q set usteer.@usteer[0].band_steering_threshold='5'
+					uci -q set usteer.@usteer[0].band_steering_min_snr='-70'
 					uci -q set usteer.@usteer[0].kick_threshold='-78'
 					uci -q set usteer.@usteer[0].max_retries='3'
 					uci commit usteer 2>/dev/null || true

@@ -4,7 +4,7 @@
 'require poll';
 'require fs';
 'require ui';
-const ARK_BUILD_VERSION = '1.5.16';
+const ARK_BUILD_VERSION = '1.5.17';
 if (typeof window !== 'undefined') {
 	window.ARK_BUILD_VERSION = ARK_BUILD_VERSION;
 	window.ARK_VERSION = ARK_BUILD_VERSION;
@@ -21,8 +21,38 @@ if (typeof window !== 'undefined') {
 	} catch(e) {}
 }
 
-document.querySelector('head').appendChild(E('link', {
-	'rel': 'stylesheet', 'type': 'text/css',
-	'href': L.resource('view/equipe-dashboard/overview_v2.css') + '?v=' + ARK_BUILD_VERSION
-}));
+if (typeof document !== 'undefined') {
+	try {
+		var _head = (document.querySelector && document.querySelector('head')) || document.documentElement || document.head;
+		if (_head) {
+			var _vpEl = document.querySelector ? document.querySelector('meta[name="viewport"]') : null;
+			if (!_vpEl) {
+				if (typeof E === 'function') {
+					_vpEl = E('meta', { 'name': 'viewport', 'content': 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover' });
+				} else if (typeof document.createElement === 'function') {
+					_vpEl = document.createElement('meta');
+					_vpEl.name = 'viewport';
+					_vpEl.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+				}
+				if (_vpEl && _head.appendChild) _head.appendChild(_vpEl);
+			} else if (_vpEl.setAttribute) {
+				_vpEl.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+			}
+
+			var _cssHref = (typeof L !== 'undefined' && L.resource ? L.resource('view/equipe-dashboard/overview_v2.css') : '/luci-static/resources/view/equipe-dashboard/overview_v2.css') + '?v=' + ARK_BUILD_VERSION;
+			var _linkEl = null;
+			if (typeof E === 'function') {
+				_linkEl = E('link', { 'rel': 'stylesheet', 'type': 'text/css', 'href': _cssHref });
+			} else if (typeof document.createElement === 'function') {
+				_linkEl = document.createElement('link');
+				_linkEl.rel = 'stylesheet';
+				_linkEl.type = 'text/css';
+				_linkEl.href = _cssHref;
+			}
+			if (_linkEl && _head.appendChild) _head.appendChild(_linkEl);
+		}
+	} catch(e) {}
+}
+
+
 

@@ -405,8 +405,16 @@ div[data-tab][data-tab-active="true"]:not(li),
 	display: block !important;
 	height: auto !important;
 	opacity: 1 !important;
-	overflow: visible !important;
+	overflow: visible;
 	animation: arkTabFade 0.2s ease-in-out;
+}
+
+.cbi-section.cbi-tblsection[data-tab-active="true"],
+.cbi-tblsection[data-tab-active="true"] {
+	overflow-x: auto !important;
+	-webkit-overflow-scrolling: touch !important;
+	max-width: 100% !important;
+	box-sizing: border-box !important;
 }
 
 @keyframes arkTabFade {
@@ -455,27 +463,84 @@ table .ifacebadge,
 	margin: 0 !important;
 }
 
-/* Prevent tooltip popups from rendering inline and breaking interface cells */
+/* Universal LuCI Tooltip Popovers in Ark Theme */
+.cbi-tooltip-container {
+	position: relative !important;
+	cursor: help !important;
+}
+.cbi-tooltip,
 .cbi-tooltip.ifacebadge {
 	display: none !important;
-}
-.cbi-tooltip-container:hover .cbi-tooltip.ifacebadge {
-	display: block !important;
 	position: absolute !important;
-	z-index: 1000 !important;
+	z-index: 9999 !important;
+	bottom: calc(100% + 8px) !important;
+	left: 50% !important;
+	transform: translateX(-50%) translateY(4px) !important;
 	background: #0f172a !important;
 	border: 1px solid #334155 !important;
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
-	padding: 10px 14px !important;
+	color: #e2e8f0 !important;
+	box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.7) !important;
+	padding: 8px 12px !important;
 	border-radius: 8px !important;
+	font-size: 11px !important;
+	font-weight: 400 !important;
+	line-height: 1.45 !important;
+	white-space: pre !important;
+	text-align: left !important;
+	min-width: 170px !important;
+	max-width: min(320px, calc(100vw - 32px)) !important;
+	width: max-content !important;
+	opacity: 0 !important;
+	pointer-events: none !important;
+	transition: opacity 0.15s ease, transform 0.15s ease !important;
+}
+.cbi-tooltip::after,
+.cbi-tooltip.ifacebadge::after {
+	content: '' !important;
+	position: absolute !important;
+	top: 100% !important;
+	left: 50% !important;
+	transform: translateX(-50%) !important;
+	border-width: 5px !important;
+	border-style: solid !important;
+	border-color: #334155 transparent transparent transparent !important;
+}
+.cbi-tooltip.left {
+	left: 0 !important;
+	transform: translateY(4px) !important;
+}
+.cbi-tooltip.left::after {
+	left: 20px !important;
+	transform: none !important;
+}
+.cbi-tooltip-container:hover > .cbi-tooltip,
+.cbi-tooltip-container:hover > .cbi-tooltip.ifacebadge,
+.cbi-tooltip-container:focus-within > .cbi-tooltip,
+.cbi-tooltip-container:focus-within > .cbi-tooltip.ifacebadge {
+	display: block !important;
+	opacity: 1 !important;
+	transform: translateX(-50%) translateY(0) !important;
+}
+.cbi-tooltip-container:hover > .cbi-tooltip.left,
+.cbi-tooltip-container:focus-within > .cbi-tooltip.left {
+	transform: translateY(0) !important;
+}
+.cbi-tooltip span.nowrap {
+	display: block !important;
+	margin-bottom: 2px !important;
+}
+.cbi-tooltip strong {
+	color: #93c5fd !important;
+	font-weight: 600 !important;
 }
 
+/* Base Interface Box */
 .ifacebox {
 	background: var(--ark-surface-1) !important;
 	border: 1px solid var(--ark-border) !important;
-	border-radius: var(--ark-radius-lg) !important;
-	margin-bottom: 20px !important;
-	padding: 20px !important;
+	border-radius: var(--ark-radius-lg, 12px) !important;
+	margin-bottom: 16px !important;
+	padding: 14px 16px !important;
 	box-shadow: var(--ark-shadow) !important;
 }
 .ifacebox-head {
@@ -483,27 +548,11 @@ table .ifacebadge,
 	color: #fff !important;
 	font-weight: 700 !important;
 	border-radius: 6px !important;
-	padding: 6px 14px !important;
-	margin-bottom: 14px !important;
+	padding: 4px 12px !important;
+	margin-bottom: 10px !important;
 	display: inline-block !important;
-	font-size: 13px !important;
+	font-size: 12px !important;
 	letter-spacing: 0.03em;
-}
-.ifacebox .ifacebox-head.cbi-tooltip-container,
-.ifacebox .cbi-tooltip-container {
-	background: rgba(255, 255, 255, 0.04) !important;
-	border: 1px solid var(--ark-border) !important;
-	color: var(--ark-text-muted) !important;
-	font-size: 11px !important;
-	font-weight: 500 !important;
-	padding: 8px 10px !important;
-	border-radius: 6px !important;
-	line-height: 1.5 !important;
-	margin-top: 8px !important;
-	margin-bottom: 0 !important;
-	text-align: left !important;
-	display: block !important;
-	box-shadow: none !important;
 }
 .ifacebox-body {
 	display: flex !important;
@@ -511,6 +560,143 @@ table .ifacebadge,
 	gap: 12px !important;
 	background: transparent !important;
 	padding: 4px 0 !important;
+}
+
+/* ========================================================== */
+/* Port Status Grid & Card Architecture (Switch Layout)      */
+/* ========================================================== */
+div[style*="grid-template-columns"]:has(> .ifacebox) {
+	display: flex !important;
+	flex-wrap: wrap !important;
+	gap: 12px !important;
+	margin: 12px 0 20px !important;
+	padding: 14px !important;
+	background: rgba(15, 23, 42, 0.45) !important;
+	border: 1px solid rgba(255, 255, 255, 0.06) !important;
+	border-radius: var(--ark-radius-lg, 12px) !important;
+	box-sizing: border-box !important;
+	align-items: stretch !important;
+}
+
+div[style*="grid-template-columns"] > .ifacebox {
+	background: var(--ark-surface-2, #162238) !important;
+	border: 1px solid var(--ark-border, rgba(255, 255, 255, 0.08)) !important;
+	border-radius: var(--ark-radius, 10px) !important;
+	padding: 10px 8px 8px !important;
+	margin: 0 !important;
+	min-width: 90px !important;
+	max-width: 125px !important;
+	flex: 1 1 100px !important;
+	width: auto !important;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+	display: flex !important;
+	flex-direction: column !important;
+	align-items: center !important;
+	justify-content: space-between !important;
+	box-sizing: border-box !important;
+	position: relative !important;
+	min-height: 124px !important;
+	transition: all 0.2s ease !important;
+}
+
+div[style*="grid-template-columns"] > .ifacebox:hover {
+	border-color: var(--ark-primary, #3b82f6) !important;
+	transform: translateY(-2px) !important;
+	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4), 0 0 12px rgba(59, 130, 246, 0.25) !important;
+}
+
+/* Port Header / Title */
+div[style*="grid-template-columns"] > .ifacebox > .ifacebox-head:first-child {
+	background: linear-gradient(135deg, #1e3a8a, #3b82f6) !important;
+	color: #ffffff !important;
+	font-weight: 700 !important;
+	border-radius: 6px !important;
+	padding: 3px 8px !important;
+	margin: 0 0 6px 0 !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	font-size: 11px !important;
+	letter-spacing: 0.05em !important;
+	text-transform: uppercase !important;
+	width: auto !important;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Port Body (Icon + Link Speed) */
+div[style*="grid-template-columns"] > .ifacebox > .ifacebox-body:nth-child(2) {
+	display: flex !important;
+	flex-direction: column !important;
+	align-items: center !important;
+	justify-content: center !important;
+	gap: 4px !important;
+	padding: 4px 0 !important;
+	margin: 0 !important;
+	width: 100% !important;
+	flex: 1 !important;
+}
+
+div[style*="grid-template-columns"] > .ifacebox > .ifacebox-body:nth-child(2) img {
+	width: 28px !important;
+	height: 28px !important;
+	object-fit: contain !important;
+	filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5)) !important;
+}
+
+div[style*="grid-template-columns"] > .ifacebox > .ifacebox-body:nth-child(2) span,
+div[style*="grid-template-columns"] > .ifacebox > .ifacebox-body:nth-child(2) {
+	font-size: 11px !important;
+	font-weight: 600 !important;
+	color: #e2e8f0 !important;
+	white-space: nowrap !important;
+	line-height: 1.2 !important;
+}
+
+/* Firewall Zone Indicator Bar */
+div[style*="grid-template-columns"] > .ifacebox > .ifacebox-head.cbi-tooltip-container {
+	background: transparent !important;
+	border: none !important;
+	padding: 0 !important;
+	margin: 4px 0 !important;
+	width: 100% !important;
+	border-radius: 0 !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	box-shadow: none !important;
+}
+
+div[style*="grid-template-columns"] > .ifacebox .zonebadge {
+	border-radius: 3px !important;
+	height: 4px !important;
+	width: 100% !important;
+	display: block !important;
+}
+
+/* Traffic Up/Down Counter Container */
+div[style*="grid-template-columns"] > .ifacebox > .ifacebox-body:last-child {
+	width: 100% !important;
+	padding: 0 !important;
+	margin-top: 4px !important;
+	display: block !important;
+}
+
+div[style*="grid-template-columns"] > .ifacebox .cbi-tooltip-container {
+	background: rgba(255, 255, 255, 0.04) !important;
+	border: 1px solid rgba(255, 255, 255, 0.08) !important;
+	border-radius: 6px !important;
+	padding: 3px 4px !important;
+	font-size: 10px !important;
+	font-weight: 500 !important;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+	color: #94a3b8 !important;
+	width: 100% !important;
+	box-sizing: border-box !important;
+	text-align: center !important;
+	line-height: 1.3 !important;
+	display: block !important;
+	margin: 0 !important;
+	box-shadow: none !important;
 }
 .ark-iface-icon {
 	font-size: 13px !important;
@@ -1148,7 +1334,7 @@ form[action=""] input.cbi-input-text,
 form:has(input[name="luci_password"]) input.cbi-input-text {
 	width: 100% !important;
 	padding: 12px 14px !important;
-	font-size: 14px !important;
+	font-size: 16px !important;
 	border-radius: 10px !important;
 	background: rgba(11, 17, 32, 0.8) !important;
 }
@@ -1246,11 +1432,11 @@ body.modal-overlay-active:not(.ark-login-page) #modal_overlay {
 	border-radius: var(--ark-radius-lg) !important;
 	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(56, 189, 248, 0.1) !important;
 	color: var(--ark-text-main) !important;
-	max-width: 720px;
+	max-width: 880px;
 	min-height: 32px;
 	min-width: 280px;
-	width: 90%;
-	margin: 4em auto;
+	width: min(880px, calc(100vw - 32px));
+	margin: 2.5em auto;
 	padding: 24px;
 	display: flex;
 	flex-wrap: wrap;
@@ -1258,7 +1444,8 @@ body.modal-overlay-active:not(.ark-login-page) #modal_overlay {
 	box-sizing: border-box;
 }
 #modal_overlay > .modal.uci-dialog, #modal_overlay > .modal.cbi-modal {
-	max-width: 900px;
+	max-width: 960px;
+	width: min(960px, calc(100vw - 32px));
 }
 .modal > * {
 	flex-basis: 100%;
@@ -1996,6 +2183,72 @@ body.modal-overlay-active:not(.ark-login-page) #modal_overlay {
 	padding: 4px 10px !important;
 }
 
+/* Associated Stations Responsive Card */
+.ark-assoclist-card {
+	margin-top: 24px !important;
+	padding: 20px 24px !important;
+	border-radius: var(--ark-radius-lg, 16px) !important;
+	background: var(--ark-surface-1) !important;
+	border: 1px solid var(--ark-border) !important;
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+	box-sizing: border-box !important;
+	width: 100% !important;
+	max-width: 100% !important;
+	overflow: hidden !important;
+}
+.ark-assoclist-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin-bottom: 16px;
+	padding-bottom: 12px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.ark-assoclist-title-wrap {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+.ark-assoclist-title-wrap h3 {
+	margin: 0 !important;
+	font-size: 17px !important;
+	font-weight: 700 !important;
+	color: #fff !important;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.ark-table-swipe-hint {
+	display: none;
+	font-size: 11px;
+	color: var(--ark-primary);
+	background: rgba(59, 130, 246, 0.1);
+	border: 1px solid rgba(59, 130, 246, 0.2);
+	padding: 4px 10px;
+	border-radius: 6px;
+	white-space: nowrap;
+}
+.ark-table-responsive {
+	width: 100% !important;
+	max-width: 100% !important;
+	overflow-x: auto !important;
+	-webkit-overflow-scrolling: touch !important;
+	box-sizing: border-box !important;
+	border-radius: 10px;
+}
+.ark-table-responsive > table,
+.ark-table-responsive > .table {
+	margin: 0 !important;
+	width: 100% !important;
+}
+
+#view {
+	max-width: 100% !important;
+	box-sizing: border-box !important;
+}
 
 /* 7. Interfaces Command Grid (Space-Efficient & Modernized) */
 .ark-iface-grid {
@@ -2341,7 +2594,38 @@ textarea[name*="notes"]:focus {
 	padding-top: 6px !important;
 }
 
-/* 11. Mobile Breakpoint Adjustments */
+/* 11. Mobile Breakpoint Adjustments & Anti-Zoom Safeguards */
+button, input, select, textarea, label, summary, a, [role="button"], .btn, .cbi-button {
+	touch-action: manipulation;
+}
+@media (max-width: 854px) {
+	input,
+	input.cbi-input-text,
+	input[type="text"],
+	input[type="password"],
+	input[type="number"],
+	input[type="search"],
+	input[type="email"],
+	input[type="tel"],
+	input[type="url"],
+	textarea,
+	select,
+	select.cbi-input-select,
+	.cbi-value-field input,
+	.cbi-value-field select,
+	.cbi-value-field textarea,
+	.modal input,
+	.modal select,
+	.modal textarea,
+	.modal .cbi-value-field input.cbi-input-text,
+	.modal .cbi-value-field select.cbi-input-select,
+	#modal_overlay .modal input,
+	#modal_overlay .modal select,
+	#modal_overlay .modal textarea,
+	.ark-search-input {
+		font-size: 16px !important;
+	}
+}
 @media (max-width: 768px) {
 	.ark-wireless-grid,
 	.ark-action-grid,

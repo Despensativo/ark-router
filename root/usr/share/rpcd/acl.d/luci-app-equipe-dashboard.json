@@ -11,7 +11,8 @@
 				"/tmp/ark-doctor-last.json": [ "read" ],
 				"/var/log/ark-doctor.log": [ "read" ],
 				"/proc/net/arp": [ "read" ],
-				"/sys/class/thermal/thermal_zone0/temp": [ "read" ]
+				"/sys/class/thermal/thermal_zone0/temp": [ "read" ],
+				"/www/luci-static/resources/preload": [ "list" ]
 			},
 			"ubus": {
 				"file": [ "exec", "read", "list" ],
@@ -24,7 +25,7 @@
 				"system": [ "board", "info" ],
 				"uci": [ "changes", "get" ]
 			},
-			"uci": [ "attendedsysupgrade", "dhcp", "equipe_dashboard", "equipe_devices", "equipe_perf", "firewall", "luci", "mwan3", "network", "qos_equipe", "sqm", "starlink_telemetry", "transmission", "wireless" ]
+			"uci": [ "attendedsysupgrade", "dhcp", "equipe_dashboard", "equipe_devices", "equipe_perf", "firewall", "luci", "mwan3", "network", "qos_equipe", "sqm", "starlink_telemetry", "system", "transmission", "wireless" ]
 		},
 		"write": {
 			"file": {
@@ -34,7 +35,7 @@
 				"file": [ "exec" ],
 				"uci": [ "add", "apply", "commit", "delete", "set" ]
 			},
-			"uci": [ "attendedsysupgrade", "dhcp", "equipe_dashboard", "equipe_devices", "equipe_perf", "firewall", "luci", "mwan3", "network", "qos_equipe", "sqm", "starlink_telemetry", "transmission", "wireless" ]
+			"uci": [ "attendedsysupgrade", "dhcp", "equipe_dashboard", "equipe_devices", "equipe_perf", "firewall", "luci", "mwan3", "network", "qos_equipe", "sqm", "starlink_telemetry", "system", "transmission", "wireless" ]
 		}
 	}
 }

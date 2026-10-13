@@ -131,3 +131,94 @@ Orientar o desenvolvimento, refatoração e auditoria visual da interface web do
 - ❌ **NUNCA use `alert()`, `confirm()` ou `prompt()` síncronos:** Eles congelam o thread de eventos do LuCI e falham miseravelmente no Safari mobile e webviews. Use os modais assíncronos estilizados do ARK Router.
 - ❌ **NUNCA defina larguras fixas em pixels (`width: 600px`):** Use sempre limites responsivos com porcentagens ou `max-width: 100%`.
 - ❌ **NUNCA confie em preenchimento automático de senhas do LuCI:** O LuCI injeta inputs fictícios com `left: -100000px` para enganar o navegador; seus seletores de DOM devem ignorar esses elementos ocultos.
+
+---
+
+## 7. Padrão Arquitetural Homologado: Tabelas, Abas e Ações Mobile no LuCI
+
+### 7.1 Contenção Estrita de Viewport e Scroll Horizontal
+No LuCI, telas com tabelas nativas (`.cbi-tblsection`, rotas, wireless, regras de tráfego, DHCP) possuem largura intrínseca maior que a largura da tela de um smartphone (360px a 390px). Sem contenção rigorosa, a página infla a viewport do navegador para mais de 1.000px, quebrando a responsividade e gerando uma faixa vazia lateral.
+
+**Regras Mandatórias de CSS (`cascade.css` & `mobile.css`):**
+1. **Contenção Global de Viewport:**
+   ```css
+   #view, #maincontent {
+       max-width: 100% !important;
+       box-sizing: border-box !important;
+   }
+   ```
+2. **Desbloqueio de Scroll em Abas Ativas (A Pegadinha do LuCI):**
+   - O LuCI adiciona `[data-tab-active="true"]` aos painéis de abas ativas.
+   - **NUNCA** aplique `overflow: visible !important` genérico em seletores de abas ativas, pois isso anula a contenção horizontal de tabelas filhas.
+   - Aplique sempre a regra de alta especificidade com scroll lateral touch:
+   ```css
+   .cbi-section.cbi-tblsection,
+   .cbi-tblsection[data-tab-active="true"],
+   .cbi-section.cbi-tblsection[data-tab-active="true"],
+   .cbi-section-node,
+   .ark-table-responsive {
+       display: block !important;
+       overflow-x: auto !important;
+       -webkit-overflow-scrolling: touch !important;
+       max-width: 100% !important;
+       box-sizing: border-box !important;
+   }
+   ```
+3. **Dimensionamento de Tabelas Densas:**
+   - Para evitar colunas esmagadas ou texto ilegível em telas móveis, as tabelas com rolagem horizontal interna devem ter largura mínima e padding compacto:
+   ```css
+   @media only screen and (max-width: 854px) {
+       .cbi-section-table,
+       .cbi-tblsection-table,
+       .table {
+           min-width: 650px; /* Garante legibilidade e layout tabular íntegro */
+           font-size: 12px;
+       }
+       .cbi-section-table-cell,
+       .cbi-section-table-titles th {
+           padding: 8px 10px !important;
+           white-space: nowrap;
+       }
+   }
+   ```
+
+### 7.2 Encapsulamento Dinâmico de Tabelas no JavaScript (`ark-theme.js`)
+Tabelas nativas do LuCI inseridas diretamente sob `#view` (órfãs, como `#wifi_assoclist_table` em wireless) ou tabelas em abas devem ser encapsuladas e enriquecidas através de ganchos em `applyPageTransforms()`:
+1. **Empacotamento em Cartão com Rolagem Suave:**
+   - Detectar a tabela e envolvê-la em `.cbi-section.ark-assoclist-card` com container `.ark-table-responsive`.
+2. **Aviso Visual Tátil (Swipe Hint):**
+   - Inserir um indicador tátil acima da tabela para instruir o usuário de celular a deslizar para visualizar colunas ocultas:
+   ```javascript
+   const hint = E('div', { 'class': 'ark-table-swipe-hint' }, '↔ Deslize a tabela para ver métrica, detalhes e ações');
+   ```
+   Com estilo sutil em `mobile.css`: `font-size: 11px; color: var(--text-muted); opacity: 0.8; margin-bottom: 8px;`.
+3. **Idempotência Estrita no DOM:**
+   - Toda transformação deve verificar atributo de marcação (ex: `table.dataset.arkWrapped = 'true'`) para nunca duplicar elementos durante mutações do DOM ou refreshes do LuCI.
+
+### 7.3 Barra de Ações Mobile Padronizada (`.cbi-page-actions`)
+Em telas móveis (smartphones), os botões da barra inferior de salvar/descartar nunca devem ficar comprimidos em linha única nem estourar a tela.
+- **Layout Homologado:**
+  1. Botão Primário ("Salvar e Aplicar" / `cbi-button-apply`): 100% da largura na linha superior, com altura mínima de 44px e destaque visual.
+  2. Botões Secundários ("Salvar" / `cbi-button-save` e "Descartar" / `cbi-button-reset`): Grade de duas colunas balanceada (50% / 50%) na linha inferior, com altura mínima de 42px.
+- **Implementação CSS (`mobile.css`):**
+  ```css
+  @media only screen and (max-width: 854px) {
+      .cbi-page-actions {
+          display: flex !important;
+          flex-wrap: wrap !important;
+          gap: 8px !important;
+          padding: 12px !important;
+      }
+      .cbi-page-actions .cbi-button-apply {
+          flex: 1 1 100% !important;
+          order: 1 !important;
+          min-height: 44px !important;
+      }
+      .cbi-page-actions .cbi-button-save,
+      .cbi-page-actions .cbi-button-reset {
+          flex: 1 1 calc(50% - 4px) !important;
+          order: 2 !important;
+          min-height: 42px !important;
+      }
+  }
+  ```

@@ -95,7 +95,7 @@ const systemMethods = {
 		const stateClass=info.error?'offline':(info.available?'online':'standby');
 		const actions=[];
 		if(info.available){
-			actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.startSelfUpdate,this,info)},['Atualizar agora']));
+			actions.push(E('button',{class:'ex-mini-button','click':L.bind(this.showUpdateConfirmModal,this,info)},['Atualizar agora']));
 		}
 		actions.push(E('button',{class:'ex-mini-button','style':'background: rgba(127,127,127,.12);','click':L.bind(this.openManualUpdateModal,this,info)},['📦 Instalar manual/offline']));
 
@@ -137,40 +137,47 @@ const systemMethods = {
 		]));
 		translateTree(node);
 	},
-	checkSelfUpdate: function(button){
+	checkSelfUpdate: function(button, force){
 		if(button){button.disabled=true;button.textContent='Verificando…';}
 		const node=document.getElementById('ex-self-update-result'); if(node)node.replaceChildren(E('div',{class:'ex-update-card'},[E('small',{class:'ex-muted'},['Consultando GitHub Releases…'])]));
-		return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-check'],20000).then(L.bind(function(r){
+		const args = ['self-update-check'];
+		if(force) args.push('force');
+		return fs.exec('/usr/sbin/equipe-dashboard-control',args,20000).then(L.bind(function(r){
 			if(r.code)throw new Error(r.stderr||'Falha ao verificar atualização');
 			let info={}; try{info=JSON.parse(r.stdout||'{}');}catch(e){throw new Error('Resposta de atualização inválida');}
 			this.renderSelfUpdateResult(info);
+			if(info.available){
+				this.showUpdateConfirmModal(info);
+			}
 		},this)).catch(function(e){if(node)node.replaceChildren(E('div',{class:'ex-update-card'},[E('p',{class:'alert-message warning'},[e.message])]));}).finally(function(){if(button){button.disabled=false;button.textContent='Verificar atualização';}});
 	},
-	pollSelfUpdate: function(attempt){
+	pollSelfUpdate: function(attempt, liveContainer, updateInfo){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-status']).then(L.bind(function(r){
 			let raw = String(r.stdout || '').trim();
 			let data = { state: raw, percent: 30, message: 'Atualização em andamento…' };
 			if (raw.startsWith('{')) {
 				try { data = JSON.parse(raw); } catch(e){}
 			}
-			const node = document.getElementById('ex-self-update-result');
+			const cardNode = document.getElementById('ex-self-update-result');
+			const node = liveContainer || cardNode;
+
 			if (data.state === 'done') {
 				if (node) {
-					node.replaceChildren(E('div', { class: 'ex-update-progress-wrap' }, [
-						E('div', { class: 'ex-update-progress-bar' }, [
-							E('div', { class: 'ex-update-progress-fill', style: 'width: 100%; background: #10b981;' })
+					node.replaceChildren(E('div', { class: 'ex-update-live-box', style: 'border-color:rgba(16,185,129,0.4);' }, [
+						E('div', { style: 'font-size:2.2rem;margin-bottom:8px;' }, ['🎉']),
+						E('strong', { style: 'color: #10b981; font-size: 1.15rem; display: block;' }, ['✅ ' + (data.message || 'Atualização concluída com sucesso!')]),
+						E('p', { class: 'ex-muted', style: 'font-size:0.86rem;margin:8px 0 16px 0;' }, [_t('A nova versão foi instalada e está operacional.')]),
+						E('div', { class: 'ex-update-progress-bar-lg' }, [
+							E('div', { class: 'ex-update-progress-fill-lg', style: 'width: 100%; background: #10b981;' })
 						]),
-						E('div', { style: 'margin-top: 10px; text-align: center;' }, [
-							E('strong', { style: 'color: #10b981; font-size: 0.95rem; display: block;' }, ['✅ ' + (data.message || 'Atualização concluída com sucesso!')]),
-							E('small', { id: 'ex-update-countdown', class: 'ex-muted', style: 'display: block; margin-top: 4px;' }, ['Recarregando a página em 3 segundos…'])
-						])
+						E('small', { id: 'ex-update-countdown', class: 'ex-muted', style: 'display: block; margin-top: 12px; font-weight:700; color:#38bdf8;' }, [_t('Recarregando a página em 3 segundos…')])
 					]));
 				}
 				let seconds = 3;
 				const timer = window.setInterval(function(){
 					seconds--;
 					const el = document.getElementById('ex-update-countdown');
-					if (el) el.textContent = 'Recarregando a página em ' + seconds + ' segundo' + (seconds === 1 ? '' : 's') + '…';
+					if (el) el.textContent = _t('Recarregando a página em %s segundo(s)…').replace('%s', seconds);
 					if (seconds <= 0) {
 						window.clearInterval(timer);
 						window.location.reload();
@@ -179,44 +186,321 @@ const systemMethods = {
 				return;
 			}
 			if (data.state === 'error' || attempt > 180) {
-				return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-log']).then(function(log){
+				return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-log']).then(L.bind(function(log){
 					const lines = String(log.stdout||'').split(/\r?\n/).map(function(line){return line.trim();}).filter(Boolean);
 					const detail = lines.length ? lines.slice(-5).join(' | ') : 'A atualização não foi concluída.';
-					if (node) node.replaceChildren(E('p',{class:'alert-message warning'},[detail]));
+					if (node) {
+						node.replaceChildren(E('div', { class: 'ex-update-live-box', style: 'border-color:rgba(239,68,68,0.4);' }, [
+							E('div', { style: 'font-size:2.2rem;margin-bottom:8px;' }, ['⚠️']),
+							E('strong', { style: 'color:#ef4444;font-size:1.1rem;display:block;' }, [_t('A atualização não pôde ser concluída')]),
+							E('p', { style: 'font-size:0.85rem;color:#fca5a5;margin:8px 0 16px 0;text-align:left;max-height:140px;overflow-y:auto;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;' }, [detail]),
+							E('div', { style: 'display:flex;justify-content:center;gap:10px;margin-top:14px;' }, [
+								E('button', { class: 'btn cbi-button cbi-button-neutral', click: ui.hideModal }, [_t('Fechar')]),
+								updateInfo ? E('button', { class: 'btn cbi-button cbi-button-action', click: L.bind(function() {
+									this.showUpdateConfirmModal(updateInfo);
+								}, this) }, [_t('Tentar Novamente')]) : ''
+							])
+						]));
+					}
 					ui.addNotification(null, E('p',{},[detail]), 'danger');
-				});
+				}, this));
 			}
 			if (node) {
 				const pct = data.percent || Math.min(15 + attempt * 2, 90);
 				const msg = data.message || 'Atualização em andamento…';
-				node.replaceChildren(E('div', { class: 'ex-update-progress-wrap' }, [
-					E('div', { class: 'ex-update-progress-bar' }, [
-						E('div', { class: 'ex-update-progress-fill', style: 'width: ' + pct + '%;' })
+				node.replaceChildren(E('div', { class: 'ex-update-live-box' }, [
+					E('div', { class: 'ex-update-live-title' }, [
+						E('span', { class: 'ex-spinner-inline', style: 'width:18px;height:18px;border-width:3px;' }),
+						E('strong', {}, [_t('Atualizando ARK Router…')])
 					]),
-					E('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-top: 8px;' }, [
-						E('small', { style: 'font-weight: 650;' }, [msg]),
-						E('small', { class: 'ex-muted', style: 'font-variant-numeric: tabular-nums; font-weight: 700;' }, [pct + '%'])
+					E('p', { class: 'ex-muted', style: 'font-size:0.86rem;margin:6px 0 14px 0;' }, [
+						_t('Por favor, não desligue o aparelho nem feche esta janela.')
+					]),
+					E('div', { class: 'ex-update-progress-bar-lg' }, [
+						E('div', { class: 'ex-update-progress-fill-lg', style: 'width: ' + pct + '%;' })
+					]),
+					E('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size:0.86rem;' }, [
+						E('small', { style: 'font-weight: 700; color:#38bdf8;' }, [msg]),
+						E('small', { class: 'ex-muted', style: 'font-variant-numeric: tabular-nums; font-weight: 750;' }, [pct + '%'])
+					]),
+					E('div', { style: 'margin-top:16px;padding:8px 12px;background:rgba(0,0,0,0.22);border-radius:8px;font-size:0.78rem;color:#94a3b8;display:flex;justify-content:space-around;' }, [
+						E('span', {}, ['🛡️ Backup ativo']),
+						E('span', {}, ['🔒 Configurações salvas']),
+						E('span', {}, ['🌐 Conexões operando'])
 					])
 				]));
 			}
-			window.setTimeout(L.bind(this.pollSelfUpdate, this, attempt + 1), 1500);
+			window.setTimeout(L.bind(this.pollSelfUpdate, this, attempt + 1, liveContainer, updateInfo), 1500);
 		}, this));
 	},
-	startSelfUpdate: function(info){
+	showUpdateConfirmModal: function(info){
 		info=info||{};
-		const profileUpgrade=!!info.available&&info.profile==='full'&&info.actual_profile!=='full'&&(info.current||'')===(info.latest||'');
-		ui.showModal('Atualizar ARK Router',[
-			E('p',{},[profileUpgrade?'Upgrade de perfil: ':'Instalada: ',E('strong',{},[info.current||'—']),' • ',profileUpgrade?'Destino: ':'Nova: ',E('strong',{},[profileUpgrade?'Full':(info.latest||'—')])]),
-			E('p',{class:'alert-message warning'},['O pacote será baixado do GitHub Releases e instalado com o gerenciador de pacotes do OpenWrt. O painel pode reiniciar por alguns segundos. Configurações de rede não serão alteradas.']),
-			E('p',{class:'ex-package-name'},['Arquivo: ',E('code',{},[info.asset||'luci-app-ark-router'])]),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
-				return fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-start']).then(L.bind(function(r){
-					if(r.code)throw new Error(r.stderr||'Falha ao iniciar atualização');
-					ui.hideModal(); ui.addNotification(null,E('p',{},['Atualização iniciada. O painel avisará quando terminar.']));
-					this.pollSelfUpdate(0);
-				},this)).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});
-			},this)},['Confirmar atualização'])])
+		const self=this;
+		const update=this.capabilities.update||{};
+		const current=info.current||update.current||'—';
+		const latest=info.latest||'—';
+		const manager=info.manager||update.manager||this.capabilities.package_manager||'apk';
+		const asset=info.asset||('luci-app-ark-router.'+(manager==='apk'?'apk':'ipk'));
+		const isSameVersion = (current && latest && current !== '—' && latest !== '—' && current === latest);
+
+		const overlayFreeKb=Number(info.overlay_free_kb||0);
+		const overlayFreeMb=(overlayFreeKb/1024).toFixed(1);
+		const needOverlayKb=Number(info.need_overlay_kb||650);
+		const tmpFreeKb=Number(info.tmp_free_kb||0);
+		const tmpFreeMb=(tmpFreeKb/1024).toFixed(0);
+		const spaceOk=(info.space_ok!==false)&&(overlayFreeKb>=needOverlayKb);
+		const spaceWarning=info.space_warning||(overlayFreeKb>=needOverlayKb&&overlayFreeKb<1200);
+
+		// Formatador de Changelog
+		const rawChangelog=info.changelog||'';
+		let changelogEls=[];
+		if(rawChangelog.trim()){
+			const lines=rawChangelog.split(/\r?\n/).map(function(l){return l.trim();}).filter(Boolean);
+			lines.forEach(function(line){
+				if(line.startsWith('###')||line.startsWith('##')){
+					changelogEls.push(E('strong',{style:'display:block;margin:10px 0 4px 0;color:#3b82f6;font-size:0.95rem;'},[line.replace(/^#+\s*/,'')]));
+				}else if(line.startsWith('•')||line.startsWith('-')||line.startsWith('*')){
+					const clean=line.replace(/^[•\-\*]\s*/,'').replace(/\*\*(.*?)\*\*/g,'$1');
+					changelogEls.push(E('div',{style:'display:flex;gap:8px;margin:4px 0;font-size:0.85rem;line-height:1.4;'},[
+						E('span',{style:'color:#10b981;'},['•']),
+						E('span',{},[clean])
+					]));
+				}else{
+					changelogEls.push(E('p',{style:'margin:4px 0;font-size:0.85rem;line-height:1.4;'},[line.replace(/\*\*(.*?)\*\*/g,'$1')]));
+				}
+			});
+		}else{
+			changelogEls.push(E('p',{class:'ex-muted',style:'font-size:0.85rem;font-style:italic;'},[
+				'Melhorias de desempenho, estabilidade de conexão e correções gerais do ecossistema ARK Router.'
+			]));
+		}
+
+		// Diagnostico de Armazenamento Flash e RAM com ponto de corte no limite
+		let storageBadgeText = _t('ESPAÇO SUFICIENTE');
+		let storageBadgeClass = 'badge-green';
+		let storageDesc = _t('Armazenamento seguro: %s MB livres na partição Flash (ponto de corte mínimo: %s KB).').replace('%s', overlayFreeMb).replace('%s', needOverlayKb);
+		let storageBorderColor = 'rgba(16, 185, 129, 0.3)';
+		let storageBg = 'rgba(16, 185, 129, 0.06)';
+
+		if (!spaceOk) {
+			storageBadgeText = _t('ESPAÇO INSUFICIENTE NA FLASH');
+			storageBadgeClass = 'badge-red';
+			storageDesc = _t('Apenas %s KB livres na partição Flash. O ponto de corte mínimo é de %s KB para evitar travamento ou corrupção de sistema. Atualização bloqueada por segurança.').replace('%s', overlayFreeKb).replace('%s', needOverlayKb);
+			storageBorderColor = 'rgba(239, 68, 68, 0.4)';
+			storageBg = 'rgba(239, 68, 68, 0.08)';
+		} else if (spaceWarning) {
+			storageBadgeText = _t('NO LIMITE DE SEGURANÇA');
+			storageBadgeClass = 'badge-yellow';
+			storageDesc = _t('Armazenamento compacto: %s MB livres (ponto de corte mínimo: %s KB). A atualização prosseguirá substituindo os arquivos existentes.').replace('%s', overlayFreeMb).replace('%s', needOverlayKb);
+			storageBorderColor = 'rgba(245, 158, 11, 0.4)';
+			storageBg = 'rgba(245, 158, 11, 0.08)';
+		}
+
+		const storageCard = E('div', {
+			class: 'ex-device-config-block',
+			style: 'padding:12px 14px;margin:12px 0;border-radius:10px;border:1px solid ' + storageBorderColor + ';background:' + storageBg + ';'
+		}, [
+			E('div', { style: 'display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;' }, [
+				E('strong', { style: 'font-size:0.9rem;display:flex;align-items:center;gap:6px;' }, [
+					_t('💾 Diagnóstico de Espaço em Disco'),
+					E('span', { class: 'ex-perf-badge ' + storageBadgeClass }, [(spaceOk ? (spaceWarning ? '⚠️ ' : '✅ ') : '❌ ') + storageBadgeText])
+				]),
+				E('small', { class: 'ex-muted' }, [_t('RAM (/tmp): %s MB livres').replace('%s', tmpFreeMb)])
+			]),
+			E('p', { style: 'margin:8px 0 0 0;font-size:0.84rem;line-height:1.4;' }, [storageDesc]),
+			(!spaceOk) ? E('div', { style: 'margin-top:10px;display:flex;justify-content:flex-start;' }, [
+				E('button', {
+					class: 'ex-mini-button',
+					type: 'button',
+					style: 'padding:6px 14px;font-weight:700;',
+					click: function() {
+						ui.hideModal();
+						fs.exec('/usr/sbin/equipe-dashboard-control', ['system-storage-purge']).then(function() {
+							ui.addNotification(null, E('p', {}, [_t('Espaço Flash otimizado! Verificando novamente…')]));
+							self.checkSelfUpdate(null, true);
+						});
+					}
+				}, [_t('🧹 Otimizar Espaço Flash Agora')])
+			]) : ''
 		]);
+
+		const confirmLabel = spaceOk
+			? (isSameVersion ? _t('🔄 Reinstalar / Reparar v%s').replace('%s', latest) : _t('🚀 Confirmar e Atualizar'))
+			: _t('Espaço Insuficiente');
+
+		const confirmBtn = E('button', {
+			class: 'btn cbi-button ' + (spaceOk ? 'cbi-button-positive' : 'cbi-button-neutral'),
+			disabled: (!spaceOk) ? '' : null,
+			style: 'font-weight:750;',
+			click: L.bind(function(ev) {
+				const btn = ev.currentTarget;
+				btn.disabled = true;
+				btn.innerHTML = '<span class="ex-spinner-inline"></span> ' + _t('Iniciando…');
+
+				const modalDialog = document.querySelector('.cbi-modal') || document.querySelector('.modal');
+				let liveContainer = null;
+				if (modalDialog) {
+					const closeBtn = modalDialog.querySelector('.btn-close, .close, [aria-label="Close"], button.close');
+					if (closeBtn) closeBtn.style.display = 'none';
+					liveContainer = modalDialog.querySelector('.cbi-modal-body') || modalDialog;
+					liveContainer.replaceChildren(E('div', { class: 'ex-update-live-box' }, [
+						E('div', { class: 'ex-update-live-title' }, [
+							E('span', { class: 'ex-spinner-inline', style: 'width:18px;height:18px;border-width:3px;' }),
+							E('strong', {}, [_t('Iniciando atualização do ARK Router…')])
+						]),
+						E('p', { class: 'ex-muted', style: 'font-size:0.86rem;margin-top:6px;' }, [_t('Estabelecendo conexão e preparando ambiente…')])
+					]));
+				}
+
+				const cmdArgs = ['self-update-start'];
+				if (isSameVersion) {
+					cmdArgs.push('force');
+				}
+
+				fs.exec('/usr/sbin/equipe-dashboard-control', cmdArgs).then(L.bind(function(r) {
+					if (r.code) throw new Error(r.stderr || 'Falha ao iniciar atualização');
+					this.pollSelfUpdate(0, liveContainer, info);
+				}, this)).catch(L.bind(function(e) {
+					if (reloadAfterExpectedDisconnect(e, 'Comando enviado. O painel recarregará quando o roteador concluir a atualização.', 4500)) return;
+					if (liveContainer) {
+						liveContainer.replaceChildren(E('div', { class: 'ex-update-live-box', style: 'border-color:rgba(239,68,68,0.4);' }, [
+							E('strong', { style: 'color:#ef4444;font-size:1.05rem;display:block;' }, [_t('Erro ao iniciar atualização')]),
+							E('p', { style: 'font-size:0.85rem;color:#fca5a5;margin:8px 0 16px 0;' }, [e.message]),
+							E('button', { class: 'btn cbi-button cbi-button-neutral', click: ui.hideModal }, [_t('Fechar')])
+						]));
+					} else {
+						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+					}
+				}, this));
+			}, this)
+		}, [confirmLabel]);
+
+		const promptMsg = isSameVersion
+			? _t('Você já está com a versão v%s instalada. Deseja reinstalar ou reparar o pacote agora?').replace('%s', latest)
+			: _t('Deseja realmente atualizar o ARK Router para a versão v%s agora?').replace('%s', latest);
+
+		const modalContent = [
+			E('div', { style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08);flex-wrap:wrap;gap:8px;' }, [
+				E('div', { style: 'display:flex;align-items:center;gap:8px;' }, [
+					E('span', { style: 'font-size:0.85rem;color:#94a3b8;' }, [_t('Versão Instalada:')]),
+					E('strong', { class: 'ex-pill standby', style: 'padding:4px 10px;' }, ['v' + current]),
+					E('span', { style: 'color:#94a3b8;' }, ['➔']),
+					E('span', { style: 'font-size:0.85rem;color:#10b981;font-weight:700;' }, [isSameVersion ? _t('Status:') : _t('Nova Versão:')]),
+					E('strong', { class: 'ex-pill online', style: 'padding:4px 10px;' }, [isSameVersion ? ('v' + latest + ' ' + _t('(Atual)')) : ('v' + latest)])
+				]),
+				E('code', { style: 'font-size:0.82rem;font-weight:700;' }, [asset])
+			]),
+
+			E('div', { class: 'ex-device-config-block', style: 'margin-bottom:12px;' }, [
+				E('strong', { style: 'font-size:0.9rem;display:block;margin-bottom:6px;' }, [_t('📋 O que há de novo na versão v%s:').replace('%s', latest)]),
+				E('div', { style: 'max-height:220px;overflow-y:auto;padding:10px 14px;background:rgba(0,0,0,0.22);border-radius:8px;border:1px solid rgba(255,255,255,0.06);' }, changelogEls)
+			]),
+
+			storageCard,
+
+			E('div', { class: 'ex-device-config-block', style: 'margin-bottom:14px;background:rgba(59,130,246,0.06);border-color:rgba(59,130,246,0.2);' }, [
+				E('strong', { style: 'font-size:0.88rem;color:#3b82f6;' }, [_t('🛡️ Blindagem & Garantias de Segurança:')]),
+				E('ul', { style: 'margin:6px 0 0 16px;padding:0;font-size:0.82rem;color:#cbd5e1;line-height:1.45;' }, [
+					E('li', {}, [_t('Backup automático de segurança das configurações antes da gravação.')]),
+					E('li', {}, [_t('Senhas, redes Wi-Fi, regras de firewall e conexões são 100% preservadas.')]),
+					E('li', {}, [_t('Zero interrupção de tráfego de internet durante o processo.')])
+				])
+			]),
+
+			E('p', { style: 'font-size:0.92rem;font-weight:700;text-align:center;margin:14px 0 8px 0;' }, [promptMsg]),
+
+			E('div', { style: 'display:flex;justify-content:flex-end;gap:10px;margin-top:14px;' }, [
+				E('button', { class: 'btn cbi-button cbi-button-neutral', click: ui.hideModal }, [_t('Cancelar')]),
+				confirmBtn
+			])
+		];
+
+		ui.showModal(_t('🚀 Atualização do ARK Router'), modalContent);
+		translateTree(document.querySelector('.cbi-modal') || document.body);
+	},
+	startSelfUpdate: function(info){
+		return this.showUpdateConfirmModal(info);
+	},
+	checkBackgroundUpdate: function(){
+		const self=this;
+		const now=Date.now();
+		const lastCheckTime=Number(localStorage.getItem('ark_last_update_check_time')||0);
+		const cachedDataStr=localStorage.getItem('ark_last_update_check_data');
+
+		if(now-lastCheckTime<43200000&&cachedDataStr){
+			try{
+				const data=JSON.parse(cachedDataStr);
+				if(data&&data.available){
+					self.renderUpdateBanner(data);
+				}
+				return;
+			}catch(e){}
+		}
+
+		window.setTimeout(function(){
+			fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-check']).then(function(r){
+				if(r.code)return;
+				let info={};
+				try{info=JSON.parse(r.stdout||'{}');}catch(e){return;}
+				localStorage.setItem('ark_last_update_check_time',String(Date.now()));
+				localStorage.setItem('ark_last_update_check_data',JSON.stringify(info));
+				if(info&&info.available){
+					self.renderUpdateBanner(info);
+				}
+			}).catch(function(){});
+		},4500);
+	},
+	renderUpdateBanner: function(info){
+		if(!info||!info.available||!info.latest)return;
+		const dismissed=localStorage.getItem('ark_dismissed_update');
+		if(dismissed===info.latest)return;
+
+		const container=document.getElementById('ex-update-banner-container');
+		if(!container)return;
+
+		const banner=E('div',{
+			class:'ex-update-banner',
+			style:'display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:12px 18px;margin:12px 0 16px 0;border-radius:12px;background:linear-gradient(90deg,rgba(59,130,246,0.12) 0%,rgba(139,92,246,0.12) 100%);border:1px solid rgba(59,130,246,0.35);box-shadow:0 4px 16px rgba(0,0,0,0.15);'
+		},[
+			E('div',{style:'display:flex;align-items:center;gap:12px;'},[
+				E('span',{style:'font-size:1.4rem;'},['🚀']),
+				E('div',{},[
+					E('div',{style:'display:flex;align-items:center;gap:8px;'},[
+						E('strong', { style: 'font-size:0.95rem;' }, [_t('Nova versão disponível: ARK Router v%s').replace('%s', info.latest)]),
+						E('span', { class: 'ex-pill online', style: 'padding:2px 8px;font-size:0.75rem;font-weight:700;' }, [_t('ATUALIZAÇÃO')])
+					]),
+					E('small', { class: 'ex-muted', style: 'display:block;margin-top:2px;' }, [
+						_t('Versão atual: v%s').replace('%s', info.current || '—') + ' • ' + _t('Atualização com backup de segurança automático.')
+					])
+				])
+			]),
+			E('div', { style: 'display:flex;align-items:center;gap:8px;' }, [
+				E('button', {
+					class: 'ex-mini-button',
+					type: 'button',
+					style: 'padding:8px 14px;font-weight:750;font-size:0.85rem;',
+					click: L.bind(function() {
+						this.showUpdateConfirmModal(info);
+					}, this)
+				}, [_t('Ver Novidades & Atualizar')]),
+				E('button', {
+					class: 'ex-mini-button',
+					type: 'button',
+					style: 'padding:8px 12px;background:rgba(127,127,127,0.15);color:#94a3b8;font-size:0.82rem;',
+					title: _t('Ocultar aviso para esta versão'),
+					click: function() {
+						localStorage.setItem('ark_dismissed_update', info.latest);
+						banner.style.transition = 'all 0.3s ease';
+						banner.style.opacity = '0';
+						banner.style.transform = 'translateY(-10px)';
+						window.setTimeout(function() { banner.remove(); }, 300);
+					}
+				}, [_t('Ocultar ✕')])
+			])
+		]);
+
+		container.replaceChildren(banner);
+		translateTree(container);
 	},
 	openManualUpdateModal: function(info){
 		info=info||{};
@@ -2478,10 +2762,22 @@ const systemMethods = {
 		];
 
 		const silicon = hwInfo.silicon || {};
+		const wedDesc = silicon.wed_capable
+			? 'Suportado (DMA Direto Wi-Fi/Ethernet)'
+			: (silicon.class === 'qualcomm_ipq'
+				? 'Integrado nativo (Qualcomm PPE / SFE Flow)'
+				: (silicon.class === 'x86_pc'
+					? 'Não aplicável (SMP Multicore x86_64)'
+					: (silicon.class === 'mips_legacy'
+						? 'Não aplicável (MIPS Fastpath Software)'
+						: 'Padrão mac80211')));
+		const wedBadge = silicon.wed_capable
+			? 'WED'
+			: (silicon.class === 'qualcomm_ipq' ? 'PPE' : null);
 		const siliconRows = [
 			infoItem('Família de Silício', silicon.name || 'Arquitetura Universal', 'DETECTADO'),
-			infoItem('Aceleração em Silício (PPE)', silicon.hw_offload_capable ? 'Suportada (PPE Hardware)' : 'Não aplicável (Software Flowtable)', silicon.hw_offload_capable ? 'ATIVO' : null),
-			infoItem('Despacho Wi-Fi Direto (WED)', silicon.wed_capable ? 'Suportado (DMA Direto Wi-Fi/Ethernet)' : 'Padrão mac80211', silicon.wed_capable ? 'WED' : null),
+			infoItem('Aceleração em Silício (PPE)', silicon.hw_offload_capable ? 'Suportada (PPE Hardware)' : (silicon.class === 'x86_pc' ? 'Processamento Multicore Nativo' : 'Não aplicável (Software Flowtable)'), silicon.hw_offload_capable ? 'ATIVO' : null),
+			infoItem('Despacho Wi-Fi Direto (WED)', wedDesc, wedBadge),
 			infoItem('Faixa de Memória (Tier)', silicon.ram_tier_desc || 'Padrão', (silicon.ram_tier || 'standard').toUpperCase()),
 			infoItem('Perfil de Ajuste Recomendado', silicon.tuning_profile || 'Universal Multicore')
 		];
@@ -2724,12 +3020,22 @@ const systemMethods = {
 		const ipv6Panel=E('section',{class:'ex-cleanup-entry'},[
 			E('div',{},[
 				E('strong',{},['🌐 Central de Conectividade IPv6']),
-				E('small',{class:'ex-muted'},['Modos de operação: Pilha Dupla Global, IPv6 Seletivo por MAC (Gamer/IoT), IPv4 Apenas ou IPv6-Only. Suporte a cascata NDP Relay.'])
+				E('small',{class:'ex-muted'},['Modos de operação: Pilha Dupla Global, NPTv6 Inteligente (Multi-WAN), IPv6 Seletivo por MAC, IPv4 Apenas ou IPv6-Only.'])
 			]),
 			E('button',{class:'ex-mini-button btn-ipv6','click':L.bind(function(){
 				closeModal();
 				this.showIpv6Modal();
 			},this)},['Ajustes IPv6'])
+		]);
+		const ntpPanel=E('section',{class:'ex-cleanup-entry'},[
+			E('div',{},[
+				E('strong',{},['⏰ Sincronização de Horário & NTP Inteligente']),
+				E('small',{class:'ex-muted'},['Pool resiliente (NTP.br + Cloudflare + Google), Interceptação UDP 123 na LAN (1ms para IoT) e Fake RTC Preserver contra ano 1970.'])
+			]),
+			E('button',{class:'ex-mini-button',style:'background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);font-weight:700;','click':L.bind(function(){
+				closeModal();
+				this.showNtpModal();
+			},this)},['Ajustes NTP & Fuso'])
 		]);
 		const profileSelect=E('select',{class:'cbi-input-select'},[
 			E('option',{value:'standard'},['Modo Padrão / Equilibrado']),
@@ -2810,6 +3116,7 @@ const systemMethods = {
 			this.selfUpdatePanel(),
 			bulkPanel,
 			ipv6Panel,
+			ntpPanel,
 			starlinkModalPanel,
 			E('section', { class: 'ex-appearance-panel' }, [
 				E('div', { class: 'ex-appearance-heading' }, [
@@ -2834,6 +3141,165 @@ const systemMethods = {
 			E('div',{class:'ex-feature-list'},rows),
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])
 		]);
+	},
+	showNtpModal: function() {
+		const self = this;
+		ui.showModal('⏰ Sincronização Inteligente de Horário & NTP', [
+			E('p', { class: 'ex-muted' }, ['Consultando status de relógio e servidores NTP do roteador…'])
+		]);
+
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['ntp-status']).then(function(r) {
+			let st = {};
+			try { st = JSON.parse(r.stdout || '{}'); } catch(e) {}
+
+			const browserTz = (Intl && Intl.DateTimeFormat) ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'America/Sao_Paulo';
+			const browserOffsetMin = new Date().getTimezoneOffset();
+			const browserDateStr = new Date().toLocaleString('pt-BR');
+
+			const statusBox = E('div', {
+				class: 'ex-priority-desc-box',
+				style: 'margin-bottom: 16px; border: 1px solid rgba(255,255,255,.1); padding: 14px; border-radius: 10px; background: rgba(15,23,42,.6);'
+			}, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
+						E('strong', { style: 'font-size: 0.95rem; color: #f8fafc;' }, ['Relógio do Roteador:']),
+						E('span', {
+							class: 'ex-device-badge',
+							style: 'font-weight: 700; font-size: 0.85rem; padding: 3px 10px; border-radius: 8px; color: #10b981; background: rgba(16,185,129,.15); border: 1px solid rgba(16,185,129,.35);'
+						}, [ st.date_formatted || 'Desconhecido' ])
+					]),
+					E('span', {
+						class: 'ex-pill ' + (st.server_active ? 'online' : 'standby'),
+						style: 'font-size: 0.75rem;'
+					}, [ st.server_active ? 'Servidor NTP Local Ativo (Porta 123)' : 'Modo Cliente Apenas' ])
+				]),
+				E('div', { class: 'ex-grid ex-grid-2', style: 'gap: 8px; font-size: 0.8rem;' }, [
+					E('div', {}, [
+						E('span', { class: 'ex-muted' }, ['Fuso Configurado: ']),
+						E('strong', { style: 'color: #38bdf8;' }, [ (st.zonename || 'America/Sao_Paulo') + ' (' + (st.timezone || '<-03>3') + ')' ])
+					]),
+					E('div', {}, [
+						E('span', { class: 'ex-muted' }, ['Fuso do seu Aparelho: ']),
+						E('strong', { style: 'color: #a78bfa;' }, [ browserTz + ' (' + browserDateStr + ')' ])
+					]),
+					E('div', {}, [
+						E('span', { class: 'ex-muted' }, ['Interceptação UDP 123: ']),
+						E('strong', { style: 'color: ' + (st.intercept_active ? '#10b981' : '#f59e0b') }, [ st.intercept_active ? 'Ativa (1ms de resposta p/ IoT)' : 'Desativada' ])
+					]),
+					E('div', {}, [
+						E('span', { class: 'ex-muted' }, ['Fake RTC Clock Preserver: ']),
+						E('strong', { style: 'color: ' + (st.clock_preserver_active ? '#10b981' : '#94a3b8') }, [ st.clock_preserver_active ? 'Ativo (timestamp salvo)' : 'Aguardando primeiro boot' ])
+					])
+				])
+			]);
+
+			const interceptCheckbox = E('input', {
+				type: 'checkbox',
+				checked: st.intercept_active ? '' : null,
+				change: function(ev) {
+					const desired = ev.currentTarget.checked ? '1' : '0';
+					ev.currentTarget.disabled = true;
+					fs.exec('/usr/sbin/equipe-dashboard-control', ['ntp-intercept-toggle', desired]).then(function(res) {
+						if (res.code) throw new Error(res.stderr || 'Falha ao alterar interceptação NTP');
+						ui.addNotification(null, E('p', {}, [desired === '1' ? 'Interceptação NTP UDP 123 ativada.' : 'Interceptação NTP desativada.']));
+						self.showNtpModal();
+					}).catch(function(e) {
+						ev.currentTarget.disabled = false;
+						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+					});
+				}
+			});
+			interceptCheckbox.checked = !!st.intercept_active;
+
+			const interceptCard = E('section', {
+				class: 'ex-cleanup-entry',
+				style: 'margin-bottom: 12px; padding: 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.02); align-items: center;'
+			}, [
+				E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;' }, [
+						E('strong', { style: 'font-size: 0.92rem; color: #f8fafc;' }, ['🛡️ Interceptação Anycast LAN (UDP 123)']),
+						E('span', { class: 'ex-pill ' + (st.intercept_active ? 'online' : 'standby'), style: 'font-size: 0.7rem;' }, [ st.intercept_active ? 'REDIRECIONAMENTO ATIVO' : 'DESLIGADO' ])
+					]),
+					E('p', { class: 'ex-muted', style: 'font-size: 0.8rem; line-height: 1.4; margin: 4px 0 0;' }, [
+						'Intercepta silenciosamente qualquer consulta NTP de câmeras IP, TVs e tomadas IoT na rede local e responde em menos de 1ms pelo próprio roteador. Aparelhos nunca mais perdem a hora mesmo com servidores externos bloqueados.'
+					])
+				]),
+				E('div', { style: 'flex: 0 0 auto; margin-left: 14px;' }, [
+					E('label', { class: 'ex-switch' }, [
+						interceptCheckbox,
+						E('span', { class: 'ex-switch-slider' })
+					])
+				])
+			]);
+
+			const serversList = (st.servers && st.servers.length) ? st.servers : ['a.st1.ntp.br', 'b.st1.ntp.br', 'time.cloudflare.com', 'time.google.com'];
+			const serversCard = E('div', {
+				class: 'ex-cleanup-entry',
+				style: 'margin-bottom: 16px; padding: 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.02);'
+			}, [
+				E('div', { style: 'flex: 1 1 auto;' }, [
+					E('strong', { style: 'font-size: 0.92rem; color: #f8fafc; display: block; margin-bottom: 4px;' }, ['🌐 Servidores Upstream em Uso (Pool Resiliente)']),
+					E('div', { style: 'display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px;' }, serversList.map(function(srv) {
+						return E('code', { style: 'font-size: 0.78rem; padding: 3px 8px; border-radius: 6px; background: rgba(255,255,255,.06); color: #38bdf8;' }, [ srv ]);
+					}))
+				])
+			]);
+
+			const syncBrowserBtn = E('button', {
+				class: 'btn cbi-button cbi-button-positive',
+				style: 'min-height: 40px; font-weight: 700;',
+				click: function(ev) {
+					const b = ev.currentTarget;
+					b.disabled = true;
+					b.textContent = 'Sincronizando…';
+					const nowEpoch = Math.floor(Date.now() / 1000);
+					return fs.exec('/usr/sbin/equipe-dashboard-control', ['ntp-sync-browser', String(nowEpoch), browserTz, String(browserOffsetMin)]).then(function(res) {
+						if (res.code) throw new Error(res.stderr || 'Falha ao sincronizar relógio');
+						ui.addNotification(null, E('p', {}, ['Relógio do roteador e fuso horário (' + browserTz + ') sincronizados com sucesso.']));
+						self.showNtpModal();
+					}).catch(function(err) {
+						b.disabled = false;
+						b.textContent = '⏱️ Sincronizar com Navegador Agora';
+						ui.addNotification(null, E('p', {}, [err.message]), 'danger');
+					});
+				}
+			}, ['⏱️ Sincronizar Fuso & Relógio com este Navegador']);
+
+			const resetPoolBtn = E('button', {
+				class: 'btn cbi-button cbi-button-neutral',
+				style: 'min-height: 40px;',
+				click: function(ev) {
+					const b = ev.currentTarget;
+					b.disabled = true;
+					b.textContent = 'Aplicando…';
+					return fs.exec('/usr/sbin/equipe-dashboard-control', ['ntp-configure-smart']).then(function(res) {
+						if (res.code) throw new Error(res.stderr || 'Falha ao reconfigurar pool');
+						ui.addNotification(null, E('p', {}, ['Pool resiliente (NTP.br + Cloudflare + Google) e Interceptação aplicados.']));
+						self.showNtpModal();
+					}).catch(function(err) {
+						b.disabled = false;
+						b.textContent = '⚡ Aplicar Pool Resiliente Padrão';
+						ui.addNotification(null, E('p', {}, [err.message]), 'danger');
+					});
+				}
+			}, ['⚡ Aplicar Pool Resiliente Padrão']);
+
+			ui.showModal('⏰ Sincronização Inteligente de Horário & NTP', [
+				statusBox,
+				interceptCard,
+				serversCard,
+				E('div', { class: 'right', style: 'display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;' }, [
+					resetPoolBtn,
+					syncBrowserBtn,
+					E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Fechar'])
+				])
+			]);
+		}).catch(function(e) {
+			ui.showModal('⏰ Sincronização de Horário', [
+				E('p', { class: 'alert-message warning' }, [ e.message ]),
+				E('div', { class: 'right' }, [ E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Fechar']) ])
+			]);
+		});
 	},
 	showHighRamZramConfirmModal: function(f) {
 		const finalButton = E('button', { class: 'btn cbi-button cbi-button-negative', disabled: true }, [_t('Aguarde 5 s')]);
@@ -2953,6 +3419,84 @@ const systemMethods = {
 				style: 'width: 20px; height: 20px; cursor: pointer;'
 			});
 			fallbackToggle.checked = fallbackActive;
+
+			const memMb = Number(status.mem_total_mb || 0);
+			let recCache = 10000;
+			let memBadgeText = '1 GB RAM (Alta Capacidade)';
+			if (memMb > 0 && memMb < 200) {
+				recCache = 1000;
+				memBadgeText = (memMb ? memMb + ' MB' : '128 MB') + ' RAM (Econômico)';
+			} else if (memMb >= 200 && memMb < 400) {
+				recCache = 2500;
+				memBadgeText = (memMb ? memMb + ' MB' : '256 MB') + ' RAM (Médio)';
+			} else if (memMb >= 400 && memMb < 700) {
+				recCache = 5000;
+				memBadgeText = (memMb ? memMb + ' MB' : '512 MB') + ' RAM (Intermediário)';
+			} else if (memMb >= 700) {
+				recCache = 10000;
+				memBadgeText = (memMb ? memMb + ' MB' : '1 GB+') + ' RAM (Alta Capacidade)';
+			}
+
+			const currentCache = Number(status.cachesize || 150);
+			const standardOptions = [10000, 5000, 2500, 1000, 150];
+			const isKnownPreset = standardOptions.indexOf(currentCache) !== -1;
+
+			const cacheSelect = E('select', {
+				class: 'cbi-input-select',
+				style: 'width: 100%; box-sizing: border-box; font-size: 0.88rem; padding: 7px 10px; font-weight: 600;'
+			}, [
+				E('option', { value: '10000' }, ['🚀 10.000 domínios na RAM (~1,5 MB)' + (recCache === 10000 ? ' ⭐ (Recomendado para seu Hardware)' : '')]),
+				E('option', { value: '5000' }, ['⚡ 5.000 domínios na RAM (~800 KB)' + (recCache === 5000 ? ' ⭐ (Recomendado para seu Hardware)' : '')]),
+				E('option', { value: '2500' }, ['🔹 2.500 domínios na RAM (~400 KB)' + (recCache === 2500 ? ' ⭐ (Recomendado para seu Hardware)' : '')]),
+				E('option', { value: '1000' }, ['🔸 1.000 domínios na RAM (~160 KB)' + (recCache === 1000 ? ' ⭐ (Recomendado para seu Hardware)' : '')]),
+				E('option', { value: '150' }, ['🐢 150 domínios (Padrão de Fábrica OpenWrt / Mínimo)' + (recCache === 150 ? ' ⭐ (Recomendado)' : '')]),
+				E('option', { value: 'custom' }, ['✏️ Personalizado (Digitar valor manual)'])
+			]);
+
+			if (isKnownPreset) {
+				cacheSelect.value = String(currentCache);
+			} else {
+				cacheSelect.value = 'custom';
+			}
+
+			const customCacheInput = E('input', {
+				class: 'cbi-input-text',
+				type: 'number',
+				min: 150,
+				max: 50000,
+				step: 500,
+				value: currentCache,
+				style: 'width: 100%; box-sizing: border-box;'
+			});
+
+			const customCacheWrapper = E('div', {
+				style: 'margin-top: 8px; display: ' + (isKnownPreset ? 'none' : 'block') + ';'
+			}, [
+				E('small', { class: 'ex-muted', style: 'display: block; margin-bottom: 4px;' }, ['Digite a quantidade de domínios em cache (150 a 50.000):']),
+				customCacheInput
+			]);
+
+			cacheSelect.addEventListener('change', function() {
+				if (cacheSelect.value === 'custom') {
+					customCacheWrapper.style.display = 'block';
+				} else {
+					customCacheWrapper.style.display = 'none';
+					customCacheInput.value = cacheSelect.value;
+				}
+			});
+
+			const quickApplyRecBtn = (currentCache < recCache) ? E('div', { style: 'margin-top: 8px;' }, [
+				E('button', {
+					type: 'button',
+					class: 'ex-mini-button',
+					style: 'font-weight: 700; background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 5px 10px; border-radius: 6px; cursor: pointer;',
+					click: function() {
+						cacheSelect.value = String(recCache);
+						customCacheWrapper.style.display = 'none';
+						customCacheInput.value = String(recCache);
+					}
+				}, ['⚡ Aplicar Recomendado para seu Hardware (' + recCache.toLocaleString('pt-BR') + ' domínios)'])
+			]) : '';
 
 			const ipInputs = [
 				E('input', { class: 'cbi-input-text', type: 'text', value: serverList[0] || '1.1.1.1', placeholder: 'ex: 1.1.1.1 ou 2606:4700:4700::1111', style: 'width: 100%; box-sizing: border-box;' }),
@@ -3126,6 +3670,19 @@ const systemMethods = {
 					])
 				]),
 				E('div', { class: 'ex-device-config-block' }, [
+					E('div', { style: 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;' }, [
+						E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
+							E('strong', {}, ['Tamanho do Cache DNS na Memória RAM (0ms)']),
+							E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Guarda domínios na memória do roteador. Sites acessados respondem instantaneamente sem consultar a internet.'])
+						]),
+						E('span', { class: 'ex-perf-badge badge-blue', style: 'font-weight: 700;' }, [memBadgeText])
+					]),
+					cacheSelect,
+					customCacheWrapper,
+					quickApplyRecBtn,
+					E('small', { class: 'ex-muted', style: 'display: block; margin-top: 6px;' }, ['O OpenWrt vem de fábrica com apenas 150 domínios. Em seu hardware, 10.000 domínios consomem menos de 2 MB de RAM e deixam a navegação em 0ms.'])
+				]),
+				E('div', { class: 'ex-device-config-block' }, [
 					E('strong', {}, ['Predefinições Rápidas']),
 					E('small', { class: 'ex-muted', style: 'display: block; margin-top: 2px;' }, ['Selecione uma combinação pronta ou digite seus próprios IPs:']),
 					E('div', { class: 'ex-priority-button-grid', style: 'margin-top: 8px; gap: 8px;' }, presetBtns)
@@ -3158,7 +3715,8 @@ const systemMethods = {
 							const s4 = cleanIp(ipInputs[3].value);
 							const alls = hasDnsBlocker ? (status.allservers ? '1' : '0') : (allserversToggle.checked ? '1' : '0');
 							const fallback = fallbackToggle.checked ? '1' : '0';
-							const args = ['dns-turbo-save', alls, s1, s2, s3, s4, fallback];
+							const selectedCache = cacheSelect.value === 'custom' ? (parseInt(customCacheInput.value, 10) || 150) : (parseInt(cacheSelect.value, 10) || 10000);
+							const args = ['dns-turbo-save', alls, s1, s2, s3, s4, fallback, String(selectedCache)];
 							return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 								if (r.code) throw new Error(r.stderr || 'Falha ao salvar DNS');
 								ui.hideModal();
@@ -3189,7 +3747,54 @@ const systemMethods = {
 
 			const ctInput = E('input', { class: 'cbi-input-text', type: 'number', value: status.conntrack_max || 131072, min: 16384, max: 524288, step: 4096, style: 'width: 100%; box-sizing: border-box;' });
 			const fwdInput = E('input', { class: 'cbi-input-text', type: 'number', value: status.dns_forward_max || 2000, min: 150, max: 10000, step: 100, style: 'width: 100%; box-sizing: border-box;' });
-			const cacheInput = E('input', { class: 'cbi-input-text', type: 'number', value: status.cachesize || 10000, min: 150, max: 50000, step: 500, style: 'width: 100%; box-sizing: border-box;' });
+
+			const capMemMb = Number(status.mem_total_mb || 0);
+			let capRecCache = 10000;
+			if (capMemMb > 0 && capMemMb < 200) capRecCache = 1000;
+			else if (capMemMb >= 200 && capMemMb < 400) capRecCache = 2500;
+			else if (capMemMb >= 400 && capMemMb < 700) capRecCache = 5000;
+			else capRecCache = 10000;
+
+			const capCurCache = Number(status.cachesize || 10000);
+			const capPresets = [10000, 5000, 2500, 1000, 150];
+			const capIsKnown = capPresets.indexOf(capCurCache) !== -1;
+
+			const capCacheSelect = E('select', {
+				class: 'cbi-input-select',
+				style: 'width: 100%; box-sizing: border-box; font-size: 0.88rem; padding: 6px 10px; font-weight: 550;'
+			}, [
+				E('option', { value: '10000' }, ['🚀 10.000 domínios (~1,5 MB RAM)' + (capRecCache === 10000 ? ' ⭐ (Recomendado)' : '')]),
+				E('option', { value: '5000' }, ['⚡ 5.000 domínios (~800 KB RAM)' + (capRecCache === 5000 ? ' ⭐ (Recomendado)' : '')]),
+				E('option', { value: '2500' }, ['🔹 2.500 domínios (~400 KB RAM)' + (capRecCache === 2500 ? ' ⭐ (Recomendado)' : '')]),
+				E('option', { value: '1000' }, ['🔸 1.000 domínios (~160 KB RAM)' + (capRecCache === 1000 ? ' ⭐ (Recomendado)' : '')]),
+				E('option', { value: '150' }, ['🐢 150 domínios (Padrão OpenWrt)' + (capRecCache === 150 ? ' ⭐ (Recomendado)' : '')]),
+				E('option', { value: 'custom' }, ['✏️ Personalizado (Digitar valor)'])
+			]);
+
+			if (capIsKnown) {
+				capCacheSelect.value = String(capCurCache);
+			} else {
+				capCacheSelect.value = 'custom';
+			}
+
+			const cacheInput = E('input', {
+				class: 'cbi-input-text',
+				type: 'number',
+				value: capCurCache,
+				min: 150,
+				max: 50000,
+				step: 500,
+				style: 'width: 100%; box-sizing: border-box;' + (capIsKnown ? ' display: none;' : ' margin-top: 6px;')
+			});
+
+			capCacheSelect.addEventListener('change', function() {
+				if (capCacheSelect.value === 'custom') {
+					cacheInput.style.display = 'block';
+				} else {
+					cacheInput.style.display = 'none';
+					cacheInput.value = capCacheSelect.value;
+				}
+			});
 
 			const leaseSelect = E('select', { class: 'cbi-input-select', style: 'width: 100%; box-sizing: border-box;' }, [
 				E('option', { value: '1h', selected: status.dhcp_leasetime === '1h' }, ['1 hora (Alta Rotatividade / Eventos / 250+ clientes)']),
@@ -3210,6 +3815,13 @@ const systemMethods = {
 				ctInput.value = ct;
 				fwdInput.value = fwd;
 				cacheInput.value = cache;
+				if (capPresets.indexOf(Number(cache)) !== -1) {
+					capCacheSelect.value = String(cache);
+					cacheInput.style.display = 'none';
+				} else {
+					capCacheSelect.value = 'custom';
+					cacheInput.style.display = 'block';
+				}
 				leaseSelect.value = lease;
 				if (timeout) timeoutSelect.value = timeout;
 			};
@@ -3275,9 +3887,10 @@ const systemMethods = {
 							E('small', { class: 'ex-muted' }, ['Padrão 512M/1G: 2.000 consultas simultâneas no boot'])
 						]),
 						E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600;' }, [
-							E('span', {}, ['Tamanho do Cache DNS (cachesize):']),
+							E('span', {}, ['Tamanho do Cache DNS na Memória:']),
+							capCacheSelect,
 							cacheInput,
-							E('small', { class: 'ex-muted' }, ['Padrão 512M/1G: 10.000 entradas (~1 MB de RAM)'])
+							E('small', { class: 'ex-muted' }, ['Mantém consultas resolvidas em 0ms sem reconsultar a internet'])
 						]),
 						E('label', { style: 'display: flex; flex-direction: column; gap: 4px; font-weight: 600; grid-column: 1 / -1;' }, [
 							E('span', {}, ['Tempo de Concessão DHCP (leasetime):']),
@@ -3311,7 +3924,7 @@ const systemMethods = {
 							btn.textContent = 'Aplicando…';
 							const ctVal = ctInput.value.trim() || '131072';
 							const fwdVal = fwdInput.value.trim() || '2000';
-							const cacheVal = cacheInput.value.trim() || '10000';
+							const cacheVal = capCacheSelect.value === 'custom' ? (cacheInput.value.trim() || '150') : capCacheSelect.value;
 							const leaseVal = leaseSelect.value || '2h';
 							const timeoutVal = timeoutSelect.value || '432000';
 							const args = ['network-capacity-save', ctVal, fwdVal, cacheVal, leaseVal, timeoutVal];

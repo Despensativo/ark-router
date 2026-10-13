@@ -1456,6 +1456,7 @@ handle_ezsetup() {
 		fi
 		if [ "$cpu_freq_mhz" -le 0 ]; then
 			case "$board" in
+				*predator-t7*|*connect-t7*|*ipq5332*|*ipq53*) cpu_freq_mhz=1500 ;;
 				*mt7986*|*filogic-830*|*predator-w6x*) cpu_freq_mhz=2000 ;;
 				*mt7981*|*filogic-820*) cpu_freq_mhz=1300 ;;
 				*mt7622*) cpu_freq_mhz=1350 ;;
@@ -1663,8 +1664,14 @@ handle_ezsetup() {
 		[ "$cur_country" = "PA" ] && wifi_maxpower_enabled=true
 		asu_check=false
 		[ "$(uci -q get attendedsysupgrade.client.login_check_for_upgrades || echo 0)" = "1" ] && asu_check=true
-		printf '},"hardware":{"cpu_cores":%s,"cpu_freq_mhz":%s,"cpu_freq_str":"%s","cpu_arch":"%s","mem_total_mb":%s,"flash_type":"%s","wifi_160_supported":%s,"wifi_ax_supported":%s,"wifi_be_supported":%s,"wifi_6g_supported":%s,"wifi_320_supported":%s,"wifi_wed_supported":%s,"wifi_wed_enabled":%s,"wifi_maxpower_enabled":%s,"is_legacy_owrt":%s},"https":{"available":%s,"redirect":%s,"certificate":"local","ca_available":%s,"ca_fingerprint":"%s","ca_download":"/ark-router/ark-router-ca.crt"},"update":{"current":"%s","repo":"%s","manager":"%s","asu_check":%s}}\n' \
-			"$cpu_cores" "$cpu_freq_mhz" "$(json_escape "$cpu_freq_str")" "$(json_escape "$cpu_arch")" "$mem_total_mb" "$(json_escape "$flash_type")" "$wifi_160" "$wifi_ax" "$wifi_be" "$wifi_6g" "$wifi_320" "$wifi_wed_supported" "$wifi_wed_enabled" "$wifi_maxpower_enabled" "$is_legacy_owrt" "$https_available" "$(bool "$https_redirect")" "$ca_available" "$ca_fingerprint" "$(json_escape "$current_version")" "$(json_escape "$update_repo")" "$(json_escape "$manager")" "$asu_check"
+		detect_hardware_silicon_profile
+		hw_offload_bool="false"; [ "$silicon_hw_offload_capable" = 1 ] && hw_offload_bool="true"
+		wed_bool="false"; [ "$silicon_wed_capable" = 1 ] && wed_bool="true"
+		multicore_bool="false"; [ "$silicon_multicore" = 1 ] && multicore_bool="true"
+		printf '},"hardware":{"cpu_cores":%s,"cpu_freq_mhz":%s,"cpu_freq_str":"%s","cpu_arch":"%s","mem_total_mb":%s,"flash_type":"%s","wifi_160_supported":%s,"wifi_ax_supported":%s,"wifi_be_supported":%s,"wifi_6g_supported":%s,"wifi_320_supported":%s,"wifi_wed_supported":%s,"wifi_wed_enabled":%s,"wifi_maxpower_enabled":%s,"is_legacy_owrt":%s,"silicon":{"class":"%s","name":"%s","hw_offload_capable":%s,"wed_capable":%s,"multicore":%s,"ram_tier":"%s","ram_tier_desc":"%s","tuning_profile":"%s"}},"https":{"available":%s,"redirect":%s,"certificate":"local","ca_available":%s,"ca_fingerprint":"%s","ca_download":"/ark-router/ark-router-ca.crt"},"update":{"current":"%s","repo":"%s","manager":"%s","asu_check":%s}}\n' \
+			"$cpu_cores" "$cpu_freq_mhz" "$(json_escape "$cpu_freq_str")" "$(json_escape "$cpu_arch")" "$mem_total_mb" "$(json_escape "$flash_type")" "$wifi_160" "$wifi_ax" "$wifi_be" "$wifi_6g" "$wifi_320" "$wifi_wed_supported" "$wifi_wed_enabled" "$wifi_maxpower_enabled" "$is_legacy_owrt" \
+			"$(json_escape "$silicon_class")" "$(json_escape "$silicon_name")" "$hw_offload_bool" "$wed_bool" "$multicore_bool" "$(json_escape "$silicon_ram_tier")" "$(json_escape "$silicon_ram_tier_desc")" "$(json_escape "$silicon_tuning_profile")" \
+			"$https_available" "$(bool "$https_redirect")" "$ca_available" "$ca_fingerprint" "$(json_escape "$current_version")" "$(json_escape "$update_repo")" "$(json_escape "$manager")" "$asu_check"
 		}
 		features_out="$(features_payload)"
 		printf '%s\n' "$features_out" > "$cache" 2>/dev/null
@@ -1701,6 +1708,9 @@ handle_ezsetup() {
 		status=/tmp/ark-router-self-update.status
 		log=/tmp/ark-router-self-update.log
 		grep -qE '("state":"running"|^running)' "$status" 2>/dev/null && { echo running; exit 0; }
+		force=0
+		case "$2" in --force|force|1) force=1 ;; esac
+		rm -f /tmp/ark-router-update-check.json
 		info="$(ark_update_json)"
 		available="$(printf '%s' "$info" | jsonfilter -e '@.available' 2>/dev/null)"
 		url="$(printf '%s' "$info" | jsonfilter -e '@.url' 2>/dev/null)"
@@ -1712,7 +1722,10 @@ handle_ezsetup() {
 		overlay_kb="$(printf '%s' "$info" | jsonfilter -e '@.overlay_free_kb' 2>/dev/null)"
 		need_overlay_kb="$(printf '%s' "$info" | jsonfilter -e '@.need_overlay_kb' 2>/dev/null)"
 		[ -n "$repo" ] || repo="$(ark_update_repo)"
-		[ "$available" = true ] || { echo 'Nenhuma atualizacao mais nova disponivel' >&2; exit 3; }
+		if [ "$force" = 0 ] && [ "$available" != true ]; then
+			echo 'Nenhuma atualizacao mais nova disponivel' >&2
+			exit 3
+		fi
 		if [ "$space_ok" = false ]; then
 			echo "Espaco insuficiente na Flash (/overlay): apenas ${overlay_kb} KB livres. O ponto de corte minimo e de ${need_overlay_kb} KB para garantir a integridade do sistema." >&2
 			exit 5
@@ -1761,7 +1774,7 @@ handle_ezsetup() {
 			installed_after="$(ark_current_version)"
 			echo "Installed version after update: $installed_after"
 			clean_installed="$(normalize_version "$installed_after")"
-			if [ -n "$clean_latest" ] && version_gt "$clean_latest" "$clean_installed"; then
+			if [ "$force" = 0 ] && [ -n "$clean_latest" ] && version_gt "$clean_latest" "$clean_installed"; then
 				echo "Atualizacao baixada, mas a versao instalada continua antiga ($installed_after < $latest)." >&2
 				echo "Isso normalmente indica asset de release antigo/incompleto ou pacote rejeitado pelo gerenciador." >&2
 				exit 4

@@ -296,8 +296,11 @@ dns_turbo_status_json() {
 	blocker_name="$(detect_dns_blocker 2>/dev/null || true)"
 	dns_blocker_active=false
 	[ -n "$blocker_name" ] && dns_blocker_active=true
-	printf '{"allservers":%s,"servers":"%s","filter_aaaa":%s,"dhcp_fallback":%s,"dns_blocker_active":%s,"dns_blocker_name":"%s"}\n' \
-		"$allservers" "$(json_escape "$servers")" "$filter_aaaa" "$dhcp_fallback" "$dns_blocker_active" "$(json_escape "$blocker_name")"
+	cachesize="$(uci -q get dhcp.@dnsmasq[0].cachesize || echo 150)"
+	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+	mem_total_mb=$((mem_total_kb / 1024))
+	printf '{"allservers":%s,"servers":"%s","filter_aaaa":%s,"dhcp_fallback":%s,"dns_blocker_active":%s,"dns_blocker_name":"%s","cachesize":%s,"mem_total_mb":%s}\n' \
+		"$allservers" "$(json_escape "$servers")" "$filter_aaaa" "$dhcp_fallback" "$dns_blocker_active" "$(json_escape "$blocker_name")" "$cachesize" "$mem_total_mb"
 }
 
 dns_turbo_save() {
@@ -307,6 +310,7 @@ dns_turbo_save() {
 	dns3="$4"
 	dns4="$5"
 	fallback="${6:-0}"
+	cache_sz="${7:-}"
 	case "$allservers" in 1|true) allservers=1 ;; *) allservers=0 ;; esac
 	case "$fallback" in 1|true) fallback=1 ;; *) fallback=0 ;; esac
 
@@ -382,6 +386,14 @@ dns_turbo_save() {
 		else
 			apply_lan_dhcp_dns "$lan_ip"
 		fi
+	fi
+	if [ -n "$cache_sz" ]; then
+		case "$cache_sz" in
+			''|*[!0-9]*) cache_sz=10000 ;;
+		esac
+		[ "$cache_sz" -lt 150 ] && cache_sz=150
+		[ "$cache_sz" -gt 50000 ] && cache_sz=50000
+		uci -q set "dhcp.@dnsmasq[0].cachesize=$cache_sz"
 	fi
 	command -v sanitize_dhcp_hostnames >/dev/null 2>&1 && sanitize_dhcp_hostnames
 	uci commit dhcp
@@ -1829,9 +1841,16 @@ detect_hardware_silicon_profile() {
 			silicon_hw_offload_capable=1
 			silicon_tuning_profile="MT7621A (PPE v1 HW NAT + Multicore)"
 			;;
+		*predator-t7*|*connect-t7*|*ipq5332*|*ipq5322*)
+			silicon_class="qualcomm_ipq"
+			silicon_name="Qualcomm IPQ5332 (Acer Predator Connect T7)"
+			silicon_hw_offload_capable=1
+			silicon_tuning_profile="Qualcomm IPQ5332 (PPE Offload + Wi-Fi 7 BE11000)"
+			;;
 		*ipq53*|*qualcommax*|*ipq807*|*ipq60*|*ipq50*|*ipq9574*|*ipq9554*)
 			silicon_class="qualcomm_ipq"
 			silicon_name="Qualcomm IPQ (ARMv8 Multicore High-Speed)"
+			silicon_hw_offload_capable=1
 			silicon_tuning_profile="Qualcomm IPQ (SFE / Flowtable Multicore)"
 			;;
 		*ipq4018*|*ipq4019*|*ipq40xx*)
@@ -2253,6 +2272,7 @@ get_system_hardware_info_raw() {
 	if [ "$cpu_freq_mhz" -le 0 ]; then
 		compat="$(cat /proc/device-tree/compatible 2>/dev/null | tr '\0' ' ' || echo '')"
 		case "$board $compat" in
+			*predator-t7*|*connect-t7*|*ipq5332*|*ipq53*) cpu_freq_mhz=1500 ;;
 			*mt7986*|*filogic-830*|*predator-w6x*) cpu_freq_mhz=2000 ;;
 			*mt7981*|*filogic-820*|*wr3000*) cpu_freq_mhz=1300 ;;
 			*mt7988*|*filogic-880*) cpu_freq_mhz=1800 ;;
@@ -2797,6 +2817,181 @@ zram_toggle() {
 	echo ok
 }
 
+# -------------------------------------------------------------
+# SUBSISTEMA DE HORÁRIO, NTP INTELIGENTE & FAKE RTC CLOCK PRESERVER
+# -------------------------------------------------------------
+
+get_ntp_status() {
+	local cur_date="$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo '')"
+	local cur_epoch="$(date +%s 2>/dev/null || echo 0)"
+	local cur_tz="$(uci -q get system.@system[0].timezone || echo 'UTC')"
+	local cur_zone="$(uci -q get system.@system[0].zonename || echo 'UTC')"
+	local ntp_enabled="$(uci -q get system.ntp.enabled || echo 1)"
+	local ntp_server="$(uci -q get system.ntp.enable_server || echo 0)"
+	local intercept_enabled="$(uci -q get firewall.ark_ntp_intercept.enabled || echo 0)"
+
+	local clock_saved=false
+	if [ -f /etc/ark-clock.epoch ]; then
+		clock_saved=true
+	fi
+
+	local servers=""
+	local s_first=1
+	for s in $(uci -q get system.ntp.server); do
+		[ "$s_first" = 1 ] && s_first=0 || servers="$servers,"
+		servers="$servers\"$(json_escape "$s")\""
+	done
+
+	cat <<EOF
+{
+  "date_formatted": "$(json_escape "$cur_date")",
+  "epoch": $cur_epoch,
+  "timezone": "$(json_escape "$cur_tz")",
+  "zonename": "$(json_escape "$cur_zone")",
+  "ntp_enabled": $([ "$ntp_enabled" = "1" ] && echo true || echo false),
+  "server_active": $([ "$ntp_server" = "1" ] && echo true || echo false),
+  "intercept_active": $([ "$intercept_enabled" = "1" ] && echo true || echo false),
+  "clock_preserver_active": $clock_saved,
+  "servers": [$servers]
+}
+EOF
+}
+
+ntp_sync_browser() {
+	local target_epoch="$1"
+	local target_tz_name="$2"
+	local target_offset_min="$3"
+
+	case "$target_epoch" in
+		''|*[!0-9]*) ;;
+		*)
+			if [ "$target_epoch" -ge 1735689600 ]; then
+				date -u -s "@$target_epoch" >/dev/null 2>&1 || true
+				mkdir -p /etc
+				printf '%s\n' "$target_epoch" > /etc/ark-clock.epoch
+			fi
+			;;
+	esac
+
+	if [ -n "$target_tz_name" ]; then
+		local posix_tz=""
+		case "$target_tz_name" in
+			America/Sao_Paulo|America/Fortaleza|America/Recife|America/Bahia|America/Belem|America/Maceio|America/Araguaina)
+				posix_tz="<-03>3"
+				target_tz_name="America/Sao_Paulo"
+				;;
+			America/Manaus|America/Cuiaba|America/Campo_Grande|America/Porto_Velho|America/Boa_Vista)
+				posix_tz="<-04>4"
+				;;
+			America/Rio_Branco)
+				posix_tz="<-05>5"
+				;;
+			America/Noronha)
+				posix_tz="<-02>2"
+				;;
+			UTC|Etc/UTC)
+				posix_tz="UTC"
+				;;
+			*)
+				if [ -n "$target_offset_min" ]; then
+					case "$target_offset_min" in
+						''|*[!0-9-]*) ;;
+						*)
+							local offset_hours=$((target_offset_min / 60))
+							if [ "$offset_hours" -gt 0 ]; then
+								posix_tz="<-0${offset_hours}>${offset_hours}"
+							elif [ "$offset_hours" -lt 0 ]; then
+								local pos_hours=$(( -offset_hours ))
+								posix_tz="<+0${pos_hours}>-${pos_hours}"
+							else
+								posix_tz="UTC"
+							fi
+							;;
+					esac
+				fi
+				;;
+		esac
+
+		if [ -n "$posix_tz" ]; then
+			uci -q set system.@system[0].zonename="$target_tz_name"
+			uci -q set system.@system[0].timezone="$posix_tz"
+			uci commit system
+		fi
+	fi
+
+	echo 'ok'
+}
+
+ntp_configure_smart() {
+	uci -q set system.ntp=timeserver
+	uci -q set system.ntp.enabled='1'
+	uci -q set system.ntp.enable_server='1'
+	uci -q delete system.ntp.server
+	uci add_list system.ntp.server='a.st1.ntp.br'
+	uci add_list system.ntp.server='b.st1.ntp.br'
+	uci add_list system.ntp.server='time.cloudflare.com'
+	uci add_list system.ntp.server='time.google.com'
+	uci commit system
+
+	uci -q delete firewall.ark_ntp_intercept
+	uci set firewall.ark_ntp_intercept=redirect
+	uci set firewall.ark_ntp_intercept.name='Interceptar NTP UDP 123'
+	uci set firewall.ark_ntp_intercept.src='lan'
+	uci set firewall.ark_ntp_intercept.proto='udp'
+	uci set firewall.ark_ntp_intercept.src_dport='123'
+	uci set firewall.ark_ntp_intercept.dest_port='123'
+	uci set firewall.ark_ntp_intercept.target='DNAT'
+	uci set firewall.ark_ntp_intercept.enabled='1'
+	uci commit firewall
+
+	if [ -x /etc/init.d/ark-clock-preserver ]; then
+		/etc/init.d/ark-clock-preserver enable >/dev/null 2>&1 || true
+		/etc/init.d/ark-clock-preserver start >/dev/null 2>&1 || true
+	fi
+
+	(
+		/etc/init.d/sysntpd restart >/dev/null 2>&1 || true
+		if command -v fw4 >/dev/null 2>&1; then
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+		elif command -v fw3 >/dev/null 2>&1; then
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+		fi
+	) &
+
+	echo 'ok'
+}
+
+ntp_intercept_toggle() {
+	local state="$1"
+	case "$state" in
+		1|true) state=1 ;;
+		*) state=0 ;;
+	esac
+
+	uci -q set "firewall.ark_ntp_intercept.enabled=$state"
+	uci commit firewall
+
+	if command -v fw4 >/dev/null 2>&1 || command -v fw3 >/dev/null 2>&1; then
+		/etc/init.d/firewall reload >/dev/null 2>&1 || true
+	fi
+
+	echo 'ok'
+}
+
+time_save_clock() {
+	local cur_epoch="$(date +%s 2>/dev/null || echo 0)"
+	local cur_year="$(date +%Y 2>/dev/null || echo 0)"
+	case "$cur_epoch" in ''|*[!0-9]*) cur_epoch=0 ;; esac
+	case "$cur_year" in ''|*[!0-9]*) cur_year=0 ;; esac
+	if [ "$cur_year" -ge 2025 ] && [ "$cur_epoch" -ge 1735689600 ]; then
+		mkdir -p /etc
+		printf '%s\n' "$cur_epoch" > /etc/ark-clock.epoch
+		echo 'ok'
+	else
+		echo 'clock_invalid'
+	fi
+}
+
 handle_system() {
 	action="$1"
 	[ -n "$action" ] || { echo "Uso: $0 <comando> [args...]" >&2; exit 1; }
@@ -3004,6 +3199,21 @@ handle_system() {
 	safe-storage-reboot)
 		ark_safe_storage_reboot
 		echo ok
+		;;
+	ntp-status)
+		get_ntp_status
+		;;
+	ntp-sync-browser)
+		ntp_sync_browser "$2" "$3" "$4"
+		;;
+	ntp-configure-smart)
+		ntp_configure_smart
+		;;
+	ntp-intercept-toggle)
+		ntp_intercept_toggle "$2"
+		;;
+	time-save-clock|clock-save)
+		time_save_clock
 		;;
 
 	*)

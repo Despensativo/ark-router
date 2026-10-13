@@ -549,6 +549,10 @@ function wifiConfig(config) {
 		                   (c && c.ssid && out.disabled6 !== '1');
 		out.disabled = anyEnabled ? '0' : '1';
 		out.encryption=(b&&b.encryption)||(a&&a.encryption)||(c&&c.encryption)||'sae-mixed';
+		out.encryption2=(a&&a.encryption)||out.encryption||'sae-mixed';
+		out.encryption5=(b&&b.encryption)||out.encryption||'sae-mixed';
+		out.encryption6=(c&&c.encryption)||'sae';
+		out.splitEnc=!!(a&&b&&a.encryption&&b.encryption&&a.encryption!==b.encryption);
 		out.ssid=out.ssid2||out.ssid5||out.ssid6||out.ssid||'';
 		out.split=!!(out.ssid2&&out.ssid5&&out.ssid2!==out.ssid5);
 		out.network=(a&&a.network)||(b&&b.network)||(c&&c.network)||'lan';
@@ -607,7 +611,9 @@ function wifiConfig(config) {
 		rawRadio0: v.radio0 || {},
 		rawRadio1: v.radio1 || {},
 		rawRadio2: (dev6g && v[dev6g]) || v.radio2 || {},
-		has6g: !!(dev6g && v[dev6g]),
+		has2g: !!(hasRadios && dev2g && v[dev2g] && v[dev2g]['.type'] === 'wifi-device'),
+		has5g: !!(hasRadios && dev5g && v[dev5g] && v[dev5g]['.type'] === 'wifi-device'),
+		has6g: !!(hasRadios && dev6g && v[dev6g] && v[dev6g]['.type'] === 'wifi-device'),
 		wpsEnabled: isWpsEnabled,
 		roamingEnabled: isRoamingEnabled,
 		meshActive: isMeshActive,
@@ -1064,5 +1070,50 @@ function setupCardAccordion(options) {
 		}
 	};
 }
+
+function withButtonFeedback(button, actionFn, options) {
+	if (!button || button.disabled) return Promise.resolve();
+	options = options || {};
+	const origHtml = button.innerHTML;
+	const loadingText = options.loadingText || (button.textContent.trim() + '…');
+	const successText = options.successText || '✓ ' + (options.doneText || 'Concluído');
+
+	button.disabled = true;
+	button.classList.add('is-busy');
+	button.innerHTML = '<span class="ex-spinner-inline"></span> ' + loadingText;
+
+	return Promise.resolve()
+		.then(function() { return actionFn(); })
+		.then(function(res) {
+			button.classList.remove('is-busy');
+			button.classList.add('is-success');
+			button.innerHTML = successText;
+			if (options.successToast) {
+				ui.addNotification(null, E('p', {}, [options.successToast]), 'info');
+			}
+			window.setTimeout(function() {
+				button.classList.remove('is-success');
+				button.innerHTML = origHtml;
+				button.disabled = false;
+				if (typeof options.onSuccess === 'function') options.onSuccess(res);
+			}, options.resetDelay || 1500);
+			return res;
+		})
+		.catch(function(err) {
+			button.classList.remove('is-busy');
+			button.classList.add('is-error');
+			button.innerHTML = '❌ ' + (options.errorText || 'Erro');
+			const msg = (err && (err.message || err.stderr)) || 'Falha ao executar operação';
+			ui.addNotification(null, E('p', {}, [msg]), 'danger');
+			window.setTimeout(function() {
+				button.classList.remove('is-error');
+				button.innerHTML = origHtml;
+				button.disabled = false;
+				if (typeof options.onError === 'function') options.onError(err);
+			}, 2500);
+			throw err;
+		});
+}
+
 
 

@@ -98,6 +98,7 @@ class TestLiteVsFullScenarios(unittest.TestCase):
             head: headMock,
             body: bodyMock,
             getElementById: () => null,
+            createElement: (tag) => createEl(tag, {{}}, []),
             querySelector: (sel) => sel === 'head' ? headMock : createEl('div', {{}}, []),
             querySelectorAll: () => []
         }};
@@ -275,6 +276,7 @@ class TestLiteVsFullScenarios(unittest.TestCase):
             head: headMock,
             body: bodyMock,
             getElementById: () => null,
+            createElement: (tag) => createEl(tag, {{}}, []),
             querySelector: (sel) => sel === 'head' ? headMock : createEl('div', {{}}, []),
             querySelectorAll: () => []
         }};

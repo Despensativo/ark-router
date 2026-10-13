@@ -18,6 +18,9 @@ fi
 if [ -f "${_lib}/modules/network.sh" ] && ! command -v ensure_mwan3_ark_config >/dev/null 2>&1; then
 	. "${_lib}/modules/network.sh"
 fi
+if [ -f "${_lib}/modules/wifi.sh" ] && ! command -v wifi_known_radios >/dev/null 2>&1; then
+	. "${_lib}/modules/wifi.sh"
+fi
 unset _lib
 
 ark_doctor_audit() {
@@ -28,6 +31,8 @@ ark_doctor_audit() {
 	fixes_applied=0
 	checks=""
 	log_details=""
+	root_prefix="${ARK_ROOT:-}"
+	uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
 
 	add_check() {
 		local c_name="$1" c_status="$2" c_msg="$3"
@@ -708,7 +713,7 @@ ark_doctor_audit() {
 
 		v6_mode="$($uci_cmd get equipe_dashboard.ipv6.mode 2>/dev/null || echo '')"
 		missing_wan6=0
-		if [ "$v6_mode" = "dual_stack" ] || [ "$v6_mode" = "selective" ] || [ "$v6_mode" = "ipv6_only" ]; then
+		if [ "$v6_mode" = "dual_stack" ] || [ "$v6_mode" = "selective" ] || [ "$v6_mode" = "nptv6" ] || [ "$v6_mode" = "ipv6_only" ]; then
 			[ "$has_wan6_configured" = 0 ] && missing_wan6=1
 		fi
 
@@ -943,9 +948,25 @@ ark_doctor_audit() {
 				add_check "Coerência IPv6 (Dashboard vs LAN)" "OK" "Modo IPv4 Puro: anúncios desativados na LAN e filtro AAAA ativo no DNSmasq."
 			fi
 		elif [ "$wan_has_ipv6" = "1" ]; then
-			# Modo dual_stack ou selective com WAN IPv6 ativa: anúncios na LAN DEVEM estar operacionais
+			# Modo dual_stack, selective ou nptv6 com WAN IPv6 ativa: anúncios na LAN DEVEM estar operacionais
 			expected_service="server"
-			[ "$relay" = "1" ] && expected_service="relay"
+			if [ "$ipv6_mode" = "nptv6" ]; then
+				expected_service="server"
+				if [ "$relay" = "1" ]; then
+					if [ "$auto_fix" = 1 ]; then
+						$uci_cmd set equipe_dashboard.ipv6.relay='0'
+						$uci_cmd delete dhcp.wan.dhcpv6 2>/dev/null || true
+						$uci_cmd delete dhcp.wan.ra 2>/dev/null || true
+						$uci_cmd delete dhcp.wan.ndp 2>/dev/null || true
+						$uci_cmd delete dhcp.wan.master 2>/dev/null || true
+						$uci_cmd commit dhcp
+						$uci_cmd commit equipe_dashboard
+						relay="0"
+					fi
+				fi
+			elif [ "$relay" = "1" ]; then
+				expected_service="relay"
+			fi
 
 			if [ "$lan_ra" != "$expected_service" ] || [ "$lan_dhcpv6" != "$expected_service" ] || [ "$filter_aaaa" = "1" ]; then
 				if [ "$auto_fix" = 1 ]; then
@@ -975,6 +996,35 @@ ark_doctor_audit() {
 				fi
 			else
 				add_check "Coerência IPv6 (Dashboard vs LAN)" "OK" "Modo $ipv6_mode devidamente alinhado entre WAN e anúncios da LAN ($expected_service)."
+			fi
+
+			if [ "$ipv6_mode" = "nptv6" ]; then
+				wan_masq6=""
+				z_idx=0
+				while true; do
+					z_name="$($uci_cmd get firewall.@zone[$z_idx].name 2>/dev/null || echo '')"
+					[ -z "$z_name" ] && break
+					if [ "$z_name" = "wan" ]; then
+						wan_masq6="$($uci_cmd get firewall.@zone[$z_idx].masq6 2>/dev/null || echo '0')"
+						break
+					fi
+					z_idx=$((z_idx + 1))
+				done
+				if [ "$wan_masq6" != "1" ]; then
+					if [ "$auto_fix" = 1 ]; then
+						if [ -f /usr/lib/ark/modules/network.sh ]; then
+							. /usr/lib/ark/modules/network.sh
+							sync_nptv6_firewall >/dev/null 2>&1 || true
+						fi
+						fixes_applied=$((fixes_applied + 1))
+						add_check "Masquerade NPTv6 (Firewall WAN)" "FIXED" "Regra masq6 ativada na zona WAN para tradução 1:1 de prefixo IPv6."
+					else
+						errors=$((errors + 1))
+						add_check "Masquerade NPTv6 (Firewall WAN)" "FAIL" "Modo nptv6 ativo, mas masq6 ausente na zona WAN do firewall."
+					fi
+				else
+					add_check "Masquerade NPTv6 (Firewall WAN)" "OK" "Tradução 1:1 NPTv6 (masq6) ativa e operacional na zona WAN."
+				fi
 			fi
 		else
 			# Modo dual_stack ou selective, mas WAN sem IPv6
@@ -1059,22 +1109,341 @@ ark_doctor_audit() {
 		fi
 	fi
 
-	# 13. Checagem de Sincronizacao de Horario (NTP)
+	# 12b. Coerência Criptográfica Wi-Fi (SSID Unificado & Roaming 802.11v)
+	local ap_sections=""
+	for sec in $($uci_cmd show wireless 2>/dev/null | sed -n 's/^wireless\.\([a-zA-Z0-9_]*\)=wifi-iface$/\1/p'); do
+		local sec_mode="$($uci_cmd get "wireless.$sec.mode" 2>/dev/null || echo 'ap')"
+		[ "$sec_mode" = "ap" ] || continue
+		local sec_dis="$($uci_cmd get "wireless.$sec.disabled" 2>/dev/null || echo 0)"
+		[ "$sec_dis" = "1" ] && continue
+		ap_sections="$ap_sections $sec"
+	done
+
+	local processed_ssids=""
+	local has_unified_wifi=0
+	local unified_ssids=""
+	local wifi_needs_reload=0
+	local crypto_checked_count=0
+	local crypto_mismatch_count=0
+	local crypto_key_mismatch_count=0
+
+	for sec1 in $ap_sections; do
+		local chk_ssid="$($uci_cmd get "wireless.$sec1.ssid" 2>/dev/null || echo '')"
+		[ -n "$chk_ssid" ] || continue
+
+		case "|${processed_ssids}|" in
+			*"|${chk_ssid}|"*) continue ;;
+		esac
+		processed_ssids="${processed_ssids}|${chk_ssid}"
+
+		local matching_secs=""
+		local matching_count=0
+		local first_enc=""
+		local first_key=""
+		local enc_mismatch=0
+		local key_mismatch=0
+		local enc_summary=""
+		local has_sae=0
+
+		for other_sec in $ap_sections; do
+			local s_ssid="$($uci_cmd get "wireless.$other_sec.ssid" 2>/dev/null || echo '')"
+			[ "$s_ssid" = "$chk_ssid" ] || continue
+
+			matching_count=$((matching_count + 1))
+			matching_secs="$matching_secs $other_sec"
+
+			local s_enc="$($uci_cmd get "wireless.$other_sec.encryption" 2>/dev/null || echo 'none')"
+			local s_key="$($uci_cmd get "wireless.$other_sec.key" 2>/dev/null || echo '')"
+			local s_dev="$($uci_cmd get "wireless.$other_sec.device" 2>/dev/null || echo "$other_sec")"
+
+			case "$s_enc" in *sae*) has_sae=1 ;; esac
+
+			local s_band="$($uci_cmd get "wireless.$s_dev.band" 2>/dev/null || echo '')"
+			[ -n "$s_band" ] || s_band="$($uci_cmd get "wireless.$s_dev.hwmode" 2>/dev/null || echo '')"
+			local s_label
+			case "$s_band" in
+				*2g*|*11g*|*11b*|*11n*) s_label="2.4GHz" ;;
+				*5g*|*11a*|*11ac*|*11ax*) s_label="5GHz" ;;
+				*6g*) s_label="6GHz" ;;
+				*) s_label="$s_dev" ;;
+			esac
+
+			enc_summary="${enc_summary} [${s_label}: ${s_enc}]"
+
+			if [ -z "$first_enc" ]; then
+				first_enc="$s_enc"
+				first_key="$s_key"
+			else
+				if [ "$s_enc" != "$first_enc" ]; then
+					enc_mismatch=1
+				fi
+				if [ "$s_key" != "$first_key" ]; then
+					key_mismatch=1
+				fi
+			fi
+		done
+
+		# Se o mesmo SSID existe em 2 ou mais interfaces AP ativas (Rede Unificada)
+		if [ "$matching_count" -ge 2 ]; then
+			has_unified_wifi=1
+			unified_ssids="${unified_ssids} '${chk_ssid}'"
+			crypto_checked_count=$((crypto_checked_count + 1))
+
+			if [ "$key_mismatch" = 1 ]; then
+				crypto_key_mismatch_count=$((crypto_key_mismatch_count + 1))
+				errors=$((errors + 1))
+				add_check "Coerencia de Senha Wi-Fi" "FAIL" "SSID '${chk_ssid}' possui senhas diferentes entre as bandas. A troca de banda desconecta os clientes."
+			fi
+
+			if [ "$enc_mismatch" = 1 ]; then
+				crypto_mismatch_count=$((crypto_mismatch_count + 1))
+				if [ "$auto_fix" = 1 ]; then
+					local target_enc="sae-mixed"
+					[ "$has_sae" = 1 ] || target_enc="psk2"
+					for fix_sec in $matching_secs; do
+						$uci_cmd set "wireless.$fix_sec.encryption=$target_enc"
+					done
+					$uci_cmd commit wireless 2>/dev/null || true
+					wifi_needs_reload=1
+					fixes_applied=$((fixes_applied + 1))
+					add_check "Coerencia Criptografica Wi-Fi" "FIXED" "SSID '${chk_ssid}' com seguranca divergente (${enc_summary# }). Criptografia unificada para '${target_enc}' (WPA2/WPA3), restaurando o Roaming 802.11v suave."
+				else
+					warnings=$((warnings + 1))
+					add_check "Coerencia Criptografica Wi-Fi" "WARN" "SSID '${chk_ssid}' com seguranca divergente (${enc_summary# }). Prejudica a transição suave (802.11v/roaming) entre bandas."
+				fi
+			fi
+		fi
+	done
+
+	if [ "$crypto_checked_count" -gt 0 ] && [ "$crypto_mismatch_count" -eq 0 ]; then
+		add_check "Coerencia Criptografica Wi-Fi" "OK" "Criptografia e credenciais unificadas em todas as bandas dos SSIDs ativos."
+	elif [ "$crypto_checked_count" -eq 0 ]; then
+		add_check "Coerencia Criptografica Wi-Fi" "OK" "Roteador sem redes Wi-Fi unificadas multi-banda (não aplicável)."
+	fi
+
+	# 12c. Auditoria e Autocura de Band Steering (usteer / Qualcomm SON)
+	local has_qca_son=0
+	if lsmod 2>/dev/null | grep -qE 'hyfi_bridging|qca_mcs|qca_ssdk' || [ -d /sys/module/hyfi_bridging ] || pgrep -x hyd >/dev/null 2>&1 || [ -x /etc/init.d/hyd ]; then
+		has_qca_son=1
+	fi
+
+	if [ "$has_qca_son" = 1 ]; then
+		add_check "Band Steering & Roaming (Qualcomm SON)" "OK" "Gerenciado nativamente em silício pelo Qualcomm Wi-Fi SON (hyd / hyfi-bridging com aceleração PPE). usteer dispensado para evitar conflito de kernel."
+	elif [ "$has_unified_wifi" = 0 ]; then
+		add_check "Band Steering (usteer)" "OK" "Redes Wi-Fi segregadas ou rádio único. Band Steering (usteer) não aplicável."
+	else
+		local overlay_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR>1 {print $4}')"
+		[ -n "$overlay_free_kb" ] || overlay_free_kb="$(df -k / 2>/dev/null | awk 'NR>1 {print $4}')"
+		[ -n "$overlay_free_kb" ] || overlay_free_kb=0
+
+		local usteer_installed=0
+		if [ -x /sbin/usteerd ] || [ -x /usr/sbin/usteerd ] || [ -x /etc/init.d/usteer ]; then
+			usteer_installed=1
+		fi
+
+		local usteer_active=0
+		if pgrep -x usteerd >/dev/null 2>&1; then
+			usteer_active=1
+		elif [ -x /etc/init.d/usteer ]; then
+			if /etc/init.d/usteer enabled >/dev/null 2>&1; then
+				usteer_active=1
+			fi
+		fi
+
+		if [ "$usteer_installed" = 1 ] && [ "$usteer_active" = 1 ]; then
+			# Verifica se 802.11k e 802.11v estão configurados nas seções AP
+			local missing_kv_secs=""
+			for chk_sec in $ap_sections; do
+				local k="$($uci_cmd get "wireless.$chk_sec.ieee80211k" 2>/dev/null || echo 0)"
+				local v="$($uci_cmd get "wireless.$chk_sec.ieee80211v" 2>/dev/null || echo 0)"
+				if [ "$k" != "1" ] || [ "$v" != "1" ]; then
+					missing_kv_secs="$missing_kv_secs $chk_sec"
+				fi
+			done
+
+			if [ -n "$missing_kv_secs" ]; then
+				if [ "$auto_fix" = 1 ]; then
+					for kv_sec in $missing_kv_secs; do
+						$uci_cmd set "wireless.$kv_sec.ieee80211k=1"
+						$uci_cmd set "wireless.$kv_sec.rrm_neighbor_report=1"
+						$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
+						$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
+						$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
+					done
+					$uci_cmd commit wireless 2>/dev/null || true
+					wifi_needs_reload=1
+					fixes_applied=$((fixes_applied + 1))
+					add_check "Band Steering (usteer)" "FIXED" "Daemon usteer ativo; parâmetros 802.11k/v alinhados nas interfaces AP para balanceamento 5GHz."
+				else
+					warnings=$((warnings + 1))
+					add_check "Band Steering (usteer)" "WARN" "usteer ativo, mas 802.11k/v ausente em interfaces AP (assistência de roaming incompleta)."
+				fi
+			else
+				add_check "Band Steering (usteer)" "OK" "Assistente de Band Steering (usteer) ativo e balanceando clientes entre 2.4GHz e 5GHz."
+			fi
+
+		elif [ "$usteer_installed" = 1 ]; then
+			# usteer está instalado mas desativado (cenário típico de aparelhos presos em 2.4GHz)
+			if [ "$auto_fix" = 1 ]; then
+				if [ ! -s /etc/config/usteer ]; then
+					touch /etc/config/usteer
+					$uci_cmd set usteer.@usteer[0]=usteer 2>/dev/null || $uci_cmd add usteer usteer
+					$uci_cmd set usteer.@usteer[0].network='lan'
+					$uci_cmd set usteer.@usteer[0].syslog='1'
+					$uci_cmd set usteer.@usteer[0].min_snr='15'
+					$uci_cmd set usteer.@usteer[0].load_balancing_threshold='3'
+					$uci_cmd set usteer.@usteer[0].band_steering_threshold='5'
+					$uci_cmd set usteer.@usteer[0].band_steering_min_snr='-70'
+					$uci_cmd set usteer.@usteer[0].kick_threshold='-78'
+					$uci_cmd set usteer.@usteer[0].max_retries='3'
+					$uci_cmd commit usteer 2>/dev/null || true
+				fi
+				for kv_sec in $ap_sections; do
+					$uci_cmd set "wireless.$kv_sec.ieee80211k=1"
+					$uci_cmd set "wireless.$kv_sec.rrm_neighbor_report=1"
+					$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
+					$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
+					$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
+				done
+				$uci_cmd commit wireless 2>/dev/null || true
+				/etc/init.d/usteer enable >/dev/null 2>&1 || true
+				/etc/init.d/usteer restart >/dev/null 2>&1 || true
+				$uci_cmd set equipe_dashboard.wifi=settings 2>/dev/null || true
+				$uci_cmd set equipe_dashboard.wifi.usteer_enabled=1
+				$uci_cmd commit equipe_dashboard 2>/dev/null || true
+				wifi_needs_reload=1
+				fixes_applied=$((fixes_applied + 1))
+				add_check "Band Steering (usteer)" "FIXED" "Assistente usteer ativado e 802.11k/v configurados. Aparelhos agora são distribuídos dinamicamente para o 5GHz."
+			else
+				warnings=$((warnings + 1))
+				add_check "Band Steering (usteer)" "WARN" "Rede Wi-Fi unificada (${unified_ssids# }) com Band Steering (usteer) inativo. Aparelhos tendem a ficar presos no 2.4GHz mais lento."
+			fi
+
+		else
+			# usteer não está instalado. Checar se o roteador tem suporte/capacidade de hardware
+			# Ponto de corte: 1200 KB livres para garantir 650 KB reservados para o Ark Panel + 150 KB usteer + 400 KB margem
+			if [ "$overlay_free_kb" -lt 1200 ]; then
+				add_check "Band Steering (usteer)" "OK" "Espaço Flash em overlay insuficiente (< 1200KB) para instalar o usteer sem comprometer atualizações do Ark Panel."
+			else
+				if [ "$auto_fix" = 1 ]; then
+					local net_ok=0
+					if ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1 || ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
+						net_ok=1
+					fi
+
+					if [ "$net_ok" = 1 ]; then
+						local inst_ok=0
+						if command -v apk >/dev/null 2>&1; then
+							apk add usteer >/dev/null 2>&1 || { apk update >/dev/null 2>&1 && apk add usteer >/dev/null 2>&1; }
+							[ -x /etc/init.d/usteer ] && inst_ok=1
+						elif command -v opkg >/dev/null 2>&1; then
+							opkg install usteer >/dev/null 2>&1 || { opkg update >/dev/null 2>&1 && opkg install usteer >/dev/null 2>&1; }
+							[ -x /etc/init.d/usteer ] && inst_ok=1
+						fi
+
+						if [ "$inst_ok" = 1 ]; then
+							if [ ! -s /etc/config/usteer ]; then
+								touch /etc/config/usteer
+								$uci_cmd set usteer.@usteer[0]=usteer 2>/dev/null || $uci_cmd add usteer usteer
+								$uci_cmd set usteer.@usteer[0].network='lan'
+								$uci_cmd set usteer.@usteer[0].syslog='1'
+								$uci_cmd set usteer.@usteer[0].min_snr='15'
+								$uci_cmd set usteer.@usteer[0].load_balancing_threshold='3'
+								$uci_cmd set usteer.@usteer[0].band_steering_threshold='5'
+								$uci_cmd set usteer.@usteer[0].band_steering_min_snr='-70'
+								$uci_cmd set usteer.@usteer[0].kick_threshold='-78'
+								$uci_cmd set usteer.@usteer[0].max_retries='3'
+								$uci_cmd commit usteer 2>/dev/null || true
+							fi
+							for kv_sec in $ap_sections; do
+								$uci_cmd set "wireless.$kv_sec.ieee80211k=1"
+								$uci_cmd set "wireless.$kv_sec.rrm_neighbor_report=1"
+								$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
+								$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
+								$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
+							done
+							$uci_cmd commit wireless 2>/dev/null || true
+							/etc/init.d/usteer enable >/dev/null 2>&1 || true
+							/etc/init.d/usteer restart >/dev/null 2>&1 || true
+							$uci_cmd set equipe_dashboard.wifi=settings 2>/dev/null || true
+							$uci_cmd set equipe_dashboard.wifi.usteer_enabled=1
+							$uci_cmd commit equipe_dashboard 2>/dev/null || true
+							wifi_needs_reload=1
+							fixes_applied=$((fixes_applied + 1))
+							add_check "Band Steering (usteer)" "FIXED" "Módulo usteer instalado e ativado com sucesso! Balanceamento dinâmico 2.4GHz/5GHz ativo."
+						else
+							warnings=$((warnings + 1))
+							add_check "Band Steering (usteer)" "WARN" "Rede Wi-Fi unificada sem usteer. Falha ao baixar o pacote dos repositórios OpenWrt."
+						fi
+					else
+						warnings=$((warnings + 1))
+						add_check "Band Steering (usteer)" "WARN" "Rede Wi-Fi unificada sem usteer. Download adiado por falta de conexão à internet."
+					fi
+				else
+					warnings=$((warnings + 1))
+					add_check "Band Steering (usteer)" "WARN" "Rede Wi-Fi unificada (${unified_ssids# }) sem módulo de Band Steering (usteer). Hardware suporta instalação (~73 KB com > 1.2MB livres em /overlay)."
+				fi
+			fi
+		fi
+	fi
+
+	if [ "$wifi_needs_reload" = "1" ] && [ "$auto_fix" = "1" ]; then
+		(sleep 1; wifi reload) >/dev/null 2>&1 &
+	fi
+
+	# 13. Checagem de Sincronizacao de Horario (NTP) & Preservacao de Relogio
 	cur_year="$(date +%Y 2>/dev/null || echo 0)"
 	cur_date_str="$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo '')"
+	cur_tz="$(uci -q get system.@system[0].timezone || echo '')"
+	clock_has_fake_rtc=0
+	[ -f /etc/ark-clock.epoch ] && clock_has_fake_rtc=1
+
+	# Normaliza fuso horario antigo com horario de verao obsoleto (BRST extinto)
+	if [ "$cur_tz" = "BRT3BRST,M10.3.0/0,M2.3.0/0" ] || [ "$cur_tz" = "BRT3BRST" ]; then
+		if [ "$auto_fix" = 1 ]; then
+			uci -q set system.@system[0].timezone='<-03>3'
+			uci commit system
+			fixes_applied=$((fixes_applied + 1))
+		fi
+	fi
+
 	if [ "$cur_year" -lt 2025 ] && [ "$cur_year" -gt 0 ]; then
 		if [ "$auto_fix" = 1 ]; then
+			if [ -x /etc/init.d/ark-clock-preserver ]; then
+				/etc/init.d/ark-clock-preserver start >/dev/null 2>&1 || true
+			fi
 			if [ -x /etc/init.d/sysntpd ]; then
 				/etc/init.d/sysntpd restart >/dev/null 2>&1 || true
 			fi
 			fixes_applied=$((fixes_applied + 1))
-			add_check "Sincronizacao de Horario (NTP)" "FIXED" "Servico NTP reiniciado para sincronizacao imediata de data e hora."
+			add_check "Sincronizacao de Horario (NTP)" "FIXED" "Servico NTP reiniciado e relogio atualizado para sincronizacao imediata."
 		else
 			warnings=$((warnings + 1))
 			add_check "Sincronizacao de Horario (NTP)" "WARN" "Relogio desatualizado (${cur_year}). Isso pode invalidar certificados TLS e o LuCI."
 		fi
 	else
-		add_check "Sincronizacao de Horario (NTP)" "OK" "Relogio sincronizado (${cur_date_str:-OK}). Certificados TLS validos."
+		# Grava periodicamente a data valida no Fake RTC preserver
+		if [ -f /usr/lib/ark/modules/system.sh ]; then
+			. /usr/lib/ark/modules/system.sh
+			time_save_clock >/dev/null 2>&1 || true
+		fi
+		# Garante servidor NTP local ativo para a LAN e daemon de preservacao habilitado
+		ntp_srv_en="$(uci -q get system.ntp.enable_server || echo '0')"
+		if [ "$ntp_srv_en" != "1" ] && [ "$auto_fix" = 1 ]; then
+			uci -q set system.ntp.enable_server='1'
+			uci commit system
+			[ -x /etc/init.d/sysntpd ] && /etc/init.d/sysntpd restart >/dev/null 2>&1 || true
+			fixes_applied=$((fixes_applied + 1))
+		fi
+		if [ -x /etc/init.d/ark-clock-preserver ] && [ ! -f /etc/rc.d/S01ark-clock-preserver ] && [ "$auto_fix" = 1 ]; then
+			/etc/init.d/ark-clock-preserver enable >/dev/null 2>&1 || true
+			fixes_applied=$((fixes_applied + 1))
+		fi
+
+		intercept_status="$(uci -q get firewall.ark_ntp_intercept.enabled || echo 0)"
+		intercept_desc=""
+		[ "$intercept_status" = "1" ] && intercept_desc=" • Intercept UDP 123 ativo"
+		add_check "Sincronizacao de Horario (NTP)" "OK" "Relogio sincronizado (${cur_date_str:-OK})${intercept_desc}. Certificados TLS validos."
 	fi
 
 	# 14. Checagem da Tabela NAT (Conntrack)

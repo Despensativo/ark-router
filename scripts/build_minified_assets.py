@@ -43,6 +43,11 @@ TARGETS = [
         "src": os.path.join(REPO_DIR, "root", "www", "luci-static", "ark", "cascade.css"),
         "rel": os.path.join("www", "luci-static", "ark", "cascade.css"),
         "type": "css"
+    },
+    {
+        "src": os.path.join(REPO_DIR, "root", "www", "luci-static", "ark", "mobile.css"),
+        "rel": os.path.join("www", "luci-static", "ark", "mobile.css"),
+        "type": "css"
     }
 ]
 

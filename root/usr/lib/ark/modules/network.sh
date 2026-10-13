@@ -733,12 +733,29 @@ EOF
 	fi
 }
 
+sync_nptv6_firewall() {
+	local zone="$(firewall_wan_zone_section)"
+	if [ -n "$zone" ]; then
+		uci -q set "firewall.$zone.masq6=1"
+		uci commit firewall
+	fi
+}
+
+clean_nptv6_firewall() {
+	local zone="$(firewall_wan_zone_section)"
+	if [ -n "$zone" ]; then
+		uci -q delete "firewall.$zone.masq6"
+		uci commit firewall
+	fi
+}
+
 set_ipv6_mode() {
 	mode="$1"
 	case "$mode" in
 		ipv4_only)
 			disable_ipv6_full
 			clean_ipv6_selective_firewall
+			clean_nptv6_firewall
 			if [ "$(uci -q get equipe_dashboard.main.network_mode)" != "ap" ]; then
 				local prev_v6="$(uci -q get equipe_dashboard.ipv6.mode || true)"
 				[ "$prev_v6" = "ipv6_only" ] && uci -q delete dhcp.lan.ignore && uci commit dhcp
@@ -751,6 +768,7 @@ set_ipv6_mode() {
 			;;
 		dual_stack)
 			enable_ipv6_dual_stack
+			clean_nptv6_firewall
 			sync_ipv6_selective_firewall
 			uci -q delete dhcp.lan.ignore
 			uci commit dhcp
@@ -762,6 +780,7 @@ set_ipv6_mode() {
 			;;
 		selective)
 			enable_ipv6_dual_stack
+			clean_nptv6_firewall
 			sync_ipv6_selective_firewall
 			uci -q delete dhcp.lan.ignore
 			uci commit dhcp
@@ -771,8 +790,30 @@ set_ipv6_mode() {
 			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) &
 			echo ok
 			;;
+		nptv6)
+			enable_ipv6_dual_stack
+			sync_nptv6_firewall
+			clean_ipv6_selective_firewall
+			uci -q set equipe_dashboard.ipv6.relay='0'
+			uci -q set dhcp.lan.dhcpv6='server'
+			uci -q set dhcp.lan.ra='server'
+			uci -q set dhcp.lan.ndp='disabled'
+			uci -q set dhcp.lan.ra_prefer_old='0'
+			uci -q delete dhcp.wan.dhcpv6
+			uci -q delete dhcp.wan.ra
+			uci -q delete dhcp.wan.ndp
+			uci -q delete dhcp.wan.master
+			uci -q delete dhcp.lan.ignore
+			uci commit dhcp
+			uci -q set equipe_dashboard.ipv6=ipv6
+			uci -q set equipe_dashboard.ipv6.mode='nptv6'
+			uci commit equipe_dashboard
+			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/odhcpd restart >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) &
+			echo ok
+			;;
 		ipv6_only)
 			enable_ipv6_dual_stack
+			clean_nptv6_firewall
 			clean_ipv6_selective_firewall
 			uci -q set dhcp.lan.ignore='1'
 			uci commit dhcp
@@ -783,7 +824,7 @@ set_ipv6_mode() {
 			echo ok
 			;;
 		*)
-			echo "Modo invalido: $mode (use: ipv4_only, dual_stack, selective, ipv6_only)" >&2
+			echo "Modo invalido: $mode (use: ipv4_only, dual_stack, selective, nptv6, ipv6_only)" >&2
 			exit 2
 			;;
 	esac
@@ -792,11 +833,19 @@ set_ipv6_mode() {
 set_ipv6_relay() {
 	state="$1"
 	case "$state" in 1|true) state=1 ;; *) state=0 ;; esac
+	mode="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
+	if [ "$state" = "1" ] && [ "$mode" = "nptv6" ]; then
+		echo "O modo NDP Relay e incompativel com NPTv6 (NPTv6 exige Servidor Direto de ULA)" >&2
+		exit 2
+	fi
+	if [ "$state" = "1" ] && [ "$mode" = "ipv4_only" ]; then
+		echo "NDP Relay nao pode ser ativado no modo IPv4 Puro" >&2
+		exit 2
+	fi
 	uci -q set equipe_dashboard.ipv6=ipv6
 	uci -q set "equipe_dashboard.ipv6.relay=$state"
 	uci commit equipe_dashboard
 
-	mode="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
 	if [ "$mode" != "ipv4_only" ]; then
 		if [ "$state" = 1 ]; then
 			uci -q set dhcp.lan.dhcpv6='relay'
@@ -868,10 +917,14 @@ get_ipv6_status() {
 		done
 	fi
 
+	zone="$(firewall_wan_zone_section)"
+	masq6="$(uci -q get "firewall.$zone.masq6" || echo 0)"
+
 	cat <<EOF
 {
   "mode": "$mode",
   "relay": $([ "$relay" = "1" ] && echo true || echo false),
+  "masq6": $([ "$masq6" = "1" ] && echo true || echo false),
   "wan6_proto": "$wan6_proto",
   "wan6_dev": "$wan6_dev",
   "prefix_delegated": "${prefix_delegated:-none}",
@@ -2003,6 +2056,7 @@ handle_network() {
 			ipv4_only) ipv6_label="Desativado (IPv4 Puro)" ;;
 			selective) ipv6_label="Seletivo por MAC" ;;
 			ipv6_only) ipv6_label="IPv6-Only" ;;
+			nptv6) ipv6_label="NPTv6 Inteligente (Multi-WAN)" ;;
 			*)
 				if [ "$ipv6_relay" = "1" ] || [ "$(uci -q get dhcp.lan.ndp)" = "relay" ]; then
 					ipv6_label="Cascata (NDP Relay)"
@@ -2011,11 +2065,15 @@ handle_network() {
 				fi
 				;;
 		esac
-		printf '{"ipaddr":"%s","netmask":"%s","dhcp_start":"%s.%s","dhcp_end":"%s.%s","start":"%s","limit":"%s","preset":"%s","supported":%s,"ipv6_mode":"%s","ipv6_relay":"%s","ipv6_label":"%s","dns":[' \
+		local ula_prefix="$(uci -q get network.globals.ula_prefix || echo '')"
+		local prefix_delegated="$(ip -6 route show 2>/dev/null | grep -E 'proto (kernel|ra|static)' | grep -E '^[23]' | head -n 1 | awk '{print $1}')"
+		[ -n "$prefix_delegated" ] || prefix_delegated="$(uci -q get network.wan6.ip6prefix || echo '')"
+		printf '{"ipaddr":"%s","netmask":"%s","dhcp_start":"%s.%s","dhcp_end":"%s.%s","start":"%s","limit":"%s","preset":"%s","supported":%s,"ipv6_mode":"%s","ipv6_relay":"%s","ipv6_label":"%s","ula_prefix":"%s","prefix_delegated":"%s","dns":[' \
 			"$(json_escape "$lan_ip")" "$(json_escape "$netmask")" "$prefix" "$start_host" "$prefix" "$end_host" "$start" "$limit" \
 			"$(case "$lan_ip" in 192.168.*) printf 192 ;; 10.0.*) printf 10 ;; *) printf manual ;; esac)" \
 			"$( [ "$netmask" = 255.255.255.0 ] && printf true || printf false )" \
-			"$(json_escape "$ipv6_mode")" "$(json_escape "$ipv6_relay")" "$(json_escape "$ipv6_label")"
+			"$(json_escape "$ipv6_mode")" "$(json_escape "$ipv6_relay")" "$(json_escape "$ipv6_label")" \
+			"$(json_escape "$ula_prefix")" "$(json_escape "$prefix_delegated")"
 		first=1
 		for server in $dns_values; do
 			[ "$first" = 1 ] || printf ','

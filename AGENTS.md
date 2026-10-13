@@ -63,6 +63,11 @@
     - O workflow automático do GitHub Actions na nuvem é lento e não deve ser o método primário para aguardar pacotes.
     - Toda geração dos pacotes `.ipk` e `.apk` deve ser realizada **localmente** no host/WSL através dos scripts de build (`scripts/build-ipk-wsl.sh`, `scripts/build-apk-manual-wsl.sh` ou utilitários locais).
     - O deploy ou publicação nas Releases do GitHub deve subir os binários já empacotados localmente (via `gh release upload` ou upload manual de artefatos), eliminando tempos mortos de espera e garantindo validação local antes de qualquer anúncio público.
+12. **Padrão Arquitetural Obrigatório para Tabelas, Abas e Ações Mobile no LuCI**:
+    - **Contenção Estrita de Viewport (`#view`, `#maincontent`)**: Declarar obrigatoriamente `max-width: 100% !important; box-sizing: border-box !important;`. Nenhuma página ou elemento de tabela pode expandir o `body` além da viewport móvel (360px a 390px).
+    - **Proibição de `overflow: visible !important` em Abas Ativas**: Seletores como `[data-tab-active="true"]` jamais podem aplicar `overflow: visible !important`, pois sobrepõem e neutralizam o scroll horizontal de contêineres e tabelas internas (`.cbi-tblsection`). Contêineres de tabela em abas devem implementar regra de alta especificidade com `overflow-x: auto !important; -webkit-overflow-scrolling: touch !important;`.
+    - **Encapsulamento Dinâmico de Tabelas Órfãs no LuCI JS (`ark-theme.js`)**: Tabelas injetadas diretamente sob `#view` sem wrapper (ex: `#wifi_assoclist_table`) devem ser detectadas em `applyPageTransforms()` e envolvidas em cartões `.ark-assoclist-card` com subtítulo, contador dinâmico e aviso visual tátil (`.ark-table-swipe-hint`).
+    - **Barra Inferior de Ações Mobile (`.cbi-page-actions`)**: Em telas móveis (<= 854px), o botão principal ("Salvar e Aplicar") deve ocupar 100% da largura na linha superior (altura mínima 44px), e os botões secundários ("Salvar" / "Descartar") devem dividir a linha inferior em 50%/50% (altura mínima 42px). Detalhes canônicos em `.agents/skills/ark-theme-ui/SKILL.md`.
 
 ---
 

@@ -1167,6 +1167,12 @@ msgstr "Click a profile to pre-fill recommended limits:"
 msgid "Clique para alternar modos IPv6 (Pilha Dupla, Seletivo por MAC, Cascata ou IPv4 Puro)"
 msgstr "Click to toggle IPv6 modes (Dual Stack, Selective MAC, Cascade, or Pure IPv4)"
 
+msgid "Clique para alternar modos IPv6 (Pilha Dupla, NPTv6, Seletivo por MAC, Cascata ou IPv4 Puro)"
+msgstr "Click to toggle IPv6 modes (Dual Stack, NPTv6, Selective MAC, Cascade, or Pure IPv4)"
+
+msgid "Clique para gerenciar o prefixo IPv6 e modos de rede"
+msgstr "Click to manage IPv6 prefix and network modes"
+
 msgid "Clique para escolher o servidor de teste de latência (Cloudflare, Google, Quad9, etc.)"
 msgstr "Click to choose latency test server (Cloudflare, Google, Quad9, etc.)"
 
@@ -12620,4 +12626,274 @@ msgstr "🛡️ Hardening & Safety Guarantees:"
 
 msgid "🧹 Otimizar Espaço Flash Agora"
 msgstr "🧹 Optimize Flash Space Now"
+
+msgid "(Atual)"
+msgstr "(Current)"
+
+msgid "A atualização não pôde ser concluída"
+msgstr "The update could not be completed"
+
+msgid "A nova versão foi instalada e está operacional."
+msgstr "The new version has been installed and is operational."
+
+msgid "Aceleração de Rede & Wi-Fi (Qualcomm PPE / SFE)"
+msgstr "Network & Wi-Fi Acceleration (Qualcomm PPE / SFE)"
+
+msgid "Aceleração de Rede ("
+msgstr "Network Acceleration ("
+
+msgid "Aceleração de Rede (Fastpath Software / MIPS)"
+msgstr "Network Acceleration (Software Fastpath / MIPS)"
+
+msgid "Ajustar relógio e fuso horário do roteador"
+msgstr "Adjust router clock and timezone"
+
+msgid "Atualizando ARK Router…"
+msgstr "Updating ARK Router…"
+
+msgid "Compatibilidade clássica com todos os dispositivos compatíveis com 5 GHz."
+msgstr "Classic compatibility with all 5 GHz compatible devices."
+
+msgid "Consultando status de relógio e servidores NTP do roteador…"
+msgstr "Checking router clock status and NTP servers…"
+
+msgid "Dispositivo em Operação Cabeada / Sem Rádios Wi-Fi:"
+msgstr "Wired-Only Operation / No Wi-Fi Radios:"
+
+msgid "Download"
+msgstr "Download"
+
+msgid "Erro ao iniciar atualização"
+msgstr "Error starting update"
+
+msgid "Estabelecendo conexão e preparando ambiente…"
+msgstr "Establishing connection and preparing environment…"
+
+msgid "Forçar Potência Máxima de Transmissão (Limite do Hardware)"
+msgstr "Force Maximum Transmit Power (Hardware Limit)"
+
+msgid "Fuso Configurado:"
+msgstr "Configured Timezone:"
+
+msgid "Iniciando atualização do ARK Router…"
+msgstr "Starting ARK Router update…"
+
+msgid "Interceptação UDP 123:"
+msgstr "UDP 123 Interception:"
+
+msgid "Interface"
+msgstr "Interface"
+
+msgid "Limite máximo de velocidade que todos os aparelhos de visitas podem usar juntos."
+msgstr "Maximum combined speed limit for all guest devices."
+
+msgid "Modos de operação: Pilha Dupla Global, NPTv6 Inteligente (Multi-WAN), IPv6 Seletivo por MAC, IPv4 Apenas ou IPv6-Only."
+msgstr "Operating modes: Global Dual-Stack, Smart NPTv6 (Multi-WAN), Selective IPv6 by MAC, IPv4-Only or IPv6-Only."
+
+msgid "Máxima segurança criptográfica moderna com PMF obrigatório. Apenas aparelhos modernos se conectarão nesta frequência."
+msgstr "Maximum modern cryptographic security with mandatory PMF. Only modern devices will connect on this frequency."
+
+msgid "Nenhum rádio Wi-Fi ativo para exibição de canais."
+msgstr "No active Wi-Fi radio to display channels."
+
+msgid "Não aplicável • Dispositivo mono-band 2,4 GHz (canais DFS existem apenas em 5 GHz)."
+msgstr "Not applicable • Single-band 2.4 GHz device (DFS channels only exist in 5 GHz)."
+
+msgid "Não aplicável • Dispositivo operando sem rádio 2,4 GHz ativo."
+msgstr "Not applicable • Device operating without active 2.4 GHz radio."
+
+msgid "Online"
+msgstr "Online"
+
+msgid "Padrão obrigatório com Protected Management Frames (PMF)."
+msgstr "Mandatory standard with Protected Management Frames (PMF)."
+
+msgid "Padrão recomendado para redes unificadas. Garante transição suave entre 2,4 GHz e 5 GHz (802.11k/v/usteer) e segurança moderna."
+msgstr "Recommended standard for unified networks. Ensures smooth transition between 2.4 GHz and 5 GHz (802.11k/v/usteer) and modern security."
+
+msgid "Plano (ex: 50)"
+msgstr "Plan (e.g. 50)"
+
+msgid "Plano (ex: 500)"
+msgstr "Plan (e.g. 500)"
+
+msgid "Pool resiliente (NTP.br + Cloudflare + Google) e Interceptação aplicados."
+msgstr "Resilient pool (NTP.br + Cloudflare + Google) and Interception applied."
+
+msgid "Por favor, não desligue o aparelho nem feche esta janela."
+msgstr "Please do not turn off the device or close this window."
+
+msgid "Processamento de Rede (x86_64 Multicore)"
+msgstr "Network Processing (x86_64 Multicore)"
+
+msgid "Recarregando a página em %s segundo(s)…"
+msgstr "Reloading page in %s second(s)…"
+
+msgid "Recomendado para ambientes com muitos aparelhos de automação (IoT) e legados. Garante conexão estável sem exigir PMF 802.11w."
+msgstr "Recommended for environments with many smart home (IoT) and legacy devices. Ensures stable connection without requiring 802.11w PMF."
+
+msgid "Rede aberta não é permitida pelo padrão Wi-Fi 6E/7."
+msgstr "Open network is not allowed by Wi-Fi 6E/7 standard."
+
+msgid "Rede de Visitantes (QoS Secundário)"
+msgstr "Guest Network (Secondary QoS)"
+
+msgid "Relógio do Roteador:"
+msgstr "Router Clock:"
+
+msgid "Relógio do roteador e fuso horário ("
+msgstr "Router clock and timezone ("
+
+msgid "SEM RÁDIO 2.4G"
+msgstr "NO 2.4G RADIO"
+
+msgid "SQM Salvo!"
+msgstr "SQM Saved!"
+
+msgid "Salvando SQM…"
+msgstr "Saving SQM…"
+
+msgid "Segurança 2,4 GHz"
+msgstr "2.4 GHz Security"
+
+msgid "Segurança 5 GHz"
+msgstr "5 GHz Security"
+
+msgid "Segurança 6 GHz"
+msgstr "6 GHz Security"
+
+msgid "Sem Senha (Desativa 6 GHz)"
+msgstr "No Password (Disables 6 GHz)"
+
+msgid "Sem link"
+msgstr "No link"
+
+msgid "Separar segurança por frequência (2,4 GHz e 5 GHz)"
+msgstr "Split security by frequency (2.4 GHz and 5 GHz)"
+
+msgid "Separar segurança por frequência (2,4 GHz, 5 GHz e 6 GHz)"
+msgstr "Split security by frequency (2.4 GHz, 5 GHz and 6 GHz)"
+
+msgid "Status:"
+msgstr "Status:"
+
+msgid "Tentar Novamente"
+msgstr "Try Again"
+
+msgid "Upload"
+msgstr "Upload"
+
+msgid "Você já está com a versão v%s instalada. Deseja reinstalar ou reparar o pacote agora?"
+msgstr "You already have version v%s installed. Do you want to reinstall or repair the package now?"
+
+msgid "WPA2 / WPA3 Transição (Modo Misto)"
+msgstr "WPA2 / WPA3 Transition (Mixed Mode)"
+
+msgid "WPA2 / WPA3 Transição (Recomendado - Modo Misto)"
+msgstr "WPA2 / WPA3 Transition (Recommended - Mixed Mode)"
+
+msgid "WPA2 / WPA3 Transição (Recomendado 5 GHz)"
+msgstr "WPA2 / WPA3 Transition (Recommended 5 GHz)"
+
+msgid "WPA2 Pessoal (Recomendado para 2,4 GHz e IoT)"
+msgstr "WPA2 Personal (Recommended for 2.4 GHz and IoT)"
+
+msgid "WPA2-PSK (5 GHz):"
+msgstr "WPA2-PSK (5 GHz):"
+
+msgid "WPA2-PSK (Compatibilidade Geral)"
+msgstr "WPA2-PSK (General Compatibility)"
+
+msgid "WPA2-PSK (Compatibilidade IoT / Legado)"
+msgstr "WPA2-PSK (IoT / Legacy Compatibility)"
+
+msgid "WPA3 Pessoal Puro (Aparelhos Modernos - Incompatível com IoT)"
+msgstr "Pure WPA3 Personal (Modern Devices - Incompatible with IoT)"
+
+msgid "WPA3 Pessoal Puro (Apenas Aparelhos Modernos)"
+msgstr "Pure WPA3 Personal (Modern Devices Only)"
+
+msgid "WPA3 Pessoal Puro (Máxima Segurança)"
+msgstr "Pure WPA3 Personal (Maximum Security)"
+
+msgid "WPA3 Pessoal Puro (Obrigatório Wi-Fi 6E/7)"
+msgstr "Pure WPA3 Personal (Mandatory for Wi-Fi 6E/7)"
+
+msgid "WPA3-SAE (Nativo 6 GHz):"
+msgstr "WPA3-SAE (Native 6 GHz):"
+
+msgid "WPA3-SAE Puro (5 GHz):"
+msgstr "Pure WPA3-SAE (5 GHz):"
+
+msgid "dispositivo"
+msgstr "device"
+
+msgid "⏰ Sincronização Inteligente de Horário & NTP"
+msgstr "⏰ Smart Time & NTP Synchronization"
+
+msgid "⏰ Sincronização de Horário"
+msgstr "⏰ Time Synchronization"
+
+msgid "⏰ Sincronização de Horário & NTP Inteligente"
+msgstr "⏰ Smart Time Synchronization & NTP"
+
+msgid "⚠️ Cuidado com Aparelhos IoT (2,4 GHz):"
+msgstr "⚠️ Caution with Smart Home / IoT Devices (2.4 GHz):"
+
+msgid "⚠️ Cuidado com Aparelhos IoT na Rede Unificada:"
+msgstr "⚠️ Caution with Smart Home / IoT Devices on Unified Network:"
+
+msgid "⚠️ Desativada no 6 GHz:"
+msgstr "⚠️ Disabled on 6 GHz:"
+
+msgid "⚡ NATIVO EM SILÍCIO"
+msgstr "⚡ HARDWARE NATIVE SILICON"
+
+msgid "✅ Aceleração em Silício (AES):"
+msgstr "✅ Hardware Silicon Acceleration (AES):"
+
+msgid "✅ Padrão Recomendado para 5 GHz:"
+msgstr "✅ Recommended Standard for 5 GHz:"
+
+msgid "✅ Recomendado para 2,4 GHz:"
+msgstr "✅ Recommended for 2.4 GHz:"
+
+msgid "🌐 Conexões operando"
+msgstr "🌐 Operating connections"
+
+msgid "🌐 Servidores Upstream em Uso (Pool Resiliente)"
+msgstr "🌐 Upstream Servers in Use (Resilient Pool)"
+
+msgid "💡 Dica de Compatibilidade:"
+msgstr "💡 Compatibility Tip:"
+
+msgid "💡 Dica para Casa Inteligente:"
+msgstr "💡 Smart Home Tip:"
+
+msgid "🔄 Reinstalar / Reparar v%s"
+msgstr "🔄 Reinstall / Repair v%s"
+
+msgid "🔒 Configurações salvas"
+msgstr "🔒 Settings saved"
+
+msgid "🛡️ Backup ativo"
+msgstr "🛡️ Active backup"
+
+msgid "🛡️ Interceptação Anycast LAN (UDP 123)"
+msgstr "🛡️ LAN Anycast Interception (UDP 123)"
+
+msgid "Digite a quantidade de domínios em cache (150 a 50.000):"
+msgstr "Enter the number of cached domains (150 to 50,000):"
+
+msgid "Guarda domínios na memória do roteador. Sites acessados respondem instantaneamente sem consultar a internet."
+msgstr "Stores domains in router RAM. Visited sites respond instantly without re-querying the internet."
+
+msgid "Mantém consultas resolvidas em 0ms sem reconsultar a internet"
+msgstr "Keeps resolved queries at 0ms without re-querying the internet"
+
+msgid "Tamanho do Cache DNS na Memória RAM (0ms)"
+msgstr "DNS Cache Size in RAM (0ms)"
+
+msgid "Tamanho do Cache DNS na Memória:"
+msgstr "DNS Cache Size in Memory:"
 

@@ -1,6 +1,6 @@
 // /src/modules/lifecycle.js - ARK Router LuCI View Module
 const lifecycleMethods = {
-	board: {}, countries: [], capabilities: {features:{}}, previous: {}, trafficPrevious: {}, trafficAt: 0, currentData: null, recommendedChannels: null, speedResults: {}, refreshTimer: null, dashboardRoot: null, deviceSortKey: 'total', deviceSortDir: 'desc', starlinkTelemetryTimer: null, starlinkTelemetryStopTimer: null, starlinkTelemetryActive: false, starlinkTelemetryWan: null, starlinkWanOrder: [], starlinkResults: {},
+	board: {}, countries: [], capabilities: {features:{}}, previous: {}, trafficPrevious: {}, trafficAt: 0, currentData: null, recommendedChannels: null, speedResults: {}, refreshTimer: null, clockTimer: null, dashboardRoot: null, deviceSortKey: 'total', deviceSortDir: 'desc', starlinkTelemetryTimer: null, starlinkTelemetryStopTimer: null, starlinkTelemetryActive: false, starlinkTelemetryWan: null, starlinkWanOrder: [], starlinkResults: {},
 	fetchCapabilities: function(){
 		if (typeof window !== 'undefined' && window._arkCapabilities && window._arkCapabilities.features) {
 			return Promise.resolve(window._arkCapabilities);
@@ -491,6 +491,9 @@ const lifecycleMethods = {
 		if(this.refreshTimer){window.clearTimeout(this.refreshTimer);this.refreshTimer=null;}
 		const wait=delay!=null?delay:(this.currentData?this.adaptiveRefreshSeconds(this.currentData)*1000:3000);
 		this.refreshTimer=window.setTimeout(L.bind(function(){
+			if (typeof location !== 'undefined' && location.pathname.indexOf('/equipe-dashboard') === -1 && location.pathname.indexOf('/admin/status/overview') === -1) {
+				return;
+			}
 			if(typeof document !== 'undefined' && document.hidden){
 				this.refreshPaused = true;
 				return;
@@ -602,27 +605,57 @@ const lifecycleMethods = {
 		text('ex-lan-dhcp', dhcpDisplay);
 		text('ex-lan-mask', lanStatus.netmask || '—');
 		text('ex-lan-dns', Array.isArray(lanStatus.dns) && lanStatus.dns.length ? lanStatus.dns.join('  •  ') : 'Sem DNS fixo');
+		const v6Mode = lanStatus.ipv6_mode || (data.equipeDashboardConfig && data.equipeDashboardConfig.values && data.equipeDashboardConfig.values.ipv6 && data.equipeDashboardConfig.values.ipv6.mode) || 'dual_stack';
+		const isRelay = lanStatus.ipv6_relay === '1' || (data.dhcpConfig && data.dhcpConfig.values && data.dhcpConfig.values.lan && data.dhcpConfig.values.lan.ndp === 'relay');
 		let ipv6Label = lanStatus.ipv6_label;
-		if (!ipv6Label) {
-			const dhcpLan=(data.dhcpConfig&&data.dhcpConfig.values&&data.dhcpConfig.values.lan)||(data.dhcpConfig&&data.dhcpConfig.lan)||{};
-			if(dhcpLan.ndp==='relay') ipv6Label = 'Cascata (NDP Relay)';
-			else if(dhcpLan.dhcpv6==='disabled'&&dhcpLan.ra==='disabled') ipv6Label = 'Desativado (IPv4 Puro)';
-			else ipv6Label = 'Pilha Dupla Global';
+		if (isRelay) {
+			ipv6Label = 'Cascata (NDP Relay)';
+		} else if (v6Mode === 'nptv6') {
+			ipv6Label = 'NPTv6 Inteligente (Multi-WAN)';
+		} else if (v6Mode === 'selective') {
+			ipv6Label = 'IPv6 Seletivo por MAC';
+		} else if (v6Mode === 'ipv4_only') {
+			ipv6Label = 'Desativado (IPv4 Puro)';
+		} else if (v6Mode === 'ipv6_only') {
+			ipv6Label = 'IPv6-Only (Futurista)';
+		} else if (!ipv6Label || ipv6Label === 'Pilha Dupla Global') {
+			ipv6Label = 'Pilha Dupla Global';
 		}
 		text('ex-lan-ipv6', ipv6Label);
+
 		let ipv6Prefix = '—';
 		const lanIface = iface(data.interfaces, 'lan');
 		const wan6Iface = iface(data.interfaces, 'wan6');
-		if (lanIface && Array.isArray(lanIface['ipv6-prefix-assignment']) && lanIface['ipv6-prefix-assignment'].length > 0) {
-			const p = lanIface['ipv6-prefix-assignment'][0];
-			ipv6Prefix = (p.address || '') + '/' + (p.mask || 64);
-		} else if (wan6Iface && Array.isArray(wan6Iface['ipv6-prefix']) && wan6Iface['ipv6-prefix'].length > 0) {
-			const p = wan6Iface['ipv6-prefix'][0];
-			ipv6Prefix = (p.address || '') + '/' + (p.mask || 64);
-		} else if (lanStatus.ipv6_relay === '1' || (ipv6Label && ipv6Label.indexOf('Relay') !== -1)) {
-			ipv6Prefix = 'Repasse NDP WAN ⇄ LAN';
-		} else if (lanStatus.ipv6_mode === 'ipv4_only' || (ipv6Label && ipv6Label.indexOf('Desativado') !== -1)) {
+		let pubPrefix = '';
+		let ulaPrefix = lanStatus.ula_prefix || (data.networkConfig && data.networkConfig.values && data.networkConfig.values.globals && data.networkConfig.values.globals.ula_prefix) || '';
+		if (lanIface && Array.isArray(lanIface['ipv6-prefix-assignment'])) {
+			lanIface['ipv6-prefix-assignment'].forEach(function(pa) {
+				const addr = String(pa.address || '');
+				if (addr.indexOf('fd') === 0 || addr.indexOf('fc') === 0) {
+					if (!ulaPrefix) ulaPrefix = addr + '/' + (pa.mask || 64);
+				} else if (!pubPrefix && addr) {
+					pubPrefix = addr + '/' + (pa.mask || 64);
+				}
+			});
+		}
+		if (!pubPrefix && wan6Iface && Array.isArray(wan6Iface['ipv6-prefix']) && wan6Iface['ipv6-prefix'].length > 0) {
+			const wp = wan6Iface['ipv6-prefix'][0];
+			pubPrefix = (wp.address || '') + '/' + (wp.mask || 64);
+		}
+		if (!pubPrefix && lanStatus.prefix_delegated) {
+			pubPrefix = lanStatus.prefix_delegated;
+		}
+
+		if (isRelay) {
+			ipv6Prefix = pubPrefix ? ('Repasse NDP • ' + pubPrefix) : 'Repasse NDP WAN ⇄ LAN';
+		} else if (v6Mode === 'ipv4_only' || (ipv6Label && ipv6Label.indexOf('Desativado') !== -1)) {
 			ipv6Prefix = 'Desativado';
+		} else if (v6Mode === 'nptv6') {
+			ipv6Prefix = (ulaPrefix || 'fd73:0192:0168::/48') + ' (NPTv6 1:1)';
+		} else if (v6Mode === 'selective') {
+			ipv6Prefix = pubPrefix ? (pubPrefix + ' (Seletivo)') : (ulaPrefix ? (ulaPrefix + ' (ULA)') : 'Sem prefixo da operadora');
+		} else {
+			ipv6Prefix = pubPrefix || (ulaPrefix ? (ulaPrefix + ' (ULA Local)') : 'Sem prefixo da operadora');
 		}
 		text('ex-lan-ipv6-prefix', ipv6Prefix);
 		const igmpActive = !!lanStatus.igmp_snooping;
@@ -731,7 +764,44 @@ const lifecycleMethods = {
 			starlinkPanelEl.style.display=(hasStarlink||slPub.enabled||slAlwaysShow)?'':'none';
 		}
 		this.updateDoctorStatus(data.doctorStatus);
-		this.updateWifi(data); this.updateMwanMode(data); this.updateHistory(data.history); this.renderDevices(data,dr); text('ex-clock',new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+		this.updateWifi(data); this.updateMwanMode(data); this.updateHistory(data.history); this.renderDevices(data,dr);
+		this.updateClockAndDate();
+	},
+	updateClockAndDate: function() {
+		const clockEl = document.getElementById('ex-clock');
+		const dateEl = document.getElementById('ex-date');
+		if (!clockEl && !dateEl) {
+			if (this.clockTimer) {
+				window.clearInterval(this.clockTimer);
+				this.clockTimer = null;
+			}
+			return;
+		}
+		const now = new Date();
+		if (clockEl) {
+			clockEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+		}
+		if (dateEl) {
+			const lang = (typeof dashboardLanguage !== 'undefined' && dashboardLanguage) || 'pt-br';
+			const locale = (lang === 'en') ? 'en-US' : (lang === 'es') ? 'es-ES' : 'pt-BR';
+			let dateStr = '';
+			try {
+				dateStr = now.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+				dateStr = dateStr.replace(/^([a-zçáéíóú]+)\./i, '$1');
+				dateStr = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+			} catch(e) {
+				dateStr = now.toLocaleDateString();
+			}
+			dateEl.textContent = dateStr;
+		}
+	},
+	startClockTicker: function() {
+		if (this.clockTimer) {
+			window.clearInterval(this.clockTimer);
+			this.clockTimer = null;
+		}
+		this.updateClockAndDate();
+		this.clockTimer = window.setInterval(L.bind(this.updateClockAndDate, this), 1000);
 	},
 	updateDoctorStatus: function(doc) {
 		const pill = document.getElementById('ex-doctor-pill');

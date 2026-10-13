@@ -627,6 +627,9 @@ config device 'wan_eth1'
 
         # 2. Modo Dual Stack com tentativa de managed-config e WAN IP na LAN
         self.sb.uci_set("equipe_dashboard.ipv6.mode=dual_stack")
+        self.sb.uci_set("network.wan6=interface")
+        self.sb.uci_set("network.wan6.proto=dhcpv6")
+        self.sb.uci_set("network.wan6.device=@wan")
         self.sb.uci_set("dhcp.lan.ra=server")
         self.sb.uci_set("dhcp.lan.dhcpv6=server")
         self.sb.uci_set("dhcp.@dnsmasq[0].filter_aaaa=0")

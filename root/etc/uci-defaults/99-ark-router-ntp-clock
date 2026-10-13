@@ -1,0 +1,61 @@
+#!/bin/sh
+# 99-ark-router-ntp-clock - ARK Router Intelligent NTP & Clock Hygiene
+# Copyright (C) 2024-2026 ARK Router Project
+
+# 1. Higiene de Fuso Horário (Regra de Não-Intervenção)
+# Se o roteador estiver no default virgem 'UTC', define America/Sao_Paulo (<-03>3)
+# O horário de verão foi extinto no Brasil pelo Decreto 9.772/2019.
+# <-03>3 garante matematicamente UTC-3 sem nenhuma mudança de verão!
+cur_tz="$(uci -q get system.@system[0].timezone || echo 'UTC')"
+cur_zone="$(uci -q get system.@system[0].zonename || echo '')"
+
+if [ "$cur_tz" = "UTC" ] || [ -z "$cur_tz" ]; then
+	uci -q set system.@system[0].zonename='America/Sao_Paulo'
+	uci -q set system.@system[0].timezone='<-03>3'
+elif [ "$cur_tz" = "BRT3BRST,M10.3.0/0,M2.3.0/0" ] || [ "$cur_tz" = "BRT3BRST" ]; then
+	# Corrige strings obsoletas com horario de verao extinto para <-03>3
+	uci -q set system.@system[0].timezone='<-03>3'
+	[ -z "$cur_zone" ] && uci -q set system.@system[0].zonename='America/Sao_Paulo'
+fi
+
+# 2. Servidor NTP Local Ativo (Responde na LAN em UDP 123)
+uci -q set system.ntp=timeserver
+uci -q set system.ntp.enabled='1'
+uci -q set system.ntp.enable_server='1'
+
+# 3. Pool Resiliente de Alta Disponibilidade (NTP.br + Cloudflare + Google)
+# Apenas atualiza se for o pool generico openwrt
+cur_servers="$(uci -q get system.ntp.server)"
+case "$cur_servers" in
+	*openwrt.pool.ntp.org*|"")
+		uci -q delete system.ntp.server
+		uci add_list system.ntp.server='a.st1.ntp.br'
+		uci add_list system.ntp.server='b.st1.ntp.br'
+		uci add_list system.ntp.server='time.cloudflare.com'
+		uci add_list system.ntp.server='time.google.com'
+		;;
+esac
+uci commit system
+
+# 4. Interceptação Limpa de NTP no Firewall (UDP 123)
+# Redireciona consultas NTP de clientes da LAN para o servidor NTP local do roteador
+# Gera regras nativas tanto no fw4 (nftables redirect to 123) quanto no fw3 (iptables)
+if ! uci -q get firewall.ark_ntp_intercept >/dev/null 2>&1; then
+	uci set firewall.ark_ntp_intercept=redirect
+	uci set firewall.ark_ntp_intercept.name='Interceptar NTP UDP 123'
+	uci set firewall.ark_ntp_intercept.src='lan'
+	uci set firewall.ark_ntp_intercept.proto='udp'
+	uci set firewall.ark_ntp_intercept.src_dport='123'
+	uci set firewall.ark_ntp_intercept.dest_port='123'
+	uci set firewall.ark_ntp_intercept.target='DNAT'
+	uci set firewall.ark_ntp_intercept.enabled='1'
+	uci commit firewall
+fi
+
+# 5. Ativação do Fake RTC Clock Preserver
+if [ -x /etc/init.d/ark-clock-preserver ]; then
+	/etc/init.d/ark-clock-preserver enable >/dev/null 2>&1 || true
+	/etc/init.d/ark-clock-preserver start >/dev/null 2>&1 || true
+fi
+
+exit 0

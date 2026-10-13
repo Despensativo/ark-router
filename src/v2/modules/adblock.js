@@ -267,7 +267,7 @@ const adblockMethods = {
 				submitBtn
 			])
 		]);
-		pwdInput.focus();
+		if (window.innerWidth > 854 && !(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) pwdInput.focus();
 	},
 	openAdguardUninstallModal: function(f) {
 		const self = this;

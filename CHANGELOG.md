@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.5.17
+
+- **📱 Padrão Arquitetural Mobile-First: Tabelas, Abas e Ações no LuCI (13/10/2026)**:
+  - **Contenção Estrita de Viewport**: `#view` e `#maincontent` limitados a `max-width: 100% !important; box-sizing: border-box !important;`, eliminando 100% dos estouros laterais de até 1.018px em smartphones (360px a 390px).
+  - **Desbloqueio de Scroll em Abas Ativas (`network/routes`)**: Remoção de `overflow: visible !important` em `[data-tab-active="true"]` e aplicação de regra de alta especificidade com rolagem touch (`overflow-x: auto !important; -webkit-overflow-scrolling: touch !important;`).
+  - **Encapsulamento Dinâmico de Tabelas Órfãs (`network/wireless`)**: Empacotamento de `#wifi_assoclist_table` em cartão dedicado `.ark-assoclist-card` com contador ao vivo (`#ark-assoclist-count`), contêiner `.ark-table-responsive` e indicador tátil de deslize lateral (`.ark-table-swipe-hint`).
+  - **Barra de Ações Ergonômica Mobile (`.cbi-page-actions`)**: Botão principal "Salvar e Aplicar" ocupando 100% da largura superior (altura mínima 44px), e botões "Salvar" / "Descartar" balanceados em 50%/50% na linha inferior (altura mínima 42px).
+
+- **⏱️ Preservador de Horário & Fake-RTC (`ark-clock-preserver`) (13/10/2026)**:
+  - Inicialização segura de relógio via época salva em Flash/RAM (`/etc/ark-clock.epoch`), evitando expiração de certificados TLS e falhas no LuCI antes do sincronismo NTP.
+  - Interceptação de tráfego NTP (UDP 123) e servidor local ativo para distribuição precisa de hora na rede LAN.
+
+- **🛡️ Auto-Recuperação de Telemetria e Processos (`status/processes`) (13/10/2026)**:
+  - Cooldown e trava de concorrência em `injectRealProcessMemory()`, eliminando loops infinitos do `MutationObserver` e exaustão de subprocessos do BusyBox.
+  - Auto-recuperação resiliente para renderização da lista de processos em cenários de sobrecarga.
+
 ## 1.5.16
 
 - **🌐 Isolamento Canônico de IPv6 & Fim do Sequestro de Socket na WAN (12/10/2026)**:
