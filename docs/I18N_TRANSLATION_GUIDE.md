@@ -96,7 +96,7 @@ flowchart TD
     A["Fase 1: Prototipagem de Código em src/"] -->|"Desenvolvimento 100% em PT-BR"| B["Fase 2: Validação Funcional e Visual na VM"]
     B -->|"Feature Pronta & Testada"| C["Fase 3: Pre-Release Translation Gate"]
     C -->|"1. python scripts/audit_i18n.py --extract"| D["Gera docs/missing_i18n.json (One-Shot Batch)"]
-    D -->|"2. Tradução Concentrada em Lote (EN + ES)"| E["Injeção em src/core/i18n/{en,es}.js"]
+    D -->|"2. Tradução Concentrada em Lote (EN + ES)"| E["Injeção em po/{en,es}/ark.po e src/core/i18n/{en,es}.js"]
     E -->|"3. python scripts/audit_i18n.py --strict"| F{"Audit Aprovada?"}
     F -->|Não| D
     F -->|Sim (100% Cobertura)| G["Fase 4: Compilação do Bundle & Minificação"]
@@ -111,8 +111,9 @@ flowchart TD
 # 1. Extrair strings pendentes para arquivo estruturado em JSON
 python scripts/audit_i18n.py --extract docs/missing_i18n.json
 
-# 2. Traduzir o lote JSON e injetar nos dicionários (en.js e es.js)
-# (Realizado em uma única chamada concentrada pela IA ou tradutor)
+# 2. Traduzir o lote JSON e injetar nos catálogos PO (po/{en,es}/ark.po) e dicionários (src/core/i18n/{en,es}.js)
+python scripts/merge_i18n.py docs/missing_i18n.json
+python scripts/generate_ptbr_po.py
 
 # 3. Validar cobertura estrita nos 3 idiomas (PT-BR, EN, ES)
 python scripts/audit_i18n.py --strict

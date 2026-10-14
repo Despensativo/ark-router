@@ -60,9 +60,9 @@ flowchart TD
 | Parâmetro | Máquina Principal (Moderna) | Máquina Secundária (Legada) |
 | :--- | :--- | :--- |
 | **Nome da VM** | `OpenWrt-ARK-Dev` | `OpenWrt-ARK-Legacy` |
-| **Versão OpenWrt** | 24.10.x / 25.x x86_64 (`ext4-combined-efi`) | 23.05.x / 21.02.x x86_64 (`ext4-combined-efi`) |
-| **Firewall** | `fw4` / `nftables` | `fw3` / `iptables` |
-| **Gerenciador de Pacotes** | `apk` (ou `opkg` híbrido) | `opkg` nativo |
+| **Versão OpenWrt** | 24.10.x / 25.12.x x86_64 (`ext4-combined-efi`) | 19.07.x / 21.02.x x86_64 (`ext4-combined`) |
+| **Firewall** | `fw4` / `nftables` (padrão desde 22.03+) | `fw3` / `iptables` |
+| **Gerenciador de Pacotes** | `opkg` (até 24.10) / `apk` (25.12+) | `opkg` nativo |
 | **Memória RAM** | 512 MB | 128 MB (simulação restrita de hardware SPI) |
 | **vCPUs** | 2 vCPUs | 1 vCPU |
 | **Firmware** | EFI habilitado | BIOS Legacy |

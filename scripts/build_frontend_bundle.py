@@ -37,6 +37,7 @@ MODULE_FILES = [
     ("starlink.js", "starlinkMethods"),
     ("speedtest.js", "speedtestMethods"),
     ("system.js", "systemMethods"),
+    ("doctor_perf.js", "doctorPerfMethods"),
     ("render.js", "renderMethods"),
 ]
 
@@ -110,16 +111,44 @@ def build_i18n_assets(version_val):
     out_dir = os.path.join(REPO_DIR, "root", "www", "luci-static", "resources", "view", "equipe-dashboard")
     os.makedirs(out_dir, exist_ok=True)
     generated = []
-    
+
     import json
+    import re
+    fallback_re = re.compile(
+        r"Total recebido|Total enviado|Pico |amostra|até agora|conectado|neste ponto|na rede|"
+        r"no Wi-Fi|Canal |automático|manual|ocupação|Ruído:|visitantes| ATIVA|Ligado|Desligado|"
+        r"canais definidos|escolhe os canais|LIGADA|DESLIGADA|Recolher|Expandir|PADRÃO|Ativo|"
+        r"Desativado|Cliente VPN|Túnel Cliente|limites|Visitantes com|ATIVO \(LOCAL\)|otimizaç|"
+        r"Controles de estabilidade|conexões ativas|Controla a tabela|Tabela dimensionada|"
+        r"Expande a tabela|lista aberta|lista recolhida|modo econômico|modo turbo|sessão de|"
+        r"Encendido hace|em uso|livre |Flash Interna|CRÍTICO PARA|RECOMENDADO PARA|"
+        r"ROTEADORES <=|Resolução local|A distribuição já"
+    )
+
     for lang in ["en", "es", "pt-br"]:
         src_p = os.path.join(po_dir, lang, "ark.po")
         dst_p = os.path.join(out_dir, f"i18n.{lang}.js")
-        
+
+        if lang == "pt-br":
+            # PT-BR is native in overview.js (translateText returns s immediately for pt-br).
+            # Emit a lightweight stub for deploy/file-list compatibility without wasting ~451 KB in /overlay.
+            c = (
+                f"// ARK Router i18n PT-BR Stub (Native strings embedded in overview.js)\n"
+                f"(function(){{\n"
+                f"\tconst ARK_I18N_VERSION = '{version_val}';\n"
+                f"\twindow.ARK_I18N_PT_BR = {{}};\n"
+                f"}})();\n"
+            )
+            with open(dst_p, "w", encoding="utf-8") as df:
+                df.write(c)
+            validate_syntax(dst_p)
+            generated.append(dst_p)
+            continue
+
         if os.path.isfile(src_p):
             with open(src_p, "r", encoding="utf-8") as sf:
                 lines = sf.readlines()
-                
+
             entries = {}
             current_id = None
             for line in lines:
@@ -128,13 +157,14 @@ def build_i18n_assets(version_val):
                     current_id = line[7:-1].replace('\\"', '"').replace('\\n', '\n')
                 elif line.startswith('msgstr "') and current_id is not None:
                     current_str = line[8:-1].replace('\\"', '"').replace('\\n', '\n')
-                    if current_id and current_str: # ignore header
-                        entries[current_id] = current_str
+                    if current_id and current_str:  # ignore header
+                        if current_id != current_str or fallback_re.search(current_id):
+                            entries[current_id] = current_str
                     current_id = None
-                    
-            json_str = json.dumps(entries, ensure_ascii=False, indent=2)
+
+            json_str = json.dumps(entries, ensure_ascii=False, separators=(",", ":"))
             c = f"// ARK Router i18n {lang.upper()} Dictionary (Auto-generated from .po)\n(function(){{\n\tconst ARK_I18N_VERSION = '{version_val}';\n\tif (typeof window.ARK_BUILD_VERSION !== 'undefined' && window.ARK_BUILD_VERSION !== ARK_I18N_VERSION) {{\n\t\tconsole.warn('[ARK Router] i18n.{lang}.js version mismatch (' + ARK_I18N_VERSION + ' vs ' + window.ARK_BUILD_VERSION + ')');\n\t}}\n\twindow.ARK_I18N_{lang.upper().replace('-', '_')} = {json_str};\n}})();\n"
-            
+
             with open(dst_p, "w", encoding="utf-8") as df:
                 df.write(c)
             validate_syntax(dst_p)

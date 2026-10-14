@@ -12897,3 +12897,31 @@ msgstr "DNS Cache Size in RAM (0ms)"
 msgid "Tamanho do Cache DNS na Memória:"
 msgstr "DNS Cache Size in Memory:"
 
+msgid "CARREGANDO..."
+msgstr "LOADING..."
+
+msgid "Consultando diagnóstico de hardware e status do daemon Wi-Fi…"
+msgstr "Querying hardware diagnostics and Wi-Fi daemon status…"
+
+msgid "Erro ao consultar status:"
+msgstr "Error querying status:"
+
+msgid "Memória RAM:"
+msgstr "RAM Memory:"
+
+msgid "Motor Avançado Wi-Fi (Daemon Hostapd & 802.11v)"
+msgstr "Advanced Wi-Fi Engine (Hostapd Daemon & 802.11v)"
+
+msgid "Motor Avançado Wi-Fi — Smart Enhancer"
+msgstr "Advanced Wi-Fi Engine — Smart Enhancer"
+
+msgid "Progresso de Execução da Migração:"
+msgstr "Migration Execution Progress:"
+
+msgid "Verificando arquitetura do daemon de rádio e suporte a BSS Transition..."
+msgstr "Checking radio daemon architecture and BSS Transition support..."
+
+msgid "🚀 Iniciar Upgrade Automático"
+msgstr "🚀 Start Automatic Upgrade"
+
+

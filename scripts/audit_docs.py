@@ -104,6 +104,52 @@ def main():
         if task_lines > 150:
             warnings.append(f"TASK.md possui {task_lines} linhas (limite recomendado <= 100 linhas). Considere arquivar tarefas em tasks/done/.")
 
+    # 6. Consistência de Hashes SHA-256 de Firmware (Firmware/sha256sums vs docs/firmware-runbook.md)
+    sha_file = workspace_dir / "Firmware" / "sha256sums"
+    runbook_file = repo_dir / "docs" / "firmware-runbook.md"
+    if sha_file.exists() and runbook_file.exists():
+        rb_txt = runbook_file.read_text(encoding="utf-8").lower()
+        for line in sha_file.read_text(encoding="utf-8").splitlines():
+            parts = line.strip().split()
+            if len(parts) >= 2:
+                expected_hash = parts[0].lower()
+                fw_name = parts[1].lstrip("*")
+                if fw_name in rb_txt and expected_hash not in rb_txt:
+                    errors.append(f"Hash SHA-256 de '{fw_name}' em docs/firmware-runbook.md diverge de Firmware/sha256sums ({expected_hash[:12]}...).")
+
+    # 7. Higienização de Credenciais em Markdowns e Scripts (Regra #7 AGENTS.md)
+    cred_targets = [workspace_dir / "PLAYBOOK.md", workspace_dir / "GUIA-INSTALACAO-ROM-CUDY-WR3000-OUTRA-IA.md"]
+    for s_dir in [repo_dir / "scripts", repo_dir / "scripts" / "adhoc"]:
+        if s_dir.exists():
+            for sf in sorted(s_dir.iterdir()):
+                if sf.is_file() and sf.suffix in {".py", ".sh"} and sf.name != "audit_docs.py" and not sf.name.startswith("."):
+                    cred_targets.append(sf)
+    for chk_path in cred_targets:
+        if chk_path.exists():
+            chk_txt = chk_path.read_text(encoding="utf-8", errors="ignore")
+            if re.search(r'(?:admin0100|root0100)', chk_txt):
+                errors.append(f"Credencial explícita detectada em {chk_path.name} (use $ARK_ROUTER_TEST_PASSWORD).")
+
+    # 8. Teto Arquitetural de Modularização (< 4.000 linhas por módulo fonte)
+    modular_dirs = [
+        repo_dir / "src" / "core",
+        repo_dir / "src" / "modules",
+        repo_dir / "root" / "www" / "luci-static" / "ark",
+        repo_dir / "root" / "usr" / "lib" / "ark" / "modules",
+    ]
+    for mod_dir in modular_dirs:
+        if not mod_dir.exists():
+            continue
+        for src_file in sorted(mod_dir.iterdir()):
+            if not src_file.is_file() or src_file.name.startswith("."):
+                continue
+            if src_file.suffix not in {".js", ".css", ".sh"}:
+                continue
+            line_cnt = len(src_file.read_text(encoding="utf-8").splitlines())
+            if line_cnt >= 4000:
+                rel_p = src_file.relative_to(repo_dir)
+                errors.append(f"Arquivo modular {rel_p} possui {line_cnt} linhas (teto arquitetural < 4.000 linhas).")
+
     # Relatório
     print("=" * 60)
     print("      ARK ROUTER: AUDITORIA PREVENTIVA DE DOCUMENTAÇÃO      ")

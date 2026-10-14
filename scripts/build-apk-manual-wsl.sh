@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export COPYFILE_DISABLE=1
 
 SDK_LINK="${SDK_LINK:-$HOME/openwrt-sdk-filogic}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -38,6 +39,9 @@ fi
 printf '%s\n' "$version" > "$pkg_root/usr/share/ark-router/VERSION"
 printf '%s\n' "$version" > "$SRC_DIR/root/usr/share/ark-router/VERSION"
 rm -rf "$pkg_root/etc/etc" "$pkg_root/usr/usr" "$pkg_root/www/www" "$pkg_root/etc/mwan3.user"
+rm -f "$pkg_root/www/luci-static/resources/view/equipe-dashboard/overview_v2.js" \
+      "$pkg_root/www/luci-static/resources/view/equipe-dashboard/overview_v2.css"
+find "$pkg_root" -name "._*" -delete 2>/dev/null || true
 
 if [ ! -s "$sign_key" ]; then
 	sign_key="$work_dir/ark-router-apk-private-key.pem"

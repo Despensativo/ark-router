@@ -4287,6 +4287,15 @@
   "Guarda domínios na memória do roteador. Sites acessados respondem instantaneamente sem consultar a internet.": "Guarda dominios en la memoria RAM del router. Los sitios visitados responden al instante sin consultar internet.",
   "Mantém consultas resolvidas em 0ms sem reconsultar a internet": "Mantiene las consultas resueltas en 0ms sin volver a consultar internet",
   "Tamanho do Cache DNS na Memória RAM (0ms)": "Tamaño de la Caché DNS en Memoria RAM (0ms)",
-  "Tamanho do Cache DNS na Memória:": "Tamaño de la Caché DNS en Memoria:"
+  "Tamanho do Cache DNS na Memória:": "Tamaño de la Caché DNS en Memoria:",
+  "CARREGANDO...": "CARGANDO...",
+  "Consultando diagnóstico de hardware e status do daemon Wi-Fi…": "Consultando diagnóstico de hardware y estado del daemon Wi-Fi…",
+  "Erro ao consultar status:": "Error al consultar el estado:",
+  "Memória RAM:": "Memoria RAM:",
+  "Motor Avançado Wi-Fi (Daemon Hostapd & 802.11v)": "Motor Wi-Fi Avanzado (Daemon Hostapd y 802.11v)",
+  "Motor Avançado Wi-Fi — Smart Enhancer": "Motor Wi-Fi Avanzado — Smart Enhancer",
+  "Progresso de Execução da Migração:": "Progreso de Ejecución de la Migración:",
+  "Verificando arquitetura do daemon de rádio e suporte a BSS Transition...": "Verificando arquitectura del daemon de radio y soporte para BSS Transition...",
+  "🚀 Iniciar Upgrade Automático": "🚀 Iniciar Actualización Automática"
 };
 })();

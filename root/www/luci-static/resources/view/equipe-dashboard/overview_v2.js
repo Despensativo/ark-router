@@ -16920,7 +16920,11 @@ const systemMethods = {
 				E('div', { class: 'right' }, [ E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Fechar']) ])
 			]);
 		});
-	},
+	}
+};
+
+// /src/modules/doctor_perf.js - ARK Router LuCI View Module (Performance Tuning & Ark Doctor)
+const doctorPerfMethods = {
 	showHighRamZramConfirmModal: function(f) {
 		const finalButton = E('button', { class: 'btn cbi-button cbi-button-negative', disabled: true }, [_t('Aguarde 5 s')]);
 		const started = Date.now();
@@ -20519,6 +20523,7 @@ return view.extend(Object.assign(
 	starlinkMethods,
 	speedtestMethods,
 	systemMethods,
+	doctorPerfMethods,
 	renderMethods
 ));
 

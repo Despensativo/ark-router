@@ -37,7 +37,7 @@ Documento modular para desenvolvimento e estilização de interfaces LuCI e tema
 ---
 
 ## 3. Isolamento de Scroll no LuCI
-- No LuCI (temas Argon / Bootstrap), o elemento `body` possui `overflow: hidden; height: 100vh;`.
+- No LuCI (Tema Ark / Bootstrap), o elemento `body` possui `overflow: hidden; height: 100vh;`.
 - **Quem rola a página é o contêiner `.main-right`**.
 - Ao abrir modais, menus laterais ou alertas flutuantes, trave o contêiner `.main-right`:
   ```css

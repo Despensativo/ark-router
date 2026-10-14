@@ -1,31 +1,22 @@
-# Estado da auditoria
+# Estado da Auditoria Estrutural e de Contratos
 
-Atualizado em: 2026-09-20. Este resumo é um checkpoint; confira o Git antes de continuar.
+Atualizado em: 2026-10-14. Este resumo é o checkpoint ativo da trilha `docs/audit/`.
 
-- Repositório: `GitHub/luci-app-ark-router`, relativo ao workspace ARK Router.
-- Versão declarada em VERSION: `1.5.2`.
-- HEAD observado: `ce2b724ed0245f1d6772f94ffbc62ce09138a6df`, branch `main`.
-- Alterações preexistentes: bundle `overview.js`, `src/core/formatters.js`, `src/core/i18n.js`, `src/modules/devices.js`. Preservar; hashes no lote 000.
-- Durante a validação apareceu também uma alteração em `root/usr/lib/ark/modules/network.sh`, externa a esta entrega. Reinspecionar antes do próximo lote; não foi revertida nem validada funcionalmente.
-- Lote concluído: [000 — estrutura e baseline](batches/000-bootstrap.md), somente documentação e inspeção estrutural.
-- Próximo lote: 001, confiabilidade dos contratos/geradores. Critérios em [PLAN](PLAN.md).
-- Catálogo existente: 70 IDs. O estado `funcional` é declaração histórica, não resultado desta auditoria.
-- Último pacote validado por esta auditoria: **nenhum**.
-- Testes de reboot, tráfego e interferência executados nesta etapa: **nenhum**.
-- Checagem estrutural existente: `python tests/verify_feature_contracts.py` passou para 70 contratos. Limites descritos no lote 000.
-- Validação da estrutura criada: 11 documentos, 45 links locais válidos; `git diff --check` sem erros. Detalhes no lote 000.
+- **Repositório**: `GitHub/luci-app-ark-router`, relativo ao workspace ARK Router.
+- **Versão declarada em `VERSION`**: `1.5.17` (sincronizada em `Makefile`, `root/usr/share/ark-router/VERSION`, `common.sh` e `CHANGELOG.md`).
+- **Lotes concluídos**:
+  - [000 — estrutura e baseline](batches/000-bootstrap.md): estrutura documental e inventário inicial.
+  - **001 — confiabilidade dos contratos, geradores, modularização e higienização (`T-003`, `T-042`, `T-043`, `T-044`)**:
+    - `tests/verify_feature_contracts.py` atualizado com parser YAML *zero-dependency* nativo (eliminando o salto silencioso quando `pyyaml` está ausente), validação semântica de tipos/perfis, integridade relacional (`relations`) e suíte embutida de 7 testes negativos de esquema.
+    - `tests/feature_contracts.yaml` saneado (`version: 1.5.17`, `total_features: 69`, `canonical_repo: GitHub/luci-app-ark-router` sem caminhos absolutos de máquina, e registro de `src/modules/doctor_perf.js` e `src/core/i18n/loader.js`).
+    - `scripts/generate_feature_contracts.py` protegido por trava `--force` contra sobrescrita acidental de curadoria manual.
+    - `scripts/audit_docs.py` expandido para 8 travas contínuas (versão, termos descontinuados, matriz OpenWrt, contagem de contratos, orçamento `TASK.md`, paridade SHA-256 com `Firmware/sha256sums`, higienização de credenciais em `.md` + `scripts/`, e teto `< 4.000 linhas` em todos os 33 módulos fonte).
+- **Catálogo validado**: 74 IDs (`ARK-*`, incluindo os 5 novos contratos da `v1.5.10`–`v1.5.17`: `ARK-SYS-008`, `ARK-WAN-011`, `ARK-PERF-006`, `ARK-WIFI-010`, `ARK-WIFI-011`) 100% aprovados em estrutura, tipos, relações, ACLs e presença em `docs/FEATURE_AUDIT_AND_REBOOT.md`.
+- **Cobertura i18n**: 4.292 chaves homologadas em `po/en/ark.po`, `po/es/ark.po` e `po/pt-br/ark.po` (`scripts/audit_i18n.py --strict` 100% aprovado).
+- **Orçamento de Flash (`/overlay` Lite)**: reduzido de `3,46 MiB` para **`2,75 MiB`** (-748 KB / -20,6%).
 
-## Pendências prioritárias
+## Próximos Lotes Planejados
 
-1. Gerador de Markdown produz aprovações pós-reboot a partir de metadados, sem consultar resultados executados. Não usar como aprovação de release.
-2. Gerador de YAML pode sobrescrever edições do catálogo; definir manutenção/migração antes de executá-lo.
-3. Contratos contêm caminho antigo de máquina; geradores e catálogo têm versões/cabeçalhos divergentes.
-4. Verificador atual não valida integralmente tipos, relações, semântica ou execução dos testes. Formalizar esquema e testes negativos no lote 001.
-5. Descoberta de ações e subchamadas ainda incompleta. Os 70 registros não comprovam cobertura de todo o código.
-6. Topologia VirtualBox e snapshots ainda não inspecionados nesta etapa. Nenhuma VM foi iniciada ou modificada.
-
-## Próxima ação concreta
-
-Leia [000-bootstrap](batches/000-bootstrap.md), `tests/verify_feature_contracts.py` e os dois geradores citados nele. Compare com os contratos atuais; proponha e implemente uma migração compatível de evidências/esquema, preservando IDs e mudanças locais. Não regenere documentos antes de preservar as diferenças existentes e revisar o efeito do gerador.
-
-Feche 001 com testes positivos/negativos, validação local aplicável e checkpoint. Consulte [DECISIONS](DECISIONS.md) se surgir mudança intencional de política ou padrão.
+1. **Lote 002 — Expansão do Catálogo de Contratos (`v1.5.10` a `v1.5.17`)**: ✅ **Concluído** (74 contratos sincronizados em `tests/feature_contracts.yaml` e `docs/FEATURE_AUDIT_AND_REBOOT.md`).
+2. **Lote 003 — Consolidação Visual V2 SPA (`v2_staging` ➔ LuCI View)**:
+   - Unificar a árvore `src/v2/` com a arquitetura modular de produção e eliminar dicionários JS legados órfãos em `src/core/i18n/`.

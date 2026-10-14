@@ -89,7 +89,7 @@ scripts/build-apk-wsl.sh
 
 The script creates Lite and Full APK assets in `dist/sdk/`, including `luci-app-ark-router.apk`, `luci-app-ark-router-lite.apk` and `luci-app-ark-router-full.apk`. It uses `scripts/build-apk-manual-wsl.sh` internally and requires the matching OpenWrt SDK only for the `apk` packaging tool/signing key.
 
-For normal public distribution, prefer the repository GitHub Actions workflow instead of building manually on a desktop. The workflow should attach the generated package assets to the GitHub Release.
+For public distribution, build the `.apk` and `.ipk` packages locally and upload the verified artifacts directly to the GitHub Release (see [`PUBLISHING.md`](PUBLISHING.md)). The GitHub Actions workflow is retained only as an optional fallback.
 
 ## Install On The Router
 

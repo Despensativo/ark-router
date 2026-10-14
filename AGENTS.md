@@ -10,7 +10,7 @@
 
 ## 1. Escopo e Identificação
 - **Repositório**: Canônico oficial do ARK Router (OpenWrt LuCI Application & Theme).
-- **Versão Ativa**: `1.5.16` (declarada em `VERSION` e `Makefile:PKG_VERSION:=1.5.16`).
+- **Versão Ativa**: `1.5.17` (declarada em `VERSION` e `Makefile:PKG_VERSION:=1.5.17`).
 - **Arquitetura Alvo**: Dual OpenWrt — Legado (19.07 a 21.02, `opkg`, `iptables`/`fw3`) e Moderno (22.03 a 25.x, `opkg`/`apk`, `nftables`/`fw4`). Detalhes em `docs/COMPATIBILITY_MATRIX.md`.
 - **Hardware Suportado**: De 128 MB RAM / 16 MB SPI Flash (DGL-5500) até 256 MB a 1 GB+ RAM (Cudy WR3000, Predator W6x, Filogic).
 
@@ -173,3 +173,4 @@ O ambiente principal de desenvolvimento e validação do ARK Router deve ser uma
 9. `openwrt-sqm-bufferbloat`: CAKE, cake-mq multi-core, FQ-CoDel, framing overhead e medição empírica.
 10. `openwrt-storage-failsafe`: Mapa de partições MTD, proteção de calibração de rádio (ART) e telnet failsafe.
 11. `openwrt-wifi-mesh`: Roaming rápido 802.11r/k/v, calibração de limiares do usteer e mesh 802.11s.
+12. `js-performance-optimization`: Arquitetura modular em `src/modules/`, DOM diffing cirúrgico, prevenção de memory leaks, `AbortController` e batching RPC no LuCI.

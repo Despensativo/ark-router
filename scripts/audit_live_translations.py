@@ -3,13 +3,14 @@
 """
 Auditoria em tempo real de traduções e erros de console no roteador real via Playwright.
 """
+import os
 import sys
 import time
 from playwright.sync_api import sync_playwright
 
 ROUTER_URL = "http://10.203.73.5/cgi-bin/luci"
 USER = "root"
-PASS = "admin0100"
+PASS = os.environ.get("ARK_ROUTER_TEST_PASSWORD", "")
 
 def audit():
     with sync_playwright() as p:

@@ -6,10 +6,10 @@ Manual de compilação, verificação de integridade e atualização de ROMs Squ
 
 ## 1. Imagens de ROM Pré-Compiladas
 
-| Dispositivo | Arquivo | SHA-256 | Tamanho |
+| Dispositivo | Arquivo | SHA-256 (`Firmware/sha256sums`) | Tamanho |
 | :--- | :--- | :--- | :--- |
-| **Cudy WR3000 v1** (MediaTek MT7981) | `Firmware/openwrt-25.12.5-cudy-wr3000-v1-ark-router-squashfs-sysupgrade.bin` | `01b2381cba129983049326be06c15285fe3110d128cfafc70abe2173438df957` | 12.58 MB |
-| **Acer Predator W6x** (MT7986) | `Firmware/openwrt-25.12.5-acer-predator-w6x-stock-ark-router-squashfs-sysupgrade.bin` | Ver `Firmware/sha256sums` | 33.5 MB |
+| **Cudy WR3000 v1** (MediaTek MT7981) | `Firmware/openwrt-25.12.5-cudy-wr3000-v1-ark-router-squashfs-sysupgrade.bin` | `3e822849d5393a9c2cf358ee1707651068c2b52f6798c0dcf47b6074266b6fcc` | 12.13 MB |
+| **Acer Predator W6x** (MT7986) | `Firmware/openwrt-25.12.5-acer-predator-w6x-stock-ark-router-squashfs-sysupgrade.bin` | `0c1d53bda08590f27e267326a3553bf740aa11b00974874a957208866772451a` | 12.13 MB |
 
 ---
 

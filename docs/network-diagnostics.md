@@ -5,14 +5,13 @@ Diretrizes de compatibilidade com múltiplas gerações do OpenWrt, mitigação 
 ---
 
 ## 1. Dual OpenWrt Architecture (Legado vs. Moderno)
-O ARK Router deve manter compatibilidade entre as duas famílias:
+O ARK Router mantém compatibilidade entre as gerações do OpenWrt detectando cada capacidade separadamente (consulte [`docs/COMPATIBILITY_MATRIX.md`](COMPATIBILITY_MATRIX.md)):
 
-| Recurso | OpenWrt 19.07 a 23.05 (Legado) | OpenWrt 24.x a 25.x (Moderno) |
-| :--- | :--- | :--- |
-| **Gerenciador de Pacotes** | `opkg` (`/etc/opkg.conf`) | `apk` (`/etc/apk/`) |
-| **Mecanismo de Firewall** | `iptables` / `firewall3` | `nftables` / `firewall4` |
-| **Renderização LuCI** | Tabelas HTML tradicionais | Views JavaScript (`L.view.extend`) |
-| **Regra Obrigatória** | Detectar dinamicamente (`which apk opkg`) | Detectar dinamicamente (`nft` vs `iptables`) |
+| Recurso | OpenWrt Legado | OpenWrt Moderno | Regra Obrigatória de Detecção |
+| :--- | :--- | :--- | :--- |
+| **Mecanismo de Firewall** | `firewall3` / `iptables` (19.07 a 21.02) | `firewall4` / `nftables` (22.03 a 25.x+) | Exclusivamente via `/usr/lib/ark/common.sh` (`ark_firewall_engine`, `is_fw4`, `is_fw3`). **Proibido** invocar `iptables` em sistemas `fw4`. |
+| **Gerenciador de Pacotes** | `opkg` (19.07 a 24.10) | `apk` (25.12+) | Detectar dinamicamente via `command -v apk` / `command -v opkg`. |
+| **Renderização LuCI** | Tabelas HTML / CBI legado | Views JavaScript (`L.view.extend`) + `ucode` (`*.ut`) | Seletores adaptativos em `ark-theme.js`. |
 
 ---
 
@@ -29,16 +28,20 @@ O ARK Router deve manter compatibilidade entre as duas famílias:
 ---
 
 ## 3. Utilitário ARK Doctor (Auditoria e Auto-Cura)
-- **Comando CLI**: `/usr/sbin/ark-doctor`
-- **Comando Backend RPC**: `/usr/sbin/equipe-dashboard-control audit-system [--fix]`
+- **Comandos CLI**: `/usr/sbin/ark-doctor run` (auditoria) e `/usr/sbin/ark-doctor fix-run` (autocura)
+- **Comandos Backend RPC**:
+  - Diagnóstico: `/usr/sbin/equipe-dashboard-control doctor-run`
+  - Autocura: `/usr/sbin/equipe-dashboard-control doctor-fix`
+  - Status em cache: `/usr/sbin/equipe-dashboard-control doctor-status` (`/tmp/ark-doctor-last.json`)
+  - Log histórico: `/usr/sbin/equipe-dashboard-control doctor-log` (`/var/log/ark-doctor.log`)
 - **Itens Auditados**:
-  - Memória RAM livre (> 128 MB / > 256 MB).
+  - Memória RAM livre (> 80 MB em 128 MB / > 60 MB em 256 MB) e integridade da ZRAM (`Check 1b`).
   - Espaço livre no `/overlay` (> 2 MB).
-  - Associação correta do SQM com L3 em PPPoE.
-  - Persistência de MTU 1508 em Baby Jumbo Frames.
-  - Conflitos de Flow Offload vs SQM.
-- **Auto-Cura (`--fix`)**:
-  - Corrige automaticamente interfaces SQM órfãs e recarrega os serviços.
+  - Associação correta do SQM com L3 em PPPoE e persistência de MTU 1508 em Baby Jumbo Frames.
+  - Conflitos de Flow Offload vs SQM, sintaxe do `hostapd` (WPA3 FT-SAE vs 802.11k/v WNM) e calibração do `usteer`.
+  - Sincronismo NTP, Fake RTC Preserver (`/etc/ark-clock.epoch`) e exclusão mútua NPTv6 vs NDP Relay.
+- **Auto-Cura (`doctor-fix`)**:
+  - Corrige automaticamente desvios de configuração, órfãos de SQM/firewall e recarrega apenas os serviços afetados.
 
 ---
 

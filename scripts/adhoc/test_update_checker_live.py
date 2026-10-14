@@ -25,7 +25,7 @@ async def main():
 
         pw = await page.query_selector('input[name="luci_password"]')
         if pw:
-            await pw.fill("admin0100")
+            await pw.fill(os.environ.get("ARK_ROUTER_TEST_PASSWORD", ""))
             await page.keyboard.press("Enter")
             await page.wait_for_load_state("networkidle")
             await page.wait_for_timeout(3000)

@@ -47,6 +47,6 @@ O código do ARK Router **NUNCA** infere capacidades do sistema baseando-se em n
 |---|---|---|---|---|---|
 | **VM OpenWrt-ARK-Dev** | OpenWrt 24.10 (x86_64) | `fw4` (`nftables`) | `opkg` | 100% Saudável | Validado em Laboratório |
 | **Cudy WR3000 v1** | OpenWrt 25.x / Snapshot (ARM64 MT7981) | `fw4` (`nftables`) | `apk` | 100% Saudável | Validado em Hardware Real |
-| **Acer Predator W6x** | OpenWrt MT7986 (ARM64) | `fw4` (`nftables`) | `apk` | 100% Saudável | Validado em Hardware Real |
-| **Acer Predator T7** | OpenWrt IPQ5332 (ARM64) | `fw4` (`nftables`) | `opkg` | 100% Saudável | Validado em Hardware Real |
+| **Acer Predator W6x** | OpenWrt 25.12.x MT7986 (ARM64) | `fw4` (`nftables`) | `apk` | 100% Saudável | Validado em Hardware Real |
+| **Acer Predator T7** | OpenWrt 19.07 / QSDK SPF-12.2 IPQ5332 (ARM64) | `fw3` (`iptables`) | `opkg` | 100% Saudável | Validado em Hardware Real |
 | **D-Link DGL-5500** | OpenWrt 19.07/21.02 (MIPS 16MB Flash) | `fw3` (`iptables`) | `opkg` | 100% Saudável | Validado em Hardware Real |

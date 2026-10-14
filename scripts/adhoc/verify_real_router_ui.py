@@ -38,7 +38,7 @@ try:
     user_input.clear()
     user_input.send_keys("root")
     pass_input.clear()
-    pass_input.send_keys("admin0100")
+    pass_input.send_keys(os.environ.get("ARK_ROUTER_TEST_PASSWORD", ""))
     submit_btn = driver.find_element(By.CSS_SELECTOR, "input[type='submit']")
     submit_btn.click()
     time.sleep(3)

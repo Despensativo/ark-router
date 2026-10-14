@@ -1719,9 +1719,9 @@ FEATURES = [
     {
         "id": "ARK-SYS-006",
         "name": "Customização de Idioma e Título do Sistema (Branding)",
-        "purpose": "Permitir customizar o título do cabeçalho da interface e selecionar idioma de exibição (Português BR / Inglês).",
+        "purpose": "Permitir customizar o título do cabeçalho da interface e selecionar idioma de exibição (Português BR / Inglês / Espanhol).",
         "state": "funcional",
-        "files": ["root/usr/lib/ark/modules/ezsetup.sh", "src/core/i18n.js"],
+        "files": ["root/usr/lib/ark/modules/ezsetup.sh", "src/core/i18n/loader.js", "src/modules/system.js"],
         "actions": ["language", "title"],
         "rpc_endpoints": ["/usr/sbin/equipe-dashboard-control language", "/usr/sbin/equipe-dashboard-control title"],
         "acls": ["luci-app-equipe-dashboard"],
@@ -1769,13 +1769,24 @@ FEATURES = [
 ]
 
 def main():
+    if os.path.exists(OUTPUT_FILE) and "--force" not in sys.argv:
+        print(f"[PROTEÇÃO LOTE 001] {OUTPUT_FILE} já existe e possui curadoria manual.")
+        print("Use '--force' explicitamente se desejar sobrescrever o catálogo YAML.")
+        sys.exit(1)
+
+    version_file = os.path.join(REPO_DIR, "VERSION")
+    active_ver = "1.5.17"
+    if os.path.exists(version_file):
+        with open(version_file, "r", encoding="utf-8") as vf:
+            active_ver = vf.read().strip()
+
     print(f"Generating feature contracts for {len(FEATURES)} features...")
     data = {
         "metadata": {
-            "version": "1.5.2",
+            "version": active_ver,
             "schema_version": "1.0",
             "total_features": len(FEATURES),
-            "canonical_repo": "C:/Users/User/Desktop/FEITOS COM IA/Ark-Router/GitHub/luci-app-ark-router"
+            "canonical_repo": "GitHub/luci-app-ark-router"
         },
         "features": FEATURES
     }

@@ -460,6 +460,11 @@ install_source() {
 	[ "$source_profile" = auto ] && source_profile="$(best_profile)"
 	check_storage_safety "$source_profile" || return 1
 
+	rm -f "$rootdir/root/www/luci-static/resources/view/equipe-dashboard/overview_v2.js" \
+	      "$rootdir/root/www/luci-static/resources/view/equipe-dashboard/overview_v2.css" 2>/dev/null || true
+	if [ -d "$rootdir/dist/minified" ]; then
+		cp -R "$rootdir/dist/minified"/. "$rootdir/root"/ 2>/dev/null || true
+	fi
 	copy_tree "$rootdir/root" /
 	if [ "$source_profile" != full ] || ! can_run_aarch64; then
 		rm -f /usr/bin/starlink-dish 2>/dev/null || true

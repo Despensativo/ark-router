@@ -40,6 +40,11 @@ TARGETS = [
         "type": "js"
     },
     {
+        "src": os.path.join(REPO_DIR, "root", "www", "luci-static", "resources", "view", "equipe-dashboard", "i18n.pt-br.js"),
+        "rel": os.path.join("www", "luci-static", "resources", "view", "equipe-dashboard", "i18n.pt-br.js"),
+        "type": "js"
+    },
+    {
         "src": os.path.join(REPO_DIR, "root", "www", "luci-static", "ark", "cascade.css"),
         "rel": os.path.join("www", "luci-static", "ark", "cascade.css"),
         "type": "css"

@@ -1,8 +1,8 @@
 metadata:
-  version: 1.5.2
+  version: 1.5.17
   schema_version: '1.0'
-  total_features: 69
-  canonical_repo: C:/Users/User/Desktop/FEITOS COM IA/Ark-Router/GitHub/luci-app-ark-router
+  total_features: 74
+  canonical_repo: GitHub/luci-app-ark-router
 features:
 - id: ARK-UI-001
   name: Painel LuCI Overview e Telemetria em Tempo Real
@@ -2736,6 +2736,7 @@ features:
   files:
   - root/usr/sbin/ark-doctor
   - root/usr/lib/ark/modules/doctor.sh
+  - src/modules/doctor_perf.js
   actions:
   - ark-doctor
   - ark-doctor --fix
@@ -3098,7 +3099,8 @@ features:
   state: funcional
   files:
   - root/usr/lib/ark/modules/ezsetup.sh
-  - src/core/i18n.js
+  - src/core/i18n/loader.js
+  - src/modules/system.js
   actions:
   - language
   - title
@@ -3184,3 +3186,254 @@ features:
   tests:
   - tests/test_wan_matrix.py
   real_hw_required: false
+- id: ARK-SYS-008
+  name: NTP Inteligente, Fake RTC Preserver e Fallback HTTP Date
+  purpose: Garantir sincronização monotônica de horário em roteadores sem bateria CMOS via pool NTP brasileiro/global, fallback HTTP Date (quando UDP 123 é bloqueado por CGNAT/Starlink) e persistência controlada de época (/etc/ark-clock-epoch).
+  state: funcional
+  files:
+  - root/etc/init.d/ark-clock-preserver
+  - root/etc/uci-defaults/99-ark-router-ntp-clock
+  - root/usr/lib/ark/modules/system.sh
+  - src/modules/system.js
+  actions:
+  - ntp-status
+  - ntp-sync
+  - ntp-save
+  rpc_endpoints:
+  - /usr/sbin/equipe-dashboard-control ntp-*
+  acls:
+  - luci-app-equipe-dashboard
+  dependencies:
+  - sysntpd
+  uci_configs:
+  - package: system
+    sections:
+    - timeserver
+    - system
+  services:
+  - sysntpd
+  - ark-clock-preserver
+  persistent_data:
+  - /etc/config/system
+  - /etc/ark-clock-epoch
+  temp_data: []
+  boot_behavior: Restaura época mínima no START=11 antes do WireGuard/DNSSEC e sincroniza via NTP ou HTTP Date.
+  can_modify:
+  - system.ntp.server
+  - /etc/ark-clock-epoch
+  cannot_modify:
+  - interfaces de rede
+  relations:
+  - ARK-VPN-001
+  - ARK-DIAG-001
+  hw_limitations: Essencial para SoCs sem RTC alimentado por bateria; grava em flash apenas no shutdown ou 1x/24h.
+  openwrt_limitations: Universal (19.07 a 25.x+).
+  profiles:
+  - lite
+  - full
+  version: 1.5.13
+  tests:
+  - tests/test_wan_matrix.py
+  real_hw_required: false
+- id: ARK-WAN-011
+  name: Blindagem Exclusiva NPTv6 (RFC 6296) vs NDP Relay e Sincronização ULA
+  purpose: Traduzir prefixo ULA estático da LAN para prefixos globais GUA dinâmicos (/64 de Starlink/CGNAT/4G) em estado stateless (NPTv6) com trava de exclusão mútua contra NDP Relay.
+  state: funcional
+  files:
+  - root/usr/lib/ark/modules/network.sh
+  - root/usr/lib/ark/modules/doctor.sh
+  - src/modules/network.js
+  - src/modules/render.js
+  actions:
+  - ipv6-npt-status
+  - ipv6-npt-set
+  rpc_endpoints:
+  - /usr/sbin/equipe-dashboard-control ipv6-npt-*
+  acls:
+  - luci-app-equipe-dashboard
+  dependencies:
+  - odhcpd
+  uci_configs:
+  - package: network
+    sections:
+    - globals
+    - lan
+  - package: dhcp
+    sections:
+    - lan
+  services:
+  - odhcpd
+  - firewall
+  persistent_data:
+  - /etc/config/network
+  - /etc/config/dhcp
+  temp_data: []
+  boot_behavior: Regras de tradução de prefixo recarregadas via hotplug wan6/firewall mantendo sub-rede ULA estável na LAN.
+  can_modify:
+  - network.globals.ula_prefix
+  - dhcp.lan.ra
+  - dhcp.lan.ndp
+  cannot_modify:
+  - rotas IPv4
+  relations:
+  - ARK-WAN-004
+  - ARK-DIAG-001
+  hw_limitations: Nenhuma.
+  openwrt_limitations: Isolamento duplo estrito entre nftables (fw4) e ip6tables (fw3).
+  profiles:
+  - lite
+  - full
+  version: 1.5.13
+  tests:
+  - tests/test_wan_matrix.py
+  real_hw_required: false
+- id: ARK-PERF-006
+  name: Seletor Inteligente de Cache DNS Adaptado por Hardware (RAM 0ms)
+  purpose: Dimensionar dinamicamente o cachesize do dnsmasq (de 1.500 a 10.000 entradas) conforme a RAM física do roteador (128 MB a 1 GB+) e proteger min_cache_ttl para respostas DNS em 0ms.
+  state: funcional
+  files:
+  - root/usr/lib/ark/modules/system.sh
+  - src/modules/doctor_perf.js
+  actions:
+  - dns-cache-set
+  - system-perf-status
+  rpc_endpoints:
+  - /usr/sbin/equipe-dashboard-control dns-cache-set
+  acls:
+  - luci-app-equipe-dashboard
+  dependencies:
+  - dnsmasq
+  uci_configs:
+  - package: dhcp
+    sections:
+    - dnsmasq
+  - package: equipe_dashboard
+    sections:
+    - state
+  services:
+  - dnsmasq
+  persistent_data:
+  - /etc/config/dhcp
+  - /etc/config/equipe_dashboard
+  temp_data: []
+  boot_behavior: Preserva snapshot saved_dns_cachesize do usuário e aplica perfil adequado no boot do dnsmasq.
+  can_modify:
+  - dhcp.@dnsmasq[0].cachesize
+  - dhcp.@dnsmasq[0].min_cache_ttl
+  cannot_modify:
+  - servidores DNS upstream
+  relations:
+  - ARK-LAN-002
+  - ARK-DIAG-001
+  hw_limitations: Limita automaticamente o teto a 1.500 entradas em roteadores <= 128 MB RAM para evitar OOM.
+  openwrt_limitations: Universal.
+  profiles:
+  - lite
+  - full
+  version: 1.5.14
+  tests:
+  - tests/test_wan_matrix.py
+  real_hw_required: false
+- id: ARK-WIFI-010
+  name: Roaming Rápido 802.11k/v (BSS Transition), RNR 6 GHz e Calibração usteer
+  purpose: Configurar bss_transition=1, time_advertisement=2, rnr=1 (Reduced Neighbor Report para descoberta de 6 GHz) e limiares calibrados do usteer para transição suave entre APs e bandas.
+  state: funcional
+  files:
+  - root/usr/lib/ark/modules/wifi.sh
+  - root/usr/lib/ark/modules/doctor.sh
+  - src/modules/wifi.js
+  actions:
+  - wifi-roaming-set
+  - doctor-fix
+  rpc_endpoints:
+  - /usr/sbin/equipe-dashboard-control wifi-*
+  acls:
+  - luci-app-equipe-dashboard
+  dependencies:
+  - hostapd-common
+  uci_configs:
+  - package: wireless
+    sections:
+    - wifi-iface
+  - package: usteer
+    sections:
+    - usteer
+  services:
+  - wpad
+  - usteer
+  persistent_data:
+  - /etc/config/wireless
+  - /etc/config/usteer
+  temp_data: []
+  boot_behavior: Aplicado nos perfis de interface wireless pelo netifd/hostapd e monitorado pelo Ark Doctor.
+  can_modify:
+  - wireless.@wifi-iface[].bss_transition
+  - wireless.@wifi-iface[].rrm_neighbor_report
+  - wireless.@wifi-iface[].rnr
+  - usteer.@usteer[0]
+  cannot_modify:
+  - senhas Wi-Fi
+  relations:
+  - ARK-WIFI-004
+  - ARK-DIAG-001
+  hw_limitations: Requer wpad completo (wpad-mbedtls/wolfssl/openssl) para suporte integral a frames 802.11v WNM.
+  openwrt_limitations: Em OpenWrt 23.05+, bss_transition=1 substitui wnm_sleep_mode para ativar 802.11v.
+  profiles:
+  - lite
+  - full
+  version: 1.5.17
+  tests:
+  - tests/test_wan_matrix.py
+  real_hw_required: false
+- id: ARK-WIFI-011
+  name: Smart Wi-Fi Package Enhancer (Upgrade Atômico wpad-mbedtls e usteer)
+  purpose: Detectar binários wpad-basic limitados e executar substituição atômica para wpad-mbedtls mais instalação de usteer com stepper visual multi-etapas e reconexão automática.
+  state: funcional
+  files:
+  - root/usr/lib/ark/modules/wifi.sh
+  - src/modules/wifi.js
+  - src/modules/render.js
+  actions:
+  - wifi-smart-enhance
+  - wifi-smart-enhance-status
+  rpc_endpoints:
+  - /usr/sbin/equipe-dashboard-control wifi-smart-enhance*
+  acls:
+  - luci-app-equipe-dashboard
+  dependencies:
+  - opkg ou apk
+  uci_configs:
+  - package: wireless
+    sections:
+    - wifi-iface
+  - package: usteer
+    sections:
+    - usteer
+  services:
+  - wpad
+  - usteer
+  persistent_data:
+  - /etc/config/wireless
+  - /etc/config/usteer
+  temp_data:
+  - /tmp/ark_wifi_enhance.status
+  - /tmp/ark_wifi_enhance.log
+  boot_behavior: Pacotes instalados persistem em /overlay; parâmetros 802.11k/v/r sobem automaticamente com o wpad completo.
+  can_modify:
+  - pacotes wpad e usteer
+  - wireless.@wifi-iface[]
+  cannot_modify:
+  - configurações de WAN/LAN
+  relations:
+  - ARK-WIFI-004
+  - ARK-WIFI-010
+  hw_limitations: Exige espaço livre mínimo em /overlay e conectividade WAN ativa para baixar pacotes da árvore oficial.
+  openwrt_limitations: Suporta tanto opkg (--force-removal-of-dependent-packages) quanto apk (OpenWrt 24.10/25.x+).
+  profiles:
+  - lite
+  - full
+  version: 1.5.17
+  tests:
+  - tests/test_wan_matrix.py
+  real_hw_required: false
+

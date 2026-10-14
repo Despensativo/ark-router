@@ -1,3 +1,4 @@
+import os
 import time
 import pprint
 from selenium import webdriver
@@ -21,7 +22,7 @@ try:
         user_inputs[0].send_keys('root')
         pass_input = driver.find_element(By.NAME, 'luci_password')
         pass_input.clear()
-        pass_input.send_keys('admin0100')
+        pass_input.send_keys(os.environ.get("ARK_ROUTER_TEST_PASSWORD", ""))
         btn = driver.find_element(By.CSS_SELECTOR, "input[type='submit'], button[type='submit'], .cbi-button-apply")
         btn.click()
         time.sleep(3)

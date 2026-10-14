@@ -1,3 +1,4 @@
+import os
 import time
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -21,7 +22,7 @@ try:
         user_inputs[0].send_keys('root')
         p = driver.find_element(By.NAME, 'luci_password')
         p.clear()
-        p.send_keys('admin0100')
+        p.send_keys(os.environ.get("ARK_ROUTER_TEST_PASSWORD", ""))
         driver.find_element(By.CSS_SELECTOR, "input[type='submit'], button[type='submit']").click()
         time.sleep(3)
     driver.get('http://192.168.73.3/cgi-bin/luci/admin/equipe-dashboard/overview')

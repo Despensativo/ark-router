@@ -46,7 +46,7 @@ O ambiente principal de desenvolvimento, depuração e validação do **ARK Rout
 | Parâmetro | Configuração Padrão | Justificativa Técnica |
 | :--- | :--- | :--- |
 | **Nome da VM** | `OpenWrt-ARK-Dev` | Identificador padronizado para scripts de automação. |
-| **Imagem Base** | OpenWrt 24.10.0 x86_64 EFI (`ext4-combined-efi`) | Kernel moderno, suporte a fw4 (`nftables`), `apk` e ucode. |
+| **Imagem Base** | OpenWrt 24.10.0 x86_64 EFI (`ext4-combined-efi`) | Kernel moderno, suporte a `fw4` (`nftables`), `opkg` (24.10) / `apk` (25.12+) e `ucode`. |
 | **Memória RAM** | 512 MB | Suficiente para isolar vazamentos de memória sem penalizar o host. |
 | **Processadores** | 2 vCPUs | Permite testar concorrência de daemons e scripts ubus. |
 | **Armazenamento** | VDI de 1.024 MB (1 GB redimensionado) | Espaço suficiente para pacotes de teste, logs e mocks. |

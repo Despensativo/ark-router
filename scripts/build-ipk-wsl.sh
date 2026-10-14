@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export COPYFILE_DISABLE=1
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 SRC_DIR="${SRC_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
@@ -38,6 +39,9 @@ build_ipk_variant() {
 	mkdir -p "$data_dir/usr/share/ark-router"
 	printf '%s\n' "$version" > "$data_dir/usr/share/ark-router/VERSION"
 	rm -rf "$data_dir/etc/etc" "$data_dir/usr/usr" "$data_dir/www/www" "$data_dir/etc/mwan3.user"
+	rm -f "$data_dir/www/luci-static/resources/view/equipe-dashboard/overview_v2.js" \
+	      "$data_dir/www/luci-static/resources/view/equipe-dashboard/overview_v2.css"
+	find "$data_dir" -name "._*" -delete 2>/dev/null || true
 
 	# Strip starlink binary if lite
 	if [ "$pkg_name" = "$PKG_BASE_NAME" ]; then

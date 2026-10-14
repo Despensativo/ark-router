@@ -1,7 +1,7 @@
 # ARK Router — Auditoria Completa, Persistência Pós-Reboot e Contratos Funcionais
 
 > **Documento Vivo Oficial**: Atualizado obrigatoriamente a cada adição, alteração, remoção ou correção funcional.
-> Versão Ativa: `1.5.9` | Repositório Canônico: `GitHub/luci-app-ark-router` | Total de Funcionalidades: `69`
+> Versão Ativa: `1.5.17` | Repositório Canônico: `GitHub/luci-app-ark-router` | Total de Funcionalidades: `74`
 
 ---
 
@@ -46,7 +46,7 @@ flowchart TD
 
 ---
 
-## 2. Inventário Completo e Enumerado de Funcionalidades (69 Recursos)
+## 2. Inventário Completo e Enumerado de Funcionalidades (74 Recursos)
 
 ### `ARK-UI-001` — Painel LuCI Overview e Telemetria em Tempo Real
 - **1. Identificador**: `ARK-UI-001`
@@ -301,7 +301,7 @@ flowchart TD
 ### `ARK-WAN-008` — Acesso Isolado à Interface Web de ONUs/Modems em Bridge
 - **1. Identificador**: `ARK-WAN-008`
 - **2. Nome**: Acesso Isolado à Interface Web de ONUs/Modems em Bridge
-- **3. Objetivo**: Criar interface e rota com masquerade para permitir acesso direto ao IP de gerência da ONU/Modem (ex: 192.168.1.1 ou 192.168.100.1) mesmo com PPPoE ativo.
+- **3. Objetivo**: 'Criar interface e rota com masquerade para permitir acesso direto ao IP de gerência da ONU/Modem (ex: 192.168.1.1 ou 192.168.100.1) mesmo com PPPoE ativo.'
 - **4. Estado Atual**: `funcional`
 - **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/network.sh`
 - **6. Comandos e Ações**: `wan-save modem_ip=...`
@@ -376,7 +376,7 @@ flowchart TD
 ### `ARK-LAN-001` — Configuração da Sub-rede LAN e Servidor DHCP Central
 - **1. Identificador**: `ARK-LAN-001`
 - **2. Nome**: Configuração da Sub-rede LAN e Servidor DHCP Central
-- **3. Objetivo**: Definir endereço IP do roteador (ex: 192.168.1.1 ou 192.168.73.1), máscara, faixa de distribuição DHCP e tempo de lease.
+- **3. Objetivo**: 'Definir endereço IP do roteador (ex: 192.168.1.1 ou 192.168.73.1), máscara, faixa de distribuição DHCP e tempo de lease.'
 - **4. Estado Atual**: `funcional`
 - **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/network.sh`
 - **6. Comandos e Ações**: `lan-status`, `lan-save`
@@ -991,7 +991,7 @@ flowchart TD
 - **15. Recursos que Pode Alterar**: wireless.@wifi-device[].htmode, wireless.@wifi-device[].he_su_beamformer
 - **16. Recursos que NÃO Pode Alterar**: calibração de potência de fábrica
 - **17. Relações e Dependências**: `ARK-WIFI-001`, `ARK-WIFI-002`
-- **18. Limitações por Hardware**: Disponível exclusivamente em SoCs com rádio Wi-Fi 6/7 físico (ex: Predator W6x, Cudy WR3000, Filogic 880). No laboratório virtual é mantido em estado simulado.
+- **18. Limitações por Hardware**: 'Disponível exclusivamente em SoCs com rádio Wi-Fi 6/7 físico (ex: Predator W6x, Cudy WR3000, Filogic 880). No laboratório virtual é mantido em estado simulado.'
 - **19. Limitações por Versão do OpenWrt**: OpenWrt 23.05+ (Wi-Fi 6) e 24.x/25.x (Wi-Fi 7 EHT).
 - **20. Disponibilidade nos Perfis**: `full`
 - **21. Versão de Criação/Alteração**: `1.5.2`
@@ -1528,7 +1528,7 @@ flowchart TD
 - **2. Nome**: ARK Doctor — Diagnóstico de Integridade e Auto-Cura do Sistema
 - **3. Objetivo**: Auditar inconsistências de rede, alinhamento SQM, MTU Baby Jumbo, memória RAM, conflitos de Fastpath e auto-corrigir com o argumento --fix.
 - **4. Estado Atual**: `funcional`
-- **5. Arquivos Responsáveis**: `root/usr/sbin/ark-doctor`, `root/usr/lib/ark/modules/doctor.sh`
+- **5. Arquivos Responsáveis**: `root/usr/sbin/ark-doctor`, `root/usr/lib/ark/modules/doctor.sh`, `src/modules/doctor_perf.js`
 - **6. Comandos e Ações**: `ark-doctor`, `ark-doctor --fix`, `audit-system`
 - **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control ark-doctor`, `/usr/sbin/equipe-dashboard-control audit-system`
 - **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
@@ -1601,7 +1601,7 @@ flowchart TD
 ### `ARK-SYS-001` — Gerenciador de Nomes Amigáveis de Dispositivos (Aliases)
 - **1. Identificador**: `ARK-SYS-001`
 - **2. Nome**: Gerenciador de Nomes Amigáveis de Dispositivos (Aliases)
-- **3. Objetivo**: Atribuir apelidos customizados (ex: 'TV Sala', 'Celular João') aos endereços MAC para fácil identificação visual em todo o sistema.
+- **3. Objetivo**: 'Atribuir apelidos customizados (ex: ''TV Sala'', ''Celular João'') aos endereços MAC para fácil identificação visual em todo o sistema.'
 - **4. Estado Atual**: `funcional`
 - **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/devices.sh`, `src/modules/devices.js`
 - **6. Comandos e Ações**: `rename`, `device-status`
@@ -1676,7 +1676,7 @@ flowchart TD
 ### `ARK-SYS-004` — Gerenciador de Perfis de Pacote (Lite vs Full) e Ocultação Modular
 - **1. Identificador**: `ARK-SYS-004`
 - **2. Nome**: Gerenciador de Perfis de Pacote (Lite vs Full) e Ocultação Modular
-- **3. Objetivo**: Permitir ocultar ou desativar módulos não utilizados (ex: VPN, Starlink, Adblock) para economizar RAM e simplificar a interface.
+- **3. Objetivo**: 'Permitir ocultar ou desativar módulos não utilizados (ex: VPN, Starlink, Adblock) para economizar RAM e simplificar a interface.'
 - **4. Estado Atual**: `funcional`
 - **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/ezsetup.sh`, `src/modules/system.js`
 - **6. Comandos e Ações**: `features`, `feature-hide`, `profile`
@@ -1728,7 +1728,7 @@ flowchart TD
 - **2. Nome**: Customização de Idioma e Título do Sistema (Branding)
 - **3. Objetivo**: Permitir customizar o título do cabeçalho da interface e selecionar idioma de exibição (Português BR / Inglês).
 - **4. Estado Atual**: `funcional`
-- **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/ezsetup.sh`, `src/core/i18n.js`
+- **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/ezsetup.sh`, `src/core/i18n/loader.js`, `src/modules/system.js`
 - **6. Comandos e Ações**: `language`, `title`
 - **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control language`, `/usr/sbin/equipe-dashboard-control title`
 - **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
@@ -1770,6 +1770,131 @@ flowchart TD
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
 - **21. Versão de Criação/Alteração**: `1.5.2`
+- **22. Testes Relacionados**: `tests/test_wan_matrix.py`
+- **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
+
+### `ARK-SYS-008` — NTP Inteligente, Fake RTC Preserver e Fallback HTTP Date
+- **1. Identificador**: `ARK-SYS-008`
+- **2. Nome**: NTP Inteligente, Fake RTC Preserver e Fallback HTTP Date
+- **3. Objetivo**: Garantir sincronização monotônica de horário em roteadores sem bateria CMOS via pool NTP brasileiro/global, fallback HTTP Date (quando UDP 123 é bloqueado por CGNAT/Starlink) e persistência controlada de época (/etc/ark-clock-epoch).
+- **4. Estado Atual**: `funcional`
+- **5. Arquivos Responsáveis**: `root/etc/init.d/ark-clock-preserver`, `root/etc/uci-defaults/99-ark-router-ntp-clock`, `root/usr/lib/ark/modules/system.sh`, `src/modules/system.js`
+- **6. Comandos e Ações**: `ntp-status`, `ntp-sync`, `ntp-save`
+- **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control ntp-*`
+- **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
+- **9. Dependências e Pacotes**: `sysntpd`
+- **10. Configurações UCI**: `system`
+- **11. Serviços e Daemons**: `sysntpd`, `ark-clock-preserver`
+- **12. Dados Persistentes**: `/etc/config/system`, `/etc/ark-clock-epoch`
+- **13. Dados Temporários em /tmp ou Memória**: Nenhum
+- **14. Comportamento no Boot**: Restaura época mínima no START=11 antes do WireGuard/DNSSEC e sincroniza via NTP ou HTTP Date.
+- **15. Recursos que Pode Alterar**: system.ntp.server, /etc/ark-clock-epoch
+- **16. Recursos que NÃO Pode Alterar**: interfaces de rede
+- **17. Relações e Dependências**: `ARK-VPN-001`, `ARK-DIAG-001`
+- **18. Limitações por Hardware**: Essencial para SoCs sem RTC alimentado por bateria; grava em flash apenas no shutdown ou 1x/24h.
+- **19. Limitações por Versão do OpenWrt**: Universal (19.07 a 25.x+).
+- **20. Disponibilidade nos Perfis**: `lite`, `full`
+- **21. Versão de Criação/Alteração**: `1.5.13`
+- **22. Testes Relacionados**: `tests/test_wan_matrix.py`
+- **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
+
+### `ARK-WAN-011` — Blindagem Exclusiva NPTv6 (RFC 6296) vs NDP Relay e Sincronização ULA
+- **1. Identificador**: `ARK-WAN-011`
+- **2. Nome**: Blindagem Exclusiva NPTv6 (RFC 6296) vs NDP Relay e Sincronização ULA
+- **3. Objetivo**: Traduzir prefixo ULA estático da LAN para prefixos globais GUA dinâmicos (/64 de Starlink/CGNAT/4G) em estado stateless (NPTv6) com trava de exclusão mútua contra NDP Relay.
+- **4. Estado Atual**: `funcional`
+- **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/network.sh`, `root/usr/lib/ark/modules/doctor.sh`, `src/modules/network.js`, `src/modules/render.js`
+- **6. Comandos e Ações**: `ipv6-npt-status`, `ipv6-npt-set`
+- **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control ipv6-npt-*`
+- **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
+- **9. Dependências e Pacotes**: `odhcpd`
+- **10. Configurações UCI**: `network`, `dhcp`
+- **11. Serviços e Daemons**: `odhcpd`, `firewall`
+- **12. Dados Persistentes**: `/etc/config/network`, `/etc/config/dhcp`
+- **13. Dados Temporários em /tmp ou Memória**: Nenhum
+- **14. Comportamento no Boot**: Regras de tradução de prefixo recarregadas via hotplug wan6/firewall mantendo sub-rede ULA estável na LAN.
+- **15. Recursos que Pode Alterar**: network.globals.ula_prefix, dhcp.lan.ra, dhcp.lan.ndp
+- **16. Recursos que NÃO Pode Alterar**: rotas IPv4
+- **17. Relações e Dependências**: `ARK-WAN-004`, `ARK-DIAG-001`
+- **18. Limitações por Hardware**: Nenhuma.
+- **19. Limitações por Versão do OpenWrt**: Isolamento duplo estrito entre nftables (fw4) e ip6tables (fw3).
+- **20. Disponibilidade nos Perfis**: `lite`, `full`
+- **21. Versão de Criação/Alteração**: `1.5.13`
+- **22. Testes Relacionados**: `tests/test_wan_matrix.py`
+- **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
+
+### `ARK-PERF-006` — Seletor Inteligente de Cache DNS Adaptado por Hardware (RAM 0ms)
+- **1. Identificador**: `ARK-PERF-006`
+- **2. Nome**: Seletor Inteligente de Cache DNS Adaptado por Hardware (RAM 0ms)
+- **3. Objetivo**: Dimensionar dinamicamente o cachesize do dnsmasq (de 1.500 a 10.000 entradas) conforme a RAM física do roteador (128 MB a 1 GB+) e proteger min_cache_ttl para respostas DNS em 0ms.
+- **4. Estado Atual**: `funcional`
+- **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/system.sh`, `src/modules/doctor_perf.js`
+- **6. Comandos e Ações**: `dns-cache-set`, `system-perf-status`
+- **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control dns-cache-set`
+- **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
+- **9. Dependências e Pacotes**: `dnsmasq`
+- **10. Configurações UCI**: `dhcp`, `equipe_dashboard`
+- **11. Serviços e Daemons**: `dnsmasq`
+- **12. Dados Persistentes**: `/etc/config/dhcp`, `/etc/config/equipe_dashboard`
+- **13. Dados Temporários em /tmp ou Memória**: Nenhum
+- **14. Comportamento no Boot**: Preserva snapshot saved_dns_cachesize do usuário e aplica perfil adequado no boot do dnsmasq.
+- **15. Recursos que Pode Alterar**: dhcp.@dnsmasq[0].cachesize, dhcp.@dnsmasq[0].min_cache_ttl
+- **16. Recursos que NÃO Pode Alterar**: servidores DNS upstream
+- **17. Relações e Dependências**: `ARK-LAN-002`, `ARK-DIAG-001`
+- **18. Limitações por Hardware**: Limita automaticamente o teto a 1.500 entradas em roteadores <= 128 MB RAM para evitar OOM.
+- **19. Limitações por Versão do OpenWrt**: Universal.
+- **20. Disponibilidade nos Perfis**: `lite`, `full`
+- **21. Versão de Criação/Alteração**: `1.5.14`
+- **22. Testes Relacionados**: `tests/test_wan_matrix.py`
+- **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
+
+### `ARK-WIFI-010` — Roaming Rápido 802.11k/v (BSS Transition), RNR 6 GHz e Calibração usteer
+- **1. Identificador**: `ARK-WIFI-010`
+- **2. Nome**: Roaming Rápido 802.11k/v (BSS Transition), RNR 6 GHz e Calibração usteer
+- **3. Objetivo**: Configurar bss_transition=1, time_advertisement=2, rnr=1 (Reduced Neighbor Report para descoberta de 6 GHz) e limiares calibrados do usteer para transição suave entre APs e bandas.
+- **4. Estado Atual**: `funcional`
+- **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/wifi.sh`, `root/usr/lib/ark/modules/doctor.sh`, `src/modules/wifi.js`
+- **6. Comandos e Ações**: `wifi-roaming-set`, `doctor-fix`
+- **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control wifi-*`
+- **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
+- **9. Dependências e Pacotes**: `hostapd-common`
+- **10. Configurações UCI**: `wireless`, `usteer`
+- **11. Serviços e Daemons**: `wpad`, `usteer`
+- **12. Dados Persistentes**: `/etc/config/wireless`, `/etc/config/usteer`
+- **13. Dados Temporários em /tmp ou Memória**: Nenhum
+- **14. Comportamento no Boot**: Aplicado nos perfis de interface wireless pelo netifd/hostapd e monitorado pelo Ark Doctor.
+- **15. Recursos que Pode Alterar**: wireless.@wifi-iface[].bss_transition, wireless.@wifi-iface[].rrm_neighbor_report, wireless.@wifi-iface[].rnr, usteer.@usteer[0]
+- **16. Recursos que NÃO Pode Alterar**: senhas Wi-Fi
+- **17. Relações e Dependências**: `ARK-WIFI-004`, `ARK-DIAG-001`
+- **18. Limitações por Hardware**: Requer wpad completo (wpad-mbedtls/wolfssl/openssl) para suporte integral a frames 802.11v WNM.
+- **19. Limitações por Versão do OpenWrt**: Em OpenWrt 23.05+, bss_transition=1 substitui wnm_sleep_mode para ativar 802.11v.
+- **20. Disponibilidade nos Perfis**: `lite`, `full`
+- **21. Versão de Criação/Alteração**: `1.5.17`
+- **22. Testes Relacionados**: `tests/test_wan_matrix.py`
+- **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
+
+### `ARK-WIFI-011` — Smart Wi-Fi Package Enhancer (Upgrade Atômico wpad-mbedtls e usteer)
+- **1. Identificador**: `ARK-WIFI-011`
+- **2. Nome**: Smart Wi-Fi Package Enhancer (Upgrade Atômico wpad-mbedtls e usteer)
+- **3. Objetivo**: Detectar binários wpad-basic limitados e executar substituição atômica para wpad-mbedtls mais instalação de usteer com stepper visual multi-etapas e reconexão automática.
+- **4. Estado Atual**: `funcional`
+- **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/wifi.sh`, `src/modules/wifi.js`, `src/modules/render.js`
+- **6. Comandos e Ações**: `wifi-smart-enhance`, `wifi-smart-enhance-status`
+- **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control wifi-smart-enhance*`
+- **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
+- **9. Dependências e Pacotes**: `opkg ou apk`
+- **10. Configurações UCI**: `wireless`, `usteer`
+- **11. Serviços e Daemons**: `wpad`, `usteer`
+- **12. Dados Persistentes**: `/etc/config/wireless`, `/etc/config/usteer`
+- **13. Dados Temporários em /tmp ou Memória**: `/tmp/ark_wifi_enhance.status`, `/tmp/ark_wifi_enhance.log`
+- **14. Comportamento no Boot**: Pacotes instalados persistem em /overlay; parâmetros 802.11k/v/r sobem automaticamente com o wpad completo.
+- **15. Recursos que Pode Alterar**: pacotes wpad e usteer, wireless.@wifi-iface[]
+- **16. Recursos que NÃO Pode Alterar**: configurações de WAN/LAN
+- **17. Relações e Dependências**: `ARK-WIFI-004`, `ARK-WIFI-010`
+- **18. Limitações por Hardware**: Exige espaço livre mínimo em /overlay e conectividade WAN ativa para baixar pacotes da árvore oficial.
+- **19. Limitações por Versão do OpenWrt**: Suporta tanto opkg (--force-removal-of-dependent-packages) quanto apk (OpenWrt 24.10/25.x+).
+- **20. Disponibilidade nos Perfis**: `lite`, `full`
+- **21. Versão de Criação/Alteração**: `1.5.17`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
@@ -1848,6 +1973,11 @@ flowchart TD
 | `ARK-SYS-005` | Mecanismo de Atualização OTA e Upgrade Manual (IPK / APK) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
 | `ARK-SYS-006` | Customização de Idioma e Título do Sistema (Branding) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
 | `ARK-SYS-007` | Watchdog e Auto-Recuperação do Servidor Web e Interface LuCI | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
+| `ARK-SYS-008` | NTP Inteligente, Fake RTC Preserver e Fallback HTTP Date | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
+| `ARK-WAN-011` | Blindagem Exclusiva NPTv6 (RFC 6296) vs NDP Relay e Sincronização ULA | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
+| `ARK-PERF-006` | Seletor Inteligente de Cache DNS Adaptado por Hardware (RAM 0ms) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
+| `ARK-WIFI-010` | Roaming Rápido 802.11k/v (BSS Transition), RNR 6 GHz e Calibração usteer | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
+| `ARK-WIFI-011` | Smart Wi-Fi Package Enhancer (Upgrade Atômico wpad-mbedtls e usteer) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
 
 ---
 
@@ -1960,11 +2090,11 @@ Os seguintes diretórios residem estritamente em memória RAM para prevenir desg
 
 | Categoria de Status | Quantidade de Funcionalidades | Percentual |
 | :--- | :---: | :---: |
-| **Aprovadas e Funcionais no Lab Virtual** | **66** | **95.7%** |
+| **Aprovadas e Funcionais no Lab Virtual** | **71** | **95.9%** |
 | **Corrigidas durante a Auditoria e Aprovadas** | **2** | **2,9%** |
-| **Simuladas (Aguardando Validação em Hardware Real)** | **3** (`ARK-WIFI-006`, `ARK-WIFI-009`, `ARK-HW-001`) | **4.3%** |
+| **Simuladas (Aguardando Validação em Hardware Real)** | **3** (`ARK-WIFI-006`, `ARK-WIFI-009`, `ARK-HW-001`) | **4.1%** |
 | **Falhas Não Resolvidas** | **0** | **0,0%** |
-| **Total Auditado** | **69** | **100,0%** |
+| **Total Auditado** | **74** | **100,0%** |
 
 > [!IMPORTANT]
 > A aprovação no laboratório virtual não autoriza automaticamente deploy em roteador físico.

@@ -6,18 +6,24 @@ guaranteeing 100% synchronization and strictly under 4,000 lines.
 """
 
 import os
-import yaml
+import sys
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.join(REPO_DIR, "tests"))
+from verify_feature_contracts import load_contracts_data
+
 YAML_FILE = os.path.join(REPO_DIR, "tests", "feature_contracts.yaml")
 MD_FILE = os.path.join(REPO_DIR, "docs", "FEATURE_AUDIT_AND_REBOOT.md")
 
 def generate_doc():
-    with open(YAML_FILE, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
+    data = load_contracts_data(YAML_FILE)
 
     version_file = os.path.join(REPO_DIR, "VERSION")
-    active_version = "1.5.9"
+    active_version = "1.5.17"
     if os.path.exists(version_file):
         with open(version_file, "r", encoding="utf-8") as vf:
             active_version = vf.read().strip()

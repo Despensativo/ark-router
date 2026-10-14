@@ -24,7 +24,7 @@ async def main():
         if login_btn:
             pw_input = await page.query_selector('input[type="password"]')
             if pw_input:
-                await pw_input.fill("root0100")
+                await pw_input.fill(os.environ.get("ARK_ROUTER_TEST_PASSWORD", ""))
             await login_btn.click()
             await page.wait_for_timeout(2000)
 

@@ -1,6 +1,6 @@
 # ARK Router — Índice Canônico de Documentação Técnica
 
-> **Mapa Oficial de Documentação Técnica do Projeto (v1.5.9)**
+> **Mapa Oficial de Documentação Técnica do Projeto (v1.5.17)**
 > Este índice orienta desenvolvedores e agentes de IA para as fontes canônicas de cada domínio técnico, eliminando ambiguidades e documentos concorrentes.
 
 ---
@@ -21,6 +21,7 @@
 | **Recuperação TFTP (Cudy WR3000)** | [`docs/CUDY_WR3000_TFTP_RECOVERY.md`](CUDY_WR3000_TFTP_RECOVERY.md) | Procedimento de resgate de emergência via TFTP e migração segura do firmware OEM. |
 | **Segurança e Isolamento** | [`docs/SECURITY.md`](SECURITY.md) | Política de segurança, proteção de credenciais e auditoria de tokens efêmeros em `/tmp`. |
 | **Diagnósticos de Rede & Doctor** | [`docs/network-diagnostics.md`](network-diagnostics.md) | Rotinas de auto-cura do `ark-doctor`, testes de ping anycast e resolução de falhas. |
+| **Upgrade WPAD & Roaming Wi-Fi 6/7** | [`docs/WPAD_UPGRADE_AND_WIFI6_ROAMING.md`](WPAD_UPGRADE_AND_WIFI6_ROAMING.md) | Migração segura para `wpad-mbedtls`, roaming 802.11k/v + RNR e armadilhas de FT-SAE (`T-039`). |
 | **Histórico de Lançamentos** | [`CHANGELOG.md`](../CHANGELOG.md) | Registro cronológico oficial de todas as releases e correções do sistema. |
 
 ---

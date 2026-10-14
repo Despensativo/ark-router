@@ -7,12 +7,12 @@ For the complete maintainer publishing checklist, see [PUBLISHING.md](PUBLISHING
 The easiest public distribution path is:
 
 1. Push the source code to GitHub.
-2. Create a version tag matching `VERSION`, for example `v1.5.11`.
-3. Build the package locally using `scripts/build-apk-manual-wsl.sh` / `scripts/build-ipk-wsl.sh` (or let GitHub Actions build with the OpenWrt SDK).
-4. Publish the generated `.apk` or `.ipk` files as GitHub Release assets.
+2. Create a version tag matching `VERSION`, for example `v1.5.17`.
+3. Build the packages locally using `scripts/build-apk-manual-wsl.sh` and `scripts/build-ipk-wsl.sh` (or `python scripts/pack_ipk_local.py`).
+4. Upload the locally verified `.apk` and `.ipk` files directly as GitHub Release assets (`gh release create` / `gh release upload`).
 5. Install or update from the router with the SSH one-liner in `scripts/install.sh`.
 
-For public/stable releases, prefer the generated `.apk`/`.ipk` assets because they are installed by the OpenWrt package manager. For early testing, emergency updates or a moment when the release asset has not been generated yet, use source mode over SSH. Source mode backs up ARK Router configs, preserves existing dashboard/device/QoS config files and copies only the project files into place.
+For public/stable releases, prefer the generated `.apk`/`.ipk` assets because they are installed by the OpenWrt package manager. For early testing, emergency updates or a moment when a release asset has not been uploaded yet, use source mode over SSH. Source mode backs up ARK Router configs, preserves existing dashboard/device/QoS config files and copies only the project files into place.
 
 If a package asset exists, use release mode:
 
@@ -32,7 +32,7 @@ To force Full from the same GitHub Release:
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_PROFILE=full sh
 ```
 
-If GitHub Actions has not produced the package yet, use source mode:
+If a pre-built package asset is not yet attached to the release, use source mode:
 
 ```sh
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_INSTALL_MODE=source sh

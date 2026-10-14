@@ -32,7 +32,7 @@ try:
         login_inputs[0].send_keys("root")
         pass_in = driver.find_element(By.NAME, "luci_password")
         pass_in.clear()
-        pass_in.send_keys("admin0100")
+        pass_in.send_keys(os.environ.get("ARK_ROUTER_TEST_PASSWORD", ""))
         
         print("[2] Clicando em Entrar (Login direto -> Dashboard)...")
         t0 = time.time()

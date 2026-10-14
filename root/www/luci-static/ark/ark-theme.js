@@ -463,338 +463,162 @@
         if (has6g) {
           guide = {
             band: 'tri',
-            title: isEn ? 'Wi-Fi Networks Guide (Tri-Band • Wi-Fi 7 / 6E)' :
-                   (isEs ? 'Guía de Redes Wi-Fi (Tri-Band • Wi-Fi 7 / 6E)' :
-                           'Guia de Redes Wi-Fi (Tri-Band • Wi-Fi 7 / 6E)'),
-            serve: isEn ? 'Controls wireless transmission across 6 GHz (maximum throughput and ultra-low latency with channels up to 320 MHz), 5 GHz (high performance for gaming and streaming), and 2.4 GHz (maximum range through walls and IoT devices).' :
-                   (isEs ? 'Controla la transmisión inalámbrica en las bandas de 6 GHz (máxima velocidad y ultrabaja latencia con canales de hasta 320 MHz), 5 GHz (alto rendimiento para streaming y juegos) y 2.4 GHz (mayor alcance a través de paredes y dispositivos IoT).' :
-                           'Controla a transmissão sem fio nas faixas de 6 GHz (máxima velocidade e ultrabaixa latência com canais até 320 MHz), 5 GHz (alta performance para vídeos e jogos) e 2.4 GHz (maior alcance através de paredes e dispositivos IoT).'),
-            fazer: isEn ? 'Set easy-to-recognize network names (SSID) and strong passwords. If signal is unstable due to neighbor interference, adjust channel or channel width in radio settings.' :
-                   (isEs ? 'Defina nombres (SSID) fáciles de reconocer y contraseñas seguras. Si la señal es inestable por interferencias, cambie el canal o ajuste el ancho de banda en los ajustes de cada radio.' :
-                           'Defina nomes (SSID) fáceis de reconhecer e senhas fortes. Se o sinal estiver instável por interferência de vizinhos, troque o canal ou ajuste a largura de banda nas configurações de cada rádio.'),
-            rec:   isEn ? 'On the 6 GHz band, use mandatory WPA3-SAE security with ultra-wide channels (160/320 MHz). On the 5 GHz radio, use Channel 36 or higher (80/160 MHz) and on 2.4 GHz keep clean Channels 1, 6, or 11 (20 MHz) with WPA2/WPA3 Mixed security.' :
-                   (isEs ? 'En la banda de 6 GHz, use seguridad obligatoria WPA3-SAE con canales ultra-anchos (160/320 MHz). En la radio de 5 GHz, use Canal 36 o superior (80/160 MHz) y en 2.4 GHz mantenga Canales 1, 6 u 11 (20 MHz) con seguridad WPA2/WPA3 Mixta.' :
-                           'Na faixa de 6 GHz, utilize segurança obrigatória WPA3-SAE com canais ultra-largos (160/320 MHz). No rádio 5 GHz, utilize Canal 36 ou superior (80/160 MHz) e no 2.4 GHz mantenha Canais 1, 6 ou 11 (20 MHz) com segurança WPA2/WPA3 Mixed.')
+            title: isEn ? 'Wi-Fi Networks Guide (Tri-Band • Wi-Fi 7 / 6E)' : (isEs ? 'Guía de Redes Wi-Fi (Tri-Band • Wi-Fi 7 / 6E)' : 'Guia de Redes Wi-Fi (Tri-Band • Wi-Fi 7 / 6E)'),
+            serve: isEn ? 'Controls wireless transmission across 6 GHz (maximum throughput and ultra-low latency with channels up to 320 MHz), 5 GHz (high performance for gaming and streaming), and 2.4 GHz (maximum range through walls and IoT devices).' : (isEs ? 'Controla la transmisión inalámbrica en las bandas de 6 GHz (máxima velocidad y ultrabaja latencia con canales de hasta 320 MHz), 5 GHz (alto rendimiento para streaming y juegos) y 2.4 GHz (mayor alcance a través de paredes y dispositivos IoT).' : 'Controla a transmissão sem fio nas faixas de 6 GHz (máxima velocidade e ultrabaixa latência com canais até 320 MHz), 5 GHz (alta performance para vídeos e jogos) e 2.4 GHz (maior alcance através de paredes e dispositivos IoT).'),
+            fazer: isEn ? 'Set easy-to-recognize network names (SSID) and strong passwords. If signal is unstable due to neighbor interference, adjust channel or channel width in radio settings.' : (isEs ? 'Defina nombres (SSID) fáciles de reconocer y contraseñas seguras. Si la señal es inestable por interferencias, cambie el canal o ajuste el ancho de banda en los ajustes de cada radio.' : 'Defina nomes (SSID) fáceis de reconhecer e senhas fortes. Se o sinal estiver instável por interferência de vizinhos, troque o canal ou ajuste a largura de banda nas configurações de cada rádio.'),
+            rec: isEn ? 'On the 6 GHz band, use mandatory WPA3-SAE security with ultra-wide channels (160/320 MHz). On the 5 GHz radio, use Channel 36 or higher (80/160 MHz) and on 2.4 GHz keep clean Channels 1, 6, or 11 (20 MHz) with WPA2/WPA3 Mixed security.' : (isEs ? 'En la banda de 6 GHz, use seguridad obligatoria WPA3-SAE con canales ultra-anchos (160/320 MHz). En la radio de 5 GHz, use Canal 36 o superior (80/160 MHz) y en 2.4 GHz mantenga Canales 1, 6 u 11 (20 MHz) con seguridad WPA2/WPA3 Mixta.' : 'Na faixa de 6 GHz, utilize segurança obrigatória WPA3-SAE com canais ultra-largos (160/320 MHz). No rádio 5 GHz, utilize Canal 36 ou superior (80/160 MHz) e no 2.4 GHz mantenha Canais 1, 6 ou 11 (20 MHz) com segurança WPA2/WPA3 Mixed.')
           };
         } else if (has5g && has2g) {
           guide = {
             band: 'dual',
-            title: isEn ? 'Wi-Fi Networks Guide (Dual-Band)' :
-                   (isEs ? 'Guía de Redes Wi-Fi (Dual-Band)' :
-                           'Guia de Redes Wi-Fi (Dual-Band)'),
-            serve: isEn ? 'Controls wireless transmission across 5 GHz (maximum speed for video and gaming) and 2.4 GHz (longer range through walls and smart devices compatibility).' :
-                   (isEs ? 'Controla la transmisión inalámbrica en las bandas de 5 GHz (máxima velocidad para vídeos y juegos) y 2.4 GHz (mayor alcance a través de paredes y compatibilidad con dispositivos inteligentes).' :
-                           'Controla a transmissão sem fio nas faixas de 5 GHz (máxima velocidade para vídeos e jogos) e 2.4 GHz (maior alcance através de paredes e compatibilidade com dispositivos inteligentes).'),
-            fazer: isEn ? 'Set easy-to-recognize network names (SSID) and strong passwords. If the signal is unstable due to interference, change the channel in radio settings.' :
-                   (isEs ? 'Defina nombres (SSID) fáciles de reconocer y contraseñas seguras. Si la señal es inestable por interferencias, cambie el canal en los ajustes de la radio.' :
-                           'Defina nomes (SSID) fáceis de reconhecer e senhas fortes. Se o sinal estiver instável por interferência de vizinhos, troque o canal nas configurações do rádio.'),
-            rec:   isEn ? 'Keep 5 GHz on Channel 36 or higher (80/160 MHz) and 2.4 GHz on Channel 1, 6, or 11 (20 MHz) with WPA2-PSK (AES) or WPA2/WPA3 Mixed security.' :
-                   (isEs ? 'Mantenga la radio de 5 GHz en el Canal 36 o superior (80/160 MHz) y la de 2.4 GHz en el Canal 1, 6 u 11 (20 MHz) con seguridad WPA2-PSK (AES) o WPA2/WPA3 Mixta.' :
-                           'Mantenha o rádio 5 GHz no Canal 36 ou superior (80/160 MHz) e o 2.4 GHz no Canal 1, 6 ou 11 (20 MHz) com segurança WPA2-PSK (AES) ou WPA2/WPA3 Mixed.')
+            title: isEn ? 'Wi-Fi Networks Guide (Dual-Band)' : (isEs ? 'Guía de Redes Wi-Fi (Dual-Band)' : 'Guia de Redes Wi-Fi (Dual-Band)'),
+            serve: isEn ? 'Controls wireless transmission across 5 GHz (maximum speed for video and gaming) and 2.4 GHz (longer range through walls and smart devices compatibility).' : (isEs ? 'Controla la transmisión inalámbrica en las bandas de 5 GHz (máxima velocidad para vídeos y juegos) y 2.4 GHz (mayor alcance a través de paredes y compatibilidad con dispositivos inteligentes).' : 'Controla a transmissão sem fio nas faixas de 5 GHz (máxima velocidade para vídeos e jogos) e 2.4 GHz (maior alcance através de paredes e compatibilidade com dispositivos inteligentes).'),
+            fazer: isEn ? 'Set easy-to-recognize network names (SSID) and strong passwords. If the signal is unstable due to interference, change the channel in radio settings.' : (isEs ? 'Defina nombres (SSID) fáciles de reconocer y contraseñas seguras. Si la señal es inestable por interferencias, cambie el canal en los ajustes de la radio.' : 'Defina nomes (SSID) fáceis de reconhecer e senhas fortes. Se o sinal estiver instável por interferência de vizinhos, troque o canal nas configurações do rádio.'),
+            rec: isEn ? 'Keep 5 GHz on Channel 36 or higher (80/160 MHz) and 2.4 GHz on Channel 1, 6, or 11 (20 MHz) with WPA2-PSK (AES) or WPA2/WPA3 Mixed security.' : (isEs ? 'Mantenga la radio de 5 GHz en el Canal 36 o superior (80/160 MHz) y la de 2.4 GHz en el Canal 1, 6 u 11 (20 MHz) con seguridad WPA2-PSK (AES) o WPA2/WPA3 Mixta.' : 'Mantenha o rádio 5 GHz no Canal 36 ou superior (80/160 MHz) e o 2.4 GHz no Canal 1, 6 ou 11 (20 MHz) com segurança WPA2-PSK (AES) ou WPA2/WPA3 Mixed.')
           };
         } else {
           guide = {
             band: 'single',
-            title: isEn ? 'Wi-Fi Networks Guide (2.4 GHz)' :
-                   (isEs ? 'Guía de Redes Wi-Fi (2.4 GHz)' :
-                           'Guia de Redes Wi-Fi (2.4 GHz)'),
-            serve: isEn ? 'Controls wireless transmission on the 2.4 GHz band for stable connection of computers, smartphones, and IoT devices.' :
-                   (isEs ? 'Controla la transmisión inalámbrica en la banda de 2.4 GHz para conexión estable de ordenadores, smartphones e dispositivos IoT.' :
-                           'Controla a transmissão sem fio na faixa de 2.4 GHz para conexão de computadores, smartphones e dispositivos inteligentes.'),
-            fazer: isEn ? 'Set easy-to-recognize network names (SSID) and strong passwords. If the signal is unstable due to neighbor interference, change the channel.' :
-                   (isEs ? 'Defina nombres (SSID) fáciles de reconocer y contraseñas seguras. Si la señal es inestable por interferencias de vecinos, cambie el canal.' :
-                           'Defina nomes (SSID) fáceis de reconhecer e senhas fortes. Se o sinal estiver instável por interferência de vizinhos, troque o canal nas configurações do rádio.'),
-            rec:   isEn ? 'Keep 2.4 GHz on non-overlapping Channels 1, 6, or 11 (20 MHz) with WPA2-PSK (AES) security.' :
-                   (isEs ? 'Mantenga la radio de 2.4 GHz en los canales 1, 6 u 11 (20 MHz) con seguridad WPA2-PSK (AES).' :
-                           'Mantenha o rádio 2.4 GHz nos canais não sobrepostos 1, 6 ou 11 (20 MHz) com segurança WPA2-PSK (AES).')
+            title: isEn ? 'Wi-Fi Networks Guide (2.4 GHz)' : (isEs ? 'Guía de Redes Wi-Fi (2.4 GHz)' : 'Guia de Redes Wi-Fi (2.4 GHz)'),
+            serve: isEn ? 'Controls wireless transmission on the 2.4 GHz band for stable connection of computers, smartphones, and IoT devices.' : (isEs ? 'Controla la transmisión inalámbrica en la banda de 2.4 GHz para conexión estable de ordenadores, smartphones e dispositivos IoT.' : 'Controla a transmissão sem fio na faixa de 2.4 GHz para conexão de computadores, smartphones e dispositivos inteligentes.'),
+            fazer: isEn ? 'Set easy-to-recognize network names (SSID) and strong passwords. If the signal is unstable due to neighbor interference, change the channel.' : (isEs ? 'Defina nombres (SSID) fáciles de reconocer y contraseñas seguras. Si la señal es inestable por interferencias de vecinos, cambie el canal.' : 'Defina nomes (SSID) fáceis de reconhecer e senhas fortes. Se o sinal estiver instável por interferência de vizinhos, troque o canal nas configurações do rádio.'),
+            rec: isEn ? 'Keep 2.4 GHz on non-overlapping Channels 1, 6, or 11 (20 MHz) with WPA2-PSK (AES) security.' : (isEs ? 'Mantenga la radio de 2.4 GHz en los canales 1, 6 u 11 (20 MHz) con seguridad WPA2-PSK (AES).' : 'Mantenha o rádio 2.4 GHz nos canais não sobrepostos 1, 6 ou 11 (20 MHz) com segurança WPA2-PSK (AES).')
           };
         }
       } else if (existingGuide) {
         return;
       } else if (path.indexOf('/network/network') !== -1) {
         guide = {
-          title: isEn ? 'Connection Guide: WAN (Internet) & LAN (Local Network)' :
-                 (isEs ? 'Guía de Conexión: WAN (Internet) y LAN (Red Local)' :
-                         'Guia de Conexão: WAN (Internet) e LAN (Rede Local)'),
-          serve: isEn ? 'The WAN interface receives internet signal from your ISP modem or fiber ONT. The LAN interface distributes that connection to wired and Wi-Fi devices.' :
-                 (isEs ? 'La interfaz WAN recibe la señal de internet del módem o fibra del operador. La interfaz LAN distribuye esa conexión a los equipos conectados por cable y Wi-Fi.' :
-                         'A interface WAN recebe o sinal de internet do modem ou fibra da operadora. A interface LAN distribui essa conexão aos aparelhos conectados por cabo e Wi-Fi.'),
-          fazer: isEn ? 'If internet drops, click "Restart" on the WAN interface to restore connection with your ISP. To change device IP range, edit the LAN interface.' :
-                 (isEs ? 'Si internet se desconecta, use el botón "Reiniciar" en la interfaz WAN para restablecer la conexión con el operador. Para cambiar el rango de IP, edite la interfaz LAN.' :
-                         'Se a internet cair, use o botão "Reiniciar" na interface WAN para restabelecer a conexão com a operadora. Para mudar a faixa de IP dos seus aparelhos, edite a interface LAN.'),
-          rec:   isEn ? 'Keep the router at IP 192.168.12.1 to avoid conflicts with ISP modems (which often use 192.168.1.1 or 192.168.0.1).' :
-                 (isEs ? 'Mantenga el router en la IP 192.168.12.1 para evitar conflictos con módems de operadoras (que suelen usar 192.168.1.1 o 192.168.0.1).' :
-                         'Mantenha o roteador no IP 192.168.12.1 para nunca conflitar com modems de operadoras (que costumam usar 192.168.1.1 ou 192.168.0.1).')
+          title: isEn ? 'Connection Guide: WAN (Internet) & LAN (Local Network)' : (isEs ? 'Guía de Conexión: WAN (Internet) y LAN (Red Local)' : 'Guia de Conexão: WAN (Internet) e LAN (Rede Local)'),
+          serve: isEn ? 'The WAN interface receives internet signal from your ISP modem or fiber ONT. The LAN interface distributes that connection to wired and Wi-Fi devices.' : (isEs ? 'La interfaz WAN recibe la señal de internet del módem o fibra del operador. La interfaz LAN distribuye esa conexión a los equipos conectados por cable y Wi-Fi.' : 'A interface WAN recebe o sinal de internet do modem ou fibra da operadora. A interface LAN distribui essa conexão aos aparelhos conectados por cabo e Wi-Fi.'),
+          fazer: isEn ? 'If internet drops, click "Restart" on the WAN interface to restore connection with your ISP. To change device IP range, edit the LAN interface.' : (isEs ? 'Si internet se desconecta, use el botón "Reiniciar" en la interfaz WAN para restablecer la conexión con el operador. Para cambiar el rango de IP, edite la interfaz LAN.' : 'Se a internet cair, use o botão "Reiniciar" na interface WAN para restabelecer a conexão com a operadora. Para mudar a faixa de IP dos seus aparelhos, edite a interface LAN.'),
+          rec: isEn ? 'Keep the router at IP 192.168.12.1 to avoid conflicts with ISP modems (which often use 192.168.1.1 or 192.168.0.1).' : (isEs ? 'Mantenga el router en la IP 192.168.12.1 para evitar conflictos con módems de operadoras (que suelen usar 192.168.1.1 o 192.168.0.1).' : 'Mantenha o roteador no IP 192.168.12.1 para nunca conflitar com modems de operadoras (que costumam usar 192.168.1.1 ou 192.168.0.1).')
         };
       } else if (path.indexOf('/system/flash') !== -1) {
         guide = {
-          title: isEn ? 'Backup, Restore & Firmware Guide' :
-                 (isEs ? 'Guía de Copia de Seguridad, Restauración y Firmware' :
-                         'Guia de Backup, Restauração e Firmware'),
-          serve: isEn ? 'System security center to create backup copies of all network and Wi-Fi settings, restore previous backups, or upgrade the OpenWrt operating system.' :
-                 (isEs ? 'Centro de seguridad del sistema para crear copias de seguridad de todos los ajustes de red y Wi-Fi, restaurar respaldos o actualizar el sistema OpenWrt.' :
-                         'Central de segurança do sistema para criar cópias de backup de todos os ajustes de rede e Wi-Fi, restaurar backups anteriores ou atualizar o sistema operacional OpenWrt.'),
-          fazer: isEn ? 'Generate a backup archive before making any technical changes. To return to clean factory defaults, use the "Factory Reset" button.' :
-                 (isEs ? 'Genere una copia de seguridad antes de realizar cambios técnicos. Para volver al estado original de fábrica, use el botón "Restaurar de Fábrica".' :
-                         'Gere um arquivo de backup antes de fazer qualquer alteração técnica. Para voltar ao estado original de fábrica, use o botão "Restaurar de Fábrica".'),
-          rec:   isEn ? 'Always download a backup (.tar.gz) to your computer before installing firmware upgrades. Never unplug the router from power during firmware flashing.' :
-                 (isEs ? 'Descargue siempre una copia de seguridad (.tar.gz) en su ordenador antes de instalar actualizaciones. Nunca desenchufe el equipo durante el flasheo de firmware.' :
-                         'Sempre baixe um backup (.tar.gz) para o seu computador antes de instalar atualizações. Nunca desligue o aparelho da tomada durante uma gravação de firmware.')
+          title: isEn ? 'Backup, Restore & Firmware Guide' : (isEs ? 'Guía de Copia de Seguridad, Restauración y Firmware' : 'Guia de Backup, Restauração e Firmware'),
+          serve: isEn ? 'System security center to create backup copies of all network and Wi-Fi settings, restore previous backups, or upgrade the OpenWrt operating system.' : (isEs ? 'Centro de seguridad del sistema para crear copias de seguridad de todos los ajustes de red y Wi-Fi, restaurar respaldos o actualizar el sistema OpenWrt.' : 'Central de segurança do sistema para criar cópias de backup de todos os ajustes de rede e Wi-Fi, restaurar backups anteriores ou atualizar o sistema operacional OpenWrt.'),
+          fazer: isEn ? 'Generate a backup archive before making any technical changes. To return to clean factory defaults, use the "Factory Reset" button.' : (isEs ? 'Genere una copia de seguridad antes de realizar cambios técnicos. Para volver al estado original de fábrica, use el botón "Restaurar de Fábrica".' : 'Gere um arquivo de backup antes de fazer qualquer alteração técnica. Para voltar ao estado original de fábrica, use o botão "Restaurar de Fábrica".'),
+          rec: isEn ? 'Always download a backup (.tar.gz) to your computer before installing firmware upgrades. Never unplug the router from power during firmware flashing.' : (isEs ? 'Descargue siempre una copia de seguridad (.tar.gz) en su ordenador antes de instalar actualizaciones. Nunca desenchufe el equipo durante el flasheo de firmware.' : 'Sempre baixe um backup (.tar.gz) para o seu computador antes de instalar atualizações. Nunca desligue o aparelho da tomada durante uma gravação de firmware.')
         };
       } else if (path.indexOf('/network/diagnostics') !== -1) {
         guide = {
-          title: isEn ? 'Network Diagnostics Guide' :
-                 (isEs ? 'Guía de Diagnósticos de Red' :
-                         'Guia de Diagnósticos de Rede'),
-          serve: isEn ? 'Tests internet health by measuring latency (ping), tracing the route to target servers (traceroute), and verifying domain name resolution (DNS).' :
-                 (isEs ? 'Comprueba el estado de su conexión midiendo latencia (ping), trazando la ruta al destino (traceroute) y probando resolución de nombres (DNS).' :
-                         'Testa a saúde da sua internet medindo latência (ping), rastreando a rota até o servidor de destino (traceroute) e testando a resolução de nomes (DNS).'),
-          fazer: isEn ? 'Click the quick action buttons (Google DNS or Cloudflare) to test your connection in 1 click without typing terminal commands.' :
-                 (isEs ? 'Haga clic en los botones rápidos (Google DNS o Cloudflare) para probar su conexión con 1 clic sin escribir comandos.' :
-                         'Clique nos botões rápidos (Google DNS ou Cloudflare) para testar sua conexão com 1 clique sem precisar digitar comandos.'),
-          rec:   isEn ? 'Latency below 30 ms is optimal for voice calls and online gaming. If ping responds but websites do not load, your DNS servers are down.' :
-                 (isEs ? 'Una latencia inferior a 30 ms es ideal para llamadas de voz y juegos en línea. Si el ping responde pero las páginas no abren, sus servidores DNS están caídos.' :
-                         'Latência abaixo de 30 ms é ideal para chamadas de voz e jogos online. Se o Ping responder mas os sites não abrirem, seus servidores DNS estão fora do ar.')
+          title: isEn ? 'Network Diagnostics Guide' : (isEs ? 'Guía de Diagnósticos de Red' : 'Guia de Diagnósticos de Rede'),
+          serve: isEn ? 'Tests internet health by measuring latency (ping), tracing the route to target servers (traceroute), and verifying domain name resolution (DNS).' : (isEs ? 'Comprueba el estado de su conexión midiendo latencia (ping), trazando la ruta al destino (traceroute) y probando resolución de nombres (DNS).' : 'Testa a saúde da sua internet medindo latência (ping), rastreando a rota até o servidor de destino (traceroute) e testando a resolução de nomes (DNS).'),
+          fazer: isEn ? 'Click the quick action buttons (Google DNS or Cloudflare) to test your connection in 1 click without typing terminal commands.' : (isEs ? 'Haga clic en los botones rápidos (Google DNS o Cloudflare) para probar su conexión con 1 clic sin escribir comandos.' : 'Clique nos botões rápidos (Google DNS ou Cloudflare) para testar sua conexão com 1 clique sem precisar digitar comandos.'),
+          rec: isEn ? 'Latency below 30 ms is optimal for voice calls and online gaming. If ping responds but websites do not load, your DNS servers are down.' : (isEs ? 'Una latencia inferior a 30 ms es ideal para llamadas de voz y juegos en línea. Si el ping responde pero las páginas no abren, sus servidores DNS están caídos.' : 'Latência abaixo de 30 ms é ideal para chamadas de voz e jogos online. Se o Ping responder mas os sites não abrirem, seus servidores DNS estão fora do ar.')
         };
       } else if (path.indexOf('/system/reboot') !== -1) {
         guide = {
-          title: isEn ? 'Safe Reboot Guide' :
-                 (isEs ? 'Guía de Reinicio Seguro' :
-                         'Guia de Reinicialização Segura'),
-          serve: isEn ? 'Reboots the router operating system safely, terminating lingering processes and clearing RAM without loss of configurations.' :
-                 (isEs ? 'Reinicia el sistema operativo del router de forma segura, cerrando procesos zombis y liberando memoria RAM sin perder configuraciones.' :
-                         'Reinicia o sistema operacional do roteador de forma segura, descarregando processos zumbis e liberando memória RAM sem perda de configurações.'),
-          fazer: isEn ? 'Use this option if the internet feels sluggish after weeks of continuous uptime. The process takes approximately 60 to 75 seconds.' :
-                 (isEs ? 'Use esta opción si internet se nota lenta tras semanas de uso continuo. El proceso tarda aproximadamente entre 60 y 75 segundos.' :
-                         'Use esta opção se a internet estiver lenta após semanas ligada direto. O processo leva cerca de 60 a 75 segundos.'),
-          rec:   isEn ? 'Avoid pulling the power plug directly to prevent corruption of the router SPI/NAND flash storage.' :
-                 (isEs ? 'Evite desenchufar el cable de corriente directamente para evitar corromper la memoria flash del router.' :
-                         'Evite desligar puxando o cabo de energia da tomada para não corromper a memória flash SPI do equipamento.')
+          title: isEn ? 'Safe Reboot Guide' : (isEs ? 'Guía de Reinicio Seguro' : 'Guia de Reinicialização Segura'),
+          serve: isEn ? 'Reboots the router operating system safely, terminating lingering processes and clearing RAM without loss of configurations.' : (isEs ? 'Reinicia el sistema operativo del router de forma segura, cerrando procesos zombis y liberando memoria RAM sin perder configuraciones.' : 'Reinicia o sistema operacional do roteador de forma segura, descarregando processos zumbis e liberando memória RAM sem perda de configurações.'),
+          fazer: isEn ? 'Use this option if the internet feels sluggish after weeks of continuous uptime. The process takes approximately 60 to 75 seconds.' : (isEs ? 'Use esta opción si internet se nota lenta tras semanas de uso continuo. El proceso tarda aproximadamente entre 60 y 75 segundos.' : 'Use esta opção se a internet estiver lenta após semanas ligada direto. O processo leva cerca de 60 a 75 segundos.'),
+          rec: isEn ? 'Avoid pulling the power plug directly to prevent corruption of the router SPI/NAND flash storage.' : (isEs ? 'Evite desenchufar el cable de corriente directamente para evitar corromper la memoria flash del router.' : 'Evite desligar puxando o cabo de energia da tomada para não corromper a memória flash SPI do equipamento.')
         };
       } else if (path.indexOf('/network/firewall') !== -1) {
         guide = {
-          title: isEn ? 'Firewall & Port Rules Guide' :
-                 (isEs ? 'Guía de Cortafuegos y Puertos' :
-                         'Guia do Firewall e Portas'),
-          serve: isEn ? 'Protective barrier that blocks unauthorized incoming internet connections to your local computers and mobile devices.' :
-                 (isEs ? 'Barrera de protección que bloquea conexiones no autorizadas procedentes de internet hacia sus ordenadores y móviles.' :
-                         'Barreira de proteção que bloqueia conexões não autorizadas vindas da internet para seus computadores e celulares.'),
-          fazer: isEn ? 'If you need to host a local server or achieve Open NAT in games, configure Port Forwarding rules strictly for the required IPs.' :
-                 (isEs ? 'Si necesita alojar un servidor local u obtener NAT Abierta en juegos, configure reglas de redirección de puertos solo para las IPs necesarias.' :
-                         'Se precisar hospedar um servidor local ou obter NAT Aberto em jogos, crie regras de redirecionamento de portas (Port Forwarding) apenas para os IPs necessários.'),
-          rec:   isEn ? 'Keep WAN input policy set to "Drop" / "Reject" to keep your home network invisible to external internet port scans.' :
-                 (isEs ? 'Mantenga la política de entrada de la WAN en "Rechazar" (Drop) para mantener su red doméstica invisible a escaneos externos.' :
-                         'Mantenha a política de entrada da WAN como "Rejeitar" (Drop) para manter a rede doméstica invisível a invasores externos.')
+          title: isEn ? 'Firewall & Port Rules Guide' : (isEs ? 'Guía de Cortafuegos y Puertos' : 'Guia do Firewall e Portas'),
+          serve: isEn ? 'Protective barrier that blocks unauthorized incoming internet connections to your local computers and mobile devices.' : (isEs ? 'Barrera de protección que bloquea conexiones no autorizadas procedentes de internet hacia sus ordenadores y móviles.' : 'Barreira de proteção que bloqueia conexões não autorizadas vindas da internet para seus computadores e celulares.'),
+          fazer: isEn ? 'If you need to host a local server or achieve Open NAT in games, configure Port Forwarding rules strictly for the required IPs.' : (isEs ? 'Si necesita alojar un servidor local u obtener NAT Abierta en juegos, configure reglas de redirección de puertos solo para las IPs necesarias.' : 'Se precisar hospedar um servidor local ou obter NAT Aberto em jogos, crie regras de redirecionamento de portas (Port Forwarding) apenas para os IPs necessários.'),
+          rec: isEn ? 'Keep WAN input policy set to "Drop" / "Reject" to keep your home network invisible to external internet port scans.' : (isEs ? 'Mantenga la política de entrada de la WAN en "Rechazar" (Drop) para mantener su red doméstica invisible a escaneos externos.' : 'Mantenha a política de entrada da WAN como "Rejeitar" (Drop) para manter a rede doméstica invisível a invasores externos.')
         };
       } else if (path.indexOf('/network/dhcp') !== -1) {
         guide = {
-          title: isEn ? 'DHCP Server & DNS Guide' :
-                 (isEs ? 'Guía de Servidor DHCP y DNS' :
-                         'Guia de Servidor DHCP e DNS'),
-          serve: isEn ? 'DHCP automatically assigns IP addresses to devices connecting via Wi-Fi or Ethernet. DNS converts human website names into IP addresses.' :
-                 (isEs ? 'El DHCP asigna automáticamente direcciones IP a cada nuevo dispositivo por Wi-Fi o cable. El DNS convierte nombres de sitios en números IP.' :
-                         'O DHCP atribui automaticamente endereços IP para cada novo dispositivo que entra no Wi-Fi ou cabo. O DNS converte nomes de sites em números IP de acesso.'),
-          fazer: isEn ? 'To assign fixed IPs to printers, NAS, or cameras, scroll to "Static Leases" and bind the desired IP to the device MAC address.' :
-                 (isEs ? 'Para fijar la IP de impresoras o cámaras IP, desplácese a "Leases Estáticos" y vincule la IP deseada a la MAC del dispositivo.' :
-                         'Para fixar o IP de impressoras ou câmeras IP, role até "Leases Estáticos" e vincule o IP desejado ao endereço MAC do aparelho.'),
-          rec:   isEn ? 'Use a 12-hour lease time and configure fast DNS upstream servers like 1.1.1.1 (Cloudflare) or 8.8.8.8 (Google).' :
-                 (isEs ? 'Utilice un tiempo de concesión de 12 horas y configure servidores DNS rápidos como 1.1.1.1 (Cloudflare) o 8.8.8.8 (Google).' :
-                         'Utilize tempo de concessão de 12 horas e configure servidores DNS rápidos como 1.1.1.1 (Cloudflare) ou 8.8.8.8 (Google).')
+          title: isEn ? 'DHCP Server & DNS Guide' : (isEs ? 'Guía de Servidor DHCP y DNS' : 'Guia de Servidor DHCP e DNS'),
+          serve: isEn ? 'DHCP automatically assigns IP addresses to devices connecting via Wi-Fi or Ethernet. DNS converts human website names into IP addresses.' : (isEs ? 'El DHCP asigna automáticamente direcciones IP a cada nuevo dispositivo por Wi-Fi o cable. El DNS convierte nombres de sitios en números IP.' : 'O DHCP atribui automaticamente endereços IP para cada novo dispositivo que entra no Wi-Fi ou cabo. O DNS converte nomes de sites em números IP de acesso.'),
+          fazer: isEn ? 'To assign fixed IPs to printers, NAS, or cameras, scroll to "Static Leases" and bind the desired IP to the device MAC address.' : (isEs ? 'Para fijar la IP de impresoras o cámaras IP, desplácese a "Leases Estáticos" y vincule la IP deseada a la MAC del dispositivo.' : 'Para fixar o IP de impressoras ou câmeras IP, role até "Leases Estáticos" e vincule o IP desejado ao endereço MAC do aparelho.'),
+          rec: isEn ? 'Use a 12-hour lease time and configure fast DNS upstream servers like 1.1.1.1 (Cloudflare) or 8.8.8.8 (Google).' : (isEs ? 'Utilice un tiempo de concesión de 12 horas y configure servidores DNS rápidos como 1.1.1.1 (Cloudflare) o 8.8.8.8 (Google).' : 'Utilize tempo de concessão de 12 horas e configure servidores DNS rápidos como 1.1.1.1 (Cloudflare) ou 8.8.8.8 (Google).')
         };
       } else if (path.indexOf('/network/mwan') !== -1) {
         guide = {
-          title: isEn ? 'MWAN3 Guide (Multi-WAN Load Balancing & Failover)' :
-                 (isEs ? 'Guía de MWAN3 (Balanceo de Carga y Conmutación por Error)' :
-                         'Guia do MWAN3 (Balanceamento e Redundância de Internet)'),
-          serve: isEn ? 'Monitors multiple internet connections, detects link drops automatically to switch routes or aggregate bandwidth across multiple ISPs.' :
-                 (isEs ? 'Monitoriza múltiples conexiones a internet y detecta caídas para conmutar rutas o sumar enlaces de distintos proveedores.' :
-                         'Monitora links de internet (Multi-WAN) e detecta quedas automaticamente para alternar rotas ou somar conexões de operadoras diferentes.'),
-          fazer: isEn ? 'The "Ping Interval" (e.g. 5 seconds) is the frequency used to check link vitality. If 3 consecutive tests fail, the route is declared down. Click "Edit" to adjust.' :
-                 (isEs ? 'El "Intervalo de Ping" (ej: 5 segundos) es la frecuencia con que comprueba si la conexión está viva. Si falla 3 veces, la ruta se declara inactiva. Pulse "Editar" para cambiarlo.' :
-                         'O "Intervalo de Ping" (ex: 5 segundos) é a frequência com que o roteador testa se a internet está viva. Se o teste falhar 3 vezes seguidas, a rota é declarada inoperante. Clique no botão "Editar" de cada interface para alterar os segundos do intervalo ou os IPs de teste.'),
-          rec:   isEn ? 'If using only a single ISP cable (Single WAN), MWAN3 operates in standard mode and yellow warnings at the top are normal and harmless.' :
-                 (isEs ? 'Si utiliza solo 1 conexión de proveedor (WAN única), MWAN3 opera en modo estándar y las advertencias amarillas superiores son normales e inofensivas.' :
-                         'Se você utiliza apenas 1 cabo de operadora (WAN única), o MWAN3 opera em modo padrão e os avisos amarelos no topo (wan6/wanb não encontrada) são normais e inofensivos.')
+          title: isEn ? 'MWAN3 Guide (Multi-WAN Load Balancing & Failover)' : (isEs ? 'Guía de MWAN3 (Balanceo de Carga y Conmutación por Error)' : 'Guia do MWAN3 (Balanceamento e Redundância de Internet)'),
+          serve: isEn ? 'Monitors multiple internet connections, detects link drops automatically to switch routes or aggregate bandwidth across multiple ISPs.' : (isEs ? 'Monitoriza múltiples conexiones a internet y detecta caídas para conmutar rutas o sumar enlaces de distintos proveedores.' : 'Monitora links de internet (Multi-WAN) e detecta quedas automaticamente para alternar rotas ou somar conexões de operadoras diferentes.'),
+          fazer: isEn ? 'The "Ping Interval" (e.g. 5 seconds) is the frequency used to check link vitality. If 3 consecutive tests fail, the route is declared down. Click "Edit" to adjust.' : (isEs ? 'El "Intervalo de Ping" (ej: 5 segundos) es la frecuencia con que comprueba si la conexión está viva. Si falla 3 veces, la ruta se declara inactiva. Pulse "Editar" para cambiarlo.' : 'O "Intervalo de Ping" (ex: 5 segundos) é a frequência com que o roteador testa se a internet está viva. Se o teste falhar 3 vezes seguidas, a rota é declarada inoperante. Clique no botão "Editar" de cada interface para alterar os segundos do intervalo ou os IPs de teste.'),
+          rec: isEn ? 'If using only a single ISP cable (Single WAN), MWAN3 operates in standard mode and yellow warnings at the top are normal and harmless.' : (isEs ? 'Si utiliza solo 1 conexión de proveedor (WAN única), MWAN3 opera en modo estándar y las advertencias amarillas superiores son normales e inofensivas.' : 'Se você utiliza apenas 1 cabo de operadora (WAN única), o MWAN3 opera em modo padrão e os avisos amarelos no topo (wan6/wanb não encontrada) são normais e inofensivos.')
         };
       } else if (path.indexOf('/status/overview') !== -1) {
         guide = {
-          title: isEn ? 'System Overview Guide' :
-                 (isEs ? 'Guía de Visión General del Sistema' :
-                         'Guia da Visão Geral do Sistema'),
-          serve: isEn ? 'Telemetry dashboard displaying router health, CPU load, RAM usage, and active connected devices.' :
-                 (isEs ? 'Panel de telemetría que muestra el estado del router, uso de CPU, memoria RAM y dispositivos conectados.' :
-                         'Painel de telemetria mostrando o estado de funcionamento do roteador, uso de processamento, memória RAM e dispositivos conectados.'),
-          fazer: isEn ? 'Monitor CPU and RAM gauges. If free RAM stays continuously below 40 MB, perform a scheduled maintenance reboot.' :
-                 (isEs ? 'Supervise los indicadores de CPU y RAM. Si la RAM libre permanece por debajo de 40 MB de forma continua, reinicie para mantenimiento.' :
-                         'Monitore os medidores de CPU e RAM no topo. Se a RAM livre ficar abaixo de 40 MB de forma contínua, faça uma reinicialização de manutenção.'),
-          rec:   isEn ? 'Maintain a safe free RAM margin to guarantee stability and maximum packet routing throughput.' :
-                 (isEs ? 'Mantenga un margen seguro de RAM libre para garantizar estabilidad y máxima fluidez de tráfico.' :
-                         'Mantenha margem segura de RAM livre para garantir estabilidade e máxima fluidez de tráfego.')
+          title: isEn ? 'System Overview Guide' : (isEs ? 'Guía de Visión General del Sistema' : 'Guia da Visão Geral do Sistema'),
+          serve: isEn ? 'Telemetry dashboard displaying router health, CPU load, RAM usage, and active connected devices.' : (isEs ? 'Panel de telemetría que muestra el estado del router, uso de CPU, memoria RAM y dispositivos conectados.' : 'Painel de telemetria mostrando o estado de funcionamento do roteador, uso de processamento, memória RAM e dispositivos conectados.'),
+          fazer: isEn ? 'Monitor CPU and RAM gauges. If free RAM stays continuously below 40 MB, perform a scheduled maintenance reboot.' : (isEs ? 'Supervise los indicadores de CPU y RAM. Si la RAM libre permanece por debajo de 40 MB de forma continua, reinicie para mantenimiento.' : 'Monitore os medidores de CPU e RAM no topo. Se a RAM livre ficar abaixo de 40 MB de forma contínua, faça uma reinicialização de manutenção.'),
+          rec: isEn ? 'Maintain a safe free RAM margin to guarantee stability and maximum packet routing throughput.' : (isEs ? 'Mantenga un margen seguro de RAM libre para garantizar estabilidad y máxima fluidez de tráfico.' : 'Mantenha margem segura de RAM livre para garantir estabilidade e máxima fluidez de tráfego.')
         };
       } else if (path.indexOf('/system/system') !== -1) {
         guide = {
-          title: isEn ? 'General Settings & Clock Sync Guide' :
-                 (isEs ? 'Guía de Configuración General y Sincronización Horaria' :
-                         'Guia de Configurações Gerais e Sincronização de Horário'),
-          serve: isEn ? 'Sets the router hostname on the network and automatically synchronizes the system clock with official NTP servers.' :
-                 (isEs ? 'Define el nombre del router (hostname) en la red y sincroniza automáticamente la hora con servidores NTP de internet.' :
-                         'Define o nome identificador do roteador (hostname) na rede e sincroniza automaticamente o relógio com servidores NTP oficiais da internet.'),
-          fazer: isEn ? 'Keep NTP time synchronization enabled so system logs, firewall schedules, and traffic history timestamps are accurate.' :
-                 (isEs ? 'Mantenga activa la sincronización NTP para que los registros de log, horarios del cortafuegos y tráfico tengan marcas precisas.' :
-                         'Mantenha a sincronização NTP ativa para que os registros de log, agendamentos do firewall e relatórios de tráfego tenham horários precisos.'),
-          rec:   isEn ? 'Configure reliable NTP pool servers and your local timezone for precise logging.' :
-                 (isEs ? 'Configure servidores del grupo NTP y su zona horaria local para registros precisos.' :
-                         'Utilize o servidor pool.ntp.br e o fuso horário America/Sao_Paulo (UTC-3) para precisão no Brasil.')
+          title: isEn ? 'General Settings & Clock Sync Guide' : (isEs ? 'Guía de Configuración General y Sincronización Horaria' : 'Guia de Configurações Gerais e Sincronização de Horário'),
+          serve: isEn ? 'Sets the router hostname on the network and automatically synchronizes the system clock with official NTP servers.' : (isEs ? 'Define el nombre del router (hostname) en la red y sincroniza automáticamente la hora con servidores NTP de internet.' : 'Define o nome identificador do roteador (hostname) na rede e sincroniza automaticamente o relógio com servidores NTP oficiais da internet.'),
+          fazer: isEn ? 'Keep NTP time synchronization enabled so system logs, firewall schedules, and traffic history timestamps are accurate.' : (isEs ? 'Mantenga activa la sincronización NTP para que los registros de log, horarios del cortafuegos y tráfico tengan marcas precisas.' : 'Mantenha a sincronização NTP ativa para que os registros de log, agendamentos do firewall e relatórios de tráfego tenham horários precisos.'),
+          rec: isEn ? 'Configure reliable NTP pool servers and your local timezone for precise logging.' : (isEs ? 'Configure servidores del grupo NTP y su zona horaria local para registros precisos.' : 'Utilize o servidor pool.ntp.br e o fuso horário America/Sao_Paulo (UTC-3) para precisão no Brasil.')
         };
       } else if (path.indexOf('/status/processes') !== -1) {
         guide = {
-          title: isEn ? 'Running Processes Guide (RAM Memory)' :
-                 (isEs ? 'Guía de Procesos en Ejecución (Memoria RAM)' :
-                         'Guia de Processos em Execução (Memória RAM)'),
-          serve: isEn ? 'Real-time list of active processes running in router RAM (ps command). All items listed are already active.' :
-                 (isEs ? 'Lista en tiempo real de procesos activos en la RAM del router (comando ps). Todos los elementos ya están en ejecución.' :
-                         'Lista em tempo real os processos ativos na memória RAM do roteador (comando ps). Todos os itens listados já estão em execução, por isso não há opção de "Iniciar" direto nesta tabela.'),
-          fazer: isEn ? 'Monitor CPU and memory consumption. Click column headers to sort. Use "🔄 Reload" (SIGHUP) to apply changes without dropping from memory, "Terminate" (SIGTERM) or "Kill" (SIGKILL) if frozen.' :
-                 (isEs ? 'Supervise consumo de CPU y memoria. Pulse encabezados para ordenar. Use "🔄 Recargar" (SIGHUP), "Terminar" (SIGTERM) o "Matar" (SIGKILL) si se bloquea.' :
-                         'Monitore o consumo de CPU e memória. Clique nos títulos das colunas (CPU, Memória, Comando ou PID) para ordenar a lista instantaneamente. Use "🔄 Recarregar" (SIGHUP) para recarregar configurações sem reiniciar nem descarregar da memória, "Terminar" (SIGTERM) para encerrar suavemente ou "Matar" (SIGKILL) caso o processo trave. Para INICIAR ou PARAR serviços do sistema, utilize o atalho no topo para "Sistema -> Inicialização".'),
-          rec:   isEn ? 'Never terminate essential system daemons (such as procd, ubusd, netifd, or uhttpd).' :
-                 (isEs ? 'Nunca finalice procesos esenciales del sistema operativo (como procd, ubusd, netifd o uhttpd).' :
-                         'Nunca finalize processos essenciais do sistema operacional (como procd, ubusd, netifd ou uhttpd), pois eles mantêm o roteador e este painel funcionando.')
+          title: isEn ? 'Running Processes Guide (RAM Memory)' : (isEs ? 'Guía de Procesos en Ejecución (Memoria RAM)' : 'Guia de Processos em Execução (Memória RAM)'),
+          serve: isEn ? 'Real-time list of active processes running in router RAM (ps command). All items listed are already active.' : (isEs ? 'Lista en tiempo real de procesos activos en la RAM del router (comando ps). Todos los elementos ya están en ejecución.' : 'Lista em tempo real os processos ativos na memória RAM do roteador (comando ps). Todos os itens listados já estão em execução, por isso não há opção de "Iniciar" direto nesta tabela.'),
+          fazer: isEn ? 'Monitor CPU and memory consumption. Click column headers to sort. Use "🔄 Reload" (SIGHUP) to apply changes without dropping from memory, "Terminate" (SIGTERM) or "Kill" (SIGKILL) if frozen.' : (isEs ? 'Supervise consumo de CPU y memoria. Pulse encabezados para ordenar. Use "🔄 Recargar" (SIGHUP), "Terminar" (SIGTERM) o "Matar" (SIGKILL) si se bloquea.' : 'Monitore o consumo de CPU e memória. Clique nos títulos das colunas (CPU, Memória, Comando ou PID) para ordenar a lista instantaneamente. Use "🔄 Recarregar" (SIGHUP) para recarregar configurações sem reiniciar nem descarregar da memória, "Terminar" (SIGTERM) para encerrar suavemente ou "Matar" (SIGKILL) caso o processo trave. Para INICIAR ou PARAR serviços do sistema, utilize o atalho no topo para "Sistema -> Inicialização".'),
+          rec: isEn ? 'Never terminate essential system daemons (such as procd, ubusd, netifd, or uhttpd).' : (isEs ? 'Nunca finalice procesos esenciales del sistema operativo (como procd, ubusd, netifd o uhttpd).' : 'Nunca finalize processos essenciais do sistema operacional (como procd, ubusd, netifd ou uhttpd), pois eles mantêm o roteador e este painel funcionando.')
         };
       } else if (path.indexOf('/network/switch') !== -1 || path.indexOf('/network/vlan') !== -1) {
         guide = {
-          title: isEn ? 'Switch & VLANs Guide (Physical Network Ports)' :
-                 (isEs ? 'Guía de Switch y VLANs (Puertos de Red Físicos)' :
-                         'Guia de Switch e VLANs (Portas de Rede Físicas)'),
-          serve: isEn ? 'Configures the internal hardware switch, dividing physical rear ports into isolated logical networks (VLANs).' :
-                 (isEs ? 'Configura el conmutador de hardware interno, dividiendo los puertos físicos en redes lógicas aisladas (VLANs).' :
-                         'Configura o comutador de hardware interno (Switch Gigabit) dividindo as portas físicas traseiras em redes lógicas isoladas (VLANs).'),
-          fazer: isEn ? 'Keep ports 1-4 untagged (U) on VLAN 1 for the local network (LAN). WAN port connects on VLAN 2.' :
-                 (isEs ? 'Mantenga los puertos 1 a 4 como "untagged" (U) en la VLAN 1 para la LAN local. El puerto WAN se conecta en VLAN 2.' :
-                         'Mantenha as portas 1 a 4 marcadas como "untagged" (U) na VLAN 1 para a rede local (LAN). A porta WAN conecta-se na VLAN 2.'),
-          rec:   isEn ? 'NEVER uncheck or modify CPU port (eth0); it is the vital pipeline between CPU and switch ports.' :
-                 (isEs ? 'NUNCA desmarque ni modifique el puerto de CPU (eth0), es el enlace vital entre procesador y puertos del router.' :
-                         'NUNCA desmarque nem altere a porta de CPU (eth0), pois ela é a ponte vital de comunicação entre o processador e as portas do roteador. Se quiser criar uma rede de visitantes isolada, utilize a interface Wi-Fi Guest em vez de alterar as VLANs físicas.')
+          title: isEn ? 'Switch & VLANs Guide (Physical Network Ports)' : (isEs ? 'Guía de Switch y VLANs (Puertos de Red Físicos)' : 'Guia de Switch e VLANs (Portas de Rede Físicas)'),
+          serve: isEn ? 'Configures the internal hardware switch, dividing physical rear ports into isolated logical networks (VLANs).' : (isEs ? 'Configura el conmutador de hardware interno, dividiendo los puertos físicos en redes lógicas aisladas (VLANs).' : 'Configura o comutador de hardware interno (Switch Gigabit) dividindo as portas físicas traseiras em redes lógicas isoladas (VLANs).'),
+          fazer: isEn ? 'Keep ports 1-4 untagged (U) on VLAN 1 for the local network (LAN). WAN port connects on VLAN 2.' : (isEs ? 'Mantenga los puertos 1 a 4 como "untagged" (U) en la VLAN 1 para la LAN local. El puerto WAN se conecta en VLAN 2.' : 'Mantenha as portas 1 a 4 marcadas como "untagged" (U) na VLAN 1 para a rede local (LAN). A porta WAN conecta-se na VLAN 2.'),
+          rec: isEn ? 'NEVER uncheck or modify CPU port (eth0); it is the vital pipeline between CPU and switch ports.' : (isEs ? 'NUNCA desmarque ni modifique el puerto de CPU (eth0), es el enlace vital entre procesador y puertos del router.' : 'NUNCA desmarque nem altere a porta de CPU (eth0), pois ela é a ponte vital de comunicação entre o processador e as portas do roteador. Se quiser criar uma rede de visitantes isolada, utilize a interface Wi-Fi Guest em vez de alterar as VLANs físicas.')
         };
       } else if (path.indexOf('/nlbw/display') !== -1) {
         guide = {
-          title: isEn ? 'Bandwidth Monitor Guide (Netlink / nlbwmon)' :
-                 (isEs ? 'Guía del Monitor de Ancho de Banda (Netlink / nlbwmon)' :
-                         'Guia do Monitor de Largura de Banda (Netlink)'),
-          serve: isEn ? 'Monitors and logs real-time data consumption per client device in interactive charts across customizable timeframes.' :
-                 (isEs ? 'Monitoriza y registra en gráficos interactivos el consumo de datos de cada dispositivo en tiempo real.' :
-                         'Monitora e registra em gráficos interativos o consumo de dados de cada computador, videogame e celular da sua casa em tempo real e por períodos acumulados.'),
-          fazer: isEn ? 'Use the donut chart and client table below to discover which devices or protocols consume the most bandwidth.' :
-                 (isEs ? 'Use el gráfico de anillo y la tabla de clientes para descubrir qué dispositivos consumen más ancho de banda.' :
-                         'Use o gráfico de rosca (donut) e a tabela de clientes abaixo para descobrir quais aparelhos ou protocolos estão usando a maior parte da sua franquia de dados ou banda de internet.'),
-          rec:   isEn ? 'If internet slows down during heavy downloads, activate Smart Queue Management (SQM CAKE) in ARK Router.' :
-                 (isEs ? 'Si internet se vuelve lento durante descargas intensas, active Smart Queue Management (SQM CAKE) en ARK Router.' :
-                         'Se sua internet estiver lenta durante downloads pesados de algum aparelho, utilize o Smart Queue Management (SQM Cake) no ARK Router para priorizar chamadas de voz e jogos.')
+          title: isEn ? 'Bandwidth Monitor Guide (Netlink / nlbwmon)' : (isEs ? 'Guía del Monitor de Ancho de Banda (Netlink / nlbwmon)' : 'Guia do Monitor de Largura de Banda (Netlink)'),
+          serve: isEn ? 'Monitors and logs real-time data consumption per client device in interactive charts across customizable timeframes.' : (isEs ? 'Monitoriza y registra en gráficos interactivos el consumo de datos de cada dispositivo en tiempo real.' : 'Monitora e registra em gráficos interativos o consumo de dados de cada computador, videogame e celular da sua casa em tempo real e por períodos acumulados.'),
+          fazer: isEn ? 'Use the donut chart and client table below to discover which devices or protocols consume the most bandwidth.' : (isEs ? 'Use el gráfico de anillo y la tabla de clientes para descubrir qué dispositivos consumen más ancho de banda.' : 'Use o gráfico de rosca (donut) e a tabela de clientes abaixo para descobrir quais aparelhos ou protocolos estão usando a maior parte da sua franquia de dados ou banda de internet.'),
+          rec: isEn ? 'If internet slows down during heavy downloads, activate Smart Queue Management (SQM CAKE) in ARK Router.' : (isEs ? 'Si internet se vuelve lento durante descargas intensas, active Smart Queue Management (SQM CAKE) en ARK Router.' : 'Se sua internet estiver lenta durante downloads pesados de algum aparelho, utilize o Smart Queue Management (SQM Cake) no ARK Router para priorizar chamadas de voz e jogos.')
         };
       } else if (path.indexOf('/system/leds') !== -1) {
         guide = {
-          title: isEn ? 'Status LEDs & Illumination Guide' :
-                 (isEs ? 'Guía de Iluminación y LEDs de Estado' :
-                         'Guia de Iluminação e LEDs de Status'),
-          serve: isEn ? 'Controls front chassis LEDs (Power, Internet, Wi-Fi 2.4/5 GHz) to indicate network health, outages, or physical activity.' :
-                 (isEs ? 'Controla los LEDs frontales del router (Power, Internet, Wi-Fi 2.4/5 GHz) para indicar estado de red o caídas.' :
-                         'Controla os LEDs luminosos frontais do roteador (Status/Power, Internet, Wi-Fi 2.4 GHz e Wi-Fi 5 GHz) para indicar status de rede, quedas ou atividade física do seu aparelho.'),
-          fazer: isEn ? 'Select a quick profile at the top (Smart Internet, Night Mode, Outage Alert) to adjust all LEDs in 1 click.' :
-                 (isEs ? 'Elija un perfil rápido arriba (Internet Inteligente, Modo Nocturno, Alerta de Caída) con 1 clic.' :
-                         'Escolha um dos perfis rápidos no topo (Internet Inteligente, Modo Noturno, Alerta de Queda) para ajustar automaticamente todos os LEDs com 1 clique.'),
-          rec:   isEn ? 'In bedrooms, enable "Night Mode" to turn off lights completely for a dark, glare-free environment.' :
-                 (isEs ? 'En dormitorios, active el "Modo Nocturno" para apagar las luces y asegurar un entorno 100% oscuro.' :
-                         'Em dormitórios, ative o "Modo Noturno" para desligar as luzes e garantir um ambiente 100% escuro sem claridade.')
+          title: isEn ? 'Status LEDs & Illumination Guide' : (isEs ? 'Guía de Iluminación y LEDs de Estado' : 'Guia de Iluminação e LEDs de Status'),
+          serve: isEn ? 'Controls front chassis LEDs (Power, Internet, Wi-Fi 2.4/5 GHz) to indicate network health, outages, or physical activity.' : (isEs ? 'Controla los LEDs frontales del router (Power, Internet, Wi-Fi 2.4/5 GHz) para indicar estado de red o caídas.' : 'Controla os LEDs luminosos frontais do roteador (Status/Power, Internet, Wi-Fi 2.4 GHz e Wi-Fi 5 GHz) para indicar status de rede, quedas ou atividade física do seu aparelho.'),
+          fazer: isEn ? 'Select a quick profile at the top (Smart Internet, Night Mode, Outage Alert) to adjust all LEDs in 1 click.' : (isEs ? 'Elija un perfil rápido arriba (Internet Inteligente, Modo Nocturno, Alerta de Caída) con 1 clic.' : 'Escolha um dos perfis rápidos no topo (Internet Inteligente, Modo Noturno, Alerta de Queda) para ajustar automaticamente todos os LEDs com 1 clique.'),
+          rec: isEn ? 'In bedrooms, enable "Night Mode" to turn off lights completely for a dark, glare-free environment.' : (isEs ? 'En dormitorios, active el "Modo Nocturno" para apagar las luces y asegurar un entorno 100% oscuro.' : 'Em dormitórios, ative o "Modo Noturno" para desligar as luzes e garantir um ambiente 100% escuro sem claridade.')
         };
       } else if (path.indexOf('/services/uhttpd') !== -1) {
         guide = {
-          title: isEn ? 'uHTTPd Web Server Guide' :
-                 (isEs ? 'Guía del Servidor Web uHTTPd' :
-                         'Guia do Servidor Web uHTTPd'),
-          serve: isEn ? 'uHTTPd is the internal HTTP/HTTPS web server powering the LuCI dashboard and browser administration.' :
-                 (isEs ? 'uHTTPd es el servidor web HTTP y HTTPS interno responsable de mostrar este panel LuCI.' :
-                         'O uHTTPd é o servidor web HTTP e HTTPS interno do roteador, responsável por exibir este painel de controle LuCI e permitir a administração pelo navegador.'),
-          fazer: isEn ? 'Adjust listening ports (default 80 and 443) or SSL parameters. NEVER delete the "main" instance.' :
-                 (isEs ? 'Ajuste puertos de escucha (80 y 443) o parámetros SSL. NUNCA elimine la instancia "main".' :
-                         'Ajuste portas de escuta (padrão 80 e 443) ou parâmetros de certificados. NUNCA apague a instância principal "main", pois ela mantém esta interface gráfica ativa.'),
-          rec:   isEn ? 'Keep "Ignore private IP addresses on public interface" checked (RFC1918) for perimeter security.' :
-                 (isEs ? 'Mantenga marcada la protección RFC1918 para proteger el acceso administrativo contra amenazas externas.' :
-                         'Mantenha "Ignore endereços IP privados na interface pública" marcado (RFC1918) para proteger o acesso administrativo contra ameaças externas da internet.')
+          title: isEn ? 'uHTTPd Web Server Guide' : (isEs ? 'Guía del Servidor Web uHTTPd' : 'Guia do Servidor Web uHTTPd'),
+          serve: isEn ? 'uHTTPd is the internal HTTP/HTTPS web server powering the LuCI dashboard and browser administration.' : (isEs ? 'uHTTPd es el servidor web HTTP y HTTPS interno responsable de mostrar este panel LuCI.' : 'O uHTTPd é o servidor web HTTP e HTTPS interno do roteador, responsável por exibir este painel de controle LuCI e permitir a administração pelo navegador.'),
+          fazer: isEn ? 'Adjust listening ports (default 80 and 443) or SSL parameters. NEVER delete the "main" instance.' : (isEs ? 'Ajuste puertos de escucha (80 y 443) o parámetros SSL. NUNCA elimine la instancia "main".' : 'Ajuste portas de escuta (padrão 80 e 443) ou parâmetros de certificados. NUNCA apague a instância principal "main", pois ela mantém esta interface gráfica ativa.'),
+          rec: isEn ? 'Keep "Ignore private IP addresses on public interface" checked (RFC1918) for perimeter security.' : (isEs ? 'Mantenga marcada la protección RFC1918 para proteger el acceso administrativo contra amenazas externas.' : 'Mantenha "Ignore endereços IP privados na interface pública" marcado (RFC1918) para proteger o acesso administrativo contra ameaças externas da internet.')
         };
       } else if (path.indexOf('/status/syslog') !== -1 || path.indexOf('/status/dmesg') !== -1) {
         guide = {
-          title: isEn ? 'System Event Logs Guide' :
-                 (isEs ? 'Guía de Registros de Eventos del Sistema (Logs)' :
-                         'Guia de Registros de Eventos do Sistema (Logs)'),
-          serve: isEn ? 'Logs all operating events in real time, such as Wi-Fi client handshakes, DHCP renewals, and security alerts.' :
-                 (isEs ? 'Registra en tiempo real los eventos operativos del router, como conexiones Wi-Fi o renovaciones de IP.' :
-                         'Registra em tempo real todos os acontecimentos operacionais do roteador, como conexões de aparelhos Wi-Fi, renovação de IP na operadora e avisos de segurança.'),
-          fazer: isEn ? 'Use the search box at the top to filter terms like wifi, pppoe, or error to troubleshoot quickly.' :
-                 (isEs ? 'Use el buscador arriba para filtrar términos como wifi, pppoe o error para diagnosticar incidencias.' :
-                         'Utilize o campo de busca no topo para pesquisar termos como wifi, pppoe ou error e diagnosticar problemas rapidamente.'),
-          rec:   isEn ? 'During ISP outages, copy recent log lines mentioning wan or daemon to share with technical support.' :
-                 (isEs ? 'En caso de caídas de conexión, copie las líneas recientes con wan o daemon para soporte técnico.' :
-                         'Em caso de instabilidade com sua operadora, copie as linhas recentes que mencionem wan ou daemon para compartilhar com o suporte técnico.')
+          title: isEn ? 'System Event Logs Guide' : (isEs ? 'Guía de Registros de Eventos del Sistema (Logs)' : 'Guia de Registros de Eventos do Sistema (Logs)'),
+          serve: isEn ? 'Logs all operating events in real time, such as Wi-Fi client handshakes, DHCP renewals, and security alerts.' : (isEs ? 'Registra en tiempo real los eventos operativos del router, como conexiones Wi-Fi o renovaciones de IP.' : 'Registra em tempo real todos os acontecimentos operacionais do roteador, como conexões de aparelhos Wi-Fi, renovação de IP na operadora e avisos de segurança.'),
+          fazer: isEn ? 'Use the search box at the top to filter terms like wifi, pppoe, or error to troubleshoot quickly.' : (isEs ? 'Use el buscador arriba para filtrar términos como wifi, pppoe o error para diagnosticar incidencias.' : 'Utilize o campo de busca no topo para pesquisar termos como wifi, pppoe ou error e diagnosticar problemas rapidamente.'),
+          rec: isEn ? 'During ISP outages, copy recent log lines mentioning wan or daemon to share with technical support.' : (isEs ? 'En caso de caídas de conexión, copie las líneas recientes con wan o daemon para soporte técnico.' : 'Em caso de instabilidade com sua operadora, copie as linhas recentes que mencionem wan ou daemon para compartilhar com o suporte técnico.')
         };
       } else if (path.indexOf('/system/startup') !== -1) {
         guide = {
-          title: isEn ? 'Startup & Services Guide' :
-                 (isEs ? 'Guía de Inicio y Servicios' :
-                         'Guia de Inicialização e Serviços'),
-          serve: isEn ? 'Controls system services loaded automatically when the router boots up.' :
-                 (isEs ? 'Controla qué servicios del sistema se cargan automáticamente al arrancar el router.' :
-                         'Controla quais serviços do sistema são carregados automaticamente quando o roteador é ligado na tomada.'),
-          fazer: isEn ? 'Start, restart, or stop individual daemons without rebooting the entire hardware unit.' :
-                 (isEs ? 'Inicie, reinicie o detenga servicios individuales sin reiniciar todo el dispositivo.' :
-                         'Você pode iniciar, reiniciar ou parar serviços individuais caso precise reiniciar uma função específica da rede sem reiniciar o aparelho inteiro.'),
-          rec:   isEn ? 'Enable only necessary services to maximize available free RAM memory.' :
-                 (isEs ? 'Mantenga habilitados solo los servicios indispensables para maximizar la memoria RAM libre.' :
-                         'Mantenha habilitados apenas os serviços necessários para maximizar a memória RAM livre do equipamento.')
+          title: isEn ? 'Startup & Services Guide' : (isEs ? 'Guía de Inicio y Servicios' : 'Guia de Inicialização e Serviços'),
+          serve: isEn ? 'Controls system services loaded automatically when the router boots up.' : (isEs ? 'Controla qué servicios del sistema se cargan automáticamente al arrancar el router.' : 'Controla quais serviços do sistema são carregados automaticamente quando o roteador é ligado na tomada.'),
+          fazer: isEn ? 'Start, restart, or stop individual daemons without rebooting the entire hardware unit.' : (isEs ? 'Inicie, reinicie o detenga servicios individuales sin reiniciar todo el dispositivo.' : 'Você pode iniciar, reiniciar ou parar serviços individuais caso precise reiniciar uma função específica da rede sem reiniciar o aparelho inteiro.'),
+          rec: isEn ? 'Enable only necessary services to maximize available free RAM memory.' : (isEs ? 'Mantenga habilitados solo los servicios indispensables para maximizar la memoria RAM libre.' : 'Mantenha habilitados apenas os serviços necessários para maximizar a memória RAM livre do equipamento.')
         };
       } else if (path.indexOf('/status/iptables') !== -1) {
         guide = {
-          title: isEn ? 'Firewall Packet Flow Guide (iptables / nftables)' :
-                 (isEs ? 'Guía de Flujo del Cortafuegos (iptables / nftables)' :
-                         'Guia de Condição e Fluxo do Firewall (iptables)'),
-          serve: isEn ? 'Real-time Netfilter packet telemetry displaying accepted, dropped, or redirected packets between LAN and WAN.' :
-                 (isEs ? 'Telemetría de paquetes Netfilter en tiempo real con tráfico aceptado, bloqueado o redirigido.' :
-                         'Painel de telemetria em tempo real do Kernel Linux Netfilter. Mostra o fluxo exato de pacotes e bytes aceitos, bloqueados ou redirecionados entre sua rede local e a internet.'),
-          fazer: isEn ? 'Empty chains are hidden by default. Use search bar to find rules by IP or port.' :
-                 (isEs ? 'Las cadenas vacías se ocultan por defecto. Use la búsqueda para filtrar reglas por IP o puerto.' :
-                         'As correntes vazias vêm ocultadas por padrão para facilitar a leitura. Use a barra de busca no topo para pesquisar regras por IP, porta ou protocolo. Para adicionar ou modificar regras de segurança, clique no botão "⚙️ Editar Regras de Firewall (Rede ➔ Firewall)".'),
-          rec:   isEn ? 'The FORWARD chain must always maintain a default policy of DROP (Block incoming).' :
-                 (isEs ? 'La cadena FORWARD debe mantener siempre la política en DROP (Bloquear conexiones entrantes).' :
-                         'A corrente FORWARD deve sempre manter a política padrão em DROP (Bloquear), garantindo que conexões externas não autorizadas nunca alcancem seus computadores e celulares.')
+          title: isEn ? 'Firewall Packet Flow Guide (iptables / nftables)' : (isEs ? 'Guía de Flujo del Cortafuegos (iptables / nftables)' : 'Guia de Condição e Fluxo do Firewall (iptables)'),
+          serve: isEn ? 'Real-time Netfilter packet telemetry displaying accepted, dropped, or redirected packets between LAN and WAN.' : (isEs ? 'Telemetría de paquetes Netfilter en tiempo real con tráfico aceptado, bloqueado o redirigido.' : 'Painel de telemetria em tempo real do Kernel Linux Netfilter. Mostra o fluxo exato de pacotes e bytes aceitos, bloqueados ou redirecionados entre sua rede local e a internet.'),
+          fazer: isEn ? 'Empty chains are hidden by default. Use search bar to find rules by IP or port.' : (isEs ? 'Las cadenas vacías se ocultan por defecto. Use la búsqueda para filtrar reglas por IP o puerto.' : 'As correntes vazias vêm ocultadas por padrão para facilitar a leitura. Use a barra de busca no topo para pesquisar regras por IP, porta ou protocolo. Para adicionar ou modificar regras de segurança, clique no botão "⚙️ Editar Regras de Firewall (Rede ➔ Firewall)".'),
+          rec: isEn ? 'The FORWARD chain must always maintain a default policy of DROP (Block incoming).' : (isEs ? 'La cadena FORWARD debe mantener siempre la política en DROP (Bloquear conexiones entrantes).' : 'A corrente FORWARD deve sempre manter a política padrão em DROP (Bloquear), garantindo que conexões externas não autorizadas nunca alcancem seus computadores e celulares.')
         };
       } else if (path.indexOf('/services/upnp') !== -1) {
         guide = {
-          title: isEn ? 'UPnP & NAT-PMP Guide (Automatic Port Forwarding)' :
-                 (isEs ? 'Guía de UPnP y NAT-PMP (Apertura Automática de Puertos)' :
-                         'Guia de UPnP e NAT-PMP (Abertura Automática de Portas)'),
-          serve: isEn ? 'Allows gaming consoles (PlayStation, Xbox, Switch) and PC apps to automatically open temporary ports for Open NAT.' :
-                 (isEs ? 'Permite a consolas (PlayStation, Xbox, Switch) y aplicaciones abrir puertos temporales para NAT Abierta.' :
-                         'Permite que consoles (PlayStation, Xbox, Switch) e aplicativos (torrents, games de PC) abram automaticamente portas de comunicação temporárias no roteador para obter NAT Aberto.'),
-          fazer: isEn ? 'If you play online games, keep UPnP active for fast matchmaking and voice chat without strict NAT hurdles.' :
-                 (isEs ? 'Si juega en línea, mantenga UPnP activo para emparejamiento rápido y chat de voz sin restricciones.' :
-                         'Se você joga online no videogame ou PC, mantenha o UPnP ativado para garantir conexões rápidas e bate-papo por voz sem bloqueios. Caso prefira segurança total e controle manual, desmarque e crie regras manuais no Firewall.'),
-          rec:   isEn ? 'Keep UPnP active in gaming households. ARK Router automatically cleans stale port leases.' :
-                 (isEs ? 'Mantenga UPnP activo en hogares con jugadores. ARK Router limpia automáticamente concesiones inactivas.' :
-                         'Mantenha "Dispare os serviços de UPnP e NAT-PMP" ativado em residências com gamers. O ARK Router gerencia a limpeza automática das concessões inativas.')
+          title: isEn ? 'UPnP & NAT-PMP Guide (Automatic Port Forwarding)' : (isEs ? 'Guía de UPnP y NAT-PMP (Apertura Automática de Puertos)' : 'Guia de UPnP e NAT-PMP (Abertura Automática de Portas)'),
+          serve: isEn ? 'Allows gaming consoles (PlayStation, Xbox, Switch) and PC apps to automatically open temporary ports for Open NAT.' : (isEs ? 'Permite a consolas (PlayStation, Xbox, Switch) y aplicaciones abrir puertos temporales para NAT Abierta.' : 'Permite que consoles (PlayStation, Xbox, Switch) e aplicativos (torrents, games de PC) abram automaticamente portas de comunicação temporárias no roteador para obter NAT Aberto.'),
+          fazer: isEn ? 'If you play online games, keep UPnP active for fast matchmaking and voice chat without strict NAT hurdles.' : (isEs ? 'Si juega en línea, mantenga UPnP activo para emparejamiento rápido y chat de voz sin restricciones.' : 'Se você joga online no videogame ou PC, mantenha o UPnP ativado para garantir conexões rápidas e bate-papo por voz sem bloqueios. Caso prefira segurança total e controle manual, desmarque e crie regras manuais no Firewall.'),
+          rec: isEn ? 'Keep UPnP active in gaming households. ARK Router automatically cleans stale port leases.' : (isEs ? 'Mantenga UPnP activo en hogares con jugadores. ARK Router limpia automáticamente concesiones inactivas.' : 'Mantenha "Dispare os serviços de UPnP e NAT-PMP" ativado em residências com gamers. O ARK Router gerencia a limpeza automática das concessões inativas.')
         };
       } else if (path.indexOf('/status/realtime') !== -1) {
         guide = {
-          title: isEn ? 'Real-Time Graphs Guide (Bandwidth & Load)' :
-                 (isEs ? 'Guía de Gráficos en Tiempo Real (Ancho de Banda y Carga)' :
-                         'Guia de Gráficos em Tempo Real (Largura de Banda e Carga)'),
-          serve: isEn ? 'Dynamically updating telemetry panel displaying CPU load, download/upload rates, Wi-Fi noise, and active connections.' :
-                 (isEs ? 'Panel dinámico que muestra carga de CPU, tasas de descarga/subida, ruido Wi-Fi y sesiones activas.' :
-                         'Painel com atualização dinâmica a cada 3 segundos exibindo carga da CPU, velocidade de download/upload, ruído do sinal Wi-Fi e sessões ativas (TCP/UDP).'),
-          fazer: isEn ? 'Switch tabs to diagnose latency spikes. If traffic saturates your connection, enable Smart Queue Management (SQM CAKE).' :
-                 (isEs ? 'Cambie pestañas para diagnosticar picos de consumo. Si el tráfico satura el enlace, active SQM CAKE.' :
-                         'Alterne entre as abas superiores para diagnosticar picos de consumo ou lentidão na rede. Se o tráfego atingir 100% da sua conexão, ative o Smart Queue Management (SQM Cake) no ARK Router para evitar lag em jogos.'),
-          rec:   isEn ? 'For fluid gaming, UDP jitter must remain stable and CPU load should not exceed 1.50.' :
-                 (isEs ? 'Para juegos fluidos, las conexiones UDP deben ser estables y la carga de CPU no debe superar 1.50.' :
-                         'Para menor latência e jogos online fluidos, conexões UDP devem se manter estáveis e a Carga da CPU não deve ultrapassar 1.50.')
+          title: isEn ? 'Real-Time Graphs Guide (Bandwidth & Load)' : (isEs ? 'Guía de Gráficos en Tiempo Real (Ancho de Banda y Carga)' : 'Guia de Gráficos em Tempo Real (Largura de Banda e Carga)'),
+          serve: isEn ? 'Dynamically updating telemetry panel displaying CPU load, download/upload rates, Wi-Fi noise, and active connections.' : (isEs ? 'Panel dinámico que muestra carga de CPU, tasas de descarga/subida, ruido Wi-Fi y sesiones activas.' : 'Painel com atualização dinâmica a cada 3 segundos exibindo carga da CPU, velocidade de download/upload, ruído do sinal Wi-Fi e sessões ativas (TCP/UDP).'),
+          fazer: isEn ? 'Switch tabs to diagnose latency spikes. If traffic saturates your connection, enable Smart Queue Management (SQM CAKE).' : (isEs ? 'Cambie pestañas para diagnosticar picos de consumo. Si el tráfico satura el enlace, active SQM CAKE.' : 'Alterne entre as abas superiores para diagnosticar picos de consumo ou lentidão na rede. Se o tráfego atingir 100% da sua conexão, ative o Smart Queue Management (SQM Cake) no ARK Router para evitar lag em jogos.'),
+          rec: isEn ? 'For fluid gaming, UDP jitter must remain stable and CPU load should not exceed 1.50.' : (isEs ? 'Para juegos fluidos, las conexiones UDP deben ser estables y la carga de CPU no debe superar 1.50.' : 'Para menor latência e jogos online fluidos, conexões UDP devem se manter estáveis e a Carga da CPU não deve ultrapassar 1.50.')
         };
       }
 
@@ -808,16 +632,7 @@
       box.className = 'ark-guide-box';
       if (guide.band) box.setAttribute('data-ark-band', guide.band);
       var badgeText = isEn ? '💡 Tips & Guide\u00a0▾' : (isEs ? '💡 Consejos y Guía\u00a0▾' : '💡 Ajuda & Dicas\u00a0▾');
-      box.innerHTML = '' +
-        '<summary class="ark-guide-title">' +
-          '<span>📘 ' + guide.title + '</span>' +
-          '<span class="ark-guide-badge">' + badgeText + '</span>' +
-        '</summary>' +
-        '<div class="ark-guide-content">' +
-          '<div class="ark-guide-item"><strong>📌 ' + (isEn ? 'What it is:' : (isEs ? 'Para qué sirve:' : 'Para que serve:')) + '</strong> <span>' + guide.serve + '</span></div>' +
-          '<div class="ark-guide-item"><strong>🛠️ ' + (isEn ? 'What to do:' : (isEs ? 'Qué hacer:' : 'O que fazer:')) + '</strong> <span>' + guide.fazer + '</span></div>' +
-          '<div class="ark-guide-item rec"><strong>💡 ' + (isEn ? 'ARK Recommendation:' : (isEs ? 'Recomendación ARK:' : 'Recomendação ARK:')) + '</strong> <span>' + guide.rec + '</span></div>' +
-        '</div>';
+      box.innerHTML = '' + '<summary class="ark-guide-title">' + '<span>📘 ' + guide.title + '</span>' + '<span class="ark-guide-badge">' + badgeText + '</span>' + '</summary>' + '<div class="ark-guide-content">' + '<div class="ark-guide-item"><strong>📌 ' + (isEn ? 'What it is:' : (isEs ? 'Para qué sirve:' : 'Para que serve:')) + '</strong> <span>' + guide.serve + '</span></div>' + '<div class="ark-guide-item"><strong>🛠️ ' + (isEn ? 'What to do:' : (isEs ? 'Qué hacer:' : 'O que fazer:')) + '</strong> <span>' + guide.fazer + '</span></div>' + '<div class="ark-guide-item rec"><strong>💡 ' + (isEn ? 'ARK Recommendation:' : (isEs ? 'Recomendación ARK:' : 'Recomendação ARK:')) + '</strong> <span>' + guide.rec + '</span></div>' + '</div>';
 
       if (!existingGuide) {
         var target = view.querySelector('.ark-hero-banner, .ark-action-grid, .ark-wireless-grid, .ark-iface-grid, .ark-admin-card, .ark-diag-grid, .cbi-map, h2') || view.firstChild;
@@ -911,333 +726,122 @@
       var isEs = (lang.indexOf('es') === 0);
 
       var dict = {
-        'Save & Apply': 'Salvar e Aplicar',
-        'Apply unchecked': 'Aplicar sem verificar',
-        'Save': 'Salvar Ajustes',
-        'Reset': 'Redefinir Padrões',
-        'Restart': 'Reiniciar',
-        'Stop': 'Parar',
-        'Edit': 'Editar',
-        'Delete': 'Excluir',
-        'Remove': 'Remover',
-        'Scan': 'Escanear Redes',
-        'Add': 'Adicionar',
-        'Add new interface...': 'Adicionar Nova Interface...',
-        'New interface name...': 'Nome da nova interface...',
-        'Protocol of the new interface': 'Protocolo da nova interface',
-        'Create interface': 'Criar Interface',
-        'DHCP client': 'Cliente DHCP (Automático)',
-        'Static address': 'Endereço IP Estático',
-        'unspecified': 'Não especificado',
-        'Device': 'Dispositivo de Rede',
-        'Devices': 'Dispositivos de Rede',
-        'Global network options': 'Opções Globais de Rede',
-        'Bring up on boot': 'Iniciar na inicialização do sistema',
-        'Use default gateway': 'Usar gateway padrão',
-        'Use DNS servers advertised by peer': 'Usar servidores DNS do provedor',
-        'Use custom DNS servers': 'Usar servidores DNS personalizados',
-        'Override MAC address': 'Substituir endereço MAC',
-        'Advanced Settings': 'Configurações Avançadas',
-        'Physical Settings': 'Configurações Físicas',
-        'Firewall Settings': 'Configurações de Firewall',
-        'DHCP Server': 'Servidor DHCP',
-        'Generate archive': 'Gerar Cópia de Segurança',
-        'Perform reset': 'Restaurar de Fábrica',
-        'Upload archive...': 'Enviar Cópia...',
-        'Flash image...': 'Gravar Imagem...',
-        'Save mtdblock': 'Salvar Bloco MTD',
-        'Open list...': 'Abrir Lista...',
-        'Enable': 'Ativar',
-        'Disable': 'Desativar',
-        'Back': 'Voltar',
-        'Dismiss': 'Fechar',
-        'Cancel': 'Cancelar',
-        'Confirm': 'Confirmar',
-        'Back to overview': 'Voltar à Visão Geral',
-        'Applying changes': 'Aplicando alterações…',
-        'Configuration applied': 'Configuração aplicada!',
-        'Waiting for changes to take effect...': 'Aguardando aplicação das alterações…',
-        'Changes applied.': 'Alterações aplicadas com sucesso.',
-        'Roll back': 'Reverter',
-        'Rollback': 'Reversão de Segurança',
-        'Checking connectivity': 'Verificando conectividade…',
-        'Wireless Overview': 'Centro de Comando Wi-Fi',
-        'Associated Stations': 'Dispositivos Conectados no Wi-Fi',
-        'Active DHCP Leases': 'Dispositivos Conectados na Rede Local (DHCP)',
-        'Active DHCPv6 Leases': 'Dispositivos Conectados via IPv6',
-        'Network Utilities': 'Utilitários e Diagnósticos de Rede',
-        'Router Password': 'Senha do Administrador',
-        'SSH Access': 'Acesso Remoto SSH',
-        'SSH-Keys': 'Chaves Públicas SSH',
-        'General Settings': 'Configurações Gerais',
-        'Time Synchronization': 'Sincronização de Data e Hora',
-        'Language and Style': 'Idioma e Tema',
-        'Download backup': 'Baixar Cópia de Segurança',
-        'Reset to defaults': 'Restaurar Padrões de Fábrica',
-        'Restore backup': 'Restaurar Cópia de Segurança',
-        'Flash new firmware image': 'Gravar Nova Imagem de Firmware',
-        'Actions': 'Ações Principais',
-        'Configuration': 'Ajustes Salvos',
-        'Interfaces': 'Interfaces de Rede',
-        'Hostname': 'Nome do Roteador',
-        'Model': 'Modelo',
-        'Architecture': 'Processador / Arquitetura',
-        'Firmware Version': 'Versão do Sistema',
-        'Kernel Version': 'Versão do Kernel',
-        'Local Time': 'Hora Local',
-        'Uptime': 'Tempo de Atividade',
-        'Load Average': 'Carga da CPU',
-        'MAC-Address': 'Endereço MAC',
-        'Network': 'Rede',
-        'Signal / Noise': 'Sinal / Ruído',
-        'RX Rate / TX Rate': 'Download / Upload',
-        'No information available': 'Nenhum dispositivo conectado no momento.',
-        'Auto Refresh': 'Atualização Automática',
-        'Collecting data...': 'Coletando informações...',
-        'System log': 'Registros de Mensagens do Sistema',
-        'Kernel Log': 'Registros de Eventos do Kernel',
-        'Processes': 'Processos em Execução',
-        'Routing Table': 'Tabela de Rotas',
-        'Routing': 'Tabela de Roteamento',
-        'System Log': 'Registros do Sistema',
-        'Channel Analysis': 'Análise de Canais Wi-Fi',
-        'Realtime Graphs': 'Gráficos em Tempo Real',
-        'WireGuard': 'VPN WireGuard',
-        'Status': 'Status',
-        'System': 'Sistema',
-        'Administration': 'Administração e Senha',
-        'Software': 'Gerenciador de Pacotes',
-        'Startup': 'Inicialização de Serviços',
-        'Scheduled Tasks': 'Tarefas Agendadas (Cron)',
-        'Mount Points': 'Pontos de Montagem',
-        'Attended Sysupgrade': 'Atualização Assistida',
-        'LED Configuration': 'Configuração de LEDs',
-        'Reboot': 'Reinicialização',
-        'Services': 'Serviços Adicionais',
-        'Wireless': 'Redes Sem Fio (Wi-Fi)',
-        'DHCP': 'Servidor DHCP',
-        'DNS': 'Servidor DNS',
-        'Firewall': 'Firewall e Segurança',
-        'Log out': 'Sair do Painel',
-        'Refreshing': 'Atualizando...',
-        'Load': 'Carga da CPU',
-        'Bandwidth': 'Largura de Banda',
-        'Connections': 'Sessões Ativas',
-        'Conexões': 'Sessões Ativas',
-        'NAT Rules': 'Regras de NAT',
-        'IP Sets': 'Conjuntos de IPs (IPset)',
-        'Sync with browser': 'Sincronizar com Navegador',
-        'Sync with NTP-Server': 'Sincronizar com Servidor NTP',
-        'Perform reboot': 'Reiniciar Roteador',
-        'Hang Up': 'Recarregar (HUP)',
-        'Terminate': 'Finalizar (TERM)',
-        'Kill': 'Forçar Parada (KILL)',
-        'System load': 'Carga do Sistema (CPU)',
-        'System Properties': 'Propriedades do Sistema',
-        'Enable SYN-flood protection': 'Proteção contra SYN-Flood',
-        'Drop invalid packets': 'Descartar pacotes inválidos',
-        'Input': 'Entrada (Input)',
-        'Output': 'Saída (Output)',
-        'Forward': 'Encaminhamento (Forward)',
-        'accept': 'Aceitar (Accept)',
-        'reject': 'Rejeitar (Reject)',
-        'drop': 'Descartar (Drop)',
-        'Firewall - Zone Settings': 'Firewall - Zonas de Segurança',
-        'Port Forwards': 'Redirecionamento de Portas',
-        'Traffic Rules': 'Regras de Tráfego',
-        'Custom Rules': 'Regras Personalizadas',
-        'Diagnostics': 'Diagnósticos de Rede',
-        'Backup / Flash Firmware': 'Backup e Firmware',
-        'DHCP and DNS': 'Servidor DHCP e DNS',
-        'Static Leases': 'Endereços IP Fixos (Leases Estáticos)',
-        'IP Address': 'Endereço IP',
-        'IP address': 'Endereço IP',
-        'Netmask': 'Máscara de Rede',
-        'Gateway': 'Gateway Padrão',
-        'DNS server': 'Servidor DNS',
-        'DNS servers': 'Servidores DNS',
-        'IPv6-Address': 'Endereço IPv6',
-        'Transfer': 'Tráfego',
-        'Transmit': 'Enviados (TX)',
-        'Receive': 'Recebidos (RX)',
-        'No password set!': 'Nenhuma senha definida!',
-        'There is no password set on this router. Please configure a root password to protect the web interface.': 'Não há nenhuma senha configurada neste roteador. Por favor, configure uma senha para o usuário root a fim de proteger o painel.',
-        'Go to password configuration...': 'Configurar senha de acesso…',
-        'JavaScript required!': 'JavaScript obrigatório!',
-        'You must enable JavaScript in your browser or LuCI will not work properly.': 'Você precisa habilitar o JavaScript no seu navegador para que o painel funcione corretamente.',
-        'Authorization Required': 'Autenticação Necessária',
-        'Please enter your username and password.': 'Por favor, digite seu usuário e senha.',
-        'Username': 'Usuário',
-        'Password': 'Senha',
-        'Log in': 'Entrar no Painel',
-        'An optional, short description for this device': 'Uma descrição breve e opcional para este dispositivo',
-        'Here you can configure the basic aspects of your device like its hostname or the timezone.': 'Aqui você pode configurar os aspectos básicos do seu roteador, como nome de rede (hostname) e fuso horário.',
+        'Save & Apply': 'Salvar e Aplicar', 'Apply unchecked': 'Aplicar sem verificar', 'Save': 'Salvar Ajustes',
+        'Reset': 'Redefinir Padrões', 'Restart': 'Reiniciar', 'Stop': 'Parar',
+        'Edit': 'Editar', 'Delete': 'Excluir', 'Remove': 'Remover',
+        'Scan': 'Escanear Redes', 'Add': 'Adicionar', 'Add new interface...': 'Adicionar Nova Interface...',
+        'New interface name...': 'Nome da nova interface...', 'Protocol of the new interface': 'Protocolo da nova interface', 'Create interface': 'Criar Interface',
+        'DHCP client': 'Cliente DHCP (Automático)', 'Static address': 'Endereço IP Estático', 'unspecified': 'Não especificado',
+        'Device': 'Dispositivo de Rede', 'Devices': 'Dispositivos de Rede', 'Global network options': 'Opções Globais de Rede',
+        'Bring up on boot': 'Iniciar na inicialização do sistema', 'Use default gateway': 'Usar gateway padrão', 'Use DNS servers advertised by peer': 'Usar servidores DNS do provedor',
+        'Use custom DNS servers': 'Usar servidores DNS personalizados', 'Override MAC address': 'Substituir endereço MAC', 'Advanced Settings': 'Configurações Avançadas',
+        'Physical Settings': 'Configurações Físicas', 'Firewall Settings': 'Configurações de Firewall', 'DHCP Server': 'Servidor DHCP',
+        'Generate archive': 'Gerar Cópia de Segurança', 'Perform reset': 'Restaurar de Fábrica', 'Upload archive...': 'Enviar Cópia...',
+        'Flash image...': 'Gravar Imagem...', 'Save mtdblock': 'Salvar Bloco MTD', 'Open list...': 'Abrir Lista...',
+        'Enable': 'Ativar', 'Disable': 'Desativar', 'Back': 'Voltar',
+        'Dismiss': 'Fechar', 'Cancel': 'Cancelar', 'Confirm': 'Confirmar',
+        'Back to overview': 'Voltar à Visão Geral', 'Applying changes': 'Aplicando alterações…', 'Configuration applied': 'Configuração aplicada!',
+        'Waiting for changes to take effect...': 'Aguardando aplicação das alterações…', 'Changes applied.': 'Alterações aplicadas com sucesso.',
+        'Roll back': 'Reverter', 'Rollback': 'Reversão de Segurança', 'Checking connectivity': 'Verificando conectividade…',
+        'Wireless Overview': 'Centro de Comando Wi-Fi', 'Associated Stations': 'Dispositivos Conectados no Wi-Fi', 'Active DHCP Leases': 'Dispositivos Conectados na Rede Local (DHCP)',
+        'Active DHCPv6 Leases': 'Dispositivos Conectados via IPv6', 'Network Utilities': 'Utilitários e Diagnósticos de Rede', 'Router Password': 'Senha do Administrador',
+        'SSH Access': 'Acesso Remoto SSH', 'SSH-Keys': 'Chaves Públicas SSH', 'General Settings': 'Configurações Gerais',
+        'Time Synchronization': 'Sincronização de Data e Hora', 'Language and Style': 'Idioma e Tema', 'Download backup': 'Baixar Cópia de Segurança',
+        'Reset to defaults': 'Restaurar Padrões de Fábrica', 'Restore backup': 'Restaurar Cópia de Segurança', 'Flash new firmware image': 'Gravar Nova Imagem de Firmware',
+        'Actions': 'Ações Principais', 'Configuration': 'Ajustes Salvos', 'Interfaces': 'Interfaces de Rede',
+        'Hostname': 'Nome do Roteador', 'Model': 'Modelo', 'Architecture': 'Processador / Arquitetura',
+        'Firmware Version': 'Versão do Sistema', 'Kernel Version': 'Versão do Kernel', 'Local Time': 'Hora Local',
+        'Uptime': 'Tempo de Atividade', 'Load Average': 'Carga da CPU', 'MAC-Address': 'Endereço MAC',
+        'Network': 'Rede', 'Signal / Noise': 'Sinal / Ruído', 'RX Rate / TX Rate': 'Download / Upload',
+        'No information available': 'Nenhum dispositivo conectado no momento.', 'Auto Refresh': 'Atualização Automática', 'Collecting data...': 'Coletando informações...',
+        'System log': 'Registros de Mensagens do Sistema', 'Kernel Log': 'Registros de Eventos do Kernel', 'Processes': 'Processos em Execução',
+        'Routing Table': 'Tabela de Rotas', 'Routing': 'Tabela de Roteamento', 'System Log': 'Registros do Sistema',
+        'Channel Analysis': 'Análise de Canais Wi-Fi', 'Realtime Graphs': 'Gráficos em Tempo Real', 'WireGuard': 'VPN WireGuard',
+        'Status': 'Status', 'System': 'Sistema', 'Administration': 'Administração e Senha',
+        'Software': 'Gerenciador de Pacotes', 'Startup': 'Inicialização de Serviços', 'Scheduled Tasks': 'Tarefas Agendadas (Cron)',
+        'Mount Points': 'Pontos de Montagem', 'Attended Sysupgrade': 'Atualização Assistida', 'LED Configuration': 'Configuração de LEDs',
+        'Reboot': 'Reinicialização', 'Services': 'Serviços Adicionais', 'Wireless': 'Redes Sem Fio (Wi-Fi)',
+        'DHCP': 'Servidor DHCP', 'DNS': 'Servidor DNS', 'Firewall': 'Firewall e Segurança',
+        'Log out': 'Sair do Painel', 'Refreshing': 'Atualizando...', 'Load': 'Carga da CPU',
+        'Bandwidth': 'Largura de Banda', 'Connections': 'Sessões Ativas', 'Conexões': 'Sessões Ativas',
+        'NAT Rules': 'Regras de NAT', 'IP Sets': 'Conjuntos de IPs (IPset)', 'Sync with browser': 'Sincronizar com Navegador',
+        'Sync with NTP-Server': 'Sincronizar com Servidor NTP', 'Perform reboot': 'Reiniciar Roteador', 'Hang Up': 'Recarregar (HUP)',
+        'Terminate': 'Finalizar (TERM)', 'Kill': 'Forçar Parada (KILL)', 'System load': 'Carga do Sistema (CPU)',
+        'System Properties': 'Propriedades do Sistema', 'Enable SYN-flood protection': 'Proteção contra SYN-Flood', 'Drop invalid packets': 'Descartar pacotes inválidos',
+        'Input': 'Entrada (Input)', 'Output': 'Saída (Output)', 'Forward': 'Encaminhamento (Forward)',
+        'accept': 'Aceitar (Accept)', 'reject': 'Rejeitar (Reject)', 'drop': 'Descartar (Drop)',
+        'Firewall - Zone Settings': 'Firewall - Zonas de Segurança', 'Port Forwards': 'Redirecionamento de Portas', 'Traffic Rules': 'Regras de Tráfego',
+        'Custom Rules': 'Regras Personalizadas', 'Diagnostics': 'Diagnósticos de Rede', 'Backup / Flash Firmware': 'Backup e Firmware',
+        'DHCP and DNS': 'Servidor DHCP e DNS', 'Static Leases': 'Endereços IP Fixos (Leases Estáticos)', 'IP Address': 'Endereço IP',
+        'IP address': 'Endereço IP', 'Netmask': 'Máscara de Rede', 'Gateway': 'Gateway Padrão',
+        'DNS server': 'Servidor DNS', 'DNS servers': 'Servidores DNS', 'IPv6-Address': 'Endereço IPv6',
+        'Transfer': 'Tráfego', 'Transmit': 'Enviados (TX)', 'Receive': 'Recebidos (RX)',
+        'No password set!': 'Nenhuma senha definida!', 'There is no password set on this router. Please configure a root password to protect the web interface.': 'Não há nenhuma senha configurada neste roteador. Por favor, configure uma senha para o usuário root a fim de proteger o painel.',
+        'Go to password configuration...': 'Configurar senha de acesso…', 'JavaScript required!': 'JavaScript obrigatório!', 'You must enable JavaScript in your browser or LuCI will not work properly.': 'Você precisa habilitar o JavaScript no seu navegador para que o painel funcione corretamente.',
+        'Authorization Required': 'Autenticação Necessária', 'Please enter your username and password.': 'Por favor, digite seu usuário e senha.',
+        'Username': 'Usuário', 'Password': 'Senha', 'Log in': 'Entrar no Painel',
+        'An optional, short description for this device': 'Uma descrição breve e opcional para este dispositivo', 'Here you can configure the basic aspects of your device like its hostname or the timezone.': 'Aqui você pode configurar os aspectos básicos do seu roteador, como nome de rede (hostname) e fuso horário.',
         'This list gives an overview over currently running system processes and their status.': 'Esta lista exibe os processos atualmente em execução na memória RAM e seus respectivos status.',
         'Load Average is a metric that is used by Linux to keep track of system resources.': 'A carga média (Load Average) indica a demanda de processamento da CPU ao longo do tempo.'
       };
 
       var dictEs = {
-        'Save & Apply': 'Guardar y Aplicar',
-        'Apply unchecked': 'Aplicar sin comprobar',
-        'Save': 'Guardar Ajustes',
-        'Reset': 'Restablecer',
-        'Restart': 'Reiniciar',
-        'Stop': 'Detener',
-        'Edit': 'Editar',
-        'Delete': 'Eliminar',
-        'Remove': 'Eliminar',
-        'Scan': 'Escanear Redes',
-        'Add': 'Añadir',
-        'Add new interface...': 'Añadir Nueva Interfaz...',
-        'New interface name...': 'Nombre de la nueva interfaz...',
-        'Protocol of the new interface': 'Protocolo de la nueva interfaz',
-        'Create interface': 'Crear Interfaz',
-        'DHCP client': 'Cliente DHCP (Automático)',
-        'Static address': 'Dirección IP Estática',
-        'unspecified': 'No especificado',
-        'Device': 'Dispositivo de Red',
-        'Devices': 'Dispositivos de Red',
-        'Global network options': 'Opciones Globales de Red',
-        'Bring up on boot': 'Iniciar en el arranque del sistema',
-        'Use default gateway': 'Usar puerta de enlace predeterminada',
-        'Use DNS servers advertised by peer': 'Usar servidores DNS del proveedor',
-        'Use custom DNS servers': 'Usar servidores DNS personalizados',
-        'Override MAC address': 'Reemplazar dirección MAC',
-        'Advanced Settings': 'Configuración Avanzada',
-        'Physical Settings': 'Configuración Física',
-        'Firewall Settings': 'Configuración del Cortafuegos',
-        'DHCP Server': 'Servidor DHCP',
-        'Generate archive': 'Generar Copia de Seguridad',
-        'Perform reset': 'Restablecer de Fábrica',
-        'Upload archive...': 'Subir Copia...',
-        'Flash image...': 'Grabar Imagen...',
-        'Save mtdblock': 'Guardar Bloque MTD',
-        'Open list...': 'Abrir Lista...',
-        'Enable': 'Activar',
-        'Disable': 'Desactivar',
-        'Back': 'Volver',
-        'Dismiss': 'Cerrar',
-        'Cancel': 'Cancelar',
-        'Confirm': 'Confirmar',
-        'Back to overview': 'Volver al Estado General',
-        'Applying changes': 'Aplicando cambios…',
-        'Configuration applied': '¡Configuración aplicada!',
-        'Waiting for changes to take effect...': 'Esperando a que se apliquen los cambios…',
-        'Changes applied.': 'Cambios aplicados con éxito.',
-        'Roll back': 'Revertir',
-        'Rollback': 'Reversión de Seguridad',
-        'Checking connectivity': 'Comprobando conectividad…',
-        'Wireless Overview': 'Centro de Mando Wi-Fi',
-        'Associated Stations': 'Dispositivos Conectados a la Wi-Fi',
-        'Active DHCP Leases': 'Dispositivos Conectados en Red Local (DHCP)',
-        'Active DHCPv6 Leases': 'Dispositivos Conectados mediante IPv6',
-        'Network Utilities': 'Utilidades y Diagnósticos de Red',
-        'Router Password': 'Contraseña del Administrador',
-        'SSH Access': 'Acceso Remoto SSH',
-        'SSH-Keys': 'Claves Públicas SSH',
-        'General Settings': 'Configuración General',
-        'Time Synchronization': 'Sincronización de Fecha y Hora',
-        'Language and Style': 'Idioma y Tema',
-        'Download backup': 'Descargar Copia de Seguridad',
-        'Reset to defaults': 'Restablecer Valores de Fábrica',
-        'Restore backup': 'Restaurar Copia de Seguridad',
-        'Flash new firmware image': 'Grabar Nueva Imagen de Firmware',
-        'Actions': 'Acciones Principales',
-        'Configuration': 'Ajustes Guardados',
-        'Interfaces': 'Interfaces de Red',
-        'Hostname': 'Nombre del Router',
-        'Model': 'Modelo',
-        'Architecture': 'Procesador / Arquitectura',
-        'Firmware Version': 'Versión del Sistema',
-        'Kernel Version': 'Versión del Kernel',
-        'Local Time': 'Hora Local',
-        'Uptime': 'Tiempo de Actividad',
-        'Load Average': 'Carga de la CPU',
-        'MAC-Address': 'Dirección MAC',
-        'Network': 'Red',
-        'Signal / Noise': 'Señal / Ruido',
-        'RX Rate / TX Rate': 'Descarga / Subida',
-        'No information available': 'No hay dispositivos conectados en este momento.',
-        'Auto Refresh': 'Actualización Automática',
-        'Collecting data...': 'Recopilando información...',
-        'System log': 'Registros de Mensajes del Sistema',
-        'Kernel Log': 'Registros de Eventos del Kernel',
-        'Processes': 'Procesos en Ejecución',
-        'Routing Table': 'Tabla de Enrutamiento',
-        'Routing': 'Tabla de Enrutamiento',
-        'System Log': 'Registros del Sistema',
-        'Channel Analysis': 'Análisis de Canales Wi-Fi',
-        'Realtime Graphs': 'Gráficos en Tiempo Real',
-        'WireGuard': 'VPN WireGuard',
-        'Status': 'Estado',
-        'System': 'Sistema',
-        'Administration': 'Administración y Contraseña',
-        'Software': 'Gestor de Paquetes',
-        'Startup': 'Inicio de Servicios',
-        'Scheduled Tasks': 'Tareas Programadas (Cron)',
-        'Mount Points': 'Puntos de Montaje',
-        'Attended Sysupgrade': 'Actualización Asistida',
-        'LED Configuration': 'Configuración de LEDs',
-        'Reboot': 'Reinicio del Sistema',
-        'Services': 'Servicios Adicionales',
-        'Wireless': 'Redes Inalámbricas (Wi-Fi)',
-        'DHCP': 'Servidor DHCP',
-        'DNS': 'Servidor DNS',
-        'Firewall': 'Cortafuegos y Seguridad',
-        'Log out': 'Cerrar Sesión',
-        'Refreshing': 'Actualizando...',
-        'Load': 'Carga de CPU',
-        'Bandwidth': 'Ancho de Banda',
-        'Connections': 'Conexiones Activas',
-        'Conexões': 'Conexiones Activas',
-        'NAT Rules': 'Regras de NAT',
-        'IP Sets': 'Conjuntos de IP (IPset)',
-        'Sync with browser': 'Sincronizar con el Navegador',
-        'Sync with NTP-Server': 'Sincronizar con Servidor NTP',
-        'Perform reboot': 'Reiniciar Router',
-        'Hang Up': 'Recargar (HUP)',
-        'Terminate': 'Finalizar (TERM)',
-        'Kill': 'Forzar Parada (KILL)',
-        'System load': 'Carga del Sistema (CPU)',
-        'System Properties': 'Propiedades del Sistema',
-        'Enable SYN-flood protection': 'Protección contra ataques SYN-Flood',
-        'Drop invalid packets': 'Descartar paquetes inválidos',
-        'Input': 'Entrada (Input)',
-        'Output': 'Salida (Output)',
-        'Forward': 'Reenvío (Forward)',
-        'accept': 'Aceptar (Accept)',
-        'reject': 'Rechazar (Reject)',
-        'drop': 'Descartar (Drop)',
-        'Firewall - Zone Settings': 'Cortafuegos - Zonas de Seguridad',
-        'Port Forwards': 'Reenvío de Puertos',
-        'Traffic Rules': 'Reglas de Tráfico',
-        'Custom Rules': 'Reglas Personalizadas',
-        'Diagnostics': 'Diagnósticos de Red',
-        'Backup / Flash Firmware': 'Copia de Seguridad y Firmware',
-        'DHCP and DNS': 'Servidor DHCP y DNS',
-        'Static Leases': 'Direcciones IP Fijas (Leases Estáticos)',
-        'IP Address': 'Dirección IP',
-        'IP address': 'Dirección IP',
-        'Netmask': 'Máscara de Red',
-        'Gateway': 'Puerta de Enlace Predeterminada',
-        'DNS server': 'Servidor DNS',
-        'DNS servers': 'Servidores DNS',
-        'IPv6-Address': 'Dirección IPv6',
-        'Transfer': 'Tráfico',
-        'Transmit': 'Transmitidos (TX)',
-        'Receive': 'Recibidos (RX)',
-        'No password set!': '¡Ninguna contraseña configurada!',
-        'There is no password set on this router. Please configure a root password to protect the web interface.': 'No hay contraseña configurada en este router. Por favor configure una contraseña para el usuario root para proteger la interfaz web.',
-        'Go to password configuration...': 'Configurar contraseña de acceso…',
-        'JavaScript required!': '¡JavaScript requerido!',
-        'You must enable JavaScript in your browser or LuCI will not work properly.': 'Debe habilitar JavaScript en su navegador para que LuCI funcione correctamente.',
-        'Authorization Required': 'Autenticación Requerida',
-        'Please enter your username and password.': 'Por favor ingrese su usuario y contraseña.',
-        'Username': 'Usuario',
-        'Password': 'Contraseña',
-        'Log in': 'Entrar al Panel',
-        'An optional, short description for this device': 'Una descripción breve y opcional para este dispositivo',
-        'Here you can configure the basic aspects of your device like its hostname or the timezone.': 'Aquí puede configurar los aspectos básicos de su dispositivo como su nombre de host o la zona horaria.',
+        'Save & Apply': 'Guardar y Aplicar', 'Apply unchecked': 'Aplicar sin comprobar', 'Save': 'Guardar Ajustes',
+        'Reset': 'Restablecer', 'Restart': 'Reiniciar', 'Stop': 'Detener',
+        'Edit': 'Editar', 'Delete': 'Eliminar', 'Remove': 'Eliminar',
+        'Scan': 'Escanear Redes', 'Add': 'Añadir', 'Add new interface...': 'Añadir Nueva Interfaz...',
+        'New interface name...': 'Nombre de la nueva interfaz...', 'Protocol of the new interface': 'Protocolo de la nueva interfaz',
+        'Create interface': 'Crear Interfaz', 'DHCP client': 'Cliente DHCP (Automático)', 'Static address': 'Dirección IP Estática',
+        'unspecified': 'No especificado', 'Device': 'Dispositivo de Red', 'Devices': 'Dispositivos de Red',
+        'Global network options': 'Opciones Globales de Red', 'Bring up on boot': 'Iniciar en el arranque del sistema', 'Use default gateway': 'Usar puerta de enlace predeterminada',
+        'Use DNS servers advertised by peer': 'Usar servidores DNS del proveedor', 'Use custom DNS servers': 'Usar servidores DNS personalizados',
+        'Override MAC address': 'Reemplazar dirección MAC', 'Advanced Settings': 'Configuración Avanzada', 'Physical Settings': 'Configuración Física',
+        'Firewall Settings': 'Configuración del Cortafuegos', 'DHCP Server': 'Servidor DHCP', 'Generate archive': 'Generar Copia de Seguridad',
+        'Perform reset': 'Restablecer de Fábrica', 'Upload archive...': 'Subir Copia...', 'Flash image...': 'Grabar Imagen...',
+        'Save mtdblock': 'Guardar Bloque MTD', 'Open list...': 'Abrir Lista...', 'Enable': 'Activar',
+        'Disable': 'Desactivar', 'Back': 'Volver', 'Dismiss': 'Cerrar',
+        'Cancel': 'Cancelar', 'Confirm': 'Confirmar', 'Back to overview': 'Volver al Estado General',
+        'Applying changes': 'Aplicando cambios…', 'Configuration applied': '¡Configuración aplicada!', 'Waiting for changes to take effect...': 'Esperando a que se apliquen los cambios…',
+        'Changes applied.': 'Cambios aplicados con éxito.', 'Roll back': 'Revertir', 'Rollback': 'Reversión de Seguridad',
+        'Checking connectivity': 'Comprobando conectividad…', 'Wireless Overview': 'Centro de Mando Wi-Fi', 'Associated Stations': 'Dispositivos Conectados a la Wi-Fi',
+        'Active DHCP Leases': 'Dispositivos Conectados en Red Local (DHCP)', 'Active DHCPv6 Leases': 'Dispositivos Conectados mediante IPv6',
+        'Network Utilities': 'Utilidades y Diagnósticos de Red', 'Router Password': 'Contraseña del Administrador', 'SSH Access': 'Acceso Remoto SSH',
+        'SSH-Keys': 'Claves Públicas SSH', 'General Settings': 'Configuración General', 'Time Synchronization': 'Sincronización de Fecha y Hora',
+        'Language and Style': 'Idioma y Tema', 'Download backup': 'Descargar Copia de Seguridad', 'Reset to defaults': 'Restablecer Valores de Fábrica',
+        'Restore backup': 'Restaurar Copia de Seguridad', 'Flash new firmware image': 'Grabar Nueva Imagen de Firmware', 'Actions': 'Acciones Principales',
+        'Configuration': 'Ajustes Guardados', 'Interfaces': 'Interfaces de Red', 'Hostname': 'Nombre del Router',
+        'Model': 'Modelo', 'Architecture': 'Procesador / Arquitectura', 'Firmware Version': 'Versión del Sistema',
+        'Kernel Version': 'Versión del Kernel', 'Local Time': 'Hora Local', 'Uptime': 'Tiempo de Actividad',
+        'Load Average': 'Carga de la CPU', 'MAC-Address': 'Dirección MAC', 'Network': 'Red',
+        'Signal / Noise': 'Señal / Ruido', 'RX Rate / TX Rate': 'Descarga / Subida', 'No information available': 'No hay dispositivos conectados en este momento.',
+        'Auto Refresh': 'Actualización Automática', 'Collecting data...': 'Recopilando información...', 'System log': 'Registros de Mensajes del Sistema',
+        'Kernel Log': 'Registros de Eventos del Kernel', 'Processes': 'Procesos en Ejecución', 'Routing Table': 'Tabla de Enrutamiento',
+        'Routing': 'Tabla de Enrutamiento', 'System Log': 'Registros del Sistema', 'Channel Analysis': 'Análisis de Canales Wi-Fi',
+        'Realtime Graphs': 'Gráficos en Tiempo Real', 'WireGuard': 'VPN WireGuard', 'Status': 'Estado',
+        'System': 'Sistema', 'Administration': 'Administración y Contraseña', 'Software': 'Gestor de Paquetes',
+        'Startup': 'Inicio de Servicios', 'Scheduled Tasks': 'Tareas Programadas (Cron)', 'Mount Points': 'Puntos de Montaje',
+        'Attended Sysupgrade': 'Actualización Asistida', 'LED Configuration': 'Configuración de LEDs', 'Reboot': 'Reinicio del Sistema',
+        'Services': 'Servicios Adicionales', 'Wireless': 'Redes Inalámbricas (Wi-Fi)', 'DHCP': 'Servidor DHCP',
+        'DNS': 'Servidor DNS', 'Firewall': 'Cortafuegos y Seguridad', 'Log out': 'Cerrar Sesión',
+        'Refreshing': 'Actualizando...', 'Load': 'Carga de CPU', 'Bandwidth': 'Ancho de Banda',
+        'Connections': 'Conexiones Activas', 'Conexões': 'Conexiones Activas', 'NAT Rules': 'Regras de NAT',
+        'IP Sets': 'Conjuntos de IP (IPset)', 'Sync with browser': 'Sincronizar con el Navegador', 'Sync with NTP-Server': 'Sincronizar con Servidor NTP',
+        'Perform reboot': 'Reiniciar Router', 'Hang Up': 'Recargar (HUP)', 'Terminate': 'Finalizar (TERM)',
+        'Kill': 'Forzar Parada (KILL)', 'System load': 'Carga del Sistema (CPU)', 'System Properties': 'Propiedades del Sistema',
+        'Enable SYN-flood protection': 'Protección contra ataques SYN-Flood', 'Drop invalid packets': 'Descartar paquetes inválidos',
+        'Input': 'Entrada (Input)', 'Output': 'Salida (Output)', 'Forward': 'Reenvío (Forward)',
+        'accept': 'Aceptar (Accept)', 'reject': 'Rechazar (Reject)', 'drop': 'Descartar (Drop)',
+        'Firewall - Zone Settings': 'Cortafuegos - Zonas de Seguridad', 'Port Forwards': 'Reenvío de Puertos', 'Traffic Rules': 'Reglas de Tráfico',
+        'Custom Rules': 'Reglas Personalizadas', 'Diagnostics': 'Diagnósticos de Red', 'Backup / Flash Firmware': 'Copia de Seguridad y Firmware',
+        'DHCP and DNS': 'Servidor DHCP y DNS', 'Static Leases': 'Direcciones IP Fijas (Leases Estáticos)', 'IP Address': 'Dirección IP',
+        'IP address': 'Dirección IP', 'Netmask': 'Máscara de Red', 'Gateway': 'Puerta de Enlace Predeterminada',
+        'DNS server': 'Servidor DNS', 'DNS servers': 'Servidores DNS', 'IPv6-Address': 'Dirección IPv6',
+        'Transfer': 'Tráfico', 'Transmit': 'Transmitidos (TX)', 'Receive': 'Recibidos (RX)',
+        'No password set!': '¡Ninguna contraseña configurada!', 'There is no password set on this router. Please configure a root password to protect the web interface.': 'No hay contraseña configurada en este router. Por favor configure una contraseña para el usuario root para proteger la interfaz web.',
+        'Go to password configuration...': 'Configurar contraseña de acceso…', 'JavaScript required!': '¡JavaScript requerido!', 'You must enable JavaScript in your browser or LuCI will not work properly.': 'Debe habilitar JavaScript en su navegador para que LuCI funcione correctamente.',
+        'Authorization Required': 'Autenticación Requerida', 'Please enter your username and password.': 'Por favor ingrese su usuario y contraseña.',
+        'Username': 'Usuario', 'Password': 'Contraseña', 'Log in': 'Entrar al Panel',
+        'An optional, short description for this device': 'Una descripción breve y opcional para este dispositivo', 'Here you can configure the basic aspects of your device like its hostname or the timezone.': 'Aquí puede configurar los aspectos básicos de su dispositivo como su nombre de host o la zona horaria.',
         'This list gives an overview over currently running system processes and their status.': 'Esta lista muestra los procesos que se están ejecutando actualmente en la memoria RAM y su estado.',
         'Load Average is a metric that is used by Linux to keep track of system resources.': 'La carga promedio (Load Average) es una métrica utilizada para monitorear el uso de la CPU a lo largo del tiempo.'
       };
@@ -1361,14 +965,7 @@
             banner.style.justifyContent = 'space-between';
             banner.style.gap = '12px';
             banner.style.flexWrap = 'wrap';
-            banner.innerHTML = '' +
-              '<div>' +
-                '<strong>⚠️ Atenção: Nenhuma instância configurada nesta seção!</strong><br>' +
-                '<span style="font-size:12.5px;">Se você apagou por engano, você pode recuperar os dados originais salvos no roteador antes de salvar:</span>' +
-              '</div>' +
-              '<button type="button" class="btn btn-primary" style="padding:6px 14px;font-weight:600;">' +
-                '↩️ Desfazer e Restaurar' +
-              '</button>';
+            banner.innerHTML = '' + '<div>' + '<strong>⚠️ Atenção: Nenhuma instância configurada nesta seção!</strong><br>' + '<span style="font-size:12.5px;">Se você apagou por engano, você pode recuperar os dados originais salvos no roteador antes de salvar:</span>' + '</div>' + '<button type="button" class="btn btn-primary" style="padding:6px 14px;font-weight:600;">' + '↩️ Desfazer e Restaurar' + '</button>';
             banner.querySelector('button').addEventListener('click', function() {
               var resetBtn = document.querySelector('.cbi-button-reset, input[name*="reset"], button[name*="reset"]');
               if (resetBtn) {
@@ -1462,12 +1059,7 @@
 
           var meter = document.createElement('div');
           meter.className = 'ark-pwd-meter';
-          meter.innerHTML = '' +
-            '<div class="ark-meter-bar"><div class="ark-meter-fill"></div></div>' +
-            '<div class="ark-meter-label"><span class="ark-meter-text">' + lblPrompt + '</span></div>' +
-            '<div class="ark-meter-rules">' +
-              '<span class="rule-len">' + lblRule + '</span>' +
-            '</div>';
+          meter.innerHTML = '' + '<div class="ark-meter-bar"><div class="ark-meter-fill"></div></div>' + '<div class="ark-meter-label"><span class="ark-meter-text">' + lblPrompt + '</span></div>' + '<div class="ark-meter-rules">' + '<span class="rule-len">' + lblRule + '</span>' + '</div>';
 
           var fieldContainer = input.closest('.cbi-value-field') || input.parentElement;
           if (fieldContainer) {
@@ -1538,10 +1130,7 @@
 
         var filterBar = document.createElement('div');
         filterBar.className = 'ark-table-search-bar';
-        filterBar.innerHTML = '' +
-          '<span class="ark-search-icon">🔍</span>' +
-          '<input type="text" class="ark-search-input" placeholder="Filtrar nesta lista em tempo real..." />' +
-          '<span class="ark-search-count">' + rows.length + ' itens</span>';
+        filterBar.innerHTML = '' + '<span class="ark-search-icon">🔍</span>' + '<input type="text" class="ark-search-input" placeholder="Filtrar nesta lista em tempo real..." />' + '<span class="ark-search-count">' + rows.length + ' itens</span>';
 
         tbl.parentNode.insertBefore(filterBar, tbl);
 
@@ -1585,16 +1174,7 @@
           logActions.style.alignItems = 'center';
           logActions.style.marginBottom = '12px';
 
-          logActions.innerHTML = '' +
-            '<div class="ark-table-search-bar" style="margin-bottom: 0; flex: 1; min-width: 260px;">' +
-              '<span class="ark-search-icon">🔍</span>' +
-              '<input type="text" class="ark-search-input ark-log-filter" placeholder="Filtrar mensagens de log em tempo real..." />' +
-              '<span class="ark-search-count ark-log-counter"></span>' +
-            '</div>' +
-            '<div class="ark-log-btn-group" style="display: flex; gap: 8px;">' +
-              '<button type="button" class="cbi-button cbi-button-neutral ark-copy-log-btn" style="display:inline-flex;align-items:center;gap:6px;">📋 Copiar Log</button>' +
-              '<button type="button" class="cbi-button cbi-button-action ark-download-log-btn" style="display:inline-flex;align-items:center;gap:6px;">📥 Baixar (.txt)</button>' +
-            '</div>';
+          logActions.innerHTML = '' + '<div class="ark-table-search-bar" style="margin-bottom: 0; flex: 1; min-width: 260px;">' + '<span class="ark-search-icon">🔍</span>' + '<input type="text" class="ark-search-input ark-log-filter" placeholder="Filtrar mensagens de log em tempo real..." />' + '<span class="ark-search-count ark-log-counter"></span>' + '</div>' + '<div class="ark-log-btn-group" style="display: flex; gap: 8px;">' + '<button type="button" class="cbi-button cbi-button-neutral ark-copy-log-btn" style="display:inline-flex;align-items:center;gap:6px;">📋 Copiar Log</button>' + '<button type="button" class="cbi-button cbi-button-action ark-download-log-btn" style="display:inline-flex;align-items:center;gap:6px;">📥 Baixar (.txt)</button>' + '</div>';
 
           logEl.parentNode.insertBefore(logActions, logEl);
 
@@ -1735,11 +1315,7 @@
               title: 'Confirmar Reinicialização do Sistema',
               icon: '🔄',
               type: 'warning',
-              message: 'Tem certeza de que deseja reiniciar o roteador ARK?<br><br>' +
-                       '<strong>Impacto no serviço:</strong><br>' +
-                       '• Todas as conexões Wi-Fi e cabeadas serão interrompidas temporariamente.<br>' +
-                       '• Downloads, chamadas e jogos em andamento serão desconectados.<br>' +
-                       '• ⏱️ <em>Tempo estimado para retorno: cerca de 60 a 75 segundos.</em>',
+              message: 'Tem certeza de que deseja reiniciar o roteador ARK?<br><br>' + '<strong>Impacto no serviço:</strong><br>' + '• Todas as conexões Wi-Fi e cabeadas serão interrompidas temporariamente.<br>' + '• Downloads, chamadas e jogos em andamento serão desconectados.<br>' + '• ⏱️ <em>Tempo estimado para retorno: cerca de 60 a 75 segundos.</em>',
               confirmText: 'Sim, Reiniciar Agora',
               onConfirm: function() {
                 btn.setAttribute('data-confirmed', 'true');
@@ -1768,10 +1344,7 @@
               title: 'Restaurar Configurações de Fábrica?',
               icon: '⚠️',
               type: 'danger',
-              message: '<strong style="color:#ef4444;">ATENÇÃO: ESTA AÇÃO É IRREVERSÍVEL!</strong><br><br>' +
-                       'Todas as personalizações, senhas, redes Wi-Fi e regras serão apagadas e substituídas pelo padrão de fábrica.<br><br>' +
-                       '• O IP voltará para o padrão (192.168.1.1 ou 192.168.12.1).<br>' +
-                       '• ⏱️ <em>Tempo estimado: cerca de 2 minutos.</em>',
+              message: '<strong style="color:#ef4444;">ATENÇÃO: ESTA AÇÃO É IRREVERSÍVEL!</strong><br><br>' + 'Todas as personalizações, senhas, redes Wi-Fi e regras serão apagadas e substituídas pelo padrão de fábrica.<br><br>' + '• O IP voltará para o padrão (192.168.1.1 ou 192.168.12.1).<br>' + '• ⏱️ <em>Tempo estimado: cerca de 2 minutos.</em>',
               confirmText: 'Apagar Tudo e Restaurar',
               onConfirm: function() {
                 btn.setAttribute('data-confirmed', 'true');
@@ -1785,10 +1358,7 @@
 
       // 3. Destructive Deletion & Removal Buttons Across All CBI Forms (e.g. uHTTPd, Interfaces, Firewall)
       var deleteBtns = document.querySelectorAll(
-        '.cbi-section-remove input, .cbi-section-remove button, ' +
-        'input.cbi-button-remove, button.cbi-button-remove, ' +
-        'input[name^="cbi.rts."], button[name^="cbi.rts."], ' +
-        'input[name*="remove_conf"], input[name*="remove_old"]'
+        '.cbi-section-remove input, .cbi-section-remove button, ' + 'input.cbi-button-remove, button.cbi-button-remove, ' + 'input[name^="cbi.rts."], button[name^="cbi.rts."], ' + 'input[name*="remove_conf"], input[name*="remove_old"]'
       );
       deleteBtns.forEach(function(btn) {
         if (btn.getAttribute('data-ark-safe') === 'true') return;
@@ -1811,15 +1381,12 @@
           var isUhttpdMain = (btn.name && btn.name.indexOf('uhttpd.main') !== -1) ||
                              (location.pathname.indexOf('uhttpd') !== -1 && (secTitle === 'MAIN' || (btn.name && btn.name.indexOf('main') !== -1)));
 
-          var msg = 'Tem certeza de que deseja executar a remoção?<br><br>' +
-                    'Ação: <strong>' + actionName + '</strong>';
+          var msg = 'Tem certeza de que deseja executar a remoção?<br><br>' + 'Ação: <strong>' + actionName + '</strong>';
           if (secTitle) {
             msg += '<br>Seção afetada: <strong>' + secTitle + '</strong>';
           }
           if (isUhttpdMain) {
-            msg += '<br><br><span style="color:#ef4444;font-weight:700;">⚠️ ALERTA CRÍTICO:</span> ' +
-                   'A instância <strong>main</strong> do uHTTPd é o servidor web ativo que exibe este painel de controle. ' +
-                   'Se você apagá-la e salvar, você perderá o acesso à interface web pelo navegador!';
+            msg += '<br><br><span style="color:#ef4444;font-weight:700;">⚠️ ALERTA CRÍTICO:</span> ' + 'A instância <strong>main</strong> do uHTTPd é o servidor web ativo que exibe este painel de controle. ' + 'Se você apagá-la e salvar, você perderá o acesso à interface web pelo navegador!';
           }
           msg += '<br><br><em>Dica: Se você apagar por engano, utilize o botão <strong>↩️ Desfazer Alterações</strong> no rodapé antes de salvar para recuperar os dados originais.</em>';
 
@@ -1845,20 +1412,9 @@
       var overlay = document.createElement('div');
       overlay.id = 'ark-safety-modal';
       overlay.className = 'ark-modal-backdrop';
-      overlay.innerHTML = '' +
-        '<div class="ark-modal-box ' + (opts.type || 'warning') + '">' +
-          '<div class="ark-modal-header">' +
-            '<span class="ark-modal-icon">' + (opts.icon || '⚠️') + '</span>' +
-            '<h3>' + opts.title + '</h3>' +
-          '</div>' +
-          '<div class="ark-modal-body">' +
+      overlay.innerHTML = '' + '<div class="ark-modal-box ' + (opts.type || 'warning') + '">' + '<div class="ark-modal-header">' + '<span class="ark-modal-icon">' + (opts.icon || '⚠️') + '</span>' + '<h3>' + opts.title + '</h3>' + '</div>' + '<div class="ark-modal-body">' +
             opts.message +
-          '</div>' +
-          '<div class="ark-modal-actions">' +
-            '<button type="button" class="cbi-button cbi-button-neutral ark-modal-cancel">Cancelar</button>' +
-            '<button type="button" class="cbi-button cbi-button-negative ark-modal-confirm">' + (opts.confirmText || 'Confirmar') + '</button>' +
-          '</div>' +
-        '</div>';
+          '</div>' + '<div class="ark-modal-actions">' + '<button type="button" class="cbi-button cbi-button-neutral ark-modal-cancel">Cancelar</button>' + '<button type="button" class="cbi-button cbi-button-negative ark-modal-confirm">' + (opts.confirmText || 'Confirmar') + '</button>' + '</div>' + '</div>';
 
       document.body.appendChild(overlay);
 
@@ -1887,14 +1443,7 @@
     showCountdownScreen: function(title, seconds, note) {
       var scr = document.createElement('div');
       scr.className = 'ark-fullscreen-overlay';
-      scr.innerHTML = '' +
-        '<div class="ark-countdown-card">' +
-          '<div class="ark-spinner-ring"></div>' +
-          '<h2>' + title + '</h2>' +
-          '<div class="ark-countdown-num" id="ark-timer-val">' + seconds + 's</div>' +
-          '<div class="ark-countdown-progress"><div class="ark-progress-bar" id="ark-timer-bar"></div></div>' +
-          '<p class="ark-countdown-note">' + note + '</p>' +
-        '</div>';
+      scr.innerHTML = '' + '<div class="ark-countdown-card">' + '<div class="ark-spinner-ring"></div>' + '<h2>' + title + '</h2>' + '<div class="ark-countdown-num" id="ark-timer-val">' + seconds + 's</div>' + '<div class="ark-countdown-progress"><div class="ark-progress-bar" id="ark-timer-bar"></div></div>' + '<p class="ark-countdown-note">' + note + '</p>' + '</div>';
 
       document.body.appendChild(scr);
 
@@ -2063,11 +1612,7 @@
       container.id = 'ark-smart-survey';
       container.className = 'cbi-section';
       container.style.marginTop = '24px';
-      container.innerHTML = '<h3 style="margin-top:0;">Radar Inteligente (Análise de Ocupação do Espectro)</h3>' +
-        '<div class="cbi-section-descr" style="margin-bottom:15px; color:var(--ark-text-muted, #94a3b8); font-size:12px; line-height:1.5;">' +
-        'O gráfico acima mostra apenas redes que respondem a sondas ativas (no 5GHz muitos rádios evitam varreduras ativas para não interromper conexões). ' +
-        'Abaixo, o radar de hardware mede o ruído e o tempo real de ocupação do ar (Airtime Congestion) em cada canal sem desconectar seus aparelhos.</div>' +
-        '<div id="ark-survey-bars" style="display:flex; flex-wrap:wrap; gap:16px;">Carregando espectro via hardware...</div>';
+      container.innerHTML = '<h3 style="margin-top:0;">Radar Inteligente (Análise de Ocupação do Espectro)</h3>' + '<div class="cbi-section-descr" style="margin-bottom:15px; color:var(--ark-text-muted, #94a3b8); font-size:12px; line-height:1.5;">' + 'O gráfico acima mostra apenas redes que respondem a sondas ativas (no 5GHz muitos rádios evitam varreduras ativas para não interromper conexões). ' + 'Abaixo, o radar de hardware mede o ruído e o tempo real de ocupação do ar (Airtime Congestion) em cada canal sem desconectar seus aparelhos.</div>' + '<div id="ark-survey-bars" style="display:flex; flex-wrap:wrap; gap:16px;">Carregando espectro via hardware...</div>';
       
       view.appendChild(container);
 
@@ -2218,19 +1763,7 @@
         var bar = document.createElement('div');
         bar.id = 'ark-proc-top-bar';
         bar.className = 'ark-proc-top-bar';
-        bar.innerHTML = '' +
-          '<div class="ark-proc-top-left">' +
-            '<span class="ark-proc-top-icon">⚡</span>' +
-            '<div class="ark-proc-top-text">' +
-              '<strong>Processos Ativos na Memória RAM</strong>' +
-              '<span>Programas em execução no sistema. Para monitoramento interativo em tempo real via terminal (SSH), utilize <code>htop</code>.</span>' +
-            '</div>' +
-          '</div>' +
-          '<div class="ark-proc-top-right">' +
-            '<a href="/cgi-bin/luci/admin/system/startup" class="cbi-button cbi-button-apply ark-proc-srv-btn">' +
-              '⚙️ Gerenciar Serviços (Iniciar / Parar / Reiniciar)' +
-            '</a>' +
-          '</div>';
+        bar.innerHTML = '' + '<div class="ark-proc-top-left">' + '<span class="ark-proc-top-icon">⚡</span>' + '<div class="ark-proc-top-text">' + '<strong>Processos Ativos na Memória RAM</strong>' + '<span>Programas em execução no sistema. Para monitoramento interativo em tempo real via terminal (SSH), utilize <code>htop</code>.</span>' + '</div>' + '</div>' + '<div class="ark-proc-top-right">' + '<a href="/cgi-bin/luci/admin/system/startup" class="cbi-button cbi-button-apply ark-proc-srv-btn">' + '⚙️ Gerenciar Serviços (Iniciar / Parar / Reiniciar)' + '</a>' + '</div>';
 
         var guide = document.getElementById('ark-feature-guide');
         if (guide && guide.nextSibling) {
@@ -2456,8 +1989,7 @@
                 var mb = (item.rss_kb / 1024).toFixed(1);
                 var isHeavy = parseFloat(item.percent) >= 5.0;
                 var color = isHeavy ? 'var(--ark-orange, #f59e0b)' : 'var(--ark-blue, #38bdf8)';
-                ramCell.innerHTML = '<span style="font-weight:700; color:' + color + ';">' + mb + ' MB</span> ' +
-                  '<small class="ex-muted" style="font-size:0.75rem; color:var(--ark-text-muted);">(' + item.percent + '%)</small>';
+                ramCell.innerHTML = '<span style="font-weight:700; color:' + color + ';">' + mb + ' MB</span> ' + '<small class="ex-muted" style="font-size:0.75rem; color:var(--ark-text-muted);">(' + item.percent + '%)</small>';
                 ramCell.title = 'Consumo Real (RSS): ' + mb + ' MB (' + item.percent + '% da RAM)\nMemória Virtual Alocada (VSZ): ' + (item.vsz_kb / 1024).toFixed(1) + ' MB';
                 ramCell.setAttribute('data-normalized', '2');
               } else {
@@ -2803,70 +2335,7 @@
 
       var dash = document.createElement('div');
       dash.id = 'ark-overview-dashboard';
-      dash.innerHTML = '' +
-        '<div class="ark-hero-banner">' +
-          '<div class="ark-hero-left">' +
-            '<div class="ark-hero-badge-icon">⚡</div>' +
-            '<div class="ark-hero-details">' +
-              '<h2 id="ark-dash-model">' + model + '</h2>' +
-              '<div class="ark-hero-chips">' +
-                '<span class="ark-chip online">🟢 Online</span>' +
-                '<span class="ark-chip primary">🛡️ ARK Router OS</span>' +
-                '<span class="ark-chip">⏱️ Uptime: ' + uptime + '</span>' +
-                '<span class="ark-chip">🕒 ' + timeStr + '</span>' +
-              '</div>' +
-            '</div>' +
-          '</div>' +
-          '<div class="ark-hero-right" style="display:flex;align-items:center;gap:8px;">' +
-            '<a href="/cgi-bin/luci/admin/equipe-dashboard" class="cbi-button cbi-button-neutral" style="font-size:12px;padding:8px 14px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);">' +
-              '📊 Painel ARK' +
-            '</a>' +
-            '<a href="/cgi-bin/luci/admin/system/reboot" class="cbi-button cbi-button-action" style="font-size:12px;padding:8px 14px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;">' +
-              '🔄 Reiniciar' +
-            '</a>' +
-          '</div>' +
-        '</div>' +
-        '<div class="ark-metrics-grid" id="ark-metrics-grid">' +
-          '<div class="ark-metric-tile">' +
-            '<div class="ark-metric-head">' +
-              '<span class="ark-metric-title">📈 Carga da CPU</span>' +
-              '<span class="ark-metric-value" id="ark-dash-cpu-val">' + loadPct + '%</span>' +
-            '</div>' +
-            '<div class="ark-meter-bar-lg">' +
-              '<div class="ark-meter-bar-fill ' + loadColor + '" id="ark-dash-cpu-bar" style="width:' + loadPct + '%;"></div>' +
-            '</div>' +
-            '<div class="ark-metric-subtext">' +
-              '<span>Médias: ' + load + '</span>' +
-              '<span id="ark-dash-cpu-desc">Processador</span>' +
-            '</div>' +
-          '</div>' +
-          '<div class="ark-metric-tile">' +
-            '<div class="ark-metric-head">' +
-              '<span class="ark-metric-title">🧠 Memória RAM</span>' +
-              '<span class="ark-metric-value" id="ark-dash-mem-val">Verificando…</span>' +
-            '</div>' +
-            '<div class="ark-meter-bar-lg">' +
-              '<div class="ark-meter-bar-fill green" id="ark-dash-mem-bar" style="width:30%;"></div>' +
-            '</div>' +
-            '<div class="ark-metric-subtext">' +
-              '<span id="ark-dash-mem-used">Memória RAM</span>' +
-              '<span id="ark-dash-mem-status" style="color:#34d399;font-weight:600;">Estável</span>' +
-            '</div>' +
-          '</div>' +
-          '<div class="ark-metric-tile">' +
-            '<div class="ark-metric-head">' +
-              '<span class="ark-metric-title">💾 Memória Flash (Overlay)</span>' +
-              '<span class="ark-metric-value" id="ark-dash-flash-val">Verificando…</span>' +
-            '</div>' +
-            '<div class="ark-meter-bar-lg">' +
-              '<div class="ark-meter-bar-fill blue" id="ark-dash-flash-bar" style="width:20%;"></div>' +
-            '</div>' +
-            '<div class="ark-metric-subtext">' +
-              '<span id="ark-dash-flash-type">Memória Flash</span>' +
-              '<span id="ark-dash-flash-pct" style="color:#60a5fa;font-weight:600;">Disponível</span>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
+      dash.innerHTML = '' + '<div class="ark-hero-banner">' + '<div class="ark-hero-left">' + '<div class="ark-hero-badge-icon">⚡</div>' + '<div class="ark-hero-details">' + '<h2 id="ark-dash-model">' + model + '</h2>' + '<div class="ark-hero-chips">' + '<span class="ark-chip online">🟢 Online</span>' + '<span class="ark-chip primary">🛡️ ARK Router OS</span>' + '<span class="ark-chip">⏱️ Uptime: ' + uptime + '</span>' + '<span class="ark-chip">🕒 ' + timeStr + '</span>' + '</div>' + '</div>' + '</div>' + '<div class="ark-hero-right" style="display:flex;align-items:center;gap:8px;">' + '<a href="/cgi-bin/luci/admin/equipe-dashboard" class="cbi-button cbi-button-neutral" style="font-size:12px;padding:8px 14px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);">' + '📊 Painel ARK' + '</a>' + '<a href="/cgi-bin/luci/admin/system/reboot" class="cbi-button cbi-button-action" style="font-size:12px;padding:8px 14px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;">' + '🔄 Reiniciar' + '</a>' + '</div>' + '</div>' + '<div class="ark-metrics-grid" id="ark-metrics-grid">' + '<div class="ark-metric-tile">' + '<div class="ark-metric-head">' + '<span class="ark-metric-title">📈 Carga da CPU</span>' + '<span class="ark-metric-value" id="ark-dash-cpu-val">' + loadPct + '%</span>' + '</div>' + '<div class="ark-meter-bar-lg">' + '<div class="ark-meter-bar-fill ' + loadColor + '" id="ark-dash-cpu-bar" style="width:' + loadPct + '%;"></div>' + '</div>' + '<div class="ark-metric-subtext">' + '<span>Médias: ' + load + '</span>' + '<span id="ark-dash-cpu-desc">Processador</span>' + '</div>' + '</div>' + '<div class="ark-metric-tile">' + '<div class="ark-metric-head">' + '<span class="ark-metric-title">🧠 Memória RAM</span>' + '<span class="ark-metric-value" id="ark-dash-mem-val">Verificando…</span>' + '</div>' + '<div class="ark-meter-bar-lg">' + '<div class="ark-meter-bar-fill green" id="ark-dash-mem-bar" style="width:30%;"></div>' + '</div>' + '<div class="ark-metric-subtext">' + '<span id="ark-dash-mem-used">Memória RAM</span>' + '<span id="ark-dash-mem-status" style="color:#34d399;font-weight:600;">Estável</span>' + '</div>' + '</div>' + '<div class="ark-metric-tile">' + '<div class="ark-metric-head">' + '<span class="ark-metric-title">💾 Memória Flash (Overlay)</span>' + '<span class="ark-metric-value" id="ark-dash-flash-val">Verificando…</span>' + '</div>' + '<div class="ark-meter-bar-lg">' + '<div class="ark-meter-bar-fill blue" id="ark-dash-flash-bar" style="width:20%;"></div>' + '</div>' + '<div class="ark-metric-subtext">' + '<span id="ark-dash-flash-type">Memória Flash</span>' + '<span id="ark-dash-flash-pct" style="color:#60a5fa;font-weight:600;">Disponível</span>' + '</div>' + '</div>' + '</div>';
 
       var firstTarget = main.querySelector('.cbi-map, .cbi-section, h2') || main.firstChild;
       if (firstTarget && firstTarget.parentNode) {
@@ -2946,18 +2415,7 @@
                 var tColor = s0.temp_c >= crit0 ? 'red' : (s0.temp_c >= warn0 ? 'amber' : 'green');
                 var valColor = s0.temp_c >= crit0 ? '#ef4444' : (s0.temp_c >= warn0 ? '#f59e0b' : '#34d399');
                 var pct = Math.min(100, Math.round((s0.temp_c / max0) * 100));
-                tTile.innerHTML = '' +
-                  '<div class="ark-metric-head">' +
-                    '<span class="ark-metric-title">🌡️ Temperatura</span>' +
-                    '<span class="ark-metric-value" style="color:' + valColor + ';">' + s0.temp_c + ' °C</span>' +
-                  '</div>' +
-                  '<div class="ark-meter-bar-lg">' +
-                    '<div class="ark-meter-bar-fill ' + tColor + '" style="width:' + pct + '%;"></div>' +
-                  '</div>' +
-                  '<div class="ark-metric-subtext">' +
-                    '<span>' + s0.name + '</span>' +
-                    '<span style="color:#60a5fa;font-weight:600;">' + (hw.thermal_sensors.length > 1 ? (hw.thermal_sensors.length + ' sensores') : 'CPU') + '</span>' +
-                  '</div>';
+                tTile.innerHTML = '' + '<div class="ark-metric-head">' + '<span class="ark-metric-title">🌡️ Temperatura</span>' + '<span class="ark-metric-value" style="color:' + valColor + ';">' + s0.temp_c + ' °C</span>' + '</div>' + '<div class="ark-meter-bar-lg">' + '<div class="ark-meter-bar-fill ' + tColor + '" style="width:' + pct + '%;"></div>' + '</div>' + '<div class="ark-metric-subtext">' + '<span>' + s0.name + '</span>' + '<span style="color:#60a5fa;font-weight:600;">' + (hw.thermal_sensors.length > 1 ? (hw.thermal_sensors.length + ' sensores') : 'CPU') + '</span>' + '</div>';
                 grid.appendChild(tTile);
               }
             }
@@ -3001,63 +2459,19 @@
 
       var cardBackup = document.createElement('div');
       cardBackup.className = 'ark-action-card primary';
-      cardBackup.innerHTML = '' +
-        '<div class="ark-action-header">' +
-          '<span class="ark-action-icon">💾</span>' +
-          '<div>' +
-            '<h3>Backup de Configurações</h3>' +
-            '<span style="font-size:11px;color:#60a5fa;font-weight:600;">Cópia .tar.gz segura</span>' +
-          '</div>' +
-        '</div>' +
-        '<p class="ark-action-desc">' +
-          'Baixe um arquivo compactado contendo todos os ajustes de Wi-Fi, rede, senhas e serviços do roteador para restauração rápida.' +
-        '</p>' +
-        '<div class="ark-action-btn-wrap" id="ark-backup-slot"></div>';
+      cardBackup.innerHTML = '' + '<div class="ark-action-header">' + '<span class="ark-action-icon">💾</span>' + '<div>' + '<h3>Backup de Configurações</h3>' + '<span style="font-size:11px;color:#60a5fa;font-weight:600;">Cópia .tar.gz segura</span>' + '</div>' + '</div>' + '<p class="ark-action-desc">' + 'Baixe um arquivo compactado contendo todos os ajustes de Wi-Fi, rede, senhas e serviços do roteador para restauração rápida.' + '</p>' + '<div class="ark-action-btn-wrap" id="ark-backup-slot"></div>';
 
       var cardRestore = document.createElement('div');
       cardRestore.className = 'ark-action-card success';
-      cardRestore.innerHTML = '' +
-        '<div class="ark-action-header">' +
-          '<span class="ark-action-icon">📥</span>' +
-          '<div>' +
-            '<h3>Restaurar Backup</h3>' +
-            '<span style="font-size:11px;color:#34d399;font-weight:600;">Subir arquivo .tar.gz</span>' +
-          '</div>' +
-        '</div>' +
-        '<p class="ark-action-desc">' +
-          'Envie uma cópia de segurança salva anteriormente para restabelecer imediatamente todos os parâmetros e regras do equipamento.' +
-        '</p>' +
-        '<div class="ark-action-btn-wrap" id="ark-restore-slot"></div>';
+      cardRestore.innerHTML = '' + '<div class="ark-action-header">' + '<span class="ark-action-icon">📥</span>' + '<div>' + '<h3>Restaurar Backup</h3>' + '<span style="font-size:11px;color:#34d399;font-weight:600;">Subir arquivo .tar.gz</span>' + '</div>' + '</div>' + '<p class="ark-action-desc">' + 'Envie uma cópia de segurança salva anteriormente para restabelecer imediatamente todos os parâmetros e regras do equipamento.' + '</p>' + '<div class="ark-action-btn-wrap" id="ark-restore-slot"></div>';
 
       var cardFlash = document.createElement('div');
       cardFlash.className = 'ark-action-card purple';
-      cardFlash.innerHTML = '' +
-        '<div class="ark-action-header">' +
-          '<span class="ark-action-icon">🚀</span>' +
-          '<div>' +
-            '<h3>Atualização de Firmware</h3>' +
-            '<span style="font-size:11px;color:#c084fc;font-weight:600;">Imagem OpenWrt Sysupgrade</span>' +
-          '</div>' +
-        '</div>' +
-        '<p class="ark-action-desc">' +
-          'Grave uma nova imagem de firmware (.bin). O sistema validará a assinatura e permitirá manter suas configurações atuais.' +
-        '</p>' +
-        '<div class="ark-action-btn-wrap" id="ark-flash-slot"></div>';
+      cardFlash.innerHTML = '' + '<div class="ark-action-header">' + '<span class="ark-action-icon">🚀</span>' + '<div>' + '<h3>Atualização de Firmware</h3>' + '<span style="font-size:11px;color:#c084fc;font-weight:600;">Imagem OpenWrt Sysupgrade</span>' + '</div>' + '</div>' + '<p class="ark-action-desc">' + 'Grave uma nova imagem de firmware (.bin). O sistema validará a assinatura e permitirá manter suas configurações atuais.' + '</p>' + '<div class="ark-action-btn-wrap" id="ark-flash-slot"></div>';
 
       var cardReset = document.createElement('div');
       cardReset.className = 'ark-action-card danger';
-      cardReset.innerHTML = '' +
-        '<div class="ark-action-header">' +
-          '<span class="ark-action-icon">⚠️</span>' +
-          '<div>' +
-            '<h3>Padrões de Fábrica</h3>' +
-            '<span style="font-size:11px;color:#f87171;font-weight:600;">Apagar todas as configurações</span>' +
-          '</div>' +
-        '</div>' +
-        '<p class="ark-action-desc">' +
-          '<strong style="color:#ef4444;">Ação irreversível!</strong> Apaga todas as redes, senhas e regras, retornando o roteador ao estado original de fábrica.' +
-        '</p>' +
-        '<div class="ark-action-btn-wrap" id="ark-reset-slot"></div>';
+      cardReset.innerHTML = '' + '<div class="ark-action-header">' + '<span class="ark-action-icon">⚠️</span>' + '<div>' + '<h3>Padrões de Fábrica</h3>' + '<span style="font-size:11px;color:#f87171;font-weight:600;">Apagar todas as configurações</span>' + '</div>' + '</div>' + '<p class="ark-action-desc">' + '<strong style="color:#ef4444;">Ação irreversível!</strong> Apaga todas as redes, senhas e regras, retornando o roteador ao estado original de fábrica.' + '</p>' + '<div class="ark-action-btn-wrap" id="ark-reset-slot"></div>';
 
       grid.appendChild(cardBackup);
       grid.appendChild(cardRestore);
@@ -3115,26 +2529,7 @@
         card.style.padding = '20px 24px';
         card.style.marginTop = '12px';
 
-        card.innerHTML = '' +
-          '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">' +
-            '<div style="max-width:680px;">' +
-              '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
-                '<span style="font-size:22px;">💾</span>' +
-                '<h3 style="margin:0;font-size:16px;font-weight:700;color:#fff;">Cópia de Segurança de Partições de Baixo Nível (MTD)</h3>' +
-                '<span style="background:rgba(234,179,8,0.15);color:#facc15;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;border:1px solid rgba(234,179,8,0.3);">Recurso Avançado</span>' +
-              '</div>' +
-              '<p style="margin:0 0 10px 0;font-size:13px;color:var(--ark-text-muted, #94a3b8);line-height:1.5;">' +
-                'Permite extrair a imagem binária (.bin) bruta diretamente do chip de memória Flash (16 MB) do roteador.' +
-              '</p>' +
-              '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px;font-size:12px;background:rgba(0,0,0,0.25);padding:10px 14px;border-radius:8px;border-left:3px solid #3b82f6;">' +
-                '<div><strong style="color:#60a5fa;">u-boot (mtd0):</strong> O bootloader ("BIOS") do aparelho. Essencial para recuperar roteadores inoperantes (unbrick).</div>' +
-                '<div><strong style="color:#34d399;">art (mtd9):</strong> Atheros Radio Test. Calibração analógica de fábrica dos rádios Wi-Fi. Guarde como segurança!</div>' +
-              '</div>' +
-            '</div>' +
-            '<div id="ark-mtd-slot" style="display:flex;flex-direction:column;gap:8px;min-width:220px;">' +
-              '<label style="font-size:12px;font-weight:600;color:#cbd5e1;">Selecione a partição MTD:</label>' +
-            '</div>' +
-          '</div>';
+        card.innerHTML = '' + '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">' + '<div style="max-width:680px;">' + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' + '<span style="font-size:22px;">💾</span>' + '<h3 style="margin:0;font-size:16px;font-weight:700;color:#fff;">Cópia de Segurança de Partições de Baixo Nível (MTD)</h3>' + '<span style="background:rgba(234,179,8,0.15);color:#facc15;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;border:1px solid rgba(234,179,8,0.3);">Recurso Avançado</span>' + '</div>' + '<p style="margin:0 0 10px 0;font-size:13px;color:var(--ark-text-muted, #94a3b8);line-height:1.5;">' + 'Permite extrair a imagem binária (.bin) bruta diretamente do chip de memória Flash (16 MB) do roteador.' + '</p>' + '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:10px;font-size:12px;background:rgba(0,0,0,0.25);padding:10px 14px;border-radius:8px;border-left:3px solid #3b82f6;">' + '<div><strong style="color:#60a5fa;">u-boot (mtd0):</strong> O bootloader ("BIOS") do aparelho. Essencial para recuperar roteadores inoperantes (unbrick).</div>' + '<div><strong style="color:#34d399;">art (mtd9):</strong> Atheros Radio Test. Calibração analógica de fábrica dos rádios Wi-Fi. Guarde como segurança!</div>' + '</div>' + '</div>' + '<div id="ark-mtd-slot" style="display:flex;flex-direction:column;gap:8px;min-width:220px;">' + '<label style="font-size:12px;font-weight:600;color:#cbd5e1;">Selecione a partição MTD:</label>' + '</div>' + '</div>';
 
         actionSec.appendChild(card);
         var slot = card.querySelector('#ark-mtd-slot');
@@ -3193,23 +2588,7 @@
       card.style.maxWidth = '640px';
       card.style.margin = '20px auto';
       card.style.borderTop = '3px solid #3b82f6';
-      card.innerHTML = '' +
-        '<div class="ark-action-header">' +
-          '<span class="ark-action-icon" style="background:rgba(59,130,246,0.15);color:#60a5fa;font-size:28px;width:52px;height:52px;">🔄</span>' +
-          '<div>' +
-            '<h3 style="font-size:18px;">Manutenção e Reinicialização</h3>' +
-            '<span style="font-size:12px;color:#94a3b8;">Reiniciar o sistema operacional com segurança</span>' +
-          '</div>' +
-        '</div>' +
-        '<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px;margin:14px 0;">' +
-          '<div style="font-weight:700;margin-bottom:8px;font-size:13px;color:#f8fafc;">O que esperar durante a reinicialização:</div>' +
-          '<ul style="margin:0;padding-left:18px;font-size:12px;color:#94a3b8;line-height:1.7;">' +
-            '<li>⏱️ <strong>Tempo estimado</strong>: O roteador levará cerca de 60 a 75 segundos para restabelecer os serviços.</li>' +
-            '<li>📶 <strong>Conexões</strong>: A internet Wi-Fi e os cabos de rede serão interrompidos temporariamente.</li>' +
-            '<li>🛡️ <strong>Integridade</strong>: Nenhuma configuração gravada será perdida.</li>' +
-          '</ul>' +
-        '</div>' +
-        '<div class="ark-action-btn-wrap" id="ark-reboot-btn-slot"></div>';
+      card.innerHTML = '' + '<div class="ark-action-header">' + '<span class="ark-action-icon" style="background:rgba(59,130,246,0.15);color:#60a5fa;font-size:28px;width:52px;height:52px;">🔄</span>' + '<div>' + '<h3 style="font-size:18px;">Manutenção e Reinicialização</h3>' + '<span style="font-size:12px;color:#94a3b8;">Reiniciar o sistema operacional com segurança</span>' + '</div>' + '</div>' + '<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px;margin:14px 0;">' + '<div style="font-weight:700;margin-bottom:8px;font-size:13px;color:#f8fafc;">O que esperar durante a reinicialização:</div>' + '<ul style="margin:0;padding-left:18px;font-size:12px;color:#94a3b8;line-height:1.7;">' + '<li>⏱️ <strong>Tempo estimado</strong>: O roteador levará cerca de 60 a 75 segundos para restabelecer os serviços.</li>' + '<li>📶 <strong>Conexões</strong>: A internet Wi-Fi e os cabos de rede serão interrompidos temporariamente.</li>' + '<li>🛡️ <strong>Integridade</strong>: Nenhuma configuração gravada será perdida.</li>' + '</ul>' + '</div>' + '<div class="ark-action-btn-wrap" id="ark-reboot-btn-slot"></div>';
 
       var form = rebootBtn.closest('form');
       var target = view.querySelector('.cbi-map, h2') || view.firstChild;
@@ -3247,30 +2626,15 @@
 
       var pingCard = document.createElement('div');
       pingCard.className = 'ark-diag-card';
-      pingCard.innerHTML = '' +
-        '<div class="ark-diag-card-title"><span>📡</span> Teste de Ping (Latência)</div>' +
-        '<div class="ark-diag-card-desc">Verifica conectividade e tempo de resposta em milissegundos.</div>' +
-        '<div class="ark-preset-pills">' +
-          '<button type="button" class="ark-preset-btn" data-host="8.8.8.8">🌐 Google DNS</button>' +
-          '<button type="button" class="ark-preset-btn" data-host="1.1.1.1">⚡ Cloudflare</button>' +
-          '<button type="button" class="ark-preset-btn" data-host="openwrt.org">🐧 OpenWrt</button>' +
-          '<button type="button" class="ark-preset-btn" data-host="registro.br">🇧🇷 Registro.br</button>' +
-        '</div>' +
-        '<div id="ark-ping-slot"></div>';
+      pingCard.innerHTML = '' + '<div class="ark-diag-card-title"><span>📡</span> Teste de Ping (Latência)</div>' + '<div class="ark-diag-card-desc">Verifica conectividade e tempo de resposta em milissegundos.</div>' + '<div class="ark-preset-pills">' + '<button type="button" class="ark-preset-btn" data-host="8.8.8.8">🌐 Google DNS</button>' + '<button type="button" class="ark-preset-btn" data-host="1.1.1.1">⚡ Cloudflare</button>' + '<button type="button" class="ark-preset-btn" data-host="openwrt.org">🐧 OpenWrt</button>' + '<button type="button" class="ark-preset-btn" data-host="registro.br">🇧🇷 Registro.br</button>' + '</div>' + '<div id="ark-ping-slot"></div>';
 
       var traceCard = document.createElement('div');
       traceCard.className = 'ark-diag-card';
-      traceCard.innerHTML = '' +
-        '<div class="ark-diag-card-title"><span>🗺️</span> Traceroute (Rotas)</div>' +
-        '<div class="ark-diag-card-desc">Mapeia cada salto e roteador intermediário até o servidor de destino.</div>' +
-        '<div id="ark-trace-slot" style="margin-top:auto;"></div>';
+      traceCard.innerHTML = '' + '<div class="ark-diag-card-title"><span>🗺️</span> Traceroute (Rotas)</div>' + '<div class="ark-diag-card-desc">Mapeia cada salto e roteador intermediário até o servidor de destino.</div>' + '<div id="ark-trace-slot" style="margin-top:auto;"></div>';
 
       var nsCard = document.createElement('div');
       nsCard.className = 'ark-diag-card';
-      nsCard.innerHTML = '' +
-        '<div class="ark-diag-card-title"><span>🔍</span> Consulta DNS (Nslookup)</div>' +
-        '<div class="ark-diag-card-desc">Resolve nomes de domínio em endereços IP para detectar falhas no provedor.</div>' +
-        '<div id="ark-ns-slot" style="margin-top:auto;"></div>';
+      nsCard.innerHTML = '' + '<div class="ark-diag-card-title"><span>🔍</span> Consulta DNS (Nslookup)</div>' + '<div class="ark-diag-card-desc">Resolve nomes de domínio em endereços IP para detectar falhas no provedor.</div>' + '<div id="ark-ns-slot" style="margin-top:auto;"></div>';
 
       grid.appendChild(pingCard);
       grid.appendChild(traceCard);
@@ -3359,21 +2723,7 @@
           card = document.createElement('div');
           card.id = cardId;
           card.className = 'ark-radio-card ' + cardClass;
-          card.innerHTML = '' +
-            '<div class="ark-radio-header">' +
-              '<div class="ark-radio-title-wrap">' +
-                '<h3>' + titleText + '</h3>' +
-                '<div class="ark-radio-meta" id="ark-r' + rKey + '-meta">' + (isEn ? 'Identifying hardware...' : (isEs ? 'Identificando hardware...' : 'Identificando hardware...')) + '</div>' +
-                '<div class="ark-radio-badges" id="ark-r' + rKey + '-badges">' +
-                  '<span class="ark-chip primary" id="ark-r' + rKey + '-chan-chip">' + (isEn ? 'Channel --' : (isEs ? 'Canal --' : 'Canal --')) + '</span>' +
-                  '<span class="ark-chip info" id="ark-r' + rKey + '-bitrate-chip" style="display:none;"></span>' +
-                  '<span class="ark-chip online" id="ark-r' + rKey + '-status-chip">🟢 ' + (isEn ? 'Radio Active' : (isEs ? 'Radio Activa' : 'Rádio Ativo')) + '</span>' +
-                '</div>' +
-              '</div>' +
-              '<div class="ark-radio-actions" id="ark-r' + rKey + '-actions"></div>' +
-            '</div>' +
-            '<div style="font-size:12px;font-weight:700;color:#94a3b8;margin-top:8px;">' + (isEn ? 'Broadcasted Wi-Fi Networks:' : (isEs ? 'Redes Wi-Fi Transmitidas:' : 'Redes Wi-Fi Transmitidas:')) + '</div>' +
-            '<div class="ark-ssid-list" id="ark-r' + rKey + '-ssids"></div>';
+          card.innerHTML = '' + '<div class="ark-radio-header">' + '<div class="ark-radio-title-wrap">' + '<h3>' + titleText + '</h3>' + '<div class="ark-radio-meta" id="ark-r' + rKey + '-meta">' + (isEn ? 'Identifying hardware...' : (isEs ? 'Identificando hardware...' : 'Identificando hardware...')) + '</div>' + '<div class="ark-radio-badges" id="ark-r' + rKey + '-badges">' + '<span class="ark-chip primary" id="ark-r' + rKey + '-chan-chip">' + (isEn ? 'Channel --' : (isEs ? 'Canal --' : 'Canal --')) + '</span>' + '<span class="ark-chip info" id="ark-r' + rKey + '-bitrate-chip" style="display:none;"></span>' + '<span class="ark-chip online" id="ark-r' + rKey + '-status-chip">🟢 ' + (isEn ? 'Radio Active' : (isEs ? 'Radio Activa' : 'Rádio Ativo')) + '</span>' + '</div>' + '</div>' + '<div class="ark-radio-actions" id="ark-r' + rKey + '-actions"></div>' + '</div>' + '<div style="font-size:12px;font-weight:700;color:#94a3b8;margin-top:8px;">' + (isEn ? 'Broadcasted Wi-Fi Networks:' : (isEs ? 'Redes Wi-Fi Transmitidas:' : 'Redes Wi-Fi Transmitidas:')) + '</div>' + '<div class="ark-ssid-list" id="ark-r' + rKey + '-ssids"></div>';
           grid.appendChild(card);
         }
         return card;
@@ -3591,12 +2941,7 @@
 
         var aHeader = document.createElement('div');
         aHeader.className = 'ark-assoclist-header';
-        aHeader.innerHTML = '' +
-          '<div class="ark-assoclist-title-wrap">' +
-            '<h3>📶 ' + titleStr + '</h3>' +
-            '<span class="ark-chip primary" id="ark-assoclist-count">' + (isEn ? 'Scanning...' : (isEs ? 'Buscando...' : 'Buscando...')) + '</span>' +
-          '</div>' +
-          '<div class="ark-table-swipe-hint">↔ ' + (isEn ? 'Swipe table to view signal & rates' : (isEs ? 'Deslice para ver señal y tasas' : 'Deslize para ver sinal e taxas')) + '</div>';
+        aHeader.innerHTML = '' + '<div class="ark-assoclist-title-wrap">' + '<h3>📶 ' + titleStr + '</h3>' + '<span class="ark-chip primary" id="ark-assoclist-count">' + (isEn ? 'Scanning...' : (isEs ? 'Buscando...' : 'Buscando...')) + '</span>' + '</div>' + '<div class="ark-table-swipe-hint">↔ ' + (isEn ? 'Swipe table to view signal & rates' : (isEs ? 'Deslice para ver señal y tasas' : 'Deslize para ver sinal e taxas')) + '</div>';
 
         var respWrap = document.createElement('div');
         respWrap.className = 'ark-table-responsive';
@@ -3706,12 +3051,7 @@
               var dotText = isConnected ? '● Conectado' : '○ Standby';
               var badgeActive = isConnected ? 'active' : '';
 
-              memberBadgesHTML += '' +
-                '<span class="ark-member-badge ' + badgeActive + '" title="' + devName + ' (' + devType + ')' + (subMac ? ' - MAC: ' + subMac : '') + '">' +
-                  '<span class="icon">' + devIcon + '</span>' +
-                  '<span class="name"><strong>' + friendlyName + '</strong></span>' +
-                  '<span class="dot ' + dotClass + '">' + dotText + '</span>' +
-                '</span>';
+              memberBadgesHTML += '' + '<span class="ark-member-badge ' + badgeActive + '" title="' + devName + ' (' + devType + ')' + (subMac ? ' - MAC: ' + subMac : '') + '">' + '<span class="icon">' + devIcon + '</span>' + '<span class="name"><strong>' + friendlyName + '</strong></span>' + '<span class="dot ' + dotClass + '">' + dotText + '</span>' + '</span>';
             }
           });
         }
@@ -3720,47 +3060,12 @@
         if (!memberBadgesHTML) {
           var defIcon = (sid.indexOf('wan') !== -1) ? '🌐' : '🔌';
           var defLabel = (sid.indexOf('wan') !== -1) ? 'Porta WAN Física (eth0.2)' : 'Porta LAN Física (eth0.1)';
-          memberBadgesHTML = '' +
-            '<span class="ark-member-badge active">' +
-              '<span class="icon">' + defIcon + '</span>' +
-              '<span class="name"><strong>' + defLabel + '</strong></span>' +
-              '<span class="dot online">● Conectado</span>' +
-            '</span>';
+          memberBadgesHTML = '' + '<span class="ark-member-badge active">' + '<span class="icon">' + defIcon + '</span>' + '<span class="name"><strong>' + defLabel + '</strong></span>' + '<span class="dot online">● Conectado</span>' + '</span>';
         }
 
         var card = document.createElement('div');
         card.className = 'ark-iface-card ' + cardClass;
-        card.innerHTML = '' +
-          '<div class="ark-iface-head">' +
-            '<div class="ark-iface-name"><span>' + icon + '</span> ' + name + '</div>' +
-            '<div class="ark-iface-chips">' +
-              '<span class="ark-chip online" style="font-size:11px;">🟢 ' + uptime + '</span>' +
-              '<span class="ark-chip proto">🏷️ ' + proto + '</span>' +
-            '</div>' +
-          '</div>' +
-          '<div class="ark-iface-stats">' +
-            '<div class="ark-iface-stat-tile">' +
-              '<span class="label">Endereço IPv4:</span>' +
-              '<span class="val" style="color:#60a5fa;font-size:14px;">' + ip + '</span>' +
-            '</div>' +
-            '<div class="ark-iface-stat-tile">' +
-              '<span class="label">Dispositivo Principal / MAC:</span>' +
-              '<span class="val">' + device + (mac ? ' <span style="font-size:10px;color:var(--ark-text-dim);">(' + mac + ')</span>' : '') + '</span>' +
-            '</div>' +
-            '<div class="ark-iface-stat-tile">' +
-              '<span class="label">Download Total (RX):</span>' +
-              '<span class="val" style="color:#34d399;">⬇️ ' + rx + '</span>' +
-            '</div>' +
-            '<div class="ark-iface-stat-tile">' +
-              '<span class="label">Upload Total (TX):</span>' +
-              '<span class="val" style="color:#a78bfa;">⬆️ ' + tx + '</span>' +
-            '</div>' +
-          '</div>' +
-          '<div class="ark-iface-members">' +
-            '<div class="ark-iface-members-title">Portas e Dispositivos Físicos Vinculados:</div>' +
-            '<div class="ark-iface-member-list">' + memberBadgesHTML + '</div>' +
-          '</div>' +
-          '<div class="ark-iface-actions"></div>';
+        card.innerHTML = '' + '<div class="ark-iface-head">' + '<div class="ark-iface-name"><span>' + icon + '</span> ' + name + '</div>' + '<div class="ark-iface-chips">' + '<span class="ark-chip online" style="font-size:11px;">🟢 ' + uptime + '</span>' + '<span class="ark-chip proto">🏷️ ' + proto + '</span>' + '</div>' + '</div>' + '<div class="ark-iface-stats">' + '<div class="ark-iface-stat-tile">' + '<span class="label">Endereço IPv4:</span>' + '<span class="val" style="color:#60a5fa;font-size:14px;">' + ip + '</span>' + '</div>' + '<div class="ark-iface-stat-tile">' + '<span class="label">Dispositivo Principal / MAC:</span>' + '<span class="val">' + device + (mac ? ' <span style="font-size:10px;color:var(--ark-text-dim);">(' + mac + ')</span>' : '') + '</span>' + '</div>' + '<div class="ark-iface-stat-tile">' + '<span class="label">Download Total (RX):</span>' + '<span class="val" style="color:#34d399;">⬇️ ' + rx + '</span>' + '</div>' + '<div class="ark-iface-stat-tile">' + '<span class="label">Upload Total (TX):</span>' + '<span class="val" style="color:#a78bfa;">⬆️ ' + tx + '</span>' + '</div>' + '</div>' + '<div class="ark-iface-members">' + '<div class="ark-iface-members-title">Portas e Dispositivos Físicos Vinculados:</div>' + '<div class="ark-iface-member-list">' + memberBadgesHTML + '</div>' + '</div>' + '<div class="ark-iface-actions"></div>';
 
         var actWrap = card.querySelector('.ark-iface-actions');
         var actions = r.querySelector('.cbi-section-actions');
@@ -3848,15 +3153,7 @@
       var card = document.createElement('div');
       card.id = 'ark-admin-card';
       card.className = 'ark-admin-card';
-      card.innerHTML = '' +
-        '<div class="ark-admin-card-head">' +
-          '<div class="icon">🔐</div>' +
-          '<div>' +
-            '<h3>' + title + '</h3>' +
-            '<p>' + desc + '</p>' +
-          '</div>' +
-        '</div>' +
-        '<div class="ark-grid-2" id="ark-pw-grid-slot"></div>';
+      card.innerHTML = '' + '<div class="ark-admin-card-head">' + '<div class="icon">🔐</div>' + '<div>' + '<h3>' + title + '</h3>' + '<p>' + desc + '</p>' + '</div>' + '</div>' + '<div class="ark-grid-2" id="ark-pw-grid-slot"></div>';
 
       pwSection.parentNode.insertBefore(card, pwSection);
 
@@ -3887,91 +3184,7 @@
 
       var container = document.createElement('div');
       container.id = 'ark-led-control-center';
-      container.innerHTML = '' +
-        '<div class="ark-presets-box">' +
-          '<div style="display:flex;align-items:center;gap:10px;">' +
-            '<span style="font-size:24px;">💡</span>' +
-            '<div>' +
-              '<h3 style="margin:0;font-size:16px;color:#fff;">Perfis Rápidos de Iluminação (1 Clique)</h3>' +
-              '<p style="margin:2px 0 0;font-size:12px;color:var(--ark-text-muted);">Configure os LEDs do painel frontal instantaneamente para diferentes momentos e necessidades.</p>' +
-            '</div>' +
-          '</div>' +
-          '<div class="ark-preset-cards">' +
-            '<button type="button" class="ark-preset-tile" data-led-preset="smart">' +
-              '<div class="ark-preset-tile-title">🟢 Internet Conectada (Verde Fixo)</div>' +
-              '<div class="ark-preset-tile-desc">LED frontal verde contínuo e estável quando conectado; sem piscar com tráfego de pacotes ou Wi-Fi.</div>' +
-            '</button>' +
-            '<button type="button" class="ark-preset-tile" data-led-preset="night">' +
-              '<div class="ark-preset-tile-title">🌙 Modo Noturno (Tudo Desligado)</div>' +
-              '<div class="ark-preset-tile-desc">Desliga todos os LEDs frontais para quartos e ambientes de descanso. Roteador 100% escuro sem claridade.</div>' +
-            '</button>' +
-            '<button type="button" class="ark-preset-tile" data-led-preset="default">' +
-              '<div class="ark-preset-tile-title">↺ Restaurar Padrão de Fábrica</div>' +
-              '<div class="ark-preset-tile-desc">Restaura a iluminação original e gatilhos padrão de fábrica do seu roteador com 1 clique.</div>' +
-            '</button>' +
-          '</div>' +
-
-          '<!-- Seção de Personalização Visual de Cor RGB -->' +
-          '<div id="ark-rgb-picker-section" class="ark-rgb-box" style="display:none;">' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">' +
-              '<div style="display:flex;align-items:center;gap:8px;">' +
-                '<span style="font-size:22px;">🎨</span>' +
-                '<div>' +
-                  '<h4 style="margin:0;font-size:14px;color:#fff;">Personalizar Cor do LED RGB Frontal</h4>' +
-                  '<p style="margin:2px 0 0;font-size:12px;color:var(--ark-text-muted);">Escolha a cor antes de aplicar: utilize a paleta visual, selecione um tom rápido ou digite o código HEX / RGB:</p>' +
-                '</div>' +
-              '</div>' +
-              '<div id="ark-rgb-preview-badge" style="display:flex;align-items:center;gap:8px;padding:5px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:20px;">' +
-                '<span id="ark-rgb-preview-dot" style="width:14px;height:14px;border-radius:50%;background:#00FF00;box-shadow:0 0 10px #00FF00;display:inline-block;transition:all 0.2s ease;"></span>' +
-                '<span id="ark-rgb-preview-text" style="font-size:12px;font-weight:700;font-family:monospace;color:#fff;">#00FF00</span>' +
-              '</div>' +
-            '</div>' +
-
-            '<div style="display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap;">' +
-              '<div style="display:flex;align-items:center;gap:8px;">' +
-                '<input type="color" id="ark-rgb-color-native" value="#00ff00" style="width:40px;height:36px;padding:2px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:transparent;cursor:pointer;" title="Clique para abrir a paleta de cores completa">' +
-                '<input type="text" id="ark-rgb-hex-manual" value="#00FF00" maxlength="20" style="width:120px;height:36px;padding:0 10px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:rgba(0,0,0,0.3);color:#fff;font-family:monospace;font-weight:700;font-size:13px;text-transform:uppercase;" placeholder="#00FF00">' +
-              '</div>' +
-              '<div style="display:flex;align-items:center;gap:6px;">' +
-                '<label for="ark-rgb-effect-select" style="font-size:12px;color:var(--ark-text-muted);font-weight:600;">Efeito:</label>' +
-                '<select id="ark-rgb-effect-select" style="height:36px;padding:0 10px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:rgba(0,0,0,0.4);color:#fff;font-size:12px;cursor:pointer;">' +
-                  '<option value="breathe" selected>🌊 Respiração Suave (Breathing)</option>' +
-                  '<option value="solid">💡 Estático (Fixo)</option>' +
-                  '<option value="rainbow">🌈 Arco-Íris Fluido (Rainbow)</option>' +
-                '</select>' +
-              '</div>' +
-              '<div id="ark-rgb-speed-group" style="display:flex;align-items:center;gap:6px;">' +
-                '<label for="ark-rgb-speed-select" style="font-size:12px;color:var(--ark-text-muted);font-weight:600;">Velocidade:</label>' +
-                '<select id="ark-rgb-speed-select" style="height:36px;padding:0 10px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:rgba(0,0,0,0.4);color:#fff;font-size:12px;cursor:pointer;">' +
-                  '<option value="slow">🐢 Lenta (Zen)</option>' +
-                  '<option value="normal" selected>⚖️ Normal</option>' +
-                  '<option value="fast">⚡ Rápida (Dinâmica)</option>' +
-                '</select>' +
-              '</div>' +
-              '<button type="button" id="ark-rgb-apply-btn" class="cbi-button cbi-button-apply" style="height:36px;display:flex;align-items:center;gap:6px;font-weight:600;font-size:12px;padding:0 16px;">' +
-                '<span>✨</span> Aplicar no LED' +
-              '</button>' +
-            '</div>' +
-
-            '<div style="display:flex;align-items:center;gap:6px;margin-top:12px;flex-wrap:wrap;">' +
-              '<span style="font-size:11px;color:var(--ark-text-muted);margin-right:4px;">Cores rápidas:</span>' +
-              '<button type="button" class="ark-color-swatch-btn" data-color="#00FF00" style="background:#00FF00;color:#000;" title="Verde Esmeralda">Verde</button>' +
-              '<button type="button" class="ark-color-swatch-btn" data-color="#00E5FF" style="background:#00E5FF;color:#000;" title="Azul Ciano / Predador">Ciano</button>' +
-              '<button type="button" class="ark-color-swatch-btn" data-color="#3B82F6" style="background:#3B82F6;color:#fff;" title="Azul Royal">Azul</button>' +
-              '<button type="button" class="ark-color-swatch-btn" data-color="#8B5CF6" style="background:#8B5CF6;color:#fff;" title="Roxo Cyberpunk">Roxo</button>' +
-              '<button type="button" class="ark-color-swatch-btn" data-color="#EC4899" style="background:#EC4899;color:#fff;" title="Rosa / Magenta">Rosa</button>' +
-              '<button type="button" class="ark-color-swatch-btn" data-color="#F59E0B" style="background:#F59E0B;color:#000;" title="Âmbar / Laranja">Âmbar</button>' +
-              '<button type="button" class="ark-color-swatch-btn" data-color="#EF4444" style="background:#EF4444;color:#fff;" title="Vermelho Gamer">Vermelho</button>' +
-              '<button type="button" class="ark-color-swatch-btn" data-color="#FFFFFF" style="background:#FFFFFF;color:#000;" title="Branco Puro">Branco</button>' +
-            '</div>' +
-          '</div>' +
-
-          '<div id="ark-led-feedback" style="display:none;margin-top:12px;font-size:12px;font-weight:600;padding:8px 12px;border-radius:6px;"></div>' +
-        '</div>' +
-        '<div id="ark-led-hardware-header" style="margin:20px 0 10px;font-size:14px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;">' +
-          '<span>🎛️</span> <span id="ark-led-hardware-title">Painel Frontal dos LEDs Físicos:</span>' +
-        '</div>' +
-        '<div class="ark-led-grid" id="ark-led-tiles"></div>';
+      container.innerHTML = '' + '<div class="ark-presets-box">' + '<div style="display:flex;align-items:center;gap:10px;">' + '<span style="font-size:24px;">💡</span>' + '<div>' + '<h3 style="margin:0;font-size:16px;color:#fff;">Perfis Rápidos de Iluminação (1 Clique)</h3>' + '<p style="margin:2px 0 0;font-size:12px;color:var(--ark-text-muted);">Configure os LEDs do painel frontal instantaneamente para diferentes momentos e necessidades.</p>' + '</div>' + '</div>' + '<div class="ark-preset-cards">' + '<button type="button" class="ark-preset-tile" data-led-preset="smart">' + '<div class="ark-preset-tile-title">🟢 Internet Conectada (Verde Fixo)</div>' + '<div class="ark-preset-tile-desc">LED frontal verde contínuo e estável quando conectado; sem piscar com tráfego de pacotes ou Wi-Fi.</div>' + '</button>' + '<button type="button" class="ark-preset-tile" data-led-preset="night">' + '<div class="ark-preset-tile-title">🌙 Modo Noturno (Tudo Desligado)</div>' + '<div class="ark-preset-tile-desc">Desliga todos os LEDs frontais para quartos e ambientes de descanso. Roteador 100% escuro sem claridade.</div>' + '</button>' + '<button type="button" class="ark-preset-tile" data-led-preset="default">' + '<div class="ark-preset-tile-title">↺ Restaurar Padrão de Fábrica</div>' + '<div class="ark-preset-tile-desc">Restaura a iluminação original e gatilhos padrão de fábrica do seu roteador com 1 clique.</div>' + '</button>' + '</div>' + '<!-- Seção de Personalização Visual de Cor RGB -->' + '<div id="ark-rgb-picker-section" class="ark-rgb-box" style="display:none;">' + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">' + '<div style="display:flex;align-items:center;gap:8px;">' + '<span style="font-size:22px;">🎨</span>' + '<div>' + '<h4 style="margin:0;font-size:14px;color:#fff;">Personalizar Cor do LED RGB Frontal</h4>' + '<p style="margin:2px 0 0;font-size:12px;color:var(--ark-text-muted);">Escolha a cor antes de aplicar: utilize a paleta visual, selecione um tom rápido ou digite o código HEX / RGB:</p>' + '</div>' + '</div>' + '<div id="ark-rgb-preview-badge" style="display:flex;align-items:center;gap:8px;padding:5px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:20px;">' + '<span id="ark-rgb-preview-dot" style="width:14px;height:14px;border-radius:50%;background:#00FF00;box-shadow:0 0 10px #00FF00;display:inline-block;transition:all 0.2s ease;"></span>' + '<span id="ark-rgb-preview-text" style="font-size:12px;font-weight:700;font-family:monospace;color:#fff;">#00FF00</span>' + '</div>' + '</div>' + '<div style="display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap;">' + '<div style="display:flex;align-items:center;gap:8px;">' + '<input type="color" id="ark-rgb-color-native" value="#00ff00" style="width:40px;height:36px;padding:2px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:transparent;cursor:pointer;" title="Clique para abrir a paleta de cores completa">' + '<input type="text" id="ark-rgb-hex-manual" value="#00FF00" maxlength="20" style="width:120px;height:36px;padding:0 10px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:rgba(0,0,0,0.3);color:#fff;font-family:monospace;font-weight:700;font-size:13px;text-transform:uppercase;" placeholder="#00FF00">' + '</div>' + '<div style="display:flex;align-items:center;gap:6px;">' + '<label for="ark-rgb-effect-select" style="font-size:12px;color:var(--ark-text-muted);font-weight:600;">Efeito:</label>' + '<select id="ark-rgb-effect-select" style="height:36px;padding:0 10px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:rgba(0,0,0,0.4);color:#fff;font-size:12px;cursor:pointer;">' + '<option value="breathe" selected>🌊 Respiração Suave (Breathing)</option>' + '<option value="solid">💡 Estático (Fixo)</option>' + '<option value="rainbow">🌈 Arco-Íris Fluido (Rainbow)</option>' + '</select>' + '</div>' + '<div id="ark-rgb-speed-group" style="display:flex;align-items:center;gap:6px;">' + '<label for="ark-rgb-speed-select" style="font-size:12px;color:var(--ark-text-muted);font-weight:600;">Velocidade:</label>' + '<select id="ark-rgb-speed-select" style="height:36px;padding:0 10px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:rgba(0,0,0,0.4);color:#fff;font-size:12px;cursor:pointer;">' + '<option value="slow">🐢 Lenta (Zen)</option>' + '<option value="normal" selected>⚖️ Normal</option>' + '<option value="fast">⚡ Rápida (Dinâmica)</option>' + '</select>' + '</div>' + '<button type="button" id="ark-rgb-apply-btn" class="cbi-button cbi-button-apply" style="height:36px;display:flex;align-items:center;gap:6px;font-weight:600;font-size:12px;padding:0 16px;">' + '<span>✨</span> Aplicar no LED' + '</button>' + '</div>' + '<div style="display:flex;align-items:center;gap:6px;margin-top:12px;flex-wrap:wrap;">' + '<span style="font-size:11px;color:var(--ark-text-muted);margin-right:4px;">Cores rápidas:</span>' + '<button type="button" class="ark-color-swatch-btn" data-color="#00FF00" style="background:#00FF00;color:#000;" title="Verde Esmeralda">Verde</button>' + '<button type="button" class="ark-color-swatch-btn" data-color="#00E5FF" style="background:#00E5FF;color:#000;" title="Azul Ciano / Predador">Ciano</button>' + '<button type="button" class="ark-color-swatch-btn" data-color="#3B82F6" style="background:#3B82F6;color:#fff;" title="Azul Royal">Azul</button>' + '<button type="button" class="ark-color-swatch-btn" data-color="#8B5CF6" style="background:#8B5CF6;color:#fff;" title="Roxo Cyberpunk">Roxo</button>' + '<button type="button" class="ark-color-swatch-btn" data-color="#EC4899" style="background:#EC4899;color:#fff;" title="Rosa / Magenta">Rosa</button>' + '<button type="button" class="ark-color-swatch-btn" data-color="#F59E0B" style="background:#F59E0B;color:#000;" title="Âmbar / Laranja">Âmbar</button>' + '<button type="button" class="ark-color-swatch-btn" data-color="#EF4444" style="background:#EF4444;color:#fff;" title="Vermelho Gamer">Vermelho</button>' + '<button type="button" class="ark-color-swatch-btn" data-color="#FFFFFF" style="background:#FFFFFF;color:#000;" title="Branco Puro">Branco</button>' + '</div>' + '</div>' + '<div id="ark-led-feedback" style="display:none;margin-top:12px;font-size:12px;font-weight:600;padding:8px 12px;border-radius:6px;"></div>' + '</div>' + '<div id="ark-led-hardware-header" style="margin:20px 0 10px;font-size:14px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;">' + '<span>🎛️</span> <span id="ark-led-hardware-title">Painel Frontal dos LEDs Físicos:</span>' + '</div>' + '<div class="ark-led-grid" id="ark-led-tiles"></div>';
 
       table.parentNode.insertBefore(container, table);
 
@@ -4214,17 +3427,7 @@
             indClass += ' breathing speed-' + activeSpeed;
           }
 
-          card.innerHTML = '' +
-            '<div class="ark-led-header">' +
-              '<span class="' + indClass + '" id="ind-' + domId + '"></span>' +
-              '<div>' +
-                '<div class="ark-led-title">' + l.name + '</div>' +
-                '<div class="ark-led-sub">' + l.sub + '</div>' +
-              '</div>' +
-            '</div>' +
-            '<div style="font-size:12px;color:var(--ark-text-muted);">' +
-              'Gatilho ativo: <code style="color:var(--ark-text);">' + (activeEffect === 'rainbow' ? 'arco-íris' : (l.trigger || 'padrão')) + '</code>' +
-            '</div>';
+          card.innerHTML = '' + '<div class="ark-led-header">' + '<span class="' + indClass + '" id="ind-' + domId + '"></span>' + '<div>' + '<div class="ark-led-title">' + l.name + '</div>' + '<div class="ark-led-sub">' + l.sub + '</div>' + '</div>' + '</div>' + '<div style="font-size:12px;color:var(--ark-text-muted);">' + 'Gatilho ativo: <code style="color:var(--ark-text);">' + (activeEffect === 'rainbow' ? 'arco-íris' : (l.trigger || 'padrão')) + '</code>' + '</div>';
 
           grid.appendChild(card);
 

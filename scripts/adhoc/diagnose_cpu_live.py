@@ -24,7 +24,7 @@ try:
         login_inputs[0].send_keys('root')
         pass_in = driver.find_element(By.NAME, 'luci_password')
         pass_in.clear()
-        pass_in.send_keys('admin0100')
+        pass_in.send_keys(os.environ.get("ARK_ROUTER_TEST_PASSWORD", ""))
         driver.find_element(By.CSS_SELECTOR, "input[type='submit']").click()
         time.sleep(3)
         
@@ -36,7 +36,7 @@ try:
     cmd = [
         "plink", "-batch",
         "-hostkey", "SHA256:6vCtAQ/hnLjmz0RrDSFWQ/tlLNnrJ0HIyQ5CNIvG1Dw",
-        "-pw", "admin0100",
+        "-pw", os.environ.get("ARK_ROUTER_TEST_PASSWORD", ""),
         "root@192.168.12.1",
         "top -n 1 -b | head -n 30"
     ]

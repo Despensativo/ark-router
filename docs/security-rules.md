@@ -22,4 +22,4 @@ Regras mandatórias para evitar vulnerabilidades, injection de comandos e bloque
 ## 2. Prevenção de Command Injection & Validação de Entrada
 - Sanitizar rigorosamente todo argumento recebido via HTTP, LuCI ou RPC antes de passar para comandos shell.
 - NUNCA concatenar entradas de usuário diretamente em chamadas `eval` ou subshells sem validação contra regex (`[a-zA-Z0-9_.-]+`).
-- Ações críticas de frontend usam tokens efêmeros com expiração de 30 segundos salvos em `/tmp/`.
+- Ações críticas de frontend usam tokens efêmeros de uso único com trava de 2 segundos e expiração de 60 segundos salvos em `/tmp/`.

@@ -31,7 +31,8 @@ def main():
     source_dir = base_dir / "GitHub" / "OpenWrt-Skills" / "skills"
     targets = [
         base_dir / ".agents" / "skills",
-        base_dir / "GitHub" / "luci-app-ark-router" / ".agents" / "skills"
+        base_dir / "GitHub" / "luci-app-ark-router" / ".agents" / "skills",
+        base_dir / "GitHub" / "OpenWrt-Skills" / ".agents" / "skills"
     ]
     
     if not source_dir.exists():
@@ -67,13 +68,13 @@ def main():
                     mismatches += 1
                 else:
                     dest_skill_dir.mkdir(parents=True, exist_ok=True)
-                    # Copy all files from skill dir
+                    # Copy all files from skill dir (use copyfile to avoid ExFAT AppleDouble ._* creation)
                     for src_item in skill_path.glob("**/*"):
-                        if src_item.is_file():
+                        if src_item.is_file() and not src_item.name.startswith("._"):
                             rel = src_item.relative_to(skill_path)
                             dest_item = dest_skill_dir / rel
                             dest_item.parent.mkdir(parents=True, exist_ok=True)
-                            shutil.copy2(src_item, dest_item)
+                            shutil.copyfile(src_item, dest_item)
                     print(f"  [+] Sincronizado: {target_base.name}/{skill_name}")
                     synced += 1
                     
