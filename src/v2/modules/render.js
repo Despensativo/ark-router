@@ -1666,6 +1666,33 @@ const renderMethods = {
 									click: L.bind(function(){ self.showMeshModal(); }, self)
 								}, [w.meshActive ? '⚙ Gerenciar Mesh Sem Fio' : '🔗 Configurar Mesh Sem Fio'])
 							])
+						]),
+						// 5. Motor do Sistema Wi-Fi (Smart Wi-Fi Enhancer)
+						E('div', {
+							id: 'ex-wifi-enhancer-container',
+							class: 'ex-channel-mode-control ex-has-action',
+							style: 'border-top: 1px solid rgba(127,127,127,.12); padding-top: 12px; margin-top: 12px;'
+						}, [
+							E('div', {}, [
+								E('div', { style: 'display:flex; align-items:center; gap:8px; flex-wrap:wrap;' }, [
+									E('strong', {}, ['Motor Avançado Wi-Fi (Daemon Hostapd & 802.11v)']),
+									E('span', { id: 'ex-enhancer-pill', class: 'ex-pill standby' }, ['CARREGANDO...'])
+								]),
+								E('small', { id: 'ex-enhancer-summary', class: 'ex-muted' }, [
+									'Verificando arquitetura do daemon de rádio e suporte a BSS Transition...'
+								]),
+								E('p', { class: 'ex-muted', style: 'margin: 4px 0 0; line-height: 1.4; font-size: 12px;' }, [
+									'Roteadores OpenWrt vêm de fábrica com o pacote básico (wpad-basic) sem 802.11v WNM compilado. O Smart Wi-Fi Enhancer detecta se o seu hardware possui memória RAM e Flash de sobra para promover o sistema para o motor completo wpad-mbedtls com roaming suave.'
+								])
+							]),
+							E('div', { class: 'ex-channel-mode-actions', id: 'ex-enhancer-actions' }, [
+								E('button', {
+									id: 'ex-enhancer-btn',
+									class: 'ex-mini-button',
+									style: 'display:none; font-weight: 700; white-space: nowrap;',
+									click: L.bind(function(){ self.showWifiEnhancerModal(); }, self)
+								}, ['🚀 Turbinar Motor Wi-Fi'])
+							])
 						])
 					])
 				]);

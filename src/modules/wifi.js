@@ -113,6 +113,7 @@ const wifiMethods = {
 				? 'Ativo • Monitora o sinal de cada dispositivo e orquestra a troca entre roteadores e frequências 2,4 / 5 GHz.'
 				: (usteerFeat.installed ? 'Desativado • O roteador não realiza assistência ativa de roaming.' : 'Módulo ultraleve oficial do OpenWrt disponível para instalação.');
 		}
+		this.updateWifiEnhancerUI();
 	},
 	currentWifiChannels: function() {
 		const data=this.currentData||{}, w=wifiConfig(data.wireless);
@@ -1723,6 +1724,227 @@ const wifiMethods = {
 			])
 		];
 		ui.showModal('Configurar Enlace Mesh Sem Fio (802.11s)', body);
+	},
+
+	updateWifiEnhancerUI: function() {
+		const pill = document.getElementById('ex-enhancer-pill');
+		const summary = document.getElementById('ex-enhancer-summary');
+		const btn = document.getElementById('ex-enhancer-btn');
+		if (!pill || !summary) return;
+
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-enhancer-status']).then(function(res) {
+			if (res.code !== 0 || !res.stdout) return;
+			let data;
+			try { data = JSON.parse(res.stdout); } catch(e) { return; }
+
+			window._arkWifiEnhancerData = data;
+
+			if (data.has_wnm) {
+				setPill('ex-enhancer-pill', 'online', 'MOTOR PRO ATIVO (802.11v WNM)');
+				summary.textContent = 'Ativo • Daemon ' + (data.current_pkg || 'wpad-mbedtls') + ' com 802.11v WNM, BSS Transition e anti-queda (disassoc_low_ack=0).';
+				if (btn) {
+					btn.style.display = 'inline-block';
+					btn.textContent = '🔍 Diagnóstico do Motor';
+					btn.className = 'ex-mini-button';
+				}
+			} else if (data.capable) {
+				setPill('ex-enhancer-pill', 'warning', 'UPGRADE DISPONÍVEL (1 CLIQUE)');
+				summary.textContent = 'Elegível • Hardware potente (' + data.ram_total_mb + ' MB RAM • ' + data.flash_free_mb + ' MB Flash livres). Motor avançado pronto para instalação.';
+				if (btn) {
+					btn.style.display = 'inline-block';
+					btn.textContent = '🚀 Turbinar Motor Wi-Fi';
+					btn.className = 'ex-mini-button cbi-button-positive';
+				}
+			} else {
+				setPill('ex-enhancer-pill', 'standby', 'MODO COMPACTO (SEGURANÇA RAM)');
+				summary.textContent = 'Preservado • wpad-basic mantido para resguardar memória e evitar instabilidade em hardware compacto.';
+				if (btn) {
+					btn.style.display = 'inline-block';
+					btn.textContent = 'ℹ️ Detalhes do Hardware';
+					btn.className = 'ex-mini-button';
+				}
+			}
+		}).catch(function(){});
+	},
+
+	showWifiEnhancerModal: function() {
+		const self = this;
+		let pollInterval = null;
+
+		const closeModal = function() {
+			if (pollInterval) {
+				clearInterval(pollInterval);
+				pollInterval = null;
+			}
+			ui.hideModal();
+		};
+
+		ui.showModal('Motor Avançado Wi-Fi — Smart Enhancer', [
+			E('p', { class: 'spinning' }, ['Consultando diagnóstico de hardware e status do daemon Wi-Fi…'])
+		]);
+
+		fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-enhancer-status']).then(function(res) {
+			let data = {};
+			try { data = JSON.parse(res.stdout || '{}'); } catch(e) {}
+
+			const steps = [
+				{ id: 1, name: 'Validação de Hardware (RAM e Armazenamento Flash)' },
+				{ id: 2, name: 'Teste de Conectividade com Repositórios OpenWrt' },
+				{ id: 3, name: 'Catálogo de Pacotes e Remoção de Restrições' },
+				{ id: 4, name: 'Download e Instalação do wpad-mbedtls' },
+				{ id: 5, name: 'Validação da Integridade do hostapd' },
+				{ id: 6, name: 'Sincronização 802.11v BSS Transition & Anti-Queda' },
+				{ id: 7, name: 'Conclusão e Reinicialização Suave do Wi-Fi' }
+			];
+
+			const stepItems = steps.map(function(s) {
+				return E('li', {
+					id: 'enhancer-step-' + s.id,
+					style: 'display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 13px; color: #94a3b8;'
+				}, [
+					E('span', { class: 'step-icon', style: 'font-family: monospace; font-weight: bold; width: 18px; text-align: center;' }, ['○']),
+					E('span', {}, [s.id + '. ' + s.name])
+				]);
+			});
+
+			const stepperList = E('ul', { style: 'list-style: none; padding-left: 0; margin: 12px 0;' }, stepItems);
+
+			const progressBar = E('div', {
+				id: 'enhancer-modal-progress-bar',
+				style: 'background: linear-gradient(90deg, #10b981, #06b6d4); height: 100%; width: ' + (data.progress || (data.has_wnm ? 100 : 0)) + '%; transition: width 0.4s ease;'
+			});
+
+			const progressContainer = E('div', {
+				style: 'background: rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden; height: 10px; margin: 14px 0 8px;'
+			}, [progressBar]);
+
+			const stageBadge = E('span', {
+				id: 'enhancer-modal-stage-badge',
+				class: 'ex-pill ' + (data.has_wnm ? 'online' : (data.capable ? 'warning' : 'standby')),
+				style: 'font-size: 11px;'
+			}, [data.stage_num > 0 ? ('Etapa ' + data.stage_num + '/7: ' + data.stage) : (data.has_wnm ? 'MOTOR PRO ATIVO' : 'PRONTO')]);
+
+			const msgText = E('p', {
+				id: 'enhancer-modal-msg',
+				class: 'ex-muted',
+				style: 'margin: 6px 0 14px; font-size: 12px; min-height: 18px;'
+			}, [data.message || 'Pronto para iniciar a promoção para o motor Wi-Fi completo.']);
+
+			const btnStart = E('button', {
+				class: 'btn cbi-button cbi-button-positive',
+				style: 'font-weight: 700;'
+			}, ['🚀 Iniciar Upgrade Automático']);
+
+			const btnCancel = E('button', {
+				class: 'btn cbi-button cbi-button-neutral',
+				click: closeModal
+			}, ['Fechar']);
+
+			const updateStepperUI = function(d) {
+				if (progressBar) progressBar.style.width = (d.progress || (d.has_wnm ? 100 : 0)) + '%';
+				if (stageBadge) {
+					stageBadge.textContent = d.stage_num > 0 ? ('Etapa ' + d.stage_num + '/7: ' + d.stage) : (d.has_wnm || d.state === 'completed' ? 'MOTOR PRO ATIVO' : 'PRONTO');
+					stageBadge.className = 'ex-pill ' + (d.state === 'failed' ? 'danger' : (d.has_wnm || d.state === 'completed' ? 'online' : 'warning'));
+				}
+				if (msgText) msgText.textContent = d.message || '';
+
+				steps.forEach(function(s) {
+					const el = document.getElementById('enhancer-step-' + s.id);
+					if (!el) return;
+					const icon = el.querySelector('.step-icon');
+					if (s.id < d.stage_num || ((d.has_wnm || d.state === 'completed') && (d.stage_num === 0 || s.id <= 7))) {
+						el.style.color = '#10b981';
+						el.style.fontWeight = 'normal';
+						if (icon) icon.textContent = '✓';
+					} else if (s.id === d.stage_num) {
+						if (d.state === 'failed') {
+							el.style.color = '#ef4444';
+							el.style.fontWeight = 'bold';
+							if (icon) icon.textContent = '✗';
+						} else {
+							el.style.color = '#38bdf8';
+							el.style.fontWeight = 'bold';
+							if (icon) icon.textContent = '▶';
+						}
+					} else {
+						el.style.color = '#64748b';
+						el.style.fontWeight = 'normal';
+						if (icon) icon.textContent = '○';
+					}
+				});
+			};
+
+			const startUpgrade = function() {
+				btnStart.disabled = true;
+				btnStart.textContent = 'Executando Upgrade…';
+				btnCancel.disabled = true;
+
+				fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-enhancer-upgrade']).then(function() {
+					pollInterval = setInterval(function() {
+						fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-enhancer-status']).then(function(pRes) {
+							let pData = {};
+							try { pData = JSON.parse(pRes.stdout || '{}'); } catch(e) {}
+							updateStepperUI(pData);
+
+							if (pData.state === 'completed') {
+								clearInterval(pollInterval);
+								pollInterval = null;
+								btnStart.style.display = 'none';
+								btnCancel.disabled = false;
+								btnCancel.textContent = 'Concluído (Fechar)';
+								self.updateWifiEnhancerUI();
+							} else if (pData.state === 'failed') {
+								clearInterval(pollInterval);
+								pollInterval = null;
+								btnStart.disabled = false;
+								btnStart.textContent = 'Tentar Novamente';
+								btnCancel.disabled = false;
+							}
+						}).catch(function(){});
+					}, 1000);
+				}).catch(function(err) {
+					btnStart.disabled = false;
+					btnCancel.disabled = false;
+					if (msgText) msgText.textContent = 'Falha ao iniciar comando: ' + err.message;
+				});
+			};
+
+			btnStart.addEventListener('click', startUpgrade);
+
+			const hardwareCard = E('div', {
+				style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px; background: rgba(15, 23, 42, 0.4); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); font-size: 12px;'
+			}, [
+				E('div', {}, [ E('span', { class: 'ex-muted' }, ['Memória RAM:']), E('br'), E('strong', {}, [data.ram_total_mb + ' MB']) ]),
+				E('div', {}, [ E('span', { class: 'ex-muted' }, ['Flash Livre:']), E('br'), E('strong', {}, [data.flash_free_mb + ' MB']) ]),
+				E('div', {}, [ E('span', { class: 'ex-muted' }, ['Pacote Atual:']), E('br'), E('strong', {}, [data.current_pkg || 'wpad-basic']) ]),
+				E('div', {}, [ E('span', { class: 'ex-muted' }, ['802.11v WNM:']), E('br'), E('strong', { style: 'color:' + (data.has_wnm ? '#10b981' : '#f59e0b') }, [data.has_wnm ? 'Ativo (Pro)' : 'Inativo (Basic)']) ])
+			]);
+
+			const modalContent = [
+				hardwareCard,
+				E('div', { style: 'display:flex; justify-content:space-between; align-items:center;' }, [
+					E('strong', { style: 'font-size: 13px;' }, ['Progresso de Execução da Migração:']),
+					stageBadge
+				]),
+				progressContainer,
+				msgText,
+				stepperList,
+				E('div', { class: 'right', style: 'margin-top: 16px;' }, [
+					btnCancel, ' ',
+					(data.has_wnm ? '' : (data.capable ? btnStart : ''))
+				])
+			];
+
+			ui.showModal('Motor Avançado Wi-Fi — Smart Enhancer', modalContent);
+			updateStepperUI(data);
+		}).catch(function(err) {
+			ui.showModal('Motor Avançado Wi-Fi — Smart Enhancer', [
+				E('p', { class: 'alert-message danger' }, ['Erro ao consultar status: ' + err.message]),
+				E('div', { class: 'right' }, [
+					E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Fechar'])
+				])
+			]);
+		});
 	},
 
 	showSatelliteWizardModal: function() {

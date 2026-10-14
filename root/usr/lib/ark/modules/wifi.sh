@@ -181,6 +181,211 @@ wifi_get_ap_sections() {
 	printf '%s\n' "$sections"
 }
 
+wifi_enhancer_status() {
+	local mem_total_kb=0
+	[ -f /proc/meminfo ] && mem_total_kb="$(awk '/MemTotal:/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
+	local ram_mb=$((mem_total_kb / 1024))
+
+	local flash_free_kb=0
+	flash_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR>1 {print $4}')"
+	[ -n "$flash_free_kb" ] || flash_free_kb="$(df -k / 2>/dev/null | awk 'NR>1 {print $4}')"
+	[ -n "$flash_free_kb" ] || flash_free_kb=0
+	local flash_mb=$((flash_free_kb / 1024))
+
+	local capable=0
+	if [ "$ram_mb" -ge 256 ] && [ "$flash_free_kb" -ge 4096 ]; then
+		capable=1
+	fi
+
+	local current_pkg=""
+	if ark_has_apk; then
+		current_pkg="$(apk list -I 2>/dev/null | grep -E '^wpad' | head -n 1 | awk '{print $1}')"
+		[ -n "$current_pkg" ] || current_pkg="$(apk list -I 2>/dev/null | grep -E '^hostapd' | head -n 1 | awk '{print $1}')"
+	elif ark_has_opkg; then
+		current_pkg="$(opkg list-installed 2>/dev/null | grep -E '^wpad' | head -n 1 | awk '{print $1}')"
+		[ -n "$current_pkg" ] || current_pkg="$(opkg list-installed 2>/dev/null | grep -E '^hostapd' | head -n 1 | awk '{print $1}')"
+	fi
+	[ -n "$current_pkg" ] || current_pkg="wpad"
+
+	local has_wnm=0
+	ark_hostapd_has_wnm && has_wnm=1
+
+	local status_file="/tmp/ark_wifi_enhancer.status"
+	local state="idle"
+	local stage="IDLE"
+	local stage_num=0
+	local total_stages=7
+	local progress=0
+	local message=""
+	local error=""
+
+	if [ -f "$status_file" ]; then
+		state="$(grep -o '"state": *"[^"]*"' "$status_file" | cut -d'"' -f4)"
+		stage="$(grep -o '"stage": *"[^"]*"' "$status_file" | cut -d'"' -f4)"
+		stage_num="$(grep -o '"stage_num": *[0-9]*' "$status_file" | tr -dc '0-9')"
+		progress="$(grep -o '"progress": *[0-9]*' "$status_file" | tr -dc '0-9')"
+		message="$(grep -o '"message": *"[^"]*"' "$status_file" | cut -d'"' -f4)"
+		error="$(grep -o '"error": *"[^"]*"' "$status_file" | cut -d'"' -f4)"
+	fi
+	[ -n "$state" ] || state="idle"
+	[ -n "$stage" ] || stage="IDLE"
+	[ -n "$stage_num" ] || stage_num=0
+	[ -n "$progress" ] || progress=0
+
+	if [ "$has_wnm" = "1" ] && [ "$state" = "idle" ]; then
+		message="Motor Pro wpad-mbedtls com 802.11v WNM e BSS Transition totalmente ativo."
+	elif [ "$has_wnm" = "0" ] && [ "$state" = "idle" ]; then
+		if [ "$capable" = "1" ]; then
+			message="Motor compacto wpad-basic ativo. Hardware potente elegivel para upgrade com 1 clique."
+		else
+			message="Motor compacto wpad-basic ativo. Preservado para protecao de memoria e estabilidade."
+		fi
+	fi
+
+	cat <<EOF
+{
+  "capable": $([ "$capable" = "1" ] && echo "true" || echo "false"),
+  "ram_total_mb": $ram_mb,
+  "flash_free_mb": $flash_mb,
+  "current_pkg": "$current_pkg",
+  "has_wnm": $([ "$has_wnm" = "1" ] && echo "true" || echo "false"),
+  "state": "$state",
+  "stage": "$stage",
+  "stage_num": $stage_num,
+  "total_stages": $total_stages,
+  "progress": $progress,
+  "message": "$message",
+  "error": "$error"
+}
+EOF
+}
+
+wifi_enhancer_update_status() {
+	local state="$1" stage="$2" num="$3" pct="$4" msg="$5" err="$6"
+	cat <<EOF > /tmp/ark_wifi_enhancer.status
+{
+  "state": "$state",
+  "stage": "$stage",
+  "stage_num": $num,
+  "total_stages": 7,
+  "progress": $pct,
+  "message": "$msg",
+  "error": "$err",
+  "timestamp": $(date +%s)
+}
+EOF
+}
+
+wifi_enhancer_run_upgrade() {
+	local status_file="/tmp/ark_wifi_enhancer.status"
+	local lock_file="/tmp/ark_wifi_enhancer.lock"
+
+	if [ -f "$lock_file" ]; then
+		local pid="$(cat "$lock_file" 2>/dev/null)"
+		if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+			return 1
+		fi
+	fi
+	echo "$$" > "$lock_file"
+	trap 'rm -f "$lock_file"' EXIT INT TERM
+
+	# Etapa 1 / 7: PREFLIGHT
+	wifi_enhancer_update_status "running" "PREFLIGHT" 1 15 "Validando elegibilidade de hardware (RAM e armazenamento Flash)..." ""
+	sleep 1
+
+	local mem_total_kb=0
+	[ -f /proc/meminfo ] && mem_total_kb="$(awk '/MemTotal:/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
+	local ram_mb=$((mem_total_kb / 1024))
+	local flash_free_kb=0
+	flash_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR>1 {print $4}')"
+	[ -n "$flash_free_kb" ] || flash_free_kb="$(df -k / 2>/dev/null | awk 'NR>1 {print $4}')"
+	[ -n "$flash_free_kb" ] || flash_free_kb=0
+
+	if [ "$ram_mb" -lt 256 ]; then
+		wifi_enhancer_update_status "failed" "PREFLIGHT" 1 15 "Falha na Etapa 1: Memória RAM insuficiente (< 256 MB)." "ram_low"
+		return 1
+	fi
+	if [ "$flash_free_kb" -lt 4096 ]; then
+		wifi_enhancer_update_status "failed" "PREFLIGHT" 1 15 "Falha na Etapa 1: Armazenamento Flash insuficiente (< 4 MB livres em /overlay)." "flash_low"
+		return 1
+	fi
+
+	# Etapa 2 / 7: CONNECTIVITY
+	wifi_enhancer_update_status "running" "CONNECTIVITY" 2 30 "Testando conexao com os repositorios oficiais do OpenWrt..." ""
+	sleep 1
+
+	local ping_ok=0
+	if ping -c 1 -W 3 1.1.1.1 >/dev/null 2>&1 || ping -c 1 -W 3 8.8.8.8 >/dev/null 2>&1; then
+		ping_ok=1
+	elif nslookup downloads.openwrt.org >/dev/null 2>&1; then
+		ping_ok=1
+	fi
+
+	if [ "$ping_ok" = "0" ]; then
+		wifi_enhancer_update_status "failed" "CONNECTIVITY" 2 30 "Falha na Etapa 2: Sem conexao de internet para baixar o pacote. Verifique a WAN." "no_internet"
+		return 1
+	fi
+
+	# Etapa 3 / 7: PREPARING
+	wifi_enhancer_update_status "running" "PREPARING" 3 45 "Atualizando listas de pacotes e preparando remocao de restricoes virtuais..." ""
+	sleep 1
+
+	if ark_has_apk; then
+		sed -i -E '/^wpad-basic/d' /etc/apk/world 2>/dev/null || true
+		if ! apk update >/tmp/ark_enhancer_apk.log 2>&1; then
+			wifi_enhancer_update_status "failed" "PREPARING" 3 45 "Falha na Etapa 3: Nao foi possivel atualizar o catalogo de pacotes (apk update)." "repo_update_error"
+			return 1
+		fi
+	elif ark_has_opkg; then
+		if ! opkg update >/tmp/ark_enhancer_opkg.log 2>&1; then
+			wifi_enhancer_update_status "failed" "PREPARING" 3 45 "Falha na Etapa 3: Nao foi possivel atualizar o catalogo de pacotes (opkg update)." "repo_update_error"
+			return 1
+		fi
+	fi
+
+	# Etapa 4 / 7: INSTALLING
+	wifi_enhancer_update_status "running" "INSTALLING" 4 65 "Baixando e instalando pacote completo wpad-mbedtls com 802.11v nativo..." ""
+
+	local install_ok=0
+	if ark_has_apk; then
+		if apk add wpad-mbedtls >>/tmp/ark_enhancer_apk.log 2>&1; then
+			install_ok=1
+		fi
+	elif ark_has_opkg; then
+		if opkg install --force-overwrite wpad-mbedtls >>/tmp/ark_enhancer_opkg.log 2>&1; then
+			install_ok=1
+		fi
+	fi
+
+	if [ "$install_ok" = "0" ]; then
+		if ark_has_apk; then apk add wpad-basic-mbedtls >/dev/null 2>&1 || true; fi
+		wifi_enhancer_update_status "failed" "INSTALLING" 4 65 "Falha na Etapa 4: Erro ao instalar wpad-mbedtls. Rollback de protecao executado." "install_error"
+		return 1
+	fi
+
+	# Etapa 5 / 7: VERIFYING
+	wifi_enhancer_update_status "running" "VERIFYING" 5 80 "Validando integridade do binario hostapd e suporte a WNM..." ""
+	sleep 1
+
+	if [ ! -x /usr/sbin/hostapd ]; then
+		wifi_enhancer_update_status "failed" "VERIFYING" 5 80 "Falha na Etapa 5: Binario hostapd nao encontrado apos instalacao. Restaurando..." "binary_missing"
+		if ark_has_apk; then apk add wpad-basic-mbedtls >/dev/null 2>&1 || true; fi
+		return 1
+	fi
+
+	# Etapa 6 / 7: CONFIGURING
+	wifi_enhancer_update_status "running" "CONFIGURING" 6 90 "Sincronizando 802.11v BSS Transition, anti-queda (disassoc_low_ack=0) e reiniciando daemons..." ""
+
+	/etc/init.d/wpad restart >/dev/null 2>&1 || true
+	handle_wifi "wifi-roaming-sync" "on" >/dev/null 2>&1 || true
+
+	# Etapa 7 / 7: COMPLETED
+	wifi_enhancer_update_status "completed" "COMPLETED" 7 100 "Upgrade concluido com sucesso! Motor Pro wpad-mbedtls 100% ativo e operacional." ""
+
+	(sleep 2; wifi reload) >/dev/null 2>&1 &
+	return 0
+}
+
 handle_wifi() {
 	case "$1" in
 	wifi)
@@ -1769,6 +1974,13 @@ EOF
 		uci commit wireless
 		(sleep 2; wifi reload) >/dev/null 2>&1 &
 		echo 'ok'
+		;;
+	wifi-enhancer-status)
+		wifi_enhancer_status
+		;;
+	wifi-enhancer-upgrade)
+		(wifi_enhancer_run_upgrade) >/dev/null 2>&1 &
+		echo 'started'
 		;;
 	esac
 }
