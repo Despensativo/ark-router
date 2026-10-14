@@ -87,33 +87,67 @@ def run_spa_audit():
             # Save panel screenshot
             page.screenshot(path=os.path.join(SCREENSHOT_DIR, f"spa_panel_{panel_id}.png"))
 
-        # 3. Test LuCI Simulator and LuCI Drawer
-        print("\n4. Validando Integração e Navegação do LuCI Nativo...")
+        # 3. Test LuCI Classic Direct Button and Simulator
+        print("\n4. Validando Botão Direto 'Ver Interface Clássica' (sem seta/drawer)...")
         page.evaluate("window.switchView('overview')")
         time.sleep(0.2)
 
-        # Open Drawer
-        page.evaluate("window.toggleLuciDrawer()")
-        time.sleep(0.3)
-        drawer_visible = page.eval_on_selector("#luci_drawer", "el => el.classList.contains('open')")
-        print(f"   ✓ LuCI Drawer aberto: {drawer_visible}")
-        page.screenshot(path=os.path.join(SCREENSHOT_DIR, "spa_luci_drawer.png"))
+        # Verify button text and lack of down arrow
+        header_btn_text = page.eval_on_selector(".top-header .header-right a", "el => el.innerText.trim()")
+        print(f"   ✓ Botão no Cabeçalho: '{header_btn_text}' (Sem setas para baixo ou menus confusos)")
+        assert "Ver Interface Clássica" in header_btn_text, "Botão deveria conter 'Ver Interface Clássica'"
 
-        # Close Drawer
-        page.evaluate("window.toggleLuciDrawer()")
-        time.sleep(0.2)
-
-        # Open Simulator for Network Interfaces
-        page.evaluate("window.openLuciSimulator('network/network')")
+        # Click the button and verify simulator opens directly
+        page.click(".top-header .header-right a")
         time.sleep(0.4)
         sim_visible = page.eval_on_selector("#luci_native_view_container", "el => el.classList.contains('active')")
         sim_route = page.eval_on_selector("#luci_sim_current_route", "el => el.innerText")
-        print(f"   ✓ LuCI Simulator Ativo: {sim_visible} | Rota: '{sim_route}'")
-        page.screenshot(path=os.path.join(SCREENSHOT_DIR, "spa_luci_sim.png"))
+        print(f"   ✓ LuCI Simulator Ativo Diretamente: {sim_visible} | Rota: '{sim_route}'")
+        page.screenshot(path=os.path.join(SCREENSHOT_DIR, "spa_luci_sim_direct.png"))
 
         # Return from simulator
         page.evaluate("window.closeLuciSimulator()")
         time.sleep(0.2)
+
+        # 4. Validar Novos Recursos Nativos do LuCI Trazidos para o ARK Router
+        print("\n5. Validando Recursos Nativos do LuCI Incorporados nos Painéis do ARK...")
+        
+        # Test Wi-Fi Site Survey
+        page.evaluate("window.switchView('wifi')")
+        time.sleep(0.3)
+        has_survey = page.eval_on_selector("#wifi_scan_table", "el => el !== null")
+        print(f"   ✓ Wi-Fi: Scanner de Redes Vizinhas & Site Survey: {has_survey}")
+        page.evaluate("window.scanNeighborWifi()")
+        time.sleep(0.5)
+
+        # Test DHCP Server in Devices
+        page.evaluate("window.switchView('devices')")
+        time.sleep(0.3)
+        has_dhcp = page.eval_on_selector("#dhcp_start_sel", "el => el !== null && el.tagName === 'SELECT'")
+        print(f"   ✓ Dispositivos: Servidor DHCP & Domínio Local com <select>: {has_dhcp}")
+
+        # Test Port Forwarding in Security
+        page.evaluate("window.switchView('security')")
+        time.sleep(0.3)
+        has_pf = page.eval_on_selector("#port_forward_tbody", "el => el.children.length >= 3")
+        print(f"   ✓ Segurança: Redirecionamento de Portas (Port Forwarding / NAT): {has_pf}")
+
+        # Test Diagnostics & Syslog in Doctor
+        page.evaluate("window.switchView('doctor')")
+        time.sleep(0.3)
+        has_diag = page.eval_on_selector("#diag_tool_sel", "el => el !== null")
+        has_syslog = page.eval_on_selector("#syslog_box", "el => el !== null && el.children.length > 0")
+        print(f"   ✓ Ark Doctor: Ferramentas Interativas de Rede (Ping/Traceroute): {has_diag}")
+        print(f"   ✓ Ark Doctor: Logs do Sistema em Tempo Real (Syslog & Kernel): {has_syslog}")
+        page.click("#btn_run_diag")
+        time.sleep(1.0)
+
+        # Test Backup & Services in System
+        page.evaluate("window.switchView('system')")
+        time.sleep(0.3)
+        has_backup = page.evaluate("() => typeof window.generateConfigBackup === 'function'")
+        has_services = page.evaluate("() => typeof window.serviceAction === 'function'")
+        print(f"   ✓ Sistema: Backup/Sysupgrade & Daemons (/etc/init.d/): {has_backup and has_services}")
 
         # 4. Test Modals and Dropdowns
         print("\n5. Validando Modais e Dropdowns (<select> nativos)...")
