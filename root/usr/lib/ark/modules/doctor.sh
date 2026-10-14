@@ -1221,6 +1221,41 @@ ark_doctor_audit() {
 		add_check "Coerencia Criptografica Wi-Fi" "OK" "Roteador sem redes Wi-Fi unificadas multi-banda (não aplicável)."
 	fi
 
+	# 12b. Auditoria e Autocura de Compatibilidade WPA3 vs 802.11r (FT-SAE)
+	# Em redes WPA3 (sae/sae-mixed), ft_psk_generate_local=1 quebra a associação de clientes Wi-Fi 6/6E/7
+	local ft_sae_conflicts=0
+	for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
+		local chk_enc="$($uci_cmd get "wireless.$iface.encryption" || echo '')"
+		local chk_r11="$($uci_cmd get "wireless.$iface.ieee80211r" || echo '0')"
+		case "$chk_enc" in
+			*sae*|*owe*)
+				if [ "$chk_r11" = "1" ]; then
+					ft_sae_conflicts=$((ft_sae_conflicts + 1))
+					if [ "$auto_fix" = 1 ]; then
+						$uci_cmd delete "wireless.$iface.ieee80211r"
+						$uci_cmd delete "wireless.$iface.ft_over_ds"
+						$uci_cmd delete "wireless.$iface.ft_psk_generate_local"
+						$uci_cmd delete "wireless.$iface.mobility_domain"
+						wifi_needs_reload=1
+					fi
+				fi
+				;;
+		esac
+	done
+
+	if [ "$ft_sae_conflicts" -gt 0 ]; then
+		if [ "$auto_fix" = 1 ]; then
+			$uci_cmd commit wireless 2>/dev/null || true
+			fixes_applied=$((fixes_applied + 1))
+			add_check "Compatibilidade WPA3 e Roaming" "FIXED" "Conflito FT-SAE corrigido ($ft_sae_conflicts interface(s)). 802.11r removido em rede WPA3 (roaming preservado via 802.11k/v e usteer)."
+		else
+			warnings=$((warnings + 1))
+			add_check "Compatibilidade WPA3 e Roaming" "WARN" "802.11r (FT-SAE) ativo em rede WPA3 ($ft_sae_conflicts interface(s)). Causa rejeição de autenticação em clientes Wi-Fi 6/6E/7."
+		fi
+	else
+		add_check "Compatibilidade WPA3 e Roaming" "OK" "Handshake WPA3 protegido e imune a rejeições de chave FT-SAE."
+	fi
+
 	# 12c. Auditoria e Autocura de Band Steering (usteer / Qualcomm SON)
 	local has_qca_son=0
 	if ark_has_qualcomm_son; then

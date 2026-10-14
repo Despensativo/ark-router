@@ -1021,19 +1021,33 @@ EOF
 					uci -q delete "wireless.$iface.wnm_sleep_mode"
 				fi
 
-				# 802.11r (Fast Transition) no 5 GHz e 6 GHz para blindar IoT no 2.4 GHz
-				if [ "$dev" = "$radio5" ] || [ "$dev" = "radio1" ] || { [ -n "$radio6" ] && [ "$dev" = "$radio6" ]; } || [ "$dev" = "radio2" ]; then
-					uci -q set "wireless.$iface.ieee80211r=1"
-					uci -q set "wireless.$iface.ft_over_ds=1"
-					uci -q set "wireless.$iface.ft_psk_generate_local=1"
-					uci -q set "wireless.$iface.mobility_domain=$mob_dom"
-				else
-					# No 2.4 GHz removemos cabeçalhos FT para garantir que lâmpadas antigas não caiam
-					uci -q delete "wireless.$iface.ieee80211r"
-					uci -q delete "wireless.$iface.ft_over_ds"
-					uci -q delete "wireless.$iface.ft_psk_generate_local"
-					uci -q delete "wireless.$iface.mobility_domain"
-				fi
+				# 802.11r (Fast Transition):
+				# ATENÇÃO CRÍTICA: Em redes WPA3 (sae ou sae-mixed), ft_psk_generate_local=1 quebra clientes
+				# modernos (FT-SAE), gerando "deauthenticated due to local deauth request".
+				# A transição moderna em WPA3 é governada por 802.11k + 802.11v (WNM) + RNR.
+				# 802.11r só é aplicável em redes puras legadas WPA2-PSK (psk/psk2).
+				local iface_enc="$(uci -q get "wireless.$iface.encryption" || echo '')"
+				case "$iface_enc" in
+					*sae*|*owe*)
+						uci -q delete "wireless.$iface.ieee80211r"
+						uci -q delete "wireless.$iface.ft_over_ds"
+						uci -q delete "wireless.$iface.ft_psk_generate_local"
+						uci -q delete "wireless.$iface.mobility_domain"
+						;;
+					*)
+						if [ "$dev" = "$radio5" ] || [ "$dev" = "radio1" ] || { [ -n "$radio6" ] && [ "$dev" = "$radio6" ]; } || [ "$dev" = "radio2" ]; then
+							uci -q set "wireless.$iface.ieee80211r=1"
+							uci -q set "wireless.$iface.ft_over_ds=0"
+							uci -q set "wireless.$iface.ft_psk_generate_local=1"
+							uci -q set "wireless.$iface.mobility_domain=$mob_dom"
+						else
+							uci -q delete "wireless.$iface.ieee80211r"
+							uci -q delete "wireless.$iface.ft_over_ds"
+							uci -q delete "wireless.$iface.ft_psk_generate_local"
+							uci -q delete "wireless.$iface.mobility_domain"
+						fi
+						;;
+				esac
 			done
 			uci commit wireless
 			(sleep 1; wifi reload) >/dev/null 2>&1 &
@@ -1480,9 +1494,21 @@ EOF
 						uci -q delete wireless.$iface.bss_transition
 						uci -q delete wireless.$iface.wnm_sleep_mode
 					fi
-					uci -q set wireless.$iface.ieee80211r='1'
-					uci -q set wireless.$iface.ft_psk_generate_local='1'
-					uci -q set wireless.$iface.mobility_domain="${mobility_domain:-a1b2}"
+					local slave_enc="$(uci -q get "wireless.$iface.encryption" || echo '')"
+					case "$slave_enc" in
+						*sae*|*owe*)
+							uci -q delete wireless.$iface.ieee80211r
+							uci -q delete wireless.$iface.ft_over_ds
+							uci -q delete wireless.$iface.ft_psk_generate_local
+							uci -q delete wireless.$iface.mobility_domain
+							;;
+						*)
+							uci -q set wireless.$iface.ieee80211r='1'
+							uci -q set wireless.$iface.ft_over_ds='0'
+							uci -q set wireless.$iface.ft_psk_generate_local='1'
+							uci -q set wireless.$iface.mobility_domain="${mobility_domain:-a1b2}"
+							;;
+					esac
 				fi
 			done
 		fi
