@@ -18,8 +18,11 @@ class V2StagingHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=WORKSPACE_ROOT, **kwargs)
 
+    def do_HEAD(self):
+        self.do_GET()
+
     def do_GET(self):
-        if self.path in ['/', '/index.html', '/v2']:
+        if self.path in ['/', '/index.html', '/v2', '/v2/']:
             self.send_response(302)
             self.send_header('Location', '/docs/qa_screenshots/v2_staging/index.html')
             self.end_headers()
