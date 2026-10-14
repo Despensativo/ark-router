@@ -12,7 +12,7 @@ Build packages locally to avoid slow CI/CD cloud queues, verify them immediately
 2. Update `VERSION`, `Makefile`, `CHANGELOG.md` and runtime version files.
 3. **Pre-Release Translation Gate (Token-Efficient i18n)**:
    - Run `python scripts/audit_i18n.py --extract docs/missing_i18n.json` to identify any untranslated user-facing strings added during development.
-   - Inject the batch translations into `src/core/i18n/en.js` and `es.js`.
+   - Inject the batch translations into `po/en/ark.po`, `po/es/ark.po`, and `po/pt-br/ark.po` (the bundler automatically compiles the runtime differential JS dictionaries from `.po`).
    - Run `python scripts/audit_i18n.py --strict` to ensure 100% triple coverage (PT-BR, EN, ES) and dictionary symmetry. (See `docs/I18N_TRANSLATION_GUIDE.md`).
 4. Build the packages **locally** in seconds:
    - Compile bundle & assets: `python scripts/build_frontend_bundle.py && python scripts/build_minified_assets.py`.

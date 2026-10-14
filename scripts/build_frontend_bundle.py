@@ -47,7 +47,7 @@ def find_node():
             return cmd
     return None
 
-def assemble_bundle(src_base_dir=None):
+def assemble_bundle(src_base_dir=None, is_v2=False):
     parts = []
     base_dir = src_base_dir if src_base_dir else SRC_DIR
     
@@ -67,6 +67,8 @@ def assemble_bundle(src_base_dir=None):
             if f_name == "header.js":
                 import re
                 content = re.sub(r"const ARK_BUILD_VERSION = '[^']+';", f"const ARK_BUILD_VERSION = '{version_val}';", content)
+                if is_v2:
+                    content = content.replace("overview.css", "overview_v2.css")
             parts.append(content)
 
     # 2. Append Modules
@@ -173,7 +175,7 @@ def build_i18n_assets(version_val):
 
 def main():
     parser = argparse.ArgumentParser(description="ARK Router Frontend Bundler")
-    parser.add_argument("--v2", action="store_true", help="Build V2 staging bundle from src/v2/ into overview_v2.js")
+    parser.add_argument("--v2", action="store_true", help="Build V2 staging bundle from src/ into overview_v2.js")
     parser.add_argument("--check", action="store_true", help="Verify if target overview.js matches src/ bundle")
     parser.add_argument("--quiet", action="store_true", help="Quiet output")
     args = parser.parse_args()
@@ -184,10 +186,11 @@ def main():
         with open(version_file, "r", encoding="utf-8") as vf:
             version_val = vf.read().strip()
 
-    target_src = os.path.join(SRC_DIR, "v2") if args.v2 else SRC_DIR
+    v2_override_dir = os.path.join(SRC_DIR, "v2")
+    target_src = v2_override_dir if (args.v2 and os.path.isdir(v2_override_dir)) else SRC_DIR
     target_output = os.path.join(REPO_DIR, "root", "www", "luci-static", "resources", "view", "equipe-dashboard", "overview_v2.js" if args.v2 else "overview.js")
 
-    bundle_content = assemble_bundle(target_src)
+    bundle_content = assemble_bundle(target_src, is_v2=args.v2)
 
     if args.check:
         if not os.path.isfile(target_output):
@@ -196,7 +199,7 @@ def main():
         with open(target_output, "r", encoding="utf-8") as f:
             current_content = f.read()
         if current_content != bundle_content:
-            label = "root/.../overview_v2.js está desatualizado em relação a src/v2/!" if args.v2 else "root/.../overview.js está desatualizado em relação a src/!"
+            label = "root/.../overview_v2.js está desatualizado em relação a src/!" if args.v2 else "root/.../overview.js está desatualizado em relação a src/!"
             print(f"ERRO: O arquivo {label}", file=sys.stderr)
             flag = " --v2" if args.v2 else ""
             print(f"Execute: python3 scripts/build_frontend_bundle.py{flag}", file=sys.stderr)
