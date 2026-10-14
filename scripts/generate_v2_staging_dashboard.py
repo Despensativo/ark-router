@@ -1224,22 +1224,59 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
             transform: translateY(0);
         }
 
+        /* Responsive Breakpoints & Multi-Device Optimization */
+        @media (min-width: 855px) and (max-width: 1180px) {
+            .sidebar {
+                width: 220px;
+            }
+            .traffic-grid {
+                grid-template-columns: 1fr;
+            }
+            .health-strip {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
         @media (max-width: 854px) {
+            html, body {
+                max-width: 100vw !important;
+                overflow-x: hidden !important;
+            }
+            .app-shell {
+                max-width: 100vw !important;
+                overflow-x: hidden !important;
+            }
+            .content-area {
+                max-width: 100vw !important;
+                min-width: 0 !important;
+                box-sizing: border-box !important;
+                padding: 12px !important;
+                overflow-x: hidden !important;
+            }
+            .section-card {
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+                padding: 14px !important;
+                overflow-x: hidden !important;
+            }
             .sidebar {
                 position: fixed;
                 left: -260px;
+                box-shadow: 10px 0 35px rgba(0, 0, 0, 0.85);
             }
             .sidebar.open {
                 transform: translateX(260px);
             }
             .btn-hamburger {
                 display: block;
+                min-height: 42px;
+                min-width: 42px;
+            }
+            #btn_sidebar_close {
+                display: flex !important;
             }
             .top-header {
                 padding: 0 14px;
-            }
-            .content-area {
-                padding: 14px;
             }
             .ex-hero {
                 padding: 16px;
@@ -1248,6 +1285,99 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
                 align-items: flex-start;
                 width: 100%;
             }
+            .ex-hero-actions {
+                width: 100%;
+                gap: 6px;
+            }
+            .ex-hero-actions .btn-hero-action {
+                flex: 1 1 calc(50% - 6px);
+                justify-content: center;
+                min-height: 42px;
+                font-size: 0.8rem;
+            }
+            .ex-hero-status-row {
+                width: 100%;
+                justify-content: space-between;
+                flex-wrap: wrap;
+            }
+            .ex-clock-box {
+                width: 100%;
+                align-items: center;
+                margin-top: 6px;
+            }
+            .health-strip {
+                grid-template-columns: 1fr 1fr !important;
+                gap: 10px !important;
+            }
+            .traffic-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .wan-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .wifi-grid {
+                grid-template-columns: 1fr !important;
+            }
+            .device-filters {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 10px !important;
+            }
+            .device-tabs {
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+                padding: 4px !important;
+            }
+            .device-tab {
+                min-height: 40px !important;
+                padding: 8px 12px !important;
+                white-space: nowrap !important;
+            }
+            .device-search-box {
+                flex-direction: column !important;
+                width: 100% !important;
+                gap: 8px !important;
+            }
+            .device-search-input {
+                width: 100% !important;
+                min-height: 42px !important;
+                box-sizing: border-box !important;
+            }
+            .device-search-box .form-select {
+                width: 100% !important;
+                min-height: 42px !important;
+            }
+            .device-table-container {
+                max-width: 100% !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                box-sizing: border-box !important;
+                border-radius: 8px !important;
+            }
+            /* Table Swipe Hint (Rule 13) */
+            .ark-table-swipe-hint {
+                display: flex !important;
+            }
+            /* Modal actions mobile Rule 13 (min-height 44px, full width stacked) */
+            .modal-box {
+                max-width: 95vw !important;
+                margin: 8px !important;
+            }
+            .modal-footer {
+                flex-direction: column-reverse !important;
+                gap: 8px !important;
+            }
+            .modal-footer .ark-btn {
+                width: 100% !important;
+                min-height: 44px !important;
+                font-size: 0.92rem !important;
+            }
+            .form-select, .form-input {
+                min-height: 44px !important;
+                font-size: 16px !important; /* Prevents iOS auto-zoom */
+            }
         }
     </style>
 </head>
@@ -1255,6 +1385,7 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
 
     <!-- App Shell -->
     <div class="app-shell">
+        <div id="sidebar_backdrop" onclick="toggleSidebar()" style="position:fixed; inset:0; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); z-index:45; display:none;"></div>
 
         <!-- Sidebar Navigation -->
         <aside class="sidebar" id="sidebar">
@@ -1264,6 +1395,7 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
                     <h1>ARK Router</h1>
                     <span class="version-badge">v1.5.17 Pro (V2)</span>
                 </div>
+                <button class="modal-close-btn" id="btn_sidebar_close" onclick="toggleSidebar()" style="display:none; margin-left:auto; font-size:1.1rem; color:#fff;" aria-label="Fechar menu">✕</button>
             </div>
 
             <div class="nav-section-title">Central Operacional</div>
@@ -1735,6 +1867,8 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
                                 <option value="name">Nome (A → Z)</option>
                             </select>
                         </div>
+                    <div class="ark-table-swipe-hint" style="display:none; align-items:center; gap:6px; font-size:0.75rem; color:#38bdf8; margin-bottom:8px;">
+                        <span>↔ Deslize a tabela para os lados para visualizar todas as colunas</span>
                     </div>
 
                     <div class="device-table-container">
@@ -2259,7 +2393,12 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
         }
 
         function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('open');
+            const sb = document.getElementById('sidebar');
+            const bd = document.getElementById('sidebar_backdrop');
+            sb.classList.toggle('open');
+            if (bd) {
+                bd.style.display = sb.classList.contains('open') ? 'block' : 'none';
+            }
         }
 
         // LuCI Slide-Over Drawer
@@ -3220,6 +3359,17 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
                 closeLuciSimulator();
                 const drawer = document.getElementById('luci_drawer');
                 if (drawer && drawer.classList.contains('open')) toggleLuciDrawer();
+            }
+        });
+
+        // Window Resize Responsiveness
+        window.addEventListener('resize', () => {
+            initTrafficCanvas();
+            if (window.innerWidth > 854) {
+                const sb = document.getElementById('sidebar');
+                const bd = document.getElementById('sidebar_backdrop');
+                if (sb && sb.classList.contains('open')) sb.classList.remove('open');
+                if (bd) bd.style.display = 'none';
             }
         });
 
