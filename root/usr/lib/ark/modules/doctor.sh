@@ -1289,13 +1289,14 @@ ark_doctor_audit() {
 		ark_hostapd_has_wnm && wnm_capable=1
 
 		if [ "$usteer_installed" = 1 ] && [ "$usteer_active" = 1 ]; then
-			# Verifica se 802.11k (rrm), 802.11v (bss_transition se suportado) e RNR estão configurados nas seções AP
+			# Verifica se 802.11k (rrm), 802.11v (bss_transition se suportado), RNR e anti-desconexão (disassoc_low_ack=0) estão configurados nas seções AP
 			local missing_kv_secs=""
 			for chk_sec in $ap_sections; do
 				local k="$($uci_cmd get "wireless.$chk_sec.ieee80211k" 2>/dev/null || echo 0)"
 				local bt="$($uci_cmd get "wireless.$chk_sec.bss_transition" 2>/dev/null || echo 0)"
 				local rnr_v="$($uci_cmd get "wireless.$chk_sec.rnr" 2>/dev/null || echo 0)"
-				if [ "$k" != "1" ] || [ "$rnr_v" != "1" ]; then
+				local d_ack="$($uci_cmd get "wireless.$chk_sec.disassoc_low_ack" 2>/dev/null || echo 1)"
+				if [ "$k" != "1" ] || [ "$rnr_v" != "1" ] || [ "$d_ack" != "0" ]; then
 					missing_kv_secs="$missing_kv_secs $chk_sec"
 				elif [ "$wnm_capable" = 1 ] && [ "$bt" != "1" ]; then
 					missing_kv_secs="$missing_kv_secs $chk_sec"
@@ -1320,6 +1321,7 @@ ark_doctor_audit() {
 						$uci_cmd set "wireless.$kv_sec.rrm_beacon_report=1"
 						$uci_cmd set "wireless.$kv_sec.rnr=1"
 						$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
+						$uci_cmd set "wireless.$kv_sec.disassoc_low_ack=0"
 						if [ "$wnm_capable" = 1 ]; then
 							$uci_cmd set "wireless.$kv_sec.bss_transition=1"
 							$uci_cmd set "wireless.$kv_sec.wnm_sleep_mode=1"
@@ -1349,16 +1351,16 @@ ark_doctor_audit() {
 					fi
 
 					fixes_applied=$((fixes_applied + 1))
-					add_check "Band Steering (usteer)" "FIXED" "Daemon usteer ativo; 802.11k, RNR e calibração de alta velocidade (-70 dBm) sincronizados."
+					add_check "Band Steering (usteer)" "FIXED" "Daemon usteer ativo; 802.11k, RNR, anti-desconexão (disassoc_low_ack=0) e calibração (-70 dBm) sincronizados."
 				else
 					warnings=$((warnings + 1))
-					add_check "Band Steering (usteer)" "WARN" "usteer ativo, mas parâmetros de roaming 802.11k/RNR ou calibração de alta velocidade (-70 dBm) ausentes."
+					add_check "Band Steering (usteer)" "WARN" "usteer ativo, mas parâmetros de roaming 802.11k/RNR, anti-desconexão (disassoc_low_ack) ou calibração de alta velocidade (-70 dBm) ausentes."
 				fi
 			else
 				if [ "$wnm_capable" = 1 ]; then
-					add_check "Band Steering (usteer)" "OK" "Assistente de Band Steering (usteer) ativo com 802.11k/v (bss_transition) e calibração de alta velocidade (-70 dBm)."
+					add_check "Band Steering (usteer)" "OK" "Assistente de Band Steering (usteer) ativo com 802.11k/v (bss_transition), anti-desconexão (disassoc_low_ack=0) e calibração de alta velocidade (-70 dBm)."
 				else
-					add_check "Band Steering (usteer)" "OK" "Assistente de Band Steering (usteer) ativo com 802.11k, RNR e calibração -70 dBm (wpad-basic ativo; bss_transition resguardado)."
+					add_check "Band Steering (usteer)" "OK" "Assistente de Band Steering (usteer) ativo com 802.11k, RNR, anti-desconexão (disassoc_low_ack=0) e calibração -70 dBm (wpad-basic ativo; bss_transition resguardado)."
 				fi
 			fi
 

@@ -1005,13 +1005,14 @@ EOF
 				[ "$mode" = "ap" ] || continue
 				dev="$(uci -q get wireless.$iface.device || echo '')"
 
-				# 802.11k, 802.11v (bss_transition) e RNR operam em todos os rádios (2.4G, 5G e 6G)
-				# Orientam celulares na troca de nós e frequências sem alterar o handshake WPA2/WPA3
+				# 802.11k, 802.11v (bss_transition), disassoc_low_ack=0 e RNR operam em todos os rádios (2.4G, 5G e 6G)
+				# Orientam celulares na troca de nós e frequências sem quedas bruscas por atenuação de parede
 				uci -q set "wireless.$iface.ieee80211k=1"
 				uci -q set "wireless.$iface.rrm_neighbor_report=1"
 				uci -q set "wireless.$iface.rrm_beacon_report=1"
 				uci -q set "wireless.$iface.rnr=1"
 				uci -q set "wireless.$iface.ieee80211v=1"
+				uci -q set "wireless.$iface.disassoc_low_ack=0"
 
 				if ark_hostapd_has_wnm; then
 					uci -q set "wireless.$iface.bss_transition=1"
