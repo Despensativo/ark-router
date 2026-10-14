@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ARK Router: Senior UI/UX Redesign & Complete V2 Staging Dashboard Generator.
+ARK Router: Senior UI/UX Redesign & Complete V2 Flagship Dashboard Generator.
 Builds the comprehensive, interactive, production-grade V2 dashboard for local emulation.
-Includes:
-- Native LuCI Slide-Over Drawer with links to ALL native LuCI pages (unobtrusive & clean).
-- All ARK Router Modules: Multi-WAN, Wi-Fi 6E/7, Enhancer, Devices, SQM CAKE, AdBlock,
-  Doctor, System & LEDs, Starlink Dishy, WireGuard & PBR, Speedtest Multi-WAN.
-- 100% of edit buttons, toggles, switches, and modals fully wired and functional.
+- Structure closely aligned with V1 (Hero Banner with live clock/date, Health Strip,
+  Live Traffic Canvas, Internet cards, Wi-Fi multi-band, 34 Devices, and all ARK modules).
+- 100% of inputs that have discrete options converted to clean, user-friendly <select> dropdowns.
+- Fully clickable Native LuCI integration with an authentic simulated LuCI interface preview
+  and switcher, guaranteeing that every link is clickable and functional.
+- Fully wired modals with real-time DOM updates and zero console errors.
 """
 
 import os
@@ -21,7 +22,10 @@ TARGET_FILE = os.path.join(WORKSPACE_ROOT, "docs", "qa_screenshots", "v2_staging
 print(f"Generating Comprehensive V2 Flagship Dashboard at: {TARGET_FILE}")
 os.makedirs(os.path.dirname(TARGET_FILE), exist_ok=True)
 
-html_content = r'''<!DOCTYPE html>
+# Generate HTML code
+with open(TARGET_FILE, "w", encoding="utf-8") as f:
+    # Write the entire HTML in chunks
+    f.write(r'''<!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="utf-8">
@@ -73,9 +77,9 @@ html_content = r'''<!DOCTYPE html>
             width: 100%;
         }
 
-        /* Sidebar Styling */
+        /* Sidebar Styling (V1 Inspired + Modern Navigation) */
         .sidebar {
-            width: 260px;
+            width: 250px;
             background: #0b1324;
             border-right: 1px solid var(--ark-border);
             display: flex;
@@ -86,7 +90,7 @@ html_content = r'''<!DOCTYPE html>
             height: 100vh;
             overflow-y: auto;
             z-index: 50;
-            padding: 18px 14px;
+            padding: 16px 12px;
             transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
@@ -94,7 +98,7 @@ html_content = r'''<!DOCTYPE html>
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 4px 8px 18px;
+            padding: 4px 6px 16px;
             border-bottom: 1px solid var(--ark-border);
             margin-bottom: 14px;
         }
@@ -138,7 +142,7 @@ html_content = r'''<!DOCTYPE html>
             letter-spacing: 0.1em;
             color: #64748b;
             font-weight: 800;
-            padding: 10px 10px 4px;
+            padding: 10px 8px 4px;
         }
 
         .nav-item {
@@ -148,70 +152,55 @@ html_content = r'''<!DOCTYPE html>
             padding: 9px 12px;
             border-radius: var(--ark-radius-sm);
             color: var(--ark-text-muted);
+            text-decoration: none;
             font-size: 0.86rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.15s ease;
-            user-select: none;
+            transition: all 0.18s ease;
             margin-bottom: 2px;
-            text-decoration: none;
         }
 
         .nav-item:hover {
-            color: var(--ark-text-main);
+            color: #fff;
             background: rgba(255, 255, 255, 0.05);
         }
 
         .nav-item.active {
-            background: rgba(2, 132, 199, 0.18);
-            color: #38bdf8;
-            font-weight: 750;
+            color: #fff;
+            background: linear-gradient(90deg, rgba(2, 132, 199, 0.28) 0%, rgba(2, 132, 199, 0.08) 100%);
             border-left: 3px solid #38bdf8;
+            font-weight: 700;
         }
 
-        .nav-item .nav-badge {
-            margin-left: auto;
-            font-size: 0.65rem;
-            font-weight: 800;
-            padding: 2px 6px;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: #cbd5e1;
+        .nav-item .icon {
+            font-size: 1.05rem;
+            width: 22px;
+            text-align: center;
         }
 
-        .nav-item .nav-badge.pulse {
-            background: rgba(16, 185, 129, 0.2);
-            color: #10b981;
-        }
-
-        .nav-item .nav-badge.purple {
-            background: rgba(139, 92, 246, 0.2);
-            color: #c084fc;
-        }
-
-        /* Content Area */
-        .content-area {
-            flex: 1;
+        .sidebar-footer {
+            margin-top: auto;
+            padding-top: 14px;
+            border-top: 1px solid var(--ark-border);
             display: flex;
             flex-direction: column;
-            min-width: 0;
-            background: var(--ark-bg);
+            gap: 8px;
         }
 
-        /* Top Header Bar */
-        .header-bar {
-            height: 64px;
-            border-bottom: 1px solid var(--ark-border);
-            background: rgba(15, 23, 42, 0.75);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+        /* Top Header */
+        .top-header {
             position: sticky;
             top: 0;
             z-index: 40;
+            background: rgba(11, 19, 36, 0.88);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--ark-border);
+            height: 60px;
+            padding: 0 24px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 28px;
         }
 
         .header-left {
@@ -220,90 +209,844 @@ html_content = r'''<!DOCTYPE html>
             gap: 14px;
         }
 
-        .mobile-menu-btn {
-            display: none;
-            background: transparent;
-            border: 1px solid var(--ark-border);
-            color: var(--ark-text-main);
-            border-radius: 8px;
-            width: 38px;
-            height: 38px;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            cursor: pointer;
-        }
-
-        .page-heading {
-            font-size: 1.15rem;
-            font-weight: 850;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
         .header-right {
             display: flex;
             align-items: center;
+            gap: 12px;
+        }
+
+        .btn-hamburger {
+            display: none;
+            background: none;
+            border: 1px solid var(--ark-border);
+            color: #fff;
+            font-size: 1.2rem;
+            padding: 6px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* Hero Banner (Faithful to V1, elevated for V2) */
+        .ex-hero {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(22, 34, 56, 0.95) 100%);
+            border: 1px solid var(--ark-border);
+            border-radius: var(--ark-radius-lg);
+            padding: 24px;
+            margin-bottom: 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 18px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+        }
+
+        .ex-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #0284c7, #06b6d4, #8b5cf6, #10b981);
+        }
+
+        .ex-hero-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .ex-hero-eyebrow {
+            font-size: 0.74rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #38bdf8;
+            font-weight: 800;
+        }
+
+        .ex-hero-title {
+            font-size: 1.7rem;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
             gap: 10px;
         }
 
-        .stat-pill {
-            display: inline-flex;
+        .ex-hero-desc {
+            font-size: 0.86rem;
+            color: #94a3b8;
+            display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            padding: 5px 12px;
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--ark-border);
-            color: #cbd5e1;
-            user-select: none;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
-        .ping-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--ark-emerald);
-            box-shadow: 0 0 8px var(--ark-emerald);
-            animation: pulseDot 2s infinite ease-in-out;
+        .ex-hero-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
         }
 
-        @keyframes pulseDot {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(0.85); }
+        .ex-hero-status-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
-        /* LuCI Drawer Button */
-        .btn-luci-drawer {
-            background: rgba(56, 189, 248, 0.12);
-            color: #38bdf8;
-            border: 1px solid rgba(56, 189, 248, 0.3);
-            border-radius: 9px;
+        .ex-clock-box {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             padding: 6px 14px;
-            font-size: 0.80rem;
-            font-weight: 750;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
             cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .ex-clock-box:hover {
+            border-color: rgba(56, 189, 248, 0.4);
+            background: rgba(56, 189, 248, 0.08);
+        }
+
+        .ex-date-val {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+
+        .ex-time-val {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #fff;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.04em;
+        }
+
+        .ex-hero-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-hero-action {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.18s ease;
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            transition: all 0.18s ease;
-        }
-        .btn-luci-drawer:hover {
-            background: rgba(56, 189, 248, 0.22);
-            box-shadow: 0 0 14px rgba(56, 189, 248, 0.3);
         }
 
-        /* Slide-Over Drawer for Native LuCI Pages */
+        .btn-hero-action:hover {
+            background: rgba(255, 255, 255, 0.14);
+            border-color: rgba(255, 255, 255, 0.25);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        .btn-hero-primary {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            border-color: rgba(56, 189, 248, 0.4);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+        }
+
+        .btn-hero-primary:hover {
+            background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);
+            box-shadow: 0 6px 16px rgba(2, 132, 199, 0.45);
+        }
+
+        /* Health Strip (V1 Style) */
+        .health-strip {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+
+        .health-card {
+            background: var(--ark-surface-1);
+            border: 1px solid var(--ark-border);
+            border-radius: var(--ark-radius-md);
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .health-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--ark-border-hover);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+        }
+
+        .health-icon-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+            flex-shrink: 0;
+        }
+
+        .health-info {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            flex-grow: 1;
+        }
+
+        .health-label {
+            font-size: 0.75rem;
+            color: var(--ark-text-muted);
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
+        .health-val {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .health-bar-bg {
+            width: 100%;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 3px;
+        }
+
+        .health-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.4s ease;
+        }
+
+        /* Main Content Grid */
+        .content-area {
+            flex-grow: 1;
+            padding: 24px;
+            max-width: 1500px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Section Cards */
+        .section-card {
+            background: var(--ark-surface-1);
+            border: 1px solid var(--ark-border);
+            border-radius: var(--ark-radius-lg);
+            padding: 22px;
+            margin-bottom: 22px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+            scroll-margin-top: 80px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--ark-border);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title h2 {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: -0.01em;
+        }
+
+        .section-title .badge {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        /* Live Traffic Grid */
+        .traffic-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 18px;
+            margin-bottom: 22px;
+        }
+
+        @media (max-width: 1024px) {
+            .traffic-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .traffic-canvas-card {
+            background: var(--ark-surface-2);
+            border: 1px solid var(--ark-border);
+            border-radius: var(--ark-radius-md);
+            padding: 16px;
+            position: relative;
+        }
+
+        .traffic-canvas-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .traffic-stats-column {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .traffic-stat-card {
+            background: var(--ark-surface-2);
+            border: 1px solid var(--ark-border);
+            border-radius: var(--ark-radius-md);
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stat-rate {
+            font-size: 1.6rem;
+            font-weight: 900;
+            line-height: 1.1;
+        }
+
+        .stat-rate.down {
+            color: #38bdf8;
+        }
+
+        .stat-rate.up {
+            color: #a855f7;
+        }
+
+        .stat-peak {
+            font-size: 0.75rem;
+            color: var(--ark-text-muted);
+            margin-top: 4px;
+        }
+
+        /* Internet (Multi-WAN) Cards */
+        .wan-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 16px;
+        }
+
+        .wan-card {
+            background: var(--ark-surface-2);
+            border: 1px solid var(--ark-border);
+            border-radius: var(--ark-radius-md);
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: border-color 0.2s ease;
+        }
+
+        .wan-card:hover {
+            border-color: rgba(56, 189, 248, 0.4);
+        }
+
+        .wan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .wan-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .wan-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 14px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+        }
+
+        .wan-info-item span {
+            color: var(--ark-text-muted);
+            display: block;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .wan-info-item strong {
+            color: #fff;
+            font-size: 0.88rem;
+            word-break: break-all;
+        }
+
+        .wan-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        /* Wi-Fi Cards */
+        .wifi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .wifi-radio-card {
+            background: var(--ark-surface-2);
+            border: 1px solid var(--ark-border);
+            border-radius: var(--ark-radius-md);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .wifi-radio-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .wifi-radio-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Devices Table */
+        .device-filters {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+
+        .device-tabs {
+            display: flex;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.25);
+            padding: 4px;
+            border-radius: 10px;
+        }
+
+        .device-tab {
+            background: none;
+            border: none;
+            color: var(--ark-text-muted);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .device-tab:hover {
+            color: #fff;
+        }
+
+        .device-tab.active {
+            background: var(--ark-primary);
+            color: #fff;
+        }
+
+        .device-search-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .device-search-input {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid var(--ark-border);
+            color: #fff;
+            padding: 7px 12px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            width: 200px;
+            outline: none;
+        }
+
+        .device-search-input:focus {
+            border-color: var(--ark-primary);
+        }
+
+        .device-table-container {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border: 1px solid var(--ark-border);
+            border-radius: var(--ark-radius-md);
+        }
+
+        .device-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.84rem;
+            text-align: left;
+        }
+
+        .device-table th {
+            background: #0f192d;
+            padding: 12px 14px;
+            color: #94a3b8;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--ark-border);
+            white-space: nowrap;
+        }
+
+        .device-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            color: #e2e8f0;
+            white-space: nowrap;
+        }
+
+        .device-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Buttons & Pills */
+        .ark-btn {
+            background: var(--ark-surface-3);
+            border: 1px solid var(--ark-border);
+            color: #fff;
+            padding: 7px 14px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .ark-btn:hover {
+            background: var(--ark-border-hover);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        .ark-btn-primary {
+            background: var(--ark-primary);
+            border-color: rgba(56, 189, 248, 0.3);
+        }
+
+        .ark-btn-primary:hover {
+            background: var(--ark-primary-hover);
+        }
+
+        .ark-btn-purple {
+            background: #7c3aed;
+            border-color: rgba(168, 85, 247, 0.4);
+        }
+
+        .ark-btn-purple:hover {
+            background: #6d28d9;
+        }
+
+        .ark-btn-danger {
+            background: rgba(244, 63, 94, 0.15);
+            border-color: rgba(244, 63, 94, 0.4);
+            color: #fda4af;
+        }
+
+        .ark-btn-danger:hover {
+            background: #e11d48;
+            color: #fff;
+        }
+
+        .ark-btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.12);
+            color: #cbd5e1;
+        }
+
+        .ark-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+        }
+
+        .pill-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .pill-online {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .pill-cyan {
+            background: rgba(6, 182, 212, 0.15);
+            color: #22d3ee;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+
+        .pill-purple {
+            background: rgba(139, 92, 246, 0.15);
+            color: #c084fc;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .pill-amber {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        /* Switches & Toggles */
+        .ark-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .ark-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .ark-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background-color: rgba(255, 255, 255, 0.15);
+            transition: .25s ease;
+            border-radius: 24px;
+            border: 1px solid var(--ark-border);
+        }
+
+        .ark-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .25s ease;
+            border-radius: 50%;
+        }
+
+        input:checked + .ark-slider {
+            background-color: #0284c7;
+            border-color: #38bdf8;
+        }
+
+        input:checked + .ark-slider:before {
+            transform: translateX(20px);
+        }
+
+        /* MODAL OVERLAY (With strict LuCI compatibility) */
+        #modal_overlay {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100dvh;
+            background: rgba(0, 0, 0, 0.78);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+
+        body.modal-overlay-active #modal_overlay {
+            display: flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        .modal-box {
+            background: #0f192d;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: var(--ark-radius-lg);
+            width: 100%;
+            max-width: 580px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+            overflow: hidden;
+            animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes modalPop {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-header {
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--ark-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-header h3 {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-close-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.3rem;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+        }
+
+        .modal-close-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-body {
+            padding: 22px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #cbd5e1;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .form-select, .form-input {
+            background: #162238;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            outline: none;
+            width: 100%;
+            transition: border-color 0.15s ease;
+        }
+
+        .form-select:focus, .form-input:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+        }
+
+        .form-select option {
+            background: #0f192d;
+            color: #fff;
+            padding: 8px;
+        }
+
+        .form-hint {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            line-height: 1.35;
+        }
+
+        .modal-footer {
+            padding: 16px 22px;
+            border-top: 1px solid var(--ark-border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.15);
+        }
+
+        /* NATIVE LUCI SLIDE-OVER DRAWER */
         #luci_drawer_backdrop {
             position: fixed;
             inset: 0;
             width: 100vw;
             height: 100dvh;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.65);
             backdrop-filter: blur(4px);
             z-index: 1500;
             opacity: 0;
@@ -319,19 +1062,19 @@ html_content = r'''<!DOCTYPE html>
         #luci_drawer {
             position: fixed;
             top: 0;
-            right: -420px;
-            width: 380px;
+            right: -440px;
+            width: 400px;
             max-width: 90vw;
             height: 100dvh;
-            background: #0f192d;
+            background: #0b1324;
             border-left: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: -10px 0 40px rgba(0, 0, 0, 0.7);
+            box-shadow: -10px 0 40px rgba(0, 0, 0, 0.8);
             z-index: 1600;
             overflow-y: auto;
             padding: 24px;
             display: flex;
             flex-direction: column;
-            gap: 18px;
+            gap: 16px;
             transition: right 0.28s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
@@ -347,1858 +1090,1172 @@ html_content = r'''<!DOCTYPE html>
             padding-bottom: 14px;
         }
 
-        .drawer-header h3 {
-            font-size: 1.1rem;
-            font-weight: 850;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .drawer-cat {
+        .drawer-category {
             font-size: 0.72rem;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: #38bdf8;
             font-weight: 800;
-            margin-top: 6px;
-            margin-bottom: 6px;
+            color: #38bdf8;
+            letter-spacing: 0.08em;
+            margin-top: 10px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         }
 
         .drawer-link {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 8px 12px;
+            padding: 10px 12px;
             border-radius: 8px;
-            color: var(--ark-text-muted);
-            font-size: 0.84rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            color: #e2e8f0;
             text-decoration: none;
-            transition: all 0.15s ease;
-            background: rgba(255, 255, 255, 0.02);
-            margin-bottom: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.18s ease;
         }
 
         .drawer-link:hover {
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(56, 189, 248, 0.15);
+            border-color: rgba(56, 189, 248, 0.35);
             color: #fff;
-            transform: translateX(4px);
+            transform: translateX(-2px);
         }
 
-        .drawer-link span.uri {
-            font-size: 0.70rem;
-            font-family: monospace;
-            color: #64748b;
-        }
-
-        /* View Panels */
-        .view-panel {
-            display: none;
-            padding: 28px;
-            animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-            max-width: 1440px;
-            margin: 0 auto;
-            width: 100%;
-        }
-
-        .view-panel.active {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Hero Banner */
-        .hero-banner {
-            background: linear-gradient(135deg, #0d1a30 0%, #102746 50%, #1a3860 100%);
-            border: 1px solid rgba(56, 189, 248, 0.25);
-            border-radius: var(--ark-radius-lg);
-            padding: 24px 28px;
-            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
-            margin-bottom: 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 20px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .hero-eyebrow {
-            font-size: 0.72rem;
-            letter-spacing: 0.15em;
-            text-transform: uppercase;
-            font-weight: 800;
-            color: #38bdf8;
-            margin-bottom: 4px;
-            display: block;
-        }
-
-        .hero-title {
-            font-size: 1.85rem;
-            font-weight: 900;
-            color: #fff;
-            letter-spacing: -0.02em;
-            margin-bottom: 4px;
-        }
-
-        .hero-desc {
-            font-size: 0.88rem;
+        .drawer-link-meta {
+            font-size: 0.7rem;
             color: #94a3b8;
-            max-width: 680px;
-            line-height: 1.45;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
         }
 
-        .hero-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 16px;
-            flex-wrap: wrap;
-        }
-
-        /* Buttons */
-        .ark-btn {
-            min-height: 42px;
-            padding: 8px 18px;
-            border-radius: 9px;
-            font-size: 0.84rem;
-            font-weight: 750;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: all 0.18s ease;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: manipulation;
-            border: none;
-            text-decoration: none;
-        }
-
-        .ark-btn-primary {
-            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-            color: #fff;
-            box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
-        }
-        .ark-btn-primary:hover {
-            box-shadow: 0 6px 20px rgba(2, 132, 199, 0.5);
-            transform: translateY(-1px);
-        }
-
-        .ark-btn-secondary {
-            background: rgba(255, 255, 255, 0.08);
-            color: #f8fafc;
-            border: 1px solid var(--ark-border);
-        }
-        .ark-btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.12);
-        }
-
-        .ark-btn-purple {
-            background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
-            color: #fff;
-            box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
-        }
-        .ark-btn-purple:hover {
-            box-shadow: 0 6px 20px rgba(124, 58, 237, 0.5);
-            transform: translateY(-1px);
-        }
-
-        .ark-btn-danger {
-            background: rgba(239, 68, 68, 0.15);
-            color: #f87171;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-        .ark-btn-danger:hover {
-            background: #ef4444;
-            color: #fff;
-        }
-
-        /* Switch Toggles */
-        .ark-switch {
-            position: relative;
-            display: inline-block;
-            width: 46px;
-            height: 26px;
-            flex-shrink: 0;
-        }
-
-        .ark-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .ark-slider {
-            position: absolute;
-            cursor: pointer;
-            inset: 0;
-            background-color: rgba(255, 255, 255, 0.15);
-            transition: .2s;
-            border-radius: 26px;
-            border: 1px solid var(--ark-border);
-        }
-
-        .ark-slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: .2s;
-            border-radius: 50%;
-        }
-
-        input:checked + .ark-slider {
-            background-color: #0284c7;
-        }
-
-        input:checked + .ark-slider:before {
-            transform: translateX(20px);
-        }
-
-        .toggle-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 14px;
-            background: rgba(255, 255, 255, 0.02);
-            border-radius: var(--ark-radius-sm);
-            border: 1px solid var(--ark-border);
-            margin-bottom: 10px;
-            gap: 14px;
-        }
-
-        .toggle-title {
-            font-weight: 750;
-            font-size: 0.88rem;
-            color: #fff;
-            display: block;
-        }
-
-        .toggle-desc {
-            font-size: 0.75rem;
-            color: var(--ark-text-muted);
-            margin-top: 2px;
-            line-height: 1.4;
-        }
-
-        /* Grid System */
-        .grid-4 {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 18px;
-            margin-bottom: 22px;
-        }
-
-        .grid-3 {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 18px;
-            margin-bottom: 22px;
-        }
-
-        .grid-2 {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-            margin-bottom: 22px;
-        }
-
-        /* Cards */
-        .ark-card {
-            background: var(--ark-surface-1);
-            border: 1px solid var(--ark-border);
-            border-radius: var(--ark-radius-md);
-            padding: 20px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-            position: relative;
-        }
-
-        .ark-card:hover {
-            border-color: var(--ark-border-hover);
-            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
-        }
-
-        .card-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 16px;
-            gap: 12px;
-        }
-
-        .card-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .card-title h3 {
-            font-size: 1.05rem;
-            font-weight: 800;
-            color: #fff;
-        }
-
-        .card-kicker {
-            font-size: 0.68rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: #64748b;
-            font-weight: 800;
-            display: block;
-        }
-
-        .info-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-            font-size: 0.85rem;
-            min-width: 0;
-        }
-
-        .info-row:last-child {
-            border-bottom: none;
-        }
-
-        .info-label {
-            color: var(--ark-text-muted);
-            min-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .info-val {
-            font-weight: 750;
-            color: var(--ark-text-main);
-            text-align: right;
-        }
-
-        .info-val.highlight {
-            color: #38bdf8;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        }
-
-        .info-val.success {
-            color: var(--ark-emerald);
-        }
-
-        .stat-card {
-            background: linear-gradient(145deg, #0f192d 0%, #13223d 100%);
-            border: 1px solid var(--ark-border);
-            border-radius: var(--ark-radius-md);
-            padding: 18px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .stat-card-label {
-            font-size: 0.75rem;
-            font-weight: 750;
-            color: var(--ark-text-muted);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .stat-card-value {
-            font-size: 1.7rem;
-            font-weight: 900;
-            color: #fff;
-            letter-spacing: -0.02em;
-            display: flex;
-            align-items: baseline;
-            gap: 6px;
-        }
-
-        .stat-card-value small {
-            font-size: 0.82rem;
-            color: var(--ark-text-muted);
-            font-weight: 600;
-        }
-
-        .stat-card-meta {
-            font-size: 0.72rem;
-            color: #64748b;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        /* Canvas Chart Wrapper */
-        .chart-wrapper {
-            position: relative;
-            width: 100%;
-            height: 180px;
-            background: rgba(0, 0, 0, 0.35);
-            border-radius: var(--ark-radius-md);
-            padding: 12px;
-            border: 1px solid var(--ark-border);
-            margin-top: 10px;
-        }
-
-        .chart-canvas {
-            width: 100% !important;
-            height: 100% !important;
-            display: block;
-        }
-
-        /* Tables */
-        .table-responsive {
-            width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            border-radius: var(--ark-radius-sm);
-            border: 1px solid var(--ark-border);
-            margin-top: 12px;
-        }
-
-        .ark-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.84rem;
-            min-width: 680px;
-        }
-
-        .ark-table th {
-            background: rgba(255, 255, 255, 0.04);
-            color: var(--ark-text-muted);
-            text-transform: uppercase;
-            font-size: 0.70rem;
-            letter-spacing: 0.08em;
-            padding: 12px 14px;
-            text-align: left;
-            font-weight: 800;
-            border-bottom: 1px solid var(--ark-border);
-        }
-
-        .ark-table td {
-            padding: 12px 14px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-            color: var(--ark-text-main);
-        }
-
-        .ark-table tr:hover td {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .swipe-hint {
-            font-size: 0.72rem;
-            color: #64748b;
-            margin-bottom: 6px;
+        /* NATIVE LUCI SIMULATOR VIEW (For full preview in staging) */
+        #luci_native_view_container {
             display: none;
-        }
-
-        /* Steppers */
-        .stepper-list {
-            list-style: none;
-            padding-left: 0;
-            margin: 14px 0;
-        }
-
-        .step-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 8px 10px;
-            border-radius: 8px;
-            font-size: 0.84rem;
-            color: var(--ark-text-muted);
-            margin-bottom: 4px;
-            transition: all 0.2s ease;
-        }
-
-        .step-icon {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            font-size: 11px;
-            font-family: monospace;
-            background: rgba(255, 255, 255, 0.08);
-            color: #94a3b8;
-            flex-shrink: 0;
-        }
-
-        .step-item.active {
-            background: rgba(2, 132, 199, 0.12);
-            color: #38bdf8;
-            font-weight: 750;
-        }
-        .step-item.active .step-icon {
-            background: var(--ark-primary);
-            color: #fff;
-            box-shadow: 0 0 10px var(--ark-primary);
-        }
-
-        .step-item.done {
-            color: var(--ark-emerald);
-        }
-        .step-item.done .step-icon {
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--ark-emerald);
-        }
-
-        /* Modals */
-        #modal_overlay {
             position: fixed;
             inset: 0;
             width: 100vw;
             height: 100dvh;
-            background: rgba(0, 0, 0, 0.78);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            z-index: 2000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-            box-sizing: border-box;
-            transition: opacity 0.2s ease, visibility 0.2s ease;
-        }
-
-        #modal_overlay.inactive {
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-        }
-
-        .modal-card {
-            background: #0f192d;
-            border: 1px solid rgba(255, 255, 255, 0.14);
-            border-radius: var(--ark-radius-lg);
-            width: 100%;
-            max-width: 620px;
-            max-height: calc(100dvh - 48px);
+            background: #111827;
+            z-index: 1800;
             overflow-y: auto;
-            padding: 24px;
-            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
-            animation: modalPop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+            flex-direction: column;
         }
 
-        @keyframes modalPop {
-            from { opacity: 0; transform: scale(0.96) translateY(10px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
+        #luci_native_view_container.active {
+            display: flex;
         }
 
-        .modal-header {
+        .luci-sim-bar {
+            background: #1f2937;
+            border-bottom: 1px solid #374151;
+            padding: 10px 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 18px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid var(--ark-border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
-        .modal-header h3 {
-            font-size: 1.15rem;
-            font-weight: 850;
+        .luci-sim-classic-header {
+            background: #1e3a8a;
             color: #fff;
-        }
-
-        .modal-close-btn {
-            background: rgba(255, 255, 255, 0.08);
-            border: none;
-            color: #94a3b8;
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
+            padding: 14px 24px;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
         }
-        .modal-close-btn:hover {
-            background: rgba(255, 255, 255, 0.16);
+
+        .luci-sim-classic-nav {
+            background: #2563eb;
+            display: flex;
+            padding: 0 24px;
+            gap: 4px;
+        }
+
+        .luci-nav-tab {
             color: #fff;
-        }
-
-        .form-group {
-            margin-bottom: 14px;
-        }
-
-        .form-label {
-            display: block;
-            font-size: 0.78rem;
-            font-weight: 750;
-            color: var(--ark-text-muted);
-            margin-bottom: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .form-input, .form-select {
-            width: 100%;
-            height: 42px;
-            background: rgba(0, 0, 0, 0.35);
-            border: 1px solid var(--ark-border);
-            border-radius: var(--ark-radius-sm);
-            padding: 8px 12px;
-            color: #fff;
+            padding: 10px 16px;
             font-size: 0.88rem;
-            outline: none;
-            transition: border-color 0.15s ease;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            border-bottom: 3px solid transparent;
         }
 
-        .form-input:focus, .form-select:focus {
-            border-color: #38bdf8;
-            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+        .luci-nav-tab.active {
+            background: #1d4ed8;
+            border-bottom-color: #60a5fa;
         }
 
-        .form-actions {
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 20px;
-            padding-top: 16px;
-            border-top: 1px solid var(--ark-border);
+        .luci-sim-content {
+            padding: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
         }
 
-        /* Toast */
+        /* Toast Notifications */
         #toast_notify {
             position: fixed;
             bottom: 24px;
             right: 24px;
-            background: #1e293b;
+            background: #0284c7;
             color: #fff;
-            border: 1px solid rgba(56, 189, 248, 0.35);
-            border-radius: 10px;
             padding: 12px 20px;
+            border-radius: 10px;
             font-size: 0.88rem;
             font-weight: 700;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
             z-index: 3000;
-            display: flex;
-            align-items: center;
-            gap: 10px;
             opacity: 0;
-            transform: translateY(20px);
-            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-            pointer-events: none;
+            visibility: hidden;
+            transform: translateY(12px);
+            transition: all 0.25s ease;
         }
 
         #toast_notify.show {
             opacity: 1;
+            visibility: visible;
             transform: translateY(0);
-            pointer-events: auto;
         }
 
-        /* Responsive Breakpoints */
-        @media (max-width: 960px) {
+        @media (max-width: 854px) {
             .sidebar {
                 position: fixed;
-                left: -280px;
-                top: 0;
-                bottom: 0;
-                box-shadow: 10px 0 30px rgba(0, 0, 0, 0.7);
+                left: -260px;
             }
             .sidebar.open {
-                left: 0;
+                transform: translateX(260px);
             }
-            .mobile-menu-btn {
-                display: inline-flex;
-            }
-            .grid-4, .grid-3 {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            .grid-2 {
-                grid-template-columns: 1fr;
-            }
-            .view-panel {
-                padding: 16px;
-            }
-            .header-bar {
-                padding: 0 16px;
-            }
-            .swipe-hint {
+            .btn-hamburger {
                 display: block;
             }
-        }
-
-        @media (max-width: 600px) {
-            .grid-4, .grid-3 {
-                grid-template-columns: 1fr;
+            .top-header {
+                padding: 0 14px;
             }
-            .hero-banner {
-                padding: 18px;
+            .content-area {
+                padding: 14px;
             }
-            .hero-title {
-                font-size: 1.45rem;
+            .ex-hero {
+                padding: 16px;
             }
-            .stat-pill:not(.online) {
-                display: none;
+            .ex-hero-right {
+                align-items: flex-start;
+                width: 100%;
             }
         }
     </style>
 </head>
 <body>
 
-    <!-- APP SHELL -->
+    <!-- App Shell -->
     <div class="app-shell">
 
-        <!-- SIDEBAR -->
+        <!-- Sidebar Navigation -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-brand">
-                <div class="sidebar-logo">A</div>
+                <div class="sidebar-logo">⚡</div>
                 <div class="sidebar-title">
                     <h1>ARK Router</h1>
-                    <span class="version-badge">v1.5.17 PRO</span>
+                    <span class="version-badge">v1.5.17 Pro (V2)</span>
                 </div>
             </div>
 
-            <div class="nav-section-title">Principal</div>
-            <a class="nav-item active" onclick="switchView('overview')">
-                <span>📊</span> Visão Geral
-                <span class="nav-badge pulse">AO VIVO</span>
+            <div class="nav-section-title">Central Operacional</div>
+            <a class="nav-item active" onclick="scrollToSection('sec-overview')">
+                <span class="icon">📊</span> Visão Geral
             </a>
-            <a class="nav-item" onclick="switchView('wan')">
-                <span>🌐</span> Multi-WAN & Failover
-                <span class="nav-badge">DUAL</span>
+            <a class="nav-item" onclick="scrollToSection('sec-wan')">
+                <span class="icon">🌐</span> Multi-WAN & Failover
             </a>
-            <a class="nav-item" onclick="switchView('wifi')">
-                <span>📶</span> Redes Wi-Fi & Rádios
-                <span class="nav-badge">6E/7</span>
+            <a class="nav-item" onclick="scrollToSection('sec-wifi')">
+                <span class="icon">📶</span> Wi-Fi 6E / Wi-Fi 7
             </a>
-            <a class="nav-item" onclick="switchView('enhancer')" style="color:#c084fc;">
-                <span>🚀</span> Smart Wi-Fi Enhancer
-                <span class="nav-badge purple">7 ETAPAS</span>
+            <a class="nav-item" onclick="scrollToSection('sec-enhancer')">
+                <span class="icon">🚀</span> Wi-Fi Enhancer
             </a>
-            <a class="nav-item" onclick="switchView('devices')">
-                <span>📱</span> Dispositivos
-                <span class="nav-badge">34</span>
+            <a class="nav-item" onclick="scrollToSection('sec-devices')">
+                <span class="icon">📱</span> Dispositivos (<span id="side_dev_count">34</span>)
             </a>
 
-            <div class="nav-section-title">Conectividade & Satélite</div>
-            <a class="nav-item" onclick="switchView('starlink')">
-                <span>🛰️</span> Starlink & Satélite
-                <span class="nav-badge">28ms</span>
+            <div class="nav-section-title">Engenharia & Performance</div>
+            <a class="nav-item" onclick="scrollToSection('sec-doctor')">
+                <span class="icon">🩺</span> Ark Doctor (Diagnóstico)
             </a>
-            <a class="nav-item" onclick="switchView('vpn')">
-                <span>🔒</span> VPN & Roteamento (PBR)
-                <span class="nav-badge">WG</span>
+            <a class="nav-item" onclick="scrollToSection('sec-sqm')">
+                <span class="icon">⚡</span> SQM CAKE Bufferbloat
             </a>
-            <a class="nav-item" onclick="switchView('speedtest')">
-                <span>⚡</span> Speedtest Multi-WAN
+            <a class="nav-item" onclick="scrollToSection('sec-starlink')">
+                <span class="icon">🛰️</span> Starlink Dishy LEO
             </a>
-
-            <div class="nav-section-title">Otimização & Segurança</div>
-            <a class="nav-item" onclick="switchView('sqm')">
-                <span>🛡️</span> Firewall & SQM CAKE
-                <span class="nav-badge">0ms LAG</span>
+            <a class="nav-item" onclick="scrollToSection('sec-vpn')">
+                <span class="icon">🔒</span> VPN WireGuard & PBR
             </a>
-            <a class="nav-item" onclick="switchView('adblock')">
-                <span>🛑</span> Escudo AdBlock & DNS
-                <span class="nav-badge">42K</span>
+            <a class="nav-item" onclick="scrollToSection('sec-speedtest')">
+                <span class="icon">🚀</span> Teste de Velocidade
             </a>
-            <a class="nav-item" onclick="switchView('doctor')">
-                <span>🩺</span> Ark Doctor
-                <span class="nav-badge pulse">28 CHECKS</span>
+            <a class="nav-item" onclick="scrollToSection('sec-hardware')">
+                <span class="icon">💡</span> Hardware & LEDs
             </a>
 
-            <div class="nav-section-title">Manutenção & Avançado</div>
-            <a class="nav-item" onclick="switchView('system')">
-                <span>⚙️</span> Sistema, LEDs & Modos
-                <span class="nav-badge">46°C</span>
+            <div class="nav-section-title">OpenWrt LuCI</div>
+            <a class="nav-item" style="color:#38bdf8;" onclick="toggleLuciDrawer()">
+                <span class="icon">🛠️</span> LuCI Nativo ▾
             </a>
-            <a class="nav-item" onclick="toggleLuciDrawer()" style="color:#38bdf8; background:rgba(56,189,248,0.08);">
-                <span>🛠️</span> Páginas Nativas LuCI
+            <a class="nav-item" style="color:#c084fc;" onclick="openLuciSimulator('overview')">
+                <span class="icon">💻</span> Ver Interface Clássica
             </a>
-            <a class="nav-item" onclick="openModal('reboot')" style="color:#f87171;">
-                <span>🔄</span> Reiniciar Roteador
-            </a>
+
+            <div class="sidebar-footer">
+                <button class="ark-btn ark-btn-secondary" style="width:100%;" onclick="openModal('reboot')">
+                    🔄 Reiniciar Roteador
+                </button>
+            </div>
         </aside>
 
-        <!-- CONTENT AREA -->
-        <div class="content-area">
+        <!-- Main Wrapper -->
+        <div style="flex-grow:1; display:flex; flex-direction:column; min-width:0;">
 
-            <!-- HEADER BAR -->
-            <header class="header-bar">
+            <!-- Top Header -->
+            <header class="top-header">
                 <div class="header-left">
-                    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
-                    <div class="page-heading" id="current_page_title">
-                        <span>📊</span> Visão Geral do Roteador
-                    </div>
+                    <button class="btn-hamburger" onclick="toggleSidebar()">☰</button>
+                    <span style="font-size:0.92rem; font-weight:700; color:#fff;">
+                        🏠 Acer Predator W6x <span style="color:#64748b;">(192.168.73.1)</span>
+                    </span>
                 </div>
                 <div class="header-right">
-                    <div class="stat-pill online">
-                        <span class="ping-dot"></span> GATEWAY: <span id="header_ping">12</span>ms
-                    </div>
-                    <div class="stat-pill">
-                        🛡️ CAKE: 0ms
-                    </div>
-                    <div class="stat-pill">
-                        📱 34 Clientes
-                    </div>
-                    <div class="stat-pill" style="font-family: monospace;" id="header_clock">
-                        --:--:--
-                    </div>
-                    <!-- Discrete LuCI Drawer Trigger -->
-                    <button class="btn-luci-drawer" onclick="toggleLuciDrawer()">
+                    <button class="btn-hero-action" onclick="toggleLuciDrawer()" style="background:rgba(56,189,248,0.15); border-color:rgba(56,189,248,0.35); color:#38bdf8;">
                         🛠️ LuCI Nativo ▾
+                    </button>
+                    <button class="btn-hero-action" onclick="openModal('setup')">
+                        ⚡ Setup Rápido
+                    </button>
+                    <button class="btn-hero-action" onclick="openModal('theme_picker')">
+                        🎨 Tema
                     </button>
                 </div>
             </header>
 
-            <!-- ========================================================= -->
-            <!-- 1. VIEW: VISÃO GERAL (OVERVIEW)                            -->
-            <!-- ========================================================= -->
-            <main class="view-panel active" id="view-overview">
-                <!-- HERO BANNER -->
-                <section class="hero-banner">
-                    <div>
-                        <span class="hero-eyebrow">CENTRAL DE OPERAÇÕES • V2 PROFISSIONAL</span>
-                        <h2 class="hero-title">ARK Router OS</h2>
-                        <p class="hero-desc">
-                            MediaTek Filogic 830 (MT7986) Quad-Core 2.0 GHz • OpenWrt 25.12.5 • Dual-WAN Ativo com Failover Instantâneo e SQM CAKE.
+            <!-- Main Content Area -->
+            <main class="content-area">
+
+                <!-- HERO BANNER (V1 Structural Identity, Elevated for V2) -->
+                <section class="ex-hero" id="sec-overview">
+                    <div class="ex-hero-info">
+                        <span class="ex-hero-eyebrow">PAINEL DE CONTROLE • ACER PREDATOR W6X (WI-FI 6E)</span>
+                        <h2 class="ex-hero-title">
+                            ARK Router <span class="pill-badge pill-online">ATIVO</span>
+                        </h2>
+                        <p class="ex-hero-desc">
+                            <span>OpenWrt 24.10.0</span> • 
+                            <span>Kernel 6.6.54</span> • 
+                            <span>MediaTek Filogic 830 (MT7986A 4x 2.0GHz)</span> • 
+                            <strong style="color:#38bdf8;">ARK OS v1.5.17</strong>
                         </p>
-                        <div class="hero-actions">
-                            <button class="ark-btn ark-btn-primary" onclick="openModal('setup')">⚡ Ark Setup (Assistente)</button>
-                            <button class="ark-btn ark-btn-purple" onclick="switchView('enhancer')">🚀 Smart Wi-Fi Enhancer (7 Etapas)</button>
-                            <button class="ark-btn ark-btn-secondary" onclick="switchView('doctor')">🩺 Executar Doctor</button>
-                            <button class="ark-btn ark-btn-secondary" onclick="openModal('wifi_qr')">📲 Conectar via QR Code</button>
-                            <button class="ark-btn ark-btn-danger" onclick="openModal('reboot')">🔄 Reiniciar</button>
+                        <div class="ex-hero-actions" style="margin-top:10px;">
+                            <button class="btn-hero-action btn-hero-primary" onclick="openModal('setup')">⚡ Ark - Setup</button>
+                            <button class="btn-hero-action" onclick="openModal('op_mode')">🌐 Modo: Roteador Gateway</button>
+                            <button class="btn-hero-action" onclick="openModal('gamer_mode')">🎮 Perfil Gamer Ultra</button>
+                            <button class="btn-hero-action" onclick="openModal('language')">🇧🇷 Idioma: PT-BR</button>
+                            <button class="btn-hero-action" onclick="toggleLuciDrawer()">🛠️ Menus LuCI Nativo</button>
                         </div>
                     </div>
-                    <div style="text-align: right;">
-                        <span style="font-size:0.75rem; color:#94a3b8; font-weight:700;">CONSUMO AGREGADO:</span>
-                        <div style="font-size:2.2rem; font-weight:900; color:#38bdf8;" id="overview_total_speed">482.4 Mbps</div>
-                        <span style="font-size:0.78rem; color:#10b981; font-weight:700;">⬆ 184.2 Mbps Upload</span>
+                    <div class="ex-hero-right">
+                        <div class="ex-hero-status-row">
+                            <span class="pill-badge pill-online" style="padding:6px 12px; font-size:0.8rem;">● TUDO OPERACIONAL</span>
+                            <div class="ex-clock-box" onclick="openModal('clock')" title="Ajustar relógio e servidor NTP">
+                                <span class="ex-date-val" id="live_date">14/10/2026</span>
+                                <span class="ex-time-val" id="live_clock">03:15:00</span>
+                            </div>
+                        </div>
+                        <span style="font-size:0.75rem; color:#64748b;">sessão segura de 12 horas • atualização contínua a cada 3s</span>
                     </div>
                 </section>
 
-                <!-- 4 STAT CARDS -->
-                <div class="grid-4">
-                    <div class="stat-card">
-                        <div class="stat-card-label">
-                            <span>VELOCIDADE ATUAL</span>
-                            <span style="color:#38bdf8;">⚡ LIVE</span>
-                        </div>
-                        <div class="stat-card-value">
-                            <span id="stat_down">482</span> <small>Mbps Down</small>
-                        </div>
-                        <div class="stat-card-meta" style="color:#10b981;">
-                            ▲ 184 Mbps Up • CAKE 0ms Bufferbloat
+                <!-- HEALTH STRIP (5 Hardware Vitals) -->
+                <div class="health-strip">
+                    <div class="health-card" onclick="openHardwareModal('cpu')">
+                        <div class="health-icon-box" style="background:rgba(16,185,129,0.15); color:#10b981;">⚡</div>
+                        <div class="health-info">
+                            <span class="health-label">Processador</span>
+                            <span class="health-val" id="health_cpu">12%</span>
+                            <div class="health-bar-bg"><div class="health-bar-fill" id="bar_cpu" style="width:12%; background:#10b981;"></div></div>
                         </div>
                     </div>
-
-                    <div class="stat-card">
-                        <div class="stat-card-label">
-                            <span>INTERNET MULTI-WAN</span>
-                            <span class="stat-pill online" style="padding:2px 8px; font-size:0.65rem;">ONLINE</span>
-                        </div>
-                        <div class="stat-card-value">
-                            2 <small>Links Ativos</small>
-                        </div>
-                        <div class="stat-card-meta">
-                            WAN 1: Fibra 1Gbps • WAN 2: Backup 300M
+                    <div class="health-card" onclick="openHardwareModal('temp')">
+                        <div class="health-icon-box" style="background:rgba(245,158,11,0.15); color:#f59e0b;">℃</div>
+                        <div class="health-info">
+                            <span class="health-label">Temperatura</span>
+                            <span class="health-val" id="health_temp">46°C</span>
+                            <div class="health-bar-bg"><div class="health-bar-fill" style="width:46%; background:#f59e0b;"></div></div>
                         </div>
                     </div>
-
-                    <div class="stat-card">
-                        <div class="stat-card-label">
-                            <span>DISPOSITIVOS CONECTADOS</span>
-                            <span style="color:#c084fc;">📶 WI-FI 6E</span>
-                        </div>
-                        <div class="stat-card-value">
-                            34 <small>Aparelhos</small>
-                        </div>
-                        <div class="stat-card-meta">
-                            18 em 5 GHz • 12 em 2.4 GHz • 4 em 6 GHz
+                    <div class="health-card" onclick="openHardwareModal('ram')">
+                        <div class="health-icon-box" style="background:rgba(59,130,246,0.15); color:#3b82f6;">▦</div>
+                        <div class="health-info">
+                            <span class="health-label">Memória RAM</span>
+                            <span class="health-val" id="health_ram">188 / 512 MB</span>
+                            <div class="health-bar-bg"><div class="health-bar-fill" id="bar_ram" style="width:36%; background:#3b82f6;"></div></div>
                         </div>
                     </div>
-
-                    <div class="stat-card">
-                        <div class="stat-card-label">
-                            <span>SAÚDE DO SISTEMA</span>
-                            <span style="color:#10b981;">100% OK</span>
+                    <div class="health-card" onclick="openHardwareModal('flash')">
+                        <div class="health-icon-box" style="background:rgba(139,92,246,0.15); color:#8b5cf6;">▣</div>
+                        <div class="health-info">
+                            <span class="health-label">Armazenamento</span>
+                            <span class="health-val">18 / 128 MB</span>
+                            <div class="health-bar-bg"><div class="health-bar-fill" style="width:14%; background:#8b5cf6;"></div></div>
                         </div>
-                        <div class="stat-card-value">
-                            46°C <small>Normal</small>
-                        </div>
-                        <div class="stat-card-meta">
-                            RAM: 134/512 MB • CPU: 8% • Doctor 28/28
+                    </div>
+                    <div class="health-card">
+                        <div class="health-icon-box" style="background:rgba(6,182,212,0.15); color:#06b6d4;">⌁</div>
+                        <div class="health-info">
+                            <span class="health-label">Carga do Sistema</span>
+                            <span class="health-val" style="font-size:0.98rem;">0.15, 0.12, 0.08</span>
+                            <span style="font-size:0.7rem; color:#64748b;">4 núcleos ativos</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- LIVE TRAFFIC GRAPH (CANVAS 2D) -->
-                <div class="ark-card" style="margin-bottom: 22px;">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <span class="card-kicker">TELEMETRIA EM TEMPO REAL</span>
-                            <h3>Tráfego Agregado de Rede (Download & Upload)</h3>
-                        </div>
-                        <div style="display:flex; gap:12px; align-items:center;">
-                            <span style="font-size:0.75rem; color:#38bdf8; font-weight:750;">● Download: <span id="chart_down_label">482 Mbps</span></span>
-                            <span style="font-size:0.75rem; color:#10b981; font-weight:750;">● Upload: <span id="chart_up_label">184 Mbps</span></span>
-                            <button class="ark-btn ark-btn-secondary" style="min-height:30px; padding:3px 10px; font-size:0.75rem;" onclick="toggleChartPause()">⏸ Pausar</button>
-                        </div>
-                    </div>
-                    <div class="chart-wrapper">
-                        <canvas id="traffic_canvas" class="chart-canvas"></canvas>
-                    </div>
-                </div>
-
-                <!-- 2-COL SECTION: WANs & SMART ENHANCER -->
-                <div class="grid-2">
-                    <div class="ark-card">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <span class="card-kicker">BALANCEAMENTO MWAN3</span>
-                                <h3>Interfaces WAN</h3>
-                            </div>
-                            <button class="ark-btn ark-btn-secondary" style="min-height:32px; padding:4px 12px; font-size:0.75rem;" onclick="switchView('wan')">Gerenciar WANs</button>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">WAN 1 (Vivo Fibra PPPoE 1Gbps)</span>
-                            <span class="info-val success">● Ativo (1000M Full) • 12ms</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">WAN 2 (Claro Backup DHCP 300Mbps)</span>
-                            <span class="info-val" style="color:#38bdf8;">● Standby Quente • 16ms</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">IPv6 Operadora</span>
-                            <span class="info-val highlight">2804:14d:5484::/64 (Delegado)</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Controle de Latência (Bufferbloat)</span>
-                            <span class="info-val success">CAKE Ativo (Fila Zero-Lag)</span>
-                        </div>
-                    </div>
-
-                    <div class="ark-card">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <span class="card-kicker">WIRELESS PROFISSIONAL</span>
-                                <h3>Redes Wi-Fi & Roaming</h3>
-                            </div>
-                            <button class="ark-btn ark-btn-secondary" style="min-height:32px; padding:4px 12px; font-size:0.75rem;" onclick="switchView('wifi')">Configurar Wi-Fi</button>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">SSID Unificado</span>
-                            <span class="info-val" style="color:#38bdf8; font-weight:800;" id="overview_ssid_label">Wi-Fi-H&R (2.4G/5G/6G)</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Segurança Criptográfica</span>
-                            <span class="info-val">WPA3-SAE / WPA2-PSK Misto + PMF</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Fast Roaming (802.11k/v/r)</span>
-                            <span class="info-val success">Ativo (WNM BSS Transition)</span>
-                        </div>
-                        <div class="info-row" style="border-top:1px dashed rgba(255,255,255,0.08); padding-top:10px; margin-top:8px;">
+                <!-- LIVE TRAFFIC CANVAS & PEAKS -->
+                <div class="traffic-grid">
+                    <div class="traffic-canvas-card">
+                        <div class="traffic-canvas-header">
                             <div>
-                                <span style="font-weight:750; font-size:0.85rem; color:#c084fc;">🚀 Smart Wi-Fi Enhancer</span>
-                                <div style="font-size:0.72rem; color:#94a3b8;">Daemon hostapd avançado com 802.11v nativo</div>
+                                <h3 style="font-size:0.95rem; font-weight:800; color:#fff;">Fluxo de Rede em Tempo Real</h3>
+                                <span style="font-size:0.75rem; color:#94a3b8;">Monitoramento dual-stream por amostragem contínua</span>
                             </div>
-                            <button class="ark-btn ark-btn-purple" style="min-height:30px; padding:3px 12px; font-size:0.75rem;" onclick="switchView('enhancer')">Ver Status 7 Etapas</button>
-                        </div>
-                    </div>
-                </div>
-            </main>
-
-            <!-- ========================================================= -->
-            <!-- 2. VIEW: MULTI-WAN, AUTO-WAN & FAILOVER                   -->
-            <!-- ========================================================= -->
-            <main class="view-panel" id="view-wan">
-                <div class="hero-banner" style="background: linear-gradient(135deg, #091a30 0%, #0d284f 100%);">
-                    <div>
-                        <span class="hero-eyebrow">ARQUITETURA MULTI-WAN INTELIGENTE</span>
-                        <h2 class="hero-title">Multi-WAN, Auto-WAN & Failover</h2>
-                        <p class="hero-desc">
-                            Monitoramento em tempo real com perda zero de pacotes via mwan3. O Piloto Automático de Portas (Auto-WAN) detecta quando um cabo de operadora é plugado e reconfigura a porta automaticamente.
-                        </p>
-                    </div>
-                    <button class="ark-btn ark-btn-danger" id="sim_failover_btn" onclick="toggleSimulatedFailover()">
-                        ⚡ Simular Queda da WAN 1 (Teste de Failover)
-                    </button>
-                </div>
-
-                <!-- Toggles de Auto-WAN e Balanceamento -->
-                <div class="grid-2">
-                    <div class="toggle-row">
-                        <div>
-                            <span class="toggle-title">Piloto Automático de Portas (Auto-WAN)</span>
-                            <span class="toggle-desc">Converte dinamicamente qualquer porta LAN em WAN ao detectar sinal de link de operadora.</span>
-                        </div>
-                        <label class="ark-switch">
-                            <input type="checkbox" checked onchange="toggleGenericSwitch(this, 'Auto-WAN (Piloto Automático de Portas)')">
-                            <span class="ark-slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="toggle-row">
-                        <div>
-                            <span class="toggle-title">Modo de Operação Multi-WAN</span>
-                            <span class="toggle-desc" id="mwan_mode_desc">Balanceamento Ativo (70% WAN 1 Vivo / 30% WAN 2 Claro).</span>
-                        </div>
-                        <button class="ark-btn ark-btn-secondary" style="min-height:34px; font-size:0.75rem;" onclick="openModal('mwan_mode')">⚙️ Alterar Regras</button>
-                    </div>
-                </div>
-
-                <div class="grid-2">
-                    <!-- WAN 1 Card -->
-                    <div class="ark-card" id="card_wan1">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <span class="card-kicker">INTERFACE PRINCIPAL (eth0 - 2.5 GbE)</span>
-                                <h3 id="card_wan1_title">WAN 1: Vivo Fibra PPPoE</h3>
+                            <div style="display:flex; gap:12px; font-size:0.78rem;">
+                                <span style="color:#38bdf8; font-weight:700;">● Download</span>
+                                <span style="color:#a855f7; font-weight:700;">● Upload</span>
                             </div>
-                            <span class="stat-pill online" id="badge_wan1">● ONLINE</span>
                         </div>
-                        <div class="info-row">
-                            <span class="info-label">Protocolo</span>
-                            <span class="info-val" id="wan1_proto_val">PPPoE (Direto na ONT)</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">IP Público IPv4</span>
-                            <span class="info-val highlight" id="val_wan1_ip">177.142.88.94</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Gateway Operadora</span>
-                            <span class="info-val highlight">177.142.88.1</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">IPv6 Prefix Delegation</span>
-                            <span class="info-val highlight">2804:14d:5484::/64</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">MTU / MRU</span>
-                            <span class="info-val" id="wan1_mtu_val">1492 (Padrão Ótimo PPPoE)</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Velocidade & Ping</span>
-                            <span class="info-val success">1000 Mbps • 11ms Latência</span>
-                        </div>
-                        <div class="form-actions" style="margin-top:14px; padding-top:12px;">
-                            <button class="ark-btn ark-btn-secondary" style="min-height:34px; font-size:0.78rem;" onclick="openWanModal('WAN 1', 'pppoe', 'Vivo Fibra', '1492')">⚙️ Editar Conexão</button>
-                        </div>
+                        <canvas id="live_traffic_canvas" width="700" height="150" style="width:100%; height:150px;"></canvas>
                     </div>
 
-                    <!-- WAN 2 Card -->
-                    <div class="ark-card" id="card_wan2">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <span class="card-kicker">INTERFACE SECUNDÁRIA (eth1 - 1 GbE)</span>
-                                <h3 id="card_wan2_title">WAN 2: Claro Backup DHCP</h3>
+                    <div class="traffic-stats-column">
+                        <div class="traffic-stat-card">
+                            <div>
+                                <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#94a3b8;">↓ Download Agora</span>
+                                <div class="stat-rate down" id="stat_down">74.2 <span style="font-size:1rem;">Mbps</span></div>
+                                <div class="stat-peak">Pico hoje: 842.1 Mbps • 42.8 GB</div>
                             </div>
-                            <span class="stat-pill" style="color:#38bdf8; border-color:#38bdf8;" id="badge_wan2">● STANDBY ATIVO</span>
+                            <span style="font-size:2rem; color:#38bdf8; opacity:0.3;">↓</span>
                         </div>
-                        <div class="info-row">
-                            <span class="info-label">Protocolo</span>
-                            <span class="info-val" id="wan2_proto_val">DHCP Cliente (Modem em Bridge)</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">IP Público IPv4</span>
-                            <span class="info-val highlight">189.120.44.15</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Gateway Operadora</span>
-                            <span class="info-val highlight">189.120.44.1</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">MTU</span>
-                            <span class="info-val" id="wan2_mtu_val">1500 (Padrão Ethernet)</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Velocidade & Ping</span>
-                            <span class="info-val">300 Mbps • 16ms Latência</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Regra de Failover</span>
-                            <span class="info-val" style="color:#f59e0b;">Assume se WAN 1 perder 3 pings</span>
-                        </div>
-                        <div class="form-actions" style="margin-top:14px; padding-top:12px;">
-                            <button class="ark-btn ark-btn-secondary" style="min-height:34px; font-size:0.78rem;" onclick="openWanModal('WAN 2', 'dhcp', 'Claro Backup', '1500')">⚙️ Editar Conexão</button>
-                        </div>
-                    </div>
-                </div>
-            </main>
-
-            <!-- ========================================================= -->
-            <!-- 3. VIEW: REDES WI-FI, RÁDIOS & TOGGLES REAIS              -->
-            <!-- ========================================================= -->
-            <main class="view-panel" id="view-wifi">
-                <div class="hero-banner" style="background: linear-gradient(135deg, #131435 0%, #1e1b4b 100%);">
-                    <div>
-                        <span class="hero-eyebrow">CONTROLE TOTAL DE RADIOFREQUÊNCIA</span>
-                        <h2 class="hero-title">Rádios Wi-Fi 6 / 6E / 7 & Roaming 802.11k/v</h2>
-                        <p class="hero-desc">
-                            Canais de alta performance com DFS Radar, BSS Coloring, largura de banda de até 160/320 MHz e transição suave entre pontos de acesso sem queda de voz ou jogos.
-                        </p>
-                    </div>
-                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                        <button class="ark-btn ark-btn-primary" onclick="openModal('wifi')">⚙️ Editar SSID e Senha</button>
-                        <button class="ark-btn ark-btn-purple" onclick="openModal('wifi_guest')">👥 Rede de Visitantes</button>
-                        <button class="ark-btn ark-btn-secondary" onclick="openModal('wifi_qr')">📲 Gerar QR Code Wi-Fi</button>
-                        <button class="ark-btn ark-btn-secondary" onclick="openModal('wps')">🤝 Conectar via WPS</button>
-                    </div>
-                </div>
-
-                <!-- Toggles Reais de Hardware Wi-Fi -->
-                <div class="grid-2">
-                    <div class="toggle-row">
-                        <div>
-                            <span class="toggle-title">Aceleração de Hardware Wi-Fi (MediaTek WED / DMA)</span>
-                            <span class="toggle-desc">Despacho direto de pacotes Wi-Fi via DMA/PPE no hardware Filogic 830, liberando os 4 núcleos de CPU.</span>
-                        </div>
-                        <label class="ark-switch">
-                            <input type="checkbox" checked onchange="toggleGenericSwitch(this, 'Aceleração de Hardware Wi-Fi (MediaTek WED)')">
-                            <span class="ark-slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="toggle-row">
-                        <div>
-                            <span class="toggle-title">Modo Estabilidade Casa Inteligente / Alexas (2,4 GHz)</span>
-                            <span class="toggle-desc">Aplica disassoc_low_ack='0', sincroniza DTIM 1 e estabiliza conexões MQTT/AWS IoT.</span>
-                        </div>
-                        <label class="ark-switch">
-                            <input type="checkbox" checked onchange="toggleGenericSwitch(this, 'Modo Estabilidade Casa Inteligente')">
-                            <span class="ark-slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="toggle-row">
-                        <div>
-                            <span class="toggle-title">Prevenção de Quedas Radar DFS (802.11h CSA - 5 GHz)</span>
-                            <span class="toggle-desc">Migra aparelhos de canal sem desconectar ao detectar sinais de radar meteorológico nos canais 52 a 144.</span>
-                        </div>
-                        <label class="ark-switch">
-                            <input type="checkbox" checked onchange="toggleGenericSwitch(this, 'Prevenção de Quedas Radar DFS (802.11h)')">
-                            <span class="ark-slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="toggle-row">
-                        <div>
-                            <span class="toggle-title">Forçar Potência Máxima de Transmissão (RF FEM)</span>
-                            <span class="toggle-desc">Libera 100% da potência física dos amplificadores de sinal do roteador (até 1000mW com salvaguarda térmica).</span>
-                        </div>
-                        <label class="ark-switch">
-                            <input type="checkbox" checked onchange="toggleGenericSwitch(this, 'Potência Máxima de Transmissão RF')">
-                            <span class="ark-slider"></span>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- 3 RÁDIOS CARDS -->
-                <div class="grid-3">
-                    <div class="ark-card">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <span class="card-kicker">RÁDIO 1 • LONGO ALCANCE</span>
-                                <h3>2.4 GHz (IoT & Legado)</h3>
+                        <div class="traffic-stat-card">
+                            <div>
+                                <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#94a3b8;">↑ Upload Agora</span>
+                                <div class="stat-rate up" id="stat_up">18.6 <span style="font-size:1rem;">Mbps</span></div>
+                                <div class="stat-peak">Pico hoje: 412.5 Mbps • 14.2 GB</div>
                             </div>
-                            <span class="stat-pill online">ATIVO</span>
+                            <span style="font-size:2rem; color:#a855f7; opacity:0.3;">↑</span>
                         </div>
-                        <div class="info-row"><span class="info-label">Canal / Frequência</span><span class="info-val highlight" id="wifi_ch_2g">Canal 1 (2412 MHz)</span></div>
-                        <div class="info-row"><span class="info-label">Largura de Canal</span><span class="info-val">HE20 (Sem interferência)</span></div>
-                        <div class="info-row"><span class="info-label">Potência TX / Ruído</span><span class="info-val">24 dBm (250mW) • -92 dBm</span></div>
-                        <div class="info-row"><span class="info-label">Clientes Conectados</span><span class="info-val">12 Aparelhos</span></div>
-                        <div class="form-actions" style="margin-top:12px; padding-top:10px;">
-                            <button class="ark-btn ark-btn-secondary" style="min-height:32px; font-size:0.75rem;" onclick="openRadioModal('2.4 GHz', '1', 'HE20', '24')">⚙️ Configurar Rádio</button>
+                    </div>
+                </div>
+
+                <!-- SECTION: MULTI-WAN & FAILOVER -->
+                <section class="section-card" id="sec-wan">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <h2>🌐 Conexões de Internet & Multi-WAN (mwan3)</h2>
+                            <span class="badge pill-online">2 Conexões Ativas</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <span style="font-size:0.82rem; color:#94a3b8;">Balanceamento de Carga:</span>
+                            <label class="ark-switch">
+                                <input type="checkbox" id="mwan_toggle" checked onchange="toggleMwan(this)">
+                                <span class="ark-slider"></span>
+                            </label>
                         </div>
                     </div>
 
-                    <div class="ark-card">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <span class="card-kicker">RÁDIO 2 • ALTA VELOCIDADE</span>
-                                <h3>5 GHz (Wi-Fi 6)</h3>
+                    <div class="wan-grid">
+                        <!-- WAN 1 Card -->
+                        <div class="wan-card" id="card_wan1">
+                            <div class="wan-header">
+                                <span class="wan-title">
+                                    <span style="color:#38bdf8;">●</span> WAN 1 — Vivo Fibra (GPON)
+                                </span>
+                                <span class="pill-badge pill-online" id="status_wan1">ONLINE (PRINCIPAL)</span>
                             </div>
-                            <span class="stat-pill online">ATIVO</span>
-                        </div>
-                        <div class="info-row"><span class="info-label">Canal / Frequência</span><span class="info-val highlight" id="wifi_ch_5g">Canal 36 (5180 MHz - DFS)</span></div>
-                        <div class="info-row"><span class="info-label">Largura de Canal</span><span class="info-val" style="color:#38bdf8;">HE160 (Até 2400 Mbps)</span></div>
-                        <div class="info-row"><span class="info-label">Potência TX / Ruído</span><span class="info-val">27 dBm (500mW) • -95 dBm</span></div>
-                        <div class="info-row"><span class="info-label">Clientes Conectados</span><span class="info-val">18 Aparelhos</span></div>
-                        <div class="form-actions" style="margin-top:12px; padding-top:10px;">
-                            <button class="ark-btn ark-btn-secondary" style="min-height:32px; font-size:0.75rem;" onclick="openRadioModal('5 GHz', '36', 'HE160', '27')">⚙️ Configurar Rádio</button>
-                        </div>
-                    </div>
-
-                    <div class="ark-card">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <span class="card-kicker">RÁDIO 3 • ULTRA-LOW LATENCY</span>
-                                <h3>6 GHz (Wi-Fi 6E/7)</h3>
+                            <div class="wan-info-grid">
+                                <div class="wan-info-item">
+                                    <span>Endereço IP Público</span>
+                                    <strong id="ip_wan1">187.54.21.90</strong>
+                                </div>
+                                <div class="wan-info-item">
+                                    <span>Protocolo</span>
+                                    <strong id="proto_wan1">PPPoE (MTU 1492)</strong>
+                                </div>
+                                <div class="wan-info-item">
+                                    <span>Servidores DNS</span>
+                                    <strong id="dns_wan1">1.1.1.1 (Cloudflare)</strong>
+                                </div>
+                                <div class="wan-info-item">
+                                    <span>Tempo Online</span>
+                                    <strong id="uptime_wan1">14 dias, 8 horas</strong>
+                                </div>
                             </div>
-                            <span class="stat-pill" style="color:#c084fc; border-color:#c084fc;">ATIVO (MLO)</span>
-                        </div>
-                        <div class="info-row"><span class="info-label">Canal / Frequência</span><span class="info-val highlight" id="wifi_ch_6g">Canal 69 (6295 MHz - PSC)</span></div>
-                        <div class="info-row"><span class="info-label">Largura de Canal</span><span class="info-val" style="color:#c084fc;">HE160 / 320 MHz</span></div>
-                        <div class="info-row"><span class="info-label">Segurança Obrigatória</span><span class="info-val">WPA3-SAE Puro com PMF</span></div>
-                        <div class="info-row"><span class="info-label">Clientes Conectados</span><span class="info-val">4 Aparelhos (iPhone/Mac)</span></div>
-                        <div class="form-actions" style="margin-top:12px; padding-top:10px;">
-                            <button class="ark-btn ark-btn-secondary" style="min-height:32px; font-size:0.75rem;" onclick="openRadioModal('6 GHz', '69', 'HE160', '23')">⚙️ Configurar Rádio</button>
-                        </div>
-                    </div>
-                </div>
-            </main>
-
-            <!-- ========================================================= -->
-            <!-- 4. VIEW: SMART WI-FI ENHANCER (7 ETAPAS)                  -->
-            <!-- ========================================================= -->
-            <main class="view-panel" id="view-enhancer">
-                <div class="hero-banner" style="background: linear-gradient(135deg, #2e1065 0%, #3b0764 100%); border-color: rgba(168, 85, 247, 0.4);">
-                    <div>
-                        <span class="hero-eyebrow" style="color: #c084fc;">MOTOR DE OTIMIZAÇÃO AUTOMÁTICA</span>
-                        <h2 class="hero-title">Smart Wi-Fi Package Enhancer</h2>
-                        <p class="hero-desc">
-                            Upgrade atômico do daemon Wi-Fi do OpenWrt de <strong style="color:#f59e0b;">wpad-basic-mbedtls</strong> para <strong style="color:#10b981;">wpad-mbedtls completo</strong>. Destrava nativamente o 802.11v BSS Transition Management e Fast Roaming com zero perda de conectividade.
-                        </p>
-                    </div>
-                    <button class="ark-btn ark-btn-purple" id="enhancer_main_run_btn" onclick="startEnhancerLiveSimulation()">
-                        🚀 Iniciar Upgrade Automático (7 Etapas)
-                    </button>
-                </div>
-
-                <div class="grid-2">
-                    <div class="ark-card">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <span class="card-kicker">PRÉ-REQUISITOS DE HARDWARE</span>
-                                <h3>Validação de Capacidade</h3>
+                            <div class="wan-actions">
+                                <button class="ark-btn ark-btn-primary" style="flex:1;" onclick="openWanModal('wan1')">
+                                    ⚙️ Editar Internet
+                                </button>
+                                <button class="ark-btn ark-btn-secondary" onclick="openModal('pppoe_logs')">
+                                    📜 Logs PPPoE
+                                </button>
                             </div>
-                            <span class="stat-pill online">COMPATÍVEL</span>
                         </div>
-                        <div class="info-row"><span class="info-label">Memória RAM do Roteador</span><span class="info-val success">512 MB (Mínimo 256 MB ✓)</span></div>
-                        <div class="info-row"><span class="info-label">Espaço Flash Livre (Overlay)</span><span class="info-val success">8.4 MB (Mínimo 4 MB ✓)</span></div>
-                        <div class="info-row"><span class="info-label">Pacote Atual Instalado</span><span class="info-val" id="enhancer_page_cur_pkg" style="color:#f59e0b;">wpad-basic-mbedtls</span></div>
-                        <div class="info-row"><span class="info-label">Pacote Alvo da Otimização</span><span class="info-val success">wpad-mbedtls (Com WNM 802.11v)</span></div>
-                        <div class="info-row"><span class="info-label">Proteção de Rollback</span><span class="info-val">Ativa (Restauração se falhar)</span></div>
-                    </div>
 
-                    <div class="ark-card">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <span class="card-kicker">ACOMPANHAMENTO AO VIVO</span>
-                                <h3>Progresso da Otimização</h3>
+                        <!-- WAN 2 Card -->
+                        <div class="wan-card" id="card_wan2">
+                            <div class="wan-header">
+                                <span class="wan-title">
+                                    <span style="color:#06b6d4;">●</span> WAN 2 — Claro Fibra / Cabo
+                                </span>
+                                <span class="pill-badge pill-cyan" id="status_wan2">ONLINE (BACKUP / 50%)</span>
                             </div>
-                            <span class="stat-pill" id="enhancer_status_badge" style="background:#8b5cf6; color:#fff;">PRONTO</span>
+                            <div class="wan-info-grid">
+                                <div class="wan-info-item">
+                                    <span>Endereço IP Público</span>
+                                    <strong id="ip_wan2">201.86.110.45</strong>
+                                </div>
+                                <div class="wan-info-item">
+                                    <span>Protocolo</span>
+                                    <strong id="proto_wan2">DHCP Cliente (MTU 1500)</strong>
+                                </div>
+                                <div class="wan-info-item">
+                                    <span>Servidores DNS</span>
+                                    <strong id="dns_wan2">8.8.8.8 (Google)</strong>
+                                </div>
+                                <div class="wan-info-item">
+                                    <span>Tempo Online</span>
+                                    <strong id="uptime_wan2">6 dias, 2 horas</strong>
+                                </div>
+                            </div>
+                            <div class="wan-actions">
+                                <button class="ark-btn ark-btn-primary" style="flex:1;" onclick="openWanModal('wan2')">
+                                    ⚙️ Editar Internet
+                                </button>
+                                <button class="ark-btn ark-btn-secondary" onclick="testWanPing('wan2')">
+                                    📶 Testar Ping
+                                </button>
+                            </div>
                         </div>
+                    </div>
+                </section>
 
-                        <div style="background:rgba(255,255,255,0.08); border-radius:6px; overflow:hidden; height:12px; margin:10px 0 14px;">
-                            <div id="enhancer_pbar" style="background:linear-gradient(90deg, #10b981, #06b6d4, #8b5cf6); height:100%; width:0%; transition:width 0.35s ease;"></div>
+                <!-- SECTION: WI-FI 6E / 7 MULTI-BAND -->
+                <section class="section-card" id="sec-wifi">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <h2>📶 Redes Sem Fio Wi-Fi 6E & Wi-Fi 7</h2>
+                            <span class="badge pill-purple">Tri-Band Ativo (31 Clientes)</span>
                         </div>
-
-                        <p id="enhancer_msg" style="font-size:0.85rem; color:#94a3b8; min-height:22px; margin-bottom:14px;">
-                            Clique em "Iniciar Upgrade Automático" para executar as 7 etapas.
-                        </p>
-
-                        <ul class="stepper-list" id="enhancer_stepper">
-                            <li class="step-item" id="s_step_1"><span class="step-icon">1</span> 1. Pré-voo de Recursos (RAM >= 256MB, Flash >= 4MB)</li>
-                            <li class="step-item" id="s_step_2"><span class="step-icon">2</span> 2. Teste de Conectividade com Repositório OpenWrt</li>
-                            <li class="step-item" id="s_step_3"><span class="step-icon">3</span> 3. Preparação e Limpeza de Dependências</li>
-                            <li class="step-item" id="s_step_4"><span class="step-icon">4</span> 4. Download e Instalação Atômica (wpad-mbedtls)</li>
-                            <li class="step-item" id="s_step_5"><span class="step-icon">5</span> 5. Verificação de Integridade dos Binários</li>
-                            <li class="step-item" id="s_step_6"><span class="step-icon">6</span> 6. Ativação de 802.11v, BSS Transition e Sincronização</li>
-                            <li class="step-item" id="s_step_7"><span class="step-icon">7</span> 7. Instalação e Otimização Concluídas com Sucesso</li>
-                        </ul>
+                        <div style="display:flex; gap:8px;">
+                            <button class="ark-btn ark-btn-secondary" onclick="openModal('wifi_qr')">📲 QR Code</button>
+                            <button class="ark-btn ark-btn-secondary" onclick="openModal('wps')">🤝 WPS Parear</button>
+                            <button class="ark-btn ark-btn-purple" onclick="openModal('wifi')">⚙️ Configurar Wi-Fi</button>
+                        </div>
                     </div>
-                </div>
-            </main>
 
-            <!-- ========================================================= -->
-            <!-- 5. VIEW: DISPOSITIVOS (34 CLIENTES)                       -->
-            <!-- ========================================================= -->
-            <main class="view-panel" id="view-devices">
-                <div class="card-header" style="margin-bottom:16px;">
-                    <div>
-                        <span class="card-kicker">INSPEÇÃO E CONTROLE DE TRÁFEGO</span>
-                        <h2 style="font-size:1.6rem; font-weight:850; color:#fff;">34 Dispositivos Conectados na Rede</h2>
-                    </div>
-                    <button class="ark-btn ark-btn-secondary" onclick="openDeviceModal('Novo Dispositivo', '192.168.1.50', 'AA:BB:CC:DD:EE:FF')">➕ Reservar IP Fixo</button>
-                </div>
-
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:14px; flex-wrap:wrap;">
-                    <div style="display:flex; gap:8px;">
-                        <button class="ark-btn ark-btn-primary" style="min-height:34px; padding:4px 12px; font-size:0.75rem;" onclick="filterDevices('all')">Todos (34)</button>
-                        <button class="ark-btn ark-btn-secondary" style="min-height:34px; padding:4px 12px; font-size:0.75rem;" onclick="filterDevices('5g')">5 GHz (18)</button>
-                        <button class="ark-btn ark-btn-secondary" style="min-height:34px; padding:4px 12px; font-size:0.75rem;" onclick="filterDevices('2g')">2.4 GHz (12)</button>
-                        <button class="ark-btn ark-btn-secondary" style="min-height:34px; padding:4px 12px; font-size:0.75rem;" onclick="filterDevices('6g')">6 GHz (4)</button>
-                    </div>
-                    <input type="text" class="form-input" id="device_search_input" placeholder="🔍 Buscar por nome, IP ou MAC..." style="width:280px; height:36px;" oninput="searchDevices(this.value)">
-                </div>
-
-                <div class="swipe-hint">↔ Deslize a tabela lateralmente para visualizar detalhes completos</div>
-                <div class="table-responsive">
-                    <table class="ark-table" id="devices_table">
-                        <thead>
-                            <tr>
-                                <th>Dispositivo / Fabricante</th>
-                                <th>Endereço IP / MAC</th>
-                                <th>Banda / Sinal</th>
-                                <th>Download</th>
-                                <th>Upload</th>
-                                <th>Status / Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody id="devices_tbody"></tbody>
-                    </table>
-                </div>
-            </main>
-
-            <!-- ========================================================= -->
-            <!-- 6. VIEW: STARLINK & SATÉLITE (MÓDULO STARLINK.JS)         -->
-            <!-- ========================================================= -->
-            <main class="view-panel" id="view-starlink">
-                <div class="hero-banner" style="background: linear-gradient(135deg, #091d36 0%, #0d2e54 100%); border-color: rgba(6, 182, 212, 0.4);">
-                    <div>
-                        <span class="hero-eyebrow" style="color: #06b6d4;">INTEGRAÇÃO DE SATÉLITE EM ÓRBITA BAIXA</span>
-                        <h2 class="hero-title">Starlink Dishy Telemetry & Bypass</h2>
-                        <p class="hero-desc">
-                            Monitoramento direto via gRPC da antena Starlink (Dishy V2 / V3 / Mini). Exibição em tempo real de latência aos satélites, mapa de obstrução, azimute e controle de modo sleep.
-                        </p>
-                    </div>
-                    <button class="ark-btn ark-btn-primary" onclick="openModal('starlink_config')">⚙️ Configurações Starlink</button>
-                </div>
-
-                <div class="grid-3">
-                    <div class="stat-card">
-                        <div class="stat-card-label">LATÊNCIA PARA O SATÉLITE</div>
-                        <div class="stat-card-value" style="color:#06b6d4;">28 <small>ms</small></div>
-                        <div class="stat-card-meta">Órbita LEO • Jitter de ±3ms</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">OBSTRUÇÃO DO CÉU</div>
-                        <div class="stat-card-value" style="color:#10b981;">0.0% <small>Livre</small></div>
-                        <div class="stat-card-meta">Visada 100% limpa ao Norte</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">CONSUMO DE ENERGIA</div>
-                        <div class="stat-card-value">42 <small>Watts</small></div>
-                        <div class="stat-card-meta">Degelo inteligente desativado</div>
-                    </div>
-                </div>
-
-                <div class="grid-2">
-                    <div class="toggle-row">
+                    <!-- Main Wi-Fi Card -->
+                    <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                         <div>
-                            <span class="toggle-title">Modo Bypass de Roteador Starlink</span>
-                            <span class="toggle-desc">Encaminha tráfego público direto para o ARK Router sem duplo NAT (CGNAT IPv4 / IPv6 nativo).</span>
+                            <span style="font-size:0.75rem; text-transform:uppercase; color:#94a3b8; font-weight:700;">Nome da Rede Wi-Fi Unificada (SSID)</span>
+                            <div style="font-size:1.25rem; font-weight:800; color:#fff;" id="label_main_ssid">Wi-Fi-H&R</div>
+                            <div style="font-size:0.8rem; color:#94a3b8; margin-top:2px;">
+                                Senha: <span id="pwd_main_wifi">••••••••••••</span> 
+                                <button style="background:none; border:none; color:#38bdf8; cursor:pointer; font-weight:700; margin-left:6px;" onclick="toggleWifiPass()">👁️ Revelar</button>
+                            </div>
                         </div>
-                        <label class="ark-switch">
-                            <input type="checkbox" checked onchange="toggleGenericSwitch(this, 'Modo Bypass Starlink')">
-                            <span class="ark-slider"></span>
-                        </label>
-                    </div>
-                    <div class="toggle-row">
-                        <div>
-                            <span class="toggle-title">Modo Noturno / Economia de Energia (Sleep Schedule)</span>
-                            <span class="toggle-desc">Pausa a antena das 02:00 às 06:00 da manhã para reduzir consumo de energia em off-grid.</span>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <span class="pill-badge pill-online">WPA3-SAE MISTO + PMF</span>
+                            <span class="pill-badge pill-purple">MLO 320 MHz ATIVO</span>
                         </div>
-                        <label class="ark-switch">
-                            <input type="checkbox" onchange="toggleGenericSwitch(this, 'Modo Noturno Starlink')">
-                            <span class="ark-slider"></span>
-                        </label>
                     </div>
-                </div>
-            </main>
 
-            <!-- ========================================================= -->
-            <!-- 7. VIEW: VPN, WIREGUARD & PBR (MÓDULO VPN.JS)             -->
-            <!-- ========================================================= -->
-            <main class="view-panel" id="view-vpn">
-                <div class="hero-banner" style="background: linear-gradient(135deg, #18182b 0%, #2b1f47 100%); border-color: rgba(139, 92, 246, 0.4);">
-                    <div>
-                        <span class="hero-eyebrow" style="color: #c084fc;">CRIPTOGRAFIA & PRIVACIDADE</span>
-                        <h2 class="hero-title">WireGuard VPN & Roteamento por Políticas (PBR)</h2>
-                        <p class="hero-desc">
-                            Conecte túneis WireGuard de alta velocidade e direcione tráfego de dispositivos específicos (ex: Smart TVs, Torrent, consoles) para a VPN ou para uma WAN de preferência.
-                        </p>
-                    </div>
-                    <button class="ark-btn ark-btn-purple" onclick="openModal('add_vpn')">➕ Adicionar Túnel WireGuard</button>
-                </div>
+                    <div class="wifi-grid">
+                        <!-- Radio 2.4 GHz -->
+                        <div class="wifi-radio-card" id="card_radio_24">
+                            <div class="wifi-radio-header">
+                                <span class="wifi-radio-title">
+                                    <span style="color:#f59e0b;">●</span> Rádio 2.4 GHz
+                                </span>
+                                <span class="pill-badge pill-amber">12 Aparelhos</span>
+                            </div>
+                            <div class="wan-info-grid">
+                                <div class="wan-info-item">
+                                    <span>Canal</span>
+                                    <strong id="ch_radio_24">Canal 6 (2437 MHz)</strong>
+                                </div>
+                                <div class="wan-info-item">
+                                    <span>Largura de Banda</span>
+                                    <strong id="width_radio_24">20 MHz</strong>
+                                </div>
+                                <div class="wan-info-item">
+                                    <span>Potência TX</span>
+                                    <strong id="tx_radio_24">20 dBm (100 mW)</strong>
+                                </div>
+                                <div class="wan-info-item">
+                                    <span>BSS Coloring</span>
+                                    <strong>Ativo (Cor 12)</strong>
+                                </div>
+                            </div>
+                            <button class="ark-btn ark-btn-secondary" style="width:100%;" onclick="openRadioModal('2.4')">
+                                ⚙️ Editar Rádio 2.4 GHz
+                            </button>
+                        </div>
 
-                <div class="ark-card" style="margin-bottom:20px;">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <span class="card-kicker">TÚNEIS ATIVOS</span>
-                            <h3>Clientes e Servidores VPN</h3>
+                        <!-- Radio 5 GHz -->
+                        <div class="wifi-radio-card" id="card_radio_5">
+                            <div class="wifi-radio-header">
+                                <span class="wifi-radio-title">
+                                    <span style="color:#06b6d4;">●</span> Rádio 5 GHz
+                                </span>
+                                <span class="pill-badge pill-cyan">15 Aparelhos</span>
+                            </div>
+                            <div class="wan-info-grid">
+                                <div class="wan-info-item">
+                                    <span>Canal</span>
+                                    <strong id="ch_radio_5">Canal 36 (5180 MHz)</strong>
+                                </div>
+                                <div class="wan-info-item">
+                                    <span>Largura de Banda</span>
+                                    <strong id="width_radio_5">160 MHz Ultra</strong>
+                                </div>
+                                <div class="wan-info-item">
+                                    <span>Potência TX</span>
+                                    <strong id="tx_radio_5">23 dBm (200 mW)</strong>
+                                </div>
+                                <div class="wan-info-item">
+                                    <span>Fast Roaming</span>
+                                    <strong>802.11r / 802.11v</strong>
+                                </div>
+                            </div>
+                            <button class="ark-btn ark-btn-secondary" style="width:100%;" onclick="openRadioModal('5')">
+                                ⚙️ Editar Rádio 5 GHz
+                            </button>
+                        </div>
+
+                        <!-- Radio 6 GHz -->
+                        <div class="wifi-radio-card" id="card_radio_6">
+                            <div class="wifi-radio-header">
+                                <span class="wifi-radio-title">
+                                    <span style="color:#a855f7;">●</span> Rádio 6 GHz (Wi-Fi 6E/7)
+                                </span>
+                                <span class="pill-badge pill-purple">4 Aparelhos</span>
+                            </div>
+                            <div class="wan-info-grid">
+                                <div class="wan-info-item">
+                                    <span>Canal</span>
+                                    <strong id="ch_radio_6">Canal 37 PSC (6135 MHz)</strong>
+                                </div>
+                                <div class="wan-info-item">
+                                    <span>Largura de Banda</span>
+                                    <strong id="width_radio_6">320 MHz (Extremo)</strong>
+                                </div>
+                                <div class="wan-info-item">
+                                    <span>Potência TX</span>
+                                    <strong id="tx_radio_6">23 dBm (200 mW)</strong>
+                                </div>
+                                <div class="wan-info-item">
+                                    <span>Modo MLO</span>
+                                    <strong>STR Multi-Link Ativo</strong>
+                                </div>
+                            </div>
+                            <button class="ark-btn ark-btn-secondary" style="width:100%;" onclick="openRadioModal('6')">
+                                ⚙️ Editar Rádio 6 GHz
+                            </button>
                         </div>
                     </div>
-                    <div class="table-responsive">
-                        <table class="ark-table">
+                </section>
+
+                <!-- SECTION: SMART WI-FI ENHANCER (STEPPER) -->
+                <section class="section-card" id="sec-enhancer">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <h2>🚀 Smart Wi-Fi Package Enhancer</h2>
+                            <span class="badge pill-online">Instalador Atômico</span>
+                        </div>
+                        <button class="ark-btn ark-btn-primary" id="btn_run_enhancer" onclick="startEnhancerProcess()">
+                            ⚡ Iniciar Otimização Wi-Fi
+                        </button>
+                    </div>
+
+                    <p style="font-size:0.86rem; color:#cbd5e1; margin-bottom:18px; line-height:1.5;">
+                        Migra seu subsistema de rádio sem fio com segurança atômica: remove conflitos de pacotes mínimos (`wpad-basic`),
+                        instala o stack completo `wpad-mbedtls`, calibra chaves criptográficas WPA3-SAE e ativa transição suave 802.11v/k sem reiniciar o roteador.
+                    </p>
+
+                    <!-- Stepper Visualizer -->
+                    <div id="enhancer_stepper_box" style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:20px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:14px;">
+                            <span style="font-weight:700; color:#fff;" id="enhancer_status_title">Status: Pronto para otimizar rádios Wi-Fi</span>
+                            <span style="font-weight:800; color:#38bdf8;" id="enhancer_step_counter">Etapa 0 de 7</span>
+                        </div>
+                        <div class="health-bar-bg" style="height:8px; margin-bottom:18px;">
+                            <div class="health-bar-fill" id="enhancer_progress_bar" style="width:0%; background:linear-gradient(90deg, #0284c7, #10b981);"></div>
+                        </div>
+                        <div id="enhancer_log_box" style="background:#090e1a; border:1px solid var(--ark-border); border-radius:8px; padding:12px; font-family:monospace; font-size:0.78rem; color:#94a3b8; max-height:120px; overflow-y:auto;">
+                            [SISTEMA] Aguardando clique para iniciar validação dos módulos Wi-Fi...
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: CONNECTED DEVICES (34 CLIENTS) -->
+                <section class="section-card" id="sec-devices">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <h2>📱 Aparelhos Conectados na Rede</h2>
+                            <span class="badge pill-online" id="main_dev_badge">34 Dispositivos Online</span>
+                        </div>
+                        <button class="ark-btn ark-btn-secondary" onclick="openModal('add_device')">
+                            ➕ Adicionar Reserva IP Fixo
+                        </button>
+                    </div>
+
+                    <div class="device-filters">
+                        <div class="device-tabs">
+                            <button class="device-tab active" onclick="filterDevices('all', this)">Todos (34)</button>
+                            <button class="device-tab" onclick="filterDevices('2.4', this)">2.4 GHz (12)</button>
+                            <button class="device-tab" onclick="filterDevices('5', this)">5 GHz (15)</button>
+                            <button class="device-tab" onclick="filterDevices('6', this)">6 GHz (4)</button>
+                            <button class="device-tab" onclick="filterDevices('eth', this)">Cabo LAN (3)</button>
+                        </div>
+                        <div class="device-search-box">
+                            <input type="text" class="device-search-input" id="dev_search_input" placeholder="🔍 Buscar por nome, IP ou MAC..." oninput="searchDevices(this.value)">
+                            <select class="form-select" style="width:auto; padding:6px 10px; font-size:0.8rem;" onchange="sortDevices(this.value)">
+                                <option value="traffic">Maior Consumo Total</option>
+                                <option value="speed">Velocidade Agora</option>
+                                <option value="name">Nome (A → Z)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="device-table-container">
+                        <table class="device-table">
                             <thead>
                                 <tr>
-                                    <th>Interface</th>
-                                    <th>Servidor / Endpoint</th>
-                                    <th>IP do Túnel</th>
-                                    <th>Tráfego RX/TX</th>
-                                    <th>Status</th>
-                                    <th>Ações</th>
+                                    <th>Dispositivo</th>
+                                    <th>Endereço IP</th>
+                                    <th>Endereço MAC</th>
+                                    <th>Banda / Enlace</th>
+                                    <th>Sinal dBm</th>
+                                    <th>Velocidade Agora</th>
+                                    <th>Total Consumido</th>
+                                    <th style="text-align:right;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="device_table_body">
+                                <!-- Populated dynamically by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- SECTION: ARK DOCTOR (12 HEALTH CHECKS) -->
+                <section class="section-card" id="sec-doctor">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <h2>🩺 Ark Doctor — Diagnóstico Vital Inteligente</h2>
+                            <span class="badge pill-online">12/12 Subsistemas Saudáveis</span>
+                        </div>
+                        <button class="ark-btn ark-btn-primary" onclick="runDoctorCheck()">
+                            🔄 Executar Diagnóstico Completo
+                        </button>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px;" id="doctor_checks_grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </section>
+
+                <!-- SECTION: SQM CAKE & BUFFERBLOAT -->
+                <section class="section-card" id="sec-sqm">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <h2>⚡ SQM CAKE — Mitigação de Bufferbloat (Nota A+)</h2>
+                            <span class="badge pill-online">Algoritmo CAKE Ativo</span>
+                        </div>
+                        <button class="ark-btn ark-btn-primary" onclick="openModal('sqm')">
+                            ⚙️ Calibrar Banda & Framing
+                        </button>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;" class="traffic-grid">
+                        <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px;">
+                            <span style="font-size:0.75rem; text-transform:uppercase; color:#94a3b8; font-weight:700;">Conformidade Bufferbloat</span>
+                            <div style="font-size:2rem; font-weight:900; color:#10b981; margin:4px 0;">NOTA A+ (0.4 ms)</div>
+                            <p style="font-size:0.82rem; color:#cbd5e1; line-height:1.4;">
+                                O escalonador CAKE fragmenta fluxos pesados de download em microslots contínuos, garantindo 0 ms de fila sob saturação máxima da rede.
+                            </p>
+                        </div>
+                        <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px;">
+                            <span style="font-size:0.75rem; text-transform:uppercase; color:#94a3b8; font-weight:700;">Parâmetros em Execução</span>
+                            <div style="margin-top:6px; font-size:0.86rem; color:#fff; display:flex; flex-direction:column; gap:4px;">
+                                <div>• Limite de Download: <strong id="sqm_label_down">850 Mbps</strong></div>
+                                <div>• Limite de Upload: <strong id="sqm_label_up">450 Mbps</strong></div>
+                                <div>• Perfil de Overhead: <strong>Fibra Óptica GPON (44 bytes)</strong></div>
+                                <div>• Isolamento por Host: <strong>Ativo (Dual-ISOLATE)</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: STARLINK DISHY LEO -->
+                <section class="section-card" id="sec-starlink">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <h2>🛰️ Starlink Dishy — Telemetria Orbital LEO</h2>
+                            <span class="badge pill-cyan">Antena Starlink Mini Conectada</span>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button class="ark-btn ark-btn-secondary" onclick="openModal('starlink_config')">⚙️ Configurações Dishy</button>
+                        </div>
+                    </div>
+
+                    <div class="wan-grid">
+                        <div class="wan-card">
+                            <div class="wan-header">
+                                <span class="wan-title">📡 Estado Operacional da Antena</span>
+                                <span class="pill-badge pill-online">ONLINE • SATÉLITE FIXADO</span>
+                            </div>
+                            <div class="wan-info-grid">
+                                <div class="wan-info-item"><span>Latência Orbital</span><strong>28 ms (Excelente)</strong></div>
+                                <div class="wan-info-item"><span>Obstrução do Céu</span><strong>0.0% (Visão Limpa)</strong></div>
+                                <div class="wan-info-item"><span>Azimute / Elevação</span><strong>184° / 42° Norte</strong></div>
+                                <div class="wan-info-item"><span>Consumo Energético</span><strong>24.2 Watts</strong></div>
+                            </div>
+                        </div>
+                        <div class="wan-card">
+                            <div class="wan-header">
+                                <span class="wan-title">❄️ Degelo Térmico & Modo Noturno</span>
+                                <span class="pill-badge pill-cyan">STANDBY TÉRMICO</span>
+                            </div>
+                            <div class="wan-info-grid">
+                                <div class="wan-info-item"><span>Temperatura Antena</span><strong>38.4°C</strong></div>
+                                <div class="wan-info-item"><span>Sensor de Neve</span><strong>Automático</strong></div>
+                                <div class="wan-info-item"><span>Modo Bypass</span><strong>Ativado (ARK Gateway)</strong></div>
+                                <div class="wan-info-item"><span>Horário de Sleep</span><strong>Programado (02:00 - 06:00)</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION: VPN WIREGUARD & PBR -->
+                <section class="section-card" id="sec-vpn">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <h2>🔒 VPN WireGuard & Roteamento por Políticas (PBR)</h2>
+                            <span class="badge pill-purple">1 Túnel Ativo</span>
+                        </div>
+                        <button class="ark-btn ark-btn-purple" onclick="openModal('add_vpn')">➕ Adicionar Túnel</button>
+                    </div>
+
+                    <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-size:1.05rem; font-weight:800; color:#fff;">Túnel wg0 — Servidor São Paulo (WireGuard)</div>
+                            <div style="font-size:0.8rem; color:#94a3b8; margin-top:2px;">Endpoint: 198.51.100.22:51820 • IP Virtual: 10.14.0.2/24 • Handshake: há 14 segundos</div>
+                        </div>
+                        <span class="pill-badge pill-online">CONECTADO</span>
+                    </div>
+
+                    <div class="device-table-container">
+                        <table class="device-table">
+                            <thead>
+                                <tr>
+                                    <th>Regra de Política</th>
+                                    <th>Dispositivo Alvo</th>
+                                    <th>Destino / Porta</th>
+                                    <th>Interface de Saída</th>
+                                    <th style="text-align:right;">Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td><strong>wg0 (Mullvad Suécia)</strong></td>
-                                    <td>se-sto-wg-001.relays.mullvad.net:51820</td>
-                                    <td style="font-family:monospace; color:#38bdf8;">10.64.120.4/32</td>
-                                    <td>⬇ 1.4 GB / ⬆ 340 MB</td>
-                                    <td><span class="stat-pill online">CONECTADO (14ms)</span></td>
-                                    <td><button class="ark-btn ark-btn-secondary" style="min-height:30px; font-size:0.75rem;" onclick="openModal('edit_vpn')">⚙️ Configurar</button></td>
+                                    <td><strong>TV Streaming Brasil</strong></td>
+                                    <td>TV-Samsung-OLED (192.168.1.110)</td>
+                                    <td>Qualquer Tráfego</td>
+                                    <td><span class="pill-badge pill-cyan">WAN 1 (Vivo)</span></td>
+                                    <td style="text-align:right;"><span class="pill-badge pill-online">Ativo</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Túnel Seguro Trabalho</strong></td>
+                                    <td>MacBook-Pro-M3 (192.168.1.142)</td>
+                                    <td>Rede Corporativa / SSH</td>
+                                    <td><span class="pill-badge pill-purple">WireGuard wg0</span></td>
+                                    <td style="text-align:right;"><span class="pill-badge pill-online">Ativo</span></td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                </div>
-            </main>
+                </section>
 
-            <!-- ========================================================= -->
-            <!-- 8. VIEW: SPEEDTEST MULTI-WAN (MÓDULO SPEEDTEST.JS)        -->
-            <!-- ========================================================= -->
-            <main class="view-panel" id="view-speedtest">
-                <div class="hero-banner" style="background: linear-gradient(135deg, #092c30 0%, #06404e 100%); border-color: rgba(6, 182, 212, 0.4);">
-                    <div>
-                        <span class="hero-eyebrow" style="color: #06b6d4;">MEDIDOR DE CAPACIDADE DE BANDA</span>
-                        <h2 class="hero-title">Speedtest Multi-WAN Integrado</h2>
-                        <p class="hero-desc">
-                            Execute testes de vazão diretamente no roteador contra servidores Ookla / LibreSpeed sem sofrer atenuação de Wi-Fi. Teste WAN 1 e WAN 2 de forma isolada ou agregada.
-                        </p>
+                <!-- SECTION: SPEEDTEST MULTI-WAN -->
+                <section class="section-card" id="sec-speedtest">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <h2>🚀 Teste de Velocidade Multi-WAN em Tempo Real</h2>
+                            <span class="badge pill-online">Motor Speedtest OOKLA Integrado</span>
+                        </div>
                     </div>
-                    <div style="display:flex; gap:10px;">
-                        <button class="ark-btn ark-btn-primary" onclick="runSpeedtest('wan1')">⚡ Testar WAN 1 (Fibra)</button>
-                        <button class="ark-btn ark-btn-secondary" onclick="runSpeedtest('wan2')">⚡ Testar WAN 2 (Claro)</button>
-                    </div>
-                </div>
 
-                <div class="grid-3">
-                    <div class="stat-card">
-                        <div class="stat-card-label">DOWNLOAD TESTADO</div>
-                        <div class="stat-card-value" style="color:#38bdf8;" id="sp_down_val">942.8 <small>Mbps</small></div>
-                        <div class="stat-card-meta">Servidor São Paulo (Vivo)</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">UPLOAD TESTADO</div>
-                        <div class="stat-card-value" style="color:#10b981;" id="sp_up_val">488.2 <small>Mbps</small></div>
-                        <div class="stat-card-meta">Bufferbloat 0ms adicionado</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">LATÊNCIA & JITTER</div>
-                        <div class="stat-card-value" id="sp_ping_val">4.2 <small>ms</small></div>
-                        <div class="stat-card-meta">Jitter: 0.4 ms</div>
-                    </div>
-                </div>
-            </main>
-
-            <!-- ========================================================= -->
-            <!-- 9. VIEW: FIREWALL & SQM CAKE                              -->
-            <!-- ========================================================= -->
-            <main class="view-panel" id="view-sqm">
-                <div class="hero-banner" style="background: linear-gradient(135deg, #092c20 0%, #064e3b 100%); border-color:rgba(16,185,129,0.3);">
-                    <div>
-                        <span class="hero-eyebrow" style="color:#10b981;">ELIMINADOR DE BUFFERBLOAT (ZERO-LAG)</span>
-                        <h2 class="hero-title">Smart Queue Management (SQM CAKE)</h2>
-                        <p class="hero-desc">
-                            O algoritmo CAKE prioriza pacotes essenciais como jogos online, chamadas de vídeo e DNS, garantindo que o ping permaneça estável mesmo durante downloads pesados.
-                        </p>
-                    </div>
-                    <button class="ark-btn ark-btn-primary" style="background:#10b981;" onclick="openModal('sqm')">⚙️ Ajustar Velocidades</button>
-                </div>
-
-                <div class="grid-2">
-                    <div class="ark-card">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <span class="card-kicker">CONFIGURAÇÃO ATUAL DO CAKE</span>
-                                <h3>Limites de Fila e Enquadramento</h3>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;" class="traffic-grid">
+                        <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:20px; text-align:center;">
+                            <span style="font-size:0.8rem; text-transform:uppercase; color:#94a3b8; font-weight:700;">Selecione a Interface para Teste</span>
+                            <div style="display:flex; justify-content:center; gap:10px; margin:14px 0;">
+                                <select class="form-select" id="speedtest_iface_select" style="max-width:260px;">
+                                    <option value="wan1" selected>WAN 1 — Vivo Fibra (1 Gbps)</option>
+                                    <option value="wan2">WAN 2 — Claro Fibra (500 Mbps)</option>
+                                    <option value="all">Balanceamento Combinado (mwan3)</option>
+                                </select>
                             </div>
-                            <span class="stat-pill online">0ms LAG</span>
+                            <button class="ark-btn ark-btn-primary" style="padding:10px 24px; font-size:0.92rem;" id="btn_run_speedtest" onclick="runSpeedtestProcess()">
+                                🚀 Iniciar Teste de Velocidade
+                            </button>
                         </div>
-                        <div class="info-row"><span class="info-label">Interface de Aplicação</span><span class="info-val highlight">pppoe-wan (Vivo Fibra)</span></div>
-                        <div class="info-row"><span class="info-label">Limite de Download</span><span class="info-val highlight" id="sqm_val_down">850 Mbps (95% da banda)</span></div>
-                        <div class="info-row"><span class="info-label">Limite de Upload</span><span class="info-val highlight" id="sqm_val_up">450 Mbps (95% da banda)</span></div>
-                        <div class="info-row"><span class="info-label">Compensação de Framing</span><span class="info-val">Fibra Óptica FTTH (0 bytes)</span></div>
-                        <div class="info-row"><span class="info-label">Escalonamento Multi-Core</span><span class="info-val success">cake-mq ativo nos 4 núcleos</span></div>
-                        <div class="form-actions" style="margin-top:12px; padding-top:10px;">
-                            <button class="ark-btn ark-btn-secondary" style="min-height:34px; font-size:0.78rem;" onclick="openModal('sqm')">⚙️ Ajustar Parâmetros</button>
-                        </div>
-                    </div>
 
-                    <div class="ark-card">
-                        <div class="card-header">
-                            <div class="card-title">
-                                <span class="card-kicker">ZONA DESMILITARIZADA & PORT FORWARD</span>
-                                <h3>DMZ & Redirecionamento de Portas</h3>
-                            </div>
-                            <span class="stat-pill" id="dmz_status_badge" style="color:#f59e0b; border-color:#f59e0b;">DMZ DESLIGADO</span>
-                        </div>
-                        <div class="toggle-row">
+                        <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:20px; display:flex; justify-content:space-around; align-items:center;">
                             <div>
-                                <span class="toggle-title">DMZ (Zona Desmilitarizada)</span>
-                                <span class="toggle-desc">Encaminha todas as portas não mapeadas para o IP de um videogame ou servidor local.</span>
+                                <span style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase; font-weight:700;">Download</span>
+                                <div style="font-size:1.8rem; font-weight:900; color:#38bdf8;" id="sp_down_val">842.5 <span style="font-size:0.9rem;">Mbps</span></div>
                             </div>
-                            <label class="ark-switch">
-                                <input type="checkbox" id="dmz_switch" onchange="toggleDmzSwitch(this)">
-                                <span class="ark-slider"></span>
-                            </label>
+                            <div>
+                                <span style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase; font-weight:700;">Upload</span>
+                                <div style="font-size:1.8rem; font-weight:900; color:#a855f7;" id="sp_up_val">421.8 <span style="font-size:0.9rem;">Mbps</span></div>
+                            </div>
+                            <div>
+                                <span style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase; font-weight:700;">Latência / Jitter</span>
+                                <div style="font-size:1.8rem; font-weight:900; color:#10b981;" id="sp_ping_val">3.2 <span style="font-size:0.9rem;">ms</span></div>
+                            </div>
                         </div>
-                        <div class="form-actions" style="margin-top:12px; padding-top:10px;">
-                            <button class="ark-btn ark-btn-secondary" style="min-height:34px; font-size:0.78rem;" onclick="openModal('port_forward')">➕ Adicionar Regra de Porta (NAT)</button>
+                    </div>
+                </section>
+
+                <!-- SECTION: HARDWARE & LEDS -->
+                <section class="section-card" id="sec-hardware">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <h2>💡 Hardware, Iluminação & LEDs Noturnos</h2>
+                            <span class="badge pill-online">Controle de Placa</span>
                         </div>
-                    </div>
-                </div>
-            </main>
-
-            <!-- ========================================================= -->
-            <!-- 10. VIEW: ESCUDO ADBLOCK & DNS                            -->
-            <!-- ========================================================= -->
-            <main class="view-panel" id="view-adblock">
-                <div class="hero-banner" style="background: linear-gradient(135deg, #3b0716 0%, #4c0519 100%); border-color:rgba(244,63,94,0.3);">
-                    <div>
-                        <span class="hero-eyebrow" style="color:#fb7185;">PROTEÇÃO NATIVA NO ROTEADOR</span>
-                        <h2 class="hero-title">Escudo AdBlock & Bloqueio DNS</h2>
-                        <p class="hero-desc">
-                            Bloqueio automático de anúncios, rastreadores e sites maliciosos diretamente na raiz da rede para todos os celulares, smart TVs e computadores da casa.
-                        </p>
-                    </div>
-                    <div style="display:flex; gap:10px;">
-                        <button class="ark-btn ark-btn-primary" style="background:#f43f5e;" onclick="runAdblockUpdate()">🔄 Atualizar Listas Agora</button>
-                        <button class="ark-btn ark-btn-secondary" onclick="openModal('adblock_rules')">⚙️ Gerenciar Whitelist</button>
-                    </div>
-                </div>
-
-                <div class="grid-3">
-                    <div class="stat-card">
-                        <div class="stat-card-label">ANÚNCIOS BLOQUEADOS HOJE</div>
-                        <div class="stat-card-value" style="color:#fb7185;">42.819</div>
-                        <div class="stat-card-meta">23.4% de todas as consultas DNS</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">DOMÍNIOS NA LISTA NEGRA</div>
-                        <div class="stat-card-value">248.910</div>
-                        <div class="stat-card-meta">Listas OISD + StevenBlack atualizadas</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-label">LATÊNCIA DO DNS PRIVADO</div>
-                        <div class="stat-card-value" style="color:#10b981;">1.2 ms</div>
-                        <div class="stat-card-meta">Dnsmasq + Cache em RAM</div>
-                    </div>
-                </div>
-            </main>
-
-            <!-- ========================================================= -->
-            <!-- 11. VIEW: ARK DOCTOR (28 CHECKS)                          -->
-            <!-- ========================================================= -->
-            <main class="view-panel" id="view-doctor">
-                <div class="hero-banner" style="background: linear-gradient(135deg, #022c22 0%, #064e3b 100%); border-color:rgba(16,185,129,0.3);">
-                    <div>
-                        <span class="hero-eyebrow" style="color:#10b981;">AUDITORIA PROFISSIONAL E AUTOCURA</span>
-                        <h2 class="hero-title">Ark Doctor — Diagnóstico Completo</h2>
-                        <p class="hero-desc">
-                            Verificação profunda de 28 pontos críticos de rede, firewall fw4 puro, MTU, IPv6, BSS Transition e detecção de conflitos de pacotes.
-                        </p>
-                    </div>
-                    <button class="ark-btn ark-btn-primary" style="background:#10b981;" onclick="runDoctorAudit()">🩺 Executar Auditoria Completa</button>
-                </div>
-
-                <div class="ark-card">
-                    <div class="card-header">
-                        <div class="card-title">
-                            <span class="card-kicker">STATUS GERAL DO ROTEADOR</span>
-                            <h3 id="doctor_status_text">STATUS: SISTEMA 100% SAUDÁVEL E OTIMIZADO! (28/28 APROVADOS)</h3>
-                        </div>
-                        <span class="stat-pill online" id="doctor_badge">28/28 OK</span>
+                        <button class="ark-btn ark-btn-secondary" onclick="openModal('led_control')">⚙️ Configurar LEDs</button>
                     </div>
 
-                    <div class="grid-2" id="doctor_checks_container"></div>
-                </div>
-            </main>
-
-            <!-- ========================================================= -->
-            <!-- 12. VIEW: SISTEMA, SENSORES, LEDS & MODOS OPERACIONAIS    -->
-            <!-- ========================================================= -->
-            <main class="view-panel" id="view-system">
-                <div class="hero-banner">
-                    <div>
-                        <span class="hero-eyebrow">DIAGNÓSTICO FÍSICO & OPERACIONAL</span>
-                        <h2 class="hero-title">Sistema, Sensores & Hardware</h2>
-                        <p class="hero-desc">
-                            Acer Predator Connect W6x / Cudy WR3000 • MediaTek Filogic 830 Quad-Core • OpenWrt 25.12.5.
-                        </p>
-                    </div>
-                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                        <button class="ark-btn ark-btn-secondary" onclick="generateBackupDownload()">💾 Backup das Configurações</button>
-                        <button class="ark-btn ark-btn-secondary" onclick="openModal('theme_picker')">🎨 Trocar Tema Visual</button>
-                        <button class="ark-btn ark-btn-danger" onclick="openModal('reboot')">🔄 Reiniciar</button>
-                    </div>
-                </div>
-
-                <!-- Toggles de Sistema, LEDs e HTTPS -->
-                <div class="grid-2">
-                    <div class="toggle-row">
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px;">
                         <div>
-                            <span class="toggle-title">Redirecionamento HTTPS Automático</span>
-                            <span class="toggle-desc">Força conexões seguras com certificado SSL local em todo acesso web.</span>
+                            <div style="font-size:1rem; font-weight:800; color:#fff;">Modo Noturno (Desligar Iluminação do Roteador)</div>
+                            <div style="font-size:0.8rem; color:#94a3b8;">Desativa todos os LEDs físicos das portas e logotipo frontal para ambientes escuros.</div>
                         </div>
                         <label class="ark-switch">
-                            <input type="checkbox" checked onchange="toggleGenericSwitch(this, 'Redirecionamento HTTPS')">
+                            <input type="checkbox" id="led_night_toggle" onchange="toggleNightLeds(this)">
                             <span class="ark-slider"></span>
                         </label>
                     </div>
+                </section>
 
-                    <div class="toggle-row">
-                        <div>
-                            <span class="toggle-title">Atualizações Automáticas de Firmware (ASU)</span>
-                            <span class="toggle-desc">Verifica compilações estáveis do OpenWrt com restauração automática de pacotes.</span>
-                        </div>
-                        <label class="ark-switch">
-                            <input type="checkbox" onchange="toggleGenericSwitch(this, 'Atualizações ASU')">
-                            <span class="ark-slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="toggle-row">
-                        <div>
-                            <span class="toggle-title">Controle Inteligente de LEDs do Roteador</span>
-                            <span class="toggle-desc" id="led_mode_desc">Modo Tráfego Dinâmico (Pisca suave conforme download/upload).</span>
-                        </div>
-                        <button class="ark-btn ark-btn-secondary" style="min-height:34px; font-size:0.75rem;" onclick="openModal('led_control')">💡 Ajustar LEDs</button>
-                    </div>
-
-                    <div class="toggle-row">
-                        <div>
-                            <span class="toggle-title">Modo de Operação do Roteador</span>
-                            <span class="toggle-desc">Modo Roteador Gateway Completo (NAT, Firewall e DHCP ativos).</span>
-                        </div>
-                        <button class="ark-btn ark-btn-secondary" style="min-height:34px; font-size:0.75rem;" onclick="openModal('router_mode')">🔀 Alternar Modo</button>
-                    </div>
-                </div>
-
-                <div class="grid-3">
-                    <div class="ark-card">
-                        <div class="card-header">
-                            <h3>Processador (CPU)</h3>
-                            <span class="stat-pill online">8% Carga</span>
-                        </div>
-                        <div class="info-row"><span class="info-label">Modelo</span><span class="info-val">Filogic 830 Quad-Core</span></div>
-                        <div class="info-row"><span class="info-label">Frequência</span><span class="info-val">2.0 GHz por núcleo</span></div>
-                        <div class="info-row"><span class="info-label">Core 0</span><span class="info-val highlight">6%</span></div>
-                        <div class="info-row"><span class="info-label">Core 1</span><span class="info-val highlight">9%</span></div>
-                        <div class="info-row"><span class="info-label">Core 2</span><span class="info-val highlight">7%</span></div>
-                        <div class="info-row"><span class="info-label">Core 3</span><span class="info-val highlight">10%</span></div>
-                    </div>
-
-                    <div class="ark-card">
-                        <div class="card-header">
-                            <h3>Memória RAM (512 MB)</h3>
-                            <span class="stat-pill online">26% Usada</span>
-                        </div>
-                        <div class="info-row"><span class="info-label">Total Físico</span><span class="info-val">512 MB DDR4</span></div>
-                        <div class="info-row"><span class="info-label">Em Uso Real (RSS)</span><span class="info-val highlight">134 MB</span></div>
-                        <div class="info-row"><span class="info-label">Buffers & Cache</span><span class="info-val">88 MB</span></div>
-                        <div class="info-row"><span class="info-label">Livre para Alocação</span><span class="info-val success">290 MB</span></div>
-                    </div>
-
-                    <div class="ark-card">
-                        <div class="card-header">
-                            <h3>Armazenamento Flash (128 MB)</h3>
-                            <span class="stat-pill online">Livre</span>
-                        </div>
-                        <div class="info-row"><span class="info-label">Tipo</span><span class="info-val">SPI NAND Flash</span></div>
-                        <div class="info-row"><span class="info-label">Partição Overlay RW</span><span class="info-val highlight">96 MB</span></div>
-                        <div class="info-row"><span class="info-label">Espaço Livre</span><span class="info-val success">82.4 MB Livres</span></div>
-                        <div class="info-row"><span class="info-label">Saúde do Overlay</span><span class="info-val success">100% Íntegro</span></div>
-                    </div>
-                </div>
             </main>
-
         </div>
     </div>
 
     <!-- ========================================================= -->
-    <!-- SLIDE-OVER DRAWER: PÁGINAS NATIVAS DO LUCI (NÃO-INTRUSIVO) -->
+    <!-- SLIDE-OVER DRAWER: PÁGINAS NATIVAS DO LUCI (100% CLICÁVEIS) -->
     <!-- ========================================================= -->
     <div id="luci_drawer_backdrop" onclick="toggleLuciDrawer()"></div>
     <div id="luci_drawer">
         <div class="drawer-header">
-            <h3>🛠️ Páginas Nativas do LuCI</h3>
+            <h3 style="color:#fff; font-size:1.1rem; font-weight:800;">🛠️ LuCI Nativo do OpenWrt</h3>
             <button class="modal-close-btn" onclick="toggleLuciDrawer()">✕</button>
         </div>
         <p style="font-size:0.78rem; color:#94a3b8; line-height:1.4;">
-            Acesso direto e irrestrito a todos os formulários UCI e ferramentas avançadas do LuCI original sem sair do ecossistema.
+            Acesso irrestrito a todas as configurações avançadas originais do OpenWrt. Clique em qualquer item abaixo para abrir a página.
         </p>
 
-        <div class="drawer-cat">📊 Status & Diagnósticos</div>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/status/overview')">
-            <span>Visão Geral do LuCI</span>
-            <span class="uri">/status/overview</span>
+        <div class="drawer-category">📊 Status & Diagnósticos</div>
+        <a class="drawer-link" href="/cgi-bin/luci/admin/status/overview" onclick="handleLuciClick(event, 'overview')">
+            <span>Visão Geral Original (Status)</span>
+            <span class="drawer-link-meta">/status/overview</span>
         </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/status/routes')">
-            <span>Tabela de Rotas de Kernel</span>
-            <span class="uri">/status/routes</span>
+        <a class="drawer-link" href="/cgi-bin/luci/admin/status/routes" onclick="handleLuciClick(event, 'routes')">
+            <span>Tabela de Rotas de Rede</span>
+            <span class="drawer-link-meta">/status/routes</span>
         </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/status/syslog')">
-            <span>Log do Sistema (Syslog)</span>
-            <span class="uri">/status/syslog</span>
+        <a class="drawer-link" href="/cgi-bin/luci/admin/status/syslog" onclick="handleLuciClick(event, 'syslog')">
+            <span>Syslog do Sistema</span>
+            <span class="drawer-link-meta">/status/syslog</span>
         </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/status/dmesg')">
+        <a class="drawer-link" href="/cgi-bin/luci/admin/status/dmesg" onclick="handleLuciClick(event, 'dmesg')">
             <span>Log do Kernel (dmesg)</span>
-            <span class="uri">/status/dmesg</span>
+            <span class="drawer-link-meta">/status/dmesg</span>
         </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/status/processes')">
-            <span>Processos em Execução</span>
-            <span class="uri">/status/processes</span>
-        </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/status/realtime')">
-            <span>Gráficos em Tempo Real</span>
-            <span class="uri">/status/realtime</span>
-        </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/status/nftables')">
-            <span>Status do Firewall (nftables)</span>
-            <span class="uri">/status/nftables</span>
+        <a class="drawer-link" href="/cgi-bin/luci/admin/status/nftables" onclick="handleLuciClick(event, 'nftables')">
+            <span>Regras do Firewall (nftables)</span>
+            <span class="drawer-link-meta">/status/nftables</span>
         </a>
 
-        <div class="drawer-cat">🌐 Rede & Interfaces</div>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/network/network')">
-            <span>Interfaces de Rede</span>
-            <span class="uri">/network/network</span>
+        <div class="drawer-category">🌐 Rede & Conexões</div>
+        <a class="drawer-link" href="/cgi-bin/luci/admin/network/network" onclick="handleLuciClick(event, 'interfaces')">
+            <span>Interfaces de Rede (WAN/LAN)</span>
+            <span class="drawer-link-meta">/network/network</span>
         </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/network/device')">
-            <span>Dispositivos & Pontes (DSA)</span>
-            <span class="uri">/network/device</span>
-        </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/network/wireless')">
+        <a class="drawer-link" href="/cgi-bin/luci/admin/network/wireless" onclick="handleLuciClick(event, 'wireless')">
             <span>Redes Sem Fio (Wireless)</span>
-            <span class="uri">/network/wireless</span>
+            <span class="drawer-link-meta">/network/wireless</span>
         </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/network/dhcp')">
-            <span>Servidor DHCP e DNS</span>
-            <span class="uri">/network/dhcp</span>
+        <a class="drawer-link" href="/cgi-bin/luci/admin/network/dhcp" onclick="handleLuciClick(event, 'dhcp')">
+            <span>Servidor DHCP & DNS (dnsmasq)</span>
+            <span class="drawer-link-meta">/network/dhcp</span>
         </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/network/firewall')">
-            <span>Firewall (Regras de Tráfego)</span>
-            <span class="uri">/network/firewall</span>
+        <a class="drawer-link" href="/cgi-bin/luci/admin/network/firewall" onclick="handleLuciClick(event, 'firewall')">
+            <span>Firewall & Redirecionamento NAT</span>
+            <span class="drawer-link-meta">/network/firewall</span>
         </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/network/mwan')">
-            <span>Multi-WAN (mwan3)</span>
-            <span class="uri">/network/mwan</span>
-        </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/network/diagnostics')">
-            <span>Diagnóstico (Ping & Traceroute)</span>
-            <span class="uri">/network/diagnostics</span>
+        <a class="drawer-link" href="/cgi-bin/luci/admin/network/mwan" onclick="handleLuciClick(event, 'mwan')">
+            <span>Multi-WAN (mwan3) Nativo</span>
+            <span class="drawer-link-meta">/network/mwan</span>
         </a>
 
-        <div class="drawer-cat">🛡️ Serviços</div>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/services/sqm')">
-            <span>Gerenciador de Filas SQM</span>
-            <span class="uri">/services/sqm</span>
-        </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/services/adblock')">
-            <span>AdBlock Nativo</span>
-            <span class="uri">/services/adblock</span>
-        </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/services/upnp')">
-            <span>UPnP / Port Forwarding</span>
-            <span class="uri">/services/upnp</span>
-        </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/services/ddns')">
-            <span>DNS Dinâmico (DDNS)</span>
-            <span class="uri">/services/ddns</span>
-        </a>
-
-        <div class="drawer-cat">⚙️ Sistema & Firmware</div>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/system/system')">
+        <div class="drawer-category">⚙️ Sistema & Ferramentas</div>
+        <a class="drawer-link" href="/cgi-bin/luci/admin/system/system" onclick="handleLuciClick(event, 'system')">
             <span>Configurações do Sistema</span>
-            <span class="uri">/system/system</span>
+            <span class="drawer-link-meta">/system/system</span>
         </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/system/admin')">
-            <span>Senha do Administrador & SSH</span>
-            <span class="uri">/system/admin</span>
+        <a class="drawer-link" href="/cgi-bin/luci/admin/system/opkg" onclick="handleLuciClick(event, 'packages')">
+            <span>Gerenciador de Pacotes (Software)</span>
+            <span class="drawer-link-meta">/system/opkg</span>
         </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/system/packages')">
-            <span>Gerenciador de Pacotes (opkg/apk)</span>
-            <span class="uri">/system/packages</span>
+        <a class="drawer-link" href="/cgi-bin/luci/admin/system/startup" onclick="handleLuciClick(event, 'startup')">
+            <span>Scripts de Inicialização (init.d)</span>
+            <span class="drawer-link-meta">/system/startup</span>
         </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/system/startup')">
-            <span>Inicialização & Daemons</span>
-            <span class="uri">/system/startup</span>
+        <a class="drawer-link" href="/cgi-bin/luci/admin/system/flash" onclick="handleLuciClick(event, 'flash')">
+            <span>Backup / Gravar Firmware</span>
+            <span class="drawer-link-meta">/system/flash</span>
         </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/system/crontab')">
-            <span>Tarefas Agendadas (Cron)</span>
-            <span class="uri">/system/crontab</span>
-        </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/system/flash')">
-            <span>Backup / Flash Firmware</span>
-            <span class="uri">/system/flash</span>
-        </a>
-        <a class="drawer-link" onclick="openLuciUrl('/cgi-bin/luci/admin/system/reboot')">
-            <span>Reiniciar Sistema</span>
-            <span class="uri">/system/reboot</span>
+        <a class="drawer-link" href="/cgi-bin/luci/admin/system/reboot" onclick="handleLuciClick(event, 'reboot')">
+            <span>Reinicialização do Sistema</span>
+            <span class="drawer-link-meta">/system/reboot</span>
         </a>
 
-        <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--ark-border);">
-            <button class="ark-btn ark-btn-secondary" style="width:100%; font-size:0.78rem;" onclick="switchToClassicLuCI()">
-                🔄 Alternar para Modo LuCI Clássico (Argon)
+        <div style="margin-top:auto; padding-top:14px; border-top:1px solid var(--ark-border);">
+            <button class="ark-btn ark-btn-purple" style="width:100%; padding:10px;" onclick="openLuciSimulator('overview')">
+                💻 Abrir LuCI em Modo Completo
             </button>
         </div>
     </div>
 
-    <!-- MODAL OVERLAY GENÉRICO DINÂMICO -->
-    <div id="modal_overlay" class="inactive" onclick="if(event.target === this) closeModal();">
-        <div class="modal modal-card" id="modal_container"></div>
+    <!-- ========================================================= -->
+    <!-- SIMULADOR INTERATIVO DE PÁGINAS NATIVAS DO LUCI -->
+    <!-- ========================================================= -->
+    <div id="luci_native_view_container">
+        <!-- Barra de Retorno Superior -->
+        <div class="luci-sim-bar">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <button class="ark-btn ark-btn-primary" onclick="closeLuciSimulator()">
+                    ⬅ Voltar ao Painel ARK Router V2
+                </button>
+                <span style="font-size:0.85rem; color:#9ca3af;" id="luci_sim_current_route">Rota: /cgi-bin/luci/admin/status/overview</span>
+            </div>
+            <span class="pill-badge pill-cyan">MODO LUCI CLÁSSICO SIMULADO</span>
+        </div>
+
+        <!-- Cabeçalho Autêntico do LuCI -->
+        <div class="luci-sim-classic-header">
+            <div>
+                <h1 style="font-size:1.3rem; font-weight:700; margin:0;">OpenWrt LuCI</h1>
+                <span style="font-size:0.75rem; opacity:0.8;">Acer Predator W6x • OpenWrt 24.10.0 r27208</span>
+            </div>
+            <div style="font-size:0.82rem;">Usuário: <strong>root</strong></div>
+        </div>
+
+        <!-- Abas Clássicas do LuCI -->
+        <div class="luci-sim-classic-nav">
+            <a class="luci-nav-tab active" onclick="switchLuciTab('status')">Status</a>
+            <a class="luci-nav-tab" onclick="switchLuciTab('system')">Sistema</a>
+            <a class="luci-nav-tab" onclick="switchLuciTab('network')">Rede</a>
+            <a class="luci-nav-tab" onclick="switchLuciTab('services')">Serviços</a>
+            <a class="luci-nav-tab" style="background:#0284c7; color:#fff;" onclick="closeLuciSimulator()">⚡ ARK Router</a>
+        </div>
+
+        <!-- Conteúdo do LuCI Clássico -->
+        <div class="luci-sim-content" id="luci_sim_content_body">
+            <!-- Populated dynamically -->
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODAL OVERLAY CENTRAL (100% OPERACIONAL COM SELECTS) -->
+    <!-- ========================================================= -->
+    <div id="modal_overlay">
+        <div class="modal-box">
+            <div id="modal_content_holder"></div>
+        </div>
     </div>
 
     <!-- TOAST NOTIFICATION -->
     <div id="toast_notify"></div>
 
-    <!-- ========================================================= -->
-    <!-- JAVASCRIPT REATIVO DO DASHBOARD                           -->
-    <!-- ========================================================= -->
+    <!-- JAVASCRIPT LOGIC & REAL-TIME INTERACTION -->
     <script>
-        // Router & Navigation
-        const pageTitles = {
-            overview: '<span>📊</span> Visão Geral do Roteador',
-            wan: '<span>🌐</span> Multi-WAN, Interfaces & Failover',
-            wifi: '<span>📶</span> Redes Wi-Fi 6E/7 & Radiofrequência',
-            enhancer: '<span>🚀</span> Smart Wi-Fi Package Enhancer',
-            devices: '<span>📱</span> Dispositivos Conectados (34 Clientes)',
-            starlink: '<span>🛰️</span> Starlink & Satélite (Dishy LEO)',
-            vpn: '<span>🔒</span> WireGuard VPN & Roteamento PBR',
-            speedtest: '<span>⚡</span> Speedtest Multi-WAN Integrado',
-            sqm: '<span>🛡️</span> Firewall & SQM CAKE (Zero-Lag)',
-            adblock: '<span>🛑</span> Escudo AdBlock & Bloqueio DNS',
-            doctor: '<span>🩺</span> Ark Doctor — Diagnóstico Completo (28 Checks)',
-            system: '<span>⚙️</span> Sistema, Sensores, LEDs & Modos'
-        };
+        // Device Mock Database (34 Devices across 2.4G, 5G, 6G, Cable)
+        const DEVICES = [
+            { id: 1, name: "iPhone-16-Pro-Max", ip: "192.168.1.101", mac: "34:ab:95:11:22:33", band: "6", rssi: -42, speed: "2.8 Gbps", total: "14.8 GB", type: "phone", prio: "high" },
+            { id: 2, name: "MacBook-Pro-M3-Max", ip: "192.168.1.142", mac: "f4:d4:88:55:66:77", band: "6", rssi: -45, speed: "2.4 Gbps", total: "38.2 GB", type: "laptop", prio: "high" },
+            { id: 3, name: "Galaxy-S24-Ultra", ip: "192.168.1.109", mac: "cc:46:d6:33:44:55", band: "6", rssi: -48, speed: "2.1 Gbps", total: "9.5 GB", type: "phone", prio: "normal" },
+            { id: 4, name: "iPad-Pro-M4", ip: "192.168.1.115", mac: "18:af:61:77:88:99", band: "6", rssi: -50, speed: "1.9 Gbps", total: "12.1 GB", type: "laptop", prio: "normal" },
+            { id: 5, name: "PlayStation-5-Pro", ip: "192.168.1.189", mac: "70:9e:29:aa:bb:cc", band: "eth", rssi: 0, speed: "2.5 Gbps", total: "84.2 GB", type: "console", prio: "gamer" },
+            { id: 6, name: "TV-Samsung-OLED-65", ip: "192.168.1.110", mac: "a0:c9:a0:12:34:56", band: "5", rssi: -54, speed: "866 Mbps", total: "45.0 GB", type: "tv", prio: "normal" },
+            { id: 7, name: "Apple-TV-4K", ip: "192.168.1.112", mac: "e8:04:0b:aa:11:22", band: "eth", rssi: 0, speed: "1.0 Gbps", total: "29.4 GB", type: "tv", prio: "normal" },
+            { id: 8, name: "Servidor-NAS-Synology", ip: "192.168.1.105", mac: "00:11:32:44:55:66", band: "eth", rssi: 0, speed: "2.5 Gbps", total: "112.4 GB", type: "server", prio: "normal" },
+            { id: 9, name: "Notebook-Dell-XPS", ip: "192.168.1.144", mac: "74:70:fd:88:99:00", band: "5", rssi: -58, speed: "866 Mbps", total: "16.8 GB", type: "laptop", prio: "normal" },
+            { id: 10, name: "Xbox-Series-X", ip: "192.168.1.188", mac: "60:45:bd:11:22:33", band: "5", rssi: -52, speed: "1.2 Gbps", total: "52.3 GB", type: "console", prio: "gamer" },
+            { id: 11, name: "Nintendo-Switch-OLED", ip: "192.168.1.192", mac: "98:b6:e9:22:33:44", band: "5", rssi: -62, speed: "433 Mbps", total: "8.1 GB", type: "console", prio: "normal" },
+            { id: 12, name: "Amazon-Echo-Show-10", ip: "192.168.1.120", mac: "fc:65:de:33:44:55", band: "5", rssi: -56, speed: "433 Mbps", total: "3.2 GB", type: "iot", prio: "low" },
+            { id: 13, name: "Google-Nest-Hub", ip: "192.168.1.122", mac: "20:df:b9:44:55:66", band: "5", rssi: -60, speed: "300 Mbps", total: "2.8 GB", type: "iot", prio: "low" },
+            { id: 14, name: "Camera-Seguranca-Frente", ip: "192.168.1.150", mac: "10:2c:6b:55:66:77", band: "2.4", rssi: -64, speed: "72 Mbps", total: "18.5 GB", type: "iot", prio: "normal" },
+            { id: 15, name: "Camera-Seguranca-Fundos", ip: "192.168.1.151", mac: "10:2c:6b:66:77:88", band: "2.4", rssi: -68, speed: "72 Mbps", total: "17.9 GB", type: "iot", prio: "normal" },
+            { id: 16, name: "Lampada-Smart-Sala-1", ip: "192.168.1.160", mac: "50:02:91:77:88:99", band: "2.4", rssi: -70, speed: "24 Mbps", total: "120 MB", type: "iot", prio: "low" },
+            { id: 17, name: "Lampada-Smart-Sala-2", ip: "192.168.1.161", mac: "50:02:91:88:99:aa", band: "2.4", rssi: -72, speed: "24 Mbps", total: "115 MB", type: "iot", prio: "low" },
+            { id: 18, name: "Tomada-Smart-Cafeteira", ip: "192.168.1.162", mac: "68:c6:3a:99:aa:bb", band: "2.4", rssi: -66, speed: "36 Mbps", total: "85 MB", type: "iot", prio: "low" },
+            { id: 19, name: "Robo-Aspirador-Xiaomi", ip: "192.168.1.170", mac: "7c:49:eb:aa:bb:cc", band: "2.4", rssi: -59, speed: "54 Mbps", total: "1.4 GB", type: "iot", prio: "low" },
+            { id: 20, name: "Ar-Condicionado-LG-Quarto", ip: "192.168.1.172", mac: "84:25:3f:bb:cc:dd", band: "2.4", rssi: -65, speed: "36 Mbps", total: "420 MB", type: "iot", prio: "low" },
+            { id: 21, name: "Ar-Condicionado-LG-Sala", ip: "192.168.1.173", mac: "84:25:3f:cc:dd:ee", band: "2.4", rssi: -62, speed: "48 Mbps", total: "510 MB", type: "iot", prio: "low" },
+            { id: 22, name: "Fechadura-Smart-Entrada", ip: "192.168.1.175", mac: "90:b6:86:dd:ee:ff", band: "2.4", rssi: -58, speed: "24 Mbps", total: "95 MB", type: "iot", prio: "high" },
+            { id: 23, name: "Impressora-HP-LaserJet", ip: "192.168.1.130", mac: "3c:2a:f4:ee:ff:00", band: "2.4", rssi: -55, speed: "72 Mbps", total: "2.1 GB", type: "printer", prio: "normal" },
+            { id: 24, name: "Kindle-Paperwhite-Leitor", ip: "192.168.1.135", mac: "ac:63:be:00:11:22", band: "2.4", rssi: -63, speed: "48 Mbps", total: "340 MB", type: "phone", prio: "low" },
+            { id: 25, name: "Tablet-Samsung-Tab-S9", ip: "192.168.1.118", mac: "54:27:1e:11:22:33", band: "5", rssi: -50, speed: "1.2 Gbps", total: "8.9 GB", type: "laptop", prio: "normal" },
+            { id: 26, name: "TV-LG-WebOS-Quarto", ip: "192.168.1.111", mac: "28:ee:52:22:33:44", band: "5", rssi: -61, speed: "433 Mbps", total: "22.4 GB", type: "tv", prio: "normal" },
+            { id: 27, name: "Sonos-One-Sala-Som", ip: "192.168.1.125", mac: "78:28:ca:33:44:55", band: "5", rssi: -53, speed: "300 Mbps", total: "14.2 GB", type: "iot", prio: "normal" },
+            { id: 28, name: "Sonos-One-Cozinha", ip: "192.168.1.126", mac: "78:28:ca:44:55:66", band: "5", rssi: -58, speed: "300 Mbps", total: "9.6 GB", type: "iot", prio: "normal" },
+            { id: 29, name: "HomePod-Mini-Escritorio", ip: "192.168.1.128", mac: "94:e9:79:55:66:77", band: "5", rssi: -49, speed: "433 Mbps", total: "6.8 GB", type: "iot", prio: "normal" },
+            { id: 30, name: "Sensor-Presenca-Corredor", ip: "192.168.1.180", mac: "a4:c1:38:66:77:88", band: "2.4", rssi: -71, speed: "12 Mbps", total: "45 MB", type: "iot", prio: "low" },
+            { id: 31, name: "Sensor-Vazamento-Cozinha", ip: "192.168.1.181", mac: "a4:c1:38:77:88:99", band: "2.4", rssi: -69, speed: "12 Mbps", total: "38 MB", type: "iot", prio: "high" },
+            { id: 32, name: "Motor-Portao-Garagem", ip: "192.168.1.185", mac: "b8:d6:1a:88:99:aa", band: "2.4", rssi: -74, speed: "24 Mbps", total: "62 MB", type: "iot", prio: "normal" },
+            { id: 33, name: "Chromecast-HD-Hospedes", ip: "192.168.1.114", mac: "f8:8f:12:99:aa:bb", band: "5", rssi: -67, speed: "300 Mbps", total: "11.2 GB", type: "tv", prio: "normal" },
+            { id: 34, name: "MacMini-M2-Backup", ip: "192.168.1.146", mac: "3c:06:30:aa:bb:cc", band: "5", rssi: -44, speed: "1.2 Gbps", total: "28.1 GB", type: "laptop", prio: "normal" }
+        ];
 
-        function switchView(viewId) {
-            document.querySelectorAll('.view-panel').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.sidebar .nav-item').forEach(el => el.classList.remove('active'));
+        let currentFilter = 'all';
+        let currentSearch = '';
+        let currentSort = 'traffic';
 
-            const targetPanel = document.getElementById('view-' + viewId);
-            if (targetPanel) targetPanel.classList.add('active');
+        // Render Devices Table
+        function renderDevicesTable() {
+            const tbody = document.getElementById('device_table_body');
+            if (!tbody) return;
 
-            const heading = document.getElementById('current_page_title');
-            if (heading && pageTitles[viewId]) heading.innerHTML = pageTitles[viewId];
+            let list = [...DEVICES];
 
-            document.querySelectorAll('.sidebar .nav-item').forEach(el => {
-                const attr = el.getAttribute('onclick') || '';
-                if (attr.includes("'" + viewId + "'")) el.classList.add('active');
-            });
+            // Filter
+            if (currentFilter !== 'all') {
+                list = list.filter(d => d.band === currentFilter);
+            }
 
-            document.getElementById('sidebar').classList.remove('open');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            // Search
+            if (currentSearch.trim()) {
+                const q = currentSearch.toLowerCase();
+                list = list.filter(d => d.name.toLowerCase().includes(q) || d.ip.includes(q) || d.mac.toLowerCase().includes(q));
+            }
+
+            // Sort
+            if (currentSort === 'traffic') {
+                list.sort((a, b) => parseFloat(b.total) - parseFloat(a.total));
+            } else if (currentSort === 'speed') {
+                list.sort((a, b) => parseFloat(b.speed) - parseFloat(a.speed));
+            } else if (currentSort === 'name') {
+                list.sort((a, b) => a.name.localeCompare(b.name));
+            }
+
+            tbody.innerHTML = list.map(d => {
+                let icon = '📱';
+                if (d.type === 'laptop') icon = '💻';
+                else if (d.type === 'tv') icon = '📺';
+                else if (d.type === 'console') icon = '🎮';
+                else if (d.type === 'server') icon = '🖥️';
+                else if (d.type === 'printer') icon = '🖨️';
+                else if (d.type === 'iot') icon = '🏠';
+
+                let bandBadge = '<span class="pill-badge pill-amber">2.4 GHz</span>';
+                if (d.band === '5') bandBadge = '<span class="pill-badge pill-cyan">5 GHz</span>';
+                else if (d.band === '6') bandBadge = '<span class="pill-badge pill-purple">6 GHz BE</span>';
+                else if (d.band === 'eth') bandBadge = '<span class="pill-badge pill-online">Cabo LAN</span>';
+
+                let signalStr = d.band === 'eth' ? '— (Cabo)' : `${d.rssi} dBm`;
+
+                return `
+                    <tr>
+                        <td>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="font-size:1.15rem;">${icon}</span>
+                                <div>
+                                    <strong style="color:#fff;">${d.name}</strong>
+                                    <div style="font-size:0.72rem; color:#64748b;">${d.prio === 'gamer' ? '⚡ Prioridade Gamer' : (d.prio === 'high' ? 'Alta Prioridade' : 'Normal')}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><code>${d.ip}</code></td>
+                        <td><code style="color:#94a3b8;">${d.mac}</code></td>
+                        <td>${bandBadge}</td>
+                        <td style="color:${d.rssi > -60 ? '#34d399' : (d.rssi > -70 ? '#fbbf24' : '#f87171')}; font-weight:700;">${signalStr}</td>
+                        <td style="color:#38bdf8; font-weight:700;">${d.speed}</td>
+                        <td style="color:#c084fc; font-weight:800;">${d.total}</td>
+                        <td style="text-align:right;">
+                            <button class="ark-btn ark-btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="openDeviceModal('${d.mac}')" title="Configurar IP fixo e regras">
+                                ⚙️ Editar
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterDevices(band, btn) {
+            currentFilter = band;
+            document.querySelectorAll('.device-tab').forEach(t => t.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            renderDevicesTable();
+        }
+
+        function searchDevices(val) {
+            currentSearch = val;
+            renderDevicesTable();
+        }
+
+        function sortDevices(val) {
+            currentSort = val;
+            renderDevicesTable();
+        }
+
+        // Live Clock Ticker
+        function updateClock() {
+            const now = new Date();
+            const timeEl = document.getElementById('live_clock');
+            const dateEl = document.getElementById('live_date');
+            if (timeEl) {
+                timeEl.textContent = now.toLocaleTimeString('pt-BR', { hour12: false });
+            }
+            if (dateEl) {
+                dateEl.textContent = now.toLocaleDateString('pt-BR');
+            }
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Smooth Scroll to Section
+        function scrollToSection(id) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth' });
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                const activeNav = Array.from(document.querySelectorAll('.nav-item')).find(a => a.getAttribute('onclick')?.includes(id));
+                if (activeNav) activeNav.classList.add('active');
+                if (window.innerWidth <= 854) toggleSidebar();
+            }
         }
 
         function toggleSidebar() {
@@ -2213,446 +2270,129 @@ html_content = r'''<!DOCTYPE html>
             backdrop.classList.toggle('open');
         }
 
-        function openLuciUrl(path) {
+        // Handle LuCI Click (Real URL + Simulator in Staging)
+        function handleLuciClick(ev, route) {
+            ev.preventDefault();
             toggleLuciDrawer();
-            showToast('Navegando para: ' + path);
-            // Em ambiente real com LuCI conectado: window.location.href = path;
+            openLuciSimulator(route);
         }
 
-        function switchToClassicLuCI() {
-            toggleLuciDrawer();
-            showToast('Alternando para o tema LuCI clássico (Argon / Bootstrap)...');
-        }
-
-        // Live Clock & Ping Jitter
-        function updateClock() {
-            const now = new Date();
-            const timeStr = now.toTimeString().split(' ')[0];
-            const clockEl = document.getElementById('header_clock');
-            if (clockEl) clockEl.textContent = timeStr;
-
-            const jitter = Math.floor(Math.random() * 4) + 11;
-            const pingEl = document.getElementById('header_ping');
-            if (pingEl) pingEl.textContent = jitter;
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
-
-        // Canvas 2D Live Traffic Chart
-        const canvas = document.getElementById('traffic_canvas');
-        let chartPaused = false;
-        const downData = [240, 260, 310, 420, 450, 480, 470, 490, 510, 480, 460, 482];
-        const upData = [80, 95, 110, 140, 160, 180, 175, 185, 190, 182, 178, 184];
-
-        function drawChart() {
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            const dpr = window.devicePixelRatio || 1;
-            const rect = canvas.getBoundingClientRect();
+        // Open Native LuCI Simulator Mode
+        function openLuciSimulator(route) {
+            const container = document.getElementById('luci_native_view_container');
+            const routeLabel = document.getElementById('luci_sim_current_route');
+            const body = document.getElementById('luci_sim_content_body');
             
-            canvas.width = rect.width * dpr;
-            canvas.height = rect.height * dpr;
-            ctx.scale(dpr, dpr);
+            routeLabel.textContent = `Rota Original: /cgi-bin/luci/admin/${route}`;
+            container.classList.add('active');
 
-            const w = rect.width;
-            const h = rect.height;
-            ctx.clearRect(0, 0, w, h);
-
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-            ctx.lineWidth = 1;
-            for (let y = 30; y < h; y += 35) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(w, y);
-                ctx.stroke();
-            }
-
-            function renderLine(data, strokeColor, fillColor) {
-                const maxVal = 600;
-                const pts = data.map((v, i) => ({
-                    x: (i / (data.length - 1)) * w,
-                    y: h - (v / maxVal) * (h - 20)
-                }));
-
-                ctx.beginPath();
-                ctx.moveTo(pts[0].x, pts[0].y);
-                for (let i = 0; i < pts.length - 1; i++) {
-                    const xc = (pts[i].x + pts[i + 1].x) / 2;
-                    const yc = (pts[i].y + pts[i + 1].y) / 2;
-                    ctx.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc);
-                }
-                ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
-
-                ctx.save();
-                ctx.strokeStyle = strokeColor;
-                ctx.lineWidth = 2.5;
-                ctx.shadowColor = strokeColor;
-                ctx.shadowBlur = 8;
-                ctx.stroke();
-                ctx.restore();
-
-                ctx.lineTo(w, h);
-                ctx.lineTo(0, h);
-                ctx.closePath();
-                const grad = ctx.createLinearGradient(0, 0, 0, h);
-                grad.addColorStop(0, fillColor);
-                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                ctx.fillStyle = grad;
-                ctx.fill();
-            }
-
-            renderLine(downData, '#38bdf8', 'rgba(56, 189, 248, 0.25)');
-            renderLine(upData, '#10b981', 'rgba(16, 185, 129, 0.2)');
-        }
-
-        function updateTraffic() {
-            if (chartPaused) return;
-            const nextDown = Math.floor(Math.random() * 80) + 440;
-            const nextUp = Math.floor(Math.random() * 40) + 160;
-
-            downData.shift();
-            downData.push(nextDown);
-            upData.shift();
-            upData.push(nextUp);
-
-            const downEl = document.getElementById('stat_down');
-            const totalSpeedEl = document.getElementById('overview_total_speed');
-            const chartDown = document.getElementById('chart_down_label');
-            const chartUp = document.getElementById('chart_up_label');
-
-            if (downEl) downEl.textContent = nextDown;
-            if (totalSpeedEl) totalSpeedEl.textContent = (nextDown + (nextUp * 0.1)).toFixed(1) + ' Mbps';
-            if (chartDown) chartDown.textContent = nextDown + ' Mbps';
-            if (chartUp) chartUp.textContent = nextUp + ' Mbps';
-
-            drawChart();
-        }
-        setInterval(updateTraffic, 1500);
-        window.addEventListener('resize', drawChart);
-        setTimeout(drawChart, 200);
-
-        function toggleChartPause() {
-            chartPaused = !chartPaused;
-            showToast(chartPaused ? 'Tráfego pausado' : 'Tráfego retomado');
-        }
-
-        // Multi-WAN Failover Simulation
-        let wanFailoverSimulated = false;
-        function toggleSimulatedFailover() {
-            wanFailoverSimulated = !wanFailoverSimulated;
-            const btn = document.getElementById('sim_failover_btn');
-            const b1 = document.getElementById('badge_wan1');
-            const b2 = document.getElementById('badge_wan2');
-
-            if (wanFailoverSimulated) {
-                btn.textContent = '🔄 Restaurar WAN 1 (Reconectar Fibra)';
-                btn.className = 'ark-btn ark-btn-primary';
-                b1.textContent = '✕ DESCONECTADO (Cabo Rompido)';
-                b1.className = 'stat-pill';
-                b1.style.color = '#ef4444';
-                b1.style.borderColor = '#ef4444';
-
-                b2.textContent = '● ASSUMIU 100% DO TRÁFEGO (FAILOVER)';
-                b2.className = 'stat-pill online';
-
-                showToast('⚠️ WAN 1 desconectada! Failover acionado: WAN 2 assumiu o tráfego em 200ms!');
-            } else {
-                btn.textContent = '⚡ Simular Queda da WAN 1 (Teste de Failover)';
-                btn.className = 'ark-btn ark-btn-danger';
-                b1.textContent = '● ONLINE';
-                b1.className = 'stat-pill online';
-                b1.style.color = '';
-                b1.style.borderColor = '';
-
-                b2.textContent = '● STANDBY ATIVO';
-                b2.className = 'stat-pill';
-
-                showToast('✅ WAN 1 restabelecida! Balanceamento normal restaurado.');
-            }
-        }
-
-        // Devices Data & Table Renderer
-        const devicesList = [
-            { name: 'MacBook Pro 16" M3 Max', ip: '192.168.1.105', mac: 'AA:BB:CC:11:22:33', band: '6g', icon: '💻', signal: -42, down: '142.4 Mbps', up: '45.1 Mbps', paused: false },
-            { name: 'iPhone 16 Pro Max', ip: '192.168.1.112', mac: 'DD:EE:FF:44:55:66', band: '6g', icon: '📱', signal: -48, down: '68.2 Mbps', up: '18.4 Mbps', paused: false },
-            { name: 'iPad Pro M4', ip: '192.168.1.119', mac: '11:22:33:AA:BB:CC', band: '6g', icon: '📱', signal: -52, down: '24.1 Mbps', up: '4.2 Mbps', paused: false },
-            { name: 'Smart TV LG OLED 65" 4K', ip: '192.168.1.140', mac: '44:55:66:DD:EE:FF', band: '5g', icon: '📺', signal: -58, down: '48.9 Mbps', up: '2.1 Mbps', paused: false },
-            { name: 'PlayStation 5 Pro', ip: '192.168.1.155', mac: '77:88:99:11:22:33', band: '5g', icon: '🎮', signal: -54, down: '85.4 Mbps', up: '12.0 Mbps', paused: false },
-            { name: 'Samsung Galaxy S24 Ultra', ip: '192.168.1.162', mac: '22:33:44:55:66:77', band: '5g', icon: '📱', signal: -50, down: '18.2 Mbps', up: '3.4 Mbps', paused: false },
-            { name: 'Apple Watch Series 10', ip: '192.168.1.171', mac: '88:99:AA:BB:CC:DD', band: '2g', icon: '⌚', signal: -68, down: '0.4 Mbps', up: '0.1 Mbps', paused: false },
-            { name: 'Lâmpada Inteligente Sala', ip: '192.168.1.201', mac: 'CC:DD:EE:FF:11:22', band: '2g', icon: '💡', signal: -72, down: '0.02 Mbps', up: '0.01 Mbps', paused: false },
-            { name: 'Câmera Externa Garagem', ip: '192.168.1.205', mac: 'EE:FF:11:22:33:44', band: '2g', icon: '📷', signal: -64, down: '4.2 Mbps', up: '4.1 Mbps', paused: false },
-            { name: 'Robô Aspirador Xiaomi', ip: '192.168.1.210', mac: '33:44:55:66:77:88', band: '2g', icon: '🤖', signal: -70, down: '0.1 Mbps', up: '0.05 Mbps', paused: false }
-        ];
-
-        function renderDevices(filter = 'all', query = '') {
-            const tbody = document.getElementById('devices_tbody');
-            if (!tbody) return;
-            tbody.innerHTML = '';
-
-            const filtered = devicesList.filter(d => {
-                const matchFilter = (filter === 'all') || (d.band === filter);
-                const matchQuery = !query || d.name.toLowerCase().includes(query.toLowerCase()) || d.ip.includes(query) || d.mac.toLowerCase().includes(query.toLowerCase());
-                return matchFilter && matchQuery;
-            });
-
-            filtered.forEach(d => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <span style="font-size:1.3rem;">${d.icon}</span>
-                            <div>
-                                <strong style="color:#fff; display:block;">${d.name}</strong>
-                                <span style="font-size:0.72rem; color:#94a3b8;">${d.band.toUpperCase()} • Alta Prioridade</span>
+            if (route === 'overview' || route === 'status') {
+                body.innerHTML = `
+                    <div style="background:#1f2937; border:1px solid #374151; border-radius:6px; padding:20px; color:#fff; margin-bottom:20px;">
+                        <h2 style="font-size:1.15rem; font-weight:700; margin-bottom:14px; border-bottom:1px solid #374151; padding-bottom:8px;">Status do Sistema (Visão Geral Original LuCI)</h2>
+                        <table style="width:100%; border-collapse:collapse; font-size:0.88rem;">
+                            <tr style="border-bottom:1px solid #374151;"><td style="padding:8px 0; color:#9ca3af; width:220px;">Nome do Host</td><td><strong>OpenWrt</strong></td></tr>
+                            <tr style="border-bottom:1px solid #374151;"><td style="padding:8px 0; color:#9ca3af;">Modelo do Roteador</td><td>Acer Predator Connect W6x (Wi-Fi 6E)</td></tr>
+                            <tr style="border-bottom:1px solid #374151;"><td style="padding:8px 0; color:#9ca3af;">Arquitetura do Chip</td><td>MediaTek Filogic 830 (ARMv8 Cortex-A53)</td></tr>
+                            <tr style="border-bottom:1px solid #374151;"><td style="padding:8px 0; color:#9ca3af;">Versão do Firmware</td><td>OpenWrt 24.10.0 r27208 / LuCI openwrt-24.10 branch</td></tr>
+                            <tr style="border-bottom:1px solid #374151;"><td style="padding:8px 0; color:#9ca3af;">Versão do Kernel</td><td>6.6.54</td></tr>
+                            <tr style="border-bottom:1px solid #374151;"><td style="padding:8px 0; color:#9ca3af;">Hora Local</td><td>${new Date().toLocaleString('pt-BR')}</td></tr>
+                            <tr style="border-bottom:1px solid #374151;"><td style="padding:8px 0; color:#9ca3af;">Tempo Ativo (Uptime)</td><td>14 dias, 8 horas, 12 minutos</td></tr>
+                            <tr><td style="padding:8px 0; color:#9ca3af;">Carga Média</td><td>0.15, 0.12, 0.08</td></tr>
+                        </table>
+                    </div>
+                `;
+            } else if (route === 'interfaces' || route === 'network') {
+                body.innerHTML = `
+                    <div style="background:#1f2937; border:1px solid #374151; border-radius:6px; padding:20px; color:#fff; margin-bottom:20px;">
+                        <h2 style="font-size:1.15rem; font-weight:700; margin-bottom:14px; border-bottom:1px solid #374151; padding-bottom:8px;">Interfaces de Rede (UCI /etc/config/network)</h2>
+                        <div style="display:flex; flex-direction:column; gap:12px;">
+                            <div style="background:#111827; border:1px solid #374151; border-radius:6px; padding:14px; display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <strong style="color:#60a5fa; font-size:1rem;">lan (br-lan)</strong>
+                                    <div style="font-size:0.8rem; color:#9ca3af;">Tipo: Bridge • IP: 192.168.1.1/24 • MAC: 00:e0:4c:68:01:00</div>
+                                </div>
+                                <span class="pill-badge pill-online">CONECTADO</span>
+                            </div>
+                            <div style="background:#111827; border:1px solid #374151; border-radius:6px; padding:14px; display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <strong style="color:#34d399; font-size:1rem;">wan (eth0 - Vivo Fibra GPON)</strong>
+                                    <div style="font-size:0.8rem; color:#9ca3af;">Tipo: PPPoE • IP: 187.54.21.90 • MTU: 1492 • Gateway: 187.54.20.1</div>
+                                </div>
+                                <span class="pill-badge pill-online">CONECTADO</span>
+                            </div>
+                            <div style="background:#111827; border:1px solid #374151; border-radius:6px; padding:14px; display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <strong style="color:#22d3ee; font-size:1rem;">wan2 (eth1 - Claro Fibra)</strong>
+                                    <div style="font-size:0.8rem; color:#9ca3af;">Tipo: DHCP • IP: 201.86.110.45 • MTU: 1500 • Gateway: 201.86.110.1</div>
+                                </div>
+                                <span class="pill-badge pill-cyan">CONECTADO (50%)</span>
                             </div>
                         </div>
-                    </td>
-                    <td>
-                        <div style="font-family:monospace; color:#38bdf8;">${d.ip}</div>
-                        <div style="font-family:monospace; font-size:0.72rem; color:#64748b;">${d.mac}</div>
-                    </td>
-                    <td>
-                        <span class="stat-pill ${d.signal > -60 ? 'online' : ''}">${d.band.toUpperCase()} (${d.signal} dBm)</span>
-                    </td>
-                    <td style="color:#38bdf8; font-weight:750;">${d.down}</td>
-                    <td style="color:#10b981; font-weight:750;">${d.up}</td>
-                    <td>
-                        <div style="display:flex; gap:6px;">
-                            <button class="ark-btn ark-btn-secondary" style="min-height:30px; padding:2px 8px; font-size:0.72rem;" onclick="openDeviceModal('${d.name}', '${d.ip}', '${d.mac}')">⚙️ Editar</button>
-                            <button class="ark-btn ${d.paused ? 'ark-btn-primary' : 'ark-btn-danger'}" style="min-height:30px; padding:2px 8px; font-size:0.72rem;" onclick="toggleDevicePause('${d.mac}')">
-                                ${d.paused ? '▶ Desbloquear' : '⏸ Pausar'}
-                            </button>
-                        </div>
-                    </td>
+                    </div>
                 `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        function filterDevices(band) { renderDevices(band); }
-        function searchDevices(query) { renderDevices('all', query); }
-
-        function toggleDevicePause(mac) {
-            const dev = devicesList.find(d => d.mac === mac);
-            if (dev) {
-                dev.paused = !dev.paused;
-                renderDevices();
-                showToast(dev.paused ? `⏸ Internet pausada para ${dev.name}` : `▶ Conexão liberada para ${dev.name}`);
-            }
-        }
-        renderDevices();
-
-        // Doctor Checks
-        const doctorChecks = [
-            "1. Conectividade WAN 1 (Gateway 177.142.88.1)",
-            "2. Conectividade WAN 2 (Gateway 189.120.44.1)",
-            "3. Roteamento e Balanceamento mwan3",
-            "4. Resolução DNS Primária e Secundária",
-            "5. Validação de Prefixo IPv6 (/64 Delegado)",
-            "6. Auditoria de MTU (1492 no PPPoE, 1500 no Ethernet)",
-            "7. Detecção de Falhas de NAT e Port Forward",
-            "8. Firewall fw4: Ausência Total de Regras Legadas iptables",
-            "9. Validação de Sintaxe nftables nas Cadeias de Forward",
-            "10. Bloqueio de Portas Inseguras (Telnet / SMB na WAN)",
-            "11. Estado do Rádio Wi-Fi 2.4 GHz (Canal 1 HE20)",
-            "12. Estado do Rádio Wi-Fi 5 GHz (Canal 36 HE160 DFS)",
-            "13. Estado do Rádio Wi-Fi 6 GHz (Canal 69 HE160 PSC)",
-            "14. Blindagem WPA3-SAE (Sem conflito FT-SAE 802.11r)",
-            "15. Ativação do Protocolo 802.11k (Neighbor Reports)",
-            "16. Ativação do Protocolo 802.11v (BSS Transition WNM)",
-            "17. Calibração Anti-Queda: disassoc_low_ack='0'",
-            "18. Calibração do Band Steering usteer (-70 dBm)",
-            "19. Integridade do Daemon hostapd (wpad-mbedtls)",
-            "20. Limites de Fila SQM CAKE na WAN Principal",
-            "21. Compensação de Framing (Zero Overhead FTTH)",
-            "22. Escalonamento Multi-Core cake-mq (4 Cores)",
-            "23. Lista Negra do AdBlock (248.910 domínios)",
-            "24. Memória RAM Livre e Ausência de Memory Leaks",
-            "25. Espaço Livre no Overlay RW da Flash MTD",
-            "26. Temperatura dos Sensores Filogic (46°C)",
-            "27. Daemon ubus e chamadas RPC sem timeout",
-            "28. Serviços Essenciais em Execução (uhttpd, rpcd, odhcpd)"
-        ];
-
-        function renderDoctorChecks() {
-            const cont = document.getElementById('doctor_checks_container');
-            if (!cont) return;
-            cont.innerHTML = '';
-            doctorChecks.forEach(c => {
-                const div = document.createElement('div');
-                div.style.cssText = 'background:rgba(255,255,255,0.02); padding:10px 14px; border-radius:8px; border:1px solid var(--ark-border); display:flex; align-items:center; justify-content:space-between; font-size:0.82rem;';
-                div.innerHTML = `<span>${c}</span> <strong style="color:#10b981;">✓ APROVADO</strong>`;
-                cont.appendChild(div);
-            });
-        }
-        renderDoctorChecks();
-
-        function runDoctorAudit() {
-            const badge = document.getElementById('doctor_badge');
-            const txt = document.getElementById('doctor_status_text');
-            badge.textContent = 'AUDITANDO...';
-            badge.style.background = '#3b82f6';
-            txt.textContent = 'Executando 28 testes de conformidade no roteador...';
-
-            setTimeout(() => {
-                badge.textContent = '28/28 OK';
-                badge.style.background = '#10b981';
-                txt.textContent = 'STATUS: SISTEMA 100% SAUDÁVEL E OTIMIZADO! (28/28 APROVADOS)';
-                showToast('🩺 Ark Doctor: Todos os 28 checks foram validados com 100% de sucesso!');
-            }, 1200);
-        }
-
-        // Smart Wi-Fi Enhancer Live Stepper
-        let enhancerTimer = null;
-        function startEnhancerLiveSimulation() {
-            const btn = document.getElementById('enhancer_main_run_btn');
-            if (btn) { btn.disabled = true; btn.textContent = '⏳ Executando em Tempo Real...'; }
-
-            const stages = [
-                { id: 1, name: 'PREFLIGHT', pct: 15, msg: 'Validando RAM disponível (512MB) e Flash livre (8.4MB)...' },
-                { id: 2, name: 'CONNECTIVITY', pct: 30, msg: 'Verificando conexão com downloads.openwrt.org...' },
-                { id: 3, name: 'PREPARING', pct: 45, msg: 'Atualizando catálogos de pacotes e removendo travas de dependência...' },
-                { id: 4, name: 'INSTALLING', pct: 65, msg: 'Instalando pacote atômico wpad-mbedtls...' },
-                { id: 5, name: 'VERIFYING', pct: 80, msg: 'Validando integridade dos binários hostapd e wpa_supplicant...' },
-                { id: 6, name: 'CONFIGURING', pct: 92, msg: 'Ativando 802.11v BSS Transition e sincronizando disassoc_low_ack=0...' },
-                { id: 7, name: 'COMPLETED', pct: 100, msg: 'Motor Wi-Fi wpad-mbedtls ativo com 802.11v! Otimização concluída com sucesso!' }
-            ];
-
-            let curIndex = 0;
-            if (enhancerTimer) clearInterval(enhancerTimer);
-
-            function step() {
-                if (curIndex >= stages.length) {
-                    clearInterval(enhancerTimer);
-                    const b = document.getElementById('enhancer_status_badge');
-                    if (b) { b.textContent = 'MOTOR PRO ATIVO'; b.style.background = '#10b981'; }
-                    const pkg = document.getElementById('enhancer_page_cur_pkg');
-                    if (pkg) { pkg.textContent = 'wpad-mbedtls (Completo)'; pkg.style.color = '#10b981'; }
-                    if (btn) { btn.disabled = false; btn.textContent = '✓ Concluído com Sucesso'; btn.className = 'ark-btn ark-btn-primary'; }
-                    showToast('🎉 Motor Wi-Fi 802.11v BSS Transition Otimizado com Sucesso!');
-                    return;
-                }
-
-                const s = stages[curIndex];
-                const b = document.getElementById('enhancer_status_badge');
-                if (b) { b.textContent = 'Etapa ' + s.id + '/7: ' + s.name; b.style.background = '#3b82f6'; }
-                const pbar = document.getElementById('enhancer_pbar');
-                if (pbar) pbar.style.width = s.pct + '%';
-                const msg = document.getElementById('enhancer_msg');
-                if (msg) msg.textContent = s.msg;
-
-                for (let i = 1; i <= stages.length; i++) {
-                    const el = document.getElementById('s_step_' + i);
-                    if (!el) continue;
-                    if (i < s.id) {
-                        el.className = 'step-item done';
-                        el.querySelector('.step-icon').textContent = '✓';
-                    } else if (i === s.id) {
-                        el.className = 'step-item active';
-                        el.querySelector('.step-icon').textContent = '▶';
-                    } else {
-                        el.className = 'step-item';
-                        el.querySelector('.step-icon').textContent = i;
-                    }
-                }
-                curIndex++;
-            }
-            step();
-            enhancerTimer = setInterval(step, 800);
-        }
-
-        // Speedtest Multi-WAN Runner
-        function runSpeedtest(wan) {
-            showToast('⚡ Iniciando Speedtest no link ' + wan.toUpperCase() + '...');
-            const downEl = document.getElementById('sp_down_val');
-            const upEl = document.getElementById('sp_up_val');
-            const pingEl = document.getElementById('sp_ping_val');
-
-            downEl.innerHTML = '<span style="color:#06b6d4;">Testando...</span>';
-            upEl.innerHTML = '<span style="color:#06b6d4;">Aguardando...</span>';
-
-            setTimeout(() => {
-                if (wan === 'wan1') {
-                    downEl.innerHTML = '942.8 <small>Mbps</small>';
-                    upEl.innerHTML = '488.2 <small>Mbps</small>';
-                    pingEl.innerHTML = '4.2 <small>ms</small>';
-                    showToast('✅ Teste WAN 1 concluído: 942.8 Mbps Down / 488.2 Mbps Up!');
-                } else {
-                    downEl.innerHTML = '298.4 <small>Mbps</small>';
-                    upEl.innerHTML = '48.1 <small>Mbps</small>';
-                    pingEl.innerHTML = '14.8 <small>ms</small>';
-                    showToast('✅ Teste WAN 2 concluído: 298.4 Mbps Down / 48.1 Mbps Up!');
-                }
-            }, 1800);
-        }
-
-        // DMZ Toggle Handler
-        function toggleDmzSwitch(input) {
-            const badge = document.getElementById('dmz_status_badge');
-            if (input.checked) {
-                badge.textContent = 'DMZ ATIVO (192.168.1.155)';
-                badge.style.color = '#10b981';
-                badge.style.borderColor = '#10b981';
-                showToast('⚠️ DMZ Ativada para o IP 192.168.1.155 (PlayStation 5 Pro)');
             } else {
-                badge.textContent = 'DMZ DESLIGADO';
-                badge.style.color = '#f59e0b';
-                badge.style.borderColor = '#f59e0b';
-                showToast('DMZ Desativada com sucesso.');
+                body.innerHTML = `
+                    <div style="background:#1f2937; border:1px solid #374151; border-radius:6px; padding:20px; color:#fff; margin-bottom:20px;">
+                        <h2 style="font-size:1.15rem; font-weight:700; margin-bottom:14px; border-bottom:1px solid #374151; padding-bottom:8px;">Página LuCI: ${route}</h2>
+                        <p style="font-size:0.9rem; color:#cbd5e1; line-height:1.5;">
+                            Esta rota nativa do OpenWrt LuCI (<code>/cgi-bin/luci/admin/${route}</code>) está perfeitamente linkada. Em um dispositivo físico ou VM conectada via ubus/rpcd, o formulário UCI completo é renderizado aqui.
+                        </p>
+                    </div>
+                `;
             }
         }
 
-        function toggleGenericSwitch(input, label) {
-            showToast(`${label}: ${input.checked ? 'Ativado' : 'Desativado'}`);
+        function closeLuciSimulator() {
+            document.getElementById('luci_native_view_container').classList.remove('active');
         }
 
-        function runAdblockUpdate() {
-            showToast('🔄 Atualizando 248.910 domínios na lista negra do AdBlock...');
-            setTimeout(() => {
-                showToast('✅ Listas do AdBlock atualizadas e compiladas no nftables!');
-            }, 1600);
-        }
-
-        function generateBackupDownload() {
-            showToast('💾 Gerando arquivo de backup das configurações (.tar.gz)...');
-            setTimeout(() => {
-                showToast('✅ Download do backup concluído: ark_backup_2026.tar.gz');
-            }, 1000);
+        function switchLuciTab(tab) {
+            openLuciSimulator(tab);
         }
 
         // =========================================================
-        // COMPLETE MODAL CONTROLLERS (100% WIRED & WORKING)
+        // MODALS ENGINE WITH 100% SELECT DROPDOWNS & REAL-TIME LOGIC
         // =========================================================
-        function openModal(type, data) {
+        function openModal(type) {
             document.body.classList.add('modal-overlay-active');
-            document.getElementById('modal_overlay').classList.remove('inactive');
-            const cont = document.getElementById('modal_container');
+            const cont = document.getElementById('modal_content_holder');
 
             if (type === 'setup') {
                 cont.innerHTML = `
                     <div class="modal-header">
-                        <h3>⚡ Assistente de Configuração Rápida (Ark Setup)</h3>
+                        <h3>⚡ Assistente de Setup Rápido ARK</h3>
                         <button class="modal-close-btn" onclick="closeModal()">✕</button>
                     </div>
-                    <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:14px;">Configure sua conexão de operadora e Wi-Fi em apenas 3 passos:</p>
-                    <div class="form-group">
-                        <label class="form-label">Tipo de Conexão com a Internet</label>
-                        <select class="form-select" id="setup_proto">
-                            <option value="pppoe" selected>Fibra Óptica PPPoE (Vivo, Oi, Desktop, Vero)</option>
-                            <option value="dhcp">DHCP Automático (Claro, Starlink, Roteador Secundário)</option>
-                            <option value="ap">Modo Ponto de Acesso / Ponte (Desativa Roteamento)</option>
-                        </select>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label">Tipo de Conexão com o Provedor (WAN 1)</label>
+                            <select class="form-select" id="setup_proto">
+                                <option value="pppoe" selected>Fibra Óptica PPPoE (Vivo, Oi, Desktop, Vero)</option>
+                                <option value="dhcp">DHCP Automático (Claro Fibra/Coaxial, Starlink, Modem em Bridge)</option>
+                                <option value="static">IP Estático Fixo Corporativo</option>
+                                <option value="ap">Modo Ponto de Acesso / Ponte (Desativa Roteador)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Nome da Rede Wi-Fi Unificada (SSID)</label>
+                            <input type="text" class="form-input" id="setup_ssid" value="Wi-Fi-H&R">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Senha da Rede Sem Fio</label>
+                            <input type="password" class="form-input" id="setup_pass" value="MinhaSenhaForte2026">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Servidor DNS Preferencial</label>
+                            <select class="form-select">
+                                <option selected>Cloudflare 1.1.1.1 + 1.0.0.1 (Máxima Velocidade)</option>
+                                <option>Google DNS 8.8.8.8 + 8.8.4.4</option>
+                                <option>AdGuard Anti-Anúncios 94.140.14.14</option>
+                                <option>Automático do Provedor (ISP)</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Nome da Rede Wi-Fi (SSID)</label>
-                        <input type="text" class="form-input" id="setup_ssid" value="Wi-Fi-H&R">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Senha do Wi-Fi</label>
-                        <input type="password" class="form-input" id="setup_pass" value="MinhaSenhaForte2026">
-                    </div>
-                    <div class="form-actions">
+                    <div class="modal-footer">
                         <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
                         <button class="ark-btn ark-btn-primary" onclick="saveSetupModal()">💾 Salvar e Aplicar</button>
                     </div>
@@ -2660,67 +2400,87 @@ html_content = r'''<!DOCTYPE html>
             } else if (type === 'wifi') {
                 cont.innerHTML = `
                     <div class="modal-header">
-                        <h3>📶 Configurar Redes Wi-Fi (2.4 / 5 / 6 GHz)</h3>
+                        <h3>📶 Configurar Redes Wi-Fi (Tri-Band)</h3>
                         <button class="modal-close-btn" onclick="closeModal()">✕</button>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Nome da Rede Wi-Fi (SSID)</label>
-                        <input type="text" class="form-input" id="modal_wifi_ssid" value="Wi-Fi-H&R">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label">Nome da Rede Wi-Fi (SSID)</label>
+                            <input type="text" class="form-input" id="m_wifi_ssid" value="Wi-Fi-H&R">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Senha de Acesso (Mínimo 8 dígitos)</label>
+                            <input type="password" class="form-input" id="m_wifi_pass" value="MinhaSenhaForte2026">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Modo de Criptografia & Segurança</label>
+                            <select class="form-select" id="m_wifi_crypto">
+                                <option value="wpa3_mixed" selected>WPA3-SAE / WPA2-PSK Misto + PMF (Recomendado)</option>
+                                <option value="wpa3_pure">WPA3-SAE Puro (Máxima Blindagem Wi-Fi 6E/7)</option>
+                                <option value="wpa2_legacy">WPA2-PSK Legado (Para dispositivos antigos)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Distribuição de Frequências</label>
+                            <select class="form-select">
+                                <option selected>Rede Única Inteligente MLO (2.4G + 5G + 6G com Band Steering)</option>
+                                <option>Separar em Redes Individuais (2.4G / 5G / 6G)</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Senha da Rede (Mínimo 8 dígitos)</label>
-                        <input type="password" class="form-input" id="modal_wifi_pass" value="MinhaSenhaForte2026">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Modo de Criptografia</label>
-                        <select class="form-select">
-                            <option selected>WPA3-SAE / WPA2-PSK Misto + PMF (Recomendado)</option>
-                            <option>WPA3-SAE Puro (Máxima Segurança Wi-Fi 6E/7)</option>
-                            <option>WPA2-PSK Legado</option>
-                        </select>
-                    </div>
-                    <div class="form-actions">
+                    <div class="modal-footer">
                         <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
-                        <button class="ark-btn ark-btn-primary" onclick="saveWifiModal()">💾 Salvar e Atualizar Rádios</button>
+                        <button class="ark-btn ark-btn-primary" onclick="saveWifiModal()">💾 Atualizar Redes Wi-Fi</button>
                     </div>
                 `;
-            } else if (type === 'wifi_guest') {
+            } else if (type === 'sqm') {
                 cont.innerHTML = `
                     <div class="modal-header">
-                        <h3>👥 Rede Wi-Fi de Visitantes (Guest Network)</h3>
+                        <h3>⚡ Calibrar SQM CAKE & Bufferbloat</h3>
                         <button class="modal-close-btn" onclick="closeModal()">✕</button>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Nome da Rede de Visitantes</label>
-                        <input type="text" class="form-input" id="modal_guest_ssid" value="Wi-Fi-Visitantes">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Senha de Visitantes</label>
-                        <input type="text" class="form-input" id="modal_guest_pass" value="Visita2026">
-                    </div>
-                    <div class="toggle-row">
-                        <div>
-                            <span class="toggle-title">Isolar Clientes da Rede Local (LAN)</span>
-                            <span class="toggle-desc">Impede que visitantes acessem computadores, impressoras e câmeras da casa.</span>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label">Plano de Velocidade Contratada</label>
+                            <select class="form-select" id="m_sqm_preset" onchange="applySqmPreset(this.value)">
+                                <option value="1000">1 Gbps Download / 500 Mbps Upload</option>
+                                <option value="850" selected>850 Mbps Download / 450 Mbps Upload (Calibrado)</option>
+                                <option value="600">600 Mbps Download / 300 Mbps Upload</option>
+                                <option value="500">500 Mbps Download / 250 Mbps Upload</option>
+                                <option value="300">300 Mbps Download / 150 Mbps Upload</option>
+                                <option value="100">100 Mbps Download / 50 Mbps Upload</option>
+                            </select>
                         </div>
-                        <label class="ark-switch">
-                            <input type="checkbox" checked>
-                            <span class="ark-slider"></span>
-                        </label>
+                        <div class="form-group">
+                            <label class="form-label">Algoritmo de Fila Inteligente (Qdisc)</label>
+                            <select class="form-select">
+                                <option selected>CAKE (Recomendado - Elimina Bufferbloat e Latência de Games)</option>
+                                <option>FQ_CoDel (Padrão IETF)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Compensação de Framing (Overhead de Camada 2)</label>
+                            <select class="form-select">
+                                <option selected>Fibra Óptica FTTH / GPON (44 bytes de overhead)</option>
+                                <option>Ethernet Pura (18 bytes de overhead)</option>
+                                <option>Cabo Coaxial DOCSIS (18 bytes)</option>
+                                <option>VDSL2 / PTM (26 bytes)</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-actions">
+                    <div class="modal-footer">
                         <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
-                        <button class="ark-btn ark-btn-purple" onclick="closeModal(); showToast('👥 Rede de Visitantes configurada e isolada!')">💾 Aplicar Rede de Visitantes</button>
+                        <button class="ark-btn ark-btn-primary" onclick="saveSqmModal()">💾 Salvar Calibração SQM</button>
                     </div>
                 `;
             } else if (type === 'wifi_qr') {
                 cont.innerHTML = `
                     <div class="modal-header">
-                        <h3>📲 Conectar via QR Code (EasyConnect)</h3>
+                        <h3>📲 Conexão Wi-Fi via QR Code (EasyConnect)</h3>
                         <button class="modal-close-btn" onclick="closeModal()">✕</button>
                     </div>
-                    <div style="text-align:center; padding:16px 0;">
-                        <div style="display:inline-block; padding:16px; background:#fff; border-radius:12px;">
+                    <div class="modal-body" style="text-align:center;">
+                        <div style="display:inline-block; padding:16px; background:#fff; border-radius:12px; margin:10px 0;">
                             <svg width="180" height="180" viewBox="0 0 100 100">
                                 <rect width="100" height="100" fill="#fff" />
                                 <rect x="10" y="10" width="30" height="30" fill="#000" />
@@ -2735,139 +2495,115 @@ html_content = r'''<!DOCTYPE html>
                                 <circle cx="50" cy="50" r="10" fill="#0284c7" />
                             </svg>
                         </div>
-                        <h4 style="margin:14px 0 4px; color:#fff;" id="qr_ssid_label">Wi-Fi-H&R</h4>
-                        <p style="font-size:0.8rem; color:#94a3b8;">Aponte a câmera do celular para conectar instantaneamente sem digitar a senha.</p>
+                        <h4 style="color:#fff; margin-bottom:4px;">Wi-Fi-H&R</h4>
+                        <p style="font-size:0.8rem; color:#94a3b8;">Aponte a câmera do seu celular para conectar automaticamente sem digitar senha.</p>
                     </div>
-                    <div class="form-actions">
+                    <div class="modal-footer">
                         <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Fechar</button>
                     </div>
                 `;
             } else if (type === 'wps') {
                 cont.innerHTML = `
                     <div class="modal-header">
-                        <h3>🤝 Conectar Dispositivo via WPS (Push Button)</h3>
+                        <h3>🤝 Conectar Dispositivo por WPS (Push Button)</h3>
                         <button class="modal-close-btn" onclick="closeModal()">✕</button>
                     </div>
-                    <p style="font-size:0.85rem; color:#cbd5e1; line-height:1.4;">
-                        Pressione o botão virtual abaixo e, em seguida, pressione o botão WPS na sua impressora ou repetidor dentro de 2 minutos.
-                    </p>
-                    <div style="text-align:center; padding:20px 0;">
-                        <button class="ark-btn ark-btn-primary" style="padding:12px 28px; font-size:1rem;" onclick="closeModal(); showToast('🤝 Pareamento WPS ativado por 120 segundos!')">
-                            🔘 Disparar Pareamento WPS (PBC)
-                        </button>
+                    <div class="modal-body" style="text-align:center;">
+                        <p style="font-size:0.85rem; color:#cbd5e1; line-height:1.5;">
+                            Pressione o botão virtual abaixo e, em seguida, pressione o botão WPS físico na sua impressora, TV ou repetidor dentro de 2 minutos.
+                        </p>
+                        <div style="padding:24px 0;">
+                            <button class="ark-btn ark-btn-primary" style="padding:14px 28px; font-size:1.05rem;" onclick="closeModal(); showToast('🤝 Pareamento WPS PBC ativado por 120 segundos!')">
+                                🔘 Iniciar Pareamento WPS (2 min)
+                            </button>
+                        </div>
+                        <span style="font-size:0.75rem; color:#10b981;">● Modo Seguro: WPS por PIN desativado contra invasões.</span>
                     </div>
-                    <div class="form-actions">
+                    <div class="modal-footer">
                         <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
                     </div>
                 `;
-            } else if (type === 'sqm') {
+            } else if (type === 'pppoe_logs') {
                 cont.innerHTML = `
                     <div class="modal-header">
-                        <h3>🛡️ Ajustar Limites de Velocidade (SQM CAKE)</h3>
+                        <h3>📜 Histórico de Sessões & Logs PPPoE (WAN 1)</h3>
                         <button class="modal-close-btn" onclick="closeModal()">✕</button>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Velocidade Contratada de Download (Mbps)</label>
-                        <input type="number" class="form-input" id="modal_sqm_down" value="850">
+                    <div class="modal-body">
+                        <div style="background:#090e1a; border:1px solid var(--ark-border); border-radius:8px; padding:14px; font-family:monospace; font-size:0.75rem; color:#94a3b8; line-height:1.6; max-height:240px; overflow-y:auto;">
+                            [Oct 14 02:40:12] pppd[1820]: Plugin rp-pppoe.so loaded.<br>
+                            [Oct 14 02:40:12] pppd[1820]: PPP session is 48212 (0xbc54)<br>
+                            [Oct 14 02:40:12] pppd[1820]: Connected to 00:30:88:00:1a:ff via interface eth0<br>
+                            [Oct 14 02:40:12] pppd[1820]: Using interface pppoe-wan<br>
+                            [Oct 14 02:40:12] pppd[1820]: Connect: pppoe-wan &lt;--&gt; eth0<br>
+                            [Oct 14 02:40:13] pppd[1820]: PAP authentication succeeded<br>
+                            [Oct 14 02:40:13] pppd[1820]: peer from calling number 00:30:88:00:1A:FF authorized<br>
+                            [Oct 14 02:40:13] pppd[1820]: local  IP address 187.54.21.90<br>
+                            [Oct 14 02:40:13] pppd[1820]: remote IP address 187.54.20.1<br>
+                            [Oct 14 02:40:13] pppd[1820]: primary   DNS address 1.1.1.1<br>
+                            [Oct 14 02:40:13] netifd: Network device 'pppoe-wan' link is up (MTU 1492)
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Velocidade Contratada de Upload (Mbps)</label>
-                        <input type="number" class="form-input" id="modal_sqm_up" value="450">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Perfil de Compensação de Framing</label>
-                        <select class="form-select">
-                            <option selected>Fibra Óptica FTTH (0 bytes de overhead)</option>
-                            <option>GPON / VDSL (28 bytes de overhead)</option>
-                            <option>Cabo Coaxial DOCSIS (18 bytes de overhead)</option>
-                        </select>
-                    </div>
-                    <div class="form-actions">
-                        <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
-                        <button class="ark-btn ark-btn-primary" onclick="saveSqmModal()">💾 Aplicar Regras CAKE</button>
+                    <div class="modal-footer">
+                        <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Fechar</button>
                     </div>
                 `;
             } else if (type === 'reboot') {
                 cont.innerHTML = `
                     <div class="modal-header">
-                        <h3 style="color:#ef4444;">🔄 Reiniciar Roteador com Segurança</h3>
+                        <h3 style="color:#f43f5e;">⚠️ Reinicialização Segura do Sistema</h3>
                         <button class="modal-close-btn" onclick="closeModal()">✕</button>
                     </div>
-                    <p style="font-size:0.85rem; color:#cbd5e1; line-height:1.5;">
-                        Deseja realmente reiniciar o roteador? A conexão de todos os 34 aparelhos será pausada por aproximadamente 45 segundos.
-                    </p>
-                    <div style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:10px; padding:12px; margin:14px 0;">
-                        <span style="font-size:0.78rem; color:#ef4444; font-weight:750;">⚠️ Trava de Segurança Ativa:</span>
-                        <p style="margin:4px 0 0; font-size:0.75rem; color:#cbd5e1;">O botão de confirmação permanecerá travado por 2 segundos para evitar cliques acidentais no celular.</p>
+                    <div class="modal-body">
+                        <p style="font-size:0.88rem; color:#cbd5e1; line-height:1.5;">
+                            Deseja reiniciar o roteador agora? Todos os 34 aparelhos conectados serão temporariamente desconectados durante 45 segundos.
+                        </p>
                     </div>
-                    <div class="form-actions">
+                    <div class="modal-footer">
                         <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
-                        <button class="ark-btn ark-btn-danger" id="reboot_confirm_btn" disabled onclick="executeReboot()">Confirmar (2s)...</button>
+                        <button class="ark-btn ark-btn-danger" id="btn_confirm_reboot" onclick="executeReboot()">
+                            🔄 Reiniciar Agora (Aguarde 2s)
+                        </button>
                     </div>
                 `;
                 setTimeout(() => {
-                    const btn = document.getElementById('reboot_confirm_btn');
-                    if (btn) { btn.disabled = false; btn.textContent = 'Sim, Reiniciar Agora'; }
+                    const btn = document.getElementById('btn_confirm_reboot');
+                    if (btn) btn.textContent = '🔄 Confirmar e Reiniciar';
                 }, 2000);
-            } else if (type === 'led_control') {
-                cont.innerHTML = `
-                    <div class="modal-header">
-                        <h3>💡 Controle de LEDs do Hardware</h3>
-                        <button class="modal-close-btn" onclick="closeModal()">✕</button>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Perfil de Iluminação</label>
-                        <select class="form-select" id="modal_led_mode">
-                            <option value="traffic" selected>Tráfego Inteligente (Pisca suave em download/upload)</option>
-                            <option value="stealth">Modo Furtivo / Noturno (Todos os LEDs desligados)</option>
-                            <option value="static">Ligado Estático (Apenas indicação de status)</option>
-                        </select>
-                    </div>
-                    <div class="form-actions">
-                        <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
-                        <button class="ark-btn ark-btn-primary" onclick="saveLedModal()">💾 Aplicar LEDs</button>
-                    </div>
-                `;
-            } else if (type === 'theme_picker') {
-                cont.innerHTML = `
-                    <div class="modal-header">
-                        <h3>🎨 Personalização de Tema Visual</h3>
-                        <button class="modal-close-btn" onclick="closeModal()">✕</button>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Tema da Interface</label>
-                        <select class="form-select">
-                            <option selected>ARK Router Cyber Dark (Padrão)</option>
-                            <option>Argon Deep Blue</option>
-                            <option>OpenWrt Bootstrap Clássico</option>
-                        </select>
-                    </div>
-                    <div class="form-actions">
-                        <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
-                        <button class="ark-btn ark-btn-primary" onclick="closeModal(); showToast('🎨 Tema visual aplicado com sucesso!')">💾 Aplicar Tema</button>
-                    </div>
-                `;
             } else if (type === 'starlink_config') {
                 cont.innerHTML = `
                     <div class="modal-header">
                         <h3>🛰️ Configurações da Antena Starlink</h3>
                         <button class="modal-close-btn" onclick="closeModal()">✕</button>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">IP da Antena Dishy (gRPC)</label>
-                        <input type="text" class="form-input" value="192.168.100.1">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label">Sensor de Degelo de Neve (Snow Melt)</label>
+                            <select class="form-select">
+                                <option selected>Automático (Sensor Térmico Inteligente)</option>
+                                <option>Sempre Ativado (Ambientes de Neve Contínua)</option>
+                                <option>Desativado (Economia de Energia)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Modo Operacional da Antena</label>
+                            <select class="form-select">
+                                <option selected>Modo Bypass (Pass-Through para Roteador ARK)</option>
+                                <option>Roteador Nativo Starlink Ativo</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Horário de Suspensão Noturna (Sleep Mode)</label>
+                            <select class="form-select">
+                                <option selected>Programado (02:00 às 06:00)</option>
+                                <option>Programado (00:00 às 07:00)</option>
+                                <option>Desativado (Sempre Ligado)</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Degelo de Neve (Snow Melt)</label>
-                        <select class="form-select">
-                            <option selected>Automático</option>
-                            <option>Desativado (Economia de Energia)</option>
-                            <option>Forçado Máximo</option>
-                        </select>
-                    </div>
-                    <div class="form-actions">
+                    <div class="modal-footer">
                         <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
-                        <button class="ark-btn ark-btn-primary" onclick="closeModal(); showToast('🛰️ Configurações Starlink salvas!')">💾 Salvar Starlink</button>
+                        <button class="ark-btn ark-btn-primary" onclick="closeModal(); showToast('🛰️ Parâmetros Starlink salvos!')">💾 Salvar Starlink</button>
                     </div>
                 `;
             } else if (type === 'add_vpn') {
@@ -2876,228 +2612,597 @@ html_content = r'''<!DOCTYPE html>
                         <h3>🔒 Adicionar Túnel WireGuard</h3>
                         <button class="modal-close-btn" onclick="closeModal()">✕</button>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Nome da Conexão</label>
-                        <input type="text" class="form-input" value="wg1">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label">Localização / Servidor VPN</label>
+                            <select class="form-select">
+                                <option selected>São Paulo (Brasil) — 12ms</option>
+                                <option>Miami (EUA) — 98ms</option>
+                                <option>Frankfurt (Alemanha) — 180ms</option>
+                                <option>Personalizado</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Chave Privada (Private Key)</label>
+                            <input type="password" class="form-input" placeholder="Cole sua chave privada WireGuard...">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Endereço IP Virtual do Túnel</label>
+                            <select class="form-select">
+                                <option selected>10.14.0.2/24 (Padrão WireGuard)</option>
+                                <option>10.8.0.2/24</option>
+                                <option>192.168.99.2/24</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Chave Privada (Private Key)</label>
-                        <input type="password" class="form-input" placeholder="Cole sua chave privada WireGuard...">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Servidor Endpoint (IP:Porta)</label>
-                        <input type="text" class="form-input" placeholder="ex: vpn.servidor.com:51820">
-                    </div>
-                    <div class="form-actions">
+                    <div class="modal-footer">
                         <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
-                        <button class="ark-btn ark-btn-purple" onclick="closeModal(); showToast('🔒 Túnel WireGuard cadastrado e ativado!')">💾 Conectar VPN</button>
+                        <button class="ark-btn ark-btn-purple" onclick="closeModal(); showToast('🔒 Novo túnel WireGuard ativado!')">💾 Conectar VPN</button>
                     </div>
                 `;
-            } else if (type === 'port_forward') {
+            } else if (type === 'theme_picker') {
                 cont.innerHTML = `
                     <div class="modal-header">
-                        <h3>➕ Adicionar Regra de Redirecionamento de Porta (NAT)</h3>
+                        <h3>🎨 Selecionar Tema Visual do ARK Router</h3>
                         <button class="modal-close-btn" onclick="closeModal()">✕</button>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Nome da Regra</label>
-                        <input type="text" class="form-input" placeholder="ex: Servidor Web / Jogo">
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label">Paleta de Cores e Estilo Visual</label>
+                            <select class="form-select" onchange="changeTheme(this.value)">
+                                <option value="cyan" selected>ARK Flagship Cyan & Deep Blue (Padrão)</option>
+                                <option value="gamer">Predator Gamer Red & Carbon</option>
+                                <option value="emerald">Cyber Emerald Green</option>
+                                <option value="purple">Quantum Purple & Violet</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Porta Externa WAN</label>
-                        <input type="number" class="form-input" placeholder="ex: 8080">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">IP Interno do Dispositivo</label>
-                        <input type="text" class="form-input" placeholder="ex: 192.168.1.105">
-                    </div>
-                    <div class="form-actions">
-                        <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
-                        <button class="ark-btn ark-btn-primary" onclick="closeModal(); showToast('✅ Regra de porta NAT aplicada no nftables!')">💾 Adicionar Regra</button>
+                    <div class="modal-footer">
+                        <button class="ark-btn ark-btn-primary" onclick="closeModal(); showToast('🎨 Tema visual aplicado!')">Fechar</button>
                     </div>
                 `;
+            } else if (type === 'op_mode') {
+                cont.innerHTML = `
+                    <div class="modal-header">
+                        <h3>🌐 Modo de Operação do Dispositivo</h3>
+                        <button class="modal-close-btn" onclick="closeModal()">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label">Modo Operacional Ativo</label>
+                            <select class="form-select">
+                                <option selected>Roteador Gateway Principal (DHCP, NAT, Firewall e SQM Ativos)</option>
+                                <option>Ponto de Acesso Bridge (Desativa NAT e DHCP, opera como Extensor)</option>
+                                <option>Repetidor Mesh Sem Fio (802.11s EasyMesh)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
+                        <button class="ark-btn ark-btn-primary" onclick="closeModal(); showToast('🌐 Modo de operação atualizado!')">Salvar Modo</button>
+                    </div>
+                `;
+            } else if (type === 'gamer_mode') {
+                cont.innerHTML = `
+                    <div class="modal-header">
+                        <h3>🎮 Perfil Gamer Ultra de Baixa Latência</h3>
+                        <button class="modal-close-btn" onclick="closeModal()">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label class="form-label">Priorização de Pacotes UDP de Jogos</label>
+                            <select class="form-select">
+                                <option selected>Ultra Baixa Latência (Express Queue FQ-CoDel + DSCP CS4)</option>
+                                <option>Equilibrado (Streaming + Jogos)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Console / PC Principal</label>
+                            <select class="form-select">
+                                <option selected>PlayStation-5-Pro (192.168.1.189)</option>
+                                <option>Xbox-Series-X (192.168.1.188)</option>
+                                <option>MacBook-Pro-M3-Max (192.168.1.142)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
+                        <button class="ark-btn ark-btn-primary" onclick="closeModal(); showToast('🎮 Perfil Gamer Ultra ativado!')">Ativar Modo Gamer</button>
+                    </div>
+                `;
+            } else {
+                closeModal();
             }
         }
 
-        function closeModal() {
-            document.body.classList.remove('modal-overlay-active');
-            document.getElementById('modal_overlay').classList.add('inactive');
-        }
-
-        function openWanModal(name, proto, provider, mtu) {
+        // Open WAN Modal (100% Selects for Protocol, MTU, DNS)
+        function openWanModal(name) {
             document.body.classList.add('modal-overlay-active');
-            document.getElementById('modal_overlay').classList.remove('inactive');
-            const cont = document.getElementById('modal_container');
+            const cont = document.getElementById('modal_content_holder');
+            const isWan1 = name === 'wan1';
+
             cont.innerHTML = `
                 <div class="modal-header">
-                    <h3>🌐 Editar Conexão — ${name} (${provider})</h3>
+                    <h3>🌐 Configurar ${isWan1 ? 'WAN 1 (Vivo Fibra GPON)' : 'WAN 2 (Claro Fibra)'}</h3>
                     <button class="modal-close-btn" onclick="closeModal()">✕</button>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Protocolo de Conexão</label>
-                    <select class="form-select" id="m_wan_proto">
-                        <option value="pppoe" ${proto === 'pppoe' ? 'selected' : ''}>PPPoE (Login / Senha de Provedor)</option>
-                        <option value="dhcp" ${proto === 'dhcp' ? 'selected' : ''}>DHCP Cliente (Automático)</option>
-                        <option value="static">IP Estático Fixo</option>
-                    </select>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Protocolo de Conexão com o Provedor</label>
+                        <select class="form-select" id="m_wan_proto">
+                            <option value="pppoe" ${isWan1 ? 'selected' : ''}>PPPoE (Vivo Fibra, Oi, Provedores Regionais FTTH)</option>
+                            <option value="dhcp" ${!isWan1 ? 'selected' : ''}>DHCP Cliente Automático (Claro Fibra, Starlink, Modem Bridge)</option>
+                            <option value="static">IP Estático Fixo Corporativo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tamanho Máximo de Pacote (MTU)</label>
+                        <select class="form-select" id="m_wan_mtu">
+                            <option value="1492" ${isWan1 ? 'selected' : ''}>1492 (Padrão Otimizado Fibra PPPoE - Elimina Fragmentação)</option>
+                            <option value="1500" ${!isWan1 ? 'selected' : ''}>1500 (Padrão Ethernet / Cabo / Starlink / DOCSIS)</option>
+                            <option value="1480">1480 (Túneis Corporativos e Roteamento Avançado)</option>
+                            <option value="1420">1420 (VPN WireGuard MTU)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Servidores DNS de Resolução</label>
+                        <select class="form-select" id="m_wan_dns">
+                            <option value="1.1.1.1" selected>Cloudflare DNS (1.1.1.1 + 1.0.0.1 - Latência 2ms)</option>
+                            <option value="8.8.8.8">Google DNS (8.8.8.8 + 8.8.4.4 - Alta Redundância)</option>
+                            <option value="adguard">AdGuard DNS (94.140.14.14 - Bloqueio de Anúncios)</option>
+                            <option value="quad9">Quad9 (9.9.9.9 - Proteção contra Phishing)</option>
+                            <option value="isp">Automático do Provedor de Internet (ISP)</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Tamanho Máximo de Pacote (MTU)</label>
-                    <input type="number" class="form-input" id="m_wan_mtu" value="${mtu}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Servidores DNS Personalizados</label>
-                    <input type="text" class="form-input" value="1.1.1.1, 8.8.8.8">
-                </div>
-                <div class="form-actions">
+                <div class="modal-footer">
                     <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
                     <button class="ark-btn ark-btn-primary" onclick="saveWanModal('${name}')">💾 Salvar e Aplicar</button>
                 </div>
             `;
         }
 
-        function openRadioModal(band, channel, width, power) {
+        function saveWanModal(name) {
+            const proto = document.getElementById('m_wan_proto').value;
+            const mtu = document.getElementById('m_wan_mtu').value;
+            const dns = document.getElementById('m_wan_dns').options[document.getElementById('m_wan_dns').selectedIndex].text.split(' ')[0];
+
+            if (name === 'wan1') {
+                document.getElementById('proto_wan1').textContent = `${proto.toUpperCase()} (MTU ${mtu})`;
+                document.getElementById('dns_wan1').textContent = dns;
+            } else {
+                document.getElementById('proto_wan2').textContent = `${proto.toUpperCase()} (MTU ${mtu})`;
+                document.getElementById('dns_wan2').textContent = dns;
+            }
+
+            closeModal();
+            showToast(`✅ Parâmetros de internet da ${name.toUpperCase()} aplicados com sucesso!`);
+        }
+
+        // Open Radio Modal (100% Selects for Channel, Width, TX Power)
+        function openRadioModal(band) {
             document.body.classList.add('modal-overlay-active');
-            document.getElementById('modal_overlay').classList.remove('inactive');
-            const cont = document.getElementById('modal_container');
+            const cont = document.getElementById('modal_content_holder');
+
+            let channelSelectOptions = '';
+            let widthSelectOptions = '';
+            let defaultTx = '20';
+
+            if (band === '2.4') {
+                channelSelectOptions = `
+                    <option value="auto" selected>Auto (Canal Inteligente: Canal 6)</option>
+                    <option value="1">Canal 1 (2412 MHz)</option>
+                    <option value="6">Canal 6 (2437 MHz)</option>
+                    <option value="11">Canal 11 (2462 MHz)</option>
+                `;
+                widthSelectOptions = `
+                    <option value="20" selected>20 MHz (Maior Alcance & Menor Interferência)</option>
+                    <option value="40">20/40 MHz Misto (Maior Velocidade de Pico)</option>
+                `;
+                defaultTx = '20';
+            } else if (band === '5') {
+                channelSelectOptions = `
+                    <option value="auto" selected>Auto (Canal Inteligente: Canal 36)</option>
+                    <option value="36">Canal 36 (5180 MHz - Baixo)</option>
+                    <option value="40">Canal 40 (5200 MHz)</option>
+                    <option value="44">Canal 44 (5220 MHz)</option>
+                    <option value="48">Canal 48 (5240 MHz)</option>
+                    <option value="149">Canal 149 (5745 MHz - Alto)</option>
+                    <option value="153">Canal 153 (5765 MHz)</option>
+                    <option value="157">Canal 157 (5785 MHz)</option>
+                    <option value="161">Canal 161 (5805 MHz)</option>
+                `;
+                widthSelectOptions = `
+                    <option value="160" selected>160 MHz Ultra (Velocidade Máxima Wi-Fi 6)</option>
+                    <option value="80">80 MHz (Alta Compatibilidade Residencial)</option>
+                    <option value="40">40 MHz</option>
+                    <option value="20">20 MHz</option>
+                `;
+                defaultTx = '23';
+            } else {
+                channelSelectOptions = `
+                    <option value="auto" selected>Auto (Canal Inteligente: Canal 37 PSC)</option>
+                    <option value="37">Canal 37 PSC (6135 MHz)</option>
+                    <option value="53">Canal 53 PSC (6215 MHz)</option>
+                    <option value="69">Canal 69 PSC (6295 MHz)</option>
+                    <option value="85">Canal 85 PSC (6375 MHz)</option>
+                    <option value="101">Canal 101 (6455 MHz)</option>
+                    <option value="117">Canal 117 (6535 MHz)</option>
+                `;
+                widthSelectOptions = `
+                    <option value="320" selected>320 MHz Extremo (Banda Completa Wi-Fi 7 BE)</option>
+                    <option value="160">160 MHz</option>
+                    <option value="80">80 MHz</option>
+                `;
+                defaultTx = '23';
+            }
+
             cont.innerHTML = `
                 <div class="modal-header">
-                    <h3>📶 Configurar Rádio — ${band}</h3>
+                    <h3>📶 Configurar Rádio — ${band} GHz</h3>
                     <button class="modal-close-btn" onclick="closeModal()">✕</button>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Canal de Operação</label>
-                    <input type="text" class="form-input" id="m_radio_ch" value="${channel}">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Canal de Operação</label>
+                        <select class="form-select" id="m_radio_ch">
+                            ${channelSelectOptions}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Largura de Banda</label>
+                        <select class="form-select" id="m_radio_width">
+                            ${widthSelectOptions}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Potência de Transmissão (Potência de Rádio)</label>
+                        <select class="form-select" id="m_radio_tx">
+                            <option value="20" ${defaultTx === '20' ? 'selected' : ''}>20 dBm (100 mW - Padrão Equilibrado)</option>
+                            <option value="23" ${defaultTx === '23' ? 'selected' : ''}>23 dBm (200 mW - Alta Cobertura Residencial)</option>
+                            <option value="26">26 dBm (400 mW - Máxima Potência Anatel)</option>
+                            <option value="17">17 dBm (50 mW - Baixa Interferência / Apartamentos)</option>
+                            <option value="14">14 dBm (25 mW - Econômico / Quarto)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">BSS Coloring & TWT</label>
+                        <select class="form-select">
+                            <option selected>Ativado (Anti-Interferência de Vizinhança + TWT Economia de Bateria)</option>
+                            <option>Desativado</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Largura de Banda</label>
-                    <input type="text" class="form-input" id="m_radio_width" value="${width}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Potência de Transmissão (dBm)</label>
-                    <input type="number" class="form-input" id="m_radio_tx" value="${power}">
-                </div>
-                <div class="form-actions">
+                <div class="modal-footer">
                     <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
                     <button class="ark-btn ark-btn-primary" onclick="saveRadioModal('${band}')">💾 Salvar Rádio</button>
                 </div>
             `;
         }
 
-        function openDeviceModal(name, ip, mac) {
+        function saveRadioModal(band) {
+            const ch = document.getElementById('m_radio_ch').options[document.getElementById('m_radio_ch').selectedIndex].text;
+            const width = document.getElementById('m_radio_width').options[document.getElementById('m_radio_width').selectedIndex].text.split(' ')[0];
+            const tx = document.getElementById('m_radio_tx').value;
+
+            if (band === '2.4') {
+                document.getElementById('ch_radio_24').textContent = ch;
+                document.getElementById('width_radio_24').textContent = width + ' MHz';
+                document.getElementById('tx_radio_24').textContent = `${tx} dBm (${tx === '20' ? '100 mW' : '200 mW'})`;
+            } else if (band === '5') {
+                document.getElementById('ch_radio_5').textContent = ch;
+                document.getElementById('width_radio_5').textContent = width + ' MHz Ultra';
+                document.getElementById('tx_radio_5').textContent = `${tx} dBm (200 mW)`;
+            } else {
+                document.getElementById('ch_radio_6').textContent = ch;
+                document.getElementById('width_radio_6').textContent = width + ' MHz (Extremo)';
+                document.getElementById('tx_radio_6').textContent = `${tx} dBm (200 mW)`;
+            }
+
+            closeModal();
+            showToast(`📶 Rádio ${band} GHz reconfigurado com sucesso!`);
+        }
+
+        // Open Device Modal (100% Selects for Category & Priority)
+        function openDeviceModal(mac) {
             document.body.classList.add('modal-overlay-active');
-            document.getElementById('modal_overlay').classList.remove('inactive');
-            const cont = document.getElementById('modal_container');
+            const cont = document.getElementById('modal_content_holder');
+            const dev = DEVICES.find(d => d.mac === mac) || { name: 'Aparelho', ip: '192.168.1.100', mac: mac, type: 'phone', prio: 'normal' };
+
             cont.innerHTML = `
                 <div class="modal-header">
-                    <h3>📱 Gerenciar Dispositivo — ${name}</h3>
+                    <h3>📱 Gerenciar Aparelho — ${dev.name}</h3>
                     <button class="modal-close-btn" onclick="closeModal()">✕</button>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Nome Amigável do Aparelho</label>
-                    <input type="text" class="form-input" id="m_dev_name" value="${name}">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Nome Amigável do Aparelho</label>
+                        <input type="text" class="form-input" id="m_dev_name" value="${dev.name}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tipo / Ícone do Aparelho</label>
+                        <select class="form-select" id="m_dev_type">
+                            <option value="phone" ${dev.type === 'phone' ? 'selected' : ''}>📱 Smartphone / Celular</option>
+                            <option value="laptop" ${dev.type === 'laptop' ? 'selected' : ''}>💻 Computador / Notebook</option>
+                            <option value="tv" ${dev.type === 'tv' ? 'selected' : ''}>📺 Smart TV / Streaming</option>
+                            <option value="console" ${dev.type === 'console' ? 'selected' : ''}>🎮 Console de Games (PS5 / Xbox)</option>
+                            <option value="server" ${dev.type === 'server' ? 'selected' : ''}>🖥️ Servidor Local / NAS</option>
+                            <option value="printer" ${dev.type === 'printer' ? 'selected' : ''}>🖨️ Impressora de Rede</option>
+                            <option value="iot" ${dev.type === 'iot' ? 'selected' : ''}>🏠 Automação IoT / Lâmpada / Câmera</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Prioridade de Conexão (Qualidade de Serviço CAKE)</label>
+                        <select class="form-select" id="m_dev_prio">
+                            <option value="normal" ${dev.prio === 'normal' ? 'selected' : ''}>Normal (Equilíbrio Inteligente CAKE)</option>
+                            <option value="gamer" ${dev.prio === 'gamer' ? 'selected' : ''}>⚡ Alta Prioridade Gamer (Baixa Latência Express)</option>
+                            <option value="high" ${dev.prio === 'high' ? 'selected' : ''}>Prioridade Elevada (Trabalho / Streaming)</option>
+                            <option value="low" ${dev.prio === 'low' ? 'selected' : ''}>Segundo Plano / Fundo (Downloads lentos)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Política de Endereçamento IP</label>
+                        <select class="form-select">
+                            <option selected>Reserva Estática Permanente (IP Fixo: ${dev.ip})</option>
+                            <option>Dinâmico pelo Servidor DHCP</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Endereço IP Fixo (Reserva DHCP)</label>
-                    <input type="text" class="form-input" id="m_dev_ip" value="${ip}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Endereço MAC Físico</label>
-                    <input type="text" class="form-input" value="${mac}" readonly style="opacity:0.6;">
-                </div>
-                <div class="form-actions">
+                <div class="modal-footer">
                     <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
-                    <button class="ark-btn ark-btn-primary" onclick="saveDeviceModal('${mac}')">💾 Salvar Dispositivo</button>
+                    <button class="ark-btn ark-btn-primary" onclick="saveDeviceModal('${mac}')">💾 Salvar Alterações</button>
                 </div>
             `;
         }
 
-        // Save Handlers
+        function saveDeviceModal(mac) {
+            const dev = DEVICES.find(d => d.mac === mac);
+            if (dev) {
+                dev.name = document.getElementById('m_dev_name').value;
+                dev.type = document.getElementById('m_dev_type').value;
+                dev.prio = document.getElementById('m_dev_prio').value;
+            }
+            closeModal();
+            renderDevicesTable();
+            showToast('✅ Aparelho atualizado com sucesso!');
+        }
+
+        function closeModal() {
+            document.body.classList.remove('modal-overlay-active');
+        }
+
         function saveSetupModal() {
             const ssid = document.getElementById('setup_ssid').value;
-            const overviewSsid = document.getElementById('overview_ssid_label');
-            if (overviewSsid) overviewSsid.textContent = ssid + ' (2.4G/5G/6G)';
+            document.getElementById('label_main_ssid').textContent = ssid;
             closeModal();
-            showToast('✅ Configurações iniciais aplicadas com sucesso!');
+            showToast(`⚡ Assistente concluído! Rede ${ssid} configurada.`);
         }
 
         function saveWifiModal() {
-            const ssid = document.getElementById('modal_wifi_ssid').value;
-            const overviewSsid = document.getElementById('overview_ssid_label');
-            if (overviewSsid) overviewSsid.textContent = ssid + ' (2.4G/5G/6G)';
-            const qrSsid = document.getElementById('qr_ssid_label');
-            if (qrSsid) qrSsid.textContent = ssid;
+            const ssid = document.getElementById('m_wifi_ssid').value;
+            document.getElementById('label_main_ssid').textContent = ssid;
             closeModal();
-            showToast('✅ Redes Wi-Fi atualizadas e rádios sincronizados!');
-        }
-
-        function saveWanModal(name) {
-            const proto = document.getElementById('m_wan_proto').value;
-            const mtu = document.getElementById('m_wan_mtu').value;
-            if (name === 'WAN 1') {
-                document.getElementById('wan1_proto_val').textContent = proto.toUpperCase();
-                document.getElementById('wan1_mtu_val').textContent = mtu;
-            } else {
-                document.getElementById('wan2_proto_val').textContent = proto.toUpperCase();
-                document.getElementById('wan2_mtu_val').textContent = mtu;
-            }
-            closeModal();
-            showToast('✅ Conexão ' + name + ' atualizada e aplicada!');
-        }
-
-        function saveRadioModal(band) {
-            const ch = document.getElementById('m_radio_ch').value;
-            if (band === '2.4 GHz') document.getElementById('wifi_ch_2g').textContent = 'Canal ' + ch;
-            else if (band === '5 GHz') document.getElementById('wifi_ch_5g').textContent = 'Canal ' + ch;
-            else if (band === '6 GHz') document.getElementById('wifi_ch_6g').textContent = 'Canal ' + ch;
-            closeModal();
-            showToast('✅ Rádio ' + band + ' recalibrado para o Canal ' + ch);
-        }
-
-        function saveDeviceModal(mac) {
-            const name = document.getElementById('m_dev_name').value;
-            const ip = document.getElementById('m_dev_ip').value;
-            const dev = devicesList.find(d => d.mac === mac);
-            if (dev) {
-                dev.name = name;
-                dev.ip = ip;
-                renderDevices();
-            }
-            closeModal();
-            showToast('✅ Reserva de IP salva para ' + name);
+            showToast(`📶 Rede ${ssid} e rádios atualizados!`);
         }
 
         function saveSqmModal() {
-            const down = document.getElementById('modal_sqm_down').value;
-            const up = document.getElementById('modal_sqm_up').value;
-            document.getElementById('sqm_val_down').textContent = down + ' Mbps (95% da banda)';
-            document.getElementById('sqm_val_up').textContent = up + ' Mbps (95% da banda)';
             closeModal();
-            showToast('✅ Limites SQM CAKE atualizados com sucesso!');
+            showToast('⚡ Parâmetros SQM CAKE gravados no nftables e kernel!');
         }
 
-        function saveLedModal() {
-            const mode = document.getElementById('modal_led_mode').value;
-            const desc = document.getElementById('led_mode_desc');
-            if (mode === 'stealth') desc.textContent = 'Modo Furtivo / Noturno (Todos os LEDs desligados).';
-            else if (mode === 'traffic') desc.textContent = 'Modo Tráfego Dinâmico (Pisca suave conforme tráfego).';
-            else desc.textContent = 'Modo Estático (Apenas indicação de status).';
-            closeModal();
-            showToast('💡 Perfil de LEDs atualizado no hardware!');
+        function applySqmPreset(val) {
+            if (val === '1000') {
+                document.getElementById('sqm_label_down').textContent = '1000 Mbps';
+                document.getElementById('sqm_label_up').textContent = '500 Mbps';
+            } else if (val === '850') {
+                document.getElementById('sqm_label_down').textContent = '850 Mbps';
+                document.getElementById('sqm_label_up').textContent = '450 Mbps';
+            } else {
+                document.getElementById('sqm_label_down').textContent = val + ' Mbps';
+                document.getElementById('sqm_label_up').textContent = Math.round(parseInt(val)/2) + ' Mbps';
+            }
+        }
+
+        function toggleWifiPass() {
+            const p = document.getElementById('pwd_main_wifi');
+            if (p.textContent === '••••••••••••') {
+                p.textContent = 'MinhaSenhaForte2026';
+            } else {
+                p.textContent = '••••••••••••';
+            }
+        }
+
+        function toggleMwan(el) {
+            showToast(el.checked ? '⚖️ Balanceamento de Carga Multi-WAN ativado!' : '⚠️ Modo Failover puro ativado (WAN 2 em standby)');
+        }
+
+        function toggleNightLeds(el) {
+            showToast(el.checked ? '🌙 Modo Noturno Ativado: Todos os LEDs físicos desligados.' : '☀️ Modo Normal: LEDs de atividade ativos.');
+        }
+
+        function testWanPing(wan) {
+            showToast(`📶 Testando ping para 1.1.1.1 via ${wan.toUpperCase()}... Latência: 4.2 ms (0% perda)`);
         }
 
         function executeReboot() {
             closeModal();
-            showToast('🔄 Reiniciando roteador... Aguarde a reconexão em 45s.');
+            showToast('🔄 Reiniciando roteador com segurança... Reconexão em 45s.');
         }
 
-        document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') {
-                closeModal();
-                const drawer = document.getElementById('luci_drawer');
-                if (drawer && drawer.classList.contains('open')) toggleLuciDrawer();
+        // Stepper Simulation for Smart Wi-Fi Enhancer
+        let enhancerRunning = false;
+        function startEnhancerProcess() {
+            if (enhancerRunning) return;
+            enhancerRunning = true;
+            const btn = document.getElementById('btn_run_enhancer');
+            const title = document.getElementById('enhancer_status_title');
+            const counter = document.getElementById('enhancer_step_counter');
+            const bar = document.getElementById('enhancer_progress_bar');
+            const log = document.getElementById('enhancer_log_box');
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Executando Otimização...';
+
+            const steps = [
+                { title: "Verificando pacotes Wi-Fi atuais...", log: "[1/7] Checando lock opkg e pacotes wpad..." },
+                { title: "Criando backup das configurações UCI...", log: "[2/7] Backup gerado em /etc/config/wireless.bak..." },
+                { title: "Removendo pacote legado wpad-basic...", log: "[3/7] Removendo wpad-basic sem desligar rádios..." },
+                { title: "Instalando stack completo wpad-mbedtls...", log: "[4/7] Instalando wpad-mbedtls (WPA3-SAE, 802.11r/k/v, Suite-B)..." },
+                { title: "Calibrando chaves criptográficas WPA3...", log: "[5/7] Configurando sae_pwe=2 e bss_transition=1..." },
+                { title: "Sincronizando usteer e band steering...", log: "[6/7] Ajustando usteer para transição suave de clientes..." },
+                { title: "Otimização concluída com sucesso!", log: "[7/7] Verificação de integridade 100% OK! Rádios otimizados." }
+            ];
+
+            let curr = 0;
+            const timer = setInterval(() => {
+                if (curr < steps.length) {
+                    title.textContent = "Status: " + steps[curr].title;
+                    counter.textContent = `Etapa ${curr + 1} de 7`;
+                    bar.style.width = `${((curr + 1) / 7) * 100}%`;
+                    log.innerHTML += `<br>${steps[curr].log}`;
+                    log.scrollTop = log.scrollHeight;
+                    curr++;
+                } else {
+                    clearInterval(timer);
+                    enhancerRunning = false;
+                    btn.disabled = false;
+                    btn.textContent = '✅ Otimização Concluída';
+                    showToast('🚀 Smart Wi-Fi Enhancer finalizado com sucesso!');
+                }
+            }, 700);
+        }
+
+        // Ark Doctor Check Simulation
+        function runDoctorCheck() {
+            showToast('🩺 Executando diagnóstico vital em 12 subsistemas...');
+            const grid = document.getElementById('doctor_checks_grid');
+            grid.innerHTML = '<div style="color:#38bdf8; padding:12px;">Diagnosticando...</div>';
+
+            setTimeout(() => {
+                const checks = [
+                    { name: "Motor de Firewall (fw4 nftables)", status: "Perfeito (Regras ativas)", icon: "🛡️" },
+                    { name: "Suporte Criptográfico WPA3", status: "wpad-mbedtls instalado", icon: "🔐" },
+                    { name: "Transição Suave 802.11v/k", status: "Ativa nos 3 rádios", icon: "📶" },
+                    { name: "Multi-WAN Failover (mwan3)", status: "Rastreamento ping OK", icon: "🌐" },
+                    { name: "Controle de Latência CAKE", status: "Overhead 44B GPON OK", icon: "⚡" },
+                    { name: "Resolução DNS e Cache", status: "dnsmasq ativo (0ms RAM)", icon: "🧠" },
+                    { name: "Aceleração de Fluxo (Fastpath)", status: "Hardware offload ativo", icon: "🚀" },
+                    { name: "Servidor de Hora NTP", status: "Sincronizado pool.ntp.br", icon: "⏰" },
+                    { name: "Temperatura do SoC Filogic", status: "46°C (Estável)", icon: "℃" },
+                    { name: "Armazenamento Flash / Overlay", status: "14% usado (110MB livres)", icon: "▣" },
+                    { name: "Túneis WireGuard", status: "Handshake ativo wg0", icon: "🔒" },
+                    { name: "Preservação de Fake RTC", status: "Daemon ark-clock ativo", icon: "⏳" }
+                ];
+
+                grid.innerHTML = checks.map(c => `
+                    <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:8px; padding:12px; display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1.3rem;">${c.icon}</span>
+                        <div>
+                            <strong style="font-size:0.84rem; color:#fff;">${c.name}</strong>
+                            <div style="font-size:0.75rem; color:#34d399;">● ${c.status}</div>
+                        </div>
+                    </div>
+                `).join('');
+                showToast('🩺 Diagnóstico concluído: 12/12 subsistemas 100% saudáveis!');
+            }, 600);
+        }
+
+        // Speedtest Simulation
+        function runSpeedtestProcess() {
+            const btn = document.getElementById('btn_run_speedtest');
+            btn.disabled = true;
+            btn.textContent = '⏳ Medindo Latência e Banda...';
+
+            const dEl = document.getElementById('sp_down_val');
+            const uEl = document.getElementById('sp_up_val');
+            const pEl = document.getElementById('sp_ping_val');
+
+            dEl.innerHTML = '<span style="color:#fbbf24;">Medindo...</span>';
+            uEl.innerHTML = '<span style="color:#94a3b8;">Aguardando...</span>';
+            pEl.innerHTML = '<span style="color:#38bdf8;">1.8 ms</span>';
+
+            setTimeout(() => {
+                dEl.innerHTML = '924.8 <span style="font-size:0.9rem;">Mbps</span>';
+                uEl.innerHTML = '<span style="color:#fbbf24;">Medindo upload...</span>';
+            }, 1200);
+
+            setTimeout(() => {
+                uEl.innerHTML = '482.1 <span style="font-size:0.9rem;">Mbps</span>';
+                pEl.innerHTML = '2.4 <span style="font-size:0.9rem;">ms</span>';
+                btn.disabled = false;
+                btn.textContent = '🚀 Iniciar Novo Teste';
+                showToast('🚀 Teste de velocidade finalizado: 924.8 Mbps Down / 482.1 Mbps Up!');
+            }, 2400);
+        }
+
+        // Live Traffic Canvas 2D Animator
+        function initTrafficCanvas() {
+            const cvs = document.getElementById('live_traffic_canvas');
+            if (!cvs) return;
+            const ctx = cvs.getContext('2d');
+            const w = cvs.width = cvs.parentElement.clientWidth - 32;
+            const h = cvs.height = 140;
+
+            let downPoints = new Array(30).fill(50);
+            let upPoints = new Array(30).fill(20);
+
+            function draw() {
+                ctx.clearRect(0, 0, w, h);
+
+                // Grid lines
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+                ctx.lineWidth = 1;
+                for (let y = 20; y < h; y += 30) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(w, y);
+                    ctx.stroke();
+                }
+
+                // Push new random realistic points
+                downPoints.shift();
+                downPoints.push(Math.min(120, Math.max(30, downPoints[downPoints.length - 1] + (Math.random() * 24 - 12))));
+
+                upPoints.shift();
+                upPoints.push(Math.min(80, Math.max(10, upPoints[upPoints.length - 1] + (Math.random() * 14 - 7))));
+
+                // Update text stats
+                const curDown = (downPoints[downPoints.length - 1] * 0.95).toFixed(1);
+                const curUp = (upPoints[upPoints.length - 1] * 0.85).toFixed(1);
+                const sDown = document.getElementById('stat_down');
+                const sUp = document.getElementById('stat_up');
+                if (sDown) sDown.innerHTML = `${curDown} <span style="font-size:1rem;">Mbps</span>`;
+                if (sUp) sUp.innerHTML = `${curUp} <span style="font-size:1rem;">Mbps</span>`;
+
+                // Draw Down Line (Cyan/Blue)
+                ctx.strokeStyle = "#38bdf8";
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                const step = w / (downPoints.length - 1);
+                for (let i = 0; i < downPoints.length; i++) {
+                    const x = i * step;
+                    const y = h - downPoints[i];
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+
+                // Draw Up Line (Purple)
+                ctx.strokeStyle = "#a855f7";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                for (let i = 0; i < upPoints.length; i++) {
+                    const x = i * step;
+                    const y = h - upPoints[i];
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
             }
-        });
+
+            setInterval(draw, 1000);
+            draw();
+        }
 
         // Toast Helper
         function showToast(msg) {
@@ -3107,12 +3212,25 @@ html_content = r'''<!DOCTYPE html>
             t.classList.add('show');
             setTimeout(() => t.classList.remove('show'), 3500);
         }
+
+        // Global ESC handler
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                closeLuciSimulator();
+                const drawer = document.getElementById('luci_drawer');
+                if (drawer && drawer.classList.contains('open')) toggleLuciDrawer();
+            }
+        });
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            renderDevicesTable();
+            initTrafficCanvas();
+            runDoctorCheck();
+        });
     </script>
 </body>
-</html>
-'''
-
-with open(TARGET_FILE, "w", encoding="utf-8") as f:
-    f.write(html_content)
+</html>''')
 
 print("Comprehensive V2 Flagship Dashboard generated successfully!")
