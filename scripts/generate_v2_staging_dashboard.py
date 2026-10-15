@@ -3633,29 +3633,26 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
             const cont = document.getElementById('modal_content_holder');
             cont.innerHTML = `
                 <div class="modal-header">
-                    <h3>🔀 Nova Regra de Redirecionamento (Port Forwarding)</h3>
+                    <h3>🔀 Nova Regra de Redirecionamento de Porta (Port Forwarding)</h3>
                     <button class="modal-close-btn" onclick="closeModal()">✕</button>
                 </div>
                 <div class="modal-body">
+                    <!-- Presets Rápidos -->
                     <div class="form-group">
-                        <label class="form-label">Modelo Pré-Configurado (Preset Rápido)</label>
-                        <select class="form-select" id="pf_preset" onchange="applyPortPreset(this.value)">
-                            <option value="custom">Personalizado (Manual)</option>
-                            <option value="plex">Plex Media Server (Porta 32400 TCP)</option>
-                            <option value="ssh">SSH Remoto Seguro (Porta 2222 -> 22 TCP)</option>
-                            <option value="web">Servidor Web HTTPS (Porta 443 TCP)</option>
-                            <option value="minecraft">Minecraft Server (Porta 25565 TCP+UDP)</option>
-                            <option value="torrent">Cliente BitTorrent (Porta 51413 TCP+UDP)</option>
-                        </select>
+                        <label class="form-label">Preenchimento Rápido (Serviços Comuns)</label>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <button type="button" class="ark-btn ark-btn-secondary" style="font-size:0.75rem; padding:4px 8px;" onclick="fillPortPreset('Plex Server', 'TCP', '32400', '192.168.1.105', '32400')">🎬 Plex (32400)</button>
+                            <button type="button" class="ark-btn ark-btn-secondary" style="font-size:0.75rem; padding:4px 8px;" onclick="fillPortPreset('Servidor Web', 'TCP', '8080', '192.168.1.105', '80')">🌐 Web (8080->80)</button>
+                            <button type="button" class="ark-btn ark-btn-secondary" style="font-size:0.75rem; padding:4px 8px;" onclick="fillPortPreset('Minecraft', 'TCP+UDP', '25565', '192.168.1.144', '25565')">⛏️ Minecraft (25565)</button>
+                            <button type="button" class="ark-btn ark-btn-secondary" style="font-size:0.75rem; padding:4px 8px;" onclick="fillPortPreset('Torrent P2P', 'TCP+UDP', '51413', '192.168.1.105', '51413')">📥 BitTorrent (51413)</button>
+                            <button type="button" class="ark-btn ark-btn-secondary" style="font-size:0.75rem; padding:4px 8px;" onclick="fillPortPreset('SSH Externo', 'TCP', '2222', '192.168.1.105', '22')">🔒 SSH (2222->22)</button>
+                        </div>
                     </div>
+
+                    <!-- Manual Input Fields -->
                     <div class="form-group">
                         <label class="form-label">Nome da Regra</label>
-                        <select class="form-select" id="pf_name">
-                            <option value="Servidor Local">Servidor Local</option>
-                            <option value="Jogo Online">Jogo Online</option>
-                            <option value="Câmeras CFTV">Câmeras CFTV</option>
-                            <option value="Acesso Remoto">Acesso Remoto</option>
-                        </select>
+                        <input type="text" class="form-input" id="pf_name" value="Servidor Local" placeholder="Ex: Servidor Plex / Câmera">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Protocolo de Transporte</label>
@@ -3666,23 +3663,16 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Porta WAN Externa</label>
-                        <select class="form-select" id="pf_ext_port">
-                            <option value="8443" selected>Porta 8443 (HTTPS Alternativa)</option>
-                            <option value="32400">Porta 32400 (Plex)</option>
-                            <option value="25565">Porta 25565 (Minecraft)</option>
-                            <option value="51413">Porta 51413 (Torrent)</option>
-                            <option value="2222">Porta 2222 (SSH Seguro)</option>
-                        </select>
+                        <label class="form-label">Porta WAN Externa (ou faixa: 3000-3050)</label>
+                        <input type="text" class="form-input" id="pf_ext_port" value="8443" placeholder="Ex: 8443 ou 32400">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Dispositivo Destino na Rede Interna (IP)</label>
-                        <select class="form-select" id="pf_int_ip">
-                            <option value="192.168.1.105" selected>192.168.1.105 (Servidor-NAS-Synology)</option>
-                            <option value="192.168.1.146">192.168.1.146 (MacMini-M2-Backup)</option>
-                            <option value="192.168.1.150">192.168.1.150 (Camera-Seguranca-Frente)</option>
-                            <option value="192.168.1.189">192.168.1.189 (PlayStation-5-Pro)</option>
-                        </select>
+                        <label class="form-label">Endereço IP do Dispositivo na LAN (Manual)</label>
+                        <input type="text" class="form-input" id="pf_int_ip" value="192.168.1.105" placeholder="Ex: 192.168.1.105">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Porta Interna de Destino</label>
+                        <input type="text" class="form-input" id="pf_int_port" value="443" placeholder="Ex: 443 ou 32400">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -3692,20 +3682,12 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
             `;
         }
 
-        function applyPortPreset(val) {
-            if (val === 'plex') {
-                document.getElementById('pf_proto').value = 'TCP';
-                document.getElementById('pf_ext_port').value = '32400';
-            } else if (val === 'minecraft') {
-                document.getElementById('pf_proto').value = 'TCP+UDP';
-                document.getElementById('pf_ext_port').value = '25565';
-            } else if (val === 'torrent') {
-                document.getElementById('pf_proto').value = 'TCP+UDP';
-                document.getElementById('pf_ext_port').value = '51413';
-            } else if (val === 'ssh') {
-                document.getElementById('pf_proto').value = 'TCP';
-                document.getElementById('pf_ext_port').value = '2222';
-            }
+        function fillPortPreset(name, proto, ext, ip, intp) {
+            document.getElementById('pf_name').value = name;
+            document.getElementById('pf_proto').value = proto;
+            document.getElementById('pf_ext_port').value = ext;
+            document.getElementById('pf_int_ip').value = ip;
+            document.getElementById('pf_int_port').value = intp;
         }
 
         function savePortForward() {
@@ -3713,6 +3695,7 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
             const proto = document.getElementById('pf_proto').value;
             const ext = document.getElementById('pf_ext_port').value;
             const ip = document.getElementById('pf_int_ip').value;
+            const intp = document.getElementById('pf_int_port') ? document.getElementById('pf_int_port').value : ext;
             const tbody = document.getElementById('port_forward_tbody');
             if (tbody) {
                 const tr = document.createElement('tr');
@@ -3721,14 +3704,14 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
                     <td><span class="pill-badge pill-cyan">${proto}</span></td>
                     <td><code>${ext}</code></td>
                     <td>${ip}</td>
-                    <td><code>${ext}</code></td>
+                    <td><code>${intp}</code></td>
                     <td><label class="ark-switch"><input type="checkbox" checked><span class="ark-slider"></span></label></td>
                     <td style="text-align:right;"><button class="ark-btn ark-btn-secondary" style="padding:4px 8px; font-size:0.75rem;" onclick="deletePortRule(this)">🗑️</button></td>
                 `;
                 tbody.appendChild(tr);
             }
             closeModal();
-            showToast(`✅ Regra de redirecionamento para porta ${ext} criada com sucesso!`);
+            showToast(`✅ Regra "${name}" adicionada com sucesso! Porta externa ${ext} -> ${ip}:${intp}.`);
         }
 
         function deletePortRule(btn) {
@@ -4449,28 +4432,85 @@ Address 4: 2606:4700:4700::1001
                         <button class="ark-btn ark-btn-primary" onclick="saveSetupModal()">💾 Salvar e Aplicar</button>
                     </div>
                 `;
+
             } else if (type === 'wifi') {
                 cont.innerHTML = `
                     <div class="modal-header">
-                        <h3>📶 Configurar Redes Wi-Fi (Tri-Band)</h3>
+                        <h3>📶 Configurar Redes Wi-Fi (2.4 GHz, 5 GHz & Wi-Fi 7 6 GHz)</h3>
                         <button class="modal-close-btn" onclick="closeModal()">✕</button>
                     </div>
                     <div class="modal-body">
-                        <div class="form-group">
-                            <label class="form-label">Nome da Rede Wi-Fi (SSID)</label>
-                            <input type="text" class="form-input" id="m_wifi_ssid" value="Wi-Fi-H&R">
+                        <!-- Unified vs Split SSID Option from V1 -->
+                        <div style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:12px; margin-bottom:14px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <strong style="color:#fff; font-size:0.88rem;">Separar Nomes por Frequência (2.4G / 5G / 6G)</strong>
+                                    <div style="font-size:0.75rem; color:#94a3b8;">Desative para usar Smart Connect (SSID único com troca suave entre bandas)</div>
+                                </div>
+                                <label class="ark-switch">
+                                    <input type="checkbox" id="m_wifi_split_toggle" onchange="toggleWifiSplitFields(this.checked)">
+                                    <span class="ark-slider"></span>
+                                </label>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Senha de Acesso (Mínimo 8 dígitos)</label>
-                            <input type="password" class="form-input" id="m_wifi_pass" value="MinhaSenhaForte2026">
+
+                        <!-- Unified SSID Fields -->
+                        <div id="wifi_unified_fields">
+                            <div class="form-group">
+                                <label class="form-label">Nome da Rede Wi-Fi Unificada (SSID)</label>
+                                <input type="text" class="form-input" id="m_wifi_ssid" value="Wi-Fi-H&R" maxlength="32">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Senha de Acesso (Mínimo 8 dígitos)</label>
+                                <div style="display:flex; gap:8px;">
+                                    <input type="password" class="form-input" id="m_wifi_pass" value="MinhaSenhaForte2026" maxlength="63">
+                                    <button type="button" class="ark-btn ark-btn-secondary" onclick="togglePassVisibility('m_wifi_pass', this)">👁️ Ver</button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Modo de Criptografia & Segurança</label>
-                            <select class="form-select">
-                                <option selected>WPA3-SAE / WPA2-PSK Misto + PMF (Recomendado)</option>
-                                <option>WPA3-SAE Puro (Máxima Blindagem Wi-Fi 6E/7)</option>
-                                <option>WPA2-PSK Legado</option>
+
+                        <!-- Split SSID Fields -->
+                        <div id="wifi_split_fields" style="display:none; display:flex; flex-direction:column; gap:12px;">
+                            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:6px; padding:10px;">
+                                <label class="form-label" style="color:#38bdf8;">Rádio 2.4 GHz (Maior Alcance)</label>
+                                <input type="text" class="form-input" id="m_wifi_ssid_2g" value="Wi-Fi-H&R-2.4G" placeholder="Nome 2.4G" style="margin-bottom:6px;">
+                                <input type="password" class="form-input" id="m_wifi_pass_2g" value="MinhaSenhaForte2026" placeholder="Senha 2.4G">
+                            </div>
+                            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:6px; padding:10px;">
+                                <label class="form-label" style="color:#c084fc;">Rádio 5 GHz (Alta Velocidade 160 MHz)</label>
+                                <input type="text" class="form-input" id="m_wifi_ssid_5g" value="Wi-Fi-H&R-5G" placeholder="Nome 5G" style="margin-bottom:6px;">
+                                <input type="password" class="form-input" id="m_wifi_pass_5g" value="MinhaSenhaForte2026" placeholder="Senha 5G">
+                            </div>
+                            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:6px; padding:10px;">
+                                <label class="form-label" style="color:#10b981;">Rádio 6 GHz (Wi-Fi 7 BE11000 320 MHz)</label>
+                                <input type="text" class="form-input" id="m_wifi_ssid_6g" value="Wi-Fi-H&R-6G-Pro" placeholder="Nome 6G" style="margin-bottom:6px;">
+                                <input type="password" class="form-input" id="m_wifi_pass_6g" value="MinhaSenhaForte2026" placeholder="Senha 6G (WPA3 SAE Obrigatório)">
+                            </div>
+                        </div>
+
+                        <!-- Security & Advanced Toggles -->
+                        <div class="form-group" style="margin-top:12px;">
+                            <label class="form-label">Criptografia & Blindagem</label>
+                            <select class="form-select" id="m_wifi_crypto">
+                                <option value="mixed" selected>WPA3-SAE / WPA2-PSK Misto + PMF (Recomendado para Compatibilidade)</option>
+                                <option value="sae">WPA3-SAE Puro (Exclusivo Wi-Fi 6E/7 — Máxima Segurança)</option>
+                                <option value="psk2">WPA2-PSK Legado (Apenas Dispositivos Antigos)</option>
                             </select>
+                        </div>
+
+                        <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+                            <label style="display:flex; align-items:center; gap:8px; font-size:0.82rem; color:#cbd5e1; cursor:pointer;">
+                                <input type="checkbox" id="m_wifi_roaming" checked>
+                                <span>Ativar Roaming Rápido 802.11k/v (BSS Transition + RNR Co-located)</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; font-size:0.82rem; color:#cbd5e1; cursor:pointer;">
+                                <input type="checkbox" id="m_wifi_bss_color" checked>
+                                <span>Ativar BSS Coloring (Eliminação de interferência de redes vizinhas)</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; font-size:0.82rem; color:#cbd5e1; cursor:pointer;">
+                                <input type="checkbox" id="m_wifi_hide_ssid">
+                                <span>Ocultar Nome da Rede (Hidden SSID / Broadcast desativado)</span>
+                            </label>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -4478,36 +4518,79 @@ Address 4: 2606:4700:4700::1001
                         <button class="ark-btn ark-btn-primary" onclick="saveWifiModal()">💾 Atualizar Redes Wi-Fi</button>
                     </div>
                 `;
+
+
             } else if (type === 'sqm') {
                 cont.innerHTML = `
                     <div class="modal-header">
-                        <h3>⚡ Calibrar SQM CAKE & Bufferbloat</h3>
+                        <h3>⚡ Calibrar SQM CAKE & Eliminação de Bufferbloat</h3>
                         <button class="modal-close-btn" onclick="closeModal()">✕</button>
                     </div>
                     <div class="modal-body">
+                        <!-- Fast.com direct button from V1 -->
+                        <div style="background:rgba(56, 189, 248, 0.1); border:1px solid rgba(56, 189, 248, 0.25); border-radius:8px; padding:12px; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between;">
+                            <div>
+                                <strong style="color:#fff; font-size:0.88rem;">Medição Precisa de Velocidade</strong>
+                                <div style="font-size:0.75rem; color:#94a3b8;">Recomendamos medir a velocidade real antes de aplicar os limites do CAKE</div>
+                            </div>
+                            <button type="button" class="ark-btn ark-btn-cyan" style="font-size:0.8rem; padding:6px 12px;" onclick="window.open('https://fast.com', '_blank')">🎬 Medir no Fast.com ↗</button>
+                        </div>
+
+                        <!-- Manual Bandwidth Inputs (V1 Mandatory) -->
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                            <div class="form-group">
+                                <label class="form-label">Velocidade de Download (Mbps)</label>
+                                <input type="number" class="form-input" id="m_sqm_down" value="850" min="1" max="10000" step="1" placeholder="Ex: 850">
+                                <small style="color:#94a3b8; font-size:0.72rem;">Configure 90% a 95% do plano contratado</small>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Velocidade de Upload (Mbps)</label>
+                                <input type="number" class="form-input" id="m_sqm_up" value="450" min="1" max="10000" step="1" placeholder="Ex: 450">
+                                <small style="color:#94a3b8; font-size:0.72rem;">Evita fila de saída saturada</small>
+                            </div>
+                        </div>
+
+                        <!-- Quick Presets -->
                         <div class="form-group">
-                            <label class="form-label">Plano de Velocidade Contratada</label>
-                            <select class="form-select" id="m_sqm_preset" onchange="applySqmPreset(this.value)">
-                                <option value="1000">1 Gbps Download / 500 Mbps Upload</option>
-                                <option value="850" selected>850 Mbps Download / 450 Mbps Upload (Calibrado)</option>
-                                <option value="600">600 Mbps Download / 300 Mbps Upload</option>
-                                <option value="500">500 Mbps Download / 250 Mbps Upload</option>
-                                <option value="300">300 Mbps Download / 150 Mbps Upload</option>
+                            <label class="form-label">Preenchimento Rápido por Perfil (Presets)</label>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                <button type="button" class="ark-btn ark-btn-secondary" style="font-size:0.75rem; padding:4px 8px;" onclick="setSqmValues(1000, 500)">1 Gbps / 500M</button>
+                                <button type="button" class="ark-btn ark-btn-secondary" style="font-size:0.75rem; padding:4px 8px;" onclick="setSqmValues(850, 450)">850M / 450M</button>
+                                <button type="button" class="ark-btn ark-btn-secondary" style="font-size:0.75rem; padding:4px 8px;" onclick="setSqmValues(600, 300)">600M / 300M</button>
+                                <button type="button" class="ark-btn ark-btn-secondary" style="font-size:0.75rem; padding:4px 8px;" onclick="setSqmValues(300, 150)">300M / 150M</button>
+                                <button type="button" class="ark-btn ark-btn-secondary" style="font-size:0.75rem; padding:4px 8px;" onclick="setSqmValues(100, 50)">100M / 50M</button>
+                            </div>
+                        </div>
+
+                        <!-- Algorithm Qdisc -->
+                        <div class="form-group">
+                            <label class="form-label">Algoritmo Ativo de Fila (Qdisc)</label>
+                            <select class="form-select" id="m_sqm_qdisc">
+                                <option value="cake" selected>CAKE — Common Applications Kept Enhanced (Recomendado OpenWrt Moderno)</option>
+                                <option value="fq_codel">FQ-CoDel — Fair Queueing Controlled Delay</option>
                             </select>
                         </div>
+
+                        <!-- Framing / Overhead -->
                         <div class="form-group">
-                            <label class="form-label">Compensação de Framing (Overhead)</label>
-                            <select class="form-select">
-                                <option selected>Fibra Óptica FTTH / GPON (44 bytes de overhead)</option>
-                                <option>Ethernet Pura (18 bytes de overhead)</option>
-                            </select>
+                            <label class="form-label">Enquadramento de Camada Física (Overhead)</label>
+                            <div style="display:flex; gap:8px;">
+                                <select class="form-select" id="m_sqm_overhead_sel" onchange="document.getElementById('m_sqm_overhead').value = this.value" style="flex:2;">
+                                    <option value="44" selected>Fibra Óptica FTTH / GPON (44 bytes de overhead)</option>
+                                    <option value="18">Ethernet Pura / Switch (18 bytes)</option>
+                                    <option value="34">VDSL2 PTM (34 bytes)</option>
+                                    <option value="0">Desativar Compensação (0 bytes)</option>
+                                </select>
+                                <input type="number" class="form-input" id="m_sqm_overhead" value="44" placeholder="Bytes" style="flex:1;">
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
-                        <button class="ark-btn ark-btn-primary" onclick="saveSqmModal()">💾 Salvar SQM</button>
+                        <button class="ark-btn ark-btn-primary" onclick="saveSqmModal()">💾 Salvar Calibração SQM</button>
                     </div>
                 `;
+
             } else if (type === 'reboot') {
                 cont.innerHTML = `
                     <div class="modal-header">
@@ -4578,21 +4661,41 @@ Address 4: 2606:4700:4700::1001
             } else if (type === 'theme_picker') {
                 cont.innerHTML = `
                     <div class="modal-header">
-                        <h3>🎨 Selecionar Tema Visual do ARK Router</h3>
+                        <h3>🎨 Personalização Visual & Marca do Painel (White-Label)</h3>
                         <button class="modal-close-btn" onclick="closeModal()">✕</button>
                     </div>
                     <div class="modal-body">
                         <div class="form-group">
+                            <label class="form-label">Título / Nome do Roteador no Cabeçalho</label>
+                            <input type="text" class="form-input" id="m_theme_brand_name" value="ARK Router" maxlength="40" placeholder="Nome personalizado">
+                        </div>
+
+                        <div class="form-group">
                             <label class="form-label">Paleta de Cores e Estilo Visual</label>
-                            <select class="form-select">
-                                <option selected>ARK Flagship Cyan & Deep Blue (Padrão)</option>
-                                <option>Predator Gamer Red & Carbon</option>
-                                <option>Cyber Emerald Green</option>
-                                <option>Quantum Purple & Violet</option>
+                            <select class="form-select" id="m_theme_preset" onchange="applyThemePreset(this.value)">
+                                <option value="cyan" selected>ARK Flagship Cyan & Deep Blue (Padrão)</option>
+                                <option value="rog">Predator Gamer Red & Carbon (ASUS ROG)</option>
+                                <option value="emerald">Cyber Emerald Green</option>
+                                <option value="purple">Quantum Purple & Violet</option>
+                                <option value="custom">Personalizado (Escolher Cores Manualmente)</option>
                             </select>
                         </div>
+
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px;">
+                            <div class="form-group">
+                                <label class="form-label">Cor Primária de Destaque</label>
+                                <input type="color" class="form-input" id="m_theme_color_primary" value="#0284c7" style="height:44px; padding:2px 6px; cursor:pointer;">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Cor Secundária de Gradiente</label>
+                                <input type="color" class="form-input" id="m_theme_color_secondary" value="#38bdf8" style="height:44px; padding:2px 6px; cursor:pointer;">
+                            </div>
+                        </div>
                     </div>
-                    <div class="modal-footer"><button class="ark-btn ark-btn-primary" onclick="closeModal(); showToast('🎨 Tema aplicado!')">Fechar</button></div>
+                    <div class="modal-footer">
+                        <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
+                        <button class="ark-btn ark-btn-primary" onclick="saveThemeCustomization()">💾 Salvar e Aplicar Tema</button>
+                    </div>
                 `;
             } else if (type === 'op_mode') {
                 const currentOp = window.currentOperationMode || 'gateway';
@@ -4799,6 +4902,7 @@ Address 4: 2606:4700:4700::1001
                         <button class="ark-btn ark-btn-cyan" onclick="saveStarlinkModal()">💾 Aplicar na Antena Dishy</button>
                     </div>
                 `;
+
             } else if (type === 'add_device') {
                 cont.innerHTML = `
                     <div class="modal-header">
@@ -4815,12 +4919,19 @@ Address 4: 2606:4700:4700::1001
                             <input type="text" class="form-input" id="m_new_dev_mac" placeholder="Ex: b8:27:eb:11:22:33">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Endereço IP Reservado Desejado</label>
-                            <select class="form-select" id="m_new_dev_ip">
-                                <option value="192.168.1.50">192.168.1.50 (Faixa de Servidores)</option>
-                                <option value="192.168.1.55">192.168.1.55</option>
-                                <option value="192.168.1.60">192.168.1.60 (Faixa Gamer / Consoles)</option>
-                                <option value="192.168.1.99">192.168.1.99</option>
+                            <label class="form-label">Endereço IP Reservado Desejado (Manual)</label>
+                            <input type="text" class="form-input" id="m_new_dev_ip" value="192.168.73.150" placeholder="Ex: 192.168.73.150">
+                            <small style="color:#94a3b8; font-size:0.75rem;">Digite o IP fixo desejado dentro da sub-rede local</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tipo de Aparelho (Ícone & Identificação)</label>
+                            <select class="form-select" id="m_new_dev_type">
+                                <option value="phone" selected>📱 Smartphone / Celular</option>
+                                <option value="laptop">💻 Computador / Notebook</option>
+                                <option value="console">🎮 Console Gamer (PS5, Xbox, Switch)</option>
+                                <option value="server">🖥️ Servidor Local / NAS / Docker</option>
+                                <option value="tv">📺 Smart TV / Streaming Box</option>
+                                <option value="iot">🏠 Automação Residencial / IoT</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -4838,6 +4949,7 @@ Address 4: 2606:4700:4700::1001
                         <button class="ark-btn ark-btn-primary" onclick="saveNewDeviceModal()">💾 Cadastrar Dispositivo</button>
                     </div>
                 `;
+
             } else if (type === 'add_vpn') {
                 cont.innerHTML = `
                     <div class="modal-header">
@@ -4845,41 +4957,113 @@ Address 4: 2606:4700:4700::1001
                         <button class="modal-close-btn" onclick="closeModal()">✕</button>
                     </div>
                     <div class="modal-body">
+                        <!-- Import .conf button from V1 -->
+                        <div style="background:rgba(192, 132, 252, 0.1); border:1px solid rgba(192, 132, 252, 0.3); border-radius:8px; padding:12px; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between;">
+                            <div>
+                                <strong style="color:#fff; font-size:0.88rem;">Importar Arquivo de Configuração (.conf)</strong>
+                                <div style="font-size:0.75rem; color:#94a3b8;">Preenche automaticamente chaves, servidor e rotas do túnel</div>
+                            </div>
+                            <label class="ark-btn ark-btn-purple" style="font-size:0.8rem; padding:6px 12px; cursor:pointer;">
+                                📥 Importar .conf
+                                <input type="file" accept=".conf" onchange="importWireguardFile(this)" style="display:none;">
+                            </label>
+                        </div>
+
                         <div class="form-group">
                             <label class="form-label">Nome da Interface Virtual</label>
-                            <select class="form-select" id="m_vpn_iface">
-                                <option value="wg1" selected>wg1 (Túnel Pessoal / Provedor Comercial)</option>
-                                <option value="wg_office">wg_escritorio (Acesso Corporativo)</option>
-                                <option value="wg_home">wg_casa (Ponto a Ponto Remoto)</option>
-                            </select>
+                            <input type="text" class="form-input" id="m_vpn_iface" value="wg0" placeholder="ex: wg0 ou wg_trabalho">
                         </div>
+
                         <div class="form-group">
-                            <label class="form-label">Servidor Endpoint Remoto & Porta</label>
-                            <select class="form-select" id="m_vpn_endpoint">
-                                <option value="vpn.sp.arkrouter.net:51820" selected>vpn.sp.arkrouter.net:51820 (São Paulo - Latência 4 ms)</option>
-                                <option value="vpn.mia.arkrouter.net:51820">vpn.mia.arkrouter.net:51820 (Miami - Latência 115 ms)</option>
-                                <option value="vpn.fra.arkrouter.net:51820">vpn.fra.arkrouter.net:51820 (Frankfurt - Latência 180 ms)</option>
-                            </select>
+                            <label class="form-label">Endereço IP do Cliente no Túnel (com máscara)</label>
+                            <input type="text" class="form-input" id="m_vpn_client_ip" value="10.8.0.2/24" placeholder="ex: 10.8.0.2/24">
                         </div>
+
                         <div class="form-group">
-                            <label class="form-label">Endereço IP da Interface Local (/24)</label>
-                            <input type="text" class="form-input" id="m_vpn_local_ip" value="10.14.0.3/24">
+                            <label class="form-label">Chave Privada do Cliente (Private Key)</label>
+                            <div style="display:flex; gap:8px;">
+                                <input type="password" class="form-input" id="m_vpn_privkey" value="eG1ha2V5cHJpdmF0ZTEyMzQ1Njc4OWFiY2RlZjAxMjM0" placeholder="Chave privada base64">
+                                <button type="button" class="ark-btn ark-btn-secondary" onclick="generateWgKeypair()">🔑 Gerar</button>
+                            </div>
                         </div>
+
                         <div class="form-group">
-                            <label class="form-label">Chave Pública do Servidor (PublicKey)</label>
-                            <input type="text" class="form-input" id="m_vpn_pubkey" value="tZ9q+bX81mN2kLm9...f9aL3=">
+                            <label class="form-label">Chave Pública do Servidor Remoto (Public Key)</label>
+                            <input type="text" class="form-input" id="m_vpn_pubkey" value="c2VydmVycHVibGlja2V5MTIzNDU2Nzg5YWJjZGVmMDEy" placeholder="Chave pública do servidor WireGuard">
                         </div>
+
                         <div class="form-group">
-                            <label class="form-label">Redes Permitidas (AllowedIPs)</label>
-                            <select class="form-select" id="m_vpn_allowed">
-                                <option value="0.0.0.0/0" selected>0.0.0.0/0, ::/0 (Roteamento Integral de Toda a Conexão)</option>
-                                <option value="10.0.0.0/8">10.0.0.0/8 (Apenas Subredes Privadas da Empresa)</option>
-                            </select>
+                            <label class="form-label">Chave Pré-Compartilhada (PresharedKey — opcional)</label>
+                            <input type="password" class="form-input" id="m_vpn_psk" placeholder="Opcional (segurança pós-quântica)">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Servidor Endpoint Remoto & Porta (Manual)</label>
+                            <input type="text" class="form-input" id="m_vpn_endpoint" value="vpn.sp.arkrouter.net:51820" placeholder="ex: vpn.servidor.com:51820 ou 198.51.100.1:51820">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Redes Permitidas / Roteadas (AllowedIPs)</label>
+                            <input type="text" class="form-input" id="m_vpn_allowed_ips" value="0.0.0.0/0, ::/0" placeholder="0.0.0.0/0 (Toda a Internet) ou 192.168.10.0/24">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Keepalive Periódico (segundos)</label>
+                            <input type="number" class="form-input" id="m_vpn_keepalive" value="25" min="0" max="300">
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
-                        <button class="ark-btn ark-btn-purple" onclick="saveVpnModal()">💾 Salvar e Conectar Túnel</button>
+                        <button class="ark-btn ark-btn-purple" onclick="saveVpnModal()">💾 Salvar e Ativar Túnel</button>
+                    </div>
+                `;
+            } else if (type === 'wan_optimizations') {
+                cont.innerHTML = `
+                    <div class="modal-header">
+                        <h3>⚙️ Otimizações Avançadas de Conexão WAN</h3>
+                        <button class="modal-close-btn" onclick="closeModal()">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="display:flex; flex-direction:column; gap:12px;">
+                            <label style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:10px 14px; border-radius:6px; cursor:pointer;">
+                                <div>
+                                    <strong style="color:#fff; font-size:0.88rem;">MSS Clamping Automático</strong>
+                                    <div style="font-size:0.75rem; color:#94a3b8;">Ajusta o tamanho máximo de segmento TCP para eliminar fragmentação em túneis PPPoE</div>
+                                </div>
+                                <label class="ark-switch"><input type="checkbox" id="m_wan_opt_mss" checked><span class="ark-slider"></span></label>
+                            </label>
+
+                            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:10px 14px; border-radius:6px;">
+                                <div class="form-group" style="margin-bottom:8px;">
+                                    <label class="form-label">Intervalo de Verificação LCP Echo (segundos)</label>
+                                    <input type="number" class="form-input" id="m_wan_lcp_interval" value="5" min="1" max="60">
+                                </div>
+                                <div class="form-group" style="margin:0;">
+                                    <label class="form-label">Tolerância a Quedas Consecutivas de LCP</label>
+                                    <input type="number" class="form-input" id="m_wan_lcp_failure" value="3" min="1" max="10">
+                                </div>
+                            </div>
+
+                            <label style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:10px 14px; border-radius:6px; cursor:pointer;">
+                                <div>
+                                    <strong style="color:#fff; font-size:0.88rem;">TCP Turbo BBR v2</strong>
+                                    <div style="font-size:0.75rem; color:#94a3b8;">Algoritmo de controle de congestionamento do Google baseado em modelo de gargalo</div>
+                                </div>
+                                <label class="ark-switch"><input type="checkbox" id="m_wan_opt_bbr" checked><span class="ark-slider"></span></label>
+                            </label>
+
+                            <label style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:10px 14px; border-radius:6px; cursor:pointer;">
+                                <div>
+                                    <strong style="color:#fff; font-size:0.88rem;">Aceleração de Fluxo por Hardware (MediaTek PPE)</strong>
+                                    <div style="font-size:0.75rem; color:#94a3b8;">Desvia pacotes da CPU para o silício com latência submilisegundo</div>
+                                </div>
+                                <label class="ark-switch"><input type="checkbox" id="m_wan_opt_ppe" checked><span class="ark-slider"></span></label>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
+                        <button class="ark-btn ark-btn-primary" onclick="showToast('✅ Otimizações avançadas da WAN salvas e aplicadas!'); closeModal();">💾 Salvar Otimizações</button>
                     </div>
                 `;
             } else if (type === 'pppoe_logs') {
@@ -5350,58 +5534,139 @@ Address 4: 2606:4700:4700::1001
 
             cont.innerHTML = `
                 <div class="modal-header">
-                    <h3>🌐 Configurar ${isWan1 ? 'WAN 1 (Vivo Fibra GPON)' : 'WAN 2 (Claro Fibra)'}</h3>
+                    <h3>🌐 Configuração da Internet — ${isWan1 ? 'WAN 1 (Vivo Fibra GPON)' : 'WAN 2 (Claro Fibra / Backup)'}</h3>
                     <button class="modal-close-btn" onclick="closeModal()">✕</button>
                 </div>
                 <div class="modal-body">
+                    <!-- Protocol Selector -->
                     <div class="form-group">
                         <label class="form-label">Protocolo de Conexão com o Provedor</label>
-                        <select class="form-select" id="m_wan_proto">
-                            <option value="pppoe" ${isWan1 ? 'selected' : ''}>PPPoE (Vivo Fibra, Oi, Provedores Regionais FTTH)</option>
-                            <option value="dhcp" ${!isWan1 ? 'selected' : ''}>DHCP Cliente Automático (Claro Fibra, Starlink, Modem Bridge)</option>
-                            <option value="static">IP Estático Fixo Corporativo</option>
+                        <select class="form-select" id="m_wan_proto" onchange="toggleWanProtoFields(this.value)">
+                            <option value="pppoe" ${isWan1 ? 'selected' : ''}>PPPoE (Vivo Fibra, Oi Fibra, Provedores Regionais FTTH)</option>
+                            <option value="dhcp" ${!isWan1 ? 'selected' : ''}>DHCP Cliente Automático (Claro Fibra, Starlink, Modem em Bridge)</option>
+                            <option value="static">IP Fixo / Estático Corporativo</option>
                         </select>
                     </div>
+
+                    <!-- PPPoE Manual Fields -->
+                    <div id="wan_pppoe_fields" style="display:${isWan1 ? 'block' : 'none'}; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:12px; margin-bottom:12px;">
+                        <div class="form-group">
+                            <label class="form-label">Nome de Usuário PPPoE</label>
+                            <input type="text" class="form-input" id="m_wan_user" value="${isWan1 ? 'cliente@vivofibra.com.br' : 'cliente@provedor.com'}" placeholder="login@provedor.com.br">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Senha de Autenticação PPPoE</label>
+                            <div style="display:flex; gap:8px;">
+                                <input type="password" class="form-input" id="m_wan_pass" value="vivo123" placeholder="senha da autenticação">
+                                <button type="button" class="ark-btn ark-btn-secondary" onclick="togglePassVisibility('m_wan_pass', this)">👁️ Ver</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">VLAN ID de Autenticação (802.1Q — opcional)</label>
+                            <input type="number" class="form-input" id="m_wan_vlan" value="${isWan1 ? '10' : ''}" placeholder="Ex: 10 (Vivo Fibra), 100 (Claro), vazio se modem autentica">
+                        </div>
+                    </div>
+
+                    <!-- Static IP Manual Fields -->
+                    <div id="wan_static_fields" style="display:none; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:12px; margin-bottom:12px;">
+                        <div class="form-group">
+                            <label class="form-label">Endereço IP Fixo Público</label>
+                            <input type="text" class="form-input" id="m_wan_static_ip" value="187.54.21.90" placeholder="Ex: 200.180.10.5">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Máscara de Sub-rede</label>
+                            <input type="text" class="form-input" id="m_wan_static_mask" value="255.255.255.0" placeholder="255.255.255.0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Gateway Padrão do Provedor</label>
+                            <input type="text" class="form-input" id="m_wan_static_gw" value="187.54.21.1" placeholder="Ex: 200.180.10.1">
+                        </div>
+                    </div>
+
+                    <!-- MTU with Presets & Manual Value -->
                     <div class="form-group">
                         <label class="form-label">Tamanho Máximo de Pacote (MTU)</label>
-                        <select class="form-select" id="m_wan_mtu">
-                            <option value="1508">1508 (Baby Jumbo Frames — PPPoE com MTU 1500 Puro sem Fragmentação)</option>
-                            <option value="1492" ${isWan1 ? 'selected' : ''}>1492 (Padrão Otimizado Fibra PPPoE - Elimina Fragmentação)</option>
-                            <option value="1500" ${!isWan1 ? 'selected' : ''}>1500 (Padrão Ethernet / Cabo / Starlink / DOCSIS)</option>
-                            <option value="1480">1480 (Túneis Corporativos)</option>
-                        </select>
+                        <div style="display:flex; gap:8px;">
+                            <select class="form-select" id="m_wan_mtu_sel" onchange="document.getElementById('m_wan_mtu').value = this.value" style="flex:2;">
+                                <option value="1492" ${isWan1 ? 'selected' : ''}>1492 (Padrão Otimizado Fibra PPPoE)</option>
+                                <option value="1500" ${!isWan1 ? 'selected' : ''}>1500 (Padrão Ethernet / DOCSIS / Starlink)</option>
+                                <option value="1508">1508 (Baby Jumbo Frames — PPPoE com 1500 Puro)</option>
+                                <option value="1480">1480 (Túneis Corporativos)</option>
+                            </select>
+                            <input type="number" class="form-input" id="m_wan_mtu" value="${isWan1 ? '1492' : '1500'}" placeholder="MTU" style="flex:1;">
+                        </div>
                     </div>
+
+                    <!-- Custom DNS -->
                     <div class="form-group">
                         <label class="form-label">Servidores DNS de Resolução</label>
-                        <select class="form-select" id="m_wan_dns">
-                            <option value="1.1.1.1" selected>Cloudflare DNS (1.1.1.1 + 1.0.0.1 - Latência 2ms)</option>
-                            <option value="8.8.8.8">Google DNS (8.8.8.8 + 8.8.4.4 - Alta Redundância)</option>
-                            <option value="adguard">AdGuard DNS (94.140.14.14 - Bloqueio de Anúncios)</option>
-                            <option value="isp">Automático do Provedor de Internet (ISP)</option>
+                        <select class="form-select" id="m_wan_dns_preset" onchange="applyDnsPreset(this.value)" style="margin-bottom:6px;">
+                            <option value="1.1.1.1 1.0.0.1" selected>Cloudflare DNS (1.1.1.1 + 1.0.0.1 - Latência 2ms)</option>
+                            <option value="8.8.8.8 8.8.4.4">Google Public DNS (8.8.8.8 + 8.8.4.4)</option>
+                            <option value="94.140.14.14 94.140.15.15">AdGuard DNS (Filtro Antispam)</option>
+                            <option value="custom">Personalizado (Digitação Manual)</option>
                         </select>
+                        <input type="text" class="form-input" id="m_wan_dns" value="1.1.1.1 1.0.0.1" placeholder="Servidores DNS separados por espaço (ex: 1.1.1.1 8.8.8.8)">
+                    </div>
+
+                    <!-- Cloned MAC Address Manual -->
+                    <div class="form-group">
+                        <label class="form-label">Clonagem de Endereço MAC (Bypass de Provedor)</label>
+                        <div style="display:flex; gap:8px;">
+                            <input type="text" class="form-input" id="m_wan_mac" placeholder="vazio = MAC físico do hardware">
+                            <button type="button" class="ark-btn ark-btn-secondary" onclick="document.getElementById('m_wan_mac').value = '00:1A:2B:3C:4D:5E'">Copiar MAC Físico</button>
+                        </div>
+                    </div>
+
+                    <!-- Isolated ONU Bridge IP -->
+                    <div class="form-group">
+                        <label class="form-label">Acesso Isolado à Web GUI da ONU / Modem Bridge</label>
+                        <div style="display:flex; gap:8px;">
+                            <input type="text" class="form-input" id="m_wan_modem_ip" value="192.168.1.1" placeholder="ex: 192.168.1.1">
+                            <button type="button" class="ark-btn ark-btn-secondary" onclick="window.open('http://' + document.getElementById('m_wan_modem_ip').value, '_blank')">🔗 Testar Acesso</button>
+                        </div>
+                    </div>
+
+                    <!-- Multi-WAN Metric -->
+                    <div class="form-group">
+                        <label class="form-label">Métrica de Roteamento Multi-WAN (mwan3)</label>
+                        <input type="number" class="form-input" id="m_wan_metric" value="${isWan1 ? '10' : '20'}" min="1" max="255">
+                        <small style="color:#94a3b8; font-size:0.75rem;">Métrica menor tem maior prioridade. Métrica igual ativa balanceamento de carga.</small>
+                    </div>
+
+                    <!-- Direct Action Buttons from V1 -->
+                    <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
+                        <button type="button" class="ark-btn ark-btn-secondary" style="flex:1;" onclick="openModal('pppoe_logs')">📜 Ver Logs PPPoE ao Vivo</button>
+                        <button type="button" class="ark-btn ark-btn-secondary" style="flex:1;" onclick="openModal('wan_optimizations')">⚙️ Otimizações Avançadas</button>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
-                    <button class="ark-btn ark-btn-primary" onclick="saveWanModal('${name}')">💾 Salvar e Aplicar</button>
+                    <button class="ark-btn ark-btn-primary" onclick="saveWanModal('${name}')">💾 Salvar e Aplicar Conexão</button>
                 </div>
             `;
         }
 
-        function saveWanModal(name) {
-            const proto = document.getElementById('m_wan_proto').value;
-            const mtu = document.getElementById('m_wan_mtu').value;
-            const dns = document.getElementById('m_wan_dns').options[document.getElementById('m_wan_dns').selectedIndex].text.split(' ')[0];
+        function toggleWanProtoFields(proto) {
+            const pppoeBox = document.getElementById('wan_pppoe_fields');
+            const staticBox = document.getElementById('wan_static_fields');
+            if (pppoeBox) pppoeBox.style.display = (proto === 'pppoe') ? 'block' : 'none';
+            if (staticBox) staticBox.style.display = (proto === 'static') ? 'block' : 'none';
+        }
 
-            if (name === 'wan1') {
-                document.getElementById('proto_wan1').textContent = `${proto.toUpperCase()} (MTU ${mtu})`;
-                document.getElementById('dns_wan1').textContent = dns;
-            } else {
-                document.getElementById('proto_wan2').textContent = `${proto.toUpperCase()} (MTU ${mtu})`;
-                document.getElementById('dns_wan2').textContent = dns;
+        function togglePassVisibility(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            const isPass = input.type === 'password';
+            input.type = isPass ? 'text' : 'password';
+            btn.textContent = isPass ? '🔒 Ocultar' : '👁️ Ver';
+        }
+
+        function applyDnsPreset(val) {
+            const input = document.getElementById('m_wan_dns');
+            if (input && val !== 'custom') {
+                input.value = val;
             }
-            closeModal();
-            showToast(`✅ Parâmetros de internet da ${name.toUpperCase()} aplicados com sucesso!`);
         }
 
         function openRadioModal(band) {
@@ -5536,6 +5801,88 @@ Address 4: 2606:4700:4700::1001
         }
 
         function closeModal() { document.body.classList.remove('modal-overlay-active'); }
+
+        
+        function setSqmValues(down, up) {
+            const d = document.getElementById('m_sqm_down');
+            const u = document.getElementById('m_sqm_up');
+            if (d) d.value = down;
+            if (u) u.value = up;
+            showToast(`⚡ Presets aplicados: ${down} Mbps Download / ${up} Mbps Upload.`);
+        }
+
+        function toggleWifiSplitFields(isSplit) {
+            const uni = document.getElementById('wifi_unified_fields');
+            const spl = document.getElementById('wifi_split_fields');
+            if (uni) uni.style.display = isSplit ? 'none' : 'block';
+            if (spl) spl.style.display = isSplit ? 'flex' : 'none';
+        }
+
+        function generateWgKeypair() {
+            const priv = document.getElementById('m_vpn_privkey');
+            if (priv) {
+                priv.value = 'y' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + '=';
+                priv.type = 'text';
+                showToast('🔑 Novo par de chaves WireGuard Curve25519 gerado com segurança!');
+            }
+        }
+
+        function importWireguardFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const privMatch = text.match(/PrivateKey\s*=\s*([^\r\n]+)/i);
+                const addrMatch = text.match(/Address\s*=\s*([^\r\n]+)/i);
+                const pubMatch = text.match(/PublicKey\s*=\s*([^\r\n]+)/i);
+                const endMatch = text.match(/Endpoint\s*=\s*([^\r\n]+)/i);
+                const allowedMatch = text.match(/AllowedIPs\s*=\s*([^\r\n]+)/i);
+
+                if (privMatch && document.getElementById('m_vpn_privkey')) document.getElementById('m_vpn_privkey').value = privMatch[1].trim();
+                if (addrMatch && document.getElementById('m_vpn_client_ip')) document.getElementById('m_vpn_client_ip').value = addrMatch[1].trim();
+                if (pubMatch && document.getElementById('m_vpn_pubkey')) document.getElementById('m_vpn_pubkey').value = pubMatch[1].trim();
+                if (endMatch && document.getElementById('m_vpn_endpoint')) document.getElementById('m_vpn_endpoint').value = endMatch[1].trim();
+                if (allowedMatch && document.getElementById('m_vpn_allowed_ips')) document.getElementById('m_vpn_allowed_ips').value = allowedMatch[1].trim();
+
+                showToast(`✅ Arquivo ${file.name} importado com sucesso! Campos preenchidos.`);
+            };
+            reader.readAsText(file);
+        }
+
+        function syncWithComputerTime() {
+            const now = new Date();
+            showToast(`⏰ Relógio sincronizado com o computador: ${now.toLocaleTimeString('pt-BR')} (Data: ${now.toLocaleDateString('pt-BR')})!`);
+            closeModal();
+        }
+
+        function applyThemePreset(val) {
+            const prim = document.getElementById('m_theme_color_primary');
+            const sec = document.getElementById('m_theme_color_secondary');
+            if (val === 'cyan') {
+                if (prim) prim.value = '#0284c7';
+                if (sec) sec.value = '#38bdf8';
+            } else if (val === 'rog') {
+                if (prim) prim.value = '#f43f5e';
+                if (sec) sec.value = '#fb7185';
+            } else if (val === 'emerald') {
+                if (prim) prim.value = '#10b981';
+                if (sec) sec.value = '#34d399';
+            } else if (val === 'purple') {
+                if (prim) prim.value = '#a855f7';
+                if (sec) sec.value = '#c084fc';
+            }
+        }
+
+        function saveThemeCustomization() {
+            const brand = document.getElementById('m_theme_brand_name').value;
+            const prim = document.getElementById('m_theme_color_primary').value;
+            const topBrand = document.querySelector('.sidebar-title h1');
+            if (topBrand) topBrand.textContent = brand;
+            document.documentElement.style.setProperty('--ark-primary', prim);
+            closeModal();
+            showToast(`🎨 Tema "${brand}" aplicado com sucesso!`);
+        }
 
         function saveSetupModal() {
             const ssid = document.getElementById('setup_ssid').value;
