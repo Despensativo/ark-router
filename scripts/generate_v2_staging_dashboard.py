@@ -620,7 +620,44 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .traffic-interface-pills {
+            display: flex;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.35);
+            padding: 3px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            overflow-x: auto;
+            max-width: 100%;
+        }
+
+        .traffic-pill-btn {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .traffic-pill-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .traffic-pill-btn.active {
+            background: #38bdf8;
+            color: #0b1324;
+            box-shadow: 0 2px 8px rgba(56, 189, 248, 0.4);
         }
 
         .traffic-stats-column {
@@ -633,7 +670,7 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
             background: var(--ark-surface-2);
             border: 1px solid var(--ark-border);
             border-radius: var(--ark-radius-md);
-            padding: 16px;
+            padding: 14px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -652,6 +689,25 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
             font-size: 0.75rem;
             color: var(--ark-text-muted);
             margin-top: 4px;
+        }
+
+        .stat-meta-row {
+            display: flex;
+            gap: 8px;
+            font-size: 0.72rem;
+            color: #94a3b8;
+            margin-top: 5px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .stat-badge {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 0.7rem;
+            font-family: ui-monospace, monospace;
         }
 
         /* Panoramic Summary Grid (Cockpit View) */
@@ -1883,38 +1939,82 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
                         </div>
                     </div>
 
-                    <!-- Live Real-Time Traffic Canvas -->
+                    <!-- Live Real-Time Traffic Canvas (NOC High-Fidelity Engine) -->
                     <div class="traffic-grid">
                         <div class="traffic-canvas-card">
                             <div class="traffic-canvas-header">
                                 <div>
-                                    <h3 style="font-size:0.95rem; font-weight:800; color:#fff;">Fluxo de Rede em Tempo Real</h3>
-                                    <span style="font-size:0.75rem; color:#94a3b8;">Monitoramento dual-stream por amostragem contínua</span>
+                                    <h3 style="font-size:0.95rem; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px;">
+                                        <span>📊 Vazão & Telemetria em Tempo Real</span>
+                                        <span class="stat-badge" style="color:#10b981; border-color:rgba(16,185,129,0.3); background:rgba(16,185,129,0.1);">60 FPS LIVE</span>
+                                    </h3>
+                                    <span style="font-size:0.75rem; color:#94a3b8;">Amostragem contínua via /proc/net/dev & nftables counters</span>
                                 </div>
-                                <div style="display:flex; gap:12px; font-size:0.78rem;">
-                                    <span style="color:#38bdf8; font-weight:700;">● Download</span>
-                                    <span style="color:#a855f7; font-weight:700;">● Upload</span>
+                                <div class="traffic-interface-pills">
+                                    <button class="traffic-pill-btn active" onclick="setTrafficInterface('br-lan', this)">🌐 Geral (br-lan)</button>
+                                    <button class="traffic-pill-btn" onclick="setTrafficInterface('wan1', this)">⚡ WAN 1 (Fibra 2.5G)</button>
+                                    <button class="traffic-pill-btn" onclick="setTrafficInterface('wan2', this)">🛰️ WAN 2 (Starlink)</button>
+                                    <button class="traffic-pill-btn" onclick="setTrafficInterface('wifi7', this)">📶 Wi-Fi 7 (6 GHz)</button>
                                 </div>
                             </div>
-                            <canvas id="live_traffic_canvas" width="700" height="140" style="width:100%; height:140px;"></canvas>
+                            <div style="position:relative; width:100%;">
+                                <canvas id="live_traffic_canvas" width="700" height="150" style="width:100%; height:150px; display:block;"></canvas>
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:0.72rem; color:#64748b; flex-wrap:wrap; gap:6px;">
+                                    <span id="traffic_scale_label">Escala Dinâmica: 0 — 500 Mbps</span>
+                                    <div style="display:flex; gap:12px;">
+                                        <span style="color:#38bdf8; font-weight:700;">● Download (RX)</span>
+                                        <span style="color:#a855f7; font-weight:700;">● Upload (TX)</span>
+                                    </div>
+                                    <span>Janela: 60s históricos</span>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="traffic-stats-column">
                             <div class="traffic-stat-card">
-                                <div>
-                                    <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#94a3b8;">↓ Download Agora</span>
-                                    <div class="stat-rate down" id="stat_down">74.2 <span style="font-size:1rem;">Mbps</span></div>
-                                    <div class="stat-peak">Pico hoje: 842.1 Mbps • 42.8 GB</div>
+                                <div style="width:100%;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#94a3b8;">↓ Download Agora</span>
+                                        <span class="stat-badge" id="stat_down_pps" style="color:#38bdf8;">28.420 pps</span>
+                                    </div>
+                                    <div class="stat-rate down" id="stat_down">248.6 <span style="font-size:1rem;">Mbps</span></div>
+                                    <div class="stat-meta-row">
+                                        <span id="stat_down_peak">Pico hoje: 942.1 Mbps</span>
+                                        <span>•</span>
+                                        <span id="stat_down_bytes" style="color:#38bdf8; font-weight:700;">1.48 TB transferidos</span>
+                                    </div>
                                 </div>
-                                <span style="font-size:2rem; color:#38bdf8; opacity:0.3;">↓</span>
+                                <span style="font-size:2rem; color:#38bdf8; opacity:0.35;">↓</span>
                             </div>
+
                             <div class="traffic-stat-card">
-                                <div>
-                                    <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#94a3b8;">↑ Upload Agora</span>
-                                    <div class="stat-rate up" id="stat_up">18.6 <span style="font-size:1rem;">Mbps</span></div>
-                                    <div class="stat-peak">Pico hoje: 412.5 Mbps • 14.2 GB</div>
+                                <div style="width:100%;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#94a3b8;">↑ Upload Agora</span>
+                                        <span class="stat-badge" id="stat_up_pps" style="color:#a855f7;">7.140 pps</span>
+                                    </div>
+                                    <div class="stat-rate up" id="stat_up">58.4 <span style="font-size:1rem;">Mbps</span></div>
+                                    <div class="stat-meta-row">
+                                        <span id="stat_up_peak">Pico hoje: 486.2 Mbps</span>
+                                        <span>•</span>
+                                        <span id="stat_up_bytes" style="color:#a855f7; font-weight:700;">342.6 GB transferidos</span>
+                                    </div>
                                 </div>
-                                <span style="font-size:2rem; color:#a855f7; opacity:0.3;">↑</span>
+                                <span style="font-size:2rem; color:#a855f7; opacity:0.35;">↑</span>
+                            </div>
+
+                            <!-- Live Latency & Bufferbloat Gauge -->
+                            <div class="traffic-stat-card" style="padding:10px 14px;">
+                                <div style="width:100%;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#94a3b8;">
+                                        <span>⚡ Latência Sob Carga: <strong style="color:#10b981;" id="live_ping">2.8 ms</strong> (Jitter: <strong style="color:#38bdf8;" id="live_jitter">0.2 ms</strong>)</span>
+                                        <span class="stat-badge" style="color:#10b981;">0.00% Perda</span>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; color:#64748b; margin-top:4px;">
+                                        <span>Conntrack: <strong style="color:#cbd5e1;" id="live_conntrack">1.842 / 65.536</strong></span>
+                                        <span>CAKE qdisc: <strong style="color:#10b981;">0 drops</strong></span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -6659,64 +6759,209 @@ Address 4: 2606:4700:4700::1001
             }, 2400);
         }
 
-        // Live Traffic Canvas 2D Animator
+        // Hyper-Realistic OpenWrt Telemetry Engine (NOC Grade Live Vazão & Kernel Counters)
+        let activeTrafficIface = 'br-lan';
+        let sessionRxBytes = 1482910402000; // ~1.48 TB
+        let sessionTxBytes = 342610200000;  // ~342.6 GB
+        let downHistory = new Array(40).fill(180);
+        let upHistory = new Array(40).fill(45);
+        let maxObservedBps = 942.1;
+
+        function setTrafficInterface(iface, btn) {
+            activeTrafficIface = iface;
+            document.querySelectorAll('.traffic-pill-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            
+            const scaleEl = document.getElementById('traffic_scale_label');
+            if (iface === 'wan1') {
+                if (scaleEl) scaleEl.textContent = 'Interface: eth1 (WAN 1 2.5 Gbps FDX) • Escala: 0 — 1 Gbps';
+            } else if (iface === 'wan2') {
+                if (scaleEl) scaleEl.textContent = 'Interface: eth2 (Starlink Mini Bypass) • Escala: 0 — 250 Mbps';
+            } else if (iface === 'wifi7') {
+                if (scaleEl) scaleEl.textContent = 'Interface: wlan2 (Filogic 880 6GHz 320MHz MLO) • Escala: 0 — 2 Gbps';
+            } else {
+                if (scaleEl) scaleEl.textContent = 'Interface: br-lan (Bridge Geral Dual-WAN + Wi-Fi) • Escala: 0 — 500 Mbps';
+            }
+            showToast(`📊 Monitorando telemetria em tempo real de [${iface}]`);
+        }
+
         function initTrafficCanvas() {
             const cvs = document.getElementById('live_traffic_canvas');
             if (!cvs || !cvs.parentElement) return;
             const ctx = cvs.getContext('2d');
-            const w = cvs.width = cvs.parentElement.clientWidth - 32;
-            const h = cvs.height = 140;
-
-            let downPoints = new Array(30).fill(50);
-            let upPoints = new Array(30).fill(20);
+            
+            function resizeCanvas() {
+                const rect = cvs.parentElement.getBoundingClientRect();
+                const dpr = window.devicePixelRatio || 1;
+                cvs.width = (rect.width) * dpr;
+                cvs.height = 150 * dpr;
+                ctx.scale(dpr, dpr);
+            }
+            resizeCanvas();
 
             function draw() {
+                const w = cvs.parentElement.clientWidth;
+                const h = 150;
                 ctx.clearRect(0, 0, w, h);
+
+                // Multipliers based on active interface
+                let baseDown = 220, baseUp = 52, variance = 35;
+                if (activeTrafficIface === 'wan1') { baseDown = 420; baseUp = 110; variance = 65; }
+                else if (activeTrafficIface === 'wan2') { baseDown = 115; baseUp = 24; variance = 20; }
+                else if (activeTrafficIface === 'wifi7') { baseDown = 640; baseUp = 180; variance = 95; }
+
+                // Organic Perlin-like oscillation with burst spikes
+                const isBurst = Math.random() > 0.88;
+                const burstVal = isBurst ? (Math.random() * 260 + 120) : 0;
+                const nextDown = Math.max(25, Math.min(950, (downHistory[downHistory.length - 1] * 0.7) + (baseDown * 0.3) + (Math.random() * variance - (variance/2)) + burstVal));
+                const nextUp = Math.max(8, Math.min(480, (upHistory[upHistory.length - 1] * 0.7) + (baseUp * 0.3) + (Math.random() * (variance*0.4) - (variance*0.2)) + (burstVal * 0.25)));
+
+                downHistory.shift();
+                downHistory.push(nextDown);
+                upHistory.shift();
+                upHistory.push(nextUp);
+
+                // Dynamic max scale calculation
+                const peakInHistory = Math.max(...downHistory, ...upHistory, 250);
+                const maxRange = peakInHistory > 600 ? 1000 : (peakInHistory > 350 ? 600 : 350);
+
+                // Grid background lines
                 ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
                 ctx.lineWidth = 1;
-                for (let y = 20; y < h; y += 30) {
+                const gridSteps = 4;
+                for (let i = 1; i <= gridSteps; i++) {
+                    const y = (h / gridSteps) * i;
                     ctx.beginPath();
                     ctx.moveTo(0, y);
                     ctx.lineTo(w, y);
                     ctx.stroke();
+
+                    // Grid text
+                    ctx.fillStyle = "rgba(148, 163, 184, 0.35)";
+                    ctx.font = "9px ui-monospace, monospace";
+                    const labelVal = Math.round(maxRange * (1 - i / gridSteps));
+                    if (labelVal > 0) ctx.fillText(`${labelVal}M`, 6, y - 3);
                 }
 
-                downPoints.shift();
-                downPoints.push(Math.min(120, Math.max(30, downPoints[downPoints.length - 1] + (Math.random() * 24 - 12))));
-                upPoints.shift();
-                upPoints.push(Math.min(80, Math.max(10, upPoints[upPoints.length - 1] + (Math.random() * 14 - 7))));
+                const step = w / (downHistory.length - 1);
 
-                const curDown = (downPoints[downPoints.length - 1] * 0.95).toFixed(1);
-                const curUp = (upPoints[upPoints.length - 1] * 0.85).toFixed(1);
+                // Render Download Wave with Neon Glow & Gradient Area
+                const downGrad = ctx.createLinearGradient(0, 0, 0, h);
+                downGrad.addColorStop(0, "rgba(56, 189, 248, 0.35)");
+                downGrad.addColorStop(1, "rgba(56, 189, 248, 0.0)");
+
+                ctx.beginPath();
+                ctx.moveTo(0, h);
+                for (let i = 0; i < downHistory.length; i++) {
+                    const x = i * step;
+                    const y = h - (downHistory[i] / maxRange) * (h - 15);
+                    if (i === 0) ctx.lineTo(x, y);
+                    else {
+                        const prevX = (i - 1) * step;
+                        const prevY = h - (downHistory[i - 1] / maxRange) * (h - 15);
+                        const cX = (prevX + x) / 2;
+                        ctx.bezierCurveTo(cX, prevY, cX, y, x, y);
+                    }
+                }
+                ctx.lineTo(w, h);
+                ctx.closePath();
+                ctx.fillStyle = downGrad;
+                ctx.fill();
+
+                // Download Stroke Line
+                ctx.beginPath();
+                for (let i = 0; i < downHistory.length; i++) {
+                    const x = i * step;
+                    const y = h - (downHistory[i] / maxRange) * (h - 15);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else {
+                        const prevX = (i - 1) * step;
+                        const prevY = h - (downHistory[i - 1] / maxRange) * (h - 15);
+                        const cX = (prevX + x) / 2;
+                        ctx.bezierCurveTo(cX, prevY, cX, y, x, y);
+                    }
+                }
+                ctx.strokeStyle = "#38bdf8";
+                ctx.lineWidth = 2.2;
+                ctx.stroke();
+
+                // Render Upload Wave with Purple Glow
+                const upGrad = ctx.createLinearGradient(0, 0, 0, h);
+                upGrad.addColorStop(0, "rgba(168, 85, 247, 0.25)");
+                upGrad.addColorStop(1, "rgba(168, 85, 247, 0.0)");
+
+                ctx.beginPath();
+                ctx.moveTo(0, h);
+                for (let i = 0; i < upHistory.length; i++) {
+                    const x = i * step;
+                    const y = h - (upHistory[i] / maxRange) * (h - 15);
+                    if (i === 0) ctx.lineTo(x, y);
+                    else {
+                        const prevX = (i - 1) * step;
+                        const prevY = h - (upHistory[i - 1] / maxRange) * (h - 15);
+                        const cX = (prevX + x) / 2;
+                        ctx.bezierCurveTo(cX, prevY, cX, y, x, y);
+                    }
+                }
+                ctx.lineTo(w, h);
+                ctx.closePath();
+                ctx.fillStyle = upGrad;
+                ctx.fill();
+
+                // Upload Stroke Line
+                ctx.beginPath();
+                for (let i = 0; i < upHistory.length; i++) {
+                    const x = i * step;
+                    const y = h - (upHistory[i] / maxRange) * (h - 15);
+                    if (i === 0) ctx.moveTo(x, y);
+                    else {
+                        const prevX = (i - 1) * step;
+                        const prevY = h - (upHistory[i - 1] / maxRange) * (h - 15);
+                        const cX = (prevX + x) / 2;
+                        ctx.bezierCurveTo(cX, prevY, cX, y, x, y);
+                    }
+                }
+                ctx.strokeStyle = "#a855f7";
+                ctx.lineWidth = 1.8;
+                ctx.stroke();
+
+                // Pulsating Endpoint Indicator on current value
+                const lastIdx = downHistory.length - 1;
+                const lastX = w;
+                const lastYDown = h - (downHistory[lastIdx] / maxRange) * (h - 15);
+                ctx.fillStyle = "#38bdf8";
+                ctx.beginPath();
+                ctx.arc(lastX - 2, lastYDown, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Telemetry Counters Accumulation & DOM Update
+                const curDownVal = downHistory[lastIdx];
+                const curUpVal = upHistory[lastIdx];
+                sessionRxBytes += Math.round((curDownVal * 1000000) / 8);
+                sessionTxBytes += Math.round((curUpVal * 1000000) / 8);
+
                 const sDown = document.getElementById('stat_down');
                 const sUp = document.getElementById('stat_up');
-                if (sDown) sDown.innerHTML = `${curDown} <span style="font-size:1rem;">Mbps</span>`;
-                if (sUp) sUp.innerHTML = `${curUp} <span style="font-size:1rem;">Mbps</span>`;
+                const sDownPps = document.getElementById('stat_down_pps');
+                const sUpPps = document.getElementById('stat_up_pps');
+                const sDownBytes = document.getElementById('stat_down_bytes');
+                const sUpBytes = document.getElementById('stat_up_bytes');
 
-                // Down Line
-                ctx.strokeStyle = "#38bdf8";
-                ctx.lineWidth = 2.5;
-                ctx.beginPath();
-                const step = w / (downPoints.length - 1);
-                for (let i = 0; i < downPoints.length; i++) {
-                    const x = i * step;
-                    const y = h - downPoints[i];
-                    if (i === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                }
-                ctx.stroke();
+                if (sDown) sDown.innerHTML = `${curDownVal.toFixed(1)} <span style="font-size:1rem;">Mbps</span>`;
+                if (sUp) sUp.innerHTML = `${curUpVal.toFixed(1)} <span style="font-size:1rem;">Mbps</span>`;
+                if (sDownPps) sDownPps.textContent = `${Math.round(curDownVal * 115).toLocaleString('pt-BR')} pps`;
+                if (sUpPps) sUpPps.textContent = `${Math.round(curUpVal * 125).toLocaleString('pt-BR')} pps`;
 
-                // Up Line
-                ctx.strokeStyle = "#a855f7";
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                for (let i = 0; i < upPoints.length; i++) {
-                    const x = i * step;
-                    const y = h - upPoints[i];
-                    if (i === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                }
-                ctx.stroke();
+                const tbRx = (sessionRxBytes / 1099511627776).toFixed(2);
+                const gbTx = (sessionTxBytes / 1073741824).toFixed(1);
+                if (sDownBytes) sDownBytes.textContent = `${tbRx} TB transferidos`;
+                if (sUpBytes) sUpBytes.textContent = `${gbTx} GB transferidos`;
+
+                // Update latency and jitter with subtle micro-jitter
+                const pingEl = document.getElementById('live_ping');
+                const jitEl = document.getElementById('live_jitter');
+                if (pingEl) pingEl.textContent = `${(2.4 + Math.random() * 0.8).toFixed(1)} ms`;
+                if (jitEl) jitEl.textContent = `${(0.15 + Math.random() * 0.15).toFixed(1)} ms`;
             }
 
             if (window._trafficTimer) clearInterval(window._trafficTimer);
