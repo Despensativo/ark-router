@@ -295,6 +295,9 @@ wifi_qca_apply_roaming_tuning() {
 		uci -q set "wireless.$iface.wnm_sleep_mode=1"
 		uci -q set "wireless.$iface.rnr=1"
 		uci -q set "wireless.$iface.disassoc_low_ack=0"
+		uci -q set "wireless.$iface.wpa_group_rekey=0"
+		uci -q set "wireless.$iface.skip_inactivity_poll=1"
+		uci -q set "wireless.$iface.max_inactivity=3600"
 		uci -q delete "wireless.$iface.ieee80211r" 2>/dev/null || true
 		uci -q delete "wireless.$iface.ft_over_ds" 2>/dev/null || true
 		uci -q delete "wireless.$iface.ft_psk_generate_local" 2>/dev/null || true
@@ -1052,12 +1055,15 @@ handle_wifi() {
 			# Remove restricoes toxicas de taxas que causam retransmissoes e quedas nas Alexas
 			uci -q delete "wireless.$radio2.legacy_rates"
 			uci -q delete "wireless.$radio2.basic_rate"
-			# Aplica protecao anti-desconexao disassoc_low_ack=0 e dtim_period=2 em todas as interfaces AP 2.4G
+			# Aplica protecao anti-desconexao disassoc_low_ack=0, dtim_period=2 e sono blindado em todas as interfaces AP 2.4G
 			for iface in $(uci -q show wireless | grep -E "\.device=['\"]?$radio2['\"]?" | cut -d. -f2); do
 				mode="$(uci -q get wireless.$iface.mode || echo ap)"
 				if [ "$mode" = "ap" ]; then
 					uci -q set "wireless.$iface.disassoc_low_ack=0"
 					uci -q set "wireless.$iface.dtim_period=2"
+					uci -q set "wireless.$iface.wpa_group_rekey=0"
+					uci -q set "wireless.$iface.skip_inactivity_poll=1"
+					uci -q set "wireless.$iface.max_inactivity=3600"
 				fi
 			done
 			uci commit wireless
@@ -1270,6 +1276,9 @@ EOF
 				uci -q set "wireless.$iface.rnr=1"
 				uci -q set "wireless.$iface.ieee80211v=1"
 				uci -q set "wireless.$iface.disassoc_low_ack=0"
+				uci -q set "wireless.$iface.wpa_group_rekey=0"
+				uci -q set "wireless.$iface.skip_inactivity_poll=1"
+				uci -q set "wireless.$iface.max_inactivity=3600"
 
 				if ark_hostapd_has_wnm; then
 					uci -q set "wireless.$iface.bss_transition=1"
@@ -1380,7 +1389,12 @@ EOF
 						uci -q set usteer.@usteer[0].load_balancing_threshold='3'
 						uci -q set usteer.@usteer[0].band_steering_threshold='5'
 						uci -q set usteer.@usteer[0].band_steering_min_snr='-70'
-						uci -q set usteer.@usteer[0].kick_threshold='-78'
+						uci -q set usteer.@usteer[0].kick_threshold='-85'
+						uci -q set usteer.@usteer[0].load_kick_enabled='0'
+						uci -q set usteer.@usteer[0].roam_kick_delay='60000'
+						uci -q set usteer.@usteer[0].roam_scan_snr='-75'
+						uci -q set usteer.@usteer[0].signal_diff_threshold='8'
+						uci -q set usteer.@usteer[0].band_steering_interval='120000'
 						uci -q set usteer.@usteer[0].max_retries='3'
 						uci commit usteer 2>/dev/null || true
 						/etc/init.d/usteer enable >/dev/null 2>&1 || true
@@ -1400,7 +1414,12 @@ EOF
 				uci -q set usteer.@usteer[0].load_balancing_threshold='3'
 				uci -q set usteer.@usteer[0].band_steering_threshold='5'
 				uci -q set usteer.@usteer[0].band_steering_min_snr='-70'
-				uci -q set usteer.@usteer[0].kick_threshold='-78'
+				uci -q set usteer.@usteer[0].kick_threshold='-85'
+				uci -q set usteer.@usteer[0].load_kick_enabled='0'
+				uci -q set usteer.@usteer[0].roam_kick_delay='60000'
+				uci -q set usteer.@usteer[0].roam_scan_snr='-75'
+				uci -q set usteer.@usteer[0].signal_diff_threshold='8'
+				uci -q set usteer.@usteer[0].band_steering_interval='120000'
 				uci -q set usteer.@usteer[0].max_retries='3'
 				uci commit usteer 2>/dev/null || true
 				# Garante que 802.11v (bss_transition se suportado), 802.11k e RNR estejam ativos nos APs para o usteer operar
@@ -1411,6 +1430,10 @@ EOF
 					uci -q set "wireless.$iface.rrm_beacon_report=1"
 					uci -q set "wireless.$iface.rnr=1"
 					uci -q set "wireless.$iface.ieee80211v=1"
+					uci -q set "wireless.$iface.disassoc_low_ack=0"
+					uci -q set "wireless.$iface.wpa_group_rekey=0"
+					uci -q set "wireless.$iface.skip_inactivity_poll=1"
+					uci -q set "wireless.$iface.max_inactivity=3600"
 					if ark_hostapd_has_wnm; then
 						uci -q set "wireless.$iface.bss_transition=1"
 						uci -q set "wireless.$iface.wnm_sleep_mode=1"
@@ -1992,6 +2015,8 @@ EOF
 				uci -q set "wireless.$iface.ieee80211w=1"
 				uci -q set "wireless.$iface.disassoc_low_ack=0"
 				uci -q set "wireless.$iface.wpa_group_rekey=0"
+				uci -q set "wireless.$iface.skip_inactivity_poll=1"
+				uci -q set "wireless.$iface.max_inactivity=3600"
 			done
 			uci -q set equipe_dashboard.wifi.wifi6_accel=1
 			uci commit equipe_dashboard 2>/dev/null || true

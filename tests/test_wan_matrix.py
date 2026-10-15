@@ -901,8 +901,12 @@ config wifi-iface 'default_radio1'
         # 4. Verifica persistencia no UCI
         self.assertEqual(self.sb.uci_get("wireless.default_radio0.wpa_group_rekey"), "0")
         self.assertEqual(self.sb.uci_get("wireless.default_radio0.disassoc_low_ack"), "0")
+        self.assertEqual(self.sb.uci_get("wireless.default_radio0.skip_inactivity_poll"), "1")
+        self.assertEqual(self.sb.uci_get("wireless.default_radio0.max_inactivity"), "3600")
         self.assertEqual(self.sb.uci_get("wireless.default_radio1.wpa_group_rekey"), "0")
         self.assertEqual(self.sb.uci_get("wireless.default_radio1.disassoc_low_ack"), "0")
+        self.assertEqual(self.sb.uci_get("wireless.default_radio1.skip_inactivity_poll"), "1")
+        self.assertEqual(self.sb.uci_get("wireless.default_radio1.max_inactivity"), "3600")
         self.assertEqual(self.sb.uci_get("wireless.radio0.twt_responder"), "0")
 
         # 5. Nova auditoria deve reportar OK

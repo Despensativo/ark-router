@@ -1338,10 +1338,12 @@ ark_doctor_audit() {
 				fi
 			done
 
-			# Verifica se a calibração de alta velocidade do usteer está presente (-70 dBm)
+			# Verifica se a calibração de alta velocidade e anti-chute do usteer está presente (-70 dBm, kick -85, histerese 8 dB)
 			local usteer_snr="$($uci_cmd get usteer.@usteer[0].band_steering_min_snr 2>/dev/null || echo '')"
+			local usteer_kick="$($uci_cmd get usteer.@usteer[0].kick_threshold 2>/dev/null || echo '')"
+			local usteer_lk="$($uci_cmd get usteer.@usteer[0].load_kick_enabled 2>/dev/null || echo '')"
 			local usteer_needs_calib=0
-			if [ "$usteer_snr" != "-70" ]; then
+			if [ "$usteer_snr" != "-70" ] || [ "$usteer_kick" != "-85" ] || [ "$usteer_lk" != "0" ]; then
 				usteer_needs_calib=1
 			fi
 
@@ -1376,24 +1378,25 @@ ark_doctor_audit() {
 						$uci_cmd set usteer.@usteer[0].load_balancing_threshold='3'
 						$uci_cmd set usteer.@usteer[0].band_steering_threshold='5'
 						$uci_cmd set usteer.@usteer[0].band_steering_min_snr='-70'
-						$uci_cmd set usteer.@usteer[0].kick_threshold='-78'
+						$uci_cmd set usteer.@usteer[0].kick_threshold='-85'
+						$uci_cmd set usteer.@usteer[0].load_kick_enabled='0'
+						$uci_cmd set usteer.@usteer[0].roam_kick_delay='60000'
+						$uci_cmd set usteer.@usteer[0].roam_scan_snr='-75'
+						$uci_cmd set usteer.@usteer[0].signal_diff_threshold='8'
+						$uci_cmd set usteer.@usteer[0].band_steering_interval='120000'
 						$uci_cmd set usteer.@usteer[0].max_retries='3'
 						$uci_cmd commit usteer 2>/dev/null || true
 						/etc/init.d/usteer restart >/dev/null 2>&1 || true
 					fi
 
 					fixes_applied=$((fixes_applied + 1))
-					add_check "Band Steering (usteer)" "FIXED" "Daemon usteer ativo; 802.11k, RNR, anti-desconexão (disassoc_low_ack=0) e calibração (-70 dBm) sincronizados."
+					add_check "Band Steering (usteer)" "FIXED" "Daemon usteer calibrado com histerese (8 dB), anti-chute (load_kick=0, kick=-85), 802.11k/v e subida para 5GHz (-70 dBm)."
 				else
 					warnings=$((warnings + 1))
-					add_check "Band Steering (usteer)" "WARN" "usteer ativo, mas parâmetros de roaming 802.11k/RNR, anti-desconexão (disassoc_low_ack) ou calibração de alta velocidade (-70 dBm) ausentes."
+					add_check "Band Steering (usteer)" "WARN" "usteer ativo, mas parâmetros de roaming 802.11k/RNR, histerese ou anti-chute descalibrados."
 				fi
 			else
-				if [ "$wnm_capable" = 1 ]; then
-					add_check "Band Steering (usteer)" "OK" "Assistente de Band Steering (usteer) ativo com 802.11k/v (bss_transition), anti-desconexão (disassoc_low_ack=0) e calibração de alta velocidade (-70 dBm)."
-				else
-					add_check "Band Steering (usteer)" "OK" "Assistente de Band Steering (usteer) ativo com 802.11k, RNR, anti-desconexão (disassoc_low_ack=0) e calibração -70 dBm (wpad-basic ativo; bss_transition resguardado)."
-				fi
+				add_check "Band Steering (usteer)" "OK" "Assistente de Band Steering (usteer) ativo com 802.11k/v (bss_transition), histerese (8 dB), anti-chute (kick=-85) e calibração de alta velocidade."
 			fi
 
 		elif [ "$usteer_installed" = 1 ]; then
@@ -1407,7 +1410,12 @@ ark_doctor_audit() {
 				$uci_cmd set usteer.@usteer[0].load_balancing_threshold='3'
 				$uci_cmd set usteer.@usteer[0].band_steering_threshold='5'
 				$uci_cmd set usteer.@usteer[0].band_steering_min_snr='-70'
-				$uci_cmd set usteer.@usteer[0].kick_threshold='-78'
+				$uci_cmd set usteer.@usteer[0].kick_threshold='-85'
+				$uci_cmd set usteer.@usteer[0].load_kick_enabled='0'
+				$uci_cmd set usteer.@usteer[0].roam_kick_delay='60000'
+				$uci_cmd set usteer.@usteer[0].roam_scan_snr='-75'
+				$uci_cmd set usteer.@usteer[0].signal_diff_threshold='8'
+				$uci_cmd set usteer.@usteer[0].band_steering_interval='120000'
 				$uci_cmd set usteer.@usteer[0].max_retries='3'
 				$uci_cmd commit usteer 2>/dev/null || true
 				for kv_sec in $ap_sections; do
@@ -1469,7 +1477,12 @@ ark_doctor_audit() {
 							$uci_cmd set usteer.@usteer[0].load_balancing_threshold='3'
 							$uci_cmd set usteer.@usteer[0].band_steering_threshold='5'
 							$uci_cmd set usteer.@usteer[0].band_steering_min_snr='-70'
-							$uci_cmd set usteer.@usteer[0].kick_threshold='-78'
+							$uci_cmd set usteer.@usteer[0].kick_threshold='-85'
+							$uci_cmd set usteer.@usteer[0].load_kick_enabled='0'
+							$uci_cmd set usteer.@usteer[0].roam_kick_delay='60000'
+							$uci_cmd set usteer.@usteer[0].roam_scan_snr='-75'
+							$uci_cmd set usteer.@usteer[0].signal_diff_threshold='8'
+							$uci_cmd set usteer.@usteer[0].band_steering_interval='120000'
 							$uci_cmd set usteer.@usteer[0].max_retries='3'
 							$uci_cmd commit usteer 2>/dev/null || true
 							for kv_sec in $ap_sections; do
@@ -1511,7 +1524,7 @@ ark_doctor_audit() {
 		fi
 	fi
 
-	# 12d. Auditoria e Autocura de Estabilidade Wi-Fi Mobile & IoT (Rekey, Low-ACK & TWT)
+	# 12d. Auditoria e Autocura de Estabilidade Wi-Fi Mobile & IoT (Rekey, Low-ACK, Inatividade & TWT)
 	# Previne desconexões a cada 5min no Galaxy S24/Android e quedas de IoT em repouso
 	local mobile_iot_issues=0
 	local mobile_iot_details=""
@@ -1526,6 +1539,8 @@ ark_doctor_audit() {
 	if [ -n "$all_ap_secs" ]; then
 		local rekey_mismatch=0
 		local lowack_missing=0
+		local skip_poll_missing=0
+		local inactivity_short=0
 		for chk_iface in $all_ap_secs; do
 			local cur_rekey="$($uci_cmd get "wireless.$chk_iface.wpa_group_rekey" 2>/dev/null || echo '')"
 			if [ "$cur_rekey" != "0" ]; then
@@ -1544,6 +1559,24 @@ ark_doctor_audit() {
 					wifi_needs_reload=1
 				fi
 			fi
+
+			local cur_skip_poll="$($uci_cmd get "wireless.$chk_iface.skip_inactivity_poll" 2>/dev/null || echo '')"
+			if [ "$cur_skip_poll" != "1" ]; then
+				skip_poll_missing=$((skip_poll_missing + 1))
+				if [ "$auto_fix" = 1 ]; then
+					$uci_cmd set "wireless.$chk_iface.skip_inactivity_poll=1"
+					wifi_needs_reload=1
+				fi
+			fi
+
+			local cur_inactivity="$($uci_cmd get "wireless.$chk_iface.max_inactivity" 2>/dev/null || echo '')"
+			if [ "$cur_inactivity" != "3600" ]; then
+				inactivity_short=$((inactivity_short + 1))
+				if [ "$auto_fix" = 1 ]; then
+					$uci_cmd set "wireless.$chk_iface.max_inactivity=3600"
+					wifi_needs_reload=1
+				fi
+			fi
 		done
 
 		local twt_mismatch=0
@@ -1558,13 +1591,16 @@ ark_doctor_audit() {
 			fi
 		done
 
-		if [ "$rekey_mismatch" -gt 0 ] || [ "$lowack_missing" -gt 0 ] || [ "$twt_mismatch" -gt 0 ]; then
+		if [ "$rekey_mismatch" -gt 0 ] || [ "$lowack_missing" -gt 0 ] || [ "$skip_poll_missing" -gt 0 ] || [ "$inactivity_short" -gt 0 ] || [ "$twt_mismatch" -gt 0 ]; then
 			mobile_iot_issues=1
 			if [ "$rekey_mismatch" -gt 0 ]; then
 				mobile_iot_details="${mobile_iot_details} • Rotação periódica de chave GTK ativa ($rekey_mismatch interface(s))"
 			fi
 			if [ "$lowack_missing" -gt 0 ]; then
 				mobile_iot_details="${mobile_iot_details} • Proteção disassoc_low_ack ausente ($lowack_missing interface(s))"
+			fi
+			if [ "$skip_poll_missing" -gt 0 ] || [ "$inactivity_short" -gt 0 ]; then
+				mobile_iot_details="${mobile_iot_details} • Sondagem hostapd derrubando clientes dormindo"
 			fi
 			if [ "$twt_mismatch" -gt 0 ]; then
 				mobile_iot_details="${mobile_iot_details} • TWT Responder ativo ($twt_mismatch rádio(s))"
@@ -1575,13 +1611,13 @@ ark_doctor_audit() {
 			if [ "$auto_fix" = 1 ]; then
 				$uci_cmd commit wireless 2>/dev/null || true
 				fixes_applied=$((fixes_applied + 1))
-				add_check "Estabilidade Wi-Fi Mobile & IoT" "FIXED" "Parâmetros blindados: wpa_group_rekey=0 (fim das quedas periódicas de 5 min), disassoc_low_ack=0 universal e twt_responder=0 seguro."
+				add_check "Estabilidade Wi-Fi Mobile & IoT" "FIXED" "Parâmetros blindados: wpa_group_rekey=0 (fim das quedas de 5 min), sono blindado (skip_inactivity_poll=1, max_inactivity=3600), disassoc_low_ack=0 e twt_responder=0 seguro."
 			else
 				warnings=$((warnings + 1))
 				add_check "Estabilidade Wi-Fi Mobile & IoT" "WARN" "Configuração vulnerável a quedas no Galaxy S24 e IoT em repouso:${mobile_iot_details}."
 			fi
 		else
-			add_check "Estabilidade Wi-Fi Mobile & IoT" "OK" "Imune a quedas periódicas em repouso (wpa_group_rekey=0, disassoc_low_ack=0 universal e twt_responder seguro)."
+			add_check "Estabilidade Wi-Fi Mobile & IoT" "OK" "Imune a quedas periódicas em repouso (wpa_group_rekey=0, sono blindado 1h, disassoc_low_ack=0 e twt_responder seguro)."
 		fi
 	fi
 
