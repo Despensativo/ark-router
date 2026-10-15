@@ -197,8 +197,13 @@ wifi_enhancer_status() {
 		capable=1
 	fi
 
+	local is_qca=0
+	ark_has_qca_wifi && is_qca=1
+
 	local current_pkg=""
-	if ark_has_apk; then
+	if [ "$is_qca" = "1" ]; then
+		current_pkg="qca-hostapd-11be (Qualcomm QSDK)"
+	elif ark_has_apk; then
 		current_pkg="$(apk list -I 2>/dev/null | grep -E '^wpad' | head -n 1 | awk '{print $1}')"
 		[ -n "$current_pkg" ] || current_pkg="$(apk list -I 2>/dev/null | grep -E '^hostapd' | head -n 1 | awk '{print $1}')"
 	elif ark_has_opkg; then
@@ -232,7 +237,9 @@ wifi_enhancer_status() {
 	[ -n "$stage_num" ] || stage_num=0
 	[ -n "$progress" ] || progress=0
 
-	if [ "$has_wnm" = "1" ] && [ "$state" = "idle" ]; then
+	if [ "$is_qca" = "1" ] && [ "$state" = "idle" ]; then
+		message="Motor nativo Qualcomm QSDK (qca-hostapd-11be) com 802.11k/v, RNR Co-located (1 7) e FILS (20 ms) em silicio."
+	elif [ "$has_wnm" = "1" ] && [ "$state" = "idle" ]; then
 		message="Motor Pro wpad-mbedtls com 802.11v WNM e BSS Transition totalmente ativo."
 	elif [ "$has_wnm" = "0" ] && [ "$state" = "idle" ]; then
 		if [ "$capable" = "1" ]; then
@@ -249,6 +256,7 @@ wifi_enhancer_status() {
   "flash_free_mb": $flash_mb,
   "current_pkg": "$current_pkg",
   "has_wnm": $([ "$has_wnm" = "1" ] && echo "true" || echo "false"),
+  "is_qca": $([ "$is_qca" = "1" ] && echo "true" || echo "false"),
   "state": "$state",
   "stage": "$stage",
   "stage_num": $stage_num,
@@ -276,6 +284,39 @@ wifi_enhancer_update_status() {
 EOF
 }
 
+wifi_qca_apply_roaming_tuning() {
+	for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
+		[ "$(uci -q get "wireless.$iface.mode" || echo ap)" = "ap" ] || continue
+		uci -q set "wireless.$iface.rrm=1"
+		uci -q set "wireless.$iface.ieee80211k=1"
+		uci -q set "wireless.$iface.rrm_neighbor_report=1"
+		uci -q set "wireless.$iface.rrm_beacon_report=1"
+		uci -q set "wireless.$iface.bss_transition=1"
+		uci -q set "wireless.$iface.wnm_sleep_mode=1"
+		uci -q set "wireless.$iface.rnr=1"
+		uci -q set "wireless.$iface.disassoc_low_ack=0"
+		uci -q delete "wireless.$iface.ieee80211r" 2>/dev/null || true
+		uci -q delete "wireless.$iface.ft_over_ds" 2>/dev/null || true
+		uci -q delete "wireless.$iface.ft_psk_generate_local" 2>/dev/null || true
+		uci -q delete "wireless.$iface.mobility_domain" 2>/dev/null || true
+	done
+	uci commit wireless 2>/dev/null || true
+
+	if command -v cfg80211tool >/dev/null 2>&1; then
+		local r6="$(wifi_radio_6g)"
+		[ -n "$r6" ] || r6="wifi2"
+		if [ -d "/sys/class/net/$r6" ]; then
+			cfg80211tool "$r6" rnr_6ghz_colocated 1 7 >/dev/null 2>&1 || true
+		fi
+		# Aplica enable_fils 1 20 na interface AP 6 GHz ativa (ex: ath2 / wifi2)
+		for vap6 in ath2 wifi2_ap; do
+			if [ -d "/sys/class/net/$vap6" ]; then
+				cfg80211tool "$vap6" enable_fils 1 20 >/dev/null 2>&1 || true
+			fi
+		done
+	fi
+}
+
 wifi_enhancer_run_upgrade() {
 	local status_file="/tmp/ark_wifi_enhancer.status"
 	local lock_file="/tmp/ark_wifi_enhancer.lock"
@@ -288,6 +329,16 @@ wifi_enhancer_run_upgrade() {
 	fi
 	echo "$$" > "$lock_file"
 	trap 'rm -f "$lock_file"' EXIT INT TERM
+
+	# Blindagem Crítica Qualcomm QSDK (qcawificfg80211 / Acer Predator Connect T7):
+	# NUNCA substituir qca-hostapd-11be por wpad-mbedtls (quebraria os 3 rádios Wi-Fi 7, 320 MHz e MLO).
+	# Em QSDK, apenas sincroniza rrm=1, bss_transition=1, rnr_6ghz_colocated 1 7 e enable_fils 1 20.
+	if ark_has_qca_wifi; then
+		wifi_enhancer_update_status "running" "CONFIGURING" 6 90 "Detectado driver Qualcomm QSDK (qcawificfg80211): preservando qca-hostapd-11be e calibrando 802.11k/v, RNR 6GHz (1 7) e FILS (20 ms)..." ""
+		wifi_qca_apply_roaming_tuning
+		wifi_enhancer_update_status "completed" "COMPLETED" 7 100 "Calibracao Qualcomm QSDK concluida! qca-hostapd-11be preservado com 802.11k/v, RNR Co-located (1 7) e FILS (20 ms) ativos." ""
+		return 0
+	fi
 
 	# Etapa 1 / 7: PREFLIGHT
 	wifi_enhancer_update_status "running" "PREFLIGHT" 1 15 "Validando elegibilidade de hardware (RAM e armazenamento Flash)..." ""
@@ -1212,6 +1263,7 @@ EOF
 
 				# 802.11k, 802.11v (bss_transition), disassoc_low_ack=0 e RNR operam em todos os rádios (2.4G, 5G e 6G)
 				# Orientam celulares na troca de nós e frequências sem quedas bruscas por atenuação de parede
+				uci -q set "wireless.$iface.rrm=1"
 				uci -q set "wireless.$iface.ieee80211k=1"
 				uci -q set "wireless.$iface.rrm_neighbor_report=1"
 				uci -q set "wireless.$iface.rrm_beacon_report=1"
@@ -1256,6 +1308,9 @@ EOF
 				esac
 			done
 			uci commit wireless
+			if ark_has_qca_wifi; then
+				wifi_qca_apply_roaming_tuning
+			fi
 			(sleep 1; wifi reload) >/dev/null 2>&1 &
 			echo 'enabled'
 		else

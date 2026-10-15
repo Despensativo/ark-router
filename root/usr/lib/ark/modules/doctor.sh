@@ -1256,14 +1256,46 @@ ark_doctor_audit() {
 		add_check "Compatibilidade WPA3 e Roaming" "OK" "Handshake WPA3 protegido e imune a rejeições de chave FT-SAE."
 	fi
 
-	# 12c. Auditoria e Autocura de Band Steering (usteer / Qualcomm SON)
+	# 12c. Auditoria e Autocura de Band Steering (usteer / Qualcomm QSDK / SON)
 	local has_qca_son=0
 	if ark_has_qualcomm_son; then
 		has_qca_son=1
 	fi
 
 	if [ "$has_qca_son" = 1 ]; then
-		add_check "Band Steering & Roaming (Qualcomm SON)" "OK" "Gerenciado nativamente em silício pelo Qualcomm Wi-Fi SON (hyd / hyfi-bridging com aceleração PPE). usteer dispensado para evitar conflito de kernel."
+		local qca_missing_kv=""
+		for chk_sec in $ap_sections; do
+			local rrm_v="$($uci_cmd get "wireless.$chk_sec.rrm" 2>/dev/null || echo 0)"
+			local bt_v="$($uci_cmd get "wireless.$chk_sec.bss_transition" 2>/dev/null || echo 0)"
+			if [ "$rrm_v" != "1" ] || [ "$bt_v" != "1" ]; then
+				qca_missing_kv="$qca_missing_kv $chk_sec"
+			fi
+		done
+		if [ -n "$qca_missing_kv" ] && [ "$auto_fix" = 1 ]; then
+			for kv_sec in $qca_missing_kv; do
+				$uci_cmd set "wireless.$kv_sec.rrm=1"
+				$uci_cmd set "wireless.$kv_sec.ieee80211k=1"
+				$uci_cmd set "wireless.$kv_sec.rrm_neighbor_report=1"
+				$uci_cmd set "wireless.$kv_sec.rrm_beacon_report=1"
+				$uci_cmd set "wireless.$kv_sec.bss_transition=1"
+				$uci_cmd set "wireless.$kv_sec.wnm_sleep_mode=1"
+				$uci_cmd set "wireless.$kv_sec.rnr=1"
+				$uci_cmd set "wireless.$kv_sec.disassoc_low_ack=0"
+			done
+			$uci_cmd commit wireless 2>/dev/null || true
+			if command -v cfg80211tool >/dev/null 2>&1; then
+				[ -d /sys/class/net/wifi2 ] && cfg80211tool wifi2 rnr_6ghz_colocated 1 7 >/dev/null 2>&1 || true
+				[ -d /sys/class/net/ath2 ] && cfg80211tool ath2 enable_fils 1 20 >/dev/null 2>&1 || true
+			fi
+			wifi_needs_reload=1
+			fixes_applied=$((fixes_applied + 1))
+			add_check "Band Steering & Roaming (Qualcomm QSDK)" "FIXED" "Qualcomm QSDK (qca-hostapd-11be) calibrado com 802.11k/v (rrm=1, bss_transition=1), RNR Co-located (1 7) e FILS (20 ms). usteer bloqueado."
+		elif [ -n "$qca_missing_kv" ]; then
+			warnings=$((warnings + 1))
+			add_check "Band Steering & Roaming (Qualcomm QSDK)" "WARN" "Qualcomm QSDK detectado (usteer dispensado), mas flags rrm=1 / bss_transition=1 ausentes em algumas interfaces."
+		else
+			add_check "Band Steering & Roaming (Qualcomm QSDK)" "OK" "Gerenciado nativamente em silício pelo Qualcomm QSDK (qca-hostapd-11be com 802.11k/v, RNR Co-located 1 7 e FILS 20 ms). usteer e wpad-mbedtls bloqueados."
+		fi
 	elif [ "$has_unified_wifi" = 0 ]; then
 		add_check "Band Steering (usteer)" "OK" "Redes Wi-Fi segregadas ou rádio único. Band Steering (usteer) não aplicável."
 	else

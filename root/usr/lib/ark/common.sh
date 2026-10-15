@@ -60,9 +60,20 @@ ark_has_opkg() {
 	command -v opkg >/dev/null 2>&1
 }
 
+# Detecta se o roteador utiliza o driver proprietário Qualcomm QSDK (qcawificfg80211 / qca-hostapd-11be, ex: Acer Predator Connect T7)
+ark_has_qca_wifi() {
+	grep -q "qcawificfg80211" /etc/config/wireless 2>/dev/null || \
+	uci -q show wireless 2>/dev/null | grep -q "qcawificfg80211" || \
+	command -v cfg80211tool >/dev/null 2>&1
+}
+
 # Detecta se o binário hostapd/wpad em execução suporta 802.11v WNM (bss_transition)
-# No OpenWrt, imagens geradas com wpad-basic / hostapd-basic não compilam CONFIG_WNM e quebram se bss_transition for configurado
+# No OpenWrt, imagens geradas com wpad-basic / hostapd-basic não compilam CONFIG_WNM e quebram se bss_transition for configurado.
+# No Qualcomm QSDK (qcawificfg80211), o qca-hostapd-11be já vem compilado nativamente com OpenSSL e 802.11k/v/RNR/FILS completos.
 ark_hostapd_has_wnm() {
+	if ark_has_qca_wifi; then
+		return 0
+	fi
 	if ark_has_apk; then
 		if apk list -I 2>/dev/null | grep -E '^(wpad|hostapd)' | grep -q 'basic'; then
 			return 1
@@ -77,9 +88,10 @@ ark_hostapd_has_wnm() {
 	return 0
 }
 
-# Detecta se o roteador roda drivers e daemons proprietários Qualcomm Wi-Fi SON (QSDK / IPQ5332 / Predator T7)
-# Nesses ambientes, o band steering e roaming são gerenciados nativamente por hyd/PPE; usteer deve ser estritamente bloqueado
+# Detecta se o roteador roda drivers e daemons proprietários Qualcomm QSDK / Wi-Fi SON (qcawificfg80211 / IPQ5332 / Predator T7)
+# Nesses ambientes, o qca-hostapd não expõe objetos no ubus (usa /var/run/hostapd-wifiX + cfg80211tool) e o steering ocorre em silício (RNR Co-located + FILS + 802.11k/v ou hyd/PPE); usteer deve ser estritamente bloqueado
 ark_has_qualcomm_son() {
+	ark_has_qca_wifi || \
 	lsmod 2>/dev/null | grep -qE 'hyfi_bridging|qca_mcs|qca_ssdk' || \
 	[ -d /sys/module/hyfi_bridging ] || \
 	pgrep -x hyd >/dev/null 2>&1 || \
