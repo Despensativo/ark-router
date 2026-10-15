@@ -1097,6 +1097,40 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
             opacity: 1 !important;
             visibility: visible !important;
         }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 8px;
+        }
+
+        .form-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #94a3b8;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .form-select, .form-input {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            color: #f8fafc;
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .form-select:focus, .form-input:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+        }
 
         .modal-box {
             background: #0f192d;
@@ -1105,7 +1139,8 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
             width: 100%;
             max-width: 640px;
             box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85);
-            max-height: calc(100dvh - 36px);
+            height: auto;
+            max-height: calc(100dvh - 40px);
             display: flex;
             flex-direction: column;
             position: relative;
@@ -1580,64 +1615,72 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
                 border-radius: 8px !important;
             }
             .ark-table-swipe-hint { display: flex !important; }
-            /* Mobile Bottom Sheet Modal Optimization */
+            /* Mobile Responsive Modal Optimization (Natural Auto-Height & Zero Wasted Space) */
             #modal_overlay {
-                padding: 0 !important;
-                align-items: flex-end !important;
-                overflow: hidden !important;
+                padding: 14px 10px !important;
+                align-items: center !important;
+                justify-content: center !important;
+                overflow-y: auto !important;
             }
             .modal-box {
-                max-width: 100vw !important;
-                width: 100vw !important;
-                max-height: 92dvh !important;
-                height: 92dvh !important;
-                margin: 0 !important;
-                border-bottom-left-radius: 0 !important;
-                border-bottom-right-radius: 0 !important;
-                border-top-left-radius: 22px !important;
-                border-top-right-radius: 22px !important;
-                border-left: none !important;
-                border-right: none !important;
-                border-bottom: none !important;
-                border-top: 2px solid rgba(56, 189, 248, 0.45) !important;
-                box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.9) !important;
+                max-width: calc(100vw - 20px) !important;
+                width: calc(100vw - 20px) !important;
+                height: auto !important;
+                max-height: calc(100dvh - 28px) !important;
+                margin: auto !important;
+                border-radius: 16px !important;
+                border: 1px solid rgba(56, 189, 248, 0.35) !important;
+                box-shadow: 0 16px 50px rgba(0, 0, 0, 0.9) !important;
+                display: flex !important;
+                flex-direction: column !important;
             }
             .modal-box.modal-fullscreen {
-                max-height: 100dvh !important;
+                max-width: 100vw !important;
+                width: 100vw !important;
                 height: 100dvh !important;
-                border-top-left-radius: 0 !important;
-                border-top-right-radius: 0 !important;
-                border-top: none !important;
+                max-height: 100dvh !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
+                border: none !important;
             }
             .modal-header {
-                padding: 12px 16px !important;
+                padding: 14px 18px !important;
+                flex: 0 0 auto !important;
+                background: #0f192d !important;
             }
             .modal-header h3 {
                 font-size: 1.05rem !important;
             }
             .modal-body {
-                padding: 14px 16px 20px 16px !important;
+                padding: 16px 18px !important;
                 gap: 12px !important;
-                max-height: calc(92dvh - 125px) !important;
+                flex: 1 1 auto !important;
+                min-height: 0 !important;
+                max-height: none !important;
+                overflow-y: auto !important;
                 -webkit-overflow-scrolling: touch !important;
             }
             .modal-footer {
-                padding: 12px 16px 16px 16px !important;
-                flex-direction: column-reverse !important;
+                padding: 10px 16px !important;
+                display: grid !important;
+                grid-template-columns: 1fr 1.35fr !important;
+                flex-direction: row !important;
                 gap: 8px !important;
                 background: #09101c !important;
+                flex: 0 0 auto !important;
+                border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
             }
             .modal-footer .ark-btn {
                 width: 100% !important;
-                min-height: 44px !important;
-                font-size: 0.95rem !important;
+                height: 42px !important;
+                min-height: 42px !important;
+                font-size: 0.9rem !important;
                 font-weight: 700 !important;
+                padding: 0 10px !important;
+                display: flex !important;
+                align-items: center !important;
                 justify-content: center !important;
-            }
-            .modal-footer .ark-btn {
-                width: 100% !important;
-                min-height: 44px !important;
-                font-size: 0.92rem !important;
+                white-space: nowrap !important;
             }
             .form-select, .form-input {
                 min-height: 44px !important;
@@ -4579,7 +4622,7 @@ Address 4: 2606:4700:4700::1001
                         </div>
 
                         <!-- Split SSID Fields -->
-                        <div id="wifi_split_fields" style="display:none; display:flex; flex-direction:column; gap:12px;">
+                        <div id="wifi_split_fields" style="display:none; flex-direction:column; gap:12px;">
                             <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:6px; padding:10px;">
                                 <label class="form-label" style="color:#38bdf8;">Rádio 2.4 GHz (Maior Alcance)</label>
                                 <input type="text" class="form-input" id="m_wifi_ssid_2g" value="Wi-Fi-H&R-2.4G" placeholder="Nome 2.4G" style="margin-bottom:6px;">
