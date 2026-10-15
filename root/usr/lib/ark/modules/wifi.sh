@@ -1932,7 +1932,7 @@ EOF
 		[ "$(uci -q get equipe_dashboard.wifi.wifi6_accel)" = "1" ] && accel_en=1
 		if [ "$accel_en" = 0 ]; then
 			for r in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut -d= -f1); do
-				if [ "$(uci -q get wireless.$r.bss_color)" = "auto" ] || [ "$(uci -q get wireless.$r.twt_responder)" = "1" ]; then
+				if [ "$(uci -q get wireless.$r.bss_color)" = "auto" ] || [ "$(uci -q get wireless.$r.he_bss_color)" = "1" ] || [ "$(uci -q get wireless.$r.he_spatial_reuse)" = "1" ]; then
 					accel_en=1
 					break
 				fi
@@ -1973,7 +1973,7 @@ EOF
 				uci -q set "wireless.$r.bss_color=auto"
 				uci -q set "wireless.$r.he_bss_color=1"
 				uci -q set "wireless.$r.he_spatial_reuse=1"
-				uci -q set "wireless.$r.twt_responder=1"
+				uci -q set "wireless.$r.twt_responder=0"
 				uci -q set "wireless.$r.airtime_fairness=1"
 				uci -q set "wireless.$r.he_su_beamformer=1"
 				uci -q set "wireless.$r.he_su_beamformee=1"
@@ -1990,6 +1990,8 @@ EOF
 				[ "$mode" = "ap" ] || continue
 				# PMF adaptativo (opcional para clientes, obrigatório para WPA3)
 				uci -q set "wireless.$iface.ieee80211w=1"
+				uci -q set "wireless.$iface.disassoc_low_ack=0"
+				uci -q set "wireless.$iface.wpa_group_rekey=0"
 			done
 			uci -q set equipe_dashboard.wifi.wifi6_accel=1
 			uci commit equipe_dashboard 2>/dev/null || true

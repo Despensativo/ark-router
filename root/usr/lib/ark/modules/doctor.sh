@@ -1511,6 +1511,80 @@ ark_doctor_audit() {
 		fi
 	fi
 
+	# 12d. Auditoria e Autocura de Estabilidade Wi-Fi Mobile & IoT (Rekey, Low-ACK & TWT)
+	# Previne desconexões a cada 5min no Galaxy S24/Android e quedas de IoT em repouso
+	local mobile_iot_issues=0
+	local mobile_iot_details=""
+	local all_ap_secs=""
+
+	for sec in $($uci_cmd show wireless 2>/dev/null | sed -n 's/^wireless\.\([a-zA-Z0-9_]*\)=wifi-iface$/\1/p'); do
+		local sec_mode="$($uci_cmd get "wireless.$sec.mode" 2>/dev/null || echo 'ap')"
+		[ "$sec_mode" = "ap" ] || continue
+		all_ap_secs="$all_ap_secs $sec"
+	done
+
+	if [ -n "$all_ap_secs" ]; then
+		local rekey_mismatch=0
+		local lowack_missing=0
+		for chk_iface in $all_ap_secs; do
+			local cur_rekey="$($uci_cmd get "wireless.$chk_iface.wpa_group_rekey" 2>/dev/null || echo '')"
+			if [ "$cur_rekey" != "0" ]; then
+				rekey_mismatch=$((rekey_mismatch + 1))
+				if [ "$auto_fix" = 1 ]; then
+					$uci_cmd set "wireless.$chk_iface.wpa_group_rekey=0"
+					wifi_needs_reload=1
+				fi
+			fi
+
+			local cur_lowack="$($uci_cmd get "wireless.$chk_iface.disassoc_low_ack" 2>/dev/null || echo '')"
+			if [ "$cur_lowack" != "0" ]; then
+				lowack_missing=$((lowack_missing + 1))
+				if [ "$auto_fix" = 1 ]; then
+					$uci_cmd set "wireless.$chk_iface.disassoc_low_ack=0"
+					wifi_needs_reload=1
+				fi
+			fi
+		done
+
+		local twt_mismatch=0
+		for r in $($uci_cmd show wireless 2>/dev/null | sed -n 's/^wireless\.\([a-zA-Z0-9_]*\)=wifi-device$/\1/p'); do
+			local cur_twt="$($uci_cmd get "wireless.$r.twt_responder" 2>/dev/null || echo '0')"
+			if [ "$cur_twt" = "1" ]; then
+				twt_mismatch=$((twt_mismatch + 1))
+				if [ "$auto_fix" = 1 ]; then
+					$uci_cmd set "wireless.$r.twt_responder=0"
+					wifi_needs_reload=1
+				fi
+			fi
+		done
+
+		if [ "$rekey_mismatch" -gt 0 ] || [ "$lowack_missing" -gt 0 ] || [ "$twt_mismatch" -gt 0 ]; then
+			mobile_iot_issues=1
+			if [ "$rekey_mismatch" -gt 0 ]; then
+				mobile_iot_details="${mobile_iot_details} • Rotação periódica de chave GTK ativa ($rekey_mismatch interface(s))"
+			fi
+			if [ "$lowack_missing" -gt 0 ]; then
+				mobile_iot_details="${mobile_iot_details} • Proteção disassoc_low_ack ausente ($lowack_missing interface(s))"
+			fi
+			if [ "$twt_mismatch" -gt 0 ]; then
+				mobile_iot_details="${mobile_iot_details} • TWT Responder ativo ($twt_mismatch rádio(s))"
+			fi
+		fi
+
+		if [ "$mobile_iot_issues" -gt 0 ]; then
+			if [ "$auto_fix" = 1 ]; then
+				$uci_cmd commit wireless 2>/dev/null || true
+				fixes_applied=$((fixes_applied + 1))
+				add_check "Estabilidade Wi-Fi Mobile & IoT" "FIXED" "Parâmetros blindados: wpa_group_rekey=0 (fim das quedas periódicas de 5 min), disassoc_low_ack=0 universal e twt_responder=0 seguro."
+			else
+				warnings=$((warnings + 1))
+				add_check "Estabilidade Wi-Fi Mobile & IoT" "WARN" "Configuração vulnerável a quedas no Galaxy S24 e IoT em repouso:${mobile_iot_details}."
+			fi
+		else
+			add_check "Estabilidade Wi-Fi Mobile & IoT" "OK" "Imune a quedas periódicas em repouso (wpa_group_rekey=0, disassoc_low_ack=0 universal e twt_responder seguro)."
+		fi
+	fi
+
 	if [ "$wifi_needs_reload" = "1" ] && [ "$auto_fix" = "1" ]; then
 		(sleep 1; wifi reload) >/dev/null 2>&1 &
 	fi

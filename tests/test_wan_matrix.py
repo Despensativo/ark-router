@@ -847,6 +847,70 @@ config device 'wan_eth1'
         stun_check_ok = next((c for c in data_ok.get("checks", []) if "STUN" in c.get("name", "")), None)
         self.assertEqual(stun_check_ok.get("status"), "OK")
 
+    def test_25_wifi_mobile_stability_rekey_and_twt_audit_and_autofix(self):
+        """Valida que o Ark Doctor audita e corrige parâmetros de estabilidade Wi-Fi Mobile & IoT (wpa_group_rekey=0, disassoc_low_ack=0, twt_responder=0)."""
+        # 1. Configura interface wireless com vulnerabilidades conhecidas (sem rekey, sem lowack, com twt_responder=1)
+        wifi_cfg = os.path.join(self.sb.etc_config, "wireless")
+        with open(wifi_cfg, "w") as f:
+            f.write("""
+config wifi-device 'radio0'
+\toption type 'mac80211'
+\toption band '2g'
+\toption twt_responder '1'
+
+config wifi-device 'radio1'
+\toption type 'mac80211'
+\toption band '5g'
+\toption twt_responder '1'
+
+config wifi-iface 'default_radio0'
+\toption device 'radio0'
+\toption mode 'ap'
+\toption ssid 'Ark-2.4G'
+\toption encryption 'psk2'
+\toption key 'admin0100'
+\toption wpa_group_rekey '300'
+\toption disassoc_low_ack '1'
+
+config wifi-iface 'default_radio1'
+\toption device 'radio1'
+\toption mode 'ap'
+\toption ssid 'Ark-5G'
+\toption encryption 'sae-mixed'
+\toption key 'admin0100'
+\toption wpa_group_rekey '300'
+\toption disassoc_low_ack '1'
+""")
+
+        # 2. Executa doctor-run -> DEVE gerar WARN
+        res_audit = self.sb.run_control("doctor-run")
+        self.assertEqual(res_audit.returncode, 0)
+        data_audit = json.loads(res_audit.stdout)
+        wifi_check = next((c for c in data_audit.get("checks", []) if "Estabilidade Wi-Fi Mobile" in c.get("name", "")), None)
+        self.assertIsNotNone(wifi_check, "Checagem de Estabilidade Wi-Fi Mobile & IoT não encontrada!")
+        self.assertEqual(wifi_check.get("status"), "WARN")
+
+        # 3. Executa doctor-fix -> DEVE reparar (FIXED)
+        res_fix = self.sb.run_control("doctor-fix")
+        self.assertEqual(res_fix.returncode, 0)
+        data_fix = json.loads(res_fix.stdout)
+        wifi_check_fix = next((c for c in data_fix.get("checks", []) if "Estabilidade Wi-Fi Mobile" in c.get("name", "")), None)
+        self.assertIsNotNone(wifi_check_fix)
+        self.assertEqual(wifi_check_fix.get("status"), "FIXED")
+
+        # 4. Verifica persistencia no UCI
+        self.assertEqual(self.sb.uci_get("wireless.default_radio0.wpa_group_rekey"), "0")
+        self.assertEqual(self.sb.uci_get("wireless.default_radio0.disassoc_low_ack"), "0")
+        self.assertEqual(self.sb.uci_get("wireless.default_radio1.wpa_group_rekey"), "0")
+        self.assertEqual(self.sb.uci_get("wireless.default_radio1.disassoc_low_ack"), "0")
+        self.assertEqual(self.sb.uci_get("wireless.radio0.twt_responder"), "0")
+
+        # 5. Nova auditoria deve reportar OK
+        res_ok = self.sb.run_control("doctor-run")
+        data_ok = json.loads(res_ok.stdout)
+        wifi_check_ok = next((c for c in data_ok.get("checks", []) if "Estabilidade Wi-Fi Mobile" in c.get("name", "")), None)
+        self.assertEqual(wifi_check_ok.get("status"), "OK")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 
