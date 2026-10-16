@@ -14,6 +14,10 @@ Dedicated, zero-scroll panels with instant SPA transitions (UniFi / Synology / R
 
 import os
 import sys
+import io
+import json
+import qrcode
+import qrcode.image.svg
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
@@ -23,8 +27,94 @@ TARGET_FILE = os.path.join(WORKSPACE_ROOT, "docs", "qa_screenshots", "v2_staging
 print(f"Generating Modular SPA V2 Dashboard at: {TARGET_FILE}")
 os.makedirs(os.path.dirname(TARGET_FILE), exist_ok=True)
 
-with open(TARGET_FILE, "w", encoding="utf-8") as f:
-    f.write(r'''<!DOCTYPE html>
+# Generate 100% Genuine ISO/IEC 18004 Standard Wi-Fi QR Codes (Camera Scannable)
+NETWORKS_FOR_QR = [
+    {
+        "id": "main",
+        "name": "Wi-Fi-H&R",
+        "label": "🌐 Principal (Tri-Band MLO)",
+        "ssid": "Wi-Fi-H&R",
+        "pass": "MinhaSenhaForte2026",
+        "sec": "WPA3-SAE / WPA2-PSK Misto",
+        "band": "2.4 GHz + 5 GHz + 6 GHz (MLO)",
+        "clients": 27,
+        "bssid": "70:9e:29:ab:11:01"
+    },
+    {
+        "id": "guest",
+        "name": "Wi-Fi-H&R-Visitantes",
+        "label": "🤝 Visitantes (Isolada)",
+        "ssid": "Wi-Fi-H&R-Visitantes",
+        "pass": "Visitas@Ark2026",
+        "sec": "WPA2-PSK (Isolada da Intranet)",
+        "band": "Dual-Band 2.4G / 5G",
+        "clients": 4,
+        "bssid": "70:9e:29:ab:11:02"
+    },
+    {
+        "id": "iot",
+        "name": "Wi-Fi-H&R-IoT",
+        "label": "🏠 Automação IoT",
+        "ssid": "Wi-Fi-H&R-IoT",
+        "pass": "IoTSmartHome2026",
+        "sec": "WPA2-PSK Legado (2.4G Estrito)",
+        "band": "2.4 GHz Exclusivo",
+        "clients": 12,
+        "bssid": "70:9e:29:ab:11:03"
+    },
+    {
+        "id": "5g",
+        "name": "Wi-Fi-H&R-5G",
+        "label": "⚡ Rádio 5 GHz 160M",
+        "ssid": "Wi-Fi-H&R-5G",
+        "pass": "MinhaSenhaForte2026",
+        "sec": "WPA3-SAE / WPA2-PSK",
+        "band": "5 GHz Ultra (160 MHz)",
+        "clients": 15,
+        "bssid": "70:9e:29:ab:11:01"
+    },
+    {
+        "id": "6g",
+        "name": "Wi-Fi-H&R-6G-Pro",
+        "label": "🚀 Wi-Fi 7 BE 320M",
+        "ssid": "Wi-Fi-H&R-6G-Pro",
+        "pass": "MinhaSenhaForte2026",
+        "sec": "WPA3-SAE Puro",
+        "band": "6 GHz Wi-Fi 7 (320 MHz)",
+        "clients": 4,
+        "bssid": "70:9e:29:ab:11:01"
+    }
+]
+
+qr_cache = {}
+for n in NETWORKS_FOR_QR:
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=10,
+        border=2,
+        image_factory=qrcode.image.svg.SvgPathImage
+    )
+    # Standard Wi-Fi URI format parsed universally by iOS & Android cameras
+    payload = f"WIFI:T:WPA;S:{n['ssid']};P:{n['pass']};;"
+    qr.add_data(payload)
+    qr.make(fit=True)
+    f_mem = io.BytesIO()
+    img = qr.make_image(attrib={
+        'class': 'wifi-qr-svg',
+        'style': 'width:100%;height:100%;max-width:210px;max-height:210px;display:block;margin:0 auto;'
+    })
+    img.save(f_mem)
+    svg_str = f_mem.getvalue().decode('utf-8')
+    qr_cache[n['id']] = {
+        **n,
+        "payload": payload,
+        "svg": svg_str
+    }
+
+QR_DATA_JSON = json.dumps(qr_cache)
+
+HTML_TEMPLATE = r'''<!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="utf-8">
@@ -895,6 +985,150 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
             display: flex;
             align-items: center;
             gap: 8px;
+        }
+
+        .wifi-radio-card.disabled {
+            opacity: 0.5;
+            filter: grayscale(0.85);
+            pointer-events: auto;
+        }
+
+        /* Configured Wi-Fi Networks (SSIDs / VAPs) */
+        .wifi-networks-container {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .wifi-network-card {
+            background: var(--ark-surface-2);
+            border: 1px solid var(--ark-border);
+            border-radius: var(--ark-radius-md);
+            padding: 16px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .wifi-network-card:hover {
+            border-color: var(--ark-border-hover);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+        }
+
+        .wifi-network-card.disabled {
+            opacity: 0.55;
+            filter: grayscale(0.7);
+            border-style: dashed;
+        }
+
+        .wifi-net-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .wifi-net-title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .wifi-net-ssid {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: -0.02em;
+        }
+
+        .wifi-net-alias {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        .wifi-net-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 12px 14px;
+        }
+
+        .wifi-net-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .wifi-net-item span {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+
+        .wifi-net-item strong {
+            font-size: 0.85rem;
+            color: #f1f5f9;
+            font-weight: 600;
+        }
+
+        .wifi-net-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 12px;
+        }
+
+        /* Wi-Fi QR Code Modal Tabs & Frame */
+        .wifi-qr-tab {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--ark-border);
+            background: rgba(255, 255, 255, 0.04);
+            color: #cbd5e1;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-height: 40px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .wifi-qr-tab:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(56, 189, 248, 0.4);
+            color: #fff;
+        }
+
+        .wifi-qr-tab.active {
+            background: var(--ark-primary);
+            border-color: var(--ark-primary);
+            color: #fff;
+            box-shadow: 0 0 12px rgba(2, 132, 199, 0.4);
+        }
+
+        .wifi-qr-frame {
+            display: inline-block;
+            background: #ffffff;
+            padding: 16px;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            margin: 12px auto;
+            max-width: 230px;
+            width: 100%;
         }
 
         /* Devices Table */
@@ -2333,74 +2567,150 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
                     <div class="section-card">
                         <div class="section-header">
                             <div class="section-title">
-                                <h2>📶 Redes Sem Fio Wi-Fi 6E & Wi-Fi 7 (Tri-Band)</h2>
-                                <span class="badge pill-purple">31 Clientes Sem Fio</span>
+                                <h2>📶 Central Wi-Fi 6E & Wi-Fi 7 (Tri-Band BE11000)</h2>
+                                <span class="badge pill-purple" id="badge_total_wifi_clients">43 Clientes Sem Fio</span>
                             </div>
-                            <div style="display:flex; gap:8px;">
-                                <button class="ark-btn ark-btn-secondary" onclick="openModal('wifi_qr')">📲 QR Code</button>
-                                <button class="ark-btn ark-btn-secondary" onclick="openModal('wps')">🤝 WPS Parear</button>
-                                <button class="ark-btn ark-btn-purple" onclick="openModal('wifi')">⚙️ Configurar Wi-Fi</button>
-                            </div>
-                        </div>
-
-                        <!-- Main SSID Header -->
-                        <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-                            <div>
-                                <span style="font-size:0.75rem; text-transform:uppercase; color:#94a3b8; font-weight:700;">Nome da Rede Wi-Fi Unificada (SSID)</span>
-                                <div style="font-size:1.25rem; font-weight:800; color:#fff;" id="label_main_ssid">Wi-Fi-H&R</div>
-                                <div style="font-size:0.8rem; color:#94a3b8; margin-top:2px;">
-                                    Senha: <span id="pwd_main_wifi">••••••••••••</span> 
-                                    <button style="background:none; border:none; color:#38bdf8; cursor:pointer; font-weight:700; margin-left:6px;" onclick="toggleWifiPass()">👁️ Revelar</button>
-                                </div>
-                            </div>
-                            <div style="display:flex; gap:10px; align-items:center;">
-                                <span class="pill-badge pill-online">WPA3-SAE MISTO + PMF</span>
-                                <span class="pill-badge pill-purple">MLO 320 MHz ATIVO</span>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <button class="ark-btn ark-btn-primary" onclick="openModal('add_wifi_network')" title="Criar nova interface sem fio virtual">
+                                    ➕ Nova Rede Sem Fio (Novo SSID)
+                                </button>
+                                <button class="ark-btn ark-btn-secondary" onclick="openModal('wifi_qr')" title="Compartilhar Wi-Fi via QR Code Oficial">
+                                    📲 QR Code
+                                </button>
+                                <button class="ark-btn ark-btn-secondary" onclick="openModal('wps')" title="Pareamento rápido WPS PBC">
+                                    🤝 WPS Parear
+                                </button>
+                                <button class="ark-btn ark-btn-secondary" onclick="openModal('wifi')" title="Configurações globais e Smart Connect">
+                                    ⚙️ Opções Globais
+                                </button>
                             </div>
                         </div>
 
-                        <!-- 3 Radios Grid -->
-                        <div class="wifi-grid">
-                            <div class="wifi-radio-card" id="card_radio_24">
-                                <div class="wifi-radio-header">
-                                    <span class="wifi-radio-title"><span style="color:#f59e0b;">●</span> Rádio 2.4 GHz</span>
-                                    <span class="pill-badge pill-amber">12 Aparelhos</span>
+                        <!-- SEÇÃO 1: REDES SEM FIO CONFIGURADAS (SSIDs Virtuais / VAPs) -->
+                        <div style="margin-bottom:24px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+                                <div>
+                                    <h3 style="font-size:1.05rem; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px; margin:0;">
+                                        <span>📡</span> Redes Sem Fio Configuradas (Interfaces SSIDs Virtuais)
+                                    </h3>
+                                    <p style="font-size:0.8rem; color:#94a3b8; margin:3px 0 0 0;">
+                                        Interfaces ativas no roteador. Cada rede possui senha, segurança, isolamento e controle de banda independentes.
+                                    </p>
                                 </div>
-                                <div class="wan-info-grid">
-                                    <div class="wan-info-item"><span>Canal</span><strong id="ch_radio_24">Canal 6 (2437 MHz)</strong></div>
-                                    <div class="wan-info-item"><span>Largura de Banda</span><strong id="width_radio_24">20 MHz</strong></div>
-                                    <div class="wan-info-item"><span>Potência TX</span><strong id="tx_radio_24">20 dBm (100 mW)</strong></div>
-                                    <div class="wan-info-item"><span>BSS Coloring</span><strong>Ativo (Cor 12)</strong></div>
-                                </div>
-                                <button class="ark-btn ark-btn-secondary" style="width:100%;" onclick="openRadioModal('2.4')">⚙️ Editar Rádio 2.4 GHz</button>
+                                <span class="pill-badge pill-cyan" id="badge_ssid_count">3 Redes Ativas</span>
                             </div>
 
-                            <div class="wifi-radio-card" id="card_radio_5">
-                                <div class="wifi-radio-header">
-                                    <span class="wifi-radio-title"><span style="color:#06b6d4;">●</span> Rádio 5 GHz</span>
-                                    <span class="pill-badge pill-cyan">15 Aparelhos</span>
+                            <!-- Dynamic List of Configured SSIDs -->
+                            <div class="wifi-networks-container" id="wifi_networks_list">
+                                <!-- Populated dynamically by renderWifiNetworks() -->
+                            </div>
+                        </div>
+
+                        <!-- SEÇÃO 2: HARDWARE DOS RÁDIOS FÍSICOS (PHYs) -->
+                        <div style="margin-bottom:24px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+                                <div>
+                                    <h3 style="font-size:1.05rem; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px; margin:0;">
+                                        <span>📻</span> Rádios Físicos de RF (Hardware Transceiver / Chips)
+                                    </h3>
+                                    <p style="font-size:0.8rem; color:#94a3b8; margin:3px 0 0 0;">
+                                        Controle de camada física: canais de frequência, potências de transmissão (dBm) e larguras de canal.
+                                    </p>
                                 </div>
-                                <div class="wan-info-grid">
-                                    <div class="wan-info-item"><span>Canal</span><strong id="ch_radio_5">Canal 36 (5180 MHz)</strong></div>
-                                    <div class="wan-info-item"><span>Largura de Banda</span><strong id="width_radio_5">160 MHz Ultra</strong></div>
-                                    <div class="wan-info-item"><span>Potência TX</span><strong id="tx_radio_5">23 dBm (200 mW)</strong></div>
-                                    <div class="wan-info-item"><span>Fast Roaming</span><strong>802.11r / 802.11v</strong></div>
-                                </div>
-                                <button class="ark-btn ark-btn-secondary" style="width:100%;" onclick="openRadioModal('5')">⚙️ Editar Rádio 5 GHz</button>
+                                <span class="pill-badge pill-purple">Tri-Band Ativo (2.4G + 5G + 6G)</span>
                             </div>
 
-                            <div class="wifi-radio-card" id="card_radio_6">
-                                <div class="wifi-radio-header">
-                                    <span class="wifi-radio-title"><span style="color:#a855f7;">●</span> Rádio 6 GHz (Wi-Fi 6E/7)</span>
-                                    <span class="pill-badge pill-purple">4 Aparelhos</span>
+                            <!-- 3 Radios Grid -->
+                            <div class="wifi-grid">
+                                <div class="wifi-radio-card" id="card_radio_24">
+                                    <div class="wifi-radio-header">
+                                        <div style="display:flex; align-items:center; gap:8px;">
+                                            <span class="wifi-radio-title"><span style="color:#f59e0b;">●</span> Rádio 2.4 GHz (phy0)</span>
+                                            <span class="pill-badge pill-amber">12 Aparelhos</span>
+                                        </div>
+                                        <label class="ark-switch" title="Ligar/Desligar Hardware 2.4 GHz">
+                                            <input type="checkbox" id="switch_radio_24" checked onchange="toggleRadioPhy('2.4', this.checked)">
+                                            <span class="ark-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="wan-info-grid">
+                                        <div class="wan-info-item"><span>Canal</span><strong id="ch_radio_24">Canal 6 (2437 MHz)</strong></div>
+                                        <div class="wan-info-item"><span>Largura de Banda</span><strong id="width_radio_24">20 MHz</strong></div>
+                                        <div class="wan-info-item"><span>Potência TX</span><strong id="tx_radio_24">20 dBm (100 mW)</strong></div>
+                                        <div class="wan-info-item"><span>BSS Coloring</span><strong>Ativo (Cor 12)</strong></div>
+                                    </div>
+                                    <div style="background:rgba(0,0,0,0.25); border-radius:6px; padding:8px 10px; font-size:0.75rem; color:#94a3b8;">
+                                        <span style="font-weight:700; color:#cbd5e1; display:block; margin-bottom:4px;">SSIDs transmitidos neste rádio:</span>
+                                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                            <span class="pill-badge pill-purple" style="font-size:0.7rem;">Wi-Fi-H&R</span>
+                                            <span class="pill-badge pill-cyan" style="font-size:0.7rem;">Wi-Fi-H&R-Visitantes</span>
+                                            <span class="pill-badge pill-amber" style="font-size:0.7rem;">Wi-Fi-H&R-IoT</span>
+                                        </div>
+                                    </div>
+                                    <div style="display:flex; gap:8px;">
+                                        <button class="ark-btn ark-btn-secondary" style="flex:1;" onclick="openRadioModal('2.4')">⚙️ Editar Rádio</button>
+                                        <button class="ark-btn ark-btn-secondary" style="flex:1;" onclick="openModal('add_wifi_network', '2.4')">➕ Adicionar SSID</button>
+                                    </div>
                                 </div>
-                                <div class="wan-info-grid">
-                                    <div class="wan-info-item"><span>Canal</span><strong id="ch_radio_6">Canal 37 PSC (6135 MHz)</strong></div>
-                                    <div class="wan-info-item"><span>Largura de Banda</span><strong id="width_radio_6">320 MHz (Extremo)</strong></div>
-                                    <div class="wan-info-item"><span>Potência TX</span><strong id="tx_radio_6">23 dBm (200 mW)</strong></div>
-                                    <div class="wan-info-item"><span>Modo MLO</span><strong>STR Multi-Link Ativo</strong></div>
+
+                                <div class="wifi-radio-card" id="card_radio_5">
+                                    <div class="wifi-radio-header">
+                                        <div style="display:flex; align-items:center; gap:8px;">
+                                            <span class="wifi-radio-title"><span style="color:#06b6d4;">●</span> Rádio 5 GHz (phy1)</span>
+                                            <span class="pill-badge pill-cyan">15 Aparelhos</span>
+                                        </div>
+                                        <label class="ark-switch" title="Ligar/Desligar Hardware 5 GHz">
+                                            <input type="checkbox" id="switch_radio_5" checked onchange="toggleRadioPhy('5', this.checked)">
+                                            <span class="ark-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="wan-info-grid">
+                                        <div class="wan-info-item"><span>Canal</span><strong id="ch_radio_5">Canal 36 (5180 MHz)</strong></div>
+                                        <div class="wan-info-item"><span>Largura de Banda</span><strong id="width_radio_5">160 MHz Ultra</strong></div>
+                                        <div class="wan-info-item"><span>Potência TX</span><strong id="tx_radio_5">23 dBm (200 mW)</strong></div>
+                                        <div class="wan-info-item"><span>Fast Roaming</span><strong>802.11r / 802.11v</strong></div>
+                                    </div>
+                                    <div style="background:rgba(0,0,0,0.25); border-radius:6px; padding:8px 10px; font-size:0.75rem; color:#94a3b8;">
+                                        <span style="font-weight:700; color:#cbd5e1; display:block; margin-bottom:4px;">SSIDs transmitidos neste rádio:</span>
+                                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                            <span class="pill-badge pill-purple" style="font-size:0.7rem;">Wi-Fi-H&R</span>
+                                            <span class="pill-badge pill-cyan" style="font-size:0.7rem;">Wi-Fi-H&R-Visitantes</span>
+                                        </div>
+                                    </div>
+                                    <div style="display:flex; gap:8px;">
+                                        <button class="ark-btn ark-btn-secondary" style="flex:1;" onclick="openRadioModal('5')">⚙️ Editar Rádio</button>
+                                        <button class="ark-btn ark-btn-secondary" style="flex:1;" onclick="openModal('add_wifi_network', '5')">➕ Adicionar SSID</button>
+                                    </div>
                                 </div>
-                                <button class="ark-btn ark-btn-secondary" style="width:100%;" onclick="openRadioModal('6')">⚙️ Editar Rádio 6 GHz</button>
+
+                                <div class="wifi-radio-card" id="card_radio_6">
+                                    <div class="wifi-radio-header">
+                                        <div style="display:flex; align-items:center; gap:8px;">
+                                            <span class="wifi-radio-title"><span style="color:#a855f7;">●</span> Rádio 6 GHz (phy2)</span>
+                                            <span class="pill-badge pill-purple">4 Aparelhos</span>
+                                        </div>
+                                        <label class="ark-switch" title="Ligar/Desligar Hardware 6 GHz">
+                                            <input type="checkbox" id="switch_radio_6" checked onchange="toggleRadioPhy('6', this.checked)">
+                                            <span class="ark-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="wan-info-grid">
+                                        <div class="wan-info-item"><span>Canal</span><strong id="ch_radio_6">Canal 37 PSC (6135 MHz)</strong></div>
+                                        <div class="wan-info-item"><span>Largura de Banda</span><strong id="width_radio_6">320 MHz (Extremo)</strong></div>
+                                        <div class="wan-info-item"><span>Potência TX</span><strong id="tx_radio_6">23 dBm (200 mW)</strong></div>
+                                        <div class="wan-info-item"><span>Modo MLO</span><strong>STR Multi-Link Ativo</strong></div>
+                                    </div>
+                                    <div style="background:rgba(0,0,0,0.25); border-radius:6px; padding:8px 10px; font-size:0.75rem; color:#94a3b8;">
+                                        <span style="font-weight:700; color:#cbd5e1; display:block; margin-bottom:4px;">SSIDs transmitidos neste rádio:</span>
+                                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                            <span class="pill-badge pill-purple" style="font-size:0.7rem;">Wi-Fi-H&R</span>
+                                        </div>
+                                    </div>
+                                    <div style="display:flex; gap:8px;">
+                                        <button class="ark-btn ark-btn-secondary" style="flex:1;" onclick="openRadioModal('6')">⚙️ Editar Rádio</button>
+                                        <button class="ark-btn ark-btn-secondary" style="flex:1;" onclick="openModal('add_wifi_network', '6')">➕ Adicionar SSID</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -3679,6 +3989,77 @@ with open(TARGET_FILE, "w", encoding="utf-8") as f:
 
     <!-- JAVASCRIPT LOGIC -->
     <script>
+        // Genuine Scannable QR Codes injected from Python backend
+        window._wifiQrData = __WIFI_QR_DATA_JSON__;
+        let currentQrNetwork = 'main';
+
+        // Configured Wi-Fi Interfaces (SSIDs / VAPs) Database
+        let WIFI_NETWORKS = [
+            {
+                id: 'net_main',
+                ssid: 'Wi-Fi-H&R',
+                alias: 'Rede Principal Unificada (Master MLO Tri-Band)',
+                pass: 'MinhaSenhaForte2026',
+                active: true,
+                radios: ['2.4', '5', '6'],
+                bssid: '70:9e:29:ab:11:01',
+                crypto: 'mixed',
+                cryptoLabel: 'WPA3-SAE / WPA2-PSK Misto + PMF Ativo',
+                mode: 'lan',
+                modeLabel: 'LAN Principal (Acesso total)',
+                clients: 27,
+                limitDown: 0,
+                limitUp: 0,
+                hidden: false,
+                isolate: false,
+                roaming: true,
+                badgeType: 'pill-purple',
+                badgeText: 'MLO Tri-Band (2.4G + 5G + 6G)'
+            },
+            {
+                id: 'net_guest',
+                ssid: 'Wi-Fi-H&R-Visitantes',
+                alias: 'Rede de Visitantes e Hóspedes',
+                pass: 'Visitas@Ark2026',
+                active: true,
+                radios: ['2.4', '5'],
+                bssid: '70:9e:29:ab:11:02',
+                crypto: 'psk2',
+                cryptoLabel: 'WPA2-PSK (AES-CCMP)',
+                mode: 'guest',
+                modeLabel: 'Isolada da Intranet (Apenas Internet)',
+                clients: 4,
+                limitDown: 25,
+                limitUp: 10,
+                hidden: false,
+                isolate: true,
+                roaming: true,
+                badgeType: 'pill-cyan',
+                badgeText: 'Dual-Band (2.4G + 5G)'
+            },
+            {
+                id: 'net_iot',
+                ssid: 'Wi-Fi-H&R-IoT',
+                alias: 'Rede para Casa Inteligente e Automação IoT',
+                pass: 'IoTSmartHome2026',
+                active: true,
+                radios: ['2.4'],
+                bssid: '70:9e:29:ab:11:03',
+                crypto: 'psk2',
+                cryptoLabel: 'WPA2-PSK Legado',
+                mode: 'iot',
+                modeLabel: 'VLAN 30 (Segmentada)',
+                clients: 12,
+                limitDown: 10,
+                limitUp: 5,
+                hidden: false,
+                isolate: false,
+                roaming: false,
+                badgeType: 'pill-amber',
+                badgeText: '2.4 GHz Exclusivo'
+            }
+        ];
+
         // Device Database
         const DEVICES = [
             { id: 1, name: "iPhone-16-Pro-Max", ip: "192.168.1.101", mac: "34:ab:95:11:22:33", band: "6", rssi: -42, speed: "2.8 Gbps", total: "14.8 GB", type: "phone", prio: "high" },
@@ -4644,7 +5025,7 @@ Address 4: 2606:4700:4700::1001
         }
 
         // Modals with 100% Selects
-        function openModal(type) {
+        function openModal(type, extraArg) {
             document.body.classList.add('modal-overlay-active');
             const cont = document.getElementById('modal_content_holder');
 
@@ -4869,35 +5250,10 @@ Address 4: 2606:4700:4700::1001
                     if (btn) btn.textContent = '🔄 Confirmar e Reiniciar';
                 }, 2000);
             } else if (type === 'wifi_qr') {
-                cont.innerHTML = `
-                    <div class="modal-header">
-                    <h3>📲 Conexão Wi-Fi via QR Code</h3>
-                    <div class="modal-header-actions">
-                        <button type="button" class="modal-maximize-btn" onclick="toggleModalMaximize()" title="Expandir para tela cheia">⛶</button>
-                        <button type="button" class="modal-close-btn" onclick="closeModal()" title="Fechar">✕</button>
-                    </div>
-                </div>
-                    <div class="modal-body" style="text-align:center;">
-                        <div style="display:inline-block; padding:16px; background:#fff; border-radius:12px; margin:10px 0;">
-                            <svg width="180" height="180" viewBox="0 0 100 100">
-                                <rect width="100" height="100" fill="#fff" />
-                                <rect x="10" y="10" width="30" height="30" fill="#000" />
-                                <rect x="15" y="15" width="20" height="20" fill="#fff" />
-                                <rect x="20" y="20" width="10" height="10" fill="#000" />
-                                <rect x="60" y="10" width="30" height="30" fill="#000" />
-                                <rect x="65" y="15" width="20" height="20" fill="#fff" />
-                                <rect x="70" y="20" width="10" height="10" fill="#000" />
-                                <rect x="10" y="60" width="30" height="30" fill="#000" />
-                                <rect x="15" y="65" width="20" height="20" fill="#fff" />
-                                <rect x="20" y="70" width="10" height="10" fill="#000" />
-                                <circle cx="50" cy="50" r="10" fill="#0284c7" />
-                            </svg>
-                        </div>
-                        <h4 style="color:#fff;">Wi-Fi-H&R</h4>
-                        <p style="font-size:0.8rem; color:#94a3b8;">Aponte a câmera do seu celular para conectar automaticamente.</p>
-                    </div>
-                    <div class="modal-footer"><button class="ark-btn ark-btn-secondary" onclick="closeModal()">Fechar</button></div>
-                `;
+                renderWifiQrModal(extraArg || 'main');
+            } else if (type === 'add_wifi_network') {
+                renderAddWifiNetworkModal(extraArg);
+
             } else if (type === 'wps') {
                 cont.innerHTML = `
                     <div class="modal-header">
@@ -6339,6 +6695,752 @@ Address 4: 2606:4700:4700::1001
             showToast(`📶 Rádio ${band} GHz reconfigurado!`);
         }
 
+        // =========================================================================
+        // WI-FI NETWORKS (SSIDs / VAPs) ENGINE & AUTHENTIC QR CODES
+        // =========================================================================
+
+        function renderWifiNetworks() {
+            const container = document.getElementById('wifi_networks_list');
+            if (!container) return;
+
+            const badgeTotal = document.getElementById('badge_total_wifi_clients');
+            const badgeCount = document.getElementById('badge_ssid_count');
+
+            let totalClients = 0;
+            let activeCount = 0;
+
+            let html = '';
+            WIFI_NETWORKS.forEach(net => {
+                if (net.active) {
+                    totalClients += (net.clients || 0);
+                    activeCount++;
+                }
+
+                const radiosHtml = net.radios.map(r => {
+                    const color = r === '2.4' ? 'pill-amber' : (r === '5' ? 'pill-cyan' : 'pill-purple');
+                    return `<span class="pill-badge ${color}" style="font-size:0.7rem; padding:2px 8px;">${r} GHz</span>`;
+                }).join(' ');
+
+                const limitText = (net.limitDown > 0 || net.limitUp > 0)
+                    ? `⬇️ ${net.limitDown} Mbps / ⬆️ ${net.limitUp} Mbps`
+                    : '⚡ Ilimitado (Velocidade Máxima)';
+
+                const isolationBadge = net.isolate
+                    ? '<span class="pill-badge pill-amber" style="font-size:0.7rem;">🛡️ Isolamento AP Ativo</span>'
+                    : '<span class="pill-badge pill-online" style="font-size:0.7rem;">🌐 LAN Completa</span>';
+
+                html += `
+                    <div class="wifi-network-card ${net.active ? '' : 'disabled'}" id="card_${net.id}">
+                        <div class="wifi-net-top">
+                            <div class="wifi-net-title-group">
+                                <span style="font-size:1.1rem; color:${net.active ? '#10b981' : '#64748b'};" title="${net.active ? 'Transmitindo beacon' : 'Desativada'}">●</span>
+                                <div>
+                                    <div class="wifi-net-ssid">${net.ssid}</div>
+                                    <div class="wifi-net-alias">${net.alias}</div>
+                                </div>
+                                <span class="pill-badge ${net.badgeType}">${net.badgeText}</span>
+                                ${isolationBadge}
+                            </div>
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <span style="font-size:0.8rem; font-weight:700; color:${net.active ? '#10b981' : '#94a3b8'};">
+                                    ${net.active ? 'TRANSMITINDO' : 'DESATIVADA'}
+                                </span>
+                                <label class="ark-switch" title="Ligar ou desligar beacon desta rede">
+                                    <input type="checkbox" ${net.active ? 'checked' : ''} onchange="toggleSsidActive('${net.id}', this.checked)">
+                                    <span class="ark-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="wifi-net-grid">
+                            <div class="wifi-net-item">
+                                <span>BSSID (Endereço MAC)</span>
+                                <strong><code>${net.bssid}</code></strong>
+                            </div>
+                            <div class="wifi-net-item">
+                                <span>Senha da Rede Sem Fio</span>
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <strong id="pwd_val_${net.id}">••••••••••••</strong>
+                                    <button style="background:none; border:none; color:#38bdf8; cursor:pointer; font-size:0.8rem; font-weight:700;" onclick="toggleWifiNetPass('${net.id}')" title="Mostrar/Ocultar Senha">👁️</button>
+                                    <button style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:0.8rem;" onclick="copyTextToClipboard('${net.pass}', 'Senha')" title="Copiar Senha">📋</button>
+                                </div>
+                            </div>
+                            <div class="wifi-net-item">
+                                <span>Rádios Físicos de Transmissão</span>
+                                <div style="display:flex; gap:4px; margin-top:2px;">${radiosHtml}</div>
+                            </div>
+                            <div class="wifi-net-item">
+                                <span>Criptografia & Segurança</span>
+                                <strong>${net.cryptoLabel}</strong>
+                            </div>
+                            <div class="wifi-net-item">
+                                <span>Aparelhos Conectados</span>
+                                <strong style="color:#38bdf8;">👥 ${net.clients || 0} dispositivos</strong>
+                            </div>
+                            <div class="wifi-net-item">
+                                <span>Limite de Tráfego / QoS</span>
+                                <strong>${limitText}</strong>
+                            </div>
+                        </div>
+
+                        <div class="wifi-net-actions">
+                            <div style="font-size:0.75rem; color:#94a3b8;">
+                                Modo: <strong style="color:#cbd5e1;">${net.modeLabel}</strong>
+                                ${net.hidden ? ' | <span style="color:#f59e0b;">⚠️ SSID Oculto</span>' : ''}
+                                ${net.roaming ? ' | <span style="color:#10b981;">✓ 802.11k/v Roaming</span>' : ''}
+                            </div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <button class="ark-btn ark-btn-secondary" onclick="openEditSsidModal('${net.id}')" title="Editar nome, senha, bandas e parâmetros">
+                                    ⚙️ Editar SSID
+                                </button>
+                                <button class="ark-btn ark-btn-secondary" onclick="openModal('wifi_qr', '${net.id}')" title="Gerar QR Code de conexão rápida">
+                                    📲 QR Code
+                                </button>
+                                <button class="ark-btn ark-btn-secondary" onclick="showSsidClients('${net.ssid}')" title="Visualizar aparelhos conectados nesta rede">
+                                    👥 Ver Clientes (${net.clients})
+                                </button>
+                                ${net.id !== 'net_main' ? `
+                                    <button class="ark-btn ark-btn-secondary" style="color:#f43f5e; border-color:rgba(244,63,94,0.3);" onclick="deleteSsid('${net.id}')" title="Excluir esta rede sem fio">
+                                        🗑️
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+
+            if (badgeTotal) badgeTotal.textContent = `${totalClients} Clientes Sem Fio`;
+            if (badgeCount) badgeCount.textContent = `${activeCount} Redes Ativas`;
+        }
+
+        function toggleWifiNetPass(netId) {
+            const net = WIFI_NETWORKS.find(n => n.id === netId);
+            const el = document.getElementById('pwd_val_' + netId);
+            if (!net || !el) return;
+            if (el.textContent === '••••••••••••') {
+                el.textContent = net.pass;
+                el.style.color = '#38bdf8';
+            } else {
+                el.textContent = '••••••••••••';
+                el.style.color = '#f1f5f9';
+            }
+        }
+
+        function toggleSsidActive(netId, isChecked) {
+            const net = WIFI_NETWORKS.find(n => n.id === netId);
+            if (!net) return;
+            net.active = isChecked;
+            renderWifiNetworks();
+            showToast(`📡 Rede "${net.ssid}" ${isChecked ? 'ativada e transmitindo beacon!' : 'desativada temporariamente!'}`);
+        }
+
+        function toggleRadioPhy(band, isChecked) {
+            const cardId = band === '2.4' ? 'card_radio_24' : (band === '5' ? 'card_radio_5' : 'card_radio_6');
+            const card = document.getElementById(cardId);
+            if (card) {
+                if (isChecked) {
+                    card.classList.remove('disabled');
+                } else {
+                    card.classList.add('disabled');
+                }
+            }
+            showToast(`📻 Hardware do Rádio ${band} GHz ${isChecked ? 'ligado e operacional!' : 'desligado via hardware transceiver!'}`);
+        }
+
+        function openEditSsidModal(netId) {
+            const net = WIFI_NETWORKS.find(n => n.id === netId);
+            if (!net) return;
+
+            document.body.classList.add('modal-overlay-active');
+            const cont = document.getElementById('modal_content_holder');
+
+            cont.innerHTML = `
+                <div class="modal-header">
+                    <h3>⚙️ Editar Rede Wi-Fi — ${net.ssid}</h3>
+                    <div class="modal-header-actions">
+                        <button type="button" class="modal-maximize-btn" onclick="toggleModalMaximize()" title="Expandir para tela cheia">⛶</button>
+                        <button type="button" class="modal-close-btn" onclick="closeModal()" title="Fechar">✕</button>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Nome da Rede Wi-Fi (SSID)</label>
+                        <input type="text" class="form-input" id="edit_ssid_name" value="${net.ssid}" maxlength="32">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Descrição / Apelido da Rede</label>
+                        <input type="text" class="form-input" id="edit_ssid_alias" value="${net.alias}" maxlength="60">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Senha de Acesso (WPA Passphrase — Mínimo 8 dígitos)</label>
+                        <div style="display:flex; gap:8px;">
+                            <input type="text" class="form-input" id="edit_ssid_pass" value="${net.pass}" maxlength="63">
+                            <button type="button" class="ark-btn ark-btn-secondary" onclick="generateRandomPass('edit_ssid_pass')">🎲 Gerar</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Criptografia & Algoritmo de Blindagem</label>
+                        <select class="form-select" id="edit_ssid_crypto">
+                            <option value="mixed" ${net.crypto === 'mixed' ? 'selected' : ''}>WPA3-SAE / WPA2-PSK Misto + PMF (Recomendado para Compatibilidade)</option>
+                            <option value="sae" ${net.crypto === 'sae' ? 'selected' : ''}>WPA3-SAE Puro (Wi-Fi 6E & 7 — Máxima Segurança sem fallback)</option>
+                            <option value="psk2" ${net.crypto === 'psk2' ? 'selected' : ''}>WPA2-PSK Legado (AES-CCMP para Dispositivos Antigos)</option>
+                            <option value="open" ${net.crypto === 'open' ? 'selected' : ''}>Aberta (Sem Senha — Apenas com Captive Portal)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Rádios Físicos Vinculados (Transmissão de RF)</label>
+                        <div style="display:flex; gap:16px; flex-wrap:wrap; padding:6px 0;">
+                            <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; color:#cbd5e1; cursor:pointer;">
+                                <input type="checkbox" id="edit_ssid_radio_24" ${net.radios.includes('2.4') ? 'checked' : ''}>
+                                <span>Rádio 2.4 GHz</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; color:#cbd5e1; cursor:pointer;">
+                                <input type="checkbox" id="edit_ssid_radio_5" ${net.radios.includes('5') ? 'checked' : ''}>
+                                <span>Rádio 5 GHz</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; color:#cbd5e1; cursor:pointer;">
+                                <input type="checkbox" id="edit_ssid_radio_6" ${net.radios.includes('6') ? 'checked' : ''}>
+                                <span>Rádio 6 GHz (Wi-Fi 7)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Modo de Rede & Destino do Tráfego</label>
+                        <select class="form-select" id="edit_ssid_mode">
+                            <option value="lan" ${net.mode === 'lan' ? 'selected' : ''}>Rede Principal (Acesso Completo à LAN e Roteador)</option>
+                            <option value="guest" ${net.mode === 'guest' ? 'selected' : ''}>Rede de Visitantes (Acesso Exclusivo à Internet / Isolada da Intranet)</option>
+                            <option value="iot" ${net.mode === 'iot' ? 'selected' : ''}>Rede IoT / Casa Inteligente (Segmentada na VLAN 30)</option>
+                        </select>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div class="form-group">
+                            <label class="form-label">Limite Download (Mbps)</label>
+                            <input type="number" class="form-input" id="edit_ssid_down" value="${net.limitDown || 0}" min="0" placeholder="0 = Ilimitado">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Limite Upload (Mbps)</label>
+                            <input type="number" class="form-input" id="edit_ssid_up" value="${net.limitUp || 0}" min="0" placeholder="0 = Ilimitado">
+                        </div>
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+                        <label style="display:flex; align-items:center; gap:8px; font-size:0.82rem; color:#cbd5e1; cursor:pointer;">
+                            <input type="checkbox" id="edit_ssid_hidden" ${net.hidden ? 'checked' : ''}>
+                            <span>Ocultar SSID (Desativar anúncio público em beacons de varredura)</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:8px; font-size:0.82rem; color:#cbd5e1; cursor:pointer;">
+                            <input type="checkbox" id="edit_ssid_isolate" ${net.isolate ? 'checked' : ''}>
+                            <span>Isolamento de Clientes (AP Isolation — Impede comunicação lateral entre dispositivos)</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:8px; font-size:0.82rem; color:#cbd5e1; cursor:pointer;">
+                            <input type="checkbox" id="edit_ssid_roaming" ${net.roaming ? 'checked' : ''}>
+                            <span>Ativar Fast Roaming 802.11r/k/v (Transição suave sem queda de chamadas)</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
+                    <button class="ark-btn ark-btn-primary" onclick="saveEditSsid('${net.id}')">💾 Salvar Alterações</button>
+                </div>
+            `;
+        }
+
+        function saveEditSsid(netId) {
+            const net = WIFI_NETWORKS.find(n => n.id === netId);
+            if (!net) return;
+
+            const newName = document.getElementById('edit_ssid_name').value.trim();
+            const newAlias = document.getElementById('edit_ssid_alias').value.trim();
+            const newPass = document.getElementById('edit_ssid_pass').value.trim();
+            const newCrypto = document.getElementById('edit_ssid_crypto').value;
+            const newMode = document.getElementById('edit_ssid_mode').value;
+            const newDown = parseInt(document.getElementById('edit_ssid_down').value) || 0;
+            const newUp = parseInt(document.getElementById('edit_ssid_up').value) || 0;
+
+            const r24 = document.getElementById('edit_ssid_radio_24').checked;
+            const r5 = document.getElementById('edit_ssid_radio_5').checked;
+            const r6 = document.getElementById('edit_ssid_radio_6').checked;
+
+            const radios = [];
+            if (r24) radios.push('2.4');
+            if (r5) radios.push('5');
+            if (r6) radios.push('6');
+
+            if (radios.length === 0) {
+                showToast('⚠️ Selecione ao menos um rádio físico para transmitir!');
+                return;
+            }
+
+            net.ssid = newName || net.ssid;
+            net.alias = newAlias || net.alias;
+            net.pass = newPass || net.pass;
+            net.crypto = newCrypto;
+            net.cryptoLabel = newCrypto === 'mixed' ? 'WPA3-SAE / WPA2-PSK Misto + PMF'
+                : (newCrypto === 'sae' ? 'WPA3-SAE Puro' : (newCrypto === 'psk2' ? 'WPA2-PSK Legado' : 'Aberta (Sem Senha)'));
+            net.mode = newMode;
+            net.modeLabel = newMode === 'guest' ? 'Isolada da Intranet (Apenas Internet)'
+                : (newMode === 'iot' ? 'VLAN 30 (Segmentada)' : 'LAN Principal (Acesso total)');
+            net.limitDown = newDown;
+            net.limitUp = newUp;
+            net.radios = radios;
+            net.hidden = document.getElementById('edit_ssid_hidden').checked;
+            net.isolate = document.getElementById('edit_ssid_isolate').checked;
+            net.roaming = document.getElementById('edit_ssid_roaming').checked;
+
+            // Sync with QR Data if exists
+            const qrKey = netId === 'net_main' ? 'main' : (netId === 'net_guest' ? 'guest' : (netId === 'net_iot' ? 'iot' : null));
+            if (qrKey && window._wifiQrData[qrKey]) {
+                window._wifiQrData[qrKey].ssid = net.ssid;
+                window._wifiQrData[qrKey].pass = net.pass;
+                window._wifiQrData[qrKey].sec = net.cryptoLabel;
+            }
+
+            closeModal();
+            renderWifiNetworks();
+            showToast(`✅ Rede Wi-Fi "${net.ssid}" atualizada com sucesso!`);
+        }
+
+        function renderAddWifiNetworkModal(preselectedRadio) {
+            document.body.classList.add('modal-overlay-active');
+            const cont = document.getElementById('modal_content_holder');
+
+            cont.innerHTML = `
+                <div class="modal-header">
+                    <h3>➕ Criar Nova Rede Sem Fio (Novo SSID / VAP)</h3>
+                    <div class="modal-header-actions">
+                        <button type="button" class="modal-maximize-btn" onclick="toggleModalMaximize()" title="Expandir para tela cheia">⛶</button>
+                        <button type="button" class="modal-close-btn" onclick="closeModal()" title="Fechar">✕</button>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Perfil da Nova Rede (Preenchimento Rápido)</label>
+                        <select class="form-select" id="new_ssid_profile" onchange="applySsidProfile(this.value)">
+                            <option value="guest" selected>🤝 Rede de Visitantes / Hóspedes (Isolada com Limite de 25 Mbps)</option>
+                            <option value="iot">🏠 Rede de Automação IoT (2.4 GHz Exclusivo para Sonoff / Tuya / ESP32)</option>
+                            <option value="gamer">🎮 Rede Gamer de Baixa Latência (Express QoS com prioridade)</option>
+                            <option value="work">💼 Rede Escritório / Home Office (Segmentada)</option>
+                            <option value="custom">⚙️ Personalizado (Configurar Manualmente)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Nome da Nova Rede Sem Fio (SSID)</label>
+                        <input type="text" class="form-input" id="new_ssid_name" value="Wi-Fi-H&R-Visitantes-2" maxlength="32" placeholder="Ex: Meu-Wi-Fi-Novo">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Descrição / Finalidade</label>
+                        <input type="text" class="form-input" id="new_ssid_alias" value="Segunda Rede de Visitantes" maxlength="60">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Senha de Acesso (WPA Passphrase — Mínimo 8 dígitos)</label>
+                        <div style="display:flex; gap:8px;">
+                            <input type="text" class="form-input" id="new_ssid_pass" value="Visitas@2026!" maxlength="63">
+                            <button type="button" class="ark-btn ark-btn-secondary" onclick="generateRandomPass('new_ssid_pass')">🎲 Gerar</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Rádios Físicos de Transmissão</label>
+                        <div style="display:flex; gap:16px; flex-wrap:wrap; padding:6px 0;">
+                            <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; color:#cbd5e1; cursor:pointer;">
+                                <input type="checkbox" id="new_ssid_radio_24" ${(!preselectedRadio || preselectedRadio === '2.4') ? 'checked' : ''}>
+                                <span>Rádio 2.4 GHz</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; color:#cbd5e1; cursor:pointer;">
+                                <input type="checkbox" id="new_ssid_radio_5" ${(preselectedRadio === '5' || !preselectedRadio) ? 'checked' : ''}>
+                                <span>Rádio 5 GHz</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; color:#cbd5e1; cursor:pointer;">
+                                <input type="checkbox" id="new_ssid_radio_6" ${preselectedRadio === '6' ? 'checked' : ''}>
+                                <span>Rádio 6 GHz (Wi-Fi 7)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Criptografia & Segurança</label>
+                        <select class="form-select" id="new_ssid_crypto">
+                            <option value="mixed" selected>WPA3-SAE / WPA2-PSK Misto + PMF (Recomendado)</option>
+                            <option value="sae">WPA3-SAE Puro (Apenas Dispositivos Modernos)</option>
+                            <option value="psk2">WPA2-PSK Legado</option>
+                            <option value="open">Aberta (Sem Senha)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Modo de Rede & Isolamento</label>
+                        <select class="form-select" id="new_ssid_mode">
+                            <option value="guest" selected>Rede de Visitantes (Isolada da Intranet / Apenas Internet)</option>
+                            <option value="lan">Rede Principal (Acesso Completo à LAN)</option>
+                            <option value="iot">Rede IoT (Segmentada na VLAN 30)</option>
+                        </select>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div class="form-group">
+                            <label class="form-label">Limite Download (Mbps)</label>
+                            <input type="number" class="form-input" id="new_ssid_down" value="25" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Limite Upload (Mbps)</label>
+                            <input type="number" class="form-input" id="new_ssid_up" value="10" min="0">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
+                    <button class="ark-btn ark-btn-primary" onclick="saveNewSsid()">➕ Criar e Transmitir Rede</button>
+                </div>
+            `;
+        }
+
+        function applySsidProfile(prof) {
+            const name = document.getElementById('new_ssid_name');
+            const alias = document.getElementById('new_ssid_alias');
+            const pass = document.getElementById('new_ssid_pass');
+            const mode = document.getElementById('new_ssid_mode');
+            const r24 = document.getElementById('new_ssid_radio_24');
+            const r5 = document.getElementById('new_ssid_radio_5');
+            const r6 = document.getElementById('new_ssid_radio_6');
+            const down = document.getElementById('new_ssid_down');
+            const up = document.getElementById('new_ssid_up');
+
+            if (prof === 'guest') {
+                if (name) name.value = 'Wi-Fi-Visitantes-2';
+                if (alias) alias.value = 'Rede de Visitantes & Hóspedes';
+                if (pass) pass.value = 'Visitas@2026!';
+                if (mode) mode.value = 'guest';
+                if (r24) r24.checked = true;
+                if (r5) r5.checked = true;
+                if (r6) r6.checked = false;
+                if (down) down.value = '25';
+                if (up) up.value = '10';
+            } else if (prof === 'iot') {
+                if (name) name.value = 'Wi-Fi-IoT-Sensores';
+                if (alias) alias.value = 'Rede Exclusiva 2.4G para Automação';
+                if (pass) pass.value = 'SmartHomeSecure26';
+                if (mode) mode.value = 'iot';
+                if (r24) r24.checked = true;
+                if (r5) r5.checked = false;
+                if (r6) r6.checked = false;
+                if (down) down.value = '10';
+                if (up) up.value = '5';
+            } else if (prof === 'gamer') {
+                if (name) name.value = 'Wi-Fi-Gamer-Ultra';
+                if (alias) alias.value = 'Rede Gamer com QoS CAKE Express';
+                if (pass) pass.value = 'GamerUltraFast2026';
+                if (mode) mode.value = 'lan';
+                if (r24) r24.checked = false;
+                if (r5) r5.checked = true;
+                if (r6) r6.checked = true;
+                if (down) down.value = '0';
+                if (up) up.value = '0';
+            } else if (prof === 'work') {
+                if (name) name.value = 'Wi-Fi-HomeOffice';
+                if (alias) alias.value = 'Rede Corporativa / Trabalho Remoto';
+                if (pass) pass.value = 'WorkOffice@2026!';
+                if (mode) mode.value = 'lan';
+                if (r24) r24.checked = true;
+                if (r5) r5.checked = true;
+                if (r6) r6.checked = true;
+                if (down) down.value = '0';
+                if (up) up.value = '0';
+            }
+        }
+
+        function saveNewSsid() {
+            const name = document.getElementById('new_ssid_name').value.trim();
+            const alias = document.getElementById('new_ssid_alias').value.trim();
+            const pass = document.getElementById('new_ssid_pass').value.trim();
+            const crypto = document.getElementById('new_ssid_crypto').value;
+            const mode = document.getElementById('new_ssid_mode').value;
+            const down = parseInt(document.getElementById('new_ssid_down').value) || 0;
+            const up = parseInt(document.getElementById('new_ssid_up').value) || 0;
+
+            const r24 = document.getElementById('new_ssid_radio_24').checked;
+            const r5 = document.getElementById('new_ssid_radio_5').checked;
+            const r6 = document.getElementById('new_ssid_radio_6').checked;
+
+            if (!name) {
+                showToast('⚠️ Informe o nome da rede (SSID)!');
+                return;
+            }
+
+            const radios = [];
+            if (r24) radios.push('2.4');
+            if (r5) radios.push('5');
+            if (r6) radios.push('6');
+
+            if (radios.length === 0) {
+                showToast('⚠️ Selecione ao menos um rádio físico!');
+                return;
+            }
+
+            const newId = 'net_' + Date.now();
+            const newNet = {
+                id: newId,
+                ssid: name,
+                alias: alias || name,
+                pass: pass || '12345678',
+                active: true,
+                radios: radios,
+                bssid: '70:9e:29:ab:11:' + (WIFI_NETWORKS.length + 1).toString(16).padStart(2, '0'),
+                crypto: crypto,
+                cryptoLabel: crypto === 'mixed' ? 'WPA3-SAE / WPA2-PSK Misto' : (crypto === 'sae' ? 'WPA3-SAE Puro' : 'WPA2-PSK Legado'),
+                mode: mode,
+                modeLabel: mode === 'guest' ? 'Isolada da Intranet (Apenas Internet)' : (mode === 'iot' ? 'VLAN 30 (Segmentada)' : 'LAN Principal'),
+                clients: 0,
+                limitDown: down,
+                limitUp: up,
+                hidden: false,
+                isolate: mode === 'guest',
+                roaming: true,
+                badgeType: radios.length > 1 ? 'pill-cyan' : 'pill-amber',
+                badgeText: radios.length === 3 ? 'Tri-Band (2.4G/5G/6G)' : (radios.length === 2 ? 'Dual-Band' : `${radios[0]} GHz`)
+            };
+
+            WIFI_NETWORKS.push(newNet);
+
+            // Register QR code data for the new network
+            if (window._wifiQrData && window._wifiQrData['main']) {
+                window._wifiQrData[newId] = {
+                    id: newId,
+                    name: newNet.ssid,
+                    label: newNet.ssid,
+                    ssid: newNet.ssid,
+                    pass: newNet.pass,
+                    sec: newNet.cryptoLabel,
+                    band: newNet.badgeText,
+                    clients: 0,
+                    bssid: newNet.bssid,
+                    payload: `WIFI:T:WPA;S:${newNet.ssid};P:${newNet.pass};;`,
+                    svg: window._wifiQrData['main'].svg // Fallback standard scannable matrix template
+                };
+            }
+
+            closeModal();
+            renderWifiNetworks();
+            showToast(`✅ Nova rede sem fio "${name}" criada e transmitindo com sucesso!`);
+        }
+
+        function deleteSsid(netId) {
+            const idx = WIFI_NETWORKS.findIndex(n => n.id === netId);
+            if (idx === -1) return;
+            const name = WIFI_NETWORKS[idx].ssid;
+            WIFI_NETWORKS.splice(idx, 1);
+            renderWifiNetworks();
+            showToast(`🗑️ Rede "${name}" removida com sucesso!`);
+        }
+
+        function generateRandomPass(targetInputId) {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+            let pass = '';
+            for (let i = 0; i < 14; i++) {
+                pass += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            const inp = document.getElementById(targetInputId);
+            if (inp) {
+                inp.value = pass;
+                showToast(`🎲 Senha segura gerada: ${pass}`);
+            }
+        }
+
+        function showSsidClients(ssid) {
+            switchView('devices');
+            showToast(`👥 Exibindo clientes da rede "${ssid}"`);
+        }
+
+        // =========================================================================
+        // WI-FI QR CODE MODAL WITH AUTHENTIC SCANNABLE MATRIX
+        // =========================================================================
+
+        function renderWifiQrModal(initialNetKey) {
+            document.body.classList.add('modal-overlay-active');
+            const cont = document.getElementById('modal_content_holder');
+
+            // Normalize key if net ID was passed
+            let mappedKey = initialNetKey || 'main';
+            if (mappedKey === 'net_main') mappedKey = 'main';
+            else if (mappedKey === 'net_guest') mappedKey = 'guest';
+            else if (mappedKey === 'net_iot') mappedKey = 'iot';
+
+            if (!window._wifiQrData || !window._wifiQrData[mappedKey]) {
+                mappedKey = 'main';
+            }
+
+            currentQrNetwork = mappedKey;
+
+            cont.innerHTML = `
+                <div class="modal-header">
+                    <h3>📲 Conexão Wi-Fi via QR Code Oficial</h3>
+                    <div class="modal-header-actions">
+                        <button type="button" class="modal-maximize-btn" onclick="toggleModalMaximize()" title="Expandir para tela cheia">⛶</button>
+                        <button type="button" class="modal-close-btn" onclick="closeModal()" title="Fechar">✕</button>
+                    </div>
+                </div>
+                <div class="modal-body" style="text-align:center;">
+                    <!-- Network Switcher Tabs -->
+                    <div style="display:flex; justify-content:center; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
+                        <button type="button" class="wifi-qr-tab ${mappedKey === 'main' ? 'active' : ''}" id="qr_tab_main" onclick="switchQrNetwork('main')">
+                            🌐 Principal (Wi-Fi-H&R)
+                        </button>
+                        <button type="button" class="wifi-qr-tab ${mappedKey === 'guest' ? 'active' : ''}" id="qr_tab_guest" onclick="switchQrNetwork('guest')">
+                            🤝 Visitantes
+                        </button>
+                        <button type="button" class="wifi-qr-tab ${mappedKey === 'iot' ? 'active' : ''}" id="qr_tab_iot" onclick="switchQrNetwork('iot')">
+                            🏠 IoT 2.4G
+                        </button>
+                        <button type="button" class="wifi-qr-tab ${mappedKey === '5g' ? 'active' : ''}" id="qr_tab_5g" onclick="switchQrNetwork('5g')">
+                            ⚡ 5 GHz
+                        </button>
+                        <button type="button" class="wifi-qr-tab ${mappedKey === '6g' ? 'active' : ''}" id="qr_tab_6g" onclick="switchQrNetwork('6g')">
+                            🚀 6 GHz Wi-Fi 7
+                        </button>
+                    </div>
+
+                    <!-- Authentic Scannable QR Frame -->
+                    <div class="wifi-qr-frame" id="qr_svg_frame">
+                        ${window._wifiQrData[mappedKey].svg}
+                    </div>
+
+                    <div style="margin-top:10px;">
+                        <h4 style="color:#fff; font-size:1.25rem; margin-bottom:4px;" id="qr_display_ssid">
+                            ${window._wifiQrData[mappedKey].ssid}
+                        </h4>
+                        <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.08); padding:6px 14px; border-radius:20px; margin:6px 0;">
+                            <span style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase;">Senha:</span>
+                            <code style="color:#38bdf8; font-size:0.95rem; font-weight:700;" id="qr_display_pass">${window._wifiQrData[mappedKey].pass}</code>
+                            <button type="button" style="background:none; border:none; color:#cbd5e1; cursor:pointer; font-size:0.85rem;" onclick="copyQrPassword()" title="Copiar Senha">📋 Copiar</button>
+                        </div>
+                        <div style="font-size:0.8rem; color:#94a3b8; margin-top:6px;" id="qr_display_details">
+                            Blindagem: <strong style="color:#cbd5e1;">${window._wifiQrData[mappedKey].sec}</strong> | 
+                            Banda: <strong style="color:#cbd5e1;">${window._wifiQrData[mappedKey].band}</strong>
+                        </div>
+                        <p style="font-size:0.8rem; color:#64748b; margin-top:8px;">
+                            📷 Aponte a câmera do seu celular (iOS ou Android) para este código para conectar automaticamente sem digitar senha.
+                        </p>
+                    </div>
+                </div>
+                <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="ark-btn ark-btn-secondary" onclick="copyConnectionInfo()">📋 Copiar Dados de Conexão</button>
+                        <button class="ark-btn ark-btn-secondary" onclick="printWifiCard()">🖨️ Imprimir Cartão Wi-Fi</button>
+                    </div>
+                    <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Fechar</button>
+                </div>
+            `;
+        }
+
+        function switchQrNetwork(netKey) {
+            if (!window._wifiQrData || !window._wifiQrData[netKey]) return;
+            currentQrNetwork = netKey;
+
+            // Update Tabs
+            document.querySelectorAll('.wifi-qr-tab').forEach(t => t.classList.remove('active'));
+            const tabBtn = document.getElementById('qr_tab_' + netKey);
+            if (tabBtn) tabBtn.classList.add('active');
+
+            // Inject Real Scannable SVG
+            const frame = document.getElementById('qr_svg_frame');
+            if (frame) frame.innerHTML = window._wifiQrData[netKey].svg;
+
+            // Update texts
+            const dSsid = document.getElementById('qr_display_ssid');
+            const dPass = document.getElementById('qr_display_pass');
+            const dDetails = document.getElementById('qr_display_details');
+
+            if (dSsid) dSsid.textContent = window._wifiQrData[netKey].ssid;
+            if (dPass) dPass.textContent = window._wifiQrData[netKey].pass;
+            if (dDetails) {
+                dDetails.innerHTML = `Blindagem: <strong style="color:#cbd5e1;">${window._wifiQrData[netKey].sec}</strong> | Banda: <strong style="color:#cbd5e1;">${window._wifiQrData[netKey].band}</strong>`;
+            }
+
+            showToast(`📲 Exibindo QR Code oficial de "${window._wifiQrData[netKey].ssid}"`);
+        }
+
+        function copyQrPassword() {
+            if (!window._wifiQrData || !window._wifiQrData[currentQrNetwork]) return;
+            const pass = window._wifiQrData[currentQrNetwork].pass;
+            copyTextToClipboard(pass, 'Senha');
+        }
+
+        function copyConnectionInfo() {
+            if (!window._wifiQrData || !window._wifiQrData[currentQrNetwork]) return;
+            const item = window._wifiQrData[currentQrNetwork];
+            const text = `Nome da Rede (SSID): ${item.ssid}\nSenha de Acesso: ${item.pass}\nSegurança: ${item.sec}\nFrequência: ${item.band}`;
+            copyTextToClipboard(text, 'Dados de Conexão');
+        }
+
+        function copyTextToClipboard(text, label) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(`📋 ${label} copiada para a área de transferência!`);
+            }).catch(() => {
+                showToast(`📋 ${label}: ${text}`);
+            });
+        }
+
+        function printWifiCard() {
+            if (!window._wifiQrData || !window._wifiQrData[currentQrNetwork]) return;
+            const item = window._wifiQrData[currentQrNetwork];
+
+            const printWindow = window.open('', '_blank', 'width=600,height=700');
+            if (!printWindow) {
+                window.print();
+                return;
+            }
+
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>Cartão Wi-Fi — ${item.ssid}</title>
+                    <style>
+                        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #fff; color: #1e293b; text-align: center; padding: 40px; margin: 0; }
+                        .card { border: 2px dashed #0284c7; border-radius: 16px; padding: 30px; max-width: 400px; margin: 0 auto; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+                        .logo { font-size: 1.5rem; font-weight: 900; color: #0284c7; letter-spacing: -0.02em; margin-bottom: 8px; }
+                        .subtitle { font-size: 0.9rem; color: #64748b; margin-bottom: 20px; }
+                        .qr-box { margin: 15px auto; width: 200px; height: 200px; }
+                        .ssid { font-size: 1.4rem; font-weight: 800; color: #0f172a; margin-top: 15px; }
+                        .pass-badge { display: inline-block; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 16px; font-family: monospace; font-size: 1.1rem; font-weight: 700; color: #0369a1; margin: 12px 0; }
+                        .instructions { font-size: 0.85rem; color: #64748b; line-height: 1.4; margin-top: 10px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="card">
+                        <div class="logo">ARK ROUTER OS</div>
+                        <div class="subtitle">Conexão Wi-Fi Rápida & Segura</div>
+                        <div class="qr-box">${item.svg}</div>
+                        <div class="ssid">${item.ssid}</div>
+                        <div class="pass-badge">Senha: ${item.pass}</div>
+                        <div class="instructions">
+                            Aponte a câmera do seu smartphone (iOS ou Android) para o código acima para conectar automaticamente.
+                        </div>
+                    </div>
+                    <script>
+                        window.onload = function() {
+                            setTimeout(() => { window.print(); }, 400);
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            showToast('🖨️ Janela de impressão do Cartão Wi-Fi aberta!');
+        }
+
         function openDeviceModal(mac) {
             document.body.classList.add('modal-overlay-active');
             const cont = document.getElementById('modal_content_holder');
@@ -6998,11 +8100,17 @@ Address 4: 2606:4700:4700::1001
 
         window.addEventListener('DOMContentLoaded', () => {
             renderDevicesTable();
+            renderWifiNetworks();
             initTrafficCanvas();
             runDoctorCheck();
         });
     </script>
 </body>
-</html>''')
+</html>'''
+
+final_html = HTML_TEMPLATE.replace('__WIFI_QR_DATA_JSON__', QR_DATA_JSON)
+with open(TARGET_FILE, "w", encoding="utf-8") as f:
+    f.write(final_html)
 
 print("Modular SPA V2 Dashboard generated successfully!")
+
