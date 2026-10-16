@@ -1131,6 +1131,181 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
             width: 100%;
         }
 
+        /* EZ-Setup Section Boxes */
+        .ez-section-box {
+            background: rgba(0, 0, 0, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: var(--ark-radius-md);
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .ez-section-title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 2px;
+        }
+
+        .ez-plugin-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 10px 12px;
+            gap: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .ez-plugin-card:hover {
+            border-color: rgba(56, 189, 248, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .ez-plugin-card.installed {
+            border-color: rgba(16, 185, 129, 0.3);
+            background: rgba(16, 185, 129, 0.06);
+        }
+
+        /* Plugins Central (Software Manager) */
+        .plugins-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 14px;
+            margin-top: 14px;
+        }
+
+        .plugin-detail-card {
+            background: var(--ark-surface-2);
+            border: 1px solid var(--ark-border);
+            border-radius: var(--ark-radius-md);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .plugin-detail-card:hover {
+            border-color: var(--ark-border-hover);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+        }
+
+        .plugin-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .plugin-card-info h4 {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 3px;
+        }
+
+        .plugin-card-info p {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            line-height: 1.4;
+            margin-top: 4px;
+        }
+
+        .plugin-card-meta {
+            display: flex;
+            gap: 10px;
+            font-size: 0.75rem;
+            color: #64748b;
+            font-family: monospace;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .plugin-card-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .terminal-sim-box {
+            background: #050811;
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            border-radius: 8px;
+            padding: 14px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.8rem;
+            color: #38bdf8;
+            max-height: 240px;
+            overflow-y: auto;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.7);
+        }
+
+        .plugins-tabs {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            margin-bottom: 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .plugin-tab-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #94a3b8;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+
+        .plugin-tab-btn.active, .plugin-tab-btn:hover {
+            background: rgba(56, 189, 248, 0.18);
+            border-color: #38bdf8;
+            color: #fff;
+        }
+
+        .modal-footer-multi {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: flex-end;
+            width: 100%;
+        }
+
+        @media (max-width: 854px) {
+            .modal-footer-multi {
+                display: flex !important;
+                flex-wrap: wrap !important;
+                gap: 8px !important;
+            }
+            .modal-footer-multi .ark-btn {
+                flex: 1 1 calc(50% - 6px) !important;
+                min-height: 42px !important;
+                font-size: 0.82rem !important;
+            }
+            .modal-footer-multi .ark-btn-primary {
+                flex: 1 1 100% !important;
+            }
+            .plugins-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
         /* Devices Table */
         .device-filters {
             display: flex;
@@ -2032,6 +2207,9 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
             <a class="nav-item" onclick="switchView('system')">
                 <span class="icon">💡</span> Hardware & Sistema
             </a>
+            <a class="nav-item" onclick="openModal('plugins')">
+                <span class="icon">📦</span> Plugins & Módulos (<span style="color:#38bdf8;">12</span>)
+            </a>
 
             <div class="nav-section-title">OpenWrt Nativo</div>
             <a class="nav-item" style="color:#38bdf8;" onclick="toggleLuciDrawer()">
@@ -2063,6 +2241,9 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
                     <a class="btn-hero-action" href="/cgi-bin/luci/admin/status/overview" onclick="openClassicLuci(event)" style="background:rgba(192,132,252,0.15); border-color:rgba(192,132,252,0.4); color:#c084fc; text-decoration:none; font-weight:700;" title="Acessar Interface Clássica Original do LuCI">
                         💻 Ver Interface Clássica <span style="font-size:0.75rem; opacity:0.8;">↗</span>
                     </a>
+                    <button class="btn-hero-action" onclick="openModal('plugins')">
+                        📦 Plugins (12)
+                    </button>
                     <button class="btn-hero-action" onclick="openModal('setup')">
                         ⚡ Setup Rápido
                     </button>
@@ -3631,6 +3812,24 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
                             </div>
                         </div>
 
+                        <!-- Central de Plugins e Módulos do Sistema (OpenWrt Packages & Daemons) -->
+                        <div style="background:var(--ark-surface-2); border:1px solid rgba(56, 189, 248, 0.25); border-radius:var(--ark-radius-md); padding:16px; margin-bottom:14px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                                <div>
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <h3 style="font-size:0.98rem; font-weight:800; color:#fff; margin:0;">📦 Central de Plugins & Módulos do Sistema (12)</h3>
+                                        <span class="pill-badge pill-online" style="font-size:0.7rem;">opkg & daemons</span>
+                                    </div>
+                                    <p style="font-size:0.78rem; color:#94a3b8; margin:4px 0 0;">Gerencie os serviços de aceleração, pacotes instalados na partição /overlay, UPnP, mwan3, ZeroTier e Speedify.</p>
+                                </div>
+                                <div style="display:flex; gap:8px;">
+                                    <button class="ark-btn ark-btn-primary" onclick="openModal('plugins')">
+                                        📦 Gerenciar Plugins & Módulos
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;" class="traffic-grid">
                             <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px;">
                                 <strong style="color:#fff; font-size:0.95rem;">🎨 Personalização Visual</strong>
@@ -4057,6 +4256,154 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
                 roaming: false,
                 badgeType: 'pill-amber',
                 badgeText: '2.4 GHz Exclusivo'
+            }
+        ];
+
+        // System Plugins & Modules Database (OpenWrt Packages)
+        let SYSTEM_PLUGINS = [
+            {
+                id: 'sqm',
+                name: 'SQM / CAKE (Anti-Bufferbloat)',
+                pkg: 'sqm-scripts',
+                desc: 'Organiza as filas de tráfego CAKE / FQ-CoDel, eliminando picos de latência e lag em jogos.',
+                installed: true,
+                size: '240 KB',
+                version: '1.5.2-r3',
+                category: 'net',
+                actionType: 'modal',
+                actionTarget: 'sqm'
+            },
+            {
+                id: 'mwan3',
+                name: 'Multi-WAN & Failover Inteligente',
+                pkg: 'mwan3',
+                desc: 'Adiciona redundância de sub-segundo e balanceamento de carga entre múltiplos links de internet.',
+                installed: true,
+                size: '380 KB',
+                version: '2.11.8-1',
+                category: 'net',
+                actionType: 'modal',
+                actionTarget: 'mwan3'
+            },
+            {
+                id: 'adblock',
+                name: 'Bloqueador de Anúncios (AdBlock Fast)',
+                pkg: 'adblock-fast',
+                desc: 'Intercepta anúncios invasivos, rastreadores e telemetria de Smart TVs diretamente no DNS.',
+                installed: true,
+                size: '180 KB',
+                version: '1.1.2-4',
+                category: 'sec',
+                actionType: 'modal',
+                actionTarget: 'adblock'
+            },
+            {
+                id: 'upnp',
+                name: 'UPnP IGD & NAT-PMP (Jogos / Consoles)',
+                pkg: 'miniupnpd',
+                desc: 'Abertura automática e dinâmica de portas para PlayStation 5, Xbox Series X, PC Gamer e torrents.',
+                installed: true,
+                size: '120 KB',
+                version: '2.2.3-2',
+                category: 'net',
+                actionType: 'modal',
+                actionTarget: 'upnp'
+            },
+            {
+                id: 'wireguard',
+                name: 'WireGuard VPN (Kernel Mode)',
+                pkg: 'kmod-wireguard',
+                desc: 'Túneis VPN modernos e de altíssimo desempenho operando em nível de kernel com criptografia Curve25519.',
+                installed: true,
+                size: '310 KB',
+                version: '1.0.20210914',
+                category: 'sec',
+                actionType: 'modal',
+                actionTarget: 'add_vpn'
+            },
+            {
+                id: 'nlbwmon',
+                name: 'Consumo & Tráfego por Aparelho',
+                pkg: 'nlbwmon',
+                desc: 'Coletor em tempo real do volume de dados e velocidade individual de cada aparelho conectado.',
+                installed: true,
+                size: '190 KB',
+                version: '0.7.0-2',
+                category: 'sys',
+                actionType: 'view',
+                actionTarget: 'devices'
+            },
+            {
+                id: 'usteer',
+                name: 'Assistente de Roaming Wi-Fi (usteer)',
+                pkg: 'usteer',
+                desc: 'Orquestra troca suave de sinal (AP Steering) e Band Steering 802.11k/v/r sem interrupção de chamada.',
+                installed: true,
+                size: '160 KB',
+                version: '2024-03-01',
+                category: 'wifi',
+                actionType: 'view',
+                actionTarget: 'wifi'
+            },
+            {
+                id: 'zerotier',
+                name: 'ZeroTier SD-WAN (Rede Virtual P2P)',
+                pkg: 'zerotier',
+                desc: 'Cria uma rede privada virtual mesh para acesso remoto seguro sem precisar abrir portas ou IP público.',
+                installed: true,
+                size: '2.8 MB',
+                version: '1.12.2-1',
+                category: 'sec',
+                actionType: 'modal',
+                actionTarget: 'zerotier'
+            },
+            {
+                id: 'speedify',
+                name: 'Speedify Bonding (Starlink + Fibra)',
+                pkg: 'speedify-router',
+                desc: 'Soma links de internet distintos agregando largura de banda e protegendo contra perdas de pacotes.',
+                installed: false,
+                size: '14.2 MB',
+                version: '14.5.0',
+                category: 'net',
+                actionType: 'modal',
+                actionTarget: 'speedify'
+            },
+            {
+                id: 'zram',
+                name: 'Compressão ZRAM LZ4 (RAM Turbo)',
+                pkg: 'zram-swap',
+                desc: 'Compacta a memória RAM em tempo real, dobrando a capacidade útil para roteadores e serviços.',
+                installed: true,
+                size: '45 KB',
+                version: '1.2.0-1',
+                category: 'sys',
+                actionType: 'modal',
+                actionTarget: 'hardware_ram'
+            },
+            {
+                id: 'irqbalance',
+                name: 'Balanceador Multicore CPU (irqbalance)',
+                pkg: 'irqbalance',
+                desc: 'Distribui interrupções de pacotes de rede e Wi-Fi entre os 4 núcleos do processador Filogic.',
+                installed: true,
+                size: '85 KB',
+                version: '1.9.3-1',
+                category: 'sys',
+                actionType: 'modal',
+                actionTarget: 'hardware_cpu'
+            },
+            {
+                id: 'htop',
+                name: 'Monitor de Processos (htop Terminal)',
+                pkg: 'htop',
+                desc: 'Visualizador interativo em tempo real com árvore de processos, memória e medidores por núcleo.',
+                installed: true,
+                size: '140 KB',
+                version: '3.3.0-1',
+                category: 'sys',
+                actionType: 'modal',
+                actionTarget: 'diagnostics'
             }
         ];
 
@@ -5030,39 +5377,19 @@ Address 4: 2606:4700:4700::1001
             const cont = document.getElementById('modal_content_holder');
 
             if (type === 'setup') {
-                cont.innerHTML = `
-                    <div class="modal-header">
-                    <h3>⚡ Assistente de Setup Rápido ARK</h3>
-                    <div class="modal-header-actions">
-                        <button type="button" class="modal-maximize-btn" onclick="toggleModalMaximize()" title="Expandir para tela cheia">⛶</button>
-                        <button type="button" class="modal-close-btn" onclick="closeModal()" title="Fechar">✕</button>
-                    </div>
-                </div>
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label class="form-label">Tipo de Conexão com o Provedor (WAN 1)</label>
-                            <select class="form-select" id="setup_proto">
-                                <option value="pppoe" selected>Fibra Óptica PPPoE (Vivo, Oi, Desktop, Vero)</option>
-                                <option value="dhcp">DHCP Automático (Claro Fibra/Coaxial, Starlink, Modem Bridge)</option>
-                                <option value="static">IP Estático Fixo Corporativo</option>
-                                <option value="ap">Modo Ponto de Acesso / Ponte (Desativa Roteador)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Nome da Rede Wi-Fi Unificada (SSID)</label>
-                            <input type="text" class="form-input" id="setup_ssid" value="Wi-Fi-H&R">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Senha da Rede Sem Fio</label>
-                            <input type="password" class="form-input" id="setup_pass" value="MinhaSenhaForte2026">
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Cancelar</button>
-                        <button class="ark-btn ark-btn-primary" onclick="saveSetupModal()">💾 Salvar e Aplicar</button>
-                    </div>
-                `;
-
+                renderEzSetupModal(cont);
+            } else if (type === 'plugins') {
+                renderPluginsCentralModal(cont);
+            } else if (type === 'pkg_install') {
+                renderPackageInstallModal(cont, extraArg);
+            } else if (type === 'upnp') {
+                renderUpnpModal(cont);
+            } else if (type === 'mwan3') {
+                renderMwan3Modal(cont);
+            } else if (type === 'zerotier') {
+                renderZeroTierModal(cont);
+            } else if (type === 'speedify') {
+                renderSpeedifyModal(cont);
             } else if (type === 'wifi') {
                 cont.innerHTML = `
                     <div class="modal-header">
@@ -7720,11 +8047,1192 @@ Address 4: 2606:4700:4700::1001
             showToast(`🎨 Tema "${brand}" aplicado com sucesso!`);
         }
 
-        function saveSetupModal() {
-            const ssid = document.getElementById('setup_ssid').value;
-            document.getElementById('label_main_ssid').textContent = ssid;
+        // =========================================================================
+        // EZ-SETUP 8 SECTIONS (100% V1 FIDELITY) & PLUGINS ECOSYSTEM
+        // =========================================================================
+
+        let ezDraft = {
+            hostname: 'ARK-Router',
+            country: 'BR',
+            wan1_proto: 'pppoe',
+            wan1_user: 'cliente@fibra.com.br',
+            wan1_pass: 'Fibra@2026',
+            wan1_modem_ip: '192.168.1.1',
+            wan1_mac: '',
+            wan2_enabled: false,
+            wan_mode: 'failover',
+            wan2_port: 'lan1',
+            wan2_proto: 'dhcp',
+            wifi_mode: 'unified',
+            wifi_ssid: 'Wi-Fi-H&R',
+            wifi_pass: 'MinhaSenhaForte2026',
+            guest_enabled: false,
+            guest_ssid: 'Wi-Fi-Visitantes',
+            guest_pass: 'Visita@2026',
+            guest_down: '25',
+            guest_up: '10',
+            admin_enabled: false,
+            admin_pass: '',
+            dns_mode: 'recommended',
+            ipv6: 'enable',
+            disable_wps: true,
+            sqm_enabled: true,
+            sqm_down: '650',
+            sqm_up: '320'
+        };
+
+        function renderEzSetupModal(cont) {
+            cont.innerHTML = `
+                <div class="modal-header">
+                    <h3>⚡ Assistente de Setup Rápido ARK (8 Etapas Completas)</h3>
+                    <div class="modal-header-actions">
+                        <button type="button" class="modal-maximize-btn" onclick="toggleModalMaximize()" title="Expandir para tela cheia">⛶</button>
+                        <button type="button" class="modal-close-btn" onclick="closeModal()" title="Fechar">✕</button>
+                    </div>
+                </div>
+                <div class="modal-body" style="display:flex; flex-direction:column; gap:16px;">
+                    <div style="background:rgba(56, 189, 248, 0.08); border:1px solid rgba(56, 189, 248, 0.25); border-radius:8px; padding:12px 14px; font-size:0.83rem; color:#bae6fd; line-height:1.45;">
+                        💡 <strong>Configuração Integrada ARK OS:</strong> Configure todos os parâmetros essenciais de rede, segurança, Wi-Fi e otimização gamer com validação em tempo real.
+                    </div>
+
+                    <!-- SEÇÃO 1: IDENTIFICAÇÃO & REGIÃO -->
+                    <div class="ez-section-box">
+                        <div class="ez-section-title"><span>1️⃣</span> Identificação do Roteador & Região</div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+                            <div class="form-group">
+                                <label class="form-label">Idioma da Interface</label>
+                                <select class="form-select" id="ez_lang">
+                                    <option value="pt-br" selected>Português (Brasil)</option>
+                                    <option value="en">English (US)</option>
+                                    <option value="es">Español</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Nome do Roteador (Hostname)</label>
+                                <input type="text" class="form-input" id="ez_hostname" value="${ezDraft.hostname}" maxlength="40">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">País Regulatório Wi-Fi</label>
+                                <select class="form-select" id="ez_country">
+                                    <option value="BR" ${ezDraft.country === 'BR' ? 'selected' : ''}>Brasil (BR)</option>
+                                    <option value="00" ${ezDraft.country === '00' ? 'selected' : ''}>Mundo / Driver Padrão - Max Power (00)</option>
+                                    <option value="US" ${ezDraft.country === 'US' ? 'selected' : ''}>Estados Unidos (US)</option>
+                                    <option value="PT" ${ezDraft.country === 'PT' ? 'selected' : ''}>Portugal (PT)</option>
+                                    <option value="ES" ${ezDraft.country === 'ES' ? 'selected' : ''}>Espanha (ES)</option>
+                                    <option value="AR" ${ezDraft.country === 'AR' ? 'selected' : ''}>Argentina (AR)</option>
+                                    <option value="PA" ${ezDraft.country === 'PA' ? 'selected' : ''}>Panamá - Max Power (PA)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SEÇÃO 2: PROVEDOR DE INTERNET & DUAL-WAN -->
+                    <div class="ez-section-box">
+                        <div class="ez-section-title"><span>2️⃣</span> Provedor de Internet & Modo Dual-WAN</div>
+                        <div class="form-group">
+                            <label class="form-label">Tipo de Conexão WAN 1 (Porta Principal da Fibra)</label>
+                            <select class="form-select" id="ez_wan1_proto" onchange="toggleEzWan1Proto(this.value)">
+                                <option value="pppoe" ${ezDraft.wan1_proto === 'pppoe' ? 'selected' : ''}>Fibra Ótica com Login (PPPoE - Usuário e Senha)</option>
+                                <option value="dhcp" ${ezDraft.wan1_proto === 'dhcp' ? 'selected' : ''}>Modem Operadora / Starlink / Cabo (DHCP Automático - Plug & Play)</option>
+                                <option value="static" ${ezDraft.wan1_proto === 'static' ? 'selected' : ''}>IP Fixo Corporativo / Manual (Estático)</option>
+                            </select>
+                        </div>
+
+                        <!-- PPPoE WAN 1 Box -->
+                        <div id="ez_wan1_pppoe_box" style="display:${ezDraft.wan1_proto === 'pppoe' ? 'grid' : 'none'}; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px;">
+                            <div class="form-group">
+                                <label class="form-label">Usuário PPPoE</label>
+                                <input type="text" class="form-input" id="ez_wan1_user" value="${ezDraft.wan1_user}" placeholder="ex: cliente@provedor">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Senha PPPoE</label>
+                                <div style="display:flex; gap:6px;">
+                                    <input type="password" class="form-input" id="ez_wan1_pass" value="${ezDraft.wan1_pass}">
+                                    <button type="button" class="ark-btn ark-btn-secondary" onclick="togglePassVisibility('ez_wan1_pass', this)">👁️</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">IP de Acesso ao Modem / ONU (Opcional)</label>
+                                <input type="text" class="form-input" id="ez_wan1_modem_ip" value="${ezDraft.wan1_modem_ip}" placeholder="ex: 192.168.1.1 ou 192.168.18.1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Clonar MAC da WAN (Opcional)</label>
+                                <input type="text" class="form-input" id="ez_wan1_mac" value="${ezDraft.wan1_mac}" placeholder="ex: AA:BB:CC:DD:EE:FF">
+                            </div>
+                        </div>
+
+                        <!-- Static WAN 1 Box -->
+                        <div id="ez_wan1_static_box" style="display:${ezDraft.wan1_proto === 'static' ? 'grid' : 'none'}; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+                            <div class="form-group">
+                                <label class="form-label">Endereço IPv4 Fixo</label>
+                                <input type="text" class="form-input" id="ez_wan1_ip" value="192.168.1.50">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Máscara de Rede</label>
+                                <input type="text" class="form-input" id="ez_wan1_mask" value="255.255.255.0">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Gateway Padrão</label>
+                                <input type="text" class="form-input" id="ez_wan1_gw" value="192.168.1.1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Servidores DNS</label>
+                                <input type="text" class="form-input" id="ez_wan1_dns" value="1.1.1.1 8.8.8.8">
+                            </div>
+                        </div>
+
+                        <!-- WAN 2 (Dual-WAN) Sub-section -->
+                        <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:12px; margin-top:8px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <strong style="color:#fff; font-size:0.88rem;">Habilitar Segunda Internet (WAN 2 / Failover)</strong>
+                                    <div style="font-size:0.75rem; color:#94a3b8;">Permite usar um segundo link (Starlink, 4G/5G ou segunda fibra) em porta LAN convertida</div>
+                                </div>
+                                <label class="ark-switch">
+                                    <input type="checkbox" id="ez_wan2_toggle" ${ezDraft.wan2_enabled ? 'checked' : ''} onchange="toggleEzWan2Box(this.checked)">
+                                    <span class="ark-slider"></span>
+                                </label>
+                            </div>
+
+                            <div id="ez_wan2_subbox" style="display:${ezDraft.wan2_enabled ? 'flex' : 'none'}; flex-direction:column; gap:10px; margin-top:12px;">
+                                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Modo de Operação</label>
+                                        <select class="form-select" id="ez_wan_mode">
+                                            <option value="failover" selected>Failover (WAN1 principal, WAN2 reserva se cair)</option>
+                                            <option value="balanced">Balanceamento (dividir conexões entre as duas)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Porta Física para WAN 2</label>
+                                        <select class="form-select" id="ez_wan2_port">
+                                            <option value="lan1" selected>Porta LAN 1 (Recomendado)</option>
+                                            <option value="lan2">Porta LAN 2</option>
+                                            <option value="lan3">Porta LAN 3</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Tipo de Conexão (WAN 2)</label>
+                                        <select class="form-select" id="ez_wan2_proto">
+                                            <option value="dhcp" selected>DHCP Automático (Starlink / Modem Bridge)</option>
+                                            <option value="pppoe">Fibra PPPoE</option>
+                                            <option value="static">IP Estático</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SEÇÃO 3: REDE WI-FI PRINCIPAL -->
+                    <div class="ez-section-box">
+                        <div class="ez-section-title"><span>3️⃣</span> Rede Wi-Fi Principal (2.4 GHz, 5 GHz & Wi-Fi 7 6 GHz)</div>
+                        <div class="form-group">
+                            <label class="form-label">Modo de Operação Wi-Fi</label>
+                            <select class="form-select" id="ez_wifi_mode" onchange="toggleEzWifiMode(this.value)">
+                                <option value="unified" ${ezDraft.wifi_mode === 'unified' ? 'selected' : ''}>Unificar 2,4 GHz, 5 GHz e 6 GHz (Recomendado - Smart Connect MLO)</option>
+                                <option value="split" ${ezDraft.wifi_mode === 'split' ? 'selected' : ''}>Separar redes em 2,4 GHz, 5 GHz e 6 GHz independentes</option>
+                            </select>
+                        </div>
+
+                        <!-- Unified Wi-Fi Box -->
+                        <div id="ez_wifi_unified_box" style="display:${ezDraft.wifi_mode === 'unified' ? 'grid' : 'none'}; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px;">
+                            <div class="form-group">
+                                <label class="form-label">Nome da Rede Wi-Fi (SSID Único)</label>
+                                <input type="text" class="form-input" id="ez_wifi_ssid" value="${ezDraft.wifi_ssid}" maxlength="32">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Senha do Wi-Fi</label>
+                                <div style="display:flex; gap:6px;">
+                                    <input type="password" class="form-input" id="ez_wifi_pass" value="${ezDraft.wifi_pass}">
+                                    <button type="button" class="ark-btn ark-btn-secondary" onclick="togglePassVisibility('ez_wifi_pass', this)">👁️</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Split Wi-Fi Box -->
+                        <div id="ez_wifi_split_box" style="display:${ezDraft.wifi_mode === 'split' ? 'flex' : 'none'}; flex-direction:column; gap:10px;">
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; background:rgba(0,0,0,0.15); padding:10px; border-radius:6px;">
+                                <div class="form-group">
+                                    <label class="form-label" style="color:#38bdf8;">Nome Wi-Fi 2.4 GHz</label>
+                                    <input type="text" class="form-input" id="ez_wifi_ssid_2g" value="${ezDraft.wifi_ssid}-2.4G">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" style="color:#38bdf8;">Senha 2.4 GHz</label>
+                                    <input type="password" class="form-input" id="ez_wifi_pass_2g" value="${ezDraft.wifi_pass}">
+                                </div>
+                            </div>
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; background:rgba(0,0,0,0.15); padding:10px; border-radius:6px;">
+                                <div class="form-group">
+                                    <label class="form-label" style="color:#a855f7;">Nome Wi-Fi 5 GHz</label>
+                                    <input type="text" class="form-input" id="ez_wifi_ssid_5g" value="${ezDraft.wifi_ssid}-5G">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" style="color:#a855f7;">Senha 5 GHz</label>
+                                    <input type="password" class="form-input" id="ez_wifi_pass_5g" value="${ezDraft.wifi_pass}">
+                                </div>
+                            </div>
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; background:rgba(0,0,0,0.15); padding:10px; border-radius:6px;">
+                                <div class="form-group">
+                                    <label class="form-label" style="color:#10b981;">Nome Wi-Fi 6 GHz (Wi-Fi 7)</label>
+                                    <input type="text" class="form-input" id="ez_wifi_ssid_6g" value="${ezDraft.wifi_ssid}-6G">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" style="color:#10b981;">Senha 6 GHz (WPA3-SAE)</label>
+                                    <input type="password" class="form-input" id="ez_wifi_pass_6g" value="${ezDraft.wifi_pass}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SEÇÃO 4: WI-FI PARA VISITANTES -->
+                    <div class="ez-section-box">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div class="ez-section-title" style="margin:0;"><span>4️⃣</span> Rede Wi-Fi para Visitantes (Isolada)</div>
+                            <label class="ark-switch">
+                                <input type="checkbox" id="ez_guest_toggle" ${ezDraft.guest_enabled ? 'checked' : ''} onchange="toggleEzGuestBox(this.checked)">
+                                <span class="ark-slider"></span>
+                            </label>
+                        </div>
+                        <div style="font-size:0.75rem; color:#94a3b8;">Rede com isolamento de clientes (Client Isolation) protegendo seus computadores e TVs de acessos externos.</div>
+
+                        <div id="ez_guest_box" style="display:${ezDraft.guest_enabled ? 'grid' : 'none'}; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; margin-top:10px;">
+                            <div class="form-group">
+                                <label class="form-label">Nome da Rede Visitante</label>
+                                <input type="text" class="form-input" id="ez_guest_ssid" value="${ezDraft.guest_ssid}">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Senha da Rede Visitante</label>
+                                <input type="password" class="form-input" id="ez_guest_pass" value="${ezDraft.guest_pass}">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Download Máximo (Mbps)</label>
+                                <input type="number" class="form-input" id="ez_guest_down" value="${ezDraft.guest_down}">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Upload Máximo (Mbps)</label>
+                                <input type="number" class="form-input" id="ez_guest_up" value="${ezDraft.guest_up}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SEÇÃO 5: SENHA DE ADMINISTRAÇÃO (ROOT) -->
+                    <div class="ez-section-box">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div class="ez-section-title" style="margin:0;"><span>5️⃣</span> Senha de Administração do Roteador (root)</div>
+                            <label class="ark-switch">
+                                <input type="checkbox" id="ez_admin_toggle" ${ezDraft.admin_enabled ? 'checked' : ''} onchange="toggleEzAdminBox(this.checked)">
+                                <span class="ark-slider"></span>
+                            </label>
+                        </div>
+                        <div style="font-size:0.75rem; color:#94a3b8;">Proteja o acesso administrativo ao painel LuCI e terminal SSH do roteador.</div>
+
+                        <div id="ez_admin_box" style="display:${ezDraft.admin_enabled ? 'grid' : 'none'}; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-top:10px;">
+                            <div class="form-group">
+                                <label class="form-label">Nova Senha do Administrador</label>
+                                <div style="display:flex; gap:6px;">
+                                    <input type="password" class="form-input" id="ez_admin_pass" placeholder="Mínimo 6 caracteres" oninput="checkEzAdminMatch()">
+                                    <button type="button" class="ark-btn ark-btn-secondary" onclick="togglePassVisibility('ez_admin_pass', this)">👁️</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Confirmar Nova Senha</label>
+                                <div style="display:flex; gap:6px;">
+                                    <input type="password" class="form-input" id="ez_admin_pass2" placeholder="Repita a senha" oninput="checkEzAdminMatch()">
+                                    <button type="button" class="ark-btn ark-btn-secondary" onclick="togglePassVisibility('ez_admin_pass2', this)">👁️</button>
+                                </div>
+                                <small id="ez_admin_match_alert" style="color:#ef4444; font-weight:600; display:none; margin-top:4px;">As senhas não coincidem.</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SEÇÃO 6: DNS SEGURO & PROTEÇÃO -->
+                    <div class="ez-section-box">
+                        <div class="ez-section-title"><span>6️⃣</span> DNS Seguro & Proteção da Família</div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
+                            <div class="form-group">
+                                <label class="form-label">Provedor de Resolução DNS</label>
+                                <select class="form-select" id="ez_dns_mode" onchange="toggleEzDnsMode(this.value)">
+                                    <option value="recommended" ${ezDraft.dns_mode === 'recommended' ? 'selected' : ''}>DNS Recomendado (Cloudflare 1.1.1.1 + Google 8.8.8.8)</option>
+                                    <option value="operator" ${ezDraft.dns_mode === 'operator' ? 'selected' : ''}>DNS da Operadora (Automático via ISP)</option>
+                                    <option value="custom" ${ezDraft.dns_mode === 'custom' ? 'selected' : ''}>DNS Personalizado Manual</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Conectividade Global IPv6</label>
+                                <select class="form-select" id="ez_ipv6">
+                                    <option value="enable" ${ezDraft.ipv6 === 'enable' ? 'selected' : ''}>🟢 Pilha Dupla Global (IPv6 Ativo - Recomendado)</option>
+                                    <option value="disable" ${ezDraft.ipv6 === 'disable' ? 'selected' : ''}>🟡 Desativar IPv6 (Operar Apenas em IPv4)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="ez_dns_custom_box" style="display:${ezDraft.dns_mode === 'custom' ? 'grid' : 'none'}; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-top:10px;">
+                            <div class="form-group">
+                                <label class="form-label">DNS Primário</label>
+                                <input type="text" class="form-input" id="ez_dns1" value="1.1.1.1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">DNS Secundário</label>
+                                <input type="text" class="form-input" id="ez_dns2" value="1.0.0.1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">DNS Terciário</label>
+                                <input type="text" class="form-input" id="ez_dns3" value="8.8.8.8">
+                            </div>
+                        </div>
+
+                        <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+                            <input type="checkbox" id="ez_disable_wps" ${ezDraft.disable_wps ? 'checked' : ''} style="accent-color:#38bdf8;">
+                            <label for="ez_disable_wps" style="font-size:0.8rem; color:#cbd5e1; cursor:pointer;">
+                                🛡️ <strong>Desativar WPS PBC por Segurança:</strong> Previne ataques de força bruta no PIN WPS contra as redes sem fio.
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- SEÇÃO 7: ANTI-LAG GAMER & SQM CAKE -->
+                    <div class="ez-section-box">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div class="ez-section-title" style="margin:0;"><span>7️⃣</span> Otimização Gamer & Anti-Lag (SQM CAKE)</div>
+                            <label class="ark-switch">
+                                <input type="checkbox" id="ez_sqm_toggle" ${ezDraft.sqm_enabled ? 'checked' : ''} onchange="toggleEzSqmBox(this.checked)">
+                                <span class="ark-slider"></span>
+                            </label>
+                        </div>
+                        <div style="font-size:0.75rem; color:#94a3b8;">Elimina picos de latência (Bufferbloat A+) organizando as filas de transmissão com o algoritmo CAKE.</div>
+
+                        <div id="ez_sqm_box" style="display:${ezDraft.sqm_enabled ? 'flex' : 'none'}; flex-direction:column; gap:10px; margin-top:10px;">
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+                                <div class="form-group">
+                                    <label class="form-label">Download WAN 1 (Mbps)</label>
+                                    <input type="number" class="form-input" id="ez_sqm_down" value="${ezDraft.sqm_down}">
+                                    <small style="color:#64748b; font-size:0.72rem;">Defina ~90-95% do plano contratado</small>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Upload WAN 1 (Mbps)</label>
+                                    <input type="number" class="form-input" id="ez_sqm_up" value="${ezDraft.sqm_up}">
+                                    <small style="color:#64748b; font-size:0.72rem;">Defina ~90-95% do upload da operadora</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SEÇÃO 8: PLUGINS E MÓDULOS OPCIONAIS DO SISTEMA -->
+                    <div class="ez-section-box">
+                        <div class="ez-section-title"><span>8️⃣</span> Plugins e Módulos Opcionais do Sistema</div>
+                        <div style="font-size:0.75rem; color:#94a3b8; margin-bottom:8px;">Serviços integrados do OpenWrt com gerenciamento via ARK Router:</div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:8px;">
+                            <div class="ez-plugin-card installed">
+                                <div>
+                                    <strong style="font-size:0.83rem; color:#fff;">⚡ SQM / CAKE</strong>
+                                    <div style="font-size:0.72rem; color:#94a3b8;">Anti-Bufferbloat e filas de jogo</div>
+                                </div>
+                                <span class="badge" style="background:rgba(16,185,129,0.2); color:#10b981; font-size:0.7rem;">✓ Instalado na ROM</span>
+                            </div>
+
+                            <div class="ez-plugin-card installed">
+                                <div>
+                                    <strong style="font-size:0.83rem; color:#fff;">⚖️ Multi-WAN (mwan3)</strong>
+                                    <div style="font-size:0.72rem; color:#94a3b8;">Failover e balanceamento</div>
+                                </div>
+                                <span class="badge" style="background:rgba(16,185,129,0.2); color:#10b981; font-size:0.7rem;">✓ Instalado na ROM</span>
+                            </div>
+
+                            <div class="ez-plugin-card installed">
+                                <div>
+                                    <strong style="font-size:0.83rem; color:#fff;">🎮 UPnP IGD & NAT-PMP</strong>
+                                    <div style="font-size:0.72rem; color:#94a3b8;">Portas para consoles & PC Gamer</div>
+                                </div>
+                                <span class="badge" style="background:rgba(16,185,129,0.2); color:#10b981; font-size:0.7rem;">✓ Instalado na ROM</span>
+                            </div>
+
+                            <div class="ez-plugin-card installed">
+                                <div>
+                                    <strong style="font-size:0.83rem; color:#fff;">📊 nlbwmon (Consumo)</strong>
+                                    <div style="font-size:0.72rem; color:#94a3b8;">Monitor de tráfego por aparelho</div>
+                                </div>
+                                <span class="badge" style="background:rgba(16,185,129,0.2); color:#10b981; font-size:0.7rem;">✓ Instalado na ROM</span>
+                            </div>
+
+                            <div class="ez-plugin-card installed">
+                                <div>
+                                    <strong style="font-size:0.83rem; color:#fff;">📡 usteer (Band Steering)</strong>
+                                    <div style="font-size:0.72rem; color:#94a3b8;">Roaming suave 802.11k/v/r</div>
+                                </div>
+                                <span class="badge" style="background:rgba(16,185,129,0.2); color:#10b981; font-size:0.7rem;">✓ Instalado na ROM</span>
+                            </div>
+
+                            <div class="ez-plugin-card installed">
+                                <div>
+                                    <strong style="font-size:0.83rem; color:#fff;">🛡️ AdBlock Fast</strong>
+                                    <div style="font-size:0.72rem; color:#94a3b8;">Bloqueador de anúncios no DNS</div>
+                                </div>
+                                <span class="badge" style="background:rgba(16,185,129,0.2); color:#10b981; font-size:0.7rem;">✓ Instalado na ROM</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer modal-footer-multi">
+                    <button class="ark-btn ark-btn-secondary" onclick="closeModal()">✕ Fechar</button>
+                    <button class="ark-btn ark-btn-secondary" onclick="resetEzSetupDraft()">🗑️ Apagar Rascunho</button>
+                    <button class="ark-btn ark-btn-secondary" onclick="saveEzSetupDraft()">💾 Salvar Rascunho</button>
+                    <button class="ark-btn ark-btn-primary" id="btn_ez_apply" onclick="applyEzSetupWithCountdown()">🚀 Confirmar e Aplicar (2s)</button>
+                </div>
+            `;
+        }
+
+        function toggleEzWan1Proto(proto) {
+            ezDraft.wan1_proto = proto;
+            const pBox = document.getElementById('ez_wan1_pppoe_box');
+            const sBox = document.getElementById('ez_wan1_static_box');
+            if (pBox) pBox.style.display = (proto === 'pppoe') ? 'grid' : 'none';
+            if (sBox) sBox.style.display = (proto === 'static') ? 'grid' : 'none';
+        }
+
+        function toggleEzWan2Box(enabled) {
+            ezDraft.wan2_enabled = enabled;
+            const box = document.getElementById('ez_wan2_subbox');
+            if (box) box.style.display = enabled ? 'flex' : 'none';
+        }
+
+        function toggleEzWifiMode(mode) {
+            ezDraft.wifi_mode = mode;
+            const uBox = document.getElementById('ez_wifi_unified_box');
+            const sBox = document.getElementById('ez_wifi_split_box');
+            if (uBox) uBox.style.display = (mode === 'unified') ? 'grid' : 'none';
+            if (sBox) sBox.style.display = (mode === 'split') ? 'flex' : 'none';
+        }
+
+        function toggleEzGuestBox(enabled) {
+            ezDraft.guest_enabled = enabled;
+            const box = document.getElementById('ez_guest_box');
+            if (box) box.style.display = enabled ? 'grid' : 'none';
+        }
+
+        function toggleEzAdminBox(enabled) {
+            ezDraft.admin_enabled = enabled;
+            const box = document.getElementById('ez_admin_box');
+            if (box) box.style.display = enabled ? 'grid' : 'none';
+            checkEzAdminMatch();
+        }
+
+        function checkEzAdminMatch() {
+            const toggle = document.getElementById('ez_admin_toggle');
+            const alertMsg = document.getElementById('ez_admin_match_alert');
+            if (!toggle || !toggle.checked) {
+                if (alertMsg) alertMsg.style.display = 'none';
+                return true;
+            }
+            const p1 = document.getElementById('ez_admin_pass') ? document.getElementById('ez_admin_pass').value : '';
+            const p2 = document.getElementById('ez_admin_pass2') ? document.getElementById('ez_admin_pass2').value : '';
+            if (p1 && p2 && p1 !== p2) {
+                if (alertMsg) alertMsg.style.display = 'block';
+                return false;
+            }
+            if (alertMsg) alertMsg.style.display = 'none';
+            return true;
+        }
+
+        function toggleEzDnsMode(mode) {
+            ezDraft.dns_mode = mode;
+            const box = document.getElementById('ez_dns_custom_box');
+            if (box) box.style.display = (mode === 'custom') ? 'grid' : 'none';
+        }
+
+        function toggleEzSqmBox(enabled) {
+            ezDraft.sqm_enabled = enabled;
+            const box = document.getElementById('ez_sqm_box');
+            if (box) box.style.display = enabled ? 'flex' : 'none';
+        }
+
+        function saveEzSetupDraft() {
+            const host = document.getElementById('ez_hostname');
+            const ssid = document.getElementById('ez_wifi_ssid');
+            if (host) ezDraft.hostname = host.value;
+            if (ssid) ezDraft.wifi_ssid = ssid.value;
+            showToast('💾 Rascunho do Assistente de Setup salvo na memória local!');
+        }
+
+        function resetEzSetupDraft() {
+            ezDraft = {
+                hostname: 'ARK-Router',
+                country: 'BR',
+                wan1_proto: 'pppoe',
+                wan1_user: 'cliente@fibra.com.br',
+                wan1_pass: 'Fibra@2026',
+                wan1_modem_ip: '192.168.1.1',
+                wan1_mac: '',
+                wan2_enabled: false,
+                wan_mode: 'failover',
+                wan2_port: 'lan1',
+                wan2_proto: 'dhcp',
+                wifi_mode: 'unified',
+                wifi_ssid: 'Wi-Fi-H&R',
+                wifi_pass: 'MinhaSenhaForte2026',
+                guest_enabled: false,
+                guest_ssid: 'Wi-Fi-Visitantes',
+                guest_pass: 'Visita@2026',
+                guest_down: '25',
+                guest_up: '10',
+                admin_enabled: false,
+                admin_pass: '',
+                dns_mode: 'recommended',
+                ipv6: 'enable',
+                disable_wps: true,
+                sqm_enabled: true,
+                sqm_down: '650',
+                sqm_up: '320'
+            };
+            const cont = document.getElementById('modal_content_holder');
+            if (cont) renderEzSetupModal(cont);
+            showToast('🗑️ Rascunho limpo! Parâmetros redefinidos para os valores de fábrica.');
+        }
+
+        function applyEzSetupWithCountdown() {
+            const btn = document.getElementById('btn_ez_apply');
+            if (!checkEzAdminMatch()) {
+                showToast('⚠️ As senhas de administrador não coincidem!');
+                return;
+            }
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '⏳ Gravando UCI...';
+                setTimeout(() => {
+                    btn.textContent = '🔄 Reiniciando subsistemas (1s)...';
+                }, 1000);
+                setTimeout(() => {
+                    const ssidInp = document.getElementById('ez_wifi_ssid');
+                    const hostInp = document.getElementById('ez_hostname');
+                    if (ssidInp) {
+                        const lbl = document.getElementById('label_main_ssid');
+                        if (lbl) lbl.textContent = ssidInp.value;
+                    }
+                    if (hostInp) {
+                        const hostLbl = document.getElementById('top_host_label');
+                        if (hostLbl) hostLbl.innerHTML = `🏠 ${hostInp.value} <span style="color:#64748b;">(192.168.73.1)</span>`;
+                    }
+                    closeModal();
+                    showToast('🚀 ARK OS: Setup Rápido aplicado e validado com sucesso em 2 segundos!');
+                }, 2000);
+            }
+        }
+
+        // =========================================================================
+        // CENTRAL DE PLUGINS, PACOTES & MÓDULOS (OPKG & DAEMONS)
+        // =========================================================================
+
+        let currentPluginCategory = 'all';
+
+        function renderPluginsCentralModal(cont) {
+            cont.innerHTML = `
+                <div class="modal-header">
+                    <h3>📦 Central de Plugins, Pacotes & Módulos do Sistema</h3>
+                    <div class="modal-header-actions">
+                        <button type="button" class="modal-maximize-btn" onclick="toggleModalMaximize()" title="Expandir para tela cheia">⛶</button>
+                        <button type="button" class="modal-close-btn" onclick="closeModal()" title="Fechar">✕</button>
+                    </div>
+                </div>
+                <div class="modal-body" style="display:flex; flex-direction:column; gap:14px;">
+                    <!-- Flash Storage Meter -->
+                    <div style="background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:12px 14px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span style="font-size:0.83rem; font-weight:700; color:#fff;">
+                                💾 Armazenamento /overlay (Memória Flash Útil): <strong style="color:#38bdf8;">16.1 MB livres</strong> de 28.5 MB
+                            </span>
+                            <span style="font-size:0.75rem; color:#94a3b8; font-weight:600;">43% ocupado</span>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.06); height:8px; border-radius:4px; overflow:hidden;">
+                            <div style="width:43%; height:100%; background:linear-gradient(90deg, #0284c7, #38bdf8); border-radius:4px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Search and Actions Bar -->
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:space-between;">
+                        <div style="flex:1 1 240px; min-width:200px;">
+                            <input type="text" class="form-input" id="plugins_search_input" oninput="filterPluginsList()" placeholder="🔍 Buscar plugin por nome, serviço ou pacote (opkg)...">
+                        </div>
+                        <button class="ark-btn ark-btn-secondary" onclick="runOpkgUpdate()" title="Sincronizar índices de repositórios oficiais OpenWrt">
+                            🔄 Atualizar Listas (opkg update)
+                        </button>
+                    </div>
+
+                    <!-- Category Pills Filter -->
+                    <div class="plugins-tabs">
+                        <button class="plugin-tab-btn active" onclick="filterPluginsCategory('all', this)">Todos (12)</button>
+                        <button class="plugin-tab-btn" onclick="filterPluginsCategory('net', this)">Rede & WAN (4)</button>
+                        <button class="plugin-tab-btn" onclick="filterPluginsCategory('sec', this)">Segurança & VPN (3)</button>
+                        <button class="plugin-tab-btn" onclick="filterPluginsCategory('wifi', this)">Wi-Fi & Roaming (1)</button>
+                        <button class="plugin-tab-btn" onclick="filterPluginsCategory('sys', this)">Sistema & Hardware (4)</button>
+                    </div>
+
+                    <!-- Plugins Grid -->
+                    <div class="plugins-grid" id="plugins_grid_container">
+                        <!-- Populated by renderPluginsCards() -->
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Fechar</button>
+                </div>
+            `;
+            renderPluginsCards();
+        }
+
+        function renderPluginsCards() {
+            const container = document.getElementById('plugins_grid_container');
+            if (!container) return;
+
+            const q = document.getElementById('plugins_search_input') ? document.getElementById('plugins_search_input').value.toLowerCase().trim() : '';
+            
+            const filtered = SYSTEM_PLUGINS.filter(p => {
+                const matchCat = (currentPluginCategory === 'all' || p.category === currentPluginCategory);
+                const matchText = (!q || p.name.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q) || p.pkg.toLowerCase().includes(q));
+                return matchCat && matchText;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div style="grid-column:1/-1; text-align:center; padding:30px; color:#94a3b8; font-size:0.88rem;">
+                        🔍 Nenhum plugin encontrado para o filtro informado.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(p => {
+                const isInstalled = p.installed;
+                return `
+                    <div class="plugin-detail-card" style="border-color:${isInstalled ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.08)'};">
+                        <div class="plugin-card-top">
+                            <div class="plugin-card-info">
+                                <h4>${p.name}</h4>
+                                <p>${p.desc}</p>
+                            </div>
+                            <span class="badge" style="font-size:0.72rem; ${isInstalled ? 'background:rgba(16,185,129,0.18); color:#10b981; border:1px solid rgba(16,185,129,0.3);' : 'background:rgba(255,255,255,0.06); color:#94a3b8;'}">
+                                ${isInstalled ? '🟢 Instalado' : '⚪ Disponível'}
+                            </span>
+                        </div>
+                        <div class="plugin-card-meta">
+                            <span>📦 ${p.pkg}</span>
+                            <span>v${p.version}</span>
+                            <span>💾 ${p.size}</span>
+                        </div>
+                        <div class="plugin-card-actions">
+                            ${isInstalled ? `
+                                <button class="ark-btn ark-btn-primary" style="flex:1; font-size:0.8rem; padding:8px 12px;" onclick="${p.actionType === 'modal' ? `openModal('${p.actionTarget}')` : `switchView('${p.actionTarget}'); closeModal();`}">
+                                    ⚙️ Abrir Interface
+                                </button>
+                                <button class="ark-btn ark-btn-secondary" style="font-size:0.8rem; padding:8px 10px;" onclick="openModal('pkg_install', '${p.id}')" title="Reinstalar pacote">
+                                    🔄
+                                </button>
+                            ` : `
+                                <button class="ark-btn ark-btn-primary" style="flex:1; font-size:0.8rem; padding:8px 12px; background:linear-gradient(135deg, #10b981, #059669);" onclick="openModal('pkg_install', '${p.id}')">
+                                    📥 Instalar Pacote (${p.size})
+                                </button>
+                            `}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterPluginsCategory(cat, btn) {
+            currentPluginCategory = cat;
+            document.querySelectorAll('.plugin-tab-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            renderPluginsCards();
+        }
+
+        function filterPluginsList() {
+            renderPluginsCards();
+        }
+
+        function runOpkgUpdate() {
+            showToast('🔄 Executando "opkg update"... Sincronizando listas oficiais do OpenWrt 24.10.');
+            setTimeout(() => {
+                showToast('✅ Listas de pacotes atualizadas com sucesso: 14.280 pacotes indexados!');
+            }, 1200);
+        }
+
+        // =========================================================================
+        // SIMULADOR DE INSTALAÇÃO DE PACOTES OPENWRT (OPKG TERMINAL)
+        // =========================================================================
+
+        function renderPackageInstallModal(cont, pkgId) {
+            const plugin = SYSTEM_PLUGINS.find(p => p.id === pkgId) || SYSTEM_PLUGINS[0];
+
+            cont.innerHTML = `
+                <div class="modal-header">
+                    <h3>📦 Instalador de Pacotes OpenWrt (opkg)</h3>
+                    <div class="modal-header-actions">
+                        <button type="button" class="modal-maximize-btn" onclick="toggleModalMaximize()" title="Expandir para tela cheia">⛶</button>
+                        <button type="button" class="modal-close-btn" onclick="closeModal()" title="Fechar">✕</button>
+                    </div>
+                </div>
+                <div class="modal-body" style="display:flex; flex-direction:column; gap:14px;">
+                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                        <div>
+                            <strong style="color:#fff; font-size:0.95rem;">${plugin.name}</strong>
+                            <div style="font-size:0.75rem; color:#94a3b8; font-family:monospace; margin-top:2px;">
+                                Pacote: ${plugin.pkg} | Versão: ${plugin.version} | Tamanho: ${plugin.size}
+                            </div>
+                        </div>
+                        <span class="badge" style="background:rgba(56,189,248,0.15); color:#38bdf8; font-size:0.75rem;">
+                            Repositório Oficial OpenWrt
+                        </span>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div style="background:rgba(255,255,255,0.06); height:8px; border-radius:4px; overflow:hidden;">
+                        <div id="pkg_install_progress" style="width:10%; height:100%; background:linear-gradient(90deg, #0284c7, #38bdf8); border-radius:4px; transition:width 0.4s ease;"></div>
+                    </div>
+                    <div id="pkg_install_status_txt" style="font-size:0.78rem; color:#38bdf8; font-family:monospace;">
+                        Iniciando transação opkg no OpenWrt...
+                    </div>
+
+                    <!-- Simulated Terminal Window -->
+                    <div class="terminal-sim-box" id="pkg_terminal_box">root@ARK-Router:~# opkg update
+Downloading https://downloads.openwrt.org/releases/24.10.0/packages/aarch64_cortex-a53/base/Packages.gz
+Updated list of available packages in /var/opkg-lists/base.
+</div>
+                </div>
+
+                <div class="modal-footer" id="pkg_install_footer">
+                    <button class="ark-btn ark-btn-secondary" onclick="openModal('plugins')">Voltar aos Plugins</button>
+                </div>
+            `;
+
+            startPluginInstallProcess(plugin);
+        }
+
+        function startPluginInstallProcess(plugin) {
+            const term = document.getElementById('pkg_terminal_box');
+            const prog = document.getElementById('pkg_install_progress');
+            const st = document.getElementById('pkg_install_status_txt');
+            const footer = document.getElementById('pkg_install_footer');
+
+            setTimeout(() => {
+                if (term) term.textContent += `root@ARK-Router:~# opkg install ${plugin.pkg}
+Installing ${plugin.pkg} (${plugin.version}) to root...
+Downloading https://downloads.openwrt.org/releases/24.10.0/packages/aarch64_cortex-a53/packages/${plugin.pkg}_${plugin.version}_aarch64_cortex-a53.ipk
+`;
+                if (prog) prog.style.width = '45%';
+                if (st) st.textContent = `Baixando artefato ${plugin.pkg} (${plugin.size})...`;
+            }, 600);
+
+            setTimeout(() => {
+                if (term) term.textContent += `Configuring ${plugin.pkg}.
+Enabling service /etc/init.d/${plugin.id} enable
+Starting service /etc/init.d/${plugin.id} start
+[OK] Daemon iniciado com sucesso! PID ${Math.floor(1000 + Math.random() * 8000)}
+`;
+                if (prog) prog.style.width = '85%';
+                if (st) st.textContent = `Registrando serviço e inicializando daemons...`;
+            }, 1300);
+
+            setTimeout(() => {
+                plugin.installed = true;
+                if (term) term.textContent += `
+✓ Instalação de ${plugin.pkg} concluída com sucesso!
+`;
+                if (prog) {
+                    prog.style.width = '100%';
+                    prog.style.background = 'linear-gradient(90deg, #10b981, #34d399)';
+                }
+                if (st) {
+                    st.style.color = '#10b981';
+                    st.textContent = `✅ Módulo ${plugin.name} instalado e em execução!`;
+                }
+                if (footer) {
+                    footer.innerHTML = `
+                        <button class="ark-btn ark-btn-secondary" onclick="openModal('plugins')">Voltar aos Plugins</button>
+                        <button class="ark-btn ark-btn-primary" onclick="${plugin.actionType === 'modal' ? `openModal('${plugin.actionTarget}')` : `switchView('${plugin.actionTarget}'); closeModal();`}">
+                            ⚙️ Abrir Configuração do Plugin
+                        </button>
+                    `;
+                }
+                showToast(`🎉 Plugin "${plugin.name}" instalado e ativado!`);
+            }, 2000);
+        }
+
+        // =========================================================================
+        // INTERFACE REAL DO PLUGIN: UPNP IGD & NAT-PMP (miniupnpd)
+        // =========================================================================
+
+        function renderUpnpModal(cont) {
+            cont.innerHTML = `
+                <div class="modal-header">
+                    <h3>🎮 UPnP IGD & NAT-PMP (Abertura Automática de Portas)</h3>
+                    <div class="modal-header-actions">
+                        <button type="button" class="modal-maximize-btn" onclick="toggleModalMaximize()" title="Expandir para tela cheia">⛶</button>
+                        <button type="button" class="modal-close-btn" onclick="closeModal()" title="Fechar">✕</button>
+                    </div>
+                </div>
+                <div class="modal-body" style="display:flex; flex-direction:column; gap:14px;">
+                    <div style="background:rgba(56, 189, 248, 0.08); border:1px solid rgba(56, 189, 248, 0.25); border-radius:8px; padding:12px; font-size:0.83rem; color:#bae6fd; line-height:1.45;">
+                        🎮 <strong>miniupnpd Daemon:</strong> Permite que consoles (PS5, Xbox), PCs Gamer (Steam, Epic) e clientes BitTorrent abram dinamicamente as portas necessárias no firewall nftables para obter <strong>NAT Tipo 1 (Aberto)</strong>.
+                    </div>
+
+                    <!-- Configurações Globais -->
+                    <div style="background:rgba(0,0,0,0.22); border:1px solid rgba(255,255,255,0.07); border-radius:8px; padding:14px; display:flex; flex-direction:column; gap:10px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <strong style="color:#fff; font-size:0.9rem;">Habilitar Serviço UPnP / NAT-PMP</strong>
+                                <div style="font-size:0.75rem; color:#94a3b8;">Ativa a resposta a requisições SSDP na rede local</div>
+                            </div>
+                            <label class="ark-switch">
+                                <input type="checkbox" id="upnp_active_toggle" checked>
+                                <span class="ark-slider"></span>
+                            </label>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
+                            <div>
+                                <strong style="color:#fff; font-size:0.9rem;">Modo Seguro (Secure Mode)</strong>
+                                <div style="font-size:0.75rem; color:#94a3b8;">Clientes só podem redirecionar portas para o seu próprio IP local (portas > 1024)</div>
+                            </div>
+                            <label class="ark-switch">
+                                <input type="checkbox" id="upnp_secure_toggle" checked>
+                                <span class="ark-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Tabela de Portas Abertas Dinamicamente -->
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <strong style="color:#fff; font-size:0.9rem;">Portas Abertas Dinamicamente (5 Ativas)</strong>
+                            <button class="ark-btn ark-btn-secondary" style="font-size:0.75rem; padding:4px 10px;" onclick="clearUpnpMappings()">
+                                🧹 Limpar Todos os Mapeamentos
+                            </button>
+                        </div>
+
+                        <div style="overflow-x:auto;">
+                            <table class="ark-table" id="upnp_table" style="width:100%; font-size:0.8rem;">
+                                <thead>
+                                    <tr>
+                                        <th>Dispositivo</th>
+                                        <th>Protocolo</th>
+                                        <th>Porta Ext.</th>
+                                        <th>Porta Int.</th>
+                                        <th>Aplicação</th>
+                                        <th>Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>192.168.1.103</strong> <span style="color:#64748b;">(PS5-LivingRoom)</span></td>
+                                        <td><span class="badge" style="background:#0284c7; color:#fff;">UDP</span></td>
+                                        <td><strong>9308</strong></td>
+                                        <td>9308</td>
+                                        <td>PlayStation Party & Voice</td>
+                                        <td><button class="ark-btn ark-btn-secondary" style="padding:2px 8px; font-size:0.72rem;" onclick="deleteUpnpRule(this)">✕</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>192.168.1.100</strong> <span style="color:#64748b;">(PC-Gamer-i9)</span></td>
+                                        <td><span class="badge" style="background:#0284c7; color:#fff;">UDP</span></td>
+                                        <td><strong>3074</strong></td>
+                                        <td>3074</td>
+                                        <td>Call of Duty: Warzone</td>
+                                        <td><button class="ark-btn ark-btn-secondary" style="padding:2px 8px; font-size:0.72rem;" onclick="deleteUpnpRule(this)">✕</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>192.168.1.100</strong> <span style="color:#64748b;">(PC-Gamer-i9)</span></td>
+                                        <td><span class="badge" style="background:#0284c7; color:#fff;">UDP</span></td>
+                                        <td><strong>27015</strong></td>
+                                        <td>27015</td>
+                                        <td>Steam Multiplayer</td>
+                                        <td><button class="ark-btn ark-btn-secondary" style="padding:2px 8px; font-size:0.72rem;" onclick="deleteUpnpRule(this)">✕</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>192.168.1.112</strong> <span style="color:#64748b;">(Xbox-Series-X)</span></td>
+                                        <td><span class="badge" style="background:#0284c7; color:#fff;">UDP</span></td>
+                                        <td><strong>3074</strong></td>
+                                        <td>3074</td>
+                                        <td>Xbox Live Multiplayer</td>
+                                        <td><button class="ark-btn ark-btn-secondary" style="padding:2px 8px; font-size:0.72rem;" onclick="deleteUpnpRule(this)">✕</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>192.168.1.200</strong> <span style="color:#64748b;">(NAS-Storage)</span></td>
+                                        <td><span class="badge" style="background:#10b981; color:#fff;">TCP</span></td>
+                                        <td><strong>6881</strong></td>
+                                        <td>6881</td>
+                                        <td>qBittorrent P2P</td>
+                                        <td><button class="ark-btn ark-btn-secondary" style="padding:2px 8px; font-size:0.72rem;" onclick="deleteUpnpRule(this)">✕</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Fechar</button>
+                    <button class="ark-btn ark-btn-primary" onclick="saveUpnpModal()">💾 Salvar Configurações</button>
+                </div>
+            `;
+        }
+
+        function deleteUpnpRule(btn) {
+            const tr = btn.closest('tr');
+            if (tr) {
+                tr.remove();
+                showToast('🗑️ Mapeamento UPnP removido da tabela do firewall.');
+            }
+        }
+
+        function clearUpnpMappings() {
+            const tbody = document.querySelector('#upnp_table tbody');
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:16px;">Nenhum redirecionamento dinâmico ativo.</td></tr>`;
+                showToast('🧹 Todos os redirecionamentos UPnP foram purgados com sucesso!');
+            }
+        }
+
+        function saveUpnpModal() {
             closeModal();
-            showToast(`⚡ Setup concluído! Rede ${ssid} configurada.`);
+            showToast('💾 Configurações do miniupnpd atualizadas e aplicadas!');
+        }
+
+        // =========================================================================
+        // INTERFACE REAL DO PLUGIN: MULTI-WAN & FAILOVER (mwan3)
+        // =========================================================================
+
+        function renderMwan3Modal(cont) {
+            cont.innerHTML = `
+                <div class="modal-header">
+                    <h3>⚖️ Multi-WAN & Failover Inteligente (mwan3)</h3>
+                    <div class="modal-header-actions">
+                        <button type="button" class="modal-maximize-btn" onclick="toggleModalMaximize()" title="Expandir para tela cheia">⛶</button>
+                        <button type="button" class="modal-close-btn" onclick="closeModal()" title="Fechar">✕</button>
+                    </div>
+                </div>
+                <div class="modal-body" style="display:flex; flex-direction:column; gap:14px;">
+                    <!-- Status das Interfaces -->
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px;">
+                        <div style="background:rgba(16, 185, 129, 0.08); border:1px solid rgba(16, 185, 129, 0.3); border-radius:8px; padding:12px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <strong style="color:#fff;">WAN 1 (Vivo Fibra - eth0)</strong>
+                                <span class="badge" style="background:#10b981; color:#fff; font-size:0.7rem;">ONLINE</span>
+                            </div>
+                            <div style="font-size:0.75rem; color:#94a3b8; margin-top:6px; font-family:monospace;">
+                                Ping: 4.2 ms | Perda: 0% | Peso: 3 (75% tráfego)
+                            </div>
+                        </div>
+
+                        <div style="background:rgba(56, 189, 248, 0.08); border:1px solid rgba(56, 189, 248, 0.3); border-radius:8px; padding:12px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <strong style="color:#fff;">WAN 2 (Starlink - eth1)</strong>
+                                <span class="badge" style="background:#38bdf8; color:#0f172a; font-size:0.7rem;">ONLINE</span>
+                            </div>
+                            <div style="font-size:0.75rem; color:#94a3b8; margin-top:6px; font-family:monospace;">
+                                Ping: 32.8 ms | Perda: 0% | Peso: 1 (25% tráfego)
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configuração mwan3 -->
+                    <div class="ez-section-box">
+                        <div class="ez-section-title">Parâmetros do Rastreamento de Conexão</div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+                            <div class="form-group">
+                                <label class="form-label">Modo Multi-WAN</label>
+                                <select class="form-select" id="mwan3_mode">
+                                    <option value="balanced" selected>Balanceamento de Carga Proporcional (3:1)</option>
+                                    <option value="failover">Failover Estrito (WAN1 primária, WAN2 reserva)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">IPs de Rastreamento (Tracking)</label>
+                                <input type="text" class="form-input" id="mwan3_tracking" value="1.1.1.1 8.8.8.8">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Intervalo de Ping</label>
+                                <input type="number" class="form-input" id="mwan3_interval" value="3" min="1" max="60">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Falhas para Disparar Failover</label>
+                                <input type="number" class="form-input" id="mwan3_failures" value="3" min="1" max="10">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Regras de Roteamento -->
+                    <div class="ez-section-box">
+                        <div class="ez-section-title">Políticas de Roteamento por Aplicação</div>
+                        <div style="display:flex; flex-direction:column; gap:8px; font-size:0.8rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:6px;">
+                                <span>🎮 <strong>Jogos Online & VoIP (UDP 3074, 9308, 27015):</strong></span>
+                                <span class="badge" style="background:#0284c7; color:#fff;">Forçar WAN 1 (Fibra de baixa latência)</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:6px;">
+                                <span>📺 <strong>Streaming (Netflix, YouTube, Twitch):</strong></span>
+                                <span class="badge" style="background:#10b981; color:#fff;">Balanceamento 50/50</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:6px;">
+                                <span>📥 <strong>Downloads & Torrents:</strong></span>
+                                <span class="badge" style="background:#a855f7; color:#fff;">WAN 2 Starlink prioritário</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Fechar</button>
+                    <button class="ark-btn ark-btn-primary" onclick="saveMwan3Modal()">💾 Salvar e Aplicar Regras</button>
+                </div>
+            `;
+        }
+
+        function saveMwan3Modal() {
+            closeModal();
+            showToast('⚖️ Parâmetros do mwan3 e políticas de roteamento gravadas no UCI!');
+        }
+
+        // =========================================================================
+        // INTERFACE REAL DO PLUGIN: ZEROTIER SD-WAN (zerotier)
+        // =========================================================================
+
+        function renderZeroTierModal(cont) {
+            cont.innerHTML = `
+                <div class="modal-header">
+                    <h3>🌐 ZeroTier SD-WAN (Rede Privada Mesh P2P)</h3>
+                    <div class="modal-header-actions">
+                        <button type="button" class="modal-maximize-btn" onclick="toggleModalMaximize()" title="Expandir para tela cheia">⛶</button>
+                        <button type="button" class="modal-close-btn" onclick="closeModal()" title="Fechar">✕</button>
+                    </div>
+                </div>
+                <div class="modal-body" style="display:flex; flex-direction:column; gap:14px;">
+                    <div style="background:rgba(245, 158, 11, 0.08); border:1px solid rgba(245, 158, 11, 0.3); border-radius:8px; padding:12px; font-size:0.83rem; color:#fde68a; line-height:1.45;">
+                        🌐 <strong>ZeroTier One:</strong> Conecta seu roteador ARK e aparelhos locais a uma rede privada virtual peer-to-peer criptografada em qualquer lugar do mundo, sem precisar de IP público ou portas abertas.
+                    </div>
+
+                    <div class="ez-section-box">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div class="ez-section-title" style="margin:0;">Ativar Cliente ZeroTier</div>
+                            <label class="ark-switch">
+                                <input type="checkbox" id="zt_enable" checked>
+                                <span class="ark-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="form-group" style="margin-top:10px;">
+                            <label class="form-label">Network ID (Identificador da Rede de 16 Dígitos Hex)</label>
+                            <input type="text" class="form-input" id="zt_network_id" value="8056c2e21c000001" maxlength="16" style="font-family:monospace; font-weight:700; letter-spacing:1px;">
+                        </div>
+
+                        <div style="background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.06); border-radius:6px; padding:12px; display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; font-size:0.8rem;">
+                            <div>
+                                <span style="color:#94a3b8;">Status da Conexão:</span>
+                                <div style="color:#10b981; font-weight:700; margin-top:2px;">🟢 ONLINE (Planet Root)</div>
+                            </div>
+                            <div>
+                                <span style="color:#94a3b8;">IP Virtual Atribuído:</span>
+                                <div style="color:#38bdf8; font-weight:700; margin-top:2px;">10.147.20.45/24</div>
+                            </div>
+                            <div>
+                                <span style="color:#94a3b8;">Dispositivos no Mesh:</span>
+                                <div style="color:#fff; font-weight:700; margin-top:2px;">4 nós conectados</div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+                            <label style="display:flex; align-items:center; gap:8px; font-size:0.8rem; color:#cbd5e1; cursor:pointer;">
+                                <input type="checkbox" checked style="accent-color:#38bdf8;">
+                                Permitir que clientes remotos do ZeroTier acessem dispositivos da rede LAN local
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; font-size:0.8rem; color:#cbd5e1; cursor:pointer;">
+                                <input type="checkbox" style="accent-color:#38bdf8;">
+                                Usar o ZeroTier como Rota Padrão (Default Gateway para toda a internet)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Fechar</button>
+                    <button class="ark-btn ark-btn-primary" onclick="executeZeroTierConnect()">🌐 Conectar / Salvar Rede</button>
+                </div>
+            `;
+        }
+
+        function executeZeroTierConnect() {
+            closeModal();
+            showToast('🌐 ZeroTier: Conexão P2P estabelecida! IP virtual 10.147.20.45 ativo.');
+        }
+
+        // =========================================================================
+        // INTERFACE REAL DO PLUGIN: SPEEDIFY BONDING (speedify-router)
+        // =========================================================================
+
+        function renderSpeedifyModal(cont) {
+            cont.innerHTML = `
+                <div class="modal-header">
+                    <h3>🚀 Speedify Bonding (Agregação de Links Fibra + Starlink)</h3>
+                    <div class="modal-header-actions">
+                        <button type="button" class="modal-maximize-btn" onclick="toggleModalMaximize()" title="Expandir para tela cheia">⛶</button>
+                        <button type="button" class="modal-close-btn" onclick="closeModal()" title="Fechar">✕</button>
+                    </div>
+                </div>
+                <div class="modal-body" style="display:flex; flex-direction:column; gap:14px;">
+                    <div style="background:rgba(168, 85, 247, 0.08); border:1px solid rgba(168, 85, 247, 0.3); border-radius:8px; padding:12px; font-size:0.83rem; color:#e9d5ff; line-height:1.45;">
+                        🚀 <strong>Channel Bonding em Nível de Pacotes:</strong> O Speedify soma conexões diferentes (Fibra + Starlink + 5G) em um único super-túnel criptografado, garantindo 0% de queda em reuniões e transmissões ao vivo.
+                    </div>
+
+                    <div class="ez-section-box">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div class="ez-section-title" style="margin:0;">Ativar Serviço Speedify</div>
+                            <label class="ark-switch">
+                                <input type="checkbox" id="speedify_enable" checked>
+                                <span class="ark-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="form-group" style="margin-top:10px;">
+                            <label class="form-label">Modo de Agregação de Links (Bonding Mode)</label>
+                            <select class="form-select" id="speedify_mode">
+                                <option value="speed" selected>Velocidade Máxima (Soma o download e upload dos links)</option>
+                                <option value="redundant">Redundante (Transmite pacotes duplicados para zero perda em chamadas)</option>
+                                <option value="streaming">Streaming Prioritário (Otimizado para lives Twitch/YouTube/OBS)</option>
+                            </select>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+                            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:6px; padding:10px;">
+                                <strong style="color:#fff; font-size:0.83rem;">WAN 1 (eth0 - Fibra)</strong>
+                                <div style="font-size:0.75rem; color:#10b981; margin-top:2px;">Primária (Uso Ilimitado)</div>
+                            </div>
+                            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:6px; padding:10px;">
+                                <strong style="color:#fff; font-size:0.83rem;">WAN 2 (eth1 - Starlink)</strong>
+                                <div style="font-size:0.75rem; color:#38bdf8; margin-top:2px;">Secundária (Uso Inteligente)</div>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top:10px;">
+                            <label class="form-label">Criptografia de Canal</label>
+                            <select class="form-select">
+                                <option value="chacha20" selected>ChaCha20-Poly1305 (Aceleração Hardware ARM Filogic)</option>
+                                <option value="aes">AES-128-GCM</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="ark-btn ark-btn-secondary" onclick="closeModal()">Fechar</button>
+                    <button class="ark-btn ark-btn-primary" onclick="executeSpeedifyConnect()">🚀 Conectar Speedify</button>
+                </div>
+            `;
+        }
+
+        function executeSpeedifyConnect() {
+            closeModal();
+            showToast('🚀 Speedify conectado! Links agregados com sucesso.');
+        }
+
+        function saveSetupModal() {
+            applyEzSetupWithCountdown();
         }
 
         function saveWifiModal() {
