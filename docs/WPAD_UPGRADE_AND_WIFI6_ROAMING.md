@@ -118,3 +118,20 @@ Detectar automaticamente se o roteador possui hardware qualificado e oferecer ou
   - Se `wpad-basic` for detectado em hardware qualificado:
     - Modo Auditoria: Emite alerta informativo `WARN` explicando que o hardware suporta upgrade para roaming BTM completo.
     - Modo Autocura (`--fix`): Executa a migração automática segura e ativa `bss_transition` nas interfaces unificadas.
+
+---
+
+## 6. Blindagem Contra Desconexões Noturnas e Queda para 4G (Sono de Celulares e IoTs) [AL-ARK-007]
+
+### Mecanismo do Sono Profundo (*Doze Mode*) e Fallback para 4G no Android/iOS
+1. **Sono de CPU vs Rádio Ativo**: Quando o smartphone repousa com tela desligada, o SoC (CPU) dorme, mas o silício de rádio Wi-Fi mantém-se ouvindo beacons em baixo consumo.
+2. **A Armadilha de `skip_inactivity_poll=1`**: Presumir que o nome significa *"não incomodar aparelhos dormindo"*. No código C do `hostapd` (`src/ap/sta_info.c`), `skip_inactivity_poll=1` suprime o envio do quadro de sondagem leve (*null-data probe*) e expulsa sumariamente o aparelho da rede (`timer DEAUTH/REMOVE`).
+3. **Comportamento Correto com `skip_inactivity_poll=0`**: Quando o tempo de inatividade expira, o `hostapd` envia um frame nulo leve. O **hardware de rede do próprio smartphone responde com um quadro ACK em nível físico**, sem acordar o sistema operacional e sem gastar bateria. O `hostapd` renova a sessão.
+4. **Penalização no Android (`WifiBlocklistMonitor`)**: Desconexões repetidas durante a madrugada fazem o Android classificar a rede Wi-Fi como instável, alternando a rota de dados silenciosamente para o 4G/5G da operadora.
+5. **Chutes Forçados pelo `usteer`**: `min_snr > 0` (ex: `15`) e `roam_scan_snr < 0` (ex: `-75`) forçam comandos `del_client` via ubus quando o aparelho em repouso recusa BTM (802.11v).
+6. **Configuração Homologada Imune a Quedas**:
+   - `option skip_inactivity_poll '0'` (preserva a sondagem leve respondida pelo chip em hardware).
+   - `option max_inactivity '86400'` (24 horas de tolerância contínua).
+   - `option wpa_group_rekey '0'` (elimina desincronização de chave GTK em repouso).
+   - `option disassoc_low_ack '0'`.
+   - `usteer`: `min_snr '0'`, `roam_scan_snr '0'`, `roam_trigger_snr '0'`, `load_kick_enabled '0'` (puramente consultivo via 802.11k/v sem chutes forçados).
