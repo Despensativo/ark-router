@@ -1306,6 +1306,180 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
             }
         }
 
+        /* Dropdown Navigation & Plugin Pages */
+        .nav-dropdown {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .nav-dropdown-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .dropdown-chevron {
+            font-size: 0.75rem;
+            transition: transform 0.22s ease;
+            color: #94a3b8;
+            margin-left: auto;
+        }
+
+        .nav-dropdown.open .dropdown-chevron {
+            transform: rotate(180deg);
+            color: #38bdf8;
+        }
+
+        .nav-dropdown-menu {
+            display: none;
+            flex-direction: column;
+            gap: 2px;
+            padding-left: 10px;
+            margin-top: 2px;
+            margin-bottom: 6px;
+            border-left: 2px solid rgba(56, 189, 248, 0.25);
+            margin-left: 18px;
+        }
+
+        .nav-dropdown.open .nav-dropdown-menu {
+            display: flex;
+        }
+
+        .subnav-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 10px;
+            border-radius: var(--ark-radius-sm);
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .subnav-item:hover, .subnav-item.active {
+            color: #fff;
+            background: rgba(56, 189, 248, 0.14);
+            color: #38bdf8;
+            font-weight: 700;
+        }
+
+        .header-dropdown-wrap {
+            position: relative;
+            display: inline-block;
+        }
+
+        .header-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            background: #0b1324;
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            border-radius: 10px;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.85);
+            width: 280px;
+            max-height: 480px;
+            overflow-y: auto;
+            z-index: 1050;
+            padding: 6px;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .header-dropdown-menu.show {
+            display: flex;
+        }
+
+        .header-drop-title {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            font-weight: 800;
+            padding: 6px 10px 4px;
+        }
+
+        .header-dropdown-menu a {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 10px;
+            border-radius: 6px;
+            color: #cbd5e1;
+            font-size: 0.8rem;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .header-dropdown-menu a:hover {
+            background: rgba(56, 189, 248, 0.14);
+            color: #38bdf8;
+        }
+
+        .header-drop-divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.06);
+            margin: 4px 6px;
+        }
+
+        .plugin-page-header {
+            background: var(--ark-surface-2);
+            border: 1px solid var(--ark-border);
+            border-radius: var(--ark-radius-md);
+            padding: 14px 18px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .plugin-breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            font-size: 0.85rem;
+        }
+
+        .plugin-breadcrumb a {
+            color: #94a3b8;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.15s ease;
+        }
+
+        .plugin-breadcrumb a:hover {
+            color: #38bdf8;
+        }
+
+        .plugin-breadcrumb .sep {
+            color: #475569;
+        }
+
+        .plugin-drop-picker {
+            display: inline-block;
+        }
+
+        .plugin-drop-select {
+            background: #0f192d !important;
+            border: 1px solid #38bdf8 !important;
+            color: #fff !important;
+            font-weight: 700 !important;
+            font-size: 0.82rem !important;
+            padding: 6px 12px !important;
+            border-radius: 8px !important;
+            cursor: pointer !important;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.25) !important;
+        }
+
         /* Devices Table */
         .device-filters {
             display: flex;
@@ -2207,9 +2381,54 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
             <a class="nav-item" onclick="switchView('system')">
                 <span class="icon">💡</span> Hardware & Sistema
             </a>
-            <a class="nav-item" onclick="openModal('plugins')">
-                <span class="icon">📦</span> Plugins & Módulos (<span style="color:#38bdf8;">12</span>)
-            </a>
+            <!-- Dropdown Sanfona: Plugins & Módulos (Páginas Individuais) -->
+            <div class="nav-dropdown" id="nav_plugins_dropdown">
+                <a class="nav-item nav-dropdown-toggle" onclick="togglePluginsDropdown(event)">
+                    <span class="icon">📦</span> Plugins & Módulos (<span style="color:#38bdf8;">12</span>)
+                    <span class="dropdown-chevron" id="plugins_chevron">▾</span>
+                </a>
+                <div class="nav-dropdown-menu" id="plugins_subnav">
+                    <a class="subnav-item" onclick="switchView('plugins')">
+                        <span>📋</span> Central de Plugins (Loja)
+                    </a>
+                    <a class="subnav-item" onclick="switchView('plugin_upnp')">
+                        <span>🎮</span> UPnP IGD (miniupnpd)
+                    </a>
+                    <a class="subnav-item" onclick="switchView('plugin_mwan3')">
+                        <span>⚖️</span> Multi-WAN (mwan3)
+                    </a>
+                    <a class="subnav-item" onclick="switchView('plugin_zerotier')">
+                        <span>🌐</span> ZeroTier SD-WAN
+                    </a>
+                    <a class="subnav-item" onclick="switchView('plugin_speedify')">
+                        <span>🚀</span> Speedify Bonding
+                    </a>
+                    <a class="subnav-item" onclick="switchView('plugin_sqm')">
+                        <span>⚡</span> SQM CAKE Anti-Lag
+                    </a>
+                    <a class="subnav-item" onclick="switchView('plugin_adblock')">
+                        <span>🛡️</span> AdBlock Fast
+                    </a>
+                    <a class="subnav-item" onclick="switchView('plugin_wireguard')">
+                        <span>🔒</span> WireGuard Kernel
+                    </a>
+                    <a class="subnav-item" onclick="switchView('plugin_nlbwmon')">
+                        <span>📊</span> Consumo nlbwmon
+                    </a>
+                    <a class="subnav-item" onclick="switchView('plugin_usteer')">
+                        <span>📡</span> Roaming usteer
+                    </a>
+                    <a class="subnav-item" onclick="switchView('plugin_zram')">
+                        <span>💾</span> ZRAM LZ4 (RAM Turbo)
+                    </a>
+                    <a class="subnav-item" onclick="switchView('plugin_irqbalance')">
+                        <span>⚙️</span> irqbalance Multicore
+                    </a>
+                    <a class="subnav-item" onclick="switchView('plugin_htop')">
+                        <span>📈</span> htop Processos
+                    </a>
+                </div>
+            </div>
 
             <div class="nav-section-title">OpenWrt Nativo</div>
             <a class="nav-item" style="color:#38bdf8;" onclick="toggleLuciDrawer()">
@@ -2241,9 +2460,28 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
                     <a class="btn-hero-action" href="/cgi-bin/luci/admin/status/overview" onclick="openClassicLuci(event)" style="background:rgba(192,132,252,0.15); border-color:rgba(192,132,252,0.4); color:#c084fc; text-decoration:none; font-weight:700;" title="Acessar Interface Clássica Original do LuCI">
                         💻 Ver Interface Clássica <span style="font-size:0.75rem; opacity:0.8;">↗</span>
                     </a>
-                    <button class="btn-hero-action" onclick="openModal('plugins')">
-                        📦 Plugins (12)
-                    </button>
+                    <div class="header-dropdown-wrap">
+                        <button class="btn-hero-action" onclick="toggleHeaderPluginsDrop(event)">
+                            📦 Plugins (12) <span style="font-size:0.75rem; opacity:0.8;">▾</span>
+                        </button>
+                        <div class="header-dropdown-menu" id="header_plugins_drop">
+                            <div class="header-drop-title">Módulos & Daemons do Sistema</div>
+                            <a onclick="switchView('plugins'); closeHeaderPluginsDrop();">📋 <strong>Central & Catálogo de Plugins</strong></a>
+                            <div class="header-drop-divider"></div>
+                            <a onclick="switchView('plugin_upnp'); closeHeaderPluginsDrop();">🎮 UPnP IGD & NAT-PMP (miniupnpd)</a>
+                            <a onclick="switchView('plugin_mwan3'); closeHeaderPluginsDrop();">⚖️ Multi-WAN & Failover (mwan3)</a>
+                            <a onclick="switchView('plugin_zerotier'); closeHeaderPluginsDrop();">🌐 ZeroTier SD-WAN (P2P Mesh)</a>
+                            <a onclick="switchView('plugin_speedify'); closeHeaderPluginsDrop();">🚀 Speedify Bonding (Starlink+Fibra)</a>
+                            <a onclick="switchView('plugin_sqm'); closeHeaderPluginsDrop();">⚡ SQM CAKE Anti-Bufferbloat</a>
+                            <a onclick="switchView('plugin_adblock'); closeHeaderPluginsDrop();">🛡️ AdBlock Fast (Filtro DNS)</a>
+                            <a onclick="switchView('plugin_wireguard'); closeHeaderPluginsDrop();">🔒 WireGuard VPN (Kernel Mode)</a>
+                            <a onclick="switchView('plugin_nlbwmon'); closeHeaderPluginsDrop();">📊 Consumo por Dispositivo (nlbwmon)</a>
+                            <a onclick="switchView('plugin_usteer'); closeHeaderPluginsDrop();">📡 Roaming Suave (usteer 802.11k/v/r)</a>
+                            <a onclick="switchView('plugin_zram'); closeHeaderPluginsDrop();">💾 Compressão ZRAM LZ4 (RAM Turbo)</a>
+                            <a onclick="switchView('plugin_irqbalance'); closeHeaderPluginsDrop();">⚙️ Balanceador Multicore IRQ (CPU)</a>
+                            <a onclick="switchView('plugin_htop'); closeHeaderPluginsDrop();">📈 Monitor Interativo (htop)</a>
+                        </div>
+                    </div>
                     <button class="btn-hero-action" onclick="openModal('setup')">
                         ⚡ Setup Rápido
                     </button>
@@ -4032,6 +4270,1023 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
                     </div>
                 </section>
 
+                <!-- ========================================================= -->
+                <!-- PAINEL 9: CENTRAL DE PLUGINS & LOJA DE PACOTES            -->
+                <!-- ========================================================= -->
+                <section class="view-panel" id="view_plugins">
+                    <div class="plugin-page-header">
+                        <div class="plugin-breadcrumb">
+                            <a onclick="switchView('overview')">📊 Cockpit</a>
+                            <span class="sep">/</span>
+                            <span style="color:#fff; font-weight:700;">📦 Central de Plugins</span>
+                            <span class="sep">/</span>
+                            <div class="plugin-drop-picker">
+                                <select class="form-select plugin-drop-select" onchange="switchView(this.value)">
+                                    <option value="plugins" selected>📋 Central & Loja de Plugins (12)</option>
+                                    <option value="plugin_upnp">🎮 UPnP IGD & NAT-PMP (miniupnpd)</option>
+                                    <option value="plugin_mwan3">⚖️ Multi-WAN & Failover (mwan3)</option>
+                                    <option value="plugin_zerotier">🌐 ZeroTier SD-WAN (Mesh P2P)</option>
+                                    <option value="plugin_speedify">🚀 Speedify Bonding (Starlink+Fibra)</option>
+                                    <option value="plugin_sqm">⚡ SQM CAKE Anti-Bufferbloat</option>
+                                    <option value="plugin_adblock">🛡️ AdBlock Fast (Filtro DNS)</option>
+                                    <option value="plugin_wireguard">🔒 WireGuard VPN (Kernel Mode)</option>
+                                    <option value="plugin_nlbwmon">📊 Consumo por Dispositivo (nlbwmon)</option>
+                                    <option value="plugin_usteer">📡 Roaming Suave (usteer 802.11k/v/r)</option>
+                                    <option value="plugin_zram">💾 Compressão ZRAM LZ4 (RAM Turbo)</option>
+                                    <option value="plugin_irqbalance">⚙️ Balanceador Multicore IRQ (CPU)</option>
+                                    <option value="plugin_htop">📈 Monitor Interativo (htop)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button class="ark-btn ark-btn-secondary" onclick="runOpkgUpdate()">🔄 opkg update</button>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <h2>📦 Catálogo de Softwares, Daemons & Módulos OpenWrt</h2>
+                                <span class="badge pill-online">12 Módulos Catalogados</span>
+                            </div>
+                        </div>
+
+                        <!-- Flash Storage Meter -->
+                        <div style="background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:14px; margin-bottom:14px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <span style="font-size:0.86rem; font-weight:700; color:#fff;">
+                                    💾 Armazenamento /overlay (Memória Flash NAND Útil): <strong style="color:#38bdf8;">16.1 MB livres</strong> de 28.5 MB
+                                </span>
+                                <span style="font-size:0.75rem; color:#94a3b8; font-weight:600;">43% ocupado</span>
+                            </div>
+                            <div style="background:rgba(255,255,255,0.06); height:8px; border-radius:4px; overflow:hidden;">
+                                <div style="width:43%; height:100%; background:linear-gradient(90deg, #0284c7, #38bdf8); border-radius:4px;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Search and Categories -->
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:space-between; margin-bottom:12px;">
+                            <div style="flex:1 1 260px; min-width:220px;">
+                                <input type="text" class="form-input" id="plugins_page_search" oninput="filterPluginsPageList(this.value)" placeholder="🔍 Buscar plugin por nome, serviço ou pacote (opkg)...">
+                            </div>
+                            <div class="plugins-tabs" style="margin-bottom:0;">
+                                <button class="plugin-tab-btn active" onclick="filterPluginsPageCategory('all', this)">Todos (12)</button>
+                                <button class="plugin-tab-btn" onclick="filterPluginsPageCategory('net', this)">Rede & WAN (4)</button>
+                                <button class="plugin-tab-btn" onclick="filterPluginsPageCategory('sec', this)">Segurança & VPN (3)</button>
+                                <button class="plugin-tab-btn" onclick="filterPluginsPageCategory('wifi', this)">Wi-Fi & Roaming (1)</button>
+                                <button class="plugin-tab-btn" onclick="filterPluginsPageCategory('sys', this)">Sistema & Hardware (4)</button>
+                            </div>
+                        </div>
+
+                        <!-- Plugins Cards Grid -->
+                        <div class="plugins-grid" id="plugins_page_cards_grid">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- PAINEL INDIVIDUAL: UPNP IGD & NAT-PMP (miniupnpd)         -->
+                <!-- ========================================================= -->
+                <section class="view-panel" id="view_plugin_upnp">
+                    <div class="plugin-page-header">
+                        <div class="plugin-breadcrumb">
+                            <a onclick="switchView('overview')">📊 Cockpit</a>
+                            <span class="sep">/</span>
+                            <a onclick="switchView('plugins')">📦 Plugins</a>
+                            <span class="sep">/</span>
+                            <div class="plugin-drop-picker">
+                                <select class="form-select plugin-drop-select" onchange="switchView(this.value)">
+                                    <option value="plugins">📋 Central & Loja de Plugins (12)</option>
+                                    <option value="plugin_upnp" selected>🎮 UPnP IGD & NAT-PMP (miniupnpd)</option>
+                                    <option value="plugin_mwan3">⚖️ Multi-WAN & Failover (mwan3)</option>
+                                    <option value="plugin_zerotier">🌐 ZeroTier SD-WAN (Mesh P2P)</option>
+                                    <option value="plugin_speedify">🚀 Speedify Bonding (Starlink+Fibra)</option>
+                                    <option value="plugin_sqm">⚡ SQM CAKE Anti-Bufferbloat</option>
+                                    <option value="plugin_adblock">🛡️ AdBlock Fast (Filtro DNS)</option>
+                                    <option value="plugin_wireguard">🔒 WireGuard VPN (Kernel Mode)</option>
+                                    <option value="plugin_nlbwmon">📊 Consumo por Dispositivo (nlbwmon)</option>
+                                    <option value="plugin_usteer">📡 Roaming Suave (usteer 802.11k/v/r)</option>
+                                    <option value="plugin_zram">💾 Compressão ZRAM LZ4 (RAM Turbo)</option>
+                                    <option value="plugin_irqbalance">⚙️ Balanceador Multicore IRQ (CPU)</option>
+                                    <option value="plugin_htop">📈 Monitor Interativo (htop)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <span class="pill-badge pill-online" style="font-size:0.75rem;">● miniupnpd (PID 1422) ATIVO</span>
+                            <button class="ark-btn ark-btn-secondary" style="font-size:0.78rem; padding:6px 12px;" onclick="serviceAction('miniupnpd', 'restart')">🔄 Reiniciar</button>
+                            <button class="ark-btn ark-btn-primary" style="font-size:0.78rem; padding:6px 12px;" onclick="saveUpnpModal()">💾 Salvar UCI</button>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <h2>🎮 Abertura Automática de Portas (UPnP IGD & NAT-PMP)</h2>
+                                <span class="badge pill-online">NAT Tipo 1 (Aberto)</span>
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; margin-bottom:16px;">
+                            <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px; display:flex; flex-direction:column; gap:12px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div>
+                                        <strong style="color:#fff; font-size:0.92rem;">Habilitar Daemon UPnP</strong>
+                                        <div style="font-size:0.75rem; color:#94a3b8;">Ativa resposta a requisições SSDP locais</div>
+                                    </div>
+                                    <label class="ark-switch"><input type="checkbox" checked><span class="ark-slider"></span></label>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.05); padding-top:10px;">
+                                    <div>
+                                        <strong style="color:#fff; font-size:0.92rem;">Modo Seguro (Secure Mode)</strong>
+                                        <div style="font-size:0.75rem; color:#94a3b8;">Apenas portas > 1024 para o próprio IP</div>
+                                    </div>
+                                    <label class="ark-switch"><input type="checkbox" checked><span class="ark-slider"></span></label>
+                                </div>
+                            </div>
+
+                            <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px;">
+                                <strong style="color:#fff; font-size:0.92rem;">Parâmetros de Operação</strong>
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Tempo Limite (TTL)</label>
+                                        <input type="number" class="form-input" value="600" min="60" max="86400">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Porta de Escuta</label>
+                                        <input type="number" class="form-input" value="5555" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tabela de Portas Dinâmicas Ativas -->
+                        <div class="section-header" style="margin-top:10px; margin-bottom:8px;">
+                            <div class="section-title">
+                                <h3 style="font-size:0.95rem; font-weight:800; color:#fff; margin:0;">Mapeamentos Dinâmicos Ativos no Firewall (nftables)</h3>
+                                <span class="badge" style="background:#0284c7; color:#fff;">5 Conexões Ativas</span>
+                            </div>
+                            <button class="ark-btn ark-btn-secondary" style="font-size:0.75rem; padding:4px 10px;" onclick="clearUpnpMappings()">
+                                🧹 Limpar Todos os Mapeamentos
+                            </button>
+                        </div>
+
+                        <div class="device-table-container">
+                            <table class="device-table" id="page_upnp_table">
+                                <thead>
+                                    <tr>
+                                        <th>Dispositivo Cliente</th>
+                                        <th>Protocolo</th>
+                                        <th>Porta Externa</th>
+                                        <th>Porta Interna</th>
+                                        <th>Aplicação / Jogo</th>
+                                        <th style="text-align:right;">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>192.168.1.103</strong> <span style="color:#64748b;">(PS5-LivingRoom)</span></td>
+                                        <td><span class="badge" style="background:#0284c7; color:#fff;">UDP</span></td>
+                                        <td><strong>9308</strong></td>
+                                        <td>9308</td>
+                                        <td>PlayStation Party & Voice Chat</td>
+                                        <td style="text-align:right;"><button class="ark-btn ark-btn-secondary" style="padding:2px 8px; font-size:0.72rem;" onclick="deleteUpnpRule(this)">✕</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>192.168.1.100</strong> <span style="color:#64748b;">(PC-Gamer-i9)</span></td>
+                                        <td><span class="badge" style="background:#0284c7; color:#fff;">UDP</span></td>
+                                        <td><strong>3074</strong></td>
+                                        <td>3074</td>
+                                        <td>Call of Duty: Warzone</td>
+                                        <td style="text-align:right;"><button class="ark-btn ark-btn-secondary" style="padding:2px 8px; font-size:0.72rem;" onclick="deleteUpnpRule(this)">✕</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>192.168.1.100</strong> <span style="color:#64748b;">(PC-Gamer-i9)</span></td>
+                                        <td><span class="badge" style="background:#0284c7; color:#fff;">UDP</span></td>
+                                        <td><strong>27015</strong></td>
+                                        <td>27015</td>
+                                        <td>Steam Multiplayer Dedicated Server</td>
+                                        <td style="text-align:right;"><button class="ark-btn ark-btn-secondary" style="padding:2px 8px; font-size:0.72rem;" onclick="deleteUpnpRule(this)">✕</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>192.168.1.112</strong> <span style="color:#64748b;">(Xbox-Series-X)</span></td>
+                                        <td><span class="badge" style="background:#0284c7; color:#fff;">UDP</span></td>
+                                        <td><strong>3074</strong></td>
+                                        <td>3074</td>
+                                        <td>Xbox Live Multiplayer</td>
+                                        <td style="text-align:right;"><button class="ark-btn ark-btn-secondary" style="padding:2px 8px; font-size:0.72rem;" onclick="deleteUpnpRule(this)">✕</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>192.168.1.200</strong> <span style="color:#64748b;">(NAS-Synology)</span></td>
+                                        <td><span class="badge" style="background:#10b981; color:#fff;">TCP</span></td>
+                                        <td><strong>6881</strong></td>
+                                        <td>6881</td>
+                                        <td>qBittorrent P2P Client</td>
+                                        <td style="text-align:right;"><button class="ark-btn ark-btn-secondary" style="padding:2px 8px; font-size:0.72rem;" onclick="deleteUpnpRule(this)">✕</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- PAINEL INDIVIDUAL: MULTI-WAN & FAILOVER (mwan3)           -->
+                <!-- ========================================================= -->
+                <section class="view-panel" id="view_plugin_mwan3">
+                    <div class="plugin-page-header">
+                        <div class="plugin-breadcrumb">
+                            <a onclick="switchView('overview')">📊 Cockpit</a>
+                            <span class="sep">/</span>
+                            <a onclick="switchView('plugins')">📦 Plugins</a>
+                            <span class="sep">/</span>
+                            <div class="plugin-drop-picker">
+                                <select class="form-select plugin-drop-select" onchange="switchView(this.value)">
+                                    <option value="plugins">📋 Central & Loja de Plugins (12)</option>
+                                    <option value="plugin_upnp">🎮 UPnP IGD & NAT-PMP (miniupnpd)</option>
+                                    <option value="plugin_mwan3" selected>⚖️ Multi-WAN & Failover (mwan3)</option>
+                                    <option value="plugin_zerotier">🌐 ZeroTier SD-WAN (Mesh P2P)</option>
+                                    <option value="plugin_speedify">🚀 Speedify Bonding (Starlink+Fibra)</option>
+                                    <option value="plugin_sqm">⚡ SQM CAKE Anti-Bufferbloat</option>
+                                    <option value="plugin_adblock">🛡️ AdBlock Fast (Filtro DNS)</option>
+                                    <option value="plugin_wireguard">🔒 WireGuard VPN (Kernel Mode)</option>
+                                    <option value="plugin_nlbwmon">📊 Consumo por Dispositivo (nlbwmon)</option>
+                                    <option value="plugin_usteer">📡 Roaming Suave (usteer 802.11k/v/r)</option>
+                                    <option value="plugin_zram">💾 Compressão ZRAM LZ4 (RAM Turbo)</option>
+                                    <option value="plugin_irqbalance">⚙️ Balanceador Multicore IRQ (CPU)</option>
+                                    <option value="plugin_htop">📈 Monitor Interativo (htop)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <span class="pill-badge pill-online" style="font-size:0.75rem;">● mwan3 ONLINE</span>
+                            <button class="ark-btn ark-btn-secondary" style="font-size:0.78rem; padding:6px 12px;" onclick="serviceAction('mwan3', 'restart')">🔄 Reiniciar</button>
+                            <button class="ark-btn ark-btn-primary" style="font-size:0.78rem; padding:6px 12px;" onclick="saveMwan3Modal()">💾 Salvar Regras</button>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <h2>⚖️ Gerenciador Multi-WAN & Redundância Sub-Segundo (mwan3)</h2>
+                                <span class="badge pill-online">Dual-WAN Ativo</span>
+                            </div>
+                        </div>
+
+                        <!-- Interface Status Cards -->
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; margin-bottom:16px;">
+                            <div style="background:rgba(16, 185, 129, 0.08); border:1px solid rgba(16, 185, 129, 0.35); border-radius:var(--ark-radius-md); padding:16px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <strong style="color:#fff; font-size:1rem;">WAN 1: Vivo Fibra Ótica (eth0)</strong>
+                                    <span class="pill-badge pill-online">ONLINE</span>
+                                </div>
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; font-size:0.8rem; font-family:monospace;">
+                                    <div>Latência: <strong style="color:#10b981;">4.2 ms</strong></div>
+                                    <div>Perda: <strong style="color:#10b981;">0.0%</strong></div>
+                                    <div>Peso: <strong style="color:#fff;">3 (75% Tráfego)</strong></div>
+                                    <div>Tracking: <strong style="color:#38bdf8;">1.1.1.1 OK</strong></div>
+                                </div>
+                            </div>
+
+                            <div style="background:rgba(56, 189, 248, 0.08); border:1px solid rgba(56, 189, 248, 0.35); border-radius:var(--ark-radius-md); padding:16px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <strong style="color:#fff; font-size:1rem;">WAN 2: Starlink Satélite (eth1)</strong>
+                                    <span class="pill-badge pill-online" style="background:rgba(56,189,248,0.2); color:#38bdf8;">ONLINE</span>
+                                </div>
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; font-size:0.8rem; font-family:monospace;">
+                                    <div>Latência: <strong style="color:#38bdf8;">32.8 ms</strong></div>
+                                    <div>Perda: <strong style="color:#10b981;">0.0%</strong></div>
+                                    <div>Peso: <strong style="color:#fff;">1 (25% Tráfego)</strong></div>
+                                    <div>Tracking: <strong style="color:#38bdf8;">8.8.8.8 OK</strong></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Políticas de Roteamento -->
+                        <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px;">
+                            <h3 style="font-size:0.95rem; font-weight:800; color:#fff; margin:0 0 12px;">Políticas de Roteamento Inteligente por Aplicação</h3>
+                            <div style="display:flex; flex-direction:column; gap:10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.25); padding:12px 14px; border-radius:8px;">
+                                    <div>
+                                        <strong style="color:#fff; font-size:0.88rem;">🎮 Jogos Online, Discord & VoIP</strong>
+                                        <div style="font-size:0.75rem; color:#94a3b8;">Portas UDP 3074, 9308, 27015, 5060</div>
+                                    </div>
+                                    <span class="badge" style="background:#0284c7; color:#fff;">Forçar WAN 1 (Fibra Ótica de Baixa Latência)</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.25); padding:12px 14px; border-radius:8px;">
+                                    <div>
+                                        <strong style="color:#fff; font-size:0.88rem;">📺 Streaming de Vídeo (Netflix, YouTube, Twitch)</strong>
+                                        <div style="font-size:0.75rem; color:#94a3b8;">Portas TCP 80, 443, 8080</div>
+                                    </div>
+                                    <span class="badge" style="background:#10b981; color:#fff;">Balanceado Proporcional (3:1)</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.25); padding:12px 14px; border-radius:8px;">
+                                    <div>
+                                        <strong style="color:#fff; font-size:0.88rem;">📥 Torrents e Downloads em Massa</strong>
+                                        <div style="font-size:0.75rem; color:#94a3b8;">Tráfego P2P e downloads > 100 MB</div>
+                                    </div>
+                                    <span class="badge" style="background:#a855f7; color:#fff;">WAN 2 Starlink Prioritária</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- PAINEL INDIVIDUAL: ZEROTIER SD-WAN (zerotier)             -->
+                <!-- ========================================================= -->
+                <section class="view-panel" id="view_plugin_zerotier">
+                    <div class="plugin-page-header">
+                        <div class="plugin-breadcrumb">
+                            <a onclick="switchView('overview')">📊 Cockpit</a>
+                            <span class="sep">/</span>
+                            <a onclick="switchView('plugins')">📦 Plugins</a>
+                            <span class="sep">/</span>
+                            <div class="plugin-drop-picker">
+                                <select class="form-select plugin-drop-select" onchange="switchView(this.value)">
+                                    <option value="plugins">📋 Central & Loja de Plugins (12)</option>
+                                    <option value="plugin_upnp">🎮 UPnP IGD & NAT-PMP (miniupnpd)</option>
+                                    <option value="plugin_mwan3">⚖️ Multi-WAN & Failover (mwan3)</option>
+                                    <option value="plugin_zerotier" selected>🌐 ZeroTier SD-WAN (Mesh P2P)</option>
+                                    <option value="plugin_speedify">🚀 Speedify Bonding (Starlink+Fibra)</option>
+                                    <option value="plugin_sqm">⚡ SQM CAKE Anti-Bufferbloat</option>
+                                    <option value="plugin_adblock">🛡️ AdBlock Fast (Filtro DNS)</option>
+                                    <option value="plugin_wireguard">🔒 WireGuard VPN (Kernel Mode)</option>
+                                    <option value="plugin_nlbwmon">📊 Consumo por Dispositivo (nlbwmon)</option>
+                                    <option value="plugin_usteer">📡 Roaming Suave (usteer 802.11k/v/r)</option>
+                                    <option value="plugin_zram">💾 Compressão ZRAM LZ4 (RAM Turbo)</option>
+                                    <option value="plugin_irqbalance">⚙️ Balanceador Multicore IRQ (CPU)</option>
+                                    <option value="plugin_htop">📈 Monitor Interativo (htop)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <span class="pill-badge pill-online" style="font-size:0.75rem;">● ZeroTier ONLINE</span>
+                            <button class="ark-btn ark-btn-primary" style="font-size:0.78rem; padding:6px 12px;" onclick="executeZeroTierConnect()">🌐 Salvar & Conectar</button>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <h2>🌐 Rede Privada Virtual Mesh P2P (ZeroTier One)</h2>
+                                <span class="badge pill-online">Conexão Criptografada</span>
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; margin-bottom:16px;">
+                            <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px;">
+                                <div class="form-group">
+                                    <label class="form-label">Network ID da Rede Virtual (16 Dígitos Hexadecimais)</label>
+                                    <input type="text" class="form-input" value="8056c2e21c000001" maxlength="16" style="font-family:monospace; font-size:1rem; font-weight:700; letter-spacing:1px; color:#38bdf8;">
+                                </div>
+                                <div style="display:flex; flex-direction:column; gap:8px; margin-top:12px;">
+                                    <label style="display:flex; align-items:center; gap:8px; font-size:0.8rem; color:#cbd5e1; cursor:pointer;">
+                                        <input type="checkbox" checked style="accent-color:#38bdf8;">
+                                        Permitir acesso de membros remotos à rede local (LAN Bridge)
+                                    </label>
+                                    <label style="display:flex; align-items:center; gap:8px; font-size:0.8rem; color:#cbd5e1; cursor:pointer;">
+                                        <input type="checkbox" style="accent-color:#38bdf8;">
+                                        Roteamento Global Padrão (Default Gateway para toda a internet)
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
+                                <div>
+                                    <strong style="color:#fff; font-size:0.92rem;">Parâmetros da Interface Virtual (zt0)</strong>
+                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; font-size:0.82rem;">
+                                        <div>IP Atribuído: <strong style="color:#38bdf8; font-family:monospace;">10.147.20.45/24</strong></div>
+                                        <div>MTU: <strong style="color:#fff; font-family:monospace;">2800</strong></div>
+                                        <div>Servidor Root: <strong style="color:#10b981;">Planet OK</strong></div>
+                                        <div>Membros na Malha: <strong style="color:#fff;">4 Ativos</strong></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- PAINEL INDIVIDUAL: SPEEDIFY BONDING (speedify-router)     -->
+                <!-- ========================================================= -->
+                <section class="view-panel" id="view_plugin_speedify">
+                    <div class="plugin-page-header">
+                        <div class="plugin-breadcrumb">
+                            <a onclick="switchView('overview')">📊 Cockpit</a>
+                            <span class="sep">/</span>
+                            <a onclick="switchView('plugins')">📦 Plugins</a>
+                            <span class="sep">/</span>
+                            <div class="plugin-drop-picker">
+                                <select class="form-select plugin-drop-select" onchange="switchView(this.value)">
+                                    <option value="plugins">📋 Central & Loja de Plugins (12)</option>
+                                    <option value="plugin_upnp">🎮 UPnP IGD & NAT-PMP (miniupnpd)</option>
+                                    <option value="plugin_mwan3">⚖️ Multi-WAN & Failover (mwan3)</option>
+                                    <option value="plugin_zerotier">🌐 ZeroTier SD-WAN (Mesh P2P)</option>
+                                    <option value="plugin_speedify" selected>🚀 Speedify Bonding (Starlink+Fibra)</option>
+                                    <option value="plugin_sqm">⚡ SQM CAKE Anti-Bufferbloat</option>
+                                    <option value="plugin_adblock">🛡️ AdBlock Fast (Filtro DNS)</option>
+                                    <option value="plugin_wireguard">🔒 WireGuard VPN (Kernel Mode)</option>
+                                    <option value="plugin_nlbwmon">📊 Consumo por Dispositivo (nlbwmon)</option>
+                                    <option value="plugin_usteer">📡 Roaming Suave (usteer 802.11k/v/r)</option>
+                                    <option value="plugin_zram">💾 Compressão ZRAM LZ4 (RAM Turbo)</option>
+                                    <option value="plugin_irqbalance">⚙️ Balanceador Multicore IRQ (CPU)</option>
+                                    <option value="plugin_htop">📈 Monitor Interativo (htop)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <span class="pill-badge pill-online" style="font-size:0.75rem;">● Speedify ATIVO</span>
+                            <button class="ark-btn ark-btn-primary" style="font-size:0.78rem; padding:6px 12px;" onclick="executeSpeedifyConnect()">🚀 Conectar Speedify</button>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <h2>🚀 Agregação de Conexões em Nível de Pacotes (Channel Bonding)</h2>
+                                <span class="badge" style="background:#a855f7; color:#fff;">Licença Unlimited Ativa</span>
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; margin-bottom:16px;">
+                            <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px;">
+                                <div class="form-group">
+                                    <label class="form-label">Modo de Agregação (Bonding Mode)</label>
+                                    <select class="form-select">
+                                        <option value="speed" selected>Velocidade Máxima (Soma taxa de download e upload de ambos os modems)</option>
+                                        <option value="redundant">Redundante (Transmite pacotes duplicados para zero perda em reuniões)</option>
+                                        <option value="streaming">Streaming Prioritário (Otimizado para lives Twitch/YouTube/OBS)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-top:10px;">
+                                    <label class="form-label">Criptografia de Canal</label>
+                                    <select class="form-select">
+                                        <option value="chacha20" selected>ChaCha20-Poly1305 (Aceleração Hardware ARM Filogic)</option>
+                                        <option value="aes">AES-128-GCM</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style="background:rgba(168, 85, 247, 0.08); border:1px solid rgba(168, 85, 247, 0.35); border-radius:var(--ark-radius-md); padding:16px;">
+                                <strong style="color:#fff; font-size:0.95rem;">Vazão Agregada do Túnel</strong>
+                                <div style="display:flex; justify-content:space-between; align-items:baseline; margin:14px 0;">
+                                    <span style="font-size:2rem; font-weight:900; color:#c084fc;">770 Mbps</span>
+                                    <span style="font-size:0.8rem; color:#94a3b8;">Taxa Somada (Fibra 650 + Starlink 120)</span>
+                                </div>
+                                <div style="font-size:0.78rem; color:#cbd5e1; line-height:1.4;">
+                                    Túnel ativo com o PoP São Paulo SP-1. Perda de pacotes corrigida dinamicamente em 0.0%.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- PAINEL INDIVIDUAL: SQM CAKE                               -->
+                <!-- ========================================================= -->
+                <section class="view-panel" id="view_plugin_sqm">
+                    <div class="plugin-page-header">
+                        <div class="plugin-breadcrumb">
+                            <a onclick="switchView('overview')">📊 Cockpit</a>
+                            <span class="sep">/</span>
+                            <a onclick="switchView('plugins')">📦 Plugins</a>
+                            <span class="sep">/</span>
+                            <div class="plugin-drop-picker">
+                                <select class="form-select plugin-drop-select" onchange="switchView(this.value)">
+                                    <option value="plugins">📋 Central & Loja de Plugins (12)</option>
+                                    <option value="plugin_upnp">🎮 UPnP IGD & NAT-PMP (miniupnpd)</option>
+                                    <option value="plugin_mwan3">⚖️ Multi-WAN & Failover (mwan3)</option>
+                                    <option value="plugin_zerotier">🌐 ZeroTier SD-WAN (Mesh P2P)</option>
+                                    <option value="plugin_speedify">🚀 Speedify Bonding (Starlink+Fibra)</option>
+                                    <option value="plugin_sqm" selected>⚡ SQM CAKE Anti-Bufferbloat</option>
+                                    <option value="plugin_adblock">🛡️ AdBlock Fast (Filtro DNS)</option>
+                                    <option value="plugin_wireguard">🔒 WireGuard VPN (Kernel Mode)</option>
+                                    <option value="plugin_nlbwmon">📊 Consumo por Dispositivo (nlbwmon)</option>
+                                    <option value="plugin_usteer">📡 Roaming Suave (usteer 802.11k/v/r)</option>
+                                    <option value="plugin_zram">💾 Compressão ZRAM LZ4 (RAM Turbo)</option>
+                                    <option value="plugin_irqbalance">⚙️ Balanceador Multicore IRQ (CPU)</option>
+                                    <option value="plugin_htop">📈 Monitor Interativo (htop)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <span class="pill-badge pill-online" style="font-size:0.75rem;">● qdisc CAKE ATIVO</span>
+                            <button class="ark-btn ark-btn-primary" style="font-size:0.78rem; padding:6px 12px;" onclick="saveSqmModal()">⚡ Aplicar no Kernel</button>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <h2>⚡ Anti-Lag Gaming & Mitigação de Bufferbloat (SQM CAKE)</h2>
+                                <span class="badge pill-online">Nota A+ de Bufferbloat</span>
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; margin-bottom:16px;">
+                            <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px;">
+                                <strong style="color:#fff; font-size:0.92rem;">Limites de Banda WAN 1 (Fibra)</strong>
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Download (Mbps)</label>
+                                        <input type="number" class="form-input" id="page_sqm_down" value="650">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Upload (Mbps)</label>
+                                        <input type="number" class="form-input" id="page_sqm_up" value="320">
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;">
+                                    <button class="ark-btn ark-btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="setPageSqmValues(100, 50)">100M</button>
+                                    <button class="ark-btn ark-btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="setPageSqmValues(300, 150)">300M</button>
+                                    <button class="ark-btn ark-btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="setPageSqmValues(650, 320)">650M</button>
+                                    <button class="ark-btn ark-btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="setPageSqmValues(1000, 500)">1 Gbps</button>
+                                </div>
+                            </div>
+
+                            <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px;">
+                                <strong style="color:#fff; font-size:0.92rem;">Desempenho de Latência Sob Carga</strong>
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; font-size:0.85rem;">
+                                    <div>Ping Ocioso: <strong style="color:#10b981;">2.1 ms</strong></div>
+                                    <div>Ping em Download: <strong style="color:#10b981;">4.5 ms (+2.4 ms)</strong></div>
+                                    <div>Pacotes Descartados: <strong style="color:#38bdf8;">0.001%</strong></div>
+                                    <div>Algoritmo: <strong style="color:#fff;">CAKE Diffserv4</strong></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- PAINEL INDIVIDUAL: ADBLOCK FAST                           -->
+                <!-- ========================================================= -->
+                <section class="view-panel" id="view_plugin_adblock">
+                    <div class="plugin-page-header">
+                        <div class="plugin-breadcrumb">
+                            <a onclick="switchView('overview')">📊 Cockpit</a>
+                            <span class="sep">/</span>
+                            <a onclick="switchView('plugins')">📦 Plugins</a>
+                            <span class="sep">/</span>
+                            <div class="plugin-drop-picker">
+                                <select class="form-select plugin-drop-select" onchange="switchView(this.value)">
+                                    <option value="plugins">📋 Central & Loja de Plugins (12)</option>
+                                    <option value="plugin_upnp">🎮 UPnP IGD & NAT-PMP (miniupnpd)</option>
+                                    <option value="plugin_mwan3">⚖️ Multi-WAN & Failover (mwan3)</option>
+                                    <option value="plugin_zerotier">🌐 ZeroTier SD-WAN (Mesh P2P)</option>
+                                    <option value="plugin_speedify">🚀 Speedify Bonding (Starlink+Fibra)</option>
+                                    <option value="plugin_sqm">⚡ SQM CAKE Anti-Bufferbloat</option>
+                                    <option value="plugin_adblock" selected>🛡️ AdBlock Fast (Filtro DNS)</option>
+                                    <option value="plugin_wireguard">🔒 WireGuard VPN (Kernel Mode)</option>
+                                    <option value="plugin_nlbwmon">📊 Consumo por Dispositivo (nlbwmon)</option>
+                                    <option value="plugin_usteer">📡 Roaming Suave (usteer 802.11k/v/r)</option>
+                                    <option value="plugin_zram">💾 Compressão ZRAM LZ4 (RAM Turbo)</option>
+                                    <option value="plugin_irqbalance">⚙️ Balanceador Multicore IRQ (CPU)</option>
+                                    <option value="plugin_htop">📈 Monitor Interativo (htop)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <span class="pill-badge pill-online" style="font-size:0.75rem;">● 148.291 Regras Ativas</span>
+                            <button class="ark-btn ark-btn-secondary" style="font-size:0.78rem; padding:6px 12px;" onclick="updateAdblockList()">🔄 Atualizar Listas</button>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <h2>🛡️ Bloqueador de Anúncios no DNS (AdBlock Fast)</h2>
+                                <span class="badge pill-online">Filtro de Telemetria & Banners</span>
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; margin-bottom:16px;">
+                            <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px;">
+                                <strong style="color:#fff; font-size:0.92rem;">Lista Branca (Whitelist - Permitir Domínios)</strong>
+                                <div style="display:flex; gap:8px; margin:10px 0;">
+                                    <input type="text" class="form-input" id="adblock_wl_inp" placeholder="ex: analytics.google.com">
+                                    <button class="ark-btn ark-btn-secondary" onclick="addPageWhitelistDomain()">Adicionar</button>
+                                </div>
+                                <div id="page_adblock_wl_tags" style="display:flex; gap:6px; flex-wrap:wrap;">
+                                    <span class="badge" style="background:rgba(255,255,255,0.08); color:#cbd5e1;">bradesco.com.br</span>
+                                    <span class="badge" style="background:rgba(255,255,255,0.08); color:#cbd5e1;">gov.br</span>
+                                </div>
+                            </div>
+
+                            <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px;">
+                                <strong style="color:#fff; font-size:0.92rem;">Fontes de Regras Oficiais</strong>
+                                <div style="display:flex; flex-direction:column; gap:6px; margin-top:10px; font-size:0.8rem;">
+                                    <div>✓ StevenBlack Unified Hosts (142.000 domínios)</div>
+                                    <div>✓ OISD Basic (Smart TV Telemetry & Trackers)</div>
+                                    <div>✓ AdGuard DNS Filter (Banners e Popups móveis)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- PAINEL INDIVIDUAL: WIREGUARD VPN                          -->
+                <!-- ========================================================= -->
+                <section class="view-panel" id="view_plugin_wireguard">
+                    <div class="plugin-page-header">
+                        <div class="plugin-breadcrumb">
+                            <a onclick="switchView('overview')">📊 Cockpit</a>
+                            <span class="sep">/</span>
+                            <a onclick="switchView('plugins')">📦 Plugins</a>
+                            <span class="sep">/</span>
+                            <div class="plugin-drop-picker">
+                                <select class="form-select plugin-drop-select" onchange="switchView(this.value)">
+                                    <option value="plugins">📋 Central & Loja de Plugins (12)</option>
+                                    <option value="plugin_upnp">🎮 UPnP IGD & NAT-PMP (miniupnpd)</option>
+                                    <option value="plugin_mwan3">⚖️ Multi-WAN & Failover (mwan3)</option>
+                                    <option value="plugin_zerotier">🌐 ZeroTier SD-WAN (Mesh P2P)</option>
+                                    <option value="plugin_speedify">🚀 Speedify Bonding (Starlink+Fibra)</option>
+                                    <option value="plugin_sqm">⚡ SQM CAKE Anti-Bufferbloat</option>
+                                    <option value="plugin_adblock">🛡️ AdBlock Fast (Filtro DNS)</option>
+                                    <option value="plugin_wireguard" selected>🔒 WireGuard VPN (Kernel Mode)</option>
+                                    <option value="plugin_nlbwmon">📊 Consumo por Dispositivo (nlbwmon)</option>
+                                    <option value="plugin_usteer">📡 Roaming Suave (usteer 802.11k/v/r)</option>
+                                    <option value="plugin_zram">💾 Compressão ZRAM LZ4 (RAM Turbo)</option>
+                                    <option value="plugin_irqbalance">⚙️ Balanceador Multicore IRQ (CPU)</option>
+                                    <option value="plugin_htop">📈 Monitor Interativo (htop)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <span class="pill-badge pill-online" style="font-size:0.75rem;">● wg0 ONLINE</span>
+                            <button class="ark-btn ark-btn-primary" style="font-size:0.78rem; padding:6px 12px;" onclick="saveVpnModal()">🔒 Salvar Túnel</button>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <h2>🔒 Túnel VPN WireGuard em Nível de Kernel (kmod-wireguard)</h2>
+                                <span class="badge pill-online">Curve25519 / ChaCha20</span>
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px;">
+                            <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px;">
+                                <div class="form-group">
+                                    <label class="form-label">Endpoint do Servidor VPN Remoto</label>
+                                    <input type="text" class="form-input" value="vpn.empresa.com.br:51820">
+                                </div>
+                                <div class="form-group" style="margin-top:10px;">
+                                    <label class="form-label">Endereço IP Local do Cliente (Tunnel IPv4)</label>
+                                    <input type="text" class="form-input" value="10.8.0.2/24">
+                                </div>
+                                <div class="form-group" style="margin-top:10px;">
+                                    <label class="form-label">Redes Permitidas (AllowedIPs)</label>
+                                    <input type="text" class="form-input" value="0.0.0.0/0, ::/0">
+                                </div>
+                            </div>
+
+                            <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px;">
+                                <strong style="color:#fff; font-size:0.92rem;">Par de Chaves Criptográficas</strong>
+                                <div class="form-group" style="margin-top:10px;">
+                                    <label class="form-label">Chave Privada (Private Key)</label>
+                                    <input type="password" class="form-input" value="yK2...ChaveSeguraPrivada==">
+                                </div>
+                                <div class="form-group" style="margin-top:10px;">
+                                    <label class="form-label">Chave Pública do Servidor</label>
+                                    <input type="text" class="form-input" value="PUB_SERVER_Curve25519_KEY==">
+                                </div>
+                                <div style="display:flex; gap:8px; margin-top:12px;">
+                                    <button class="ark-btn ark-btn-secondary" style="font-size:0.78rem;" onclick="generateWgKeypair()">🔑 Gerar Chaves</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- PAINEL INDIVIDUAL: NLBWMON (CONSUMO)                      -->
+                <!-- ========================================================= -->
+                <section class="view-panel" id="view_plugin_nlbwmon">
+                    <div class="plugin-page-header">
+                        <div class="plugin-breadcrumb">
+                            <a onclick="switchView('overview')">📊 Cockpit</a>
+                            <span class="sep">/</span>
+                            <a onclick="switchView('plugins')">📦 Plugins</a>
+                            <span class="sep">/</span>
+                            <div class="plugin-drop-picker">
+                                <select class="form-select plugin-drop-select" onchange="switchView(this.value)">
+                                    <option value="plugins">📋 Central & Loja de Plugins (12)</option>
+                                    <option value="plugin_upnp">🎮 UPnP IGD & NAT-PMP (miniupnpd)</option>
+                                    <option value="plugin_mwan3">⚖️ Multi-WAN & Failover (mwan3)</option>
+                                    <option value="plugin_zerotier">🌐 ZeroTier SD-WAN (Mesh P2P)</option>
+                                    <option value="plugin_speedify">🚀 Speedify Bonding (Starlink+Fibra)</option>
+                                    <option value="plugin_sqm">⚡ SQM CAKE Anti-Bufferbloat</option>
+                                    <option value="plugin_adblock">🛡️ AdBlock Fast (Filtro DNS)</option>
+                                    <option value="plugin_wireguard">🔒 WireGuard VPN (Kernel Mode)</option>
+                                    <option value="plugin_nlbwmon" selected>📊 Consumo por Dispositivo (nlbwmon)</option>
+                                    <option value="plugin_usteer">📡 Roaming Suave (usteer 802.11k/v/r)</option>
+                                    <option value="plugin_zram">💾 Compressão ZRAM LZ4 (RAM Turbo)</option>
+                                    <option value="plugin_irqbalance">⚙️ Balanceador Multicore IRQ (CPU)</option>
+                                    <option value="plugin_htop">📈 Monitor Interativo (htop)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <span class="pill-badge pill-online" style="font-size:0.75rem;">● Coletor nlbwmon ATIVO</span>
+                            <button class="ark-btn ark-btn-secondary" style="font-size:0.78rem; padding:6px 12px;" onclick="showToast('📥 Dados de tráfego exportados para CSV com sucesso!')">📥 Exportar CSV</button>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <h2>📊 Monitor de Consumo e Tráfego Mensal por Aparelho</h2>
+                                <span class="badge pill-online">Histórico em RAM (30 Dias)</span>
+                            </div>
+                        </div>
+
+                        <div class="device-table-container">
+                            <table class="device-table">
+                                <thead>
+                                    <tr>
+                                        <th>Dispositivo</th>
+                                        <th>IP Local</th>
+                                        <th>Download</th>
+                                        <th>Upload</th>
+                                        <th>Total Acumulado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Servidor-NAS-Synology</strong></td>
+                                        <td>192.168.1.105</td>
+                                        <td>84.2 GB</td>
+                                        <td>28.2 GB</td>
+                                        <td><strong style="color:#38bdf8;">112.4 GB</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>PlayStation-5-Pro</strong></td>
+                                        <td>192.168.1.189</td>
+                                        <td>78.1 GB</td>
+                                        <td>6.1 GB</td>
+                                        <td><strong style="color:#38bdf8;">84.2 GB</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>TV-Samsung-OLED-65</strong></td>
+                                        <td>192.168.1.110</td>
+                                        <td>42.5 GB</td>
+                                        <td>2.5 GB</td>
+                                        <td><strong style="color:#38bdf8;">45.0 GB</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>MacBook-Pro-M3-Max</strong></td>
+                                        <td>192.168.1.142</td>
+                                        <td>31.4 GB</td>
+                                        <td>6.8 GB</td>
+                                        <td><strong style="color:#38bdf8;">38.2 GB</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- PAINEL INDIVIDUAL: USTEER (ROAMING WI-FI)                 -->
+                <!-- ========================================================= -->
+                <section class="view-panel" id="view_plugin_usteer">
+                    <div class="plugin-page-header">
+                        <div class="plugin-breadcrumb">
+                            <a onclick="switchView('overview')">📊 Cockpit</a>
+                            <span class="sep">/</span>
+                            <a onclick="switchView('plugins')">📦 Plugins</a>
+                            <span class="sep">/</span>
+                            <div class="plugin-drop-picker">
+                                <select class="form-select plugin-drop-select" onchange="switchView(this.value)">
+                                    <option value="plugins">📋 Central & Loja de Plugins (12)</option>
+                                    <option value="plugin_upnp">🎮 UPnP IGD & NAT-PMP (miniupnpd)</option>
+                                    <option value="plugin_mwan3">⚖️ Multi-WAN & Failover (mwan3)</option>
+                                    <option value="plugin_zerotier">🌐 ZeroTier SD-WAN (Mesh P2P)</option>
+                                    <option value="plugin_speedify">🚀 Speedify Bonding (Starlink+Fibra)</option>
+                                    <option value="plugin_sqm">⚡ SQM CAKE Anti-Bufferbloat</option>
+                                    <option value="plugin_adblock">🛡️ AdBlock Fast (Filtro DNS)</option>
+                                    <option value="plugin_wireguard">🔒 WireGuard VPN (Kernel Mode)</option>
+                                    <option value="plugin_nlbwmon">📊 Consumo por Dispositivo (nlbwmon)</option>
+                                    <option value="plugin_usteer" selected>📡 Roaming Suave (usteer 802.11k/v/r)</option>
+                                    <option value="plugin_zram">💾 Compressão ZRAM LZ4 (RAM Turbo)</option>
+                                    <option value="plugin_irqbalance">⚙️ Balanceador Multicore IRQ (CPU)</option>
+                                    <option value="plugin_htop">📈 Monitor Interativo (htop)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <span class="pill-badge pill-online" style="font-size:0.75rem;">● usteer 802.11k/v/r ATIVO</span>
+                            <button class="ark-btn ark-btn-primary" style="font-size:0.78rem; padding:6px 12px;" onclick="showToast('📡 Parâmetros usteer calibrados com sucesso!')">📡 Calibrar</button>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <h2>📡 Assistente de Roaming e Band Steering Inteligente (usteer)</h2>
+                                <span class="badge pill-online">Transição Suave 0ms Queda</span>
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; margin-bottom:16px;">
+                            <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px;">
+                                <div class="form-group">
+                                    <label class="form-label">Limite de Desassociação (Kick Threshold)</label>
+                                    <input type="text" class="form-input" value="-85 dBm" readonly>
+                                    <small style="color:#64748b; font-size:0.72rem;">Evita quedas bruscas de aparelhos fracos</small>
+                                </div>
+                                <div class="form-group" style="margin-top:10px;">
+                                    <label class="form-label">Histerese de Sinal (Signal Hysteresis)</label>
+                                    <input type="text" class="form-input" value="8 dB" readonly>
+                                    <small style="color:#64748b; font-size:0.72rem;">Evita efeito ping-pong entre 5G e 6G</small>
+                                </div>
+                            </div>
+
+                            <div style="background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:14px; font-family:monospace; font-size:0.75rem; color:#cbd5e1; height:160px; overflow-y:auto;">
+                                <div>[14/Oct 03:42:15] <span style="color:#a855f7;">usteer:</span> Client 34:ab:95:11:22:33 (iPhone 16) Roam event: 5GHz -> 6GHz (RSSI: -42 dBm, 320MHz MLO link active)</div>
+                                <div>[14/Oct 03:40:02] <span style="color:#38bdf8;">usteer:</span> Client f4:d4:88:55:66:77 (MacBook) Steering evaluation: staying on 6GHz (signal optimal)</div>
+                                <div>[14/Oct 03:38:19] <span style="color:#10b981;">usteer:</span> Band steering probe response: steering client to 5GHz UNII-3</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- PAINEL INDIVIDUAL: ZRAM LZ4 (RAM TURBO)                   -->
+                <!-- ========================================================= -->
+                <section class="view-panel" id="view_plugin_zram">
+                    <div class="plugin-page-header">
+                        <div class="plugin-breadcrumb">
+                            <a onclick="switchView('overview')">📊 Cockpit</a>
+                            <span class="sep">/</span>
+                            <a onclick="switchView('plugins')">📦 Plugins</a>
+                            <span class="sep">/</span>
+                            <div class="plugin-drop-picker">
+                                <select class="form-select plugin-drop-select" onchange="switchView(this.value)">
+                                    <option value="plugins">📋 Central & Loja de Plugins (12)</option>
+                                    <option value="plugin_upnp">🎮 UPnP IGD & NAT-PMP (miniupnpd)</option>
+                                    <option value="plugin_mwan3">⚖️ Multi-WAN & Failover (mwan3)</option>
+                                    <option value="plugin_zerotier">🌐 ZeroTier SD-WAN (Mesh P2P)</option>
+                                    <option value="plugin_speedify">🚀 Speedify Bonding (Starlink+Fibra)</option>
+                                    <option value="plugin_sqm">⚡ SQM CAKE Anti-Bufferbloat</option>
+                                    <option value="plugin_adblock">🛡️ AdBlock Fast (Filtro DNS)</option>
+                                    <option value="plugin_wireguard">🔒 WireGuard VPN (Kernel Mode)</option>
+                                    <option value="plugin_nlbwmon">📊 Consumo por Dispositivo (nlbwmon)</option>
+                                    <option value="plugin_usteer">📡 Roaming Suave (usteer 802.11k/v/r)</option>
+                                    <option value="plugin_zram" selected>💾 Compressão ZRAM LZ4 (RAM Turbo)</option>
+                                    <option value="plugin_irqbalance">⚙️ Balanceador Multicore IRQ (CPU)</option>
+                                    <option value="plugin_htop">📈 Monitor Interativo (htop)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <span class="pill-badge pill-online" style="font-size:0.75rem;">● /dev/zram0 LZ4 ATIVO</span>
+                            <button class="ark-btn ark-btn-secondary" style="font-size:0.78rem; padding:6px 12px;" onclick="purgeRam()">🧹 Desfragmentar</button>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <h2>💾 Memória RAM Compactada em Tempo Real (ZRAM LZ4)</h2>
+                                <span class="badge pill-online">Taxa de Compressão: 2.4 : 1</span>
+                            </div>
+                        </div>
+
+                        <div style="background:var(--ark-surface-2); border:1px solid var(--ark-border); border-radius:var(--ark-radius-md); padding:16px;">
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; font-size:0.9rem;">
+                                <div>Memória RAM Física: <strong style="color:#fff;">512 MB DDR4</strong></div>
+                                <div>Capacidade ZRAM Swap: <strong style="color:#38bdf8;">256 MB</strong></div>
+                                <div>Capacidade Efetiva Útil: <strong style="color:#10b981;">768 MB</strong></div>
+                                <div>Algoritmo de Compressão: <strong style="color:#fff;">LZ4 (Kernel 6.6)</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- PAINEL INDIVIDUAL: IRQBALANCE (MULTICORE CPU)             -->
+                <!-- ========================================================= -->
+                <section class="view-panel" id="view_plugin_irqbalance">
+                    <div class="plugin-page-header">
+                        <div class="plugin-breadcrumb">
+                            <a onclick="switchView('overview')">📊 Cockpit</a>
+                            <span class="sep">/</span>
+                            <a onclick="switchView('plugins')">📦 Plugins</a>
+                            <span class="sep">/</span>
+                            <div class="plugin-drop-picker">
+                                <select class="form-select plugin-drop-select" onchange="switchView(this.value)">
+                                    <option value="plugins">📋 Central & Loja de Plugins (12)</option>
+                                    <option value="plugin_upnp">🎮 UPnP IGD & NAT-PMP (miniupnpd)</option>
+                                    <option value="plugin_mwan3">⚖️ Multi-WAN & Failover (mwan3)</option>
+                                    <option value="plugin_zerotier">🌐 ZeroTier SD-WAN (Mesh P2P)</option>
+                                    <option value="plugin_speedify">🚀 Speedify Bonding (Starlink+Fibra)</option>
+                                    <option value="plugin_sqm">⚡ SQM CAKE Anti-Bufferbloat</option>
+                                    <option value="plugin_adblock">🛡️ AdBlock Fast (Filtro DNS)</option>
+                                    <option value="plugin_wireguard">🔒 WireGuard VPN (Kernel Mode)</option>
+                                    <option value="plugin_nlbwmon">📊 Consumo por Dispositivo (nlbwmon)</option>
+                                    <option value="plugin_usteer">📡 Roaming Suave (usteer 802.11k/v/r)</option>
+                                    <option value="plugin_zram">💾 Compressão ZRAM LZ4 (RAM Turbo)</option>
+                                    <option value="plugin_irqbalance" selected>⚙️ Balanceador Multicore IRQ (CPU)</option>
+                                    <option value="plugin_htop">📈 Monitor Interativo (htop)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <span class="pill-badge pill-online" style="font-size:0.75rem;">● irqbalance 4 CORES ATIVO</span>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <h2>⚙️ Balanceador de Interrupções Multicore (irqbalance)</h2>
+                                <span class="badge pill-online">MediaTek Filogic 830 (4x 2.0 GHz)</span>
+                            </div>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
+                            <div style="background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:12px;">
+                                <strong style="color:#fff;">Core 0 (CPU 0)</strong>
+                                <div style="font-size:0.75rem; color:#38bdf8; margin-top:4px;">Ethernet WAN & Switch GMAC</div>
+                            </div>
+                            <div style="background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:12px;">
+                                <strong style="color:#fff;">Core 1 (CPU 1)</strong>
+                                <div style="font-size:0.75rem; color:#10b981; margin-top:4px;">Rádio Wi-Fi 5 GHz (MT7976)</div>
+                            </div>
+                            <div style="background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:12px;">
+                                <strong style="color:#fff;">Core 2 (CPU 2)</strong>
+                                <div style="font-size:0.75rem; color:#a855f7; margin-top:4px;">Rádio Wi-Fi 6 GHz (Wi-Fi 7)</div>
+                            </div>
+                            <div style="background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:12px;">
+                                <strong style="color:#fff;">Core 3 (CPU 3)</strong>
+                                <div style="font-size:0.75rem; color:#f59e0b; margin-top:4px;">Firewall nftables & SQM CAKE</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ========================================================= -->
+                <!-- PAINEL INDIVIDUAL: HTOP (MONITOR DE PROCESSOS)            -->
+                <!-- ========================================================= -->
+                <section class="view-panel" id="view_plugin_htop">
+                    <div class="plugin-page-header">
+                        <div class="plugin-breadcrumb">
+                            <a onclick="switchView('overview')">📊 Cockpit</a>
+                            <span class="sep">/</span>
+                            <a onclick="switchView('plugins')">📦 Plugins</a>
+                            <span class="sep">/</span>
+                            <div class="plugin-drop-picker">
+                                <select class="form-select plugin-drop-select" onchange="switchView(this.value)">
+                                    <option value="plugins">📋 Central & Loja de Plugins (12)</option>
+                                    <option value="plugin_upnp">🎮 UPnP IGD & NAT-PMP (miniupnpd)</option>
+                                    <option value="plugin_mwan3">⚖️ Multi-WAN & Failover (mwan3)</option>
+                                    <option value="plugin_zerotier">🌐 ZeroTier SD-WAN (Mesh P2P)</option>
+                                    <option value="plugin_speedify">🚀 Speedify Bonding (Starlink+Fibra)</option>
+                                    <option value="plugin_sqm">⚡ SQM CAKE Anti-Bufferbloat</option>
+                                    <option value="plugin_adblock">🛡️ AdBlock Fast (Filtro DNS)</option>
+                                    <option value="plugin_wireguard">🔒 WireGuard VPN (Kernel Mode)</option>
+                                    <option value="plugin_nlbwmon">📊 Consumo por Dispositivo (nlbwmon)</option>
+                                    <option value="plugin_usteer">📡 Roaming Suave (usteer 802.11k/v/r)</option>
+                                    <option value="plugin_zram">💾 Compressão ZRAM LZ4 (RAM Turbo)</option>
+                                    <option value="plugin_irqbalance">⚙️ Balanceador Multicore IRQ (CPU)</option>
+                                    <option value="plugin_htop" selected>📈 Monitor Interativo (htop)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <span class="pill-badge pill-online" style="font-size:0.75rem;">● htop v3.3.0</span>
+                            <button class="ark-btn ark-btn-secondary" style="font-size:0.78rem; padding:6px 12px;" onclick="showToast('🔄 Lista de processos atualizada!')">🔄 Atualizar</button>
+                        </div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <h2>📈 Monitor Interativo de Processos e Consumo de CPU</h2>
+                                <span class="badge pill-online">Árvore de Processos do Linux</span>
+                            </div>
+                        </div>
+
+                        <div class="terminal-sim-box" style="max-height:360px; font-size:0.75rem;">  1  [||||||||||                     24.2%]   Tasks: 78, 124 thr; 1 running
+  2  [||||||                         16.8%]   Load average: 0.24 0.18 0.12 
+  3  [||||                           12.1%]   Uptime: 3 days, 14:28:10
+  4  [||||||||||||||                 38.4%]   Mem: 146M/512M | Swp: 18M/256M
+
+  PID USER      PRI  NI  VIRT   RES   SHR S CPU% MEM%   TIME+  Command
+ 1422 root       20   0  5216  2140  1820 S  2.4  0.4  1:24.12 miniupnpd -f /etc/miniupnpd.conf
+ 1842 root       20   0  9412  3840  2410 S  1.8  0.7  0:58.30 usteer
+ 2104 root       20   0  7120  2890  2040 S  1.2  0.5  2:14.05 mwan3
+  842 root       20   0 14820  6120  4120 S  0.8  1.1  4:32.18 hostapd -g /var/run/hostapd/global
+  412 root       20   0  3210  1140   920 S  0.4  0.2  0:42.10 dnsmasq -C /var/etc/dnsmasq.conf
+ 2841 root       20   0 18420  8140  5210 S  0.2  1.5  0:12.44 uhttpd -f -p 0.0.0.0:80
+</div>
+                    </div>
+                </section>
             </main>
         </div>
     </div>
@@ -4270,8 +5525,8 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
                 size: '240 KB',
                 version: '1.5.2-r3',
                 category: 'net',
-                actionType: 'modal',
-                actionTarget: 'sqm'
+                actionType: 'view',
+                actionTarget: 'plugin_sqm'
             },
             {
                 id: 'mwan3',
@@ -4282,8 +5537,8 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
                 size: '380 KB',
                 version: '2.11.8-1',
                 category: 'net',
-                actionType: 'modal',
-                actionTarget: 'mwan3'
+                actionType: 'view',
+                actionTarget: 'plugin_mwan3'
             },
             {
                 id: 'adblock',
@@ -4294,8 +5549,8 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
                 size: '180 KB',
                 version: '1.1.2-4',
                 category: 'sec',
-                actionType: 'modal',
-                actionTarget: 'adblock'
+                actionType: 'view',
+                actionTarget: 'plugin_adblock'
             },
             {
                 id: 'upnp',
@@ -4306,8 +5561,8 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
                 size: '120 KB',
                 version: '2.2.3-2',
                 category: 'net',
-                actionType: 'modal',
-                actionTarget: 'upnp'
+                actionType: 'view',
+                actionTarget: 'plugin_upnp'
             },
             {
                 id: 'wireguard',
@@ -4318,8 +5573,8 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
                 size: '310 KB',
                 version: '1.0.20210914',
                 category: 'sec',
-                actionType: 'modal',
-                actionTarget: 'add_vpn'
+                actionType: 'view',
+                actionTarget: 'plugin_wireguard'
             },
             {
                 id: 'nlbwmon',
@@ -4331,7 +5586,7 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
                 version: '0.7.0-2',
                 category: 'sys',
                 actionType: 'view',
-                actionTarget: 'devices'
+                actionTarget: 'plugin_nlbwmon'
             },
             {
                 id: 'usteer',
@@ -4343,7 +5598,7 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
                 version: '2024-03-01',
                 category: 'wifi',
                 actionType: 'view',
-                actionTarget: 'wifi'
+                actionTarget: 'plugin_usteer'
             },
             {
                 id: 'zerotier',
@@ -4354,8 +5609,8 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
                 size: '2.8 MB',
                 version: '1.12.2-1',
                 category: 'sec',
-                actionType: 'modal',
-                actionTarget: 'zerotier'
+                actionType: 'view',
+                actionTarget: 'plugin_zerotier'
             },
             {
                 id: 'speedify',
@@ -4366,8 +5621,8 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
                 size: '14.2 MB',
                 version: '14.5.0',
                 category: 'net',
-                actionType: 'modal',
-                actionTarget: 'speedify'
+                actionType: 'view',
+                actionTarget: 'plugin_speedify'
             },
             {
                 id: 'zram',
@@ -4378,8 +5633,8 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
                 size: '45 KB',
                 version: '1.2.0-1',
                 category: 'sys',
-                actionType: 'modal',
-                actionTarget: 'hardware_ram'
+                actionType: 'view',
+                actionTarget: 'plugin_zram'
             },
             {
                 id: 'irqbalance',
@@ -4390,8 +5645,8 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
                 size: '85 KB',
                 version: '1.9.3-1',
                 category: 'sys',
-                actionType: 'modal',
-                actionTarget: 'hardware_cpu'
+                actionType: 'view',
+                actionTarget: 'plugin_irqbalance'
             },
             {
                 id: 'htop',
@@ -4402,8 +5657,8 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
                 size: '140 KB',
                 version: '3.3.0-1',
                 category: 'sys',
-                actionType: 'modal',
-                actionTarget: 'diagnostics'
+                actionType: 'view',
+                actionTarget: 'plugin_htop'
             }
         ];
 
@@ -4453,14 +5708,26 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
         function switchView(viewId) {
             document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.querySelectorAll('.subnav-item').forEach(i => i.classList.remove('active'));
 
             const targetPanel = document.getElementById('view_' + viewId);
             if (targetPanel) {
                 targetPanel.classList.add('active');
             }
 
-            const activeNav = Array.from(document.querySelectorAll('.nav-item')).find(a => a.getAttribute('onclick')?.includes(viewId));
-            if (activeNav) activeNav.classList.add('active');
+            const activeNav = Array.from(document.querySelectorAll('.nav-item, .subnav-item')).find(a => a.getAttribute('onclick')?.includes(`'${viewId}'`));
+            if (activeNav) {
+                activeNav.classList.add('active');
+                if (activeNav.classList.contains('subnav-item')) {
+                    const drop = document.getElementById('nav_plugins_dropdown');
+                    if (drop) drop.classList.add('open');
+                }
+            }
+
+            // Sync all contextual plugin drop-selects
+            document.querySelectorAll('.plugin-drop-select').forEach(sel => {
+                sel.value = viewId;
+            });
 
             if (window.innerWidth <= 854) {
                 const sb = document.getElementById('sidebar');
@@ -4469,12 +5736,45 @@ HTML_TEMPLATE = r'''<!DOCTYPE html>
                 if (bd) bd.style.display = 'none';
             }
 
+            closeHeaderPluginsDrop();
             window.scrollTo({ top: 0, behavior: 'smooth' });
 
             if (viewId === 'overview') {
                 setTimeout(initTrafficCanvas, 50);
+            } else if (viewId === 'plugins') {
+                renderPluginsCards();
             }
         }
+
+        function togglePluginsDropdown(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            const drop = document.getElementById('nav_plugins_dropdown');
+            if (drop) drop.classList.toggle('open');
+        }
+
+        function toggleHeaderPluginsDrop(e) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            const menu = document.getElementById('header_plugins_drop');
+            if (menu) menu.classList.toggle('show');
+        }
+
+        function closeHeaderPluginsDrop() {
+            const menu = document.getElementById('header_plugins_drop');
+            if (menu) menu.classList.remove('show');
+        }
+
+        document.addEventListener('click', function(e) {
+            const wrap = document.querySelector('.header-dropdown-wrap');
+            if (wrap && !wrap.contains(e.target)) {
+                closeHeaderPluginsDrop();
+            }
+        });
 
         function toggleSidebar() {
             const sb = document.getElementById('sidebar');
@@ -8681,10 +9981,16 @@ Address 4: 2606:4700:4700::1001
         }
 
         function renderPluginsCards() {
-            const container = document.getElementById('plugins_grid_container');
-            if (!container) return;
+            const containers = [
+                document.getElementById('plugins_grid_container'),
+                document.getElementById('plugins_page_cards_grid')
+            ].filter(Boolean);
 
-            const q = document.getElementById('plugins_search_input') ? document.getElementById('plugins_search_input').value.toLowerCase().trim() : '';
+            if (containers.length === 0) return;
+
+            const qModal = document.getElementById('plugins_search_input')?.value.toLowerCase().trim() || '';
+            const qPage = document.getElementById('plugins_page_search')?.value.toLowerCase().trim() || '';
+            const q = qModal || qPage || '';
             
             const filtered = SYSTEM_PLUGINS.filter(p => {
                 const matchCat = (currentPluginCategory === 'all' || p.category === currentPluginCategory);
@@ -8692,50 +9998,52 @@ Address 4: 2606:4700:4700::1001
                 return matchCat && matchText;
             });
 
-            if (filtered.length === 0) {
-                container.innerHTML = `
-                    <div style="grid-column:1/-1; text-align:center; padding:30px; color:#94a3b8; font-size:0.88rem;">
-                        🔍 Nenhum plugin encontrado para o filtro informado.
-                    </div>
-                `;
-                return;
-            }
+            containers.forEach(container => {
+                if (filtered.length === 0) {
+                    container.innerHTML = `
+                        <div style="grid-column:1/-1; text-align:center; padding:30px; color:#94a3b8; font-size:0.88rem;">
+                            🔍 Nenhum plugin encontrado para o filtro informado.
+                        </div>
+                    `;
+                    return;
+                }
 
-            container.innerHTML = filtered.map(p => {
-                const isInstalled = p.installed;
-                return `
-                    <div class="plugin-detail-card" style="border-color:${isInstalled ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.08)'};">
-                        <div class="plugin-card-top">
-                            <div class="plugin-card-info">
-                                <h4>${p.name}</h4>
-                                <p>${p.desc}</p>
+                container.innerHTML = filtered.map(p => {
+                    const isInstalled = p.installed;
+                    return `
+                        <div class="plugin-detail-card" style="border-color:${isInstalled ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.08)'};">
+                            <div class="plugin-card-top">
+                                <div class="plugin-card-info">
+                                    <h4>${p.name}</h4>
+                                    <p>${p.desc}</p>
+                                </div>
+                                <span class="badge" style="font-size:0.72rem; ${isInstalled ? 'background:rgba(16,185,129,0.18); color:#10b981; border:1px solid rgba(16,185,129,0.3);' : 'background:rgba(255,255,255,0.06); color:#94a3b8;'}">
+                                    ${isInstalled ? '🟢 Instalado' : '⚪ Disponível'}
+                                </span>
                             </div>
-                            <span class="badge" style="font-size:0.72rem; ${isInstalled ? 'background:rgba(16,185,129,0.18); color:#10b981; border:1px solid rgba(16,185,129,0.3);' : 'background:rgba(255,255,255,0.06); color:#94a3b8;'}">
-                                ${isInstalled ? '🟢 Instalado' : '⚪ Disponível'}
-                            </span>
+                            <div class="plugin-card-meta">
+                                <span>📦 ${p.pkg}</span>
+                                <span>v${p.version}</span>
+                                <span>💾 ${p.size}</span>
+                            </div>
+                            <div class="plugin-card-actions">
+                                ${isInstalled ? `
+                                    <button class="ark-btn ark-btn-primary" style="flex:1; font-size:0.8rem; padding:8px 12px;" onclick="switchView('${p.actionTarget}'); closeModal();">
+                                        ⚙️ Acessar Página Individual
+                                    </button>
+                                    <button class="ark-btn ark-btn-secondary" style="font-size:0.8rem; padding:8px 10px;" onclick="openModal('pkg_install', '${p.id}')" title="Reinstalar pacote">
+                                        🔄
+                                    </button>
+                                ` : `
+                                    <button class="ark-btn ark-btn-primary" style="flex:1; font-size:0.8rem; padding:8px 12px; background:linear-gradient(135deg, #10b981, #059669);" onclick="openModal('pkg_install', '${p.id}')">
+                                        📥 Instalar Pacote (${p.size})
+                                    </button>
+                                `}
+                            </div>
                         </div>
-                        <div class="plugin-card-meta">
-                            <span>📦 ${p.pkg}</span>
-                            <span>v${p.version}</span>
-                            <span>💾 ${p.size}</span>
-                        </div>
-                        <div class="plugin-card-actions">
-                            ${isInstalled ? `
-                                <button class="ark-btn ark-btn-primary" style="flex:1; font-size:0.8rem; padding:8px 12px;" onclick="${p.actionType === 'modal' ? `openModal('${p.actionTarget}')` : `switchView('${p.actionTarget}'); closeModal();`}">
-                                    ⚙️ Abrir Interface
-                                </button>
-                                <button class="ark-btn ark-btn-secondary" style="font-size:0.8rem; padding:8px 10px;" onclick="openModal('pkg_install', '${p.id}')" title="Reinstalar pacote">
-                                    🔄
-                                </button>
-                            ` : `
-                                <button class="ark-btn ark-btn-primary" style="flex:1; font-size:0.8rem; padding:8px 12px; background:linear-gradient(135deg, #10b981, #059669);" onclick="openModal('pkg_install', '${p.id}')">
-                                    📥 Instalar Pacote (${p.size})
-                                </button>
-                            `}
-                        </div>
-                    </div>
-                `;
-            }).join('');
+                    `;
+                }).join('');
+            });
         }
 
         function filterPluginsCategory(cat, btn) {
@@ -8747,6 +10055,43 @@ Address 4: 2606:4700:4700::1001
 
         function filterPluginsList() {
             renderPluginsCards();
+        }
+
+        function filterPluginsPageCategory(cat, btn) {
+            currentPluginCategory = cat;
+            document.querySelectorAll('#view_plugins .plugin-tab-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            renderPluginsCards();
+        }
+
+        function filterPluginsPageList(val) {
+            renderPluginsCards();
+        }
+
+        function setPageSqmValues(down, up) {
+            const d = document.getElementById('page_sqm_down');
+            const u = document.getElementById('page_sqm_up');
+            if (d) d.value = down;
+            if (u) u.value = up;
+            showToast(`⚡ Presets aplicados: ${down} Mbps Download / ${up} Mbps Upload.`);
+        }
+
+        function addPageWhitelistDomain() {
+            const inp = document.getElementById('adblock_wl_inp');
+            const val = inp ? inp.value.trim() : '';
+            if (val) {
+                const tags = document.getElementById('page_adblock_wl_tags');
+                if (tags) {
+                    const sp = document.createElement('span');
+                    sp.className = 'badge';
+                    sp.style.background = 'rgba(56,189,248,0.15)';
+                    sp.style.color = '#38bdf8';
+                    sp.textContent = val;
+                    tags.appendChild(sp);
+                }
+                inp.value = '';
+                showToast(`🛡️ Domínio "${val}" adicionado à Whitelist!`);
+            }
         }
 
         function runOpkgUpdate() {
