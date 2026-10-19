@@ -1103,7 +1103,9 @@ _ark_set_single_device_mtu() {
 					$uci_cmd delete "network.$s"
 				done
 				uci commit network 2>/dev/null || true
-				ip link set "$dev_name" mtu "$target_mtu" 2>/dev/null || true
+				if [ "$(cat "/sys/class/net/$dev_name/mtu" 2>/dev/null)" != "$target_mtu" ]; then
+					ip link set "$dev_name" mtu "$target_mtu" 2>/dev/null || true
+				fi
 				return 0
 				;;
 		esac
@@ -1146,7 +1148,7 @@ _ark_set_single_device_mtu() {
 
 	if [ -n "$root_prefix" ] && [ -f "$root_prefix/sys/class/net/$dev_name/mtu" ]; then
 		printf '%s\n' "$target_mtu" > "$root_prefix/sys/class/net/$dev_name/mtu" 2>/dev/null || true
-	elif [ -z "$root_prefix" ]; then
+	elif [ -z "$root_prefix" ] && [ "$(cat "/sys/class/net/$dev_name/mtu" 2>/dev/null)" != "$target_mtu" ]; then
 		ip link set "$dev_name" mtu "$target_mtu" 2>/dev/null || true
 	fi
 }
@@ -1900,9 +1902,12 @@ ark_sync_doh_proxy() {
 		if [ -f "$cfg_file" ]; then
 			$uci_cmd set https-dns-proxy.config=main 2>/dev/null || true
 			$uci_cmd set https-dns-proxy.config.dnsmasq_config_update='-' 2>/dev/null || true
+			$uci_cmd set https-dns-proxy.config.update_dnsmasq_config='-' 2>/dev/null || true
 			$uci_cmd set https-dns-proxy.config.force_dns='0' 2>/dev/null || true
 			uci ${root_prefix:+-c "$root_prefix/etc/config"} commit https-dns-proxy 2>/dev/null || true
 		fi
+		$uci_cmd delete dhcp.@dnsmasq[0].doh_backup_server 2>/dev/null || true
+		$uci_cmd delete dhcp.@dnsmasq[0].doh_backup_noresolv 2>/dev/null || true
 		if [ -z "$root_prefix" ] && [ -x /etc/init.d/https-dns-proxy ]; then
 			/etc/init.d/https-dns-proxy stop >/dev/null 2>&1 || true
 		fi
@@ -1918,7 +1923,10 @@ ark_sync_doh_proxy() {
 
 	$uci_cmd set https-dns-proxy.config=main
 	$uci_cmd set https-dns-proxy.config.dnsmasq_config_update='-'
+	$uci_cmd set https-dns-proxy.config.update_dnsmasq_config='-'
 	$uci_cmd set https-dns-proxy.config.force_dns='0'
+	$uci_cmd delete dhcp.@dnsmasq[0].doh_backup_server 2>/dev/null || true
+	$uci_cmd delete dhcp.@dnsmasq[0].doh_backup_noresolv 2>/dev/null || true
 
 	b1="1.1.1.1,1.0.0.1"
 	u1="https://cloudflare-dns.com/dns-query"

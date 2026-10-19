@@ -230,8 +230,18 @@ if command -v swconfig >/dev/null 2>&1 && swconfig dev switch0 show >/dev/null 2
 			for w in $(uci -q show network 2>/dev/null | sed -n 's/^network\.\(wan[0-9]*\)=interface$/\1/p'); do
 				if [ "$(uci -q get "network.$w.device_mtu")" = "1508" ]; then
 					uci -q delete "network.$w.device_mtu"
-					[ "$(uci -q get "network.$w.proto")" = "pppoe" ] && uci -q set "network.$w.mtu=1492"
 					net_fixed=1
+				fi
+				if [ "$(uci -q get "network.$w.proto")" = "pppoe" ] && [ "$(uci -q get "network.$w.mtu")" = "1492" ]; then
+					uci -q delete "network.$w.mtu"
+					net_fixed=1
+				fi
+				w_if="$(uci -q get "network.$w.ifname")"
+				if [ -n "$w_if" ] && [ -f "/sys/class/net/$w_if/mtu" ]; then
+					[ "$(cat "/sys/class/net/$w_if/mtu" 2>/dev/null)" = "1500" ] || ip link set "$w_if" mtu 1500 2>/dev/null || true
+				fi
+				if [ -f "/sys/class/net/pppoe-$w/mtu" ]; then
+					cat "/sys/class/net/pppoe-$w/mtu" > "/tmp/ark-mtu-probed-$w" 2>/dev/null || true
 				fi
 			done
 		fi
@@ -240,6 +250,45 @@ if command -v swconfig >/dev/null 2>&1 && swconfig dev switch0 show >/dev/null 2
 		uci commit network 2>/dev/null || true
 	fi
 fi
+
+# Em sistemas OpenWrt com uclient-fetch, evita falha "Operation not permitted" (wget returned 4) no opkg quando nao ha rota default IPv6
+if [ -L /usr/bin/wget ] && [ -x /bin/uclient-fetch ]; then
+	rm -f /usr/bin/wget
+	cat << 'WEOF' > /usr/bin/wget
+#!/bin/sh
+if [ -z "$(ip -6 route show default 2>/dev/null)" ]; then
+	exec /bin/uclient-fetch -4 "$@"
+fi
+exec /bin/uclient-fetch "$@"
+WEOF
+	chmod 0755 /usr/bin/wget
+fi
+
+# Auto-reparo de SSIDs invertidos em roteadores dual-band onde radio0 eh 5 GHz (11a) e radio1 eh 2,4 GHz (11g)
+r0_hw="$(uci -q get wireless.radio0.hwmode || uci -q get wireless.radio0.band || true)"
+r1_hw="$(uci -q get wireless.radio1.hwmode || uci -q get wireless.radio1.band || true)"
+case "${r0_hw}:${r1_hw}" in
+	11a:11g|11a:11b|5g:2g)
+		if [ "$(uci -q get wireless.default_radio0.device)" = "radio0" ] && [ "$(uci -q get wireless.default_radio1.device)" = "radio1" ]; then
+			s0="$(uci -q get wireless.default_radio0.ssid || true)"
+			s1="$(uci -q get wireless.default_radio1.ssid || true)"
+			case "$s1" in
+				*5G*|*5g*)
+					case "$s0" in
+						*5G*|*5g*) ;;
+						*)
+							if [ -n "$s0" ] && [ -n "$s1" ]; then
+								uci -q set "wireless.default_radio0.ssid=$s1"
+								uci -q set "wireless.default_radio1.ssid=$s0"
+								uci commit wireless 2>/dev/null || true
+							fi
+							;;
+					esac
+					;;
+			esac
+		fi
+		;;
+esac
 
 rm -f /tmp/ark-*.cache /tmp/ark-*-cache.json /tmp/ark-*-cache.ts 2>/dev/null || true
 

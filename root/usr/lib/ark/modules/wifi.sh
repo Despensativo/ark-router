@@ -647,7 +647,7 @@ handle_wifi() {
 				esac
 			fi
 			is_sec_6g=0
-			if { [ -n "$radio6" ] && [ "$sec_dev" = "$radio6" ]; } || case "$section" in *radio2|*_r2|*wifi2*|*6g*) true;; *) false;; esac; then
+			if { [ -n "$radio6" ] && [ "$sec_dev" = "$radio6" ]; } || { [ -z "$sec_dev" ] && case "$section" in *radio2|*_r2|*wifi2*|*6g*) true;; *) false;; esac; }; then
 				is_sec_6g=1
 			fi
 
@@ -704,7 +704,7 @@ handle_wifi() {
 			elif [ "$enabled" = 1 ] && [ "$enable_2g" = keep ] && [ "$enable_5g" = keep ] && [ "$enable_6g" = keep ]; then
 				uci -q set "wireless.$section.disabled=0"
 			else
-				if [ "$sec_dev" = "$radio2" ] || case "$section" in *radio0|*_r0) true;; *) false;; esac; then
+				if [ "$sec_dev" = "$radio2" ] || { [ -z "$sec_dev" ] && case "$section" in *radio0|*_r0) true;; *) false;; esac; }; then
 					if [ "$enable_2g" = 1 ]; then
 						uci -q set "wireless.$section.disabled=0"
 					elif [ "$enable_2g" = 0 ]; then
@@ -712,7 +712,7 @@ handle_wifi() {
 					elif [ "$enabled" = 1 ]; then
 						uci -q set "wireless.$section.disabled=0"
 					fi
-				elif [ "$sec_dev" = "$radio5" ] || case "$section" in *radio1|*_r1) true;; *) false;; esac; then
+				elif [ "$sec_dev" = "$radio5" ] || { [ -z "$sec_dev" ] && case "$section" in *radio1|*_r1) true;; *) false;; esac; }; then
 					if [ "$enable_5g" = 1 ]; then
 						uci -q set "wireless.$section.disabled=0"
 					elif [ "$enable_5g" = 0 ]; then
@@ -720,7 +720,7 @@ handle_wifi() {
 					elif [ "$enabled" = 1 ]; then
 						uci -q set "wireless.$section.disabled=0"
 					fi
-				elif { [ -n "$radio6" ] && [ "$sec_dev" = "$radio6" ]; } || case "$section" in *radio2|*_r2) true;; *) false;; esac; then
+				elif { [ -n "$radio6" ] && [ "$sec_dev" = "$radio6" ]; } || { [ -z "$sec_dev" ] && case "$section" in *radio2|*_r2) true;; *) false;; esac; }; then
 					if [ "$enable_6g" = 1 ]; then
 						uci -q set "wireless.$section.disabled=0"
 					elif [ "$enable_6g" = 0 ]; then

@@ -435,9 +435,9 @@ dns_turbo_doh_toggle() {
 	if [ "$enable" = "1" ]; then
 		if ! ark_has_doh_proxy; then
 			if command -v apk >/dev/null 2>&1; then
-				apk add https-dns-proxy >/dev/null 2>&1 || { apk update >/dev/null 2>&1 && apk add https-dns-proxy >/dev/null 2>&1; } || true
+				apk add https-dns-proxy >/dev/null 2>&1 || { apk update >/dev/null 2>&1 || true; apk add https-dns-proxy >/dev/null 2>&1; } || true
 			elif command -v opkg >/dev/null 2>&1; then
-				opkg install https-dns-proxy >/dev/null 2>&1 || { opkg update >/dev/null 2>&1 && opkg install https-dns-proxy >/dev/null 2>&1; } || true
+				opkg install https-dns-proxy >/dev/null 2>&1 || { opkg update >/dev/null 2>&1 || true; opkg install https-dns-proxy >/dev/null 2>&1; } || true
 			fi
 		fi
 		if ! ark_has_doh_proxy; then

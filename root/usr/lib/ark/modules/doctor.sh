@@ -346,7 +346,11 @@ ark_doctor_audit() {
 						uci -q set "network.$wan.mtu=1500"
 						uci -q set "network.$wan.device_mtu=1508"
 					else
-						uci -q set "network.$wan.mtu=1492"
+						if [ -z "${ARK_ROOT:-}" ] && is_swconfig; then
+							uci -q delete "network.$wan.mtu"
+						else
+							uci -q set "network.$wan.mtu=1492"
+						fi
 						uci -q delete "network.$wan.device_mtu"
 						printf '1492\n' > "/tmp/ark-mtu-probed-$wan" 2>/dev/null || true
 					fi

@@ -388,8 +388,32 @@ restore_ipv6_firewall_rules() {
 	fi
 }
 
+ark_ensure_ipv6_dhcpv6_client() {
+	[ -z "${ARK_ROOT:-}" ] || return 0
+	if [ ! -f /lib/netifd/proto/dhcpv6.sh ] || ! command -v odhcp6c >/dev/null 2>&1; then
+		if command -v apk >/dev/null 2>&1; then
+			apk add odhcp6c >/dev/null 2>&1 || { apk update >/dev/null 2>&1 || true; apk add odhcp6c >/dev/null 2>&1; } || true
+		elif command -v opkg >/dev/null 2>&1; then
+			opkg install odhcp6c >/dev/null 2>&1 || { opkg update >/dev/null 2>&1 || true; opkg install odhcp6c >/dev/null 2>&1; } || true
+		fi
+	fi
+	if [ ! -x /usr/sbin/odhcpd ] && [ ! -x /etc/init.d/odhcpd ]; then
+		if command -v apk >/dev/null 2>&1; then
+			apk add odhcpd-ipv6only >/dev/null 2>&1 || apk add odhcpd >/dev/null 2>&1 || { apk update >/dev/null 2>&1 || true; apk add odhcpd-ipv6only >/dev/null 2>&1 || apk add odhcpd >/dev/null 2>&1; } || true
+		elif command -v opkg >/dev/null 2>&1; then
+			opkg install odhcpd-ipv6only >/dev/null 2>&1 || opkg install odhcpd >/dev/null 2>&1 || { opkg update >/dev/null 2>&1 || true; opkg install odhcpd-ipv6only >/dev/null 2>&1 || opkg install odhcpd >/dev/null 2>&1; } || true
+		fi
+	fi
+	if [ -f /lib/netifd/proto/dhcpv6.sh ] && command -v ubus >/dev/null 2>&1; then
+		if ! ubus call network get_proto_handlers 2>/dev/null | grep -q '"dhcpv6"'; then
+			(sleep 2; /etc/init.d/network restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
+		fi
+	fi
+}
+
 enable_ipv6_dual_stack() {
 	local sysctl_ipv6_conf iface cur_v6 ula saved_ula relay pfx
+	ark_ensure_ipv6_dhcpv6_client
 	sysctl_ipv6_conf="/etc/sysctl.d/99-ark-router-disable-ipv6.conf"
 	[ -n "${ARK_ROOT}" ] && sysctl_ipv6_conf="${ARK_ROOT}/etc/sysctl.d/99-ark-router-disable-ipv6.conf"
 	rm -f "$sysctl_ipv6_conf" 2>/dev/null || true
@@ -412,6 +436,7 @@ enable_ipv6_dual_stack() {
 	uci -q set network.wan6=interface
 	uci -q set network.wan6.proto='dhcpv6'
 	uci -q set network.wan6.device='@wan'
+	uci -q set network.wan6.ifname='@wan'
 	uci -q set network.wan6.reqprefix='auto'
 	uci -q set network.wan6.reqaddress='try'
 
@@ -492,7 +517,14 @@ clean_ipv6_selective_firewall() {
 		fi
 	elif is_fw3; then
 		if command -v ip6tables >/dev/null 2>&1; then
-			lan_dev="$(uci -q get network.lan.device || uci -q get network.lan.ifname || echo br-lan)"
+			lan_dev="$(uci -q get network.lan.device || echo '')"
+			if [ -z "$lan_dev" ]; then
+				if [ "$(uci -q get network.lan.type)" = "bridge" ] || [ -d /sys/class/net/br-lan ]; then
+					lan_dev="br-lan"
+				else
+					lan_dev="$(uci -q get network.lan.ifname || echo br-lan)"
+				fi
+			fi
 			ip6tables -D FORWARD -i "$lan_dev" -j ARK_IPV6_SEL 2>/dev/null || true
 			ip6tables -F ARK_IPV6_SEL 2>/dev/null || true
 			ip6tables -X ARK_IPV6_SEL 2>/dev/null || true
@@ -507,7 +539,14 @@ sync_ipv6_selective_firewall() {
 	local lan_dev cur_mode allowed_macs blocked_macs sections s val m tmp_nft nft_file apply_sh elements_str
 	local elements_line
 	mkdir -p /etc/ark
-	lan_dev="$(uci -q get network.lan.device || uci -q get network.lan.ifname || echo br-lan)"
+	lan_dev="$(uci -q get network.lan.device || echo '')"
+	if [ -z "$lan_dev" ]; then
+		if [ "$(uci -q get network.lan.type)" = "bridge" ] || [ -d /sys/class/net/br-lan ]; then
+			lan_dev="br-lan"
+		else
+			lan_dev="$(uci -q get network.lan.ifname || echo br-lan)"
+		fi
+	fi
 	cur_mode="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
 
 	allowed_macs=""
@@ -699,7 +738,7 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='ipv4_only'
 			uci commit equipe_dashboard
-			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) &
+			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
 		dual_stack)
@@ -711,7 +750,7 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='dual_stack'
 			uci commit equipe_dashboard
-			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) &
+			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
 		selective)
@@ -723,7 +762,7 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='selective'
 			uci commit equipe_dashboard
-			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) &
+			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
 		nptv6)
@@ -744,7 +783,7 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='nptv6'
 			uci commit equipe_dashboard
-			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/odhcpd restart >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) &
+			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/odhcpd restart >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
 		ipv6_only)
@@ -756,7 +795,7 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='ipv6_only'
 			uci commit equipe_dashboard
-			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) &
+			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
 		*)
@@ -834,7 +873,14 @@ get_ipv6_status() {
 	wan6_proto="$(uci -q get network.wan6.proto || echo 'none')"
 	wan6_dev="$(uci -q get network.wan6.device || echo '')"
 	
-	lan_dev="$(uci -q get network.lan.device || uci -q get network.lan.ifname || echo br-lan)"
+	lan_dev="$(uci -q get network.lan.device || echo '')"
+	if [ -z "$lan_dev" ]; then
+		if [ "$(uci -q get network.lan.type)" = "bridge" ] || [ -d /sys/class/net/br-lan ]; then
+			lan_dev="br-lan"
+		else
+			lan_dev="$(uci -q get network.lan.ifname || echo br-lan)"
+		fi
+	fi
 	prefix_delegated="$(ip -6 route show 2>/dev/null | grep -E 'proto (kernel|ra|static)' | grep -v 'fe80::' | grep -vE '^fd[0-9a-fA-F]{2}:' | head -n 1 | awk '{print $1}')"
 	lan_ip6="$(ip -6 addr show dev "$lan_dev" scope global 2>/dev/null | grep -vE 'fd[0-9a-fA-F]{2}:' | grep 'inet6' | head -n 1 | awk '{print $2}')"
 	ula_ip6="$(ip -6 addr show dev "$lan_dev" scope global 2>/dev/null | grep -E 'fd[0-9a-fA-F]{2}:' | grep 'inet6' | head -n 1 | awk '{print $2}')"

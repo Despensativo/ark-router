@@ -41,12 +41,20 @@ apply_wan_proto() {
 		if [ "$cur_dev_mtu" = "1508" ]; then
 			if [ -n "$wan_phys_dev" ] && ! ark_ensure_phys_device_mtu "$wan_phys_dev" 1508; then
 				uci -q delete "network.$iface.device_mtu"
-				uci -q set "network.$iface.mtu=1492"
+				if [ -z "${ARK_ROOT:-}" ] && is_swconfig; then
+					uci -q delete "network.$iface.mtu"
+				else
+					uci -q set "network.$iface.mtu=1492"
+				fi
 			else
 				[ -z "$cur_mtu" ] && uci -q set "network.$iface.mtu=1500"
 			fi
 		elif [ -z "$cur_mtu" ] || [ "$cur_mtu" = "1500" ]; then
-			uci -q set "network.$iface.mtu=1492"
+			if [ -z "${ARK_ROOT:-}" ] && is_swconfig; then
+				uci -q delete "network.$iface.mtu"
+			else
+				uci -q set "network.$iface.mtu=1492"
+			fi
 		fi
 	elif [ "$proto" = static ]; then
 		valid_ipv4 "$ipaddr" && valid_ipv4 "$netmask" || { echo 'IPv4 estatico invalido' >&2; return 2; }
@@ -1556,7 +1564,11 @@ EOF
 						fi
 					fi
 				else
-					uci -q set "network.$iface.mtu=1492"
+					if [ -z "${ARK_ROOT:-}" ] && is_swconfig; then
+						uci -q delete "network.$iface.mtu"
+					else
+						uci -q set "network.$iface.mtu=1492"
+					fi
 					uci -q delete "network.$iface.device_mtu"
 					printf '1492\n' > "/tmp/ark-mtu-probed-$iface" 2>/dev/null || true
 					uci commit network
@@ -1570,7 +1582,11 @@ EOF
 			fi
 		elif [ "$baby_jumbo" = 0 ]; then
 			if [ "$cur_wan_proto" = pppoe ]; then
-				uci -q set "network.$iface.mtu=1492"
+				if [ -z "${ARK_ROOT:-}" ] && is_swconfig; then
+					uci -q delete "network.$iface.mtu"
+				else
+					uci -q set "network.$iface.mtu=1492"
+				fi
 				[ -z "${ARK_ROOT}" ] && ip link set "pppoe-$iface" mtu 1492 >/dev/null 2>&1 || true
 			else
 				uci -q delete "network.$iface.mtu"

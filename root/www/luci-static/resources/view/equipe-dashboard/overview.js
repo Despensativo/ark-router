@@ -1154,9 +1154,12 @@ function wifiConfig(config) {
 	const v = values(config);
 	const bandOfSection=function(section){
 		const radio=v[section.device]||{}, band=String(radio.band||'').toLowerCase(), ht=String(radio.htmode||'').toLowerCase(), hw=String(radio.hwmode||'').toLowerCase(), dev=String(section.device||'').toLowerCase();
-		if(band.indexOf('6')===0||band==='3'||hw.indexOf('6g')>=0||ht.indexOf('320')>=0||dev.indexOf('6g')>=0||dev==='wifi2'||dev==='radio2')return '6g';
-		if(band.indexOf('2')===0||band==='1'||hw==='11g'||hw==='11b'||hw.indexOf('beg')>=0||hw.indexOf('g')>=0||ht.indexOf('g')>=0||dev.indexOf('2g')>=0||dev==='wifi0'||dev==='radio0')return '2g';
-		if(band.indexOf('5')===0||band==='2'||hw==='11a'||hw.indexOf('bea')>=0||ht.indexOf('80')>=0||ht.indexOf('160')>=0||dev.indexOf('5g')>=0||dev==='wifi1'||dev==='radio1')return '5g';
+		if(band.indexOf('6')===0||band==='3'||hw.indexOf('6g')>=0||ht.indexOf('320')>=0||dev.indexOf('6g')>=0)return '6g';
+		if(band.indexOf('2')===0||band==='1'||hw==='11g'||hw==='11b'||hw==='11ng'||hw.indexOf('beg')>=0||hw.indexOf('axg')>=0||dev.indexOf('2g')>=0)return '2g';
+		if(band.indexOf('5')===0||band==='2'||hw==='11a'||hw==='11na'||hw==='11ac'||hw.indexOf('bea')>=0||hw.indexOf('axa')>=0||ht.indexOf('80')>=0||ht.indexOf('160')>=0||dev.indexOf('5g')>=0)return '5g';
+		if(dev==='wifi2'||dev==='radio2')return '6g';
+		if(dev==='wifi0'||dev==='radio0')return '2g';
+		if(dev==='wifi1'||dev==='radio1')return '5g';
 		return '';
 	};
 
@@ -1168,13 +1171,20 @@ function wifiConfig(config) {
 		const hw = String(s.hwmode || '').toLowerCase();
 		const ht = String(s.htmode || '').toLowerCase();
 		const name = String(k).toLowerCase();
-		if (band.indexOf('6') === 0 || band === '3' || hw.indexOf('6g') >= 0 || ht.indexOf('320') >= 0 || name.indexOf('6g') >= 0 || name === 'wifi2' || name === 'radio2') {
+		if (band.indexOf('6') === 0 || band === '3' || hw.indexOf('6g') >= 0 || ht.indexOf('320') >= 0 || name.indexOf('6g') >= 0) {
 			if (!dev6g) dev6g = k;
-		} else if (band.indexOf('2') === 0 || band === '1' || hw === '11g' || hw === '11b' || hw.indexOf('beg') >= 0 || hw.indexOf('g') >= 0 || ht.indexOf('g') >= 0 || name.indexOf('2g') >= 0 || name === 'wifi0' || name === 'radio0') {
+		} else if (band.indexOf('2') === 0 || band === '1' || hw === '11g' || hw === '11b' || hw === '11ng' || hw.indexOf('beg') >= 0 || hw.indexOf('axg') >= 0 || name.indexOf('2g') >= 0) {
 			if (!dev2g) dev2g = k;
-		} else if (band.indexOf('5') === 0 || band === '2' || hw === '11a' || hw.indexOf('bea') >= 0 || ht.indexOf('80') >= 0 || ht.indexOf('160') >= 0 || name.indexOf('5g') >= 0 || name === 'wifi1' || name === 'radio1') {
+		} else if (band.indexOf('5') === 0 || band === '2' || hw === '11a' || hw === '11na' || hw === '11ac' || hw.indexOf('bea') >= 0 || hw.indexOf('axa') >= 0 || ht.indexOf('80') >= 0 || ht.indexOf('160') >= 0 || name.indexOf('5g') >= 0) {
 			if (!dev5g) dev5g = k;
 		}
+	});
+	devList.forEach(function(k){
+		if (k === dev2g || k === dev5g || k === dev6g) return;
+		const name = String(k).toLowerCase();
+		if (!dev6g && (name === 'wifi2' || name === 'radio2')) dev6g = k;
+		else if (!dev2g && (name === 'wifi0' || name === 'radio0')) dev2g = k;
+		else if (!dev5g && (name === 'wifi1' || name === 'radio1')) dev5g = k;
 	});
 	if (!dev2g && !dev5g && !dev6g) {
 		dev2g = devList[0] || 'radio0';
@@ -9032,8 +9042,11 @@ const wifiMethods = {
 		const curCh5 = Number(radio5.channel || 0);
 		const widthFrom = function(ht){ const m = String(ht || '').match(/(20|40|80|160|320)/); return m ? m[1] : ''; };
 		const select = function(value, items){
-			const s = E('select', { class: 'cbi-input-select' }, items.map(function(i){ return E('option', { value: i[0] }, [i[1]]); }));
-			s.value = value;
+			const valid = items.some(function(i){ return String(i[0]) === String(value); }) ? String(value) : String(items[0][0]);
+			const s = E('select', { class: 'cbi-input-select' }, items.map(function(i){
+				return E('option', { value: i[0], selected: String(i[0]) === valid ? '' : null }, [i[1]]);
+			}));
+			s.value = valid;
 			return s;
 		};
 		const w2 = select(widthFrom(radio2.htmode) || '20', [
@@ -9069,7 +9082,7 @@ const wifiMethods = {
 		}
 		const curWidth5 = widthFrom(radio5.htmode);
 		const default5 = (has160 && curWidth5 === '160') ? '160' : '80';
-		const w5 = select(curWidth5 || default5, items5);
+		const w5 = select(default5, items5);
 		const w5Note = E('div', { class: 'alert-message info', style: 'margin-top: 8px; font-size: 12px; line-height: 1.4; display: none;' });
 		const updateW5Note = function() {
 			if (w5.value === '160') {

@@ -1293,8 +1293,11 @@ const wifiMethods = {
 		const curCh5 = Number(radio5.channel || 0);
 		const widthFrom = function(ht){ const m = String(ht || '').match(/(20|40|80|160|320)/); return m ? m[1] : ''; };
 		const select = function(value, items){
-			const s = E('select', { class: 'cbi-input-select' }, items.map(function(i){ return E('option', { value: i[0] }, [i[1]]); }));
-			s.value = value;
+			const valid = items.some(function(i){ return String(i[0]) === String(value); }) ? String(value) : String(items[0][0]);
+			const s = E('select', { class: 'cbi-input-select' }, items.map(function(i){
+				return E('option', { value: i[0], selected: String(i[0]) === valid ? '' : null }, [i[1]]);
+			}));
+			s.value = valid;
 			return s;
 		};
 		const w2 = select(widthFrom(radio2.htmode) || '20', [
@@ -1330,7 +1333,7 @@ const wifiMethods = {
 		}
 		const curWidth5 = widthFrom(radio5.htmode);
 		const default5 = (has160 && curWidth5 === '160') ? '160' : '80';
-		const w5 = select(curWidth5 || default5, items5);
+		const w5 = select(default5, items5);
 		const w5Note = E('div', { class: 'alert-message info', style: 'margin-top: 8px; font-size: 12px; line-height: 1.4; display: none;' });
 		const updateW5Note = function() {
 			if (w5.value === '160') {

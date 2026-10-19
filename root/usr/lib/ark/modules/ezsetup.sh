@@ -1493,7 +1493,11 @@ handle_ezsetup() {
 				if [ "$(uci -q get network.wan.device_mtu)" = "1508" ] || [ "$(uci -q get network.wan.mtu)" = "1500" -a "$wan1_proto" = "pppoe" ]; then
 					if ! ark_ensure_phys_device_mtu "$effective_dev1" 1508; then
 						uci -q delete network.wan.device_mtu
-						uci -q set network.wan.mtu=1492
+						if [ -z "${ARK_ROOT:-}" ] && is_swconfig; then
+							uci -q delete network.wan.mtu
+						else
+							uci -q set network.wan.mtu=1492
+						fi
 					fi
 				fi
 			fi
@@ -1519,7 +1523,11 @@ handle_ezsetup() {
 				if [ "$(uci -q get network.wan2.device_mtu)" = "1508" ] || [ "$(uci -q get network.wan2.mtu)" = "1500" -a "$wan2_proto" = "pppoe" ]; then
 					if ! ark_ensure_phys_device_mtu "$wan2_port" 1508; then
 						uci -q delete network.wan2.device_mtu
-						uci -q set network.wan2.mtu=1492
+						if [ -z "${ARK_ROOT:-}" ] && is_swconfig; then
+							uci -q delete network.wan2.mtu
+						else
+							uci -q set network.wan2.mtu=1492
+						fi
 					fi
 				fi
 				zone="$(firewall_wan_zone_section)"

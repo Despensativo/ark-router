@@ -21,15 +21,18 @@ dev_mtu="$(uci -q get "network.$INTERFACE.device_mtu")"
 req_mtu="$(uci -q get "network.$INTERFACE.mtu")"
 wan_dev="$(uci -q get "network.$INTERFACE.device" || uci -q get "network.$INTERFACE.ifname")"
 
-# Se o usuario fixou explicitamente o MTU abaixo de 1500 (ex: 1492), respeita e sincroniza ra_mtu IPv6
+# Se o usuario ou o limite do driver fixou o MTU abaixo de 1500 (ex: 1492), respeita L3 PPPoE em 1492 sem resetar o driver L2
 if [ -n "$req_mtu" ] && [ "$req_mtu" -lt 1500 ] 2>/dev/null; then
-	ip link set "$DEVICE" mtu "$req_mtu" 2>/dev/null || true
-	rm -f "/tmp/ark-mtu-probed-$INTERFACE" 2>/dev/null || true
+	cur_ppp_mtu="$(cat "/sys/class/net/$DEVICE/mtu" 2>/dev/null || echo 0)"
+	[ "$cur_ppp_mtu" = "$req_mtu" ] || ip link set "$DEVICE" mtu "$req_mtu" 2>/dev/null || true
+	printf '%s\n' "$req_mtu" > "/tmp/ark-mtu-probed-$INTERFACE" 2>/dev/null || true
 	command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
 	exit 0
 fi
 
 if [ "$dev_mtu" != "1508" ] || [ "$req_mtu" != "1500" ]; then
+	cur_ppp_mtu="$(cat "/sys/class/net/$DEVICE/mtu" 2>/dev/null || echo 1492)"
+	printf '%s\n' "$cur_ppp_mtu" > "/tmp/ark-mtu-probed-$INTERFACE" 2>/dev/null || true
 	command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
 	exit 0
 fi
