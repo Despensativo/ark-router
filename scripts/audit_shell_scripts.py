@@ -544,6 +544,13 @@ def audit_openwrt_manual_compliance():
                         f"{rel}:{idx} Extração direta de dígitos em {line.strip()} proibida (transforma eth0.2 em 02); use swconfig_port_num"
                     )
 
+    doctor_path = os.path.join(ARK_LIB_DIR, "modules", "doctor.sh")
+    if os.path.isfile(doctor_path):
+        with open(doctor_path, "r", encoding="utf-8", errors="replace") as fh:
+            doc_txt = fh.read()
+        if "has_brlan_dev" not in doc_txt:
+            errors.append("doctor.sh: Checagem IGMP Snooping deve validar has_brlan_dev para suportar bridge legada (network.lan.type='bridge') sem config device")
+
     return errors
 
 

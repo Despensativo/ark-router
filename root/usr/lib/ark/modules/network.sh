@@ -638,6 +638,11 @@ handle_network() {
 		if [ -n "$igmp_snooping" ]; then
 			uci -q set network.lan.igmp_snooping="$igmp_snooping"
 			uci -q set network.lan.multicast_querier="$igmp_snooping"
+			for s in $(uci -q show network 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1); do
+				if [ "$(uci -q get "network.$s.name")" = "br-lan" ]; then
+					uci -q set "network.$s.igmp_snooping=$igmp_snooping"
+				fi
+			done
 			if [ -f /sys/class/net/br-lan/bridge/multicast_snooping ]; then
 				echo "$igmp_snooping" > /sys/class/net/br-lan/bridge/multicast_snooping 2>/dev/null || true
 				echo "$igmp_snooping" > /sys/class/net/br-lan/bridge/multicast_querier 2>/dev/null || true

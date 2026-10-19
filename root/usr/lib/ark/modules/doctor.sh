@@ -550,20 +550,29 @@ ark_doctor_audit() {
 		fi
 	fi
 
-	# 8d. Proteção Multicast (IGMP Snooping) — Universal (Master e AP)
+	# 8d. Proteção Multicast (IGMP Snooping) — Universal (Master e AP, DSA config device e Legado type=bridge)
 	igmp_cfg="$(uci -q get network.lan.igmp_snooping || echo 0)"
 	igmp_dev=0
+	local has_brlan_dev=0
 	for s in $(uci -q show network 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1); do
-		if [ "$(uci -q get "network.$s.name")" = "br-lan" ] && [ "$(uci -q get "network.$s.igmp_snooping")" = "1" ]; then
-			igmp_dev=1
-			break
+		if [ "$(uci -q get "network.$s.name")" = "br-lan" ]; then
+			has_brlan_dev=1
+			if [ "$(uci -q get "network.$s.igmp_snooping")" = "1" ]; then
+				igmp_dev=1
+				break
+			fi
 		fi
 	done
-	real_igmp="$(cat /sys/class/net/br-lan/bridge/multicast_snooping 2>/dev/null || echo 0)"
+	# Em OpenWrt legado (ex: 19.07 swconfig) com network.lan.type='bridge', nao existe secao config device para br-lan;
+	# a persistencia canonica do netifd ocorre diretamente em network.lan.igmp_snooping.
+	if [ "$has_brlan_dev" = "0" ] && [ "$igmp_cfg" = "1" ]; then
+		igmp_dev=1
+	fi
+	real_igmp="$(cat "${ARK_ROOT}/sys/class/net/br-lan/bridge/multicast_snooping" 2>/dev/null || cat /sys/class/net/br-lan/bridge/multicast_snooping 2>/dev/null || echo 0)"
 
 	if [ "$igmp_cfg" = "1" ] || [ "$igmp_dev" = "1" ]; then
 		if [ "$real_igmp" = "1" ] && [ "$igmp_dev" = "1" ]; then
-			add_check "Protecao Multicast (IGMP Snooping)" "OK" "IGMP Snooping ativo no kernel e persistido na secao device da bridge br-lan."
+			add_check "Protecao Multicast (IGMP Snooping)" "OK" "IGMP Snooping ativo no kernel e persistido na configuracao da bridge br-lan."
 		else
 			if [ "$auto_fix" = 1 ]; then
 				uci -q set network.lan.igmp_snooping=1
@@ -573,7 +582,7 @@ ark_doctor_audit() {
 				uci commit network 2>/dev/null || true
 				[ -f /sys/class/net/br-lan/bridge/multicast_snooping ] && echo 1 > /sys/class/net/br-lan/bridge/multicast_snooping 2>/dev/null || true
 				fixes_applied=$((fixes_applied + 1))
-				add_check "Protecao Multicast (IGMP Snooping)" "FIXED" "IGMP Snooping ativado no kernel e persistido na secao device da br-lan."
+				add_check "Protecao Multicast (IGMP Snooping)" "FIXED" "IGMP Snooping ativado no kernel e persistido na configuracao da br-lan."
 			else
 				errors=$((errors + 1))
 				add_check "Protecao Multicast (IGMP Snooping)" "FAIL" "IGMP Snooping configurado mas inativo no kernel da bridge br-lan."
