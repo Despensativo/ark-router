@@ -25,7 +25,7 @@
 
 El proyecto no reemplaza OpenWrt ni LuCI: opera como una suite avanzada de gestión (`luci-app-ark-router`) con telemetría en tiempo real, cero bloatware, salvaguardas anti-bloqueo y funciones pioneras de red y blindaje de memoria.
 
-> **Versión Oficial Activa**: **`v1.5.17`** (consulte [`VERSION`](VERSION) y [Releases](https://github.com/Despensativo/ark-router/releases)).
+> **Versión Oficial Activa**: **`v2.0.0`** (consulte [`VERSION`](VERSION) y [Releases](https://github.com/Despensativo/ark-router/releases)).
 
 ---
 
@@ -45,7 +45,7 @@ El proyecto no reemplaza OpenWrt ni LuCI: opera como una suite avanzada de gesti
 4. **🩺 ARK Doctor (Auditor de Integridad y Autocura)**:
    - Diagnóstico continuo en tiempo de ejecución en 10 capas críticas: radios Wi-Fi, puentes de red, DHCP, cortafuegos (fw4/nftables puro), integridad de ZRAM (`Check 1b`), SQM y sintaxis de hostapd, con botón de autorreparación en 1 clic (`ark-doctor --fix`).
 5. **🛡️ Bloqueador de Anuncios y Control Parental Híbrido (RAM / Nube)**:
-   - **Perfil Full ($\ge 512$ MB RAM)**: Motor AdGuard Home completo ejecutándose directamente en memoria RAM (`/tmp/adguardhome`) en el puerto 3000 con más de 1 millón de reglas locales, supercaché y cero escritura en flash.
+   - **Perfil Full ($\ge 512$ MB RAM)**: Motor AdGuard Home completo ejecutándose directamente en memoria RAM (`/tmp/adguardhome`) en el puerto 3000 con más de 1 millón de reglas locales, supercaché, soporte nativo para **HTTP/3 QUIC (`h3://`)** y cero escritura en flash.
    - **Perfil Lite (128 MB a 256 MB RAM)**: Modo Nube ultraligero mediante `dnsmasq` con 9 proveedores Anycast especializados (Cloudflare Family, Quad9, CleanBrowsing, Control D, OpenDNS y NextDNS).
 6. **🚫 Lista Negra Local de Sitios Web en 0ms**:
    - Bloqueo instantáneo de dominios específicos (apuestas, casinos, sitios no deseados) respondiendo `0.0.0.0` en 0ms con cero consumo extra de memoria RAM.
@@ -56,27 +56,27 @@ El proyecto no reemplaza OpenWrt ni LuCI: opera como una suite avanzada de gesti
 9. **📊 Tráfico por Dispositivo en Tiempo Real (Hardware DMA & Anti-Jitter)**:
    - Medición instantánea desde contadores del controlador Wi-Fi (`iwinfo`), sin retrasos y con filtro de amortiguación suave (EMA) que evita saltos bruscos.
    - Columna de **Total Consumido** (MB/GB) y ordenación interactiva estable.
-10. **🚀 DNS Turbo & Benchmark Mundial Integrado**:
-    - Comparación de latencia en tiempo real entre Cloudflare, Google, Quad9, OpenDNS y AdGuard con aplicación segura en 1 clic.
+10. **🚀 DNS Turbo, Dual-DoH (`https-dns-proxy`) en 1 Clic & Escudo de Puertos 53/853**:
+    - Comparación de latencia en tiempo real entre Cloudflare, Google, Quad9, OpenDNS y AdGuard, activación en 1 clic de **Dual-DoH (`https-dns-proxy`)** (`127.0.0.1#5053` + `#5054`) y escudo completo contra evasión DNS en Smart TVs y Android (*Private DNS* `TCP/UDP 853`).
 11. **🌐 Acceso Remoto Inteligente con ZeroTier**:
     - Ejecución nativa en enrutadores con almacenamiento amplio y cargador ultrarrápido en RAM (0.3s) para dispositivos de 16 MB flash.
 12. **🛰️ Central Multi-Starlink (Telemetría y Alineación)**:
     - Diagnóstico de múltiples antenas Starlink: brújula 3D, obstrucciones, pérdida de paquetes, SNR y visor público local sin contraseña en `/starlink/`.
 13. **🔄 Ciclo Óptimo entre Fastpath (Flow Offload / PPE) y SQM/CAKE**:
     - Conmutación con exclusión mutua estricta. Al desactivar SQM en el interruptor rápido del panel, la aceleración de hardware (Fastpath/PPE) se reactiva automáticamente.
-14. **🛡️ Baby Jumbo MTU 1500 en PPPoE (RFC 4638)**:
-    - Ajusta automáticamente MTU 1508/1512 en la interfaz física base para lograr MTU 1500 pura en el túnel PPPoE, eliminando la fragmentación de paquetes en conexiones de fibra modernas.
-15. **📱 Diseño 100% Optimizado para Móviles (Mobile-First)**:
-    - Interfaz táctil fluida con botones grandes (48px) para pantallas táctiles (iOS y Android), sin desplazamiento horizontal ni saltos de interfaz.
+14. **🛡️ Auto-MTU Inteligente & Baby Jumbo MTU 1500 en PPPoE (RFC 4638)**:
+    - Sondeo ICMP real sin fragmentación y ajuste automático de MTU 1508/1512 en la interfaz física base para lograr MTU 1500 pura en el túnel PPPoE, con estado persistente en la tarjeta y el modal.
+15. **📱 Arquitectura V2: Cockpit de Estado, Central de Recursos & Diseño Mobile-First**:
+    - Separación ejecutiva entre el **Cockpit** (telemetría pura en vivo) y la **Central de Recursos** (ciclo de vida completo de Servicios Nativos y Plugins Opcionales + **Modo Desarrollador**), 100% responsivo de 360px a 1440px+.
 16. **🔀 Cambio en 1 Clic entre Modo Router y Modo Punto de Acceso (Dumb AP)**:
     - Unifica interfaces en un único puente (`br-lan`), desactiva DHCP y protege la administración con IP de Rescate permanente (`192.168.12.1` / `192.168.73.1`).
-17. **🕸️ Red Mesh Wi-Fi 802.11s & Roaming Rápido 802.11r/k/v**:
-    - Sincronización maestro/satélite con exportación segura de credenciales, cambio de nodo sin interrupción de llamadas de voz/vídeo y Satellite Shield.
+17. **🕸️ Inteligencia Wi-Fi 6/6E/7: Fast Roaming 802.11k/v Puro & Diagnóstico MacBook `awdl0`**:
+    - Roaming `bss_transition=1` + `rnr=1` sin `wnm_sleep_mode`, junto con aviso contextual para la línea **Apple MacBook (M1 a M5)** mostrado exclusivamente en `160 MHz` para desbloquear `2400 Mbps` PHY (`1.4+ Gbps` reales).
 18. **🌐 Balanceo PBR BitTorrent en Modo Seguro Amplio (Dual-WAN)**:
     - Reparte conexiones P2P en más de 64.500 puertos entre ambas conexiones WAN, protegiendo estrictamente los puertos de sistema (80, 443, 53) en la conexión principal.
-19. **⚡ Cliente WireGuard Ultrarrápido y Desacoplado**:
-    - Importación de archivos `.conf` con respuesta inmediata al RPC (< 100ms) y aplicación asíncrona en segundo plano sin bloqueos.
-20. **🌎 Internacionalización Triple con 100% de Paridad (i18n)**:
+19. **⚡ Servidor SMB 3.1.1 en Kernel (`ksmbd`), Wake-on-LAN & Cliente WireGuard Ultrarrápido**:
+    - Servidor de archivos USB de alta velocidad en kernel (`ksmbd`), encendido remoto por Magic Packet (`etherwake`) e importación instantánea de túneles WireGuard (`.conf`).
+20. **🌎 Internacionalización Triple con 100% de Paridad (i18n — 4.423 Claves)**:
     - Cobertura completa, nativa y auditada en Portugués de Brasil (PT-BR), Inglés (EN) y Español neutro (ES).
 
 ---

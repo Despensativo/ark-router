@@ -7,8 +7,8 @@ For the complete maintainer publishing checklist, see [PUBLISHING.md](PUBLISHING
 The easiest public distribution path is:
 
 1. Push the source code to GitHub.
-2. Create a version tag matching `VERSION`, for example `v1.5.17`.
-3. Build the packages locally using `scripts/build-apk-manual-wsl.sh` and `scripts/build-ipk-wsl.sh` (or `python scripts/pack_ipk_local.py`).
+2. Create a version tag matching `VERSION`, for example `v2.0.0`.
+3. Build the packages locally using `scripts/build-apk-mac.py` and `scripts/build-ipk-mac.py` (or `scripts/build-apk-manual-wsl.sh` and `scripts/build-ipk-wsl.sh` on WSL).
 4. Upload the locally verified `.apk` and `.ipk` files directly as GitHub Release assets (`gh release create` / `gh release upload`).
 5. Install or update from the router with the SSH one-liner in `scripts/install.sh`.
 

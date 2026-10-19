@@ -65,14 +65,17 @@ apk add wpad-mbedtls
 # 3. Reiniciar o serviço wpad com proteção procd/ujail
 /etc/init.d/wpad restart
 
-# 4. Sincronizar as opções bss_transition e wnm_sleep_mode no wireless
+# 4. Sincronizar bss_transition=1 e rnr=1 no wireless (sem wnm_sleep_mode)
 uci -q set wireless.default_radio0.bss_transition='1'
-uci -q set wireless.default_radio0.wnm_sleep_mode='1'
+uci -q delete wireless.default_radio0.wnm_sleep_mode
 uci -q set wireless.default_radio1.bss_transition='1'
-uci -q set wireless.default_radio1.wnm_sleep_mode='1'
+uci -q delete wireless.default_radio1.wnm_sleep_mode
+uci -q set wireless.default_radio1.rnr='1'
 uci commit wireless
 wifi reload
 ```
+
+> **Nota Crítica (`v2.0.0`)**: A opção `wnm_sleep_mode='1'` **não** deve ser ativada junto ao `bss_transition='1'`, pois retém quadros multicast/GTK durante a suspensão WNM e causa atrasos de entrega de notificações em Android/iOS. O daemon `ark-wifi-roam-guard` mantém `bss_transition='1'` + `ieee80211k='1'` + `rnr='1'` e remove automaticamente qualquer `wnm_sleep_mode` residual.
 
 ### Evidências da Validação no Dispositivo Real
 - **Status Hostapd (`ubus call hostapd.phy1-ap0 get_status`)**:
@@ -135,3 +138,15 @@ Detectar automaticamente se o roteador possui hardware qualificado e oferecer ou
    - `option wpa_group_rekey '0'` (elimina desincronização de chave GTK em repouso).
    - `option disassoc_low_ack '0'`.
    - `usteer`: `min_snr '0'`, `roam_scan_snr '0'`, `roam_trigger_snr '0'`, `load_kick_enabled '0'` (puramente consultivo via 802.11k/v sem chutes forçados).
+
+---
+
+## 7. Limitação de 160 MHz na Linha Apple MacBook (M1 a M5) e Interface `awdl0` [ARK-08]
+
+1. **Fenômeno**: Em roteadores Wi-Fi 6/6E/7 operando em `5 GHz HE160` no canal `36` (bloco `36–64`), celulares Samsung Galaxy Ultra e notebooks Intel AX200/AX210 negociam `160 MHz` (`2400 Mbps` PHY / `1.4+ Gbps` reais), enquanto toda a linha **Apple MacBook (Air e Pro M1 a M5)** crava `Channel Width: 80 MHz` (`1200 Mbps` PHY / `~660–720 Mbps` reais).
+2. **Causa Raiz (`awdl0` — Apple Wireless Direct Link)**: O macOS mantém a interface virtual `awdl0` (usada por AirDrop, AirPlay Receiver, Handoff, Universal Control e Sidecar) fixada nos canais sociais da Apple (`44` na América/Europa ou `149` na Ásia/EUA) em `80 MHz`. Quando o roteador usa o canal primário `36` ou quando `awdl0` está ativa escutando em segundo plano, o firmware Wi-Fi da Apple recusa agregar os `80 MHz` superiores (canais DFS `52–64`). Trocar o país (`country`) não altera esse comportamento.
+3. **Solução no ARK Router (`v2.0.0`)**:
+   - Exclusivamente quando a largura de canal está configurada em **`160 MHz`** (permanecendo oculto em `20/40/80/240/320 MHz`), o painel exibe um diagnóstico contextual na tela de Wi-Fi e no modal de Largura de Canal orientando a:
+     1. Selecionar o **Canal `44`** em `160 MHz` no roteador (alinhado com o canal base do `awdl0`); ou
+     2. Desativar temporariamente a interface `awdl0` no macOS (`sudo ifconfig awdl0 down`) durante downloads pesados de múltiplos Gigabits, reativando com `sudo ifconfig awdl0 up` quando for usar o AirDrop.
+

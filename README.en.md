@@ -25,7 +25,7 @@
 
 The project does not replace OpenWrt or LuCI — it operates on top of LuCI as an advanced operations package (`luci-app-ark-router`) featuring real-time telemetry, zero bloat, anti-lockout safeguards, and pioneering memory and network shielding mechanisms.
 
-> **Current Official Release**: **`v1.5.17`** (see [`VERSION`](VERSION) and [Releases](https://github.com/Despensativo/ark-router/releases)).
+> **Current Official Release**: **`v2.0.0`** (see [`VERSION`](VERSION) and [Releases](https://github.com/Despensativo/ark-router/releases)).
 
 ---
 
@@ -45,7 +45,7 @@ The project does not replace OpenWrt or LuCI — it operates on top of LuCI as a
 4. **🩺 ARK Doctor (Automated System Auditor & Self-Healing)**:
    - Live 10-layer runtime health diagnostic: Wi-Fi radios, network bridges, DHCP, firewall rules (pure fw4/nftables), ZRAM integrity (`Check 1b`), SQM, and hostapd syntax, with a 1-click automatic self-repair button (`ark-doctor --fix`).
 5. **🛡️ Hybrid AdBlocker & Parental Control (RAM / Cloud Anycast)**:
-   - **Full Profile ($\ge 512$ MB RAM)**: Full AdGuard Home engine running entirely in volatile RAM (`/tmp/adguardhome`) on port 3000 with 1M+ local rules, super-cache, and zero flash writes.
+   - **Full Profile ($\ge 512$ MB RAM)**: Full AdGuard Home engine running entirely in volatile RAM (`/tmp/adguardhome`) on port 3000 with 1M+ local rules, super-cache, native **HTTP/3 QUIC (`h3://`)** upstreams, and zero flash writes.
    - **Lite Profile (128 MB to 256 MB RAM)**: Cloud Anycast mode via `dnsmasq` with 9 specialized DNS security providers (Cloudflare Family, Quad9, CleanBrowsing, Control D, OpenDNS, NextDNS).
 6. **🚫 0ms Local Domain Blacklist ("X or Y")**:
    - Instant domain and subdomain blocking directly in the dashboard, returning `0.0.0.0` in 0ms with zero extra RAM consumption in `dnsmasq`.
@@ -56,27 +56,27 @@ The project does not replace OpenWrt or LuCI — it operates on top of LuCI as a
 9. **📊 Real-Time Per-Device Traffic (Hardware DMA & Anti-Jitter)**:
    - Real-time rate tracking directly from the Wi-Fi driver (`iwinfo`) with an Exponential Moving Average (EMA) smoothing filter that prevents jumpy readings.
    - **Total Consumed** column (MB/GB) with interactive sorting.
-10. **🚀 Integrated DNS Turbo & Global Benchmark**:
-    - Real-time parallel latency testing comparing Cloudflare, Google, Quad9, OpenDNS, and AdGuard with 1-click application.
+10. **🚀 DNS Turbo, 1-Click Dual-DoH (`https-dns-proxy`) & Port 53/853 Shield**:
+    - Real-time parallel latency testing comparing Cloudflare, Google, Quad9, OpenDNS, and AdGuard, 1-click **Dual-DoH (`https-dns-proxy`)** activation (`127.0.0.1#5053` + `#5054`), and full forced DNS shielding across Port 53 + DoT Port 853 (RFC 7858).
 11. **🌐 Intelligent ZeroTier Remote Access**:
     - Native execution on devices with ample storage and seamless 0.3s RAM loader on compact 16 MB flash hardware.
 12. **🛰️ Multi-Starlink Operations Center**:
     - Multi-dish diagnostics: 3D alignment compass, obstructions, packet loss, SNR, and unauthenticated read-only LAN viewer at `/starlink/`.
 13. **🔄 Seamless Fastpath (Flow Offload / PPE) & SQM/CAKE Lifecycle**:
     - Strict mutual exclusion guardrail. Disabling SQM from the quick dashboard switch automatically restores hardware packet offloading (PPE/Flowtable).
-14. **🛡️ Baby Jumbo MTU 1500 on PPPoE (RFC 4638)**:
-    - Automatically sets MTU 1508/1512 on the underlying Ethernet interface, allowing true 1500-byte MTU inside PPPoE tunnels with zero packet fragmentation.
-15. **📱 Mobile-First Native Experience**:
-    - Designed from the ground up for smartphones and tablets with large 48px touch targets, zero horizontal scrolling, and fluid CSS.
+14. **🛡️ Smart Auto-MTU & Baby Jumbo MTU 1500 on PPPoE (RFC 4638)**:
+    - Live non-fragmenting ICMP PMTU discovery and automatic MTU 1508/1512 configuration on the underlying Ethernet port for true 1500-byte PPPoE tunnels, with persistent status badges.
+15. **📱 V2 Architecture: Status-Only Cockpit, Feature Center & Mobile-First UX**:
+    - Clean structural separation between the **Cockpit** (pure live telemetry) and the **Feature Center** (Native Services + Cautious Optional Plugin Lifecycle & **Developer Mode**), 100% responsive from 360px to 1440px+.
 16. **🔀 1-Click Router to Dumb Access Point (Dumb AP) Mode**:
     - Converts interfaces into a single unified bridge (`br-lan`), disables DHCP, and provides permanent anti-lockout rescue IP access (`192.168.12.1` / `192.168.73.1`).
-17. **🕸️ 802.11s Mesh & 802.11r/k/v Fast Roaming**:
-    - One-click master/satellite credential synchronization, seamless roaming without audio/video drops, and Satellite Shield.
+17. **🕸️ Wi-Fi 6/6E/7 Intelligence: Pure 802.11k/v Fast Roaming & MacBook `awdl0` Advisory**:
+    - `bss_transition=1` + `rnr=1` roaming without `wnm_sleep_mode` multicast stalls, plus contextual **Apple MacBook (M1–M5)** `awdl0` diagnostics shown strictly on `160 MHz` to unlock `2400 Mbps` PHY (`1.4+ Gbps` real throughput).
 18. **🌐 Safe Broad-Spectrum PBR BitTorrent Balancing (Dual-WAN)**:
     - Distributes P2P traffic over 64,500 ports between WANs while strictly protecting essential system ports (80, 443, 53) on the primary connection.
-19. **⚡ Ultra-Fast Decoupled WireGuard Client**:
-    - Instant `.conf` import with sub-100ms RPC response times and asynchronous background firewall/route application.
-20. **🌎 Trilingual UI with 100% Audited Parity (Triple i18n)**:
+19. **⚡ Kernel SMB 3.1.1 (`ksmbd`), Wake-on-LAN & Decoupled WireGuard Client**:
+    - High-speed in-kernel USB file sharing (`ksmbd`), 1-click Magic Packet Wake-on-LAN (`etherwake`), and instant `.conf` WireGuard tunnel import.
+20. **🌎 Trilingual UI with 100% Audited Parity (Triple i18n — 4,423 Keys)**:
     - Strict 100% translation coverage across Portuguese (Brazil), English, and neutral Spanish.
 
 ---

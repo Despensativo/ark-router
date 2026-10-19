@@ -2,8 +2,8 @@
 
 ## Short Term
 
-- Test the published `v1.5.17` package across architectures (ARM64 MT7986, MIPS QCA9558, MT7981, IPQ5332).
-- Validate Auto-WAN dynamic sensing, Dumb AP topology switching, NPTv6 1:1 translation, Smart Wi-Fi Package Enhancer (`wpad-mbedtls`), and SQM upload-only optimization on additional OpenWrt 24.x/25.x targets.
+- Test the published `v2.0.0` package across architectures (ARM64 MT7986, MIPS QCA9558, MT7981, IPQ5332).
+- Validate V2 Cockpit & Feature Center lifecycle, 1-Click Dual-DoH (`https-dns-proxy`) + HTTP/3 QUIC (`h3://`), Auto-MTU Baby Jumbo RFC 4638, KSMBD 3.1.1, Wake-on-LAN, and Smart Wi-Fi Package Enhancer (`wpad-mbedtls`) across OpenWrt 24.x/25.x targets.
 - Test on both `apk` (OpenWrt 25.12+) and `opkg` (OpenWrt 21.02 - 24.10) based releases.
 - Expand compatibility table populated by live router reports (see `docs/COMPATIBILITY_MATRIX.md`).
 

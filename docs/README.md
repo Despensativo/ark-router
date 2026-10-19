@@ -1,6 +1,6 @@
 # ARK Router — Índice Canônico de Documentação Técnica
 
-> **Mapa Oficial de Documentação Técnica do Projeto (v1.5.17)**
+> **Mapa Oficial de Documentação Técnica do Projeto (v2.0.0)**
 > Este índice orienta desenvolvedores e agentes de IA para as fontes canônicas de cada domínio técnico, eliminando ambiguidades e documentos concorrentes.
 
 ---
@@ -11,9 +11,10 @@
 |---|---|---|
 | **Arquitetura & RPC** | [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) | Subsistemas, despachante RPC, handlers e ciclo de vida do daemon. |
 | **Compatibilidade OpenWrt** | [`docs/COMPATIBILITY_MATRIX.md`](COMPATIBILITY_MATRIX.md) | Limites oficiais entre `fw3` (<=21.02) e `fw4` (>=22.03), `opkg` (<=24.10) e `apk` (>=25.12). |
-| **Auditoria e Contratos** | [`docs/FEATURE_AUDIT_AND_REBOOT.md`](FEATURE_AUDIT_AND_REBOOT.md) | Catálogo vivo dos 69 recursos com persistência pós-reboot e não-interferência. |
+| **Auditoria e Contratos** | [`docs/FEATURE_AUDIT_AND_REBOOT.md`](FEATURE_AUDIT_AND_REBOOT.md) | Catálogo vivo dos 74 recursos com persistência pós-reboot e não-interferência. |
+| **Manual Exaustivo de Subsistemas** | [`docs/ARK_ROUTER_EXHAUSTIVE_COMMANDS_AND_SUBSYSTEMS_MANUAL.md`](ARK_ROUTER_EXHAUSTIVE_COMMANDS_AND_SUBSYSTEMS_MANUAL.md) | Referência completa de todos os comandos RPC, módulos shell (`network_ipv6_mwan`, `storage_wol`, `system_hardware_leds`) e fluxos V2. |
 | **Instalação e Configuração** | [`docs/INSTALL.md`](INSTALL.md) | Guia completo de instalação via pacote (.apk/.ipk), primeiro boot e assistente Ark - Setup. |
-| **Publicação e Releases** | [`docs/PUBLISHING.md`](PUBLISHING.md) | Procedimento oficial de empacotamento local (WSL) e deploy em GitHub Releases. |
+| **Publicação e Releases** | [`docs/PUBLISHING.md`](PUBLISHING.md) | Procedimento oficial de empacotamento local (macOS/WSL) e deploy em GitHub Releases. |
 | **Laboratório Virtual** | [`docs/VIRTUALBOX_TEST_ENVIRONMENT.md`](VIRTUALBOX_TEST_ENVIRONMENT.md) | Infraestrutura de teste isolada no VirtualBox (`OpenWrt-ARK-Dev`), snapshots e topologias. |
 | **Design System & UI QA** | [`docs/UI_DESIGN_SYSTEM_AND_QA.md`](UI_DESIGN_SYSTEM_AND_QA.md) | Padrões de DOM LuCI, modais, touch targets de 40px+, isolamento de rolagem e testes visuais. |
 | **Perfis e Orçamento Físico** | [`docs/MODULES_AND_HARDWARE_PROFILES.md`](MODULES_AND_HARDWARE_PROFILES.md) | Matriz de hardware (Ultra-Lite 128MB, Balanced 256-512MB, Pro 1GB+), limites de RAM e Flash. |

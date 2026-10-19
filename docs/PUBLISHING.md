@@ -16,14 +16,14 @@ Build packages locally to avoid slow CI/CD cloud queues, verify them immediately
    - Run `python scripts/audit_i18n.py --strict` to ensure 100% triple coverage (PT-BR, EN, ES) and dictionary symmetry. (See `docs/I18N_TRANSLATION_GUIDE.md`).
 4. Build the packages **locally** in seconds:
    - Compile bundle & assets: `python scripts/build_frontend_bundle.py && python scripts/build_minified_assets.py`.
-   - IPK packages: run `scripts/build-ipk-wsl.sh` (or `python scripts/pack_ipk_local.py`).
-   - APK packages: run `scripts/build-apk-manual-wsl.sh` (under WSL or build host).
+   - IPK packages: run `python scripts/build-ipk-mac.py` (macOS) or `scripts/build-ipk-wsl.sh` (WSL).
+   - APK packages: run `python scripts/build-apk-mac.py` (macOS) or `scripts/build-apk-manual-wsl.sh` (WSL).
    - Artifacts will be generated in `dist/sdk/`.
 5. Validate packages locally in VirtualBox (`OpenWrt-ARK-Dev`).
 6. Commit and push source to GitHub.
 7. Create the release and upload the pre-built packages directly:
    ```sh
-   gh release create v1.5.x dist/sdk/luci-app-ark-router* --title "ARK Router v1.5.x" --notes-file CHANGELOG.md
+   gh release create v2.0.x dist/sdk/luci-app-ark-router* --title "ARK Router v2.0.x" --notes-file CHANGELOG.md
    ```
    *(Or attach the files directly in the GitHub Release web UI).*
 8. The cloud GitHub Actions workflow (`.github/workflows/build-packages.yml`) is kept only as an optional background fallback (`workflow_dispatch`), eliminating the slow cloud build queue.
@@ -58,7 +58,7 @@ Update these files for each release:
 | `VERSION` | package/project version |
 | `Makefile` | `PKG_VERSION` |
 | `root/usr/share/ark-router/VERSION` | version shown/read on router |
-| `root/usr/sbin/equipe-dashboard-control` | `ARK_ROUTER_VERSION` fallback |
+| `root/usr/lib/ark/common.sh` | `ARK_ROUTER_VERSION` |
 | `CHANGELOG.md` | release notes |
 | `README.md` / docs | only when behavior or install instructions changed |
 
@@ -68,19 +68,19 @@ Typical release flow with pre-built local packages:
 
 ```sh
 # 1. Build packages locally in seconds
-scripts/build-ipk-wsl.sh
-scripts/build-apk-manual-wsl.sh
+python scripts/build-ipk-mac.py
+python scripts/build-apk-mac.py
 
 # 2. Check and commit
 git status
 git add .
-git commit -m "Release ARK Router v1.5.x"
+git commit -m "Release ARK Router v2.0.x"
 git push origin main
-git tag -a v1.5.x -m "ARK Router v1.5.x"
-git push origin v1.5.x
+git tag -a v2.0.x -m "ARK Router v2.0.x"
+git push origin v2.0.x
 
 # 3. Upload pre-built packages directly to the release
-gh release create v1.5.x dist/sdk/luci-app-ark-router* --title "ARK Router v1.5.x" --notes-file CHANGELOG.md
+gh release create v2.0.x dist/sdk/luci-app-ark-router* --title "ARK Router v2.0.x" --notes-file CHANGELOG.md
 # (Or drag and drop files from dist/sdk/ into GitHub Release web editor)
 ```
 

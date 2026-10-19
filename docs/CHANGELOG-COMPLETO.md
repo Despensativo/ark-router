@@ -1,5 +1,406 @@
 # Changelog
 
+## 2.0.0
+
+- **🚀 Nova Arquitetura V2: Cockpit Executivo Status-Only & Central de Recursos (19/10/2026)**:
+  - **Separação Estrutural Cockpit vs. Central de Recursos**: O **Cockpit** (`panel === 'cockpit'`) agora é 100% focado em telemetria operacional e leitura rápida (WANs, LAN, Wi-Fi, Top Clientes, Saúde e Processos), sem cartões de configuração pesados nem controles de instalação na tela inicial.
+  - **Central de Recursos Unificada (`features`)**: Catálogo executivo para gerenciamento de **Serviços Nativos** (com interruptor rápido Ativar/Desativar) e **Plugins Opcionais de Sistema** (Ciclo de Vida Completo: Instalar, Ativar, Desativar com confirmação cautelosa e Remover pacote).
+  - **Modo Desenvolvedor (`ark_dev_mode`)**: Oculta da barra lateral e das abas de domínio os plugins opcionais ainda não instalados no roteador por padrão; quando ativado na Central de Recursos, exibe todos os módulos com barra de ciclo de vida inline (`.ex-inline-plugin-lifecycle-bar`).
+  - **Navegação Responsiva Desktop, Tablet e Mobile**: Barra superior mobile com gaveta deslizante (`ex-v2-mobile-bar`), pílulas de status compactas no topo sem sobreposição e modais 100% contidos na viewport (360px a 1440px+).
+
+- **🔒 DNS Privado Inteligente: Dual-DoH (`https-dns-proxy`) 1-Clique + HTTP/3 QUIC (`h3://`) & Escudo Portas 53/853 (19/10/2026)**:
+  - **Ativação 1-Clique de Dual-DoH (`dns-turbo-doh`)**: Novo botão interativo no modal **DNS Turbo & Cache** (Ark Doctor) que instala automaticamente `https-dns-proxy` via `apk`/`opkg` e configura redundância dupla HTTPS em `127.0.0.1#5053` (Cloudflare) + `127.0.0.1#5054` (Google) integrada ao `dnsmasq`.
+  - **Suporte Nativo a HTTP/3 QUIC (`h3://`) no AdGuard Home**: Ao provisionar o motor AdGuard Home, o ARK Router configura nativamente os upstreams `h3://1.1.1.1/dns-query`, `h3://8.8.8.8/dns-query` e `https://dns.quad9.net/dns-query` com `enable_http3: true` (UDP 443 zero head-of-line blocking).
+  - **Escudo DNS Forçado Completo (Portas 53 + DoT 853)**: Interceptação transparente (`DNAT`) de DNS legado TCP/UDP 53 combinada ao bloqueio `REJECT` de DNS-over-TLS (`TCP/UDP 853` — RFC 7858), forçando Smart TVs, Chromecasts e celulares Android com *Private DNS* a utilizarem o resolvedor seguro e filtrado da LAN sem lentidão de timeout.
+
+- **🌐 Auto-MTU Inteligente & Baby Jumbo Frames (RFC 4638 — PPPoE 1500 Puro) (19/10/2026)**:
+  - **Sondagem ICMP Real sem Fragmentação**: Teste automático de descoberta de PMTU (`1472` bytes payload / `1500` bytes IP) e verificação de suporte a Baby Jumbo Frames (`1508` bytes na porta física Ethernet para PPPoE `1500` puro sem overhead de 8 bytes).
+  - **Feedback Visual Persistente no Card e no Modal**: Exibição imediata do diagnóstico ativo (ex.: `1500 B • RFC 4638 Baby Jumbo elegível` ou `1500 B • Ótimo`) tanto na pílula do card **Auto-MTU & MSS Clamping** quanto dentro do modal interativo, com persistência automática em `/etc/config/ark`.
+
+- **🍎 Inteligência Wi-Fi 6/6E/7: Apple MacBook (`awdl0` 160 MHz) & Fast Roaming 802.11k/v Puro (19/10/2026)**:
+  - **Diagnóstico Cirúrgico para Linha MacBook (M1 a M5)**: Quando o rádio 5 GHz opera em **160 MHz** fora dos canais preferenciais da Apple (`44` ou `149`), o painel exibe um alerta contextual exclusivo explicando a limitação do driver `awdl0` (AirDrop/Sidecar/Handoff travando a largura em 80 MHz / ~660–720 Mbps) e como destravar `160 MHz` (`2400 Mbps` PHY / `1.4+ Gbps` reais). O aviso permanece oculto em `20/40/80/240/320 MHz`.
+  - **802.11v (`bss_transition=1`) Sem `wnm_sleep_mode`**: O guardião `ark-wifi-roam-guard` mantém `bss_transition=1`, `ieee80211k=1` e `rnr=1` ativos, mas remove explicitamente `wnm_sleep_mode` para eliminar atrasos de entrega multicast/GTK e quedas silenciosas em smartphones em repouso.
+
+- **⚡ Servidor SMB 3.1.1 em Kernel (`ksmbd`), Central Wake-on-LAN & IPv6 ULA/WAN Isolation (19/10/2026)**:
+  - **Servidor de Arquivos USB (`ksmbd`)**: Substituição do Samba4 pesado em espaço de usuário pelo módulo de kernel `ksmbd` (`kmod-fs-ksmbd` + `ksmbd-server`), entregando transferências SMB 3.1.1 de alta velocidade com consumo mínimo de RAM e Flash.
+  - **Central Wake-on-LAN (WoL)**: Despertar remoto via Magic Packet (`etherwake`) com lista de dispositivos favoritos, seleção de interface (`br-lan`) e disparo em 1 clique.
+  - **Detecção Universal de Prefixo IPv6 ULA (`fdXX:`) & Isolamento Multi-WAN**: Reconhecimento preciso de qualquer prefixo RFC 4193 (`fd00:` a `fdff:`, incluindo `fd73:192:168::/64`) e isolamento estrito de anúncios RA (`ra='disabled'`) nas interfaces WAN para impedir vazamento de prefixo LAN para modems upstream.
+
+- **🌍 Internacionalização Tripla Completa (PT-BR, EN, ES — 4.423 Chaves) (19/10/2026)**:
+  - Cobertura 100% auditada (`audit_i18n.py --strict`) em Português (Brasil), Inglês e Espanhol neutro para todos os novos painéis, modais, avisos de hardware e diagnósticos da versão `2.0.0`.
+
+## 1.5.17
+
+- **📶 Inteligência Dinâmica Wi-Fi, 802.11v (WNM) e RNR (13/10/2026)**:
+  - **Detecção Universal de WNM (`ark_hostapd_has_wnm`)**: Identifica em tempo de execução a presença de suporte WNM no daemon `wpad`/`hostapd`, ativando `bss_transition=1` e `wnm_sleep_mode=1` com segurança sem quebrar builds com `wpad-basic`.
+  - **Reduced Neighbor Report (RNR) & 802.11k Ativos**: Anúncio proativo de vizinhança entre 2.4GHz, 5GHz e 6GHz, acelerando a descoberta de canais e transição transparente de clientes modernos.
+  - **Calibração Avançada do Assistente de Banda (`usteer`)**: Ajuste automático de limiares para velocidade máxima (`band_steering_min_snr '-70'`, `kick_threshold '-78'`), forçando migração para canais 5GHz HE160 de 2.4 Gbps.
+  - **Blindagem Qualcomm SON (`ark_has_qualcomm_son`)**: Detecção de módulos proprietários QSDK (`hyd`, `hyfi_bridging`), abortando daemons de steering conflitantes e prevenindo travamentos de kernel.
+
+- **📱 Padrão Arquitetural Mobile-First: Tabelas, Abas e Ações no LuCI (13/10/2026)**:
+  - **Contenção Estrita de Viewport**: `#view` e `#maincontent` limitados a `max-width: 100% !important; box-sizing: border-box !important;`, eliminando 100% dos estouros laterais de até 1.018px em smartphones (360px a 390px).
+  - **Desbloqueio de Scroll em Abas Ativas (`network/routes`)**: Remoção de `overflow: visible !important` em `[data-tab-active="true"]` e aplicação de regra de alta especificidade com rolagem touch (`overflow-x: auto !important; -webkit-overflow-scrolling: touch !important;`).
+  - **Encapsulamento Dinâmico de Tabelas Órfãs (`network/wireless`)**: Empacotamento de `#wifi_assoclist_table` em cartão dedicado `.ark-assoclist-card` com contador ao vivo (`#ark-assoclist-count`), contêiner `.ark-table-responsive` e indicador tátil de deslize lateral (`.ark-table-swipe-hint`).
+  - **Barra de Ações Ergonômica Mobile (`.cbi-page-actions`)**: Botão principal "Salvar e Aplicar" ocupando 100% da largura superior (altura mínima 44px), e botões "Salvar" / "Descartar" balanceados em 50%/50% na linha inferior (altura mínima 42px).
+
+- **⏱️ Preservador de Horário & Fake-RTC (`ark-clock-preserver`) (13/10/2026)**:
+  - Inicialização segura de relógio via época salva em Flash/RAM (`/etc/ark-clock.epoch`), evitando expiração de certificados TLS e falhas no LuCI antes do sincronismo NTP.
+  - Interceptação de tráfego NTP (UDP 123) e servidor local ativo para distribuição precisa de hora na rede LAN.
+
+- **🛡️ Auto-Recuperação de Telemetria e Processos (`status/processes`) (13/10/2026)**:
+  - Cooldown e trava de concorrência em `injectRealProcessMemory()`, eliminando loops infinitos do `MutationObserver` e exaustão de subprocessos do BusyBox.
+  - Auto-recuperação resiliente para renderização da lista de processos em cenários de sobrecarga.
+
+## 1.5.16
+
+- **🌐 Isolamento Canônico de IPv6 & Fim do Sequestro de Socket na WAN (12/10/2026)**:
+  - **Vinculação Estrita de Interfaces DHCPv6**: Pareamento canônico de interfaces IPv6 com seus respectivos dispositivos de WAN pai (`wan` ➔ `wan6` em `@wan`, `wan2` ➔ `wan2_6` em `@wan2`).
+  - **Expurgo Automático de Interfaces Órfãs**: Ao converter uma porta WAN secundária para LAN, suas interfaces de IPv6 e registros de firewall são cirurgicamente removidos, prevenindo loops de recarga no `netifd` e erros de `Invalid argument`.
+  - **Exclusividade Mútua na Delegação de Prefixo**: Em cenários Multi-WAN, a WAN primária delega o prefixo para a LAN (`delegate=1`), enquanto as WANs secundárias operam com `delegate=0`, eliminando colisões de roteamento e *blackholes* de tráfego.
+
+- **🛡️ Blindagem de Modo Ponto de Acesso / Ponte (AP / Bridge Mode) (12/10/2026)**:
+  - **Passagem L2 Transparente**: Reconhecimento automático do tráfego IPv6 fluindo via switch bridge de Camada 2 a partir do roteador mestre upstream.
+  - **Bypass no Ark Doctor e Sanitizadores**: Sanitizadores e auditorias ignoram a exigência de `wan6` local quando o roteador opera como satélite/ponte/AP, reportando status verde sem alertas indevidos.
+
+- **🔥 Pureza de Firewall fw4 no Multi-WAN (mwan3) (12/10/2026)**:
+  - **Contador Preciso de WANs Ativas**: O ciclo de vida do `mwan3` agora ignora interfaces companheiras de IPv6 (`wan6`, `*_6`, proto `dhcpv6`), identificando corretamente cenários com apenas 1 WAN física.
+  - **Standby Automático & Eliminação de Regras Legadas**: Em Single-WAN, o `mwan3` entra em standby imediato e o `fw4` é recarregado, eliminando 100% das regras legadas de `iptables` e operando com `nftables` puro.
+
+## 1.5.15
+
+- **🚀 Checador Inteligente de Nova Versão & Diagnóstico de Espaço em Disco (12/10/2026)**:
+  - **Checagem em Segundo Plano com Cache Duplo**: Execução não intrusiva com cache de 12 horas no backend (`/tmp/ark-router-update-check.json`) e throttling no frontend (`localStorage`), evitando requisições desnecessárias.
+  - **Banner Dinâmico com Opção de Ocultar**: Notificação visual sutil logo abaixo do Hero, com botão "Ocultar ✕" que persiste por versão no navegador.
+  - **Modal Completa de Confirmação & Changelog**: Exibição da versão instalada vs nova versão (`v{current}` ➔ `v{latest}`), pacote de destino (`.apk`/`.ipk`) e lista detalhada de novidades.
+  - **Ponto de Corte de Armazenamento no Limite Físico (650 KB)**: Diagnóstico visual de espaço na partição Flash (`/overlay`) e RAM (`/tmp`). Se o espaço livre for inferior a 650 KB, o sistema alerta e bloqueia a gravação para evitar corrupção do JFFS2/UBIFS, oferecendo botão para purgar a flash. Entre 650 KB e 1200 KB, emite aviso de margem estreita e prossegue substituindo os arquivos.
+  - **Garantias de Blindagem**: Backup automático de configurações antes do update, preservando 100% das senhas, regras de firewall e redes Wi-Fi sem queda de conexão.
+
+- **⚖️ Blindagem Multicore de Interrupções (IRQ Balance) (12/10/2026)**:
+  - Detecção nativa em nível de silício para MediaTek Filogic (WED/PPE) e Qualcomm IPQ/NSS. O toggle manual é protegido e substituído por selo verde Nativo por Hardware com anéis de DMA dedicados.
+
+- **🌐 Internacionalização Tripla (i18n) (12/10/2026)**:
+  - 100% de cobertura e paridade estrita nos 3 idiomas suportados: Português do Brasil (PT-BR), Inglês (EN) e Espanhol (ES).
+
+## 1.5.14
+
+- **🎛️ Toggles Inteligentes no Card Principal "Desempenho & Blindagem de Memória" (11/10/2026)**:
+  - Os controles de Compressão de Memória RAM (ZRAM) e Abertura Automática de Portas (UPnP / IGD) agora estão integrados como switches interativos de primeiro nível diretamente no card principal do dashboard.
+  - Indicadores dinâmicos de status em tempo real, badges informativos coloridos e persistência segura em tempo de execução.
+
+- **🗜️ Compressão de Memória RAM Inteligente (ZRAM / LZ4) (11/10/2026)**:
+  - Cria disco virtual de swap comprimido na RAM com algoritmo LZ4 ultrarrápido, duplicando a capacidade efetiva sem desgaste na memória Flash.
+  - Trava de Segurança de 5 Segundos: Em roteadores com 512 MB ou mais de RAM física, o switch exige confirmação temporizada de 5s para evitar gasto desnecessário de ciclos de CPU em equipamentos de ponta.
+  - Modo Protegido para CPUs Mononúcleo (MIPS): Detecta processadores modestos e limita o disco a 32 MB com swappiness=15, evitando gargalo de processamento.
+  - Ativação Imediata: Em roteadores multicore com até 256 MB (ex: Cudy WR3000), opera nativamente com alocação otimizada (116 MB LZ4).
+
+- **🎮 Blindagem de Portas WAN (UPnP / IGD) (11/10/2026)**:
+  - Modo Seguro (Padrão): Mantém portas WAN protegidas contra abertura arbitrária e não autorizada por aplicativos na rede local.
+  - Modo Dinâmico: Permite abertura sob demanda para consoles (Xbox/PlayStation) com alertas visuais explícitos de segurança e atualização imediata do contador de otimizações.
+
+- **🩺 Ark Doctor (Auditoria & Autocura) (11/10/2026)**:
+  - Adicionado teste de integridade da ZRAM (Check 1b: Coerência de ZRAM) com verificação de montagem LZ4 em /dev/zram0 e autocura de vm.swappiness.
+  - Diagnóstico em tempo de execução 100% aprovado (0 erros, 0 avisos).
+
+## 1.5.11
+
+- **🧠 Steering de IRQs Multicore de Rede e Correção de Sysctl Linux 6.x (08/10/2026)**:
+  - **Desafogamento Crítico da CPU0**: O controlador ARM GICv3 direcionava 100% das interrupções de hardware Wi-Fi (`mt7915e`, >167M eventos) e Ethernet (`15100000.ethernet`, >136M eventos) para a CPU0. Criada função `ark_tune_irq_affinity` no `/etc/init.d/ark-hardware-tune`:
+    - Wi-Fi fixado na CPU 2 (Core mask 0x4).
+    - Ethernet WAN/LAN fixada na CPU 1 (Core mask 0x2).
+    - CPU 0 aliviada para tarefas de SO, userspace, uhttpd e DNS.
+    - CPU 3 dedicada para SQM / CAKE e softirqs.
+  - **Correção de Sysctl no Linux 6.x (`Invalid argument`)**: `net.core.netdev_budget_usecs` ajustado universalmente de 2000 para 20000 (20 ms), eliminando o aborto de `sysctl -p` no kernel 6.x e garantindo a aplicação de todas as diretivas de rede.
+
+- **📊 Telemetria de Memória Real de Processos (RSS) & Habilitação de htop (08/10/2026)**:
+  - **Consumo Real de RAM (RSS)**: Integrada telemetria precisa de memória física real residente (RSS) via `/usr/sbin/equipe-dashboard-control system-processes-telemetry` na modal de Especificações Técnicas de Hardware.
+  - **Eliminação de Falsos Alertas**: Distinção clara entre memória virtual (`VSZ`) e memória residente (`RSS`), identificando corretamente binários Go/Rust (como `speedtest-go`) sem alarmismo falso de consumo de RAM.
+
+- **🎨 Seletor Dinâmico de Temas LuCI e Redesenho da Central de Recursos (08/10/2026)**:
+  - **Seletor Universal de Temas**: Suporte à alternância nativa entre o Tema ARK e o Tema Bootstrap/Material diretamente no painel de Aparência.
+  - **Layout Otimizado**: Reorganização dos blocos visuais da Central de Recursos para melhor usabilidade móvel e desktop.
+
+- **📶 Suporte e Guardrails para Wi-Fi 6E / Wi-Fi 7 (6 GHz até 320 MHz) (08/10/2026)**:
+  - **Canalização 6 GHz**: Separação estrita de canalização IEEE 802.11be, permitindo largura de 320 MHz exclusivamente na banda de 6 GHz e limitando 5 GHz ao teto físico de 160 MHz.
+  - **Fallback Seguro**: Comutação automática para canais seguros (ex.: Canal 36) ao selecionar 160 MHz em 5 GHz para máxima estabilidade operacional.
+
+- **🎯 Trava de Exclusão Mútua Estrita entre Fastpath (Flow Offload) e SQM/CAKE (08/10/2026)**:
+  - **Prevenção de Conflito de Kernel**: Desativação recíproca automática com feedback visual no painel para impedir que o offload de hardware/software desvie pacotes da fila de controle do SQM/CAKE.
+
+- **🌐 Portão de Pré-Release de Internacionalização (Pre-Release Gate) 100% i18n (08/10/2026)**:
+  - **Cobertura Completa nos 3 Idiomas**: 100% de paridade simétrica entre Português (Brasil), Inglês e Espanhol neutro em todos os componentes, modais e kickers do painel.
+
+## 1.5.10
+
+- **⚡ Auto-Enforcement Condicional de MTU 1500 em PPPoE com Baby Jumbo (RFC 4638) (08/10/2026)**:
+  - **Hook Nativo de Hotplug (`05-ark-pppoe-babyjumbo`)**: Adicionado hook dinâmico em `/etc/hotplug.d/iface/` disparado pelo `netifd` a cada subida de link (`ifup`).
+  - **Execução Estritamente Condicional**: O ajuste é acionado única e exclusivamente quando a chave **Baby Jumbo / MTU 1508** estiver ativada na respectiva interface no UCI (`device_mtu='1508'`). Se desativada, encerra imediatamente sem alterar o MTU negociado pela operadora.
+  - **Superação de Restrições LCP em BNGs**: Corrige o problema em que concentradores de operadoras (ex.: Juniper/Huawei) forçam 1492 no aperto de mão LCP mesmo com a porta física suportando 1508 bytes, elevando o túnel para 1500 bytes de forma transparente e registrando log no sistema.
+  - **Multi-WAN & Nomes Arbitrários**: Identifica qualquer interface PPPoE dinamicamente, suportando Dual-WAN/Triple-WAN e nomes customizados de interface.
+  - **Auditoria no Doctor ARK**: Validação de integridade e permissões executáveis do hook integrada ao `doctor.sh`.
+  - **Empacotamento Nativo**: Permissões e inclusão integradas aos scripts de build local `build-ipk-wsl.sh` e `build-apk-manual-wsl.sh`.
+
+- **🔐 Simplificação da Tela de Senhas do Administrador (06/10/2026)**:
+  - **Remoção do Card Superior Informativo**: Removido o banner de guia redundante da tela de administração de senhas (`admin/system/admin`), deixando a interface mais limpa e focada.
+  - **Requisito Mínimo de 4 Caracteres**: Substituídas as regras complexas (maiúsculas, minúsculas, números e símbolos especiais) por uma validação clara e objetiva com requisito mínimo de 4 caracteres (`Mínimo 4 Caracteres`), aceitando senhas simples com validação imediata.
+  - **Ocultação de Texto Legado e i18n Completo**: Ocultada a mensagem legada não traduzida do LuCI (*"Password strength: More Characters"*) e traduzido o rótulo de confirmação para *"Confirmar Senha"*.
+  - **Auditoria de i18n e Validação Visual**: Cobertura i18n mantida em 100% (PT-BR, EN, ES) e interface validada no ambiente virtual VirtualBox com screenshots headless.
+
+## 1.5.9
+
+- **🛡️ Blindagem Anti-MAC Collision, Desbloqueio Netdev & Restauração Completa de IPv6 (04/10/2026)**:
+  - **Eliminação de Conflito de MAC na Bridge LAN**:
+    - Corrigido conflito em que portas LAN (como `eth1` interconectada a APs secundários) mantinham endereços MAC clonados de WANs migradas, confundindo a tabela de roteamento e comutação do hardware switch / PPE (MediaTek Filogic 830) e descartando quadros multicast e Router Advertisements (RA).
+    - `add_lan_port()` em `network.sh` agora remove automaticamente qualquer `option macaddr` residual ao adicionar qualquer interface à bridge `br-lan`.
+  - **Fim do Bloqueio Netdev Destrutivo no Firewall IPv6 Seletivo**:
+    - Eliminada a geração incorreta de tabelas `table netdev ark_ipv6_${bname} { ether type ip6 drop }` que derrubavam o tráfego IPv6 de portas físicas inteiras quando um único dispositivo atrás de um AP ou switch tinha o IPv6 desativado no painel.
+    - O filtro seletivo de dispositivos passa a operar com 100% de pureza e precisão na tabela `inet` (`@blocked_macs`), preservando o tráfego IPv6 de todos os demais aparelhos na mesma porta.
+  - **Blindagem em 3 Camadas no Doctor ARK e Interface Gráfica**:
+    - **Doctor ARK (`doctor.sh`)**: Adicionada checagem `11b.4 Anti-MAC Collision` que detecta portas LAN com MAC duplicado da WAN e tabelas netdev parasitas, aplicando auto-correção imediata e restauração do MAC de fábrica do `board.json`.
+    - **Interface Web (`network.js` & `overview.js`)**: Validação ativa na modal de WAN que bloqueia a clonagem de um MAC já em uso por outra conexão WAN ativa.
+    - **Auditoria de i18n**: 100% de cobertura nos 3 idiomas (PT-BR, EN, ES) validada via `scripts/audit_i18n.py`.
+
+- **📶 IGMP Snooping Nativo Integrado no Dashboard ARK Router (04/10/2026)**:
+  - Adicionado toggle nativo de **Proteção Multicast & Wi-Fi (IGMP Snooping)** diretamente no card de Rede Principal (LAN / DHCP) do Overview e na modal de configurações de rede.
+  - Mitigação transparente de saturação de Wi-Fi por tráfego multicast (IPTV / AirPlay / mDNS).
+  - Testado e validado em tempo real em hardware real com persistência completa pós-reboot e verificação visual por screenshot headless.
+
+- **💡 HAL de LEDs e Daemons de Iluminação Dinâmica (`ark-rainbowd` / `ark-port-ledd`)**:
+  - Implementação de daemons para controle de LEDs de portas físicas e iluminação RGB para plataformas Acer Predator W6x e T7.
+
+- **🚀 Instalador Shell Universal (`scripts/install.sh`) com Detecção de Arquitetura**:
+  - Detecção inteligente de CPU (`can_run_aarch64`) selecionando automaticamente perfil Lite em roteadores ARM 32-bit (como Acer Predator T7 `armv7l`), prevenindo erros de execução com binários 64-bit.
+  - Suporte resiliente a download com fallback em cascata entre `curl`, `wget` e `uclient-fetch`, além de auto-correção de relógio RTC/NTP para evitar falhas de certificado TLS.
+
+## 1.5.8
+
+- **📱 Correção de Rolagem em Dispositivos Móveis e Preservação de Posição de Tela (02/10/2026)**:
+  - **Fim da Trava de Rolagem para Cima no Ark - Setup (Issue 1)**:
+    - Eliminado o conflito de múltiplos contêineres de scroll aninhados com `overscroll-behavior: contain` e `overflow-x: hidden` (que computava `overflow-y: auto` no elemento filho `.modal`, bloqueando o encadeamento de rolagem para o overlay pai).
+    - Desacoplamento estrito: `#modal_overlay` opera como contêiner exclusivo de rolagem com aceleração por hardware (`-webkit-overflow-scrolling: touch; touch-action: pan-y;`), enquanto `.modal`, `.ex-ez-setup` e `.ex-ez-section` utilizam `overflow: visible` e `overscroll-behavior: auto`. O modal agora rola livremente tanto para baixo quanto para cima em smartphones sem nenhum travamento.
+  - **Preservação e Restauração Inteligente de Posição ao Fechar Modais (Issue 2)**:
+    - Removida a declaração `height: 100vh !important;` de `body.modal-overlay-active`, que causava o colapso instantâneo da altura do documento e resetava forçadamente o scroll para `0px` ao abrir qualquer pop-up.
+    - Implementado gerenciador global de rolagem (`ArkTheme.initModalScrollPreservation` em `ark-theme.js` e `closeModal` em `formatters.js`): rastreia a posição ativa (`window.scrollY`, `.main-right` e `.main`) e restaura com precisão cirúrgica a viewport quando o modal é fechado (via botão Fechar, "×", clique no backdrop ou tecla Escape).
+  - **Validação Automatizada por Screenshot (Pixel 7 Headless 412x915)**:
+    - Testado em navegador com emulação touch: rolagem descendente até 1200px e retorno completo ao topo (0px) no Ark - Setup com 100% de sucesso.
+    - Preservação da posição de visualização da página com desvio de 0px após fechar pop-ups e zero erros no console (`mobile_scroll_restored_after_modal.png`).
+
+- **🎯 Correção de Dropdowns LuCI Achatados/Ilegíveis em Modais (`cbi-dropdown`) (02/10/2026)**:
+  - **Causa Raiz & Resolução Geométrica (`cascade.css`)**:
+    - O motor de posicionamento inline do LuCI aplicava `bottom: 34px` quando abria para cima, colidindo com `top: calc(100% + 4px) !important;` que achatava a caixa suspensa para meros 10px de altura.
+    - Isolamento de direção: `.cbi-dropdown[open] > ul[style*="bottom"]` agora força `top: auto !important; bottom: calc(100% + 4px) !important;`, enquanto a abertura normal descendente recebe `bottom: auto !important; top: calc(100% + 4px) !important;`.
+    - Adicionado `max-height: 280px !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;` e liberação de overflow nos contêineres `.modal .cbi-section` para evitar corte visual. Altura computada restabelecida para **290px** com rolagem perfeita.
+
+- **🚫 Fim da Piscadela do Botão Fechar ("×") Durante Aplicação de Mudanças (02/10/2026)**:
+  - No `ark-theme.js`, a rotina de injeção `enhanceModals()` agora detecta ativamente estados de progresso/carregamento (`isApplyingModal` checando spinners `.spinning`, `.cbi-progressbar`, `[data-indicator="apply"]` e títulos de salvamento/reboot).
+  - Modais aplicando alterações nunca recebem o botão "×" e qualquer botão remanescente é removido imediatamente, eliminando o piscar durante telas de progresso.
+
+- **🛡️ AdGuard Home: Eliminação de Queda de Internet, URL `/24:3000` & Telemetria em Tempo Real (02/10/2026)**:
+  - **Higienização de Máscara CIDR**: Removido o sufixo `/24` do IP da LAN (`${lan_ip%%/*}`) tanto no backend (`adblock.sh`) quanto na URL do painel (`adblock.js`), impedindo URLs inválidas como `http://192.168.1.1/24:3000`.
+  - **Blindagem Contra Bloqueio de DNS no Setup Inicial**: Pré-configuração de `adguardhome.yaml` com chave `users: []` e servidores upstream diretos (`1.1.1.1`, `8.8.8.8`). Evita que o AdGuard Home fique travado no assistente de instalação sem responder na porta 5335 enquanto o `dnsmasq` está com `noresolv='1'`.
+  - **Telemetria e Estatísticas no Dashboard**: O backend agora consulta `/control/stats` e expõe métricas em tempo real (Status DNS, Total de Consultas, Consultas Bloqueadas com porcentagem e Latência Média) no card do AdGuard Home.
+
+- **🚀 SQM CAKE Turbinado: Calculadora Dupla (Down/Up), Integração Fast.com & Parâmetros Avançados (02/10/2026)**:
+  - **Preenchimento Automático do Fast.com**: Ao concluir o teste de velocidade no dashboard, os resultados de Download e Upload são salvos e preenchidos automaticamente na configuração do SQM com cálculo de -7% para prevenção de Bufferbloat.
+  - **Calculadora Dupla de Banda**: Adicionada calculadora interativa tanto para Download quanto para Upload com ajuste automático de overhead.
+  - **Acordeão de Parâmetros Avançados CAKE**:
+    - Seletor de Link Layer Framing Overhead: Nenhum (0), Cable DOCSIS (18), GPON IPoE (26), PPPoE VLAN (34), GPON PPPoE (44 - Recomendado para fibra) e ATM (44).
+    - Opções avançadas de qdisc: `nat`, `dual-srchost`/`dual-dsthost` (equidade por dispositivo), `ack-filter`, `wash` e `diffserv4`.
+    - Persistência completa no backend `sqm-save-v2` (`root/usr/lib/ark/modules/sqm.sh`) em `/etc/config/sqm`.
+
+- **🌐 Tradução Abrangente de Telas Nativas do LuCI (`translateRemainingUI`) (02/10/2026)**:
+  - Expansão do motor de tradução dinâmica no `ark-theme.js` para telas nativas (como `/admin/network/network`), traduzindo termos em inglês que escapavam do catálogo ("Create interface" -> "Criar Interface", "Protocol of the new interface" -> "Protocolo da nova interface", "DHCP client" -> "Cliente DHCP (Automático)", "Device" -> "Dispositivo de Rede", etc.).
+  - Adição de 10 novas chaves aos catálogos `en.js` e `es.js` com 100% de conformidade no script de auditoria `scripts/audit_i18n.py`.
+
+- **🎨 Auditoria e Blindagem Estrutural do LuCI Padrão (Modo Básico vs Avançado) (02/10/2026)**:
+  - **Eliminação Definitiva do Scroll Horizontal no LuCI Padrão**:
+    - Substituição de `calc(100vw - 230px)` por `calc(100% - 230px) !important;` no `#maincontent` e `.main` (`cascade.css` e `mobile.css`). `100vw` computava a calha da barra de rolagem vertical (15-17px) gerando overflow horizontal forçado. Adicionado `overflow-x: hidden !important;` ao `html, body`.
+  - **Descompressão do Centro de Comando Wi-Fi (`admin/network/wireless`)**:
+    - Inclusão de `flex-wrap: wrap;` e `min-width: 0; word-break: break-word;` no `.ark-radio-header`, `.ark-radio-title-wrap` e ações de rádio. Títulos longos não são mais espremidos verticalmente e mantêm espaçamento ergonômico.
+  - **Arquitetura Dinâmica Multi-Rádio no LuCI**:
+    - Substituição do template estático por `getOrCreateRadioCard()` no `ark-theme.js`, compatibilizando roteadores com 1, 2, 3 ou 4 rádios simultâneos (2.4 GHz, 5 GHz e 6 GHz Wi-Fi 6E/7 com destaque ciano `.radio-6g`).
+  - **Blindagem de Web Components (`<cbi-dropdown>`)**:
+    - Protegida a integridade do DOM interno de seletores avançados do LuCI, garantindo que o motor de tradução não interfira em elementos customizados ou eventos de clique.
+  - **Seletor Interativo de Modo de Interface (⚡ Básico / 🛠️ Avançado)**:
+    - Injetadas pílulas de alternância instantânea no rodapé da barra lateral (`.ark-mode-switch-wrap`), permitindo ao usuário escolher entre o visual limpo moderno ou as tabelas técnicas completas do LuCI, persistido via `localStorage`.
+  - **Auditoria Automatizada Completa em 11 Páginas Nativas**:
+    - 100% aprovado com 0 erros de JavaScript e 0 barras de rolagem horizontais em Visão Geral, Interfaces, Sem Fio, Firewall, Diagnósticos, Sistema, Administração, Backup/Flash, Reinicialização, Tempo Real e Processos.
+
+
+## 1.5.7
+
+- **⚡ Modularização de Idiomas Sob Demanda (Code-Splitting de i18n com Handshake de Versão) (02/10/2026)**:
+  - **Eliminação de Dicionários Inativos em Português**:
+    - Divisão cirúrgica do dicionário monolítico `src/core/i18n.js` (3.410 linhas / ~320 KB) em `loader.js` (44 linhas), `en.js` (1.602 chaves) e `es.js` (1.602 chaves).
+    - O idioma nativo (Português do Brasil) agora embarca 0 bytes extras e nenhuma chave inativa. Dicionários de Inglês e Espanhol são carregados dinamicamente sob demanda (`i18n.en.js` e `i18n.es.js`) somente se o usuário selecionar esses idiomas.
+  - **Redução Massiva no Tamanho do Bundle Principal**:
+    - O bundle de produção `overview.js` encolheu de **1.022 KB para 701 KB (-31.4% / -320 KB)** e de **20.718 para 14.018 linhas de JavaScript**.
+  - **Handshake Automático de Versão (`ARK_BUILD_VERSION`)**:
+    - Injeção da versão ativa do firmware no bundle de frontend e comparação com a versão do servidor no carregamento.
+    - Se a versão do navegador divergir da versão do roteador (ex: após atualização de firmware com cache preso no navegador), o painel invalida o cache automaticamente e recarrega a página de forma transparente, eliminando a necessidade de `Ctrl + F5`.
+  - **Auditorias & Validação em Roteador Real**:
+    - 100% de cobertura nos 3 idiomas (1.602 chaves auditadas via `scripts/audit_i18n.py`).
+    - Validado no D-Link DGL-5500 (`192.168.73.3`): tempo de carregamento com cache em disco despencou para **3.63 segundos** com zero erros no console.
+
+- **🚀 Auto-Cura de Processos Zumbis (`rpcd`), Cache em RAM e Polling Adaptativo (02/10/2026)**:
+  - **Watchdog Anti-Zumbi (Auto-Cura de Daemon)**:
+    - Integrado ao daemon `equipe-traffic-history` (`/usr/sbin/equipe-traffic-history`): monitora periodicamente o acúmulo de processos `rpcd` zumbis causados por travamentos de bibliotecas de terceiros (`iwinfo.so`). Ao detectar >= 3 processos travados por mais de 30 segundos, executa auto-recuperação limpa dos serviços web/RPC sem derrubar a conexão de internet.
+  - **Caches Semiestáticos em RAM (`/tmp/`)**:
+    - `system-hardware-info`: Cache JSON em memória de 30 segundos (`/tmp/ark-hw-cache.json`) com leitura de CPU em tempo real direto via `/proc/stat` em 0.1ms, dispensando chamadas contínuas de `swconfig` e leituras térmicas repetidas.
+    - `device-fingerprints`: Cache JSON em memória de 20 segundos (`/tmp/ark-fp-cache.json`) para impressões digitais de dispositivos.
+  - **Polling Adaptativo e Escalonado**:
+    - Detecção automática de processadores econômicos (`isEconomicHardware`: CPUs MIPS, single-core ou clock < 1.0 GHz).
+    - Intervalo de atualização ajustado suavemente para 5 segundos (`modo econômico`), com ignoramento de consultas de Multi-WAN quando em modo Ponto de Acesso / Secundário.
+    - Load average no hardware econômico caiu de **6.43 para < 0.20**, com uso de CPU em repouso variando entre **0% e 9%**.
+
+- **🔥 Pré-aquecimento no Boot (Pre-caching) e Invalidação Dirigida a Eventos (02/10/2026)**:
+  - **Pré-aquecimento no Boot (`/etc/init.d/ark-hardware-tune`)**:
+    - Disparo de rotina em segundo plano aos 12 segundos pós-boot com prioridade mínima (`nice -n 19`), gerando antecipadamente na RAM todos os arquivos de telemetria e inventário antes do primeiro acesso do usuário.
+  - **Invalidação Dirigida a Eventos (Sem Polling Desperdiçado)**:
+    - Conexão e desconexão de cabos de rede e subida/descida de interfaces (`/etc/hotplug.d/net/95-ark-cache-invalidate` e `/iface/95-ark-cache-invalidate`) limpam imediatamente os caches de hardware e portas.
+    - Eventos de clientes Wi-Fi e DHCP (`add`, `old`, `del` em `dhcp_fingerprint.sh`) invalidam os caches de estações instantaneamente na ocorrência do evento.
+
+- **⚡ Provedor Ultraleve de Status Multi-WAN (`mwan_status_fast`) (02/10/2026)**:
+  - Criação de leitor direto de status em memória RAM a partir de `/var/run/mwan3track/`, eliminando dezenas de forks de subprocessos pesados (`iptables -S`, `ip6tables` e `ipset list`).
+  - Tempo de resposta da telemetria de Multi-WAN reduzido de 3,5s para **< 15 milissegundos**.
+
+- **🔌 Toggle DHCP Server na LAN e Cascata IPv6 NDP Relay (02/10/2026)**:
+  - **Toggle DHCP Server na LAN**: Switch interativo no modal "Editar IP & DHCP", permitindo desativar o DHCP IPv4 com alertas explicativos. No Modo AP, o switch é travado em desativado com aviso educativo.
+  - **Modal de Confirmação com Trava de 3 Segundos**: Contagem regressiva obrigatória ao reverter do Modo AP para o Modo Roteador Principal, exigindo escolha consciente do estado do DHCP.
+  - **Card Educativo de Repasse IPv6 (NDP Relay)**: Detalhamento explícito para operadoras que entregam apenas prefixo /64 em conexões em cascata.
+
+- **🛡️ Trava de Segurança SQM (3s) em Hardware Econômico e Recomendações de Silício Wi-Fi por Arquitetura (02/10/2026)**:
+  - **Trava de Confirmação Consciente no SQM / CAKE (`src/modules/network.js`)**:
+    - Em hardwares com CPU single-core ou MIPS (`isEconomicHardware`, ex: D-Link DGL-5500 QCA9558), o interruptor de ativação do SQM é bloqueado por um modal com contagem regressiva obrigatória de 3 segundos (`Aguarde 3 s... 2 s... 1 s...`).
+    - Alerta detalhado informando o teto de processamento por software do CAKE nesta CPU (~80–100 Mbps) e o risco de gargalo de 100% em conexões mais rápidas, orientando o usuário a definir Download em 0 (ilimitado) em "Editar limites" para moldar apenas o Upload sem sobrecarregar o processador.
+    - Em hardwares modernos com acelerador em silício (`hw_flowoffload_capable`, como MediaTek Filogic PPE), o modal informa transparentemente que o acelerador operará em modo híbrido/software com total capacidade na CPU multicore.
+  - **Badges Contextuais no Card do Painel Principal (`src/modules/render.js`)**:
+    - O card CAKE / SQM passa a exibir aviso informativo imediato sobre a capacidade de processamento do hardware detectado (Single-Core vs Multicore com PPE).
+    - Modal de limites (`editSqmLimits`) enriquecido com o alerta `modernPpeNotice` e atalho rápido de otimização de Upload.
+  - **Otimizações e Dicas de Silício Wi-Fi no Modal de Configuração (`src/modules/wifi.js`)**:
+    - **Card de Silício (`hwWifiBanner`)**:
+      - Em MIPS Legado / Atheros (chips `ath9k` e `ath10k`): explicita a aceleração criptográfica AES em silício do hardware, orientando o uso de WPA2-PSK puro e largura de 20 MHz no 2,4 GHz para evitar tempestades de retransmissões que afetam CPUs de 1 núcleo.
+      - Em ARM Moderno (Filogic / Broadcom): explicita o suporte nativo a WPA3-SAE com PMF, aceleração WED / DMA direto e canais largos (80/160 MHz) para baixa latência.
+    - **Feedback em Tempo Real no Seletor de Criptografia (`encAlert`)**:
+      - WPA2-PSK (`psk2`): destaca a aceleração direta por hardware nos chips Atheros/MIPS e a compatibilidade universal com IoT.
+      - WPA2/WPA3 Misto (`sae-mixed`): alerta sobre o maior consumo de CPU em MIPS single-core durante o handshake WPA3 vs padrão recomendado para hardwares modernos.
+      - WPA3-SAE Puro (`sae`): alerta sobre a exigência mandatória de PMF e bloqueio de aparelhos legados.
+      - Sem Senha (`none`): alerta vermelho imediato de rede aberta.
+    - **Canal 2,4 GHz (`showManualChannelsModal`)**: Inclui dica contextual recomendando largura de 20 MHz (HT20) em processadores de 1 núcleo para mitigar erros de CRC.
+  - **Auditorias & Integridade**:
+    - 100% de cobertura nos 3 idiomas (PT-BR, EN, ES) com 1.601 chaves auditadas em `scripts/audit_i18n.py`.
+    - 100% de conformidade POSIX e isolamento fw3/fw4 em `scripts/audit_shell_scripts.py`.
+    - Suíte de testes locais de hardware e satélite 100% aprovada.
+
+- **📶 Controle Seletivo de Frequências Wi-Fi (Toggles 2.4 GHz, 5 GHz e 6 GHz / Wi-Fi 7) e Resiliência de RF (02/10/2026)**:
+  - **Toggles Independentes por Frequência no Modal Wi-Fi**:
+    - Adicionados seletores independentes no modal de edição de rede (`editWifiNetwork`) permitindo ativar ou desativar frequências específicas individualmente (ex: operar apenas em 2.4 GHz e manter 5 GHz desligado, ou vice-versa).
+    - Suporte nativo a roteadores Dual-Band (2.4 GHz e 5 GHz) e Tri-Band / Wi-Fi 7 (6 GHz) com cores distintas (Âmbar 2.4G, Azul 5G e Esmeralda 6G).
+    - Status em tempo real ("Ativa" / "Desativada"), dicas dinâmicas de SSID por frequência e adaptação visual com esmaecimento de campos de nome de rede quando em modo separado (Split).
+  - **Trava de Segurança Anti-Lockout Reativa**:
+    - Proteção no frontend e backend (`wifi.sh`): impede que o usuário desative todas as bandas de frequência simultaneamente, prevenindo perda total de conectividade sem fio. Exibe alerta em tempo real e bloqueia o botão de salvar.
+  - **Backend Cirúrgico no UCI Wireless (`root/usr/lib/ark/modules/wifi.sh`)**:
+    - Novos parâmetros `enable_2g`, `enable_5g` e `enable_6g` no comando `wifi-settings`.
+    - Controle aplicado diretamente nas seções de interface `default_radioX` via `disabled='0'|'1'`, garantindo que a transmissão de radiofrequência e emissão de beacons cessem de imediato pelo `hostapd` com repouso dos amplificadores de potência (PA/LNA).
+    - Preserva o estado de canais DFS (sem a penalidade de 60 segundos de silêncio obrigatório do Radar CAC ao religar a rede) e mantém intactas quaisquer redes secundárias ou de convidados associadas ao mesmo chip.
+    - Reativação automática do dispositivo de rádio (`wireless.$radio.disabled=0`) ao habilitar qualquer banda.
+  - **Internacionalização e Estilo**:
+    - 28 novas strings integradas e auditadas em Português (Brasil), Inglês e Espanhol neutro (`audit_i18n.py`).
+    - Estilização de chips inativos (`.is-disabled`) no painel de visão geral (`render.js` e `overview.css`).
+  - **Validação Visual Rigorosa e Teste Físico**:
+    - 5 cenários validados visualmente via automação Chrome Headless (`scripts/verify_wifi_modal_visual.py`).
+
+## 1.5.6
+
+- **🌐 Compatibilidade Internacional, Blindagem Anti-Blackout Multi-WAN e Resiliência SQM/AdGuard (02/10/2026)**:
+  - **i18n & Normalização Global de Tradução**:
+    - Normalização com `.trim()` e preservação estrita de espaçamento em nós de texto do DOM no `translateText()`, garantindo tradução integral para Inglês e Espanhol em todos os cards, seções e modais.
+    - Detecção dinâmica de idioma via `ark_language()` no `common.sh`, herdando automaticamente `luci.main.lang` em novas instalações internacionais e respeitando escolhas explícitas do usuário.
+  - **Blindagem Anti-Blackout de Internet no Multi-WAN (mwan3)**:
+    - Desativação automática do serviço `mwan3` quando o roteador opera em Single-WAN (1 única WAN ativa), eliminando sequestro de rotas padrão por falsos positivos.
+    - Transição do alvo de ping padrão de `registro_br` (200.160.2.3 no Brasil) para Anycast global Cloudflare (`1.1.1.1 1.0.0.1 8.8.8.8`).
+    - Configuração de `initial_state=online`, relaxamento do timeout de ping de 2s para 4s e intervalo de 10s para acomodar latências internacionais sem quedas de rota.
+  - **Domínio Regulatório Wi-Fi Abrangente**:
+    - Expansão do seletor regulatório para lista global completa ISO 3166-1 (incluindo Paquistão `PK`, Índia `IN`, Arábia Saudita `SA`, Turquia `TR`, etc.) no Assistente Inicial e no modal Wi-Fi.
+    - Detecção dinâmica do dispositivo de rádio (`radio0`/`wlan0`) sem amarras a drivers proprietários MediaTek.
+  - **Calibração Universal de SQM com Fallback HTTP Multi-Stream**:
+    - Suporte a medição de velocidade em sistemas `opkg` ou sem binário `speedtest-go`, utilizando o motor nativo paralelo Fast.com/Cloudflare (`speedtest_download_fallback_mbps` e `speedtest_upload_fallback_mbps`).
+    - O SQM automático não falha mais por dependência de pacotes externos, calculando taxas de shaper em qualquer arquitetura.
+  - **Circuit Breaker Estrito para AdGuard Home**:
+    - Validação de execução prévia antes de qualquer redirecionamento de DNS no `dnsmasq`: se o binário não puder ser instalado ou o AdGuard Home não estiver escutando na porta `5335`, a ativação é abortada e o DNS padrão é mantido intacto.
+    - Geração automática de arquivo YAML inicial configurado para a porta `5335` e porta web `3000`, evitando colisões com a porta 53 do dnsmasq e impedindo blackouts na rede local.
+
+## 1.5.5
+
+- **🛡️ Blindagem Quádrupla IPv6 SLAAC Apple, Isolamento de Sub-redes WAN/LAN e Auto-Cura de Boot (30/09/2026)**:
+  - **Compatibilidade Apple iOS / macOS (RFC 4862 & RFC 8106)**:
+    - **Expurgo Automático de `managed-config` (M-bit)**: O iOS/macOS não suporta DHCPv6 com estado para atribuição de endereços em redes locais. Forçamento de `other-config` (O-bit) com `ra_slaac=1` e `ra_default=1`, garantindo entrega de endereços globais via SLAAC puro e DNS stateless (RDNSS).
+    - **Intervalos de RA Acelerados para APs e Mobile**: Ajuste de `ra_mininterval='20'` e `ra_maxinterval='60'` no `odhcpd`, assegurando recuperação imediata de prefixos globais por celulares e APs satélites (ex: Acer Predator T7).
+  - **Isolamento Estrito de Sub-redes WAN na Bridge LAN**:
+    - **Detecção e Expurgo de Prefixos de WAN PPPoE na LAN**: Purga automática de qualquer endereço estático pertencente à WAN (`feca:e2a2` etc.) indevidamente adicionado a `network.lan.ip6addr`, eliminando blackholes de tráfego. Suporte simultâneo a opções escalares (`option`) e listas (`list`) no UCI.
+  - **Proteção e Preservação de Modos Operacionais**:
+    - **Respeito a IPv4 Puro (`ipv4_only`)**: Rotinas de boot e auditoria agora respeitam quando o usuário desativa o IPv6, não ativando flags de RA e não interferindo no `odhcpd`.
+    - **Modo IPv6 Full e Seletivo**: Total compatibilidade e coerência garantida em `ipv6_only`, `dual_stack`, `selective` e `relay`.
+  - **Auditoria e Auto-Cura Viva (`ark-doctor`)**:
+    - Novas checagens `11b.2` (*Compatibilidade SLAAC Apple*) e `11b.3` (*Isolamento de Sub-rede WAN/LAN*) com auto-reparo instantâneo via `ark-doctor --fix`.
+  - **Persistência de Boot no Kernel (`ark-safe-shutdown` / `common.sh`)**:
+    - Invocação de `ark_sanitize_lan_ipv6` em todo boot do roteador (`START=99`), garantindo que nenhuma alteração manual externa possa reintroduzir as falhas.
+
+## 1.5.2
+
+- **⚡ WireGuard Client Instantâneo, BitTorrent PBR Amplo Seguro, Calibração de Hardware e Blindagem AdGuard Home (20/09/2026)**:
+  - **⚡ Conexão e Edição Instantânea do Cliente WireGuard (Zero Timeout)**:
+    - **Eliminação Definitiva do Erro *"Request timeout"***: Ao alterar o endereço do servidor VPN (`Endpoint = ...`) ou importar um arquivo `.conf`, o backend agora persiste os dados UCI e responde `ok` ao LuCI RPC de forma instantânea (< 100ms), reduzindo o tempo de resposta no roteador real de 12s para impressionantes **0.730s**!
+    - **Execução Assíncrona e Desacoplada no Kernel**: O recarregamento pesado do firewall `fw4` (`/etc/init.d/firewall reload`), a subida da interface (`/sbin/ifup wgclient`) e a sincronização do endpoint (`/usr/sbin/ark-wireguard-wan-sync`) rodam em um subshell em segundo plano totalmente desvinculado (`</dev/null >/dev/null 2>&1 &`), liberando imediatamente a requisição HTTP e evitando estouro de timeout do LuCI RPC.
+    - **Proteção Transitória no Frontend**: Tratamento inteligente com `reloadAfterExpectedDisconnect(err, ...)` em `src/modules/vpn.js` e no bundle `overview.js`, absorvendo micro-oscilações decorrentes de reorganização de rotas de rede sem travamentos ou alertas falsos na tela.
+  - **🌐 BitTorrent PBR Safe Wide Mode (Balanceamento Amplo Seguro nas 2 WANs)**:
+    - **Cobertura de 64.500+ Portas Dinâmicas**: Distribuição balanceada 50/50 de tráfego P2P/BitTorrent nas faixas `1024:8079, 8081:8442, 8444:65535` em TCP e UDP, maximizando as taxas de download em conexões Dual-WAN simultâneas.
+    - **Blindagem de Portas Críticas de Sistema**: Proteção estrita das portas de sistema (80, 443, 53, 22, 8080, 8443) mantidas 100% na WAN1 primária (`wan_then_wan2`), evitando que navegação web segura, bancos, jogos ou tráfego QUIC/HTTP3 sofram alternância ou quedas de sessão.
+    - **Modal Visual Interativo (`showMwanTorrentModal`)**: Novo botão "⚙️ Portas" no card de BitTorrent com seleção clara entre 3 modos: *Modo Amplo Seguro (Recomendado)*, *Modo Clássico* (51413 e 6881-6999) e *Personalizado*.
+  - **🛡️ Blindagem Total Anti-Religamento do AdGuard Home (Circuit Breaker no Kernel e Hotplug)**:
+    - **Causa Raiz Identificada no Boot (`/etc/mwan3.user`)**: Descoberto e eliminado o gatilho residual em `/etc/mwan3.user` herdado de versões legadas de failover, onde qualquer evento de rede do netifd/mwan3track (`ACTION=connected` ou `ACTION=ifup`) invocava incondicionalmente `/etc/init.d/adguardhome restart &` ao subir as interfaces WAN, religando o daemon à revelia da configuração do usuário.
+    - **Hard Circuit Breaker em `/etc/init.d/adguardhome`**: Injeção direta no topo de `start_service()` e `boot()` do script de serviço: se `adblock_enabled='0'` ou `adguard_enabled='0'`, o script aborta imediatamente retornando código 0, sem instanciar `ujail`, sem abrir instâncias no `procd` e sem tocar no binário `/usr/bin/AdGuardHome`.
+    - **Sanitização Universal no Boot e Desativação (`99-ark-router-dhcp-sanitize` e `adblock.sh`)**: O instalador e o módulo `adblock_disable()` agora corrigem automaticamente o arquivo `/etc/mwan3.user` e injetam a trava de segurança no `/etc/init.d/adguardhome` com sintaxe pura POSIX `awk`.
+    - **Vigilância Ativa no Watchdog (`ark-firewall-guard`)**: No boot do roteador, se o AdGuard estiver configurado como desativado, o watchdog extermina sumariamente qualquer processo fantasma (`killall -9 AdGuardHome adguardhome`), cancela o registro no ubus (`ubus call service delete '{"name":"adguardhome"}'`) e remove links órfãos em `/etc/rc.d/`.
+    - **Eliminação do Fallback Permissivo**: Substituição em todo o codebase de `[ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 1)" != "0" ]` por validação explícita afirmativa `[ "$(uci -q get ... || echo 0)" = "1" ]`, prevenindo ativações acidentais quando a chave não existir.
+  - **🎯 Latência Interna Zero-Drop com Classificação DSCP Nftables (`15-ark-dscp-priority.nft`)**:
+    - Priorização cirúrgica no kernel de pacotes sensíveis: ICMP/ICMPv6 (Ping Echo e Reply) e DNS (portas 53, 853, 5353) marcados com `CS6` (Network Control / Latência Mínima).
+    - Controle de sessão TCP (SYN, RST, FIN) marcado com `CS5` (Immediate Handshake / Teardown).
+    - Encaminhamento automático para o tin `Voice` do agendador CAKE (`diffserv4`), alcançando latência de 2 µs a 9 µs com **0 drops** absolutos, mesmo sob tráfego simultâneo intenso de centenas de Mbps de BitTorrent.
+  - **⚡ Calibração de Hardware Adaptativa Multi-Tier (`ark-hardware-tune`)**:
+    - Daemon inteligente de inicialização e calibração dinâmica (`/etc/init.d/ark-hardware-tune`) que detecta CPU e RAM e aplica perfis sob medida:
+      - **Low-Spec ($\le$ 192 MB RAM / 1 Core - ex: D-Link DGL-5500)**: Memória protegida com buffers leves (`rmem/wmem 1MB`, `fq_codel 2Mb limit 1024`, `netdev_budget=300`), RPS desativado e suporte 100% puro ao firewall legado `fw3 / iptables` sem invocar `fw4`.
+      - **Mid-Spec (192 MB a 512 MB RAM / 2 Cores - ex: Cudy WR3000 v1)**: Buffers equilibrados de 4 MB, `txqueuelen 1500`, RPS em 2 núcleos (máscara 3) e RFS com 16.384 entradas.
+      - **High-Spec (> 512 MB RAM / $\ge$ 4 Cores - ex: Acer Predator W6x MT7986 / x86_64)**: Buffers de 8 MB, `txqueuelen 2048`, RPS em todos os 4 núcleos (máscara `f`), RFS com 32.768 fluxos e `netdev_budget=600`, eliminando gargalos de driver (`NETDEV_TX_BUSY`) e estabilizando o ping interno do PC Gamer em média de **0 ms**.
+  - **🚀 Calibração de Buffer Multi-Fila LAN (`fq_codel 16MB`)**:
+    - Ajuste de `memory_limit 16Mb limit 20480 target 5ms quantum 1526` em todas as filas de hardware do adaptador `eth0`, garantindo 0b de backlog e eliminando perdas de pacotes sob cargas gigabit simétricas.
+  - **🧹 Saneamento de Rotas Fantasma IPv6 na Bridge Local (`br-lan`)**:
+    - Purga de prefixos estáticos/órfãos residuais na interface local (`br-lan`), permitindo que apenas o prefixo dinâmico delegado do provedor (`/64`) anuncie nos clientes.
+  - **🩺 Auditoria e Diagnóstico Aprofundado no ARK Doctor (`ark-doctor`)**:
+    - Novas checagens de pureza do firewall (`fw4` vs `fw3`), alinhamento de MTU Baby Jumbo (1508/1500 bytes em PPPoE), taxa de ocupação da tabela de NAT/Conntrack e monitoramento de canais Wi-Fi.
+
+## 1.5.1
+
+- **🛡️ Dupla Blindagem Automática: Anti-Zumbi DHCPv6/WAN6 e Auto-Ativação Inteligente de Wi-Fi (19/09/2026)**:
+  - **⚡ Blindagem Anti-Zumbi DHCPv6 e Sanitização Canônica de WAN6 (`ark_cleanup_dhcpv6_orphans`, `ark_sanitize_wan6_config`)**:
+    - Elimina o problema de saturação de 98% da CPU causado por processos órfãos (`odhcp6c` com PPID 1) e recargas infinitas de `firewall4`/`nlbwmon`.
+    - Auto-sanitiza no primeiro boot e na instalação (`99-ark-router-theme`) qualquer configuração de WAN6 do OpenWrt original que use `device 'wan'` (sem `@`), convertendo para o alias canônico `device '@wan'` com `reqaddress 'try'` e `reqprefix 'auto'`.
+    - Limpeza preventiva de processos órfãos no boot do sistema (`/etc/init.d/ark-safe-shutdown`).
+  - **📶 Auto-Ativação Inteligente de Wi-Fi de Fábrica com Preservação Sagrada de Estado (`ark_auto_enable_factory_wifi`)**:
+    - Detecta rádios físicos bloqueados pelo padrão virgem de fábrica do OpenWrt (`disabled '1'`) e ativa-os automaticamente no primeiro boot/instalação.
+    - Preservação Estrita da Escolha do Usuário: caso o administrador desative o Wi-Fi no painel, o estado intencional é persistido em `equipe_dashboard.main.wifi_user_disabled='1'`, impedindo terminantemente que o rádio seja religado sozinho.
+  - **🩺 Auditoria e Auto-Cura no ARK Doctor**:
+    - Adicionadas checagens dedicadas de integridade da WAN6 e de detecção de bloqueio de fábrica de rádio Wi-Fi com resolução automatizada em 1 clique (`--fix`).
+  - **📦 Telemetria com Barra de Progresso Inteligente em 'Instalar Tudo' e 'EZ Setup'**:
+    - Modal de progresso com contador de passos dinâmico, barra de gradiente animada, console monospaçado de log real e contagem regressiva de recarga.
+  - **🔄 Reinicialização Segura com Proteção em Dupla Camada (Double-Shield Storage Reboot)**:
+    - Gancho de encerramento seguro (`ark-safe-shutdown`), parada graciosa de daemons/servidores web e descarga tripla de buffers de memória RAM (`sync; sync; sync`) para proteção de mídias USB/SD contra corrupção.
+  - **🌐 Sincronização Bidirecional e UX de DNS LAN (`dns_dhcp_option6_sync`)**:
+    - Sincronização automática e transparente entre `uci network.lan.dns` e a opção de DHCP para clientes locais (`dhcp.lan.dhcp_option='6,...'`), garantindo que servidores DNS customizados configurados pelo usuário na aba de Rede Local sejam imediatamente refletidos na interface e anunciados a todos os dispositivos clientes sem dessincronização visual.
+  - **🚀 Otimização de Buffers de Armazenamento para Downloads Ultrarrápidos (`sysctl vm.dirty_*`)**:
+    - Calibração de `vm.dirty_background_ratio` e `vm.dirty_ratio` no kernel para gravações intensivas em SSDs e mídias externas via Aria2/BitTorrent, eliminando gargalos de I/O em taxas de transferência de 200MB/s+ sem engasgos de CPU.
+  - **📦 Arquitetura Limpa e Standalone para Integrações de Terceiros (`contrib/alldebrid/`)**:
+    - Desacoplamento estrutural: integrações experimentais ou de serviços externos de download (como AllDebrid bridge/API) foram encapsuladas em diretório autônomo `contrib/alldebrid/` com daemon de inicialização e documentação próprios, mantendo a árvore base do ARK Router leve, enxuta e focada em telecomunicações puras.
+
 ## 1.0.2
 
 - **🚀 Arquitetura Modular, Purga Ativa de Mesh, Segurança Hostapd e Telemetria Multi-AP (17/09/2026)**:
