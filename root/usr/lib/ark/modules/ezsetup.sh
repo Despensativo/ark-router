@@ -589,7 +589,7 @@ ark_remove_opposite_profile() {
 }
 
 ark_install_package_file() {
-	local pkg pm asset_name install_ok unpack_dir cfg
+	local pkg pm asset_name install_ok unpack_dir cfg data_member
 	pkg="$1"
 	pm="$2"
 	asset_name="${3:-$(basename "$pkg")}"
@@ -618,9 +618,10 @@ ark_install_package_file() {
 
 		# Tenta descompactar como tar.gz direto ou extrair data.tar.gz de IPK
 		if tar -tzf "$pkg" >/dev/null 2>&1; then
-			if tar -tzf "$pkg" | grep -q 'data\.tar\.gz'; then
-				# Formato IPK clássico (tar contendo data.tar.gz)
-				tar -xzf "$pkg" data.tar.gz -O 2>/dev/null | tar -xzf - -C "$unpack_dir" 2>/dev/null || true
+			data_member="$(tar -tzf "$pkg" 2>/dev/null | grep 'data\.tar\.gz' | head -n 1)"
+			if [ -n "$data_member" ]; then
+				# Formato IPK clássico (tar contendo data.tar.gz ou ./data.tar.gz)
+				tar -xzf "$pkg" "$data_member" -O 2>/dev/null | tar -xzf - -C "$unpack_dir" 2>/dev/null || true
 			else
 				# Formato tar.gz direto (ex: APK empacotado como tar.gz)
 				tar -xzf "$pkg" -C "$unpack_dir" 2>/dev/null || true
@@ -699,11 +700,12 @@ ark_http_download() {
 }
 
 ark_latest_release() {
-	local repo tag
+	local repo tag ts
 	repo="$(ark_update_repo)"
+	ts="$(date +%s 2>/dev/null || echo 0)"
 	tag=""
-	# 1. Tentativa primária ultra-rápida via raw.githubusercontent.com (sem rate limit e sem jsonfilter)
-	tag="$(ark_http_get "https://raw.githubusercontent.com/$repo/main/VERSION" | tr -d '\r\n v')"
+	# 1. Tentativa primária ultra-rápida via raw.githubusercontent.com com cache-buster
+	tag="$(ark_http_get "https://raw.githubusercontent.com/$repo/main/VERSION?t=$ts" | tr -d '\r\n v')"
 	# 2. Fallback via releases/latest da API do GitHub
 	if [ -z "$tag" ]; then
 		tag="$(ark_http_get "https://api.github.com/repos/$repo/releases/latest" "User-Agent: ARK-Router" | jsonfilter -e '@.tag_name' 2>/dev/null | head -n 1 | tr -d '\r\n v')"
@@ -716,14 +718,15 @@ ark_latest_release() {
 }
 
 ark_latest_changelog() {
-	local repo body
+	local repo body ts
 	repo="$(ark_update_repo)"
+	ts="$(date +%s 2>/dev/null || echo 0)"
 	body=""
 	# 1. Tentativa via GitHub API releases/latest
 	body="$(ark_http_get "https://api.github.com/repos/$repo/releases/latest" "User-Agent: ARK-Router" | jsonfilter -e '@.body' 2>/dev/null || true)"
 	# 2. Fallback via raw.githubusercontent.com docs/LATEST_CHANGELOG.md
 	if [ -z "$body" ]; then
-		body="$(ark_http_get "https://raw.githubusercontent.com/$repo/main/docs/LATEST_CHANGELOG.md" 2>/dev/null || true)"
+		body="$(ark_http_get "https://raw.githubusercontent.com/$repo/main/docs/LATEST_CHANGELOG.md?t=$ts" 2>/dev/null || true)"
 	fi
 	printf '%s' "$body"
 }
@@ -1952,7 +1955,11 @@ handle_ezsetup() {
 		if [ "$force" = 0 ] && [ -f "$cache_file" ]; then
 			cache_mtime="$(date -r "$cache_file" +%s 2>/dev/null || echo 0)"
 			cache_age=$((now - cache_mtime))
-			if [ "$cache_age" -ge 0 ] && [ "$cache_age" -lt 43200 ]; then
+			cache_ttl=43200
+			if grep -q '"available":false' "$cache_file" 2>/dev/null || ! grep -q '"error":""' "$cache_file" 2>/dev/null; then
+				cache_ttl=300
+			fi
+			if [ "$cache_age" -ge 0 ] && [ "$cache_age" -lt "$cache_ttl" ]; then
 				cache_valid=1
 			fi
 		fi

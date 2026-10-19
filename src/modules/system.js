@@ -141,10 +141,14 @@ const systemMethods = {
 		if(button){button.disabled=true;button.textContent='Verificando…';}
 		const node=document.getElementById('ex-self-update-result'); if(node)node.replaceChildren(E('div',{class:'ex-update-card'},[E('small',{class:'ex-muted'},['Consultando GitHub Releases…'])]));
 		const args = ['self-update-check'];
-		if(force) args.push('force');
+		if(force !== false) args.push('force');
 		return fs.exec('/usr/sbin/equipe-dashboard-control',args,20000).then(L.bind(function(r){
 			if(r.code)throw new Error(r.stderr||'Falha ao verificar atualização');
 			let info={}; try{info=JSON.parse(r.stdout||'{}');}catch(e){throw new Error('Resposta de atualização inválida');}
+			try{
+				localStorage.setItem('ark_last_update_check_time',String(Date.now()));
+				localStorage.setItem('ark_last_update_check_data',JSON.stringify(info));
+			}catch(e){}
 			this.renderSelfUpdateResult(info);
 			if(info.available){
 				this.showUpdateConfirmModal(info);
@@ -656,7 +660,7 @@ const systemMethods = {
 						E('small',{class:'ex-muted'},['Gerenciador: ',manager])
 					]),
 					E('div',{class:'ex-feature-actions',style:'margin-top: 8px; flex-wrap: wrap; gap: 8px;'},[
-						E('button',{class:'ex-mini-button','click':L.bind(function(ev){this.checkSelfUpdate(ev.currentTarget);},this)},['Verificar atualização']),
+						E('button',{class:'ex-mini-button','click':L.bind(function(ev){this.checkSelfUpdate(ev.currentTarget,true);},this)},['Verificar atualização']),
 						E('button',{class:'ex-mini-button','style':'background: rgba(127,127,127,.12);','click':L.bind(this.openManualUpdateModal,this)},['📦 Instalar manual/offline'])
 					])
 				]),
