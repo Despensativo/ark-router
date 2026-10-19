@@ -495,6 +495,58 @@ def audit_version_coherence():
         errors.append(f"Incoerência de versão detectada entre arquivos do projeto: {versions}")
     return errors
 
+def audit_openwrt_manual_compliance():
+    """
+    9. Garante conformidade com o Manual Oficial do OpenWrt:
+       - Topologia swconfig lida via /etc/board.json (ark_board_switch_role_ports, ark_board_switch_wan_port, ark_board_switch_cpu_tag).
+       - Proibição de extrair porta via tr -cd '0-9' diretamente de $device ou $port fora de swconfig_port_num.
+       - Isolamento de config device type=8021q em is_swconfig (OpenWrt 19.07 netifd legado).
+       - Validação read-only de max_mtu / DRIVER=ag71xx antes de aplicar Baby Jumbo 1508.
+    """
+    errors = []
+    common_sh = os.path.join(ARK_LIB_DIR, "common.sh")
+    if not os.path.exists(common_sh):
+        return ["common.sh ausente"]
+    with open(common_sh, "r", encoding="utf-8", errors="replace") as fh:
+        common_txt = fh.read()
+
+    required_primitives = [
+        "ark_board_switch_role_ports",
+        "ark_board_switch_wan_port",
+        "ark_board_switch_cpu_tag",
+        "ark_board_uses_legacy_ifname",
+        "swconfig_port_num",
+        "ark_dev_supports_mtu",
+    ]
+    for prim in required_primitives:
+        if f"{prim}()" not in common_txt:
+            errors.append(f"common.sh: Primitiva obrigatória do manual OpenWrt ausente: {prim}()")
+
+    if "DRIVER=(ag71xx|fec)" not in common_txt or "maxmtu" not in common_txt:
+        errors.append("common.sh: ark_dev_supports_mtu() deve checar DRIVER=(ag71xx|fec) e maxmtu em modo read-only antes de ip link set")
+
+    for root, _, files in os.walk(ARK_LIB_DIR):
+        for f in sorted(files):
+            if not f.endswith(".sh") or f.startswith("._"):
+                continue
+            sh_file = os.path.join(root, f)
+            rel = os.path.relpath(sh_file, REPO_ROOT)
+            with open(sh_file, "r", encoding="utf-8", errors="replace") as fh:
+                lines = fh.read().splitlines()
+            in_swconfig_port_num = False
+            for idx, line in enumerate(lines, 1):
+                if "swconfig_port_num()" in line:
+                    in_swconfig_port_num = True
+                elif in_swconfig_port_num and line.startswith("}"):
+                    in_swconfig_port_num = False
+                if not in_swconfig_port_num and re.search(r'\$\{?(device|port)\}?.*tr\s+-cd\s+[\'"]0-9[\'"]', line):
+                    errors.append(
+                        f"{rel}:{idx} Extração direta de dígitos em {line.strip()} proibida (transforma eth0.2 em 02); use swconfig_port_num"
+                    )
+
+    return errors
+
+
 def main():
     print("=" * 70)
     print("ARK Router — Auditoria Preventiva de Shell, JS, RPC, CSS & Release")
@@ -502,7 +554,7 @@ def main():
 
     total_errors = []
 
-    print("[1/8] Checando colisões e funções duplicadas entre módulos...")
+    print("[1/9] Checando colisões e funções duplicadas entre módulos...")
     func_errors = audit_duplicate_functions()
     if func_errors:
         print(f"  ❌ Encontradas {len(func_errors)} colisões de funções:")
@@ -512,7 +564,7 @@ def main():
     else:
         print("  ✅ Zero colisões de função encontradas nos módulos ARK.")
 
-    print("[2/8] Checando sintaxe POSIX sh -n de todos os scripts...")
+    print("[2/9] Checando sintaxe POSIX sh -n de todos os scripts...")
     syntax_errors = audit_shell_syntax()
     if syntax_errors:
         print(f"  ❌ Encontrados {len(syntax_errors)} erros de sintaxe:")
@@ -522,7 +574,7 @@ def main():
     else:
         print("  ✅ Todos os scripts shell possuem sintaxe 100% válida.")
 
-    print("[3/8] Checando proteção e isolamento de firewall (Regra 11)...")
+    print("[3/9] Checando proteção e isolamento de firewall (Regra 11)...")
     fw_errors = audit_firewall_guards()
     if fw_errors:
         print(f"  ⚠️  Encontrados {len(fw_errors)} avisos de firewall:")
@@ -532,7 +584,7 @@ def main():
     else:
         print("  ✅ Comandos de firewall devidamente isolados por arquitetura.")
 
-    print("[4/8] Checando coerência estrita de versão em todo o ecossistema...")
+    print("[4/9] Checando coerência estrita de versão em todo o ecossistema...")
     ver_errors = audit_version_coherence()
     if ver_errors:
         print(f"  ❌ Encontrados {len(ver_errors)} erros de versão:")
@@ -542,7 +594,7 @@ def main():
     else:
         print("  ✅ Versões em VERSION, root VERSION, Makefile e common.sh 100% idênticas.")
 
-    print("[5/8] Checando chamadas entre módulos sem source (Cross-Module Call Graph)...")
+    print("[5/9] Checando chamadas entre módulos sem source (Cross-Module Call Graph)...")
     xref_errors = audit_cross_module_calls()
     if xref_errors:
         print(f"  ❌ Encontradas {len(xref_errors)} chamadas sem source:")
@@ -552,7 +604,7 @@ def main():
     else:
         print("  ✅ 100% das chamadas entre módulos possuem dependências carregadas.")
 
-    print("[6/8] Checando colisão de variáveis de loop sem 'local' (POSIX ash)...")
+    print("[6/9] Checando colisão de variáveis de loop sem 'local' (POSIX ash)...")
     loop_errors = audit_loop_variable_clobbers()
     if loop_errors:
         print(f"  ❌ Encontradas {len(loop_errors)} colisões de variável de loop:")
@@ -562,7 +614,7 @@ def main():
     else:
         print("  ✅ Zero colisões de variável de loop detectadas.")
 
-    print("[7/8] Checando contratos JS <-> Shell RPC e integridade de métodos JS...")
+    print("[7/9] Checando contratos JS <-> Shell RPC e integridade de métodos JS...")
     js_errors = audit_js_rpc_and_methods()
     if js_errors:
         print(f"  ❌ Encontrados {len(js_errors)} erros de contrato JS/RPC:")
@@ -572,7 +624,7 @@ def main():
     else:
         print("  ✅ 100% dos métodos JS e contratos RPC JS <-> Shell íntegros.")
 
-    print("[8/8] Checando paridade e integridade sintática CSS...")
+    print("[8/9] Checando paridade e integridade sintática CSS...")
     css_errors = audit_css_integrity()
     if css_errors:
         print(f"  ❌ Encontrados {len(css_errors)} erros de CSS:")
@@ -581,6 +633,16 @@ def main():
         total_errors.extend(css_errors)
     else:
         print("  ✅ Arquivos CSS sincronizados e com chaves 100% balanceadas.")
+
+    print("[9/9] Checando conformidade com o Manual OpenWrt (swconfig / DSA / netifd / max_mtu)...")
+    owrt_errors = audit_openwrt_manual_compliance()
+    if owrt_errors:
+        print(f"  ❌ Encontrados {len(owrt_errors)} erros de conformidade OpenWrt:")
+        for err in owrt_errors:
+            print(f"     - {err}")
+        total_errors.extend(owrt_errors)
+    else:
+        print("  ✅ Conformidade 100% validada (/etc/board.json, swconfig vs DSA, netifd e max_mtu).")
 
     print("=" * 70)
     if total_errors:

@@ -364,9 +364,9 @@ handle_network() {
 		if is_swconfig; then
 			p_num="$(swconfig_port_num "$device" 2>/dev/null || true)"
 			if [ -z "$p_num" ] && [ "$iface" = wan ] && { [ "$device" = "eth0.2" ] || [ -z "$device" ]; } && [ "$(uci -q get network.autowan.wan_to_lan)" != "1" ]; then
-				p_num="5"
+				p_num="$(ark_board_switch_wan_port)"
 			fi
-			if [ -n "$p_num" ] && [ "$p_num" -ge 1 ] && [ "$p_num" -le 5 ]; then
+			if [ -n "$p_num" ] && [ "$p_num" -ge 0 ] && [ "$p_num" -le 6 ]; then
 				if [ "$iface" = wan ]; then
 					vlan_id=2
 				else
@@ -380,7 +380,7 @@ handle_network() {
 					uci -q set "network.$vsec.device=switch0"
 					uci -q set "network.$vsec.vlan=$vlan_id"
 				fi
-				uci -q set "network.$vsec.ports=$p_num 0t"
+				uci -q set "network.$vsec.ports=$p_num $(ark_board_switch_cpu_tag)"
 				effective_dev="eth0.$vlan_id"
 			fi
 		else
@@ -392,7 +392,7 @@ handle_network() {
 		fi
 
 		uci -q set "network.$iface=interface"
-		if [ -z "${ARK_ROOT:-}" ] && is_swconfig; then
+		if [ -z "${ARK_ROOT:-}" ] && ark_board_uses_legacy_ifname; then
 			uci -q delete "network.$iface.device"
 		else
 			uci -q set "network.$iface.device=$effective_dev"

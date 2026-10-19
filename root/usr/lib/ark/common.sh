@@ -1051,7 +1051,19 @@ ark_dev_supports_mtu() {
 	[ "$req_mtu" -le 1500 ] 2>/dev/null && return 0
 	local base_dev="${dev_name%%.*}"
 	[ -d "/sys/class/net/$base_dev" ] || return 0
+	if [ -r "/sys/class/net/$base_dev/device/uevent" ]; then
+		if grep -qE '^DRIVER=(ag71xx|fec)$' "/sys/class/net/$base_dev/device/uevent" 2>/dev/null; then
+			return 1
+		fi
+	fi
+	local max_k_mtu="$(ip -d link show "$base_dev" 2>/dev/null | sed -n 's/.*maxmtu \([0-9][0-9]*\).*/\1/p' | head -n 1)"
+	if [ -n "$max_k_mtu" ] && [ "$req_mtu" -gt "$max_k_mtu" ] 2>/dev/null; then
+		return 1
+	fi
 	local orig_mtu="$(cat "/sys/class/net/$base_dev/mtu" 2>/dev/null || echo 1500)"
+	if [ -n "$orig_mtu" ] && [ "$orig_mtu" -ge "$req_mtu" ] 2>/dev/null; then
+		return 0
+	fi
 	if ip link set "$base_dev" mtu "$req_mtu" 2>/dev/null; then
 		return 0
 	fi
@@ -1586,13 +1598,73 @@ swconfig_add_port_to_vlan() {
 	uci -q set "network.$sec.ports=$new_ports"
 }
 
+# Leitura canonica do /etc/board.json (Manual Oficial OpenWrt) para topologia swconfig e geracao netifd
+ark_board_switch_role_ports() {
+	local role="${1:-wan}"
+	local bfile="${ARK_ROOT:-}/etc/board.json"
+	[ -f "$bfile" ] || bfile="/etc/board.json"
+	local ports=""
+	if [ -f "$bfile" ] && command -v jsonfilter >/dev/null 2>&1; then
+		ports="$(jsonfilter -i "$bfile" -e "@.switch.*.roles[@.role=\"$role\"].ports" 2>/dev/null | head -n 1 || true)"
+	fi
+	if [ -z "$ports" ]; then
+		if [ "$role" = "wan" ]; then
+			ports="5 0t"
+		else
+			ports="1 2 3 4 0t"
+		fi
+	fi
+	printf '%s' "$ports"
+}
+
+ark_board_switch_wan_port() {
+	local bfile="${ARK_ROOT:-}/etc/board.json"
+	[ -f "$bfile" ] || bfile="/etc/board.json"
+	local p=""
+	if [ -f "$bfile" ] && command -v jsonfilter >/dev/null 2>&1; then
+		p="$(jsonfilter -i "$bfile" -e '@.switch.*.ports[@.role="wan"].num' 2>/dev/null | head -n 1 || true)"
+	fi
+	if [ -z "$p" ]; then
+		local item
+		for item in $(ark_board_switch_role_ports wan); do
+			case "$item" in
+				*t) ;;
+				[0-9]*) p="$item"; break ;;
+			esac
+		done
+	fi
+	printf '%s' "${p:-5}"
+}
+
+ark_board_switch_cpu_tag() {
+	local item
+	for item in $(ark_board_switch_role_ports wan); do
+		case "$item" in
+			*t) printf '%s' "$item"; return 0 ;;
+		esac
+	done
+	printf '0t'
+}
+
+ark_board_uses_legacy_ifname() {
+	is_swconfig && return 0
+	local bfile="${ARK_ROOT:-}/etc/board.json"
+	[ -f "$bfile" ] || bfile="/etc/board.json"
+	if [ -f "$bfile" ] && command -v jsonfilter >/dev/null 2>&1; then
+		local has_ifname="$(jsonfilter -i "$bfile" -e '@.network.wan.ifname' 2>/dev/null || true)"
+		local has_device="$(jsonfilter -i "$bfile" -e '@.network.wan.device' 2>/dev/null || true)"
+		[ -n "$has_ifname" ] && [ -z "$has_device" ] && return 0
+	fi
+	return 1
+}
+
 swconfig_port_num() {
 	case "$1" in
 		eth*.*|eth*|br-*|wlan*|phy*|pppoe-*|@*)
 			return 1
 			;;
 		wan)
-			printf '5'
+			ark_board_switch_wan_port
 			return 0
 			;;
 		lan[1-4]|port[1-5]|[1-5])
@@ -1609,10 +1681,11 @@ bridge_has_port() {
 }
 
 add_lan_port() {
-	local port="$1" p br
+	local port="$1" p br wan_p
 	if is_swconfig; then
 		p="$(swconfig_port_num "$port" 2>/dev/null || true)"
-		[ -n "$p" ] && [ "$p" != "5" ] && swconfig_add_port_to_vlan "$p" 1
+		wan_p="$(ark_board_switch_wan_port)"
+		[ -n "$p" ] && [ "$p" != "$wan_p" ] && swconfig_add_port_to_vlan "$p" 1
 		return 0
 	fi
 	br="$(lan_bridge_section)"

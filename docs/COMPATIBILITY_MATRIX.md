@@ -39,6 +39,11 @@ O código do ARK Router **NUNCA** infere capacidades do sistema baseando-se em n
 - **Razão da Transição**: O fork do `opkg` utilizado pelo OpenWrt foi descontinuado pelo upstream. O `apk` oferece resolução moderna de dependências e menor consumo de metadados.
 - **Sistemas 24.10 e Anteriores**: Continuam utilizando `opkg` como padrão oficial estável.
 
+### C. Switch, `netifd` e Limite de MTU de Hardware (`swconfig` vs `DSA` & `/etc/board.json`)
+- **Descoberta Canônica de Portas via `/etc/board.json`**: Em arquiteturas `swconfig` (OpenWrt 19.07), a porta física da WAN e a porta taggeada da CPU variam conforme o SoC (`5 0t` em QCA9558/AR8327, `0 6t` ou `4 6t` em MT7621). É proibido extrair dígitos de nomes de interface (`eth0.2` $\to$ `02`) via `tr -cd '0-9'`; toda resolução usa `swconfig_port_num()`, `ark_board_switch_role_ports()`, `ark_board_switch_wan_port()` e `ark_board_switch_cpu_tag()` lendo `/etc/board.json`.
+- **Isolamento `netifd` Legado (`option ifname`) vs Moderno (`option device` / `config device`)**: No OpenWrt 19.07 (`swconfig`), VLANs `eth0.1` e `eth0.2` são instanciadas implicitamente pelo `switch0` + `option ifname`. Criar seções `config device` com `option type '8021q'` para `eth0.X` conflita com o `netifd` legado e impede a subida do `pppd`. Funções de camada física (`_ark_set_single_device_mtu`, `ark_ensure_phys_device_mac` e `ark_board_uses_legacy_ifname`) isolam `is_swconfig`.
+- **Validação Read-Only de `max_mtu` do Driver Ethernet (`ark_dev_supports_mtu`)**: Drivers MIPS legados como `ag71xx` (QCA9558) e `fec` possuem teto rígido `hw max 1500` no kernel e rejeitam RFC 4638 Baby Jumbo (`1508`) com `-EINVAL`. Antes de configurar `1508`, `ark_dev_supports_mtu()` inspeciona `/sys/class/net/<dev>/device/uevent` (`DRIVER=ag71xx|fec`) e `ip -d link` (`maxmtu`) em modo somente leitura, fazendo fallback transparente para `1500`/`1492` sem derrubar o link.
+
 ---
 
 ## 4. Matriz de Validação em Hardware e Laboratório

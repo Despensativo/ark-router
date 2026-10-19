@@ -192,16 +192,20 @@ fi
 # 1. Repara switch_vlan 2 caso tenha sido gravada com '02 0t' em vez de '5 0t'
 # 2. Remove secoes config device (eth0 / eth0.X com type=8021q) que conflitam com a VLAN implicita do switch0 no netifd
 # 3. Remove device_mtu=1508 caso o driver Ethernet do kernel (ex: ag71xx hw max 1500) rejeite Baby Jumbo
+[ -f /usr/lib/ark/common.sh ] && . /usr/lib/ark/common.sh
+
 if command -v swconfig >/dev/null 2>&1 && swconfig dev switch0 show >/dev/null 2>&1; then
 	net_fixed=0
+	board_wan_ports="$(command -v ark_board_switch_role_ports >/dev/null 2>&1 && ark_board_switch_role_ports wan || echo '5 0t')"
+	board_wan_p="$(command -v ark_board_switch_wan_port >/dev/null 2>&1 && ark_board_switch_wan_port || echo '5')"
 	for vsec in $(uci -q show network 2>/dev/null | sed -n 's/^network\.\([^.=]*\)=switch_vlan$/\1/p'); do
 		if [ "$(uci -q get "network.$vsec.vlan")" = "2" ] && [ "$(uci -q get network.autowan.wan_to_lan)" != "1" ]; then
 			vports="$(uci -q get "network.$vsec.ports" || true)"
 			case "$vports" in
-				02\ *|*02\ 0t*)
-					uci -q set "network.$vsec.ports=5 0t"
-					swconfig dev switch0 vlan 2 set ports "5 0t" >/dev/null 2>&1 || true
-					swconfig dev switch0 port 5 set pvid 2 >/dev/null 2>&1 || true
+				02\ *|*02\ *)
+					uci -q set "network.$vsec.ports=$board_wan_ports"
+					swconfig dev switch0 vlan 2 set ports "$board_wan_ports" >/dev/null 2>&1 || true
+					swconfig dev switch0 port "$board_wan_p" set pvid 2 >/dev/null 2>&1 || true
 					swconfig dev switch0 set apply >/dev/null 2>&1 || true
 					net_fixed=1
 					;;
@@ -221,9 +225,8 @@ if command -v swconfig >/dev/null 2>&1 && swconfig dev switch0 show >/dev/null 2
 		uci -q delete network.wan.device
 		net_fixed=1
 	fi
-	if [ -d /sys/class/net/eth0 ]; then
-		orig_eth0_mtu="$(cat /sys/class/net/eth0/mtu 2>/dev/null || echo 1500)"
-		if ! ip link set eth0 mtu 1508 2>/dev/null; then
+	if [ -d /sys/class/net/eth0 ] && command -v ark_dev_supports_mtu >/dev/null 2>&1; then
+		if ! ark_dev_supports_mtu eth0 1508; then
 			for w in $(uci -q show network 2>/dev/null | sed -n 's/^network\.\(wan[0-9]*\)=interface$/\1/p'); do
 				if [ "$(uci -q get "network.$w.device_mtu")" = "1508" ]; then
 					uci -q delete "network.$w.device_mtu"
@@ -231,8 +234,6 @@ if command -v swconfig >/dev/null 2>&1 && swconfig dev switch0 show >/dev/null 2
 					net_fixed=1
 				fi
 			done
-		else
-			[ -n "$orig_eth0_mtu" ] && ip link set eth0 mtu "$orig_eth0_mtu" 2>/dev/null || true
 		fi
 	fi
 	if [ "$net_fixed" = 1 ]; then
