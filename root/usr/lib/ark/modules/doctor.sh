@@ -24,6 +24,19 @@ fi
 unset _lib
 
 ark_doctor_audit() {
+	local auto_fix format log_details root_prefix uci_cmd mem_total_kb mem_free_kb mem_total_mb mem_free_mb top_proc pid max_p
+	local max_r p overlay_free_kb sqm_has_active wan proto wan_dev expected_sqm_dev sqm_sec sqm_enabled cur_sqm_iface cur_ov
+	local cur_ll cur_mpu exp_ov exp_ll exp_mpu ov_reason ov_mismatch cur_mtu dev_mtu phys_dev dev_sec_count dev_has_non_1508
+	local s s_mtu real_phys_mtu real_ppp_mtu expected_ppp_mtu probed_ppp_mtu mtu_defect mtu_err_msg has_ppe flow_offload mwan_active_count w
+	local flow_offload_hw dnsmasq_pid lease_file lease_count dhcp_ignore sat_sqm_active sat_mwan_active igmp_cfg igmp_dev real_igmp has_uci_mesh sec
+	local orphan_mesh iface legacy_rules fw_user_file fw_user_has_iptables upnp_is_legacy sqm_is_legacy culprit q_dir has_zombie_dhcp has_bad_wan6_dev has_wan6_configured
+	local dev parent_wan seen_wan6_parents v6_mode missing_wan6 lan_cur_ra ipv6_mode_chk lan_ra_prefer_old has_managed_ra flg lan_slaac_active lan_wan_pfx_conflict
+	local pfx mac_collision_found mac_collision_dev mac_collision_val wan_macs w_iface w_dev w_mac d_sec lan_ports p_mac p_mac_lower
+	local wm rogue_netdev_found t ipv6_mode wan_has_ipv6 wan6_proto lan_ra lan_dhcpv6 filter_aaaa relay expected_service wan_masq6
+	local z_idx z_name mwan3_conf orphan_mwan_found orphan_names m_iface net_proto net_auto net_dev m_mem target_if t_proto
+	local t_dev user_wifi_disabled total_radios disabled_radios r sec1 other_sec fix_sec chk_sec kv_sec chk_iface cur_year
+	local cur_date_str cur_tz clock_has_fake_rtc ntp_srv_en intercept_status intercept_desc ct_count ct_max ct_pct dist_target has_native_hw_queues cpu_cores_chk
+	local irq_running ap_conflict_found ap_conflict_svcs xlat_found xlat_secs xlat_s wan_proto_v4
 	auto_fix="${1:-0}"
 	format="${2:-text}"
 	errors=0
@@ -264,11 +277,25 @@ ark_doctor_audit() {
 		# 4. Checagem de MTU e Baby Jumbo (1508)
 		cur_mtu="$(uci -q get "network.$wan.mtu")"
 		dev_mtu="$(uci -q get "network.$wan.device_mtu")"
-		if [ "$dev_mtu" = 1508 ] || [ "$cur_mtu" = 1500 -a "$proto" = pppoe ]; then
-			phys_dev="$wan_dev"
-			[ -n "$phys_dev" ] || phys_dev="$(uci -q get "network.$wan.ifname")"
-			[ -n "$phys_dev" ] || phys_dev="$(uci -q get "network.$wan.ark_phys_port")"
+		phys_dev="$wan_dev"
+		[ -n "$phys_dev" ] || phys_dev="$(uci -q get "network.$wan.ifname")"
+		[ -n "$phys_dev" ] || phys_dev="$(uci -q get "network.$wan.ark_phys_port")"
 
+		if [ "$proto" != "pppoe" ] && [ "$dev_mtu" = "1508" ]; then
+			if [ "$auto_fix" = 1 ]; then
+				[ -n "$phys_dev" ] && ark_ensure_phys_device_mtu "$phys_dev" 1500
+				uci -q delete "network.$wan.device_mtu"
+				[ "$cur_mtu" = "1492" ] && uci -q delete "network.$wan.mtu"
+				uci commit network
+				command -v ark_ensure_wan_mtu_fix >/dev/null 2>&1 && ark_ensure_wan_mtu_fix
+				command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
+				fixes_applied=$((fixes_applied + 1))
+				add_check "MTU Baby Jumbo ($wan)" "FIXED" "Resíduo Baby Jumbo (1508) removido de interface $proto; porta $phys_dev restaurada para 1500 bytes."
+			else
+				warnings=$((warnings + 1))
+				add_check "MTU Baby Jumbo ($wan)" "WARN" "Interface $wan opera em modo $proto, mas possui device_mtu=1508 residual de PPPoE."
+			fi
+		elif [ "$proto" = "pppoe" ] && { [ "$dev_mtu" = 1508 ] || [ "$cur_mtu" = 1500 ]; }; then
 			dev_sec_count=0
 			dev_has_non_1508=0
 			for s in $(uci -q show network 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1); do
@@ -284,10 +311,17 @@ ark_doctor_audit() {
 			[ -z "$real_phys_mtu" ] && [ -f "/sys/class/net/$phys_dev/mtu" ] && [ -z "${ARK_ROOT}" ] && real_phys_mtu="$(cat "/sys/class/net/$phys_dev/mtu" 2>/dev/null || true)"
 
 			real_ppp_mtu=""
-			if [ "$proto" = pppoe ]; then
-				[ -f "${ARK_ROOT}/sys/class/net/pppoe-$wan/mtu" ] && real_ppp_mtu="$(cat "${ARK_ROOT}/sys/class/net/pppoe-$wan/mtu" 2>/dev/null || true)"
-				[ -z "$real_ppp_mtu" ] && [ -f "/sys/class/net/pppoe-$wan/mtu" ] && [ -z "${ARK_ROOT}" ] && real_ppp_mtu="$(cat "/sys/class/net/pppoe-$wan/mtu" 2>/dev/null || true)"
-			fi
+			[ -f "${ARK_ROOT}/sys/class/net/pppoe-$wan/mtu" ] && real_ppp_mtu="$(cat "${ARK_ROOT}/sys/class/net/pppoe-$wan/mtu" 2>/dev/null || true)"
+			[ -z "$real_ppp_mtu" ] && [ -f "/sys/class/net/pppoe-$wan/mtu" ] && [ -z "${ARK_ROOT}" ] && real_ppp_mtu="$(cat "/sys/class/net/pppoe-$wan/mtu" 2>/dev/null || true)"
+
+			expected_ppp_mtu=1500
+			probed_ppp_mtu=""
+			[ -f "${ARK_ROOT}/tmp/ark-mtu-probed-$wan" ] && probed_ppp_mtu="$(cat "${ARK_ROOT}/tmp/ark-mtu-probed-$wan" 2>/dev/null || true)"
+			[ -z "$probed_ppp_mtu" ] && [ -z "${ARK_ROOT}" ] && [ -f "/tmp/ark-mtu-probed-$wan" ] && probed_ppp_mtu="$(cat "/tmp/ark-mtu-probed-$wan" 2>/dev/null || true)"
+			case "$probed_ppp_mtu" in
+				''|*[!0-9]*) ;;
+				*) [ "$probed_ppp_mtu" -ge 1280 ] && [ "$probed_ppp_mtu" -le 1500 ] && expected_ppp_mtu="$probed_ppp_mtu" ;;
+			esac
 
 			mtu_defect=0
 			mtu_err_msg=""
@@ -301,9 +335,9 @@ ark_doctor_audit() {
 			elif [ -n "$real_phys_mtu" ] && [ "$real_phys_mtu" -lt 1508 ] 2>/dev/null; then
 				mtu_defect=1
 				mtu_err_msg="Porta fisica $phys_dev opera em MTU $real_phys_mtu no kernel (esperado: 1508)."
-			elif [ "$proto" = pppoe ] && [ -n "$real_ppp_mtu" ] && [ "$real_ppp_mtu" -lt 1500 ] 2>/dev/null; then
+			elif [ -n "$real_ppp_mtu" ] && [ "$real_ppp_mtu" -lt "$expected_ppp_mtu" ] 2>/dev/null; then
 				mtu_defect=1
-				mtu_err_msg="Interface pppoe-$wan opera em MTU $real_ppp_mtu no kernel (esperado: 1500)."
+				mtu_err_msg="Interface pppoe-$wan opera em MTU $real_ppp_mtu no kernel (esperado: $expected_ppp_mtu)."
 			fi
 
 			if [ "$mtu_defect" = 1 ]; then
@@ -312,15 +346,19 @@ ark_doctor_audit() {
 					uci -q set "network.$wan.mtu=1500"
 					uci -q set "network.$wan.device_mtu=1508"
 					uci commit network
+					command -v ark_ensure_wan_mtu_fix >/dev/null 2>&1 && ark_ensure_wan_mtu_fix
 					if [ -n "${ARK_ROOT}" ] && [ -f "${ARK_ROOT}/sys/class/net/$phys_dev/mtu" ]; then
 						printf '1508\n' > "${ARK_ROOT}/sys/class/net/$phys_dev/mtu" 2>/dev/null || true
-						[ "$proto" = pppoe ] && [ -f "${ARK_ROOT}/sys/class/net/pppoe-$wan/mtu" ] && printf '1500\n' > "${ARK_ROOT}/sys/class/net/pppoe-$wan/mtu" 2>/dev/null || true
+						[ -f "${ARK_ROOT}/sys/class/net/pppoe-$wan/mtu" ] && printf '%s\n' "$expected_ppp_mtu" > "${ARK_ROOT}/sys/class/net/pppoe-$wan/mtu" 2>/dev/null || true
 					elif [ -z "${ARK_ROOT}" ]; then
 						ip link set "$phys_dev" mtu 1508 2>/dev/null || true
-						[ "$proto" = pppoe ] && ip link set "pppoe-$wan" mtu 1500 2>/dev/null || true
-						[ -f "/etc/hotplug.d/iface/05-ark-pppoe-babyjumbo" ] && chmod +x "/etc/hotplug.d/iface/05-ark-pppoe-babyjumbo" 2>/dev/null || true
+						if [ -f "/etc/hotplug.d/iface/05-ark-pppoe-babyjumbo" ]; then
+							chmod +x "/etc/hotplug.d/iface/05-ark-pppoe-babyjumbo" 2>/dev/null || true
+							ACTION=ifup INTERFACE="$wan" DEVICE="pppoe-$wan" /etc/hotplug.d/iface/05-ark-pppoe-babyjumbo >/dev/null 2>&1 || true
+						fi
 					fi
 					[ -n "${ARK_ROOT}" ] && [ -f "${ARK_ROOT}/etc/hotplug.d/iface/05-ark-pppoe-babyjumbo" ] && chmod +x "${ARK_ROOT}/etc/hotplug.d/iface/05-ark-pppoe-babyjumbo" 2>/dev/null || true
+					command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
 					fixes_applied=$((fixes_applied + 1))
 					add_check "MTU Baby Jumbo ($wan)" "FIXED" "Porta $phys_dev ajustada para MTU 1508 e duplicatas saneadas."
 				else
@@ -328,7 +366,9 @@ ark_doctor_audit() {
 					add_check "MTU Baby Jumbo ($wan)" "FAIL" "$mtu_err_msg"
 				fi
 			else
-				add_check "MTU Baby Jumbo ($wan)" "OK" "Porta $phys_dev e interface $wan alinhadas em 1508/1500 bytes."
+				command -v ark_ensure_wan_mtu_fix >/dev/null 2>&1 && ark_ensure_wan_mtu_fix
+				command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
+				add_check "MTU Baby Jumbo ($wan)" "OK" "Porta $phys_dev e interface $wan alinhadas em 1508/${expected_ppp_mtu} bytes."
 			fi
 		fi
 	done
@@ -612,7 +652,7 @@ ark_doctor_audit() {
 				fi
 				if [ "$sqm_is_legacy" = 1 ]; then
 					for sec in $(uci -q show sqm 2>/dev/null | grep '=queue$' | cut -d. -f2 | cut -d= -f1); do
-						[ "$(uci -q get "sqm.$sec.script")" = "simple.qos" ] && uci -q set "sqm.$sec.script=piece_of_cake.qos"
+						[ "$(uci -q get "sqm.$sec.script")" = "simple.qos" ] && uci -q set "sqm.$sec.script=layer_cake.qos"
 					done
 					uci commit sqm 2>/dev/null || true
 					/etc/init.d/sqm restart >/dev/null 2>&1 || true
@@ -802,18 +842,32 @@ ark_doctor_audit() {
 		fi
 	fi
 
-	# 11b.3 Checagem de Sub-redes WAN Conflitantes na Bridge LAN
+	# 11b.3 Checagem de Sub-redes WAN Conflitantes na Bridge LAN e Hotplugs Fantasmas
 	lan_wan_pfx_conflict=0
 	for pfx in $($uci_cmd get network.lan.ip6addr 2>/dev/null); do
 		case "$pfx" in
-			*feca:e2a2*|*FECA:E2A2*) lan_wan_pfx_conflict=1 ;;
+			*feca:*|*FECA:*) lan_wan_pfx_conflict=1 ;;
 		esac
 	done
+	if [ -z "$root_prefix" ]; then
+		for hp_f in /etc/hotplug.d/iface/*ipv6-slaac* /etc/hotplug.d/iface/*.disabled /etc/hotplug.d/iface/._*; do
+			[ -e "$hp_f" ] && lan_wan_pfx_conflict=1
+		done
+		local wan6_p2p_pfx="$(ip -6 -o addr show dev pppoe-wan scope global 2>/dev/null | awk '{print $4}' | awk -F: '{print $1":"$2":"$3":"$4}' | head -n1)"
+		if [ -n "$wan6_p2p_pfx" ]; then
+			if ip -6 -o addr show dev br-lan scope global 2>/dev/null | grep -qi "$wan6_p2p_pfx"; then
+				lan_wan_pfx_conflict=1
+			fi
+		fi
+		if ip -6 route show dev br-lan 2>/dev/null | grep -qiE '^2804:[^:]+:feca:'; then
+			lan_wan_pfx_conflict=1
+		fi
+	fi
 	if [ "$lan_wan_pfx_conflict" = 1 ]; then
 		if [ "$auto_fix" = 1 ]; then
 			for pfx in $($uci_cmd get network.lan.ip6addr 2>/dev/null); do
 				case "$pfx" in
-					*feca:e2a2*|*FECA:E2A2*)
+					*feca:*|*FECA:*)
 						$uci_cmd del_list network.lan.ip6addr="$pfx" 2>/dev/null || true
 						if [ "$($uci_cmd get network.lan.ip6addr 2>/dev/null)" = "$pfx" ]; then
 							$uci_cmd delete network.lan.ip6addr 2>/dev/null || true
@@ -821,13 +875,25 @@ ark_doctor_audit() {
 						;;
 				esac
 			done
-			$uci_cmd commit network
-			[ -z "$root_prefix" ] && [ -x /etc/init.d/network ] && /etc/init.d/network reload >/dev/null 2>&1 || true
+			$uci_cmd commit network 2>/dev/null || true
+			if [ -z "$root_prefix" ]; then
+				rm -f /etc/hotplug.d/iface/*ipv6-slaac* /etc/hotplug.d/iface/*.disabled /etc/hotplug.d/iface/._* /etc/hotplug.d/*/._* 2>/dev/null || true
+				for bad_ip6 in $(ip -6 -o addr show dev br-lan scope global 2>/dev/null | awk '{print $4}' | grep -iE '^2804:[^:]+:feca:'); do
+					ip -6 addr del "$bad_ip6" dev br-lan 2>/dev/null || true
+				done
+				for bad_rt6 in $(ip -6 route show dev br-lan 2>/dev/null | awk '{print $1}' | grep -iE '^2804:[^:]+:feca:'); do
+					ip -6 route del "$bad_rt6" dev br-lan 2>/dev/null || true
+				done
+				for exp_rt6 in $(ip -6 route show dev br-lan 2>/dev/null | grep 'expires' | awk '{print $1}'); do
+					ip -6 route del "$exp_rt6" dev br-lan 2>/dev/null || true
+				done
+				[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
+			fi
 			fixes_applied=$((fixes_applied + 1))
-			add_check "Isolamento de Sub-rede WAN/LAN" "FIXED" "Sub-rede ponto-a-ponto da WAN removida da bridge LAN."
+			add_check "Isolamento de Sub-rede WAN/LAN" "FIXED" "Sub-rede ponto-a-ponto da WAN e hotplugs residuais (99-ipv6-slaac/.disabled) removidos da bridge LAN."
 		else
 			errors=$((errors + 1))
-			add_check "Isolamento de Sub-rede WAN/LAN" "FAIL" "Sub-rede ponto-a-ponto da WAN configurada estaticamente na LAN (conflito de RA)."
+			add_check "Isolamento de Sub-rede WAN/LAN" "FAIL" "Sub-rede ponto-a-ponto da WAN ou hotplug 99-ipv6-slaac infiltrado na bridge LAN (conflito de RA/NAT66)."
 		fi
 	else
 		add_check "Isolamento de Sub-rede WAN/LAN" "OK" "Sem sobreposição de sub-redes da WAN na bridge LAN."
@@ -900,6 +966,33 @@ ark_doctor_audit() {
 		add_check "Unicidade de MAC WAN/LAN" "FIXED" "Tabelas netdev parasitas removidas do firewall de bridge."
 	else
 		add_check "Unicidade de MAC WAN/LAN" "OK" "Sem colisão de endereços MAC entre portas da bridge LAN e WAN."
+	fi
+
+	# 11b.5 Higienização de Túnel 464xlat (Anti-Flood DNS ipv4only.arpa em Dual-Stack)
+	wan_proto_v4="$($uci_cmd get network.wan.proto 2>/dev/null || echo '')"
+	if [ "$wan_proto_v4" = "pppoe" ] || [ "$wan_proto_v4" = "dhcp" ] || [ "$wan_proto_v4" = "static" ]; then
+		xlat_found=0
+		xlat_secs=""
+		for xlat_s in $($uci_cmd show network 2>/dev/null | sed -n "s/^network\.\([^.=]*\)\.proto='464xlat'$/\1/p"); do
+			if [ "$($uci_cmd get "network.$xlat_s.disabled" 2>/dev/null || echo '0')" != "1" ] && \
+			   [ "$($uci_cmd get "network.$xlat_s.auto" 2>/dev/null || echo '1')" != "0" ]; then
+				xlat_found=1
+				xlat_secs="${xlat_secs:+$xlat_secs }$xlat_s"
+				if [ "$auto_fix" = 1 ]; then
+					$uci_cmd delete "network.$xlat_s" 2>/dev/null || true
+					fixes_applied=$((fixes_applied + 1))
+				fi
+			fi
+		done
+		if [ "$xlat_found" = 1 ]; then
+			if [ "$auto_fix" = 1 ]; then
+				uci ${root_prefix:+-c "$root_prefix/etc/config"} commit network 2>/dev/null || true
+				add_check "Túnel 464xlat (Dual-Stack)" "FIXED" "Interface(s) 464xlat órfã(s) ($xlat_secs) removida(s) para eliminar loop de sondagem DNS ipv4only.arpa."
+			else
+				warnings=$((warnings + 1))
+				add_check "Túnel 464xlat (Dual-Stack)" "WARN" "Interface 464xlat ($xlat_secs) ativa em conexão IPv4/Dual-Stack ($wan_proto_v4), gerando loop de sondagem DNS ipv4only.arpa."
+			fi
+		fi
 	fi
 
 	# 11c. Coerência do Protocolo IPv6 (Dashboard vs WAN vs LAN)
@@ -1224,7 +1317,14 @@ ark_doctor_audit() {
 	# 12b. Auditoria e Autocura de Compatibilidade WPA3 vs 802.11r (FT-SAE)
 	# Em redes WPA3 (sae/sae-mixed), ft_psk_generate_local=1 quebra a associação de clientes Wi-Fi 6/6E/7
 	local ft_sae_conflicts=0
+	local wnm_sleep_cleaned=0
 	for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
+		local chk_wsm="$($uci_cmd get "wireless.$iface.wnm_sleep_mode" || echo '0')"
+		if [ "$chk_wsm" = "1" ] && [ "$auto_fix" = 1 ]; then
+			$uci_cmd delete "wireless.$iface.wnm_sleep_mode" 2>/dev/null || true
+			wnm_sleep_cleaned=1
+			wifi_needs_reload=1
+		fi
 		local chk_enc="$($uci_cmd get "wireless.$iface.encryption" || echo '')"
 		local chk_r11="$($uci_cmd get "wireless.$iface.ieee80211r" || echo '0')"
 		case "$chk_enc" in
@@ -1242,6 +1342,7 @@ ark_doctor_audit() {
 				;;
 		esac
 	done
+	[ "$wnm_sleep_cleaned" = "1" ] && $uci_cmd commit wireless 2>/dev/null || true
 
 	if [ "$ft_sae_conflicts" -gt 0 ]; then
 		if [ "$auto_fix" = 1 ]; then
@@ -1267,7 +1368,8 @@ ark_doctor_audit() {
 		for chk_sec in $ap_sections; do
 			local rrm_v="$($uci_cmd get "wireless.$chk_sec.rrm" 2>/dev/null || echo 0)"
 			local bt_v="$($uci_cmd get "wireless.$chk_sec.bss_transition" 2>/dev/null || echo 0)"
-			if [ "$rrm_v" != "1" ] || [ "$bt_v" != "1" ]; then
+			local wsm_v="$($uci_cmd get "wireless.$chk_sec.wnm_sleep_mode" 2>/dev/null || echo 0)"
+			if [ "$rrm_v" != "1" ] || [ "$bt_v" != "1" ] || [ "$wsm_v" = "1" ]; then
 				qca_missing_kv="$qca_missing_kv $chk_sec"
 			fi
 		done
@@ -1278,7 +1380,7 @@ ark_doctor_audit() {
 				$uci_cmd set "wireless.$kv_sec.rrm_neighbor_report=1"
 				$uci_cmd set "wireless.$kv_sec.rrm_beacon_report=1"
 				$uci_cmd set "wireless.$kv_sec.bss_transition=1"
-				$uci_cmd set "wireless.$kv_sec.wnm_sleep_mode=1"
+				$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
 				$uci_cmd set "wireless.$kv_sec.rnr=1"
 				$uci_cmd set "wireless.$kv_sec.disassoc_low_ack=0"
 			done
@@ -1326,9 +1428,10 @@ ark_doctor_audit() {
 			for chk_sec in $ap_sections; do
 				local k="$($uci_cmd get "wireless.$chk_sec.ieee80211k" 2>/dev/null || echo 0)"
 				local bt="$($uci_cmd get "wireless.$chk_sec.bss_transition" 2>/dev/null || echo 0)"
+				local wsm="$($uci_cmd get "wireless.$chk_sec.wnm_sleep_mode" 2>/dev/null || echo 0)"
 				local rnr_v="$($uci_cmd get "wireless.$chk_sec.rnr" 2>/dev/null || echo 0)"
 				local d_ack="$($uci_cmd get "wireless.$chk_sec.disassoc_low_ack" 2>/dev/null || echo 1)"
-				if [ "$k" != "1" ] || [ "$rnr_v" != "1" ] || [ "$d_ack" != "0" ]; then
+				if [ "$k" != "1" ] || [ "$rnr_v" != "1" ] || [ "$d_ack" != "0" ] || [ "$wsm" = "1" ]; then
 					missing_kv_secs="$missing_kv_secs $chk_sec"
 				elif [ "$wnm_capable" = 1 ] && [ "$bt" != "1" ]; then
 					missing_kv_secs="$missing_kv_secs $chk_sec"
@@ -1359,11 +1462,10 @@ ark_doctor_audit() {
 						$uci_cmd set "wireless.$kv_sec.disassoc_low_ack=0"
 						if [ "$wnm_capable" = 1 ]; then
 							$uci_cmd set "wireless.$kv_sec.bss_transition=1"
-							$uci_cmd set "wireless.$kv_sec.wnm_sleep_mode=1"
 						else
 							$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
-							$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
 						fi
+						$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
 					done
 					[ -n "$missing_kv_secs" ] && {
 						$uci_cmd commit wireless 2>/dev/null || true
@@ -1429,11 +1531,10 @@ ark_doctor_audit() {
 					$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
 					if [ "$wnm_capable" = 1 ]; then
 						$uci_cmd set "wireless.$kv_sec.bss_transition=1"
-						$uci_cmd set "wireless.$kv_sec.wnm_sleep_mode=1"
 					else
 						$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
-						$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
 					fi
+					$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
 				done
 				$uci_cmd commit wireless 2>/dev/null || true
 				/etc/init.d/usteer enable >/dev/null 2>&1 || true
@@ -1498,11 +1599,10 @@ ark_doctor_audit() {
 								$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
 								if [ "$wnm_capable" = 1 ]; then
 									$uci_cmd set "wireless.$kv_sec.bss_transition=1"
-									$uci_cmd set "wireless.$kv_sec.wnm_sleep_mode=1"
 								else
 									$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
-									$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
 								fi
+								$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
 							done
 							$uci_cmd commit wireless 2>/dev/null || true
 							/etc/init.d/usteer enable >/dev/null 2>&1 || true

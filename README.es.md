@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://openwrt.org/"><img src="https://img.shields.io/badge/OpenWrt-19.07%20a%2025.x-00B5E2?logo=openwrt&logoColor=white" alt="OpenWrt"></a>
-  <a href="https://github.com/Despensativo/ark-router/releases/tag/v1.5.17"><img src="https://img.shields.io/badge/release-v1.5.17-blue.svg" alt="Release v1.5.17"></a>
+  <a href="https://github.com/Despensativo/ark-router/releases/tag/v2.0.0"><img src="https://img.shields.io/badge/release-v2.0.0-blue.svg" alt="Release v2.0.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/UI-PT--BR%20%2F%20EN%20%2F%20ES-blue" alt="Trilingual UI">
   <img src="https://img.shields.io/badge/arch-all%20%2F%20noarch-orange" alt="Arquitectura: All">
@@ -146,12 +146,12 @@ Descargue los paquetes directamente de la sección de **[Releases](https://githu
 
 - **OpenWrt Moderno (gestor APK)**:
   ```sh
-  apk add ./luci-app-ark-router-1.5.17-r1.apk
+  apk add ./luci-app-ark-router-2.0.0-r1.apk
   /etc/init.d/rpcd restart
   ```
 - **OpenWrt Tradicional / Legado (gestor OPKG)**:
   ```sh
-  opkg install ./luci-app-ark-router-1.5.17-r1.ipk
+  opkg install ./luci-app-ark-router-2.0.0-r1.ipk
   /etc/init.d/rpcd restart
   ```
 

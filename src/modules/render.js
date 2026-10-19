@@ -105,14 +105,14 @@ const renderMethods = {
 		const isGamer=(this.capabilities&&this.capabilities.operation_profile)==='gamer';
 		const isApMode=(this.capabilities&&this.capabilities.network_mode)==='ap';
 		const hw = (data && data.hardwareInfo) || (this.capabilities && this.capabilities.hardware) || {};
-		const silicon = hw.silicon || (this.capabilities && this.capabilities.hardware && this.capabilities.hardware.silicon) || {};
+		const capHw = (this.capabilities && this.capabilities.hardware) || {};
+		const silicon = hw.silicon || capHw.silicon || {};
 		const silClass = silicon.class || '';
-		const isMaxPower = !!(hw.wifi_maxpower_enabled || (w.r2g && w.r2g.country === 'PA') || (w.r5g && w.r5g.country === 'PA'));
-		const isWedSupported = !!(hw.wifi_wed_supported || silicon.wed_capable);
-		const isWedEnabled = !!hw.wifi_wed_enabled;
-		const isWifi6PlusSupported = !!(hw.wifi_ax_supported || hw.wifi_be_supported);
-		const isWifi7 = !!(hw.wifi_be_supported || silClass === 'qualcomm_ipq');
-		const has6gBand = !!(hw.wifi_6g_supported || w.has6g);
+		const isWedSupported = !!(hw.wifi_wed_supported || capHw.wifi_wed_supported || (hw.wifi && hw.wifi.wifi_wed_supported) || silicon.wed_capable);
+		const isWedEnabled = !!(hw.wifi_wed_enabled !== undefined ? hw.wifi_wed_enabled : (hw.wifi && hw.wifi.wifi_wed_enabled !== undefined ? hw.wifi.wifi_wed_enabled : capHw.wifi_wed_enabled));
+		const isWifi6PlusSupported = !!(hw.wifi_ax_supported || capHw.wifi_ax_supported || (hw.wifi && hw.wifi.wifi_ax) || hw.wifi_be_supported || capHw.wifi_be_supported || (hw.wifi && hw.wifi.wifi_be));
+		const isWifi7 = !!(hw.wifi_be_supported || capHw.wifi_be_supported || (hw.wifi && hw.wifi.wifi_be) || silClass === 'qualcomm_ipq');
+		const has6gBand = !!(hw.wifi_6g_supported || capHw.wifi_6g_supported || (hw.wifi && hw.wifi.wifi_6g) || w.has6g);
 		const heroEyebrow=isApMode?_t('📡 ROTEADOR SECUNDÁRIO • PONTO ADICIONAL & SWITCH'):(isGamer?_t('🎮 MODO GAMER • BAIXA LATÊNCIA'):_t('CENTRAL DE OPERAÇÕES'));
 		const gamerButton=E('button',{class:'ex-hero-feature-button '+(isGamer?'ex-hero-gamer-active':'ex-hero-gamer-btn'),'click':L.bind(this.switchProfile,this,isGamer?'standard':'gamer')},[isGamer?'🎮 GAMER ATIVO':'🎮 Modo Gamer']);
 		const opModeButton=E('button',{class:'ex-hero-feature-button ex-hero-opmode-btn',style:isApMode?'border-color:#3b82f6;color:#60a5fa;font-weight:700;':'font-weight:650;','click':L.bind(this.showNetworkModeModal,this)},[isApMode?'📡 Roteador Secundário / AP':'🌐 Modo Roteador']);
@@ -1113,6 +1113,11 @@ const renderMethods = {
 										.then(L.bind(function(r){
 											chk.disabled = false;
 											if (r.code) throw new Error(r.stderr || 'Falha ao alterar aceleração WED');
+											if (self.capabilities && self.capabilities.hardware) self.capabilities.hardware.wifi_wed_enabled = enable;
+											if (self.currentData && self.currentData.hardwareInfo) {
+												self.currentData.hardwareInfo.wifi_wed_enabled = enable;
+												if (self.currentData.hardwareInfo.wifi) self.currentData.hardwareInfo.wifi.wifi_wed_enabled = enable;
+											}
 											if (summary) summary.textContent = enable
 												? 'Ativo • Despacho direto de pacotes Wi-Fi via DMA/PPE no hardware MediaTek Filogic, liberando os núcleos de CPU.'
 												: 'Desativado • Pacotes Wi-Fi processados pelas filas de software da CPU.';
@@ -1278,52 +1283,6 @@ const renderMethods = {
 					E('span', { class: 'ex-pill standby' }, ['MONO-BAND'])
 				]);
 
-				const maxPowerControl = E('div',{class:'ex-channel-mode-control'},[
-					E('div',{},[
-						E('strong',{},['Forçar Potência Máxima de Transmissão (Limite do Hardware)']),
-						E('small',{id:'ex-maxpower-mode-summary',class:'ex-muted'},[
-							isMaxPower
-								? 'Ativo • Libera 100% da potência física permitida pelos amplificadores de rádio (RF Frontend / FEM) do equipamento, utilizando perfil de potência irrestrito com salvaguarda térmica.'
-								: 'Desativado • Limite regulatório padrão aplicado (equilíbrio entre alcance e conformidade regional).'
-						])
-					]),
-					E('label',{class:'ex-switch'},[
-						E('input',{
-							id:'ex-maxpower-toggle',
-							type:'checkbox',
-							checked: isMaxPower ? '' : null,
-							'aria-label':'Forçar Potência Máxima de Transmissão (Limite do Hardware)',
-							'change': L.bind(function(ev){
-								const chk = ev.currentTarget;
-								const enable = chk.checked;
-								chk.disabled = true;
-								const summary = document.getElementById('ex-maxpower-mode-summary');
-								if (summary) summary.textContent = 'Aplicando alteração e reiniciando rádio…';
-								fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-maxpower-toggle', enable ? '1' : '0'])
-								.then(L.bind(function(r){
-									chk.disabled = false;
-									if (r.code) throw new Error(r.stderr || 'Falha ao alterar potência Wi-Fi');
-									if (summary) summary.textContent = enable
-										? 'Ativo • Libera 100% da potência física permitida pelos amplificadores de rádio (RF Frontend / FEM) do equipamento, utilizando perfil de potência irrestrito com salvaguarda térmica.'
-										: 'Desativado • Limite regulatório padrão aplicado (equilíbrio entre alcance e conformidade regional).';
-									ui.addNotification(null, E('p', {}, [enable ? 'Potência máxima do hardware ativada! Rádios liberados no limite físico dos amplificadores.' : 'Potência regulatória padrão restaurada.']), 'info');
-									const countryEl = document.getElementById('ex-country-current');
-									if (countryEl) countryEl.textContent = enable ? 'Irrestrito (PA / 1000 mW)' : 'Brasil (BR)';
-								}, self))
-								.catch(function(e){
-									chk.disabled = false;
-									chk.checked = !enable;
-									if (summary) summary.textContent = (!enable)
-										? 'Ativo • Libera 100% da potência física permitida pelos amplificadores de rádio (RF Frontend / FEM) do equipamento, utilizando perfil de potência irrestrito com salvaguarda térmica.'
-										: 'Desativado • Limite regulatório padrão aplicado (equilíbrio entre alcance e conformidade regional).';
-									ui.addNotification(null, E('p', {}, [e.message]), 'danger');
-								});
-							}, self)
-						}),
-						E('span',{class:'ex-switch-slider'})
-					])
-				]);
-
 				const channelGrid = (function(){
 					const cols = [];
 					if (w.has2g) {
@@ -1385,7 +1344,6 @@ const renderMethods = {
 							]),
 							iotControl,
 							dfsControl,
-							maxPowerControl,
 							hwAccelControl,
 							channelGrid,
 							E('p',{id:'ex-wifi-noise',class:'ex-muted'},['—']),
@@ -1780,18 +1738,18 @@ const renderMethods = {
 				return devicesCard;
 			})(),
 			this.adblockCard(),
+			this.ksmbdCard(),
+			this.wolCard(),
 			this.wireguardCard(),
 			this.zerotierCard(),
 			speedifySection || '',
 			E('section',{class:'ex-card ex-reboot-card'},[E('div',{},[E('span',{class:'ex-kicker'},['SISTEMA']),E('h3',{},['Reiniciar o roteador']),E('p',{class:'ex-muted'},['Interrompe a internet por alguns minutos e encerra as sessões abertas.'])]),E('button',{class:'ex-reboot-button','click':L.bind(function(){this.requestReboot();},this)},['Reiniciar…'])])
 		]);
-		if(!(this.feature('history')||{}).installed){const h=root.querySelector('.ex-history-grid'),c=root.querySelector('.ex-history-caption');if(h)h.remove();if(c)c.remove();}
 		if(!(this.feature('wifi')||{}).installed){const g=root.querySelector('.ex-wifi-grid'),c=root.querySelector('.ex-channel-card');if(g)g.remove();if(c)c.remove();}
 		if(!(this.feature('temperature')||{}).installed){const t=root.querySelector('#ex-temperature');if(t&&t.closest('.ex-health-item'))t.closest('.ex-health-item').remove();const hi=root.querySelector('.ex-health-items');if(hi)hi.classList.add('compact-3');}
 		if(!(this.feature('custom_qos')||{}).installed){const q=root.querySelector('#ex-qos-guest');if(q&&q.closest('.ex-row'))q.closest('.ex-row').remove();}
-		if(!(this.feature('sqm')||{}).installed){const q=root.querySelector('#ex-qos-section');if(q)q.remove();}
-		if(!(this.feature('mwan3')||{}).installed){const m=root.querySelector('.ex-mwan-control');if(m)m.remove();}
 		if(!(this.feature('nlbwmon')||{}).installed){const note=root.querySelector('.ex-table-note');if(note)note.textContent='O monitor de consumo não está instalado; a lista de dispositivos continua disponível, sem velocidade individual.';}
+		this.setupV2CockpitLayout(root, data);
 		translateTree(root);
 		this.dashboardRoot=root;
 		if(typeof window !== 'undefined'){ window.arkDashboard = this; }
@@ -1807,6 +1765,9 @@ const renderMethods = {
 			}, this));
 		}
 		this.update(data); this.scheduleAdaptiveRefresh();
+		window.setTimeout(L.bind(function() {
+			if (this.currentData) this.update(this.currentData);
+		}, this), 0);
 		if (typeof this.startClockTicker === 'function') {
 			this.startClockTicker();
 		}
@@ -1987,6 +1948,1140 @@ const renderMethods = {
 				E('div', { id: 'ex-mwan-custom-rules-list' }, rulesElements)
 			])
 		]);
+	},
+	renderV2DoctorStrip: function(data) {
+		const self = this;
+		const hw = (data && data.hardwareInfo) || (this.capabilities && this.capabilities.hardware) || {};
+		const sil = hw.silicon || {};
+		const silBadge = sil.hw_offload_capable ? 'PPE Offload' : 'Flowtable';
+		return E('section', {
+			id: 'ex-v2-doctor-strip',
+			class: 'ex-v2-doctor-strip',
+			'data-ark-panels': 'cockpit all'
+		}, [
+			E('div', { class: 'ex-v2-doctor-left' }, [
+				E('span', { class: 'ex-v2-doctor-icon' }, ['🩺']),
+				E('div', { class: 'ex-v2-doctor-copy' }, [
+					E('strong', { id: 'ex-v2-doc-title' }, ['Ark Doctor: Subsistemas Saudáveis']),
+					E('small', { id: 'ex-v2-doc-sub' }, ['Kernel • ' + silBadge + ' • SQM CAKE • Roaming 802.11k/v • Firewall 100% Blindados'])
+				])
+			]),
+			E('div', { class: 'ex-v2-doctor-actions' }, [
+				E('button', {
+					type: 'button',
+					class: 'ex-v2-doc-btn secondary',
+					click: L.bind(function() { self.showDoctorModal('diagnosis'); }, self)
+				}, ['🔄 Diagnosticar']),
+				E('button', {
+					type: 'button',
+					class: 'ex-v2-doc-btn primary',
+					click: L.bind(function() { self.showDoctorModal('diagnosis'); }, self)
+				}, ['Ver Painel Ark Doctor ↗'])
+			])
+		]);
+	},
+	renderV2QuickStatusStrip: function(data) {
+		const self = this;
+		const makePill = function(icon, label, valueId, defaultVal, onClick, featureKey) {
+			const attrs = {
+				type: 'button',
+				class: 'ex-v2-quick-pill',
+				click: onClick
+			};
+			if (featureKey) attrs['data-ark-menu-feature'] = featureKey;
+			return E('button', attrs, [
+				E('span', { class: 'ex-v2-qp-icon' }, [icon]),
+				E('span', { class: 'ex-v2-qp-label' }, [label + ':']),
+				E('strong', { id: valueId, class: 'ex-v2-qp-val' }, [defaultVal])
+			]);
+		};
+		return E('div', {
+			id: 'ex-v2-quick-strip',
+			class: 'ex-v2-quick-strip',
+			'data-ark-panels': 'always'
+		}, [
+			makePill('🛡️', 'AdBlock', 'ex-v2-pill-adblock', 'Ativo', L.bind(function() { self.switchV2Panel('adblock', 'ex-adblock-section'); }, self), 'adblock'),
+			makePill('⚡', 'CAKE SQM', 'ex-v2-pill-sqm', 'Ativo', L.bind(function() { self.switchV2Panel('sqm_perf', 'ex-qos-section'); }, self), 'sqm'),
+			makePill('🧠', 'Cache DNS', 'ex-v2-pill-dns', 'RAM 0ms', L.bind(function() { self.openDnsTurboModal(); }, self), null),
+			makePill('🔒', 'WireGuard', 'ex-v2-pill-wg', 'Standby', L.bind(function() { self.switchV2Panel('wireguard', 'ex-wireguard-section'); }, self), 'wireguard'),
+			makePill('🗄️', 'USB KSMBD', 'ex-v2-pill-ksmbd', 'Pronto', L.bind(function() { self.switchV2Panel('ksmbd', 'ex-ksmbd-section'); }, self), 'ksmbd'),
+			makePill('⚡', 'Wake-on-LAN', 'ex-v2-pill-wol', 'Pronto', L.bind(function() { self.switchV2Panel('wol', 'ex-wol-section'); }, self), 'wol'),
+			makePill('🚀', 'Aceleração', 'ex-v2-pill-accel', 'Flow Offload', L.bind(function() { self.showHardwareModal(); }, self), 'hardware_tune')
+		]);
+	},
+	renderV2SwitchPortsCard: function(data) {
+		const portsGrid = E('div', { id: 'ex-v2-switch-ports-grid', class: 'ex-v2-switch-ports-grid' }, []);
+		const card = E('section', {
+			id: 'ex-v2-switch-ports-card',
+			class: 'ex-card ex-v2-switch-ports-card',
+			'data-ark-panels': 'cockpit wan all'
+		}, [
+			E('div', { class: 'ex-card-title' }, [
+				E('div', {}, [
+					E('span', { class: 'ex-kicker' }, ['TOPOLOGIA FÍSICA ETHERNET']),
+					E('h3', {}, ['🔌 Portas Físicas de Switch Ethernet & Conexões de Rede']),
+					E('small', { class: 'ex-muted' }, ['Status de enlace físico, duplex e velocidade negociada em hardware'])
+				]),
+				E('span', { id: 'ex-v2-ports-summary-pill', class: 'ex-pill online' }, ['PORTAS ATIVAS'])
+			]),
+			portsGrid
+		]);
+		return card;
+	},
+	toggleV2MobileSidebar: function(forceState) {
+		const sb = document.getElementById('ex-v2-sidebar');
+		const bd = document.getElementById('ex-v2-sidebar-backdrop');
+		if (!sb || !bd) return;
+		const isOpen = sb.classList.contains('is-mobile-open');
+		const next = (typeof forceState === 'boolean') ? forceState : !isOpen;
+		sb.classList.toggle('is-mobile-open', next);
+		bd.classList.toggle('is-open', next);
+	},
+	switchV2Panel: function(panelId, scrollTargetId) {
+		const root = this.dashboardRoot || document.querySelector('.ex-dashboard');
+		if (!root) return;
+		const targetPanel = panelId || 'cockpit';
+		root.setAttribute('data-active-v2-panel', targetPanel);
+		try { sessionStorage.setItem('ark_v2_active_panel', targetPanel); } catch(e) {}
+		this.toggleV2MobileSidebar(false);
+
+		const panelLabels = {
+			'cockpit': '📊 Cockpit Geral',
+			'wan': '🌐 Internet & Multi-WAN',
+			'wifi': '📶 Wi-Fi',
+			'devices': '📱 Dispositivos',
+			'sqm_perf': '⚡ SQM CAKE & Desempenho',
+			'adblock': '🛡️ Bloqueador AdBlock',
+			'upnp_dmz': '🎮 UPnP & Portas (DMZ)',
+			'wireguard': '🔒 WireGuard VPN',
+			'zerotier': '🌐 ZeroTier SD-WAN',
+			'speedify': '🚀 Speedify Bonding',
+			'ksmbd': '🗄️ Servidor USB (NAS)',
+			'wol': '⚡ Wake-on-LAN (WoL)',
+			'security_usb': '🛡️ Segurança, VPN & USB',
+			'all': '📋 Todos os Painéis'
+		};
+		const mobCurEl = document.getElementById('ex-v2-mobile-active-panel');
+		if (mobCurEl && panelLabels[targetPanel]) {
+			mobCurEl.textContent = panelLabels[targetPanel];
+		}
+
+		const navBtns = root.querySelectorAll('.ex-v2-nav-btn[data-panel]');
+		Array.prototype.forEach.call(navBtns, function(btn) {
+			if (btn.getAttribute('data-panel') === targetPanel) {
+				btn.classList.add('is-active');
+			} else {
+				btn.classList.remove('is-active');
+			}
+		});
+
+		const singleModulePanels = {
+			'adblock': true,
+			'upnp_dmz': true,
+			'wireguard': true,
+			'zerotier': true,
+			'speedify': true,
+			'ksmbd': true,
+			'wol': true
+		};
+		const mainEl = root.querySelector('.ex-v2-main') || root;
+		const items = mainEl.querySelectorAll('[data-ark-panels]');
+		Array.prototype.forEach.call(items, function(el) {
+			const panelsStr = el.getAttribute('data-ark-panels') || 'all';
+			const list = panelsStr.split(/\s+/);
+			const visible = (targetPanel === 'all') || (list.indexOf('always') !== -1) || (list.indexOf(targetPanel) !== -1);
+			if (visible) {
+				el.classList.remove('ark-v2-panel-hidden');
+				if (singleModulePanels[targetPanel] && list.indexOf(targetPanel) !== -1 && el.classList.contains('is-collapsed')) {
+					const toggleBtn = el.querySelector('.ex-accordion-toggle-btn');
+					if (toggleBtn) toggleBtn.click();
+				}
+			} else {
+				el.classList.add('ark-v2-panel-hidden');
+			}
+		});
+
+		if (scrollTargetId) {
+			window.setTimeout(function() {
+				const targetEl = document.getElementById(scrollTargetId);
+				if (targetEl) {
+					if (targetEl.classList.contains('is-collapsed')) {
+						const toggleBtn = targetEl.querySelector('.ex-accordion-toggle-btn');
+						if (toggleBtn) toggleBtn.click();
+					}
+					targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				}
+			}, 40);
+		}
+	},
+	renderV2CockpitStatusOverview: function(data) {
+		const self = this;
+		const makeRow = function(label, valId, defaultVal) {
+			return E('div', { class: 'ex-v2-stat-row' }, [
+				E('span', { class: 'ex-v2-stat-k' }, [label]),
+				E('strong', { id: valId, class: 'ex-v2-stat-v' }, [defaultVal])
+			]);
+		};
+		return E('section', {
+			id: 'ex-v2-cockpit-status-overview',
+			class: 'ex-v2-cockpit-status-overview',
+			'data-ark-panels': 'cockpit'
+		}, [
+			E('div', { class: 'ex-card ex-v2-stat-card' }, [
+				E('div', { class: 'ex-v2-stat-head' }, [
+					E('div', {}, [
+						E('span', { class: 'ex-kicker' }, ['CONECTIVIDADE EXTERNA']),
+						E('h3', {}, ['🌐 Status da Internet & Multi-WAN'])
+					]),
+					E('span', { id: 'ex-v2-stat-wan-pill', class: 'ex-pill online' }, ['ONLINE'])
+				]),
+				E('div', { class: 'ex-v2-stat-body' }, [
+					makeRow('WAN 1 (Principal)', 'ex-v2-stat-wan1', 'Conectado'),
+					makeRow('WAN 2 (Secundária)', 'ex-v2-stat-wan2', 'Standby / Failover'),
+					makeRow('Modo Multi-WAN', 'ex-v2-stat-mwan', 'Failover Automático')
+				]),
+				E('button', {
+					type: 'button',
+					class: 'ex-v2-stat-jump-btn',
+					click: L.bind(function() { self.switchV2Panel('wan'); }, self)
+				}, ['⚙️ Editar em Internet & Multi-WAN →'])
+			]),
+			E('div', { class: 'ex-card ex-v2-stat-card' }, [
+				E('div', { class: 'ex-v2-stat-head' }, [
+					E('div', {}, [
+						E('span', { class: 'ex-kicker' }, ['RÁDIOS SEM FIO']),
+						E('h3', {}, ['📶 Status do Wi-Fi'])
+					]),
+					E('span', { id: 'ex-v2-stat-wifi-pill', class: 'ex-pill online' }, ['ATIVO'])
+				]),
+				E('div', { class: 'ex-v2-stat-body' }, [
+					makeRow('Rede Principal (SSID)', 'ex-v2-stat-ssid', 'ARK Router'),
+					makeRow('Rede de Visitantes', 'ex-v2-stat-guest', 'Isolada'),
+					makeRow('Clientes Sem Fio', 'ex-v2-stat-wifi-clients', '0 conectados')
+				]),
+				E('button', {
+					type: 'button',
+					class: 'ex-v2-stat-jump-btn',
+					click: L.bind(function() { self.switchV2Panel('wifi'); }, self)
+				}, ['⚙️ Editar em Wi-Fi →'])
+			]),
+			E('div', { class: 'ex-card ex-v2-stat-card' }, [
+				E('div', { class: 'ex-v2-stat-head' }, [
+					E('div', {}, [
+						E('span', { class: 'ex-kicker' }, ['REDE LOCAL & CLIENTES']),
+						E('h3', {}, ['📱 Dispositivos & LAN'])
+					]),
+					E('span', { id: 'ex-v2-stat-lan-pill', class: 'ex-pill online' }, ['DHCP ATIVO'])
+				]),
+				E('div', { class: 'ex-v2-stat-body' }, [
+					makeRow('Gateway LAN', 'ex-v2-stat-lan-ip', '192.168.1.1'),
+					makeRow('Dispositivos Ativos', 'ex-v2-stat-dev-count', '0 online'),
+					makeRow('Controle de Filas (SQM)', 'ex-v2-stat-sqm', 'CAKE Ativo')
+				]),
+				E('button', {
+					type: 'button',
+					class: 'ex-v2-stat-jump-btn',
+					click: L.bind(function() { self.switchV2Panel('devices'); }, self)
+				}, ['⚙️ Gerenciar em Dispositivos →'])
+			])
+		]);
+	},
+	setupV2CockpitLayout: function(root, data) {
+		if (!root || root.classList.contains('ex-v2-cockpit-layout')) return;
+		const self = this;
+		this.dashboardRoot = root;
+		root.classList.add('ex-v2-cockpit-layout');
+
+		const children = Array.prototype.slice.call(root.children);
+		children.forEach(function(el) {
+			if (!el || !el.classList) return;
+			let panels = 'all';
+			let assignId = '';
+			let featureKey = '';
+			const txt = el.textContent || '';
+			if (el.classList.contains('ex-hero') || el.id === 'ex-update-banner-container' || el.id === 'ex-doctor-banner' || el.classList.contains('ex-health-strip')) {
+				panels = 'always';
+			} else if (el.querySelector && (el.querySelector('#ex-perf-active-badge') || el.querySelector('#ex-dns-turbo-toggle'))) {
+				panels = 'sqm_perf all';
+				assignId = 'ex-perf-section';
+			} else if (el.querySelector && el.querySelector('#ex-download')) {
+				panels = 'cockpit all';
+				assignId = 'ex-live-rates-grid';
+			} else if (el.classList.contains('ex-history-grid') || el.id === 'ex-history-samples') {
+				panels = 'cockpit all';
+				featureKey = 'history';
+			} else if (el.classList.contains('ex-autowan-card')) {
+				panels = 'wan all';
+				assignId = 'ex-autowan-section';
+				featureKey = 'autowan';
+			} else if (el.id === 'ex-starlink-global-panel' || el.classList.contains('ex-starlink-panel')) {
+				panels = 'wan all';
+			} else if (el.querySelector && (el.querySelector('.ex-wan-card') || el.querySelector('#ex-ap-uplink-status'))) {
+				panels = 'wan all';
+				assignId = 'ex-wans-grid-section';
+			} else if (el.classList.contains('ex-mwan-control')) {
+				panels = 'wan all';
+				assignId = 'ex-mwan-section';
+				featureKey = 'mwan3';
+			} else if (el.id === 'ex-qos-section' || el.classList.contains('ex-qos-card')) {
+				panels = 'sqm_perf all';
+				assignId = 'ex-qos-section';
+				featureKey = 'sqm';
+			} else if (el.classList.contains('ex-lan-config-card')) {
+				panels = 'wan all';
+				assignId = 'ex-lan-config-section';
+			} else if (el.classList.contains('ex-dmz-card')) {
+				panels = 'upnp_dmz wan security_usb all';
+				assignId = 'ex-dmz-section';
+			} else if (el.classList.contains('ex-lan-block')) {
+				panels = 'wan all';
+				assignId = 'ex-lan-ports-section';
+			} else if (el.classList.contains('ex-wifi-block') || el.classList.contains('ex-wifi-card')) {
+				panels = 'wifi all';
+				assignId = 'ex-wifi-networks-section';
+			} else if (el.querySelector && el.querySelector('#ex-main-clients')) {
+				panels = 'wifi devices all';
+				assignId = 'ex-wifi-clients-summary';
+			} else if (el.classList.contains('ex-channel-card')) {
+				panels = 'wifi all';
+				assignId = 'ex-wifi-channels-section';
+			} else if (el.classList.contains('ex-wifi6-card')) {
+				panels = 'wifi all';
+				assignId = 'ex-wifi6-accel-section';
+			} else if (el.classList.contains('ex-mesh-roaming-card')) {
+				panels = 'wifi all';
+				assignId = 'ex-wifi-mesh-section';
+			} else if (el.classList.contains('ex-devices')) {
+				panels = 'devices all';
+				assignId = 'ex-devices-section';
+			} else if (el.id === 'ex-ksmbd-card' || el.classList.contains('ex-ksmbd-card')) {
+				panels = 'ksmbd security_usb all';
+				assignId = 'ex-ksmbd-section';
+				featureKey = 'ksmbd';
+			} else if (el.id === 'ex-wol-card' || el.classList.contains('ex-wol-card')) {
+				panels = 'wol devices security_usb all';
+				assignId = 'ex-wol-section';
+				featureKey = 'wol';
+			} else if (txt.indexOf('WireGuard') !== -1) {
+				panels = 'wireguard security_usb all';
+				assignId = 'ex-wireguard-section';
+				featureKey = 'wireguard';
+			} else if (el.classList.contains('ex-remote-card') || txt.indexOf('ZeroTier') !== -1) {
+				panels = 'zerotier security_usb all';
+				assignId = 'ex-zerotier-section';
+				featureKey = 'zerotier';
+			} else if (el.classList.contains('ex-speedify-card')) {
+				panels = 'speedify wan security_usb all';
+				assignId = 'ex-speedify-section';
+				featureKey = 'speedify';
+			} else if (el.classList.contains('ex-reboot-card')) {
+				panels = 'sqm_perf security_usb all';
+				assignId = 'ex-reboot-section';
+			} else if (el.classList.contains('ex-adblock-card') || txt.indexOf('Bloqueador de Anúncios') !== -1) {
+				panels = 'adblock security_usb all';
+				assignId = 'ex-adblock-section';
+				featureKey = 'adblock';
+			}
+			el.setAttribute('data-ark-panels', panels);
+			if (assignId && !el.id) el.id = assignId;
+			if (featureKey) el.setAttribute('data-ark-feature', featureKey);
+		});
+
+		const arkVersion = ((this.capabilities && this.capabilities.update) || {}).current || '2.0.0';
+		const luciOverviewHref = (typeof L !== 'undefined' && typeof L.url === 'function') ? L.url('admin/status/overview') : '/cgi-bin/luci/admin/status/overview';
+
+		const mobileBarEl = E('div', {
+			class: 'ex-v2-mobile-bar',
+			'data-ark-panels': 'always'
+		}, [
+			E('button', {
+				type: 'button',
+				class: 'ex-v2-mobile-menu-btn',
+				click: function() { self.toggleV2MobileSidebar(); }
+			}, ['☰ Menu']),
+			E('span', { id: 'ex-v2-mobile-active-panel', class: 'ex-v2-mobile-active-panel' }, ['📊 Cockpit Geral']),
+			E('a', {
+				class: 'ex-v2-mobile-luci-btn',
+				href: luciOverviewHref,
+				style: 'text-decoration:none;'
+			}, ['💻 LuCI ↗'])
+		]);
+
+		const mainEl = E('div', { class: 'ex-v2-main' }, [mobileBarEl]);
+		const quickStripEl = this.renderV2QuickStatusStrip(data);
+		const statusOverviewEl = this.renderV2CockpitStatusOverview(data);
+		const switchPortsCardEl = this.renderV2SwitchPortsCard(data);
+
+		children.forEach(function(el) {
+			mainEl.appendChild(el);
+			if (el.classList && el.classList.contains('ex-health-strip')) {
+				mainEl.appendChild(quickStripEl);
+				mainEl.appendChild(statusOverviewEl);
+			}
+			if (el.id === 'ex-history-samples') {
+				mainEl.appendChild(switchPortsCardEl);
+			}
+		});
+		if (!switchPortsCardEl.parentNode) {
+			const ratesGrid = mainEl.querySelector('#ex-live-rates-grid');
+			if (ratesGrid && ratesGrid.nextSibling) {
+				mainEl.insertBefore(switchPortsCardEl, ratesGrid.nextSibling);
+			} else {
+				mainEl.appendChild(switchPortsCardEl);
+			}
+		}
+
+		const heroActions = mainEl.querySelector('.ex-hero-actions');
+		if (heroActions) {
+			heroActions.appendChild(E('button', {
+				type: 'button',
+				id: 'ex-hero-dev-mode-btn',
+				class: 'ex-hero-feature-button ex-hero-dev-badge',
+				style: 'display:none;background:rgba(245,158,11,0.18);color:#fbbf24;border-color:rgba(245,158,11,0.5);font-weight:800;',
+				title: 'Modo Desenvolvedor (DEV Mode) ativo: exibindo todos os menus ocultos e plugins não instalados. Clique para gerenciar em Recursos.',
+				click: function() { self.showFeatureCenter(); }
+			}, ['🛠️ DEV ON']));
+		}
+
+		const navBtn = function(panelId, icon, label, badgeId, badgeText, featureKey) {
+			const attrs = {
+				type: 'button',
+				id: 'ex-v2-nav-' + panelId,
+				class: 'ex-v2-nav-btn' + (panelId === 'cockpit' ? ' is-active' : ''),
+				'data-panel': panelId,
+				click: L.bind(function() { self.switchV2Panel(panelId); }, self)
+			};
+			if (featureKey) {
+				attrs['data-ark-menu-feature'] = featureKey;
+				attrs['data-default-badge'] = badgeText || '';
+			}
+			return E('button', attrs, [
+				E('span', { class: 'ex-v2-nav-left' }, [
+					E('span', { class: 'ex-v2-nav-icon' }, [icon]),
+					E('span', { class: 'ex-v2-nav-label' }, [label])
+				]),
+				(badgeText || featureKey) ? E('span', { id: badgeId || null, class: 'ex-v2-nav-badge' }, [badgeText || '']) : ''
+			]);
+		};
+		const actionNavBtn = function(icon, label, badgeText, onClick) {
+			return E('button', {
+				type: 'button',
+				class: 'ex-v2-nav-btn ex-v2-nav-action',
+				click: function() { self.toggleV2MobileSidebar(false); onClick(); }
+			}, [
+				E('span', { class: 'ex-v2-nav-left' }, [
+					E('span', { class: 'ex-v2-nav-icon' }, [icon]),
+					E('span', { class: 'ex-v2-nav-label' }, [label])
+				]),
+				badgeText ? E('span', { class: 'ex-v2-nav-badge action' }, [badgeText]) : ''
+			]);
+		};
+
+		const sidebarBackdropEl = E('div', {
+			id: 'ex-v2-sidebar-backdrop',
+			class: 'ex-v2-sidebar-backdrop',
+			click: function() { self.toggleV2MobileSidebar(false); }
+		});
+
+		const sidebarEl = E('aside', { id: 'ex-v2-sidebar', class: 'ex-v2-sidebar', 'aria-label': 'Menu Lateral ARK Router' }, [
+			E('div', { class: 'ex-v2-brand' }, [
+				E('div', { class: 'ex-v2-brand-logo' }, ['⚡']),
+				E('div', { class: 'ex-v2-brand-copy' }, [
+					E('div', { style: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;' }, [
+						E('strong', {}, ['ARK Router']),
+						E('span', { id: 'ex-v2-dev-mode-pill', class: 'ex-v2-dev-pill', style: 'display:none;' }, ['🛠️ DEV'])
+					]),
+					E('span', { class: 'ex-v2-brand-ver' }, ['v' + arkVersion + ' Pro (V2)'])
+				]),
+				E('button', {
+					type: 'button',
+					class: 'ex-v2-sidebar-close-btn',
+					click: function() { self.toggleV2MobileSidebar(false); }
+				}, ['✕'])
+			]),
+			E('div', { class: 'ex-v2-nav-group' }, [
+				E('div', { class: 'ex-v2-nav-group-title' }, ['PAINÉIS OPERACIONAIS']),
+				navBtn('cockpit', '📊', 'Cockpit Geral', 'ex-v2-nav-cockpit-badge', 'AO VIVO'),
+				navBtn('wan', '🌐', 'Internet & Multi-WAN', 'ex-v2-nav-wan-badge', 'DUAL'),
+				navBtn('wifi', '📶', 'Wi-Fi', 'ex-v2-nav-wifi-badge', ''),
+				navBtn('devices', '📱', 'Dispositivos', 'ex-v2-nav-devices-badge', '0')
+			]),
+			E('div', { class: 'ex-v2-nav-group' }, [
+				E('div', { class: 'ex-v2-nav-group-title' }, ['OTIMIZAÇÃO, REDE & SEGURANÇA']),
+				navBtn('sqm_perf', '⚡', 'SQM CAKE & Desempenho', 'ex-v2-nav-sqm-badge', '0ms LAG'),
+				navBtn('adblock', '🛡️', 'Bloqueador AdBlock', 'ex-v2-nav-adblock-badge', 'DNS', 'adblock'),
+				navBtn('upnp_dmz', '🎮', 'UPnP & Portas (DMZ)', 'ex-v2-nav-upnp-badge', 'NAT', 'upnp'),
+				navBtn('wireguard', '🔒', 'WireGuard VPN', 'ex-v2-nav-wg-badge', 'VPN', 'wireguard'),
+				navBtn('zerotier', '🌐', 'ZeroTier SD-WAN', 'ex-v2-nav-zt-badge', 'MESH', 'zerotier'),
+				navBtn('speedify', '🚀', 'Speedify Bonding', 'ex-v2-nav-sp-badge', 'BOND', 'speedify'),
+				navBtn('ksmbd', '🗄️', 'Servidor USB (NAS)', 'ex-v2-nav-ksmbd-badge', 'SMB', 'ksmbd'),
+				navBtn('wol', '⚡', 'Wake-on-LAN (WoL)', 'ex-v2-nav-wol-badge', 'WOL', 'wol'),
+				navBtn('all', '📋', 'Mostrar Tudo (Lista)', 'ex-v2-nav-all-badge', 'TODOS')
+			]),
+			E('div', { class: 'ex-v2-nav-group' }, [
+				E('div', { class: 'ex-v2-nav-group-title' }, ['MÓDULOS & SISTEMA']),
+				actionNavBtn('🩺', 'Ark Doctor & Autocura', '28 CHECKS', L.bind(function() { self.showDoctorModal('diagnosis'); }, self)),
+				actionNavBtn('📦', 'Central de Plugins', 'LOJA', L.bind(function() { self.showFeatureCenter(); }, self)),
+				actionNavBtn('🔍', 'Hardware & Silício', 'SPECS', L.bind(function() { self.showHardwareModal(); }, self))
+			]),
+			E('div', { class: 'ex-v2-nav-group' }, [
+				E('div', { class: 'ex-v2-nav-group-title' }, ['OPENWRT NATIVO (LUCI)']),
+				E('a', {
+					id: 'ex-v2-nav-openwrt-native',
+					class: 'ex-v2-nav-btn ex-v2-nav-action ex-v2-nav-luci-link',
+					href: luciOverviewHref,
+					style: 'text-decoration:none;'
+				}, [
+					E('span', { class: 'ex-v2-nav-left' }, [
+						E('span', { class: 'ex-v2-nav-icon' }, ['💻']),
+						E('span', { class: 'ex-v2-nav-label' }, ['Interface OpenWrt (Tema Ark)'])
+					]),
+					E('span', { class: 'ex-v2-nav-badge luci' }, ['↗'])
+				])
+			]),
+			E('div', { class: 'ex-v2-sidebar-footer' }, [
+				E('button', {
+					type: 'button',
+					class: 'ex-v2-reboot-btn',
+					click: L.bind(function() { self.toggleV2MobileSidebar(false); self.requestReboot(); }, self)
+				}, ['🔄 Reiniciar Roteador'])
+			])
+		]);
+
+		const luciDrawerNodes = this.renderV2LuciDrawer();
+
+		root.appendChild(sidebarBackdropEl);
+		root.appendChild(sidebarEl);
+		root.appendChild(mainEl);
+		root.appendChild(luciDrawerNodes.backdrop);
+		root.appendChild(luciDrawerNodes.drawer);
+
+		if (typeof window !== 'undefined') {
+			window.arkSwitchV2Panel = L.bind(this.switchV2Panel, this);
+			window.toggleLuciDrawer = L.bind(this.toggleV2LuciDrawer, this);
+		}
+		this.applyFeatureVisibilityAndLifecycle(root);
+		let savedPanel = 'cockpit';
+		try {
+			savedPanel = sessionStorage.getItem('ark_v2_active_panel') || 'cockpit';
+		} catch(e) {}
+		this.switchV2Panel(savedPanel);
+		this.updateV2CockpitStatus(data);
+	},
+	renderPluginLifecycleBar: function(key, compact) {
+		const self = this;
+		const meta = (typeof FEATURE_META !== 'undefined' && FEATURE_META[key]) || { name: key, canToggle: true, canRemove: true };
+		const f = (this.feature && this.feature(key)) || {};
+		const installed = !!f.installed;
+		const active = !!f.active;
+		const devMode = (typeof this.isDevMode === 'function') ? this.isDevMode() : false;
+
+		if (!installed) {
+			return E('div', {
+				class: 'ex-plugin-lifecycle-bar is-uninstalled' + (compact ? ' is-compact' : ''),
+				'data-lifecycle-key': key
+			}, [
+				E('div', { class: 'ex-plc-copy' }, [
+					E('div', { class: 'ex-plc-badges' }, [
+						E('span', { class: 'ex-plc-badge uninstalled' }, ['📦 PLUGIN NÃO INSTALADO']),
+						devMode ? E('span', { class: 'ex-plc-badge dev' }, ['🛠️ VISÍVEL EM MODO DEV']) : '',
+						f.user_removed ? E('span', { class: 'ex-plc-badge memory' }, ['💾 REMOVIDO PELO USUÁRIO']) : ''
+					]),
+					E('strong', { class: 'ex-plc-title' }, ['Deseja instalar ' + meta.name + ' nesta seção?']),
+					E('small', { class: 'ex-plc-desc' }, [
+						(meta.description || '') + (f.package ? (' • Pacote: ' + f.package) : '')
+					])
+				]),
+				E('div', { class: 'ex-plc-actions' }, [
+					E('button', {
+						type: 'button',
+						class: 'ex-plc-btn install',
+						click: function(ev) {
+							ev.stopPropagation();
+							self.installFeature(key);
+						}
+					}, ['📥 Instalar ' + meta.name])
+				])
+			]);
+		}
+
+		const statusLabel = active
+			? '🟢 Recurso Instalado & Ativo'
+			: (f.user_disabled ? '⏸️ Desativado pelo Usuário (Escolha Lembrada)' : '⏸️ Instalado (Em Espera / Standby)');
+		const statusClass = active ? 'online' : 'standby';
+
+		const actionBtns = [];
+		if (meta.canToggle) {
+			actionBtns.push(E('button', {
+				type: 'button',
+				class: 'ex-plc-btn ' + (active ? 'disable' : 'enable'),
+				title: active ? 'Desativar com limpeza segura de filas/regras e lembrar após atualização' : 'Ativar recurso e sincronizar subsistemas',
+				click: function(ev) {
+					ev.stopPropagation();
+					self.toggleFeatureState(key, !active);
+				}
+			}, [active ? '⏸️ Desativar' : '▶️ Ativar']));
+		}
+		if (meta.canRemove && !meta.nativeDaemon) {
+			actionBtns.push(E('button', {
+				type: 'button',
+				class: 'ex-plc-btn remove',
+				title: 'Desativar com segurança, reverter regras e desinstalar pacote do roteador',
+				click: function(ev) {
+					ev.stopPropagation();
+					self.removeFeature(key);
+				}
+			}, ['🗑️ Remover']));
+		}
+
+		return E('div', {
+			class: 'ex-plugin-lifecycle-bar is-installed' + (compact ? ' is-compact' : ''),
+			'data-lifecycle-key': key
+		}, [
+			E('div', { class: 'ex-plc-copy' }, [
+				E('div', { class: 'ex-plc-badges' }, [
+					E('span', { class: 'ex-plc-badge ' + statusClass }, [statusLabel]),
+					devMode ? E('span', { class: 'ex-plc-badge dev' }, ['🛠️ DEV']) : ''
+				]),
+				E('small', { class: 'ex-plc-desc' }, [
+					meta.cautionNote || 'Ajustes de ativação e desativação gerenciados com segurança e memória pós-atualização.'
+				])
+			]),
+			E('div', { class: 'ex-plc-actions' }, actionBtns)
+		]);
+	},
+	applyFeatureVisibilityAndLifecycle: function(rootEl) {
+		const root = rootEl || this.dashboardRoot || document.querySelector('.ex-dashboard');
+		if (!root) return;
+		const self = this;
+		const devMode = (typeof this.isDevMode === 'function') ? this.isDevMode() : false;
+		const showUninst = (typeof this.isShowUninstalledMenus === 'function') ? this.isShowUninstalledMenus() : false;
+
+		root.classList.toggle('is-ark-dev-mode', devMode);
+
+		const heroDevBtn = root.querySelector('#ex-hero-dev-mode-btn');
+		if (heroDevBtn) heroDevBtn.style.display = devMode ? 'inline-flex' : 'none';
+		const sbDevPill = root.querySelector('#ex-v2-dev-mode-pill');
+		if (sbDevPill) sbDevPill.style.display = devMode ? 'inline-flex' : 'none';
+
+		// 1. Inject/update lifecycle bars and visibility on [data-ark-feature] sections
+		const featureSections = root.querySelectorAll('[data-ark-feature]');
+		Array.prototype.forEach.call(featureSections, function(sec) {
+			const key = sec.getAttribute('data-ark-feature');
+			if (!key) return;
+			const meta = (typeof FEATURE_META !== 'undefined' && FEATURE_META[key]) || {};
+			const f = (self.feature && self.feature(key)) || {};
+			const installed = !!f.installed;
+			const active = !!f.active;
+
+			if (key === 'history') {
+				const shouldHideHist = !devMode && (!installed || !active);
+				sec.classList.toggle('ark-feature-uninstalled-hidden', shouldHideHist);
+				return;
+			}
+
+			// Determine if this section should be hidden when uninstalled/disabled
+			let shouldHide = false;
+			if (!devMode) {
+				if (meta.nativeDaemon) {
+					shouldHide = !!f.user_disabled || !!f.user_removed;
+				} else if (!installed) {
+					shouldHide = !showUninst || !!f.user_removed || !!f.hidden;
+				}
+			}
+			sec.classList.toggle('ark-feature-uninstalled-hidden', shouldHide);
+			sec.classList.toggle('is-dev-uninstalled', devMode && !installed);
+
+			// Inject or update the inline lifecycle bar inside the card
+			const oldBar = sec.querySelector('.ex-plugin-lifecycle-bar[data-lifecycle-key="' + key + '"]');
+			const newBar = self.renderPluginLifecycleBar(key, false);
+			if (oldBar && oldBar.parentNode) {
+				oldBar.parentNode.replaceChild(newBar, oldBar);
+			} else {
+				const collapseInner = sec.querySelector('.ex-card-collapse-inner');
+				const cardTitle = sec.querySelector('.ex-card-title');
+				if ( !installed && cardTitle && cardTitle.parentNode === sec ) {
+					if (cardTitle.nextSibling) {
+						sec.insertBefore(newBar, cardTitle.nextSibling);
+					} else {
+						sec.appendChild(newBar);
+					}
+				} else if (collapseInner) {
+					collapseInner.insertBefore(newBar, collapseInner.firstChild);
+				} else if (cardTitle && cardTitle.nextSibling) {
+					sec.insertBefore(newBar, cardTitle.nextSibling);
+				} else {
+					sec.appendChild(newBar);
+				}
+			}
+		});
+
+		// 2. Also inject compact lifecycle bars for UPnP inside #ex-dmz-section and usteer inside #ex-wifi-mesh-section
+		const dmzSec = root.querySelector('#ex-dmz-section');
+		if (dmzSec) {
+			const oldUpnpBar = dmzSec.querySelector('.ex-plugin-lifecycle-bar[data-lifecycle-key="upnp"]');
+			const newUpnpBar = self.renderPluginLifecycleBar('upnp', true);
+			if (oldUpnpBar && oldUpnpBar.parentNode) {
+				oldUpnpBar.parentNode.replaceChild(newUpnpBar, oldUpnpBar);
+			} else {
+				const inner = dmzSec.querySelector('.ex-card-collapse-inner') || dmzSec;
+				inner.insertBefore(newUpnpBar, inner.firstChild);
+			}
+		}
+		const meshSec = root.querySelector('#ex-wifi-mesh-section');
+		if (meshSec) {
+			const oldUsteerBar = meshSec.querySelector('.ex-plugin-lifecycle-bar[data-lifecycle-key="usteer"]');
+			const newUsteerBar = self.renderPluginLifecycleBar('usteer', true);
+			if (oldUsteerBar && oldUsteerBar.parentNode) {
+				oldUsteerBar.parentNode.replaceChild(newUsteerBar, oldUsteerBar);
+			} else {
+				const usteerCtrl = meshSec.querySelector('#ex-usteer-pill');
+				const usteerRow = usteerCtrl ? usteerCtrl.closest('.ex-channel-mode-control') : null;
+				if (usteerRow && usteerRow.parentNode) {
+					usteerRow.parentNode.insertBefore(newUsteerBar, usteerRow.nextSibling);
+				}
+			}
+		}
+
+		// 3. Update visibility & DEV badges on menu items ([data-ark-menu-feature])
+		const menuItems = root.querySelectorAll('[data-ark-menu-feature]');
+		Array.prototype.forEach.call(menuItems, function(item) {
+			const key = item.getAttribute('data-ark-menu-feature');
+			if (!key) return;
+			const meta = (typeof FEATURE_META !== 'undefined' && FEATURE_META[key]) || {};
+			const f = (self.feature && self.feature(key)) || {};
+			const installed = !!f.installed;
+			let hideMenu = false;
+			if (!devMode) {
+				if (meta.nativeDaemon) {
+					hideMenu = !!f.user_disabled || !!f.user_removed;
+				} else if (!installed) {
+					hideMenu = !showUninst || !!f.user_removed || !!f.hidden;
+				}
+			}
+			item.classList.toggle('ark-feature-uninstalled-hidden', hideMenu);
+			item.classList.toggle('is-dev-uninstalled-menu', devMode && !installed);
+
+			const navBadge = item.querySelector && item.querySelector('.ex-v2-nav-badge');
+			const defaultBadge = item.getAttribute('data-default-badge');
+			if (navBadge && defaultBadge !== null) {
+				if (!installed && (devMode || showUninst)) {
+					navBadge.textContent = '🛠️ INSTALAR';
+				} else if (installed && !f.active && f.user_disabled) {
+					navBadge.textContent = 'PAUSADO';
+				} else {
+					navBadge.textContent = defaultBadge;
+				}
+			}
+		});
+	},
+	renderV2LuciDrawer: function() {
+		const self = this;
+		const buildUrl = function(route) {
+			if (typeof L !== 'undefined' && typeof L.url === 'function') {
+				return L.url('admin/' + route);
+			}
+			return '/cgi-bin/luci/admin/' + route;
+		};
+		const categories = [
+			{
+				title: '📊 Status do Roteador',
+				items: [
+					{ label: 'Visão Geral do Sistema (LuCI)', route: 'status/overview', meta: '/status/overview' },
+					{ label: 'Firewall & Tabelas nftables (fw4)', route: 'status/nftables', meta: '/status/nftables' },
+					{ label: 'Tabela de Roteamento Kernel', route: 'status/routes', meta: '/status/routes' },
+					{ label: 'Registro do Sistema (Syslog)', route: 'status/syslog', meta: '/status/syslog' },
+					{ label: 'Registro do Kernel (Dmesg)', route: 'status/dmesg', meta: '/status/dmesg' },
+					{ label: 'Processos Ativos & Uso de CPU', route: 'status/processes', meta: '/status/processes' },
+					{ label: 'Gráficos em Tempo Real', route: 'status/realtime', meta: '/status/realtime' },
+					{ label: 'Análise de Canais Wi-Fi (Espectro)', route: 'status/channel_analysis', meta: '/status/channel_analysis' }
+				]
+			},
+			{
+				title: '⚙️ Sistema & Administração',
+				items: [
+					{ label: 'Propriedades do Sistema, Fuso & Tema', route: 'system/system', meta: '/system/system' },
+					{ label: 'Administração, Senha & Chaves SSH', route: 'system/admin', meta: '/system/admin' },
+					{ label: 'Gerenciador de Pacotes (apk / opkg)', route: 'system/opkg', meta: '/system/opkg' },
+					{ label: 'Serviços de Inicialização (Initscripts)', route: 'system/startup', meta: '/system/startup' },
+					{ label: 'Tarefas Agendadas (Crontab)', route: 'system/crontab', meta: '/system/crontab' },
+					{ label: 'Pontos de Montagem (USB / Overlay)', route: 'system/mounts', meta: '/system/mounts' },
+					{ label: 'Configuração de LEDs', route: 'system/leds', meta: '/system/leds' },
+					{ label: 'Backup & Gravar Firmware (Sysupgrade)', route: 'system/flash', meta: '/system/flash' },
+					{ label: 'Reiniciar Sistema (Nativo)', route: 'system/reboot', meta: '/system/reboot' }
+				]
+			},
+			{
+				title: '🌐 Rede & Firewall',
+				items: [
+					{ label: 'Interfaces de Rede (LAN, WAN, WAN2)', route: 'network/network', meta: '/network/network' },
+					{ label: 'Rádios Wi-Fi & Pontos de Acesso', route: 'network/wireless', meta: '/network/wireless' },
+					{ label: 'Switch / DSA VLANs (802.1Q)', route: 'network/switch', meta: '/network/switch' },
+					{ label: 'Servidor DHCP e DNS (dnsmasq)', route: 'network/dhcp', meta: '/network/dhcp' },
+					{ label: 'Firewall, Zonas & Port Forwards', route: 'network/firewall', meta: '/network/firewall' },
+					{ label: 'Diagnósticos de Rede (Ping / Trace / DNS)', route: 'network/diagnostics', meta: '/network/diagnostics' },
+					{ label: 'Multi-WAN Balanceamento (mwan3)', route: 'network/mwan3', meta: '/network/mwan3', feature: 'mwan3' },
+					{ label: 'Controle de Bufferbloat (SQM CAKE)', route: 'network/sqm', meta: '/network/sqm', feature: 'sqm' }
+				]
+			},
+			{
+				title: '🛡️ Serviços, Armazenamento & VPN',
+				items: [
+					{ label: 'AdBlock DNS Sinkhole', route: 'services/adblock', meta: '/services/adblock', feature: 'adblock' },
+					{ label: 'Servidor de Arquivos USB (KSMBD)', route: 'services/ksmbd', meta: '/services/ksmbd', feature: 'ksmbd' },
+					{ label: 'Wake-on-LAN (Magic Packet L2)', route: 'services/wol', meta: '/services/wol', feature: 'wol' },
+					{ label: 'UPnP / NAT-PMP IGD', route: 'services/upnp', meta: '/services/upnp', feature: 'upnp' },
+					{ label: 'WireGuard VPN Status', route: 'vpn/wireguard', meta: '/vpn/wireguard', feature: 'wireguard' }
+				]
+			}
+		];
+
+		const listChildren = [];
+		categories.forEach(function(cat) {
+			listChildren.push(E('div', { class: 'ex-v2-drawer-cat' }, [cat.title]));
+			cat.items.forEach(function(item) {
+				const linkAttrs = {
+					class: 'ex-v2-drawer-link',
+					href: buildUrl(item.route),
+					'data-search': (item.label + ' ' + item.meta + ' ' + cat.title).toLowerCase()
+				};
+				if (item.feature) linkAttrs['data-ark-menu-feature'] = item.feature;
+				listChildren.push(E('a', linkAttrs, [
+					E('span', { class: 'ex-v2-drawer-link-label' }, [item.label]),
+					E('code', { class: 'ex-v2-drawer-link-meta' }, [item.meta])
+				]));
+			});
+		});
+
+		const backdrop = E('div', {
+			id: 'ex-v2-luci-drawer-backdrop',
+			class: 'ex-v2-luci-drawer-backdrop',
+			click: function() { self.toggleV2LuciDrawer(false); }
+		});
+		const drawer = E('aside', {
+			id: 'ex-v2-luci-drawer',
+			class: 'ex-v2-luci-drawer',
+			'aria-label': 'Gaveta de Navegação OpenWrt LuCI'
+		}, [
+			E('div', { class: 'ex-v2-drawer-head' }, [
+				E('div', {}, [
+					E('strong', { class: 'ex-v2-drawer-title' }, ['🧭 Navegação OpenWrt LuCI (Tema Ark Integrado)']),
+					E('span', { class: 'ex-v2-drawer-sub' }, ['Acesso direto às telas nativas do OpenWrt estilizadas com o Tema Ark (Modo Básico / Avançado)'])
+				]),
+				E('button', {
+					type: 'button',
+					class: 'ex-v2-drawer-close',
+					click: function() { self.toggleV2LuciDrawer(false); }
+				}, ['✕'])
+			]),
+			E('div', { class: 'ex-v2-drawer-cta-bar' }, [
+				E('a', {
+					class: 'ex-v2-drawer-main-cta',
+					href: buildUrl('status/overview')
+				}, ['💻 Abrir Interface Nativa do OpenWrt (Visão Geral com Tema Ark) ↗'])
+			]),
+			E('div', { class: 'ex-v2-drawer-search-wrap' }, [
+				E('input', {
+					type: 'text',
+					id: 'ex-v2-drawer-search',
+					class: 'ex-v2-drawer-search',
+					placeholder: '🔍 Filtrar menus, rotas ou ajustes UCI (ex: firewall, dhcp, syslog, pacotes)...',
+					input: function(ev) { self.filterV2LuciDrawer(ev.target.value); }
+				})
+			]),
+			E('div', { id: 'ex-v2-drawer-links', class: 'ex-v2-drawer-links' }, listChildren)
+		]);
+		return { backdrop: backdrop, drawer: drawer };
+	},
+	toggleV2LuciDrawer: function(forceState) {
+		const drawer = document.getElementById('ex-v2-luci-drawer');
+		const backdrop = document.getElementById('ex-v2-luci-drawer-backdrop');
+		if (!drawer || !backdrop) return;
+		const isOpen = drawer.classList.contains('is-open');
+		const next = (typeof forceState === 'boolean') ? forceState : !isOpen;
+		drawer.classList.toggle('is-open', next);
+		backdrop.classList.toggle('is-open', next);
+		if (next) {
+			const inp = document.getElementById('ex-v2-drawer-search');
+			if (inp) {
+				inp.value = '';
+				this.filterV2LuciDrawer('');
+				setTimeout(function() { try { inp.focus(); } catch(e) {} }, 60);
+			}
+		}
+	},
+	filterV2LuciDrawer: function(query) {
+		const term = String(query || '').toLowerCase().trim();
+		const links = document.querySelectorAll('#ex-v2-drawer-links .ex-v2-drawer-link');
+		const cats = document.querySelectorAll('#ex-v2-drawer-links .ex-v2-drawer-cat');
+		links.forEach(function(el) {
+			const hay = el.getAttribute('data-search') || el.textContent.toLowerCase();
+			el.style.display = (!term || hay.indexOf(term) !== -1) ? 'flex' : 'none';
+		});
+		cats.forEach(function(el) {
+			el.style.display = (!term) ? 'block' : 'none';
+		});
+	},
+	updateV2CockpitStatus: function(data) {
+		if (!data) return;
+		const self = this;
+		if (typeof this.applyFeatureVisibilityAndLifecycle === 'function') {
+			this.applyFeatureVisibilityAndLifecycle(this.dashboardRoot);
+		}
+		// 1. Update Devices badge in sidebar
+		const devCountEl = document.getElementById('ex-device-count');
+		const navDevBadge = document.getElementById('ex-v2-nav-devices-badge');
+		if (devCountEl && navDevBadge) {
+			const m = String(devCountEl.textContent || '').match(/\d+/);
+			navDevBadge.textContent = m ? m[0] : '0';
+		}
+
+		// 2. Update Quick Status Strip Pills
+		const adblockFeat = (this.feature && this.feature('adblock')) || {};
+		const adEl = document.getElementById('ex-v2-pill-adblock');
+		if (adEl) {
+			adEl.textContent = !adblockFeat.installed ? '🛠️ Instalar' : (adblockFeat.active ? 'Ativo (DNS)' : 'Standby');
+			adEl.className = 'ex-v2-qp-val ' + (adblockFeat.active ? 'is-online' : '');
+		}
+
+		const sqmFeat = (this.feature && this.feature('sqm')) || {};
+		const qosPill = document.getElementById('ex-qos-status');
+		const sqmEl = document.getElementById('ex-v2-pill-sqm');
+		if (sqmEl) {
+			const isSqmOn = sqmFeat.installed && ((qosPill && qosPill.classList.contains('online')) || sqmFeat.active);
+			sqmEl.textContent = !sqmFeat.installed ? '🛠️ Instalar' : (isSqmOn ? 'Nota A+ (Ativo)' : 'Standby');
+			sqmEl.className = 'ex-v2-qp-val ' + (isSqmOn ? 'is-online' : '');
+		}
+
+		const wgFeat = (this.feature && this.feature('wireguard')) || {};
+		const wgEl = document.getElementById('ex-v2-pill-wg');
+		if (wgEl) {
+			wgEl.textContent = !wgFeat.installed ? '🛠️ Instalar' : (wgFeat.active ? 'wg0 Ativo' : 'Standby');
+			wgEl.className = 'ex-v2-qp-val ' + (wgFeat.active ? 'is-online' : '');
+		}
+
+		const ksmbdFeat = (this.feature && this.feature('ksmbd')) || {};
+		const ksmbdEl = document.getElementById('ex-v2-pill-ksmbd');
+		if (ksmbdEl) {
+			ksmbdEl.textContent = ksmbdFeat.active ? 'SMB 3.1.1 Ativo' : (ksmbdFeat.installed ? 'Pronto' : '🛠️ Instalar');
+			ksmbdEl.className = 'ex-v2-qp-val ' + (ksmbdFeat.active ? 'is-online' : '');
+		}
+
+		const wolFeat = (this.feature && this.feature('wol')) || {};
+		const wolEl = document.getElementById('ex-v2-pill-wol');
+		if (wolEl) {
+			wolEl.textContent = wolFeat.installed ? (wolFeat.active ? 'Pronto' : 'Pausado') : '🛠️ Instalar';
+			wolEl.className = 'ex-v2-qp-val ' + (wolFeat.installed && wolFeat.active ? 'is-online' : '');
+		}
+
+		const hw = (data && data.hardwareInfo) || (this.capabilities && this.capabilities.hardware) || {};
+		const sil = hw.silicon || {};
+		const accelEl = document.getElementById('ex-v2-pill-accel');
+		if (accelEl) {
+			accelEl.textContent = sil.hw_offload_capable ? 'PPE Hardware Ativo' : 'Flowtable Ativo';
+			accelEl.className = 'ex-v2-qp-val is-online';
+		}
+
+		// 3. Update Ark Doctor Banner in Cockpit
+		const docPillText = document.getElementById('ex-doctor-pill-text');
+		const docTitle = document.getElementById('ex-v2-doc-title');
+		if (docPillText && docTitle && docPillText.textContent) {
+			const raw = docPillText.textContent.trim();
+			docTitle.textContent = raw.indexOf('Ark Doctor') === 0 ? (raw + ' • Subsistemas Auditados') : ('Ark Doctor: ' + raw);
+		}
+
+		// 4. Update Physical Switch Ports Grid
+		const portsGrid = document.getElementById('ex-v2-switch-ports-grid');
+		if (portsGrid) {
+			const hwPorts = (data.hardwareInfo && data.hardwareInfo.ports) || {};
+			const netValues = values(data.networkConfig);
+			const isWanToLan = !!(netValues.autowan && String(netValues.autowan.wan_to_lan) === '1');
+			const isWanPromoted = !!(netValues.autowan && String(netValues.autowan.wan_promoted) === '1');
+			const isApNode = isSatelliteOrAp(data);
+			const portDefs = [];
+			const seenPorts = {};
+
+			const getPortMaxSpeed = function(dev, hw) {
+				if (hw && hw.max_speed) return hw.max_speed;
+				const clean = String(dev || '').replace(/@.+/, '');
+				if (hwPorts[clean] && hwPorts[clean].max_speed) return hwPorts[clean].max_speed;
+				if (clean === 'eth1' || clean === 'lan5' || clean === 'port5' || clean === 'wan' || clean === 'wan1' || clean.indexOf('2.5') >= 0) {
+					const wHw = hwPorts.eth1 || hwPorts.port5 || hwPorts.lan5 || hwPorts.wan || hwPorts.wan1;
+					if (wHw && wHw.max_speed) return wHw.max_speed;
+					return '2.5G';
+				}
+				return '1G';
+			};
+
+			if (isApNode) {
+				let lanStatusObj = {};
+				try { lanStatusObj = JSON.parse((data.lanStatus && data.lanStatus.stdout) || '{}'); } catch(e) {}
+				const uplinkDev = lanStatusObj.uplink_dev || data.apUplink || 'eth0';
+				const dev = (data.wanDevicesMap && (data.wanDevicesMap[uplinkDev] || data.wanDevicesMap.eth0 || data.wanDevicesMap.lan)) || {};
+				const hw = hwPorts[uplinkDev] || hwPorts.eth0 || {};
+				const isUp = !!(dev.carrier || hw.carrier || (Number(dev.speed) > 0) || (Number(hw.speed) > 0));
+				const maxSpd = getPortMaxSpeed(uplinkDev, hw);
+				seenPorts[uplinkDev] = 1;
+				portDefs.push({
+					key: uplinkDev,
+					label: portLabel(uplinkDev) + ' (' + maxSpd + ')',
+					role: 'UPLINK',
+					isWan: true,
+					isUp: isUp,
+					speed: (hw.speed && Number(hw.speed) > 0 ? hw.speed : dev.speed),
+					duplex: hw.duplex || dev.duplex || 'full'
+				});
+			} else {
+				const activeWans = getActiveWanList(data);
+				activeWans.forEach(function(w) {
+					const cfg = netValues[w.iface] || {};
+					if (w.iface === 'wan' && isWanToLan && !isWanPromoted) return;
+					const i = iface(data.interfaces, w.iface);
+					const d = (data.wanDevicesMap && data.wanDevicesMap[w.iface]) || (w.iface === 'wan' ? data.wanDevice : (w.iface === 'wan2' ? data.wan2Device : {})) || {};
+					let phy = (data.wanPhysicalDevicesMap && data.wanPhysicalDevicesMap[w.iface]) || (w.iface === 'wan' ? data.wanPhysicalDevice : (w.iface === 'wan2' ? data.wan2PhysicalDevice : d)) || d || {};
+					const rawDev = String(w.device || cfg.device || i.device || w.iface || '').replace(/@.+/, '');
+					const isPhysWanDev = (rawDev === 'wan' || rawDev === 'wan1' || rawDev === 'eth1' || rawDev === 'lan5' || rawDev === 'port5' || rawDev === 'eth0.2');
+					const hw = hwPorts[rawDev] || hwPorts[cfg.device] || hwPorts[i.device] || (isPhysWanDev ? (hwPorts.eth1 || hwPorts.wan || hwPorts.wan1 || hwPorts.port5 || hwPorts.lan5) : null);
+					if (hw && (hw.carrier !== undefined || hw.speed)) {
+						phy = Object.assign({}, phy, {
+							carrier: (hw.carrier !== undefined ? !!hw.carrier : !!phy.carrier),
+							speed: (hw.speed && Number(hw.speed) > 0) ? hw.speed : phy.speed,
+							duplex: (hw.duplex && hw.duplex !== 'unknown') ? hw.duplex : phy.duplex,
+							max_speed: hw.max_speed || phy.max_speed
+						});
+					}
+					if (rawDev) seenPorts[rawDev] = 1;
+					const maxSpd = getPortMaxSpeed(rawDev, hw);
+					const physLbl = isPhysWanDev ? maxSpd : (portLabel(rawDev) + ' • ' + maxSpd);
+					const roleLbl = String(w.label || 'WAN').replace(/^WAN(\d+)$/i, 'WAN $1');
+					const isUp = !!(phy.carrier || (i && i.up && Number(phy.speed) > 0));
+					portDefs.push({
+						key: rawDev || w.iface,
+						label: w.label + ' (' + physLbl + ')',
+						role: roleLbl,
+						isWan: true,
+						isUp: isUp,
+						speed: phy.speed,
+						duplex: phy.duplex
+					});
+				});
+			}
+
+			const rawLanPorts = (data.lanPorts && data.lanPorts.length) ? data.lanPorts : lanPortsFromNetwork(data.networkConfig);
+			const lanPorts = isApNode ? rawLanPorts.filter(function(port) { return !seenPorts[port] && port !== 'eth0'; }) : rawLanPorts;
+			lanPorts.forEach(function(port) {
+				if (seenPorts[port]) return;
+				seenPorts[port] = 1;
+				const rawIdx = rawLanPorts.indexOf(port);
+				let dev = (rawIdx >= 0 && data.lanDevices && data.lanDevices[rawIdx]) ? data.lanDevices[rawIdx] : {};
+				const isWanPort = (port === 'lan5' || port === 'port5' || port === 'eth1' || port === 'wan' || port === 'eth0.2');
+				let hw = hwPorts[port] || (isWanPort ? (hwPorts.lan5 || hwPorts.port5 || hwPorts.wan || hwPorts.wan1 || hwPorts.eth1) : null);
+				if (!hw && port === 'eth1.1') hw = hwPorts.lan1 || hwPorts.port1;
+				if (!hw && port === 'eth1.2') hw = hwPorts.lan2 || hwPorts.port2;
+				if (hw && (hw.carrier !== undefined || hw.speed)) {
+					dev = Object.assign({}, dev, {
+						carrier: !!hw.carrier,
+						speed: hw.speed || dev.speed,
+						duplex: hw.duplex || dev.duplex,
+						max_speed: hw.max_speed || dev.max_speed
+					});
+				}
+				const maxSpd = getPortMaxSpeed(port, hw);
+				const baseLbl = portLabel(port);
+				const fullLbl = baseLbl.slice(-1) === ')' ? (baseLbl + ' • ' + maxSpd) : (baseLbl + ' (' + maxSpd + ')');
+				const isUp = !!dev.carrier;
+				portDefs.push({
+					key: port,
+					label: fullLbl,
+					role: isWanPort ? 'WAN → LAN' : 'LAN',
+					isWan: false,
+					isUp: isUp,
+					speed: dev.speed,
+					duplex: dev.duplex
+				});
+			});
+
+			let upCount = 0;
+			const boxes = portDefs.map(function(pd) {
+				const isUp = !!pd.isUp;
+				if (isUp) upCount++;
+				const rawSpd = String(pd.speed || '').match(/^[0-9]+/);
+				const speedStr = (rawSpd && Number(rawSpd[0]) > 0) ? (rawSpd[0] + ' Mbps') : 'Conectada';
+				const rawDup = String(pd.duplex || '').trim();
+				const duplexStr = (rawDup && rawDup !== 'unknown') ? rawDup : 'Full Duplex';
+				return E('div', {
+					class: 'ex-v2-port-box ' + (isUp ? 'port-up' : 'port-down'),
+					click: L.bind(function() { self.switchV2Panel('wan', 'ex-lan-ports-section'); }, self),
+					title: 'Clique para gerenciar portas de rede'
+				}, [
+					E('span', { class: 'ex-v2-port-role ' + (pd.isWan ? 'is-wan' : 'is-lan') }, [pd.role]),
+					E('div', { class: 'ex-v2-port-jack' }, [
+						E('div', { class: 'ex-v2-port-leds' }, [
+							E('span', { class: 'ex-v2-led ' + (isUp ? 'led-green' : 'led-off') }),
+							E('span', { class: 'ex-v2-led ' + (isUp ? 'led-amber' : 'led-off') })
+						]),
+						E('span', { class: 'ex-v2-port-pins' }, ['||||'])
+					]),
+					E('strong', { class: 'ex-v2-port-name' }, [pd.label]),
+					E('small', { class: 'ex-v2-port-speed' }, [isUp ? (speedStr + ' • ' + duplexStr) : 'Sem Cabo'])
+				]);
+			});
+			portsGrid.replaceChildren.apply(portsGrid, boxes);
+			const sumPill = document.getElementById('ex-v2-ports-summary-pill');
+			if (sumPill) {
+				sumPill.textContent = upCount + ' / ' + portDefs.length + ' PORTAS ATIVAS';
+			}
+		}
+
+		// 5. Update Compact Cockpit Status Overview Cards (Read-Only Summary)
+		const setTxt = function(id, val) {
+			const el = document.getElementById(id);
+			if (el && val) el.textContent = val;
+		};
+		const wan1IpEl = document.getElementById('ex-wan1-ip') || document.getElementById('ex-wan-ip');
+		const wan1PingEl = document.getElementById('ex-wan1-latency') || document.getElementById('ex-wan-latency') || document.getElementById('ex-wan-ping');
+		const wan1PillEl = document.getElementById('ex-wan1-status') || document.getElementById('ex-wan-status');
+		const w1Status = (wan1PillEl && wan1PillEl.textContent) ? wan1PillEl.textContent.trim() : 'ONLINE';
+		const w1Ip = (wan1IpEl && wan1IpEl.textContent) ? wan1IpEl.textContent.trim() : '';
+		const w1Ping = (wan1PingEl && wan1PingEl.textContent) ? wan1PingEl.textContent.trim().replace(/\s+/g, '\u00A0') : '';
+		setTxt('ex-v2-stat-wan1', w1Status + (w1Ip && w1Ip !== '—' ? (' • ' + w1Ip) : '') + (w1Ping && w1Ping !== '—' ? (' (' + w1Ping + ')') : ''));
+
+		const wan2IpEl = document.getElementById('ex-wan2-ip');
+		const wan2PingEl = document.getElementById('ex-wan2-latency');
+		const wan2PillEl = document.getElementById('ex-wan2-status');
+		const w2Status = (wan2PillEl && wan2PillEl.textContent) ? wan2PillEl.textContent.trim() : 'STANDBY';
+		const w2Ip = (wan2IpEl && wan2IpEl.textContent) ? wan2IpEl.textContent.trim() : '';
+		const w2Ping = (wan2PingEl && wan2PingEl.textContent) ? wan2PingEl.textContent.trim().replace(/\s+/g, '\u00A0') : '';
+		setTxt('ex-v2-stat-wan2', w2Status + (w2Ip && w2Ip !== '—' ? (' • ' + w2Ip) : '') + (w2Ping && w2Ping !== '—' ? (' (' + w2Ping + ')') : ''));
+
+		const mwanTitleEl = document.querySelector('#ex-mwan-section h3');
+		if (mwanTitleEl && mwanTitleEl.textContent) {
+			setTxt('ex-v2-stat-mwan', mwanTitleEl.textContent.replace(/^Modo atual:\s*/i, '').trim());
+		}
+
+		const mainSsidEl = document.getElementById('ex-main-ssid');
+		const guestSsidEl = document.getElementById('ex-guest-ssid');
+		const mainClientsEl = document.getElementById('ex-main-clients');
+		const guestClientsEl = document.getElementById('ex-guest-clients');
+		if (mainSsidEl && mainSsidEl.textContent) setTxt('ex-v2-stat-ssid', mainSsidEl.textContent.trim());
+		if (guestSsidEl && guestSsidEl.textContent) setTxt('ex-v2-stat-guest', guestSsidEl.textContent.trim());
+		const mc = parseInt((mainClientsEl && mainClientsEl.textContent) || '0', 10) || 0;
+		const gc = parseInt((guestClientsEl && guestClientsEl.textContent) || '0', 10) || 0;
+		setTxt('ex-v2-stat-wifi-clients', (mc + gc) + ' clientes sem fio');
+
+		const lanIpEl = document.getElementById('ex-lan-ip');
+		const lanIpDom = (lanIpEl && lanIpEl.textContent) ? lanIpEl.textContent.trim() : '';
+		const lanIp = (lanIpDom && lanIpDom !== '—')
+			? lanIpDom
+			: ((data.networkConfig && data.networkConfig.values && data.networkConfig.values.lan && data.networkConfig.values.lan.ipaddr) || (data.lan && data.lan.ipaddr) || '192.168.1.1');
+		setTxt('ex-v2-stat-lan-ip', lanIp + ' (DHCP Ativo)');
+		if (devCountEl && devCountEl.textContent) {
+			const dm = String(devCountEl.textContent).match(/\d+/);
+			setTxt('ex-v2-stat-dev-count', (dm ? dm[0] : '0') + ' dispositivos na rede');
+		}
+		if (sqmEl && sqmEl.textContent) {
+			setTxt('ex-v2-stat-sqm', sqmEl.textContent.trim());
+		}
 	},
 	handleSaveApply:null, handleSave:null, handleReset:null
 };

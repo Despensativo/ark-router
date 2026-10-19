@@ -159,6 +159,9 @@ const lifecycleMethods = {
 	},
 
 	load: function() {
+		if (typeof installArkTransactionCoordinator === 'function') {
+			installArkTransactionCoordinator();
+		}
 		return Promise.all([
 			safe(callSystemBoard(), {}),
 			Promise.resolve({ results: [] }),
@@ -283,7 +286,7 @@ const lifecycleMethods = {
 						}
 					});
 				}
-				return {
+				const retObj = {
 				system:r[0], interfaces:interfaces, wanDevice:wanDevicesMap.wan||{}, wan2Device:wanDevicesMap.wan2||{}, wanPhysicalDevice:wanPhysicalDevicesMap.wan||{}, wan2PhysicalDevice:wanPhysicalDevicesMap.wan2||{},
 				wanDevicesMap:wanDevicesMap, wanPhysicalDevicesMap:wanPhysicalDevicesMap, wanPingsMap:wanPingsMap,
 				activeWans: activeWans,
@@ -299,18 +302,44 @@ const lifecycleMethods = {
 				deviceStations: deviceStations,
 				apUplink: apUplink,
 				doctorStatus: (function(){ try { return (r[25] && r[25].trim()) ? JSON.parse(r[25]) : null; } catch(e){ return null; } })(),
+				_initialLoad: !!isInitial,
 				timestamp:Date.now()
 			};
-			if ((!r[25] || !r[25].trim()) && isInitial) {
-				safe(fs.exec('/usr/sbin/equipe-dashboard-control', ['doctor-status']), {}).then(function(res) {
-					try {
-						const parsed = JSON.parse(res.stdout || '{}');
-						if (self.currentData && parsed && parsed.status) {
-							self.currentData.doctorStatus = parsed;
-							self.updateDoctorStatus(parsed);
-						}
-					} catch(e) {}
+			if (isInitial) {
+				if (!retObj.doctorStatus || (!retObj.doctorStatus.status && !Array.isArray(retObj.doctorStatus.checks))) {
+					safe(fs.exec('/usr/sbin/equipe-dashboard-control', ['doctor-status']), {}).then(function(res) {
+						try {
+							const parsed = JSON.parse(res.stdout || '{}');
+							if (self.currentData && parsed && (parsed.status || Array.isArray(parsed.checks))) {
+								self.currentData.doctorStatus = parsed;
+								self.updateDoctorStatus(parsed);
+							}
+						} catch(e) {}
+					});
+				}
+				const bgPingPromises = [];
+				activeWans.forEach(function(w){
+					const live=iface(interfaces,w.iface), cfg=networkValues[w.iface]||{};
+					const logicalDev=live.l3_device||live.device||cfg.device||w.iface;
+					if(live.up && logicalDev){
+						const pingTarget = resolvePingTarget(pingCfg.target, pingCfg.customIp, live, cfg);
+						const isV6 = pingTarget && pingTarget.indexOf(':') !== -1;
+						const ip = (live['ipv4-address'] && live['ipv4-address'][0] && live['ipv4-address'][0].address) || '';
+						const bindTarget = isV6 ? logicalDev : (ip || logicalDev);
+						bgPingPromises.push(safe(fs.exec('/bin/ping',['-c','1','-W','2','-I',bindTarget,pingTarget]),{}).then(function(p){
+							wanPingsMap[w.iface]=p;
+							if(self.currentData && self.currentData.wanPingsMap) self.currentData.wanPingsMap[w.iface]=p;
+						}));
+					}
 				});
+				if (bgPingPromises.length > 0) {
+					Promise.all(bgPingPromises).then(function(){
+						if (self.currentData) {
+							self.currentData._initialLoad = false;
+							self.update(self.currentData);
+						}
+					});
+				}
 			}
 			return retObj; });
 		});
@@ -498,8 +527,21 @@ const lifecycleMethods = {
 				this.refreshPaused = true;
 				return;
 			}
+			if (typeof isPollingSuppressed === 'function' && isPollingSuppressed()) {
+				this.scheduleAdaptiveRefresh(1200);
+				return;
+			}
 			this.refreshPaused = false;
-			this.fetchDataTimed(9000).then(L.bind(function(data){this.update(data);this.scheduleAdaptiveRefresh();},this)).catch(L.bind(function(){this.scheduleAdaptiveRefresh(3000);},this));
+			const pollEpoch = (typeof window !== 'undefined' && window._arkTxState && window._arkTxState.epoch) || 0;
+			this.fetchDataTimed(9000).then(L.bind(function(data){
+				const curEpoch = (typeof window !== 'undefined' && window._arkTxState && window._arkTxState.epoch) || 0;
+				if ((typeof isPollingSuppressed === 'function' && isPollingSuppressed()) || curEpoch !== pollEpoch) {
+					this.scheduleAdaptiveRefresh(1500);
+					return;
+				}
+				this.update(data);
+				this.scheduleAdaptiveRefresh();
+			},this)).catch(L.bind(function(){this.scheduleAdaptiveRefresh(3000);},this));
 		},this),Math.max(250,wait));
 	},
 
@@ -766,6 +808,7 @@ const lifecycleMethods = {
 		this.updateDoctorStatus(data.doctorStatus);
 		this.updateWifi(data); this.updateMwanMode(data); this.updateHistory(data.history); this.renderDevices(data,dr);
 		this.updateClockAndDate();
+		if (typeof this.updateV2CockpitStatus === 'function') this.updateV2CockpitStatus(data);
 	},
 	updateClockAndDate: function() {
 		const clockEl = document.getElementById('ex-clock');
@@ -807,8 +850,10 @@ const lifecycleMethods = {
 		const pill = document.getElementById('ex-doctor-pill');
 		const pillText = document.getElementById('ex-doctor-pill-text');
 		const banner = document.getElementById('ex-doctor-banner');
+		const v2DocTitle = document.getElementById('ex-v2-doc-title');
 
-		if (!doc || !doc.status) {
+		const hasChecks = !!(doc && Array.isArray(doc.checks));
+		if (!doc || (!doc.status && !hasChecks && doc.score === undefined)) {
 			if (pillText) pillText.textContent = _t('Ark Doctor: Auditando…');
 			if (pill) {
 				pill.className = 'ex-pill standby ex-doctor-pill-btn';
@@ -817,9 +862,11 @@ const lifecycleMethods = {
 			return;
 		}
 
-		const isOk = doc.status === 'OK' || (Number(doc.errors || 0) === 0 && Number(doc.warnings || 0) === 0);
-		const hasErrors = Number(doc.errors || 0) > 0;
-		const hasWarnings = !hasErrors && Number(doc.warnings || 0) > 0;
+		const derivedErrors = doc.errors != null ? Number(doc.errors) : (hasChecks ? doc.checks.filter(function(c){ return c && (c.status === 'FAIL' || c.status === 'ERROR'); }).length : 0);
+		const derivedWarnings = doc.warnings != null ? Number(doc.warnings) : (hasChecks ? doc.checks.filter(function(c){ return c && c.status === 'WARN'; }).length : 0);
+		const isOk = doc.status === 'OK' || (derivedErrors === 0 && derivedWarnings === 0);
+		const hasErrors = derivedErrors > 0;
+		const hasWarnings = !hasErrors && derivedWarnings > 0;
 
 		if (pill && pillText) {
 			if (isOk) {
@@ -828,16 +875,20 @@ const lifecycleMethods = {
 				pill.title = _t('Sistema 100% saudável e otimizado. Clique para ver diagnósticos e logs.');
 			} else if (hasErrors) {
 				pill.className = 'ex-pill offline ex-doctor-pill-btn';
-				const errCount = Number(doc.errors || 1);
+				const errCount = derivedErrors || 1;
 				pillText.textContent = _t('Ark Doctor: ') + errCount + ' ' + (errCount === 1 ? _t('Falha') : _t('Falhas')) + ' ↗';
 				const firstFail = (doc.checks || []).find(function(c){ return c.status === 'FAIL'; });
 				pill.title = _t('Falha detectada: ') + (firstFail ? (firstFail.name + ' - ' + firstFail.message) : _t('Clique para reparar'));
 			} else if (hasWarnings) {
 				pill.className = 'ex-pill standby ex-doctor-pill-btn';
-				const warnCount = Number(doc.warnings || 1);
+				const warnCount = derivedWarnings || 1;
 				pillText.textContent = _t('Ark Doctor: ') + warnCount + ' ' + (warnCount === 1 ? _t('Aviso') : _t('Avisos')) + ' ↗';
 				const firstWarn = (doc.checks || []).find(function(c){ return c.status === 'WARN'; });
 				pill.title = _t('Aviso: ') + (firstWarn ? (firstWarn.name + ' - ' + firstWarn.message) : _t('Clique para verificar'));
+			}
+			if (v2DocTitle && pillText.textContent) {
+				const raw = pillText.textContent.trim();
+				v2DocTitle.textContent = raw.indexOf('Ark Doctor') === 0 ? (raw + ' • Subsistemas Auditados') : ('Ark Doctor: ' + raw);
 			}
 		}
 

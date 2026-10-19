@@ -15,6 +15,7 @@ json_text_escape() {
 }
 
 ark_vpn_lan_cidr() {
+	local ipaddr netmask network
 	ipaddr="$(uci -q get network.lan.ipaddr || true)"
 	netmask="$(uci -q get network.lan.netmask || printf 255.255.255.0)"
 	[ -n "$ipaddr" ] || return 1
@@ -41,6 +42,7 @@ ark_vpn_lan_cidr() {
 }
 
 zerotier_device_name() {
+	local ztdev
 	ztdev=""
 	if command -v zerotier-cli >/dev/null 2>&1; then
 		ztdev="$(zerotier-cli -j listnetworks 2>/dev/null | jsonfilter -e '@[0].portDeviceName' 2>/dev/null)"
@@ -56,6 +58,7 @@ zerotier_device_name() {
 }
 
 zerotier_firewall_prepare() {
+	local ztdev
 	ztdev="$(zerotier_device_name)"
 	uci -q delete network.zerotier
 	uci commit network
@@ -99,18 +102,8 @@ zerotier_current_ip() {
 	zerotier-cli listnetworks 2>/dev/null | awk 'NR>1 {for(i=1;i<=NF;i++) if($i ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\/[0-9]+$/) {split($i,a,"/"); print a[1]; exit}}'
 }
 
-configure_uhttpd_listeners() {
-	uci -q delete uhttpd.main.listen_http
-	uci -q delete uhttpd.main.listen_https
-	uci -q add_list "uhttpd.main.listen_http=0.0.0.0:80"
-	uci -q add_list "uhttpd.main.listen_https=0.0.0.0:443"
-	uci -q add_list "uhttpd.main.listen_http=[::]:80" 2>/dev/null || true
-	uci -q add_list "uhttpd.main.listen_https=[::]:443" 2>/dev/null || true
-	uci -q set uhttpd.main.rfc1918_filter=0
-	uci commit uhttpd
-}
-
 zerotier_configure_access() {
+	local sec
 	configure_uhttpd_listeners
 	for sec in $(uci -q show dropbear 2>/dev/null | grep '=dropbear$' | cut -d. -f2 | cut -d= -f1); do
 		uci -q delete "dropbear.$sec.Interface" 2>/dev/null || true
@@ -125,44 +118,13 @@ zerotier_bind_uhttpd() {
 }
 
 zerotier_late_bind_uhttpd() {
+	local delay
 	(
 		for delay in 3 8 15; do
 			sleep "$delay"
 			zerotier_firewall_prepare >/dev/null 2>&1 || true
 		done
 	) >/dev/null 2>&1 &
-}
-
-zerotier_ram_compress() {
-	local overlay_total
-	overlay_total="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $2}')"
-	case "$overlay_total" in ''|*[!0-9]*) overlay_total=65536 ;; esac
-	if [ "$overlay_total" -le 16384 ]; then
-		if [ -f /rom/usr/lib/libstdc++.so.6.0.33 ] || [ -f /rom/usr/bin/zerotier-one ]; then
-			rm -f /etc/ark-router/zerotier-pkg.tar.gz /etc/ark-router/zerotier-libs.tar.gz 2>/dev/null || true
-			return 0
-		fi
-		if [ -f /etc/ark-router/zerotier-pkg.tar.gz ]; then
-			if [ ! -f /tmp/usr/lib/libstdc++.so.6.0.33 ] || [ ! -f /tmp/usr/bin/zerotier-one ]; then
-				mkdir -p /tmp
-				tar -xzf /etc/ark-router/zerotier-pkg.tar.gz -C /tmp/ 2>/dev/null
-			fi
-			[ -e /usr/lib/libstdc++.so.6.0.33 ] || ln -sf /tmp/usr/lib/libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6.0.33
-			[ -e /usr/lib/libstdc++.so.6 ] || ln -sf libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6
-			[ -e /usr/bin/zerotier-one ] || ln -sf /tmp/usr/bin/zerotier-one /usr/bin/zerotier-one
-			chmod +x /tmp/usr/bin/zerotier-one 2>/dev/null || true
-		elif [ -f /usr/lib/libstdc++.so.6.0.33 ] && [ ! -L /usr/lib/libstdc++.so.6.0.33 ]; then
-			mkdir -p /etc/ark-router /tmp
-			tar -czf /etc/ark-router/zerotier-pkg.tar.gz /usr/lib/libstdc++.so.6.0.33 /usr/bin/zerotier-one 2>/dev/null
-			tar -xzf /etc/ark-router/zerotier-pkg.tar.gz -C /tmp/ 2>/dev/null
-			rm -f /usr/lib/libstdc++.so.6.0.33 /usr/bin/zerotier-one /etc/ark-router/zerotier-libs.tar.gz 2>/dev/null || true
-			ln -sf /tmp/usr/lib/libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6.0.33
-			ln -sf libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6
-			ln -sf /tmp/usr/bin/zerotier-one /usr/bin/zerotier-one
-			chmod +x /tmp/usr/bin/zerotier-one 2>/dev/null || true
-			[ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true
-		fi
-	fi
 }
 
 zerotier_install() {
@@ -178,6 +140,7 @@ zerotier_install() {
 }
 
 zerotier_enable() {
+	local sec s zt_auto i
 	zerotier_install || return $?
 	zerotier_ram_compress
 	sec="$(uci -q show zerotier | grep '=zerotier' | head -n1 | cut -d. -f2 | cut -d= -f1)"
@@ -213,6 +176,7 @@ zerotier_enable() {
 }
 
 zerotier_disable() {
+	local sec ztdev
 	sec="$(uci -q show zerotier | grep '=zerotier' | head -n1 | cut -d. -f2 | cut -d= -f1)"
 	[ -n "$sec" ] || sec="sample_config"
 	uci -q set "zerotier.$sec.enabled=0"
@@ -232,6 +196,7 @@ zerotier_disable() {
 valid_zerotier_network_id() { printf '%s' "$1" | grep -Eq '^[0-9a-fA-F]{16}$'; }
 
 zerotier_join_network() {
+	local netid sec i out rc
 	netid="$1"
 	valid_zerotier_network_id "$netid" || { echo 'Network ID ZeroTier invalido. Use 16 caracteres hexadecimais.' >&2; return 2; }
 	zerotier_enable || return $?
@@ -270,6 +235,7 @@ zerotier_join_network() {
 }
 
 zerotier_leave_network() {
+	local netid sec
 	netid="$1"
 	[ -n "$netid" ] || netid="$(uci -q get equipe_dashboard.zerotier.network_id || true)"
 	valid_zerotier_network_id "$netid" || { echo 'Network ID ZeroTier invalido ou ausente.' >&2; return 2; }
@@ -287,6 +253,8 @@ zerotier_leave_network() {
 }
 
 zerotier_status_json() {
+	local installed_zt autostart zt_auto active node online info cli_node idf sec netid line
+	local nstatus
 	installed_zt=false; [ -x /usr/sbin/zerotier-one ] || [ -x /usr/bin/zerotier-one ] || command -v zerotier-cli >/dev/null 2>&1 && installed_zt=true
 	autostart=false
 	zt_auto="$(uci -q get equipe_dashboard.zerotier.autostart || true)"
@@ -343,6 +311,7 @@ zerotier_status_json() {
 }
 
 zerotier_autostart_toggle() {
+	local val
 	val="${1:-1}"
 	case "$val" in
 		1|true|on)
@@ -366,6 +335,9 @@ zerotier_autostart_toggle() {
 }
 
 wireguard_status_json() {
+	local installed_wg autostart_wg configured_wg active_wg listen_port wg_ip pubkey wan_ip wan_ipv6 is_cgnat custom_endpoint endpoint
+	local dump_file peers_count peers_active now first_peer sec pk desc aips hs rx tx
+	local ep line peer_online diff has_cfg
 	installed_wg=false; ([ -x /usr/bin/wg ] || [ -f /lib/netifd/proto/wireguard.sh ]) && installed_wg=true
 	autostart_wg=false; [ "$(uci -q get network.wg0.auto)" != "0" ] && autostart_wg=true
 	configured_wg=false; [ -n "$(uci -q get network.wg0.proto)" ] && configured_wg=true
@@ -459,6 +431,8 @@ wireguard_status_json() {
 }
 
 wireguard_firewall_setup() {
+	local port no_reload changed zg nets fw_wan sec f fw_lan fw_lan_wg rule_wg r
+	local cur_port
 	port="${1:-51820}"
 	no_reload="${2:-0}"
 	changed=0
@@ -625,6 +599,7 @@ wireguard_firewall_setup() {
 }
 
 wireguard_firewall_cleanup() {
+	local sec
 	local wg0_enabled=0
 	local wgclient_enabled=0
 
@@ -677,6 +652,7 @@ wireguard_firewall_cleanup() {
 }
 
 wireguard_server_setup() {
+	local port privkey
 	port="${1:-51820}"
 	ip="${2:-10.14.0.1/24}"
 
@@ -711,6 +687,7 @@ wireguard_server_setup() {
 }
 
 wireguard_enable() {
+	local port
 	if [ -z "$(uci -q get network.wg0.proto)" ]; then
 		wireguard_server_setup "51820" "10.14.0.1/24"
 		return 0
@@ -738,6 +715,7 @@ wireguard_disable() {
 }
 
 wireguard_autostart_toggle() {
+	local val
 	val="${1:-1}"
 	case "$val" in
 		1|true|on)
@@ -754,6 +732,9 @@ wireguard_autostart_toggle() {
 }
 
 wireguard_peer_add() {
+	local name req_ip custom_endpoint tunnel_mode clean_name server_pub server_port client_ip max_host aip h client_priv
+	local client_pub client_psk sec cur_desc cur_pk psec wan_ip wan_ipv6 is_cgnat endpoint host_num lan_net
+	local lan_prefix client_allowed_ips cfg_file psk_tmp conf_txt qr_svg
 	name="$1"
 	req_ip="$2"
 	custom_endpoint="$3"
@@ -895,6 +876,7 @@ EOF
 }
 
 wireguard_peer_delete() {
+	local target deleted_pk sec pk nm
 	target="$1"
 	[ -n "$target" ] || { echo 'Chave ou nome do peer obrigatorio' >&2; exit 2; }
 
@@ -919,6 +901,7 @@ wireguard_peer_delete() {
 }
 
 wireguard_peer_qr() {
+	local target cfg_file peer_name sec pk nm conf_txt qr_svg
 	target="$1"
 	[ -n "$target" ] || { echo 'Nome ou chave do peer obrigatorio' >&2; exit 2; }
 
@@ -954,6 +937,7 @@ wireguard_peer_qr() {
 }
 
 b64_decode_str() {
+	local raw_input clean_b64
 	raw_input="$1"
 	if [ -z "$raw_input" ]; then
 		raw_input="$(cat)"
@@ -983,6 +967,7 @@ b64_decode_str() {
 }
 
 b64_encode_file() {
+	local file
 	file="$1"
 	[ -s "$file" ] || return 0
 	if command -v ucode >/dev/null 2>&1; then
@@ -997,6 +982,8 @@ b64_encode_file() {
 }
 
 wireguard_client_import() {
+	local b64 tmp_conf privkey pubkey preshared_key endpoint keepalive mtu ep_host ep_port s a
+	local d sec allowed_count aip z
 	b64="$1"
 	[ -n "$b64" ] || b64="$(cat)"
 	[ -n "$b64" ] || { echo 'Conteudo da configuracao vazio' >&2; exit 2; }
@@ -1105,6 +1092,8 @@ wireguard_client_import() {
 }
 
 wireguard_client_status_json() {
+	local installed_wg configured active autostart client_ip ep_host ep_port pubkey endpoint hs rx tx
+	local live_ep dump online now diff conf_b64
 	installed_wg=false; ([ -x /usr/bin/wg ] || [ -f /lib/netifd/proto/wireguard.sh ]) && installed_wg=true
 	configured=false; [ "$(uci -q get network.wgclient.proto)" = "wireguard" ] && configured=true
 	active=false; [ -d /sys/class/net/wgclient ] && active=true
@@ -1150,6 +1139,7 @@ wireguard_client_status_json() {
 }
 
 wireguard_client_toggle() {
+	local des
 	des="$1"
 	rm -f /tmp/ark-features.cache 2>/dev/null || true
 	if [ "$des" = "1" ] || [ "$des" = "on" ] || [ "$des" = "start" ]; then
@@ -1178,6 +1168,7 @@ wireguard_client_toggle() {
 }
 
 wireguard_client_delete() {
+	local s z
 	rm -f /tmp/ark-features.cache 2>/dev/null || true
 	uci -q delete network.wgclient
 	for s in $(uci -q show network | grep '=wireguard_wgclient$' | cut -d. -f2 | cut -d= -f1); do

@@ -2732,6 +2732,8 @@
       var rows = table.querySelectorAll('.tr.cbi-section-table-row, tr.cbi-section-table-row');
       var currentRadio = null;
       var currentRadioSid = null;
+      var usedKeys = {};
+      var activeCardIds = {};
 
       rows.forEach(function(r) {
         var sid = r.getAttribute('data-sid') || '';
@@ -2745,27 +2747,29 @@
           var titleText = '<span>📡</span> ' + (isEn ? '2.4 GHz Radio (Long Range)' : (isEs ? 'Radio 2.4 GHz (Largo Alcance)' : 'Rádio 2.4 GHz (Longo Alcance)'));
           var cardClass = 'radio-2g';
 
-          if (rowLower.indexOf('6ghz') !== -1 || rowLower.indexOf('6 ghz') !== -1 || sid === 'wifi2' || sid === 'radio2' || (/channel:\s*(1|5|9|13|17|21|25|29|33)\b/i.test(rowLower) && rowLower.indexOf('6.') !== -1)) {
+          var has2gFreq = /\b2\.4[0-9]*\s*ghz\b/i.test(rowLower) || rowLower.indexOf('2.4ghz') !== -1 || rowLower.indexOf('2.4 ghz') !== -1 || /802\.11[a-z/]*b\/g/i.test(rowLower);
+          var has6gFreq = /\b(?:5\.9[2-9][0-9]|6\.[0-9]+)\s*ghz\b/i.test(rowLower) || rowLower.indexOf('6ghz') !== -1 || rowLower.indexOf('6 ghz') !== -1;
+          var has5gFreq = /\b5\.[1-8][0-9]*\s*ghz\b/i.test(rowLower) || rowLower.indexOf('5ghz') !== -1 || rowLower.indexOf('5 ghz') !== -1 || /channel:\s*(3[6-9]|[4-9][0-9]|1[0-9]{2})\b/i.test(rowLower) || rowLower.indexOf('ac/ax/n') !== -1 || rowLower.indexOf('ax/ac/n') !== -1 || rowLower.indexOf('ac/an') !== -1;
+
+          if (has6gFreq || (!has2gFreq && !has5gFreq && (sid === 'wifi2' || sid === 'radio2'))) {
             rKey = '6g';
-            titleText = '<span>⚡</span> ' + (isEn ? '6 GHz Radio (Wi-Fi 6E/7 Ultra)' : (isEs ? 'Radio 6 GHz (Wi-Fi 6E/7 Ultra)' : 'Rádio 6 GHz (Wi-Fi 6E/7 Ultra)'));
+            titleText = '<span>⚡</span> ' + (isEn ? '6 GHz Radio (Ultra Speed)' : (isEs ? 'Radio 6 GHz (Ultra Velocidad)' : 'Rádio 6 GHz (Ultra Velocidade)'));
             cardClass = 'radio-6g';
-          } else if (rowLower.indexOf('5.') !== -1 || rowLower.indexOf('5ghz') !== -1 || rowLower.indexOf('5 ghz') !== -1 || sid === 'wifi1' || sid === 'radio1' || /channel:\s*(3[6-9]|[4-9][0-9]|1[0-9]{2})\b/i.test(rowLower) || rowLower.indexOf('ac/ax/n') !== -1 || rowLower.indexOf('ac/an') !== -1) {
-            rKey = '5g';
-            titleText = '<span>⚡</span> ' + (isEn ? '5 GHz Radio (High Speed)' : (isEs ? 'Radio 5 GHz (Alta Velocidad)' : 'Rádio 5 GHz (Alta Velocidade)'));
-            cardClass = 'radio-5g';
-          } else if ((sid === 'radio1' || sid === 'wifi1') && rKey === '2g') {
+          } else if (!has2gFreq && (has5gFreq || sid === 'wifi1' || sid === 'radio1')) {
             rKey = '5g';
             titleText = '<span>⚡</span> ' + (isEn ? '5 GHz Radio (High Speed)' : (isEs ? 'Radio 5 GHz (Alta Velocidad)' : 'Rádio 5 GHz (Alta Velocidade)'));
             cardClass = 'radio-5g';
           }
 
-          if (document.getElementById('ark-radio-' + rKey + '-card') && currentRadioSid && currentRadioSid !== sid) {
+          if (usedKeys[rKey] && usedKeys[rKey] !== sid) {
             rKey = rKey + '-2';
             titleText = '<span>⚡</span> ' + (isEn ? 'Radio ' + rKey.toUpperCase() + ' (Secondary/Gaming)' : (isEs ? 'Radio ' + rKey.toUpperCase() + ' (Secundario/Gaming)' : 'Rádio ' + rKey.toUpperCase() + ' (Secundário/Gaming)'));
           }
 
+          usedKeys[rKey] = sid;
           currentRadio = rKey;
           currentRadioSid = sid;
+          activeCardIds['ark-radio-' + rKey + '-card'] = true;
 
           getOrCreateRadioCard(rKey, titleText, cardClass);
 
@@ -2910,6 +2914,12 @@
 
           var ssidList = document.getElementById('ark-r' + currentRadio + '-ssids');
           if (ssidList) ssidList.appendChild(ssidCard);
+        }
+      });
+
+      grid.querySelectorAll('.ark-radio-card').forEach(function(cardEl) {
+        if (cardEl.id && !activeCardIds[cardEl.id]) {
+          cardEl.remove();
         }
       });
 

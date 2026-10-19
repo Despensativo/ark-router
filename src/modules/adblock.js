@@ -456,16 +456,37 @@ const adblockMethods = {
 
 		const protDnsIntercept = makeToggleRow(
 			[
-				_t('📺 Blindagem de Smart TVs (Interceptar Porta 53)'),
+				_t('📺 Blindagem de Smart TVs & Android (Porta 53 + Bloquear DoT 853)'),
 				' ',
 				E('span', {
 					class: 'ex-pill online',
 					style: 'font-size: 0.68rem; margin-left: 6px; padding: 2px 7px; vertical-align: middle; background: rgba(16,185,129,0.18); border: 1px solid rgba(16,185,129,0.4); color: #34d399; font-weight: 700; border-radius: 4px;'
-				}, [_t('DNAT Transparente')])
+				}, [_t('DNAT + RFC 7858 REJECT')])
 			],
-			_t('Força Smart TVs, Chromecasts e aparelhos com DNS embutido a passarem pelo AdGuard. Redireciona consultas externas da porta 53 para o roteador em 0ms.'),
-			f.dns_intercept !== false
+			_t('Força Smart TVs, Chromecasts e celulares com DNS privado a passarem pelo bloqueador do roteador (redireciona porta 53 em 0ms e rejeita evasão DoT na porta 853).'),
+			f.dns_intercept !== false && f.prot_dns_intercept !== false
 		);
+
+		const dnsInterceptWarn = E('div', {
+			class: 'alert-message warning',
+			style: 'margin-top: 8px; font-size: 0.8rem; line-height: 1.45; display: ' + (protDnsIntercept.input.checked ? 'none' : 'block') + ';'
+		}, [
+			E('div', { style: 'width: 100%;' }, [
+				E('strong', {}, ['⚠️ ' + _t('Alerta de Evasão de DNS:') + ' ']),
+				_t('Com esta blindagem desligada, Smart TVs (LG/Samsung/Android TV), Chromecasts e celulares que trazem DNS fixo de fábrica (8.8.8.8 ou DoT 853) ignorarão as listas de bloqueio e continuarão exibindo anúncios.')
+			])
+		]);
+		protDnsIntercept.input.addEventListener('change', function() {
+			dnsInterceptWarn.style.display = protDnsIntercept.input.checked ? 'none' : 'block';
+		});
+
+		const sharedInterceptBlock = E('div', {
+			class: 'ex-device-config-block',
+			style: 'margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: rgba(16,185,129,.04); border: 1px solid rgba(16,185,129,.22);'
+		}, [
+			protDnsIntercept.row,
+			dnsInterceptWarn
+		]);
 
 		const portInput = E('input', {
 			type: 'number',
@@ -504,8 +525,7 @@ const adblockMethods = {
 			E('div', { style: 'margin-top: 14px; font-size: 0.85rem; font-weight: 600;' }, ['Proteções Essenciais']),
 			protMalware.row,
 			protParental.row,
-			protSafeSearch.row,
-			protDnsIntercept.row
+			protSafeSearch.row
 		]);
 
 		// Nuvem (Lite)
@@ -530,11 +550,22 @@ const adblockMethods = {
 			value: f.nextdns_id || ''
 		});
 
+		const nextdnsWarn = E('div', {
+			class: 'alert-message warning',
+			style: 'margin-top: 6px; font-size: 0.78rem; line-height: 1.35; display: ' + ((f.nextdns_id || '').trim() ? 'none' : 'block') + ';'
+		}, [
+			'⚠️ Digite o ID de 6 caracteres do seu perfil NextDNS para aplicar suas listas personalizadas (via DoH https://dns.nextdns.io/<id> quando https-dns-proxy estiver instalado).'
+		]);
+		nextdnsIdInput.addEventListener('input', function() {
+			nextdnsWarn.style.display = nextdnsIdInput.value.trim() ? 'none' : 'block';
+		});
+
 		const nextdnsWrap = E('div', {
 			style: 'margin-top: 10px; padding: 10px 12px; background: rgba(59,130,246,.08); border-radius: 8px; border: 1px solid rgba(59,130,246,.25);'
 		}, [
 			E('label', { style: 'font-size: 0.82rem; font-weight: 700; color: var(--ex-primary-safe, #3b82f6);' }, ['ID de Configuração do NextDNS']),
 			nextdnsIdInput,
+			nextdnsWarn,
 			E('small', { class: 'ex-muted', style: 'display: block; margin-top: 5px; font-size: 0.78rem; line-height: 1.35;' }, [
 				'💡 O NextDNS opera com servidores Anycast de baixíssima latência no Brasil (SP, RJ, Fortaleza e Curitiba — ~12ms). Requer criar uma conta gratuita no site ',
 				E('a', { href: 'https://nextdns.io', target: '_blank', rel: 'noopener noreferrer', style: 'font-weight: 700; text-decoration: underline;' }, ['nextdns.io']),
@@ -555,7 +586,18 @@ const adblockMethods = {
 		]);
 		cloudCacheSelect.value = String(f.cloud_cache || 25000);
 
+		const cloudDohNote = f.doh_installed ? E('div', {
+			class: 'alert-message success',
+			style: 'margin-bottom: 8px; font-size: 0.79rem; padding: 7px 10px; line-height: 1.45;'
+		}, [
+			E('div', { style: 'width: 100%;' }, [
+				E('strong', {}, ['🔒 DoH Criptografado Ativo (https-dns-proxy): ']),
+				'O provedor em nuvem selecionado será consultado via HTTPS/TLS 1.3 (portas locais 5053/5054) com super-cache em RAM.'
+			])
+		]) : '';
+
 		const cloudWrap = E('div', { style: 'margin-top: 10px; padding: 12px; background: rgba(255,255,255,.03); border-radius: 8px;' }, [
+			cloudDohNote,
 			E('label', { style: 'font-size: 0.85rem; font-weight: 600;' }, ['Provedor em Nuvem']),
 			providerSelect,
 			nextdnsWrap,
@@ -750,6 +792,7 @@ const adblockMethods = {
 				]),
 				cloudWrap
 			]),
+			sharedInterceptBlock,
 			blacklistBlock,
 			whitelistBlock,
 			E('p', { class: 'alert-message warning', style: 'margin-top: 14px;' }, [

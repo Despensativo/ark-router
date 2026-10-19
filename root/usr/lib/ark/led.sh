@@ -90,6 +90,7 @@ ark_led_normalize_hex() {
 
 # 1. Detecta e classifica a topologia de hardware de LEDs
 ark_led_detect_topology() {
+	local p l
 	local led_base="$(_get_led_sys)"
 
 	# A. Checagem de Controlador Matricial I2C/SPI Multi-Canal
@@ -236,6 +237,7 @@ ark_led_stop_rainbow() {
 
 # 3. Aplica efeitos padronizados por zona e topologia
 ark_led_set_effect() {
+	local t p
 	local zone="${1:-all}"      # top, front, ports, all
 	local color="${2:-00ff00}"  # hex ou nome da cor
 	local effect="${3:-solid}"  # solid, breathe, blink, rainbow, off
@@ -430,6 +432,7 @@ ark_led_set_effect() {
 
 # 4. Aplica presets completos do sistema com governança UCI
 ark_led_apply_preset() {
+	local led sec wf_led
 	local preset="${1:-smart}"
 	local custom_hex="${2:-}"
 	local custom_effect="${3:-}"
@@ -575,6 +578,7 @@ ark_led_apply_preset() {
 
 # 5. Monitoramento Dinâmico de Link WAN e Alertas
 ark_led_update_wan_status() {
+	local d cand
 	local net_base="$(_get_net_sys)"
 	local active_dev=""
 	if command -v get_active_online_wan_dev >/dev/null 2>&1; then

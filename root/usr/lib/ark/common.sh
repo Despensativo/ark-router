@@ -5,7 +5,7 @@
 [ -z "${_ARK_COMMON_SH_LOADED:-}" ] || return 0
 _ARK_COMMON_SH_LOADED=1
 
-ARK_ROUTER_VERSION="1.5.17"
+ARK_ROUTER_VERSION="2.0.0"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 ARK_ROOT="${ARK_ROOT:-}"
 
@@ -163,6 +163,7 @@ ark_cpu_cores() {
 }
 
 ark_has_native_hw_queues() {
+	local rx_q
 	# 1. Checagem direta de drivers de anel de DMA / PPE / WED no kernel em execução (/proc/interrupts)
 	# Cobre universalmente qualquer versão (estável, snapshot, beta ou OEM fork)
 	if [ -r /proc/interrupts ]; then
@@ -276,21 +277,54 @@ ark_language() {
 
 # Package and service status queries
 installed() {
+	local _feat_key=""
 	case "$1" in
-		luci-app-sqm) [ -f /etc/config/sqm ] || [ -f /usr/share/luci/menu.d/luci-app-sqm.json ] && return 0 ;;
-		luci-app-mwan3) [ -f /etc/config/mwan3 ] || [ -f /usr/share/luci/menu.d/luci-app-mwan3.json ] && return 0 ;;
-		luci-app-nlbwmon) [ -f /etc/config/nlbwmon ] || [ -f /usr/share/luci/menu.d/luci-app-nlbwmon.json ] && return 0 ;;
-		luci-app-upnp) [ -f /etc/config/upnpd ] || [ -f /usr/share/luci/menu.d/luci-app-upnp.json ] && return 0 ;;
-		luci-app-uhttpd) [ -f /usr/share/luci/menu.d/luci-app-uhttpd.json ] && return 0 ;;
-		zerotier) ([ -x /usr/sbin/zerotier-one ] || [ -f /etc/init.d/zerotier ]) && return 0 ;;
-		wireguard) ([ -x /usr/bin/wg ] || [ -f /lib/netifd/proto/wireguard.sh ]) && return 0 ;;
-		irqbalance) ([ -x /usr/sbin/irqbalance ] || [ -f /etc/init.d/irqbalance ]) && return 0 ;;
-		speedify) ([ -x /usr/share/speedify/speedify ] || [ -x /usr/bin/speedify ] || [ -x /tmp/speedify/speedify ]) && return 0 ;;
+		luci-app-sqm|sqm-scripts) _feat_key="sqm" ;;
+		luci-app-mwan3|mwan3) _feat_key="mwan3" ;;
+		luci-app-nlbwmon|nlbwmon) _feat_key="nlbwmon" ;;
+		luci-app-upnp|miniupnpd*) _feat_key="upnp" ;;
+		zerotier) _feat_key="zerotier" ;;
+		wireguard|wireguard-tools|luci-proto-wireguard) _feat_key="wireguard" ;;
+		irqbalance) _feat_key="irqbalance" ;;
+		speedify|luci-app-speedify) _feat_key="speedify" ;;
+		adblock|luci-app-adblock|adguardhome) _feat_key="adblock" ;;
+		usteer|luci-app-usteer) _feat_key="usteer" ;;
+		htop) _feat_key="htop" ;;
+		kmod-zram|zram-swap) _feat_key="zram" ;;
+		ksmbd|ksmbd-server) _feat_key="ksmbd" ;;
+		wol|etherwake) _feat_key="wol" ;;
+		ark-hardware-tune|hardware_tune) _feat_key="hardware_tune" ;;
+		ark-firewall-guard|firewall_guard) _feat_key="firewall_guard" ;;
+		ark-autowan|autowan) _feat_key="autowan" ;;
+		ark-clock-preserver|clock_preserver) _feat_key="clock_preserver" ;;
+		ark-safe-shutdown|safe_shutdown) _feat_key="safe_shutdown" ;;
+		equipe-traffic-history|history) _feat_key="history" ;;
+	esac
+	if [ -n "$_feat_key" ] && [ "$(uci -q get "equipe_dashboard.${_feat_key}.user_removed" 2>/dev/null)" = "1" ]; then
+		return 1
+	fi
+	case "$1" in
+		ark-hardware-tune|ark-firewall-guard|ark-autowan|ark-clock-preserver|ark-safe-shutdown|equipe-traffic-history)
+			([ -f "${ARK_ROOT}/etc/init.d/$1" ] || [ -f "/etc/init.d/$1" ]) && return 0
+			return 1
+			;;
+		luci-app-sqm) ([ -f "${ARK_ROOT}/etc/config/sqm" ] || [ -f /etc/config/sqm ] || [ -f /usr/share/luci/menu.d/luci-app-sqm.json ]) && return 0 ;;
+		luci-app-mwan3) ([ -f "${ARK_ROOT}/etc/config/mwan3" ] || [ -f /etc/config/mwan3 ] || [ -f /usr/share/luci/menu.d/luci-app-mwan3.json ]) && return 0 ;;
+		luci-app-nlbwmon) ([ -f "${ARK_ROOT}/etc/config/nlbwmon" ] || [ -f /etc/config/nlbwmon ] || [ -f /usr/share/luci/menu.d/luci-app-nlbwmon.json ]) && return 0 ;;
+		luci-app-upnp) ([ -f "${ARK_ROOT}/etc/config/upnpd" ] || [ -f /etc/config/upnpd ] || [ -f /usr/share/luci/menu.d/luci-app-upnp.json ]) && return 0 ;;
+		luci-app-uhttpd) ([ -f "${ARK_ROOT}/usr/share/luci/menu.d/luci-app-uhttpd.json" ] || [ -f /usr/share/luci/menu.d/luci-app-uhttpd.json ]) && return 0 ;;
+		zerotier) ([ -x "${ARK_ROOT}/usr/sbin/zerotier-one" ] || [ -f "${ARK_ROOT}/etc/init.d/zerotier" ] || [ -x /usr/sbin/zerotier-one ] || [ -f /etc/init.d/zerotier ]) && return 0 ;;
+		wireguard|wireguard-tools) ([ -x "${ARK_ROOT}/usr/bin/wg" ] || [ -x /usr/bin/wg ] || [ -f /lib/netifd/proto/wireguard.sh ]) && return 0 ;;
+		irqbalance) ([ -x "${ARK_ROOT}/usr/sbin/irqbalance" ] || [ -f "${ARK_ROOT}/etc/init.d/irqbalance" ] || [ -x /usr/sbin/irqbalance ] || [ -f /etc/init.d/irqbalance ]) && return 0 ;;
+		speedify) ([ -x "${ARK_ROOT}/usr/share/speedify/speedify" ] || [ -x /usr/share/speedify/speedify ] || [ -x /usr/bin/speedify ] || [ -x /tmp/speedify/speedify ]) && return 0 ;;
 		luci-app-speedify) ([ -f /usr/share/luci/menu.d/luci-app-speedify.json ] || [ -f /usr/lib/lua/luci/controller/speedify.lua ]) && return 0 ;;
-		history) ([ -x /usr/sbin/equipe-traffic-history ] || [ -f /etc/init.d/equipe-traffic-history ]) && return 0 ;;
-		custom_qos) (command -v tc >/dev/null 2>&1 || [ -f /etc/config/qos_equipe ]) && return 0 ;;
-		usteer|luci-app-usteer) ([ -x /sbin/usteerd ] || [ -x /usr/sbin/usteerd ] || [ -f /etc/init.d/usteer ] || [ -f /usr/lib/opkg/info/usteer.control ]) && return 0 ;;
-		htop) ([ -x /usr/bin/htop ] || [ -x /usr/sbin/htop ]) && return 0 ;;
+		history) ([ -x "${ARK_ROOT}/usr/sbin/equipe-traffic-history" ] || [ -f "${ARK_ROOT}/etc/init.d/equipe-traffic-history" ] || [ -f "${ARK_ROOT}/tmp/equipe-traffic-history.csv" ] || [ -x /usr/sbin/equipe-traffic-history ] || [ -f /etc/init.d/equipe-traffic-history ]) && return 0 ;;
+		custom_qos) (command -v tc >/dev/null 2>&1 || [ -f "${ARK_ROOT}/etc/config/qos_equipe" ] || [ -f /etc/config/qos_equipe ]) && return 0 ;;
+		usteer|luci-app-usteer) ([ -x "${ARK_ROOT}/usr/sbin/usteerd" ] || [ -x /sbin/usteerd ] || [ -x /usr/sbin/usteerd ] || [ -f "${ARK_ROOT}/etc/init.d/usteer" ] || [ -f /etc/init.d/usteer ] || [ -f /usr/lib/opkg/info/usteer.control ]) && return 0 ;;
+		htop) ([ -x "${ARK_ROOT}/usr/bin/htop" ] || [ -x /usr/bin/htop ] || [ -x /usr/sbin/htop ]) && return 0 ;;
+		ksmbd|ksmbd-server) ([ -x "${ARK_ROOT}/etc/init.d/ksmbd" ] || [ -x /etc/init.d/ksmbd ] || [ -x /usr/sbin/ksmbd.mountd ]) && return 0 ;;
+		wol|etherwake) ([ -x "${ARK_ROOT}/usr/bin/etherwake" ] || [ -x /usr/bin/etherwake ] || [ -x /usr/sbin/etherwake ] || command -v etherwake >/dev/null 2>&1) && return 0 ;;
+		adblock|luci-app-adblock|adguardhome) ([ -x "${ARK_ROOT}/etc/init.d/adblock" ] || [ -f "${ARK_ROOT}/etc/config/adblock" ] || [ -x /etc/init.d/adblock ] || [ -x /usr/bin/AdGuardHome ] || [ -x /etc/init.d/adguardhome ]) && return 0 ;;
 	esac
 	if ark_has_apk; then
 		apk info -e "$1" >/dev/null 2>&1
@@ -313,6 +347,8 @@ running() {
 		usteer) pidof usteerd >/dev/null 2>&1 ;;
 		irqbalance) pidof irqbalance >/dev/null 2>&1 ;;
 		nlbwmon) pidof nlbwmon >/dev/null 2>&1 ;;
+		ksmbd|ksmbd-server) pidof ksmbd.mountd >/dev/null 2>&1 || pgrep -f ksmbd >/dev/null 2>&1 || { [ -x "${ARK_ROOT}/etc/init.d/ksmbd" ] && "${ARK_ROOT}/etc/init.d/ksmbd" status 2>/dev/null | grep -E -qi 'running|active'; } || { [ -x /etc/init.d/ksmbd ] && /etc/init.d/ksmbd status 2>/dev/null | grep -E -qi 'running|active'; } ;;
+		wol|etherwake) installed wol ;;
 		*)
 			pidof "$1" >/dev/null 2>&1 || pgrep -x "$1" >/dev/null 2>&1 || {
 				[ -x "/etc/init.d/$1" ] && {
@@ -348,6 +384,7 @@ ARK_LOCK_DIR="${ARK_ROOT}/var/lock"
 [ -d "$ARK_LOCK_DIR" ] || ARK_LOCK_DIR="${ARK_ROOT}/tmp"
 
 ark_acquire_lock() {
+	local _lockname _lockfile _tries _holder
 	_lockname="${1:-ark_operation}"
 	_lockfile="${ARK_LOCK_DIR}/${_lockname}.lock"
 	_tries=0
@@ -371,12 +408,14 @@ ark_acquire_lock() {
 }
 
 ark_release_lock() {
+	local _lockname _lockfile
 	_lockname="${1:-ark_operation}"
 	_lockfile="${ARK_LOCK_DIR}/${_lockname}.lock"
 	rm -rf "${_lockfile}.d" 2>/dev/null || true
 }
 
 ez_backup() {
+	local stamp file stage _cfg_dir cfg
 	stamp="$(date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)"
 	file="/tmp/ark-router-ezsetup-backup-$stamp.tar.gz"
 	stage="/tmp/ark-router-ezsetup-backup-$stamp"
@@ -631,6 +670,7 @@ ark_sanitize_upnp_config() {
 # bancos de dados, downloads, compartilhamentos de arquivos e midia),
 # e descarrega todos os buffers de RAM do kernel de forma segura antes do reinicio.
 ark_safe_storage_reboot() {
+	local srv
 	local root_prefix="${ARK_ROOT:-}"
 	logger -t ark-safe-storage "Iniciando sequencia de encerramento seguro e protecao de armazenamento..."
 
@@ -770,6 +810,7 @@ ark_harden_transmission_config() {
 
 # Limpeza de processos odhcp6c órfãos (PPID 1) para prevenir avalanches de recargas no netifd
 ark_cleanup_dhcpv6_orphans() {
+	local pid
 	local cleaned=0
 	for pid in $(pgrep -x odhcp6c 2>/dev/null || ps w 2>/dev/null | awk '/[o]dhcp6c/ {print $1}'); do
 		[ -n "$pid" ] || continue
@@ -790,6 +831,7 @@ ark_cleanup_dhcpv6_orphans() {
 
 # Sanitizacao Canonica de Interfaces WAN6 (prevencao contra device fisico bruto em vez de alias @wan)
 ark_sanitize_wan6_config() {
+	local sec claimed_parents
 	local root_prefix="${ARK_ROOT:-}"
 	local cfg="${root_prefix}/etc/config/network"
 	[ -f "$cfg" ] || return 0
@@ -877,6 +919,7 @@ ark_sanitize_wan6_config() {
 
 # Sanitizacao Canonica de IPv6 da LAN (compatibilidade Apple SLAAC e blindagem anti-colisao WAN)
 ark_sanitize_lan_ipv6() {
+	local flag pfx
 	local root_prefix="${ARK_ROOT:-}"
 	local dhcp_cfg="${root_prefix}/etc/config/dhcp"
 	local net_cfg="${root_prefix}/etc/config/network"
@@ -950,6 +993,7 @@ ark_sanitize_lan_ipv6() {
 
 # Auto-ativacao inteligente de radios Wi-Fi de fabrica com preservacao estrita de escolha do usuario
 ark_auto_enable_factory_wifi() {
+	local r
 	local root_prefix="${ARK_ROOT:-}"
 	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
 
@@ -985,11 +1029,12 @@ ark_auto_enable_factory_wifi() {
 }
 
 # Consolidacao e Blindagem de MTU em secoes config device (Baby Jumbo 1508 / Padrao 1500)
-# Elimina secoes duplicadas para a mesma porta fisica e garante aplicacao no kernel e UCI.
-ark_ensure_phys_device_mtu() {
-	local phys_dev="$1"
+# Elimina secoes duplicadas para a mesma porta fisica (e sub-interface VLAN 802.1Q se houver) e garante aplicacao no kernel e UCI.
+_ark_set_single_device_mtu() {
+	local s
+	local dev_name="$1"
 	local target_mtu="${2:-1508}"
-	[ -n "$phys_dev" ] || return 1
+	[ -n "$dev_name" ] || return 1
 
 	local root_prefix="${ARK_ROOT:-}"
 	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
@@ -999,7 +1044,7 @@ ark_ensure_phys_device_mtu() {
 	local primary_sec=""
 
 	for s in $($uci_cmd show network 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1); do
-		if [ "$($uci_cmd get "network.$s.name")" = "$phys_dev" ]; then
+		if [ "$($uci_cmd get "network.$s.name")" = "$dev_name" ]; then
 			matched_sections="$matched_sections $s"
 			local m="$($uci_cmd get "network.$s.macaddr")"
 			[ -n "$m" ] && [ -z "$mac_to_keep" ] && mac_to_keep="$m"
@@ -1019,18 +1064,124 @@ ark_ensure_phys_device_mtu() {
 	else
 		$uci_cmd add network device >/dev/null 2>&1
 		primary_sec="@device[-1]"
-		$uci_cmd set "network.$primary_sec.name=$phys_dev"
+		$uci_cmd set "network.$primary_sec.name=$dev_name"
 	fi
 
-	$uci_cmd set "network.$primary_sec.name=$phys_dev"
+	$uci_cmd set "network.$primary_sec.name=$dev_name"
 	$uci_cmd set "network.$primary_sec.mtu=$target_mtu"
+	case "$dev_name" in
+		*.*)
+			local base_if="${dev_name%%.*}"
+			local vid_id="${dev_name#*.}"
+			case "$vid_id" in
+				''|*[!0-9]*) ;;
+				*)
+					[ -n "$($uci_cmd get "network.$primary_sec.type")" ] || $uci_cmd set "network.$primary_sec.type=8021q"
+					[ -n "$($uci_cmd get "network.$primary_sec.ifname")" ] || $uci_cmd set "network.$primary_sec.ifname=$base_if"
+					[ -n "$($uci_cmd get "network.$primary_sec.vid")" ] || $uci_cmd set "network.$primary_sec.vid=$vid_id"
+					;;
+			esac
+			;;
+	esac
 	[ -n "$mac_to_keep" ] && $uci_cmd set "network.$primary_sec.macaddr=$mac_to_keep"
 	uci ${root_prefix:+-c "$root_prefix/etc/config"} commit network 2>/dev/null || true
 
-	if [ -n "$root_prefix" ] && [ -f "$root_prefix/sys/class/net/$phys_dev/mtu" ]; then
-		printf '%s\n' "$target_mtu" > "$root_prefix/sys/class/net/$phys_dev/mtu" 2>/dev/null || true
+	if [ -n "$root_prefix" ] && [ -f "$root_prefix/sys/class/net/$dev_name/mtu" ]; then
+		printf '%s\n' "$target_mtu" > "$root_prefix/sys/class/net/$dev_name/mtu" 2>/dev/null || true
 	elif [ -z "$root_prefix" ]; then
-		ip link set "$phys_dev" mtu "$target_mtu" 2>/dev/null || true
+		ip link set "$dev_name" mtu "$target_mtu" 2>/dev/null || true
+	fi
+}
+
+ark_ensure_phys_device_mtu() {
+	local s
+	local phys_dev="$1"
+	local target_mtu="${2:-1508}"
+	[ -n "$phys_dev" ] || return 1
+
+	local root_prefix="${ARK_ROOT:-}"
+	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+
+	# Se phys_dev for uma VLAN 802.1Q (ex: eth1.10 ou device com option ifname), aplica na porta fisica pai primeiro e depois na VLAN (manual netifd OpenWrt)
+	local parent_dev=""
+	case "$phys_dev" in
+		*.*) parent_dev="${phys_dev%%.*}" ;;
+		*)
+			for s in $($uci_cmd show network 2>/dev/null | grep '=device$' | cut -d. -f2 | cut -d= -f1); do
+				if [ "$($uci_cmd get "network.$s.name")" = "$phys_dev" ]; then
+					parent_dev="$($uci_cmd get "network.$s.ifname")"
+					break
+				fi
+			done
+			;;
+	esac
+
+	if [ -n "$parent_dev" ] && [ "$parent_dev" != "$phys_dev" ]; then
+		_ark_set_single_device_mtu "$parent_dev" "$target_mtu"
+	fi
+	_ark_set_single_device_mtu "$phys_dev" "$target_mtu"
+}
+
+# Garante TCP MSS Clamping dinamico por rota (mtu_fix=1) na zona WAN do firewall (Single-WAN e Multi-WAN)
+ark_ensure_wan_mtu_fix() {
+	local z
+	local root_prefix="${ARK_ROOT:-}"
+	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+	local changed=0
+	for z in $($uci_cmd show firewall 2>/dev/null | sed -n 's/^firewall\.\([^.=]*\)=zone$/\1/p'); do
+		if [ "$($uci_cmd get "firewall.$z.name")" = "wan" ]; then
+			if [ "$($uci_cmd get "firewall.$z.mtu_fix")" != "1" ]; then
+				$uci_cmd set "firewall.$z.mtu_fix=1"
+				changed=1
+			fi
+		fi
+	done
+	if [ "$changed" = 1 ]; then
+		uci ${root_prefix:+-c "$root_prefix/etc/config"} commit firewall 2>/dev/null || true
+	fi
+}
+
+# Sincroniza o ra_mtu do IPv6 Router Advertisement (odhcpd) na LAN/Wi-Fi com o menor MTU real das WANs ativas
+# Garante que clientes Android/iOS/PC em IPv6 enviem pacotes UDP/QUIC/HTTP3 sem ICMPv6 Packet Too Big drops, mantendo a LAN/Wi-Fi local em 1500B.
+ark_sync_lan_ipv6_ra_mtu() {
+	local root_prefix="${ARK_ROOT:-}"
+	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+	[ -f "${root_prefix}/etc/config/dhcp" ] || [ -f /etc/config/dhcp ] || return 0
+
+	local min_wan_mtu=1500
+	local w proto w_mtu
+	for w in $($uci_cmd show network 2>/dev/null | sed -n 's/^network\.\(wan[0-9]*\)=interface$/\1/p'); do
+		proto="$($uci_cmd get "network.$w.proto")"
+		case "$proto" in
+			pppoe)
+				w_mtu=""
+				if [ -n "$root_prefix" ] && [ -f "$root_prefix/sys/class/net/pppoe-$w/mtu" ]; then
+					w_mtu="$(cat "$root_prefix/sys/class/net/pppoe-$w/mtu" 2>/dev/null)"
+				elif [ -z "$root_prefix" ] && [ -f "/sys/class/net/pppoe-$w/mtu" ]; then
+					w_mtu="$(cat "/sys/class/net/pppoe-$w/mtu" 2>/dev/null)"
+				fi
+				[ -n "$w_mtu" ] || w_mtu="$($uci_cmd get "network.$w.mtu")"
+				[ -n "$w_mtu" ] || w_mtu=1492
+				;;
+			dhcp|static)
+				w_mtu="$($uci_cmd get "network.$w.mtu")"
+				[ -n "$w_mtu" ] || w_mtu=1500
+				;;
+			*) continue ;;
+		esac
+		case "$w_mtu" in
+			''|*[!0-9]*) w_mtu=1500 ;;
+		esac
+		if [ "$w_mtu" -ge 1280 ] && [ "$w_mtu" -lt "$min_wan_mtu" ]; then
+			min_wan_mtu="$w_mtu"
+		fi
+	done
+
+	local cur_ra_mtu="$($uci_cmd get dhcp.lan.ra_mtu 2>/dev/null)"
+	if [ "$cur_ra_mtu" != "$min_wan_mtu" ]; then
+		$uci_cmd set "dhcp.lan.ra_mtu=$min_wan_mtu"
+		uci ${root_prefix:+-c "$root_prefix/etc/config"} commit dhcp 2>/dev/null || true
+		[ -z "$root_prefix" ] && [ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd reload >/dev/null 2>&1 || true
 	fi
 }
 
@@ -1038,6 +1189,7 @@ ark_ensure_phys_device_mtu() {
 # Garante aplicacao 100% confiavel em PPPoE, DHCP, DSA switch e camada 2.
 # Quando target_mac estiver vazio, remove clonagem e restaura MAC nativo de fabrica.
 ark_ensure_phys_device_mac() {
+	local s
 	local phys_dev="$1"
 	local target_mac="$2"
 	[ -n "$phys_dev" ] || return 1
@@ -1106,5 +1258,668 @@ ark_ensure_phys_device_mac() {
 			fi
 		fi
 	fi
+}
+
+# ============================================================================
+# PRIMITIVAS COMPARTILHADAS ENTRE MODULOS (ISOLAMENTO DE ESCOPO 'local')
+# Centralizadas em common.sh para evitar cross-sourcing circular de modulos
+# inteiros e falhas de 'command not found' entre dominios.
+# ============================================================================
+
+ez_get() { uci -q get "equipe_dashboard.setup.$1" 2>/dev/null || printf '%s' "$2"; }
+
+ez_set() { uci -q set equipe_dashboard.setup=ezsetup; uci -q set "equipe_dashboard.setup.$1=$2"; }
+
+cleanup_backup() {
+	local stamp file
+	stamp="$(date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)"
+	file="/tmp/ark-router-before-cleanup-$stamp.tar.gz"
+	if command -v sysupgrade >/dev/null 2>&1; then sysupgrade -b "$file" >/dev/null 2>&1 || return 1
+	else ez_backup >/dev/null || return 1; file="$(ez_get backup '')"
+	fi
+	uci -q set equipe_dashboard.cleanup=cleanup
+	uci -q set equipe_dashboard.cleanup.last_backup="$file"
+	uci commit equipe_dashboard
+	printf '%s' "$file"
+}
+
+ark_kill_package_fetchers() {
+	local pid
+	ps w 2>/dev/null | awk '/downloads\.openwrt\.org|packages\.adb|APKINDEX|apk update|apk fetch/ && !/awk/ {print $1}' | while read -r pid; do
+		[ -n "$pid" ] && kill "$pid" 2>/dev/null || true
+	done
+}
+
+ark_run_limited() {
+	local seconds="$1" pid i=0
+	shift
+	"$@" &
+	pid="$!"
+	while kill -0 "$pid" 2>/dev/null; do
+		[ "$i" -ge "$seconds" ] && {
+			kill "$pid" 2>/dev/null || true
+			ark_kill_package_fetchers
+			sleep 2
+			kill -9 "$pid" 2>/dev/null || true
+			ark_kill_package_fetchers
+			wait "$pid" 2>/dev/null
+			return 124
+		}
+		sleep 1
+		i=$((i+1))
+	done
+	wait "$pid"
+}
+
+guest_l3_device() {
+	local dev
+	dev="$(ubus call network.interface.guest status 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null || true)"
+	[ -n "$dev" ] || dev="$(ubus call network.interface.guest status 2>/dev/null | jsonfilter -e '@.device' 2>/dev/null || true)"
+	valid_net_device "$dev" && printf '%s' "$dev"
+}
+
+active_wan_networks() {
+	local network_section proto
+	uci -q show network 2>/dev/null | sed -n 's/^network\.\(wan[0-9]*\)=interface$/\1/p' | while IFS= read -r network_section; do
+		proto="$(uci -q get "network.$network_section.proto")"
+		case "$proto" in dhcp|pppoe|static) printf '%s\n' "$network_section" ;; esac
+	done
+}
+
+sqm_device_for_network() {
+	local network_section="$1" proto device
+	proto="$(uci -q get "network.$network_section.proto")"
+	if [ "$proto" = pppoe ]; then
+		printf 'pppoe-%s' "$network_section"
+		return 0
+	fi
+	device="$(ubus call "network.interface.$network_section" status 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null)"
+	[ -n "$device" ] || device="$(uci -q get "network.$network_section.device")"
+	[ -n "$device" ] || device="$network_section"
+	printf '%s' "$device"
+}
+
+find_dhcp_host() {
+	local value key
+	uci -q show dhcp 2>/dev/null | awk -F= -v wanted="$1" '
+		/\.mac=/ {
+			value=$2; gsub(/^\047|\047$/, "", value)
+			if (toupper(value) == wanted) {
+				key=$1; sub(/^dhcp\./, "", key); sub(/\.mac$/, "", key); print key; exit
+			}
+		}'
+}
+
+sanitize_dhcp_hostnames() {
+	local changed=0 h cur_name clean_name
+	for h in $(uci -q show dhcp 2>/dev/null | grep -E '\.name=' | cut -d. -f2 | cut -d= -f1 | sort -u); do
+		cur_name="$(uci -q get "dhcp.$h.name" || true)"
+		[ -n "$cur_name" ] || continue
+		clean_name="$(printf '%s' "$cur_name" | sed 's/[^a-zA-Z0-9_-]/-/g; s/-\{2,\}/-/g; s/^-//; s/-$//')"
+		[ -n "$clean_name" ] || clean_name="ark-$h"
+		if [ "$cur_name" != "$clean_name" ]; then
+			uci -q set "dhcp.$h.name=$clean_name"
+			changed=1
+		fi
+	done
+	[ "$changed" = 1 ] && uci commit dhcp || true
+}
+
+apply_lan_dhcp_dns() {
+	local dns="$1" old_options opt
+	old_options="$(uci -q get dhcp.lan.dhcp_option 2>/dev/null || true)"
+	uci -q delete dhcp.lan.dhcp_option
+	for opt in $old_options; do
+		[ -n "$opt" ] || continue
+		case "$opt" in
+			6,*) ;;
+			*) uci -q add_list dhcp.lan.dhcp_option="$opt" ;;
+		esac
+	done
+	[ -n "$dns" ] && uci -q add_list dhcp.lan.dhcp_option="6,$(printf '%s' "$dns" | tr ' ' ',')"
+}
+
+same_managed_subnet() {
+	local candidate="$1" managed managed_ip prefix netmask network candidate_network
+	for managed in lan guest; do
+		managed_ip="$(ubus call "network.interface.$managed" status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null || true)"
+		prefix="$(ubus call "network.interface.$managed" status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].mask' 2>/dev/null || true)"
+		if [ -z "$managed_ip" ]; then
+			managed_ip="$(uci -q get "network.$managed.ipaddr" 2>/dev/null || true)"
+		fi
+		if [ -z "$prefix" ]; then
+			netmask="$(uci -q get "network.$managed.netmask" 2>/dev/null || echo 255.255.255.0)"
+			case "$netmask" in
+				255.255.255.0) prefix=24 ;;
+				255.255.0.0)   prefix=16 ;;
+				255.0.0.0)     prefix=8 ;;
+				*)             prefix=24 ;;
+			esac
+		fi
+		[ -n "$managed_ip" ] && [ -n "$prefix" ] || continue
+		[ "$candidate" != "$managed_ip" ] || return 1
+		if command -v ipcalc.sh >/dev/null 2>&1; then
+			network="$(ipcalc.sh "$managed_ip/$prefix" 2>/dev/null | sed -n 's/^NETWORK=//p')"
+			candidate_network="$(ipcalc.sh "$candidate/$prefix" 2>/dev/null | sed -n 's/^NETWORK=//p')"
+			[ -n "$network" ] && [ "$network" = "$candidate_network" ] && return 0
+		else
+			[ "${managed_ip%.*}" = "${candidate%.*}" ] && return 0
+		fi
+	done
+	return 1
+}
+
+sync_adguard_ipv6() {
+	local enable_ipv6="${1:-}" cur_mode yaml="/etc/adguardhome/adguardhome.yaml"
+	if [ -z "$enable_ipv6" ]; then
+		cur_mode="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
+		[ "$cur_mode" != "ipv4_only" ] && enable_ipv6=1 || enable_ipv6=0
+	fi
+	[ -f "$yaml" ] || return 0
+	cp -f "$yaml" "${yaml}.bak_ipv6" 2>/dev/null || true
+	if [ "$enable_ipv6" = "1" ] || [ "$enable_ipv6" = "true" ]; then
+		sed -i 's/^[[:space:]]*aaaa_disabled:.*/  aaaa_disabled: false/' "$yaml"
+		if ! grep -q "2606:4700:4700::1111" "$yaml"; then
+			sed -i '/^[[:space:]]*upstream_dns:/a \    - 2606:4700:4700::1111\n    - 2001:4860:4860::8888' "$yaml"
+		fi
+		if ! sed -n '/^[[:space:]]*bootstrap_dns:/,/^[a-z_]/p' "$yaml" | grep -q "2606:4700:4700::1111"; then
+			sed -i '/^[[:space:]]*bootstrap_dns:/a \    - 2606:4700:4700::1111\n    - 2001:4860:4860::8888' "$yaml"
+		fi
+	else
+		sed -i 's/^[[:space:]]*aaaa_disabled:.*/  aaaa_disabled: true/' "$yaml"
+		sed -i '/2606:4700:4700::1111/d; /2001:4860:4860::8888/d' "$yaml"
+	fi
+	chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
+	chmod 644 "$yaml" 2>/dev/null || true
+	if [ -x /usr/bin/AdGuardHome ] && pgrep -f 'AdGuardHome' >/dev/null 2>&1 && [ "$(uci -q get equipe_perf.settings.adblock_enabled || echo 0)" = "1" ] && [ "$(uci -q get equipe_perf.settings.adguard_enabled || echo 0)" = "1" ]; then
+		if /usr/bin/AdGuardHome --config "$yaml" --check-config >/dev/null 2>&1; then
+			/etc/init.d/adguardhome reload >/dev/null 2>&1 || /etc/init.d/adguardhome restart >/dev/null 2>&1 || true
+		else
+			logger -t ark-adguard "Configuracao YAML do AdGuard corrompida ao sincronizar IPv6. Revertendo."
+			cp -f "${yaml}.bak_ipv6" "$yaml" 2>/dev/null || true
+			chown -R adguardhome:adguardhome /etc/adguardhome /var/lib/adguardhome 2>/dev/null || true
+			chmod 644 "$yaml" 2>/dev/null || true
+		fi
+	fi
+}
+
+firewall_wan_zone_section() {
+	uci -q show firewall 2>/dev/null | awk -F= '
+		/\.name='\''wan'\''$/ { s=$1; sub(/^firewall\./, "", s); sub(/\.name$/, "", s); print s; exit }
+	'
+}
+
+firewall_zone_has_network() {
+	local section="$1" network="$2"
+	uci -q get "firewall.$section.network" 2>/dev/null | tr ' ' '\n' | grep -qx "$network"
+}
+
+lan_bridge_section() {
+	uci -q show network | awk -F= '/\.name=.br-lan./ { key=$1; sub(/^network\./, "", key); sub(/\.name$/, "", key); print key; exit }'
+}
+
+lan_bridge_port_count() {
+	local br="$(lan_bridge_section)"
+	[ -n "$br" ] || { printf 0; return 0; }
+	uci -q get "network.$br.ports" 2>/dev/null | wc -w
+}
+
+find_switch_vlan() {
+	local target_vlan="$1" idx=0 v
+	while true; do
+		v="$(uci -q get "network.@switch_vlan[$idx].vlan")"
+		[ -z "$v" ] && break
+		if [ "$v" = "$target_vlan" ]; then
+			echo "@switch_vlan[$idx]"
+			return 0
+		fi
+		idx=$((idx + 1))
+	done
+	return 1
+}
+
+swconfig_remove_port_from_vlan() {
+	local p="$1" target_vlan="${2:-1}" sec cur_ports new_ports="" item
+	sec="$(find_switch_vlan "$target_vlan")"
+	[ -n "$sec" ] || return 0
+	cur_ports="$(uci -q get "network.$sec.ports")"
+	for item in $cur_ports; do
+		case "$item" in
+			"$p"|"$p"t) continue ;;
+			*) new_ports="$new_ports $item" ;;
+		esac
+	done
+	new_ports="$(printf '%s' "$new_ports" | awk '{$1=$1};1')"
+	uci -q set "network.$sec.ports=$new_ports"
+}
+
+swconfig_add_port_to_vlan() {
+	local p="$1" target_vlan="${2:-1}" sec cur_ports item new_ports="" added=0
+	sec="$(find_switch_vlan "$target_vlan")"
+	[ -n "$sec" ] || return 0
+	cur_ports="$(uci -q get "network.$sec.ports")"
+	for item in $cur_ports; do
+		if [ "$item" = "$p" ] || [ "$item" = "${p}t" ]; then
+			return 0
+		fi
+	done
+	for item in $cur_ports; do
+		if [ "$item" = "0t" ] && [ "$added" = 0 ]; then
+			new_ports="$new_ports $p $item"
+			added=1
+		else
+			new_ports="$new_ports $item"
+		fi
+	done
+	[ "$added" = 1 ] || new_ports="$new_ports $p"
+	new_ports="$(printf '%s' "$new_ports" | awk '{$1=$1};1')"
+	uci -q set "network.$sec.ports=$new_ports"
+}
+
+bridge_has_port() {
+	local br="$1" port="$2"
+	uci -q get "network.$br.ports" 2>/dev/null | tr ' ' '\n' | grep -qx "$port"
+}
+
+add_lan_port() {
+	local port="$1" p br
+	if is_swconfig; then
+		p="$(printf '%s' "$port" | tr -cd '0-9')"
+		[ -n "$p" ] && swconfig_add_port_to_vlan "$p" 1
+		return 0
+	fi
+	br="$(lan_bridge_section)"
+	[ -n "$br" ] || return 0
+	bridge_has_port "$br" "$port" || uci -q add_list "network.$br.ports=$port"
+	ark_ensure_phys_device_mac "$port" ""
+}
+
+remove_lan_port() {
+	local port="$1" p br
+	if is_swconfig; then
+		p="$(printf '%s' "$port" | tr -cd '0-9')"
+		[ -n "$p" ] && swconfig_remove_port_from_vlan "$p" 1
+		return 0
+	fi
+	br="$(lan_bridge_section)"
+	[ -n "$br" ] || return 0
+	uci -q del_list "network.$br.ports=$port" 2>/dev/null || true
+}
+
+configure_uhttpd_listeners() {
+	uci -q delete uhttpd.main.listen_http
+	uci -q delete uhttpd.main.listen_https
+	uci -q add_list "uhttpd.main.listen_http=0.0.0.0:80"
+	uci -q add_list "uhttpd.main.listen_https=0.0.0.0:443"
+	uci -q add_list "uhttpd.main.listen_http=[::]:80" 2>/dev/null || true
+	uci -q add_list "uhttpd.main.listen_https=[::]:443" 2>/dev/null || true
+	uci -q set uhttpd.main.rfc1918_filter=0
+	uci commit uhttpd
+}
+
+zerotier_ram_compress() {
+	local overlay_total
+	overlay_total="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $2}')"
+	case "$overlay_total" in ''|*[!0-9]*) overlay_total=65536 ;; esac
+	if [ "$overlay_total" -le 16384 ]; then
+		if [ -f /rom/usr/lib/libstdc++.so.6.0.33 ] || [ -f /rom/usr/bin/zerotier-one ]; then
+			rm -f /etc/ark-router/zerotier-pkg.tar.gz /etc/ark-router/zerotier-libs.tar.gz 2>/dev/null || true
+			return 0
+		fi
+		if [ -f /etc/ark-router/zerotier-pkg.tar.gz ]; then
+			if [ ! -f /tmp/usr/lib/libstdc++.so.6.0.33 ] || [ ! -f /tmp/usr/bin/zerotier-one ]; then
+				mkdir -p /tmp
+				tar -xzf /etc/ark-router/zerotier-pkg.tar.gz -C /tmp/ 2>/dev/null
+			fi
+			[ -e /usr/lib/libstdc++.so.6.0.33 ] || ln -sf /tmp/usr/lib/libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6.0.33
+			[ -e /usr/lib/libstdc++.so.6 ] || ln -sf libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6
+			[ -e /usr/bin/zerotier-one ] || ln -sf /tmp/usr/bin/zerotier-one /usr/bin/zerotier-one
+			chmod +x /tmp/usr/bin/zerotier-one 2>/dev/null || true
+		elif [ -f /usr/lib/libstdc++.so.6.0.33 ] && [ ! -L /usr/lib/libstdc++.so.6.0.33 ]; then
+			mkdir -p /etc/ark-router /tmp
+			tar -czf /etc/ark-router/zerotier-pkg.tar.gz /usr/lib/libstdc++.so.6.0.33 /usr/bin/zerotier-one 2>/dev/null
+			tar -xzf /etc/ark-router/zerotier-pkg.tar.gz -C /tmp/ 2>/dev/null
+			rm -f /usr/lib/libstdc++.so.6.0.33 /usr/bin/zerotier-one /etc/ark-router/zerotier-libs.tar.gz 2>/dev/null || true
+			ln -sf /tmp/usr/lib/libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6.0.33
+			ln -sf libstdc++.so.6.0.33 /usr/lib/libstdc++.so.6
+			ln -sf /tmp/usr/bin/zerotier-one /usr/bin/zerotier-one
+			chmod +x /tmp/usr/bin/zerotier-one 2>/dev/null || true
+			[ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true
+		fi
+	fi
+}
+
+get_primary_wan_dev() {
+	local dev="$(uci -q get network.wan.device || true)"
+	[ -z "$dev" ] && dev="$(uci -q get network.wan.ifname || true)"
+	[ -z "$dev" ] && dev="$(uci -q get network.wan1.device || true)"
+	[ -z "$dev" ] && dev="$(uci -q get network.wan1.ifname || true)"
+	if [ -z "$dev" ]; then
+		dev="$(ubus call network.interface.wan status 2>/dev/null | grep -o '"l3_device": "[^"]*"' | cut -d'"' -f4 || true)"
+	fi
+	if [ -z "$dev" ]; then
+		dev="$(ubus call network.interface.wan status 2>/dev/null | grep -o '"device": "[^"]*"' | cut -d'"' -f4 || true)"
+	fi
+	if [ -z "$dev" ]; then
+		dev="$(uci -q get network.wan2.device || uci -q get network.wan2.ifname || true)"
+	fi
+	if [ -z "$dev" ]; then
+		if [ -e /sys/class/net/wan ]; then
+			dev="wan"
+		elif [ -e /sys/class/net/eth1 ]; then
+			dev="eth1"
+		elif [ -e /sys/class/net/eth0.2 ]; then
+			dev="eth0.2"
+		else
+			dev="eth0.2"
+		fi
+	fi
+	printf '%s' "$dev"
+}
+
+get_active_online_wan_dev() {
+	if [ "$(uci -q get dhcp.lan.ignore || echo 0)" = "1" ] || [ "$(uci -q get network.lan.proto || echo static)" = "dhcp" ]; then
+		printf 'br-lan'
+		return 0
+	fi
+	local def_dev="$(ip route show default 2>/dev/null | awk '/default/{print $5; exit}')"
+	if [ -n "$def_dev" ] && [ -e "/sys/class/net/$def_dev" ]; then
+		printf '%s' "$def_dev"
+		return 0
+	fi
+	local iface auto status d
+	for iface in wan wan2 wan1 wan3 wan4; do
+		auto="$(uci -q get "network.$iface.auto" || echo 1)"
+		[ "$auto" != "0" ] || continue
+		status="$(ubus call "network.interface.$iface" status 2>/dev/null || true)"
+		if echo "$status" | grep -q '"up": true'; then
+			d="$(echo "$status" | grep -o '"l3_device": "[^"]*"' | cut -d'"' -f4)"
+			[ -z "$d" ] && d="$(echo "$status" | grep -o '"device": "[^"]*"' | cut -d'"' -f4)"
+			[ -z "$d" ] && d="$(uci -q get "network.$iface.device" || uci -q get "network.$iface.ifname" || echo "")"
+			if [ -n "$d" ] && [ -e "/sys/class/net/$d" ]; then
+				printf '%s' "$d"
+				return 0
+			fi
+		fi
+	done
+	for iface in wan wan2 wan1; do
+		auto="$(uci -q get "network.$iface.auto" || echo 1)"
+		[ "$auto" != "0" ] || continue
+		d="$(uci -q get "network.$iface.device" || uci -q get "network.$iface.ifname" || echo "")"
+		if [ -n "$d" ] && [ -e "/sys/class/net/$d" ]; then
+			if [ "$(cat "/sys/class/net/$d/carrier" 2>/dev/null || echo 0)" = "1" ]; then
+				printf '%s' "$d"
+				return 0
+			fi
+		fi
+	done
+	get_primary_wan_dev
+}
+
+get_internet_led_sysfs() {
+	local cand p b
+	for cand in \
+		"d-link:green:planet" \
+		"blue:internet" "green:internet" "white:internet" \
+		"blue:wan" "green:wan" "white:wan" \
+		"planet" "internet" "wan"; do
+		if [ -e "/sys/class/leds/$cand" ]; then
+			printf '%s' "$cand"
+			return 0
+		fi
+	done
+	for p in /sys/class/leds/*planet* /sys/class/leds/*internet* /sys/class/leds/*wan* /sys/class/leds/*broadband* /sys/class/leds/*online* /sys/class/leds/*modem* /sys/class/leds/*dsl*; do
+		[ -e "$p" ] || continue
+		b="$(basename "$p")"
+		case "$b" in
+			*orange*|*red*|*amber*) continue ;;
+			*) printf '%s' "$b"; return 0 ;;
+		esac
+	done
+	for p in /sys/class/leds/*/multi_intensity; do
+		if [ -e "$p" ]; then
+			printf '%s' "$(basename "$(dirname "$p")")"
+			return 0
+		fi
+	done
+	if [ -e /sys/class/leds/rgb:status ]; then
+		printf 'rgb:status'
+		return 0
+	fi
+	return 1
+}
+
+get_internet_alert_led_sysfs() {
+	local cand
+	for cand in \
+		"d-link:orange:planet" \
+		"orange:internet" "red:internet" "amber:internet" \
+		"orange:wan" "red:wan" "amber:wan"; do
+		if [ -e "/sys/class/leds/$cand" ]; then
+			printf '%s' "$cand"
+			return 0
+		fi
+	done
+	return 1
+}
+
+# Detecta se o kernel executa sob arquitetura Qualcomm QSDK / NSS / ECM (Kernel 5.4 QCA)
+# Utilizado para isolar estritamente o workaround 'no-split-gso' do sch_cake (bug skb_gso_segment 0x8864)
+# e a coordenacao de front_end_ipv4_stop no qca-nss-ecm sem afetar MediaTek Filogic (mt76 / PPE).
+ark_has_qsdk_ecm() {
+	local root_prefix="${ARK_ROOT:-}"
+	if [ -n "$root_prefix" ]; then
+		[ -d "$root_prefix/sys/kernel/debug/ecm" ] && return 0
+	else
+		[ -d /sys/kernel/debug/ecm ] && return 0
+	fi
+	ark_has_qca_wifi
+}
+
+# Detecta se o daemon leve de DNS-over-HTTPS (https-dns-proxy em C/libcurl HTTP/2) esta instalado
+ark_has_doh_proxy() {
+	local root_prefix="${ARK_ROOT:-}"
+	if [ -n "$root_prefix" ]; then
+		[ -x "$root_prefix/usr/sbin/https-dns-proxy" ]
+	else
+		[ -x /usr/sbin/https-dns-proxy ] || command -v https-dns-proxy >/dev/null 2>&1
+	fi
+}
+
+# Sincroniza o https-dns-proxy (Dual-DoH RFC 8484 em 127.0.0.1:5053 e 127.0.0.1:5054) com blindagem UCI:
+# - dnsmasq_config_update='-' (impede que o procd do pacote sobrescreva dhcp.@dnsmasq[0].server)
+# - force_dns='0' (impede colisao com a regra ark_dns_intercept do ARK Router)
+# Retorna 0 se o proxy DoH foi ativado e vinculado ao dnsmasq; retorna 1 para fallback UDP/TCP padrao.
+ark_sync_doh_proxy() {
+	local mode="${1:-disable}" arg1="${2:-}" arg2="${3:-}" arg3="${4:-}"
+	local root_prefix="${ARK_ROOT:-}" uci_cmd cfg_file s b1 b2 u1 u2 nd_path ip1 ip2
+	uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+	cfg_file="${root_prefix}/etc/config/https-dns-proxy"
+
+	if [ "$mode" = "disable" ] || ! ark_has_doh_proxy; then
+		if [ -f "$cfg_file" ]; then
+			$uci_cmd set https-dns-proxy.config=main 2>/dev/null || true
+			$uci_cmd set https-dns-proxy.config.dnsmasq_config_update='-' 2>/dev/null || true
+			$uci_cmd set https-dns-proxy.config.force_dns='0' 2>/dev/null || true
+			uci ${root_prefix:+-c "$root_prefix/etc/config"} commit https-dns-proxy 2>/dev/null || true
+		fi
+		if [ -z "$root_prefix" ] && [ -x /etc/init.d/https-dns-proxy ]; then
+			/etc/init.d/https-dns-proxy stop >/dev/null 2>&1 || true
+		fi
+		return 1
+	fi
+
+	mkdir -p "${root_prefix}/etc/config" 2>/dev/null || true
+	[ -f "$cfg_file" ] || touch "$cfg_file"
+
+	for s in $($uci_cmd show https-dns-proxy 2>/dev/null | sed -n 's/^https-dns-proxy\.\([^.=]*\)=https-dns-proxy$/\1/p'); do
+		$uci_cmd delete "https-dns-proxy.$s" 2>/dev/null || true
+	done
+
+	$uci_cmd set https-dns-proxy.config=main
+	$uci_cmd set https-dns-proxy.config.dnsmasq_config_update='-'
+	$uci_cmd set https-dns-proxy.config.force_dns='0'
+
+	b1="1.1.1.1,1.0.0.1"
+	u1="https://cloudflare-dns.com/dns-query"
+	b2="8.8.8.8,8.8.4.4"
+	u2="https://dns.google/dns-query"
+
+	if [ "$mode" = "turbo" ]; then
+		ip1="$(printf '%s' "$arg1" | awk '{print $1}')"
+		ip2="$(printf '%s' "$arg1" | awk '{print $2}')"
+		case "$ip1" in
+			9.9.9.9|149.112.*) b1="9.9.9.9,149.112.112.112"; u1="https://dns.quad9.net/dns-query" ;;
+			94.140.*) b1="94.140.14.14,94.140.15.15"; u1="https://dns.adguard-dns.com/dns-query" ;;
+			8.8.8.8|8.8.4.4) b1="8.8.8.8,8.8.4.4"; u1="https://dns.google/dns-query"; b2="1.1.1.1,1.0.0.1"; u2="https://cloudflare-dns.com/dns-query" ;;
+		esac
+		case "$ip2" in
+			9.9.9.9|149.112.*) b2="9.9.9.9,149.112.112.112"; u2="https://dns.quad9.net/dns-query" ;;
+			94.140.*) b2="94.140.14.14,94.140.15.15"; u2="https://dns.adguard-dns.com/dns-query" ;;
+		esac
+	elif [ "$mode" = "cloud" ]; then
+		case "$arg1" in
+			cloudflare_family)
+				b1="1.1.1.3,1.0.0.3"; u1="https://family.cloudflare-dns.com/dns-query"
+				b2="1.0.0.3,1.1.1.3"; u2="https://family.cloudflare-dns.com/dns-query"
+				;;
+			cloudflare_security)
+				b1="1.1.1.2,1.0.0.2"; u1="https://security.cloudflare-dns.com/dns-query"
+				b2="1.0.0.2,1.1.1.2"; u2="https://security.cloudflare-dns.com/dns-query"
+				;;
+			quad9)
+				b1="9.9.9.9,149.112.112.112"; u1="https://dns.quad9.net/dns-query"
+				b2="149.112.112.112,9.9.9.9"; u2="https://dns.quad9.net/dns-query"
+				;;
+			opendns_family)
+				b1="208.67.222.123,208.67.220.123"; u1="https://doh.familyshield.opendns.com/dns-query"
+				b2="208.67.220.123,208.67.222.123"; u2="https://doh.familyshield.opendns.com/dns-query"
+				;;
+			cleanbrowsing_adult)
+				b1="185.228.168.10,185.228.169.11"; u1="https://doh.cleanbrowsing.org/doh/adult-filter/"
+				b2="185.228.169.11,185.228.168.10"; u2="https://doh.cleanbrowsing.org/doh/adult-filter/"
+				;;
+			cleanbrowsing_family)
+				b1="185.228.168.168,185.228.169.168"; u1="https://doh.cleanbrowsing.org/doh/family-filter/"
+				b2="185.228.169.168,185.228.168.168"; u2="https://doh.cleanbrowsing.org/doh/family-filter/"
+				;;
+			controld_full)
+				b1="76.76.2.2,76.76.10.2"; u1="https://freedns.controld.com/p2"
+				b2="76.76.10.2,76.76.2.2"; u2="https://freedns.controld.com/p2"
+				;;
+			nextdns)
+				nd_path="/dns-query"
+				local clean_nd_id
+				clean_nd_id="$(printf '%s' "$arg3" | tr -cd 'a-zA-Z0-9_-')"
+				[ -n "$clean_nd_id" ] && nd_path="/$clean_nd_id"
+				b1="45.90.28.0,45.90.30.0"; u1="https://dns.nextdns.io${nd_path}"
+				b2="45.90.30.0,45.90.28.0"; u2="https://dns.nextdns.io${nd_path}"
+				;;
+			adguard_dns|*)
+				if [ "$arg2" = "true" ] || [ "$arg2" = "1" ]; then
+					b1="94.140.14.15,94.140.15.16"; u1="https://family.adguard-dns.com/dns-query"
+					b2="94.140.15.16,94.140.14.15"; u2="https://family.adguard-dns.com/dns-query"
+				else
+					b1="94.140.14.14,94.140.15.15"; u1="https://dns.adguard-dns.com/dns-query"
+					b2="94.140.15.15,94.140.14.14"; u2="https://dns.adguard-dns.com/dns-query"
+				fi
+				;;
+		esac
+	fi
+
+	$uci_cmd set https-dns-proxy.ark_doh1=https-dns-proxy
+	$uci_cmd set "https-dns-proxy.ark_doh1.bootstrap_dns=$b1"
+	$uci_cmd set "https-dns-proxy.ark_doh1.resolver_url=$u1"
+	$uci_cmd set https-dns-proxy.ark_doh1.listen_addr='127.0.0.1'
+	$uci_cmd set https-dns-proxy.ark_doh1.listen_port='5053'
+	$uci_cmd set https-dns-proxy.ark_doh1.user='nobody'
+	$uci_cmd set https-dns-proxy.ark_doh1.group='nogroup'
+
+	$uci_cmd set https-dns-proxy.ark_doh2=https-dns-proxy
+	$uci_cmd set "https-dns-proxy.ark_doh2.bootstrap_dns=$b2"
+	$uci_cmd set "https-dns-proxy.ark_doh2.resolver_url=$u2"
+	$uci_cmd set https-dns-proxy.ark_doh2.listen_addr='127.0.0.1'
+	$uci_cmd set https-dns-proxy.ark_doh2.listen_port='5054'
+	$uci_cmd set https-dns-proxy.ark_doh2.user='nobody'
+	$uci_cmd set https-dns-proxy.ark_doh2.group='nogroup'
+
+	uci ${root_prefix:+-c "$root_prefix/etc/config"} commit https-dns-proxy 2>/dev/null || true
+
+	$uci_cmd add_list dhcp.@dnsmasq[0].server='127.0.0.1#5053'
+	$uci_cmd add_list dhcp.@dnsmasq[0].server='127.0.0.1#5054'
+	$uci_cmd set dhcp.@dnsmasq[0].noresolv='1'
+
+	if [ -z "$root_prefix" ] && [ -x /etc/init.d/https-dns-proxy ]; then
+		/etc/init.d/https-dns-proxy enable >/dev/null 2>&1 || true
+		/etc/init.d/https-dns-proxy restart >/dev/null 2>&1 || true
+	fi
+	return 0
+}
+
+# ---------------------------------------------------------------------------
+# Transactional Mutation Guard (prevents concurrent UCI commits / service reloads
+# while guaranteeing zero ghost locks via kill -0 PID check + 25s stale TTL)
+# ---------------------------------------------------------------------------
+ark_is_readonly_action() {
+	local act="${1:-}"
+	local sub="${2:-}"
+	case "$act" in
+		*-status|*-status-*|*-get|*-list|*-check|*-check-*|*-audit|*-info|*-discover|*-fingerprints|*-stations|*-processes|*-logs|*-log|*-telemetry|*-qr|features|fast-targets|audit-system|ark-doctor|card-state-save|speedtest-*|starlink-telemetry|autowan-can-convert-wan|speedify-user)
+			return 0
+			;;
+	esac
+	case "$sub" in
+		status|get|list|check|scan|discover|audit|info)
+			return 0
+			;;
+	esac
+	return 1
+}
+
+ark_acquire_mutation_lock() {
+	local cmd_name="${1:-unknown}"
+	local lock_dir="${ARK_ROOT}/tmp/ark_mutation.lock"
+	local wait_ticks=0
+	local max_wait_ticks=12
+
+	mkdir -p "${ARK_ROOT}/tmp" 2>/dev/null || true
+
+	while ! mkdir "$lock_dir" 2>/dev/null; do
+		local owner_pid=""
+		local lock_ts=0
+		local now_ts
+		now_ts=$(date +%s 2>/dev/null || echo 0)
+
+		[ -f "$lock_dir/pid" ] && read -r owner_pid < "$lock_dir/pid" 2>/dev/null
+		[ -f "$lock_dir/ts" ] && read -r lock_ts < "$lock_dir/ts" 2>/dev/null
+
+		# Auto-heal ghost locks immediately if owner process exited or lock is older than 25s
+		if [ -z "$owner_pid" ] || ! kill -0 "$owner_pid" 2>/dev/null || [ $((now_ts - lock_ts)) -gt 25 ]; then
+			rm -rf "$lock_dir" 2>/dev/null
+			continue
+		fi
+
+		wait_ticks=$((wait_ticks + 1))
+		if [ "$wait_ticks" -ge "$max_wait_ticks" ]; then
+			echo "Outra alteração ainda está sendo aplicada no roteador. Aguarde concluir." >&2
+			return 1
+		fi
+		sleep 1
+	done
+
+	echo "$$" > "$lock_dir/pid" 2>/dev/null
+	date +%s > "$lock_dir/ts" 2>/dev/null
+	echo "$cmd_name" > "$lock_dir/cmd" 2>/dev/null
+	return 0
+}
+
+ark_release_mutation_lock() {
+	local lock_dir="${ARK_ROOT}/tmp/ark_mutation.lock"
+	local owner_pid=""
+	[ -f "$lock_dir/pid" ] && read -r owner_pid < "$lock_dir/pid" 2>/dev/null
+	if [ "$owner_pid" = "$$" ] || [ -z "$owner_pid" ]; then
+		rm -rf "$lock_dir" 2>/dev/null
+	fi
+	rm -f "${ARK_ROOT}/tmp/ark_dashboard_cache.json" 2>/dev/null || true
 }
 

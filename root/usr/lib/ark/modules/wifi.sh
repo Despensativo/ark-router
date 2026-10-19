@@ -14,6 +14,7 @@ _ARK_WIFI_SH_LOADED=1
 [ -f "${ARK_LIB_DIR}/modules/ezsetup.sh" ] && . "${ARK_LIB_DIR}/modules/ezsetup.sh"
 
 wifi_radio_by_band() {
+	local wanted section value r b hw ht
 	wanted="$1"
 	uci -q show wireless 2>/dev/null | awk -F= -v wanted="$wanted" '
 		/^[^.]+\.[^.]+=wifi-device/ { section=$1; sub(/^wireless\./, "", section); radios[++count]=section }
@@ -112,6 +113,7 @@ wifi_auto_enable_mesh_optimizations() {
 }
 
 wifi_cleanup_mesh_interfaces() {
+	local iface sec
 	# 1. Encontra interfaces do tipo 'mesh point' ativas no kernel via iw dev
 	local mesh_ifaces
 	mesh_ifaces="$(iw dev 2>/dev/null | awk '/Interface/ {i=$2} /type mesh point/ {print i}')"
@@ -143,6 +145,7 @@ wifi_cleanup_mesh_interfaces() {
 }
  
 wifi_get_ap_sections() {
+	local net mode
 	local kind="${1:-main}"
 	local sections=""
 	local r6="$(wifi_radio_6g)"
@@ -285,6 +288,7 @@ EOF
 }
 
 wifi_qca_apply_roaming_tuning() {
+	local iface vap6
 	for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
 		[ "$(uci -q get "wireless.$iface.mode" || echo ap)" = "ap" ] || continue
 		uci -q set "wireless.$iface.rrm=1"
@@ -292,7 +296,7 @@ wifi_qca_apply_roaming_tuning() {
 		uci -q set "wireless.$iface.rrm_neighbor_report=1"
 		uci -q set "wireless.$iface.rrm_beacon_report=1"
 		uci -q set "wireless.$iface.bss_transition=1"
-		uci -q set "wireless.$iface.wnm_sleep_mode=1"
+		uci -q delete "wireless.$iface.wnm_sleep_mode" 2>/dev/null || true
 		uci -q set "wireless.$iface.rnr=1"
 		uci -q set "wireless.$iface.disassoc_low_ack=0"
 		uci -q set "wireless.$iface.wpa_group_rekey=0"
@@ -310,6 +314,7 @@ wifi_qca_apply_roaming_tuning() {
 		[ -n "$r6" ] || r6="wifi2"
 		if [ -d "/sys/class/net/$r6" ]; then
 			cfg80211tool "$r6" rnr_6ghz_colocated 1 7 >/dev/null 2>&1 || true
+			cfg80211tool "$r6" acs_6g_only_psc 1 >/dev/null 2>&1 || true
 		fi
 		# Aplica enable_fils 1 20 na interface AP 6 GHz ativa (ex: ath2 / wifi2)
 		for vap6 in ath2 wifi2_ap; do
@@ -841,7 +846,7 @@ handle_wifi() {
 		echo 'ok'
 		;;
 	channels)
-		radio2="$(wifi_radio_2g)"; radio5="$(wifi_radio_5g)"
+		radio2="$(wifi_radio_2g)"; radio5="$(wifi_radio_5g)"; radio6="$(wifi_radio_6g)"
 		[ -n "$radio2" ] || { echo 'Radio 2,4 GHz nao encontrado' >&2; exit 3; }
 		[ -n "$radio5" ] || radio5="$radio2"
 		case "$2" in
@@ -930,6 +935,16 @@ handle_wifi() {
 				for ch in 36 40 44 48 149 153 157 161; do
 					uci -q add_list "wireless.$radio5.channels=$ch"
 				done
+				if [ -n "$radio6" ]; then
+					if ark_has_qca_wifi; then
+						command -v cfg80211tool >/dev/null 2>&1 && cfg80211tool "$radio6" acs_6g_only_psc 1 >/dev/null 2>&1 || true
+					else
+						# OpenWrt mac80211 / mt76: evita falha de ACS em 6 GHz ('No available channels found')
+						# fixando no canal PSC 37 (6135 MHz, centro do 1o bloco de 160/320 MHz na UNII-5 Anatel Ato 1306)
+						uci -q set "wireless.$radio6.channel=37"
+						uci -q delete "wireless.$radio6.channels"
+					fi
+				fi
 				;;
 			*) echo 'Modo de canal invalido' >&2; exit 2 ;;
 		esac
@@ -982,6 +997,18 @@ handle_wifi() {
 		[ "$ht5" != "$current_ht5" ] && changed5=1
 
 		[ "$changed2" = 1 ] && uci set "wireless.$radio2.htmode=$ht2"
+		if [ "$width2" = 40 ]; then
+			uci -q set "wireless.$radio2.noscan=1"
+			uci -q set "wireless.$radio2.ht_coex=0"
+			if ark_has_qca_wifi; then
+				uci -q set "wireless.$radio2.disablecoext=1"
+			fi
+			changed2=1
+		else
+			uci -q delete "wireless.$radio2.noscan"
+			uci -q delete "wireless.$radio2.ht_coex"
+			uci -q delete "wireless.$radio2.disablecoext"
+		fi
 		[ "$changed5" = 1 ] && uci set "wireless.$radio5.htmode=$ht5"
 
 		# Se a largura de 5 GHz for colocada em 160 MHz, garantir que o canal seja compativel (canais < 132)
@@ -1146,6 +1173,7 @@ EOF
 					echo Y > "/sys/module/$mod/parameters/wed_enable" 2>/dev/null || true
 				fi
 			done
+			rm -f /tmp/ark-router-features.json /tmp/ark-hw-cache.json /tmp/ark-hw-cache.ts
 			echo 'enabled'
 		else
 			for mod in mt7915e mt7996e mt7921e; do
@@ -1153,6 +1181,7 @@ EOF
 				echo "$mod wed_enable=N" > "/etc/modules.d/$mod"
 				echo N > "/sys/module/$mod/parameters/wed_enable" 2>/dev/null || true
 			done
+			rm -f /tmp/ark-router-features.json /tmp/ark-hw-cache.json /tmp/ark-hw-cache.ts
 			echo 'disabled'
 		fi
 		;;
@@ -1282,11 +1311,10 @@ EOF
 
 				if ark_hostapd_has_wnm; then
 					uci -q set "wireless.$iface.bss_transition=1"
-					uci -q set "wireless.$iface.wnm_sleep_mode=1"
 				else
 					uci -q delete "wireless.$iface.bss_transition"
-					uci -q delete "wireless.$iface.wnm_sleep_mode"
 				fi
+				uci -q delete "wireless.$iface.wnm_sleep_mode" 2>/dev/null || true
 
 				# 802.11r (Fast Transition):
 				# ATENÇÃO CRÍTICA: Em redes WPA3 (sae ou sae-mixed), ft_psk_generate_local=1 quebra clientes
@@ -1438,11 +1466,10 @@ EOF
 					uci -q set "wireless.$iface.max_inactivity=86400"
 					if ark_hostapd_has_wnm; then
 						uci -q set "wireless.$iface.bss_transition=1"
-						uci -q set "wireless.$iface.wnm_sleep_mode=1"
 					else
 						uci -q delete "wireless.$iface.bss_transition"
-						uci -q delete "wireless.$iface.wnm_sleep_mode"
 					fi
+					uci -q delete "wireless.$iface.wnm_sleep_mode" 2>/dev/null || true
 				done
 				uci commit wireless 2>/dev/null || true
 				[ -x /etc/init.d/usteer ] && {
@@ -1750,11 +1777,10 @@ EOF
 					uci -q set wireless.$iface.ieee80211v='1'
 					if ark_hostapd_has_wnm; then
 						uci -q set wireless.$iface.bss_transition='1'
-						uci -q set wireless.$iface.wnm_sleep_mode='1'
 					else
 						uci -q delete wireless.$iface.bss_transition
-						uci -q delete wireless.$iface.wnm_sleep_mode
 					fi
+					uci -q delete wireless.$iface.wnm_sleep_mode 2>/dev/null || true
 					uci -q delete wireless.$iface.ieee80211r
 				fi
 			done
@@ -1775,11 +1801,10 @@ EOF
 					uci -q set wireless.$iface.ieee80211v='1'
 					if ark_hostapd_has_wnm; then
 						uci -q set wireless.$iface.bss_transition='1'
-						uci -q set wireless.$iface.wnm_sleep_mode='1'
 					else
 						uci -q delete wireless.$iface.bss_transition
-						uci -q delete wireless.$iface.wnm_sleep_mode
 					fi
+					uci -q delete wireless.$iface.wnm_sleep_mode 2>/dev/null || true
 					local slave_enc="$(uci -q get "wireless.$iface.encryption" || echo '')"
 					case "$slave_enc" in
 						*sae*|*owe*)

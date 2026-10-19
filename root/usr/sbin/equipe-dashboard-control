@@ -24,6 +24,14 @@ fi
 action="$1"
 [ -n "$action" ] || { echo "Uso: $0 <comando> [argumentos...]" >&2; exit 1; }
 
+_ark_has_mut_lock=0
+if [ "${ARK_MUTATION_LOCK_HELD:-0}" != "1" ] && ! ark_is_readonly_action "$action" "$2"; then
+	ark_acquire_mutation_lock "$action" || exit 1
+	_ark_has_mut_lock=1
+	export ARK_MUTATION_LOCK_HELD=1
+	trap 'ark_release_mutation_lock' EXIT INT TERM HUP
+fi
+
 case "$action" in
 	audit-system|ark-doctor|doctor-*)
 		. "${ARK_LIB_DIR}/modules/doctor.sh"
@@ -74,8 +82,17 @@ case "$action" in
 		. "${ARK_LIB_DIR}/modules/ezsetup.sh"
 		handle_ezsetup "$@"
 		;;
+	ksmbd-*|wol-*)
+		. "${ARK_LIB_DIR}/modules/storage_wol.sh"
+		handle_storage_wol "$@"
+		;;
 	*)
+		[ "$_ark_has_mut_lock" = "1" ] && ark_release_mutation_lock
 		echo "Comando desconhecido: $action" >&2
 		exit 1
 		;;
 esac
+_ark_rc=$?
+[ "$_ark_has_mut_lock" = "1" ] && ark_release_mutation_lock
+exit $_ark_rc
+

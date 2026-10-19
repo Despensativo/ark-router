@@ -19,33 +19,7 @@ _ARK_EZSETUP_SH_LOADED=1
 [ -f "${ARK_LIB_DIR}/modules/vpn.sh" ] && . "${ARK_LIB_DIR}/modules/vpn.sh"
 [ -f "${ARK_LIB_DIR}/modules/adblock.sh" ] && . "${ARK_LIB_DIR}/modules/adblock.sh"
 [ -f "${ARK_LIB_DIR}/modules/system.sh" ] && . "${ARK_LIB_DIR}/modules/system.sh"
-
-ark_kill_package_fetchers() {
-	ps w 2>/dev/null | awk '/downloads\.openwrt\.org|packages\.adb|APKINDEX|apk update|apk fetch/ && !/awk/ {print $1}' | while read -r pid; do
-		[ -n "$pid" ] && kill "$pid" 2>/dev/null || true
-	done
-}
-
-ark_run_limited() {
-	seconds="$1"; shift
-	"$@" &
-	pid="$!"
-	i=0
-	while kill -0 "$pid" 2>/dev/null; do
-		[ "$i" -ge "$seconds" ] && {
-			kill "$pid" 2>/dev/null || true
-			ark_kill_package_fetchers
-			sleep 2
-			kill -9 "$pid" 2>/dev/null || true
-			ark_kill_package_fetchers
-			wait "$pid" 2>/dev/null
-			return 124
-		}
-		sleep 1
-		i=$((i+1))
-	done
-	wait "$pid"
-}
+[ -f "${ARK_LIB_DIR}/modules/storage_wol.sh" ] && . "${ARK_LIB_DIR}/modules/storage_wol.sh"
 
 feature_package() {
 	case "$1" in
@@ -62,6 +36,14 @@ feature_package() {
 		usteer) printf usteer ;;
 		htop) printf htop ;;
 		zram) printf kmod-zram ;;
+		ksmbd) printf ksmbd-server ;;
+		wol) printf etherwake ;;
+		history) printf equipe-traffic-history ;;
+		hardware_tune) printf ark-hardware-tune ;;
+		firewall_guard) printf ark-firewall-guard ;;
+		autowan) printf ark-autowan ;;
+		clock_preserver) printf ark-clock-preserver ;;
+		safe_shutdown) printf ark-safe-shutdown ;;
 		*) return 1 ;;
 	esac
 }
@@ -71,7 +53,8 @@ bulk_feature_keys() {
 }
 
 feature_missing_installable() {
-	key="$1"; package="$(feature_package "$key" 2>/dev/null)" || return 1
+	local key="$1" package tmp_avail
+	package="$(feature_package "$key" 2>/dev/null)" || return 1
 	case "$key" in
 		speedify|zerotier) return 1 ;;
 		speedtest)
@@ -155,6 +138,7 @@ cleanup_removable() {
 }
 
 cleanup_installed_count() {
+	local count pkg f
 	count=0
 	for pkg in $(cleanup_packages "$1"); do installed "$pkg" && count=$((count+1)); done
 	if [ "$1" = speedify_residue ]; then
@@ -166,6 +150,7 @@ cleanup_installed_count() {
 }
 
 cleanup_status_json() {
+	local overlay_avail overlay_total backup first key count rec rem
 	overlay_avail="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"; [ -n "$overlay_avail" ] || overlay_avail=0
 	overlay_total="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $2}')"; [ -n "$overlay_total" ] || overlay_total=0
 	backup="$(uci -q get equipe_dashboard.cleanup.last_backup || true)"
@@ -185,19 +170,8 @@ cleanup_status_json() {
 	printf ']}\n'
 }
 
-cleanup_backup() {
-	stamp="$(date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)"
-	file="/tmp/ark-router-before-cleanup-$stamp.tar.gz"
-	if command -v sysupgrade >/dev/null 2>&1; then sysupgrade -b "$file" >/dev/null 2>&1 || return 1
-	else ez_backup >/dev/null || return 1; file="$(ez_get backup '')"
-	fi
-	uci -q set equipe_dashboard.cleanup=cleanup
-	uci -q set equipe_dashboard.cleanup.last_backup="$file"
-	uci commit equipe_dashboard
-	printf '%s' "$file"
-}
-
 cleanup_speedify_residue() {
+	local f p
 	for f in \
 		/overlay/upper/usr/lib/libcrypto.so.3 /overlay/upper/usr/lib/libssl.so.3 \
 		/overlay/upper/usr/lib/libstdc++.so.6 /overlay/upper/usr/lib/libstdc++.so.6.0.33 \
@@ -216,6 +190,7 @@ cleanup_speedify_residue() {
 }
 
 cleanup_apply_keys() {
+	local backup key pkgs pkg
 	[ $# -gt 0 ] || { echo 'Nenhum item selecionado' >&2; return 2; }
 	backup="$(cleanup_backup)" || { echo 'Falha ao criar backup antes da limpeza' >&2; return 3; }
 	echo "Backup: $backup"
@@ -241,31 +216,251 @@ cleanup_apply_keys() {
 }
 
 feature_active() {
+	if [ "$(uci -q get "equipe_dashboard.${1}.user_disabled" 2>/dev/null)" = "1" ] || [ "$(uci -q get "equipe_dashboard.${1}.user_removed" 2>/dev/null)" = "1" ]; then
+		return 1
+	fi
 	case "$1" in
 		sqm) uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'" ;;
-		mwan3) pgrep -f mwan3rtmon >/dev/null 2>&1 || pgrep -f mwan3track >/dev/null 2>&1 ;;
-		nlbwmon) pidof nlbwmon >/dev/null 2>&1 || running nlbwmon ;;
-		upnp) [ "$(uci -q get upnpd.config.enabled || echo 0)" = "1" ] && { pidof miniupnpd >/dev/null 2>&1 || running miniupnpd; } ;;
-		zram) grep -q zram /proc/swaps 2>/dev/null ;;
-		ark) [ -d /www/luci-static/ark ] && [ "$(uci -q get luci.main.mediaurlbase)" = /luci-static/ark ] ;;
-		uhttpd) [ -f /usr/share/luci/menu.d/luci-app-uhttpd.json ] ;;
-		wifi) [ -f /etc/config/wireless ] ;;
+		mwan3) pgrep -f mwan3rtmon >/dev/null 2>&1 || pgrep -f mwan3track >/dev/null 2>&1 || [ -f "${ARK_ROOT}/state/mwan3_running" ] ;;
+		nlbwmon) pidof nlbwmon >/dev/null 2>&1 || running nlbwmon || [ -f "${ARK_ROOT}/etc/config/nlbwmon" ] ;;
+		upnp) [ "$(uci -q get upnpd.config.enabled || echo 0)" = "1" ] && { pidof miniupnpd >/dev/null 2>&1 || running miniupnpd || [ -f "${ARK_ROOT}/etc/config/upnpd" ]; } ;;
+		zram) grep -q zram /proc/swaps 2>/dev/null || grep -q zram "${ARK_ROOT}/proc/swaps" 2>/dev/null ;;
+		ark) ([ -d "${ARK_ROOT}/www/luci-static/ark" ] || [ -d /www/luci-static/ark ]) && [ "$(uci -q get luci.main.mediaurlbase)" = /luci-static/ark ] ;;
+		uhttpd) [ -f "${ARK_ROOT}/usr/share/luci/menu.d/luci-app-uhttpd.json" ] || [ -f /usr/share/luci/menu.d/luci-app-uhttpd.json ] ;;
+		wifi) [ -f "${ARK_ROOT}/etc/config/wireless" ] || [ -f /etc/config/wireless ] ;;
 		temperature)
+			[ -r "${ARK_ROOT}/sys/class/thermal/thermal_zone0/temp" ] || \
 			[ -r /sys/class/thermal/thermal_zone0/temp ] || \
 			ls /sys/class/thermal/thermal_zone*/temp >/dev/null 2>&1 || \
 			ls /sys/class/hwmon/hwmon*/temp*_input >/dev/null 2>&1
 			;;
-		history) pgrep -f equipe-traffic-history >/dev/null 2>&1 || running equipe-traffic-history ;;
-		custom_qos) [ -f /etc/config/qos_equipe ] && [ "$(uci -q get qos_equipe.guest.enabled)" = 1 ] ;;
+		history) pgrep -f equipe-traffic-history >/dev/null 2>&1 || running equipe-traffic-history || [ -f "${ARK_ROOT}/tmp/equipe-traffic-history.csv" ] ;;
+		hardware_tune) [ "$(uci -q get equipe_dashboard.hardware_tune.enabled || echo 1)" = "1" ] ;;
+		firewall_guard) [ "$(uci -q get equipe_dashboard.firewall_guard.enabled || echo 1)" = "1" ] ;;
+		autowan) [ "$(uci -q get equipe_dashboard.autowan.enabled || echo 0)" = "1" ] ;;
+		clock_preserver) [ "$(uci -q get equipe_dashboard.clock_preserver.enabled || echo 1)" = "1" ] ;;
+		safe_shutdown) [ "$(uci -q get equipe_dashboard.safe_shutdown.enabled || echo 1)" = "1" ] ;;
+		custom_qos) ([ -f "${ARK_ROOT}/etc/config/qos_equipe" ] || [ -f /etc/config/qos_equipe ]) && [ "$(uci -q get qos_equipe.guest.enabled)" = 1 ] ;;
 		speedtest) command -v speedtest-go >/dev/null 2>&1 || [ -x /tmp/ark-speedtest/speedtest-go ] || command -v wget >/dev/null 2>&1 || command -v curl >/dev/null 2>&1 ;;
 		speedify) [ -x /usr/share/speedify/speedify_cli ] || installed speedify ;;
 		zerotier) pidof zerotier-one >/dev/null 2>&1 && [ "$(uci -q get zerotier.global.enabled)" = 1 ] ;;
-		wireguard) [ -d /sys/class/net/wg0 ] || [ -d /sys/class/net/wgclient ] || (command -v wg >/dev/null 2>&1 && [ -n "$(wg show interfaces 2>/dev/null)" ]) ;;
+		wireguard) [ -d /sys/class/net/wg0 ] || [ -d /sys/class/net/wgclient ] || [ -d "${ARK_ROOT}/sys/class/net/wg0" ] || (command -v wg >/dev/null 2>&1 && [ -n "$(wg show interfaces 2>/dev/null)" ]) ;;
 		irqbalance) pidof irqbalance >/dev/null 2>&1 || { [ -x /etc/init.d/irqbalance ] && /etc/init.d/irqbalance enabled >/dev/null 2>&1; } ;;
 		usteer) pidof usteerd >/dev/null 2>&1 || [ "$(uci -q get equipe_dashboard.wifi.usteer_enabled)" = "1" ] || { [ -x /etc/init.d/usteer ] && /etc/init.d/usteer enabled >/dev/null 2>&1; } ;;
 		htop) pidof htop >/dev/null 2>&1 || [ -x /usr/bin/htop ] || [ -x /usr/sbin/htop ] ;;
+		ksmbd) running ksmbd ;;
+		wol) installed wol ;;
 		*) return 1 ;;
 	esac
+}
+
+ark_feature_toggle_internal() {
+	local key="$1" desired="$2" s dev pref
+	[ "$desired" = "1" ] || desired="0"
+	uci -q set "equipe_dashboard.${key}=feature"
+	if [ "$desired" = "1" ]; then
+		uci -q set "equipe_dashboard.${key}.user_disabled=0"
+		uci -q set "equipe_dashboard.${key}.enabled=1"
+	else
+		uci -q set "equipe_dashboard.${key}.user_disabled=1"
+		uci -q set "equipe_dashboard.${key}.enabled=0"
+	fi
+	uci commit equipe_dashboard 2>/dev/null || true
+
+	case "$key" in
+		hardware_tune)
+			if [ "$desired" = "1" ]; then
+				[ -x "${ARK_ROOT}/etc/init.d/ark-hardware-tune" ] && { "${ARK_ROOT}/etc/init.d/ark-hardware-tune" enable >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/ark-hardware-tune" restart >/dev/null 2>&1 || true; }
+			else
+				[ -x "${ARK_ROOT}/etc/init.d/ark-hardware-tune" ] && { "${ARK_ROOT}/etc/init.d/ark-hardware-tune" stop >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/ark-hardware-tune" disable >/dev/null 2>&1 || true; }
+				sysctl -q -w net.core.netdev_max_backlog=1000 2>/dev/null || true
+				sysctl -q -w net.core.rps_sock_flow_entries=0 2>/dev/null || true
+			fi
+			;;
+		firewall_guard)
+			if [ "$desired" = "1" ]; then
+				[ -x "${ARK_ROOT}/etc/init.d/ark-firewall-guard" ] && { "${ARK_ROOT}/etc/init.d/ark-firewall-guard" enable >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/ark-firewall-guard" restart >/dev/null 2>&1 || true; }
+			else
+				[ -x "${ARK_ROOT}/etc/init.d/ark-firewall-guard" ] && { "${ARK_ROOT}/etc/init.d/ark-firewall-guard" stop >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/ark-firewall-guard" disable >/dev/null 2>&1 || true; }
+			fi
+			;;
+		history)
+			if [ "$desired" = "1" ]; then
+				[ -x "${ARK_ROOT}/etc/init.d/equipe-traffic-history" ] && { "${ARK_ROOT}/etc/init.d/equipe-traffic-history" enable >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/equipe-traffic-history" restart >/dev/null 2>&1 || true; }
+			else
+				[ -x "${ARK_ROOT}/etc/init.d/equipe-traffic-history" ] && { "${ARK_ROOT}/etc/init.d/equipe-traffic-history" stop >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/equipe-traffic-history" disable >/dev/null 2>&1 || true; }
+			fi
+			;;
+		autowan)
+			if [ "$desired" = "1" ]; then
+				handle_network autowan-toggle 1 >/dev/null 2>&1 || true
+				[ -x "${ARK_ROOT}/etc/init.d/ark-autowan" ] && { "${ARK_ROOT}/etc/init.d/ark-autowan" enable >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/ark-autowan" restart >/dev/null 2>&1 || true; }
+			else
+				handle_network autowan-toggle 0 >/dev/null 2>&1 || true
+				[ -x "${ARK_ROOT}/etc/init.d/ark-autowan" ] && { "${ARK_ROOT}/etc/init.d/ark-autowan" stop >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/ark-autowan" disable >/dev/null 2>&1 || true; }
+			fi
+			;;
+		clock_preserver)
+			if [ "$desired" = "1" ]; then
+				[ -x "${ARK_ROOT}/etc/init.d/ark-clock-preserver" ] && { "${ARK_ROOT}/etc/init.d/ark-clock-preserver" enable >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/ark-clock-preserver" restart >/dev/null 2>&1 || true; }
+			else
+				[ -x "${ARK_ROOT}/etc/init.d/ark-clock-preserver" ] && { "${ARK_ROOT}/etc/init.d/ark-clock-preserver" stop >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/ark-clock-preserver" disable >/dev/null 2>&1 || true; }
+			fi
+			;;
+		safe_shutdown)
+			if [ "$desired" = "1" ]; then
+				[ -x "${ARK_ROOT}/etc/init.d/ark-safe-shutdown" ] && { "${ARK_ROOT}/etc/init.d/ark-safe-shutdown" enable >/dev/null 2>&1 || true; }
+			else
+				[ -x "${ARK_ROOT}/etc/init.d/ark-safe-shutdown" ] && { "${ARK_ROOT}/etc/init.d/ark-safe-shutdown" disable >/dev/null 2>&1 || true; }
+			fi
+			;;
+		sqm)
+			if [ "$desired" = "1" ]; then
+				for s in $(uci -q show sqm 2>/dev/null | awk -F'[.=]' '$3=="queue"{print $2}'); do
+					uci -q set "sqm.${s}.enabled=1"
+				done
+				uci commit sqm 2>/dev/null || true
+				[ -x "${ARK_ROOT}/etc/init.d/sqm" ] && { "${ARK_ROOT}/etc/init.d/sqm" enable >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/sqm" restart >/dev/null 2>&1 || true; }
+			else
+				[ -x "${ARK_ROOT}/etc/init.d/sqm" ] && { "${ARK_ROOT}/etc/init.d/sqm" stop >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/sqm" disable >/dev/null 2>&1 || true; }
+				for s in $(uci -q show sqm 2>/dev/null | awk -F'[.=]' '$3=="queue"{print $2}'); do
+					uci -q set "sqm.${s}.enabled=0"
+				done
+				uci commit sqm 2>/dev/null || true
+				for dev in $(ls /sys/class/net 2>/dev/null); do
+					tc qdisc show dev "$dev" 2>/dev/null | grep -q "cake" && tc qdisc del dev "$dev" root 2>/dev/null || true
+					tc qdisc del dev "$dev" ingress 2>/dev/null || true
+					case "$dev" in ifb4*) ip link set dev "$dev" down 2>/dev/null || true ;; esac
+				done
+			fi
+			;;
+		mwan3)
+			if [ "$desired" = "1" ]; then
+				ensure_mwan3_ark_config >/dev/null 2>&1 || true
+				[ -x "${ARK_ROOT}/etc/init.d/mwan3" ] && { "${ARK_ROOT}/etc/init.d/mwan3" enable >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/mwan3" restart >/dev/null 2>&1 || true; }
+				mkdir -p "${ARK_ROOT}/state" 2>/dev/null && touch "${ARK_ROOT}/state/mwan3_running" 2>/dev/null || true
+			else
+				[ -x "${ARK_ROOT}/etc/init.d/mwan3" ] && { "${ARK_ROOT}/etc/init.d/mwan3" stop >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/mwan3" disable >/dev/null 2>&1 || true; }
+				rm -f "${ARK_ROOT}/state/mwan3_running" 2>/dev/null || true
+				ip rule show 2>/dev/null | awk -F: '$1+0 >= 2000 && $1+0 <= 2255 {print $1}' | while read -r pref; do
+					[ -n "$pref" ] && ip rule del pref "$pref" 2>/dev/null || true
+				done
+			fi
+			;;
+		nlbwmon)
+			if [ "$desired" = "1" ]; then
+				[ -x "${ARK_ROOT}/etc/init.d/nlbwmon" ] && { "${ARK_ROOT}/etc/init.d/nlbwmon" enable >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/nlbwmon" restart >/dev/null 2>&1 || true; }
+			else
+				[ -x "${ARK_ROOT}/etc/init.d/nlbwmon" ] && { "${ARK_ROOT}/etc/init.d/nlbwmon" stop >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/nlbwmon" disable >/dev/null 2>&1 || true; }
+			fi
+			;;
+		upnp)
+			handle_system upnp-toggle "$desired" >/dev/null 2>&1 || true
+			;;
+		adblock)
+			handle_adblock adblock-toggle "$desired" >/dev/null 2>&1 || true
+			;;
+		wireguard)
+			if [ "$desired" = "1" ]; then
+				uci -q set network.wg0.disabled=0
+				uci commit network 2>/dev/null || true
+				ifup wg0 >/dev/null 2>&1 || true
+			else
+				ifdown wg0 >/dev/null 2>&1 || true
+				ifdown wgclient >/dev/null 2>&1 || true
+				uci -q set network.wg0.disabled=1
+				uci -q set network.wgclient.disabled=1
+				uci commit network 2>/dev/null || true
+			fi
+			;;
+		zerotier)
+			if [ "$desired" = "1" ]; then
+				handle_vpn zerotier-enable >/dev/null 2>&1 || true
+			else
+				handle_vpn zerotier-disable >/dev/null 2>&1 || true
+			fi
+			;;
+		speedify)
+			if [ "$desired" = "1" ]; then
+				handle_speedify speedify-connect >/dev/null 2>&1 || true
+			else
+				handle_speedify speedify-disconnect >/dev/null 2>&1 || true
+				[ -x "${ARK_ROOT}/etc/init.d/ark-speedify" ] && { "${ARK_ROOT}/etc/init.d/ark-speedify" stop >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/ark-speedify" disable >/dev/null 2>&1 || true; }
+			fi
+			;;
+		usteer)
+			handle_wifi wifi-usteer-toggle "$desired" >/dev/null 2>&1 || true
+			;;
+		irqbalance)
+			handle_sqm irqbalance-toggle "$desired" >/dev/null 2>&1 || true
+			;;
+		zram)
+			handle_system zram-toggle "$desired" >/dev/null 2>&1 || true
+			;;
+		ksmbd)
+			handle_storage_wol ksmbd-toggle "$desired" >/dev/null 2>&1 || true
+			;;
+		wol|htop)
+			# Binarios de linha de comando / utilitarios: estado controlado via user_disabled
+			;;
+	esac
+	rm -f "${ARK_ROOT}/tmp/ark-features.cache" /tmp/ark-features.cache 2>/dev/null || true
+	return 0
+}
+
+ark_feature_remove_internal() {
+	local key="$1" pkgs="" pkg
+	case "$key" in
+		sqm) pkgs="luci-app-sqm sqm-scripts" ;;
+		mwan3) pkgs="luci-app-mwan3 mwan3" ;;
+		nlbwmon) pkgs="luci-app-nlbwmon nlbwmon" ;;
+		upnp) pkgs="luci-app-upnp miniupnpd-nftables miniupnpd" ;;
+		adblock) pkgs="luci-app-adblock adblock" ;;
+		wireguard) pkgs="luci-proto-wireguard wireguard-tools" ;;
+		zerotier) pkgs="zerotier" ;;
+		speedify) pkgs="luci-app-speedify speedify" ;;
+		usteer) pkgs="luci-app-usteer usteer" ;;
+		irqbalance) pkgs="irqbalance" ;;
+		zram) pkgs="zram-swap" ;;
+		ksmbd) pkgs="luci-app-ksmbd ksmbd-server ksmbd-utils" ;;
+		wol) pkgs="luci-app-wol etherwake" ;;
+		htop) pkgs="htop" ;;
+		*) return 1 ;;
+	esac
+
+	# 1. Desativacao cautelosa e limpeza completa de rotas, filas e regras antes de desinstalar
+	ark_feature_toggle_internal "$key" 0
+
+	# 2. Remocao segura dos pacotes folha (nunca remove dependencias do sistema base)
+	if [ -z "${ARK_ROOT}" ]; then
+		if command -v apk >/dev/null 2>&1; then
+			for pkg in $pkgs; do
+				apk info -e "$pkg" >/dev/null 2>&1 && apk del "$pkg" >/dev/null 2>&1 || true
+			done
+		elif command -v opkg >/dev/null 2>&1; then
+			for pkg in $pkgs; do
+				opkg status "$pkg" 2>/dev/null | grep -q '^Status:.* installed' && opkg remove "$pkg" >/dev/null 2>&1 || true
+			done
+		fi
+	fi
+
+	# 3. Persiste que o usuario removeu intencionalmente (sobrevive a updates do ARK Router)
+	uci -q set "equipe_dashboard.${key}=feature"
+	uci -q set "equipe_dashboard.${key}.user_removed=1"
+	uci -q set "equipe_dashboard.${key}.user_disabled=1"
+	uci -q set "equipe_dashboard.${key}.enabled=0"
+	uci commit equipe_dashboard 2>/dev/null || true
+	rm -f "${ARK_ROOT}/tmp/ark-features.cache" /tmp/ark-features.cache 2>/dev/null || true
+	return 0
+}
+
+ark_enforce_saved_feature_policies() {
+	local key
+	for key in hardware_tune firewall_guard history autowan clock_preserver safe_shutdown sqm mwan3 nlbwmon upnp adblock wireguard zerotier speedify usteer irqbalance zram ksmbd wol htop; do
+		if [ "$(uci -q get "equipe_dashboard.${key}.user_disabled" 2>/dev/null)" = "1" ] || [ "$(uci -q get "equipe_dashboard.${key}.user_removed" 2>/dev/null)" = "1" ]; then
+			ark_feature_toggle_internal "$key" 0 >/dev/null 2>&1 || true
+		fi
+	done
 }
 
 version_gt() {
@@ -288,6 +483,7 @@ ark_package_manager() {
 }
 
 ark_cpu_arch() {
+	local v
 	v="$(uname -m 2>/dev/null || true)"
 	[ -n "$v" ] && printf '%s' "$v" || printf unknown
 }
@@ -300,21 +496,25 @@ ark_can_run_aarch64() {
 }
 
 ark_mem_total_kb() {
+	local v
 	v="$(awk '/^MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || true)"
 	[ -n "$v" ] && printf '%s' "$v" || printf 0
 }
 
 ark_overlay_avail_kb() {
+	local v
 	v="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4; exit}' || true)"
 	[ -n "$v" ] && printf '%s' "$v" || printf 0
 }
 
 ark_tmp_avail_kb() {
+	local v
 	v="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4; exit}' || true)"
 	[ -n "$v" ] && printf '%s' "$v" || printf 0
 }
 
 ark_best_profile() {
+	local ram overlay min_ram min_overlay
 	# Never select Full on 32-bit / non-AArch64 architectures (e.g. armv7l, mips)
 	if ! ark_can_run_aarch64; then
 		printf lite
@@ -336,6 +536,7 @@ ark_actual_profile() {
 }
 
 ark_installed_profile() {
+	local actual
 	actual="$(ark_actual_profile)"
 	if [ "$actual" = full ] && ark_can_run_aarch64; then
 		printf full
@@ -345,6 +546,7 @@ ark_installed_profile() {
 }
 
 ark_update_asset_name() {
+	local profile
 	profile="$(ark_installed_profile)"
 	case "$(ark_package_manager):$profile" in
 		apk:full) printf luci-app-ark-router-full.apk ;;
@@ -356,6 +558,7 @@ ark_update_asset_name() {
 }
 
 ark_remove_opposite_profile() {
+	local asset manager backup_dir cfg
 	asset="$1"
 	manager="$2"
 	case "$asset" in
@@ -386,6 +589,7 @@ ark_remove_opposite_profile() {
 }
 
 ark_install_package_file() {
+	local pkg pm asset_name install_ok unpack_dir cfg
 	pkg="$1"
 	pm="$2"
 	asset_name="${3:-$(basename "$pkg")}"
@@ -453,6 +657,7 @@ ark_install_package_file() {
 }
 
 ark_http_get() {
+	local url header
 	url="$1"
 	header="${2:-}"
 	if command -v curl >/dev/null 2>&1; then
@@ -476,6 +681,7 @@ ark_http_get() {
 }
 
 ark_http_download() {
+	local url dest timeout
 	url="$1"
 	dest="$2"
 	timeout="${3:-35}"
@@ -493,6 +699,7 @@ ark_http_download() {
 }
 
 ark_latest_release() {
+	local repo tag
 	repo="$(ark_update_repo)"
 	tag=""
 	# 1. Tentativa primária ultra-rápida via raw.githubusercontent.com (sem rate limit e sem jsonfilter)
@@ -509,6 +716,7 @@ ark_latest_release() {
 }
 
 ark_latest_changelog() {
+	local repo body
 	repo="$(ark_update_repo)"
 	body=""
 	# 1. Tentativa via GitHub API releases/latest
@@ -521,6 +729,8 @@ ark_latest_changelog() {
 }
 
 ark_update_json() {
+	local current repo manager actual_profile profile best_profile ram_kb overlay_kb tmp_kb asset latest available
+	local error need_overlay_kb need_tmp_kb space_ok space_warning changelog
 	current="$(ark_current_version)"
 	repo="$(ark_update_repo)"
 	manager="$(ark_package_manager)"
@@ -564,6 +774,7 @@ ark_update_json() {
 ark_operation_profile() { uci -q get equipe_dashboard.main.operation_profile 2>/dev/null || printf 'standard'; }
 
 apply_operation_profile() {
+	local mode stage cfg stamp mem_total_kb cake_opts sec sqm_queues
 	mode="$1"
 	case "$mode" in
 		standard|gamer) ;;
@@ -583,9 +794,9 @@ apply_operation_profile() {
 	# 2. Identifica hardware e memoria disponivel para otimizacao inteligente
 	mem_total_kb="$(awk '/MemTotal/{print $2}' /proc/meminfo 2>/dev/null || echo 256000)"
 	if [ "$mem_total_kb" -gt 300000 ]; then
-		cake_opts="diffserv4 nat dual-srchost ack-filter memlimit 64M"
+		cake_opts="diffserv4 nat dual-srchost wash ack-filter memlimit 64M"
 	else
-		cake_opts="diffserv4 nat dual-srchost ack-filter memlimit 32M"
+		cake_opts="diffserv4 nat dual-srchost wash ack-filter memlimit 32M"
 	fi
 
 	uci -q set equipe_dashboard.main=settings
@@ -601,7 +812,9 @@ apply_operation_profile() {
 			for sec in $sqm_queues; do
 				if [ -n "$(uci -q get "sqm.$sec" 2>/dev/null)" ]; then
 					uci -q set "sqm.$sec.qdisc=cake"
-					uci -q set "sqm.$sec.script=piece_of_cake.qos"
+					uci -q set "sqm.$sec.script=layer_cake.qos"
+					uci -q set "sqm.$sec.squash_dscp=1"
+					uci -q set "sqm.$sec.squash_ingress=1"
 					uci -q set "sqm.$sec.eqdisc_opts=$cake_opts"
 					uci -q set "sqm.$sec.iqdisc_opts=diffserv4 nat dual-dsthost ingress"
 				fi
@@ -618,7 +831,10 @@ apply_operation_profile() {
 			for sec in $sqm_queues; do
 				if [ -n "$(uci -q get "sqm.$sec" 2>/dev/null)" ]; then
 					uci -q delete "sqm.$sec.opts" 2>/dev/null || true
-					uci -q set "sqm.$sec.eqdisc_opts=diffserv4 nat dual-srchost ack-filter"
+					uci -q set "sqm.$sec.script=layer_cake.qos"
+					uci -q set "sqm.$sec.squash_dscp=1"
+					uci -q set "sqm.$sec.squash_ingress=1"
+					uci -q set "sqm.$sec.eqdisc_opts=diffserv4 nat dual-srchost wash ack-filter"
 					uci -q set "sqm.$sec.iqdisc_opts=diffserv4 nat dual-dsthost ingress"
 				fi
 			done
@@ -632,13 +848,12 @@ apply_operation_profile() {
 	return 0
 }
 
-ez_get() { uci -q get "equipe_dashboard.setup.$1" 2>/dev/null || printf '%s' "$2"; }
-
-ez_set() { uci -q set equipe_dashboard.setup=ezsetup; uci -q set "equipe_dashboard.setup.$1=$2"; }
-
 ez_progress() { ez_set applied_step "$1"; ez_set last_step "$2"; uci commit equipe_dashboard; }
 
 ez_json() {
+	local cur_wan_proto cur_wan_user cur_wan_pass cur_wan_ip cur_wan_mask cur_wan_gw cur_wan_dns cur_wan_mac cur_wan_modem cur_wan2_proto cur_wan2_user cur_wan2_pass
+	local cur_wan2_ip cur_wan2_mask cur_wan2_gw cur_wan2_dns cur_wan2_mac cur_wan2_modem cur_main_ssid cur_main_key cur_main_ssid_5g cur_main_key_5g detected_wifi_mode cur_wifi_mode
+	local cur_guest_ssid cur_guest_key cur_wan_online
 	# Ler dados atuais do roteador caso ainda nao existam no setup
 	cur_wan_proto="$(uci -q get network.wan.proto || printf 'dhcp')"
 	cur_wan_user="$(uci -q get network.wan.username || true)"
@@ -735,7 +950,7 @@ ez_json() {
 }
 
 ez_apply_wifi_iface() {
-	section="$1"; device="$2"; network="$3"; ssid="$4"; key="$5"; disabled="$6"
+	local section="$1" device="$2" network="$3" ssid="$4" key="$5" disabled="$6"
 	uci -q get "wireless.$section" >/dev/null 2>&1 || uci -q set "wireless.$section=wifi-iface"
 	uci -q set "wireless.$section.device=$device"
 	uci -q set "wireless.$section.mode=ap"
@@ -747,6 +962,7 @@ ez_apply_wifi_iface() {
 }
 
 ez_apply_guest_network() {
+	local enabled
 	enabled="$1"
 	if [ "$enabled" = 1 ]; then
 		uci -q set network.guest=interface
@@ -789,6 +1005,7 @@ ez_apply_guest_network() {
 }
 
 ez_apply_guest_limit() {
+	local enabled upload download
 	ensure_qos_equipe
 	enabled="$1"; upload="$2"; download="${3:-0}"
 	if [ "$enabled" = 1 ]; then
@@ -804,13 +1021,13 @@ ez_apply_guest_limit() {
 	fi
 }
 
-guest_l3_device() {
-	dev="$(ubus call network.interface.guest status 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null || true)"
-	[ -n "$dev" ] || dev="$(ubus call network.interface.guest status 2>/dev/null | jsonfilter -e '@.device' 2>/dev/null || true)"
-	valid_net_device "$dev" && printf '%s' "$dev"
-}
-
 feature_json() {
+	local key enabled concealed tmp_avail min_kb installable cli runtime present luci state prepared
+	local mode saved autostart desired bonding_mode runtime_mode tunnel_ip settings_out settings_mode adapters_json settings_json last_autostart
+	local account_logged account_licensed account_masked user_out account_email account_bytes reason arch installed_zt active_zt autostart_zt zt_auto
+	local node netid nstatus lan_cidr installed_wg active_wg autostart_wg listen_port wg_ip pubkey peers_count peers_active
+	local now hs diff wan_ip custom_endpoint endpoint client_configured client_active client_endpoint client_online client_hs now_c
+	local diff_c
 	key="$1" package="$2" installable="$3" reason="$4"
 	if [ "$key" = ark ]; then
 		feature_active ark; enabled=$?
@@ -834,7 +1051,7 @@ feature_json() {
 		local is_low_ram=0
 		[ "$mem_total_mb" -le 256 ] && is_low_ram=1
 		local supported=0
-		if [ -b /dev/zram0 ] || [ -f "/lib/modules/$(uname -r 2>/dev/null)/zram.ko" ] || modprobe -n zram >/dev/null 2>&1 || apk list -I 2>/dev/null | grep -q kmod-zram || opkg list-installed 2>/dev/null | grep -q kmod-zram; then
+		if [ -b /dev/zram0 ] || [ -d /sys/module/zram ] || [ -f "/lib/modules/$(uname -r 2>/dev/null)/zram.ko" ] || apk list -I 2>/dev/null | grep -q kmod-zram || opkg list-installed 2>/dev/null | grep -q kmod-zram; then
 			supported=1
 		fi
 		local active=0
@@ -855,9 +1072,14 @@ feature_json() {
 			recommendation="caution_weak_cpu"
 		fi
 		local swappiness="$(sysctl -n vm.swappiness 2>/dev/null || echo 60)"
+		local u_dis=0 u_rem=0
+		[ "$(uci -q get equipe_dashboard.zram.user_disabled 2>/dev/null)" = "1" ] && u_dis=1
+		[ "$(uci -q get equipe_dashboard.zram.user_removed 2>/dev/null)" = "1" ] && u_rem=1
+		[ "$u_rem" = 1 ] && { supported=0; active=0; }
+		[ "$u_dis" = 1 ] && active=0
 		hidden zram; concealed=$?
-		printf '"zram":{"installed":%s,"active":%s,"hidden":%s,"installable":%s,"package":"kmod-zram","mem_total_mb":%d,"cpu_cores":%d,"is_low_end_mips":%s,"is_high_ram":%s,"is_low_ram":%s,"recommendation":"%s","zram_size_mb":%d,"zram_used_mb":%d,"swappiness":%d}' \
-			"$(bool $((supported == 1)))" "$(bool $((active == 1)))" "$(bool $((concealed == 0)))" "$(bool $((supported == 1)))" \
+		printf '"zram":{"installed":%s,"active":%s,"hidden":%s,"user_disabled":%s,"user_removed":%s,"installable":%s,"package":"kmod-zram","mem_total_mb":%d,"cpu_cores":%d,"is_low_end_mips":%s,"is_high_ram":%s,"is_low_ram":%s,"recommendation":"%s","zram_size_mb":%d,"zram_used_mb":%d,"swappiness":%d}' \
+			"$(bool $((supported == 1)))" "$(bool $((active == 1)))" "$(bool $((concealed == 0)))" "$(bool $((u_dis == 1)))" "$(bool $((u_rem == 1)))" "$(bool $((supported == 1 || u_rem == 1)))" \
 			"$mem_total_mb" "$cpu_cores" "$(bool $((is_low_end_mips == 1)))" "$(bool $((is_high_ram == 1)))" "$(bool $((is_low_ram == 1)))" \
 			"$recommendation" "$zram_size_mb" "$zram_used_mb" "$swappiness"
 		return 0
@@ -895,6 +1117,8 @@ feature_json() {
 		present=false; ([ -n "$cli" ] || installed speedify) && present=true
 		luci=false; installed luci-app-speedify && luci=true
 		active=false; state="$(speedify_state_value)"; case "$state" in CONNECTED|CONNECTING) active=true ;; esac
+		[ "$(uci -q get equipe_dashboard.speedify.user_removed 2>/dev/null)" = "1" ] && { present=false; active=false; runtime=false; }
+		[ "$(uci -q get equipe_dashboard.speedify.user_disabled 2>/dev/null)" = "1" ] && { active=false; runtime=false; }
 		prepared="$(uci -q get equipe_dashboard.speedify.prepared || printf 0)"
 		mode="$(speedify_detected_install_mode 2>/dev/null || true)"
 		if [ -z "$mode" ] || [ "$mode" = auto ]; then
@@ -944,16 +1168,22 @@ feature_json() {
 			reason="$4"
 			supported="$3"
 		fi
-		printf '"speedify":{"installed":%s,"active":%s,"runtime_running":%s,"hidden":%s,"installable":%s,"reason":"%s","package":"Runtime Speedify opcional: interno, externo ou RAM","luci":%s,"state":"%s","supported":%s,"prepared":%s,"install_mode":"%s","saved_config":%s,"autostart":%s,"desired_state":"%s","bonding_mode":"%s","runtime_mode":"%s","tunnel_ip":"%s","last_autostart":"%s","account_logged_in":%s,"account_licensed":%s,"account_email_masked":"%s","adapters":%s,"settings":%s,' \
-			"$present" "$active" "$runtime" "$(bool $((concealed == 0)))" "$supported" "$(json_escape "$reason")" "$luci" "$(json_escape "$state")" "$supported" "$(bool "$prepared")" "$(json_escape "$mode")" "$(bool "$saved")" "$(bool "$autostart")" "$(json_escape "$desired")" "$(json_escape "$bonding_mode")" "$(json_escape "$runtime_mode")" "$(json_escape "$tunnel_ip")" "$(json_escape "$last_autostart")" "$account_logged" "$account_licensed" "$(json_escape "$account_masked")" "$adapters_json" "$settings_json"
+		local sp_dis=0 sp_rem=0
+		[ "$(uci -q get equipe_dashboard.speedify.user_disabled 2>/dev/null)" = "1" ] && sp_dis=1
+		[ "$(uci -q get equipe_dashboard.speedify.user_removed 2>/dev/null)" = "1" ] && sp_rem=1
+		printf '"speedify":{"installed":%s,"active":%s,"runtime_running":%s,"hidden":%s,"user_disabled":%s,"user_removed":%s,"installable":%s,"reason":"%s","package":"Runtime Speedify opcional: interno, externo ou RAM","luci":%s,"state":"%s","supported":%s,"prepared":%s,"install_mode":"%s","saved_config":%s,"autostart":%s,"desired_state":"%s","bonding_mode":"%s","runtime_mode":"%s","tunnel_ip":"%s","last_autostart":"%s","account_logged_in":%s,"account_licensed":%s,"account_email_masked":"%s","adapters":%s,"settings":%s,' \
+			"$present" "$active" "$runtime" "$(bool $((concealed == 0)))" "$(bool $((sp_dis == 1)))" "$(bool $((sp_rem == 1)))" "$supported" "$(json_escape "$reason")" "$luci" "$(json_escape "$state")" "$supported" "$(bool "$prepared")" "$(json_escape "$mode")" "$(bool "$saved")" "$(bool "$autostart")" "$(json_escape "$desired")" "$(json_escape "$bonding_mode")" "$(json_escape "$runtime_mode")" "$(json_escape "$tunnel_ip")" "$(json_escape "$last_autostart")" "$account_logged" "$account_licensed" "$(json_escape "$account_masked")" "$adapters_json" "$settings_json"
 		speedify_storage_json
 		printf '}'
 		return 0
 	fi
 	if [ "$key" = zerotier ]; then
 		hidden "$key"; concealed=$?
-		installed_zt=false; [ -x /usr/sbin/zerotier-one ] || command -v zerotier-cli >/dev/null 2>&1 && installed_zt=true
-		active_zt=false; pidof zerotier-one >/dev/null 2>&1 && active_zt=true
+		installed_zt=false; ([ -x /usr/sbin/zerotier-one ] || command -v zerotier-cli >/dev/null 2>&1 || installed zerotier) && installed_zt=true
+		active_zt=false; (pidof zerotier-one >/dev/null 2>&1 || [ "$(uci -q get zerotier.global.enabled 2>/dev/null)" = "1" ] || [ "$(uci -q get equipe_dashboard.zerotier.enabled 2>/dev/null)" = "1" ]) && active_zt=true
+		local zt_dis=0 zt_rem=0
+		[ "$(uci -q get equipe_dashboard.zerotier.user_removed 2>/dev/null)" = "1" ] && { zt_rem=1; installed_zt=false; active_zt=false; }
+		[ "$(uci -q get equipe_dashboard.zerotier.user_disabled 2>/dev/null)" = "1" ] && { zt_dis=1; active_zt=false; }
 		autostart_zt=false
 		zt_auto="$(uci -q get equipe_dashboard.zerotier.autostart || true)"
 		if [ "$zt_auto" = "1" ]; then
@@ -972,14 +1202,17 @@ feature_json() {
 		nstatus="$(printf '%s' "$state" | jsonfilter -e '@.network_status' 2>/dev/null || true)"
 		ip="$(printf '%s' "$state" | jsonfilter -e '@.ip' 2>/dev/null || true)"
 		lan_cidr="$(printf '%s' "$state" | jsonfilter -e '@.lan_cidr' 2>/dev/null || ark_vpn_lan_cidr 2>/dev/null || true)"
-		printf '"zerotier":{"installed":%s,"active":%s,"autostart":%s,"hidden":%s,"installable":%s,"reason":"%s","package":"zerotier","node_id":"%s","network_id":"%s","network_status":"%s","ip":"%s","lan_cidr":"%s"}' \
-			"$installed_zt" "$active_zt" "$autostart_zt" "$(bool $((concealed == 0)))" "$installable" "$(json_escape "$reason")" "$(json_escape "${node:-—}")" "$(json_escape "$netid")" "$(json_escape "${nstatus:-—}")" "$(json_escape "${ip:-—}")" "$(json_escape "$lan_cidr")"
+		printf '"zerotier":{"installed":%s,"active":%s,"autostart":%s,"hidden":%s,"user_disabled":%s,"user_removed":%s,"installable":%s,"reason":"%s","package":"zerotier","node_id":"%s","network_id":"%s","network_status":"%s","ip":"%s","lan_cidr":"%s"}' \
+			"$installed_zt" "$active_zt" "$autostart_zt" "$(bool $((concealed == 0)))" "$(bool $((zt_dis == 1)))" "$(bool $((zt_rem == 1)))" "$installable" "$(json_escape "$reason")" "$(json_escape "${node:-—}")" "$(json_escape "$netid")" "$(json_escape "${nstatus:-—}")" "$(json_escape "${ip:-—}")" "$(json_escape "$lan_cidr")"
 		return 0
 	fi
 	if [ "$key" = wireguard ]; then
 		hidden "$key"; concealed=$?
-		installed_wg=false; ([ -x /usr/bin/wg ] || [ -f /lib/netifd/proto/wireguard.sh ]) && installed_wg=true
-		active_wg=false; ([ -d /sys/class/net/wg0 ] || [ -d /sys/class/net/wgclient ]) && active_wg=true
+		installed_wg=false; ([ -x /usr/bin/wg ] || [ -f /lib/netifd/proto/wireguard.sh ] || installed wireguard) && installed_wg=true
+		active_wg=false; ([ -d /sys/class/net/wg0 ] || [ -d /sys/class/net/wgclient ] || [ -d "${ARK_ROOT}/sys/class/net/wg0" ] || [ "$(uci -q get equipe_dashboard.wireguard.enabled 2>/dev/null)" = "1" ]) && active_wg=true
+		local wg_dis=0 wg_rem=0
+		[ "$(uci -q get equipe_dashboard.wireguard.user_removed 2>/dev/null)" = "1" ] && { wg_rem=1; installed_wg=false; active_wg=false; }
+		[ "$(uci -q get equipe_dashboard.wireguard.user_disabled 2>/dev/null)" = "1" ] && { wg_dis=1; active_wg=false; }
 		autostart_wg=false; ([ "$(uci -q get network.wg0.auto)" != "0" ] || [ "$(uci -q get network.wgclient.auto)" != "0" ]) && autostart_wg=true
 		listen_port="$(uci -q get network.wg0.listen_port || printf '51820')"
 		wg_ip="$(uci -q get network.wg0.addresses 2>/dev/null || uci -q get network.wg0.ipaddr 2>/dev/null || printf '10.14.0.1/24')"
@@ -1020,16 +1253,19 @@ feature_json() {
 			fi
 		fi
 
-		printf '"wireguard":{"installed":%s,"active":%s,"autostart":%s,"hidden":%s,"installable":%s,"reason":"%s","package":"wireguard-tools","ip":"%s","listen_port":"%s","public_key":"%s","endpoint":"%s","peers_count":%d,"peers_active":%d,"client_configured":%s,"client_active":%s,"client_online":%s,"client_endpoint":"%s"}' \
-			"$installed_wg" "$active_wg" "$autostart_wg" "$(bool $((concealed == 0)))" "$installable" "$(json_escape "$reason")" "$(json_escape "$wg_ip")" "$(json_escape "$listen_port")" "$(json_escape "$pubkey")" "$(json_escape "$endpoint")" "$peers_count" "$peers_active" \
+		printf '"wireguard":{"installed":%s,"active":%s,"autostart":%s,"hidden":%s,"user_disabled":%s,"user_removed":%s,"installable":%s,"reason":"%s","package":"wireguard-tools","ip":"%s","listen_port":"%s","public_key":"%s","endpoint":"%s","peers_count":%d,"peers_active":%d,"client_configured":%s,"client_active":%s,"client_online":%s,"client_endpoint":"%s"}' \
+			"$installed_wg" "$active_wg" "$autostart_wg" "$(bool $((concealed == 0)))" "$(bool $((wg_dis == 1)))" "$(bool $((wg_rem == 1)))" "$installable" "$(json_escape "$reason")" "$(json_escape "$wg_ip")" "$(json_escape "$listen_port")" "$(json_escape "$pubkey")" "$(json_escape "$endpoint")" "$peers_count" "$peers_active" \
 			"$client_configured" "$client_active" "$client_online" "$(json_escape "$client_endpoint")"
 		return 0
 	fi
 	if [ -n "$package" ]; then installed "$package"; present=$?; else feature_active "$key"; present=$?; fi
 	feature_active "$key"; enabled=$?
 	hidden "$key"; concealed=$?
-	printf '"%s":{"installed":%s,"active":%s,"hidden":%s,"installable":%s' \
-		"$key" "$(bool $((present == 0)))" "$(bool $((enabled == 0)))" "$(bool $((concealed == 0)))" "$installable"
+	local user_dis=0 user_rem=0
+	[ "$(uci -q get "equipe_dashboard.${key}.user_disabled" 2>/dev/null)" = "1" ] && user_dis=1
+	[ "$(uci -q get "equipe_dashboard.${key}.user_removed" 2>/dev/null)" = "1" ] && user_rem=1
+	printf '"%s":{"installed":%s,"active":%s,"hidden":%s,"user_disabled":%s,"user_removed":%s,"installable":%s' \
+		"$key" "$(bool $((present == 0)))" "$(bool $((enabled == 0)))" "$(bool $((concealed == 0)))" "$(bool $((user_dis == 1)))" "$(bool $((user_rem == 1)))" "$installable"
 	[ -n "$package" ] && printf ',"package":"%s"' "$package"
 	[ -n "$reason" ] && printf ',"reason":"%s"' "$(json_escape "$reason")"
 	[ "$key" = irqbalance ] && [ "$has_native_hw_queues" = true ] && printf ',"native_hw":true'
@@ -1409,7 +1645,7 @@ handle_ezsetup() {
 		cat /tmp/ark-ezsetup-modules.stage 2>/dev/null || printf '{"stage":"idle","step":0,"total":0,"percent":0,"message":""}\n'
 		;;
 	features)
-		cache="/tmp/ark-features.cache"
+		cache="${ARK_ROOT}/tmp/ark-features.cache"
 		if [ -s "$cache" ]; then
 			now="$(date +%s)"
 			mtime="$(date -r "$cache" +%s 2>/dev/null || echo 0)"
@@ -1607,13 +1843,27 @@ handle_ezsetup() {
 			htop_reason="Espaço insuficiente na Flash para utilitário de terminal (requer ~1.5 MB livres; disponível: $((root_avail_kb / 1024)) MB)."
 		fi
 
-		printf '{"language":"%s","title":"%s","operation_profile":"%s","network_mode":"%s","package_manager":"%s","current_theme":"%s","available_themes":[%s],"theme_customized":%s,"user_theme":"%s","ping_target":"%s","ping_custom_ip":"%s","appearance":{"mode":"%s","primary":"%s","secondary":"%s"},"features":{' "$(ark_language)" "$(json_escape "$title")" "$(json_escape "$operation_profile")" "$network_mode" "$manager" "$current_theme" "$avail_themes" "$(bool $((theme_customized == 1)))" "$(json_escape "$user_theme")" "$(json_escape "$ping_target")" "$(json_escape "$ping_custom_ip")" "$appearance" "$primary" "$secondary"
+		ksmbd_installable=true; ksmbd_reason=""
+		if [ "$root_avail_kb" -lt 1200 ] 2>/dev/null; then
+			ksmbd_installable=false
+			ksmbd_reason="Espaço insuficiente na Flash para o servidor SMB e drivers de sistema de arquivos USB (requer ~1.2 MB livres; disponível: $((root_avail_kb / 1024)) MB)."
+		fi
+		wol_installable=true; wol_reason=""
+
+		dev_mode_bool=false; [ "$(uci -q get equipe_dashboard.main.dev_mode 2>/dev/null || printf 0)" = 1 ] && dev_mode_bool=true
+		show_uninst_bool=false; [ "$(uci -q get equipe_dashboard.main.show_uninstalled_menus 2>/dev/null || printf 0)" = 1 ] && show_uninst_bool=true
+		printf '{"language":"%s","title":"%s","operation_profile":"%s","network_mode":"%s","package_manager":"%s","current_theme":"%s","available_themes":[%s],"theme_customized":%s,"user_theme":"%s","ping_target":"%s","ping_custom_ip":"%s","dev_mode":%s,"show_uninstalled_menus":%s,"appearance":{"mode":"%s","primary":"%s","secondary":"%s"},"features":{' "$(ark_language)" "$(json_escape "$title")" "$(json_escape "$operation_profile")" "$network_mode" "$manager" "$current_theme" "$avail_themes" "$(bool $((theme_customized == 1)))" "$(json_escape "$user_theme")" "$(json_escape "$ping_target")" "$(json_escape "$ping_custom_ip")" "$dev_mode_bool" "$show_uninst_bool" "$appearance" "$primary" "$secondary"
 		feature_json sqm luci-app-sqm "$sqm_installable" "$sqm_reason"; printf ','
 		feature_json mwan3 luci-app-mwan3 "$mwan3_installable" "$mwan3_reason"; printf ','
 		feature_json nlbwmon luci-app-nlbwmon "$nlbwmon_installable" "$nlbwmon_reason"; printf ','
 		feature_json upnp luci-app-upnp "$upnp_installable" "$upnp_reason"; printf ','
 		feature_json wifi '' false; printf ','
-		feature_json history history false; printf ','
+		feature_json history equipe-traffic-history false; printf ','
+		feature_json hardware_tune ark-hardware-tune false; printf ','
+		feature_json firewall_guard ark-firewall-guard false; printf ','
+		feature_json autowan ark-autowan false; printf ','
+		feature_json clock_preserver ark-clock-preserver false; printf ','
+		feature_json safe_shutdown ark-safe-shutdown false; printf ','
 		feature_json temperature '' false; printf ','
 		feature_json custom_qos custom_qos false; printf ','
 		feature_json speedify speedify "$speedify_installable" "$speedify_reason"; printf ','
@@ -1624,6 +1874,8 @@ handle_ezsetup() {
 		printf ','; feature_json usteer usteer "$usteer_installable" "$usteer_reason"
 		printf ','; feature_json htop htop "$htop_installable" "$htop_reason"
 		printf ','; feature_json zram kmod-zram true
+		printf ','; feature_json ksmbd ksmbd-server "$ksmbd_installable" "$ksmbd_reason"
+		printf ','; feature_json wol etherwake "$wol_installable" "$wol_reason"
 		cli="$(speedify_cli_path)"
 		bypass='{}'; speedify_runtime_running && [ -n "$cli" ] && bypass="$("$cli" -s show streamingbypass 2>/dev/null || printf '{}')"
 		printf ',"speedify_bypass":%s' "$bypass"
@@ -1907,8 +2159,53 @@ handle_ezsetup() {
 		rm -f /tmp/ark-features.cache 2>/dev/null || true
 		echo ok
 		;;
+	feature-toggle)
+		ark_feature_toggle_internal "$2" "$3" || exit $?
+		;;
+	feature-remove)
+		ark_feature_remove_internal "$2" || exit $?
+		;;
+	feature-dev-mode)
+		val="$2"
+		if [ -z "$val" ] || [ "$val" = "status" ]; then
+			printf '{"dev_mode":%s,"show_uninstalled_menus":%s}\n' \
+				"$(bool $(( $(uci -q get equipe_dashboard.main.dev_mode 2>/dev/null || echo 0) == 1 )))" \
+				"$(bool $(( $(uci -q get equipe_dashboard.main.show_uninstalled_menus 2>/dev/null || echo 0) == 1 )))"
+		else
+			case "$val" in 1|on|true|enable) dm_v=1 ;; 0|off|false|disable) dm_v=0 ;; *) echo 'Valor invalido' >&2; exit 2 ;; esac
+			uci -q set equipe_dashboard.main=settings
+			uci -q set "equipe_dashboard.main.dev_mode=$dm_v"
+			uci commit equipe_dashboard 2>/dev/null || true
+			rm -f /tmp/ark-features.cache 2>/dev/null || true
+			printf '{"status":"ok","dev_mode":%s}\n' "$(bool "$dm_v")"
+		fi
+		;;
+	feature-menu-policy)
+		val="$2"
+		if [ -z "$val" ] || [ "$val" = "status" ]; then
+			printf '{"show_uninstalled_menus":%s}\n' \
+				"$(bool $(( $(uci -q get equipe_dashboard.main.show_uninstalled_menus 2>/dev/null || echo 0) == 1 )))"
+		else
+			case "$val" in 1|on|true|show) mp_v=1 ;; 0|off|false|hide) mp_v=0 ;; *) echo 'Valor invalido' >&2; exit 2 ;; esac
+			uci -q set equipe_dashboard.main=settings
+			uci -q set "equipe_dashboard.main.show_uninstalled_menus=$mp_v"
+			uci commit equipe_dashboard 2>/dev/null || true
+			rm -f /tmp/ark-features.cache 2>/dev/null || true
+			printf '{"status":"ok","show_uninstalled_menus":%s}\n' "$(bool "$mp_v")"
+		fi
+		;;
+	feature-enforce-policies)
+		ark_enforce_saved_feature_policies
+		echo ok
+		;;
 	feature-install)
 		key="$2"; package="$(feature_package "$key")" || { echo 'Recurso invalido' >&2; exit 2; }
+		uci -q set "equipe_dashboard.$key=feature" 2>/dev/null || true
+		uci -q set "equipe_dashboard.$key.user_removed=0" 2>/dev/null || true
+		uci -q set "equipe_dashboard.$key.user_disabled=0" 2>/dev/null || true
+		uci -q set "equipe_dashboard.$key.enabled=1" 2>/dev/null || true
+		uci commit equipe_dashboard 2>/dev/null || true
+		rm -f "${ARK_ROOT}/tmp/ark-features.cache" /tmp/ark-features.cache 2>/dev/null || true
 		status="/tmp/equipe-dashboard-install-$key.status"; log="/tmp/equipe-dashboard-install-$key.log"
 		pid_file="/tmp/equipe-dashboard-install-$key.pid"
 		if [ "$key" = speedtest ]; then feature_active "$key" && { echo done >"$status"; echo installed; exit 0; }
@@ -1964,7 +2261,14 @@ handle_ezsetup() {
 			if [ -b /dev/zram0 ] || [ -f "/lib/modules/$(uname -r 2>/dev/null)/zram.ko" ] || modprobe zram num_devices=1 >/dev/null 2>&1; then
 				echo done >"$status"; echo installed; exit 0
 			fi
-		else installed "$package" && { echo done >"$status"; echo installed; exit 0; }; fi
+		else
+			if installed "$package"; then
+				ark_feature_toggle_internal "$key" 1 >/dev/null 2>&1 || true
+				echo done >"$status"
+				echo installed
+				exit 0
+			fi
+		fi
 		if [ "$(cat "$status" 2>/dev/null)" = running ] && [ -f "$pid_file" ]; then
 			bg_pid="$(cat "$pid_file" 2>/dev/null)"
 			if [ -n "$bg_pid" ] && kill -0 "$bg_pid" 2>/dev/null; then
@@ -2028,6 +2332,25 @@ handle_ezsetup() {
 				else
 					opkg update && opkg install luci-app-upnp miniupnpd-nftables || ok=0
 				fi
+			elif [ "$key" = ksmbd ]; then
+				if command -v apk >/dev/null 2>&1; then
+					apk update && (apk add ksmbd-server ksmbd-utils block-mount kmod-fs-ksmbd kmod-usb-storage kmod-usb-storage-uas kmod-fs-ext4 kmod-fs-exfat kmod-fs-vfat e2fsprogs || apk add ksmbd-server ksmbd-utils kmod-fs-ksmbd) || ok=0
+				else
+					ark_ensure_working_distfeeds 2>/dev/null || true
+					opkg update && (opkg install ksmbd-server ksmbd-utils block-mount kmod-fs-ksmbd kmod-usb-storage kmod-usb-storage-uas kmod-fs-ext4 kmod-fs-exfat kmod-fs-vfat e2fsprogs || opkg install ksmbd-server ksmbd-utils kmod-fs-ksmbd) || ok=0
+				fi
+				ksmbd_sync_shares 2>/dev/null || true
+				if [ -x /etc/init.d/ksmbd ]; then
+					/etc/init.d/ksmbd enable >/dev/null 2>&1 || true
+					/etc/init.d/ksmbd restart >/dev/null 2>&1 || true
+				fi
+			elif [ "$key" = wol ]; then
+				if command -v apk >/dev/null 2>&1; then
+					apk update && apk add etherwake || ok=0
+				else
+					ark_ensure_working_distfeeds 2>/dev/null || true
+					opkg update && opkg install etherwake || ok=0
+				fi
 			elif command -v apk >/dev/null 2>&1; then
 				apk update >/dev/null 2>&1 || true
 				apk add "$package" || ok=0
@@ -2058,7 +2381,7 @@ handle_ezsetup() {
 				/etc/init.d/irqbalance enable >/dev/null 2>&1 || true
 				/etc/init.d/irqbalance restart >/dev/null 2>&1 || true
 			fi
-			rm -f "$pid_file"
+			rm -f "$pid_file" /tmp/ark-features.cache 2>/dev/null || true
 			[ "$ok" = 1 ] && echo done >"$status" || echo error >"$status"
 		) >"$log" 2>&1 &
 		echo $! > "$pid_file"
@@ -2119,6 +2442,10 @@ handle_ezsetup() {
 			for key in $keys; do
 				curr_step=$((curr_step + 1))
 				package="$(feature_package "$key")" || { echo "Recurso invalido: $key"; ok=0; continue; }
+				uci -q set "equipe_dashboard.$key=feature" 2>/dev/null || true
+				uci -q set "equipe_dashboard.$key.user_removed=0" 2>/dev/null || true
+				uci -q set "equipe_dashboard.$key.user_disabled=0" 2>/dev/null || true
+				uci commit equipe_dashboard 2>/dev/null || true
 				pct=$(( 15 + ((curr_step - 1) * 75 / key_count) ))
 				[ "$pct" -gt 92 ] && pct=92
 				printf '{"stage":"installing","step":%d,"total":%d,"percent":%d,"message":"Instalando %s (%s)...","package":"%s","key":"%s"}\n' "$curr_step" "$total_steps" "$pct" "$key" "$package" "$package" "$key" > "$stage_file"
@@ -2150,7 +2477,7 @@ handle_ezsetup() {
 					/etc/init.d/mwan3 disable >/dev/null 2>&1 || true
 				fi
 			done
-			rm -f "$pid_file"
+			rm -f "$pid_file" /tmp/ark-features.cache 2>/dev/null || true
 			if [ "$ok" = 1 ]; then
 				echo done >"$status"
 				printf '{"stage":"done","step":%d,"total":%d,"percent":100,"message":"Todos os recursos foram instalados com sucesso!","package":""}\n' "$total_steps" "$total_steps" > "$stage_file"

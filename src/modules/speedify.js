@@ -262,7 +262,6 @@ const speedifyMethods = {
 	speedifyCard: function(data){
 		const detectionData=data||this.currentData||{};
 		const f=this.feature('speedify')||{}, installed=!!f.installed, supported=f.supported!==false, prepared=!!f.prepared, state=(f.state||'unavailable'), luci=!!f.luci, storage=f.storage||{}, rec=storage.recommended||'none', installedMode=String(f.install_mode||'');
-		if(f.hidden) return '';
 		const arch = (this.capabilities.hardware && this.capabilities.hardware.cpu_arch) || '';
 		const is64bit = arch === 'aarch64' || arch === 'x86_64';
 		const memMb = (this.capabilities.hardware && this.capabilities.hardware.mem_total_mb) || 128;

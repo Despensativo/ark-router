@@ -15,32 +15,8 @@ _ARK_DEVICES_SH_LOADED=1
 [ -f "${ARK_LIB_DIR}/modules/system.sh" ] && . "${ARK_LIB_DIR}/modules/system.sh"
 [ -f "${ARK_LIB_DIR}/modules/ezsetup.sh" ] && . "${ARK_LIB_DIR}/modules/ezsetup.sh"
 
-find_dhcp_host() {
-	uci -q show dhcp 2>/dev/null | awk -F= -v wanted="$1" '
-		/\.mac=/ {
-			value=$2; gsub(/^\047|\047$/, "", value)
-			if (toupper(value) == wanted) {
-				key=$1; sub(/^dhcp\./, "", key); sub(/\.mac$/, "", key); print key; exit
-			}
-		}'
-}
-
-sanitize_dhcp_hostnames() {
-	changed=0
-	for h in $(uci -q show dhcp 2>/dev/null | grep -E '\.name=' | cut -d. -f2 | cut -d= -f1 | sort -u); do
-		cur_name="$(uci -q get "dhcp.$h.name" || true)"
-		[ -n "$cur_name" ] || continue
-		clean_name="$(printf '%s' "$cur_name" | sed 's/[^a-zA-Z0-9_-]/-/g; s/-\{2,\}/-/g; s/^-//; s/-$//')"
-		[ -n "$clean_name" ] || clean_name="ark-$h"
-		if [ "$cur_name" != "$clean_name" ]; then
-			uci -q set "dhcp.$h.name=$clean_name"
-			changed=1
-		fi
-	done
-	[ "$changed" = 1 ] && uci commit dhcp || true
-}
-
 flush_stale_leases() {
+	local wif a_mac
 	[ -f /tmp/dhcp.leases ] || { printf '{"ok":true,"purged":0}\n'; return 0; }
 	
 	local wifi_macs=""
@@ -143,6 +119,7 @@ device_get_stations() {
 }
 
 device_get_stations_raw() {
+	local s wif line m
 	local main_ssid=""
 	local guest_ssid=""
 	local r2g_ssid=""
@@ -378,6 +355,7 @@ speedtest_history_file() {
 }
 
 speedtest_history_append() {
+	local wan result_file file stamp download latency upload conservative aggressive source_ip
 	wan="$1"; result_file="$2"
 	file="$(speedtest_history_file "$wan")" || return 0
 	stamp="$(date +%Y-%m-%dT%H:%M:%S%z 2>/dev/null || date)"
@@ -393,6 +371,7 @@ speedtest_history_append() {
 }
 
 speedtest_history_json() {
+	local wan file last first dn d l c b a
 	wan="$1"; file="$(speedtest_history_file "$wan")" || { printf '{"items":[],"average":{}}'; return 0; }
 	[ -s "$file" ] || { printf '{"items":[],"average":{}}'; return 0; }
 	last="$(tail -n 3 "$file")"
@@ -425,6 +404,7 @@ EOF
 }
 
 speedtest_schedule_weak_cleanup() {
+	local tmp_total
 	command -v speedtest-go >/dev/null 2>&1 && return 0
 	[ -x /tmp/ark-speedtest/speedtest-go ] || return 0
 	tmp_total="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $2}')"; [ -n "$tmp_total" ] || tmp_total=0
@@ -439,6 +419,8 @@ speedtest_schedule_weak_cleanup() {
 }
 
 speedtest_download_fallback_mbps() {
+	local wan_src bind_opt token fast_meta urls start pids count u end dt mbps
+	local i
 	wan_src="$1"
 	bind_opt=""
 	[ -n "$wan_src" ] && bind_opt="--bind-address=$wan_src"
@@ -490,6 +472,7 @@ speedtest_download_fallback_mbps() {
 }
 
 speedtest_upload_fallback_mbps() {
+	local wan_src bind_opt up_file start curl_bind end dt mbps
 	wan_src="$1"
 	bind_opt=""
 	[ -n "$wan_src" ] && bind_opt="--bind-address=$wan_src"
@@ -523,6 +506,7 @@ speedtest_upload_fallback_mbps() {
 }
 
 device_limits_json() {
+	local first sec enabled down up lan_bypass dev_mac
 	[ -f /etc/config/equipe_devices ] || { printf '{}\n'; return 0; }
 	first=1
 	printf '{'
@@ -542,15 +526,19 @@ device_limits_json() {
 }
 
 apply_device_bandwidth_limits() {
-	[ -f /etc/config/equipe_devices ] || return 0
-	mkdir -p /etc/ark
-	nft_file="/etc/ark/ark_device_limits.nft"
-	apply_sh="/etc/ark/apply_limits.sh"
-	tmp_nft="/tmp/ark_device_limits.nft.$$"
+	local nft_file apply_sh tmp_nft has_rules sec enabled down_mbps up_mbps dev_mac lan_bypass dev_ip hsec
+	local dev_ip6_list down_kbps down_burst up_kbps up_burst ip6_addr ark_etc_dir nft_bin
+	ark_etc_dir="${ARK_ROOT:-}/etc/ark"
+	[ -f "${ARK_ROOT:-}/etc/config/equipe_devices" ] || [ -f /etc/config/equipe_devices ] || return 0
+	mkdir -p "$ark_etc_dir"
+	nft_file="${ark_etc_dir}/ark_device_limits.nft"
+	apply_sh="${ark_etc_dir}/apply_limits.sh"
+	tmp_nft="${ARK_ROOT:-}/tmp/ark_device_limits.nft.$$"
+	nft_bin="$(command -v nft 2>/dev/null || echo /usr/sbin/nft)"
 	has_rules=0
 
 	# Clean up any legacy file that might break fw4
-	rm -f /etc/nftables.d/ark_device_limits.nft 2>/dev/null || true
+	rm -f "${ARK_ROOT:-}/etc/nftables.d/ark_device_limits.nft" 2>/dev/null || true
 
 	printf 'table inet ark_device_limits\ndelete table inet ark_device_limits\ntable inet ark_device_limits {\n\tchain forward_limits {\n\t\ttype filter hook forward priority filter - 5; policy accept;\n' > "$tmp_nft"
 
@@ -572,48 +560,75 @@ apply_device_bandwidth_limits() {
 				break
 			fi
 		done
-		if [ -z "$dev_ip" ] && [ -f /tmp/dhcp.leases ]; then
+		if [ -z "$dev_ip" ] && [ -f "${ARK_ROOT:-}/tmp/dhcp.leases" ]; then
+			dev_ip="$(awk -v m="$dev_mac" '$2==m {print $3; exit}' "${ARK_ROOT:-}/tmp/dhcp.leases")"
+		elif [ -z "$dev_ip" ] && [ -f /tmp/dhcp.leases ]; then
 			dev_ip="$(awk -v m="$dev_mac" '$2==m {print $3; exit}' /tmp/dhcp.leases)"
 		fi
 		if [ -z "$dev_ip" ]; then
 			dev_ip="$(ip neigh show 2>/dev/null | awk -v m="$dev_mac" '$5==m {print $1; exit}')"
 		fi
 
+		dev_ip6_list="$(ip -6 neigh show 2>/dev/null | awk -v m="$dev_mac" 'tolower($0) ~ m && $1 ~ /:/ && $1 !~ /^fe80:/ {print $1}')"
+
+		down_kbps=$((down_mbps * 125))
+		down_burst=$((down_kbps / 4))
+		[ "$down_burst" -lt 64 ] && down_burst=64
+
+		up_kbps=$((up_mbps * 125))
+		up_burst=$((up_kbps / 4))
+		[ "$up_burst" -lt 64 ] && up_burst=64
+
 		if [ -n "$dev_ip" ]; then
 			if [ "$lan_bypass" = 1 ]; then
 				if [ "$down_mbps" -gt 0 ]; then
-					down_kbps=$((down_mbps * 125))
-					printf '\t\tip daddr %s ip saddr != { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } limit rate over %d kbytes/second drop\n' "$dev_ip" "$down_kbps" >> "$tmp_nft"
+					printf '\t\tip daddr %s ip saddr != { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } limit rate over %d kbytes/second burst %d kbytes drop\n' "$dev_ip" "$down_kbps" "$down_burst" >> "$tmp_nft"
+					for ip6_addr in $dev_ip6_list; do
+						printf '\t\tip6 daddr %s ip6 saddr != { fe80::/10, fc00::/7 } limit rate over %d kbytes/second burst %d kbytes drop\n' "$ip6_addr" "$down_kbps" "$down_burst" >> "$tmp_nft"
+					done
 					has_rules=1
 				fi
 				if [ "$up_mbps" -gt 0 ]; then
-					up_kbps=$((up_mbps * 125))
-					printf '\t\tip saddr %s ip daddr != { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } limit rate over %d kbytes/second drop\n' "$dev_ip" "$up_kbps" >> "$tmp_nft"
+					printf '\t\tip saddr %s ip daddr != { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } limit rate over %d kbytes/second burst %d kbytes drop\n' "$dev_ip" "$up_kbps" "$up_burst" >> "$tmp_nft"
+					printf '\t\tether saddr %s ip6 daddr != { fe80::/10, fc00::/7 } limit rate over %d kbytes/second burst %d kbytes drop\n' "$dev_mac" "$up_kbps" "$up_burst" >> "$tmp_nft"
 					has_rules=1
 				fi
 			else
 				if [ "$down_mbps" -gt 0 ]; then
-					down_kbps=$((down_mbps * 125))
-					printf '\t\tip daddr %s limit rate over %d kbytes/second drop\n' "$dev_ip" "$down_kbps" >> "$tmp_nft"
+					printf '\t\tip daddr %s limit rate over %d kbytes/second burst %d kbytes drop\n' "$dev_ip" "$down_kbps" "$down_burst" >> "$tmp_nft"
+					for ip6_addr in $dev_ip6_list; do
+						printf '\t\tip6 daddr %s limit rate over %d kbytes/second burst %d kbytes drop\n' "$ip6_addr" "$down_kbps" "$down_burst" >> "$tmp_nft"
+					done
 					has_rules=1
 				fi
 				if [ "$up_mbps" -gt 0 ]; then
-					up_kbps=$((up_mbps * 125))
-					printf '\t\tip saddr %s limit rate over %d kbytes/second drop\n' "$dev_ip" "$up_kbps" >> "$tmp_nft"
+					printf '\t\tip saddr %s limit rate over %d kbytes/second burst %d kbytes drop\n' "$dev_ip" "$up_kbps" "$up_burst" >> "$tmp_nft"
+					printf '\t\tether saddr %s meta nfproto ipv6 limit rate over %d kbytes/second burst %d kbytes drop\n' "$dev_mac" "$up_kbps" "$up_burst" >> "$tmp_nft"
 					has_rules=1
 				fi
 			fi
 		else
 			if [ "$lan_bypass" = 1 ]; then
+				if [ "$down_mbps" -gt 0 ] && [ -n "$dev_ip6_list" ]; then
+					for ip6_addr in $dev_ip6_list; do
+						printf '\t\tip6 daddr %s ip6 saddr != { fe80::/10, fc00::/7 } limit rate over %d kbytes/second burst %d kbytes drop\n' "$ip6_addr" "$down_kbps" "$down_burst" >> "$tmp_nft"
+					done
+					has_rules=1
+				fi
 				if [ "$up_mbps" -gt 0 ]; then
-					up_kbps=$((up_mbps * 125))
-					printf '\t\tether saddr %s ip daddr != { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } limit rate over %d kbytes/second drop\n' "$dev_mac" "$up_kbps" >> "$tmp_nft"
+					printf '\t\tether saddr %s ip daddr != { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } limit rate over %d kbytes/second burst %d kbytes drop\n' "$dev_mac" "$up_kbps" "$up_burst" >> "$tmp_nft"
+					printf '\t\tether saddr %s ip6 daddr != { fe80::/10, fc00::/7 } limit rate over %d kbytes/second burst %d kbytes drop\n' "$dev_mac" "$up_kbps" "$up_burst" >> "$tmp_nft"
 					has_rules=1
 				fi
 			else
+				if [ "$down_mbps" -gt 0 ] && [ -n "$dev_ip6_list" ]; then
+					for ip6_addr in $dev_ip6_list; do
+						printf '\t\tip6 daddr %s limit rate over %d kbytes/second burst %d kbytes drop\n' "$ip6_addr" "$down_kbps" "$down_burst" >> "$tmp_nft"
+					done
+					has_rules=1
+				fi
 				if [ "$up_mbps" -gt 0 ]; then
-					up_kbps=$((up_mbps * 125))
-					printf '\t\tether saddr %s limit rate over %d kbytes/second drop\n' "$dev_mac" "$up_kbps" >> "$tmp_nft"
+					printf '\t\tether saddr %s limit rate over %d kbytes/second burst %d kbytes drop\n' "$dev_mac" "$up_kbps" "$up_burst" >> "$tmp_nft"
 					has_rules=1
 				fi
 			fi
@@ -623,7 +638,7 @@ apply_device_bandwidth_limits() {
 	printf '\t}\n}\n' >> "$tmp_nft"
 
 	if [ "$has_rules" = 1 ]; then
-		if ! /usr/sbin/nft -c -f "$tmp_nft" 2>/dev/null; then
+		if [ -x "$nft_bin" ] && ! "$nft_bin" -c -f "$tmp_nft" 2>/dev/null; then
 			rm -f "$tmp_nft"
 			echo "Erro de sintaxe nftables no arquivo de limites" >&2
 			return 1
@@ -634,22 +649,23 @@ apply_device_bandwidth_limits() {
 [ -f /etc/ark/ark_device_limits.nft ] && /usr/sbin/nft -f /etc/ark/ark_device_limits.nft 2>/dev/null || true
 EOF
 		chmod +x "$apply_sh"
-		nft delete table inet ark_device_limits 2>/dev/null || true
-		nft -f "$nft_file" 2>/dev/null || true
+		"$nft_bin" delete table inet ark_device_limits 2>/dev/null || true
+		"$nft_bin" -f "$nft_file" 2>/dev/null || true
 		uci -q set firewall.ark_limits=include
 		uci -q set firewall.ark_limits.type=script
-		uci -q set "firewall.ark_limits.path=$apply_sh"
+		uci -q set "firewall.ark_limits.path=/etc/ark/apply_limits.sh"
 		uci -q set firewall.ark_limits.fw4_compatible='1'
 		uci commit firewall
 	else
 		rm -f "$tmp_nft" "$nft_file" "$apply_sh" 2>/dev/null || true
-		nft delete table inet ark_device_limits 2>/dev/null || true
+		"$nft_bin" delete table inet ark_device_limits 2>/dev/null || true
 		uci -q delete firewall.ark_limits 2>/dev/null || true
 		uci commit firewall
 	fi
 }
 
 device_apply_parental() {
+	local p_mac p_ip p_name p_mode p_block p_safe p_services p_suffix agh_active
 	p_mac="$1"
 	p_ip="$2"
 	p_name="$3"
@@ -830,6 +846,7 @@ except Exception:
 }
 
 can_install_speedtest_flash() {
+	local avail_kb total_kb needed_kb remaining_kb percent_free
 	avail_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"
 	total_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $2}')"
 	[ -n "$avail_kb" ] || avail_kb="$(df -k / 2>/dev/null | awk 'NR==2{print $4}')"
@@ -846,6 +863,7 @@ can_install_speedtest_flash() {
 }
 
 speedtest_storage_json() {
+	local tmp_avail tmp_total overlay_avail min_kb weak recommended
 	tmp_avail="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"
 	tmp_total="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $2}')"
 	overlay_avail="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"
@@ -862,6 +880,7 @@ speedtest_storage_json() {
 }
 
 prepare_speedtest() {
+	local tmp_avail min_kb pm stage version repo package_file
 	command -v speedtest-go >/dev/null 2>&1 && return 0
 	[ -x /tmp/ark-speedtest/speedtest-go ] && return 0
 	tmp_avail="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"; [ -n "$tmp_avail" ] || tmp_avail=0
@@ -953,6 +972,7 @@ satellite_sync_master_leases_if_needed() {
 }
 
 get_device_fingerprints_raw() {
+	local f
 	satellite_sync_master_leases_if_needed
 
 	local fp_dir="/tmp/ark_fp"

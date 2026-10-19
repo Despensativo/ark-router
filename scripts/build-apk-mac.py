@@ -58,16 +58,32 @@ def build_apk_variant(pkg_name, pkg_version, depends, description, is_full=False
             print(f"ERRO: Binário apk não encontrado em {apk_bin}", file=sys.stderr)
             sys.exit(2)
 
-        # 5. Criar script de post-install oficial
+        # 5. Criar scripts de pre-install e post-install oficiais
+        pre_install = os.path.join(temp_dir, "pre-install")
+        with open(pre_install, "w", encoding="utf-8") as f:
+            f.write("""#!/bin/sh
+rm -f /etc/init.d/ark-*.apk-new /etc/init.d/equipe-*.apk-new /etc/hotplug.d/iface/*ark*.apk-new /etc/uci-defaults/*ark*.apk-new 2>/dev/null || true
+exit 0
+""")
+        os.chmod(pre_install, 0o755)
+
         post_install = os.path.join(temp_dir, "post-install")
         with open(post_install, "w", encoding="utf-8") as f:
             f.write("""#!/bin/sh
+for apknew in /etc/init.d/ark-*.apk-new /etc/init.d/equipe-*.apk-new /etc/hotplug.d/iface/*ark*.apk-new /etc/uci-defaults/*ark*.apk-new; do
+	[ -f "$apknew" ] || continue
+	target="${apknew%.apk-new}"
+	mv -f "$apknew" "$target" 2>/dev/null || true
+done
 chmod 0755 /usr/share/ark-router/VERSION 2>/dev/null || true
 chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history 2>/dev/null || true
+chmod +x /usr/lib/ark/ark-control /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh 2>/dev/null || true
 chmod +x /usr/libexec/ark-starlink-telemetry 2>/dev/null || true
 chmod +x /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export 2>/dev/null || true
 chmod +x /etc/init.d/* 2>/dev/null || true
 chmod +x /etc/hotplug.d/iface/* 2>/dev/null || true
+chown -R root:root /www/luci-static/ark /www/luci-static/resources/view/equipe-dashboard /usr/lib/ark /usr/sbin/equipe-dashboard-control 2>/dev/null || true
+chmod -R a+rX /www/luci-static/ark /www/luci-static/resources/view/equipe-dashboard /usr/share/luci/menu.d /usr/share/rpcd/acl.d 2>/dev/null || true
 [ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable >/dev/null 2>&1 || true
 [ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram enable >/dev/null 2>&1 || true
 [ -x /etc/init.d/ark-zerotier-ram ] && /etc/init.d/ark-zerotier-ram start >/dev/null 2>&1 || true
@@ -89,6 +105,7 @@ rm -f /tmp/luci-indexcache 2>/dev/null || true
 rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 [ -x /etc/init.d/equipe-traffic-history ] && /etc/init.d/equipe-traffic-history enable >/dev/null 2>&1 || true
 [ -x /etc/init.d/equipe-traffic-history ] && /etc/init.d/equipe-traffic-history restart >/dev/null 2>&1 || true
+[ -x /usr/sbin/equipe-dashboard-control ] && /usr/sbin/equipe-dashboard-control feature-enforce-policies >/dev/null 2>&1 || true
 [ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
 [ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
 exit 0
@@ -115,8 +132,11 @@ exit 0
                 )
                 os.chmod(file_path, 0o755 if is_exec else 0o644)
 
-        # 7. Executar apk mkpkg nativo gerando pacote oficial ADB
+        # 7. Executar apk mkpkg nativo gerando pacote oficial ADB (sem xattrs do macOS)
         import subprocess
+        subprocess.run(["xattr", "-cr", payload_dir], capture_output=True)
+        env = os.environ.copy()
+        env["COPYFILE_DISABLE"] = "1"
         cmd = [
             apk_bin, "mkpkg",
             "-I", f"name:{pkg_name}",
@@ -128,12 +148,14 @@ exit 0
             "-I", f"depends:{depends}",
             "-I", "provides:luci-app-ark-router-any",
             "-I", "tags:openwrt:section=luci",
+            "-s", f"pre-install:{pre_install}",
+            "-s", f"pre-upgrade:{pre_install}",
             "-s", f"post-install:{post_install}",
             "-s", f"post-upgrade:{post_install}",
             "-F", payload_dir,
             "-o", out_file
         ]
-        res = subprocess.run(cmd, capture_output=True, text=True)
+        res = subprocess.run(cmd, capture_output=True, text=True, env=env)
         if res.returncode != 0:
             print(f"ERRO ao gerar pacote {pkg_name}: {res.stderr}", file=sys.stderr)
             sys.exit(res.returncode)

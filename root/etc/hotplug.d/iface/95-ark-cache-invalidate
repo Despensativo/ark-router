@@ -2,3 +2,12 @@
 # /etc/hotplug.d/iface/95-ark-cache-invalidate
 # Invalidates semistatic hardware, station, and performance caches on interface up/down events
 rm -f /tmp/ark-hw-cache.ts /tmp/ark-stations-cache.ts /tmp/ark-perf-cache.ts 2>/dev/null || true
+
+case "${INTERFACE:-}" in
+	wan*)
+		if [ "${ACTION:-}" = "ifup" ] && [ -x /etc/init.d/https-dns-proxy ] && pgrep -f 'https-dns-proxy' >/dev/null 2>&1; then
+			(/etc/init.d/https-dns-proxy reload >/dev/null 2>&1 || /etc/init.d/https-dns-proxy restart >/dev/null 2>&1 || true) &
+		fi
+		;;
+esac
+

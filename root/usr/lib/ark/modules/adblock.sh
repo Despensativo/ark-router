@@ -11,6 +11,10 @@ _ARK_ADBLOCK_SH_LOADED=1
 . "${ARK_LIB_DIR}/validation.sh"
 
 adblock_status_json() {
+	local mem_total_kb overlay_free_kb mem_total_mb recommended_cache_mb local_installed local_active overlay_free_mb supported_profile cloud_active active mode rules_count
+	local cache_size_mb parental_enabled protection_enabled safesearch_enabled cloud_cache web_port raw_bytes raw_port lan_ip web_url stat_queries stat_blocked
+	local stat_blocked_pct stat_avg_ms stat_running stats_raw agh_auth_arg stored_pass stat_time zt_access zt_web_url zt_dev zt_ip cloud_provider
+	local custom_blacklist custom_whitelist nextdns_id doh_installed doh_active
 	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
 	overlay_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"
 	[ -n "$overlay_free_kb" ] || overlay_free_kb="$(df -k / 2>/dev/null | awk 'NR==2{print $4}')"
@@ -25,11 +29,14 @@ adblock_status_json() {
 	fi
 
 	local_installed=false
-	if [ -x /usr/bin/AdGuardHome ] || [ -x /usr/bin/adguardhome ] || [ -x /etc/init.d/adguardhome ] || [ -f /etc/adguardhome/adguardhome.yaml ] || [ -d /tmp/adguardhome ] || installed adguardhome; then
+	if [ -x /usr/bin/AdGuardHome ] || [ -x /usr/bin/adguardhome ] || [ -x /etc/init.d/adguardhome ] || [ -f /etc/adguardhome/adguardhome.yaml ] || [ -d /tmp/adguardhome ] || installed adguardhome || installed adblock; then
 		local_installed=true
 	fi
+	if [ "$(uci -q get equipe_dashboard.adblock.user_removed 2>/dev/null)" = "1" ]; then
+		local_installed=false
+	fi
 	local_active=false
-	(pgrep -f 'AdGuardHome' >/dev/null 2>&1 || pgrep -f 'adguardhome' >/dev/null 2>&1) && local_active=true
+	([ "$(uci -q get adblock.global.adb_enabled 2>/dev/null)" = "1" ] || pgrep -f 'AdGuardHome' >/dev/null 2>&1 || pgrep -f 'adguardhome' >/dev/null 2>&1) && local_active=true
 
 	overlay_free_mb=$((overlay_free_kb / 1024))
 	supported_profile="full"
@@ -48,6 +55,9 @@ adblock_status_json() {
 	elif $cloud_active; then
 		active=true
 		mode="cloud"
+	fi
+	if [ "$(uci -q get equipe_dashboard.adblock.user_disabled 2>/dev/null)" = "1" ] || [ "$local_installed" = "false" ] && [ "$cloud_active" = "false" ]; then
+		[ "$(uci -q get equipe_dashboard.adblock.user_disabled 2>/dev/null)" = "1" ] && active=false
 	fi
 
 	rules_count=0
@@ -190,11 +200,21 @@ except Exception:
 		adblock_reason="Memória RAM insuficiente (< 64 MB). Listas de bloqueio de anúncios podem esgotar a RAM do roteador."
 	fi
 
-	printf '{"installed":%s,"active":%s,"installable":%s,"reason":"%s","mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s","mem_total_mb":%d,"overlay_free_mb":%d,"overlay_free_kb":%d,"cache_size_mb":%d,"recommended_cache_mb":%d,"parental_enabled":%s,"protection_enabled":%s,"safesearch_enabled":%s,"cloud_cache":%s,"web_port":%d,"zerotier_access":%s,"zt_web_url":"%s","custom_blacklist":"%s","custom_whitelist":"%s","nextdns_id":"%s","dns_intercept":%s,"stat_queries":%d,"stat_blocked":%d,"stat_blocked_pct":%d,"stat_avg_ms":"%s","stat_running":%s}\n' \
-		"$local_installed" "$active" "$adblock_installable" "$(json_escape "$adblock_reason")" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url" "$mem_total_mb" "$overlay_free_mb" "$overlay_free_kb" "$cache_size_mb" "$recommended_cache_mb" "$parental_enabled" "$protection_enabled" "$safesearch_enabled" "$cloud_cache" "$web_port" "$zt_access" "$zt_web_url" "$(json_escape "$custom_blacklist")" "$(json_escape "$custom_whitelist")" "$(json_escape "$nextdns_id")" "$dns_intercept" "$stat_queries" "$stat_blocked" "$stat_blocked_pct" "$stat_avg_ms" "$stat_running"
+	doh_installed=false
+	doh_active=false
+	if command -v ark_has_doh_proxy >/dev/null 2>&1 && ark_has_doh_proxy; then
+		doh_installed=true
+		if uci -q get dhcp.@dnsmasq[0].server 2>/dev/null | grep -q '127\.0\.0\.1#5053'; then
+			doh_active=true
+		fi
+	fi
+
+	printf '{"installed":%s,"active":%s,"installable":%s,"reason":"%s","mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s","mem_total_mb":%d,"overlay_free_mb":%d,"overlay_free_kb":%d,"cache_size_mb":%d,"recommended_cache_mb":%d,"parental_enabled":%s,"protection_enabled":%s,"safesearch_enabled":%s,"cloud_cache":%s,"web_port":%d,"zerotier_access":%s,"zt_web_url":"%s","custom_blacklist":"%s","custom_whitelist":"%s","nextdns_id":"%s","dns_intercept":%s,"doh_installed":%s,"doh_active":%s,"stat_queries":%d,"stat_blocked":%d,"stat_blocked_pct":%d,"stat_avg_ms":"%s","stat_running":%s}\n' \
+		"$local_installed" "$active" "$adblock_installable" "$(json_escape "$adblock_reason")" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url" "$mem_total_mb" "$overlay_free_mb" "$overlay_free_kb" "$cache_size_mb" "$recommended_cache_mb" "$parental_enabled" "$protection_enabled" "$safesearch_enabled" "$cloud_cache" "$web_port" "$zt_access" "$zt_web_url" "$(json_escape "$custom_blacklist")" "$(json_escape "$custom_whitelist")" "$(json_escape "$nextdns_id")" "$dns_intercept" "$doh_installed" "$doh_active" "$stat_queries" "$stat_blocked" "$stat_blocked_pct" "$stat_avg_ms" "$stat_running"
 }
 
 adblock_apply_rules() {
+	local raw_blacklist raw_whitelist old_addrs old_servers has_bl_arg clean_bl item dom has_wl_arg clean_wl a d s
 	raw_blacklist="$1"
 	raw_whitelist="${2:-}"
 	mkdir -p /etc/config
@@ -743,15 +763,30 @@ sync_dns_intercept() {
 		uci -q set firewall.dns_intercept_tcp.dest_port='53'
 		uci -q set firewall.dns_intercept_tcp.target='DNAT'
 		uci -q set firewall.dns_intercept_tcp.enabled='1'
+
+		# Regra companheira oficial do Manual de DNS Hijacking do OpenWrt:
+		# Rejeita DNS-over-TLS (DoT porta 853 TCP/UDP) na zona lan->wan com REJECT imediato
+		# para que o Private DNS oportunista do Android/Smart TVs faca fallback instantaneo para a porta 53 local.
+		uci -q set firewall.ark_dot_reject=rule
+		uci -q set firewall.ark_dot_reject.name='ARK-Reject-DoT-853'
+		uci -q set firewall.ark_dot_reject.src='lan'
+		uci -q set firewall.ark_dot_reject.dest='wan'
+		uci -q set firewall.ark_dot_reject.proto='tcp udp'
+		uci -q set firewall.ark_dot_reject.dest_port='853'
+		uci -q set firewall.ark_dot_reject.target='REJECT'
+		uci -q set firewall.ark_dot_reject.enabled='1'
 	else
 		uci -q delete firewall.dns_intercept_udp
 		uci -q delete firewall.dns_intercept_tcp
+		uci -q delete firewall.ark_dot_reject
 	fi
 	uci commit firewall
 	/etc/init.d/firewall reload >/dev/null 2>&1 || true
 }
 
 adblock_configure() {
+	local mode cache_mb protection parental safesearch provider cloud_cache web_port zt_access custom_blacklist nextdns_id custom_whitelist
+	local dns_intercept cache_bytes yaml in_ss cur_zt_http new_zt_http
 	mode="${1:-local}"
 	cache_mb="${2:-64}"
 	protection="${3:-1}"
@@ -855,6 +890,7 @@ adblock_configure() {
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
 
 			if pgrep -f 'AdGuardHome' >/dev/null 2>&1 || pgrep -f 'adguardhome' >/dev/null 2>&1 || nc -z 127.0.0.1 5335 >/dev/null 2>&1; then
+				command -v ark_sync_doh_proxy >/dev/null 2>&1 && ark_sync_doh_proxy "disable" || true
 				uci -q delete dhcp.@dnsmasq[0].server
 				uci -q add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
 				uci -q set dhcp.@dnsmasq[0].noresolv='1'
@@ -872,56 +908,59 @@ adblock_configure() {
 		[ "$cloud_cache" -gt 100000 ] && cloud_cache=100000
 
 		uci -q set "equipe_perf.settings.adblock_cloud_provider=$provider"
+		if [ "$provider" = "nextdns" ] && [ -n "$nextdns_id" ]; then
+			uci -q set "equipe_perf.settings.nextdns_id=$nextdns_id"
+		fi
 		uci commit equipe_perf
 
 		uci -q delete dhcp.@dnsmasq[0].server
-		case "$provider" in
-			cloudflare_family)
-				uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.3'
-				uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.3'
-				;;
-			cloudflare_security)
-				uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.2'
-				uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.2'
-				;;
-			quad9)
-				uci -q add_list dhcp.@dnsmasq[0].server='9.9.9.9'
-				uci -q add_list dhcp.@dnsmasq[0].server='149.112.112.112'
-				;;
-			opendns_family)
-				uci -q add_list dhcp.@dnsmasq[0].server='208.67.222.123'
-				uci -q add_list dhcp.@dnsmasq[0].server='208.67.220.123'
-				;;
-			cleanbrowsing_adult)
-				uci -q add_list dhcp.@dnsmasq[0].server='185.228.168.10'
-				uci -q add_list dhcp.@dnsmasq[0].server='185.228.169.11'
-				;;
-			cleanbrowsing_family)
-				uci -q add_list dhcp.@dnsmasq[0].server='185.228.168.168'
-				uci -q add_list dhcp.@dnsmasq[0].server='185.228.169.168'
-				;;
-			controld_full)
-				uci -q add_list dhcp.@dnsmasq[0].server='76.76.2.2'
-				uci -q add_list dhcp.@dnsmasq[0].server='76.76.10.2'
-				;;
-			nextdns)
-				if [ -n "$nextdns_id" ]; then
-					uci -q set "equipe_perf.settings.nextdns_id=$nextdns_id"
-					uci commit equipe_perf
-				fi
-				uci -q add_list dhcp.@dnsmasq[0].server='45.90.28.0'
-				uci -q add_list dhcp.@dnsmasq[0].server='45.90.30.0'
-				;;
-			adguard_dns|*)
-				if [ "$parental_bool" = "true" ]; then
-					uci -q add_list dhcp.@dnsmasq[0].server='94.140.14.15'
-					uci -q add_list dhcp.@dnsmasq[0].server='94.140.15.16'
-				else
-					uci -q add_list dhcp.@dnsmasq[0].server='94.140.14.14'
-					uci -q add_list dhcp.@dnsmasq[0].server='94.140.15.15'
-				fi
-				;;
-		esac
+		if command -v ark_sync_doh_proxy >/dev/null 2>&1 && ark_sync_doh_proxy "cloud" "$provider" "$parental_bool" "$nextdns_id"; then
+			uci -q set dhcp.@dnsmasq[0].allservers='1'
+		else
+			case "$provider" in
+				cloudflare_family)
+					uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.3'
+					uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.3'
+					;;
+				cloudflare_security)
+					uci -q add_list dhcp.@dnsmasq[0].server='1.1.1.2'
+					uci -q add_list dhcp.@dnsmasq[0].server='1.0.0.2'
+					;;
+				quad9)
+					uci -q add_list dhcp.@dnsmasq[0].server='9.9.9.9'
+					uci -q add_list dhcp.@dnsmasq[0].server='149.112.112.112'
+					;;
+				opendns_family)
+					uci -q add_list dhcp.@dnsmasq[0].server='208.67.222.123'
+					uci -q add_list dhcp.@dnsmasq[0].server='208.67.220.123'
+					;;
+				cleanbrowsing_adult)
+					uci -q add_list dhcp.@dnsmasq[0].server='185.228.168.10'
+					uci -q add_list dhcp.@dnsmasq[0].server='185.228.169.11'
+					;;
+				cleanbrowsing_family)
+					uci -q add_list dhcp.@dnsmasq[0].server='185.228.168.168'
+					uci -q add_list dhcp.@dnsmasq[0].server='185.228.169.168'
+					;;
+				controld_full)
+					uci -q add_list dhcp.@dnsmasq[0].server='76.76.2.2'
+					uci -q add_list dhcp.@dnsmasq[0].server='76.76.10.2'
+					;;
+				nextdns)
+					uci -q add_list dhcp.@dnsmasq[0].server='45.90.28.0'
+					uci -q add_list dhcp.@dnsmasq[0].server='45.90.30.0'
+					;;
+				adguard_dns|*)
+					if [ "$parental_bool" = "true" ]; then
+						uci -q add_list dhcp.@dnsmasq[0].server='94.140.14.15'
+						uci -q add_list dhcp.@dnsmasq[0].server='94.140.15.16'
+					else
+						uci -q add_list dhcp.@dnsmasq[0].server='94.140.14.14'
+						uci -q add_list dhcp.@dnsmasq[0].server='94.140.15.15'
+					fi
+					;;
+			esac
+		fi
 
 		uci -q set "dhcp.@dnsmasq[0].cachesize=$cloud_cache"
 		uci commit dhcp
@@ -936,6 +975,9 @@ adblock_configure() {
 }
 
 adblock_enable() {
+	local chosen_mode provider cache_mb protection parental safesearch cloud_cache web_port zt_access custom_blacklist nextdns_id custom_whitelist
+	local dns_intercept mem_total_kb overlay_free_kb cur_servers clean_cur s clean_s cur_allservers cur_noresolv cur_dhcp_fallback agh_ready _i
+	local cur_ipv6
 	chosen_mode="${1:-auto}"
 	provider="${2:-adguard_dns}"
 	cache_mb="${3:-64}"
@@ -1044,10 +1086,12 @@ dns:
     - 127.0.0.1
   port: 5335
   upstream_dns:
-    - 1.1.1.1
-    - 8.8.8.8
+    - h3://dns.cloudflare.com/dns-query
+    - h3://dns.google/dns-query
     - https://dns.cloudflare.com/dns-query
     - https://dns.google/dns-query
+    - 1.1.1.1
+    - 8.8.8.8
   bootstrap_dns:
     - 1.1.1.1
     - 8.8.8.8
@@ -1158,6 +1202,7 @@ EOF
 }
 
 adblock_restore_dns() {
+	local target_servers clean_restore_servers s clean_s target_allservers target_dhcp_fallback lan_ip old_addrs a target_noresolv
 	# 1. Consulta os servidores DNS configurados ou previamente salvos no equipe_perf
 	target_servers="$(uci -q get equipe_perf.settings.dns_servers || true)"
 	if [ -z "$target_servers" ]; then
@@ -1220,12 +1265,15 @@ adblock_restore_dns() {
 
 	# 4. Aplica restauracao no dnsmasq
 	uci -q delete dhcp.@dnsmasq[0].server
-	for s in $clean_restore_servers; do
-		uci -q add_list "dhcp.@dnsmasq[0].server=$s"
-	done
-
-	uci -q set "dhcp.@dnsmasq[0].allservers=$target_allservers"
-	uci -q set "dhcp.@dnsmasq[0].noresolv=$target_noresolv"
+	if command -v ark_sync_doh_proxy >/dev/null 2>&1 && ark_sync_doh_proxy "turbo" "$clean_restore_servers"; then
+		uci -q set dhcp.@dnsmasq[0].allservers='1'
+	else
+		for s in $clean_restore_servers; do
+			uci -q add_list "dhcp.@dnsmasq[0].server=$s"
+		done
+		uci -q set "dhcp.@dnsmasq[0].allservers=$target_allservers"
+		uci -q set "dhcp.@dnsmasq[0].noresolv=$target_noresolv"
+	fi
 	uci -q set dhcp.@dnsmasq[0].cachesize='1000'
 	uci commit dhcp
 
@@ -1370,6 +1418,7 @@ adblock_uninstall() {
 }
 
 adblock_toggle() {
+	local desired
 	desired="${1:-0}"
 	case "$desired" in
 		1|true)
@@ -1382,6 +1431,7 @@ adblock_toggle() {
 }
 
 adblock_sso_login() {
+	local user_pass stored_pass pass web_port raw_port has_users esc_pass json_body body_len resp token
 	user_pass="$1"
 	stored_pass="$(uci -q get equipe_perf.settings.adguard_pass || true)"
 	pass="${user_pass:-$stored_pass}"

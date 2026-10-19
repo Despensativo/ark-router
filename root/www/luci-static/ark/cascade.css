@@ -1191,6 +1191,12 @@ input.hidden, .hidden {
 	flex-wrap: wrap !important;
 	gap: 10px !important;
 }
+.alert-message[style*="display: none"],
+.alert-message[style*="display:none"],
+.alert-message[hidden],
+.alert-message:empty {
+	display: none !important;
+}
 .alert-message.warning {
 	border-left-color: var(--ark-warning) !important;
 	background: rgba(245, 158, 11, 0.1) !important;

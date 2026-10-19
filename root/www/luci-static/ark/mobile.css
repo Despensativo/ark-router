@@ -342,7 +342,11 @@
 	body:has(input[name="luci_password"]) aside.ark-sidebar,
 	body:has(input[name="luci_password"]) .ark-sidebar-backdrop,
 	body:has(input[name="luci_password"]) .ark-mobile-bar,
-	body:has(input[name="luci_password"]) #ark-sidebar {
+	body:has(input[name="luci_password"]) #ark-sidebar,
+	body:has(.ex-v2-cockpit-layout) aside.ark-sidebar,
+	body:has(.ex-v2-cockpit-layout) .ark-sidebar-backdrop,
+	body:has(.ex-v2-cockpit-layout) .ark-mobile-bar,
+	body:has(.ex-v2-cockpit-layout) #ark-sidebar {
 		display: none !important;
 	}
 

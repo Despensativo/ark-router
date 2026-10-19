@@ -167,12 +167,13 @@ start() {
 		sysctl -q -w net.ipv4.tcp_wmem="4096 65536 1048576" 2>/dev/null || true
 
 		# Qdisc leve (2 MB de memória máxima por interface, limite 1024 pacotes)
+		# Mantido ativo mesmo com flow_offloading_hw=1 para proteger pacotes de controle/handshake na CPU
 		for iface in $(ls /sys/class/net 2>/dev/null); do
 			case "$iface" in
 				eth*|lan*)
 					[ -d "/sys/class/net/$iface" ] || continue
+					ip link set dev "$iface" txqueuelen 1000 2>/dev/null || true
 					tc qdisc show dev "$iface" 2>/dev/null | grep -q "cake" && continue
-					[ "$(uci -q get firewall.@defaults[0].flow_offloading_hw)" = "1" ] && continue
 					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \
 					tc qdisc replace dev "$iface" root fq_codel memory_limit 2Mb limit 1024 target 5ms quantum 1514 2>/dev/null || true
 					;;
@@ -223,10 +224,10 @@ start() {
 				eth*|lan*)
 					[ -d "/sys/class/net/$iface" ] || continue
 					ethtool -K "$iface" gro on gso on 2>/dev/null || true
-					ip link set dev "$iface" txqueuelen 1500 2>/dev/null || true
+					ip link set dev "$iface" txqueuelen 1000 2>/dev/null || true
 					tc qdisc show dev "$iface" 2>/dev/null | grep -q "cake" && continue
-					[ "$(uci -q get firewall.@defaults[0].flow_offloading_hw)" = "1" ] && continue
-					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || true
+					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \
+					tc qdisc replace dev "$iface" root fq_codel memory_limit 8Mb limit 10240 target 5ms quantum 1514 2>/dev/null || true
 					for subq in 1 2 3 4 5 6 7 8 9 a b c d e f 10; do
 						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit 8Mb limit 10240 target 5ms quantum 1514 2>/dev/null || true
 					done
@@ -261,18 +262,18 @@ start() {
 			[ -f "$q" ] && echo 4096 > "$q" 2>/dev/null || true
 		done
 
-		# txqueuelen 2048 para evitar NETDEV_TX_BUSY / requeues sob rajadas
+		# txqueuelen 1000 + fq_codel ativo mesmo com PPE HW Offload para eliminar latencia em pacotes de handshake/DNS/ICMP
 		for iface in $(ls /sys/class/net 2>/dev/null); do
 			case "$iface" in
 				eth*|lan*)
 					[ -d "/sys/class/net/$iface" ] || continue
 					ethtool -K "$iface" gro on gso on 2>/dev/null || true
-					ip link set dev "$iface" txqueuelen 2048 2>/dev/null || true
+					ip link set dev "$iface" txqueuelen 1000 2>/dev/null || true
 					tc qdisc show dev "$iface" 2>/dev/null | grep -q "cake" && continue
-					[ "$(uci -q get firewall.@defaults[0].flow_offloading_hw)" = "1" ] && continue
-					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || true
+					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \
+					tc qdisc replace dev "$iface" root fq_codel memory_limit 16Mb limit 10240 target 5ms quantum 1514 2>/dev/null || true
 					for subq in 1 2 3 4 5 6 7 8 9 a b c d e f 10; do
-						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit 16Mb limit 20480 target 5ms quantum 1514 2>/dev/null || true
+						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit 16Mb limit 10240 target 5ms quantum 1514 2>/dev/null || true
 					done
 					;;
 			esac
@@ -291,8 +292,8 @@ start() {
 
 		local tcp_buf=16777216
 		local qdisc_mem="32Mb"
-		local qdisc_limit=40960
-		local txq=4096
+		local qdisc_limit=10240
+		local txq=1000
 		local rfs_entries=65536
 		local rfs_flow_cnt=8192
 		local backlog=25000
@@ -301,8 +302,8 @@ start() {
 		if [ "$mem_total_kb" -ge 3670016 ]; then
 			tcp_buf=33554432
 			qdisc_mem="64Mb"
-			qdisc_limit=65536
-			txq=8192
+			qdisc_limit=20480
+			txq=1000
 			rfs_entries=131072
 			rfs_flow_cnt=16384
 			backlog=50000
@@ -332,8 +333,8 @@ start() {
 					ethtool -K "$iface" gro on gso on 2>/dev/null || true
 					ip link set dev "$iface" txqueuelen "$txq" 2>/dev/null || true
 					tc qdisc show dev "$iface" 2>/dev/null | grep -q "cake" && continue
-					[ "$(uci -q get firewall.@defaults[0].flow_offloading_hw)" = "1" ] && continue
-					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || true
+					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \
+					tc qdisc replace dev "$iface" root fq_codel memory_limit "$qdisc_mem" limit "$qdisc_limit" target 5ms quantum 1514 2>/dev/null || true
 					for subq in 1 2 3 4 5 6 7 8 9 a b c d e f 10 11 12 13 14 15 16 17 18 19 1a 1b 1c 1d 1e 1f 20; do
 						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit "$qdisc_mem" limit "$qdisc_limit" target 5ms quantum 1514 2>/dev/null || true
 					done

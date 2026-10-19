@@ -17,14 +17,23 @@ class TestWifiHostapdSafety(unittest.TestCase):
         cls.doctor_sh = os.path.join(cls.repo_dir, "root", "usr", "lib", "ark", "modules", "doctor.sh")
 
     def test_01_no_forbidden_hostapd_set_directives(self):
-        """Verifies that bss_transition and wnm_sleep_mode are never 'set' in wifi.sh."""
+        """Verifies that bss_transition and wnm_sleep_mode are never set unconditionally in wifi.sh (must be guarded by ark_hostapd_has_wnm or QCA QSDK)."""
+        import re
         self.assertTrue(os.path.isfile(self.wifi_sh), "wifi.sh must exist")
         with open(self.wifi_sh, "r", encoding="utf-8", errors="replace") as f:
             content = f.read()
 
-        # Disallow setting bss_transition=1 or wnm_sleep_mode=1 which breaks wpad-basic
-        self.assertNotIn("bss_transition=1", content, "bss_transition=1 is incompatible with wpad-basic-mbedtls and must not be set!")
-        self.assertNotIn("wnm_sleep_mode=1", content, "wnm_sleep_mode=1 is incompatible with wpad-basic-mbedtls and must not be set!")
+        # Remove wifi_qca_apply_roaming_tuning body (QCA QSDK qca-hostapd-11be natively supports WNM)
+        non_qca = re.sub(r"wifi_qca_apply_roaming_tuning\(\)\s*\{[\s\S]*?\n\}", "", content)
+        # Remove guarded 'if ark_hostapd_has_wnm; then ... fi' blocks
+        unguarded = re.sub(r"if\s+ark_hostapd_has_wnm;\s*then[\s\S]*?fi", "", non_qca)
+        # Strip comment lines
+        unguarded = re.sub(r"(?m)^\s*#.*$", "", unguarded)
+
+        self.assertNotIn("bss_transition=1", unguarded, "Unconditional bss_transition=1 breaks wpad-basic-mbedtls!")
+        self.assertNotIn("bss_transition='1'", unguarded, "Unconditional bss_transition='1' breaks wpad-basic-mbedtls!")
+        self.assertNotIn("wnm_sleep_mode=1", unguarded, "Unconditional wnm_sleep_mode=1 breaks wpad-basic-mbedtls!")
+        self.assertNotIn("wnm_sleep_mode='1'", unguarded, "Unconditional wnm_sleep_mode='1' breaks wpad-basic-mbedtls!")
 
     def test_02_mesh_cleanup_function_exists(self):
         """Verifies that wifi_cleanup_mesh_interfaces performs kernel-level destruction and unbridging."""

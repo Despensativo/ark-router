@@ -30,6 +30,7 @@ MODULE_FILES = [
     ("lifecycle.js", "lifecycleMethods"),
     ("devices.js", "devicesMethods"),
     ("network.js", "networkMethods"),
+    ("network_modals.js", "networkModalsMethods"),
     ("wifi.js", "wifiMethods"),
     ("vpn.js", "vpnMethods"),
     ("adblock.js", "adblockMethods"),
@@ -37,7 +38,9 @@ MODULE_FILES = [
     ("starlink.js", "starlinkMethods"),
     ("speedtest.js", "speedtestMethods"),
     ("system.js", "systemMethods"),
+    ("ezsetup.js", "ezsetupMethods"),
     ("doctor_perf.js", "doctorPerfMethods"),
+    ("storage_wol.js", "storageWolMethods"),
     ("render.js", "renderMethods"),
 ]
 
@@ -212,6 +215,11 @@ def main():
     os.makedirs(os.path.dirname(target_output), exist_ok=True)
     with open(target_output, "w", encoding="utf-8") as f:
         f.write(bundle_content)
+
+    css_v1 = os.path.join(os.path.dirname(target_output), "overview.css")
+    css_v2 = os.path.join(os.path.dirname(target_output), "overview_v2.css")
+    if os.path.isfile(css_v1):
+        shutil.copyfile(css_v1, css_v2)
 
     if not args.v2:
         build_i18n_assets(version_val)

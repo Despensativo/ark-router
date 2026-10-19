@@ -216,7 +216,278 @@ function formatUptime(seconds) {
 }
 function text(id, value) { const n = document.getElementById(id); if (n) n.textContent = value == null ? '—' : String(value); }
 function setPill(id, state, label) { const n = document.getElementById(id); if (n) { n.className = 'ex-pill ' + state; n.textContent = label; } }
-function reloadSoon(message, delay) { ui.addNotification(null, E('p', {}, [ message || 'Aplicado. Recarregando o painel…' ])); window.setTimeout(function() { window.location.reload(); }, delay || 800); }
+
+if (typeof window !== 'undefined' && !window._arkTxState) {
+	window._arkTxState = {
+		activeCount: 0,
+		epoch: 0,
+		cooldownUntil: 0,
+		currentCmd: null,
+		startedAt: 0,
+		watchdogTimer: null,
+		escapeTimer: null,
+		reloadPending: false,
+		lastBusyToastAt: 0
+	};
+}
+
+function isMutationLocked() {
+	if (typeof window === 'undefined' || !window._arkTxState) return false;
+	const st = window._arkTxState;
+	if (st.activeCount > 0 && st.startedAt > 0 && (Date.now() - st.startedAt > 45000)) {
+		forceReleaseMutationLock('watchdog_safety_cap');
+		return false;
+	}
+	return st.activeCount > 0;
+}
+
+function isPollingSuppressed() {
+	if (typeof window === 'undefined' || !window._arkTxState) return false;
+	const st = window._arkTxState;
+	return isMutationLocked() || Date.now() < (st.cooldownUntil || 0) || !!st.reloadPending;
+}
+
+function forceReleaseMutationLock(reason) {
+	if (typeof window === 'undefined' || !window._arkTxState) return;
+	const st = window._arkTxState;
+	st.activeCount = 0;
+	st.currentCmd = null;
+	st.startedAt = 0;
+	st.reloadPending = false;
+	st.cooldownUntil = Date.now() + 800;
+	if (st.watchdogTimer) { window.clearTimeout(st.watchdogTimer); st.watchdogTimer = null; }
+	if (st.escapeTimer) { window.clearTimeout(st.escapeTimer); st.escapeTimer = null; }
+	if (typeof document !== 'undefined' && document.body) {
+		document.body.classList.remove('ark-mutation-busy');
+		const banner = document.getElementById('ark-tx-banner');
+		if (banner) banner.classList.remove('is-visible');
+	}
+}
+
+function classifyArkMutation(cmd, args) {
+	if (String(cmd || '').indexOf('equipe-dashboard-control') === -1) {
+		return { readOnly: true };
+	}
+	const act = String((args && args[0]) || '');
+	const sub = String((args && args[1]) || '');
+	if (
+		!act ||
+		/(-status|-status-.*|-get|-list|-check|-check-.*|-audit|-info|-discover|-fingerprints|-stations|-processes|-logs|-log|-telemetry|-qr)$/.test(act) ||
+		/^(features|fast-targets|audit-system|ark-doctor|card-state-save|starlink-telemetry|autowan-can-convert-wan|speedify-user)$/.test(act) ||
+		/^speedtest-/.test(act) ||
+		/^(status|get|list|check|scan|discover|audit|info)$/.test(sub)
+	) {
+		return { readOnly: true };
+	}
+	if (/^(doctor-fix|adblock-install|adblock-uninstall|feature-install|feature-remove|self-update-apply|manual-update-apply|ez-setup-|transmission-install|speedify|reboot-|safe-storage-reboot)/.test(act)) {
+		return { readOnly: false, estSec: 12, ttlMs: 40000, cooldownMs: 2800, label: 'Executando operação de sistema (~10–15s)…' };
+	}
+	if (/^(wifi|channels|country|wan-|lan-|mwan|autowan-|system-network-mode-|pppoe-|ipv6-|sync-ipv6-firewall|system-hardware-tune)/.test(act) && !/^wifi-(iot-optimize|dfs-optimize|toggle|wps|roaming|txpower)/.test(act)) {
+		return { readOnly: false, estSec: 6, ttlMs: 24000, cooldownMs: 2200, label: 'Sincronizando rádio / interfaces de rede (~5–8s)…' };
+	}
+	if (/^(sqm-|irqbalance-|dns-turbo|adblock|zram-|dmz|upnp-|network-capacity|profile|zerotier|wireguard|ntp-|time-|clock-|wifi-)/.test(act)) {
+		return { readOnly: false, estSec: 4, ttlMs: 18000, cooldownMs: 1800, label: 'Aplicando regras e reiniciando serviço (~3–5s)…' };
+	}
+	return { readOnly: false, estSec: 2, ttlMs: 12000, cooldownMs: 1200, label: 'Aplicando configuração (~1–2s)…' };
+}
+
+function ensureArkTxBanner(profile) {
+	if (typeof document === 'undefined' || !document.body || typeof document.createElement !== 'function') return;
+	if (!document.getElementById('ark-tx-style') && document.head && typeof document.head.appendChild === 'function') {
+		const styleEl = document.createElement('style');
+		styleEl.id = 'ark-tx-style';
+		styleEl.textContent =
+			'.ark-tx-banner{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(24px);z-index:2147483640;min-width:320px;max-width:92vw;background:rgba(15,23,42,0.96);border:1px solid rgba(56,189,248,0.45);border-radius:12px;box-shadow:0 14px 36px rgba(0,0,0,0.55);padding:10px 14px;color:#f8fafc;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;backdrop-filter:blur(10px);}' +
+			'.ark-tx-banner.is-visible{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}' +
+			'.ark-tx-banner-row{display:flex;align-items:center;gap:10px;justify-content:space-between;}' +
+			'.ark-tx-spinner{width:16px;height:16px;border:2.5px solid rgba(56,189,248,0.25);border-top-color:#38bdf8;border-radius:50%;animation:arkTxSpin .75s linear infinite;flex:0 0 auto;}' +
+			'@keyframes arkTxSpin{to{transform:rotate(360deg);}}' +
+			'.ark-tx-copy{flex:1 1 auto;min-width:0;}' +
+			'.ark-tx-title{font-size:12.5px;font-weight:700;color:#e0f2fe;line-height:1.3;}' +
+			'.ark-tx-sub{font-size:11px;color:#94a3b8;margin-top:2px;}' +
+			'.ark-tx-unlock-btn{background:rgba(245,158,11,0.18);border:1px solid rgba(245,158,11,0.5);color:#fbbf24;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:700;cursor:pointer;flex:0 0 auto;}' +
+			'.ark-tx-track{height:3px;background:rgba(148,163,184,0.18);border-radius:3px;overflow:hidden;margin-top:7px;}' +
+			'.ark-tx-bar{height:100%;width:10%;background:linear-gradient(90deg,#38bdf8,#10b981);border-radius:3px;}' +
+			'body.ark-mutation-busy .cbi-button:not(#ark-tx-unlock-btn),body.ark-mutation-busy .ex-mini-button:not(#ark-tx-unlock-btn),body.ark-mutation-busy .ex-hero-feature-button,body.ark-mutation-busy .ex-switch{opacity:0.68;cursor:wait;}';
+		document.head.appendChild(styleEl);
+	}
+	let banner = document.getElementById('ark-tx-banner');
+	if (!banner) {
+		banner = E('div', { id: 'ark-tx-banner', class: 'ark-tx-banner', role: 'status', 'aria-live': 'polite' }, [
+			E('div', { class: 'ark-tx-banner-row' }, [
+				E('span', { class: 'ark-tx-spinner' }),
+				E('div', { class: 'ark-tx-copy' }, [
+					E('div', { id: 'ark-tx-title', class: 'ark-tx-title' }, ['Aplicando alterações…']),
+					E('div', { id: 'ark-tx-eta', class: 'ark-tx-sub' }, ['Aguarde concluir para evitar conflitos'])
+				]),
+				E('button', {
+					type: 'button',
+					id: 'ark-tx-unlock-btn',
+					class: 'ark-tx-unlock-btn',
+					style: 'display:none;',
+					click: function(ev) {
+						if (ev && ev.stopPropagation) ev.stopPropagation();
+						forceReleaseMutationLock('manual_escape');
+						if (typeof ui !== 'undefined' && ui.addNotification) {
+							ui.addNotification(null, E('p', {}, ['Interface destravada manualmente.']), 'info');
+						}
+					}
+				}, ['Destravar'])
+			]),
+			E('div', { class: 'ark-tx-track' }, [
+				E('div', { id: 'ark-tx-bar', class: 'ark-tx-bar' })
+			])
+		]);
+		document.body.appendChild(banner);
+	}
+	const titleEl = document.getElementById('ark-tx-title');
+	const etaEl = document.getElementById('ark-tx-eta');
+	const barEl = document.getElementById('ark-tx-bar');
+	const unlockBtn = document.getElementById('ark-tx-unlock-btn');
+	if (titleEl) titleEl.textContent = (profile && profile.label) || 'Aplicando alterações…';
+	if (etaEl) etaEl.textContent = 'Tempo estimado: ~' + ((profile && profile.estSec) || 3) + 's • Outras ações bloqueadas até concluir';
+	if (unlockBtn) unlockBtn.style.display = 'none';
+	if (barEl && barEl.style) {
+		barEl.style.transition = 'none';
+		barEl.style.width = '10%';
+		if (typeof window !== 'undefined' && window.setTimeout) {
+			window.setTimeout(function() {
+				if (barEl && barEl.style) {
+					barEl.style.transition = 'width ' + (((profile && profile.estSec) || 3) * 1000) + 'ms cubic-bezier(0.22, 1, 0.36, 1)';
+					barEl.style.width = '92%';
+				}
+			}, 30);
+		}
+	}
+	if (banner.classList) banner.classList.add('is-visible');
+	if (document.body.classList) document.body.classList.add('ark-mutation-busy');
+}
+
+function installArkTransactionCoordinator() {
+	if (typeof window === 'undefined') return;
+	if (typeof fs !== 'undefined' && fs && typeof fs.exec === 'function' && !fs._arkTxWrapped) {
+		const origExec = fs.exec;
+		fs._arkTxWrapped = true;
+		fs.exec = function(cmd, args) {
+			const profile = classifyArkMutation(cmd, args);
+			if (profile.readOnly) {
+				return origExec.apply(this, arguments);
+			}
+			const st = window._arkTxState;
+			const now = Date.now();
+			if (isMutationLocked() && (now - st.startedAt > 120)) {
+				if (now - (st.lastBusyToastAt || 0) > 1500 && typeof ui !== 'undefined' && ui.addNotification) {
+					st.lastBusyToastAt = now;
+					ui.addNotification(null, E('p', {}, ['⏳ Aguarde a operação atual concluir antes de enviar outra alteração.']), 'warning');
+				}
+				return Promise.reject(new Error('Operação em andamento. Aguarde concluir.'));
+			}
+			if (st.activeCount === 0) {
+				st.startedAt = now;
+				st.currentCmd = String((args && args[0]) || 'config');
+				ensureArkTxBanner(profile);
+				if (st.escapeTimer) window.clearTimeout(st.escapeTimer);
+				st.escapeTimer = window.setTimeout(function() {
+					const unlockBtn = typeof document !== 'undefined' && document.getElementById('ark-tx-unlock-btn');
+					if (unlockBtn && isMutationLocked()) unlockBtn.style.display = 'inline-block';
+				}, Math.max(6000, profile.estSec * 1500));
+			}
+			st.activeCount++;
+			st.epoch++;
+			if (st.watchdogTimer) window.clearTimeout(st.watchdogTimer);
+			st.watchdogTimer = window.setTimeout(function() {
+				forceReleaseMutationLock('watchdog_ttl');
+			}, profile.ttlMs || 25000);
+
+			const finalize = function() {
+				st.activeCount = Math.max(0, st.activeCount - 1);
+				st.epoch++;
+				st.cooldownUntil = Math.max(st.cooldownUntil || 0, Date.now() + (profile.cooldownMs || 1500));
+				if (st.activeCount === 0 && !st.reloadPending) {
+					if (st.watchdogTimer) { window.clearTimeout(st.watchdogTimer); st.watchdogTimer = null; }
+					if (st.escapeTimer) { window.clearTimeout(st.escapeTimer); st.escapeTimer = null; }
+					const barEl = typeof document !== 'undefined' && document.getElementById('ark-tx-bar');
+					if (barEl && barEl.style) {
+						barEl.style.transition = 'width 180ms ease';
+						barEl.style.width = '100%';
+					}
+					window.setTimeout(function() {
+						if (!isMutationLocked() && !st.reloadPending) {
+							forceReleaseMutationLock('completed');
+						}
+					}, 220);
+				}
+			};
+
+			return origExec.apply(this, arguments).then(
+				function(res) { finalize(); return res; },
+				function(err) { finalize(); throw err; }
+			);
+		};
+	}
+
+	if (typeof document !== 'undefined' && typeof document.addEventListener === 'function' && !window._arkDomGuardInstalled) {
+		window._arkDomGuardInstalled = true;
+		const guardHandler = function(ev) {
+			if (!isMutationLocked()) return;
+			const st = window._arkTxState;
+			if (!st || (Date.now() - st.startedAt <= 120)) return;
+			const t = ev && ev.target;
+			if (!t || typeof t.closest !== 'function') return;
+			if (t.closest('#ark-tx-banner, .ex-toast-close, .ex-accordion-toggle-btn, .cbi-button-neutral, .ex-doctor-tab-btn, #ark-emulator-bar, .ex-v2-sidebar, .ex-v2-nav-btn, .ex-v2-quick-pill, .ex-v2-modules-wrap')) return;
+			const interactive = t.closest('button, input[type="checkbox"], input[type="radio"], .cbi-button, .ex-mini-button, .ex-switch');
+			if (interactive) {
+				if (ev.type === 'change' && (t.type === 'checkbox' || t.type === 'radio')) {
+					t.checked = !t.checked;
+				}
+				if (ev.preventDefault) ev.preventDefault();
+				if (ev.stopPropagation) ev.stopPropagation();
+				const now = Date.now();
+				if (now - (st.lastBusyToastAt || 0) > 1500 && typeof ui !== 'undefined' && ui.addNotification) {
+					st.lastBusyToastAt = now;
+					ui.addNotification(null, E('p', {}, ['⏳ Uma configuração está sendo aplicada no roteador. Aguarde concluir para evitar conflitos.']), 'warning');
+				}
+			}
+		};
+		document.addEventListener('click', guardHandler, true);
+		document.addEventListener('change', guardHandler, true);
+	}
+}
+
+function reloadSoon(message, delay) {
+	ui.addNotification(null, E('p', {}, [ message || 'Aplicado. Sincronizando o painel…' ]));
+	const st = (typeof window !== 'undefined' && window._arkTxState) || null;
+	const waitMs = delay || 800;
+	if (st) {
+		st.reloadPending = true;
+		st.cooldownUntil = Date.now() + waitMs + 5000;
+		ensureArkTxBanner({ estSec: Math.max(2, Math.ceil(waitMs / 1000) + 1), label: 'Sincronizando painel com o roteador…' });
+	}
+	window.setTimeout(function() {
+		// Se a instância ativa do painel suportar Hot State Refresh, sincroniza sem piscar a tela nem cair em ERR_CONNECTION_REFUSED
+		if (typeof window !== 'undefined' && window._arkViewInstance && typeof window._arkViewInstance.triggerImmediateRefresh === 'function') {
+			let attempts = 0;
+			const tryHotSync = function() {
+				attempts++;
+				Promise.resolve(window._arkViewInstance.triggerImmediateRefresh(null, 'info', true))
+					.then(function() {
+						forceReleaseMutationLock('hot_sync_ok');
+					})
+					.catch(function() {
+						if (attempts < 5) {
+							window.setTimeout(tryHotSync, 800);
+						} else {
+							forceReleaseMutationLock('hot_sync_fallback');
+						}
+					});
+			};
+			tryHotSync();
+			return;
+		}
+		forceReleaseMutationLock('hard_reload');
+		window.location.reload();
+	}, waitMs);
+}
 function isExpectedApplyDisconnect(e) { return /xhr|timeout|timed out|network|failed to fetch|request/i.test(String((e && e.message) || e || '')); }
 function reloadAfterExpectedDisconnect(e, message, delay) {
 	if (!isExpectedApplyDisconnect(e)) return false;
@@ -240,8 +511,15 @@ function redirectToRouter(ip, message, delay) {
 	window.setTimeout(function() { window.location.href = window.location.protocol + '//' + ip + path; }, delay || 1000);
 }
 
+installArkTransactionCoordinator();
+
 if (typeof window !== 'undefined') {
 	window.translateText = translateText;
 	window.translateTree = translateTree;
 	window.enableTranslation = enableTranslation;
+	window.isMutationLocked = isMutationLocked;
+	window.isPollingSuppressed = isPollingSuppressed;
+	window.forceReleaseMutationLock = forceReleaseMutationLock;
+	window.installArkTransactionCoordinator = installArkTransactionCoordinator;
 }
+

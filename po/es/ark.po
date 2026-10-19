@@ -12925,3 +12925,396 @@ msgid "🚀 Iniciar Upgrade Automático"
 msgstr "🚀 Iniciar Actualización Automática"
 
 
+msgid "80 MHz no Canal 149"
+msgstr "80 MHz en el Canal 149"
+
+msgid "ATENÇÃO: PERDA TOTAL DE DADOS NA UNIDADE USB"
+msgstr "ATENCIÓN: PÉRDIDA TOTAL DE DATOS EN LA UNIDAD USB"
+
+msgid "Acesso Direto pela Internet (WAN - Porta 445)"
+msgstr "Acceso Directo por Internet (WAN - Puerto 445)"
+
+msgid "Acesso KSMBD na rede"
+msgstr "Acceso KSMBD en la red"
+
+msgid "Acesso direto às telas nativas do OpenWrt estilizadas com o Tema Ark (Modo Básico / Avançado)"
+msgstr "Acceso directo a las pantallas nativas de OpenWrt estilizadas con el Tema Ark (Modo Básico / Avanzado)"
+
+msgid "Alerta de Evasão de DNS:"
+msgstr "Alerta de Evasión de DNS:"
+
+msgid "Alerta de Roaming (Android 13–15 & iOS 16–18):"
+msgstr "Alerta de Roaming (Android 13–15 e iOS 16–18):"
+
+msgid "Aplicando alterações…"
+msgstr "Aplicando cambios…"
+
+msgid "Ark Doctor: Subsistemas Saudáveis"
+msgstr "Ark Doctor: Subsistemas Saludables"
+
+msgid "Ativar Modo Desenvolvedor (DEV Mode)"
+msgstr "Activar Modo Desarrollador (DEV Mode)"
+
+msgid "CONECTIVIDADE EXTERNA"
+msgstr "CONECTIVIDAD EXTERNA"
+
+msgid "Cabo de Rede Ethernet"
+msgstr "Cable de Red Ethernet"
+
+msgid "Canal 149 (5745 MHz)"
+msgstr "Canal 149 (5745 MHz)"
+
+msgid "Canal 149 (80 MHz):"
+msgstr "Canal 149 (80 MHz):"
+
+msgid "Canal 6 GHz (Wi-Fi 6E / Wi-Fi 7 — PSC Automático)"
+msgstr "Canal 6 GHz (Wi-Fi 6E / Wi-Fi 7 — PSC Automático)"
+
+msgid "Carregando unidades USB, compartilhamentos e contas de acesso…"
+msgstr "Cargando unidades USB, carpetas compartidas y cuentas de acceso…"
+
+msgid "Central de Armazenamento & KSMBD"
+msgstr "Central de Almacenamiento y KSMBD"
+
+msgid "Clique para gerenciar portas de rede"
+msgstr "Haga clic para gestionar los puertos de red"
+
+msgid "Configurações globais do KSMBD salvas com sucesso!"
+msgstr "¡Configuraciones globales de KSMBD guardadas con éxito!"
+
+msgid "Confirmação de Segurança Obrigatória (digite SIM):"
+msgstr "Confirmación de Seguridad Obligatoria (escriba SIM):"
+
+msgid "Consultando tabela ARP, concessões DHCP e favoritos salvos…"
+msgstr "Consultando tabla ARP, concesiones DHCP y favoritos guardados…"
+
+msgid "DHCP ATIVO"
+msgstr "DHCP ACTIVO"
+
+msgid "DNAT + RFC 7858 REJECT"
+msgstr "DNAT + RFC 7858 REJECT"
+
+msgid "Desativar com segurança, limpar configurações órfãs e desinstalar pacote"
+msgstr "Desactivar con seguridad, limpiar configuraciones huérfanas y desinstalar paquete"
+
+msgid "Desativar com segurança, reverter regras e desinstalar pacote do roteador"
+msgstr "Desactivar con seguridad, revertir reglas y desinstalar paquete del router"
+
+msgid "Descrição do Servidor na Rede"
+msgstr "Descripción del Servidor en la Red"
+
+msgid "Deseja desativar"
+msgstr "¿Desea desactivar"
+
+msgid "Deseja desativar e remover completamente o pacote"
+msgstr "¿Desea desactivar y eliminar por completo el paquete"
+
+msgid "Deseja instalar"
+msgstr "¿Desea instalar"
+
+msgid "Dica: Favoritar um PC mantém ele na lista mesmo quando desligado por vários dias"
+msgstr "Consejo: Marcar un PC como favorito lo mantiene en la lista incluso cuando está apagado durante varios días"
+
+msgid "Digite SIM em maiúsculas para confirmar"
+msgstr "Escriba SIM en mayúsculas para confirmar"
+
+msgid "Endereço MAC"
+msgstr "Dirección MAC"
+
+msgid "Endereço MAC do Alvo"
+msgstr "Dirección MAC de Destino"
+
+msgid "Envia pacote mágico (Magic Packet) para acordar este dispositivo pela rede cabeada ou fixe-o nos favoritos."
+msgstr "Envíe un paquete mágico (Magic Packet) para despertar este dispositivo por la red cableada o fíjelo en favoritos."
+
+msgid "Exibir recursos não instalados nos menus"
+msgstr "Mostrar funciones no instaladas en los menús"
+
+msgid "Favoritos Salvos"
+msgstr "Favoritos Guardados"
+
+msgid "Gaveta de Navegação OpenWrt LuCI"
+msgstr "Panel de Navegación OpenWrt LuCI"
+
+msgid "Informe o nome de usuário e a senha SMB."
+msgstr "Ingrese el nombre de usuario y la contraseña SMB."
+
+msgid "Informe um endereço MAC válido no formato AA:BB:CC:DD:EE:FF."
+msgstr "Ingrese una dirección MAC válida en el formato AA:BB:CC:DD:EE:FF."
+
+msgid "Interface Padrão"
+msgstr "Interfaz Predeterminada"
+
+msgid "Interface de Rede"
+msgstr "Interfaz de Red"
+
+msgid "Interface destravada manualmente."
+msgstr "Interfaz desbloqueada manualmente."
+
+msgid "Isolamento de Credenciais:"
+msgstr "Aislamiento de Credenciales:"
+
+msgid "LIGAR PC & SERVIDORES REMOTAMENTE (MAGIC PACKET)"
+msgstr "ENCENDER PC Y SERVIDORES REMOTAMENTE (MAGIC PACKET)"
+
+msgid "MÓDULO OPCIONAL"
+msgstr "MÓDULO OPCIONAL"
+
+msgid "MÓDULO OPCIONAL (~30 KB)"
+msgstr "MÓDULO OPCIONAL (~30 KB)"
+
+msgid "MÓDULOS & SISTEMA"
+msgstr "MÓDULOS Y SISTEMA"
+
+msgid "NATIVO ARK"
+msgstr "NATIVO ARK"
+
+msgid "Nome / Identificação"
+msgstr "Nombre / Identificación"
+
+msgid "Novo Usuário SMB"
+msgstr "Nuevo Usuario SMB"
+
+msgid "Nível de Acesso"
+msgstr "Nivel de Acceso"
+
+msgid "OPENWRT NATIVO (LUCI)"
+msgstr "OPENWRT NATIVO (LUCI)"
+
+msgid "OTIMIZAÇÃO, REDE & SEGURANÇA"
+msgstr "OPTIMIZACIÓN, RED Y SEGURIDAD"
+
+msgid "PAINÉIS OPERACIONAIS"
+msgstr "PANELES OPERATIVOS"
+
+msgid "PORTAS ATIVAS"
+msgstr "PUERTOS ACTIVOS"
+
+msgid "Pacote ksmbd-server ainda não instalado na Flash"
+msgstr "El paquete ksmbd-server aún no está instalado en la memoria Flash"
+
+msgid "Permissão de"
+msgstr "Permiso de"
+
+msgid "Permissão nas Pastas"
+msgstr "Permisos en las Carpetas"
+
+msgid "Permitir Acesso Convidado (Guest sem senha na LAN)"
+msgstr "Permitir Acceso de Invitado (Guest sin contraseña en LAN)"
+
+msgid "Porta 445 liberada na WAN."
+msgstr "Puerto 445 habilitado en la WAN."
+
+msgid "REDE LOCAL & CLIENTES"
+msgstr "RED LOCAL Y CLIENTES"
+
+msgid "Rede IoT / Smart TVs Isoladas"
+msgstr "Red IoT / Smart TVs Aisladas"
+
+msgid "Rede Principal (LAN)"
+msgstr "Red Principal (LAN)"
+
+msgid "Rede de Visitantes (Guest)"
+msgstr "Red de Invitados (Guest)"
+
+msgid "Redes Autorizadas"
+msgstr "Redes Autorizadas"
+
+msgid "RÁDIOS SEM FIO"
+msgstr "RADIOS INALÁMBRICOS"
+
+msgid "Rótulo do Volume (Nome da Pasta na Rede)"
+msgstr "Etiqueta del Volumen (Nombre de la Carpeta en Red)"
+
+msgid "SERVIDOR DE ARQUIVOS USB (KERNEL SMB 3.1.1)"
+msgstr "SERVIDOR DE ARCHIVOS USB (KERNEL SMB 3.1.1)"
+
+msgid "Senha SMB"
+msgstr "Contraseña SMB"
+
+msgid "Senha exclusiva do SMB"
+msgstr "Contraseña exclusiva de SMB"
+
+msgid "Servidor KSMBD iniciado e compartilhamentos sincronizados."
+msgstr "Servidor KSMBD iniciado y recursos compartidos sincronizados."
+
+msgid "Servidor KSMBD parado e desativado no boot."
+msgstr "Servidor KSMBD detenido y desactivado en el arranque."
+
+msgid "Servidor KSMBD pausado temporariamente."
+msgstr "Servidor KSMBD pausado temporalmente."
+
+msgid "Servidor KSMBD reiniciado."
+msgstr "Servidor KSMBD reiniciado."
+
+msgid "Status de enlace físico, duplex e velocidade negociada em hardware"
+msgstr "Estado del enlace físico, dúplex y velocidad negociada por hardware"
+
+msgid "TOPOLOGIA FÍSICA ETHERNET"
+msgstr "TOPOLOGÍA FÍSICA ETHERNET"
+
+msgid "Usar WPA2/WPA3 Misto em ambas (Recomendado)"
+msgstr "Usar WPA2/WPA3 Mixto en ambas (Recomendado)"
+
+msgid "Usuário SMB"
+msgstr "Usuario SMB"
+
+msgid "Utilitário etherwake ainda não instalado"
+msgstr "La utilidad etherwake aún no está instalada"
+
+msgid "ex: PC Gamer Quarto / Servidor NAS"
+msgstr "ej.: PC Gamer Habitación / Servidor NAS"
+
+msgid "⏳ Aguarde a operação atual concluir antes de enviar outra alteração."
+msgstr "⏳ Espere a que finalice la operación actual antes de enviar otro cambio."
+
+msgid "⏳ Uma configuração está sendo aplicada no roteador. Aguarde concluir para evitar conflitos."
+msgstr "⏳ Se está aplicando una configuración en el router. Espere a que termine para evitar conflictos."
+
+msgid "⏸️ Desativar"
+msgstr "⏸️ Desactivar"
+
+msgid "⚙️ Serviços Nativos do ARK Router (Memória Persistente Pós-Atualização)"
+msgstr "⚙️ Servicios Nativos de ARK Router (Memoria Persistente Post-Actualización)"
+
+msgid "⚙️ Sistema & Administração"
+msgstr "⚙️ Sistema y Administración"
+
+msgid "⚠️ Aviso de Compatibilidade com Filtros/AdBlock:"
+msgstr "⚠️ Aviso de Compatibilidad con Filtros/AdBlock:"
+
+msgid "⚠️ Formatar Unidade USB ("
+msgstr "⚠️ Formatear Unidad USB ("
+
+msgid "⚡ Auto-MTU Inteligente & Baby Jumbo PPPoE (1500 / 1492 Automático)"
+msgstr "⚡ Auto-MTU Inteligente y Baby Jumbo PPPoE (1500 / 1492 Automático)"
+
+msgid "⚡ Central Wake-on-LAN"
+msgstr "⚡ Central Wake-on-LAN"
+
+msgid "⚡ Central Wake-on-LAN (Acordar Computadores e Servidores)"
+msgstr "⚡ Central Wake-on-LAN (Encender Computadoras y Servidores)"
+
+msgid "⚪ Modo Fixo Atual: Sessão operando em MTU"
+msgstr "⚪ Modo Fijo Actual: Sesión operando en MTU"
+
+msgid "✅ Sondagem Concluída: Sua operadora aceitou Baby Jumbo (RFC 4638)! Porta"
+msgstr "✅ Sondeo Completado: ¡Su operador aceptó Baby Jumbo (RFC 4638)! Puerto"
+
+msgid "🌐 Rede & Firewall"
+msgstr "🌐 Red y Firewall"
+
+msgid "🍎 Linha Apple MacBook (M1/M2/M3/M4/M5) — Canal 149 vs 160 MHz (awdl0):"
+msgstr "🍎 Línea Apple MacBook (M1/M2/M3/M4/M5) — Canal 149 vs 160 MHz (awdl0):"
+
+msgid "🍎 Recomendação Geral para Linha Apple MacBook (M1/M2/M3/M4/M5):"
+msgstr "🍎 Recomendación General para la Línea Apple MacBook (M1/M2/M3/M4/M5):"
+
+msgid "🎯 Disparo Manual & Cadastro de Dispositivo Favorito (Persistente)"
+msgstr "🎯 Disparo Manual y Registro de Dispositivo Favorito (Persistente)"
+
+msgid "💡 Recomendação Arquitetural ARK Router:"
+msgstr "💡 Recomendación Arquitectónica de ARK Router:"
+
+msgid "💡 Requisitos Rápidos no Computador Alvo (BIOS & Windows):"
+msgstr "💡 Requisitos Rápidos en el Equipo de Destino (BIOS y Windows):"
+
+msgid "💻 Abrir Interface Nativa do OpenWrt (Visão Geral com Tema Ark) ↗"
+msgstr "💻 Abrir Interfaz Nativa de OpenWrt (Vista General con Tema Ark) ↗"
+
+msgid "💾 2. Menus Ocultos & Memória Pós-Atualização:"
+msgstr "💾 2. Menús Ocultos y Memoria Post-Actualización:"
+
+msgid "💾 Memória Persistente Pós-Atualização:"
+msgstr "💾 Memoria Persistente Post-Actualización:"
+
+msgid "💾 REMOVIDO PELO USUÁRIO"
+msgstr "💾 ELIMINADO POR EL USUARIO"
+
+msgid "📊 Status do Roteador"
+msgstr "📊 Estado del Router"
+
+msgid "📋 Exibir plugins não instalados nos menus (Modo Normal)"
+msgstr "📋 Mostrar plugins no instalados en los menús (Modo Normal)"
+
+msgid "📖 Como Acessar seus Arquivos nos Dispositivos:"
+msgstr "📖 Cómo Acceder a sus Archivos en los Dispositivos:"
+
+msgid "📥 Instalar"
+msgstr "📥 Instalar"
+
+msgid "📦 PLUGIN NÃO INSTALADO"
+msgstr "📦 PLUGIN NO INSTALADO"
+
+msgid "📦 Plugins, Módulos e Pacotes Opcionais (Ativar, Desativar ou Remover)"
+msgstr "📦 Plugins, Módulos y Paquetes Opcionales (Activar, Desactivar o Eliminar)"
+
+msgid "📱 Dispositivos & LAN"
+msgstr "📱 Dispositivos y LAN"
+
+msgid "📺 Blindagem de Smart TVs & Android (Porta 53 + Bloquear DoT 853)"
+msgstr "📺 Blindaje de Smart TVs y Android (Puerto 53 + Bloquear DoT 853)"
+
+msgid "🔄 Modo HD Sempre Ligado (Anti-Hibernação / Keepalive)"
+msgstr "🔄 Modo Disco Siempre Activo (Anti-Hibernación / Keepalive)"
+
+msgid "🔌 Portas Físicas de Switch Ethernet & Conexões de Rede"
+msgstr "🔌 Puertos Físicos del Switch Ethernet y Conexiones de Red"
+
+msgid "🔍 Filtrar menus, rotas ou ajustes UCI (ex: firewall, dhcp, syslog, pacotes)..."
+msgstr "🔍 Filtrar menús, rutas o ajustes UCI (ej.: firewall, dhcp, syslog, paquetes)..."
+
+msgid "🔐 Contas de Acesso SMB, Permissões & Workgroup"
+msgstr "🔐 Cuentas de Acceso SMB, Permisos y Grupo de Trabajo"
+
+msgid "🔒 Canal PSC 37 (6135 MHz — Anatel UNII-5):"
+msgstr "🔒 Canal PSC 37 (6135 MHz — UNII-5):"
+
+msgid "🔒 DoH Criptografado Ativo (https-dns-proxy):"
+msgstr "🔒 DoH Cifrado Activo (https-dns-proxy):"
+
+msgid "🔒 Dual-DoH Criptografado Ativo (https-dns-proxy HTTP/2 RFC 8484)"
+msgstr "🔒 Dual-DoH Cifrado Activo (https-dns-proxy HTTP/2 RFC 8484)"
+
+msgid "🖧 Aparelhos na Rede Local (ARP + Concessões DHCP + Favoritos)"
+msgstr "🖧 Dispositivos en la Red Local (ARP + Concesiones DHCP + Favoritos)"
+
+msgid "🗄️ Servidor de Arquivos USB (KSMBD)"
+msgstr "🗄️ Servidor de Archivos USB (KSMBD)"
+
+msgid "🗄️ Servidor de Arquivos USB (Kernel SMB 3.1.1 — KSMBD)"
+msgstr "🗄️ Servidor de Archivos USB (Kernel SMB 3.1.1 — KSMBD)"
+
+msgid "🗑️ Remover / Desinstalar"
+msgstr "🗑️ Eliminar / Desinstalar"
+
+msgid "🚨 Alerta Crítico de Segurança: Exposição SMB na WAN (Porta 445)"
+msgstr "🚨 Alerta Crítica de Seguridad: Exposición SMB en la WAN (Puerto 445)"
+
+msgid "🛠️ Modo Desenvolvedor (DEV Mode — Menus Ocultos & Validação)"
+msgstr "🛠️ Modo Desarrollador (DEV Mode — Menús Ocultos y Validación)"
+
+msgid "🛠️ VISÍVEL EM MODO DEV"
+msgstr "🛠️ VISIBLE EN MODO DEV"
+
+msgid "🛡️ 1. Limpeza Cautelosa Antes da Remoção:"
+msgstr "🛡️ 1. Limpieza Cautelosa Antes de la Eliminación:"
+
+msgid "🛡️ Ajuste seguro:"
+msgstr "🛡️ Ajuste seguro:"
+
+msgid "🛡️ Ajustes Cautelosos de Desativação Automática:"
+msgstr "🛡️ Ajustes Cautelosos de Desactivación Automática:"
+
+msgid "🛡️ Redes Autorizadas & Sincronização de Firewall (fw4/fw3)"
+msgstr "🛡️ Redes Autorizadas y Sincronización de Firewall (fw4/fw3)"
+
+msgid "🛡️ Serviços, Armazenamento & VPN"
+msgstr "🛡️ Servicios, Almacenamiento y VPN"
+
+msgid "🛡️ Sondagem Concluída: Porta"
+msgstr "🛡️ Sondeo Completado: Puerto"
+
+msgid "🧭 Navegação OpenWrt LuCI (Tema Ark Integrado)"
+msgstr "🧭 Navegación OpenWrt LuCI (Tema Ark Integrado)"
+

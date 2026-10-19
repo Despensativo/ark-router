@@ -1672,6 +1672,40 @@ const devicesMethods = {
 				])
 			]));
 
+			const selfDev = this;
+			sections.push(E('div', { class: 'ex-device-config-block' }, [
+				E('div', { style: 'display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;' }, [
+					E('div', {}, [
+						E('strong', {}, ['⚡ Wake-on-LAN (Ligar Aparelho Remotamente)']),
+						E('small', { class: 'ex-muted', style: 'display:block; margin-top:2px;' }, [
+							'Envia pacote mágico (Magic Packet) para acordar este dispositivo pela rede cabeada ou fixe-o nos favoritos.'
+						])
+					]),
+					E('div', { style: 'display:flex; gap:6px; flex-wrap:wrap;' }, [
+						E('button', {
+							type: 'button',
+							class: 'ex-mini-button',
+							style: 'background:rgba(56,189,248,0.16); color:#38bdf8; border:1px solid rgba(56,189,248,0.35); font-weight:750;',
+							click: function(ev) {
+								selfDev.triggerWolWake(device.mac, name.value.trim() || device.name, 'br-lan', ev.currentTarget);
+							}
+						}, ['⚡ Acordar (Wake)']),
+						E('button', {
+							type: 'button',
+							class: 'ex-mini-button',
+							click: function(ev) {
+								const b = ev.currentTarget;
+								b.disabled = true;
+								fs.exec('/usr/sbin/equipe-dashboard-control', ['wol-target-save', device.mac, name.value.trim() || device.name || 'PC LAN', ipInput.value.trim() || device.ip || '', 'br-lan']).then(function() {
+									b.textContent = '⭐ Favoritado no WoL!';
+									selfDev.refreshWolCardSummary();
+								});
+							}
+						}, ['⭐ Fixar no WoL'])
+					])
+				])
+			]));
+
 			sections.push(E('div', { class: 'ex-device-config-block' }, [
 				E('strong', {}, ['🌐 Servidor DNS Deste Aparelho (DHCP Opção 6)']),
 				E('small', { class: 'ex-muted', style: 'display: block; margin: 2px 0 8px;' }, [

@@ -53,6 +53,7 @@ get_system_hardware_sqm_audit() {
 }
 
 sqm_apply_upload_only() {
+	local s
 	if ark_is_satellite_or_ap; then
 		echo "O controle de Bufferbloat (SQM/CAKE) é exclusivo do Roteador Mestre (Gateway). Desativado em modo Ponto de Acesso (AP)." >&2
 		exit 2
@@ -74,65 +75,67 @@ sqm_apply_upload_only() {
 	uci -q set "sqm.$sec.download=0"
 	uci -q set "sqm.$sec.upload=$up_kbps"
 	uci -q set "sqm.$sec.qdisc=cake"
-	uci -q set "sqm.$sec.script=piece_of_cake.qos"
-	uci -q set "sqm.$sec.eqdisc_opts=diffserv4 ack-filter memlimit 32M"
+	uci -q set "sqm.$sec.script=layer_cake.qos"
+	local eq_opts="diffserv4 wash ack-filter memlimit 32M"
+	if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
+		eq_opts="$eq_opts no-split-gso"
+	fi
+	uci -q set "sqm.$sec.eqdisc_opts=$eq_opts"
 	uci commit sqm
-	# Trava de exclusao mutua: SQM/CAKE ativo desliga Fastpath
-	uci -q set firewall.@defaults[0].flow_offloading=0
-	uci -q set firewall.@defaults[0].flow_offloading_hw=0
-	uci commit firewall 2>/dev/null || true
-	/etc/init.d/firewall reload >/dev/null 2>&1 || true
+	sync_sqm_flow_offload
 	/etc/init.d/sqm restart >/dev/null 2>&1 || true
 	echo 'ok'
 }
 
 ensure_qos_equipe() {
-	[ -f /etc/config/qos_equipe ] && return 0
+	local qos_cfg="${ARK_ROOT:-}/etc/config/qos_equipe"
+	[ -f "$qos_cfg" ] && return 0
+	mkdir -p "$(dirname "$qos_cfg")" 2>/dev/null || true
 	{
 		echo "config guest_limit 'guest'"
 		echo "	option enabled '1'"
 		echo "	option upload_kbps '1500'"
 		echo "	option download_kbps '0'"
-	} >/etc/config/qos_equipe
+	} >"$qos_cfg"
 }
 
 ensure_sqm_section() {
+	local section device
 	section="$1"; device="$2"
 	uci -q get "sqm.$section" >/dev/null 2>&1 || uci -q set "sqm.$section=queue"
 	uci -q set "sqm.$section.interface=$device"
 	[ -n "$(uci -q get "sqm.$section.qdisc")" ] || uci -q set "sqm.$section.qdisc=cake"
-	[ -n "$(uci -q get "sqm.$section.script")" ] || uci -q set "sqm.$section.script=piece_of_cake.qos"
+	local cur_script="$(uci -q get "sqm.$section.script")"
+	if [ -z "$cur_script" ] || [ "$cur_script" = "piece_of_cake.qos" ]; then
+		uci -q set "sqm.$section.script=layer_cake.qos"
+	fi
 	[ -n "$(uci -q get "sqm.$section.qdisc_advanced")" ] || uci -q set "sqm.$section.qdisc_advanced=1"
-	[ -n "$(uci -q get "sqm.$section.eqdisc_opts")" ] || uci -q set "sqm.$section.eqdisc_opts=diffserv4 nat dual-srchost ack-filter"
+	[ -n "$(uci -q get "sqm.$section.squash_dscp")" ] || uci -q set "sqm.$section.squash_dscp=1"
+	[ -n "$(uci -q get "sqm.$section.squash_ingress")" ] || uci -q set "sqm.$section.squash_ingress=1"
+	local cur_eq="$(uci -q get "sqm.$section.eqdisc_opts")"
+	if [ -z "$cur_eq" ]; then
+		cur_eq="diffserv4 nat dual-srchost wash ack-filter"
+		uci -q set "sqm.$section.eqdisc_opts=$cur_eq"
+	elif ! printf '%s' "$cur_eq" | grep -qw 'wash'; then
+		cur_eq="$cur_eq wash"
+		uci -q set "sqm.$section.eqdisc_opts=$cur_eq"
+	fi
+	if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
+		if ! printf '%s' "$cur_eq" | grep -qw 'no-split-gso'; then
+			cur_eq="$cur_eq no-split-gso"
+			uci -q set "sqm.$section.eqdisc_opts=$cur_eq"
+		fi
+	fi
 	[ -n "$(uci -q get "sqm.$section.iqdisc_opts")" ] || uci -q set "sqm.$section.iqdisc_opts=diffserv4 nat dual-dsthost ingress"
 	[ -n "$(uci -q get "sqm.$section.linklayer")" ] || uci -q set "sqm.$section.linklayer=none"
-}
-
-active_wan_networks() {
-	uci -q show network 2>/dev/null | sed -n 's/^network\.\(wan[0-9]*\)=interface$/\1/p' | while IFS= read -r network_section; do
-		proto="$(uci -q get "network.$network_section.proto")"
-		case "$proto" in dhcp|pppoe|static) printf '%s\n' "$network_section" ;; esac
-	done
 }
 
 sqm_section_for_network() {
 	case "$1" in wan) printf wan1 ;; wan[0-9]*) printf '%s' "$1" ;; *) return 1 ;; esac
 }
 
-sqm_device_for_network() {
-	network_section="$1"
-	proto="$(uci -q get "network.$network_section.proto")"
-	if [ "$proto" = pppoe ]; then
-		printf 'pppoe-%s' "$network_section"
-		return 0
-	fi
-	device="$(ubus call "network.interface.$network_section" status 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null)"
-	[ -n "$device" ] || device="$(uci -q get "network.$network_section.device")"
-	[ -n "$device" ] || device="$network_section"
-	printf '%s' "$device"
-}
-
 apply_guest_tc_limit() {
+	local dev upload download
 	dev="$(guest_l3_device || true)"
 	[ -n "$dev" ] || { echo 'Interface da rede visitante nao encontrada para aplicar limite.' >&2; return 1; }
 	tc qdisc del dev "$dev" root 2>/dev/null || true
@@ -143,7 +146,7 @@ apply_guest_tc_limit() {
 	valid_sqm_rate "$upload" || upload=0
 	valid_sqm_rate "$download" || download=0
 	if [ "$download" -gt 0 ]; then
-		tc qdisc replace dev "$dev" root tbf rate "${download}kbit" burst 64kbit latency 400ms 2>/tmp/ark-guest-tc-download.log || {
+		tc qdisc replace dev "$dev" root tbf rate "${download}kbit" burst 64kbit latency 50ms 2>/tmp/ark-guest-tc-download.log || {
 			cat /tmp/ark-guest-tc-download.log >&2
 			return 1
 		}
@@ -154,12 +157,16 @@ apply_guest_tc_limit() {
 			cat /tmp/ark-guest-tc-upload.log >&2
 			return 1
 		}
+		tc filter add dev "$dev" parent ffff: protocol ipv6 u32 match u32 0 0 police rate "${upload}kbit" burst 64kbit drop flowid :1 2>/dev/null || true
 	fi
 	echo "guest-limit-applied dev=$dev download=${download}kbit upload=${upload}kbit"
 }
 
 sync_sqm_flow_offload() {
+	local w ecm_dir
 	local sqm_active=0
+	ecm_dir="${ARK_ROOT:-}/sys/kernel/debug/ecm"
+	[ -d "$ecm_dir" ] || ecm_dir="/sys/kernel/debug/ecm"
 	if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
 		sqm_active=1
 	fi
@@ -172,6 +179,12 @@ sync_sqm_flow_offload() {
 			uci -q set firewall.@defaults[0].flow_offloading_hw=0
 			uci commit firewall 2>/dev/null || true
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+		fi
+		# Coordenacao Qualcomm QSDK ECM (qca-nss-ecm): impede sequestro do fluxo TCP apos ~25 pacotes em PPPoE + IFB
+		if [ -d "$ecm_dir" ]; then
+			[ -f "$ecm_dir/front_end_ipv4_stop" ] && echo 1 > "$ecm_dir/front_end_ipv4_stop" 2>/dev/null || true
+			[ -f "$ecm_dir/front_end_ipv6_stop" ] && echo 1 > "$ecm_dir/front_end_ipv6_stop" 2>/dev/null || true
+			[ -f "$ecm_dir/ecm_db/defunct_all" ] && echo 1 > "$ecm_dir/ecm_db/defunct_all" 2>/dev/null || true
 		fi
 	else
 		# SQM desativado: verifica se Multi-WAN esta REALMENTE ativo no sistema operacional
@@ -193,6 +206,10 @@ sync_sqm_flow_offload() {
 				uci commit firewall 2>/dev/null || true
 				/etc/init.d/firewall reload >/dev/null 2>&1 || true
 			fi
+			if [ -d "$ecm_dir" ]; then
+				[ -f "$ecm_dir/front_end_ipv4_stop" ] && echo 0 > "$ecm_dir/front_end_ipv4_stop" 2>/dev/null || true
+				[ -f "$ecm_dir/front_end_ipv6_stop" ] && echo 0 > "$ecm_dir/front_end_ipv6_stop" 2>/dev/null || true
+			fi
 		fi
 	fi
 }
@@ -201,7 +218,7 @@ handle_sqm() {
 	case "$1" in
 	sqm-toggle)
 		case "$2" in 0|1) ;; *) echo 'Estado SQM invalido' >&2; exit 2 ;; esac
-		[ -f /etc/config/sqm ] || { echo 'SQM nao instalado' >&2; exit 3; }
+		[ -f "${ARK_ROOT}/etc/config/sqm" ] || [ -f /etc/config/sqm ] || { echo 'SQM nao instalado' >&2; exit 3; }
 		wan_count=0
 		for network_section in $(active_wan_networks); do
 			sqm_section="$(sqm_section_for_network "$network_section")" || continue
@@ -324,7 +341,12 @@ handle_sqm() {
 					fi
 					if [ -n "$eqdisc_opts" ] || [ -n "$iqdisc_opts" ]; then
 						uci -q set "sqm.$section.qdisc_advanced=1"
-						[ -n "$eqdisc_opts" ] && uci -q set "sqm.$section.eqdisc_opts=$eqdisc_opts"
+						if [ -n "$eqdisc_opts" ]; then
+							if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
+								printf '%s' "$eqdisc_opts" | grep -qw 'no-split-gso' || eqdisc_opts="$eqdisc_opts no-split-gso"
+							fi
+							uci -q set "sqm.$section.eqdisc_opts=$eqdisc_opts"
+						fi
 						[ -n "$iqdisc_opts" ] && uci -q set "sqm.$section.iqdisc_opts=$iqdisc_opts"
 					fi
 					;;

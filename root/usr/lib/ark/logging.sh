@@ -13,23 +13,27 @@ ark_mask_sensitive() {
 }
 
 ark_log() {
+	local _msg
 	_msg="$(printf '%s' "$*" | ark_mask_sensitive)"
 	logger -t "ark-router[$$]" -p user.info "$_msg" 2>/dev/null || true
 }
 
 ark_warn() {
+	local _msg
 	_msg="$(printf '%s' "$*" | ark_mask_sensitive)"
 	logger -t "ark-router[$$]" -p user.warning "$_msg" 2>/dev/null || true
 	printf '[AVISO] %s\n' "$_msg" >&2
 }
 
 ark_err() {
+	local _msg
 	_msg="$(printf '%s' "$*" | ark_mask_sensitive)"
 	logger -t "ark-router[$$]" -p user.err "$_msg" 2>/dev/null || true
 	printf '[ERRO] %s\n' "$_msg" >&2
 }
 
 ark_audit() {
+	local _level _msg
 	_level="${1:-INFO}"
 	shift
 	_msg="$(printf '%s' "$*" | ark_mask_sensitive)"

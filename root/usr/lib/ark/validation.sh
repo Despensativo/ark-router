@@ -38,6 +38,7 @@ ipv4_host() {
 }
 
 valid_lan_dhcp_range() {
+	local router_ip netmask start_ip end_ip router_prefix start_prefix end_prefix router_host start_host end_host
 	router_ip="$1"; netmask="$2"; start_ip="$3"; end_ip="$4"
 	valid_ipv4 "$router_ip" && valid_ipv4 "$netmask" && valid_ipv4 "$start_ip" && valid_ipv4 "$end_ip" || return 1
 	[ "$netmask" = 255.255.255.0 ] || return 1
@@ -53,6 +54,7 @@ valid_lan_dhcp_range() {
 }
 
 lan_dhcp_dns_values() {
+	local opt
 	for opt in $(uci -q get dhcp.lan.dhcp_option 2>/dev/null); do
 		case "$opt" in
 			6,*) printf '%s\n' "$opt" | cut -d, -f2- | tr ',' '\n' ;;
@@ -61,6 +63,7 @@ lan_dhcp_dns_values() {
 }
 
 validate_dns_list() {
+	local count server
 	count=0
 	for server in $1; do
 		valid_ipv4 "$server" || return 1
@@ -71,17 +74,20 @@ validate_dns_list() {
 }
 
 valid_plain() {
+	local value max
 	value="$1"; max="$2"
 	[ "${#value}" -le "$max" ] || return 1
 	! printf '%s' "$value" | grep -q '[[:cntrl:]]'
 }
 
 valid_wifi_password() {
+	local length
 	length="${#1}"
 	[ "$length" -ge 8 ] && [ "$length" -le 63 ] && valid_plain "$1" 63
 }
 
 valid_ssid() {
+	local length
 	length="${#1}"
 	[ "$length" -ge 1 ] && [ "$length" -le 32 ] && valid_plain "$1" 32
 }
@@ -104,6 +110,20 @@ valid_net_device() {
 	fi
 	case "$1" in
 		pppoe-*) return 0 ;;
+		*.*)
+			local base_dev="${1%%.*}"
+			local vlan_id="${1#*.}"
+			case "$vlan_id" in
+				''|*[!0-9]*) ;;
+				*)
+					if [ "$vlan_id" -ge 1 ] && [ "$vlan_id" -le 4094 ] 2>/dev/null; then
+						if [ "$base_dev" = wan ] || [ -d "${ARK_ROOT}/sys/class/net/$base_dev" ] || [ -d "/sys/class/net/$base_dev" ]; then
+							return 0
+						fi
+					fi
+					;;
+			esac
+			;;
 	esac
 	if command -v is_swconfig >/dev/null 2>&1 && is_swconfig; then
 		case "$1" in

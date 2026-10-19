@@ -30,17 +30,6 @@ const wifiMethods = {
 		const r2 = w.r2g || w.r0 || {}, r5 = w.r5g || w.r1 || {};
 		const auto2=String(r2.channel||'auto')==='auto', auto5=String(r5.channel||'auto')==='auto';
 		const country=String(r2.country||r5.country||'00').toUpperCase(), countryInfo=this.countries.find(function(x){return String(x.code||x.iso3166).toUpperCase()===country;}); text('ex-country-current',(countryInfo&&countryInfo.country?countryInfo.country:'País')+' ('+country+')');
-		const maxPowerToggle = document.getElementById('ex-maxpower-toggle');
-		if(maxPowerToggle && !maxPowerToggle.disabled){
-			const isPA = (country === 'PA');
-			maxPowerToggle.checked = isPA;
-			const maxSummary = document.getElementById('ex-maxpower-mode-summary');
-			if(maxSummary){
-				maxSummary.textContent = isPA
-					? 'Ativo • Libera 100% da potência física permitida pelos amplificadores de rádio (RF Frontend / FEM) do equipamento, utilizando perfil de potência irrestrito com salvaguarda térmica.'
-					: 'Desativado • Limite regulatório padrão aplicado (equilíbrio entre alcance e conformidade regional).';
-			}
-		}
 		const allAuto=auto2&&auto5, mixed=auto2!==auto5, toggle=document.getElementById('ex-channel-auto-toggle');
 		if(toggle){toggle.checked=allAuto;toggle.indeterminate=mixed;toggle.setAttribute('aria-checked',mixed?'mixed':String(allAuto));}
 		text('ex-channel-mode-summary',mixed?'Configuração mista entre as bandas':(allAuto?'Ligado • Auto Inteligente (1, 6, 11 no 2,4 GHz • Sem radar DFS no 5 GHz)':'Desligado • canais definidos manualmente'));
@@ -54,6 +43,20 @@ const wifiMethods = {
 			text('ex-wifi-6', 'Canal ' + (auto6 ? 'automático' : (r6.channel || '—')) + ' • ' + (auto6 ? 'automático' : 'manual') + ' • ' + (r6.htmode || ''));
 		}
 		text('ex-wifi-noise','Ruído: 2,4 GHz '+(isFinite(s2.noise)?s2.noise+' dBm':'—')+' • 5 GHz '+(isFinite(s5.noise)?s5.noise+' dBm':'—'));
+
+		const wedToggle = document.getElementById('ex-wed-toggle');
+		if(wedToggle && !wedToggle.disabled){
+			const hwData = (data && data.hardwareInfo) || {};
+			const capHw = (this.capabilities && this.capabilities.hardware) || {};
+			const wedOn = !!(hwData.wifi_wed_enabled !== undefined ? hwData.wifi_wed_enabled : (hwData.wifi && hwData.wifi.wifi_wed_enabled !== undefined ? hwData.wifi.wifi_wed_enabled : capHw.wifi_wed_enabled));
+			wedToggle.checked = wedOn;
+			const wedSummary = document.getElementById('ex-wed-mode-summary');
+			if(wedSummary){
+				wedSummary.textContent = wedOn
+					? 'Ativo • Despacho direto de pacotes Wi-Fi via DMA/PPE no hardware MediaTek Filogic, liberando os núcleos de CPU.'
+					: 'Desativado • Pacotes Wi-Fi processados pelas filas de software da CPU.';
+			}
+		}
 
 		const wifi6Toggle = document.getElementById('ex-wifi6-toggle');
 		if(wifi6Toggle && !wifi6Toggle.disabled){
@@ -700,9 +703,39 @@ const wifiMethods = {
 					renderEncMessage(encAlert6, encSelect6.value, '6g');
 				}
 				if (!split.checked && encSelect2.value !== encSelect5.value) {
-					splitEncAlertTip.className = 'alert-message info';
-					splitEncAlertTip.style.display = 'block';
-					splitEncAlertTip.innerHTML = '<strong>' + _t('💡 Dica de Compatibilidade:') + '</strong> ' + _t('Como o nome do Wi‑Fi é idêntico em 2,4 GHz e 5 GHz, usar seguranças distintas pode dificultar a transição suave de alguns aparelhos entre as faixas.');
+					if (encSelect2.value === 'psk2' && (encSelect5.value === 'sae-mixed' || encSelect5.value === 'sae')) {
+						splitEncAlertTip.className = 'alert-message warning';
+						splitEncAlertTip.style.display = 'block';
+						splitEncAlertTip.innerHTML = '';
+						const fixUnifiedBtn = E('button', {
+							type: 'button',
+							class: 'btn cbi-button cbi-button-apply',
+							style: 'padding: 3px 10px; font-size: 11px; margin-right: 6px; margin-top: 6px;',
+							click: function() {
+								encSelect2.value = 'sae-mixed';
+								encSelect5.value = 'sae-mixed';
+								updateEncVisibility();
+							}
+						}, [_t('Usar WPA2/WPA3 Misto em ambas (Recomendado)')]);
+						const fixSplitSsidBtn = E('button', {
+							type: 'button',
+							class: 'btn cbi-button cbi-button-neutral',
+							style: 'padding: 3px 10px; font-size: 11px; margin-top: 6px;',
+							click: function() {
+								split.checked = true;
+								split.dispatchEvent(new Event('change'));
+							}
+						}, [_t('Separar nomes 2,4 GHz e 5 GHz')]);
+						splitEncAlertTip.appendChild(E('div', { style: 'line-height: 1.45;' }, [
+							E('strong', {}, ['⚠️ ' + _t('Alerta de Roaming (Android 13–15 & iOS 16–18):') + ' ']),
+							_t('Com o mesmo nome de Wi‑Fi (SSID Único), celulares modernos que conectam no 5 GHz em WPA3 gravam o perfil exigindo WPA3 e bloqueiam a transição automática para o 2,4 GHz em WPA2 Puro (proteção anti-downgrade). Para manter WPA2 Puro no 2,4 GHz sem travar o roaming, separe os nomes das bandas ou use WPA2/WPA3 Misto em ambas:'),
+							E('div', { style: 'display: flex; flex-wrap: wrap; gap: 4px;' }, [fixUnifiedBtn, fixSplitSsidBtn])
+						]));
+					} else {
+						splitEncAlertTip.className = 'alert-message info';
+						splitEncAlertTip.style.display = 'block';
+						splitEncAlertTip.innerHTML = '<strong>' + _t('💡 Dica de Compatibilidade:') + '</strong> ' + _t('Como o nome do Wi‑Fi é idêntico em 2,4 GHz e 5 GHz, usar seguranças distintas pode dificultar a transição suave de alguns aparelhos entre as faixas.');
+					}
 				} else {
 					splitEncAlertTip.style.display = 'none';
 				}
@@ -1053,7 +1086,7 @@ const wifiMethods = {
 				ch5Note.style.display = 'block';
 			} else if ([149, 153, 157, 161, 165].indexOf(num) >= 0) {
 				ch5Note.className = 'alert-message success';
-				ch5Note.textContent = '✅ Faixa UNII-3: 100% livre de DFS, permite potências de transmissão maiores (até 1W / 30 dBm) para alcance expandido. Opera em até 80 MHz.';
+				ch5Note.textContent = '✅ Faixa UNII-3: 100% livre de DFS, permite potências de transmissão maiores (até 1W / 30 dBm) e opera na mesma faixa nativa do protocolo awdl0 da Apple (Canal 149), eliminando saltos de canal a cada 500 ms na linha MacBook. Opera em até 80 MHz.';
 				ch5Note.style.display = 'block';
 			} else {
 				ch5Note.style.display = 'none';
@@ -1063,13 +1096,58 @@ const wifiMethods = {
 		updateCh5Note();
 
 		const ch5HelpText = has160Support
-			? 'Canais 36-48 e 149-165 não usam DFS (sem pausas por radar). Canais 36-48 suportam 160 MHz; canais 149-165 operam em até 80 MHz.'
+			? 'Canais 36-48 e 149-165 não usam DFS (sem pausas por radar). Canais 36-48 e 100-128 suportam 160 MHz; canais 149-165 operam em até 80 MHz.'
 			: 'Canais 36-48 e 149-165 não usam DFS (sem pausas por radar). Este hardware opera com canais de até 80 MHz (VHT80) para máxima estabilidade.';
+
+		const macbookAwdlTip = E('div', { class: 'alert-message info', style: 'margin-top: 8px; font-size: 11.5px; line-height: 1.45; display: none;' }, [
+			E('div', { style: 'width: 100%;' }, [
+				E('strong', {}, ['🍎 Linha Apple MacBook (M1/M2/M3/M4/M5) — Canal 149 vs 160 MHz (awdl0): ']),
+				'No macOS, a interface oculta ',
+				E('code', {}, ['awdl0']),
+				' opera fixa no ',
+				E('strong', {}, ['Canal 149 (5745 MHz)']),
+				' (mesmo desligando o AirDrop no Finder). Fora do Canal 149, o MacBook salta para o Canal 149 por ~60 ms a cada 0,5s, limitando o Download em ~350–400 Mbps. ',
+				E('br'),
+				'• ',
+				E('strong', {}, ['Canal 149 (80 MHz):']),
+				' Sincroniza com o ',
+				E('code', {}, ['awdl0']),
+				', zera os saltos de 500 ms (ping ~2.6 ms) e entrega ~660–740 Mbps mantendo AirDrop/Handoff ativos. ',
+				E('br'),
+				'• ',
+				E('strong', {}, ['Canais 36–64 / 100–128 (160 MHz):']),
+				' Para atingir ~840+ Mbps no MacBook em 160 MHz, execute ',
+				E('code', {}, ['sudo ifconfig awdl0 down']),
+				' no Terminal do Mac. Desligar o ',
+				E('code', {}, ['awdl0']),
+				' pausa temporariamente AirDrop, Copiar/Colar Universal com iPhone, Espelhamento do iPhone, Handoff e Sidecar (para religar: ',
+				E('code', {}, ['sudo ifconfig awdl0 up']),
+				').'
+			])
+		]);
+		const syncMacbookAwdlTip = function() {
+			const num = Number(ch5Select.value);
+			const active160 = is160Mode && (ch5Select.value === 'auto' || (num > 0 && num < 132));
+			macbookAwdlTip.style.display = active160 ? 'block' : 'none';
+		};
+		ch5Select.addEventListener('change', syncMacbookAwdlTip);
+		syncMacbookAwdlTip();
 
 		const isEcoHw = this.isEconomicHardware ? this.isEconomicHardware(this.currentData) : false;
 		const ecoWifiTip = isEcoHw ? E('div', { class: 'alert-message info', style: 'margin-top: 6px; font-size: 11.5px; line-height: 1.4;' }, [
 			E('strong', {}, ['💡 ' + _t('Dica para CPU de 1 Núcleo / MIPS:') + ' ']),
 			_t('Em 2,4 GHz, manter a largura em 20 MHz (HT20) evita colisões de canal de 40 MHz que sobrecarregam a CPU com erros de CRC.')
+		]) : '';
+
+		const has6gHw = !!(wConf.has6g || (this.capabilities && this.capabilities.hardware && (this.capabilities.hardware.wifi_6g_supported || (this.capabilities.hardware.wifi && this.capabilities.hardware.wifi_6g))));
+		const ch6Block = has6gHw ? E('div', { class: 'ex-device-config-block' }, [
+			E('strong', {}, ['Canal 6 GHz (Wi-Fi 6E / Wi-Fi 7 — PSC Automático)']),
+			E('div', { class: 'alert-message info', style: 'margin-top: 6px; font-size: 11.5px; line-height: 1.45;' }, [
+				E('div', { style: 'width: 100%;' }, [
+					E('strong', {}, ['🔒 Canal PSC 37 (6135 MHz — Anatel UNII-5): ']),
+					'A banda de 6 GHz opera ancorada automaticamente em canais PSC (Preferred Scanning Channels) com RNR + quadros FILS Discovery a cada 20 ms, garantindo descoberta instantânea em iPhones, Samsung Galaxy S23/S24/S25 e notebooks sem varredura lenta.'
+				])
+			])
 		]) : '';
 
 		const rows = [
@@ -1084,8 +1162,10 @@ const wifiMethods = {
 				E('strong', {}, ['Canal 5 GHz']),
 				ch5Select,
 				ch5Note,
+				macbookAwdlTip,
 				E('small', { class: 'ex-muted' }, [ch5HelpText])
 			]),
+			ch6Block,
 			E('p', { class: 'alert-message warning' }, ['Ao aplicar, os rádios Wi‑Fi reiniciarão no novo canal selecionado.']),
 			E('div', { class: 'right' }, [
 				E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': closeModal }, ['Cancelar']),
@@ -1138,7 +1218,7 @@ const wifiMethods = {
 		const suggested=this.recommendedChannels, fixed=mode==='fixed';
 		if(fixed&&!suggested){ui.addNotification(null,E('p',{},['Execute a análise de canais antes de aplicar uma sugestão.']));return;}
 		if(fixed&&suggested.alreadyApplied){ui.addNotification(null,E('p',{},['Os canais sugeridos já estão aplicados. Nenhuma alteração foi feita.']));return;}
-		const description=fixed?('Fixar canal '+suggested.two+' no 2,4 GHz e '+suggested.five+' no 5 GHz?'):'Ativar o Modo Auto Inteligente nas duas bandas? O roteador selecionará os melhores canais limpos (1, 6 ou 11 no 2,4 GHz e faixas livres de radares DFS no 5 GHz para máxima compatibilidade e sem quedas).';
+		const description=fixed?('Fixar canal '+suggested.two+' no 2,4 GHz e '+suggested.five+' no 5 GHz?'):'Ativar o Modo Auto Inteligente nas duas bandas? O roteador selecionará os melhores canais limpos (1, 6 ou 11 no 2,4 GHz, faixas livres de radares DFS no 5 GHz e Canal PSC 37 no 6 GHz se disponível, para máxima compatibilidade e sem quedas).';
 		ui.showModal(fixed?'Aplicar canais sugeridos':'Ativar Seleção Automática Inteligente',[
 			E('p',{},[description]),
 			E('p',{class:'alert-message warning'},['A alteração reiniciará as duas bandas do Wi‑Fi e desconectará temporariamente os aparelhos conectados.']),
@@ -1218,9 +1298,23 @@ const wifiMethods = {
 			return s;
 		};
 		const w2 = select(widthFrom(radio2.htmode) || '20', [
-			['20', '20 MHz — mais alcance/estabilidade'],
-			['40', '40 MHz — mais rápido, mais interferência']
+			['20', '20 MHz — mais alcance/estabilidade (Recomendado)'],
+			['40', '40 MHz — mais rápido, mais interferência (Trava noscan=1 ativa)']
 		]);
+		const w2Note = E('div', { class: 'alert-message info', style: 'margin-top: 8px; font-size: 12px; line-height: 1.4; display: none;' });
+		const updateW2Note = function() {
+			if (w2.value === '40') {
+				w2Note.className = 'alert-message warning';
+				w2Note.textContent = '⚠️ Em 40 MHz, o ARK aplica trava real contra queda por interferência (noscan=1 / ht_coex=0), impedindo que iPhones derrubem a rede para 20 MHz. Contudo, em locais com muitos vizinhos ou Bluetooth, 40 MHz no 2,4 GHz pode gerar colisões de canal e instabilidade em dispositivos Casa Inteligente (IoT).';
+				w2Note.style.display = 'block';
+			} else {
+				w2Note.className = 'alert-message success';
+				w2Note.textContent = '✅ 20 MHz (HT20): Padrão ouro de estabilidade e alcance no 2,4 GHz. Opera sem sobreposição nos canais 1, 6 ou 11 e garante 100% de compatibilidade com IoT e Bluetooth.';
+				w2Note.style.display = 'block';
+			}
+		};
+		w2.addEventListener('change', updateW2Note);
+		updateW2Note();
 		
 		const hw = this.capabilities.hardware || {};
 		const has160 = !!(hw.wifi_160_supported || (hw.wifi && hw.wifi.wifi_160));
@@ -1237,13 +1331,21 @@ const wifiMethods = {
 		const curWidth5 = widthFrom(radio5.htmode);
 		const default5 = (has160 && curWidth5 === '160') ? '160' : '80';
 		const w5 = select(curWidth5 || default5, items5);
-		const w5Note = E('div', { class: 'alert-message info', style: 'margin-top: 8px; font-size: 12px; display: none;' });
+		const w5Note = E('div', { class: 'alert-message info', style: 'margin-top: 8px; font-size: 12px; line-height: 1.4; display: none;' });
 		const updateW5Note = function() {
-			if (w5.value === '160' && curCh5 >= 132) {
-				w5Note.textContent = 'ℹ️ O canal 5 GHz atual (Canal ' + curCh5 + ') opera em até 80 MHz. Ao selecionar 160 MHz, o canal será comutado automaticamente para o Canal 36 para total estabilidade.';
+			if (w5.value === '160') {
+				if (curCh5 >= 132) {
+					w5Note.className = 'alert-message warning';
+					w5Note.textContent = '⚠️ 160 MHz (HE160 / VHT160): Dobra a largura de banda para velocidade máxima a curta distância. Como o Canal ' + curCh5 + ' suporta até 80 MHz, o rádio será comutado automaticamente para o Canal 36 para total estabilidade.';
+				} else {
+					w5Note.className = 'alert-message warning';
+					w5Note.textContent = '⚡ 160 MHz (HE160 / VHT160): Largura dupla para velocidade máxima a curta distância. Ocupa 8 canais contínuos (36–64 ou 100–128), podendo sofrer maior atenuação através de paredes ou acionar varredura de radar (DFS).';
+				}
 				w5Note.style.display = 'block';
 			} else {
-				w5Note.style.display = 'none';
+				w5Note.className = 'alert-message success';
+				w5Note.textContent = '✅ 80 MHz (HE80 / VHT80): Padrão recomendado de alta velocidade e estabilidade no 5 GHz. Entrega desempenho Gigabit real com excelente penetração de sinal e compatibilidade total com todos os canais (36–64 e 149–165) sem quedas por radar DFS.';
+				w5Note.style.display = 'block';
 			}
 		};
 		w5.addEventListener('change', updateW5Note);
@@ -1251,6 +1353,7 @@ const wifiMethods = {
 
 		// 6 GHz (Wi-Fi 6E / Wi-Fi 7): Suporte dedicado a 80 MHz, 160 MHz e 320 MHz (nunca ocultar 320 MHz no 6G)
 		let w6 = null;
+		let w6Note = null;
 		if (has6g) {
 			const items6 = [
 				['80', '80 MHz — mais compatível'],
@@ -1259,20 +1362,61 @@ const wifiMethods = {
 			];
 			const default6 = (curWidth6 === '320') ? '320' : ((curWidth6 === '160') ? '160' : (has320 ? '320' : '160'));
 			w6 = select(curWidth6 || default6, items6);
+			w6Note = E('div', { class: 'alert-message info', style: 'margin-top: 8px; font-size: 12px; line-height: 1.4; display: none;' });
+			const updateW6Note = function() {
+				if (w6.value === '320') {
+					w6Note.className = 'alert-message info';
+					w6Note.textContent = '🚀 320 MHz (EHT320): Largura ultra-ampla exclusiva do 6 GHz para throughput extremo multi-Gigabit a curta distância (Canal PSC 37 em modo Auto).';
+				} else if (w6.value === '160') {
+					w6Note.className = 'alert-message success';
+					w6Note.textContent = '✅ 160 MHz (HE160 / EHT160): Excelente equilíbrio entre ultra velocidade e estabilidade no espectro limpo de 6 GHz, compatível com todos os clientes Wi-Fi 6E e Wi-Fi 7.';
+				} else {
+					w6Note.className = 'alert-message success';
+					w6Note.textContent = '✅ 80 MHz (HE80 / EHT80): Máximo alcance e densidade espectral no 6 GHz, ideal para ambientes com paredes ou múltiplos obstáculos.';
+				}
+				w6Note.style.display = 'block';
+			};
+			w6.addEventListener('change', updateW6Note);
+			updateW6Note();
 		}
 
 		const field = function(label, node, hint){ return E('label', { class: 'ex-wan-edit-field' }, [E('span', {}, [label]), node, E('small', { class: 'ex-muted' }, [hint])]); };
 		const gridFields = [
-			field('2,4 GHz', w2, 'Recomendado: 20 MHz para maior alcance e menos interferência.'),
+			field('2,4 GHz', E('div', {}, [w2, w2Note]), 'Recomendado: 20 MHz para maior alcance e menos interferência.'),
 			field('5 GHz', E('div', {}, [w5, w5Note]), has160 ? '80 MHz é mais estável e compatível com todos os canais; 160 MHz oferece velocidade máxima nos canais 36-64.' : '80 MHz é a largura máxima suportada pelo hardware deste roteador (VHT80).')
 		];
 		if (has6g && w6) {
-			gridFields.push(field('6 GHz (Wi-Fi 6E/7)', w6, 'Suporta até 320 MHz para throughput extremo no Wi-Fi 7.'));
+			gridFields.push(field('6 GHz', E('div', {}, [w6, w6Note]), 'Suporta até 320 MHz para throughput extremo no 6 GHz (Canal PSC 37 em modo Auto).'));
 		}
+
+		const macbookWidthTip = E('div', { class: 'alert-message info', style: 'margin-top: 8px; font-size: 11.5px; line-height: 1.45; display: none;' }, [
+			E('div', { style: 'width: 100%;' }, [
+				E('strong', {}, ['🍎 Recomendação Geral para Linha Apple MacBook (M1/M2/M3/M4/M5): ']),
+				'Em 160 MHz (Canais 36–64 / 100–128), o macOS interrompe o canal por ~60 ms a cada 0,5s para sintonizar a interface ',
+				E('code', {}, ['awdl0']),
+				' no Canal 149 (limitando o Download em ~350–400 Mbps). Para máxima estabilidade sem mexer no Mac, use ',
+				E('strong', {}, ['80 MHz no Canal 149']),
+				' (~660–740 Mbps, ping ~2.6 ms, AirDrop ativo). Para atingir ',
+				E('strong', {}, ['~840+ Mbps em 160 MHz']),
+				' no MacBook, desligue o ',
+				E('code', {}, ['awdl0']),
+				' no Terminal (',
+				E('code', {}, ['sudo ifconfig awdl0 down']),
+				' — pausa AirDrop, Copiar/Colar Universal com iPhone, Espelhamento do iPhone, Handoff e Sidecar até rodar ',
+				E('code', {}, ['sudo ifconfig awdl0 up']),
+				').'
+			])
+		]);
+		const syncMacbookWidthTip = function() {
+			macbookWidthTip.style.display = (w5.value === '160') ? 'block' : 'none';
+		};
+		w5.addEventListener('change', syncMacbookWidthTip);
+		syncMacbookWidthTip();
 
 		ui.showModal('Largura e desempenho do Wi‑Fi', [
 			E('p', { class: 'ex-muted' }, ['A largura maior aumenta velocidade máxima, mas também aumenta interferência e pode reduzir alcance estável. Alterar reinicia o Wi‑Fi.']),
 			E('div', { class: 'ex-wan-edit-grid' }, gridFields),
+			macbookWidthTip,
 			E('p', { class: 'alert-message warning' }, ['A alteração reinicia seletivamente o rádio modificado (aparelhos na outra frequência permanecem conectados).']),
 			E('div', { class: 'right' }, [
 				E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': closeModal }, ['Cancelar']),

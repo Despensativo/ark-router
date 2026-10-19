@@ -11,6 +11,7 @@ _ARK_SPEEDIFY_SH_LOADED=1
 . "${ARK_LIB_DIR}/validation.sh"
 
 speedify_detected_install_mode() {
+	local saved_m
 	if [ -x /tmp/ark-speedify-root/usr/share/speedify/speedify ]; then
 		printf 'ram'
 	elif [ -n "$(uci -q get equipe_dashboard.speedify.external_target)" ] && [ -x "$(uci -q get equipe_dashboard.speedify.external_target)/ark-router/speedify-root/usr/share/speedify/speedify" ]; then
@@ -27,6 +28,7 @@ speedify_detected_install_mode() {
 }
 
 speedify_ipk_name() {
+	local arch
 	if command -v opkg >/dev/null 2>&1; then
 		arch="$(opkg info kernel 2>/dev/null | grep Architecture: | cut -d ' ' -f 2 | tail -n 1)"
 		case "$arch" in
@@ -44,6 +46,7 @@ speedify_ipk_name() {
 }
 
 speedify_extract_package() {
+	local pkg dest
 	pkg="$1"; dest="$2"
 	mkdir -p "$dest"
 	if command -v apk >/dev/null 2>&1; then
@@ -62,6 +65,7 @@ speedify_extract_package() {
 }
 
 install_speedify_official() {
+	local overlay_avail need_internal tmp inst_ok ipk_file ipk_tmp
 	speedify_supported || { echo 'Arquitetura nao suportada pelo Speedify. Requer aarch64 ou x86_64.' >&2; return 3; }
 	command -v wget >/dev/null 2>&1 || { echo 'wget nao encontrado' >&2; return 3; }
 	overlay_avail="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"; [ -n "$overlay_avail" ] || overlay_avail=0
@@ -101,6 +105,7 @@ install_speedify_official() {
 }
 
 speedify_save_config() {
+	local src name
 	mkdir -p /etc/ark-router/speedify
 	for src in /etc/speedify /usr/share/speedify/settings /usr/share/speedify/*.conf; do
 		[ -e "$src" ] || continue
@@ -116,6 +121,7 @@ speedify_save_config() {
 }
 
 speedify_loader_path() {
+	local r
 	r="$1"
 	case "$(uname -m 2>/dev/null)" in
 		x86_64)
@@ -134,6 +140,7 @@ speedify_loader_path() {
 }
 
 speedify_library_path() {
+	local r
 	r="$1"
 	case "$(uname -m 2>/dev/null)" in
 		x86_64) printf '%s/lib:%s/lib/x86_64-linux-gnu' "$r" "$r" ;;
@@ -142,6 +149,7 @@ speedify_library_path() {
 }
 
 speedify_write_cli_wrapper() {
+	local wrapper r ld lib_path
 	wrapper="$1"; r="$2"
 	mkdir -p "$(dirname "$wrapper")"
 	ld="$(speedify_loader_path "$r")"
@@ -163,6 +171,7 @@ speedify_package_url() {
 }
 
 speedify_fetch_package() {
+	local pkg url tmp
 	pkg="$1"
 	url="$(speedify_package_url)" || { echo 'Arquitetura Speedify sem pacote conhecido.' >&2; return 3; }
 	mkdir -p "$(dirname "$pkg")"
@@ -200,6 +209,7 @@ speedify_ensure_tun() {
 }
 
 speedify_tunnel_device() {
+	local dev
 	dev="$(ip -o link show 2>/dev/null | awk -F': ' '/: connectify[0-9]*:/{print $2; exit}' | cut -d@ -f1)"
 	[ -n "$dev" ] && printf '%s' "$dev" || printf connectify0
 }
@@ -211,6 +221,7 @@ speedify_firewall_zone_section() {
 }
 
 speedify_firewall_forwarding_exists() {
+	local src dest v
 	src="$1"; dest="$2"
 	uci -q show firewall 2>/dev/null | awk -F= -v src="$src" -v dest="$dest" '
 		/\.src=/ { s=$1; sub(/^firewall\./, "", s); sub(/\.src$/, "", s); v=$2; gsub(/\047/, "", v); if (v==src) a[s]=1 }
@@ -220,6 +231,7 @@ speedify_firewall_forwarding_exists() {
 }
 
 speedify_clean_zone_devices() {
+	local sec name
 	# O tunel deve pertencer somente a zona speedify, nunca a lan/wan.
 	for sec in $(uci -q show firewall 2>/dev/null | sed -n "s/^firewall\.\(@zone\[[0-9]*\]\)\.name=.*/\1/p"); do
 		name="$(uci -q get "firewall.$sec.name" 2>/dev/null || true)"
@@ -228,6 +240,7 @@ speedify_clean_zone_devices() {
 }
 
 speedify_start_extracted() {
+	local root wrapper r ld lib_path
 	root="$1"; wrapper="$2"
 	r="$root/usr/share/speedify"
 	ld="$(speedify_loader_path "$r")"
@@ -267,6 +280,7 @@ speedify_start_extracted() {
 }
 
 speedify_install_external() {
+	local target avail need_internal root pkg
 	speedify_supported || { echo 'Arquitetura nao suportada pelo Speedify.' >&2; return 3; }
 	command -v wget >/dev/null 2>&1 || { echo 'wget nao encontrado' >&2; return 3; }
 	target="${ARK_SPEEDIFY_EXTERNAL_TARGET:-$(speedify_external_target)}"
@@ -290,6 +304,7 @@ speedify_install_external() {
 }
 
 speedify_start_external_saved() {
+	local target root
 	target="$(uci -q get equipe_dashboard.speedify.external_target || true)"
 	[ -n "$target" ] || target="$(speedify_external_target || true)"
 	[ -n "$target" ] || { echo 'Armazenamento externo salvo nao encontrado.' >&2; return 3; }
@@ -298,6 +313,7 @@ speedify_start_external_saved() {
 }
 
 speedify_install_ram() {
+	local tmp_avail need_ram pkg root
 	speedify_supported || { echo 'Arquitetura nao suportada pelo Speedify.' >&2; return 3; }
 	command -v wget >/dev/null 2>&1 || { echo 'wget nao encontrado' >&2; return 3; }
 	tmp_avail="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"; [ -n "$tmp_avail" ] || tmp_avail=0
@@ -320,6 +336,7 @@ speedify_install_ram() {
 }
 
 speedify_install_auto_safe() {
+	local overlay_avail tmp_avail need_internal need_ram external_path
 	speedify_supported || { echo 'Arquitetura nao suportada pelo Speedify. Requer aarch64 ou x86_64.' >&2; return 3; }
 	overlay_avail="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"; [ -n "$overlay_avail" ] || overlay_avail=0
 	tmp_avail="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"; [ -n "$tmp_avail" ] || tmp_avail=0
@@ -342,6 +359,7 @@ speedify_install_auto_safe() {
 }
 
 speedify_clean_runtime_network() {
+	local tunnel_dev d z fwd src dest
 	tunnel_dev="$(speedify_tunnel_device 2>/dev/null || echo connectify0)"
 	if uci -q get network.speedify >/dev/null 2>&1; then
 		ifdown speedify >/dev/null 2>&1 || true
@@ -371,6 +389,7 @@ speedify_clean_runtime_network() {
 }
 
 speedify_prepare_runtime_network() {
+	local tunnel_dev zone
 	tunnel_dev="$(speedify_tunnel_device)"
 	uci -q set network.speedify=interface
 	uci -q set network.speedify.proto=none
@@ -421,6 +440,7 @@ EOI
 }
 
 speedify_auto_prepare_wan2() {
+	local count
 	[ -n "$(uci -q get network.wan2.proto)" ] && return 0
 	[ -e /sys/class/net/lan1 ] || { echo 'WAN2 nao configurada e porta LAN1 nao encontrada.' >&2; return 3; }
 	count="$(lan_bridge_port_count)"
@@ -440,6 +460,7 @@ speedify_auto_prepare_wan2() {
 }
 
 speedify_prepare_wans() {
+	local wan_count wan_index iface proto cur_m metric cur_ipv6 zone
 	speedify_supported || { echo 'Este roteador nao esta em arquitetura Speedify suportada.' >&2; return 3; }
 	[ -n "$(uci -q get network.wan.proto)" ] || { echo 'WAN1 nao configurada.' >&2; return 3; }
 	ez_backup >/dev/null || { echo 'Falha ao criar backup antes da preparacao Speedify.' >&2; return 3; }
@@ -491,6 +512,8 @@ speedify_prepare_wans() {
 }
 
 speedify_status_json() {
+	local cli runtime present luci supported prepared mode saved autostart desired bonding_mode last_autostart
+	local state version adapters settings runtime_mode tunnel_ip user_email user_masked licensed logged user_out bytes_available
 	cli="$(speedify_cli_path)"
 	runtime=false; speedify_runtime_running && runtime=true
 	present=false; ([ -x "$cli" ] || installed speedify) && present=true
@@ -529,6 +552,7 @@ speedify_status_json() {
 }
 
 speedify_cli_action() {
+	local cli rc
 	cli="$(speedify_cli_path)"
 	[ -n "$cli" ] || { echo 'Speedify CLI nao encontrado. Instale e faca login no Speedify primeiro.' >&2; return 3; }
 	case "$1" in
@@ -543,6 +567,7 @@ speedify_cli_action() {
 }
 
 speedify_wait_tunnel() {
+	local dev _wait
 	dev="$(speedify_tunnel_device)"
 	for _wait in 1 2 3 4 5 6 7 8 9 10; do
 		ip link show "$dev" >/dev/null 2>&1 && ip -4 addr show "$dev" | grep -q 'inet ' && return 0
@@ -552,6 +577,7 @@ speedify_wait_tunnel() {
 }
 
 speedify_route_ok() {
+	local dev
 	dev="$(speedify_tunnel_device)"
 	[ -n "$dev" ] || return 1
 	ip -4 route get 1.1.1.1 2>/dev/null | grep -q "dev $dev" || return 1
@@ -559,6 +585,7 @@ speedify_route_ok() {
 }
 
 speedify_wait_route() {
+	local _route_wait
 	# O endereco do tunel costuma aparecer antes da rota padrao e do DNS.
 	for _route_wait in 1 2 3 4 5 6 7 8 9 10; do
 		speedify_route_ok && return 0
@@ -583,6 +610,7 @@ speedify_pause_mwan3() {
 }
 
 speedify_restore_mwan3() {
+	local saved previous
 	[ -x /etc/init.d/mwan3 ] || return 0
 	saved="$(uci -q get equipe_dashboard.speedify.mwan3_state_saved || printf 0)"
 	previous="$(uci -q get equipe_dashboard.speedify.mwan3_previous || printf 0)"
@@ -595,6 +623,7 @@ speedify_restore_mwan3() {
 }
 
 speedify_configure_downstream_subnets() {
+	local cli args iface status mask net prefix
 	cli="$1"
 	args=""
 	for iface in lan guest; do
@@ -610,6 +639,7 @@ speedify_configure_downstream_subnets() {
 }
 
 speedify_safe_connect() {
+	local cli
 	cli="$1"
 	[ -n "$cli" ] || return 3
 	speedify_pause_mwan3
@@ -633,6 +663,7 @@ speedify_safe_connect() {
 }
 
 speedify_watchdog() {
+	local cli fails _watch
 	# Monitora a primeira janela apos a troca de rota; em falha, faz rollback.
 	cli="$(speedify_cli_path)"
 	fails=0
@@ -651,6 +682,7 @@ speedify_watchdog() {
 }
 
 speedify_safe_disconnect() {
+	local cli iface proto
 	cli="$1"
 	if [ -n "$cli" ] && speedify_runtime_running; then
 		ark_run_limited 5 "$cli" disconnect >/dev/null 2>&1 || true
@@ -672,6 +704,7 @@ speedify_safe_disconnect() {
 }
 
 speedify_stop_runtime() {
+	local cli pid
 	cli="$1"
 	if [ -n "$cli" ] && speedify_runtime_running; then
 		speedify_safe_disconnect "$cli"
@@ -710,6 +743,7 @@ speedify_start_ui_helper() {
 speedify_adapter_valid() { printf '%s' "$1" | grep -Eq '^[A-Za-z0-9_.:-]{1,32}$'; }
 
 speedify_mask_email() {
+	local email localpart domain first
 	email="$1"
 	case "$email" in
 		*@*)
@@ -722,6 +756,7 @@ speedify_mask_email() {
 }
 
 speedify_pairing_json() {
+	local cli out code url
 	cli="$(speedify_cli_path)"
 	[ -n "$cli" ] || { echo 'Speedify CLI nao encontrado. Inicie o Speedify primeiro.' >&2; return 3; }
 	out="$("$cli" activationcode 2>/tmp/ark-speedify-activation.log)" || { cat /tmp/ark-speedify-activation.log >&2; return 1; }
@@ -732,6 +767,7 @@ speedify_pairing_json() {
 }
 
 speedify_user_json() {
+	local cli out email bytes_available payment is_team logged licensed
 	cli="$(speedify_cli_path)"
 	[ -n "$cli" ] || { echo 'Speedify CLI nao encontrado. Inicie o Speedify primeiro.' >&2; return 3; }
 	out="$("$cli" show user 2>/tmp/ark-speedify-user.log)" || { cat /tmp/ark-speedify-user.log >&2; return 1; }
@@ -760,6 +796,7 @@ speedify_autostart_set() {
 }
 
 speedify_recover_runtime() {
+	local cli mode
 	speedify_supported || { echo unsupported >/tmp/ark-speedify-autostart.status; return 1; }
 	echo running >/tmp/ark-speedify-autostart.status
 	ping -c 1 -W 1 1.1.1.1 >/dev/null 2>&1 || ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1 || true
@@ -789,6 +826,7 @@ speedify_recover_runtime() {
 }
 
 speedify_power_set() {
+	local cli user_out bytes_avail user_email
 	if ark_is_satellite_or_ap; then
 		echo "O Speedify atua no agrupamento de links de operadora e deve ser executado exclusivamente no Roteador Mestre." >&2
 		return 2
@@ -840,6 +878,7 @@ speedify_autostart_run() {
 }
 
 speedify_cli_path() {
+	local p
 	if [ -x /usr/share/speedify/speedify_cli ]; then printf /usr/share/speedify/speedify_cli; return 0; fi
 	if [ -x /etc/ark-router/speedify-cli ]; then printf /etc/ark-router/speedify-cli; return 0; fi
 	if [ -x /tmp/ark-speedify-cli ]; then printf /tmp/ark-speedify-cli; return 0; fi
@@ -863,6 +902,7 @@ speedify_supported() {
 }
 
 speedify_external_target() {
+	local need mp avail
 	need="$(uci -q get equipe_dashboard.speedify.min_internal_kb || printf '%s' "${ARK_SPEEDIFY_INTERNAL_MIN_KB:-22000}")"
 	for mp in /opt /mnt/sda1 /mnt/usb /mnt/sdb1 /mnt/mmcblk0p1; do
 		[ -d "$mp" ] || continue
@@ -874,6 +914,7 @@ speedify_external_target() {
 }
 
 speedify_storage_json() {
+	local overlay_avail overlay_total tmp_avail tmp_total need_internal need_ram internal ram external external_path recommend
 	overlay_avail="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"
 	overlay_total="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $2}')"
 	tmp_avail="$(df -k /tmp 2>/dev/null | awk 'NR==2{print $4}')"
@@ -896,6 +937,7 @@ speedify_storage_json() {
 }
 
 speedify_state_value() {
+	local cli out state
 	speedify_runtime_running || { printf STOPPED; return 0; }
 	cli="$(speedify_cli_path)"
 	[ -n "$cli" ] || { printf unavailable; return 0; }
@@ -905,6 +947,7 @@ speedify_state_value() {
 }
 
 speedify_uninstall() {
+	local cli ext_target
 	# 1. Parar daemons, watchdog e conexoes
 	cli="$(speedify_cli_path)"
 	speedify_stop_runtime "$cli"

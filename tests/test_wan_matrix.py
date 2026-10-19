@@ -915,8 +915,350 @@ config wifi-iface 'default_radio1'
         wifi_check_ok = next((c for c in data_ok.get("checks", []) if "Estabilidade Wi-Fi Mobile" in c.get("name", "")), None)
         self.assertEqual(wifi_check_ok.get("status"), "OK")
 
+    def test_27_dmz_set_and_cross_module_primitives(self):
+        """Verifica se dmz-set e dmz-status funcionam sem erro de funcao ausente entre modulos (same_managed_subnet / find_dhcp_host)"""
+        # IP fora da LAN (192.168.73.1/24) deve ser rejeitado com codigo 2
+        res_bad = self.sb.run_control("dmz-set", "1", "192.168.99.50", "AA:BB:CC:DD:EE:FF", "PS5")
+        self.assertEqual(res_bad.returncode, 2)
+
+        # IP dentro da LAN deve configurar redirect DMZ e reserva DHCP sem erro
+        res_ok = self.sb.run_control("dmz-set", "1", "192.168.73.50", "AA:BB:CC:DD:EE:FF", "PS5")
+        self.assertEqual(res_ok.returncode, 0, f"Erro em dmz-set: {res_ok.stderr}")
+        self.assertEqual(self.sb.uci_get("firewall.ark_dmz.dest_ip"), "192.168.73.50")
+
+        res_status = self.sb.run_control("dmz-status")
+        self.assertEqual(res_status.returncode, 0, f"Erro em dmz-status: {res_status.stderr}")
+        st = json.loads(res_status.stdout)
+        self.assertTrue(st.get("enabled"))
+        self.assertEqual(st.get("dest_ip"), "192.168.73.50")
+        self.assertEqual(st.get("mac"), "AA:BB:CC:DD:EE:FF")
+        self.assertEqual(st.get("name"), "PS5")
+
+    def test_28_device_bandwidth_limits_burst_and_ipv6(self):
+        """[B1] Verifica se o limitador por dispositivo gera burst proporcional (3x) e regras IPv4 + IPv6 + MAC no nftables"""
+        # Simula vizinho IPv6 GUA para o MAC aa:bb:cc:dd:ee:55 no wrapper 'ip'
+        ip_wrapper = os.path.join(self.sb.bin_dir, "ip")
+        with open(ip_wrapper, "w") as f:
+            f.write("""#!/bin/sh
+if [ "$1" = "-6" ] && [ "$2" = "neigh" ]; then
+    echo "2804:14d:1:2::55 dev br-lan lladdr aa:bb:cc:dd:ee:55 REACHABLE"
+    echo "fe80::1 dev br-lan lladdr aa:bb:cc:dd:ee:55 REACHABLE"
+    exit 0
+fi
+exit 0
+""")
+        os.chmod(ip_wrapper, 0o755)
+
+        res = self.sb.run_control(
+            "device-save",
+            "AA:BB:CC:DD:EE:55",
+            "SmartTV-Sala",
+            "reserved",
+            "192.168.73.55",
+            "0",
+            "AF41",
+            "default",
+            "1",
+            "100",
+            "50",
+            "default",
+            "0",
+            "0",
+            "",
+            "1",
+            "1",
+            "",
+            "0"
+        )
+        self.assertEqual(res.returncode, 0, f"Falha em device-save: {res.stderr}")
+
+        nft_file = os.path.join(self.sb.temp_dir, "etc", "ark", "ark_device_limits.nft")
+        self.assertTrue(os.path.isfile(nft_file), "Arquivo ark_device_limits.nft nao foi gerado!")
+        with open(nft_file, "r") as f:
+            nft_content = f.read()
+
+        # Verifica conversao 100 Mbps -> 12500 kbytes/s com burst proporcional de 250ms (3125 kbytes) e 50 Mbps -> 6250 kbytes/s (burst 1562 kbytes)
+        self.assertIn("limit rate over 12500 kbytes/second burst 3125 kbytes drop", nft_content)
+        self.assertIn("limit rate over 6250 kbytes/second burst 1562 kbytes drop", nft_content)
+        # Verifica IPv4 + IPv6 GUA (ignorando fe80::) + MAC
+        self.assertIn("ip daddr 192.168.73.55", nft_content)
+        self.assertIn("ip6 daddr 2804:14d:1:2::55", nft_content)
+        self.assertNotIn("fe80::1", nft_content)
+        self.assertIn("ether saddr aa:bb:cc:dd:ee:55", nft_content)
+
+    def test_29_sqm_layer_cake_and_dscp_wash(self):
+        """[B2] Verifica se ensure_sqm_section / sqm-save aplica layer_cake.qos, squash_dscp=1, squash_ingress=1 e wash"""
+        res = self.sb.run_control(
+            "sqm-save",
+            "wan1_enabled=1",
+            "wan1_download=300000",
+            "wan1_upload=150000",
+            "guest_download=20000",
+            "guest_upload=10000"
+        )
+        self.assertEqual(res.returncode, 0, f"Falha em sqm-save: {res.stderr}")
+        self.assertEqual(self.sb.uci_get("sqm.wan1.script"), "layer_cake.qos")
+        self.assertEqual(self.sb.uci_get("sqm.wan1.squash_dscp"), "1")
+        self.assertEqual(self.sb.uci_get("sqm.wan1.squash_ingress"), "1")
+        eq_opts = self.sb.uci_get("sqm.wan1.eqdisc_opts") or ""
+        self.assertIn("wash", eq_opts)
+        self.assertEqual(self.sb.uci_get("qos_equipe.guest.download_kbps"), "20000")
+        self.assertEqual(self.sb.uci_get("qos_equipe.guest.upload_kbps"), "10000")
+
+    def test_30_adblock_dot_853_reject_lifecycle(self):
+        """[B3] Verifica se o DNS Intercept cria e remove a regra ark_dot_reject (TCP/UDP 853 REJECT) no firewall"""
+        res_on = self.sb.run_control(
+            "adblock-configure",
+            "cloud", "64", "1", "0", "0", "adguard_dns", "25000", "3000", "1", "", "", "", "1"
+        )
+        self.assertEqual(res_on.returncode, 0, f"Falha ao ativar adblock-configure: {res_on.stderr}")
+        self.assertEqual(self.sb.uci_get("firewall.ark_dot_reject.target"), "REJECT")
+        self.assertEqual(self.sb.uci_get("firewall.ark_dot_reject.dest_port"), "853")
+        self.assertEqual(self.sb.uci_get("firewall.ark_dot_reject.proto"), "tcp udp")
+        self.assertEqual(self.sb.uci_get("firewall.ark_dot_reject.enabled"), "1")
+
+        res_off = self.sb.run_control(
+            "adblock-configure",
+            "cloud", "64", "1", "0", "0", "adguard_dns", "25000", "3000", "1", "", "", "", "0"
+        )
+        self.assertEqual(res_off.returncode, 0, f"Falha ao desativar dns_intercept: {res_off.stderr}")
+        self.assertIsNone(self.sb.uci_get("firewall.ark_dot_reject"))
+
+    def test_31_pppoe_vlan_parent_1508_and_dhcp_transition_cleanup(self):
+        """[B4] Verifica propagacao Baby Jumbo 1508 em VLAN 802.1Q + porta pai e limpeza automatica ao mudar para DHCP/IPoE"""
+        # Cria sysfs simulado para eth1.10
+        vlan_dir = os.path.join(self.sb.sys_net, "eth1.10")
+        os.makedirs(vlan_dir, exist_ok=True)
+        with open(os.path.join(vlan_dir, "mtu"), "w") as f:
+            f.write("1500\n")
+
+        self.sb.uci_set("network.wan.device=eth1.10")
+        self.sb.uci_set("network.wan.proto=pppoe")
+
+        # 1. Ativa Baby Jumbo 1508 na WAN com VLAN eth1.10
+        res_bj = self.sb.run_control("wan-optimize-set", "iface=wan", "baby_jumbo=1")
+        self.assertEqual(res_bj.returncode, 0, f"Falha em wan-optimize-set: {res_bj.stderr}")
+
+        with open(os.path.join(self.sb.sys_net, "eth1", "mtu")) as f:
+            self.assertEqual(f.read().strip(), "1508", "Porta fisica pai eth1 nao recebeu MTU 1508!")
+        with open(os.path.join(self.sb.sys_net, "eth1.10", "mtu")) as f:
+            self.assertEqual(f.read().strip(), "1508", "Sub-interface VLAN eth1.10 nao recebeu MTU 1508!")
+
+        # 2. Muda WAN e WAN2 para DHCP (IPoE) e verifica limpeza de 1508 -> 1500 e ra_mtu=1500
+        res_dhcp1 = self.sb.run_control("wan-save", "iface=wan", "proto=dhcp", "device=eth1.10", "metric=10")
+        self.assertEqual(res_dhcp1.returncode, 0, f"Falha em wan-save (wan->dhcp): {res_dhcp1.stderr}")
+        res_dhcp2 = self.sb.run_control("wan-save", "iface=wan2", "proto=dhcp", "device=lan4", "metric=20")
+        self.assertEqual(res_dhcp2.returncode, 0, f"Falha em wan-save (wan2->dhcp): {res_dhcp2.stderr}")
+
+        self.assertIsNone(self.sb.uci_get("network.wan.device_mtu"))
+        self.assertIsNone(self.sb.uci_get("network.wan2.device_mtu"))
+        with open(os.path.join(self.sb.sys_net, "eth1", "mtu")) as f:
+            self.assertEqual(f.read().strip(), "1500", "Porta pai eth1 nao reverteu para 1500 ao mudar para DHCP!")
+        with open(os.path.join(self.sb.sys_net, "eth1.10", "mtu")) as f:
+            self.assertEqual(f.read().strip(), "1500", "VLAN eth1.10 nao reverteu para 1500 ao mudar para DHCP!")
+        self.assertEqual(self.sb.uci_get("dhcp.lan.ra_mtu"), "1500")
+
+    def test_32_qsdk_sqm_no_split_gso_and_ecm_coordination_and_464xlat_doctor(self):
+        """[T7-1/4] Valida isolamento estrito QSDK de no-split-gso + qca-nss-ecm e higienizacao 464xlat no Ark Doctor"""
+        # 1. Em OpenWrt padrao (sem QSDK ECM), no-split-gso NAO deve ser adicionado
+        self.sb.run_sh("uci -q delete sqm.wan1.eqdisc_opts && uci commit sqm")
+        res_std = self.sb.run_control("sqm-save-v2", "wan=wan1|wan|pppoe-wan|1|300000|150000|ethernet|44")
+        self.assertEqual(res_std.returncode, 0, f"Falha em sqm-save-v2 padrao: {res_std.stderr}")
+        eq_std = self.sb.uci_get("sqm.wan1.eqdisc_opts") or ""
+        self.assertNotIn("no-split-gso", eq_std, "no-split-gso nao deve ser injetado em kernel OpenWrt padrao (mac80211/mt76)!")
+
+        # 2. Simula ambiente Qualcomm QSDK Kernel 5.4 + qca-nss-ecm (/sys/kernel/debug/ecm)
+        ecm_dir = os.path.join(self.sb.temp_dir, "sys", "kernel", "debug", "ecm")
+        ecm_db_dir = os.path.join(ecm_dir, "ecm_db")
+        os.makedirs(ecm_db_dir, exist_ok=True)
+        for fn in ("front_end_ipv4_stop", "front_end_ipv6_stop"):
+            with open(os.path.join(ecm_dir, fn), "w") as f:
+                f.write("0\n")
+        with open(os.path.join(ecm_db_dir, "defunct_all"), "w") as f:
+            f.write("0\n")
+
+        res_qsdk = self.sb.run_control("sqm-save-v2", "wan=wan1|wan|pppoe-wan|1|300000|150000|ethernet|44")
+        self.assertEqual(res_qsdk.returncode, 0, f"Falha em sqm-save-v2 QSDK: {res_qsdk.stderr}")
+        eq_qsdk = self.sb.uci_get("sqm.wan1.eqdisc_opts") or ""
+        self.assertIn("no-split-gso", eq_qsdk, "no-split-gso obrigatorio no QSDK para evitar drop -EPROTONOSUPPORT em 0x8864!")
+        with open(os.path.join(ecm_dir, "front_end_ipv4_stop")) as f:
+            self.assertEqual(f.read().strip(), "1", "qca-nss-ecm front_end_ipv4_stop deve ser 1 com SQM ativo!")
+
+        # Desativa SQM e valida restauracao do ECM
+        res_off = self.sb.run_control("sqm-toggle", "0")
+        self.assertEqual(res_off.returncode, 0)
+        with open(os.path.join(ecm_dir, "front_end_ipv4_stop")) as f:
+            self.assertEqual(f.read().strip(), "0", "qca-nss-ecm front_end_ipv4_stop deve voltar a 0 com SQM inativo!")
+
+        # 3. Injetar interface 464xlat orfa em roteador PPPoE Dual-Stack e validar Ark Doctor
+        self.sb.uci_set("network.wan6_xlat=interface")
+        self.sb.uci_set("network.wan6_xlat.proto=464xlat")
+        res_doc = self.sb.run_control("doctor-run")
+        self.assertEqual(res_doc.returncode, 0)
+        doc_json = json.loads(res_doc.stdout)
+        xlat_checks = [c for c in doc_json.get("checks", []) if "464xlat" in c.get("name", "")]
+        self.assertEqual(len(xlat_checks), 1)
+        self.assertEqual(xlat_checks[0]["status"], "WARN")
+
+        res_fix = self.sb.run_control("doctor-fix")
+        self.assertEqual(res_fix.returncode, 0)
+        self.assertIsNone(self.sb.uci_get("network.wan6_xlat"), "Interface 464xlat orfa deveria ter sido removida pelo doctor-fix!")
+
+    def test_33_doh_https_dns_proxy_sync_and_wifi_psc37_ht40(self):
+        """[T7-2/3] Valida sincronizacao Dual-DoH (https-dns-proxy) com blindagem UCI e Wi-Fi PSC 37 + HT40"""
+        # 1. Cria binario mock executavel do https-dns-proxy no sandbox
+        sbin_dir = os.path.join(self.sb.temp_dir, "usr", "sbin")
+        os.makedirs(sbin_dir, exist_ok=True)
+        doh_bin = os.path.join(sbin_dir, "https-dns-proxy")
+        with open(doh_bin, "w") as f:
+            f.write("#!/bin/sh\nexit 0\n")
+        os.chmod(doh_bin, 0o755)
+
+        res_dns = self.sb.run_control("dns-turbo-save", "1", "1.1.1.1", "8.8.8.8", "1.0.0.1", "8.8.4.4", "0", "10000")
+        self.assertEqual(res_dns.returncode, 0, f"Falha em dns-turbo-save com DoH: {res_dns.stderr}")
+
+        self.assertEqual(self.sb.uci_get("https-dns-proxy.config.dnsmasq_config_update"), "-")
+        self.assertEqual(self.sb.uci_get("https-dns-proxy.config.force_dns"), "0")
+        self.assertEqual(self.sb.uci_get("https-dns-proxy.ark_doh1.listen_port"), "5053")
+        self.assertEqual(self.sb.uci_get("https-dns-proxy.ark_doh2.listen_port"), "5054")
+        self.assertIn("cloudflare-dns.com", self.sb.uci_get("https-dns-proxy.ark_doh1.resolver_url") or "")
+        self.assertIn("dns.google", self.sb.uci_get("https-dns-proxy.ark_doh2.resolver_url") or "")
+        dnsmasq_srv = self.sb.uci_get("dhcp.@dnsmasq[0].server") or ""
+        self.assertIn("127.0.0.1#5053", dnsmasq_srv)
+        self.assertIn("127.0.0.1#5054", dnsmasq_srv)
+        self.assertEqual(self.sb.uci_get("dhcp.@dnsmasq[0].allservers"), "1")
+        self.assertEqual(self.sb.uci_get("dhcp.@dnsmasq[0].noresolv"), "1")
+
+        # 2. Testa modo Cloud AdBlock com NextDNS ID no caminho DoH
+        res_cloud = self.sb.run_control("adblock-configure", "cloud", "64", "1", "0", "0", "nextdns", "25000", "3000", "1", "", "abc123xyz", "", "1")
+        self.assertEqual(res_cloud.returncode, 0, f"Falha em adblock-configure cloud DoH: {res_cloud.stderr}")
+        self.assertEqual(self.sb.uci_get("https-dns-proxy.ark_doh1.resolver_url"), "https://dns.nextdns.io/abc123xyz")
+
+        # 3. Testa Wi-Fi 6 GHz PSC 37 em channels auto e noscan/ht_coex em wifi-width 40 MHz
+        self.sb.uci_set("wireless.radio0=wifi-device")
+        self.sb.uci_set("wireless.radio0.band=2g")
+        self.sb.uci_set("wireless.radio0.htmode=HE20")
+        self.sb.uci_set("wireless.radio1=wifi-device")
+        self.sb.uci_set("wireless.radio1.band=5g")
+        self.sb.uci_set("wireless.radio1.htmode=HE80")
+        self.sb.uci_set("wireless.radio2=wifi-device")
+        self.sb.uci_set("wireless.radio2.band=6g")
+        self.sb.uci_set("wireless.radio2.htmode=EHT320")
+        self.sb.uci_set("wireless.radio2.channel=auto")
+
+        res_ch = self.sb.run_control("channels", "auto")
+        self.assertEqual(res_ch.returncode, 0, f"Falha em channels auto: {res_ch.stderr}")
+        self.assertEqual(self.sb.uci_get("wireless.radio2.channel"), "37", "Radio 6 GHz em mac80211/mt76 deve fixar no canal PSC 37!")
+
+        res_w40 = self.sb.run_control("wifi-width", "40", "80")
+        self.assertEqual(res_w40.returncode, 0, f"Falha em wifi-width 40 80: {res_w40.stderr}")
+        self.assertEqual(self.sb.uci_get("wireless.radio0.noscan"), "1")
+        self.assertEqual(self.sb.uci_get("wireless.radio0.ht_coex"), "0")
+
+        res_w20 = self.sb.run_control("wifi-width", "20", "80")
+        self.assertEqual(res_w20.returncode, 0)
+        self.assertIsNone(self.sb.uci_get("wireless.radio0.noscan"))
+        self.assertIsNone(self.sb.uci_get("wireless.radio0.ht_coex"))
+
+    def test_34_transactional_mutation_lock_and_ghost_recovery(self):
+        """
+        Valida o Coordenador Transacional (Anti-Concorrência e Auto-Cura de Ghost Lock):
+        1. Ações somente-leitura (dns-turbo-status, adblock-status) rodam livres sem lock residual.
+        2. Um ghost lock simulado (PID inexistente 999999 ou timestamp expirado) é auto-removido
+           instantaneamente na próxima mutação sem travar o roteador.
+        3. O cache /tmp/ark_dashboard_cache.json é invalidado ao final de cada mutação.
+        """
+        lock_dir = os.path.join(self.sb.temp_dir, "tmp", "ark_mutation.lock")
+        cache_file = os.path.join(self.sb.temp_dir, "tmp", "ark_dashboard_cache.json")
+
+        # 1. Simula um Ghost Lock deixado por processo morto (PID 999999) + cache antigo
+        os.makedirs(lock_dir, exist_ok=True)
+        with open(os.path.join(lock_dir, "pid"), "w") as f:
+            f.write("999999\n")
+        with open(os.path.join(lock_dir, "ts"), "w") as f:
+            f.write("1000000\n")
+        with open(cache_file, "w") as f:
+            f.write('{"stale":true}\n')
+
+        # 2. Chamadas read-only não devem falhar mesmo com ghost lock presente
+        res_ro = self.sb.run_control("dns-turbo-status")
+        self.assertEqual(res_ro.returncode, 0)
+
+        # 3. Chamada mutante deve detectar o PID morto, limpar o ghost lock, executar,
+        # remover o lock ao sair e invalidar o cache obsoleto
+        res_mut = self.sb.run_control("sqm-toggle", "0")
+        self.assertEqual(res_mut.returncode, 0, f"Mutação falhou ao recuperar ghost lock: {res_mut.stderr}")
+        self.assertFalse(os.path.exists(lock_dir), "O diretório ark_mutation.lock deve ser removido após a conclusão!")
+        self.assertFalse(os.path.exists(cache_file), "O cache ark_dashboard_cache.json deve ser invalidado após mutação!")
+
+    def test_35_ksmbd_and_wol_optional_features_and_safety_guards(self):
+        """
+        Valida o ecossistema KSMBD (Servidor de Arquivos USB SMB 3.1.1) e Wake-on-LAN (etherwake):
+        1. ksmbd e wol aparecem no payload de features como opcionais e instaláveis.
+        2. Blindagem Anti-MTD/UBI/Rootfs bloqueia imediatamente qualquer tentativa de tocar em /dev/mtdblock* ou /dev/ubi*.
+        3. Formatação/montagem de partição USB válida (/dev/sda1) sincroniza shares no /etc/config/ksmbd.
+        4. Cadastro de contas SMB, permissões (RW/RO), zonas de rede + firewall e Keepalive funcionam.
+        5. Wake-on-LAN lista dispositivos, salva/remove favoritos e valida estritamente o endereço MAC.
+        """
+        # 1. Verifica presença no catálogo features
+        res_feat = self.sb.run_control("features")
+        self.assertEqual(res_feat.returncode, 0, f"Falha em features: {res_feat.stderr}")
+        feat_data = json.loads(res_feat.stdout).get("features", {})
+        self.assertIn("ksmbd", feat_data)
+        self.assertIn("wol", feat_data)
+        self.assertEqual(feat_data["ksmbd"].get("package"), "ksmbd-server")
+        self.assertEqual(feat_data["wol"].get("package"), "etherwake")
+
+        # 2. Blindagem Anti-MTD/UBI/Rootfs no ksmbd-disk-action
+        res_mtd = self.sb.run_control("ksmbd-disk-action", "format", "/dev/mtdblock5", "ext4", "BRICK")
+        self.assertNotEqual(res_mtd.returncode, 0, "Format em /dev/mtdblock5 DEVE ser bloqueado!")
+        self.assertIn("BLOQUEIO DE SEGURANCA", res_mtd.stderr)
+
+        res_ubi = self.sb.run_control("ksmbd-disk-action", "umount", "/dev/ubi0_1")
+        self.assertNotEqual(res_ubi.returncode, 0, "Umount em /dev/ubi0_1 DEVE ser bloqueado!")
+
+        # 3. Operação em partição USB válida (/dev/sda1)
+        res_usb = self.sb.run_control("ksmbd-disk-action", "format", "/dev/sda1", "exfat", "ARK_NAS")
+        self.assertEqual(res_usb.returncode, 0, f"Falha ao formatar /dev/sda1 no sandbox: {res_usb.stderr}")
+        st_usb = json.loads(res_usb.stdout)
+        self.assertTrue(any(d.get("name") == "sda1" for d in st_usb.get("disks", [])))
+
+        # 4. Contas SMB, permissões e zonas de rede + firewall
+        res_usr = self.sb.run_control("ksmbd-user-action", "add", "familia", "SenhaForte123", "rw")
+        self.assertEqual(res_usr.returncode, 0)
+        res_perm = self.sb.run_control("ksmbd-user-action", "permission", "familia", "ro")
+        self.assertEqual(res_perm.returncode, 0)
+        st_perm = json.loads(res_perm.stdout)
+        users_map = {u["username"]: u["permission"] for u in st_perm.get("users", [])}
+        self.assertEqual(users_map.get("familia"), "ro")
+
+        res_if = self.sb.run_control("ksmbd-interface-access", "guest", "1")
+        self.assertEqual(res_if.returncode, 0)
+        self.assertEqual(self.sb.uci_get("firewall.ark_ksmbd_guest.target"), "ACCEPT")
+
+        res_ka = self.sb.run_control("ksmbd-control", "keepalive_on")
+        self.assertEqual(res_ka.returncode, 0)
+        self.assertTrue(json.loads(res_ka.stdout).get("keepalive"))
+
+        # 5. Wake-on-LAN: favoritos, validação de MAC e disparo
+        res_wol_bad = self.sb.run_control("wol-wake", "INVALID_MAC;rm -rf /")
+        self.assertNotEqual(res_wol_bad.returncode, 0, "MAC inválido deve ser rejeitado!")
+
+        res_wol_fav = self.sb.run_control("wol-target-save", "AA:BB:CC:11:22:33", "PC Gamer RTX", "192.168.1.50", "br-lan")
+        self.assertEqual(res_wol_fav.returncode, 0, f"Falha em wol-target-save: {res_wol_fav.stderr}")
+        st_wol = json.loads(res_wol_fav.stdout)
+        fav_devs = [d for d in st_wol.get("devices", []) if d.get("mac") == "AA:BB:CC:11:22:33"]
+        self.assertEqual(len(fav_devs), 1)
+        self.assertTrue(fav_devs[0].get("favorite"))
+        self.assertEqual(fav_devs[0].get("name"), "PC Gamer RTX")
+
+        res_wol_wake = self.sb.run_control("wol-wake", "AA:BB:CC:11:22:33", "br-lan")
+        self.assertEqual(res_wol_wake.returncode, 0, f"Falha em wol-wake: {res_wol_wake.stderr}")
+        self.assertEqual(json.loads(res_wol_wake.stdout).get("status"), "ok")
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
 
 
 

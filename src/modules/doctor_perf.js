@@ -333,7 +333,76 @@ const doctorPerfMethods = {
 				])
 			]);
 
+			const toggleDohAction = function(enableVal, ev) {
+				const btn = ev.currentTarget;
+				btn.disabled = true;
+				btn.textContent = enableVal === '1'
+					? (status.doh_installed ? 'Ativando Dual-DoH…' : 'Instalando e ativando Dual-DoH…')
+					: 'Desativando Dual-DoH…';
+				return fs.exec('/usr/sbin/equipe-dashboard-control', ['dns-turbo-doh', enableVal]).then(function(r) {
+					if (r.code) throw new Error(r.stderr || 'Falha ao alternar Dual-DoH');
+					ui.addNotification(null, E('p', {}, [
+						enableVal === '1'
+							? '🔒 Transporte Criptografado Dual-DoH (127.0.0.1:5053 & :5054) instalado e ativado com sucesso!'
+							: '⚡ Dual-DoH desativado. DNS operando em disparo UDP/TCP paralelo direto.'
+					]));
+					return self.openDnsTurboModal();
+				}).catch(function(e) {
+					btn.disabled = false;
+					btn.textContent = enableVal === '1' ? '🔒 Instalar e Ativar Dual-DoH' : 'Desativar DoH';
+					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+				});
+			};
+
+			const dohBanner = status.doh_active ? E('div', {
+				class: 'alert-message success',
+				style: 'margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border-radius: 8px; line-height: 1.45;'
+			}, [
+				E('div', { style: 'flex: 1 1 auto; min-width: 0;' }, [
+					E('strong', { style: 'display: block; margin-bottom: 4px;' }, ['🔒 Dual-DoH Criptografado Ativo (https-dns-proxy HTTP/2 RFC 8484)']),
+					E('span', { style: 'font-size: 0.83rem;' }, [
+						'Suas consultas DNS estão saindo 100% criptografadas em TLS 1.3 com conexões HTTP/2 persistentes (127.0.0.1:5053 & :5054) e blindagem UCI ativa (dnsmasq_config_update="-").'
+					])
+				]),
+				E('button', {
+					type: 'button',
+					class: 'btn cbi-button cbi-button-neutral',
+					style: 'flex: 0 0 auto; white-space: nowrap;',
+					click: function(ev) { return toggleDohAction('0', ev); }
+				}, ['Desativar DoH'])
+			]) : (!hasDnsBlocker ? E('div', {
+				class: 'alert-message info',
+				style: 'margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 8px; line-height: 1.45;'
+			}, [
+				E('div', { style: 'flex: 1 1 auto; min-width: 0; font-size: 0.82rem;' }, [
+					E('strong', {}, [status.doh_installed ? '⚡ Modo DNS Paralelo UDP/TCP Direto (Dual-DoH Instalado): ' : '⚡ Modo DNS Paralelo UDP/TCP Direto: ']),
+					status.doh_installed
+						? 'O pacote https-dns-proxy já está instalado. Clique ao lado para ativar o túnel criptografado Dual-DoH (127.0.0.1:5053 & :5054).'
+						: 'Disparo simultâneo de 0ms via dnsmasq. Clique ao lado para baixar e ativar automaticamente o túnel criptografado Dual-DoH (https-dns-proxy HTTP/2 TLS 1.3).'
+				]),
+				E('button', {
+					type: 'button',
+					class: 'btn cbi-button cbi-button-positive',
+					style: 'flex: 0 0 auto; white-space: nowrap;',
+					click: function(ev) { return toggleDohAction('1', ev); }
+				}, [status.doh_installed ? '🔒 Ativar Dual-DoH Agora' : '🔒 Instalar e Ativar Dual-DoH'])
+			]) : '');
+
+			const fallbackWarn = E('div', {
+				class: 'alert-message warning',
+				style: 'margin-top: 8px; font-size: 0.8rem; line-height: 1.45; display: ' + (fallbackToggle.checked ? 'block' : 'none') + ';'
+			}, [
+				E('div', { style: 'width: 100%;' }, [
+					E('strong', {}, ['⚠️ Aviso de Compatibilidade com Filtros/AdBlock: ']),
+					'Ao enviar 1.1.1.1 diretamente via DHCP Option 6 aos aparelhos, celulares e Smart TVs poderão consultar 1.1.1.1 por fora do cache e da Lista Negra do roteador (a menos que a Interceptação de Porta 53 esteja ativa no Bloqueador). Para filtragem estrita, mantenha desligado.'
+				])
+			]);
+			fallbackToggle.addEventListener('change', function() {
+				fallbackWarn.style.display = fallbackToggle.checked ? 'block' : 'none';
+			});
+
 			const content = [
+				dohBanner,
 				hasDnsBlocker ? E('div', { class: 'alert-message warning', style: 'margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px; padding: 12px; border-radius: 6px;' }, [
 					E('span', { style: 'font-size: 1.3rem;' }, ['🛡️']),
 					E('div', {}, [
@@ -366,7 +435,8 @@ const doctorPerfMethods = {
 							fallbackToggle,
 							E('span', { class: 'ex-switch-slider' })
 						])
-					])
+					]),
+					fallbackWarn
 				]),
 				E('div', { class: 'ex-device-config-block' }, [
 					E('div', { style: 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;' }, [
@@ -1566,7 +1636,8 @@ const doctorPerfMethods = {
 
 	runDoctorFix: function(btn) {
 		const self = this;
-		if (btn) {
+		if (btn && btn.currentTarget) btn = btn.currentTarget;
+		if (btn && btn.nodeType === 1) {
 			btn.disabled = true;
 			btn.textContent = '⏳ ' + _t('Reparando…');
 		}

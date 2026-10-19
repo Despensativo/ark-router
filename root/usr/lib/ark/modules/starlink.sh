@@ -16,6 +16,7 @@ starlink_cgnat_ipv4() {
 }
 
 starlink_active_wan_get() {
+	local active cur_dev w dev
 	active="$(uci -q get equipe_dashboard.starlink.active_wan || true)"
 	if [ -z "$active" ]; then
 		cur_dev="$(ip -4 route show exact 192.168.100.1/32 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1)}' || true)"
@@ -34,6 +35,7 @@ starlink_active_wan_get() {
 }
 
 starlink_active_wan_set() {
+	local wan status_json device gateway
 	wan="$1"
 	printf '%s' "$wan" | grep -Eq '^wan([0-9]+)?$' || { echo 'WAN invalida' >&2; exit 2; }
 	[ "$(uci -q get "network.$wan")" = interface ] || { echo 'WAN nao encontrada' >&2; exit 3; }
@@ -58,6 +60,7 @@ starlink_active_wan_set() {
 }
 
 starlink_wan_port() {
+	local num
 	case "$1" in
 		wan|wan1) echo 9201 ;;
 		wan2) echo 9202 ;;
@@ -72,6 +75,7 @@ starlink_wan_port() {
 }
 
 starlink_wan_table() {
+	local num
 	case "$1" in
 		wan|wan1) echo 5101 ;;
 		wan2) echo 5102 ;;
@@ -86,6 +90,8 @@ starlink_wan_table() {
 }
 
 starlink_setup_policy_routing() {
+	local nft_file tmp_nft prerouting_rules mangle_pre_rules output_nat_rules mangle_out_rules network_section status_json device gateway port table
+	local mark rule_prio
 	sysctl -w net.ipv4.conf.all.route_localnet=1 >/dev/null 2>&1 || true
 	sysctl -w net.ipv4.conf.default.route_localnet=1 >/dev/null 2>&1 || true
 
@@ -144,6 +150,7 @@ starlink_setup_policy_routing() {
 }
 
 starlink_public_list_json() {
+	local active_wan first network_section status_json up ipaddr gateway dns device port likely cgnat_ip
 	starlink_setup_policy_routing
 	active_wan="$(starlink_active_wan_get)"
 	printf '{"ok":true,"enabled":true,"active_wan":"%s","wans":[' "$(json_escape "$active_wan")"

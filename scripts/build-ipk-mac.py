@@ -49,6 +49,7 @@ rm -f /tmp/luci-indexcache 2>/dev/null || true
 rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 [ -x /etc/init.d/equipe-traffic-history ] && /etc/init.d/equipe-traffic-history enable >/dev/null 2>&1 || true
 [ -x /etc/init.d/equipe-traffic-history ] && /etc/init.d/equipe-traffic-history restart >/dev/null 2>&1 || true
+[ -x /usr/sbin/equipe-dashboard-control ] && /usr/sbin/equipe-dashboard-control feature-enforce-policies >/dev/null 2>&1 || true
 [ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
 [ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
 exit 0

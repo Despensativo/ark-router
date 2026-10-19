@@ -1,35 +1,87 @@
 #!/bin/sh
 # /etc/hotplug.d/iface/05-ark-pppoe-babyjumbo
-# ARK Router — Auto-enforcement condicional de MTU 1500 para PPPoE (RFC 4638)
-# Disparado automaticamente pelo netifd no evento ifup.
+# ARK Router — Motor Inteligente de Auto-MTU e Baby Jumbo PPPoE (RFC 4638 + Path MTU Probe)
+# Disparado automaticamente pelo netifd no evento ifup para cada WAN PPPoE (Single-WAN e Multi-WAN).
 
 [ "$ACTION" = "ifup" ] || exit 0
 [ -n "$INTERFACE" ] || exit 0
 [ -n "$DEVICE" ] || exit 0
 
-# Apenas para interfaces PPPoE
+# Isolamento estrito: atua SOMENTE em interfaces PPPoE (nunca interfere em DHCP, IPoE ou IP Fixo)
 case "$DEVICE" in
 	pppoe-*) ;;
 	*) exit 0 ;;
 esac
 
-# Trava de seguranca estrita: executa SOMENTE se a opcao Baby Jumbo estiver ATIVA para esta interface no UCI
+[ -f /usr/lib/ark/common.sh ] && . /usr/lib/ark/common.sh
+
+command -v ark_ensure_wan_mtu_fix >/dev/null 2>&1 && ark_ensure_wan_mtu_fix
+
 dev_mtu="$(uci -q get "network.$INTERFACE.device_mtu")"
 req_mtu="$(uci -q get "network.$INTERFACE.mtu")"
+wan_dev="$(uci -q get "network.$INTERFACE.device" || uci -q get "network.$INTERFACE.ifname")"
 
-# Se o usuario fixou explicitamente o MTU (ex: 1492), respeita estritamente a configuracao do usuario e nunca eleva
-if [ -n "$req_mtu" ] && [ "$req_mtu" -lt 1500 ]; then
+# Se o usuario fixou explicitamente o MTU abaixo de 1500 (ex: 1492), respeita e sincroniza ra_mtu IPv6
+if [ -n "$req_mtu" ] && [ "$req_mtu" -lt 1500 ] 2>/dev/null; then
 	ip link set "$DEVICE" mtu "$req_mtu" 2>/dev/null || true
+	rm -f "/tmp/ark-mtu-probed-$INTERFACE" 2>/dev/null || true
+	command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
 	exit 0
 fi
 
 if [ "$dev_mtu" != "1508" ] || [ "$req_mtu" != "1500" ]; then
+	command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
 	exit 0
 fi
 
-# Se Baby Jumbo estiver explicitamente ativo (mtu=1500 e device_mtu=1508)
-cur_mtu="$(cat "/sys/class/net/$DEVICE/mtu" 2>/dev/null)"
-if [ -n "$cur_mtu" ] && [ "$cur_mtu" -lt 1500 ] 2>/dev/null; then
-	ip link set "$DEVICE" mtu 1500 2>/dev/null && \
-		logger -t ark-babyjumbo "Baby Jumbo ativo para $INTERFACE: interface $DEVICE elevada para MTU 1500"
+# Garante que a porta fisica pai e a sub-interface VLAN 802.1Q estejam em 1508 para RFC 4638
+if [ -n "$wan_dev" ] && command -v ark_ensure_phys_device_mtu >/dev/null 2>&1; then
+	ark_ensure_phys_device_mtu "$wan_dev" 1508
 fi
+
+# Sondagem inteligente assincrona (nao bloqueia o netifd):
+# 1. Respeita o teto LCP negociado pelo pppd com o BRAS da operadora (nunca forca 1500 se o BRAS recusou RFC 4638 e negociou 1492).
+# 2. Valida na fibra com pacotes reais (1500 -> 1492 -> 1480 -> 1460 -> 1420) e sincroniza TCP MSS (rt mtu) + IPv6 RA MTU (ra_mtu).
+(
+	sleep 1
+	lcp_mtu="$(cat "/sys/class/net/$DEVICE/mtu" 2>/dev/null || echo 1492)"
+	case "$lcp_mtu" in ''|*[!0-9]*) lcp_mtu=1492 ;; esac
+
+	probe_target=""
+	for host in 1.1.1.1 8.8.8.8 9.9.9.9; do
+		if ping -4 -I "$DEVICE" -s 32 -c 1 -W 1 "$host" >/dev/null 2>&1; then
+			probe_target="$host"
+			break
+		fi
+	done
+
+	best_mtu="$lcp_mtu"
+	if [ -n "$probe_target" ]; then
+		found_mtu=""
+		for cand in 1500 1492 1480 1460 1420; do
+			# Nao testa acima do MRU/MTU que o BRAS da operadora aceitou no LCP
+			[ "$cand" -le "$lcp_mtu" ] || continue
+			payload=$((cand - 28))
+			if ping -4 -I "$DEVICE" -s "$payload" -c 2 -W 1 "$probe_target" >/dev/null 2>&1; then
+				found_mtu="$cand"
+				break
+			fi
+		done
+		[ -n "$found_mtu" ] && best_mtu="$found_mtu"
+	fi
+
+	printf '%s\n' "$best_mtu" > "/tmp/ark-mtu-probed-$INTERFACE" 2>/dev/null || true
+	cur_k_mtu="$(cat "/sys/class/net/$DEVICE/mtu" 2>/dev/null || echo 0)"
+	if [ "$cur_k_mtu" != "$best_mtu" ]; then
+		ip link set "$DEVICE" mtu "$best_mtu" 2>/dev/null || true
+	fi
+
+	if [ "$best_mtu" = "1500" ]; then
+		logger -t ark-babyjumbo "Auto-MTU ($INTERFACE): Baby Jumbo RFC 4638 homologado na operadora ($DEVICE em MTU 1500 real)."
+	else
+		logger -t ark-babyjumbo "Auto-MTU ($INTERFACE): Operadora limitou sessao PPPoE em ${best_mtu}B (LCP=${lcp_mtu}B). MTU e TCP MSS ajustados para ${best_mtu}B sem buraco negro."
+	fi
+
+	command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
+) >/dev/null 2>&1 &
+exit 0
