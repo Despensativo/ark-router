@@ -169,4 +169,77 @@ if [ -f /etc/adguardhome/adguardhome.yaml ]; then
 	chmod 644 /etc/adguardhome/adguardhome.yaml 2>/dev/null || true
 fi
 
+# Higienizacao pos-update: limpa flag residual adblock_cloud=1 quando os servidores atuais do dnsmasq nao sao de bloqueio em nuvem
+if [ "$(uci -q get equipe_perf.settings.adblock_cloud || printf 0)" = "1" ]; then
+	cur_dns_srv="$(uci -q get dhcp.@dnsmasq[0].server 2>/dev/null || true)"
+	case " $cur_dns_srv " in
+		*" 1.1.1.2 "*|*" 1.0.0.2 "*|*" 1.1.1.3 "*|*" 1.0.0.3 "*|*" 94.140.14."* |*" 94.140.15."* |*" 208.67.222.123 "*|*" 208.67.220.123 "*|*" 185.228.168."* ) ;;
+		*)
+			if [ -n "$cur_dns_srv" ]; then
+				uci -q set equipe_perf.settings.adblock_cloud='0'
+				uci -q delete equipe_perf.settings.adblock_profile 2>/dev/null || true
+				uci commit equipe_perf 2>/dev/null || true
+				if [ "$(uci -q get equipe_perf.settings.dns_allservers || printf 1)" = "1" ]; then
+					uci -q set dhcp.@dnsmasq[0].allservers='1'
+					uci commit dhcp 2>/dev/null || true
+				fi
+			fi
+			;;
+	esac
+fi
+
+# Higienizacao pos-update para arquiteturas legadas swconfig (ex: OpenWrt 19.07 / D-Link DGL-5500 ag71xx):
+# 1. Repara switch_vlan 2 caso tenha sido gravada com '02 0t' em vez de '5 0t'
+# 2. Remove secoes config device (eth0 / eth0.X com type=8021q) que conflitam com a VLAN implicita do switch0 no netifd
+# 3. Remove device_mtu=1508 caso o driver Ethernet do kernel (ex: ag71xx hw max 1500) rejeite Baby Jumbo
+if command -v swconfig >/dev/null 2>&1 && swconfig dev switch0 show >/dev/null 2>&1; then
+	net_fixed=0
+	for vsec in $(uci -q show network 2>/dev/null | sed -n 's/^network\.\([^.=]*\)=switch_vlan$/\1/p'); do
+		if [ "$(uci -q get "network.$vsec.vlan")" = "2" ] && [ "$(uci -q get network.autowan.wan_to_lan)" != "1" ]; then
+			vports="$(uci -q get "network.$vsec.ports" || true)"
+			case "$vports" in
+				02\ *|*02\ 0t*)
+					uci -q set "network.$vsec.ports=5 0t"
+					swconfig dev switch0 vlan 2 set ports "5 0t" >/dev/null 2>&1 || true
+					swconfig dev switch0 port 5 set pvid 2 >/dev/null 2>&1 || true
+					swconfig dev switch0 set apply >/dev/null 2>&1 || true
+					net_fixed=1
+					;;
+			esac
+		fi
+	done
+	for dsec in $(uci -q show network 2>/dev/null | sed -n 's/^network\.\([^.=]*\)=device$/\1/p'); do
+		dname="$(uci -q get "network.$dsec.name" || true)"
+		case "$dname" in
+			eth0|eth0.*)
+				uci -q delete "network.$dsec"
+				net_fixed=1
+				;;
+		esac
+	done
+	if [ -n "$(uci -q get network.wan.device)" ] && [ -n "$(uci -q get network.wan.ifname)" ]; then
+		uci -q delete network.wan.device
+		net_fixed=1
+	fi
+	if [ -d /sys/class/net/eth0 ]; then
+		orig_eth0_mtu="$(cat /sys/class/net/eth0/mtu 2>/dev/null || echo 1500)"
+		if ! ip link set eth0 mtu 1508 2>/dev/null; then
+			for w in $(uci -q show network 2>/dev/null | sed -n 's/^network\.\(wan[0-9]*\)=interface$/\1/p'); do
+				if [ "$(uci -q get "network.$w.device_mtu")" = "1508" ]; then
+					uci -q delete "network.$w.device_mtu"
+					[ "$(uci -q get "network.$w.proto")" = "pppoe" ] && uci -q set "network.$w.mtu=1492"
+					net_fixed=1
+				fi
+			done
+		else
+			[ -n "$orig_eth0_mtu" ] && ip link set eth0 mtu "$orig_eth0_mtu" 2>/dev/null || true
+		fi
+	fi
+	if [ "$net_fixed" = 1 ]; then
+		uci commit network 2>/dev/null || true
+	fi
+fi
+
+rm -f /tmp/ark-*.cache /tmp/ark-*-cache.json /tmp/ark-*-cache.ts 2>/dev/null || true
+
 exit 0

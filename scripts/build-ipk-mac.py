@@ -45,11 +45,12 @@ fi
 [ -f /etc/uci-defaults/99-ark-router-leds ] && /bin/sh /etc/uci-defaults/99-ark-router-leds >/dev/null 2>&1 || true
 [ -f /etc/uci-defaults/99-ark-router-uhttpd ] && /bin/sh /etc/uci-defaults/99-ark-router-uhttpd >/dev/null 2>&1 || true
 [ -f /etc/uci-defaults/99-ark-router-dhcp-sanitize ] && /bin/sh /etc/uci-defaults/99-ark-router-dhcp-sanitize >/dev/null 2>&1 || true
-rm -f /tmp/luci-indexcache 2>/dev/null || true
+rm -f /tmp/luci-indexcache /tmp/ark-*.cache /tmp/ark-*-cache.json /tmp/ark-*-cache.ts 2>/dev/null || true
 rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 [ -x /etc/init.d/equipe-traffic-history ] && /etc/init.d/equipe-traffic-history enable >/dev/null 2>&1 || true
 [ -x /etc/init.d/equipe-traffic-history ] && /etc/init.d/equipe-traffic-history restart >/dev/null 2>&1 || true
 [ -x /usr/sbin/equipe-dashboard-control ] && /usr/sbin/equipe-dashboard-control feature-enforce-policies >/dev/null 2>&1 || true
+[ -x /usr/sbin/ark-doctor ] && (/usr/sbin/ark-doctor --auto >/dev/null 2>&1 &) || true
 [ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
 [ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
 exit 0
