@@ -551,6 +551,20 @@ def audit_openwrt_manual_compliance():
         if "has_brlan_dev" not in doc_txt:
             errors.append("doctor.sh: Checagem IGMP Snooping deve validar has_brlan_dev para suportar bridge legada (network.lan.type='bridge') sem config device")
 
+    ez_path = os.path.join(ARK_LIB_DIR, "modules", "ezsetup.sh")
+    if os.path.isfile(ez_path):
+        with open(ez_path, "r", encoding="utf-8", errors="replace") as fh:
+            ez_txt = fh.read()
+        if "VERSION?t=" not in ez_txt:
+            errors.append("ezsetup.sh: ark_latest_release deve usar cache-buster '?t=' em raw.githubusercontent.com/.../VERSION")
+
+    sys_js_path = os.path.join(REPO_ROOT, "src", "modules", "system.js")
+    if os.path.isfile(sys_js_path):
+        with open(sys_js_path, "r", encoding="utf-8", errors="replace") as fh:
+            sys_js_txt = fh.read()
+        if "force !== false" not in sys_js_txt:
+            errors.append("src/modules/system.js: checkSelfUpdate deve passar 'force' por padrão (force !== false) em verificações manuais")
+
     return errors
 
 
