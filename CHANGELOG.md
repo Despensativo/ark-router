@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.0.1
+
+- **🛡️ Autocura Universal & Compatibilidade Multi-Geração OpenWrt (`19.07` a `25.12+`) (19/10/2026)**:
+  - **Introspecção de Topologia `/etc/board.json` (`swconfig` vs `DSA`)**: Detecção autônoma da porta física de WAN (`port 5`, `eth1`, `wan`) e da porta de CPU (`0t`/`6t`) sem sobrescrever `switch_vlan` com dígitos de `eth0.2`, mantendo `network.wan.ifname` e `network.wan.device` sincronizados e removendo seções `config device` (`type='8021q'`) conflitantes em sistemas `swconfig`.
+  - **Auto-MTU Inteligente & Blindagem L2 (`eth0.2` em `1500` + `pppoe-wan` em `1492`)**: Verificação prévia somente-leitura (`ark_dev_supports_mtu`) do teto real do driver (`maxmtu` e `ag71xx`/`fec`) antes de `ip link set`, preservando a camada L2 (`eth0`/`eth0.2`) em `1500` bytes sem resetar os anéis DMA e mantendo `pppoe-wan` em `1492` bytes quando Baby Jumbo (`1508`) não é suportado pelo silício.
+  - **Auto-Instalação de Clientes/Servidores IPv6 (`odhcp6c` + `odhcpd-ipv6only`) & Fallback IPv4 no `wget`**: Instalação automática sob demanda de `odhcp6c` e `odhcpd-ipv6only` com registro de handler `"dhcpv6"` no `netifd` e wrapper `/usr/bin/wget` (`-4`) quando a `br-lan` possui ULA IPv6 sem rota default IPv6 ativa.
+  - **Dual-DoH Universal (`19.07` + `23.05+`) & DNS Turbo sem Falsos Positivos**: Suporte simultâneo a `update_dnsmasq_config='-'` (OpenWrt 19.07) e `dnsmasq_config_update='-'` (OpenWrt 23.05+) no `https-dns-proxy`, além de verificação de processo ativo em `detect_dns_blocker()`.
+  - **Classificação em Duas Passagens de Rádios Wi-Fi (`radio0=5GHz` / `radio1=2.4GHz`) & IGMP Snooping Híbrido**: Priorização de `band`/`hwmode`/`htmode` antes do fallback por nome (`radio0`/`radio1`) no frontend e backend, e suporte tanto a `config device` (`DSA`) quanto a `network.lan.type='bridge'` (`19.07`) no Ark Doctor.
+
 ## 2.0.0
 
 - **🚀 Nova Arquitetura V2: Cockpit Executivo Status-Only & Central de Recursos (19/10/2026)**:

@@ -1,6 +1,6 @@
 # ARK Router — Índice Canônico de Documentação Técnica
 
-> **Mapa Oficial de Documentação Técnica do Projeto (v2.0.0)**
+> **Mapa Oficial de Documentação Técnica do Projeto (v2.0.1)**
 > Este índice orienta desenvolvedores e agentes de IA para as fontes canônicas de cada domínio técnico, eliminando ambiguidades e documentos concorrentes.
 
 ---

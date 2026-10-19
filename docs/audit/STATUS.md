@@ -3,12 +3,12 @@
 Atualizado em: 2026-10-19. Este resumo é o checkpoint ativo da trilha `docs/audit/`.
 
 - **Repositório**: `GitHub/luci-app-ark-router`, relativo ao workspace ARK Router.
-- **Versão declarada em `VERSION`**: `2.0.0` (sincronizada em `Makefile`, `root/usr/share/ark-router/VERSION`, `common.sh` e `CHANGELOG.md`).
+- **Versão declarada em `VERSION`**: `2.0.1` (sincronizada em `Makefile`, `root/usr/share/ark-router/VERSION`, `common.sh` e `CHANGELOG.md`).
 - **Lotes concluídos**:
   - [000 — estrutura e baseline](batches/000-bootstrap.md): estrutura documental e inventário inicial.
   - **001 — confiabilidade dos contratos, geradores, modularização e higienização (`T-003`, `T-042`, `T-043`, `T-044`)**:
     - `tests/verify_feature_contracts.py` atualizado com parser YAML *zero-dependency* nativo (eliminando o salto silencioso quando `pyyaml` está ausente), validação semântica de tipos/perfis, integridade relacional (`relations`) e suíte embutida de 7 testes negativos de esquema.
-    - `tests/feature_contracts.yaml` saneado (`version: 2.0.0`, `total_features: 74`, `canonical_repo: GitHub/luci-app-ark-router` sem caminhos absolutos de máquina, e registro de `src/modules/doctor_perf.js` e `src/core/i18n/loader.js`).
+    - `tests/feature_contracts.yaml` saneado (`version: 2.0.1`, `total_features: 74`, `canonical_repo: GitHub/luci-app-ark-router` sem caminhos absolutos de máquina, e registro de `src/modules/doctor_perf.js` e `src/core/i18n/loader.js`).
     - `scripts/generate_feature_contracts.py` protegido por trava `--force` contra sobrescrita acidental de curadoria manual.
     - `scripts/audit_docs.py` expandido para 8 travas contínuas (versão, termos descontinuados, matriz OpenWrt, contagem de contratos, orçamento `TASK.md`, paridade SHA-256 com `Firmware/sha256sums`, higienização de credenciais em `.md` + `scripts/`, e teto `< 4.000 linhas` em todos os módulos fonte).
   - **002 — Expansão do Catálogo de Contratos (`v1.5.10` a `v2.0.0`)**:

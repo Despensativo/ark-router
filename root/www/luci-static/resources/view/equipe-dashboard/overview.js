@@ -4,7 +4,7 @@
 'require poll';
 'require fs';
 'require ui';
-const ARK_BUILD_VERSION = '2.0.0';
+const ARK_BUILD_VERSION = '2.0.1';
 if (typeof window !== 'undefined') {
 	window.ARK_BUILD_VERSION = ARK_BUILD_VERSION;
 	window.ARK_VERSION = ARK_BUILD_VERSION;
@@ -22916,7 +22916,7 @@ const renderMethods = {
 			if (featureKey) el.setAttribute('data-ark-feature', featureKey);
 		});
 
-		const arkVersion = ((this.capabilities && this.capabilities.update) || {}).current || '2.0.0';
+		const arkVersion = ((this.capabilities && this.capabilities.update) || {}).current || '2.0.1';
 		const luciOverviewHref = (typeof L !== 'undefined' && typeof L.url === 'function') ? L.url('admin/status/overview') : '/cgi-bin/luci/admin/status/overview';
 
 		const mobileBarEl = E('div', {

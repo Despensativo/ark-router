@@ -1,7 +1,7 @@
 # ARK Router — Auditoria Completa, Persistência Pós-Reboot e Contratos Funcionais
 
 > **Documento Vivo Oficial**: Atualizado obrigatoriamente a cada adição, alteração, remoção ou correção funcional.
-> Versão Ativa: `2.0.0` | Repositório Canônico: `GitHub/luci-app-ark-router` | Total de Funcionalidades: `74`
+> Versão Ativa: `2.0.1` | Repositório Canônico: `GitHub/luci-app-ark-router` | Total de Funcionalidades: `74`
 
 ---
 
