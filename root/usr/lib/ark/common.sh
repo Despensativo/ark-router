@@ -449,8 +449,21 @@ detect_dns_blocker() {
 		return 0
 	fi
 	if [ "$(uci -q get equipe_perf.settings.adblock_cloud || printf 0)" = 1 ]; then
-		echo "Bloqueador em Nuvem"
-		return 0
+		local cur_dns="$(uci -q get dhcp.@dnsmasq[0].server 2>/dev/null || true)"
+		case " $cur_dns " in
+			*" 1.1.1.2 "*|*" 1.0.0.2 "*|*" 1.1.1.3 "*|*" 1.0.0.3 "*|*" 94.140.14."* |*" 94.140.15."* |*" 208.67.222.123 "*|*" 208.67.220.123 "*|*" 185.228.168."* )
+				echo "Bloqueador em Nuvem"
+				return 0
+				;;
+			*)
+				if [ -n "${ARK_ROOT:-}" ] || [ -z "$cur_dns" ]; then
+					echo "Bloqueador em Nuvem"
+					return 0
+				fi
+				uci -q set equipe_perf.settings.adblock_cloud='0'
+				uci -q commit equipe_perf 2>/dev/null || true
+				;;
+		esac
 	fi
 	if [ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome status 2>/dev/null | grep -v 'not running' | grep -q 'running'; then
 		echo "AdGuard Home"
@@ -1028,6 +1041,24 @@ ark_auto_enable_factory_wifi() {
 	return 1
 }
 
+# Verifica se o driver Ethernet do kernel suporta o MTU solicitado (ex: Baby Jumbo 1508 vs ag71xx hw max 1500)
+ark_dev_supports_mtu() {
+	local dev_name="$1"
+	local req_mtu="${2:-1508}"
+	local root_prefix="${ARK_ROOT:-}"
+	[ -n "$dev_name" ] || return 1
+	[ -n "$root_prefix" ] && return 0
+	[ "$req_mtu" -le 1500 ] 2>/dev/null && return 0
+	local base_dev="${dev_name%%.*}"
+	[ -d "/sys/class/net/$base_dev" ] || return 0
+	local orig_mtu="$(cat "/sys/class/net/$base_dev/mtu" 2>/dev/null || echo 1500)"
+	if ip link set "$base_dev" mtu "$req_mtu" 2>/dev/null; then
+		return 0
+	fi
+	[ -n "$orig_mtu" ] && ip link set "$base_dev" mtu "$orig_mtu" 2>/dev/null || true
+	return 1
+}
+
 # Consolidacao e Blindagem de MTU em secoes config device (Baby Jumbo 1508 / Padrao 1500)
 # Elimina secoes duplicadas para a mesma porta fisica (e sub-interface VLAN 802.1Q se houver) e garante aplicacao no kernel e UCI.
 _ark_set_single_device_mtu() {
@@ -1050,6 +1081,21 @@ _ark_set_single_device_mtu() {
 			[ -n "$m" ] && [ -z "$mac_to_keep" ] && mac_to_keep="$m"
 		fi
 	done
+
+	# Em OpenWrt legado swconfig (ex: 19.07 ag71xx), secoes config device com type=8021q para eth0/eth0.X
+	# conflitam com a VLAN implicita do switch0 no netifd e impedem o pppd de subir.
+	if [ -z "$root_prefix" ] && is_swconfig; then
+		case "$dev_name" in
+			eth0|eth0.*)
+				for s in $matched_sections; do
+					$uci_cmd delete "network.$s"
+				done
+				uci commit network 2>/dev/null || true
+				ip link set "$dev_name" mtu "$target_mtu" 2>/dev/null || true
+				return 0
+				;;
+		esac
+	fi
 
 	if [ -n "$matched_sections" ]; then
 		local is_first=1
@@ -1115,6 +1161,12 @@ ark_ensure_phys_device_mtu() {
 			done
 			;;
 	esac
+
+	if [ "$target_mtu" -gt 1500 ] 2>/dev/null && ! ark_dev_supports_mtu "${parent_dev:-$phys_dev}" "$target_mtu"; then
+		[ -n "$parent_dev" ] && [ "$parent_dev" != "$phys_dev" ] && _ark_set_single_device_mtu "$parent_dev" 1500
+		_ark_set_single_device_mtu "$phys_dev" 1500
+		return 1
+	fi
 
 	if [ -n "$parent_dev" ] && [ "$parent_dev" != "$phys_dev" ]; then
 		_ark_set_single_device_mtu "$parent_dev" "$target_mtu"
@@ -1205,6 +1257,24 @@ ark_ensure_phys_device_mac() {
 			matched_sections="$matched_sections $s"
 		fi
 	done
+
+	# Em OpenWrt legado swconfig (ex: 19.07), network.<wan>.macaddr ja aplica o MAC na VLAN eth0.X nativamente;
+	# criar config device para eth0.X conflita com a VLAN implicita do switch0 no netifd.
+	if [ -z "$root_prefix" ] && is_swconfig; then
+		case "$phys_dev" in
+			eth0|eth0.*)
+				for s in $matched_sections; do
+					$uci_cmd delete "network.$s"
+				done
+				uci commit network 2>/dev/null || true
+				if [ -n "$target_mac" ]; then
+					target_mac="$(printf '%s' "$target_mac" | tr 'a-f' 'A-F')"
+					ip link set dev "$phys_dev" address "$target_mac" 2>/dev/null || true
+				fi
+				return 0
+				;;
+		esac
+	fi
 
 	if [ -n "$matched_sections" ]; then
 		local is_first=1
@@ -1516,6 +1586,23 @@ swconfig_add_port_to_vlan() {
 	uci -q set "network.$sec.ports=$new_ports"
 }
 
+swconfig_port_num() {
+	case "$1" in
+		eth*.*|eth*|br-*|wlan*|phy*|pppoe-*|@*)
+			return 1
+			;;
+		wan)
+			printf '5'
+			return 0
+			;;
+		lan[1-4]|port[1-5]|[1-5])
+			printf '%s' "$1" | tr -cd '0-9'
+			return 0
+			;;
+	esac
+	return 1
+}
+
 bridge_has_port() {
 	local br="$1" port="$2"
 	uci -q get "network.$br.ports" 2>/dev/null | tr ' ' '\n' | grep -qx "$port"
@@ -1524,8 +1611,8 @@ bridge_has_port() {
 add_lan_port() {
 	local port="$1" p br
 	if is_swconfig; then
-		p="$(printf '%s' "$port" | tr -cd '0-9')"
-		[ -n "$p" ] && swconfig_add_port_to_vlan "$p" 1
+		p="$(swconfig_port_num "$port" 2>/dev/null || true)"
+		[ -n "$p" ] && [ "$p" != "5" ] && swconfig_add_port_to_vlan "$p" 1
 		return 0
 	fi
 	br="$(lan_bridge_section)"
@@ -1537,7 +1624,7 @@ add_lan_port() {
 remove_lan_port() {
 	local port="$1" p br
 	if is_swconfig; then
-		p="$(printf '%s' "$port" | tr -cd '0-9')"
+		p="$(swconfig_port_num "$port" 2>/dev/null || true)"
 		[ -n "$p" ] && swconfig_remove_port_from_vlan "$p" 1
 		return 0
 	fi

@@ -39,8 +39,12 @@ apply_wan_proto() {
 		[ -n "$password" ] && uci -q set "network.$iface.password=$password"
 		local cur_mtu="$(uci -q get "network.$iface.mtu")"
 		if [ "$cur_dev_mtu" = "1508" ]; then
-			[ -z "$cur_mtu" ] && uci -q set "network.$iface.mtu=1500"
-			[ -n "$wan_phys_dev" ] && ark_ensure_phys_device_mtu "$wan_phys_dev" 1508
+			if [ -n "$wan_phys_dev" ] && ! ark_ensure_phys_device_mtu "$wan_phys_dev" 1508; then
+				uci -q delete "network.$iface.device_mtu"
+				uci -q set "network.$iface.mtu=1492"
+			else
+				[ -z "$cur_mtu" ] && uci -q set "network.$iface.mtu=1500"
+			fi
 		elif [ -z "$cur_mtu" ] || [ "$cur_mtu" = "1500" ]; then
 			uci -q set "network.$iface.mtu=1492"
 		fi
@@ -358,7 +362,10 @@ handle_network() {
 
 		effective_dev="$device"
 		if is_swconfig; then
-			p_num="$(printf '%s' "$device" | tr -cd '0-9')"
+			p_num="$(swconfig_port_num "$device" 2>/dev/null || true)"
+			if [ -z "$p_num" ] && [ "$iface" = wan ] && { [ "$device" = "eth0.2" ] || [ -z "$device" ]; } && [ "$(uci -q get network.autowan.wan_to_lan)" != "1" ]; then
+				p_num="5"
+			fi
 			if [ -n "$p_num" ] && [ "$p_num" -ge 1 ] && [ "$p_num" -le 5 ]; then
 				if [ "$iface" = wan ]; then
 					vlan_id=2
@@ -385,7 +392,11 @@ handle_network() {
 		fi
 
 		uci -q set "network.$iface=interface"
-		uci -q set "network.$iface.device=$effective_dev"
+		if [ -z "${ARK_ROOT:-}" ] && is_swconfig; then
+			uci -q delete "network.$iface.device"
+		else
+			uci -q set "network.$iface.device=$effective_dev"
+		fi
 		uci -q set "network.$iface.ifname=$effective_dev"
 		[ -n "$device" ] && uci -q set "network.$iface.ark_phys_port=$device"
 
@@ -1524,7 +1535,7 @@ EOF
 			uci commit sqm
 			/etc/init.d/sqm restart >/dev/null 2>&1 || true
 		fi
-		wan_dev="$(uci -q get "network.$iface.device")"
+		wan_dev="$(uci -q get "network.$iface.device" || uci -q get "network.$iface.ifname")"
 		[ -n "$wan_dev" ] || wan_dev="$(sqm_device_for_network "$iface")"
 		valid_net_device "$wan_dev" || { echo "Dispositivo fisico invalido para $iface" >&2; exit 2; }
 		local cur_wan_proto="$(uci -q get "network.$iface.proto")"
@@ -1532,17 +1543,23 @@ EOF
 		local prev_wan_mtu="$(uci -q get "network.$iface.mtu")"
 		if [ "$baby_jumbo" = 1 ]; then
 			if [ "$cur_wan_proto" = pppoe ]; then
-				uci -q set "network.$iface.mtu=1500"
-				uci -q set "network.$iface.device_mtu=1508"
-				ark_ensure_phys_device_mtu "$wan_dev" 1508
-				uci commit network
-				if [ -z "${ARK_ROOT}" ]; then
-					if [ "$prev_dev_mtu" != "1508" ] || [ "$prev_wan_mtu" != "1500" ]; then
-						ubus call network reload >/dev/null 2>&1 || true
+				if ark_ensure_phys_device_mtu "$wan_dev" 1508; then
+					uci -q set "network.$iface.mtu=1500"
+					uci -q set "network.$iface.device_mtu=1508"
+					uci commit network
+					if [ -z "${ARK_ROOT}" ]; then
+						if [ "$prev_dev_mtu" != "1508" ] || [ "$prev_wan_mtu" != "1500" ]; then
+							ubus call network reload >/dev/null 2>&1 || true
+						fi
+						if [ -x /etc/hotplug.d/iface/05-ark-pppoe-babyjumbo ]; then
+							ACTION=ifup INTERFACE="$iface" DEVICE="pppoe-$iface" /etc/hotplug.d/iface/05-ark-pppoe-babyjumbo >/dev/null 2>&1 || true
+						fi
 					fi
-					if [ -x /etc/hotplug.d/iface/05-ark-pppoe-babyjumbo ]; then
-						ACTION=ifup INTERFACE="$iface" DEVICE="pppoe-$iface" /etc/hotplug.d/iface/05-ark-pppoe-babyjumbo >/dev/null 2>&1 || true
-					fi
+				else
+					uci -q set "network.$iface.mtu=1492"
+					uci -q delete "network.$iface.device_mtu"
+					printf '1492\n' > "/tmp/ark-mtu-probed-$iface" 2>/dev/null || true
+					uci commit network
 				fi
 			else
 				ark_ensure_phys_device_mtu "$wan_dev" 1500

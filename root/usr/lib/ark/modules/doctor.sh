@@ -342,15 +342,20 @@ ark_doctor_audit() {
 
 			if [ "$mtu_defect" = 1 ]; then
 				if [ "$auto_fix" = 1 ]; then
-					ark_ensure_phys_device_mtu "$phys_dev" 1508
-					uci -q set "network.$wan.mtu=1500"
-					uci -q set "network.$wan.device_mtu=1508"
+					if ark_ensure_phys_device_mtu "$phys_dev" 1508; then
+						uci -q set "network.$wan.mtu=1500"
+						uci -q set "network.$wan.device_mtu=1508"
+					else
+						uci -q set "network.$wan.mtu=1492"
+						uci -q delete "network.$wan.device_mtu"
+						printf '1492\n' > "/tmp/ark-mtu-probed-$wan" 2>/dev/null || true
+					fi
 					uci commit network
 					command -v ark_ensure_wan_mtu_fix >/dev/null 2>&1 && ark_ensure_wan_mtu_fix
 					if [ -n "${ARK_ROOT}" ] && [ -f "${ARK_ROOT}/sys/class/net/$phys_dev/mtu" ]; then
 						printf '1508\n' > "${ARK_ROOT}/sys/class/net/$phys_dev/mtu" 2>/dev/null || true
 						[ -f "${ARK_ROOT}/sys/class/net/pppoe-$wan/mtu" ] && printf '%s\n' "$expected_ppp_mtu" > "${ARK_ROOT}/sys/class/net/pppoe-$wan/mtu" 2>/dev/null || true
-					elif [ -z "${ARK_ROOT}" ]; then
+					elif [ -z "${ARK_ROOT}" ] && [ "$(uci -q get "network.$wan.device_mtu")" = "1508" ]; then
 						ip link set "$phys_dev" mtu 1508 2>/dev/null || true
 						if [ -f "/etc/hotplug.d/iface/05-ark-pppoe-babyjumbo" ]; then
 							chmod +x "/etc/hotplug.d/iface/05-ark-pppoe-babyjumbo" 2>/dev/null || true

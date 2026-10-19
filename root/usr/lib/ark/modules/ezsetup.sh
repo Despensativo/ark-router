@@ -1491,7 +1491,10 @@ handle_ezsetup() {
 				apply_wan_modem_access wan "$wan1_proto" "$wan1_modem" "$effective_dev1"
 				uci -q set network.wan.metric=10
 				if [ "$(uci -q get network.wan.device_mtu)" = "1508" ] || [ "$(uci -q get network.wan.mtu)" = "1500" -a "$wan1_proto" = "pppoe" ]; then
-					ark_ensure_phys_device_mtu "$effective_dev1" 1508
+					if ! ark_ensure_phys_device_mtu "$effective_dev1" 1508; then
+						uci -q delete network.wan.device_mtu
+						uci -q set network.wan.mtu=1492
+					fi
 				fi
 			fi
 
@@ -1514,7 +1517,10 @@ handle_ezsetup() {
 				apply_wan_modem_access wan2 "$wan2_proto" "$wan2_modem" "$wan2_port"
 				uci -q set network.wan2.metric=20
 				if [ "$(uci -q get network.wan2.device_mtu)" = "1508" ] || [ "$(uci -q get network.wan2.mtu)" = "1500" -a "$wan2_proto" = "pppoe" ]; then
-					ark_ensure_phys_device_mtu "$wan2_port" 1508
+					if ! ark_ensure_phys_device_mtu "$wan2_port" 1508; then
+						uci -q delete network.wan2.device_mtu
+						uci -q set network.wan2.mtu=1492
+					fi
 				fi
 				zone="$(firewall_wan_zone_section)"
 				[ -n "$zone" ] && firewall_zone_has_network "$zone" wan2 || uci -q add_list "firewall.$zone.network=wan2"

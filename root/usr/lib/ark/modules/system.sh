@@ -354,6 +354,10 @@ dns_turbo_save() {
 	uci -q set "equipe_perf.settings.dns_allservers=$allservers"
 	uci -q set "equipe_perf.settings.dns_servers=$valid_servers"
 	uci -q set "equipe_perf.settings.dns_dhcp_fallback=$fallback"
+	case " $valid_servers " in
+		*" 1.1.1.2 "*|*" 1.0.0.2 "*|*" 1.1.1.3 "*|*" 1.0.0.3 "*|*" 94.140.14."* |*" 94.140.15."* |*" 208.67.222.123 "*|*" 208.67.220.123 "*|*" 185.228.168."* ) ;;
+		*) uci -q set equipe_perf.settings.adblock_cloud='0' ;;
+	esac
 	uci commit equipe_perf
 
 	blocker_name="$(detect_dns_blocker 2>/dev/null || true)"

@@ -36,7 +36,14 @@ fi
 
 # Garante que a porta fisica pai e a sub-interface VLAN 802.1Q estejam em 1508 para RFC 4638
 if [ -n "$wan_dev" ] && command -v ark_ensure_phys_device_mtu >/dev/null 2>&1; then
-	ark_ensure_phys_device_mtu "$wan_dev" 1508
+	if ! ark_ensure_phys_device_mtu "$wan_dev" 1508; then
+		uci -q delete "network.$INTERFACE.device_mtu"
+		uci -q set "network.$INTERFACE.mtu=1492"
+		uci commit network 2>/dev/null || true
+		printf '1492\n' > "/tmp/ark-mtu-probed-$INTERFACE" 2>/dev/null || true
+		command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
+		exit 0
+	fi
 fi
 
 # Sondagem inteligente assincrona (nao bloqueia o netifd):
