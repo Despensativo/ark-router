@@ -1075,10 +1075,18 @@ handle_wifi() {
 		;;
 	wifi-iot-optimize)
 		radio2="$(wifi_radio_2g)"
+		radio5="$(wifi_radio_5g)"
 		[ -n "$radio2" ] || { echo 'Radio 2,4 GHz nao encontrado' >&2; exit 3; }
 		state="${2:-1}"
 		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
 			uci -q set "wireless.$radio2.iot_stability=1"
+			uci -q set "wireless.$radio2.vendor_vht=1"
+			if [ -n "$radio5" ] && [ "$radio5" != "$radio2" ]; then
+				cur_tx2="$(uci -q get "wireless.$radio2.txpower" || true)"
+				if [ -z "$cur_tx2" ] || [ "$cur_tx2" -gt 23 ] 2>/dev/null; then
+					uci -q set "wireless.$radio2.txpower=22"
+				fi
+			fi
 			# Remove restricoes toxicas de taxas que causam retransmissoes e quedas nas Alexas
 			uci -q delete "wireless.$radio2.legacy_rates"
 			uci -q delete "wireless.$radio2.basic_rate"
@@ -2019,6 +2027,17 @@ EOF
 		fi
 		state="${2:-1}"
 		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
+			radio2="$(wifi_radio_2g)"
+			radio5="$(wifi_radio_5g)"
+			if [ -n "$radio2" ]; then
+				uci -q set "wireless.$radio2.vendor_vht=1"
+				if [ -n "$radio5" ] && [ "$radio5" != "$radio2" ]; then
+					cur_tx2="$(uci -q get "wireless.$radio2.txpower" || true)"
+					if [ -z "$cur_tx2" ] || [ "$cur_tx2" -gt 23 ] 2>/dev/null; then
+						uci -q set "wireless.$radio2.txpower=22"
+					fi
+				fi
+			fi
 			for r in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut -d= -f1); do
 				uci -q set "wireless.$r.bss_color=auto"
 				uci -q set "wireless.$r.he_bss_color=1"

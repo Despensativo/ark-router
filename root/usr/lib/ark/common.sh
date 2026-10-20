@@ -1917,7 +1917,8 @@ ark_sync_doh_proxy() {
 	mkdir -p "${root_prefix}/etc/config" 2>/dev/null || true
 	[ -f "$cfg_file" ] || touch "$cfg_file"
 
-	for s in $($uci_cmd show https-dns-proxy 2>/dev/null | sed -n 's/^https-dns-proxy\.\([^.=]*\)=https-dns-proxy$/\1/p'); do
+	while $uci_cmd delete "https-dns-proxy.@https-dns-proxy[0]" 2>/dev/null; do :; done
+	for s in $($uci_cmd show https-dns-proxy 2>/dev/null | sed -n 's/^https-dns-proxy\.\([^.=@]*\)=https-dns-proxy$/\1/p'); do
 		$uci_cmd delete "https-dns-proxy.$s" 2>/dev/null || true
 	done
 

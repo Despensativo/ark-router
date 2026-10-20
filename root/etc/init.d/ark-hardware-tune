@@ -79,6 +79,19 @@ start() {
 	local _enabled="$(uci -q get equipe_dashboard.hardware_tune.enabled || echo 1)"
 	[ "$_enabled" = "1" ] || return 0
 
+	local _now="$(date +%s 2>/dev/null || echo 0)"
+	local _last="$(cat /tmp/ark-hardware-tune.ts 2>/dev/null || echo 0)"
+	if [ "$((_now - _last))" -ge 0 ] && [ "$((_now - _last))" -lt 10 ] 2>/dev/null; then
+		return 0
+	fi
+	printf '%s\n' "$_now" > /tmp/ark-hardware-tune.ts 2>/dev/null || true
+
+	if [ "$(uci -q get system.@system[0].cronloglevel || echo 5)" != "9" ]; then
+		uci -q set system.@system[0].cronloglevel='9'
+		uci commit system 2>/dev/null || true
+		[ -x /etc/init.d/cron ] && /etc/init.d/cron reload >/dev/null 2>&1 || true
+	fi
+
 	# Source common runtime if available
 	[ -f /usr/lib/ark/common.sh ] && . /usr/lib/ark/common.sh
 
