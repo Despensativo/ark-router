@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.2
+
+- **⚡ Otimização RF 2.4 GHz (`256-QAM` + Anti-Saturação `22 dBm`), OTA Instantâneo & Blindagem de Boot (19/10/2026)**:
+  - **Otimização Autônoma Wi-Fi 2.4 GHz (`vendor_vht=1` + Teto Anti-Saturação `22 dBm`)**: Ativa automaticamente `256-QAM` (`vendor_vht=1`) no rádio 2.4 GHz (+33% de velocidade física para clientes Wi-Fi 5 sem afetar dispositivos IoT) e limita automaticamente a potência do 2.4 GHz a `22 dBm` em roteadores Dual-Band quando em automático (`30 dBm`), eliminando saturação de LNA (`-15 dBm`), zerando tempestades de `tx failed` e destravando o *Band Steering* (`802.11v BSS Transition`) para o 5 GHz (`160 MHz`).
+  - **Verificador OTA Instantâneo (`self-update-check force` + Cache-Buster CDN)**: O botão "Verificar atualização" agora força consulta em tempo real ao GitHub (`force`) com cache-buster `?t=<timestamp>` no CDN Fastly, TTL reduzido para 5 minutos em respostas negativas e suporte a `./data.tar.gz` na extração de contingência de `.ipk`.
+  - **Blindagem de Boot (`https-dns-proxy` + `ark-hardware-tune` + `cronloglevel`)**: Limpeza completa de seções anônimas UCI do `https-dns-proxy` (`@https-dns-proxy[0]`) evitando colisão na porta `5054` no boot, *debounce* de 10 segundos no `ark-hardware-tune` contra disparos simultâneos de hotplug (`wan` + `wan6`) e ajuste automático de `cronloglevel='9'`.
+
 ## 2.0.1
 
 - **🛡️ Autocura Universal & Compatibilidade Multi-Geração OpenWrt (`19.07` a `25.12+`) (19/10/2026)**:
