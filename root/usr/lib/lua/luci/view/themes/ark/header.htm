@@ -42,7 +42,25 @@
 		<script type="application/json" src="<%=resource%>/luci.js?v=<%=ark_rev%>"></script>
 		<script src="<%=url('admin/translations', luci.i18n.context.lang)%>?v=<%=ark_rev%>"></script>
 		<script src="<%=resource%>/cbi.js?v=<%=ark_rev%>"></script>
-		<script>window.ARK_VERSION = "<%=ark_v%>"; window.ARK_ASSET_REV = "<%=ark_rev%>";</script>
+		<script>
+			window.ARK_VERSION = "<%=ark_v%>";
+			window.ARK_ASSET_REV = "<%=ark_rev%>";
+			try {
+				if (window.sessionStorage) {
+					if (sessionStorage.getItem('ark_active_rev') !== window.ARK_ASSET_REV) {
+						sessionStorage.removeItem('ark_caps');
+						sessionStorage.setItem('ark_active_rev', window.ARK_ASSET_REV);
+					}
+				}
+				if (window.localStorage) {
+					var _uc = JSON.parse(localStorage.getItem('ark_last_update_check_data') || '{}');
+					if (_uc && (_uc.current !== window.ARK_VERSION || _uc.latest === window.ARK_VERSION)) {
+						localStorage.removeItem('ark_last_update_check_data');
+						localStorage.removeItem('ark_last_update_check_time');
+					}
+				}
+			} catch(e) {}
+		</script>
 		<script src="<%=media%>/ark-theme.js?v=<%=ark_rev%>"></script>
 	</head>
 

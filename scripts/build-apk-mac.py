@@ -109,8 +109,7 @@ rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 [ -x /etc/init.d/equipe-traffic-history ] && /etc/init.d/equipe-traffic-history restart >/dev/null 2>&1 || true
 [ -x /usr/sbin/equipe-dashboard-control ] && /usr/sbin/equipe-dashboard-control feature-enforce-policies >/dev/null 2>&1 || true
 [ -x /usr/sbin/ark-doctor ] && (/usr/sbin/ark-doctor --auto >/dev/null 2>&1 &) || true
-[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
-[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1 || true
 exit 0
 """)
         os.chmod(post_install, 0o755)

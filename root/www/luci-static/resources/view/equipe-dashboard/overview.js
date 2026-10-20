@@ -1831,13 +1831,21 @@ function withButtonFeedback(button, actionFn, options) {
 const lifecycleMethods = {
 	board: {}, countries: [], capabilities: {features:{}}, previous: {}, trafficPrevious: {}, trafficAt: 0, currentData: null, recommendedChannels: null, speedResults: {}, refreshTimer: null, clockTimer: null, dashboardRoot: null, deviceSortKey: 'total', deviceSortDir: 'desc', starlinkTelemetryTimer: null, starlinkTelemetryStopTimer: null, starlinkTelemetryActive: false, starlinkTelemetryWan: null, starlinkWanOrder: [], starlinkResults: {},
 	fetchCapabilities: function(){
+		const expectedVer = (typeof window !== 'undefined' && window.ARK_VERSION) ? window.ARK_VERSION : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : '');
 		if (typeof window !== 'undefined' && window._arkCapabilities && window._arkCapabilities.features) {
-			return Promise.resolve(window._arkCapabilities);
+			const memVer = (window._arkCapabilities.update && window._arkCapabilities.update.current) || '';
+			if (!expectedVer || !memVer || memVer === expectedVer) {
+				return Promise.resolve(window._arkCapabilities);
+			}
+			delete window._arkCapabilities;
 		}
 		if (typeof sessionStorage !== 'undefined') {
 			try {
 				const cached = JSON.parse(sessionStorage.getItem('ark_caps') || '{}');
-				if (cached && cached.features && Object.keys(cached.features).length > 0) {
+				const cachedVer = (cached && cached.update && cached.update.current) || '';
+				if (expectedVer && cachedVer && cachedVer !== expectedVer) {
+					sessionStorage.removeItem('ark_caps');
+				} else if (cached && cached.features && Object.keys(cached.features).length > 0) {
 					if (typeof window !== 'undefined') window._arkCapabilities = cached;
 					const lang = cached.language || 'pt-br';
 					dashboardLanguage = lang;
@@ -14401,7 +14409,11 @@ const systemMethods = {
 						window.clearInterval(timer);
 						try {
 							if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
-							if (typeof localStorage !== 'undefined') localStorage.removeItem('ark_caps');
+							if (typeof localStorage !== 'undefined') {
+								localStorage.removeItem('ark_caps');
+								localStorage.removeItem('ark_last_update_check_data');
+								localStorage.removeItem('ark_last_update_check_time');
+							}
 						} catch(e) {}
 						window.location.href = window.location.pathname + '?_ts=' + Date.now() + window.location.hash;
 					}
@@ -14559,6 +14571,14 @@ const systemMethods = {
 				const btn = ev.currentTarget;
 				btn.disabled = true;
 				btn.innerHTML = '<span class="ex-spinner-inline"></span> ' + _t('Iniciando…');
+				try {
+					if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('ark_caps');
+					if (typeof localStorage !== 'undefined') {
+						localStorage.removeItem('ark_caps');
+						localStorage.removeItem('ark_last_update_check_data');
+						localStorage.removeItem('ark_last_update_check_time');
+					}
+				} catch(e) {}
 
 				const modalDialog = document.querySelector('.cbi-modal') || document.querySelector('.modal');
 				let liveContainer = null;
@@ -14575,10 +14595,7 @@ const systemMethods = {
 					]));
 				}
 
-				const cmdArgs = ['self-update-start'];
-				if (isSameVersion) {
-					cmdArgs.push('force');
-				}
+				const cmdArgs = ['self-update-start', 'force'];
 
 				fs.exec('/usr/sbin/equipe-dashboard-control', cmdArgs).then(L.bind(function(r) {
 					if (r.code) throw new Error(r.stderr || 'Falha ao iniciar atualização');
@@ -14647,16 +14664,22 @@ const systemMethods = {
 	checkBackgroundUpdate: function(){
 		const self=this;
 		const now=Date.now();
+		const curVer = (this.capabilities && this.capabilities.update && this.capabilities.update.current) || (typeof window !== 'undefined' && window.ARK_VERSION) || (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : '');
 		const lastCheckTime=Number(localStorage.getItem('ark_last_update_check_time')||0);
 		const cachedDataStr=localStorage.getItem('ark_last_update_check_data');
 
 		if(now-lastCheckTime<43200000&&cachedDataStr){
 			try{
 				const data=JSON.parse(cachedDataStr);
-				if(data&&data.available){
+				if (data && curVer && (data.current !== curVer || data.latest === curVer)) {
+					localStorage.removeItem('ark_last_update_check_data');
+					localStorage.removeItem('ark_last_update_check_time');
+				} else if(data&&data.available){
 					self.renderUpdateBanner(data);
+					return;
+				} else {
+					return;
 				}
-				return;
 			}catch(e){}
 		}
 
@@ -14667,14 +14690,15 @@ const systemMethods = {
 				try{info=JSON.parse(r.stdout||'{}');}catch(e){return;}
 				localStorage.setItem('ark_last_update_check_time',String(Date.now()));
 				localStorage.setItem('ark_last_update_check_data',JSON.stringify(info));
-				if(info&&info.available){
+				if(info&&info.available&&(!curVer || info.latest !== curVer)){
 					self.renderUpdateBanner(info);
 				}
 			}).catch(function(){});
 		},4500);
 	},
 	renderUpdateBanner: function(info){
-		if(!info||!info.available||!info.latest)return;
+		const curVer = (this.capabilities && this.capabilities.update && this.capabilities.update.current) || (typeof window !== 'undefined' && window.ARK_VERSION) || (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : '');
+		if(!info||!info.available||!info.latest||(curVer && info.latest === curVer))return;
 		const dismissed=localStorage.getItem('ark_dismissed_update');
 		if(dismissed===info.latest)return;
 
@@ -20690,7 +20714,11 @@ const renderMethods = {
 							click: function() {
 								try {
 									if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
-									if (typeof localStorage !== 'undefined') localStorage.removeItem('ark_caps');
+									if (typeof localStorage !== 'undefined') {
+										localStorage.removeItem('ark_caps');
+										localStorage.removeItem('ark_last_update_check_data');
+										localStorage.removeItem('ark_last_update_check_time');
+									}
 									if ('caches' in window) {
 										caches.keys().then(function(names) { names.forEach(function(n) { caches.delete(n); }); });
 									}
@@ -20712,6 +20740,8 @@ const renderMethods = {
 					}
 					if (typeof localStorage !== 'undefined') {
 						localStorage.removeItem('ark_caps');
+						localStorage.removeItem('ark_last_update_check_data');
+						localStorage.removeItem('ark_last_update_check_time');
 					}
 					if (typeof fetch === 'function' && typeof L !== 'undefined' && L.resource) {
 						fetch(L.resource('view/equipe-dashboard/overview.js'), { cache: 'reload' }).catch(function(){});

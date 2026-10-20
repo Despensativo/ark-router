@@ -2063,8 +2063,7 @@ handle_ezsetup() {
 			rm -f /tmp/luci-indexcache /tmp/ark-*.cache /tmp/ark-*-cache.json /tmp/ark-*-cache.ts 2>/dev/null || true
 			rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 			[ -x /usr/sbin/ark-doctor ] && (/usr/sbin/ark-doctor --auto >/dev/null 2>&1 &) || true
-			[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
-			[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+			[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1 || true
 			echo '{"state":"done","percent":100,"message":"Atualização concluída com sucesso! Versão '"$latest"' ativa."}' >"$status"
 		) >"$log" 2>&1 || echo '{"state":"error","percent":0,"message":"Falha na atualização."}' >"$status" &
 		echo started
@@ -2106,8 +2105,7 @@ handle_ezsetup() {
 			rm -f /tmp/luci-indexcache /tmp/ark-*.cache /tmp/ark-*-cache.json /tmp/ark-*-cache.ts 2>/dev/null || true
 			rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 			[ -x /usr/sbin/ark-doctor ] && (/usr/sbin/ark-doctor --auto >/dev/null 2>&1 &) || true
-			[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart >/dev/null 2>&1 || true
-			[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+			[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1 || true
 			echo '{"state":"done","percent":100,"message":"Instalação concluída com sucesso! Versão '"$installed_after"' ativa."}' >"$status"
 		) >"$log" 2>&1 || echo '{"state":"error","percent":0,"message":"Falha na instalação manual do pacote."}' >"$status" &
 		echo started

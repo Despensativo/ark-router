@@ -2,13 +2,21 @@
 const lifecycleMethods = {
 	board: {}, countries: [], capabilities: {features:{}}, previous: {}, trafficPrevious: {}, trafficAt: 0, currentData: null, recommendedChannels: null, speedResults: {}, refreshTimer: null, clockTimer: null, dashboardRoot: null, deviceSortKey: 'total', deviceSortDir: 'desc', starlinkTelemetryTimer: null, starlinkTelemetryStopTimer: null, starlinkTelemetryActive: false, starlinkTelemetryWan: null, starlinkWanOrder: [], starlinkResults: {},
 	fetchCapabilities: function(){
+		const expectedVer = (typeof window !== 'undefined' && window.ARK_VERSION) ? window.ARK_VERSION : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : '');
 		if (typeof window !== 'undefined' && window._arkCapabilities && window._arkCapabilities.features) {
-			return Promise.resolve(window._arkCapabilities);
+			const memVer = (window._arkCapabilities.update && window._arkCapabilities.update.current) || '';
+			if (!expectedVer || !memVer || memVer === expectedVer) {
+				return Promise.resolve(window._arkCapabilities);
+			}
+			delete window._arkCapabilities;
 		}
 		if (typeof sessionStorage !== 'undefined') {
 			try {
 				const cached = JSON.parse(sessionStorage.getItem('ark_caps') || '{}');
-				if (cached && cached.features && Object.keys(cached.features).length > 0) {
+				const cachedVer = (cached && cached.update && cached.update.current) || '';
+				if (expectedVer && cachedVer && cachedVer !== expectedVer) {
+					sessionStorage.removeItem('ark_caps');
+				} else if (cached && cached.features && Object.keys(cached.features).length > 0) {
 					if (typeof window !== 'undefined') window._arkCapabilities = cached;
 					const lang = cached.language || 'pt-br';
 					dashboardLanguage = lang;

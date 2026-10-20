@@ -40,6 +40,19 @@
 			window.ARK_VERSION = "{{ ark_v }}";
 			window.ARK_ASSET_REV = "{{ ark_rev }}";
 			try {
+				if (window.sessionStorage) {
+					if (sessionStorage.getItem('ark_active_rev') !== window.ARK_ASSET_REV) {
+						sessionStorage.removeItem('ark_caps');
+						sessionStorage.setItem('ark_active_rev', window.ARK_ASSET_REV);
+					}
+				}
+				if (window.localStorage) {
+					var _uc = JSON.parse(localStorage.getItem('ark_last_update_check_data') || '{}');
+					if (_uc && (_uc.current !== window.ARK_VERSION || _uc.latest === window.ARK_VERSION)) {
+						localStorage.removeItem('ark_last_update_check_data');
+						localStorage.removeItem('ark_last_update_check_time');
+					}
+				}
 				if (window.history && window.history.replaceState && window.location.search) {
 					var sp = new URLSearchParams(window.location.search);
 					if (sp.has('_v') || sp.has('_ts')) {

@@ -52,7 +52,11 @@ const renderMethods = {
 							click: function() {
 								try {
 									if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
-									if (typeof localStorage !== 'undefined') localStorage.removeItem('ark_caps');
+									if (typeof localStorage !== 'undefined') {
+										localStorage.removeItem('ark_caps');
+										localStorage.removeItem('ark_last_update_check_data');
+										localStorage.removeItem('ark_last_update_check_time');
+									}
 									if ('caches' in window) {
 										caches.keys().then(function(names) { names.forEach(function(n) { caches.delete(n); }); });
 									}
@@ -74,6 +78,8 @@ const renderMethods = {
 					}
 					if (typeof localStorage !== 'undefined') {
 						localStorage.removeItem('ark_caps');
+						localStorage.removeItem('ark_last_update_check_data');
+						localStorage.removeItem('ark_last_update_check_time');
 					}
 					if (typeof fetch === 'function' && typeof L !== 'undefined' && L.resource) {
 						fetch(L.resource('view/equipe-dashboard/overview.js'), { cache: 'reload' }).catch(function(){});
