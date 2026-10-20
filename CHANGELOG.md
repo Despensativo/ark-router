@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.3
+
+- **🚫 Fim Definitivo do Cache de Interface no Navegador (`mtime` Dinâmico + `resource_version` Automático) (19/10/2026)**:
+  - **Invalidação Automática por Timestamp de Disco (`header.ut` / `header.htm`)**: Os templates do tema ARK (`ucode` no OpenWrt 22.03–25.12+ e `Lua` no OpenWrt 19.07–21.02) agora calculam dinamicamente `ark_rev = <versão>-<mtime_overview>-<mtime_theme>` direto do sistema de arquivos e injetam uma tag sentinela `<script type="application/json" src=".../luci.js?v={{ ark_rev }}"></script>` antes do carregador base do LuCI, fazendo com que `L.require('view.equipe-dashboard.overview')` utilize `?v=<ark_rev>` em vez da versão estática do firmware.
+  - **Sincronização Total de Assets (`overview.css`, `cascade.css`, `mobile.css`, `ark-theme.js` e `i18n.*.js`)**: Todos os recursos estáticos e dicionários de idioma usam `window.ARK_ASSET_REV`, garantindo que qualquer atualização OTA ou alteração de arquivo em disco seja carregada imediatamente no primeiro acesso, sem necessidade de limpar cache do navegador.
+  - **Expurgo Ativo Pós-OTA (`render.js` & `system.js`)**: Ao concluir uma atualização OTA ou detectar mudança de versão, o painel invalida o cache HTTP do `overview.js` (`fetch(..., { cache: 'reload' })`), limpa `ark_caps` em `sessionStorage`/`localStorage` e recarrega com cache-buster automático.
+
 ## 2.0.2
 
 - **⚡ Otimização RF 2.4 GHz (`256-QAM` + Anti-Saturação `22 dBm`), OTA Instantâneo & Blindagem de Boot (19/10/2026)**:
