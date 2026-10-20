@@ -4,7 +4,7 @@
 'require poll';
 'require fs';
 'require ui';
-const ARK_BUILD_VERSION = '1.5.17';
+const ARK_BUILD_VERSION = '2.0.2';
 if (typeof window !== 'undefined') {
 	window.ARK_BUILD_VERSION = ARK_BUILD_VERSION;
 	window.ARK_VERSION = ARK_BUILD_VERSION;
@@ -39,7 +39,8 @@ if (typeof document !== 'undefined') {
 				_vpEl.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
 			}
 
-			var _cssHref = (typeof L !== 'undefined' && L.resource ? L.resource('view/equipe-dashboard/overview.css') : '/luci-static/resources/view/equipe-dashboard/overview.css') + '?v=' + ARK_BUILD_VERSION;
+			var _assetRev = (typeof window !== 'undefined' && window.ARK_ASSET_REV) ? window.ARK_ASSET_REV : ARK_BUILD_VERSION;
+			var _cssHref = (typeof L !== 'undefined' && L.resource ? L.resource('view/equipe-dashboard/overview.css') : '/luci-static/resources/view/equipe-dashboard/overview.css') + '?v=' + _assetRev;
 			var _linkEl = null;
 			if (typeof E === 'function') {
 				_linkEl = E('link', { 'rel': 'stylesheet', 'type': 'text/css', 'href': _cssHref });

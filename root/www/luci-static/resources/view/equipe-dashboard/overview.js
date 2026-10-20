@@ -39,7 +39,8 @@ if (typeof document !== 'undefined') {
 				_vpEl.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
 			}
 
-			var _cssHref = (typeof L !== 'undefined' && L.resource ? L.resource('view/equipe-dashboard/overview.css') : '/luci-static/resources/view/equipe-dashboard/overview.css') + '?v=' + ARK_BUILD_VERSION;
+			var _assetRev = (typeof window !== 'undefined' && window.ARK_ASSET_REV) ? window.ARK_ASSET_REV : ARK_BUILD_VERSION;
+			var _cssHref = (typeof L !== 'undefined' && L.resource ? L.resource('view/equipe-dashboard/overview.css') : '/luci-static/resources/view/equipe-dashboard/overview.css') + '?v=' + _assetRev;
 			var _linkEl = null;
 			if (typeof E === 'function') {
 				_linkEl = E('link', { 'rel': 'stylesheet', 'type': 'text/css', 'href': _cssHref });
@@ -98,7 +99,7 @@ function loadDashboardLanguage(lang) {
 		if (typeof document === 'undefined') return resolve();
 		const s = document.createElement('script');
 		s.type = 'text/javascript';
-		const ver = (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : (window.ARK_BUILD_VERSION || '1.5.10'));
+		const ver = (typeof window !== 'undefined' && window.ARK_ASSET_REV) ? window.ARK_ASSET_REV : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : (window.ARK_BUILD_VERSION || '2.0.2'));
 		s.src = L.resource('view/equipe-dashboard/i18n.' + targetLang + '.js') + '?v=' + ver;
 		s.onload = function() {
 			if (targetLang === 'en' && window.ARK_I18N_EN) Object.assign(EN, window.ARK_I18N_EN);
@@ -14398,7 +14399,11 @@ const systemMethods = {
 					if (el) el.textContent = _t('Recarregando a página em %s segundo(s)…').replace('%s', seconds);
 					if (seconds <= 0) {
 						window.clearInterval(timer);
-						window.location.reload();
+						try {
+							if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
+							if (typeof localStorage !== 'undefined') localStorage.removeItem('ark_caps');
+						} catch(e) {}
+						window.location.href = window.location.pathname + '?_ts=' + Date.now() + window.location.hash;
 					}
 				}, 1000);
 				return;
@@ -20689,8 +20694,11 @@ const renderMethods = {
 									if ('caches' in window) {
 										caches.keys().then(function(names) { names.forEach(function(n) { caches.delete(n); }); });
 									}
+									if (typeof fetch === 'function' && typeof L !== 'undefined' && L.resource) {
+										fetch(L.resource('view/equipe-dashboard/overview.js'), { cache: 'reload' }).catch(function(){});
+									}
 								} catch(e) {}
-								window.location.reload(true);
+								window.location.href = window.location.pathname + '?_v=' + encodeURIComponent(serverVersion) + '&_ts=' + Date.now() + window.location.hash;
 							}
 						}, [_t('🔄 Atualizar Agora')])
 					]), 'warning');
@@ -20701,6 +20709,12 @@ const renderMethods = {
 					if (typeof sessionStorage !== 'undefined') {
 						sessionStorage.removeItem('ark_caps');
 						sessionStorage.setItem(reloadKey, '1');
+					}
+					if (typeof localStorage !== 'undefined') {
+						localStorage.removeItem('ark_caps');
+					}
+					if (typeof fetch === 'function' && typeof L !== 'undefined' && L.resource) {
+						fetch(L.resource('view/equipe-dashboard/overview.js'), { cache: 'reload' }).catch(function(){});
 					}
 				} catch(e) {}
 				console.warn('[ARK Router] Versão do sistema (' + serverVersion + ') difere da versão em cache JS (' + ARK_BUILD_VERSION + '). Atualizando painel...');
@@ -20713,7 +20727,7 @@ const renderMethods = {
 					if ('caches' in window) {
 						try { caches.keys().then(function(names) { names.forEach(function(n) { caches.delete(n); }); }); } catch(e) {}
 					}
-					window.location.reload(true);
+					window.location.href = window.location.pathname + '?_v=' + encodeURIComponent(serverVersion) + '&_ts=' + Date.now() + window.location.hash;
 				}, 1000);
 			}
 		} else if (typeof sessionStorage !== 'undefined' && serverVersion && serverVersion === ARK_BUILD_VERSION) {

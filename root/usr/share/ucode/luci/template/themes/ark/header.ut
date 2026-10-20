@@ -7,7 +7,10 @@
 	import { getuid, getspnam } from 'luci.core';
 	import * as fs from 'fs';
 	const boardinfo = ubus.call('system', 'board');
-	const ark_v = trim(fs.readfile('/usr/share/ark-router/VERSION') ?? '1.5.6');
+	const ark_v = trim(fs.readfile('/usr/share/ark-router/VERSION') ?? '2.0.2');
+	const ov_mt = fs.stat('/www/luci-static/resources/view/equipe-dashboard/overview.js')?.mtime ?? 0;
+	const th_mt = fs.stat('/www/luci-static/ark/ark-theme.js')?.mtime ?? 0;
+	const ark_rev = `${ark_v}-${ov_mt}-${th_mt}`;
 	http.prepare_content('text/html; charset=UTF-8');
 -%}
 
@@ -21,8 +24,8 @@
 		<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 		<meta http-equiv="Pragma" content="no-cache">
 		<meta http-equiv="Expires" content="0">
-		<link rel="stylesheet" href="{{ media }}/cascade.css?v={{ ark_v }}">
-		<link rel="stylesheet" media="only screen and (max-width: 854px)" href="{{ media }}/mobile.css?v={{ ark_v }}" />
+		<link rel="stylesheet" href="{{ media }}/cascade.css?v={{ ark_rev }}">
+		<link rel="stylesheet" media="only screen and (max-width: 854px)" href="{{ media }}/mobile.css?v={{ ark_rev }}" />
 		<link rel="icon" href="{{ media }}/favicon.png">
 		{% if (node?.css): %}
 		<link rel="stylesheet" href="{{ resource }}/{{ node.css }}">
@@ -30,10 +33,12 @@
 		{% if (css): %}
 		<style title="text/css">{{ css }}</style>
 		{% endif %}
+		<script type="application/json" src="{{ resource }}/luci.js?v={{ ark_rev }}"></script>
 		<script src="{{ dispatcher.build_url('admin/translations', dispatcher.lang) }}"></script>
-		<script src="{{ resource }}/cbi.js?v={{ ark_v }}"></script>
+		<script src="{{ resource }}/cbi.js?v={{ ark_rev }}"></script>
 		<script>
 			window.ARK_VERSION = "{{ ark_v }}";
+			window.ARK_ASSET_REV = "{{ ark_rev }}";
 			try {
 				if (window.history && window.history.replaceState && window.location.search) {
 					var sp = new URLSearchParams(window.location.search);
@@ -46,7 +51,7 @@
 				}
 			} catch(e) {}
 		</script>
-		<script src="{{ media }}/ark-theme.js?v={{ ark_v }}"></script>
+		<script src="{{ media }}/ark-theme.js?v={{ ark_rev }}"></script>
 	</head>
 	{% let is_login = !(ctx?.authsession || dispatcher?.context?.authsession); %}
 	<body class="lang_{{ dispatcher.lang }} {{ entityencode(striptags(node?.title ?? ''), true) }} {{ is_login ? 'ark-login-page' : 'ark-app-page' }} ark-theme" data-page="{{ entityencode(join('-', ctx.request_path), true) }}">

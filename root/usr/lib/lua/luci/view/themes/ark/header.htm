@@ -13,7 +13,10 @@
 	local boardinfo = util.ubus("system", "board")
 	local node = disp.context.dispatched
 	local is_login = not disp.context.authsession
-	local ark_v = (fs.readfile("/usr/share/ark-router/VERSION") or "1.5.6"):gsub("%s+", "")
+	local ark_v = (fs.readfile("/usr/share/ark-router/VERSION") or "2.0.2"):gsub("%s+", "")
+	local ov_st = fs.stat("/www/luci-static/resources/view/equipe-dashboard/overview.js")
+	local th_st = fs.stat("/www/luci-static/ark/ark-theme.js")
+	local ark_rev = ark_v .. "-" .. tostring(ov_st and ov_st.mtime or 0) .. "-" .. tostring(th_st and th_st.mtime or 0)
 
 	http.prepare_content("text/html")
 -%>
@@ -24,8 +27,11 @@
 		<title><%=striptags( (boardinfo.hostname or "?") .. ( (node and node.title) and ' - ' .. translate(node.title) or '')) %> - ARK Router</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 		<meta name="theme-color" content="#0f172a">
-		<link rel="stylesheet" href="<%=media%>/cascade.css?v=<%=ark_v%>">
-		<link rel="stylesheet" media="only screen and (max-width: 854px)" href="<%=media%>/mobile.css?v=<%=ark_v%>" type="text/css" />
+		<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+		<meta http-equiv="Pragma" content="no-cache">
+		<meta http-equiv="Expires" content="0">
+		<link rel="stylesheet" href="<%=media%>/cascade.css?v=<%=ark_rev%>">
+		<link rel="stylesheet" media="only screen and (max-width: 854px)" href="<%=media%>/mobile.css?v=<%=ark_rev%>" type="text/css" />
 		<link rel="shortcut icon" href="<%=media%>/favicon.png">
 		<% if node and node.css then %>
 			<link rel="stylesheet" href="<%=resource%>/<%=node.css%>">
@@ -33,10 +39,11 @@
 		<% if css then %>
 			<style title="text/css"><%= css %></style>
 		<% end -%>
-		<script src="<%=url('admin/translations', luci.i18n.context.lang)%>?v=<%=ark_v%>"></script>
-		<script src="<%=resource%>/cbi.js?v=<%=ark_v%>"></script>
-		<script>window.ARK_VERSION = "<%=ark_v%>";</script>
-		<script src="<%=media%>/ark-theme.js?v=<%=ark_v%>"></script>
+		<script type="application/json" src="<%=resource%>/luci.js?v=<%=ark_rev%>"></script>
+		<script src="<%=url('admin/translations', luci.i18n.context.lang)%>?v=<%=ark_rev%>"></script>
+		<script src="<%=resource%>/cbi.js?v=<%=ark_rev%>"></script>
+		<script>window.ARK_VERSION = "<%=ark_v%>"; window.ARK_ASSET_REV = "<%=ark_rev%>";</script>
+		<script src="<%=media%>/ark-theme.js?v=<%=ark_rev%>"></script>
 	</head>
 
 	<body class="lang_<%=luci.i18n.context.lang%> <% if node then %><%= striptags( node.title ) %><%- end %> <%= is_login and 'ark-login-page' or 'ark-app-page' %> ark-theme" data-page="<%= pcdata(table.concat(disp.context.requestpath, "-")) %>">

@@ -56,8 +56,11 @@ const renderMethods = {
 									if ('caches' in window) {
 										caches.keys().then(function(names) { names.forEach(function(n) { caches.delete(n); }); });
 									}
+									if (typeof fetch === 'function' && typeof L !== 'undefined' && L.resource) {
+										fetch(L.resource('view/equipe-dashboard/overview.js'), { cache: 'reload' }).catch(function(){});
+									}
 								} catch(e) {}
-								window.location.reload(true);
+								window.location.href = window.location.pathname + '?_v=' + encodeURIComponent(serverVersion) + '&_ts=' + Date.now() + window.location.hash;
 							}
 						}, [_t('🔄 Atualizar Agora')])
 					]), 'warning');
@@ -68,6 +71,12 @@ const renderMethods = {
 					if (typeof sessionStorage !== 'undefined') {
 						sessionStorage.removeItem('ark_caps');
 						sessionStorage.setItem(reloadKey, '1');
+					}
+					if (typeof localStorage !== 'undefined') {
+						localStorage.removeItem('ark_caps');
+					}
+					if (typeof fetch === 'function' && typeof L !== 'undefined' && L.resource) {
+						fetch(L.resource('view/equipe-dashboard/overview.js'), { cache: 'reload' }).catch(function(){});
 					}
 				} catch(e) {}
 				console.warn('[ARK Router] Versão do sistema (' + serverVersion + ') difere da versão em cache JS (' + ARK_BUILD_VERSION + '). Atualizando painel...');
@@ -80,7 +89,7 @@ const renderMethods = {
 					if ('caches' in window) {
 						try { caches.keys().then(function(names) { names.forEach(function(n) { caches.delete(n); }); }); } catch(e) {}
 					}
-					window.location.reload(true);
+					window.location.href = window.location.pathname + '?_v=' + encodeURIComponent(serverVersion) + '&_ts=' + Date.now() + window.location.hash;
 				}, 1000);
 			}
 		} else if (typeof sessionStorage !== 'undefined' && serverVersion && serverVersion === ARK_BUILD_VERSION) {

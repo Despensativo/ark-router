@@ -184,7 +184,11 @@ const systemMethods = {
 					if (el) el.textContent = _t('Recarregando a página em %s segundo(s)…').replace('%s', seconds);
 					if (seconds <= 0) {
 						window.clearInterval(timer);
-						window.location.reload();
+						try {
+							if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
+							if (typeof localStorage !== 'undefined') localStorage.removeItem('ark_caps');
+						} catch(e) {}
+						window.location.href = window.location.pathname + '?_ts=' + Date.now() + window.location.hash;
 					}
 				}, 1000);
 				return;
