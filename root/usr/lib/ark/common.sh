@@ -1908,6 +1908,8 @@ ark_sync_doh_proxy() {
 		fi
 		$uci_cmd delete dhcp.@dnsmasq[0].doh_backup_server 2>/dev/null || true
 		$uci_cmd delete dhcp.@dnsmasq[0].doh_backup_noresolv 2>/dev/null || true
+		$uci_cmd delete dhcp.@dnsmasq[0].doh_server 2>/dev/null || true
+		uci ${root_prefix:+-c "$root_prefix/etc/config"} commit dhcp 2>/dev/null || true
 		if [ -z "$root_prefix" ] && [ -x /etc/init.d/https-dns-proxy ]; then
 			/etc/init.d/https-dns-proxy stop >/dev/null 2>&1 || true
 		fi
@@ -1928,6 +1930,8 @@ ark_sync_doh_proxy() {
 	$uci_cmd set https-dns-proxy.config.force_dns='0'
 	$uci_cmd delete dhcp.@dnsmasq[0].doh_backup_server 2>/dev/null || true
 	$uci_cmd delete dhcp.@dnsmasq[0].doh_backup_noresolv 2>/dev/null || true
+	$uci_cmd delete dhcp.@dnsmasq[0].doh_server 2>/dev/null || true
+	uci ${root_prefix:+-c "$root_prefix/etc/config"} commit dhcp 2>/dev/null || true
 
 	b1="1.1.1.1,1.0.0.1"
 	u1="https://cloudflare-dns.com/dns-query"
@@ -2014,14 +2018,20 @@ ark_sync_doh_proxy() {
 
 	uci ${root_prefix:+-c "$root_prefix/etc/config"} commit https-dns-proxy 2>/dev/null || true
 
-	$uci_cmd add_list dhcp.@dnsmasq[0].server='127.0.0.1#5053'
-	$uci_cmd add_list dhcp.@dnsmasq[0].server='127.0.0.1#5054'
-	$uci_cmd set dhcp.@dnsmasq[0].noresolv='1'
-
 	if [ -z "$root_prefix" ] && [ -x /etc/init.d/https-dns-proxy ]; then
 		/etc/init.d/https-dns-proxy enable >/dev/null 2>&1 || true
 		/etc/init.d/https-dns-proxy restart >/dev/null 2>&1 || true
 	fi
+
+	$uci_cmd delete dhcp.@dnsmasq[0].doh_backup_server 2>/dev/null || true
+	$uci_cmd delete dhcp.@dnsmasq[0].doh_backup_noresolv 2>/dev/null || true
+	$uci_cmd delete dhcp.@dnsmasq[0].doh_server 2>/dev/null || true
+	$uci_cmd del_list dhcp.@dnsmasq[0].server='127.0.0.1#5053' 2>/dev/null || true
+	$uci_cmd del_list dhcp.@dnsmasq[0].server='127.0.0.1#5054' 2>/dev/null || true
+	$uci_cmd add_list dhcp.@dnsmasq[0].server='127.0.0.1#5053'
+	$uci_cmd add_list dhcp.@dnsmasq[0].server='127.0.0.1#5054'
+	$uci_cmd set dhcp.@dnsmasq[0].noresolv='1'
+	uci ${root_prefix:+-c "$root_prefix/etc/config"} commit dhcp 2>/dev/null || true
 	return 0
 }
 

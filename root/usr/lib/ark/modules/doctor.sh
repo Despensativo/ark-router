@@ -1941,6 +1941,46 @@ ark_doctor_audit() {
 		fi
 	fi
 
+	# 26. Integridade do Túnel Dual-DoH (https-dns-proxy -> dnsmasq) e limpeza de controllers Lua órfãos
+	if [ -z "${ARK_ROOT}" ] && [ ! -x /usr/bin/lua ] && [ -f /usr/lib/lua/luci/controller/mwan3.lua ]; then
+		if [ "$auto_fix" = 1 ]; then
+			rm -f /usr/lib/lua/luci/controller/mwan3.lua 2>/dev/null || true
+			fixes_applied=$((fixes_applied + 1))
+			add_check "Higiene uhttpd (ucode)" "FIXED" "Controller Lua orfao (mwan3.lua) removido em sistema ucode puro."
+		fi
+	fi
+
+	if ! ark_is_satellite_or_ap && command -v ark_has_doh_proxy >/dev/null 2>&1 && ark_has_doh_proxy; then
+		local _doh_pref="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.dns_doh_enabled || echo 0)"
+		local _agh_active=0
+		[ -x "${ARK_ROOT}/etc/init.d/adguardhome" ] && pgrep -f AdGuardHome >/dev/null 2>&1 && _agh_active=1
+		if [ "$_doh_pref" = "1" ] && [ "$_agh_active" = "0" ]; then
+			local _cur_dnsmasq_srv="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get dhcp.@dnsmasq[0].server 2>/dev/null || echo '')"
+			if ! printf '%s' "$_cur_dnsmasq_srv" | grep -q '127\.0\.0\.1#5053'; then
+				if [ "$auto_fix" = 1 ]; then
+					local _cloud_prov="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adblock_cloud || echo 0)"
+					local _turbo_srvs="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.dns_servers || echo '1.1.1.1 8.8.8.8')"
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} delete dhcp.@dnsmasq[0].server 2>/dev/null || true
+					if [ -n "$_cloud_prov" ] && [ "$_cloud_prov" != "0" ] && [ "$_cloud_prov" != "off" ]; then
+						ark_sync_doh_proxy "cloud" "$_cloud_prov" "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adblock_parental || echo 0)" "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.nextdns_id || echo '')" >/dev/null 2>&1 || true
+					else
+						ark_sync_doh_proxy "turbo" "$_turbo_srvs" >/dev/null 2>&1 || true
+					fi
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set dhcp.@dnsmasq[0].allservers='1'
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} commit dhcp 2>/dev/null || true
+					[ -z "${ARK_ROOT}" ] && [ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+					fixes_applied=$((fixes_applied + 1))
+					add_check "Transporte Criptografado Dual-DoH" "FIXED" "Vinculo Dual-DoH (127.0.0.1#5053 e #5054) restaurado no dnsmasq."
+				else
+					warnings=$((warnings + 1))
+					add_check "Transporte Criptografado Dual-DoH" "WARN" "Dual-DoH habilitado, porem dnsmasq nao estava apontando para 127.0.0.1#5053/#5054."
+				fi
+			else
+				add_check "Transporte Criptografado Dual-DoH" "OK" "Tunel TLS 1.3 Dual-DoH (127.0.0.1:5053 e :5054) ativo e vinculado ao dnsmasq."
+			fi
+		fi
+	fi
+
 	local _overall_status="OK"
 	if [ "$errors" -gt 0 ]; then
 		_overall_status="FAIL"

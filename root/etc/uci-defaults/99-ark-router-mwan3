@@ -2,6 +2,10 @@
 # ARK Router - Inicialização Automática do Multi-WAN (mwan3)
 # Garante targets de ping e políticas ativas apenas se houver 2 ou mais WANs
 
+if [ ! -x /usr/bin/lua ] && [ -f /usr/lib/lua/luci/controller/mwan3.lua ]; then
+	rm -f /usr/lib/lua/luci/controller/mwan3.lua 2>/dev/null || true
+fi
+
 [ -f /etc/config/mwan3 ] || exit 0
 
 active_wans=0
