@@ -318,11 +318,26 @@ handle_network() {
 		done
 		[ -n "$iface" ] || { echo 'WAN ausente' >&2; exit 2; }
 		[ -n "$device" ] || device="$(uci -q get "network.$iface.device" || uci -q get "network.$iface.ifname")"
-		[ "$iface" != wan ] || [ "$mode" = wan ] || { echo 'A WAN1 fisica nao pode virar LAN por este atalho' >&2; exit 2; }
+		if [ "$iface" = wan ] && [ "$mode" = lan ]; then
+			native_wan_dev="$(get_physical_wan_dev)"
+			[ "$native_wan_dev" = "5" ] && native_wan_dev="eth0.2"
+			cur_wan_dev="$(uci -q get network.wan.ark_phys_port || uci -q get network.wan.device || uci -q get network.wan.ifname || true)"
+			if [ -n "$cur_wan_dev" ] && [ "$cur_wan_dev" != "$native_wan_dev" ] && [ "$cur_wan_dev" != "wan" ] && [ "$cur_wan_dev" != "eth0.2" ]; then
+				mode=wan
+				device="$native_wan_dev"
+			else
+				echo 'A WAN1 fisica nao pode virar LAN por este atalho' >&2
+				exit 2
+			fi
+		fi
 		ez_backup >/dev/null || { echo 'Falha ao criar backup antes da alteracao WAN' >&2; exit 3; }
 		if [ "$iface" != wan ] && [ "$mode" = lan ]; then
 			old="$(uci -q get "network.$iface.ark_phys_port" || uci -q get "network.$iface.device" || uci -q get "network.$iface.ifname")"
-			[ -n "$old" ] && [ "$old" != wan ] && add_lan_port "$old"
+			if [ -n "$old" ] && [ "$old" != wan ] && [ "$old" != "eth0.2" ]; then
+				ark_ensure_phys_device_mtu "$old" 1500 >/dev/null 2>&1 || true
+				ark_ensure_phys_device_mac "$old" "" >/dev/null 2>&1 || true
+				add_lan_port "$old"
+			fi
 			if is_swconfig; then
 				sw_ifname="$(uci -q get "network.$iface.ifname")"
 				case "$sw_ifname" in
@@ -365,7 +380,11 @@ handle_network() {
 		fi
 
 		old="$(uci -q get "network.$iface.ark_phys_port" || uci -q get "network.$iface.device" || uci -q get "network.$iface.ifname")"
-		[ "$iface" != wan ] && [ -n "$old" ] && [ "$old" != "$device" ] && [ "$old" != wan ] && add_lan_port "$old"
+		if [ -n "$old" ] && [ "$old" != "$device" ] && [ "$old" != wan ] && [ "$old" != "eth0.2" ]; then
+			ark_ensure_phys_device_mtu "$old" 1500 >/dev/null 2>&1 || true
+			ark_ensure_phys_device_mac "$old" "" >/dev/null 2>&1 || true
+			add_lan_port "$old"
+		fi
 		[ "$device" != wan ] && remove_lan_port "$device"
 
 		effective_dev="$device"
@@ -1191,7 +1210,9 @@ handle_network() {
 				echo 'enabled'
 				;;
 			*)
-				[ "$(uci -q get network.autowan.wan_to_lan)" = "1" ] || { echo 'disabled'; exit 0; }
+				old_wan_dev="$(uci -q get network.wan.ark_phys_port || uci -q get network.wan.device || uci -q get network.wan.ifname || true)"
+				effective_wan_dev="$wan_dev"
+				is_swconfig && effective_wan_dev="eth0.2"
 
 				# swconfig (D-Link DGL-5500)
 				if is_swconfig; then
@@ -1209,11 +1230,46 @@ handle_network() {
 				else
 					remove_lan_port "$wan_dev"
 					brctl delif br-lan "$wan_dev" >/dev/null 2>&1 || ip link set "$wan_dev" nomaster >/dev/null 2>&1 || true
+					if [ -n "$old_wan_dev" ] && [ "$old_wan_dev" != "$wan_dev" ] && [ "$old_wan_dev" != "$effective_wan_dev" ] && [ "$old_wan_dev" != "wan" ] && [ "$old_wan_dev" != "eth0.2" ]; then
+						ark_ensure_phys_device_mtu "$old_wan_dev" 1500 >/dev/null 2>&1 || true
+						ark_ensure_phys_device_mac "$old_wan_dev" "" >/dev/null 2>&1 || true
+						add_lan_port "$old_wan_dev"
+						ip link set "$old_wan_dev" up >/dev/null 2>&1 || true
+						brctl addif br-lan "$old_wan_dev" >/dev/null 2>&1 || ip link set "$old_wan_dev" master br-lan >/dev/null 2>&1 || true
+					fi
 				fi
 
+				if [ -z "${ARK_ROOT:-}" ] && ark_board_uses_legacy_ifname; then
+					uci -q delete network.wan.device
+				else
+					uci -q set "network.wan.device=$effective_wan_dev"
+				fi
+				uci -q set "network.wan.ifname=$effective_wan_dev"
+				uci -q set "network.wan.ark_phys_port=$effective_wan_dev"
 				uci -q set network.wan.auto='1'
-				[ -z "$(uci -q get network.wan_modem)" ] || uci -q set network.wan_modem.auto='1'
+				if [ -n "$(uci -q get network.wan_modem)" ]; then
+					uci -q set "network.wan_modem.device=$effective_wan_dev"
+					uci -q set "network.wan_modem.ifname=$effective_wan_dev"
+					uci -q set network.wan_modem.auto='1'
+				fi
 				[ -z "$(uci -q get network.wan_mgmt)" ] || uci -q set network.wan_mgmt.auto='1'
+
+				wan_mac="$(uci -q get network.wan.macaddr || true)"
+				if [ -n "$wan_mac" ]; then
+					ark_ensure_phys_device_mac "$effective_wan_dev" "$wan_mac" >/dev/null 2>&1 || true
+				fi
+				if [ "$(uci -q get network.wan.device_mtu)" = "1508" ] || { [ "$(uci -q get network.wan.proto)" = "pppoe" ] && [ "$(uci -q get network.wan.mtu)" = "1500" ]; }; then
+					if ark_ensure_phys_device_mtu "$effective_wan_dev" 1508 >/dev/null 2>&1; then
+						uci -q set network.wan.device_mtu='1508'
+					else
+						uci -q delete network.wan.device_mtu
+					fi
+				fi
+				if [ -n "$(uci -q get sqm.wan)" ] && [ "$(uci -q get network.wan.proto)" != "pppoe" ]; then
+					uci -q set "sqm.wan.interface=$effective_wan_dev" 2>/dev/null || true
+					uci commit sqm 2>/dev/null || true
+				fi
+
 				uci -q delete network.autowan.wan_to_lan
 				uci -q delete network.autowan.wan_promoted
 				uci commit network

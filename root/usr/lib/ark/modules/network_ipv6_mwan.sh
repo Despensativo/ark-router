@@ -52,8 +52,36 @@ get_physical_wan_dev() {
 	if is_swconfig; then
 		echo "5"
 	else
-		local d="$(uci -q get network.wan.ark_phys_port || uci -q get network.wan.device || uci -q get network.wan.ifname || echo eth1)"
-		echo "$d"
+		local board_wan=""
+		if [ -f /etc/board.json ] && command -v jsonfilter >/dev/null 2>&1; then
+			board_wan="$(jsonfilter -i /etc/board.json -e '@.network.wan.device' 2>/dev/null || jsonfilter -i /etc/board.json -e '@.network.wan.ports[0]' 2>/dev/null || true)"
+		fi
+		case "$board_wan" in
+			''|lan[1-4]) board_wan="" ;;
+		esac
+		if [ -n "$board_wan" ]; then
+			echo "$board_wan"
+			return 0
+		fi
+		local d="$(uci -q get network.wan.ark_phys_port || uci -q get network.wan.device || uci -q get network.wan.ifname || true)"
+		case "$d" in
+			''|lan[1-4])
+				if [ -e /sys/class/net/eth1 ]; then
+					echo "eth1"
+				elif [ -e /sys/class/net/wan ]; then
+					echo "wan"
+				elif [ -e /sys/class/net/lan5 ]; then
+					echo "lan5"
+				elif [ -e /sys/class/net/port5 ]; then
+					echo "port5"
+				else
+					echo "${d:-eth1}"
+				fi
+				;;
+			*)
+				echo "$d"
+				;;
+		esac
 	fi
 }
 

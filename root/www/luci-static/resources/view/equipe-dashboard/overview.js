@@ -5424,10 +5424,26 @@ const networkMethods = {
 			const detectedDev=cfg.device||((iface((this.currentData||{}).interfaces,which)||{}).l3_device)||((iface((this.currentData||{}).interfaces,which)||{}).device)||'';
 			const targetDev=(!isPrimary&&preferredDevice)?preferredDevice:detectedDev;
 			const chosenPortLabel = portLabel(targetDev || (!isPrimary ? 'lan1' : 'eth1'));
+			const isPrimaryOnLanPort = isPrimary && /^lan[1-4]$/i.test(String(targetDev || ''));
+			const nativeWanPort = (function(d) {
+				const lp = (d && d.lanPorts) || [];
+				for (let i = 0; i < lp.length; i++) {
+					if (lp[i] === 'eth1' || lp[i] === 'lan5' || lp[i] === 'port5' || lp[i] === 'wan' || lp[i] === 'eth0.2') return lp[i];
+				}
+				return 'eth1';
+			})(this.currentData);
 			const wanPorts = [[targetDev || (!isPrimary ? 'lan1' : 'eth1'), chosenPortLabel]];
-			const role=makeSelect((!isPrimary&&cfg.proto==='none'&&!preferredDevice)?'lan':'wan',!isPrimary?[['wan','Usar como internet / '+whichLabel],['lan','Voltar porta para LAN']]:[['wan','Usar como internet / WAN1']]);
+			if (isPrimaryOnLanPort && nativeWanPort !== targetDev) {
+				wanPorts.push([nativeWanPort, 'PORTA WAN (Padrão)']);
+			}
+			const roleOptions = !isPrimary
+				? [['wan','Usar como internet / '+whichLabel],['lan','Voltar porta para LAN']]
+				: (isPrimaryOnLanPort
+					? [['wan','Usar como internet / WAN1'],['lan','Voltar ' + chosenPortLabel + ' para LAN (Restaurar WAN1 na Porta WAN)']]
+					: [['wan','Usar como internet / WAN1']]);
+			const role=makeSelect((!isPrimary&&cfg.proto==='none'&&!preferredDevice)?'lan':'wan', roleOptions);
 			const device=makeSelect(targetDev||(!isPrimary?'lan1':'eth1'),wanPorts);
-			device.disabled=true;
+			device.disabled = !isPrimaryOnLanPort;
 			const proto=makeSelect(cfg.proto==='pppoe'?'pppoe':(cfg.proto==='static'?'static':'dhcp'),[['dhcp','DHCP automático'],['pppoe','PPPoE'],['static','IP fixo / estático']]);
 			const username=E('input',{class:'cbi-input-text',value:cfg.username||'',placeholder:'usuário PPPoE'});
 			const password=E('input',{type:'password',class:'cbi-input-text',value:cfg.password||'',placeholder:'senha PPPoE'});
@@ -5742,6 +5758,14 @@ const networkMethods = {
 			]) : null;
 			const sync=function(){
 				const lanMode=!isPrimary&&role.value==='lan';
+				if (isPrimaryOnLanPort) {
+					if (role.value === 'lan') {
+						device.value = nativeWanPort;
+						device.disabled = true;
+					} else {
+						device.disabled = false;
+					}
+				}
 				proto.disabled=lanMode;
 				pppoeBlock.style.display=(!lanMode&&proto.value==='pppoe')?'contents':'none';
 				staticBlock.style.display=(!lanMode&&proto.value==='static')?'contents':'none';
@@ -20998,14 +21022,64 @@ const renderMethods = {
 		const lanCards=lanPorts.map(L.bind(function(port){
 			const id='ex-lan-'+portDomId(port), label=portLabel(port);
 			const isPhysicalWanAsLan = (port === 'eth1' || port === 'lan5' || port === 'port5' || port === 'wan' || port === 'eth0.2');
-			const actionBtn = isApNode ? null : (isPhysicalWanAsLan ? E('button', {
-				class: 'ex-mini-button ex-wan-edit-button',
-				click: function() {
-					fs.exec('/usr/sbin/equipe-dashboard-control', ['autowan-wan-to-lan', '0']).then(function() {
-						self.triggerImmediateRefresh('Porta WAN física restaurada para conexão de modem/internet padrão.', 'info');
-					});
-				}
-			}, ['Restaurar como WAN1']) : E('button', {
+			const wan1Cfg = (netCfgValues && netCfgValues.wan) || {};
+			const wan1CurDev = wan1Cfg.ark_phys_port || wan1Cfg.device || wan1Cfg.ifname || '';
+			const wan1OnOtherPort = !!(wan1CurDev && wan1CurDev !== port && wan1CurDev !== 'wan' && wan1CurDev !== 'eth0.2');
+			const actionBtn = isApNode ? null : (isPhysicalWanAsLan ? E('div', { style: 'display:flex; gap:6px; flex-wrap:wrap;' }, [
+				E('button', {
+					class: 'ex-mini-button ex-wan-edit-button',
+					style: 'flex:1;',
+					click: L.bind(function(ev) {
+						const btn = ev.currentTarget;
+						const doRestoreWan1 = function() {
+							if (btn) { btn.disabled = true; btn.textContent = 'Restaurando WAN1…'; }
+							fs.exec('/usr/sbin/equipe-dashboard-control', ['autowan-wan-to-lan', '0']).then(function(r) {
+								if (r && r.code) throw new Error(r.stderr || 'Falha ao restaurar WAN1');
+								ui.hideModal();
+								reloadSoon('Porta WAN física restaurada como WAN1 com todas as configurações mantidas! Recarregando…', 1500);
+							}).catch(function(e) {
+								if (btn) { btn.disabled = false; btn.textContent = 'Restaurar como WAN1'; }
+								if (reloadAfterExpectedDisconnect(e, 'Restaurando porta WAN1… Recarregando painel…', 3500)) return;
+								ui.addNotification(null, E('p', {}, [e.message || 'Erro ao restaurar WAN1']), 'danger');
+							});
+						};
+						if (!wan1OnOtherPort) {
+							doRestoreWan1();
+							return;
+						}
+						const oldPortLbl = portLabel(wan1CurDev);
+						const protoLbl = wan1Cfg.proto === 'pppoe'
+							? ('PPPoE' + (wan1Cfg.username ? ' (' + wan1Cfg.username + ')' : ''))
+							: (wan1Cfg.proto === 'static' ? ('IP Fixo (' + (wan1Cfg.ipaddr || '') + ')') : 'DHCP Automático');
+						ui.showModal('🔄 Restaurar Porta WAN Física como WAN1', [
+							E('div', { class: 'alert-message notice', style: 'border-left: 4px solid #38bdf8; background: rgba(56, 189, 248, 0.12); padding: 14px 16px; border-radius: 10px; margin-bottom: 14px;' }, [
+								E('strong', { style: 'display:block; margin-bottom:6px; color:#38bdf8; font-size:1rem;' }, [
+									'✨ Migração Inteligente sem Perda de Dados'
+								]),
+								E('p', { style: 'margin:0 0 8px 0; line-height:1.5;' }, [
+									'A conexão ', E('strong', {}, ['WAN1']), ' voltará para a ', E('strong', {}, ['Porta WAN Física (' + port.toUpperCase() + ')']),
+									' mantendo 100% das configurações atuais, e a porta ', E('strong', {}, [oldPortLbl]), ' voltará automaticamente a funcionar como rede local (LAN).'
+								]),
+								E('ul', { style: 'margin:0; padding-left:18px; line-height:1.5; font-size:0.9rem;' }, [
+									E('li', {}, ['Conexão preservada: ', E('strong', {}, [protoLbl])]),
+									wan1Cfg.macaddr ? E('li', {}, ['MAC Clonado preservado: ', E('strong', {}, [wan1Cfg.macaddr])]) : null,
+									wan1Cfg.modem_ip ? E('li', {}, ['Acesso à ONU preservado: ', E('strong', {}, [wan1Cfg.modem_ip])]) : null,
+									E('li', {}, ['Após confirmar, basta mudar o cabo de internet da porta ', E('strong', {}, [oldPortLbl]), ' para a ', E('strong', {}, ['Porta WAN'])])
+								].filter(Boolean))
+							]),
+							E('div', { class: 'right', style: 'display:flex; justify-content:flex-end; gap:8px; margin-top:14px;' }, [
+								E('button', { class: 'btn cbi-button cbi-button-neutral', click: closeModal }, ['Cancelar']),
+								E('button', { class: 'btn cbi-button cbi-button-positive', style: 'font-weight:700;', click: doRestoreWan1 }, ['Confirmar e Restaurar WAN1'])
+							])
+						]);
+					}, this)
+				}, ['Restaurar como WAN1']),
+				wan1OnOtherPort ? E('button', {
+					class: 'ex-mini-button ex-wan-edit-button',
+					style: 'flex:1;',
+					click: L.bind(function(){ this.editWan(nextWan.iface, port); }, this)
+				}, ['Usar como ' + nextWan.label]) : null
+			].filter(Boolean)) : E('button', {
 				class: 'ex-mini-button ex-wan-edit-button',
 				click: L.bind(function(){this.editWan(nextWan.iface,port);},this)
 			}, ['Usar como '+nextWan.label]));

@@ -880,10 +880,26 @@ const networkMethods = {
 			const detectedDev=cfg.device||((iface((this.currentData||{}).interfaces,which)||{}).l3_device)||((iface((this.currentData||{}).interfaces,which)||{}).device)||'';
 			const targetDev=(!isPrimary&&preferredDevice)?preferredDevice:detectedDev;
 			const chosenPortLabel = portLabel(targetDev || (!isPrimary ? 'lan1' : 'eth1'));
+			const isPrimaryOnLanPort = isPrimary && /^lan[1-4]$/i.test(String(targetDev || ''));
+			const nativeWanPort = (function(d) {
+				const lp = (d && d.lanPorts) || [];
+				for (let i = 0; i < lp.length; i++) {
+					if (lp[i] === 'eth1' || lp[i] === 'lan5' || lp[i] === 'port5' || lp[i] === 'wan' || lp[i] === 'eth0.2') return lp[i];
+				}
+				return 'eth1';
+			})(this.currentData);
 			const wanPorts = [[targetDev || (!isPrimary ? 'lan1' : 'eth1'), chosenPortLabel]];
-			const role=makeSelect((!isPrimary&&cfg.proto==='none'&&!preferredDevice)?'lan':'wan',!isPrimary?[['wan','Usar como internet / '+whichLabel],['lan','Voltar porta para LAN']]:[['wan','Usar como internet / WAN1']]);
+			if (isPrimaryOnLanPort && nativeWanPort !== targetDev) {
+				wanPorts.push([nativeWanPort, 'PORTA WAN (Padrão)']);
+			}
+			const roleOptions = !isPrimary
+				? [['wan','Usar como internet / '+whichLabel],['lan','Voltar porta para LAN']]
+				: (isPrimaryOnLanPort
+					? [['wan','Usar como internet / WAN1'],['lan','Voltar ' + chosenPortLabel + ' para LAN (Restaurar WAN1 na Porta WAN)']]
+					: [['wan','Usar como internet / WAN1']]);
+			const role=makeSelect((!isPrimary&&cfg.proto==='none'&&!preferredDevice)?'lan':'wan', roleOptions);
 			const device=makeSelect(targetDev||(!isPrimary?'lan1':'eth1'),wanPorts);
-			device.disabled=true;
+			device.disabled = !isPrimaryOnLanPort;
 			const proto=makeSelect(cfg.proto==='pppoe'?'pppoe':(cfg.proto==='static'?'static':'dhcp'),[['dhcp','DHCP automático'],['pppoe','PPPoE'],['static','IP fixo / estático']]);
 			const username=E('input',{class:'cbi-input-text',value:cfg.username||'',placeholder:'usuário PPPoE'});
 			const password=E('input',{type:'password',class:'cbi-input-text',value:cfg.password||'',placeholder:'senha PPPoE'});
@@ -1198,6 +1214,14 @@ const networkMethods = {
 			]) : null;
 			const sync=function(){
 				const lanMode=!isPrimary&&role.value==='lan';
+				if (isPrimaryOnLanPort) {
+					if (role.value === 'lan') {
+						device.value = nativeWanPort;
+						device.disabled = true;
+					} else {
+						device.disabled = false;
+					}
+				}
 				proto.disabled=lanMode;
 				pppoeBlock.style.display=(!lanMode&&proto.value==='pppoe')?'contents':'none';
 				staticBlock.style.display=(!lanMode&&proto.value==='static')?'contents':'none';
