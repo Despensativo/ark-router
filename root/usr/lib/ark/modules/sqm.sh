@@ -47,9 +47,10 @@ get_system_hardware_sqm_audit() {
 
 	local cpu_model="$(awk -F': ' '/model name|machine|Hardware|Processor/{print $2; exit}' /proc/cpuinfo 2>/dev/null || echo '')"
 	[ -n "$cpu_model" ] || cpu_model="$(cat /proc/device-tree/model 2>/dev/null | tr -d '\0' || cat /tmp/sysinfo/model 2>/dev/null || echo 'MIPS Processor')"
+	local cake_memlimit="$(ark_cake_memlimit)"
 
-	printf '{"is_low_end_mips":%s,"cpu_arch":"%s","cpu_cores":%d,"cpu_model":"%s","suggested_cut_off_mbps":%d,"fastpath_active":%s,"hw_flowoffload_capable":%s,"hw_flowoffload_active":%s}\n' \
-		"$(bool "$is_low_end_mips")" "$cpu_arch" "$cpu_cores" "$(json_escape "$cpu_model")" "$suggested_cut_off_mbps" "$fastpath_active" "$(bool "$hw_flowoffload_capable")" "$(bool "$hw_flowoffload_active")"
+	printf '{"is_low_end_mips":%s,"cpu_arch":"%s","cpu_cores":%d,"cpu_model":"%s","suggested_cut_off_mbps":%d,"fastpath_active":%s,"hw_flowoffload_capable":%s,"hw_flowoffload_active":%s,"cake_memlimit":"%s"}\n' \
+		"$(bool "$is_low_end_mips")" "$cpu_arch" "$cpu_cores" "$(json_escape "$cpu_model")" "$suggested_cut_off_mbps" "$fastpath_active" "$(bool "$hw_flowoffload_capable")" "$(bool "$hw_flowoffload_active")" "$cake_memlimit"
 }
 
 sqm_apply_upload_only() {
@@ -69,6 +70,7 @@ sqm_apply_upload_only() {
 		fi
 	done
 	[ -n "$sec" ] || sec="ark_$wan"
+	local mlim="$(ark_cake_memlimit)"
 	uci -q set "sqm.$sec=queue"
 	uci -q set "sqm.$sec.interface=$wan"
 	uci -q set "sqm.$sec.enabled=1"
@@ -76,7 +78,7 @@ sqm_apply_upload_only() {
 	uci -q set "sqm.$sec.upload=$up_kbps"
 	uci -q set "sqm.$sec.qdisc=cake"
 	uci -q set "sqm.$sec.script=layer_cake.qos"
-	local eq_opts="diffserv4 wash ack-filter memlimit 32M"
+	local eq_opts="diffserv4 nat dual-srchost wash ack-filter memlimit $mlim"
 	if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
 		eq_opts="$eq_opts no-split-gso"
 	fi
@@ -100,8 +102,9 @@ ensure_qos_equipe() {
 }
 
 ensure_sqm_section() {
-	local section device
+	local section device mlim
 	section="$1"; device="$2"
+	mlim="$(ark_cake_memlimit)"
 	uci -q get "sqm.$section" >/dev/null 2>&1 || uci -q set "sqm.$section=queue"
 	uci -q set "sqm.$section.interface=$device"
 	[ -n "$(uci -q get "sqm.$section.qdisc")" ] || uci -q set "sqm.$section.qdisc=cake"
@@ -112,13 +115,26 @@ ensure_sqm_section() {
 	[ -n "$(uci -q get "sqm.$section.qdisc_advanced")" ] || uci -q set "sqm.$section.qdisc_advanced=1"
 	[ -n "$(uci -q get "sqm.$section.squash_dscp")" ] || uci -q set "sqm.$section.squash_dscp=1"
 	[ -n "$(uci -q get "sqm.$section.squash_ingress")" ] || uci -q set "sqm.$section.squash_ingress=1"
+	[ -n "$(uci -q get "sqm.$section.ingress_ecn")" ] || uci -q set "sqm.$section.ingress_ecn=ECN"
+	[ -n "$(uci -q get "sqm.$section.egress_ecn")" ] || uci -q set "sqm.$section.egress_ecn=NOECN"
 	local cur_eq="$(uci -q get "sqm.$section.eqdisc_opts")"
 	if [ -z "$cur_eq" ]; then
-		cur_eq="diffserv4 nat dual-srchost wash ack-filter"
+		cur_eq="diffserv4 nat dual-srchost wash ack-filter memlimit $mlim"
 		uci -q set "sqm.$section.eqdisc_opts=$cur_eq"
-	elif ! printf '%s' "$cur_eq" | grep -qw 'wash'; then
-		cur_eq="$cur_eq wash"
-		uci -q set "sqm.$section.eqdisc_opts=$cur_eq"
+	else
+		local eq_changed=0
+		if ! printf '%s' "$cur_eq" | grep -qw 'wash'; then
+			cur_eq="$cur_eq wash"
+			eq_changed=1
+		fi
+		if ! printf '%s' "$cur_eq" | grep -q 'memlimit'; then
+			cur_eq="$cur_eq memlimit $mlim"
+			eq_changed=1
+		elif ! printf '%s' "$cur_eq" | grep -q "memlimit $mlim"; then
+			cur_eq="$(printf '%s' "$cur_eq" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $mlim/g")"
+			eq_changed=1
+		fi
+		[ "$eq_changed" = "1" ] && uci -q set "sqm.$section.eqdisc_opts=$cur_eq"
 	fi
 	if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
 		if ! printf '%s' "$cur_eq" | grep -qw 'no-split-gso'; then
@@ -128,7 +144,7 @@ ensure_sqm_section() {
 	fi
 	local cur_iq="$(uci -q get "sqm.$section.iqdisc_opts")"
 	if [ -z "$cur_iq" ]; then
-		cur_iq="besteffort nat dual-dsthost wash ingress"
+		cur_iq="besteffort nat dual-dsthost wash ingress memlimit $mlim"
 		uci -q set "sqm.$section.iqdisc_opts=$cur_iq"
 	elif [ "$(uci -q get "sqm.$section.squash_ingress" || echo 1)" = "1" ]; then
 		local iq_changed=0
@@ -144,9 +160,23 @@ ensure_sqm_section() {
 			cur_iq="$(printf '%s' "$cur_iq" | sed 's/ *rtt 50ms//g')"
 			iq_changed=1
 		fi
+		if ! printf '%s' "$cur_iq" | grep -q 'memlimit'; then
+			cur_iq="$cur_iq memlimit $mlim"
+			iq_changed=1
+		elif ! printf '%s' "$cur_iq" | grep -q "memlimit $mlim"; then
+			cur_iq="$(printf '%s' "$cur_iq" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $mlim/g")"
+			iq_changed=1
+		fi
 		[ "$iq_changed" = "1" ] && uci -q set "sqm.$section.iqdisc_opts=$cur_iq"
 	fi
-	[ -n "$(uci -q get "sqm.$section.linklayer")" ] || uci -q set "sqm.$section.linklayer=none"
+	if [ -z "$(uci -q get "sqm.$section.linklayer")" ]; then
+		uci -q set "sqm.$section.linklayer=ethernet"
+		uci -q set "sqm.$section.mpu=64"
+		case "$device" in
+			pppoe*) uci -q set "sqm.$section.overhead=44" ;;
+			*) uci -q set "sqm.$section.overhead=18" ;;
+		esac
+	fi
 }
 
 sqm_section_for_network() {
@@ -368,8 +398,14 @@ handle_sqm() {
 						fi
 					fi
 					if [ -n "$eqdisc_opts" ] || [ -n "$iqdisc_opts" ]; then
+						local mlim_save="$(ark_cake_memlimit)"
 						uci -q set "sqm.$section.qdisc_advanced=1"
 						if [ -n "$eqdisc_opts" ]; then
+							if printf '%s' "$eqdisc_opts" | grep -q 'memlimit'; then
+								eqdisc_opts="$(printf '%s' "$eqdisc_opts" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $mlim_save/g")"
+							else
+								eqdisc_opts="$eqdisc_opts memlimit $mlim_save"
+							fi
 							if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
 								printf '%s' "$eqdisc_opts" | grep -qw 'no-split-gso' || eqdisc_opts="$eqdisc_opts no-split-gso"
 							fi
@@ -381,6 +417,11 @@ handle_sqm() {
 							fi
 							printf '%s' "$iqdisc_opts" | grep -qw 'wash' || iqdisc_opts="$iqdisc_opts wash"
 							iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed 's/ *rtt 50ms//g')"
+							if printf '%s' "$iqdisc_opts" | grep -q 'memlimit'; then
+								iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $mlim_save/g")"
+							else
+								iqdisc_opts="$iqdisc_opts memlimit $mlim_save"
+							fi
 							uci -q set "sqm.$section.iqdisc_opts=$iqdisc_opts"
 						fi
 					fi

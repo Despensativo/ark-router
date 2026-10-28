@@ -4,7 +4,7 @@
 'require poll';
 'require fs';
 'require ui';
-const ARK_BUILD_VERSION = '2.0.9';
+const ARK_BUILD_VERSION = '2.1.0';
 if (typeof window !== 'undefined') {
 	window.ARK_BUILD_VERSION = ARK_BUILD_VERSION;
 	window.ARK_VERSION = ARK_BUILD_VERSION;
@@ -99,7 +99,7 @@ function loadDashboardLanguage(lang) {
 		if (typeof document === 'undefined') return resolve();
 		const s = document.createElement('script');
 		s.type = 'text/javascript';
-		const ver = (typeof window !== 'undefined' && window.ARK_ASSET_REV) ? window.ARK_ASSET_REV : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : (window.ARK_BUILD_VERSION || '2.0.9'));
+		const ver = (typeof window !== 'undefined' && window.ARK_ASSET_REV) ? window.ARK_ASSET_REV : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : (window.ARK_BUILD_VERSION || '2.1.0'));
 		s.src = L.resource('view/equipe-dashboard/i18n.' + targetLang + '.js') + '?v=' + ver;
 		s.onload = function() {
 			if (targetLang === 'en' && window.ARK_I18N_EN) Object.assign(EN, window.ARK_I18N_EN);
@@ -5152,10 +5152,11 @@ const networkMethods = {
 				]);
 
 				// 3. Link Layer Overhead & CAKE Parameters
+				const cakeMemlimit = audit.cake_memlimit || '32M';
 				const curLinklayer = queue.linklayer || 'none';
 				const curOverhead = parseInt(queue.overhead || 0, 10);
-				const curEqdisc = queue.eqdisc_opts || 'diffserv4 nat dual-srchost ack-filter wash memlimit 32M';
-				const curIqdisc = queue.iqdisc_opts || 'besteffort nat dual-dsthost wash ingress memlimit 32M';
+				const curEqdisc = queue.eqdisc_opts || ('diffserv4 nat dual-srchost ack-filter wash memlimit ' + cakeMemlimit);
+				const curIqdisc = queue.iqdisc_opts || ('besteffort nat dual-dsthost wash ingress memlimit ' + cakeMemlimit);
 
 				const isPppoe = profile.proto === 'pppoe';
 				let targetOverheadVal = 'none|0';
@@ -5359,13 +5360,14 @@ const networkMethods = {
 				const overhead = parts[1] || '0';
 				let eqOpts = [];
 				let iqOpts = [];
+				const saveMemlimit = audit.cake_memlimit || '32M';
 				if (editor.chkDiffserv.checked) { eqOpts.push('diffserv4'); iqOpts.push('besteffort'); } else { eqOpts.push('besteffort'); iqOpts.push('besteffort'); }
 				if (editor.chkNat.checked) { eqOpts.push('nat'); iqOpts.push('nat'); }
 				if (editor.chkHostFair.checked) { eqOpts.push('dual-srchost'); iqOpts.push('dual-dsthost'); }
 				if (editor.chkAck.checked) { eqOpts.push('ack-filter'); }
 				if (editor.chkWash.checked) { eqOpts.push('wash'); iqOpts.push('wash'); }
-				eqOpts.push('memlimit 32M');
-				iqOpts.push('ingress memlimit 32M');
+				eqOpts.push('memlimit ' + saveMemlimit);
+				iqOpts.push('ingress memlimit ' + saveMemlimit);
 				const eqStr = eqOpts.join(' ');
 				const iqStr = iqOpts.join(' ');
 

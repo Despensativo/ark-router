@@ -795,12 +795,10 @@ apply_operation_profile() {
 	rm -rf "$stage"
 
 	# 2. Identifica hardware e memoria disponivel para otimizacao inteligente
-	mem_total_kb="$(awk '/MemTotal/{print $2}' /proc/meminfo 2>/dev/null || echo 256000)"
-	if [ "$mem_total_kb" -gt 300000 ]; then
-		cake_opts="diffserv4 nat dual-srchost wash ack-filter memlimit 64M"
-	else
-		cake_opts="diffserv4 nat dual-srchost wash ack-filter memlimit 32M"
-	fi
+	local mlim="32M"
+	command -v ark_cake_memlimit >/dev/null 2>&1 && mlim="$(ark_cake_memlimit)"
+	cake_opts="diffserv4 nat dual-srchost wash ack-filter memlimit $mlim"
+	cake_iq_opts="besteffort nat dual-dsthost wash ingress memlimit $mlim"
 
 	uci -q set equipe_dashboard.main=settings
 	uci -q set "equipe_dashboard.main.operation_profile=$mode"
@@ -818,8 +816,10 @@ apply_operation_profile() {
 					uci -q set "sqm.$sec.script=layer_cake.qos"
 					uci -q set "sqm.$sec.squash_dscp=1"
 					uci -q set "sqm.$sec.squash_ingress=1"
+					uci -q set "sqm.$sec.ingress_ecn=ECN"
+					uci -q set "sqm.$sec.egress_ecn=NOECN"
 					uci -q set "sqm.$sec.eqdisc_opts=$cake_opts"
-					uci -q set "sqm.$sec.iqdisc_opts=besteffort nat dual-dsthost wash ingress"
+					uci -q set "sqm.$sec.iqdisc_opts=$cake_iq_opts"
 				fi
 			done
 		fi
@@ -837,8 +837,10 @@ apply_operation_profile() {
 					uci -q set "sqm.$sec.script=layer_cake.qos"
 					uci -q set "sqm.$sec.squash_dscp=1"
 					uci -q set "sqm.$sec.squash_ingress=1"
-					uci -q set "sqm.$sec.eqdisc_opts=diffserv4 nat dual-srchost wash ack-filter"
-					uci -q set "sqm.$sec.iqdisc_opts=besteffort nat dual-dsthost wash ingress"
+					uci -q set "sqm.$sec.ingress_ecn=ECN"
+					uci -q set "sqm.$sec.egress_ecn=NOECN"
+					uci -q set "sqm.$sec.eqdisc_opts=$cake_opts"
+					uci -q set "sqm.$sec.iqdisc_opts=$cake_iq_opts"
 				fi
 			done
 		fi

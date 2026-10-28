@@ -608,10 +608,11 @@ const networkMethods = {
 				]);
 
 				// 3. Link Layer Overhead & CAKE Parameters
+				const cakeMemlimit = audit.cake_memlimit || '32M';
 				const curLinklayer = queue.linklayer || 'none';
 				const curOverhead = parseInt(queue.overhead || 0, 10);
-				const curEqdisc = queue.eqdisc_opts || 'diffserv4 nat dual-srchost ack-filter wash memlimit 32M';
-				const curIqdisc = queue.iqdisc_opts || 'besteffort nat dual-dsthost wash ingress memlimit 32M';
+				const curEqdisc = queue.eqdisc_opts || ('diffserv4 nat dual-srchost ack-filter wash memlimit ' + cakeMemlimit);
+				const curIqdisc = queue.iqdisc_opts || ('besteffort nat dual-dsthost wash ingress memlimit ' + cakeMemlimit);
 
 				const isPppoe = profile.proto === 'pppoe';
 				let targetOverheadVal = 'none|0';
@@ -815,13 +816,14 @@ const networkMethods = {
 				const overhead = parts[1] || '0';
 				let eqOpts = [];
 				let iqOpts = [];
+				const saveMemlimit = audit.cake_memlimit || '32M';
 				if (editor.chkDiffserv.checked) { eqOpts.push('diffserv4'); iqOpts.push('besteffort'); } else { eqOpts.push('besteffort'); iqOpts.push('besteffort'); }
 				if (editor.chkNat.checked) { eqOpts.push('nat'); iqOpts.push('nat'); }
 				if (editor.chkHostFair.checked) { eqOpts.push('dual-srchost'); iqOpts.push('dual-dsthost'); }
 				if (editor.chkAck.checked) { eqOpts.push('ack-filter'); }
 				if (editor.chkWash.checked) { eqOpts.push('wash'); iqOpts.push('wash'); }
-				eqOpts.push('memlimit 32M');
-				iqOpts.push('ingress memlimit 32M');
+				eqOpts.push('memlimit ' + saveMemlimit);
+				iqOpts.push('ingress memlimit ' + saveMemlimit);
 				const eqStr = eqOpts.join(' ');
 				const iqStr = iqOpts.join(' ');
 
