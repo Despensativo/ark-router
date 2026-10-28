@@ -4,7 +4,7 @@
 'require poll';
 'require fs';
 'require ui';
-const ARK_BUILD_VERSION = '2.0.4';
+const ARK_BUILD_VERSION = '2.0.5';
 if (typeof window !== 'undefined') {
 	window.ARK_BUILD_VERSION = ARK_BUILD_VERSION;
 	window.ARK_VERSION = ARK_BUILD_VERSION;
@@ -99,7 +99,7 @@ function loadDashboardLanguage(lang) {
 		if (typeof document === 'undefined') return resolve();
 		const s = document.createElement('script');
 		s.type = 'text/javascript';
-		const ver = (typeof window !== 'undefined' && window.ARK_ASSET_REV) ? window.ARK_ASSET_REV : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : (window.ARK_BUILD_VERSION || '2.0.4'));
+		const ver = (typeof window !== 'undefined' && window.ARK_ASSET_REV) ? window.ARK_ASSET_REV : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : (window.ARK_BUILD_VERSION || '2.0.5'));
 		s.src = L.resource('view/equipe-dashboard/i18n.' + targetLang + '.js') + '?v=' + ver;
 		s.onload = function() {
 			if (targetLang === 'en' && window.ARK_I18N_EN) Object.assign(EN, window.ARK_I18N_EN);
