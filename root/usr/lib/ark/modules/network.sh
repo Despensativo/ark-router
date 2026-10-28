@@ -1524,6 +1524,7 @@ EOF
 			uci -q set firewall.@defaults[0].flow_offloading=0
 			uci -q set firewall.@defaults[0].flow_offloading_hw=0
 			uci commit firewall
+			[ -z "${ARK_ROOT:-}" ] && command -v nft >/dev/null 2>&1 && nft delete flowtable inet fw4 ft 2>/dev/null || true
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
 		fi
 		if [ "$irqbalance" = 1 ]; then
@@ -1546,6 +1547,7 @@ EOF
 			uci -q set firewall.@defaults[0].flow_offloading=0
 			uci -q set firewall.@defaults[0].flow_offloading_hw=0
 			uci commit firewall
+			[ -z "${ARK_ROOT:-}" ] && command -v nft >/dev/null 2>&1 && nft delete flowtable inet fw4 ft 2>/dev/null || true
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
 
 			ensure_sqm_section "$sqm_section" "$wan_device"

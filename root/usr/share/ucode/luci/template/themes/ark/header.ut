@@ -7,7 +7,7 @@
 	import { getuid, getspnam } from 'luci.core';
 	import * as fs from 'fs';
 	const boardinfo = ubus.call('system', 'board');
-	const ark_v = trim(fs.readfile('/usr/share/ark-router/VERSION') ?? '2.0.5');
+	const ark_v = trim(fs.readfile('/usr/share/ark-router/VERSION') ?? '2.0.6');
 	const ov_mt = fs.stat('/www/luci-static/resources/view/equipe-dashboard/overview.js')?.mtime ?? 0;
 	const th_mt = fs.stat('/www/luci-static/ark/ark-theme.js')?.mtime ?? 0;
 	const ark_rev = `${ark_v}-${ov_mt}-${th_mt}`;

@@ -1182,9 +1182,12 @@ system_hardware_auto_tune() {
 		offload_reason="Comutação L2 Pura (Modo Ponte / AP dispensa Flowtable L3)"
 		silicon_tuning_profile="Ponto de Acesso / Ponte L2 Otimizada"
 	elif [ "$sqm_active" = 1 ]; then
-		uci -q set firewall.@defaults[0].flow_offloading=1
+		uci -q set firewall.@defaults[0].flow_offloading=0
 		uci -q set firewall.@defaults[0].flow_offloading_hw=0
-		offload_reason="Software Flowtable (SQM/CAKE ativo prioriza combate a Bufferbloat)"
+		offload_reason="Fastpath desativado (SQM/CAKE ativo prioriza combate a Bufferbloat)"
+		if [ -z "${ARK_ROOT:-}" ] && command -v nft >/dev/null 2>&1; then
+			nft delete flowtable inet fw4 ft 2>/dev/null || true
+		fi
 	elif [ "$silicon_hw_offload_capable" = 1 ]; then
 		uci -q set firewall.@defaults[0].flow_offloading=1
 		uci -q set firewall.@defaults[0].flow_offloading_hw=1

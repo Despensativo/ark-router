@@ -5,7 +5,7 @@
 [ -z "${_ARK_COMMON_SH_LOADED:-}" ] || return 0
 _ARK_COMMON_SH_LOADED=1
 
-ARK_ROUTER_VERSION="2.0.5"
+ARK_ROUTER_VERSION="2.0.6"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 ARK_ROOT="${ARK_ROOT:-}"
 

@@ -336,6 +336,36 @@ if [ "$active_wans_cnt" -lt 2 ] && [ "$(uci -q get equipe_dashboard.ipv6.mode)" 
 	done
 fi
 
+# Higieniza filas SQM/CAKE no Download (iqdisc_opts) para usar besteffort + wash quando squash_ingress=1,
+# impedindo que DSCP falso de CDNs/operadora sequestre as filas prioritarias de Voz/Video no IFB
+if [ -f /etc/config/sqm ]; then
+	sqm_mod=0
+	sqm_is_on=0
+	for sq in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\([^.=]*\)=queue$/\1/p'); do
+		[ "$(uci -q get "sqm.$sq.enabled")" = "1" ] && sqm_is_on=1
+		cur_iq="$(uci -q get "sqm.$sq.iqdisc_opts")"
+		if [ "$(uci -q get "sqm.$sq.squash_ingress" || echo 1)" = "1" ] && printf '%s' "$cur_iq" | grep -qw 'diffserv4'; then
+			cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bdiffserv4\b/besteffort/g')"
+			printf '%s' "$cur_iq" | grep -qw 'wash' || cur_iq="$cur_iq wash"
+			uci -q set "sqm.$sq.iqdisc_opts=$cur_iq"
+			sqm_mod=1
+		fi
+	done
+	if [ "$sqm_mod" = "1" ]; then
+		uci commit sqm 2>/dev/null || true
+		[ "$sqm_is_on" = "1" ] && [ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
+	fi
+	if [ "$sqm_is_on" = "1" ]; then
+		if [ "$(uci -q get firewall.@defaults[0].flow_offloading || echo 0)" = "1" ] || \
+		   [ "$(uci -q get firewall.@defaults[0].flow_offloading_hw || echo 0)" = "1" ]; then
+			uci -q set firewall.@defaults[0].flow_offloading='0'
+			uci -q set firewall.@defaults[0].flow_offloading_hw='0'
+			uci commit firewall 2>/dev/null || true
+		fi
+		command -v nft >/dev/null 2>&1 && nft delete flowtable inet fw4 ft 2>/dev/null || true
+	fi
+fi
+
 rm -f /tmp/ark-*.cache /tmp/ark-*-cache.json /tmp/ark-*-cache.ts 2>/dev/null || true
 
 exit 0

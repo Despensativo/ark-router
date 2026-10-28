@@ -32,6 +32,8 @@ class TestHardwareTune(unittest.TestCase):
 
     def test_02_hardware_auto_tune_execution(self):
         """Verifica se system-hardware-auto-tune executa com sucesso e aplica regras no firewall e sysctl"""
+        self.sb.uci_set("sqm.wan1.enabled=0")
+        self.sb.uci_set("sqm.wan2.enabled=0")
         res = self.sb.run_control("system-hardware-auto-tune")
         self.assertEqual(res.returncode, 0, f"Falha ao executar system-hardware-auto-tune: {res.stderr}")
         data = json.loads(res.stdout)
@@ -44,7 +46,7 @@ class TestHardwareTune(unittest.TestCase):
         self.assertIn("conntrack_max", data)
         self.assertIn("rmem_max", data)
 
-        # Verifica se flow_offloading foi ativado no firewall
+        # Verifica se flow_offloading foi ativado no firewall quando SQM esta desligado
         flow_offload = self.sb.uci_get("firewall.@defaults[0].flow_offloading")
         self.assertEqual(flow_offload, "1", "flow_offloading nao foi ativado no firewall")
 
@@ -73,7 +75,7 @@ class TestHardwareTune(unittest.TestCase):
         self.assertIn("net.netfilter.nf_conntrack_udp_timeout=30", content)
 
     def test_04_hardware_auto_tune_with_vpn_and_sqm(self):
-        """Verifica se VPN e SQM ativos ativam mtu_probing e priorizam Software Flowtable"""
+        """Verifica se VPN e SQM ativos ativam mtu_probing e desativam Fastpath para proteger SQM/CAKE"""
         # Configura SQM ativo
         sqm_file = os.path.join(self.sb.etc_config, "sqm")
         with open(sqm_file, "w") as f:
@@ -90,6 +92,7 @@ class TestHardwareTune(unittest.TestCase):
         self.assertIn("sqm", svcs)
         self.assertIn("vpn", svcs)
         self.assertIn("SQM/CAKE ativo", data.get("offload_reason", ""))
+        self.assertEqual(self.sb.uci_get("firewall.@defaults[0].flow_offloading"), "0")
 
         # Inspeciona se tcp_mtu_probing foi ativado
         sysctl_file = os.path.join(self.sb.temp_dir, "etc", "sysctl.d", "99-ark-hardware-tune.conf")

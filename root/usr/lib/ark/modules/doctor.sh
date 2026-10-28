@@ -269,6 +269,18 @@ ark_doctor_audit() {
 						add_check "SQM Overhead $wan" "OK" "Enquadramento calibrado: ${cur_ov}B ($cur_ll, mpu $cur_mpu)."
 					fi
 				fi
+
+				cur_iq="$(uci -q get "sqm.$sqm_sec.iqdisc_opts")"
+				if [ "$(uci -q get "sqm.$sqm_sec.squash_ingress" || echo 1)" = "1" ] && printf '%s' "$cur_iq" | grep -qw 'diffserv4'; then
+					if [ "$auto_fix" = 1 ]; then
+						cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bdiffserv4\b/besteffort/g')"
+						printf '%s' "$cur_iq" | grep -qw 'wash' || cur_iq="$cur_iq wash"
+						uci -q set "sqm.$sqm_sec.iqdisc_opts=$cur_iq"
+						uci commit sqm
+						[ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
+						fixes_applied=$((fixes_applied + 1))
+					fi
+				fi
 			else
 				add_check "SQM $wan" "OK" "Desativado (toggle desligado no painel)."
 			fi
@@ -404,7 +416,9 @@ ark_doctor_audit() {
 			uci -q set firewall.@defaults[0].flow_offloading=0
 			uci -q set firewall.@defaults[0].flow_offloading_hw=0
 			uci commit firewall
+			[ -z "${ARK_ROOT:-}" ] && command -v nft >/dev/null 2>&1 && nft delete flowtable inet fw4 ft 2>/dev/null || true
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			[ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune reload >/dev/null 2>&1 || true
 			fixes_applied=$((fixes_applied + 1))
 			add_check "Flow Offload vs SQM" "FIXED" "Conflito detectado. Fastpath desativado para permitir funcionamento prioritario do SQM/CAKE."
 		else
@@ -416,7 +430,9 @@ ark_doctor_audit() {
 			uci -q set firewall.@defaults[0].flow_offloading=0
 			uci -q set firewall.@defaults[0].flow_offloading_hw=0
 			uci commit firewall
+			[ -z "${ARK_ROOT:-}" ] && command -v nft >/dev/null 2>&1 && nft delete flowtable inet fw4 ft 2>/dev/null || true
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			[ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune reload >/dev/null 2>&1 || true
 			fixes_applied=$((fixes_applied + 1))
 			add_check "Flow Offload vs Multi-WAN" "FIXED" "Conflito detectado. Fastpath desativado para permitir balanceamento e failover no mwan3."
 		else
@@ -431,6 +447,7 @@ ark_doctor_audit() {
 			fi
 			uci commit firewall
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			[ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune reload >/dev/null 2>&1 || true
 			fixes_applied=$((fixes_applied + 1))
 			add_check "Aceleracao de Rede" "FIXED" "Sem SQM ou Multi-WAN detectado. Fastpath e Hardware Offload religados para maxima vazao."
 		else
@@ -438,6 +455,7 @@ ark_doctor_audit() {
 			add_check "Aceleracao de Rede" "WARN" "Fastpath desativado, mas nao ha SQM nem Multi-WAN para justifica-lo. Habilite-o para ganhar maxima vazao."
 		fi
 	else
+		[ "$sqm_has_active" = "1" ] && [ -z "${ARK_ROOT:-}" ] && command -v nft >/dev/null 2>&1 && nft delete flowtable inet fw4 ft 2>/dev/null || true
 		add_check "Aceleracao de Rede" "OK" "Sem conflitos entre Fastpath, SQM e Multi-WAN."
 	fi
 

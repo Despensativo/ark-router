@@ -126,7 +126,15 @@ ensure_sqm_section() {
 			uci -q set "sqm.$section.eqdisc_opts=$cur_eq"
 		fi
 	fi
-	[ -n "$(uci -q get "sqm.$section.iqdisc_opts")" ] || uci -q set "sqm.$section.iqdisc_opts=diffserv4 nat dual-dsthost ingress"
+	local cur_iq="$(uci -q get "sqm.$section.iqdisc_opts")"
+	if [ -z "$cur_iq" ]; then
+		cur_iq="besteffort nat dual-dsthost wash ingress"
+		uci -q set "sqm.$section.iqdisc_opts=$cur_iq"
+	elif [ "$(uci -q get "sqm.$section.squash_ingress" || echo 1)" = "1" ] && printf '%s' "$cur_iq" | grep -qw 'diffserv4'; then
+		cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bdiffserv4\b/besteffort/g')"
+		printf '%s' "$cur_iq" | grep -qw 'wash' || cur_iq="$cur_iq wash"
+		uci -q set "sqm.$section.iqdisc_opts=$cur_iq"
+	fi
 	[ -n "$(uci -q get "sqm.$section.linklayer")" ] || uci -q set "sqm.$section.linklayer=none"
 }
 
@@ -178,7 +186,15 @@ sync_sqm_flow_offload() {
 			uci -q set firewall.@defaults[0].flow_offloading=0
 			uci -q set firewall.@defaults[0].flow_offloading_hw=0
 			uci commit firewall 2>/dev/null || true
+			if [ -z "${ARK_ROOT:-}" ] && command -v nft >/dev/null 2>&1; then
+				nft delete flowtable inet fw4 ft 2>/dev/null || true
+			fi
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			[ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune reload >/dev/null 2>&1 || true
+		elif [ -z "${ARK_ROOT:-}" ] && command -v nft >/dev/null 2>&1 && nft list flowtables 2>/dev/null | grep -q 'flowtable ft'; then
+			nft delete flowtable inet fw4 ft 2>/dev/null || true
+			/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			[ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune reload >/dev/null 2>&1 || true
 		fi
 		# Coordenacao Qualcomm QSDK ECM (qca-nss-ecm): impede sequestro do fluxo TCP apos ~25 pacotes em PPPoE + IFB
 		if [ -d "$ecm_dir" ]; then
@@ -205,6 +221,7 @@ sync_sqm_flow_offload() {
 				fi
 				uci commit firewall 2>/dev/null || true
 				/etc/init.d/firewall reload >/dev/null 2>&1 || true
+				[ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune reload >/dev/null 2>&1 || true
 			fi
 			if [ -d "$ecm_dir" ]; then
 				[ -f "$ecm_dir/front_end_ipv4_stop" ] && echo 0 > "$ecm_dir/front_end_ipv4_stop" 2>/dev/null || true
@@ -347,7 +364,13 @@ handle_sqm() {
 							fi
 							uci -q set "sqm.$section.eqdisc_opts=$eqdisc_opts"
 						fi
-						[ -n "$iqdisc_opts" ] && uci -q set "sqm.$section.iqdisc_opts=$iqdisc_opts"
+						if [ -n "$iqdisc_opts" ]; then
+							if [ "$(uci -q get "sqm.$section.squash_ingress" || echo 1)" = "1" ] && printf '%s' "$iqdisc_opts" | grep -qw 'diffserv4'; then
+								iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed 's/\bdiffserv4\b/besteffort/g')"
+							fi
+							printf '%s' "$iqdisc_opts" | grep -qw 'wash' || iqdisc_opts="$iqdisc_opts wash"
+							uci -q set "sqm.$section.iqdisc_opts=$iqdisc_opts"
+						fi
 					fi
 					;;
 				guest_upload)
@@ -413,31 +436,7 @@ handle_sqm() {
 		done
 		uci commit sqm
 		uci commit qos_equipe 2>/dev/null || true
-		# Trava de exclusao mutua: SQM desativa Fastpath/Flow Offloading; ausência de SQM reativa o Hardware Offloading se o silício suportar.
-		if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
-			if [ "$(uci -q get firewall.@defaults[0].flow_offloading || echo 0)" = "1" ] || \
-			   [ "$(uci -q get firewall.@defaults[0].flow_offloading_hw || echo 0)" = "1" ]; then
-				uci -q set firewall.@defaults[0].flow_offloading=0
-				uci -q set firewall.@defaults[0].flow_offloading_hw=0
-				uci commit firewall 2>/dev/null || true
-				/etc/init.d/firewall reload >/dev/null 2>&1 || true
-			fi
-		else
-			local mwan_count=0
-			if [ -f /etc/config/mwan3 ]; then
-				for w in $(uci -q show mwan3 2>/dev/null | grep "\.enabled='1'" | cut -d. -f2 | grep -v "\."); do
-					mwan_count=$((mwan_count + 1))
-				done
-			fi
-			if [ "$(uci -q get firewall.@defaults[0].flow_offloading || echo 0)" = "0" ] && [ "$mwan_count" -lt 2 ]; then
-				uci -q set firewall.@defaults[0].flow_offloading=1
-				if [ -d /sys/kernel/debug/ppe0 ] || [ -d /sys/kernel/debug/ppe1 ] || [ -f /sys/kernel/debug/ppe/offload_stats ] || [ -d /sys/devices/platform/soc/*ppe* ]; then
-					uci -q set firewall.@defaults[0].flow_offloading_hw=1
-				fi
-				uci commit firewall 2>/dev/null || true
-				/etc/init.d/firewall reload >/dev/null 2>&1 || true
-			fi
-		fi
+		sync_sqm_flow_offload
 		/etc/init.d/sqm restart
 		apply_guest_tc_limit >/dev/null 2>&1 || true
 		echo ok
