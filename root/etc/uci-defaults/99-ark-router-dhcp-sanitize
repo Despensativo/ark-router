@@ -293,6 +293,26 @@ esac
 # Limpeza automatica de arquivos orfaos de MSS clamping legado e metadados AppleDouble no fw4
 rm -f /etc/nftables.d/20-mss-clamping.nft /etc/nftables.d/20-mss-clamping.nft.bak /etc/nftables.d/._* 2>/dev/null || true
 
+# Garante que regras de prioridade por dispositivo (ark_priority_*) cubram IPv4 + IPv6 (family=any) e remove duplicatas guest_forwarding
+fw_sanitized=0
+for p_sec in $(uci -q show firewall 2>/dev/null | sed -n 's/^firewall\.\(ark_priority_[^.=]*\)=rule$/\1/p'); do
+	if [ "$(uci -q get "firewall.$p_sec.family")" = "ipv4" ]; then
+		uci -q set "firewall.$p_sec.family=any"
+		fw_sanitized=1
+	fi
+done
+if [ -n "$(uci -q get firewall.guest_wan)" ] && [ -n "$(uci -q get firewall.guest_forwarding)" ]; then
+	uci -q delete firewall.guest_forwarding
+	fw_sanitized=1
+fi
+[ "$fw_sanitized" = 1 ] && uci commit firewall 2>/dev/null || true
+
+# Desativa debug verboso desnecessario do pppd na WAN
+if [ "$(uci -q get network.wan.debug)" = "1" ]; then
+	uci -q delete network.wan.debug
+	uci commit network 2>/dev/null || true
+fi
+
 # Em Single-WAN, evita que NPTv6 (masq6=1) fique preso quebrando P2P WebRTC (WhatsApp) e PPE Offload
 active_wans_cnt=0
 for w in wan wan2 wan3 wan4; do

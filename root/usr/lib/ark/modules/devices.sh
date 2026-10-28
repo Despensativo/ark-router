@@ -1411,7 +1411,7 @@ handle_devices() {
 			uci -q set "firewall.$priority_section.name=ARK-Priority-$mac"
 			uci -q set "firewall.$priority_section.src=lan"
 			uci -q set "firewall.$priority_section.dest=wan"
-			uci -q set "firewall.$priority_section.family=ipv4"
+			uci -q set "firewall.$priority_section.family=any"
 			uci -q set "firewall.$priority_section.proto=all"
 			uci -q set "firewall.$priority_section.src_mac=$mac"
 			uci -q set "firewall.$priority_section.target=DSCP"

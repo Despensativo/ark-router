@@ -2235,24 +2235,7 @@ handle_ezsetup() {
 		elif [ "$key" = speedify ]; then feature_active "$key" && { echo done >"$status"; echo installed; exit 0; }
 		elif [ "$key" = usteer ]; then
 			if installed "$package"; then
-				if [ ! -s /etc/config/usteer ]; then
-					touch /etc/config/usteer
-					uci -q set usteer.@usteer[0]=usteer 2>/dev/null || uci -q add usteer usteer
-					uci -q set usteer.@usteer[0].network='lan'
-					uci -q set usteer.@usteer[0].syslog='1'
-					uci -q set usteer.@usteer[0].min_snr='15'
-					uci -q set usteer.@usteer[0].band_steering_threshold='20'
-					uci -q set usteer.@usteer[0].kick_threshold='-78'
-					uci -q set usteer.@usteer[0].max_retries='3'
-					uci commit usteer 2>/dev/null || true
-				fi
-				if [ -x /etc/init.d/usteer ]; then
-					/etc/init.d/usteer enable >/dev/null 2>&1 || true
-					/etc/init.d/usteer restart >/dev/null 2>&1 || true
-				fi
-				uci -q set equipe_dashboard.wifi=settings 2>/dev/null || true
-				uci -q set equipe_dashboard.wifi.usteer_enabled=1
-				uci commit equipe_dashboard 2>/dev/null || true
+				handle_wifi wifi-usteer-toggle 1 >/dev/null 2>&1 || true
 				echo done >"$status"
 				echo installed
 				exit 0
@@ -2331,24 +2314,7 @@ handle_ezsetup() {
 						opkg install wpad-mbedtls || true
 					fi
 				fi
-				if [ ! -s /etc/config/usteer ]; then
-					touch /etc/config/usteer
-					uci -q set usteer.@usteer[0]=usteer 2>/dev/null || uci -q add usteer usteer
-					uci -q set usteer.@usteer[0].network='lan'
-					uci -q set usteer.@usteer[0].syslog='1'
-					uci -q set usteer.@usteer[0].min_snr='15'
-					uci -q set usteer.@usteer[0].band_steering_threshold='20'
-					uci -q set usteer.@usteer[0].kick_threshold='-78'
-					uci -q set usteer.@usteer[0].max_retries='3'
-					uci commit usteer 2>/dev/null || true
-				fi
-				if [ -x /etc/init.d/usteer ]; then
-					/etc/init.d/usteer enable >/dev/null 2>&1 || true
-					/etc/init.d/usteer restart >/dev/null 2>&1 || true
-				fi
-				uci -q set equipe_dashboard.wifi=settings 2>/dev/null || true
-				uci -q set equipe_dashboard.wifi.usteer_enabled=1
-				uci commit equipe_dashboard 2>/dev/null || true
+				handle_wifi wifi-usteer-toggle 1 >/dev/null 2>&1 || true
 			elif [ "$key" = upnp ] && is_fw4; then
 				if command -v apk >/dev/null 2>&1; then
 					apk update && apk add luci-app-upnp miniupnpd-nftables || ok=0

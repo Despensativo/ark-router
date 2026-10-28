@@ -147,7 +147,7 @@ if [ -n "$radio6" ]; then
 	fi
 fi
 
-# 6. Otimizações de Aceleração Wi-Fi 6 Out-of-the-Box (se hardware suportar)
+# 6. Otimizações de Aceleração Wi-Fi 6 Out-of-the-Box e Blindagem de Sono Mobile/IoT
 for dev in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut -d= -f1); do
 	cur_ht="$(uci -q get wireless.$dev.htmode || true)"
 	case "$cur_ht" in
@@ -155,7 +155,7 @@ for dev in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut 
 			uci -q set "wireless.$dev.bss_color=auto"
 			uci -q set "wireless.$dev.he_bss_color=1"
 			uci -q set "wireless.$dev.he_spatial_reuse=1"
-			uci -q set "wireless.$dev.twt_responder=1"
+			uci -q set "wireless.$dev.twt_responder=0"
 			uci -q set "wireless.$dev.airtime_fairness=1"
 			uci -q set "wireless.$dev.he_su_beamformer=1"
 			uci -q set "wireless.$dev.he_su_beamformee=1"
@@ -168,6 +168,18 @@ for dev in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut 
 			changed=1
 			;;
 	esac
+done
+
+for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
+	mode="$(uci -q get wireless.$iface.mode || echo ap)"
+	if [ "$mode" = "ap" ]; then
+		uci -q set "wireless.$iface.disassoc_low_ack=0"
+		uci -q set "wireless.$iface.wpa_group_rekey=0"
+		uci -q set "wireless.$iface.skip_inactivity_poll=0"
+		uci -q set "wireless.$iface.max_inactivity=86400"
+		uci -q delete "wireless.$iface.wnm_sleep_mode" 2>/dev/null || true
+		changed=1
+	fi
 done
 
 [ "$changed" = "1" ] && {

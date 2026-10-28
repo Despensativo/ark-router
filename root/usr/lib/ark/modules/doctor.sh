@@ -1469,15 +1469,20 @@ ark_doctor_audit() {
 		ark_hostapd_has_wnm && wnm_capable=1
 
 		if [ "$usteer_installed" = 1 ] && [ "$usteer_active" = 1 ]; then
-			# Verifica se 802.11k (rrm), 802.11v (bss_transition se suportado), RNR e anti-desconexão (disassoc_low_ack=0) estão configurados nas seções AP
+			# Verifica se 802.11k (rrm), 802.11v (bss_transition se suportado), RNR e anti-desconexão (disassoc_low_ack=0) estão configurados nas seções AP LAN
 			local missing_kv_secs=""
 			for chk_sec in $ap_sections; do
+				local d_ack="$($uci_cmd get "wireless.$chk_sec.disassoc_low_ack" 2>/dev/null || echo 1)"
+				local wsm="$($uci_cmd get "wireless.$chk_sec.wnm_sleep_mode" 2>/dev/null || echo 0)"
+				if [ "$d_ack" != "0" ] || [ "$wsm" = "1" ]; then
+					missing_kv_secs="$missing_kv_secs $chk_sec"
+					continue
+				fi
+				[ "$($uci_cmd get "wireless.$chk_sec.network" 2>/dev/null || echo lan)" = "lan" ] || continue
 				local k="$($uci_cmd get "wireless.$chk_sec.ieee80211k" 2>/dev/null || echo 0)"
 				local bt="$($uci_cmd get "wireless.$chk_sec.bss_transition" 2>/dev/null || echo 0)"
-				local wsm="$($uci_cmd get "wireless.$chk_sec.wnm_sleep_mode" 2>/dev/null || echo 0)"
 				local rnr_v="$($uci_cmd get "wireless.$chk_sec.rnr" 2>/dev/null || echo 0)"
-				local d_ack="$($uci_cmd get "wireless.$chk_sec.disassoc_low_ack" 2>/dev/null || echo 1)"
-				if [ "$k" != "1" ] || [ "$rnr_v" != "1" ] || [ "$d_ack" != "0" ] || [ "$wsm" = "1" ]; then
+				if [ "$k" != "1" ] || [ "$rnr_v" != "1" ]; then
 					missing_kv_secs="$missing_kv_secs $chk_sec"
 				elif [ "$wnm_capable" = 1 ] && [ "$bt" != "1" ]; then
 					missing_kv_secs="$missing_kv_secs $chk_sec"
@@ -1487,31 +1492,35 @@ ark_doctor_audit() {
 				fi
 			done
 
-			# Verifica se a calibração de alta velocidade e anti-chute do usteer está presente (-70 dBm, histerese 8 dB, zero chutes)
+			# Verifica se a calibração de alta velocidade e anti-chute do usteer está presente (-70 dBm, histerese 8 dB, zero chutes, zero link_measurement_interval)
 			local usteer_snr="$($uci_cmd get usteer.@usteer[0].band_steering_min_snr 2>/dev/null || echo '')"
 			local usteer_min_snr="$($uci_cmd get usteer.@usteer[0].min_snr 2>/dev/null || echo '0')"
 			local usteer_roam_scan="$($uci_cmd get usteer.@usteer[0].roam_scan_snr 2>/dev/null || echo '0')"
 			local usteer_lk="$($uci_cmd get usteer.@usteer[0].load_kick_enabled 2>/dev/null || echo '0')"
+			local usteer_lmi="$($uci_cmd get usteer.@usteer[0].link_measurement_interval 2>/dev/null || echo '')"
+			local usteer_lm="$($uci_cmd get usteer.@usteer[0].local_mode 2>/dev/null || echo '')"
 			local usteer_needs_calib=0
-			if [ "$usteer_snr" != "-70" ] || [ "$usteer_min_snr" != "0" ] || [ "$usteer_roam_scan" != "0" ] || [ "$usteer_lk" != "0" ]; then
+			if [ "$usteer_snr" != "-70" ] || [ "$usteer_min_snr" != "0" ] || [ "$usteer_roam_scan" != "0" ] || [ "$usteer_lk" != "0" ] || [ "$usteer_lmi" != "0" ] || [ "$usteer_lm" != "1" ]; then
 				usteer_needs_calib=1
 			fi
 
 			if [ -n "$missing_kv_secs" ] || [ "$usteer_needs_calib" = 1 ]; then
 				if [ "$auto_fix" = 1 ]; then
 					for kv_sec in $missing_kv_secs; do
-						$uci_cmd set "wireless.$kv_sec.ieee80211k=1"
-						$uci_cmd set "wireless.$kv_sec.rrm_neighbor_report=1"
-						$uci_cmd set "wireless.$kv_sec.rrm_beacon_report=1"
-						$uci_cmd set "wireless.$kv_sec.rnr=1"
-						$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
 						$uci_cmd set "wireless.$kv_sec.disassoc_low_ack=0"
-						if [ "$wnm_capable" = 1 ]; then
-							$uci_cmd set "wireless.$kv_sec.bss_transition=1"
-						else
-							$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
-						fi
 						$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
+						if [ "$($uci_cmd get "wireless.$kv_sec.network" 2>/dev/null || echo lan)" = "lan" ]; then
+							$uci_cmd set "wireless.$kv_sec.ieee80211k=1"
+							$uci_cmd set "wireless.$kv_sec.rrm_neighbor_report=1"
+							$uci_cmd set "wireless.$kv_sec.rrm_beacon_report=1"
+							$uci_cmd set "wireless.$kv_sec.rnr=1"
+							$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
+							if [ "$wnm_capable" = 1 ]; then
+								$uci_cmd set "wireless.$kv_sec.bss_transition=1"
+							else
+								$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
+							fi
+						fi
 					done
 					[ -n "$missing_kv_secs" ] && {
 						$uci_cmd commit wireless 2>/dev/null || true
@@ -1523,6 +1532,8 @@ ark_doctor_audit() {
 						[ -n "$($uci_cmd get usteer.@usteer[0] 2>/dev/null)" ] || $uci_cmd add usteer usteer >/dev/null 2>&1 || true
 						$uci_cmd set usteer.@usteer[0].network='lan'
 						$uci_cmd set usteer.@usteer[0].syslog='1'
+						$uci_cmd set usteer.@usteer[0].local_mode='1'
+						$uci_cmd set usteer.@usteer[0].link_measurement_interval='0'
 						$uci_cmd set usteer.@usteer[0].min_snr='0'
 						$uci_cmd set usteer.@usteer[0].load_balancing_threshold='3'
 						$uci_cmd set usteer.@usteer[0].band_steering_threshold='5'
@@ -1535,12 +1546,23 @@ ark_doctor_audit() {
 						$uci_cmd set usteer.@usteer[0].band_steering_interval='120000'
 						$uci_cmd set usteer.@usteer[0].max_retries='3'
 						$uci_cmd delete usteer.@usteer[0].kick_threshold 2>/dev/null || true
+						$uci_cmd delete usteer.@usteer[0].ssid_list 2>/dev/null || true
+						local seen_u_ssids=""
+						for kv_sec in $ap_sections; do
+							[ "$($uci_cmd get "wireless.$kv_sec.network" 2>/dev/null || echo lan)" = "lan" ] || continue
+							local u_ssid="$($uci_cmd get "wireless.$kv_sec.ssid" 2>/dev/null || echo '')"
+							[ -n "$u_ssid" ] || continue
+							case " $seen_u_ssids " in *" $u_ssid "*) ;; *)
+								$uci_cmd add_list "usteer.@usteer[0].ssid_list=$u_ssid"
+								seen_u_ssids="$seen_u_ssids $u_ssid"
+							;; esac
+						done
 						$uci_cmd commit usteer 2>/dev/null || true
 						/etc/init.d/usteer restart >/dev/null 2>&1 || true
 					fi
 
 					fixes_applied=$((fixes_applied + 1))
-					add_check "Band Steering (usteer)" "FIXED" "Daemon usteer calibrado com histerese (8 dB), zero chutes forçados (min_snr=0, load_kick=0), 802.11k/v e subida para 5GHz (-70 dBm)."
+					add_check "Band Steering (usteer)" "FIXED" "Daemon usteer calibrado com histerese (8 dB), zero chutes forçados (min_snr=0, load_kick=0, link_measurement=0), 802.11k/v e subida para 5GHz (-70 dBm)."
 				else
 					warnings=$((warnings + 1))
 					add_check "Band Steering (usteer)" "WARN" "usteer ativo, mas parâmetros de roaming 802.11k/RNR, histerese ou anti-chute descalibrados."
@@ -1556,6 +1578,8 @@ ark_doctor_audit() {
 				[ -n "$($uci_cmd get usteer.@usteer[0] 2>/dev/null)" ] || $uci_cmd add usteer usteer >/dev/null 2>&1 || true
 				$uci_cmd set usteer.@usteer[0].network='lan'
 				$uci_cmd set usteer.@usteer[0].syslog='1'
+				$uci_cmd set usteer.@usteer[0].local_mode='1'
+				$uci_cmd set usteer.@usteer[0].link_measurement_interval='0'
 				$uci_cmd set usteer.@usteer[0].min_snr='0'
 				$uci_cmd set usteer.@usteer[0].load_balancing_threshold='3'
 				$uci_cmd set usteer.@usteer[0].band_steering_threshold='5'
@@ -1568,8 +1592,12 @@ ark_doctor_audit() {
 				$uci_cmd set usteer.@usteer[0].band_steering_interval='120000'
 				$uci_cmd set usteer.@usteer[0].max_retries='3'
 				$uci_cmd delete usteer.@usteer[0].kick_threshold 2>/dev/null || true
-				$uci_cmd commit usteer 2>/dev/null || true
+				$uci_cmd delete usteer.@usteer[0].ssid_list 2>/dev/null || true
+				local seen_u_ssids=""
 				for kv_sec in $ap_sections; do
+					$uci_cmd set "wireless.$kv_sec.disassoc_low_ack=0"
+					$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
+					[ "$($uci_cmd get "wireless.$kv_sec.network" 2>/dev/null || echo lan)" = "lan" ] || continue
 					$uci_cmd set "wireless.$kv_sec.ieee80211k=1"
 					$uci_cmd set "wireless.$kv_sec.rrm_neighbor_report=1"
 					$uci_cmd set "wireless.$kv_sec.rrm_beacon_report=1"
@@ -1580,8 +1608,15 @@ ark_doctor_audit() {
 					else
 						$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
 					fi
-					$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
+					local u_ssid="$($uci_cmd get "wireless.$kv_sec.ssid" 2>/dev/null || echo '')"
+					if [ -n "$u_ssid" ]; then
+						case " $seen_u_ssids " in *" $u_ssid "*) ;; *)
+							$uci_cmd add_list "usteer.@usteer[0].ssid_list=$u_ssid"
+							seen_u_ssids="$seen_u_ssids $u_ssid"
+						;; esac
+					fi
 				done
+				$uci_cmd commit usteer 2>/dev/null || true
 				$uci_cmd commit wireless 2>/dev/null || true
 				/etc/init.d/usteer enable >/dev/null 2>&1 || true
 				/etc/init.d/usteer restart >/dev/null 2>&1 || true
@@ -1623,6 +1658,8 @@ ark_doctor_audit() {
 							[ -n "$($uci_cmd get usteer.@usteer[0] 2>/dev/null)" ] || $uci_cmd add usteer usteer >/dev/null 2>&1 || true
 							$uci_cmd set usteer.@usteer[0].network='lan'
 							$uci_cmd set usteer.@usteer[0].syslog='1'
+							$uci_cmd set usteer.@usteer[0].local_mode='1'
+							$uci_cmd set usteer.@usteer[0].link_measurement_interval='0'
 							$uci_cmd set usteer.@usteer[0].min_snr='0'
 							$uci_cmd set usteer.@usteer[0].load_balancing_threshold='3'
 							$uci_cmd set usteer.@usteer[0].band_steering_threshold='5'
@@ -1635,9 +1672,12 @@ ark_doctor_audit() {
 							$uci_cmd set usteer.@usteer[0].band_steering_interval='120000'
 							$uci_cmd set usteer.@usteer[0].max_retries='3'
 							$uci_cmd delete usteer.@usteer[0].kick_threshold 2>/dev/null || true
-							$uci_cmd commit usteer 2>/dev/null || true
-							$uci_cmd commit usteer 2>/dev/null || true
+							$uci_cmd delete usteer.@usteer[0].ssid_list 2>/dev/null || true
+							local seen_u_ssids=""
 							for kv_sec in $ap_sections; do
+								$uci_cmd set "wireless.$kv_sec.disassoc_low_ack=0"
+								$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
+								[ "$($uci_cmd get "wireless.$kv_sec.network" 2>/dev/null || echo lan)" = "lan" ] || continue
 								$uci_cmd set "wireless.$kv_sec.ieee80211k=1"
 								$uci_cmd set "wireless.$kv_sec.rrm_neighbor_report=1"
 								$uci_cmd set "wireless.$kv_sec.rrm_beacon_report=1"
@@ -1648,8 +1688,15 @@ ark_doctor_audit() {
 								else
 									$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
 								fi
-								$uci_cmd delete "wireless.$kv_sec.wnm_sleep_mode" 2>/dev/null || true
+								local u_ssid="$($uci_cmd get "wireless.$kv_sec.ssid" 2>/dev/null || echo '')"
+								if [ -n "$u_ssid" ]; then
+									case " $seen_u_ssids " in *" $u_ssid "*) ;; *)
+										$uci_cmd add_list "usteer.@usteer[0].ssid_list=$u_ssid"
+										seen_u_ssids="$seen_u_ssids $u_ssid"
+									;; esac
+								fi
 							done
+							$uci_cmd commit usteer 2>/dev/null || true
 							$uci_cmd commit wireless 2>/dev/null || true
 							/etc/init.d/usteer enable >/dev/null 2>&1 || true
 							/etc/init.d/usteer restart >/dev/null 2>&1 || true
