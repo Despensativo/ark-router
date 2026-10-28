@@ -13,7 +13,7 @@
 	local boardinfo = util.ubus("system", "board")
 	local node = disp.context.dispatched
 	local is_login = not disp.context.authsession
-	local ark_v = (fs.readfile("/usr/share/ark-router/VERSION") or "2.1.0"):gsub("%s+", "")
+	local ark_v = (fs.readfile("/usr/share/ark-router/VERSION") or "2.1.1"):gsub("%s+", "")
 	local ov_st = fs.stat("/www/luci-static/resources/view/equipe-dashboard/overview.js")
 	local th_st = fs.stat("/www/luci-static/ark/ark-theme.js")
 	local ark_rev = ark_v .. "-" .. tostring(ov_st and ov_st.mtime or 0) .. "-" .. tostring(th_st and th_st.mtime or 0)

@@ -48,9 +48,15 @@ get_system_hardware_sqm_audit() {
 	local cpu_model="$(awk -F': ' '/model name|machine|Hardware|Processor/{print $2; exit}' /proc/cpuinfo 2>/dev/null || echo '')"
 	[ -n "$cpu_model" ] || cpu_model="$(cat /proc/device-tree/model 2>/dev/null | tr -d '\0' || cat /tmp/sysinfo/model 2>/dev/null || echo 'MIPS Processor')"
 	local cake_memlimit="$(ark_cake_memlimit)"
+	local waveform_aplus=1
+	if [ "$(uci -q get equipe_dashboard.settings.waveform_aplus_mode)" = "0" ]; then
+		waveform_aplus=0
+	elif uci -q show sqm 2>/dev/null | grep -q "\.waveform_aplus='0'"; then
+		waveform_aplus=0
+	fi
 
-	printf '{"is_low_end_mips":%s,"cpu_arch":"%s","cpu_cores":%d,"cpu_model":"%s","suggested_cut_off_mbps":%d,"fastpath_active":%s,"hw_flowoffload_capable":%s,"hw_flowoffload_active":%s,"cake_memlimit":"%s"}\n' \
-		"$(bool "$is_low_end_mips")" "$cpu_arch" "$cpu_cores" "$(json_escape "$cpu_model")" "$suggested_cut_off_mbps" "$fastpath_active" "$(bool "$hw_flowoffload_capable")" "$(bool "$hw_flowoffload_active")" "$cake_memlimit"
+	printf '{"is_low_end_mips":%s,"cpu_arch":"%s","cpu_cores":%d,"cpu_model":"%s","suggested_cut_off_mbps":%d,"fastpath_active":%s,"hw_flowoffload_capable":%s,"hw_flowoffload_active":%s,"cake_memlimit":"%s","waveform_aplus_mode":%s}\n' \
+		"$(bool "$is_low_end_mips")" "$cpu_arch" "$cpu_cores" "$(json_escape "$cpu_model")" "$suggested_cut_off_mbps" "$fastpath_active" "$(bool "$hw_flowoffload_capable")" "$(bool "$hw_flowoffload_active")" "$cake_memlimit" "$(bool "$waveform_aplus")"
 }
 
 sqm_apply_upload_only() {
@@ -113,6 +119,7 @@ ensure_sqm_section() {
 		uci -q set "sqm.$section.script=layer_cake.qos"
 	fi
 	[ -n "$(uci -q get "sqm.$section.qdisc_advanced")" ] || uci -q set "sqm.$section.qdisc_advanced=1"
+	[ -n "$(uci -q get "sqm.$section.waveform_aplus")" ] || uci -q set "sqm.$section.waveform_aplus=1"
 	[ -n "$(uci -q get "sqm.$section.squash_dscp")" ] || uci -q set "sqm.$section.squash_dscp=1"
 	[ -n "$(uci -q get "sqm.$section.squash_ingress")" ] || uci -q set "sqm.$section.squash_ingress=1"
 	[ -n "$(uci -q get "sqm.$section.ingress_ecn")" ] || uci -q set "sqm.$section.ingress_ecn=ECN"
@@ -312,11 +319,59 @@ handle_sqm() {
 		fi
 		echo ok
 		;;
+	sqm-waveform-aplus)
+		case "$2" in 0|1) ;; *) echo 'Estado Waveform A+ invalido' >&2; exit 2 ;; esac
+		[ -f "${ARK_ROOT}/etc/config/sqm" ] || [ -f /etc/config/sqm ] || { echo 'SQM nao instalado' >&2; exit 3; }
+		uci -q set equipe_dashboard.settings=dashboard
+		uci -q set "equipe_dashboard.settings.waveform_aplus_mode=$2"
+		uci commit equipe_dashboard 2>/dev/null || true
+		mlim_aplus="$(ark_cake_memlimit)"
+		for network_section in $(active_wan_networks); do
+			sqm_section="$(sqm_section_for_network "$network_section")" || continue
+			wan_device="$(sqm_device_for_network "$network_section")"
+			valid_net_device "$wan_device" || continue
+			ensure_sqm_section "$sqm_section" "$wan_device"
+			uci -q set "sqm.$sqm_section.waveform_aplus=$2"
+			if [ "$2" = "1" ]; then
+				uci -q set "sqm.$sqm_section.qdisc=cake"
+				uci -q set "sqm.$sqm_section.script=layer_cake.qos"
+				uci -q set "sqm.$sqm_section.qdisc_advanced=1"
+				uci -q set "sqm.$sqm_section.squash_dscp=1"
+				uci -q set "sqm.$sqm_section.squash_ingress=1"
+				uci -q set "sqm.$sqm_section.ingress_ecn=ECN"
+				uci -q set "sqm.$sqm_section.egress_ecn=NOECN"
+				uci -q set "sqm.$sqm_section.linklayer=ethernet"
+				uci -q set "sqm.$sqm_section.mpu=64"
+				wan_proto="$(uci -q get "network.$network_section.proto")"
+				case "$wan_proto:$wan_device" in
+					pppoe:*|*:pppoe*) uci -q set "sqm.$sqm_section.overhead=44" ;;
+					*) uci -q set "sqm.$sqm_section.overhead=18" ;;
+				esac
+				eq_aplus="diffserv4 nat dual-srchost ack-filter wash memlimit $mlim_aplus"
+				if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
+					eq_aplus="$eq_aplus no-split-gso"
+				fi
+				iq_aplus="besteffort nat dual-dsthost wash ingress memlimit $mlim_aplus"
+				uci -q set "sqm.$sqm_section.eqdisc_opts=$eq_aplus"
+				uci -q set "sqm.$sqm_section.iqdisc_opts=$iq_aplus"
+			fi
+		done
+		uci commit sqm
+		if [ "$2" = "1" ] && [ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/ark-hardware-tune ]; then
+			rm -f /tmp/ark-hardware-tune.ts 2>/dev/null || true
+			/etc/init.d/ark-hardware-tune reload >/dev/null 2>&1 || true
+		fi
+		if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
+			/etc/init.d/sqm restart >/dev/null 2>&1 || true
+		fi
+		echo ok
+		;;
 	sqm-save-v2)
 		[ -f "${ARK_ROOT}/etc/config/sqm" ] || [ -f /etc/config/sqm ] || { echo 'SQM nao instalado' >&2; exit 3; }
 		shift
 		wan_count=0
 		submitted_sections=' '
+		waveform_aplus_override=""
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
@@ -348,10 +403,18 @@ handle_sqm() {
 					[ -n "$value" ] || value=0
 					valid_sqm_rate "$value" || { echo 'Velocidade visitante invalida' >&2; exit 2; }
 					;;
+				waveform_aplus)
+					case "$value" in 0|1) waveform_aplus_override="$value" ;; *) echo 'Estado Waveform A+ invalido' >&2; exit 2 ;; esac
+					;;
 				*) echo "Campo SQM invalido: $key" >&2; exit 2 ;;
 			esac
 		done
 		[ "$wan_count" -gt 0 ] || { echo 'Nenhuma WAN enviada para o SQM' >&2; exit 2; }
+		if [ -n "$waveform_aplus_override" ]; then
+			uci -q set equipe_dashboard.settings=dashboard
+			uci -q set "equipe_dashboard.settings.waveform_aplus_mode=$waveform_aplus_override"
+			uci commit equipe_dashboard 2>/dev/null || true
+		fi
 		# Disable stale queues that belonged to WANs removed or converted back
 		# to LAN. Otherwise SQM could keep shaping an old physical LAN device.
 		for existing_section in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\(wan[0-9]*\)=queue$/\1/p'); do
@@ -384,45 +447,73 @@ handle_sqm() {
 					uci -q set "sqm.$section.enabled=$enabled"
 					uci -q set "sqm.$section.download=$download"
 					uci -q set "sqm.$section.upload=$upload"
-					if [ "$linklayer" = "none" ] || [ -z "$linklayer" ]; then
-						uci -q set "sqm.$section.linklayer=none"
-						uci -q delete "sqm.$section.overhead"
-						uci -q delete "sqm.$section.mpu"
-					else
-						uci -q set "sqm.$section.linklayer=$linklayer"
-						[ -n "$overhead" ] && uci -q set "sqm.$section.overhead=$overhead"
-						if [ "$linklayer" = "ethernet" ]; then
-							uci -q set "sqm.$section.mpu=64"
-						else
-							uci -q delete "sqm.$section.mpu"
-						fi
+					if [ -n "$waveform_aplus_override" ]; then
+						uci -q set "sqm.$section.waveform_aplus=$waveform_aplus_override"
 					fi
-					if [ -n "$eqdisc_opts" ] || [ -n "$iqdisc_opts" ]; then
+					if [ "$waveform_aplus_override" = "1" ]; then
 						local mlim_save="$(ark_cake_memlimit)"
+						uci -q set "sqm.$section.qdisc=cake"
+						uci -q set "sqm.$section.script=layer_cake.qos"
 						uci -q set "sqm.$section.qdisc_advanced=1"
-						if [ -n "$eqdisc_opts" ]; then
-							if printf '%s' "$eqdisc_opts" | grep -q 'memlimit'; then
-								eqdisc_opts="$(printf '%s' "$eqdisc_opts" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $mlim_save/g")"
-							else
-								eqdisc_opts="$eqdisc_opts memlimit $mlim_save"
-							fi
-							if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
-								printf '%s' "$eqdisc_opts" | grep -qw 'no-split-gso' || eqdisc_opts="$eqdisc_opts no-split-gso"
-							fi
-							uci -q set "sqm.$section.eqdisc_opts=$eqdisc_opts"
+						uci -q set "sqm.$section.squash_dscp=1"
+						uci -q set "sqm.$section.squash_ingress=1"
+						uci -q set "sqm.$section.ingress_ecn=ECN"
+						uci -q set "sqm.$section.egress_ecn=NOECN"
+						uci -q set "sqm.$section.linklayer=ethernet"
+						uci -q set "sqm.$section.mpu=64"
+						local wan_proto="$(uci -q get "network.$net_name.proto")"
+						case "$wan_proto:$device" in
+							pppoe:*|*:pppoe*) uci -q set "sqm.$section.overhead=44" ;;
+							*) uci -q set "sqm.$section.overhead=18" ;;
+						esac
+						eqdisc_opts="diffserv4 nat dual-srchost ack-filter wash memlimit $mlim_save"
+						if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
+							eqdisc_opts="$eqdisc_opts no-split-gso"
 						fi
-						if [ -n "$iqdisc_opts" ]; then
-							if [ "$(uci -q get "sqm.$section.squash_ingress" || echo 1)" = "1" ] && printf '%s' "$iqdisc_opts" | grep -qw 'diffserv4'; then
-								iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed 's/\bdiffserv4\b/besteffort/g')"
-							fi
-							printf '%s' "$iqdisc_opts" | grep -qw 'wash' || iqdisc_opts="$iqdisc_opts wash"
-							iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed 's/ *rtt 50ms//g')"
-							if printf '%s' "$iqdisc_opts" | grep -q 'memlimit'; then
-								iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $mlim_save/g")"
+						iqdisc_opts="besteffort nat dual-dsthost wash ingress memlimit $mlim_save"
+						uci -q set "sqm.$section.eqdisc_opts=$eqdisc_opts"
+						uci -q set "sqm.$section.iqdisc_opts=$iqdisc_opts"
+					else
+						if [ "$linklayer" = "none" ] || [ -z "$linklayer" ]; then
+							uci -q set "sqm.$section.linklayer=none"
+							uci -q delete "sqm.$section.overhead"
+							uci -q delete "sqm.$section.mpu"
+						else
+							uci -q set "sqm.$section.linklayer=$linklayer"
+							[ -n "$overhead" ] && uci -q set "sqm.$section.overhead=$overhead"
+							if [ "$linklayer" = "ethernet" ]; then
+								uci -q set "sqm.$section.mpu=64"
 							else
-								iqdisc_opts="$iqdisc_opts memlimit $mlim_save"
+								uci -q delete "sqm.$section.mpu"
 							fi
-							uci -q set "sqm.$section.iqdisc_opts=$iqdisc_opts"
+						fi
+						if [ -n "$eqdisc_opts" ] || [ -n "$iqdisc_opts" ]; then
+							local mlim_save="$(ark_cake_memlimit)"
+							uci -q set "sqm.$section.qdisc_advanced=1"
+							if [ -n "$eqdisc_opts" ]; then
+								if printf '%s' "$eqdisc_opts" | grep -q 'memlimit'; then
+									eqdisc_opts="$(printf '%s' "$eqdisc_opts" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $mlim_save/g")"
+								else
+									eqdisc_opts="$eqdisc_opts memlimit $mlim_save"
+								fi
+								if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
+									printf '%s' "$eqdisc_opts" | grep -qw 'no-split-gso' || eqdisc_opts="$eqdisc_opts no-split-gso"
+								fi
+								uci -q set "sqm.$section.eqdisc_opts=$eqdisc_opts"
+							fi
+							if [ -n "$iqdisc_opts" ]; then
+								if [ "$(uci -q get "sqm.$section.squash_ingress" || echo 1)" = "1" ] && printf '%s' "$iqdisc_opts" | grep -qw 'diffserv4'; then
+									iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed 's/\bdiffserv4\b/besteffort/g')"
+								fi
+								printf '%s' "$iqdisc_opts" | grep -qw 'wash' || iqdisc_opts="$iqdisc_opts wash"
+								iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed 's/ *rtt 50ms//g')"
+								if printf '%s' "$iqdisc_opts" | grep -q 'memlimit'; then
+									iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $mlim_save/g")"
+								else
+									iqdisc_opts="$iqdisc_opts memlimit $mlim_save"
+								fi
+								uci -q set "sqm.$section.iqdisc_opts=$iqdisc_opts"
+							fi
 						fi
 					fi
 					;;

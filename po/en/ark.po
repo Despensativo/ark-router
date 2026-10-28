@@ -13345,3 +13345,42 @@ msgstr "Preserved ONT access:"
 
 msgid "Após confirmar, basta mudar o cabo de internet da porta"
 msgstr "After confirming, simply move the internet cable from port"
+msgid "🔒 Parâmetros sobrepostos pelo Modo A+ Waveform (memlimit"
+msgstr "🔒 Parameters overridden by Waveform A+ Mode (memlimit"
+
+msgid "🏆 Modo A+ no Waveform (Calibragem Oficial ARK)"
+msgstr "🏆 Waveform A+ Mode (ARK Official Calibration)"
+
+msgid "🔗 Abrir Teste Waveform Bufferbloat ↗"
+msgstr "🔗 Open Waveform Bufferbloat Test ↗"
+
+msgid "Quando ativo, sobrepõe os ajustes manuais do usuário com todas as otimizações oficiais ARK (memlimit"
+msgstr "When active, overrides manual user settings with all official ARK optimizations (memlimit"
+
+msgid "Por que subir para 92M NÃO aumenta o ping (Bufferbloat)?"
+msgstr "Why raising to 92M does NOT increase ping (Bufferbloat)?"
+
+msgid "1. Por que 32M bateu no teto em 744 Mbps? (MediaTek mtk_eth_soc Page Pool)"
+msgstr "1. Why did 32M hit the ceiling at 744 Mbps? (MediaTek mtk_eth_soc Page Pool)"
+
+msgid "2. Por que subir para 92M (em 1 GB RAM) NÃO aumenta o ping (Bufferbloat)?"
+msgstr "2. Why raising to 92M (on 1 GB RAM) does NOT increase ping (Bufferbloat)?"
+
+msgid "3. Parâmetros que o Modo A+ sobrepõe e crava automaticamente:"
+msgstr "3. Parameters that A+ Mode automatically overrides and locks:"
+
+msgid "Enquadramento Físico:"
+msgstr "Physical Framing:"
+
+msgid "🔗 Testar no Waveform ↗"
+msgstr "🔗 Test on Waveform ↗"
+
+msgid "🏆 Testar Bufferbloat (Waveform) ↗"
+msgstr "🏆 Test Bufferbloat (Waveform) ↗"
+
+msgid "🏆 Testar no Waveform ↗"
+msgstr "🔗 Test on Waveform ↗"
+
+msgid "Por que 32M bateu no teto em 744 Mbps?"
+msgstr "Why did 32M hit the ceiling at 744 Mbps?"
+

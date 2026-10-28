@@ -781,15 +781,20 @@ const lifecycleMethods = {
 		const healthWarning=isTempCrit||mu>=85||du>=85||load>=1.5;
 		setPill('ex-health-status',healthWarning?'standby':'online',healthWarning?'ATENÇÃO':'NORMAL');
 		const qosWanProfiles=sqmWanProfiles(data), qe=qosWanProfiles.some(function(profile){return !!(sqm[profile.section]&&sqm[profile.section].enabled==='1');}), qosToggle=document.getElementById('ex-qos-toggle'), qosToggleState=document.getElementById('ex-qos-toggle-state');
+		const wfToggle=document.getElementById('ex-qos-waveform-aplus-toggle'), wfToggleState=document.getElementById('ex-qos-waveform-aplus-state');
+		const isWfAplus=!qosWanProfiles.some(function(profile){return !!(sqm[profile.section]&&sqm[profile.section].waveform_aplus==='0');});
 		const isSat = isSatelliteOrAp(data);
 		if (isSat) {
 			setPill('ex-qos-status', 'standby', 'MESTRE GERENCIA');
 			if (qosToggle) { qosToggle.checked = false; qosToggle.disabled = true; qosToggle.title = _t('SQM / CAKE é exclusivo do Roteador Mestre em Modo Ponto de Acesso (AP).'); }
 			if (qosToggleState) qosToggleState.textContent = 'MESTRE GERENCIA';
+			if (wfToggle) { wfToggle.checked = false; wfToggle.disabled = true; }
 		} else {
 			setPill('ex-qos-status',qe?'online':'standby',qe?'ATIVO':'DESLIGADO');
 			if(qosToggle){qosToggle.checked=qe;qosToggle.disabled=false;}
 			if(qosToggleState)qosToggleState.textContent=qe?'Ligado':'Desligado';
+			if(wfToggle&&!wfToggle.disabled){wfToggle.checked=isWfAplus;}
+			if(wfToggleState){wfToggleState.textContent=isWfAplus?'Sobrepõe Ajustes':'Manual';wfToggleState.style.color=isWfAplus?'#34d399':'#94a3b8';}
 		}
 		const fmtLimit=function(v){v=Number(v)||0;return v>0?(v/1000).toFixed(1)+' Mbps':'Ilimitado';};
 		const guestDownloadLimit=qosGuest.download_kbps||qos.guest_download_kbps||0, guestUploadLimit=qosGuest.upload_kbps||qos.guest_upload_kbps||0;

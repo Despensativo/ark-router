@@ -490,6 +490,40 @@ const networkMethods = {
 		]));
 		ui.showModal(title, elements);
 	},
+	toggleWaveformAplus: function(input) {
+		if (isSatelliteOrAp(this.currentData)) {
+			if (input) input.checked = false;
+			return Promise.resolve();
+		}
+		const desired = !!(input && input.checked);
+		const stateEl = document.getElementById('ex-qos-waveform-aplus-state');
+		if (input) input.disabled = true;
+		if (stateEl) stateEl.textContent = 'Aplicando…';
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['sqm-waveform-aplus', desired ? '1' : '0'])
+			.then(L.bind(function(res) {
+				if (res.code) throw new Error(res.stderr || 'Falha ao alternar Modo A+ Waveform');
+				if (input) input.disabled = false;
+				if (stateEl) {
+					stateEl.textContent = desired ? 'Sobrepõe Ajustes' : 'Manual';
+					stateEl.style.color = desired ? '#34d399' : '#94a3b8';
+				}
+				const msg = desired
+					? '🏆 Modo A+ Waveform ativado! Ajustes manuais sobrepostos com a calibragem oficial ARK (memlimit dinâmico, Cobalt AQM 5ms/100ms, besteffort ingress, diffserv4 ack-filter, WAN DSCP Wash & Wi-Fi AQL).'
+					: 'Modo A+ Waveform desativado. Os parâmetros avançados do CAKE agora podem ser customizados manualmente.';
+				this.triggerImmediateRefresh(msg, 'info');
+			}, this))
+			.catch(function(e) {
+				if (input) {
+					input.disabled = false;
+					input.checked = !desired;
+				}
+				if (stateEl) {
+					stateEl.textContent = !desired ? 'Sobrepõe Ajustes' : 'Manual';
+					stateEl.style.color = !desired ? '#34d399' : '#94a3b8';
+				}
+				ui.addNotification(null, E('p', {}, [e.message || String(e)]), 'danger');
+			});
+	},
 	editSqmLimits: function(presetDown, presetUp){
 		if (isSatelliteOrAp(this.currentData)) {
 			ui.showModal(_t('Blindagem de Ponto de Acesso'), [
@@ -521,6 +555,10 @@ const networkMethods = {
 			const guestDownloadLimit=qosGuest.download_kbps||qos.guest_download_kbps||0, guestUploadLimit=qosGuest.upload_kbps||qos.guest_upload_kbps||0;
 			const fwDefs = Object.values(data.firewallConfig || {}).find(function(s) { return s && s['.type'] === 'defaults'; }) || {};
 			const isFlowOffloadActive = fwDefs.flow_offloading === '1';
+			const cakeMemlimit = audit.cake_memlimit || '32M';
+			const initialWaveformAplus = (audit.waveform_aplus_mode !== false) && !profiles.some(function(p) {
+				return sqm[p.section] && sqm[p.section].waveform_aplus === '0';
+			});
 
 			const editors=profiles.map(function(profile){
 				const queue=sqm[profile.section]||{},enabled=E('input',{type:'checkbox'}),download=field(profile.label+' download',queue.download),upload=field(profile.label+' upload',queue.upload);
@@ -608,13 +646,13 @@ const networkMethods = {
 				]);
 
 				// 3. Link Layer Overhead & CAKE Parameters
-				const cakeMemlimit = audit.cake_memlimit || '32M';
 				const curLinklayer = queue.linklayer || 'none';
 				const curOverhead = parseInt(queue.overhead || 0, 10);
 				const curEqdisc = queue.eqdisc_opts || ('diffserv4 nat dual-srchost ack-filter wash memlimit ' + cakeMemlimit);
 				const curIqdisc = queue.iqdisc_opts || ('besteffort nat dual-dsthost wash ingress memlimit ' + cakeMemlimit);
 
-				const isPppoe = profile.proto === 'pppoe';
+				const isPppoe = profile.proto === 'pppoe' || String(profile.device || '').indexOf('pppoe') === 0;
+				const optimalOverheadVal = isPppoe ? 'ethernet|44' : 'ethernet|18';
 				let targetOverheadVal = 'none|0';
 				if (curLinklayer === 'ethernet' && (curOverhead === 18 || curOverhead === 28 || curOverhead === 34 || curOverhead === 44)) {
 					targetOverheadVal = 'ethernet|' + curOverhead;
@@ -641,10 +679,16 @@ const networkMethods = {
 				const chkAck = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('ack-filter') !== -1 });
 				const chkWash = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('wash') !== -1 });
 				const chkDiffserv = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('diffserv4') !== -1 });
+				const aplusLockBadge = E('div', {
+					style: 'display: ' + (initialWaveformAplus ? 'block' : 'none') + '; padding: 6px 10px; border-radius: 8px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); color: #34d399; font-size: 11.5px; font-weight: 600;'
+				}, [
+					'🔒 Parâmetros sobrepostos pelo Modo A+ Waveform (memlimit ' + cakeMemlimit + ', Cobalt AQM 5ms/100ms, besteffort ingress, diffserv4 ack-filter). Desative o Modo A+ acima se quiser customizar manualmente.'
+				]);
 
 				const advancedDetails = E('details', { style: 'margin-top: 12px; padding: 12px 14px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;' }, [
 					E('summary', { style: 'cursor: pointer; font-weight: 700; font-size: 12px; color: #93c5fd;' }, ['⚙️ Parâmetros Avançados do CAKE & Enquadramento (Overhead)']),
 					E('div', { style: 'margin-top: 10px; display: flex; flex-direction: column; gap: 8px;' }, [
+						aplusLockBadge,
 						E('label', { style: 'display: block;' }, [
 							E('span', { style: 'font-weight: 600; font-size: 11.5px; display: block;' }, ['Tipo de Link / Overhead de Linha:']),
 							overheadSelect,
@@ -669,11 +713,30 @@ const networkMethods = {
 							]),
 							E('label', { style: 'display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;' }, [
 								chkDiffserv,
-								E('span', {}, [E('strong', {}, ['Diffserv 4-Tiers (diffserv4): ']), 'Priorização automática: Voz/Jogos > Vídeo/Streaming > Normal > Torrents.'])
+								E('span', {}, [E('strong', {}, ['Diffserv 4-Tiers (diffserv4 no Upload / besteffort no Download): ']), 'Priorização automática no Upload e fila unificada de alta vazão no Download.'])
 							])
 						])
 					])
 				]);
+
+				const applyAplusLock = function(locked) {
+					aplusLockBadge.style.display = locked ? 'block' : 'none';
+					if (locked) {
+						overheadSelect.value = optimalOverheadVal;
+						chkNat.checked = true;
+						chkHostFair.checked = true;
+						chkAck.checked = true;
+						chkWash.checked = true;
+						chkDiffserv.checked = true;
+					}
+					overheadSelect.disabled = locked;
+					chkNat.disabled = locked;
+					chkHostFair.disabled = locked;
+					chkAck.disabled = locked;
+					chkWash.disabled = locked;
+					chkDiffserv.disabled = locked;
+				};
+				applyAplusLock(initialWaveformAplus);
 
 				return {
 					profile: profile,
@@ -686,6 +749,7 @@ const networkMethods = {
 					chkAck: chkAck,
 					chkWash: chkWash,
 					chkDiffserv: chkDiffserv,
+					applyAplusLock: applyAplusLock,
 					section: E('section', { class: 'ex-qos-wan-section', style: 'padding: 16px; border: 1px solid rgba(127,127,127,.18); border-radius: 14px; background: rgba(127,127,127,.05); margin-bottom: 14px;' }, [
 						E('div', { style: 'display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(127,127,127,.12);' }, [
 							E('div', {}, [
@@ -726,6 +790,62 @@ const networkMethods = {
 					])
 				};
 			});
+
+			const modalWaveformInput = E('input', {
+				type: 'checkbox',
+				checked: initialWaveformAplus,
+				change: function(ev) {
+					const on = !!ev.currentTarget.checked;
+					modalWaveformState.textContent = on ? 'ATIVO (Sobrepõe Ajustes)' : 'Manual';
+					modalWaveformState.style.color = on ? '#34d399' : '#94a3b8';
+					editors.forEach(function(ed) { ed.applyAplusLock(on); });
+				}
+			});
+			const modalWaveformState = E('strong', {
+				class: 'ex-device-switch-state',
+				style: 'color: ' + (initialWaveformAplus ? '#34d399' : '#94a3b8') + '; font-size: 12px;'
+			}, [initialWaveformAplus ? 'ATIVO (Sobrepõe Ajustes)' : 'Manual']);
+
+			const waveformAplusBanner = E('div', {
+				style: 'margin-bottom: 14px; padding: 12px 14px; border-radius: 12px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.11), rgba(59, 130, 246, 0.09)); border: 1px solid rgba(16, 185, 129, 0.35);'
+			}, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;' }, [
+					E('div', { style: 'flex: 1 1 260px; min-width: 0;' }, [
+						E('div', { style: 'display: flex; align-items: center; flex-wrap: wrap; gap: 8px;' }, [
+							E('strong', { style: 'color: #34d399; font-size: 13.5px;' }, ['🏆 Modo A+ no Waveform (Calibragem Oficial ARK)']),
+							E('a', {
+								href: 'https://www.waveform.com/tools/bufferbloat',
+								target: '_blank',
+								rel: 'noopener noreferrer',
+								style: 'font-size: 11.5px; font-weight: 700; color: #60a5fa; text-decoration: none; padding: 2px 8px; border-radius: 6px; background: rgba(59, 130, 246, 0.16); border: 1px solid rgba(59, 130, 246, 0.38);'
+							}, ['🔗 Abrir Teste Waveform Bufferbloat ↗'])
+						]),
+						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 3px; line-height: 1.4;' }, [
+							'Quando ativo, sobrepõe os ajustes manuais do usuário com todas as otimizações oficiais ARK (memlimit ' + cakeMemlimit + ', Cobalt AQM 5ms/100ms, besteffort ingress, diffserv4 ack-filter, WAN DSCP Wash e Wi-Fi AQL).'
+						])
+					]),
+					E('div', { class: 'ex-device-switch-control' }, [
+						modalWaveformState,
+						E('label', { class: 'ex-switch' }, [modalWaveformInput, E('span', { class: 'ex-switch-slider' })])
+					])
+				]),
+				E('details', { style: 'margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 12px; line-height: 1.5;' }, [
+					E('summary', { style: 'cursor: pointer; font-weight: 700; color: #93c5fd; user-select: none;' }, [
+						'🔬 Por que 32M bateu no teto em 744 Mbps e por que subir para 92M NÃO aumenta o ping? (Ver Detalhes)'
+					]),
+					E('div', { style: 'margin-top: 8px; display: flex; flex-direction: column; gap: 8px; color: rgba(255,255,255,0.88);' }, [
+						E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.22); border-left: 3px solid #f59e0b;' }, [
+							E('strong', { style: 'display: block; color: #fbbf24; margin-bottom: 2px;' }, ['Por que 32M bateu no teto em 744 Mbps?']),
+							'No Linux 6.12 com o driver Ethernet da MediaTek (mtk_eth_soc), os pacotes de recepção usam Page Pool: cada pacote de 1,5 KB de dados reais ocupa uma página inteira de memória no kernel (skb->truesize de 4 KB a 8 KB — 3x a 5x maior que o pacote em si). Quando várias conexões paralelas (Speedtest / Fast.com / Steam) abrem rajadas a 744 Mbps, o contador de truesize bateu nos 32 MB (33.775.872 bytes) e forçou o CAKE a descartar pacotes por teto de memória (cake_drop), mesmo com a fila de tempo vazia (av_delay: 25 us, marks: 0).'
+						]),
+						E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.22); border-left: 3px solid #10b981;' }, [
+							E('strong', { style: 'display: block; color: #34d399; margin-bottom: 2px;' }, ['Por que subir para 92M NÃO aumenta o ping (Bufferbloat)?']),
+							'Porque quem controla o ping no CAKE não é o memlimit, e sim o relógio do Cobalt AQM (target 5ms, rtt 100ms). O memlimit é apenas o teto de segurança da RAM do kernel (neste roteador: ' + cakeMemlimit + ') para que o skb->truesize inflado do driver não corte pacotes antes de o Cobalt medir os 5 ms.'
+						])
+					])
+				])
+			]);
+
 			const guestDown=field('Visitantes download total',guestDownloadLimit,'Mbps • 0 ou vazio = ilimitado'), guestUp=field('Visitantes upload total',guestUploadLimit,'Mbps • exemplo: 1,5 • 0 ou vazio = ilimitado');
 			const guestSection = E('section', {
 				class: 'ex-qos-guest-section',
@@ -793,8 +913,12 @@ const networkMethods = {
 			ui.showModal('Editar SQM / CAKE',[
 				E('div',{style:'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;'},[
 					E('p',{class:'ex-muted',style:'margin:0;'},[_t('Defina os limites em Mbps. Exemplo: 1,2 Gbps = 1200 Mbps. Use 0 ou deixe em branco quando não quiser limitar aquela direção (ilimitado).')]),
-					E('button',{class:'ex-mini-button','click':L.bind(function(){ui.hideModal();this.openFastCom();},this)},['🎬 ' + _t('Medir no Fast.com')])
+					E('div',{style:'display:flex;gap:8px;flex-wrap:wrap;'},[
+						E('button',{class:'ex-mini-button','click':L.bind(function(){ui.hideModal();this.openFastCom();},this)},['🎬 ' + _t('Medir no Fast.com')]),
+						E('a',{href:'https://www.waveform.com/tools/bufferbloat',target:'_blank',rel:'noopener noreferrer',class:'ex-mini-button',style:'text-decoration:none;background:rgba(16,185,129,.16);border-color:rgba(16,185,129,.4);color:#34d399;font-weight:700;'},['🏆 Testar no Waveform ↗'])
+					])
 				]),
+				waveformAplusBanner,
 				speedtestBanner,
 				flowOffloadNotice,
 				mipsNotice,
@@ -802,7 +926,7 @@ const networkMethods = {
 				guestSection,
 				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
 			const btn = ev.currentTarget;
-			const args=['sqm-save-v2'];let invalid=false;
+			const args=['sqm-save-v2', 'waveform_aplus=' + (modalWaveformInput.checked ? '1' : '0')];let invalid=false;
 			editors.forEach(function(editor){
 				const profile=editor.profile;
 				const dRaw=String(editor.download.node.value||'').trim();

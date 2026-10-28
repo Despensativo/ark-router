@@ -993,10 +993,17 @@ const renderMethods = {
 					sqmTitleActions
 				]);
 				const sqmToggleInput = E('input',{id:'ex-qos-toggle',type:'checkbox','change':L.bind(function(ev){self.toggleSqm(ev.currentTarget);},self)});
+				const isWaveformAplusInit = !isSatNode && !qosWanProfiles.some(function(profile){
+					return !!(data.sqm && data.sqm[profile.section] && data.sqm[profile.section].waveform_aplus === '0');
+				});
+				const waveformToggleInput = E('input',{id:'ex-qos-waveform-aplus-toggle',type:'checkbox','change':L.bind(function(ev){self.toggleWaveformAplus(ev.currentTarget);},self)});
+				waveformToggleInput.checked = isWaveformAplusInit;
 				if (isSatNode) {
 					sqmToggleInput.disabled = true;
 					sqmToggleInput.checked = false;
 					sqmToggleInput.title = _t('SQM / CAKE é exclusivo do Roteador Mestre em Modo Ponto de Acesso (AP).');
+					waveformToggleInput.disabled = true;
+					waveformToggleInput.checked = false;
 				}
 				const sqmBody = E('div', { class: 'ex-card-collapse-body' }, [
 					E('div', { class: 'ex-card-collapse-inner' }, [
@@ -1011,6 +1018,55 @@ const renderMethods = {
 								E('label',{class:'ex-switch'},[sqmToggleInput,E('span',{class:'ex-switch-slider'})])
 							])
 						]),
+						!isSatNode ? E('div', {
+							class: 'ex-qos-waveform-aplus-box',
+							style: 'margin: 10px 0 12px; padding: 12px 14px; border-radius: 12px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.10), rgba(59, 130, 246, 0.08)); border: 1px solid rgba(16, 185, 129, 0.32);'
+						}, [
+							E('div', { class: 'ex-qos-toggle-row', style: 'padding: 0; border: 0; background: transparent;' }, [
+								E('div', { style: 'flex: 1 1 240px; min-width: 0;' }, [
+									E('div', { style: 'display: flex; align-items: center; flex-wrap: wrap; gap: 8px;' }, [
+										E('strong', { style: 'color: #34d399; font-size: 13.5px;' }, ['🏆 Modo A+ no Waveform (Calibragem Oficial ARK)']),
+										E('a', {
+											href: 'https://www.waveform.com/tools/bufferbloat',
+											target: '_blank',
+											rel: 'noopener noreferrer',
+											style: 'font-size: 11.5px; font-weight: 700; color: #60a5fa; text-decoration: none; padding: 2px 8px; border-radius: 6px; background: rgba(59, 130, 246, 0.14); border: 1px solid rgba(59, 130, 246, 0.35);'
+										}, ['🔗 Testar no Waveform ↗'])
+									]),
+									E('small', { class: 'ex-muted', style: 'display: block; margin-top: 3px; line-height: 1.4;' }, [
+										'Quando ativo, sobrepõe ajustes manuais do usuário utilizando todas as otimizações oficiais ARK para garantir Nota A+ (+0 ms Download / +0 ms Upload).'
+									])
+								]),
+								E('div', { class: 'ex-device-switch-control' }, [
+									E('strong', { id: 'ex-qos-waveform-aplus-state', class: 'ex-device-switch-state', style: 'color: #34d399;' }, [isWaveformAplusInit ? 'Sobrepõe Ajustes' : 'Manual']),
+									E('label', { class: 'ex-switch' }, [waveformToggleInput, E('span', { class: 'ex-switch-slider' })])
+								])
+							]),
+							E('details', { style: 'margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 12px; line-height: 1.5;' }, [
+								E('summary', { style: 'cursor: pointer; font-weight: 700; color: #93c5fd; user-select: none;' }, [
+									'🔬 Detalhes Técnicos da Engenharia Modo A+ (memlimit 92M, Page Pool truesize, Cobalt AQM & Wi-Fi AQL)'
+								]),
+								E('div', { style: 'margin-top: 8px; display: flex; flex-direction: column; gap: 8px; color: rgba(255,255,255,0.88);' }, [
+									E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.22); border-left: 3px solid #f59e0b;' }, [
+										E('strong', { style: 'display: block; color: #fbbf24; margin-bottom: 2px;' }, ['1. Por que 32M bateu no teto em 744 Mbps? (MediaTek mtk_eth_soc Page Pool)']),
+										'No Linux 6.12 com o driver Ethernet da MediaTek (mtk_eth_soc), os pacotes de recepção usam Page Pool: cada pacote de 1,5 KB de dados reais ocupa uma página inteira de memória no kernel (skb->truesize de 4 KB a 8 KB — 3x a 5x maior que o pacote em si). Quando várias conexões paralelas (Speedtest / Fast.com / Steam) abrem rajadas a 744 Mbps, o contador de truesize batia nos 32 MB (33.775.872 bytes) e forçava o CAKE a descartar pacotes por teto de memória (cake_drop), mesmo com a fila de tempo vazia (av_delay: 25 us, marks: 0).'
+									]),
+									E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.22); border-left: 3px solid #10b981;' }, [
+										E('strong', { style: 'display: block; color: #34d399; margin-bottom: 2px;' }, ['2. Por que subir para 92M (em 1 GB RAM) NÃO aumenta o ping (Bufferbloat)?']),
+										'Porque quem controla o ping no CAKE não é o memlimit, e sim o relógio do Cobalt AQM (target 5ms, rtt 100ms). O memlimit é apenas o teto de segurança da RAM do kernel (escalonado automaticamente: 128M em >1.5GB, 92M em 1GB, 32M em 512MB, 16M em 256MB, 4M em <=128MB) para que o skb->truesize inflado do driver não corte pacotes antes de o Cobalt medir os 5 ms.'
+									]),
+									E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.22); border-left: 3px solid #3b82f6;' }, [
+										E('strong', { style: 'display: block; color: #60a5fa; margin-bottom: 2px;' }, ['3. Parâmetros que o Modo A+ sobrepõe e crava automaticamente:']),
+										E('ul', { style: 'margin: 4px 0 0 16px; padding: 0;' }, [
+											E('li', {}, [E('strong', {}, ['Download (iqdisc_opts): ']), 'besteffort nat dual-dsthost wash ingress memlimit <RAM> + ECN + rtt 100ms (target 5ms) — unifica 100% da banda num único Tin sem serrilhado TCP.']),
+											E('li', {}, [E('strong', {}, ['Upload (eqdisc_opts): ']), 'diffserv4 nat dual-srchost ack-filter wash memlimit <RAM> + NOECN — 4 prioridades (Voz/Jogos > Vídeo > Normal > Bulk) e filtragem de ACKs redundantes.']),
+											E('li', {}, [E('strong', {}, ['Enquadramento Físico: ']), 'linklayer ethernet, mpu 64 e overhead 44 (Fibra GPON/PPPoE) ou 18 (Cabo/DHCP).']),
+											E('li', {}, [E('strong', {}, ['WAN DSCP Wash & Wi-Fi 6 AQL: ']), 'Limpa marcações DSCP falsas da operadora (!= CS0 -> CS0) antes do Wi-Fi WMM e calibra o Airtime Queue Limit (2500/4000 us em 5 GHz/6 GHz e 2000/3500 us em 2.4 GHz) para manter +0 ms até pelo Wi-Fi.'])
+										])
+									])
+								])
+							])
+						]) : '',
 						E('p',{class:'ex-muted',style:'margin:6px 0 10px;line-height:1.45;'},[
 							'O CAKE (Smart Queue Management) combate o bufferbloat, gerencia a latência em tempo real e impede que downloads ou vídeos pesados aumentem o ping de jogos e travem chamadas de voz de toda a rede.'
 						]),
@@ -1033,13 +1089,14 @@ const renderMethods = {
 							return '';
 						})(),
 						E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},qosWanRows.concat([infoRow('Rede visitante','ex-qos-guest'),infoRow('DNS do roteador','ex-dns')])),
-						E('div',{class:'ex-grid ex-grid-2',style:'margin-top:14px;gap:12px;'},[
+						E('div',{class:'ex-grid ex-grid-3',style:'margin-top:14px;gap:12px;'},[
 							E('button',{class:'ex-button ex-qos-edit-button',style:'margin-top:0;','click':L.bind(function(){
 								Promise.resolve().then(L.bind(self.editSqmLimits, self)).catch(function(e){
 									ui.addNotification(null,E('p',{},[e.message||String(e)]),'danger');
 								});
 							},self)},['Editar limites']),
-							E('button',{class:'ex-button',style:'margin-top:0;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.1);font-weight:650;cursor:pointer;','click':L.bind(self.openFastCom,self)},['🎬 Testar velocidade da internet'])
+							E('button',{class:'ex-button',style:'margin-top:0;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.1);font-weight:650;cursor:pointer;','click':L.bind(self.openFastCom,self)},['🎬 Testar velocidade da internet']),
+							E('a',{href:'https://www.waveform.com/tools/bufferbloat',target:'_blank',rel:'noopener noreferrer',class:'ex-button',style:'margin-top:0;display:flex;align-items:center;justify-content:center;text-decoration:none;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.38);color:#34d399;font-weight:700;cursor:pointer;'},['🏆 Testar Bufferbloat (Waveform) ↗'])
 						])
 					])
 				]);

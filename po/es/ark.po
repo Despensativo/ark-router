@@ -13345,3 +13345,42 @@ msgstr "Acceso a la ONU preservado:"
 
 msgid "Após confirmar, basta mudar o cabo de internet da porta"
 msgstr "Después de confirmar, simplemente cambie el cable de internet del puerto"
+msgid "🔒 Parâmetros sobrepostos pelo Modo A+ Waveform (memlimit"
+msgstr "🔒 Parámetros sobrescritos por el Modo A+ Waveform (memlimit"
+
+msgid "🏆 Modo A+ no Waveform (Calibragem Oficial ARK)"
+msgstr "🏆 Modo A+ en Waveform (Calibración Oficial ARK)"
+
+msgid "🔗 Abrir Teste Waveform Bufferbloat ↗"
+msgstr "🔗 Abrir Prueba Waveform Bufferbloat ↗"
+
+msgid "Quando ativo, sobrepõe os ajustes manuais do usuário com todas as otimizações oficiais ARK (memlimit"
+msgstr "Cuando está activo, sobrescribe los ajustes manuales del usuario con todas las optimizaciones oficiales ARK (memlimit"
+
+msgid "Por que subir para 92M NÃO aumenta o ping (Bufferbloat)?"
+msgstr "¿Por qué subir a 92M NO aumenta el ping (Bufferbloat)?"
+
+msgid "1. Por que 32M bateu no teto em 744 Mbps? (MediaTek mtk_eth_soc Page Pool)"
+msgstr "1. ¿Por qué 32M tocó techo a 744 Mbps? (MediaTek mtk_eth_soc Page Pool)"
+
+msgid "2. Por que subir para 92M (em 1 GB RAM) NÃO aumenta o ping (Bufferbloat)?"
+msgstr "2. ¿Por qué subir a 92M (en 1 GB RAM) NO aumenta el ping (Bufferbloat)?"
+
+msgid "3. Parâmetros que o Modo A+ sobrepõe e crava automaticamente:"
+msgstr "3. Parámetros que el Modo A+ sobrescribe y fija automáticamente:"
+
+msgid "Enquadramento Físico:"
+msgstr "Encapsulamiento Físico:"
+
+msgid "🔗 Testar no Waveform ↗"
+msgstr "🔗 Probar en Waveform ↗"
+
+msgid "🏆 Testar Bufferbloat (Waveform) ↗"
+msgstr "🏆 Probar Bufferbloat (Waveform) ↗"
+
+msgid "Por que 32M bateu no teto em 744 Mbps?"
+msgstr "¿Por qué 32M tocó techo a 744 Mbps?"
+
+msgid "🏆 Testar no Waveform ↗"
+msgstr "🏆 Probar en Waveform ↗"
+
