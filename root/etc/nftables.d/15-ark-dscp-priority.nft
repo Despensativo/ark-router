@@ -5,6 +5,13 @@
 chain ark_dscp_prerouting {
 	type filter hook prerouting priority mangle - 5; policy accept;
 
+	# Wash untrusted incoming WAN DSCP markings to CS0 (Best Effort).
+	# Upstream Linux sch_cake.c short-circuits cake_handle_diffserv(wash) when tin_mode is
+	# 'besteffort', allowing ISP-marked bulk download packets (AF21/CS3/CS4) to reach Wi-Fi
+	# hostapd qos_map_set and jump into WMM AC_VI (TID 4/5) ahead of latency probes.
+	iifname != { "lo", "br-*", "lan*" } ip dscp != cs0 ip dscp set cs0 comment "ARK: Wash untrusted WAN IPv4 DSCP"
+	iifname != { "lo", "br-*", "lan*" } ip6 dscp != cs0 ip6 dscp set cs0 comment "ARK: Wash untrusted WAN IPv6 DSCP"
+
 	# ICMP & ICMPv6 Ping Echo Requests -> CS6 (Network Control / Ultra-Low Latency)
 	ip protocol icmp ip dscp set cs6 comment "ARK: ICMP Echo priority"
 	ip6 nexthdr ipv6-icmp ip6 dscp set cs6 comment "ARK: ICMPv6 Echo priority"

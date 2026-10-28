@@ -15,3 +15,10 @@ done
 for q in "/sys/class/net/$INTERFACE"/queues/rx-*/rps_flow_cnt; do
 	[ -w "$q" ] && echo 4096 > "$q" 2>/dev/null || true
 done
+
+case "$INTERFACE" in
+	phy*|wlan*|ath*|ra*)
+		[ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune start >/dev/null 2>&1 &
+		;;
+esac
+

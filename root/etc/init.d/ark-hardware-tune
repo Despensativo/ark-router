@@ -86,15 +86,43 @@ ark_tune_irq_affinity() {
 }
 
 ark_tune_wifi_aql() {
-	local phy ac
+	local phy phy_name radio_idx band is_high_band
 	for phy in /sys/kernel/debug/ieee80211/phy*; do
 		[ -d "$phy" ] || continue
+		phy_name="$(basename "$phy")"
+		radio_idx="${phy_name#phy}"
+		band="$(uci -q get "wireless.radio${radio_idx}.band" 2>/dev/null || echo '')"
+		is_high_band=0
+		case "$band" in
+			5g|6g|5G|6G) is_high_band=1 ;;
+			2g|2G) is_high_band=0 ;;
+			*)
+				if iw phy "$phy_name" info 2>/dev/null | grep -qE "Band [24]:|5[1-8][0-9]{2}\.0 MHz|59[0-9]{2}\.0 MHz|6[0-9]{3}\.0 MHz"; then
+					is_high_band=1
+				fi
+				;;
+		esac
 		[ -w "$phy/aql_enable" ] && echo 1 > "$phy/aql_enable" 2>/dev/null || true
-		[ -w "$phy/aql_threshold" ] && echo 8000 > "$phy/aql_threshold" 2>/dev/null || true
-		if [ -w "$phy/aql_txq_limit" ]; then
-			for ac in 0 1 2 3; do
-				echo "$ac 3000 6000" > "$phy/aql_txq_limit" 2>/dev/null || true
-			done
+		if [ "$is_high_band" -eq 1 ]; then
+			# 5 GHz / 6 GHz (HE80/HE160/EHT320): PHY rate 1200-2882 Mbps (~4x real TCP goodput).
+			# Tight AQL budget (~1.5-2.5 ms PHY airtime = ~6-10 ms real wall-clock airtime)
+			# eliminates Wi-Fi download bufferbloat while preserving full 64-frame A-MPDU aggregation.
+			[ -w "$phy/aql_threshold" ] && echo 2000 > "$phy/aql_threshold" 2>/dev/null || true
+			if [ -w "$phy/aql_txq_limit" ]; then
+				echo "0 1000 1500" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "1 1200 2000" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "2 1500 2500" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "3 1000 2000" > "$phy/aql_txq_limit" 2>/dev/null || true
+			fi
+		else
+			# 2.4 GHz (HT20/HE20): slower MCS rates & IoT clients require slightly larger airtime window.
+			[ -w "$phy/aql_threshold" ] && echo 4000 > "$phy/aql_threshold" 2>/dev/null || true
+			if [ -w "$phy/aql_txq_limit" ]; then
+				echo "0 1500 3000" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "1 2000 3500" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "2 2000 4000" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "3 1500 3000" > "$phy/aql_txq_limit" 2>/dev/null || true
+			fi
 		fi
 	done
 }
@@ -218,8 +246,12 @@ start() {
 			esac
 		done
 
-		# Regras de DSCP para firewall legado fw3 / iptables
-		if command -v is_fw3 >/dev/null 2>&1 && is_fw3 && command -v iptables >/dev/null 2>&1; then
+		# Regras de DSCP: fw4 usa /etc/nftables.d/15-ark-dscp-priority.nft; fw3 legado usa iptables mangle
+		if command -v is_fw4 >/dev/null 2>&1 && is_fw4; then
+			:
+		elif command -v is_fw3 >/dev/null 2>&1 && is_fw3 && command -v iptables >/dev/null 2>&1; then
+			iptables -t mangle -C PREROUTING ! -i br-lan ! -i lo -j DSCP --set-dscp 0 >/dev/null 2>&1 || \
+			iptables -t mangle -A PREROUTING ! -i br-lan ! -i lo -j DSCP --set-dscp 0 2>/dev/null || true
 			iptables -t mangle -C PREROUTING -p icmp -j DSCP --set-dscp-class cs6 >/dev/null 2>&1 || \
 			iptables -t mangle -A PREROUTING -p icmp -j DSCP --set-dscp-class cs6 2>/dev/null || true
 			iptables -t mangle -C PREROUTING -p udp --dport 53 -j DSCP --set-dscp-class cs6 >/dev/null 2>&1 || \
