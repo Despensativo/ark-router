@@ -2047,8 +2047,8 @@ EOF
 				uci -q set "wireless.$r.he_su_beamformer=1"
 				uci -q set "wireless.$r.he_su_beamformee=1"
 				uci -q set "wireless.$r.he_mu_beamformer=1"
-				uci -q set "wireless.$r.he_ul_mumimo=1"
-				uci -q set "wireless.$r.he_ul_ofdma=1"
+				uci -q set "wireless.$r.he_ul_mumimo=0"
+				uci -q set "wireless.$r.he_ul_ofdma=0"
 				uci -q set "wireless.$r.he_puncturing=1"
 				if [ "$sup_be" = 1 ]; then
 					uci -q set "wireless.$r.eht_puncturing=1"

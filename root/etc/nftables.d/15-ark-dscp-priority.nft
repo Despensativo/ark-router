@@ -18,6 +18,12 @@ chain ark_dscp_prerouting {
 	# TCP Connection Control (SYN, RST, FIN) -> CS5 (Immediate handshake/teardown)
 	tcp flags & (syn | rst | fin) != 0 ip dscp set cs5 comment "ARK: TCP Control IPv4 priority"
 	tcp flags & (syn | rst | fin) != 0 ip6 dscp set cs5 comment "ARK: TCP Control IPv6 priority"
+
+	# Real-Time Video & Voice Calls (WhatsApp / WebRTC / STUN / TURN UDP 3478-3497) -> AF41 (WMM AC_VI Video Hardware Queue)
+	udp dport 3478-3497 ip dscp set af41 comment "ARK: WhatsApp/WebRTC Outgoing IPv4 Video priority"
+	udp sport 3478-3497 ip dscp set af41 comment "ARK: WhatsApp/WebRTC Incoming IPv4 Video priority"
+	udp dport 3478-3497 ip6 dscp set af41 comment "ARK: WhatsApp/WebRTC Outgoing IPv6 Video priority"
+	udp sport 3478-3497 ip6 dscp set af41 comment "ARK: WhatsApp/WebRTC Incoming IPv6 Video priority"
 }
 
 chain ark_dscp_output {

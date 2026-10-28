@@ -203,6 +203,10 @@ start() {
 			iptables -t mangle -A PREROUTING -p tcp --dport 53 -j DSCP --set-dscp-class cs6 2>/dev/null || true
 			iptables -t mangle -C PREROUTING -p tcp --tcp-flags SYN,RST,FIN SYN -j DSCP --set-dscp-class cs5 >/dev/null 2>&1 || \
 			iptables -t mangle -A PREROUTING -p tcp --tcp-flags SYN,RST,FIN SYN -j DSCP --set-dscp-class cs5 2>/dev/null || true
+			iptables -t mangle -C PREROUTING -p udp --dport 3478:3497 -j DSCP --set-dscp-class af41 >/dev/null 2>&1 || \
+			iptables -t mangle -A PREROUTING -p udp --dport 3478:3497 -j DSCP --set-dscp-class af41 2>/dev/null || true
+			iptables -t mangle -C PREROUTING -p udp --sport 3478:3497 -j DSCP --set-dscp-class af41 >/dev/null 2>&1 || \
+			iptables -t mangle -A PREROUTING -p udp --sport 3478:3497 -j DSCP --set-dscp-class af41 2>/dev/null || true
 		fi
 
 	# -------------------------------------------------------------------------

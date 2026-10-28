@@ -36,7 +36,7 @@ ark_doctor_audit() {
 	local z_idx z_name mwan3_conf orphan_mwan_found orphan_names m_iface net_proto net_auto net_dev m_mem target_if t_proto
 	local t_dev user_wifi_disabled total_radios disabled_radios r sec1 other_sec fix_sec chk_sec kv_sec chk_iface cur_year
 	local cur_date_str cur_tz clock_has_fake_rtc ntp_srv_en intercept_status intercept_desc ct_count ct_max ct_pct dist_target has_native_hw_queues cpu_cores_chk
-	local irq_running ap_conflict_found ap_conflict_svcs xlat_found xlat_secs xlat_s wan_proto_v4
+	local irq_running ap_conflict_found ap_conflict_svcs xlat_found xlat_secs xlat_s wan_proto_v4 mwan_cnt w_auto w_dis w_proto
 	auto_fix="${1:-0}"
 	format="${2:-text}"
 	errors=0
@@ -1121,20 +1121,48 @@ ark_doctor_audit() {
 					fi
 					z_idx=$((z_idx + 1))
 				done
-				if [ "$wan_masq6" != "1" ]; then
-					if [ "$auto_fix" = 1 ]; then
-						if [ -f /usr/lib/ark/modules/network.sh ]; then
-							. /usr/lib/ark/modules/network.sh
-							sync_nptv6_firewall >/dev/null 2>&1 || true
+				mwan_cnt=0
+				for w in wan wan2 wan3 wan4; do
+					w_auto="$($uci_cmd get "network.$w.auto" 2>/dev/null || echo '1')"
+					w_dis="$($uci_cmd get "network.$w.disabled" 2>/dev/null || echo '0')"
+					w_proto="$($uci_cmd get "network.$w.proto" 2>/dev/null || echo 'none')"
+					w_dev="$($uci_cmd get "network.$w.device" 2>/dev/null || $uci_cmd get "network.$w.ifname" 2>/dev/null || echo '')"
+					if [ "$w_auto" != "0" ] && [ "$w_dis" != "1" ] && [ "$w_proto" != "none" ] && [ "$w_proto" != "dhcpv6" ] && [ -n "$w_dev" ]; then
+						mwan_cnt=$((mwan_cnt + 1))
+					fi
+				done
+				if [ "$mwan_cnt" -ge 2 ]; then
+					if [ "$wan_masq6" != "1" ]; then
+						if [ "$auto_fix" = 1 ]; then
+							$uci_cmd set "firewall.@zone[$z_idx].masq6=1"
+							$uci_cmd commit firewall
+							fixes_applied=$((fixes_applied + 1))
+							add_check "Masquerade NPTv6 (Firewall WAN)" "FIXED" "Regra masq6 ativada na zona WAN para tradução de prefixo IPv6 em Multi-WAN."
+						else
+							errors=$((errors + 1))
+							add_check "Masquerade NPTv6 (Firewall WAN)" "FAIL" "Modo nptv6 em Multi-WAN ativo, mas masq6 ausente na zona WAN do firewall."
 						fi
-						fixes_applied=$((fixes_applied + 1))
-						add_check "Masquerade NPTv6 (Firewall WAN)" "FIXED" "Regra masq6 ativada na zona WAN para tradução 1:1 de prefixo IPv6."
 					else
-						errors=$((errors + 1))
-						add_check "Masquerade NPTv6 (Firewall WAN)" "FAIL" "Modo nptv6 ativo, mas masq6 ausente na zona WAN do firewall."
+						add_check "Masquerade NPTv6 (Firewall WAN)" "OK" "Tradução NPTv6 (masq6) ativa e operacional na zona WAN (Multi-WAN)."
 					fi
 				else
-					add_check "Masquerade NPTv6 (Firewall WAN)" "OK" "Tradução 1:1 NPTv6 (masq6) ativa e operacional na zona WAN."
+					if [ "$wan_masq6" = "1" ]; then
+						if [ "$auto_fix" = 1 ]; then
+							$uci_cmd delete "firewall.@zone[$z_idx].masq6" 2>/dev/null || true
+							$uci_cmd commit firewall
+							$uci_cmd set equipe_dashboard.ipv6=ipv6
+							$uci_cmd set equipe_dashboard.ipv6.mode='dual_stack'
+							$uci_cmd commit equipe_dashboard
+							[ -z "$root_prefix" ] && [ -x /etc/init.d/firewall ] && /etc/init.d/firewall reload >/dev/null 2>&1 || true
+							fixes_applied=$((fixes_applied + 1))
+							add_check "Masquerade NPTv6 (Firewall WAN)" "FIXED" "Single-WAN detectado: masq6 desativado e migrado para Pilha Dupla Global (libera WebRTC P2P e PPE Offload)."
+						else
+							warnings=$((warnings + 1))
+							add_check "Masquerade NPTv6 (Firewall WAN)" "WARN" "Single-WAN com masq6=1 ativo (quebra IPv6 P2P WebRTC e aceleração PPE)."
+						fi
+					else
+						add_check "Masquerade NPTv6 (Firewall WAN)" "OK" "Single-WAN operando sem masq6 (IPv6 P2P direto e PPE Offload preservados)."
+					fi
 				fi
 			fi
 		else

@@ -290,6 +290,32 @@ case "${r0_hw}:${r1_hw}" in
 		;;
 esac
 
+# Limpeza automatica de arquivos orfaos de MSS clamping legado e metadados AppleDouble no fw4
+rm -f /etc/nftables.d/20-mss-clamping.nft /etc/nftables.d/20-mss-clamping.nft.bak /etc/nftables.d/._* 2>/dev/null || true
+
+# Em Single-WAN, evita que NPTv6 (masq6=1) fique preso quebrando P2P WebRTC (WhatsApp) e PPE Offload
+active_wans_cnt=0
+for w in wan wan2 wan3 wan4; do
+	w_auto="$(uci -q get "network.$w.auto" || echo '1')"
+	w_dis="$(uci -q get "network.$w.disabled" || echo '0')"
+	w_proto="$(uci -q get "network.$w.proto" || echo 'none')"
+	w_dev="$(uci -q get "network.$w.device" || uci -q get "network.$w.ifname" || echo '')"
+	if [ "$w_auto" != "0" ] && [ "$w_dis" != "1" ] && [ "$w_proto" != "none" ] && [ "$w_proto" != "dhcpv6" ] && [ -n "$w_dev" ]; then
+		active_wans_cnt=$((active_wans_cnt + 1))
+	fi
+done
+if [ "$active_wans_cnt" -lt 2 ] && [ "$(uci -q get equipe_dashboard.ipv6.mode)" = "nptv6" ]; then
+	uci -q set equipe_dashboard.ipv6=ipv6
+	uci -q set equipe_dashboard.ipv6.mode='dual_stack'
+	uci commit equipe_dashboard 2>/dev/null || true
+	for z in $(uci -q show firewall 2>/dev/null | sed -n 's/^firewall\.\([^.=]*\)=zone$/\1/p'); do
+		if [ "$(uci -q get "firewall.$z.name")" = "wan" ] && [ "$(uci -q get "firewall.$z.masq6")" = "1" ]; then
+			uci -q delete "firewall.$z.masq6"
+			uci commit firewall 2>/dev/null || true
+		fi
+	done
+fi
+
 rm -f /tmp/ark-*.cache /tmp/ark-*-cache.json /tmp/ark-*-cache.ts 2>/dev/null || true
 
 exit 0

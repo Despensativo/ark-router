@@ -735,10 +735,30 @@ EOF
 	fi
 }
 
+ark_has_multi_wan() {
+	local w auto dis p d cnt=0
+	for w in $(uci -q show network 2>/dev/null | sed -n 's/^network\.\(wan[0-9]*\)=interface$/\1/p'); do
+		[ "$w" != "wan6" ] || continue
+		auto="$(uci -q get "network.$w.auto" || printf '1')"
+		dis="$(uci -q get "network.$w.disabled" || printf '0')"
+		[ "$auto" != "0" ] && [ "$dis" != "1" ] || continue
+		p="$(uci -q get "network.$w.proto" || printf 'none')"
+		d="$(uci -q get "network.$w.device" || uci -q get "network.$w.ifname" || printf '')"
+		if [ "$p" != "none" ] && [ "$p" != "dhcpv6" ] && [ -n "$d" ]; then
+			cnt=$((cnt + 1))
+		fi
+	done
+	[ "$cnt" -ge 2 ]
+}
+
 sync_nptv6_firewall() {
 	local zone="$(firewall_wan_zone_section)"
 	if [ -n "$zone" ]; then
-		uci -q set "firewall.$zone.masq6=1"
+		if ark_has_multi_wan; then
+			uci -q set "firewall.$zone.masq6=1"
+		else
+			uci -q delete "firewall.$zone.masq6"
+		fi
 		uci commit firewall
 	fi
 }
@@ -1131,9 +1151,18 @@ ensure_mwan3_ark_config() {
 			/etc/init.d/mwan3 stop >/dev/null 2>&1 || true
 			/etc/init.d/mwan3 disable >/dev/null 2>&1 || true
 		fi
+		if [ "$(uci -q get equipe_dashboard.ipv6.mode)" = "nptv6" ]; then
+			clean_nptv6_firewall
+			uci -q set equipe_dashboard.ipv6=ipv6
+			uci -q set equipe_dashboard.ipv6.mode='dual_stack'
+			uci commit equipe_dashboard 2>/dev/null || true
+		fi
 	else
 		if [ -x /etc/init.d/mwan3 ]; then
 			/etc/init.d/mwan3 enable >/dev/null 2>&1 || true
+		fi
+		if [ "$(uci -q get equipe_dashboard.ipv6.mode)" = "nptv6" ]; then
+			sync_nptv6_firewall
 		fi
 	fi
 
