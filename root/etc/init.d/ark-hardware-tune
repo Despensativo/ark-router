@@ -33,46 +33,70 @@ ark_tune_irq_affinity() {
 	[ -f /proc/interrupts ] && [ -d /proc/irq ] || return 0
 
 	local eth_mask=2
+	local eth_alt_mask=2
 	local wifi_mask=2
 
 	if [ "$cores" -ge 8 ]; then
 		# 8+ Cores (x86 Mini-PCs, BPi-R4, Servidores Proxmox/Bare-Metal):
 		# Core 0: SO / Userspace / LuCI / Web
-		# Core 1: Ethernet WAN (0x2)
-		# Core 2: Ethernet LAN (0x4)
+		# Core 1: Ethernet WAN/TX (0x2)
+		# Core 2: Ethernet LAN/RX (0x4)
 		# Core 3: Wi-Fi (0x8)
 		# Cores 4+: Softirqs, RPS, CAKE SQM, Crypto
 		eth_mask=2
+		eth_alt_mask=4
 		wifi_mask=8
 	elif [ "$cores" -ge 4 ]; then
 		# Quad/Hexa-Core (Acer Predator W6x MT7986, T7 IPQ5332, x86 Quad):
 		# Core 0: SO / Userspace / AdGuard / DNS
-		# Core 1: Ethernet WAN/LAN (0x2)
+		# Core 1: Ethernet Ring 0 / TX (0x2)
 		# Core 2: Wi-Fi 2.4/5/6 GHz (0x4)
-		# Core 3: SQM / CAKE e Softirqs
+		# Core 3: Ethernet Ring 1 / RX + SQM / CAKE (0x8)
 		eth_mask=2
+		eth_alt_mask=8
 		wifi_mask=4
 	elif [ "$cores" -ge 2 ]; then
 		# Dual-Core (Cudy WR3000 v1 MT7981, IPQ5018, etc.):
 		# Core 0: SO / Userspace
 		# Core 1: Rede completa (Ethernet + Wi-Fi) (0x2)
 		eth_mask=2
+		eth_alt_mask=2
 		wifi_mask=2
 	fi
 
 	# Filtro universal abrangendo MediaTek, Qualcomm, Realtek, Broadcom, Intel e VirtIO
+	local eth_idx=0
 	awk '/ethernet|mtk_eth|edma|nss|igb|ixgbe|i40e|e1000|r8169|r8125|virtio|mt76|mt79|ath|qca|rtw|rtl|brcm|wifi|wlan/ {sub(/:/, "", $1); print $1, $NF}' /proc/interrupts 2>/dev/null | while read -r irq name; do
 		[ -n "$irq" ] && [ -f "/proc/irq/$irq/smp_affinity" ] || continue
 		case "$name" in
 			*ethernet*|mtk_eth|*eth*|*edma*|*nss*|*igb*|*ixgbe*|*i40e*|*e1000*|*r8169*|*r8125*|*virtio*)
-				echo "$eth_mask" > "/proc/irq/$irq/smp_affinity" 2>/dev/null || true
+				if [ "$((eth_idx % 2))" -eq 0 ]; then
+					echo "$eth_mask" > "/proc/irq/$irq/smp_affinity" 2>/dev/null || true
+				else
+					echo "$eth_alt_mask" > "/proc/irq/$irq/smp_affinity" 2>/dev/null || true
+				fi
+				eth_idx=$((eth_idx + 1))
 				;;
 			mt76*|mt79*|ath*|qca*|rtw*|rtl*|brcm*|*wifi*|*wlan*)
 				echo "$wifi_mask" > "/proc/irq/$irq/smp_affinity" 2>/dev/null || true
 				;;
 		esac
 	done
-	logger -t ark-hardware-tune "Afinidade de IRQ distribuida dinamicamente (${cores} cores): Ethernet (Core mask 0x${eth_mask}), Wi-Fi (Core mask 0x${wifi_mask})."
+	logger -t ark-hardware-tune "Afinidade de IRQ distribuida dinamicamente (${cores} cores): Ethernet (Core masks 0x${eth_mask}/0x${eth_alt_mask}), Wi-Fi (Core mask 0x${wifi_mask})."
+}
+
+ark_tune_wifi_aql() {
+	local phy ac
+	for phy in /sys/kernel/debug/ieee80211/phy*; do
+		[ -d "$phy" ] || continue
+		[ -w "$phy/aql_enable" ] && echo 1 > "$phy/aql_enable" 2>/dev/null || true
+		[ -w "$phy/aql_threshold" ] && echo 8000 > "$phy/aql_threshold" 2>/dev/null || true
+		if [ -w "$phy/aql_txq_limit" ]; then
+			for ac in 0 1 2 3; do
+				echo "$ac 3000 6000" > "$phy/aql_txq_limit" 2>/dev/null || true
+			done
+		fi
+	done
 }
 
 start() {
@@ -118,6 +142,7 @@ start() {
 
 	# Distribuir interrupções de hardware (evita afunilar 100% dos pacotes no Core 0)
 	ark_tune_irq_affinity "$cpu_cores"
+	ark_tune_wifi_aql
 
 	# Calibracao Inteligente de ZRAM (Respeita escolha do usuario em equipe_perf e protege CPUs fracas)
 	local zram_cfg="$(uci -q get equipe_perf.settings.zram_enabled || echo 'auto')"

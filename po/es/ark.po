@@ -13318,3 +13318,30 @@ msgstr "🛡️ Sondeo Completado: Puerto"
 msgid "🧭 Navegação OpenWrt LuCI (Tema Ark Integrado)"
 msgstr "🧭 Navegación OpenWrt LuCI (Tema Ark Integrado)"
 
+
+msgid "✓ Limites anti-bufferbloat (-12,5% Download / -7% Upload) aplicados a partir da medição do Fast.com!"
+msgstr "✓ ¡Límites anti-bufferbloat (-12,5% Descarga / -7% Subida) aplicados a partir de la medición de Fast.com!"
+
+msgid "🔄 Restaurar Porta WAN Física como WAN1"
+msgstr "🔄 Restaurar Puerto WAN Físico como WAN1"
+
+msgid "✨ Migração Inteligente sem Perda de Dados"
+msgstr "✨ Migración Inteligente sin Pérdida de Datos"
+
+msgid "A conexão"
+msgstr "La conexión"
+
+msgid "Porta WAN Física ("
+msgstr "Puerto WAN Físico ("
+
+msgid "Porta WAN"
+msgstr "Puerto WAN"
+
+msgid "Conexão preservada:"
+msgstr "Conexión preservada:"
+
+msgid "Acesso à ONU preservado:"
+msgstr "Acceso a la ONU preservado:"
+
+msgid "Após confirmar, basta mudar o cabo de internet da porta"
+msgstr "Después de confirmar, simplemente cambie el cable de internet del puerto"

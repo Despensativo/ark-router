@@ -4,7 +4,7 @@
 'require poll';
 'require fs';
 'require ui';
-const ARK_BUILD_VERSION = '2.0.6';
+const ARK_BUILD_VERSION = '2.0.7';
 if (typeof window !== 'undefined') {
 	window.ARK_BUILD_VERSION = ARK_BUILD_VERSION;
 	window.ARK_VERSION = ARK_BUILD_VERSION;
@@ -99,7 +99,7 @@ function loadDashboardLanguage(lang) {
 		if (typeof document === 'undefined') return resolve();
 		const s = document.createElement('script');
 		s.type = 'text/javascript';
-		const ver = (typeof window !== 'undefined' && window.ARK_ASSET_REV) ? window.ARK_ASSET_REV : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : (window.ARK_BUILD_VERSION || '2.0.6'));
+		const ver = (typeof window !== 'undefined' && window.ARK_ASSET_REV) ? window.ARK_ASSET_REV : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : (window.ARK_BUILD_VERSION || '2.0.7'));
 		s.src = L.resource('view/equipe-dashboard/i18n.' + targetLang + '.js') + '?v=' + ver;
 		s.onload = function() {
 			if (targetLang === 'en' && window.ARK_I18N_EN) Object.assign(EN, window.ARK_I18N_EN);
@@ -5081,7 +5081,7 @@ const networkMethods = {
 					style: 'flex: 1 1 120px; min-width: 0; min-height: 38px;'
 				});
 				const calcDownNotice = E('small', { class: 'ex-muted', style: 'display: block; margin-top: 4px; font-size: 11px; line-height: 1.3;' }, [
-					'Margem recomendada de 7% para absorver variações do modem.'
+					'Margem recomendada de 12,5% no Download para assumir a fila antes da OLT da operadora.'
 				]);
 				const applyCalcDownBtn = E('button', {
 					type: 'button',
@@ -5090,17 +5090,17 @@ const networkMethods = {
 					click: function() {
 						const nominal = parseFloat(calcDownInput.value || 0);
 						if (nominal > 0) {
-							const discounted = Math.round(nominal * 0.93 * 10) / 10;
+							const discounted = Math.round(nominal * 0.875 * 10) / 10;
 							download.node.value = discounted;
 							calcDownNotice.style.color = '#10b981';
-							calcDownNotice.textContent = '✓ ' + discounted + ' Mbps aplicado ao Download (-7% contra Bufferbloat).';
+							calcDownNotice.textContent = '✓ ' + discounted + ' Mbps aplicado ao Download (-12,5% contra Bufferbloat na OLT).';
 						}
 					}
-				}, ['Aplicar -7%']);
+				}, ['Aplicar -12,5%']);
 
 				const calcDownBox = E('div', { class: 'ex-qos-calc-box' }, [
 					E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;' }, [
-						E('strong', { style: 'font-size: 11.5px;' }, ['🧮 Calculadora de Download (-7%)'])
+						E('strong', { style: 'font-size: 11.5px;' }, ['🧮 Calculadora de Download (-12,5%)'])
 					]),
 					E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
 						calcDownInput,
@@ -5155,7 +5155,7 @@ const networkMethods = {
 				const curLinklayer = queue.linklayer || 'none';
 				const curOverhead = parseInt(queue.overhead || 0, 10);
 				const curEqdisc = queue.eqdisc_opts || 'diffserv4 nat dual-srchost ack-filter wash memlimit 32M';
-				const curIqdisc = queue.iqdisc_opts || 'besteffort nat dual-dsthost wash ingress memlimit 32M';
+				const curIqdisc = queue.iqdisc_opts || 'besteffort nat dual-dsthost wash ingress rtt 50ms memlimit 32M';
 
 				const isPppoe = profile.proto === 'pppoe';
 				let targetOverheadVal = 'none|0';
@@ -5325,12 +5325,12 @@ const networkMethods = {
 					style: 'font-weight: 700; padding: 6px 12px;',
 					click: function() {
 						editors.forEach(function(ed) {
-							if (presetDown > 0) ed.download.node.value = Math.round(presetDown * 0.93 * 10) / 10;
+							if (presetDown > 0) ed.download.node.value = Math.round(presetDown * 0.875 * 10) / 10;
 							if (presetUp > 0) ed.upload.node.value = Math.round(presetUp * 0.93 * 10) / 10;
 						});
-						ui.addNotification(null, E('p', {}, ['✓ Limites anti-bufferbloat (-7%) aplicados a partir da medição do Fast.com!']), 'info');
+						ui.addNotification(null, E('p', {}, ['✓ Limites anti-bufferbloat (-12,5% Download / -7% Upload) aplicados a partir da medição do Fast.com!']), 'info');
 					}
-				}, ['🎯 Aplicar nos Limites (-7%)'])
+				}, ['🎯 Aplicar nos Limites'])
 			]) : '';
 
 			ui.showModal('Editar SQM / CAKE',[
@@ -5365,7 +5365,7 @@ const networkMethods = {
 				if (editor.chkAck.checked) { eqOpts.push('ack-filter'); }
 				if (editor.chkWash.checked) { eqOpts.push('wash'); iqOpts.push('wash'); }
 				eqOpts.push('memlimit 32M');
-				iqOpts.push('ingress memlimit 32M');
+				iqOpts.push('ingress rtt 50ms memlimit 32M');
 				const eqStr = eqOpts.join(' ');
 				const iqStr = iqOpts.join(' ');
 

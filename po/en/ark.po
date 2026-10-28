@@ -13318,3 +13318,30 @@ msgstr "🛡️ Probe Complete: Port"
 msgid "🧭 Navegação OpenWrt LuCI (Tema Ark Integrado)"
 msgstr "🧭 OpenWrt LuCI Navigation (Integrated Ark Theme)"
 
+
+msgid "✓ Limites anti-bufferbloat (-12,5% Download / -7% Upload) aplicados a partir da medição do Fast.com!"
+msgstr "✓ Anti-bufferbloat limits (-12.5% Download / -7% Upload) applied from Fast.com measurement!"
+
+msgid "🔄 Restaurar Porta WAN Física como WAN1"
+msgstr "🔄 Restore Physical WAN Port as WAN1"
+
+msgid "✨ Migração Inteligente sem Perda de Dados"
+msgstr "✨ Smart Migration with Zero Data Loss"
+
+msgid "A conexão"
+msgstr "The connection"
+
+msgid "Porta WAN Física ("
+msgstr "Physical WAN Port ("
+
+msgid "Porta WAN"
+msgstr "WAN Port"
+
+msgid "Conexão preservada:"
+msgstr "Preserved connection:"
+
+msgid "Acesso à ONU preservado:"
+msgstr "Preserved ONT access:"
+
+msgid "Após confirmar, basta mudar o cabo de internet da porta"
+msgstr "After confirming, simply move the internet cable from port"

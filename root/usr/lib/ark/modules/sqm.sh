@@ -128,12 +128,23 @@ ensure_sqm_section() {
 	fi
 	local cur_iq="$(uci -q get "sqm.$section.iqdisc_opts")"
 	if [ -z "$cur_iq" ]; then
-		cur_iq="besteffort nat dual-dsthost wash ingress"
+		cur_iq="besteffort nat dual-dsthost wash ingress rtt 50ms"
 		uci -q set "sqm.$section.iqdisc_opts=$cur_iq"
-	elif [ "$(uci -q get "sqm.$section.squash_ingress" || echo 1)" = "1" ] && printf '%s' "$cur_iq" | grep -qw 'diffserv4'; then
-		cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bdiffserv4\b/besteffort/g')"
-		printf '%s' "$cur_iq" | grep -qw 'wash' || cur_iq="$cur_iq wash"
-		uci -q set "sqm.$section.iqdisc_opts=$cur_iq"
+	elif [ "$(uci -q get "sqm.$section.squash_ingress" || echo 1)" = "1" ]; then
+		local iq_changed=0
+		if printf '%s' "$cur_iq" | grep -qw 'diffserv4'; then
+			cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bdiffserv4\b/besteffort/g')"
+			iq_changed=1
+		fi
+		if ! printf '%s' "$cur_iq" | grep -qw 'wash'; then
+			cur_iq="$cur_iq wash"
+			iq_changed=1
+		fi
+		if ! printf '%s' "$cur_iq" | grep -qE '\b(rtt|regional|metro|lan|datacentre)\b'; then
+			cur_iq="$cur_iq rtt 50ms"
+			iq_changed=1
+		fi
+		[ "$iq_changed" = "1" ] && uci -q set "sqm.$section.iqdisc_opts=$cur_iq"
 	fi
 	[ -n "$(uci -q get "sqm.$section.linklayer")" ] || uci -q set "sqm.$section.linklayer=none"
 }
@@ -369,6 +380,7 @@ handle_sqm() {
 								iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed 's/\bdiffserv4\b/besteffort/g')"
 							fi
 							printf '%s' "$iqdisc_opts" | grep -qw 'wash' || iqdisc_opts="$iqdisc_opts wash"
+							printf '%s' "$iqdisc_opts" | grep -qE '\b(rtt|regional|metro|lan|datacentre)\b' || iqdisc_opts="$iqdisc_opts rtt 50ms"
 							uci -q set "sqm.$section.iqdisc_opts=$iqdisc_opts"
 						fi
 					fi

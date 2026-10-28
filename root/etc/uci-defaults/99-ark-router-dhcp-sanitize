@@ -344,11 +344,14 @@ if [ -f /etc/config/sqm ]; then
 	for sq in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\([^.=]*\)=queue$/\1/p'); do
 		[ "$(uci -q get "sqm.$sq.enabled")" = "1" ] && sqm_is_on=1
 		cur_iq="$(uci -q get "sqm.$sq.iqdisc_opts")"
-		if [ "$(uci -q get "sqm.$sq.squash_ingress" || echo 1)" = "1" ] && printf '%s' "$cur_iq" | grep -qw 'diffserv4'; then
-			cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bdiffserv4\b/besteffort/g')"
-			printf '%s' "$cur_iq" | grep -qw 'wash' || cur_iq="$cur_iq wash"
-			uci -q set "sqm.$sq.iqdisc_opts=$cur_iq"
-			sqm_mod=1
+		if [ -n "$cur_iq" ] && [ "$(uci -q get "sqm.$sq.squash_ingress" || echo 1)" = "1" ]; then
+			if printf '%s' "$cur_iq" | grep -qw 'diffserv4' || ! printf '%s' "$cur_iq" | grep -qE '\b(rtt|regional|metro|lan|datacentre)\b'; then
+				cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bdiffserv4\b/besteffort/g')"
+				printf '%s' "$cur_iq" | grep -qw 'wash' || cur_iq="$cur_iq wash"
+				printf '%s' "$cur_iq" | grep -qE '\b(rtt|regional|metro|lan|datacentre)\b' || cur_iq="$cur_iq rtt 50ms"
+				uci -q set "sqm.$sq.iqdisc_opts=$cur_iq"
+				sqm_mod=1
+			fi
 		fi
 	done
 	if [ "$sqm_mod" = "1" ]; then
