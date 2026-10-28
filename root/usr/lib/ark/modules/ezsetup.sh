@@ -819,7 +819,7 @@ apply_operation_profile() {
 					uci -q set "sqm.$sec.squash_dscp=1"
 					uci -q set "sqm.$sec.squash_ingress=1"
 					uci -q set "sqm.$sec.eqdisc_opts=$cake_opts"
-					uci -q set "sqm.$sec.iqdisc_opts=besteffort nat dual-dsthost wash ingress rtt 50ms"
+					uci -q set "sqm.$sec.iqdisc_opts=besteffort nat dual-dsthost wash ingress"
 				fi
 			done
 		fi
@@ -838,7 +838,7 @@ apply_operation_profile() {
 					uci -q set "sqm.$sec.squash_dscp=1"
 					uci -q set "sqm.$sec.squash_ingress=1"
 					uci -q set "sqm.$sec.eqdisc_opts=diffserv4 nat dual-srchost wash ack-filter"
-					uci -q set "sqm.$sec.iqdisc_opts=besteffort nat dual-dsthost wash ingress rtt 50ms"
+					uci -q set "sqm.$sec.iqdisc_opts=besteffort nat dual-dsthost wash ingress"
 				fi
 			done
 		fi

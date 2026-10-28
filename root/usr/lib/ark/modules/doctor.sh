@@ -271,11 +271,10 @@ ark_doctor_audit() {
 				fi
 
 				cur_iq="$(uci -q get "sqm.$sqm_sec.iqdisc_opts")"
-				if [ "$(uci -q get "sqm.$sqm_sec.squash_ingress" || echo 1)" = "1" ] && { printf '%s' "$cur_iq" | grep -qw 'diffserv4' || ! printf '%s' "$cur_iq" | grep -qE '\b(rtt|regional|metro|lan|datacentre)\b'; }; then
+				if [ "$(uci -q get "sqm.$sqm_sec.squash_ingress" || echo 1)" = "1" ] && { printf '%s' "$cur_iq" | grep -qw 'diffserv4' || printf '%s' "$cur_iq" | grep -q 'rtt 50ms'; }; then
 					if [ "$auto_fix" = 1 ]; then
-						cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bdiffserv4\b/besteffort/g')"
+						cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bdiffserv4\b/besteffort/g; s/ *rtt 50ms//g')"
 						printf '%s' "$cur_iq" | grep -qw 'wash' || cur_iq="$cur_iq wash"
-						printf '%s' "$cur_iq" | grep -qE '\b(rtt|regional|metro|lan|datacentre)\b' || cur_iq="$cur_iq rtt 50ms"
 						uci -q set "sqm.$sqm_sec.iqdisc_opts=$cur_iq"
 						uci commit sqm
 						[ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
