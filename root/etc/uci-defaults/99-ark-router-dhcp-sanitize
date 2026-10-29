@@ -83,6 +83,21 @@ if [ -z "$cur_cache" ] || [ "$cur_cache" -gt 10000 ] || [ "$cur_cache" -lt 1000 
 	uci -q set "dhcp.@dnsmasq[0].cachesize=$target_cache"
 	changed=1
 fi
+
+# DNS Stale Cache (RFC 8767) - Resiliência e latência 0ms em consultas de cache expirado
+# Suportado nativamente no dnsmasq 2.89+ (OpenWrt moderno 23.05+). Em legado (19.07/21.02), ignora silenciosamente.
+if dnsmasq --help 2>&1 | grep -q "use-stale-cache"; then
+	cur_extraconf="$(uci -q get dhcp.@dnsmasq[0].extraconftext || true)"
+	if ! printf '%s' "$cur_extraconf" | grep -q "use-stale-cache"; then
+		if [ -n "$cur_extraconf" ]; then
+			uci -q set "dhcp.@dnsmasq[0].extraconftext=${cur_extraconf}
+use-stale-cache=3600"
+		else
+			uci -q set dhcp.@dnsmasq[0].extraconftext="use-stale-cache=3600"
+		fi
+		changed=1
+	fi
+fi
 [ "$changed" = 1 ] && uci commit dhcp || true
 
 # Otimizacao de leitura de trafego no nlbwmon (padrao de 30s para evitar sobrecarga de CPU em alto conntrack)

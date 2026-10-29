@@ -45,6 +45,8 @@ fi
 [ -f /etc/uci-defaults/99-ark-router-leds ] && /bin/sh /etc/uci-defaults/99-ark-router-leds >/dev/null 2>&1 || true
 [ -f /etc/uci-defaults/99-ark-router-uhttpd ] && /bin/sh /etc/uci-defaults/99-ark-router-uhttpd >/dev/null 2>&1 || true
 [ -f /etc/uci-defaults/99-ark-router-dhcp-sanitize ] && /bin/sh /etc/uci-defaults/99-ark-router-dhcp-sanitize >/dev/null 2>&1 || true
+chown -R root:root /usr/share/luci/ /usr/share/rpcd/ 2>/dev/null || true
+chmod 0644 /usr/share/luci/menu.d/*.json /usr/share/rpcd/acl.d/*.json 2>/dev/null || true
 rm -f /tmp/luci-indexcache /tmp/ark-*.cache /tmp/ark-*-cache.json /tmp/ark-*-cache.ts 2>/dev/null || true
 rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 [ -x /etc/init.d/equipe-traffic-history ] && /etc/init.d/equipe-traffic-history enable >/dev/null 2>&1 || true
@@ -52,6 +54,17 @@ rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
 [ -x /usr/sbin/equipe-dashboard-control ] && /usr/sbin/equipe-dashboard-control feature-enforce-policies >/dev/null 2>&1 || true
 [ -x /usr/sbin/ark-doctor ] && (/usr/sbin/ark-doctor --auto >/dev/null 2>&1 &) || true
 [ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1 || true
+(
+	sleep 6
+	avail_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4; exit}' || echo 0)"
+	if [ "$avail_kb" -gt 10000 ]; then
+		if command -v apk >/dev/null 2>&1; then
+			apk add kmod-tcp-bbr ethtool >/dev/null 2>&1 && /etc/init.d/ark-hardware-tune restart >/dev/null 2>&1 || true
+		elif command -v opkg >/dev/null 2>&1; then
+			opkg install kmod-tcp-bbr ethtool >/dev/null 2>&1 && /etc/init.d/ark-hardware-tune restart >/dev/null 2>&1 || true
+		fi
+	fi
+) >/dev/null 2>&1 &
 exit 0
 """
 

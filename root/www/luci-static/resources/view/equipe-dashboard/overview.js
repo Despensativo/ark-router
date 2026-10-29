@@ -1,10 +1,33 @@
 'use strict';
 'require view';
+'require dom';
 'require rpc';
 'require poll';
 'require fs';
 'require ui';
-const ARK_BUILD_VERSION = '2.1.5';
+
+if (typeof dom !== 'undefined' && dom) {
+	const proto = Object.getPrototypeOf(dom) || dom;
+	if (proto && typeof proto.attr === 'function' && !proto._arkAttrPatched) {
+		proto._arkAttrPatched = true;
+		const origAttr = proto.attr;
+		const boolAttrs = { disabled: 1, checked: 1, readonly: 1, required: 1, selected: 1, multiple: 1, autofocus: 1 };
+		proto.attr = function(node, key, val) {
+			if (typeof key === 'object' && key !== null) {
+				for (const k in key) {
+					if (boolAttrs[k] && key[k] === false) {
+						key[k] = null;
+					}
+				}
+			} else if (typeof key === 'string' && boolAttrs[key] && val === false) {
+				val = null;
+			}
+			return origAttr.call(this, node, key, val);
+		};
+	}
+}
+
+const ARK_BUILD_VERSION = '2.1.6';
 if (typeof window !== 'undefined') {
 	window.ARK_BUILD_VERSION = ARK_BUILD_VERSION;
 	window.ARK_VERSION = ARK_BUILD_VERSION;
@@ -474,17 +497,20 @@ function ensureArkTxBanner(profile) {
 		const styleEl = document.createElement('style');
 		styleEl.id = 'ark-tx-style';
 		styleEl.textContent =
-			'.ark-tx-banner{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(24px);z-index:2147483640;min-width:320px;max-width:92vw;background:rgba(15,23,42,0.96);border:1px solid rgba(56,189,248,0.45);border-radius:12px;box-shadow:0 14px 36px rgba(0,0,0,0.55);padding:10px 14px;color:#f8fafc;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;backdrop-filter:blur(10px);}' +
-			'.ark-tx-banner.is-visible{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}' +
-			'.ark-tx-banner-row{display:flex;align-items:center;gap:10px;justify-content:space-between;}' +
-			'.ark-tx-spinner{width:16px;height:16px;border:2.5px solid rgba(56,189,248,0.25);border-top-color:#38bdf8;border-radius:50%;animation:arkTxSpin .75s linear infinite;flex:0 0 auto;}' +
+			'.ark-tx-banner{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.92);z-index:2147483640;min-width:280px;width:min(480px,calc(100vw - 28px));box-sizing:border-box;background:rgba(15,23,42,0.96);border:1px solid rgba(56,189,248,0.5);border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,0.75),0 0 0 1px rgba(56,189,248,0.2);padding:18px 22px;color:#f8fafc;opacity:0;pointer-events:none;transition:opacity .24s cubic-bezier(0.16,1,0.3,1),transform .24s cubic-bezier(0.16,1,0.3,1);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}' +
+			'.ark-tx-banner.is-visible{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:auto;}' +
+			'.ark-tx-banner-row{display:flex;align-items:center;gap:14px;justify-content:space-between;}' +
+			'.ark-tx-spinner{width:22px;height:22px;border:2.5px solid rgba(56,189,248,0.22);border-top-color:#38bdf8;border-radius:50%;animation:arkTxSpin .75s linear infinite;flex:0 0 auto;}' +
 			'@keyframes arkTxSpin{to{transform:rotate(360deg);}}' +
 			'.ark-tx-copy{flex:1 1 auto;min-width:0;}' +
-			'.ark-tx-title{font-size:12.5px;font-weight:700;color:#e0f2fe;line-height:1.3;}' +
-			'.ark-tx-sub{font-size:11px;color:#94a3b8;margin-top:2px;}' +
-			'.ark-tx-unlock-btn{background:rgba(245,158,11,0.18);border:1px solid rgba(245,158,11,0.5);color:#fbbf24;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:700;cursor:pointer;flex:0 0 auto;}' +
-			'.ark-tx-track{height:3px;background:rgba(148,163,184,0.18);border-radius:3px;overflow:hidden;margin-top:7px;}' +
-			'.ark-tx-bar{height:100%;width:10%;background:linear-gradient(90deg,#38bdf8,#10b981);border-radius:3px;}' +
+			'.ark-tx-title{font-size:13.5px;font-weight:700;color:#f0f9ff;line-height:1.3;letter-spacing:-0.01em;}' +
+			'.ark-tx-sub{font-size:11.5px;color:#94a3b8;margin-top:3px;line-height:1.35;}' +
+			'.ark-tx-unlock-btn{background:rgba(245,158,11,0.18);border:1px solid rgba(245,158,11,0.5);color:#fbbf24;border-radius:8px;padding:4px 10px;font-size:11.5px;font-weight:700;cursor:pointer;flex:0 0 auto;transition:background .15s ease;}' +
+			'.ark-tx-unlock-btn:hover{background:rgba(245,158,11,0.3);}' +
+			'.ark-tx-track{height:4px;background:rgba(148,163,184,0.18);border-radius:4px;overflow:hidden;margin-top:12px;}' +
+			'.ark-tx-bar{height:100%;width:10%;background:linear-gradient(90deg,#38bdf8,#10b981);border-radius:4px;}' +
+			'body.ark-mutation-busy::after{content:"";position:fixed;inset:0;background:rgba(0,0,0,0.38);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:2147483630;pointer-events:none;animation:arkTxFadeIn .2s ease forwards;}' +
+			'@keyframes arkTxFadeIn{from{opacity:0;}to{opacity:1;}}' +
 			'body.ark-mutation-busy .cbi-button:not(#ark-tx-unlock-btn),body.ark-mutation-busy .ex-mini-button:not(#ark-tx-unlock-btn),body.ark-mutation-busy .ex-hero-feature-button,body.ark-mutation-busy .ex-switch{opacity:0.68;cursor:wait;}';
 		document.head.appendChild(styleEl);
 	}
@@ -611,7 +637,7 @@ function installArkTransactionCoordinator() {
 			if (!st || (Date.now() - st.startedAt <= 120)) return;
 			const t = ev && ev.target;
 			if (!t || typeof t.closest !== 'function') return;
-			if (t.closest('#ark-tx-banner, .ex-toast-close, .ex-accordion-toggle-btn, .cbi-button-neutral, .ex-doctor-tab-btn, #ark-emulator-bar, .ex-v2-sidebar, .ex-v2-nav-btn, .ex-v2-quick-pill, .ex-v2-modules-wrap')) return;
+			if (t.closest('#ark-tx-banner, .ex-toast-close, .ex-accordion-toggle-btn, .cbi-button-neutral, .ex-doctor-tab-btn, #ark-emulator-bar, .ex-v2-sidebar, .ex-v2-nav-btn, .ex-v2-quick-pill, .ex-v2-modules-wrap, .modal, #modal_overlay, [role="dialog"], .cbi-modal, .ark-modal-backdrop')) return;
 			const interactive = t.closest('button, input[type="checkbox"], input[type="radio"], .cbi-button, .ex-mini-button, .ex-switch');
 			if (interactive) {
 				if (ev.type === 'change' && (t.type === 'checkbox' || t.type === 'radio')) {
@@ -4987,7 +5013,7 @@ const networkMethods = {
 		const confirmBtn = E('button', {
 			class: 'btn cbi-button ' + (desired ? 'cbi-button-positive' : 'cbi-button-negative'),
 			style: 'font-weight: bold;',
-			disabled: (desired && isEconomic)
+			disabled: (desired && isEconomic) ? '' : null
 		}, [(desired && isEconomic) ? _t('Aguarde 3 s') : (desired ? _t('Confirmar') : (isGamerActive ? _t('Desativar SQM e Desligar Gamer') : _t('Confirmar')))]);
 
 		if (desired && isEconomic) {
@@ -4999,6 +5025,7 @@ const networkMethods = {
 					return;
 				}
 				clearSqmTimer();
+				confirmBtn.removeAttribute('disabled');
 				confirmBtn.disabled = false;
 				confirmBtn.textContent = '⚠️ ' + _t('Estou ciente e quero ativar SQM');
 			}, 100);
@@ -5025,8 +5052,10 @@ const networkMethods = {
 				const res = r[0] || {};
 				if(res.code) throw new Error(res.stderr || 'Falha ao alterar o SQM');
 				const msg = desired ? 'SQM ativado com sucesso!' : (isGamerActive ? 'SQM desativado. Modo Gamer desligado e perfil retornado ao Modo Padrão.' : 'SQM desativado com sucesso!');
+				closeModal();
 				this.triggerImmediateRefresh(msg, 'info');
 			}, this)).catch(function(e){
+				btn.removeAttribute('disabled');
 				btn.disabled = false;
 				btn.textContent = desired ? (isEconomic ? '⚠️ ' + _t('Estou ciente e quero ativar SQM') : _t('Confirmar')) : (isGamerActive ? _t('Desativar SQM e Desligar Gamer') : _t('Confirmar'));
 				if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
@@ -5223,11 +5252,11 @@ const networkMethods = {
 				]);
 				overheadSelect.value = targetOverheadVal;
 
-				const chkNat = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('nat') !== -1 });
-				const chkHostFair = E('input', { type: 'checkbox', checked: (curEqdisc.indexOf('dual-srchost') !== -1 || curIqdisc.indexOf('dual-dsthost') !== -1) });
-				const chkAck = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('ack-filter') !== -1 });
-				const chkWash = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('wash') !== -1 });
-				const chkDiffserv = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('diffserv4') !== -1 });
+				const chkNat = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('nat') !== -1 ? '' : null });
+				const chkHostFair = E('input', { type: 'checkbox', checked: (curEqdisc.indexOf('dual-srchost') !== -1 || curIqdisc.indexOf('dual-dsthost') !== -1) ? '' : null });
+				const chkAck = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('ack-filter') !== -1 ? '' : null });
+				const chkWash = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('wash') !== -1 ? '' : null });
+				const chkDiffserv = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('diffserv4') !== -1 ? '' : null });
 				const aplusLockBadge = E('div', {
 					style: 'display: ' + (initialWaveformAplus ? 'block' : 'none') + '; padding: 6px 10px; border-radius: 8px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); color: #34d399; font-size: 11.5px; font-weight: 600;'
 				}, [
@@ -5342,7 +5371,7 @@ const networkMethods = {
 
 			const modalWaveformInput = E('input', {
 				type: 'checkbox',
-				checked: initialWaveformAplus,
+				checked: initialWaveformAplus ? '' : null,
 				change: function(ev) {
 					const on = !!ev.currentTarget.checked;
 					modalWaveformState.textContent = on ? 'ATIVO (Sobrepõe Ajustes)' : 'Manual';
@@ -5533,6 +5562,7 @@ const networkMethods = {
 				}, this), 600);
 			}, this)).catch(function(e){
 				btn.classList.remove('is-busy');
+				btn.removeAttribute('disabled');
 				btn.disabled = false;
 				btn.textContent = _t('Salvar e reiniciar SQM');
 				if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
@@ -5930,9 +5960,15 @@ const networkMethods = {
 				E('div',{class:'ex-wan-edit-grid'},gridChildren),
 				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
 					const isConvertingToWan = (role.value === 'wan') && (isNewWan || preferredDevice);
-					const doApply = function() {
+					const doApply = function(ev) {
+						const btn = ev && ev.currentTarget;
+						if (btn) {
+							btn.disabled = true;
+							btn.textContent = 'Salvando internet…';
+						}
 						const chosenMetric = parseInt(metricInput.value, 10);
 						if (!chosenMetric || chosenMetric < 1 || chosenMetric > 255) {
+							if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Confirmar alteração'; }
 							ui.addNotification(null, E('p', {}, ['A métrica / prioridade da WAN deve ser um número entre 1 e 255.']), 'warning');
 							return;
 						}
@@ -5942,6 +5978,7 @@ const networkMethods = {
 								if (otherCfg && otherCfg.proto && otherCfg.proto !== 'none') {
 									const otherMetric = parseInt(otherCfg.metric, 10);
 									if (otherMetric === chosenMetric) {
+										if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Confirmar alteração'; }
 										ui.addNotification(null, E('p', {}, ['Conflito de prioridade: A conexão ' + otherIface.toUpperCase() + ' já utiliza a métrica ' + chosenMetric + '. Cada conexão precisa ter um peso exclusivo para evitar instabilidade de rotas.']), 'danger');
 										return;
 									}
@@ -5949,6 +5986,7 @@ const networkMethods = {
 									if (typedMac) {
 										const otherMac = String(otherCfg.macaddr || '').trim().toUpperCase();
 										if (otherMac && otherMac === typedMac) {
+											if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Confirmar alteração'; }
 											ui.addNotification(null, E('p', {}, ['Conflito de MAC: O endereço ' + typedMac + ' já está clonado na conexão ' + otherIface.toUpperCase() + '. Cada conexão WAN deve possuir um MAC exclusivo.']), 'danger');
 											return;
 										}
@@ -5965,6 +6003,11 @@ const networkMethods = {
 							ui.hideModal();
 							reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…', 1500);
 						}).catch(function(e) {
+							if (btn) {
+								btn.removeAttribute('disabled');
+								btn.disabled = false;
+								btn.textContent = 'Confirmar alteração';
+							}
 							if (reloadAfterExpectedDisconnect(e, 'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…', 4200)) return;
 							ui.addNotification(null, E('p', {}, [e.message]), 'danger');
 						});
@@ -7175,7 +7218,9 @@ const networkModalsMethods = {
 						E('p',{class:'ex-muted'},['O ARK cria backup em /tmp antes de aplicar. Se o IP principal mudar, tentarei abrir automaticamente o painel no novo endereço.']),
 						E('div',{class:'right'},[
 							E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Voltar']),' ',
-							E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+							E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
+								const btn = ev && ev.currentTarget;
+								if (btn) { btn.disabled = true; btn.textContent = 'Aplicando agora…'; }
 								const args=['lan-save','mode='+next.mode,'router_ip='+next.routerIp,'netmask='+next.netmask,'start_ip='+next.startIp,'end_ip='+next.endIp,'dns='+next.dns.join(' '),'dhcp_enabled='+(next.dhcpEnabled?'1':'0'),'igmp_snooping='+(next.igmpSnooping?'1':'0')];
 								return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){
 									if(r.code)throw new Error(r.stderr||'Falha ao salvar LAN');
@@ -7184,6 +7229,7 @@ const networkModalsMethods = {
 									if((out.new_ip||next.routerIp)!==(out.old_ip||next.oldIp))redirectToRouter(out.new_ip||next.routerIp,'LAN salva. Tentando abrir o painel no novo IP '+(out.new_ip||next.routerIp)+'…',1000);
 									else reloadSoon('Faixa DHCP salva. Recarregando o painel…',1000);
 								}).catch(function(e){
+									if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Aplicar agora'; }
 									if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
 									ui.addNotification(null,E('p',{},[e.message]),'danger');
 								});
@@ -7201,14 +7247,20 @@ const networkModalsMethods = {
 		ui.showModal('Desativar IPv6 totalmente',[
 			E('p',{class:'alert-message warning'},['Essa ação cria backup e remove/desativa WAN6, ULA, anúncios RA, DHCPv6/NDP, regras IPv6 do firewall e serviços odhcp6c/odhcpd quando presentes.']),
 			E('p',{class:'ex-muted'},['Use quando o roteador deve operar somente em IPv4. A internet IPv4, Wi‑Fi e DHCP IPv4 continuam funcionando.']),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-negative','click':function(){
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-negative','click':function(ev){
+				const btn = ev && ev.currentTarget;
+				if (btn) { btn.disabled = true; btn.textContent = 'Desativando IPv6…'; }
 				return fs.exec('/usr/sbin/equipe-dashboard-control',['ipv6-disable-full']).then(function(r){
 					if(r.code)throw new Error(r.stderr||'Falha ao desativar IPv6');
 					let out={};try{out=JSON.parse(r.stdout||'{}');}catch(e){}
 					ui.hideModal();
 					ui.addNotification(null,E('p',{},['IPv6 desativado. Backup: ',out.backup||'/tmp/ark-router-before-cleanup-*.tar.gz']));
 					window.setTimeout(function(){window.location.reload();},1000);
-				}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});
+				}).catch(function(e){
+					if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Criar backup e desativar IPv6'; }
+					if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
+					ui.addNotification(null,E('p',{},[e.message]),'danger');
+				});
 			}},['Criar backup e desativar IPv6'])])
 		]);
 	},
@@ -7379,7 +7431,7 @@ const networkModalsMethods = {
 			const relayToggle = E('input', {
 				type: 'checkbox',
 				checked: (!isRelayLocked && isRelay) ? '' : null,
-				disabled: isRelayLocked ? true : null,
+				disabled: isRelayLocked ? '' : null,
 				change: function(ev) {
 					if (isRelayLocked) return;
 					const desired = ev.currentTarget.checked ? '1' : '0';
@@ -8053,14 +8105,20 @@ const wifiMethods = {
 			E('p',{class:'alert-message warning'},['Ao salvar, o Wi‑Fi reiniciará e os aparelhos serão desconectados. Depois, será necessário conectar novamente usando a nova senha.']),
 			E('div',{class:'right'},[
 				E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',
-				E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+				E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
+					const btn = ev && ev.currentTarget;
 					const password=first.value;
 					if(password.length<8||password.length>63){ui.addNotification(null,E('p',{},['A senha precisa ter entre 8 e 63 caracteres.']));return;}
 					if(password!==second.value){ui.addNotification(null,E('p',{},['As duas senhas digitadas não são iguais.']));return;}
+					if (btn) { btn.disabled = true; btn.textContent = 'Salvando nova senha…'; }
 					return fs.exec('/usr/sbin/equipe-dashboard-control',['wifi',kind,password]).then(function(r){
 						if(r.code)throw new Error(r.stderr||'Falha ao alterar a senha');
 						ui.hideModal(); ui.addNotification(null,E('p',{},['Senha salva. O Wi‑Fi reiniciará em alguns segundos.']));
-					}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]));});
+					}).catch(function(e){
+						if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Salvar nova senha'; }
+						if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
+						ui.addNotification(null,E('p',{},[e.message]),'danger');
+					});
 				},this)},['Salvar nova senha'])
 			])
 		]);
@@ -9337,7 +9395,9 @@ const wifiMethods = {
 			E('div', { class: 'right' }, [
 				E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': closeModal }, ['Cancelar']),
 				' ',
-				E('button', { class: 'btn cbi-button cbi-button-positive', 'click': L.bind(function(){
+				E('button', { class: 'btn cbi-button cbi-button-positive', 'click': L.bind(function(ev){
+					const btn = ev && ev.currentTarget;
+					if (btn) { btn.disabled = true; btn.textContent = 'Aplicando…'; }
 					const args = ['wifi-width', w2.value, w5.value];
 					if (w6) args.push(w6.value);
 					return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r){
@@ -9345,6 +9405,7 @@ const wifiMethods = {
 						ui.hideModal();
 						reloadSoon('Largura salva. Aplicando alteração no Wi‑Fi…', 1500);
 					}).catch(function(e){
+						if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Salvar e aplicar'; }
 						if (reloadAfterExpectedDisconnect(e, 'Wi‑Fi reiniciando. Recarregando o painel…', 2000)) return;
 						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
 					});
@@ -9447,7 +9508,20 @@ const wifiMethods = {
 		ui.showModal('País e domínio regulatório',[
 			E('p',{},['Escolha o país onde o roteador está sendo utilizado. Isso controla legalmente canais e potências disponíveis.']),select,
 			E('p',{class:'alert-message warning'},['Ao alterar o país, as duas bandas voltarão ao modo automático e o Wi‑Fi será reiniciado. Selecione somente o país onde o equipamento está fisicamente instalado.']),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const code=select.value,name=select.options[select.selectedIndex].text;return fs.exec('/usr/sbin/equipe-dashboard-control',['country',code]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar o país');ui.hideModal();reloadSoon('País alterado para '+name+'. Recarregando após reiniciar o Wi‑Fi…',1500);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',2000))return;ui.addNotification(null,E('p',{},[e.message]));});},this)},['Confirmar país'])])
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
+				const btn = ev && ev.currentTarget;
+				if (btn) { btn.disabled = true; btn.textContent = 'Aplicando…'; }
+				const code=select.value,name=select.options[select.selectedIndex].text;
+				return fs.exec('/usr/sbin/equipe-dashboard-control',['country',code]).then(function(r){
+					if(r.code)throw new Error(r.stderr||'Falha ao alterar o país');
+					ui.hideModal();
+					reloadSoon('País alterado para '+name+'. Recarregando após reiniciar o Wi‑Fi…',1500);
+				}).catch(function(e){
+					if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Confirmar país'; }
+					if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',2000))return;
+					ui.addNotification(null,E('p',{},[e.message]),'danger');
+				});
+			},this)},['Confirmar país'])])
 		]);
 	},
 
@@ -9613,6 +9687,7 @@ const wifiMethods = {
 				confirmBtn.textContent = '⏳ Aguarde (' + countdown + 's)...';
 			} else {
 				window.clearInterval(timer);
+				confirmBtn.removeAttribute('disabled');
 				confirmBtn.disabled = false;
 				confirmBtn.textContent = 'Sim, possuo múltiplos roteadores (Ativar)';
 			}
@@ -10853,12 +10928,15 @@ const vpnMethods = {
 			E('div',{class:'right'},[
 				E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),
 				' ',
-				E('button',{class:'btn cbi-button cbi-button-negative','click':function(){
+				E('button',{class:'btn cbi-button cbi-button-negative','click':function(ev){
+					const btn = ev && ev.currentTarget;
+					if (btn) { btn.disabled = true; btn.textContent = 'Desligando…'; }
 					return fs.exec('/usr/sbin/equipe-dashboard-control',['zerotier-disable']).then(function(r){
 						if(r.code)throw new Error(r.stderr||'Falha ao desligar ZeroTier');
 						ui.hideModal();
 						self.triggerImmediateRefresh('ZeroTier desligado com sucesso!', 'info');
 					}).catch(function(e){
+						if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Desligar'; }
 						ui.addNotification(null,E('p',{},[e.message]),'danger');
 					});
 				}},['Desligar'])
@@ -10872,15 +10950,36 @@ const vpnMethods = {
 			E('p',{},['Cole o Network ID criado no ZeroTier Central. O roteador será autorizado no painel online do ZeroTier depois do join.']),
 			E('p',{class:'alert-message warning'},['No plano grátis atual, use o IP ZeroTier para acessar o roteador. Rotas gerenciadas para a LAN inteira podem exigir plano pago.']),
 			E('label',{class:'ex-field'},[E('span',{},['Network ID']),input]),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
+				const btn = ev && ev.currentTarget;
 				const id=String(input.value||'').trim();
-				return fs.exec('/usr/sbin/equipe-dashboard-control',['zerotier-join',id]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao entrar na rede ZeroTier');ui.hideModal();self.triggerImmediateRefresh('ZeroTier configurado! Autorize o roteador no ZeroTier Central.', 'info');}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});
+				if (!id) return;
+				if (btn) { btn.disabled = true; btn.textContent = 'Conectando…'; }
+				return fs.exec('/usr/sbin/equipe-dashboard-control',['zerotier-join',id]).then(function(r){
+					if(r.code)throw new Error(r.stderr||'Falha ao entrar na rede ZeroTier');
+					ui.hideModal();
+					self.triggerImmediateRefresh('ZeroTier configurado! Autorize o roteador no ZeroTier Central.', 'info');
+				}).catch(function(e){
+					if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Entrar'; }
+					ui.addNotification(null,E('p',{},[e.message]),'danger');
+				});
 			},this)},['Entrar'])])
 		]);
 	},
 	leaveZerotier: function(){
 		const self = this, f=this.feature('zerotier')||{}, id=f.network_id||'';
-		ui.showModal('Sair da rede ZeroTier',[E('p',{},['Remover este roteador da rede ZeroTier atual?']),E('p',{class:'ex-muted'},[id||'Nenhuma rede detectada.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-negative','click':function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['zerotier-leave',id]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao sair da rede');ui.hideModal();self.triggerImmediateRefresh('ZeroTier desconectado da rede com sucesso!', 'info');}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});}},['Sair'])])]);
+		ui.showModal('Sair da rede ZeroTier',[E('p',{},['Remover este roteador da rede ZeroTier atual?']),E('p',{class:'ex-muted'},[id||'Nenhuma rede detectada.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-negative','click':function(ev){
+			const btn = ev && ev.currentTarget;
+			if (btn) { btn.disabled = true; btn.textContent = 'Saindo…'; }
+			return fs.exec('/usr/sbin/equipe-dashboard-control',['zerotier-leave',id]).then(function(r){
+				if(r.code)throw new Error(r.stderr||'Falha ao sair da rede');
+				ui.hideModal();
+				self.triggerImmediateRefresh('ZeroTier desconectado da rede com sucesso!', 'info');
+			}).catch(function(e){
+				if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Sair'; }
+				ui.addNotification(null,E('p',{},[e.message]),'danger');
+			});
+		}},['Sair'])])]);
 	},
 	zerotierCard: function(){
 		const f=this.feature('zerotier')||{}, installed=!!f.installed, active=!!f.active;
@@ -10985,12 +11084,15 @@ const vpnMethods = {
 			E('div', {class:'right'}, [
 				E('button', {class:'btn cbi-button cbi-button-neutral', 'click':closeModal}, ['Cancelar']),
 				' ',
-				E('button', {class:'btn cbi-button cbi-button-negative', 'click':function(){
+				E('button', {class:'btn cbi-button cbi-button-negative', 'click':function(ev){
+					const btn = ev && ev.currentTarget;
+					if (btn) { btn.disabled = true; btn.textContent = 'Desligando…'; }
 					return fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-disable']).then(function(r){
 						if(r.code) throw new Error(r.stderr || 'Falha ao desligar WireGuard');
 						ui.hideModal();
 						self.triggerImmediateRefresh('WireGuard desligado com sucesso!', 'info');
 					}).catch(function(e){
+						if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Desligar'; }
 						if(reloadAfterExpectedDisconnect(e, 'Servidor WireGuard desligado. Recarregando…', 2500)) return;
 						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
 					});
@@ -14258,6 +14360,7 @@ const speedtestMethods = {
 				statusPill.className = 'ex-pill offline';
 				statusPill.textContent = 'ERRO';
 			} finally {
+				restartBtn.removeAttribute('disabled');
 				restartBtn.disabled = false;
 			}
 		};
@@ -15263,7 +15366,9 @@ const systemMethods = {
 			E('p',{},['Serão instalados os recursos recomendados que ainda faltam: ',E('strong',{},[names])]),
 			E('p',{class:'alert-message warning'},['O ARK Router atualizará a lista de pacotes e instalará os módulos em sequência. Nenhuma configuração de WAN, LAN, Wi‑Fi, SQM ou Multi‑WAN será aplicada automaticamente.']),
 			E('p',{class:'ex-muted'},['BONDING REAL / Speedify não entra neste botão porque depende de licença, arquitetura e escolha de armazenamento. Use a seção própria dele.']),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
+				const btn = ev && ev.currentTarget;
+				if (btn) { btn.disabled = true; btn.textContent = 'Iniciando…'; }
 				return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-install-missing']).then(L.bind(function(r){
 					const state=String(r.stdout||'').trim();
 					if(r.code)throw new Error(r.stderr||'Falha ao iniciar instalação em lote');
@@ -15280,7 +15385,11 @@ const systemMethods = {
 						statusCmd: 'feature-install-missing-status',
 						successMsg: 'Todos os recursos foram instalados com sucesso! Recarregando painel…'
 					});
-				},this)).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});
+				},this)).catch(function(e){
+					if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Instalar tudo'; }
+					if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
+					ui.addNotification(null,E('p',{},[e.message]),'danger');
+				});
 			},this)},['Instalar tudo'])])
 		]);
 	},
@@ -15299,7 +15408,9 @@ const systemMethods = {
 			E('p',{},[(meta&&meta.name)||key,' — ',(meta&&meta.description)||'']),
 			E('p',{class:'ex-package-name'},['Pacote: ',E('code',{},[feature.package||'—'])]),
 			E('p',{class:'alert-message warning'},[key==='speedtest'?'O executável oficial será baixado para a memória temporária. Ele não ocupará a flash e desaparecerá ao reiniciar.':(key==='speedify'?'Será executado o instalador oficial get.speedify.com. Ele exige licença Speedify Router e pode instalar luci-app-speedify/Nginx. Nenhuma WAN será alterada automaticamente.':'Essa ação atualizará a lista de pacotes e instalará somente o pacote indicado e suas dependências. Nenhuma configuração de rede será alterada automaticamente.')]),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
+				const btn = ev && ev.currentTarget;
+				if (btn) { btn.disabled = true; btn.textContent = 'Iniciando…'; }
 				return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-install',key]).then(L.bind(function(r){
 					const state=String(r.stdout||'').trim();
 					if(r.code)throw new Error(r.stderr||'Falha ao iniciar a instalação');
@@ -15315,7 +15426,11 @@ const systemMethods = {
 						ui.addNotification(null,E('p',{},[key==='speedtest'?'Preparação iniciada. O painel avisará quando terminar.':'Instalação iniciada. O painel avisará quando terminar.']));
 					}
 					this.pollFeatureInstall(key,0);
-				},this)).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]));});
+				},this)).catch(function(e){
+					if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Confirmar instalação'; }
+					if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
+					ui.addNotification(null,E('p',{},[e.message]),'danger');
+				});
 			},this)},['Confirmar instalação'])])
 		]);
 	},
@@ -15349,8 +15464,8 @@ const systemMethods = {
 	},
 	showRebootConfirmation: function(token){
 		const finalButton=E('button',{class:'btn cbi-button cbi-button-negative',disabled:true},['Aguarde 2 s']);
-		const started=Date.now(), timer=window.setInterval(function(){const left=Math.ceil((2000-(Date.now()-started))/1000);if(left>0){finalButton.textContent='Aguarde '+left+' s';return;}window.clearInterval(timer);finalButton.disabled=false;finalButton.textContent='Reiniciar agora';},100);
-		finalButton.addEventListener('click',L.bind(function(){finalButton.disabled=true;finalButton.textContent='Salvando dados e reiniciando…';return fs.exec('/usr/sbin/equipe-dashboard-control',['reboot-confirm',token]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao reiniciar');ui.hideModal();ui.addNotification(null,E('p',{},['Protegendo unidades externas e reiniciando o roteador. A conexão será interrompida.']));}).catch(function(e){finalButton.disabled=false;finalButton.textContent='Reiniciar agora';ui.addNotification(null,E('p',{},[e.message]),'danger');});},this));
+		const started=Date.now(), timer=window.setInterval(function(){const left=Math.ceil((2000-(Date.now()-started))/1000);if(left>0){finalButton.textContent='Aguarde '+left+' s';return;}window.clearInterval(timer);finalButton.removeAttribute('disabled');finalButton.disabled=false;finalButton.textContent='Reiniciar agora';},100);
+		finalButton.addEventListener('click',L.bind(function(){finalButton.disabled=true;finalButton.textContent='Salvando dados e reiniciando…';return fs.exec('/usr/sbin/equipe-dashboard-control',['reboot-confirm',token]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao reiniciar');ui.hideModal();ui.addNotification(null,E('p',{},['Protegendo unidades externas e reiniciando o roteador. A conexão será interrompida.']));}).catch(function(e){finalButton.removeAttribute('disabled');finalButton.disabled=false;finalButton.textContent='Reiniciar agora';ui.addNotification(null,E('p',{},[e.message]),'danger');});},this));
 		ui.showModal('Confirmação final',[
 			E('p',{class:'alert-message warning'},['O roteador será reiniciado imediatamente. Aguarde a rede voltar antes de abrir o painel novamente.']),
 			E('p',{class:'alert-message info',style:'margin-top:8px;font-size:0.9rem;'},['Proteção de armazenamento ativa: o roteador pausará serviços em execução (servidores, downloads e compartilhamentos), descarregará dados da memória RAM e protegerá unidades externas contra corrupção antes de reiniciar.']),
@@ -16120,6 +16235,7 @@ const systemMethods = {
 				return;
 			}
 			window.clearInterval(timer);
+			finalButton.removeAttribute('disabled');
 			finalButton.disabled = false;
 			finalButton.textContent = isAp ? '⚠️ Confirmar e Ativar Modo Ponto de Acesso' : 'Confirmar e Restaurar Modo Roteador';
 		}, 100);
@@ -16658,7 +16774,7 @@ const systemMethods = {
 		]);
 
 		const bulkKeys=['sqm','mwan3','nlbwmon','upnp'].filter(L.bind(function(key){const f=this.feature(key)||{};return !f.installed&&f.installable&&!(isSat&&(key==='sqm'||key==='mwan3'||key==='speedify'||key==='upnp'||key==='adblock'||key==='nlbwmon'));},this));
-		const bulkPanel=E('section',{class:'ex-cleanup-entry'},[E('div',{},[E('strong',{},['Instalação rápida']),E('small',{class:'ex-muted'},[bulkKeys.length?('Instala todos os recursos leves faltantes: '+bulkKeys.map(function(k){return (FEATURE_META[k]&&FEATURE_META[k].name)||k;}).join(', ')):'Todos os recursos leves compatíveis já estão instalados ou indisponíveis neste roteador.'])]),E('button',{class:'ex-mini-button','click':L.bind(this.installMissingFeatures,this,bulkKeys),disabled:!bulkKeys.length},['Instalar tudo'])]);
+		const bulkPanel=E('section',{class:'ex-cleanup-entry'},[E('div',{},[E('strong',{},['Instalação rápida']),E('small',{class:'ex-muted'},[bulkKeys.length?('Instala todos os recursos leves faltantes: '+bulkKeys.map(function(k){return (FEATURE_META[k]&&FEATURE_META[k].name)||k;}).join(', ')):'Todos os recursos leves compatíveis já estão instalados ou indisponíveis neste roteador.'])]),E('button',{class:'ex-mini-button','click':L.bind(this.installMissingFeatures,this,bulkKeys),disabled:!bulkKeys.length ? '' : null},['Instalar tudo'])]);
 		const ipv6Panel=E('section',{class:'ex-cleanup-entry'},[
 			E('div',{},[
 				E('strong',{},['🌐 Central de Conectividade IPv6']),
@@ -16905,7 +17021,9 @@ const systemMethods = {
 				E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': closeModal }, ['Cancelar']),
 				E('button', {
 					class: 'btn cbi-button cbi-button-negative',
-					'click': function() {
+					'click': function(ev) {
+						const btn = ev && ev.currentTarget;
+						if (btn) { btn.disabled = true; btn.textContent = 'Desativando…'; }
 						return fs.exec('/usr/sbin/equipe-dashboard-control', ['feature-toggle', key, '0']).then(function(r) {
 							if (r.code) throw new Error(r.stderr || 'Falha ao desativar recurso');
 							ui.hideModal();
@@ -16914,6 +17032,7 @@ const systemMethods = {
 							ui.addNotification(null, E('p', {}, ['⏸️ ' + meta.name + ' desativado com segurança e preferência salva. Recarregando…']), 'info');
 							window.setTimeout(function() { window.location.reload(); }, 650);
 						}).catch(function(e) {
+							if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Confirmar Desativação Segura'; }
 							if (reloadAfterExpectedDisconnect(e, 'Comando enviado. Recarregando painel…', 3500)) return;
 							ui.addNotification(null, E('p', {}, [e.message]), 'danger');
 						});
@@ -16940,7 +17059,9 @@ const systemMethods = {
 				E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': closeModal }, ['Cancelar']),
 				E('button', {
 					class: 'btn cbi-button cbi-button-negative',
-					'click': function() {
+					'click': function(ev) {
+						const btn = ev && ev.currentTarget;
+						if (btn) { btn.disabled = true; btn.textContent = 'Removendo pacote…'; }
 						return fs.exec('/usr/sbin/equipe-dashboard-control', ['feature-remove', key]).then(function(r) {
 							if (r.code) throw new Error(r.stderr || 'Falha ao remover pacote');
 							ui.hideModal();
@@ -16951,6 +17072,7 @@ const systemMethods = {
 							ui.addNotification(null, E('p', {}, ['🗑️ ' + meta.name + ' removido com segurança e limpeza concluída. Recarregando…']), 'info');
 							window.setTimeout(function() { window.location.reload(); }, 650);
 						}).catch(function(e) {
+							if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Confirmar Remoção Completa'; }
 							if (reloadAfterExpectedDisconnect(e, 'Comando enviado. Recarregando painel…', 3500)) return;
 							ui.addNotification(null, E('p', {}, [e.message]), 'danger');
 						});
@@ -18003,6 +18125,7 @@ const doctorPerfMethods = {
 				return;
 			}
 			window.clearInterval(timer);
+			finalButton.removeAttribute('disabled');
 			finalButton.disabled = false;
 			finalButton.textContent = _t('Confirmar ativação mesmo assim');
 		}, 100);
@@ -18017,6 +18140,7 @@ const doctorPerfMethods = {
 				ui.addNotification(null, E('p', {}, [_t('Compressão de memória (ZRAM) ativada em modo forçado pelo usuário.')]));
 				window.setTimeout(function() { window.location.reload(); }, 900);
 			}).catch(function(e) {
+				finalButton.removeAttribute('disabled');
 				finalButton.disabled = false;
 				finalButton.textContent = _t('Confirmar ativação mesmo assim');
 				ui.addNotification(null, E('p', {}, [e.message]), 'danger');
@@ -18099,7 +18223,7 @@ const doctorPerfMethods = {
 			const allserversToggle = E('input', {
 				type: 'checkbox',
 				checked: allserversActive ? '' : null,
-				disabled: hasDnsBlocker,
+				disabled: hasDnsBlocker ? '' : null,
 				style: 'width: 20px; height: 20px; cursor: ' + (hasDnsBlocker ? 'not-allowed' : 'pointer') + ';'
 			});
 			allserversToggle.checked = allserversActive;
@@ -18181,7 +18305,7 @@ const doctorPerfMethods = {
 				E('button', {
 					type: 'button',
 					class: 'ex-mini-button',
-					style: 'font-weight: 700; background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 5px 10px; border-radius: 6px; cursor: pointer;',
+					style: 'font-weight: 700; background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: normal; line-height: 1.35; max-width: 100%; box-sizing: border-box; text-align: left;',
 					click: function() {
 						cacheSelect.value = String(recCache);
 						customCacheWrapper.style.display = 'none';
@@ -21300,7 +21424,7 @@ const renderMethods = {
 						id: 'ex-wps-pbc-btn',
 						class: 'ex-mini-button',
 						style: 'font-weight: 750; padding: 8px 16px; min-height: 40px;',
-						disabled: !w.wpsEnabled,
+						disabled: !w.wpsEnabled ? '' : null,
 						click: L.bind(function(ev){ this.triggerWpsPbc(ev.currentTarget); }, this)
 					}, ['🔘 Iniciar Pareamento WPS (2 min)'])
 				]),

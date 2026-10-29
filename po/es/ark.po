@@ -13393,3 +13393,6 @@ msgstr "✓ ¡Límites anti-bufferbloat (-12.5% Down / -7% Up) aplicados a parti
 
 msgid "1. Por que o memlimit 32M é o teto calibrado ideal?"
 msgstr "1. ¿Por qué memlimit 32M es el límite calibrado ideal?"
+
+msgid "1. Por que o memlimit progressivo (64M em 1GB RAM) é a escala ideal?"
+msgstr "1. ¿Por qué el memlimit progresivo (64M en 1GB RAM) es la escala ideal?"

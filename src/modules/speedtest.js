@@ -299,6 +299,7 @@ const speedtestMethods = {
 				statusPill.className = 'ex-pill offline';
 				statusPill.textContent = 'ERRO';
 			} finally {
+				restartBtn.removeAttribute('disabled');
 				restartBtn.disabled = false;
 			}
 		};

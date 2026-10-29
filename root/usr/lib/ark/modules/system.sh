@@ -466,7 +466,7 @@ dns_turbo_doh_toggle() {
 }
 
 network_capacity_status_json() {
-	local conntrack_max conntrack_count conntrack_tcp_timeout dns_forward_max cachesize dhcp_leasetime mem_total_kb mem_total_mb
+	local conntrack_max conntrack_count conntrack_tcp_timeout dns_forward_max cachesize dhcp_leasetime mem_total_kb mem_total_mb tcp_cc bbr_supported gro_supported
 	conntrack_max="$(cat /proc/sys/net/netfilter/nf_conntrack_max 2>/dev/null || echo 65536)"
 	conntrack_count="$(cat /proc/sys/net/netfilter/nf_conntrack_count 2>/dev/null || echo 0)"
 	conntrack_tcp_timeout="$(cat /proc/sys/net/netfilter/nf_conntrack_tcp_timeout_established 2>/dev/null || echo 432000)"
@@ -475,17 +475,23 @@ network_capacity_status_json() {
 	dhcp_leasetime="$(uci -q get dhcp.lan.leasetime || echo 12h)"
 	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
 	mem_total_mb=$((mem_total_kb / 1024))
-	printf '{"conntrack_max":%s,"conntrack_count":%s,"conntrack_tcp_timeout":%s,"dns_forward_max":%s,"cachesize":%s,"dhcp_leasetime":"%s","mem_total_mb":%s}\n' \
-		"$conntrack_max" "$conntrack_count" "$conntrack_tcp_timeout" "$dns_forward_max" "$cachesize" "$dhcp_leasetime" "$mem_total_mb"
+	tcp_cc="$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || echo cubic)"
+	bbr_supported=false
+	grep -q "\bbbr\b" /proc/sys/net/ipv4/tcp_available_congestion_control 2>/dev/null && bbr_supported=true
+	gro_supported=false
+	command -v ethtool >/dev/null 2>&1 && gro_supported=true
+	printf '{"conntrack_max":%s,"conntrack_count":%s,"conntrack_tcp_timeout":%s,"dns_forward_max":%s,"cachesize":%s,"dhcp_leasetime":"%s","mem_total_mb":%s,"tcp_congestion_control":"%s","bbr_supported":%s,"gro_supported":%s}\n' \
+		"$conntrack_max" "$conntrack_count" "$conntrack_tcp_timeout" "$dns_forward_max" "$cachesize" "$dhcp_leasetime" "$mem_total_mb" "$tcp_cc" "$bbr_supported" "$gro_supported"
 }
 
 network_capacity_save() {
-	local ct_max fwd_max cache_sz lease_time tcp_timeout sysctl_dir
+	local ct_max fwd_max cache_sz lease_time tcp_timeout sysctl_dir tcp_cc
 	ct_max="${1:-131072}"
 	fwd_max="${2:-2000}"
 	cache_sz="${3:-10000}"
 	lease_time="${4:-2h}"
 	tcp_timeout="${5:-432000}"
+	tcp_cc="${6:-}"
 
 	case "$ct_max" in ''|*[!0-9]*) ct_max=131072 ;; esac
 	case "$fwd_max" in ''|*[!0-9]*) fwd_max=2000 ;; esac
@@ -498,6 +504,13 @@ network_capacity_save() {
 	mkdir -p "$sysctl_dir"
 	sysctl -w "net.netfilter.nf_conntrack_max=$ct_max" 2>/dev/null || true
 	sysctl -w "net.netfilter.nf_conntrack_tcp_timeout_established=$tcp_timeout" 2>/dev/null || true
+	if [ -n "$tcp_cc" ]; then
+		case "$tcp_cc" in
+			bbr|cubic|reno)
+				sysctl -w "net.ipv4.tcp_congestion_control=$tcp_cc" 2>/dev/null || true
+				;;
+		esac
+	fi
 	printf 'net.netfilter.nf_conntrack_max=%s\n' "$ct_max" > "${sysctl_dir}/99-ark-conntrack-max.conf"
 
 	if [ "$tcp_timeout" -le 7200 ]; then

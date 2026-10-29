@@ -18,12 +18,15 @@ const vpnMethods = {
 			E('div',{class:'right'},[
 				E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),
 				' ',
-				E('button',{class:'btn cbi-button cbi-button-negative','click':function(){
+				E('button',{class:'btn cbi-button cbi-button-negative','click':function(ev){
+					const btn = ev && ev.currentTarget;
+					if (btn) { btn.disabled = true; btn.textContent = 'Desligando…'; }
 					return fs.exec('/usr/sbin/equipe-dashboard-control',['zerotier-disable']).then(function(r){
 						if(r.code)throw new Error(r.stderr||'Falha ao desligar ZeroTier');
 						ui.hideModal();
 						self.triggerImmediateRefresh('ZeroTier desligado com sucesso!', 'info');
 					}).catch(function(e){
+						if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Desligar'; }
 						ui.addNotification(null,E('p',{},[e.message]),'danger');
 					});
 				}},['Desligar'])
@@ -37,15 +40,36 @@ const vpnMethods = {
 			E('p',{},['Cole o Network ID criado no ZeroTier Central. O roteador será autorizado no painel online do ZeroTier depois do join.']),
 			E('p',{class:'alert-message warning'},['No plano grátis atual, use o IP ZeroTier para acessar o roteador. Rotas gerenciadas para a LAN inteira podem exigir plano pago.']),
 			E('label',{class:'ex-field'},[E('span',{},['Network ID']),input]),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
+				const btn = ev && ev.currentTarget;
 				const id=String(input.value||'').trim();
-				return fs.exec('/usr/sbin/equipe-dashboard-control',['zerotier-join',id]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao entrar na rede ZeroTier');ui.hideModal();self.triggerImmediateRefresh('ZeroTier configurado! Autorize o roteador no ZeroTier Central.', 'info');}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});
+				if (!id) return;
+				if (btn) { btn.disabled = true; btn.textContent = 'Conectando…'; }
+				return fs.exec('/usr/sbin/equipe-dashboard-control',['zerotier-join',id]).then(function(r){
+					if(r.code)throw new Error(r.stderr||'Falha ao entrar na rede ZeroTier');
+					ui.hideModal();
+					self.triggerImmediateRefresh('ZeroTier configurado! Autorize o roteador no ZeroTier Central.', 'info');
+				}).catch(function(e){
+					if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Entrar'; }
+					ui.addNotification(null,E('p',{},[e.message]),'danger');
+				});
 			},this)},['Entrar'])])
 		]);
 	},
 	leaveZerotier: function(){
 		const self = this, f=this.feature('zerotier')||{}, id=f.network_id||'';
-		ui.showModal('Sair da rede ZeroTier',[E('p',{},['Remover este roteador da rede ZeroTier atual?']),E('p',{class:'ex-muted'},[id||'Nenhuma rede detectada.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-negative','click':function(){return fs.exec('/usr/sbin/equipe-dashboard-control',['zerotier-leave',id]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao sair da rede');ui.hideModal();self.triggerImmediateRefresh('ZeroTier desconectado da rede com sucesso!', 'info');}).catch(function(e){ui.addNotification(null,E('p',{},[e.message]),'danger');});}},['Sair'])])]);
+		ui.showModal('Sair da rede ZeroTier',[E('p',{},['Remover este roteador da rede ZeroTier atual?']),E('p',{class:'ex-muted'},[id||'Nenhuma rede detectada.']),E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-negative','click':function(ev){
+			const btn = ev && ev.currentTarget;
+			if (btn) { btn.disabled = true; btn.textContent = 'Saindo…'; }
+			return fs.exec('/usr/sbin/equipe-dashboard-control',['zerotier-leave',id]).then(function(r){
+				if(r.code)throw new Error(r.stderr||'Falha ao sair da rede');
+				ui.hideModal();
+				self.triggerImmediateRefresh('ZeroTier desconectado da rede com sucesso!', 'info');
+			}).catch(function(e){
+				if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Sair'; }
+				ui.addNotification(null,E('p',{},[e.message]),'danger');
+			});
+		}},['Sair'])])]);
 	},
 	zerotierCard: function(){
 		const f=this.feature('zerotier')||{}, installed=!!f.installed, active=!!f.active;
@@ -150,12 +174,15 @@ const vpnMethods = {
 			E('div', {class:'right'}, [
 				E('button', {class:'btn cbi-button cbi-button-neutral', 'click':closeModal}, ['Cancelar']),
 				' ',
-				E('button', {class:'btn cbi-button cbi-button-negative', 'click':function(){
+				E('button', {class:'btn cbi-button cbi-button-negative', 'click':function(ev){
+					const btn = ev && ev.currentTarget;
+					if (btn) { btn.disabled = true; btn.textContent = 'Desligando…'; }
 					return fs.exec('/usr/sbin/equipe-dashboard-control', ['wireguard-disable']).then(function(r){
 						if(r.code) throw new Error(r.stderr || 'Falha ao desligar WireGuard');
 						ui.hideModal();
 						self.triggerImmediateRefresh('WireGuard desligado com sucesso!', 'info');
 					}).catch(function(e){
+						if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Desligar'; }
 						if(reloadAfterExpectedDisconnect(e, 'Servidor WireGuard desligado. Recarregando…', 2500)) return;
 						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
 					});

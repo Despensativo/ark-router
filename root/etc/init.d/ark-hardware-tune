@@ -131,6 +131,33 @@ ark_tune_wifi_aql() {
 	done
 }
 
+ark_tune_tcp_stack() {
+	local mem_kb="$1"
+
+	# 1. TFO (TCP Fast Open - RFC 7413): Ativo cliente e servidor (Linux 3.7+)
+	# O kernel Linux moderno possui blackhole detection automatico para fallback transparente
+	sysctl -q -w net.ipv4.tcp_fastopen=3 2>/dev/null || true
+
+	# 2. Anti-Bufferbloat no Socket Local do Host (Google BBR / RFC optimization)
+	# Impede acumulo excessivo de dados na fila de escrita do socket (latencia DoH e VPN < 1ms)
+	sysctl -q -w net.ipv4.tcp_notsent_lowat=16384 2>/dev/null || true
+
+	# 3. Autotuning e janelas TCP adaptadas
+	sysctl -q -w net.ipv4.tcp_window_scaling=1 2>/dev/null || true
+	sysctl -q -w net.ipv4.tcp_timestamps=1 2>/dev/null || true
+
+	# 4. ECN (Explicit Congestion Notification): Modo 2 (Negociado sob demanda)
+	# Seguro para 100% dos servidores legados e plenamente compativel com marcacao CE do CAKE
+	sysctl -q -w net.ipv4.tcp_ecn=2 2>/dev/null || true
+
+	# 5. Ativacao Segura do BBR: Somente se o modulo kmod-tcp-bbr estiver instalado e suportado
+	# Se nao estiver presente ou falhar no carregamento, mantem o padrao do kernel (ex: cubic) com zero erros
+	modprobe tcp_bbr >/dev/null 2>&1 || true
+	if grep -q "\bbbr\b" /proc/sys/net/ipv4/tcp_available_congestion_control 2>/dev/null; then
+		sysctl -q -w net.ipv4.tcp_congestion_control=bbr 2>/dev/null || true
+	fi
+}
+
 start() {
 	local _enabled="$(uci -q get equipe_dashboard.hardware_tune.enabled || echo 1)"
 	[ "$_enabled" = "1" ] || return 0
@@ -175,6 +202,7 @@ start() {
 	# Distribuir interrupções de hardware (evita afunilar 100% dos pacotes no Core 0)
 	ark_tune_irq_affinity "$cpu_cores"
 	ark_tune_wifi_aql
+	ark_tune_tcp_stack "$mem_total_kb"
 
 	# Calibracao Inteligente de ZRAM (Respeita escolha do usuario em equipe_perf e protege CPUs fracas)
 	local zram_cfg="$(uci -q get equipe_perf.settings.zram_enabled || echo 'auto')"
@@ -338,8 +366,8 @@ start() {
 		sysctl -q -w vm.min_free_kbytes=65536 2>/dev/null || true
 		sysctl -q -w net.core.netdev_budget=600 2>/dev/null || true
 		sysctl -q -w net.core.netdev_budget_usecs=20000 2>/dev/null || true
-		sysctl -q -w net.ipv4.tcp_rmem="4096 87380 8388608" 2>/dev/null || true
-		sysctl -q -w net.ipv4.tcp_wmem="4096 65536 8388608" 2>/dev/null || true
+		sysctl -q -w net.ipv4.tcp_rmem="4096 87380 16777216" 2>/dev/null || true
+		sysctl -q -w net.ipv4.tcp_wmem="4096 65536 16777216" 2>/dev/null || true
 
 		# RFS com 32k entradas para acelerar conexões locais (DNS, uhttpd, ping)
 		sysctl -q -w net.core.rps_sock_flow_entries=32768 2>/dev/null || true
@@ -368,6 +396,7 @@ start() {
 				eth*|lan*)
 					[ -d "/sys/class/net/$iface" ] || continue
 					ethtool -K "$iface" gro on gso on 2>/dev/null || true
+					ethtool -K "$iface" rx-udp-gro-forwarding on 2>/dev/null || true
 					ip link set dev "$iface" txqueuelen 1000 2>/dev/null || true
 					tc qdisc show dev "$iface" 2>/dev/null | grep -q "cake" && continue
 					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \
@@ -442,6 +471,7 @@ start() {
 				eth*|lan*|en*|igb*|ixgbe*|i40e*)
 					[ -d "/sys/class/net/$iface" ] || continue
 					ethtool -K "$iface" gro on gso on 2>/dev/null || true
+					ethtool -K "$iface" rx-udp-gro-forwarding on 2>/dev/null || true
 					ip link set dev "$iface" txqueuelen "$txq" 2>/dev/null || true
 					tc qdisc show dev "$iface" 2>/dev/null | grep -q "cake" && continue
 					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \

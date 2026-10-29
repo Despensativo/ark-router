@@ -297,17 +297,20 @@ function ensureArkTxBanner(profile) {
 		const styleEl = document.createElement('style');
 		styleEl.id = 'ark-tx-style';
 		styleEl.textContent =
-			'.ark-tx-banner{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(24px);z-index:2147483640;min-width:320px;max-width:92vw;background:rgba(15,23,42,0.96);border:1px solid rgba(56,189,248,0.45);border-radius:12px;box-shadow:0 14px 36px rgba(0,0,0,0.55);padding:10px 14px;color:#f8fafc;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;backdrop-filter:blur(10px);}' +
-			'.ark-tx-banner.is-visible{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}' +
-			'.ark-tx-banner-row{display:flex;align-items:center;gap:10px;justify-content:space-between;}' +
-			'.ark-tx-spinner{width:16px;height:16px;border:2.5px solid rgba(56,189,248,0.25);border-top-color:#38bdf8;border-radius:50%;animation:arkTxSpin .75s linear infinite;flex:0 0 auto;}' +
+			'.ark-tx-banner{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.92);z-index:2147483640;min-width:280px;width:min(480px,calc(100vw - 28px));box-sizing:border-box;background:rgba(15,23,42,0.96);border:1px solid rgba(56,189,248,0.5);border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,0.75),0 0 0 1px rgba(56,189,248,0.2);padding:18px 22px;color:#f8fafc;opacity:0;pointer-events:none;transition:opacity .24s cubic-bezier(0.16,1,0.3,1),transform .24s cubic-bezier(0.16,1,0.3,1);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}' +
+			'.ark-tx-banner.is-visible{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:auto;}' +
+			'.ark-tx-banner-row{display:flex;align-items:center;gap:14px;justify-content:space-between;}' +
+			'.ark-tx-spinner{width:22px;height:22px;border:2.5px solid rgba(56,189,248,0.22);border-top-color:#38bdf8;border-radius:50%;animation:arkTxSpin .75s linear infinite;flex:0 0 auto;}' +
 			'@keyframes arkTxSpin{to{transform:rotate(360deg);}}' +
 			'.ark-tx-copy{flex:1 1 auto;min-width:0;}' +
-			'.ark-tx-title{font-size:12.5px;font-weight:700;color:#e0f2fe;line-height:1.3;}' +
-			'.ark-tx-sub{font-size:11px;color:#94a3b8;margin-top:2px;}' +
-			'.ark-tx-unlock-btn{background:rgba(245,158,11,0.18);border:1px solid rgba(245,158,11,0.5);color:#fbbf24;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:700;cursor:pointer;flex:0 0 auto;}' +
-			'.ark-tx-track{height:3px;background:rgba(148,163,184,0.18);border-radius:3px;overflow:hidden;margin-top:7px;}' +
-			'.ark-tx-bar{height:100%;width:10%;background:linear-gradient(90deg,#38bdf8,#10b981);border-radius:3px;}' +
+			'.ark-tx-title{font-size:13.5px;font-weight:700;color:#f0f9ff;line-height:1.3;letter-spacing:-0.01em;}' +
+			'.ark-tx-sub{font-size:11.5px;color:#94a3b8;margin-top:3px;line-height:1.35;}' +
+			'.ark-tx-unlock-btn{background:rgba(245,158,11,0.18);border:1px solid rgba(245,158,11,0.5);color:#fbbf24;border-radius:8px;padding:4px 10px;font-size:11.5px;font-weight:700;cursor:pointer;flex:0 0 auto;transition:background .15s ease;}' +
+			'.ark-tx-unlock-btn:hover{background:rgba(245,158,11,0.3);}' +
+			'.ark-tx-track{height:4px;background:rgba(148,163,184,0.18);border-radius:4px;overflow:hidden;margin-top:12px;}' +
+			'.ark-tx-bar{height:100%;width:10%;background:linear-gradient(90deg,#38bdf8,#10b981);border-radius:4px;}' +
+			'body.ark-mutation-busy::after{content:"";position:fixed;inset:0;background:rgba(0,0,0,0.38);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:2147483630;pointer-events:none;animation:arkTxFadeIn .2s ease forwards;}' +
+			'@keyframes arkTxFadeIn{from{opacity:0;}to{opacity:1;}}' +
 			'body.ark-mutation-busy .cbi-button:not(#ark-tx-unlock-btn),body.ark-mutation-busy .ex-mini-button:not(#ark-tx-unlock-btn),body.ark-mutation-busy .ex-hero-feature-button,body.ark-mutation-busy .ex-switch{opacity:0.68;cursor:wait;}';
 		document.head.appendChild(styleEl);
 	}
@@ -434,7 +437,7 @@ function installArkTransactionCoordinator() {
 			if (!st || (Date.now() - st.startedAt <= 120)) return;
 			const t = ev && ev.target;
 			if (!t || typeof t.closest !== 'function') return;
-			if (t.closest('#ark-tx-banner, .ex-toast-close, .ex-accordion-toggle-btn, .cbi-button-neutral, .ex-doctor-tab-btn, #ark-emulator-bar, .ex-v2-sidebar, .ex-v2-nav-btn, .ex-v2-quick-pill, .ex-v2-modules-wrap')) return;
+			if (t.closest('#ark-tx-banner, .ex-toast-close, .ex-accordion-toggle-btn, .cbi-button-neutral, .ex-doctor-tab-btn, #ark-emulator-bar, .ex-v2-sidebar, .ex-v2-nav-btn, .ex-v2-quick-pill, .ex-v2-modules-wrap, .modal, #modal_overlay, [role="dialog"], .cbi-modal, .ark-modal-backdrop')) return;
 			const interactive = t.closest('button, input[type="checkbox"], input[type="radio"], .cbi-button, .ex-mini-button, .ex-switch');
 			if (interactive) {
 				if (ev.type === 'change' && (t.type === 'checkbox' || t.type === 'radio')) {

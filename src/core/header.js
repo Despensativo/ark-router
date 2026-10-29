@@ -1,10 +1,33 @@
 'use strict';
 'require view';
+'require dom';
 'require rpc';
 'require poll';
 'require fs';
 'require ui';
-const ARK_BUILD_VERSION = '2.1.5';
+
+if (typeof dom !== 'undefined' && dom) {
+	const proto = Object.getPrototypeOf(dom) || dom;
+	if (proto && typeof proto.attr === 'function' && !proto._arkAttrPatched) {
+		proto._arkAttrPatched = true;
+		const origAttr = proto.attr;
+		const boolAttrs = { disabled: 1, checked: 1, readonly: 1, required: 1, selected: 1, multiple: 1, autofocus: 1 };
+		proto.attr = function(node, key, val) {
+			if (typeof key === 'object' && key !== null) {
+				for (const k in key) {
+					if (boolAttrs[k] && key[k] === false) {
+						key[k] = null;
+					}
+				}
+			} else if (typeof key === 'string' && boolAttrs[key] && val === false) {
+				val = null;
+			}
+			return origAttr.call(this, node, key, val);
+		};
+	}
+}
+
+const ARK_BUILD_VERSION = '2.1.6';
 if (typeof window !== 'undefined') {
 	window.ARK_BUILD_VERSION = ARK_BUILD_VERSION;
 	window.ARK_VERSION = ARK_BUILD_VERSION;

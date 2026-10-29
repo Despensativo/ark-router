@@ -992,19 +992,22 @@ button.ex-mode-button.active::before,
 	position: absolute !important;
 	top: 14px !important;
 	right: 14px !important;
-	width: 32px !important;
-	height: 32px !important;
+	width: 36px !important;
+	height: 36px !important;
+	min-width: 36px !important;
+	min-height: 36px !important;
 	display: flex !important;
 	align-items: center !important;
 	justify-content: center !important;
 	background: rgba(255, 255, 255, 0.08) !important;
 	border: 1px solid var(--ark-border) !important;
-	border-radius: 8px !important;
+	border-radius: 9px !important;
 	color: #94a3b8 !important;
 	font-size: 22px !important;
 	line-height: 1 !important;
 	cursor: pointer !important;
 	z-index: 20 !important;
+	touch-action: manipulation !important;
 	transition: all 0.15s ease !important;
 }
 .ark-modal-close-btn:hover {
@@ -1442,7 +1445,7 @@ body.modal-overlay-active:not(.ark-login-page) #modal_overlay {
 	min-height: 32px;
 	min-width: 280px;
 	width: min(880px, calc(100vw - 32px));
-	margin: 2.5em auto;
+	margin: 3vh auto;
 	padding: 24px;
 	display: flex;
 	flex-wrap: wrap;
@@ -1465,6 +1468,7 @@ body.modal-overlay-active:not(.ark-login-page) #modal_overlay {
 	color: #fff;
 	margin-bottom: 16px;
 	padding-bottom: 10px;
+	padding-right: 44px !important;
 	border-bottom: 1px solid var(--ark-border);
 }
 .modal .right {

@@ -669,7 +669,9 @@ const networkModalsMethods = {
 						E('p',{class:'ex-muted'},['O ARK cria backup em /tmp antes de aplicar. Se o IP principal mudar, tentarei abrir automaticamente o painel no novo endereço.']),
 						E('div',{class:'right'},[
 							E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Voltar']),' ',
-							E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+							E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
+								const btn = ev && ev.currentTarget;
+								if (btn) { btn.disabled = true; btn.textContent = 'Aplicando agora…'; }
 								const args=['lan-save','mode='+next.mode,'router_ip='+next.routerIp,'netmask='+next.netmask,'start_ip='+next.startIp,'end_ip='+next.endIp,'dns='+next.dns.join(' '),'dhcp_enabled='+(next.dhcpEnabled?'1':'0'),'igmp_snooping='+(next.igmpSnooping?'1':'0')];
 								return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){
 									if(r.code)throw new Error(r.stderr||'Falha ao salvar LAN');
@@ -678,6 +680,7 @@ const networkModalsMethods = {
 									if((out.new_ip||next.routerIp)!==(out.old_ip||next.oldIp))redirectToRouter(out.new_ip||next.routerIp,'LAN salva. Tentando abrir o painel no novo IP '+(out.new_ip||next.routerIp)+'…',1000);
 									else reloadSoon('Faixa DHCP salva. Recarregando o painel…',1000);
 								}).catch(function(e){
+									if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Aplicar agora'; }
 									if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
 									ui.addNotification(null,E('p',{},[e.message]),'danger');
 								});
@@ -695,14 +698,20 @@ const networkModalsMethods = {
 		ui.showModal('Desativar IPv6 totalmente',[
 			E('p',{class:'alert-message warning'},['Essa ação cria backup e remove/desativa WAN6, ULA, anúncios RA, DHCPv6/NDP, regras IPv6 do firewall e serviços odhcp6c/odhcpd quando presentes.']),
 			E('p',{class:'ex-muted'},['Use quando o roteador deve operar somente em IPv4. A internet IPv4, Wi‑Fi e DHCP IPv4 continuam funcionando.']),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-negative','click':function(){
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-negative','click':function(ev){
+				const btn = ev && ev.currentTarget;
+				if (btn) { btn.disabled = true; btn.textContent = 'Desativando IPv6…'; }
 				return fs.exec('/usr/sbin/equipe-dashboard-control',['ipv6-disable-full']).then(function(r){
 					if(r.code)throw new Error(r.stderr||'Falha ao desativar IPv6');
 					let out={};try{out=JSON.parse(r.stdout||'{}');}catch(e){}
 					ui.hideModal();
 					ui.addNotification(null,E('p',{},['IPv6 desativado. Backup: ',out.backup||'/tmp/ark-router-before-cleanup-*.tar.gz']));
 					window.setTimeout(function(){window.location.reload();},1000);
-				}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});
+				}).catch(function(e){
+					if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Criar backup e desativar IPv6'; }
+					if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
+					ui.addNotification(null,E('p',{},[e.message]),'danger');
+				});
 			}},['Criar backup e desativar IPv6'])])
 		]);
 	},
@@ -873,7 +882,7 @@ const networkModalsMethods = {
 			const relayToggle = E('input', {
 				type: 'checkbox',
 				checked: (!isRelayLocked && isRelay) ? '' : null,
-				disabled: isRelayLocked ? true : null,
+				disabled: isRelayLocked ? '' : null,
 				change: function(ev) {
 					if (isRelayLocked) return;
 					const desired = ev.currentTarget.checked ? '1' : '0';

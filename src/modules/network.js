@@ -438,7 +438,7 @@ const networkMethods = {
 		const confirmBtn = E('button', {
 			class: 'btn cbi-button ' + (desired ? 'cbi-button-positive' : 'cbi-button-negative'),
 			style: 'font-weight: bold;',
-			disabled: (desired && isEconomic)
+			disabled: (desired && isEconomic) ? '' : null
 		}, [(desired && isEconomic) ? _t('Aguarde 3 s') : (desired ? _t('Confirmar') : (isGamerActive ? _t('Desativar SQM e Desligar Gamer') : _t('Confirmar')))]);
 
 		if (desired && isEconomic) {
@@ -450,6 +450,7 @@ const networkMethods = {
 					return;
 				}
 				clearSqmTimer();
+				confirmBtn.removeAttribute('disabled');
 				confirmBtn.disabled = false;
 				confirmBtn.textContent = '⚠️ ' + _t('Estou ciente e quero ativar SQM');
 			}, 100);
@@ -476,8 +477,10 @@ const networkMethods = {
 				const res = r[0] || {};
 				if(res.code) throw new Error(res.stderr || 'Falha ao alterar o SQM');
 				const msg = desired ? 'SQM ativado com sucesso!' : (isGamerActive ? 'SQM desativado. Modo Gamer desligado e perfil retornado ao Modo Padrão.' : 'SQM desativado com sucesso!');
+				closeModal();
 				this.triggerImmediateRefresh(msg, 'info');
 			}, this)).catch(function(e){
+				btn.removeAttribute('disabled');
 				btn.disabled = false;
 				btn.textContent = desired ? (isEconomic ? '⚠️ ' + _t('Estou ciente e quero ativar SQM') : _t('Confirmar')) : (isGamerActive ? _t('Desativar SQM e Desligar Gamer') : _t('Confirmar'));
 				if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
@@ -674,11 +677,11 @@ const networkMethods = {
 				]);
 				overheadSelect.value = targetOverheadVal;
 
-				const chkNat = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('nat') !== -1 });
-				const chkHostFair = E('input', { type: 'checkbox', checked: (curEqdisc.indexOf('dual-srchost') !== -1 || curIqdisc.indexOf('dual-dsthost') !== -1) });
-				const chkAck = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('ack-filter') !== -1 });
-				const chkWash = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('wash') !== -1 });
-				const chkDiffserv = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('diffserv4') !== -1 });
+				const chkNat = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('nat') !== -1 ? '' : null });
+				const chkHostFair = E('input', { type: 'checkbox', checked: (curEqdisc.indexOf('dual-srchost') !== -1 || curIqdisc.indexOf('dual-dsthost') !== -1) ? '' : null });
+				const chkAck = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('ack-filter') !== -1 ? '' : null });
+				const chkWash = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('wash') !== -1 ? '' : null });
+				const chkDiffserv = E('input', { type: 'checkbox', checked: curEqdisc.indexOf('diffserv4') !== -1 ? '' : null });
 				const aplusLockBadge = E('div', {
 					style: 'display: ' + (initialWaveformAplus ? 'block' : 'none') + '; padding: 6px 10px; border-radius: 8px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); color: #34d399; font-size: 11.5px; font-weight: 600;'
 				}, [
@@ -793,7 +796,7 @@ const networkMethods = {
 
 			const modalWaveformInput = E('input', {
 				type: 'checkbox',
-				checked: initialWaveformAplus,
+				checked: initialWaveformAplus ? '' : null,
 				change: function(ev) {
 					const on = !!ev.currentTarget.checked;
 					modalWaveformState.textContent = on ? 'ATIVO (Sobrepõe Ajustes)' : 'Manual';
@@ -984,6 +987,7 @@ const networkMethods = {
 				}, this), 600);
 			}, this)).catch(function(e){
 				btn.classList.remove('is-busy');
+				btn.removeAttribute('disabled');
 				btn.disabled = false;
 				btn.textContent = _t('Salvar e reiniciar SQM');
 				if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
@@ -1381,9 +1385,15 @@ const networkMethods = {
 				E('div',{class:'ex-wan-edit-grid'},gridChildren),
 				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
 					const isConvertingToWan = (role.value === 'wan') && (isNewWan || preferredDevice);
-					const doApply = function() {
+					const doApply = function(ev) {
+						const btn = ev && ev.currentTarget;
+						if (btn) {
+							btn.disabled = true;
+							btn.textContent = 'Salvando internet…';
+						}
 						const chosenMetric = parseInt(metricInput.value, 10);
 						if (!chosenMetric || chosenMetric < 1 || chosenMetric > 255) {
+							if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Confirmar alteração'; }
 							ui.addNotification(null, E('p', {}, ['A métrica / prioridade da WAN deve ser um número entre 1 e 255.']), 'warning');
 							return;
 						}
@@ -1393,6 +1403,7 @@ const networkMethods = {
 								if (otherCfg && otherCfg.proto && otherCfg.proto !== 'none') {
 									const otherMetric = parseInt(otherCfg.metric, 10);
 									if (otherMetric === chosenMetric) {
+										if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Confirmar alteração'; }
 										ui.addNotification(null, E('p', {}, ['Conflito de prioridade: A conexão ' + otherIface.toUpperCase() + ' já utiliza a métrica ' + chosenMetric + '. Cada conexão precisa ter um peso exclusivo para evitar instabilidade de rotas.']), 'danger');
 										return;
 									}
@@ -1400,6 +1411,7 @@ const networkMethods = {
 									if (typedMac) {
 										const otherMac = String(otherCfg.macaddr || '').trim().toUpperCase();
 										if (otherMac && otherMac === typedMac) {
+											if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Confirmar alteração'; }
 											ui.addNotification(null, E('p', {}, ['Conflito de MAC: O endereço ' + typedMac + ' já está clonado na conexão ' + otherIface.toUpperCase() + '. Cada conexão WAN deve possuir um MAC exclusivo.']), 'danger');
 											return;
 										}
@@ -1416,6 +1428,11 @@ const networkMethods = {
 							ui.hideModal();
 							reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…', 1500);
 						}).catch(function(e) {
+							if (btn) {
+								btn.removeAttribute('disabled');
+								btn.disabled = false;
+								btn.textContent = 'Confirmar alteração';
+							}
 							if (reloadAfterExpectedDisconnect(e, 'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…', 4200)) return;
 							ui.addNotification(null, E('p', {}, [e.message]), 'danger');
 						});

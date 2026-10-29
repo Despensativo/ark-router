@@ -853,7 +853,8 @@ body.modal-overlay-active #modal_overlay {
 .modal, .cbi-modal, #modal_overlay > .modal {
 	max-width: 880px !important;
 	width: min(880px, calc(100vw - 32px)) !important;
-	max-height: calc(100dvh - 36px) !important;
+	max-height: min(88vh, 850px) !important;
+	margin: 3vh auto !important;
 	overflow-y: auto !important;
 	overscroll-behavior: auto !important;
 	-webkit-overflow-scrolling: touch !important;
@@ -952,11 +953,24 @@ body.modal-overlay-active #modal_overlay {
 		width: 100% !important;
 	}
 	.modal .right .btn, .cbi-modal .right .btn, .modal .right button, .cbi-modal .right button {
-		flex: 1 1 calc(50% - 8px) !important;
+		flex: 1 1 100% !important;
 		margin: 0 !important;
 		text-align: center !important;
 		justify-content: center !important;
-		min-height: 40px !important;
+		min-height: 44px !important;
+		font-size: 13.5px !important;
+		font-weight: 600 !important;
+	}
+	.modal .right .btn.cbi-button-positive,
+	.modal .right .btn.cbi-button-negative,
+	.cbi-modal .right .btn.cbi-button-positive,
+	.cbi-modal .right .btn.cbi-button-negative {
+		order: 1 !important;
+	}
+	.modal .right .btn.cbi-button-neutral,
+	.cbi-modal .right .btn.cbi-button-neutral {
+		order: 2 !important;
+		min-height: 42px !important;
 	}
 	.ex-cleanup-entry {
 		flex-direction: column !important;
@@ -3013,13 +3027,17 @@ button.is-error {
 	padding: 20px;
 	gap: 14px;
 	transform: translateX(104%);
-	transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+	visibility: hidden;
+	pointer-events: none;
+	transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.24s;
 	box-sizing: border-box;
 	color: #f8fafc;
 }
 
 .ex-v2-luci-drawer.is-open {
 	transform: translateX(0);
+	visibility: visible;
+	pointer-events: auto;
 }
 
 .ex-v2-drawer-head {

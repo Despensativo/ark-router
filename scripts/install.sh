@@ -518,6 +518,21 @@ if [ "$DRY_RUN" != 1 ] && [ -f /usr/lib/ark/common.sh ]; then
 	ark_migrate_upnp_variant >/dev/null 2>&1 || true
 fi
 
+if [ "$DRY_RUN" != 1 ]; then
+	avail_kb="$(overlay_avail_kb)"
+	if [ "$avail_kb" -gt 10000 ]; then
+		pkg_mgr="$(manager)"
+		case "$pkg_mgr" in
+			apk)
+				apk add kmod-tcp-bbr ethtool >/dev/null 2>&1 && [ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune restart >/dev/null 2>&1 || true
+				;;
+			opkg)
+				opkg install kmod-tcp-bbr ethtool >/dev/null 2>&1 && [ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune restart >/dev/null 2>&1 || true
+				;;
+		esac
+	fi
+fi
+
 if [ "$DRY_RUN" = 1 ]; then
 	echo "Dry run complete. No changes were made."
 else

@@ -2100,6 +2100,16 @@ ark_doctor_audit() {
 		fi
 	fi
 
+	# 27. Auditoria do Transporte TCP do Host & Anti-Bufferbloat
+	local cur_tcp_cc="$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || echo 'cubic')"
+	local cur_notsent="$(sysctl -n net.ipv4.tcp_notsent_lowat 2>/dev/null || echo '0')"
+	local cur_tfo="$(sysctl -n net.ipv4.tcp_fastopen 2>/dev/null || echo '0')"
+	if [ "$cur_notsent" = "16384" ] || [ "$cur_tcp_cc" = "bbr" ]; then
+		add_check "Transporte TCP & Low-Bufferbloat" "OK" "Transporte TCP otimizado (Algoritmo: ${cur_tcp_cc}, Low-Bufferbloat: ${cur_notsent} B, TFO: ${cur_tfo})."
+	else
+		add_check "Transporte TCP & Low-Bufferbloat" "OK" "Transporte TCP padrao do sistema operacional (Algoritmo: ${cur_tcp_cc})."
+	fi
+
 	local _overall_status="OK"
 	if [ "$errors" -gt 0 ]; then
 		_overall_status="FAIL"

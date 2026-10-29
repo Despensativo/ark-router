@@ -140,14 +140,20 @@ const wifiMethods = {
 			E('p',{class:'alert-message warning'},['Ao salvar, o Wi‑Fi reiniciará e os aparelhos serão desconectados. Depois, será necessário conectar novamente usando a nova senha.']),
 			E('div',{class:'right'},[
 				E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',
-				E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
+				E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
+					const btn = ev && ev.currentTarget;
 					const password=first.value;
 					if(password.length<8||password.length>63){ui.addNotification(null,E('p',{},['A senha precisa ter entre 8 e 63 caracteres.']));return;}
 					if(password!==second.value){ui.addNotification(null,E('p',{},['As duas senhas digitadas não são iguais.']));return;}
+					if (btn) { btn.disabled = true; btn.textContent = 'Salvando nova senha…'; }
 					return fs.exec('/usr/sbin/equipe-dashboard-control',['wifi',kind,password]).then(function(r){
 						if(r.code)throw new Error(r.stderr||'Falha ao alterar a senha');
 						ui.hideModal(); ui.addNotification(null,E('p',{},['Senha salva. O Wi‑Fi reiniciará em alguns segundos.']));
-					}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]));});
+					}).catch(function(e){
+						if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Salvar nova senha'; }
+						if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
+						ui.addNotification(null,E('p',{},[e.message]),'danger');
+					});
 				},this)},['Salvar nova senha'])
 			])
 		]);
@@ -1424,7 +1430,9 @@ const wifiMethods = {
 			E('div', { class: 'right' }, [
 				E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': closeModal }, ['Cancelar']),
 				' ',
-				E('button', { class: 'btn cbi-button cbi-button-positive', 'click': L.bind(function(){
+				E('button', { class: 'btn cbi-button cbi-button-positive', 'click': L.bind(function(ev){
+					const btn = ev && ev.currentTarget;
+					if (btn) { btn.disabled = true; btn.textContent = 'Aplicando…'; }
 					const args = ['wifi-width', w2.value, w5.value];
 					if (w6) args.push(w6.value);
 					return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r){
@@ -1432,6 +1440,7 @@ const wifiMethods = {
 						ui.hideModal();
 						reloadSoon('Largura salva. Aplicando alteração no Wi‑Fi…', 1500);
 					}).catch(function(e){
+						if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Salvar e aplicar'; }
 						if (reloadAfterExpectedDisconnect(e, 'Wi‑Fi reiniciando. Recarregando o painel…', 2000)) return;
 						ui.addNotification(null, E('p', {}, [e.message]), 'danger');
 					});
@@ -1534,7 +1543,20 @@ const wifiMethods = {
 		ui.showModal('País e domínio regulatório',[
 			E('p',{},['Escolha o país onde o roteador está sendo utilizado. Isso controla legalmente canais e potências disponíveis.']),select,
 			E('p',{class:'alert-message warning'},['Ao alterar o país, as duas bandas voltarão ao modo automático e o Wi‑Fi será reiniciado. Selecione somente o país onde o equipamento está fisicamente instalado.']),
-			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){const code=select.value,name=select.options[select.selectedIndex].text;return fs.exec('/usr/sbin/equipe-dashboard-control',['country',code]).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao alterar o país');ui.hideModal();reloadSoon('País alterado para '+name+'. Recarregando após reiniciar o Wi‑Fi…',1500);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',2000))return;ui.addNotification(null,E('p',{},[e.message]));});},this)},['Confirmar país'])])
+			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
+				const btn = ev && ev.currentTarget;
+				if (btn) { btn.disabled = true; btn.textContent = 'Aplicando…'; }
+				const code=select.value,name=select.options[select.selectedIndex].text;
+				return fs.exec('/usr/sbin/equipe-dashboard-control',['country',code]).then(function(r){
+					if(r.code)throw new Error(r.stderr||'Falha ao alterar o país');
+					ui.hideModal();
+					reloadSoon('País alterado para '+name+'. Recarregando após reiniciar o Wi‑Fi…',1500);
+				}).catch(function(e){
+					if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Confirmar país'; }
+					if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',2000))return;
+					ui.addNotification(null,E('p',{},[e.message]),'danger');
+				});
+			},this)},['Confirmar país'])])
 		]);
 	},
 
@@ -1700,6 +1722,7 @@ const wifiMethods = {
 				confirmBtn.textContent = '⏳ Aguarde (' + countdown + 's)...';
 			} else {
 				window.clearInterval(timer);
+				confirmBtn.removeAttribute('disabled');
 				confirmBtn.disabled = false;
 				confirmBtn.textContent = 'Sim, possuo múltiplos roteadores (Ativar)';
 			}

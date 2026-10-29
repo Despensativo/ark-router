@@ -483,7 +483,7 @@ const renderMethods = {
 						id: 'ex-wps-pbc-btn',
 						class: 'ex-mini-button',
 						style: 'font-weight: 750; padding: 8px 16px; min-height: 40px;',
-						disabled: !w.wpsEnabled,
+						disabled: !w.wpsEnabled ? '' : null,
 						click: L.bind(function(ev){ this.triggerWpsPbc(ev.currentTarget); }, this)
 					}, ['🔘 Iniciar Pareamento WPS (2 min)'])
 				]),

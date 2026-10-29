@@ -201,7 +201,8 @@ def main():
             if sec and sec in uf.sections:
                 uf.sections.remove(sec)
                 uf.save()
-            sys.exit(0)
+                sys.exit(0)
+            sys.exit(1)
         elif len(parts) >= 3:
             sec_name = parts[1]
             opt_name = parts[2]
@@ -209,7 +210,8 @@ def main():
             if sec and opt_name in sec.options:
                 del sec.options[opt_name]
                 uf.save()
-            sys.exit(0)
+                sys.exit(0)
+            sys.exit(1)
 
     elif cmd == "add":
         if len(subargs) < 2:

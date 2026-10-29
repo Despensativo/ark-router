@@ -10,6 +10,7 @@ const doctorPerfMethods = {
 				return;
 			}
 			window.clearInterval(timer);
+			finalButton.removeAttribute('disabled');
 			finalButton.disabled = false;
 			finalButton.textContent = _t('Confirmar ativação mesmo assim');
 		}, 100);
@@ -24,6 +25,7 @@ const doctorPerfMethods = {
 				ui.addNotification(null, E('p', {}, [_t('Compressão de memória (ZRAM) ativada em modo forçado pelo usuário.')]));
 				window.setTimeout(function() { window.location.reload(); }, 900);
 			}).catch(function(e) {
+				finalButton.removeAttribute('disabled');
 				finalButton.disabled = false;
 				finalButton.textContent = _t('Confirmar ativação mesmo assim');
 				ui.addNotification(null, E('p', {}, [e.message]), 'danger');
@@ -106,7 +108,7 @@ const doctorPerfMethods = {
 			const allserversToggle = E('input', {
 				type: 'checkbox',
 				checked: allserversActive ? '' : null,
-				disabled: hasDnsBlocker,
+				disabled: hasDnsBlocker ? '' : null,
 				style: 'width: 20px; height: 20px; cursor: ' + (hasDnsBlocker ? 'not-allowed' : 'pointer') + ';'
 			});
 			allserversToggle.checked = allserversActive;
@@ -188,7 +190,7 @@ const doctorPerfMethods = {
 				E('button', {
 					type: 'button',
 					class: 'ex-mini-button',
-					style: 'font-weight: 700; background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 5px 10px; border-radius: 6px; cursor: pointer;',
+					style: 'font-weight: 700; background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.3); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: normal; line-height: 1.35; max-width: 100%; box-sizing: border-box; text-align: left;',
 					click: function() {
 						cacheSelect.value = String(recCache);
 						customCacheWrapper.style.display = 'none';
