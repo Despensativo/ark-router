@@ -5057,7 +5057,7 @@ const networkMethods = {
 					stateEl.style.color = desired ? '#34d399' : '#94a3b8';
 				}
 				const msg = desired
-					? '🏆 Modo A+ Waveform ativado! Ajustes manuais sobrepostos com a calibragem oficial ARK (memlimit dinâmico, Cobalt AQM 5ms/100ms, besteffort ingress, diffserv4 ack-filter, WAN DSCP Wash & Wi-Fi AQL).'
+					? '🏆 Modo A+ Waveform ativado! Ajustes manuais sobrepostos com a calibragem oficial ARK (memlimit progressivo, Cobalt AQM 2.5ms/50ms, besteffort ingress, diffserv4 no-ack-filter, WAN DSCP Wash & Wi-Fi AQL).'
 					: 'Modo A+ Waveform desativado. Os parâmetros avançados do CAKE agora podem ser customizados manualmente.';
 				this.triggerImmediateRefresh(msg, 'info');
 			}, this))
@@ -5370,7 +5370,7 @@ const networkMethods = {
 							}, ['🔗 Abrir Teste Waveform Bufferbloat ↗'])
 						]),
 						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 3px; line-height: 1.4;' }, [
-							'Quando ativo, sobrepõe os ajustes manuais do usuário com todas as otimizações oficiais ARK (memlimit ' + cakeMemlimit + ', Cobalt AQM 2.5ms/50ms rtt 50ms, besteffort ingress, diffserv4 ack-filter, WAN DSCP Wash e Wi-Fi AQL).'
+							'Quando ativo, sobrepõe os ajustes manuais do usuário com todas as otimizações oficiais ARK (memlimit ' + cakeMemlimit + ', Cobalt AQM 2.5ms/50ms rtt 50ms, besteffort ingress, diffserv4 no-ack-filter, WAN DSCP Wash e Wi-Fi AQL).'
 						])
 					]),
 					E('div', { class: 'ex-device-switch-control' }, [
@@ -5380,12 +5380,12 @@ const networkMethods = {
 				]),
 				E('details', { style: 'margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 12px; line-height: 1.5;' }, [
 					E('summary', { style: 'cursor: pointer; font-weight: 700; color: #93c5fd; user-select: none;' }, [
-						'🔬 Detalhes Técnicos da Engenharia Modo A+ (memlimit 32M, rtt 50ms, Cobalt AQM & Wi-Fi AQL)'
+						'🔬 Detalhes Técnicos da Engenharia Modo A+ (memlimit progressivo ' + cakeMemlimit + ', rtt 50ms, Cobalt AQM & Wi-Fi AQL)'
 					]),
 					E('div', { style: 'margin-top: 8px; display: flex; flex-direction: column; gap: 8px; color: rgba(255,255,255,0.88);' }, [
 						E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.22); border-left: 3px solid #f59e0b;' }, [
-							E('strong', { style: 'display: block; color: #fbbf24; margin-bottom: 2px;' }, ['Por que o memlimit 32M é o teto calibrado ideal?']),
-							'No Linux com Page Pool, o memlimit 32M atua como teto de proteção estrito contra filas infladas na memória RAM. Valores excessivos (>32M) permitem o acúmulo de dezenas de megabytes no kernel durante rajadas, gerando bufferbloat tardio especialmente em conexões Wi-Fi. O teto de 32M força o TCP a manter janelas de congestionamento compactas e estáveis.'
+							E('strong', { style: 'display: block; color: #fbbf24; margin-bottom: 2px;' }, ['Por que o memlimit progressivo (' + cakeMemlimit + ') é a escala ideal?']),
+							'No Linux 6.12 com Page Pool e skb->truesize ~4KB, conexões gigabit (>700M) com múltiplos fluxos simultâneos demandam cerca de 30-40 MB de buffer transitório. O memlimit antigo de 32M forçava descartes prematuros em rajadas. A calibração progressiva aloca ' + cakeMemlimit + ' de forma proporcional à memória RAM instalada, garantindo 0ms de fila e eliminando qualquer queda de velocidade.'
 						]),
 						E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.22); border-left: 3px solid #10b981;' }, [
 							E('strong', { style: 'display: block; color: #34d399; margin-bottom: 2px;' }, ['Ingress rtt 50ms (target 2.5ms):']),
@@ -21861,12 +21861,12 @@ const renderMethods = {
 							]),
 							E('details', { style: 'margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 12px; line-height: 1.5;' }, [
 								E('summary', { style: 'cursor: pointer; font-weight: 700; color: #93c5fd; user-select: none;' }, [
-									'🔬 Detalhes Técnicos da Engenharia Modo A+ (memlimit 32M, rtt 50ms, Cobalt AQM & Wi-Fi AQL)'
+									'🔬 Detalhes Técnicos da Engenharia Modo A+ (memlimit progressivo 64M, rtt 50ms, Cobalt AQM & Wi-Fi AQL)'
 								]),
 								E('div', { style: 'margin-top: 8px; display: flex; flex-direction: column; gap: 8px; color: rgba(255,255,255,0.88);' }, [
 									E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.22); border-left: 3px solid #f59e0b;' }, [
-										E('strong', { style: 'display: block; color: #fbbf24; margin-bottom: 2px;' }, ['1. Por que o memlimit 32M é o teto calibrado ideal?']),
-										'No Linux com Page Pool, o memlimit 32M atua como teto de proteção estrito contra filas infladas na memória RAM. Valores excessivos (>32M) permitem o acúmulo de dezenas de megabytes no kernel durante rajadas, gerando bufferbloat tardio especialmente em conexões Wi-Fi. O teto de 32M força o TCP a manter janelas de congestionamento compactas e estáveis.'
+										E('strong', { style: 'display: block; color: #fbbf24; margin-bottom: 2px;' }, ['1. Por que o memlimit progressivo (64M em 1GB RAM) é a escala ideal?']),
+										'No Linux 6.12 com Page Pool e skb->truesize ~4KB, conexões gigabit (>700M) demandam cerca de 30-40 MB de buffer transitório. O memlimit 32M forçava descartes prematuros em rajadas. A calibração progressiva aloca 64M no hardware de 1GB RAM (como o Acer W6x), escalando até 128M/256M em roteadores maiores e 16M-32M em hardwares compactos, garantindo vazão máxima estável e 0ms de fila sem estouro de memória.'
 									]),
 									E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.22); border-left: 3px solid #10b981;' }, [
 										E('strong', { style: 'display: block; color: #34d399; margin-bottom: 2px;' }, ['2. Ingress rtt 50ms (target 2.5ms):']),
@@ -21875,10 +21875,10 @@ const renderMethods = {
 									E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.22); border-left: 3px solid #3b82f6;' }, [
 										E('strong', { style: 'display: block; color: #60a5fa; margin-bottom: 2px;' }, ['3. Parâmetros que o Modo A+ sobrepõe e crava automaticamente:']),
 										E('ul', { style: 'margin: 4px 0 0 16px; padding: 0;' }, [
-											E('li', {}, [E('strong', {}, ['Download (iqdisc_opts): ']), 'besteffort nat dual-dsthost wash ingress rtt 50ms memlimit 32M + ECN (target 2.5ms) — reação ultrarrápida sem atraso em rajadas.']),
-											E('li', {}, [E('strong', {}, ['Upload (eqdisc_opts): ']), 'diffserv4 nat dual-srchost ack-filter wash rtt 50ms memlimit 32M + NOECN — 4 prioridades (Voz/Jogos > Vídeo > Normal > Bulk) e filtragem de ACKs redundantes.']),
+											E('li', {}, [E('strong', {}, ['Download (iqdisc_opts): ']), 'besteffort nat dual-dsthost wash ingress rtt 50ms memlimit progressivo (64M) + ECN (target 2.5ms) — reação ultrarrápida sem atraso em rajadas.']),
+											E('li', {}, [E('strong', {}, ['Upload (eqdisc_opts): ']), 'diffserv4 nat dual-srchost no-ack-filter wash memlimit progressivo (64M) + NOECN — 4 prioridades (Voz/Jogos > Vídeo > Normal > Bulk), rtt padrão 100ms para TCP Slow-Start e no-ack-filter para conexões simétricas (evitando ACK compression e stalls).']),
 											E('li', {}, [E('strong', {}, ['Enquadramento Físico: ']), 'linklayer ethernet, mpu 64 e overhead 44 (Fibra GPON/PPPoE) ou 18 (Cabo/DHCP).']),
-											E('li', {}, [E('strong', {}, ['WAN DSCP Wash & Wi-Fi 6 AQL: ']), 'Limpa marcações DSCP falsas da operadora (!= CS0 -> CS0) antes do Wi-Fi WMM e calibra o Airtime Queue Limit (1500/2500 us threshold 2000 us em 5 GHz/6 GHz e 2000/4000 us em 2.4 GHz) para manter +0 ms no cabo e < 5 ms no Wi-Fi.'])
+											E('li', {}, [E('strong', {}, ['WAN DSCP Wash & Wi-Fi 6 AQL: ']), 'Limpa marcações DSCP falsas da operadora (!= CS0 -> CS0) antes do Wi-Fi WMM e calibra o Airtime Queue Limit (2500/4500 us threshold 4000 us em 5 GHz/6 GHz e 2500/5000 us em 2.4 GHz) para evitar o deadlock de fila do mac80211 e garantir +0 ms no cabo e < 5 ms no Wi-Fi.'])
 										])
 									])
 								])
