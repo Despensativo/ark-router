@@ -40,11 +40,21 @@ chain ark_dscp_output {
 	ip protocol icmp ip dscp set cs6 comment "ARK: Local ICMP Reply priority"
 	ip6 nexthdr ipv6-icmp ip6 dscp set cs6 comment "ARK: Local ICMPv6 Reply priority"
 
-	# Router Local DNS Responses -> CS6
+	# Router Local DNS Responses & Outbound Queries -> CS6
 	udp sport { 53, 853, 5353 } ip dscp set cs6 comment "ARK: Local DNS Reply priority"
 	tcp sport { 53, 853, 5353 } ip dscp set cs6 comment "ARK: Local DNS TCP Reply priority"
 	udp sport { 53, 853, 5353 } ip6 dscp set cs6 comment "ARK: Local DNS IPv6 Reply priority"
 	tcp sport { 53, 853, 5353 } ip6 dscp set cs6 comment "ARK: Local DNS TCP IPv6 Reply priority"
+	udp dport { 53, 853, 5353 } ip dscp set cs6 comment "ARK: Local Outbound DNS IPv4 priority"
+	tcp dport { 53, 853, 5353 } ip dscp set cs6 comment "ARK: Local Outbound DNS TCP IPv4 priority"
+	udp dport { 53, 853, 5353 } ip6 dscp set cs6 comment "ARK: Local Outbound DNS IPv6 priority"
+	tcp dport { 53, 853, 5353 } ip6 dscp set cs6 comment "ARK: Local Outbound DNS TCP IPv6 priority"
+
+	# Dual-DoH Encrypted DNS (https-dns-proxy running as nobody / UID 65534) -> CS6
+	meta skuid 65534 tcp dport 443 ip dscp set cs6 comment "ARK: Dual-DoH HTTPS IPv4 priority"
+	meta skuid 65534 udp dport 443 ip dscp set cs6 comment "ARK: Dual-DoH QUIC IPv4 priority"
+	meta skuid 65534 tcp dport 443 ip6 dscp set cs6 comment "ARK: Dual-DoH HTTPS IPv6 priority"
+	meta skuid 65534 udp dport 443 ip6 dscp set cs6 comment "ARK: Dual-DoH QUIC IPv6 priority"
 
 	# Router Local TCP Connection Control -> CS5
 	tcp flags & (syn | rst | fin) != 0 ip dscp set cs5 comment "ARK: Local TCP Control IPv4 priority"

@@ -1216,10 +1216,19 @@ system_hardware_auto_tune() {
 		else
 			irq_action="Multicore detectado ($silicon_cpu_cores núcleos)"
 		fi
-		# Mascara RPS calculada dinamicamente para 1 a 64 nucleos
+		# Mascara RPS calculada dinamicamente para 1 a 64 nucleos (somente interfaces físicas/DSA/Wi-Fi; zero em virtuais/IFB/PPPoE/bridge)
 		rps_mask="$(ark_calculate_rps_mask "$silicon_cpu_cores")"
-		for rps_f in /sys/class/net/*/queues/rx-*/rps_cpus; do
-			[ -w "$rps_f" ] && echo "$rps_mask" > "$rps_f" 2>/dev/null || true
+		for iface_dir in /sys/class/net/*; do
+			[ -d "$iface_dir" ] || continue
+			local rps_target="$rps_mask"
+			case "${iface_dir##*/}" in
+				lo|ifb*|pppoe*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
+					rps_target=0
+					;;
+			esac
+			for rps_f in "$iface_dir"/queues/rx-*/rps_cpus; do
+				[ -w "$rps_f" ] && echo "$rps_target" > "$rps_f" 2>/dev/null || true
+			done
 		done
 	else
 		if [ -x /etc/init.d/irqbalance ]; then

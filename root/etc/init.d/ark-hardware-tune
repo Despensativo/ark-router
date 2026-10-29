@@ -286,12 +286,23 @@ start() {
 		# RFS com 16k entradas
 		sysctl -q -w net.core.rps_sock_flow_entries=16384 2>/dev/null || true
 
-		# RPS dinâmico nos 2 núcleos
-		for q in /sys/class/net/*/queues/rx-*/rps_cpus; do
-			[ -f "$q" ] && echo "$rps_mask" > "$q" 2>/dev/null || true
-		done
-		for q in /sys/class/net/*/queues/rx-*/rps_flow_cnt; do
-			[ -f "$q" ] && echo 2048 > "$q" 2>/dev/null || true
+		# RPS dinâmico nos 2 núcleos (somente interfaces físicas/DSA/Wi-Fi; zero em virtuais/IFB/PPPoE/bridge para evitar triplo re-queue de IPI e contenção de spinlock no CAKE)
+		for iface_dir in /sys/class/net/*; do
+			[ -d "$iface_dir" ] || continue
+			local rps_target="$rps_mask"
+			local rfs_target=2048
+			case "${iface_dir##*/}" in
+				lo|ifb*|pppoe*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
+					rps_target=0
+					rfs_target=0
+					;;
+			esac
+			for q in "$iface_dir"/queues/rx-*/rps_cpus; do
+				[ -f "$q" ] && echo "$rps_target" > "$q" 2>/dev/null || true
+			done
+			for q in "$iface_dir"/queues/rx-*/rps_flow_cnt; do
+				[ -f "$q" ] && echo "$rfs_target" > "$q" 2>/dev/null || true
+			done
 		done
 
 		for iface in $(ls /sys/class/net 2>/dev/null); do
@@ -330,11 +341,22 @@ start() {
 		# RFS com 32k entradas para acelerar conexões locais (DNS, uhttpd, ping)
 		sysctl -q -w net.core.rps_sock_flow_entries=32768 2>/dev/null || true
 
-		for q in /sys/class/net/*/queues/rx-*/rps_cpus; do
-			[ -f "$q" ] && echo "$rps_mask" > "$q" 2>/dev/null || true
-		done
-		for q in /sys/class/net/*/queues/rx-*/rps_flow_cnt; do
-			[ -f "$q" ] && echo 4096 > "$q" 2>/dev/null || true
+		for iface_dir in /sys/class/net/*; do
+			[ -d "$iface_dir" ] || continue
+			local rps_target="$rps_mask"
+			local rfs_target=4096
+			case "${iface_dir##*/}" in
+				lo|ifb*|pppoe*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
+					rps_target=0
+					rfs_target=0
+					;;
+			esac
+			for q in "$iface_dir"/queues/rx-*/rps_cpus; do
+				[ -f "$q" ] && echo "$rps_target" > "$q" 2>/dev/null || true
+			done
+			for q in "$iface_dir"/queues/rx-*/rps_flow_cnt; do
+				[ -f "$q" ] && echo "$rfs_target" > "$q" 2>/dev/null || true
+			done
 		done
 
 		# txqueuelen 1000 + fq_codel ativo mesmo com PPE HW Offload para eliminar latencia em pacotes de handshake/DNS/ICMP
@@ -393,12 +415,23 @@ start() {
 
 		sysctl -q -w net.core.rps_sock_flow_entries="$rfs_entries" 2>/dev/null || true
 
-		# RPS dinâmico distribuído em todos os N núcleos (8, 12, 16, 32, 64 cores)
-		for q in /sys/class/net/*/queues/rx-*/rps_cpus; do
-			[ -f "$q" ] && echo "$rps_mask" > "$q" 2>/dev/null || true
-		done
-		for q in /sys/class/net/*/queues/rx-*/rps_flow_cnt; do
-			[ -f "$q" ] && echo "$rfs_flow_cnt" > "$q" 2>/dev/null || true
+		# RPS dinâmico distribuído em todos os N núcleos (somente interfaces físicas/DSA/Wi-Fi)
+		for iface_dir in /sys/class/net/*; do
+			[ -d "$iface_dir" ] || continue
+			local rps_target="$rps_mask"
+			local rfs_target="$rfs_flow_cnt"
+			case "${iface_dir##*/}" in
+				lo|ifb*|pppoe*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
+					rps_target=0
+					rfs_target=0
+					;;
+			esac
+			for q in "$iface_dir"/queues/rx-*/rps_cpus; do
+				[ -f "$q" ] && echo "$rps_target" > "$q" 2>/dev/null || true
+			done
+			for q in "$iface_dir"/queues/rx-*/rps_flow_cnt; do
+				[ -f "$q" ] && echo "$rfs_target" > "$q" 2>/dev/null || true
+			done
 		done
 
 		for iface in $(ls /sys/class/net 2>/dev/null); do
