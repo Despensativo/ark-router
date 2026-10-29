@@ -794,10 +794,9 @@ apply_operation_profile() {
 	tar -czf "/tmp/ark-profile-backup-$stamp.tar.gz" -C "$stage" . 2>/dev/null || true
 	rm -rf "$stage"
 
-	# 2. Identifica hardware e memoria disponivel para otimizacao inteligente
-	local mlim="32M"
+	local mlim="64M"
 	command -v ark_cake_memlimit >/dev/null 2>&1 && mlim="$(ark_cake_memlimit)"
-	cake_opts="diffserv4 nat dual-srchost wash ack-filter rtt 50ms memlimit $mlim"
+	cake_opts="diffserv4 nat dual-srchost wash no-ack-filter memlimit $mlim"
 	cake_iq_opts="besteffort nat dual-dsthost wash ingress rtt 50ms memlimit $mlim"
 
 	uci -q set equipe_dashboard.main=settings

@@ -682,7 +682,7 @@ const networkMethods = {
 				const aplusLockBadge = E('div', {
 					style: 'display: ' + (initialWaveformAplus ? 'block' : 'none') + '; padding: 6px 10px; border-radius: 8px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); color: #34d399; font-size: 11.5px; font-weight: 600;'
 				}, [
-					'🔒 Parâmetros sobrepostos pelo Modo A+ Waveform (memlimit ' + cakeMemlimit + ', Cobalt AQM 5ms/100ms, besteffort ingress, diffserv4 ack-filter). Desative o Modo A+ acima se quiser customizar manualmente.'
+					'🔒 Parâmetros sobrepostos pelo Modo A+ Waveform (memlimit ' + cakeMemlimit + ', Cobalt AQM 2.5ms/5ms, besteffort ingress, diffserv4 no-ack-filter). Desative o Modo A+ acima se quiser customizar manualmente.'
 				]);
 
 				const advancedDetails = E('details', { style: 'margin-top: 12px; padding: 12px 14px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;' }, [
@@ -705,7 +705,7 @@ const networkMethods = {
 							]),
 							E('label', { style: 'display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;' }, [
 								chkAck,
-								E('span', {}, [E('strong', {}, ['Filtro de ACK TCP (ack-filter): ']), 'Acelera o upload filtrando ACKs redundantes durante downloads pesados.'])
+								E('span', {}, [E('strong', {}, ['Filtro de ACK TCP (ack-filter): ']), 'Reduz ACKs em linhas assimétricas (ADSL/Cabo 10:1). Em fibra simétrica, mantenha desligado para evitar travamento de upload.'])
 							]),
 							E('label', { style: 'display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;' }, [
 								chkWash,
@@ -725,7 +725,7 @@ const networkMethods = {
 						overheadSelect.value = optimalOverheadVal;
 						chkNat.checked = true;
 						chkHostFair.checked = true;
-						chkAck.checked = true;
+						chkAck.checked = false;
 						chkWash.checked = true;
 						chkDiffserv.checked = true;
 					}
@@ -944,9 +944,9 @@ const networkMethods = {
 				if (editor.chkDiffserv.checked) { eqOpts.push('diffserv4'); iqOpts.push('besteffort'); } else { eqOpts.push('besteffort'); iqOpts.push('besteffort'); }
 				if (editor.chkNat.checked) { eqOpts.push('nat'); iqOpts.push('nat'); }
 				if (editor.chkHostFair.checked) { eqOpts.push('dual-srchost'); iqOpts.push('dual-dsthost'); }
-				if (editor.chkAck.checked) { eqOpts.push('ack-filter'); }
+				if (editor.chkAck.checked) { eqOpts.push('ack-filter'); } else { eqOpts.push('no-ack-filter'); }
 				if (editor.chkWash.checked) { eqOpts.push('wash'); iqOpts.push('wash'); }
-				eqOpts.push('rtt 50ms memlimit ' + saveMemlimit);
+				eqOpts.push('memlimit ' + saveMemlimit);
 				iqOpts.push('ingress rtt 50ms memlimit ' + saveMemlimit);
 				const eqStr = eqOpts.join(' ');
 				const iqStr = iqOpts.join(' ');

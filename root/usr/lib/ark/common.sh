@@ -5,7 +5,7 @@
 [ -z "${_ARK_COMMON_SH_LOADED:-}" ] || return 0
 _ARK_COMMON_SH_LOADED=1
 
-ARK_ROUTER_VERSION="2.1.3"
+ARK_ROUTER_VERSION="2.1.4"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 ARK_ROOT="${ARK_ROOT:-}"
 
@@ -506,11 +506,23 @@ ark_cake_memlimit() {
 	local mem_file="/proc/meminfo"
 	[ -n "${ARK_ROOT:-}" ] && [ -f "${ARK_ROOT}/proc/meminfo" ] && mem_file="${ARK_ROOT}/proc/meminfo"
 	local mem_kb="$(awk '/MemTotal:/ {print $2; exit}' "$mem_file" 2>/dev/null || echo 262144)"
-	if [ "$mem_kb" -gt 327680 ] 2>/dev/null; then
+	if [ "$mem_kb" -gt 3670016 ] 2>/dev/null; then
+		# > 3.5 GB RAM (x86 Enterprise / 4GB+ SBCs)
+		printf '256M'
+	elif [ "$mem_kb" -gt 1835008 ] 2>/dev/null; then
+		# > 1.75 GB RAM (x86 2GB, Banana Pi BPI-R4)
+		printf '128M'
+	elif [ "$mem_kb" -gt 786432 ] 2>/dev/null; then
+		# > 768 MB RAM (Acer Predator Connect W6x, Filogic 830 MT7986 1GB RAM)
+		printf '64M'
+	elif [ "$mem_kb" -gt 393216 ] 2>/dev/null; then
+		# > 384 MB RAM (512 MB routers)
 		printf '32M'
 	elif [ "$mem_kb" -gt 196608 ] 2>/dev/null; then
+		# > 192 MB RAM (256 MB routers)
 		printf '16M'
 	else
+		# <= 192 MB RAM (128 MB routers)
 		printf '4M'
 	fi
 }

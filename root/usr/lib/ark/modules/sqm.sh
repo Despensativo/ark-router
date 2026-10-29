@@ -84,7 +84,7 @@ sqm_apply_upload_only() {
 	uci -q set "sqm.$sec.upload=$up_kbps"
 	uci -q set "sqm.$sec.qdisc=cake"
 	uci -q set "sqm.$sec.script=layer_cake.qos"
-	local eq_opts="diffserv4 nat dual-srchost wash ack-filter memlimit $mlim"
+	local eq_opts="diffserv4 nat dual-srchost wash no-ack-filter memlimit $mlim"
 	if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
 		eq_opts="$eq_opts no-split-gso"
 	fi
@@ -126,7 +126,7 @@ ensure_sqm_section() {
 	[ -n "$(uci -q get "sqm.$section.egress_ecn")" ] || uci -q set "sqm.$section.egress_ecn=NOECN"
 	local cur_eq="$(uci -q get "sqm.$section.eqdisc_opts")"
 	if [ -z "$cur_eq" ]; then
-		cur_eq="diffserv4 nat dual-srchost wash ack-filter rtt 50ms memlimit $mlim"
+		cur_eq="diffserv4 nat dual-srchost wash no-ack-filter memlimit $mlim"
 		uci -q set "sqm.$section.eqdisc_opts=$cur_eq"
 	else
 		local eq_changed=0
@@ -134,8 +134,14 @@ ensure_sqm_section() {
 			cur_eq="$cur_eq wash"
 			eq_changed=1
 		fi
-		if ! printf '%s' "$cur_eq" | grep -qE '\b(rtt|regional|metro|lan|datacentre)\b'; then
-			cur_eq="$cur_eq rtt 50ms"
+		# Ensure egress uses standard RTT (target 5ms) for TCP upload slow-start; strip rtt 50ms
+		if printf '%s' "$cur_eq" | grep -q 'rtt 50ms'; then
+			cur_eq="$(printf '%s' "$cur_eq" | sed 's/ *rtt 50ms//g')"
+			eq_changed=1
+		fi
+		# Use no-ack-filter on symmetrical links to prevent upload stalls
+		if printf '%s' "$cur_eq" | grep -qw 'ack-filter'; then
+			cur_eq="$(printf '%s' "$cur_eq" | sed 's/\back-filter\b/no-ack-filter/g')"
 			eq_changed=1
 		fi
 		if ! printf '%s' "$cur_eq" | grep -q 'memlimit'; then
@@ -351,7 +357,7 @@ handle_sqm() {
 					pppoe:*|*:pppoe*) uci -q set "sqm.$sqm_section.overhead=44" ;;
 					*) uci -q set "sqm.$sqm_section.overhead=18" ;;
 				esac
-				eq_aplus="diffserv4 nat dual-srchost ack-filter wash rtt 50ms memlimit $mlim_aplus"
+				eq_aplus="diffserv4 nat dual-srchost no-ack-filter wash memlimit $mlim_aplus"
 				if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
 					eq_aplus="$eq_aplus no-split-gso"
 				fi
@@ -470,7 +476,7 @@ handle_sqm() {
 							pppoe:*|*:pppoe*) uci -q set "sqm.$section.overhead=44" ;;
 							*) uci -q set "sqm.$section.overhead=18" ;;
 						esac
-						eqdisc_opts="diffserv4 nat dual-srchost ack-filter wash rtt 50ms memlimit $mlim_save"
+						eqdisc_opts="diffserv4 nat dual-srchost no-ack-filter wash memlimit $mlim_save"
 						if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
 							eqdisc_opts="$eqdisc_opts no-split-gso"
 						fi
@@ -495,8 +501,10 @@ handle_sqm() {
 							local mlim_save="$(ark_cake_memlimit)"
 							uci -q set "sqm.$section.qdisc_advanced=1"
 							if [ -n "$eqdisc_opts" ]; then
-								if ! printf '%s' "$eqdisc_opts" | grep -qE '\b(rtt|regional|metro|lan|datacentre)\b'; then
-									eqdisc_opts="$eqdisc_opts rtt 50ms"
+								# Strip rtt 50ms from egress (upload uses standard 100ms / 5ms target)
+								eqdisc_opts="$(printf '%s' "$eqdisc_opts" | sed 's/ *rtt 50ms//g')"
+								if printf '%s' "$eqdisc_opts" | grep -qw 'ack-filter'; then
+									eqdisc_opts="$(printf '%s' "$eqdisc_opts" | sed 's/\back-filter\b/no-ack-filter/g')"
 								fi
 								if printf '%s' "$eqdisc_opts" | grep -q 'memlimit'; then
 									eqdisc_opts="$(printf '%s' "$eqdisc_opts" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $mlim_save/g")"

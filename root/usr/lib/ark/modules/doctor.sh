@@ -270,11 +270,11 @@ ark_doctor_audit() {
 					fi
 				fi
 
-				local exp_mlim="32M"
+				local exp_mlim="64M"
 				command -v ark_cake_memlimit >/dev/null 2>&1 && exp_mlim="$(ark_cake_memlimit)"
 				cur_iq="$(uci -q get "sqm.$sqm_sec.iqdisc_opts")"
 				cur_eq="$(uci -q get "sqm.$sqm_sec.eqdisc_opts")"
-				if [ "$(uci -q get "sqm.$sqm_sec.squash_ingress" || echo 1)" = "1" ] && { printf '%s' "$cur_iq" | grep -qw 'diffserv4' || ! printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || ! printf '%s' "$cur_eq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || ! printf '%s' "$cur_iq" | grep -q "memlimit $exp_mlim" || ! printf '%s' "$cur_eq" | grep -q "memlimit $exp_mlim"; }; then
+				if [ "$(uci -q get "sqm.$sqm_sec.squash_ingress" || echo 1)" = "1" ] && { printf '%s' "$cur_iq" | grep -qw 'diffserv4' || ! printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || printf '%s' "$cur_eq" | grep -qw 'rtt 50ms' || printf '%s' "$cur_eq" | grep -qw 'ack-filter' || ! printf '%s' "$cur_iq" | grep -q "memlimit $exp_mlim" || ! printf '%s' "$cur_eq" | grep -q "memlimit $exp_mlim"; }; then
 					if [ "$auto_fix" = 1 ]; then
 						[ -n "$cur_iq" ] || cur_iq="besteffort nat dual-dsthost wash ingress"
 						cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bdiffserv4\b/besteffort/g')"
@@ -287,9 +287,14 @@ ark_doctor_audit() {
 						fi
 						uci -q set "sqm.$sqm_sec.iqdisc_opts=$cur_iq"
 
-						[ -n "$cur_eq" ] || cur_eq="diffserv4 nat dual-srchost wash ack-filter"
+						[ -n "$cur_eq" ] || cur_eq="diffserv4 nat dual-srchost wash no-ack-filter"
 						printf '%s' "$cur_eq" | grep -qw 'wash' || cur_eq="$cur_eq wash"
-						printf '%s' "$cur_eq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || cur_eq="$cur_eq rtt 50ms"
+						# Egress uses standard 100ms RTT / 5ms target - strip rtt 50ms from upload
+						cur_eq="$(printf '%s' "$cur_eq" | sed 's/ *rtt 50ms//g')"
+						# Symmetrical connections: use no-ack-filter to prevent TCP stalls
+						if printf '%s' "$cur_eq" | grep -qw 'ack-filter'; then
+							cur_eq="$(printf '%s' "$cur_eq" | sed 's/\back-filter\b/no-ack-filter/g')"
+						fi
 						if printf '%s' "$cur_eq" | grep -q 'memlimit'; then
 							cur_eq="$(printf '%s' "$cur_eq" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $exp_mlim/g")"
 						else

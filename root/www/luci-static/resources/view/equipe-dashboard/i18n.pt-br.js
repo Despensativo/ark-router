@@ -1,5 +1,5 @@
 // ARK Router i18n PT-BR Stub (Native strings embedded in overview.js)
 (function(){
-	const ARK_I18N_VERSION = '2.1.3';
+	const ARK_I18N_VERSION = '2.1.4';
 	window.ARK_I18N_PT_BR = {};
 })();
