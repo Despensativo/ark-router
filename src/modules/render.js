@@ -1044,22 +1044,22 @@ const renderMethods = {
 							]),
 							E('details', { style: 'margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 12px; line-height: 1.5;' }, [
 								E('summary', { style: 'cursor: pointer; font-weight: 700; color: #93c5fd; user-select: none;' }, [
-									'🔬 Detalhes Técnicos da Engenharia Modo A+ (memlimit 92M, Page Pool truesize, Cobalt AQM & Wi-Fi AQL)'
+									'🔬 Detalhes Técnicos da Engenharia Modo A+ (memlimit 32M, rtt 50ms, Cobalt AQM & Wi-Fi AQL)'
 								]),
 								E('div', { style: 'margin-top: 8px; display: flex; flex-direction: column; gap: 8px; color: rgba(255,255,255,0.88);' }, [
 									E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.22); border-left: 3px solid #f59e0b;' }, [
-										E('strong', { style: 'display: block; color: #fbbf24; margin-bottom: 2px;' }, ['1. Por que 32M bateu no teto em 744 Mbps? (MediaTek mtk_eth_soc Page Pool)']),
-										'No Linux 6.12 com o driver Ethernet da MediaTek (mtk_eth_soc), os pacotes de recepção usam Page Pool: cada pacote de 1,5 KB de dados reais ocupa uma página inteira de memória no kernel (skb->truesize de 4 KB a 8 KB — 3x a 5x maior que o pacote em si). Quando várias conexões paralelas (Speedtest / Fast.com / Steam) abrem rajadas a 744 Mbps, o contador de truesize batia nos 32 MB (33.775.872 bytes) e forçava o CAKE a descartar pacotes por teto de memória (cake_drop), mesmo com a fila de tempo vazia (av_delay: 25 us, marks: 0).'
+										E('strong', { style: 'display: block; color: #fbbf24; margin-bottom: 2px;' }, ['1. Por que o memlimit 32M é o teto calibrado ideal?']),
+										'No Linux com Page Pool, o memlimit 32M atua como teto de proteção estrito contra filas infladas na memória RAM. Valores excessivos (>32M) permitem o acúmulo de dezenas de megabytes no kernel durante rajadas, gerando bufferbloat tardio especialmente em conexões Wi-Fi. O teto de 32M força o TCP a manter janelas de congestionamento compactas e estáveis.'
 									]),
 									E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.22); border-left: 3px solid #10b981;' }, [
-										E('strong', { style: 'display: block; color: #34d399; margin-bottom: 2px;' }, ['2. Por que subir para 92M (em 1 GB RAM) NÃO aumenta o ping (Bufferbloat)?']),
-										'Porque quem controla o ping no CAKE não é o memlimit, e sim o relógio do Cobalt AQM (target 5ms, rtt 100ms). O memlimit é apenas o teto de segurança da RAM do kernel (escalonado automaticamente: 128M em >1.5GB, 92M em 1GB, 32M em 512MB, 16M em 256MB, 4M em <=128MB) para que o skb->truesize inflado do driver não corte pacotes antes de o Cobalt medir os 5 ms.'
+										E('strong', { style: 'display: block; color: #34d399; margin-bottom: 2px;' }, ['2. Ingress rtt 50ms (target 2.5ms):']),
+										'Em conexões de fibra óptica modernas, o perfil rtt 50ms no Ingress calibra o relógio do Cobalt AQM para target 2.5ms e intervalo 50ms (o dobro da velocidade de reação do padrão de 100ms), eliminando o atraso de fila em downloads intensos e garantindo 0ms no cabo e <5ms no Wi-Fi.'
 									]),
 									E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.22); border-left: 3px solid #3b82f6;' }, [
 										E('strong', { style: 'display: block; color: #60a5fa; margin-bottom: 2px;' }, ['3. Parâmetros que o Modo A+ sobrepõe e crava automaticamente:']),
 										E('ul', { style: 'margin: 4px 0 0 16px; padding: 0;' }, [
-											E('li', {}, [E('strong', {}, ['Download (iqdisc_opts): ']), 'besteffort nat dual-dsthost wash ingress memlimit <RAM> + ECN + rtt 100ms (target 5ms) — unifica 100% da banda num único Tin sem serrilhado TCP.']),
-											E('li', {}, [E('strong', {}, ['Upload (eqdisc_opts): ']), 'diffserv4 nat dual-srchost ack-filter wash memlimit <RAM> + NOECN — 4 prioridades (Voz/Jogos > Vídeo > Normal > Bulk) e filtragem de ACKs redundantes.']),
+											E('li', {}, [E('strong', {}, ['Download (iqdisc_opts): ']), 'besteffort nat dual-dsthost wash ingress rtt 50ms memlimit 32M + ECN (target 2.5ms) — reação ultrarrápida sem atraso em rajadas.']),
+											E('li', {}, [E('strong', {}, ['Upload (eqdisc_opts): ']), 'diffserv4 nat dual-srchost ack-filter wash memlimit 32M + NOECN — 4 prioridades (Voz/Jogos > Vídeo > Normal > Bulk) e filtragem de ACKs redundantes.']),
 											E('li', {}, [E('strong', {}, ['Enquadramento Físico: ']), 'linklayer ethernet, mpu 64 e overhead 44 (Fibra GPON/PPPoE) ou 18 (Cabo/DHCP).']),
 											E('li', {}, [E('strong', {}, ['WAN DSCP Wash & Wi-Fi 6 AQL: ']), 'Limpa marcações DSCP falsas da operadora (!= CS0 -> CS0) antes do Wi-Fi WMM e calibra o Airtime Queue Limit (2500/4000 us em 5 GHz/6 GHz e 2000/3500 us em 2.4 GHz) para manter +0 ms até pelo Wi-Fi.'])
 										])

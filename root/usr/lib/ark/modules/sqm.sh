@@ -151,7 +151,7 @@ ensure_sqm_section() {
 	fi
 	local cur_iq="$(uci -q get "sqm.$section.iqdisc_opts")"
 	if [ -z "$cur_iq" ]; then
-		cur_iq="besteffort nat dual-dsthost wash ingress memlimit $mlim"
+		cur_iq="besteffort nat dual-dsthost wash ingress rtt 50ms memlimit $mlim"
 		uci -q set "sqm.$section.iqdisc_opts=$cur_iq"
 	elif [ "$(uci -q get "sqm.$section.squash_ingress" || echo 1)" = "1" ]; then
 		local iq_changed=0
@@ -163,8 +163,8 @@ ensure_sqm_section() {
 			cur_iq="$cur_iq wash"
 			iq_changed=1
 		fi
-		if printf '%s' "$cur_iq" | grep -q 'rtt 50ms'; then
-			cur_iq="$(printf '%s' "$cur_iq" | sed 's/ *rtt 50ms//g')"
+		if ! printf '%s' "$cur_iq" | grep -qE '\b(rtt|regional|metro|lan|datacentre)\b'; then
+			cur_iq="$cur_iq rtt 50ms"
 			iq_changed=1
 		fi
 		if ! printf '%s' "$cur_iq" | grep -q 'memlimit'; then
@@ -470,7 +470,7 @@ handle_sqm() {
 						if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
 							eqdisc_opts="$eqdisc_opts no-split-gso"
 						fi
-						iqdisc_opts="besteffort nat dual-dsthost wash ingress memlimit $mlim_save"
+						iqdisc_opts="besteffort nat dual-dsthost wash ingress rtt 50ms memlimit $mlim_save"
 						uci -q set "sqm.$section.eqdisc_opts=$eqdisc_opts"
 						uci -q set "sqm.$section.iqdisc_opts=$iqdisc_opts"
 					else
@@ -506,7 +506,9 @@ handle_sqm() {
 									iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed 's/\bdiffserv4\b/besteffort/g')"
 								fi
 								printf '%s' "$iqdisc_opts" | grep -qw 'wash' || iqdisc_opts="$iqdisc_opts wash"
-								iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed 's/ *rtt 50ms//g')"
+								if ! printf '%s' "$iqdisc_opts" | grep -qE '\b(rtt|regional|metro|lan|datacentre)\b'; then
+									iqdisc_opts="$iqdisc_opts rtt 50ms"
+								fi
 								if printf '%s' "$iqdisc_opts" | grep -q 'memlimit'; then
 									iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $mlim_save/g")"
 								else

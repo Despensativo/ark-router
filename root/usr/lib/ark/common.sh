@@ -506,11 +506,7 @@ ark_cake_memlimit() {
 	local mem_file="/proc/meminfo"
 	[ -n "${ARK_ROOT:-}" ] && [ -f "${ARK_ROOT}/proc/meminfo" ] && mem_file="${ARK_ROOT}/proc/meminfo"
 	local mem_kb="$(awk '/MemTotal:/ {print $2; exit}' "$mem_file" 2>/dev/null || echo 262144)"
-	if [ "$mem_kb" -gt 1572864 ] 2>/dev/null; then
-		printf '128M'
-	elif [ "$mem_kb" -gt 655360 ] 2>/dev/null; then
-		printf '92M'
-	elif [ "$mem_kb" -gt 327680 ] 2>/dev/null; then
+	if [ "$mem_kb" -gt 327680 ] 2>/dev/null; then
 		printf '32M'
 	elif [ "$mem_kb" -gt 196608 ] 2>/dev/null; then
 		printf '16M'

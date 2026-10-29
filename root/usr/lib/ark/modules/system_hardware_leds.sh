@@ -1222,7 +1222,7 @@ system_hardware_auto_tune() {
 			[ -d "$iface_dir" ] || continue
 			local rps_target="$rps_mask"
 			case "${iface_dir##*/}" in
-				lo|ifb*|pppoe*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
+				lo|ifb*|pppoe*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
 					rps_target=0
 					;;
 			esac
