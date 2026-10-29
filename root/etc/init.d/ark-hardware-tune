@@ -105,24 +105,23 @@ ark_tune_wifi_aql() {
 		[ -w "$phy/aql_enable" ] && echo 1 > "$phy/aql_enable" 2>/dev/null || true
 		if [ "$is_high_band" -eq 1 ]; then
 			# 5 GHz / 6 GHz (HE80/HE160/EHT320): PHY rate 1200-2882 Mbps (~4x real TCP goodput).
-			# Balanced AQL budget (2500/4000 us, threshold 4000 us) eliminates Wi-Fi download
-			# bufferbloat (Grade A+) without triggering AQL overlimit stalls or premature ECN
-			# marks on Fast.com / Speedtest multi-stream TCP Cubic downloads.
-			[ -w "$phy/aql_threshold" ] && echo 4000 > "$phy/aql_threshold" 2>/dev/null || true
+			# Tight AQL budget (~1.5-2.5 ms PHY airtime = ~6-10 ms real wall-clock airtime)
+			# eliminates Wi-Fi download bufferbloat (< 5ms Grade A+) while preserving full 64-frame A-MPDU aggregation.
+			[ -w "$phy/aql_threshold" ] && echo 2000 > "$phy/aql_threshold" 2>/dev/null || true
 			if [ -w "$phy/aql_txq_limit" ]; then
-				echo "0 1500 2500" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "1 2000 3000" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "2 2500 4000" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "3 1500 2500" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "0 1000 1500" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "1 1200 2000" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "2 1500 2500" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "3 1000 2000" > "$phy/aql_txq_limit" 2>/dev/null || true
 			fi
 		else
 			# 2.4 GHz (HT20/HE20): slower MCS rates & IoT clients require slightly larger airtime window.
-			[ -w "$phy/aql_threshold" ] && echo 5000 > "$phy/aql_threshold" 2>/dev/null || true
+			[ -w "$phy/aql_threshold" ] && echo 4000 > "$phy/aql_threshold" 2>/dev/null || true
 			if [ -w "$phy/aql_txq_limit" ]; then
-				echo "0 2000 3500" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "1 2500 4000" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "2 2500 5000" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "3 2000 3500" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "0 1500 3000" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "1 2000 3500" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "2 2000 4000" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "3 1500 3000" > "$phy/aql_txq_limit" 2>/dev/null || true
 			fi
 		fi
 	done
@@ -292,7 +291,7 @@ start() {
 			local rps_target="$rps_mask"
 			local rfs_target=2048
 			case "${iface_dir##*/}" in
-				lo|ifb*|pppoe*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
+				lo|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
 					rps_target=0
 					rfs_target=0
 					;;
@@ -346,7 +345,7 @@ start() {
 			local rps_target="$rps_mask"
 			local rfs_target=4096
 			case "${iface_dir##*/}" in
-				lo|ifb*|pppoe*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
+				lo|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
 					rps_target=0
 					rfs_target=0
 					;;
@@ -421,7 +420,7 @@ start() {
 			local rps_target="$rps_mask"
 			local rfs_target="$rfs_flow_cnt"
 			case "${iface_dir##*/}" in
-				lo|ifb*|pppoe*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
+				lo|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
 					rps_target=0
 					rfs_target=0
 					;;

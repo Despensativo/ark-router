@@ -4,7 +4,7 @@
 'require poll';
 'require fs';
 'require ui';
-const ARK_BUILD_VERSION = '2.1.2';
+const ARK_BUILD_VERSION = '2.1.3';
 if (typeof window !== 'undefined') {
 	window.ARK_BUILD_VERSION = ARK_BUILD_VERSION;
 	window.ARK_VERSION = ARK_BUILD_VERSION;
@@ -99,7 +99,7 @@ function loadDashboardLanguage(lang) {
 		if (typeof document === 'undefined') return resolve();
 		const s = document.createElement('script');
 		s.type = 'text/javascript';
-		const ver = (typeof window !== 'undefined' && window.ARK_ASSET_REV) ? window.ARK_ASSET_REV : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : (window.ARK_BUILD_VERSION || '2.1.2'));
+		const ver = (typeof window !== 'undefined' && window.ARK_ASSET_REV) ? window.ARK_ASSET_REV : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : (window.ARK_BUILD_VERSION || '2.1.3'));
 		s.src = L.resource('view/equipe-dashboard/i18n.' + targetLang + '.js') + '?v=' + ver;
 		s.onload = function() {
 			if (targetLang === 'en' && window.ARK_I18N_EN) Object.assign(EN, window.ARK_I18N_EN);
@@ -5133,17 +5133,17 @@ const networkMethods = {
 					click: function() {
 						const nominal = parseFloat(calcDownInput.value || 0);
 						if (nominal > 0) {
-							const discounted = Math.round(nominal * 0.93 * 10) / 10;
+							const discounted = Math.round(nominal * 0.875 * 10) / 10;
 							download.node.value = discounted;
 							calcDownNotice.style.color = '#10b981';
-							calcDownNotice.textContent = '✓ ' + discounted + ' Mbps aplicado ao Download (-7% contra Bufferbloat).';
+							calcDownNotice.textContent = '✓ ' + discounted + ' Mbps aplicado ao Download (-12,5% contra Bufferbloat).';
 						}
 					}
-				}, ['Aplicar -7%']);
+				}, ['Aplicar -12,5%']);
 
 				const calcDownBox = E('div', { class: 'ex-qos-calc-box' }, [
 					E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;' }, [
-						E('strong', { style: 'font-size: 11.5px;' }, ['🧮 Calculadora de Download (-7%)'])
+						E('strong', { style: 'font-size: 11.5px;' }, ['🧮 Calculadora de Download (-12,5%)'])
 					]),
 					E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
 						calcDownInput,
@@ -5198,7 +5198,7 @@ const networkMethods = {
 				const curLinklayer = queue.linklayer || 'none';
 				const curOverhead = parseInt(queue.overhead || 0, 10);
 				const curEqdisc = queue.eqdisc_opts || ('diffserv4 nat dual-srchost ack-filter wash memlimit ' + cakeMemlimit);
-				const curIqdisc = queue.iqdisc_opts || ('besteffort nat dual-dsthost wash ingress memlimit ' + cakeMemlimit);
+				const curIqdisc = queue.iqdisc_opts || ('besteffort nat dual-dsthost wash ingress rtt 50ms memlimit ' + cakeMemlimit);
 
 				const isPppoe = profile.proto === 'pppoe' || String(profile.device || '').indexOf('pppoe') === 0;
 				const optimalOverheadVal = isPppoe ? 'ethernet|44' : 'ethernet|18';
@@ -5370,7 +5370,7 @@ const networkMethods = {
 							}, ['🔗 Abrir Teste Waveform Bufferbloat ↗'])
 						]),
 						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 3px; line-height: 1.4;' }, [
-							'Quando ativo, sobrepõe os ajustes manuais do usuário com todas as otimizações oficiais ARK (memlimit ' + cakeMemlimit + ', Cobalt AQM 5ms/100ms, besteffort ingress, diffserv4 ack-filter, WAN DSCP Wash e Wi-Fi AQL).'
+							'Quando ativo, sobrepõe os ajustes manuais do usuário com todas as otimizações oficiais ARK (memlimit ' + cakeMemlimit + ', Cobalt AQM 2.5ms/50ms rtt 50ms, besteffort ingress, diffserv4 ack-filter, WAN DSCP Wash e Wi-Fi AQL).'
 						])
 					]),
 					E('div', { class: 'ex-device-switch-control' }, [
@@ -5451,10 +5451,10 @@ const networkMethods = {
 					style: 'font-weight: 700; padding: 6px 12px;',
 					click: function() {
 						editors.forEach(function(ed) {
-							if (presetDown > 0) ed.download.node.value = Math.round(presetDown * 0.93 * 10) / 10;
+							if (presetDown > 0) ed.download.node.value = Math.round(presetDown * 0.875 * 10) / 10;
 							if (presetUp > 0) ed.upload.node.value = Math.round(presetUp * 0.93 * 10) / 10;
 						});
-						ui.addNotification(null, E('p', {}, ['✓ Limites anti-bufferbloat (-7%) aplicados a partir da medição do Fast.com!']), 'info');
+						ui.addNotification(null, E('p', {}, ['✓ Limites anti-bufferbloat (-12.5% Down / -7% Up) aplicados a partir da medição do Fast.com!']), 'info');
 					}
 				}, ['🎯 Aplicar nos Limites'])
 			]) : '';
@@ -5495,8 +5495,8 @@ const networkMethods = {
 				if (editor.chkHostFair.checked) { eqOpts.push('dual-srchost'); iqOpts.push('dual-dsthost'); }
 				if (editor.chkAck.checked) { eqOpts.push('ack-filter'); }
 				if (editor.chkWash.checked) { eqOpts.push('wash'); iqOpts.push('wash'); }
-				eqOpts.push('memlimit ' + saveMemlimit);
-				iqOpts.push('ingress memlimit ' + saveMemlimit);
+				eqOpts.push('rtt 50ms memlimit ' + saveMemlimit);
+				iqOpts.push('ingress rtt 50ms memlimit ' + saveMemlimit);
 				const eqStr = eqOpts.join(' ');
 				const iqStr = iqOpts.join(' ');
 
@@ -21876,9 +21876,9 @@ const renderMethods = {
 										E('strong', { style: 'display: block; color: #60a5fa; margin-bottom: 2px;' }, ['3. Parâmetros que o Modo A+ sobrepõe e crava automaticamente:']),
 										E('ul', { style: 'margin: 4px 0 0 16px; padding: 0;' }, [
 											E('li', {}, [E('strong', {}, ['Download (iqdisc_opts): ']), 'besteffort nat dual-dsthost wash ingress rtt 50ms memlimit 32M + ECN (target 2.5ms) — reação ultrarrápida sem atraso em rajadas.']),
-											E('li', {}, [E('strong', {}, ['Upload (eqdisc_opts): ']), 'diffserv4 nat dual-srchost ack-filter wash memlimit 32M + NOECN — 4 prioridades (Voz/Jogos > Vídeo > Normal > Bulk) e filtragem de ACKs redundantes.']),
+											E('li', {}, [E('strong', {}, ['Upload (eqdisc_opts): ']), 'diffserv4 nat dual-srchost ack-filter wash rtt 50ms memlimit 32M + NOECN — 4 prioridades (Voz/Jogos > Vídeo > Normal > Bulk) e filtragem de ACKs redundantes.']),
 											E('li', {}, [E('strong', {}, ['Enquadramento Físico: ']), 'linklayer ethernet, mpu 64 e overhead 44 (Fibra GPON/PPPoE) ou 18 (Cabo/DHCP).']),
-											E('li', {}, [E('strong', {}, ['WAN DSCP Wash & Wi-Fi 6 AQL: ']), 'Limpa marcações DSCP falsas da operadora (!= CS0 -> CS0) antes do Wi-Fi WMM e calibra o Airtime Queue Limit (2500/4000 us em 5 GHz/6 GHz e 2000/3500 us em 2.4 GHz) para manter +0 ms até pelo Wi-Fi.'])
+											E('li', {}, [E('strong', {}, ['WAN DSCP Wash & Wi-Fi 6 AQL: ']), 'Limpa marcações DSCP falsas da operadora (!= CS0 -> CS0) antes do Wi-Fi WMM e calibra o Airtime Queue Limit (1500/2500 us threshold 2000 us em 5 GHz/6 GHz e 2000/4000 us em 2.4 GHz) para manter +0 ms no cabo e < 5 ms no Wi-Fi.'])
 										])
 									])
 								])

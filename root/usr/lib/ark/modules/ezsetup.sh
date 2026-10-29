@@ -797,8 +797,8 @@ apply_operation_profile() {
 	# 2. Identifica hardware e memoria disponivel para otimizacao inteligente
 	local mlim="32M"
 	command -v ark_cake_memlimit >/dev/null 2>&1 && mlim="$(ark_cake_memlimit)"
-	cake_opts="diffserv4 nat dual-srchost wash ack-filter memlimit $mlim"
-	cake_iq_opts="besteffort nat dual-dsthost wash ingress memlimit $mlim"
+	cake_opts="diffserv4 nat dual-srchost wash ack-filter rtt 50ms memlimit $mlim"
+	cake_iq_opts="besteffort nat dual-dsthost wash ingress rtt 50ms memlimit $mlim"
 
 	uci -q set equipe_dashboard.main=settings
 	uci -q set "equipe_dashboard.main.operation_profile=$mode"

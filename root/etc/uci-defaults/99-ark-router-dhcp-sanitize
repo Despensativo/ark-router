@@ -342,11 +342,7 @@ if [ -f /etc/config/sqm ]; then
 	sqm_mod=0
 	sqm_is_on=0
 	_mem_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 262144)"
-	if [ "$_mem_kb" -gt 1572864 ] 2>/dev/null; then
-		_mlim="128M"
-	elif [ "$_mem_kb" -gt 655360 ] 2>/dev/null; then
-		_mlim="92M"
-	elif [ "$_mem_kb" -gt 327680 ] 2>/dev/null; then
+	if [ "$_mem_kb" -gt 327680 ] 2>/dev/null; then
 		_mlim="32M"
 	elif [ "$_mem_kb" -gt 196608 ] 2>/dev/null; then
 		_mlim="16M"
@@ -357,8 +353,9 @@ if [ -f /etc/config/sqm ]; then
 		[ "$(uci -q get "sqm.$sq.enabled")" = "1" ] && sqm_is_on=1
 		cur_iq="$(uci -q get "sqm.$sq.iqdisc_opts")"
 		if [ -n "$cur_iq" ] && [ "$(uci -q get "sqm.$sq.squash_ingress" || echo 1)" = "1" ]; then
-			if printf '%s' "$cur_iq" | grep -qw 'diffserv4' || printf '%s' "$cur_iq" | grep -q 'rtt 50ms' || ! printf '%s' "$cur_iq" | grep -q "memlimit $_mlim"; then
-				cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bdiffserv4\b/besteffort/g; s/ *rtt 50ms//g')"
+			if printf '%s' "$cur_iq" | grep -qw 'diffserv4' || ! printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || ! printf '%s' "$cur_iq" | grep -q "memlimit $_mlim"; then
+				cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bdiffserv4\b/besteffort/g')"
+				printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || cur_iq="$cur_iq rtt 50ms"
 				printf '%s' "$cur_iq" | grep -qw 'nat' || cur_iq="$cur_iq nat"
 				printf '%s' "$cur_iq" | grep -qw 'dual-dsthost' || cur_iq="$cur_iq dual-dsthost"
 				printf '%s' "$cur_iq" | grep -qw 'wash' || cur_iq="$cur_iq wash"
@@ -374,11 +371,12 @@ if [ -f /etc/config/sqm ]; then
 		fi
 		cur_eq="$(uci -q get "sqm.$sq.eqdisc_opts")"
 		if [ -n "$cur_eq" ]; then
-			if ! printf '%s' "$cur_eq" | grep -qw 'wash' || ! printf '%s' "$cur_eq" | grep -q "memlimit $_mlim"; then
+			if ! printf '%s' "$cur_eq" | grep -qw 'wash' || ! printf '%s' "$cur_eq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || ! printf '%s' "$cur_eq" | grep -q "memlimit $_mlim"; then
 				printf '%s' "$cur_eq" | grep -qw 'nat' || cur_eq="$cur_eq nat"
 				printf '%s' "$cur_eq" | grep -qw 'dual-srchost' || cur_eq="$cur_eq dual-srchost"
 				printf '%s' "$cur_eq" | grep -qw 'ack-filter' || cur_eq="$cur_eq ack-filter"
 				printf '%s' "$cur_eq" | grep -qw 'wash' || cur_eq="$cur_eq wash"
+				printf '%s' "$cur_eq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || cur_eq="$cur_eq rtt 50ms"
 				if printf '%s' "$cur_eq" | grep -q 'memlimit'; then
 					cur_eq="$(printf '%s' "$cur_eq" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $_mlim/g")"
 				else

@@ -13384,3 +13384,12 @@ msgstr "🔗 Test on Waveform ↗"
 msgid "Por que 32M bateu no teto em 744 Mbps?"
 msgstr "Why did 32M hit the ceiling at 744 Mbps?"
 
+
+msgid "Por que o memlimit 32M é o teto calibrado ideal?"
+msgstr "Why is memlimit 32M the ideal calibrated ceiling?"
+
+msgid "✓ Limites anti-bufferbloat (-12.5% Down / -7% Up) aplicados a partir da medição do Fast.com!"
+msgstr "✓ Anti-bufferbloat limits (-12.5% Down / -7% Up) applied from Fast.com measurement!"
+
+msgid "1. Por que o memlimit 32M é o teto calibrado ideal?"
+msgstr "1. Why is memlimit 32M the ideal calibrated ceiling?"

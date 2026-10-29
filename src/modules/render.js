@@ -1059,9 +1059,9 @@ const renderMethods = {
 										E('strong', { style: 'display: block; color: #60a5fa; margin-bottom: 2px;' }, ['3. Parâmetros que o Modo A+ sobrepõe e crava automaticamente:']),
 										E('ul', { style: 'margin: 4px 0 0 16px; padding: 0;' }, [
 											E('li', {}, [E('strong', {}, ['Download (iqdisc_opts): ']), 'besteffort nat dual-dsthost wash ingress rtt 50ms memlimit 32M + ECN (target 2.5ms) — reação ultrarrápida sem atraso em rajadas.']),
-											E('li', {}, [E('strong', {}, ['Upload (eqdisc_opts): ']), 'diffserv4 nat dual-srchost ack-filter wash memlimit 32M + NOECN — 4 prioridades (Voz/Jogos > Vídeo > Normal > Bulk) e filtragem de ACKs redundantes.']),
+											E('li', {}, [E('strong', {}, ['Upload (eqdisc_opts): ']), 'diffserv4 nat dual-srchost ack-filter wash rtt 50ms memlimit 32M + NOECN — 4 prioridades (Voz/Jogos > Vídeo > Normal > Bulk) e filtragem de ACKs redundantes.']),
 											E('li', {}, [E('strong', {}, ['Enquadramento Físico: ']), 'linklayer ethernet, mpu 64 e overhead 44 (Fibra GPON/PPPoE) ou 18 (Cabo/DHCP).']),
-											E('li', {}, [E('strong', {}, ['WAN DSCP Wash & Wi-Fi 6 AQL: ']), 'Limpa marcações DSCP falsas da operadora (!= CS0 -> CS0) antes do Wi-Fi WMM e calibra o Airtime Queue Limit (2500/4000 us em 5 GHz/6 GHz e 2000/3500 us em 2.4 GHz) para manter +0 ms até pelo Wi-Fi.'])
+											E('li', {}, [E('strong', {}, ['WAN DSCP Wash & Wi-Fi 6 AQL: ']), 'Limpa marcações DSCP falsas da operadora (!= CS0 -> CS0) antes do Wi-Fi WMM e calibra o Airtime Queue Limit (1500/2500 us threshold 2000 us em 5 GHz/6 GHz e 2000/4000 us em 2.4 GHz) para manter +0 ms no cabo e < 5 ms no Wi-Fi.'])
 										])
 									])
 								])

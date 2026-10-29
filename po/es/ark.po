@@ -13384,3 +13384,12 @@ msgstr "¿Por qué 32M tocó techo a 744 Mbps?"
 msgid "🏆 Testar no Waveform ↗"
 msgstr "🏆 Probar en Waveform ↗"
 
+
+msgid "Por que o memlimit 32M é o teto calibrado ideal?"
+msgstr "¿Por qué memlimit 32M es el límite calibrado ideal?"
+
+msgid "✓ Limites anti-bufferbloat (-12.5% Down / -7% Up) aplicados a partir da medição do Fast.com!"
+msgstr "✓ ¡Límites anti-bufferbloat (-12.5% Down / -7% Up) aplicados a partir de la medición de Fast.com!"
+
+msgid "1. Por que o memlimit 32M é o teto calibrado ideal?"
+msgstr "1. ¿Por qué memlimit 32M es el límite calibrado ideal?"
