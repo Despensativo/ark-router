@@ -139,9 +139,8 @@ ensure_sqm_section() {
 			cur_eq="$(printf '%s' "$cur_eq" | sed 's/ *rtt 50ms//g')"
 			eq_changed=1
 		fi
-		# Use no-ack-filter on symmetrical links to prevent upload stalls
-		if printf '%s' "$cur_eq" | grep -qw 'ack-filter'; then
-			cur_eq="$(printf '%s' "$cur_eq" | sed 's/\back-filter\b/no-ack-filter/g')"
+		if printf '%s' "$cur_eq" | grep -qw 'ack-filter' || printf '%s' "$cur_eq" | grep -qw 'no-no-ack-filter'; then
+			cur_eq="$(printf '%s' "$cur_eq" | sed -E 's/(^| )ack-filter( |$)/\1no-ack-filter\2/g; s/no-no-ack-filter/no-ack-filter/g')"
 			eq_changed=1
 		fi
 		if ! printf '%s' "$cur_eq" | grep -q 'memlimit'; then
@@ -503,8 +502,8 @@ handle_sqm() {
 							if [ -n "$eqdisc_opts" ]; then
 								# Strip rtt 50ms from egress (upload uses standard 100ms / 5ms target)
 								eqdisc_opts="$(printf '%s' "$eqdisc_opts" | sed 's/ *rtt 50ms//g')"
-								if printf '%s' "$eqdisc_opts" | grep -qw 'ack-filter'; then
-									eqdisc_opts="$(printf '%s' "$eqdisc_opts" | sed 's/\back-filter\b/no-ack-filter/g')"
+								if printf '%s' "$eqdisc_opts" | grep -qw 'ack-filter' || printf '%s' "$eqdisc_opts" | grep -qw 'no-no-ack-filter'; then
+									eqdisc_opts="$(printf '%s' "$eqdisc_opts" | sed -E 's/(^| )ack-filter( |$)/\1no-ack-filter\2/g; s/no-no-ack-filter/no-ack-filter/g')"
 								fi
 								if printf '%s' "$eqdisc_opts" | grep -q 'memlimit'; then
 									eqdisc_opts="$(printf '%s' "$eqdisc_opts" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $mlim_save/g")"

@@ -292,8 +292,8 @@ ark_doctor_audit() {
 						# Egress uses standard 100ms RTT / 5ms target - strip rtt 50ms from upload
 						cur_eq="$(printf '%s' "$cur_eq" | sed 's/ *rtt 50ms//g')"
 						# Symmetrical connections: use no-ack-filter to prevent TCP stalls
-						if printf '%s' "$cur_eq" | grep -qw 'ack-filter'; then
-							cur_eq="$(printf '%s' "$cur_eq" | sed 's/\back-filter\b/no-ack-filter/g')"
+						if printf '%s' "$cur_eq" | grep -qw 'ack-filter' || printf '%s' "$cur_eq" | grep -qw 'no-no-ack-filter'; then
+							cur_eq="$(printf '%s' "$cur_eq" | sed -E 's/(^| )ack-filter( |$)/\1no-ack-filter\2/g; s/no-no-ack-filter/no-ack-filter/g')"
 						fi
 						if printf '%s' "$cur_eq" | grep -q 'memlimit'; then
 							cur_eq="$(printf '%s' "$cur_eq" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $exp_mlim/g")"
