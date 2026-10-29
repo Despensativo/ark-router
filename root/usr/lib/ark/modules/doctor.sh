@@ -1536,15 +1536,16 @@ ark_doctor_audit() {
 				fi
 			done
 
-			# Verifica se a calibração de alta velocidade e anti-chute do usteer está presente (-70 dBm, histerese 8 dB, zero chutes, zero link_measurement_interval)
+			# Verifica se a calibração de alta velocidade, roaming suave 802.11v e anti-chute do usteer está presente (-70 dBm, histerese 8 dB, roam -74/-78 dBm, zero chutes, zero link_measurement_interval)
 			local usteer_snr="$($uci_cmd get usteer.@usteer[0].band_steering_min_snr 2>/dev/null || echo '')"
 			local usteer_min_snr="$($uci_cmd get usteer.@usteer[0].min_snr 2>/dev/null || echo '0')"
-			local usteer_roam_scan="$($uci_cmd get usteer.@usteer[0].roam_scan_snr 2>/dev/null || echo '0')"
+			local usteer_roam_scan="$($uci_cmd get usteer.@usteer[0].roam_scan_snr 2>/dev/null || echo '')"
+			local usteer_roam_trigger="$($uci_cmd get usteer.@usteer[0].roam_trigger_snr 2>/dev/null || echo '')"
 			local usteer_lk="$($uci_cmd get usteer.@usteer[0].load_kick_enabled 2>/dev/null || echo '0')"
 			local usteer_lmi="$($uci_cmd get usteer.@usteer[0].link_measurement_interval 2>/dev/null || echo '')"
 			local usteer_lm="$($uci_cmd get usteer.@usteer[0].local_mode 2>/dev/null || echo '')"
 			local usteer_needs_calib=0
-			if [ "$usteer_snr" != "-70" ] || [ "$usteer_min_snr" != "0" ] || [ "$usteer_roam_scan" != "0" ] || [ "$usteer_lk" != "0" ] || [ "$usteer_lmi" != "0" ] || [ "$usteer_lm" != "1" ]; then
+			if [ "$usteer_snr" != "-70" ] || [ "$usteer_min_snr" != "0" ] || [ "$usteer_roam_scan" != "-74" ] || [ "$usteer_roam_trigger" != "-78" ] || [ "$usteer_lk" != "0" ] || [ "$usteer_lmi" != "0" ] || [ "$usteer_lm" != "1" ]; then
 				usteer_needs_calib=1
 			fi
 
@@ -1584,8 +1585,8 @@ ark_doctor_audit() {
 						$uci_cmd set usteer.@usteer[0].band_steering_min_snr='-70'
 						$uci_cmd set usteer.@usteer[0].load_kick_enabled='0'
 						$uci_cmd set usteer.@usteer[0].roam_kick_delay='60000'
-						$uci_cmd set usteer.@usteer[0].roam_scan_snr='0'
-						$uci_cmd set usteer.@usteer[0].roam_trigger_snr='0'
+						$uci_cmd set usteer.@usteer[0].roam_scan_snr='-74'
+						$uci_cmd set usteer.@usteer[0].roam_trigger_snr='-78'
 						$uci_cmd set usteer.@usteer[0].signal_diff_threshold='8'
 						$uci_cmd set usteer.@usteer[0].band_steering_interval='120000'
 						$uci_cmd set usteer.@usteer[0].max_retries='3'
@@ -1606,13 +1607,13 @@ ark_doctor_audit() {
 					fi
 
 					fixes_applied=$((fixes_applied + 1))
-					add_check "Band Steering (usteer)" "FIXED" "Daemon usteer calibrado com histerese (8 dB), zero chutes forçados (min_snr=0, load_kick=0, link_measurement=0), 802.11k/v e subida para 5GHz (-70 dBm)."
+					add_check "Band Steering (usteer)" "FIXED" "Daemon usteer calibrado com histerese (8 dB), roaming suave 802.11v (-74/-78 dBm), zero chutes forçados (min_snr=0, load_kick=0) e subida para 5GHz (-70 dBm)."
 				else
 					warnings=$((warnings + 1))
 					add_check "Band Steering (usteer)" "WARN" "usteer ativo, mas parâmetros de roaming 802.11k/RNR, histerese ou anti-chute descalibrados."
 				fi
 			else
-				add_check "Band Steering (usteer)" "OK" "Assistente de Band Steering (usteer) ativo com 802.11k/v (bss_transition), histerese (8 dB), zero chutes forçados e calibração de alta velocidade."
+				add_check "Band Steering (usteer)" "OK" "Assistente de Band Steering (usteer) ativo com 802.11v (bss_transition -74/-78 dBm), histerese (8 dB), zero chutes forçados e calibração de alta velocidade."
 			fi
 
 		elif [ "$usteer_installed" = 1 ]; then
@@ -1630,8 +1631,8 @@ ark_doctor_audit() {
 				$uci_cmd set usteer.@usteer[0].band_steering_min_snr='-70'
 				$uci_cmd set usteer.@usteer[0].load_kick_enabled='0'
 				$uci_cmd set usteer.@usteer[0].roam_kick_delay='60000'
-				$uci_cmd set usteer.@usteer[0].roam_scan_snr='0'
-				$uci_cmd set usteer.@usteer[0].roam_trigger_snr='0'
+				$uci_cmd set usteer.@usteer[0].roam_scan_snr='-74'
+				$uci_cmd set usteer.@usteer[0].roam_trigger_snr='-78'
 				$uci_cmd set usteer.@usteer[0].signal_diff_threshold='8'
 				$uci_cmd set usteer.@usteer[0].band_steering_interval='120000'
 				$uci_cmd set usteer.@usteer[0].max_retries='3'
@@ -1710,8 +1711,8 @@ ark_doctor_audit() {
 							$uci_cmd set usteer.@usteer[0].band_steering_min_snr='-70'
 							$uci_cmd set usteer.@usteer[0].load_kick_enabled='0'
 							$uci_cmd set usteer.@usteer[0].roam_kick_delay='60000'
-							$uci_cmd set usteer.@usteer[0].roam_scan_snr='0'
-							$uci_cmd set usteer.@usteer[0].roam_trigger_snr='0'
+							$uci_cmd set usteer.@usteer[0].roam_scan_snr='-74'
+							$uci_cmd set usteer.@usteer[0].roam_trigger_snr='-78'
 							$uci_cmd set usteer.@usteer[0].signal_diff_threshold='8'
 							$uci_cmd set usteer.@usteer[0].band_steering_interval='120000'
 							$uci_cmd set usteer.@usteer[0].max_retries='3'

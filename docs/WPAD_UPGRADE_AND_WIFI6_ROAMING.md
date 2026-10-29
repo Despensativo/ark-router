@@ -137,7 +137,7 @@ Detectar automaticamente se o roteador possui hardware qualificado e oferecer ou
    - `option max_inactivity '86400'` (24 horas de tolerância contínua).
    - `option wpa_group_rekey '0'` (elimina desincronização de chave GTK em repouso).
    - `option disassoc_low_ack '0'`.
-   - `usteer`: `min_snr '0'`, `roam_scan_snr '0'`, `roam_trigger_snr '0'`, `load_kick_enabled '0'` (puramente consultivo via 802.11k/v sem chutes forçados).
+   - `usteer`: `min_snr '0'`, `roam_scan_snr '-74'`, `roam_trigger_snr '-78'`, `signal_diff_threshold '8'`, `load_kick_enabled '0'` (roaming suave via 802.11v BSS Transition sem chutes forçados).
 
 ---
 
