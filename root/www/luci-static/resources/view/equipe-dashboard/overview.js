@@ -4,7 +4,7 @@
 'require poll';
 'require fs';
 'require ui';
-const ARK_BUILD_VERSION = '2.1.4';
+const ARK_BUILD_VERSION = '2.1.5';
 if (typeof window !== 'undefined') {
 	window.ARK_BUILD_VERSION = ARK_BUILD_VERSION;
 	window.ARK_VERSION = ARK_BUILD_VERSION;
@@ -21878,7 +21878,7 @@ const renderMethods = {
 											E('li', {}, [E('strong', {}, ['Download (iqdisc_opts): ']), 'besteffort nat dual-dsthost wash ingress rtt 50ms memlimit progressivo (64M) + ECN (target 2.5ms) — reação ultrarrápida sem atraso em rajadas.']),
 											E('li', {}, [E('strong', {}, ['Upload (eqdisc_opts): ']), 'diffserv4 nat dual-srchost no-ack-filter wash memlimit progressivo (64M) + NOECN — 4 prioridades (Voz/Jogos > Vídeo > Normal > Bulk), rtt padrão 100ms para TCP Slow-Start e no-ack-filter para conexões simétricas (evitando ACK compression e stalls).']),
 											E('li', {}, [E('strong', {}, ['Enquadramento Físico: ']), 'linklayer ethernet, mpu 64 e overhead 44 (Fibra GPON/PPPoE) ou 18 (Cabo/DHCP).']),
-											E('li', {}, [E('strong', {}, ['WAN DSCP Wash & Wi-Fi 6 AQL: ']), 'Limpa marcações DSCP falsas da operadora (!= CS0 -> CS0) antes do Wi-Fi WMM e calibra o Airtime Queue Limit (2500/4500 us threshold 4000 us em 5 GHz/6 GHz e 2500/5000 us em 2.4 GHz) para evitar o deadlock de fila do mac80211 e garantir +0 ms no cabo e < 5 ms no Wi-Fi.'])
+											E('li', {}, [E('strong', {}, ['WAN DSCP Wash & Wi-Fi 6 AQL: ']), 'Limpa marcações DSCP falsas da operadora (!= CS0 -> CS0) antes do Wi-Fi WMM e calibra o Airtime Queue Limit (1500/2500 us, threshold 12000 us e fq_limit 1024 em 5 GHz/6 GHz) para evitar o deadlock de fila do mac80211 e garantir +0 ms no cabo e < 5 ms no Wi-Fi.'])
 										])
 									])
 								])

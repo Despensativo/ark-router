@@ -105,24 +105,28 @@ ark_tune_wifi_aql() {
 		[ -w "$phy/aql_enable" ] && echo 1 > "$phy/aql_enable" 2>/dev/null || true
 		if [ "$is_high_band" -eq 1 ]; then
 			# 5 GHz / 6 GHz (HE80/HE160/EHT320): PHY rate 1200-2882 Mbps (~4x real TCP goodput).
-			# Balanced AQL budget (2500/4500 us, threshold 4000 us) eliminates Wi-Fi bufferbloat
-			# (< 5ms Grade A+) without causing queue deadlock when weak or distant clients connect.
-			[ -w "$phy/aql_threshold" ] && echo 4000 > "$phy/aql_threshold" 2>/dev/null || true
+			# Global threshold 12000 us prevents sleeping/slow Doze-mode clients from starving the PHY,
+			# while per-station tight AQL limit (1500/2500 us) + fq_limit 1024 caps active bufferbloat to < 5ms.
+			[ -w "$phy/aql_threshold" ] && echo 12000 > "$phy/aql_threshold" 2>/dev/null || true
+			if [ -w "$phy/aql_txq_limit" ]; then
+				echo "0 1000 2000" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "1 1500 2500" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "2 1500 2500" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "3 1000 2000" > "$phy/aql_txq_limit" 2>/dev/null || true
+			fi
+			[ -w "$phy/aqm" ] && echo "fq_limit 1024" > "$phy/aqm" 2>/dev/null || true
+			[ -w "$phy/aqm" ] && echo "fq_memory_limit 4194304" > "$phy/aqm" 2>/dev/null || true
+		else
+			# 2.4 GHz (HT20/HE20): slower MCS rates & IoT clients require slightly larger airtime window.
+			[ -w "$phy/aql_threshold" ] && echo 15000 > "$phy/aql_threshold" 2>/dev/null || true
 			if [ -w "$phy/aql_txq_limit" ]; then
 				echo "0 1500 3000" > "$phy/aql_txq_limit" 2>/dev/null || true
 				echo "1 2000 3500" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "2 2500 4500" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "2 2000 4000" > "$phy/aql_txq_limit" 2>/dev/null || true
 				echo "3 1500 3000" > "$phy/aql_txq_limit" 2>/dev/null || true
 			fi
-		else
-			# 2.4 GHz (HT20/HE20): slower MCS rates & IoT clients require slightly larger airtime window.
-			[ -w "$phy/aql_threshold" ] && echo 5000 > "$phy/aql_threshold" 2>/dev/null || true
-			if [ -w "$phy/aql_txq_limit" ]; then
-				echo "0 2000 3500" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "1 2500 4000" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "2 2500 5000" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "3 2000 3500" > "$phy/aql_txq_limit" 2>/dev/null || true
-			fi
+			[ -w "$phy/aqm" ] && echo "fq_limit 1024" > "$phy/aqm" 2>/dev/null || true
+			[ -w "$phy/aqm" ] && echo "fq_memory_limit 4194304" > "$phy/aqm" 2>/dev/null || true
 		fi
 	done
 }
