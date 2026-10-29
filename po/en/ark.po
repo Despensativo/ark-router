@@ -13396,3 +13396,9 @@ msgstr "1. Why is memlimit 32M the ideal calibrated ceiling?"
 
 msgid "1. Por que o memlimit progressivo (64M em 1GB RAM) é a escala ideal?"
 msgstr "1. Why is progressive memlimit (64M on 1GB RAM) the ideal scale?"
+msgid "5. Potência e Alcance das Antenas (Anti-Sobreposição)"
+msgstr "5. Antenna Transmit Power & Range (Anti-Overlap)"
+
+msgid "Define a intensidade do sinal deste ponto adicional. A opção"
+msgstr "Sets the signal intensity of this secondary node. The option"
+

@@ -2233,6 +2233,14 @@ const wifiMethods = {
 			const mobDomainInput = E('input', { class: 'cbi-input-text', type: 'text', value: d.mobility_domain || 'a1b2', maxlength: 4, placeholder: 'a1b2', style: 'width: 100%; max-width: 120px; font-family: monospace; font-weight: 700; text-transform: lowercase;' });
 			const targetChannel5gInput = E('input', { class: 'cbi-input-text', type: 'text', value: d.channel_5g || '', placeholder: 'Ex: 36, 44 (detectado pelo scanner)', style: 'width: 100%; font-family: monospace; font-weight: 600;' });
 
+			// Wi-Fi transmit power profile
+			const txPowerSelect = E('select', { class: 'cbi-input-select', style: 'width: 100%; font-weight: 600;' }, [
+				E('option', { value: 'low' }, ['🟢 Baixa / Fundo da Casa (10–12 dBm) — Ideal para quartos/quintal sem vazar para a sala']),
+				E('option', { value: 'balanced' }, ['🟡 Balanceada Anti-Sobreposição (15 dBm no 2.4G / 20 dBm no 5G — Recomendado)']),
+				E('option', { value: 'max' }, ['🔴 Máxima (Padrão do Hardware — Alcance total sem restrições)'])
+			]);
+			txPowerSelect.value = (d.txpower_mode === 'low' || d.txpower_mode === 'max') ? d.txpower_mode : 'balanced';
+
 			// Wireless Mesh backhaul options (only shown when backhaulSelect is 'air')
 			const meshIdInput = E('input', { class: 'cbi-input-text', type: 'text', value: d.mesh_id || 'ark-mesh', placeholder: 'ark-mesh', maxlength: 32, style: 'width: 100%;' });
 			const meshKeyInput = E('input', { class: 'cbi-input-text', type: 'password', value: d.mesh_key || 'arkmeshkey123', placeholder: 'Senha Mesh WPA3 (mínimo 8 caracteres)', maxlength: 63, style: 'width: 100%;' });
@@ -2837,6 +2845,19 @@ const wifiMethods = {
 						])
 					]),
 
+					E('label', { class: 'ex-device-config-block', id: 'ex-sat-section-5' }, [
+						E('div', { style: 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;' }, [
+							E('strong', { style: 'font-size: 13.5px; color: #38bdf8;' }, ['5. Potência e Alcance das Antenas (Anti-Sobreposição)']),
+							E('span', { class: 'ex-pill info', style: 'font-size: 10px; padding: 1px 6px;' }, ['ANTI-STICKY'])
+						]),
+						txPowerSelect,
+						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 4px; line-height: 1.45;' }, [
+							'Define a intensidade do sinal deste ponto adicional. A opção ',
+							E('strong', {}, ['Baixa']),
+							' é perfeita se este roteador for ficar no fundo da casa ou em um cômodo próximo: atende os aparelhos locais com sinal limpo, sem "brigar" com o sinal do Roteador Principal na sala e evitando que celulares fiquem presos ao sinal distante.'
+						])
+					]),
+
 					E('div', { style: 'padding: 10px 12px; background: rgba(56, 189, 248, 0.07); border-radius: 8px; font-size: 12px; line-height: 1.45;' }, [
 						E('strong', { style: 'color: #38bdf8;' }, ['💡 Como funciona o isolamento inteligente: ']),
 						'O servidor DHCP local será desligado (eliminando NAT duplo). Os canais e potências de rádio de cada aparelho operam de maneira independente, evitando auto-interferência mesmo misturando roteadores de modelos diferentes (Wi-Fi 7, Wi-Fi 6 ou Wi-Fi 5).'
@@ -2899,6 +2920,7 @@ const wifiMethods = {
 								L.bind(function() {
 									btn.disabled = true;
 									btn.textContent = 'Configurando Roteador Secundário…';
+									const txPowerMode = txPowerSelect.value || 'balanced';
 									const args = [
 										'wifi-mesh-satellite-apply',
 										effectiveMasterIp,
@@ -2914,7 +2936,9 @@ const wifiMethods = {
 										mob,
 										satNetmask,
 										satDns,
-										targetChan5 || ''
+										targetChan5 || '',
+										'',
+										txPowerMode
 									];
 									return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 										ui.hideModal();

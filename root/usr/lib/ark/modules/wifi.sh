@@ -92,8 +92,11 @@ wifi_known_radios() {
 
 wifi_auto_enable_mesh_optimizations() {
 	# 1. Potência Balanceada Anti-Sobreposição (Anti-Sticky Client: 2.4G 15 dBm / 5G 20 dBm)
-	if [ "$(uci -q get equipe_dashboard.wifi.txpower_balanced)" != "1" ]; then
-		handle_wifi "wifi-txbalance-toggle" "1" >/dev/null 2>&1 || true
+	local cur_tx_mode="$(uci -q get equipe_dashboard.wifi.txpower_mode || echo '')"
+	if [ "$cur_tx_mode" != "low" ] && [ "$cur_tx_mode" != "max" ]; then
+		if [ "$(uci -q get equipe_dashboard.wifi.txpower_balanced)" != "1" ]; then
+			handle_wifi "wifi-txbalance-toggle" "1" >/dev/null 2>&1 || true
+		fi
 	fi
 
 	# 2. Aceleração Completa Wi-Fi 6 / 7 (se suportado pelo hardware)
@@ -1677,7 +1680,16 @@ EOF
 			cur_backhaul="air"
 		fi
 
-		printf '{"ok":true,"gateway":"%s","reachable":%s,"current_lan_ip":"%s","suggested_sat_ip":"%s","local_mac":"%s","current_role":"%s","ssid_2g":"%s","key_2g":"%s","ssid_5g":"%s","key_5g":"%s","mobility_domain":"%s","backhaul":"%s","mesh_id":"%s","mesh_key":"%s","channel_5g":"%s","channel_2g":"%s","ip_mode":"%s","netmask":"%s","dns":"%s"}\n' \
+		cur_tx_mode="$(uci -q get equipe_dashboard.wifi.txpower_mode || echo '')"
+		[ -n "$cur_tx_mode" ] || {
+			if [ "$(uci -q get equipe_dashboard.wifi.txpower_balanced)" = "1" ]; then
+				cur_tx_mode="balanced"
+			else
+				cur_tx_mode="balanced"
+			fi
+		}
+
+		printf '{"ok":true,"gateway":"%s","reachable":%s,"current_lan_ip":"%s","suggested_sat_ip":"%s","local_mac":"%s","current_role":"%s","ssid_2g":"%s","key_2g":"%s","ssid_5g":"%s","key_5g":"%s","mobility_domain":"%s","backhaul":"%s","mesh_id":"%s","mesh_key":"%s","channel_5g":"%s","channel_2g":"%s","ip_mode":"%s","netmask":"%s","dns":"%s","txpower_mode":"%s"}\n' \
 			"$(json_escape "$gw")" \
 			"$reachable" \
 			"$(json_escape "$my_lan_ip")" \
@@ -1696,7 +1708,8 @@ EOF
 			"$(json_escape "$cur_chan_2g")" \
 			"$(json_escape "$cur_proto")" \
 			"$(json_escape "$cur_netmask")" \
-			"$(json_escape "$cur_dns")"
+			"$(json_escape "$cur_dns")" \
+			"$(json_escape "$cur_tx_mode")"
 		;;
 	wifi-mesh-satellite-pull-master)
 		master_ip="${2:-}"
@@ -1734,6 +1747,7 @@ EOF
 		sat_dns="${14:-}"
 		target_channel_5g="${15:-}"
 		target_channel_2g="${16:-}"
+		tx_power_mode="${17:-balanced}"
 
 		# 0. Snapshot de segurança do estado original de rede antes da conversão
 		cur_proto="$(uci -q get network.lan.proto || echo static)"
@@ -1805,6 +1819,7 @@ EOF
 		# 4. Sincroniza redes Wi-Fi (SSIDs, chaves e Roaming 802.11k/v/r)
 		r2="$(wifi_radio_2g)"
 		r5="$(wifi_radio_5g)"
+		r6="$(wifi_radio_6g)"
 
 		if [ -n "$ssid_2g" ]; then
 			for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
@@ -1875,6 +1890,34 @@ EOF
 		if [ -n "$target_channel_2g" ] && [ "$target_channel_2g" != "0" ] && [ "$target_channel_2g" != "auto" ]; then
 			[ -n "$r2" ] && uci -q set "wireless.$r2.channel=$target_channel_2g"
 		fi
+
+		# 4.2 Ajusta potência de transmissão das antenas (Anti-Sobreposição / Fundo da Casa)
+		case "$tx_power_mode" in
+			low|quarto|fundo)
+				# Baixa potência: ideal para cobrir cômodo isolado ou fundo da casa sem vazar para a sala
+				[ -n "$r2" ] && uci -q set "wireless.$r2.txpower=12"
+				[ -n "$r5" ] && uci -q set "wireless.$r5.txpower=14"
+				[ -n "$r6" ] && uci -q set "wireless.$r6.txpower=15"
+				uci -q set equipe_dashboard.wifi.txpower_mode="low"
+				uci -q set equipe_dashboard.wifi.txpower_balanced="0"
+				;;
+			max|alta|full)
+				# Máxima potência: alcance irrestrito das antenas
+				[ -n "$r2" ] && uci -q delete "wireless.$r2.txpower"
+				[ -n "$r5" ] && uci -q delete "wireless.$r5.txpower"
+				[ -n "$r6" ] && uci -q delete "wireless.$r6.txpower"
+				uci -q set equipe_dashboard.wifi.txpower_mode="max"
+				uci -q set equipe_dashboard.wifi.txpower_balanced="0"
+				;;
+			balanced|*)
+				# Balanceada: 2.4 GHz moderado (15 dBm) e 5 GHz forte (20 dBm)
+				[ -n "$r2" ] && uci -q set "wireless.$r2.txpower=15"
+				[ -n "$r5" ] && uci -q set "wireless.$r5.txpower=20"
+				[ -n "$r6" ] && uci -q set "wireless.$r6.txpower=23"
+				uci -q set equipe_dashboard.wifi.txpower_mode="balanced"
+				uci -q set equipe_dashboard.wifi.txpower_balanced="1"
+				;;
+		esac
 
 		# 5. Enlace Mesh sem fio 802.11s (se selecionado)
 		if [ "$enable_wireless_mesh" = "1" ]; then

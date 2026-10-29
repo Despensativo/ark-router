@@ -1,46 +1,5 @@
 {
   "description": "ARK Router - Lote de Traduções Pendentes para Pré-Release",
-  "pending_count": 5,
-  "strings": {
-    "Digite a quantidade de domínios em cache (150 a 50.000):": {
-      "en": "Enter the number of cached domains (150 to 50,000):",
-      "es": "Ingrese la cantidad de dominios en caché (150 a 50.000):",
-      "category": "dom_with_props",
-      "files": [
-        "src/modules/system.js"
-      ]
-    },
-    "Guarda domínios na memória do roteador. Sites acessados respondem instantaneamente sem consultar a internet.": {
-      "en": "Stores domains in router RAM. Visited sites respond instantly without re-querying the internet.",
-      "es": "Guarda dominios en la memoria RAM del router. Los sitios visitados responden al instante sin consultar internet.",
-      "category": "dom_with_props",
-      "files": [
-        "src/modules/system.js"
-      ]
-    },
-    "Mantém consultas resolvidas em 0ms sem reconsultar a internet": {
-      "en": "Keeps resolved queries at 0ms without re-querying the internet",
-      "es": "Mantiene las consultas resueltas en 0ms sin volver a consultar internet",
-      "category": "dom_with_props",
-      "files": [
-        "src/modules/system.js"
-      ]
-    },
-    "Tamanho do Cache DNS na Memória RAM (0ms)": {
-      "en": "DNS Cache Size in RAM (0ms)",
-      "es": "Tamaño de la Caché DNS en Memoria RAM (0ms)",
-      "category": "dom_with_props",
-      "files": [
-        "src/modules/system.js"
-      ]
-    },
-    "Tamanho do Cache DNS na Memória:": {
-      "en": "DNS Cache Size in Memory:",
-      "es": "Tamaño de la Caché DNS en Memoria:",
-      "category": "dom_with_props",
-      "files": [
-        "src/modules/system.js"
-      ]
-    }
-  }
+  "pending_count": 0,
+  "strings": {}
 }
