@@ -1,0 +1,88 @@
+{
+  "mac": {
+    "192.168.73.1": {
+      "received": 240,
+      "last_sequence": 239,
+      "missing": 0,
+      "mean_ms": 0.882,
+      "p95_ms": 1.22,
+      "max_ms": 1.78,
+      "gaps": []
+    },
+    "172.26.1.157": {
+      "received": 240,
+      "last_sequence": 239,
+      "missing": 0,
+      "mean_ms": 3.373,
+      "p95_ms": 4.62,
+      "max_ms": 32.6,
+      "gaps": []
+    },
+    "1.1.1.1": {
+      "received": 240,
+      "last_sequence": 239,
+      "missing": 0,
+      "mean_ms": 5.109,
+      "p95_ms": 5.56,
+      "max_ms": 14.7,
+      "gaps": []
+    },
+    "8.8.8.8": {
+      "received": 240,
+      "last_sequence": 239,
+      "missing": 0,
+      "mean_ms": 15.01,
+      "p95_ms": 15.5,
+      "max_ms": 16.6,
+      "gaps": []
+    }
+  },
+  "udp": {
+    "sent": 233,
+    "timeouts": [],
+    "mean_ms": 16.096
+  },
+  "monitor": {
+    "samples": 47,
+    "carrier_values": [
+      1
+    ],
+    "outage_intervals": []
+  },
+  "capture": {
+    "requests": 875,
+    "replies": 875,
+    "unmatched_requests": 0,
+    "unmatched_windows": [],
+    "lcp_lines": [
+      "1793299401.743693 88:28:fb:2f:b6:70 > 34:66:79:68:e6:97, ethertype PPPoE S (0x8864), length 60: PPPoE  [ses 0x34] LCP (0xc021), length 10: LCP, Echo-Request (0x09), id 66, length 10",
+      "1793299401.743755 34:66:79:68:e6:97 > 88:28:fb:2f:b6:70, ethertype PPPoE S (0x8864), length 30: PPPoE  [ses 0x34] LCP (0xc021), length 10: LCP, Echo-Reply (0x0a), id 66, length 10",
+      "1793299431.764864 88:28:fb:2f:b6:70 > 34:66:79:68:e6:97, ethertype PPPoE S (0x8864), length 60: PPPoE  [ses 0x34] LCP (0xc021), length 10: LCP, Echo-Request (0x09), id 67, length 10",
+      "1793299431.764914 34:66:79:68:e6:97 > 88:28:fb:2f:b6:70, ethertype PPPoE S (0x8864), length 30: PPPoE  [ses 0x34] LCP (0xc021), length 10: LCP, Echo-Reply (0x0a), id 67, length 10"
+    ],
+    "padt_lines": [],
+    "tail": [
+      "1793299434.786439 34:66:79:68:e6:97 > 88:28:fb:2f:b6:70, ethertype PPPoE S (0x8864), length 106: PPPoE  [ses 0x34] IP (0x0021), length 86: 100.72.4.241 > 8.8.8.8: ICMP echo request, id 3812, seq 955, length 64",
+      "1793299434.800831 88:28:fb:2f:b6:70 > 34:66:79:68:e6:97, ethertype PPPoE S (0x8864), length 106: PPPoE  [ses 0x34] IP (0x0021), length 86: 8.8.8.8 > 100.72.4.241: ICMP echo reply, id 3812, seq 955, length 64",
+      "1793299434.964903 34:66:79:68:e6:97 > 88:28:fb:2f:b6:70, ethertype PPPoE S (0x8864), length 106: PPPoE  [ses 0x34] IP (0x0021), length 86: 100.72.4.241 > 172.26.1.157: ICMP echo request, id 3812, seq 957, length 64",
+      "1793299434.966719 88:28:fb:2f:b6:70 > 34:66:79:68:e6:97, ethertype PPPoE S (0x8864), length 106: PPPoE  [ses 0x34] IP (0x0021), length 86: 172.26.1.157 > 100.72.4.241: ICMP echo reply, id 3812, seq 957, length 64"
+    ]
+  },
+  "router": {
+    "peer": {
+      "received": 48,
+      "last_seq": 47,
+      "missing": []
+    },
+    "cloudflare": {
+      "received": 48,
+      "last_seq": 47,
+      "missing": []
+    },
+    "google": {
+      "received": 48,
+      "last_seq": 47,
+      "missing": []
+    }
+  }
+}

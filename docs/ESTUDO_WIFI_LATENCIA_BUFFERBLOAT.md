@@ -2,6 +2,8 @@
 
 Data: 29/10/2026. Escopo: estudo técnico e proposta de experimentação, sem mudanças em equipamentos, código funcional ou padrões do produto.
 
+> **Reavaliação após as mudanças do ARK:** a [revisão 2.1.6](REVISAO_ESTUDOS_WIFI_ARK_2_1_6.md) identifica o que permanece válido, os valores AQL atualizados e os limites de BBR/TFO/DNS/roaming. As tabelas locais deste estudo preservam a fotografia anterior e não identificam a configuração atual.
+
 Revisão 2, na mesma data: pesquisa externa ampliada. A seção 11 acrescenta resultados publicados, limites metodológicos e mudanças concretas no protocolo. As metas anteriores continuam sendo objetivos de engenharia, não valores demonstrados para o ARK.
 
 Recorte específico após confirmação do usuário: [Acer Predator Connect W6x, OpenWrt 25.12.5 e link nominal 800/800 Mb/s](ESTUDO_W6X_OPENWRT_25_12_5_LATENCIA.md). Para esse equipamento, consultar primeiro o recorte: 6 GHz, MLO e recomendações ath11k/QSDK deste estudo geral não são perfis aplicáveis ao W6x.

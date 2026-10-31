@@ -2,6 +2,8 @@
 
 Atualizado em: 2026-10-19. Este resumo é o checkpoint ativo da trilha `docs/audit/`.
 
+- **Revisão específica em 29/10/2026 (`T-070`)**: [estudos Wi-Fi/transporte após ARK 2.1.6](../REVISAO_ESTUDOS_WIFI_ARK_2_1_6.md), HEAD `bc68981e` com três arquivos locais preexistentes preservados. Inspeção e 13 testes locais aprovados; sem VM/RF/roteador. Não altera a aprovação estrutural histórica abaixo nem homologa as promessas de latência. A versão atual em `VERSION` é 2.1.6; os números de 2.0.1 abaixo pertencem ao checkpoint anterior.
+
 - **Repositório**: `GitHub/luci-app-ark-router`, relativo ao workspace ARK Router.
 - **Versão declarada em `VERSION`**: `2.0.1` (sincronizada em `Makefile`, `root/usr/share/ark-router/VERSION`, `common.sh` e `CHANGELOG.md`).
 - **Lotes concluídos**:

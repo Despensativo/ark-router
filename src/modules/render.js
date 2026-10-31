@@ -1473,7 +1473,8 @@ const renderMethods = {
 							E('div',{class:'ex-channel-actions'},[
 								E('button',{class:'ex-channel-action','click':L.bind(self.showManualChannelsModal,self)},['Escolher canais']),
 								E('button',{id:'ex-apply-channels',class:'ex-channel-action primary',disabled:true,'click':L.bind(function(){self.changeChannels('fixed');},self)},['Analisar antes de aplicar']),
-								E('button',{class:'ex-channel-action','click':L.bind(function(){self.changeWifiWidth();},self)},['Largura / desempenho'])
+								E('button',{class:'ex-channel-action','click':L.bind(function(){self.changeWifiWidth();},self)},['Largura / desempenho']),
+								E('button',{class:'ex-channel-action','click':L.bind(function(){self.showTxPowerModal();},self)},['Potência (dBm)'])
 							])
 						];
 					})())

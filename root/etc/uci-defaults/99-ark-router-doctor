@@ -20,4 +20,15 @@ elif [ -z "$(uci -q get equipe_dashboard.doctor.auto_heal)" ]; then
 	uci commit equipe_dashboard
 fi
 
+# Instala hook idempotente no /sbin/reload_config para acionar Ark Doctor em qualquer Save & Apply do LuCI
+if [ -f /sbin/reload_config ] && ! grep -q "ark-doctor --auto" /sbin/reload_config; then
+	cat << 'EOF' >> /sbin/reload_config
+
+# ARK Router: Trigger Ark Doctor auto-heal whenever UCI configurations change via LuCI
+if [ -n "$c" ] && [ -x /usr/sbin/ark-doctor ]; then
+	(sleep 2; /usr/sbin/ark-doctor --auto) >/dev/null 2>&1 &
+fi
+EOF
+fi
+
 exit 0

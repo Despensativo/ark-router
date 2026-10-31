@@ -1076,6 +1076,83 @@ handle_wifi() {
 		) &
 		echo 'ok'
 		;;
+	wifi-txpower|wifi-txpower-set)
+		radio2="$(wifi_radio_2g)"
+		radio5="$(wifi_radio_5g)"
+		radio6="$(wifi_radio_6g)"
+		[ -n "$radio2" ] || [ -n "$radio5" ] || { echo 'Nenhum radio Wi-Fi encontrado' >&2; exit 3; }
+		tx2="$2"
+		tx5="$3"
+		tx6="$4"
+		changed2=0
+		changed5=0
+		changed6=0
+
+		if [ -n "$radio2" ] && [ -n "$tx2" ]; then
+			cur_tx2="$(uci -q get "wireless.$radio2.txpower" || echo auto)"
+			if [ "$tx2" = "auto" ] || [ "$tx2" = "0" ] || [ "$tx2" = "max" ]; then
+				if [ -n "$(uci -q get "wireless.$radio2.txpower")" ]; then
+					uci -q delete "wireless.$radio2.txpower"
+					changed2=1
+				fi
+			elif [ "$tx2" != "$cur_tx2" ]; then
+				uci -q set "wireless.$radio2.txpower=$tx2"
+				changed2=1
+			fi
+		fi
+
+		if [ -n "$radio5" ] && [ -n "$tx5" ]; then
+			cur_tx5="$(uci -q get "wireless.$radio5.txpower" || echo auto)"
+			if [ "$tx5" = "auto" ] || [ "$tx5" = "0" ] || [ "$tx5" = "max" ]; then
+				if [ -n "$(uci -q get "wireless.$radio5.txpower")" ]; then
+					uci -q delete "wireless.$radio5.txpower"
+					changed5=1
+				fi
+			elif [ "$tx5" != "$cur_tx5" ]; then
+				uci -q set "wireless.$radio5.txpower=$tx5"
+				changed5=1
+			fi
+		fi
+
+		if [ -n "$radio6" ] && [ -n "$tx6" ]; then
+			cur_tx6="$(uci -q get "wireless.$radio6.txpower" || echo auto)"
+			if [ "$tx6" = "auto" ] || [ "$tx6" = "0" ] || [ "$tx6" = "max" ]; then
+				if [ -n "$(uci -q get "wireless.$radio6.txpower")" ]; then
+					uci -q delete "wireless.$radio6.txpower"
+					changed6=1
+				fi
+			elif [ "$tx6" != "$cur_tx6" ]; then
+				uci -q set "wireless.$radio6.txpower=$tx6"
+				changed6=1
+			fi
+		fi
+
+		if [ "$tx2" = "15" ] && [ "$tx5" = "20" ]; then
+			uci -q set equipe_dashboard.wifi.txpower_balanced=1
+		else
+			uci -q set equipe_dashboard.wifi.txpower_balanced=0
+		fi
+		uci commit equipe_dashboard 2>/dev/null || true
+		uci commit wireless
+
+		(
+			sleep 1
+			if [ "$changed2" = 0 ] && [ "$changed5" = 1 ] && [ "$changed6" = 0 ]; then
+				logger -t equipe-dashboard-control "Reiniciando seletivamente apenas o radio 5 GHz ($radio5)..."
+				wifi reconf "$radio5" >/dev/null 2>&1 || wifi reload >/dev/null 2>&1 || true
+			elif [ "$changed2" = 1 ] && [ "$changed5" = 0 ] && [ "$changed6" = 0 ]; then
+				logger -t equipe-dashboard-control "Reiniciando seletivamente apenas o radio 2,4 GHz ($radio2)..."
+				wifi reconf "$radio2" >/dev/null 2>&1 || wifi reload >/dev/null 2>&1 || true
+			elif [ "$changed2" = 0 ] && [ "$changed5" = 0 ] && [ "$changed6" = 1 ]; then
+				logger -t equipe-dashboard-control "Reiniciando seletivamente apenas o radio 6 GHz ($radio6)..."
+				wifi reconf "$radio6" >/dev/null 2>&1 || wifi reload >/dev/null 2>&1 || true
+			elif [ "$changed2" = 1 ] || [ "$changed5" = 1 ] || [ "$changed6" = 1 ]; then
+				logger -t equipe-dashboard-control "Reiniciando os radios Wi-Fi..."
+				wifi reload >/dev/null 2>&1 || true
+			fi
+		) &
+		echo 'ok'
+		;;
 	wifi-iot-optimize)
 		radio2="$(wifi_radio_2g)"
 		radio5="$(wifi_radio_5g)"
@@ -1090,10 +1167,11 @@ handle_wifi() {
 					uci -q set "wireless.$radio2.txpower=22"
 				fi
 			fi
-			# Remove restricoes toxicas de taxas que causam retransmissoes e quedas nas Alexas
-			uci -q delete "wireless.$radio2.legacy_rates"
+			# Piso mínimo de 6 Mbps para dados, eliminando 802.11b lento sem derrubar Alexas
+			uci -q set "wireless.$radio2.legacy_rates=0"
+			uci -q delete "wireless.$radio2.beacon_rate"
 			uci -q delete "wireless.$radio2.basic_rate"
-			# Aplica protecao anti-desconexao disassoc_low_ack=0, dtim_period=2 e sono blindado em todas as interfaces AP 2.4G
+			# Aplica protecao anti-desconexao disassoc_low_ack=0, dtim_period=2, multicast_to_unicast e sono blindado em todas as interfaces AP 2.4G
 			for iface in $(uci -q show wireless | grep -E "\.device=['\"]?$radio2['\"]?" | cut -d. -f2); do
 				mode="$(uci -q get wireless.$iface.mode || echo ap)"
 				if [ "$mode" = "ap" ]; then
@@ -1102,6 +1180,7 @@ handle_wifi() {
 					uci -q set "wireless.$iface.wpa_group_rekey=0"
 					uci -q set "wireless.$iface.skip_inactivity_poll=0"
 					uci -q set "wireless.$iface.max_inactivity=86400"
+					uci -q set "wireless.$iface.multicast_to_unicast=1"
 				fi
 			done
 			uci commit wireless
@@ -1314,16 +1393,17 @@ EOF
 				uci -q set "wireless.$iface.rrm_neighbor_report=1"
 				uci -q set "wireless.$iface.rrm_beacon_report=1"
 				uci -q set "wireless.$iface.rnr=1"
-				uci -q set "wireless.$iface.ieee80211v=1"
 				uci -q set "wireless.$iface.disassoc_low_ack=0"
 				uci -q set "wireless.$iface.wpa_group_rekey=0"
 				uci -q set "wireless.$iface.skip_inactivity_poll=0"
 				uci -q set "wireless.$iface.max_inactivity=86400"
 
 				if ark_hostapd_has_wnm; then
+					uci -q set "wireless.$iface.ieee80211v=1"
 					uci -q set "wireless.$iface.bss_transition=1"
 				else
-					uci -q delete "wireless.$iface.bss_transition"
+					uci -q delete "wireless.$iface.ieee80211v" 2>/dev/null || true
+					uci -q delete "wireless.$iface.bss_transition" 2>/dev/null || true
 				fi
 				uci -q delete "wireless.$iface.wnm_sleep_mode" 2>/dev/null || true
 
@@ -1494,11 +1574,12 @@ EOF
 						uci -q set "wireless.$iface.rrm_neighbor_report=1"
 						uci -q set "wireless.$iface.rrm_beacon_report=1"
 						uci -q set "wireless.$iface.rnr=1"
-						uci -q set "wireless.$iface.ieee80211v=1"
 						if ark_hostapd_has_wnm; then
+							uci -q set "wireless.$iface.ieee80211v=1"
 							uci -q set "wireless.$iface.bss_transition=1"
 						else
-							uci -q delete "wireless.$iface.bss_transition"
+							uci -q delete "wireless.$iface.ieee80211v" 2>/dev/null || true
+							uci -q delete "wireless.$iface.bss_transition" 2>/dev/null || true
 						fi
 						if [ "$(uci -q get wireless.$iface.disabled || echo 0)" != "1" ]; then
 							s_name="$(uci -q get wireless.$iface.ssid)"
@@ -1833,11 +1914,12 @@ EOF
 					uci -q set wireless.$iface.rrm_neighbor_report='1'
 					uci -q set wireless.$iface.rrm_beacon_report='1'
 					uci -q set wireless.$iface.rnr='1'
-					uci -q set wireless.$iface.ieee80211v='1'
 					if ark_hostapd_has_wnm; then
+						uci -q set wireless.$iface.ieee80211v='1'
 						uci -q set wireless.$iface.bss_transition='1'
 					else
-						uci -q delete wireless.$iface.bss_transition
+						uci -q delete wireless.$iface.ieee80211v 2>/dev/null || true
+						uci -q delete wireless.$iface.bss_transition 2>/dev/null || true
 					fi
 					uci -q delete wireless.$iface.wnm_sleep_mode 2>/dev/null || true
 					uci -q delete wireless.$iface.ieee80211r
@@ -1857,11 +1939,12 @@ EOF
 					uci -q set wireless.$iface.rrm_neighbor_report='1'
 					uci -q set wireless.$iface.rrm_beacon_report='1'
 					uci -q set wireless.$iface.rnr='1'
-					uci -q set wireless.$iface.ieee80211v='1'
 					if ark_hostapd_has_wnm; then
+						uci -q set wireless.$iface.ieee80211v='1'
 						uci -q set wireless.$iface.bss_transition='1'
 					else
-						uci -q delete wireless.$iface.bss_transition
+						uci -q delete wireless.$iface.ieee80211v 2>/dev/null || true
+						uci -q delete wireless.$iface.bss_transition 2>/dev/null || true
 					fi
 					uci -q delete wireless.$iface.wnm_sleep_mode 2>/dev/null || true
 					local slave_enc="$(uci -q get "wireless.$iface.encryption" || echo '')"

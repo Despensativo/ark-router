@@ -98,14 +98,16 @@ if [ -n "$radio2" ]; then
 			changed=1
 		fi
 	fi
-	# Proteção anti-desconexão para Casa Inteligente / Alexas / IoT (2.4 GHz)
-	uci -q delete wireless.$radio2.legacy_rates
+	# Proteção anti-desconexão e eficiência de ar (2.4 GHz com piso mínimo de 6 Mbps)
+	uci -q set wireless.$radio2.legacy_rates='0'
+	uci -q delete wireless.$radio2.beacon_rate
 	uci -q delete wireless.$radio2.basic_rate
 	for iface in $(uci -q show wireless | grep -E "\.device=['\"]?$radio2['\"]?" | cut -d. -f2); do
 		mode="$(uci -q get wireless.$iface.mode || echo ap)"
 		if [ "$mode" = "ap" ]; then
 			uci -q set wireless.$iface.disassoc_low_ack='0'
 			uci -q set wireless.$iface.dtim_period='2'
+			uci -q set wireless.$iface.multicast_to_unicast='1'
 		fi
 	done
 	changed=1

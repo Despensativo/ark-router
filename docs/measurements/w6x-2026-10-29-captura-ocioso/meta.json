@@ -1,0 +1,13 @@
+{
+  "start_epoch": 1793295588.804119,
+  "duration_s": 233.5867818330007,
+  "udp_samples": 1133,
+  "capture_returncode": 0,
+  "probe_returncodes": [
+    1,
+    1,
+    1,
+    0,
+    0
+  ]
+}

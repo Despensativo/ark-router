@@ -903,11 +903,14 @@ config wifi-iface 'default_radio1'
         self.assertEqual(self.sb.uci_get("wireless.default_radio0.disassoc_low_ack"), "0")
         self.assertEqual(self.sb.uci_get("wireless.default_radio0.skip_inactivity_poll"), "0")
         self.assertEqual(self.sb.uci_get("wireless.default_radio0.max_inactivity"), "86400")
+        self.assertEqual(self.sb.uci_get("wireless.default_radio0.multicast_to_unicast"), "1")
         self.assertEqual(self.sb.uci_get("wireless.default_radio1.wpa_group_rekey"), "0")
         self.assertEqual(self.sb.uci_get("wireless.default_radio1.disassoc_low_ack"), "0")
         self.assertEqual(self.sb.uci_get("wireless.default_radio1.skip_inactivity_poll"), "0")
         self.assertEqual(self.sb.uci_get("wireless.default_radio1.max_inactivity"), "86400")
+        self.assertEqual(self.sb.uci_get("wireless.default_radio1.multicast_to_unicast"), "1")
         self.assertEqual(self.sb.uci_get("wireless.radio0.twt_responder"), "0")
+        self.assertEqual(self.sb.uci_get("wireless.radio0.legacy_rates"), "0")
 
         # 5. Nova auditoria deve reportar OK
         res_ok = self.sb.run_control("doctor-run")

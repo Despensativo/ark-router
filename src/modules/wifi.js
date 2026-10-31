@@ -42,7 +42,15 @@ const wifiMethods = {
 			setPill('ex-wifi-6-mode', auto6 ? 'online' : 'standby', auto6 ? 'AUTO' : 'MANUAL');
 			text('ex-wifi-6', 'Canal ' + (auto6 ? 'automático' : (r6.channel || '—')) + ' • ' + (auto6 ? 'automático' : 'manual') + ' • ' + (r6.htmode || ''));
 		}
-		text('ex-wifi-noise','Ruído: 2,4 GHz '+(isFinite(s2.noise)?s2.noise+' dBm':'—')+' • 5 GHz '+(isFinite(s5.noise)?s5.noise+' dBm':'—'));
+		const tx2Val = (r2.txpower !== undefined && r2.txpower !== '') ? (r2.txpower + ' dBm') : 'Padrão';
+		const tx5Val = (r5.txpower !== undefined && r5.txpower !== '') ? (r5.txpower + ' dBm') : 'Padrão';
+		let noiseText = 'Ruído: 2,4 GHz '+(isFinite(s2.noise)?s2.noise+' dBm':'—')+' • 5 GHz '+(isFinite(s5.noise)?s5.noise+' dBm':'—')+' • Potência TX: 2.4G '+tx2Val+' / 5G '+tx5Val;
+		if (w.r6g || w.r2) {
+			const r6 = w.r6g || w.r2 || {};
+			const tx6Val = (r6.txpower !== undefined && r6.txpower !== '') ? (r6.txpower + ' dBm') : 'Padrão';
+			noiseText += ' / 6G ' + tx6Val;
+		}
+		text('ex-wifi-noise', noiseText);
 
 		const wedToggle = document.getElementById('ex-wed-toggle');
 		if(wedToggle && !wedToggle.disabled){
@@ -1447,6 +1455,172 @@ const wifiMethods = {
 				}, this) }, ['Salvar e aplicar'])
 			])
 		]);
+	},
+	showTxPowerModal: function() {
+		const self = this;
+		const w = wifiConfig(this.currentData && this.currentData.wireless || {});
+		const dev2g = w.dev2g || 'radio0';
+		const dev5g = w.dev5g || 'radio1';
+		const dev6g = w.dev6g || null;
+		const r2 = w.r2g || w.r0 || {};
+		const r5 = w.r5g || w.r1 || {};
+		const r6 = w.r6g || w.r2 || {};
+		const curTx2 = String((r2.txpower !== undefined && r2.txpower !== '') ? r2.txpower : 'auto');
+		const curTx5 = String((r5.txpower !== undefined && r5.txpower !== '') ? r5.txpower : 'auto');
+		const curTx6 = String((r6.txpower !== undefined && r6.txpower !== '') ? r6.txpower : 'auto');
+
+		ui.showModal('Potência de Transmissão Wi‑Fi (dBm)', [
+			E('p', { class: 'spinning' }, ['Consultando potências suportadas pelo hardware…'])
+		]);
+
+		const promises = [
+			safe(callTxPowerList(dev2g), { results: [] }),
+			safe(callTxPowerList(dev5g), { results: [] })
+		];
+		if (dev6g) {
+			promises.push(safe(callTxPowerList(dev6g), { results: [] }));
+		}
+
+		Promise.all(promises).then(function(resList) {
+			const list2 = (resList[0] && resList[0].results) || [];
+			const list5 = (resList[1] && resList[1].results) || [];
+			const list6 = dev6g ? ((resList[2] && resList[2].results) || []) : [];
+
+			const buildOptions = function(list, curVal, is2g) {
+				const sel = E('select', { class: 'cbi-input-select', style: 'width:100%;' });
+				sel.appendChild(E('option', { value: 'auto' }, ['Automático / Máximo do Hardware e País']));
+				if (list && list.length) {
+					list.slice().sort(function(a, b){ return a.dbm - b.dbm; }).forEach(function(item){
+						const dbm = String(item.dbm);
+						const mw = item.mw;
+						let label = dbm + ' dBm (' + mw + ' mW)';
+						if (is2g && dbm === '15') label += ' — Recomendado Anti-Sobreposição';
+						else if (!is2g && dbm === '20') label += ' — Equilibrado';
+						else if (!is2g && dbm === '23') label += ' — Alta Potência';
+						sel.appendChild(E('option', { value: dbm }, [label]));
+					});
+				} else {
+					const fallbackDbm = is2g
+						? [10, 12, 14, 15, 17, 18, 20, 22, 23]
+						: [12, 14, 15, 17, 18, 20, 22, 23, 25, 27, 30];
+					fallbackDbm.forEach(function(dbm){
+						const dStr = String(dbm);
+						const mw = Math.round(Math.pow(10, dbm / 10));
+						let label = dStr + ' dBm (~' + mw + ' mW)';
+						if (is2g && dStr === '15') label += ' — Recomendado Anti-Sobreposição';
+						else if (!is2g && dStr === '20') label += ' — Equilibrado';
+						else if (!is2g && dStr === '23') label += ' — Alta Potência';
+						sel.appendChild(E('option', { value: dStr }, [label]));
+					});
+				}
+				if (curVal !== 'auto') {
+					let exists = false;
+					for (let i = 0; i < sel.options.length; i++) {
+						if (sel.options[i].value === curVal) { exists = true; break; }
+					}
+					if (!exists) {
+						sel.appendChild(E('option', { value: curVal }, [curVal + ' dBm (Ativo)']));
+					}
+				}
+				sel.value = curVal;
+				return sel;
+			};
+
+			const sel2 = buildOptions(list2, curTx2, true);
+			const sel5 = buildOptions(list5, curTx5, false);
+			let sel6 = null;
+			if (dev6g) {
+				sel6 = buildOptions(list6, curTx6, false);
+			}
+
+			const setPreset = function(v2, v5, v6) {
+				sel2.value = v2;
+				sel5.value = v5;
+				if (sel6 && v6) sel6.value = v6;
+			};
+
+			const presetBar = E('div', { style: 'display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;' }, [
+				E('button', {
+					class: 'btn cbi-button cbi-button-neutral',
+					style: 'font-size:12px; padding:4px 10px;',
+					click: function(ev){ ev.preventDefault(); setPreset('auto', 'auto', 'auto'); }
+				}, ['⚡ Máxima do Hardware']),
+				E('button', {
+					class: 'btn cbi-button cbi-button-neutral',
+					style: 'font-size:12px; padding:4px 10px;',
+					click: function(ev){ ev.preventDefault(); setPreset('15', '20', '23'); }
+				}, ['🟡 Balanceada Anti-Sticky (15 / 20 dBm)']),
+				E('button', {
+					class: 'btn cbi-button cbi-button-neutral',
+					style: 'font-size:12px; padding:4px 10px;',
+					click: function(ev){ ev.preventDefault(); setPreset('12', '14', '15'); }
+				}, ['🟢 Baixa / Apartamento (12 / 14 dBm)'])
+			]);
+
+			const field = function(label, node, hint){
+				return E('label', { class: 'ex-wan-edit-field', style: 'margin-bottom:12px;' }, [
+					E('span', { style: 'font-weight:700; margin-bottom:4px; display:block;' }, [label]),
+					node,
+					E('small', { class: 'ex-muted', style: 'display:block; margin-top:4px;' }, [hint])
+				]);
+			};
+
+			const gridFields = [
+				field('2,4 GHz — Antenas de Cobertura Longa & IoT', sel2, 'Recomendado: 15 dBm (~31 mW) a 17 dBm (~50 mW). Potência excessiva prende celulares em conexões lentas.'),
+				field('5 GHz — Antenas de Alta Velocidade & Smartphones', sel5, 'Recomendado: 20 dBm (100 mW) a 23 dBm (~200 mW). Maior potência garante alta velocidade e roaming eficiente.')
+			];
+			if (sel6) {
+				gridFields.push(field('6 GHz — Wi-Fi 6E / Wi-Fi 7', sel6, 'Recomendado: 20 dBm a 23 dBm para melhor penetração do sinal em paredes.'));
+			}
+
+			const modalContent = [
+				E('p', { class: 'ex-muted', style: 'line-height:1.45; font-size:13px;' }, [
+					'Ajuste o nível de potência de transmissão (dBm) por frequência de rádio. O valor em parênteses mostra a potência equivalente em miliwatts (mW).'
+				]),
+				presetBar,
+				E('div', { class: 'ex-wan-edit-grid' }, gridFields),
+				E('div', { class: 'alert-message info', style: 'margin-top:10px; font-size:11.5px; line-height:1.45;' }, [
+					E('strong', {}, ['💡 Dica de Engenharia Sem Fio: ']),
+					'As antenas de smartphones transmitem tipicamente entre 12 e 15 dBm. Configurar o roteador em potências muito altas pode gerar assimetria (o celular mostra sinal cheio, mas a antena dele não consegue responder com força suficiente).'
+				]),
+				E('p', { class: 'alert-message warning', style: 'margin-top:8px;' }, [
+					'Ao salvar, os rádios modificados reiniciam rapidamente em ~2 segundos para aplicar os novos ganhos nos amplificadores de RF.'
+				]),
+				E('div', { class: 'right', style: 'margin-top:14px;' }, [
+					E('button', { class: 'btn cbi-button cbi-button-neutral', click: function(){ ui.hideModal(); } }, ['Cancelar']),
+					' ',
+					E('button', {
+						class: 'btn cbi-button cbi-button-positive',
+						click: L.bind(function(ev){
+							const btn = ev && ev.currentTarget;
+							if (btn) { btn.disabled = true; btn.textContent = 'Aplicando…'; }
+							const val2 = sel2.value;
+							const val5 = sel5.value;
+							const args = ['wifi-txpower', val2, val5];
+							if (sel6) args.push(sel6.value);
+							return fs.exec('/usr/sbin/equipe-dashboard-control', args)
+							.then(function(r){
+								if (r.code) throw new Error(r.stderr || 'Falha ao ajustar potência das antenas');
+								ui.hideModal();
+								reloadSoon('Potência das antenas salva com sucesso! Recarregando…', 1500);
+							})
+							.catch(function(e){
+								if (btn) { btn.disabled = false; btn.textContent = 'Salvar e aplicar'; }
+								ui.addNotification(null, E('p', {}, [String(e && e.message || e)]), 'danger');
+							});
+						}, self)
+					}, ['Salvar e aplicar'])
+				])
+			];
+			ui.showModal('Potência de Transmissão Wi‑Fi (dBm)', modalContent);
+		}).catch(function(err){
+			ui.showModal('Potência de Transmissão Wi‑Fi (dBm)', [
+				E('p', { class: 'alert-message danger' }, ['Erro ao consultar rádios: ' + (err && err.message || err)]),
+				E('div', { class: 'right' }, [
+					E('button', { class: 'btn cbi-button cbi-button-neutral', click: function(){ ui.hideModal(); } }, ['Fechar'])
+				])
+			]);
+		});
 	},
 	changeCountry: function() {
 		const current=String((wifiConfig(this.currentData.wireless).r0.country)||'00').toUpperCase();

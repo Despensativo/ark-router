@@ -32,6 +32,8 @@ class TestWifiHostapdSafety(unittest.TestCase):
 
         self.assertNotIn("bss_transition=1", unguarded, "Unconditional bss_transition=1 breaks wpad-basic-mbedtls!")
         self.assertNotIn("bss_transition='1'", unguarded, "Unconditional bss_transition='1' breaks wpad-basic-mbedtls!")
+        self.assertNotIn("ieee80211v=1", unguarded, "Unconditional ieee80211v=1 breaks wpad-basic-mbedtls!")
+        self.assertNotIn("ieee80211v='1'", unguarded, "Unconditional ieee80211v='1' breaks wpad-basic-mbedtls!")
         self.assertNotIn("wnm_sleep_mode=1", unguarded, "Unconditional wnm_sleep_mode=1 breaks wpad-basic-mbedtls!")
         self.assertNotIn("wnm_sleep_mode='1'", unguarded, "Unconditional wnm_sleep_mode='1' breaks wpad-basic-mbedtls!")
 

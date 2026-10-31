@@ -13402,3 +13402,12 @@ msgstr "5. Potencia y Alcance de las Antenas (Anti-Superposición)"
 msgid "Define a intensidade do sinal deste ponto adicional. A opção"
 msgstr "Establece la intensidad de la señal de este nodo secundario. La opción"
 
+msgid "Consultando potências suportadas pelo hardware…"
+msgstr "Consultando potencias soportadas por el hardware…"
+
+msgid "Erro ao consultar rádios:"
+msgstr "Error al consultar radios:"
+
+msgid "Potência de Transmissão Wi‑Fi (dBm)"
+msgstr "Potencia de Transmisión Wi‑Fi (dBm)"
+

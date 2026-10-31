@@ -1,5 +1,7 @@
 # Estudo de Engenharia: TCP BBR, TFO (RFC 7413), DNS Stale Cache (RFC 8767) e ECN no ARK Router
 
+> **Ressalva técnica posterior — 29/10/2026:** a [revisão dos estudos no ARK 2.1.6](REVISAO_ESTUDOS_WIFI_ARK_2_1_6.md) restringe o alcance das conclusões abaixo. BBR/TFO/`tcp_notsent_lowat` atuam nos sockets TCP locais; não configuram o TCP dos clientes encaminhados nem o transporte UDP do WireGuard. TFO depende da aplicação e seu fallback precisa de verificação; 16 KB não garante latência menor que 1 ms. O status histórico de homologação abaixo não comprova essas promessas gerais. O texto foi preservado como registro do estudo original.
+
 **Autor**: Equipe de Engenharia ARK Router & Antigravity  
 **Data**: 29 de Outubro de 2026  
 **Alvo**: OpenWrt 25.12.x / Kernel Linux 6.12+ (MediaTek Filogic mt7986 / mt7981 / Qualcomm IPQ)  

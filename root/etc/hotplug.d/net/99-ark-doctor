@@ -1,0 +1,12 @@
+#!/bin/sh
+# /etc/hotplug.d/net/99-ark-doctor - Executa o Ark Doctor com autocura ao recriar interfaces de rede ou Wi-Fi
+[ "$ACTION" = "add" ] || [ "$ACTION" = "bind" ] || exit 0
+
+case "$INTERFACE" in
+	phy*|wlan*|ath*|ra*|br-lan)
+		# Delay curto de 2s para aguardar a estabilizacao das interfaces pelo hostapd
+		(sleep 2; /usr/sbin/ark-doctor --auto) >/dev/null 2>&1 &
+		;;
+esac
+
+exit 0

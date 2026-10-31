@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.7
+
+- **⚡ Controle Direto de Potência Wi-Fi (dBm) & Blindagem Automática do LuCI (31/10/2026)**:
+  - **Ajuste de Potência de Transmissão por Rádio (dBm / mW)**: Novo modal interativo no cartão Wi-Fi (`Potência (dBm)`) que consulta diretamente os níveis suportados pelo chip de RF via `iwinfo txpowerlist`, oferecendo seleção precisa em dBm e presets rápidos: *Máxima do Hardware*, *Balanceada Anti-Sticky (15 / 20 dBm)* e *Baixa / Apartamento (12 / 14 dBm)*.
+  - **Proteção e Autocura Automática após LuCI ("Salvar e Aplicar")**: Gancho idempotente instalado em `/sbin/reload_config` e script de hotplug `/etc/hotplug.d/net/99-ark-doctor`. Qualquer alteração realizada nos menus genéricos do LuCI tradicional aciona o Ark Doctor silenciosamente com autocura (`--auto`), impedindo que o LuCI desative otimizações críticas como `legacy_rates=0` ou `multicast_to_unicast=1`.
+  - **Blindagem de Sono e Estabilidade para IoT e Mobile**: Parâmetros de RF blindados contra desconexões cíclicas (`wpa_group_rekey=0`, `skip_inactivity_poll=0`, `max_inactivity=86400`, `disassoc_low_ack=0` e `twt_responder=0`).
+  - **Internacionalização 100% Homologada**: Cobertura tripla completa (PT-BR, EN e ES) com novos termos de RF e potência certificados.
+  - **Empacotamento Local v2.1.7-r1**: Pacotes APK e IPK compilados localmente com integridade validada em 87 testes automatizados.
+
 ## 2.0.3
 
 - **🚫 Fim Definitivo do Cache de Interface no Navegador (`mtime` Dinâmico + `resource_version` Automático) (19/10/2026)**:

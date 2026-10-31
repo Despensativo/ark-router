@@ -1,0 +1,8 @@
+{
+  "start_epoch": 1793294633.05769,
+  "duration_s": 102.29741450000438,
+  "samples": 492,
+  "router_returncode": 0,
+  "fping_returncode": 0,
+  "udp_protocol": "STUN binding UDP/19302; response payload not logged"
+}

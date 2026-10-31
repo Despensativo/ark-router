@@ -22,7 +22,7 @@ def main():
         page.goto("http://192.168.12.1/cgi-bin/luci", wait_until="domcontentloaded")
         page.wait_for_selector("input[name='luci_username']")
         page.fill("input[name='luci_username']", "root")
-        page.fill("input[name='luci_password']", "admin0100")
+        page.fill("input[name='luci_password']", os.environ.get('ARK_ROUTER_TEST_PASSWORD', ''))
         
         # Clica em entrar e aguarda a navegação do form submit
         with page.expect_navigation(wait_until="domcontentloaded"):

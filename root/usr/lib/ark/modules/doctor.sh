@@ -1559,10 +1559,11 @@ ark_doctor_audit() {
 							$uci_cmd set "wireless.$kv_sec.rrm_neighbor_report=1"
 							$uci_cmd set "wireless.$kv_sec.rrm_beacon_report=1"
 							$uci_cmd set "wireless.$kv_sec.rnr=1"
-							$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
 							if [ "$wnm_capable" = 1 ]; then
+								$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
 								$uci_cmd set "wireless.$kv_sec.bss_transition=1"
 							else
+								$uci_cmd delete "wireless.$kv_sec.ieee80211v" 2>/dev/null || true
 								$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
 							fi
 						fi
@@ -1647,10 +1648,11 @@ ark_doctor_audit() {
 					$uci_cmd set "wireless.$kv_sec.rrm_neighbor_report=1"
 					$uci_cmd set "wireless.$kv_sec.rrm_beacon_report=1"
 					$uci_cmd set "wireless.$kv_sec.rnr=1"
-					$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
 					if [ "$wnm_capable" = 1 ]; then
+						$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
 						$uci_cmd set "wireless.$kv_sec.bss_transition=1"
 					else
+						$uci_cmd delete "wireless.$kv_sec.ieee80211v" 2>/dev/null || true
 						$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
 					fi
 					local u_ssid="$($uci_cmd get "wireless.$kv_sec.ssid" 2>/dev/null || echo '')"
@@ -1727,10 +1729,11 @@ ark_doctor_audit() {
 								$uci_cmd set "wireless.$kv_sec.rrm_neighbor_report=1"
 								$uci_cmd set "wireless.$kv_sec.rrm_beacon_report=1"
 								$uci_cmd set "wireless.$kv_sec.rnr=1"
-								$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
 								if [ "$wnm_capable" = 1 ]; then
+									$uci_cmd set "wireless.$kv_sec.ieee80211v=1"
 									$uci_cmd set "wireless.$kv_sec.bss_transition=1"
 								else
+									$uci_cmd delete "wireless.$kv_sec.ieee80211v" 2>/dev/null || true
 									$uci_cmd delete "wireless.$kv_sec.bss_transition" 2>/dev/null || true
 								fi
 								local u_ssid="$($uci_cmd get "wireless.$kv_sec.ssid" 2>/dev/null || echo '')"
@@ -1784,6 +1787,7 @@ ark_doctor_audit() {
 		local lowack_missing=0
 		local skip_poll_forced=0
 		local inactivity_short=0
+		local mcast2ucast_missing=0
 		for chk_iface in $all_ap_secs; do
 			local cur_rekey="$($uci_cmd get "wireless.$chk_iface.wpa_group_rekey" 2>/dev/null || echo '')"
 			if [ "$cur_rekey" != "0" ]; then
@@ -1820,9 +1824,19 @@ ark_doctor_audit() {
 					wifi_needs_reload=1
 				fi
 			fi
+
+			local cur_mcast2ucast="$($uci_cmd get "wireless.$chk_iface.multicast_to_unicast" 2>/dev/null || echo '')"
+			if [ "$cur_mcast2ucast" != "1" ]; then
+				mcast2ucast_missing=$((mcast2ucast_missing + 1))
+				if [ "$auto_fix" = 1 ]; then
+					$uci_cmd set "wireless.$chk_iface.multicast_to_unicast=1"
+					wifi_needs_reload=1
+				fi
+			fi
 		done
 
 		local twt_mismatch=0
+		local legacy_mismatch=0
 		for r in $($uci_cmd show wireless 2>/dev/null | sed -n 's/^wireless\.\([a-zA-Z0-9_]*\)=wifi-device$/\1/p'); do
 			local cur_twt="$($uci_cmd get "wireless.$r.twt_responder" 2>/dev/null || echo '0')"
 			if [ "$cur_twt" = "1" ]; then
@@ -1832,9 +1846,22 @@ ark_doctor_audit() {
 					wifi_needs_reload=1
 				fi
 			fi
+
+			local cur_band="$($uci_cmd get "wireless.$r.band" 2>/dev/null || echo '')"
+			if [ "$cur_band" = "2g" ]; then
+				local cur_leg="$($uci_cmd get "wireless.$r.legacy_rates" 2>/dev/null || echo '')"
+				if [ "$cur_leg" != "0" ]; then
+					legacy_mismatch=$((legacy_mismatch + 1))
+					if [ "$auto_fix" = 1 ]; then
+						$uci_cmd set "wireless.$r.legacy_rates=0"
+						$uci_cmd delete "wireless.$r.beacon_rate" 2>/dev/null || true
+						wifi_needs_reload=1
+					fi
+				fi
+			fi
 		done
 
-		if [ "$rekey_mismatch" -gt 0 ] || [ "$lowack_missing" -gt 0 ] || [ "$skip_poll_forced" -gt 0 ] || [ "$inactivity_short" -gt 0 ] || [ "$twt_mismatch" -gt 0 ]; then
+		if [ "$rekey_mismatch" -gt 0 ] || [ "$lowack_missing" -gt 0 ] || [ "$skip_poll_forced" -gt 0 ] || [ "$inactivity_short" -gt 0 ] || [ "$twt_mismatch" -gt 0 ] || [ "$mcast2ucast_missing" -gt 0 ] || [ "$legacy_mismatch" -gt 0 ]; then
 			mobile_iot_issues=1
 			if [ "$rekey_mismatch" -gt 0 ]; then
 				mobile_iot_details="${mobile_iot_details} • Rotação periódica de chave GTK ativa ($rekey_mismatch interface(s))"
@@ -1848,6 +1875,12 @@ ark_doctor_audit() {
 			if [ "$inactivity_short" -gt 0 ]; then
 				mobile_iot_details="${mobile_iot_details} • Tolerância de inatividade abaixo de 24h ($inactivity_short interface(s))"
 			fi
+			if [ "$mcast2ucast_missing" -gt 0 ]; then
+				mobile_iot_details="${mobile_iot_details} • Otimização Multicast-to-Unicast inativa ($mcast2ucast_missing interface(s))"
+			fi
+			if [ "$legacy_mismatch" -gt 0 ]; then
+				mobile_iot_details="${mobile_iot_details} • Taxas legadas 802.11b ativas ($legacy_mismatch rádio(s) 2.4G)"
+			fi
 			if [ "$twt_mismatch" -gt 0 ]; then
 				mobile_iot_details="${mobile_iot_details} • TWT Responder ativo ($twt_mismatch rádio(s))"
 			fi
@@ -1857,13 +1890,13 @@ ark_doctor_audit() {
 			if [ "$auto_fix" = 1 ]; then
 				$uci_cmd commit wireless 2>/dev/null || true
 				fixes_applied=$((fixes_applied + 1))
-				add_check "Estabilidade Wi-Fi Mobile & IoT" "FIXED" "Parâmetros blindados: wpa_group_rekey=0 (fim das quedas cíclicas), sono blindado por hardware (skip_inactivity_poll=0, max_inactivity=86400), disassoc_low_ack=0 e twt_responder=0 seguro."
+				add_check "Estabilidade Wi-Fi Mobile & IoT" "FIXED" "Parâmetros blindados: wpa_group_rekey=0 (fim das quedas cíclicas), sono blindado por hardware (skip_inactivity_poll=0, max_inactivity=86400), disassoc_low_ack=0, multicast_to_unicast=1, legacy_rates=0 e twt_responder=0 seguro."
 			else
 				warnings=$((warnings + 1))
 				add_check "Estabilidade Wi-Fi Mobile & IoT" "WARN" "Configuração vulnerável a quedas no Galaxy S24 e IoT em repouso:${mobile_iot_details}."
 			fi
 		else
-			add_check "Estabilidade Wi-Fi Mobile & IoT" "OK" "Imune a quedas em repouso (wpa_group_rekey=0, sono blindado 24h, skip_inactivity_poll=0, disassoc_low_ack=0 e twt_responder seguro)."
+			add_check "Estabilidade Wi-Fi Mobile & IoT" "OK" "Imune a quedas em repouso (wpa_group_rekey=0, sono blindado 24h, skip_inactivity_poll=0, disassoc_low_ack=0, multicast_to_unicast=1, legacy_rates=0 e twt_responder seguro)."
 		fi
 	fi
 

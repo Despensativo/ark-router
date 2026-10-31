@@ -1,0 +1,7 @@
+{
+  "start_utc": "2026-10-29T18:43:07.138265+00:00",
+  "udp_destination": "74.125.250.129",
+  "udp_port": 19302,
+  "duration_s": 290,
+  "scope": "read-only idle probes, CPU/CAKE/carrier and WAN ICMP/LCP/PADT capture; no settings changed"
+}

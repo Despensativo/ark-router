@@ -13402,3 +13402,12 @@ msgstr "5. Antenna Transmit Power & Range (Anti-Overlap)"
 msgid "Define a intensidade do sinal deste ponto adicional. A opção"
 msgstr "Sets the signal intensity of this secondary node. The option"
 
+msgid "Consultando potências suportadas pelo hardware…"
+msgstr "Querying hardware supported transmit powers…"
+
+msgid "Erro ao consultar rádios:"
+msgstr "Error querying radios:"
+
+msgid "Potência de Transmissão Wi‑Fi (dBm)"
+msgstr "Wi‑Fi Transmit Power (dBm)"
+

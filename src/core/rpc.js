@@ -11,5 +11,7 @@ const callSurvey = rpc.declare({ object: 'iwinfo', method: 'survey', params: [ '
 const callScan = rpc.declare({ object: 'iwinfo', method: 'scan', params: [ 'device' ], expect: { '': {} } });
 const callFreqList = rpc.declare({ object: 'iwinfo', method: 'freqlist', params: [ 'device' ], expect: { '': {} } });
 const callCountryList = rpc.declare({ object: 'iwinfo', method: 'countrylist', params: [ 'device' ], expect: { '': {} } });
+const callTxPowerList = rpc.declare({ object: 'iwinfo', method: 'txpowerlist', params: [ 'device' ], expect: { '': {} } });
 const callUciGet = rpc.declare({ object: 'uci', method: 'get', params: [ 'config' ], expect: { '': {} } });
+
 

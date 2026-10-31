@@ -2,6 +2,8 @@
 
 Data: 29/10/2026. Estudo específico, complementar a [pesquisa geral](ESTUDO_WIFI_LATENCIA_BUFFERBLOAT.md). Nenhum comando foi executado no roteador; nenhuma configuração, dependência, firmware ou código funcional foi alterado.
 
+> **Revisão posterior do mesmo dia:** consultar primeiro a [reavaliação após ARK 2.1.6](REVISAO_ESTUDOS_WIFI_ARK_2_1_6.md). Este documento preserva a fotografia anterior: o AQL 5 GHz atual do código é BE 1500/2500 µs com threshold 12000 µs, já versionado; o quadro operacional passou a registrar OpenWrt 25.12.6 e CAKE 700M/744M. Esses registros de execução não foram confirmados ao vivo nesta revisão. Os valores antigos abaixo são históricos, não uma proposta para substituir a configuração atual.
+
 ## 1. Premissas e conclusão
 
 O usuário confirmou **Acer Predator Connect W6x**, **OpenWrt 25.12.5** e **800 Mb/s de upload e download**. Também usou o termo “assimétricos”: este estudo considera valores nominais iguais, mas calibra as direções independentemente. Não foram informados cliente Wi-Fi principal, PPPoE/IPoE, canal atual, sinal ou capacidade sustentada medida.

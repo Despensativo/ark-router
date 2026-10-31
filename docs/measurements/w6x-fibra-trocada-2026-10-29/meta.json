@@ -1,0 +1,18 @@
+{
+  "start_utc": "2026-10-29T18:12:22.534964+00:00",
+  "command": [
+    "/usr/bin/fping",
+    "-D",
+    "-c",
+    "1100",
+    "-p",
+    "200",
+    "-t",
+    "500",
+    "192.168.73.1",
+    "172.26.1.157",
+    "1.1.1.1",
+    "8.8.8.8"
+  ],
+  "purpose": "Sondas ICMP ociosas apos troca manual do cabo optico pelo usuario; nao e teste sob carga"
+}
