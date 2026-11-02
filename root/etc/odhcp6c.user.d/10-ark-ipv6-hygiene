@@ -1,0 +1,16 @@
+#!/bin/sh
+# /etc/odhcp6c.user.d/10-ark-ipv6-hygiene
+# ARK Router — Gatilho direto do odhcp6c para autolimpeza de prefixos IPv6 antigos após renovação/rediscagem
+
+case "$2" in
+	bound|updated|rebound|ra-updated|informed)
+		if [ -f /usr/lib/ark/common.sh ]; then
+			(
+				. /usr/lib/ark/common.sh
+				ark_ipv6_prefix_hygiene
+				sleep 2
+				ark_ipv6_prefix_hygiene
+			) >/dev/null 2>&1 &
+		fi
+		;;
+esac

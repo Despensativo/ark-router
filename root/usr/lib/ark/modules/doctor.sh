@@ -957,6 +957,15 @@ ark_doctor_audit() {
 		if ip -6 route show dev br-lan 2>/dev/null | grep -qiE '^2804:[^:]+:feca:'; then
 			lan_wan_pfx_conflict=1
 		fi
+		if ip -6 -o addr show dev br-lan scope global deprecated 2>/dev/null | grep -q 'inet6'; then
+			lan_wan_pfx_conflict=1
+		fi
+		if ! ark_is_satellite_or_ap && [ "$(cat /proc/sys/net/ipv6/conf/br-lan/accept_ra 2>/dev/null || echo 0)" != "0" ]; then
+			lan_wan_pfx_conflict=1
+		fi
+		if ip -6 route show default proto ra 2>/dev/null | grep -q 'dev pppoe-'; then
+			lan_wan_pfx_conflict=1
+		fi
 	fi
 	if [ "$lan_wan_pfx_conflict" = 1 ]; then
 		if [ "$auto_fix" = 1 ]; then
@@ -982,16 +991,17 @@ ark_doctor_audit() {
 				for exp_rt6 in $(ip -6 route show dev br-lan 2>/dev/null | grep 'expires' | awk '{print $1}'); do
 					ip -6 route del "$exp_rt6" dev br-lan 2>/dev/null || true
 				done
+				command -v ark_ipv6_prefix_hygiene >/dev/null 2>&1 && ark_ipv6_prefix_hygiene 2>/dev/null || true
 				[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
 			fi
 			fixes_applied=$((fixes_applied + 1))
-			add_check "Isolamento de Sub-rede WAN/LAN" "FIXED" "Sub-rede ponto-a-ponto da WAN e hotplugs residuais (99-ipv6-slaac/.disabled) removidos da bridge LAN."
+			add_check "Isolamento de Sub-rede WAN/LAN" "FIXED" "Prefixos IPv6 antigos/deprecated, rota RA sem filtro e hotplugs residuais expurgados da bridge LAN."
 		else
 			errors=$((errors + 1))
-			add_check "Isolamento de Sub-rede WAN/LAN" "FAIL" "Sub-rede ponto-a-ponto da WAN ou hotplug 99-ipv6-slaac infiltrado na bridge LAN (conflito de RA/NAT66)."
+			add_check "Isolamento de Sub-rede WAN/LAN" "FAIL" "Prefixo IPv6 antigo (deprecated), rota RA sem filtro ou sub-rede WAN residual detectado na bridge LAN."
 		fi
 	else
-		add_check "Isolamento de Sub-rede WAN/LAN" "OK" "Sem sobreposição de sub-redes da WAN na bridge LAN."
+		add_check "Isolamento de Sub-rede WAN/LAN" "OK" "Sem prefixos IPv6 antigos presos ou sobreposição de sub-redes na bridge LAN."
 	fi
 
 	# 11b.4 Checagem de Conflito de Endereços MAC (Anti-MAC Collision)
@@ -2331,22 +2341,41 @@ handle_doctor() {
 
 	local _lock_dir="${ARK_LOCK_DIR:-/tmp}"
 	[ -d "$_lock_dir" ] || _lock_dir="/tmp"
-	local _lock_path="${_lock_dir}/ark-doctor.lock"
+	local _lock_path="${_lock_dir}/ark-doctor.lockdir"
 
-	# Non-blocking lock (OpenWrt lock utility)
-	if command -v lock >/dev/null 2>&1; then
-		lock -n "$_lock_path" || return 0
-		trap "lock -u '$_lock_path'" EXIT INT TERM
-	else
-		mkdir "$_lock_path" 2>/dev/null || return 0
-		trap "rm -rf '$_lock_path'" EXIT INT TERM
+	# Limpa eventual processo 'lock' legado orfao de versoes anteriores
+	if [ -e "${_lock_dir}/ark-doctor.lock" ] && command -v lock >/dev/null 2>&1; then
+		lock -u "${_lock_dir}/ark-doctor.lock" >/dev/null 2>&1 || true
+		rm -f "${_lock_dir}/ark-doctor.lock" 2>/dev/null || true
 	fi
+
+	# Lock atomico via mkdir + validacao de PID ativo (nunca faz fork em background nem retem pipes stdout)
+	if ! mkdir "$_lock_path" 2>/dev/null; then
+		local _old_pid="$(cat "$_lock_path/pid" 2>/dev/null || echo '')"
+		if [ -z "$_old_pid" ] || ! kill -0 "$_old_pid" 2>/dev/null; then
+			rm -rf "$_lock_path" 2>/dev/null || true
+		elif [ "$_is_auto" = 0 ]; then
+			local _w=0
+			while [ "$_w" -lt 8 ] && [ -d "$_lock_path" ]; do
+				sleep 1
+				_w=$((_w + 1))
+			done
+		fi
+		if ! mkdir "$_lock_path" 2>/dev/null; then
+			return 0
+		fi
+	fi
+	printf '%s\n' "$$" > "$_lock_path/pid" 2>/dev/null || true
+	trap "rm -rf '$_lock_path' 2>/dev/null || true" EXIT INT TERM
 
 	if [ "$_is_auto" = 1 ]; then
 		ark_doctor_audit "$_auto_fix" "$_format" >/dev/null 2>&1
 	else
 		ark_doctor_audit "$_auto_fix" "$_format"
 	fi
+
+	rm -rf "$_lock_path" 2>/dev/null || true
+	trap - EXIT INT TERM
 }
 
 # If executed directly as a script

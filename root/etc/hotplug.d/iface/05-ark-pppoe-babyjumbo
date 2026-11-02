@@ -27,6 +27,7 @@ if [ -n "$req_mtu" ] && [ "$req_mtu" -lt 1500 ] 2>/dev/null; then
 	[ "$cur_ppp_mtu" = "$req_mtu" ] || ip link set "$DEVICE" mtu "$req_mtu" 2>/dev/null || true
 	printf '%s\n' "$req_mtu" > "/tmp/ark-mtu-probed-$INTERFACE" 2>/dev/null || true
 	command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
+	command -v ark_ipv6_prefix_hygiene >/dev/null 2>&1 && ( sleep 2; ark_ipv6_prefix_hygiene ) >/dev/null 2>&1 &
 	exit 0
 fi
 
@@ -34,6 +35,7 @@ if [ "$dev_mtu" != "1508" ] || [ "$req_mtu" != "1500" ]; then
 	cur_ppp_mtu="$(cat "/sys/class/net/$DEVICE/mtu" 2>/dev/null || echo 1492)"
 	printf '%s\n' "$cur_ppp_mtu" > "/tmp/ark-mtu-probed-$INTERFACE" 2>/dev/null || true
 	command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
+	command -v ark_ipv6_prefix_hygiene >/dev/null 2>&1 && ( sleep 2; ark_ipv6_prefix_hygiene ) >/dev/null 2>&1 &
 	exit 0
 fi
 
@@ -45,6 +47,7 @@ if [ -n "$wan_dev" ] && command -v ark_ensure_phys_device_mtu >/dev/null 2>&1; t
 		uci commit network 2>/dev/null || true
 		printf '1492\n' > "/tmp/ark-mtu-probed-$INTERFACE" 2>/dev/null || true
 		command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
+		command -v ark_ipv6_prefix_hygiene >/dev/null 2>&1 && ( sleep 2; ark_ipv6_prefix_hygiene ) >/dev/null 2>&1 &
 		exit 0
 	fi
 fi
@@ -94,24 +97,8 @@ fi
 
 	command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
 
-	# Limpa prefixos IPv6 /64 zumbis (proto kernel) na br-lan herdados de sessoes PPPoE anteriores
+	# Autolimpeza completa de prefixos IPv6 /64 antigos presos na br-lan, vizinhos e rotas
 	sleep 3
-	active_v6_pfxs="$(ip -6 route show default 2>/dev/null | sed -n 's/.*default from \([0-9a-fA-F:]*\/[0-9]*\) .*/\1/p')"
-	if [ -n "$active_v6_pfxs" ]; then
-		ip -6 route show dev br-lan proto kernel 2>/dev/null | awk '/^[23][0-9a-fA-F]*:.*\/64/ {print $1}' | while read -r k_pfx; do
-			[ -n "$k_pfx" ] || continue
-			pfx_alive=0
-			for a_pfx in $active_v6_pfxs; do
-				if [ "$k_pfx" = "$a_pfx" ]; then
-					pfx_alive=1
-					break
-				fi
-			done
-			if [ "$pfx_alive" = 0 ]; then
-				ip -6 route del "$k_pfx" dev br-lan proto kernel 2>/dev/null || true
-				logger -t ark-babyjumbo "IPv6 ($INTERFACE): Prefixo zumbi antigo $k_pfx removido da br-lan."
-			fi
-		done
-	fi
+	command -v ark_ipv6_prefix_hygiene >/dev/null 2>&1 && ark_ipv6_prefix_hygiene
 ) >/dev/null 2>&1 &
 exit 0

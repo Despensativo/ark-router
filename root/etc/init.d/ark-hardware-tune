@@ -193,16 +193,10 @@ ark_tune_tcp_stack() {
 	fi
 }
 
-start() {
+ark_hardware_tune_apply() {
 	local _enabled="$(uci -q get equipe_dashboard.hardware_tune.enabled || echo 1)"
 	[ "$_enabled" = "1" ] || return 0
 
-	local _now="$(date +%s 2>/dev/null || echo 0)"
-	local _last="$(cat /tmp/ark-hardware-tune.ts 2>/dev/null || echo 0)"
-	if [ "$((_now - _last))" -ge 0 ] && [ "$((_now - _last))" -lt 10 ] 2>/dev/null; then
-		return 0
-	fi
-	printf '%s\n' "$_now" > /tmp/ark-hardware-tune.ts 2>/dev/null || true
 
 	if [ "$(uci -q get system.@system[0].cronloglevel || echo 5)" != "9" ]; then
 		uci -q set system.@system[0].cronloglevel='9'
@@ -615,6 +609,12 @@ start() {
 		command -v ark_apply_ingress_voice_tin_filters >/dev/null 2>&1 && ark_apply_ingress_voice_tin_filters 2>/dev/null || true
 	fi
 
+	# Autolimpeza e blindagem contra prefixos IPv6 antigos presos na br-lan
+	if [ -f /usr/lib/ark/common.sh ]; then
+		. /usr/lib/ark/common.sh 2>/dev/null || true
+		command -v ark_ipv6_prefix_hygiene >/dev/null 2>&1 && ark_ipv6_prefix_hygiene 2>/dev/null || true
+	fi
+
 	# Calibração e Proteção de Iluminação HAL (ex: AW21018 no Acer Predator T7)
 	if [ -x /usr/sbin/equipe-dashboard-control ]; then
 		/usr/sbin/equipe-dashboard-control led-calibrate-curves >/dev/null 2>&1 || true
@@ -630,10 +630,17 @@ start() {
 
 	logger -t ark-hardware-tune "Calibracao de hardware e latencia finalizada com sucesso."
 
+	return 0
+}
+
+ark_hardware_tune_warmup() {
+	mkdir /tmp/ark-hardware-warmup.lock 2>/dev/null || return 0
 	# Background Pre-caching for Dashboard (WARMUP)
 	# Pre-populates semistatic RAM caches in /tmp 12s after boot
 	# with minimum priority (nice 19) so first LuCI dashboard access is instant.
 	(
+		trap 'rmdir /tmp/ark-hardware-warmup.lock 2>/dev/null' EXIT
+		trap 'exit 1' HUP INT TERM
 		sleep 12
 		if [ -x /usr/sbin/equipe-dashboard-control ]; then
 			nice -n 19 /usr/sbin/equipe-dashboard-control system-hardware-info >/dev/null 2>&1
@@ -648,7 +655,16 @@ start() {
 	return 0
 }
 
+start() {
+	. /usr/lib/ark/serialized-job.sh || return 1
+	local job_rc
+	ark_serialized_job /tmp/ark-hardware-tune ark_hardware_tune_apply
+	job_rc=$?
+	[ "$job_rc" = 75 ] && return 0
+	[ "$job_rc" = 0 ] || return "$job_rc"
+	ark_hardware_tune_warmup
+}
+
 reload() {
-	rm -f /tmp/ark-hardware-tune.ts 2>/dev/null || true
 	start
 }

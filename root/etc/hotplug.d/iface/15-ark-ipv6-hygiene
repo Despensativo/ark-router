@@ -1,0 +1,26 @@
+#!/bin/sh
+# /etc/hotplug.d/iface/15-ark-ipv6-hygiene
+# ARK Router — Autolimpeza Inteligente de Prefixos IPv6 Zumbis a cada Rediscagem PPPoE / DHCPv6-PD
+
+case "$ACTION" in
+	ifup|ifupdate) ;;
+	*) exit 0 ;;
+esac
+
+case "$INTERFACE" in
+	wan*|lan) ;;
+	*) exit 0 ;;
+esac
+
+[ -f /usr/lib/ark/common.sh ] || exit 0
+. /usr/lib/ark/common.sh
+
+if command -v ark_ipv6_prefix_hygiene >/dev/null 2>&1; then
+	ark_ipv6_prefix_hygiene >/dev/null 2>&1 || true
+	(
+		sleep 3
+		ark_ipv6_prefix_hygiene
+	) >/dev/null 2>&1 &
+fi
+
+exit 0

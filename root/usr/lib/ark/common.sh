@@ -1029,6 +1029,118 @@ ark_sanitize_lan_ipv6() {
 	return 0
 }
 
+# Autolimpeza inteligente e blindagem contra prefixos IPv6 antigos presos na br-lan a cada rediscagem PPPoE
+ark_ipv6_prefix_hygiene() {
+	local root_prefix="${ARK_ROOT:-}"
+	[ -z "$root_prefix" ] || return 0
+	ark_is_satellite_or_ap && return 0
+
+	local purged=0
+	local b_dev ppp_path ppp_dev gw StaticHasRoutes
+
+	# 1. Blinda bridges LAN/Guest contra Router Advertisements externos (ex: Smart TV / Thread Border Router)
+	for b_dev in br-lan br-guest; do
+		if [ -f "/proc/sys/net/ipv6/conf/$b_dev/accept_ra" ]; then
+			echo 0 > "/proc/sys/net/ipv6/conf/$b_dev/accept_ra" 2>/dev/null || true
+		fi
+	done
+
+	# 2. Blinda interfaces PPPoE contra rota default 'proto ra' sem filtro de origem na tabela main,
+	#    mantendo a rota default do proprio roteador (iif lo) isolada na tabela 253 (prio 32767).
+	#    Isso garante que pacotes da LAN com prefixo antigo/morto ou ULA recebam ICMPv6 Unreachable em < 1ms.
+	for ppp_path in /sys/class/net/pppoe-*; do
+		[ -e "$ppp_path" ] || continue
+		ppp_dev="${ppp_path##*/}"
+		if [ -f "/proc/sys/net/ipv6/conf/$ppp_dev/accept_ra" ]; then
+			echo 0 > "/proc/sys/net/ipv6/conf/$ppp_dev/accept_ra" 2>/dev/null || true
+		fi
+		StaticHasRoutes="$(ip -6 route show default dev "$ppp_dev" proto static 2>/dev/null | head -n 1)"
+		if [ -n "$StaticHasRoutes" ]; then
+			gw="$(printf '%s\n' "$StaticHasRoutes" | awk '/via / {for(i=1;i<=NF;i++) if($i=="via") {print $(i+1); exit}}')"
+			if [ -n "$gw" ]; then
+				ip -6 route replace default via "$gw" dev "$ppp_dev" table 253 2>/dev/null || true
+				if ! ip -6 rule show 2>/dev/null | grep -q '^32767:.*iif lo'; then
+					ip -6 rule del prio 32767 2>/dev/null || true
+					ip -6 rule add iif lo lookup 253 prio 32767 2>/dev/null || true
+				fi
+			fi
+			if ip -6 route show default dev "$ppp_dev" proto ra 2>/dev/null | grep -q 'default'; then
+				ip -6 route del default dev "$ppp_dev" proto ra 2>/dev/null || true
+				purged=1
+			fi
+		fi
+	done
+
+	# 3. Coleta os prefixos GUA /64 legitimamente ativos na interface lan (via netifd ubus)
+	local active_gua_pfxs=""
+	if command -v ubus >/dev/null 2>&1 && command -v jsonfilter >/dev/null 2>&1; then
+		active_gua_pfxs="$(ubus call network.interface.lan status 2>/dev/null \
+			| jsonfilter -e '@["ipv6-prefix-assignment"][*].address' -e '@["ipv6-address"][*].address' 2>/dev/null \
+			| awk -F: '/^[23][0-9a-fA-F]*:/ {print tolower($1":"$2":"$3":"$4)}' | sort -u | tr '\n' ' ' | sed 's/ $//')"
+	fi
+
+	# 4. Remove imediatamente qualquer endereco IPv6 GUA 'deprecated' na br-lan
+	local dep_ip
+	for dep_ip in $(ip -6 -o addr show dev br-lan scope global deprecated 2>/dev/null | awk '{print $4}'); do
+		[ -n "$dep_ip" ] || continue
+		ip -6 addr del "$dep_ip" dev br-lan 2>/dev/null || true
+		purged=1
+	done
+
+	# 5. Se ha prefixo GUA ativo na LAN, expurga enderecos, rotas e vizinhos (neigh) de sessoes PPPoE antigas
+	if [ -n "$active_gua_pfxs" ]; then
+		local addr_cidr addr_p4 pfx_ok a_p4 rt_pfx n_ip
+		for addr_cidr in $(ip -6 -o addr show dev br-lan scope global 2>/dev/null | awk '{print $4}' | grep -iE '^[23][0-9a-f]*:'); do
+			addr_p4="$(printf '%s' "$addr_cidr" | awk -F: '{print tolower($1":"$2":"$3":"$4)}')"
+			pfx_ok=0
+			for a_p4 in $active_gua_pfxs; do
+				[ "$addr_p4" = "$a_p4" ] && { pfx_ok=1; break; }
+			done
+			if [ "$pfx_ok" -eq 0 ]; then
+				ip -6 addr del "$addr_cidr" dev br-lan 2>/dev/null || true
+				purged=1
+			fi
+		done
+
+		for rt_pfx in $(ip -6 route show dev br-lan 2>/dev/null | awk '/^[23][0-9a-fA-F]*:/ {print $1}'); do
+			addr_p4="$(printf '%s' "$rt_pfx" | awk -F: '{print tolower($1":"$2":"$3":"$4)}')"
+			pfx_ok=0
+			for a_p4 in $active_gua_pfxs; do
+				[ "$addr_p4" = "$a_p4" ] && { pfx_ok=1; break; }
+			done
+			if [ "$pfx_ok" -eq 0 ]; then
+				ip -6 route del "$rt_pfx" dev br-lan 2>/dev/null || true
+				purged=1
+			fi
+		done
+
+		for n_ip in $(ip -6 neigh show dev br-lan 2>/dev/null | awk '/^[23][0-9a-fA-F]*:/ {print $1}'); do
+			addr_p4="$(printf '%s' "$n_ip" | awk -F: '{print tolower($1":"$2":"$3":"$4)}')"
+			pfx_ok=0
+			for a_p4 in $active_gua_pfxs; do
+				[ "$addr_p4" = "$a_p4" ] && { pfx_ok=1; break; }
+			done
+			if [ "$pfx_ok" -eq 0 ]; then
+				ip -6 neigh del "$n_ip" dev br-lan 2>/dev/null || true
+				purged=1
+			fi
+		done
+	fi
+
+	local prev_pfxs="$(cat /tmp/ark-active-lan-v6pfx 2>/dev/null || true)"
+	if [ -n "$active_gua_pfxs" ] && [ "$active_gua_pfxs" != "$prev_pfxs" ]; then
+		printf '%s\n' "$active_gua_pfxs" > /tmp/ark-active-lan-v6pfx 2>/dev/null || true
+		purged=1
+	fi
+
+	if [ "$purged" -eq 1 ]; then
+		[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd reload >/dev/null 2>&1 || true
+		logger -t ark-ipv6-hygiene "Autolimpeza IPv6 executada na br-lan (prefixo ativo: ${active_gua_pfxs:-nenhum})."
+	fi
+	return 0
+}
+
+
 # Auto-ativacao inteligente de radios Wi-Fi de fabrica com preservacao estrita de escolha do usuario
 ark_auto_enable_factory_wifi() {
 	local r
