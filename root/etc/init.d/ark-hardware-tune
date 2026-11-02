@@ -210,6 +210,44 @@ start() {
 		[ -x /etc/init.d/cron ] && /etc/init.d/cron reload >/dev/null 2>&1 || true
 	fi
 
+	# Disable OpenWrt's native packet_steering service (which otherwise runs 1000ms after
+	# any interface.* event and overwrites eth0/eth1/phy* rps_cpus with 'f', causing
+	# double-RPS on PPPoE download and invading the dedicated Wi-Fi Core 2).
+	if [ "$(uci -q get network.globals.packet_steering 2>/dev/null)" != "0" ]; then
+		uci -q set network.globals.packet_steering='0'
+		uci commit network 2>/dev/null || true
+	fi
+	if [ -x /etc/init.d/packet_steering ]; then
+		if /etc/init.d/packet_steering enabled >/dev/null 2>&1 || [ -L /etc/rc.d/S25packet_steering ]; then
+			/etc/init.d/packet_steering stop >/dev/null 2>&1 || true
+			/etc/init.d/packet_steering disable >/dev/null 2>&1 || true
+		fi
+	fi
+
+	# Suppress stray Link-Local IPv6 (fe80::) on raw physical PPPoE ports (e.g. eth1 / wan_modem)
+	# so MLD/RS/ICMPv6 multicast never leaks outside the pppoe-wan tunnel toward the ONT.
+	local _w_ifc _w_proto _w_dev _net_dirty=0
+	for _w_ifc in wan wan1 wan2; do
+		_w_proto="$(uci -q get "network.${_w_ifc}.proto" 2>/dev/null || echo '')"
+		_w_dev="$(uci -q get "network.${_w_ifc}.device" || uci -q get "network.${_w_ifc}.ifname" || echo '')"
+		if [ -n "$(uci -q get "network.${_w_ifc}_modem" 2>/dev/null)" ]; then
+			if [ "$(uci -q get "network.${_w_ifc}_modem.ipv6" 2>/dev/null)" != "0" ]; then
+				uci -q set "network.${_w_ifc}_modem.ipv6=0"
+				_net_dirty=1
+			fi
+		fi
+		[ -n "$_w_dev" ] || continue
+		case "$_w_dev" in
+			br-*|lo|pppoe*|wg*|tun*|tap*) continue ;;
+		esac
+		if [ "$_w_proto" = "pppoe" ]; then
+			sysctl -q -w "net.ipv6.conf.${_w_dev}.disable_ipv6=1" 2>/dev/null || true
+		elif [ "$_w_proto" = "dhcp" ] || [ "$_w_proto" = "static" ]; then
+			sysctl -q -w "net.ipv6.conf.${_w_dev}.disable_ipv6=0" 2>/dev/null || true
+		fi
+	done
+	[ "$_net_dirty" = "1" ] && uci commit network 2>/dev/null || true
+
 	# Source common runtime if available
 	[ -f /usr/lib/ark/common.sh ] && . /usr/lib/ark/common.sh
 
@@ -431,11 +469,11 @@ start() {
 		sysctl -q -w net.core.rps_sock_flow_entries=0 2>/dev/null || true
 
 		local wan_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
-		local wan_sqm_mask="$rps_mask"
+		local wifi_isolated_mask="$rps_mask"
 		if [ "$cpu_cores" -eq 4 ] && grep -qE 'mt76|mt79|ath|qca' /proc/interrupts 2>/dev/null; then
-			# Dedicate CPU 3 (0x8) to WAN RX + ifb4pppoe-wan single-queue CAKE ingress (zero multi-CPU spinlock contention
-			# and zero TCP packet reordering), while CPU 2 (0x4) stays dedicated to Wi-Fi IRQ/NAPI/TX without cross-core IPIs.
-			wan_sqm_mask="8"
+			# Reserve CPU 2 (0x4) exclusively for Wi-Fi hardware IRQ & RX/TX NAPI rings:
+			# eth0=0, eth1=0, pppoe-wan=b (CPUs 0,1,3), phy*=1 (CPU 0)
+			wifi_isolated_mask="b"
 		fi
 		for iface_dir in /sys/class/net/*; do
 			[ -d "$iface_dir" ] || continue
@@ -444,9 +482,12 @@ start() {
 			local rfs_target=0
 			case "$ifname" in
 				pppoe*)
-					rps_target="$wan_sqm_mask"
+					rps_target="$wifi_isolated_mask"
 					;;
-				lo|ifb*|br-*|phy*|wlan*|ath*|ra*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|*)
+				phy*|wlan*|ath*|ra*)
+					[ "$cpu_cores" -ge 4 ] && rps_target=1 || rps_target=0
+					;;
+				lo|ifb*|br-*|eth*|lan*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|*)
 					rps_target=0
 					;;
 			esac

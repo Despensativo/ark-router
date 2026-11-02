@@ -121,6 +121,8 @@ apply_wan_modem_access() {
 		uci -q set "network.${iface}_modem.defaultroute=0"
 		uci -q set "network.${iface}_modem.delegate=0"
 		uci -q set "network.${iface}_modem.peerdns=0"
+		uci -q set "network.${iface}_modem.ipv6=0"
+		[ -n "$effective_dev" ] && sysctl -q -w "net.ipv6.conf.${effective_dev}.disable_ipv6=1" 2>/dev/null || true
 		if [ -n "$zone" ]; then
 			firewall_zone_has_network "$zone" "${iface}_modem" || uci -q add_list "firewall.$zone.network=${iface}_modem"
 		fi

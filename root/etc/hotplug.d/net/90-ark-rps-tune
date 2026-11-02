@@ -9,7 +9,7 @@ cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
 
 rps_mask="$(ark_calculate_rps_mask "$cpu_cores")"
 if [ "$cpu_cores" -eq 4 ] && grep -qE 'mt76|mt79|ath|qca' /proc/interrupts 2>/dev/null; then
-	rps_mask="8"
+	rps_mask="b"
 fi
 rps_target=0
 rfs_target=0
@@ -18,15 +18,22 @@ case "$INTERFACE" in
 	pppoe*)
 		rps_target="$rps_mask"
 		;;
-	lo|ifb*|br-*|phy*|wlan*|ath*|ra*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|*)
+	phy*|wlan*|ath*|ra*)
+		[ "$cpu_cores" -ge 4 ] && rps_target=1 || rps_target=0
+		;;
+	lo|ifb*|br-*|eth*|lan*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|*)
 		rps_target=0
 		;;
 esac
 
 wan_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
+wan_proto="$(uci -q get network.wan.proto || uci -q get network.wan1.proto || echo '')"
 if [ -n "$wan_phys" ]; then
 	[ -w "/sys/class/net/$wan_phys/gro_flush_timeout" ] && echo 250000 > "/sys/class/net/$wan_phys/gro_flush_timeout" 2>/dev/null || true
 	[ -w "/sys/class/net/$wan_phys/napi_defer_hard_irqs" ] && echo 20 > "/sys/class/net/$wan_phys/napi_defer_hard_irqs" 2>/dev/null || true
+	if [ "$wan_proto" = "pppoe" ]; then
+		sysctl -q -w "net.ipv6.conf.${wan_phys}.disable_ipv6=1" 2>/dev/null || true
+	fi
 	for q in "/sys/class/net/$wan_phys"/queues/rx-*/rps_cpus; do
 		[ -w "$q" ] && echo 0 > "$q" 2>/dev/null || true
 	done

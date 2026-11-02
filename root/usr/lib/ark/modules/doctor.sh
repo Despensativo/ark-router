@@ -2008,7 +2008,7 @@ ark_doctor_audit() {
 		fi
 	fi
 
-	# 15. Governanca de Interrupcoes de CPU (IRQ Balance vs Silicio Nativo)
+	# 15. Governanca de Interrupcoes de CPU (IRQ Balance & Packet Steering vs Silicio Nativo)
 	dist_target="$(grep 'DISTRIB_TARGET' /etc/openwrt_release 2>/dev/null | cut -d"'" -f2 || echo '')"
 	[ -n "$dist_target" ] || dist_target="$(ubus call system board 2>/dev/null | grep -o '"target":"[^"]*"' | cut -d'"' -f4 || echo '')"
 	has_native_hw_queues=false
@@ -2016,6 +2016,32 @@ ark_doctor_audit() {
 		has_native_hw_queues=true
 	fi
 	cpu_cores_chk="$(ark_cpu_cores)"
+
+	# Prevent OpenWrt packet_steering (1000ms trigger) from clobbering ark-hardware-tune RPS masks with 'f'
+	if [ -z "${ARK_ROOT}" ] && [ "$cpu_cores_chk" -gt 1 ]; then
+		local cur_ps="$($uci_cmd get network.globals.packet_steering 2>/dev/null || echo '0')"
+		if [ "$cur_ps" != "0" ] || [ -L /etc/rc.d/S25packet_steering ]; then
+			if [ "$auto_fix" = 1 ]; then
+				$uci_cmd set network.globals.packet_steering='0'
+				$uci_cmd commit network 2>/dev/null || true
+				[ -x /etc/init.d/packet_steering ] && /etc/init.d/packet_steering stop >/dev/null 2>&1 || true
+				[ -x /etc/init.d/packet_steering ] && /etc/init.d/packet_steering disable >/dev/null 2>&1 || true
+				[ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune reload </dev/null >/dev/null 2>&1 || true
+				fixes_applied=$((fixes_applied + 1))
+			fi
+		fi
+		# Ensure raw PPPoE physical interface (eth1 / wan_modem) has stray Link-Local IPv6 disabled
+		if [ "$($uci_cmd get network.wan.proto 2>/dev/null)" = "pppoe" ]; then
+			local raw_wan_dev="$($uci_cmd get network.wan.device 2>/dev/null || $uci_cmd get network.wan.ifname 2>/dev/null || echo '')"
+			if [ -n "$raw_wan_dev" ] && [ "$auto_fix" = 1 ]; then
+				sysctl -q -w "net.ipv6.conf.${raw_wan_dev}.disable_ipv6=1" 2>/dev/null || true
+				if [ -n "$($uci_cmd get network.wan_modem 2>/dev/null)" ] && [ "$($uci_cmd get network.wan_modem.ipv6 2>/dev/null)" != "0" ]; then
+					$uci_cmd set network.wan_modem.ipv6='0'
+					$uci_cmd commit network 2>/dev/null || true
+				fi
+			fi
+		fi
+	fi
 
 	irq_running=0
 	if pidof irqbalance >/dev/null 2>&1 || { [ -x /etc/init.d/irqbalance ] && /etc/init.d/irqbalance enabled >/dev/null 2>&1; }; then
