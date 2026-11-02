@@ -12,6 +12,10 @@ chain ark_dscp_prerouting {
 	iifname != { "lo", "br-*", "lan*" } ip dscp != cs0 ip dscp set cs0 comment "ARK: Wash untrusted WAN IPv4 DSCP"
 	iifname != { "lo", "br-*", "lan*" } ip6 dscp != cs0 ip6 dscp set cs0 comment "ARK: Wash untrusted WAN IPv6 DSCP"
 
+	# Fast-path exit for normal WAN TCP download data packets (ct mark bit 0x80 not set, not SYN/RST/FIN).
+	# Avoids evaluating 30+ LAN classification rules at 65,000+ pps during Gigabit downloads.
+	iifname != { "lo", "br-*", "lan*" } ct mark & 0x00000080 == 0 meta l4proto tcp tcp flags & (syn | rst | fin) == 0 return comment "ARK: Fast-path WAN TCP download"
+
 	# Restore verified bidirectional flow DSCP from Conntrack (ct mark lower byte: 0x80 valid bit | 6-bit DSCP).
 	# Ensures incoming WAN packets (for Wi-Fi WMM / AQL & act_ctinfo) and large mid-session gaming packets
 	# keep their true Voice/Gaming (CS4=0xa0), Video (AF41=0xa2), or Bulk P2P (CS1=0x88) classification.

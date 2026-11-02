@@ -82,7 +82,29 @@ ark_tune_irq_affinity() {
 				;;
 		esac
 	done
-	logger -t ark-hardware-tune "Afinidade de IRQ distribuida dinamicamente (${cores} cores): Ethernet (Core masks 0x${eth_mask}/0x${eth_alt_mask}), Wi-Fi (Core mask 0x${wifi_mask})."
+
+	# Pin threaded NAPI kthreads (e.g., napi/mtk_eth-*, napi/phy*, mt76-tx*) to match IRQ masks.
+	# Prevents OpenWrt packet-steering.uc from piling all Ethernet NAPI rings onto Core 0.
+	if command -v taskset >/dev/null 2>&1; then
+		local napi_eth_idx=0
+		ps -w 2>/dev/null | awk '/\[napi\/|\[mt76-tx/ {print $1, $NF}' | while read -r npid nname; do
+			[ -n "$npid" ] || continue
+			case "$nname" in
+				*mtk_eth*|*eth*|*edma*|*nss*|*igb*|*ixgbe*)
+					if [ "$((napi_eth_idx % 2))" -eq 0 ]; then
+						taskset -p "$eth_mask" "$npid" >/dev/null 2>&1 || true
+					else
+						taskset -p "$eth_alt_mask" "$npid" >/dev/null 2>&1 || true
+					fi
+					napi_eth_idx=$((napi_eth_idx + 1))
+					;;
+				*phy*|*mt76*|*ath*|*wlan*|*wifi*)
+					taskset -p "$wifi_mask" "$npid" >/dev/null 2>&1 || true
+					;;
+			esac
+		done
+	fi
+	logger -t ark-hardware-tune "Afinidade de IRQ e NAPI distribuida dinamicamente (${cores} cores): Ethernet (Core masks 0x${eth_mask}/0x${eth_alt_mask}), Wi-Fi (Core mask 0x${wifi_mask})."
 }
 
 ark_tune_wifi_aql() {
@@ -104,18 +126,19 @@ ark_tune_wifi_aql() {
 		esac
 		[ -w "$phy/aql_enable" ] && echo 1 > "$phy/aql_enable" 2>/dev/null || true
 		if [ "$is_high_band" -eq 1 ]; then
-			# 5 GHz / 6 GHz (HE80/HE160/EHT320): PHY rate 1200-2882 Mbps (~4x real TCP goodput).
-			# Global threshold 12000 us prevents sleeping/slow Doze-mode clients from starving the PHY,
-			# while per-station tight AQL limit (1500/2500 us) + fq_limit 1024 caps active bufferbloat to < 5ms.
-			[ -w "$phy/aql_threshold" ] && echo 12000 > "$phy/aql_threshold" 2>/dev/null || true
+			# 5 GHz / 6 GHz (HE80/HE160/EHT320): PHY rate 1200-2882 Mbps.
+			# On MediaTek MT7915/MT7986 with HE160 + multi-VAP, a single A-MPDU TXOP + BlockAck round-trip
+			# takes ~2.5ms. Setting VI/BE to 3500/6000 us keeps 2 A-MPDUs pipelined in hardware DMA
+			# (unlocking 600-900+ Mbps on 5GHz) while bounding active Wi-Fi air-queue latency to <= 5ms.
+			[ -w "$phy/aql_threshold" ] && echo 24000 > "$phy/aql_threshold" 2>/dev/null || true
 			if [ -w "$phy/aql_txq_limit" ]; then
-				echo "0 1000 2000" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "1 1500 2500" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "2 1500 2500" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "3 1000 2000" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "0 1500 3000" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "1 3500 6000" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "2 3500 6000" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "3 1500 3000" > "$phy/aql_txq_limit" 2>/dev/null || true
 			fi
-			[ -w "$phy/aqm" ] && echo "fq_limit 1024" > "$phy/aqm" 2>/dev/null || true
-			[ -w "$phy/aqm" ] && echo "fq_memory_limit 4194304" > "$phy/aqm" 2>/dev/null || true
+			[ -w "$phy/aqm" ] && echo "fq_limit 2048" > "$phy/aqm" 2>/dev/null || true
+			[ -w "$phy/aqm" ] && echo "fq_memory_limit 8388608" > "$phy/aqm" 2>/dev/null || true
 		else
 			# 2.4 GHz (HT20/HE20): slower MCS rates & IoT clients require slightly larger airtime window.
 			[ -w "$phy/aql_threshold" ] && echo 15000 > "$phy/aql_threshold" 2>/dev/null || true
@@ -329,16 +352,25 @@ start() {
 		# RFS com 16k entradas
 		sysctl -q -w net.core.rps_sock_flow_entries=16384 2>/dev/null || true
 
-		# RPS dinâmico nos 2 núcleos (somente interfaces físicas/DSA/Wi-Fi; zero em virtuais/IFB/PPPoE/bridge para evitar triplo re-queue de IPI e contenção de spinlock no CAKE)
+		# RPS dinâmico nos 2 núcleos (habilita RPS em pppoe* pós-IFB split-gso e desativa no portador físico bruto do PPPoE e no IFB para eliminar contenção de spinlock no CAKE)
+		local pppoe_phys=""
+		if ls /sys/class/net/pppoe-* >/dev/null 2>&1; then
+			pppoe_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
+		fi
 		for iface_dir in /sys/class/net/*; do
 			[ -d "$iface_dir" ] || continue
+			local ifname="${iface_dir##*/}"
 			local rps_target="$rps_mask"
 			local rfs_target=2048
-			case "${iface_dir##*/}" in
-				lo|ifb*|pppoe*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
+			case "$ifname" in
+				lo|ifb*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
 					rps_target=0
 					rfs_target=0
 					;;
+			esac
+			[ -n "$pppoe_phys" ] && [ "$ifname" = "$pppoe_phys" ] && { rps_target=0; rfs_target=0; }
+			case "$ifname" in
+				ifb*) ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true ;;
 			esac
 			for q in "$iface_dir"/queues/rx-*/rps_cpus; do
 				[ -f "$q" ] && echo "$rps_target" > "$q" 2>/dev/null || true
@@ -384,15 +416,24 @@ start() {
 		# RFS com 32k entradas para acelerar conexões locais (DNS, uhttpd, ping)
 		sysctl -q -w net.core.rps_sock_flow_entries=32768 2>/dev/null || true
 
+		local pppoe_phys=""
+		if ls /sys/class/net/pppoe-* >/dev/null 2>&1; then
+			pppoe_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
+		fi
 		for iface_dir in /sys/class/net/*; do
 			[ -d "$iface_dir" ] || continue
+			local ifname="${iface_dir##*/}"
 			local rps_target="$rps_mask"
 			local rfs_target=4096
-			case "${iface_dir##*/}" in
-				lo|ifb*|pppoe*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
+			case "$ifname" in
+				lo|ifb*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
 					rps_target=0
 					rfs_target=0
 					;;
+			esac
+			[ -n "$pppoe_phys" ] && [ "$ifname" = "$pppoe_phys" ] && { rps_target=0; rfs_target=0; }
+			case "$ifname" in
+				ifb*) ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true ;;
 			esac
 			for q in "$iface_dir"/queues/rx-*/rps_cpus; do
 				[ -f "$q" ] && echo "$rps_target" > "$q" 2>/dev/null || true
@@ -459,16 +500,25 @@ start() {
 
 		sysctl -q -w net.core.rps_sock_flow_entries="$rfs_entries" 2>/dev/null || true
 
-		# RPS dinâmico distribuído em todos os N núcleos (somente interfaces físicas/DSA/Wi-Fi)
+		# RPS dinâmico distribuído em todos os N núcleos (inclui pppoe* pós-IFB split-gso; exclui portador físico bruto do PPPoE e IFB)
+		local pppoe_phys=""
+		if ls /sys/class/net/pppoe-* >/dev/null 2>&1; then
+			pppoe_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
+		fi
 		for iface_dir in /sys/class/net/*; do
 			[ -d "$iface_dir" ] || continue
+			local ifname="${iface_dir##*/}"
 			local rps_target="$rps_mask"
 			local rfs_target="$rfs_flow_cnt"
-			case "${iface_dir##*/}" in
-				lo|ifb*|pppoe*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
+			case "$ifname" in
+				lo|ifb*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
 					rps_target=0
 					rfs_target=0
 					;;
+			esac
+			[ -n "$pppoe_phys" ] && [ "$ifname" = "$pppoe_phys" ] && { rps_target=0; rfs_target=0; }
+			case "$ifname" in
+				ifb*) ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true ;;
 			esac
 			for q in "$iface_dir"/queues/rx-*/rps_cpus; do
 				[ -f "$q" ] && echo "$rps_target" > "$q" 2>/dev/null || true
@@ -527,4 +577,9 @@ start() {
 	) >/dev/null 2>&1 &
 
 	return 0
+}
+
+reload() {
+	rm -f /tmp/ark-hardware-tune.ts 2>/dev/null || true
+	start
 }

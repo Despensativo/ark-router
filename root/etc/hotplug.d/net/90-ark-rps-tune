@@ -8,17 +8,45 @@ cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
 [ "$cpu_cores" -gt 1 ] 2>/dev/null || exit 0
 
 rps_mask="$(ark_calculate_rps_mask "$cpu_cores")"
+rps_target="$rps_mask"
+rfs_target=4096
+
+case "$INTERFACE" in
+	lo|ifb*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
+		rps_target=0
+		rfs_target=0
+		;;
+esac
+
+if ls /sys/class/net/pppoe-* >/dev/null 2>&1; then
+	pppoe_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
+	if [ -n "$pppoe_phys" ]; then
+		[ "$INTERFACE" = "$pppoe_phys" ] && { rps_target=0; rfs_target=0; }
+		for q in "/sys/class/net/$pppoe_phys"/queues/rx-*/rps_cpus; do
+			[ -w "$q" ] && echo 0 > "$q" 2>/dev/null || true
+		done
+		for q in "/sys/class/net/$pppoe_phys"/queues/rx-*/rps_flow_cnt; do
+			[ -w "$q" ] && echo 0 > "$q" 2>/dev/null || true
+		done
+	fi
+fi
+
+case "$INTERFACE" in
+	ifb*)
+		ethtool -K "$INTERFACE" rx-gro-list off 2>/dev/null || true
+		;;
+esac
 
 for q in "/sys/class/net/$INTERFACE"/queues/rx-*/rps_cpus; do
-	[ -w "$q" ] && echo "$rps_mask" > "$q" 2>/dev/null || true
+	[ -w "$q" ] && echo "$rps_target" > "$q" 2>/dev/null || true
 done
 for q in "/sys/class/net/$INTERFACE"/queues/rx-*/rps_flow_cnt; do
-	[ -w "$q" ] && echo 4096 > "$q" 2>/dev/null || true
+	[ -w "$q" ] && echo "$rfs_target" > "$q" 2>/dev/null || true
 done
 
 case "$INTERFACE" in
-	phy*|wlan*|ath*|ra*)
-		[ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune start >/dev/null 2>&1 &
+	phy*|wlan*|ath*|ra*|pppoe*|ifb*)
+		[ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune reload >/dev/null 2>&1 &
 		;;
 esac
 

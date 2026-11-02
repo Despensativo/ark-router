@@ -163,14 +163,16 @@ class TestHardwareTune(unittest.TestCase):
             self.assertEqual(calc_mask, exp_mask, f"Falha no calculo de mascara para {cores} cores")
 
     def test_08_irq_affinity_function_presence_and_logic(self):
-        """Valida se ark_tune_irq_affinity e exclusao RPS de ifb*/pppoe*/br-* estao presentes"""
+        """Valida se ark_tune_irq_affinity, pinning de NAPI kthreads e calibracao RPS de ifb*/pppoe* estao presentes"""
         tune_script = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "root", "etc", "init.d", "ark-hardware-tune")
         with open(tune_script, "r", encoding="utf-8") as f:
             content = f.read()
         self.assertIn("ark_tune_irq_affinity", content)
         self.assertIn("smp_affinity", content)
+        self.assertIn("taskset -p", content)
         self.assertIn("net.core.netdev_budget_usecs=20000", content)
-        self.assertIn("lo|ifb*|pppoe*|br-*|wg*", content)
+        self.assertIn("lo|ifb*|br-*|wg*", content)
+        self.assertIn("rx-gro-list off", content)
 
     def test_09_sqm_cake_mq_and_auto_dscp_promotion(self):
         """Valida deteccao automatica de cake-mq multi-core em interfaces multi-fila e auditoria Auto-DSCP"""
