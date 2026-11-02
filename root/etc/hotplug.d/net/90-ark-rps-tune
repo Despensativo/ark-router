@@ -9,7 +9,7 @@ cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
 
 rps_mask="$(ark_calculate_rps_mask "$cpu_cores")"
 if [ "$cpu_cores" -eq 4 ] && grep -qE 'mt76|mt79|ath|qca' /proc/interrupts 2>/dev/null; then
-	rps_mask="b"
+	rps_mask="8"
 fi
 rps_target=0
 rfs_target=0
@@ -18,10 +18,7 @@ case "$INTERFACE" in
 	pppoe*)
 		rps_target="$rps_mask"
 		;;
-	phy*|wlan*|ath*|ra*)
-		[ "$cpu_cores" -ge 4 ] && rps_target=1 || rps_target=0
-		;;
-	lo|ifb*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|*)
+	lo|ifb*|br-*|phy*|wlan*|ath*|ra*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|*)
 		rps_target=0
 		;;
 esac
@@ -57,7 +54,7 @@ done
 
 case "$INTERFACE" in
 	phy*|wlan*|ath*|ra*|pppoe*|ifb*)
-		[ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune reload >/dev/null 2>&1 &
+		[ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune reload </dev/null >/dev/null 2>&1 &
 		;;
 esac
 

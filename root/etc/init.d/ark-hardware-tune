@@ -109,12 +109,14 @@ ark_tune_irq_affinity() {
 }
 
 ark_tune_wifi_aql() {
-	local phy phy_name radio_idx band is_high_band
+	local phy phy_name radio_idx band is_high_band atf_en accel_en atf_flags
+	accel_en="$(uci -q get equipe_dashboard.wifi.wifi6_accel 2>/dev/null || echo '1')"
 	for phy in /sys/kernel/debug/ieee80211/phy*; do
 		[ -d "$phy" ] || continue
 		phy_name="$(basename "$phy")"
 		radio_idx="${phy_name#phy}"
 		band="$(uci -q get "wireless.radio${radio_idx}.band" 2>/dev/null || echo '')"
+		atf_en="$(uci -q get "wireless.radio${radio_idx}.airtime_fairness" 2>/dev/null || echo '')"
 		is_high_band=0
 		case "$band" in
 			5g|6g|5G|6G) is_high_band=1 ;;
@@ -125,13 +127,19 @@ ark_tune_wifi_aql() {
 				fi
 				;;
 		esac
-		[ -w "$phy/aql_enable" ] && echo 0 > "$phy/aql_enable" 2>/dev/null || true
-		[ -w "$phy/airtime_flags" ] && echo 0 > "$phy/airtime_flags" 2>/dev/null || true
+		if [ "$atf_en" = "0" ] || [ "$accel_en" = "0" ]; then
+			atf_flags=0
+		else
+			atf_flags=3
+		fi
+		[ -w "$phy/aql_enable" ] && echo 1 > "$phy/aql_enable" 2>/dev/null || true
+		[ -w "$phy/airtime_flags" ] && echo "$atf_flags" > "$phy/airtime_flags" 2>/dev/null || true
 		[ -w "$phy/mt76/implicit_txbf" ] && echo 1 > "$phy/mt76/implicit_txbf" 2>/dev/null || true
 		if [ "$is_high_band" -eq 1 ]; then
 			# 5 GHz / 6 GHz (HE80/HE160/EHT320): PHY rate 1200-2882 Mbps.
-			# Setting fq_quantum to 12288 (8 MTU frames per flow burst) with AQL throttling disabled
-			# allows mac80211 + mt76 to pack 3-MSDU hardware A-MSDUs and 64-frame A-MPDUs at full speed.
+			# AQL enabled (aql_enable=1) with 5ms/12ms limits (5000/12000 us) and fq_quantum 12288
+			# guarantees full 64-frame A-MPDU aggregation while enforcing Airtime Fairness (airtime_flags=3)
+			# against slow 1x1 VHT/HT clients and preventing driver ring bufferbloat.
 			[ -w "$phy/aql_threshold" ] && echo 24000 > "$phy/aql_threshold" 2>/dev/null || true
 			if [ -w "$phy/aql_txq_limit" ]; then
 				echo "0 5000 12000" > "$phy/aql_txq_limit" 2>/dev/null || true
@@ -423,10 +431,11 @@ start() {
 		sysctl -q -w net.core.rps_sock_flow_entries=0 2>/dev/null || true
 
 		local wan_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
-		local wifi_isolated_mask="$rps_mask"
+		local wan_sqm_mask="$rps_mask"
 		if [ "$cpu_cores" -eq 4 ] && grep -qE 'mt76|mt79|ath|qca' /proc/interrupts 2>/dev/null; then
-			# Reserve CPU 2 (0x4) exclusively for Wi-Fi hardware IRQ & RX/TX NAPI rings
-			wifi_isolated_mask="b"
+			# Dedicate CPU 3 (0x8) to WAN RX + ifb4pppoe-wan single-queue CAKE ingress (zero multi-CPU spinlock contention
+			# and zero TCP packet reordering), while CPU 2 (0x4) stays dedicated to Wi-Fi IRQ/NAPI/TX without cross-core IPIs.
+			wan_sqm_mask="8"
 		fi
 		for iface_dir in /sys/class/net/*; do
 			[ -d "$iface_dir" ] || continue
@@ -435,12 +444,9 @@ start() {
 			local rfs_target=0
 			case "$ifname" in
 				pppoe*)
-					rps_target="$wifi_isolated_mask"
+					rps_target="$wan_sqm_mask"
 					;;
-				phy*|wlan*|ath*|ra*)
-					[ "$cpu_cores" -ge 4 ] && rps_target=1 || rps_target=0
-					;;
-				lo|ifb*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|*)
+				lo|ifb*|br-*|phy*|wlan*|ath*|ra*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|*)
 					rps_target=0
 					;;
 			esac
@@ -596,7 +602,7 @@ start() {
 			nice -n 19 /usr/sbin/equipe-dashboard-control features >/dev/null 2>&1
 			logger -t ark-hardware-tune "Dashboard pre-caching completado com sucesso."
 		fi
-	) >/dev/null 2>&1 &
+	) </dev/null >/dev/null 2>&1 &
 
 	return 0
 }

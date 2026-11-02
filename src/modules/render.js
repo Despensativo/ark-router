@@ -1493,7 +1493,7 @@ const renderMethods = {
 			})(),
 			(isWifi6PlusSupported ? (function(){
 				const isWifi6Active = [w.r2g, w.r5g, w.r6g].some(function(r){
-					return r && (r.bss_color === 'auto' || String(r.twt_responder || '') === '1' || String(r.he_bss_color || '') === '1');
+					return r && (String(r.he_bss_color_enabled || '') === '1' || (Number(r.he_bss_color || 0) >= 1 && String(r.he_bss_color_enabled || '') !== '0') || r.bss_color === 'auto');
 				});
 				const wifi6Pill = E('span', { id: 'ex-wifi6-pill', class: 'ex-pill ' + (isWifi6Active ? 'online' : 'standby') }, [isWifi6Active ? 'ACELERAÇÃO ATIVA' : (isWifi7 ? 'WI-FI 7 READY' : 'WI-FI 6')]);
 				const wifi6TitleActions = E('div', { class: 'ex-card-title-actions' }, [
@@ -1509,13 +1509,13 @@ const renderMethods = {
 				const wifi6Body = E('div', { class: 'ex-card-collapse-body' }, [
 					E('div', { class: 'ex-card-collapse-inner' }, [
 						E('p', { class: 'ex-muted', style: 'margin: 6px 0 14px; line-height: 1.45; font-size: 13px;' }, [
-							'Otimizações de protocolo para redes densas e aparelhos modernos. Aumenta a velocidade real, reduz a latência e estende a bateria de celulares e laptops compatíveis.'
+							'Otimizações de protocolo para redes densas e aparelhos modernos. Aumenta a velocidade real, reduz a latência e protege o tempo de ar contra clientes legados.'
 						]),
 						E('div', { class: 'ex-channel-mode-control' }, [
 							E('div', {}, [
 								E('strong', {}, ['Aceleração Completa ' + (isWifi7 ? 'Wi-Fi 6 / 7' : 'Wi-Fi 6')]),
 								E('small', { id: 'ex-wifi6-summary', class: 'ex-muted' }, [
-									'Ativa BSS Coloring, Target Wake Time (TWT), OFDMA, Beamforming e Preamble Puncturing nos rádios.'
+									'Ativa BSS Coloring, Spatial Reuse (OBSS PD), SU Beamforming, Airtime Fairness (AQL) e proteção PMF nos rádios.'
 								])
 							]),
 							E('label', { class: 'ex-switch' }, [

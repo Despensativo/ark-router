@@ -1871,11 +1871,12 @@ ark_doctor_audit() {
 		local twt_mismatch=0
 		local legacy_mismatch=0
 		for r in $($uci_cmd show wireless 2>/dev/null | sed -n 's/^wireless\.\([a-zA-Z0-9_]*\)=wifi-device$/\1/p'); do
-			local cur_twt="$($uci_cmd get "wireless.$r.twt_responder" 2>/dev/null || echo '0')"
+			local cur_twt="$($uci_cmd get "wireless.$r.he_twt_required" 2>/dev/null || $uci_cmd get "wireless.$r.twt_responder" 2>/dev/null || echo '0')"
 			if [ "$cur_twt" = "1" ]; then
 				twt_mismatch=$((twt_mismatch + 1))
 				if [ "$auto_fix" = 1 ]; then
-					$uci_cmd set "wireless.$r.twt_responder=0"
+					$uci_cmd set "wireless.$r.he_twt_required=0"
+					$uci_cmd delete "wireless.$r.twt_responder" 2>/dev/null || true
 					wifi_needs_reload=1
 				fi
 			fi
@@ -1915,7 +1916,7 @@ ark_doctor_audit() {
 				mobile_iot_details="${mobile_iot_details} • Taxas legadas 802.11b ativas ($legacy_mismatch rádio(s) 2.4G)"
 			fi
 			if [ "$twt_mismatch" -gt 0 ]; then
-				mobile_iot_details="${mobile_iot_details} • TWT Responder ativo ($twt_mismatch rádio(s))"
+				mobile_iot_details="${mobile_iot_details} • TWT Required ativo ($twt_mismatch rádio(s))"
 			fi
 		fi
 
@@ -1923,13 +1924,13 @@ ark_doctor_audit() {
 			if [ "$auto_fix" = 1 ]; then
 				$uci_cmd commit wireless 2>/dev/null || true
 				fixes_applied=$((fixes_applied + 1))
-				add_check "Estabilidade Wi-Fi Mobile & IoT" "FIXED" "Parâmetros blindados: wpa_group_rekey=0 (fim das quedas cíclicas), sono blindado por hardware (skip_inactivity_poll=0, max_inactivity=86400), disassoc_low_ack=0, multicast_to_unicast=1, legacy_rates=0 e twt_responder=0 seguro."
+				add_check "Estabilidade Wi-Fi Mobile & IoT" "FIXED" "Parâmetros blindados: wpa_group_rekey=0 (fim das quedas cíclicas), sono blindado por hardware (skip_inactivity_poll=0, max_inactivity=86400), disassoc_low_ack=0, multicast_to_unicast=1, legacy_rates=0 e he_twt_required=0 seguro."
 			else
 				warnings=$((warnings + 1))
 				add_check "Estabilidade Wi-Fi Mobile & IoT" "WARN" "Configuração vulnerável a quedas no Galaxy S24 e IoT em repouso:${mobile_iot_details}."
 			fi
 		else
-			add_check "Estabilidade Wi-Fi Mobile & IoT" "OK" "Imune a quedas em repouso (wpa_group_rekey=0, sono blindado 24h, skip_inactivity_poll=0, disassoc_low_ack=0, multicast_to_unicast=1, legacy_rates=0 e twt_responder seguro)."
+			add_check "Estabilidade Wi-Fi Mobile & IoT" "OK" "Imune a quedas em repouso (wpa_group_rekey=0, sono blindado 24h, skip_inactivity_poll=0, disassoc_low_ack=0, multicast_to_unicast=1, legacy_rates=0 e he_twt_required=0 seguro)."
 		fi
 	fi
 

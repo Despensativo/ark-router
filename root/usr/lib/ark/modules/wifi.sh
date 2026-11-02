@@ -2152,29 +2152,46 @@ EOF
 		[ "$(uci -q get equipe_dashboard.wifi.wifi6_accel)" = "1" ] && accel_en=1
 		if [ "$accel_en" = 0 ]; then
 			for r in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut -d= -f1); do
-				if [ "$(uci -q get wireless.$r.bss_color)" = "auto" ] || [ "$(uci -q get wireless.$r.he_bss_color)" = "1" ] || [ "$(uci -q get wireless.$r.he_spatial_reuse)" = "1" ]; then
+				if [ "$(uci -q get wireless.$r.he_bss_color_enabled)" = "1" ] || [ "$(uci -q get wireless.$r.he_su_beamformer)" = "1" ] || [ "$(uci -q get wireless.$r.bss_color)" = "auto" ]; then
 					accel_en=1
 					break
 				fi
 			done
 		fi
-		bss_col=0; twt_val=0; punct_val=0; pmf_val=0
+		bss_col=0; twt_val=0; spr_val=0; su_bf=0; atf_val=0; pmf_val=0
 		for r in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut -d= -f1); do
-			[ "$(uci -q get wireless.$r.bss_color)" = "auto" ] && bss_col=1
-			[ "$(uci -q get wireless.$r.twt_responder)" = "1" ] && twt_val=1
-			[ "$(uci -q get wireless.$r.he_puncturing)" = "1" ] && punct_val=1
+			if [ "$(uci -q get wireless.$r.he_bss_color_enabled)" = "1" ] || [ -n "$(uci -q get wireless.$r.he_bss_color)" ]; then
+				bss_col=1
+			fi
+			[ "$(uci -q get wireless.$r.he_twt_required)" = "1" ] && twt_val=1
+			[ -n "$(uci -q get wireless.$r.he_spr_sr_control)" ] && spr_val=1
+			[ "$(uci -q get wireless.$r.he_su_beamformer)" = "1" ] && su_bf=1
+		done
+		if ls /var/run/hostapd-phy*.conf >/dev/null 2>&1; then
+			grep -q "^he_bss_color=" /var/run/hostapd-phy*.conf 2>/dev/null && bss_col=1 || bss_col=0
+			grep -q "^he_spr_sr_control=" /var/run/hostapd-phy*.conf 2>/dev/null && spr_val=1 || spr_val=0
+			grep -q "^he_su_beamformer=1" /var/run/hostapd-phy*.conf 2>/dev/null && su_bf=1 || su_bf=0
+			grep -q "^he_twt_required=1" /var/run/hostapd-phy*.conf 2>/dev/null && twt_val=1 || twt_val=0
+		fi
+		for phy in /sys/kernel/debug/ieee80211/phy*; do
+			[ -r "$phy/airtime_flags" ] || continue
+			if [ "$(cat "$phy/airtime_flags" 2>/dev/null)" != "0" ] && [ "$(cat "$phy/aql_enable" 2>/dev/null)" = "1" ]; then
+				atf_val=1
+			fi
 		done
 		for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
 			[ "$(uci -q get wireless.$iface.ieee80211w)" = "1" ] && pmf_val=1
 		done
-		printf '{"supported":%s,"enabled":%s,"is_wifi7":%s,"has_6g":%s,"bss_color":%s,"twt":%s,"puncturing":%s,"pmf":%s}\n' \
+		printf '{"supported":%s,"enabled":%s,"is_wifi7":%s,"has_6g":%s,"bss_color":%s,"spatial_reuse":%s,"su_beamformer":%s,"airtime_fairness":%s,"twt":%s,"pmf":%s}\n' \
 			"$([ "$is_sup" = 1 ] && echo true || echo false)" \
 			"$([ "$accel_en" = 1 ] && echo true || echo false)" \
 			"$([ "$sup_be" = 1 ] && echo true || echo false)" \
 			"$([ "$sup_6g" = 1 ] && echo true || echo false)" \
 			"$([ "$bss_col" = 1 ] && echo true || echo false)" \
+			"$([ "$spr_val" = 1 ] && echo true || echo false)" \
+			"$([ "$su_bf" = 1 ] && echo true || echo false)" \
+			"$([ "$atf_val" = 1 ] && echo true || echo false)" \
 			"$([ "$twt_val" = 1 ] && echo true || echo false)" \
-			"$([ "$punct_val" = 1 ] && echo true || echo false)" \
 			"$([ "$pmf_val" = 1 ] && echo true || echo false)"
 		;;
 	wifi-wifi6-toggle)
@@ -2201,21 +2218,26 @@ EOF
 				fi
 			fi
 			for r in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut -d= -f1); do
-				uci -q set "wireless.$r.bss_color=auto"
-				uci -q set "wireless.$r.he_bss_color=1"
-				uci -q set "wireless.$r.he_spatial_reuse=1"
-				uci -q set "wireless.$r.twt_responder=0"
+				# Remove chaves legadas nao reconhecidas pelo hostapd.uc / mac80211.sh
+				uci -q delete "wireless.$r.bss_color" 2>/dev/null || true
+				uci -q delete "wireless.$r.he_spatial_reuse" 2>/dev/null || true
+				uci -q delete "wireless.$r.twt_responder" 2>/dev/null || true
+				uci -q delete "wireless.$r.he_ul_mumimo" 2>/dev/null || true
+				uci -q delete "wireless.$r.he_ul_ofdma" 2>/dev/null || true
+				uci -q delete "wireless.$r.he_puncturing" 2>/dev/null || true
+				uci -q delete "wireless.$r.eht_puncturing" 2>/dev/null || true
+				# Chaves oficiais do schema OpenWrt (wireless.wifi-device.json / hostapd.uc)
+				uci -q set "wireless.$r.he_bss_color_enabled=1"
+				uci -q set "wireless.$r.he_bss_color=8"
+				uci -q set "wireless.$r.he_spr_sr_control=3"
+				uci -q set "wireless.$r.he_spr_psr_enabled=0"
+				uci -q set "wireless.$r.he_twt_required=0"
+				uci -q set "wireless.$r.airtime_mode=2"
 				uci -q set "wireless.$r.airtime_fairness=1"
 				uci -q set "wireless.$r.he_su_beamformer=1"
 				uci -q set "wireless.$r.he_su_beamformee=1"
 				uci -q set "wireless.$r.he_mu_beamformer=0"
 				uci -q set "wireless.$r.mu_beamformer=0"
-				uci -q set "wireless.$r.he_ul_mumimo=0"
-				uci -q set "wireless.$r.he_ul_ofdma=0"
-				uci -q set "wireless.$r.he_puncturing=1"
-				if [ "$sup_be" = 1 ]; then
-					uci -q set "wireless.$r.eht_puncturing=1"
-				fi
 			done
 			for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
 				mode="$(uci -q get wireless.$iface.mode || echo ap)"
@@ -2230,17 +2252,30 @@ EOF
 			uci -q set equipe_dashboard.wifi.wifi6_accel=1
 			uci commit equipe_dashboard 2>/dev/null || true
 			uci commit wireless
-			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			for phy in /sys/kernel/debug/ieee80211/phy*; do
+				[ -w "$phy/aql_enable" ] && echo 1 > "$phy/aql_enable" 2>/dev/null || true
+				[ -w "$phy/airtime_flags" ] && echo 3 > "$phy/airtime_flags" 2>/dev/null || true
+			done
+			(sleep 1; wifi reload; sleep 3; /etc/init.d/ark-hardware-tune reload) </dev/null >/dev/null 2>&1 &
 			echo 'enabled'
 		else
 			for r in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut -d= -f1); do
-				uci -q delete "wireless.$r.bss_color"
-				uci -q delete "wireless.$r.he_bss_color"
-				uci -q delete "wireless.$r.he_spatial_reuse"
-				uci -q delete "wireless.$r.twt_responder"
-				uci -q delete "wireless.$r.airtime_fairness"
-				uci -q delete "wireless.$r.he_puncturing"
-				uci -q delete "wireless.$r.eht_puncturing"
+				uci -q delete "wireless.$r.bss_color" 2>/dev/null || true
+				uci -q set "wireless.$r.he_bss_color_enabled=0"
+				uci -q delete "wireless.$r.he_bss_color" 2>/dev/null || true
+				uci -q delete "wireless.$r.he_spr_sr_control" 2>/dev/null || true
+				uci -q delete "wireless.$r.he_spr_psr_enabled" 2>/dev/null || true
+				uci -q delete "wireless.$r.he_spatial_reuse" 2>/dev/null || true
+				uci -q delete "wireless.$r.twt_responder" 2>/dev/null || true
+				uci -q delete "wireless.$r.he_twt_required" 2>/dev/null || true
+				uci -q delete "wireless.$r.airtime_mode" 2>/dev/null || true
+				uci -q set "wireless.$r.airtime_fairness=0"
+				uci -q set "wireless.$r.he_su_beamformer=0"
+				uci -q set "wireless.$r.he_su_beamformee=0"
+				uci -q delete "wireless.$r.he_ul_mumimo" 2>/dev/null || true
+				uci -q delete "wireless.$r.he_ul_ofdma" 2>/dev/null || true
+				uci -q delete "wireless.$r.he_puncturing" 2>/dev/null || true
+				uci -q delete "wireless.$r.eht_puncturing" 2>/dev/null || true
 			done
 			for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
 				enc="$(uci -q get wireless.$iface.encryption || echo '')"
@@ -2251,7 +2286,10 @@ EOF
 			uci -q set equipe_dashboard.wifi.wifi6_accel=0
 			uci commit equipe_dashboard 2>/dev/null || true
 			uci commit wireless
-			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			for phy in /sys/kernel/debug/ieee80211/phy*; do
+				[ -w "$phy/airtime_flags" ] && echo 0 > "$phy/airtime_flags" 2>/dev/null || true
+			done
+			(sleep 1; wifi reload; sleep 3; /etc/init.d/ark-hardware-tune reload) </dev/null >/dev/null 2>&1 &
 			echo 'disabled'
 		fi
 		;;

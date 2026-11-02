@@ -154,18 +154,23 @@ for dev in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut 
 	cur_ht="$(uci -q get wireless.$dev.htmode || true)"
 	case "$cur_ht" in
 		HE*|EHT*)
-			uci -q set "wireless.$dev.bss_color=auto"
-			uci -q set "wireless.$dev.he_bss_color=1"
-			uci -q set "wireless.$dev.he_spatial_reuse=1"
-			uci -q set "wireless.$dev.twt_responder=0"
+			uci -q delete "wireless.$dev.bss_color" 2>/dev/null || true
+			uci -q delete "wireless.$dev.he_spatial_reuse" 2>/dev/null || true
+			uci -q delete "wireless.$dev.twt_responder" 2>/dev/null || true
+			uci -q delete "wireless.$dev.he_ul_mumimo" 2>/dev/null || true
+			uci -q delete "wireless.$dev.he_ul_ofdma" 2>/dev/null || true
+			uci -q delete "wireless.$dev.he_puncturing" 2>/dev/null || true
+			uci -q set "wireless.$dev.he_bss_color_enabled=1"
+			uci -q set "wireless.$dev.he_bss_color=8"
+			uci -q set "wireless.$dev.he_spr_sr_control=3"
+			uci -q set "wireless.$dev.he_spr_psr_enabled=0"
+			uci -q set "wireless.$dev.he_twt_required=0"
+			uci -q set "wireless.$dev.airtime_mode=2"
 			uci -q set "wireless.$dev.airtime_fairness=1"
 			uci -q set "wireless.$dev.he_su_beamformer=1"
 			uci -q set "wireless.$dev.he_su_beamformee=1"
 			uci -q set "wireless.$dev.he_mu_beamformer=0"
 			uci -q set "wireless.$dev.mu_beamformer=0"
-			uci -q set "wireless.$dev.he_ul_mumimo=0"
-			uci -q set "wireless.$dev.he_ul_ofdma=0"
-			uci -q set "wireless.$dev.he_puncturing=1"
 			uci -q set equipe_dashboard.wifi=settings 2>/dev/null || true
 			uci -q set equipe_dashboard.wifi.wifi6_accel=1
 			changed=1

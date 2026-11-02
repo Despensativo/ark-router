@@ -69,15 +69,15 @@ const wifiMethods = {
 		const wifi6Toggle = document.getElementById('ex-wifi6-toggle');
 		if(wifi6Toggle && !wifi6Toggle.disabled){
 			const isWifi6Active = [w.r2g, w.r5g, w.r6g].some(function(r){
-				return r && (r.bss_color === 'auto' || String(r.twt_responder || '') === '1' || String(r.he_bss_color || '') === '1');
+				return r && (String(r.he_bss_color_enabled || '') === '1' || (Number(r.he_bss_color || 0) >= 1 && String(r.he_bss_color_enabled || '') !== '0') || r.bss_color === 'auto');
 			});
 			wifi6Toggle.checked = isWifi6Active;
 			setPill('ex-wifi6-pill', isWifi6Active ? 'online' : 'standby', isWifi6Active ? 'ACELERAÇÃO ATIVA' : 'STANDBY');
 			const wifi6Summary = document.getElementById('ex-wifi6-summary');
 			if(wifi6Summary){
 				wifi6Summary.textContent = isWifi6Active
-					? 'Ativo • BSS Coloring, TWT, OFDMA, Beamforming e Puncturing operando nos rádios.'
-					: 'Desativado • Recursos avançados de agregação e economia de bateria em espera.';
+					? 'Ativo • BSS Coloring, Spatial Reuse (OBSS PD), SU Beamforming, Airtime Fairness (AQL) e proteção PMF operando nos rádios.'
+					: 'Desativado • Recursos avançados de agregação, reúso espacial e justiça de tempo de ar em espera.';
 			}
 		}
 
