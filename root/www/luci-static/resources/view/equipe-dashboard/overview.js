@@ -22644,20 +22644,20 @@ const renderMethods = {
 						]),
 						E('div', { class: 'ex-grid ex-grid-2', style: 'margin-top: 14px; gap: 10px;' }, [
 							E('div', { style: 'background: rgba(255,255,255,0.03); padding: 10px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.06);' }, [
-								E('strong', { style: 'font-size: 12.5px; display: block; margin-bottom: 2px;' }, ['🎨 BSS Coloring & OFDMA']),
-								E('span', { style: 'font-size: 12px; color: rgba(255,255,255,0.65); line-height: 1.4;' }, ['Identifica e ignora redes de vizinhos no mesmo canal, multiplicando a capacidade em locais movimentados.'])
+								E('strong', { style: 'font-size: 12.5px; display: block; margin-bottom: 2px;' }, ['🎨 BSS Coloring & Spatial Reuse (OBSS PD)']),
+								E('span', { style: 'font-size: 12px; color: rgba(255,255,255,0.65); line-height: 1.4;' }, ['Marca quadros com cor de célula (he_bss_color) e reusa o espectro ignorando redes vizinhas distantes.'])
 							]),
 							E('div', { style: 'background: rgba(255,255,255,0.03); padding: 10px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.06);' }, [
-								E('strong', { style: 'font-size: 12.5px; display: block; margin-bottom: 2px;' }, ['🔋 Target Wake Time (TWT)']),
-								E('span', { style: 'font-size: 12px; color: rgba(255,255,255,0.65); line-height: 1.4;' }, ['Negocia horários de transmissão para celulares e IoT dormirem quando ociosos, poupando até 67% de bateria.'])
+								E('strong', { style: 'font-size: 12.5px; display: block; margin-bottom: 2px;' }, ['⚖️ Airtime Fairness & Controle AQL']),
+								E('span', { style: 'font-size: 12px; color: rgba(255,255,255,0.65); line-height: 1.4;' }, ['Contabiliza TX/RX no kernel (airtime_flags=3 e AQL) para impedir que clientes 1x1 lentos roubem tempo de ar.'])
 							]),
 							E('div', { style: 'background: rgba(255,255,255,0.03); padding: 10px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.06);' }, [
-								E('strong', { style: 'font-size: 12.5px; display: block; margin-bottom: 2px;' }, ['📡 Beamforming & MU-MIMO']),
-								E('span', { style: 'font-size: 12px; color: rgba(255,255,255,0.65); line-height: 1.4;' }, ['Focaliza o sinal de rádio diretamente na direção dos seus aparelhos em vez de espalhar em círculo.'])
+								E('strong', { style: 'font-size: 12.5px; display: block; margin-bottom: 2px;' }, ['📡 SU Beamforming Direcional (iBF / eBF)']),
+								E('span', { style: 'font-size: 12px; color: rgba(255,255,255,0.65); line-height: 1.4;' }, ['Focaliza o feixe de rádio Single-User diretamente no cliente sem perdas de sounding MU-MIMO em 160 MHz.'])
 							]),
 							E('div', { style: 'background: rgba(255,255,255,0.03); padding: 10px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.06);' }, [
-								E('strong', { style: 'font-size: 12.5px; display: block; margin-bottom: 2px;' }, ['⚡ Preamble Puncturing']),
-								E('span', { style: 'font-size: 12px; color: rgba(255,255,255,0.65); line-height: 1.4;' }, ['Permite canais largos (80/160/320 MHz) mesmo se houver interferência pontual em uma sub-faixa.'])
+								E('strong', { style: 'font-size: 12.5px; display: block; margin-bottom: 2px;' }, ['🛡️ Proteção PMF (802.11w) & Sono Mobile']),
+								E('span', { style: 'font-size: 12px; color: rgba(255,255,255,0.65); line-height: 1.4;' }, ['Criptografa quadros de gerência e blinda sessões em repouso (TWT desligado e inatividade 24h) para iOS/Android.'])
 							])
 						])
 					])
