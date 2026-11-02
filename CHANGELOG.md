@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.8
+
+- **🚀 Motor SQM/CAKE Next-Gen (Inspirado no QoSmate + Qosify + `cake_mq`) & Unificação de Baixa Latência Nativa (01/11/2026)**:
+  - **Auto-Classificação DSCP Zero-Config + Persistência Bidirecional `ct mark` (`0x80 | dscp`)**: Regras em `/etc/nftables.d/15-ark-dscp-priority.nft` (e paridade em `fw3` legado) classificam automaticamente jogos em tempo real (portas competitivas e heurística comportamental UDP `<= 256B` ➔ `CS4`), VoIP/Discord (`5060–5061`, `50000–50100` ➔ `CS4`), videoconferências WebRTC/Zoom/Teams (`3478–3497`, `8801–8810` ➔ `AF41`), DNS/NTP/DHCP (`CS6`) e BitTorrent/P2P (`6881–6889`, `51413` ➔ `CS1` Bulk), gravando no `ct mark` (byte inferior `0x000000ff`, preservando `mwan3` em `0xffffff00`) e restaurando o DSCP nos pacotes de Download para priorização direta no Wi-Fi WMM e `mac80211` AQL.
+  - **Inteligência Adaptativa de `ack-filter`, `rtt` e `cake_mq` (`sqm.sh` & `doctor.sh`)**: Ativação dinâmica de `ack-filter` exclusivamente em conexões assimétricas ($\ge 5:1$) e `no-ack-filter` em fibra simétrica; `rtt 100ms` (`target 5ms`) calibrado para rajadas GRO de 68 KB em fibra de alta velocidade e `rtt 150ms` para Starlink/Satélite; promoção seletiva para `cake_mq` apenas em interfaces físicas multi-fila reais (`queues/tx-1`) mantendo `use_mq=0`, `rps_cpus=0` e `rx-gro-list off` nas interfaces virtuais `ifb4*` (prevenindo o bug `capacity estimate: 0bit` do `cake_mq + ingress` no Kernel 6.12).
+  - **Simplificação da Interface (Remoção do "Modo Gamer" Redundante)**: Como todas as otimizações de baixa latência, anti-bufferbloat e priorização de jogos agora operam 100% do tempo por padrão, o botão/seletor de perfil operacional "Modo Gamer" foi removido da interface.
+  - **Empacotamento Local v2.1.8-r1**: Pacotes APK e IPK compilados localmente com auditoria completa aprovada.
+
 ## 2.1.7
 
 - **⚡ Controle Direto de Potência Wi-Fi (dBm) & Blindagem Automática do LuCI (31/10/2026)**:

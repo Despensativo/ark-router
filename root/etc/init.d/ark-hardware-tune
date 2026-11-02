@@ -290,12 +290,24 @@ start() {
 			iptables -t mangle -A PREROUTING -p udp --dport 53 -j DSCP --set-dscp-class cs6 2>/dev/null || true
 			iptables -t mangle -C PREROUTING -p tcp --dport 53 -j DSCP --set-dscp-class cs6 >/dev/null 2>&1 || \
 			iptables -t mangle -A PREROUTING -p tcp --dport 53 -j DSCP --set-dscp-class cs6 2>/dev/null || true
+			iptables -t mangle -C PREROUTING -p udp --dport 123 -j DSCP --set-dscp-class cs6 >/dev/null 2>&1 || \
+			iptables -t mangle -A PREROUTING -p udp --dport 123 -j DSCP --set-dscp-class cs6 2>/dev/null || true
 			iptables -t mangle -C PREROUTING -p tcp --tcp-flags SYN,RST,FIN SYN -j DSCP --set-dscp-class cs5 >/dev/null 2>&1 || \
 			iptables -t mangle -A PREROUTING -p tcp --tcp-flags SYN,RST,FIN SYN -j DSCP --set-dscp-class cs5 2>/dev/null || true
 			iptables -t mangle -C PREROUTING -p udp --dport 3478:3497 -j DSCP --set-dscp-class af41 >/dev/null 2>&1 || \
 			iptables -t mangle -A PREROUTING -p udp --dport 3478:3497 -j DSCP --set-dscp-class af41 2>/dev/null || true
 			iptables -t mangle -C PREROUTING -p udp --sport 3478:3497 -j DSCP --set-dscp-class af41 >/dev/null 2>&1 || \
 			iptables -t mangle -A PREROUTING -p udp --sport 3478:3497 -j DSCP --set-dscp-class af41 2>/dev/null || true
+			iptables -t mangle -C PREROUTING -p udp --dport 8801:8810 -j DSCP --set-dscp-class af41 >/dev/null 2>&1 || \
+			iptables -t mangle -A PREROUTING -p udp --dport 8801:8810 -j DSCP --set-dscp-class af41 2>/dev/null || true
+			iptables -t mangle -C PREROUTING -p udp --dport 50000:50100 -j DSCP --set-dscp-class cs4 >/dev/null 2>&1 || \
+			iptables -t mangle -A PREROUTING -p udp --dport 50000:50100 -j DSCP --set-dscp-class cs4 2>/dev/null || true
+			iptables -t mangle -C PREROUTING -p tcp --dport 6881:6889 -j DSCP --set-dscp-class cs1 >/dev/null 2>&1 || \
+			iptables -t mangle -A PREROUTING -p tcp --dport 6881:6889 -j DSCP --set-dscp-class cs1 2>/dev/null || true
+			iptables -t mangle -C PREROUTING -p udp --dport 6881:6889 -j DSCP --set-dscp-class cs1 >/dev/null 2>&1 || \
+			iptables -t mangle -A PREROUTING -p udp --dport 6881:6889 -j DSCP --set-dscp-class cs1 2>/dev/null || true
+			iptables -t mangle -C PREROUTING -i br-lan -p udp ! --dport 53 ! --dport 443 -m length --length 0:256 -m dscp --dscp 0 -j DSCP --set-dscp-class cs4 >/dev/null 2>&1 || \
+			iptables -t mangle -A PREROUTING -i br-lan -p udp ! --dport 53 ! --dport 443 -m length --length 0:256 -m dscp --dscp 0 -j DSCP --set-dscp-class cs4 2>/dev/null || true
 		fi
 
 	# -------------------------------------------------------------------------
@@ -323,7 +335,7 @@ start() {
 			local rps_target="$rps_mask"
 			local rfs_target=2048
 			case "${iface_dir##*/}" in
-				lo|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
+				lo|ifb*|pppoe*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
 					rps_target=0
 					rfs_target=0
 					;;
@@ -377,7 +389,7 @@ start() {
 			local rps_target="$rps_mask"
 			local rfs_target=4096
 			case "${iface_dir##*/}" in
-				lo|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
+				lo|ifb*|pppoe*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
 					rps_target=0
 					rfs_target=0
 					;;
@@ -453,7 +465,7 @@ start() {
 			local rps_target="$rps_mask"
 			local rfs_target="$rfs_flow_cnt"
 			case "${iface_dir##*/}" in
-				lo|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
+				lo|ifb*|pppoe*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
 					rps_target=0
 					rfs_target=0
 					;;

@@ -5,7 +5,7 @@
 [ -z "${_ARK_COMMON_SH_LOADED:-}" ] || return 0
 _ARK_COMMON_SH_LOADED=1
 
-ARK_ROUTER_VERSION="2.1.7"
+ARK_ROUTER_VERSION="2.1.8"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 ARK_ROOT="${ARK_ROOT:-}"
 
@@ -1215,17 +1215,20 @@ ark_ensure_phys_device_mtu() {
 
 # Garante TCP MSS Clamping dinamico por rota (mtu_fix=1) na zona WAN do firewall (Single-WAN e Multi-WAN)
 ark_ensure_wan_mtu_fix() {
-	local z
+	local z z_name
 	local root_prefix="${ARK_ROOT:-}"
 	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
 	local changed=0
 	for z in $($uci_cmd show firewall 2>/dev/null | sed -n 's/^firewall\.\([^.=]*\)=zone$/\1/p'); do
-		if [ "$($uci_cmd get "firewall.$z.name")" = "wan" ]; then
-			if [ "$($uci_cmd get "firewall.$z.mtu_fix")" != "1" ]; then
-				$uci_cmd set "firewall.$z.mtu_fix=1"
-				changed=1
-			fi
-		fi
+		z_name="$($uci_cmd get "firewall.$z.name" 2>/dev/null || echo '')"
+		case "$z_name" in
+			wan*)
+				if [ "$($uci_cmd get "firewall.$z.mtu_fix" 2>/dev/null || echo '')" != "1" ]; then
+					$uci_cmd set "firewall.$z.mtu_fix=1"
+					changed=1
+				fi
+				;;
+		esac
 	done
 	if [ "$changed" = 1 ]; then
 		uci ${root_prefix:+-c "$root_prefix/etc/config"} commit firewall 2>/dev/null || true
@@ -1443,6 +1446,9 @@ sqm_device_for_network() {
 		return 0
 	fi
 	device="$(ubus call "network.interface.$network_section" status 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null)"
+	case "$device" in
+		pppoe-*) [ "$proto" = pppoe ] || device="" ;;
+	esac
 	[ -n "$device" ] || device="$(uci -q get "network.$network_section.device")"
 	[ -n "$device" ] || device="$network_section"
 	printf '%s' "$device"

@@ -454,7 +454,18 @@ dns_turbo_doh_toggle() {
 	alls="$(uci -q get equipe_perf.settings.dns_allservers || uci -q get dhcp.@dnsmasq[0].allservers || echo 1)"
 	fallback="$(uci -q get equipe_perf.settings.dns_dhcp_fallback || echo 1)"
 	cache_sz="$(uci -q get dhcp.@dnsmasq[0].cachesize || echo 2500)"
-	servers="$(uci -q get equipe_perf.settings.dns_servers || echo '1.1.1.1 2606:4700:4700::1111 8.8.8.8 2001:4860:4860::8888')"
+	servers="$(uci -q get equipe_perf.settings.dns_servers || echo '')"
+	if [ -z "$servers" ]; then
+		local wan_proto="" w_p
+		for w_p in $(uci -q show network 2>/dev/null | sed -n 's/^network\.\(wan[0-9]*\)=interface$/\1/p'); do
+			[ "$(uci -q get "network.$w_p.proto" 2>/dev/null)" = "pppoe" ] && wan_proto="pppoe"
+		done
+		if [ "$wan_proto" = "pppoe" ]; then
+			servers='8.8.8.8 2001:4860:4860::8888 1.1.1.1 2606:4700:4700::1111'
+		else
+			servers='1.1.1.1 2606:4700:4700::1111 8.8.8.8 2001:4860:4860::8888'
+		fi
+	fi
 	# shellcheck disable=SC2086
 	set -- $servers
 	s1="${1:-1.1.1.1}"

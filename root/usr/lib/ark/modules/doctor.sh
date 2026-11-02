@@ -255,10 +255,16 @@ ark_doctor_audit() {
 					if [ "$ov_mismatch" = 1 ]; then
 						if [ "$auto_fix" = 1 ]; then
 							uci -q set "sqm.$sqm_sec.linklayer=$exp_ll"
+							uci -q set "sqm.$sqm_sec.linklayer_advanced=1"
 							uci -q set "sqm.$sqm_sec.overhead=$exp_ov"
+							uci -q set "sqm.$sqm_sec.tcMTU=2047"
+							uci -q set "sqm.$sqm_sec.tcTSIZE=512"
+							uci -q set "sqm.$sqm_sec.tcMPU=$exp_mpu"
 							uci -q set "sqm.$sqm_sec.mpu=$exp_mpu"
+							uci -q set "sqm.$sqm_sec.linklayer_adaptation_mechanism=default"
 							uci commit sqm
 							[ "$sqm_enabled" = 1 ] && [ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
+							command -v ark_promote_cake_mq >/dev/null 2>&1 && ark_promote_cake_mq
 							fixes_applied=$((fixes_applied + 1))
 							add_check "SQM Overhead $wan" "FIXED" "Overhead corrigido de '${cur_ov:-0}B' para ${exp_ov}B ($exp_ll, mpu $exp_mpu) para $ov_reason."
 						else
@@ -272,14 +278,33 @@ ark_doctor_audit() {
 
 				local exp_mlim="64M"
 				command -v ark_cake_memlimit >/dev/null 2>&1 && exp_mlim="$(ark_cake_memlimit)"
+				local down_doc="$(uci -q get "sqm.$sqm_sec.download" || echo 0)"
+				local up_doc="$(uci -q get "sqm.$sqm_sec.upload" || echo 0)"
+				local exp_ack="no-ack-filter"
+				command -v ark_sqm_ack_filter_opt >/dev/null 2>&1 && exp_ack="$(ark_sqm_ack_filter_opt "$down_doc" "$up_doc")"
+				local exp_irtt="rtt 100ms"
+				command -v ark_sqm_ingress_rtt_opt >/dev/null 2>&1 && exp_irtt="$(ark_sqm_ingress_rtt_opt "$wan")"
+				local exp_imode=""
+				command -v ark_sqm_ingress_mode_opt >/dev/null 2>&1 && exp_imode="$(ark_sqm_ingress_mode_opt "$down_doc" "$wan")"
 				cur_iq="$(uci -q get "sqm.$sqm_sec.iqdisc_opts")"
 				cur_eq="$(uci -q get "sqm.$sqm_sec.eqdisc_opts")"
-				if [ "$(uci -q get "sqm.$sqm_sec.squash_ingress" || echo 1)" = "1" ] && { printf '%s' "$cur_iq" | grep -qw 'diffserv4' || ! printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || printf '%s' "$cur_eq" | grep -qw 'rtt 50ms' || printf '%s' "$cur_eq" | grep -qw 'ack-filter' || ! printf '%s' "$cur_iq" | grep -q "memlimit $exp_mlim" || ! printf '%s' "$cur_eq" | grep -q "memlimit $exp_mlim"; }; then
+				if [ "$(uci -q get "sqm.$sqm_sec.squash_ingress" || echo 1)" = "1" ] && { printf '%s' "$cur_iq" | grep -qw 'diffserv4' || printf '%s' "$cur_iq" | grep -q 'rtt 50ms' || ! printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || { [ -z "$exp_imode" ] && printf '%s' "$cur_iq" | grep -qw 'ingress'; } || { [ -n "$exp_imode" ] && ! printf '%s' "$cur_iq" | grep -qw 'ingress'; } || printf '%s' "$cur_eq" | grep -qw 'rtt 50ms' || ! printf '%s' "$cur_eq" | grep -qw "$exp_ack" || ! printf '%s' "$cur_iq" | grep -q "memlimit $exp_mlim" || ! printf '%s' "$cur_eq" | grep -q "memlimit $exp_mlim"; }; then
 					if [ "$auto_fix" = 1 ]; then
-						[ -n "$cur_iq" ] || cur_iq="besteffort nat dual-dsthost wash ingress"
+						uci -q set "sqm.$sqm_sec.qdisc_advanced=1"
+						uci -q set "sqm.$sqm_sec.qdisc_really_really_advanced=1"
+						[ -n "$cur_iq" ] || cur_iq="besteffort nat dual-dsthost wash"
 						cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bdiffserv4\b/besteffort/g')"
 						printf '%s' "$cur_iq" | grep -qw 'wash' || cur_iq="$cur_iq wash"
-						printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || cur_iq="$cur_iq rtt 50ms"
+						if printf '%s' "$cur_iq" | grep -q 'rtt 50ms'; then
+							cur_iq="$(printf '%s' "$cur_iq" | sed "s/rtt 50ms/$exp_irtt/g")"
+						elif ! printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)'; then
+							cur_iq="$cur_iq $exp_irtt"
+						fi
+						if [ -z "$exp_imode" ] && printf '%s' "$cur_iq" | grep -qw 'ingress'; then
+							cur_iq="$(printf '%s' "$cur_iq" | sed -E 's/(^| )ingress( |$)/ /g' | tr -s ' ' | sed 's/^ //; s/ $//')"
+						elif [ -n "$exp_imode" ] && ! printf '%s' "$cur_iq" | grep -qw 'ingress'; then
+							cur_iq="$cur_iq ingress"
+						fi
 						if printf '%s' "$cur_iq" | grep -q 'memlimit'; then
 							cur_iq="$(printf '%s' "$cur_iq" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $exp_mlim/g")"
 						else
@@ -287,18 +312,22 @@ ark_doctor_audit() {
 						fi
 						uci -q set "sqm.$sqm_sec.iqdisc_opts=$cur_iq"
 
-						[ -n "$cur_eq" ] || cur_eq="diffserv4 nat dual-srchost wash no-ack-filter"
+						[ -n "$cur_eq" ] || cur_eq="diffserv4 nat dual-srchost wash $exp_ack"
 						printf '%s' "$cur_eq" | grep -qw 'wash' || cur_eq="$cur_eq wash"
 						# Egress uses standard 100ms RTT / 5ms target - strip rtt 50ms from upload
 						cur_eq="$(printf '%s' "$cur_eq" | sed 's/ *rtt 50ms//g')"
-						# Symmetrical connections: use no-ack-filter to prevent TCP stalls
-						if printf '%s' "$cur_eq" | grep -qw 'ack-filter' || printf '%s' "$cur_eq" | grep -qw 'no-no-ack-filter'; then
-							cur_eq="$(printf '%s' "$cur_eq" | sed -E 's/(^| )ack-filter( |$)/\1no-ack-filter\2/g; s/no-no-ack-filter/no-ack-filter/g')"
+						# Symmetrical vs Asymmetrical (>= 5:1) ACK Filter intelligence
+						if ! printf '%s' "$cur_eq" | grep -qw "$exp_ack" || printf '%s' "$cur_eq" | grep -qw 'no-no-ack-filter'; then
+							cur_eq="$(printf '%s' "$cur_eq" | sed -E 's/(^| )(no-)*ack-filter( |$)/\1'"$exp_ack"'\3/g')"
+							printf '%s' "$cur_eq" | grep -qw "$exp_ack" || cur_eq="$cur_eq $exp_ack"
 						fi
 						if printf '%s' "$cur_eq" | grep -q 'memlimit'; then
 							cur_eq="$(printf '%s' "$cur_eq" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $exp_mlim/g")"
 						else
 							cur_eq="$cur_eq memlimit $exp_mlim"
+						fi
+						if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
+							printf '%s' "$cur_eq" | grep -qw 'no-split-gso' || cur_eq="$cur_eq no-split-gso"
 						fi
 						uci -q set "sqm.$sqm_sec.eqdisc_opts=$cur_eq"
 
@@ -307,6 +336,7 @@ ark_doctor_audit() {
 						fixes_applied=$((fixes_applied + 1))
 					fi
 				fi
+				command -v ark_promote_cake_mq >/dev/null 2>&1 && ark_promote_cake_mq
 			else
 				add_check "SQM $wan" "OK" "Desativado (toggle desligado no painel)."
 			fi
@@ -419,6 +449,8 @@ ark_doctor_audit() {
 			fi
 		fi
 	done
+	command -v ark_ensure_wan_mtu_fix >/dev/null 2>&1 && ark_ensure_wan_mtu_fix
+	command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
 
 	has_ppe=0
 	if [ -e /sys/kernel/debug/ppe0 ] || [ -e /sys/kernel/debug/ppe1 ] || [ -d /sys/devices/platform/soc/15010000.wed ] || \
@@ -2129,7 +2161,18 @@ ark_doctor_audit() {
 					add_check "Transporte Criptografado Dual-DoH" "WARN" "Dual-DoH habilitado, porem dnsmasq nao estava apontando para 127.0.0.1#5053/#5054."
 				fi
 			else
-				add_check "Transporte Criptografado Dual-DoH" "OK" "Tunel TLS 1.3 Dual-DoH (127.0.0.1:5053 e :5054) ativo e vinculado ao dnsmasq."
+				if [ -z "${ARK_ROOT}" ] && [ -x /etc/init.d/https-dns-proxy ] && ! pgrep -f https-dns-proxy >/dev/null 2>&1; then
+					if [ "$auto_fix" = 1 ]; then
+						/etc/init.d/https-dns-proxy restart >/dev/null 2>&1 || true
+						fixes_applied=$((fixes_applied + 1))
+						add_check "Transporte Criptografado Dual-DoH" "FIXED" "Processo https-dns-proxy estava inativo e foi reiniciado com sucesso."
+					else
+						warnings=$((warnings + 1))
+						add_check "Transporte Criptografado Dual-DoH" "WARN" "Dual-DoH habilitado, porem o daemon https-dns-proxy nao esta em execucao."
+					fi
+				else
+					add_check "Transporte Criptografado Dual-DoH" "OK" "Tunel TLS 1.3 Dual-DoH (127.0.0.1:5053 e :5054) ativo e vinculado ao dnsmasq."
+				fi
 			fi
 		fi
 	fi

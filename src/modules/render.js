@@ -117,7 +117,6 @@ const renderMethods = {
 				}
 			}
 		}
-		const isGamer=(this.capabilities&&this.capabilities.operation_profile)==='gamer';
 		const isApMode=(this.capabilities&&this.capabilities.network_mode)==='ap';
 		const hw = (data && data.hardwareInfo) || (this.capabilities && this.capabilities.hardware) || {};
 		const capHw = (this.capabilities && this.capabilities.hardware) || {};
@@ -128,8 +127,7 @@ const renderMethods = {
 		const isWifi6PlusSupported = !!(hw.wifi_ax_supported || capHw.wifi_ax_supported || (hw.wifi && hw.wifi.wifi_ax) || hw.wifi_be_supported || capHw.wifi_be_supported || (hw.wifi && hw.wifi.wifi_be));
 		const isWifi7 = !!(hw.wifi_be_supported || capHw.wifi_be_supported || (hw.wifi && hw.wifi.wifi_be) || silClass === 'qualcomm_ipq');
 		const has6gBand = !!(hw.wifi_6g_supported || capHw.wifi_6g_supported || (hw.wifi && hw.wifi.wifi_6g) || w.has6g);
-		const heroEyebrow=isApMode?_t('📡 ROTEADOR SECUNDÁRIO • PONTO ADICIONAL & SWITCH'):(isGamer?_t('🎮 MODO GAMER • BAIXA LATÊNCIA'):_t('CENTRAL DE OPERAÇÕES'));
-		const gamerButton=E('button',{class:'ex-hero-feature-button '+(isGamer?'ex-hero-gamer-active':'ex-hero-gamer-btn'),'click':L.bind(this.switchProfile,this,isGamer?'standard':'gamer')},[isGamer?'🎮 GAMER ATIVO':'🎮 Modo Gamer']);
+		const heroEyebrow=isApMode?_t('📡 ROTEADOR SECUNDÁRIO • PONTO ADICIONAL & SWITCH'):_t('CENTRAL DE OPERAÇÕES');
 		const opModeButton=E('button',{class:'ex-hero-feature-button ex-hero-opmode-btn',style:isApMode?'border-color:#3b82f6;color:#60a5fa;font-weight:700;':'font-weight:650;','click':L.bind(this.showNetworkModeModal,this)},[isApMode?'📡 Roteador Secundário / AP':'🌐 Modo Roteador']);
 		const langBadge = dashboardLanguage === 'en' ? '🌐 🇺🇸 EN' : (dashboardLanguage === 'es' ? '🌐 🇪🇸 ES' : '🌐 🇧🇷 PT');
 		const languageButton = E('button', {
@@ -544,7 +542,7 @@ const renderMethods = {
 		]);
 
 		const root=E('div',{class:'ex-dashboard'},[
-			E('section',{class:'ex-hero'+(isGamer?' ex-hero-gamer':'')},[E('div',{},[E('span',{class:'ex-eyebrow'},[heroEyebrow]),E('h2',{},[panelTitle]),E('p',{},[this.board.model||'OpenWrt','  •  ',release,'  •  ARK Router ',arkVersion]),E('div',{id:'ex-speedify-top',class:'ex-hero-speedify standby',style:'display:none'},[E('span',{},['Speedify']),E('strong',{},['—']),E('small',{},['—'])])]),E('div',{class:'ex-hero-status'},[E('span',{id:'ex-global-status',class:'ex-pill standby'},['VERIFICANDO']),E('div',{id:'ex-clock-wrap',class:'ex-clock-wrap',style:'cursor:pointer;display:flex;flex-direction:column;align-items:inherit;gap:2px;margin:2px 0;',title:'Ajustar relógio e fuso horário do roteador','click':L.bind(this.showNtpModal,this)},[E('span',{id:'ex-date',style:'font-size:0.78rem;font-weight:600;opacity:0.85;letter-spacing:0.02em;'},['--/--/----']),E('strong',{id:'ex-clock',style:'font-size:1.45rem;font-variant-numeric:tabular-nums;line-height:1.15;'},['--:--:--'])]),E('small',{id:'ex-refresh-summary'},['sessão de 12 horas • atualização a cada 3 segundos']),E('div',{class:'ex-hero-actions'},[gamerButton,opModeButton,languageButton,E('button',{class:'ex-hero-feature-button ex-hero-setup-button','click':L.bind(this.showEzSetup,this)},['Ark - Setup']),E('button',{class:'ex-hero-feature-button','click':L.bind(this.showFeatureCenter,this)},['Recursos'])])])]),
+			E('section',{class:'ex-hero'},[E('div',{},[E('span',{class:'ex-eyebrow'},[heroEyebrow]),E('h2',{},[panelTitle]),E('p',{},[this.board.model||'OpenWrt','  •  ',release,'  •  ARK Router ',arkVersion]),E('div',{id:'ex-speedify-top',class:'ex-hero-speedify standby',style:'display:none'},[E('span',{},['Speedify']),E('strong',{},['—']),E('small',{},['—'])])]),E('div',{class:'ex-hero-status'},[E('span',{id:'ex-global-status',class:'ex-pill standby'},['VERIFICANDO']),E('div',{id:'ex-clock-wrap',class:'ex-clock-wrap',style:'cursor:pointer;display:flex;flex-direction:column;align-items:inherit;gap:2px;margin:2px 0;',title:'Ajustar relógio e fuso horário do roteador','click':L.bind(this.showNtpModal,this)},[E('span',{id:'ex-date',style:'font-size:0.78rem;font-weight:600;opacity:0.85;letter-spacing:0.02em;'},['--/--/----']),E('strong',{id:'ex-clock',style:'font-size:1.45rem;font-variant-numeric:tabular-nums;line-height:1.15;'},['--:--:--'])]),E('small',{id:'ex-refresh-summary'},['sessão de 12 horas • atualização a cada 3 segundos']),E('div',{class:'ex-hero-actions'},[opModeButton,languageButton,E('button',{class:'ex-hero-feature-button ex-hero-setup-button','click':L.bind(this.showEzSetup,this)},['Ark - Setup']),E('button',{class:'ex-hero-feature-button','click':L.bind(this.showFeatureCenter,this)},['Recursos'])])])]),
 			E('div',{id:'ex-update-banner-container'}),
 			E('div',{id:'ex-doctor-banner',class:'ex-doctor-banner',style:'display:none;'}),
 			E('section',{class:'ex-card ex-health-strip'},[

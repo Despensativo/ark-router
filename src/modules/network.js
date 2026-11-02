@@ -384,7 +384,6 @@ const networkMethods = {
 			return;
 		}
 		const desired=!!input.checked;input.checked=!desired;
-		const isGamerActive=(this.capabilities&&this.capabilities.operation_profile)==='gamer';
 		const isEconomic = this.isEconomicHardware ? this.isEconomicHardware(this.currentData) : false;
 		const hw = (this.currentData && this.currentData.hardwareInfo) || (this.capabilities && this.capabilities.hardware) || {};
 		const silicon = hw.silicon || {};
@@ -428,18 +427,14 @@ const networkMethods = {
 				]));
 			}
 		} else {
-			if (isGamerActive) {
-				elements.push(E('p', {class:'alert-message danger'}, ['⚠️ ' + _t('Atenção: O Modo Gamer está ATIVO! Ao desligar o SQM / CAKE, a proteção anti-bufferbloat será desativada e o painel retornará automaticamente ao Modo Padrão.')]));
-			} else {
-				elements.push(E('p', {class:'alert-message warning'}, [_t('O SQM será desligado e o serviço será reiniciado. A internet pode pausar por alguns segundos.')]));
-			}
+			elements.push(E('p', {class:'alert-message warning'}, [_t('O SQM será desligado e o serviço será reiniciado. A internet pode pausar por alguns segundos.')]));
 		}
 
 		const confirmBtn = E('button', {
 			class: 'btn cbi-button ' + (desired ? 'cbi-button-positive' : 'cbi-button-negative'),
 			style: 'font-weight: bold;',
 			disabled: (desired && isEconomic) ? '' : null
-		}, [(desired && isEconomic) ? _t('Aguarde 3 s') : (desired ? _t('Confirmar') : (isGamerActive ? _t('Desativar SQM e Desligar Gamer') : _t('Confirmar')))]);
+		}, [(desired && isEconomic) ? _t('Aguarde 3 s') : _t('Confirmar')]);
 
 		if (desired && isEconomic) {
 			const started = Date.now();
@@ -470,9 +465,6 @@ const networkMethods = {
 			btn.disabled = true;
 			btn.textContent = _t('Aplicando…');
 			const actions = [fs.exec('/usr/sbin/equipe-dashboard-control', ['sqm-toggle', desired?'1':'0'])];
-			if (!desired && isGamerActive) {
-				actions.push(fs.exec('/usr/sbin/equipe-dashboard-control', ['profile', 'standard']));
-			}
 			return Promise.all(actions).then(L.bind(function(r){
 				const res = r[0] || {};
 				if(res.code) throw new Error(res.stderr || 'Falha ao alterar o SQM');
@@ -651,8 +643,8 @@ const networkMethods = {
 				// 3. Link Layer Overhead & CAKE Parameters
 				const curLinklayer = queue.linklayer || 'none';
 				const curOverhead = parseInt(queue.overhead || 0, 10);
-				const curEqdisc = queue.eqdisc_opts || ('diffserv4 nat dual-srchost ack-filter wash memlimit ' + cakeMemlimit);
-				const curIqdisc = queue.iqdisc_opts || ('besteffort nat dual-dsthost wash ingress rtt 50ms memlimit ' + cakeMemlimit);
+				const curEqdisc = queue.eqdisc_opts || ('diffserv4 nat dual-srchost no-ack-filter wash memlimit ' + cakeMemlimit);
+				const curIqdisc = queue.iqdisc_opts || ('besteffort nat dual-dsthost wash ingress rtt 100ms memlimit ' + cakeMemlimit);
 
 				const isPppoe = profile.proto === 'pppoe' || String(profile.device || '').indexOf('pppoe') === 0;
 				const optimalOverheadVal = isPppoe ? 'ethernet|44' : 'ethernet|18';
@@ -950,7 +942,7 @@ const networkMethods = {
 				if (editor.chkAck.checked) { eqOpts.push('ack-filter'); } else { eqOpts.push('no-ack-filter'); }
 				if (editor.chkWash.checked) { eqOpts.push('wash'); iqOpts.push('wash'); }
 				eqOpts.push('memlimit ' + saveMemlimit);
-				iqOpts.push('ingress rtt 50ms memlimit ' + saveMemlimit);
+				iqOpts.push('ingress rtt 100ms memlimit ' + saveMemlimit);
 				const eqStr = eqOpts.join(' ');
 				const iqStr = iqOpts.join(' ');
 

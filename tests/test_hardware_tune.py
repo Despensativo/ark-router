@@ -132,6 +132,9 @@ class TestHardwareTune(unittest.TestCase):
             nft_content = f.read()
         self.assertIn("ip dscp set cs6", nft_content)
         self.assertIn("ip dscp set cs5", nft_content)
+        self.assertIn("ip dscp set cs4", nft_content)
+        self.assertIn("ip dscp set cs1", nft_content)
+        self.assertIn("meta length <= 256", nft_content)
 
     def test_07_rps_mask_calculation_for_all_cores(self):
         """Valida se a funcao ark_calculate_rps_mask gera bitmasks exatos para 1 a 64 nucleos"""
@@ -160,13 +163,69 @@ class TestHardwareTune(unittest.TestCase):
             self.assertEqual(calc_mask, exp_mask, f"Falha no calculo de mascara para {cores} cores")
 
     def test_08_irq_affinity_function_presence_and_logic(self):
-        """Valida se ark_tune_irq_affinity está presente e configurado para balancear IRQs em múltiplos cores"""
+        """Valida se ark_tune_irq_affinity e exclusao RPS de ifb*/pppoe*/br-* estao presentes"""
         tune_script = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "root", "etc", "init.d", "ark-hardware-tune")
         with open(tune_script, "r", encoding="utf-8") as f:
             content = f.read()
         self.assertIn("ark_tune_irq_affinity", content)
         self.assertIn("smp_affinity", content)
         self.assertIn("net.core.netdev_budget_usecs=20000", content)
+        self.assertIn("lo|ifb*|pppoe*|br-*|wg*", content)
+
+    def test_09_sqm_cake_mq_and_auto_dscp_promotion(self):
+        """Valida deteccao automatica de cake-mq multi-core em interfaces multi-fila e auditoria Auto-DSCP"""
+        # 1. Sem suporte a cake_mq no kernel, cake_mq_capable e cake_mq_active devem ser False
+        res_std = self.sb.run_control("system-hardware-sqm-audit")
+        self.assertEqual(res_std.returncode, 0, f"Falha em system-hardware-sqm-audit: {res_std.stderr}")
+        audit_std = json.loads(res_std.stdout)
+        self.assertFalse(audit_std.get("cake_mq_capable"))
+        self.assertFalse(audit_std.get("cake_mq_active"))
+        self.assertTrue(audit_std.get("auto_dscp_active"))
+
+        # 2. Simula suporte kernel a cake_mq e múltiplas filas TX (tx-0, tx-1) na interface wan (eth1)
+        dbg_dir = os.path.join(self.sb.temp_dir, "sys", "kernel", "debug")
+        os.makedirs(dbg_dir, exist_ok=True)
+        with open(os.path.join(dbg_dir, "cake_mq_capable"), "w") as f:
+            f.write("1\n")
+
+        eth1_tx1 = os.path.join(self.sb.sys_net, "eth1", "queues", "tx-1")
+        os.makedirs(eth1_tx1, exist_ok=True)
+        self.sb.uci_set("network.wan.proto=dhcp")
+        self.sb.uci_set("network.wan.device=eth1")
+
+        res_save = self.sb.run_control("sqm-save-v2", "wan=wan1|wan|eth1|1|500000|250000|ethernet|18")
+        self.assertEqual(res_save.returncode, 0, f"Falha em sqm-save-v2: {res_save.stderr}")
+        self.assertEqual(self.sb.uci_get("sqm.wan1.use_mq"), "0")
+        self.assertEqual(self.sb.uci_get("sqm.wan1.tcMPU"), "64")
+        self.assertIn("no-ack-filter", self.sb.uci_get("sqm.wan1.eqdisc_opts") or "")
+        iq_500m = self.sb.uci_get("sqm.wan1.iqdisc_opts") or ""
+        self.assertIn("rtt 100ms", iq_500m)
+        self.assertIn("ingress", iq_500m)
+
+        res_mq = self.sb.run_control("system-hardware-sqm-audit")
+        self.assertEqual(res_mq.returncode, 0)
+        audit_mq = json.loads(res_mq.stdout)
+        self.assertTrue(audit_mq.get("cake_mq_capable"), "cake_mq_capable deveria ser True!")
+        self.assertTrue(audit_mq.get("cake_mq_active"), "cake_mq_active deveria ser True em interface com tx-1!")
+
+        # 3. Valida link assimetrico (>= 5:1, ex: 500M/50M) + modo Starlink (rtt 150ms + ingress + ack-filter)
+        self.sb.uci_set("equipe_dashboard.main=settings")
+        self.sb.uci_set("equipe_dashboard.main.starlink_mode=1")
+        self.sb.run_sh("uci -q delete sqm.wan1.iqdisc_opts; uci commit sqm")
+        res_asym = self.sb.run_control("sqm-save-v2", "wan=wan1|wan|eth1|1|500000|50000|ethernet|18", "waveform_aplus=1")
+        self.assertEqual(res_asym.returncode, 0, f"Falha em sqm-save-v2 assimetrico: {res_asym.stderr}")
+        eq_asym = self.sb.uci_get("sqm.wan1.eqdisc_opts") or ""
+        iq_asym = self.sb.uci_get("sqm.wan1.iqdisc_opts") or ""
+        self.assertIn("ack-filter", eq_asym)
+        self.assertNotIn("no-ack-filter", eq_asym)
+        self.assertIn("rtt 150ms", iq_asym)
+        self.assertIn("ingress", iq_asym)
+
+        # 4. Ao desligar o SQM, o estado cake_mq_active deve voltar para False
+        res_off = self.sb.run_control("sqm-toggle", "0")
+        self.assertEqual(res_off.returncode, 0)
+        audit_off = json.loads(self.sb.run_control("system-hardware-sqm-audit").stdout)
+        self.assertFalse(audit_off.get("cake_mq_active"), "cake_mq_active deve ser limpo ao desativar SQM!")
 
 if __name__ == "__main__":
     unittest.main()

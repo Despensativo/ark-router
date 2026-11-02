@@ -84,12 +84,8 @@ const lifecycleMethods = {
 	},
 	applyAppearance: function(){
 		const appearance=this.capabilities.appearance||{}, mode=/^(auto|equipe|custom)$/.test(appearance.mode)?appearance.mode:'auto';
-		const profile=this.capabilities.operation_profile||'standard';
 		let primary='#3b82f6',secondary='#8b5cf6';
-		if(profile==='gamer'){
-			primary='#ef4444';
-			secondary='#dc2626';
-		} else if(mode==='custom'){
+		if(mode==='custom'){
 			primary=appearance.primary||primary;
 			secondary=appearance.secondary||secondary;
 		} else if(mode==='auto'){
@@ -99,7 +95,7 @@ const lifecycleMethods = {
 		document.documentElement.style.setProperty('--ex-primary',primary);
 		document.documentElement.style.setProperty('--ex-secondary',secondary);
 		document.documentElement.setAttribute('data-ex-appearance',mode);
-		document.documentElement.setAttribute('data-ex-profile',profile);
+		document.documentElement.setAttribute('data-ex-profile','standard');
 	},
 	triggerImmediateRefresh: function(message, type, hideModal) {
 		if (hideModal !== false) {

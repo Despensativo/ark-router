@@ -2314,19 +2314,6 @@ const systemMethods = {
 				this.showNtpModal();
 			},this)},['Ajustes NTP & Fuso'])
 		]);
-		const profileSelect=E('select',{class:'cbi-input-select'},[
-			E('option',{value:'standard'},['Modo Padrão / Equilibrado']),
-			E('option',{value:'gamer'},['Modo Gamer (Baixa Latência & PUBG Mobile)'])
-		]);
-		profileSelect.value=this.capabilities.operation_profile||'standard';
-		const profilePanel=E('div',{class:'ex-brand-row'},[
-			E('label',{},['Perfil operacional']),
-			profileSelect,
-			E('button',{class:'ex-mini-button','click':L.bind(function(){
-				closeModal();
-				this.switchProfile(profileSelect.value);
-			},this)},['Aplicar perfil'])
-		]);
 		const wanOptPanel=E('section',{class:'ex-cleanup-entry'},[
 			E('div',{},[
 				E('strong',{},['⚡ Otimização de Conexão e Desempenho da Internet']),
@@ -2386,7 +2373,6 @@ const systemMethods = {
 
 		ui.showModal('RECURSOS E COMPATIBILIDADE',[
 			devModePanel,
-			profilePanel,
 			wanOptPanel,
 			doctorPanel,
 			E('div',{class:'ex-brand-row'},[E('label',{},['Nome do painel']),brandName,E('button',{class:'ex-mini-button','click':L.bind(function(){this.setDashboardTitle(brandName.value);},this)},['Salvar nome'])]),

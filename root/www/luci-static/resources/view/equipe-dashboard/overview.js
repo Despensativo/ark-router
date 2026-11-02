@@ -1940,12 +1940,8 @@ const lifecycleMethods = {
 	},
 	applyAppearance: function(){
 		const appearance=this.capabilities.appearance||{}, mode=/^(auto|equipe|custom)$/.test(appearance.mode)?appearance.mode:'auto';
-		const profile=this.capabilities.operation_profile||'standard';
 		let primary='#3b82f6',secondary='#8b5cf6';
-		if(profile==='gamer'){
-			primary='#ef4444';
-			secondary='#dc2626';
-		} else if(mode==='custom'){
+		if(mode==='custom'){
 			primary=appearance.primary||primary;
 			secondary=appearance.secondary||secondary;
 		} else if(mode==='auto'){
@@ -1955,7 +1951,7 @@ const lifecycleMethods = {
 		document.documentElement.style.setProperty('--ex-primary',primary);
 		document.documentElement.style.setProperty('--ex-secondary',secondary);
 		document.documentElement.setAttribute('data-ex-appearance',mode);
-		document.documentElement.setAttribute('data-ex-profile',profile);
+		document.documentElement.setAttribute('data-ex-profile','standard');
 	},
 	triggerImmediateRefresh: function(message, type, hideModal) {
 		if (hideModal !== false) {
@@ -4960,7 +4956,6 @@ const networkMethods = {
 			return;
 		}
 		const desired=!!input.checked;input.checked=!desired;
-		const isGamerActive=(this.capabilities&&this.capabilities.operation_profile)==='gamer';
 		const isEconomic = this.isEconomicHardware ? this.isEconomicHardware(this.currentData) : false;
 		const hw = (this.currentData && this.currentData.hardwareInfo) || (this.capabilities && this.capabilities.hardware) || {};
 		const silicon = hw.silicon || {};
@@ -5004,18 +4999,14 @@ const networkMethods = {
 				]));
 			}
 		} else {
-			if (isGamerActive) {
-				elements.push(E('p', {class:'alert-message danger'}, ['⚠️ ' + _t('Atenção: O Modo Gamer está ATIVO! Ao desligar o SQM / CAKE, a proteção anti-bufferbloat será desativada e o painel retornará automaticamente ao Modo Padrão.')]));
-			} else {
-				elements.push(E('p', {class:'alert-message warning'}, [_t('O SQM será desligado e o serviço será reiniciado. A internet pode pausar por alguns segundos.')]));
-			}
+			elements.push(E('p', {class:'alert-message warning'}, [_t('O SQM será desligado e o serviço será reiniciado. A internet pode pausar por alguns segundos.')]));
 		}
 
 		const confirmBtn = E('button', {
 			class: 'btn cbi-button ' + (desired ? 'cbi-button-positive' : 'cbi-button-negative'),
 			style: 'font-weight: bold;',
 			disabled: (desired && isEconomic) ? '' : null
-		}, [(desired && isEconomic) ? _t('Aguarde 3 s') : (desired ? _t('Confirmar') : (isGamerActive ? _t('Desativar SQM e Desligar Gamer') : _t('Confirmar')))]);
+		}, [(desired && isEconomic) ? _t('Aguarde 3 s') : _t('Confirmar')]);
 
 		if (desired && isEconomic) {
 			const started = Date.now();
@@ -5046,9 +5037,6 @@ const networkMethods = {
 			btn.disabled = true;
 			btn.textContent = _t('Aplicando…');
 			const actions = [fs.exec('/usr/sbin/equipe-dashboard-control', ['sqm-toggle', desired?'1':'0'])];
-			if (!desired && isGamerActive) {
-				actions.push(fs.exec('/usr/sbin/equipe-dashboard-control', ['profile', 'standard']));
-			}
 			return Promise.all(actions).then(L.bind(function(r){
 				const res = r[0] || {};
 				if(res.code) throw new Error(res.stderr || 'Falha ao alterar o SQM');
@@ -5227,8 +5215,8 @@ const networkMethods = {
 				// 3. Link Layer Overhead & CAKE Parameters
 				const curLinklayer = queue.linklayer || 'none';
 				const curOverhead = parseInt(queue.overhead || 0, 10);
-				const curEqdisc = queue.eqdisc_opts || ('diffserv4 nat dual-srchost ack-filter wash memlimit ' + cakeMemlimit);
-				const curIqdisc = queue.iqdisc_opts || ('besteffort nat dual-dsthost wash ingress rtt 50ms memlimit ' + cakeMemlimit);
+				const curEqdisc = queue.eqdisc_opts || ('diffserv4 nat dual-srchost no-ack-filter wash memlimit ' + cakeMemlimit);
+				const curIqdisc = queue.iqdisc_opts || ('besteffort nat dual-dsthost wash ingress rtt 100ms memlimit ' + cakeMemlimit);
 
 				const isPppoe = profile.proto === 'pppoe' || String(profile.device || '').indexOf('pppoe') === 0;
 				const optimalOverheadVal = isPppoe ? 'ethernet|44' : 'ethernet|18';
@@ -5526,7 +5514,7 @@ const networkMethods = {
 				if (editor.chkAck.checked) { eqOpts.push('ack-filter'); } else { eqOpts.push('no-ack-filter'); }
 				if (editor.chkWash.checked) { eqOpts.push('wash'); iqOpts.push('wash'); }
 				eqOpts.push('memlimit ' + saveMemlimit);
-				iqOpts.push('ingress rtt 50ms memlimit ' + saveMemlimit);
+				iqOpts.push('ingress rtt 100ms memlimit ' + saveMemlimit);
 				const eqStr = eqOpts.join(' ');
 				const iqStr = iqOpts.join(' ');
 
@@ -16994,19 +16982,6 @@ const systemMethods = {
 				this.showNtpModal();
 			},this)},['Ajustes NTP & Fuso'])
 		]);
-		const profileSelect=E('select',{class:'cbi-input-select'},[
-			E('option',{value:'standard'},['Modo Padrão / Equilibrado']),
-			E('option',{value:'gamer'},['Modo Gamer (Baixa Latência & PUBG Mobile)'])
-		]);
-		profileSelect.value=this.capabilities.operation_profile||'standard';
-		const profilePanel=E('div',{class:'ex-brand-row'},[
-			E('label',{},['Perfil operacional']),
-			profileSelect,
-			E('button',{class:'ex-mini-button','click':L.bind(function(){
-				closeModal();
-				this.switchProfile(profileSelect.value);
-			},this)},['Aplicar perfil'])
-		]);
 		const wanOptPanel=E('section',{class:'ex-cleanup-entry'},[
 			E('div',{},[
 				E('strong',{},['⚡ Otimização de Conexão e Desempenho da Internet']),
@@ -17066,7 +17041,6 @@ const systemMethods = {
 
 		ui.showModal('RECURSOS E COMPATIBILIDADE',[
 			devModePanel,
-			profilePanel,
 			wanOptPanel,
 			doctorPanel,
 			E('div',{class:'ex-brand-row'},[E('label',{},['Nome do painel']),brandName,E('button',{class:'ex-mini-button','click':L.bind(function(){this.setDashboardTitle(brandName.value);},this)},['Salvar nome'])]),
@@ -21257,7 +21231,6 @@ const renderMethods = {
 				}
 			}
 		}
-		const isGamer=(this.capabilities&&this.capabilities.operation_profile)==='gamer';
 		const isApMode=(this.capabilities&&this.capabilities.network_mode)==='ap';
 		const hw = (data && data.hardwareInfo) || (this.capabilities && this.capabilities.hardware) || {};
 		const capHw = (this.capabilities && this.capabilities.hardware) || {};
@@ -21268,8 +21241,7 @@ const renderMethods = {
 		const isWifi6PlusSupported = !!(hw.wifi_ax_supported || capHw.wifi_ax_supported || (hw.wifi && hw.wifi.wifi_ax) || hw.wifi_be_supported || capHw.wifi_be_supported || (hw.wifi && hw.wifi.wifi_be));
 		const isWifi7 = !!(hw.wifi_be_supported || capHw.wifi_be_supported || (hw.wifi && hw.wifi.wifi_be) || silClass === 'qualcomm_ipq');
 		const has6gBand = !!(hw.wifi_6g_supported || capHw.wifi_6g_supported || (hw.wifi && hw.wifi.wifi_6g) || w.has6g);
-		const heroEyebrow=isApMode?_t('📡 ROTEADOR SECUNDÁRIO • PONTO ADICIONAL & SWITCH'):(isGamer?_t('🎮 MODO GAMER • BAIXA LATÊNCIA'):_t('CENTRAL DE OPERAÇÕES'));
-		const gamerButton=E('button',{class:'ex-hero-feature-button '+(isGamer?'ex-hero-gamer-active':'ex-hero-gamer-btn'),'click':L.bind(this.switchProfile,this,isGamer?'standard':'gamer')},[isGamer?'🎮 GAMER ATIVO':'🎮 Modo Gamer']);
+		const heroEyebrow=isApMode?_t('📡 ROTEADOR SECUNDÁRIO • PONTO ADICIONAL & SWITCH'):_t('CENTRAL DE OPERAÇÕES');
 		const opModeButton=E('button',{class:'ex-hero-feature-button ex-hero-opmode-btn',style:isApMode?'border-color:#3b82f6;color:#60a5fa;font-weight:700;':'font-weight:650;','click':L.bind(this.showNetworkModeModal,this)},[isApMode?'📡 Roteador Secundário / AP':'🌐 Modo Roteador']);
 		const langBadge = dashboardLanguage === 'en' ? '🌐 🇺🇸 EN' : (dashboardLanguage === 'es' ? '🌐 🇪🇸 ES' : '🌐 🇧🇷 PT');
 		const languageButton = E('button', {
@@ -21684,7 +21656,7 @@ const renderMethods = {
 		]);
 
 		const root=E('div',{class:'ex-dashboard'},[
-			E('section',{class:'ex-hero'+(isGamer?' ex-hero-gamer':'')},[E('div',{},[E('span',{class:'ex-eyebrow'},[heroEyebrow]),E('h2',{},[panelTitle]),E('p',{},[this.board.model||'OpenWrt','  •  ',release,'  •  ARK Router ',arkVersion]),E('div',{id:'ex-speedify-top',class:'ex-hero-speedify standby',style:'display:none'},[E('span',{},['Speedify']),E('strong',{},['—']),E('small',{},['—'])])]),E('div',{class:'ex-hero-status'},[E('span',{id:'ex-global-status',class:'ex-pill standby'},['VERIFICANDO']),E('div',{id:'ex-clock-wrap',class:'ex-clock-wrap',style:'cursor:pointer;display:flex;flex-direction:column;align-items:inherit;gap:2px;margin:2px 0;',title:'Ajustar relógio e fuso horário do roteador','click':L.bind(this.showNtpModal,this)},[E('span',{id:'ex-date',style:'font-size:0.78rem;font-weight:600;opacity:0.85;letter-spacing:0.02em;'},['--/--/----']),E('strong',{id:'ex-clock',style:'font-size:1.45rem;font-variant-numeric:tabular-nums;line-height:1.15;'},['--:--:--'])]),E('small',{id:'ex-refresh-summary'},['sessão de 12 horas • atualização a cada 3 segundos']),E('div',{class:'ex-hero-actions'},[gamerButton,opModeButton,languageButton,E('button',{class:'ex-hero-feature-button ex-hero-setup-button','click':L.bind(this.showEzSetup,this)},['Ark - Setup']),E('button',{class:'ex-hero-feature-button','click':L.bind(this.showFeatureCenter,this)},['Recursos'])])])]),
+			E('section',{class:'ex-hero'},[E('div',{},[E('span',{class:'ex-eyebrow'},[heroEyebrow]),E('h2',{},[panelTitle]),E('p',{},[this.board.model||'OpenWrt','  •  ',release,'  •  ARK Router ',arkVersion]),E('div',{id:'ex-speedify-top',class:'ex-hero-speedify standby',style:'display:none'},[E('span',{},['Speedify']),E('strong',{},['—']),E('small',{},['—'])])]),E('div',{class:'ex-hero-status'},[E('span',{id:'ex-global-status',class:'ex-pill standby'},['VERIFICANDO']),E('div',{id:'ex-clock-wrap',class:'ex-clock-wrap',style:'cursor:pointer;display:flex;flex-direction:column;align-items:inherit;gap:2px;margin:2px 0;',title:'Ajustar relógio e fuso horário do roteador','click':L.bind(this.showNtpModal,this)},[E('span',{id:'ex-date',style:'font-size:0.78rem;font-weight:600;opacity:0.85;letter-spacing:0.02em;'},['--/--/----']),E('strong',{id:'ex-clock',style:'font-size:1.45rem;font-variant-numeric:tabular-nums;line-height:1.15;'},['--:--:--'])]),E('small',{id:'ex-refresh-summary'},['sessão de 12 horas • atualização a cada 3 segundos']),E('div',{class:'ex-hero-actions'},[opModeButton,languageButton,E('button',{class:'ex-hero-feature-button ex-hero-setup-button','click':L.bind(this.showEzSetup,this)},['Ark - Setup']),E('button',{class:'ex-hero-feature-button','click':L.bind(this.showFeatureCenter,this)},['Recursos'])])])]),
 			E('div',{id:'ex-update-banner-container'}),
 			E('div',{id:'ex-doctor-banner',class:'ex-doctor-banner',style:'display:none;'}),
 			E('section',{class:'ex-card ex-health-strip'},[

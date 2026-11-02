@@ -479,22 +479,33 @@ handle_network() {
 		sqm_sec="$(sqm_section_for_network "$iface" 2>/dev/null || true)"
 		if [ -n "$sqm_sec" ] && uci -q get "sqm.$sqm_sec" >/dev/null 2>&1; then
 			if [ "$proto" = pppoe ]; then
-				uci -q set "sqm.$sqm_sec.interface=pppoe-$iface"
+				ensure_sqm_section "$sqm_sec" "pppoe-$iface"
 				cur_ov="$(uci -q get "sqm.$sqm_sec.overhead" || echo 0)"
 				if [ "$cur_ov" = "18" ] || [ "$cur_ov" = "0" ] || [ "$cur_ov" = "28" ] || [ -z "$cur_ov" ]; then
 					uci -q set "sqm.$sqm_sec.linklayer=ethernet"
 					uci -q set "sqm.$sqm_sec.overhead=44"
+					uci -q set "sqm.$sqm_sec.linklayer_advanced=1"
+					uci -q set "sqm.$sqm_sec.tcMTU=2047"
+					uci -q set "sqm.$sqm_sec.tcTSIZE=512"
+					uci -q set "sqm.$sqm_sec.tcMPU=64"
 					uci -q set "sqm.$sqm_sec.mpu=64"
+					uci -q set "sqm.$sqm_sec.linklayer_adaptation_mechanism=default"
 				fi
 			else
-				uci -q set "sqm.$sqm_sec.interface=$effective_dev"
+				ensure_sqm_section "$sqm_sec" "$effective_dev"
 				cur_ov="$(uci -q get "sqm.$sqm_sec.overhead" || echo 0)"
-				if [ "$cur_ov" = "28" ] || [ "$cur_ov" = "44" ]; then
+				if [ "$cur_ov" = "28" ] || [ "$cur_ov" = "44" ] || [ "$cur_ov" = "0" ] || [ -z "$cur_ov" ]; then
 					uci -q set "sqm.$sqm_sec.linklayer=ethernet"
 					uci -q set "sqm.$sqm_sec.overhead=18"
+					uci -q set "sqm.$sqm_sec.linklayer_advanced=1"
+					uci -q set "sqm.$sqm_sec.tcMTU=2047"
+					uci -q set "sqm.$sqm_sec.tcTSIZE=512"
+					uci -q set "sqm.$sqm_sec.tcMPU=64"
 					uci -q set "sqm.$sqm_sec.mpu=64"
+					uci -q set "sqm.$sqm_sec.linklayer_adaptation_mechanism=default"
 				fi
 			fi
+			uci commit sqm 2>/dev/null || true
 		fi
 		apply_wan_proto "$iface" "$proto" "$username" "$password" "$ipaddr" "$netmask" "$gateway" "$dns" "$macaddr" || exit $?
 
@@ -1576,27 +1587,46 @@ EOF
 				case "$linklayer_profile" in
 					none)
 						uci -q set "sqm.$s.linklayer=none"
+						uci -q delete "sqm.$s.linklayer_advanced"
 						uci -q delete "sqm.$s.overhead"
+						uci -q delete "sqm.$s.tcMPU"
 						uci -q delete "sqm.$s.mpu"
 						;;
 					pppoe_28)
 						uci -q set "sqm.$s.linklayer=ethernet"
+						uci -q set "sqm.$s.linklayer_advanced=1"
 						uci -q set "sqm.$s.overhead=28"
+						uci -q set "sqm.$s.tcMTU=2047"
+						uci -q set "sqm.$s.tcTSIZE=512"
+						uci -q set "sqm.$s.tcMPU=64"
 						uci -q set "sqm.$s.mpu=64"
+						uci -q set "sqm.$s.linklayer_adaptation_mechanism=default"
 						;;
 					vlan_34)
 						uci -q set "sqm.$s.linklayer=ethernet"
+						uci -q set "sqm.$s.linklayer_advanced=1"
 						uci -q set "sqm.$s.overhead=34"
+						uci -q set "sqm.$s.tcMTU=2047"
+						uci -q set "sqm.$s.tcTSIZE=512"
+						uci -q set "sqm.$s.tcMPU=64"
 						uci -q set "sqm.$s.mpu=64"
+						uci -q set "sqm.$s.linklayer_adaptation_mechanism=default"
 						;;
 					vdsl_44)
 						uci -q set "sqm.$s.linklayer=ethernet"
+						uci -q set "sqm.$s.linklayer_advanced=1"
 						uci -q set "sqm.$s.overhead=44"
+						uci -q set "sqm.$s.tcMTU=2047"
+						uci -q set "sqm.$s.tcTSIZE=512"
+						uci -q set "sqm.$s.tcMPU=64"
 						uci -q set "sqm.$s.mpu=64"
+						uci -q set "sqm.$s.linklayer_adaptation_mechanism=default"
 						;;
 					atm)
 						uci -q set "sqm.$s.linklayer=atm"
 						uci -q set "sqm.$s.overhead=44"
+						uci -q delete "sqm.$s.tcMPU"
+						uci -q delete "sqm.$s.mpu"
 						;;
 				esac
 			fi
@@ -1605,6 +1635,7 @@ EOF
 		if [ "$sqm_changed" = 1 ]; then
 			uci commit sqm
 			/etc/init.d/sqm restart >/dev/null 2>&1 || true
+			command -v ark_promote_cake_mq >/dev/null 2>&1 && ark_promote_cake_mq
 		fi
 		wan_dev="$(uci -q get "network.$iface.device" || uci -q get "network.$iface.ifname")"
 		[ -n "$wan_dev" ] || wan_dev="$(sqm_device_for_network "$iface")"
