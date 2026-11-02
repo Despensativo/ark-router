@@ -1281,7 +1281,7 @@ system_hardware_auto_tune() {
 			dns_cache=1000
 			budget=300
 			budget_usecs=20000
-			rps_entries=16384
+			rps_entries=0
 			;;
 		high)
 			ct_max=131072
@@ -1294,7 +1294,7 @@ system_hardware_auto_tune() {
 			dns_cache=2500
 			budget=600
 			budget_usecs=20000
-			rps_entries=32768
+			rps_entries=0
 			;;
 		extreme)
 			ct_max=262144
@@ -1307,7 +1307,7 @@ system_hardware_auto_tune() {
 			dns_cache=5000
 			budget=1000
 			budget_usecs=20000
-			rps_entries=65536
+			rps_entries=0
 			;;
 	esac
 
@@ -1330,13 +1330,11 @@ net.core.netdev_max_backlog=$backlog
 net.core.netdev_budget=$budget
 net.core.netdev_budget_usecs=$budget_usecs
 net.core.dev_weight=64
+net.core.rps_sock_flow_entries=$rps_entries
 vm.vfs_cache_pressure=$vfs_cache
 vm.dirty_ratio=$dirty
 vm.dirty_background_ratio=$dirty_bg
 EOF
-	if [ "$rps_entries" -gt 0 ]; then
-		echo "net.core.rps_sock_flow_entries=$rps_entries" >> "${sysctl_dir}/99-ark-hardware-tune.conf"
-	fi
 
 	# Ajustes especificos para VPN
 	if [ "$vpn_active" = 1 ]; then

@@ -797,7 +797,7 @@ apply_operation_profile() {
 	local mlim="64M"
 	command -v ark_cake_memlimit >/dev/null 2>&1 && mlim="$(ark_cake_memlimit)"
 	cake_opts="diffserv4 nat dual-srchost wash no-ack-filter memlimit $mlim"
-	cake_iq_opts="besteffort nat dual-dsthost wash ingress rtt 50ms memlimit $mlim"
+	cake_iq_opts="diffserv4 nat dual-dsthost wash no-split-gso rtt 100ms memlimit $mlim"
 
 	uci -q set equipe_dashboard.main=settings
 	uci -q set "equipe_dashboard.main.operation_profile=$mode"

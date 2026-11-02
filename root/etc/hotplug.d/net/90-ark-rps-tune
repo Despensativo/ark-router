@@ -11,27 +11,35 @@ rps_mask="$(ark_calculate_rps_mask "$cpu_cores")"
 if [ "$cpu_cores" -eq 4 ] && grep -qE 'mt76|mt79|ath|qca' /proc/interrupts 2>/dev/null; then
 	rps_mask="b"
 fi
-rps_target="$rps_mask"
-rfs_target=4096
+rps_target=0
+rfs_target=0
 
 case "$INTERFACE" in
-	lo|ifb*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
+	pppoe*)
+		rps_target="$rps_mask"
+		;;
+	phy*|wlan*|ath*|ra*)
+		[ "$cpu_cores" -ge 4 ] && rps_target=1 || rps_target=0
+		;;
+	lo|ifb*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|*)
 		rps_target=0
-		rfs_target=0
 		;;
 esac
 
-if ls /sys/class/net/pppoe-* >/dev/null 2>&1; then
-	pppoe_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
-	if [ -n "$pppoe_phys" ]; then
-		[ "$INTERFACE" = "$pppoe_phys" ] && { rps_target=0; rfs_target=0; }
-		for q in "/sys/class/net/$pppoe_phys"/queues/rx-*/rps_cpus; do
-			[ -w "$q" ] && echo 0 > "$q" 2>/dev/null || true
-		done
-		for q in "/sys/class/net/$pppoe_phys"/queues/rx-*/rps_flow_cnt; do
-			[ -w "$q" ] && echo 0 > "$q" 2>/dev/null || true
-		done
-	fi
+wan_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
+if [ -n "$wan_phys" ]; then
+	[ -w "/sys/class/net/$wan_phys/gro_flush_timeout" ] && echo 250000 > "/sys/class/net/$wan_phys/gro_flush_timeout" 2>/dev/null || true
+	[ -w "/sys/class/net/$wan_phys/napi_defer_hard_irqs" ] && echo 20 > "/sys/class/net/$wan_phys/napi_defer_hard_irqs" 2>/dev/null || true
+	for q in "/sys/class/net/$wan_phys"/queues/rx-*/rps_cpus; do
+		[ -w "$q" ] && echo 0 > "$q" 2>/dev/null || true
+	done
+	for q in "/sys/class/net/$wan_phys"/queues/rx-*/rps_flow_cnt; do
+		[ -w "$q" ] && echo 0 > "$q" 2>/dev/null || true
+	done
+fi
+if [ "$INTERFACE" = "$wan_phys" ] || [ "${INTERFACE#pppoe}" != "$INTERFACE" ]; then
+	[ -w "/sys/class/net/$INTERFACE/gro_flush_timeout" ] && echo 250000 > "/sys/class/net/$INTERFACE/gro_flush_timeout" 2>/dev/null || true
+	[ -w "/sys/class/net/$INTERFACE/napi_defer_hard_irqs" ] && echo 20 > "/sys/class/net/$INTERFACE/napi_defer_hard_irqs" 2>/dev/null || true
 fi
 
 case "$INTERFACE" in

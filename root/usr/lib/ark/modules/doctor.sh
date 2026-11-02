@@ -288,13 +288,14 @@ ark_doctor_audit() {
 				command -v ark_sqm_ingress_mode_opt >/dev/null 2>&1 && exp_imode="$(ark_sqm_ingress_mode_opt "$down_doc" "$wan")"
 				cur_iq="$(uci -q get "sqm.$sqm_sec.iqdisc_opts")"
 				cur_eq="$(uci -q get "sqm.$sqm_sec.eqdisc_opts")"
-				if [ "$(uci -q get "sqm.$sqm_sec.squash_ingress" || echo 1)" = "1" ] && { printf '%s' "$cur_iq" | grep -qw 'besteffort' || printf '%s' "$cur_iq" | grep -q 'rtt 50ms' || ! printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || { [ -z "$exp_imode" ] && printf '%s' "$cur_iq" | grep -qw 'ingress'; } || { [ -n "$exp_imode" ] && ! printf '%s' "$cur_iq" | grep -qw 'ingress'; } || printf '%s' "$cur_eq" | grep -qw 'rtt 50ms' || ! printf '%s' "$cur_eq" | grep -qw "$exp_ack" || ! printf '%s' "$cur_iq" | grep -q "memlimit $exp_mlim" || ! printf '%s' "$cur_eq" | grep -q "memlimit $exp_mlim"; }; then
+				if [ "$(uci -q get "sqm.$sqm_sec.squash_ingress" || echo 1)" = "1" ] && { printf '%s' "$cur_iq" | grep -qw 'besteffort' || ! printf '%s' "$cur_iq" | grep -qw 'no-split-gso' || printf '%s' "$cur_iq" | grep -q 'rtt 50ms' || ! printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || { [ -z "$exp_imode" ] && printf '%s' "$cur_iq" | grep -qw 'ingress'; } || { [ -n "$exp_imode" ] && ! printf '%s' "$cur_iq" | grep -qw 'ingress'; } || printf '%s' "$cur_eq" | grep -qw 'rtt 50ms' || ! printf '%s' "$cur_eq" | grep -qw "$exp_ack" || ! printf '%s' "$cur_iq" | grep -q "memlimit $exp_mlim" || ! printf '%s' "$cur_eq" | grep -q "memlimit $exp_mlim"; }; then
 					if [ "$auto_fix" = 1 ]; then
 						uci -q set "sqm.$sqm_sec.qdisc_advanced=1"
 						uci -q set "sqm.$sqm_sec.qdisc_really_really_advanced=1"
-						[ -n "$cur_iq" ] || cur_iq="diffserv4 nat dual-dsthost wash"
+						[ -n "$cur_iq" ] || cur_iq="diffserv4 nat dual-dsthost wash no-split-gso"
 						cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bbesteffort\b/diffserv4/g')"
 						printf '%s' "$cur_iq" | grep -qw 'wash' || cur_iq="$cur_iq wash"
+						printf '%s' "$cur_iq" | grep -qw 'no-split-gso' || cur_iq="$cur_iq no-split-gso"
 						if printf '%s' "$cur_iq" | grep -q 'rtt 50ms'; then
 							cur_iq="$(printf '%s' "$cur_iq" | sed "s/rtt 50ms/$exp_irtt/g")"
 						elif ! printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)'; then

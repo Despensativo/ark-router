@@ -325,7 +325,7 @@ ensure_sqm_section() {
 	fi
 	local cur_iq="$(uci -q get "sqm.$section.iqdisc_opts")"
 	if [ -z "$cur_iq" ]; then
-		cur_iq="$(printf 'diffserv4 nat dual-dsthost wash %s %s memlimit %s' "$imode_opt" "$irtt_opt" "$mlim" | tr -s ' ')"
+		cur_iq="$(printf 'diffserv4 nat dual-dsthost wash no-split-gso %s %s memlimit %s' "$imode_opt" "$irtt_opt" "$mlim" | tr -s ' ')"
 		uci -q set "sqm.$section.iqdisc_opts=$cur_iq"
 	elif [ "$(uci -q get "sqm.$section.squash_ingress" || echo 1)" = "1" ]; then
 		local iq_changed=0
@@ -335,6 +335,10 @@ ensure_sqm_section() {
 		fi
 		if ! printf '%s' "$cur_iq" | grep -qw 'wash'; then
 			cur_iq="$cur_iq wash"
+			iq_changed=1
+		fi
+		if ! printf '%s' "$cur_iq" | grep -qw 'no-split-gso'; then
+			cur_iq="$cur_iq no-split-gso"
 			iq_changed=1
 		fi
 		if printf '%s' "$cur_iq" | grep -q 'rtt 50ms'; then
@@ -563,7 +567,7 @@ handle_sqm() {
 				if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
 					eq_aplus="$eq_aplus no-split-gso"
 				fi
-				iq_aplus="$(printf 'besteffort nat dual-dsthost wash %s %s memlimit %s' "$imode_aplus" "$irtt_aplus" "$mlim_aplus" | tr -s ' ')"
+				iq_aplus="$(printf 'diffserv4 nat dual-dsthost wash no-split-gso %s %s memlimit %s' "$imode_aplus" "$irtt_aplus" "$mlim_aplus" | tr -s ' ')"
 				uci -q set "sqm.$sqm_section.eqdisc_opts=$eq_aplus"
 				uci -q set "sqm.$sqm_section.iqdisc_opts=$iq_aplus"
 			fi
@@ -694,7 +698,7 @@ handle_sqm() {
 						if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
 							eqdisc_opts="$eqdisc_opts no-split-gso"
 						fi
-						iqdisc_opts="$(printf 'besteffort nat dual-dsthost wash %s %s memlimit %s' "$imode_save" "$irtt_save" "$mlim_save" | tr -s ' ')"
+						iqdisc_opts="$(printf 'diffserv4 nat dual-dsthost wash no-split-gso %s %s memlimit %s' "$imode_save" "$irtt_save" "$mlim_save" | tr -s ' ')"
 						uci -q set "sqm.$section.eqdisc_opts=$eqdisc_opts"
 						uci -q set "sqm.$section.iqdisc_opts=$iqdisc_opts"
 					else
@@ -741,10 +745,11 @@ handle_sqm() {
 								uci -q set "sqm.$section.eqdisc_opts=$eqdisc_opts"
 							fi
 							if [ -n "$iqdisc_opts" ]; then
-								if [ "$(uci -q get "sqm.$section.squash_ingress" || echo 1)" = "1" ] && printf '%s' "$iqdisc_opts" | grep -qw 'diffserv4'; then
-									iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed 's/\bdiffserv4\b/besteffort/g')"
+								if [ "$(uci -q get "sqm.$section.squash_ingress" || echo 1)" = "1" ] && printf '%s' "$iqdisc_opts" | grep -qw 'besteffort'; then
+									iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed 's/\bbesteffort\b/diffserv4/g')"
 								fi
 								printf '%s' "$iqdisc_opts" | grep -qw 'wash' || iqdisc_opts="$iqdisc_opts wash"
+								printf '%s' "$iqdisc_opts" | grep -qw 'no-split-gso' || iqdisc_opts="$iqdisc_opts no-split-gso"
 								if printf '%s' "$iqdisc_opts" | grep -q 'rtt 50ms'; then
 									iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed "s/rtt 50ms/$irtt_save/g")"
 								elif ! printf '%s' "$iqdisc_opts" | grep -qE '\b(rtt|regional|metro|lan|datacentre)\b'; then

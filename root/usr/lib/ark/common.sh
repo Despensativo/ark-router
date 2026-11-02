@@ -1935,6 +1935,7 @@ ark_sync_doh_proxy() {
 			$uci_cmd set https-dns-proxy.config.dnsmasq_config_update='-' 2>/dev/null || true
 			$uci_cmd set https-dns-proxy.config.update_dnsmasq_config='-' 2>/dev/null || true
 			$uci_cmd set https-dns-proxy.config.force_dns='0' 2>/dev/null || true
+			$uci_cmd set https-dns-proxy.config.notrack_dns='0' 2>/dev/null || true
 			uci ${root_prefix:+-c "$root_prefix/etc/config"} commit https-dns-proxy 2>/dev/null || true
 		fi
 		$uci_cmd delete dhcp.@dnsmasq[0].doh_backup_server 2>/dev/null || true
@@ -1959,6 +1960,7 @@ ark_sync_doh_proxy() {
 	$uci_cmd set https-dns-proxy.config.dnsmasq_config_update='-'
 	$uci_cmd set https-dns-proxy.config.update_dnsmasq_config='-'
 	$uci_cmd set https-dns-proxy.config.force_dns='0'
+	$uci_cmd set https-dns-proxy.config.notrack_dns='0'
 	$uci_cmd delete dhcp.@dnsmasq[0].doh_backup_server 2>/dev/null || true
 	$uci_cmd delete dhcp.@dnsmasq[0].doh_backup_noresolv 2>/dev/null || true
 	$uci_cmd delete dhcp.@dnsmasq[0].doh_server 2>/dev/null || true
