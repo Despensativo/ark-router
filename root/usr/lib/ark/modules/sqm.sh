@@ -32,16 +32,58 @@ ark_has_auto_dscp() {
 	return 1
 }
 
+ark_apply_ingress_voice_tin_filters() {
+	local iface="$1"
+	[ -n "${ARK_ROOT:-}" ] && return 0
+	[ -n "$iface" ] && [ -d "/sys/class/net/$iface" ] || return 0
+	local ifb_dev="ifb4${iface}"
+	[ -d "/sys/class/net/$ifb_dev" ] || return 0
+
+	local cake_handle p
+	cake_handle="$(tc qdisc show dev "$ifb_dev" 2>/dev/null | awk '/qdisc cake/ {print $3; exit}')"
+	[ -n "$cake_handle" ] || return 0
+
+	modprobe act_skbedit 2>/dev/null || true
+	for p in 1 2 3 4 5 6 7 8; do
+		tc filter del dev "$iface" parent ffff: pref "$p" 2>/dev/null || true
+	done
+	# Classify incoming ICMP, ICMPv6, TCP SYN, interactive TCP PSH (<=255B: WebSocket latency probes/SSH),
+	# and small UDP (<=255B: Gaming/VoIP/DNS/STUN) directly into CAKE Voice Tin (${cake_handle}4) before IFB redirect
+	tc filter add dev "$iface" parent ffff: protocol ip pref 1 u32 match ip protocol 1 0xff action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 2 u32 match ip6 protocol 58 0xff action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ip pref 3 u32 match ip protocol 6 0xff match u8 0x02 0x02 at 33 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 4 u32 match ip6 protocol 6 0xff match u8 0x02 0x02 at 53 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ip pref 5 u32 match ip protocol 6 0xff match u16 0x0000 0xff00 at 2 match u8 0x08 0x08 at 33 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 6 u32 match ip6 protocol 6 0xff match u16 0x0000 0xff00 at 4 match u8 0x08 0x08 at 53 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ip pref 7 u32 match ip protocol 17 0xff match u16 0x0000 0xff00 at 2 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 8 u32 match ip6 protocol 17 0xff match u16 0x0000 0xff00 at 4 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+}
+
 ark_promote_cake_mq() {
 	local state_file="${ARK_ROOT:-}/tmp/ark_sqm_cake_mq.state"
-	local ifb_q ndev
+	local ifb_q ndev pppoe_phys cpu_cores rps_mask
 	mkdir -p "$(dirname "$state_file")" 2>/dev/null || true
 	rm -f "$state_file" 2>/dev/null || true
 
 	if [ -z "${ARK_ROOT:-}" ]; then
-		for ifb_q in /sys/class/net/ifb*/queues/rx-*/rps_cpus /sys/class/net/pppoe*/queues/rx-*/rps_cpus /sys/class/net/br-*/queues/rx-*/rps_cpus; do
+		for ifb_q in /sys/class/net/ifb*/queues/rx-*/rps_cpus /sys/class/net/br-*/queues/rx-*/rps_cpus; do
 			[ -w "$ifb_q" ] && echo 0 > "$ifb_q" 2>/dev/null || true
 		done
+		if ls /sys/class/net/pppoe-* >/dev/null 2>&1; then
+			cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
+			rps_mask="f"
+			command -v ark_calculate_rps_mask >/dev/null 2>&1 && rps_mask="$(ark_calculate_rps_mask "$cpu_cores")"
+			[ "$cpu_cores" = "4" ] && grep -q "mt79" /proc/interrupts 2>/dev/null && rps_mask="b"
+			for ifb_q in /sys/class/net/pppoe*/queues/rx-*/rps_cpus; do
+				[ -w "$ifb_q" ] && echo "$rps_mask" > "$ifb_q" 2>/dev/null || true
+			done
+			pppoe_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
+			if [ -n "$pppoe_phys" ]; then
+				for ifb_q in "/sys/class/net/$pppoe_phys"/queues/rx-*/rps_cpus; do
+					[ -w "$ifb_q" ] && echo 0 > "$ifb_q" 2>/dev/null || true
+				done
+			fi
+		fi
 		if command -v ethtool >/dev/null 2>&1; then
 			for ndev in /sys/class/net/*; do
 				ndev="${ndev##*/}"
@@ -51,7 +93,6 @@ ark_promote_cake_mq() {
 		fi
 	fi
 
-	ark_has_cake_mq || return 0
 	uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'" || return 0
 
 	local sec enabled qdisc iface upload linklayer overhead mpu eq_opts tx1_dir promoted=0
@@ -62,6 +103,8 @@ ark_promote_cake_mq() {
 		[ "$qdisc" = "cake" ] || [ "$qdisc" = "cake_mq" ] || continue
 		iface="$(uci -q get "sqm.$sec.interface")"
 		[ -n "$iface" ] || continue
+		ark_apply_ingress_voice_tin_filters "$iface"
+		ark_has_cake_mq || continue
 		upload="$(uci -q get "sqm.$sec.upload" || echo 0)"
 		[ "$upload" -gt 0 ] 2>/dev/null || continue
 
@@ -282,12 +325,12 @@ ensure_sqm_section() {
 	fi
 	local cur_iq="$(uci -q get "sqm.$section.iqdisc_opts")"
 	if [ -z "$cur_iq" ]; then
-		cur_iq="$(printf 'besteffort nat dual-dsthost wash %s %s memlimit %s' "$imode_opt" "$irtt_opt" "$mlim" | tr -s ' ')"
+		cur_iq="$(printf 'diffserv4 nat dual-dsthost wash %s %s memlimit %s' "$imode_opt" "$irtt_opt" "$mlim" | tr -s ' ')"
 		uci -q set "sqm.$section.iqdisc_opts=$cur_iq"
 	elif [ "$(uci -q get "sqm.$section.squash_ingress" || echo 1)" = "1" ]; then
 		local iq_changed=0
-		if printf '%s' "$cur_iq" | grep -qw 'diffserv4'; then
-			cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bdiffserv4\b/besteffort/g')"
+		if printf '%s' "$cur_iq" | grep -qw 'besteffort'; then
+			cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bbesteffort\b/diffserv4/g')"
 			iq_changed=1
 		fi
 		if ! printf '%s' "$cur_iq" | grep -qw 'wash'; then

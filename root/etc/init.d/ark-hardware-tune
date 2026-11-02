@@ -84,9 +84,12 @@ ark_tune_irq_affinity() {
 	done
 
 	# Pin threaded NAPI kthreads (e.g., napi/mtk_eth-*, napi/phy*, mt76-tx*) to match IRQ masks.
-	# Prevents OpenWrt packet-steering.uc from piling all Ethernet NAPI rings onto Core 0.
+	# On 4+ core MediaTek routers, split mt76-tx and TX-free NAPI (10..12) to Core 0 (0x1)
+	# while keeping Wi-Fi hardware IRQ and RX NAPI (7..9) dedicated on Core 2 (0x4).
 	if command -v taskset >/dev/null 2>&1; then
 		local napi_eth_idx=0
+		local wifi_tx_mask="$wifi_mask"
+		[ "$cores" -ge 4 ] && wifi_tx_mask=1
 		ps -w 2>/dev/null | awk '/\[napi\/|\[mt76-tx/ {print $1, $NF}' | while read -r npid nname; do
 			[ -n "$npid" ] || continue
 			case "$nname" in
@@ -98,13 +101,16 @@ ark_tune_irq_affinity() {
 					fi
 					napi_eth_idx=$((napi_eth_idx + 1))
 					;;
+				*mt76-tx*|*phy*-1[0-9]*|*phy*-2[0-9]*)
+					taskset -p "$wifi_tx_mask" "$npid" >/dev/null 2>&1 || true
+					;;
 				*phy*|*mt76*|*ath*|*wlan*|*wifi*)
 					taskset -p "$wifi_mask" "$npid" >/dev/null 2>&1 || true
 					;;
 			esac
 		done
 	fi
-	logger -t ark-hardware-tune "Afinidade de IRQ e NAPI distribuida dinamicamente (${cores} cores): Ethernet (Core masks 0x${eth_mask}/0x${eth_alt_mask}), Wi-Fi (Core mask 0x${wifi_mask})."
+	logger -t ark-hardware-tune "Afinidade de IRQ e NAPI distribuida dinamicamente (${cores} cores): Ethernet (Core masks 0x${eth_mask}/0x${eth_alt_mask}), Wi-Fi RX/IRQ (0x${wifi_mask}), Wi-Fi TX (0x${wifi_tx_mask:-$wifi_mask})."
 }
 
 ark_tune_wifi_aql() {
@@ -125,20 +131,21 @@ ark_tune_wifi_aql() {
 				;;
 		esac
 		[ -w "$phy/aql_enable" ] && echo 1 > "$phy/aql_enable" 2>/dev/null || true
+		[ -w "$phy/mt76/implicit_txbf" ] && echo 1 > "$phy/mt76/implicit_txbf" 2>/dev/null || true
 		if [ "$is_high_band" -eq 1 ]; then
 			# 5 GHz / 6 GHz (HE80/HE160/EHT320): PHY rate 1200-2882 Mbps.
-			# On MediaTek MT7915/MT7986 with HE160 + multi-VAP, a single A-MPDU TXOP + BlockAck round-trip
-			# takes ~2.5ms. Setting VI/BE to 3500/6000 us keeps 2 A-MPDUs pipelined in hardware DMA
-			# (unlocking 600-900+ Mbps on 5GHz) while bounding active Wi-Fi air-queue latency to <= 5ms.
+			# Setting VI/BE to 5000/12000 us and fq_quantum to 12288 (8 MTU frames per flow burst)
+			# prevents mac80211 FQ from fragmenting multi-stream TCP downloads into 1-packet TXOPs.
 			[ -w "$phy/aql_threshold" ] && echo 24000 > "$phy/aql_threshold" 2>/dev/null || true
 			if [ -w "$phy/aql_txq_limit" ]; then
 				echo "0 1500 3000" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "1 3500 6000" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "2 3500 6000" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "3 1500 3000" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "1 5000 12000" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "2 5000 12000" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "3 2500 5000" > "$phy/aql_txq_limit" 2>/dev/null || true
 			fi
 			[ -w "$phy/aqm" ] && echo "fq_limit 2048" > "$phy/aqm" 2>/dev/null || true
 			[ -w "$phy/aqm" ] && echo "fq_memory_limit 8388608" > "$phy/aqm" 2>/dev/null || true
+			[ -w "$phy/aqm" ] && echo "fq_quantum 12288" > "$phy/aqm" 2>/dev/null || true
 		else
 			# 2.4 GHz (HT20/HE20): slower MCS rates & IoT clients require slightly larger airtime window.
 			[ -w "$phy/aql_threshold" ] && echo 15000 > "$phy/aql_threshold" 2>/dev/null || true
@@ -150,6 +157,7 @@ ark_tune_wifi_aql() {
 			fi
 			[ -w "$phy/aqm" ] && echo "fq_limit 1024" > "$phy/aqm" 2>/dev/null || true
 			[ -w "$phy/aqm" ] && echo "fq_memory_limit 4194304" > "$phy/aqm" 2>/dev/null || true
+			[ -w "$phy/aqm" ] && echo "fq_quantum 4542" > "$phy/aqm" 2>/dev/null || true
 		fi
 	done
 }
@@ -420,10 +428,15 @@ start() {
 		if ls /sys/class/net/pppoe-* >/dev/null 2>&1; then
 			pppoe_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
 		fi
+		local wifi_isolated_mask="$rps_mask"
+		if [ "$cpu_cores" -eq 4 ] && grep -qE 'mt76|mt79|ath|qca' /proc/interrupts 2>/dev/null; then
+			# Reserve CPU 2 (0x4) exclusively for Wi-Fi hardware IRQ & RX NAPI rings
+			wifi_isolated_mask="b"
+		fi
 		for iface_dir in /sys/class/net/*; do
 			[ -d "$iface_dir" ] || continue
 			local ifname="${iface_dir##*/}"
-			local rps_target="$rps_mask"
+			local rps_target="$wifi_isolated_mask"
 			local rfs_target=4096
 			case "$ifname" in
 				lo|ifb*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
@@ -544,6 +557,12 @@ start() {
 					;;
 			esac
 		done
+	fi
+
+	# Ensure SQM ingress Voice Tin filters and cake_mq state are preserved after hotplug/reload
+	if [ -f /usr/lib/ark/modules/sqm.sh ]; then
+		. /usr/lib/ark/modules/sqm.sh 2>/dev/null || true
+		command -v ark_apply_ingress_voice_tin_filters >/dev/null 2>&1 && ark_apply_ingress_voice_tin_filters 2>/dev/null || true
 	fi
 
 	# Calibração e Proteção de Iluminação HAL (ex: AW21018 no Acer Predator T7)

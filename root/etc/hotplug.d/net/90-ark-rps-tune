@@ -8,6 +8,9 @@ cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
 [ "$cpu_cores" -gt 1 ] 2>/dev/null || exit 0
 
 rps_mask="$(ark_calculate_rps_mask "$cpu_cores")"
+if [ "$cpu_cores" -eq 4 ] && grep -qE 'mt76|mt79|ath|qca' /proc/interrupts 2>/dev/null; then
+	rps_mask="b"
+fi
 rps_target="$rps_mask"
 rfs_target=4096
 
