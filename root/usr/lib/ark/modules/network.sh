@@ -209,51 +209,53 @@ mwan_status_fast() {
 	[ -n "$ifaces" ] || ifaces="wan wan2"
 
 	local first_if=1
-	printf '{"interfaces":{'
-	for iface in $ifaces; do
-		[ -n "$iface" ] || continue
-		local idir="$mwan_track_dir/$iface"
-		local status="offline"
-		local score=0 lost=0 turn=0
-		local running=false enabled=true up=false
+	{
+		printf '{"interfaces":{'
+		for iface in $ifaces; do
+			[ -n "$iface" ] || continue
+			local idir="$mwan_track_dir/$iface"
+			local status="offline"
+			local score=0 lost=0 turn=0
+			local running=false enabled=true up=false
 
-		[ -f "$idir/STATUS" ] && status="$(cat "$idir/STATUS" 2>/dev/null || echo offline)"
-		[ -f "$idir/SCORE" ] && score="$(cat "$idir/SCORE" 2>/dev/null || echo 0)"
-		[ -f "$idir/LOST" ] && lost="$(cat "$idir/LOST" 2>/dev/null || echo 0)"
-		[ -f "$idir/TURN" ] && turn="$(cat "$idir/TURN" 2>/dev/null || echo 0)"
+			[ -f "$idir/STATUS" ] && status="$(cat "$idir/STATUS" 2>/dev/null || echo offline)"
+			[ -f "$idir/SCORE" ] && score="$(cat "$idir/SCORE" 2>/dev/null || echo 0)"
+			[ -f "$idir/LOST" ] && lost="$(cat "$idir/LOST" 2>/dev/null || echo 0)"
+			[ -f "$idir/TURN" ] && turn="$(cat "$idir/TURN" 2>/dev/null || echo 0)"
 
-		case "$score" in ''|*[!0-9]*) score=0 ;; esac
-		case "$lost" in ''|*[!0-9]*) lost=0 ;; esac
-		case "$turn" in ''|*[!0-9]*) turn=0 ;; esac
+			case "$score" in ''|*[!0-9]*) score=0 ;; esac
+			case "$lost" in ''|*[!0-9]*) lost=0 ;; esac
+			case "$turn" in ''|*[!0-9]*) turn=0 ;; esac
 
-		pgrep -f "mwan3track $iface" >/dev/null 2>&1 && running=true
-		[ "$status" = "online" ] && up=true
+			pgrep -f "mwan3track $iface" >/dev/null 2>&1 && running=true
+			[ "$status" = "online" ] && up=true
 
-		local track_json=""
-		local first_tr=1
-		if [ -d "$idir" ]; then
-			for tf in "$idir"/TRACK_*; do
-				[ -f "$tf" ] || continue
-				local tip="${tf##*TRACK_}"
-				[ -n "$tip" ] || continue
-				local tstatus="$(cat "$tf" 2>/dev/null || echo down)"
-				local tlatency=0 tloss=0
-				[ -f "$idir/LATENCY_$tip" ] && tlatency="$(cat "$idir/LATENCY_$tip" 2>/dev/null || echo 0)"
-				[ -f "$idir/LOSS_$tip" ] && tloss="$(cat "$idir/LOSS_$tip" 2>/dev/null || echo 0)"
-				case "$tlatency" in ''|*[!0-9]*) tlatency=0 ;; esac
-				case "$tloss" in ''|*[!0-9]*) tloss=0 ;; esac
+			local track_json=""
+			local first_tr=1
+			if [ -d "$idir" ]; then
+				for tf in "$idir"/TRACK_*; do
+					[ -f "$tf" ] || continue
+					local tip="${tf##*TRACK_}"
+					[ -n "$tip" ] || continue
+					local tstatus="$(cat "$tf" 2>/dev/null || echo down)"
+					local tlatency=0 tloss=0
+					[ -f "$idir/LATENCY_$tip" ] && tlatency="$(cat "$idir/LATENCY_$tip" 2>/dev/null || echo 0)"
+					[ -f "$idir/LOSS_$tip" ] && tloss="$(cat "$idir/LOSS_$tip" 2>/dev/null || echo 0)"
+					case "$tlatency" in ''|*[!0-9]*) tlatency=0 ;; esac
+					case "$tloss" in ''|*[!0-9]*) tloss=0 ;; esac
 
-				[ "$first_tr" = 1 ] && first_tr=0 || track_json="${track_json},"
-				track_json="${track_json}{\"ip\":\"$tip\",\"status\":\"$tstatus\",\"latency\":$tlatency,\"packetloss\":$tloss}"
-			done
-		fi
+					[ "$first_tr" = 1 ] && first_tr=0 || track_json="${track_json},"
+					track_json="${track_json}{\"ip\":\"$tip\",\"status\":\"$tstatus\",\"latency\":$tlatency,\"packetloss\":$tloss}"
+				done
+			fi
 
-		[ "$first_if" = 1 ] && first_if=0 || printf ','
-		printf '"%s":{"status":"%s","running":%s,"enabled":%s,"up":%s,"score":%s,"lost":%s,"turn":%s,"track_ip":[%s]}' \
-			"$iface" "$status" "$running" "$enabled" "$up" "$score" "$lost" "$turn" "$track_json"
-	done
-	printf '},"connected":{"ipv4":[],"ipv6":[]},"policies":{"ipv4":{},"ipv6":{}}}\n' > "$mwan_cache.tmp"
-	mv "$mwan_cache.tmp" "$mwan_cache"
+			[ "$first_if" = 1 ] && first_if=0 || printf ','
+			printf '"%s":{"status":"%s","running":%s,"enabled":%s,"up":%s,"score":%s,"lost":%s,"turn":%s,"track_ip":[%s]}' \
+				"$iface" "$status" "$running" "$enabled" "$up" "$score" "$lost" "$turn" "$track_json"
+		done
+		printf '},"connected":{"ipv4":[],"ipv6":[]},"policies":{"ipv4":{},"ipv6":{}}}\n'
+	} > "$mwan_cache.$$.tmp"
+	mv -f "$mwan_cache.$$.tmp" "$mwan_cache"
 	echo "$now" > "$mwan_ts"
 	cat "$mwan_cache"
 }
@@ -547,6 +549,7 @@ handle_network() {
 			selective) ipv6_label="Seletivo por MAC" ;;
 			ipv6_only) ipv6_label="IPv6-Only" ;;
 			nptv6) ipv6_label="NPTv6 Inteligente (Multi-WAN)" ;;
+			ipv6_clat) ipv6_label="WAN 100% IPv6 + LAN IPv4 (Anycast)" ;;
 			*)
 				if [ "$ipv6_relay" = "1" ] || [ "$(uci -q get dhcp.lan.ndp)" = "relay" ]; then
 					ipv6_label="Cascata (NDP Relay)"
@@ -680,11 +683,12 @@ handle_network() {
 				echo "$igmp_snooping" > /sys/class/net/br-lan/bridge/multicast_querier 2>/dev/null || true
 			fi
 		fi
+		cur_leasetime="$(uci -q get dhcp.lan.leasetime 2>/dev/null || echo 12h)"
 		uci -q set dhcp.lan=dhcp
 		uci -q set dhcp.lan.interface=lan
 		uci -q set dhcp.lan.start="$start_host"
 		uci -q set dhcp.lan.limit="$limit"
-		uci -q set dhcp.lan.leasetime="${DHCP_LEASETIME:-12h}"
+		uci -q set dhcp.lan.leasetime="${DHCP_LEASETIME:-$cur_leasetime}"
 		if [ "$dhcp_enabled" = "0" ]; then
 			uci -q set dhcp.lan.ignore='1'
 			uci -q delete dhcp.lan.force
@@ -1000,6 +1004,7 @@ handle_network() {
 			fi
 			echo 'enabled'
 		else
+			saved_dyn_list="$(cat /var/run/ark-autowan-dynamic.list 2>/dev/null || echo '')"
 			if [ -x /etc/init.d/ark-autowan ]; then
 				/etc/init.d/ark-autowan stop >/dev/null 2>&1 || true
 				/etc/init.d/ark-autowan disable >/dev/null 2>&1 || true
@@ -1013,12 +1018,11 @@ handle_network() {
 			fi
 
 			# Reverte WANs dinamicas criadas de volta para LAN
-			if [ -f /var/run/ark-autowan-dynamic.list ]; then
-				for entry in $(cat /var/run/ark-autowan-dynamic.list 2>/dev/null); do
+			if [ -n "$saved_dyn_list" ]; then
+				for entry in $saved_dyn_list; do
 					dyn_wan="${entry#*=}"
 					[ -n "$dyn_wan" ] && [ "$dyn_wan" != "wan" ] && "$0" wan-save iface="$dyn_wan" mode=lan >/dev/null 2>&1 || true
 				done
-				rm -f /var/run/ark-autowan-dynamic.list 2>/dev/null || true
 			fi
 
 			# Limpa VLAN de quarentena (99) e restaura portas LAN no swconfig
@@ -1100,10 +1104,11 @@ handle_network() {
 		# Sincroniza com o mwan3 APENAS se Auto-WAN estiver efetivamente ATIVADO
 		if [ "$(uci -q get network.autowan.enabled)" = "1" ]; then
 			active_wans_cnt=0
-			for w in $(uci -q show network | grep '=interface' | cut -d. -f2 | cut -d= -f1 | grep -E '^wan([0-9]+)?$'); do
+			for w in $(uci -q show network | grep '=interface' | cut -d. -f2 | cut -d= -f1 | grep -E '^wan([0-9]+)?$' | grep -v '^wan6$'); do
 				auto="$(uci -q get "network.$w.auto" || printf '1')"
 				[ "$auto" != "0" ] || continue
 				p="$(uci -q get "network.$w.proto" || printf 'none')"
+				[ "$p" != "dhcpv6" ] || continue
 				d="$(uci -q get "network.$w.device" || uci -q get "network.$w.ifname" || printf '')"
 				[ "$p" != "none" ] && [ -n "$d" ] && active_wans_cnt=$((active_wans_cnt + 1))
 			done
@@ -1508,6 +1513,9 @@ EOF
 			sysctl -w net.ipv4.tcp_mtu_probing=0 >/dev/null 2>&1 || true
 			sysctl -w net.ipv4.tcp_slow_start_after_idle=1 >/dev/null 2>&1 || true
 			sysctl -w net.ipv4.tcp_fastopen=1 >/dev/null 2>&1 || true
+			if [ "$(uci -q get nlbwmon.@nlbwmon[0].netlink_buffer_size 2>/dev/null || echo 0)" -ge 524288 ] 2>/dev/null; then
+				sysctl -w net.core.rmem_max=1048576 >/dev/null 2>&1 || true
+			fi
 		fi
 		if [ "$flow_offload" = 1 ]; then
 			# Trava de exclusao mutua: Fastpath/Flow Offloading desvia o trafego do kernel e quebra o SQM/CAKE.
@@ -1519,11 +1527,16 @@ EOF
 			/etc/init.d/sqm stop >/dev/null 2>&1 || true
 			enable_sqm=0
 
+			touch "${ARK_ROOT}/etc/config/equipe_perf" 2>/dev/null || true
+			uci -q set equipe_perf.settings=perf 2>/dev/null || true
+			uci -q set equipe_perf.settings.flow_offload_user_disabled='0'
+			uci -q commit equipe_perf 2>/dev/null || true
+
 			uci -q set firewall.@defaults[0].flow_offloading=1
-			# Detecta aceleracao em silicio MediaTek Filogic PPE / WED ou MT7621 PPE
+			# Detecta aceleracao em silicio MediaTek Filogic PPE / WED, MT7621 PPE ou Qualcomm IPQ NSS/PPE
 			has_ppe=0
 			if [ -e /sys/kernel/debug/ppe0 ] || [ -e /sys/kernel/debug/ppe1 ] || [ -d /sys/devices/platform/soc/15010000.wed ] || \
-			   grep -qiE 'mt7981|mt7986|mt7988|mt7621|mt7622|filogic' /tmp/sysinfo/board_name /tmp/sysinfo/model 2>/dev/null; then
+			   grep -qiE 'mt7981|mt7986|mt7988|mt7621|mt7622|filogic|ipq5332|ipq807x|ipq6018|ipq5018|ipq9574|qualcomm|predator connect t7' /tmp/sysinfo/board_name /tmp/sysinfo/model "${ARK_ROOT}/tmp/sysinfo/board_name" "${ARK_ROOT}/tmp/sysinfo/model" 2>/dev/null; then
 				has_ppe=1
 			fi
 			if [ "$has_ppe" = 1 ]; then
@@ -1534,6 +1547,11 @@ EOF
 			uci commit firewall
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
 		elif [ "$flow_offload" = 0 ]; then
+			touch "${ARK_ROOT}/etc/config/equipe_perf" 2>/dev/null || true
+			uci -q set equipe_perf.settings=perf 2>/dev/null || true
+			uci -q set equipe_perf.settings.flow_offload_user_disabled='1'
+			uci -q commit equipe_perf 2>/dev/null || true
+
 			uci -q set firewall.@defaults[0].flow_offloading=0
 			uci -q set firewall.@defaults[0].flow_offloading_hw=0
 			uci commit firewall

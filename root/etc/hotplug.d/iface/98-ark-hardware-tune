@@ -5,8 +5,8 @@
 [ "$ACTION" = "ifup" ] || exit 0
 
 # Ignora loopback e pppoe (para nao causar gargalo no CPU em reconnects de provedor rapido)
-case "$INTERFACE" in
-	loopback|pppoe*) exit 0 ;;
+case "${INTERFACE}:${DEVICE}" in
+	loopback:*|pppoe*:*|*:pppoe*) exit 0 ;;
 esac
 
 # Verifica se a sintonia esta habilitada no sistema

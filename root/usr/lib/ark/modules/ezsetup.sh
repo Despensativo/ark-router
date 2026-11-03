@@ -1128,10 +1128,6 @@ feature_json() {
 		if [ -z "$mode" ] || [ "$mode" = auto ]; then
 			mode="$(uci -q get equipe_dashboard.speedify.install_mode || printf auto)"
 		fi
-		if [ "$mode" = "internal" ] && [ "$(uci -q get equipe_dashboard.speedify.install_mode)" != "internal" ]; then
-			uci -q set equipe_dashboard.speedify.install_mode='internal'
-			uci commit equipe_dashboard
-		fi
 		saved="$(uci -q get equipe_dashboard.speedify.saved_config || printf 0)"
 		autostart="$(uci -q get equipe_dashboard.speedify.autostart || printf 0)"
 		desired="$(uci -q get equipe_dashboard.speedify.desired_state || printf manual)"
@@ -1944,7 +1940,7 @@ handle_ezsetup() {
 			"$https_available" "$(bool "$https_redirect")" "$ca_available" "$ca_fingerprint" "$(json_escape "$current_version")" "$(json_escape "$update_repo")" "$(json_escape "$manager")" "$asu_check"
 		}
 		features_out="$(features_payload)"
-		printf '%s\n' "$features_out" > "$cache" 2>/dev/null
+		printf '%s\n' "$features_out" > "$cache.$$.tmp" 2>/dev/null && mv -f "$cache.$$.tmp" "$cache" 2>/dev/null || true
 		printf '%s\n' "$features_out"
 		;;
 	self-update-check)
@@ -1968,7 +1964,7 @@ handle_ezsetup() {
 			cat "$cache_file"
 		else
 			out="$(ark_update_json)"
-			printf '%s\n' "$out" > "$cache_file" 2>/dev/null
+			printf '%s\n' "$out" > "$cache_file.$$.tmp" 2>/dev/null && mv -f "$cache_file.$$.tmp" "$cache_file" 2>/dev/null || true
 			printf '%s\n' "$out"
 		fi
 		;;
@@ -2007,6 +2003,7 @@ handle_ezsetup() {
 		[ -n "$url" ] && [ -n "$asset" ] || { echo 'Arquivo de atualizacao indisponivel' >&2; exit 3; }
 		echo '{"state":"running","percent":10,"message":"Iniciando processo de atualização..."}' >"$status"
 		(
+			trap '[ $? -ne 0 ] && echo "{\"state\":\"error\",\"percent\":0,\"message\":\"Falha na atualização.\"}" >"$status"' EXIT
 			set -e
 			tmp=/tmp/ark-router-self-update
 			rm -rf "$tmp"; mkdir -p "$tmp"
@@ -2066,7 +2063,7 @@ handle_ezsetup() {
 			[ -x /usr/sbin/ark-doctor ] && (/usr/sbin/ark-doctor --auto >/dev/null 2>&1 &) || true
 			[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1 || true
 			echo '{"state":"done","percent":100,"message":"Atualização concluída com sucesso! Versão '"$latest"' ativa."}' >"$status"
-		) >"$log" 2>&1 || echo '{"state":"error","percent":0,"message":"Falha na atualização."}' >"$status" &
+		) >"$log" 2>&1 &
 		echo started
 		;;
 	manual-update-start)
@@ -2084,6 +2081,7 @@ handle_ezsetup() {
 		[ -n "$pkg_file" ] && [ -s "$pkg_file" ] || { echo "Arquivo de pacote invalido ou nao encontrado" >&2; exit 3; }
 		echo '{"state":"running","percent":10,"message":"Iniciando instalação manual offline..."}' >"$status"
 		(
+			trap '[ $? -ne 0 ] && echo "{\"state\":\"error\",\"percent\":0,\"message\":\"Falha na instalação manual do pacote.\"}" >"$status"' EXIT
 			set -e
 			echo '{"state":"running","percent":25,"message":"1/4 Criando backup de segurança do sistema..."}' >"$status"
 			backup="/tmp/ark-router-before-self-update-$(date +%Y%m%d-%H%M%S).tar.gz"
@@ -2108,7 +2106,7 @@ handle_ezsetup() {
 			[ -x /usr/sbin/ark-doctor ] && (/usr/sbin/ark-doctor --auto >/dev/null 2>&1 &) || true
 			[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1 || true
 			echo '{"state":"done","percent":100,"message":"Instalação concluída com sucesso! Versão '"$installed_after"' ativa."}' >"$status"
-		) >"$log" 2>&1 || echo '{"state":"error","percent":0,"message":"Falha na instalação manual do pacote."}' >"$status" &
+		) >"$log" 2>&1 &
 		echo started
 		;;
 	language)

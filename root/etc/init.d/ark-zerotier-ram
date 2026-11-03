@@ -40,7 +40,3 @@ start_service() {
 stop() {
 	return 0
 }
-
-case "$1" in
-	start|boot) start_service 2>/dev/null || true ;;
-esac

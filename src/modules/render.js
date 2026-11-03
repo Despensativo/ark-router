@@ -1182,6 +1182,7 @@ const renderMethods = {
 					_t('Em redes com TV Box, IPTV ou caixas de som inteligentes, sem o IGMP Snooping a ponte L2 (br-lan) replica todo o fluxo multimídia como broadcast para todas as portas e antenas simultaneamente, causando saturação severa e travamentos no Wi-Fi.')
 				])
 			]),
+			isApNode ? '' : this.upnpCard(),
 			isApNode ? '' : this.dmzCard(),
 			E('div',{class:'ex-lan-block'},[E('div',{class:'ex-lan-title'},[E('div',{},[E('span',{class:'ex-kicker'},['PORTAS CABEADAS']),E('h3',{},['LAN disponíveis'])]),E('small',{class:'ex-muted'},[isApNode ? _t('Portas locais em modo switch transparente conectadas aos seus aparelhos.') : (_t('Portas em modo LAN aparecem aqui; ao converter uma porta em ') + nextWan.label + _t(', ela sai desta lista e vira uma nova conexão de internet.'))])]),E('div',{class:'ex-grid ex-grid-2'},lanCards.length?lanCards:[E('section',{class:'ex-card ex-lan-card ex-center-card'},[E('strong',{},[_t('Nenhuma porta LAN disponível')]),E('small',{class:'ex-muted'},[_t('Todas as portas cabeadas livres estão em uso como WAN ou não foram detectadas.')])])])]),
 			wifiBlock,
@@ -2351,6 +2352,10 @@ const renderMethods = {
 			} else if (el.classList.contains('ex-lan-config-card')) {
 				panels = 'wan all';
 				assignId = 'ex-lan-config-section';
+			} else if (el.classList.contains('ex-upnp-card')) {
+				panels = 'upnp_dmz wan security_usb all';
+				assignId = 'ex-upnp-section';
+				featureKey = 'upnp';
 			} else if (el.classList.contains('ex-dmz-card')) {
 				panels = 'upnp_dmz wan security_usb all';
 				assignId = 'ex-dmz-section';
@@ -2707,7 +2712,11 @@ const renderMethods = {
 				if (meta.nativeDaemon) {
 					shouldHide = !!f.user_disabled || !!f.user_removed;
 				} else if (!installed) {
-					shouldHide = !showUninst || !!f.user_removed || !!f.hidden;
+					if (key === 'upnp') {
+						shouldHide = !!f.user_removed || !!f.hidden;
+					} else {
+						shouldHide = !showUninst || !!f.user_removed || !!f.hidden;
+					}
 				}
 			}
 			sec.classList.toggle('ark-feature-uninstalled-hidden', shouldHide);
@@ -2737,18 +2746,7 @@ const renderMethods = {
 			}
 		});
 
-		// 2. Also inject compact lifecycle bars for UPnP inside #ex-dmz-section and usteer inside #ex-wifi-mesh-section
-		const dmzSec = root.querySelector('#ex-dmz-section');
-		if (dmzSec) {
-			const oldUpnpBar = dmzSec.querySelector('.ex-plugin-lifecycle-bar[data-lifecycle-key="upnp"]');
-			const newUpnpBar = self.renderPluginLifecycleBar('upnp', true);
-			if (oldUpnpBar && oldUpnpBar.parentNode) {
-				oldUpnpBar.parentNode.replaceChild(newUpnpBar, oldUpnpBar);
-			} else {
-				const inner = dmzSec.querySelector('.ex-card-collapse-inner') || dmzSec;
-				inner.insertBefore(newUpnpBar, inner.firstChild);
-			}
-		}
+		// 2. Also inject compact lifecycle bar for usteer inside #ex-wifi-mesh-section
 		const meshSec = root.querySelector('#ex-wifi-mesh-section');
 		if (meshSec) {
 			const oldUsteerBar = meshSec.querySelector('.ex-plugin-lifecycle-bar[data-lifecycle-key="usteer"]');
@@ -2774,7 +2772,9 @@ const renderMethods = {
 			const installed = !!f.installed;
 			let hideMenu = false;
 			if (!devMode) {
-				if (meta.nativeDaemon) {
+				if (item.getAttribute('data-panel') === 'upnp_dmz') {
+					hideMenu = false;
+				} else if (meta.nativeDaemon) {
 					hideMenu = !!f.user_disabled || !!f.user_removed;
 				} else if (!installed) {
 					hideMenu = !showUninst || !!f.user_removed || !!f.hidden;

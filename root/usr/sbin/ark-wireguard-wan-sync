@@ -25,16 +25,22 @@ for s in $(uci -q show network 2>/dev/null | grep -E '=wireguard_[a-zA-Z0-9_]+$'
 	[ -n "$pubkey" ] || continue
 	ep_port="$(uci -q get "network.$s.endpoint_port" || printf '51820')"
 
-	# Extract interface name from section name (e.g. @wireguard_wgclient[0] -> wgclient)
-	sec_clean="${s#@wireguard_}"
+	# Extract interface name from section type (e.g. wireguard_wgclient -> wgclient)
+	sec_type="$(uci -q get "network.$s" 2>/dev/null || printf '%s' "$s")"
+	sec_clean="${sec_type#@wireguard_}"
 	sec_clean="${sec_clean#wireguard_}"
 	iface="${sec_clean%%\[*}"
 	[ -n "$iface" ] && [ -d "/sys/class/net/$iface" ] || continue
 
 	target_ip="$ep_host"
 	case "$ep_host" in
+		*:*)
+			# IPv6 literal endpoint: strip any existing brackets and wrap in [ipv6]
+			target_ip="[${ep_host#\[}"
+			target_ip="${target_ip%\]}]"
+			;;
 		*[a-zA-Z]*)
-			resolved="$(nslookup "$ep_host" 2>/dev/null | awk '/^Address[ 0-9]*:/{print $NF}' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n1)"
+			resolved="$(nslookup "$ep_host" 2>/dev/null | awk 'NR>2 && /^Address[ 0-9]*:/{print $NF}' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | grep -v '^127\.' | head -n1)"
 			[ -n "$resolved" ] && target_ip="$resolved"
 			;;
 	esac

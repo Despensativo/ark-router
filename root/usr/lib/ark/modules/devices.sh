@@ -13,7 +13,6 @@ _ARK_DEVICES_SH_LOADED=1
 [ -f "${ARK_LIB_DIR}/modules/network.sh" ] && . "${ARK_LIB_DIR}/modules/network.sh"
 [ -f "${ARK_LIB_DIR}/modules/speedify.sh" ] && . "${ARK_LIB_DIR}/modules/speedify.sh"
 [ -f "${ARK_LIB_DIR}/modules/system.sh" ] && . "${ARK_LIB_DIR}/modules/system.sh"
-[ -f "${ARK_LIB_DIR}/modules/ezsetup.sh" ] && . "${ARK_LIB_DIR}/modules/ezsetup.sh"
 
 flush_stale_leases() {
 	local wif a_mac
@@ -98,23 +97,27 @@ device_get_stations() {
 		return 0
 	fi
 
-	local st_cache="/tmp/ark-stations-cache.json"
-	local st_ts="/tmp/ark-stations-cache.ts"
+	local st_cache="${ARK_ROOT}/tmp/ark-stations-cache.json"
+	local st_ts="${ARK_ROOT}/tmp/ark-stations-cache.ts"
 	local now cache_time
 
 	now="$(date +%s 2>/dev/null || echo 0)"
 	if [ -s "$st_cache" ] && [ -f "$st_ts" ]; then
 		cache_time="$(head -n 1 "$st_ts" 2>/dev/null || echo 0)"
 		case "$cache_time" in ''|*[!0-9]*) cache_time=0 ;; esac
-		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ $((now - cache_time)) -lt 120 ]; then
+		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ "$now" -ge "$cache_time" ] && [ $((now - cache_time)) -lt 120 ]; then
 			cat "$st_cache"
 			return 0
 		fi
 	fi
 
-	device_get_stations_raw > "$st_cache.tmp"
-	mv "$st_cache.tmp" "$st_cache"
-	echo "$now" > "$st_ts"
+	if ! device_get_stations_raw > "$st_cache.$$.tmp"; then
+		rm -f "$st_cache.$$.tmp"
+		return 1
+	fi
+	mv "$st_cache.$$.tmp" "$st_cache" || return 1
+	printf '%s\n' "$now" > "$st_ts.$$.tmp"
+	mv "$st_ts.$$.tmp" "$st_ts"
 	cat "$st_cache"
 }
 
@@ -506,7 +509,7 @@ speedtest_upload_fallback_mbps() {
 }
 
 device_limits_json() {
-	local first sec enabled down up lan_bypass dev_mac
+	local first sec enabled down up lan_bypass dev_mac seen_macs=""
 	[ -f /etc/config/equipe_devices ] || { printf '{}\n'; return 0; }
 	first=1
 	printf '{'
@@ -518,6 +521,8 @@ device_limits_json() {
 		[ "$lan_bypass" = 0 ] || [ "$lan_bypass" = false ] && lan_bypass=false || lan_bypass=true
 		dev_mac="$(uci -q get "equipe_devices.$sec.mac" | tr 'a-f' 'A-F')"
 		[ -n "$dev_mac" ] || continue
+		case " $seen_macs " in *" $dev_mac "*) continue ;; esac
+		seen_macs="$seen_macs $dev_mac"
 		[ "$first" = 1 ] || printf ','
 		first=0
 		printf '"%s":{"enabled":%s,"down":%d,"up":%d,"lan_bypass":%s}' "$dev_mac" "$( [ "$enabled" = 1 ] && printf true || printf false )" "$down" "$up" "$lan_bypass"
@@ -887,6 +892,7 @@ prepare_speedtest() {
 	min_kb="${ARK_SPEEDTEST_RAM_MIN_KB:-25600}"
 	[ "$tmp_avail" -ge "$min_kb" ] || { echo "RAM /tmp insuficiente para medidor automatico. Use Fast.com/manual." >&2; return 3; }
 	if can_install_speedtest_flash; then
+		[ -f "${ARK_LIB_DIR}/modules/ezsetup.sh" ] && . "${ARK_LIB_DIR}/modules/ezsetup.sh"
 		pm="$(ark_package_manager)"
 		if [ "$pm" = apk ]; then
 			ark_run_limited 90 apk update >/dev/null 2>&1 && ark_run_limited 120 apk add speedtest-go >/dev/null 2>&1
@@ -1015,23 +1021,27 @@ get_device_fingerprints_raw() {
 }
 
 get_device_fingerprints() {
-	local fp_cache="/tmp/ark-fp-cache.json"
-	local fp_ts="/tmp/ark-fp-cache.ts"
+	local fp_cache="${ARK_ROOT}/tmp/ark-fp-cache.json"
+	local fp_ts="${ARK_ROOT}/tmp/ark-fp-cache.ts"
 	local now cache_time
 
 	now="$(date +%s 2>/dev/null || echo 0)"
 	if [ -s "$fp_cache" ] && [ -f "$fp_ts" ]; then
 		cache_time="$(head -n 1 "$fp_ts" 2>/dev/null || echo 0)"
 		case "$cache_time" in ''|*[!0-9]*) cache_time=0 ;; esac
-		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ $((now - cache_time)) -lt 120 ]; then
+		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ "$now" -ge "$cache_time" ] && [ $((now - cache_time)) -lt 120 ]; then
 			cat "$fp_cache"
 			return 0
 		fi
 	fi
 
-	get_device_fingerprints_raw > "$fp_cache.tmp"
-	mv "$fp_cache.tmp" "$fp_cache"
-	echo "$now" > "$fp_ts"
+	if ! get_device_fingerprints_raw > "$fp_cache.$$.tmp"; then
+		rm -f "$fp_cache.$$.tmp"
+		return 1
+	fi
+	mv "$fp_cache.$$.tmp" "$fp_cache" || return 1
+	printf '%s\n' "$now" > "$fp_ts.$$.tmp"
+	mv "$fp_ts.$$.tmp" "$fp_ts"
 	cat "$fp_cache"
 }
 
@@ -1068,6 +1078,7 @@ handle_devices() {
 	speedtest-start)
 		case "$2" in wan) network=wan; sqm_section=wan1 ;; wan2) network=wan2; sqm_section=wan2 ;; *) echo 'WAN invalida' >&2; exit 2 ;; esac
 		selected_wan="$2"
+		[ -f "${ARK_LIB_DIR}/modules/ezsetup.sh" ] && . "${ARK_LIB_DIR}/modules/ezsetup.sh"
 		feature_active speedtest || { echo 'Medidor indisponivel' >&2; exit 3; }
 		status="/tmp/ark-speedtest-$2.status"; result="/tmp/ark-speedtest-$2.json"; log="/tmp/ark-speedtest-$2.log"
 		grep -q 'running' "$status" 2>/dev/null && { echo running; exit 0; }
@@ -1082,10 +1093,19 @@ handle_devices() {
 		echo 'running|5|Preparando teste' >"$status"; rm -f "$result"
 		(
 			bin="$(command -v speedtest-go 2>/dev/null || printf /tmp/ark-speedtest/speedtest-go)"
-			restore_sqm() { uci -q revert "sqm.$sqm_section.enabled"; /etc/init.d/sqm restart >/dev/null 2>&1; }
+			saved_sqm_en="$(uci -q get "sqm.$sqm_section.enabled" 2>/dev/null || echo 0)"
+			restore_sqm() {
+				if [ "$saved_sqm_en" = "1" ]; then
+					uci -q revert "sqm.$sqm_section.enabled" 2>/dev/null || true
+					/etc/init.d/sqm start >/dev/null 2>&1 || /etc/init.d/sqm restart >/dev/null 2>&1 || true
+				fi
+			}
 			trap restore_sqm EXIT INT TERM
 			echo 'running|10|Pausando SQM' >"$status"
-			uci -q set "sqm.$sqm_section.enabled=0"; /etc/init.d/sqm restart >/dev/null 2>&1; sleep 2
+			if [ "$saved_sqm_en" = "1" ]; then
+				/etc/init.d/sqm stop >/dev/null 2>&1 || true
+				sleep 2
+			fi
 			ok=0; uploads=''; download=0; latency=0; run=1
 			if [ -x "$bin" ]; then
 				while [ "$run" -le 3 ]; do
@@ -1189,12 +1209,19 @@ handle_devices() {
 		suffix="$(device_suffix "$mac")"
 		[ -n "$name" ] || name="ARK-Secundario-${suffix}"
 		dns_host_name="$(printf '%s' "$name" | sed 's/[^a-zA-Z0-9_-]/-/g; s/\-{2,\}/-/g; s/^-//; s/-$//')"
-		host="$(find_dhcp_host "$mac")"
-		[ -n "$host" ] || host="ark_sec_$suffix"
+		for h in $(uci -q show dhcp 2>/dev/null | grep -E '\.mac=' | cut -d. -f2 | cut -d= -f1); do
+			hmac="$(uci -q get "dhcp.$h.mac" | tr 'a-f' 'A-F')"
+			hip="$(uci -q get "dhcp.$h.ip")"
+			if [ "$hmac" = "$mac" ] || [ "$hip" = "$ip" ]; then
+				uci -q delete "dhcp.$h"
+			fi
+		done
+		host="ark_sec_$suffix"
 		uci -q set "dhcp.$host=host"
 		uci -q set "dhcp.$host.name=$dns_host_name"
 		uci -q set "dhcp.$host.mac=$mac"
 		uci -q set "dhcp.$host.ip=$ip"
+		uci -q set "dhcp.$host.dns=1"
 		uci commit dhcp
 		name_section="device_$(printf '%s' "$mac" | tr -d ':')"
 		uci -q set "equipe_devices.$name_section=device"
@@ -1288,6 +1315,7 @@ handle_devices() {
 				dmz_active=true
 			fi
 		fi
+		[ -f "${ARK_LIB_DIR}/modules/ezsetup.sh" ] && . "${ARK_LIB_DIR}/modules/ezsetup.sh"
 		printf '{"reserved":%s,"ip":"%s","priority":%s,"dscp":"%s","wan_route":"%s","limit_enabled":%s,"limit_down":%d,"limit_up":%d,"limit_lan_bypass":%s,"operation_profile":"%s","qos_active":%s,"parental_mode":"%s","parental_block":%s,"safesearch":%s,"blocked_services":"%s","adguard_installed":%s,"ipv6_allowed":%s,"custom_dns":"%s","dmz":%s}\n' \
 			"$reserved" "$(json_escape "$ip")" "$priority" "$(json_escape "$dscp")" "$(json_escape "$wan_route")" "$limit_enabled" "$limit_down" "$limit_up" "$limit_lan_bypass" "$(ark_operation_profile)" "$(feature_active sqm && bool 1 || bool 0)" \
 			"$(json_escape "$parental_mode")" "$parental_block" "$safesearch" "$(json_escape "$blocked_services")" "$adguard_installed" "$ipv6_allowed" "$(json_escape "$saved_custom_dns")" "$dmz_active"
@@ -1331,6 +1359,7 @@ handle_devices() {
 			host="$(find_dhcp_host "$mac")"
 			[ -z "$duplicate" ] || printf '%s\n' "$duplicate" | grep -q "^dhcp\.$host\.ip=" || { echo 'Esse IP ja esta reservado para outro dispositivo' >&2; exit 2; }
 		fi
+		[ -f "${ARK_LIB_DIR}/modules/ezsetup.sh" ] && . "${ARK_LIB_DIR}/modules/ezsetup.sh"
 		[ "$priority" != 1 ] || { feature_active sqm && [ -s /etc/config/qos_equipe ]; } || { echo 'Ative o SQM antes de priorizar o dispositivo' >&2; exit 3; }
 		if [ -z "$target_dscp" ]; then
 			target_dscp="AF41"
@@ -1520,29 +1549,6 @@ handle_devices() {
 		rm -f /tmp/ark-router-reboot-token
 		( ark_safe_storage_reboot; sleep 1; /sbin/reboot ) >/dev/null 2>&1 &
 		echo restarting
-		;;
-	device-reserve-secondary)
-		mac="$(printf '%s' "$2" | tr 'a-f' 'A-F')"
-		ip="$3"
-		name="${4:-ARK-Ponto-Adicional}"
-		valid_mac "$mac" || { echo 'MAC invalido' >&2; exit 2; }
-		valid_ipv4 "$ip" || { echo 'IP invalido' >&2; exit 2; }
-		for h in $(uci -q show dhcp 2>/dev/null | grep -E '\.mac=' | cut -d. -f2 | cut -d= -f1); do
-			hmac="$(uci -q get "dhcp.$h.mac" | tr 'a-f' 'A-F')"
-			hip="$(uci -q get "dhcp.$h.ip")"
-			if [ "$hmac" = "$mac" ] || [ "$hip" = "$ip" ]; then
-				uci -q delete "dhcp.$h"
-			fi
-		done
-		sec_id="sec_$(printf '%s' "$mac" | tr -d ':' | tr 'A-F' 'a-f')"
-		uci -q set "dhcp.$sec_id=host"
-		uci -q set "dhcp.$sec_id.mac=$mac"
-		uci -q set "dhcp.$sec_id.ip=$ip"
-		uci -q set "dhcp.$sec_id.name=$name"
-		uci -q set "dhcp.$sec_id.dns=1"
-		uci commit dhcp
-		/etc/init.d/dnsmasq reload >/dev/null 2>&1 || true
-		echo 'reserved'
 		;;
 	flush-stale-leases)
 		flush_stale_leases

@@ -71,8 +71,6 @@ define Package/luci-app-ark-router/install
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) ./root/usr/sbin/equipe-dashboard-control $(1)/usr/sbin/equipe-dashboard-control
 	$(INSTALL_BIN) ./root/usr/sbin/equipe-traffic-history $(1)/usr/sbin/equipe-traffic-history
-	$(INSTALL_DIR) $(1)/usr/lib/ark
-	$(INSTALL_BIN) ./root/usr/lib/ark/ark-control $(1)/usr/lib/ark/ark-control
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./root/etc/init.d/equipe-traffic-history $(1)/etc/init.d/equipe-traffic-history
 	$(INSTALL_BIN) ./root/etc/init.d/ark-safe-shutdown $(1)/etc/init.d/ark-safe-shutdown
@@ -91,8 +89,6 @@ define Package/luci-app-ark-router-full/install
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) ./root/usr/sbin/equipe-dashboard-control $(1)/usr/sbin/equipe-dashboard-control
 	$(INSTALL_BIN) ./root/usr/sbin/equipe-traffic-history $(1)/usr/sbin/equipe-traffic-history
-	$(INSTALL_DIR) $(1)/usr/lib/ark
-	$(INSTALL_BIN) ./root/usr/lib/ark/ark-control $(1)/usr/lib/ark/ark-control
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./root/etc/init.d/equipe-traffic-history $(1)/etc/init.d/equipe-traffic-history
 	$(INSTALL_BIN) ./root/etc/init.d/ark-safe-shutdown $(1)/etc/init.d/ark-safe-shutdown
@@ -130,7 +126,7 @@ endef
 define Package/luci-app-ark-router/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
-	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/sbin/ark-port-ledd /usr/sbin/ark-rainbowd /usr/lib/ark/ark-control /usr/lib/ark/*.sh /etc/init.d/equipe-traffic-history /etc/init.d/ark-safe-shutdown /etc/init.d/ark-port-ledd /etc/init.d/ark-rainbowd /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
+	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/sbin/ark-port-ledd /usr/sbin/ark-rainbowd /usr/lib/ark/*.sh /etc/init.d/equipe-traffic-history /etc/init.d/ark-safe-shutdown /etc/init.d/ark-port-ledd /etc/init.d/ark-rainbowd /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
 	[ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable 2>/dev/null || true
 	[ -x /etc/init.d/ark-port-ledd ] && /etc/init.d/ark-port-ledd enable 2>/dev/null || true
 	[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme
@@ -145,7 +141,7 @@ endef
 define Package/luci-app-ark-router-full/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
-	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/sbin/ark-port-ledd /usr/sbin/ark-rainbowd /usr/lib/ark/ark-control /usr/lib/ark/*.sh /etc/init.d/equipe-traffic-history /etc/init.d/ark-safe-shutdown /etc/init.d/ark-port-ledd /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
+	chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/equipe-traffic-history /usr/sbin/ark-port-ledd /usr/sbin/ark-rainbowd /usr/lib/ark/*.sh /etc/init.d/equipe-traffic-history /etc/init.d/ark-safe-shutdown /etc/init.d/ark-port-ledd /usr/libexec/ark-starlink-telemetry /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
 	[ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable 2>/dev/null || true
 	[ -x /etc/init.d/ark-port-ledd ] && /etc/init.d/ark-port-ledd enable 2>/dev/null || true
 	[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme

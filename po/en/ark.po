@@ -13411,3 +13411,117 @@ msgstr "Error querying radios:"
 msgid "Potência de Transmissão Wi‑Fi (dBm)"
 msgstr "Wi‑Fi Transmit Power (dBm)"
 
+
+msgid "Ativa BSS Coloring, Spatial Reuse (OBSS PD), SU Beamforming, Airtime Fairness (AQL) e proteção PMF nos rádios."
+msgstr "Enables BSS Coloring, Spatial Reuse (OBSS PD), SU Beamforming, Airtime Fairness (AQL), and PMF protection on the radios."
+
+msgid "Marca quadros com cor de célula (he_bss_color) e reusa o espectro ignorando redes vizinhas distantes."
+msgstr "Tags frames with a BSS color (he_bss_color) and reuses spectrum by ignoring distant neighboring networks."
+
+msgid "Contabiliza TX/RX no kernel (airtime_flags=3 e AQL) para impedir que clientes 1x1 lentos roubem tempo de ar."
+msgstr "Accounts for TX/RX in the kernel (airtime_flags=3 and AQL) to prevent slow 1x1 clients from monopolizing airtime."
+
+msgid "Focaliza o feixe de rádio Single-User diretamente no cliente sem perdas de sounding MU-MIMO em 160 MHz."
+msgstr "Focuses the Single-User radio beam directly on the client without MU-MIMO sounding overhead at 160 MHz."
+
+msgid "🛡️ Proteção PMF (802.11w) & Sono Mobile"
+msgstr "🛡️ PMF Protection (802.11w) & Mobile Sleep"
+
+msgid "Criptografa quadros de gerência e blinda sessões em repouso (TWT desligado e inatividade 24h) para iOS/Android."
+msgstr "Encrypts management frames and protects idle sessions (TWT disabled and 24-hour inactivity timeout) for iOS/Android."
+msgid "0 Portas Ativas"
+msgstr "0 Active Ports"
+
+msgid "Ajustes do UPnP / NAT‑PMP salvos e aplicados com sucesso."
+msgstr "UPnP / NAT‑PMP settings saved and applied successfully."
+
+msgid "Auxílio STUN Anti-NAT Estrito"
+msgstr "Anti-Strict NAT STUN Assist"
+
+msgid "Consultando redirecionamentos UPnP ativos…"
+msgstr "Checking active UPnP port forwards…"
+
+msgid "Daemon miniupnpd reiniciado com sucesso."
+msgstr "miniupnpd daemon restarted successfully."
+
+msgid "Habilitar Serviço UPnP e NAT-PMP"
+msgstr "Enable UPnP and NAT-PMP Service"
+
+msgid "Modo Seguro (Secure Mode)"
+msgstr "Secure Mode"
+
+msgid "Porta Interna SOAP"
+msgstr "Internal SOAP Port"
+
+msgid "Preencher com a velocidade detectada do SQM ou link físico WAN"
+msgstr "Fill with detected SQM speed or physical WAN link speed"
+
+msgid "REDE & JOGOS • ABERTURA AUTOMÁTICA DE PORTAS"
+msgstr "NETWORK & GAMING • AUTOMATIC PORT FORWARDING"
+
+msgid "Revogar esta porta do firewall"
+msgstr "Revoke this port from the firewall"
+
+msgid "Servidor STUN Externo"
+msgstr "External STUN Server"
+
+msgid "Tempo Limite / Limpeza (TTL s)"
+msgstr "Lease Timeout / Cleanup (TTL s)"
+
+msgid "Todos os redirecionamentos dinâmicos UPnP foram limpos com sucesso."
+msgstr "All dynamic UPnP port forwards were cleared successfully."
+
+msgid "Velocidade Download Anunciada (Mbps)"
+msgstr "Advertised Download Speed (Mbps)"
+
+msgid "Velocidade Upload Anunciada (Mbps)"
+msgstr "Advertised Upload Speed (Mbps)"
+
+msgid "⚙️ Parâmetros Avançados do Daemon (UCI upnpd)"
+msgstr "⚙️ Advanced Daemon Parameters (UCI upnpd)"
+
+msgid "📋 Mapeamentos Dinâmicos Ativos no Firewall"
+msgstr "📋 Active Dynamic Firewall Mappings"
+
+msgid "🚀 Identificação de Velocidade do Link (UPnP IGD WANCommonInterfaceConfig)"
+msgstr "🚀 Link Speed Identification (UPnP IGD WANCommonInterfaceConfig)"
+
+msgid "Modo 6: WAN 100% IPv6 + LAN IPv4 (Anycast)"
+msgstr "Mode 6: 100% IPv6 WAN + IPv4 LAN (Anycast)"
+
+msgid "Modo 6: WAN 100% IPv6 + LAN IPv4 (Anycast / 464XLAT)"
+msgstr "Mode 6: 100% IPv6 WAN + IPv4 LAN (Anycast / 464XLAT)"
+
+msgid "WAN 100% IPv6 + LAN IPv4 (Anycast)"
+msgstr "100% IPv6 WAN + IPv4 LAN (Anycast)"
+
+msgid "Bypass CGNAT • ~15ms"
+msgstr "CGNAT Bypass • ~15ms"
+
+msgid "Motor de Tradução CLAT: "
+msgstr "CLAT Translation Engine: "
+
+msgid "Cloudflare Anycast WireGuard IPv6 (~15ms)"
+msgstr "Cloudflare Anycast WireGuard IPv6 (~15ms)"
+
+msgid "Kernel 464XLAT + DNS64"
+msgstr "Kernel 464XLAT + DNS64"
+
+msgid "Automático (Anycast IPv6 / 464XLAT)"
+msgstr "Automatic (Anycast IPv6 / 464XLAT)"
+
+msgid "Desligar e Restaurar"
+msgstr "Turn Off & Restore"
+
+msgid "Mantém o IPv4 normal na rede interna (LAN), mas força 100% do tráfego externo a sair via IPv6 (direto para sites IPv6 e via túnel Anycast Cloudflare IPv6 / 464XLAT para sites legados IPv4)."
+msgstr "Keeps standard IPv4 on the local network (LAN), while forcing 100% of external traffic out over IPv6 (direct to IPv6 sites and via Cloudflare IPv6 Anycast / 464XLAT tunnel for legacy IPv4 sites)."
+
+msgid "Fuga inteligente do CGNAT da operadora sem quebrar TVs, videogames ou IoTs que dependem de IPv4 na LAN."
+msgstr "Smart ISP CGNAT bypass without breaking TVs, game consoles, or IoT devices that rely on LAN IPv4."
+
+msgid "Tráfego IPv6 sai direto na velocidade da fibra (~4,8ms) e tráfego IPv4 é encapsulado em IPv6 via Cloudflare Anycast (~15ms)."
+msgstr "IPv6 traffic exits directly at fiber speed (~4.8ms) and IPv4 traffic is encapsulated in IPv6 via Cloudflare Anycast (~15ms)."
+
+msgid "Reversão inteligente com 1 clique: salva o estado original da WAN/DHCP ao ligar e restaura tudo exatamente como estava ao desligar."
+msgstr "1-click smart rollback: saves original WAN/DHCP state when enabled and restores everything exactly as it was when disabled."
+

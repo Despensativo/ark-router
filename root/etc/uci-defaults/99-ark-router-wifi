@@ -210,9 +210,36 @@ if [ -f /etc/config/mwan3 ] && ! uci -q get mwan3.iot_alexa_mqtt >/dev/null; the
 EOF
 fi
 
-# Suporte a desligamento de wpa_supplicant em modo AP exclusivo para economizar RAM
-if [ -f /etc/init.d/wpad ] && ! grep -q 'wireless.globals.supplicant' /etc/init.d/wpad; then
-	sed -i 's/if \[ -x "\/usr\/sbin\/wpa_supplicant" \]; then/if \[ "$(\/sbin\/uci -q get wireless.globals.supplicant || echo 1)" != "0" \] \&\& \[ -x "\/usr\/sbin\/wpa_supplicant" \]; then/' /etc/init.d/wpad 2>/dev/null || true
+# Garantir que wpad e wpa_supplicant permanecam integros para o netifd inicializar radios Wi-Fi sem travamento
+uci -q delete wireless.globals 2>/dev/null || true
+uci commit wireless 2>/dev/null || true
+if [ -f /etc/init.d/wpad ] && grep -q 'wireless.globals.supplicant' /etc/init.d/wpad 2>/dev/null; then
+	sed -i 's/.*wireless.globals.supplicant.*/\tif [ -x "\/usr\/sbin\/wpa_supplicant" ]; then/' /etc/init.d/wpad 2>/dev/null || true
+fi
+
+# Reparo pós-configuração: se os SSIDs de 2.4G e 5G ficaram invertidos (radio0=5g e radio1=2g), corrige após criação
+if [ "$(uci -q get wireless.radio0.band)" = "5g" ] && [ "$(uci -q get wireless.radio1.band)" = "2g" ]; then
+	_s0="$(uci -q get wireless.default_radio0.ssid)"
+	_s1="$(uci -q get wireless.default_radio1.ssid)"
+	case "$_s1" in
+		*5G|*5g)
+			case "$_s0" in
+				*5G|*5g) ;;
+				*)
+					if [ -n "$_s0" ] && [ -n "$_s1" ]; then
+						uci -q set "wireless.default_radio0.ssid=$_s1"
+						uci -q set "wireless.default_radio1.ssid=$_s0"
+						uci commit wireless 2>/dev/null || true
+					fi
+					;;
+			esac
+			;;
+	esac
+fi
+
+# Dispara ark-hardware-tune após os rádios e SSIDs estarem configurados
+if [ "$(uci -q get equipe_dashboard.hardware_tune.user_disabled 2>/dev/null || echo 0)" != "1" ] && [ "$(uci -q get equipe_dashboard.hardware_tune.user_removed 2>/dev/null || echo 0)" != "1" ]; then
+	[ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune start 2>/dev/null || true
 fi
 
 exit 0

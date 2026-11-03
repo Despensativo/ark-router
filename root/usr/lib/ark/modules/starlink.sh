@@ -151,7 +151,9 @@ starlink_setup_policy_routing() {
 
 starlink_public_list_json() {
 	local active_wan first network_section status_json up ipaddr gateway dns device port likely cgnat_ip
-	starlink_setup_policy_routing
+	if [ ! -f /etc/ark/ark_starlink.nft ] && [ "$(uci -q get equipe_dashboard.starlink.public_view 2>/dev/null || echo 0)" = "1" ]; then
+		starlink_setup_policy_routing
+	fi
 	active_wan="$(starlink_active_wan_get)"
 	printf '{"ok":true,"enabled":true,"active_wan":"%s","wans":[' "$(json_escape "$active_wan")"
 	first=1

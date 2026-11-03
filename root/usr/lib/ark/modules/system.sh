@@ -251,6 +251,266 @@ dmz_set() {
 	esac
 }
 
+upnp_status_json() {
+	local upnp_enabled upnp_running upnp_pid upnp_installed enable_upnp enable_natpmp secure_mode use_stun stun_host stun_port clean_interval listen_port fw_eng lease_file leases_json first_lease
+	local line proto ext_port int_addr int_port expires desc mac sec_name dev_name host
+	local sqm_down sqm_up auto_down_mbps auto_up_mbps phy_spd raw_down_kbs raw_up_kbs down_mbps up_mbps down_kbs up_kbs
+
+	upnp_enabled="$(uci -q get upnpd.config.enabled || printf 0)"
+	enable_upnp="$(uci -q get upnpd.config.enable_upnp || printf 1)"
+	enable_natpmp="$(uci -q get upnpd.config.enable_natpmp || printf 1)"
+	secure_mode="$(uci -q get upnpd.config.secure_mode || printf 1)"
+	use_stun="$(uci -q get upnpd.config.use_stun || printf 1)"
+	stun_host="$(uci -q get upnpd.config.stun_host || printf 'stun.cloudflare.com')"
+	[ -n "$stun_host" ] || stun_host="stun.cloudflare.com"
+	stun_port="$(uci -q get upnpd.config.stun_port || printf 3478)"
+	case "$stun_port" in ''|*[!0-9]*) stun_port=3478 ;; esac
+	clean_interval="$(uci -q get upnpd.config.clean_ruleset_interval || printf 600)"
+	case "$clean_interval" in ''|*[!0-9]*) clean_interval=600 ;; esac
+	listen_port="$(uci -q get upnpd.config.port || printf 5000)"
+	case "$listen_port" in ''|*[!0-9]*) listen_port=5000 ;; esac
+
+	auto_down_mbps=1000
+	auto_up_mbps=500
+	for phy_spd in /sys/class/net/eth1/speed /sys/class/net/wan/speed /sys/class/net/eth0/speed; do
+		if [ -r "$phy_spd" ]; then
+			sqm_down="$(cat "$phy_spd" 2>/dev/null || true)"
+			case "$sqm_down" in
+				''|*[!0-9]*) ;;
+				*)
+					if [ "$sqm_down" -ge 100 ] 2>/dev/null; then
+						auto_down_mbps="$sqm_down"
+						auto_up_mbps="$sqm_down"
+						break
+					fi
+					;;
+			esac
+		fi
+	done
+
+	sqm_down="$(uci -q get sqm.@queue[0].download || uci -q get sqm.wan_sqm.download || printf 0)"
+	sqm_up="$(uci -q get sqm.@queue[0].upload || uci -q get sqm.wan_sqm.upload || printf 0)"
+	case "$sqm_down" in ''|*[!0-9]*) sqm_down=0 ;; esac
+	case "$sqm_up" in ''|*[!0-9]*) sqm_up=0 ;; esac
+	if [ "$sqm_up" -ge 1000 ] 2>/dev/null; then
+		auto_up_mbps=$(( (sqm_up + 500) / 1000 ))
+		if [ "$sqm_down" -ge 1000 ] 2>/dev/null; then
+			auto_down_mbps=$(( (sqm_down + 500) / 1000 ))
+		else
+			auto_down_mbps="$auto_up_mbps"
+		fi
+	elif [ "$sqm_down" -ge 1000 ] 2>/dev/null; then
+		auto_down_mbps=$(( (sqm_down + 500) / 1000 ))
+	fi
+
+	raw_down_kbs="$(uci -q get upnpd.config.download || true)"
+	raw_up_kbs="$(uci -q get upnpd.config.upload || true)"
+	case "$raw_down_kbs" in ''|*[!0-9]*) raw_down_kbs=0 ;; esac
+	case "$raw_up_kbs" in ''|*[!0-9]*) raw_up_kbs=0 ;; esac
+
+	if [ "$raw_down_kbs" -le 0 ] || { [ "$raw_down_kbs" = 1024 ] && [ "$raw_up_kbs" = 512 ]; }; then
+		down_mbps="$auto_down_mbps"
+		up_mbps="$auto_up_mbps"
+		down_kbs=$(( down_mbps * 128 ))
+		up_kbs=$(( up_mbps * 128 ))
+	else
+		down_kbs="$raw_down_kbs"
+		up_kbs="$raw_up_kbs"
+		[ "$up_kbs" -gt 0 ] || up_kbs=$(( auto_up_mbps * 128 ))
+		down_mbps=$(( (down_kbs + 64) / 128 ))
+		up_mbps=$(( (up_kbs + 64) / 128 ))
+		[ "$down_mbps" -ge 1 ] || down_mbps=1
+		[ "$up_mbps" -ge 1 ] || up_mbps=1
+	fi
+
+	upnp_running=0
+	upnp_pid="$(pidof miniupnpd 2>/dev/null | awk '{print $1}')"
+	[ -n "$upnp_pid" ] && upnp_running=1
+
+	upnp_installed=0
+	if [ -x /etc/init.d/miniupnpd ] || [ -f /etc/config/upnpd ] || command -v miniupnpd >/dev/null 2>&1; then
+		upnp_installed=1
+	fi
+
+	fw_eng="fw4"
+	if command -v ark_firewall_engine >/dev/null 2>&1; then
+		fw_eng="$(ark_firewall_engine)"
+	fi
+
+	lease_file="$(uci -q get upnpd.config.upnp_lease_file || printf '/var/run/miniupnpd.leases')"
+	[ -f "$lease_file" ] || lease_file="/var/run/miniupnpd.leases"
+	[ -f "$lease_file" ] || lease_file="/tmp/upnp.leases"
+
+	leases_json="["
+	first_lease=1
+	if [ -f "$lease_file" ]; then
+		line="$(awk -F: 'NF>=4 { k=toupper($1) ":" $2; if (!(k in idx)) { keys[++n]=k; idx[k]=n } lines[k]=$0 } END { for (i=1; i<=n; i++) print lines[keys[i]] }' "$lease_file" 2>/dev/null || true)"
+		if [ -n "$line" ]; then
+			while IFS=':' read -r proto ext_port int_addr int_port expires desc; do
+				[ -n "$proto" ] && [ -n "$ext_port" ] && [ -n "$int_addr" ] || continue
+				case "$ext_port" in ''|*[!0-9]*) continue ;; esac
+				case "$int_port" in ''|*[!0-9]*) int_port="$ext_port" ;; esac
+				case "$expires" in ''|*[!0-9]*) expires=0 ;; esac
+				dev_name=""
+				mac=""
+				if [ -f /tmp/dhcp.leases ]; then
+					mac="$(awk -v ip="$int_addr" '$3==ip {print toupper($2); exit}' /tmp/dhcp.leases)"
+					dev_name="$(awk -v ip="$int_addr" '$3==ip && $4 != "*" {print $4; exit}' /tmp/dhcp.leases)"
+				fi
+				if [ -n "$mac" ]; then
+					sec_name="device_$(printf '%s' "$mac" | tr -d ':')"
+					host="$(uci -q get "equipe_devices.$sec_name.name" || true)"
+					[ -n "$host" ] && dev_name="$host"
+				fi
+				[ "$first_lease" = 1 ] || leases_json="${leases_json},"
+				first_lease=0
+				leases_json="${leases_json}{\"proto\":\"$(json_escape "$proto")\",\"ext_port\":${ext_port},\"int_addr\":\"$(json_escape "$int_addr")\",\"int_port\":${int_port},\"hostname\":\"$(json_escape "$dev_name")\",\"desc\":\"$(json_escape "$desc")\",\"expires\":${expires}}"
+			done <<EOF
+$line
+EOF
+		fi
+	fi
+	leases_json="${leases_json}]"
+
+	printf '{"enabled":%s,"running":%s,"installed":%s,"pid":"%s","enable_upnp":%s,"enable_natpmp":%s,"secure_mode":%s,"use_stun":%s,"stun_host":"%s","stun_port":%s,"clean_ruleset_interval":%s,"port":%s,"download_mbps":%s,"upload_mbps":%s,"download_kbs":%s,"upload_kbs":%s,"auto_down_mbps":%s,"auto_up_mbps":%s,"fw_engine":"%s","leases":%s}\n' \
+		"$([ "$upnp_enabled" = 1 ] && printf true || printf false)" \
+		"$([ "$upnp_running" = 1 ] && printf true || printf false)" \
+		"$([ "$upnp_installed" = 1 ] && printf true || printf false)" \
+		"$(json_escape "$upnp_pid")" \
+		"$([ "$enable_upnp" = 0 ] && printf false || printf true)" \
+		"$([ "$enable_natpmp" = 0 ] && printf false || printf true)" \
+		"$([ "$secure_mode" = 0 ] && printf false || printf true)" \
+		"$([ "$use_stun" = 0 ] && printf false || printf true)" \
+		"$(json_escape "$stun_host")" \
+		"$stun_port" \
+		"$clean_interval" \
+		"$listen_port" \
+		"$down_mbps" \
+		"$up_mbps" \
+		"$down_kbs" \
+		"$up_kbs" \
+		"$auto_down_mbps" \
+		"$auto_up_mbps" \
+		"$(json_escape "$fw_eng")" \
+		"$leases_json"
+}
+
+upnp_save() {
+	local enabled enable_upnp enable_natpmp secure_mode use_stun stun_host clean_interval listen_port down_mbps up_mbps down_kbs up_kbs
+	enabled="${1:-0}"
+	enable_upnp="${2:-1}"
+	enable_natpmp="${3:-1}"
+	secure_mode="${4:-1}"
+	use_stun="${5:-1}"
+	stun_host="$(printf '%s' "${6:-stun.cloudflare.com}" | tr -d ' ,;\t\r\n"'\''')"
+	clean_interval="${7:-600}"
+	listen_port="${8:-5000}"
+	down_mbps="${9:-}"
+	up_mbps="${10:-}"
+
+	case "$enabled" in 1|true|on) enabled=1 ;; *) enabled=0 ;; esac
+	case "$enable_upnp" in 0|false|off) enable_upnp=0 ;; *) enable_upnp=1 ;; esac
+	case "$enable_natpmp" in 0|false|off) enable_natpmp=0 ;; *) enable_natpmp=1 ;; esac
+	case "$secure_mode" in 0|false|off) secure_mode=0 ;; *) secure_mode=1 ;; esac
+	case "$use_stun" in 0|false|off) use_stun=0 ;; *) use_stun=1 ;; esac
+	[ -n "$stun_host" ] || stun_host="stun.cloudflare.com"
+	case "$clean_interval" in ''|*[!0-9]*) clean_interval=600 ;; esac
+	[ "$clean_interval" -ge 30 ] 2>/dev/null || clean_interval=60
+	[ "$clean_interval" -le 86400 ] 2>/dev/null || clean_interval=86400
+	case "$listen_port" in ''|*[!0-9]*) listen_port=5000 ;; esac
+	if [ "$listen_port" -ne 0 ] 2>/dev/null; then
+		[ "$listen_port" -ge 1024 ] 2>/dev/null || listen_port=5000
+		[ "$listen_port" -le 65535 ] 2>/dev/null || listen_port=5000
+	fi
+
+	uci -q set upnpd.config=upnpd
+	uci -q set "upnpd.config.enabled=$enabled"
+	uci -q set "upnpd.config.enable_upnp=$enable_upnp"
+	uci -q set "upnpd.config.enable_natpmp=$enable_natpmp"
+	uci -q set "upnpd.config.secure_mode=$secure_mode"
+	uci -q set "upnpd.config.use_stun=$use_stun"
+	uci -q set "upnpd.config.stun_host=$stun_host"
+	uci -q set upnpd.config.stun_port='3478'
+	uci -q set "upnpd.config.clean_ruleset_interval=$clean_interval"
+	uci -q set "upnpd.config.port=$listen_port"
+	uci -q set upnpd.config.upnp_lease_file='/var/run/miniupnpd.leases'
+
+	case "$down_mbps" in
+		''|*[!0-9]*) ;;
+		*)
+			if [ "$down_mbps" -ge 1 ] 2>/dev/null && [ "$down_mbps" -le 100000 ] 2>/dev/null; then
+				down_kbs=$(( down_mbps * 128 ))
+				uci -q set "upnpd.config.download=$down_kbs"
+			fi
+			;;
+	esac
+	case "$up_mbps" in
+		''|*[!0-9]*) ;;
+		*)
+			if [ "$up_mbps" -ge 1 ] 2>/dev/null && [ "$up_mbps" -le 100000 ] 2>/dev/null; then
+				up_kbs=$(( up_mbps * 128 ))
+				uci -q set "upnpd.config.upload=$up_kbs"
+			fi
+			;;
+	esac
+
+	uci commit upnpd 2>/dev/null || true
+
+	if [ "$enabled" = 1 ]; then
+		[ -x /etc/init.d/miniupnpd ] && {
+			/etc/init.d/miniupnpd enable >/dev/null 2>&1 || true
+			/etc/init.d/miniupnpd restart >/dev/null 2>&1 || true
+		}
+	else
+		[ -x /etc/init.d/miniupnpd ] && {
+			/etc/init.d/miniupnpd stop >/dev/null 2>&1 || true
+			/etc/init.d/miniupnpd disable >/dev/null 2>&1 || true
+		}
+	fi
+	echo ok
+}
+
+upnp_delete_lease() {
+	local target_proto target_port lease_file tmp_file
+	target_proto="$(printf '%s' "${1:-}" | tr 'a-z' 'A-Z' | tr -d ' \t\r\n')"
+	target_port="$(printf '%s' "${2:-}" | tr -d ' \t\r\n')"
+	case "$target_proto" in TCP|UDP) ;; *) echo "Protocolo inválido" >&2; exit 2 ;; esac
+	case "$target_port" in ''|*[!0-9]*) echo "Porta inválida" >&2; exit 2 ;; esac
+
+	for lease_file in "$(uci -q get upnpd.config.upnp_lease_file || printf '/var/run/miniupnpd.leases')" /var/run/miniupnpd.leases /tmp/upnp.leases; do
+		if [ -f "$lease_file" ]; then
+			tmp_file="${lease_file}.tmp.$$"
+			awk -F':' -v p="$target_proto" -v port="$target_port" 'toupper($1) != p || $2 != port { print $0 }' "$lease_file" > "$tmp_file" 2>/dev/null || true
+			mv -f "$tmp_file" "$lease_file" 2>/dev/null || rm -f "$tmp_file" 2>/dev/null || true
+		fi
+	done
+
+	if pidof miniupnpd >/dev/null 2>&1 && [ -x /etc/init.d/miniupnpd ]; then
+		/etc/init.d/miniupnpd restart >/dev/null 2>&1 || true
+	fi
+	echo ok
+}
+
+upnp_clear_leases() {
+	local lease_file
+	for lease_file in "$(uci -q get upnpd.config.upnp_lease_file || printf '/var/run/miniupnpd.leases')" /var/run/miniupnpd.leases /tmp/upnp.leases; do
+		[ -f "$lease_file" ] && : > "$lease_file" 2>/dev/null || true
+	done
+
+	if is_fw4; then
+		nft flush chain inet fw4 upnp_prerouting >/dev/null 2>&1 || true
+		nft flush chain inet fw4 upnp_forward >/dev/null 2>&1 || true
+	elif is_fw3; then
+		iptables -t nat -F MINIUPNPD >/dev/null 2>&1 || true
+		iptables -F MINIUPNPD >/dev/null 2>&1 || true
+	fi
+
+	if pidof miniupnpd >/dev/null 2>&1 && [ -x /etc/init.d/miniupnpd ]; then
+		/etc/init.d/miniupnpd restart >/dev/null 2>&1 || true
+	fi
+	echo ok
+}
+
 dns_turbo_status_json() {
 	local allservers saved_allservers saved_servers clean_saved s clean_s servers raw_servers clean_servers filter_aaaa dhcp_fallback saved_fallback
 	local blocker_name dns_blocker_active cachesize mem_total_kb mem_total_mb doh_installed doh_active
@@ -355,7 +615,7 @@ dns_turbo_save() {
 	uci -q set "equipe_perf.settings.dns_servers=$valid_servers"
 	uci -q set "equipe_perf.settings.dns_dhcp_fallback=$fallback"
 	case " $valid_servers " in
-		*" 1.1.1.2 "*|*" 1.0.0.2 "*|*" 1.1.1.3 "*|*" 1.0.0.3 "*|*" 94.140.14."* |*" 94.140.15."* |*" 208.67.222.123 "*|*" 208.67.220.123 "*|*" 185.228.168."* ) ;;
+		*" 127.0.0.1 "*|*" 1.1.1.2 "*|*" 1.0.0.2 "*|*" 1.1.1.3 "*|*" 1.0.0.3 "*|*" 94.140.14."* |*" 94.140.15."* |*" 9.9.9.9 "*|*" 149.112.112.112 "*|*" 76.76.2."* |*" 76.76.10."* |*" 45.90.28."* |*" 45.90.30."* |*" 208.67.222.123 "*|*" 208.67.220.123 "*|*" 185.228.168."* |*" 185.228.169."* ) ;;
 		*) uci -q set equipe_perf.settings.adblock_cloud='0' ;;
 	esac
 	uci commit equipe_perf
@@ -630,9 +890,15 @@ system_perf_save() {
 		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_fin_wait=30 2>/dev/null || true
 		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_time_wait=30 2>/dev/null || true
 		printf 'net.netfilter.nf_conntrack_tcp_timeout_established=7440\nnet.netfilter.nf_conntrack_tcp_timeout_close_wait=30\nnet.netfilter.nf_conntrack_tcp_timeout_fin_wait=30\nnet.netfilter.nf_conntrack_tcp_timeout_time_wait=30\n' > "${sysctl_dir}/99-ark-conntrack.conf"
+		if [ -f "${sysctl_dir}/99-ark-hardware-tune.conf" ]; then
+			sed 's/^net\.netfilter\.nf_conntrack_tcp_timeout_established=.*/net.netfilter.nf_conntrack_tcp_timeout_established=7440/' "${sysctl_dir}/99-ark-hardware-tune.conf" > "${sysctl_dir}/99-ark-hardware-tune.conf.tmp" 2>/dev/null && mv -f "${sysctl_dir}/99-ark-hardware-tune.conf.tmp" "${sysctl_dir}/99-ark-hardware-tune.conf"
+		fi
 	else
 		sysctl -w net.netfilter.nf_conntrack_tcp_timeout_established=432000 2>/dev/null || true
 		rm -f "${sysctl_dir}/99-ark-conntrack.conf" 2>/dev/null || true
+		if [ -f "${sysctl_dir}/99-ark-hardware-tune.conf" ]; then
+			sed 's/^net\.netfilter\.nf_conntrack_tcp_timeout_established=.*/net.netfilter.nf_conntrack_tcp_timeout_established=432000/' "${sysctl_dir}/99-ark-hardware-tune.conf" > "${sysctl_dir}/99-ark-hardware-tune.conf.tmp" 2>/dev/null && mv -f "${sysctl_dir}/99-ark-hardware-tune.conf.tmp" "${sysctl_dir}/99-ark-hardware-tune.conf"
+		fi
 	fi
 
 	# Evita Split-Brain de rmem_max caso o hardware-tune ou TCP Turbo ja tenha alocado buffer maior
@@ -653,7 +919,9 @@ system_perf_save() {
 			vm.dirty_background_ratio=5
 			vm.swappiness=30
 		EOF
-		if [ ! -f "${sysctl_dir}/99-ark-hardware-tune.conf" ] && [ ! -f "${sysctl_dir}/99-ark-performance.conf" ]; then
+		if [ -f "${sysctl_dir}/99-ark-hardware-tune.conf" ]; then
+			sed 's/^vm\.vfs_cache_pressure=.*/vm.vfs_cache_pressure=150/; s/^vm\.dirty_ratio=.*/vm.dirty_ratio=10/; s/^vm\.dirty_background_ratio=.*/vm.dirty_background_ratio=5/' "${sysctl_dir}/99-ark-hardware-tune.conf" > "${sysctl_dir}/99-ark-hardware-tune.conf.tmp" 2>/dev/null && mv -f "${sysctl_dir}/99-ark-hardware-tune.conf.tmp" "${sysctl_dir}/99-ark-hardware-tune.conf"
+		elif [ ! -f "${sysctl_dir}/99-ark-performance.conf" ]; then
 			echo "net.core.rmem_max=$target_rmem" >> "${sysctl_dir}/99-ark-memory.conf"
 		fi
 	else
@@ -663,6 +931,9 @@ system_perf_save() {
 		sysctl -w vm.swappiness=60 2>/dev/null || true
 		[ "$cur_rmem" -lt 1048576 ] && sysctl -w net.core.rmem_max=1048576 2>/dev/null || true
 		rm -f "${sysctl_dir}/99-ark-memory.conf" 2>/dev/null || true
+		if [ -f "${sysctl_dir}/99-ark-hardware-tune.conf" ]; then
+			sed 's/^vm\.vfs_cache_pressure=.*/vm.vfs_cache_pressure=100/; s/^vm\.dirty_ratio=.*/vm.dirty_ratio=20/; s/^vm\.dirty_background_ratio=.*/vm.dirty_background_ratio=10/' "${sysctl_dir}/99-ark-hardware-tune.conf" > "${sysctl_dir}/99-ark-hardware-tune.conf.tmp" 2>/dev/null && mv -f "${sysctl_dir}/99-ark-hardware-tune.conf.tmp" "${sysctl_dir}/99-ark-hardware-tune.conf"
+		fi
 	fi
 
 	# Garantir que wpad e wpa_supplicant permanecam ativos (essencial para o netifd inicializar radios Wi-Fi)
@@ -1110,21 +1381,21 @@ handle_system() {
 		dmz_set "$@"
 		;;
 	upnp-status)
-		local upnp_enabled="$(uci -q get upnpd.config.enabled || echo 0)"
-		local upnp_running=0
-		pidof miniupnpd >/dev/null 2>&1 && upnp_running=1
-		printf '{"enabled":%s,"running":%s}\n' "$([ "$upnp_enabled" = 1 ] && echo true || echo false)" "$([ "$upnp_running" = 1 ] && echo true || echo false)"
+		upnp_status_json
 		;;
 	upnp-toggle)
 		shift
-		local state="${1:-0}"
+		state="${1:-0}"
 		case "$state" in 1|true) state=1 ;; *) state=0 ;; esac
 		if [ "$state" = 1 ]; then
+			uci -q set upnpd.config=upnpd
 			uci -q set upnpd.config.enabled='1'
 			uci -q set upnpd.config.enable_upnp='1'
 			uci -q set upnpd.config.enable_natpmp='1'
+			[ -n "$(uci -q get upnpd.config.secure_mode)" ] || uci -q set upnpd.config.secure_mode='1'
 			[ "$(uci -q get upnpd.config.use_stun)" = "1" ] || uci -q set upnpd.config.use_stun='1'
 			[ -n "$(uci -q get upnpd.config.stun_host)" ] || uci -q set upnpd.config.stun_host='stun.cloudflare.com'
+			uci -q set upnpd.config.upnp_lease_file='/var/run/miniupnpd.leases'
 			uci commit upnpd 2>/dev/null || true
 			[ -x /etc/init.d/miniupnpd ] && { /etc/init.d/miniupnpd enable >/dev/null 2>&1 || true; /etc/init.d/miniupnpd restart >/dev/null 2>&1 || true; }
 		else
@@ -1134,6 +1405,21 @@ handle_system() {
 			uci commit upnpd 2>/dev/null || true
 			[ -x /etc/init.d/miniupnpd ] && { /etc/init.d/miniupnpd stop >/dev/null 2>&1 || true; /etc/init.d/miniupnpd disable >/dev/null 2>&1 || true; }
 		fi
+		echo ok
+		;;
+	upnp-save)
+		shift
+		upnp_save "$@"
+		;;
+	upnp-delete-lease)
+		shift
+		upnp_delete_lease "$@"
+		;;
+	upnp-clear-leases)
+		upnp_clear_leases
+		;;
+	upnp-restart)
+		[ -x /etc/init.d/miniupnpd ] && /etc/init.d/miniupnpd restart >/dev/null 2>&1 || true
 		echo ok
 		;;
 	zram-status)

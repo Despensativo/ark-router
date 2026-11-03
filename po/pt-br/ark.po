@@ -13318,3 +13318,210 @@ msgstr "🛡️ Sondagem Concluída: Porta"
 msgid "🧭 Navegação OpenWrt LuCI (Tema Ark Integrado)"
 msgstr "🧭 Navegação OpenWrt LuCI (Tema Ark Integrado)"
 
+
+msgid "✓ Limites anti-bufferbloat (-12,5% Download / -7% Upload) aplicados a partir da medição do Fast.com!"
+msgstr "✓ Limites anti-bufferbloat (-12,5% Download / -7% Upload) aplicados a partir da medição do Fast.com!"
+
+msgid "🔄 Restaurar Porta WAN Física como WAN1"
+msgstr "🔄 Restaurar Porta WAN Física como WAN1"
+
+msgid "✨ Migração Inteligente sem Perda de Dados"
+msgstr "✨ Migração Inteligente sem Perda de Dados"
+
+msgid "A conexão"
+msgstr "A conexão"
+
+msgid "Porta WAN Física ("
+msgstr "Porta WAN Física ("
+
+msgid "Porta WAN"
+msgstr "Porta WAN"
+
+msgid "Conexão preservada:"
+msgstr "Conexão preservada:"
+
+msgid "Acesso à ONU preservado:"
+msgstr "Acesso à ONU preservado:"
+
+msgid "Após confirmar, basta mudar o cabo de internet da porta"
+msgstr "Após confirmar, basta mudar o cabo de internet da porta"
+msgid "🔒 Parâmetros sobrepostos pelo Modo A+ Waveform (memlimit"
+msgstr "🔒 Parâmetros sobrepostos pelo Modo A+ Waveform (memlimit"
+
+msgid "🏆 Modo A+ no Waveform (Calibragem Oficial ARK)"
+msgstr "🏆 Modo A+ no Waveform (Calibragem Oficial ARK)"
+
+msgid "🔗 Abrir Teste Waveform Bufferbloat ↗"
+msgstr "🔗 Abrir Teste Waveform Bufferbloat ↗"
+
+msgid "Quando ativo, sobrepõe os ajustes manuais do usuário com todas as otimizações oficiais ARK (memlimit"
+msgstr "Quando ativo, sobrepõe os ajustes manuais do usuário com todas as otimizações oficiais ARK (memlimit"
+
+msgid "Por que subir para 92M NÃO aumenta o ping (Bufferbloat)?"
+msgstr "Por que subir para 92M NÃO aumenta o ping (Bufferbloat)?"
+
+msgid "1. Por que 32M bateu no teto em 744 Mbps? (MediaTek mtk_eth_soc Page Pool)"
+msgstr "1. Por que 32M bateu no teto em 744 Mbps? (MediaTek mtk_eth_soc Page Pool)"
+
+msgid "2. Por que subir para 92M (em 1 GB RAM) NÃO aumenta o ping (Bufferbloat)?"
+msgstr "2. Por que subir para 92M (em 1 GB RAM) NÃO aumenta o ping (Bufferbloat)?"
+
+msgid "3. Parâmetros que o Modo A+ sobrepõe e crava automaticamente:"
+msgstr "3. Parâmetros que o Modo A+ sobrepõe e crava automaticamente:"
+
+msgid "Enquadramento Físico:"
+msgstr "Enquadramento Físico:"
+
+msgid "🔗 Testar no Waveform ↗"
+msgstr "🔗 Testar no Waveform ↗"
+
+msgid "🏆 Testar Bufferbloat (Waveform) ↗"
+msgstr "🏆 Testar Bufferbloat (Waveform) ↗"
+
+msgid "🏆 Testar no Waveform ↗"
+msgstr "🏆 Testar no Waveform ↗"
+
+msgid "Por que 32M bateu no teto em 744 Mbps?"
+msgstr "Por que 32M bateu no teto em 744 Mbps?"
+
+
+msgid "Por que o memlimit 32M é o teto calibrado ideal?"
+msgstr "Por que o memlimit 32M é o teto calibrado ideal?"
+
+msgid "✓ Limites anti-bufferbloat (-12.5% Down / -7% Up) aplicados a partir da medição do Fast.com!"
+msgstr "✓ Limites anti-bufferbloat (-12.5% Down / -7% Up) aplicados a partir da medição do Fast.com!"
+
+msgid "1. Por que o memlimit 32M é o teto calibrado ideal?"
+msgstr "1. Por que o memlimit 32M é o teto calibrado ideal?"
+
+msgid "1. Por que o memlimit progressivo (64M em 1GB RAM) é a escala ideal?"
+msgstr "1. Por que o memlimit progressivo (64M em 1GB RAM) é a escala ideal?"
+msgid "5. Potência e Alcance das Antenas (Anti-Sobreposição)"
+msgstr "5. Potência e Alcance das Antenas (Anti-Sobreposição)"
+
+msgid "Define a intensidade do sinal deste ponto adicional. A opção"
+msgstr "Define a intensidade do sinal deste ponto adicional. A opção"
+
+msgid "Consultando potências suportadas pelo hardware…"
+msgstr "Consultando potências suportadas pelo hardware…"
+
+msgid "Erro ao consultar rádios:"
+msgstr "Erro ao consultar rádios:"
+
+msgid "Potência de Transmissão Wi‑Fi (dBm)"
+msgstr "Potência de Transmissão Wi‑Fi (dBm)"
+
+
+msgid "Ativa BSS Coloring, Spatial Reuse (OBSS PD), SU Beamforming, Airtime Fairness (AQL) e proteção PMF nos rádios."
+msgstr "Ativa BSS Coloring, Spatial Reuse (OBSS PD), SU Beamforming, Airtime Fairness (AQL) e proteção PMF nos rádios."
+
+msgid "Marca quadros com cor de célula (he_bss_color) e reusa o espectro ignorando redes vizinhas distantes."
+msgstr "Marca quadros com cor de célula (he_bss_color) e reusa o espectro ignorando redes vizinhas distantes."
+
+msgid "Contabiliza TX/RX no kernel (airtime_flags=3 e AQL) para impedir que clientes 1x1 lentos roubem tempo de ar."
+msgstr "Contabiliza TX/RX no kernel (airtime_flags=3 e AQL) para impedir que clientes 1x1 lentos roubem tempo de ar."
+
+msgid "Focaliza o feixe de rádio Single-User diretamente no cliente sem perdas de sounding MU-MIMO em 160 MHz."
+msgstr "Focaliza o feixe de rádio Single-User diretamente no cliente sem perdas de sounding MU-MIMO em 160 MHz."
+
+msgid "🛡️ Proteção PMF (802.11w) & Sono Mobile"
+msgstr "🛡️ Proteção PMF (802.11w) & Sono Mobile"
+
+msgid "Criptografa quadros de gerência e blinda sessões em repouso (TWT desligado e inatividade 24h) para iOS/Android."
+msgstr "Criptografa quadros de gerência e blinda sessões em repouso (TWT desligado e inatividade 24h) para iOS/Android."
+msgid "0 Portas Ativas"
+msgstr "0 Portas Ativas"
+
+msgid "Ajustes do UPnP / NAT‑PMP salvos e aplicados com sucesso."
+msgstr "Ajustes do UPnP / NAT‑PMP salvos e aplicados com sucesso."
+
+msgid "Auxílio STUN Anti-NAT Estrito"
+msgstr "Auxílio STUN Anti-NAT Estrito"
+
+msgid "Consultando redirecionamentos UPnP ativos…"
+msgstr "Consultando redirecionamentos UPnP ativos…"
+
+msgid "Daemon miniupnpd reiniciado com sucesso."
+msgstr "Daemon miniupnpd reiniciado com sucesso."
+
+msgid "Habilitar Serviço UPnP e NAT-PMP"
+msgstr "Habilitar Serviço UPnP e NAT-PMP"
+
+msgid "Modo Seguro (Secure Mode)"
+msgstr "Modo Seguro (Secure Mode)"
+
+msgid "Porta Interna SOAP"
+msgstr "Porta Interna SOAP"
+
+msgid "Preencher com a velocidade detectada do SQM ou link físico WAN"
+msgstr "Preencher com a velocidade detectada do SQM ou link físico WAN"
+
+msgid "REDE & JOGOS • ABERTURA AUTOMÁTICA DE PORTAS"
+msgstr "REDE & JOGOS • ABERTURA AUTOMÁTICA DE PORTAS"
+
+msgid "Revogar esta porta do firewall"
+msgstr "Revogar esta porta do firewall"
+
+msgid "Servidor STUN Externo"
+msgstr "Servidor STUN Externo"
+
+msgid "Tempo Limite / Limpeza (TTL s)"
+msgstr "Tempo Limite / Limpeza (TTL s)"
+
+msgid "Todos os redirecionamentos dinâmicos UPnP foram limpos com sucesso."
+msgstr "Todos os redirecionamentos dinâmicos UPnP foram limpos com sucesso."
+
+msgid "Velocidade Download Anunciada (Mbps)"
+msgstr "Velocidade Download Anunciada (Mbps)"
+
+msgid "Velocidade Upload Anunciada (Mbps)"
+msgstr "Velocidade Upload Anunciada (Mbps)"
+
+msgid "⚙️ Parâmetros Avançados do Daemon (UCI upnpd)"
+msgstr "⚙️ Parâmetros Avançados do Daemon (UCI upnpd)"
+
+msgid "📋 Mapeamentos Dinâmicos Ativos no Firewall"
+msgstr "📋 Mapeamentos Dinâmicos Ativos no Firewall"
+
+msgid "🚀 Identificação de Velocidade do Link (UPnP IGD WANCommonInterfaceConfig)"
+msgstr "🚀 Identificação de Velocidade do Link (UPnP IGD WANCommonInterfaceConfig)"
+
+msgid "Modo 6: WAN 100% IPv6 + LAN IPv4 (Anycast)"
+msgstr "Modo 6: WAN 100% IPv6 + LAN IPv4 (Anycast)"
+
+msgid "Modo 6: WAN 100% IPv6 + LAN IPv4 (Anycast / 464XLAT)"
+msgstr "Modo 6: WAN 100% IPv6 + LAN IPv4 (Anycast / 464XLAT)"
+
+msgid "WAN 100% IPv6 + LAN IPv4 (Anycast)"
+msgstr "WAN 100% IPv6 + LAN IPv4 (Anycast)"
+
+msgid "Bypass CGNAT • ~15ms"
+msgstr "Bypass CGNAT • ~15ms"
+
+msgid "Motor de Tradução CLAT: "
+msgstr "Motor de Tradução CLAT: "
+
+msgid "Cloudflare Anycast WireGuard IPv6 (~15ms)"
+msgstr "Cloudflare Anycast WireGuard IPv6 (~15ms)"
+
+msgid "Kernel 464XLAT + DNS64"
+msgstr "Kernel 464XLAT + DNS64"
+
+msgid "Automático (Anycast IPv6 / 464XLAT)"
+msgstr "Automático (Anycast IPv6 / 464XLAT)"
+
+msgid "Desligar e Restaurar"
+msgstr "Desligar e Restaurar"
+
+msgid "Mantém o IPv4 normal na rede interna (LAN), mas força 100% do tráfego externo a sair via IPv6 (direto para sites IPv6 e via túnel Anycast Cloudflare IPv6 / 464XLAT para sites legados IPv4)."
+msgstr "Mantém o IPv4 normal na rede interna (LAN), mas força 100% do tráfego externo a sair via IPv6 (direto para sites IPv6 e via túnel Anycast Cloudflare IPv6 / 464XLAT para sites legados IPv4)."
+
+msgid "Fuga inteligente do CGNAT da operadora sem quebrar TVs, videogames ou IoTs que dependem de IPv4 na LAN."
+msgstr "Fuga inteligente do CGNAT da operadora sem quebrar TVs, videogames ou IoTs que dependem de IPv4 na LAN."
+
+msgid "Tráfego IPv6 sai direto na velocidade da fibra (~4,8ms) e tráfego IPv4 é encapsulado em IPv6 via Cloudflare Anycast (~15ms)."
+msgstr "Tráfego IPv6 sai direto na velocidade da fibra (~4,8ms) e tráfego IPv4 é encapsulado em IPv6 via Cloudflare Anycast (~15ms)."
+
+msgid "Reversão inteligente com 1 clique: salva o estado original da WAN/DHCP ao ligar e restaura tudo exatamente como estava ao desligar."
+msgstr "Reversão inteligente com 1 clique: salva o estado original da WAN/DHCP ao ligar e restaura tudo exatamente como estava ao desligar."
+

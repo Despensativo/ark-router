@@ -127,6 +127,44 @@ class TestFirewallEngine(unittest.TestCase):
         fw_checks_fix = [c for c in data_fix["checks"] if "Firewall" in c.get("name", "")]
         self.assertEqual(fw_checks_fix[0].get("status"), "FIXED")
 
+    def test_07_upnp_settings_save_and_leases_lifecycle(self):
+        """Valida upnp-save, upnp-status, upnp-delete-lease e upnp-clear-leases no backend"""
+        upnp_cfg = os.path.join(self.sb.etc_config, "upnpd")
+        with open(upnp_cfg, "w", encoding="utf-8") as f:
+            f.write("config upnpd 'config'\n\toption enabled '0'\n\toption download '1024'\n\toption upload '512'\n")
+
+        res_save = self.sb.run_control(
+            "upnp-save", "1", "1", "1", "1", "1", "stun.cloudflare.com", "900", "5555", "800", "400"
+        )
+        self.assertEqual(res_save.returncode, 0, f"Erro em upnp-save: {res_save.stderr}")
+        self.assertEqual(self.sb.uci_get("upnpd.config.enabled"), "1")
+        self.assertEqual(self.sb.uci_get("upnpd.config.enable_upnp"), "1")
+        self.assertEqual(self.sb.uci_get("upnpd.config.enable_natpmp"), "1")
+        self.assertEqual(self.sb.uci_get("upnpd.config.secure_mode"), "1")
+        self.assertEqual(self.sb.uci_get("upnpd.config.use_stun"), "1")
+        self.assertEqual(self.sb.uci_get("upnpd.config.stun_host"), "stun.cloudflare.com")
+        self.assertEqual(self.sb.uci_get("upnpd.config.clean_ruleset_interval"), "900")
+        self.assertEqual(self.sb.uci_get("upnpd.config.port"), "5555")
+        self.assertEqual(self.sb.uci_get("upnpd.config.download"), "102400")
+        self.assertEqual(self.sb.uci_get("upnpd.config.upload"), "51200")
+
+        res_status = self.sb.run_control("upnp-status")
+        self.assertEqual(res_status.returncode, 0)
+        st = json.loads(res_status.stdout)
+        self.assertTrue(st["enabled"])
+        self.assertTrue(st["enable_upnp"])
+        self.assertTrue(st["enable_natpmp"])
+        self.assertTrue(st["secure_mode"])
+        self.assertTrue(st["use_stun"])
+        self.assertEqual(st["clean_ruleset_interval"], 900)
+        self.assertEqual(st["port"], 5555)
+        self.assertEqual(st["download_mbps"], 800)
+        self.assertEqual(st["upload_mbps"], 400)
+        self.assertEqual(st["download_kbs"], 102400)
+        self.assertEqual(st["upload_kbs"], 51200)
+        self.assertIsInstance(st["leases"], list)
+
 if __name__ == "__main__":
     unittest.main()
+
 

@@ -151,5 +151,62 @@ class TestInterferenceMatrix(unittest.TestCase):
         # Verifica se mwan3 ainda é consistente
         self.assertEqual(self.sb.uci_get("mwan3.wan.enabled"), "1")
 
+    def test_11_readonly_status_preserves_cloud_adblock_doh_and_mwan_cache(self):
+        """Cenário 11: Consultas somente-leitura (dns-turbo-status / mwan-status-fast) preservam Cloud AdBlock Dual-DoH e cache JSON válido."""
+        import json
+        self.sb.uci_set("equipe_perf.settings=perf")
+        self.sb.uci_set("equipe_perf.settings.adblock_cloud=1")
+        self.sb.uci_set("equipe_perf.settings.adblock_cloud_provider=quad9")
+        self.sb.uci_set("dhcp.@dnsmasq[0].server=127.0.0.1#5053")
+
+        res_dns = self.sb.run_control("dns-turbo-status")
+        self.assertEqual(res_dns.returncode, 0, f"dns-turbo-status falhou: {res_dns.stderr}")
+        dns_data = json.loads(res_dns.stdout)
+        self.assertEqual(self.sb.uci_get("equipe_perf.settings.adblock_cloud"), "1")
+        self.assertTrue(dns_data.get("dns_blocker_active"))
+        self.assertEqual(dns_data.get("dns_blocker_name"), "Bloqueador em Nuvem")
+
+        res_mwan1 = self.sb.run_control("mwan-status-fast")
+        self.assertEqual(res_mwan1.returncode, 0)
+        mwan_data1 = json.loads(res_mwan1.stdout)
+        self.assertIn("interfaces", mwan_data1)
+
+        res_mwan2 = self.sb.run_control("mwan-status-fast")
+        self.assertEqual(res_mwan2.returncode, 0)
+        mwan_data2 = json.loads(res_mwan2.stdout)
+        self.assertIn("interfaces", mwan_data2)
+
+    def test_12_user_disabled_flow_offload_respected_by_doctor_and_autotune(self):
+        """Cenário 12: Desativar Flow Offload manualmente em wan-optimize-set não é desfeito pelo doctor-fix nem pelo auto-tune."""
+        self.sb.uci_set("sqm.wan1.enabled=0")
+        self.sb.uci_set("sqm.wan2.enabled=0")
+        self.sb.uci_set("mwan3.wan2.enabled=0")
+
+        res_off = self.sb.run_control("wan-optimize-set", "iface=wan", "flow_offload=0")
+        self.assertEqual(res_off.returncode, 0, f"wan-optimize-set falhou: {res_off.stderr}")
+        self.assertEqual(self.sb.uci_get("equipe_perf.settings.flow_offload_user_disabled"), "1")
+        self.assertEqual(self.sb.uci_get("firewall.@defaults[0].flow_offloading"), "0")
+
+        res_doc = self.sb.run_control("doctor-fix")
+        self.assertEqual(res_doc.returncode, 0, f"doctor-fix falhou: {res_doc.stderr}")
+        self.assertEqual(self.sb.uci_get("firewall.@defaults[0].flow_offloading"), "0")
+
+        res_tune = self.sb.run_control("system-hardware-auto-tune")
+        self.assertEqual(res_tune.returncode, 0, f"system-hardware-auto-tune falhou: {res_tune.stderr}")
+        self.assertEqual(self.sb.uci_get("firewall.@defaults[0].flow_offloading"), "0")
+
+    def test_13_wol_and_device_limits_share_canonical_equipe_devices_section(self):
+        """Cenário 13: wol-target-save e device-save compartilham a seção canônica device_<MAC> sem duplicar chaves."""
+        import json
+        res_dev = self.sb.run_control("device-save", "AA:BB:CC:11:22:33", "PC_Gamer", "automatic", "", "0", "AF41", "default", "1", "100", "50", "default", "1")
+        self.assertEqual(res_dev.returncode, 0, f"device-save falhou: {res_dev.stderr}")
+
+        res_wol = self.sb.run_control("wol-target-save", "AA:BB:CC:11:22:33", "PC_Gamer", "192.168.73.50", "br-lan")
+        self.assertEqual(res_wol.returncode, 0, f"wol-target-save falhou: {res_wol.stderr}")
+
+        self.assertEqual(self.sb.uci_get("equipe_devices.device_AABBCC112233.wol_favorite"), "1")
+        self.assertEqual(self.sb.uci_get("equipe_devices.device_AABBCC112233.limit_enabled"), "1")
+        self.assertIsNone(self.sb.uci_get("equipe_devices.dev_aabbcc112233"))
+
 if __name__ == "__main__":
     unittest.main()

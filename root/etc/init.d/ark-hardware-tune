@@ -86,6 +86,7 @@ ark_tune_irq_affinity() {
 	# Pin threaded NAPI kthreads (e.g., napi/mtk_eth-*, napi/phy*, mt76-tx*) to match IRQ masks.
 	# Keep all Wi-Fi NAPI and mt76-tx kthreads unified on wifi_mask (Core 2 on 4-core routers)
 	# to eliminate cross-core spinlock contention between mt76-tx and Wi-Fi IRQ rings.
+	[ -w /sys/module/mtk_eth/parameters/rx_dim_max_us ] && echo 40 > /sys/module/mtk_eth/parameters/rx_dim_max_us 2>/dev/null || true
 	if command -v taskset >/dev/null 2>&1; then
 		local napi_eth_idx=0
 		ps -w 2>/dev/null | awk '/\[napi\/|\[mt76-tx/ {print $1, $NF}' | while read -r npid nname; do
@@ -97,10 +98,12 @@ ark_tune_irq_affinity() {
 					else
 						taskset -p "$eth_alt_mask" "$npid" >/dev/null 2>&1 || true
 					fi
+					command -v chrt >/dev/null 2>&1 && chrt -f -p 1 "$npid" >/dev/null 2>&1 || true
 					napi_eth_idx=$((napi_eth_idx + 1))
 					;;
 				*phy*|*mt76*|*ath*|*wlan*|*wifi*)
 					taskset -p "$wifi_mask" "$npid" >/dev/null 2>&1 || true
+					command -v chrt >/dev/null 2>&1 && chrt -f -p 1 "$npid" >/dev/null 2>&1 || true
 					;;
 			esac
 		done
@@ -127,25 +130,20 @@ ark_tune_wifi_aql() {
 				fi
 				;;
 		esac
-		if [ "$atf_en" = "0" ] || [ "$accel_en" = "0" ]; then
-			atf_flags=0
-		else
-			atf_flags=3
-		fi
 		[ -w "$phy/aql_enable" ] && echo 1 > "$phy/aql_enable" 2>/dev/null || true
-		[ -w "$phy/airtime_flags" ] && echo "$atf_flags" > "$phy/airtime_flags" 2>/dev/null || true
+		[ -w "$phy/airtime_flags" ] && echo 3 > "$phy/airtime_flags" 2>/dev/null || true
 		[ -w "$phy/mt76/implicit_txbf" ] && echo 1 > "$phy/mt76/implicit_txbf" 2>/dev/null || true
 		if [ "$is_high_band" -eq 1 ]; then
 			# 5 GHz / 6 GHz (HE80/HE160/EHT320): PHY rate 1200-2882 Mbps.
-			# AQL enabled (aql_enable=1) with 5ms/12ms limits (5000/12000 us) and fq_quantum 12288
-			# guarantees full 64-frame A-MPDU aggregation while enforcing Airtime Fairness (airtime_flags=3)
-			# against slow 1x1 VHT/HT clients and preventing driver ring bufferbloat.
+			# AC 2 (Best Effort) calibrated to 2500/5000 us (2.5ms low / 5ms high):
+			# allows full 64-frame A-MPDU aggregation (<800 us airtime at HE80/HE160) while cutting
+			# max Wi-Fi firmware queue latency under load from 12ms down to 5ms.
 			[ -w "$phy/aql_threshold" ] && echo 24000 > "$phy/aql_threshold" 2>/dev/null || true
 			if [ -w "$phy/aql_txq_limit" ]; then
-				echo "0 5000 12000" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "1 5000 12000" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "2 5000 12000" > "$phy/aql_txq_limit" 2>/dev/null || true
-				echo "3 5000 12000" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "0 2500 5000" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "1 3500 7000" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "2 2500 5000" > "$phy/aql_txq_limit" 2>/dev/null || true
+				echo "3 1500 3500" > "$phy/aql_txq_limit" 2>/dev/null || true
 			fi
 			[ -w "$phy/aqm" ] && echo "fq_limit 4096" > "$phy/aqm" 2>/dev/null || true
 			[ -w "$phy/aqm" ] && echo "fq_memory_limit 16777216" > "$phy/aqm" 2>/dev/null || true
@@ -185,7 +183,11 @@ ark_tune_tcp_stack() {
 	# Seguro para 100% dos servidores legados e plenamente compativel com marcacao CE do CAKE
 	sysctl -q -w net.ipv4.tcp_ecn=2 2>/dev/null || true
 
-	# 5. Ativacao Segura do BBR: Somente se o modulo kmod-tcp-bbr estiver instalado e suportado
+	# 5. RFC 4787 NAT Flowtable Timeouts (previne queda de sessoes UDP de jogos/voz/WireGuard apos 30s)
+	sysctl -q -w net.netfilter.nf_flowtable_udp_timeout=180 2>/dev/null || true
+	sysctl -q -w net.netfilter.nf_flowtable_tcp_timeout=1800 2>/dev/null || true
+
+	# 6. Ativacao Segura do BBR: Somente se o modulo kmod-tcp-bbr estiver instalado e suportado
 	# Se nao estiver presente ou falhar no carregamento, mantem o padrao do kernel (ex: cubic) com zero erros
 	modprobe tcp_bbr >/dev/null 2>&1 || true
 	if grep -q "\bbbr\b" /proc/sys/net/ipv4/tcp_available_congestion_control 2>/dev/null; then
@@ -273,8 +275,9 @@ ark_hardware_tune_apply() {
 
 	# Calibracao Inteligente de ZRAM (Respeita escolha do usuario em equipe_perf e protege CPUs fracas)
 	local zram_cfg="$(uci -q get equipe_perf.settings.zram_enabled || echo 'auto')"
+	local cpu_arch="$(uname -m 2>/dev/null || awk -F: '/system type|cpu model|model name/{print tolower($2); exit}' /proc/cpuinfo 2>/dev/null || echo '')"
 	local is_mips_weak=0
-	case "$cpu_arch" in mips*) [ "$cpu_cores" -le 1 ] && is_mips_weak=1 ;; esac
+	case "$cpu_arch" in *mips*) [ "$cpu_cores" -le 1 ] && is_mips_weak=1 ;; esac
 
 	local should_zram=0
 	case "$zram_cfg" in
@@ -406,17 +409,23 @@ ark_hardware_tune_apply() {
 			case "$ifname" in
 				pppoe*)
 					rps_target="$rps_mask"
+					ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true
+					ethtool -K "$ifname" rx-udp-gro-forwarding on 2>/dev/null || true
+					ip link set dev "$ifname" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
 					;;
 				lo|ifb*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|*)
 					rps_target=0
 					;;
 			esac
-			if [ "$ifname" = "$wan_phys" ] || [ "${ifname#pppoe}" != "$ifname" ]; then
+			if [ "$ifname" = "$wan_phys" ] || [ "${ifname#pppoe}" != "$ifname" ] || [ "${ifname#lan}" != "$ifname" ]; then
 				[ -w "$iface_dir/gro_flush_timeout" ] && echo 250000 > "$iface_dir/gro_flush_timeout" 2>/dev/null || true
 				[ -w "$iface_dir/napi_defer_hard_irqs" ] && echo 20 > "$iface_dir/napi_defer_hard_irqs" 2>/dev/null || true
 			fi
 			case "$ifname" in
-				ifb*) ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true ;;
+				ifb*)
+					ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true
+					ip link set dev "$ifname" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
+					;;
 			esac
 			for q in "$iface_dir"/queues/rx-*/rps_cpus; do
 				[ -f "$q" ] && echo "$rps_target" > "$q" 2>/dev/null || true
@@ -431,12 +440,14 @@ ark_hardware_tune_apply() {
 				eth*|lan*)
 					[ -d "/sys/class/net/$iface" ] || continue
 					ethtool -K "$iface" gro on gso on 2>/dev/null || true
-					ip link set dev "$iface" txqueuelen 1000 2>/dev/null || true
+					ethtool -K "$iface" rx-gro-list off 2>/dev/null || true
+					ethtool -K "$iface" rx-udp-gro-forwarding on 2>/dev/null || true
+					ip link set dev "$iface" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
 					tc qdisc show dev "$iface" 2>/dev/null | grep -q "cake" && continue
 					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \
-					tc qdisc replace dev "$iface" root fq_codel memory_limit 8Mb limit 10240 target 5ms quantum 1514 2>/dev/null || true
+					tc qdisc replace dev "$iface" root fq_codel memory_limit 16Mb limit 10240 target 5ms quantum 15140 noecn 2>/dev/null || true
 					for subq in 1 2 3 4 5 6 7 8 9 a b c d e f 10; do
-						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit 8Mb limit 10240 target 5ms quantum 1514 2>/dev/null || true
+						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit 16Mb limit 10240 target 5ms quantum 15140 noecn 2>/dev/null || true
 					done
 					;;
 			esac
@@ -445,7 +456,7 @@ ark_hardware_tune_apply() {
 	# -------------------------------------------------------------------------
 	# PERFIL 3: HIGH-SPEC (512 MB < RAM <= 1536 MB, 3 a 6 Núcleos de CPU)
 	# Exemplo: Acer Predator W6x (MT7986 Quad-Core 2.0 GHz, 1 GB RAM)
-	# Prioridade: Desempenho gigabit máximo, RPS cirúrgico sem reordenação TCP, GRO 250us
+	# Prioridade: Pipeline 4-Core Dedicado (CPU3=DMA RX, CPU2=Wi-Fi, CPU1=Download, CPU0=Upload)
 	# -------------------------------------------------------------------------
 	elif [ "$mem_total_kb" -le 1572864 ] && [ "$cpu_cores" -lt 8 ]; then
 		logger -t ark-hardware-tune "Aplicando Perfil High-Spec (Quad/Hexa-Core 1GB RAM, RPS Mask: ${rps_mask})."
@@ -463,11 +474,16 @@ ark_hardware_tune_apply() {
 		sysctl -q -w net.core.rps_sock_flow_entries=0 2>/dev/null || true
 
 		local wan_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
-		local wifi_isolated_mask="$rps_mask"
+		local wan_dl_mask="$rps_mask"
+		local lan_ul_mask=1
 		if [ "$cpu_cores" -eq 4 ] && grep -qE 'mt76|mt79|ath|qca' /proc/interrupts 2>/dev/null; then
-			# Reserve CPU 2 (0x4) exclusively for Wi-Fi hardware IRQ & RX/TX NAPI rings:
-			# eth0=0, eth1=0, pppoe-wan=b (CPUs 0,1,3), phy*=1 (CPU 0)
-			wifi_isolated_mask="b"
+			# Pipeline 4-Core Dedicado (Zero Contencao de Spinlock no CAKE e Zero Saturação de Core):
+			# CPU 3 (0x8): Hardware Ethernet DMA RX (napi/mtk_eth-6 em eth0/eth1, rps=0)
+			# CPU 2 (0x4): Hardware Wi-Fi IRQ 119 + NAPI phy0-* + mt76-tx (rps=0)
+			# CPU 1 (0x2): Motor Dedicado de Download (pppoe-wan rps=2 -> ifb4pppoe-wan CAKE)
+			# CPU 0 (0x1): Motor Dedicado de Upload (lan1..4 + phy*-ap* rps=1 -> pppoe-wan CAKE)
+			wan_dl_mask="2"
+			lan_ul_mask="1"
 		fi
 		for iface_dir in /sys/class/net/*; do
 			[ -d "$iface_dir" ] || continue
@@ -476,21 +492,27 @@ ark_hardware_tune_apply() {
 			local rfs_target=0
 			case "$ifname" in
 				pppoe*)
-					rps_target="$wifi_isolated_mask"
+					rps_target="$wan_dl_mask"
+					ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true
+					ethtool -K "$ifname" rx-udp-gro-forwarding on 2>/dev/null || true
+					ip link set dev "$ifname" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
 					;;
-				phy*|wlan*|ath*|ra*)
-					[ "$cpu_cores" -ge 4 ] && rps_target=1 || rps_target=0
+				lan[0-9]*|phy*|wlan*|ath*|ra*)
+					[ "$cpu_cores" -ge 4 ] && rps_target="$lan_ul_mask" || rps_target=0
 					;;
-				lo|ifb*|br-*|eth*|lan*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|*)
+				lo|ifb*|br-*|eth*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|*)
 					rps_target=0
 					;;
 			esac
-			if [ "$ifname" = "$wan_phys" ] || [ "${ifname#pppoe}" != "$ifname" ]; then
+			if [ "$ifname" = "$wan_phys" ] || [ "${ifname#pppoe}" != "$ifname" ] || [ "${ifname#lan}" != "$ifname" ] || [ "$ifname" = "eth0" ]; then
 				[ -w "$iface_dir/gro_flush_timeout" ] && echo 250000 > "$iface_dir/gro_flush_timeout" 2>/dev/null || true
 				[ -w "$iface_dir/napi_defer_hard_irqs" ] && echo 20 > "$iface_dir/napi_defer_hard_irqs" 2>/dev/null || true
 			fi
 			case "$ifname" in
-				ifb*) ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true ;;
+				ifb*)
+					ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true
+					ip link set dev "$ifname" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
+					;;
 			esac
 			for q in "$iface_dir"/queues/rx-*/rps_cpus; do
 				[ -f "$q" ] && echo "$rps_target" > "$q" 2>/dev/null || true
@@ -500,19 +522,20 @@ ark_hardware_tune_apply() {
 			done
 		done
 
-		# txqueuelen 1000 + fq_codel ativo mesmo com PPE HW Offload para eliminar latencia em pacotes de handshake/DNS/ICMP
+		# txqueuelen 1000 + gro_max_size 16384 (reduz 4x o atraso de serializacao de super-pacotes no CAKE no-split-gso mantendo 91% do ganho de CPU)
 		for iface in $(ls /sys/class/net 2>/dev/null); do
 			case "$iface" in
 				eth*|lan*)
 					[ -d "/sys/class/net/$iface" ] || continue
 					ethtool -K "$iface" gro on gso on 2>/dev/null || true
+					ethtool -K "$iface" rx-gro-list off 2>/dev/null || true
 					ethtool -K "$iface" rx-udp-gro-forwarding on 2>/dev/null || true
-					ip link set dev "$iface" txqueuelen 1000 2>/dev/null || true
+					ip link set dev "$iface" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
 					tc qdisc show dev "$iface" 2>/dev/null | grep -q "cake" && continue
 					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \
-					tc qdisc replace dev "$iface" root fq_codel memory_limit 16Mb limit 10240 target 5ms quantum 1514 2>/dev/null || true
+					tc qdisc replace dev "$iface" root fq_codel memory_limit 64Mb limit 10240 target 5ms quantum 15140 noecn 2>/dev/null || true
 					for subq in 1 2 3 4 5 6 7 8 9 a b c d e f 10; do
-						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit 16Mb limit 10240 target 5ms quantum 1514 2>/dev/null || true
+						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit 64Mb limit 10240 target 5ms quantum 15140 noecn 2>/dev/null || true
 					done
 					;;
 			esac
@@ -530,7 +553,7 @@ ark_hardware_tune_apply() {
 		[ "$(uci -q get uhttpd.main.max_connections)" != "150" ] && { uci -q set uhttpd.main.max_connections='150'; uci -q set uhttpd.main.tcp_keepalive='1'; uci commit uhttpd; /etc/init.d/uhttpd restart >/dev/null 2>&1 || true; }
 
 		local tcp_buf=16777216
-		local qdisc_mem="32Mb"
+		local qdisc_mem="64Mb"
 		local qdisc_limit=10240
 		local txq=1000
 		local backlog=25000
@@ -562,20 +585,26 @@ ark_hardware_tune_apply() {
 			case "$ifname" in
 				pppoe*)
 					rps_target="$rps_mask"
+					ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true
+					ethtool -K "$ifname" rx-udp-gro-forwarding on 2>/dev/null || true
+					ip link set dev "$ifname" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
 					;;
-				phy*|wlan*|ath*|ra*)
+				lan[0-9]*|phy*|wlan*|ath*|ra*)
 					[ "$cpu_cores" -ge 4 ] && rps_target=1 || rps_target=0
 					;;
 				lo|ifb*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|*)
 					rps_target=0
 					;;
 			esac
-			if [ "$ifname" = "$wan_phys" ] || [ "${ifname#pppoe}" != "$ifname" ]; then
+			if [ "$ifname" = "$wan_phys" ] || [ "${ifname#pppoe}" != "$ifname" ] || [ "${ifname#lan}" != "$ifname" ]; then
 				[ -w "$iface_dir/gro_flush_timeout" ] && echo 250000 > "$iface_dir/gro_flush_timeout" 2>/dev/null || true
 				[ -w "$iface_dir/napi_defer_hard_irqs" ] && echo 20 > "$iface_dir/napi_defer_hard_irqs" 2>/dev/null || true
 			fi
 			case "$ifname" in
-				ifb*) ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true ;;
+				ifb*)
+					ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true
+					ip link set dev "$ifname" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
+					;;
 			esac
 			for q in "$iface_dir"/queues/rx-*/rps_cpus; do
 				[ -f "$q" ] && echo "$rps_target" > "$q" 2>/dev/null || true
@@ -590,13 +619,14 @@ ark_hardware_tune_apply() {
 				eth*|lan*|en*|igb*|ixgbe*|i40e*)
 					[ -d "/sys/class/net/$iface" ] || continue
 					ethtool -K "$iface" gro on gso on 2>/dev/null || true
+					ethtool -K "$iface" rx-gro-list off 2>/dev/null || true
 					ethtool -K "$iface" rx-udp-gro-forwarding on 2>/dev/null || true
-					ip link set dev "$iface" txqueuelen "$txq" 2>/dev/null || true
+					ip link set dev "$iface" txqueuelen "$txq" gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
 					tc qdisc show dev "$iface" 2>/dev/null | grep -q "cake" && continue
 					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \
-					tc qdisc replace dev "$iface" root fq_codel memory_limit "$qdisc_mem" limit "$qdisc_limit" target 5ms quantum 1514 2>/dev/null || true
+					tc qdisc replace dev "$iface" root fq_codel memory_limit "$qdisc_mem" limit "$qdisc_limit" target 5ms quantum 15140 noecn 2>/dev/null || true
 					for subq in 1 2 3 4 5 6 7 8 9 a b c d e f 10 11 12 13 14 15 16 17 18 19 1a 1b 1c 1d 1e 1f 20; do
-						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit "$qdisc_mem" limit "$qdisc_limit" target 5ms quantum 1514 2>/dev/null || true
+						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit "$qdisc_mem" limit "$qdisc_limit" target 5ms quantum 15140 noecn 2>/dev/null || true
 					done
 					;;
 			esac
@@ -606,7 +636,14 @@ ark_hardware_tune_apply() {
 	# Ensure SQM ingress Voice Tin filters and cake_mq state are preserved after hotplug/reload
 	if [ -f /usr/lib/ark/modules/sqm.sh ]; then
 		. /usr/lib/ark/modules/sqm.sh 2>/dev/null || true
-		command -v ark_apply_ingress_voice_tin_filters >/dev/null 2>&1 && ark_apply_ingress_voice_tin_filters 2>/dev/null || true
+		if command -v ark_apply_ingress_voice_tin_filters >/dev/null 2>&1; then
+			local _sq _sq_if
+			for _sq in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\([^.=]*\)=queue$/\1/p'); do
+				[ "$(uci -q get "sqm.$_sq.enabled" 2>/dev/null || echo 0)" = "1" ] || continue
+				_sq_if="$(uci -q get "sqm.$_sq.interface" 2>/dev/null || true)"
+				[ -n "$_sq_if" ] && ark_apply_ingress_voice_tin_filters "$_sq_if" 2>/dev/null || true
+			done
+		fi
 	fi
 
 	# Autolimpeza e blindagem contra prefixos IPv6 antigos presos na br-lan
@@ -622,6 +659,8 @@ ark_hardware_tune_apply() {
 		local cur_preset="$(uci -q get system.led_status.preset || echo smart)"
 		if [ "$led_pwr" = "0" ] || [ "$cur_preset" = "night" ]; then
 			/usr/sbin/equipe-dashboard-control set-led-preset night >/dev/null 2>&1 || true
+		elif [ "$cur_preset" = "off" ] || [ "$cur_preset" = "smart" ] || [ "$cur_preset" = "alert" ] || [ "$cur_preset" = "rainbow" ]; then
+			/usr/sbin/equipe-dashboard-control set-led-preset "$cur_preset" >/dev/null 2>&1 || true
 		else
 			local cur_col="$(uci -q get system.led_status.hex_color || echo '#00FF00')"
 			/usr/sbin/equipe-dashboard-control set-led-rgb-color "$cur_col" >/dev/null 2>&1 || true
@@ -643,6 +682,7 @@ ark_hardware_tune_warmup() {
 		trap 'exit 1' HUP INT TERM
 		sleep 12
 		if [ -x /usr/sbin/equipe-dashboard-control ]; then
+			rm -f /tmp/ark-hw-cache.ts /tmp/ark-hw-cache.json /tmp/ark-hw-info-cache.ts /tmp/ark-perf-cache.ts /tmp/ark-perf-cache.json /tmp/ark-perf-status-cache.ts /tmp/ark-fp-cache.ts /tmp/ark-stations-cache.ts /tmp/ark-features.cache 2>/dev/null || true
 			nice -n 19 /usr/sbin/equipe-dashboard-control system-hardware-info >/dev/null 2>&1
 			nice -n 19 /usr/sbin/equipe-dashboard-control system-perf-status >/dev/null 2>&1
 			nice -n 19 /usr/sbin/equipe-dashboard-control device-fingerprints >/dev/null 2>&1

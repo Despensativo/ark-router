@@ -451,17 +451,15 @@ detect_dns_blocker() {
 	if [ "$(uci -q get equipe_perf.settings.adblock_cloud || printf 0)" = 1 ]; then
 		local cur_dns="$(uci -q get dhcp.@dnsmasq[0].server 2>/dev/null || true)"
 		case " $cur_dns " in
-			*" 1.1.1.2 "*|*" 1.0.0.2 "*|*" 1.1.1.3 "*|*" 1.0.0.3 "*|*" 94.140.14."* |*" 94.140.15."* |*" 208.67.222.123 "*|*" 208.67.220.123 "*|*" 185.228.168."* )
+			*" 127.0.0.1#5053"*|*" 127.0.0.1#5054"*|*" 1.1.1.2 "*|*" 1.0.0.2 "*|*" 1.1.1.3 "*|*" 1.0.0.3 "*|*" 94.140.14."* |*" 94.140.15."* |*" 208.67.222.123 "*|*" 208.67.220.123 "*|*" 185.228.168."* |*" 185.228.169."* |*" 9.9.9.9 "*|*" 149.112.112.112 "*|*" 76.76.2."* |*" 76.76.10."* |*" 45.90.28."* |*" 45.90.30."* )
 				echo "Bloqueador em Nuvem"
 				return 0
 				;;
 			*)
-				if [ -n "${ARK_ROOT:-}" ] || [ -z "$cur_dns" ]; then
+				if [ -n "${ARK_ROOT:-}" ] || [ -z "$cur_dns" ] || [ -n "$(uci -q get equipe_perf.settings.adblock_cloud_provider 2>/dev/null || true)" ]; then
 					echo "Bloqueador em Nuvem"
 					return 0
 				fi
-				uci -q set equipe_perf.settings.adblock_cloud='0'
-				uci -q commit equipe_perf 2>/dev/null || true
 				;;
 		esac
 	fi
@@ -2188,7 +2186,19 @@ ark_is_readonly_action() {
 	local act="${1:-}"
 	local sub="${2:-}"
 	case "$act" in
-		*-status|*-status-*|*-get|*-list|*-check|*-check-*|*-audit|*-info|*-discover|*-fingerprints|*-stations|*-processes|*-logs|*-log|*-telemetry|*-qr|features|fast-targets|audit-system|ark-doctor|card-state-save|speedtest-*|starlink-telemetry|autowan-can-convert-wan|speedify-user)
+		audit-system|ark-doctor)
+			case "$sub" in
+				--auto|auto|--fix|fix|fix-run|doctor-fix|fix=1) return 1 ;;
+			esac
+			return 0
+			;;
+		doctor-fix|fix-run)
+			return 1
+			;;
+		doctor-run|doctor-status|doctor-log)
+			return 0
+			;;
+		*-status|*-status-*|*-get|*-list|*-check|*-check-*|*-audit|*-info|*-discover|*-fingerprints|*-stations|*-processes|*-logs|*-log|*-telemetry|*-qr|features|fast-targets|speedtest-result|starlink-telemetry|autowan-can-convert|autowan-can-convert-wan|speedify-user)
 			return 0
 			;;
 	esac
@@ -2217,8 +2227,14 @@ ark_acquire_mutation_lock() {
 		[ -f "$lock_dir/pid" ] && read -r owner_pid < "$lock_dir/pid" 2>/dev/null
 		[ -f "$lock_dir/ts" ] && read -r lock_ts < "$lock_dir/ts" 2>/dev/null
 
-		# Auto-heal ghost locks immediately if owner process exited or lock is older than 25s
-		if [ -z "$owner_pid" ] || ! kill -0 "$owner_pid" 2>/dev/null || [ $((now_ts - lock_ts)) -gt 25 ]; then
+		# Auto-heal ghost locks immediately if owner process exited, or if lock is older than 120s
+		if [ -n "$owner_pid" ] && ! kill -0 "$owner_pid" 2>/dev/null; then
+			rm -rf "$lock_dir" 2>/dev/null
+			continue
+		elif [ -z "$owner_pid" ] && [ "$wait_ticks" -ge 1 ]; then
+			rm -rf "$lock_dir" 2>/dev/null
+			continue
+		elif [ "$lock_ts" -gt 0 ] 2>/dev/null && [ $((now_ts - lock_ts)) -gt 120 ]; then
 			rm -rf "$lock_dir" 2>/dev/null
 			continue
 		fi
@@ -2245,5 +2261,23 @@ ark_release_mutation_lock() {
 		rm -rf "$lock_dir" 2>/dev/null
 	fi
 	rm -f "${ARK_ROOT}/tmp/ark_dashboard_cache.json" 2>/dev/null || true
+}
+
+ark_invalidate_caches() {
+	local pfx="${ARK_ROOT:-}"
+	rm -f \
+		"${pfx}/tmp/ark-hw-cache.ts" "${pfx}/tmp/ark-hw-cache.json" "${pfx}/tmp/ark-hw-info-cache.ts" \
+		"${pfx}/tmp/ark-perf-cache.ts" "${pfx}/tmp/ark-perf-cache.json" "${pfx}/tmp/ark-perf-status-cache.ts" \
+		"${pfx}/tmp/ark-features.cache" "${pfx}/tmp/ark-router-features.json" \
+		"${pfx}/tmp/ark-mwan-cache.json" "${pfx}/tmp/ark_dashboard_cache.json" \
+		2>/dev/null || true
+}
+
+ark_restore_mutation_trap() {
+	if [ "${ARK_MUTATION_LOCK_HELD:-0}" = "1" ]; then
+		trap 'ark_release_mutation_lock' EXIT INT TERM HUP
+	else
+		trap - EXIT INT TERM HUP
+	fi
 }
 

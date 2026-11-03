@@ -32,6 +32,27 @@ ark_has_auto_dscp() {
 	return 1
 }
 
+ark_has_ctinfo() {
+	if [ -f "${ARK_ROOT:-}/sys/kernel/debug/ctinfo_capable" ] || [ -f "/sys/kernel/debug/ctinfo_capable" ]; then
+		return 0
+	fi
+	if [ -z "${ARK_ROOT:-}" ]; then
+		grep -qw "act_ctinfo" /proc/modules 2>/dev/null && return 0
+		[ -f "/lib/modules/$(uname -r 2>/dev/null)/act_ctinfo.ko" ] && return 0
+	fi
+	return 1
+}
+
+ark_has_l4s_dscp() {
+	local nft_path="${ARK_ROOT:-}/etc/nftables.d/15-ark-dscp-priority.nft"
+	[ -f "$nft_path" ] || nft_path="/etc/nftables.d/15-ark-dscp-priority.nft"
+	[ -f "$nft_path" ] || nft_path="${ARK_LIB_DIR:-/usr/lib/ark}/../../../etc/nftables.d/15-ark-dscp-priority.nft"
+	if [ -f "$nft_path" ] && grep -q "ecn == ect1" "$nft_path" 2>/dev/null; then
+		return 0
+	fi
+	return 1
+}
+
 ark_apply_ingress_voice_tin_filters() {
 	local iface="$1"
 	[ -n "${ARK_ROOT:-}" ] && return 0
@@ -43,12 +64,14 @@ ark_apply_ingress_voice_tin_filters() {
 	cake_handle="$(tc qdisc show dev "$ifb_dev" 2>/dev/null | awk '/qdisc cake/ {print $3; exit}')"
 	[ -n "$cake_handle" ] || return 0
 
-	modprobe act_skbedit 2>/dev/null || true
-	for p in 1 2 3 4 5 6 7 8; do
+	[ -f "/lib/modules/$(uname -r 2>/dev/null)/act_skbedit.ko" ] && modprobe act_skbedit 2>/dev/null || true
+	# NUNCA remover pref 10: o /usr/lib/sqm/layer_cake.qos (e piece_of_cake.qos) instala o filtro
+	# 'prio 10 u32 match u32 0 0 flowid 1:1 action mirred egress redirect dev ifb4*' exatamente em pref 10!
+	for p in 1 2 3 4 5 6 7 8 9; do
 		tc filter del dev "$iface" parent ffff: pref "$p" 2>/dev/null || true
 	done
 	# Classify incoming ICMP, ICMPv6, TCP SYN, interactive TCP PSH (<=255B: WebSocket latency probes/SSH),
-	# and small UDP (<=255B: Gaming/VoIP/DNS/STUN) directly into CAKE Voice Tin (${cake_handle}4) before IFB redirect
+	# small UDP (<=255B: Gaming/VoIP/DNS/STUN), and L4S ECT(1) (<=512B) into CAKE Voice Tin (${cake_handle}4) before prio 10 IFB redirect
 	tc filter add dev "$iface" parent ffff: protocol ip pref 1 u32 match ip protocol 1 0xff action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
 	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 2 u32 match ip6 protocol 58 0xff action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
 	tc filter add dev "$iface" parent ffff: protocol ip pref 3 u32 match ip protocol 6 0xff match u8 0x02 0x02 at 33 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
@@ -57,6 +80,21 @@ ark_apply_ingress_voice_tin_filters() {
 	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 6 u32 match ip6 protocol 6 0xff match u16 0x0000 0xff00 at 4 match u8 0x08 0x08 at 53 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
 	tc filter add dev "$iface" parent ffff: protocol ip pref 7 u32 match ip protocol 17 0xff match u16 0x0000 0xff00 at 2 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
 	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 8 u32 match ip6 protocol 17 0xff match u16 0x0000 0xff00 at 4 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	# L4S (RFC 9332) ECT(1) interactive packets (<= 512B, TOS/Traffic Class ECN bits 0x01) -> CAKE Voice Tin
+	tc filter add dev "$iface" parent ffff: protocol ip pref 7 u32 match u8 0x01 0x03 at 1 match u16 0x0000 0xfe00 at 2 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 8 u32 match u16 0x0010 0x0030 at 0 match u16 0x0000 0xfe00 at 4 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	# Restore bidirectional Conntrack DSCP (0x80 valid bit | 6-bit DSCP in ct mark lower byte) before prio 10 IFB redirect
+	if ark_has_ctinfo; then
+		[ -f "/lib/modules/$(uname -r 2>/dev/null)/act_ctinfo.ko" ] && modprobe act_ctinfo 2>/dev/null || true
+		tc filter add dev "$iface" parent ffff: protocol all pref 9 u32 match u32 0 0 action ctinfo dscp 0x0000003f 0x00000080 continue 2>/dev/null || true
+	fi
+	# Autocura do redirecionamento prio 10 (mirred egress redirect dev ifb4*) caso tenha sido removido ou sobrescrito
+	if ! tc filter show dev "$iface" parent ffff: 2>/dev/null | grep -q "mirred.*$ifb_dev"; then
+		tc filter del dev "$iface" parent ffff: pref 10 2>/dev/null || true
+		tc filter del dev "$iface" parent ffff: pref 11 2>/dev/null || true
+		tc filter add dev "$iface" parent ffff: protocol all prio 10 u32 \
+			match u32 0 0 flowid 1:1 action mirred egress redirect dev "$ifb_dev" 2>/dev/null || true
+	fi
 }
 
 ark_promote_cake_mq() {
@@ -66,14 +104,19 @@ ark_promote_cake_mq() {
 	rm -f "$state_file" 2>/dev/null || true
 
 	if [ -z "${ARK_ROOT:-}" ]; then
-		for ifb_q in /sys/class/net/ifb*/queues/rx-*/rps_cpus /sys/class/net/br-*/queues/rx-*/rps_cpus; do
+		for ifb_q in /sys/class/net/ifb*/queues/rx-*/rps_cpus /sys/class/net/br-*/queues/rx-*/rps_cpus /sys/class/net/eth*/queues/rx-*/rps_cpus; do
 			[ -w "$ifb_q" ] && echo 0 > "$ifb_q" 2>/dev/null || true
 		done
 		if ls /sys/class/net/pppoe-* >/dev/null 2>&1; then
 			cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
 			rps_mask="f"
 			command -v ark_calculate_rps_mask >/dev/null 2>&1 && rps_mask="$(ark_calculate_rps_mask "$cpu_cores")"
-			[ "$cpu_cores" = "4" ] && grep -q "mt79" /proc/interrupts 2>/dev/null && rps_mask="b"
+			if [ "$cpu_cores" = "4" ] && grep -qE "mt76|mt79|ath|qca" /proc/interrupts 2>/dev/null; then
+				rps_mask="2"
+				for ifb_q in /sys/class/net/lan[0-9]*/queues/rx-*/rps_cpus /sys/class/net/phy*/queues/rx-*/rps_cpus; do
+					[ -w "$ifb_q" ] && echo 1 > "$ifb_q" 2>/dev/null || true
+				done
+			fi
 			for ifb_q in /sys/class/net/pppoe*/queues/rx-*/rps_cpus; do
 				[ -w "$ifb_q" ] && echo "$rps_mask" > "$ifb_q" 2>/dev/null || true
 			done
@@ -103,6 +146,12 @@ ark_promote_cake_mq() {
 		[ "$qdisc" = "cake" ] || [ "$qdisc" = "cake_mq" ] || continue
 		iface="$(uci -q get "sqm.$sec.interface")"
 		[ -n "$iface" ] || continue
+		if [ -z "${ARK_ROOT:-}" ]; then
+			ip link set dev "$iface" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
+			ip link set dev "ifb4${iface}" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
+			tc qdisc change dev "$iface" root cake no-split-gso 2>/dev/null || true
+			tc qdisc change dev "ifb4${iface}" root cake no-split-gso 2>/dev/null || true
+		fi
 		ark_apply_ingress_voice_tin_filters "$iface"
 		ark_has_cake_mq || continue
 		upload="$(uci -q get "sqm.$sec.upload" || echo 0)"
@@ -188,13 +237,19 @@ get_system_hardware_sqm_audit() {
 	fi
 	local auto_dscp_active=0
 	ark_has_auto_dscp && auto_dscp_active=1
+	local ctinfo_capable=0
+	ark_has_ctinfo && ctinfo_capable=1
+	local l4s_active=0
+	ark_has_l4s_dscp && l4s_active=1
+	local autorate_enabled=0
+	[ "$(uci -q get equipe_dashboard.settings.sqm_autorate 2>/dev/null || echo 0)" = "1" ] && autorate_enabled=1
 
-	printf '{"is_low_end_mips":%s,"cpu_arch":"%s","cpu_cores":%d,"cpu_model":"%s","suggested_cut_off_mbps":%d,"fastpath_active":%s,"hw_flowoffload_capable":%s,"hw_flowoffload_active":%s,"cake_memlimit":"%s","waveform_aplus_mode":%s,"cake_mq_capable":%s,"cake_mq_active":%s,"auto_dscp_active":%s}\n' \
-		"$(bool "$is_low_end_mips")" "$cpu_arch" "$cpu_cores" "$(json_escape "$cpu_model")" "$suggested_cut_off_mbps" "$fastpath_active" "$(bool "$hw_flowoffload_capable")" "$(bool "$hw_flowoffload_active")" "$cake_memlimit" "$(bool "$waveform_aplus")" "$(bool "$cake_mq_capable")" "$(bool "$cake_mq_active")" "$(bool "$auto_dscp_active")"
+	printf '{"is_low_end_mips":%s,"cpu_arch":"%s","cpu_cores":%d,"cpu_model":"%s","suggested_cut_off_mbps":%d,"fastpath_active":%s,"hw_flowoffload_capable":%s,"hw_flowoffload_active":%s,"cake_memlimit":"%s","waveform_aplus_mode":%s,"cake_mq_capable":%s,"cake_mq_active":%s,"auto_dscp_active":%s,"ctinfo_capable":%s,"l4s_active":%s,"autorate_enabled":%s}\n' \
+		"$(bool "$is_low_end_mips")" "$cpu_arch" "$cpu_cores" "$(json_escape "$cpu_model")" "$suggested_cut_off_mbps" "$fastpath_active" "$(bool "$hw_flowoffload_capable")" "$(bool "$hw_flowoffload_active")" "$cake_memlimit" "$(bool "$waveform_aplus")" "$(bool "$cake_mq_capable")" "$(bool "$cake_mq_active")" "$(bool "$auto_dscp_active")" "$(bool "$ctinfo_capable")" "$(bool "$l4s_active")" "$(bool "$autorate_enabled")"
 }
 
 sqm_apply_upload_only() {
-	local s
+	local s saved_sec wan_dev
 	if ark_is_satellite_or_ap; then
 		echo "O controle de Bufferbloat (SQM/CAKE) é exclusivo do Roteador Mestre (Gateway). Desativado em modo Ponto de Acesso (AP)." >&2
 		exit 2
@@ -202,15 +257,19 @@ sqm_apply_upload_only() {
 	local wan="${1:-wan}"
 	local up_kbps="${2:-0}"
 	[ -n "$up_kbps" ] && [ "$up_kbps" -gt 0 ] 2>/dev/null || { echo 'Velocidade de upload invalida' >&2; exit 2; }
-	local sec=""
-	for s in $(uci -q show sqm | grep '=queue' | cut -d. -f2 | cut -d= -f1); do
-		if [ "$(uci -q get "sqm.$s.interface")" = "$wan" ]; then
-			sec="$s"
-			break
-		fi
-	done
-	[ -n "$sec" ] || sec="ark_$wan"
-	ensure_sqm_section "$sec" "$wan"
+	saved_sec="$(sqm_section_for_network "$wan" 2>/dev/null || echo '')"
+	wan_dev="$(sqm_device_for_network "$wan" 2>/dev/null || echo "$wan")"
+	local sec="$saved_sec"
+	if [ -z "$sec" ]; then
+		for s in $(uci -q show sqm | grep '=queue' | cut -d. -f2 | cut -d= -f1); do
+			if [ "$(uci -q get "sqm.$s.interface")" = "$wan_dev" ] || [ "$(uci -q get "sqm.$s.interface")" = "$wan" ]; then
+				sec="$s"
+				break
+			fi
+		done
+	fi
+	[ -n "$sec" ] || sec="wan1"
+	ensure_sqm_section "$sec" "$wan_dev"
 	uci -q set "sqm.$sec.enabled=1"
 	uci -q set "sqm.$sec.download=0"
 	uci -q set "sqm.$sec.upload=$up_kbps"
@@ -454,6 +513,7 @@ sync_sqm_flow_offload() {
 			[ -f "$ecm_dir/front_end_ipv6_stop" ] && echo 1 > "$ecm_dir/front_end_ipv6_stop" 2>/dev/null || true
 			[ -f "$ecm_dir/ecm_db/defunct_all" ] && echo 1 > "$ecm_dir/ecm_db/defunct_all" 2>/dev/null || true
 		fi
+		ark_sync_lan_selective_offload
 	else
 		# SQM desativado: verifica se Multi-WAN esta REALMENTE ativo no sistema operacional
 		local mwan_count=0
@@ -481,6 +541,188 @@ sync_sqm_flow_offload() {
 			fi
 		fi
 	fi
+}
+
+ark_sync_lan_selective_offload() {
+	local br_dev br_name
+	[ -z "${ARK_ROOT:-}" ] || return 0
+	for br_dev in /sys/class/net/br-* /sys/class/net/lan*; do
+		[ -d "$br_dev" ] || continue
+		br_name="${br_dev##*/}"
+		command -v ethtool >/dev/null 2>&1 && ethtool -K "$br_name" gro on gso on tso on 2>/dev/null || true
+		ip link set dev "$br_name" txqueuelen 1000 2>/dev/null || true
+	done
+	return 0
+}
+
+ark_sqm_autorate_toggle() {
+	local state="${1:-0}"
+	case "$state" in 0|1) ;; *) echo 'Estado Autorate invalido' >&2; exit 2 ;; esac
+	uci -q set equipe_dashboard.settings=dashboard
+	uci -q set "equipe_dashboard.settings.sqm_autorate=$state"
+	uci commit equipe_dashboard 2>/dev/null || true
+	if [ "$state" = "0" ]; then
+		rm -f "${ARK_ROOT:-}/tmp"/ark_autorate_*.state 2>/dev/null || true
+	fi
+	echo ok
+}
+
+ark_sqm_autorate_step() {
+	local arg key val override_load="" override_delay="" thr_ms=15
+	for arg in "$@"; do
+		key="${arg%%=*}"
+		val="${arg#*=}"
+		case "$key" in
+			load_pct) override_load="$val" ;;
+			delay_ms) override_delay="$val" ;;
+		esac
+	done
+
+	if [ "$(uci -q get equipe_dashboard.main.starlink_mode 2>/dev/null)" = "1" ] || \
+	   [ "$(uci -q get equipe_dashboard.settings.starlink_mode 2>/dev/null)" = "1" ]; then
+		thr_ms=35
+	fi
+
+	local sec enabled iface base_dl base_ul state_file cur_dl cur_ul saved_base_dl saved_base_ul
+	local last_action="steady" load_dl_pct=0 load_ul_pct=0 delay_dl_ms=0 delay_ul_ms=0
+	local min_dl max_dl min_ul max_ul new_dl new_ul step_dl step_ul qdisc_type
+	local out_sec="wan1" out_dl=0 out_ul=0 out_base_dl=0 out_base_ul=0 out_action="steady" out_delay=0 out_load=0
+
+	for sec in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\([^.=]*\)=queue$/\1/p'); do
+		enabled="$(uci -q get "sqm.$sec.enabled" || echo 0)"
+		[ "$enabled" = "1" ] || continue
+		iface="$(uci -q get "sqm.$sec.interface" || echo wan)"
+		base_dl="$(uci -q get "sqm.$sec.download" || echo 0)"
+		base_ul="$(uci -q get "sqm.$sec.upload" || echo 0)"
+		[ "$base_dl" -gt 0 ] 2>/dev/null || base_dl=0
+		[ "$base_ul" -gt 0 ] 2>/dev/null || base_ul=0
+		[ "$base_dl" -gt 0 ] || [ "$base_ul" -gt 0 ] || continue
+
+		state_file="${ARK_ROOT:-}/tmp/ark_autorate_${sec}.state"
+		mkdir -p "$(dirname "$state_file")" 2>/dev/null || true
+		cur_dl="$base_dl"
+		cur_ul="$base_ul"
+		saved_base_dl="$base_dl"
+		saved_base_ul="$base_ul"
+
+		if [ -f "$state_file" ]; then
+			saved_base_dl="$(awk -F= '/^base_dl=/{print $2}' "$state_file" 2>/dev/null || echo "$base_dl")"
+			saved_base_ul="$(awk -F= '/^base_ul=/{print $2}' "$state_file" 2>/dev/null || echo "$base_ul")"
+			if [ "$saved_base_dl" = "$base_dl" ] && [ "$saved_base_ul" = "$base_ul" ]; then
+				cur_dl="$(awk -F= '/^cur_dl=/{print $2}' "$state_file" 2>/dev/null || echo "$base_dl")"
+				cur_ul="$(awk -F= '/^cur_ul=/{print $2}' "$state_file" 2>/dev/null || echo "$base_ul")"
+			fi
+		fi
+		[ -n "$cur_dl" ] && [ "$cur_dl" -gt 0 ] 2>/dev/null || cur_dl="$base_dl"
+		[ -n "$cur_ul" ] && [ "$cur_ul" -gt 0 ] 2>/dev/null || cur_ul="$base_ul"
+
+		load_dl_pct="${override_load:-30}"
+		load_ul_pct="${override_load:-30}"
+		delay_dl_ms="${override_delay:-2}"
+		delay_ul_ms="${override_delay:-2}"
+
+		min_dl=$((base_dl * 35 / 100))
+		[ "$min_dl" -lt 1000 ] && [ "$base_dl" -ge 1000 ] && min_dl=1000
+		max_dl="$base_dl"
+		min_ul=$((base_ul * 35 / 100))
+		[ "$min_ul" -lt 500 ] && [ "$base_ul" -ge 500 ] && min_ul=500
+		max_ul="$base_ul"
+
+		new_dl="$cur_dl"
+		new_ul="$cur_ul"
+		last_action="steady"
+
+		# 1. Bufferbloat / Congestion detected (delay > threshold): Multiplicative Decrease (-12%)
+		if [ "$delay_dl_ms" -gt "$thr_ms" ] 2>/dev/null; then
+			new_dl=$((cur_dl * 88 / 100))
+			[ "$new_dl" -lt "$min_dl" ] && new_dl="$min_dl"
+			last_action="shaping_down"
+		# 2. Motor 1 — Sondagem Ativa (Active Probing under high load >= 70% with clean latency): +5% step up
+		elif [ "$load_dl_pct" -ge 70 ] 2>/dev/null && [ "$cur_dl" -lt "$max_dl" ]; then
+			step_dl=$((cur_dl * 5 / 100))
+			[ "$step_dl" -lt 500 ] && step_dl=500
+			new_dl=$((cur_dl + step_dl))
+			[ "$new_dl" -gt "$max_dl" ] && new_dl="$max_dl"
+			last_action="probing_up"
+		# 3. Motor 2 — Retorno Elastico Silencioso (Elastic Idle Recovery when load < 50%): +15% of base toward base_dl
+		elif [ "$load_dl_pct" -lt 50 ] 2>/dev/null && [ "$cur_dl" -lt "$base_dl" ]; then
+			step_dl=$((base_dl * 15 / 100))
+			[ "$step_dl" -lt 1000 ] && step_dl=1000
+			new_dl=$((cur_dl + step_dl))
+			[ "$new_dl" -gt "$base_dl" ] && new_dl="$base_dl"
+			last_action="elastic_recovery"
+		fi
+
+		if [ "$delay_ul_ms" -gt "$thr_ms" ] 2>/dev/null; then
+			new_ul=$((cur_ul * 88 / 100))
+			[ "$new_ul" -lt "$min_ul" ] && new_ul="$min_ul"
+			last_action="shaping_down"
+		elif [ "$load_ul_pct" -ge 70 ] 2>/dev/null && [ "$cur_ul" -lt "$max_ul" ]; then
+			step_ul=$((cur_ul * 5 / 100))
+			[ "$step_ul" -lt 250 ] && step_ul=250
+			new_ul=$((cur_ul + step_ul))
+			[ "$new_ul" -gt "$max_ul" ] && new_ul="$max_ul"
+			[ "$last_action" = "steady" ] && last_action="probing_up"
+		elif [ "$load_ul_pct" -lt 50 ] 2>/dev/null && [ "$cur_ul" -lt "$base_ul" ]; then
+			step_ul=$((base_ul * 15 / 100))
+			[ "$step_ul" -lt 500 ] && step_ul=500
+			new_ul=$((cur_ul + step_ul))
+			[ "$new_ul" -gt "$base_ul" ] && new_ul="$base_ul"
+			[ "$last_action" = "steady" ] && last_action="elastic_recovery"
+		fi
+
+		if [ -z "${ARK_ROOT:-}" ]; then
+			if [ "$new_ul" != "$cur_ul" ] && [ "$new_ul" -gt 0 ]; then
+				qdisc_type="cake"
+				tc qdisc show dev "$iface" 2>/dev/null | grep -q "cake_mq" && qdisc_type="cake_mq"
+				tc qdisc change dev "$iface" root "$qdisc_type" bandwidth "${new_ul}kbit" 2>/dev/null || true
+			fi
+			if [ "$new_dl" != "$cur_dl" ] && [ "$new_dl" -gt 0 ]; then
+				tc qdisc change dev "ifb4${iface}" root cake bandwidth "${new_dl}kbit" 2>/dev/null || true
+			fi
+		fi
+
+		{
+			printf 'sec=%s\n' "$sec"
+			printf 'iface=%s\n' "$iface"
+			printf 'base_dl=%d\n' "$base_dl"
+			printf 'base_ul=%d\n' "$base_ul"
+			printf 'cur_dl=%d\n' "$new_dl"
+			printf 'cur_ul=%d\n' "$new_ul"
+			printf 'last_action=%s\n' "$last_action"
+			printf 'delay_ms=%d\n' "$delay_dl_ms"
+			printf 'load_pct=%d\n' "$load_dl_pct"
+		} > "$state_file"
+
+		out_sec="$sec"
+		out_dl="$new_dl"
+		out_ul="$new_ul"
+		out_base_dl="$base_dl"
+		out_base_ul="$base_ul"
+		out_action="$last_action"
+		out_delay="$delay_dl_ms"
+		out_load="$load_dl_pct"
+	done
+
+	printf '{"ok":true,"section":"%s","cur_dl_kbps":%d,"cur_ul_kbps":%d,"base_dl_kbps":%d,"base_ul_kbps":%d,"action":"%s","delay_ms":%d,"load_pct":%d,"threshold_ms":%d}\n' \
+		"$out_sec" "$out_dl" "$out_ul" "$out_base_dl" "$out_base_ul" "$out_action" "$out_delay" "$out_load" "$thr_ms"
+}
+
+ark_sqm_autorate_status() {
+	local enabled=0 state_file="${ARK_ROOT:-}/tmp/ark_autorate_wan1.state"
+	local cur_dl=0 cur_ul=0 base_dl=0 base_ul=0 last_action="idle" delay_ms=0 load_pct=0
+	[ "$(uci -q get equipe_dashboard.settings.sqm_autorate 2>/dev/null || echo 0)" = "1" ] && enabled=1
+	if [ -f "$state_file" ]; then
+		cur_dl="$(awk -F= '/^cur_dl=/{print $2}' "$state_file" 2>/dev/null || echo 0)"
+		cur_ul="$(awk -F= '/^cur_ul=/{print $2}' "$state_file" 2>/dev/null || echo 0)"
+		base_dl="$(awk -F= '/^base_dl=/{print $2}' "$state_file" 2>/dev/null || echo 0)"
+		base_ul="$(awk -F= '/^base_ul=/{print $2}' "$state_file" 2>/dev/null || echo 0)"
+		last_action="$(awk -F= '/^last_action=/{print $2}' "$state_file" 2>/dev/null || echo idle)"
+		delay_ms="$(awk -F= '/^delay_ms=/{print $2}' "$state_file" 2>/dev/null || echo 0)"
+		load_pct="$(awk -F= '/^load_pct=/{print $2}' "$state_file" 2>/dev/null || echo 0)"
+	fi
+	printf '{"enabled":%s,"cur_dl_kbps":%d,"cur_ul_kbps":%d,"base_dl_kbps":%d,"base_ul_kbps":%d,"action":"%s","delay_ms":%d,"load_pct":%d}\n' \
+		"$(bool "$enabled")" "$cur_dl" "$cur_ul" "$base_dl" "$base_ul" "$last_action" "$delay_ms" "$load_pct"
 }
 
 handle_sqm() {
@@ -806,8 +1048,9 @@ handle_sqm() {
 				*) echo "Campo SQM invalido: $key" >&2; exit 2 ;;
 			esac
 		done
-		ensure_sqm_section wan1 wan
-		wan2_dev="$(uci -q get network.wan2.device || printf lan1)"
+		wan1_dev="$(sqm_device_for_network wan 2>/dev/null || printf wan)"
+		ensure_sqm_section wan1 "$wan1_dev"
+		wan2_dev="$(sqm_device_for_network wan2 2>/dev/null || uci -q get network.wan2.device || printf lan1)"
 		ensure_sqm_section wan2 "$wan2_dev"
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
@@ -846,6 +1089,17 @@ handle_sqm() {
 	sqm-apply-upload-only)
 		shift
 		sqm_apply_upload_only "$@"
+		;;
+	sqm-autorate-toggle)
+		shift
+		ark_sqm_autorate_toggle "$@"
+		;;
+	sqm-autorate-step)
+		shift
+		ark_sqm_autorate_step "$@"
+		;;
+	sqm-autorate-status)
+		ark_sqm_autorate_status
 		;;
 	esac
 }

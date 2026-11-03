@@ -951,7 +951,8 @@ get_led_status() {
 }
 
 detect_hardware_silicon_profile() {
-	local haystack
+	local haystack meminfo_file="/proc/meminfo"
+	[ -n "${ARK_ROOT:-}" ] && [ -f "${ARK_ROOT}/proc/meminfo" ] && meminfo_file="${ARK_ROOT}/proc/meminfo"
 	silicon_model="$(cat /tmp/sysinfo/model 2>/dev/null || cat /proc/cpuinfo 2>/dev/null | awk -F': ' '/model name|machine|Hardware/{print $2; exit}' || echo 'ARK Router')"
 	silicon_board="$(cat /tmp/sysinfo/board_name 2>/dev/null || echo 'generic')"
 	silicon_target="$(grep 'DISTRIB_TARGET' /etc/openwrt_release 2>/dev/null | cut -d"'" -f2 || echo '')"
@@ -959,7 +960,8 @@ detect_hardware_silicon_profile() {
 	silicon_cpu_arch="$(uname -m 2>/dev/null || echo 'generic')"
 	silicon_cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
 	[ "$silicon_cpu_cores" -ge 1 ] 2>/dev/null || silicon_cpu_cores=1
-	silicon_mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+	silicon_mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' "$meminfo_file" 2>/dev/null || echo 262144)"
+	[ -n "$silicon_mem_total_kb" ] && [ "$silicon_mem_total_kb" -gt 0 ] 2>/dev/null || silicon_mem_total_kb=262144
 	silicon_mem_total_mb=$((silicon_mem_total_kb / 1024))
 
 	# RAM Tier
@@ -1176,6 +1178,7 @@ system_hardware_auto_tune() {
 	fi
 
 	# --- 3. Flow Offloading ---
+	local flow_user_disabled="$(uci -q get equipe_perf.settings.flow_offload_user_disabled 2>/dev/null || echo 0)"
 	if ark_is_satellite_or_ap; then
 		uci -q set firewall.@defaults[0].flow_offloading=0
 		uci -q set firewall.@defaults[0].flow_offloading_hw=0
@@ -1188,6 +1191,10 @@ system_hardware_auto_tune() {
 		if [ -z "${ARK_ROOT:-}" ] && command -v nft >/dev/null 2>&1; then
 			nft delete flowtable inet fw4 ft 2>/dev/null || true
 		fi
+	elif [ "$flow_user_disabled" = "1" ]; then
+		uci -q set firewall.@defaults[0].flow_offloading=0
+		uci -q set firewall.@defaults[0].flow_offloading_hw=0
+		offload_reason="Fastpath desativado manualmente pelo usuário"
 	elif [ "$silicon_hw_offload_capable" = 1 ]; then
 		uci -q set firewall.@defaults[0].flow_offloading=1
 		uci -q set firewall.@defaults[0].flow_offloading_hw=1
@@ -1222,7 +1229,7 @@ system_hardware_auto_tune() {
 			[ -d "$iface_dir" ] || continue
 			local rps_target="$rps_mask"
 			case "${iface_dir##*/}" in
-				lo|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*)
+				lo|ifb*|br-*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|wlan*|phy*|ap*|sta*|mesh*|mld*)
 					rps_target=0
 					;;
 			esac
@@ -1285,9 +1292,9 @@ system_hardware_auto_tune() {
 			;;
 		high)
 			ct_max=131072
-			rmem=4194304
-			wmem=4194304
-			backlog=8000
+			rmem=16777216
+			wmem=16777216
+			backlog=10000
 			vfs_cache=100
 			dirty=20
 			dirty_bg=10
@@ -1314,6 +1321,13 @@ system_hardware_auto_tune() {
 	# Garantir rmem suficiente para o nlbwmon (minimo 1MB para evitar netlink overrun)
 	if [ "$nlbwmon_active" = 1 ] && [ "$rmem" -lt 1048576 ]; then
 		rmem=1048576
+	fi
+
+	# Respeitar escolha explícita de ram_autopurge do usuário em equipe_perf
+	if [ "$(uci -q get equipe_perf.settings.ram_autopurge 2>/dev/null || echo 0)" = "1" ] || [ -f "${sysctl_dir}/99-ark-memory.conf" ]; then
+		vfs_cache=150
+		dirty=10
+		dirty_bg=5
 	fi
 
 	# Ajustar dirty pages para evitar sobrecarga de RAM com Storage/Samba
@@ -1351,6 +1365,10 @@ net.netfilter.nf_conntrack_tcp_timeout_established=1200
 net.netfilter.nf_conntrack_udp_timeout=30
 net.netfilter.nf_conntrack_udp_timeout_stream=120
 EOF
+	elif [ "$(uci -q get equipe_perf.settings.conntrack_recycle 2>/dev/null || echo 1)" = "0" ]; then
+		cat <<-EOF >> "${sysctl_dir}/99-ark-hardware-tune.conf"
+net.netfilter.nf_conntrack_tcp_timeout_established=432000
+EOF
 	else
 		cat <<-EOF >> "${sysctl_dir}/99-ark-hardware-tune.conf"
 net.netfilter.nf_conntrack_tcp_timeout_established=7440
@@ -1379,13 +1397,19 @@ EOF
 	fi
 
 	sysctl -p "${sysctl_dir}/99-ark-hardware-tune.conf" >/dev/null 2>&1 || true
+	[ -f "${sysctl_dir}/99-ark-memory.conf" ] && sysctl -p "${sysctl_dir}/99-ark-memory.conf" >/dev/null 2>&1 || true
+	[ -f "${sysctl_dir}/99-ark-conntrack.conf" ] && sysctl -p "${sysctl_dir}/99-ark-conntrack.conf" >/dev/null 2>&1 || true
 
-	# --- 6. Dimensionamento de Cache do DNSmasq ---
+	# --- 6. Dimensionamento de Cache do DNSmasq (preserva cachesize superior em sistemas >= 256MB RAM) ---
 	if [ -f /etc/config/dhcp ] || [ -n "${ARK_ROOT}" -a -f "${ARK_ROOT}/etc/config/dhcp" ] || [ -n "${UCI_CONFIG_DIR}" -a -f "${UCI_CONFIG_DIR}/dhcp" ]; then
+		cur_dns_cache="$(uci -q get dhcp.@dnsmasq[0].cachesize || true)"
 		if ark_is_satellite_or_ap; then
 			dns_cache=150
+		elif [ "$effective_ram_tier" != "ultra_low" ] && [ "$effective_ram_tier" != "low" ]; then
+			if [ -n "$cur_dns_cache" ] && [ "$cur_dns_cache" -gt "$dns_cache" ] 2>/dev/null; then
+				dns_cache="$cur_dns_cache"
+			fi
 		fi
-		cur_dns_cache="$(uci -q get dhcp.@dnsmasq[0].cachesize || true)"
 		if [ "$cur_dns_cache" != "$dns_cache" ]; then
 			uci -q set "dhcp.@dnsmasq[0].cachesize=$dns_cache"
 			uci commit dhcp

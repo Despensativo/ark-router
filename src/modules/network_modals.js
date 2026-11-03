@@ -732,9 +732,15 @@ const networkModalsMethods = {
 				dual_stack: { label: 'Modo 2: Pilha Dupla Global', color: '#10b981', bg: 'rgba(16,185,129,.15)', border: 'rgba(16,185,129,.35)' },
 				selective: { label: 'Modo 3: IPv6 Seletivo por MAC', color: '#38bdf8', bg: 'rgba(56,189,248,.15)', border: 'rgba(56,189,248,.35)' },
 				nptv6: { label: 'Modo 4: NPTv6 Inteligente (Multi-WAN)', color: '#06b6d4', bg: 'rgba(6,182,212,.15)', border: 'rgba(6,182,212,.35)' },
-				ipv6_only: { label: 'Modo 5: IPv6-Only (Single-Stack)', color: '#c084fc', bg: 'rgba(192,132,252,.15)', border: 'rgba(192,132,252,.35)' }
+				ipv6_only: { label: 'Modo 5: IPv6-Only (Single-Stack)', color: '#c084fc', bg: 'rgba(192,132,252,.15)', border: 'rgba(192,132,252,.35)' },
+				ipv6_clat: { label: 'Modo 6: WAN 100% IPv6 + LAN IPv4 (Anycast)', color: '#ec4899', bg: 'rgba(236,72,153,.15)', border: 'rgba(236,72,153,.35)' }
 			};
 			const curBadge = modeBadgeMeta[curMode] || modeBadgeMeta.dual_stack;
+			const prevClatMode = st.saved_clat_prev_mode || 'dual_stack';
+			const prevClatBadge = modeBadgeMeta[prevClatMode] || modeBadgeMeta.dual_stack;
+			const clatEngineLabel = st.clat_engine === 'cloudflare_anycast'
+				? 'Cloudflare Anycast WireGuard IPv6 (~15ms)'
+				: (st.clat_engine === '464xlat' ? 'Kernel 464XLAT + DNS64' : 'Automático (Anycast IPv6 / 464XLAT)');
 
 			const statusHeader = E('div', {
 				class: 'ex-priority-desc-box',
@@ -767,8 +773,12 @@ const networkModalsMethods = {
 						E('strong', { style: 'color: ' + (st.filter_aaaa ? '#f59e0b' : '#10b981') }, [ st.filter_aaaa ? 'Ativo (Bloqueando AAAA)' : 'Desativado (Normal)' ])
 					]),
 					E('div', {}, [
-						E('span', { class: 'ex-muted' }, ['Dispositivos Seletivos: ']),
-						E('strong', { style: 'color: #38bdf8;' }, [ (st.selective_allowed_macs && st.selective_allowed_macs.length) ? (st.selective_allowed_macs.length + ' autorizado(s)') : 'Nenhum aparelho liberado' ])
+						E('span', { class: 'ex-muted' }, [ curMode === 'ipv6_clat' ? 'Motor de Tradução CLAT: ' : 'Dispositivos Seletivos: ' ]),
+						E('strong', { style: 'color: ' + (curMode === 'ipv6_clat' ? '#ec4899;' : '#38bdf8;') }, [
+							curMode === 'ipv6_clat'
+								? clatEngineLabel
+								: ((st.selective_allowed_macs && st.selective_allowed_macs.length) ? (st.selective_allowed_macs.length + ' autorizado(s)') : 'Nenhum aparelho liberado')
+						])
 					])
 				])
 			]);
@@ -802,7 +812,7 @@ const networkModalsMethods = {
 				]);
 			};
 
-			const renderModeCard = function(modeId, title, badgeText, description, benefitsList, isCurrent) {
+			const renderModeCard = function(modeId, title, badgeText, description, benefitsList, isCurrent, onDeactivate) {
 				return E('div', {
 					class: 'ex-cleanup-entry',
 					style: 'margin-bottom: 12px; padding: 14px; border-radius: 10px; border: 1px solid ' + (isCurrent ? 'rgba(56,189,248,.4)' : 'rgba(255,255,255,.08)') + '; background: ' + (isCurrent ? 'rgba(56,189,248,.05)' : 'rgba(255,255,255,.02)') + ';'
@@ -818,7 +828,13 @@ const networkModalsMethods = {
 					]),
 					E('div', { style: 'flex: 0 0 auto; display: flex; align-items: center; margin-left: 12px;' }, [
 						isCurrent
-							? E('button', { class: 'ex-mini-button', disabled: true, style: 'opacity: .6; cursor: default;' }, [ 'Modo Ativo' ])
+							? (onDeactivate
+								? E('button', {
+									class: 'ex-mini-button',
+									style: 'min-height: 40px; padding: 8px 14px; font-weight: 600; border-color: rgba(244,63,94,.45); color: #fda4af; background: rgba(244,63,94,.12);',
+									click: onDeactivate
+								}, [ 'Desligar e Restaurar' ])
+								: E('button', { class: 'ex-mini-button', disabled: true, style: 'opacity: .6; cursor: default;' }, [ 'Modo Ativo' ]))
 							: E('button', {
 								class: 'ex-mini-button',
 								style: 'min-height: 40px; padding: 8px 14px; font-weight: 600;',
@@ -846,6 +862,22 @@ const networkModalsMethods = {
 						'Sem sobrecarga de portas: cada dispositivo preserva suas 65.535 portas 1:1 sem NAT restrito.'
 					],
 					curMode === 'nptv6'
+				),
+				renderModeCard('ipv6_clat', 'Modo 6: WAN 100% IPv6 + LAN IPv4 (Anycast / 464XLAT)', 'Bypass CGNAT • ~15ms',
+					'Mantém o IPv4 normal na rede interna (LAN), mas força 100% do tráfego externo a sair via IPv6 (direto para sites IPv6 e via túnel Anycast Cloudflare IPv6 / 464XLAT para sites legados IPv4).',
+					[
+						'Fuga inteligente do CGNAT da operadora sem quebrar TVs, videogames ou IoTs que dependem de IPv4 na LAN.',
+						'Tráfego IPv6 sai direto na velocidade da fibra (~4,8ms) e tráfego IPv4 é encapsulado em IPv6 via Cloudflare Anycast (~15ms).',
+						'Reversão inteligente com 1 clique: salva o estado original da WAN/DHCP ao ligar e restaura tudo exatamente como estava ao desligar.'
+					],
+					curMode === 'ipv6_clat',
+					function() {
+						applyMode(
+							'restore_clat',
+							'Restaurar ' + prevClatBadge.label,
+							'O túnel Anycast/464XLAT será desligado e todas as rotas, DNS e firewall voltarão exatamente ao modo anterior (' + prevClatBadge.label + ').'
+						);
+					}
 				),
 				renderModeCard('selective', 'Modo 3: IPv6 Seletivo por Aparelho', 'Escudo Gamer & IoT',
 					'Apenas aparelhos marcados com "⚡ Permitir IPv6" no painel utilizam IPv6. Dispositivos não autorizados têm o tráfego rejeitado instantaneamente em 0,1ms.',

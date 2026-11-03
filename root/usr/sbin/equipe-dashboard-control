@@ -16,6 +16,27 @@ if [ -z "${ARK_LIB_DIR}" ]; then
 	fi
 fi
 
+# Leituras quentes: reutiliza o mesmo TTL do módulo sem carregar suas dependências.
+# ARK_ROOT usa apenas o cache isolado do sandbox, nunca o /tmp do hospedeiro.
+case "${1:-}" in
+	device-fingerprints) _ark_cache_name=ark-fp-cache ;;
+	device-stations|wifi-stations) _ark_cache_name=ark-stations-cache ;;
+	*) _ark_cache_name='' ;;
+esac
+if [ -n "$_ark_cache_name" ] && [ ! -f "${ARK_ROOT}/tmp/ark_mock_stations.json" ]; then
+	_ark_cache="${ARK_ROOT}/tmp/$_ark_cache_name"
+	_ark_cache_time=0
+	if [ -s "$_ark_cache.json" ] && [ -r "$_ark_cache.ts" ]; then
+		read -r _ark_cache_time < "$_ark_cache.ts" || _ark_cache_time=0
+		case "$_ark_cache_time" in ''|*[!0-9]*) _ark_cache_time=0 ;; esac
+		_ark_cache_now="$(date +%s)"
+		if [ "$_ark_cache_time" -gt 0 ] && [ "$_ark_cache_now" -ge "$_ark_cache_time" ] && [ $((_ark_cache_now - _ark_cache_time)) -lt 120 ]; then
+			cat "$_ark_cache.json" && exit 0
+		fi
+	fi
+fi
+unset _ark_cache_name _ark_cache _ark_cache_time _ark_cache_now
+
 # Load core foundation libraries
 . "${ARK_LIB_DIR}/common.sh"
 . "${ARK_LIB_DIR}/logging.sh"
@@ -50,6 +71,10 @@ case "$action" in
 		. "${ARK_LIB_DIR}/modules/network.sh"
 		handle_network "$@"
 		;;
+	device-*|satellite-*|wifi-stations|wifi-mesh-satellite-sync-leases|setup-fingerprint-hook|setup-dhcp-fingerprint|rename|flush-stale-leases|speedtest-*|reboot-*)
+		. "${ARK_LIB_DIR}/modules/devices.sh"
+		handle_devices "$@"
+		;;
 	wifi*|channels|country)
 		. "${ARK_LIB_DIR}/modules/wifi.sh"
 		handle_wifi "$@"
@@ -66,17 +91,13 @@ case "$action" in
 		. "${ARK_LIB_DIR}/modules/vpn.sh"
 		handle_vpn "$@"
 		;;
-	adblock*)
+	adblock*|sso-login|uninstall)
 		. "${ARK_LIB_DIR}/modules/adblock.sh"
 		handle_adblock "$@"
 		;;
-	system-perf*|system-processes*|ram-purge-now|dmz*|upnp-*|zram-*|dns-turbo*|network-capacity*|system-memory-purge|system-storage-purge|fast-targets|https-redirect|asu-check-*|cleanup-orphan-leds|get-led-*|set-led-*|led-*|update-led-alert|update-wan-led|system-hardware-*|transmission-*|safe-storage-reboot|ntp-*|time-*|clock-*)
+	system-perf*|system-processes*|ram-purge-now|dmz*|upnp-*|zram-*|dns-turbo*|network-capacity*|system-memory-purge|system-storage-purge|fast-targets|https-redirect|asu-check-*|cleanup-orphan-leds|get-led-*|set-led-*|led-*|update-led-alert|update-wan-led|system-hardware-*|hardware-tune|transmission-*|safe-storage-reboot|ntp-*|time-*|clock-*)
 		. "${ARK_LIB_DIR}/modules/system.sh"
 		handle_system "$@"
-		;;
-	device-*|satellite-*|rename|flush-stale-leases|speedtest-*|reboot-*)
-		. "${ARK_LIB_DIR}/modules/devices.sh"
-		handle_devices "$@"
 		;;
 	ez-setup-*|features|feature-*|self-update-*|manual-update-*|cleanup-*|theme|language|title|profile|appearance|card-state-*)
 		. "${ARK_LIB_DIR}/modules/ezsetup.sh"

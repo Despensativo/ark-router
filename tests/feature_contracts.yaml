@@ -14,6 +14,8 @@ features:
   - src/modules/render.js
   - src/modules/lifecycle.js
   - root/www/luci-static/resources/view/equipe-dashboard/overview.js
+  - root/usr/sbin/equipe-dashboard-control
+  - root/usr/lib/ark/modules/devices.sh
   actions:
   - overview.js render()
   - rpc.js poll()
@@ -62,6 +64,7 @@ features:
   - full
   version: 1.5.2
   tests:
+  - tests/test_multicore_optimization.py
   - tests/test_wan_matrix.py
   - scripts/verify_dom_progressive.mjs
   real_hw_required: false
@@ -1448,6 +1451,8 @@ features:
   state: funcional
   files:
   - root/usr/lib/ark/modules/sqm.sh
+  - root/etc/init.d/ark-hardware-tune
+  - root/usr/lib/ark/serialized-job.sh
   actions:
   - irqbalance-toggle
   rpc_endpoints:
@@ -1480,6 +1485,7 @@ features:
   - full
   version: 1.5.2
   tests:
+  - tests/test_multicore_optimization.py
   - tests/test_wan_matrix.py
   real_hw_required: false
 - id: ARK-QOS-001

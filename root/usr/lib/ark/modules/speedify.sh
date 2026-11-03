@@ -521,10 +521,6 @@ speedify_status_json() {
 	supported=false; speedify_supported && supported=true
 	prepared="$(uci -q get equipe_dashboard.speedify.prepared || printf 0)"
 	mode="$(speedify_detected_install_mode)"
-	if [ "$mode" = "internal" ] && [ "$(uci -q get equipe_dashboard.speedify.install_mode)" != "internal" ]; then
-		uci -q set equipe_dashboard.speedify.install_mode='internal'
-		uci commit equipe_dashboard
-	fi
 	saved="$(uci -q get equipe_dashboard.speedify.saved_config || printf 0)"
 	autostart="$(uci -q get equipe_dashboard.speedify.autostart || printf 0)"
 	desired="$(uci -q get equipe_dashboard.speedify.desired_state || printf manual)"

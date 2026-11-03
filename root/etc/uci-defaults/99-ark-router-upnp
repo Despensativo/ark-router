@@ -7,6 +7,17 @@ if [ -f /etc/config/upnpd ]; then
 	[ "$(uci -q get upnpd.config.use_stun)" = "1" ] || { uci -q set upnpd.config.use_stun='1'; changed=1; }
 	[ "$(uci -q get upnpd.config.stun_host)" = "stun.cloudflare.com" ] || { uci -q set upnpd.config.stun_host='stun.cloudflare.com'; changed=1; }
 	[ "$(uci -q get upnpd.config.stun_port)" = "3478" ] || { uci -q set upnpd.config.stun_port='3478'; changed=1; }
+	# Substitui padrao legado ADSL do OpenWrt (1024/512 KB/s = 8/4 Mbps) por 1000 Mbps (128000 KB/s)
+	cur_dl="$(uci -q get upnpd.config.download || true)"
+	if [ -z "$cur_dl" ] || [ "$cur_dl" = "1024" ]; then
+		uci -q set upnpd.config.download='128000'
+		changed=1
+	fi
+	cur_ul="$(uci -q get upnpd.config.upload || true)"
+	if [ -z "$cur_ul" ] || [ "$cur_ul" = "512" ]; then
+		uci -q set upnpd.config.upload='128000'
+		changed=1
+	fi
 	# Preserva a escolha do usuario: so define padrao desativado (modo seguro) se nunca configurado
 	if [ -z "$(uci -q get upnpd.config.enabled)" ]; then
 		uci -q set upnpd.config.enabled='0'

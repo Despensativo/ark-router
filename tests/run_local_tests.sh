@@ -60,6 +60,7 @@ printf "${GREEN}✓ Código JavaScript e sincronia do bundle válidos!${NC}\n\n"
 # 3. Execução da Matriz de Testes Unitários e Integração (Python)
 printf "${YELLOW}[3/5] Executando matriz de testes de WAN, SQM, MTU, ARK Doctor e Cenários Lite vs Full...${NC}\n"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_wan_matrix.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_multicore_optimization.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_lite_vs_full_scenarios.py"
 printf "${GREEN}✓ Todos os testes unitários e de cenários passaram com sucesso!${NC}\n\n"
 

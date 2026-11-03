@@ -17,14 +17,19 @@ chain ark_dscp_prerouting {
 	iifname != { "lo", "br-*", "lan*" } ct mark & 0x00000080 == 0 meta l4proto tcp tcp flags & (syn | rst | fin) == 0 meta length > 256 return comment "ARK: Fast-path WAN TCP download"
 
 	# Restore verified bidirectional flow DSCP from Conntrack (ct mark lower byte: 0x80 valid bit | 6-bit DSCP).
-	# Ensures incoming WAN packets (for Wi-Fi WMM / AQL & act_ctinfo) and large mid-session gaming packets
-	# keep their true Voice/Gaming (CS4=0xa0), Video (AF41=0xa2), or Bulk P2P (CS1=0x88) classification.
-	ct mark & 0x000000ff == 0x000000a0 ip dscp set cs4 comment "ARK: Restore Conntrack CS4 Voice/Gaming IPv4"
-	ct mark & 0x000000ff == 0x000000a0 ip6 dscp set cs4 comment "ARK: Restore Conntrack CS4 Voice/Gaming IPv6"
-	ct mark & 0x000000ff == 0x000000a2 ip dscp set af41 comment "ARK: Restore Conntrack AF41 Video IPv4"
-	ct mark & 0x000000ff == 0x000000a2 ip6 dscp set af41 comment "ARK: Restore Conntrack AF41 Video IPv6"
+	# Restricted to UDP for CS4/AF41 so bulk TCP streams (Fast.com/Speedtest/HTTP) are never locked into CAKE's 25% Voice Tin.
+	meta l4proto udp ct mark & 0x000000ff == 0x000000a0 ip dscp set cs4 comment "ARK: Restore Conntrack CS4 Voice/Gaming IPv4"
+	meta l4proto udp ct mark & 0x000000ff == 0x000000a0 ip6 dscp set cs4 comment "ARK: Restore Conntrack CS4 Voice/Gaming IPv6"
+	meta l4proto udp ct mark & 0x000000ff == 0x000000a2 ip dscp set af41 comment "ARK: Restore Conntrack AF41 Video IPv4"
+	meta l4proto udp ct mark & 0x000000ff == 0x000000a2 ip6 dscp set af41 comment "ARK: Restore Conntrack AF41 Video IPv6"
 	ct mark & 0x000000ff == 0x00000088 ip dscp set cs1 comment "ARK: Restore Conntrack CS1 Bulk IPv4"
 	ct mark & 0x000000ff == 0x00000088 ip6 dscp set cs1 comment "ARK: Restore Conntrack CS1 Bulk IPv6"
+	ct mark & 0x00000080 != 0 meta l4proto { tcp, udp } meta length > 256 return comment "ARK: Fast-path already-classified Conntrack flow"
+
+	# L4S (Low Latency, Low Loss, Scalable Throughput - RFC 9332):
+	# Promote interactive ECT(1) UDP packets (<= 512B: Apple FaceTime/Cloud Gaming/WebRTC L4S) -> CS4 (Voice/Gaming Tin)
+	iifname { "br-*", "lan*" } meta l4proto udp ip ecn == ect1 meta length <= 512 ip dscp set cs4 comment "ARK: L4S ECT(1) Interactive IPv4 priority"
+	iifname { "br-*", "lan*" } meta l4proto udp ip6 ecn == ect1 meta length <= 512 ip6 dscp set cs4 comment "ARK: L4S ECT(1) Interactive IPv6 priority"
 
 	# ICMP & ICMPv6 Ping Echo Requests -> CS6 (Network Control / Ultra-Low Latency)
 	ip protocol icmp ip dscp set cs6 comment "ARK: ICMP Echo priority"
@@ -72,11 +77,11 @@ chain ark_dscp_prerouting {
 	iifname { "br-*", "lan*" } udp dport != { 53, 67, 68, 80, 123, 443, 853, 5353, 6881-6889, 51413 } udp sport != { 53, 67, 68, 80, 123, 443, 853, 5353, 6881-6889, 51413 } meta length <= 256 ip dscp == cs0 ip dscp set cs4 comment "ARK: Low-payload Gaming UDP IPv4 heuristic"
 	iifname { "br-*", "lan*" } udp dport != { 53, 80, 123, 443, 546, 547, 853, 5353, 6881-6889, 51413 } udp sport != { 53, 80, 123, 443, 546, 547, 853, 5353, 6881-6889, 51413 } meta length <= 256 ip6 dscp == cs0 ip6 dscp set cs4 comment "ARK: Low-payload Gaming UDP IPv6 heuristic"
 
-	# Persist verified LAN flow DSCP into Conntrack mark lower byte (0x80 | DSCP, preserving 0xffffff00 for mwan3)
-	iifname { "br-*", "lan*" } ip dscp == cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: Save CS4 Voice/Gaming to ct mark IPv4"
-	iifname { "br-*", "lan*" } ip6 dscp == cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: Save CS4 Voice/Gaming to ct mark IPv6"
-	iifname { "br-*", "lan*" } ip dscp == af41 ct mark set (ct mark & 0xffffff00) | 0x000000a2 comment "ARK: Save AF41 Video to ct mark IPv4"
-	iifname { "br-*", "lan*" } ip6 dscp == af41 ct mark set (ct mark & 0xffffff00) | 0x000000a2 comment "ARK: Save AF41 Video to ct mark IPv6"
+	# Persist verified LAN UDP flow DSCP into Conntrack mark lower byte (0x80 | DSCP, preserving 0xffffff00 for mwan3)
+	iifname { "br-*", "lan*" } meta l4proto udp ip dscp == cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: Save CS4 Voice/Gaming to ct mark IPv4"
+	iifname { "br-*", "lan*" } meta l4proto udp ip6 dscp == cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: Save CS4 Voice/Gaming to ct mark IPv6"
+	iifname { "br-*", "lan*" } meta l4proto udp ip dscp == af41 ct mark set (ct mark & 0xffffff00) | 0x000000a2 comment "ARK: Save AF41 Video to ct mark IPv4"
+	iifname { "br-*", "lan*" } meta l4proto udp ip6 dscp == af41 ct mark set (ct mark & 0xffffff00) | 0x000000a2 comment "ARK: Save AF41 Video to ct mark IPv6"
 	iifname { "br-*", "lan*" } ip dscp == cs1 ct mark set (ct mark & 0xffffff00) | 0x00000088 comment "ARK: Save CS1 Bulk to ct mark IPv4"
 	iifname { "br-*", "lan*" } ip6 dscp == cs1 ct mark set (ct mark & 0xffffff00) | 0x00000088 comment "ARK: Save CS1 Bulk to ct mark IPv6"
 }

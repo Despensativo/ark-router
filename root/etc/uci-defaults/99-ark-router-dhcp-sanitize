@@ -355,26 +355,40 @@ if [ "$active_wans_cnt" -lt 2 ] && [ "$(uci -q get equipe_dashboard.ipv6.mode)" 
 	done
 fi
 
-# Higieniza filas SQM/CAKE no Download (iqdisc_opts) para usar besteffort + wash quando squash_ingress=1,
-# impedindo que DSCP falso de CDNs/operadora sequestre as filas prioritarias de Voz/Video no IFB
+# Higieniza filas SQM/CAKE em conformidade com sqm.sh e doctor.sh (diffserv4 + wash + memlimit proporcional à RAM)
 if [ -f /etc/config/sqm ]; then
 	sqm_mod=0
 	sqm_is_on=0
-	_mem_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 262144)"
-	if [ "$_mem_kb" -gt 327680 ] 2>/dev/null; then
-		_mlim="32M"
-	elif [ "$_mem_kb" -gt 196608 ] 2>/dev/null; then
-		_mlim="16M"
-	else
-		_mlim="4M"
+	if [ -f /usr/lib/ark/common.sh ]; then
+		. /usr/lib/ark/common.sh
 	fi
+	if command -v ark_cake_memlimit >/dev/null 2>&1; then
+		_mlim="$(ark_cake_memlimit)"
+	else
+		_mem_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 262144)"
+		if [ "$_mem_kb" -gt 3500000 ] 2>/dev/null; then
+			_mlim="256M"
+		elif [ "$_mem_kb" -gt 1800000 ] 2>/dev/null; then
+			_mlim="128M"
+		elif [ "$_mem_kb" -gt 700000 ] 2>/dev/null; then
+			_mlim="64M"
+		elif [ "$_mem_kb" -gt 327680 ] 2>/dev/null; then
+			_mlim="32M"
+		elif [ "$_mem_kb" -gt 196608 ] 2>/dev/null; then
+			_mlim="16M"
+		else
+			_mlim="4M"
+		fi
+	fi
+	_in_rtt="rtt 100ms"
+	[ "$(uci -q get equipe_dashboard.main.starlink_mode 2>/dev/null || echo 0)" = "1" ] && _in_rtt="rtt 150ms"
 	for sq in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\([^.=]*\)=queue$/\1/p'); do
 		[ "$(uci -q get "sqm.$sq.enabled")" = "1" ] && sqm_is_on=1
 		cur_iq="$(uci -q get "sqm.$sq.iqdisc_opts")"
-		if [ -n "$cur_iq" ] && [ "$(uci -q get "sqm.$sq.squash_ingress" || echo 1)" = "1" ]; then
-			if printf '%s' "$cur_iq" | grep -qw 'diffserv4' || ! printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || ! printf '%s' "$cur_iq" | grep -q "memlimit $_mlim"; then
-				cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bdiffserv4\b/besteffort/g')"
-				printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || cur_iq="$cur_iq rtt 50ms"
+		if [ -n "$cur_iq" ]; then
+			if printf '%s' "$cur_iq" | grep -qw 'besteffort' || printf '%s' "$cur_iq" | grep -q 'rtt 50ms' || ! printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || ! printf '%s' "$cur_iq" | grep -q "memlimit $_mlim"; then
+				cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bbesteffort\b/diffserv4/g; s/rtt 50ms/'"$_in_rtt"'/g')"
+				printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || cur_iq="$cur_iq $_in_rtt"
 				printf '%s' "$cur_iq" | grep -qw 'nat' || cur_iq="$cur_iq nat"
 				printf '%s' "$cur_iq" | grep -qw 'dual-dsthost' || cur_iq="$cur_iq dual-dsthost"
 				printf '%s' "$cur_iq" | grep -qw 'wash' || cur_iq="$cur_iq wash"
@@ -384,23 +398,24 @@ if [ -f /etc/config/sqm ]; then
 				else
 					cur_iq="$cur_iq memlimit $_mlim"
 				fi
+				cur_iq="$(printf '%s' "$cur_iq" | tr -s ' ' | sed 's/^ //; s/ $//')"
 				uci -q set "sqm.$sq.iqdisc_opts=$cur_iq"
 				sqm_mod=1
 			fi
 		fi
 		cur_eq="$(uci -q get "sqm.$sq.eqdisc_opts")"
 		if [ -n "$cur_eq" ]; then
-			if ! printf '%s' "$cur_eq" | grep -qw 'wash' || ! printf '%s' "$cur_eq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || ! printf '%s' "$cur_eq" | grep -q "memlimit $_mlim"; then
+			if printf '%s' "$cur_eq" | grep -q 'rtt 50ms' || ! printf '%s' "$cur_eq" | grep -qw 'wash' || ! printf '%s' "$cur_eq" | grep -q "memlimit $_mlim"; then
+				cur_eq="$(printf '%s' "$cur_eq" | sed 's/rtt 50ms//g')"
 				printf '%s' "$cur_eq" | grep -qw 'nat' || cur_eq="$cur_eq nat"
 				printf '%s' "$cur_eq" | grep -qw 'dual-srchost' || cur_eq="$cur_eq dual-srchost"
-				printf '%s' "$cur_eq" | grep -qw 'ack-filter' || cur_eq="$cur_eq ack-filter"
 				printf '%s' "$cur_eq" | grep -qw 'wash' || cur_eq="$cur_eq wash"
-				printf '%s' "$cur_eq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || cur_eq="$cur_eq rtt 50ms"
 				if printf '%s' "$cur_eq" | grep -q 'memlimit'; then
 					cur_eq="$(printf '%s' "$cur_eq" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $_mlim/g")"
 				else
 					cur_eq="$cur_eq memlimit $_mlim"
 				fi
+				cur_eq="$(printf '%s' "$cur_eq" | tr -s ' ' | sed 's/^ //; s/ $//')"
 				uci -q set "sqm.$sq.eqdisc_opts=$cur_eq"
 				sqm_mod=1
 			fi

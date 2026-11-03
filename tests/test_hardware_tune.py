@@ -173,6 +173,10 @@ class TestHardwareTune(unittest.TestCase):
         self.assertIn("net.core.netdev_budget_usecs=20000", content)
         self.assertIn("lo|ifb*|br-*|wg*", content)
         self.assertIn("rx-gro-list off", content)
+        self.assertIn("gro_max_size 16384 gro_ipv4_max_size 16384", content)
+        self.assertIn("net.netfilter.nf_flowtable_udp_timeout=180", content)
+        self.assertIn("net.netfilter.nf_flowtable_tcp_timeout=1800", content)
+        self.assertIn('echo "2 2500 5000" > "$phy/aql_txq_limit"', content)
 
     def test_09_sqm_cake_mq_and_auto_dscp_promotion(self):
         """Valida deteccao automatica de cake-mq multi-core em interfaces multi-fila e auditoria Auto-DSCP"""
@@ -229,6 +233,39 @@ class TestHardwareTune(unittest.TestCase):
         audit_off = json.loads(self.sb.run_control("system-hardware-sqm-audit").stdout)
         self.assertFalse(audit_off.get("cake_mq_active"), "cake_mq_active deve ser limpo ao desativar SQM!")
 
+    def test_10_autorate_probing_recovery_and_l4s_ctinfo(self):
+        """Valida L4S ECT(1), act_ctinfo, AQL por AC e os 2 motores de recuperacao do ARK Autorate"""
+        self.sb.uci_set("network.wan.proto=dhcp")
+        self.sb.uci_set("network.wan.device=eth1")
+        res_save = self.sb.run_control("sqm-save-v2", "wan=wan1|wan|eth1|1|500000|250000|ethernet|18")
+        self.assertEqual(res_save.returncode, 0)
+
+        # 1. Ativa Autorate e verifica auditoria L4S + Autorate
+        res_on = self.sb.run_control("sqm-autorate-toggle", "1")
+        self.assertEqual(res_on.returncode, 0)
+        audit = json.loads(self.sb.run_control("system-hardware-sqm-audit").stdout)
+        self.assertTrue(audit.get("l4s_active"), "L4S ECT(1) deve estar ativo no 15-ark-dscp-priority.nft")
+        self.assertTrue(audit.get("autorate_enabled"), "autorate_enabled deve ser True apos ativacao")
+
+        # 2. Simula congestionamento da operadora (delay_ms=25 > 15ms): deve reduzir 12% (500000 -> 440000)
+        step_down = json.loads(self.sb.run_control("sqm-autorate-step", "load_pct=85", "delay_ms=25").stdout)
+        self.assertEqual(step_down["action"], "shaping_down")
+        self.assertEqual(step_down["cur_dl_kbps"], 440000)
+        self.assertEqual(step_down["cur_ul_kbps"], 220000)
+
+        # 3. Motor 1 — Sondagem Ativa sob carga alta (load_pct=85, delay_ms=3): sobe +5% (440000 -> 462000)
+        step_probe = json.loads(self.sb.run_control("sqm-autorate-step", "load_pct=85", "delay_ms=3").stdout)
+        self.assertEqual(step_probe["action"], "probing_up")
+        self.assertEqual(step_probe["cur_dl_kbps"], 462000)
+        self.assertEqual(step_probe["cur_ul_kbps"], 231000)
+
+        # 4. Motor 2 — Retorno Elastico em rede ociosa (load_pct=20, delay_ms=2): recupera para base_dl (500000)
+        step_idle = json.loads(self.sb.run_control("sqm-autorate-step", "load_pct=20", "delay_ms=2").stdout)
+        self.assertEqual(step_idle["action"], "elastic_recovery")
+        self.assertEqual(step_idle["cur_dl_kbps"], 500000)
+        self.assertEqual(step_idle["cur_ul_kbps"], 250000)
+
 if __name__ == "__main__":
     unittest.main()
+
 

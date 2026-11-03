@@ -909,7 +909,8 @@ config wifi-iface 'default_radio1'
         self.assertEqual(self.sb.uci_get("wireless.default_radio1.skip_inactivity_poll"), "0")
         self.assertEqual(self.sb.uci_get("wireless.default_radio1.max_inactivity"), "86400")
         self.assertEqual(self.sb.uci_get("wireless.default_radio1.multicast_to_unicast"), "1")
-        self.assertEqual(self.sb.uci_get("wireless.radio0.twt_responder"), "0")
+        self.assertIsNone(self.sb.uci_get("wireless.radio0.twt_responder"))
+        self.assertEqual(self.sb.uci_get("wireless.radio0.he_twt_required"), "0")
         self.assertEqual(self.sb.uci_get("wireless.radio0.legacy_rates"), "0")
 
         # 5. Nova auditoria deve reportar OK

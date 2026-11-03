@@ -5,7 +5,7 @@
 # para pausar o Transmission, descarregar buffers e remontar unidades USB em modo seguro (ro).
 
 START=99
-STOP=01
+STOP=98
 USE_PROCD=0
 
 start() {

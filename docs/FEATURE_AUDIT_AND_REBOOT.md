@@ -1900,6 +1900,12 @@ flowchart TD
 
 ---
 
+### Atualização T-083 — concorrência e leituras quentes (02/11/2026)
+
+- `ARK-SQM-004`: `ark-hardware-tune` usa `serialized-job.sh`; uma execução por vez, eventos concorrentes solicitam reaplicação final e warmup único. Travas somente em `/tmp`, sem alterar a política de afinidades. Sinais normais liberam a trava; SIGKILL falha fechado, exigindo verificar filhos antes de limpar ou reiniciar.
+- `ARK-UI-001`: leituras quentes de fingerprints/estações retornam o cache existente de 120 s antes de carregar módulos. Escrita com temporário por PID e rename; timestamps futuros/expirados são rejeitados. ARK_ROOT isola os caches de teste. Não há alteração visual nem aumento do TTL.
+- Validação: `tests/test_multicore_optimization.py`, testes locais de hardware/WAN e auditores. Por orientação do usuário e confirmação SIM, o W6x foi usado para testes físicos: ash, concorrência, cache quente/frio, hashes, filas e carga verificados. Reboot/hotplug físico e homologação de release não foram realizados. Detalhes em docs/OTIMIZACAO_MULTICORE_T083.md.
+
 ## 3. Matriz de Persistência Pós-Reboot
 
 | Identificador | Nome da Funcionalidade | Classificação Pós-Reboot | Evidência e Validação |

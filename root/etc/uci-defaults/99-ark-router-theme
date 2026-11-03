@@ -1,5 +1,9 @@
 #!/bin/sh
 
+# Garante que o arquivo e a secao principal equipe_dashboard.main existam antes de gravar
+[ -f /etc/config/equipe_dashboard ] || touch /etc/config/equipe_dashboard
+uci -q get equipe_dashboard.main >/dev/null 2>&1 || uci -q set equipe_dashboard.main=settings
+
 # Registra tema ARK na lista de temas do LuCI
 uci -q set luci.themes.ARK='/luci-static/ark'
 
@@ -51,14 +55,17 @@ if [ -f /usr/lib/ark/common.sh ]; then
 	. /usr/lib/ark/common.sh
 	ark_sanitize_wan6_config 2>/dev/null || true
 	ark_cleanup_dhcpv6_orphans 2>/dev/null || true
-	ark_auto_enable_factory_wifi 2>/dev/null || true
+	# Se 99-ark-router-wifi ainda vai executar nesta rodada de uci-defaults, deixa o reload de Wi-Fi para ele
+	if [ ! -f /etc/uci-defaults/99-ark-router-wifi ]; then
+		ark_auto_enable_factory_wifi 2>/dev/null || true
+	fi
 fi
 
 # Ativa calibracao inteligente de hardware e otimizacao de latencia (respeitando escolha do usuario)
 if [ "$(uci -q get equipe_dashboard.hardware_tune.user_disabled 2>/dev/null || echo 0)" != "1" ] && [ "$(uci -q get equipe_dashboard.hardware_tune.user_removed 2>/dev/null || echo 0)" != "1" ]; then
 	[ -x /etc/init.d/ark-hardware-tune ] && {
 		/etc/init.d/ark-hardware-tune enable 2>/dev/null || true
-		/etc/init.d/ark-hardware-tune start 2>/dev/null || true
+		[ ! -f /etc/uci-defaults/99-ark-router-wifi ] && /etc/init.d/ark-hardware-tune start 2>/dev/null || true
 	}
 fi
 
@@ -66,18 +73,16 @@ fi
 [ -x /usr/sbin/equipe-dashboard-control ] && /usr/sbin/equipe-dashboard-control feature-enforce-policies >/dev/null 2>&1 || true
 
 # Define idioma padrao para Portugues do Brasil (PT-BR) se nao configurado
-[ -f /etc/config/equipe_dashboard ] || touch /etc/config/equipe_dashboard
 cur_lang="$(uci -q get equipe_dashboard.main.language 2>/dev/null || true)"
 if [ -z "$cur_lang" ] || [ "$cur_lang" = "auto" ]; then
-	uci -q set equipe_dashboard.main=settings
 	uci -q set equipe_dashboard.main.language='pt-br'
-	uci commit equipe_dashboard 2>/dev/null || true
 fi
 cur_luci_lang="$(uci -q get luci.main.lang 2>/dev/null || true)"
 if [ -z "$cur_luci_lang" ] || [ "$cur_luci_lang" = "auto" ]; then
 	uci -q set luci.main.lang='pt_br'
-	uci commit luci 2>/dev/null || true
 fi
+uci commit equipe_dashboard 2>/dev/null || true
+uci commit luci 2>/dev/null || true
 
 rm -f /tmp/luci-indexcache /tmp/ark-features.cache
 rm -rf /tmp/luci-modulecache/* 2>/dev/null || true

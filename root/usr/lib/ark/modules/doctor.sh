@@ -18,9 +18,6 @@ fi
 if [ -f "${_lib}/modules/network.sh" ] && ! command -v ensure_mwan3_ark_config >/dev/null 2>&1; then
 	. "${_lib}/modules/network.sh"
 fi
-if [ -f "${_lib}/modules/wifi.sh" ] && ! command -v wifi_known_radios >/dev/null 2>&1; then
-	. "${_lib}/modules/wifi.sh"
-fi
 unset _lib
 
 ark_doctor_audit() {
@@ -288,7 +285,7 @@ ark_doctor_audit() {
 				command -v ark_sqm_ingress_mode_opt >/dev/null 2>&1 && exp_imode="$(ark_sqm_ingress_mode_opt "$down_doc" "$wan")"
 				cur_iq="$(uci -q get "sqm.$sqm_sec.iqdisc_opts")"
 				cur_eq="$(uci -q get "sqm.$sqm_sec.eqdisc_opts")"
-				if [ "$(uci -q get "sqm.$sqm_sec.squash_ingress" || echo 1)" = "1" ] && { printf '%s' "$cur_iq" | grep -qw 'besteffort' || ! printf '%s' "$cur_iq" | grep -qw 'no-split-gso' || printf '%s' "$cur_iq" | grep -q 'rtt 50ms' || ! printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || { [ -z "$exp_imode" ] && printf '%s' "$cur_iq" | grep -qw 'ingress'; } || { [ -n "$exp_imode" ] && ! printf '%s' "$cur_iq" | grep -qw 'ingress'; } || printf '%s' "$cur_eq" | grep -qw 'rtt 50ms' || ! printf '%s' "$cur_eq" | grep -qw "$exp_ack" || ! printf '%s' "$cur_iq" | grep -q "memlimit $exp_mlim" || ! printf '%s' "$cur_eq" | grep -q "memlimit $exp_mlim"; }; then
+				if [ "$(uci -q get "sqm.$sqm_sec.squash_ingress" || echo 1)" = "1" ] && { printf '%s' "$cur_iq" | grep -qw 'besteffort' || printf '%s' "$cur_iq" | grep -q 'rtt 50ms' || ! printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || { [ -z "$exp_imode" ] && printf '%s' "$cur_iq" | grep -qw 'ingress'; } || { [ -n "$exp_imode" ] && ! printf '%s' "$cur_iq" | grep -qw 'ingress'; } || printf '%s' "$cur_eq" | grep -qw 'rtt 50ms' || ! printf '%s' "$cur_eq" | grep -qw "$exp_ack" || ! printf '%s' "$cur_iq" | grep -q "memlimit $exp_mlim" || ! printf '%s' "$cur_eq" | grep -q "memlimit $exp_mlim"; }; then
 					if [ "$auto_fix" = 1 ]; then
 						uci -q set "sqm.$sqm_sec.qdisc_advanced=1"
 						uci -q set "sqm.$sqm_sec.qdisc_really_really_advanced=1"
@@ -455,12 +452,13 @@ ark_doctor_audit() {
 
 	has_ppe=0
 	if [ -e /sys/kernel/debug/ppe0 ] || [ -e /sys/kernel/debug/ppe1 ] || [ -d /sys/devices/platform/soc/15010000.wed ] || \
-	   grep -qiE 'mt7981|mt7986|mt7988|mt7621|mt7622|filogic' /tmp/sysinfo/board_name /tmp/sysinfo/model 2>/dev/null; then
+	   grep -qiE 'mt7981|mt7986|mt7988|mt7621|mt7622|filogic|ipq5332|ipq807x|ipq6018|ipq5018|ipq9574|qualcomm|predator connect t7' /tmp/sysinfo/board_name /tmp/sysinfo/model "${ARK_ROOT}/tmp/sysinfo/board_name" "${ARK_ROOT}/tmp/sysinfo/model" 2>/dev/null; then
 		has_ppe=1
 	fi
 
 	# 5. Checagem de Conflitos: Flow Offloading vs SQM vs Multi-WAN
 	flow_offload="$(uci -q get firewall.@defaults[0].flow_offloading || echo 0)"
+	flow_user_disabled="$(uci -q get equipe_perf.settings.flow_offload_user_disabled 2>/dev/null || echo 0)"
 	mwan_active_count=0
 	if [ -f "${ARK_ROOT}/etc/config/mwan3" ] || [ -f /etc/config/mwan3 ]; then
 		if [ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 enabled >/dev/null 2>&1; then
@@ -498,7 +496,7 @@ ark_doctor_audit() {
 			warnings=$((warnings + 1))
 			add_check "Flow Offload vs Multi-WAN" "WARN" "Fastpath ativo com 2+ WANs no mwan3. O Fastpath ignora regras de balanceamento/failover."
 		fi
-	elif [ "$flow_offload" = "0" ] && [ "$sqm_has_active" = "0" ] && [ "$mwan_active_count" -lt 2 ]; then
+	elif [ "$flow_offload" = "0" ] && [ "$sqm_has_active" = "0" ] && [ "$mwan_active_count" -lt 2 ] && [ "$flow_user_disabled" != "1" ]; then
 		if [ "$auto_fix" = 1 ]; then
 			uci -q set firewall.@defaults[0].flow_offloading=1
 			if [ "$has_ppe" = "1" ]; then
@@ -848,7 +846,7 @@ ark_doctor_audit() {
 
 		v6_mode="$($uci_cmd get equipe_dashboard.ipv6.mode 2>/dev/null || echo '')"
 		missing_wan6=0
-		if [ "$v6_mode" = "dual_stack" ] || [ "$v6_mode" = "selective" ] || [ "$v6_mode" = "nptv6" ] || [ "$v6_mode" = "ipv6_only" ]; then
+		if [ "$v6_mode" = "dual_stack" ] || [ "$v6_mode" = "selective" ] || [ "$v6_mode" = "nptv6" ] || [ "$v6_mode" = "ipv6_only" ] || [ "$v6_mode" = "ipv6_clat" ]; then
 			[ "$has_wan6_configured" = 0 ] && missing_wan6=1
 		fi
 
@@ -1075,7 +1073,8 @@ ark_doctor_audit() {
 
 	# 11b.5 Higienização de Túnel 464xlat (Anti-Flood DNS ipv4only.arpa em Dual-Stack)
 	wan_proto_v4="$($uci_cmd get network.wan.proto 2>/dev/null || echo '')"
-	if [ "$wan_proto_v4" = "pppoe" ] || [ "$wan_proto_v4" = "dhcp" ] || [ "$wan_proto_v4" = "static" ]; then
+	ipv6_mode_chk="$($uci_cmd get equipe_dashboard.ipv6.mode 2>/dev/null || echo '')"
+	if [ "$ipv6_mode_chk" != "ipv6_clat" ] && { [ "$wan_proto_v4" = "pppoe" ] || [ "$wan_proto_v4" = "dhcp" ] || [ "$wan_proto_v4" = "static" ]; }; then
 		xlat_found=0
 		xlat_secs=""
 		for xlat_s in $($uci_cmd show network 2>/dev/null | sed -n "s/^network\.\([^.=]*\)\.proto='464xlat'$/\1/p"); do
@@ -1352,6 +1351,7 @@ ark_doctor_audit() {
 	local crypto_checked_count=0
 	local crypto_mismatch_count=0
 	local crypto_key_mismatch_count=0
+	local split_enc="$($uci_cmd get equipe_dashboard.wifi.split_enc 2>/dev/null || echo 0)"
 
 	for sec1 in $ap_sections; do
 		local chk_ssid="$($uci_cmd get "wireless.$sec1.ssid" 2>/dev/null || echo '')"
@@ -1386,21 +1386,28 @@ ark_doctor_audit() {
 
 			local s_band="$($uci_cmd get "wireless.$s_dev.band" 2>/dev/null || echo '')"
 			[ -n "$s_band" ] || s_band="$($uci_cmd get "wireless.$s_dev.hwmode" 2>/dev/null || echo '')"
+			local s_ht="$($uci_cmd get "wireless.$s_dev.htmode" 2>/dev/null || echo '')"
 			local s_label
-			case "$s_band" in
-				*2g*|*11g*|*11b*|*11n*) s_label="2.4GHz" ;;
-				*5g*|*11a*|*11ac*|*11ax*) s_label="5GHz" ;;
-				*6g*) s_label="6GHz" ;;
+			case "$s_band:$s_ht" in
+				*6g*|3:*|*:HT320|*:EHT320) s_label="6GHz" ;;
+				*2g*|*11g*|*11b*|*11n*|*11beg*) s_label="2.4GHz" ;;
+				*5g*|*11a*|*11ac*|*11ax*|*11bea*) s_label="5GHz" ;;
 				*) s_label="$s_dev" ;;
 			esac
 
 			enc_summary="${enc_summary} [${s_label}: ${s_enc}]"
 
+			# Em 6GHz, WPA3 puro (sae) e compativel com WPA2/WPA3 hibrido (sae-mixed) em 2.4/5GHz
+			local s_enc_norm="$s_enc"
+			if [ "$s_label" = "6GHz" ] && [ "$s_enc" = "sae" ]; then
+				s_enc_norm="sae-mixed"
+			fi
+
 			if [ -z "$first_enc" ]; then
-				first_enc="$s_enc"
+				first_enc="$s_enc_norm"
 				first_key="$s_key"
 			else
-				if [ "$s_enc" != "$first_enc" ]; then
+				if [ "$split_enc" != "1" ] && [ "$s_enc_norm" != "$first_enc" ] && ! { [ "$s_enc_norm" = "sae" ] && [ "$first_enc" = "sae-mixed" ]; }; then
 					enc_mismatch=1
 				fi
 				if [ "$s_key" != "$first_key" ]; then
@@ -1427,7 +1434,18 @@ ark_doctor_audit() {
 					local target_enc="sae-mixed"
 					[ "$has_sae" = 1 ] || target_enc="psk2"
 					for fix_sec in $matching_secs; do
-						$uci_cmd set "wireless.$fix_sec.encryption=$target_enc"
+						local fix_dev="$($uci_cmd get "wireless.$fix_sec.device" 2>/dev/null || echo "$fix_sec")"
+						local fix_band="$($uci_cmd get "wireless.$fix_dev.band" 2>/dev/null || echo '')"
+						local fix_ht="$($uci_cmd get "wireless.$fix_dev.htmode" 2>/dev/null || echo '')"
+						case "$fix_band:$fix_ht" in
+							*6g*|3:*|*:HT320|*:EHT320)
+								$uci_cmd set "wireless.$fix_sec.encryption=sae"
+								$uci_cmd set "wireless.$fix_sec.ieee80211w=2"
+								;;
+							*)
+								$uci_cmd set "wireless.$fix_sec.encryption=$target_enc"
+								;;
+						esac
 					done
 					$uci_cmd commit wireless 2>/dev/null || true
 					wifi_needs_reload=1
@@ -1533,6 +1551,8 @@ ark_doctor_audit() {
 		fi
 	elif [ "$has_unified_wifi" = 0 ]; then
 		add_check "Band Steering (usteer)" "OK" "Redes Wi-Fi segregadas ou rádio único. Band Steering (usteer) não aplicável."
+	elif [ "$($uci_cmd get equipe_dashboard.wifi.usteer_enabled 2>/dev/null || echo '')" = "0" ]; then
+		add_check "Band Steering (usteer)" "OK" "Band Steering (usteer) desativado manualmente pelo usuario."
 	else
 		local overlay_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR>1 {print $4}')"
 		[ -n "$overlay_free_kb" ] || overlay_free_kb="$(df -k / 2>/dev/null | awk 'NR>1 {print $4}')"
@@ -2181,10 +2201,13 @@ ark_doctor_audit() {
 			local _cur_dnsmasq_srv="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get dhcp.@dnsmasq[0].server 2>/dev/null || echo '')"
 			if ! printf '%s' "$_cur_dnsmasq_srv" | grep -q '127\.0\.0\.1#5053'; then
 				if [ "$auto_fix" = 1 ]; then
-					local _cloud_prov="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adblock_cloud || echo 0)"
+					local _cloud_en="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adblock_cloud || echo 0)"
+					local _cloud_prov="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adblock_cloud_provider || echo '')"
+					[ -n "$_cloud_prov" ] || _cloud_prov="$_cloud_en"
+					[ "$_cloud_prov" = "1" ] && _cloud_prov="adguard_dns"
 					local _turbo_srvs="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.dns_servers || echo '1.1.1.1 8.8.8.8')"
 					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} delete dhcp.@dnsmasq[0].server 2>/dev/null || true
-					if [ -n "$_cloud_prov" ] && [ "$_cloud_prov" != "0" ] && [ "$_cloud_prov" != "off" ]; then
+					if [ -n "$_cloud_en" ] && [ "$_cloud_en" != "0" ] && [ "$_cloud_en" != "off" ]; then
 						ark_sync_doh_proxy "cloud" "$_cloud_prov" "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adblock_parental || echo 0)" "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.nextdns_id || echo '')" >/dev/null 2>&1 || true
 					else
 						ark_sync_doh_proxy "turbo" "$_turbo_srvs" >/dev/null 2>&1 || true
@@ -2303,6 +2326,10 @@ doctor_get_log() {
 }
 
 handle_doctor() {
+	_auto_fix=0
+	_format="text"
+	_is_auto=0
+
 	case "$1" in
 		doctor-status|status)
 			doctor_get_status
@@ -2313,18 +2340,15 @@ handle_doctor() {
 			return 0
 			;;
 		doctor-run|run)
-			ark_doctor_audit 0 json
-			return 0
+			_auto_fix=0
+			_format="json"
 			;;
 		doctor-fix|fix-run)
-			ark_doctor_audit 1 json
-			return 0
+			_auto_fix=1
+			_format="json"
 			;;
 	esac
 
-	_auto_fix=0
-	_format="text"
-	_is_auto=0
 	for _arg in "$@"; do
 		case "$_arg" in
 			--fix|fix|fix=1) _auto_fix=1 ;;
@@ -2366,7 +2390,7 @@ handle_doctor() {
 		fi
 	fi
 	printf '%s\n' "$$" > "$_lock_path/pid" 2>/dev/null || true
-	trap "rm -rf '$_lock_path' 2>/dev/null || true" EXIT INT TERM
+	trap "rm -rf '$_lock_path' 2>/dev/null || true; [ \"\${ARK_MUTATION_LOCK_HELD:-0}\" = \"1\" ] && command -v ark_release_mutation_lock >/dev/null 2>&1 && ark_release_mutation_lock" EXIT INT TERM
 
 	if [ "$_is_auto" = 1 ]; then
 		ark_doctor_audit "$_auto_fix" "$_format" >/dev/null 2>&1
@@ -2374,8 +2398,19 @@ handle_doctor() {
 		ark_doctor_audit "$_auto_fix" "$_format"
 	fi
 
+	if [ "$_auto_fix" = 1 ]; then
+		command -v ark_invalidate_caches >/dev/null 2>&1 && ark_invalidate_caches
+		rm -f "${ARK_ROOT}/tmp/ark-hw-cache.ts" "${ARK_ROOT}/tmp/ark-hw-cache.json" \
+		      "${ARK_ROOT}/tmp/ark-perf-cache.ts" "${ARK_ROOT}/tmp/ark-perf-cache.json" \
+		      "${ARK_ROOT}/tmp/ark-hw-info-cache.ts" "${ARK_ROOT}/tmp/ark-perf-status-cache.ts" 2>/dev/null || true
+	fi
+
 	rm -rf "$_lock_path" 2>/dev/null || true
-	trap - EXIT INT TERM
+	if command -v ark_restore_mutation_trap >/dev/null 2>&1; then
+		ark_restore_mutation_trap
+	else
+		trap - EXIT INT TERM
+	fi
 }
 
 # If executed directly as a script

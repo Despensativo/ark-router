@@ -593,7 +593,7 @@ sync_ipv6_selective_firewall() {
 		done
 	fi
 
-	if [ "$cur_mode" = "ipv4_only" ] || [ "$cur_mode" = "ipv6_only" ]; then
+	if [ "$cur_mode" = "ipv4_only" ] || [ "$cur_mode" = "ipv6_only" ] || [ "$cur_mode" = "ipv6_clat" ]; then
 		clean_ipv6_selective_firewall
 		return 0
 	fi
@@ -771,11 +771,233 @@ clean_nptv6_firewall() {
 	fi
 }
 
+save_pre_clat_state() {
+	local cur_mode existing_prev prev_defroute prev_peerdns prev_ignore prev_metric
+	cur_mode="$(uci -q get equipe_dashboard.ipv6.mode || echo dual_stack)"
+	existing_prev="$(uci -q get equipe_dashboard.ipv6.saved_clat_prev_mode || echo '')"
+	if [ "$cur_mode" = "ipv6_clat" ] || [ -n "$existing_prev" ]; then
+		return 0
+	fi
+
+	prev_defroute="$(uci -q get network.wan.defaultroute || echo '__unset__')"
+	prev_peerdns="$(uci -q get network.wan.peerdns || echo '__unset__')"
+	prev_ignore="$(uci -q get dhcp.lan.ignore || echo '__unset__')"
+	prev_metric="$(uci -q get network.wan.metric || echo '__unset__')"
+
+	uci -q set equipe_dashboard.ipv6=ipv6
+	uci -q set "equipe_dashboard.ipv6.saved_clat_prev_mode=$cur_mode"
+	uci -q set "equipe_dashboard.ipv6.saved_clat_wan_defroute=$prev_defroute"
+	uci -q set "equipe_dashboard.ipv6.saved_clat_wan_peerdns=$prev_peerdns"
+	uci -q set "equipe_dashboard.ipv6.saved_clat_lan_ignore=$prev_ignore"
+	uci -q set "equipe_dashboard.ipv6.saved_clat_wan_metric=$prev_metric"
+	uci commit equipe_dashboard
+}
+
+ark_register_cloudflare_warp_v6() {
+	local priv_k pub_k payload resp v4_addr peer_pub ep_v6
+	priv_k="$(uci -q get equipe_dashboard.ipv6.warp_privkey || echo '')"
+	v4_addr="$(uci -q get equipe_dashboard.ipv6.warp_v4_addr || echo '')"
+	if [ -n "$priv_k" ] && [ -n "$v4_addr" ]; then
+		return 0
+	fi
+	if [ -z "${ARK_ROOT:-}" ] && ! command -v wg >/dev/null 2>&1; then
+		if command -v apk >/dev/null 2>&1; then
+			apk add wireguard-tools kmod-wireguard >/dev/null 2>&1 || true
+		elif command -v opkg >/dev/null 2>&1; then
+			opkg install wireguard-tools kmod-wireguard >/dev/null 2>&1 || true
+		fi
+	fi
+	command -v wg >/dev/null 2>&1 || return 1
+	priv_k="$(wg genkey 2>/dev/null || echo '')"
+	[ -n "$priv_k" ] || return 1
+	pub_k="$(printf '%s' "$priv_k" | wg pubkey 2>/dev/null || echo '')"
+	[ -n "$pub_k" ] || return 1
+
+	payload="{\"key\":\"$pub_k\",\"install_id\":\"\",\"warp_enabled\":true,\"tos\":\"2026-01-01T00:00:00.000Z\",\"type\":\"Linux\",\"locale\":\"en_US\"}"
+	resp=""
+	if [ -z "${ARK_ROOT:-}" ]; then
+		if command -v curl >/dev/null 2>&1; then
+			resp="$(curl -6 -s --max-time 5 -H 'Content-Type: application/json' -d "$payload" 'https://api.cloudflareclient.com/v0a2158/reg' 2>/dev/null || curl -s --max-time 5 -H 'Content-Type: application/json' -d "$payload" 'https://api.cloudflareclient.com/v0a2158/reg' 2>/dev/null || echo '')"
+		elif command -v uclient-fetch >/dev/null 2>&1; then
+			resp="$(uclient-fetch -q -O - --timeout=5 --header='Content-Type: application/json' --post-data="$payload" 'https://api.cloudflareclient.com/v0a2158/reg' 2>/dev/null || echo '')"
+		fi
+	fi
+
+	v4_addr=""
+	peer_pub="bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo="
+	ep_v6="2606:4700:d0::a29f:c001"
+	if [ -n "$resp" ] && command -v jsonfilter >/dev/null 2>&1; then
+		v4_addr="$(printf '%s' "$resp" | jsonfilter -e '@.config.interface.addresses.v4' 2>/dev/null || echo '')"
+		peer_pub="$(printf '%s' "$resp" | jsonfilter -e '@.config.peers[0].public_key' 2>/dev/null || echo "$peer_pub")"
+	elif [ -n "$resp" ]; then
+		v4_addr="$(printf '%s' "$resp" | sed -n 's/.*"v4":"\([0-9.]*\)".*/\1/p' | head -n 1)"
+	fi
+	[ -n "$v4_addr" ] || v4_addr="172.16.0.2"
+	case "$v4_addr" in */*) ;; *) v4_addr="$v4_addr/32" ;; esac
+
+	uci -q set equipe_dashboard.ipv6=ipv6
+	uci -q set "equipe_dashboard.ipv6.warp_privkey=$priv_k"
+	uci -q set "equipe_dashboard.ipv6.warp_v4_addr=$v4_addr"
+	uci -q set "equipe_dashboard.ipv6.warp_peer_pub=$peer_pub"
+	uci -q set "equipe_dashboard.ipv6.warp_endpoint=$ep_v6"
+	uci commit equipe_dashboard
+	return 0
+}
+
+sync_ipv6_clat_tunnel() {
+	local saved_defroute warp_priv warp_v4 warp_pub warp_ep zone engine_mode proto_wg proto_xlat
+	save_pre_clat_state
+	saved_defroute="$(uci -q get equipe_dashboard.ipv6.saved_clat_wan_defroute || echo '__unset__')"
+
+	uci -q delete network.ark_clat6 2>/dev/null || true
+	uci -q delete network.ark_clat6_peer 2>/dev/null || true
+
+	if ark_register_cloudflare_warp_v6; then
+		warp_priv="$(uci -q get equipe_dashboard.ipv6.warp_privkey || echo '')"
+		warp_v4="$(uci -q get equipe_dashboard.ipv6.warp_v4_addr || echo '172.16.0.2/32')"
+		warp_pub="$(uci -q get equipe_dashboard.ipv6.warp_peer_pub || echo 'bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=')"
+		warp_ep="$(uci -q get equipe_dashboard.ipv6.warp_endpoint || echo '2606:4700:d0::a29f:c001')"
+		proto_wg="wireguard"
+		uci -q set network.ark_clat6=interface
+		uci -q set "network.ark_clat6.proto=$proto_wg"
+		uci -q set "network.ark_clat6.private_key=$warp_priv"
+		uci -q set "network.ark_clat6.mtu=1412"
+		uci -q set "network.ark_clat6.metric=5"
+		uci -q set "network.ark_clat6.nohostroute=1"
+		uci -q add_list "network.ark_clat6.addresses=$warp_v4"
+
+		uci -q set network.ark_clat6_peer=wireguard_ark_clat6
+		uci -q set "network.ark_clat6_peer.description=Cloudflare Anycast IPv6 Gateway"
+		uci -q set "network.ark_clat6_peer.public_key=$warp_pub"
+		uci -q set "network.ark_clat6_peer.endpoint_host=$warp_ep"
+		uci -q set "network.ark_clat6_peer.endpoint_port=2408"
+		uci -q set "network.ark_clat6_peer.route_allowed_ips=1"
+		uci -q set "network.ark_clat6_peer.persistent_keepalive=25"
+		uci -q add_list "network.ark_clat6_peer.allowed_ips=0.0.0.0/0"
+		engine_mode="cloudflare_anycast"
+	else
+		if [ -z "${ARK_ROOT:-}" ] && [ ! -f /lib/netifd/proto/464xlat.sh ]; then
+			if command -v apk >/dev/null 2>&1; then
+				apk add 464xlat kmod-nat46 >/dev/null 2>&1 || true
+			elif command -v opkg >/dev/null 2>&1; then
+				opkg install 464xlat kmod-nat46 >/dev/null 2>&1 || true
+			fi
+		fi
+		proto_xlat="464xlat"
+		uci -q set network.ark_clat6=interface
+		uci -q set "network.ark_clat6.proto=$proto_xlat"
+		uci -q set "network.ark_clat6.tunlink=wan6"
+		uci -q set "network.ark_clat6.ip6prefix=64:ff9b::/96"
+		uci -q set "network.ark_clat6.metric=5"
+		uci -q del_list dhcp.@dnsmasq[0].server='2606:4700:4700::64' 2>/dev/null || true
+		uci -q del_list dhcp.@dnsmasq[0].server='2606:4700:4700::6400' 2>/dev/null || true
+		uci -q add_list dhcp.@dnsmasq[0].server='2606:4700:4700::64'
+		uci -q add_list dhcp.@dnsmasq[0].server='2606:4700:4700::6400'
+		engine_mode="464xlat"
+	fi
+
+	if [ -n "$(uci -q get network.wan.proto)" ]; then
+		if [ "$engine_mode" = "cloudflare_anycast" ]; then
+			local fallback_metric="20"
+			uci -q set "network.wan.metric=$fallback_metric"
+		else
+			local disable_defroute="0"
+			uci -q set "network.wan.defaultroute=$disable_defroute"
+		fi
+	fi
+
+	zone="$(firewall_wan_zone_section)"
+	if [ -n "$zone" ]; then
+		uci -q del_list "firewall.$zone.network=ark_clat6" 2>/dev/null || true
+		uci -q add_list "firewall.$zone.network=ark_clat6"
+	fi
+
+	uci -q set equipe_dashboard.ipv6=ipv6
+	uci -q set "equipe_dashboard.ipv6.clat_engine=$engine_mode"
+	uci commit network
+	uci commit dhcp
+	uci commit firewall
+	uci commit equipe_dashboard
+}
+
+clean_ipv6_clat_tunnel() {
+	local saved_defroute saved_peerdns saved_ignore saved_metric zone cur_mode
+	saved_defroute="$(uci -q get equipe_dashboard.ipv6.saved_clat_wan_defroute || echo '')"
+	saved_peerdns="$(uci -q get equipe_dashboard.ipv6.saved_clat_wan_peerdns || echo '')"
+	saved_ignore="$(uci -q get equipe_dashboard.ipv6.saved_clat_lan_ignore || echo '')"
+	saved_metric="$(uci -q get equipe_dashboard.ipv6.saved_clat_wan_metric || echo '')"
+	cur_mode="$(uci -q get equipe_dashboard.ipv6.mode || echo '')"
+
+	uci -q delete network.ark_clat6 2>/dev/null || true
+	uci -q delete network.ark_clat6_peer 2>/dev/null || true
+
+	if [ -n "$saved_defroute" ]; then
+		if [ "$saved_defroute" = "__unset__" ]; then
+			uci -q delete network.wan.defaultroute 2>/dev/null || true
+		else
+			uci -q set "network.wan.defaultroute=$saved_defroute"
+		fi
+	elif [ "$cur_mode" = "ipv6_clat" ]; then
+		local def_restore="1"
+		uci -q set "network.wan.defaultroute=$def_restore"
+	fi
+
+	if [ -n "$saved_peerdns" ]; then
+		if [ "$saved_peerdns" = "__unset__" ]; then
+			uci -q delete network.wan.peerdns 2>/dev/null || true
+		else
+			uci -q set "network.wan.peerdns=$saved_peerdns"
+		fi
+	fi
+
+	if [ -n "$saved_metric" ]; then
+		if [ "$saved_metric" = "__unset__" ]; then
+			uci -q delete network.wan.metric 2>/dev/null || true
+		else
+			uci -q set "network.wan.metric=$saved_metric"
+		fi
+	fi
+
+	if [ -n "$saved_ignore" ]; then
+		if [ "$saved_ignore" = "__unset__" ]; then
+			uci -q delete dhcp.lan.ignore 2>/dev/null || true
+		else
+			uci -q set "dhcp.lan.ignore=$saved_ignore"
+		fi
+	fi
+
+	uci -q del_list dhcp.@dnsmasq[0].server='2606:4700:4700::64' 2>/dev/null || true
+	uci -q del_list dhcp.@dnsmasq[0].server='2606:4700:4700::6400' 2>/dev/null || true
+
+	zone="$(firewall_wan_zone_section)"
+	if [ -n "$zone" ]; then
+		uci -q del_list "firewall.$zone.network=ark_clat6" 2>/dev/null || true
+	fi
+
+	uci -q delete equipe_dashboard.ipv6.saved_clat_prev_mode 2>/dev/null || true
+	uci -q delete equipe_dashboard.ipv6.saved_clat_wan_defroute 2>/dev/null || true
+	uci -q delete equipe_dashboard.ipv6.saved_clat_wan_peerdns 2>/dev/null || true
+	uci -q delete equipe_dashboard.ipv6.saved_clat_lan_ignore 2>/dev/null || true
+	uci -q delete equipe_dashboard.ipv6.saved_clat_wan_metric 2>/dev/null || true
+	uci -q delete equipe_dashboard.ipv6.clat_engine 2>/dev/null || true
+
+	uci commit network
+	uci commit dhcp
+	uci commit firewall
+	uci commit equipe_dashboard
+
+	if [ -z "${ARK_ROOT:-}" ]; then
+		ifdown ark_clat6 >/dev/null 2>&1 || true
+		ip link del ark_clat6 >/dev/null 2>&1 || true
+	fi
+}
+
 set_ipv6_mode() {
 	local mode
 	mode="$1"
 	case "$mode" in
 		ipv4_only)
+			clean_ipv6_clat_tunnel
 			disable_ipv6_full
 			clean_ipv6_selective_firewall
 			clean_nptv6_firewall
@@ -786,10 +1008,11 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='ipv4_only'
 			uci commit equipe_dashboard
-			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
+			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
 		dual_stack)
+			clean_ipv6_clat_tunnel
 			enable_ipv6_dual_stack
 			clean_nptv6_firewall
 			sync_ipv6_selective_firewall
@@ -798,10 +1021,11 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='dual_stack'
 			uci commit equipe_dashboard
-			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
+			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
 		selective)
+			clean_ipv6_clat_tunnel
 			enable_ipv6_dual_stack
 			clean_nptv6_firewall
 			sync_ipv6_selective_firewall
@@ -810,10 +1034,11 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='selective'
 			uci commit equipe_dashboard
-			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
+			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
 		nptv6)
+			clean_ipv6_clat_tunnel
 			enable_ipv6_dual_stack
 			sync_nptv6_firewall
 			clean_ipv6_selective_firewall
@@ -831,10 +1056,11 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='nptv6'
 			uci commit equipe_dashboard
-			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/odhcpd restart >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
+			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/odhcpd restart >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
 		ipv6_only)
+			clean_ipv6_clat_tunnel
 			enable_ipv6_dual_stack
 			clean_nptv6_firewall
 			clean_ipv6_selective_firewall
@@ -843,11 +1069,34 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='ipv6_only'
 			uci commit equipe_dashboard
-			(sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
+			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
+		ipv6_clat)
+			save_pre_clat_state
+			enable_ipv6_dual_stack
+			clean_nptv6_firewall
+			clean_ipv6_selective_firewall
+			uci -q delete dhcp.lan.ignore
+			uci commit dhcp
+			sync_ipv6_clat_tunnel
+			uci -q set equipe_dashboard.ipv6=ipv6
+			uci -q set equipe_dashboard.ipv6.mode='ipv6_clat'
+			uci commit equipe_dashboard
+			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
+			echo ok
+			;;
+		restore_clat)
+			local target_prev
+			target_prev="$(uci -q get equipe_dashboard.ipv6.saved_clat_prev_mode || echo 'dual_stack')"
+			case "$target_prev" in
+				ipv4_only|dual_stack|selective|nptv6|ipv6_only) ;;
+				*) target_prev="dual_stack" ;;
+			esac
+			set_ipv6_mode "$target_prev"
+			;;
 		*)
-			echo "Modo invalido: $mode (use: ipv4_only, dual_stack, selective, nptv6, ipv6_only)" >&2
+			echo "Modo invalido: $mode (use: ipv4_only, dual_stack, selective, nptv6, ipv6_only, ipv6_clat, restore_clat)" >&2
 			exit 2
 			;;
 	esac
@@ -915,9 +1164,11 @@ toggle_ipv6_device() {
 
 get_ipv6_status() {
 	local mode relay wan6_proto wan6_dev lan_dev prefix_delegated lan_ip6 ula_ip6 ula_prefix filter_aaaa odhcpd_active allowed_macs
-	local first sections s mac zone masq6
+	local first sections s mac zone masq6 clat_engine saved_prev_mode
 	mode="$(uci -q get equipe_dashboard.ipv6.mode || echo 'dual_stack')"
 	relay="$(uci -q get equipe_dashboard.ipv6.relay || echo '0')"
+	clat_engine="$(uci -q get equipe_dashboard.ipv6.clat_engine || echo 'none')"
+	saved_prev_mode="$(uci -q get equipe_dashboard.ipv6.saved_clat_prev_mode || echo 'dual_stack')"
 	wan6_proto="$(uci -q get network.wan6.proto || echo 'none')"
 	wan6_dev="$(uci -q get network.wan6.device || echo '')"
 	
@@ -959,6 +1210,8 @@ get_ipv6_status() {
   "mode": "$mode",
   "relay": $([ "$relay" = "1" ] && echo true || echo false),
   "masq6": $([ "$masq6" = "1" ] && echo true || echo false),
+  "clat_engine": "${clat_engine:-none}",
+  "saved_clat_prev_mode": "${saved_prev_mode:-dual_stack}",
   "wan6_proto": "$wan6_proto",
   "wan6_dev": "$wan6_dev",
   "prefix_delegated": "${prefix_delegated:-none}",

@@ -613,10 +613,17 @@ ark_led_update_wan_status() {
 		elif [ "$has_link" = "1" ]; then
 			local cur_color="$(uci -q get system.led_status.hex_color || echo '#00FF00')"
 			local cur_preset="$(uci -q get system.led_status.preset || echo 'smart')"
-			if [ "$cur_preset" != "night" ]; then
-				ark_led_set_effect top "$cur_color" breathe
-				ark_led_set_effect front "$cur_color" solid
-			fi
+			case "$cur_preset" in
+				night|off) ;;
+				rainbow)
+					ark_led_set_effect top "$cur_color" rainbow
+					ark_led_set_effect front "$cur_color" rainbow
+					;;
+				*)
+					ark_led_set_effect top "$cur_color" breathe
+					ark_led_set_effect front "$cur_color" solid
+					;;
+			esac
 		fi
 		return 0
 	fi

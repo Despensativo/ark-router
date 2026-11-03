@@ -658,6 +658,8 @@ const lifecycleMethods = {
 			ipv6Label = 'Cascata (NDP Relay)';
 		} else if (v6Mode === 'nptv6') {
 			ipv6Label = 'NPTv6 Inteligente (Multi-WAN)';
+		} else if (v6Mode === 'ipv6_clat') {
+			ipv6Label = 'WAN 100% IPv6 + LAN IPv4 (Anycast)';
 		} else if (v6Mode === 'selective') {
 			ipv6Label = 'IPv6 Seletivo por MAC';
 		} else if (v6Mode === 'ipv4_only') {
@@ -698,6 +700,8 @@ const lifecycleMethods = {
 			ipv6Prefix = 'Desativado';
 		} else if (v6Mode === 'nptv6') {
 			ipv6Prefix = (ulaPrefix || 'fd73:0192:0168::/48') + ' (NPTv6 1:1)';
+		} else if (v6Mode === 'ipv6_clat') {
+			ipv6Prefix = (pubPrefix || ulaPrefix || 'WAN IPv6') + ' (Anycast / 464XLAT)';
 		} else if (v6Mode === 'selective') {
 			ipv6Prefix = pubPrefix ? (pubPrefix + ' (Seletivo)') : (ulaPrefix ? (ulaPrefix + ' (ULA)') : 'Sem prefixo da operadora');
 		} else {

@@ -11,7 +11,6 @@ _ARK_WIFI_SH_LOADED=1
 [ -f "${ARK_LIB_DIR}/validation.sh" ] && . "${ARK_LIB_DIR}/validation.sh"
 [ -f "${ARK_LIB_DIR}/modules/network.sh" ] && . "${ARK_LIB_DIR}/modules/network.sh"
 [ -f "${ARK_LIB_DIR}/modules/sqm.sh" ] && . "${ARK_LIB_DIR}/modules/sqm.sh"
-[ -f "${ARK_LIB_DIR}/modules/ezsetup.sh" ] && . "${ARK_LIB_DIR}/modules/ezsetup.sh"
 
 wifi_radio_by_band() {
 	local wanted section value r b hw ht
@@ -339,7 +338,7 @@ wifi_enhancer_run_upgrade() {
 		fi
 	fi
 	echo "$$" > "$lock_file"
-	trap 'rm -f "$lock_file"' EXIT INT TERM
+	trap 'rm -f "$lock_file"; [ "${ARK_MUTATION_LOCK_HELD:-0}" = "1" ] && command -v ark_release_mutation_lock >/dev/null 2>&1 && ark_release_mutation_lock' EXIT INT TERM
 
 	# Blindagem Crítica Qualcomm QSDK (qcawificfg80211 / Acer Predator Connect T7):
 	# NUNCA substituir qca-hostapd-11be por wpad-mbedtls (quebraria os 3 rádios Wi-Fi 7, 320 MHz e MLO).
@@ -595,6 +594,7 @@ handle_wifi() {
 			valid_wifi_password "$password" || { echo 'A senha deve ter entre 8 e 63 caracteres' >&2; exit 2; }
 		fi
 		[ "$allow_toggle" = 1 ] || [ "$enabled" = keep ] || { echo 'A rede principal nao pode ser desligada por este atalho' >&2; exit 2; }
+		[ -f "${ARK_LIB_DIR}/modules/ezsetup.sh" ] && . "${ARK_LIB_DIR}/modules/ezsetup.sh"
 		ez_backup >/dev/null || { echo 'Falha ao criar backup antes da alteracao do Wi-Fi' >&2; exit 3; }
 		[ "$enable_2g" = 1 ] && uci -q set "wireless.$radio2.disabled=0"
 		[ "$enable_5g" = 1 ] && uci -q set "wireless.$radio5.disabled=0"
@@ -769,7 +769,10 @@ handle_wifi() {
 		[ -n "$radio5" ] || radio5="$radio2"
 		id="$(printf '%s' "$new_ssid" | tr -dc '0-9a-zA-Z' | head -c 8 | tr 'A-Z' 'a-z')"
 		[ -n "$id" ] || id="$(date +%s | head -c 8)"
-		[ "$target_network" = guest ] && ez_apply_guest_network 1
+		if [ "$target_network" = guest ]; then
+			[ -f "${ARK_LIB_DIR}/modules/ezsetup.sh" ] && . "${ARK_LIB_DIR}/modules/ezsetup.sh"
+			ez_apply_guest_network 1
+		fi
 		if [ "$band_mode" = both ] || [ "$band_mode" = 2g ]; then
 			sec="extra_${id}_r0"
 			uci -q set "wireless.$sec=wifi-iface"
@@ -1206,7 +1209,11 @@ EOF
 		else
 			uci -q set "wireless.$radio2.iot_stability=0"
 			for iface in $(uci -q show wireless | grep -E "\.device=['\"]?$radio2['\"]?" | cut -d. -f2); do
-				uci -q delete "wireless.$iface.disassoc_low_ack"
+				if [ "$(uci -q get equipe_dashboard.wifi.wifi6_accel 2>/dev/null || echo 0)" != "1" ] && \
+				   [ "$(uci -q get "wireless.$iface.bss_transition" 2>/dev/null || echo 0)" != "1" ] && \
+				   [ "$(uci -q get "wireless.$iface.ieee80211k" 2>/dev/null || echo 0)" != "1" ]; then
+					uci -q delete "wireless.$iface.disassoc_low_ack"
+				fi
 			done
 			uci commit wireless
 			(sleep 1; wifi reload) >/dev/null 2>&1 &
@@ -1263,7 +1270,7 @@ EOF
 					echo Y > "/sys/module/$mod/parameters/wed_enable" 2>/dev/null || true
 				fi
 			done
-			rm -f /tmp/ark-router-features.json /tmp/ark-hw-cache.json /tmp/ark-hw-cache.ts
+			rm -f /tmp/ark-features.cache /tmp/ark-router-features.json /tmp/ark-hw-cache.json /tmp/ark-hw-cache.ts
 			echo 'enabled'
 		else
 			for mod in mt7915e mt7996e mt7921e; do
@@ -1271,7 +1278,7 @@ EOF
 				echo "$mod wed_enable=N" > "/etc/modules.d/$mod"
 				echo N > "/sys/module/$mod/parameters/wed_enable" 2>/dev/null || true
 			done
-			rm -f /tmp/ark-router-features.json /tmp/ark-hw-cache.json /tmp/ark-hw-cache.ts
+			rm -f /tmp/ark-features.cache /tmp/ark-router-features.json /tmp/ark-hw-cache.json /tmp/ark-hw-cache.ts
 			echo 'disabled'
 		fi
 		;;
@@ -2163,7 +2170,9 @@ EOF
 			if [ "$(uci -q get wireless.$r.he_bss_color_enabled)" = "1" ] || [ -n "$(uci -q get wireless.$r.he_bss_color)" ]; then
 				bss_col=1
 			fi
-			[ "$(uci -q get wireless.$r.he_twt_required)" = "1" ] && twt_val=1
+			if [ -n "$(uci -q get wireless.$r.he_twt_required)" ] || [ "$(uci -q get wireless.$r.twt_responder)" = "1" ]; then
+				twt_val=1
+			fi
 			[ -n "$(uci -q get wireless.$r.he_spr_sr_control)" ] && spr_val=1
 			[ "$(uci -q get wireless.$r.he_su_beamformer)" = "1" ] && su_bf=1
 		done
@@ -2171,7 +2180,7 @@ EOF
 			grep -q "^he_bss_color=" /var/run/hostapd-phy*.conf 2>/dev/null && bss_col=1 || bss_col=0
 			grep -q "^he_spr_sr_control=" /var/run/hostapd-phy*.conf 2>/dev/null && spr_val=1 || spr_val=0
 			grep -q "^he_su_beamformer=1" /var/run/hostapd-phy*.conf 2>/dev/null && su_bf=1 || su_bf=0
-			grep -q "^he_twt_required=1" /var/run/hostapd-phy*.conf 2>/dev/null && twt_val=1 || twt_val=0
+			grep -qE "^he_twt_required=|^twt_responder=1" /var/run/hostapd-phy*.conf 2>/dev/null && twt_val=1 || twt_val=0
 		fi
 		for phy in /sys/kernel/debug/ieee80211/phy*; do
 			[ -r "$phy/airtime_flags" ] || continue
@@ -2242,8 +2251,12 @@ EOF
 			for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
 				mode="$(uci -q get wireless.$iface.mode || echo ap)"
 				[ "$mode" = "ap" ] || continue
-				# PMF adaptativo (opcional para clientes, obrigatório para WPA3)
-				uci -q set "wireless.$iface.ieee80211w=1"
+				enc="$(uci -q get wireless.$iface.encryption || echo '')"
+				# PMF adaptativo (opcional para WPA2/sae-mixed, obrigatório ieee80211w=2 para WPA3 sae/owe puro)
+				case "$enc" in
+					sae|owe) uci -q set "wireless.$iface.ieee80211w=2" ;;
+					*) uci -q set "wireless.$iface.ieee80211w=1" ;;
+				esac
 				uci -q set "wireless.$iface.disassoc_low_ack=0"
 				uci -q set "wireless.$iface.wpa_group_rekey=0"
 				uci -q set "wireless.$iface.skip_inactivity_poll=0"
@@ -2279,7 +2292,7 @@ EOF
 			done
 			for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
 				enc="$(uci -q get wireless.$iface.encryption || echo '')"
-				if [ "$enc" != "sae" ]; then
+				if [ "$enc" != "sae" ] && [ "$enc" != "sae-mixed" ]; then
 					uci -q delete "wireless.$iface.ieee80211w"
 				fi
 			done

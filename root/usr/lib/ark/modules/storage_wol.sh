@@ -732,25 +732,29 @@ handle_storage_wol() {
 			case "$iface" in
 				''|*/*|*..*|*[!A-Za-z0-9_.:-]*) iface="br-lan" ;;
 			esac
-			local suf
+			local suf dev_sec
 			suf="$(device_suffix "$mac")"
+			dev_sec="device_$(printf '%s' "$mac" | tr 'a-f' 'A-F' | tr -d ':')"
 			mkdir -p "${ARK_ROOT}/etc/config" 2>/dev/null || true
 			touch "${ARK_ROOT}/etc/config/equipe_devices" 2>/dev/null || true
-			uci -q set "equipe_devices.dev_${suf}=device"
-			uci -q set "equipe_devices.dev_${suf}.mac=$mac"
-			uci -q set "equipe_devices.dev_${suf}.name=$name"
-			[ -n "$ip" ] && uci -q set "equipe_devices.dev_${suf}.ip=$ip"
-			uci -q set "equipe_devices.dev_${suf}.wol_favorite=1"
-			uci -q set "equipe_devices.dev_${suf}.wol_iface=$iface"
+			uci -q delete "equipe_devices.dev_${suf}" 2>/dev/null || true
+			uci -q set "equipe_devices.${dev_sec}=device"
+			uci -q set "equipe_devices.${dev_sec}.mac=$mac"
+			uci -q set "equipe_devices.${dev_sec}.name=$name"
+			[ -n "$ip" ] && uci -q set "equipe_devices.${dev_sec}.ip=$ip"
+			uci -q set "equipe_devices.${dev_sec}.wol_favorite=1"
+			uci -q set "equipe_devices.${dev_sec}.wol_iface=$iface"
 			uci -q commit equipe_devices 2>/dev/null || true
 			wol_status_json
 			;;
 		wol-target-delete)
 			local mac="$1"
 			valid_mac_anycase "$mac" || { echo "Endereco MAC invalido" >&2; return 2; }
-			local suf
+			local suf dev_sec
 			suf="$(device_suffix "$mac")"
-			uci -q set "equipe_devices.dev_${suf}.wol_favorite=0" 2>/dev/null || true
+			dev_sec="device_$(printf '%s' "$mac" | tr 'a-f' 'A-F' | tr -d ':')"
+			uci -q delete "equipe_devices.dev_${suf}.wol_favorite" 2>/dev/null || true
+			uci -q set "equipe_devices.${dev_sec}.wol_favorite=0" 2>/dev/null || true
 			uci -q commit equipe_devices 2>/dev/null || true
 			wol_status_json
 			;;

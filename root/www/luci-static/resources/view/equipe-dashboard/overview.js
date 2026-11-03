@@ -2514,6 +2514,8 @@ const lifecycleMethods = {
 			ipv6Label = 'Cascata (NDP Relay)';
 		} else if (v6Mode === 'nptv6') {
 			ipv6Label = 'NPTv6 Inteligente (Multi-WAN)';
+		} else if (v6Mode === 'ipv6_clat') {
+			ipv6Label = 'WAN 100% IPv6 + LAN IPv4 (Anycast)';
 		} else if (v6Mode === 'selective') {
 			ipv6Label = 'IPv6 Seletivo por MAC';
 		} else if (v6Mode === 'ipv4_only') {
@@ -2554,6 +2556,8 @@ const lifecycleMethods = {
 			ipv6Prefix = 'Desativado';
 		} else if (v6Mode === 'nptv6') {
 			ipv6Prefix = (ulaPrefix || 'fd73:0192:0168::/48') + ' (NPTv6 1:1)';
+		} else if (v6Mode === 'ipv6_clat') {
+			ipv6Prefix = (pubPrefix || ulaPrefix || 'WAN IPv6') + ' (Anycast / 464XLAT)';
 		} else if (v6Mode === 'selective') {
 			ipv6Prefix = pubPrefix ? (pubPrefix + ' (Seletivo)') : (ulaPrefix ? (ulaPrefix + ' (ULA)') : 'Sem prefixo da operadora');
 		} else {
@@ -7270,9 +7274,15 @@ const networkModalsMethods = {
 				dual_stack: { label: 'Modo 2: Pilha Dupla Global', color: '#10b981', bg: 'rgba(16,185,129,.15)', border: 'rgba(16,185,129,.35)' },
 				selective: { label: 'Modo 3: IPv6 Seletivo por MAC', color: '#38bdf8', bg: 'rgba(56,189,248,.15)', border: 'rgba(56,189,248,.35)' },
 				nptv6: { label: 'Modo 4: NPTv6 Inteligente (Multi-WAN)', color: '#06b6d4', bg: 'rgba(6,182,212,.15)', border: 'rgba(6,182,212,.35)' },
-				ipv6_only: { label: 'Modo 5: IPv6-Only (Single-Stack)', color: '#c084fc', bg: 'rgba(192,132,252,.15)', border: 'rgba(192,132,252,.35)' }
+				ipv6_only: { label: 'Modo 5: IPv6-Only (Single-Stack)', color: '#c084fc', bg: 'rgba(192,132,252,.15)', border: 'rgba(192,132,252,.35)' },
+				ipv6_clat: { label: 'Modo 6: WAN 100% IPv6 + LAN IPv4 (Anycast)', color: '#ec4899', bg: 'rgba(236,72,153,.15)', border: 'rgba(236,72,153,.35)' }
 			};
 			const curBadge = modeBadgeMeta[curMode] || modeBadgeMeta.dual_stack;
+			const prevClatMode = st.saved_clat_prev_mode || 'dual_stack';
+			const prevClatBadge = modeBadgeMeta[prevClatMode] || modeBadgeMeta.dual_stack;
+			const clatEngineLabel = st.clat_engine === 'cloudflare_anycast'
+				? 'Cloudflare Anycast WireGuard IPv6 (~15ms)'
+				: (st.clat_engine === '464xlat' ? 'Kernel 464XLAT + DNS64' : 'Automático (Anycast IPv6 / 464XLAT)');
 
 			const statusHeader = E('div', {
 				class: 'ex-priority-desc-box',
@@ -7305,8 +7315,12 @@ const networkModalsMethods = {
 						E('strong', { style: 'color: ' + (st.filter_aaaa ? '#f59e0b' : '#10b981') }, [ st.filter_aaaa ? 'Ativo (Bloqueando AAAA)' : 'Desativado (Normal)' ])
 					]),
 					E('div', {}, [
-						E('span', { class: 'ex-muted' }, ['Dispositivos Seletivos: ']),
-						E('strong', { style: 'color: #38bdf8;' }, [ (st.selective_allowed_macs && st.selective_allowed_macs.length) ? (st.selective_allowed_macs.length + ' autorizado(s)') : 'Nenhum aparelho liberado' ])
+						E('span', { class: 'ex-muted' }, [ curMode === 'ipv6_clat' ? 'Motor de Tradução CLAT: ' : 'Dispositivos Seletivos: ' ]),
+						E('strong', { style: 'color: ' + (curMode === 'ipv6_clat' ? '#ec4899;' : '#38bdf8;') }, [
+							curMode === 'ipv6_clat'
+								? clatEngineLabel
+								: ((st.selective_allowed_macs && st.selective_allowed_macs.length) ? (st.selective_allowed_macs.length + ' autorizado(s)') : 'Nenhum aparelho liberado')
+						])
 					])
 				])
 			]);
@@ -7340,7 +7354,7 @@ const networkModalsMethods = {
 				]);
 			};
 
-			const renderModeCard = function(modeId, title, badgeText, description, benefitsList, isCurrent) {
+			const renderModeCard = function(modeId, title, badgeText, description, benefitsList, isCurrent, onDeactivate) {
 				return E('div', {
 					class: 'ex-cleanup-entry',
 					style: 'margin-bottom: 12px; padding: 14px; border-radius: 10px; border: 1px solid ' + (isCurrent ? 'rgba(56,189,248,.4)' : 'rgba(255,255,255,.08)') + '; background: ' + (isCurrent ? 'rgba(56,189,248,.05)' : 'rgba(255,255,255,.02)') + ';'
@@ -7356,7 +7370,13 @@ const networkModalsMethods = {
 					]),
 					E('div', { style: 'flex: 0 0 auto; display: flex; align-items: center; margin-left: 12px;' }, [
 						isCurrent
-							? E('button', { class: 'ex-mini-button', disabled: true, style: 'opacity: .6; cursor: default;' }, [ 'Modo Ativo' ])
+							? (onDeactivate
+								? E('button', {
+									class: 'ex-mini-button',
+									style: 'min-height: 40px; padding: 8px 14px; font-weight: 600; border-color: rgba(244,63,94,.45); color: #fda4af; background: rgba(244,63,94,.12);',
+									click: onDeactivate
+								}, [ 'Desligar e Restaurar' ])
+								: E('button', { class: 'ex-mini-button', disabled: true, style: 'opacity: .6; cursor: default;' }, [ 'Modo Ativo' ]))
 							: E('button', {
 								class: 'ex-mini-button',
 								style: 'min-height: 40px; padding: 8px 14px; font-weight: 600;',
@@ -7384,6 +7404,22 @@ const networkModalsMethods = {
 						'Sem sobrecarga de portas: cada dispositivo preserva suas 65.535 portas 1:1 sem NAT restrito.'
 					],
 					curMode === 'nptv6'
+				),
+				renderModeCard('ipv6_clat', 'Modo 6: WAN 100% IPv6 + LAN IPv4 (Anycast / 464XLAT)', 'Bypass CGNAT • ~15ms',
+					'Mantém o IPv4 normal na rede interna (LAN), mas força 100% do tráfego externo a sair via IPv6 (direto para sites IPv6 e via túnel Anycast Cloudflare IPv6 / 464XLAT para sites legados IPv4).',
+					[
+						'Fuga inteligente do CGNAT da operadora sem quebrar TVs, videogames ou IoTs que dependem de IPv4 na LAN.',
+						'Tráfego IPv6 sai direto na velocidade da fibra (~4,8ms) e tráfego IPv4 é encapsulado em IPv6 via Cloudflare Anycast (~15ms).',
+						'Reversão inteligente com 1 clique: salva o estado original da WAN/DHCP ao ligar e restaura tudo exatamente como estava ao desligar.'
+					],
+					curMode === 'ipv6_clat',
+					function() {
+						applyMode(
+							'restore_clat',
+							'Restaurar ' + prevClatBadge.label,
+							'O túnel Anycast/464XLAT será desligado e todas as rotas, DNS e firewall voltarão exatamente ao modo anterior (' + prevClatBadge.label + ').'
+						);
+					}
 				),
 				renderModeCard('selective', 'Modo 3: IPv6 Seletivo por Aparelho', 'Escudo Gamer & IoT',
 					'Apenas aparelhos marcados com "⚡ Permitir IPv6" no painel utilizam IPv6. Dispositivos não autorizados têm o tráfego rejeitado instantaneamente em 0,1ms.',
@@ -15659,6 +15695,616 @@ const systemMethods = {
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':function(){window.clearInterval(timer);ui.hideModal();}},['Cancelar']),' ',finalButton])
 		]);
 	},
+	upnpCard: function() {
+		const self = this;
+		const f = (this.feature && this.feature('upnp')) || {};
+		const isInstalled = !!f.installed;
+		const isActive = !!f.active;
+
+		const pillEl = E('span', {
+			id: 'ex-upnp-pill',
+			class: 'ex-pill ' + (isActive ? 'online' : 'standby')
+		}, [isInstalled ? (isActive ? 'ATIVO • NAT ABERTO' : 'MODO SEGURO') : 'NÃO INSTALADO']);
+
+		const summaryTextEl = E('p', {
+			id: 'ex-upnp-summary',
+			class: 'ex-muted',
+			style: 'margin: 6px 0 12px; line-height: 1.45; font-size: 13px;'
+		}, [
+			'Permite que consoles (PlayStation, Xbox, Nintendo Switch), PCs Gamer (Steam, Call of Duty, EA) e clientes P2P/BitTorrent abram portas dinamicamente no firewall para alcançar NAT Tipo 1 / Aberto sem redirecionamento manual.'
+		]);
+
+		const enableInput = E('input', {
+			id: 'ex-upnp-enable-toggle',
+			type: 'checkbox',
+			switch: '',
+			'aria-label': 'Habilitar Serviço UPnP e NAT-PMP'
+		});
+		enableInput.checked = isActive;
+
+		const secureInput = E('input', {
+			id: 'ex-upnp-secure-toggle',
+			type: 'checkbox',
+			switch: '',
+			'aria-label': 'Modo Seguro (Secure Mode)'
+		});
+		secureInput.checked = true;
+
+		const igdInput = E('input', {
+			id: 'ex-upnp-igd-toggle',
+			type: 'checkbox',
+			switch: '',
+			'aria-label': 'Protocolo UPnP IGD'
+		});
+		igdInput.checked = true;
+
+		const natpmpInput = E('input', {
+			id: 'ex-upnp-natpmp-toggle',
+			type: 'checkbox',
+			switch: '',
+			'aria-label': 'Protocolo NAT-PMP / PCP'
+		});
+		natpmpInput.checked = true;
+
+		const stunInput = E('input', {
+			id: 'ex-upnp-stun-toggle',
+			type: 'checkbox',
+			switch: '',
+			'aria-label': 'Auxílio STUN Anti-NAT Estrito'
+		});
+		stunInput.checked = true;
+
+		[enableInput, secureInput, igdInput, natpmpInput, stunInput].forEach(function(inp) {
+			inp.addEventListener('change', function() {
+				self.saveUpnpSettings(true);
+			});
+		});
+
+		const cleanIntervalInput = E('input', {
+			id: 'ex-upnp-clean-interval',
+			type: 'number',
+			class: 'cbi-input-text',
+			min: '60',
+			max: '86400',
+			value: '600',
+			style: 'width: 100%; min-height: 40px; box-sizing: border-box;'
+		});
+
+		const listenPortInput = E('input', {
+			id: 'ex-upnp-listen-port',
+			type: 'number',
+			class: 'cbi-input-text',
+			min: '1024',
+			max: '65535',
+			value: '5000',
+			style: 'width: 100%; min-height: 40px; box-sizing: border-box;'
+		});
+
+		const stunHostInput = E('input', {
+			id: 'ex-upnp-stun-host',
+			type: 'text',
+			class: 'cbi-input-text',
+			placeholder: 'stun.cloudflare.com',
+			value: 'stun.cloudflare.com',
+			style: 'width: 100%; min-height: 40px; box-sizing: border-box;'
+		});
+
+		const updateSpeedKbsHint = function() {
+			const hintEl = document.getElementById('ex-upnp-speed-kbs-hint');
+			const dEl = document.getElementById('ex-upnp-down-mbps');
+			const uEl = document.getElementById('ex-upnp-up-mbps');
+			if (!hintEl || !dEl || !uEl) return;
+			const dMbps = Math.max(1, parseInt(dEl.value, 10) || 1000);
+			const uMbps = Math.max(1, parseInt(uEl.value, 10) || 1000);
+			hintEl.textContent = 'UCI KB/s: ↓ ' + (dMbps * 128) + ' KB/s • ↑ ' + (uMbps * 128) + ' KB/s';
+		};
+
+		const downMbpsInput = E('input', {
+			id: 'ex-upnp-down-mbps',
+			type: 'number',
+			class: 'cbi-input-text',
+			min: '1',
+			max: '10000',
+			value: '1000',
+			style: 'width: 100%; min-height: 40px; box-sizing: border-box;',
+			input: updateSpeedKbsHint,
+			change: updateSpeedKbsHint
+		});
+
+		const upMbpsInput = E('input', {
+			id: 'ex-upnp-up-mbps',
+			type: 'number',
+			class: 'cbi-input-text',
+			min: '1',
+			max: '10000',
+			value: '1000',
+			style: 'width: 100%; min-height: 40px; box-sizing: border-box;',
+			input: updateSpeedKbsHint,
+			change: updateSpeedKbsHint
+		});
+
+		const makeToggleItem = function(title, descId, descText, inputEl) {
+			return E('div', {
+				class: 'ex-channel-mode-control',
+				style: 'margin-bottom: 8px; padding: 10px 12px;'
+			}, [
+				E('div', { style: 'min-width: 0; flex: 1; padding-right: 10px;' }, [
+					E('strong', { style: 'display: block; font-size: 13.5px;' }, [title]),
+					E('small', { id: descId || '', class: 'ex-muted', style: 'display: block; line-height: 1.35;' }, [descText])
+				]),
+				E('label', { class: 'ex-switch' }, [
+					inputEl,
+					E('span', { class: 'ex-switch-slider' })
+				])
+			]);
+		};
+
+		const settingsGrid = E('div', {
+			id: 'ex-upnp-settings-wrap',
+			style: 'display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px;'
+		}, [
+			makeToggleItem(
+				'Habilitar Daemon UPnP (miniupnpd)',
+				'ex-upnp-enable-desc',
+				isActive ? 'Ativo na rede local (respondendo a requisições SSDP / NAT-PMP)' : 'Desativado (Modo Seguro — nenhuma porta aberta dinamicamente)',
+				enableInput
+			),
+			E('div', {
+				class: 'ex-grid ex-grid-2',
+				style: 'gap: 10px;'
+			}, [
+				makeToggleItem(
+					'Modo Seguro (Secure Mode)',
+					'ex-upnp-secure-desc',
+					'Clientes só abrem portas > 1024 para o próprio endereço IP local',
+					secureInput
+				),
+				makeToggleItem(
+					'Auxílio STUN (Anti‑CGNAT / NAT Duplo)',
+					'ex-upnp-stun-desc',
+					'Detecta IP WAN público via STUN sem travar em provedores CGNAT',
+					stunInput
+				),
+				makeToggleItem(
+					'Protocolo UPnP IGD',
+					'ex-upnp-igd-desc',
+					'Padrão para PlayStation, Xbox, Windows e jogos Steam/EA',
+					igdInput
+				),
+				makeToggleItem(
+					'Protocolo NAT‑PMP / PCP',
+					'ex-upnp-natpmp-desc',
+					'Padrão para Apple (macOS/iOS), Nintendo Switch e P2P moderno',
+					natpmpInput
+				)
+			]),
+			E('div', {
+				style: 'background: rgba(15, 23, 42, 0.45); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 12px;'
+			}, [
+				E('div', {
+					style: 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;'
+				}, [
+					E('div', {}, [
+						E('strong', { style: 'display: block; font-size: 13px; color: #e2e8f0;' }, ['🚀 Identificação de Velocidade do Link (UPnP IGD WANCommonInterfaceConfig)']),
+						E('small', { class: 'ex-muted', style: 'display: block; font-size: 11.5px; line-height: 1.35;' }, [
+							'Substitui o padrão legado do OpenWrt (8/4 Mbps ADSL) anunciado via GetCommonLinkProperties para consoles (PS5/Xbox) e clientes P2P.'
+						])
+					]),
+					E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap;' }, [
+						E('span', {
+							id: 'ex-upnp-speed-kbs-hint',
+							class: 'ex-pill standby',
+							style: 'font-size: 11px; padding: 2px 8px; font-family: monospace;'
+						}, ['UCI KB/s: ↓ 128000 KB/s • ↑ 128000 KB/s']),
+						E('button', {
+							id: 'ex-upnp-autospeed-btn',
+							type: 'button',
+							class: 'ex-mini-button',
+							style: 'min-height: 32px; padding: 4px 10px; font-size: 12px; font-weight: 700;',
+							title: 'Preencher com a velocidade detectada do SQM ou link físico WAN',
+							click: function() {
+								const autoSpd = self._upnpAutoSpeed || { down: 1000, up: 1000 };
+								const dEl = document.getElementById('ex-upnp-down-mbps');
+								const uEl = document.getElementById('ex-upnp-up-mbps');
+								if (dEl) dEl.value = String(autoSpd.down || 1000);
+								if (uEl) uEl.value = String(autoSpd.up || 1000);
+								updateSpeedKbsHint();
+							}
+						}, ['⚡ Sincronizar SQM / WAN'])
+					])
+				]),
+				E('div', {
+					class: 'ex-grid ex-grid-2',
+					style: 'gap: 10px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.06);'
+				}, [
+					E('div', { style: 'min-width: 0;' }, [
+						E('label', { style: 'display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; font-weight: 600;' }, ['Velocidade Download Anunciada (Mbps)']),
+						downMbpsInput
+					]),
+					E('div', { style: 'min-width: 0;' }, [
+						E('label', { style: 'display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; font-weight: 600;' }, ['Velocidade Upload Anunciada (Mbps)']),
+						upMbpsInput
+					])
+				]),
+				E('strong', { style: 'display: block; font-size: 13px; margin-bottom: 10px; color: #e2e8f0;' }, ['⚙️ Parâmetros Avançados do Daemon (UCI upnpd)']),
+				E('div', {
+					class: 'ex-grid ex-grid-3',
+					style: 'gap: 10px;'
+				}, [
+					E('div', { style: 'min-width: 0;' }, [
+						E('label', { style: 'display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; font-weight: 600;' }, ['Tempo Limite / Limpeza (TTL s)']),
+						cleanIntervalInput
+					]),
+					E('div', { style: 'min-width: 0;' }, [
+						E('label', { style: 'display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; font-weight: 600;' }, ['Porta Interna SOAP']),
+						listenPortInput
+					]),
+					E('div', { style: 'min-width: 0;' }, [
+						E('label', { style: 'display: block; font-size: 12px; color: #94a3b8; margin-bottom: 4px; font-weight: 600;' }, ['Servidor STUN Externo']),
+						stunHostInput
+					])
+				]),
+				E('div', {
+					style: 'display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; justify-content: flex-end;'
+				}, [
+					E('button', {
+						id: 'ex-upnp-restart-btn',
+						type: 'button',
+						class: 'btn cbi-button cbi-button-neutral',
+						style: 'min-height: 40px; font-weight: 700; border-radius: 8px; padding: 6px 14px;',
+						click: function() { self.restartUpnpDaemon(); }
+					}, ['🔄 Reiniciar miniupnpd']),
+					E('button', {
+						id: 'ex-upnp-save-btn',
+						type: 'button',
+						class: 'btn cbi-button cbi-button-positive',
+						style: 'min-height: 40px; font-weight: 700; border-radius: 8px; padding: 6px 16px;',
+						click: function() { self.saveUpnpSettings(false); }
+					}, ['💾 Salvar e Aplicar Ajustes UPnP'])
+				])
+			])
+		]);
+
+		const leasesBadge = E('span', {
+			id: 'ex-upnp-leases-badge',
+			class: 'ex-pill standby',
+			style: 'font-size: 11.5px; padding: 2px 8px;'
+		}, ['0 Portas Ativas']);
+
+		const clearLeasesBtn = E('button', {
+			id: 'ex-upnp-clear-btn',
+			type: 'button',
+			class: 'ex-mini-button',
+			style: 'min-height: 36px; font-weight: 700;',
+			click: function() { self.clearUpnpLeases(); }
+		}, ['🧹 Limpar Todos os Mapeamentos']);
+
+		const leasesTableWrap = E('div', {
+			id: 'ex-upnp-leases-wrap',
+			style: 'overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; max-width: 100%; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; background: rgba(15, 23, 42, 0.35);'
+		}, [
+			E('div', {
+				id: 'ex-upnp-leases-body',
+				style: 'padding: 14px; font-size: 13px; color: #94a3b8; text-align: center;'
+			}, ['Consultando redirecionamentos UPnP ativos…'])
+		]);
+
+		const leasesSection = E('div', { style: 'margin-top: 6px;' }, [
+			E('div', {
+				style: 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;'
+			}, [
+				E('div', { style: 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap;' }, [
+					E('strong', { style: 'font-size: 13.5px;' }, ['📋 Mapeamentos Dinâmicos Ativos no Firewall']),
+					leasesBadge
+				]),
+				clearLeasesBtn
+			]),
+			leasesTableWrap
+		]);
+
+		window.setTimeout(function() { self.updateUpnpStatus(); }, 260);
+
+		const upnpTitleActions = E('div', { class: 'ex-card-title-actions' }, [
+			pillEl
+		]);
+		const upnpTitle = E('div', { class: 'ex-card-title' }, [
+			E('div', {}, [
+				E('span', { class: 'ex-kicker' }, ['REDE & JOGOS • ABERTURA AUTOMÁTICA DE PORTAS']),
+				E('h3', {}, ['🎮 UPnP IGD & NAT‑PMP (miniupnpd)'])
+			]),
+			upnpTitleActions
+		]);
+		const upnpBody = E('div', { class: 'ex-card-collapse-body' }, [
+			E('div', { class: 'ex-card-collapse-inner' }, [
+				summaryTextEl,
+				settingsGrid,
+				leasesSection
+			])
+		]);
+		const upnpCardEl = E('section', {
+			class: 'ex-card ex-upnp-card',
+			style: 'margin-bottom: 20px;'
+		}, [
+			upnpTitle,
+			upnpBody
+		]);
+		const upnpAccordion = setupCardAccordion({
+			id: 'upnp',
+			cardEl: upnpCardEl,
+			titleEl: upnpTitle,
+			bodyEl: upnpBody,
+			isActive: isActive
+		});
+		upnpTitleActions.appendChild(upnpAccordion.expandBtn);
+		self._upnpAccordion = upnpAccordion;
+
+		return upnpCardEl;
+	},
+	updateUpnpStatus: function() {
+		const self = this;
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['upnp-status']).then(function(r) {
+			let st = {};
+			try { st = JSON.parse(r.stdout || '{}'); } catch(e) {}
+			const isEnabled = !!st.enabled;
+			const isRunning = !!st.running;
+			const pid = st.pid || '';
+			const leases = Array.isArray(st.leases) ? st.leases : [];
+			const fwEng = st.fw_engine || 'fw4';
+
+			const upnpFeat = (self.feature && self.feature('upnp')) || null;
+			if (upnpFeat) {
+				upnpFeat.active = isEnabled;
+				if (st.installed !== undefined) upnpFeat.installed = !!st.installed;
+			}
+
+			if (self._upnpAccordion) {
+				self._upnpAccordion.updateActiveState(isEnabled);
+			}
+
+			const pill = document.getElementById('ex-upnp-pill');
+			if (pill) {
+				pill.className = 'ex-pill ' + (isEnabled ? 'online' : 'standby');
+				pill.textContent = isEnabled
+					? ('ATIVO' + (pid ? ' (PID ' + pid + ')' : '') + ' • ' + leases.length + (leases.length === 1 ? ' PORTA' : ' PORTAS'))
+					: 'MODO SEGURO (DESATIVADO)';
+			}
+
+			const navBadge = document.getElementById('ex-v2-nav-upnp-badge');
+			if (navBadge) {
+				navBadge.textContent = isEnabled ? (leases.length > 0 ? (leases.length + ' PORTAS') : 'ATIVO') : 'NAT';
+			}
+
+			const enableToggle = document.getElementById('ex-upnp-enable-toggle');
+			if (enableToggle) enableToggle.checked = isEnabled;
+
+			const enableDesc = document.getElementById('ex-upnp-enable-desc');
+			if (enableDesc) {
+				enableDesc.textContent = isEnabled
+					? (isRunning
+						? ('Em execução' + (pid ? ' (PID ' + pid + ')' : '') + ' • Firewall ' + fwEng.toUpperCase() + ' respondendo a requisições SSDP / NAT-PMP')
+						: 'Habilitado no UCI (aguardando tráfego na interface WAN)')
+					: 'Desativado (Modo Seguro — nenhuma porta é aberta sem autorização)';
+			}
+
+			const secureToggle = document.getElementById('ex-upnp-secure-toggle');
+			if (secureToggle && st.secure_mode !== undefined) secureToggle.checked = !!st.secure_mode;
+
+			const igdToggle = document.getElementById('ex-upnp-igd-toggle');
+			if (igdToggle && st.enable_upnp !== undefined) igdToggle.checked = !!st.enable_upnp;
+
+			const natpmpToggle = document.getElementById('ex-upnp-natpmp-toggle');
+			if (natpmpToggle && st.enable_natpmp !== undefined) natpmpToggle.checked = !!st.enable_natpmp;
+
+			const stunToggle = document.getElementById('ex-upnp-stun-toggle');
+			if (stunToggle && st.use_stun !== undefined) stunToggle.checked = !!st.use_stun;
+
+			const cleanInp = document.getElementById('ex-upnp-clean-interval');
+			if (cleanInp && st.clean_ruleset_interval) cleanInp.value = String(st.clean_ruleset_interval);
+
+			const portInp = document.getElementById('ex-upnp-listen-port');
+			if (portInp && st.port !== undefined) portInp.value = String(st.port);
+
+			const stunHostInp = document.getElementById('ex-upnp-stun-host');
+			if (stunHostInp && st.stun_host) stunHostInp.value = String(st.stun_host);
+
+			self._upnpAutoSpeed = {
+				down: parseInt(st.auto_down_mbps, 10) || 1000,
+				up: parseInt(st.auto_up_mbps, 10) || 1000
+			};
+			const downMbpsVal = parseInt(st.download_mbps, 10) || self._upnpAutoSpeed.down || 1000;
+			const upMbpsVal = parseInt(st.upload_mbps, 10) || self._upnpAutoSpeed.up || 1000;
+			const downInp = document.getElementById('ex-upnp-down-mbps');
+			if (downInp) downInp.value = String(downMbpsVal);
+			const upInp = document.getElementById('ex-upnp-up-mbps');
+			if (upInp) upInp.value = String(upMbpsVal);
+			const hintEl = document.getElementById('ex-upnp-speed-kbs-hint');
+			if (hintEl) {
+				const dKbs = parseInt(st.download_kbs, 10) || (downMbpsVal * 128);
+				const uKbs = parseInt(st.upload_kbs, 10) || (upMbpsVal * 128);
+				hintEl.textContent = 'UCI KB/s: ↓ ' + dKbs + ' KB/s • ↑ ' + uKbs + ' KB/s';
+			}
+
+			const leasesBadge = document.getElementById('ex-upnp-leases-badge');
+			if (leasesBadge) {
+				leasesBadge.className = 'ex-pill ' + (leases.length > 0 ? 'online' : 'standby');
+				leasesBadge.textContent = leases.length + (leases.length === 1 ? ' Porta Ativa' : ' Portas Ativas');
+			}
+
+			const leasesBody = document.getElementById('ex-upnp-leases-body');
+			if (leasesBody) {
+				leasesBody.innerHTML = '';
+				if (!leases.length) {
+					leasesBody.style.padding = '14px';
+					leasesBody.style.textAlign = 'center';
+					leasesBody.textContent = isEnabled
+						? 'Nenhum redirecionamento dinâmico ativo no momento. As portas aparecerão aqui automaticamente quando um console ou jogo solicitar abertura via UPnP / NAT‑PMP.'
+						: 'O daemon UPnP está desativado (Modo Seguro). Ative acima caso seus jogos ou consoles acusem NAT Estrito / Tipo 3.';
+				} else {
+					leasesBody.style.padding = '0';
+					leasesBody.style.textAlign = 'left';
+					const rows = leases.map(function(item) {
+						const proto = String(item.proto || 'UDP').toUpperCase();
+						const extPort = String(item.ext_port || '');
+						const intAddr = String(item.int_addr || '');
+						const intPort = String(item.int_port || extPort);
+						const hostLbl = item.hostname ? (intAddr + ' (' + item.hostname + ')') : intAddr;
+						const descLbl = item.desc || 'Mapeamento UPnP / NAT-PMP';
+						const isTcp = proto === 'TCP';
+						return E('tr', { style: 'border-top: 1px solid rgba(255,255,255,0.06);' }, [
+							E('td', { style: 'padding: 10px 12px; font-weight: 700; white-space: nowrap;' }, [hostLbl]),
+							E('td', { style: 'padding: 10px 12px;' }, [
+								E('span', {
+									class: 'ex-perf-badge ' + (isTcp ? 'badge-green' : 'badge-blue'),
+									style: 'font-size: 11px; padding: 2px 7px;'
+								}, [proto])
+							]),
+							E('td', { style: 'padding: 10px 12px; font-family: monospace; font-weight: 700; color: #38bdf8;' }, [extPort]),
+							E('td', { style: 'padding: 10px 12px; font-family: monospace;' }, [intPort]),
+							E('td', { style: 'padding: 10px 12px; color: #cbd5e1;' }, [descLbl]),
+							E('td', { style: 'padding: 10px 12px; text-align: right;' }, [
+								E('button', {
+									type: 'button',
+									class: 'ex-mini-button',
+									style: 'min-height: 32px; padding: 4px 10px; font-size: 12px;',
+									title: 'Revogar esta porta do firewall',
+									click: function() { self.deleteUpnpLease(proto, extPort); }
+								}, ['🗑️ Revogar'])
+							])
+						]);
+					});
+					const tbl = E('table', {
+						style: 'width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 520px;'
+					}, [
+						E('thead', {}, [
+							E('tr', { style: 'background: rgba(255,255,255,0.04); text-align: left; color: #94a3b8; font-size: 11.5px; text-transform: uppercase;' }, [
+								E('th', { style: 'padding: 9px 12px;' }, ['Dispositivo Cliente']),
+								E('th', { style: 'padding: 9px 12px;' }, ['Protocolo']),
+								E('th', { style: 'padding: 9px 12px;' }, ['Porta Externa']),
+								E('th', { style: 'padding: 9px 12px;' }, ['Porta Interna']),
+								E('th', { style: 'padding: 9px 12px;' }, ['Aplicação / Jogo']),
+								E('th', { style: 'padding: 9px 12px; text-align: right;' }, ['Ação'])
+							])
+						]),
+						E('tbody', {}, rows)
+					]);
+					leasesBody.appendChild(tbl);
+				}
+			}
+		}).catch(function() {});
+	},
+	saveUpnpSettings: function(silentToggle) {
+		const self = this;
+		const enableToggle = document.getElementById('ex-upnp-enable-toggle');
+		const secureToggle = document.getElementById('ex-upnp-secure-toggle');
+		const igdToggle = document.getElementById('ex-upnp-igd-toggle');
+		const natpmpToggle = document.getElementById('ex-upnp-natpmp-toggle');
+		const stunToggle = document.getElementById('ex-upnp-stun-toggle');
+		const cleanInp = document.getElementById('ex-upnp-clean-interval');
+		const portInp = document.getElementById('ex-upnp-listen-port');
+		const stunHostInp = document.getElementById('ex-upnp-stun-host');
+		const downInp = document.getElementById('ex-upnp-down-mbps');
+		const upInp = document.getElementById('ex-upnp-up-mbps');
+		const saveBtn = document.getElementById('ex-upnp-save-btn');
+
+		const enabled = (enableToggle && enableToggle.checked) ? '1' : '0';
+		const enableUpnp = (igdToggle && !igdToggle.checked) ? '0' : '1';
+		const enableNatpmp = (natpmpToggle && !natpmpToggle.checked) ? '0' : '1';
+		const secureMode = (secureToggle && !secureToggle.checked) ? '0' : '1';
+		const useStun = (stunToggle && !stunToggle.checked) ? '0' : '1';
+		const stunHost = (stunHostInp && stunHostInp.value.trim()) || 'stun.cloudflare.com';
+		const cleanInterval = (cleanInp && cleanInp.value.trim()) || '600';
+		const listenPort = (portInp && portInp.value.trim()) || '5000';
+		const downMbps = (downInp && downInp.value.trim()) || '1000';
+		const upMbps = (upInp && upInp.value.trim()) || '1000';
+
+		if (saveBtn && !silentToggle) {
+			saveBtn.disabled = true;
+			saveBtn.textContent = '⏳ Aplicando…';
+		}
+
+		return fs.exec('/usr/sbin/equipe-dashboard-control', [
+			'upnp-save',
+			enabled,
+			enableUpnp,
+			enableNatpmp,
+			secureMode,
+			useStun,
+			stunHost,
+			cleanInterval,
+			listenPort,
+			downMbps,
+			upMbps
+		]).then(function(r) {
+			if (saveBtn && !silentToggle) {
+				saveBtn.disabled = false;
+				saveBtn.textContent = '💾 Salvar e Aplicar Ajustes UPnP';
+			}
+			if (r.code) throw new Error(r.stderr || 'Falha ao salvar ajustes do UPnP');
+			if (!silentToggle) {
+				ui.addNotification(null, E('p', {}, ['Ajustes do UPnP / NAT‑PMP salvos e aplicados com sucesso.']));
+			}
+			if (typeof self.applyFeatureVisibilityAndLifecycle === 'function') {
+				const f = self.feature && self.feature('upnp');
+				if (f) f.active = (enabled === '1');
+				self.applyFeatureVisibilityAndLifecycle(self.dashboardRoot);
+			}
+			return self.updateUpnpStatus();
+		}).catch(function(e) {
+			if (saveBtn && !silentToggle) {
+				saveBtn.disabled = false;
+				saveBtn.textContent = '💾 Salvar e Aplicar Ajustes UPnP';
+			}
+			ui.addNotification(null, E('p', {}, [e.message || 'Erro ao aplicar UPnP']), 'danger');
+			self.updateUpnpStatus();
+		});
+	},
+	deleteUpnpLease: function(proto, extPort) {
+		const self = this;
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['upnp-delete-lease', String(proto), String(extPort)]).then(function(r) {
+			if (r.code) throw new Error(r.stderr || 'Falha ao revogar porta UPnP');
+			ui.addNotification(null, E('p', {}, ['Porta ' + proto + ' ' + extPort + ' revogada do firewall com sucesso.']));
+			return self.updateUpnpStatus();
+		}).catch(function(e) {
+			ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+		});
+	},
+	clearUpnpLeases: function() {
+		const self = this;
+		const btn = document.getElementById('ex-upnp-clear-btn');
+		if (btn) btn.disabled = true;
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['upnp-clear-leases']).then(function(r) {
+			if (btn) btn.disabled = false;
+			if (r.code) throw new Error(r.stderr || 'Falha ao limpar mapeamentos UPnP');
+			ui.addNotification(null, E('p', {}, ['Todos os redirecionamentos dinâmicos UPnP foram limpos com sucesso.']));
+			return self.updateUpnpStatus();
+		}).catch(function(e) {
+			if (btn) btn.disabled = false;
+			ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+		});
+	},
+	restartUpnpDaemon: function() {
+		const self = this;
+		const btn = document.getElementById('ex-upnp-restart-btn');
+		if (btn) {
+			btn.disabled = true;
+			btn.textContent = '⏳ Reiniciando…';
+		}
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['upnp-restart']).then(function(r) {
+			if (btn) {
+				btn.disabled = false;
+				btn.textContent = '🔄 Reiniciar miniupnpd';
+			}
+			if (r.code) throw new Error(r.stderr || 'Falha ao reiniciar miniupnpd');
+			ui.addNotification(null, E('p', {}, ['Daemon miniupnpd reiniciado com sucesso.']));
+			return self.updateUpnpStatus();
+		}).catch(function(e) {
+			if (btn) {
+				btn.disabled = false;
+				btn.textContent = '🔄 Reiniciar miniupnpd';
+			}
+			ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+		});
+	},
 	dmzCard: function() {
 		const self = this;
 		const pillEl = E('span', { id: 'ex-dmz-pill', class: 'ex-pill standby' }, ['CONSULTANDO…']);
@@ -22296,6 +22942,7 @@ const renderMethods = {
 					_t('Em redes com TV Box, IPTV ou caixas de som inteligentes, sem o IGMP Snooping a ponte L2 (br-lan) replica todo o fluxo multimídia como broadcast para todas as portas e antenas simultaneamente, causando saturação severa e travamentos no Wi-Fi.')
 				])
 			]),
+			isApNode ? '' : this.upnpCard(),
 			isApNode ? '' : this.dmzCard(),
 			E('div',{class:'ex-lan-block'},[E('div',{class:'ex-lan-title'},[E('div',{},[E('span',{class:'ex-kicker'},['PORTAS CABEADAS']),E('h3',{},['LAN disponíveis'])]),E('small',{class:'ex-muted'},[isApNode ? _t('Portas locais em modo switch transparente conectadas aos seus aparelhos.') : (_t('Portas em modo LAN aparecem aqui; ao converter uma porta em ') + nextWan.label + _t(', ela sai desta lista e vira uma nova conexão de internet.'))])]),E('div',{class:'ex-grid ex-grid-2'},lanCards.length?lanCards:[E('section',{class:'ex-card ex-lan-card ex-center-card'},[E('strong',{},[_t('Nenhuma porta LAN disponível')]),E('small',{class:'ex-muted'},[_t('Todas as portas cabeadas livres estão em uso como WAN ou não foram detectadas.')])])])]),
 			wifiBlock,
@@ -23465,6 +24112,10 @@ const renderMethods = {
 			} else if (el.classList.contains('ex-lan-config-card')) {
 				panels = 'wan all';
 				assignId = 'ex-lan-config-section';
+			} else if (el.classList.contains('ex-upnp-card')) {
+				panels = 'upnp_dmz wan security_usb all';
+				assignId = 'ex-upnp-section';
+				featureKey = 'upnp';
 			} else if (el.classList.contains('ex-dmz-card')) {
 				panels = 'upnp_dmz wan security_usb all';
 				assignId = 'ex-dmz-section';
@@ -23821,7 +24472,11 @@ const renderMethods = {
 				if (meta.nativeDaemon) {
 					shouldHide = !!f.user_disabled || !!f.user_removed;
 				} else if (!installed) {
-					shouldHide = !showUninst || !!f.user_removed || !!f.hidden;
+					if (key === 'upnp') {
+						shouldHide = !!f.user_removed || !!f.hidden;
+					} else {
+						shouldHide = !showUninst || !!f.user_removed || !!f.hidden;
+					}
 				}
 			}
 			sec.classList.toggle('ark-feature-uninstalled-hidden', shouldHide);
@@ -23851,18 +24506,7 @@ const renderMethods = {
 			}
 		});
 
-		// 2. Also inject compact lifecycle bars for UPnP inside #ex-dmz-section and usteer inside #ex-wifi-mesh-section
-		const dmzSec = root.querySelector('#ex-dmz-section');
-		if (dmzSec) {
-			const oldUpnpBar = dmzSec.querySelector('.ex-plugin-lifecycle-bar[data-lifecycle-key="upnp"]');
-			const newUpnpBar = self.renderPluginLifecycleBar('upnp', true);
-			if (oldUpnpBar && oldUpnpBar.parentNode) {
-				oldUpnpBar.parentNode.replaceChild(newUpnpBar, oldUpnpBar);
-			} else {
-				const inner = dmzSec.querySelector('.ex-card-collapse-inner') || dmzSec;
-				inner.insertBefore(newUpnpBar, inner.firstChild);
-			}
-		}
+		// 2. Also inject compact lifecycle bar for usteer inside #ex-wifi-mesh-section
 		const meshSec = root.querySelector('#ex-wifi-mesh-section');
 		if (meshSec) {
 			const oldUsteerBar = meshSec.querySelector('.ex-plugin-lifecycle-bar[data-lifecycle-key="usteer"]');
@@ -23888,7 +24532,9 @@ const renderMethods = {
 			const installed = !!f.installed;
 			let hideMenu = false;
 			if (!devMode) {
-				if (meta.nativeDaemon) {
+				if (item.getAttribute('data-panel') === 'upnp_dmz') {
+					hideMenu = false;
+				} else if (meta.nativeDaemon) {
 					hideMenu = !!f.user_disabled || !!f.user_removed;
 				} else if (!installed) {
 					hideMenu = !showUninst || !!f.user_removed || !!f.hidden;

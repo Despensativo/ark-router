@@ -1,0 +1,146 @@
+{
+  "date": "2026-11-02",
+  "timezone": "America/Sao_Paulo",
+  "task": "T-083",
+  "target": "W6x 192.168.73.1",
+  "authorized_by": "SIM",
+  "backup_sha256": "ae6dde2a8bdb27713bbaa6864b085e8b9e09326b07680ec1549c89b894d8e35c",
+  "hot_cache_batches_80_reads_seconds": {
+    "old": [
+      13.88,
+      13.76
+    ],
+    "new": [
+      0.35,
+      0.4,
+      0.39
+    ]
+  },
+  "passive_rpcd_one_core_percent": {
+    "before": 32.21,
+    "after": 26.4,
+    "controlled_workload": false
+  },
+  "load": [
+    {
+      "duration_s": 10.04,
+      "cpu_busy": [
+        55.6,
+        44.8,
+        61.4,
+        50.6
+      ],
+      "mbps_rx_tx": {
+        "pppoe-wan": [
+          537.95,
+          262.57
+        ],
+        "phy1-ap0": [
+          265.4,
+          559.55
+        ]
+      }
+    },
+    {
+      "duration_s": 10.04,
+      "cpu_busy": [
+        47.6,
+        42.3,
+        54.8,
+        48.5
+      ],
+      "mbps_rx_tx": {
+        "pppoe-wan": [
+          518.18,
+          166.7
+        ],
+        "phy1-ap0": [
+          168.54,
+          539.5
+        ]
+      }
+    },
+    {
+      "duration_s": 10.02,
+      "cpu_busy": [
+        13.3,
+        16,
+        16.3,
+        17.6
+      ],
+      "mbps_rx_tx": {
+        "pppoe-wan": [
+          94.4,
+          0.58
+        ],
+        "phy1-ap0": [
+          0.69,
+          98.31
+        ]
+      }
+    },
+    {
+      "duration_s": 10.02,
+      "cpu_busy": [
+        9.9,
+        8.7,
+        8.7,
+        9.4
+      ],
+      "mbps_rx_tx": {
+        "pppoe-wan": [
+          0.09,
+          0.08
+        ],
+        "phy1-ap0": [
+          0.13,
+          0.65
+        ]
+      }
+    },
+    {
+      "duration_s": 10.02,
+      "cpu_busy": [
+        11.5,
+        11.1,
+        12.3,
+        10.7
+      ],
+      "mbps_rx_tx": {
+        "pppoe-wan": [
+          0.21,
+          38.03
+        ],
+        "phy1-ap0": [
+          38.81,
+          0.81
+        ]
+      }
+    },
+    {
+      "duration_s": 10.04,
+      "cpu_busy": [
+        62.7,
+        36.6,
+        49.4,
+        42.6
+      ],
+      "mbps_rx_tx": {
+        "pppoe-wan": [
+          3.57,
+          546.32
+        ],
+        "phy1-ap0": [
+          551.53,
+          4.97
+        ]
+      }
+    }
+  ],
+  "limitations": [
+    "No reboot test",
+    "No physical hotplug interruption test",
+    "Router interface counters are not the phone app's reported result",
+    "30s RPCd windows are observational, not controlled causality"
+  ]
+}
