@@ -62,7 +62,11 @@ def build_apk_variant(pkg_name, pkg_version, depends, description, is_full=False
         pre_install = os.path.join(temp_dir, "pre-install")
         with open(pre_install, "w", encoding="utf-8") as f:
             f.write("""#!/bin/sh
-rm -f /etc/init.d/ark-*.apk-new /etc/init.d/equipe-*.apk-new /etc/hotplug.d/iface/*ark*.apk-new /etc/uci-defaults/*ark*.apk-new 2>/dev/null || true
+mkdir -p /tmp/ark-cfg-preserve 2>/dev/null || true
+for cfg in equipe_dashboard equipe_devices qos_equipe equipe_perf starlink_telemetry; do
+	[ -f "/etc/config/$cfg" ] && cp -af "/etc/config/$cfg" "/tmp/ark-cfg-preserve/$cfg" 2>/dev/null || true
+done
+rm -f /etc/init.d/ark-*.apk-new /etc/init.d/equipe-*.apk-new /etc/hotplug.d/iface/*ark*.apk-new /etc/hotplug.d/net/*ark*.apk-new /etc/uci-defaults/*ark*.apk-new /etc/config/*.apk-new 2>/dev/null || true
 exit 0
 """)
         os.chmod(pre_install, 0o755)
@@ -70,18 +74,23 @@ exit 0
         post_install = os.path.join(temp_dir, "post-install")
         with open(post_install, "w", encoding="utf-8") as f:
             f.write("""#!/bin/sh
-for apknew in /etc/init.d/ark-*.apk-new /etc/init.d/equipe-*.apk-new /etc/hotplug.d/iface/*ark*.apk-new /etc/uci-defaults/*ark*.apk-new; do
+for cfg in equipe_dashboard equipe_devices qos_equipe equipe_perf starlink_telemetry; do
+	[ -f "/tmp/ark-cfg-preserve/$cfg" ] && cp -af "/tmp/ark-cfg-preserve/$cfg" "/etc/config/$cfg" 2>/dev/null || true
+	rm -f "/etc/config/$cfg.apk-new" 2>/dev/null || true
+done
+rm -rf /tmp/ark-cfg-preserve 2>/dev/null || true
+for apknew in /etc/init.d/ark-*.apk-new /etc/init.d/equipe-*.apk-new /etc/hotplug.d/iface/*ark*.apk-new /etc/hotplug.d/net/*ark*.apk-new /etc/uci-defaults/*ark*.apk-new; do
 	[ -f "$apknew" ] || continue
 	target="${apknew%.apk-new}"
 	mv -f "$apknew" "$target" 2>/dev/null || true
 done
 chmod 0755 /usr/share/ark-router/VERSION 2>/dev/null || true
-chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history 2>/dev/null || true
+chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history /usr/sbin/ark-* 2>/dev/null || true
 chmod +x /usr/lib/ark/ark-control /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh 2>/dev/null || true
 chmod +x /usr/libexec/ark-starlink-telemetry 2>/dev/null || true
 chmod +x /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export 2>/dev/null || true
 chmod +x /etc/init.d/* 2>/dev/null || true
-chmod +x /etc/hotplug.d/iface/* 2>/dev/null || true
+chmod +x /etc/hotplug.d/iface/* /etc/hotplug.d/net/* 2>/dev/null || true
 chown -R root:root /www/luci-static/ark /www/luci-static/resources/view/equipe-dashboard /usr/lib/ark /usr/sbin/equipe-dashboard-control 2>/dev/null || true
 chmod -R a+rX /www/luci-static/ark /www/luci-static/resources/view/equipe-dashboard /usr/share/luci/menu.d /usr/share/rpcd/acl.d 2>/dev/null || true
 [ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable >/dev/null 2>&1 || true
