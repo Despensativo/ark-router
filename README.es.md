@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://openwrt.org/"><img src="https://img.shields.io/badge/OpenWrt-19.07%20a%2025.x-00B5E2?logo=openwrt&logoColor=white" alt="OpenWrt"></a>
-  <a href="https://github.com/Despensativo/ark-router/releases/tag/v2.0.2"><img src="https://img.shields.io/badge/release-v2.0.2-blue.svg" alt="Release v2.0.2"></a>
+  <a href="https://github.com/Despensativo/ark-router/releases/tag/v2.1.9"><img src="https://img.shields.io/badge/release-v2.1.9-blue.svg" alt="Release v2.1.9"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/UI-PT--BR%20%2F%20EN%20%2F%20ES-blue" alt="Trilingual UI">
   <img src="https://img.shields.io/badge/arch-all%20%2F%20noarch-orange" alt="Arquitectura: All">
@@ -25,7 +25,26 @@
 
 El proyecto no reemplaza OpenWrt ni LuCI: opera como una suite avanzada de gestión (`luci-app-ark-router`) con telemetría en tiempo real, cero bloatware, salvaguardas anti-bloqueo y funciones pioneras de red y blindaje de memoria.
 
-> **Versión Oficial Activa**: **`v2.0.2`** (consulte [`VERSION`](VERSION) y [Releases](https://github.com/Despensativo/ark-router/releases)).
+> **Versión Oficial Activa**: **`v2.1.9`** (consulte [`VERSION`](VERSION) y [Releases](https://github.com/Despensativo/ark-router/releases)).
+
+---
+
+## 🏆 Destaque de Ingeniería (`v2.1.9`): Arquitectura Dual-Engine de QoS & Kernel Networking
+
+**ARK Router v2.1.9** introduce una arquitectura de **Control de Colas y Latencia (SQM Dual-Engine)** combinada con calibraciones de bajo nivel en el Kernel Linux (`BQL`, `RPS Multi-Core`, `NAPI` e `IEEE 802.3x`), documentada íntegramente en [`docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md`](docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md) y [`docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md`](docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md):
+
+- **⚙️ Elección Inteligente entre 2 Motores de QoS en el Panel**:
+  - **🛡️ Opción 1 — `CAKE (Layer Cake / DiffServ4)`**: Motor clásico `sch_cake` con aislamiento automático por dispositivo (`dual-srchost` / `dual-dsthost`), `nat`, `wash` y `no-split-gso`.
+  - **🚀 Opción 2 — `HFSC + FQ-CoDel Turbo (Gamer & Gigabit Inteligente)`**: Motor `/usr/lib/sqm/ark_hfsc_fqcodel.qos` que combina 3 clases elásticas **HFSC (`Hierarchical Fair Service Curve`)** con **FQ-CoDel (`1024` flujos hash)**:
+    - **Cola `1:10` Real-Time (`rt` curve `< 1 ms`)**: Curva de dos pendientes (`m1 = 40%` por `8ms`, `m2 = 20%`) exclusiva para paquetes `<= 511 bytes` (`u32 match u16 0x0000 0xfe00 at 2`) de Juegos UDP, VoIP, Ping, DNS, `L4S ECT(1)` y TCP SYN/ACK — bloqueando superpaquetes GRO de `16 KB` en la vía rápida.
+    - **Cola `1:20` Interactive & Speed (`FQ-CoDel Turbo`)**: `ls` elástico hasta el `100%` del ancho de banda (`ul rate 100%`), `quantum 1514` (1 trama Ethernet por ronda DRR) y soporte nativo para **`ce_threshold` (L4S RFC 9332)**.
+    - **Cola `1:30` Bulk Scavenger (`CS1`)**: Aísla torrents y copias de seguridad en la subida (`m2 = 5%`), liberando el `95%` del ancho de banda al instante sin estrangular la descarga cuando el proveedor remarca tráfico a `CS1`.
+- **📡 Autocalibración por Perfil Físico de WAN (`xpon_bridge`, `xpon_vlan`, `dhcp_cable`, `mobile_starlink`)**: Ajusta automáticamente el overhead L2 (`34B` GPON PPPoE, `38B` PPPoE+VLAN, `18B` Cable DOCSIS/Starlink), `target`/`interval`/`ce_threshold`, **RFC 4638 Baby Jumbo Frames** (`eth1=1508` ➔ `pppoe-wan=1500` cero fragmentación), **RFC 4821 PLPMTUD** (`tcp_mtu_probing=1`) y MTU dinámico de túneles WireGuard (`1412` / `1420` / `1380`).
+- **🎮 Base BufferSpeed de 80+ Juegos, NAT Abierta Asistida (`180s`) & Escalado Multi-Core Simétrico (`[AL-ARK-100..102]`)**:
+  - **80+ Juegos y Consolas en 1 Clic**: Marcado bidireccional (`CS4` + `ct mark 0xa0`) para PS5/PSN, Xbox Live, Nintendo Switch, CS2, Valorant, Call of Duty/Warzone, Fortnite, EA FC, League of Legends, Discord y Cloud Gaming, con vía rápida en el cortafuegos (`ark_gaming_forward`) y timeout UDP de `180s`.
+  - **RPS Multi-Core Simétrico `7/3` + Presupuesto NAPI `256/1200` (`[AL-ARK-100]`)**: Distribuye los puertos LAN (`rps_cpus=7`) y WAN/Wi-Fi (`rps_cpus=3`) manteniendo la `CPU3` (`IRQ 123`) 100% dedicada al DMA RX (`0%` pérdida), reduciendo el retraso interno de subida bajo carga combinada (`16 Down + 16 Up`) de `159 ms` a **`0.10–0.44 ms`**.
+  - **BQL Físico `512 KB` Anti-Drop bajo PPPoE (`[AL-ARK-101]`)**: Calibra `limit_min=524288` (`512 KB`) y `fq_codel target 50ms interval 500ms quantum 1514 noecn` en el GMAC (`eth0`/`eth1`), eliminando el 100% de los descartes secundarios en tramas PPPoE (`0x8864` no-ECN).
+  - **Aislamiento de Tormentas de Pause Frames `IEEE 802.3x` (`[AL-ARK-102]`)**: Desactiva `rx/tx flow control` (`ethtool -A`) en los puertos LAN/WAN, impidiendo que adaptadores USB-Ethernet de clientes pausen el switch físico del router.
 
 ---
 
@@ -62,10 +81,10 @@ El proyecto no reemplaza OpenWrt ni LuCI: opera como una suite avanzada de gesti
     - Ejecución nativa en enrutadores con almacenamiento amplio y cargador ultrarrápido en RAM (0.3s) para dispositivos de 16 MB flash.
 12. **🛰️ Central Multi-Starlink (Telemetría y Alineación)**:
     - Diagnóstico de múltiples antenas Starlink: brújula 3D, obstrucciones, pérdida de paquetes, SNR y visor público local sin contraseña en `/starlink/`.
-13. **🔄 Ciclo Óptimo entre Fastpath (Flow Offload / PPE) y SQM/CAKE**:
+13. **🔄 Ciclo Óptimo entre Fastpath (Flow Offload / PPE) y SQM Dual-Engine (`CAKE` / `HFSC + FQ-CoDel Turbo`)**:
     - Conmutación con exclusión mutua estricta. Al desactivar SQM en el interruptor rápido del panel, la aceleración de hardware (Fastpath/PPE) se reactiva automáticamente.
-14. **🛡️ Auto-MTU Inteligente & Baby Jumbo MTU 1500 en PPPoE (RFC 4638)**:
-    - Sondeo ICMP real sin fragmentación y ajuste automático de MTU 1508/1512 en la interfaz física base para lograr MTU 1500 pura en el túnel PPPoE, con estado persistente en la tarjeta y el modal.
+14. **🛡️ Auto-MTU Inteligente, Baby Jumbo MTU 1500 en PPPoE (RFC 4638) & PLPMTUD (RFC 4821)**:
+    - Sondeo ICMP real sin fragmentación, ajuste automático de MTU 1508/1512 en la interfaz física base para lograr MTU 1500 pura en el túnel PPPoE y descubrimiento de PMTU en capa de paquete (`tcp_mtu_probing=1`).
 15. **📱 Arquitectura V2: Cockpit de Estado, Central de Recursos & Diseño Mobile-First**:
     - Separación ejecutiva entre el **Cockpit** (telemetría pura en vivo) y la **Central de Recursos** (ciclo de vida completo de Servicios Nativos y Plugins Opcionales + **Modo Desarrollador**), 100% responsivo de 360px a 1440px+.
 16. **🔀 Cambio en 1 Clic entre Modo Router y Modo Punto de Acceso (Dumb AP)**:
@@ -76,7 +95,7 @@ El proyecto no reemplaza OpenWrt ni LuCI: opera como una suite avanzada de gesti
     - Reparte conexiones P2P en más de 64.500 puertos entre ambas conexiones WAN, protegiendo estrictamente los puertos de sistema (80, 443, 53) en la conexión principal.
 19. **⚡ Servidor SMB 3.1.1 en Kernel (`ksmbd`), Wake-on-LAN & Cliente WireGuard Ultrarrápido**:
     - Servidor de archivos USB de alta velocidad en kernel (`ksmbd`), encendido remoto por Magic Packet (`etherwake`) e importación instantánea de túneles WireGuard (`.conf`).
-20. **🌎 Internacionalización Triple con 100% de Paridad (i18n — 4.423 Claves)**:
+20. **🌎 Internacionalización Triple con 100% de Paridad (i18n — 4.502 Claves)**:
     - Cobertura completa, nativa y auditada en Portugués de Brasil (PT-BR), Inglés (EN) y Español neutro (ES).
 
 ---
@@ -146,12 +165,12 @@ Descargue los paquetes directamente de la sección de **[Releases](https://githu
 
 - **OpenWrt Moderno (gestor APK)**:
   ```sh
-  apk add ./luci-app-ark-router-2.0.2-r1.apk
+  apk add ./luci-app-ark-router-2.1.9-r1.apk
   /etc/init.d/rpcd restart
   ```
 - **OpenWrt Tradicional / Legado (gestor OPKG)**:
   ```sh
-  opkg install ./luci-app-ark-router-2.0.2-r1.ipk
+  opkg install ./luci-app-ark-router-2.1.9-r1.ipk
   /etc/init.d/rpcd restart
   ```
 

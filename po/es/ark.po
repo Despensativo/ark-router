@@ -13525,3 +13525,33 @@ msgstr "El tráfico IPv6 sale directo a velocidad de fibra (~4,8ms) y el tráfic
 msgid "Reversão inteligente com 1 clique: salva o estado original da WAN/DHCP ao ligar e restaura tudo exatamente como estava ao desligar."
 msgstr "Reversión inteligente con 1 clic: guarda el estado original de WAN/DHCP al encender y restaura todo exactamente como estaba al apagar."
 
+msgid "1. Base BufferSpeed de 80+ Jogos & Consoles (Marcação Bidirecional CS4 + 0xa0):"
+msgstr "1. Base BufferSpeed de 80+ Juegos y Consolas (Marcado Bidireccional CS4 + 0xa0):"
+
+msgid "2. NAT Aberto Assistido, RPS Multi-Core 7/3 & BQL Físico abaixo do PPPoE (512 KB + quantum 1514):"
+msgstr "2. NAT Abierta Asistida, RPS Multi-Core 7/3 y BQL Físico bajo PPPoE (512 KB + quantum 1514):"
+
+msgid "CONTROLE DE FILAS & LATÊNCIA"
+msgstr "CONTROL DE COLAS Y LATENCIA"
+
+msgid "⚙️ Escolha o Motor de QoS (2 Opções Inteligentes):"
+msgstr "⚙️ Elija el Motor de QoS (2 Opciones Inteligentes):"
+
+msgid "⚙️ Motor de QoS (Escolha entre as 2 Opções):"
+msgstr "⚙️ Motor de QoS (Elija entre las 2 Opciones):"
+
+msgid "⚠️ Conflito Detectado: Modo 6 IPv6 (Túnel 464XLAT / Cloudflare) Ativo"
+msgstr "⚠️ Conflicto Detectado: Modo 6 IPv6 (Túnel 464XLAT / Cloudflare) Activo"
+
+msgid "🎬 Testar velocidade (Fast.com)"
+msgstr "🎬 Probar velocidad (Fast.com)"
+
+msgid "🎮 Portas de Jogos & NAT Aberto Inteligente (80+ Jogos + BQL Físico)"
+msgstr "🎮 Puertos de Juegos y NAT Abierta Inteligente (80+ Juegos + BQL Físico)"
+
+msgid "🚀 Opção 2: HFSC + FQ-CoDel Turbo"
+msgstr "🚀 Opción 2: HFSC + FQ-CoDel Turbo"
+
+msgid "🛡️ Opção 1: CAKE (Layer Cake)"
+msgstr "🛡️ Opción 1: CAKE (Layer Cake)"
+

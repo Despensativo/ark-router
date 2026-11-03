@@ -15,11 +15,16 @@ esac
 [ -f /usr/lib/ark/common.sh ] || exit 0
 . /usr/lib/ark/common.sh
 
+if command -v ark_sync_clat_p2p_routes >/dev/null 2>&1; then
+	ark_sync_clat_p2p_routes >/dev/null 2>&1 || true
+fi
+
 if command -v ark_ipv6_prefix_hygiene >/dev/null 2>&1; then
 	ark_ipv6_prefix_hygiene >/dev/null 2>&1 || true
 	(
 		sleep 3
 		ark_ipv6_prefix_hygiene
+		command -v ark_sync_clat_p2p_routes >/dev/null 2>&1 && ark_sync_clat_p2p_routes
 	) >/dev/null 2>&1 &
 fi
 

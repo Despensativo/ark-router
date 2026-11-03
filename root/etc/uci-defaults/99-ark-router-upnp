@@ -7,6 +7,14 @@ if [ -f /etc/config/upnpd ]; then
 	[ "$(uci -q get upnpd.config.use_stun)" = "1" ] || { uci -q set upnpd.config.use_stun='1'; changed=1; }
 	[ "$(uci -q get upnpd.config.stun_host)" = "stun.cloudflare.com" ] || { uci -q set upnpd.config.stun_host='stun.cloudflare.com'; changed=1; }
 	[ "$(uci -q get upnpd.config.stun_port)" = "3478" ] || { uci -q set upnpd.config.stun_port='3478'; changed=1; }
+	wan_p="$(uci -q get network.wan.proto || true)"
+	if [ -n "$wan_p" ] && [ "$wan_p" != "none" ] && [ "$wan_p" != "dhcpv6" ]; then
+		cur_ext="$(uci -q get upnpd.config.external_iface || true)"
+		if [ -z "$cur_ext" ] || [ "$cur_ext" = "ark_clat6" ]; then
+			uci -q set upnpd.config.external_iface='wan'
+			changed=1
+		fi
+	fi
 	# Substitui padrao legado ADSL do OpenWrt (1024/512 KB/s = 8/4 Mbps) por 1000 Mbps (128000 KB/s)
 	cur_dl="$(uci -q get upnpd.config.download || true)"
 	if [ -z "$cur_dl" ] || [ "$cur_dl" = "1024" ]; then

@@ -1,0 +1,1 @@
+ARK Router Unified HFSC + FQ-CoDel Turbo intelligent shaper. Combines Real-Time Service Curves (1:10 Gamer/VoIP/L4S <1ms) with Gigabit FQ-CoDel Turbo (1:20) and Elastic Bulk Scavenger (1:30) without legacy iptables.

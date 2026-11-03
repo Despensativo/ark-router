@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://openwrt.org/"><img src="https://img.shields.io/badge/OpenWrt-19.07%20a%2025.x-00B5E2?logo=openwrt&logoColor=white" alt="OpenWrt"></a>
-  <a href="https://github.com/Despensativo/ark-router/releases/tag/v2.0.2"><img src="https://img.shields.io/badge/release-v2.0.2-blue.svg" alt="Release v2.0.2"></a>
+  <a href="https://github.com/Despensativo/ark-router/releases/tag/v2.1.9"><img src="https://img.shields.io/badge/release-v2.1.9-blue.svg" alt="Release v2.1.9"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/UI-PT--BR%20%2F%20EN%20%2F%20ES-blue" alt="Trilingual UI">
   <img src="https://img.shields.io/badge/arch-all%20%2F%20noarch-orange" alt="Architecture: All">
@@ -25,7 +25,26 @@ O **ARK Router** transforma roteadores com **OpenWrt** em verdadeiras centrais d
 
 Ele não substitui o OpenWrt nem o LuCI: ele opera como uma suíte avançada de controle (`luci-app-ark-router`) com telemetria em tempo real, zero bloatware, salvaguardas anti-lockout e recursos pioneiros de rede e blindagem de memória.
 
-> **Versão Oficial Ativa**: **`v2.0.2`** (consulte [`VERSION`](VERSION) e [Releases](https://github.com/Despensativo/ark-router/releases)).
+> **Versão Oficial Ativa**: **`v2.1.9`** (consulte [`VERSION`](VERSION) e [Releases](https://github.com/Despensativo/ark-router/releases)).
+
+---
+
+## 🏆 Destaque de Engenharia (`v2.1.9`): Arquitetura Dual-Engine de QoS & Kernel Networking
+
+O **ARK Router v2.1.9** introduz uma engenharia inédita de **Controle de Filas e Latência (SQM Dual-Engine)** combinada a calibrações de baixo nível no Kernel Linux (`BQL`, `RPS Multi-Core`, `NAPI` e `IEEE 802.3x`), documentada integralmente em [`docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md`](docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md) e [`docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md`](docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md):
+
+- **⚙️ Escolha Inteligente entre 2 Motores de QoS no Painel**:
+  - **🛡️ Opção 1 — `CAKE (Layer Cake / DiffServ4)`**: Motor clássico `sch_cake` com isolamento automático por dispositivo (`dual-srchost` / `dual-dsthost`), `nat`, `wash` e `no-split-gso`, ideal para justiça de banda plug-and-play entre múltiplos usuários.
+  - **🚀 Opção 2 — `HFSC + FQ-CoDel Turbo (Gamer & Gigabit Inteligente)`**: Motor `/usr/lib/sqm/ark_hfsc_fqcodel.qos` que une curvas matemáticas **HFSC (`Hierarchical Fair Service Curve`)** em 3 classes elásticas com **FQ-CoDel (`1024` fluxos hash)**:
+    - **Fila `1:10` Real-Time (`rt` curve `< 1 ms`)**: Curva de duas inclinações (`m1 = 40%` por `8ms`, `m2 = 20%`) exclusiva para pacotes `<= 511 bytes` (`u32 match u16 0x0000 0xfe00 at 2`) de Jogos UDP, VoIP, Ping, DNS, `L4S ECT(1)` e TCP SYN/ACK — bloqueando super-pacotes GRO de `16 KB` de invadirem a via rápida.
+    - **Fila `1:20` Interactive & Speed (`FQ-CoDel Turbo`)**: `ls` elástico até `100%` da banda (`ul rate 100%`), `quantum 1514` (1 quadro Ethernet por rodada DRR) e suporte nativo a **`ce_threshold` (L4S RFC 9332)**.
+    - **Fila `1:30` Bulk Scavenger (`CS1`)**: Isola torrents e backups no Upload (`m2 = 5%`), liberando `95%` da banda instantaneamente sem estrangular o Download quando provedores remarcam tráfego para `CS1`.
+- **📡 Auto-Calibração por Perfil Físico da WAN (`xpon_bridge`, `xpon_vlan`, `dhcp_cable`, `mobile_starlink`)**: Ajusta automaticamente overhead L2 (`34B` GPON PPPoE, `38B` PPPoE+VLAN, `18B` Cabo DOCSIS/Starlink), `target`/`interval`/`ce_threshold`, **RFC 4638 Baby Jumbo Frames** (`eth1=1508` ➔ `pppoe-wan=1500` zero fragmentação), **RFC 4821 PLPMTUD** (`tcp_mtu_probing=1`) e MTU dinâmico de túneis WireGuard (`1412` / `1420` / `1380`).
+- **🎮 Base BufferSpeed de 80+ Jogos, NAT Aberto Assistido (`180s`) & Escalonamento Multi-Core Simétrico (`[AL-ARK-100..102]`)**:
+  - **80+ Jogos & Consoles em 1 Clique**: Marcação bidirecional (`CS4` + `ct mark 0xa0`) para PS5/PSN, Xbox Live, Nintendo Switch, CS2, Valorant, Call of Duty/Warzone, Fortnite, EA FC, League of Legends, Discord e Cloud Gaming, com fast-path no firewall (`ark_gaming_forward`) e timeout UDP de `180s`.
+  - **RPS Multi-Core Simétrico `7/3` + Orçamento NAPI `256/1200` (`[AL-ARK-100]`)**: Distribui portas LAN (`rps_cpus=7`) e WAN/Wi-Fi (`rps_cpus=3`) mantendo a `CPU3` (`IRQ 123`) 100% dedicada ao DMA RX (`0%` perda), reduzindo o atraso interno de Upload sob estresse simultâneo (`16 Down + 16 Up`) de `159 ms` para **`0.10–0.44 ms`**.
+  - **BQL Físico `512 KB` Anti-Drop abaixo do PPPoE (`[AL-ARK-101]`)**: Calibra `limit_min=524288` (`512 KB`) e `fq_codel target 50ms interval 500ms quantum 1514 noecn` no GMAC (`eth0`/`eth1`), eliminando 100% dos descartes secundários em quadros PPPoE (`0x8864` não-ECN) e transferindo o controle AQM integralmente para o motor SQM.
+  - **Isolamento de Tempestades de Pause Frames `IEEE 802.3x` (`[AL-ARK-102]`)**: Desativa `rx/tx flow control` (`ethtool -A`) nas portas LAN/WAN, impedindo que adaptadores USB-Ethernet de clientes pausem o switch físico do roteador.
 
 ---
 
@@ -62,10 +81,10 @@ Ele não substitui o OpenWrt nem o LuCI: ele opera como uma suíte avançada de 
     - Executa nativamente em roteadores com armazenamento amplo e auto-extrai na RAM (`/tmp`) em 0.3s em aparelhos compactos de 16MB SPI flash.
 12. **🛰️ Central Multi-Starlink (Telemetria & Alinhamento)**:
     - Diagnóstico de múltiplas antenas Starlink: bússola 3D, obstruções, perda de pacotes, SNR e visualizador público `/starlink/` para a rede local sem necessidade de login.
-13. **🔄 Ciclo Perfeito de Fastpath (Flow Offload / PPE) e SQM/CAKE**:
+13. **🔄 Ciclo Perfeito de Fastpath (Flow Offload / PPE) e SQM Dual-Engine (`CAKE` / `HFSC + FQ-CoDel Turbo`)**:
     - Trava de exclusão mútua estrita entre Fastpath e SQM. Ao desligar o SQM no switch rápido do dashboard, o Fastpath de hardware é reativado automaticamente pelo procd.
-14. **🛡️ Auto-MTU Inteligente & Baby Jumbo MTU 1500 em PPPoE (RFC 4638)**:
-    - Sondagem ICMP real sem fragmentação e configuração automática de MTU 1508/1512 na interface base física para garantir MTU 1500 pura no túnel PPPoE, com status persistente no card e no modal.
+14. **🛡️ Auto-MTU Inteligente, Baby Jumbo MTU 1500 em PPPoE (RFC 4638) & PLPMTUD (RFC 4821)**:
+    - Sondagem ICMP real sem fragmentação, configuração automática de MTU 1508/1512 na interface base física para garantir MTU 1500 pura no túnel PPPoE e descoberta de PMTU em camada de pacote (`tcp_mtu_probing=1`).
 15. **📱 Arquitetura V2: Cockpit Status-Only, Central de Recursos & Mobile-First**:
     - Separação executiva entre o **Cockpit** (telemetria pura) e a **Central de Recursos** (ciclo de vida completo de Serviços Nativos e Plugins Opcionais + **Modo Desenvolvedor**), 100% contido em telas de 360px a 1440px+.
 16. **🔀 Alternância 1-Click entre Modo Roteador e Modo Ponto de Acesso & Switch (Dumb AP)**:
@@ -76,7 +95,7 @@ Ele não substitui o OpenWrt nem o LuCI: ele opera como uma suíte avançada de 
     - Distribui conexões P2P em mais de 64.500 portas entre as WANs, preservando portas de sistema (80, 443, 53) prioritárias na WAN primária.
 19. **⚡ Servidor SMB 3.1.1 em Kernel (`ksmbd`), Wake-on-LAN & WireGuard Ultrarrápido**:
     - Compartilhamento USB de alta velocidade em kernel (`ksmbd`), despertar remoto via Magic Packet (`etherwake`) e importação instantânea de túneis WireGuard (`.conf`).
-20. **🌎 Internacionalização Tripla com 100% de Paridade (i18n Triplo — 4.423 Chaves)**:
+20. **🌎 Internacionalização Tripla com 100% de Paridade (i18n Triplo — 4.502 Chaves)**:
     - Cobertura integral, nativa e auditada em Português do Brasil (PT-BR), Inglês (EN) e Espanhol neutro (ES).
 
 ---
@@ -146,12 +165,12 @@ Baixe os pacotes gerados diretamente na aba de **[Releases](https://github.com/D
 
 - **OpenWrt Moderno (gerenciador APK)**:
   ```sh
-  apk add ./luci-app-ark-router-2.0.2-r1.apk
+  apk add ./luci-app-ark-router-2.1.9-r1.apk
   /etc/init.d/rpcd restart
   ```
 - **OpenWrt Tradicional / Legado (gerenciador OPKG)**:
   ```sh
-  opkg install ./luci-app-ark-router-2.0.2-r1.ipk
+  opkg install ./luci-app-ark-router-2.1.9-r1.ipk
   /etc/init.d/rpcd restart
   ```
 

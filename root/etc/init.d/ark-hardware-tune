@@ -147,7 +147,7 @@ ark_tune_wifi_aql() {
 			fi
 			[ -w "$phy/aqm" ] && echo "fq_limit 4096" > "$phy/aqm" 2>/dev/null || true
 			[ -w "$phy/aqm" ] && echo "fq_memory_limit 16777216" > "$phy/aqm" 2>/dev/null || true
-			[ -w "$phy/aqm" ] && echo "fq_quantum 12288" > "$phy/aqm" 2>/dev/null || true
+			[ -w "$phy/aqm" ] && echo "fq_quantum 1514" > "$phy/aqm" 2>/dev/null || true
 		else
 			# 2.4 GHz (HT20/HE20): slower MCS rates & IoT clients.
 			[ -w "$phy/aql_threshold" ] && echo 15000 > "$phy/aql_threshold" 2>/dev/null || true
@@ -159,7 +159,7 @@ ark_tune_wifi_aql() {
 			fi
 			[ -w "$phy/aqm" ] && echo "fq_limit 1024" > "$phy/aqm" 2>/dev/null || true
 			[ -w "$phy/aqm" ] && echo "fq_memory_limit 4194304" > "$phy/aqm" 2>/dev/null || true
-			[ -w "$phy/aqm" ] && echo "fq_quantum 4542" > "$phy/aqm" 2>/dev/null || true
+			[ -w "$phy/aqm" ] && echo "fq_quantum 1514" > "$phy/aqm" 2>/dev/null || true
 		fi
 	done
 }
@@ -171,9 +171,11 @@ ark_tune_tcp_stack() {
 	# O kernel Linux moderno possui blackhole detection automatico para fallback transparente
 	sysctl -q -w net.ipv4.tcp_fastopen=3 2>/dev/null || true
 
-	# 2. Anti-Bufferbloat no Socket Local do Host (Google BBR / RFC optimization)
+	# 2. Anti-Bufferbloat no Socket Local do Host (Google BBR / TSQ RFC optimization)
 	# Impede acumulo excessivo de dados na fila de escrita do socket (latencia DoH e VPN < 1ms)
 	sysctl -q -w net.ipv4.tcp_notsent_lowat=16384 2>/dev/null || true
+	sysctl -q -w net.ipv4.tcp_limit_output_bytes=262144 2>/dev/null || true
+	sysctl -q -w net.ipv4.tcp_pacing_ss_ratio=150 2>/dev/null || true
 
 	# 3. Autotuning e janelas TCP adaptadas
 	sysctl -q -w net.ipv4.tcp_window_scaling=1 2>/dev/null || true
@@ -182,6 +184,10 @@ ark_tune_tcp_stack() {
 	# 4. ECN (Explicit Congestion Notification): Modo 2 (Negociado sob demanda)
 	# Seguro para 100% dos servidores legados e plenamente compativel com marcacao CE do CAKE
 	sysctl -q -w net.ipv4.tcp_ecn=2 2>/dev/null || true
+
+	# 4b. RFC 4821 PLPMTUD: Imunidade a Black Holes de PMTU (CGNAT / PPPoE / VPNs que filtram ICMP Fragmentation Needed)
+	sysctl -q -w net.ipv4.tcp_mtu_probing=1 2>/dev/null || true
+	sysctl -q -w net.ipv4.tcp_base_mss=1024 2>/dev/null || true
 
 	# 5. RFC 4787 NAT Flowtable Timeouts (previne queda de sessoes UDP de jogos/voz/WireGuard apos 30s)
 	sysctl -q -w net.netfilter.nf_flowtable_udp_timeout=180 2>/dev/null || true
@@ -465,7 +471,8 @@ ark_hardware_tune_apply() {
 
 		sysctl -q -w net.core.netdev_max_backlog=10000 2>/dev/null || true
 		sysctl -q -w vm.min_free_kbytes=65536 2>/dev/null || true
-		sysctl -q -w net.core.netdev_budget=600 2>/dev/null || true
+		sysctl -q -w net.core.dev_weight=256 2>/dev/null || true
+		sysctl -q -w net.core.netdev_budget=1200 2>/dev/null || true
 		sysctl -q -w net.core.netdev_budget_usecs=20000 2>/dev/null || true
 		sysctl -q -w net.ipv4.tcp_rmem="4096 87380 16777216" 2>/dev/null || true
 		sysctl -q -w net.ipv4.tcp_wmem="4096 65536 16777216" 2>/dev/null || true
@@ -476,14 +483,15 @@ ark_hardware_tune_apply() {
 		local wan_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
 		local wan_dl_mask="$rps_mask"
 		local lan_ul_mask=1
+		local wifi_ul_mask=1
 		if [ "$cpu_cores" -eq 4 ] && grep -qE 'mt76|mt79|ath|qca' /proc/interrupts 2>/dev/null; then
-			# Pipeline 4-Core Dedicado (Zero Contencao de Spinlock no CAKE e Zero Saturação de Core):
-			# CPU 3 (0x8): Hardware Ethernet DMA RX (napi/mtk_eth-6 em eth0/eth1, rps=0)
-			# CPU 2 (0x4): Hardware Wi-Fi IRQ 119 + NAPI phy0-* + mt76-tx (rps=0)
-			# CPU 1 (0x2): Motor Dedicado de Download (pppoe-wan rps=2 -> ifb4pppoe-wan CAKE)
-			# CPU 0 (0x1): Motor Dedicado de Upload (lan1..4 + phy*-ap* rps=1 -> pppoe-wan CAKE)
-			wan_dl_mask="2"
-			lan_ul_mask="1"
+			# Pipeline 4-Core Multi-Queue RPS (Zero Backlog em /proc/net/softnet_stat sob Carga Combinada 16x16):
+			# CPU 3 (0x8): Hardware Ethernet DMA RX Dedicado (IRQ 123 mtk_napi_rx, rps=0)
+			# CPU 0..2 (0x7): 3-Core Hash RPS para Upload Cabeado (lan1..4 rps=7 -> pppoe-wan HFSC/CAKE)
+			# CPU 0..1 (0x3): 2-Core Hash RPS para Download WAN (pppoe-wan rps=3 -> ifb4pppoe-wan HFSC/CAKE)
+			wan_dl_mask="3"
+			lan_ul_mask="7"
+			wifi_ul_mask="3"
 		fi
 		for iface_dir in /sys/class/net/*; do
 			[ -d "$iface_dir" ] || continue
@@ -495,10 +503,13 @@ ark_hardware_tune_apply() {
 					rps_target="$wan_dl_mask"
 					ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true
 					ethtool -K "$ifname" rx-udp-gro-forwarding on 2>/dev/null || true
-					ip link set dev "$ifname" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
+					ip link set dev "$ifname" txqueuelen 128 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
 					;;
-				lan[0-9]*|phy*|wlan*|ath*|ra*)
+				lan[0-9]*)
 					[ "$cpu_cores" -ge 4 ] && rps_target="$lan_ul_mask" || rps_target=0
+					;;
+				phy*|wlan*|ath*|ra*)
+					[ "$cpu_cores" -ge 4 ] && rps_target="$wifi_ul_mask" || rps_target=0
 					;;
 				lo|ifb*|br-*|eth*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|*)
 					rps_target=0
@@ -587,7 +598,7 @@ ark_hardware_tune_apply() {
 					rps_target="$rps_mask"
 					ethtool -K "$ifname" rx-gro-list off 2>/dev/null || true
 					ethtool -K "$ifname" rx-udp-gro-forwarding on 2>/dev/null || true
-					ip link set dev "$ifname" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
+					ip link set dev "$ifname" txqueuelen 128 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
 					;;
 				lan[0-9]*|phy*|wlan*|ath*|ra*)
 					[ "$cpu_cores" -ge 4 ] && rps_target=1 || rps_target=0
@@ -633,7 +644,7 @@ ark_hardware_tune_apply() {
 		done
 	fi
 
-	# Ensure SQM ingress Voice Tin filters and cake_mq state are preserved after hotplug/reload
+	# Ensure SQM ingress Voice Tin filters, cake_mq state, and AQL/NAPI low-latency bounds are preserved after hotplug/reload
 	if [ -f /usr/lib/ark/modules/sqm.sh ]; then
 		. /usr/lib/ark/modules/sqm.sh 2>/dev/null || true
 		if command -v ark_apply_ingress_voice_tin_filters >/dev/null 2>&1; then
@@ -643,6 +654,10 @@ ark_hardware_tune_apply() {
 				_sq_if="$(uci -q get "sqm.$_sq.interface" 2>/dev/null || true)"
 				[ -n "$_sq_if" ] && ark_apply_ingress_voice_tin_filters "$_sq_if" 2>/dev/null || true
 			done
+		fi
+		command -v ark_sync_gaming_ports_and_bql >/dev/null 2>&1 && ark_sync_gaming_ports_and_bql 2>/dev/null || true
+		if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
+			command -v ark_sync_lan_selective_offload >/dev/null 2>&1 && ark_sync_lan_selective_offload 2>/dev/null || true
 		fi
 	fi
 

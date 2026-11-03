@@ -86,7 +86,7 @@ for apknew in /etc/init.d/ark-*.apk-new /etc/init.d/equipe-*.apk-new /etc/hotplu
 done
 chmod 0755 /usr/share/ark-router/VERSION 2>/dev/null || true
 chmod +x /usr/sbin/equipe-dashboard-control /usr/sbin/ark-doctor /usr/sbin/equipe-traffic-history /usr/sbin/ark-* 2>/dev/null || true
-chmod +x /usr/lib/ark/ark-control /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh 2>/dev/null || true
+chmod +x /usr/lib/ark/ark-control /usr/lib/ark/*.sh /usr/lib/ark/modules/*.sh /usr/lib/sqm/*.qos 2>/dev/null || true
 chmod +x /usr/libexec/ark-starlink-telemetry 2>/dev/null || true
 chmod +x /www/cgi-bin/ark-starlink-telemetry /www/cgi-bin/ark-mesh-export 2>/dev/null || true
 chmod +x /etc/init.d/* 2>/dev/null || true
@@ -153,6 +153,7 @@ exit 0
                     or rel_path.startswith("etc/uci-defaults/")
                     or rel_path.startswith("etc/hotplug.d/")
                     or rel_path.endswith(".sh")
+                    or rel_path.endswith(".qos")
                 )
                 os.chmod(file_path, 0o755 if is_exec else 0o644)
 

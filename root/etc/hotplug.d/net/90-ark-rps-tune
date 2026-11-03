@@ -9,20 +9,45 @@ cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
 
 rps_mask="$(ark_calculate_rps_mask "$cpu_cores")"
 if [ "$cpu_cores" -eq 4 ] && grep -qE 'mt76|mt79|ath|qca' /proc/interrupts 2>/dev/null; then
-	rps_mask="2"
+	rps_mask="3"
 fi
 rps_target=0
 rfs_target=0
+sqm_active=0
+uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'" && sqm_active=1
+gro_cap=16384
+gro_to=250000
+napi_def=20
+if [ "$sqm_active" = "1" ]; then
+	gro_cap=8192
+	gro_to=20000
+	napi_def=2
+fi
 
 case "$INTERFACE" in
 	pppoe*)
 		rps_target="$rps_mask"
 		ethtool -K "$INTERFACE" rx-gro-list off 2>/dev/null || true
 		ethtool -K "$INTERFACE" rx-udp-gro-forwarding on 2>/dev/null || true
-		ip link set dev "$INTERFACE" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
+		ip link set dev "$INTERFACE" txqueuelen 128 gro_max_size "$gro_cap" gro_ipv4_max_size "$gro_cap" gso_max_size "$gro_cap" gso_ipv4_max_size "$gro_cap" 2>/dev/null || true
 		;;
-	lan[0-9]*|phy*|wlan*|ath*|ra*)
-		[ "$cpu_cores" -ge 4 ] && rps_target=1 || rps_target=0
+	lan[0-9]*)
+		if [ "$cpu_cores" -eq 4 ] && grep -qE 'mt76|mt79|ath|qca' /proc/interrupts 2>/dev/null; then
+			rps_target=7
+		elif [ "$cpu_cores" -ge 4 ]; then
+			rps_target=1
+		else
+			rps_target=0
+		fi
+		;;
+	phy*|wlan*|ath*|ra*)
+		if [ "$cpu_cores" -eq 4 ] && grep -qE 'mt76|mt79|ath|qca' /proc/interrupts 2>/dev/null; then
+			rps_target=3
+		elif [ "$cpu_cores" -ge 4 ]; then
+			rps_target=1
+		else
+			rps_target=0
+		fi
 		;;
 	lo|ifb*|br-*|eth*|wg*|tailscale*|zt*|tun*|tap*|sit*|gre*|veth*|*)
 		rps_target=0
@@ -32,9 +57,9 @@ esac
 wan_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
 wan_proto="$(uci -q get network.wan.proto || uci -q get network.wan1.proto || echo '')"
 if [ -n "$wan_phys" ]; then
-	[ -w "/sys/class/net/$wan_phys/gro_flush_timeout" ] && echo 250000 > "/sys/class/net/$wan_phys/gro_flush_timeout" 2>/dev/null || true
-	[ -w "/sys/class/net/$wan_phys/napi_defer_hard_irqs" ] && echo 20 > "/sys/class/net/$wan_phys/napi_defer_hard_irqs" 2>/dev/null || true
-	ip link set dev "$wan_phys" gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
+	[ -w "/sys/class/net/$wan_phys/gro_flush_timeout" ] && echo "$gro_to" > "/sys/class/net/$wan_phys/gro_flush_timeout" 2>/dev/null || true
+	[ -w "/sys/class/net/$wan_phys/napi_defer_hard_irqs" ] && echo "$napi_def" > "/sys/class/net/$wan_phys/napi_defer_hard_irqs" 2>/dev/null || true
+	ip link set dev "$wan_phys" gro_max_size "$gro_cap" gro_ipv4_max_size "$gro_cap" gso_max_size "$gro_cap" gso_ipv4_max_size "$gro_cap" 2>/dev/null || true
 	if [ "$wan_proto" = "pppoe" ]; then
 		sysctl -q -w "net.ipv6.conf.${wan_phys}.disable_ipv6=1" 2>/dev/null || true
 	fi
@@ -45,16 +70,19 @@ if [ -n "$wan_phys" ]; then
 		[ -w "$q" ] && echo 0 > "$q" 2>/dev/null || true
 	done
 fi
-if [ "$INTERFACE" = "$wan_phys" ] || [ "${INTERFACE#pppoe}" != "$INTERFACE" ] || [ "${INTERFACE#lan}" != "$INTERFACE" ] || [ "$INTERFACE" = "eth0" ]; then
-	[ -w "/sys/class/net/$INTERFACE/gro_flush_timeout" ] && echo 250000 > "/sys/class/net/$INTERFACE/gro_flush_timeout" 2>/dev/null || true
-	[ -w "/sys/class/net/$INTERFACE/napi_defer_hard_irqs" ] && echo 20 > "/sys/class/net/$INTERFACE/napi_defer_hard_irqs" 2>/dev/null || true
-	ip link set dev "$INTERFACE" gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
+if [ "$INTERFACE" = "$wan_phys" ] || [ "${INTERFACE#lan}" != "$INTERFACE" ] || [ "$INTERFACE" = "eth0" ]; then
+	[ -w "/sys/class/net/$INTERFACE/gro_flush_timeout" ] && echo "$gro_to" > "/sys/class/net/$INTERFACE/gro_flush_timeout" 2>/dev/null || true
+	[ -w "/sys/class/net/$INTERFACE/napi_defer_hard_irqs" ] && echo "$napi_def" > "/sys/class/net/$INTERFACE/napi_defer_hard_irqs" 2>/dev/null || true
+	ip link set dev "$INTERFACE" gro_max_size "$gro_cap" gro_ipv4_max_size "$gro_cap" gso_max_size "$gro_cap" gso_ipv4_max_size "$gro_cap" 2>/dev/null || true
+elif [ "${INTERFACE#pppoe}" != "$INTERFACE" ]; then
+	[ -w "/sys/class/net/$INTERFACE/gro_flush_timeout" ] && echo 0 > "/sys/class/net/$INTERFACE/gro_flush_timeout" 2>/dev/null || true
+	[ -w "/sys/class/net/$INTERFACE/napi_defer_hard_irqs" ] && echo 0 > "/sys/class/net/$INTERFACE/napi_defer_hard_irqs" 2>/dev/null || true
 fi
 
 case "$INTERFACE" in
 	ifb*)
 		ethtool -K "$INTERFACE" rx-gro-list off 2>/dev/null || true
-		ip link set dev "$INTERFACE" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
+		ip link set dev "$INTERFACE" txqueuelen 1000 gro_max_size "$gro_cap" gro_ipv4_max_size "$gro_cap" gso_max_size "$gro_cap" gso_ipv4_max_size "$gro_cap" 2>/dev/null || true
 		;;
 esac
 

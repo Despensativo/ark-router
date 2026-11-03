@@ -896,10 +896,63 @@ sync_ipv6_clat_tunnel() {
 		engine_mode="464xlat"
 	fi
 
-	if [ -n "$(uci -q get network.wan.proto)" ]; then
+	uci -q delete network.ark_clat_local 2>/dev/null || true
+	uci -q delete network.ark_clat_p2p 2>/dev/null || true
+	uci -q delete firewall.ark_clat_p2p_udp 2>/dev/null || true
+	uci -q delete firewall.ark_clat_p2p_low 2>/dev/null || true
+	uci -q delete firewall.ark_clat_p2p_out 2>/dev/null || true
+
+	local wan_proto="$(uci -q get network.wan.proto || echo '')"
+	if [ -n "$wan_proto" ]; then
 		if [ "$engine_mode" = "cloudflare_anycast" ]; then
 			local fallback_metric="20"
 			uci -q set "network.wan.metric=$fallback_metric"
+			if [ "$wan_proto" != "none" ] && [ "$wan_proto" != "dhcpv6" ]; then
+				uci -q set network.ark_clat_local=rule
+				uci -q set network.ark_clat_local.mark='0x1450'
+				uci -q set network.ark_clat_local.lookup='main'
+				uci -q set network.ark_clat_local.suppress_prefixlength='0'
+				uci -q set network.ark_clat_local.priority='895'
+
+				uci -q set network.ark_clat_p2p=rule
+				uci -q set network.ark_clat_p2p.mark='0x1450'
+				uci -q set network.ark_clat_p2p.lookup='5200'
+				uci -q set network.ark_clat_p2p.priority='902'
+
+				uci -q set firewall.ark_clat_p2p_udp=rule
+				uci -q set firewall.ark_clat_p2p_udp.name='ARK-CLAT-P2P-UDP-Bypass'
+				uci -q set firewall.ark_clat_p2p_udp.src='lan'
+				uci -q set firewall.ark_clat_p2p_udp.dest='*'
+				uci -q set firewall.ark_clat_p2p_udp.family='ipv4'
+				uci -q set firewall.ark_clat_p2p_udp.proto='udp'
+				uci -q set firewall.ark_clat_p2p_udp.dest_port='1024-65535'
+				uci -q set firewall.ark_clat_p2p_udp.set_mark='0x1450'
+				uci -q set firewall.ark_clat_p2p_udp.target='MARK'
+
+				uci -q set firewall.ark_clat_p2p_low=rule
+				uci -q set firewall.ark_clat_p2p_low.name='ARK-CLAT-P2P-LowUDP-Bypass'
+				uci -q set firewall.ark_clat_p2p_low.src='lan'
+				uci -q set firewall.ark_clat_p2p_low.dest='*'
+				uci -q set firewall.ark_clat_p2p_low.family='ipv4'
+				uci -q set firewall.ark_clat_p2p_low.proto='udp'
+				uci -q set firewall.ark_clat_p2p_low.dest_port='88 500'
+				uci -q set firewall.ark_clat_p2p_low.set_mark='0x1450'
+				uci -q set firewall.ark_clat_p2p_low.target='MARK'
+
+				uci -q set firewall.ark_clat_p2p_out=rule
+				uci -q set firewall.ark_clat_p2p_out.name='ARK-CLAT-Output-STUN-Bypass'
+				uci -q set firewall.ark_clat_p2p_out.dest='*'
+				uci -q set firewall.ark_clat_p2p_out.family='ipv4'
+				uci -q set firewall.ark_clat_p2p_out.proto='udp'
+				uci -q set firewall.ark_clat_p2p_out.dest_port='3478 3479 5349 19302'
+				uci -q set firewall.ark_clat_p2p_out.set_mark='0x1450'
+				uci -q set firewall.ark_clat_p2p_out.target='MARK'
+
+				if [ -f "${ARK_ROOT:-}/etc/config/upnpd" ] || [ -f /etc/config/upnpd ]; then
+					uci -q set upnpd.config.external_iface='wan'
+					uci commit upnpd 2>/dev/null || true
+				fi
+			fi
 		else
 			local disable_defroute="0"
 			uci -q set "network.wan.defaultroute=$disable_defroute"
@@ -918,6 +971,7 @@ sync_ipv6_clat_tunnel() {
 	uci commit dhcp
 	uci commit firewall
 	uci commit equipe_dashboard
+	command -v ark_sync_clat_p2p_routes >/dev/null 2>&1 && ark_sync_clat_p2p_routes >/dev/null 2>&1 || true
 }
 
 clean_ipv6_clat_tunnel() {
@@ -930,6 +984,11 @@ clean_ipv6_clat_tunnel() {
 
 	uci -q delete network.ark_clat6 2>/dev/null || true
 	uci -q delete network.ark_clat6_peer 2>/dev/null || true
+	uci -q delete network.ark_clat_local 2>/dev/null || true
+	uci -q delete network.ark_clat_p2p 2>/dev/null || true
+	uci -q delete firewall.ark_clat_p2p_udp 2>/dev/null || true
+	uci -q delete firewall.ark_clat_p2p_low 2>/dev/null || true
+	uci -q delete firewall.ark_clat_p2p_out 2>/dev/null || true
 
 	if [ -n "$saved_defroute" ]; then
 		if [ "$saved_defroute" = "__unset__" ]; then
@@ -989,6 +1048,7 @@ clean_ipv6_clat_tunnel() {
 	if [ -z "${ARK_ROOT:-}" ]; then
 		ifdown ark_clat6 >/dev/null 2>&1 || true
 		ip link del ark_clat6 >/dev/null 2>&1 || true
+		command -v ark_sync_clat_p2p_routes >/dev/null 2>&1 && ark_sync_clat_p2p_routes >/dev/null 2>&1 || true
 	fi
 }
 

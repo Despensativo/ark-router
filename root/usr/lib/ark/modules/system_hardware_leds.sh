@@ -1345,6 +1345,8 @@ net.core.netdev_budget=$budget
 net.core.netdev_budget_usecs=$budget_usecs
 net.core.dev_weight=64
 net.core.rps_sock_flow_entries=$rps_entries
+net.ipv4.tcp_mtu_probing=1
+net.ipv4.tcp_base_mss=1024
 vm.vfs_cache_pressure=$vfs_cache
 vm.dirty_ratio=$dirty
 vm.dirty_background_ratio=$dirty_bg
@@ -1354,7 +1356,6 @@ EOF
 	if [ "$vpn_active" = 1 ]; then
 		cat <<-EOF >> "${sysctl_dir}/99-ark-hardware-tune.conf"
 net.ipv4.ip_forward=1
-net.ipv4.tcp_mtu_probing=1
 EOF
 	fi
 

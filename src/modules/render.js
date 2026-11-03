@@ -979,29 +979,42 @@ const renderMethods = {
 			})(),
 			(function(){
 				const isSatNode = isSatelliteOrAp(data);
+				const sqmVals = values(data.sqm);
 				const isSqmActive = !isSatNode && qosWanProfiles.some(function(profile){
-					return !!(data.sqm && data.sqm[profile.section] && data.sqm[profile.section].enabled === '1');
+					return !!(sqmVals[profile.section] && sqmVals[profile.section].enabled === '1');
 				});
-				const sqmPill = E('span',{id:'ex-qos-status',class:'ex-pill ' + (isSatNode ? 'standby' : (isSqmActive ? 'online' : 'standby'))},[isSatNode ? 'MESTRE GERENCIA' : (isSqmActive ? 'ATIVO' : 'DESLIGADO')]);
+				const isHfscEngineInit = !isSatNode && (qosWanProfiles.some(function(profile){
+					const q = sqmVals[profile.section];
+					return !!(q && (q.ark_engine === 'hfsc_fq_codel' || q.script === 'ark_hfsc_fqcodel.qos'));
+				}) || !!(self.arkSqmAuditCache && self.arkSqmAuditCache.sqm_engine === 'hfsc_fq_codel'));
+				const sqmPill = E('span',{id:'ex-qos-status',class:'ex-pill ' + (isSatNode ? 'standby' : (isSqmActive ? 'online' : 'standby'))},[isSatNode ? 'MESTRE GERENCIA' : (isSqmActive ? (isHfscEngineInit ? 'ATIVO • HFSC + FQ-CoDel' : 'ATIVO • CAKE') : 'DESLIGADO')]);
 				const sqmTitleActions = E('div', { class: 'ex-card-title-actions' }, [
 					sqmPill
 				]);
 				const sqmTitle = E('div',{class:'ex-card-title'},[
-					E('div',{},[E('span',{class:'ex-kicker'},['CONTROLE DE FILAS']),E('h3',{},['CAKE / SQM'])]),
+					E('div',{},[E('span',{class:'ex-kicker'},['CONTROLE DE FILAS & LATÊNCIA']),E('h3',{id:'ex-qos-card-heading'},[isHfscEngineInit ? 'SQM / QoS (HFSC + FQ-CoDel Turbo)' : 'SQM / QoS (CAKE Layer Cake)'])]),
 					sqmTitleActions
 				]);
 				const sqmToggleInput = E('input',{id:'ex-qos-toggle',type:'checkbox','change':L.bind(function(ev){self.toggleSqm(ev.currentTarget);},self)});
 				const isWaveformAplusInit = !isSatNode && !qosWanProfiles.some(function(profile){
-					return !!(data.sqm && data.sqm[profile.section] && data.sqm[profile.section].waveform_aplus === '0');
+					return !!(sqmVals[profile.section] && sqmVals[profile.section].waveform_aplus === '0');
 				});
+				const isGamingPortsInit = !isSatNode && !qosWanProfiles.some(function(profile){
+					return !!(sqmVals[profile.section] && sqmVals[profile.section].gaming_ports === '0');
+				}) && !((data.equipeDashboardConfig && data.equipeDashboardConfig.settings && data.equipeDashboardConfig.settings.sqm_gaming_ports === '0'));
+				const ipv6ModeInit = (data.equipeDashboardConfig && data.equipeDashboardConfig.ipv6 && data.equipeDashboardConfig.ipv6.mode) || '';
 				const waveformToggleInput = E('input',{id:'ex-qos-waveform-aplus-toggle',type:'checkbox','change':L.bind(function(ev){self.toggleWaveformAplus(ev.currentTarget);},self)});
 				waveformToggleInput.checked = isWaveformAplusInit;
+				const gamingPortsToggleInput = E('input',{id:'ex-qos-gaming-ports-toggle',type:'checkbox','change':L.bind(function(ev){self.toggleGamingPorts(ev.currentTarget);},self)});
+				gamingPortsToggleInput.checked = isGamingPortsInit;
 				if (isSatNode) {
 					sqmToggleInput.disabled = true;
 					sqmToggleInput.checked = false;
 					sqmToggleInput.title = _t('SQM / CAKE é exclusivo do Roteador Mestre em Modo Ponto de Acesso (AP).');
 					waveformToggleInput.disabled = true;
 					waveformToggleInput.checked = false;
+					gamingPortsToggleInput.disabled = true;
+					gamingPortsToggleInput.checked = false;
 				}
 				const sqmBody = E('div', { class: 'ex-card-collapse-body' }, [
 					E('div', { class: 'ex-card-collapse-inner' }, [
@@ -1009,13 +1022,94 @@ const renderMethods = {
 							E('strong', { style: 'display: block; margin-bottom: 3px;' }, ['🛡️ ' + _t('Fila Exclusiva do Roteador Mestre')]),
 							_t('O controle de Bufferbloat (SQM / CAKE) atua exclusivamente na porta de internet (WAN) do Roteador Mestre (Gateway). Em nós em Modo Ponto de Acesso (AP), todo o tráfego passa em ponte direta (L2) para não limitar nem degradar a velocidade local do Wi-Fi.')
 						]) : '',
+						!isSatNode ? E('div', {
+							id: 'ex-qos-clat-warning',
+							style: 'display: ' + (ipv6ModeInit === 'ipv6_clat' ? 'flex' : 'none') + '; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; padding: 12px 14px; border-radius: 12px; background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.45); color: #fef3c7; font-size: 12.5px; line-height: 1.45;'
+						}, [
+							E('div', { style: 'flex: 1 1 260px;' }, [
+								E('strong', { style: 'display: block; color: #fbbf24; margin-bottom: 2px;' }, ['⚠️ Conflito Detectado: Modo 6 IPv6 (Túnel 464XLAT / Cloudflare) Ativo']),
+								'O túnel virtual ark_clat6 encapsula o tráfego IPv4 por fora do Ingress do SQM e adiciona ~25 ms de latência base. Para Nota A+ real (+0 ms Download/Upload), utilize o Modo 2 (Pilha Dupla Global).'
+							]),
+							E('button', {
+								type: 'button',
+								class: 'btn cbi-button cbi-button-action ex-mini-button',
+								style: 'font-weight: 700; white-space: nowrap;',
+								click: L.bind(function() {
+									if (typeof self.applyIpv6Mode === 'function') {
+										self.applyIpv6Mode('dual_stack');
+									}
+								}, self)
+							}, ['⚡ Mudar para Modo 2 (Pilha Dupla)'])
+						]) : '',
 						E('div',{class:'ex-qos-toggle-row'},[
-							E('div',{},[E('strong',{},['SQM / CAKE']),E('small',{class:'ex-muted'},[isSatNode ? 'Desativado e gerenciado centralmente pelo Roteador Mestre' : 'Liga ou desliga as filas configuradas'])]),
+							E('div',{},[E('strong',{},['SQM / Controle Inteligente de Filas']),E('small',{class:'ex-muted'},[isSatNode ? 'Desativado e gerenciado centralmente pelo Roteador Mestre' : 'Liga ou desliga o motor anti-bufferbloat configurado abaixo'])]),
 							E('div',{class:'ex-device-switch-control'},[
 								E('strong',{id:'ex-qos-toggle-state',class:'ex-device-switch-state'},[isSatNode ? 'MESTRE GERENCIA' : '—']),
 								E('label',{class:'ex-switch'},[sqmToggleInput,E('span',{class:'ex-switch-slider'})])
 							])
 						]),
+						!isSatNode ? E('div', {
+							id: 'ex-qos-engine-selector-box',
+							style: 'margin: 12px 0; padding: 14px 16px; border-radius: 12px; background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(148, 163, 184, 0.18);'
+						}, [
+							E('div', { style: 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;' }, [
+								E('strong', { style: 'font-size: 13.5px; color: #f8fafc;' }, ['⚙️ Motor de QoS (Escolha entre as 2 Opções):']),
+								E('span', {
+									id: 'ex-qos-engine-active-pill',
+									style: 'font-size: 11.5px; font-weight: 800; padding: 4px 10px; border-radius: 999px; white-space: nowrap; background: ' + (isHfscEngineInit ? 'rgba(56, 189, 248, 0.18)' : 'rgba(16, 185, 129, 0.18)') + '; color: ' + (isHfscEngineInit ? '#38bdf8' : '#34d399') + '; border: 1px solid ' + (isHfscEngineInit ? 'rgba(56, 189, 248, 0.45)' : 'rgba(16, 185, 129, 0.45)') + ';'
+								}, [isHfscEngineInit ? '✅ MODELO ATIVO: HFSC + FQ-CoDel Turbo' : '✅ MODELO ATIVO: CAKE (Layer Cake)'])
+							]),
+							E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;' }, [
+								E('div', {
+									role: 'button',
+									tabindex: '0',
+									id: 'ex-qos-engine-btn-cake',
+									style: 'display: flex; flex-direction: column; justify-content: space-between; gap: 8px; text-align: left; padding: 14px 16px; border-radius: 12px; cursor: pointer; color: #f8fafc; transition: all .18s ease; background: ' + (!isHfscEngineInit ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(6, 78, 59, 0.25))' : 'rgba(15, 23, 42, 0.45)') + '; border: ' + (!isHfscEngineInit ? '2px solid #10b981' : '1px solid rgba(148, 163, 184, 0.18)') + '; box-shadow: ' + (!isHfscEngineInit ? '0 0 18px rgba(16, 185, 129, 0.18)' : 'none') + ';',
+									click: L.bind(function() { self.selectSqmEngine('cake'); }, self)
+								}, [
+									E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: nowrap;' }, [
+										E('strong', { style: 'font-size: 13.5px; font-weight: 700; color: #34d399; white-space: nowrap;' }, ['🛡️ Opção 1: CAKE (Layer Cake)']),
+										E('span', {
+											id: 'ex-qos-engine-state-cake',
+											style: !isHfscEngineInit
+												? 'font-size: 10.5px; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: #10b981; color: #052e16;'
+												: 'font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: rgba(148, 163, 184, 0.14); color: #94a3b8;'
+										}, [!isHfscEngineInit ? '● ATIVO AGORA' : '○ Ativar'])
+									]),
+									E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' }, [
+										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.14); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.30);' }, ['👥 Isolamento Justo por IP']),
+										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.10); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.22);' }, ['📊 4 Filas DiffServ'])
+									]),
+									E('div', { style: 'font-size: 12px; line-height: 1.45; color: #e2e8f0;' }, [
+										'Divide a internet igualmente entre cada aparelho da casa (dual-srchost / dual-dsthost), impedindo que um único download puxe toda a banda.'
+									])
+								]),
+								E('div', {
+									role: 'button',
+									tabindex: '0',
+									id: 'ex-qos-engine-btn-hfsc',
+									style: 'display: flex; flex-direction: column; justify-content: space-between; gap: 8px; text-align: left; padding: 14px 16px; border-radius: 12px; cursor: pointer; color: #f8fafc; transition: all .18s ease; background: ' + (isHfscEngineInit ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(12, 74, 110, 0.28))' : 'rgba(15, 23, 42, 0.45)') + '; border: ' + (isHfscEngineInit ? '2px solid #38bdf8' : '1px solid rgba(148, 163, 184, 0.18)') + '; box-shadow: ' + (isHfscEngineInit ? '0 0 18px rgba(56, 189, 248, 0.18)' : 'none') + ';',
+									click: L.bind(function() { self.selectSqmEngine('hfsc_fq_codel'); }, self)
+								}, [
+									E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: nowrap;' }, [
+										E('strong', { style: 'font-size: 13.5px; font-weight: 700; color: #38bdf8; white-space: nowrap;' }, ['🚀 Opção 2: HFSC + FQ-CoDel Turbo']),
+										E('span', {
+											id: 'ex-qos-engine-state-hfsc',
+											style: isHfscEngineInit
+												? 'font-size: 10.5px; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: #38bdf8; color: #082f49;'
+												: 'font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: rgba(148, 163, 184, 0.14); color: #94a3b8;'
+										}, [isHfscEngineInit ? '● ATIVO AGORA' : '○ Ativar'])
+									]),
+									E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' }, [
+										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.16); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.32);' }, ['🎮 Curva Gamer < 1 ms']),
+										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.10); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.22);' }, ['⚡ Gigabit (-40% CPU)'])
+									]),
+									E('div', { style: 'font-size: 12px; line-height: 1.45; color: #e2e8f0;' }, [
+										'Reserva via exclusiva em Tempo Real (< 1 ms) para Jogos, VoIP e Ping, e libera máxima velocidade Gigabit com FQ-CoDel Turbo e menor uso de CPU.'
+									])
+								])
+							])
+						]) : '',
 						!isSatNode ? E('div', {
 							class: 'ex-qos-waveform-aplus-box',
 							style: 'margin: 10px 0 12px; padding: 12px 14px; border-radius: 12px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.10), rgba(59, 130, 246, 0.08)); border: 1px solid rgba(16, 185, 129, 0.32);'
@@ -1029,7 +1123,13 @@ const renderMethods = {
 											target: '_blank',
 											rel: 'noopener noreferrer',
 											style: 'font-size: 11.5px; font-weight: 700; color: #60a5fa; text-decoration: none; padding: 2px 8px; border-radius: 6px; background: rgba(59, 130, 246, 0.14); border: 1px solid rgba(59, 130, 246, 0.35);'
-										}, ['🔗 Testar no Waveform ↗'])
+										}, ['🔗 Testar no Waveform ↗']),
+										E('a', {
+											href: 'https://bufferspeed.com/',
+											target: '_blank',
+											rel: 'noopener noreferrer',
+											style: 'font-size: 11.5px; font-weight: 700; color: #38bdf8; text-decoration: none; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.14); border: 1px solid rgba(56, 189, 248, 0.35);'
+										}, ['⚡ Testar no BufferSpeed ↗'])
 									]),
 									E('small', { class: 'ex-muted', style: 'display: block; margin-top: 3px; line-height: 1.4;' }, [
 										'Quando ativo, sobrepõe ajustes manuais do usuário utilizando todas as otimizações oficiais ARK para garantir Nota A+ (+0 ms Download / +0 ms Upload).'
@@ -1065,6 +1165,47 @@ const renderMethods = {
 								])
 							])
 						]) : '',
+						!isSatNode ? E('div', {
+							class: 'ex-qos-gaming-ports-box',
+							style: 'margin: 0 0 12px; padding: 12px 14px; border-radius: 12px; background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(139, 92, 246, 0.08)); border: 1px solid rgba(56, 189, 248, 0.35);'
+						}, [
+							E('div', { class: 'ex-qos-toggle-row', style: 'padding: 0; border: 0; background: transparent;' }, [
+								E('div', { style: 'flex: 1 1 240px; min-width: 0;' }, [
+									E('div', { style: 'display: flex; align-items: center; flex-wrap: wrap; gap: 8px;' }, [
+										E('strong', { style: 'color: #38bdf8; font-size: 13.5px;' }, ['🎮 Portas de Jogos & NAT Aberto Inteligente (80+ Jogos + BQL Físico)']),
+										E('span', {
+											style: 'font-size: 10.5px; font-weight: 700; color: #c4b5fd; padding: 2px 8px; border-radius: 6px; background: rgba(139, 92, 246, 0.18); border: 1px solid rgba(139, 92, 246, 0.38);'
+										}, ['Auto CS4 + Conntrack 0xa0'])
+									]),
+									E('small', { class: 'ex-muted', style: 'display: block; margin-top: 3px; line-height: 1.4;' }, [
+										'Prioriza automaticamente pacotes UDP/TCP de 80+ jogos competitivos, Consoles (PS5/Xbox/Switch) e Cloud Gaming na fila < 1 ms (Upload e Download), mantém sessões NAT UDP estáveis e calibra o BQL físico da placa de rede. Lembra sua escolha e limpa 100% das regras ao desligar.'
+									])
+								]),
+								E('div', { class: 'ex-device-switch-control' }, [
+									E('strong', {
+										id: 'ex-qos-gaming-ports-state',
+										class: 'ex-device-switch-state',
+										style: 'color: ' + (isGamingPortsInit ? (isSqmActive ? '#38bdf8' : '#fbbf24') : '#94a3b8') + ';'
+									}, [isGamingPortsInit ? (isSqmActive ? 'ATIVO (Fila < 1 ms)' : 'Lembrado (Standby)') : 'Desativado']),
+									E('label', { class: 'ex-switch' }, [gamingPortsToggleInput, E('span', { class: 'ex-switch-slider' })])
+								])
+							]),
+							E('details', { style: 'margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 12px; line-height: 1.5;' }, [
+								E('summary', { style: 'cursor: pointer; font-weight: 700; color: #7dd3fc; user-select: none;' }, [
+									'🎯 Ver lista de Jogos, Consoles, Portas e Calibração BQL Físico (eth0/eth1)'
+								]),
+								E('div', { style: 'margin-top: 8px; display: flex; flex-direction: column; gap: 6px; color: rgba(255,255,255,0.88);' }, [
+									E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.22); border-left: 3px solid #38bdf8;' }, [
+										E('strong', { style: 'display: block; color: #38bdf8; margin-bottom: 2px;' }, ['1. Base BufferSpeed de 80+ Jogos & Consoles (Marcação Bidirecional CS4 + 0xa0):']),
+										'Identifica automaticamente PS5/PSN (UDP 3478-3480, 3658), Xbox Live (UDP/TCP 3074), Nintendo Switch, Steam/CS2/Dota 2 (UDP 27000-27100), Valorant (UDP 7000-8000), Call of Duty/Warzone (UDP 3074-3076, 30000-45000), Fortnite/Epic, EA FC/FIFA/Apex (UDP 3659), League of Legends (UDP 5000-5500), Overwatch 2, Rainbow Six Siege, Roblox, Minecraft, Discord Voz (UDP 50000-65535) e Cloud Gaming (GeForce NOW, Xbox Cloud, PS Remote Play, Parsec).'
+									]),
+									E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.22); border-left: 3px solid #a78bfa;' }, [
+										E('strong', { style: 'display: block; color: #c4b5fd; margin-bottom: 2px;' }, ['2. NAT Aberto Assistido, RPS Multi-Core 7/3 & BQL Físico abaixo do PPPoE (512 KB + quantum 1514):']),
+										'Acelera o retorno de pacotes UDP de jogos no Firewall (ark_gaming_forward), amplia o timeout de sessões UDP de jogos para 180s (evitando quedas de lobby/party), distribui o tráfego bidirecional entre os núcleos (RPS LAN=7 / WAN=3 + NAPI 256/1200), isola Pause Frames IEEE 802.3x e calibra o Byte Queue Limits (BQL) das portas físicas eth0/eth1 em 512 KB com target 50ms e quantum 1514, zerando descartes secundários e o atraso oculto abaixo do PPPoE.'
+									])
+								])
+							])
+						]) : '',
 						E('p',{class:'ex-muted',style:'margin:6px 0 10px;line-height:1.45;'},[
 							'O CAKE (Smart Queue Management) combate o bufferbloat, gerencia a latência em tempo real e impede que downloads ou vídeos pesados aumentem o ping de jogos e travem chamadas de voz de toda a rede.'
 						]),
@@ -1087,14 +1228,15 @@ const renderMethods = {
 							return '';
 						})(),
 						E('div',{class:'ex-grid ex-grid-3 ex-qos-grid'},qosWanRows.concat([infoRow('Rede visitante','ex-qos-guest'),infoRow('DNS do roteador','ex-dns')])),
-						E('div',{class:'ex-grid ex-grid-3',style:'margin-top:14px;gap:12px;'},[
+						E('div',{style:'display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));margin-top:14px;gap:10px;'},[
 							E('button',{class:'ex-button ex-qos-edit-button',style:'margin-top:0;','click':L.bind(function(){
 								Promise.resolve().then(L.bind(self.editSqmLimits, self)).catch(function(e){
 									ui.addNotification(null,E('p',{},[e.message||String(e)]),'danger');
 								});
 							},self)},['Editar limites']),
-							E('button',{class:'ex-button',style:'margin-top:0;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.1);font-weight:650;cursor:pointer;','click':L.bind(self.openFastCom,self)},['🎬 Testar velocidade da internet']),
-							E('a',{href:'https://www.waveform.com/tools/bufferbloat',target:'_blank',rel:'noopener noreferrer',class:'ex-button',style:'margin-top:0;display:flex;align-items:center;justify-content:center;text-decoration:none;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.38);color:#34d399;font-weight:700;cursor:pointer;'},['🏆 Testar Bufferbloat (Waveform) ↗'])
+							E('button',{class:'ex-button',style:'margin-top:0;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.1);font-weight:650;cursor:pointer;','click':L.bind(self.openFastCom,self)},['🎬 Testar velocidade (Fast.com)']),
+							E('a',{href:'https://www.waveform.com/tools/bufferbloat',target:'_blank',rel:'noopener noreferrer',class:'ex-button',style:'margin-top:0;display:flex;align-items:center;justify-content:center;text-decoration:none;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.38);color:#34d399;font-weight:700;cursor:pointer;'},['🏆 Testar no Waveform ↗']),
+							E('a',{href:'https://bufferspeed.com/',target:'_blank',rel:'noopener noreferrer',class:'ex-button',style:'margin-top:0;display:flex;align-items:center;justify-content:center;text-decoration:none;background:rgba(56,189,248,.16);border:1px solid rgba(56,189,248,.42);color:#38bdf8;font-weight:700;cursor:pointer;'},['⚡ Testar no BufferSpeed ↗'])
 						])
 					])
 				]);
@@ -2123,7 +2265,7 @@ const renderMethods = {
 			'data-ark-panels': 'always'
 		}, [
 			makePill('🛡️', 'AdBlock', 'ex-v2-pill-adblock', 'Ativo', L.bind(function() { self.switchV2Panel('adblock', 'ex-adblock-section'); }, self), 'adblock'),
-			makePill('⚡', 'CAKE SQM', 'ex-v2-pill-sqm', 'Ativo', L.bind(function() { self.switchV2Panel('sqm_perf', 'ex-qos-section'); }, self), 'sqm'),
+			makePill('⚡', 'QoS SQM', 'ex-v2-pill-sqm', 'Ativo', L.bind(function() { self.switchV2Panel('sqm_perf', 'ex-qos-section'); }, self), 'sqm'),
 			makePill('🧠', 'Cache DNS', 'ex-v2-pill-dns', 'RAM 0ms', L.bind(function() { self.openDnsTurboModal(); }, self), null),
 			makePill('🔒', 'WireGuard', 'ex-v2-pill-wg', 'Standby', L.bind(function() { self.switchV2Panel('wireguard', 'ex-wireguard-section'); }, self), 'wireguard'),
 			makePill('🗄️', 'USB KSMBD', 'ex-v2-pill-ksmbd', 'Pronto', L.bind(function() { self.switchV2Panel('ksmbd', 'ex-ksmbd-section'); }, self), 'ksmbd'),
@@ -2970,7 +3112,13 @@ const renderMethods = {
 		const sqmEl = document.getElementById('ex-v2-pill-sqm');
 		if (sqmEl) {
 			const isSqmOn = sqmFeat.installed && ((qosPill && qosPill.classList.contains('online')) || sqmFeat.active);
-			sqmEl.textContent = !sqmFeat.installed ? '🛠️ Instalar' : (isSqmOn ? 'Nota A+ (Ativo)' : 'Standby');
+			const sqmCfg = values((data && data.sqm) || {});
+			const isHfscOn = Object.keys(sqmCfg).some(function(k) {
+				const q = sqmCfg[k];
+				return !!(q && typeof q === 'object' && (q.ark_engine === 'hfsc_fq_codel' || q.script === 'ark_hfsc_fqcodel.qos'));
+			}) || !!(this.arkSqmAuditCache && this.arkSqmAuditCache.sqm_engine === 'hfsc_fq_codel');
+			const activeModelLabel = isHfscOn ? 'HFSC + FQ-CoDel (Ativo)' : 'CAKE Layer Cake (Ativo)';
+			sqmEl.textContent = !sqmFeat.installed ? '🛠️ Instalar' : (isSqmOn ? activeModelLabel : 'Standby');
 			sqmEl.className = 'ex-v2-qp-val ' + (isSqmOn ? 'is-online' : '');
 		}
 

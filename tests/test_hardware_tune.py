@@ -265,7 +265,89 @@ class TestHardwareTune(unittest.TestCase):
         self.assertEqual(step_idle["cur_dl_kbps"], 500000)
         self.assertEqual(step_idle["cur_ul_kbps"], 250000)
 
+    def test_11_sqm_dual_engine_cake_vs_hfsc_fq_codel(self):
+        """Valida seletor de 2 motores de QoS: CAKE (layer_cake.qos) vs HFSC + FQ-CoDel Turbo (ark_hfsc_fqcodel.qos)"""
+        self.sb.uci_set("network.wan.proto=pppoe")
+        self.sb.uci_set("network.wan.device=eth1")
+
+        # 1. Alterna para o Motor 2 (HFSC + FQ-CoDel Turbo) via sqm-engine-select
+        res_hfsc = self.sb.run_control("sqm-engine-select", "hfsc_fq_codel")
+        self.assertEqual(res_hfsc.returncode, 0, f"Falha em sqm-engine-select hfsc_fq_codel: {res_hfsc.stderr}")
+        self.assertEqual(self.sb.uci_get("equipe_dashboard.settings.sqm_engine"), "hfsc_fq_codel")
+        self.assertEqual(self.sb.uci_get("sqm.wan1.ark_engine"), "hfsc_fq_codel")
+        self.assertEqual(self.sb.uci_get("sqm.wan1.qdisc"), "fq_codel")
+        self.assertEqual(self.sb.uci_get("sqm.wan1.script"), "ark_hfsc_fqcodel.qos")
+
+        audit_hfsc = json.loads(self.sb.run_control("system-hardware-sqm-audit").stdout)
+        self.assertEqual(audit_hfsc.get("sqm_engine"), "hfsc_fq_codel")
+
+        # 2. Salva via sqm-save-v2 mantendo sqm_engine=hfsc_fq_codel e waveform_aplus=1
+        res_save_hfsc = self.sb.run_control(
+            "sqm-save-v2",
+            "waveform_aplus=1",
+            "sqm_engine=hfsc_fq_codel",
+            "wan=wan1|wan|pppoe-wan|1|780000|780000|ethernet|44"
+        )
+        self.assertEqual(res_save_hfsc.returncode, 0, f"Falha em sqm-save-v2 com hfsc_fq_codel: {res_save_hfsc.stderr}")
+        self.assertEqual(self.sb.uci_get("sqm.wan1.qdisc"), "fq_codel")
+        self.assertEqual(self.sb.uci_get("sqm.wan1.script"), "ark_hfsc_fqcodel.qos")
+
+        # 3. Alterna de volta para o Motor 1 (CAKE Layer Cake)
+        res_cake = self.sb.run_control("sqm-engine-select", "cake")
+        self.assertEqual(res_cake.returncode, 0, f"Falha em sqm-engine-select cake: {res_cake.stderr}")
+        self.assertEqual(self.sb.uci_get("equipe_dashboard.settings.sqm_engine"), "cake")
+        self.assertEqual(self.sb.uci_get("sqm.wan1.ark_engine"), "cake")
+        self.assertEqual(self.sb.uci_get("sqm.wan1.qdisc"), "cake")
+        self.assertEqual(self.sb.uci_get("sqm.wan1.script"), "layer_cake.qos")
+
+        audit_cake = json.loads(self.sb.run_control("system-hardware-sqm-audit").stdout)
+        self.assertEqual(audit_cake.get("sqm_engine"), "cake")
+
+    def test_12_intelligent_wan_mtu_and_hfsc_gro_cs1_guards(self):
+        """Valida motor inteligente de MTU por perfil WAN (ark_optimal_wg_mtu, ra_mtu, PLPMTUD) e guardas <= 511B/CS1 no HFSC"""
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        hfsc_path = os.path.join(repo_root, "root", "usr", "lib", "sqm", "ark_hfsc_fqcodel.qos")
+        nft_path = os.path.join(repo_root, "root", "etc", "nftables.d", "15-ark-dscp-priority.nft")
+
+        with open(hfsc_path, "r", encoding="utf-8") as f:
+            hfsc_content = f.read()
+        # 1. Guarda <= 511B (0x0000 0xfe00) nos filtros 1:10 Real-Time contra super-pacotes GRO 16 KB
+        self.assertIn("match u16 0x0000 0xfe00 at 2", hfsc_content)
+        self.assertIn("match u16 0x0000 0xfe00 at 4", hfsc_content)
+        # 2. Exclusao do filtro CS1 (1:30 Bulk Scavenger) no Ingress (ifb4*) antes do DSCP wash
+        self.assertIn('[ "$dir_mode" != "ingress" ]', hfsc_content)
+        # 3. Quantum 1514 e rate 100% preservados para Gigabit
+        self.assertIn("turbo_quantum=1514", hfsc_content)
+
+        with open(nft_path, "r", encoding="utf-8") as f:
+            nft_content = f.read()
+        # 4. Restore Conntrack CS4 exige meta length <= 512 e portas STUN (3478) excluidas de ark_gaming_ports
+        self.assertIn("meta l4proto udp meta length <= 512 ct mark & 0x000000ff == 0x000000a0", nft_content)
+
+        # 5. Valida PLPMTUD (tcp_mtu_probing=1 + tcp_base_mss=1024) em 99-ark-hardware-tune.conf
+        res_tune = self.sb.run_control("system-hardware-auto-tune")
+        self.assertEqual(res_tune.returncode, 0)
+        sysctl_file = os.path.join(self.sb.temp_dir, "etc", "sysctl.d", "99-ark-hardware-tune.conf")
+        with open(sysctl_file, "r", encoding="utf-8") as f:
+            sysctl_content = f.read()
+        self.assertIn("net.ipv4.tcp_mtu_probing=1", sysctl_content)
+        self.assertIn("net.ipv4.tcp_base_mss=1024", sysctl_content)
+
+        # 6. Valida sincronizacao automatica de wgclient.mtu e ra_mtu conforme perfil da WAN (PPPoE 1492 -> 1412, DHCP 1500 -> 1420, Starlink -> 1380)
+        self.sb.uci_set("network.wgclient=interface")
+        self.sb.uci_set("network.wgclient.proto=wireguard")
+        self.sb.uci_set("network.wgclient.mtu=1420")
+        self.sb.uci_set("network.wan2.proto=pppoe")
+        self.sb.uci_set("network.wan2.mtu=1492")
+        self.sb.run_control("wan-optimize-set", "iface=wan2", "baby_jumbo=0")
+        self.assertEqual(self.sb.uci_get("dhcp.lan.ra_mtu"), "1492")
+        self.assertEqual(self.sb.uci_get("network.wgclient.mtu"), "1412")
+
+        # Ao ativar Baby Jumbo (1500), wgclient sobe automaticamente para 1420 e ra_mtu para 1500
+        self.sb.run_control("wan-optimize-set", "iface=wan2", "baby_jumbo=1")
+        self.assertEqual(self.sb.uci_get("dhcp.lan.ra_mtu"), "1500")
+        self.assertEqual(self.sb.uci_get("network.wgclient.mtu"), "1420")
+
+
 if __name__ == "__main__":
     unittest.main()
-
-

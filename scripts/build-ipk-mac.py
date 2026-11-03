@@ -19,11 +19,11 @@ chmod +x /usr/sbin/ark-autowan-daemon 2>/dev/null || true
 chmod +x /usr/sbin/ark-port-ledd 2>/dev/null || true
 chmod +x /usr/sbin/ark-rainbowd 2>/dev/null || true
 chmod +x /usr/lib/ark/*.sh 2>/dev/null || true
-chmod +x /usr/lib/ark/modules/*.sh 2>/dev/null || true
+chmod +x /usr/lib/ark/modules/*.sh /usr/lib/sqm/*.qos 2>/dev/null || true
 chmod +x /usr/libexec/ark-starlink-telemetry 2>/dev/null || true
 chmod +x /www/cgi-bin/ark-starlink-telemetry 2>/dev/null || true
 chmod +x /etc/init.d/* 2>/dev/null || true
-chmod +x /etc/hotplug.d/iface/* 2>/dev/null || true
+chmod +x /etc/hotplug.d/iface/* /etc/hotplug.d/net/* 2>/dev/null || true
 [ -x /etc/init.d/ark-safe-shutdown ] && /etc/init.d/ark-safe-shutdown enable >/dev/null 2>&1 || true
 chmod +x /etc/init.d/equipe-traffic-history 2>/dev/null || true
 chmod +x /etc/init.d/ark-speedify 2>/dev/null || true
@@ -190,6 +190,7 @@ def build_ipk_variant(pkg_name, pkg_version, depends, description, is_full=False
                         or arc_path.startswith("./etc/uci-defaults/")
                         or arc_path.startswith("./etc/hotplug.d/")
                         or arc_path.endswith(".sh")
+                        or arc_path.endswith(".qos")
                     )
                     f_info.mode = 0o755 if is_exec else 0o644
 

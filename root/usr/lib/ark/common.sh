@@ -5,7 +5,7 @@
 [ -z "${_ARK_COMMON_SH_LOADED:-}" ] || return 0
 _ARK_COMMON_SH_LOADED=1
 
-ARK_ROUTER_VERSION="2.1.8"
+ARK_ROUTER_VERSION="2.1.9"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 ARK_ROOT="${ARK_ROOT:-}"
 
@@ -674,6 +674,14 @@ ark_sanitize_upnp_config() {
 	# Em modo Gateway/Roteador com UPnP ativo, assegurar STUN Anycast Cloudflare para travessia de CGNAT
 	if ! ark_is_satellite_or_ap; then
 		local enabled="$($uci_cmd get upnpd.config.enabled || echo 0)"
+		local wan_proto="$($uci_cmd get network.wan.proto || echo '')"
+		local cur_ext="$($uci_cmd get upnpd.config.external_iface || echo '')"
+		if [ -n "$wan_proto" ] && [ "$wan_proto" != "none" ] && [ "$wan_proto" != "dhcpv6" ]; then
+			if [ -z "$cur_ext" ] || [ "$cur_ext" = "ark_clat6" ]; then
+				$uci_cmd set upnpd.config.external_iface='wan'
+				changed=1
+			fi
+		fi
 		if [ "$enabled" = "1" ]; then
 			if [ "$($uci_cmd get upnpd.config.use_stun || echo 0)" != "1" ]; then
 				$uci_cmd set upnpd.config.use_stun='1'
@@ -700,6 +708,57 @@ ark_sanitize_upnp_config() {
 	fi
 	return 0
 }
+
+# Smart Split-CLAT: Sincroniza a tabela de roteamento 5200 (fwmark 0x1450)
+# para que pacotes UDP de STUN/WebRTC/Jogos e sondagens locais saiam pela WAN nativa
+# (Cone NAT / IP fixo) enquanto TCP e QUIC 443 permanecem no Cloudflare Anycast (ark_clat6).
+ark_sync_clat_p2p_routes() {
+	local root_prefix="${ARK_ROOT:-}"
+	[ -z "$root_prefix" ] || return 0
+	command -v ip >/dev/null 2>&1 || return 0
+
+	local uci_cmd="uci -q"
+	local clat_if="$($uci_cmd get network.ark_clat6 || echo '')"
+	local clat_eng="$($uci_cmd get equipe_dashboard.ipv6.clat_engine || echo '')"
+
+	if [ "$clat_if" != "interface" ] || [ "$clat_eng" != "cloudflare_anycast" ]; then
+		while ip -4 rule del priority 895 2>/dev/null; do :; done
+		while ip -4 rule del priority 900 2>/dev/null; do :; done
+		while ip -4 rule del priority 902 2>/dev/null; do :; done
+		ip -4 route flush table 5200 2>/dev/null || true
+		return 0
+	fi
+
+	local status_json="" wan_dev="" wan_ip="" wan_gw=""
+	if command -v ubus >/dev/null 2>&1 && command -v jsonfilter >/dev/null 2>&1; then
+		status_json="$(ubus call network.interface.wan status 2>/dev/null || echo '')"
+		if [ -n "$status_json" ]; then
+			wan_dev="$(printf '%s' "$status_json" | jsonfilter -e '@.l3_device' 2>/dev/null || echo '')"
+			[ -n "$wan_dev" ] || wan_dev="$(printf '%s' "$status_json" | jsonfilter -e '@.device' 2>/dev/null || echo '')"
+			wan_ip="$(printf '%s' "$status_json" | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null || echo '')"
+			wan_gw="$(printf '%s' "$status_json" | jsonfilter -e '@.route[@.target="0.0.0.0"].nexthop' 2>/dev/null | head -n 1)"
+		fi
+	fi
+
+	if [ -n "$wan_dev" ] && [ -n "$wan_ip" ]; then
+		if [ -n "$wan_gw" ] && [ "$wan_gw" != "0.0.0.0" ]; then
+			ip -4 route replace default via "$wan_gw" dev "$wan_dev" table 5200 2>/dev/null || true
+		else
+			ip -4 route replace default dev "$wan_dev" table 5200 2>/dev/null || true
+		fi
+		while ip -4 rule del priority 895 2>/dev/null; do :; done
+		while ip -4 rule del priority 900 2>/dev/null; do :; done
+		while ip -4 rule del priority 902 2>/dev/null; do :; done
+		ip -4 rule add fwmark 0x1450 lookup main suppress_prefixlength 0 priority 895 2>/dev/null || true
+		ip -4 rule add from "$wan_ip" lookup 5200 priority 900 2>/dev/null || true
+		ip -4 rule add fwmark 0x1450 lookup 5200 priority 902 2>/dev/null || true
+	else
+		while ip -4 rule del priority 900 2>/dev/null; do :; done
+		ip -4 route flush table 5200 2>/dev/null || true
+	fi
+	return 0
+}
+
 
 # Safe Storage & Service Shutdown before Reboot
 # Interrompe graciosamente servicos que gravam em midias externas (servidores web,
@@ -1323,7 +1382,7 @@ ark_ensure_phys_device_mtu() {
 	_ark_set_single_device_mtu "$phys_dev" "$target_mtu"
 }
 
-# Garante TCP MSS Clamping dinamico por rota (mtu_fix=1) na zona WAN do firewall (Single-WAN e Multi-WAN)
+# Garante TCP MSS Clamping dinamico por rota (mtu_fix=1) nas zonas WAN e VPN (wireguard, zerotier, tailscale)
 ark_ensure_wan_mtu_fix() {
 	local z z_name
 	local root_prefix="${ARK_ROOT:-}"
@@ -1332,7 +1391,7 @@ ark_ensure_wan_mtu_fix() {
 	for z in $($uci_cmd show firewall 2>/dev/null | sed -n 's/^firewall\.\([^.=]*\)=zone$/\1/p'); do
 		z_name="$($uci_cmd get "firewall.$z.name" 2>/dev/null || echo '')"
 		case "$z_name" in
-			wan*)
+			wan*|wireguard|zerotier|tailscale)
 				if [ "$($uci_cmd get "firewall.$z.mtu_fix" 2>/dev/null || echo '')" != "1" ]; then
 					$uci_cmd set "firewall.$z.mtu_fix=1"
 					changed=1
@@ -1345,30 +1404,52 @@ ark_ensure_wan_mtu_fix() {
 	fi
 }
 
-# Sincroniza o ra_mtu do IPv6 Router Advertisement (odhcpd) na LAN/Wi-Fi com o menor MTU real das WANs ativas
-# Garante que clientes Android/iOS/PC em IPv6 enviem pacotes UDP/QUIC/HTTP3 sem ICMPv6 Packet Too Big drops, mantendo a LAN/Wi-Fi local em 1500B.
-ark_sync_lan_ipv6_ra_mtu() {
+# Calcula o menor MTU real de Camada 3 entre as WANs ativas (PPPoE, DHCP, Static, 4G/5G QMI/MBIM/NCM, Starlink)
+ark_get_min_wan_mtu() {
 	local root_prefix="${ARK_ROOT:-}"
 	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
-	[ -f "${root_prefix}/etc/config/dhcp" ] || [ -f /etc/config/dhcp ] || return 0
-
 	local min_wan_mtu=1500
-	local w proto w_mtu
+	local w proto w_mtu u_mtu w_dev k_mtu
 	for w in $($uci_cmd show network 2>/dev/null | sed -n 's/^network\.\(wan[0-9]*\)=interface$/\1/p'); do
 		proto="$($uci_cmd get "network.$w.proto")"
+		w_mtu=""
+		u_mtu="$($uci_cmd get "network.$w.mtu")"
 		case "$proto" in
 			pppoe)
-				w_mtu=""
 				if [ -n "$root_prefix" ] && [ -f "$root_prefix/sys/class/net/pppoe-$w/mtu" ]; then
 					w_mtu="$(cat "$root_prefix/sys/class/net/pppoe-$w/mtu" 2>/dev/null)"
 				elif [ -z "$root_prefix" ] && [ -f "/sys/class/net/pppoe-$w/mtu" ]; then
 					w_mtu="$(cat "/sys/class/net/pppoe-$w/mtu" 2>/dev/null)"
+				elif [ -f "${root_prefix}/tmp/ark-mtu-probed-$w" ]; then
+					w_mtu="$(cat "${root_prefix}/tmp/ark-mtu-probed-$w" 2>/dev/null)"
 				fi
-				[ -n "$w_mtu" ] || w_mtu="$($uci_cmd get "network.$w.mtu")"
+				case "$u_mtu" in
+					''|*[!0-9]*) ;;
+					*)
+						case "$w_mtu" in
+							''|*[!0-9]*) w_mtu="$u_mtu" ;;
+							*) [ "$u_mtu" -lt "$w_mtu" ] && w_mtu="$u_mtu" ;;
+						esac
+						;;
+				esac
 				[ -n "$w_mtu" ] || w_mtu=1492
 				;;
-			dhcp|static)
+			dhcp|static|qmi|mbim|ncm|wwan|3g|modemmanager)
 				w_mtu="$($uci_cmd get "network.$w.mtu")"
+				if [ -z "$w_mtu" ]; then
+					w_dev="$($uci_cmd get "network.$w.device" || $uci_cmd get "network.$w.ifname")"
+					if [ -n "$w_dev" ] && [ -f "${root_prefix}/sys/class/net/$w_dev/mtu" ]; then
+						k_mtu="$(cat "${root_prefix}/sys/class/net/$w_dev/mtu" 2>/dev/null)"
+						case "$k_mtu" in
+							''|*[!0-9]*) ;;
+							*)
+								# Respeita MTU reduzido por modem 4G/5G (ex: 1428/1400) ou DHCP Option 26 (< 1500),
+								# ignorando 1504/1508 de switch DSA/Baby Jumbo
+								[ "$k_mtu" -ge 1280 ] && [ "$k_mtu" -lt 1500 ] && w_mtu="$k_mtu"
+								;;
+						esac
+					fi
+				fi
 				[ -n "$w_mtu" ] || w_mtu=1500
 				;;
 			*) continue ;;
@@ -1380,12 +1461,73 @@ ark_sync_lan_ipv6_ra_mtu() {
 			min_wan_mtu="$w_mtu"
 		fi
 	done
+	printf '%s' "$min_wan_mtu"
+}
 
-	local cur_ra_mtu="$($uci_cmd get dhcp.lan.ra_mtu 2>/dev/null)"
+# Calcula o MTU otimo para tuneis WireGuard (wg0 / wgclient) de acordo com o Perfil da WAN e o MTU real da rota:
+# - Em Starlink / 4G / 5G (mobile_starlink ou WAN MTU <= 1460): 1380B (margem segura contra GTP-U/IPsec e handovers)
+# - Em PPPoE 1492B (xpon_bridge / xpon_vlan sem Baby Jumbo): 1492 - 80 (IPv6+UDP+WG) = 1412B
+# - Em IPoE / DHCP / Dedicado 1500B ou PPPoE Baby Jumbo 1500B: 1500 - 80 = 1420B
+ark_optimal_wg_mtu() {
+	local root_prefix="${ARK_ROOT:-}"
+	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+	local min_wan_mtu w prof opt_mtu
+	min_wan_mtu="$(ark_get_min_wan_mtu)"
+	for w in wan wan1 wan2; do
+		prof="$($uci_cmd get "equipe_dashboard.wan_profiles.$w" 2>/dev/null || true)"
+		case "$prof" in
+			mobile_starlink|starlink|lte|5g)
+				printf '1380'
+				return 0
+				;;
+		esac
+	done
+	if [ "$($uci_cmd get equipe_dashboard.main.starlink_mode 2>/dev/null)" = "1" ] || \
+	   [ "$($uci_cmd get starlink_telemetry.main.enabled 2>/dev/null)" = "1" ] || \
+	   [ "$min_wan_mtu" -le 1460 ] 2>/dev/null; then
+		printf '1380'
+		return 0
+	fi
+	opt_mtu=$((min_wan_mtu - 80))
+	[ "$opt_mtu" -gt 1420 ] && opt_mtu=1420
+	[ "$opt_mtu" -lt 1280 ] && opt_mtu=1280
+	printf '%s' "$opt_mtu"
+}
+
+# Sincroniza o ra_mtu do IPv6 Router Advertisement (odhcpd) na LAN/Wi-Fi e o MTU dos tuneis WireGuard (wg0/wgclient)
+# de acordo com o menor MTU real e Perfil das WANs ativas.
+ark_sync_lan_ipv6_ra_mtu() {
+	local root_prefix="${ARK_ROOT:-}"
+	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+	[ -f "${root_prefix}/etc/config/dhcp" ] || [ -f /etc/config/dhcp ] || return 0
+
+	local min_wan_mtu opt_wg_mtu cur_ra_mtu wg_if cur_wg_mtu net_changed=0
+	min_wan_mtu="$(ark_get_min_wan_mtu)"
+
+	cur_ra_mtu="$($uci_cmd get dhcp.lan.ra_mtu 2>/dev/null)"
 	if [ "$cur_ra_mtu" != "$min_wan_mtu" ]; then
 		$uci_cmd set "dhcp.lan.ra_mtu=$min_wan_mtu"
 		uci ${root_prefix:+-c "$root_prefix/etc/config"} commit dhcp 2>/dev/null || true
 		[ -z "$root_prefix" ] && [ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd reload >/dev/null 2>&1 || true
+	fi
+
+	opt_wg_mtu="$(ark_optimal_wg_mtu)"
+	for wg_if in wg0 wgclient; do
+		if [ "$($uci_cmd get "network.$wg_if" 2>/dev/null)" = "interface" ]; then
+			cur_wg_mtu="$($uci_cmd get "network.$wg_if.mtu" 2>/dev/null)"
+			if [ -z "$cur_wg_mtu" ] || [ "$cur_wg_mtu" = "1420" ] || [ "$cur_wg_mtu" = "1412" ] || [ "$cur_wg_mtu" = "1380" ]; then
+				if [ "$cur_wg_mtu" != "$opt_wg_mtu" ]; then
+					$uci_cmd set "network.$wg_if.mtu=$opt_wg_mtu"
+					net_changed=1
+				fi
+				if [ -z "$root_prefix" ] && [ -d "/sys/class/net/$wg_if" ]; then
+					ip link set dev "$wg_if" mtu "$opt_wg_mtu" 2>/dev/null || true
+				fi
+			fi
+		fi
+	done
+	if [ "$net_changed" = 1 ]; then
+		uci ${root_prefix:+-c "$root_prefix/etc/config"} commit network 2>/dev/null || true
 	fi
 }
 

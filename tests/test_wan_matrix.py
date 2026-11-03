@@ -250,7 +250,7 @@ config dnsmasq
         self.assertTrue(os.path.isfile(init_script), "Script ark-safe-shutdown nao encontrado!")
         with open(init_script, "r") as f:
             content = f.read()
-        self.assertIn("STOP=01", content)
+        self.assertIn("STOP=98", content)
         self.assertIn("ark_safe_storage_reboot", content)
 
     def test_11_install_stage_telemetry(self):
@@ -1259,6 +1259,50 @@ exit 0
         res_wol_wake = self.sb.run_control("wol-wake", "AA:BB:CC:11:22:33", "br-lan")
         self.assertEqual(res_wol_wake.returncode, 0, f"Falha em wol-wake: {res_wol_wake.stderr}")
         self.assertEqual(json.loads(res_wol_wake.stdout).get("status"), "ok")
+
+    def test_34_ipv6_clat_smart_p2p_bypass(self):
+        """
+        Valida o Smart Split-CLAT no modo ipv6_clat (Cloudflare Anycast IPv6 Gateway):
+        1. Cria network.ark_clat6 com metric=5 e wan com metric=20.
+        2. Cria regras de policy routing (ark_clat_local com suppress_prefixlength=0 e ark_clat_p2p lookup=5200).
+        3. Cria regras de firewall MARK (0x1450) para UDP P2P/STUN/Jogos (1024-65535 e 88/500), preservando TCP e QUIC 443 no Cloudflare Anycast.
+        4. Fixa upnpd.config.external_iface='wan' para evitar que o miniupnpd vincule ao tunel ark_clat6.
+        5. Limpa integralmente todas as regras ao restaurar para dual_stack.
+        """
+        self.sb.uci_set("upnpd.config=upnpd")
+        self.sb.uci_set("upnpd.config.enabled=1")
+        self.sb.uci_set("equipe_dashboard.ipv6=ipv6")
+        self.sb.uci_set("equipe_dashboard.ipv6.warp_privkey=TEST_PRIV_KEY_BASE64")
+        self.sb.uci_set("equipe_dashboard.ipv6.warp_v4_addr=172.16.0.2/32")
+
+        res = self.sb.run_control("ipv6-mode-set", "ipv6_clat")
+        self.assertEqual(res.returncode, 0, f"Falha em ipv6-mode-set ipv6_clat: {res.stderr}")
+        self.assertEqual(self.sb.uci_get("equipe_dashboard.ipv6.clat_engine"), "cloudflare_anycast")
+        self.assertEqual(self.sb.uci_get("network.ark_clat6.metric"), "5")
+        self.assertEqual(self.sb.uci_get("network.wan.metric"), "20")
+
+        # Verifica regras declarativas de Smart Split-CLAT
+        self.assertEqual(self.sb.uci_get("network.ark_clat_local.mark"), "0x1450")
+        self.assertEqual(self.sb.uci_get("network.ark_clat_local.suppress_prefixlength"), "0")
+        self.assertEqual(self.sb.uci_get("network.ark_clat_p2p.mark"), "0x1450")
+        self.assertEqual(self.sb.uci_get("network.ark_clat_p2p.lookup"), "5200")
+        self.assertEqual(self.sb.uci_get("firewall.ark_clat_p2p_udp.proto"), "udp")
+        self.assertEqual(self.sb.uci_get("firewall.ark_clat_p2p_udp.dest_port"), "1024-65535")
+        self.assertEqual(self.sb.uci_get("firewall.ark_clat_p2p_udp.set_mark"), "0x1450")
+        self.assertEqual(self.sb.uci_get("firewall.ark_clat_p2p_udp.target"), "MARK")
+        self.assertEqual(self.sb.uci_get("firewall.ark_clat_p2p_low.dest_port"), "88 500")
+        self.assertEqual(self.sb.uci_get("firewall.ark_clat_p2p_out.dest_port"), "3478 3479 5349 19302")
+        self.assertEqual(self.sb.uci_get("upnpd.config.external_iface"), "wan")
+
+        # Restaura modo anterior e verifica limpeza completa
+        res_restore = self.sb.run_control("ipv6-mode-set", "restore_clat")
+        self.assertEqual(res_restore.returncode, 0, f"Falha em restore_clat: {res_restore.stderr}")
+        self.assertIsNone(self.sb.uci_get("network.ark_clat6"))
+        self.assertIsNone(self.sb.uci_get("network.ark_clat_local"))
+        self.assertIsNone(self.sb.uci_get("network.ark_clat_p2p"))
+        self.assertIsNone(self.sb.uci_get("firewall.ark_clat_p2p_udp"))
+        self.assertIsNone(self.sb.uci_get("firewall.ark_clat_p2p_low"))
+        self.assertIsNone(self.sb.uci_get("firewall.ark_clat_p2p_out"))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

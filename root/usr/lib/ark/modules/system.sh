@@ -434,6 +434,10 @@ upnp_save() {
 	uci -q set "upnpd.config.clean_ruleset_interval=$clean_interval"
 	uci -q set "upnpd.config.port=$listen_port"
 	uci -q set upnpd.config.upnp_lease_file='/var/run/miniupnpd.leases'
+	local wan_p="$(uci -q get network.wan.proto || echo '')"
+	if [ -n "$wan_p" ] && [ "$wan_p" != "none" ] && [ "$wan_p" != "dhcpv6" ]; then
+		uci -q set upnpd.config.external_iface='wan'
+	fi
 
 	case "$down_mbps" in
 		''|*[!0-9]*) ;;

@@ -485,6 +485,74 @@ const networkMethods = {
 		]));
 		ui.showModal(title, elements);
 	},
+	selectSqmEngine: function(engine) {
+		if (isSatelliteOrAp(this.currentData)) return Promise.resolve();
+		const targetEngine = (engine === 'hfsc_fq_codel') ? 'hfsc_fq_codel' : 'cake';
+		const btnCake = document.getElementById('ex-qos-engine-btn-cake');
+		const btnHfsc = document.getElementById('ex-qos-engine-btn-hfsc');
+		const pillEl = document.getElementById('ex-qos-engine-active-pill');
+		if ((btnCake && btnCake.getAttribute('data-busy') === '1') || (btnHfsc && btnHfsc.getAttribute('data-busy') === '1')) {
+			return Promise.resolve();
+		}
+		if (btnCake) { btnCake.setAttribute('data-busy', '1'); btnCake.style.opacity = '0.65'; }
+		if (btnHfsc) { btnHfsc.setAttribute('data-busy', '1'); btnHfsc.style.opacity = '0.65'; }
+		if (pillEl) pillEl.textContent = '⏳ Aplicando motor de QoS…';
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['sqm-engine-select', targetEngine])
+			.then(L.bind(function(res) {
+				if (res.code) throw new Error(res.stderr || 'Falha ao alternar motor de QoS');
+				const isHfsc = targetEngine === 'hfsc_fq_codel';
+				if (this.arkSqmAuditCache) this.arkSqmAuditCache.sqm_engine = targetEngine;
+				if (btnCake) {
+					btnCake.removeAttribute('data-busy');
+					btnCake.style.opacity = '1';
+					btnCake.style.background = !isHfsc ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(6, 78, 59, 0.25))' : 'rgba(15, 23, 42, 0.45)';
+					btnCake.style.border = !isHfsc ? '2px solid #10b981' : '1px solid rgba(148, 163, 184, 0.18)';
+					btnCake.style.boxShadow = !isHfsc ? '0 0 18px rgba(16, 185, 129, 0.18)' : 'none';
+				}
+				if (btnHfsc) {
+					btnHfsc.removeAttribute('data-busy');
+					btnHfsc.style.opacity = '1';
+					btnHfsc.style.background = isHfsc ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(12, 74, 110, 0.28))' : 'rgba(15, 23, 42, 0.45)';
+					btnHfsc.style.border = isHfsc ? '2px solid #38bdf8' : '1px solid rgba(148, 163, 184, 0.18)';
+					btnHfsc.style.boxShadow = isHfsc ? '0 0 18px rgba(56, 189, 248, 0.18)' : 'none';
+				}
+				const stCake = document.getElementById('ex-qos-engine-state-cake');
+				const stHfsc = document.getElementById('ex-qos-engine-state-hfsc');
+				if (stCake) {
+					stCake.textContent = !isHfsc ? '● ATIVO AGORA' : '○ Clique para ativar';
+					stCake.style.background = !isHfsc ? '#10b981' : 'rgba(148, 163, 184, 0.14)';
+					stCake.style.color = !isHfsc ? '#052e16' : '#94a3b8';
+					stCake.style.fontWeight = !isHfsc ? '800' : '600';
+				}
+				if (stHfsc) {
+					stHfsc.textContent = isHfsc ? '● ATIVO AGORA' : '○ Clique para ativar';
+					stHfsc.style.background = isHfsc ? '#38bdf8' : 'rgba(148, 163, 184, 0.14)';
+					stHfsc.style.color = isHfsc ? '#082f49' : '#94a3b8';
+					stHfsc.style.fontWeight = isHfsc ? '800' : '600';
+				}
+				if (pillEl) {
+					pillEl.textContent = isHfsc ? '✅ MODELO ATIVO: HFSC + FQ-CoDel Turbo' : '✅ MODELO ATIVO: CAKE (Layer Cake)';
+					pillEl.style.color = isHfsc ? '#38bdf8' : '#34d399';
+					pillEl.style.background = isHfsc ? 'rgba(56, 189, 248, 0.18)' : 'rgba(16, 185, 129, 0.18)';
+					pillEl.style.borderColor = isHfsc ? 'rgba(56, 189, 248, 0.45)' : 'rgba(16, 185, 129, 0.45)';
+				}
+				const qosCardHeading = document.getElementById('ex-qos-card-heading');
+				if (qosCardHeading) qosCardHeading.textContent = isHfsc ? 'SQM / QoS (HFSC + FQ-CoDel Turbo)' : 'SQM / QoS (CAKE Layer Cake)';
+				const v2SqmPill = document.getElementById('ex-v2-pill-sqm');
+				if (v2SqmPill && v2SqmPill.classList.contains('is-online')) {
+					v2SqmPill.textContent = isHfsc ? 'HFSC + FQ-CoDel (Ativo)' : 'CAKE Layer Cake (Ativo)';
+				}
+				const msg = isHfsc
+					? '🚀 Motor HFSC + FQ-CoDel Turbo ativado! Curva Real-Time Gamer (< 1 ms) + FQ-CoDel Gigabit (quantum 1514, menor uso de CPU) + Bulk elástico em operação.'
+					: '🛡️ Motor CAKE (Layer Cake) ativado! Isolamento justo por dispositivo (dual-srchost/dsthost) e 4 prioridades DiffServ em operação.';
+				this.triggerImmediateRefresh(msg, 'info');
+			}, this))
+			.catch(function(e) {
+				if (btnCake) { btnCake.removeAttribute('data-busy'); btnCake.style.opacity = '1'; }
+				if (btnHfsc) { btnHfsc.removeAttribute('data-busy'); btnHfsc.style.opacity = '1'; }
+				ui.addNotification(null, E('p', {}, [e.message || String(e)]), 'danger');
+			});
+	},
 	toggleWaveformAplus: function(input) {
 		if (isSatelliteOrAp(this.currentData)) {
 			if (input) input.checked = false;
@@ -515,6 +583,42 @@ const networkMethods = {
 				if (stateEl) {
 					stateEl.textContent = !desired ? 'Sobrepõe Ajustes' : 'Manual';
 					stateEl.style.color = !desired ? '#34d399' : '#94a3b8';
+				}
+				ui.addNotification(null, E('p', {}, [e.message || String(e)]), 'danger');
+			});
+	},
+	toggleGamingPorts: function(input) {
+		if (isSatelliteOrAp(this.currentData)) {
+			if (input) input.checked = false;
+			return Promise.resolve();
+		}
+		const desired = !!(input && input.checked);
+		const stateEl = document.getElementById('ex-qos-gaming-ports-state');
+		const qosToggle = document.getElementById('ex-qos-toggle');
+		const isSqmOn = !!(qosToggle && qosToggle.checked);
+		if (input) input.disabled = true;
+		if (stateEl) stateEl.textContent = 'Aplicando…';
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['sqm-gaming-ports', desired ? '1' : '0'])
+			.then(L.bind(function(res) {
+				if (res.code) throw new Error(res.stderr || 'Falha ao alternar Portas de Jogos & NAT Aberto');
+				if (input) input.disabled = false;
+				if (stateEl) {
+					stateEl.textContent = desired ? (isSqmOn ? 'ATIVO (Fila < 1 ms)' : 'Lembrado (Standby)') : 'Desativado';
+					stateEl.style.color = desired ? (isSqmOn ? '#38bdf8' : '#fbbf24') : '#94a3b8';
+				}
+				const msg = desired
+					? '🎮 Portas de Jogos & NAT Aberto Inteligente ativados! 80+ jogos competitivos, Consoles (PS5/Xbox/Switch) e Cloud Gaming marcados com CS4 + Conntrack 0xa0 (via exclusiva < 1 ms Upload/Download) + BQL Físico 64 KB calibrado.'
+					: '⏸️ Portas de Jogos & NAT Aberto desativados. Cadeias ark_gaming_ports / ark_gaming_forward limpas e BQL físico restaurado ao padrão do kernel.';
+				this.triggerImmediateRefresh(msg, 'info');
+			}, this))
+			.catch(function(e) {
+				if (input) {
+					input.disabled = false;
+					input.checked = !desired;
+				}
+				if (stateEl) {
+					stateEl.textContent = !desired ? (isSqmOn ? 'ATIVO (Fila < 1 ms)' : 'Lembrado (Standby)') : 'Desativado';
+					stateEl.style.color = !desired ? (isSqmOn ? '#38bdf8' : '#fbbf24') : '#94a3b8';
 				}
 				ui.addNotification(null, E('p', {}, [e.message || String(e)]), 'danger');
 			});
@@ -554,6 +658,13 @@ const networkMethods = {
 			const initialWaveformAplus = (audit.waveform_aplus_mode !== false) && !profiles.some(function(p) {
 				return sqm[p.section] && sqm[p.section].waveform_aplus === '0';
 			});
+			const initialGamingPorts = (audit.gaming_ports_enabled !== false) && !profiles.some(function(p) {
+				return sqm[p.section] && sqm[p.section].gaming_ports === '0';
+			});
+			let selectedModalEngine = (audit.sqm_engine === 'hfsc_fq_codel' || profiles.some(function(p) {
+				const q = sqm[p.section];
+				return q && (q.ark_engine === 'hfsc_fq_codel' || q.script === 'ark_hfsc_fqcodel.qos');
+			})) ? 'hfsc_fq_codel' : 'cake';
 
 			const editors=profiles.map(function(profile){
 				const queue=sqm[profile.section]||{},enabled=E('input',{type:'checkbox'}),download=field(profile.label+' download',queue.download),upload=field(profile.label+' upload',queue.upload);
@@ -905,15 +1016,139 @@ const networkMethods = {
 				}, ['🎯 Aplicar nos Limites'])
 			]) : '';
 
+			const modalStateCake = E('span', { style: 'font-size: 10.5px; padding: 3px 9px; border-radius: 999px; white-space: nowrap;' }, []);
+			const modalStateHfsc = E('span', { style: 'font-size: 10.5px; padding: 3px 9px; border-radius: 999px; white-space: nowrap;' }, []);
+			const modalEngineActiveBadge = E('span', { style: 'font-size: 11.5px; font-weight: 800; padding: 4px 10px; border-radius: 999px; white-space: nowrap;' }, []);
+
+			const modalBtnCake = E('div', {
+				role: 'button',
+				tabindex: '0',
+				style: 'display: flex; flex-direction: column; justify-content: space-between; gap: 8px; text-align: left; padding: 14px 16px; border-radius: 12px; cursor: pointer; color: #f8fafc; transition: all .18s ease;',
+				click: function() {
+					selectedModalEngine = 'cake';
+					updateModalEngineButtons();
+				}
+			}, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: nowrap;' }, [
+					E('strong', { style: 'font-size: 13.5px; font-weight: 700; color: #34d399; white-space: nowrap;' }, ['🛡️ Opção 1: CAKE (Layer Cake)']),
+					modalStateCake
+				]),
+				E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' }, [
+					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.14); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.30);' }, ['👥 Isolamento Justo por IP']),
+					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.10); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.22);' }, ['📊 4 Filas DiffServ'])
+				]),
+				E('div', { style: 'font-size: 12px; line-height: 1.45; color: #e2e8f0;' }, [
+					'Divide a internet igualmente entre cada aparelho da casa (dual-srchost / dual-dsthost), impedindo que um único download puxe toda a banda.'
+				])
+			]);
+			const modalBtnHfsc = E('div', {
+				role: 'button',
+				tabindex: '0',
+				style: 'display: flex; flex-direction: column; justify-content: space-between; gap: 8px; text-align: left; padding: 14px 16px; border-radius: 12px; cursor: pointer; color: #f8fafc; transition: all .18s ease;',
+				click: function() {
+					selectedModalEngine = 'hfsc_fq_codel';
+					updateModalEngineButtons();
+				}
+			}, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: nowrap;' }, [
+					E('strong', { style: 'font-size: 13.5px; font-weight: 700; color: #38bdf8; white-space: nowrap;' }, ['🚀 Opção 2: HFSC + FQ-CoDel Turbo']),
+					modalStateHfsc
+				]),
+				E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' }, [
+					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.16); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.32);' }, ['🎮 Curva Gamer < 1 ms']),
+					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.10); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.22);' }, ['⚡ Gigabit (-40% CPU)'])
+				]),
+				E('div', { style: 'font-size: 12px; line-height: 1.45; color: #e2e8f0;' }, [
+					'Reserva via exclusiva em Tempo Real (< 1 ms) para Jogos, VoIP e Ping, e libera máxima velocidade Gigabit com FQ-CoDel Turbo e menor uso de CPU.'
+				])
+			]);
+			const updateModalEngineButtons = function() {
+				const isHfsc = selectedModalEngine === 'hfsc_fq_codel';
+				modalBtnCake.style.background = !isHfsc ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(6, 78, 59, 0.25))' : 'rgba(15, 23, 42, 0.45)';
+				modalBtnCake.style.border = !isHfsc ? '2px solid #10b981' : '1px solid rgba(148, 163, 184, 0.18)';
+				modalBtnCake.style.boxShadow = !isHfsc ? '0 0 18px rgba(16, 185, 129, 0.18)' : 'none';
+				modalBtnHfsc.style.background = isHfsc ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(12, 74, 110, 0.28))' : 'rgba(15, 23, 42, 0.45)';
+				modalBtnHfsc.style.border = isHfsc ? '2px solid #38bdf8' : '1px solid rgba(148, 163, 184, 0.18)';
+				modalBtnHfsc.style.boxShadow = isHfsc ? '0 0 18px rgba(56, 189, 248, 0.18)' : 'none';
+
+				modalStateCake.textContent = !isHfsc ? '● SELECIONADO' : '○ Escolher';
+				modalStateCake.style.background = !isHfsc ? '#10b981' : 'rgba(148, 163, 184, 0.14)';
+				modalStateCake.style.color = !isHfsc ? '#052e16' : '#94a3b8';
+				modalStateCake.style.fontWeight = !isHfsc ? '800' : '600';
+
+				modalStateHfsc.textContent = isHfsc ? '● SELECIONADO' : '○ Escolher';
+				modalStateHfsc.style.background = isHfsc ? '#38bdf8' : 'rgba(148, 163, 184, 0.14)';
+				modalStateHfsc.style.color = isHfsc ? '#082f49' : '#94a3b8';
+				modalStateHfsc.style.fontWeight = isHfsc ? '800' : '600';
+
+				modalEngineActiveBadge.textContent = isHfsc ? '✅ SELECIONADO: HFSC + FQ-CoDel Turbo' : '✅ SELECIONADO: CAKE (Layer Cake)';
+				modalEngineActiveBadge.style.background = isHfsc ? 'rgba(56, 189, 248, 0.18)' : 'rgba(16, 185, 129, 0.18)';
+				modalEngineActiveBadge.style.color = isHfsc ? '#38bdf8' : '#34d399';
+				modalEngineActiveBadge.style.border = '1px solid ' + (isHfsc ? 'rgba(56, 189, 248, 0.45)' : 'rgba(16, 185, 129, 0.45)');
+			};
+			updateModalEngineButtons();
+
+			const modalEngineBanner = E('div', {
+				style: 'margin-bottom: 14px; padding: 14px 16px; border-radius: 12px; background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(148, 163, 184, 0.18);'
+			}, [
+				E('div', { style: 'margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;' }, [
+					E('strong', { style: 'font-size: 13.5px; color: #f8fafc;' }, ['⚙️ Escolha o Motor de QoS (2 Opções Inteligentes):']),
+					modalEngineActiveBadge
+				]),
+				E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;' }, [
+					modalBtnCake,
+					modalBtnHfsc
+				])
+			]);
+
+			const modalGamingPortsInput = E('input', {
+				type: 'checkbox',
+				checked: initialGamingPorts ? '' : null,
+				change: function(ev) {
+					const on = !!ev.currentTarget.checked;
+					modalGamingPortsState.textContent = on ? 'ATIVO (Fila < 1 ms)' : 'Desativado';
+					modalGamingPortsState.style.color = on ? '#38bdf8' : '#94a3b8';
+				}
+			});
+			const modalGamingPortsState = E('strong', {
+				class: 'ex-device-switch-state',
+				style: 'color: ' + (initialGamingPorts ? '#38bdf8' : '#94a3b8') + '; font-size: 12px;'
+			}, [initialGamingPorts ? 'ATIVO (Fila < 1 ms)' : 'Desativado']);
+
+			const gamingPortsBanner = E('div', {
+				style: 'margin-bottom: 14px; padding: 12px 14px; border-radius: 12px; background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(139, 92, 246, 0.08)); border: 1px solid rgba(56, 189, 248, 0.35);'
+			}, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;' }, [
+					E('div', { style: 'flex: 1 1 260px; min-width: 0;' }, [
+						E('div', { style: 'display: flex; align-items: center; flex-wrap: wrap; gap: 8px;' }, [
+							E('strong', { style: 'color: #38bdf8; font-size: 13.5px;' }, ['🎮 Portas de Jogos & NAT Aberto Inteligente (80+ Jogos + BQL Físico)']),
+							E('span', {
+								style: 'font-size: 10.5px; font-weight: 700; color: #c4b5fd; padding: 2px 8px; border-radius: 6px; background: rgba(139, 92, 246, 0.18); border: 1px solid rgba(139, 92, 246, 0.38);'
+							}, ['Auto CS4 + Conntrack 0xa0'])
+						]),
+						E('small', { class: 'ex-muted', style: 'display: block; margin-top: 3px; line-height: 1.4;' }, [
+							'Prioriza 80+ jogos competitivos, Consoles (PS5/Xbox/Switch) e Cloud Gaming na fila < 1 ms (Upload & Download), mantém sessões NAT UDP abertas (180s) e calibra o BQL físico (limit_min 512 KB + RPS Multi-Core 7/3 + quantum 1514). Lembra sua escolha e limpa tudo ao desligar.'
+						])
+					]),
+					E('div', { class: 'ex-device-switch-control' }, [
+						modalGamingPortsState,
+						E('label', { class: 'ex-switch' }, [modalGamingPortsInput, E('span', { class: 'ex-switch-slider' })])
+					])
+				])
+			]);
+
 			ui.showModal('Editar SQM / CAKE',[
 				E('div',{style:'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;'},[
 					E('p',{class:'ex-muted',style:'margin:0;'},[_t('Defina os limites em Mbps. Exemplo: 1,2 Gbps = 1200 Mbps. Use 0 ou deixe em branco quando não quiser limitar aquela direção (ilimitado).')]),
 					E('div',{style:'display:flex;gap:8px;flex-wrap:wrap;'},[
 						E('button',{class:'ex-mini-button','click':L.bind(function(){ui.hideModal();this.openFastCom();},this)},['🎬 ' + _t('Medir no Fast.com')]),
-						E('a',{href:'https://www.waveform.com/tools/bufferbloat',target:'_blank',rel:'noopener noreferrer',class:'ex-mini-button',style:'text-decoration:none;background:rgba(16,185,129,.16);border-color:rgba(16,185,129,.4);color:#34d399;font-weight:700;'},['🏆 Testar no Waveform ↗'])
+						E('a',{href:'https://www.waveform.com/tools/bufferbloat',target:'_blank',rel:'noopener noreferrer',class:'ex-mini-button',style:'text-decoration:none;background:rgba(16,185,129,.16);border-color:rgba(16,185,129,.4);color:#34d399;font-weight:700;'},['🏆 Testar no Waveform ↗']),
+						E('a',{href:'https://bufferspeed.com/',target:'_blank',rel:'noopener noreferrer',class:'ex-mini-button',style:'text-decoration:none;background:rgba(56,189,248,.16);border-color:rgba(56,189,248,.4);color:#38bdf8;font-weight:700;'},['⚡ Testar no BufferSpeed ↗'])
 					])
 				]),
+				modalEngineBanner,
 				waveformAplusBanner,
+				gamingPortsBanner,
 				speedtestBanner,
 				flowOffloadNotice,
 				mipsNotice,
@@ -921,7 +1156,7 @@ const networkMethods = {
 				guestSection,
 				E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(ev){
 			const btn = ev.currentTarget;
-			const args=['sqm-save-v2', 'waveform_aplus=' + (modalWaveformInput.checked ? '1' : '0')];let invalid=false;
+			const args=['sqm-save-v2', 'waveform_aplus=' + (modalWaveformInput.checked ? '1' : '0'), 'sqm_engine=' + selectedModalEngine, 'gaming_ports=' + (modalGamingPortsInput.checked ? '1' : '0')];let invalid=false;
 			editors.forEach(function(editor){
 				const profile=editor.profile;
 				const dRaw=String(editor.download.node.value||'').trim();

@@ -1,0 +1,266 @@
+#!/bin/sh
+# /usr/lib/sqm/ark_hfsc_fqcodel.qos
+# ARK Router: Unified HFSC + FQ-CoDel Turbo Intelligent Shaper (Zero-iptables, fw4/fw3 compatible)
+# Combines HFSC Real-Time Service Curves (1:10 Gamer/VoIP/L4S <1ms) with Gigabit FQ-CoDel Turbo (1:20)
+# and Elastic Bulk Scavenger (1:30).
+
+SUPPORT_MQ=0
+. ${SQM_LIB_DIR}/defaults.sh
+QDISC=fq_codel
+
+ark_hfsc_apply_filters() {
+    local tdev="$1"
+    local dir_mode="${2:-egress}"
+    # Via 3 (1:30): Bulk / Scavenger (CS1 = TOS 0x20 / IPv6 TC 0x0200)
+    # Aplicado apenas no Egress (pos-nftables wash); no Ingress (ifb4*) operadoras marcam trafego HTTP/CDN legitimo com CS1 antes do nftables wash!
+    if [ "$dir_mode" != "ingress" ]; then
+        $TC filter add dev "$tdev" parent 1: protocol ip prio 1 u32 match ip tos 0x20 0xfc flowid 1:30 2>/dev/null || true
+        $TC filter add dev "$tdev" parent 1: protocol ipv6 prio 2 u32 match u16 0x0200 0x0fc0 at 0 flowid 1:30 2>/dev/null || true
+    fi
+
+    # Via 1 (1:10): Real-Time Gamer / VoIP / Control — estritamente <= 511B (impede que super-pacotes GRO/GSO de 16KB entrem na fila 110:)
+    # No Ingress (ifb4*), aceita apenas CS4 (0x80 0xfc) restaurado pelo act_ctinfo (0xa0 validado na LAN),
+    # blindando 1:10 contra marcacoes CS5/EF/CS6 espurias da operadora antes do nftables prerouting wash.
+    $TC filter add dev "$tdev" parent 1: protocol ip prio 3 u32 match ip tos 0x80 0xfc match u16 0x0000 0xfe00 at 2 flowid 1:10 2>/dev/null || true
+    $TC filter add dev "$tdev" parent 1: protocol ipv6 prio 4 u32 match u16 0x0800 0x0fc0 at 0 match u16 0x0000 0xfe00 at 4 flowid 1:10 2>/dev/null || true
+    if [ "$dir_mode" != "ingress" ]; then
+        $TC filter add dev "$tdev" parent 1: protocol ip prio 3 u32 match ip tos 0xa0 0xe0 match u16 0x0000 0xfe00 at 2 flowid 1:10 2>/dev/null || true
+        $TC filter add dev "$tdev" parent 1: protocol ip prio 3 u32 match ip tos 0xc0 0xc0 match u16 0x0000 0xfe00 at 2 flowid 1:10 2>/dev/null || true
+        $TC filter add dev "$tdev" parent 1: protocol ipv6 prio 4 u32 match u16 0x0a00 0x0e00 at 0 match u16 0x0000 0xfe00 at 4 flowid 1:10 2>/dev/null || true
+        $TC filter add dev "$tdev" parent 1: protocol ipv6 prio 4 u32 match u16 0x0c00 0x0c00 at 0 match u16 0x0000 0xfe00 at 4 flowid 1:10 2>/dev/null || true
+    fi
+
+    # Direct Header Classification: ICMP/ICMPv6 (<=511B), TCP SYN Handshake (<=128B), DNS 53 & NTP 123 (<=511B), L4S ECT(1) UDP (<=511B)
+    # Note: Never match mid-stream TCP PSH or all-ports UDP (QUIC 443 / WebRTC speedtest) here, as splitting
+    # packets of the same 5-tuple flow between 1:10 and 1:20 causes intra-flow reordering and TCP cwnd collapse.
+    $TC filter add dev "$tdev" parent 1: protocol ip prio 5 u32 match ip protocol 1 0xff match u16 0x0000 0xfe00 at 2 flowid 1:10 2>/dev/null || true
+    $TC filter add dev "$tdev" parent 1: protocol ipv6 prio 6 u32 match ip6 protocol 58 0xff match u16 0x0000 0xfe00 at 4 flowid 1:10 2>/dev/null || true
+    $TC filter add dev "$tdev" parent 1: protocol ip prio 5 u32 match ip protocol 6 0xff match u16 0x0000 0xff80 at 2 match u8 0x02 0x02 at 33 flowid 1:10 2>/dev/null || true
+    $TC filter add dev "$tdev" parent 1: protocol ipv6 prio 6 u32 match ip6 protocol 6 0xff match u16 0x0000 0xff80 at 4 match u8 0x02 0x02 at 53 flowid 1:10 2>/dev/null || true
+    $TC filter add dev "$tdev" parent 1: protocol ip prio 5 u32 match ip protocol 17 0xff match u16 0x0000 0xfe00 at 2 match ip sport 53 0xffff flowid 1:10 2>/dev/null || true
+    $TC filter add dev "$tdev" parent 1: protocol ip prio 5 u32 match ip protocol 17 0xff match u16 0x0000 0xfe00 at 2 match ip dport 53 0xffff flowid 1:10 2>/dev/null || true
+    $TC filter add dev "$tdev" parent 1: protocol ip prio 5 u32 match ip protocol 17 0xff match u16 0x0000 0xfe00 at 2 match ip sport 123 0xffff flowid 1:10 2>/dev/null || true
+    $TC filter add dev "$tdev" parent 1: protocol ip prio 5 u32 match ip protocol 17 0xff match u16 0x0000 0xfe00 at 2 match ip dport 123 0xffff flowid 1:10 2>/dev/null || true
+    $TC filter add dev "$tdev" parent 1: protocol ip prio 7 u32 match ip protocol 17 0xff match u8 0x01 0x03 at 1 match u16 0x0000 0xfe00 at 2 flowid 1:10 2>/dev/null || true
+    $TC filter add dev "$tdev" parent 1: protocol ipv6 prio 8 u32 match ip6 protocol 17 0xff match u16 0x0010 0x0030 at 0 match u16 0x0000 0xfe00 at 4 flowid 1:10 2>/dev/null || true
+}
+
+ark_hfsc_detect_wan_net() {
+    local dev="$1" sec d proto
+    case "$dev" in
+        ifb4*) dev="${dev#ifb4}" ;;
+    esac
+    case "$dev" in
+        pppoe-*) printf '%s' "${dev#pppoe-}"; return 0 ;;
+    esac
+    for sec in wan wan1 wan2 wan3 wan4; do
+        d="$(uci -q get "network.$sec.device" 2>/dev/null || uci -q get "network.$sec.ifname" 2>/dev/null || true)"
+        if [ "$d" = "$dev" ] || [ "$sec" = "$dev" ]; then
+            printf '%s' "$sec"
+            return 0
+        fi
+    done
+    printf 'wan'
+}
+
+ark_hfsc_detect_wan_profile() {
+    local wan_net="$1"
+    local saved_preset proto wan_dev
+    saved_preset="$(uci -q get "equipe_dashboard.wan_profiles.$wan_net" 2>/dev/null || uci -q get "equipe_dashboard.${wan_net}.preset" 2>/dev/null || true)"
+    if [ "$(uci -q get "equipe_dashboard.main.starlink_mode" 2>/dev/null)" = "1" ] || \
+       [ "$(uci -q get "equipe_dashboard.settings.starlink_mode" 2>/dev/null)" = "1" ] || \
+       [ "$(uci -q get "starlink_telemetry.main.enabled" 2>/dev/null)" = "1" ]; then
+        printf 'mobile_starlink'
+        return 0
+    fi
+    if [ -n "$saved_preset" ] && [ "$saved_preset" != "auto" ] && [ "$saved_preset" != "custom" ]; then
+        printf '%s' "$saved_preset"
+        return 0
+    fi
+    proto="$(uci -q get "network.$wan_net.proto" 2>/dev/null || true)"
+    wan_dev="$(uci -q get "network.$wan_net.device" 2>/dev/null || true)"
+    case "$proto:$IFACE:$wan_dev" in
+        pppoe:*|*:pppoe*:*|*:*:*.*) printf 'xpon_bridge' ;;
+        dhcp:*|static:*) printf 'dhcp_cable' ;;
+        *) printf 'xpon_bridge' ;;
+    esac
+}
+
+ark_hfsc_build_tree() {
+    local tdev="$1"
+    local rate="$2"
+    local ecn_opt="$3"
+    local dir_mode="${4:-egress}"
+    local wan_net wan_prof total_ram_kb mem_rt mem_turbo
+    local rt_pct rt_rate rt_m1 turbo_rate bulk_rate
+    local rt_d rt_quantum rt_target rt_interval
+    local turbo_quantum turbo_target turbo_interval ce_thresh
+
+    wan_net="$(ark_hfsc_detect_wan_net "$IFACE")"
+    wan_prof="$(ark_hfsc_detect_wan_profile "$wan_net")"
+
+    # 1. Calibracao de memoria proporcional a RAM do roteador
+    total_ram_kb="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo 2>/dev/null || echo 262144)"
+    if [ "${total_ram_kb:-262144}" -lt 160000 ]; then
+        mem_rt=2097152
+        mem_turbo=4194304
+    elif [ "${total_ram_kb:-262144}" -lt 600000 ]; then
+        mem_rt=8388608
+        mem_turbo=16777216
+    else
+        mem_rt=16777216
+        mem_turbo=33554432
+    fi
+
+    # 2. Calibracao inteligente por Perfil da WAN (Fibra XPON vs Cabo DOCSIS vs Starlink/4G/5G)
+    rt_pct=20
+    case "$wan_prof" in
+        mobile_starlink|starlink|lte|5g)
+            # Starlink LEO (reconfiguracao orbital de 15s) e 4G/5G: janela AQM mais tolerante a jitter de radio/satelite
+            rt_d="4ms"
+            rt_target="5ms"
+            rt_interval="100ms"
+            turbo_target="7.5ms"
+            turbo_interval="150ms"
+            ce_thresh="4ms"
+            rt_pct=25
+            ;;
+        dhcp_cable|cable)
+            # Cabo DOCSIS / DHCP: protecao extra para links assimetricos (HFC)
+            rt_d="2ms"
+            rt_target="2.5ms"
+            rt_interval="50ms"
+            turbo_target="4ms"
+            turbo_interval="80ms"
+            ce_thresh="2ms"
+            if [ "${UPLINK:-0}" -gt 0 ] && [ "${DOWNLINK:-0}" -ge $((UPLINK * 4)) ]; then
+                rt_pct=30
+            fi
+            ;;
+        *)
+            # Fibra Optica GPON/XPON (xpon_bridge / xpon_vlan) e Link Dedicado: reacao ultra-rapida (< 2.5ms standing queue = Nota A+ em 16 fluxos simultaneos)
+            rt_d="1ms"
+            rt_target="1.5ms"
+            rt_interval="30ms"
+            if [ "${rate:-0}" -ge 80000 ]; then
+                turbo_target="2.5ms"
+                turbo_interval="40ms"
+            else
+                turbo_target="5ms"
+                turbo_interval="100ms"
+            fi
+            ce_thresh="1.5ms"
+            ;;
+    esac
+
+    # 3. Calibracao de Quantum e Reserva Real-Time pela Velocidade da WAN ($rate em Kbps)
+    # turbo_quantum=1514 garante que fluxos de download pesados saiam de new_flows imediatamente
+    # no primeiro pacote, mantendo sondas de latencia HTTP/WebSocket na frente com +-2ms (Nota A+).
+    if [ "$rate" -lt 15000 ]; then
+        rt_quantum=300
+        turbo_quantum=300
+    elif [ "$rate" -lt 50000 ]; then
+        rt_quantum=300
+        turbo_quantum=600
+    else
+        rt_quantum=500
+        turbo_quantum=1514
+    fi
+
+    rt_rate=$((rate * rt_pct / 100))
+    [ "$rt_rate" -lt 2000 ] && rt_rate=2000
+    [ "$rt_rate" -gt $((rate * 45 / 100)) ] && rt_rate=$((rate * 45 / 100))
+    [ "$rt_rate" -lt 64 ] && rt_rate=64
+    rt_m1=$((rt_rate * 2))
+    [ "$rt_m1" -gt "$rate" ] && rt_m1="$rate"
+    turbo_rate=$((rate * (90 - rt_pct) / 100))
+    [ "$turbo_rate" -lt 64 ] && turbo_rate=64
+    bulk_rate=$((rate * 10 / 100))
+    [ "$bulk_rate" -lt 64 ] && bulk_rate=64
+
+    SILENT=1 $TC qdisc del dev "$tdev" root
+    local tdev_txq=1000
+    case "$tdev" in pppoe*) tdev_txq=128 ;; esac
+    $IP link set dev "$tdev" txqueuelen "$tdev_txq" gro_max_size 8192 gro_ipv4_max_size 8192 gso_max_size 8192 gso_ipv4_max_size 8192 2>/dev/null || true
+
+    local stab_args
+    stab_args="$(get_stab_string)"
+    if [ -z "$stab_args" ]; then
+        case "$wan_prof:$IFACE" in
+            xpon_bridge:*|*:pppoe*) stab_args="stab mtu 2047 tsize 512 mpu 64 overhead 44 linklayer ethernet" ;;
+            xpon_vlan:*) stab_args="stab mtu 2047 tsize 512 mpu 64 overhead 34 linklayer ethernet" ;;
+            *) stab_args="stab mtu 2047 tsize 512 mpu 64 overhead 18 linklayer ethernet" ;;
+        esac
+    fi
+
+    # shellcheck disable=SC2086
+    $TC qdisc add dev "$tdev" root handle 1: $stab_args hfsc default 20
+    $TC class add dev "$tdev" parent 1: classid 1:1 hfsc sc rate "${rate}kbit" ul rate "${rate}kbit"
+    $TC class add dev "$tdev" parent 1:1 classid 1:10 hfsc rt m1 "${rt_m1}kbit" d "$rt_d" m2 "${rt_rate}kbit" ls m2 "${rt_rate}kbit" ul rate "${rate}kbit"
+    $TC class add dev "$tdev" parent 1:1 classid 1:20 hfsc ls m2 "${turbo_rate}kbit" ul rate "${rate}kbit"
+    $TC class add dev "$tdev" parent 1:1 classid 1:30 hfsc ls m2 "${bulk_rate}kbit" ul rate "${rate}kbit"
+
+    # Leaf 110: Real-Time Gamer / VoIP / L4S queue (pacotes <= 511B, zero bloqueio GSO)
+    $TC qdisc add dev "$tdev" parent 1:10 handle 110: fq_codel limit 2048 flows 512 quantum "$rt_quantum" target "$rt_target" interval "$rt_interval" ecn memory_limit "$mem_rt" 2>/dev/null || \
+        $TC qdisc add dev "$tdev" parent 1:10 handle 110: fq_codel limit 2048 flows 512 quantum "$rt_quantum" target "$rt_target" interval "$rt_interval" ecn
+
+    [ "$rate" -ge 20000 ] 2>/dev/null && ecn_opt="ecn"
+
+    # Leaf 120: FQ-CoDel Turbo queue
+    # shellcheck disable=SC2086
+    $TC qdisc add dev "$tdev" parent 1:20 handle 120: fq_codel limit 10240 flows 1024 quantum "$turbo_quantum" target "$turbo_target" interval "$turbo_interval" $ecn_opt memory_limit "$mem_turbo" drop_batch 64 ce_threshold "$ce_thresh" ce_threshold_selector 0x01/0x03 2>/dev/null || \
+        $TC qdisc add dev "$tdev" parent 1:20 handle 120: fq_codel limit 10240 flows 1024 quantum "$turbo_quantum" target "$turbo_target" interval "$turbo_interval" $ecn_opt
+
+    # Leaf 130: Bulk Scavenger queue
+    # shellcheck disable=SC2086
+    $TC qdisc add dev "$tdev" parent 1:30 handle 130: fq_codel limit 4096 flows 512 quantum "$turbo_quantum" target 10ms interval 100ms $ecn_opt memory_limit "$mem_rt" 2>/dev/null || \
+        $TC qdisc add dev "$tdev" parent 1:30 handle 130: fq_codel limit 4096 flows 512 quantum "$turbo_quantum" target 10ms interval 100ms $ecn_opt
+
+    ark_hfsc_apply_filters "$tdev" "$dir_mode"
+    logger -t SQM-ARK "HFSC+FQ-CoDel Turbo [$dir_mode:$tdev] perfil=$wan_prof rate=${rate}kbit rt_d=$rt_d rt_target=$rt_target/$rt_interval turbo_q=$turbo_quantum turbo_target=$turbo_target/$turbo_interval" 2>/dev/null || true
+}
+
+egress() {
+    ark_hfsc_build_tree "$IFACE" "$UPLINK" "$(get_ecn ${EECN})" "egress"
+    if [ -f /usr/lib/ark/modules/sqm.sh ]; then
+        ( . /usr/lib/ark/modules/sqm.sh && ark_sync_gaming_ports_and_bql ) >/dev/null 2>&1 || true
+    fi
+}
+
+ingress() {
+    sqm_debug "ingress"
+    SILENT=1 $TC qdisc del dev "$IFACE" handle ffff: ingress
+    $TC qdisc add dev "$IFACE" handle ffff: ingress
+
+    ark_hfsc_build_tree "$DEV" "$DOWNLINK" "$(get_ecn ${IECN})" "ingress"
+
+    $IP link set dev "$DEV" up
+
+    if [ -f "/lib/modules/$(uname -r 2>/dev/null)/act_ctinfo.ko" ] || grep -qw "act_ctinfo" /proc/modules 2>/dev/null; then
+        modprobe act_ctinfo 2>/dev/null || true
+        $TC filter add dev "$IFACE" parent ffff: protocol ip prio 8 u32 \
+            match u16 0x0000 0xfe00 at 2 action ctinfo dscp 0x0000003f 0x00000080 continue 2>/dev/null || true
+        $TC filter add dev "$IFACE" parent ffff: protocol ipv6 prio 9 u32 \
+            match u16 0x0000 0xfe00 at 4 action ctinfo dscp 0x0000003f 0x00000080 continue 2>/dev/null || true
+    fi
+
+    $TC filter add dev "$IFACE" parent ffff: protocol all prio 10 u32 \
+        match u32 0 0 flowid 1:1 action mirred egress redirect dev "$DEV"
+}
+
+sqm_prepare_script() {
+    modprobe -q sch_hfsc 2>/dev/null || insmod sch_hfsc 2>/dev/null || true
+    do_modules
+    verify_qdisc "hfsc" || return 1
+    verify_qdisc "$QDISC" || return 1
+}
+
+sqm_stop() {
+    [ "${DOWNLINK:-0}" -ne 0 ] 2>/dev/null && $TC qdisc del dev "$IFACE" ingress 2>/dev/null || true
+    $TC qdisc del dev "$IFACE" root 2>/dev/null || true
+    $IP link set dev "$IFACE" txqueuelen 1000 2>/dev/null || true
+    sqm_cleanup
+    if [ -f /usr/lib/ark/modules/sqm.sh ]; then
+        ( . /usr/lib/ark/modules/sqm.sh && ark_sync_gaming_ports_and_bql ) >/dev/null 2>&1 || true
+    fi
+}

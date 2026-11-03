@@ -1495,6 +1495,7 @@ net.core.netdev_max_backlog=5000
 net.ipv4.tcp_congestion_control=$cca
 net.ipv4.tcp_ecn=1
 net.ipv4.tcp_mtu_probing=1
+net.ipv4.tcp_base_mss=1024
 net.ipv4.tcp_slow_start_after_idle=0
 net.ipv4.tcp_fastopen=3
 EOF
@@ -1510,7 +1511,8 @@ EOF
 			sysctl -w net.core.netdev_max_backlog=1000 >/dev/null 2>&1 || true
 			sysctl -w net.ipv4.tcp_congestion_control=cubic >/dev/null 2>&1 || true
 			sysctl -w net.ipv4.tcp_ecn=0 >/dev/null 2>&1 || true
-			sysctl -w net.ipv4.tcp_mtu_probing=0 >/dev/null 2>&1 || true
+			sysctl -w net.ipv4.tcp_mtu_probing=1 >/dev/null 2>&1 || true
+			sysctl -w net.ipv4.tcp_base_mss=1024 >/dev/null 2>&1 || true
 			sysctl -w net.ipv4.tcp_slow_start_after_idle=1 >/dev/null 2>&1 || true
 			sysctl -w net.ipv4.tcp_fastopen=1 >/dev/null 2>&1 || true
 			if [ "$(uci -q get nlbwmon.@nlbwmon[0].netlink_buffer_size 2>/dev/null || echo 0)" -ge 524288 ] 2>/dev/null; then
@@ -1652,6 +1654,12 @@ EOF
 			fi
 			sqm_changed=1
 		fi
+		uci -q get equipe_dashboard.wan_profiles >/dev/null 2>&1 || uci -q set equipe_dashboard.wan_profiles=wan_profiles
+		if [ -n "$preset" ]; then
+			uci -q set "equipe_dashboard.wan_profiles.$iface=$preset"
+			[ "$(uci -q get "sqm.$sqm_section.enabled" 2>/dev/null)" = "1" ] && sqm_changed=1
+		fi
+		uci commit equipe_dashboard
 		if [ "$sqm_changed" = 1 ]; then
 			uci commit sqm
 			/etc/init.d/sqm restart >/dev/null 2>&1 || true
@@ -1676,6 +1684,8 @@ EOF
 						if [ -x /etc/hotplug.d/iface/05-ark-pppoe-babyjumbo ]; then
 							ACTION=ifup INTERFACE="$iface" DEVICE="pppoe-$iface" /etc/hotplug.d/iface/05-ark-pppoe-babyjumbo >/dev/null 2>&1 || true
 						fi
+					elif [ -d "${ARK_ROOT}/sys/class/net/pppoe-$iface" ]; then
+						printf '1500\n' > "${ARK_ROOT}/sys/class/net/pppoe-$iface/mtu" 2>/dev/null || true
 					fi
 				else
 					if [ -z "${ARK_ROOT:-}" ] && is_swconfig; then
@@ -1701,7 +1711,11 @@ EOF
 				else
 					uci -q set "network.$iface.mtu=1492"
 				fi
-				[ -z "${ARK_ROOT}" ] && ip link set "pppoe-$iface" mtu 1492 >/dev/null 2>&1 || true
+				if [ -z "${ARK_ROOT}" ]; then
+					ip link set "pppoe-$iface" mtu 1492 >/dev/null 2>&1 || true
+				elif [ -d "${ARK_ROOT}/sys/class/net/pppoe-$iface" ]; then
+					printf '1492\n' > "${ARK_ROOT}/sys/class/net/pppoe-$iface/mtu" 2>/dev/null || true
+				fi
 			else
 				uci -q delete "network.$iface.mtu"
 			fi

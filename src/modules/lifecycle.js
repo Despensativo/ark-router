@@ -783,18 +783,62 @@ const lifecycleMethods = {
 		const qosWanProfiles=sqmWanProfiles(data), qe=qosWanProfiles.some(function(profile){return !!(sqm[profile.section]&&sqm[profile.section].enabled==='1');}), qosToggle=document.getElementById('ex-qos-toggle'), qosToggleState=document.getElementById('ex-qos-toggle-state');
 		const wfToggle=document.getElementById('ex-qos-waveform-aplus-toggle'), wfToggleState=document.getElementById('ex-qos-waveform-aplus-state');
 		const isWfAplus=!qosWanProfiles.some(function(profile){return !!(sqm[profile.section]&&sqm[profile.section].waveform_aplus==='0');});
+		const gpToggle=document.getElementById('ex-qos-gaming-ports-toggle'), gpToggleState=document.getElementById('ex-qos-gaming-ports-state');
+		const isGamingPorts=!qosWanProfiles.some(function(profile){return !!(sqm[profile.section]&&sqm[profile.section].gaming_ports==='0');})&&!((data.equipeDashboardConfig&&data.equipeDashboardConfig.settings&&data.equipeDashboardConfig.settings.sqm_gaming_ports==='0'));
+		const clatWarnEl=document.getElementById('ex-qos-clat-warning');
+		const curIpv6Mode=(data.equipeDashboardConfig&&data.equipeDashboardConfig.ipv6&&data.equipeDashboardConfig.ipv6.mode)||'';
+		if(clatWarnEl)clatWarnEl.style.display=(!isSatelliteOrAp(data)&&curIpv6Mode==='ipv6_clat')?'flex':'none';
+		const isHfscEngine=qosWanProfiles.some(function(profile){const q=sqm[profile.section];return !!(q&&(q.ark_engine==='hfsc_fq_codel'||q.script==='ark_hfsc_fqcodel.qos'));});
+		const engBtnCake=document.getElementById('ex-qos-engine-btn-cake'), engBtnHfsc=document.getElementById('ex-qos-engine-btn-hfsc'), engPill=document.getElementById('ex-qos-engine-active-pill');
 		const isSat = isSatelliteOrAp(data);
 		if (isSat) {
 			setPill('ex-qos-status', 'standby', 'MESTRE GERENCIA');
 			if (qosToggle) { qosToggle.checked = false; qosToggle.disabled = true; qosToggle.title = _t('SQM / CAKE é exclusivo do Roteador Mestre em Modo Ponto de Acesso (AP).'); }
 			if (qosToggleState) qosToggleState.textContent = 'MESTRE GERENCIA';
 			if (wfToggle) { wfToggle.checked = false; wfToggle.disabled = true; }
+			if (gpToggle) { gpToggle.checked = false; gpToggle.disabled = true; }
 		} else {
-			setPill('ex-qos-status',qe?'online':'standby',qe?'ATIVO':'DESLIGADO');
+			setPill('ex-qos-status',qe?'online':'standby',qe?(isHfscEngine?'ATIVO • HFSC + FQ-CoDel':'ATIVO • CAKE'):'DESLIGADO');
+			const qosCardHeading=document.getElementById('ex-qos-card-heading');
+			if(qosCardHeading)qosCardHeading.textContent=isHfscEngine?'SQM / QoS (HFSC + FQ-CoDel Turbo)':'SQM / QoS (CAKE Layer Cake)';
 			if(qosToggle){qosToggle.checked=qe;qosToggle.disabled=false;}
 			if(qosToggleState)qosToggleState.textContent=qe?'Ligado':'Desligado';
 			if(wfToggle&&!wfToggle.disabled){wfToggle.checked=isWfAplus;}
 			if(wfToggleState){wfToggleState.textContent=isWfAplus?'Sobrepõe Ajustes':'Manual';wfToggleState.style.color=isWfAplus?'#34d399':'#94a3b8';}
+			if(gpToggle&&!gpToggle.disabled){gpToggle.checked=isGamingPorts;}
+			if(gpToggleState){
+				gpToggleState.textContent=isGamingPorts?(qe?'ATIVO (Fila < 1 ms)':'Lembrado (Standby)'):'Desativado';
+				gpToggleState.style.color=isGamingPorts?(qe?'#38bdf8':'#fbbf24'):'#94a3b8';
+			}
+			if(engBtnCake&&engBtnCake.getAttribute('data-busy')!=='1'){
+				engBtnCake.style.background=!isHfscEngine?'linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(6, 78, 59, 0.25))':'rgba(15, 23, 42, 0.45)';
+				engBtnCake.style.border=!isHfscEngine?'2px solid #10b981':'1px solid rgba(148, 163, 184, 0.18)';
+				engBtnCake.style.boxShadow=!isHfscEngine?'0 0 18px rgba(16, 185, 129, 0.18)':'none';
+			}
+			if(engBtnHfsc&&engBtnHfsc.getAttribute('data-busy')!=='1'){
+				engBtnHfsc.style.background=isHfscEngine?'linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(12, 74, 110, 0.28))':'rgba(15, 23, 42, 0.45)';
+				engBtnHfsc.style.border=isHfscEngine?'2px solid #38bdf8':'1px solid rgba(148, 163, 184, 0.18)';
+				engBtnHfsc.style.boxShadow=isHfscEngine?'0 0 18px rgba(56, 189, 248, 0.18)':'none';
+			}
+			const engStateCake=document.getElementById('ex-qos-engine-state-cake'), engStateHfsc=document.getElementById('ex-qos-engine-state-hfsc');
+			if(engStateCake){
+				engStateCake.textContent=!isHfscEngine?'● ATIVO AGORA':'○ Ativar';
+				engStateCake.style.background=!isHfscEngine?'#10b981':'rgba(148, 163, 184, 0.14)';
+				engStateCake.style.color=!isHfscEngine?'#052e16':'#94a3b8';
+				engStateCake.style.fontWeight=!isHfscEngine?'800':'600';
+			}
+			if(engStateHfsc){
+				engStateHfsc.textContent=isHfscEngine?'● ATIVO AGORA':'○ Ativar';
+				engStateHfsc.style.background=isHfscEngine?'#38bdf8':'rgba(148, 163, 184, 0.14)';
+				engStateHfsc.style.color=isHfscEngine?'#082f49':'#94a3b8';
+				engStateHfsc.style.fontWeight=isHfscEngine?'800':'600';
+			}
+			if(engPill){
+				engPill.textContent=isHfscEngine?'✅ MODELO ATIVO: HFSC + FQ-CoDel Turbo':'✅ MODELO ATIVO: CAKE (Layer Cake)';
+				engPill.style.color=isHfscEngine?'#38bdf8':'#34d399';
+				engPill.style.background=isHfscEngine?'rgba(56, 189, 248, 0.18)':'rgba(16, 185, 129, 0.18)';
+				engPill.style.borderColor=isHfscEngine?'rgba(56, 189, 248, 0.45)':'rgba(16, 185, 129, 0.45)';
+			}
 		}
 		const fmtLimit=function(v){v=Number(v)||0;return v>0?(v/1000).toFixed(1)+' Mbps':'Ilimitado';};
 		const guestDownloadLimit=qosGuest.download_kbps||qos.guest_download_kbps||0, guestUploadLimit=qosGuest.upload_kbps||qos.guest_upload_kbps||0;

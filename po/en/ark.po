@@ -13525,3 +13525,33 @@ msgstr "IPv6 traffic exits directly at fiber speed (~4.8ms) and IPv4 traffic is 
 msgid "Reversão inteligente com 1 clique: salva o estado original da WAN/DHCP ao ligar e restaura tudo exatamente como estava ao desligar."
 msgstr "1-click smart rollback: saves original WAN/DHCP state when enabled and restores everything exactly as it was when disabled."
 
+msgid "1. Base BufferSpeed de 80+ Jogos & Consoles (Marcação Bidirecional CS4 + 0xa0):"
+msgstr "1. BufferSpeed Database of 80+ Games & Consoles (Bidirectional CS4 + 0xa0 Marking):"
+
+msgid "2. NAT Aberto Assistido, RPS Multi-Core 7/3 & BQL Físico abaixo do PPPoE (512 KB + quantum 1514):"
+msgstr "2. Assisted Open NAT, Multi-Core RPS 7/3 & Physical BQL below PPPoE (512 KB + quantum 1514):"
+
+msgid "CONTROLE DE FILAS & LATÊNCIA"
+msgstr "QUEUE & LATENCY CONTROL"
+
+msgid "⚙️ Escolha o Motor de QoS (2 Opções Inteligentes):"
+msgstr "⚙️ Select QoS Engine (2 Smart Options):"
+
+msgid "⚙️ Motor de QoS (Escolha entre as 2 Opções):"
+msgstr "⚙️ QoS Engine (Choose between the 2 Options):"
+
+msgid "⚠️ Conflito Detectado: Modo 6 IPv6 (Túnel 464XLAT / Cloudflare) Ativo"
+msgstr "⚠️ Conflict Detected: IPv6 Mode 6 (464XLAT / Cloudflare Tunnel) Active"
+
+msgid "🎬 Testar velocidade (Fast.com)"
+msgstr "🎬 Test Speed (Fast.com)"
+
+msgid "🎮 Portas de Jogos & NAT Aberto Inteligente (80+ Jogos + BQL Físico)"
+msgstr "🎮 Gaming Ports & Smart Open NAT (80+ Games + Physical BQL)"
+
+msgid "🚀 Opção 2: HFSC + FQ-CoDel Turbo"
+msgstr "🚀 Option 2: HFSC + FQ-CoDel Turbo"
+
+msgid "🛡️ Opção 1: CAKE (Layer Cake)"
+msgstr "🛡️ Option 1: CAKE (Layer Cake)"
+

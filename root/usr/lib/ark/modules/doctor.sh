@@ -2160,23 +2160,31 @@ ark_doctor_audit() {
 	fi
 
 	# 17. Auditoria de Travessia CGNAT / STUN no UPnP (quando UPnP ativo no modo Gateway)
+	command -v ark_sync_clat_p2p_routes >/dev/null 2>&1 && ark_sync_clat_p2p_routes >/dev/null 2>&1 || true
 	if ! ark_is_satellite_or_ap && [ -f "${ARK_ROOT}/etc/config/upnpd" -o -f /etc/config/upnpd ]; then
 		local upnp_enabled="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get upnpd.config.enabled || echo 0)"
 		if [ "$upnp_enabled" = "1" ]; then
 			local cur_stun="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get upnpd.config.use_stun || echo 0)"
 			local cur_host="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get upnpd.config.stun_host || echo '')"
-			if [ "$cur_stun" != "1" ] || [ -z "$cur_host" ]; then
+			local cur_ext="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get upnpd.config.external_iface || echo '')"
+			local wan_p="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get network.wan.proto || echo '')"
+			local need_ext_fix=0
+			if [ -n "$wan_p" ] && [ "$wan_p" != "none" ] && [ "$wan_p" != "dhcpv6" ]; then
+				[ -z "$cur_ext" -o "$cur_ext" = "ark_clat6" ] && need_ext_fix=1
+			fi
+			if [ "$cur_stun" != "1" ] || [ -z "$cur_host" ] || [ "$need_ext_fix" = "1" ]; then
 				if [ "$auto_fix" = 1 ]; then
 					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set upnpd.config.use_stun='1'
 					[ -z "$cur_host" ] && uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set upnpd.config.stun_host='stun.cloudflare.com'
 					[ "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get upnpd.config.stun_port)" = "3478" ] || uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set upnpd.config.stun_port='3478'
+					[ "$need_ext_fix" = "1" ] && uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set upnpd.config.external_iface='wan'
 					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} commit upnpd
 					[ -z "${ARK_ROOT}" ] && [ -x /etc/init.d/miniupnpd ] && /etc/init.d/miniupnpd restart >/dev/null 2>&1 || true
 					fixes_applied=$((fixes_applied + 1))
-					add_check "Travessia CGNAT UPnP (STUN)" "FIXED" "STUN Anycast (stun.cloudflare.com) ativado para travessia segura de CGNAT e prevencao de log spam."
+					add_check "Travessia CGNAT UPnP (STUN)" "FIXED" "STUN Anycast (stun.cloudflare.com) e interface WAN nativa vinculados ao UPnP."
 				else
 					warnings=$((warnings + 1))
-					add_check "Travessia CGNAT UPnP (STUN)" "WARN" "STUN desativado no UPnP. Conexoes sob CGNAT podem sofrer rejeicao de portas e log spam."
+					add_check "Travessia CGNAT UPnP (STUN)" "WARN" "STUN desativado ou UPnP preso em tunel virtual. Conexoes sob CGNAT podem sofrer rejeicao de portas."
 				fi
 			else
 				add_check "Travessia CGNAT UPnP (STUN)" "OK" "STUN Anycast ativo ($cur_host) garantindo mapeamento de portas em CGNAT e IP publico."

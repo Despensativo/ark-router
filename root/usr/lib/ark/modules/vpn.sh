@@ -67,6 +67,7 @@ zerotier_firewall_prepare() {
 	uci -q set firewall.zerotier.input=REJECT
 	uci -q set firewall.zerotier.output=ACCEPT
 	uci -q set firewall.zerotier.forward=ACCEPT
+	uci -q set firewall.zerotier.mtu_fix=1
 	uci -q delete firewall.zerotier.device
 	uci -q delete firewall.zerotier.network
 	[ -n "$ztdev" ] && uci -q add_list "firewall.zerotier.device=$ztdev"
@@ -652,7 +653,7 @@ wireguard_firewall_cleanup() {
 }
 
 wireguard_server_setup() {
-	local port privkey
+	local port privkey wg_mtu
 	port="${1:-51820}"
 	ip="${2:-10.14.0.1/24}"
 
@@ -669,12 +670,14 @@ wireguard_server_setup() {
 		chmod 644 /etc/wireguard/server_public.key
 	fi
 	privkey="$(cat /etc/wireguard/server_private.key)"
+	wg_mtu="$(ark_optimal_wg_mtu 2>/dev/null || echo 1412)"
 
 	uci -q set network.wg0=interface
 	uci -q set network.wg0.proto='wireguard'
 	uci -q set network.wg0.private_key="$privkey"
 	uci -q set network.wg0.listen_port="$port"
 	uci -q set network.wg0.addresses="$ip"
+	uci -q set network.wg0.mtu="$wg_mtu"
 	uci -q set network.wg0.auto='1'
 	uci -q set network.wg0.disabled='0'
 	uci commit network
@@ -734,7 +737,7 @@ wireguard_autostart_toggle() {
 wireguard_peer_add() {
 	local name req_ip custom_endpoint tunnel_mode clean_name server_pub server_port client_ip max_host aip h client_priv
 	local client_pub client_psk sec cur_desc cur_pk psec wan_ip wan_ipv6 is_cgnat endpoint host_num lan_net
-	local lan_prefix client_allowed_ips cfg_file psk_tmp conf_txt qr_svg
+	local lan_prefix client_allowed_ips cfg_file psk_tmp conf_txt qr_svg wg_mtu
 	name="$1"
 	req_ip="$2"
 	custom_endpoint="$3"
@@ -834,6 +837,8 @@ wireguard_peer_add() {
 	mkdir -p /etc/wireguard/clients
 	chmod 700 /etc/wireguard/clients
 	cfg_file="/etc/wireguard/clients/$clean_name.conf"
+	wg_mtu="$(ark_optimal_wg_mtu 2>/dev/null || uci -q get network.wg0.mtu 2>/dev/null || echo 1412)"
+	case "$wg_mtu" in ''|*[!0-9]*) wg_mtu=1412 ;; esac
 
 	(
 		umask 077
@@ -842,6 +847,7 @@ wireguard_peer_add() {
 PrivateKey = $client_priv
 Address = $client_ip/24, fddd:dd40:a110::$host_num/64
 DNS = 10.14.0.1, 1.1.1.1, 2606:4700:4700::1111
+MTU = $wg_mtu
 
 [Peer]
 PublicKey = $server_pub
@@ -982,7 +988,7 @@ b64_encode_file() {
 }
 
 wireguard_client_import() {
-	local b64 tmp_conf privkey pubkey preshared_key endpoint keepalive mtu ep_host ep_port s a
+	local b64 tmp_conf privkey pubkey preshared_key endpoint keepalive mtu opt_mtu ep_host ep_port s a
 	local d sec allowed_count aip z
 	b64="$1"
 	[ -n "$b64" ] || b64="$(cat)"
@@ -1008,6 +1014,14 @@ wireguard_client_import() {
 	endpoint="$(get_val 'Endpoint')"
 	keepalive="$(get_val 'PersistentKeepalive')"
 	mtu="$(get_val 'MTU')"
+	opt_mtu="$(ark_optimal_wg_mtu 2>/dev/null || echo 1412)"
+	case "$mtu" in
+		''|*[!0-9]*) mtu="$opt_mtu" ;;
+		*)
+			[ "$mtu" -gt "$opt_mtu" ] && mtu="$opt_mtu"
+			[ "$mtu" -lt 1280 ] && mtu=1280
+			;;
+	esac
 
 	[ -n "$privkey" ] || { rm -f "$tmp_conf" 2>/dev/null; echo 'Chave Privada (PrivateKey) nao encontrada no .conf' >&2; exit 2; }
 	[ -n "$pubkey" ] || { rm -f "$tmp_conf" 2>/dev/null; echo 'Chave Publica do Servidor (PublicKey) nao encontrada no .conf' >&2; exit 2; }
@@ -1039,7 +1053,7 @@ wireguard_client_import() {
 	uci -q set network.wgclient.private_key="$privkey"
 	uci -q set network.wgclient.listen_port='51821'
 	uci -q set network.wgclient.auto='1'
-	[ -n "$mtu" ] && uci -q set network.wgclient.mtu="$mtu"
+	uci -q set network.wgclient.mtu="$mtu"
 
 	for a in $(get_all_vals 'Address'); do
 		uci -q add_list network.wgclient.addresses="$a"

@@ -70,23 +70,25 @@ ark_apply_ingress_voice_tin_filters() {
 	for p in 1 2 3 4 5 6 7 8 9; do
 		tc filter del dev "$iface" parent ffff: pref "$p" 2>/dev/null || true
 	done
-	# Classify incoming ICMP, ICMPv6, TCP SYN, interactive TCP PSH (<=255B: WebSocket latency probes/SSH),
-	# small UDP (<=255B: Gaming/VoIP/DNS/STUN), and L4S ECT(1) (<=512B) into CAKE Voice Tin (${cake_handle}4) before prio 10 IFB redirect
-	tc filter add dev "$iface" parent ffff: protocol ip pref 1 u32 match ip protocol 1 0xff action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 2 u32 match ip6 protocol 58 0xff action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ip pref 3 u32 match ip protocol 6 0xff match u8 0x02 0x02 at 33 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 4 u32 match ip6 protocol 6 0xff match u8 0x02 0x02 at 53 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ip pref 5 u32 match ip protocol 6 0xff match u16 0x0000 0xff00 at 2 match u8 0x08 0x08 at 33 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 6 u32 match ip6 protocol 6 0xff match u16 0x0000 0xff00 at 4 match u8 0x08 0x08 at 53 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ip pref 7 u32 match ip protocol 17 0xff match u16 0x0000 0xff00 at 2 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 8 u32 match ip6 protocol 17 0xff match u16 0x0000 0xff00 at 4 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	# L4S (RFC 9332) ECT(1) interactive packets (<= 512B, TOS/Traffic Class ECN bits 0x01) -> CAKE Voice Tin
-	tc filter add dev "$iface" parent ffff: protocol ip pref 7 u32 match u8 0x01 0x03 at 1 match u16 0x0000 0xfe00 at 2 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 8 u32 match u16 0x0010 0x0030 at 0 match u16 0x0000 0xfe00 at 4 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	# Restore bidirectional Conntrack DSCP (0x80 valid bit | 6-bit DSCP in ct mark lower byte) before prio 10 IFB redirect
+	# 1. Default all incoming WAN packets to CAKE Best Effort Tin (${cake_handle}2, 100% bandwidth)
+	# so untrusted ISP/CDN DSCP markings (CS1/AF3x/AF4x/CS4 on bulk downloads) never poison Bulk/Video/Voice tins
+	# before nftables prerouting washes them.
+	tc filter add dev "$iface" parent ffff: protocol all pref 1 u32 match u32 0 0 action skbedit priority "${cake_handle}2" continue 2>/dev/null || true
+	# 2. Promote incoming ICMP, ICMPv6, TCP SYN (<=128B), DNS/NTP replies (<=511B), and L4S ECT(1) UDP (<=511B) into CAKE Voice Tin (${cake_handle}4).
+	# Strict <= 511B guard (0x0000 0xfe00) and no mid-stream TCP PSH / blind UDP 443 splitting.
+	tc filter add dev "$iface" parent ffff: protocol ip pref 2 u32 match ip protocol 1 0xff match u16 0x0000 0xfe00 at 2 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ip pref 2 u32 match ip protocol 6 0xff match u16 0x0000 0xff80 at 2 match u8 0x02 0x02 at 33 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ip pref 2 u32 match ip protocol 17 0xff match u16 0x0000 0xfe00 at 2 match ip sport 53 0xffff action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ip pref 2 u32 match ip protocol 17 0xff match u16 0x0000 0xfe00 at 2 match ip sport 123 0xffff action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ip pref 2 u32 match ip protocol 17 0xff match u8 0x01 0x03 at 1 match u16 0x0000 0xfe00 at 2 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 3 u32 match ip6 protocol 58 0xff match u16 0x0000 0xfe00 at 4 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 3 u32 match ip6 protocol 6 0xff match u16 0x0000 0xff80 at 4 match u8 0x02 0x02 at 53 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 3 u32 match ip6 protocol 17 0xff match u16 0x0010 0x0030 at 0 match u16 0x0000 0xfe00 at 4 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	# 3. Restore bidirectional Conntrack DSCP (0x80 valid bit | 6-bit DSCP in ct mark lower byte) only for <= 511B packets before prio 10 IFB redirect
 	if ark_has_ctinfo; then
 		[ -f "/lib/modules/$(uname -r 2>/dev/null)/act_ctinfo.ko" ] && modprobe act_ctinfo 2>/dev/null || true
-		tc filter add dev "$iface" parent ffff: protocol all pref 9 u32 match u32 0 0 action ctinfo dscp 0x0000003f 0x00000080 continue 2>/dev/null || true
+		tc filter add dev "$iface" parent ffff: protocol ip pref 4 u32 match u16 0x0000 0xfe00 at 2 action ctinfo dscp 0x0000003f 0x00000080 continue 2>/dev/null || true
+		tc filter add dev "$iface" parent ffff: protocol ipv6 pref 5 u32 match u16 0x0000 0xfe00 at 4 action ctinfo dscp 0x0000003f 0x00000080 continue 2>/dev/null || true
 	fi
 	# Autocura do redirecionamento prio 10 (mirred egress redirect dev ifb4*) caso tenha sido removido ou sobrescrito
 	if ! tc filter show dev "$iface" parent ffff: 2>/dev/null | grep -q "mirred.*$ifb_dev"; then
@@ -112,9 +114,12 @@ ark_promote_cake_mq() {
 			rps_mask="f"
 			command -v ark_calculate_rps_mask >/dev/null 2>&1 && rps_mask="$(ark_calculate_rps_mask "$cpu_cores")"
 			if [ "$cpu_cores" = "4" ] && grep -qE "mt76|mt79|ath|qca" /proc/interrupts 2>/dev/null; then
-				rps_mask="2"
-				for ifb_q in /sys/class/net/lan[0-9]*/queues/rx-*/rps_cpus /sys/class/net/phy*/queues/rx-*/rps_cpus; do
-					[ -w "$ifb_q" ] && echo 1 > "$ifb_q" 2>/dev/null || true
+				rps_mask="3"
+				for ifb_q in /sys/class/net/lan[0-9]*/queues/rx-*/rps_cpus; do
+					[ -w "$ifb_q" ] && echo 7 > "$ifb_q" 2>/dev/null || true
+				done
+				for ifb_q in /sys/class/net/phy*/queues/rx-*/rps_cpus; do
+					[ -w "$ifb_q" ] && echo 3 > "$ifb_q" 2>/dev/null || true
 				done
 			fi
 			for ifb_q in /sys/class/net/pppoe*/queues/rx-*/rps_cpus; do
@@ -136,19 +141,27 @@ ark_promote_cake_mq() {
 		fi
 	fi
 
-	uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'" || return 0
+	if ! uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
+		ark_sync_gaming_ports_and_bql
+		return 0
+	fi
 
 	local sec enabled qdisc iface upload linklayer overhead mpu eq_opts tx1_dir promoted=0
 	for sec in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\([^.=]*\)=queue$/\1/p'); do
 		enabled="$(uci -q get "sqm.$sec.enabled" || echo 0)"
 		[ "$enabled" = "1" ] || continue
-		qdisc="$(uci -q get "sqm.$sec.qdisc" || echo cake)"
-		[ "$qdisc" = "cake" ] || [ "$qdisc" = "cake_mq" ] || continue
 		iface="$(uci -q get "sqm.$sec.interface")"
 		[ -n "$iface" ] || continue
 		if [ -z "${ARK_ROOT:-}" ]; then
-			ip link set dev "$iface" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
-			ip link set dev "ifb4${iface}" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
+			case "$iface" in
+				pppoe*) ip link set dev "$iface" txqueuelen 128 gro_max_size 8192 gro_ipv4_max_size 8192 gso_max_size 8192 gso_ipv4_max_size 8192 2>/dev/null || true ;;
+				*) ip link set dev "$iface" txqueuelen 1000 gro_max_size 8192 gro_ipv4_max_size 8192 gso_max_size 8192 gso_ipv4_max_size 8192 2>/dev/null || true ;;
+			esac
+			ip link set dev "ifb4${iface}" txqueuelen 1000 gro_max_size 8192 gro_ipv4_max_size 8192 gso_max_size 8192 gso_ipv4_max_size 8192 2>/dev/null || true
+		fi
+		qdisc="$(uci -q get "sqm.$sec.qdisc" || echo cake)"
+		[ "$qdisc" = "cake" ] || [ "$qdisc" = "cake_mq" ] || continue
+		if [ -z "${ARK_ROOT:-}" ]; then
 			tc qdisc change dev "$iface" root cake no-split-gso 2>/dev/null || true
 			tc qdisc change dev "ifb4${iface}" root cake no-split-gso 2>/dev/null || true
 		fi
@@ -182,7 +195,190 @@ ark_promote_cake_mq() {
 			fi
 		fi
 	done
+	ark_sync_gaming_ports_and_bql
 	return 0
+}
+
+ark_is_gaming_ports_enabled() {
+	local gp
+	gp="$(uci -q get equipe_dashboard.settings.sqm_gaming_ports 2>/dev/null || echo '')"
+	if [ "$gp" = "0" ]; then
+		return 1
+	elif [ "$gp" = "1" ]; then
+		return 0
+	fi
+	if uci -q show sqm 2>/dev/null | grep -q "\.gaming_ports='0'"; then
+		return 1
+	fi
+	return 0
+}
+
+ark_sync_gaming_ports_and_bql() {
+	local sqm_on=0 gaming_on=0 pdev bql_f fq_parent pppoe_dev phy_d ifb_dev lan_q
+	local gp_state="${ARK_ROOT:-}/tmp/ark_sqm_gaming_ports.state"
+	local bql_state="${ARK_ROOT:-}/tmp/ark_sqm_bql.state"
+	mkdir -p "$(dirname "$gp_state")" 2>/dev/null || true
+
+	if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
+		sqm_on=1
+	fi
+	if ark_is_gaming_ports_enabled; then
+		gaming_on=1
+	fi
+
+	if [ "$sqm_on" = "1" ] && [ "$gaming_on" = "1" ]; then
+		if [ -z "${ARK_ROOT:-}" ]; then
+			sysctl -w net.core.dev_weight=256 net.core.netdev_budget=1200 >/dev/null 2>&1 || true
+			for pdev in eth0 eth1 wan $(uci -q get network.wan.device 2>/dev/null || true); do
+				[ -d "/sys/class/net/$pdev" ] || continue
+				command -v ethtool >/dev/null 2>&1 && ethtool -A "$pdev" autoneg off rx off tx off 2>/dev/null || true
+				ip link set dev "$pdev" gro_max_size 8192 gro_ipv4_max_size 8192 gso_max_size 8192 gso_ipv4_max_size 8192 2>/dev/null || true
+				for bql_f in "/sys/class/net/$pdev"/queues/tx-*/byte_queue_limits/limit_max; do
+					[ -w "$bql_f" ] && echo 1879048192 > "$bql_f" 2>/dev/null || true
+				done
+				for bql_f in "/sys/class/net/$pdev"/queues/tx-*/byte_queue_limits/limit_min; do
+					[ -w "$bql_f" ] && echo 524288 > "$bql_f" 2>/dev/null || true
+				done
+				[ -w "/sys/class/net/$pdev/gro_flush_timeout" ] && echo 20000 > "/sys/class/net/$pdev/gro_flush_timeout" 2>/dev/null || true
+				[ -w "/sys/class/net/$pdev/napi_defer_hard_irqs" ] && echo 2 > "/sys/class/net/$pdev/napi_defer_hard_irqs" 2>/dev/null || true
+				if tc qdisc show dev "$pdev" 2>/dev/null | grep -q "qdisc mq"; then
+					for fq_parent in $(tc qdisc show dev "$pdev" 2>/dev/null | awk '/qdisc fq_codel/ {for(i=1;i<=NF;i++) if($i=="parent") print $(i+1)}'); do
+						tc qdisc replace dev "$pdev" parent "$fq_parent" fq_codel limit 10240 quantum 1514 target 50ms interval 500ms ecn 2>/dev/null || true
+					done
+				fi
+			done
+			for pppoe_dev in /sys/class/net/pppoe-*; do
+				[ -e "$pppoe_dev" ] || continue
+				ip link set dev "${pppoe_dev##*/}" txqueuelen 128 gro_max_size 8192 gro_ipv4_max_size 8192 gso_max_size 8192 gso_ipv4_max_size 8192 2>/dev/null || true
+				[ -w "$pppoe_dev/gro_flush_timeout" ] && echo 0 > "$pppoe_dev/gro_flush_timeout" 2>/dev/null || true
+				[ -w "$pppoe_dev/napi_defer_hard_irqs" ] && echo 0 > "$pppoe_dev/napi_defer_hard_irqs" 2>/dev/null || true
+			done
+			for ifb_dev in /sys/class/net/ifb*; do
+				[ -e "$ifb_dev" ] || continue
+				ip link set dev "${ifb_dev##*/}" txqueuelen 1000 gro_max_size 8192 gro_ipv4_max_size 8192 gso_max_size 8192 gso_ipv4_max_size 8192 2>/dev/null || true
+			done
+			if [ "$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)" = "4" ] && grep -qE "mt76|mt79|ath|qca" /proc/interrupts 2>/dev/null; then
+				for lan_q in /sys/class/net/pppoe*/queues/rx-*/rps_cpus /sys/class/net/phy*/queues/rx-*/rps_cpus; do
+					[ -w "$lan_q" ] && echo 3 > "$lan_q" 2>/dev/null || true
+				done
+				for lan_q in /sys/class/net/lan[0-9]*/queues/rx-*/rps_cpus; do
+					[ -w "$lan_q" ] && echo 7 > "$lan_q" 2>/dev/null || true
+				done
+			fi
+			for phy_d in /sys/kernel/debug/ieee80211/phy*; do
+				[ -d "$phy_d" ] || continue
+				[ -w "$phy_d/aqm" ] && echo "fq_quantum 1514" > "$phy_d/aqm" 2>/dev/null || true
+				[ -w "$phy_d/aql_threshold" ] && echo 4000 > "$phy_d/aql_threshold" 2>/dev/null || true
+				if [ -w "$phy_d/aql_txq_limit" ]; then
+					echo "0 1000 2000" > "$phy_d/aql_txq_limit" 2>/dev/null || true
+					echo "1 1500 3000" > "$phy_d/aql_txq_limit" 2>/dev/null || true
+					echo "2 1000 2000" > "$phy_d/aql_txq_limit" 2>/dev/null || true
+					echo "3 800 1600" > "$phy_d/aql_txq_limit" 2>/dev/null || true
+				fi
+			done
+		fi
+		printf 'active\n' > "$bql_state" 2>/dev/null || true
+	else
+		if [ -z "${ARK_ROOT:-}" ]; then
+			for pdev in eth0 eth1 wan $(uci -q get network.wan.device 2>/dev/null || true); do
+				[ -d "/sys/class/net/$pdev" ] || continue
+				for bql_f in "/sys/class/net/$pdev"/queues/tx-*/byte_queue_limits/limit_max; do
+					[ -w "$bql_f" ] && echo 1879048192 > "$bql_f" 2>/dev/null || true
+				done
+				[ -w "/sys/class/net/$pdev/gro_flush_timeout" ] && echo 250000 > "/sys/class/net/$pdev/gro_flush_timeout" 2>/dev/null || true
+				[ -w "/sys/class/net/$pdev/napi_defer_hard_irqs" ] && echo 20 > "/sys/class/net/$pdev/napi_defer_hard_irqs" 2>/dev/null || true
+				if tc qdisc show dev "$pdev" 2>/dev/null | grep -q "qdisc mq"; then
+					for fq_parent in $(tc qdisc show dev "$pdev" 2>/dev/null | awk '/qdisc fq_codel/ {for(i=1;i<=NF;i++) if($i=="parent") print $(i+1)}'); do
+						tc qdisc replace dev "$pdev" parent "$fq_parent" fq_codel limit 10240 quantum 1514 target 5ms interval 100ms 2>/dev/null || true
+					done
+				fi
+			done
+			for pppoe_dev in /sys/class/net/pppoe-*; do
+				[ -e "$pppoe_dev" ] && ip link set dev "${pppoe_dev##*/}" txqueuelen 1000 2>/dev/null || true
+			done
+		fi
+		rm -f "$bql_state" 2>/dev/null || true
+	fi
+
+	if [ "$sqm_on" = "1" ] && [ "$gaming_on" = "1" ]; then
+		if [ -z "${ARK_ROOT:-}" ]; then
+			if is_fw4; then
+				nft flush chain inet fw4 ark_gaming_ports 2>/dev/null || true
+				nft delete chain inet fw4 ark_gaming_ports 2>/dev/null || true
+				nft flush chain inet fw4 ark_gaming_forward 2>/dev/null || true
+				nft delete chain inet fw4 ark_gaming_forward 2>/dev/null || true
+				cat << 'EOF' > /tmp/ark_gaming_ports.nft
+table inet fw4 {
+	chain ark_gaming_ports {
+		type filter hook prerouting priority mangle - 4; policy accept;
+		iifname { "br-*", "lan*", "phy*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 5060-5062, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10100, 12000-12999, 14000-14016, 17000-17100, 19132-19133, 25565, 27000-27100, 47998-48010, 49003-49006, 50000-50100, 61455-61458 } meta length <= 512 ip dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games UDP IPv4 Priority"
+		iifname { "br-*", "lan*", "phy*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 5060-5062, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10100, 12000-12999, 14000-14016, 17000-17100, 19132-19133, 25565, 27000-27100, 47998-48010, 49003-49006, 50000-50100, 61455-61458 } meta length <= 512 ip6 dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games UDP IPv6 Priority"
+		iifname { "br-*", "lan*", "phy*" } tcp dport { 3074, 3659, 5222-5223, 6112-6120, 8088, 8393-8400, 19132, 25565, 27014-27050 } meta length <= 512 ip dscp set cs4 comment "ARK: BufferSpeed 80+ Games TCP Control IPv4"
+		iifname { "br-*", "lan*", "phy*" } tcp dport { 3074, 3659, 5222-5223, 6112-6120, 8088, 8393-8400, 19132, 25565, 27014-27050 } meta length <= 512 ip6 dscp set cs4 comment "ARK: BufferSpeed 80+ Games TCP Control IPv6"
+	}
+	chain ark_gaming_forward {
+		type filter hook forward priority filter - 5; policy accept;
+		meta l4proto udp ct mark & 0x000000ff == 0x000000a0 ct state { related, established } accept comment "ARK: Gaming Open NAT UDP Fast-Return"
+	}
+}
+EOF
+				nft -f /tmp/ark_gaming_ports.nft 2>/dev/null || true
+			elif is_fw3; then
+				iptables -t mangle -N ARK_GAMING_PORTS 2>/dev/null || iptables -t mangle -F ARK_GAMING_PORTS 2>/dev/null || true
+				iptables -t mangle -C PREROUTING -j ARK_GAMING_PORTS 2>/dev/null || iptables -t mangle -A PREROUTING -j ARK_GAMING_PORTS 2>/dev/null || true
+				iptables -t mangle -A ARK_GAMING_PORTS -p udp -m multiport --dports 88,500,3074:3079,3544,3658:3659,4379:4380,4500,5000:5500,7000:8100,27000:27100 -m length --length 0:512 -j DSCP --set-dscp-class CS4 2>/dev/null || true
+			fi
+			sysctl -w net.netfilter.nf_conntrack_udp_timeout=45 >/dev/null 2>&1 || true
+			sysctl -w net.netfilter.nf_conntrack_udp_timeout_stream=180 >/dev/null 2>&1 || true
+		fi
+		printf 'active\n' > "$gp_state" 2>/dev/null || true
+	else
+		if [ -z "${ARK_ROOT:-}" ]; then
+			if is_fw4; then
+				nft flush chain inet fw4 ark_gaming_ports 2>/dev/null || true
+				nft delete chain inet fw4 ark_gaming_ports 2>/dev/null || true
+				nft flush chain inet fw4 ark_gaming_forward 2>/dev/null || true
+				nft delete chain inet fw4 ark_gaming_forward 2>/dev/null || true
+				rm -f /tmp/ark_gaming_ports.nft 2>/dev/null || true
+			elif is_fw3; then
+				iptables -t mangle -D PREROUTING -j ARK_GAMING_PORTS 2>/dev/null || true
+				iptables -t mangle -F ARK_GAMING_PORTS 2>/dev/null || true
+				iptables -t mangle -X ARK_GAMING_PORTS 2>/dev/null || true
+			fi
+			sysctl -w net.netfilter.nf_conntrack_udp_timeout=30 >/dev/null 2>&1 || true
+			sysctl -w net.netfilter.nf_conntrack_udp_timeout_stream=120 >/dev/null 2>&1 || true
+		fi
+		rm -f "$gp_state" 2>/dev/null || true
+	fi
+}
+
+ark_get_sqm_engine() {
+	local eng
+	eng="$(uci -q get equipe_dashboard.settings.sqm_engine 2>/dev/null || echo '')"
+	if [ "$eng" = "hfsc_fq_codel" ] || [ "$eng" = "cake" ]; then
+		printf '%s' "$eng"
+		return 0
+	fi
+	if uci -q show sqm 2>/dev/null | grep -qE "\.(ark_engine='hfsc_fq_codel'|script='ark_hfsc_fqcodel\.qos')"; then
+		printf 'hfsc_fq_codel'
+		return 0
+	fi
+	printf 'cake'
+}
+
+ark_apply_sqm_engine_to_section() {
+	local sec="$1"
+	local eng="${2:-cake}"
+	[ -n "$sec" ] || return 0
+	if [ "$eng" = "hfsc_fq_codel" ]; then
+		uci -q set "sqm.$sec.ark_engine=hfsc_fq_codel"
+		uci -q set "sqm.$sec.qdisc=fq_codel"
+		uci -q set "sqm.$sec.script=ark_hfsc_fqcodel.qos"
+	else
+		uci -q set "sqm.$sec.ark_engine=cake"
+		uci -q set "sqm.$sec.qdisc=cake"
+		uci -q set "sqm.$sec.script=layer_cake.qos"
+	fi
 }
 
 get_system_hardware_sqm_audit() {
@@ -243,9 +439,21 @@ get_system_hardware_sqm_audit() {
 	ark_has_l4s_dscp && l4s_active=1
 	local autorate_enabled=0
 	[ "$(uci -q get equipe_dashboard.settings.sqm_autorate 2>/dev/null || echo 0)" = "1" ] && autorate_enabled=1
+	local sqm_engine="$(ark_get_sqm_engine)"
+	local gaming_ports_enabled=0
+	ark_is_gaming_ports_enabled && gaming_ports_enabled=1
+	local gaming_ports_active=0
+	if [ -s "${ARK_ROOT:-}/tmp/ark_sqm_gaming_ports.state" ] || [ -s "/tmp/ark_sqm_gaming_ports.state" ]; then
+		gaming_ports_active=1
+	fi
+	local bql_tuned=0
+	if [ -s "${ARK_ROOT:-}/tmp/ark_sqm_bql.state" ] || [ -s "/tmp/ark_sqm_bql.state" ]; then
+		bql_tuned=1
+	fi
+	local ipv6_mode="$(uci -q get equipe_dashboard.ipv6.mode 2>/dev/null || echo 'dual_stack')"
 
-	printf '{"is_low_end_mips":%s,"cpu_arch":"%s","cpu_cores":%d,"cpu_model":"%s","suggested_cut_off_mbps":%d,"fastpath_active":%s,"hw_flowoffload_capable":%s,"hw_flowoffload_active":%s,"cake_memlimit":"%s","waveform_aplus_mode":%s,"cake_mq_capable":%s,"cake_mq_active":%s,"auto_dscp_active":%s,"ctinfo_capable":%s,"l4s_active":%s,"autorate_enabled":%s}\n' \
-		"$(bool "$is_low_end_mips")" "$cpu_arch" "$cpu_cores" "$(json_escape "$cpu_model")" "$suggested_cut_off_mbps" "$fastpath_active" "$(bool "$hw_flowoffload_capable")" "$(bool "$hw_flowoffload_active")" "$cake_memlimit" "$(bool "$waveform_aplus")" "$(bool "$cake_mq_capable")" "$(bool "$cake_mq_active")" "$(bool "$auto_dscp_active")" "$(bool "$ctinfo_capable")" "$(bool "$l4s_active")" "$(bool "$autorate_enabled")"
+	printf '{"is_low_end_mips":%s,"cpu_arch":"%s","cpu_cores":%d,"cpu_model":"%s","suggested_cut_off_mbps":%d,"fastpath_active":%s,"hw_flowoffload_capable":%s,"hw_flowoffload_active":%s,"cake_memlimit":"%s","waveform_aplus_mode":%s,"cake_mq_capable":%s,"cake_mq_active":%s,"auto_dscp_active":%s,"ctinfo_capable":%s,"l4s_active":%s,"autorate_enabled":%s,"sqm_engine":"%s","gaming_ports_enabled":%s,"gaming_ports_active":%s,"bql_tuned":%s,"ipv6_mode":"%s"}\n' \
+		"$(bool "$is_low_end_mips")" "$cpu_arch" "$cpu_cores" "$(json_escape "$cpu_model")" "$suggested_cut_off_mbps" "$fastpath_active" "$(bool "$hw_flowoffload_capable")" "$(bool "$hw_flowoffload_active")" "$cake_memlimit" "$(bool "$waveform_aplus")" "$(bool "$cake_mq_capable")" "$(bool "$cake_mq_active")" "$(bool "$auto_dscp_active")" "$(bool "$ctinfo_capable")" "$(bool "$l4s_active")" "$(bool "$autorate_enabled")" "$sqm_engine" "$(bool "$gaming_ports_enabled")" "$(bool "$gaming_ports_active")" "$(bool "$bql_tuned")" "$(json_escape "$ipv6_mode")"
 }
 
 sqm_apply_upload_only() {
@@ -322,7 +530,7 @@ ark_sqm_ingress_mode_opt() {
 }
 
 ensure_sqm_section() {
-	local section device mlim down_k up_k ack_opt irtt_opt imode_opt
+	local section device mlim down_k up_k ack_opt irtt_opt imode_opt cur_eng cur_script
 	section="$1"; device="$2"
 	mlim="$(ark_cake_memlimit)"
 	down_k="$(uci -q get "sqm.$section.download" || echo 0)"
@@ -332,14 +540,24 @@ ensure_sqm_section() {
 	imode_opt="$(ark_sqm_ingress_mode_opt "$down_k" "$section")"
 	uci -q get "sqm.$section" >/dev/null 2>&1 || uci -q set "sqm.$section=queue"
 	uci -q set "sqm.$section.interface=$device"
-	[ -n "$(uci -q get "sqm.$section.qdisc")" ] || uci -q set "sqm.$section.qdisc=cake"
-	local cur_script="$(uci -q get "sqm.$section.script")"
-	if [ -z "$cur_script" ] || [ "$cur_script" = "piece_of_cake.qos" ]; then
-		uci -q set "sqm.$section.script=layer_cake.qos"
+	cur_eng="$(uci -q get "sqm.$section.ark_engine" || echo '')"
+	[ -n "$cur_eng" ] || cur_eng="$(ark_get_sqm_engine)"
+	cur_script="$(uci -q get "sqm.$section.script")"
+	if [ "$cur_eng" = "hfsc_fq_codel" ]; then
+		ark_apply_sqm_engine_to_section "$section" "hfsc_fq_codel"
+	else
+		uci -q set "sqm.$section.ark_engine=cake"
+		if [ -z "$(uci -q get "sqm.$section.qdisc")" ] || [ "$cur_script" = "ark_hfsc_fqcodel.qos" ]; then
+			uci -q set "sqm.$section.qdisc=cake"
+		fi
+		if [ -z "$cur_script" ] || [ "$cur_script" = "piece_of_cake.qos" ] || [ "$cur_script" = "ark_hfsc_fqcodel.qos" ]; then
+			uci -q set "sqm.$section.script=layer_cake.qos"
+		fi
 	fi
 	uci -q set "sqm.$section.qdisc_advanced=1"
 	uci -q set "sqm.$section.qdisc_really_really_advanced=1"
 	[ -n "$(uci -q get "sqm.$section.waveform_aplus")" ] || uci -q set "sqm.$section.waveform_aplus=1"
+	[ -n "$(uci -q get "sqm.$section.gaming_ports")" ] || uci -q set "sqm.$section.gaming_ports=1"
 	[ -n "$(uci -q get "sqm.$section.squash_dscp")" ] || uci -q set "sqm.$section.squash_dscp=1"
 	[ -n "$(uci -q get "sqm.$section.squash_ingress")" ] || uci -q set "sqm.$section.squash_ingress=1"
 	[ -n "$(uci -q get "sqm.$section.ingress_ecn")" ] || uci -q set "sqm.$section.ingress_ecn=ECN"
@@ -546,11 +764,17 @@ sync_sqm_flow_offload() {
 ark_sync_lan_selective_offload() {
 	local br_dev br_name
 	[ -z "${ARK_ROOT:-}" ] || return 0
-	for br_dev in /sys/class/net/br-* /sys/class/net/lan*; do
+	for br_dev in /sys/class/net/br-* /sys/class/net/lan* /sys/class/net/phy*; do
 		[ -d "$br_dev" ] || continue
 		br_name="${br_dev##*/}"
 		command -v ethtool >/dev/null 2>&1 && ethtool -K "$br_name" gro on gso on tso on 2>/dev/null || true
-		ip link set dev "$br_name" txqueuelen 1000 2>/dev/null || true
+		ip link set dev "$br_name" txqueuelen 1000 gro_max_size 8192 gro_ipv4_max_size 8192 gso_max_size 8192 gso_ipv4_max_size 8192 2>/dev/null || true
+		case "$br_name" in
+			lan*)
+				command -v ethtool >/dev/null 2>&1 && ethtool -A "$br_name" autoneg off rx off tx off 2>/dev/null || true
+				tc qdisc replace dev "$br_name" root fq_codel limit 10240 quantum 1514 target 10ms interval 100ms ecn 2>/dev/null || true
+				;;
+		esac
 	done
 	return 0
 }
@@ -673,12 +897,26 @@ ark_sqm_autorate_step() {
 
 		if [ -z "${ARK_ROOT:-}" ]; then
 			if [ "$new_ul" != "$cur_ul" ] && [ "$new_ul" -gt 0 ]; then
-				qdisc_type="cake"
-				tc qdisc show dev "$iface" 2>/dev/null | grep -q "cake_mq" && qdisc_type="cake_mq"
-				tc qdisc change dev "$iface" root "$qdisc_type" bandwidth "${new_ul}kbit" 2>/dev/null || true
+				if tc qdisc show dev "$iface" 2>/dev/null | grep -q "hfsc"; then
+					tc class change dev "$iface" parent 1: classid 1:1 hfsc sc rate "${new_ul}kbit" ul rate "${new_ul}kbit" 2>/dev/null || true
+					tc class change dev "$iface" parent 1:1 classid 1:10 hfsc rt m1 "$((new_ul * 40 / 100))kbit" d 1ms m2 "$((new_ul * 20 / 100))kbit" ls m2 "$((new_ul * 20 / 100))kbit" ul rate "${new_ul}kbit" 2>/dev/null || true
+					tc class change dev "$iface" parent 1:1 classid 1:20 hfsc ls m2 "$((new_ul * 70 / 100))kbit" ul rate "${new_ul}kbit" 2>/dev/null || true
+					tc class change dev "$iface" parent 1:1 classid 1:30 hfsc ls m2 "$((new_ul * 10 / 100))kbit" ul rate "${new_ul}kbit" 2>/dev/null || true
+				else
+					qdisc_type="cake"
+					tc qdisc show dev "$iface" 2>/dev/null | grep -q "cake_mq" && qdisc_type="cake_mq"
+					tc qdisc change dev "$iface" root "$qdisc_type" bandwidth "${new_ul}kbit" 2>/dev/null || true
+				fi
 			fi
 			if [ "$new_dl" != "$cur_dl" ] && [ "$new_dl" -gt 0 ]; then
-				tc qdisc change dev "ifb4${iface}" root cake bandwidth "${new_dl}kbit" 2>/dev/null || true
+				if tc qdisc show dev "ifb4${iface}" 2>/dev/null | grep -q "hfsc"; then
+					tc class change dev "ifb4${iface}" parent 1: classid 1:1 hfsc sc rate "${new_dl}kbit" ul rate "${new_dl}kbit" 2>/dev/null || true
+					tc class change dev "ifb4${iface}" parent 1:1 classid 1:10 hfsc rt m1 "$((new_dl * 40 / 100))kbit" d 1ms m2 "$((new_dl * 20 / 100))kbit" ls m2 "$((new_dl * 20 / 100))kbit" ul rate "${new_dl}kbit" 2>/dev/null || true
+					tc class change dev "ifb4${iface}" parent 1:1 classid 1:20 hfsc ls m2 "$((new_dl * 70 / 100))kbit" ul rate "${new_dl}kbit" 2>/dev/null || true
+					tc class change dev "ifb4${iface}" parent 1:1 classid 1:30 hfsc ls m2 "$((new_dl * 10 / 100))kbit" ul rate "${new_dl}kbit" 2>/dev/null || true
+				else
+					tc qdisc change dev "ifb4${iface}" root cake bandwidth "${new_dl}kbit" 2>/dev/null || true
+				fi
 			fi
 		fi
 
@@ -752,6 +990,27 @@ handle_sqm() {
 		ark_promote_cake_mq
 		echo ok
 		;;
+	sqm-engine-select)
+		case "$2" in cake|hfsc_fq_codel) ;; *) echo 'Motor SQM invalido' >&2; exit 2 ;; esac
+		[ -f "${ARK_ROOT}/etc/config/sqm" ] || [ -f /etc/config/sqm ] || { echo 'SQM nao instalado' >&2; exit 3; }
+		uci -q set equipe_dashboard.settings=dashboard
+		uci -q set "equipe_dashboard.settings.sqm_engine=$2"
+		uci commit equipe_dashboard 2>/dev/null || true
+		for network_section in $(active_wan_networks); do
+			sqm_section="$(sqm_section_for_network "$network_section")" || continue
+			wan_device="$(sqm_device_for_network "$network_section")"
+			valid_net_device "$wan_device" || continue
+			ensure_sqm_section "$sqm_section" "$wan_device"
+			ark_apply_sqm_engine_to_section "$sqm_section" "$2"
+		done
+		uci commit sqm
+		if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
+			/etc/init.d/sqm stop >/dev/null 2>&1 || true
+			/etc/init.d/sqm start >/dev/null 2>&1 || /etc/init.d/sqm restart >/dev/null 2>&1 || true
+		fi
+		ark_promote_cake_mq
+		echo ok
+		;;
 	irqbalance-toggle)
 		case "$2" in 0|1) ;; *) echo 'Estado do irqbalance invalido' >&2; exit 2 ;; esac
 		installed irqbalance || { echo 'irqbalance nao instalado' >&2; exit 3; }
@@ -780,8 +1039,7 @@ handle_sqm() {
 			ensure_sqm_section "$sqm_section" "$wan_device"
 			uci -q set "sqm.$sqm_section.waveform_aplus=$2"
 			if [ "$2" = "1" ]; then
-				uci -q set "sqm.$sqm_section.qdisc=cake"
-				uci -q set "sqm.$sqm_section.script=layer_cake.qos"
+				ark_apply_sqm_engine_to_section "$sqm_section" "$(ark_get_sqm_engine)"
 				uci -q set "sqm.$sqm_section.qdisc_advanced=1"
 				uci -q set "sqm.$sqm_section.qdisc_really_really_advanced=1"
 				uci -q set "sqm.$sqm_section.squash_dscp=1"
@@ -826,12 +1084,38 @@ handle_sqm() {
 		ark_promote_cake_mq
 		echo ok
 		;;
+	sqm-gaming-ports)
+		case "$2" in 0|1) ;; *) echo 'Estado Gaming Ports invalido' >&2; exit 2 ;; esac
+		[ -f "${ARK_ROOT}/etc/config/sqm" ] || [ -f /etc/config/sqm ] || { echo 'SQM nao instalado' >&2; exit 3; }
+		uci -q set equipe_dashboard.settings=dashboard
+		uci -q set "equipe_dashboard.settings.sqm_gaming_ports=$2"
+		uci commit equipe_dashboard 2>/dev/null || true
+		for network_section in $(active_wan_networks); do
+			sqm_section="$(sqm_section_for_network "$network_section")" || continue
+			wan_device="$(sqm_device_for_network "$network_section")"
+			valid_net_device "$wan_device" || continue
+			ensure_sqm_section "$sqm_section" "$wan_device"
+			uci -q set "sqm.$sqm_section.gaming_ports=$2"
+		done
+		for existing_section in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\(wan[0-9]*\)=queue$/\1/p'); do
+			uci -q set "sqm.$existing_section.gaming_ports=$2"
+		done
+		uci commit sqm 2>/dev/null || true
+		if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
+			ark_sync_gaming_ports_and_bql "1"
+		else
+			ark_sync_gaming_ports_and_bql "0"
+		fi
+		echo ok
+		;;
 	sqm-save-v2)
 		[ -f "${ARK_ROOT}/etc/config/sqm" ] || [ -f /etc/config/sqm ] || { echo 'SQM nao instalado' >&2; exit 3; }
 		shift
 		wan_count=0
 		submitted_sections=' '
 		waveform_aplus_override=""
+		sqm_engine_override=""
+		gaming_ports_override=""
 		for pair in "$@"; do
 			key="${pair%%=*}"; value="${pair#*=}"
 			case "$key" in
@@ -866,6 +1150,12 @@ handle_sqm() {
 				waveform_aplus)
 					case "$value" in 0|1) waveform_aplus_override="$value" ;; *) echo 'Estado Waveform A+ invalido' >&2; exit 2 ;; esac
 					;;
+				sqm_engine)
+					case "$value" in cake|hfsc_fq_codel) sqm_engine_override="$value" ;; *) echo 'Motor SQM invalido' >&2; exit 2 ;; esac
+					;;
+				gaming_ports)
+					case "$value" in 0|1) gaming_ports_override="$value" ;; *) echo 'Estado Gaming Ports invalido' >&2; exit 2 ;; esac
+					;;
 				*) echo "Campo SQM invalido: $key" >&2; exit 2 ;;
 			esac
 		done
@@ -873,6 +1163,16 @@ handle_sqm() {
 		if [ -n "$waveform_aplus_override" ]; then
 			uci -q set equipe_dashboard.settings=dashboard
 			uci -q set "equipe_dashboard.settings.waveform_aplus_mode=$waveform_aplus_override"
+			uci commit equipe_dashboard 2>/dev/null || true
+		fi
+		if [ -n "$sqm_engine_override" ]; then
+			uci -q set equipe_dashboard.settings=dashboard
+			uci -q set "equipe_dashboard.settings.sqm_engine=$sqm_engine_override"
+			uci commit equipe_dashboard 2>/dev/null || true
+		fi
+		if [ -n "$gaming_ports_override" ]; then
+			uci -q set equipe_dashboard.settings=dashboard
+			uci -q set "equipe_dashboard.settings.sqm_gaming_ports=$gaming_ports_override"
 			uci commit equipe_dashboard 2>/dev/null || true
 		fi
 		# Disable stale queues that belonged to WANs removed or converted back
@@ -906,6 +1206,9 @@ handle_sqm() {
 					uci -q get "sqm.$section" >/dev/null 2>&1 || uci -q set "sqm.$section=queue"
 					uci -q set "sqm.$section.download=$download"
 					uci -q set "sqm.$section.upload=$upload"
+					if [ -n "$sqm_engine_override" ]; then
+						ark_apply_sqm_engine_to_section "$section" "$sqm_engine_override"
+					fi
 					ensure_sqm_section "$section" "$device"
 					uci -q set "sqm.$section.enabled=$enabled"
 					local ack_save="$(ark_sqm_ack_filter_opt "$download" "$upload")"
@@ -914,10 +1217,12 @@ handle_sqm() {
 					if [ -n "$waveform_aplus_override" ]; then
 						uci -q set "sqm.$section.waveform_aplus=$waveform_aplus_override"
 					fi
+					if [ -n "$gaming_ports_override" ]; then
+						uci -q set "sqm.$section.gaming_ports=$gaming_ports_override"
+					fi
 					if [ "$waveform_aplus_override" = "1" ]; then
 						local mlim_save="$(ark_cake_memlimit)"
-						uci -q set "sqm.$section.qdisc=cake"
-						uci -q set "sqm.$section.script=layer_cake.qos"
+						ark_apply_sqm_engine_to_section "$section" "${sqm_engine_override:-$(ark_get_sqm_engine)}"
 						uci -q set "sqm.$section.qdisc_advanced=1"
 						uci -q set "sqm.$section.qdisc_really_really_advanced=1"
 						uci -q set "sqm.$section.squash_dscp=1"
