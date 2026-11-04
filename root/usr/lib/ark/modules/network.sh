@@ -189,15 +189,15 @@ mwan3_toggle() {
 
 mwan_status_fast() {
 	local iface tf
-	local mwan_cache="/tmp/ark-mwan-cache.json"
-	local mwan_ts="/tmp/ark-mwan-cache.ts"
+	local mwan_cache="${ARK_ROOT}/tmp/ark-mwan-cache.json"
+	local mwan_ts="${ARK_ROOT}/tmp/ark-mwan-cache.ts"
 	local now cache_time
 
 	now="$(date +%s 2>/dev/null || echo 0)"
 	if [ -s "$mwan_cache" ] && [ -f "$mwan_ts" ]; then
 		cache_time="$(head -n 1 "$mwan_ts" 2>/dev/null || echo 0)"
 		case "$cache_time" in ''|*[!0-9]*) cache_time=0 ;; esac
-		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ $((now - cache_time)) -lt 3 ]; then
+		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ "$now" -ge "$cache_time" ] && [ $((now - cache_time)) -lt 3 ]; then
 			cat "$mwan_cache"
 			return 0
 		fi
@@ -256,7 +256,8 @@ mwan_status_fast() {
 		printf '},"connected":{"ipv4":[],"ipv6":[]},"policies":{"ipv4":{},"ipv6":{}}}\n'
 	} > "$mwan_cache.$$.tmp"
 	mv -f "$mwan_cache.$$.tmp" "$mwan_cache"
-	echo "$now" > "$mwan_ts"
+	printf '%s\n' "$now" > "$mwan_ts.$$.tmp"
+	mv -f "$mwan_ts.$$.tmp" "$mwan_ts"
 	cat "$mwan_cache"
 }
 

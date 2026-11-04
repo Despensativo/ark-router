@@ -10,7 +10,7 @@
 
 ## 1. Escopo e Identificação
 - **Repositório**: Canônico oficial do ARK Router (OpenWrt LuCI Application & Theme).
-- **Versão Ativa**: `2.1.9` (declarada em `VERSION` e `Makefile:PKG_VERSION:=2.1.9`).
+- **Versão Ativa**: `2.2.0` (declarada em `VERSION` e `Makefile:PKG_VERSION:=2.2.0`).
 - **Arquitetura Alvo**: Dual OpenWrt — Legado (19.07 a 21.02, `opkg`, `iptables`/`fw3`) e Moderno (22.03 a 25.x, `opkg`/`apk`, `nftables`/`fw4`). Detalhes em `docs/COMPATIBILITY_MATRIX.md`.
 - **Hardware Suportado**: De 128 MB RAM / 16 MB SPI Flash (DGL-5500) até 256 MB a 1 GB+ RAM (Cudy WR3000, Predator W6x, Filogic).
 
@@ -145,6 +145,7 @@ O ambiente principal de desenvolvimento e validação do ARK Router deve ser uma
 ---
 
 ## 7. Documentação Especializada sob Demanda (Consulte apenas quando necessário)
+- **Mapa Determinístico de Código, Funções, Métodos e Rotas RPC (`StartLine`–`EndLine`)**: `docs/CODE_MAP.md` (gerado por `scripts/generate_code_map.py`)
 - **Auditoria de Funcionalidades, Reboot e Contratos**: `docs/FEATURE_AUDIT_AND_REBOOT.md`
 - **Laboratório Virtual Oficial e Topologias**: `docs/VIRTUAL_LAB.md` e `docs/VIRTUALBOX_TEST_ENVIRONMENT.md`
 - **Design System, Modais, Scroll e Matriz de QA**: `docs/UI_DESIGN_SYSTEM_AND_QA.md`

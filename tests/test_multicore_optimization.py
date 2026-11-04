@@ -91,19 +91,48 @@ rmdir "$TESTDIR/active"'''
         tmp.mkdir(exist_ok=True)
         lib.mkdir(exist_ok=True)
         (lib / 'common.sh').write_text('exit 88\n')
-        name = 'ark-fp-cache' if action == 'device-fingerprints' else 'ark-stations-cache'
-        (tmp / (name + '.json')).write_text('{"cached":true}\n')
-        (tmp / (name + '.ts')).write_text(str(int(time.time()) - age) + '\n')
+        if action == 'doctor-status':
+            if age < 120:
+                (tmp / 'ark-doctor-last.json').write_text('{"cached":true}\n')
+        else:
+            name_map = {
+                'device-fingerprints': 'ark-fp-cache',
+                'device-stations': 'ark-stations-cache',
+                'wifi-stations': 'ark-stations-cache',
+                'mwan-status-fast': 'ark-mwan-cache',
+                'system-perf-status': 'ark-perf-cache',
+                'system-hardware-info': 'ark-hw-cache',
+            }
+            name = name_map[action]
+            (tmp / (name + '.json')).write_text('{"cached":true}\n')
+            (tmp / (name + '.ts')).write_text(str(int(time.time()) - age) + '\n')
         if mock:
             (tmp / 'ark_mock_stations.json').write_text('[]\n')
         return subprocess.run(['sh', str(CONTROL), action], env=dict(os.environ, ARK_ROOT=str(self.path), ARK_LIB_DIR=str(lib)), capture_output=True, timeout=5)
 
     def test_hot_cache_skips_dependency_loading(self):
-        for action in ['device-fingerprints', 'device-stations', 'wifi-stations']:
+        for action in ['device-fingerprints', 'device-stations', 'wifi-stations', 'mwan-status-fast', 'system-perf-status', 'system-hardware-info', 'doctor-status']:
             with self.subTest(action=action):
                 result = self.cache_request(action, 1)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout, b'{"cached":true}\n')
+
+    def test_doctor_auto_coalesces_immediately_when_locked(self):
+        tmp = self.path / 'tmp'
+        lib = self.path / 'lib'
+        tmp.mkdir(exist_ok=True)
+        lib.mkdir(exist_ok=True)
+        (lib / 'common.sh').write_text('exit 88\n')
+        lockdir = tmp / 'ark-doctor.lockdir'
+        lockdir.mkdir(exist_ok=True)
+        (lockdir / 'pid').write_text(f'{os.getpid()}\n')
+        result = subprocess.run(
+            ['sh', str(CONTROL), 'ark-doctor', '--auto'],
+            env=dict(os.environ, ARK_ROOT=str(self.path), ARK_LIB_DIR=str(lib)),
+            capture_output=True,
+            timeout=5,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_expired_and_future_cache_fall_back(self):
         for age in [120, 1000, -60]:
@@ -136,3 +165,4 @@ printf '{"complete":true}\\n'
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
+

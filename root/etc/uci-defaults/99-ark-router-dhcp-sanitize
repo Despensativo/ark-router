@@ -75,16 +75,26 @@ for pfx in $lan_ip6_entries; do
 	esac
 done
 
-# Otimizacao inteligente do cachesize do dnsmasq conforme a RAM do hardware
+# Otimizacao inteligente do cachesize e dnsforwardmax do dnsmasq conforme a RAM do hardware
 mem_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 131072)"
 if [ "$mem_kb" -le 135000 ]; then
 	target_cache=5000
+	target_fwd=500
 else
 	target_cache=10000
+	target_fwd=2000
 fi
 cur_cache="$(uci -q get dhcp.@dnsmasq[0].cachesize || true)"
 if [ -z "$cur_cache" ] || [ "$cur_cache" -gt 10000 ] || [ "$cur_cache" -lt 1000 ]; then
 	uci -q set "dhcp.@dnsmasq[0].cachesize=$target_cache"
+	changed=1
+fi
+cur_fwd="$(uci -q get dhcp.@dnsmasq[0].dnsforwardmax || true)"
+legacy_fwd="$(uci -q get dhcp.@dnsmasq[0].dns_forward_max || true)"
+[ -n "$legacy_fwd" ] && [ "$legacy_fwd" -gt "$target_fwd" ] 2>/dev/null && target_fwd="$legacy_fwd"
+if [ -z "$cur_fwd" ] || [ "$cur_fwd" -lt 500 ] 2>/dev/null; then
+	uci -q set "dhcp.@dnsmasq[0].dnsforwardmax=$target_fwd"
+	uci -q set "dhcp.@dnsmasq[0].dns_forward_max=$target_fwd"
 	changed=1
 fi
 

@@ -71,7 +71,8 @@ printf "${YELLOW}[4/5] Verificando contratos, documentação, preservação de e
 "$PYTHON_CMD" "$REPO_DIR/scripts/audit_state_preservation.py" --strict
 "$PYTHON_CMD" "$REPO_DIR/scripts/audit_i18n.py"
 "$PYTHON_CMD" "$REPO_DIR/scripts/audit_docs.py"
-printf "${GREEN}✓ Contratos funcionais, documentação viva, i18n e preservação aprovados!${NC}\n\n"
+"$PYTHON_CMD" "$REPO_DIR/scripts/generate_code_map.py" --check
+printf "${GREEN}✓ Contratos funcionais, documentação viva, CODE_MAP, i18n e preservação aprovados!${NC}\n\n"
 
 # 5. Auditoria de Minificação
 printf "${YELLOW}[5/5] Testando pipeline de minificação...${NC}\n"

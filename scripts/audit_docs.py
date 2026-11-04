@@ -150,6 +150,22 @@ def main():
                 rel_p = src_file.relative_to(repo_dir)
                 errors.append(f"Arquivo modular {rel_p} possui {line_cnt} linhas (teto arquitetural < 4.000 linhas).")
 
+    # 9. Completude do Mapa Mestre de Documentação (docs/README.md & docs/CODE_MAP.md)
+    docs_dir = repo_dir / "docs"
+    docs_index = docs_dir / "README.md"
+    code_map = docs_dir / "CODE_MAP.md"
+    if not code_map.exists():
+        errors.append("Mapa determinístico docs/CODE_MAP.md ausente (execute scripts/generate_code_map.py).")
+    if not docs_index.exists():
+        errors.append("Índice mestre docs/README.md ausente.")
+    else:
+        index_txt = docs_index.read_text(encoding="utf-8", errors="ignore")
+        for md_file in sorted(docs_dir.glob("*.md")):
+            if md_file.name == "README.md" or md_file.name.startswith("."):
+                continue
+            if md_file.name not in index_txt:
+                errors.append(f"Documento órfão em docs/: {md_file.name} não está catalogado no índice mestre docs/README.md.")
+
     # Relatório
     print("=" * 60)
     print("      ARK ROUTER: AUDITORIA PREVENTIVA DE DOCUMENTAÇÃO      ")

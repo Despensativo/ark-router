@@ -14,15 +14,15 @@ _ARK_SYSTEM_SH_LOADED=1
 [ -f "${ARK_LIB_DIR}/modules/system_hardware_leds.sh" ] && . "${ARK_LIB_DIR}/modules/system_hardware_leds.sh"
 
 system_perf_status_json() {
-	local perf_cache="/tmp/ark-perf-cache.json"
-	local perf_ts="/tmp/ark-perf-cache.ts"
+	local perf_cache="${ARK_ROOT}/tmp/ark-perf-cache.json"
+	local perf_ts="${ARK_ROOT}/tmp/ark-perf-cache.ts"
 	local now cache_time
 
 	now="$(date +%s 2>/dev/null || echo 0)"
 	if [ -s "$perf_cache" ] && [ -f "$perf_ts" ]; then
 		cache_time="$(head -n 1 "$perf_ts" 2>/dev/null || echo 0)"
 		case "$cache_time" in ''|*[!0-9]*) cache_time=0 ;; esac
-		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ $((now - cache_time)) -lt 120 ]; then
+		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ "$now" -ge "$cache_time" ] && [ $((now - cache_time)) -lt 120 ]; then
 			local cc="$(cat /proc/sys/net/netfilter/nf_conntrack_count 2>/dev/null || echo 0)"
 			local ma="$(awk '/MemAvailable:/ {print $2; exit}' /proc/meminfo 2>/dev/null || awk '/MemFree:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
 			sed -e "s/\"conntrack_count\":[0-9]*/\"conntrack_count\":$cc/" -e "s/\"mem_avail_kb\":[0-9]*/\"mem_avail_kb\":$ma/" "$perf_cache"
@@ -30,9 +30,10 @@ system_perf_status_json() {
 		fi
 	fi
 
-	system_perf_status_raw > "$perf_cache.tmp"
-	mv "$perf_cache.tmp" "$perf_cache"
-	echo "$now" > "$perf_ts"
+	system_perf_status_raw > "$perf_cache.$$.tmp"
+	mv -f "$perf_cache.$$.tmp" "$perf_cache"
+	printf '%s\n' "$now" > "$perf_ts.$$.tmp"
+	mv -f "$perf_ts.$$.tmp" "$perf_ts"
 	cat "$perf_cache"
 }
 
@@ -745,7 +746,7 @@ network_capacity_status_json() {
 	conntrack_max="$(cat /proc/sys/net/netfilter/nf_conntrack_max 2>/dev/null || echo 65536)"
 	conntrack_count="$(cat /proc/sys/net/netfilter/nf_conntrack_count 2>/dev/null || echo 0)"
 	conntrack_tcp_timeout="$(cat /proc/sys/net/netfilter/nf_conntrack_tcp_timeout_established 2>/dev/null || echo 432000)"
-	dns_forward_max="$(uci -q get dhcp.@dnsmasq[0].dns_forward_max || echo 150)"
+	dns_forward_max="$(uci -q get dhcp.@dnsmasq[0].dnsforwardmax || uci -q get dhcp.@dnsmasq[0].dns_forward_max || echo 150)"
 	cachesize="$(uci -q get dhcp.@dnsmasq[0].cachesize || echo 150)"
 	dhcp_leasetime="$(uci -q get dhcp.lan.leasetime || echo 12h)"
 	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
@@ -804,6 +805,7 @@ network_capacity_save() {
 	fi
 	uci commit equipe_perf
 
+	uci -q set "dhcp.@dnsmasq[0].dnsforwardmax=$fwd_max"
 	uci -q set "dhcp.@dnsmasq[0].dns_forward_max=$fwd_max"
 	uci -q set "dhcp.@dnsmasq[0].cachesize=$cache_sz"
 	uci -q set "dhcp.lan.leasetime=$lease_time"

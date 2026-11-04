@@ -5,7 +5,7 @@
 [ -z "${_ARK_COMMON_SH_LOADED:-}" ] || return 0
 _ARK_COMMON_SH_LOADED=1
 
-ARK_ROUTER_VERSION="2.1.9"
+ARK_ROUTER_VERSION="2.2.0"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 ARK_ROOT="${ARK_ROOT:-}"
 
@@ -2337,7 +2337,7 @@ ark_is_readonly_action() {
 		doctor-fix|fix-run)
 			return 1
 			;;
-		doctor-run|doctor-status|doctor-log)
+		doctor-run|doctor-status|doctor-log|update-wan-led|update-led-alert)
 			return 0
 			;;
 		*-status|*-status-*|*-get|*-list|*-check|*-check-*|*-audit|*-info|*-discover|*-fingerprints|*-stations|*-processes|*-logs|*-log|*-telemetry|*-qr|features|fast-targets|speedtest-result|starlink-telemetry|autowan-can-convert|autowan-can-convert-wan|speedify-user)

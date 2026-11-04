@@ -2269,14 +2269,16 @@ ark_doctor_audit() {
 		"$_overall_status" "$_epoch_now" "$_date_now" "$errors" "$warnings" "$fixes_applied" "$checks")
 
 	# Persistir estado em /tmp/ark-doctor-last.json de forma atômica
-	local _state_file="/tmp/ark-doctor-last.json"
-	[ -w "/tmp" ] || _state_file="${ARK_LOCK_DIR:-/tmp}/ark-doctor-last.json"
+	local _state_file="${ARK_ROOT}/tmp/ark-doctor-last.json"
 	[ -d "$(dirname "$_state_file")" ] || mkdir -p "$(dirname "$_state_file")" 2>/dev/null || true
-	printf '%s\n' "$_state_json" > "${_state_file}.tmp" 2>/dev/null && mv "${_state_file}.tmp" "$_state_file" 2>/dev/null || true
+	[ -w "$(dirname "$_state_file")" ] || _state_file="${ARK_LOCK_DIR:-/tmp}/ark-doctor-last.json"
+	[ -d "$(dirname "$_state_file")" ] || mkdir -p "$(dirname "$_state_file")" 2>/dev/null || true
+	printf '%s\n' "$_state_json" > "${_state_file}.$$.tmp" 2>/dev/null && mv "${_state_file}.$$.tmp" "$_state_file" 2>/dev/null || true
 
 	# Registrar no log do sistema (/var/log/ark-doctor.log)
-	local _log_file="/var/log/ark-doctor.log"
-	[ -w "/var/log" ] || _log_file="${ARK_LOCK_DIR:-/tmp}/ark-doctor.log"
+	local _log_file="${ARK_ROOT}/var/log/ark-doctor.log"
+	[ -d "$(dirname "$_log_file")" ] || mkdir -p "$(dirname "$_log_file")" 2>/dev/null || true
+	[ -w "$(dirname "$_log_file")" ] || _log_file="${ARK_LOCK_DIR:-/tmp}/ark-doctor.log"
 	[ -d "$(dirname "$_log_file")" ] || mkdir -p "$(dirname "$_log_file")" 2>/dev/null || true
 	{
 		printf '[%s] Ark Doctor Audit: STATUS=%s (Erros=%s, Avisos=%s, Reparos=%s, AutoFix=%s)\n' \
@@ -2314,8 +2316,9 @@ ark_doctor_audit() {
 }
 
 doctor_get_status() {
-	local _state_file="/tmp/ark-doctor-last.json"
+	local _state_file="${ARK_ROOT}/tmp/ark-doctor-last.json"
 	[ -s "$_state_file" ] || _state_file="${ARK_LOCK_DIR:-/tmp}/ark-doctor-last.json"
+	[ -s "$_state_file" ] || _state_file="/tmp/ark-doctor-last.json"
 	if [ -s "$_state_file" ]; then
 		cat "$_state_file"
 	else
@@ -2324,8 +2327,9 @@ doctor_get_status() {
 }
 
 doctor_get_log() {
-	local _log_file="/var/log/ark-doctor.log"
+	local _log_file="${ARK_ROOT}/var/log/ark-doctor.log"
 	[ -f "$_log_file" ] || _log_file="${ARK_LOCK_DIR:-/tmp}/ark-doctor.log"
+	[ -f "$_log_file" ] || _log_file="/var/log/ark-doctor.log"
 	if [ -f "$_log_file" ]; then
 		tail -n 150 "$_log_file" 2>/dev/null | sed -e 's/\[[0-9;]*m//g' 2>/dev/null || cat "$_log_file" 2>/dev/null
 	else

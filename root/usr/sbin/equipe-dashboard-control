@@ -16,11 +16,38 @@ if [ -z "${ARK_LIB_DIR}" ]; then
 	fi
 fi
 
+# Coalescencia non-blocking para hotplugs automaticos (ark-doctor --auto):
+# Se ja houver auditoria ou mutacao em andamento, encerra em 0ms sem carregar 10.000+ linhas nem enfileirar.
+case "${1:-}:${2:-}" in
+	ark-doctor:--auto|ark-doctor:auto|audit-system:--auto|audit-system:auto)
+		for _ark_lk in "${ARK_LOCK_DIR:-${ARK_ROOT}/tmp}/ark-doctor.lockdir" "${ARK_ROOT}/tmp/ark_mutation.lock"; do
+			if [ -d "$_ark_lk" ] && [ -r "$_ark_lk/pid" ]; then
+				read -r _ark_lpid < "$_ark_lk/pid" 2>/dev/null || _ark_lpid=''
+				case "$_ark_lpid" in ''|*[!0-9]*) _ark_lpid='' ;; esac
+				if [ -n "$_ark_lpid" ] && kill -0 "$_ark_lpid" 2>/dev/null; then
+					exit 0
+				fi
+			fi
+		done
+		unset _ark_lk _ark_lpid
+		;;
+esac
+
 # Leituras quentes: reutiliza o mesmo TTL do módulo sem carregar suas dependências.
 # ARK_ROOT usa apenas o cache isolado do sandbox, nunca o /tmp do hospedeiro.
+_ark_cache_ttl=120
 case "${1:-}" in
 	device-fingerprints) _ark_cache_name=ark-fp-cache ;;
 	device-stations|wifi-stations) _ark_cache_name=ark-stations-cache ;;
+	mwan-status-fast|mwan-status) _ark_cache_name=ark-mwan-cache; _ark_cache_ttl=3 ;;
+	system-perf-status) _ark_cache_name=ark-perf-cache ;;
+	system-hardware-info) _ark_cache_name=ark-hw-cache ;;
+	doctor-status)
+		if [ -s "${ARK_ROOT}/tmp/ark-doctor-last.json" ]; then
+			cat "${ARK_ROOT}/tmp/ark-doctor-last.json" && exit 0
+		fi
+		_ark_cache_name=''
+		;;
 	*) _ark_cache_name='' ;;
 esac
 if [ -n "$_ark_cache_name" ] && [ ! -f "${ARK_ROOT}/tmp/ark_mock_stations.json" ]; then
@@ -30,12 +57,38 @@ if [ -n "$_ark_cache_name" ] && [ ! -f "${ARK_ROOT}/tmp/ark_mock_stations.json" 
 		read -r _ark_cache_time < "$_ark_cache.ts" || _ark_cache_time=0
 		case "$_ark_cache_time" in ''|*[!0-9]*) _ark_cache_time=0 ;; esac
 		_ark_cache_now="$(date +%s)"
-		if [ "$_ark_cache_time" -gt 0 ] && [ "$_ark_cache_now" -ge "$_ark_cache_time" ] && [ $((_ark_cache_now - _ark_cache_time)) -lt 120 ]; then
-			cat "$_ark_cache.json" && exit 0
+		if [ "$_ark_cache_time" -gt 0 ] && [ "$_ark_cache_now" -ge "$_ark_cache_time" ] && [ $((_ark_cache_now - _ark_cache_time)) -lt "$_ark_cache_ttl" ]; then
+			case "${1:-}" in
+				system-perf-status)
+					_ark_cc="$(cat /proc/sys/net/netfilter/nf_conntrack_count 2>/dev/null || echo 0)"
+					_ark_ma="$(awk '/MemAvailable:/ {print $2; exit}' /proc/meminfo 2>/dev/null || awk '/MemFree:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
+					sed -e "s/\"conntrack_count\":[0-9]*/\"conntrack_count\":$_ark_cc/" -e "s/\"mem_avail_kb\":[0-9]*/\"mem_avail_kb\":$_ark_ma/" "$_ark_cache.json" && exit 0
+					;;
+				system-hardware-info)
+					_ark_stat_f="${ARK_ROOT}/tmp/ark-cpu-usage.prev"
+					_ark_cstat="$(awk '/^cpu / {print $2+$3+$4+$5+$6+$7+$8, $5}' /proc/stat 2>/dev/null || echo '0 0')"
+					_ark_ctot="${_ark_cstat%% *}"; _ark_cidle="${_ark_cstat#* }"; _ark_cpct=0
+					if [ -f "$_ark_stat_f" ]; then
+						read -r _ark_pstat < "$_ark_stat_f" 2>/dev/null || _ark_pstat='0 0'
+						_ark_ptot="${_ark_pstat%% *}"; _ark_pidle="${_ark_pstat#* }"
+						_ark_dtot=$((_ark_ctot - _ark_ptot)); _ark_didle=$((_ark_cidle - _ark_pidle))
+						if [ "$_ark_dtot" -gt 0 ]; then
+							_ark_dused=$((_ark_dtot - _ark_didle))
+							[ "$_ark_dused" -lt 0 ] && _ark_dused=0
+							_ark_cpct=$(( (_ark_dused * 100) / _ark_dtot ))
+						fi
+					fi
+					printf '%s\n' "$_ark_cstat" > "$_ark_stat_f" 2>/dev/null || true
+					sed -e "s/\"usage_pct\":[0-9]*/\"usage_pct\":$_ark_cpct/" "$_ark_cache.json" && exit 0
+					;;
+				*)
+					cat "$_ark_cache.json" && exit 0
+					;;
+			esac
 		fi
 	fi
 fi
-unset _ark_cache_name _ark_cache _ark_cache_time _ark_cache_now
+unset _ark_cache_name _ark_cache _ark_cache_time _ark_cache_now _ark_cache_ttl _ark_cc _ark_ma _ark_stat_f _ark_cstat _ark_ctot _ark_cidle _ark_cpct _ark_pstat _ark_ptot _ark_pidle _ark_dtot _ark_didle _ark_dused
 
 # Load core foundation libraries
 . "${ARK_LIB_DIR}/common.sh"

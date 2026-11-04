@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://openwrt.org/"><img src="https://img.shields.io/badge/OpenWrt-19.07%20a%2025.x-00B5E2?logo=openwrt&logoColor=white" alt="OpenWrt"></a>
-  <a href="https://github.com/Despensativo/ark-router/releases/tag/v2.1.9"><img src="https://img.shields.io/badge/release-v2.1.9-blue.svg" alt="Release v2.1.9"></a>
+  <a href="https://github.com/Despensativo/ark-router/releases/tag/v2.2.0"><img src="https://img.shields.io/badge/release-v2.2.0-blue.svg" alt="Release v2.2.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/UI-PT--BR%20%2F%20EN%20%2F%20ES-blue" alt="Trilingual UI">
   <img src="https://img.shields.io/badge/arch-all%20%2F%20noarch-orange" alt="Architecture: All">
@@ -25,13 +25,13 @@ O **ARK Router** transforma roteadores com **OpenWrt** em verdadeiras centrais d
 
 Ele não substitui o OpenWrt nem o LuCI: ele opera como uma suíte avançada de controle (`luci-app-ark-router`) com telemetria em tempo real, zero bloatware, salvaguardas anti-lockout e recursos pioneiros de rede e blindagem de memória.
 
-> **Versão Oficial Ativa**: **`v2.1.9`** (consulte [`VERSION`](VERSION) e [Releases](https://github.com/Despensativo/ark-router/releases)).
+> **Versão Oficial Ativa**: **`v2.2.0`** (consulte [`VERSION`](VERSION) e [Releases](https://github.com/Despensativo/ark-router/releases)).
 
 ---
 
-## 🏆 Destaque de Engenharia (`v2.1.9`): Arquitetura Dual-Engine de QoS & Kernel Networking
+## 🏆 Destaque de Engenharia (`v2.2.0`): Arquitetura Dual-Engine de QoS & Kernel Networking
 
-O **ARK Router v2.1.9** introduz uma engenharia inédita de **Controle de Filas e Latência (SQM Dual-Engine)** combinada a calibrações de baixo nível no Kernel Linux (`BQL`, `RPS Multi-Core`, `NAPI` e `IEEE 802.3x`), documentada integralmente em [`docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md`](docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md) e [`docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md`](docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md):
+O **ARK Router v2.2.0** introduz uma engenharia inédita de **Controle de Filas e Latência (SQM Dual-Engine)** combinada a calibrações de baixo nível no Kernel Linux (`BQL`, `RPS Multi-Core`, `NAPI` e `IEEE 802.3x`), documentada integralmente em [`docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md`](docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md) e [`docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md`](docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md):
 
 - **⚙️ Escolha Inteligente entre 2 Motores de QoS no Painel**:
   - **🛡️ Opção 1 — `CAKE (Layer Cake / DiffServ4)`**: Motor clássico `sch_cake` com isolamento automático por dispositivo (`dual-srchost` / `dual-dsthost`), `nat`, `wash` e `no-split-gso`, ideal para justiça de banda plug-and-play entre múltiplos usuários.
@@ -165,12 +165,12 @@ Baixe os pacotes gerados diretamente na aba de **[Releases](https://github.com/D
 
 - **OpenWrt Moderno (gerenciador APK)**:
   ```sh
-  apk add ./luci-app-ark-router-2.1.9-r1.apk
+  apk add ./luci-app-ark-router-2.2.0-r1.apk
   /etc/init.d/rpcd restart
   ```
 - **OpenWrt Tradicional / Legado (gerenciador OPKG)**:
   ```sh
-  opkg install ./luci-app-ark-router-2.1.9-r1.ipk
+  opkg install ./luci-app-ark-router-2.2.0-r1.ipk
   /etc/init.d/rpcd restart
   ```
 

@@ -60,7 +60,7 @@ update_wan_led() {
 		mkdir -p /etc/hotplug.d/iface /etc/hotplug.d/net
 		printf '#!/bin/sh\n[ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ] || exit 0\n/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 &\n' > /etc/hotplug.d/iface/99-ark-led-wan
 		chmod +x /etc/hotplug.d/iface/99-ark-led-wan
-		printf '#!/bin/sh\n[ "$ACTION" = "add" ] || [ "$ACTION" = "remove" ] || [ "$ACTION" = "change" ] || exit 0\n/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 &\n' > /etc/hotplug.d/net/99-ark-led-wan
+		printf '#!/bin/sh\n[ "$ACTION" = "add" ] || [ "$ACTION" = "remove" ] || [ "$ACTION" = "change" ] || exit 0\ncase "${INTERFACE:-}" in lo|ifb*|wlan*|phy*|ath*|ra*|mld*|wg*|zt*|tun*|tap*|br-*) exit 0 ;; esac\n/usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1 &\n' > /etc/hotplug.d/net/99-ark-led-wan
 		chmod +x /etc/hotplug.d/net/99-ark-led-wan
 	fi
 
@@ -1924,16 +1924,16 @@ get_system_hardware_info_raw() {
 }
 
 get_system_hardware_info() {
-	local hw_cache="/tmp/ark-hw-cache.json"
-	local hw_ts="/tmp/ark-hw-cache.ts"
+	local hw_cache="${ARK_ROOT}/tmp/ark-hw-cache.json"
+	local hw_ts="${ARK_ROOT}/tmp/ark-hw-cache.ts"
 	local now cache_time
 
 	now="$(date +%s 2>/dev/null || echo 0)"
 	if [ -s "$hw_cache" ] && [ -f "$hw_ts" ]; then
 		cache_time="$(head -n 1 "$hw_ts" 2>/dev/null || echo 0)"
 		case "$cache_time" in ''|*[!0-9]*) cache_time=0 ;; esac
-		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ $((now - cache_time)) -lt 120 ]; then
-			local stat_file="/tmp/ark-cpu-usage.prev"
+		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ "$now" -ge "$cache_time" ] && [ $((now - cache_time)) -lt 120 ]; then
+			local stat_file="${ARK_ROOT}/tmp/ark-cpu-usage.prev"
 			local curr_stat curr_total curr_idle prev_stat prev_total prev_idle diff_total diff_idle diff_used cpu_pct=0
 			curr_stat="$(awk '/^cpu / {print $2+$3+$4+$5+$6+$7+$8, $5}' /proc/stat 2>/dev/null || echo '0 0')"
 			curr_total="${curr_stat%% *}"; curr_idle="${curr_stat#* }"
@@ -1954,9 +1954,10 @@ get_system_hardware_info() {
 		fi
 	fi
 
-	get_system_hardware_info_raw > "$hw_cache.tmp"
-	mv "$hw_cache.tmp" "$hw_cache"
-	echo "$now" > "$hw_ts"
+	get_system_hardware_info_raw > "$hw_cache.$$.tmp"
+	mv -f "$hw_cache.$$.tmp" "$hw_cache"
+	printf '%s\n' "$now" > "$hw_ts.$$.tmp"
+	mv -f "$hw_ts.$$.tmp" "$hw_ts"
 	cat "$hw_cache"
 }
 

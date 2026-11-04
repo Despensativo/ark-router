@@ -4,9 +4,9 @@
 
 [ "$ACTION" = "ifup" ] || exit 0
 
-# Ignora loopback e pppoe (para nao causar gargalo no CPU em reconnects de provedor rapido)
+# Ignora loopback, pppoe e interfaces virtuais/tuneis/alias IPv6 (para nao causar recalibracoes redundantes no boot)
 case "${INTERFACE}:${DEVICE}" in
-	loopback:*|pppoe*:*|*:pppoe*) exit 0 ;;
+	loopback:*|pppoe*:*|*:pppoe*|wan6*:*|wg*:*|*:wg*|zt*:*|*:zt*|tun*:*|*:tun*|tap*:*|*:tap*) exit 0 ;;
 esac
 
 # Verifica se a sintonia esta habilitada no sistema

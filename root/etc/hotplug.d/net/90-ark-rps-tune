@@ -2,10 +2,13 @@
 # /etc/hotplug.d/net/90-ark-rps-tune - Auto-assign multicore RPS mask to dynamically spawned interfaces (Wi-Fi, VPNs)
 [ "$ACTION" = "add" ] || [ "$ACTION" = "bind" ] || exit 0
 [ -n "$INTERFACE" ] || exit 0
+case "$INTERFACE" in
+	lo|br-*|veth*) exit 0 ;;
+esac
 
-[ -f /usr/lib/ark/common.sh ] && . /usr/lib/ark/common.sh
 cpu_cores="$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)"
 [ "$cpu_cores" -gt 1 ] 2>/dev/null || exit 0
+[ -f /usr/lib/ark/common.sh ] && . /usr/lib/ark/common.sh
 
 rps_mask="$(ark_calculate_rps_mask "$cpu_cores")"
 if [ "$cpu_cores" -eq 4 ] && grep -qE 'mt76|mt79|ath|qca' /proc/interrupts 2>/dev/null; then

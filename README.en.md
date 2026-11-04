@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://openwrt.org/"><img src="https://img.shields.io/badge/OpenWrt-19.07%20to%2025.x-00B5E2?logo=openwrt&logoColor=white" alt="OpenWrt"></a>
-  <a href="https://github.com/Despensativo/ark-router/releases/tag/v2.1.9"><img src="https://img.shields.io/badge/release-v2.1.9-blue.svg" alt="Release v2.1.9"></a>
+  <a href="https://github.com/Despensativo/ark-router/releases/tag/v2.2.0"><img src="https://img.shields.io/badge/release-v2.2.0-blue.svg" alt="Release v2.2.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/UI-PT--BR%20%2F%20EN%20%2F%20ES-blue" alt="Trilingual UI">
   <img src="https://img.shields.io/badge/arch-all%20%2F%20noarch-orange" alt="Architecture: All">
@@ -25,13 +25,13 @@
 
 The project does not replace OpenWrt or LuCI — it operates on top of LuCI as an advanced operations package (`luci-app-ark-router`) featuring real-time telemetry, zero bloat, anti-lockout safeguards, and pioneering memory and network shielding mechanisms.
 
-> **Current Official Release**: **`v2.1.9`** (see [`VERSION`](VERSION) and [Releases](https://github.com/Despensativo/ark-router/releases)).
+> **Current Official Release**: **`v2.2.0`** (see [`VERSION`](VERSION) and [Releases](https://github.com/Despensativo/ark-router/releases)).
 
 ---
 
-## 🏆 Engineering Highlight (`v2.1.9`): Dual-Engine QoS & Kernel Networking Architecture
+## 🏆 Engineering Highlight (`v2.2.0`): Dual-Engine QoS & Kernel Networking Architecture
 
-**ARK Router v2.1.9** introduces a Dual-Engine **Smart Queue Management (SQM)** architecture paired with low-level Linux Kernel networking calibrations (`BQL`, `Multi-Core RPS`, `NAPI`, and `IEEE 802.3x`), documented in detail in [`docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md`](docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md) and [`docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md`](docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md):
+**ARK Router v2.2.0** introduces a Dual-Engine **Smart Queue Management (SQM)** architecture paired with low-level Linux Kernel networking calibrations (`BQL`, `Multi-Core RPS`, `NAPI`, and `IEEE 802.3x`), documented in detail in [`docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md`](docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md) and [`docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md`](docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md):
 
 - **⚙️ Smart Choice Between 2 QoS Engines**:
   - **🛡️ Option 1 — `CAKE (Layer Cake / DiffServ4)`**: Classic `sch_cake` engine with per-host fairness (`dual-srchost` / `dual-dsthost`), `nat`, `wash`, and `no-split-gso`.
@@ -165,12 +165,12 @@ Download pre-compiled binaries directly from the **[Releases](https://github.com
 
 - **Modern OpenWrt (APK package manager)**:
   ```sh
-  apk add ./luci-app-ark-router-2.1.9-r1.apk
+  apk add ./luci-app-ark-router-2.2.0-r1.apk
   /etc/init.d/rpcd restart
   ```
 - **Legacy OpenWrt (OPKG package manager)**:
   ```sh
-  opkg install ./luci-app-ark-router-2.1.9-r1.ipk
+  opkg install ./luci-app-ark-router-2.2.0-r1.ipk
   /etc/init.d/rpcd restart
   ```
 
