@@ -274,7 +274,7 @@ daemon_run() {
 			if [ -n "$last_hour" ] && [ "$last_hour" != "$now_hour" ]; then
 				flush_ram_to_flash "$now_hour"
 				if [ -x /usr/sbin/starlink-telemetry-mailer ]; then
-					/usr/sbin/starlink-telemetry-mailer check-and-send 2>/dev/null &
+					/usr/sbin/starlink-telemetry-mailer check-and-send </dev/null >/dev/null 2>&1 &
 				fi
 			fi
 			last_hour="$now_hour"

@@ -297,10 +297,10 @@ run_autowan_cycle() {
 					local dyn_wan="${dyn_entry#*=}"
 					if [ "$dyn_wan" = "wan" ]; then
 						logger -t ark-autowan "Porta WAN física desconectada. Revertendo de volta para LAN (Auto-Sensing)..."
-						(/usr/sbin/equipe-dashboard-control autowan-wan-to-lan revert >/dev/null 2>&1; sync_autowan_mwan "$pol" >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1) &
+						(/usr/sbin/equipe-dashboard-control autowan-wan-to-lan revert >/dev/null 2>&1; sync_autowan_mwan "$pol" >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1) </dev/null >/dev/null 2>&1 &
 					else
 						logger -t ark-autowan "Porta $port_dev desconectada. Revertendo $dyn_wan de volta para LAN..."
-						(/usr/sbin/equipe-dashboard-control wan-save iface="$dyn_wan" mode=lan >/dev/null 2>&1; sync_autowan_mwan "$pol" >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1) &
+						(/usr/sbin/equipe-dashboard-control wan-save iface="$dyn_wan" mode=lan >/dev/null 2>&1; sync_autowan_mwan "$pol" >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1) </dev/null >/dev/null 2>&1 &
 					fi
 					sed -i "/^$port_dev=/d" "$DYNAMIC_WANS_FILE" 2>/dev/null || true
 				fi
@@ -376,10 +376,10 @@ run_autowan_cycle() {
 					local dyn_wan="${dyn_entry#*=}"
 					if [ "$dyn_wan" = "wan" ]; then
 						logger -t ark-autowan "Porta WAN física desconectada. Revertendo de volta para LAN (Auto-Sensing)..."
-						(/usr/sbin/equipe-dashboard-control autowan-wan-to-lan revert >/dev/null 2>&1; sync_autowan_mwan "$pol" >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1) &
+						(/usr/sbin/equipe-dashboard-control autowan-wan-to-lan revert >/dev/null 2>&1; sync_autowan_mwan "$pol" >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1) </dev/null >/dev/null 2>&1 &
 					else
 						logger -t ark-autowan "Porta fisica $p desconectada. Revertendo $dyn_wan de volta para LAN..."
-						(/usr/sbin/equipe-dashboard-control wan-save iface="$dyn_wan" mode=lan >/dev/null 2>&1; sync_autowan_mwan "$pol" >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1) &
+						(/usr/sbin/equipe-dashboard-control wan-save iface="$dyn_wan" mode=lan >/dev/null 2>&1; sync_autowan_mwan "$pol" >/dev/null 2>&1; /usr/sbin/equipe-dashboard-control update-wan-led >/dev/null 2>&1) </dev/null >/dev/null 2>&1 &
 					fi
 					sed -i "/^$port_name=/d" "$DYNAMIC_WANS_FILE" 2>/dev/null || true
 				fi

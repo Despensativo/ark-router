@@ -321,6 +321,8 @@ ark_feature_toggle_internal() {
 				done
 				uci commit sqm 2>/dev/null || true
 				[ -x "${ARK_ROOT}/etc/init.d/sqm" ] && { "${ARK_ROOT}/etc/init.d/sqm" enable >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/sqm" restart >/dev/null 2>&1 || true; }
+				command -v sync_sqm_flow_offload >/dev/null 2>&1 && sync_sqm_flow_offload
+				command -v ark_promote_cake_mq >/dev/null 2>&1 && ark_promote_cake_mq
 			else
 				[ -x "${ARK_ROOT}/etc/init.d/sqm" ] && { "${ARK_ROOT}/etc/init.d/sqm" stop >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/sqm" disable >/dev/null 2>&1 || true; }
 				for s in $(uci -q show sqm 2>/dev/null | awk -F'[.=]' '$3=="queue"{print $2}'); do
@@ -332,6 +334,7 @@ ark_feature_toggle_internal() {
 					tc qdisc del dev "$dev" ingress 2>/dev/null || true
 					case "$dev" in ifb4*) ip link set dev "$dev" down 2>/dev/null || true ;; esac
 				done
+				command -v sync_sqm_flow_offload >/dev/null 2>&1 && sync_sqm_flow_offload
 			fi
 			;;
 		mwan3)
@@ -849,6 +852,8 @@ apply_operation_profile() {
 	[ -f /etc/config/sqm ] && uci commit sqm 2>/dev/null || true
 	/etc/init.d/firewall reload >/dev/null 2>&1 || true
 	[ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
+	command -v sync_sqm_flow_offload >/dev/null 2>&1 && sync_sqm_flow_offload
+	command -v ark_promote_cake_mq >/dev/null 2>&1 && ark_promote_cake_mq
 	return 0
 }
 
@@ -1591,8 +1596,10 @@ handle_ezsetup() {
 			/etc/init.d/firewall restart >/dev/null 2>&1 || true
 			/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 			[ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
+			command -v sync_sqm_flow_offload >/dev/null 2>&1 && sync_sqm_flow_offload
+			command -v ark_promote_cake_mq >/dev/null 2>&1 && ark_promote_cake_mq
 			[ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 restart >/dev/null 2>&1 || true
-			(sleep 2; wifi reload) >/dev/null 2>&1 &
+			(sleep 2; wifi reload) </dev/null >/dev/null 2>&1 &
 			ez_progress 7 services
 		fi
 		ez_set state applied
@@ -2147,6 +2154,8 @@ handle_ezsetup() {
 				tar -xzf /etc/config/ark_last_profile_backup.tar.gz -C /
 				/etc/init.d/firewall reload >/dev/null 2>&1 || true
 				[ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
+				command -v sync_sqm_flow_offload >/dev/null 2>&1 && sync_sqm_flow_offload
+				command -v ark_promote_cake_mq >/dev/null 2>&1 && ark_promote_cake_mq
 				/etc/init.d/rpcd restart >/dev/null 2>&1 || true
 				rm -f /tmp/ark-features.cache 2>/dev/null || true
 				printf '{"status":"restored","operation_profile":"%s"}\n' "$(ark_operation_profile)"

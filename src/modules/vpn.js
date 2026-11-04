@@ -570,7 +570,7 @@ const vpnMethods = {
 							if(res.code) throw new Error(res.stderr || 'Falha ao alterar estado da conexão');
 							ui.hideModal();
 							ui.addNotification(null, E('p', {}, [targetState === '1' ? 'Cliente ativado. Tentando conectar…' : 'Cliente pausado.']), 'info');
-							self.fetchCapabilities().then(function(c){
+							self.fetchCapabilities(true).then(function(c){
 								self.capabilities = c;
 								if(self.dashboardRoot && self.currentData) self.update(self.currentData);
 							});
@@ -777,7 +777,7 @@ const vpnMethods = {
 						if(saveRes.code) throw new Error(saveRes.stderr || 'Falha ao importar cliente WireGuard');
 						ui.hideModal();
 						ui.addNotification(null, E('p', {}, ['Cliente WireGuard importado e conectado com sucesso!']), 'info');
-						self.fetchCapabilities().then(function(c){
+						self.fetchCapabilities(true).then(function(c){
 							self.capabilities = c;
 							if(self.dashboardRoot && self.currentData) self.update(self.currentData);
 						});

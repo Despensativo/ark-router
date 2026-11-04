@@ -482,8 +482,9 @@ sqm_apply_upload_only() {
 	uci -q set "sqm.$sec.download=0"
 	uci -q set "sqm.$sec.upload=$up_kbps"
 	uci commit sqm
-	sync_sqm_flow_offload
+	/etc/init.d/sqm enable >/dev/null 2>&1 || true
 	/etc/init.d/sqm restart >/dev/null 2>&1 || true
+	sync_sqm_flow_offload
 	ark_promote_cake_mq
 	echo 'ok'
 }

@@ -1857,8 +1857,14 @@ function withButtonFeedback(button, actionFn, options) {
 // /src/modules/lifecycle.js - ARK Router LuCI View Module
 const lifecycleMethods = {
 	board: {}, countries: [], capabilities: {features:{}}, previous: {}, trafficPrevious: {}, trafficAt: 0, currentData: null, recommendedChannels: null, speedResults: {}, refreshTimer: null, clockTimer: null, dashboardRoot: null, deviceSortKey: 'total', deviceSortDir: 'desc', starlinkTelemetryTimer: null, starlinkTelemetryStopTimer: null, starlinkTelemetryActive: false, starlinkTelemetryWan: null, starlinkWanOrder: [], starlinkResults: {},
-	fetchCapabilities: function(){
+	fetchCapabilities: function(forceRefresh){
 		const expectedVer = (typeof window !== 'undefined' && window.ARK_VERSION) ? window.ARK_VERSION : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : '');
+		if (forceRefresh) {
+			if (typeof window !== 'undefined') delete window._arkCapabilities;
+			if (typeof sessionStorage !== 'undefined') {
+				try { sessionStorage.removeItem('ark_caps'); } catch(e) {}
+			}
+		}
 		if (typeof window !== 'undefined' && window._arkCapabilities && window._arkCapabilities.features) {
 			const memVer = (window._arkCapabilities.update && window._arkCapabilities.update.current) || '';
 			if (!expectedVer || !memVer || memVer === expectedVer) {
@@ -1961,7 +1967,7 @@ const lifecycleMethods = {
 			ui.addNotification(null, E('p', {}, [message]), type || 'info');
 		}
 		return Promise.all([
-			this.fetchCapabilities(),
+			this.fetchCapabilities(true),
 			this.fetchData(false)
 		]).then(L.bind(function(res) {
 			const caps = res[0], data = res[1];
@@ -1996,13 +2002,16 @@ const lifecycleMethods = {
 			E('button', {class: 'btn cbi-button cbi-button-neutral', 'click': closeModal}, ['Cancelar']), ' ',
 			E('button', {class: 'btn cbi-button ' + (isGamer ? 'cbi-button-negative' : 'cbi-button-positive'), 'click': L.bind(function(){
 				const shouldTurnOnSqm = isGamer && !qosActive && autoEnableSqm.checked;
-				const actions = [fs.exec('/usr/sbin/equipe-dashboard-control', ['profile', targetMode])];
-				if (shouldTurnOnSqm) {
-					actions.push(fs.exec('/usr/sbin/equipe-dashboard-control', ['sqm-toggle', '1']));
-				}
-				return Promise.all(actions).then(L.bind(function(r){
-					const res = r[0] || {};
+				return fs.exec('/usr/sbin/equipe-dashboard-control', ['profile', targetMode]).then(L.bind(function(res){
+					res = res || {};
 					if(res.code) throw new Error(res.stderr || 'Falha ao alterar perfil operacional');
+					if (!shouldTurnOnSqm) return res;
+					return fs.exec('/usr/sbin/equipe-dashboard-control', ['sqm-toggle', '1']).then(function(res2){
+						res2 = res2 || {};
+						if(res2.code) throw new Error(res2.stderr || 'Falha ao ativar SQM / CAKE');
+						return res2;
+					});
+				}, this)).then(L.bind(function(){
 					ui.hideModal();
 					const msg = isGamer ? (shouldTurnOnSqm ? 'Modo Gamer e SQM / CAKE ativados com sucesso!' : 'Modo Gamer ativado com sucesso!') : 'Modo Padrão restaurado.';
 					this.triggerImmediateRefresh(msg, 'info');
@@ -11982,7 +11991,7 @@ const vpnMethods = {
 							if(res.code) throw new Error(res.stderr || 'Falha ao alterar estado da conexão');
 							ui.hideModal();
 							ui.addNotification(null, E('p', {}, [targetState === '1' ? 'Cliente ativado. Tentando conectar…' : 'Cliente pausado.']), 'info');
-							self.fetchCapabilities().then(function(c){
+							self.fetchCapabilities(true).then(function(c){
 								self.capabilities = c;
 								if(self.dashboardRoot && self.currentData) self.update(self.currentData);
 							});
@@ -12189,7 +12198,7 @@ const vpnMethods = {
 						if(saveRes.code) throw new Error(saveRes.stderr || 'Falha ao importar cliente WireGuard');
 						ui.hideModal();
 						ui.addNotification(null, E('p', {}, ['Cliente WireGuard importado e conectado com sucesso!']), 'info');
-						self.fetchCapabilities().then(function(c){
+						self.fetchCapabilities(true).then(function(c){
 							self.capabilities = c;
 							if(self.dashboardRoot && self.currentData) self.update(self.currentData);
 						});
@@ -13397,7 +13406,7 @@ const speedifyMethods = {
 		if(row) row.classList.toggle('is-active', desired);
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['speedify-bypass-service',title,desired?'on':'off']).then(L.bind(function(r){
 			if(r.code)throw new Error(r.stderr||'Falha ao alterar o Bypass');
-			return this.fetchCapabilities().then(L.bind(function(c){
+			return this.fetchCapabilities(true).then(L.bind(function(c){
 				this.capabilities=c;
 				const data=(c.features&&c.features.speedify_bypass)||{}, item=(data.services||[]).find(function(s){return String(s.title||'')===title;}), actual=item?!!item.enabled:desired;
 				input.checked=actual;
@@ -15063,7 +15072,7 @@ const systemMethods = {
 		ui.showModal('INSTALAÇÃO DO CERTIFICADO',[E('p',{class:'alert-message warning'},['Instale apenas em aparelhos administrativos nos quais você confia. Nunca é necessário instalar a chave privada.']),E('ol',{class:'ex-cert-steps'},[E('li',{},['Windows: abra o arquivo e instale-o em Autoridades de Certificação Raiz Confiáveis.']),E('li',{},['Android: em Segurança, procure Instalar certificado de CA e selecione o arquivo.']),E('li',{},['iPhone/iPad: instale o perfil baixado e depois habilite confiança total nos Ajustes de Certificados.']),E('li',{},['Depois da instalação, feche e abra novamente o navegador e acesse novamente o endereço HTTPS do roteador.'])]),fingerprint?E('p',{class:'ex-cert-fingerprint'},[E('span',{},['Impressão digital SHA-256']),E('code',{},[fingerprint])]):'',E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])]);
 	},
 	setFeatureHidden: function(key,hidden){
-		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-hide',key,hidden?'1':'0']).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar a preferência');return this.fetchCapabilities().then(function(c){this.capabilities=c;window.location.reload();}.bind(this));},this)).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]));});
+		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-hide',key,hidden?'1':'0']).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar a preferência');return this.fetchCapabilities(true).then(function(c){this.capabilities=c;window.location.reload();}.bind(this));},this)).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]));});
 	},
 	loadFeatureInstallLog: function(key){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-install-log',key]).then(function(r){return String(r.stdout||'').trim();}).catch(function(){return '';});

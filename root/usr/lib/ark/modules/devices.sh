@@ -12,6 +12,7 @@ _ARK_DEVICES_SH_LOADED=1
 [ -f "${ARK_LIB_DIR}/validation.sh" ] && . "${ARK_LIB_DIR}/validation.sh"
 [ -f "${ARK_LIB_DIR}/modules/network.sh" ] && . "${ARK_LIB_DIR}/modules/network.sh"
 [ -f "${ARK_LIB_DIR}/modules/speedify.sh" ] && . "${ARK_LIB_DIR}/modules/speedify.sh"
+[ -f "${ARK_LIB_DIR}/modules/sqm.sh" ] && . "${ARK_LIB_DIR}/modules/sqm.sh"
 [ -f "${ARK_LIB_DIR}/modules/system.sh" ] && . "${ARK_LIB_DIR}/modules/system.sh"
 
 flush_stale_leases() {
@@ -1095,9 +1096,12 @@ handle_devices() {
 			bin="$(command -v speedtest-go 2>/dev/null || printf /tmp/ark-speedtest/speedtest-go)"
 			saved_sqm_en="$(uci -q get "sqm.$sqm_section.enabled" 2>/dev/null || echo 0)"
 			restore_sqm() {
+				trap - EXIT INT TERM
 				if [ "$saved_sqm_en" = "1" ]; then
 					uci -q revert "sqm.$sqm_section.enabled" 2>/dev/null || true
 					/etc/init.d/sqm start >/dev/null 2>&1 || /etc/init.d/sqm restart >/dev/null 2>&1 || true
+					command -v sync_sqm_flow_offload >/dev/null 2>&1 && sync_sqm_flow_offload
+					command -v ark_promote_cake_mq >/dev/null 2>&1 && ark_promote_cake_mq
 				fi
 			}
 			trap restore_sqm EXIT INT TERM
@@ -1142,7 +1146,7 @@ handle_devices() {
 				[ "$latency" = "0" ] && latency="15000000"
 				ok=2
 			fi
-			if [ "$ok" -lt 2 ]; then restore_sqm; trap - EXIT INT TERM; echo error >"$status"; exit 1; fi
+			if [ "$ok" -lt 2 ]; then restore_sqm; echo error >"$status"; exit 1; fi
 			echo 'running|90|Calculando médias' >"$status"
 			set -- $uploads; u1="$1"; u2="$2"; u3="${3:-$2}"
 			metrics="$(awk -v d="$download" -v l="$latency" -v a="$u1" -v b="$u2" -v c="$u3" 'BEGIN{m=a;if(b<m)m=b;if(c<m)m=c;printf "%.2f %.2f %.2f %.2f %.2f %d %d %d",d*8/1000000,a*8/1000000,b*8/1000000,c*8/1000000,l/1000000,m*8/1000*.85,m*8/1000*.90,m*8/1000*.95}')"
@@ -1155,7 +1159,7 @@ handle_devices() {
 			printf '{"wan":"%s","source_ip":"%s","speedify_state":"%s","download_mbps":%s,"upload_runs_mbps":[%s,%s,%s],"latency_ms":%s,"suggested_kbps":{"conservative":%s,"balanced":%s,"aggressive":%s},"history":%s}\n' "$selected_wan" "$(json_escape "$source_ip")" "$(json_escape "$speedify_state")" "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$history" >"$result"
 			speedtest_schedule_weak_cleanup
 			echo 'running|98|Restaurando SQM' >"$status"
-			restore_sqm; trap - EXIT INT TERM
+			restore_sqm
 			echo done >"$status"
 		) >"$log" 2>&1 &
 		echo started
@@ -1176,7 +1180,11 @@ handle_devices() {
 		case "$2" in wan) sqm_section=wan1 ;; wan2) sqm_section=wan2 ;; *) echo 'WAN invalida' >&2; exit 2 ;; esac
 		printf '%s' "$3" | grep -Eq '^[0-9]{3,7}$' || { echo 'Velocidade invalida' >&2; exit 2; }
 		[ "$3" -ge 100 ] && [ "$3" -le 1000000 ] || { echo 'Velocidade fora do intervalo' >&2; exit 2; }
-		uci -q set "sqm.$sqm_section.upload=$3"; uci -q set "sqm.$sqm_section.enabled=1"; uci commit sqm; /etc/init.d/sqm restart
+		uci -q set "sqm.$sqm_section.upload=$3"; uci -q set "sqm.$sqm_section.enabled=1"; uci commit sqm
+		/etc/init.d/sqm enable >/dev/null 2>&1 || true
+		/etc/init.d/sqm restart >/dev/null 2>&1 || true
+		command -v sync_sqm_flow_offload >/dev/null 2>&1 && sync_sqm_flow_offload
+		command -v ark_promote_cake_mq >/dev/null 2>&1 && ark_promote_cake_mq
 		echo ok
 		;;
 	rename)

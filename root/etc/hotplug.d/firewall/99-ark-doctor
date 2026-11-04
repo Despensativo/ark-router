@@ -3,5 +3,5 @@
 # Necessario para re-verificar conflitos de Flow Offloading vs SQM.
 
 # Apenas inicia o doctor em background para nao travar o processo de hotplug
-/usr/sbin/ark-doctor --auto &
+/usr/sbin/ark-doctor --auto </dev/null >/dev/null 2>&1 &
 exit 0

@@ -150,7 +150,7 @@ const speedifyMethods = {
 		if(row) row.classList.toggle('is-active', desired);
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['speedify-bypass-service',title,desired?'on':'off']).then(L.bind(function(r){
 			if(r.code)throw new Error(r.stderr||'Falha ao alterar o Bypass');
-			return this.fetchCapabilities().then(L.bind(function(c){
+			return this.fetchCapabilities(true).then(L.bind(function(c){
 				this.capabilities=c;
 				const data=(c.features&&c.features.speedify_bypass)||{}, item=(data.services||[]).find(function(s){return String(s.title||'')===title;}), actual=item?!!item.enabled:desired;
 				input.checked=actual;

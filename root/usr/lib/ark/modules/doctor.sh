@@ -749,6 +749,7 @@ ark_doctor_audit() {
 					done
 					uci commit sqm 2>/dev/null || true
 					/etc/init.d/sqm restart >/dev/null 2>&1 || true
+					command -v ark_promote_cake_mq >/dev/null 2>&1 && ark_promote_cake_mq
 				fi
 				if [ "$fw_user_has_iptables" = 1 ]; then
 					q_dir="/etc/ark/quarantine"
@@ -761,6 +762,7 @@ ark_doctor_audit() {
 					# No fw4 puro, nunca invocamos iptables/ip6tables (Regra 11 de seguranca).
 					# O reload do fw4 reconstitui as regras nftables puras e elimina o aviso do LuCI.
 					/sbin/fw4 reload >/dev/null 2>&1 || true
+					command -v ark_promote_cake_mq >/dev/null 2>&1 && ark_promote_cake_mq
 					fixes_applied=$((fixes_applied + 1))
 					add_check "Pureza do Firewall (fw4 Puro)" "FIXED" "Regras legadas iptables ($culprit) saneadas e pacote migrado para nftables puro."
 				else
