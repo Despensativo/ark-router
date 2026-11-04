@@ -979,7 +979,6 @@ handle_sqm() {
 		done
 		[ "$wan_count" -gt 0 ] || { echo 'Nenhuma WAN ativa encontrada' >&2; exit 3; }
 		uci commit sqm
-		sync_sqm_flow_offload
 		if [ "$2" = 1 ]; then
 			/etc/init.d/sqm enable >/dev/null 2>&1 || true
 			/etc/init.d/sqm restart
@@ -987,6 +986,7 @@ handle_sqm() {
 			/etc/init.d/sqm stop >/dev/null 2>&1 || true
 			/etc/init.d/sqm disable >/dev/null 2>&1 || true
 		fi
+		sync_sqm_flow_offload
 		ark_promote_cake_mq
 		echo ok
 		;;
@@ -1327,7 +1327,6 @@ handle_sqm() {
 		done
 		uci commit sqm
 		uci commit qos_equipe 2>/dev/null || true
-		sync_sqm_flow_offload
 		if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
 			/etc/init.d/sqm enable >/dev/null 2>&1 || true
 			/etc/init.d/sqm restart
@@ -1335,6 +1334,7 @@ handle_sqm() {
 			/etc/init.d/sqm stop >/dev/null 2>&1 || true
 			/etc/init.d/sqm disable >/dev/null 2>&1 || true
 		fi
+		sync_sqm_flow_offload
 		ark_promote_cake_mq
 		apply_guest_tc_limit >/dev/null 2>&1 || true
 		echo ok
@@ -1382,8 +1382,8 @@ handle_sqm() {
 		done
 		uci commit sqm
 		uci commit qos_equipe 2>/dev/null || true
-		sync_sqm_flow_offload
 		/etc/init.d/sqm restart
+		sync_sqm_flow_offload
 		ark_promote_cake_mq
 		apply_guest_tc_limit >/dev/null 2>&1 || true
 		echo ok

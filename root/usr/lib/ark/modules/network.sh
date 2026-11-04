@@ -377,8 +377,8 @@ handle_network() {
 			uci commit mwan3 2>/dev/null || true
 			/etc/init.d/network reload >/dev/null 2>&1 || true
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
-			([ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 &)
-			mwan3_sync_lifecycle &
+			[ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart </dev/null >/dev/null 2>&1 &
+			mwan3_sync_lifecycle </dev/null >/dev/null 2>&1 &
 			starlink_setup_policy_routing >/dev/null 2>&1 || true
 			echo ok
 			exit 0
@@ -528,7 +528,7 @@ handle_network() {
 		uci commit network
 		/etc/init.d/network reload >/dev/null 2>&1 || true
 		/etc/init.d/firewall reload >/dev/null 2>&1 || true
-		mwan3_sync_lifecycle &
+		mwan3_sync_lifecycle </dev/null >/dev/null 2>&1 &
 		starlink_setup_policy_routing >/dev/null 2>&1 || true
 		echo ok
 		;;
@@ -706,7 +706,7 @@ handle_network() {
 		sanitize_dhcp_hostnames
 		uci commit network
 		uci commit dhcp
-		(sleep 2; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/uhttpd restart >/dev/null 2>&1 || true) &
+		(sleep 2; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/uhttpd restart >/dev/null 2>&1 || true) </dev/null >/dev/null 2>&1 &
 		printf '{"old_ip":"%s","new_ip":"%s","url":"http://%s/cgi-bin/luci/admin/equipe-dashboard"}\n' "$(json_escape "$old_ip")" "$(json_escape "$router_ip")" "$(json_escape "$router_ip")"
 		;;
 	mwan)
@@ -783,7 +783,7 @@ handle_network() {
 		uci -q set mwan3.default_rule_v4.use_policy="$policy"
 		mwan3_reorder_rules
 		uci commit mwan3
-		mwan3_sync_lifecycle &
+		mwan3_sync_lifecycle </dev/null >/dev/null 2>&1 &
 		echo "$2"
 		;;
 	mwan-rule-add)
@@ -849,7 +849,7 @@ handle_network() {
 
 		mwan3_reorder_rules
 		uci commit mwan3
-		mwan3_sync_lifecycle &
+		mwan3_sync_lifecycle </dev/null >/dev/null 2>&1 &
 		printf '{"status":"ok","id":"%s"}\n' "$sec_base"
 		;;
 	mwan-rule-delete)
@@ -862,7 +862,7 @@ handle_network() {
 		uci -q delete "mwan3.${base_id}_u"
 		mwan3_reorder_rules
 		uci commit mwan3
-		mwan3_sync_lifecycle &
+		mwan3_sync_lifecycle </dev/null >/dev/null 2>&1 &
 		echo 'ok'
 		;;
 	mwan-rule-toggle)
@@ -875,7 +875,7 @@ handle_network() {
 		[ -n "$(uci -q get "mwan3.${base_id}_t")" ] && uci -q set "mwan3.${base_id}_t.enabled=$state"
 		[ -n "$(uci -q get "mwan3.${base_id}_u")" ] && uci -q set "mwan3.${base_id}_u.enabled=$state"
 		uci commit mwan3
-		mwan3_sync_lifecycle &
+		mwan3_sync_lifecycle </dev/null >/dev/null 2>&1 &
 		echo 'ok'
 		;;
 	mwan-torrent-toggle)
@@ -969,7 +969,7 @@ handle_network() {
 		fi
 		mwan3_reorder_rules
 		uci commit mwan3
-		mwan3_sync_lifecycle &
+		mwan3_sync_lifecycle </dev/null >/dev/null 2>&1 &
 		echo 'ok'
 		;;
 	mwan3-toggle)
@@ -1162,7 +1162,7 @@ handle_network() {
 				uci -q set network.wan.auto='1'
 				uci -q set network.autowan.wan_promoted='1'
 				uci commit network
-				(sleep 1; ifup wan >/dev/null 2>&1) &
+				(sleep 1; ifup wan >/dev/null 2>&1) </dev/null >/dev/null 2>&1 &
 				echo 'promoted'
 				;;
 			revert)
@@ -1295,7 +1295,7 @@ handle_network() {
 
 				/etc/init.d/network reload >/dev/null 2>&1 || true
 				/etc/init.d/firewall reload >/dev/null 2>&1 || true
-				(sleep 1; ifup wan >/dev/null 2>&1) &
+				(sleep 1; ifup wan >/dev/null 2>&1) </dev/null >/dev/null 2>&1 &
 				rm -f /var/run/ark-autowan-retry-* 2>/dev/null || true
 				sed -i "/^port5=/d; /^wan=/d; /^eth1=/d; /^lan[1-4]=/d" /var/run/ark-autowan.state 2>/dev/null || true
 

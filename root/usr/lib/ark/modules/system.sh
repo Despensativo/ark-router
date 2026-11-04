@@ -22,7 +22,7 @@ system_perf_status_json() {
 	if [ -s "$perf_cache" ] && [ -f "$perf_ts" ]; then
 		cache_time="$(head -n 1 "$perf_ts" 2>/dev/null || echo 0)"
 		case "$cache_time" in ''|*[!0-9]*) cache_time=0 ;; esac
-		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ "$now" -ge "$cache_time" ] && [ $((now - cache_time)) -lt 120 ]; then
+		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ "$now" -ge "$cache_time" ] && [ $((now - cache_time)) -lt 30 ]; then
 			local cc="$(cat /proc/sys/net/netfilter/nf_conntrack_count 2>/dev/null || echo 0)"
 			local ma="$(awk '/MemAvailable:/ {print $2; exit}' /proc/meminfo 2>/dev/null || awk '/MemFree:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
 			sed -e "s/\"conntrack_count\":[0-9]*/\"conntrack_count\":$cc/" -e "s/\"mem_avail_kb\":[0-9]*/\"mem_avail_kb\":$ma/" "$perf_cache"
@@ -1323,7 +1323,7 @@ ntp_configure_smart() {
 		elif command -v fw3 >/dev/null 2>&1; then
 			/etc/init.d/firewall reload >/dev/null 2>&1 || true
 		fi
-	) &
+	) </dev/null >/dev/null 2>&1 &
 
 	echo 'ok'
 }

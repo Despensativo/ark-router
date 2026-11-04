@@ -360,7 +360,7 @@ system_network_mode_set() {
 		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 		/etc/init.d/network reload >/dev/null 2>&1 || true
 		/etc/init.d/firewall reload >/dev/null 2>&1 || true
-		(sleep 1; ifup wan >/dev/null 2>&1) &
+		(sleep 1; ifup wan >/dev/null 2>&1) </dev/null >/dev/null 2>&1 &
 
 		echo "router_enabled"
 	fi

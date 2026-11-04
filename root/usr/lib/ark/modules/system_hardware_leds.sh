@@ -1932,7 +1932,7 @@ get_system_hardware_info() {
 	if [ -s "$hw_cache" ] && [ -f "$hw_ts" ]; then
 		cache_time="$(head -n 1 "$hw_ts" 2>/dev/null || echo 0)"
 		case "$cache_time" in ''|*[!0-9]*) cache_time=0 ;; esac
-		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ "$now" -ge "$cache_time" ] && [ $((now - cache_time)) -lt 120 ]; then
+		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ "$now" -ge "$cache_time" ] && [ $((now - cache_time)) -lt 30 ]; then
 			local stat_file="${ARK_ROOT}/tmp/ark-cpu-usage.prev"
 			local curr_stat curr_total curr_idle prev_stat prev_total prev_idle diff_total diff_idle diff_used cpu_pct=0
 			curr_stat="$(awk '/^cpu / {print $2+$3+$4+$5+$6+$7+$8, $5}' /proc/stat 2>/dev/null || echo '0 0')"

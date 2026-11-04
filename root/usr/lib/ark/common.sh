@@ -2337,7 +2337,7 @@ ark_is_readonly_action() {
 		doctor-fix|fix-run)
 			return 1
 			;;
-		doctor-run|doctor-status|doctor-log|update-wan-led|update-led-alert)
+		doctor-run|doctor-status|doctor-log|update-wan-led|update-led-alert|led-detect-topology|led-calibrate-curves)
 			return 0
 			;;
 		*-status|*-status-*|*-get|*-list|*-check|*-check-*|*-audit|*-info|*-discover|*-fingerprints|*-stations|*-processes|*-logs|*-log|*-telemetry|*-qr|features|fast-targets|speedtest-result|starlink-telemetry|autowan-can-convert|autowan-can-convert-wan|speedify-user)
@@ -2396,13 +2396,17 @@ ark_acquire_mutation_lock() {
 }
 
 ark_release_mutation_lock() {
+	[ "${_ark_has_mut_lock:-0}" = "1" ] || return 0
+	_ark_has_mut_lock=0
+	export ARK_MUTATION_LOCK_HELD=0
+	trap - EXIT INT TERM HUP
+	ark_invalidate_caches
 	local lock_dir="${ARK_ROOT}/tmp/ark_mutation.lock"
 	local owner_pid=""
 	[ -f "$lock_dir/pid" ] && read -r owner_pid < "$lock_dir/pid" 2>/dev/null
-	if [ "$owner_pid" = "$$" ] || [ -z "$owner_pid" ]; then
+	if [ "$owner_pid" = "$$" ]; then
 		rm -rf "$lock_dir" 2>/dev/null
 	fi
-	rm -f "${ARK_ROOT}/tmp/ark_dashboard_cache.json" 2>/dev/null || true
 }
 
 ark_invalidate_caches() {
@@ -2410,16 +2414,19 @@ ark_invalidate_caches() {
 	rm -f \
 		"${pfx}/tmp/ark-hw-cache.ts" "${pfx}/tmp/ark-hw-cache.json" "${pfx}/tmp/ark-hw-info-cache.ts" \
 		"${pfx}/tmp/ark-perf-cache.ts" "${pfx}/tmp/ark-perf-cache.json" "${pfx}/tmp/ark-perf-status-cache.ts" \
+		"${pfx}/tmp/ark-stations-cache.ts" "${pfx}/tmp/ark-stations-cache.json" \
+		"${pfx}/tmp/ark-mwan-cache.ts" "${pfx}/tmp/ark-mwan-cache.json" \
 		"${pfx}/tmp/ark-features.cache" "${pfx}/tmp/ark-router-features.json" \
-		"${pfx}/tmp/ark-mwan-cache.json" "${pfx}/tmp/ark_dashboard_cache.json" \
+		"${pfx}/tmp/ark_dashboard_cache.json" \
 		2>/dev/null || true
 }
 
 ark_restore_mutation_trap() {
-	if [ "${ARK_MUTATION_LOCK_HELD:-0}" = "1" ]; then
+	if [ "${_ark_has_mut_lock:-0}" = "1" ]; then
 		trap 'ark_release_mutation_lock' EXIT INT TERM HUP
 	else
 		trap - EXIT INT TERM HUP
 	fi
 }
+
 

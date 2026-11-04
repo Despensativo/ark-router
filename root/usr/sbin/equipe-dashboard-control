@@ -37,11 +37,11 @@ esac
 # ARK_ROOT usa apenas o cache isolado do sandbox, nunca o /tmp do hospedeiro.
 _ark_cache_ttl=120
 case "${1:-}" in
-	device-fingerprints) _ark_cache_name=ark-fp-cache ;;
-	device-stations|wifi-stations) _ark_cache_name=ark-stations-cache ;;
+	device-fingerprints) _ark_cache_name=ark-fp-cache; _ark_cache_ttl=120 ;;
+	device-stations|wifi-stations) _ark_cache_name=ark-stations-cache; _ark_cache_ttl=10 ;;
 	mwan-status-fast|mwan-status) _ark_cache_name=ark-mwan-cache; _ark_cache_ttl=3 ;;
-	system-perf-status) _ark_cache_name=ark-perf-cache ;;
-	system-hardware-info) _ark_cache_name=ark-hw-cache ;;
+	system-perf-status) _ark_cache_name=ark-perf-cache; _ark_cache_ttl=30 ;;
+	system-hardware-info) _ark_cache_name=ark-hw-cache; _ark_cache_ttl=30 ;;
 	doctor-status)
 		if [ -s "${ARK_ROOT}/tmp/ark-doctor-last.json" ]; then
 			cat "${ARK_ROOT}/tmp/ark-doctor-last.json" && exit 0

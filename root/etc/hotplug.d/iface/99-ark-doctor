@@ -6,5 +6,5 @@
 [ "$INTERFACE" = "loopback" ] && exit 0
 
 # Apenas inicia o doctor em background para nao travar o processo de hotplug
-/usr/sbin/ark-doctor --auto &
+/usr/sbin/ark-doctor --auto </dev/null >/dev/null 2>&1 &
 exit 0

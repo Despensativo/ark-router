@@ -16,7 +16,7 @@ ark_serialized_job() {
 	fi
 	printf '%s\n' "$$" > "$job.lock/pid"
 	ARK_SERIAL_JOB_OWNER_PATH="$job"
-	trap 'rm -f "$ARK_SERIAL_JOB_OWNER_PATH.lock/pid"; rmdir "$ARK_SERIAL_JOB_OWNER_PATH.lock" 2>/dev/null; [ "${ARK_MUTATION_LOCK_HELD:-0}" = "1" ] && command -v ark_release_mutation_lock >/dev/null 2>&1 && ark_release_mutation_lock' EXIT
+	trap 'rm -f "$ARK_SERIAL_JOB_OWNER_PATH.lock/pid"; rmdir "$ARK_SERIAL_JOB_OWNER_PATH.lock" 2>/dev/null; [ "${_ark_has_mut_lock:-0}" = "1" ] && command -v ark_release_mutation_lock >/dev/null 2>&1 && ark_release_mutation_lock' EXIT
 	trap 'exit 1' HUP INT TERM
 	while :; do
 		rmdir "$job.pending" 2>/dev/null || true

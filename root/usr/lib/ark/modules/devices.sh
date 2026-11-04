@@ -105,7 +105,7 @@ device_get_stations() {
 	if [ -s "$st_cache" ] && [ -f "$st_ts" ]; then
 		cache_time="$(head -n 1 "$st_ts" 2>/dev/null || echo 0)"
 		case "$cache_time" in ''|*[!0-9]*) cache_time=0 ;; esac
-		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ "$now" -ge "$cache_time" ] && [ $((now - cache_time)) -lt 120 ]; then
+		if [ "$now" -gt 0 ] && [ "$cache_time" -gt 0 ] && [ "$now" -ge "$cache_time" ] && [ $((now - cache_time)) -lt 10 ]; then
 			cat "$st_cache"
 			return 0
 		fi
@@ -1526,7 +1526,9 @@ handle_devices() {
 		esac
 		/etc/init.d/dnsmasq reload >/dev/null 2>&1
 		/etc/init.d/firewall reload >/dev/null 2>&1
-		[ "$mwan3_changed" = 1 ] && [ "$(uci -q get equipe_dashboard.speedify.desired_state)" != "connected" ] && (sleep 1; /etc/init.d/mwan3 restart >/dev/null 2>&1) &
+		if [ "$mwan3_changed" = 1 ] && [ "$(uci -q get equipe_dashboard.speedify.desired_state)" != "connected" ]; then
+			(sleep 1; /etc/init.d/mwan3 restart) </dev/null >/dev/null 2>&1 &
+		fi
 		echo ok
 		;;
 	reboot-prepare)

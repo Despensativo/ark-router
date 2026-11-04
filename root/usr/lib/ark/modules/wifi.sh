@@ -327,6 +327,15 @@ wifi_qca_apply_roaming_tuning() {
 	fi
 }
 
+wifi_enhancer_cleanup_lock() {
+	rm -f "/tmp/ark_wifi_enhancer.lock" 2>/dev/null || true
+	if command -v ark_restore_mutation_trap >/dev/null 2>&1; then
+		ark_restore_mutation_trap
+	else
+		trap - EXIT INT TERM
+	fi
+}
+
 wifi_enhancer_run_upgrade() {
 	local status_file="/tmp/ark_wifi_enhancer.status"
 	local lock_file="/tmp/ark_wifi_enhancer.lock"
@@ -338,7 +347,7 @@ wifi_enhancer_run_upgrade() {
 		fi
 	fi
 	echo "$$" > "$lock_file"
-	trap 'rm -f "$lock_file"; [ "${ARK_MUTATION_LOCK_HELD:-0}" = "1" ] && command -v ark_release_mutation_lock >/dev/null 2>&1 && ark_release_mutation_lock' EXIT INT TERM
+	trap 'rm -f "/tmp/ark_wifi_enhancer.lock"; [ "${_ark_has_mut_lock:-0}" = "1" ] && command -v ark_release_mutation_lock >/dev/null 2>&1 && ark_release_mutation_lock' EXIT INT TERM
 
 	# Blindagem Crítica Qualcomm QSDK (qcawificfg80211 / Acer Predator Connect T7):
 	# NUNCA substituir qca-hostapd-11be por wpad-mbedtls (quebraria os 3 rádios Wi-Fi 7, 320 MHz e MLO).
@@ -347,6 +356,7 @@ wifi_enhancer_run_upgrade() {
 		wifi_enhancer_update_status "running" "CONFIGURING" 6 90 "Detectado driver Qualcomm QSDK (qcawificfg80211): preservando qca-hostapd-11be e calibrando 802.11k/v, RNR 6GHz (1 7) e FILS (20 ms)..." ""
 		wifi_qca_apply_roaming_tuning
 		wifi_enhancer_update_status "completed" "COMPLETED" 7 100 "Calibracao Qualcomm QSDK concluida! qca-hostapd-11be preservado com 802.11k/v, RNR Co-located (1 7) e FILS (20 ms) ativos." ""
+		wifi_enhancer_cleanup_lock
 		return 0
 	fi
 
@@ -364,10 +374,12 @@ wifi_enhancer_run_upgrade() {
 
 	if [ "$ram_mb" -lt 256 ]; then
 		wifi_enhancer_update_status "failed" "PREFLIGHT" 1 15 "Falha na Etapa 1: Memória RAM insuficiente (< 256 MB)." "ram_low"
+		wifi_enhancer_cleanup_lock
 		return 1
 	fi
 	if [ "$flash_free_kb" -lt 4096 ]; then
 		wifi_enhancer_update_status "failed" "PREFLIGHT" 1 15 "Falha na Etapa 1: Armazenamento Flash insuficiente (< 4 MB livres em /overlay)." "flash_low"
+		wifi_enhancer_cleanup_lock
 		return 1
 	fi
 
@@ -384,6 +396,7 @@ wifi_enhancer_run_upgrade() {
 
 	if [ "$ping_ok" = "0" ]; then
 		wifi_enhancer_update_status "failed" "CONNECTIVITY" 2 30 "Falha na Etapa 2: Sem conexao de internet para baixar o pacote. Verifique a WAN." "no_internet"
+		wifi_enhancer_cleanup_lock
 		return 1
 	fi
 
@@ -395,11 +408,13 @@ wifi_enhancer_run_upgrade() {
 		sed -i -E '/^wpad-basic/d' /etc/apk/world 2>/dev/null || true
 		if ! apk update >/tmp/ark_enhancer_apk.log 2>&1; then
 			wifi_enhancer_update_status "failed" "PREPARING" 3 45 "Falha na Etapa 3: Nao foi possivel atualizar o catalogo de pacotes (apk update)." "repo_update_error"
+			wifi_enhancer_cleanup_lock
 			return 1
 		fi
 	elif ark_has_opkg; then
 		if ! opkg update >/tmp/ark_enhancer_opkg.log 2>&1; then
 			wifi_enhancer_update_status "failed" "PREPARING" 3 45 "Falha na Etapa 3: Nao foi possivel atualizar o catalogo de pacotes (opkg update)." "repo_update_error"
+			wifi_enhancer_cleanup_lock
 			return 1
 		fi
 	fi
@@ -421,6 +436,7 @@ wifi_enhancer_run_upgrade() {
 	if [ "$install_ok" = "0" ]; then
 		if ark_has_apk; then apk add wpad-basic-mbedtls >/dev/null 2>&1 || true; fi
 		wifi_enhancer_update_status "failed" "INSTALLING" 4 65 "Falha na Etapa 4: Erro ao instalar wpad-mbedtls. Rollback de protecao executado." "install_error"
+		wifi_enhancer_cleanup_lock
 		return 1
 	fi
 
@@ -431,6 +447,7 @@ wifi_enhancer_run_upgrade() {
 	if [ ! -x /usr/sbin/hostapd ]; then
 		wifi_enhancer_update_status "failed" "VERIFYING" 5 80 "Falha na Etapa 5: Binario hostapd nao encontrado apos instalacao. Restaurando..." "binary_missing"
 		if ark_has_apk; then apk add wpad-basic-mbedtls >/dev/null 2>&1 || true; fi
+		wifi_enhancer_cleanup_lock
 		return 1
 	fi
 
@@ -443,7 +460,8 @@ wifi_enhancer_run_upgrade() {
 	# Etapa 7 / 7: COMPLETED
 	wifi_enhancer_update_status "completed" "COMPLETED" 7 100 "Upgrade concluido com sucesso! Motor Pro wpad-mbedtls 100% ativo e operacional." ""
 
-	(sleep 2; wifi reload) >/dev/null 2>&1 &
+	(sleep 2; wifi reload) </dev/null >/dev/null 2>&1 &
+	wifi_enhancer_cleanup_lock
 	return 0
 }
 
@@ -462,7 +480,7 @@ handle_wifi() {
 			uci -q set "wireless.$section.key=$password"
 		done
 		uci commit wireless
-		(sleep 2; wifi reload) >/dev/null 2>&1 &
+		(sleep 2; wifi reload) </dev/null >/dev/null 2>&1 &
 		echo 'ok'
 		;;
 	wifi-toggle)
@@ -517,7 +535,7 @@ handle_wifi() {
 			[ "$wifi_kind" = "guest" ] && uci -q set dhcp.guest.ignore=1 && uci commit dhcp 2>/dev/null || true
 		fi
 		uci commit wireless
-		(sleep 1; wifi reload >/dev/null 2>&1 || true) &
+		(sleep 1; wifi reload >/dev/null 2>&1 || true) </dev/null >/dev/null 2>&1 &
 		echo "ok"
 		;;
 	wifi-settings)
@@ -748,9 +766,9 @@ handle_wifi() {
 			apply_guest_tc_limit >/dev/null 2>&1 || true
 		fi
 		if [ "$wifi_kind" = guest ]; then
-			(sleep 2; /etc/init.d/dnsmasq reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; wifi reload >/dev/null 2>&1 || true) &
+			(sleep 2; /etc/init.d/dnsmasq reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; wifi reload >/dev/null 2>&1 || true) </dev/null >/dev/null 2>&1 &
 		else
-			(sleep 1; wifi reload >/dev/null 2>&1 || true) &
+			(sleep 1; wifi reload >/dev/null 2>&1 || true) </dev/null >/dev/null 2>&1 &
 		fi
 		echo 'ok'
 		;;
@@ -835,7 +853,7 @@ handle_wifi() {
 		uci commit wireless
 		uci commit network 2>/dev/null || true
 		uci commit firewall 2>/dev/null || true
-		(sleep 2; wifi reload >/dev/null 2>&1 || true) &
+		(sleep 2; wifi reload >/dev/null 2>&1 || true) </dev/null >/dev/null 2>&1 &
 		echo 'ok'
 		;;
 	wifi-delete)
@@ -848,7 +866,7 @@ handle_wifi() {
 			esac
 		done
 		uci commit wireless
-		(sleep 2; wifi reload >/dev/null 2>&1 || true) &
+		(sleep 2; wifi reload >/dev/null 2>&1 || true) </dev/null >/dev/null 2>&1 &
 		echo 'ok'
 		;;
 	channels)
@@ -972,7 +990,7 @@ handle_wifi() {
 				uci commit wireless
 				wifi reload >/dev/null 2>&1 || true
 			fi
-		) &
+		) </dev/null >/dev/null 2>&1 &
 		echo 'ok'
 		;;
 	wifi-width)
@@ -1076,7 +1094,7 @@ handle_wifi() {
 				uci commit wireless
 				wifi reload >/dev/null 2>&1 || true
 			fi
-		) &
+		) </dev/null >/dev/null 2>&1 &
 		echo 'ok'
 		;;
 	wifi-txpower|wifi-txpower-set)
@@ -1153,7 +1171,7 @@ handle_wifi() {
 				logger -t equipe-dashboard-control "Reiniciando os radios Wi-Fi..."
 				wifi reload >/dev/null 2>&1 || true
 			fi
-		) &
+		) </dev/null >/dev/null 2>&1 &
 		echo 'ok'
 		;;
 	wifi-iot-optimize)

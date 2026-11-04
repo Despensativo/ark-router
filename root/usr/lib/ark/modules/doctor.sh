@@ -2398,11 +2398,14 @@ handle_doctor() {
 			done
 		fi
 		if ! mkdir "$_lock_path" 2>/dev/null; then
+			if [ "$_is_auto" = 0 ] && [ "$_format" = "json" ] && [ -s "${ARK_ROOT}/tmp/ark-doctor-last.json" ]; then
+				cat "${ARK_ROOT}/tmp/ark-doctor-last.json"
+			fi
 			return 0
 		fi
 	fi
 	printf '%s\n' "$$" > "$_lock_path/pid" 2>/dev/null || true
-	trap "rm -rf '$_lock_path' 2>/dev/null || true; [ \"\${ARK_MUTATION_LOCK_HELD:-0}\" = \"1\" ] && command -v ark_release_mutation_lock >/dev/null 2>&1 && ark_release_mutation_lock" EXIT INT TERM
+	trap "rm -rf '$_lock_path' 2>/dev/null || true; [ \"\${_ark_has_mut_lock:-0}\" = \"1\" ] && command -v ark_release_mutation_lock >/dev/null 2>&1 && ark_release_mutation_lock" EXIT INT TERM
 
 	if [ "$_is_auto" = 1 ]; then
 		ark_doctor_audit "$_auto_fix" "$_format" >/dev/null 2>&1
