@@ -1237,7 +1237,7 @@ handle_devices() {
 		uci -q set "equipe_devices.$name_section.name=$name"
 		uci -q set "equipe_devices.$name_section.role=secondary"
 		uci commit equipe_devices 2>/dev/null || true
-		(sleep 1; /etc/init.d/dnsmasq reload 2>/dev/null || /etc/init.d/dnsmasq restart) >/dev/null 2>&1 &
+		(sleep 1; /etc/init.d/dnsmasq reload 2>/dev/null || /etc/init.d/dnsmasq restart; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 		printf '{"ok":true,"mac":"%s","ip":"%s","name":"%s"}\n' "$mac" "$ip" "$name"
 		;;
 	device-reserve-quick|device-reserve-iot)
@@ -1269,7 +1269,7 @@ handle_devices() {
 		uci -q set "equipe_devices.$name_section.mac=$mac"
 		uci -q set "equipe_devices.$name_section.name=$name"
 		uci commit equipe_devices 2>/dev/null || true
-		(sleep 1; /etc/init.d/dnsmasq reload 2>/dev/null || /etc/init.d/dnsmasq restart) >/dev/null 2>&1 &
+		(sleep 1; /etc/init.d/dnsmasq reload 2>/dev/null || /etc/init.d/dnsmasq restart; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 		printf '{"ok":true,"mac":"%s","ip":"%s","name":"%s"}\n' "$mac" "$ip" "$name"
 		;;
 	device-status)
@@ -1535,7 +1535,7 @@ handle_devices() {
 		/etc/init.d/dnsmasq reload >/dev/null 2>&1
 		/etc/init.d/firewall reload >/dev/null 2>&1
 		if [ "$mwan3_changed" = 1 ] && [ "$(uci -q get equipe_dashboard.speedify.desired_state)" != "connected" ]; then
-			(sleep 1; /etc/init.d/mwan3 restart) </dev/null >/dev/null 2>&1 &
+			(sleep 1; /etc/init.d/mwan3 restart; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 		fi
 		echo ok
 		;;

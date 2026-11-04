@@ -18,18 +18,22 @@ fi
 
 # Coalescencia non-blocking para hotplugs automaticos (ark-doctor --auto):
 # Se ja houver auditoria ou mutacao em andamento, encerra em 0ms sem carregar 10.000+ linhas nem enfileirar.
-case "${1:-}:${2:-}" in
-	ark-doctor:--auto|ark-doctor:auto|audit-system:--auto|audit-system:auto)
-		for _ark_lk in "${ARK_LOCK_DIR:-${ARK_ROOT}/tmp}/ark-doctor.lockdir" "${ARK_ROOT}/tmp/ark_mutation.lock"; do
-			if [ -d "$_ark_lk" ] && [ -r "$_ark_lk/pid" ]; then
-				read -r _ark_lpid < "$_ark_lk/pid" 2>/dev/null || _ark_lpid=''
-				case "$_ark_lpid" in ''|*[!0-9]*) _ark_lpid='' ;; esac
-				if [ -n "$_ark_lpid" ] && kill -0 "$_ark_lpid" 2>/dev/null; then
-					exit 0
-				fi
-			fi
-		done
-		unset _ark_lk _ark_lpid
+case "${1:-}" in
+	ark-doctor|audit-system)
+		case " $* " in
+			*" --auto "*|*" auto "*)
+				for _ark_lk in "${ARK_LOCK_DIR:-${ARK_ROOT}/tmp}/ark-doctor.lockdir" "${ARK_ROOT}/tmp/ark_mutation.lock"; do
+					if [ -d "$_ark_lk" ] && [ -r "$_ark_lk/pid" ]; then
+						read -r _ark_lpid < "$_ark_lk/pid" 2>/dev/null || _ark_lpid=''
+						case "$_ark_lpid" in ''|*[!0-9]*) _ark_lpid='' ;; esac
+						if [ -n "$_ark_lpid" ] && kill -0 "$_ark_lpid" 2>/dev/null; then
+							exit 0
+						fi
+					fi
+				done
+				unset _ark_lk _ark_lpid
+				;;
+		esac
 		;;
 esac
 
@@ -99,7 +103,7 @@ action="$1"
 [ -n "$action" ] || { echo "Uso: $0 <comando> [argumentos...]" >&2; exit 1; }
 
 _ark_has_mut_lock=0
-if [ "${ARK_MUTATION_LOCK_HELD:-0}" != "1" ] && ! ark_is_readonly_action "$action" "$2"; then
+if [ "${ARK_MUTATION_LOCK_HELD:-0}" != "1" ] && ! ark_is_readonly_action "$@"; then
 	ark_acquire_mutation_lock "$action" || exit 1
 	_ark_has_mut_lock=1
 	export ARK_MUTATION_LOCK_HELD=1

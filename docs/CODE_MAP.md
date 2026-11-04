@@ -86,7 +86,7 @@
 | `mwan-rule-delete` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:855` (`handle_network`) | `src/modules/network_modals.js:1194` (`deleteMwanRule`) |
 | `mwan-rule-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:868` (`handle_network`) | `src/modules/network_modals.js:1212` (`toggleMwanRule`) |
 | `mwan-status-fast` | 🟢 Read-Only | `root/usr/lib/ark/modules/network.sh:266` (`handle_network`) | `src/modules/lifecycle.js:193` (`fetchData`) |
-| `mwan-torrent-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:881` (`handle_network`) | `src/modules/network_modals.js:1235` (`toggleMwanTorrentPreset`)<br>`src/modules/network_modals.js:1420` (`showMwanTorrentModal`) |
+| `mwan-torrent-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:881` (`handle_network`) | `src/modules/network_modals.js:1235` (`toggleMwanTorrentPreset`)<br>`src/modules/network_modals.js:1422` (`showMwanTorrentModal`) |
 | `mwan3-toggle` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/network.sh:975` (`handle_network`) | `src/modules/network.js:276` (`toggleMwan3`) |
 | `network-capacity-status` | 🟢 Read-Only | `root/usr/lib/ark/modules/system.sh:1451` (`handle_system`) | `src/modules/doctor_perf.js:515` (`openNetworkCapacityModal`) |
 | `ntp-configure-smart` | 🔒 Mutação (`ark_mutation.lock`) | `root/usr/lib/ark/modules/system.sh:1596` (`handle_system`) | `src/modules/system.js:3329` (`showNtpModal`) |
@@ -192,105 +192,105 @@
 
 ## 3. Índice Cirúrgico de Funções Backend (`root/usr/lib/ark/**/*.sh`)
 
-### `root/usr/lib/ark/common.sh` (2432 linhas, 95 funções)
+### `root/usr/lib/ark/common.sh` (2448 linhas, 95 funções)
 
 | Função | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
 | `bool()` | `32–37` | 6L |
 | `ez_bool()` | `39–44` | 6L |
-| `json_escape()` | `46–48` | 3L |
-| `json_bool_value()` | `50–52` | 3L |
-| `ark_has_apk()` | `55–57` | 3L |
-| `ark_has_opkg()` | `59–61` | 3L |
-| `ark_has_qca_wifi()` | `64–68` | 5L |
-| `ark_hostapd_has_wnm()` | `73–89` | 17L |
-| `ark_has_qualcomm_son()` | `93–99` | 7L |
-| `ark_ensure_working_distfeeds()` | `101–128` | 28L |
-| `ark_has_fw4()` | `130–132` | 3L |
-| `ark_has_nftables()` | `134–136` | 3L |
-| `ark_firewall_engine()` | `138–144` | 7L |
-| `is_fw4()` | `146–148` | 3L |
-| `is_fw3()` | `150–152` | 3L |
-| `is_swconfig()` | `154–156` | 3L |
-| `ark_cpu_cores()` | `158–163` | 6L |
-| `ark_has_native_hw_queues()` | `165–208` | 44L |
-| `ark_is_satellite_or_ap()` | `210–226` | 17L |
-| `ark_ap_uplink_dev()` | `228–254` | 27L |
-| `ark_language()` | `256–276` | 21L |
-| `installed()` | `279–336` | 58L |
-| `hidden()` | `338–340` | 3L |
-| `running()` | `342–361` | 20L |
-| `ark_current_version()` | `364–372` | 9L |
-| `ark_update_repo()` | `374–376` | 3L |
-| `normalize_version()` | `378–380` | 3L |
-| `ark_acquire_lock()` | `386–408` | 23L |
-| `ark_release_lock()` | `410–415` | 6L |
-| `ez_backup()` | `417–444` | 28L |
-| `detect_dns_blocker()` | `446–483` | 38L |
-| `ark_calculate_rps_mask()` | `485–501` | 17L |
-| `ark_cake_memlimit()` | `503–526` | 24L |
-| `ark_upnp_is_legacy_iptables()` | `530–557` | 28L |
-| `ark_upnp_is_legacy_nftables_on_fw3()` | `559–580` | 22L |
-| `ark_migrate_upnp_variant()` | `582–664` | 83L |
-| `ark_sanitize_upnp_config()` | `666–710` | 45L |
-| `ark_sync_clat_p2p_routes()` | `715–760` | 46L |
-| `ark_safe_storage_reboot()` | `767–846` | 80L |
-| `ark_harden_transmission_config()` | `849–904` | 56L |
-| `ark_cleanup_dhcpv6_orphans()` | `907–925` | 19L |
-| `ark_sanitize_wan6_config()` | `928–1013` | 86L |
-| `ark_sanitize_lan_ipv6()` | `1016–1087` | 72L |
-| `ark_ipv6_prefix_hygiene()` | `1090–1198` | 109L |
-| `ark_auto_enable_factory_wifi()` | `1202–1236` | 35L |
-| `ark_dev_supports_mtu()` | `1239–1266` | 28L |
-| `_ark_set_single_device_mtu()` | `1270–1348` | 79L |
-| `ark_ensure_phys_device_mtu()` | `1350–1383` | 34L |
-| `ark_ensure_wan_mtu_fix()` | `1386–1405` | 20L |
-| `ark_get_min_wan_mtu()` | `1408–1465` | 58L |
-| `ark_optimal_wg_mtu()` | `1471–1495` | 25L |
-| `ark_sync_lan_ipv6_ra_mtu()` | `1499–1532` | 34L |
-| `ark_ensure_phys_device_mac()` | `1537–1625` | 89L |
-| `ez_get()` | `1633–1633` | 1L |
-| `ez_set()` | `1635–1635` | 1L |
-| `cleanup_backup()` | `1637–1648` | 12L |
-| `ark_kill_package_fetchers()` | `1650–1655` | 6L |
-| `ark_run_limited()` | `1657–1676` | 20L |
-| `guest_l3_device()` | `1678–1683` | 6L |
-| `active_wan_networks()` | `1685–1691` | 7L |
-| `sqm_device_for_network()` | `1693–1707` | 15L |
-| `find_dhcp_host()` | `1709–1718` | 10L |
-| `sanitize_dhcp_hostnames()` | `1720–1733` | 14L |
-| `apply_lan_dhcp_dns()` | `1735–1747` | 13L |
-| `same_managed_subnet()` | `1749–1777` | 29L |
-| `sync_adguard_ipv6()` | `1779–1811` | 33L |
-| `firewall_wan_zone_section()` | `1813–1817` | 5L |
-| `firewall_zone_has_network()` | `1819–1822` | 4L |
-| `lan_bridge_section()` | `1824–1826` | 3L |
-| `lan_bridge_port_count()` | `1828–1832` | 5L |
-| `find_switch_vlan()` | `1834–1846` | 13L |
-| `swconfig_remove_port_from_vlan()` | `1848–1861` | 14L |
-| `swconfig_add_port_to_vlan()` | `1863–1884` | 22L |
-| `ark_board_switch_role_ports()` | `1887–1903` | 17L |
-| `ark_board_switch_wan_port()` | `1905–1922` | 18L |
-| `ark_board_switch_cpu_tag()` | `1924–1932` | 9L |
-| `ark_board_uses_legacy_ifname()` | `1934–1944` | 11L |
-| `swconfig_port_num()` | `1946–1961` | 16L |
-| `bridge_has_port()` | `1963–1966` | 4L |
-| `add_lan_port()` | `1968–1980` | 13L |
-| `remove_lan_port()` | `1982–1992` | 11L |
-| `configure_uhttpd_listeners()` | `1994–2003` | 10L |
-| `zerotier_ram_compress()` | `2005–2035` | 31L |
-| `get_primary_wan_dev()` | `2037–2063` | 27L |
-| `get_active_online_wan_dev()` | `2065–2102` | 38L |
-| `get_internet_led_sysfs()` | `2104–2135` | 32L |
-| `get_internet_alert_led_sysfs()` | `2137–2149` | 13L |
-| `ark_has_qsdk_ecm()` | `2154–2162` | 9L |
-| `ark_has_doh_proxy()` | `2165–2172` | 8L |
-| `ark_sync_doh_proxy()` | `2178–2321` | 144L |
-| `ark_is_readonly_action()` | `2327–2353` | 27L |
-| `ark_acquire_mutation_lock()` | `2355–2396` | 42L |
-| `ark_release_mutation_lock()` | `2398–2410` | 13L |
-| `ark_invalidate_caches()` | `2412–2422` | 11L |
-| `ark_restore_mutation_trap()` | `2424–2430` | 7L |
+| `json_escape()` | `51–60` | 10L |
+| `json_bool_value()` | `62–64` | 3L |
+| `ark_has_apk()` | `67–69` | 3L |
+| `ark_has_opkg()` | `71–73` | 3L |
+| `ark_has_qca_wifi()` | `76–80` | 5L |
+| `ark_hostapd_has_wnm()` | `85–101` | 17L |
+| `ark_has_qualcomm_son()` | `105–111` | 7L |
+| `ark_ensure_working_distfeeds()` | `113–140` | 28L |
+| `ark_has_fw4()` | `142–144` | 3L |
+| `ark_has_nftables()` | `146–148` | 3L |
+| `ark_firewall_engine()` | `150–156` | 7L |
+| `is_fw4()` | `158–160` | 3L |
+| `is_fw3()` | `162–164` | 3L |
+| `is_swconfig()` | `166–168` | 3L |
+| `ark_cpu_cores()` | `170–175` | 6L |
+| `ark_has_native_hw_queues()` | `177–220` | 44L |
+| `ark_is_satellite_or_ap()` | `222–238` | 17L |
+| `ark_ap_uplink_dev()` | `240–266` | 27L |
+| `ark_language()` | `268–288` | 21L |
+| `installed()` | `291–348` | 58L |
+| `hidden()` | `350–352` | 3L |
+| `running()` | `354–373` | 20L |
+| `ark_current_version()` | `376–384` | 9L |
+| `ark_update_repo()` | `386–388` | 3L |
+| `normalize_version()` | `390–392` | 3L |
+| `ark_acquire_lock()` | `398–420` | 23L |
+| `ark_release_lock()` | `422–427` | 6L |
+| `ez_backup()` | `429–456` | 28L |
+| `detect_dns_blocker()` | `458–495` | 38L |
+| `ark_calculate_rps_mask()` | `497–513` | 17L |
+| `ark_cake_memlimit()` | `515–538` | 24L |
+| `ark_upnp_is_legacy_iptables()` | `542–569` | 28L |
+| `ark_upnp_is_legacy_nftables_on_fw3()` | `571–592` | 22L |
+| `ark_migrate_upnp_variant()` | `594–676` | 83L |
+| `ark_sanitize_upnp_config()` | `678–722` | 45L |
+| `ark_sync_clat_p2p_routes()` | `727–772` | 46L |
+| `ark_safe_storage_reboot()` | `779–858` | 80L |
+| `ark_harden_transmission_config()` | `861–916` | 56L |
+| `ark_cleanup_dhcpv6_orphans()` | `919–937` | 19L |
+| `ark_sanitize_wan6_config()` | `940–1025` | 86L |
+| `ark_sanitize_lan_ipv6()` | `1028–1099` | 72L |
+| `ark_ipv6_prefix_hygiene()` | `1102–1210` | 109L |
+| `ark_auto_enable_factory_wifi()` | `1214–1248` | 35L |
+| `ark_dev_supports_mtu()` | `1251–1278` | 28L |
+| `_ark_set_single_device_mtu()` | `1282–1360` | 79L |
+| `ark_ensure_phys_device_mtu()` | `1362–1395` | 34L |
+| `ark_ensure_wan_mtu_fix()` | `1398–1417` | 20L |
+| `ark_get_min_wan_mtu()` | `1420–1477` | 58L |
+| `ark_optimal_wg_mtu()` | `1483–1507` | 25L |
+| `ark_sync_lan_ipv6_ra_mtu()` | `1511–1544` | 34L |
+| `ark_ensure_phys_device_mac()` | `1549–1637` | 89L |
+| `ez_get()` | `1645–1645` | 1L |
+| `ez_set()` | `1647–1647` | 1L |
+| `cleanup_backup()` | `1649–1660` | 12L |
+| `ark_kill_package_fetchers()` | `1662–1667` | 6L |
+| `ark_run_limited()` | `1669–1688` | 20L |
+| `guest_l3_device()` | `1690–1695` | 6L |
+| `active_wan_networks()` | `1697–1703` | 7L |
+| `sqm_device_for_network()` | `1705–1719` | 15L |
+| `find_dhcp_host()` | `1721–1730` | 10L |
+| `sanitize_dhcp_hostnames()` | `1732–1745` | 14L |
+| `apply_lan_dhcp_dns()` | `1747–1759` | 13L |
+| `same_managed_subnet()` | `1761–1789` | 29L |
+| `sync_adguard_ipv6()` | `1791–1823` | 33L |
+| `firewall_wan_zone_section()` | `1825–1829` | 5L |
+| `firewall_zone_has_network()` | `1831–1834` | 4L |
+| `lan_bridge_section()` | `1836–1838` | 3L |
+| `lan_bridge_port_count()` | `1840–1844` | 5L |
+| `find_switch_vlan()` | `1846–1858` | 13L |
+| `swconfig_remove_port_from_vlan()` | `1860–1873` | 14L |
+| `swconfig_add_port_to_vlan()` | `1875–1896` | 22L |
+| `ark_board_switch_role_ports()` | `1899–1915` | 17L |
+| `ark_board_switch_wan_port()` | `1917–1934` | 18L |
+| `ark_board_switch_cpu_tag()` | `1936–1944` | 9L |
+| `ark_board_uses_legacy_ifname()` | `1946–1956` | 11L |
+| `swconfig_port_num()` | `1958–1973` | 16L |
+| `bridge_has_port()` | `1975–1978` | 4L |
+| `add_lan_port()` | `1980–1992` | 13L |
+| `remove_lan_port()` | `1994–2004` | 11L |
+| `configure_uhttpd_listeners()` | `2006–2015` | 10L |
+| `zerotier_ram_compress()` | `2017–2047` | 31L |
+| `get_primary_wan_dev()` | `2049–2075` | 27L |
+| `get_active_online_wan_dev()` | `2077–2114` | 38L |
+| `get_internet_led_sysfs()` | `2116–2147` | 32L |
+| `get_internet_alert_led_sysfs()` | `2149–2161` | 13L |
+| `ark_has_qsdk_ecm()` | `2166–2174` | 9L |
+| `ark_has_doh_proxy()` | `2177–2184` | 8L |
+| `ark_sync_doh_proxy()` | `2190–2333` | 144L |
+| `ark_is_readonly_action()` | `2339–2369` | 31L |
+| `ark_acquire_mutation_lock()` | `2371–2412` | 42L |
+| `ark_release_mutation_lock()` | `2414–2426` | 13L |
+| `ark_invalidate_caches()` | `2428–2438` | 11L |
+| `ark_restore_mutation_trap()` | `2440–2446` | 7L |
 
 ### `root/usr/lib/ark/dhcp_fingerprint.sh` (48 linhas, 0 funções)
 
@@ -811,7 +811,7 @@
 | `this.showPppoeLogsModal()` | `1721–1884` | 164L |
 | `this.showLatencyTargetModal()` | `1885–2200` | 316L |
 
-### `src/modules/network_modals.js` (1447 linhas, 9 métodos)
+### `src/modules/network_modals.js` (1449 linhas, 9 métodos)
 
 | Método da View LuCI | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
@@ -823,7 +823,7 @@
 | `this.deleteMwanRule()` | `1180–1209` | 30L |
 | `this.toggleMwanRule()` | `1210–1228` | 19L |
 | `this.toggleMwanTorrentPreset()` | `1229–1254` | 26L |
-| `this.showMwanTorrentModal()` | `1255–1447` | 193L |
+| `this.showMwanTorrentModal()` | `1255–1449` | 195L |
 
 ### `src/modules/render.js` (3356 linhas, 15 métodos)
 

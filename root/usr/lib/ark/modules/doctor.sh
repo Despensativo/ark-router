@@ -1967,7 +1967,7 @@ ark_doctor_audit() {
 	fi
 
 	if [ "$wifi_needs_reload" = "1" ] && [ "$auto_fix" = "1" ]; then
-		(sleep 1; wifi reload) >/dev/null 2>&1 &
+		(sleep 1; wifi reload; rm -f "${ARK_ROOT}/tmp"/ark-stations-cache.* "${ARK_ROOT}/tmp"/ark-hw-cache.* 2>/dev/null || true) </dev/null >/dev/null 2>&1 &
 	fi
 
 	# 13. Checagem de Sincronizacao de Horario (NTP) & Preservacao de Relogio
@@ -2373,11 +2373,11 @@ handle_doctor() {
 
 	if [ "$_is_auto" = 1 ]; then
 		# Toggle UCI check for auto-heal
-		local _enabled="$(uci -q get equipe_dashboard.doctor.auto_heal || echo 1)"
+		local _enabled="$(uci ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} -q get equipe_dashboard.doctor.auto_heal || echo 1)"
 		[ "$_enabled" = "1" ] || return 0
 	fi
 
-	local _lock_dir="${ARK_LOCK_DIR:-/tmp}"
+	local _lock_dir="${ARK_LOCK_DIR:-${ARK_ROOT}/tmp}"
 	[ -d "$_lock_dir" ] || _lock_dir="/tmp"
 	local _lock_path="${_lock_dir}/ark-doctor.lockdir"
 

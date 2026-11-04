@@ -43,8 +43,20 @@ ez_bool() {
 	esac
 }
 
+_ARK_JSON_CR=$(printf '\r')
+_ARK_JSON_LF='
+'
+_ARK_JSON_TAB='	'
+
 json_escape() {
-	printf '%s' "$1" | sed ':a;N;$!ba;s/\\/\\\\/g;s/"/\\"/g;s/\r/\\r/g;s/\n/\\n/g;s/\t/\\t/g'
+	case "$1" in
+		*[\"\\$_ARK_JSON_CR$_ARK_JSON_LF$_ARK_JSON_TAB]*)
+			printf '%s' "$1" | awk 'BEGIN{ORS=""}{gsub(/\\/,"\\\\");gsub(/"/,"\\\"");gsub(/\r/,"\\r");gsub(/\t/,"\\t");if(NR>1)printf "\\n";printf "%s",$0}'
+			;;
+		*)
+			printf '%s' "$1"
+			;;
+	esac
 }
 
 json_bool_value() {
@@ -1228,7 +1240,7 @@ ark_auto_enable_factory_wifi() {
 		uci ${root_prefix:+-c "$root_prefix/etc/config"} commit wireless 2>/dev/null || true
 		logger -t ark-wifi-guard "Radios Wi-Fi ativados do padrao virgem de fabrica do OpenWrt ($total_radios radios habilitados)."
 		if [ -z "$root_prefix" ]; then
-			(sleep 1; wifi reload >/dev/null 2>&1 || wifi up >/dev/null 2>&1 || true) &
+			(sleep 1; wifi reload >/dev/null 2>&1 || wifi up >/dev/null 2>&1 || true; rm -f "${ARK_ROOT}/tmp"/ark-stations-cache.* "${ARK_ROOT}/tmp"/ark-hw-cache.* 2>/dev/null || true) </dev/null >/dev/null 2>&1 &
 		fi
 		return 0
 	fi
@@ -2329,9 +2341,13 @@ ark_is_readonly_action() {
 	local sub="${2:-}"
 	case "$act" in
 		audit-system|ark-doctor)
-			case "$sub" in
-				--auto|auto|--fix|fix|fix-run|doctor-fix|fix=1) return 1 ;;
-			esac
+			shift
+			local _arg
+			for _arg in "$@"; do
+				case "$_arg" in
+					--auto|auto|--fix|fix|fix-run|doctor-fix|fix=1) return 1 ;;
+				esac
+			done
 			return 0
 			;;
 		doctor-fix|fix-run)
@@ -2340,7 +2356,7 @@ ark_is_readonly_action() {
 		doctor-run|doctor-status|doctor-log|update-wan-led|update-led-alert|led-detect-topology|led-calibrate-curves)
 			return 0
 			;;
-		*-status|*-status-*|*-get|*-list|*-check|*-check-*|*-audit|*-info|*-discover|*-fingerprints|*-stations|*-processes|*-logs|*-log|*-telemetry|*-qr|features|fast-targets|speedtest-result|starlink-telemetry|autowan-can-convert|autowan-can-convert-wan|speedify-user)
+		*-status|*-status-*|*-get|*-list|*-check|*-audit|*-info|*-discover|*-fingerprints|*-stations|*-processes|*-logs|*-log|*-telemetry|*-qr|features|fast-targets|speedtest-result|starlink-telemetry|autowan-can-convert|autowan-can-convert-wan|speedify-user)
 			return 0
 			;;
 	esac

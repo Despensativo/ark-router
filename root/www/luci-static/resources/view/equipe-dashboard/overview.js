@@ -471,22 +471,29 @@ function classifyArkMutation(cmd, args) {
 	}
 	const act = String((args && args[0]) || '');
 	const sub = String((args && args[1]) || '');
+	if (act === 'audit-system' || act === 'ark-doctor') {
+		const isFix = Array.isArray(args) && args.slice(1).some(function(a) {
+			return /^(--auto|auto|--fix|fix|fix-run|doctor-fix|fix=1)$/.test(String(a || ''));
+		});
+		if (!isFix) return { readOnly: true };
+		return { readOnly: false, estSec: 12, ttlMs: 40000, cooldownMs: 2800, label: 'Executando operação de sistema (~10–15s)…' };
+	}
 	if (
 		!act ||
-		/(-status|-status-.*|-get|-list|-check|-check-.*|-audit|-info|-discover|-fingerprints|-stations|-processes|-logs|-log|-telemetry|-qr)$/.test(act) ||
-		/^(features|fast-targets|audit-system|ark-doctor|card-state-save|starlink-telemetry|autowan-can-convert-wan|speedify-user)$/.test(act) ||
-		/^speedtest-/.test(act) ||
+		/(-status|-status-.*|-get|-list|-check|-audit|-info|-discover|-fingerprints|-stations|-processes|-logs|-log|-telemetry|-qr)$/.test(act) ||
+		/^(features|fast-targets|doctor-run|card-state-save|starlink-telemetry|autowan-can-convert|autowan-can-convert-wan|speedify-user|led-detect-topology|led-calibrate-curves|update-wan-led|update-led-alert)$/.test(act) ||
+		/^speedtest-(status|result|start|stop)$/.test(act) ||
 		/^(status|get|list|check|scan|discover|audit|info)$/.test(sub)
 	) {
 		return { readOnly: true };
 	}
-	if (/^(doctor-fix|adblock-install|adblock-uninstall|feature-install|feature-remove|self-update-apply|manual-update-apply|ez-setup-|transmission-install|speedify|reboot-|safe-storage-reboot)/.test(act)) {
+	if (/^(doctor-fix|fix-run|adblock-install|adblock-uninstall|feature-install|feature-remove|self-update-apply|manual-update-apply|ez-setup-|transmission-install|speedify|reboot-|safe-storage-reboot)/.test(act)) {
 		return { readOnly: false, estSec: 12, ttlMs: 40000, cooldownMs: 2800, label: 'Executando operação de sistema (~10–15s)…' };
 	}
 	if (/^(wifi|channels|country|wan-|lan-|mwan|autowan-|system-network-mode-|pppoe-|ipv6-|sync-ipv6-firewall|system-hardware-tune)/.test(act) && !/^wifi-(iot-optimize|dfs-optimize|toggle|wps|roaming|txpower)/.test(act)) {
 		return { readOnly: false, estSec: 6, ttlMs: 24000, cooldownMs: 2200, label: 'Sincronizando rádio / interfaces de rede (~5–8s)…' };
 	}
-	if (/^(sqm-|irqbalance-|dns-turbo|adblock|zram-|dmz|upnp-|network-capacity|profile|zerotier|wireguard|ntp-|time-|clock-|wifi-)/.test(act)) {
+	if (/^(sqm-|speedtest-apply|asu-check-toggle|irqbalance-|dns-turbo|adblock|zram-|dmz|upnp-|network-capacity|profile|zerotier|wireguard|ntp-|time-|clock-|wifi-)/.test(act)) {
 		return { readOnly: false, estSec: 4, ttlMs: 18000, cooldownMs: 1800, label: 'Aplicando regras e reiniciando serviço (~3–5s)…' };
 	}
 	return { readOnly: false, estSec: 2, ttlMs: 12000, cooldownMs: 1200, label: 'Aplicando configuração (~1–2s)…' };
@@ -569,15 +576,64 @@ function ensureArkTxBanner(profile) {
 
 function installArkTransactionCoordinator() {
 	if (typeof window === 'undefined') return;
+	const stInit = window._arkTxState;
+	if (stInit && typeof stInit.modalSeq !== 'number') {
+		stInit.modalSeq = 0;
+		stInit.modalOpen = false;
+		stInit.staleModalCallbackDepth = 0;
+	}
+	const uiObj = (typeof ui !== 'undefined' && ui) || (window.L && window.L.ui) || window.ui;
+	if (uiObj && typeof uiObj.showModal === 'function' && !uiObj._arkModalSeqWrapped) {
+		uiObj._arkModalSeqWrapped = true;
+		const origShowModal = uiObj.showModal;
+		const origHideModal = uiObj.hideModal;
+		uiObj.showModal = function() {
+			const st = window._arkTxState;
+			if (st && st.staleModalCallbackDepth > 0) {
+				return null;
+			}
+			if (st) {
+				st.modalOpen = true;
+				st.modalSeq = (st.modalSeq || 0) + 1;
+			}
+			return origShowModal.apply(this, arguments);
+		};
+		if (typeof origHideModal === 'function') {
+			uiObj.hideModal = function() {
+				const st = window._arkTxState;
+				if (st) {
+					st.modalOpen = false;
+					st.modalSeq = (st.modalSeq || 0) + 1;
+					st.staleModalCallbackDepth = 0;
+				}
+				return origHideModal.apply(this, arguments);
+			};
+		}
+	}
 	if (typeof fs !== 'undefined' && fs && typeof fs.exec === 'function' && !fs._arkTxWrapped) {
 		const origExec = fs.exec;
 		fs._arkTxWrapped = true;
 		fs.exec = function(cmd, args) {
 			const profile = classifyArkMutation(cmd, args);
-			if (profile.readOnly) {
-				return origExec.apply(this, arguments);
-			}
 			const st = window._arkTxState;
+			if (profile.readOnly) {
+				const hasContains = typeof document !== 'undefined' && document.body && document.body.classList && typeof document.body.classList.contains === 'function';
+				const bodyHasModal = hasContains && document.body.classList.contains('modal-overlay-active');
+				const startModalOpen = !!((st && st.modalOpen) || bodyHasModal);
+				const startModalSeq = (st && st.modalSeq) || 0;
+				return origExec.apply(this, arguments).then(function(res) {
+					const nowBodyModal = hasContains ? document.body.classList.contains('modal-overlay-active') : !!(st && st.modalOpen);
+					if (startModalOpen && st && (!nowBodyModal || !st.modalOpen || st.modalSeq !== startModalSeq)) {
+						st.staleModalCallbackDepth = (st.staleModalCallbackDepth || 0) + 1;
+						if (typeof window !== 'undefined' && window.setTimeout) {
+							window.setTimeout(function() {
+								st.staleModalCallbackDepth = Math.max(0, (st.staleModalCallbackDepth || 1) - 1);
+							}, 0);
+						}
+					}
+					return res;
+				});
+			}
 			const now = Date.now();
 			if (isMutationLocked() && (now - st.startedAt > 120)) {
 				if (now - (st.lastBusyToastAt || 0) > 1500 && typeof ui !== 'undefined' && ui.addNotification) {
@@ -702,6 +758,11 @@ function reloadAfterExpectedDisconnect(e, message, delay) {
 function closeModal(ev) {
 	if (ev && ev.preventDefault) ev.preventDefault();
 	if (ev && ev.stopPropagation) ev.stopPropagation();
+	if (typeof window !== 'undefined' && window._arkTxState) {
+		window._arkTxState.modalOpen = false;
+		window._arkTxState.modalSeq = (window._arkTxState.modalSeq || 0) + 1;
+		window._arkTxState.staleModalCallbackDepth = 0;
+	}
 	try { ui.hideModal(); } catch (e) {}
 	document.body.classList.remove('modal-open');
 	document.body.classList.remove('modal-overlay-active');
@@ -8089,7 +8150,9 @@ const networkModalsMethods = {
 		const CLASSIC_PORTS = '51413,6881:6999';
 		const clients = (this.currentData && this.currentData.clients) || [];
 
-		let activePorts = currentPorts || WIDE_PORTS;
+		let activePorts = (typeof currentPorts === 'string' && currentPorts.trim())
+			? currentPorts.trim()
+			: (Array.isArray(currentPorts) && currentPorts.length ? currentPorts.join(',') : WIDE_PORTS);
 		let initialPreset = 'custom';
 		if (activePorts === WIDE_PORTS || (activePorts.indexOf('1024') >= 0 && activePorts.indexOf('65535') >= 0)) {
 			initialPreset = 'wide';
@@ -8097,7 +8160,7 @@ const networkModalsMethods = {
 			initialPreset = 'classic';
 		}
 
-		let activeIp = (currentIp && currentIp !== '0.0.0.0' && currentIp !== '0.0.0.0/0') ? currentIp : '0.0.0.0';
+		let activeIp = (typeof currentIp === 'string' && currentIp && currentIp !== '0.0.0.0' && currentIp !== '0.0.0.0/0') ? currentIp : '0.0.0.0';
 
 		const customInput = E('input', {
 			type: 'text',

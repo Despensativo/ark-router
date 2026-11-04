@@ -360,7 +360,7 @@ system_network_mode_set() {
 		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 		/etc/init.d/network reload >/dev/null 2>&1 || true
 		/etc/init.d/firewall reload >/dev/null 2>&1 || true
-		(sleep 1; ifup wan >/dev/null 2>&1) </dev/null >/dev/null 2>&1 &
+		(sleep 1; ifup wan >/dev/null 2>&1; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 
 		echo "router_enabled"
 	fi
@@ -434,7 +434,7 @@ ark_ensure_ipv6_dhcpv6_client() {
 	fi
 	if [ -f /lib/netifd/proto/dhcpv6.sh ] && command -v ubus >/dev/null 2>&1; then
 		if ! ubus call network get_proto_handlers 2>/dev/null | grep -q '"dhcpv6"'; then
-			(sleep 2; /etc/init.d/network restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
+			(sleep 2; /etc/init.d/network restart >/dev/null 2>&1 || true; ark_invalidate_caches) >/dev/null 2>&1 </dev/null &
 		fi
 	fi
 }
@@ -1068,7 +1068,7 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='ipv4_only'
 			uci commit equipe_dashboard
-			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
+			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd reload >/dev/null 2>&1 || true; ark_invalidate_caches) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
 		dual_stack)
@@ -1081,7 +1081,7 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='dual_stack'
 			uci commit equipe_dashboard
-			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
+			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd reload >/dev/null 2>&1 || true; ark_invalidate_caches) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
 		selective)
@@ -1094,7 +1094,7 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='selective'
 			uci commit equipe_dashboard
-			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
+			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd reload >/dev/null 2>&1 || true; ark_invalidate_caches) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
 		nptv6)
@@ -1116,7 +1116,7 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='nptv6'
 			uci commit equipe_dashboard
-			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/odhcpd restart >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
+			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/odhcpd restart >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd reload >/dev/null 2>&1 || true; ark_invalidate_caches) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
 		ipv6_only)
@@ -1129,7 +1129,7 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='ipv6_only'
 			uci commit equipe_dashboard
-			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
+			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd reload >/dev/null 2>&1 || true; ark_invalidate_caches) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
 		ipv6_clat)
@@ -1143,7 +1143,7 @@ set_ipv6_mode() {
 			uci -q set equipe_dashboard.ipv6=ipv6
 			uci -q set equipe_dashboard.ipv6.mode='ipv6_clat'
 			uci commit equipe_dashboard
-			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd restart >/dev/null 2>&1 || true) >/dev/null 2>&1 </dev/null &
+			[ -z "${ARK_ROOT:-}" ] && (sleep 1; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/firewall reload >/dev/null 2>&1 || true; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/rpcd reload >/dev/null 2>&1 || true; ark_invalidate_caches) >/dev/null 2>&1 </dev/null &
 			echo ok
 			;;
 		restore_clat)

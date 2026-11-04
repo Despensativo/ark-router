@@ -20,6 +20,22 @@ class Section:
     def anon_key(self):
         return f"@{self.stype}[{self.anonymous_idx}]"
 
+_RE_CONFIG = re.compile(r"^config\s+([a-zA-Z0-9_-]+)(?:\s+['\"]?([a-zA-Z0-9_.-]+)['\"]?)?")
+_RE_OPTION = re.compile(r"^option\s+([a-zA-Z0-9_-]+)\s+['\"]?(.*?)['\"]?$")
+_RE_LIST = re.compile(r"^list\s+([a-zA-Z0-9_-]+)\s+['\"]?(.*?)['\"]?$")
+_RE_ANON = re.compile(r"^@([a-zA-Z0-9_-]+)\[(-?[0-9]+)\]$")
+
+# In-memory cache: filepath -> (mtime_ns, size, sections_snapshot)
+_UCI_FILE_CACHE = {}
+
+def _clone_sections(sections):
+    cloned = []
+    for s in sections:
+        ns = Section(s.stype, s.name, s.anonymous_idx)
+        ns.options = {k: (list(v) if isinstance(v, list) else v) for k, v in s.options.items()}
+        cloned.append(ns)
+    return cloned
+
 class UciFile:
     def __init__(self, filepath):
         self.filepath = filepath
@@ -27,8 +43,15 @@ class UciFile:
         self.load()
 
     def load(self):
-        if not os.path.isfile(self.filepath):
+        try:
+            st = os.stat(self.filepath)
+        except OSError:
             return
+        cached = _UCI_FILE_CACHE.get(self.filepath)
+        if cached and cached[0] == st.st_mtime_ns and cached[1] == st.st_size:
+            self.sections = _clone_sections(cached[2])
+            return
+
         with open(self.filepath, "r", encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()
         
@@ -39,7 +62,7 @@ class UciFile:
             if not line or line.startswith("#"):
                 continue
             
-            m = re.match(r"^config\s+([a-zA-Z0-9_-]+)(?:\s+['\"]?([a-zA-Z0-9_.-]+)['\"]?)?", line)
+            m = _RE_CONFIG.match(line)
             if m:
                 stype = m.group(1)
                 sname = m.group(2)
@@ -52,14 +75,14 @@ class UciFile:
             if not cur_sec:
                 continue
 
-            m_opt = re.match(r"^option\s+([a-zA-Z0-9_-]+)\s+['\"]?(.*?)['\"]?$", line)
+            m_opt = _RE_OPTION.match(line)
             if m_opt:
                 k = m_opt.group(1)
                 v = m_opt.group(2).rstrip("'\"")
                 cur_sec.options[k] = v
                 continue
 
-            m_list = re.match(r"^list\s+([a-zA-Z0-9_-]+)\s+['\"]?(.*?)['\"]?$", line)
+            m_list = _RE_LIST.match(line)
             if m_list:
                 k = m_list.group(1)
                 v = m_list.group(2).rstrip("'\"")
@@ -67,6 +90,8 @@ class UciFile:
                     cur_sec.options[k] = []
                 cur_sec.options[k].append(v)
                 continue
+
+        _UCI_FILE_CACHE[self.filepath] = (st.st_mtime_ns, st.st_size, _clone_sections(self.sections))
 
     def save(self):
         os.makedirs(os.path.dirname(self.filepath), exist_ok=True)
@@ -82,6 +107,11 @@ class UciFile:
                             f.write(f"\tlist {k} '{item}'\n")
                     else:
                         f.write(f"\toption {k} '{v}'\n")
+        try:
+            st = os.stat(self.filepath)
+            _UCI_FILE_CACHE[self.filepath] = (st.st_mtime_ns, st.st_size, _clone_sections(self.sections))
+        except OSError:
+            _UCI_FILE_CACHE.pop(self.filepath, None)
 
     def find_section(self, target):
         if target.startswith("@"):

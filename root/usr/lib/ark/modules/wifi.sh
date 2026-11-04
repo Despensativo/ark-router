@@ -1219,10 +1219,10 @@ handle_wifi() {
 						set mwan3.iot_alexa_mqtt.timeout='3600'
 						commit mwan3
 EOF
-					(sleep 2; /etc/init.d/mwan3 restart) >/dev/null 2>&1 &
+					(sleep 2; /etc/init.d/mwan3 restart; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 				fi
 			fi
-			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			(sleep 1; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 			echo 'enabled'
 		else
 			uci -q set "wireless.$radio2.iot_stability=0"
@@ -1234,7 +1234,7 @@ EOF
 				fi
 			done
 			uci commit wireless
-			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			(sleep 1; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 			echo 'disabled'
 		fi
 		;;
@@ -1245,12 +1245,12 @@ EOF
 		if [ "$state" = "1" ] || [ "$state" = "on" ] || [ "$state" = "enable" ]; then
 			uci -q set "wireless.$radio5.ieee80211h=1"
 			uci commit wireless
-			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			(sleep 1; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 			echo 'enabled'
 		else
 			uci -q delete "wireless.$radio5.ieee80211h"
 			uci commit wireless
-			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			(sleep 1; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 			echo 'disabled'
 		fi
 		;;
@@ -1263,7 +1263,7 @@ EOF
 				uci -q set "wireless.$r.country=PA"
 			done
 			uci commit wireless
-			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			(sleep 1; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 			echo 'enabled'
 		else
 			restore_country="$(uci -q get equipe_dashboard.wifi.previous_country || echo 'BR')"
@@ -1272,7 +1272,7 @@ EOF
 				uci -q set "wireless.$r.country=$restore_country"
 			done
 			uci commit wireless
-			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			(sleep 1; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 			echo 'disabled'
 		fi
 		;;
@@ -1342,7 +1342,7 @@ EOF
 				fi
 			done
 			uci commit wireless
-			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			(sleep 1; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 			echo 'enabled'
 		else
 			for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
@@ -1351,7 +1351,7 @@ EOF
 			done
 			rm -f /tmp/ark-wps-pbc.state
 			uci commit wireless
-			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			(sleep 1; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 			echo 'disabled'
 		fi
 		;;
@@ -1464,7 +1464,7 @@ EOF
 			if ark_has_qca_wifi; then
 				wifi_qca_apply_roaming_tuning
 			fi
-			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			(sleep 1; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 			echo 'enabled'
 		else
 			for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
@@ -1481,7 +1481,7 @@ EOF
 				uci -q delete "wireless.$iface.ieee80211v"
 			done
 			uci commit wireless
-			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			(sleep 1; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 			echo 'disabled'
 		fi
 		;;
@@ -1671,7 +1671,7 @@ EOF
 			uci -q set equipe_dashboard.wifi.txpower_balanced=1
 			uci commit equipe_dashboard 2>/dev/null || true
 			uci commit wireless
-			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			(sleep 1; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 			echo 'enabled'
 		else
 			# Restaura potências originais salvas do usuário; se clean slate (sem valor anterior), apaga para auto
@@ -1699,7 +1699,7 @@ EOF
 			uci -q delete equipe_dashboard.wifi.saved_txpower_6g
 			uci commit equipe_dashboard 2>/dev/null || true
 			uci commit wireless
-			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			(sleep 1; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 			echo 'disabled'
 		fi
 		;;
@@ -1717,17 +1717,17 @@ EOF
 			uci -q set wireless.extra_mesh_r1.disabled='0'
 			uci commit wireless
 			wifi_auto_enable_mesh_optimizations
-			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			(sleep 1; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 			echo 'enabled'
 		else
 			wifi_cleanup_mesh_interfaces
-			(sleep 1; wifi reload) >/dev/null 2>&1 &
+			(sleep 1; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 			echo 'disabled'
 		fi
 		;;
 	wifi-mesh-cleanup|wifi-cleanup-mesh)
 		wifi_cleanup_mesh_interfaces
-		(sleep 1; wifi reload) >/dev/null 2>&1 &
+		(sleep 1; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 		echo 'ok'
 		;;
 	wifi-mesh-satellite-discover)
@@ -2287,7 +2287,7 @@ EOF
 				[ -w "$phy/aql_enable" ] && echo 1 > "$phy/aql_enable" 2>/dev/null || true
 				[ -w "$phy/airtime_flags" ] && echo 3 > "$phy/airtime_flags" 2>/dev/null || true
 			done
-			(sleep 1; wifi reload; sleep 3; /etc/init.d/ark-hardware-tune reload) </dev/null >/dev/null 2>&1 &
+			(sleep 1; wifi reload; sleep 3; /etc/init.d/ark-hardware-tune reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 			echo 'enabled'
 		else
 			for r in $(uci -q show wireless | grep -E "=wifi-device$" | cut -d. -f2 | cut -d= -f1); do
@@ -2320,7 +2320,7 @@ EOF
 			for phy in /sys/kernel/debug/ieee80211/phy*; do
 				[ -w "$phy/airtime_flags" ] && echo 0 > "$phy/airtime_flags" 2>/dev/null || true
 			done
-			(sleep 1; wifi reload; sleep 3; /etc/init.d/ark-hardware-tune reload) </dev/null >/dev/null 2>&1 &
+			(sleep 1; wifi reload; sleep 3; /etc/init.d/ark-hardware-tune reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 			echo 'disabled'
 		fi
 		;;
@@ -2332,7 +2332,7 @@ EOF
 			uci set "wireless.$radio.channel=auto"
 		done
 		uci commit wireless
-		(sleep 2; wifi reload) >/dev/null 2>&1 &
+		(sleep 2; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 		echo 'ok'
 		;;
 	wifi-enhancer-status)

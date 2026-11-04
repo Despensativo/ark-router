@@ -4,8 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Limpa metadados do macOS em filesystem ExFAT para evitar artefatos de teste
-find "$REPO_DIR" -name "._*" -delete 2>/dev/null || true
+# Limpa metadados do macOS em filesystem ExFAT (ignorando .git e dist) para evitar artefatos de teste
+find "$REPO_DIR/root" "$REPO_DIR/src" "$REPO_DIR/scripts" "$REPO_DIR/tests" "$REPO_DIR/po" -name "._*" -delete 2>/dev/null || true
 
 GREEN='\033[1;32m'
 RED='\033[1;31m'
@@ -27,7 +27,9 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 
 PYTHON_CMD="python3"
-if ! "$PYTHON_CMD" -c "import sys" >/dev/null 2>&1; then
+if [ -x "/Users/user/.antigravity-tools-env/bin/python3" ]; then
+	PYTHON_CMD="/Users/user/.antigravity-tools-env/bin/python3"
+elif ! "$PYTHON_CMD" -c "import sys" >/dev/null 2>&1; then
 	if command -v python >/dev/null 2>&1 && python -c "import sys" >/dev/null 2>&1; then
 		PYTHON_CMD="python"
 	elif command -v py >/dev/null 2>&1 && py -c "import sys" >/dev/null 2>&1; then
@@ -43,7 +45,14 @@ printf "${GREEN}✓ Scripts shell e módulos 100%% íntegros e sem colisões!${N
 check_node_syntax() {
 	local f="$1"
 	[ -f "$f" ] || return 0
-	"$PYTHON_CMD" -c "import subprocess, sys, os; p = sys.argv[1]; p = (p[5].upper() + ':/' + p[7:]) if (p.startswith('/mnt/') and len(p) > 6 and p[6] == '/') else p; res = subprocess.run(['$NODE_CMD', '--check', p], capture_output=True, text=True); sys.stdout.write(res.stdout); sys.stderr.write(res.stderr); sys.exit(res.returncode)" "$f"
+	case "$f" in
+		/mnt/[a-zA-Z]/*)
+			"$PYTHON_CMD" -c "import subprocess, sys; p = sys.argv[1]; p = p[5].upper() + ':/' + p[7:]; res = subprocess.run(['$NODE_CMD', '--check', p], capture_output=True, text=True); sys.stdout.write(res.stdout); sys.stderr.write(res.stderr); sys.exit(res.returncode)" "$f"
+			;;
+		*)
+			"$NODE_CMD" --check "$f"
+			;;
+	esac
 }
 
 # 2. Validação de Sintaxe Frontend (Node.js)

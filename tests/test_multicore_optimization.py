@@ -126,13 +126,32 @@ rmdir "$TESTDIR/active"'''
         lockdir = tmp / 'ark-doctor.lockdir'
         lockdir.mkdir(exist_ok=True)
         (lockdir / 'pid').write_text(f'{os.getpid()}\n')
-        result = subprocess.run(
-            ['sh', str(CONTROL), 'ark-doctor', '--auto'],
-            env=dict(os.environ, ARK_ROOT=str(self.path), ARK_LIB_DIR=str(lib)),
-            capture_output=True,
-            timeout=5,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
+        for args in [['ark-doctor', '--auto'], ['ark-doctor', '--json', '--auto'], ['audit-system', '--json', 'auto']]:
+            result = subprocess.run(
+                ['sh', str(CONTROL), *args],
+                env=dict(os.environ, ARK_ROOT=str(self.path), ARK_LIB_DIR=str(lib)),
+                capture_output=True,
+                timeout=5,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_readonly_classifier_handles_arg_order_and_asu_toggle(self):
+        common_sh = ROOT / 'root/usr/lib/ark/common.sh'
+        script = f'''
+. "{common_sh}"
+ark_is_readonly_action ark-doctor --json && echo "ro1=0" || echo "ro1=1"
+ark_is_readonly_action ark-doctor --json --fix && echo "ro2=0" || echo "ro2=1"
+ark_is_readonly_action audit-system --json --auto && echo "ro3=0" || echo "ro3=1"
+ark_is_readonly_action asu-check-status && echo "ro4=0" || echo "ro4=1"
+ark_is_readonly_action asu-check-toggle 1 && echo "ro5=0" || echo "ro5=1"
+'''
+        res = subprocess.run(['sh', '-c', script], capture_output=True, text=True, timeout=5)
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertIn('ro1=0', res.stdout)
+        self.assertIn('ro2=1', res.stdout)
+        self.assertIn('ro3=1', res.stdout)
+        self.assertIn('ro4=0', res.stdout)
+        self.assertIn('ro5=1', res.stdout)
 
     def test_expired_and_future_cache_fall_back(self):
         for age in [120, 1000, -60]:

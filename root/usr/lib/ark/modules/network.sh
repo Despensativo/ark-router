@@ -706,7 +706,7 @@ handle_network() {
 		sanitize_dhcp_hostnames
 		uci commit network
 		uci commit dhcp
-		(sleep 2; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/network reload >/dev/null 2>&1 || true; /etc/init.d/uhttpd restart >/dev/null 2>&1 || true) </dev/null >/dev/null 2>&1 &
+		(sleep 2; /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true; /etc/init.d/network reload >/dev/null 2>&1 || true; ark_invalidate_caches; /etc/init.d/uhttpd restart >/dev/null 2>&1 || true) </dev/null >/dev/null 2>&1 &
 		printf '{"old_ip":"%s","new_ip":"%s","url":"http://%s/cgi-bin/luci/admin/equipe-dashboard"}\n' "$(json_escape "$old_ip")" "$(json_escape "$router_ip")" "$(json_escape "$router_ip")"
 		;;
 	mwan)
@@ -1162,7 +1162,7 @@ handle_network() {
 				uci -q set network.wan.auto='1'
 				uci -q set network.autowan.wan_promoted='1'
 				uci commit network
-				(sleep 1; ifup wan >/dev/null 2>&1) </dev/null >/dev/null 2>&1 &
+				(sleep 1; ifup wan >/dev/null 2>&1; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 				echo 'promoted'
 				;;
 			revert)
@@ -1295,7 +1295,7 @@ handle_network() {
 
 				/etc/init.d/network reload >/dev/null 2>&1 || true
 				/etc/init.d/firewall reload >/dev/null 2>&1 || true
-				(sleep 1; ifup wan >/dev/null 2>&1) </dev/null >/dev/null 2>&1 &
+				(sleep 1; ifup wan >/dev/null 2>&1; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 				rm -f /var/run/ark-autowan-retry-* 2>/dev/null || true
 				sed -i "/^port5=/d; /^wan=/d; /^eth1=/d; /^lan[1-4]=/d" /var/run/ark-autowan.state 2>/dev/null || true
 

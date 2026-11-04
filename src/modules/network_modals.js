@@ -1259,7 +1259,9 @@ const networkModalsMethods = {
 		const CLASSIC_PORTS = '51413,6881:6999';
 		const clients = (this.currentData && this.currentData.clients) || [];
 
-		let activePorts = currentPorts || WIDE_PORTS;
+		let activePorts = (typeof currentPorts === 'string' && currentPorts.trim())
+			? currentPorts.trim()
+			: (Array.isArray(currentPorts) && currentPorts.length ? currentPorts.join(',') : WIDE_PORTS);
 		let initialPreset = 'custom';
 		if (activePorts === WIDE_PORTS || (activePorts.indexOf('1024') >= 0 && activePorts.indexOf('65535') >= 0)) {
 			initialPreset = 'wide';
@@ -1267,7 +1269,7 @@ const networkModalsMethods = {
 			initialPreset = 'classic';
 		}
 
-		let activeIp = (currentIp && currentIp !== '0.0.0.0' && currentIp !== '0.0.0.0/0') ? currentIp : '0.0.0.0';
+		let activeIp = (typeof currentIp === 'string' && currentIp && currentIp !== '0.0.0.0' && currentIp !== '0.0.0.0/0') ? currentIp : '0.0.0.0';
 
 		const customInput = E('input', {
 			type: 'text',
