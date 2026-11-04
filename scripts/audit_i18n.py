@@ -35,7 +35,11 @@ PATTERNS = [
     (r"class:\s*[\"'][^\"']*ex-kicker[^\"']*[\"']\s*\}\s*,\s*\[\s*[\"']([^\"']+)[\"']", "kicker"),
     (r"E\(\s*[\"'](?:button|span|label|h[1-6]|p|strong|small|em|div|a)[\"']\s*,\s*\{[^}]*\}\s*,\s*\[\s*[\"']([^\"']{3,120})[\"']", "dom_with_props"),
     (r"E\(\s*[\"'][a-z0-9-]+[\"']\s*,\s*\{\}\s*,\s*\[\s*[\"']([^\"']{3,120})[\"']", "dom_empty_props"),
-    (r"ui\.addNotification\(\s*\{[^}]*message:\s*[\"']([^\"']{3,120})[\"']", "notification")
+    (r"ui\.addNotification\(\s*\{[^}]*message:\s*[\"']([^\"']{3,120})[\"']", "notification"),
+    (r"field\(\s*[\"']([^\"'\r\n]{2,180})[\"']", "field_label"),
+    (r"field\([^,]+,[^,]+,\s*[\"']([^\"'\r\n]{2,220})[\"']", "field_hint"),
+    (r"\[\s*[\"']([^\"'\r\n]{2,220})[\"']\s*\]", "dom_array_text"),
+    (r"ui\.addNotification\([^,]*,\s*E\(\s*[\"']p[\"']\s*,\s*\{[^}]*\}\s*,\s*\[\s*[\"']([^\"'\r\n]{3,220})[\"']", "notification_p")
 ]
 
 PT_REGEX = re.compile(
@@ -92,9 +96,9 @@ def scan_module_strings():
         for pat, cat in PATTERNS:
             for match in re.findall(pat, code):
                 cleaned = match.strip()
-                if (cleaned and not cleaned.startswith("/") and not cleaned.startswith("http")
-                        and not cleaned.startswith("cbi-") and not cleaned.startswith("ark-")
-                        and not cleaned.startswith("ex-")):
+                if (cleaned and not cleaned.startswith(("/", "http", "cbi-", "ark-", "ex-", ".", "#", "sudo "))
+                        and not any(x in cleaned for x in ["{", "}", ";", "==", "&&", "||", "px", "rgba("])
+                        and not re.match(r"^[a-z0-9_\-\.\:\/]+$", cleaned)):
                     if (PT_REGEX.search(cleaned) or cat in ["translation_call", "modal_title",
                                                             "kicker", "notification",
                                                             "confirm_text", "cancel_text"]):

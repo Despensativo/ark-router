@@ -13555,3 +13555,1512 @@ msgstr "🚀 Opção 2: HFSC + FQ-CoDel Turbo"
 msgid "🛡️ Opção 1: CAKE (Layer Cake)"
 msgstr "🛡️ Opção 1: CAKE (Layer Cake)"
 
+
+msgid "0 favoritados"
+msgstr "0 favoritados"
+
+msgid "2,4 GHz — Antenas de Cobertura Longa & IoT"
+msgstr "2,4 GHz — Antenas de Cobertura Longa & IoT"
+
+msgid "2. Ingress rtt 50ms (target 2.5ms):"
+msgstr "2. Ingress rtt 50ms (target 2.5ms):"
+
+msgid "2. Na BIOS da placa-mãe, ative"
+msgstr "2. Na BIOS da placa-mãe, ative"
+
+msgid "3. No Windows (Gerenciador de Dispositivos → Placa de Rede → Avançado), ative"
+msgstr "3. No Windows (Gerenciador de Dispositivos → Placa de Rede → Avançado), ative"
+
+msgid "40 MHz — mais rápido, mais interferência (Trava noscan=1 ativa)"
+msgstr "40 MHz — mais rápido, mais interferência (Trava noscan=1 ativa)"
+
+msgid "5 GHz — Antenas de Alta Velocidade & Smartphones"
+msgstr "5 GHz — Antenas de Alta Velocidade & Smartphones"
+
+msgid "6 GHz — Wi-Fi 6E / Wi-Fi 7"
+msgstr "6 GHz — Wi-Fi 6E / Wi-Fi 7"
+
+msgid "802.11v WNM:"
+msgstr "802.11v WNM:"
+
+msgid "A lista de dispositivos da sua rede e o cadastro de PCs favoritos já estão prontos abaixo! Instale o pacote ultraleve etherwake com 1 clique para disparar pacotes mágicos físicos na camada 2."
+msgstr "A lista de dispositivos da sua rede e o cadastro de PCs favoritos já estão prontos abaixo! Instale o pacote ultraleve etherwake com 1 clique para disparar pacotes mágicos físicos na camada 2."
+
+msgid "AGUARDANDO INSTALAÇÃO"
+msgstr "AGUARDANDO INSTALAÇÃO"
+
+msgid "ANTI-STICKY"
+msgstr "ANTI-STICKY"
+
+msgid "ATIVO (Fila < 1 ms)"
+msgstr "ATIVO (Fila < 1 ms)"
+
+msgid "ATIVO (Sobrepõe Ajustes)"
+msgstr "ATIVO (Sobrepõe Ajustes)"
+
+msgid "ATIVO • CAKE"
+msgstr "ATIVO • CAKE"
+
+msgid "ATIVO • HFSC + FQ-CoDel"
+msgstr "ATIVO • HFSC + FQ-CoDel"
+
+msgid "ATIVO • NAT ABERTO"
+msgstr "ATIVO • NAT ABERTO"
+
+msgid "Abertura automática de portas para jogos P2P (consoles/PC) e torrents. Permite mapeamento dinâmico sem configuração manual."
+msgstr "Abertura automática de portas para jogos P2P (consoles/PC) e torrents. Permite mapeamento dinâmico sem configuração manual."
+
+msgid "Abrir a porta TCP 445 na interface WAN permite que bots e scanners na internet pública tentem ataques de força bruta diretamente contra os seus arquivos USB."
+msgstr "Abrir a porta TCP 445 na interface WAN permite que bots e scanners na internet pública tentem ataques de força bruta diretamente contra os seus arquivos USB."
+
+msgid "Aceleração"
+msgstr "Aceleração"
+
+msgid "Aceleração de pacotes em silício suportada e gerenciada pelo kernel."
+msgstr "Aceleração de pacotes em silício suportada e gerenciada pelo kernel."
+
+msgid "Acesso local padrão em alta velocidade para seus computadores, celulares e TVs."
+msgstr "Acesso local padrão em alta velocidade para seus computadores, celulares e TVs."
+
+msgid "Adiciona failover automático e balanceamento inteligente entre dois ou mais links."
+msgstr "Adiciona failover automático e balanceamento inteligente entre dois ou mais links."
+
+msgid "Adiciona tráfego individual e histórico detalhado de consumo por aparelho."
+msgstr "Adiciona tráfego individual e histórico detalhado de consumo por aparelho."
+
+msgid "Administração, Senha & Chaves SSH"
+msgstr "Administração, Senha & Chaves SSH"
+
+msgid "Aguarde concluir para evitar conflitos"
+msgstr "Aguarde concluir para evitar conflitos"
+
+msgid "Ajuste o nível de potência de transmissão (dBm) por frequência de rádio. O valor em parênteses mostra a potência equivalente em miliwatts (mW)."
+msgstr "Ajuste o nível de potência de transmissão (dBm) por frequência de rádio. O valor em parênteses mostra a potência equivalente em miliwatts (mW)."
+
+msgid "Ajustes NTP & Fuso"
+msgstr "Ajustes NTP & Fuso"
+
+msgid "Ajustes de ativação e desativação gerenciados com segurança e memória pós-atualização."
+msgstr "Ajustes de ativação e desativação gerenciados com segurança e memória pós-atualização."
+
+msgid "Ambas as frequências (2.4 GHz e 5 GHz) funcionam e são transmitidas por este aparelho. Insira o nome e a senha idênticos aos do Mestre para que celulares e notebooks transitem automaticamente entre os cômodos sem quedas."
+msgstr "Ambas as frequências (2.4 GHz e 5 GHz) funcionam e são transmitidas por este aparelho. Insira o nome e a senha idênticos aos do Mestre para que celulares e notebooks transitem automaticamente entre os cômodos sem quedas."
+
+msgid "Análise de Canais Wi-Fi (Espectro)"
+msgstr "Análise de Canais Wi-Fi (Espectro)"
+
+msgid "Ao desativar ou remover um plugin, o ARK Router limpa filas, rotas e regras dependentes para que nada fique órfão ou quebrado."
+msgstr "Ao desativar ou remover um plugin, o ARK Router limpa filas, rotas e regras dependentes para que nada fique órfão ou quebrado."
+
+msgid "Ao desativar ou remover, derruba os túneis wg0/wgclient com segurança, desativa as interfaces no UCI e recarrega o netifd/firewall."
+msgstr "Ao desativar ou remover, derruba os túneis wg0/wgclient com segurança, desativa as interfaces no UCI e recarrega o netifd/firewall."
+
+msgid "Ao desativar ou remover, desconecta a interface virtual zt*, encerra o serviço zerotier-one e limpa o binário temporário em RAM."
+msgstr "Ao desativar ou remover, desconecta a interface virtual zt*, encerra o serviço zerotier-one e limpa o binário temporário em RAM."
+
+msgid "Ao desativar ou remover, desconecta o túnel de bonding, restaura o gateway padrão da WAN e devolve o controle de rotas ao Multi-WAN."
+msgstr "Ao desativar ou remover, desconecta o túnel de bonding, restaura o gateway padrão da WAN e devolve o controle de rotas ao Multi-WAN."
+
+msgid "Ao desativar ou remover, encerra o balanceador por software e mantém o escalonamento SMP/RPS padrão do kernel."
+msgstr "Ao desativar ou remover, encerra o balanceador por software e mantém o escalonamento SMP/RPS padrão do kernel."
+
+msgid "Ao desativar ou remover, encerra o coletor conntrack de camada 3 mantendo a lista de dispositivos ARP/DHCP funcionando normalmente."
+msgstr "Ao desativar ou remover, encerra o coletor conntrack de camada 3 mantendo a lista de dispositivos ARP/DHCP funcionando normalmente."
+
+msgid "Ao desativar ou remover, encerra o daemon miniupnpd e recarrega o firewall para fechar imediatamente todas as portas abertas dinamicamente."
+msgstr "Ao desativar ou remover, encerra o daemon miniupnpd e recarrega o firewall para fechar imediatamente todas as portas abertas dinamicamente."
+
+msgid "Ao desativar ou remover, encerra o daemon usteer mantendo o Roaming Rápido 802.11k/v/r nativo do hostapd intacto."
+msgstr "Ao desativar ou remover, encerra o daemon usteer mantendo o Roaming Rápido 802.11k/v/r nativo do hostapd intacto."
+
+msgid "Ao desativar ou remover, limpa as listas DNS sinkhole, restaura os servidores upstream do DNS Turbo e recarrega o dnsmasq sem interromper a resolução DNS."
+msgstr "Ao desativar ou remover, limpa as listas DNS sinkhole, restaura os servidores upstream do DNS Turbo e recarrega o dnsmasq sem interromper a resolução DNS."
+
+msgid "Ao desativar ou remover, migra páginas comprimidas de volta para a RAM física (swapoff /dev/zram0) com verificação prévia anti-OOM."
+msgstr "Ao desativar ou remover, migra páginas comprimidas de volta para a RAM física (swapoff /dev/zram0) com verificação prévia anti-OOM."
+
+msgid "Ao desativar ou remover, o ARK Router limpa as disciplinas de fila (qdisc cake/fq_codel), remove interfaces virtuais ifb4* do kernel e restaura o Fastpath nativo sem deixar limites órfãos."
+msgstr "Ao desativar ou remover, o ARK Router limpa as disciplinas de fila (qdisc cake/fq_codel), remove interfaces virtuais ifb4* do kernel e restaura o Fastpath nativo sem deixar limites órfãos."
+
+msgid "Ao desativar ou remover, o ARK Router limpa as regras ip rule (tabelas 2000..2255) e restaura a rota padrão da WAN principal para evitar perda de acesso (blackhole)."
+msgstr "Ao desativar ou remover, o ARK Router limpa as regras ip rule (tabelas 2000..2255) e restaura a rota padrão da WAN principal para evitar perda de acesso (blackhole)."
+
+msgid "Ao desativar ou remover, sincroniza caches de disco (sync) e encerra o servidor SMB sem corromper pendrives ou HDs conectados."
+msgstr "Ao desativar ou remover, sincroniza caches de disco (sync) e encerra o servidor SMB sem corromper pendrives ou HDs conectados."
+
+msgid "Ao desativar, desabilita o gancho automático de desmontagem USB em reinicializações."
+msgstr "Ao desativar, desabilita o gancho automático de desmontagem USB em reinicializações."
+
+msgid "Ao desativar, encerra o monitoramento de portas, restaura a porta WAN física para o modo padrão e mantém a topologia fixa."
+msgstr "Ao desativar, encerra o monitoramento de portas, restaura a porta WAN física para o modo padrão e mantém a topologia fixa."
+
+msgid "Ao desativar, encerra o processo em segundo plano e oculta os gráficos de 24 horas para economizar ciclos de CPU e RAM."
+msgstr "Ao desativar, encerra o processo em segundo plano e oculta os gráficos de 24 horas para economizar ciclos de CPU e RAM."
+
+msgid "Ao desativar, o ARK Router deixa de aplicar ganchos automáticos no firewall durante o boot e preserva sua decisão após atualizar."
+msgstr "Ao desativar, o ARK Router deixa de aplicar ganchos automáticos no firewall durante o boot e preserva sua decisão após atualizar."
+
+msgid "Ao desativar, o roteador dependerá exclusivamente da sincronização NTP após cada reinicialização."
+msgstr "Ao desativar, o roteador dependerá exclusivamente da sincronização NTP após cada reinicialização."
+
+msgid "Ao desativar, reverte os parâmetros sysctl de rede e conntrack para os padrões conservadores de fábrica do OpenWrt e lembra sua escolha após atualizações."
+msgstr "Ao desativar, reverte os parâmetros sysctl de rede e conntrack para os padrões conservadores de fábrica do OpenWrt e lembra sua escolha após atualizações."
+
+msgid "Ao salvar, os rádios modificados reiniciam rapidamente em ~2 segundos para aplicar os novos ganhos nos amplificadores de RF."
+msgstr "Ao salvar, os rádios modificados reiniciam rapidamente em ~2 segundos para aplicar os novos ganhos nos amplificadores de RF."
+
+msgid "Apenas %s KB livres na partição Flash. O ponto de corte mínimo é de %s KB para evitar travamento ou corrupção de sistema. Atualização bloqueada por segurança."
+msgstr "Apenas %s KB livres na partição Flash. O ponto de corte mínimo é de %s KB para evitar travamento ou corrupção de sistema. Atualização bloqueada por segurança."
+
+msgid "Aplicado. Sincronizando o painel…"
+msgstr "Aplicado. Sincronizando o painel…"
+
+msgid "Aplicando configuração (~1–2s)…"
+msgstr "Aplicando configuração (~1–2s)…"
+
+msgid "Aplicando regras e reiniciando serviço (~3–5s)…"
+msgstr "Aplicando regras e reiniciando serviço (~3–5s)…"
+
+msgid "Aplicar -12,5%"
+msgstr "Aplicar -12,5%"
+
+msgid "Aplicação / Jogo"
+msgstr "Aplicação / Jogo"
+
+msgid "Arquitetura x86_64 de alta performance. O processamento de pacotes é distribuído nativamente entre os núcleos de CPU via SMP/Fastpath, dispensando coprocessadores de aceleração embarcados."
+msgstr "Arquitetura x86_64 de alta performance. O processamento de pacotes é distribuído nativamente entre os núcleos de CPU via SMP/Fastpath, dispensando coprocessadores de aceleração embarcados."
+
+msgid "Assumir Risco e Liberar Porta 445"
+msgstr "Assumir Risco e Liberar Porta 445"
+
+msgid "Atenção: IRQ Balance em execução em hardware que já gerencia interrupções no silício. Recomendado desativar para evitar jitter e disputa de núcleos."
+msgstr "Atenção: IRQ Balance em execução em hardware que já gerencia interrupções no silício. Recomendado desativar para evitar jitter e disputa de núcleos."
+
+msgid "Ativo na rede local (respondendo a requisições SSDP / NAT-PMP)"
+msgstr "Ativo na rede local (respondendo a requisições SSDP / NAT-PMP)"
+
+msgid "Ativo nativamente • O silício Qualcomm IPQ despacha tráfego de rede e Wi-Fi diretamente pelo motor de hardware Packet Processing Engine (PPE), com latência ultrabaixa e offload total de CPU."
+msgstr "Ativo nativamente • O silício Qualcomm IPQ despacha tráfego de rede e Wi-Fi diretamente pelo motor de hardware Packet Processing Engine (PPE), com latência ultrabaixa e offload total de CPU."
+
+msgid "Ativo • BSS Coloring, Spatial Reuse (OBSS PD), SU Beamforming, Airtime Fairness (AQL) e proteção PMF operando nos rádios."
+msgstr "Ativo • BSS Coloring, Spatial Reuse (OBSS PD), SU Beamforming, Airtime Fairness (AQL) e proteção PMF operando nos rádios."
+
+msgid "Ativo • Despacho direto de pacotes Wi-Fi via DMA/PPE no hardware MediaTek Filogic, liberando os núcleos de CPU."
+msgstr "Ativo • Despacho direto de pacotes Wi-Fi via DMA/PPE no hardware MediaTek Filogic, liberando os núcleos de CPU."
+
+msgid "Atualiza um marcador invisível a cada 60s para impedir que HDs mecânicos externos entrem em suspensão profunda e travem ao abrir pastas."
+msgstr "Atualiza um marcador invisível a cada 60s para impedir que HDs mecânicos externos entrem em suspensão profunda e travem ao abrir pastas."
+
+msgid "Auto CS4 + Conntrack 0xa0"
+msgstr "Auto CS4 + Conntrack 0xa0"
+
+msgid "Automático / Máximo do Hardware e País"
+msgstr "Automático / Máximo do Hardware e País"
+
+msgid "Auxílio STUN (Anti‑CGNAT / NAT Duplo)"
+msgstr "Auxílio STUN (Anti‑CGNAT / NAT Duplo)"
+
+msgid "Ação"
+msgstr "Ação"
+
+msgid "Ações"
+msgstr "Ações"
+
+msgid "Baixa"
+msgstr "Baixa"
+
+msgid "Bloqueador de Anúncios (AdBlock)"
+msgstr "Bloqueador de Anúncios (AdBlock)"
+
+msgid "CAKE Layer Cake (Ativo)"
+msgstr "CAKE Layer Cake (Ativo)"
+
+msgid "Calibração de Silício & Sysctl (ARK Tune)"
+msgstr "Calibração de Silício & Sysctl (ARK Tune)"
+
+msgid "Caminho Windows / Mac"
+msgstr "Caminho Windows / Mac"
+
+msgid "Canais 36–64 / 100–128 (160 MHz):"
+msgstr "Canais 36–64 / 100–128 (160 MHz):"
+
+msgid "Catálogo de Pacotes e Remoção de Restrições"
+msgstr "Catálogo de Pacotes e Remoção de Restrições"
+
+msgid "Clientes Sem Fio"
+msgstr "Clientes Sem Fio"
+
+msgid "Clientes só abrem portas > 1024 para o próprio endereço IP local"
+msgstr "Clientes só abrem portas > 1024 para o próprio endereço IP local"
+
+msgid "Coletor de Histórico 24 Horas"
+msgstr "Coletor de Histórico 24 Horas"
+
+msgid "Comando enviado. O painel recarregará quando o roteador concluir a atualização."
+msgstr "Comando enviado. O painel recarregará quando o roteador concluir a atualização."
+
+msgid "Comando enviado. Recarregando painel…"
+msgstr "Comando enviado. Recarregando painel…"
+
+msgid "Como o nome do Wi‑Fi é idêntico em 2,4 GHz e 5 GHz, usar seguranças distintas pode dificultar a transição suave de alguns aparelhos entre as faixas."
+msgstr "Como o nome do Wi‑Fi é idêntico em 2,4 GHz e 5 GHz, usar seguranças distintas pode dificultar a transição suave de alguns aparelhos entre as faixas."
+
+msgid "Compatibilidade SMBv1 Legado (TV Box / PS2 / Impressoras antigas)"
+msgstr "Compatibilidade SMBv1 Legado (TV Box / PS2 / Impressoras antigas)"
+
+msgid "Compressão de memória (ZRAM) ativada com sucesso!"
+msgstr "Compressão de memória (ZRAM) ativada com sucesso!"
+
+msgid "Conclusão e Reinicialização Suave do Wi-Fi"
+msgstr "Conclusão e Reinicialização Suave do Wi-Fi"
+
+msgid "Concluído (Fechar)"
+msgstr "Concluído (Fechar)"
+
+msgid "Configuração de LEDs"
+msgstr "Configuração de LEDs"
+
+msgid "Confirmar Desativação Segura"
+msgstr "Confirmar Desativação Segura"
+
+msgid "Confirmar Remoção Completa"
+msgstr "Confirmar Remoção Completa"
+
+msgid "Confirmar e Restaurar WAN1"
+msgstr "Confirmar e Restaurar WAN1"
+
+msgid "Consumo por dispositivo (nlbwmon)"
+msgstr "Consumo por dispositivo (nlbwmon)"
+
+msgid "Cria um disco de memória comprimida em tempo real utilizando algoritmo LZ4 ultrarrápido, duplicando a capacidade efetiva da RAM sem gravar nem desgastar a memória Flash."
+msgstr "Cria um disco de memória comprimida em tempo real utilizando algoritmo LZ4 ultrarrápido, duplicando a capacidade efetiva da RAM sem gravar nem desgastar a memória Flash."
+
+msgid "DESATIVADO (MODO IPV4)"
+msgstr "DESATIVADO (MODO IPV4)"
+
+msgid "DESNECESSÁRIO (RAM ABUNDANTE)"
+msgstr "DESNECESSÁRIO (RAM ABUNDANTE)"
+
+msgid "DISPOSITIVO CABEADO"
+msgstr "DISPOSITIVO CABEADO"
+
+msgid "Daemon leve nativo do ARK Router que registra amostras de velocidade em RAM (/tmp) para os gráficos de 24 horas."
+msgstr "Daemon leve nativo do ARK Router que registra amostras de velocidade em RAM (/tmp) para os gráficos de 24 horas."
+
+msgid "Daemon nativo do ARK Router que detecta cabos de internet (DHCP) em qualquer porta física e alterna entre LAN e Multi-WAN."
+msgstr "Daemon nativo do ARK Router que detecta cabos de internet (DHCP) em qualquer porta física e alterna entre LAN e Multi-WAN."
+
+msgid "Desativado (Modo Seguro — nenhuma porta aberta dinamicamente)"
+msgstr "Desativado (Modo Seguro — nenhuma porta aberta dinamicamente)"
+
+msgid "Desativado (Modo Seguro — nenhuma porta é aberta sem autorização)"
+msgstr "Desativado (Modo Seguro — nenhuma porta é aberta sem autorização)"
+
+msgid "Desativado (NPTv6)"
+msgstr "Desativado (NPTv6)"
+
+msgid "Desativado (Persistido)"
+msgstr "Desativado (Persistido)"
+
+msgid "Desativado pelo usuário"
+msgstr "Desativado pelo usuário"
+
+msgid "Desativado • Pacotes Wi-Fi processados pelas filas de software da CPU."
+msgstr "Desativado • Pacotes Wi-Fi processados pelas filas de software da CPU."
+
+msgid "Desativado • Recursos avançados de agregação, reúso espacial e justiça de tempo de ar em espera."
+msgstr "Desativado • Recursos avançados de agregação, reúso espacial e justiça de tempo de ar em espera."
+
+msgid "Desativar (Restaurar Nativo)"
+msgstr "Desativar (Restaurar Nativo)"
+
+msgid "Desativar DoH"
+msgstr "Desativar DoH"
+
+msgid "Desativar com limpeza segura de filas/regras e lembrar após atualização"
+msgstr "Desativar com limpeza segura de filas/regras e lembrar após atualização"
+
+msgid "Destravar"
+msgstr "Destravar"
+
+msgid "Detecta IP WAN público via STUN sem travar em provedores CGNAT"
+msgstr "Detecta IP WAN público via STUN sem travar em provedores CGNAT"
+
+msgid "Diagnósticos de Rede (Ping / Trace / DNS)"
+msgstr "Diagnósticos de Rede (Ping / Trace / DNS)"
+
+msgid "Diferente do Samba tradicional em espaço de usuário, o KSMBD processa arquivos direto no kernel Linux com mínimo uso de RAM e máxima taxa de transferência."
+msgstr "Diferente do Samba tradicional em espaço de usuário, o KSMBD processa arquivos direto no kernel Linux com mínimo uso de RAM e máxima taxa de transferência."
+
+msgid "Diffserv 4-Tiers (diffserv4 no Upload / besteffort no Download):"
+msgstr "Diffserv 4-Tiers (diffserv4 no Upload / besteffort no Download):"
+
+msgid "Dispara pacotes mágicos (Magic Packet IEEE 802.3) pela rede cabeada para acordar computadores, servidores e NAS desligados ou em suspensão."
+msgstr "Dispara pacotes mágicos (Magic Packet IEEE 802.3) pela rede cabeada para acordar computadores, servidores e NAS desligados ou em suspensão."
+
+msgid "Disparar Magic Packet para"
+msgstr "Disparar Magic Packet para"
+
+msgid "Disparo simultâneo de 0ms via dnsmasq. Clique ao lado para baixar e ativar automaticamente o túnel criptografado Dual-DoH (https-dns-proxy HTTP/2 TLS 1.3)."
+msgstr "Disparo simultâneo de 0ms via dnsmasq. Clique ao lado para baixar e ativar automaticamente o túnel criptografado Dual-DoH (https-dns-proxy HTTP/2 TLS 1.3)."
+
+msgid "Dispositivo Cliente"
+msgstr "Dispositivo Cliente"
+
+msgid "Dispositivo LAN"
+msgstr "Dispositivo LAN"
+
+msgid "Dispositivo MIPS com memória compacta. Opera com aceleração de fluxo por software (Software Flowtable). Motores de hardware offload não são aplicáveis para garantir estabilidade operacional."
+msgstr "Dispositivo MIPS com memória compacta. Opera com aceleração de fluxo por software (Software Flowtable). Motores de hardware offload não são aplicáveis para garantir estabilidade operacional."
+
+msgid "Dispositivos Ativos"
+msgstr "Dispositivos Ativos"
+
+msgid "Divide a internet igualmente entre cada aparelho da casa (dual-srchost / dual-dsthost), impedindo que um único download puxe toda a banda."
+msgstr "Divide a internet igualmente entre cada aparelho da casa (dual-srchost / dual-dsthost), impedindo que um único download puxe toda a banda."
+
+msgid "Download (iqdisc_opts):"
+msgstr "Download (iqdisc_opts):"
+
+msgid "Download e Instalação do wpad-mbedtls"
+msgstr "Download e Instalação do wpad-mbedtls"
+
+msgid "EM EXECUÇÃO"
+msgstr "EM EXECUÇÃO"
+
+msgid "EXT4 (Máxima Performance Nativa Linux / OpenWrt)"
+msgstr "EXT4 (Máxima Performance Nativa Linux / OpenWrt)"
+
+msgid "Em 160 MHz (Canais 36–64 / 100–128), o macOS interrompe o canal por ~60 ms a cada 0,5s para sintonizar a interface"
+msgstr "Em 160 MHz (Canais 36–64 / 100–128), o macOS interrompe o canal por ~60 ms a cada 0,5s para sintonizar a interface"
+
+msgid "Em execução"
+msgstr "Em execução"
+
+msgid "Em processadores mononúcleo lentos (MIPS), a ZRAM opera limitada a 32 MB com swappiness reduzido (15) para poupar a CPU."
+msgstr "Em processadores mononúcleo lentos (MIPS), a ZRAM opera limitada a 32 MB com swappiness reduzido (15) para poupar a CPU."
+
+msgid "Erro ao aplicar UPnP"
+msgstr "Erro ao aplicar UPnP"
+
+msgid "Erro ao restaurar WAN1"
+msgstr "Erro ao restaurar WAN1"
+
+msgid "Este roteador possui"
+msgstr "Este roteador possui"
+
+msgid "Estes parâmetros já foram calibrados pelo perfil escolhido acima. Você pode ativar o Auto-MTU Inteligente abaixo para testar MTU 1500 real na fibra com fallback automático seguro."
+msgstr "Estes parâmetros já foram calibrados pelo perfil escolhido acima. Você pode ativar o Auto-MTU Inteligente abaixo para testar MTU 1500 real na fibra com fallback automático seguro."
+
+msgid "Executando operação de sistema (~10–15s)…"
+msgstr "Executando operação de sistema (~10–15s)…"
+
+msgid "FASTPATH SOFTWARE"
+msgstr "FASTPATH SOFTWARE"
+
+msgid "FAT32 (Compatibilidade Universal / Smart TVs Antigas — limite 4 GB/arq)"
+msgstr "FAT32 (Compatibilidade Universal / Smart TVs Antigas — limite 4 GB/arq)"
+
+msgid "FAVORITO"
+msgstr "FAVORITO"
+
+msgid "FLASH INTERNA PROTEGIDA"
+msgstr "FLASH INTERNA PROTEGIDA"
+
+msgid "Failover Automático"
+msgstr "Failover Automático"
+
+msgid "Fake RTC Clock Preserver:"
+msgstr "Fake RTC Clock Preserver:"
+
+msgid "Falha ao ajustar potência das antenas"
+msgstr "Falha ao ajustar potência das antenas"
+
+msgid "Falha ao alterar UPnP"
+msgstr "Falha ao alterar UPnP"
+
+msgid "Falha ao alterar ZRAM"
+msgstr "Falha ao alterar ZRAM"
+
+msgid "Falha ao alterar interceptação NTP"
+msgstr "Falha ao alterar interceptação NTP"
+
+msgid "Falha ao alternar Dual-DoH"
+msgstr "Falha ao alternar Dual-DoH"
+
+msgid "Falha ao alternar Modo A+ Waveform"
+msgstr "Falha ao alternar Modo A+ Waveform"
+
+msgid "Falha ao alternar Modo DEV"
+msgstr "Falha ao alternar Modo DEV"
+
+msgid "Falha ao alternar Portas de Jogos & NAT Aberto"
+msgstr "Falha ao alternar Portas de Jogos & NAT Aberto"
+
+msgid "Falha ao alternar motor de QoS"
+msgstr "Falha ao alternar motor de QoS"
+
+msgid "Falha ao ativar ZRAM"
+msgstr "Falha ao ativar ZRAM"
+
+msgid "Falha ao ativar recurso"
+msgstr "Falha ao ativar recurso"
+
+msgid "Falha ao desativar IRQ Balance"
+msgstr "Falha ao desativar IRQ Balance"
+
+msgid "Falha ao desativar recurso"
+msgstr "Falha ao desativar recurso"
+
+msgid "Falha ao ejetar"
+msgstr "Falha ao ejetar"
+
+msgid "Falha ao enviar Magic Packet"
+msgstr "Falha ao enviar Magic Packet"
+
+msgid "Falha ao formatar unidade"
+msgstr "Falha ao formatar unidade"
+
+msgid "Falha ao iniciar comando:"
+msgstr "Falha ao iniciar comando:"
+
+msgid "Falha ao limpar mapeamentos UPnP"
+msgstr "Falha ao limpar mapeamentos UPnP"
+
+msgid "Falha ao montar"
+msgstr "Falha ao montar"
+
+msgid "Falha ao reconfigurar pool"
+msgstr "Falha ao reconfigurar pool"
+
+msgid "Falha ao reiniciar miniupnpd"
+msgstr "Falha ao reiniciar miniupnpd"
+
+msgid "Falha ao remover pacote"
+msgstr "Falha ao remover pacote"
+
+msgid "Falha ao restaurar WAN1"
+msgstr "Falha ao restaurar WAN1"
+
+msgid "Falha ao revogar porta UPnP"
+msgstr "Falha ao revogar porta UPnP"
+
+msgid "Falha ao salvar ajustes do UPnP"
+msgstr "Falha ao salvar ajustes do UPnP"
+
+msgid "Falha ao salvar configuração KSMBD"
+msgstr "Falha ao salvar configuração KSMBD"
+
+msgid "Falha ao salvar favorito"
+msgstr "Falha ao salvar favorito"
+
+msgid "Falha ao salvar política de menus"
+msgstr "Falha ao salvar política de menus"
+
+msgid "Falha ao salvar usuário SMB"
+msgstr "Falha ao salvar usuário SMB"
+
+msgid "Falha ao sincronizar relógio"
+msgstr "Falha ao sincronizar relógio"
+
+msgid "Falha no FSCK"
+msgstr "Falha no FSCK"
+
+msgid "Falha no benchmark"
+msgstr "Falha no benchmark"
+
+msgid "Flash Livre:"
+msgstr "Flash Livre:"
+
+msgid "Força Smart TVs, Chromecasts e celulares com DNS privado a passarem pelo bloqueador do roteador (redireciona porta 53 em 0ms e rejeita evasão DoT na porta 853)."
+msgstr "Força Smart TVs, Chromecasts e celulares com DNS privado a passarem pelo bloqueador do roteador (redireciona porta 53 em 0ms e rejeita evasão DoT na porta 853)."
+
+msgid "Fuso do seu Aparelho:"
+msgstr "Fuso do seu Aparelho:"
+
+msgid "Gancho nativo do ARK Router que força flush de gravação (sync) e desmontagem limpa de discos USB antes de reiniciar o roteador."
+msgstr "Gancho nativo do ARK Router que força flush de gravação (sync) e desmontagem limpa de discos USB antes de reiniciar o roteador."
+
+msgid "Grupo de Trabalho (Workgroup)"
+msgstr "Grupo de Trabalho (Workgroup)"
+
+msgid "Gráficos em Tempo Real"
+msgstr "Gráficos em Tempo Real"
+
+msgid "Guardião de Firewall & Anti-Lockout (ARK Guard)"
+msgstr "Guardião de Firewall & Anti-Lockout (ARK Guard)"
+
+msgid "HFSC + FQ-CoDel (Ativo)"
+msgstr "HFSC + FQ-CoDel (Ativo)"
+
+msgid "Habilitado no UCI (aguardando tráfego na interface WAN)"
+msgstr "Habilitado no UCI (aguardando tráfego na interface WAN)"
+
+msgid "Habilitar Daemon UPnP (miniupnpd)"
+msgstr "Habilitar Daemon UPnP (miniupnpd)"
+
+msgid "Hardware & Silício"
+msgstr "Hardware & Silício"
+
+msgid "Hosts Detectados"
+msgstr "Hosts Detectados"
+
+msgid "IP / Interface"
+msgstr "IP / Interface"
+
+msgid "IRQ Balance desativado. Modo nativo por hardware restaurado!"
+msgstr "IRQ Balance desativado. Modo nativo por hardware restaurado!"
+
+msgid "ISOLADO DO SSH"
+msgstr "ISOLADO DO SSH"
+
+msgid "Ideal para TVs ou Media Centers na rede IoT reproduzirem filmes do USB."
+msgstr "Ideal para TVs ou Media Centers na rede IoT reproduzirem filmes do USB."
+
+msgid "Ideal para expandir a rede do Roteador Principal via cabo ou sem fio. Desativa o servidor DHCP, firewall e NAT deste aparelho, transformando todas as portas e o Wi-Fi em uma extensão transparente da sua rede."
+msgstr "Ideal para expandir a rede do Roteador Principal via cabo ou sem fio. Desativa o servidor DHCP, firewall e NAT deste aparelho, transformando todas as portas e o Wi-Fi em uma extensão transparente da sua rede."
+
+msgid "Importe ou cole a configuração (.conf) fornecida pelo seu servidor VPN (ProtonVPN, Mullvad, NordVPN, VPS próprio ou outro roteador). O ARK Router criará a interface no kernel e integrará ao firewall automaticamente."
+msgstr "Importe ou cole a configuração (.conf) fornecida pelo seu servidor VPN (ProtonVPN, Mullvad, NordVPN, VPS próprio ou outro roteador). O ARK Router criará a interface no kernel e integrará ao firewall automaticamente."
+
+msgid "Imunidade contra troca de prefixo da operadora: servidores, Docker e Home Assistant mantêm IPs estáveis."
+msgstr "Imunidade contra troca de prefixo da operadora: servidores, Docker e Home Assistant mantêm IPs estáveis."
+
+msgid "Ingress rtt 50ms (target 2.5ms):"
+msgstr "Ingress rtt 50ms (target 2.5ms):"
+
+msgid "Interceptação NTP UDP 123 ativada."
+msgstr "Interceptação NTP UDP 123 ativada."
+
+msgid "Interceptação NTP desativada."
+msgstr "Interceptação NTP desativada."
+
+msgid "Interface OpenWrt (Tema Ark)"
+msgstr "Interface OpenWrt (Tema Ark)"
+
+msgid "Interfaces de Rede (LAN, WAN, WAN2)"
+msgstr "Interfaces de Rede (LAN, WAN, WAN2)"
+
+msgid "Keepalive de HD externo ativado."
+msgstr "Keepalive de HD externo ativado."
+
+msgid "Keepalive de HD externo desativado."
+msgstr "Keepalive de HD externo desativado."
+
+msgid "LZ4 EXPANSÃO"
+msgstr "LZ4 EXPANSÃO"
+
+msgid "Lembrado (Standby)"
+msgstr "Lembrado (Standby)"
+
+msgid "Liga ou desliga o motor anti-bufferbloat configurado abaixo"
+msgstr "Liga ou desliga o motor anti-bufferbloat configurado abaixo"
+
+msgid "MB Flash livres). Motor avançado pronto para instalação."
+msgstr "MB Flash livres). Motor avançado pronto para instalação."
+
+msgid "MB de RAM física e dispensa compressão. Para ativar, há trava de segurança de 5s."
+msgstr "MB de RAM física e dispensa compressão. Para ativar, há trava de segurança de 5s."
+
+msgid "MODO COMPACTO (SEGURANÇA RAM)"
+msgstr "MODO COMPACTO (SEGURANÇA RAM)"
+
+msgid "MODO SEGURO"
+msgstr "MODO SEGURO"
+
+msgid "MODO SEGURO (DESATIVADO)"
+msgstr "MODO SEGURO (DESATIVADO)"
+
+msgid "MONO-BAND"
+msgstr "MONO-BAND"
+
+msgid "MULTICORE X86"
+msgstr "MULTICORE X86"
+
+msgid "Mantém portas protegidas contra abertura automática não autorizada. Nenhuma regra é criada na WAN sem permissão explícita no firewall."
+msgstr "Mantém portas protegidas contra abertura automática não autorizada. Nenhuma regra é criada na WAN sem permissão explícita no firewall."
+
+msgid "Mapeamento UPnP / NAT-PMP"
+msgstr "Mapeamento UPnP / NAT-PMP"
+
+msgid "Memória RAM física abundante detectada: este roteador possui %s de RAM. A memória é mais do que suficiente para o OpenWrt e todos os serviços sem qualquer risco de esgotamento."
+msgstr "Memória RAM física abundante detectada: este roteador possui %s de RAM. A memória é mais do que suficiente para o OpenWrt e todos os serviços sem qualquer risco de esgotamento."
+
+msgid "Modo 5: IPv6-Only (Single-Stack)"
+msgstr "Modo 5: IPv6-Only (Single-Stack)"
+
+msgid "Modo A+ Waveform desativado. Os parâmetros avançados do CAKE agora podem ser customizados manualmente."
+msgstr "Modo A+ Waveform desativado. Os parâmetros avançados do CAKE agora podem ser customizados manualmente."
+
+msgid "Modo Cliente Apenas"
+msgstr "Modo Cliente Apenas"
+
+msgid "Modo DEV desativado. Os menus de plugins não instalados voltaram a ficar ocultos."
+msgstr "Modo DEV desativado. Os menus de plugins não instalados voltaram a ficar ocultos."
+
+msgid "Modo Desenvolvedor (DEV Mode) ativo: exibindo todos os menus ocultos e plugins não instalados. Clique para gerenciar em Recursos."
+msgstr "Modo Desenvolvedor (DEV Mode) ativo: exibindo todos os menus ocultos e plugins não instalados. Clique para gerenciar em Recursos."
+
+msgid "Motor SMB"
+msgstr "Motor SMB"
+
+msgid "Motor de Disparo"
+msgstr "Motor de Disparo"
+
+msgid "Motor de Tradução CLAT:"
+msgstr "Motor de Tradução CLAT:"
+
+msgid "Mudar p/ Leitura+Gravação"
+msgstr "Mudar p/ Leitura+Gravação"
+
+msgid "Mudar p/ Só Leitura"
+msgstr "Mudar p/ Só Leitura"
+
+msgid "Nenhum dispositivo detectado no momento. Use o formulário acima para cadastrar o MAC do seu PC."
+msgstr "Nenhum dispositivo detectado no momento. Use o formulário acima para cadastrar o MAC do seu PC."
+
+msgid "Nenhum redirecionamento dinâmico ativo no momento. As portas aparecerão aqui automaticamente quando um console ou jogo solicitar abertura via UPnP / NAT‑PMP."
+msgstr "Nenhum redirecionamento dinâmico ativo no momento. As portas aparecerão aqui automaticamente quando um console ou jogo solicitar abertura via UPnP / NAT‑PMP."
+
+msgid "Nenhuma conta com senha cadastrada (Acesso Convidado / Guest ativo na LAN)."
+msgstr "Nenhuma conta com senha cadastrada (Acesso Convidado / Guest ativo na LAN)."
+
+msgid "Não aplicável (MIPS Fastpath Software)"
+msgstr "Não aplicável (MIPS Fastpath Software)"
+
+msgid "Não aplicável (SMP Multicore x86_64)"
+msgstr "Não aplicável (SMP Multicore x86_64)"
+
+msgid "O OpenWrt vem de fábrica com apenas 150 domínios. Em seu hardware, 10.000 domínios consomem menos de 2 MB de RAM e deixam a navegação em 0ms."
+msgstr "O OpenWrt vem de fábrica com apenas 150 domínios. Em seu hardware, 10.000 domínios consomem menos de 2 MB de RAM e deixam a navegação em 0ms."
+
+msgid "O Repasse IPv6 não pode ser utilizado enquanto o protocolo IPv6 estiver totalmente desligado (Modo IPv4 Apenas)."
+msgstr "O Repasse IPv6 não pode ser utilizado enquanto o protocolo IPv6 estiver totalmente desligado (Modo IPv4 Apenas)."
+
+msgid "O daemon UPnP está desativado (Modo Seguro). Ative acima caso seus jogos ou consoles acusem NAT Estrito / Tipo 3."
+msgstr "O daemon UPnP está desativado (Modo Seguro). Ative acima caso seus jogos ou consoles acusem NAT Estrito / Tipo 3."
+
+msgid "O pacote https-dns-proxy já está instalado. Clique ao lado para ativar o túnel criptografado Dual-DoH (127.0.0.1:5053 & :5054)."
+msgstr "O pacote https-dns-proxy já está instalado. Clique ao lado para ativar o túnel criptografado Dual-DoH (127.0.0.1:5053 & :5054)."
+
+msgid "O provedor em nuvem selecionado será consultado via HTTPS/TLS 1.3 (portas locais 5053/5054) com super-cache em RAM."
+msgstr "O provedor em nuvem selecionado será consultado via HTTPS/TLS 1.3 (portas locais 5053/5054) com super-cache em RAM."
+
+msgid "O serviço será encerrado de forma limpa sem deixar processos ou regras órfãs no sistema."
+msgstr "O serviço será encerrado de forma limpa sem deixar processos ou regras órfãs no sistema."
+
+msgid "O serviço será parado e todas as regras dependentes serão revertidas antes de remover o pacote."
+msgstr "O serviço será parado e todas as regras dependentes serão revertidas antes de remover o pacote."
+
+msgid "O túnel virtual ark_clat6 encapsula o tráfego IPv4 por fora do Ingress do SQM e adiciona ~25 ms de latência base. Para Nota A+ real (+0 ms Download/Upload), utilize o Modo 2 (Pilha Dupla Global)."
+msgstr "O túnel virtual ark_clat6 encapsula o tráfego IPv4 por fora do Ingress do SQM e adiciona ~25 ms de latência base. Para Nota A+ real (+0 ms Download/Upload), utilize o Modo 2 (Pilha Dupla Global)."
+
+msgid "Operação em andamento. Aguarde concluir."
+msgstr "Operação em andamento. Aguarde concluir."
+
+msgid "Organiza as filas e reduz a latência (Bufferbloat) quando o link está ocupado."
+msgstr "Organiza as filas e reduz a latência (Bufferbloat) quando o link está ocupado."
+
+msgid "Otimizações de protocolo para redes densas e aparelhos modernos. Aumenta a velocidade real, reduz a latência e protege o tempo de ar contra clientes legados."
+msgstr "Otimizações de protocolo para redes densas e aparelhos modernos. Aumenta a velocidade real, reduz a latência e protege o tempo de ar contra clientes legados."
+
+msgid "PERIGOSO: Expõe a porta 445 na WAN pública. Prefira usar WireGuard ou ZeroTier!"
+msgstr "PERIGOSO: Expõe a porta 445 na WAN pública. Prefira usar WireGuard ou ZeroTier!"
+
+msgid "PORTA"
+msgstr "PORTA"
+
+msgid "PORTA WAN (Padrão)"
+msgstr "PORTA WAN (Padrão)"
+
+msgid "PORTAS"
+msgstr "PORTAS"
+
+msgid "PORTAS DINÂMICAS ATIVAS"
+msgstr "PORTAS DINÂMICAS ATIVAS"
+
+msgid "Pacote Atual:"
+msgstr "Pacote Atual:"
+
+msgid "Padrão para Apple (macOS/iOS), Nintendo Switch e P2P moderno"
+msgstr "Padrão para Apple (macOS/iOS), Nintendo Switch e P2P moderno"
+
+msgid "Padrão para PlayStation, Xbox, Windows e jogos Steam/EA"
+msgstr "Padrão para PlayStation, Xbox, Windows e jogos Steam/EA"
+
+msgid "Para acessar seus arquivos fora de casa com 100% de segurança e criptografia moderna, mantenha a WAN desativada aqui e utilize o"
+msgstr "Para acessar seus arquivos fora de casa com 100% de segurança e criptografia moderna, mantenha a WAN desativada aqui e utilize o"
+
+msgid "Perfeito para Dual-WAN (Fibra + Starlink): failover de IPv6 transparente sem desconexão."
+msgstr "Perfeito para Dual-WAN (Fibra + Starlink): failover de IPv6 transparente sem desconexão."
+
+msgid "Permite que consoles e aplicativos abram portas na WAN automaticamente. ⚠️ Risco: qualquer software na rede pode criar regras de entrada sem senha."
+msgstr "Permite que consoles e aplicativos abram portas na WAN automaticamente. ⚠️ Risco: qualquer software na rede pode criar regras de entrada sem senha."
+
+msgid "Política atualizada: recursos não instalados agora permanecem visíveis nos menus."
+msgstr "Política atualizada: recursos não instalados agora permanecem visíveis nos menus."
+
+msgid "Política atualizada: recursos não instalados ficam ocultos nos menus (exceto quando o Modo DEV estiver ativo)."
+msgstr "Política atualizada: recursos não instalados ficam ocultos nos menus (exceto quando o Modo DEV estiver ativo)."
+
+msgid "Pool resiliente (NTP.br + Cloudflare + Google), Interceptação UDP 123 na LAN (1ms para IoT) e Fake RTC Preserver contra ano 1970."
+msgstr "Pool resiliente (NTP.br + Cloudflare + Google), Interceptação UDP 123 na LAN (1ms para IoT) e Fake RTC Preserver contra ano 1970."
+
+msgid "Porta Ativa"
+msgstr "Porta Ativa"
+
+msgid "Porta Externa"
+msgstr "Porta Externa"
+
+msgid "Porta Interna"
+msgstr "Porta Interna"
+
+msgid "Porta WAN física restaurada como WAN1 com todas as configurações mantidas! Recarregando…"
+msgstr "Porta WAN física restaurada como WAN1 com todas as configurações mantidas! Recarregando…"
+
+msgid "Portas Ativas"
+msgstr "Portas Ativas"
+
+msgid "Potência (dBm)"
+msgstr "Potência (dBm)"
+
+msgid "Potência das antenas salva com sucesso! Recarregando…"
+msgstr "Potência das antenas salva com sucesso! Recarregando…"
+
+msgid "Prefixo IPv6 (PD)"
+msgstr "Prefixo IPv6 (PD)"
+
+msgid "Prefixo ULA local fixo (fd73:0192:0168::/48) com tradução 1:1 stateless para a WAN ativa (RFC 6296 / Masq6)."
+msgstr "Prefixo ULA local fixo (fd73:0192:0168::/48) com tradução 1:1 stateless para a WAN ativa (RFC 6296 / Masq6)."
+
+msgid "Preservado • wpad-basic mantido para resguardar memória e evitar instabilidade em hardware compacto."
+msgstr "Preservado • wpad-basic mantido para resguardar memória e evitar instabilidade em hardware compacto."
+
+msgid "Preservador de Relógio (Fake RTC)"
+msgstr "Preservador de Relógio (Fake RTC)"
+
+msgid "Priorização automática no Upload e fila unificada de alta vazão no Download."
+msgstr "Priorização automática no Upload e fila unificada de alta vazão no Download."
+
+msgid "Processador mononúcleo (MIPS single-core) detectado. Comprimir dados em tempo real consome CPU e pode causar lentidão se a rede for exigida ao máximo."
+msgstr "Processador mononúcleo (MIPS single-core) detectado. Comprimir dados em tempo real consome CPU e pode causar lentidão se a rede for exigida ao máximo."
+
+msgid "Processamento de rede multithread com aceleração Software Flowtable."
+msgstr "Processamento de rede multithread com aceleração Software Flowtable."
+
+msgid "Pronto para iniciar a promoção para o motor Wi-Fi completo."
+msgstr "Pronto para iniciar a promoção para o motor Wi-Fi completo."
+
+msgid "Protocolo"
+msgstr "Protocolo"
+
+msgid "Protocolo NAT-PMP / PCP"
+msgstr "Protocolo NAT-PMP / PCP"
+
+msgid "Protocolo NAT‑PMP / PCP"
+msgstr "Protocolo NAT‑PMP / PCP"
+
+msgid "Protocolo UPnP IGD"
+msgstr "Protocolo UPnP IGD"
+
+msgid "Quando ativo, sobrepõe ajustes manuais do usuário utilizando todas as otimizações oficiais ARK para garantir Nota A+ (+0 ms Download / +0 ms Upload)."
+msgstr "Quando ativo, sobrepõe ajustes manuais do usuário utilizando todas as otimizações oficiais ARK para garantir Nota A+ (+0 ms Download / +0 ms Upload)."
+
+msgid "Quando desligado (recomendado), plugins removidos ou não instalados ficam ocultos nos menus e painéis, mantendo a interface limpa."
+msgstr "Quando desligado (recomendado), plugins removidos ou não instalados ficam ocultos nos menus e painéis, mantendo a interface limpa."
+
+msgid "RAM (Econômico)"
+msgstr "RAM (Econômico)"
+
+msgid "RAM (Intermediário)"
+msgstr "RAM (Intermediário)"
+
+msgid "RAM (Médio)"
+msgstr "RAM (Médio)"
+
+msgid "Recomendado para expandir a memória útil e evitar travamentos sob tráfego pesado."
+msgstr "Recomendado para expandir a memória útil e evitar travamentos sob tráfego pesado."
+
+msgid "Recomendado: 15 dBm (~31 mW) a 17 dBm (~50 mW). Potência excessiva prende celulares em conexões lentas."
+msgstr "Recomendado: 15 dBm (~31 mW) a 17 dBm (~50 mW). Potência excessiva prende celulares em conexões lentas."
+
+msgid "Recomendado: 20 dBm (100 mW) a 23 dBm (~200 mW). Maior potência garante alta velocidade e roaming eficiente."
+msgstr "Recomendado: 20 dBm (100 mW) a 23 dBm (~200 mW). Maior potência garante alta velocidade e roaming eficiente."
+
+msgid "Recomendado: 20 dBm a 23 dBm para melhor penetração do sinal em paredes."
+msgstr "Recomendado: 20 dBm a 23 dBm para melhor penetração do sinal em paredes."
+
+msgid "Rede Principal (SSID)"
+msgstr "Rede Principal (SSID)"
+
+msgid "Rede de Visitantes"
+msgstr "Rede de Visitantes"
+
+msgid "Reduz ACKs em linhas assimétricas (ADSL/Cabo 10:1). Em fibra simétrica, mantenha desligado para evitar travamento de upload."
+msgstr "Reduz ACKs em linhas assimétricas (ADSL/Cabo 10:1). Em fibra simétrica, mantenha desligado para evitar travamento de upload."
+
+msgid "Remover dos Favoritos"
+msgstr "Remover dos Favoritos"
+
+msgid "Removido pelo usuário"
+msgstr "Removido pelo usuário"
+
+msgid "Reserva via exclusiva em Tempo Real (< 1 ms) para Jogos, VoIP e Ping, e libera máxima velocidade Gigabit com FQ-CoDel Turbo e menor uso de CPU."
+msgstr "Reserva via exclusiva em Tempo Real (< 1 ms) para Jogos, VoIP e Ping, e libera máxima velocidade Gigabit com FQ-CoDel Turbo e menor uso de CPU."
+
+msgid "Restaurando porta WAN1… Recarregando painel…"
+msgstr "Restaurando porta WAN1… Recarregando painel…"
+
+msgid "Restaurar"
+msgstr "Restaurar"
+
+msgid "Rádios Wi-Fi & Pontos de Acesso"
+msgstr "Rádios Wi-Fi & Pontos de Acesso"
+
+msgid "SERVIDOR DIRETO OBRIGATÓRIO (NPTv6)"
+msgstr "SERVIDOR DIRETO OBRIGATÓRIO (NPTv6)"
+
+msgid "SQM / Controle Inteligente de Filas"
+msgstr "SQM / Controle Inteligente de Filas"
+
+msgid "SQM / QoS (CAKE Layer Cake)"
+msgstr "SQM / QoS (CAKE Layer Cake)"
+
+msgid "SQM / QoS (HFSC + FQ-CoDel Turbo)"
+msgstr "SQM / QoS (HFSC + FQ-CoDel Turbo)"
+
+msgid "Salvando nova senha…"
+msgstr "Salvando nova senha…"
+
+msgid "Sem Cabo"
+msgstr "Sem Cabo"
+
+msgid "Sem prefixo da operadora"
+msgstr "Sem prefixo da operadora"
+
+msgid "Sem sobrecarga de portas: cada dispositivo preserva suas 65.535 portas 1:1 sem NAT restrito."
+msgstr "Sem sobrecarga de portas: cada dispositivo preserva suas 65.535 portas 1:1 sem NAT restrito."
+
+msgid "Servidor NTP Local Ativo (Porta 123)"
+msgstr "Servidor NTP Local Ativo (Porta 123)"
+
+msgid "Serviço Nativo Ativo"
+msgstr "Serviço Nativo Ativo"
+
+msgid "Serviço nativo do ARK Router que ajusta buffers TCP/UDP, conntrack, escalonamento RPS/XPS e filas NAPI conforme a RAM e CPU do roteador."
+msgstr "Serviço nativo do ARK Router que ajusta buffers TCP/UDP, conntrack, escalonamento RPS/XPS e filas NAPI conforme a RAM e CPU do roteador."
+
+msgid "Serviço nativo do ARK Router que salva e restaura o horário do sistema no boot para evitar o ano 1970 e falhas de certificado HTTPS/DNSSEC."
+msgstr "Serviço nativo do ARK Router que salva e restaura o horário do sistema no boot para evitar o ano 1970 e falhas de certificado HTTPS/DNSSEC."
+
+msgid "Serviço nativo do ARK Router que sincroniza regras DMZ, DNS Turbo e proteção anti-bloqueio na inicialização e em recargas do firewall."
+msgstr "Serviço nativo do ARK Router que sincroniza regras DMZ, DNS Turbo e proteção anti-bloqueio na inicialização e em recargas do firewall."
+
+msgid "Serviços de Inicialização (Initscripts)"
+msgstr "Serviços de Inicialização (Initscripts)"
+
+msgid "Sincronizando painel com o roteador…"
+msgstr "Sincronizando painel com o roteador…"
+
+msgid "Sincronizando rádio / interfaces de rede (~5–8s)…"
+msgstr "Sincronizando rádio / interfaces de rede (~5–8s)…"
+
+msgid "Sincronização 802.11v BSS Transition & Anti-Queda"
+msgstr "Sincronização 802.11v BSS Transition & Anti-Queda"
+
+msgid "Sistema de Arquivos"
+msgstr "Sistema de Arquivos"
+
+msgid "Sobrepõe Ajustes"
+msgstr "Sobrepõe Ajustes"
+
+msgid "Status Atual"
+msgstr "Status Atual"
+
+msgid "Sua escolha será gravada em /etc/config/equipe_dashboard. Quando o ARK Router for atualizado para novas versões, ele respeitará esta decisão e não reativará este recurso sozinho."
+msgstr "Sua escolha será gravada em /etc/config/equipe_dashboard. Quando o ARK Router for atualizado para novas versões, ele respeitará esta decisão e não reativará este recurso sozinho."
+
+msgid "Suas consultas DNS estão saindo 100% criptografadas em TLS 1.3 com conexões HTTP/2 persistentes (127.0.0.1:5053 & :5054) e blindagem UCI ativa (dnsmasq_config_update=\"-\")."
+msgstr "Suas consultas DNS estão saindo 100% criptografadas em TLS 1.3 com conexões HTTP/2 persistentes (127.0.0.1:5053 & :5054) e blindagem UCI ativa (dnsmasq_config_update=\"-\")."
+
+msgid "Substitui o padrão legado do OpenWrt (8/4 Mbps ADSL) anunciado via GetCommonLinkProperties para consoles (PS5/Xbox) e clientes P2P."
+msgstr "Substitui o padrão legado do OpenWrt (8/4 Mbps ADSL) anunciado via GetCommonLinkProperties para consoles (PS5/Xbox) e clientes P2P."
+
+msgid "Suporta até 320 MHz para throughput extremo no 6 GHz (Canal PSC 37 em modo Auto)."
+msgstr "Suporta até 320 MHz para throughput extremo no 6 GHz (Canal PSC 37 em modo Auto)."
+
+msgid "Teste de Conectividade com Repositórios OpenWrt"
+msgstr "Teste de Conectividade com Repositórios OpenWrt"
+
+msgid "Toda a interface web, usuários SMB, permissões e regras de rede já estão prontos abaixo! Você pode pré-configurar tudo agora e instalar o motor KSMBD com 1 clique quando desejar."
+msgstr "Toda a interface web, usuários SMB, permissões e regras de rede já estão prontos abaixo! Você pode pré-configurar tudo agora e instalar o motor KSMBD com 1 clique quando desejar."
+
+msgid "Transforma a porta USB do roteador em um servidor NAS de alta velocidade (Kernel SMB 3.1.1) para Windows, Mac, iOS, Android e Smart TVs."
+msgstr "Transforma a porta USB do roteador em um servidor NAS de alta velocidade (Kernel SMB 3.1.1) para Windows, Mac, iOS, Android e Smart TVs."
+
+msgid "Trava de segurança de 5 segundos: projetada para evitar ativação acidental em equipamentos de ponta. Se você realmente deseja ativar para experimentos ou laboratório, aguarde a contagem."
+msgstr "Trava de segurança de 5 segundos: projetada para evitar ativação acidental em equipamentos de ponta. Se você realmente deseja ativar para experimentos ou laboratório, aguarde a contagem."
+
+msgid "UCI KB/s: ↓ 128000 KB/s • ↑ 128000 KB/s"
+msgstr "UCI KB/s: ↓ 128000 KB/s • ↑ 128000 KB/s"
+
+msgid "UPGRADE DISPONÍVEL (1 CLIQUE)"
+msgstr "UPGRADE DISPONÍVEL (1 CLIQUE)"
+
+msgid "UPnP & Portas (DMZ)"
+msgstr "UPnP & Portas (DMZ)"
+
+msgid "UPnP ativado. Atenção: portas podem ser abertas na WAN sem autenticação."
+msgstr "UPnP ativado. Atenção: portas podem ser abertas na WAN sem autenticação."
+
+msgid "UPnP desativado com sucesso (modo seguro)."
+msgstr "UPnP desativado com sucesso (modo seguro)."
+
+msgid "Unidades USB"
+msgstr "Unidades USB"
+
+msgid "Upload (eqdisc_opts):"
+msgstr "Upload (eqdisc_opts):"
+
+msgid "Utilitário de diagnóstico em terminal SSH. Pode ser removido a qualquer momento para liberar espaço na Flash."
+msgstr "Utilitário de diagnóstico em terminal SSH. Pode ser removido a qualquer momento para liberar espaço na Flash."
+
+msgid "Utilitário sob demanda (etherwake ~30 KB). Ao desativar ou remover, mantém sua lista de computadores salvos intacta."
+msgstr "Utilitário sob demanda (etherwake ~30 KB). Ao desativar ou remover, mantém sua lista de computadores salvos intacta."
+
+msgid "Validação da Integridade do hostapd"
+msgstr "Validação da Integridade do hostapd"
+
+msgid "Validação de Hardware (RAM e Armazenamento Flash)"
+msgstr "Validação de Hardware (RAM e Armazenamento Flash)"
+
+msgid "Ver Painel Ark Doctor ↗"
+msgstr "Ver Painel Ark Doctor ↗"
+
+msgid "Verificação concluída sem erros."
+msgstr "Verificação concluída sem erros."
+
+msgid "Visão Geral do Sistema (LuCI)"
+msgstr "Visão Geral do Sistema (LuCI)"
+
+msgid "Você pode desativar qualquer serviço nativo abaixo. O ARK Router reverte os ajustes automaticamente e lembra sua escolha quando atualizado."
+msgstr "Você pode desativar qualquer serviço nativo abaixo. O ARK Router reverte os ajustes automaticamente e lembra sua escolha quando atualizado."
+
+msgid "WAN 2 (Secundária)"
+msgstr "WAN 2 (Secundária)"
+
+msgid "WAN DSCP Wash & Wi-Fi 6 AQL:"
+msgstr "WAN DSCP Wash & Wi-Fi 6 AQL:"
+
+msgid "WPA2-PSK com criptografia acelerada por hardware. 100% de estabilidade e compatibilidade com automação residencial (lâmpadas, tomadas Tuya/Sonoff, Alexa), impressoras e aparelhos legados."
+msgstr "WPA2-PSK com criptografia acelerada por hardware. 100% de estabilidade e compatibilidade com automação residencial (lâmpadas, tomadas Tuya/Sonoff, Alexa), impressoras e aparelhos legados."
+
+msgid "WPA2/WPA3 Misto. Entrega criptografia avançada WPA3 para celulares e computadores modernos, mantendo compatibilidade com clientes 5 GHz comuns."
+msgstr "WPA2/WPA3 Misto. Entrega criptografia avançada WPA3 para celulares e computadores modernos, mantendo compatibilidade com clientes 5 GHz comuns."
+
+msgid "ativado e sincronizado com sucesso! Recarregando…"
+msgstr "ativado e sincronizado com sucesso! Recarregando…"
+
+msgid "autorizado(s)"
+msgstr "autorizado(s)"
+
+msgid "bytes (porta"
+msgstr "bytes (porta"
+
+msgid "bytes (zero fragmentação / sem risco de travar sites)."
+msgstr "bytes (zero fragmentação / sem risco de travar sites)."
+
+msgid "bytes. O Auto-MTU ajustou o túnel PPPoE, o TCP MSS e o IPv6 automaticamente para"
+msgstr "bytes. O Auto-MTU ajustou o túnel PPPoE, o TCP MSS e o IPv6 automaticamente para"
+
+msgid "clientes sem fio"
+msgstr "clientes sem fio"
+
+msgid "com Segurança"
+msgstr "com Segurança"
+
+msgid "de forma proporcional à memória RAM instalada, garantindo 0ms de fila e eliminando qualquer queda de velocidade."
+msgstr "de forma proporcional à memória RAM instalada, garantindo 0ms de fila e eliminando qualquer queda de velocidade."
+
+msgid "desativado com segurança e preferência salva. Recarregando…"
+msgstr "desativado com segurança e preferência salva. Recarregando…"
+
+msgid "dispositivos na rede"
+msgstr "dispositivos na rede"
+
+msgid "domínios)"
+msgstr "domínios)"
+
+msgid "ejetada com segurança."
+msgstr "ejetada com segurança."
+
+msgid "este pacote foi removido e não será reinstalado nem exibido nos menus (exceto em Modo DEV)."
+msgstr "este pacote foi removido e não será reinstalado nem exibido nos menus (exceto em Modo DEV)."
+
+msgid "este recurso permanece desativado mesmo após atualizar o ARK Router."
+msgstr "este recurso permanece desativado mesmo após atualizar o ARK Router."
+
+msgid "ex: ARK_USB"
+msgstr "ex: ARK_USB"
+
+msgid "ex: admin_usb ou familia"
+msgstr "ex: admin_usb ou familia"
+
+msgid "exFAT (Recomendado — Windows, macOS, Linux, arquivos > 4 GB)"
+msgstr "exFAT (Recomendado — Windows, macOS, Linux, arquivos > 4 GB)"
+
+msgid "formatada com sucesso em"
+msgstr "formatada com sucesso em"
+
+msgid "integrados no painel."
+msgstr "integrados no painel."
+
+msgid "linklayer ethernet, mpu 64 e overhead 44 (Fibra GPON/PPPoE) ou 18 (Cabo/DHCP)."
+msgstr "linklayer ethernet, mpu 64 e overhead 44 (Fibra GPON/PPPoE) ou 18 (Cabo/DHCP)."
+
+msgid "mantendo 100% das configurações atuais, e a porta"
+msgstr "mantendo 100% das configurações atuais, e a porta"
+
+msgid "nesta seção?"
+msgstr "nesta seção?"
+
+msgid "no Canal 149 (limitando o Download em ~350–400 Mbps). Para máxima estabilidade sem mexer no Mac, use"
+msgstr "no Canal 149 (limitando o Download em ~350–400 Mbps). Para máxima estabilidade sem mexer no Mac, use"
+
+msgid "para LAN (Restaurar WAN1 na Porta WAN)"
+msgstr "para LAN (Restaurar WAN1 na Porta WAN)"
+
+msgid "removido com segurança e limpeza concluída. Recarregando…"
+msgstr "removido com segurança e limpeza concluída. Recarregando…"
+
+msgid "respondendo a requisições SSDP / NAT-PMP"
+msgstr "respondendo a requisições SSDP / NAT-PMP"
+
+msgid "revogada do firewall com sucesso."
+msgstr "revogada do firewall com sucesso."
+
+msgid "s • Outras ações bloqueadas até concluir"
+msgstr "s • Outras ações bloqueadas até concluir"
+
+msgid "serão permanentemente apagados. A flash interna do roteador (MTD/UBI/Rootfs) é blindada por hardware/software e nunca pode ser selecionada."
+msgstr "serão permanentemente apagados. A flash interna do roteador (MTD/UBI/Rootfs) é blindada por hardware/software e nunca pode ser selecionada."
+
+msgid "suporta até 80 MHz, o rádio será comutado automaticamente para o Canal 36 para total estabilidade."
+msgstr "suporta até 80 MHz, o rádio será comutado automaticamente para o Canal 36 para total estabilidade."
+
+msgid "voltará automaticamente a funcionar como rede local (LAN)."
+msgstr "voltará automaticamente a funcionar como rede local (LAN)."
+
+msgid "voltará para a"
+msgstr "voltará para a"
+
+msgid "~840+ Mbps em 160 MHz"
+msgstr "~840+ Mbps em 160 MHz"
+
+msgid "— Alta Potência"
+msgstr "— Alta Potência"
+
+msgid "— Recomendado Anti-Sobreposição"
+msgstr "— Recomendado Anti-Sobreposição"
+
+msgid "— pausa AirDrop, Copiar/Colar Universal com iPhone, Espelhamento do iPhone, Handoff e Sidecar até rodar"
+msgstr "— pausa AirDrop, Copiar/Colar Universal com iPhone, Espelhamento do iPhone, Handoff e Sidecar até rodar"
+
+msgid "• Potência TX: 2.4G"
+msgstr "• Potência TX: 2.4G"
+
+msgid "⏏️ Ejetar com Segurança"
+msgstr "⏏️ Ejetar com Segurança"
+
+msgid "⏱️ Sincronizar Fuso & Relógio com este Navegador"
+msgstr "⏱️ Sincronizar Fuso & Relógio com este Navegador"
+
+msgid "⏳ Aplicando motor de QoS…"
+msgstr "⏳ Aplicando motor de QoS…"
+
+msgid "⏳ Aplicando…"
+msgstr "⏳ Aplicando…"
+
+msgid "⏳ Medindo Velocidade…"
+msgstr "⏳ Medindo Velocidade…"
+
+msgid "⏳ Reiniciando…"
+msgstr "⏳ Reiniciando…"
+
+msgid "⏸️ Desativado pelo Usuário (Escolha Lembrada)"
+msgstr "⏸️ Desativado pelo Usuário (Escolha Lembrada)"
+
+msgid "⏸️ Pausar"
+msgstr "⏸️ Pausar"
+
+msgid "⏸️ Portas de Jogos & NAT Aberto desativados. Cadeias ark_gaming_ports / ark_gaming_forward limpas e BQL físico restaurado ao padrão do kernel."
+msgstr "⏸️ Portas de Jogos & NAT Aberto desativados. Cadeias ark_gaming_ports / ark_gaming_forward limpas e BQL físico restaurado ao padrão do kernel."
+
+msgid "▶️ Iniciar / Ativar"
+msgstr "▶️ Iniciar / Ativar"
+
+msgid "○ Ativar"
+msgstr "○ Ativar"
+
+msgid "○ Clique para ativar"
+msgstr "○ Clique para ativar"
+
+msgid "○ Escolher"
+msgstr "○ Escolher"
+
+msgid "● ATIVO AGORA"
+msgstr "● ATIVO AGORA"
+
+msgid "● SELECIONADO"
+msgstr "● SELECIONADO"
+
+msgid "☰ Menu"
+msgstr "☰ Menu"
+
+msgid "⚖️ Airtime Fairness & Controle AQL"
+msgstr "⚖️ Airtime Fairness & Controle AQL"
+
+msgid "⚙️ Abrir Painel KSMBD & Discos USB"
+msgstr "⚙️ Abrir Painel KSMBD & Discos USB"
+
+msgid "⚙️ Auto-MTU Inteligente PPPoE e Overhead de Pacotes (Avançado)"
+msgstr "⚙️ Auto-MTU Inteligente PPPoE e Overhead de Pacotes (Avançado)"
+
+msgid "⚙️ Editar em Internet & Multi-WAN →"
+msgstr "⚙️ Editar em Internet & Multi-WAN →"
+
+msgid "⚙️ Editar em Wi-Fi →"
+msgstr "⚙️ Editar em Wi-Fi →"
+
+msgid "⚙️ Gerenciar em Dispositivos →"
+msgstr "⚙️ Gerenciar em Dispositivos →"
+
+msgid "⚙️ Painel KSMBD"
+msgstr "⚙️ Painel KSMBD"
+
+msgid "⚠️ 160 MHz (HE160 / VHT160): Dobra a largura de banda para velocidade máxima a curta distância. Como o Canal"
+msgstr "⚠️ 160 MHz (HE160 / VHT160): Dobra a largura de banda para velocidade máxima a curta distância. Como o Canal"
+
+msgid "⚠️ Apagar Tudo e Formatar"
+msgstr "⚠️ Apagar Tudo e Formatar"
+
+msgid "⚠️ Digite o ID de 6 caracteres do seu perfil NextDNS para aplicar suas listas personalizadas (via DoH https://dns.nextdns.io/<id> quando https-dns-proxy estiver instalado)."
+msgstr "⚠️ Digite o ID de 6 caracteres do seu perfil NextDNS para aplicar suas listas personalizadas (via DoH https://dns.nextdns.io/<id> quando https-dns-proxy estiver instalado)."
+
+msgid "⚠️ Formatar…"
+msgstr "⚠️ Formatar…"
+
+msgid "⚠️ RISCO EXTREMO: Protocolo SMB Exposto Diretamente para a Internet"
+msgstr "⚠️ RISCO EXTREMO: Protocolo SMB Exposto Diretamente para a Internet"
+
+msgid "⚠️ Risco de Segurança: Ativo. Qualquer aplicativo na rede pode abrir portas na WAN sem senha. Desative se não usar jogos P2P."
+msgstr "⚠️ Risco de Segurança: Ativo. Qualquer aplicativo na rede pode abrir portas na WAN sem senha. Desative se não usar jogos P2P."
+
+msgid "⚡ 5.000 domínios (~800 KB RAM)"
+msgstr "⚡ 5.000 domínios (~800 KB RAM)"
+
+msgid "⚡ 5.000 domínios na RAM (~800 KB)"
+msgstr "⚡ 5.000 domínios na RAM (~800 KB)"
+
+msgid "⚡ Abrir Central Wake-on-LAN (Acordar Dispositivos)"
+msgstr "⚡ Abrir Central Wake-on-LAN (Acordar Dispositivos)"
+
+msgid "⚡ Acordar (Wake)"
+msgstr "⚡ Acordar (Wake)"
+
+msgid "⚡ Aplicar Pool Resiliente Padrão"
+msgstr "⚡ Aplicar Pool Resiliente Padrão"
+
+msgid "⚡ Central WoL"
+msgstr "⚡ Central WoL"
+
+msgid "⚡ Disparar Magic Packet Agora"
+msgstr "⚡ Disparar Magic Packet Agora"
+
+msgid "⚡ Dual-DoH desativado. DNS operando em disparo UDP/TCP paralelo direto."
+msgstr "⚡ Dual-DoH desativado. DNS operando em disparo UDP/TCP paralelo direto."
+
+msgid "⚡ Gigabit (-40% CPU)"
+msgstr "⚡ Gigabit (-40% CPU)"
+
+msgid "⚡ Mudar para Modo 2 (Pilha Dupla)"
+msgstr "⚡ Mudar para Modo 2 (Pilha Dupla)"
+
+msgid "⚡ Máxima do Hardware"
+msgstr "⚡ Máxima do Hardware"
+
+msgid "⚡ Sincronizar SQM / WAN"
+msgstr "⚡ Sincronizar SQM / WAN"
+
+msgid "⚡ Testar no BufferSpeed ↗"
+msgstr "⚡ Testar no BufferSpeed ↗"
+
+msgid "⚡ Wake-on-LAN (Ligar Aparelho Remotamente)"
+msgstr "⚡ Wake-on-LAN (Ligar Aparelho Remotamente)"
+
+msgid "✅ 160 MHz (HE160 / EHT160): Excelente equilíbrio entre ultra velocidade e estabilidade no espectro limpo de 6 GHz, compatível com todos os clientes Wi-Fi 6E e Wi-Fi 7."
+msgstr "✅ 160 MHz (HE160 / EHT160): Excelente equilíbrio entre ultra velocidade e estabilidade no espectro limpo de 6 GHz, compatível com todos os clientes Wi-Fi 6E e Wi-Fi 7."
+
+msgid "✅ 20 MHz (HT20): Padrão ouro de estabilidade e alcance no 2,4 GHz. Opera sem sobreposição nos canais 1, 6 ou 11 e garante 100% de compatibilidade com IoT e Bluetooth."
+msgstr "✅ 20 MHz (HT20): Padrão ouro de estabilidade e alcance no 2,4 GHz. Opera sem sobreposição nos canais 1, 6 ou 11 e garante 100% de compatibilidade com IoT e Bluetooth."
+
+msgid "✅ 80 MHz (HE80 / EHT80): Máximo alcance e densidade espectral no 6 GHz, ideal para ambientes com paredes ou múltiplos obstáculos."
+msgstr "✅ 80 MHz (HE80 / EHT80): Máximo alcance e densidade espectral no 6 GHz, ideal para ambientes com paredes ou múltiplos obstáculos."
+
+msgid "✅ MODELO ATIVO: CAKE (Layer Cake)"
+msgstr "✅ MODELO ATIVO: CAKE (Layer Cake)"
+
+msgid "✅ MODELO ATIVO: HFSC + FQ-CoDel Turbo"
+msgstr "✅ MODELO ATIVO: HFSC + FQ-CoDel Turbo"
+
+msgid "✅ SELECIONADO: CAKE (Layer Cake)"
+msgstr "✅ SELECIONADO: CAKE (Layer Cake)"
+
+msgid "✅ SELECIONADO: HFSC + FQ-CoDel Turbo"
+msgstr "✅ SELECIONADO: HFSC + FQ-CoDel Turbo"
+
+msgid "✏️ Personalizado (Digitar valor manual)"
+msgstr "✏️ Personalizado (Digitar valor manual)"
+
+msgid "✏️ Personalizado (Digitar valor)"
+msgstr "✏️ Personalizado (Digitar valor)"
+
+msgid "➕ Adicionar / Atualizar Conta SMB"
+msgstr "➕ Adicionar / Atualizar Conta SMB"
+
+msgid "⭐ Fixar no WoL"
+msgstr "⭐ Fixar no WoL"
+
+msgid "⭐ Fixar nos Favoritos"
+msgstr "⭐ Fixar nos Favoritos"
+
+msgid "🌐 Status da Internet & Multi-WAN"
+msgstr "🌐 Status da Internet & Multi-WAN"
+
+msgid "🍎 macOS Finder / iPhone (App Arquivos):"
+msgstr "🍎 macOS Finder / iPhone (App Arquivos):"
+
+msgid "🎨 BSS Coloring & Spatial Reuse (OBSS PD)"
+msgstr "🎨 BSS Coloring & Spatial Reuse (OBSS PD)"
+
+msgid "🎮 Curva Gamer < 1 ms"
+msgstr "🎮 Curva Gamer < 1 ms"
+
+msgid "🎮 UPnP & Portas (DMZ)"
+msgstr "🎮 UPnP & Portas (DMZ)"
+
+msgid "🎮 UPnP IGD & NAT‑PMP (miniupnpd)"
+msgstr "🎮 UPnP IGD & NAT‑PMP (miniupnpd)"
+
+msgid "🎯 Aplicar nos Limites"
+msgstr "🎯 Aplicar nos Limites"
+
+msgid "🎯 Ver lista de Jogos, Consoles, Portas e Calibração BQL Físico (eth0/eth1)"
+msgstr "🎯 Ver lista de Jogos, Consoles, Portas e Calibração BQL Físico (eth0/eth1)"
+
+msgid "🏠 LAN Principal"
+msgstr "🏠 LAN Principal"
+
+msgid "🐢 150 domínios (Padrão OpenWrt)"
+msgstr "🐢 150 domínios (Padrão OpenWrt)"
+
+msgid "🐢 150 domínios (Padrão de Fábrica OpenWrt / Mínimo)"
+msgstr "🐢 150 domínios (Padrão de Fábrica OpenWrt / Mínimo)"
+
+msgid "👥 Isolamento Justo por IP"
+msgstr "👥 Isolamento Justo por IP"
+
+msgid "💡 Desative se não utilizar jogos multiplayer que exijam NAT Aberto para máxima blindagem de segurança."
+msgstr "💡 Desative se não utilizar jogos multiplayer que exijam NAT Aberto para máxima blindagem de segurança."
+
+msgid "💡 Dica de Engenharia Sem Fio:"
+msgstr "💡 Dica de Engenharia Sem Fio:"
+
+msgid "💡 Recomendado manter DESATIVADO (Modo Seguro). Ative apenas se consoles de jogos acusarem NAT Estrito / Tipo 3."
+msgstr "💡 Recomendado manter DESATIVADO (Modo Seguro). Ative apenas se consoles de jogos acusarem NAT Estrito / Tipo 3."
+
+msgid "💻 LuCI ↗"
+msgstr "💻 LuCI ↗"
+
+msgid "💽 Unidades USB Conectadas & Blindagem Anti-MTD/UBI"
+msgstr "💽 Unidades USB Conectadas & Blindagem Anti-MTD/UBI"
+
+msgid "💾 Salvar Parâmetros SMB"
+msgstr "💾 Salvar Parâmetros SMB"
+
+msgid "💾 Salvar e Aplicar Ajustes UPnP"
+msgstr "💾 Salvar e Aplicar Ajustes UPnP"
+
+msgid "📊 4 Filas DiffServ"
+msgstr "📊 4 Filas DiffServ"
+
+msgid "📊 Cockpit Geral"
+msgstr "📊 Cockpit Geral"
+
+msgid "📋 Todos os Painéis"
+msgstr "📋 Todos os Painéis"
+
+msgid "📡 SU Beamforming Direcional (iBF / eBF)"
+msgstr "📡 SU Beamforming Direcional (iBF / eBF)"
+
+msgid "📦 Instalar KSMBD (Servidor USB)"
+msgstr "📦 Instalar KSMBD (Servidor USB)"
+
+msgid "📦 Instalar KSMBD Agora"
+msgstr "📦 Instalar KSMBD Agora"
+
+msgid "📦 Instalar Wake-on-LAN (etherwake)"
+msgstr "📦 Instalar Wake-on-LAN (etherwake)"
+
+msgid "📦 Instalar etherwake Agora"
+msgstr "📦 Instalar etherwake Agora"
+
+msgid "📦 Opcional (Pronto p/ Instalar)"
+msgstr "📦 Opcional (Pronto p/ Instalar)"
+
+msgid "📦 Opcional (~30 KB)"
+msgstr "📦 Opcional (~30 KB)"
+
+msgid "📱 Dispositivos"
+msgstr "📱 Dispositivos"
+
+msgid "📶 Status do Wi-Fi"
+msgstr "📶 Status do Wi-Fi"
+
+msgid "🔄 Atualizar / Sincronizar /mnt"
+msgstr "🔄 Atualizar / Sincronizar /mnt"
+
+msgid "🔄 Diagnosticar"
+msgstr "🔄 Diagnosticar"
+
+msgid "🔄 Reiniciar"
+msgstr "🔄 Reiniciar"
+
+msgid "🔄 Reiniciar Roteador"
+msgstr "🔄 Reiniciar Roteador"
+
+msgid "🔄 Reiniciar miniupnpd"
+msgstr "🔄 Reiniciar miniupnpd"
+
+msgid "🔌 Montar Unidade"
+msgstr "🔌 Montar Unidade"
+
+msgid "🔌 Nenhuma partição USB externa detectada em /dev/sd* ou /mnt/*. Conecte um Pendrive ou HD Externo na porta USB do roteador."
+msgstr "🔌 Nenhuma partição USB externa detectada em /dev/sd* ou /mnt/*. Conecte um Pendrive ou HD Externo na porta USB do roteador."
+
+msgid "🔍 Diagnóstico do Motor"
+msgstr "🔍 Diagnóstico do Motor"
+
+msgid "🔒 Somente Leitura (RO)"
+msgstr "🔒 Somente Leitura (RO)"
+
+msgid "🔒 Transporte Criptografado Dual-DoH (127.0.0.1:5053 & :5054) instalado e ativado com sucesso!"
+msgstr "🔒 Transporte Criptografado Dual-DoH (127.0.0.1:5053 & :5054) instalado e ativado com sucesso!"
+
+msgid "🔓 Leitura & Gravação"
+msgstr "🔓 Leitura & Gravação"
+
+msgid "🔓 Leitura e Gravação (RW)"
+msgstr "🔓 Leitura e Gravação (RW)"
+
+msgid "🔬 Detalhes Técnicos da Engenharia Modo A+ (memlimit progressivo"
+msgstr "🔬 Detalhes Técnicos da Engenharia Modo A+ (memlimit progressivo"
+
+msgid "🔬 Detalhes Técnicos da Engenharia Modo A+ (memlimit progressivo 64M, rtt 50ms, Cobalt AQM & Wi-Fi AQL)"
+msgstr "🔬 Detalhes Técnicos da Engenharia Modo A+ (memlimit progressivo 64M, rtt 50ms, Cobalt AQM & Wi-Fi AQL)"
+
+msgid "🔴 Máxima (Padrão do Hardware — Alcance total sem restrições)"
+msgstr "🔴 Máxima (Padrão do Hardware — Alcance total sem restrições)"
+
+msgid "🔸 1.000 domínios (~160 KB RAM)"
+msgstr "🔸 1.000 domínios (~160 KB RAM)"
+
+msgid "🔸 1.000 domínios na RAM (~160 KB)"
+msgstr "🔸 1.000 domínios na RAM (~160 KB)"
+
+msgid "🔹 2.500 domínios (~400 KB RAM)"
+msgstr "🔹 2.500 domínios (~400 KB RAM)"
+
+msgid "🔹 2.500 domínios na RAM (~400 KB)"
+msgstr "🔹 2.500 domínios na RAM (~400 KB)"
+
+msgid "🗑️ Remover"
+msgstr "🗑️ Remover"
+
+msgid "🗑️ Revogar"
+msgstr "🗑️ Revogar"
+
+msgid "🚀 10.000 domínios (~1,5 MB RAM)"
+msgstr "🚀 10.000 domínios (~1,5 MB RAM)"
+
+msgid "🚀 10.000 domínios na RAM (~1,5 MB)"
+msgstr "🚀 10.000 domínios na RAM (~1,5 MB)"
+
+msgid "🚀 320 MHz (EHT320): Largura ultra-ampla exclusiva do 6 GHz para throughput extremo multi-Gigabit a curta distância (Canal PSC 37 em modo Auto)."
+msgstr "🚀 320 MHz (EHT320): Largura ultra-ampla exclusiva do 6 GHz para throughput extremo multi-Gigabit a curta distância (Canal PSC 37 em modo Auto)."
+
+msgid "🚀 Benchmark de Velocidade"
+msgstr "🚀 Benchmark de Velocidade"
+
+msgid "🚀 Motor HFSC + FQ-CoDel Turbo ativado! Curva Real-Time Gamer (< 1 ms) + FQ-CoDel Gigabit (quantum 1514, menor uso de CPU) + Bulk elástico em operação."
+msgstr "🚀 Motor HFSC + FQ-CoDel Turbo ativado! Curva Real-Time Gamer (< 1 ms) + FQ-CoDel Gigabit (quantum 1514, menor uso de CPU) + Bulk elástico em operação."
+
+msgid "🚀 Turbinar Motor Wi-Fi"
+msgstr "🚀 Turbinar Motor Wi-Fi"
+
+msgid "🛑 Desativar"
+msgstr "🛑 Desativar"
+
+msgid "🛠️ DEV"
+msgstr "🛠️ DEV"
+
+msgid "🛠️ DEV ON"
+msgstr "🛠️ DEV ON"
+
+msgid "🛠️ Instalar"
+msgstr "🛠️ Instalar"
+
+msgid "🛠️ Modo DEV ativado! Todos os menus ocultos e seções de plugins não instalados estão visíveis para validação."
+msgstr "🛠️ Modo DEV ativado! Todos os menus ocultos e seções de plugins não instalados estão visíveis para validação."
+
+msgid "🛡️ Manter Bloqueado na WAN (Recomendado)"
+msgstr "🛡️ Manter Bloqueado na WAN (Recomendado)"
+
+msgid "🛡️ Motor CAKE (Layer Cake) ativado! Isolamento justo por dispositivo (dual-srchost/dsthost) e 4 prioridades DiffServ em operação."
+msgstr "🛡️ Motor CAKE (Layer Cake) ativado! Isolamento justo por dispositivo (dual-srchost/dsthost) e 4 prioridades DiffServ em operação."
+
+msgid "🛡️ Segurança, VPN & USB"
+msgstr "🛡️ Segurança, VPN & USB"
+
+msgid "🟡 Balanceada Anti-Sobreposição (15 dBm no 2.4G / 20 dBm no 5G — Recomendado)"
+msgstr "🟡 Balanceada Anti-Sobreposição (15 dBm no 2.4G / 20 dBm no 5G — Recomendado)"
+
+msgid "🟡 Balanceada Anti-Sticky (15 / 20 dBm)"
+msgstr "🟡 Balanceada Anti-Sticky (15 / 20 dBm)"
+
+msgid "🟢 Baixa / Apartamento (12 / 14 dBm)"
+msgstr "🟢 Baixa / Apartamento (12 / 14 dBm)"
+
+msgid "🟢 Baixa / Fundo da Casa (10–12 dBm) — Ideal para quartos/quintal sem vazar para a sala"
+msgstr "🟢 Baixa / Fundo da Casa (10–12 dBm) — Ideal para quartos/quintal sem vazar para a sala"
+
+msgid "🟢 Em Execução (Kernel)"
+msgstr "🟢 Em Execução (Kernel)"
+
+msgid "🧮 Calculadora de Download (-12,5%)"
+msgstr "🧮 Calculadora de Download (-12,5%)"
+
+msgid "🧮 Calculadora de Upload (-7%)"
+msgstr "🧮 Calculadora de Upload (-7%)"
+
+msgid "🧹 Limpar Todos os Mapeamentos"
+msgstr "🧹 Limpar Todos os Mapeamentos"
+
+msgid "🩺 Diagnóstico FSCK:"
+msgstr "🩺 Diagnóstico FSCK:"
+
+msgid "🩺 Verificar / Reparar (FSCK)"
+msgstr "🩺 Verificar / Reparar (FSCK)"
+
+msgid "🪟 Windows (Explorador de Arquivos):"
+msgstr "🪟 Windows (Explorador de Arquivos):"

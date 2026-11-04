@@ -45,6 +45,9 @@ O **ARK Router v2.2.0** introduz uma engenharia inédita de **Controle de Filas 
   - **RPS Multi-Core Simétrico `7/3` + Orçamento NAPI `256/1200` (`[AL-ARK-100]`)**: Distribui portas LAN (`rps_cpus=7`) e WAN/Wi-Fi (`rps_cpus=3`) mantendo a `CPU3` (`IRQ 123`) 100% dedicada ao DMA RX (`0%` perda), reduzindo o atraso interno de Upload sob estresse simultâneo (`16 Down + 16 Up`) de `159 ms` para **`0.10–0.44 ms`**.
   - **BQL Físico `512 KB` Anti-Drop abaixo do PPPoE (`[AL-ARK-101]`)**: Calibra `limit_min=524288` (`512 KB`) e `fq_codel target 50ms interval 500ms quantum 1514 noecn` no GMAC (`eth0`/`eth1`), eliminando 100% dos descartes secundários em quadros PPPoE (`0x8864` não-ECN) e transferindo o controle AQM integralmente para o motor SQM.
   - **Isolamento de Tempestades de Pause Frames `IEEE 802.3x` (`[AL-ARK-102]`)**: Desativa `rx/tx flow control` (`ethtool -A`) nas portas LAN/WAN, impedindo que adaptadores USB-Ethernet de clientes pausem o switch físico do roteador.
+- **⚡ Execução Ultra-Rápida em RAM (`15x` / `-93,4%` CPU), Coalescência `0ms` & Blindagem de Cold-Boot (`v2.2.0`)**:
+  - **Fast-Path de Cache em RAM no Dispatcher (`equipe-dashboard-control`)**: As rotas críticas de polling respondem direto da RAM (`/tmp/ark-*-cache.json`) atualizando contadores voláteis (`/proc/stat`, `/proc/meminfo`, `nf_conntrack_count`) sem carregar bibliotecas `.sh` (~10.400 linhas), reduzindo o tempo de 20 chamadas RPC de `1.96 s` para **`0.13 s` (`6.5 ms/chamada`)**.
+  - **Coalescência de Hotplugs em `0ms` & Blindagem de Boot**: Auditorias automáticas (`ark-doctor --auto`) e hotplugs de rede descartam interfaces virtuais/duplicatas em `0ms`, calibração efetiva `dnsforwardmax=3000` no `dnsmasq` contra tempestades de reconexão e mapa determinístico [`docs/CODE_MAP.md`](docs/CODE_MAP.md).
 
 ---
 

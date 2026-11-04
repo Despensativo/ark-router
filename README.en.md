@@ -45,6 +45,9 @@ The project does not replace OpenWrt or LuCI — it operates on top of LuCI as a
   - **Symmetric Multi-Core RPS `7/3` + NAPI Budget `256/1200` (`[AL-ARK-100]`)**: Distributes LAN ports (`rps_cpus=7`) and WAN/Wi-Fi (`rps_cpus=3`) while keeping `CPU3` (`IRQ 123`) 100% dedicated to hardware DMA RX (`0%` loss), cutting internal router upload delay under bidirectional stress (`16 Down + 16 Up`) from `159 ms` to **`0.10–0.44 ms`**.
   - **Physical BQL `512 KB` Anti-Drop below PPPoE (`[AL-ARK-101]`)**: Calibrates `limit_min=524288` (`512 KB`) and `fq_codel target 50ms interval 500ms quantum 1514 noecn` on the underlying GMAC (`eth0`/`eth1`), eliminating 100% of secondary non-ECN PPPoE (`0x8864`) packet drops.
   - **`IEEE 802.3x` Pause Frame Storm Isolation (`[AL-ARK-102]`)**: Disables L2 `rx/tx flow control` (`ethtool -A`) on switch/WAN ports, preventing client USB-Ethernet adapters from pausing the router's physical switch.
+- **⚡ Ultra-Fast RAM Execution (`15x` / `-93.4%` CPU), `0ms` Hotplug Coalescing & Cold-Boot Shielding (`v2.2.0`)**:
+  - **Dispatcher RAM Cache Fast-Path (`equipe-dashboard-control`)**: High-frequency polling routes serve directly from RAM (`/tmp/ark-*-cache.json`) while refreshing live `/proc/stat`, `/proc/meminfo`, and `nf_conntrack_count` counters without sourcing `.sh` libraries (~10,400 lines), cutting 20 consecutive RPC calls from `1.96 s` down to **`0.13 s` (`6.5 ms/call`)**.
+  - **`0ms` Hotplug Coalescing & Cold-Boot Hardening**: Background `ark-doctor --auto` and network hotplugs coalesce duplicates and skip virtual interfaces in `0ms`, accompanied by `dnsforwardmax=3000` anti-storm DNS calibration and deterministic [`docs/CODE_MAP.md`](docs/CODE_MAP.md).
 
 ---
 

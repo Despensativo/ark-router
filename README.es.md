@@ -45,6 +45,9 @@ El proyecto no reemplaza OpenWrt ni LuCI: opera como una suite avanzada de gesti
   - **RPS Multi-Core Simétrico `7/3` + Presupuesto NAPI `256/1200` (`[AL-ARK-100]`)**: Distribuye los puertos LAN (`rps_cpus=7`) y WAN/Wi-Fi (`rps_cpus=3`) manteniendo la `CPU3` (`IRQ 123`) 100% dedicada al DMA RX (`0%` pérdida), reduciendo el retraso interno de subida bajo carga combinada (`16 Down + 16 Up`) de `159 ms` a **`0.10–0.44 ms`**.
   - **BQL Físico `512 KB` Anti-Drop bajo PPPoE (`[AL-ARK-101]`)**: Calibra `limit_min=524288` (`512 KB`) y `fq_codel target 50ms interval 500ms quantum 1514 noecn` en el GMAC (`eth0`/`eth1`), eliminando el 100% de los descartes secundarios en tramas PPPoE (`0x8864` no-ECN).
   - **Aislamiento de Tormentas de Pause Frames `IEEE 802.3x` (`[AL-ARK-102]`)**: Desactiva `rx/tx flow control` (`ethtool -A`) en los puertos LAN/WAN, impidiendo que adaptadores USB-Ethernet de clientes pausen el switch físico del router.
+- **⚡ Ejecución Ultrarrápida en RAM (`15x` / `-93,4%` CPU), Coalescencia `0ms` & Blindaje de Arranque (`v2.2.0`)**:
+  - **Fast-Path de Caché en RAM en el Dispatcher (`equipe-dashboard-control`)**: Las rutas críticas de sondeo responden directamente desde la RAM (`/tmp/ark-*-cache.json`) actualizando en vivo `/proc/stat`, `/proc/meminfo` y `nf_conntrack_count` sin cargar bibliotecas `.sh` (~10.400 líneas), reduciendo 20 llamadas RPC consecutivas de `1.96 s` a **`0.13 s` (`6.5 ms/llamada`)**.
+  - **Coalescencia de Hotplugs en `0ms` & Blindaje de Cold-Boot**: Las auditorías automáticas (`ark-doctor --auto`) y los hotplugs de red descartan interfaces virtuales y duplicados en `0ms`, junto con calibración `dnsforwardmax=3000` en `dnsmasq` y el mapa determinístico [`docs/CODE_MAP.md`](docs/CODE_MAP.md).
 
 ---
 
