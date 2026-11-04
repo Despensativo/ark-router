@@ -74,22 +74,29 @@ ark_apply_ingress_voice_tin_filters() {
 	# so untrusted ISP/CDN DSCP markings (CS1/AF3x/AF4x/CS4 on bulk downloads) never poison Bulk/Video/Voice tins
 	# before nftables prerouting washes them.
 	tc filter add dev "$iface" parent ffff: protocol all pref 1 u32 match u32 0 0 action skbedit priority "${cake_handle}2" continue 2>/dev/null || true
-	# 2. Promote incoming ICMP, ICMPv6, TCP SYN (<=128B), DNS/NTP replies (<=511B), and L4S ECT(1) UDP (<=511B) into CAKE Voice Tin (${cake_handle}4).
-	# Strict <= 511B guard (0x0000 0xfe00) and no mid-stream TCP PSH / blind UDP 443 splitting.
+	# 2. Promote incoming ICMP, ICMPv6, TCP SYN (<=128B), DNS/NTP replies (<=511B), L4S ECT(1) UDP (<=511B),
+	# and small UDP Gaming/VoIP/WebRTC probes (<=256B, 0x0000 0xff00) into CAKE Voice Tin (${cake_handle}4).
 	tc filter add dev "$iface" parent ffff: protocol ip pref 2 u32 match ip protocol 1 0xff match u16 0x0000 0xfe00 at 2 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
 	tc filter add dev "$iface" parent ffff: protocol ip pref 2 u32 match ip protocol 6 0xff match u16 0x0000 0xff80 at 2 match u8 0x02 0x02 at 33 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
 	tc filter add dev "$iface" parent ffff: protocol ip pref 2 u32 match ip protocol 17 0xff match u16 0x0000 0xfe00 at 2 match ip sport 53 0xffff action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
 	tc filter add dev "$iface" parent ffff: protocol ip pref 2 u32 match ip protocol 17 0xff match u16 0x0000 0xfe00 at 2 match ip sport 123 0xffff action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
 	tc filter add dev "$iface" parent ffff: protocol ip pref 2 u32 match ip protocol 17 0xff match u8 0x01 0x03 at 1 match u16 0x0000 0xfe00 at 2 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ip pref 2 u32 match ip protocol 17 0xff match u16 0x0000 0xff00 at 2 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
 	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 3 u32 match ip6 protocol 58 0xff match u16 0x0000 0xfe00 at 4 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
 	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 3 u32 match ip6 protocol 6 0xff match u16 0x0000 0xff80 at 4 match u8 0x02 0x02 at 53 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
 	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 3 u32 match ip6 protocol 17 0xff match u16 0x0010 0x0030 at 0 match u16 0x0000 0xfe00 at 4 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 3 u32 match ip6 protocol 17 0xff match u16 0x0000 0xff00 at 4 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
 	# 3. Restore bidirectional Conntrack DSCP (0x80 valid bit | 6-bit DSCP in ct mark lower byte) only for <= 511B packets before prio 10 IFB redirect
 	if ark_has_ctinfo; then
 		[ -f "/lib/modules/$(uname -r 2>/dev/null)/act_ctinfo.ko" ] && modprobe act_ctinfo 2>/dev/null || true
 		tc filter add dev "$iface" parent ffff: protocol ip pref 4 u32 match u16 0x0000 0xfe00 at 2 action ctinfo dscp 0x0000003f 0x00000080 continue 2>/dev/null || true
 		tc filter add dev "$iface" parent ffff: protocol ipv6 pref 5 u32 match u16 0x0000 0xfe00 at 4 action ctinfo dscp 0x0000003f 0x00000080 continue 2>/dev/null || true
 	fi
+	# 4. Keep all QUIC / HTTP3 (UDP port 443) packets strictly in Best Effort Tin (${cake_handle}2) to prevent intra-flow reordering
+	tc filter add dev "$iface" parent ffff: protocol ip pref 6 u32 match ip protocol 17 0xff match ip sport 443 0xffff action skbedit priority "${cake_handle}2" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ip pref 6 u32 match ip protocol 17 0xff match ip dport 443 0xffff action skbedit priority "${cake_handle}2" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 7 u32 match ip6 protocol 17 0xff match u16 0x01bb 0xffff at 40 action skbedit priority "${cake_handle}2" continue 2>/dev/null || true
+	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 7 u32 match ip6 protocol 17 0xff match u16 0x01bb 0xffff at 42 action skbedit priority "${cake_handle}2" continue 2>/dev/null || true
 	# Autocura do redirecionamento prio 10 (mirred egress redirect dev ifb4*) caso tenha sido removido ou sobrescrito
 	if ! tc filter show dev "$iface" parent ffff: 2>/dev/null | grep -q "mirred.*$ifb_dev"; then
 		tc filter del dev "$iface" parent ffff: pref 10 2>/dev/null || true

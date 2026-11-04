@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://openwrt.org/"><img src="https://img.shields.io/badge/OpenWrt-19.07%20to%2025.x-00B5E2?logo=openwrt&logoColor=white" alt="OpenWrt"></a>
-  <a href="https://github.com/Despensativo/ark-router/releases/tag/v2.2.0"><img src="https://img.shields.io/badge/release-v2.2.0-blue.svg" alt="Release v2.2.0"></a>
+  <a href="https://github.com/Despensativo/ark-router/releases/tag/v2.2.1"><img src="https://img.shields.io/badge/release-v2.2.1-blue.svg" alt="Release v2.2.1"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/UI-PT--BR%20%2F%20EN%20%2F%20ES-blue" alt="Trilingual UI">
   <img src="https://img.shields.io/badge/arch-all%20%2F%20noarch-orange" alt="Architecture: All">
@@ -25,29 +25,29 @@
 
 The project does not replace OpenWrt or LuCI — it operates on top of LuCI as an advanced operations package (`luci-app-ark-router`) featuring real-time telemetry, zero bloat, anti-lockout safeguards, and pioneering memory and network shielding mechanisms.
 
-> **Current Official Release**: **`v2.2.0`** (see [`VERSION`](VERSION) and [Releases](https://github.com/Despensativo/ark-router/releases)).
+> **Current Official Release**: **`v2.2.1`** (see [`VERSION`](VERSION) and [Releases](https://github.com/Despensativo/ark-router/releases)).
 
 ---
 
-## 🏆 Engineering Highlight (`v2.2.0`): Dual-Engine QoS & Kernel Networking Architecture
+## 🏆 Engineering Highlight (`v2.2.1`): Dual-Engine QoS & Kernel Networking Architecture
 
-**ARK Router v2.2.0** introduces a Dual-Engine **Smart Queue Management (SQM)** architecture paired with low-level Linux Kernel networking calibrations (`BQL`, `Multi-Core RPS`, `NAPI`, and `IEEE 802.3x`), documented in detail in [`docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md`](docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md) and [`docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md`](docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md):
+**ARK Router v2.2.1** delivers a Dual-Engine **Smart Queue Management (SQM)** architecture paired with low-level Linux Kernel networking calibrations (`BQL`, `Multi-Core RPS`, `NAPI`, `IEEE 802.3x`, and Ingress `u32` `Voice` Tin promotion), documented in detail in [`docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md`](docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md) and [`docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md`](docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md):
 
 - **⚙️ Smart Choice Between 2 QoS Engines**:
   - **🛡️ Option 1 — `CAKE (Layer Cake / DiffServ4)`**: Classic `sch_cake` engine with per-host fairness (`dual-srchost` / `dual-dsthost`), `nat`, `wash`, and `no-split-gso`.
   - **🚀 Option 2 — `HFSC + FQ-CoDel Turbo (Smart Gamer & Gigabit)`**: Custom `/usr/lib/sqm/ark_hfsc_fqcodel.qos` engine combining 3 elastic **HFSC (`Hierarchical Fair Service Curve`)** classes with **FQ-CoDel (`1024` hash flows)**:
-    - **Class `1:10` Real-Time (`rt` curve `< 1 ms`)**: Two-slope service curve (`m1 = 40%` for `8ms`, `m2 = 20%`) strictly guarded for packets `<= 511 bytes` (`u32 match u16 0x0000 0xfe00 at 2`) carrying UDP Gaming, VoIP, Ping, DNS, `L4S ECT(1)`, and TCP SYN/ACK — preventing `16 KB` GRO super-packets from polluting the real-time fast lane.
+    - **Class `1:10` Real-Time (`rt` curve `< 1 ms`)**: Two-slope service curve (`m1 = 40%` for `8ms`, `m2 = 20%`) strictly guarded for packets `<= 511 bytes` (`u32 match u16 0x0000 0xfe00 at 2`) carrying UDP Gaming, VoIP, WebRTC (`<= 256B`), Ping, DNS, `L4S ECT(1)`, and TCP SYN/ACK — with explicit `UDP 443` (QUIC/HTTP3) guards keeping bulk QUIC streams in `1:20` / `Best Effort`.
     - **Class `1:20` Interactive & Speed (`FQ-CoDel Turbo`)**: Elastic `ls` up to `100%` line rate (`ul rate 100%`), `quantum 1514` (1 Ethernet frame per DRR round), and native **`ce_threshold` (L4S RFC 9332)**.
     - **Class `1:30` Bulk Scavenger (`CS1`)**: Isolates torrents and background uploads (`m2 = 5%`), freeing `95%` bandwidth instantly without throttling downloads when ISPs remark traffic to `CS1`.
 - **📡 Automatic WAN Profile Calibration (`xpon_bridge`, `xpon_vlan`, `dhcp_cable`, `mobile_starlink`)**: Automatically tunes L2 framing overhead (`34B` GPON PPPoE, `38B` PPPoE+VLAN, `18B` DOCSIS/Starlink), `target`/`interval`/`ce_threshold`, **RFC 4638 Baby Jumbo Frames** (`eth1=1508` ➔ `pppoe-wan=1500` zero fragmentation), **RFC 4821 PLPMTUD** (`tcp_mtu_probing=1`), and dynamic WireGuard MTU (`1412` / `1420` / `1380`).
-- **🎮 80+ Gaming Ports Database, Assisted Open NAT (`180s`) & Symmetric Multi-Core Scaling (`[AL-ARK-100..102]`)**:
-  - **1-Click 80+ Games & Consoles Priority**: Bidirectional marking (`CS4` + `ct mark 0xa0`) for PS5/PSN, Xbox Live, Nintendo Switch, CS2, Valorant, Call of Duty/Warzone, Fortnite, EA FC, League of Legends, Discord, and Cloud Gaming, plus firewall fast-path (`ark_gaming_forward`) and `180s` UDP conntrack timeout.
+- **🎮 80+ Gaming Ports Database, Assisted Open NAT (`180s`) & Symmetric Multi-Core Scaling (`[AL-ARK-100..103]`)**:
+  - **1-Click 80+ Games, Consoles & Ingress UDP `<= 256B` Voice Promotion (`[AL-ARK-103]`)**: Bidirectional marking (`CS4` + `ct mark 0xa0`) for PS5/PSN, Xbox Live, Nintendo Switch, CS2, Valorant, Call of Duty/Warzone, Fortnite, EA FC, League of Legends, Discord, and Cloud Gaming, plus pre-`ifb4*` Ingress `u32` filter promoting incoming UDP Gaming/VoIP/WebRTC (`<= 256B`) directly into the `Voice` Tin (`9 µs` average delay) while locking `QUIC 443` in `Best Effort`.
   - **Symmetric Multi-Core RPS `7/3` + NAPI Budget `256/1200` (`[AL-ARK-100]`)**: Distributes LAN ports (`rps_cpus=7`) and WAN/Wi-Fi (`rps_cpus=3`) while keeping `CPU3` (`IRQ 123`) 100% dedicated to hardware DMA RX (`0%` loss), cutting internal router upload delay under bidirectional stress (`16 Down + 16 Up`) from `159 ms` to **`0.10–0.44 ms`**.
   - **Physical BQL `512 KB` Anti-Drop below PPPoE (`[AL-ARK-101]`)**: Calibrates `limit_min=524288` (`512 KB`) and `fq_codel target 50ms interval 500ms quantum 1514 noecn` on the underlying GMAC (`eth0`/`eth1`), eliminating 100% of secondary non-ECN PPPoE (`0x8864`) packet drops.
   - **`IEEE 802.3x` Pause Frame Storm Isolation (`[AL-ARK-102]`)**: Disables L2 `rx/tx flow control` (`ethtool -A`) on switch/WAN ports, preventing client USB-Ethernet adapters from pausing the router's physical switch.
-- **⚡ Ultra-Fast RAM Execution (`15x` / `-93.4%` CPU), `0ms` Hotplug Coalescing & Cold-Boot Shielding (`v2.2.0`)**:
+- **⚡ Ultra-Fast RAM Execution (`15x` / `-93.4%` CPU), `0ms` Hotplug Coalescing & Concurrency Hardening (`v2.2.1`)**:
   - **Dispatcher RAM Cache Fast-Path (`equipe-dashboard-control`)**: High-frequency polling routes serve directly from RAM (`/tmp/ark-*-cache.json`) while refreshing live `/proc/stat`, `/proc/meminfo`, and `nf_conntrack_count` counters without sourcing `.sh` libraries (~10,400 lines), cutting 20 consecutive RPC calls from `1.96 s` down to **`0.13 s` (`6.5 ms/call`)**.
-  - **`0ms` Hotplug Coalescing & Cold-Boot Hardening**: Background `ark-doctor --auto` and network hotplugs coalesce duplicates and skip virtual interfaces in `0ms`, accompanied by `dnsforwardmax=3000` anti-storm DNS calibration and deterministic [`docs/CODE_MAP.md`](docs/CODE_MAP.md).
+  - **`0ms` Hotplug Coalescing, Strict Lock Ownership & SQM Execution Order**: Background `ark-doctor --auto` and network hotplugs coalesce duplicates and skip virtual interfaces in `0ms`, atomic multi-cache invalidation prior to lock release, deterministic SQM/CAKE promotion ordering, and [`docs/CODE_MAP.md`](docs/CODE_MAP.md).
 
 ---
 
@@ -168,12 +168,12 @@ Download pre-compiled binaries directly from the **[Releases](https://github.com
 
 - **Modern OpenWrt (APK package manager)**:
   ```sh
-  apk add ./luci-app-ark-router-2.2.0-r1.apk
+  apk add ./luci-app-ark-router-2.2.1-r1.apk
   /etc/init.d/rpcd restart
   ```
 - **Legacy OpenWrt (OPKG package manager)**:
   ```sh
-  opkg install ./luci-app-ark-router-2.2.0-r1.ipk
+  opkg install ./luci-app-ark-router-2.2.1-r1.ipk
   /etc/init.d/rpcd restart
   ```
 
