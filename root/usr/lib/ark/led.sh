@@ -669,7 +669,13 @@ ark_led_update_wan_status() {
 			echo 255 > "$led_base/$inet_led/brightness" 2>/dev/null || true
 		elif [ "$has_link" = "1" ]; then
 			local cur_eff="$(uci -q get system.led_status.effect || echo '')"
-			[ "$cur_eff" != "rainbow" ] || return 0
+			if [ "$cur_eff" = "rainbow" ]; then
+				if [ -x /etc/init.d/ark-rainbowd ]; then
+					/etc/init.d/ark-rainbowd enabled || /etc/init.d/ark-rainbowd enable >/dev/null 2>&1 || true
+					/etc/init.d/ark-rainbowd running || /etc/init.d/ark-rainbowd start >/dev/null 2>&1 || true
+				fi
+				return 0
+			fi
 			local cur_col="$(uci -q get system.led_status.hex_color || echo '#00FF00')"
 			ark_led_normalize_hex "$cur_col"
 			local mc_order="rgb"

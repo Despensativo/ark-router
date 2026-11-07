@@ -300,7 +300,7 @@
 | Função | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
 
-### `root/usr/lib/ark/led.sh` (716 linhas, 11 funções)
+### `root/usr/lib/ark/led.sh` (722 linhas, 11 funções)
 
 | Função | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
@@ -314,7 +314,7 @@
 | `ark_led_stop_rainbow()` | `230–236` | 7L |
 | `ark_led_set_effect()` | `239–431` | 193L |
 | `ark_led_apply_preset()` | `434–577` | 144L |
-| `ark_led_update_wan_status()` | `580–716` | 137L |
+| `ark_led_update_wan_status()` | `580–722` | 143L |
 
 ### `root/usr/lib/ark/logging.sh` (41 linhas, 5 funções)
 
@@ -624,22 +624,22 @@
 | `time_save_clock()` | `1348–1360` | 13L |
 | `handle_system()` | `1362–1611` | 250L |
 
-### `root/usr/lib/ark/modules/system_hardware_leds.sh` (1963 linhas, 12 funções)
+### `root/usr/lib/ark/modules/system_hardware_leds.sh` (1976 linhas, 12 funções)
 
 | Função | Linhas (`StartLine`–`EndLine`) | Tamanho |
 | :--- | :--- | :--- |
 | `cleanup_orphan_leds()` | `14–43` | 30L |
-| `update_wan_led()` | `45–166` | 122L |
-| `get_led_hardware_info()` | `168–471` | 304L |
-| `update_led_alert()` | `473–476` | 4L |
-| `apply_aw21018_leds()` | `478–528` | 51L |
-| `set_led_rgb_color()` | `530–683` | 154L |
-| `set_led_preset()` | `685–936` | 252L |
-| `get_led_status()` | `938–951` | 14L |
-| `detect_hardware_silicon_profile()` | `953–1090` | 138L |
-| `system_hardware_auto_tune()` | `1092–1451` | 360L |
-| `get_system_hardware_info_raw()` | `1453–1924` | 472L |
-| `get_system_hardware_info()` | `1926–1962` | 37L |
+| `update_wan_led()` | `45–179` | 135L |
+| `get_led_hardware_info()` | `181–484` | 304L |
+| `update_led_alert()` | `486–489` | 4L |
+| `apply_aw21018_leds()` | `491–541` | 51L |
+| `set_led_rgb_color()` | `543–696` | 154L |
+| `set_led_preset()` | `698–949` | 252L |
+| `get_led_status()` | `951–964` | 14L |
+| `detect_hardware_silicon_profile()` | `966–1103` | 138L |
+| `system_hardware_auto_tune()` | `1105–1464` | 360L |
+| `get_system_hardware_info_raw()` | `1466–1937` | 472L |
+| `get_system_hardware_info()` | `1939–1975` | 37L |
 
 ### `root/usr/lib/ark/modules/vpn.sh` (1348 linhas, 33 funções)
 

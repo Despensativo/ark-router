@@ -83,21 +83,34 @@ update_wan_led() {
 
 	if [ "$inet_led" = "rgb:status" ] || [ -e "/sys/class/leds/$inet_led/multi_intensity" ]; then
 		if [ -f /etc/config/ark_led_alert_mode ] && [ "$has_link" = "0" ]; then
-			echo 0 255 0 > "/sys/class/leds/$inet_led/multi_intensity" 2>/dev/null || true
+			echo 255 0 0 > "/sys/class/leds/$inet_led/multi_intensity" 2>/dev/null || true
 			echo timer > "/sys/class/leds/$inet_led/trigger" 2>/dev/null || true
 			echo 500 > "/sys/class/leds/$inet_led/delay_on" 2>/dev/null || true
 			echo 500 > "/sys/class/leds/$inet_led/delay_off" 2>/dev/null || true
 			echo 255 > "/sys/class/leds/$inet_led/brightness" 2>/dev/null || true
 		elif [ "$has_link" = "1" ]; then
-			local r_val="$(uci -q get system.led_status.color_red || echo 255)"
-			local g_val="$(uci -q get system.led_status.color_green || echo 0)"
-			local b_val="$(uci -q get system.led_status.color_blue || echo 0)"
+			local cur_eff="$(uci -q get system.led_status.effect || echo '')"
+			if [ "$cur_eff" = "rainbow" ]; then
+				if [ -x /etc/init.d/ark-rainbowd ]; then
+					/etc/init.d/ark-rainbowd enabled || /etc/init.d/ark-rainbowd enable >/dev/null 2>&1 || true
+					/etc/init.d/ark-rainbowd running || /etc/init.d/ark-rainbowd start >/dev/null 2>&1 || true
+				fi
+				return 0
+			fi
+			local hex_col="$(uci -q get system.led_status.hex_color || echo '#00FF00')"
+			local clean_hex="$(printf '%s' "$hex_col" | tr -d '#' | tr 'A-Z' 'a-z')"
+			local r_val=0 g_val=255 b_val=0
+			if [ "${#clean_hex}" = "6" ]; then
+				r_val="$(printf '%d' "0x$(printf '%s' "$clean_hex" | cut -c1-2)" 2>/dev/null || echo 0)"
+				g_val="$(printf '%d' "0x$(printf '%s' "$clean_hex" | cut -c3-4)" 2>/dev/null || echo 255)"
+				b_val="$(printf '%d' "0x$(printf '%s' "$clean_hex" | cut -c5-6)" 2>/dev/null || echo 0)"
+			else
+				r_val="$(uci -q get system.led_status.color_red || echo 0)"
+				g_val="$(uci -q get system.led_status.color_green || echo 255)"
+				b_val="$(uci -q get system.led_status.color_blue || echo 0)"
+			fi
 			echo "$r_val $g_val $b_val" > "/sys/class/leds/$inet_led/multi_intensity" 2>/dev/null || true
-			echo netdev > "/sys/class/leds/$inet_led/trigger" 2>/dev/null || true
-			echo "$active_dev" > "/sys/class/leds/$inet_led/device_name" 2>/dev/null || true
-			echo 1 > "/sys/class/leds/$inet_led/link" 2>/dev/null || true
-			echo 0 > "/sys/class/leds/$inet_led/rx" 2>/dev/null || true
-			echo 0 > "/sys/class/leds/$inet_led/tx" 2>/dev/null || true
+			echo default-on > "/sys/class/leds/$inet_led/trigger" 2>/dev/null || true
 			echo 255 > "/sys/class/leds/$inet_led/brightness" 2>/dev/null || true
 		else
 			echo none > "/sys/class/leds/$inet_led/trigger" 2>/dev/null || true
@@ -539,7 +552,7 @@ set_led_rgb_color() {
 		local cur_eff="$(uci -q get system.led_status.effect || echo 'breathe')"
 		local cur_spd="$(uci -q get system.led_status.speed || echo 'normal')"
 		printf '{"success":true,"hex":"%s","r":%d,"g":%d,"b":%d,"hw_intensity":"%d %d %d","effect":"%s","speed":"%s"}\n' \
-			"$hex_display" "$r_val" "$g_val" "$b_val" "$g_val" "$r_val" "$b_val" "$cur_eff" "$cur_spd"
+			"$hex_display" "$r_val" "$g_val" "$b_val" "$r_val" "$g_val" "$b_val" "$cur_eff" "$cur_spd"
 		return 0
 	fi
 
@@ -786,9 +799,9 @@ EOF
 				uci -q set "system.led_status.trigger=netdev"
 				uci -q set "system.led_status.dev=$wan_dev"
 				uci -q set "system.led_status.mode=link"
-				# WS2812B GRB: Verde puro e 255 no byte 0 (color_red)
-				uci -q set "system.led_status.color_red=255"
-				uci -q set "system.led_status.color_green=0"
+				# WS2812B sysfs: multi_index é red green blue. Verde puro é 0 255 0
+				uci -q set "system.led_status.color_red=0"
+				uci -q set "system.led_status.color_green=255"
 				uci -q set "system.led_status.color_blue=0"
 				uci -q set "system.led_status.hex_color=#00FF00"
 				uci -q set "system.led_status.default=1"
