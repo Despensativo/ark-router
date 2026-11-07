@@ -29,6 +29,7 @@ ark_doctor_audit() {
 	local orphan_mesh iface legacy_rules fw_user_file fw_user_has_iptables upnp_is_legacy sqm_is_legacy culprit q_dir has_zombie_dhcp has_bad_wan6_dev has_wan6_configured
 	local dev parent_wan seen_wan6_parents v6_mode missing_wan6 lan_cur_ra ipv6_mode_chk lan_ra_prefer_old has_managed_ra flg lan_slaac_active lan_wan_pfx_conflict
 	local pfx mac_collision_found mac_collision_dev mac_collision_val wan_macs w_iface w_dev w_mac d_sec lan_ports p_mac p_mac_lower
+	local pio_chk_f pio_chk_p _act_pfx _sqm_active _doh_running _doh_match
 	local wm rogue_netdev_found t ipv6_mode wan_has_ipv6 wan6_proto lan_ra lan_dhcpv6 filter_aaaa relay expected_service wan_masq6
 	local z_idx z_name mwan3_conf orphan_mwan_found orphan_names m_iface net_proto net_auto net_dev m_mem target_if t_proto
 	local t_dev user_wifi_disabled total_radios disabled_radios r sec1 other_sec fix_sec chk_sec kv_sec chk_iface cur_year
@@ -47,6 +48,11 @@ ark_doctor_audit() {
 	add_check() {
 		local c_name="$1" c_status="$2" c_msg="$3"
 		local c_json
+		# O resumo deriva dos resultados emitidos, inclusive caminhos sem reparo.
+		case "$c_status" in
+			WARN) warnings=$((warnings + 1)) ;;
+			FAIL) errors=$((errors + 1)) ;;
+		esac
 		c_json=$(printf '{"name":"%s","status":"%s","message":"%s"}' \
 			"$(json_escape "$c_name")" "$(json_escape "$c_status")" "$(json_escape "$c_msg")")
 		if [ -z "$checks" ]; then checks="$c_json"; else checks="$checks,$c_json"; fi
@@ -103,7 +109,6 @@ ark_doctor_audit() {
 			fixes_applied=$((fixes_applied + 1))
 			add_check "Memoria RAM" "FIXED" "Caches reciclados. Memoria livre recuperada para ${mem_free_mb}MB.${top_info}"
 		else
-			warnings=$((warnings + 1))
 			add_check "Memoria RAM" "WARN" "RAM critica: apenas ${mem_free_mb}MB livres de ${mem_total_mb}MB.${top_info}"
 		fi
 	else
@@ -126,7 +131,6 @@ ark_doctor_audit() {
 		local swap_used_mb=$(( $(echo "$swap_line" | awk '{print $4}') / 1024 ))
 
 		if [ "$mem_total_mb" -ge 512 ]; then
-			warnings=$((warnings + 1))
 			add_check "Coerencia de ZRAM" "WARN" "ZRAM ativo em hardware de alta capacidade (${mem_total_mb}MB RAM). Desnecessario; desative para poupar CPU."
 		elif [ "$doc_is_low_end_mips" = 1 ] && [ "$doc_swappiness" -gt 25 ]; then
 			if [ "$auto_fix" = 1 ]; then
@@ -134,7 +138,6 @@ ark_doctor_audit() {
 				fixes_applied=$((fixes_applied + 1))
 				add_check "Coerencia de ZRAM" "FIXED" "Agressividade do ZRAM reduzida (swappiness=15) para proteger CPU mono-core contra saturacao."
 			else
-				warnings=$((warnings + 1))
 				add_check "Coerencia de ZRAM" "WARN" "ZRAM ativo com swappiness alta (${doc_swappiness}) em processador mono-core. Risco de 100% CPU."
 			fi
 		else
@@ -151,33 +154,23 @@ ark_doctor_audit() {
 	fi
 
 	# 2. Checagem do Espaco em Flash (/overlay)
-	overlay_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2 {print $4}')"
+	overlay_free_kb="$(df -k "${ARK_ROOT}/overlay" 2>/dev/null | awk 'NR==2 {print $4}')"
 	case "$overlay_free_kb" in
-		''|*[!0-9]*) overlay_free_kb=99999 ;;
+		''|*[!0-9]*) overlay_free_kb='' ;;
 	esac
-	if [ "$overlay_free_kb" -lt 1500 ]; then
-		if [ "$auto_fix" = 1 ]; then
-			rm -rf /tmp/opkg-lists /var/lock/opkg.lock /tmp/apk-cache /var/cache/apk/* 2>/dev/null || true
-			find /tmp -type f -name "*.tmp" -delete 2>/dev/null || true
-			overlay_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2 {print $4}')"
-			case "$overlay_free_kb" in ''|*[!0-9]*) overlay_free_kb=99999 ;; esac
-			fixes_applied=$((fixes_applied + 1))
-			add_check "Espaco Flash (/overlay)" "FIXED" "Caches temporarios purgados: $((overlay_free_kb / 1024))MB livres."
-		else
-			warnings=$((warnings + 1))
-			add_check "Espaco Flash (/overlay)" "WARN" "Espaco livre baixo: apenas $((overlay_free_kb / 1024))MB livres."
-		fi
+	if [ -z "$overlay_free_kb" ]; then
+		add_check "Espaco Flash (/overlay)" "WARN" "Espaco livre desconhecido: verifique o mount gravavel antes de instalar pacotes."
+	elif [ "$overlay_free_kb" -le 2048 ]; then
+		add_check "Espaco Flash (/overlay)" "WARN" "Espaco livre baixo: ${overlay_free_kb}KB. Libere espaco pelo gerenciador de pacotes; locks e temporarios de terceiros foram preservados."
 	else
 		add_check "Espaco Flash (/overlay)" "OK" "$((overlay_free_kb / 1024))MB livres no armazenamento gravavel."
 	fi
 
 	# 2b. Checagem de Saude do Storage (Read-Only)
 	if awk '$2 == "/overlay" {print $4}' /proc/mounts 2>/dev/null | grep -q "^ro,"; then
-		errors=$((errors + 1))
 		add_check "Saude do Storage (/overlay)" "FAIL" "SISTEMA READ-ONLY DETECTADO! Possivel falha no chip Flash. Faca backup imediatamente."
 	elif awk '$2 == "/" {print $4}' /proc/mounts 2>/dev/null | grep -q "^ro," && grep -q "/overlay" /proc/mounts 2>/dev/null; then
 		# fallback if overlay is somehow masked
-		errors=$((errors + 1))
 		add_check "Saude do Storage (/overlay)" "FAIL" "SISTEMA ROOT READ-ONLY DETECTADO! Possivel corrupcao na Flash."
 	else
 		add_check "Saude do Storage (/overlay)" "OK" "Sistema de arquivos operando de forma saudavel (Read/Write)."
@@ -185,7 +178,6 @@ ark_doctor_audit() {
 
 	# 2c. Checagem de OOM Killer no Kernel
 	if dmesg 2>/dev/null | grep -qi "Out of memory: Killed process"; then
-		warnings=$((warnings + 1))
 		add_check "OOM Killer (Kernel)" "WARN" "Eventos de falta de memoria (Out of memory) registrados recentemente no dmesg."
 	else
 		add_check "OOM Killer (Kernel)" "OK" "Kernel estavel. Sem registros de OOM Killer."
@@ -212,7 +204,6 @@ ark_doctor_audit() {
 						fixes_applied=$((fixes_applied + 1))
 						add_check "SQM $wan" "FIXED" "Corrigido dispositivo de '$cur_sqm_iface' para '$expected_sqm_dev'."
 					else
-						errors=$((errors + 1))
 						add_check "SQM $wan" "FAIL" "Desalinhado: configurado '$cur_sqm_iface', esperado '$expected_sqm_dev'."
 					fi
 				else
@@ -231,20 +222,22 @@ ark_doctor_audit() {
 
 				if [ "$proto" = "pppoe" ]; then
 					exp_ov="44"
+					exp_mpu="84"
 					ov_reason="Fibra GPON/PPPoE (cobertura total L1/L2 anti-bufferbloat)"
 				elif [ "$proto" = "dhcp" ] || [ "$proto" = "static" ]; then
 					exp_ov="18"
+					exp_mpu="64"
 					ov_reason="Cabo DOCSIS/Ethernet DHCP (enquadramento L2 padrao)"
 				fi
 
 				if [ -n "$exp_ov" ]; then
 					ov_mismatch=0
 					if [ "$proto" = "pppoe" ]; then
-						if [ "$cur_ov" != "44" ] || [ "$cur_ll" != "ethernet" ] || [ "$cur_mpu" != "64" ]; then
+						if [ "$cur_ov" != "44" ] || [ "$cur_ll" != "ethernet" ] || { [ "$cur_mpu" != "64" ] && [ "$cur_mpu" != "84" ]; }; then
 							ov_mismatch=1
 						fi
 					elif [ "$proto" = "dhcp" ] || [ "$proto" = "static" ]; then
-						if { [ "$cur_ov" != "18" ] && [ "$cur_ov" != "38" ]; } || [ "$cur_ll" != "ethernet" ] || [ "$cur_mpu" != "64" ]; then
+						if { [ "$cur_ov" != "18" ] && [ "$cur_ov" != "38" ]; } || [ "$cur_ll" != "ethernet" ] || { [ "$cur_mpu" != "64" ] && [ "$cur_mpu" != "84" ]; }; then
 							ov_mismatch=1
 						fi
 					fi
@@ -265,7 +258,6 @@ ark_doctor_audit() {
 							fixes_applied=$((fixes_applied + 1))
 							add_check "SQM Overhead $wan" "FIXED" "Overhead corrigido de '${cur_ov:-0}B' para ${exp_ov}B ($exp_ll, mpu $exp_mpu) para $ov_reason."
 						else
-							errors=$((errors + 1))
 							add_check "SQM Overhead $wan" "FAIL" "Desalinhado: configurado '${cur_ov:-0}B' (${cur_ll:-none}, mpu=${cur_mpu:-0}), esperado ${exp_ov}B ($exp_ll, mpu $exp_mpu) para $ov_reason."
 						fi
 					else
@@ -334,7 +326,7 @@ ark_doctor_audit() {
 						fixes_applied=$((fixes_applied + 1))
 					fi
 				fi
-				command -v ark_promote_cake_mq >/dev/null 2>&1 && ark_promote_cake_mq
+				[ "$auto_fix" = 1 ] && command -v ark_promote_cake_mq >/dev/null 2>&1 && ark_promote_cake_mq
 			else
 				add_check "SQM $wan" "OK" "Desativado (toggle desligado no painel)."
 			fi
@@ -358,7 +350,6 @@ ark_doctor_audit() {
 				fixes_applied=$((fixes_applied + 1))
 				add_check "MTU Baby Jumbo ($wan)" "FIXED" "Resíduo Baby Jumbo (1508) removido de interface $proto; porta $phys_dev restaurada para 1500 bytes."
 			else
-				warnings=$((warnings + 1))
 				add_check "MTU Baby Jumbo ($wan)" "WARN" "Interface $wan opera em modo $proto, mas possui device_mtu=1508 residual de PPPoE."
 			fi
 		elif [ "$proto" = "pppoe" ] && { [ "$dev_mtu" = 1508 ] || [ "$cur_mtu" = 1500 ]; }; then
@@ -437,18 +428,17 @@ ark_doctor_audit() {
 					fixes_applied=$((fixes_applied + 1))
 					add_check "MTU Baby Jumbo ($wan)" "FIXED" "Porta $phys_dev ajustada para MTU 1508 e duplicatas saneadas."
 				else
-					errors=$((errors + 1))
 					add_check "MTU Baby Jumbo ($wan)" "FAIL" "$mtu_err_msg"
 				fi
 			else
-				command -v ark_ensure_wan_mtu_fix >/dev/null 2>&1 && ark_ensure_wan_mtu_fix
-				command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
 				add_check "MTU Baby Jumbo ($wan)" "OK" "Porta $phys_dev e interface $wan alinhadas em 1508/${expected_ppp_mtu} bytes."
 			fi
 		fi
 	done
-	command -v ark_ensure_wan_mtu_fix >/dev/null 2>&1 && ark_ensure_wan_mtu_fix
-	command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
+	if [ "$auto_fix" = 1 ]; then
+		command -v ark_ensure_wan_mtu_fix >/dev/null 2>&1 && ark_ensure_wan_mtu_fix
+		command -v ark_sync_lan_ipv6_ra_mtu >/dev/null 2>&1 && ark_sync_lan_ipv6_ra_mtu
+	fi
 
 	has_ppe=0
 	if [ -e /sys/kernel/debug/ppe0 ] || [ -e /sys/kernel/debug/ppe1 ] || [ -d /sys/devices/platform/soc/15010000.wed ] || \
@@ -479,7 +469,6 @@ ark_doctor_audit() {
 			fixes_applied=$((fixes_applied + 1))
 			add_check "Flow Offload vs SQM" "FIXED" "Conflito detectado. Fastpath desativado para permitir funcionamento prioritario do SQM/CAKE."
 		else
-			errors=$((errors + 1))
 			add_check "Flow Offload vs SQM" "FAIL" "Fastpath ativo junto com SQM/CAKE. O Fastpath impede o enfileiramento CAKE."
 		fi
 	elif [ "$flow_offload" = "1" ] && [ "$mwan_active_count" -ge 2 ]; then
@@ -493,7 +482,6 @@ ark_doctor_audit() {
 			fixes_applied=$((fixes_applied + 1))
 			add_check "Flow Offload vs Multi-WAN" "FIXED" "Conflito detectado. Fastpath desativado para permitir balanceamento e failover no mwan3."
 		else
-			warnings=$((warnings + 1))
 			add_check "Flow Offload vs Multi-WAN" "WARN" "Fastpath ativo com 2+ WANs no mwan3. O Fastpath ignora regras de balanceamento/failover."
 		fi
 	elif [ "$flow_offload" = "0" ] && [ "$sqm_has_active" = "0" ] && [ "$mwan_active_count" -lt 2 ] && [ "$flow_user_disabled" != "1" ]; then
@@ -508,11 +496,9 @@ ark_doctor_audit() {
 			fixes_applied=$((fixes_applied + 1))
 			add_check "Aceleracao de Rede" "FIXED" "Sem SQM ou Multi-WAN detectado. Fastpath e Hardware Offload religados para maxima vazao."
 		else
-			warnings=$((warnings + 1))
 			add_check "Aceleracao de Rede" "WARN" "Fastpath desativado, mas nao ha SQM nem Multi-WAN para justifica-lo. Habilite-o para ganhar maxima vazao."
 		fi
 	else
-		[ "$sqm_has_active" = "1" ] && [ -z "${ARK_ROOT:-}" ] && command -v nft >/dev/null 2>&1 && nft delete flowtable inet fw4 ft 2>/dev/null || true
 		add_check "Aceleracao de Rede" "OK" "Sem conflitos entre Fastpath, SQM e Multi-WAN."
 	fi
 
@@ -526,7 +512,6 @@ ark_doctor_audit() {
 			fixes_applied=$((fixes_applied + 1))
 			add_check "Hardware Offload em Silicio" "FIXED" "Acelerador PPE ausente. flow_offloading_hw corrigido para 0 (Software Flowtable mantido)."
 		else
-			warnings=$((warnings + 1))
 			add_check "Hardware Offload em Silicio" "WARN" "flow_offloading_hw ativado em processador sem acelerador de silicio compativel."
 		fi
 	else
@@ -542,11 +527,9 @@ ark_doctor_audit() {
 			fixes_applied=$((fixes_applied + 1))
 			add_check "Tabela de Clientes" "FIXED" "Servidor DHCP/DNS (dnsmasq) reiniciado com sucesso."
 		else
-			errors=$((errors + 1))
 			add_check "Tabela de Clientes" "FAIL" "Servidor DHCP/DNS (dnsmasq) inativo! Clientes podem ficar sem IP."
 		fi
 	elif ! ark_is_satellite_or_ap && [ "$lan_dhcp_ignore" = "1" ]; then
-		warnings=$((warnings + 1))
 		add_check "Tabela de Clientes" "WARN" "Servidor DHCP local desativado (dhcp.lan.ignore=1). Aparelhos locais exigem IP estatico."
 	else
 		lease_file="/tmp/dhcp.leases"
@@ -573,7 +556,6 @@ ark_doctor_audit() {
 				fixes_applied=$((fixes_applied + 1))
 				add_check "Blindagem AP: DHCP" "FIXED" "Servidor DHCP desativado no Ponto de Acesso (AP) para evitar Rogue DHCP e Duplo NAT."
 			else
-				errors=$((errors + 1))
 				add_check "Blindagem AP: DHCP" "FAIL" "Servidor DHCP ativo em Ponto de Acesso (AP) (Risco de Rogue DHCP e Duplo NAT)."
 			fi
 		else
@@ -595,7 +577,6 @@ ark_doctor_audit() {
 				fixes_applied=$((fixes_applied + 1))
 				add_check "Blindagem AP: SQM" "FIXED" "SQM residual desativado no Ponto de Acesso (AP). O CAKE deve atuar exclusivamente no Mestre."
 			else
-				errors=$((errors + 1))
 				add_check "Blindagem AP: SQM" "FAIL" "SQM ativo em Ponto de Acesso (AP) (desperdiça CPU e limita a bridge local)."
 			fi
 		else
@@ -617,7 +598,6 @@ ark_doctor_audit() {
 				fixes_applied=$((fixes_applied + 1))
 				add_check "Blindagem AP: Multi-WAN" "FIXED" "Multi-WAN desativado no Ponto de Acesso (AP) para manter ponte de rede direta."
 			else
-				warnings=$((warnings + 1))
 				add_check "Blindagem AP: Multi-WAN" "WARN" "Multi-WAN ativo em Ponto de Acesso (AP). Deve ser desativado."
 			fi
 		else
@@ -659,7 +639,6 @@ ark_doctor_audit() {
 				fixes_applied=$((fixes_applied + 1))
 				add_check "Protecao Multicast (IGMP Snooping)" "FIXED" "IGMP Snooping ativado no kernel e persistido na configuracao da br-lan."
 			else
-				errors=$((errors + 1))
 				add_check "Protecao Multicast (IGMP Snooping)" "FAIL" "IGMP Snooping configurado mas inativo no kernel da bridge br-lan."
 			fi
 		fi
@@ -691,7 +670,6 @@ ark_doctor_audit() {
 			fixes_applied=$((fixes_applied + 1))
 			add_check "Interfaces Mesh Orfas" "FIXED" "Interface(s) mesh residual ($orphan_mesh) destruida do Kernel e desvinculada da bridge."
 		else
-			errors=$((errors + 1))
 			add_check "Interfaces Mesh Orfas" "FAIL" "Interface(s) mesh orfa ($orphan_mesh) ativa no Kernel sem declaracao no UCI."
 		fi
 	else
@@ -701,17 +679,16 @@ ark_doctor_audit() {
 	# 10. Checagem de Pureza e Integridade do Firewall (fw4 vs fw3 / iptables)
 	if is_fw4; then
 		legacy_rules=""
-		if command -v iptables-save >/dev/null 2>&1; then
-			legacy_rules="$(iptables-save 2>/dev/null | grep '^-A' || true)"
-		fi
-		if [ -z "$legacy_rules" ] && command -v ip6tables-save >/dev/null 2>&1; then
-			legacy_rules="$(ip6tables-save 2>/dev/null | grep '^-A' || true)"
-		fi
+		# /proc informa tabelas já carregadas sem instanciar wrappers legados.
+		# Isto não identifica regras nem permite atribuir sua propriedade.
+		for s in "${ARK_ROOT}/proc/net/ip_tables_names" "${ARK_ROOT}/proc/net/ip6_tables_names"; do
+			[ -r "$s" ] && [ -n "$(cat "$s" 2>/dev/null)" ] && legacy_rules="loaded"
+		done
 
 		fw_user_file="/etc/firewall.user"
 		[ -n "${ARK_ROOT}" ] && [ -f "${ARK_ROOT}/etc/firewall.user" ] && fw_user_file="${ARK_ROOT}/etc/firewall.user"
 		fw_user_has_iptables=0
-		if [ -f "$fw_user_file" ] && grep -qE 'iptables|ip6tables' "$fw_user_file" 2>/dev/null; then
+		if [ -f "$fw_user_file" ] && sed '/^[[:space:]]*#/d' "$fw_user_file" | grep -qE 'iptables|ip6tables'; then
 			fw_user_has_iptables=1
 		fi
 
@@ -738,59 +715,26 @@ ark_doctor_audit() {
 			elif [ "$fw_user_has_iptables" = 1 ]; then
 				culprit="/etc/firewall.user"
 			fi
-
-			if [ "$auto_fix" = 1 ]; then
-				if [ "$upnp_is_legacy" = 1 ]; then
-					ark_migrate_upnp_variant >/dev/null 2>&1 || true
-				fi
-				if [ "$sqm_is_legacy" = 1 ]; then
-					for sec in $(uci -q show sqm 2>/dev/null | grep '=queue$' | cut -d. -f2 | cut -d= -f1); do
-						[ "$(uci -q get "sqm.$sec.script")" = "simple.qos" ] && uci -q set "sqm.$sec.script=layer_cake.qos"
-					done
-					uci commit sqm 2>/dev/null || true
-					/etc/init.d/sqm restart >/dev/null 2>&1 || true
-					command -v ark_promote_cake_mq >/dev/null 2>&1 && ark_promote_cake_mq
-				fi
-				if [ "$fw_user_has_iptables" = 1 ]; then
-					q_dir="/etc/ark/quarantine"
-					[ -n "${ARK_ROOT}" ] && q_dir="${ARK_ROOT}/etc/ark/quarantine"
-					mkdir -p "$q_dir"
-					mv "$fw_user_file" "${q_dir}/firewall.user.legacy.$(date +%s 2>/dev/null || echo 0)" 2>/dev/null || true
-					touch "$fw_user_file"
-				fi
-				if [ "$culprit" != "mwan3" ] && [ "$culprit" != "Docker (dockerd)" ]; then
-					# No fw4 puro, nunca invocamos iptables/ip6tables (Regra 11 de seguranca).
-					# O reload do fw4 reconstitui as regras nftables puras e elimina o aviso do LuCI.
-					/sbin/fw4 reload >/dev/null 2>&1 || true
-					command -v ark_promote_cake_mq >/dev/null 2>&1 && ark_promote_cake_mq
-					fixes_applied=$((fixes_applied + 1))
-					add_check "Pureza do Firewall (fw4 Puro)" "FIXED" "Regras legadas iptables ($culprit) saneadas e pacote migrado para nftables puro."
-				else
-					add_check "Pureza do Firewall (fw4 Puro)" "WARN" "Regras iptables pertencem ao servico ativo $culprit (preservadas para manter conectividade)."
-				fi
-			else
-				warnings=$((warnings + 1))
-				add_check "Pureza do Firewall (fw4 Puro)" "WARN" "Regras legadas iptables ou pacote incompativel detectado em fw4 (Origem provavel: $culprit)."
-			fi
+			add_check "Pureza do Firewall (fw4 Puro)" "WARN" "Indicio de compatibilidade legada ($culprit). Revise o servico e suas regras; arquivos, pacotes e regras foram preservados inclusive em --fix."
 		else
-			add_check "Pureza do Firewall (fw4 Puro)" "OK" "Firewall operando puramente via nftables (zero regras legadas iptables)."
+			add_check "Pureza do Firewall (fw4 Puro)" "OK" "Backend nftables detectado; nenhum indicio legado nas fontes consultadas. Nao comprova ausencia de todas as regras legadas."
 		fi
-	else
+	elif is_fw3; then
 		if ark_upnp_is_legacy_nftables_on_fw3; then
 			if [ "$auto_fix" = 1 ]; then
 				ark_migrate_upnp_variant >/dev/null 2>&1 || true
 				fixes_applied=$((fixes_applied + 1))
 				add_check "Integridade do Firewall (fw3 iptables)" "FIXED" "Pacote miniupnpd-nftables corrigido para versao iptables retrocompativel no fw3."
 			else
-				warnings=$((warnings + 1))
 				add_check "Integridade do Firewall (fw3 iptables)" "WARN" "Pacote miniupnpd-nftables detectado em fw3 legado. Requer migracao para miniupnpd compativel."
 			fi
 		elif command -v iptables >/dev/null 2>&1 && iptables -n -L FORWARD >/dev/null 2>&1; then
 			add_check "Integridade do Firewall (fw3 iptables)" "OK" "Firewall fw3/iptables ativo e cadeias validas para arquitetura legada."
 		else
-			errors=$((errors + 1))
 			add_check "Integridade do Firewall (fw3 iptables)" "FAIL" "Firewall fw3 com falha nas cadeias ou binario iptables ausente."
 		fi
+	else
+		add_check "Integridade do Firewall" "WARN" "Backend nao identificado; nenhuma regra foi alterada."
 	fi
 
 	# 11. Blindagem WAN6 e Processos DHCPv6
@@ -858,7 +802,6 @@ ark_doctor_audit() {
 				fixes_applied=$((fixes_applied + 1))
 				add_check "Blindagem WAN6 e DHCPv6" "FIXED" "Interface wan6 ausente em modo Dual-Stack. Criada e vinculada a @wan com DHCPv6 client ativo."
 			else
-				errors=$((errors + 1))
 				add_check "Blindagem WAN6 e DHCPv6" "FAIL" "Modo $v6_mode ativo, mas interface wan6 ausente em /etc/config/network (sem requisicao DHCPv6 na WAN)."
 			fi
 		elif [ "$has_zombie_dhcp" = 1 ] || [ "$has_bad_wan6_dev" = 1 ]; then
@@ -872,7 +815,6 @@ ark_doctor_audit() {
 				fixes_applied=$((fixes_applied + 1))
 				add_check "Blindagem WAN6 e DHCPv6" "FIXED" "Processo zumbi eliminado e device @wan sanitizado sem loops."
 			else
-				warnings=$((warnings + 1))
 				add_check "Blindagem WAN6 e DHCPv6" "WARN" "Configuracao WAN6 sem alias @wan ou processos odhcp6c orfaos detectados."
 			fi
 		else
@@ -895,7 +837,6 @@ ark_doctor_audit() {
 				fixes_applied=$((fixes_applied + 1))
 				add_check "Depreciação IPv6 (RFC 9096)" "FIXED" "ra_prefer_old configurado para 0 (eliminação imediata de prefixos fantasmas)."
 			else
-				warnings=$((warnings + 1))
 				add_check "Depreciação IPv6 (RFC 9096)" "WARN" "ra_prefer_old não está ativo (aparelhos podem reter IPs antigos em trocas de PPPoE)."
 			fi
 		else
@@ -929,7 +870,6 @@ ark_doctor_audit() {
 				fixes_applied=$((fixes_applied + 1))
 				add_check "Compatibilidade SLAAC Apple" "FIXED" "managed-config removido e SLAAC puro reativado (SLAAC + other-config para DNS)."
 			else
-				errors=$((errors + 1))
 				add_check "Compatibilidade SLAAC Apple" "FAIL" "managed-config ativo ou SLAAC desativado na LAN (incompatível com dispositivos Apple/iOS)."
 			fi
 		else
@@ -966,6 +906,31 @@ ark_doctor_audit() {
 		if ip -6 route show default proto ra 2>/dev/null | grep -q 'dev pppoe-'; then
 			lan_wan_pfx_conflict=1
 		fi
+		# Detecta prefixos GUA orfaos acumulados no cache de Router Advertisement do odhcpd (/tmp/odhcpd-piodir)
+		if [ -d /tmp/odhcpd-piodir ]; then
+			_act_pfx=""
+			if command -v ubus >/dev/null 2>&1 && command -v jsonfilter >/dev/null 2>&1; then
+				_act_pfx="$(ubus call network.interface.lan status 2>/dev/null \
+					| jsonfilter -e '@["ipv6-prefix-assignment"][*].address' -e '@["ipv6-address"][*].address' 2>/dev/null \
+					| awk -F: '/^[23][0-9a-fA-F]*:/ {print tolower($1":"$2":"$3":"$4)}' | sort -u | tr '\n' ' ' | sed 's/ $//')"
+			fi
+			if [ -n "$_act_pfx" ]; then
+				for pio_chk_f in /tmp/odhcpd-piodir/*; do
+					[ -f "$pio_chk_f" ] || continue
+					for pio_chk_p in $(grep -oE '"prefix":"[^"]+"' "$pio_chk_f" 2>/dev/null | cut -d'"' -f4 | awk -F: '/^[23][0-9a-fA-F]*:/ {print tolower($1":"$2":"$3":"$4)}'); do
+						local _p_match=0
+						for _ap in $_act_pfx; do
+							[ "$pio_chk_p" = "$_ap" ] && { _p_match=1; break; }
+						done
+						if [ "$_p_match" -eq 0 ]; then
+							lan_wan_pfx_conflict=1
+							break
+						fi
+					done
+					[ "$lan_wan_pfx_conflict" = 1 ] && break
+				done
+			fi
+		fi
 	fi
 	if [ "$lan_wan_pfx_conflict" = 1 ]; then
 		if [ "$auto_fix" = 1 ]; then
@@ -991,17 +956,17 @@ ark_doctor_audit() {
 				for exp_rt6 in $(ip -6 route show dev br-lan 2>/dev/null | grep 'expires' | awk '{print $1}'); do
 					ip -6 route del "$exp_rt6" dev br-lan 2>/dev/null || true
 				done
+				rm -rf /tmp/odhcpd-piodir/* 2>/dev/null || true
 				command -v ark_ipv6_prefix_hygiene >/dev/null 2>&1 && ark_ipv6_prefix_hygiene 2>/dev/null || true
 				[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
 			fi
 			fixes_applied=$((fixes_applied + 1))
-			add_check "Isolamento de Sub-rede WAN/LAN" "FIXED" "Prefixos IPv6 antigos/deprecated, rota RA sem filtro e hotplugs residuais expurgados da bridge LAN."
+			add_check "Isolamento de Sub-rede WAN/LAN e Higiene SLAAC" "FIXED" "Prefixos IPv6 antigos/deprecated, cache odhcpd-piodir orfao e rotas RA sem filtro expurgados da LAN."
 		else
-			errors=$((errors + 1))
-			add_check "Isolamento de Sub-rede WAN/LAN" "FAIL" "Prefixo IPv6 antigo (deprecated), rota RA sem filtro ou sub-rede WAN residual detectado na bridge LAN."
+			add_check "Isolamento de Sub-rede WAN/LAN e Higiene SLAAC" "FAIL" "Prefixo IPv6 antigo (deprecated), cache odhcpd-piodir orfao ou rota RA sem filtro detectado na bridge LAN."
 		fi
 	else
-		add_check "Isolamento de Sub-rede WAN/LAN" "OK" "Sem prefixos IPv6 antigos presos ou sobreposição de sub-redes na bridge LAN."
+		add_check "Isolamento de Sub-rede WAN/LAN e Higiene SLAAC" "OK" "Sem prefixos IPv6 antigos presos, cache odhcpd integro e sem sobreposição de sub-redes."
 	fi
 
 	# 11b.4 Checagem de Conflito de Endereços MAC (Anti-MAC Collision)
@@ -1064,7 +1029,6 @@ ark_doctor_audit() {
 		if [ "$auto_fix" = 1 ]; then
 			add_check "Unicidade de MAC WAN/LAN" "FIXED" "Conflito resolvido: MAC duplicado da porta LAN '$mac_collision_dev' removido e restaurado de fábrica."
 		else
-			errors=$((errors + 1))
 			add_check "Unicidade de MAC WAN/LAN" "FAIL" "Conflito crítico: Porta LAN '$mac_collision_dev' compartilha MAC ($mac_collision_val) com interface WAN."
 		fi
 	elif [ "$rogue_netdev_found" = 1 ] && [ "$auto_fix" = 1 ]; then
@@ -1095,7 +1059,6 @@ ark_doctor_audit() {
 				uci ${root_prefix:+-c "$root_prefix/etc/config"} commit network 2>/dev/null || true
 				add_check "Túnel 464xlat (Dual-Stack)" "FIXED" "Interface(s) 464xlat órfã(s) ($xlat_secs) removida(s) para eliminar loop de sondagem DNS ipv4only.arpa."
 			else
-				warnings=$((warnings + 1))
 				add_check "Túnel 464xlat (Dual-Stack)" "WARN" "Interface 464xlat ($xlat_secs) ativa em conexão IPv4/Dual-Stack ($wan_proto_v4), gerando loop de sondagem DNS ipv4only.arpa."
 			fi
 		fi
@@ -1140,7 +1103,6 @@ ark_doctor_audit() {
 					fixes_applied=$((fixes_applied + 1))
 					add_check "Coerência IPv6 (Dashboard vs LAN)" "FIXED" "Modo IPv4 Puro: anúncios desativados na LAN e filtro AAAA ativado no DNSmasq."
 				else
-					errors=$((errors + 1))
 					add_check "Coerência IPv6 (Dashboard vs LAN)" "FAIL" "Modo IPv4 Puro ativo no painel, mas anúncios RA/DHCPv6 ativos ou filtro AAAA inativo na LAN."
 				fi
 			else
@@ -1190,7 +1152,6 @@ ark_doctor_audit() {
 					fixes_applied=$((fixes_applied + 1))
 					add_check "Coerência IPv6 (Dashboard vs LAN)" "FIXED" "Anúncios RA/DHCPv6 reativados na LAN ($expected_service) e filtro AAAA removido."
 				else
-					errors=$((errors + 1))
 					add_check "Coerência IPv6 (Dashboard vs LAN)" "FAIL" "Modo $ipv6_mode ativo com IPv6 na WAN, mas anúncios RA/DHCPv6 na LAN estão desativados (blackhole de IPv6)."
 				fi
 			else
@@ -1227,7 +1188,6 @@ ark_doctor_audit() {
 							fixes_applied=$((fixes_applied + 1))
 							add_check "Masquerade NPTv6 (Firewall WAN)" "FIXED" "Regra masq6 ativada na zona WAN para tradução de prefixo IPv6 em Multi-WAN."
 						else
-							errors=$((errors + 1))
 							add_check "Masquerade NPTv6 (Firewall WAN)" "FAIL" "Modo nptv6 em Multi-WAN ativo, mas masq6 ausente na zona WAN do firewall."
 						fi
 					else
@@ -1245,7 +1205,6 @@ ark_doctor_audit() {
 							fixes_applied=$((fixes_applied + 1))
 							add_check "Masquerade NPTv6 (Firewall WAN)" "FIXED" "Single-WAN detectado: masq6 desativado e migrado para Pilha Dupla Global (libera WebRTC P2P e PPE Offload)."
 						else
-							warnings=$((warnings + 1))
 							add_check "Masquerade NPTv6 (Firewall WAN)" "WARN" "Single-WAN com masq6=1 ativo (quebra IPv6 P2P WebRTC e aceleração PPE)."
 						fi
 					else
@@ -1256,7 +1215,6 @@ ark_doctor_audit() {
 		else
 			# Modo dual_stack ou selective, mas WAN sem IPv6
 			if [ "$lan_ra" = "server" ] || [ "$lan_dhcpv6" = "server" ]; then
-				warnings=$((warnings + 1))
 				add_check "Coerência IPv6 (Dashboard vs LAN)" "WARN" "Modo $ipv6_mode ativo na LAN, mas nenhuma WAN possui IPv6 configurado."
 			else
 				add_check "Coerência IPv6 (Dashboard vs LAN)" "OK" "Modo $ipv6_mode preservado aguardando conectividade IPv6 na WAN."
@@ -1300,7 +1258,6 @@ ark_doctor_audit() {
 				fixes_applied=$((fixes_applied + 1))
 				add_check "Integridade do Multi-WAN (mwan3)" "FIXED" "Configurações órfãs do mwan3 ($orphan_names) removidas e saneadas."
 			else
-				warnings=$((warnings + 1))
 				add_check "Integridade do Multi-WAN (mwan3)" "WARN" "Interfaces/membros órfãos detectados no mwan3 ($orphan_names) sem interface de rede correspondente."
 			fi
 		else
@@ -1328,7 +1285,6 @@ ark_doctor_audit() {
 				fixes_applied=$((fixes_applied + 1))
 				add_check "Blindagem de Radios Wi-Fi" "FIXED" "Radios Wi-Fi ativados do padrao virgem de fabrica do OpenWrt."
 			else
-				warnings=$((warnings + 1))
 				add_check "Blindagem de Radios Wi-Fi" "WARN" "Radios Wi-Fi bloqueados pelo padrao virgem de fabrica do OpenWrt."
 			fi
 		else
@@ -1426,7 +1382,6 @@ ark_doctor_audit() {
 
 			if [ "$key_mismatch" = 1 ]; then
 				crypto_key_mismatch_count=$((crypto_key_mismatch_count + 1))
-				errors=$((errors + 1))
 				add_check "Coerencia de Senha Wi-Fi" "FAIL" "SSID '${chk_ssid}' possui senhas diferentes entre as bandas. A troca de banda desconecta os clientes."
 			fi
 
@@ -1454,7 +1409,6 @@ ark_doctor_audit() {
 					fixes_applied=$((fixes_applied + 1))
 					add_check "Coerencia Criptografica Wi-Fi" "FIXED" "SSID '${chk_ssid}' com seguranca divergente (${enc_summary# }). Criptografia unificada para '${target_enc}' (WPA2/WPA3), restaurando o Roaming 802.11v suave."
 				else
-					warnings=$((warnings + 1))
 					add_check "Coerencia Criptografica Wi-Fi" "WARN" "SSID '${chk_ssid}' com seguranca divergente (${enc_summary# }). Prejudica a transição suave (802.11v/roaming) entre bandas."
 				fi
 			fi
@@ -1503,7 +1457,6 @@ ark_doctor_audit() {
 			fixes_applied=$((fixes_applied + 1))
 			add_check "Compatibilidade WPA3 e Roaming" "FIXED" "Conflito FT-SAE corrigido ($ft_sae_conflicts interface(s)). 802.11r removido em rede WPA3 (roaming preservado via 802.11k/v e usteer)."
 		else
-			warnings=$((warnings + 1))
 			add_check "Compatibilidade WPA3 e Roaming" "WARN" "802.11r (FT-SAE) ativo em rede WPA3 ($ft_sae_conflicts interface(s)). Causa rejeição de autenticação em clientes Wi-Fi 6/6E/7."
 		fi
 	else
@@ -1546,7 +1499,6 @@ ark_doctor_audit() {
 			fixes_applied=$((fixes_applied + 1))
 			add_check "Band Steering & Roaming (Qualcomm QSDK)" "FIXED" "Qualcomm QSDK (qca-hostapd-11be) calibrado com 802.11k/v (rrm=1, bss_transition=1), RNR Co-located (1 7) e FILS (20 ms). usteer bloqueado."
 		elif [ -n "$qca_missing_kv" ]; then
-			warnings=$((warnings + 1))
 			add_check "Band Steering & Roaming (Qualcomm QSDK)" "WARN" "Qualcomm QSDK detectado (usteer dispensado), mas flags rrm=1 / bss_transition=1 ausentes em algumas interfaces."
 		else
 			add_check "Band Steering & Roaming (Qualcomm QSDK)" "OK" "Gerenciado nativamente em silício pelo Qualcomm QSDK (qca-hostapd-11be com 802.11k/v, RNR Co-located 1 7 e FILS 20 ms). usteer e wpad-mbedtls bloqueados."
@@ -1675,7 +1627,6 @@ ark_doctor_audit() {
 					fixes_applied=$((fixes_applied + 1))
 					add_check "Band Steering (usteer)" "FIXED" "Daemon usteer calibrado com histerese (8 dB), roaming suave 802.11v (-74/-78 dBm), zero chutes forçados (min_snr=0, load_kick=0) e subida para 5GHz (-70 dBm)."
 				else
-					warnings=$((warnings + 1))
 					add_check "Band Steering (usteer)" "WARN" "usteer ativo, mas parâmetros de roaming 802.11k/RNR, histerese ou anti-chute descalibrados."
 				fi
 			else
@@ -1739,7 +1690,6 @@ ark_doctor_audit() {
 				fixes_applied=$((fixes_applied + 1))
 				add_check "Band Steering (usteer)" "FIXED" "Assistente usteer ativado com calibração de alta velocidade (-70 dBm) e parâmetros 802.11k/RNR configurados."
 			else
-				warnings=$((warnings + 1))
 				add_check "Band Steering (usteer)" "WARN" "Rede Wi-Fi unificada (${unified_ssids# }) com Band Steering (usteer) inativo. Aparelhos tendem a ficar presos no 2.4GHz mais lento."
 			fi
 
@@ -1820,15 +1770,12 @@ ark_doctor_audit() {
 							fixes_applied=$((fixes_applied + 1))
 							add_check "Band Steering (usteer)" "FIXED" "Módulo usteer instalado e ativado com calibração -70 dBm e 802.11k/RNR configurados."
 						else
-							warnings=$((warnings + 1))
 							add_check "Band Steering (usteer)" "WARN" "Rede Wi-Fi unificada sem usteer. Falha ao baixar o pacote dos repositórios OpenWrt."
 						fi
 					else
-						warnings=$((warnings + 1))
 						add_check "Band Steering (usteer)" "WARN" "Rede Wi-Fi unificada sem usteer. Download adiado por falta de conexão à internet."
 					fi
 				else
-					warnings=$((warnings + 1))
 					add_check "Band Steering (usteer)" "WARN" "Rede Wi-Fi unificada (${unified_ssids# }) sem módulo de Band Steering (usteer). Hardware suporta instalação (~73 KB com > 1.2MB livres em /overlay)."
 				fi
 			fi
@@ -1853,6 +1800,7 @@ ark_doctor_audit() {
 		local skip_poll_forced=0
 		local inactivity_short=0
 		local mcast2ucast_missing=0
+		local dtim_missing=0
 		for chk_iface in $all_ap_secs; do
 			local cur_rekey="$($uci_cmd get "wireless.$chk_iface.wpa_group_rekey" 2>/dev/null || echo '')"
 			if [ "$cur_rekey" != "0" ]; then
@@ -1890,12 +1838,37 @@ ark_doctor_audit() {
 				fi
 			fi
 
+			local if_dev="$($uci_cmd get "wireless.$chk_iface.device" 2>/dev/null || echo '')"
+			local if_band="$($uci_cmd get "wireless.$if_dev.band" 2>/dev/null || echo '')"
+			local is_if_2g=0
+			if [ "$if_band" = "2g" ] || [ "$if_dev" = "radio0" ] || [ "$if_dev" = "wifi0" ]; then
+				is_if_2g=1
+			else
+				local if_ch="$($uci_cmd get "wireless.$if_dev.channel" 2>/dev/null || echo '')"
+				if [ -n "$if_ch" ] && [ "$if_ch" -ge 1 ] 2>/dev/null && [ "$if_ch" -le 14 ] 2>/dev/null; then
+					is_if_2g=1
+				fi
+			fi
+
+			local target_mcast="1"
+			[ "$is_if_2g" = "1" ] && target_mcast="0"
 			local cur_mcast2ucast="$($uci_cmd get "wireless.$chk_iface.multicast_to_unicast" 2>/dev/null || echo '')"
-			if [ "$cur_mcast2ucast" != "1" ]; then
+			if [ "$cur_mcast2ucast" != "$target_mcast" ]; then
 				mcast2ucast_missing=$((mcast2ucast_missing + 1))
 				if [ "$auto_fix" = 1 ]; then
-					$uci_cmd set "wireless.$chk_iface.multicast_to_unicast=1"
+					$uci_cmd set "wireless.$chk_iface.multicast_to_unicast=$target_mcast"
 					wifi_needs_reload=1
+				fi
+			fi
+
+			if [ "$is_if_2g" = "1" ]; then
+				local cur_dtim="$($uci_cmd get "wireless.$chk_iface.dtim_period" 2>/dev/null || echo '')"
+				if [ "$cur_dtim" != "1" ]; then
+					dtim_missing=$((dtim_missing + 1))
+					if [ "$auto_fix" = 1 ]; then
+						$uci_cmd set "wireless.$chk_iface.dtim_period=1"
+						wifi_needs_reload=1
+					fi
 				fi
 			fi
 		done
@@ -1927,7 +1900,7 @@ ark_doctor_audit() {
 			fi
 		done
 
-		if [ "$rekey_mismatch" -gt 0 ] || [ "$lowack_missing" -gt 0 ] || [ "$skip_poll_forced" -gt 0 ] || [ "$inactivity_short" -gt 0 ] || [ "$twt_mismatch" -gt 0 ] || [ "$mcast2ucast_missing" -gt 0 ] || [ "$legacy_mismatch" -gt 0 ]; then
+		if [ "$rekey_mismatch" -gt 0 ] || [ "$lowack_missing" -gt 0 ] || [ "$skip_poll_forced" -gt 0 ] || [ "$inactivity_short" -gt 0 ] || [ "$twt_mismatch" -gt 0 ] || [ "$mcast2ucast_missing" -gt 0 ] || [ "$dtim_missing" -gt 0 ] || [ "$legacy_mismatch" -gt 0 ]; then
 			mobile_iot_issues=1
 			if [ "$rekey_mismatch" -gt 0 ]; then
 				mobile_iot_details="${mobile_iot_details} • Rotação periódica de chave GTK ativa ($rekey_mismatch interface(s))"
@@ -1942,7 +1915,10 @@ ark_doctor_audit() {
 				mobile_iot_details="${mobile_iot_details} • Tolerância de inatividade abaixo de 24h ($inactivity_short interface(s))"
 			fi
 			if [ "$mcast2ucast_missing" -gt 0 ]; then
-				mobile_iot_details="${mobile_iot_details} • Otimização Multicast-to-Unicast inativa ($mcast2ucast_missing interface(s))"
+				mobile_iot_details="${mobile_iot_details} • Otimização Multicast-to-Unicast descalibrada ($mcast2ucast_missing interface(s))"
+			fi
+			if [ "$dtim_missing" -gt 0 ]; then
+				mobile_iot_details="${mobile_iot_details} • Sincronismo DTIM descalibrado em 2.4G ($dtim_missing interface(s))"
 			fi
 			if [ "$legacy_mismatch" -gt 0 ]; then
 				mobile_iot_details="${mobile_iot_details} • Taxas legadas 802.11b ativas ($legacy_mismatch rádio(s) 2.4G)"
@@ -1956,14 +1932,119 @@ ark_doctor_audit() {
 			if [ "$auto_fix" = 1 ]; then
 				$uci_cmd commit wireless 2>/dev/null || true
 				fixes_applied=$((fixes_applied + 1))
-				add_check "Estabilidade Wi-Fi Mobile & IoT" "FIXED" "Parâmetros blindados: wpa_group_rekey=0 (fim das quedas cíclicas), sono blindado por hardware (skip_inactivity_poll=0, max_inactivity=86400), disassoc_low_ack=0, multicast_to_unicast=1, legacy_rates=0 e he_twt_required=0 seguro."
+				add_check "Estabilidade Wi-Fi Mobile & IoT" "FIXED" "Parâmetros blindados: wpa_group_rekey=0 (fim das quedas cíclicas), sono blindado por hardware (skip_inactivity_poll=0, max_inactivity=86400), disassoc_low_ack=0, multicast_to_unicast calibrado (0 em 2.4G / 1 em 5G), dtim_period=1 em 2.4G, legacy_rates=0 e he_twt_required=0 seguro."
 			else
-				warnings=$((warnings + 1))
 				add_check "Estabilidade Wi-Fi Mobile & IoT" "WARN" "Configuração vulnerável a quedas no Galaxy S24 e IoT em repouso:${mobile_iot_details}."
 			fi
 		else
-			add_check "Estabilidade Wi-Fi Mobile & IoT" "OK" "Imune a quedas em repouso (wpa_group_rekey=0, sono blindado 24h, skip_inactivity_poll=0, disassoc_low_ack=0, multicast_to_unicast=1, legacy_rates=0 e he_twt_required=0 seguro)."
+			add_check "Estabilidade Wi-Fi Mobile & IoT" "OK" "Imune a quedas em repouso (wpa_group_rekey=0, sono blindado 24h, skip_inactivity_poll=0, disassoc_low_ack=0, multicast_to_unicast calibrado, dtim_period=1 em 2.4G, legacy_rates=0 e he_twt_required=0 seguro)."
 		fi
+	fi
+
+	if [ "$wifi_needs_reload" = "1" ] && [ "$auto_fix" = "1" ]; then
+		(sleep 1; wifi reload; rm -f "${ARK_ROOT}/tmp"/ark-stations-cache.* "${ARK_ROOT}/tmp"/ark-hw-cache.* 2>/dev/null || true) </dev/null >/dev/null 2>&1 &
+	fi
+
+	# 12e. Higiene de Nós Zumbis IoT & Ar 2.4 GHz
+	# Detecta e purga estações zumbis em 2.4 GHz (ex: Smart Home desligadas na parede
+	# que permanecem associadas acumulando falhas contínuas e degradando o airtime).
+	# Limiar: inatividade >= 10 minutos (600.000 ms) E tx_failed >= 500 falhas contínuas.
+	# Proteção: safelist estrita para celulares, tablets e computadores.
+	local zombie_count=0
+	local zombie_purged=0
+	local zombie_macs=""
+	local wifi_2g_ifs=""
+	local mock_st_dump="${ARK_ROOT}/tmp/mock_iw_station_dump"
+	local wif=""
+
+	if [ -f "$mock_st_dump" ]; then
+		wifi_2g_ifs="mock-2g"
+	elif command -v iw >/dev/null 2>&1; then
+		for wif in $(iw dev 2>/dev/null | awk '$1=="Interface"{print $2}'); do
+			local w_info="$(iw dev "$wif" info 2>/dev/null || true)"
+			echo "$w_info" | grep -q "type AP" || continue
+			local is_wif_2g=0
+			if echo "$w_info" | grep -qE "channel [0-9]+ \(24[0-9]{2} MHz\)"; then
+				is_wif_2g=1
+			elif [ "$wif" = "phy0-ap0" ]; then
+				is_wif_2g=1
+			fi
+			[ "$is_wif_2g" = "1" ] && wifi_2g_ifs="$wifi_2g_ifs $wif"
+		done
+	fi
+
+	if [ -n "$wifi_2g_ifs" ]; then
+		for wif in $wifi_2g_ifs; do
+			local dump_src=""
+			if [ "$wif" = "mock-2g" ] && [ -f "$mock_st_dump" ]; then
+				dump_src="$(cat "$mock_st_dump" 2>/dev/null || true)"
+			elif command -v iw >/dev/null 2>&1; then
+				dump_src="$(iw dev "$wif" station dump 2>/dev/null || true)"
+			fi
+			[ -n "$dump_src" ] || continue
+
+			local dump_candidates="$(echo "$dump_src" | awk '
+				/^Station / {
+					if (mac != "" && inact >= 600000 && fail >= 500) {
+						print mac, inact, fail
+					}
+					mac = $2; inact = 0; fail = 0
+				}
+				/inactive time:/ { inact = $3 }
+				/tx failed:/ { fail = $3 }
+				END {
+					if (mac != "" && inact >= 600000 && fail >= 500) {
+						print mac, inact, fail
+					}
+				}'
+			)"
+
+			[ -n "$dump_candidates" ] || continue
+
+			local cand_mac="" cand_inact="" cand_fail=""
+			while read -r cand_mac cand_inact cand_fail; do
+				[ -n "$cand_mac" ] || continue
+				# Safelist de dispositivos pessoais (celulares, tablets, notebooks)
+				local cand_host=""
+				if [ -n "${ARK_ROOT}" ] && [ -f "${ARK_ROOT}/tmp/dhcp.leases" ]; then
+					cand_host="$(awk -v m="$cand_mac" 'tolower($2)==tolower(m){print tolower($4)}' "${ARK_ROOT}/tmp/dhcp.leases" 2>/dev/null || true)"
+				elif [ -f /tmp/dhcp.leases ]; then
+					cand_host="$(awk -v m="$cand_mac" 'tolower($2)==tolower(m){print tolower($4)}' /tmp/dhcp.leases 2>/dev/null || true)"
+				fi
+				if [ -z "$cand_host" ]; then
+					cand_host="$($uci_cmd show dhcp 2>/dev/null | grep -i "$cand_mac" -B 2 | awk -F= '/\.name=/{print tolower($2)}' | tr -d "'\"" | head -n 1)"
+				fi
+				if echo "$cand_host" | grep -qiE 'galaxy|samsung|iphone|ipad|apple|pixel|xiaomi|redmi|motorola|moto|macbook|windows|pc|desktop|notebook|laptop|linux|android|oneplus|huawei'; then
+					continue
+				fi
+
+				zombie_count=$((zombie_count + 1))
+				zombie_macs="${zombie_macs} ${cand_mac}"
+
+				if [ "$auto_fix" = 1 ]; then
+					if command -v ubus >/dev/null 2>&1 && [ "$wif" != "mock-2g" ]; then
+						ubus call "hostapd.$wif" del_client "{\"addr\":\"$cand_mac\",\"reason\":1,\"deauth\":true}" >/dev/null 2>&1 || true
+					fi
+					if command -v iw >/dev/null 2>&1 && [ "$wif" != "mock-2g" ]; then
+						iw dev "$wif" station del "$cand_mac" >/dev/null 2>&1 || true
+					fi
+					zombie_purged=$((zombie_purged + 1))
+				fi
+			done <<EOF
+$dump_candidates
+EOF
+		done
+	fi
+
+	if [ "$zombie_count" -gt 0 ]; then
+		if [ "$auto_fix" = 1 ]; then
+			fixes_applied=$((fixes_applied + 1))
+			add_check "Higiene de Ar Wi-Fi IoT (2.4 GHz)" "FIXED" "Purga de nó(s) zumbi(s) concluída (${zombie_purged} nó(s):${zombie_macs}). Ar 2.4 GHz liberado para câmeras e dispositivos ativos."
+		else
+			add_check "Higiene de Ar Wi-Fi IoT (2.4 GHz)" "WARN" "Nó(s) zumbi(s) IoT detectado(s) em 2.4 GHz (${zombie_count} nó(s):${zombie_macs}) inativo(s) há >10 min acumulando falhas contínuas de transmissão."
+		fi
+	else
+		add_check "Higiene de Ar Wi-Fi IoT (2.4 GHz)" "OK" "Ar 2.4 GHz desobstruído (nenhum nó fantasma/zumbi com inatividade >10 min e falhas contínuas detectado)."
 	fi
 
 	if [ "$wifi_needs_reload" = "1" ] && [ "$auto_fix" = "1" ]; then
@@ -1997,7 +2078,6 @@ ark_doctor_audit() {
 			fixes_applied=$((fixes_applied + 1))
 			add_check "Sincronizacao de Horario (NTP)" "FIXED" "Servico NTP reiniciado e relogio atualizado para sincronizacao imediata."
 		else
-			warnings=$((warnings + 1))
 			add_check "Sincronizacao de Horario (NTP)" "WARN" "Relogio desatualizado (${cur_year}). Isso pode invalidar certificados TLS e o LuCI."
 		fi
 	else
@@ -2033,7 +2113,6 @@ ark_doctor_audit() {
 	if [ "$ct_max" -gt 0 ]; then
 		ct_pct=$((ct_count * 100 / ct_max))
 		if [ "$ct_pct" -ge 85 ]; then
-			warnings=$((warnings + 1))
 			add_check "Tabela NAT (Conntrack)" "WARN" "Saturacao alta: ${ct_count}/${ct_max} conexoes ativas (${ct_pct}% do limite)."
 		else
 			add_check "Tabela NAT (Conntrack)" "OK" "${ct_count} conexoes ativas de ${ct_max} max (${ct_pct}% de ocupacao)."
@@ -2093,7 +2172,6 @@ ark_doctor_audit() {
 					add_check "Governanca de CPU (IRQ Balance)" "FIXED" "IRQ Balance desativado em processador single-core (economiza memória e ciclos de CPU)."
 				fi
 			else
-				warnings=$((warnings + 1))
 				if [ "$has_native_hw_queues" = true ]; then
 					add_check "Governanca de CPU (IRQ Balance)" "WARN" "IRQ Balance ativo em SoC com anéis de hardware ($dist_target). Causa perda de afinidade e jitter desnecessário."
 				else
@@ -2153,7 +2231,6 @@ ark_doctor_audit() {
 				fixes_applied=$((fixes_applied + 1))
 				add_check "Blindagem de Ponto de Acesso (AP)" "FIXED" "Serviços exclusivos de Gateway ($ap_conflict_svcs) desativados no Ponto de Acesso."
 			else
-				warnings=$((warnings + 1))
 				add_check "Blindagem de Ponto de Acesso (AP)" "WARN" "Serviços exclusivos de Gateway ($ap_conflict_svcs) ativos em Modo Ponto de Acesso."
 			fi
 		else
@@ -2162,7 +2239,7 @@ ark_doctor_audit() {
 	fi
 
 	# 17. Auditoria de Travessia CGNAT / STUN no UPnP (quando UPnP ativo no modo Gateway)
-	command -v ark_sync_clat_p2p_routes >/dev/null 2>&1 && ark_sync_clat_p2p_routes >/dev/null 2>&1 || true
+	[ "$auto_fix" = 1 ] && command -v ark_sync_clat_p2p_routes >/dev/null 2>&1 && ark_sync_clat_p2p_routes >/dev/null 2>&1 || true
 	if ! ark_is_satellite_or_ap && [ -f "${ARK_ROOT}/etc/config/upnpd" -o -f /etc/config/upnpd ]; then
 		local upnp_enabled="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get upnpd.config.enabled || echo 0)"
 		if [ "$upnp_enabled" = "1" ]; then
@@ -2185,7 +2262,6 @@ ark_doctor_audit() {
 					fixes_applied=$((fixes_applied + 1))
 					add_check "Travessia CGNAT UPnP (STUN)" "FIXED" "STUN Anycast (stun.cloudflare.com) e interface WAN nativa vinculados ao UPnP."
 				else
-					warnings=$((warnings + 1))
 					add_check "Travessia CGNAT UPnP (STUN)" "WARN" "STUN desativado ou UPnP preso em tunel virtual. Conexoes sob CGNAT podem sofrer rejeicao de portas."
 				fi
 			else
@@ -2207,7 +2283,54 @@ ark_doctor_audit() {
 		local _doh_pref="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.dns_doh_enabled || echo 0)"
 		local _agh_active=0
 		[ -x "${ARK_ROOT}/etc/init.d/adguardhome" ] && pgrep -f AdGuardHome >/dev/null 2>&1 && _agh_active=1
-		if [ "$_doh_pref" = "1" ] && [ "$_agh_active" = "0" ]; then
+		_sqm_active=0
+		if [ -f "${ARK_ROOT}/etc/config/sqm" ] || [ -f /etc/config/sqm ]; then
+			if uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
+				_sqm_active=1
+			fi
+		fi
+
+		if [ "$_sqm_active" = "1" ]; then
+			_doh_running=0
+			[ -x "${ARK_ROOT}/etc/init.d/https-dns-proxy" ] && pgrep -f https-dns-proxy >/dev/null 2>&1 && _doh_running=1
+			_doh_match=0
+			if [ "$_doh_pref" = "1" ] || [ "$_doh_running" = "1" ]; then
+				_doh_match=1
+			elif uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get dhcp.@dnsmasq[0].server 2>/dev/null | grep -q '5053'; then
+				_doh_match=1
+			fi
+
+			if [ "$_doh_match" = "1" ]; then
+				if [ "$auto_fix" = 1 ]; then
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set equipe_perf.settings=performance
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set equipe_perf.settings.dns_doh_enabled='0'
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} commit equipe_perf 2>/dev/null || true
+					if command -v ark_sync_doh_proxy >/dev/null 2>&1; then
+						ark_sync_doh_proxy "disable" >/dev/null 2>&1 || true
+					fi
+					if [ -z "${ARK_ROOT}" ] && [ -x /etc/init.d/https-dns-proxy ]; then
+						/etc/init.d/https-dns-proxy stop >/dev/null 2>&1 || true
+						/etc/init.d/https-dns-proxy disable >/dev/null 2>&1 || true
+					fi
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} delete dhcp.@dnsmasq[0].server 2>/dev/null || true
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='1.1.1.1'
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='1.0.0.1'
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='2606:4700:4700::1111'
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='8.8.8.8'
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='2001:4860:4860::8888'
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set dhcp.@dnsmasq[0].noresolv='0'
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set dhcp.@dnsmasq[0].allservers='1'
+					uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} commit dhcp 2>/dev/null || true
+					[ -z "${ARK_ROOT}" ] && [ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+					fixes_applied=$((fixes_applied + 1))
+					add_check "Latência DNS Gaming vs Dual-DoH" "FIXED" "QoS ativo: Dual-DoH desativado e Anycast direto (< 5 ms) configurado para eliminar lag DNS em jogos."
+				else
+					add_check "Latência DNS Gaming vs Dual-DoH" "WARN" "QoS ativo com Dual-DoH: negociacao TLS adiciona ~65 ms de latencia em queries DNS. Recomendado Anycast direto UDP 53."
+				fi
+			else
+				add_check "Latência DNS Gaming" "OK" "Anycast UDP 53 direto ativo (< 5 ms) em harmonia com motor QoS."
+			fi
+		elif [ "$_doh_pref" = "1" ] && [ "$_agh_active" = "0" ]; then
 			local _cur_dnsmasq_srv="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get dhcp.@dnsmasq[0].server 2>/dev/null || echo '')"
 			if ! printf '%s' "$_cur_dnsmasq_srv" | grep -q '127\.0\.0\.1#5053'; then
 				if [ "$auto_fix" = 1 ]; then
@@ -2228,7 +2351,6 @@ ark_doctor_audit() {
 					fixes_applied=$((fixes_applied + 1))
 					add_check "Transporte Criptografado Dual-DoH" "FIXED" "Vinculo Dual-DoH (127.0.0.1#5053 e #5054) restaurado no dnsmasq."
 				else
-					warnings=$((warnings + 1))
 					add_check "Transporte Criptografado Dual-DoH" "WARN" "Dual-DoH habilitado, porem dnsmasq nao estava apontando para 127.0.0.1#5053/#5054."
 				fi
 			else
@@ -2238,7 +2360,6 @@ ark_doctor_audit() {
 						fixes_applied=$((fixes_applied + 1))
 						add_check "Transporte Criptografado Dual-DoH" "FIXED" "Processo https-dns-proxy estava inativo e foi reiniciado com sucesso."
 					else
-						warnings=$((warnings + 1))
 						add_check "Transporte Criptografado Dual-DoH" "WARN" "Dual-DoH habilitado, porem o daemon https-dns-proxy nao esta em execucao."
 					fi
 				else
@@ -2288,7 +2409,7 @@ ark_doctor_audit() {
 		if [ -n "$log_details" ]; then
 			printf '%b' "$log_details"
 		else
-			printf '  [OK] Todos os módulos auditados com sucesso e 100%% saudáveis.\n'
+			printf '  [OK] Nenhum alerta nas verificacoes executadas; nao equivale a homologacao operacional.\n'
 		fi
 	} >> "$_log_file" 2>/dev/null || true
 
@@ -2303,7 +2424,7 @@ ark_doctor_audit() {
 	else
 		printf '============================================================\n'
 		if [ "$errors" -eq 0 ] && [ "$warnings" -eq 0 ]; then
-			printf '\033[1;32mSTATUS: SISTEMA 100%s SAUDAVEL E OTIMIZADO!\033[0m\n' '%'
+			printf '\033[1;32mSTATUS: NENHUM ALERTA NAS VERIFICACOES EXECUTADAS\033[0m\n'
 		elif [ "$errors" -eq 0 ]; then
 			printf '\033[1;33mSTATUS: SISTEMA OPERACIONAL (%s avisos informativos)\033[0m\n' "$warnings"
 		else
@@ -2339,6 +2460,13 @@ doctor_get_log() {
 	fi
 }
 
+doctor_release_lock() {
+	local owner_pid="$(cat "${_lock_path}/pid" 2>/dev/null)"
+	[ "$owner_pid" = "$$" ] || return 0
+	rm -f "${_lock_path}/pid"
+	rmdir "$_lock_path" 2>/dev/null || true
+}
+
 handle_doctor() {
 	_auto_fix=0
 	_format="text"
@@ -2367,50 +2495,57 @@ handle_doctor() {
 		case "$_arg" in
 			--fix|fix|fix=1) _auto_fix=1 ;;
 			--json|format=json|json) _format="json" ;;
-			--auto|auto) _is_auto=1 ; _auto_fix=1 ;;
+			--auto|auto) _is_auto=1 ;;
 		esac
 	done
 
 	if [ "$_is_auto" = 1 ]; then
-		# Toggle UCI check for auto-heal
+		# Eventos/cron observam. Nem --auto --fix autoriza reparos de rede.
+		_auto_fix=0
+		# Chave legada preservada: controla o agendamento de diagnóstico.
 		local _enabled="$(uci ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} -q get equipe_dashboard.doctor.auto_heal || echo 1)"
 		[ "$_enabled" = "1" ] || return 0
 	fi
+	# O endpoint de leitura não pode virar mutação por argumento adicional.
+	case "$1" in doctor-run|run) _auto_fix=0 ;; esac
 
 	local _lock_dir="${ARK_LOCK_DIR:-${ARK_ROOT}/tmp}"
 	[ -d "$_lock_dir" ] || _lock_dir="/tmp"
 	local _lock_path="${_lock_dir}/ark-doctor.lockdir"
 
-	# Limpa eventual processo 'lock' legado orfao de versoes anteriores
-	if [ -e "${_lock_dir}/ark-doctor.lock" ] && command -v lock >/dev/null 2>&1; then
-		lock -u "${_lock_dir}/ark-doctor.lock" >/dev/null 2>&1 || true
-		rm -f "${_lock_dir}/ark-doctor.lock" 2>/dev/null || true
-	fi
-
-	# Lock atomico via mkdir + validacao de PID ativo (nunca faz fork em background nem retem pipes stdout)
-	if ! mkdir "$_lock_path" 2>/dev/null; then
-		local _old_pid="$(cat "$_lock_path/pid" 2>/dev/null || echo '')"
-		if [ -z "$_old_pid" ] || ! kill -0 "$_old_pid" 2>/dev/null; then
-			rm -rf "$_lock_path" 2>/dev/null || true
-		elif [ "$_is_auto" = 0 ]; then
-			local _w=0
-			while [ "$_w" -lt 8 ] && [ -d "$_lock_path" ]; do
-				sleep 1
-				_w=$((_w + 1))
-			done
-		fi
-		if ! mkdir "$_lock_path" 2>/dev/null; then
-			if [ "$_is_auto" = 0 ] && [ "$_format" = "json" ] && [ -s "${ARK_ROOT}/tmp/ark-doctor-last.json" ]; then
-				cat "${ARK_ROOT}/tmp/ark-doctor-last.json"
+	local _w=0
+	while ! ark_try_lock_dir "$_lock_path"; do
+		[ "$_is_auto" = 1 ] && return 0
+		if [ "$_w" -ge 8 ]; then
+			if [ "$_format" = json ]; then
+				printf '%s\n' '{"status":"WARN","busy":true,"timestamp":0,"errors":0,"warnings":1,"fixes_applied":0,"checks":[{"name":"Auditoria em andamento","status":"WARN","message":"Aguarde a auditoria atual; nenhuma nova verificacao foi executada."}]}'
+			else
+				printf '%s\n' 'Auditoria ocupada; nenhuma nova verificacao foi executada.'
 			fi
 			return 0
 		fi
+		sleep 1
+		_w=$((_w + 1))
+	done
+	trap 'doctor_release_lock; [ "${_ark_has_mut_lock:-0}" = 1 ] && ark_release_mutation_lock' EXIT
+	trap 'doctor_release_lock; [ "${_ark_has_mut_lock:-0}" = 1 ] && ark_release_mutation_lock; exit 130' INT TERM HUP
+
+	# Coalescer também eventos sequenciais; timestamp futuro nunca bloqueia.
+	local _auto_stamp="${_lock_dir}/ark-doctor-auto.ts" _now _last
+	if [ "$_is_auto" = 1 ]; then
+		_now="$(date +%s)"
+		_last="$(cat "$_auto_stamp" 2>/dev/null)"
+		case "$_last" in ''|*[!0-9]*) _last=0 ;; esac
+		if [ "$_last" -le "$_now" ] && [ $((_now - _last)) -lt 60 ]; then
+			doctor_release_lock
+			ark_restore_mutation_trap
+			return 0
+		fi
 	fi
-	printf '%s\n' "$$" > "$_lock_path/pid" 2>/dev/null || true
-	trap "rm -rf '$_lock_path' 2>/dev/null || true; [ \"\${_ark_has_mut_lock:-0}\" = \"1\" ] && command -v ark_release_mutation_lock >/dev/null 2>&1 && ark_release_mutation_lock" EXIT INT TERM
 
 	if [ "$_is_auto" = 1 ]; then
 		ark_doctor_audit "$_auto_fix" "$_format" >/dev/null 2>&1
+		printf '%s\n' "$_now" > "$_auto_stamp"
 	else
 		ark_doctor_audit "$_auto_fix" "$_format"
 	fi
@@ -2422,11 +2557,11 @@ handle_doctor() {
 		      "${ARK_ROOT}/tmp/ark-hw-info-cache.ts" "${ARK_ROOT}/tmp/ark-perf-status-cache.ts" 2>/dev/null || true
 	fi
 
-	rm -rf "$_lock_path" 2>/dev/null || true
+	doctor_release_lock
 	if command -v ark_restore_mutation_trap >/dev/null 2>&1; then
 		ark_restore_mutation_trap
 	else
-		trap - EXIT INT TERM
+		trap - EXIT INT TERM HUP
 	fi
 }
 

@@ -1,0 +1,83 @@
+{
+  "date": "2026-11-05",
+  "head": "a5ab48c279649e4f6f9fdb85687cb5127bd373f2",
+  "declared_version": "2.2.1",
+  "revision": "working tree with preexisting QoS changes; not committed or released",
+  "baseline": {
+    "unit_tests": 124,
+    "runner_exit": 0
+  },
+  "local_validation": {
+    "command": "bash tests/run_local_tests.sh",
+    "exit_code": 0,
+    "unit_tests": 155,
+    "suites": {
+      "WAN": 35,
+      "SQM reliability": 28,
+      "QoS resources": 20,
+      "QoS ingress": 6,
+      "QoS package deps": 7,
+      "Multicore": 11,
+      "Doctor safety": 22,
+      "Firewall engine": 7,
+      "Lite/full": 4,
+      "Documentation generator": 2,
+      "Interference": 13
+    },
+    "contracts": 74,
+    "negative_contract_checks": 7,
+    "gates": [
+      "shell syntax/collision",
+      "JS syntax",
+      "bundle synchronization",
+      "state preservation strict",
+      "i18n strict",
+      "docs strict",
+      "CODE_MAP check",
+      "minification"
+    ],
+    "evidence": "local sandbox/mocks; not native OpenWrt"
+  },
+  "browser": {
+    "artifact": "browser-fixture.json",
+    "viewports": [
+      360,
+      1280
+    ],
+    "production_frontend_modified": false,
+    "scope": "original toggleFeatureState in Chromium with mocked RPC and DOM shell"
+  },
+  "virtualbox": {
+    "command": "VBoxManage list vms",
+    "exit_code": 126,
+    "reason": "wrapper exists but VirtualBox.app executable is absent",
+    "native_tests_executed": false
+  },
+  "physical_router": {
+    "accessed": false,
+    "deployed": false
+  },
+  "known_open_reproduction": "dns-restore-reproduction.json",
+  "source_sha256": {
+    "root/usr/lib/ark/common.sh": "fec5f7c881dff4663e1c1ff41b24b345ed6909abb597b1f27e83b11724266c16",
+    "root/usr/lib/ark/modules/doctor.sh": "04167570dc782686f9c98714ee11104b3eda40577c40409c3092df9097ae2a0f",
+    "root/usr/lib/ark/modules/ezsetup.sh": "1c9dd911f2c3347b0695d28768fdf1ab54bb7a38db9861e23c118d3575d50542",
+    "root/usr/sbin/equipe-dashboard-control": "39772176fa0c43ad8651f9446b222c7e23b57ddc89791beee3be92ebffc4d9d4",
+    "root/usr/sbin/ark-web-watchdog": "fcc071142eabead84c8ad457a7df62567f366fffb163ec202d1742e712a6e0ff",
+    "root/etc/init.d/ark-firewall-guard": "4f8ddc1a194d82879e167ad7ad3cf4b775409ebd629204844d4e51b9d5e8f9ee",
+    "root/etc/uci-defaults/99-ark-router-doctor": "6ec44bc98722321af5d99d5a806387cee936d1848f872b2aa4e2a8f1d31b5b8d",
+    "root/etc/hotplug.d/iface/99-ark-doctor": "096ca9904f90a16c33d2d4b067e22fe98ed89046dc4356ac0673a9e7439133ae",
+    "root/etc/hotplug.d/net/99-ark-doctor": "e08b19ed2447bd90553c35616f8c52211dd73fb8df529d2367e505fc7429bfad",
+    "root/etc/hotplug.d/firewall/99-ark-doctor": "a72ef4be4846fc75f030a4ba4595812ac57ae367a5d537b732e5380e6cea99aa",
+    "root/usr/share/rpcd/acl.d/luci-app-equipe-dashboard.json": "6315356a86984725a3258769bb72e0b6ce96f769aaaf0b34629b79c3164b6a08",
+    "tests/test_doctor_safety.py": "e1e7a8ff3cb753fffac49d68f1a80896ecb52ba278b46e5536ff7cb02556f036",
+    "tests/test_audit_documentation.py": "34bb93491c20ba10b16c2d44e2b134b7ad7293a752d25c373e344d576b14a2f9",
+    "tests/run_local_tests.sh": "4bae03d3f7afdf86a847f1a310091e596318154821f4d60c1cd384cc7c077ac9",
+    "tests/feature_contracts.yaml": "5cc06234b76faead5dee166d3b14bf920ce63787cfdee7390464de38b2b840a2",
+    "scripts/generate_code_map.py": "92c5b222b41e6c8ac97335b3839e382638c178348c43dfe5df24cf1449fe0111",
+    "scripts/generate_feature_audit_md.py": "01519327797866305378d90bb4b11c3f936a36f9a9aa9ea937d981fb73cc3914",
+    "scripts/audit_docs.py": "7affd5b9fc6723453a5f9bc97a9f847f35385a49525af0ec4c9084fd34aa762e",
+    "scripts/audit_markdown_inventory.py": "6b4df73c40fc2677b64abe0ce0d5de84ecedd58b5c4e166153e0c42a24bd5f1b",
+    "tests/capture_feature_toggle_fixture.py": "5a1b46a4404c7bcd7a33d3dbc7edc4e977089efacd40e31e7bca617ae7bd8527"
+  }
+}

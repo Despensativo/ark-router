@@ -1,0 +1,33 @@
+{
+  "captured_at": "2026-11-06T01:29:19.474062-03:00",
+  "target": "W6x 73.1",
+  "board": "acer,predator-w6x-stock",
+  "same_boot_as_027": true,
+  "dmesg_counts": {
+    "panic": 0,
+    "oops": 0,
+    "oom_kills": 0
+  },
+  "sqm_selected": [
+    {
+      "type": "queue",
+      "interface": "pppoe-wan",
+      "qdisc": "fq_codel",
+      "script": "ark_hfsc_fqcodel.qos",
+      "enabled": "1",
+      "download": "720000",
+      "upload": "700000"
+    },
+    {
+      "type": "queue",
+      "interface": "wan2",
+      "qdisc": "cake",
+      "script": "layer_cake.qos",
+      "enabled": "0"
+    },
+    {
+      "type": "state"
+    }
+  ],
+  "router_changes_in_028": false
+}

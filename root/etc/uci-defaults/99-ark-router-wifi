@@ -106,8 +106,8 @@ if [ -n "$radio2" ]; then
 		mode="$(uci -q get wireless.$iface.mode || echo ap)"
 		if [ "$mode" = "ap" ]; then
 			uci -q set wireless.$iface.disassoc_low_ack='0'
-			uci -q set wireless.$iface.dtim_period='2'
-			uci -q set wireless.$iface.multicast_to_unicast='1'
+			uci -q set wireless.$iface.dtim_period='1'
+			uci -q set wireless.$iface.multicast_to_unicast='0'
 		fi
 	done
 	changed=1

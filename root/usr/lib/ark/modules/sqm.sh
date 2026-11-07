@@ -33,14 +33,9 @@ ark_has_auto_dscp() {
 }
 
 ark_has_ctinfo() {
-	if [ -f "${ARK_ROOT:-}/sys/kernel/debug/ctinfo_capable" ] || [ -f "/sys/kernel/debug/ctinfo_capable" ]; then
-		return 0
-	fi
-	if [ -z "${ARK_ROOT:-}" ]; then
-		grep -qw "act_ctinfo" /proc/modules 2>/dev/null && return 0
-		[ -f "/lib/modules/$(uname -r 2>/dev/null)/act_ctinfo.ko" ] && return 0
-	fi
-	return 1
+	. "${ARK_LIB_DIR}/qos-resources.sh" || return 1
+	[ ! -f "${ARK_ROOT:-}/sys/kernel/debug/ctinfo_capable" ] || return 0
+	ark_qos_module_present act_ctinfo
 }
 
 ark_has_l4s_dscp() {
@@ -64,45 +59,53 @@ ark_apply_ingress_voice_tin_filters() {
 	cake_handle="$(tc qdisc show dev "$ifb_dev" 2>/dev/null | awk '/qdisc cake/ {print $3; exit}')"
 	[ -n "$cake_handle" ] || return 0
 
-	[ -f "/lib/modules/$(uname -r 2>/dev/null)/act_skbedit.ko" ] && modprobe act_skbedit 2>/dev/null || true
-	# NUNCA remover pref 10: o /usr/lib/sqm/layer_cake.qos (e piece_of_cake.qos) instala o filtro
-	# 'prio 10 u32 match u32 0 0 flowid 1:1 action mirred egress redirect dev ifb4*' exatamente em pref 10!
-	for p in 1 2 3 4 5 6 7 8 9; do
-		tc filter del dev "$iface" parent ffff: pref "$p" 2>/dev/null || true
-	done
-	# 1. Default all incoming WAN packets to CAKE Best Effort Tin (${cake_handle}2, 100% bandwidth)
-	# so untrusted ISP/CDN DSCP markings (CS1/AF3x/AF4x/CS4 on bulk downloads) never poison Bulk/Video/Voice tins
-	# before nftables prerouting washes them.
-	tc filter add dev "$iface" parent ffff: protocol all pref 1 u32 match u32 0 0 action skbedit priority "${cake_handle}2" continue 2>/dev/null || true
-	# 2. Promote incoming ICMP, ICMPv6, TCP SYN (<=128B), DNS/NTP replies (<=511B), L4S ECT(1) UDP (<=511B),
-	# and small UDP Gaming/VoIP/WebRTC probes (<=256B, 0x0000 0xff00) into CAKE Voice Tin (${cake_handle}4).
-	tc filter add dev "$iface" parent ffff: protocol ip pref 2 u32 match ip protocol 1 0xff match u16 0x0000 0xfe00 at 2 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ip pref 2 u32 match ip protocol 6 0xff match u16 0x0000 0xff80 at 2 match u8 0x02 0x02 at 33 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ip pref 2 u32 match ip protocol 17 0xff match u16 0x0000 0xfe00 at 2 match ip sport 53 0xffff action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ip pref 2 u32 match ip protocol 17 0xff match u16 0x0000 0xfe00 at 2 match ip sport 123 0xffff action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ip pref 2 u32 match ip protocol 17 0xff match u8 0x01 0x03 at 1 match u16 0x0000 0xfe00 at 2 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ip pref 2 u32 match ip protocol 17 0xff match u16 0x0000 0xff00 at 2 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 3 u32 match ip6 protocol 58 0xff match u16 0x0000 0xfe00 at 4 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 3 u32 match ip6 protocol 6 0xff match u16 0x0000 0xff80 at 4 match u8 0x02 0x02 at 53 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 3 u32 match ip6 protocol 17 0xff match u16 0x0010 0x0030 at 0 match u16 0x0000 0xfe00 at 4 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 3 u32 match ip6 protocol 17 0xff match u16 0x0000 0xff00 at 4 action skbedit priority "${cake_handle}4" continue 2>/dev/null || true
-	# 3. Restore bidirectional Conntrack DSCP (0x80 valid bit | 6-bit DSCP in ct mark lower byte) only for <= 511B packets before prio 10 IFB redirect
-	if ark_has_ctinfo; then
-		[ -f "/lib/modules/$(uname -r 2>/dev/null)/act_ctinfo.ko" ] && modprobe act_ctinfo 2>/dev/null || true
-		tc filter add dev "$iface" parent ffff: protocol ip pref 4 u32 match u16 0x0000 0xfe00 at 2 action ctinfo dscp 0x0000003f 0x00000080 continue 2>/dev/null || true
-		tc filter add dev "$iface" parent ffff: protocol ipv6 pref 5 u32 match u16 0x0000 0xfe00 at 4 action ctinfo dscp 0x0000003f 0x00000080 continue 2>/dev/null || true
-	fi
-	# 4. Keep all QUIC / HTTP3 (UDP port 443) packets strictly in Best Effort Tin (${cake_handle}2) to prevent intra-flow reordering
-	tc filter add dev "$iface" parent ffff: protocol ip pref 6 u32 match ip protocol 17 0xff match ip sport 443 0xffff action skbedit priority "${cake_handle}2" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ip pref 6 u32 match ip protocol 17 0xff match ip dport 443 0xffff action skbedit priority "${cake_handle}2" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 7 u32 match ip6 protocol 17 0xff match u16 0x01bb 0xffff at 40 action skbedit priority "${cake_handle}2" continue 2>/dev/null || true
-	tc filter add dev "$iface" parent ffff: protocol ipv6 pref 7 u32 match ip6 protocol 17 0xff match u16 0x01bb 0xffff at 42 action skbedit priority "${cake_handle}2" continue 2>/dev/null || true
+	. "${ARK_LIB_DIR}/qos-ingress.sh" || return 1
+	ark_qos_ingress_policy "$iface" "${cake_handle}2" tc || return 1
 	# Autocura do redirecionamento prio 10 (mirred egress redirect dev ifb4*) caso tenha sido removido ou sobrescrito
 	if ! tc filter show dev "$iface" parent ffff: 2>/dev/null | grep -q "mirred.*$ifb_dev"; then
 		tc filter del dev "$iface" parent ffff: pref 10 2>/dev/null || true
 		tc filter del dev "$iface" parent ffff: pref 11 2>/dev/null || true
 		tc filter add dev "$iface" parent ffff: protocol all prio 10 u32 \
 			match u32 0 0 flowid 1:1 action mirred egress redirect dev "$ifb_dev" 2>/dev/null || true
+	fi
+}
+
+ark_sync_sqm_gaming_dns() {
+	local doh_pref doh_running=0 dnsmasq_restart=0
+	doh_pref="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.dns_doh_enabled || echo 0)"
+	[ -x "${ARK_ROOT:-}/etc/init.d/https-dns-proxy" ] && pgrep -f https-dns-proxy >/dev/null 2>&1 && doh_running=1
+
+	# Se QoS/Gaming estiver ativo, desativa Dual-DoH para eliminar 60-70ms de overhead TLS e garantir ping DNS < 5ms
+	if [ "$doh_pref" = "1" ] || [ "$doh_running" = "1" ] || uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get dhcp.@dnsmasq[0].server 2>/dev/null | grep -q '5053'; then
+		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set equipe_perf.settings=performance
+		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set equipe_perf.settings.dns_doh_enabled='0'
+		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} commit equipe_perf 2>/dev/null || true
+
+		if command -v ark_sync_doh_proxy >/dev/null 2>&1; then
+			ark_sync_doh_proxy "disable" >/dev/null 2>&1 || true
+		fi
+		if [ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/https-dns-proxy ]; then
+			/etc/init.d/https-dns-proxy stop >/dev/null 2>&1 || true
+			/etc/init.d/https-dns-proxy disable >/dev/null 2>&1 || true
+		fi
+
+		# Restaura Anycast de ultra-baixa latencia direto no dnsmasq (Cloudflare + Google IPv4/IPv6)
+		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} delete dhcp.@dnsmasq[0].server 2>/dev/null || true
+		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='1.1.1.1'
+		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='1.0.0.1'
+		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='2606:4700:4700::1111'
+		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='8.8.8.8'
+		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} add_list dhcp.@dnsmasq[0].server='2001:4860:4860::8888'
+		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set dhcp.@dnsmasq[0].noresolv='0'
+		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set dhcp.@dnsmasq[0].allservers='1'
+		uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} commit dhcp 2>/dev/null || true
+
+		dnsmasq_restart=1
+		logger -t ark-sqm "QoS/Gaming ativo: Dual-DoH desativado e Anycast direto (< 5 ms) configurado no dnsmasq."
+	fi
+
+	if [ "$dnsmasq_restart" = "1" ] && [ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/dnsmasq ]; then
+		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 	fi
 }
 
@@ -153,6 +156,8 @@ ark_promote_cake_mq() {
 		return 0
 	fi
 
+	ark_sync_sqm_gaming_dns
+
 	local sec enabled qdisc iface upload linklayer overhead mpu eq_opts tx1_dir promoted=0
 	for sec in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\([^.=]*\)=queue$/\1/p'); do
 		enabled="$(uci -q get "sqm.$sec.enabled" || echo 0)"
@@ -172,7 +177,7 @@ ark_promote_cake_mq() {
 			tc qdisc change dev "$iface" root cake no-split-gso 2>/dev/null || true
 			tc qdisc change dev "ifb4${iface}" root cake no-split-gso 2>/dev/null || true
 		fi
-		ark_apply_ingress_voice_tin_filters "$iface"
+		ark_apply_ingress_voice_tin_filters "$iface" || return 1
 		ark_has_cake_mq || continue
 		upload="$(uci -q get "sqm.$sec.upload" || echo 0)"
 		[ "$upload" -gt 0 ] 2>/dev/null || continue
@@ -318,14 +323,16 @@ ark_sync_gaming_ports_and_bql() {
 table inet fw4 {
 	chain ark_gaming_ports {
 		type filter hook prerouting priority mangle - 4; policy accept;
-		iifname { "br-*", "lan*", "phy*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 5060-5062, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10100, 12000-12999, 14000-14016, 17000-17100, 19132-19133, 25565, 27000-27100, 47998-48010, 49003-49006, 50000-50100, 61455-61458 } meta length <= 512 ip dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games UDP IPv4 Priority"
-		iifname { "br-*", "lan*", "phy*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 5060-5062, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10100, 12000-12999, 14000-14016, 17000-17100, 19132-19133, 25565, 27000-27100, 47998-48010, 49003-49006, 50000-50100, 61455-61458 } meta length <= 512 ip6 dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games UDP IPv6 Priority"
-		iifname { "br-*", "lan*", "phy*" } tcp dport { 3074, 3659, 5222-5223, 6112-6120, 8088, 8393-8400, 19132, 25565, 27014-27050 } meta length <= 512 ip dscp set cs4 comment "ARK: BufferSpeed 80+ Games TCP Control IPv4"
-		iifname { "br-*", "lan*", "phy*" } tcp dport { 3074, 3659, 5222-5223, 6112-6120, 8088, 8393-8400, 19132, 25565, 27014-27050 } meta length <= 512 ip6 dscp set cs4 comment "ARK: BufferSpeed 80+ Games TCP Control IPv6"
+		iifname { "br-*", "lan*", "phy*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 5060-5062, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10612, 11000-11500, 12000-14100, 17000-17500, 19132-19133, 20000-60000, 61455-61458 } ip dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games UDP IPv4 Priority"
+		iifname { "br-*", "lan*", "phy*" } udp dport { 88, 500, 1119, 3074-3079, 3544, 3658-3659, 4379-4380, 4500, 5000-5500, 5060-5062, 6000-6190, 6672, 7000-8100, 9000-9100, 9295-9308, 9987, 10000-10612, 11000-11500, 12000-14100, 17000-17500, 19132-19133, 20000-60000, 61455-61458 } ip6 dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games UDP IPv6 Priority"
+		iifname { "br-*", "lan*", "phy*" } udp dport != { 53, 67, 68, 80, 123, 443, 546, 547, 853, 1900, 3478-3497, 5349, 5353, 6881-6889, 8801-8810, 51413 } ip dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: Universal Dynamic Relay UDP Gaming IPv4 Priority"
+		iifname { "br-*", "lan*", "phy*" } udp dport != { 53, 67, 68, 80, 123, 443, 546, 547, 853, 1900, 3478-3497, 5349, 5353, 6881-6889, 8801-8810, 51413 } ip6 dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: Universal Dynamic Relay UDP Gaming IPv6 Priority"
+		iifname { "br-*", "lan*", "phy*" } tcp dport { 3074, 3659, 5222-5223, 6112-6120, 7889, 8013, 8088, 8393-8400, 10000-10500, 11920, 13004, 14000, 15692, 17000, 17500, 18081, 19132, 20000-20400, 25565, 27014-27050 } meta length <= 512 ip dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games TCP Control IPv4"
+		iifname { "br-*", "lan*", "phy*" } tcp dport { 3074, 3659, 5222-5223, 6112-6120, 7889, 8013, 8088, 8393-8400, 10000-10500, 11920, 13004, 14000, 15692, 17000, 17500, 18081, 19132, 20000-20400, 25565, 27014-27050 } meta length <= 512 ip6 dscp set cs4 ct mark set (ct mark & 0xffffff00) | 0x000000a0 comment "ARK: BufferSpeed 80+ Games TCP Control IPv6"
 	}
 	chain ark_gaming_forward {
 		type filter hook forward priority filter - 5; policy accept;
-		meta l4proto udp ct mark & 0x000000ff == 0x000000a0 ct state { related, established } accept comment "ARK: Gaming Open NAT UDP Fast-Return"
+		meta l4proto { tcp, udp } ct mark & 0x000000ff == 0x000000a0 ct state { related, established } accept comment "ARK: Gaming Open NAT Fast-Return"
 	}
 }
 EOF
@@ -335,8 +342,13 @@ EOF
 				iptables -t mangle -C PREROUTING -j ARK_GAMING_PORTS 2>/dev/null || iptables -t mangle -A PREROUTING -j ARK_GAMING_PORTS 2>/dev/null || true
 				iptables -t mangle -A ARK_GAMING_PORTS -p udp -m multiport --dports 88,500,3074:3079,3544,3658:3659,4379:4380,4500,5000:5500,7000:8100,27000:27100 -m length --length 0:512 -j DSCP --set-dscp-class CS4 2>/dev/null || true
 			fi
-			sysctl -w net.netfilter.nf_conntrack_udp_timeout=45 >/dev/null 2>&1 || true
-			sysctl -w net.netfilter.nf_conntrack_udp_timeout_stream=180 >/dev/null 2>&1 || true
+			sysctl -w net.netfilter.nf_conntrack_udp_timeout=60 >/dev/null 2>&1 || true
+			sysctl -w net.netfilter.nf_conntrack_udp_timeout_stream=240 >/dev/null 2>&1 || true
+			if [ "$(uci -q get nlbwmon.@nlbwmon[0].refresh_interval 2>/dev/null)" = "30s" ]; then
+				uci -q set nlbwmon.@nlbwmon[0].refresh_interval='5m'
+				uci commit nlbwmon 2>/dev/null || true
+				[ -x /etc/init.d/nlbwmon ] && /etc/init.d/nlbwmon restart >/dev/null 2>&1 || true
+			fi
 		fi
 		printf 'active\n' > "$gp_state" 2>/dev/null || true
 	else
@@ -488,10 +500,10 @@ sqm_apply_upload_only() {
 	uci -q set "sqm.$sec.enabled=1"
 	uci -q set "sqm.$sec.download=0"
 	uci -q set "sqm.$sec.upload=$up_kbps"
-	uci commit sqm
-	/etc/init.d/sqm enable >/dev/null 2>&1 || true
-	/etc/init.d/sqm restart >/dev/null 2>&1 || true
-	sync_sqm_flow_offload
+	uci commit sqm || return 1
+	"${ARK_ROOT:-}/etc/init.d/sqm" enable >/dev/null 2>&1 || return 1
+	ark_sqm_restart_checked >/dev/null 2>&1 || return 1
+	sync_sqm_flow_offload || return 1
 	ark_promote_cake_mq
 	echo 'ok'
 }
@@ -597,7 +609,7 @@ ensure_sqm_section() {
 			cur_eq="$cur_eq memlimit $mlim"
 			eq_changed=1
 		elif ! printf '%s' "$cur_eq" | grep -q "memlimit $mlim"; then
-			cur_eq="$(printf '%s' "$cur_eq" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $mlim/g")"
+			cur_eq="$(printf '%s' "$cur_eq" | sed "s/memlimit [0-9][0-9]*[kKmMgGbB]*/memlimit $mlim/g")"
 			eq_changed=1
 		fi
 		[ "$eq_changed" = "1" ] && uci -q set "sqm.$section.eqdisc_opts=$cur_eq"
@@ -644,7 +656,7 @@ ensure_sqm_section() {
 			cur_iq="$cur_iq memlimit $mlim"
 			iq_changed=1
 		elif ! printf '%s' "$cur_iq" | grep -q "memlimit $mlim"; then
-			cur_iq="$(printf '%s' "$cur_iq" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $mlim/g")"
+			cur_iq="$(printf '%s' "$cur_iq" | sed "s/memlimit [0-9][0-9]*[kKmMgGbB]*/memlimit $mlim/g")"
 			iq_changed=1
 		fi
 		[ "$iq_changed" = "1" ] && uci -q set "sqm.$section.iqdisc_opts=$cur_iq"
@@ -707,66 +719,116 @@ apply_guest_tc_limit() {
 	echo "guest-limit-applied dev=$dev download=${download}kbit upload=${upload}kbit"
 }
 
-sync_sqm_flow_offload() {
-	local w ecm_dir
-	local sqm_active=0
-	ecm_dir="${ARK_ROOT:-}/sys/kernel/debug/ecm"
-	[ -d "$ecm_dir" ] || ecm_dir="/sys/kernel/debug/ecm"
-	if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
-		sqm_active=1
+ark_sqm_save_offload_state() {
+	local opt val stop_file snapshot_changed=0
+	if [ "$(uci -q get sqm.ark_offload_snapshot)" = "state" ]; then
+		[ "$(uci -q get sqm.ark_offload_snapshot.ready)" = "1" ] || return 1
+		for opt in flow_offloading flow_offloading_hw ecm_ipv4 ecm_ipv6; do
+			val="$(uci -q get "sqm.ark_offload_snapshot.saved_$opt")"
+			case "$val" in 0|1|__unset__) ;; *) return 1 ;; esac
+			case "$opt:$val" in
+				ecm_*:__unset__)
+					# ECM pode carregar depois do primeiro snapshot; salvar antes da primeira escrita.
+					stop_file="${ARK_ROOT:-}/sys/kernel/debug/ecm/front_end_${opt#ecm_}_stop"
+					if [ -f "$stop_file" ]; then
+						read -r val < "$stop_file" || return 1
+						case "$val" in 0|1) ;; *) return 1 ;; esac
+						uci -q set "sqm.ark_offload_snapshot.saved_$opt=$val" || return 1
+						snapshot_changed=1
+					fi
+					;;
+			esac
+		done
+		[ "$snapshot_changed" = "0" ] || uci commit sqm || return 1
+		return 0
 	fi
+	uci -q set sqm.ark_offload_snapshot=state || return 1
+	for opt in flow_offloading flow_offloading_hw; do
+		val="$(uci -q get "firewall.@defaults[0].$opt" || printf '__unset__')"
+		case "$val" in 0|1|__unset__) ;; *) return 1 ;; esac
+		uci -q set "sqm.ark_offload_snapshot.saved_$opt=$val" || return 1
+	done
+	for opt in ipv4 ipv6; do
+		stop_file="${ARK_ROOT:-}/sys/kernel/debug/ecm/front_end_${opt}_stop"
+		val=__unset__
+		[ ! -f "$stop_file" ] || read -r val < "$stop_file"
+		case "$val" in 0|1|__unset__) ;; *) return 1 ;; esac
+		uci -q set "sqm.ark_offload_snapshot.saved_ecm_$opt=$val" || return 1
+	done
+	uci -q set sqm.ark_offload_snapshot.ready=1 || return 1
+	uci commit sqm || return 1
+}
 
+sync_sqm_flow_offload() {
+	local w opt current target saved=0 changed=0 sqm_active=0 user_disabled=0 mwan_count=0
+	local ecm_dir="${ARK_ROOT:-}/sys/kernel/debug/ecm" stop_file
+	local firewall_init="${ARK_ROOT:-}/etc/init.d/firewall"
+	local mwan_init="${ARK_ROOT:-}/etc/init.d/mwan3"
+	uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'" && sqm_active=1
+	[ "$(uci -q get equipe_perf.settings.flow_offload_user_disabled)" != "1" ] || user_disabled=1
+	[ "$(uci -q get sqm.ark_offload_snapshot)" != "state" ] || saved=1
 	if [ "$sqm_active" = "1" ]; then
-		# Trava de exclusao mutua: se SQM/CAKE esta ativo, desativa Fastpath/Flow Offloading no firewall
-		if [ "$(uci -q get firewall.@defaults[0].flow_offloading || echo 0)" = "1" ] || \
-		   [ "$(uci -q get firewall.@defaults[0].flow_offloading_hw || echo 0)" = "1" ]; then
-			uci -q set firewall.@defaults[0].flow_offloading=0
-			uci -q set firewall.@defaults[0].flow_offloading_hw=0
-			uci commit firewall 2>/dev/null || true
-			if [ -z "${ARK_ROOT:-}" ] && command -v nft >/dev/null 2>&1; then
-				nft delete flowtable inet fw4 ft 2>/dev/null || true
-			fi
-			/etc/init.d/firewall reload >/dev/null 2>&1 || true
-			[ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune reload >/dev/null 2>&1 || true
-		elif [ -z "${ARK_ROOT:-}" ] && command -v nft >/dev/null 2>&1 && nft list flowtables 2>/dev/null | grep -q 'flowtable ft'; then
-			nft delete flowtable inet fw4 ft 2>/dev/null || true
-			/etc/init.d/firewall reload >/dev/null 2>&1 || true
-			[ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune reload >/dev/null 2>&1 || true
-		fi
-		# Coordenacao Qualcomm QSDK ECM (qca-nss-ecm): impede sequestro do fluxo TCP apos ~25 pacotes em PPPoE + IFB
-		if [ -d "$ecm_dir" ]; then
-			[ -f "$ecm_dir/front_end_ipv4_stop" ] && echo 1 > "$ecm_dir/front_end_ipv4_stop" 2>/dev/null || true
-			[ -f "$ecm_dir/front_end_ipv6_stop" ] && echo 1 > "$ecm_dir/front_end_ipv6_stop" 2>/dev/null || true
-			[ -f "$ecm_dir/ecm_db/defunct_all" ] && echo 1 > "$ecm_dir/ecm_db/defunct_all" 2>/dev/null || true
-		fi
-		ark_sync_lan_selective_offload
-	else
-		# SQM desativado: verifica se Multi-WAN esta REALMENTE ativo no sistema operacional
-		local mwan_count=0
-		if [ -f /etc/config/mwan3 ] && [ -x /etc/init.d/mwan3 ] && /etc/init.d/mwan3 enabled >/dev/null 2>&1; then
+		ark_sqm_save_offload_state || return 1
+	elif [ "$user_disabled" != "1" ]; then
+		# Sem histórico não inventa que o usuário desejava aceleração ligada.
+		[ "$saved" = "1" ] || return 0
+		ark_sqm_save_offload_state || return 1
+		if [ -f "${ARK_ROOT:-}/etc/config/mwan3" ] && [ -x "$mwan_init" ] && "$mwan_init" enabled >/dev/null 2>&1; then
 			for w in $(active_wan_networks); do
-				[ "$(uci -q get "mwan3.$w.enabled")" = "1" ] && mwan_count=$((mwan_count + 1))
+				[ "$(uci -q get "mwan3.$w.enabled")" != "1" ] || mwan_count=$((mwan_count + 1))
 			done
 		fi
+		# Mantém snapshot para restauração futura quando a restrição deixar de existir.
+		[ "$mwan_count" -lt 2 ] || return 0
+	fi
 
-		# Se Multi-WAN nao esta ativo (menos de 2 WANs), religa Fastpath e Hardware Offload (MediaTek PPE / Qualcomm NSS)
-		if [ "$mwan_count" -lt 2 ]; then
-			if [ "$(uci -q get firewall.@defaults[0].flow_offloading || echo 0)" = "0" ] || \
-			   [ "$(uci -q get firewall.@defaults[0].flow_offloading_hw || echo 0)" = "0" ]; then
-				uci -q set firewall.@defaults[0].flow_offloading=1
-				if [ -d /sys/kernel/debug/ppe0 ] || [ -d /sys/kernel/debug/ppe1 ] || [ -f /sys/kernel/debug/ppe/offload_stats ] || [ -d /sys/devices/platform/soc/*ppe* ]; then
-					uci -q set firewall.@defaults[0].flow_offloading_hw=1
-				fi
-				uci commit firewall 2>/dev/null || true
-				/etc/init.d/firewall reload >/dev/null 2>&1 || true
-				[ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/ark-hardware-tune ] && /etc/init.d/ark-hardware-tune reload >/dev/null 2>&1 || true
-			fi
-			if [ -d "$ecm_dir" ]; then
-				[ -f "$ecm_dir/front_end_ipv4_stop" ] && echo 0 > "$ecm_dir/front_end_ipv4_stop" 2>/dev/null || true
-				[ -f "$ecm_dir/front_end_ipv6_stop" ] && echo 0 > "$ecm_dir/front_end_ipv6_stop" 2>/dev/null || true
-			fi
+	for opt in flow_offloading flow_offloading_hw; do
+		target=0
+		if [ "$sqm_active" = "0" ] && [ "$user_disabled" = "0" ]; then
+			target="$(uci -q get "sqm.ark_offload_snapshot.saved_$opt")"
+		fi
+		case "$target" in 0|1|__unset__) ;; *) echo 'Snapshot de offload invalido' >&2; return 1 ;; esac
+		current="$(uci -q get "firewall.@defaults[0].$opt" || printf '__unset__')"
+		[ "$current" != "$target" ] || continue
+		if [ "$target" = "__unset__" ]; then
+			uci -q delete "firewall.@defaults[0].$opt" || return 1
+		else
+			uci -q set "firewall.@defaults[0].$opt=$target" || return 1
+		fi
+		changed=1
+	done
+	if [ "$changed" = "1" ]; then
+		uci commit firewall || return 1
+		"$firewall_init" reload >/dev/null 2>&1 || return 1
+	fi
+	if [ "$sqm_active" = "1" ] && [ -z "${ARK_ROOT:-}" ] && is_fw4; then
+		if nft list flowtable inet fw4 ft >/dev/null 2>&1; then
+			nft delete flowtable inet fw4 ft 2>/dev/null || return 1
 		fi
 	fi
+	for opt in ipv4 ipv6; do
+		stop_file="$ecm_dir/front_end_${opt}_stop"
+		[ -f "$stop_file" ] || continue
+		target=1
+		if [ "$sqm_active" = "0" ] && [ "$user_disabled" = "0" ]; then
+			target="$(uci -q get "sqm.ark_offload_snapshot.saved_ecm_$opt")"
+		fi
+		case "$target" in
+			0|1) printf '%s\n' "$target" > "$stop_file" || return 1 ;;
+			__unset__) ;;
+			*) return 1 ;;
+		esac
+	done
+	if [ "$sqm_active" = "1" ]; then
+		if [ -f "$ecm_dir/ecm_db/defunct_all" ]; then
+			printf '1\n' > "$ecm_dir/ecm_db/defunct_all" || return 1
+		fi
+		ark_sync_lan_selective_offload
+	elif [ "$saved" = "1" ]; then
+		uci -q delete sqm.ark_offload_snapshot || return 1
+		uci commit sqm || return 1
+	fi
+	return 0
 }
 
 ark_sync_lan_selective_offload() {
@@ -790,17 +852,28 @@ ark_sync_lan_selective_offload() {
 ark_sqm_autorate_toggle() {
 	local state="${1:-0}"
 	case "$state" in 0|1) ;; *) echo 'Estado Autorate invalido' >&2; exit 2 ;; esac
-	uci -q set equipe_dashboard.settings=dashboard
-	uci -q set "equipe_dashboard.settings.sqm_autorate=$state"
-	uci commit equipe_dashboard 2>/dev/null || true
+	uci -q set equipe_dashboard.settings=dashboard || return 1
+	uci -q set "equipe_dashboard.settings.sqm_autorate=$state" || return 1
+	uci commit equipe_dashboard 2>/dev/null || return 1
 	if [ "$state" = "0" ]; then
-		rm -f "${ARK_ROOT:-}/tmp"/ark_autorate_*.state 2>/dev/null || true
+		local state_file
+		for state_file in "${ARK_ROOT:-}/tmp"/ark_autorate_*.state; do
+			[ -f "$state_file" ] || continue
+			# Restore configured rates before discarding the record of runtime changes.
+			ark_sqm_restart_checked || return 1
+			ark_promote_cake_mq || return 1
+			rm -f "${ARK_ROOT:-}/tmp"/ark_autorate_*.state || return 1
+			break
+		done
 	fi
 	echo ok
 }
 
 ark_sqm_autorate_step() {
 	local arg key val override_load="" override_delay="" thr_ms=15
+	[ "$(uci -q get equipe_dashboard.settings.sqm_autorate 2>/dev/null)" = "1" ] || {
+		echo 'Autorate desligado' >&2; return 1
+	}
 	for arg in "$@"; do
 		key="${arg%%=*}"
 		val="${arg#*=}"
@@ -809,6 +882,16 @@ ark_sqm_autorate_step() {
 			delay_ms) override_delay="$val" ;;
 		esac
 	done
+
+	# No collector is wired to this API: never invent a latency/load sample.
+	for val in "$override_load" "$override_delay"; do
+		case "$val" in
+			''|*[!0-9]*|0[0-9]*|????????*) echo 'Amostra Autorate invalida' >&2; return 2 ;;
+		esac
+	done
+	[ "$override_load" -le 100 ] && [ "$override_delay" -le 60000 ] || {
+		echo 'Amostra Autorate fora do intervalo' >&2; return 2
+	}
 
 	if [ "$(uci -q get equipe_dashboard.main.starlink_mode 2>/dev/null)" = "1" ] || \
 	   [ "$(uci -q get equipe_dashboard.settings.starlink_mode 2>/dev/null)" = "1" ]; then
@@ -848,10 +931,10 @@ ark_sqm_autorate_step() {
 		[ -n "$cur_dl" ] && [ "$cur_dl" -gt 0 ] 2>/dev/null || cur_dl="$base_dl"
 		[ -n "$cur_ul" ] && [ "$cur_ul" -gt 0 ] 2>/dev/null || cur_ul="$base_ul"
 
-		load_dl_pct="${override_load:-30}"
-		load_ul_pct="${override_load:-30}"
-		delay_dl_ms="${override_delay:-2}"
-		delay_ul_ms="${override_delay:-2}"
+		load_dl_pct="$override_load"
+		load_ul_pct="$override_load"
+		delay_dl_ms="$override_delay"
+		delay_ul_ms="$override_delay"
 
 		min_dl=$((base_dl * 35 / 100))
 		[ "$min_dl" -lt 1000 ] && [ "$base_dl" -ge 1000 ] && min_dl=1000
@@ -971,6 +1054,153 @@ ark_sqm_autorate_status() {
 		"$(bool "$enabled")" "$cur_dl" "$cur_ul" "$base_dl" "$base_ul" "$last_action" "$delay_ms" "$load_pct"
 }
 
+ark_sqm_verify_device() {
+	local dev="$1" kind="$2" dump classes id
+	dump="$(tc qdisc show dev "$dev" 2>/dev/null)" || return 1
+	printf '%s\n' "$dump" | grep -Eq "^qdisc $kind .* root( |$)" || {
+		echo "Raiz SQM ausente ou inesperada em $dev" >&2
+		return 1
+	}
+	if [ "$kind" = "hfsc" ]; then
+		for id in 10 20 30; do
+			printf '%s\n' "$dump" | grep -Eq "^qdisc fq_codel .* parent 1:$id( |$)" || {
+				echo "Folha FQ-CoDel ausente na classe 1:$id de $dev" >&2
+				return 1
+			}
+		done
+		classes="$(tc class show dev "$dev" 2>/dev/null)" || return 1
+		for id in 1 10 20 30; do
+			printf '%s\n' "$classes" | grep -Eq "^class hfsc 1:$id( |$)" || {
+				echo "Classe HFSC 1:$id ausente em $dev" >&2
+				return 1
+			}
+		done
+	fi
+	return 0
+}
+
+ark_sqm_verify_queues() {
+	local sec dev kind script rate redirect ifb
+	for sec in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\([^.=]*\)=queue$/\1/p'); do
+		[ "$(uci -q get "sqm.$sec.enabled")" = "1" ] || continue
+		dev="$(uci -q get "sqm.$sec.interface")"
+		script="$(uci -q get "sqm.$sec.script")"
+		case "$script" in
+			ark_hfsc_fqcodel.qos) kind=hfsc ;;
+			layer_cake.qos|piece_of_cake.qos) kind='(cake|cake_mq)' ;;
+			*) continue ;; # Scripts externos possuem seu próprio contrato de validação.
+		esac
+		rate="$(uci -q get "sqm.$sec.upload" || echo 0)"
+		if [ "$rate" -gt 0 ] 2>/dev/null; then
+			ark_sqm_verify_device "$dev" "$kind" || return 1
+		fi
+		rate="$(uci -q get "sqm.$sec.download" || echo 0)"
+		if [ "$rate" -gt 0 ] 2>/dev/null; then
+			redirect="$(tc filter show dev "$dev" parent ffff: 2>/dev/null)" || return 1
+			ifb="$(printf '%s\n' "$redirect" | awk '/mirred/ {for(i=1;i<NF;i++) if($i=="device") {v=$(i+1); sub(/\).*/, "", v); print v; exit}}')"
+			valid_net_device "$ifb" || { echo "Redirecionamento IFB ausente em $dev" >&2; return 1; }
+			ark_sqm_verify_device "$ifb" "$kind" || return 1
+		fi
+	done
+	return 0
+}
+
+ark_sqm_sync_memory_limits() {
+	local sec script engine option current updated limit changed=0
+	limit="$(ark_cake_memlimit)" || return 1
+	for sec in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\([^.=]*\)=queue$/\1/p'); do
+		[ "$(uci -q get "sqm.$sec.enabled")" = "1" ] || continue
+		engine="$(uci -q get "sqm.$sec.ark_engine" || true)"
+		[ "$engine" = "cake" ] || continue
+		script="$(uci -q get "sqm.$sec.script" || true)"
+		case "$script" in layer_cake.qos|piece_of_cake.qos) ;; *) continue ;; esac
+		for option in eqdisc_opts iqdisc_opts; do
+			current="$(uci -q get "sqm.$sec.$option" || true)"
+			if printf '%s\n' "$current" | awk -v wanted="$limit" '
+				{ for (i=1; i<=NF; i++) if ($i == "memlimit") { count++; if ($(i+1) == wanted) valid++; } }
+				END { exit !(count == 1 && valid == 1) }'; then
+				continue
+			fi
+			updated="$(printf '%s' "$current" | sed -E 's/(^|[[:space:]])memlimit[[:space:]]+[^[:space:]]+//g; s/[[:space:]]+$//')"
+			updated="${updated:+$updated }memlimit $limit"
+			uci -q set "sqm.$sec.$option=$updated" || return 1
+			changed=1
+		done
+	done
+	[ "$changed" = 0 ] || uci commit sqm || return 1
+	return 0
+}
+
+get_sqm_resource_plan() {
+	. "${ARK_LIB_DIR}/qos-resources.sh" || return 1
+	local cores bytes ctinfo=0 mq=0
+	cores="$(grep -c '^processor' "${ARK_ROOT:-}/proc/cpuinfo" 2>/dev/null || true)"
+	case "$cores" in ''|*[!0-9]*) cores=1 ;; esac
+	[ "$cores" -gt 0 ] || cores=1
+	bytes="$(ark_qos_direction_budget_bytes)" || return 1
+	ark_qos_module_present act_ctinfo && ctinfo=1
+	ark_qos_mq_candidate && mq=1
+	printf '{"cpu_cores":%s,"memory_total_kib":%s,"qos_total_ceiling_kib":%s,"shaper_units":%s,"per_instance_ceiling_bytes":%s,"cake_memlimit":"%s","hfsc_rt_bytes":%s,"hfsc_be_bytes":%s,"hfsc_bulk_bytes":%s,"capacity_measured":false,"ctinfo_module_present":%s,"cake_mq_candidate_present":%s,"capabilities_validated":false}\n' \
+		"$cores" "$(ark_qos_memory_kb)" "$(ark_qos_total_budget_kb)" "$(ark_qos_shaper_units)" \
+		"$bytes" "$(ark_qos_cake_memlimit)" "$((bytes / 4))" "$((bytes / 2))" "$((bytes / 4))" "$(bool "$ctinfo")" "$(bool "$mq")"
+}
+
+ark_sqm_restart_checked() {
+	ark_sqm_sync_memory_limits || return 1
+	"${ARK_ROOT:-}/etc/init.d/sqm" restart || return 1
+	# O sandbox não instala qdiscs; o verificador é exercitado com saídas TC isoladas.
+	[ -n "${ARK_ROOT:-}" ] || ark_sqm_verify_queues
+}
+
+ark_sqm_select_engine() {
+	local engine="$1" stage old_engine network_section sqm_section wan_device count=0 failed=0
+	stage="$(mktemp -d "${ARK_ROOT:-}/tmp/ark-sqm-select.XXXXXX")" || return 1
+	if ! cp "${ARK_ROOT:-}/etc/config/sqm" "$stage/sqm"; then
+		rmdir "$stage" 2>/dev/null || true
+		return 1
+	fi
+	old_engine="$(uci -q get equipe_dashboard.settings.sqm_engine || printf '__unset__')"
+	uci -q set equipe_dashboard.settings=dashboard || failed=1
+	uci -q set "equipe_dashboard.settings.sqm_engine=$engine" || failed=1
+	for network_section in $(active_wan_networks); do
+		sqm_section="$(sqm_section_for_network "$network_section")" || continue
+		wan_device="$(sqm_device_for_network "$network_section")"
+		valid_net_device "$wan_device" || { failed=1; break; }
+		ensure_sqm_section "$sqm_section" "$wan_device" || { failed=1; break; }
+		ark_apply_sqm_engine_to_section "$sqm_section" "$engine" || { failed=1; break; }
+		count=$((count + 1))
+	done
+	[ "$count" -gt 0 ] || failed=1
+	[ "$failed" = "1" ] || uci commit sqm || failed=1
+	if [ "$failed" = "0" ] && uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
+		ark_sqm_restart_checked >/dev/null 2>&1 || failed=1
+	fi
+	if [ "$failed" = "0" ]; then
+		uci commit equipe_dashboard || failed=1
+	fi
+	if [ "$failed" = "1" ]; then
+		# Reconstrói o estado anterior pelo serviço; não tenta executar dumps de TC.
+		uci -q revert sqm 2>/dev/null || true
+		cp "$stage/sqm" "${ARK_ROOT:-}/etc/config/sqm" || {
+			echo "Falha ao restaurar SQM; snapshot preservado em $stage" >&2
+			return 1
+		}
+		if [ "$old_engine" = "__unset__" ]; then
+			uci -q delete equipe_dashboard.settings.sqm_engine 2>/dev/null || true
+		else
+			uci -q set "equipe_dashboard.settings.sqm_engine=$old_engine" || return 1
+		fi
+		uci commit equipe_dashboard || return 1
+		ark_sqm_restart_checked >/dev/null 2>&1 || echo 'Falha tambem ao reconstruir o motor SQM anterior' >&2
+		rm -f "$stage/sqm"; rmdir "$stage" 2>/dev/null || true
+		echo 'Falha ao aplicar motor SQM; configuracao anterior restaurada' >&2
+		return 1
+	fi
+	rm -f "$stage/sqm"; rmdir "$stage" 2>/dev/null || true
+	ark_promote_cake_mq || return 1
+	echo ok
+}
+
 handle_sqm() {
 	case "$1" in
 	sqm-toggle)
@@ -986,38 +1216,22 @@ handle_sqm() {
 			wan_count=$((wan_count + 1))
 		done
 		[ "$wan_count" -gt 0 ] || { echo 'Nenhuma WAN ativa encontrada' >&2; exit 3; }
-		uci commit sqm
+		uci commit sqm || return 1
 		if [ "$2" = 1 ]; then
-			/etc/init.d/sqm enable >/dev/null 2>&1 || true
-			/etc/init.d/sqm restart
+			"${ARK_ROOT:-}/etc/init.d/sqm" enable >/dev/null 2>&1 || return 1
+			ark_sqm_restart_checked || return 1
 		else
-			/etc/init.d/sqm stop >/dev/null 2>&1 || true
-			/etc/init.d/sqm disable >/dev/null 2>&1 || true
+			"${ARK_ROOT:-}/etc/init.d/sqm" stop >/dev/null 2>&1 || return 1
+			"${ARK_ROOT:-}/etc/init.d/sqm" disable >/dev/null 2>&1 || return 1
 		fi
-		sync_sqm_flow_offload
+		sync_sqm_flow_offload || return 1
 		ark_promote_cake_mq
 		echo ok
 		;;
 	sqm-engine-select)
 		case "$2" in cake|hfsc_fq_codel) ;; *) echo 'Motor SQM invalido' >&2; exit 2 ;; esac
 		[ -f "${ARK_ROOT}/etc/config/sqm" ] || [ -f /etc/config/sqm ] || { echo 'SQM nao instalado' >&2; exit 3; }
-		uci -q set equipe_dashboard.settings=dashboard
-		uci -q set "equipe_dashboard.settings.sqm_engine=$2"
-		uci commit equipe_dashboard 2>/dev/null || true
-		for network_section in $(active_wan_networks); do
-			sqm_section="$(sqm_section_for_network "$network_section")" || continue
-			wan_device="$(sqm_device_for_network "$network_section")"
-			valid_net_device "$wan_device" || continue
-			ensure_sqm_section "$sqm_section" "$wan_device"
-			ark_apply_sqm_engine_to_section "$sqm_section" "$2"
-		done
-		uci commit sqm
-		if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
-			/etc/init.d/sqm stop >/dev/null 2>&1 || true
-			/etc/init.d/sqm start >/dev/null 2>&1 || /etc/init.d/sqm restart >/dev/null 2>&1 || true
-		fi
-		ark_promote_cake_mq
-		echo ok
+		ark_sqm_select_engine "$2"
 		;;
 	irqbalance-toggle)
 		case "$2" in 0|1) ;; *) echo 'Estado do irqbalance invalido' >&2; exit 2 ;; esac
@@ -1038,7 +1252,7 @@ handle_sqm() {
 		[ -f "${ARK_ROOT}/etc/config/sqm" ] || [ -f /etc/config/sqm ] || { echo 'SQM nao instalado' >&2; exit 3; }
 		uci -q set equipe_dashboard.settings=dashboard
 		uci -q set "equipe_dashboard.settings.waveform_aplus_mode=$2"
-		uci commit equipe_dashboard 2>/dev/null || true
+		uci commit equipe_dashboard 2>/dev/null || return 1
 		mlim_aplus="$(ark_cake_memlimit)"
 		for network_section in $(active_wan_networks); do
 			sqm_section="$(sqm_section_for_network "$network_section")" || continue
@@ -1080,14 +1294,14 @@ handle_sqm() {
 				uci -q set "sqm.$sqm_section.iqdisc_opts=$iq_aplus"
 			fi
 		done
-		uci commit sqm
+		uci commit sqm || return 1
 		if [ "$2" = "1" ] && [ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/ark-hardware-tune ]; then
 			rm -f /tmp/ark-hardware-tune.ts 2>/dev/null || true
 			/etc/init.d/ark-hardware-tune reload >/dev/null 2>&1 || true
 		fi
 		if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
-			/etc/init.d/sqm stop >/dev/null 2>&1 || true
-			/etc/init.d/sqm start >/dev/null 2>&1 || /etc/init.d/sqm restart >/dev/null 2>&1 || true
+			"${ARK_ROOT:-}/etc/init.d/sqm" stop >/dev/null 2>&1 || return 1
+			ark_sqm_restart_checked >/dev/null 2>&1 || return 1
 		fi
 		ark_promote_cake_mq
 		echo ok
@@ -1097,7 +1311,7 @@ handle_sqm() {
 		[ -f "${ARK_ROOT}/etc/config/sqm" ] || [ -f /etc/config/sqm ] || { echo 'SQM nao instalado' >&2; exit 3; }
 		uci -q set equipe_dashboard.settings=dashboard
 		uci -q set "equipe_dashboard.settings.sqm_gaming_ports=$2"
-		uci commit equipe_dashboard 2>/dev/null || true
+		uci commit equipe_dashboard 2>/dev/null || return 1
 		for network_section in $(active_wan_networks); do
 			sqm_section="$(sqm_section_for_network "$network_section")" || continue
 			wan_device="$(sqm_device_for_network "$network_section")"
@@ -1171,17 +1385,17 @@ handle_sqm() {
 		if [ -n "$waveform_aplus_override" ]; then
 			uci -q set equipe_dashboard.settings=dashboard
 			uci -q set "equipe_dashboard.settings.waveform_aplus_mode=$waveform_aplus_override"
-			uci commit equipe_dashboard 2>/dev/null || true
+			uci commit equipe_dashboard 2>/dev/null || return 1
 		fi
 		if [ -n "$sqm_engine_override" ]; then
 			uci -q set equipe_dashboard.settings=dashboard
 			uci -q set "equipe_dashboard.settings.sqm_engine=$sqm_engine_override"
-			uci commit equipe_dashboard 2>/dev/null || true
+			uci commit equipe_dashboard 2>/dev/null || return 1
 		fi
 		if [ -n "$gaming_ports_override" ]; then
 			uci -q set equipe_dashboard.settings=dashboard
 			uci -q set "equipe_dashboard.settings.sqm_gaming_ports=$gaming_ports_override"
-			uci commit equipe_dashboard 2>/dev/null || true
+			uci commit equipe_dashboard 2>/dev/null || return 1
 		fi
 		# Disable stale queues that belonged to WANs removed or converted back
 		# to LAN. Otherwise SQM could keep shaping an old physical LAN device.
@@ -1290,7 +1504,7 @@ handle_sqm() {
 									printf '%s' "$eqdisc_opts" | grep -qw "$ack_save" || eqdisc_opts="$eqdisc_opts $ack_save"
 								fi
 								if printf '%s' "$eqdisc_opts" | grep -q 'memlimit'; then
-									eqdisc_opts="$(printf '%s' "$eqdisc_opts" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $mlim_save/g")"
+									eqdisc_opts="$(printf '%s' "$eqdisc_opts" | sed "s/memlimit [0-9][0-9]*[kKmMgGbB]*/memlimit $mlim_save/g")"
 								else
 									eqdisc_opts="$eqdisc_opts memlimit $mlim_save"
 								fi
@@ -1316,7 +1530,7 @@ handle_sqm() {
 									iqdisc_opts="$iqdisc_opts ingress"
 								fi
 								if printf '%s' "$iqdisc_opts" | grep -q 'memlimit'; then
-									iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed "s/memlimit [0-9]*[Mm][Bb]*/memlimit $mlim_save/g")"
+									iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed "s/memlimit [0-9][0-9]*[kKmMgGbB]*/memlimit $mlim_save/g")"
 								else
 									iqdisc_opts="$iqdisc_opts memlimit $mlim_save"
 								fi
@@ -1333,16 +1547,18 @@ handle_sqm() {
 					;;
 			esac
 		done
-		uci commit sqm
-		uci commit qos_equipe 2>/dev/null || true
-		if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
-			/etc/init.d/sqm enable >/dev/null 2>&1 || true
-			/etc/init.d/sqm restart
-		else
-			/etc/init.d/sqm stop >/dev/null 2>&1 || true
-			/etc/init.d/sqm disable >/dev/null 2>&1 || true
+		uci commit sqm || return 1
+		if [ -f "${ARK_ROOT:-}/etc/config/qos_equipe" ]; then
+			uci commit qos_equipe || return 1
 		fi
-		sync_sqm_flow_offload
+		if uci -q show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
+			"${ARK_ROOT:-}/etc/init.d/sqm" enable >/dev/null 2>&1 || return 1
+			ark_sqm_restart_checked || return 1
+		else
+			"${ARK_ROOT:-}/etc/init.d/sqm" stop >/dev/null 2>&1 || return 1
+			"${ARK_ROOT:-}/etc/init.d/sqm" disable >/dev/null 2>&1 || return 1
+		fi
+		sync_sqm_flow_offload || return 1
 		ark_promote_cake_mq
 		apply_guest_tc_limit >/dev/null 2>&1 || true
 		echo ok
@@ -1388,10 +1604,12 @@ handle_sqm() {
 					;;
 			esac
 		done
-		uci commit sqm
-		uci commit qos_equipe 2>/dev/null || true
-		/etc/init.d/sqm restart
-		sync_sqm_flow_offload
+		uci commit sqm || return 1
+		if [ -f "${ARK_ROOT:-}/etc/config/qos_equipe" ]; then
+			uci commit qos_equipe || return 1
+		fi
+		ark_sqm_restart_checked || return 1
+		sync_sqm_flow_offload || return 1
 		ark_promote_cake_mq
 		apply_guest_tc_limit >/dev/null 2>&1 || true
 		echo ok
@@ -1410,6 +1628,9 @@ handle_sqm() {
 	sqm-autorate-step)
 		shift
 		ark_sqm_autorate_step "$@"
+		;;
+	sqm-resource-plan)
+		get_sqm_resource_plan
 		;;
 	sqm-autorate-status)
 		ark_sqm_autorate_status

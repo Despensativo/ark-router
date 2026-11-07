@@ -192,7 +192,7 @@ class TestLedHal(unittest.TestCase):
         env["ARK_ROOT"] = self.sb.temp_dir
         env["ARK_TEST_SINGLE_PASS"] = "1"
         env["UCI_CONFIG_DIR"] = self.sb.etc_config
-        env["PATH"] = f"{self.sb.bin_dir};{env.get('PATH', '')}"
+        env["PATH"] = f"{self.sb.bin_dir}{os.pathsep}{env.get('PATH', '')}"
 
         daemon_bin = os.path.join(REPO_DIR, "root", "usr", "sbin", "ark-port-ledd").replace("\\", "/")
         sh_bin = self._get_sh_bin()
@@ -280,7 +280,7 @@ class TestLedHal(unittest.TestCase):
         env["ARK_ROOT"] = self.sb.temp_dir
         env["ARK_TEST_SINGLE_PASS"] = "1"
         env["UCI_CONFIG_DIR"] = self.sb.etc_config
-        env["PATH"] = f"{self.sb.bin_dir};{env.get('PATH', '')}"
+        env["PATH"] = f"{self.sb.bin_dir}{os.pathsep}{env.get('PATH', '')}"
 
         daemon_bin = os.path.join(REPO_DIR, "root", "usr", "sbin", "ark-rainbowd").replace("\\", "/")
         sh_bin = self._get_sh_bin()
@@ -338,7 +338,7 @@ class TestLedHal(unittest.TestCase):
         env["ARK_ROOT"] = self.sb.temp_dir
         env["ARK_TEST_SINGLE_PASS"] = "1"
         env["UCI_CONFIG_DIR"] = self.sb.etc_config
-        env["PATH"] = f"{self.sb.bin_dir};{env.get('PATH', '')}"
+        env["PATH"] = f"{self.sb.bin_dir}{os.pathsep}{env.get('PATH', '')}"
 
         daemon_bin = os.path.join(REPO_DIR, "root", "usr", "sbin", "ark-rainbowd").replace("\\", "/")
         sh_bin = self._get_sh_bin()

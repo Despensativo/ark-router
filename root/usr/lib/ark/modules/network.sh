@@ -37,6 +37,20 @@ apply_wan_proto() {
 		uci -q set "network.$iface.username=$username"
 		uci -q delete "network.$iface.password"
 		[ -n "$password" ] && uci -q set "network.$iface.password=$password"
+
+		# Estabilidade de Fibra Optica (LCP Echo Adaptativo + Backoff contra bloqueio RADIUS)
+		uci -q set "network.$iface.keepalive=5 10"
+		local cur_pppd_opts="$($uci_cmd get "network.$iface.pppd_options" 2>/dev/null || uci -q get "network.$iface.pppd_options" || true)"
+		case "$cur_pppd_opts" in
+			*lcp-echo-adaptive*) ;;
+			*)
+				if [ -n "$cur_pppd_opts" ]; then
+					uci -q set "network.$iface.pppd_options=$cur_pppd_opts lcp-echo-adaptive holdoff 5"
+				else
+					uci -q set "network.$iface.pppd_options=lcp-echo-adaptive holdoff 5"
+				fi
+				;;
+		esac
 		local cur_mtu="$(uci -q get "network.$iface.mtu")"
 		if [ "$cur_dev_mtu" = "1508" ]; then
 			if [ -n "$wan_phys_dev" ] && ! ark_ensure_phys_device_mtu "$wan_phys_dev" 1508; then
@@ -1621,8 +1635,8 @@ EOF
 						uci -q set "sqm.$s.overhead=28"
 						uci -q set "sqm.$s.tcMTU=2047"
 						uci -q set "sqm.$s.tcTSIZE=512"
-						uci -q set "sqm.$s.tcMPU=64"
-						uci -q set "sqm.$s.mpu=64"
+						uci -q set "sqm.$s.tcMPU=84"
+						uci -q set "sqm.$s.mpu=84"
 						uci -q set "sqm.$s.linklayer_adaptation_mechanism=default"
 						;;
 					vlan_34)
@@ -1631,8 +1645,8 @@ EOF
 						uci -q set "sqm.$s.overhead=34"
 						uci -q set "sqm.$s.tcMTU=2047"
 						uci -q set "sqm.$s.tcTSIZE=512"
-						uci -q set "sqm.$s.tcMPU=64"
-						uci -q set "sqm.$s.mpu=64"
+						uci -q set "sqm.$s.tcMPU=84"
+						uci -q set "sqm.$s.mpu=84"
 						uci -q set "sqm.$s.linklayer_adaptation_mechanism=default"
 						;;
 					vdsl_44)
@@ -1641,8 +1655,8 @@ EOF
 						uci -q set "sqm.$s.overhead=44"
 						uci -q set "sqm.$s.tcMTU=2047"
 						uci -q set "sqm.$s.tcTSIZE=512"
-						uci -q set "sqm.$s.tcMPU=64"
-						uci -q set "sqm.$s.mpu=64"
+						uci -q set "sqm.$s.tcMPU=84"
+						uci -q set "sqm.$s.mpu=84"
 						uci -q set "sqm.$s.linklayer_adaptation_mechanism=default"
 						;;
 					atm)

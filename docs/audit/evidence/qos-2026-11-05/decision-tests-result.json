@@ -1,0 +1,1118 @@
+{
+  "date": "2026-11-05",
+  "target": "W6x 192.168.73.1",
+  "version": "ARK2.2.1/OpenWrt25.12.6/kernel6.12.112",
+  "experiments": {
+    "gso": {
+      "phases": [
+        {
+          "phase": "A1",
+          "start_utc": "2026-11-05T19:01:15.510634+00:00",
+          "load_elapsed_seconds": 17.01,
+          "download_mbps": 531.851,
+          "upload_mbps": 362.239,
+          "responsiveness_rpm": 1250.31,
+          "pings": {
+            "gateway": {
+              "responses": 34,
+              "internal_sequence_holes": 0,
+              "p50_ms": 1.023,
+              "p95_ms": 2.879,
+              "p99_ms": 3.416,
+              "max_ms": 3.487
+            },
+            "cloudflare": {
+              "responses": 34,
+              "internal_sequence_holes": 0,
+              "p50_ms": 5.791,
+              "p95_ms": 7.712,
+              "p99_ms": 8.251,
+              "max_ms": 8.774
+            },
+            "google": {
+              "responses": 17,
+              "internal_sequence_holes": 0,
+              "p50_ms": 20.283,
+              "p95_ms": 24.025,
+              "p99_ms": 24.025,
+              "max_ms": 34.597
+            },
+            "peer": {
+              "responses": 17,
+              "internal_sequence_holes": 0,
+              "p50_ms": 2.33,
+              "p95_ms": 5.426,
+              "p99_ms": 5.426,
+              "max_ms": 7.519
+            },
+            "ont": {
+              "responses": 17,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.613,
+              "p95_ms": 1.2,
+              "p99_ms": 1.2,
+              "max_ms": 2.309
+            }
+          },
+          "cpu_mean_pct_per_core": {
+            "cpu0": 77.86,
+            "cpu1": 92.85,
+            "cpu2": 57.07,
+            "cpu3": 58.56
+          },
+          "cpu_max_sample_pct": 99.5,
+          "cpu_sample_intervals": 7,
+          "qdisc_sample_count": 16,
+          "queue_observations": {
+            "UL": {
+              "max_sampled_tin_peak_delay_ms": 3.608
+            },
+            "DL": {
+              "max_sampled_tin_peak_delay_ms": 43.018
+            }
+          }
+        },
+        {
+          "phase": "B1",
+          "start_utc": "2026-11-05T19:01:45.091995+00:00",
+          "load_elapsed_seconds": 16.18,
+          "download_mbps": 305.063,
+          "upload_mbps": 187.884,
+          "responsiveness_rpm": 880.13,
+          "pings": {
+            "gateway": {
+              "responses": 32,
+              "internal_sequence_holes": 0,
+              "p50_ms": 1.41,
+              "p95_ms": 4.533,
+              "p99_ms": 12.636,
+              "max_ms": 12.662
+            },
+            "cloudflare": {
+              "responses": 32,
+              "internal_sequence_holes": 0,
+              "p50_ms": 7.806,
+              "p95_ms": 40.197,
+              "p99_ms": 51.869,
+              "max_ms": 56.45
+            },
+            "google": {
+              "responses": 16,
+              "internal_sequence_holes": 0,
+              "p50_ms": 21.565,
+              "p95_ms": 30.826,
+              "p99_ms": 30.826,
+              "max_ms": 31.082
+            },
+            "peer": {
+              "responses": 16,
+              "internal_sequence_holes": 0,
+              "p50_ms": 3.282,
+              "p95_ms": 31.703,
+              "p99_ms": 31.703,
+              "max_ms": 40.866
+            },
+            "ont": {
+              "responses": 16,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.747,
+              "p95_ms": 2.007,
+              "p99_ms": 2.007,
+              "max_ms": 9.651
+            }
+          },
+          "cpu_mean_pct_per_core": {
+            "cpu0": 75.98,
+            "cpu1": 99.01,
+            "cpu2": 51.28,
+            "cpu3": 46.02
+          },
+          "cpu_max_sample_pct": 99.51,
+          "cpu_sample_intervals": 6,
+          "qdisc_sample_count": 14,
+          "queue_observations": {
+            "UL": {
+              "max_sampled_tin_peak_delay_ms": 0.352
+            },
+            "DL": {
+              "max_sampled_tin_peak_delay_ms": 2.802
+            }
+          }
+        },
+        {
+          "phase": "B2",
+          "start_utc": "2026-11-05T19:02:13.908877+00:00",
+          "load_elapsed_seconds": 17.15,
+          "download_mbps": 320.246,
+          "upload_mbps": 231.017,
+          "responsiveness_rpm": 748.55,
+          "pings": {
+            "gateway": {
+              "responses": 34,
+              "internal_sequence_holes": 0,
+              "p50_ms": 1.962,
+              "p95_ms": 9.43,
+              "p99_ms": 10.215,
+              "max_ms": 16.13
+            },
+            "cloudflare": {
+              "responses": 30,
+              "internal_sequence_holes": 4,
+              "p50_ms": 16.469,
+              "p95_ms": 54.789,
+              "p99_ms": 68.434,
+              "max_ms": 77.65
+            },
+            "google": {
+              "responses": 14,
+              "internal_sequence_holes": 3,
+              "p50_ms": 24.215,
+              "p95_ms": 30.769,
+              "p99_ms": 30.769,
+              "max_ms": 33.034
+            },
+            "peer": {
+              "responses": 15,
+              "internal_sequence_holes": 2,
+              "p50_ms": 9.425,
+              "p95_ms": 44.912,
+              "p99_ms": 44.912,
+              "max_ms": 54.527
+            },
+            "ont": {
+              "responses": 17,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.614,
+              "p95_ms": 1.795,
+              "p99_ms": 1.795,
+              "max_ms": 9.413
+            }
+          },
+          "cpu_mean_pct_per_core": {
+            "cpu0": 79.11,
+            "cpu1": 80.0,
+            "cpu2": 38.38,
+            "cpu3": 43.98
+          },
+          "cpu_max_sample_pct": 100.0,
+          "cpu_sample_intervals": 8,
+          "qdisc_sample_count": 18,
+          "queue_observations": {
+            "UL": {
+              "max_sampled_tin_peak_delay_ms": 12.013
+            },
+            "DL": {
+              "max_sampled_tin_peak_delay_ms": 6.664
+            }
+          }
+        },
+        {
+          "phase": "A2",
+          "start_utc": "2026-11-05T19:02:43.692724+00:00",
+          "load_elapsed_seconds": 15.09,
+          "download_mbps": 637.096,
+          "upload_mbps": 379.869,
+          "responsiveness_rpm": 1324.33,
+          "pings": {
+            "gateway": {
+              "responses": 30,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.954,
+              "p95_ms": 4.658,
+              "p99_ms": 6.376,
+              "max_ms": 12.639
+            },
+            "cloudflare": {
+              "responses": 30,
+              "internal_sequence_holes": 0,
+              "p50_ms": 7.39,
+              "p95_ms": 14.834,
+              "p99_ms": 21.709,
+              "max_ms": 24.222
+            },
+            "google": {
+              "responses": 15,
+              "internal_sequence_holes": 0,
+              "p50_ms": 21.838,
+              "p95_ms": 26.387,
+              "p99_ms": 26.387,
+              "max_ms": 28.443
+            },
+            "peer": {
+              "responses": 15,
+              "internal_sequence_holes": 0,
+              "p50_ms": 3.585,
+              "p95_ms": 11.167,
+              "p99_ms": 11.167,
+              "max_ms": 34.185
+            },
+            "ont": {
+              "responses": 15,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.688,
+              "p95_ms": 2.324,
+              "p99_ms": 2.324,
+              "max_ms": 3.463
+            }
+          },
+          "cpu_mean_pct_per_core": {
+            "cpu0": 80.62,
+            "cpu1": 80.05,
+            "cpu2": 71.52,
+            "cpu3": 64.3
+          },
+          "cpu_max_sample_pct": 93.84,
+          "cpu_sample_intervals": 6,
+          "qdisc_sample_count": 14,
+          "queue_observations": {
+            "UL": {
+              "max_sampled_tin_peak_delay_ms": 3.553
+            },
+            "DL": {
+              "max_sampled_tin_peak_delay_ms": 50.55
+            }
+          }
+        }
+      ],
+      "restored": true,
+      "configuration_hashes_unchanged": true,
+      "errors": [],
+      "telemetry_parse_errors": 0,
+      "telemetry_transition_note": null
+    },
+    "engines": {
+      "phases": [
+        {
+          "phase": "C1",
+          "start_utc": "2026-11-05T19:09:01.811963+00:00",
+          "load_elapsed_seconds": 9.76,
+          "download_mbps": 536.273,
+          "upload_mbps": 252.257,
+          "responsiveness_rpm": 1252.13,
+          "pings": {
+            "gateway": {
+              "responses": 19,
+              "internal_sequence_holes": 0,
+              "p50_ms": 1.408,
+              "p95_ms": 5.934,
+              "p99_ms": 5.934,
+              "max_ms": 13.617
+            },
+            "cloudflare": {
+              "responses": 17,
+              "internal_sequence_holes": 2,
+              "p50_ms": 5.079,
+              "p95_ms": 8.999,
+              "p99_ms": 8.999,
+              "max_ms": 10.406
+            },
+            "google": {
+              "responses": 9,
+              "internal_sequence_holes": 0,
+              "p50_ms": 20.327,
+              "p95_ms": 22.766,
+              "p99_ms": 22.766,
+              "max_ms": 23.337
+            },
+            "ont": {
+              "responses": 9,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.525,
+              "p95_ms": 0.748,
+              "p99_ms": 0.748,
+              "max_ms": 0.808
+            },
+            "peer": {
+              "responses": 9,
+              "internal_sequence_holes": 0,
+              "p50_ms": 1.604,
+              "p95_ms": 3.043,
+              "p99_ms": 3.043,
+              "max_ms": 7.013
+            }
+          },
+          "cpu_mean_pct_per_core": {
+            "cpu0": 55.36,
+            "cpu1": 86.72,
+            "cpu2": 51.2,
+            "cpu3": 52.12
+          },
+          "cpu_max_sample_pct": 99.5,
+          "cpu_sample_intervals": 4,
+          "qdisc_sample_count": 10,
+          "queue_observations": {
+            "UL": {
+              "max_sampled_tin_peak_delay_ms": 8.739
+            },
+            "DL": {
+              "max_sampled_tin_peak_delay_ms": 55.479
+            }
+          }
+        },
+        {
+          "phase": "H1",
+          "start_utc": "2026-11-05T19:09:30.193259+00:00",
+          "load_elapsed_seconds": 14.99,
+          "download_mbps": 464.805,
+          "upload_mbps": 319.614,
+          "responsiveness_rpm": 1117.57,
+          "pings": {
+            "gateway": {
+              "responses": 30,
+              "internal_sequence_holes": 0,
+              "p50_ms": 1.221,
+              "p95_ms": 3.312,
+              "p99_ms": 3.314,
+              "max_ms": 10.413
+            },
+            "cloudflare": {
+              "responses": 30,
+              "internal_sequence_holes": 0,
+              "p50_ms": 6.238,
+              "p95_ms": 11.848,
+              "p99_ms": 14.48,
+              "max_ms": 19.587
+            },
+            "google": {
+              "responses": 15,
+              "internal_sequence_holes": 0,
+              "p50_ms": 22.456,
+              "p95_ms": 24.133,
+              "p99_ms": 24.133,
+              "max_ms": 24.208
+            },
+            "ont": {
+              "responses": 15,
+              "internal_sequence_holes": 0,
+              "p50_ms": 1.149,
+              "p95_ms": 3.59,
+              "p99_ms": 3.59,
+              "max_ms": 6.965
+            },
+            "peer": {
+              "responses": 15,
+              "internal_sequence_holes": 0,
+              "p50_ms": 3.283,
+              "p95_ms": 19.206,
+              "p99_ms": 19.206,
+              "max_ms": 23.434
+            }
+          },
+          "cpu_mean_pct_per_core": {
+            "cpu0": 76.07,
+            "cpu1": 94.77,
+            "cpu2": 61.0,
+            "cpu3": 65.67
+          },
+          "cpu_max_sample_pct": 100.0,
+          "cpu_sample_intervals": 7,
+          "qdisc_sample_count": 16,
+          "queue_observations": {
+            "UL": {
+              "max_sampled_backlog_bytes_across_leaves": 137732
+            },
+            "DL": {
+              "max_sampled_backlog_bytes_across_leaves": 1255852
+            }
+          }
+        },
+        {
+          "phase": "H2",
+          "start_utc": "2026-11-05T19:10:00.948968+00:00",
+          "load_elapsed_seconds": 15.73,
+          "download_mbps": 485.868,
+          "upload_mbps": 311.141,
+          "responsiveness_rpm": 1015.05,
+          "pings": {
+            "gateway": {
+              "responses": 31,
+              "internal_sequence_holes": 0,
+              "p50_ms": 1.623,
+              "p95_ms": 6.539,
+              "p99_ms": 7.482,
+              "max_ms": 16.594
+            },
+            "cloudflare": {
+              "responses": 27,
+              "internal_sequence_holes": 4,
+              "p50_ms": 6.447,
+              "p95_ms": 15.474,
+              "p99_ms": 15.54,
+              "max_ms": 18.429
+            },
+            "google": {
+              "responses": 13,
+              "internal_sequence_holes": 2,
+              "p50_ms": 21.641,
+              "p95_ms": 24.642,
+              "p99_ms": 24.642,
+              "max_ms": 25.561
+            },
+            "ont": {
+              "responses": 15,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.684,
+              "p95_ms": 1.845,
+              "p99_ms": 1.845,
+              "max_ms": 2.834
+            },
+            "peer": {
+              "responses": 13,
+              "internal_sequence_holes": 2,
+              "p50_ms": 2.268,
+              "p95_ms": 13.571,
+              "p99_ms": 13.571,
+              "max_ms": 23.013
+            }
+          },
+          "cpu_mean_pct_per_core": {
+            "cpu0": 47.39,
+            "cpu1": 81.59,
+            "cpu2": 60.09,
+            "cpu3": 48.87
+          },
+          "cpu_max_sample_pct": 99.51,
+          "cpu_sample_intervals": 7,
+          "qdisc_sample_count": 16,
+          "queue_observations": {
+            "UL": {
+              "max_sampled_backlog_bytes_across_leaves": 311764
+            },
+            "DL": {
+              "max_sampled_backlog_bytes_across_leaves": 3580860
+            }
+          }
+        },
+        {
+          "phase": "C2",
+          "start_utc": "2026-11-05T19:10:35.045159+00:00",
+          "load_elapsed_seconds": 16.91,
+          "download_mbps": 518.881,
+          "upload_mbps": 362.315,
+          "responsiveness_rpm": 985.46,
+          "pings": {
+            "gateway": {
+              "responses": 34,
+              "internal_sequence_holes": 0,
+              "p50_ms": 3.237,
+              "p95_ms": 14.57,
+              "p99_ms": 14.972,
+              "max_ms": 18.372
+            },
+            "cloudflare": {
+              "responses": 34,
+              "internal_sequence_holes": 0,
+              "p50_ms": 8.988,
+              "p95_ms": 24.365,
+              "p99_ms": 27.906,
+              "max_ms": 30.483
+            },
+            "google": {
+              "responses": 17,
+              "internal_sequence_holes": 0,
+              "p50_ms": 22.666,
+              "p95_ms": 32.946,
+              "p99_ms": 32.946,
+              "max_ms": 35.398
+            },
+            "ont": {
+              "responses": 17,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.771,
+              "p95_ms": 5.392,
+              "p99_ms": 5.392,
+              "max_ms": 6.037
+            },
+            "peer": {
+              "responses": 17,
+              "internal_sequence_holes": 0,
+              "p50_ms": 10.31,
+              "p95_ms": 15.579,
+              "p99_ms": 15.579,
+              "max_ms": 22.978
+            }
+          },
+          "cpu_mean_pct_per_core": {
+            "cpu0": 71.87,
+            "cpu1": 92.19,
+            "cpu2": 74.97,
+            "cpu3": 70.35
+          },
+          "cpu_max_sample_pct": 99.02,
+          "cpu_sample_intervals": 7,
+          "qdisc_sample_count": 16,
+          "queue_observations": {
+            "UL": {
+              "max_sampled_tin_peak_delay_ms": 3.035
+            },
+            "DL": {
+              "max_sampled_tin_peak_delay_ms": 38.037
+            }
+          }
+        }
+      ],
+      "restored": true,
+      "configuration_hashes_unchanged": true,
+      "errors": [],
+      "telemetry_parse_errors": 1,
+      "telemetry_transition_note": "One empty DL qdisc read during SQM restoration concatenated with the next TIME line at19:10:25UTC, outside all load windows."
+    }
+  },
+  "decisions": {
+    "w6x_gso": "Keep no-split-gso at current 720/620 Mb/s; split-gso performed worse in both short repetitions. Do not generalize to all hardware.",
+    "engine": "Keep CAKE as current operational profile. Short WAN profile comparison provides no consistent HFSC advantage.",
+    "classification": "Prioritize unified trusted classification; native test demonstrates explicit skb priority overriding CS4.",
+    "hfsc_low_rate": "Revise low-rate curves and explicit ECN policy before universal use; native kernel accepted the questioned settings.",
+    "physical_memory": "Include physical queues in resource design; these experiments do not establish an optimal replacement cap."
+  },
+  "limits": [
+    "networkQuality max45 is a ceiling; actual load windows lasted about9\u201317 seconds. Two runs per condition are short, adaptive, and do not establish sustained maximum capacity.",
+    "ICMP is prioritized and is not in-game latency.",
+    "Periodic WAN nonresponse and variable external load can affect results; missing replies are tracked separately.",
+    "No multi-client fairness benchmark, low-rate throughput test, actual game session, reboot, or VM validation in this batch.",
+    "HFSC profile includes different classification/AQM policies; results compare current profiles, not isolated algorithms.",
+    "Native classification recheck observed21 Voice dequeues for20 injected datagrams; one excess count remains unexplained. Direction of class selection reproduced, but unique-packet1:1 accounting is not demonstrated."
+  ],
+  "hfsc_native": {
+    "rc": 0,
+    "cases": [
+      {
+        "rate_kbit": 1000,
+        "classes_text": [
+          "class hfsc 1: root ",
+          "class hfsc 1:1 parent 1: sc m1 0bit d 0us m2 1Mbit ul m1 0bit d 0us m2 1Mbit ",
+          "class hfsc 1:10 parent 1:1 leaf 110: rt m1 900Kbit d 1ms m2 450Kbit ls m1 0bit d 0us m2 450Kbit ul m1 0bit d 0us m2 1Mbit ",
+          "class hfsc 1:20 parent 1:1 leaf 120: ls m1 0bit d 0us m2 700Kbit ul m1 0bit d 0us m2 1Mbit ",
+          "class hfsc 1:30 parent 1:1 leaf 130: ls m1 0bit d 0us m2 100Kbit ul m1 0bit d 0us m2 1Mbit "
+        ],
+        "qdiscs": [
+          {
+            "kind": "hfsc",
+            "handle": "1:",
+            "root": true,
+            "refcnt": 2,
+            "options": {
+              "default": 20
+            },
+            "bytes": 0,
+            "packets": 0,
+            "drops": 0,
+            "overlimits": 0,
+            "requeues": 0,
+            "backlog": 0,
+            "qlen": 0
+          },
+          {
+            "kind": "fq_codel",
+            "handle": "120:",
+            "parent": "1:20",
+            "options": {
+              "limit": 10240,
+              "flows": 1024,
+              "quantum": 300,
+              "target": 4999,
+              "ce_threshold": 1499,
+              "ce_threshold_selector": 1,
+              "ce_threshold_mask": 3,
+              "interval": 99999,
+              "memory_limit": 33554432,
+              "drop_batch": 64
+            },
+            "bytes": 0,
+            "packets": 0,
+            "drops": 0,
+            "overlimits": 0,
+            "requeues": 0,
+            "backlog": 0,
+            "qlen": 0,
+            "maxpacket": 0,
+            "drop_overlimit": 0,
+            "new_flow_count": 0,
+            "ecn_mark": 0,
+            "new_flows_len": 0,
+            "old_flows_len": 0
+          },
+          {
+            "kind": "fq_codel",
+            "handle": "130:",
+            "parent": "1:30",
+            "options": {
+              "limit": 4096,
+              "flows": 512,
+              "quantum": 300,
+              "target": 9999,
+              "interval": 99999,
+              "memory_limit": 16777216,
+              "drop_batch": 64
+            },
+            "bytes": 0,
+            "packets": 0,
+            "drops": 0,
+            "overlimits": 0,
+            "requeues": 0,
+            "backlog": 0,
+            "qlen": 0,
+            "maxpacket": 0,
+            "drop_overlimit": 0,
+            "new_flow_count": 0,
+            "ecn_mark": 0,
+            "new_flows_len": 0,
+            "old_flows_len": 0
+          },
+          {
+            "kind": "fq_codel",
+            "handle": "110:",
+            "parent": "1:10",
+            "options": {
+              "limit": 2048,
+              "flows": 512,
+              "quantum": 300,
+              "target": 1499,
+              "interval": 29999,
+              "memory_limit": 16777216,
+              "ecn": true,
+              "drop_batch": 64
+            },
+            "bytes": 0,
+            "packets": 0,
+            "drops": 0,
+            "overlimits": 0,
+            "requeues": 0,
+            "backlog": 0,
+            "qlen": 0,
+            "maxpacket": 0,
+            "drop_overlimit": 0,
+            "new_flow_count": 0,
+            "ecn_mark": 0,
+            "new_flows_len": 0,
+            "old_flows_len": 0
+          }
+        ]
+      },
+      {
+        "rate_kbit": 5000,
+        "classes_text": [
+          "class hfsc 1: root ",
+          "class hfsc 1:1 parent 1: sc m1 0bit d 0us m2 5Mbit ul m1 0bit d 0us m2 5Mbit ",
+          "class hfsc 1:10 parent 1:1 leaf 110: rt m1 4Mbit d 1ms m2 2Mbit ls m1 0bit d 0us m2 2Mbit ul m1 0bit d 0us m2 5Mbit ",
+          "class hfsc 1:20 parent 1:1 leaf 120: ls m1 0bit d 0us m2 3500Kbit ul m1 0bit d 0us m2 5Mbit ",
+          "class hfsc 1:30 parent 1:1 leaf 130: ls m1 0bit d 0us m2 500Kbit ul m1 0bit d 0us m2 5Mbit "
+        ],
+        "qdiscs": [
+          {
+            "kind": "hfsc",
+            "handle": "1:",
+            "root": true,
+            "refcnt": 2,
+            "options": {
+              "default": 20
+            },
+            "bytes": 0,
+            "packets": 0,
+            "drops": 0,
+            "overlimits": 0,
+            "requeues": 0,
+            "backlog": 0,
+            "qlen": 0
+          },
+          {
+            "kind": "fq_codel",
+            "handle": "120:",
+            "parent": "1:20",
+            "options": {
+              "limit": 10240,
+              "flows": 1024,
+              "quantum": 300,
+              "target": 4999,
+              "ce_threshold": 1499,
+              "ce_threshold_selector": 1,
+              "ce_threshold_mask": 3,
+              "interval": 99999,
+              "memory_limit": 33554432,
+              "drop_batch": 64
+            },
+            "bytes": 0,
+            "packets": 0,
+            "drops": 0,
+            "overlimits": 0,
+            "requeues": 0,
+            "backlog": 0,
+            "qlen": 0,
+            "maxpacket": 0,
+            "drop_overlimit": 0,
+            "new_flow_count": 0,
+            "ecn_mark": 0,
+            "new_flows_len": 0,
+            "old_flows_len": 0
+          },
+          {
+            "kind": "fq_codel",
+            "handle": "130:",
+            "parent": "1:30",
+            "options": {
+              "limit": 4096,
+              "flows": 512,
+              "quantum": 300,
+              "target": 9999,
+              "interval": 99999,
+              "memory_limit": 16777216,
+              "drop_batch": 64
+            },
+            "bytes": 0,
+            "packets": 0,
+            "drops": 0,
+            "overlimits": 0,
+            "requeues": 0,
+            "backlog": 0,
+            "qlen": 0,
+            "maxpacket": 0,
+            "drop_overlimit": 0,
+            "new_flow_count": 0,
+            "ecn_mark": 0,
+            "new_flows_len": 0,
+            "old_flows_len": 0
+          },
+          {
+            "kind": "fq_codel",
+            "handle": "110:",
+            "parent": "1:10",
+            "options": {
+              "limit": 2048,
+              "flows": 512,
+              "quantum": 300,
+              "target": 1499,
+              "interval": 29999,
+              "memory_limit": 16777216,
+              "ecn": true,
+              "drop_batch": 64
+            },
+            "bytes": 0,
+            "packets": 0,
+            "drops": 0,
+            "overlimits": 0,
+            "requeues": 0,
+            "backlog": 0,
+            "qlen": 0,
+            "maxpacket": 0,
+            "drop_overlimit": 0,
+            "new_flow_count": 0,
+            "ecn_mark": 0,
+            "new_flows_len": 0,
+            "old_flows_len": 0
+          }
+        ]
+      },
+      {
+        "rate_kbit": 620000,
+        "classes_text": [
+          "class hfsc 1: root ",
+          "class hfsc 1:1 parent 1: sc m1 0bit d 0us m2 620Mbit ul m1 0bit d 0us m2 620Mbit ",
+          "class hfsc 1:10 parent 1:1 leaf 110: rt m1 248Mbit d 1ms m2 124Mbit ls m1 0bit d 0us m2 124Mbit ul m1 0bit d 0us m2 620Mbit ",
+          "class hfsc 1:20 parent 1:1 leaf 120: ls m1 0bit d 0us m2 434Mbit ul m1 0bit d 0us m2 620Mbit ",
+          "class hfsc 1:30 parent 1:1 leaf 130: ls m1 0bit d 0us m2 62Mbit ul m1 0bit d 0us m2 620Mbit "
+        ],
+        "qdiscs": [
+          {
+            "kind": "hfsc",
+            "handle": "1:",
+            "root": true,
+            "refcnt": 2,
+            "options": {
+              "default": 20
+            },
+            "bytes": 0,
+            "packets": 0,
+            "drops": 0,
+            "overlimits": 0,
+            "requeues": 0,
+            "backlog": 0,
+            "qlen": 0
+          },
+          {
+            "kind": "fq_codel",
+            "handle": "120:",
+            "parent": "1:20",
+            "options": {
+              "limit": 10240,
+              "flows": 1024,
+              "quantum": 1514,
+              "target": 2499,
+              "ce_threshold": 1499,
+              "ce_threshold_selector": 1,
+              "ce_threshold_mask": 3,
+              "interval": 39999,
+              "memory_limit": 33554432,
+              "ecn": true,
+              "drop_batch": 64
+            },
+            "bytes": 0,
+            "packets": 0,
+            "drops": 0,
+            "overlimits": 0,
+            "requeues": 0,
+            "backlog": 0,
+            "qlen": 0,
+            "maxpacket": 0,
+            "drop_overlimit": 0,
+            "new_flow_count": 0,
+            "ecn_mark": 0,
+            "new_flows_len": 0,
+            "old_flows_len": 0
+          },
+          {
+            "kind": "fq_codel",
+            "handle": "130:",
+            "parent": "1:30",
+            "options": {
+              "limit": 4096,
+              "flows": 512,
+              "quantum": 1514,
+              "target": 9999,
+              "interval": 99999,
+              "memory_limit": 16777216,
+              "ecn": true,
+              "drop_batch": 64
+            },
+            "bytes": 0,
+            "packets": 0,
+            "drops": 0,
+            "overlimits": 0,
+            "requeues": 0,
+            "backlog": 0,
+            "qlen": 0,
+            "maxpacket": 0,
+            "drop_overlimit": 0,
+            "new_flow_count": 0,
+            "ecn_mark": 0,
+            "new_flows_len": 0,
+            "old_flows_len": 0
+          },
+          {
+            "kind": "fq_codel",
+            "handle": "110:",
+            "parent": "1:10",
+            "options": {
+              "limit": 2048,
+              "flows": 512,
+              "quantum": 500,
+              "target": 1499,
+              "interval": 29999,
+              "memory_limit": 16777216,
+              "ecn": true,
+              "drop_batch": 64
+            },
+            "bytes": 0,
+            "packets": 0,
+            "drops": 0,
+            "overlimits": 0,
+            "requeues": 0,
+            "backlog": 0,
+            "qlen": 0,
+            "maxpacket": 0,
+            "drop_overlimit": 0,
+            "new_flow_count": 0,
+            "ecn_mark": 0,
+            "new_flows_len": 0,
+            "old_flows_len": 0
+          }
+        ]
+      },
+      {
+        "rate_kbit": 720000,
+        "classes_text": [
+          "class hfsc 1: root ",
+          "class hfsc 1:1 parent 1: sc m1 0bit d 0us m2 720Mbit ul m1 0bit d 0us m2 720Mbit ",
+          "class hfsc 1:10 parent 1:1 leaf 110: rt m1 288Mbit d 1ms m2 144Mbit ls m1 0bit d 0us m2 144Mbit ul m1 0bit d 0us m2 720Mbit ",
+          "class hfsc 1:20 parent 1:1 leaf 120: ls m1 0bit d 0us m2 504Mbit ul m1 0bit d 0us m2 720Mbit ",
+          "class hfsc 1:30 parent 1:1 leaf 130: ls m1 0bit d 0us m2 72Mbit ul m1 0bit d 0us m2 720Mbit "
+        ],
+        "qdiscs": [
+          {
+            "kind": "hfsc",
+            "handle": "1:",
+            "root": true,
+            "refcnt": 2,
+            "options": {
+              "default": 20
+            },
+            "bytes": 0,
+            "packets": 0,
+            "drops": 0,
+            "overlimits": 0,
+            "requeues": 0,
+            "backlog": 0,
+            "qlen": 0
+          },
+          {
+            "kind": "fq_codel",
+            "handle": "120:",
+            "parent": "1:20",
+            "options": {
+              "limit": 10240,
+              "flows": 1024,
+              "quantum": 1514,
+              "target": 2499,
+              "ce_threshold": 1499,
+              "ce_threshold_selector": 1,
+              "ce_threshold_mask": 3,
+              "interval": 39999,
+              "memory_limit": 33554432,
+              "ecn": true,
+              "drop_batch": 64
+            },
+            "bytes": 0,
+            "packets": 0,
+            "drops": 0,
+            "overlimits": 0,
+            "requeues": 0,
+            "backlog": 0,
+            "qlen": 0,
+            "maxpacket": 0,
+            "drop_overlimit": 0,
+            "new_flow_count": 0,
+            "ecn_mark": 0,
+            "new_flows_len": 0,
+            "old_flows_len": 0
+          },
+          {
+            "kind": "fq_codel",
+            "handle": "130:",
+            "parent": "1:30",
+            "options": {
+              "limit": 4096,
+              "flows": 512,
+              "quantum": 1514,
+              "target": 9999,
+              "interval": 99999,
+              "memory_limit": 16777216,
+              "ecn": true,
+              "drop_batch": 64
+            },
+            "bytes": 0,
+            "packets": 0,
+            "drops": 0,
+            "overlimits": 0,
+            "requeues": 0,
+            "backlog": 0,
+            "qlen": 0,
+            "maxpacket": 0,
+            "drop_overlimit": 0,
+            "new_flow_count": 0,
+            "ecn_mark": 0,
+            "new_flows_len": 0,
+            "old_flows_len": 0
+          },
+          {
+            "kind": "fq_codel",
+            "handle": "110:",
+            "parent": "1:10",
+            "options": {
+              "limit": 2048,
+              "flows": 512,
+              "quantum": 500,
+              "target": 1499,
+              "interval": 29999,
+              "memory_limit": 16777216,
+              "ecn": true,
+              "drop_batch": 64
+            },
+            "bytes": 0,
+            "packets": 0,
+            "drops": 0,
+            "overlimits": 0,
+            "requeues": 0,
+            "backlog": 0,
+            "qlen": 0,
+            "maxpacket": 0,
+            "drop_overlimit": 0,
+            "new_flow_count": 0,
+            "ecn_mark": 0,
+            "new_flows_len": 0,
+            "old_flows_len": 0
+          }
+        ]
+      }
+    ],
+    "configuration_unchanged": true,
+    "tc_hfsc_json_formatter_invalid": true,
+    "parser_workaround": "HFSC classes read as text; only known root default representation normalized for qdisc JSON"
+  },
+  "classification_first": {
+    "scope": "Native kernel packet classification on temporary IFB via narrowly matched br-lan ingress; not WAN or game performance",
+    "input_dscp": 32,
+    "udp_destination_port": 60619,
+    "packets_sent_per_phase": 20,
+    "phases": [
+      {
+        "name": "forced_best_effort",
+        "forced_priority": true,
+        "packet_delta": 20,
+        "tin_packet_deltas_bulk_be_video_voice": [
+          0,
+          20,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "dscp_only",
+        "forced_priority": false,
+        "packet_delta": 21,
+        "tin_packet_deltas_bulk_be_video_voice": [
+          0,
+          0,
+          0,
+          21
+        ]
+      }
+    ],
+    "configuration_hashes_unchanged": true,
+    "wan_roots_unchanged": true,
+    "lan_qdisc_restored": true,
+    "temporary_ifb_removed": true
+  },
+  "classification_recheck": {
+    "scope": "Native kernel packet classification on temporary IFB via narrowly matched br-lan ingress; not WAN or game performance",
+    "input_dscp": 32,
+    "udp_destination_port": 60619,
+    "packets_sent_per_phase": 20,
+    "phases": [
+      {
+        "name": "forced_best_effort",
+        "forced_priority": true,
+        "packet_delta": 20,
+        "requeue_delta": 0,
+        "qlen_before_after": [
+          0,
+          0
+        ],
+        "tin_packet_deltas_bulk_be_video_voice": [
+          0,
+          20,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "dscp_only",
+        "forced_priority": false,
+        "packet_delta": 21,
+        "requeue_delta": 0,
+        "qlen_before_after": [
+          0,
+          0
+        ],
+        "tin_packet_deltas_bulk_be_video_voice": [
+          0,
+          0,
+          0,
+          21
+        ]
+      }
+    ],
+    "configuration_hashes_unchanged": true,
+    "wan_roots_unchanged": true,
+    "lan_qdisc_restored": true,
+    "temporary_ifb_removed": true
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "runner": "tests/run_local_tests.sh",
+  "exit_code": 0,
+  "unittest_group_sizes": [
+    35,
+    28,
+    20,
+    6,
+    13,
+    1,
+    7,
+    11,
+    22,
+    7,
+    4,
+    2,
+    13
+  ],
+  "unittest_total": 169,
+  "full_success_banner": true,
+  "separate_wrapper_mock_cases": 4,
+  "first_attempt": {
+    "exit_code": 1,
+    "cause": "documentation gate: TASK.md 66 lines exceeds 60"
+  },
+  "task_lines_after_archive": 58,
+  "environment": "Mac local; no VM/hardware functional validation"
+}

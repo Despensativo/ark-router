@@ -136,7 +136,7 @@ def run_comparison(base_url, password, output_dir, viewports_to_test, targets):
 def main():
     parser = argparse.ArgumentParser(description="ARK Router Visual A/B Comparator")
     parser.add_argument("--url", default=os.environ.get("ARK_ROUTER_URL", "https://192.168.73.1/cgi-bin/luci/"), help="URL base do LuCI")
-    parser.add_argument("--password", default=os.environ.get("ARK_ROUTER_TEST_PASSWORD") or os.environ.get("ARK_ROUTER_PASSWORD") or "", help="Senha de login")
+    parser.add_argument("--password", default=os.environ.get("ARK_ROUTER_TEST_PASSWORD") or os.environ.get("ARK_ROUTER_TEST_PASSWORD") or "", help="Senha de login")
     parser.add_argument("--output", default=DEFAULT_OUTPUT_DIR, help="Diretório de saída dos prints")
     parser.add_argument("--viewport", choices=["mobile", "tablet", "desktop", "all"], default="all", help="Viewport a ser testado")
     parser.add_argument("--target", choices=["v1", "v2", "both"], default="both", help="Alvo do teste")

@@ -1,0 +1,28 @@
+[hardware]
+FAIL: test_09_sqm_cake_mq_and_auto_dscp_promotion (__main__.TestHardwareTune.test_09_sqm_cake_mq_and_auto_dscp_promotion)
+FAIL: test_10_autorate_probing_recovery_and_l4s_ctinfo (__main__.TestHardwareTune.test_10_autorate_probing_recovery_and_l4s_ctinfo)
+FAIL: test_12_intelligent_wan_mtu_and_hfsc_gro_cs1_guards (__main__.TestHardwareTune.test_12_intelligent_wan_mtu_and_hfsc_gro_cs1_guards)
+Ran 12 tests in 2.004s
+FAILED (failures=3)
+
+[wan]
+Ran 35 tests in 22.650s
+OK
+
+[interference]
+Ran 13 tests in 6.167s
+OK
+
+[shell]
+SUCESSO: Auditoria de scripts shell, JS, RPC e CSS aprovada com 100% de integridade.
+
+[state]
+Total de rotinas de ciclo de vida / restauração auditadas: 15
+[OK] ZERO violações de preservação de estado encontradas!
+
+[contract]
+Total de funcionalidades registradas: 74 (Parser: Fallback Nativo Zero-Dep)
+  [OK] Todos os 74 contratos possuem as 23 propriedades, tipos válidos e relações íntegras!
+  [OK] 7/7 gatilhos de rejeição (estado, tipos, relação órfã, caminho de máquina e arquivo ausente) validados!
+  [OK] Zero divergências entre código, ACLs e catálogo!
+  [OK] Todos os 74 IDs estão formalmente documentados em docs/FEATURE_AUDIT_AND_REBOOT.md!

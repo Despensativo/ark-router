@@ -1,73 +1,32 @@
-# ARK Router — Diagnósticos de Rede & Dual OpenWrt
+# Diagnósticos de rede e Dual OpenWrt
 
-Diretrizes de compatibilidade com múltiplas gerações do OpenWrt, mitigação de bufferbloat e auditoria do sistema.
+## Compatibilidade
 
----
+Use a [matriz de compatibilidade](COMPATIBILITY_MATRIX.md) e detecte cada capacidade no alvo. O motor de firewall do ARK é selecionado por `ark_firewall_engine`, `is_fw4` e `is_fw3` em `common.sh`. Em fw4, não invoque wrappers iptables/ip6tables, inclusive para diagnóstico. Detecte `opkg`/`apk` separadamente do firewall.
 
-## 1. Dual OpenWrt Architecture (Legado vs. Moderno)
-O ARK Router mantém compatibilidade entre as gerações do OpenWrt detectando cada capacidade separadamente (consulte [`docs/COMPATIBILITY_MATRIX.md`](COMPATIBILITY_MATRIX.md)):
+## SQM, MTU e aceleração
 
-| Recurso | OpenWrt Legado | OpenWrt Moderno | Regra Obrigatória de Detecção |
-| :--- | :--- | :--- | :--- |
-| **Mecanismo de Firewall** | `firewall3` / `iptables` (19.07 a 21.02) | `firewall4` / `nftables` (22.03 a 25.x+) | Exclusivamente via `/usr/lib/ark/common.sh` (`ark_firewall_engine`, `is_fw4`, `is_fw3`). **Proibido** invocar `iptables` em sistemas `fw4`. |
-| **Gerenciador de Pacotes** | `opkg` (19.07 a 24.10) | `apk` (25.12+) | Detectar dinamicamente via `command -v apk` / `command -v opkg`. |
-| **Renderização LuCI** | Tabelas HTML / CBI legado | Views JavaScript (`L.view.extend`) + `ucode` (`*.ut`) | Seletores adaptativos em `ark-theme.js`. |
+O código associa SQM ao dispositivo L3 da WAN, como `pppoe-wan`; confirme o dispositivo efetivo no ubus e a árvore TC. PPPoE a MTU 1500 exige suporte ao caminho de 1508 no portador e negociação adequada. Não force 1500 somente porque existe PPPoE.
 
----
+SQM e offload compartilham recursos: os módulos devem preservar o estado anterior e sincronizar aceleração ao ligar/desligar. Overhead, RTT, limites e GSO dependem do meio, hardware e medição; divergência em relação a uma heurística não comprova falha. O reparador manual do Doctor ainda contém heurísticas rígidas, conforme [modelo de segurança](DOCTOR_SAFETY_MODEL.md).
 
-## 2. SQM, Baby Jumbo Frames & Conflitos de Aceleração
-1. **SQM em Conexões PPPoE**:
-   - Em conexões PPPoE, o SQM **deve ser associado à interface lógica L3** (`pppoe-wan`), nunca à interface física (`eth1`).
-   - Se for associado à interface física, a modelagem de tráfego falha e gera latência oculta.
-2. **Baby Jumbo Frames (MTU 1508)**:
-   - Para conexões PPPoE com MTU 1500, a interface física pai precisa operar com MTU 1508 (`config device 'wan_dev'`).
-   - Deve ser configurada de forma atômica e persistente no `/etc/config/network`.
-3. **Conflito Flow Offloading vs SQM**:
-   - Software/Hardware Flow Offloading bypassa as filas do Linux e impede o controle de bufferbloat do SQM (CAKE / FQ-CoDel). O ARK Router deve priorizar ou conciliar de forma segura.
+## Doctor
 
----
+| Ação | Comando |
+|---|---|
+| Diagnosticar em texto | `/usr/sbin/ark-doctor` |
+| Diagnosticar em JSON | `/usr/sbin/ark-doctor run` |
+| Consultar cache | `/usr/sbin/equipe-dashboard-control doctor-status` |
+| Consultar log | `/usr/sbin/equipe-dashboard-control doctor-log` |
 
-## 3. Utilitário ARK Doctor (Auditoria e Auto-Cura)
-- **Comandos CLI**: `/usr/sbin/ark-doctor run` (auditoria) e `/usr/sbin/ark-doctor fix-run` (autocura)
-- **Comandos Backend RPC**:
-  - Diagnóstico: `/usr/sbin/equipe-dashboard-control doctor-run`
-  - Autocura: `/usr/sbin/equipe-dashboard-control doctor-fix`
-  - Status em cache: `/usr/sbin/equipe-dashboard-control doctor-status` (`/tmp/ark-doctor-last.json`)
-  - Log histórico: `/usr/sbin/equipe-dashboard-control doctor-log` (`/var/log/ark-doctor.log`)
-- **Itens Auditados**:
-  - Memória RAM livre (> 80 MB em 128 MB / > 60 MB em 256 MB) e integridade da ZRAM (`Check 1b`).
-  - Espaço livre no `/overlay` (> 2 MB).
-  - Associação correta do SQM com L3 em PPPoE e persistência de MTU 1508 em Baby Jumbo Frames.
-  - Conflitos de Flow Offload vs SQM, sintaxe do `hostapd` (WPA3 FT-SAE vs 802.11k/v WNM) e calibração do `usteer`.
-  - Sincronismo NTP, Fake RTC Preserver (`/etc/ark-clock.epoch`) e exclusão mútua NPTv6 vs NDP Relay.
-- **Auto-Cura (`doctor-fix`)**:
-  - Corrige automaticamente desvios de configuração, órfãos de SQM/firewall e recarrega apenas os serviços afetados.
+A partir da revisão local de 05/11/2026, `--auto` é observacional. Cron e hotplugs não reconfiguram a rede. A chave legada `equipe_dashboard.doctor.auto_heal` controla o agendamento, com intervalo mínimo de 60 segundos entre inícios automáticos.
 
----
+O alerta de RAM considera menos de 20 MiB disponíveis, conforme a implementação; não são os antigos limites documentados de 80/60 MB. Flash até 2048 KiB ou espaço desconhecido gera aviso. Cache e log ficam em `/tmp/ark-doctor-last.json` e `/var/log/ark-doctor.log`; confirmar que `/var/log` permanece em RAM no firmware alvo. Um resultado `OK` abrange somente os checks executados.
 
-## 4. Latência Interna Zero-Drop & Calibração de Hardware (`ark-hardware-tune`)
+`doctor-fix` e `ark-doctor --fix` são reparadores manuais legados com risco de reload e perda de configuração. A matriz de riscos e o plano de substituição estão em [DOCTOR_SAFETY_MODEL](DOCTOR_SAFETY_MODEL.md). Não usá-los como prova de que toda a rede está saudável.
 
-### A. Diagnóstico de Gargalos Físicos de Switch LAN (`eth0`)
-Em SoCs modernos (como MediaTek Filogic MT7986 / MT7981), o hardware do switch LAN expõe frequentemente múltiplas filas de transmissão (ex: 16 TX queues), mas **apenas 1 fila física de recepção (`numrxqueues 1`)**:
-1. **Sobrecarga de Núcleo Único**: Sem RPS configurado adequadamente, todas as interrupções de recepção de LAN caem em uma única CPU, gerando fila e elevando a latência de ICMP/DNS de 0ms para 5-15ms durante rajadas de download/torrent.
-2. **Requeues no Driver (`NETDEV_TX_BUSY`)**: `txqueuelen` padrão (1000) gera centenas de milhares de requeues sob conexões maciças com janelas TCP ampliadas (Baby Jumbo MSS 1460).
+## Latência e hardware
 
-### B. Solução Zero-Drop com DSCP
-O ARK Router aplica regras de priorização em nível de kernel (`15-ark-dscp-priority.nft`):
-- **ICMP / ICMPv6 Ping Echo & Reply**: `CS6` (Network Control / Latência Mínima).
-- **DNS (portas 53, 853, 5353)**: `CS6`.
-- **TCP Connection Control (SYN, RST, FIN)**: `CS5`.
+As regras DSCP e o `ark-hardware-tune` influenciam classificação, filas e distribuição de CPU. Contadores, nomes de tins ou latência de fila isolada não demonstram RTT do cliente nem garantem zero perdas. Os lotes QoS de [STATUS](audit/STATUS.md) registram medições por alvo e revisão; não extrapolar resultados para outro hardware.
 
-O agendador **CAKE** (`diffserv4`) despacha pacotes marcados no tin **Voice** em < 10 µs, sem necessidade de limitar ou dropar conexões pesadas de dados (`Zero-Drop`).
-
-### C. Calibração Adaptativa Multi-Tier
-O serviço `/etc/init.d/ark-hardware-tune` escala dinamicamente:
-- **Low-Spec ($\le$ 192 MB RAM / 1 Core)**: `rmem/wmem 1MB`, `fq_codel 2Mb limit 1024`, zero RPS (sem sobrecarga de interrupções mono-core), regras `iptables / fw3` nativas.
-- **Mid-Spec (192 MB - 512 MB RAM / 2 Cores)**: `rmem/wmem 4MB`, `txqueuelen 1500`, RPS em 2 núcleos (máscara 3), RFS 16k fluxos.
-- **High-Spec (512 MB - 1.5 GB RAM / 4 a 6 Cores)**: `rmem/wmem 8MB`, `txqueuelen 2048`, RPS em todos os 4 a 6 núcleos (máscara dinâmica `f` ou `3f`), RFS com 32.768 fluxos (`rps_sock_flow_entries = 32768`, `rps_flow_cnt = 4096`), `netdev_budget = 600`.
-- **Ultra-Spec / Enterprise (RAM > 1.5 GB ou $\ge$ 8 Cores - x86/ARM64 10GbE)**:
-  - Máscara RPS calculada matematicamente para qualquer quantidade $N$ de núcleos (`ff` para 8 cores, `fff` para 12, `ffff` para 16, `ffffffff` para 32, até 64 cores).
-  - Buffers TCP escalados até 32 MB para conexões de 2.5 Gbps / 10 Gbps / 25 Gbps.
-  - `txqueuelen` ampliado para 4096 a 8192.
-  - RFS com 65.536 a 131.072 entradas de fluxo (`rps_flow_cnt = 8192..16384`) e `netdev_max_backlog` até 50.000.
-
+Ao medir, registre caminho do cliente, ligação por cabo ou Wi-Fi, carga, throughput, perda, RTT e CPU por núcleo. Compare condições equivalentes e preserve a configuração original. Use mocks para RF/MLO/offload no laboratório e identifique explicitamente essa limitação.

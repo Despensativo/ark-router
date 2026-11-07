@@ -1,0 +1,2417 @@
+{
+  "date": "2026-11-05",
+  "target": "Acer Predator W6x192.168.73.1",
+  "version": "ARK2.2.1/OpenWrt25.12.6/kernel6.12.112",
+  "native_cases": {
+    "native-packet-result.json": {
+      "scope": "W6x isolated IFB, narrow LAN test filters; actual ctinfo lookup, both IP families, 96/900 byte payloads",
+      "cases": [
+        {
+          "engine": "cake",
+          "family": 4,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0x0",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 4,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0x0",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 4,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0x88",
+          "input_dscp": 32,
+          "expected_dscp": 8,
+          "expected_ecn": 1,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            4,
+            0,
+            0,
+            0
+          ],
+          "expected_queue_index": 0,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 4,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0x88",
+          "input_dscp": 32,
+          "expected_dscp": 8,
+          "expected_ecn": 1,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            4,
+            0,
+            0,
+            0
+          ],
+          "expected_queue_index": 0,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 4,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0xa2",
+          "input_dscp": 32,
+          "expected_dscp": 34,
+          "expected_ecn": 2,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 2,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 4,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0xa2",
+          "input_dscp": 32,
+          "expected_dscp": 34,
+          "expected_ecn": 2,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 2,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 4,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 32,
+          "expected_ecn": 3,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            0,
+            0,
+            4
+          ],
+          "expected_queue_index": 3,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 4,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 32,
+          "expected_ecn": 3,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            0,
+            0,
+            4
+          ],
+          "expected_queue_index": 3,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 6,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0x0",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 6,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0x0",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 6,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0x88",
+          "input_dscp": 32,
+          "expected_dscp": 8,
+          "expected_ecn": 1,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            4,
+            0,
+            0,
+            0
+          ],
+          "expected_queue_index": 0,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 6,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0x88",
+          "input_dscp": 32,
+          "expected_dscp": 8,
+          "expected_ecn": 1,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            4,
+            0,
+            0,
+            0
+          ],
+          "expected_queue_index": 0,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 6,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0xa2",
+          "input_dscp": 32,
+          "expected_dscp": 34,
+          "expected_ecn": 2,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 2,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 6,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0xa2",
+          "input_dscp": 32,
+          "expected_dscp": 34,
+          "expected_ecn": 2,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 2,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 6,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 32,
+          "expected_ecn": 3,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            0,
+            0,
+            5
+          ],
+          "expected_queue_index": 3,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 6,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 32,
+          "expected_ecn": 3,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            0,
+            0,
+            4
+          ],
+          "expected_queue_index": 3,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 4,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0x0",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 4,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0x0",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 4,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0x88",
+          "input_dscp": 32,
+          "expected_dscp": 8,
+          "expected_ecn": 1,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            0,
+            4
+          ],
+          "expected_queue_index": 2,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 4,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0x88",
+          "input_dscp": 32,
+          "expected_dscp": 8,
+          "expected_ecn": 1,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            0,
+            4
+          ],
+          "expected_queue_index": 2,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 4,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0xa2",
+          "input_dscp": 32,
+          "expected_dscp": 34,
+          "expected_ecn": 2,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 4,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0xa2",
+          "input_dscp": 32,
+          "expected_dscp": 34,
+          "expected_ecn": 2,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 4,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 32,
+          "expected_ecn": 3,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 0,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 4,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 32,
+          "expected_ecn": 3,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 0,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 6,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0x0",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 6,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0x0",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 6,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0x88",
+          "input_dscp": 32,
+          "expected_dscp": 8,
+          "expected_ecn": 1,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            0,
+            4
+          ],
+          "expected_queue_index": 2,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 6,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0x88",
+          "input_dscp": 32,
+          "expected_dscp": 8,
+          "expected_ecn": 1,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 8,
+              "ecn": 1,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            0,
+            4
+          ],
+          "expected_queue_index": 2,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 6,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0xa2",
+          "input_dscp": 32,
+          "expected_dscp": 34,
+          "expected_ecn": 2,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 6,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0xa2",
+          "input_dscp": 32,
+          "expected_dscp": 34,
+          "expected_ecn": 2,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 34,
+              "ecn": 2,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 6,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 32,
+          "expected_ecn": 3,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 0,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 6,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 32,
+          "expected_ecn": 3,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 3,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 0,
+          "passed": true
+        }
+      ],
+      "errors": [],
+      "configuration_and_wan_roots_restored_exact": true,
+      "temporary_ifb_removed": true
+    },
+    "native-no-pedit-result.json": {
+      "scope": "W6x isolated IFB, narrow LAN test filters; actual ctinfo lookup, both IP families, 96/900 byte payloads",
+      "cases": [
+        {
+          "engine": "cake",
+          "family": 4,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 32,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 4,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 32,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 6,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 32,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 6,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 32,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 4,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 32,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 4,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 32,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 6,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 32,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 6,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 32,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 32,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        }
+      ],
+      "errors": [],
+      "configuration_and_wan_roots_restored_exact": true,
+      "temporary_ifb_removed": true
+    },
+    "native-no-ctinfo-result.json": {
+      "scope": "W6x isolated IFB, narrow LAN test filters; actual ctinfo lookup, both IP families, 96/900 byte payloads",
+      "cases": [
+        {
+          "engine": "cake",
+          "family": 4,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 4,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 6,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 6,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 4,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 4,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 6,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 6,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0xa0",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        }
+      ],
+      "errors": [],
+      "configuration_and_wan_roots_restored_exact": true,
+      "temporary_ifb_removed": true
+    },
+    "native-invalid-mark-result.json": {
+      "scope": "W6x isolated IFB, narrow LAN test filters; actual ctinfo lookup, both IP families, 96/900 byte payloads",
+      "cases": [
+        {
+          "engine": "cake",
+          "family": 4,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0x20",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 4,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0x20",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 6,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0x20",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "cake",
+          "family": 6,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0x20",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 4,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0x20",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 4,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0x20",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": true
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 6,
+          "payload_bytes": 96,
+          "connmark_low_byte": "0x20",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        },
+        {
+          "engine": "hfsc",
+          "family": 6,
+          "payload_bytes": 900,
+          "connmark_low_byte": "0x20",
+          "input_dscp": 32,
+          "expected_dscp": 0,
+          "expected_ecn": 0,
+          "captured_packets": 4,
+          "observed": [
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            },
+            {
+              "dscp": 0,
+              "ecn": 0,
+              "ipv4_checksum_valid": null
+            }
+          ],
+          "queue_packet_deltas": [
+            0,
+            4,
+            0
+          ],
+          "expected_queue_index": 1,
+          "passed": true
+        }
+      ],
+      "errors": [],
+      "configuration_and_wan_roots_restored_exact": true,
+      "temporary_ifb_removed": true
+    }
+  },
+  "native_passed_cases": 56,
+  "captured_test_datagrams": 224,
+  "native_fault_injection_note": "Modules remained loaded for production WAN. Missing pedit/ctinfo was injected in the capability detector while the remaining kernel actions and packets were real.",
+  "native_instrument_control_packet": [
+    {
+      "version": 6,
+      "dscp": 48,
+      "next_header": 58,
+      "icmpv6_type": 133
+    }
+  ],
+  "load_validation": [
+    {
+      "phase": "before",
+      "started_utc": "2026-11-05T20:05:53.942589+00:00",
+      "load_elapsed_seconds": 13.93,
+      "load_rc": 0,
+      "measurements": {
+        "base_rtt": 25.00554656982422,
+        "dl_bytes_transferred": 798289716,
+        "dl_phase_duration": 13.693307995796204,
+        "dl_throughput": 465238080,
+        "responsiveness": 987.15966796875,
+        "ul_bytes_transferred": 444596224,
+        "ul_phase_duration": 13.693307995796204,
+        "ul_throughput": 305134208
+      },
+      "pings": {
+        "gateway": {
+          "responses": 68,
+          "internal_sequence_holes": 0,
+          "p95_ms": 5.325,
+          "max_ms": 18.552
+        },
+        "cloudflare": {
+          "responses": 68,
+          "internal_sequence_holes": 0,
+          "p95_ms": 11.838,
+          "max_ms": 26.862
+        },
+        "google": {
+          "responses": 66,
+          "internal_sequence_holes": 1,
+          "p95_ms": 33.523,
+          "max_ms": 43.283
+        }
+      },
+      "cpu_max_sample_pct": 100.0,
+      "shaping_options_and_handles_preserved": true
+    },
+    {
+      "phase": "after1",
+      "started_utc": "2026-11-05T20:06:16.108931+00:00",
+      "load_elapsed_seconds": 15.16,
+      "load_rc": 0,
+      "measurements": {
+        "base_rtt": 27.386001586914062,
+        "dl_bytes_transferred": 1096572182,
+        "dl_phase_duration": 14.914335012435913,
+        "dl_throughput": 599630848,
+        "responsiveness": 939.3553466796875,
+        "ul_bytes_transferred": 664862719,
+        "ul_phase_duration": 14.914335012435913,
+        "ul_throughput": 427097280
+      },
+      "pings": {
+        "gateway": {
+          "responses": 72,
+          "internal_sequence_holes": 0,
+          "p95_ms": 4.955,
+          "max_ms": 5.993
+        },
+        "cloudflare": {
+          "responses": 71,
+          "internal_sequence_holes": 1,
+          "p95_ms": 15.367,
+          "max_ms": 24.502
+        },
+        "google": {
+          "responses": 72,
+          "internal_sequence_holes": 0,
+          "p95_ms": 28.569,
+          "max_ms": 38.083
+        }
+      },
+      "cpu_max_sample_pct": 96.04,
+      "shaping_options_and_handles_preserved": true
+    },
+    {
+      "phase": "after2",
+      "started_utc": "2026-11-05T20:06:35.300911+00:00",
+      "load_elapsed_seconds": 11.79,
+      "load_rc": 0,
+      "measurements": {
+        "base_rtt": 23.710378646850586,
+        "dl_bytes_transferred": 781053995,
+        "dl_phase_duration": 11.561089992523193,
+        "dl_throughput": 548979904,
+        "responsiveness": 1092.318115234375,
+        "ul_bytes_transferred": 482344960,
+        "ul_phase_duration": 11.561089992523193,
+        "ul_throughput": 350965312
+      },
+      "pings": {
+        "gateway": {
+          "responses": 59,
+          "internal_sequence_holes": 0,
+          "p95_ms": 3.531,
+          "max_ms": 6.584
+        },
+        "cloudflare": {
+          "responses": 59,
+          "internal_sequence_holes": 0,
+          "p95_ms": 13.476,
+          "max_ms": 17.798
+        },
+        "google": {
+          "responses": 59,
+          "internal_sequence_holes": 0,
+          "p95_ms": 26.115,
+          "max_ms": 42.568
+        }
+      },
+      "cpu_max_sample_pct": 99.02,
+      "shaping_options_and_handles_preserved": true
+    }
+  ],
+  "deployment": {
+    "target": "W6x192.168.73.1",
+    "files": {
+      "/usr/lib/ark/modules/sqm.sh": "5c9f17f8284cd9279d09461832bfdbcdf407fdb51ab1e2b780b2e5c6328b2cf6",
+      "/usr/lib/sqm/ark_hfsc_fqcodel.qos": "eee59223060b5d66a98b4e01bb2fce564d871c60eef12ab7fa90acfe7fb6e8af",
+      "/etc/nftables.d/15-ark-dscp-priority.nft": "1bf98eddf8d7931c3bfed5c907aced0df5d745e04ecc7314c8d3f962a86ad6b2",
+      "/usr/lib/ark/qos-ingress.sh": "55a722afbd12fb097a9eb7d0a4707a29a4a0c56c29f503f2c3f984cbe2ff2d5f"
+    },
+    "errors": [],
+    "started_epoch": 1793909173.0328991,
+    "uci_hashes_unchanged": true,
+    "root_options_and_handles_unchanged": true,
+    "applied": true
+  },
+  "final_checks": {
+    "uci_hashes_unchanged": true,
+    "root_options_and_handles_unchanged": true,
+    "source_hashes_match": true,
+    "generic_udp_rules_absent": true,
+    "no_fixed_cake_tin_override": true,
+    "pedit_and_checksum_active": true,
+    "ctinfo_active": true,
+    "redirect_preserved": true,
+    "no_temporary_ifbs": true,
+    "fw4_check_passed": true,
+    "load_before": true,
+    "load_after1": true,
+    "load_after2": true,
+    "idempotent_reapply_roots_preserved": true,
+    "watchdog_disarmed": true
+  },
+  "limits": [
+    "No VM or reboot test; operational exception authorized.",
+    "HFSC candidate exercised with real isolated IFB packets; new HFSC was not activated on the production WAN.",
+    "Short adaptive networkQuality loads, one before/two after, do not demonstrate causal speed or gaming latency improvement.",
+    "Explicit broad LAN gaming rules and LAN ECT(1) promotion remain; DSCP classification is not application authentication.",
+    "Existing connmarks were not flushed. Low-rate HFSC curves/ECN, physical resource budget and autonomous rate calibration remain open.",
+    "Periodic WAN pauses are not resolved by this classification correction."
+  ]
+}

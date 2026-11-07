@@ -107,7 +107,8 @@ if [ "${ARK_MUTATION_LOCK_HELD:-0}" != "1" ] && ! ark_is_readonly_action "$@"; t
 	ark_acquire_mutation_lock "$action" || exit 1
 	_ark_has_mut_lock=1
 	export ARK_MUTATION_LOCK_HELD=1
-	trap 'ark_release_mutation_lock' EXIT INT TERM HUP
+	trap 'ark_release_mutation_lock' EXIT
+	trap 'ark_release_mutation_lock; exit 130' INT TERM HUP
 fi
 
 case "$action" in

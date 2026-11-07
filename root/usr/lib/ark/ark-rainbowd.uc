@@ -106,6 +106,13 @@ if (getenv("ARK_TEST_SINGLE_PASS")) {
 
 uloop.init();
 
+let sigterm = uloop.signal(15, function() {
+	uloop.end();
+});
+let sigint = uloop.signal(2, function() {
+	uloop.end();
+});
+
 let current_step = 0;
 let check_counter = 0;
 let current_interval = 40;

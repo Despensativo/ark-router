@@ -1,0 +1,14 @@
+[2026-11-05 20:00:17] Ark Doctor Audit: STATUS=WARN (Erros=0, Avisos=1, Reparos=0, AutoFix=0)
+  [WARN] Transporte Criptografado Dual-DoH: Dual-DoH habilitado, porem o daemon https-dns-proxy nao esta em execucao.
+[2026-11-05 20:01:38] Ark Doctor Audit: STATUS=OK (Erros=0, Avisos=0, Reparos=0, AutoFix=0)
+  [OK] Nenhum alerta nas verificacoes executadas; nao equivale a homologacao operacional.
+[2026-11-05 21:00:02] Ark Doctor Audit: STATUS=OK (Erros=0, Avisos=0, Reparos=0, AutoFix=0)
+  [OK] Nenhum alerta nas verificacoes executadas; nao equivale a homologacao operacional.
+[2026-11-05 22:00:04] Ark Doctor Audit: STATUS=OK (Erros=0, Avisos=0, Reparos=0, AutoFix=0)
+  [OK] Nenhum alerta nas verificacoes executadas; nao equivale a homologacao operacional.
+[2026-11-05 23:00:05] Ark Doctor Audit: STATUS=OK (Erros=0, Avisos=0, Reparos=0, AutoFix=0)
+  [OK] Nenhum alerta nas verificacoes executadas; nao equivale a homologacao operacional.
+[2026-11-06 00:00:02] Ark Doctor Audit: STATUS=OK (Erros=0, Avisos=0, Reparos=0, AutoFix=0)
+  [OK] Nenhum alerta nas verificacoes executadas; nao equivale a homologacao operacional.
+[2026-11-06 01:00:02] Ark Doctor Audit: STATUS=OK (Erros=0, Avisos=0, Reparos=0, AutoFix=0)
+  [OK] Nenhum alerta nas verificacoes executadas; nao equivale a homologacao operacional.

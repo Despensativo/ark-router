@@ -16,11 +16,6 @@ start_service() {
 	procd_close_instance
 }
 
-stop_service() {
-	killall ark-rainbowd 2>/dev/null || true
-	pkill -f "/usr/sbin/ark-rainbowd" 2>/dev/null || true
-}
-
 service_triggers() {
 	procd_add_reload_trigger "system"
 }

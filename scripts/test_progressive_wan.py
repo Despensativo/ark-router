@@ -5,7 +5,7 @@ import paramiko
 
 ROUTER_IP = os.environ.get('ARK_ROUTER_IP', '192.168.73.1')
 USERNAME = os.environ.get('ARK_ROUTER_USER', 'root')
-PASSWORD = os.environ.get('ARK_ROUTER_TEST_PASSWORD') or os.environ.get('ARK_ROUTER_PASSWORD')
+PASSWORD = os.environ.get('ARK_ROUTER_TEST_PASSWORD') or os.environ.get('ARK_ROUTER_TEST_PASSWORD')
 
 if not PASSWORD:
     print("Defina a variável ARK_ROUTER_TEST_PASSWORD para executar testes de WAN no roteador.", file=sys.stderr)

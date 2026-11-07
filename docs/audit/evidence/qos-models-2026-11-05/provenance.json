@@ -1,0 +1,19 @@
+{
+  "git_head": "a5ab48c279649e4f6f9fdb85687cb5127bd373f2",
+  "dirty_worktree": true,
+  "runtime_hashes": [
+    "5c9f17f8284cd9279d09461832bfdbcdf407fdb51ab1e2b780b2e5c6328b2cf6  /usr/lib/ark/modules/sqm.sh",
+    "eee59223060b5d66a98b4e01bb2fce564d871c60eef12ab7fa90acfe7fb6e8af  /usr/lib/sqm/ark_hfsc_fqcodel.qos",
+    "55a722afbd12fb097a9eb7d0a4707a29a4a0c56c29f503f2c3f984cbe2ff2d5f  /usr/lib/ark/qos-ingress.sh",
+    "b038dad8ba74e527d70591ebf3fddb6174840b970325e8dde31cc60f23419787  /usr/lib/ark/qos-resources.sh",
+    "fec5f7c881dff4663e1c1ff41b24b345ed6909abb597b1f27e83b11724266c16  /usr/lib/ark/common.sh"
+  ],
+  "collector_final_sha256": "3364bf541a5c8e0a7da6d507963a9933777b144b3bd11134699ff4d68bf47899",
+  "collector_running_sha256": "eb45c67f3d44f399c5cbf6af62372527f7b3c6def68f4b240f2126c1be9301ba",
+  "app": {
+    "CFBundleIdentifier": "com.bufferspeed.desktop",
+    "CFBundleShortVersionString": "0.2.8",
+    "CFBundleVersion": "27"
+  },
+  "validation": "Hardware W6x; regressões locais mockadas; sem VM ou alteração de frontend nesta continuação."
+}

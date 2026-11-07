@@ -1,0 +1,9 @@
+{
+  "environment": "sandbox, UCI mock; nenhuma consulta a roteador",
+  "case": "restauracao DNS com entrada por dominio",
+  "exit_code": 0,
+  "domain_server_preserved": false,
+  "cachesize_before": 4096,
+  "cachesize_after": "1000",
+  "status": "defeito reproduzido; correção pendente de snapshot tipado e migração"
+}

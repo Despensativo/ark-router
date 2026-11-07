@@ -14,12 +14,13 @@ fi
 
 version="$(tr -d '[:space:]' < "$SRC_DIR/VERSION")"
 pkg_version="${version}-${PKG_RELEASE}"
-out_dir="$SRC_DIR/dist/sdk"
+out_dir="${ARK_PACKAGE_OUTPUT_DIR:-$SRC_DIR/dist/sdk}"
 mkdir -p "$out_dir"
 
 build_ipk_variant() {
 	pkg_name="$1"
 	depends="$2"
+	depends="$(python3 "$SRC_DIR/scripts/qos_package_deps.py" --format opkg --base "$depends")"
 	description="$3"
 	out_file="$out_dir/${pkg_name}-${pkg_version}.ipk"
 

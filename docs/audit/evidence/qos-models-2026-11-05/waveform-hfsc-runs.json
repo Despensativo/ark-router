@@ -1,0 +1,125 @@
+[
+  {
+    "engine": "hfsc",
+    "round": 1,
+    "grade": "A+",
+    "download_mbps": 673.7,
+    "upload_mbps": 176.2,
+    "phases": [
+      {
+        "min": 2.4,
+        "median": 26.7,
+        "max": 2086.5,
+        "mean": 198.1,
+        "p25": 25.4,
+        "p75": 29.1,
+        "p95": 1115.2,
+        "jitter": 287.3
+      },
+      {
+        "min": 22.1,
+        "median": 28,
+        "max": 38.3,
+        "mean": 28.2,
+        "p25": 25.3,
+        "p75": 31,
+        "p95": 33.6,
+        "jitter": 3.1
+      },
+      {
+        "min": 20.9,
+        "median": 26.6,
+        "max": 38.6,
+        "mean": 26.6,
+        "p25": 24.7,
+        "p75": 28.8,
+        "p95": 31.4,
+        "jitter": 2.3
+      }
+    ],
+    "url": "https://www.waveform.com/tools/bufferbloat?test-id=6ac777b1-8ece-4f52-a003-d6f7682aa9de",
+    "captured": 1793926355.742
+  },
+  {
+    "engine": "hfsc",
+    "round": 2,
+    "grade": "A",
+    "download_mbps": 711.3,
+    "upload_mbps": 276.4,
+    "phases": [
+      {
+        "min": 21.2,
+        "median": 26.7,
+        "max": 34.5,
+        "mean": 26.4,
+        "p25": 25.3,
+        "p75": 27.6,
+        "p95": 29.4,
+        "jitter": 1.8
+      },
+      {
+        "min": 20.4,
+        "median": 28.2,
+        "max": 106.6,
+        "mean": 29.4,
+        "p25": 25.3,
+        "p75": 31.6,
+        "p95": 38.4,
+        "jitter": 4.3
+      },
+      {
+        "min": -12.3,
+        "median": 26.1,
+        "max": 2594,
+        "mean": 50.2,
+        "p25": 23.9,
+        "p75": 28.6,
+        "p95": 32.2,
+        "jitter": 47.3
+      }
+    ],
+    "url": "https://www.waveform.com/tools/bufferbloat?test-id=65d238de-f39b-42ff-a892-4f83e3c9a538",
+    "captured": 1793926467.929
+  },
+  {
+    "engine": "hfsc",
+    "round": 3,
+    "grade": "A+",
+    "download_mbps": 709.8,
+    "upload_mbps": 164.3,
+    "phases": [
+      {
+        "min": 21.7,
+        "median": 26.9,
+        "max": 34.6,
+        "mean": 26.3,
+        "p25": 24.6,
+        "p75": 27.7,
+        "p95": 28.9,
+        "jitter": 1.9
+      },
+      {
+        "min": 20.9,
+        "median": 27.9,
+        "max": 37.2,
+        "mean": 27.9,
+        "p25": 25.8,
+        "p75": 30.1,
+        "p95": 32.8,
+        "jitter": 2.6
+      },
+      {
+        "min": 20.7,
+        "median": 27,
+        "max": 132.1,
+        "mean": 27.7,
+        "p25": 25.1,
+        "p75": 29.3,
+        "p95": 32.2,
+        "jitter": 2.9
+      }
+    ],
+    "url": "https://www.waveform.com/tools/bufferbloat?test-id=dce5576f-adc7-4145-9c84-e6a944e5b5ca",
+    "captured": 1793926572.913
+  }
+]

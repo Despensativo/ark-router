@@ -394,6 +394,11 @@ class RouterSandbox:
         os.makedirs(self.state_dir, exist_ok=True)
         os.makedirs(os.path.join(self.temp_dir, "tmp"), exist_ok=True)
         os.makedirs(os.path.join(self.temp_dir, "var", "log"), exist_ok=True)
+        nft_dir = os.path.join(self.temp_dir, "etc", "nftables.d")
+        os.makedirs(nft_dir, exist_ok=True)
+        nft_src = os.path.join(REPO_DIR, "root", "etc", "nftables.d", "15-ark-dscp-priority.nft")
+        if os.path.isfile(nft_src):
+            shutil.copy2(nft_src, os.path.join(nft_dir, "15-ark-dscp-priority.nft"))
 
         # 1. Create simulated network devices in sysfs
         for dev in ["eth1", "lan4", "pppoe-wan", "pppoe-wan2", "br-lan"]:
@@ -682,6 +687,9 @@ config dhcp 'lan'
 
     def uci_set(self, expr):
         _run_mock_in_memory("U", self.etc_config, ["-c", self.etc_config, "set", expr])
+
+    def uci_add_list(self, expr):
+        _run_mock_in_memory("U", self.etc_config, ["-c", self.etc_config, "add_list", expr])
 
     def cleanup(self):
         shutil.rmtree(self.temp_dir, ignore_errors=True)

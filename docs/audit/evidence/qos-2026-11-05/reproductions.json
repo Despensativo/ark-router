@@ -1,0 +1,62 @@
+{
+  "save_rc": 0,
+  "autorate_step_disabled": {
+    "ok": true,
+    "section": "wan1",
+    "cur_dl_kbps": 440000,
+    "cur_ul_kbps": 220000,
+    "base_dl_kbps": 500000,
+    "base_ul_kbps": 250000,
+    "action": "shaping_down",
+    "delay_ms": 25,
+    "load_pct": 85,
+    "threshold_ms": 15
+  },
+  "autorate_no_samples": {
+    "ok": true,
+    "section": "wan1",
+    "cur_dl_kbps": 500000,
+    "cur_ul_kbps": 250000,
+    "base_dl_kbps": 500000,
+    "base_ul_kbps": 250000,
+    "action": "elastic_recovery",
+    "delay_ms": 2,
+    "load_pct": 30,
+    "threshold_ms": 15
+  },
+  "sqm_disable_rc": 0,
+  "offload_after_explicit_user_disabled": "1",
+  "audit_gaming_off_auto_dscp": {
+    "is_low_end_mips": false,
+    "cpu_arch": "arm64",
+    "cpu_cores": 1,
+    "cpu_model": "",
+    "suggested_cut_off_mbps": 350,
+    "fastpath_active": true,
+    "hw_flowoffload_capable": false,
+    "hw_flowoffload_active": false,
+    "cake_memlimit": "16M",
+    "waveform_aplus_mode": true,
+    "cake_mq_capable": false,
+    "cake_mq_active": false,
+    "auto_dscp_active": false,
+    "ctinfo_capable": false,
+    "l4s_active": false,
+    "autorate_enabled": false,
+    "sqm_engine": "cake",
+    "gaming_ports_enabled": false,
+    "gaming_ports_active": false,
+    "bql_tuned": false,
+    "ipv6_mode": "dual_stack"
+  },
+  "all_tc_commands_fail": "tree_rc=0",
+  "hfsc_linklayer_none_root_command": [
+    "qdisc add dev pppoe-wan root handle 1: stab mtu 2047 tsize 512 mpu 64 overhead 44 linklayer ethernet hfsc default 20"
+  ],
+  "fw3_multiport_slots": 16,
+  "bql_512KiB_serialization_ms": {
+    "1000": 4.194304,
+    "100": 41.94304,
+    "20": 209.7152
+  }
+}

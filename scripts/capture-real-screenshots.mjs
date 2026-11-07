@@ -5,10 +5,10 @@ const port = Number(process.env.ARK_CAPTURE_PORT || 9333);
 const outDir = process.env.ARK_SCREENSHOT_DIR || path.resolve('docs/screenshots');
 const base = process.env.ARK_ROUTER_URL || 'https://192.168.10.1/cgi-bin/luci';
 const user = process.env.ARK_ROUTER_USER || 'root';
-const password = process.env.ARK_ROUTER_PASSWORD;
+const password = process.env.ARK_ROUTER_TEST_PASSWORD;
 
 if (!password) {
-  console.error('Set ARK_ROUTER_PASSWORD before running this script.');
+  console.error('Set ARK_ROUTER_TEST_PASSWORD before running this script.');
   process.exit(2);
 }
 

@@ -19,6 +19,7 @@ dist/minified/
 # Security, keys & local configs
 *.key
 *.conf
+!root/etc/sysctl.d/*.conf
 root/etc/wireguard/
 ._*
 *.exp

@@ -256,16 +256,20 @@ feature_active() {
 
 ark_feature_toggle_internal() {
 	local key="$1" desired="$2" s dev pref
-	[ "$desired" = "1" ] || desired="0"
-	uci -q set "equipe_dashboard.${key}=feature"
-	if [ "$desired" = "1" ]; then
-		uci -q set "equipe_dashboard.${key}.user_disabled=0"
-		uci -q set "equipe_dashboard.${key}.enabled=1"
-	else
-		uci -q set "equipe_dashboard.${key}.user_disabled=1"
-		uci -q set "equipe_dashboard.${key}.enabled=0"
+	case "$desired" in 0|1) ;; *) echo 'Estado de recurso invalido' >&2; return 2 ;; esac
+	feature_package "$key" >/dev/null || { echo 'Recurso desconhecido' >&2; return 2; }
+	# SQM confirma o servico antes de anunciar a nova preferencia ao painel.
+	if [ "$key" != sqm ]; then
+		uci -q set "equipe_dashboard.${key}=feature"
+		if [ "$desired" = "1" ]; then
+			uci -q set "equipe_dashboard.${key}.user_disabled=0"
+			uci -q set "equipe_dashboard.${key}.enabled=1"
+		else
+			uci -q set "equipe_dashboard.${key}.user_disabled=1"
+			uci -q set "equipe_dashboard.${key}.enabled=0"
+		fi
+		uci commit equipe_dashboard 2>/dev/null || true
 	fi
-	uci commit equipe_dashboard 2>/dev/null || true
 
 	case "$key" in
 		hardware_tune)
@@ -315,27 +319,31 @@ ark_feature_toggle_internal() {
 			fi
 			;;
 		sqm)
+			[ -x "${ARK_ROOT}/etc/init.d/sqm" ] || { echo 'Servico SQM indisponivel' >&2; return 3; }
 			if [ "$desired" = "1" ]; then
 				for s in $(uci -q show sqm 2>/dev/null | awk -F'[.=]' '$3=="queue"{print $2}'); do
-					uci -q set "sqm.${s}.enabled=1"
+					uci -q set "sqm.${s}.enabled=1" || return 1
 				done
-				uci commit sqm 2>/dev/null || true
-				[ -x "${ARK_ROOT}/etc/init.d/sqm" ] && { "${ARK_ROOT}/etc/init.d/sqm" enable >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/sqm" restart >/dev/null 2>&1 || true; }
-				command -v sync_sqm_flow_offload >/dev/null 2>&1 && sync_sqm_flow_offload
-				command -v ark_promote_cake_mq >/dev/null 2>&1 && ark_promote_cake_mq
+				uci commit sqm || return 1
+				"${ARK_ROOT}/etc/init.d/sqm" enable >/dev/null 2>&1 || return 1
+				ark_sqm_restart_checked || return 1
+				sync_sqm_flow_offload || return 1
+				ark_promote_cake_mq || return 1
 			else
-				[ -x "${ARK_ROOT}/etc/init.d/sqm" ] && { "${ARK_ROOT}/etc/init.d/sqm" stop >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/sqm" disable >/dev/null 2>&1 || true; }
+				"${ARK_ROOT}/etc/init.d/sqm" stop >/dev/null 2>&1 || return 1
+				"${ARK_ROOT}/etc/init.d/sqm" disable >/dev/null 2>&1 || return 1
 				for s in $(uci -q show sqm 2>/dev/null | awk -F'[.=]' '$3=="queue"{print $2}'); do
-					uci -q set "sqm.${s}.enabled=0"
+					uci -q set "sqm.${s}.enabled=0" || return 1
 				done
-				uci commit sqm 2>/dev/null || true
-				for dev in $(ls /sys/class/net 2>/dev/null); do
-					tc qdisc show dev "$dev" 2>/dev/null | grep -q "cake" && tc qdisc del dev "$dev" root 2>/dev/null || true
-					tc qdisc del dev "$dev" ingress 2>/dev/null || true
-					case "$dev" in ifb4*) ip link set dev "$dev" down 2>/dev/null || true ;; esac
-				done
-				command -v sync_sqm_flow_offload >/dev/null 2>&1 && sync_sqm_flow_offload
+				uci commit sqm || return 1
+				# O servico SQM remove seus recursos. Nunca varrer todos os
+				# ingress/qdiscs/IFBs: podem pertencer a VPN, QoS ou terceiros.
+				sync_sqm_flow_offload || return 1
 			fi
+			uci -q set equipe_dashboard.sqm=feature || return 1
+			uci -q set "equipe_dashboard.sqm.enabled=$desired" || return 1
+			uci -q set "equipe_dashboard.sqm.user_disabled=$((1 - desired))" || return 1
+			uci commit equipe_dashboard || return 1
 			;;
 		mwan3)
 			if [ "$desired" = "1" ]; then

@@ -5,6 +5,7 @@ import time
 import shutil
 import tempfile
 import io
+from qos_package_deps import augment_qos_dependencies
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
@@ -83,7 +84,8 @@ CONFFILES_CONTENT = """/etc/config/equipe_dashboard
 """
 
 def build_ipk_variant(pkg_name, pkg_version, depends, description, is_full=False):
-    out_dir = os.path.join(REPO_DIR, "dist", "sdk")
+    depends = augment_qos_dependencies(depends, "opkg")
+    out_dir = os.environ.get("ARK_PACKAGE_OUTPUT_DIR", os.path.join(REPO_DIR, "dist", "sdk"))
     os.makedirs(out_dir, exist_ok=True)
     out_file = os.path.join(out_dir, f"{pkg_name}-{pkg_version}.ipk")
 
@@ -330,8 +332,21 @@ def main():
     with open(VERSION_FILE, "r", encoding="utf-8") as f:
         version = f.read().strip()
 
-    pkg_version = f"{version}-r1"
-    out_dir = os.path.join(REPO_DIR, "dist", "sdk")
+    pkg_release = "1"
+    makefile_path = os.path.join(REPO_DIR, "Makefile")
+    if os.path.isfile(makefile_path):
+        import re
+        with open(makefile_path, "r", encoding="utf-8") as f:
+            m = re.search(r"PKG_RELEASE\s*:=\s*([0-9]+)", f.read())
+            if m:
+                pkg_release = m.group(1).strip()
+    if os.environ.get("ARK_PKG_RELEASE"):
+        pkg_release = os.environ.get("ARK_PKG_RELEASE")
+    if len(sys.argv) > 1 and sys.argv[1].isdigit():
+        pkg_release = sys.argv[1]
+
+    pkg_version = f"{version}-r{pkg_release}"
+    out_dir = os.environ.get("ARK_PACKAGE_OUTPUT_DIR", os.path.join(REPO_DIR, "dist", "sdk"))
     os.makedirs(out_dir, exist_ok=True)
 
     print("=" * 60)

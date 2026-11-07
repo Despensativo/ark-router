@@ -1,0 +1,95 @@
+{
+  "target": "192.168.73.1",
+  "after_sha256": "a4055d87b17b8783213dd1d8acd2682d860d7145ec0a66a6348719809dc46d2d",
+  "initial_sha256": "2c8cb835596146f9e0f910c1e4cb8a7bbbd551446a81c83fdc58e35a3c82fbbc",
+  "autorate_enabled": false,
+  "local_regression_methods": 26,
+  "native_kernel_test": {
+    "cake_rates_mbps": [
+      100,
+      50,
+      88,
+      44,
+      100,
+      50
+    ],
+    "service_fixture": true,
+    "production_config_hashes_unchanged": true
+  },
+  "production": {
+    "qdiscs_unchanged": true,
+    "config_hashes_unchanged": true,
+    "restart": false
+  },
+  "ctinfo": {
+    "installed": false,
+    "reason": "APK verification: UNTRUSTED signature"
+  },
+  "game_test": false,
+  "reboot_test": false,
+  "load": {
+    "tool": "macOS networkQuality",
+    "interface": "en6",
+    "mode": "sequential",
+    "elapsed_seconds": 25.44,
+    "rc": 0,
+    "output_fields": [
+      "base_rtt",
+      "cli_options",
+      "dl_bytes_transferred",
+      "dl_flows",
+      "dl_phase_duration",
+      "dl_phase_end",
+      "dl_phase_start",
+      "dl_responsiveness",
+      "dl_throughput",
+      "draft_version",
+      "end_date",
+      "il_h2_req_resp",
+      "il_tcp_handshake_443",
+      "il_tls_handshake",
+      "interface_name",
+      "lud_foreign_dl_h2_req_resp",
+      "lud_foreign_dl_tcp_handshake_443",
+      "lud_foreign_dl_tls_handshake",
+      "lud_foreign_ul_h2_req_resp",
+      "lud_foreign_ul_tcp_handshake_443",
+      "lud_foreign_ul_tls_handshake",
+      "lud_self_dl_h2_req_resp",
+      "lud_self_ul_h2_req_resp",
+      "os_version",
+      "other",
+      "start_date",
+      "test_endpoint",
+      "ul_bytes_transferred",
+      "ul_flows",
+      "ul_phase_duration",
+      "ul_phase_end",
+      "ul_phase_start",
+      "ul_responsiveness",
+      "ul_throughput"
+    ],
+    "measurements": {
+      "base_rtt": 21.90874481201172,
+      "dl_responsiveness": 1378.7972412109375,
+      "dl_throughput": 638078464,
+      "ul_responsiveness": 696.59716796875,
+      "ul_throughput": 513618624
+    },
+    "error_fields": {},
+    "pings": {
+      "gateway": [
+        "80 packets transmitted, 80 packets received, 0.0% packet loss",
+        "round-trip min/avg/max/stddev = 0.265/0.612/2.603/0.290 ms"
+      ],
+      "cloudflare": [
+        "80 packets transmitted, 80 packets received, 0.0% packet loss",
+        "round-trip min/avg/max/stddev = 3.742/4.737/7.072/0.600 ms"
+      ],
+      "google": [
+        "80 packets transmitted, 80 packets received, 0.0% packet loss",
+        "round-trip min/avg/max/stddev = 18.980/19.990/24.120/0.741 ms"
+      ]
+    }
+  }
+}

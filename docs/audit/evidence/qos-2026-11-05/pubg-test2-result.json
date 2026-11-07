@@ -1,0 +1,163 @@
+{
+  "phase": 2,
+  "condition": "ExitLag disabled; PUBG native optimization enabled; option name unspecified",
+  "complete": true,
+  "meta": {
+    "phase": 2,
+    "condition": "ExitLag disabled; PUBG native optimization enabled; option name unspecified",
+    "game": "PUBG Mobile",
+    "device_ipv4": "192.168.73.114",
+    "start_utc": "2026-11-05T16:33:04.778511+00:00",
+    "planned_duration_seconds": 600,
+    "capture": "header summaries only, no payload or pcap",
+    "sqm_change_during_test": false,
+    "end_utc": "2026-11-05T16:43:06.612159+00:00",
+    "actual_duration_seconds": 601.83
+  },
+  "pings": {
+    "ipad": {
+      "responses": 300,
+      "transmitted": 300,
+      "missing_sequences_inside_observed_range": [],
+      "avg_ms": 0.466,
+      "max_ms": 1.437,
+      "p95_ms": 0.671,
+      "p99_ms": 0.775,
+      "unanswered_probes": 0
+    },
+    "cloudflare": {
+      "responses": 293,
+      "transmitted": 300,
+      "missing_sequences_inside_observed_range": [
+        13,
+        59,
+        106,
+        152,
+        199,
+        245,
+        292
+      ],
+      "avg_ms": 4.447,
+      "max_ms": 5.915,
+      "p95_ms": 4.699,
+      "p99_ms": 4.761,
+      "unanswered_probes": 7
+    },
+    "google": {
+      "responses": 292,
+      "transmitted": 300,
+      "missing_sequences_inside_observed_range": [
+        13,
+        59,
+        106,
+        152,
+        179,
+        199,
+        245,
+        292
+      ],
+      "avg_ms": 19.406,
+      "max_ms": 20.142,
+      "p95_ms": 19.661,
+      "p99_ms": 19.929,
+      "unanswered_probes": 8
+    }
+  },
+  "qdisc": {
+    "UL": {
+      "samples": 299,
+      "sample_span_seconds": 601,
+      "root_drop_delta": 0,
+      "bytes_delta": 25122481,
+      "mean_mbps": 0.3344,
+      "max_sampled_queue_packets": 0,
+      "max_sampled_tin_peak_delay_ms": 1.537,
+      "max_sampled_tin_avg_delay_ms": 0.225
+    },
+    "DL": {
+      "samples": 299,
+      "sample_span_seconds": 601,
+      "root_drop_delta": 12,
+      "bytes_delta": 274431085,
+      "mean_mbps": 3.653,
+      "max_sampled_queue_packets": 22,
+      "max_sampled_tin_peak_delay_ms": 11.304,
+      "max_sampled_tin_avg_delay_ms": 7.764
+    }
+  },
+  "cpu": {
+    "max_core_busy_pct": 38.0,
+    "max_core_softirq_pct": 33.0,
+    "mean_total_busy_pct": 2.67
+  },
+  "minimum_available_memory_kib": 711132,
+  "transport_packets": 36659,
+  "unmapped_direction_packets": 0,
+  "flow_count": 59,
+  "main_udp_gaps_over_1s": [
+    {
+      "from_utc": "2026-11-05T16:33:29.344187+00:00",
+      "to_utc": "2026-11-05T16:33:31.472830+00:00",
+      "gap_ms": 2128.64,
+      "outgoing_packets_during_gap": 43
+    },
+    {
+      "from_utc": "2026-11-05T16:35:02.299343+00:00",
+      "to_utc": "2026-11-05T16:35:04.363572+00:00",
+      "gap_ms": 2064.23,
+      "outgoing_packets_during_gap": 45
+    },
+    {
+      "from_utc": "2026-11-05T16:36:35.296369+00:00",
+      "to_utc": "2026-11-05T16:36:37.413051+00:00",
+      "gap_ms": 2116.68,
+      "outgoing_packets_during_gap": 39
+    },
+    {
+      "from_utc": "2026-11-05T16:37:41.804510+00:00",
+      "to_utc": "2026-11-05T16:37:49.265053+00:00",
+      "gap_ms": 7460.54,
+      "outgoing_packets_during_gap": 1
+    },
+    {
+      "from_utc": "2026-11-05T16:37:49.265053+00:00",
+      "to_utc": "2026-11-05T16:37:59.266176+00:00",
+      "gap_ms": 10001.12,
+      "outgoing_packets_during_gap": 0
+    },
+    {
+      "from_utc": "2026-11-05T16:37:59.266176+00:00",
+      "to_utc": "2026-11-05T16:38:19.268091+00:00",
+      "gap_ms": 20001.91,
+      "outgoing_packets_during_gap": 0
+    },
+    {
+      "from_utc": "2026-11-05T16:38:19.268091+00:00",
+      "to_utc": "2026-11-05T16:38:29.270092+00:00",
+      "gap_ms": 10002.0,
+      "outgoing_packets_during_gap": 0
+    },
+    {
+      "from_utc": "2026-11-05T16:38:29.270092+00:00",
+      "to_utc": "2026-11-05T16:38:39.270198+00:00",
+      "gap_ms": 10000.11,
+      "outgoing_packets_during_gap": 0
+    }
+  ],
+  "limits": [
+    "No game RTT measurement; user left PUBG open.",
+    "ICMP probes are prioritized and do not equal game latency.",
+    "UDP receive gaps are not proven packet loss; capture drop statistics unavailable.",
+    "CPU and root qdisc statistics cover all router traffic."
+  ],
+  "user_condition": {
+    "exitlag_enabled": false,
+    "native_optimization_enabled": true,
+    "native_option_name": "not specified",
+    "active_match_confirmed": null,
+    "user_report": "ExitLag desligado, otimizacao do jogo ligada, jogo rodando",
+    "usage": "game left open, as in test 1",
+    "active_match": false,
+    "user_confirmed_usage": true
+  }
+}

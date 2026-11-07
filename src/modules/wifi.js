@@ -132,8 +132,15 @@ const wifiMethods = {
 		if (s2.channel && Number(s2.channel) >= 36 && (!s5.channel || Number(s5.channel) <= 14)) {
 			const tmp = s2; s2 = s5; s5 = tmp;
 		}
-		const r2 = w.r2g || w.r0 || {}, r5 = w.r5g || w.r1 || {};
-		return { two: currentChannelValue(r2.channel, s2), five: currentChannelValue(r5.channel, s5), auto2: String(r2.channel||'auto')==='auto', auto5: String(r5.channel||'auto')==='auto' };
+		const r2 = w.r2g || w.r0 || {}, r5 = w.r5g || w.r1 || {}, r6 = w.r6g || w.r2 || {};
+		return {
+			two: currentChannelValue(r2.channel, s2),
+			five: currentChannelValue(r5.channel, s5),
+			six: currentChannelValue(r6.channel, null) || (r6.channel || 'auto'),
+			auto2: String(r2.channel||'auto')==='auto',
+			auto5: String(r5.channel||'auto')==='auto',
+			auto6: String(r6.channel||'auto')==='auto'
+		};
 	},
 
 	changeWifiPassword: function(kind, ssid) {
@@ -198,6 +205,11 @@ const wifiMethods = {
 		const passRow1 = E('label', { class: 'ex-device-config-block' }, [ E('strong', {}, ['Senha']), password ]);
 		const passRow2 = E('label', { class: 'ex-device-config-block' }, [ E('strong', {}, ['Confirmar senha']), passwordConfirm ]);
 		const showRow = E('label', { class: 'ex-show-password' }, [ show, E('span', {}, ['Mostrar senha digitada']) ]);
+		const hiddenAddInput = E('input', { type: 'checkbox' });
+		const hiddenAddRow = E('label', { class: 'ex-show-password', style: 'margin-top: 6px;' }, [
+			hiddenAddInput,
+			E('span', {}, [_t('Ocultar nome da rede Wi‑Fi (SSID Oculto)')])
+		]);
 
 		const encAlert = E('div', { class: 'alert-message', style: 'margin-top: 6px; font-size: 11.5px; display: none;' });
 		const updateEncVisibility = function() {
@@ -245,6 +257,7 @@ const wifiMethods = {
 			passRow1,
 			passRow2,
 			showRow,
+			hiddenAddRow,
 			E('p', { class: 'alert-message warning' }, ['Ao salvar, o Wi‑Fi reiniciará para criar os novos pontos de acesso sem fio.']),
 			E('div', { class: 'right' }, [
 				E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': closeModal }, ['Cancelar']),
@@ -259,7 +272,7 @@ const wifiMethods = {
 					}
 					btn.disabled = true;
 					btn.textContent = 'Criando rede Wi‑Fi…';
-					return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-add', name, (enc === 'none' ? '' : pass), netSelect.value, bandSelect.value, enc]).then(function(r) {
+					return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-add', name, (enc === 'none' ? '' : pass), netSelect.value, bandSelect.value, enc, (hiddenAddInput.checked ? '1' : '0')]).then(function(r) {
 						if (r.code) throw new Error(r.stderr || 'Falha ao criar rede Wi-Fi');
 						ui.hideModal();
 						reloadSoon('Nova rede Wi-Fi criada. Reiniciando o rádio…', 1500);
@@ -877,6 +890,37 @@ const wifiMethods = {
 		rows.push(passRow1);
 		rows.push(passRow2);
 		rows.push(showRow);
+
+		const hiddenInput = E('input', { type: 'checkbox' });
+		hiddenInput.checked = String(current.hidden || '0') === '1';
+
+		const hiddenRow = E('div', { class: 'ex-device-config-block', style: 'padding: 10px 12px; border-radius: 8px; background: rgba(127,127,127,.06); border: 1px solid rgba(127,127,127,.12); margin-top: 10px;' }, [
+			E('div', { class: 'ex-device-config-heading' }, [
+				E('div', { style: 'display: flex; flex-direction: column; gap: 2px;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 6px;' }, [
+						E('strong', {}, [_t('Ocultar nome da rede (SSID Oculto)')]),
+						hiddenInput.checked ? E('span', { class: 'ex-wifi-hidden-tag', style: 'font-size: 11px; padding: 1px 6px; background: rgba(239,68,68,0.15); color: #f87171; border-radius: 4px; font-weight: 700;' }, [_t('Oculta')]) : ''
+					]),
+					E('small', { class: 'ex-muted', style: 'font-size: 11.5px; line-height: 1.3;' }, [
+						_t('Não transmite o nome do Wi‑Fi publicamente. Aparelhos já conectados continuam funcionando normalmente. Lâmpadas e tomadas inteligentes (IoT) podem falhar ao reconectar após falta de luz se a rede estiver oculta.')
+					])
+				]),
+				E('div', { class: 'ex-device-switch-control', style: 'flex: 0 0 auto;' }, [
+					E('strong', { class: 'ex-device-switch-state' }, [hiddenInput.checked ? _t('Oculta') : _t('Visível')]),
+					E('label', { class: 'ex-switch', 'aria-label': _t('Ocultar nome da rede') }, [
+						hiddenInput,
+						E('span', { class: 'ex-switch-slider' })
+					])
+				])
+			])
+		]);
+		hiddenInput.addEventListener('change', function() {
+			const st = hiddenRow.querySelector('.ex-device-switch-state');
+			if (st) st.textContent = hiddenInput.checked ? _t('Oculta') : _t('Visível');
+			const tag = hiddenRow.querySelector('.ex-wifi-hidden-tag');
+			if (tag) tag.style.display = hiddenInput.checked ? 'inline' : 'none';
+		});
+		rows.push(hiddenRow);
 		if(current.kind === 'extra' || String(kind).indexOf('extra_') === 0 || (kind !== 'main' && kind !== 'guest')){
 			const deleteBox = E('div', { class: 'ex-device-config-block', style: 'border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.05);padding:12px;margin-top:14px;border-radius:12px;' });
 			const deleteConfirmBox = E('div', { style: 'display:none;margin-top:10px;padding:12px;border-radius:10px;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.35);' });
@@ -962,7 +1006,7 @@ const wifiMethods = {
 			}
 			btn.disabled = true;
 			btn.textContent = 'Salvando Wi‑Fi…';
-			const args=['wifi-settings',kind,'split='+(isSplit?'1':'0'),'ssid='+name,'ssid2='+(isSplit?name2:name),'ssid5='+(isSplit?name5:name),'encryption='+enc,'split_enc='+(isSplitEnc?'1':'0'),'encryption2='+(isSplitEnc?enc2:enc),'encryption5='+(isSplitEnc?enc5:enc),'enabled='+(isGuest?(enabled.checked?'1':'0'):'keep'),'enable_2g='+(b2?'1':'0'),'enable_5g='+(b5?'1':'0')];
+			const args=['wifi-settings',kind,'split='+(isSplit?'1':'0'),'ssid='+name,'ssid2='+(isSplit?name2:name),'ssid5='+(isSplit?name5:name),'encryption='+enc,'split_enc='+(isSplitEnc?'1':'0'),'encryption2='+(isSplitEnc?enc2:enc),'encryption5='+(isSplitEnc?enc5:enc),'enabled='+(isGuest?(enabled.checked?'1':'0'):'keep'),'hidden='+(hiddenInput.checked?'1':'0'),'enable_2g='+(b2?'1':'0'),'enable_5g='+(b5?'1':'0')];
 			if (has6g) {
 				args.push('enable_6g=' + (b6 ? '1' : '0'));
 				args.push('ssid6=' + (isSplit ? name6 : name));
@@ -1154,15 +1198,63 @@ const wifiMethods = {
 		]) : '';
 
 		const has6gHw = !!(wConf.has6g || (this.capabilities && this.capabilities.hardware && (this.capabilities.hardware.wifi_6g_supported || (this.capabilities.hardware.wifi && this.capabilities.hardware.wifi_6g))));
-		const ch6Block = has6gHw ? E('div', { class: 'ex-device-config-block' }, [
-			E('strong', {}, ['Canal 6 GHz (Wi-Fi 6E / Wi-Fi 7 — PSC Automático)']),
-			E('div', { class: 'alert-message info', style: 'margin-top: 6px; font-size: 11.5px; line-height: 1.45;' }, [
-				E('div', { style: 'width: 100%;' }, [
-					E('strong', {}, ['🔒 Canal PSC 37 (6135 MHz — Anatel UNII-5): ']),
-					'A banda de 6 GHz opera ancorada automaticamente em canais PSC (Preferred Scanning Channels) com RNR + quadros FILS Discovery a cada 20 ms, garantindo descoberta instantânea em iPhones, Samsung Galaxy S23/S24/S25 e notebooks sem varredura lenta.'
+		let ch6Select = null;
+		let ch6Note = null;
+		let ch6Block = '';
+		if (has6gHw) {
+			ch6Select = E('select', { class: 'cbi-input-select', style: 'width:100%' }, [
+				E('option', { value: 'auto' }, ['Automático Inteligente (Canal PSC 37 — Âncora 320/160 MHz)']),
+				E('optgroup', { label: 'Canais PSC — Anatel UNII-5 (5925–6425 MHz — Padrão Brasil / Sem Radar)' }, [
+					E('option', { value: '37' }, ['Canal 37 (6135 MHz — Padrão Ouro / Centro 1º Bloco 320 MHz / PSC)']),
+					E('option', { value: '5' }, ['Canal 5 (5975 MHz — PSC / UNII-5)']),
+					E('option', { value: '21' }, ['Canal 21 (6055 MHz — PSC / UNII-5)']),
+					E('option', { value: '53' }, ['Canal 53 (6215 MHz — PSC / UNII-5)']),
+					E('option', { value: '69' }, ['Canal 69 (6295 MHz — PSC / UNII-5)']),
+					E('option', { value: '85' }, ['Canal 85 (6375 MHz — PSC / UNII-5)'])
+				]),
+				E('optgroup', { label: 'Canais PSC — UNII-6 / UNII-7 / UNII-8 (Internacional / FCC)' }, [
+					E('option', { value: '101' }, ['Canal 101 (6455 MHz — PSC / UNII-6)']),
+					E('option', { value: '117' }, ['Canal 117 (6535 MHz — PSC / UNII-7)']),
+					E('option', { value: '133' }, ['Canal 133 (6615 MHz — PSC / UNII-7)']),
+					E('option', { value: '149' }, ['Canal 149 (6695 MHz — PSC / UNII-7)']),
+					E('option', { value: '165' }, ['Canal 165 (6775 MHz — PSC / UNII-7)']),
+					E('option', { value: '181' }, ['Canal 181 (6855 MHz — PSC / UNII-7)']),
+					E('option', { value: '197' }, ['Canal 197 (6935 MHz — PSC / UNII-8)']),
+					E('option', { value: '213' }, ['Canal 213 (7015 MHz — PSC / UNII-8)']),
+					E('option', { value: '229' }, ['Canal 229 (7095 MHz — PSC / UNII-8)'])
 				])
-			])
-		]) : '';
+			]);
+			ch6Select.value = cur.six || 'auto';
+
+			ch6Note = E('div', { class: 'alert-message info', style: 'margin-top: 6px; font-size: 11.5px; display: none;' });
+			const updateCh6Note = function() {
+				const v = ch6Select.value;
+				if (v === '37' || v === 'auto') {
+					ch6Note.className = 'alert-message success';
+					ch6Note.textContent = '✅ Canal PSC 37 (Padrão Ouro): Centro exato do 1º bloco de 320 MHz (320-1) e 160 MHz na faixa UNII-5 Anatel. Dispositivos Apple (iPhone 15 Pro/16/16 Pro, Macs M-series) e Android descobrem a rede imediatamente através de quadros FILS Discovery (20 ms) e RNR nos 2,4/5 GHz.';
+					ch6Note.style.display = 'block';
+				} else if ([5, 21, 53, 69, 85].indexOf(Number(v)) >= 0) {
+					ch6Note.className = 'alert-message success';
+					ch6Note.textContent = '✅ Canal PSC Homologado (Anatel UNII-5): Canal de varredura preferencial com transmissão periódica de Reduced Neighbor Report (RNR) nas outras frequências para rápida associação sem consumo de bateria.';
+					ch6Note.style.display = 'block';
+				} else {
+					ch6Note.className = 'alert-message info';
+					ch6Note.textContent = 'ℹ️ Faixas UNII-6 a UNII-8 (Canais 97–233): Disponíveis em regulamentações internacionais (FCC). Se os seus aparelhos foram homologados fora do Brasil ou suportam espectro estendido, funcionarão normalmente.';
+					ch6Note.style.display = 'block';
+				}
+			};
+			ch6Select.addEventListener('change', updateCh6Note);
+			updateCh6Note();
+
+			ch6Block = E('label', { class: 'ex-device-config-block' }, [
+				E('strong', {}, ['Canal 6 GHz (Wi-Fi 6E / Wi-Fi 7)']),
+				ch6Select,
+				ch6Note,
+				E('small', { class: 'ex-muted' }, [
+					'A banda de 6 GHz opera com canais PSC (Preferred Scanning Channels) a cada 80 MHz para descoberta instantânea sem varredura lenta. WPA3-SAE obrigatório.'
+				])
+			]);
+		}
 
 		const rows = [
 			E('label', { class: 'ex-device-config-block' }, [
@@ -1170,7 +1262,7 @@ const wifiMethods = {
 				ch2Select,
 				ch2Note,
 				ecoWifiTip,
-				E('small', { class: 'ex-muted' }, ['Canais 1, 6 e 11 são os únicos sem sobreposição no 2,4 GHz. Dica: use 20 MHz (HT20) para total estabilidade de automação residencial e IoT.'])
+				E('small', { class: 'ex-muted' }, ['Canais 1, 6 e 11 são os únicos sem sobreposição no 2,4 GHz. O ARK aplica supressão anti-11b e BSS Coloring para estabilidade de IoT e celulares.'])
 			]),
 			E('label', { class: 'ex-device-config-block' }, [
 				E('strong', {}, ['Canal 5 GHz']),
@@ -1178,28 +1270,34 @@ const wifiMethods = {
 				ch5Note,
 				macbookAwdlTip,
 				E('small', { class: 'ex-muted' }, [ch5HelpText])
-			]),
-			ch6Block,
-			E('p', { class: 'alert-message warning' }, ['Ao aplicar, os rádios Wi‑Fi reiniciarão no novo canal selecionado.']),
-			E('div', { class: 'right' }, [
-				E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': closeModal }, ['Cancelar']),
-				' ',
-				E('button', { class: 'btn cbi-button cbi-button-positive', 'click': L.bind(function(ev) {
-					const btn = ev.currentTarget;
-					btn.disabled = true;
-					btn.textContent = 'Aplicando canais…';
-					return fs.exec('/usr/sbin/equipe-dashboard-control', ['channels', 'set', ch2Select.value, ch5Select.value]).then(function(r) {
-						if (r.code) throw new Error(r.stderr || 'Falha ao aplicar os canais');
-						ui.hideModal();
-						reloadSoon('Novos canais Wi-Fi aplicados. Recarregando…', 1500);
-					}).catch(function(e) {
-						btn.disabled = false;
-						btn.textContent = 'Aplicar canais';
-						ui.addNotification(null, E('p', {}, [String(e && e.message || e)]), 'danger');
-					});
-				}, this) }, ['Aplicar canais'])
 			])
 		];
+		if (has6gHw && ch6Block) {
+			rows.push(ch6Block);
+		}
+		rows.push(E('p', { class: 'alert-message warning' }, ['Ao aplicar, os rádios Wi‑Fi reiniciarão no novo canal selecionado.']));
+		rows.push(E('div', { class: 'right' }, [
+			E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': closeModal }, ['Cancelar']),
+			' ',
+			E('button', { class: 'btn cbi-button cbi-button-positive', 'click': L.bind(function(ev) {
+				const btn = ev.currentTarget;
+				btn.disabled = true;
+				btn.textContent = 'Aplicando canais…';
+				const cmdArgs = ['channels', 'set', ch2Select.value, ch5Select.value];
+				if (has6gHw && ch6Select) {
+					cmdArgs.push(ch6Select.value);
+				}
+				return fs.exec('/usr/sbin/equipe-dashboard-control', cmdArgs).then(function(r) {
+					if (r.code) throw new Error(r.stderr || 'Falha ao aplicar os canais');
+					ui.hideModal();
+					reloadSoon('Novos canais Wi-Fi aplicados. Recarregando…', 1500);
+				}).catch(function(e) {
+					btn.disabled = false;
+					btn.textContent = 'Aplicar canais';
+					ui.addNotification(null, E('p', {}, [String(e && e.message || e)]), 'danger');
+				});
+			}, this) }, ['Aplicar canais'])
+		]));
 		ui.showModal('Escolher canais Wi‑Fi manualmente', rows);
 	},
 	analyzeChannels: function(button) {

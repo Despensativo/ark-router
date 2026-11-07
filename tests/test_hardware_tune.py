@@ -321,8 +321,11 @@ class TestHardwareTune(unittest.TestCase):
 
         with open(nft_path, "r", encoding="utf-8") as f:
             nft_content = f.read()
-        # 4. Restore Conntrack CS4 exige meta length <= 512 e portas STUN (3478) excluidas de ark_gaming_ports
-        self.assertIn("meta l4proto udp meta length <= 512 ct mark & 0x000000ff == 0x000000a0", nft_content)
+        # 4. Restore Conntrack CS4 preserva fluxos de voz/jogos sem fragmentar teamfight snapshots (> 512B)
+        self.assertIn("meta l4proto { tcp, udp } ct mark & 0x000000ff == 0x000000a0 ip dscp set cs4", nft_content)
+        # 4b. Endpoint-Independent Mapping (Full Cone NAT) para jogos UDP (PS5, Xbox, PC, STUN)
+        self.assertIn("chain ark_cone_nat", nft_content)
+        self.assertIn("masquerade persistent", nft_content)
 
         # 5. Valida PLPMTUD (tcp_mtu_probing=1 + tcp_base_mss=1024) em 99-ark-hardware-tune.conf
         res_tune = self.sb.run_control("system-hardware-auto-tune")

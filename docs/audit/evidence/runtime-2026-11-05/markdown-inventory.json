@@ -1,0 +1,5721 @@
+{
+  "scope": "Markdown descoberto por rg, incluindo ocultos e respeitando ignore; exclui dependencias, dist e historicos protegidos",
+  "excluded": [
+    "**/.git/**",
+    "**/node_modules*/**",
+    "**/.venv*/**",
+    "**/dist/**",
+    "**/.pytest_cache/**",
+    "**/._*",
+    "Offline/**",
+    "Backups/**",
+    "Router Backups/**",
+    "Documentacao privada/**"
+  ],
+  "evidence_level": "varredura estrutural; candidatos nao sao falhas confirmadas",
+  "files_count": 170,
+  "categories": {
+    "skill": 54,
+    "referencia": 86,
+    "historico": 30
+  },
+  "broken_relative_links": 1,
+  "files": [
+    {
+      "path": ".agents/skills/ark-theme-ui/SKILL.md",
+      "category": "skill",
+      "bytes": 10825,
+      "lines": 224,
+      "sha256": "0bea718fafeada671684c29d416d37b517a3f8f6f680c997c32c170554055ef3",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 95,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 102,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 112,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 132,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 146,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 163,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 201,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 213,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": ".agents/skills/js-performance-optimization/SKILL.md",
+      "category": "skill",
+      "bytes": 8147,
+      "lines": 165,
+      "sha256": "99d147f5fcec75c9505cf93b18a2e92525f811654c657cdbd88b6029176bc676",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": ".agents/skills/openwrt-hardware-offloading/SKILL.md",
+      "category": "skill",
+      "bytes": 3228,
+      "lines": 62,
+      "sha256": "a53bb65cb2749aad630f37079e9416daee97827270169e8cfbdab772e0b6caf2",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": ".agents/skills/openwrt-imagebuilder/SKILL.md",
+      "category": "skill",
+      "bytes": 4511,
+      "lines": 85,
+      "sha256": "6d4731c2ac1fb23f28d8362bf3e0925330d68fb95cdac2aed207efce52c19a1e",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 3,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 23,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 24,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 34,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 59,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 60,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 69,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 71,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 74,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 78,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 79,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": ".agents/skills/openwrt-luci-modern/SKILL.md",
+      "category": "skill",
+      "bytes": 11833,
+      "lines": 325,
+      "sha256": "8d2698922743b4c5eb4d974770e3b214dce246d41c9757e887733977da8d6c06",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 319,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": ".agents/skills/openwrt-network-firewall/SKILL.md",
+      "category": "skill",
+      "bytes": 7664,
+      "lines": 154,
+      "sha256": "332c947e6e605dc287d2710acf372c017587e8013becabc80eae70889efe8061",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": ".agents/skills/openwrt-sqm-bufferbloat/SKILL.md",
+      "category": "skill",
+      "bytes": 3692,
+      "lines": 65,
+      "sha256": "5cf7d4ba9536ecbe7ea02991ca3d69a6be6ffb53522efe5f8a2236089528768e",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": ".agents/skills/openwrt-storage-failsafe/SKILL.md",
+      "category": "skill",
+      "bytes": 3628,
+      "lines": 87,
+      "sha256": "c46fde78ea28522774f8ff012d2ae1bf6de1207cc8837027d35232a724333292",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 3,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 6,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 9,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 13,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 16,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 17,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 19,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 20,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 36,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 75,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 86,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": ".agents/skills/openwrt-wifi-mesh/SKILL.md",
+      "category": "skill",
+      "bytes": 5946,
+      "lines": 132,
+      "sha256": "7bf082ee964771545f5c362799909c510d99a4a34e1615151ed3f49fd7bfa4d6",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": ".agents/skills/posix-shell/SKILL.md",
+      "category": "skill",
+      "bytes": 2436,
+      "lines": 49,
+      "sha256": "fafb372bfc2420fd232b4eac021dad73167f66d6ad2d8b845d2257159595a580",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": ".agents/skills/security-auditor/SKILL.md",
+      "category": "skill",
+      "bytes": 3712,
+      "lines": 45,
+      "sha256": "d453f057826b1eb1d69d8bd509a1ed422161b8ff4a0cb5e7b1579ebef513af59",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 31,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": ".agents/skills/systematic-debugging/SKILL.md",
+      "category": "skill",
+      "bytes": 3512,
+      "lines": 60,
+      "sha256": "1f5930dad365a4592ea4bc992e4b56b793d43cc48da5458ea1a475cd7690073d",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": ".cursor/commands/audit-accessibility.md",
+      "category": "referencia",
+      "bytes": 1942,
+      "lines": 28,
+      "sha256": "37c4a621c57f0698cb559b52a79c67c36ad8b31aa03c32af7f928ce1f056130f",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": ".cursor/commands/audit-ark-theme.md",
+      "category": "referencia",
+      "bytes": 650,
+      "lines": 10,
+      "sha256": "ce912ddef6092f5bdef3e8cce4c45745e0c32ffb075071c8861488c44589121d",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": ".cursor/commands/create-luci-view.md",
+      "category": "referencia",
+      "bytes": 663,
+      "lines": 11,
+      "sha256": "a1bbec060a1fec19f8f5b344e678ed51860a04c2040d4a2eb0a094f1ce739a16",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": ".cursor/commands/verify-router-health.md",
+      "category": "referencia",
+      "bytes": 474,
+      "lines": 10,
+      "sha256": "fbcbc0ef8c7208f2e4285bfcc0f0acee21a972aa636802cc2c6d58a7316e6ebd",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "AGENTS.md",
+      "category": "referencia",
+      "bytes": 11468,
+      "lines": 89,
+      "sha256": "db65e9b846062283c642e7493ddeb2f258489deba1147dd3ae4abfebd3e891d4",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 11,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 22,
+          "kind": "confirmacao_SIM"
+        },
+        {
+          "line": 30,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 37,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 38,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 44,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 47,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "Evidencias locais/PUBG-ABC-2026-11-05/PUBG-ABC-resultado.md",
+      "category": "historico",
+      "bytes": 8820,
+      "lines": 84,
+      "sha256": "7ce9f6edc42364fd53b2812b04701a64be9c52e4a9449aa6a4ae42caf9353491",
+      "relative_links": [
+        {
+          "line": 65,
+          "target": "../../DIAGNOSTICO_W6X_SONDAS_WAN_2026_10_29.md",
+          "exists": false
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "Evidencias locais/WAN-localizacao-2026-11-05/resultado.md",
+      "category": "historico",
+      "bytes": 9117,
+      "lines": 80,
+      "sha256": "ba0cb3fd659d246b55cd9db6088c879cc690ecbd1a0ab7c7fb42d871d3710df6",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "Firmware/README.md",
+      "category": "referencia",
+      "bytes": 1634,
+      "lines": 31,
+      "sha256": "08c07421d7c7f0dbb30719fae570699d343598837faccf1c7f6e1c9e8237414a",
+      "relative_links": [
+        {
+          "line": 14,
+          "target": "../GitHub/luci-app-ark-router/docs/CUDY_WR3000_TFTP_RECOVERY.md",
+          "exists": true
+        },
+        {
+          "line": 31,
+          "target": "./sha256sums",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 12,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 20,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 24,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GEMINI.md",
+      "category": "referencia",
+      "bytes": 412,
+      "lines": 5,
+      "sha256": "709e7bac62bd462f91797a5b7f56e86974a8c795d96ef890e2fd48fa6d392552",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 5,
+          "kind": "confirmacao_SIM"
+        }
+      ]
+    },
+    {
+      "path": "GUIA-INSTALACAO-ROM-CUDY-WR3000-OUTRA-IA.md",
+      "category": "referencia",
+      "bytes": 10398,
+      "lines": 241,
+      "sha256": "4398ff8d8ba9e4dcf710a2114d263c612f4da393ed97b06706cc7abfd0b75a4c",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 26,
+          "kind": "caminho_de_maquina"
+        },
+        {
+          "line": 26,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 28,
+          "kind": "caminho_de_maquina"
+        },
+        {
+          "line": 28,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 36,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 40,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 59,
+          "kind": "caminho_de_maquina"
+        },
+        {
+          "line": 59,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 70,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 79,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 87,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 94,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 95,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 102,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 104,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 139,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 140,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 153,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 226,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 230,
+          "kind": "caminho_de_maquina"
+        },
+        {
+          "line": 230,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 231,
+          "kind": "caminho_de_maquina"
+        },
+        {
+          "line": 231,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 240,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/.agents/skills/ark-theme-ui/SKILL.md",
+      "category": "skill",
+      "bytes": 10825,
+      "lines": 224,
+      "sha256": "0bea718fafeada671684c29d416d37b517a3f8f6f680c997c32c170554055ef3",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 95,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 102,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 112,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 132,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 146,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 163,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 201,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 213,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/.agents/skills/js-performance-optimization/SKILL.md",
+      "category": "skill",
+      "bytes": 8147,
+      "lines": 165,
+      "sha256": "99d147f5fcec75c9505cf93b18a2e92525f811654c657cdbd88b6029176bc676",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/.agents/skills/openwrt-hardware-offloading/SKILL.md",
+      "category": "skill",
+      "bytes": 3228,
+      "lines": 62,
+      "sha256": "a53bb65cb2749aad630f37079e9416daee97827270169e8cfbdab772e0b6caf2",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/.agents/skills/openwrt-imagebuilder/SKILL.md",
+      "category": "skill",
+      "bytes": 4511,
+      "lines": 85,
+      "sha256": "6d4731c2ac1fb23f28d8362bf3e0925330d68fb95cdac2aed207efce52c19a1e",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 3,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 23,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 24,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 34,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 59,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 60,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 69,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 71,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 74,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 78,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 79,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/.agents/skills/openwrt-luci-modern/SKILL.md",
+      "category": "skill",
+      "bytes": 11833,
+      "lines": 325,
+      "sha256": "8d2698922743b4c5eb4d974770e3b214dce246d41c9757e887733977da8d6c06",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 319,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/.agents/skills/openwrt-network-firewall/SKILL.md",
+      "category": "skill",
+      "bytes": 7664,
+      "lines": 154,
+      "sha256": "332c947e6e605dc287d2710acf372c017587e8013becabc80eae70889efe8061",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/.agents/skills/openwrt-sqm-bufferbloat/SKILL.md",
+      "category": "skill",
+      "bytes": 3692,
+      "lines": 65,
+      "sha256": "5cf7d4ba9536ecbe7ea02991ca3d69a6be6ffb53522efe5f8a2236089528768e",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/.agents/skills/openwrt-storage-failsafe/SKILL.md",
+      "category": "skill",
+      "bytes": 3628,
+      "lines": 87,
+      "sha256": "c46fde78ea28522774f8ff012d2ae1bf6de1207cc8837027d35232a724333292",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 3,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 6,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 9,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 13,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 16,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 17,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 19,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 20,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 36,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 75,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 86,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/.agents/skills/openwrt-wifi-mesh/SKILL.md",
+      "category": "skill",
+      "bytes": 5318,
+      "lines": 130,
+      "sha256": "696a67fbd391167a5115323ca3675d9cb05eda76744c8721754afc0258fe14eb",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/.agents/skills/posix-shell/SKILL.md",
+      "category": "skill",
+      "bytes": 2436,
+      "lines": 49,
+      "sha256": "fafb372bfc2420fd232b4eac021dad73167f66d6ad2d8b845d2257159595a580",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/.agents/skills/security-auditor/SKILL.md",
+      "category": "skill",
+      "bytes": 3712,
+      "lines": 45,
+      "sha256": "d453f057826b1eb1d69d8bd509a1ed422161b8ff4a0cb5e7b1579ebef513af59",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 31,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/.agents/skills/systematic-debugging/SKILL.md",
+      "category": "skill",
+      "bytes": 3512,
+      "lines": 60,
+      "sha256": "1f5930dad365a4592ea4bc992e4b56b793d43cc48da5458ea1a475cd7690073d",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/AGENTS.md",
+      "category": "skill",
+      "bytes": 7602,
+      "lines": 84,
+      "sha256": "b3761ab9997cbafa93622db331d83d094adbe0f03ac099e3515b7eb775cace3e",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 14,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 48,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 63,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 67,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 76,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 81,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/GEMINI.md",
+      "category": "skill",
+      "bytes": 249,
+      "lines": 5,
+      "sha256": "96cba5d24e1a466eb0a3a3650f50083c58c33d3b1fd88eb6c6dc3362c1259d10",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/README.md",
+      "category": "skill",
+      "bytes": 9144,
+      "lines": 130,
+      "sha256": "8829ff265a10825002ff1f6de5c241fa9ec55c4461e2af6a2091e28886f7b9bd",
+      "relative_links": [
+        {
+          "line": 15,
+          "target": "LICENSE",
+          "exists": true
+        },
+        {
+          "line": 40,
+          "target": "skills/posix-shell/SKILL.md",
+          "exists": true
+        },
+        {
+          "line": 41,
+          "target": "skills/security-auditor/SKILL.md",
+          "exists": true
+        },
+        {
+          "line": 42,
+          "target": "skills/systematic-debugging/SKILL.md",
+          "exists": true
+        },
+        {
+          "line": 43,
+          "target": "skills/openwrt-network-firewall/SKILL.md",
+          "exists": true
+        },
+        {
+          "line": 44,
+          "target": "skills/ark-theme-ui/SKILL.md",
+          "exists": true
+        },
+        {
+          "line": 45,
+          "target": "skills/openwrt-imagebuilder/SKILL.md",
+          "exists": true
+        },
+        {
+          "line": 46,
+          "target": "skills/openwrt-hardware-offloading/SKILL.md",
+          "exists": true
+        },
+        {
+          "line": 47,
+          "target": "skills/openwrt-wifi-mesh/SKILL.md",
+          "exists": true
+        },
+        {
+          "line": 48,
+          "target": "skills/openwrt-sqm-bufferbloat/SKILL.md",
+          "exists": true
+        },
+        {
+          "line": 49,
+          "target": "skills/openwrt-storage-failsafe/SKILL.md",
+          "exists": true
+        },
+        {
+          "line": 50,
+          "target": "skills/openwrt-luci-modern/SKILL.md",
+          "exists": true
+        },
+        {
+          "line": 51,
+          "target": "skills/js-performance-optimization/SKILL.md",
+          "exists": true
+        },
+        {
+          "line": 77,
+          "target": "docs/PROMPT-REVISOR-MESTRE-IA.md",
+          "exists": true
+        },
+        {
+          "line": 115,
+          "target": "docs/ARK-ROUTER-LESSONS.md",
+          "exists": true
+        },
+        {
+          "line": 117,
+          "target": "docs/ARK-MD-CROSSCHECK.md",
+          "exists": true
+        },
+        {
+          "line": 127,
+          "target": "LICENSE",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 2,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 49,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 70,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 111,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/docs/ARK-MD-CROSSCHECK.md",
+      "category": "skill",
+      "bytes": 5006,
+      "lines": 29,
+      "sha256": "771f33872f7cdee3249f152cff43191d90be04a349aea2a5292233c123055a40",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 29,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/docs/ARK-ROUTER-LESSONS.md",
+      "category": "skill",
+      "bytes": 5599,
+      "lines": 43,
+      "sha256": "d826392d1cbffaa3853191b55018c79384bf332f5d9baf7947f4d002aff06208",
+      "relative_links": [
+        {
+          "line": 37,
+          "target": "ARK-MD-CROSSCHECK.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/docs/PROMPT-REVISOR-MESTRE-IA.md",
+      "category": "skill",
+      "bytes": 5574,
+      "lines": 70,
+      "sha256": "45bcb96496376d267d8a4f2ef0721f7698341a87c9b0afa82c0c47776b688875",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 66,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/skills/ark-theme-ui/SKILL.md",
+      "category": "skill",
+      "bytes": 10825,
+      "lines": 224,
+      "sha256": "0bea718fafeada671684c29d416d37b517a3f8f6f680c997c32c170554055ef3",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 95,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 102,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 112,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 132,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 146,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 163,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 201,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 213,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/skills/js-performance-optimization/SKILL.md",
+      "category": "skill",
+      "bytes": 8147,
+      "lines": 165,
+      "sha256": "99d147f5fcec75c9505cf93b18a2e92525f811654c657cdbd88b6029176bc676",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/skills/openwrt-hardware-offloading/SKILL.md",
+      "category": "skill",
+      "bytes": 3228,
+      "lines": 62,
+      "sha256": "a53bb65cb2749aad630f37079e9416daee97827270169e8cfbdab772e0b6caf2",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/skills/openwrt-imagebuilder/SKILL.md",
+      "category": "skill",
+      "bytes": 4511,
+      "lines": 85,
+      "sha256": "6d4731c2ac1fb23f28d8362bf3e0925330d68fb95cdac2aed207efce52c19a1e",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 3,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 23,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 24,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 34,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 59,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 60,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 69,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 71,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 74,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 78,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 79,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/skills/openwrt-luci-modern/SKILL.md",
+      "category": "skill",
+      "bytes": 11833,
+      "lines": 325,
+      "sha256": "8d2698922743b4c5eb4d974770e3b214dce246d41c9757e887733977da8d6c06",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 319,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/skills/openwrt-network-firewall/SKILL.md",
+      "category": "skill",
+      "bytes": 7664,
+      "lines": 154,
+      "sha256": "332c947e6e605dc287d2710acf372c017587e8013becabc80eae70889efe8061",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/skills/openwrt-sqm-bufferbloat/SKILL.md",
+      "category": "skill",
+      "bytes": 3692,
+      "lines": 65,
+      "sha256": "5cf7d4ba9536ecbe7ea02991ca3d69a6be6ffb53522efe5f8a2236089528768e",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/skills/openwrt-storage-failsafe/SKILL.md",
+      "category": "skill",
+      "bytes": 3628,
+      "lines": 87,
+      "sha256": "c46fde78ea28522774f8ff012d2ae1bf6de1207cc8837027d35232a724333292",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 3,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 6,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 9,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 13,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 16,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 17,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 19,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 20,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 36,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 75,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 86,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/skills/openwrt-wifi-mesh/SKILL.md",
+      "category": "skill",
+      "bytes": 5318,
+      "lines": 130,
+      "sha256": "696a67fbd391167a5115323ca3675d9cb05eda76744c8721754afc0258fe14eb",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/skills/posix-shell/SKILL.md",
+      "category": "skill",
+      "bytes": 2436,
+      "lines": 49,
+      "sha256": "fafb372bfc2420fd232b4eac021dad73167f66d6ad2d8b845d2257159595a580",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/skills/security-auditor/SKILL.md",
+      "category": "skill",
+      "bytes": 3712,
+      "lines": 45,
+      "sha256": "d453f057826b1eb1d69d8bd509a1ed422161b8ff4a0cb5e7b1579ebef513af59",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 31,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/OpenWrt-Skills/skills/systematic-debugging/SKILL.md",
+      "category": "skill",
+      "bytes": 3512,
+      "lines": 60,
+      "sha256": "1f5930dad365a4592ea4bc992e4b56b793d43cc48da5458ea1a475cd7690073d",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.agents/skills/ark-theme-ui/SKILL.md",
+      "category": "skill",
+      "bytes": 10825,
+      "lines": 224,
+      "sha256": "0bea718fafeada671684c29d416d37b517a3f8f6f680c997c32c170554055ef3",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 95,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 102,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 112,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 132,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 146,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 163,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 201,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 213,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.agents/skills/js-performance-optimization/SKILL.md",
+      "category": "skill",
+      "bytes": 8147,
+      "lines": 165,
+      "sha256": "99d147f5fcec75c9505cf93b18a2e92525f811654c657cdbd88b6029176bc676",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.agents/skills/openwrt-hardware-offloading/SKILL.md",
+      "category": "skill",
+      "bytes": 3228,
+      "lines": 62,
+      "sha256": "a53bb65cb2749aad630f37079e9416daee97827270169e8cfbdab772e0b6caf2",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.agents/skills/openwrt-imagebuilder/SKILL.md",
+      "category": "skill",
+      "bytes": 4511,
+      "lines": 85,
+      "sha256": "6d4731c2ac1fb23f28d8362bf3e0925330d68fb95cdac2aed207efce52c19a1e",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 3,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 23,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 24,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 34,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 59,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 60,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 69,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 71,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 74,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 78,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 79,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.agents/skills/openwrt-luci-modern/SKILL.md",
+      "category": "skill",
+      "bytes": 11833,
+      "lines": 325,
+      "sha256": "8d2698922743b4c5eb4d974770e3b214dce246d41c9757e887733977da8d6c06",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 319,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.agents/skills/openwrt-network-firewall/SKILL.md",
+      "category": "skill",
+      "bytes": 7664,
+      "lines": 154,
+      "sha256": "332c947e6e605dc287d2710acf372c017587e8013becabc80eae70889efe8061",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.agents/skills/openwrt-sqm-bufferbloat/SKILL.md",
+      "category": "skill",
+      "bytes": 3692,
+      "lines": 65,
+      "sha256": "5cf7d4ba9536ecbe7ea02991ca3d69a6be6ffb53522efe5f8a2236089528768e",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.agents/skills/openwrt-storage-failsafe/SKILL.md",
+      "category": "skill",
+      "bytes": 3628,
+      "lines": 87,
+      "sha256": "c46fde78ea28522774f8ff012d2ae1bf6de1207cc8837027d35232a724333292",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 3,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 6,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 9,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 13,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 16,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 17,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 19,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 20,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 36,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 75,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 86,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.agents/skills/openwrt-wifi-mesh/SKILL.md",
+      "category": "skill",
+      "bytes": 5318,
+      "lines": 130,
+      "sha256": "696a67fbd391167a5115323ca3675d9cb05eda76744c8721754afc0258fe14eb",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.agents/skills/posix-shell/SKILL.md",
+      "category": "skill",
+      "bytes": 2436,
+      "lines": 49,
+      "sha256": "fafb372bfc2420fd232b4eac021dad73167f66d6ad2d8b845d2257159595a580",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.agents/skills/security-auditor/SKILL.md",
+      "category": "skill",
+      "bytes": 3712,
+      "lines": 45,
+      "sha256": "d453f057826b1eb1d69d8bd509a1ed422161b8ff4a0cb5e7b1579ebef513af59",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 31,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.agents/skills/systematic-debugging/SKILL.md",
+      "category": "skill",
+      "bytes": 3512,
+      "lines": 60,
+      "sha256": "1f5930dad365a4592ea4bc992e4b56b793d43cc48da5458ea1a475cd7690073d",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.cursor/commands/audit-accessibility.md",
+      "category": "referencia",
+      "bytes": 1942,
+      "lines": 28,
+      "sha256": "37c4a621c57f0698cb559b52a79c67c36ad8b31aa03c32af7f928ce1f056130f",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.cursor/commands/audit-ark-theme.md",
+      "category": "referencia",
+      "bytes": 650,
+      "lines": 10,
+      "sha256": "ce912ddef6092f5bdef3e8cce4c45745e0c32ffb075071c8861488c44589121d",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.cursor/commands/create-luci-view.md",
+      "category": "referencia",
+      "bytes": 663,
+      "lines": 11,
+      "sha256": "a1bbec060a1fec19f8f5b344e678ed51860a04c2040d4a2eb0a094f1ce739a16",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.cursor/commands/verify-router-health.md",
+      "category": "referencia",
+      "bytes": 474,
+      "lines": 10,
+      "sha256": "fbcbc0ef8c7208f2e4285bfcc0f0acee21a972aa636802cc2c6d58a7316e6ebd",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.github/ISSUE_TEMPLATE/bug_report.md",
+      "category": "referencia",
+      "bytes": 550,
+      "lines": 40,
+      "sha256": "8a0f5c379469849fe0176f48f6fd8a26af0a75dac8bb171afdca586896d2c3d1",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.github/ISSUE_TEMPLATE/feature_request.md",
+      "category": "referencia",
+      "bytes": 436,
+      "lines": 23,
+      "sha256": "14c91d7543d1bd319d22d6308576541787d78b0ee4d92bd210ca8adc5b2a9564",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/.github/PULL_REQUEST_TEMPLATE.md",
+      "category": "referencia",
+      "bytes": 575,
+      "lines": 23,
+      "sha256": "9151f9eeae48a209572e1a0bf93102b6290fa5949a3e36ce79838d6359bbee35",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/AGENTS.md",
+      "category": "referencia",
+      "bytes": 20230,
+      "lines": 181,
+      "sha256": "d209cc8591d95b198e608f80f460a0c11191e7f951ebeb404a89bdc08ea4e790",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 44,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 53,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 54,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 67,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 70,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 80,
+          "kind": "confirmacao_SIM"
+        },
+        {
+          "line": 143,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 158,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 175,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/CHANGELOG.md",
+      "category": "historico",
+      "bytes": 88067,
+      "lines": 603,
+      "sha256": "09cc341730b6d23bfb29a12e4c9c373963cd798f35d54807ccf7e14f5552448f",
+      "relative_links": [
+        {
+          "line": 48,
+          "target": "docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md",
+          "exists": true
+        },
+        {
+          "line": 48,
+          "target": "docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md",
+          "exists": true
+        },
+        {
+          "line": 602,
+          "target": "docs/CHANGELOG-COMPLETO.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 14,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 15,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 19,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 21,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 26,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 36,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 39,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 40,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 41,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 45,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 46,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 49,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 56,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 57,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 64,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 66,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 85,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 95,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 98,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 119,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 130,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 133,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 156,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 165,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 171,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 189,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 190,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 191,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 196,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 218,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 219,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 235,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 245,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 249,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 273,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 278,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 279,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 301,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 305,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 315,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 330,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 333,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 334,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 363,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 379,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 380,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 381,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 423,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 432,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 441,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 446,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 454,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 460,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 480,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 501,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 509,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 512,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 551,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 585,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 589,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 593,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/CODE_OF_CONDUCT.md",
+      "category": "referencia",
+      "bytes": 639,
+      "lines": 18,
+      "sha256": "f7e212fd2e343571b837ed6ebd13d7181c022acc0cd1597337f9e443567865c7",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/CONTRIBUTING.md",
+      "category": "referencia",
+      "bytes": 1212,
+      "lines": 20,
+      "sha256": "81751dfda45ff2c9085da78ef492cc102f9a609c29eee4378212295ba40b5e80",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/GEMINI.md",
+      "category": "referencia",
+      "bytes": 666,
+      "lines": 12,
+      "sha256": "a16abd084dc83e8606412f77c1e5cc74e0c8523eefcdda586af2610f1cf71dad",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/README.en.md",
+      "category": "referencia",
+      "bytes": 16411,
+      "lines": 212,
+      "sha256": "ed85c81390dd7c22acaae6eb60877cb374d5bc6fa2a973be6ed2fbb8453e3de8",
+      "relative_links": [
+        {
+          "line": 7,
+          "target": "docs/DOCTOR_SAFETY_MODEL.md",
+          "exists": true
+        },
+        {
+          "line": 31,
+          "target": "VERSION",
+          "exists": true
+        },
+        {
+          "line": 37,
+          "target": "docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md",
+          "exists": true
+        },
+        {
+          "line": 37,
+          "target": "docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md",
+          "exists": true
+        },
+        {
+          "line": 53,
+          "target": "docs/CODE_MAP.md",
+          "exists": true
+        },
+        {
+          "line": 115,
+          "target": "docs/screenshots/perf-hardening-card.png",
+          "exists": true
+        },
+        {
+          "line": 115,
+          "target": "docs/screenshots/dashboard-overview.png",
+          "exists": true
+        },
+        {
+          "line": 119,
+          "target": "docs/screenshots/ark-setup.png",
+          "exists": true
+        },
+        {
+          "line": 119,
+          "target": "docs/screenshots/wan-editor.png",
+          "exists": true
+        },
+        {
+          "line": 123,
+          "target": "docs/screenshots/sqm-editor.png",
+          "exists": true
+        },
+        {
+          "line": 123,
+          "target": "docs/screenshots/starlink-telemetry-real.png",
+          "exists": true
+        },
+        {
+          "line": 127,
+          "target": "docs/screenshots/mobile-overview.png",
+          "exists": true
+        },
+        {
+          "line": 127,
+          "target": "docs/screenshots/theme_switched_to_ark.png",
+          "exists": true
+        },
+        {
+          "line": 212,
+          "target": "LICENSE",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 2,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 43,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 48,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 49,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 51,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 53,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 70,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 75,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 76,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 95,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 104,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 105,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/README.es.md",
+      "category": "referencia",
+      "bytes": 17416,
+      "lines": 212,
+      "sha256": "c5f06526edf49bfb4be76fc311eed92d7e1e929a6481789ff53313440cf98144",
+      "relative_links": [
+        {
+          "line": 7,
+          "target": "docs/DOCTOR_SAFETY_MODEL.md",
+          "exists": true
+        },
+        {
+          "line": 31,
+          "target": "VERSION",
+          "exists": true
+        },
+        {
+          "line": 37,
+          "target": "docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md",
+          "exists": true
+        },
+        {
+          "line": 37,
+          "target": "docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md",
+          "exists": true
+        },
+        {
+          "line": 53,
+          "target": "docs/CODE_MAP.md",
+          "exists": true
+        },
+        {
+          "line": 115,
+          "target": "docs/screenshots/perf-hardening-card.png",
+          "exists": true
+        },
+        {
+          "line": 115,
+          "target": "docs/screenshots/dashboard-overview.png",
+          "exists": true
+        },
+        {
+          "line": 119,
+          "target": "docs/screenshots/ark-setup.png",
+          "exists": true
+        },
+        {
+          "line": 119,
+          "target": "docs/screenshots/wan-editor.png",
+          "exists": true
+        },
+        {
+          "line": 123,
+          "target": "docs/screenshots/sqm-editor.png",
+          "exists": true
+        },
+        {
+          "line": 123,
+          "target": "docs/screenshots/starlink-telemetry-real.png",
+          "exists": true
+        },
+        {
+          "line": 127,
+          "target": "docs/screenshots/mobile-overview.png",
+          "exists": true
+        },
+        {
+          "line": 127,
+          "target": "docs/screenshots/theme_switched_to_ark.png",
+          "exists": true
+        },
+        {
+          "line": 212,
+          "target": "LICENSE",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 2,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 27,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 43,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 48,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 49,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 51,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 53,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 70,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 75,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 76,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 95,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 104,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/README.md",
+      "category": "referencia",
+      "bytes": 17531,
+      "lines": 212,
+      "sha256": "3e13f1881b68bf5b4445a95ac87d71f7eb0341dffc05e3de9633aac0ce0181f5",
+      "relative_links": [
+        {
+          "line": 7,
+          "target": "docs/DOCTOR_SAFETY_MODEL.md",
+          "exists": true
+        },
+        {
+          "line": 31,
+          "target": "VERSION",
+          "exists": true
+        },
+        {
+          "line": 37,
+          "target": "docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md",
+          "exists": true
+        },
+        {
+          "line": 37,
+          "target": "docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md",
+          "exists": true
+        },
+        {
+          "line": 53,
+          "target": "docs/CODE_MAP.md",
+          "exists": true
+        },
+        {
+          "line": 115,
+          "target": "docs/screenshots/perf-hardening-card.png",
+          "exists": true
+        },
+        {
+          "line": 115,
+          "target": "docs/screenshots/dashboard-overview.png",
+          "exists": true
+        },
+        {
+          "line": 119,
+          "target": "docs/screenshots/ark-setup.png",
+          "exists": true
+        },
+        {
+          "line": 119,
+          "target": "docs/screenshots/wan-editor.png",
+          "exists": true
+        },
+        {
+          "line": 123,
+          "target": "docs/screenshots/sqm-editor.png",
+          "exists": true
+        },
+        {
+          "line": 123,
+          "target": "docs/screenshots/starlink-telemetry-real.png",
+          "exists": true
+        },
+        {
+          "line": 127,
+          "target": "docs/screenshots/mobile-overview.png",
+          "exists": true
+        },
+        {
+          "line": 127,
+          "target": "docs/screenshots/theme_switched_to_ark.png",
+          "exists": true
+        },
+        {
+          "line": 212,
+          "target": "LICENSE",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 2,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 27,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 43,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 48,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 49,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 51,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 53,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 70,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 75,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 76,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 95,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 104,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/SUPPORT.md",
+      "category": "referencia",
+      "bytes": 447,
+      "lines": 22,
+      "sha256": "9a45e1df76759a701cbe70db9cb9544045027253adcc5c912446cc60d2b4ef77",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/contrib/alldebrid/README.md",
+      "category": "referencia",
+      "bytes": 1732,
+      "lines": 51,
+      "sha256": "45bacfc2e3fe31c8664f8b3ac648becb4ac6889c0b1bc0f58a3b23732750492e",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/ADBLOCK_WHITELIST_CATALOG.md",
+      "category": "referencia",
+      "bytes": 10574,
+      "lines": 189,
+      "sha256": "b5419758941ea7425e67dd33e24d63ac92ee7274a6eb03369e90430a1adab18a",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/ANALISE_HARDWARE_WIFI_W6X_2026_11_05.md",
+      "category": "referencia",
+      "bytes": 10595,
+      "lines": 79,
+      "sha256": "1122b8540b630081d7a83c90afba6b8d774164f24f56ff6b0500a86d112a7880",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/ANALISE_MULTICORE_W6X_2026_11_02.md",
+      "category": "referencia",
+      "bytes": 19635,
+      "lines": 157,
+      "sha256": "f2ea579a7455f402bf23ab64021b963f1d0cf71784f75db5c58e87295e7014f2",
+      "relative_links": [
+        {
+          "line": 7,
+          "target": "audit/evidence/w6x_multicore_2026_11_02.json",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 25,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 65,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 72,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 117,
+          "kind": "doctor_autocura"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/ANALISE_WIFI_CELULARES_2026_11_02.md",
+      "category": "referencia",
+      "bytes": 20974,
+      "lines": 183,
+      "sha256": "705f7ab6a1558be74e1e30789a01d1776bcca6b410648ebceaa6b9031445bc9a",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 113,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 159,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 178,
+          "kind": "confirmacao_SIM"
+        },
+        {
+          "line": 178,
+          "kind": "doctor_autocura"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/ARCHITECTURE.md",
+      "category": "referencia",
+      "bytes": 20551,
+      "lines": 195,
+      "sha256": "a4b96ab24e708d4e86d70a82fd089fd5c38e6888d072b0ec4fa375f6e4728cff",
+      "relative_links": [
+        {
+          "line": 85,
+          "target": "LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md",
+          "exists": true
+        },
+        {
+          "line": 133,
+          "target": "LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md",
+          "exists": true
+        },
+        {
+          "line": 161,
+          "target": "UI_DESIGN_SYSTEM_AND_QA.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 22,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 139,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/ARK_ROUTER_EXHAUSTIVE_COMMANDS_AND_SUBSYSTEMS_MANUAL.md",
+      "category": "referencia",
+      "bytes": 71495,
+      "lines": 871,
+      "sha256": "84682fa90dae9a90c236e151f11541bb0c0fcaf5fba5ae3e50e50a9d67553ddb",
+      "relative_links": [
+        {
+          "line": 3,
+          "target": "DOCTOR_SAFETY_MODEL.md",
+          "exists": true
+        },
+        {
+          "line": 746,
+          "target": "CODE_MAP.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 3,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 13,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 18,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 42,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 90,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 176,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 232,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 235,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 241,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 263,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 717,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 726,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 782,
+          "kind": "doctor_autocura"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/ARK_ROUTER_PACKAGES_UPDATE_GUIDE.md",
+      "category": "referencia",
+      "bytes": 9794,
+      "lines": 138,
+      "sha256": "a0f48cf7f48022d3491261839b0df8faf14978d1bb0856526616438208703ed7",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 18,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 108,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/CHANGELOG-COMPLETO.md",
+      "category": "historico",
+      "bytes": 204848,
+      "lines": 1750,
+      "sha256": "89ce30bc3c1568a497a99a054c6b7325dbf6cff3c4b6edbb9f5138a533a27f08",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 6,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 9,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 30,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 41,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 44,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 67,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 76,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 82,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 100,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 101,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 102,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 107,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 129,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 130,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 146,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 156,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 160,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 184,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 189,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 190,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 212,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 216,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 226,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 241,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 244,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 245,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 274,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 290,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 291,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 292,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 334,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 343,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 352,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 357,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 365,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 371,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 391,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 412,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 420,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 423,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 462,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 496,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 500,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 504,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 523,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 584,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 608,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 679,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 716,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 736,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 782,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 801,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 845,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 857,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 893,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 934,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 944,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 1020,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 1072,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 1077,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 1103,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 1112,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 1119,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 1123,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 1145,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 1160,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 1187,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 1190,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 1203,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 1228,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 1235,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 1250,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 1328,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/CODE_MAP.md",
+      "category": "referencia",
+      "bytes": 74478,
+      "lines": 1074,
+      "sha256": "d3dcf56360d84c66e0f633956feb07edd627172936781799e1433129a10a4ab4",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/COMPATIBILITY_MATRIX.md",
+      "category": "referencia",
+      "bytes": 5479,
+      "lines": 57,
+      "sha256": "f9fd1948b001d04939c8c31b9126e8bba0fca6d79a7ebbd1d244de776a4fc014",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 35,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 53,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 54,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 55,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 56,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 57,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/CUDY_WR3000_TFTP_RECOVERY.md",
+      "category": "referencia",
+      "bytes": 4953,
+      "lines": 87,
+      "sha256": "85bcce22830c4ad72e7c91e951efe67b0839c9aceb9c8c655922b9c743ae5862",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 16,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 64,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 67,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 86,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 87,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/DIAGNOSTICO_ONT_HUAWEI_2026_10_29.md",
+      "category": "referencia",
+      "bytes": 8298,
+      "lines": 82,
+      "sha256": "89c516b338b7ea88f264a1dd20cb73c5d45374062063f76140fa22f09cdd41c1",
+      "relative_links": [
+        {
+          "line": 61,
+          "target": "measurements/huawei-optical-2026-10-29.json",
+          "exists": true
+        },
+        {
+          "line": 62,
+          "target": "DIAGNOSTICO_W6X_SONDAS_WAN_2026_10_29.md",
+          "exists": true
+        },
+        {
+          "line": 64,
+          "target": "screenshots/huawei-eg8145x6-optical-2026-10-29.jpg",
+          "exists": true
+        },
+        {
+          "line": 72,
+          "target": "measurements/w6x-fibra-trocada-2026-10-29/",
+          "exists": true
+        },
+        {
+          "line": 74,
+          "target": "screenshots/huawei-fibra-trocada-2026-10-29.jpg",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/DIAGNOSTICO_W6X_MONITORADO_2026_10_29.md",
+      "category": "referencia",
+      "bytes": 8792,
+      "lines": 103,
+      "sha256": "42573c057cb7fd9525dd8a3d953eafebfd83848b84d66598403c361309eb1c1e",
+      "relative_links": [
+        {
+          "line": 5,
+          "target": "DIAGNOSTICO_W6X_SONDAS_WAN_2026_10_29.md",
+          "exists": true
+        },
+        {
+          "line": 36,
+          "target": "measurements/w6x-2026-10-29-monitorado/",
+          "exists": true
+        },
+        {
+          "line": 101,
+          "target": "screenshots/waveform-cabo-2026-10-29-monitorado.jpg",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/DIAGNOSTICO_W6X_SONDAS_WAN_2026_10_29.md",
+      "category": "referencia",
+      "bytes": 12516,
+      "lines": 121,
+      "sha256": "40e1dda3a186876bce19f8384ac80c60562e8fbf711a6a1a198603d2875084bd",
+      "relative_links": [
+        {
+          "line": 3,
+          "target": "DIAGNOSTICO_W6X_MONITORADO_2026_10_29.md",
+          "exists": true
+        },
+        {
+          "line": 111,
+          "target": "measurements/w6x-2026-10-29-comparacao/",
+          "exists": true
+        },
+        {
+          "line": 112,
+          "target": "measurements/w6x-2026-10-29-captura-com-carga/",
+          "exists": true
+        },
+        {
+          "line": 113,
+          "target": "measurements/w6x-2026-10-29-captura-ocioso/",
+          "exists": true
+        },
+        {
+          "line": 115,
+          "target": "screenshots/waveform-w6x-sondas-wan-2026-10-29.jpg",
+          "exists": true
+        },
+        {
+          "line": 121,
+          "target": "DIAGNOSTICO_ONT_HUAWEI_2026_10_29.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 42,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 51,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 95,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/DOCTOR_SAFETY_MODEL.md",
+      "category": "referencia",
+      "bytes": 6069,
+      "lines": 53,
+      "sha256": "2cc6edc7bacdcb2c73e969ad0a47b5f0e75312045cbc9e678aa811242cbca0bc",
+      "relative_links": [
+        {
+          "line": 3,
+          "target": "audit/batches/021-docs-runtime-doctor-audit.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 10,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 17,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 41,
+          "kind": "doctor_autocura"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md",
+      "category": "referencia",
+      "bytes": 26685,
+      "lines": 136,
+      "sha256": "ba6a0f35c193e27b47ae8b58b78dc5b896d40deee788e1bcc84640863e561925",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 3,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 9,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 20,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 40,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 42,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 43,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 55,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 56,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 57,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 72,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 78,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 94,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 95,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 111,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 123,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 125,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 127,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 128,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md",
+      "category": "referencia",
+      "bytes": 20881,
+      "lines": 178,
+      "sha256": "b1d0a677aaa5d72e28b6f843bb76a397e3e17d4facf01e3d5853a806fabe995c",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 21,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 22,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 23,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 29,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 52,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 117,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 145,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 154,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 158,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 169,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 173,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 175,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/ESTUDO_TCP_BBR_TFO_DNS_STALE_CACHE.md",
+      "category": "referencia",
+      "bytes": 8455,
+      "lines": 103,
+      "sha256": "27419a5c428551d1f6217a525a845207b5f7b28f952e5e073dd43f19f32f1522",
+      "relative_links": [
+        {
+          "line": 3,
+          "target": "REVISAO_ESTUDOS_WIFI_ARK_2_1_6.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 34,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 55,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 68,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 84,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/ESTUDO_W6X_OPENWRT_25_12_5_LATENCIA.md",
+      "category": "referencia",
+      "bytes": 21759,
+      "lines": 221,
+      "sha256": "efc3d79b6333f6439ac82f5ca53a429f87a49d972cc7bdd9897f9e79223db098",
+      "relative_links": [
+        {
+          "line": 3,
+          "target": "ESTUDO_WIFI_LATENCIA_BUFFERBLOAT.md",
+          "exists": true
+        },
+        {
+          "line": 5,
+          "target": "REVISAO_ESTUDOS_WIFI_ARK_2_1_6.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 119,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 155,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/ESTUDO_WIFI_LATENCIA_BUFFERBLOAT.md",
+      "category": "referencia",
+      "bytes": 35982,
+      "lines": 334,
+      "sha256": "430b4a1a863407acc40a004b604c0157bcc045d9194a27ec8d2a675beb2fa2d9",
+      "relative_links": [
+        {
+          "line": 5,
+          "target": "REVISAO_ESTUDOS_WIFI_ARK_2_1_6.md",
+          "exists": true
+        },
+        {
+          "line": 9,
+          "target": "ESTUDO_W6X_OPENWRT_25_12_5_LATENCIA.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 153,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/FEATURE_AUDIT_AND_REBOOT.md",
+      "category": "referencia",
+      "bytes": 156420,
+      "lines": 2110,
+      "sha256": "f3e80b0fe263113e75905588b74ffd1603832559af1c4d5ee3e779f6816eb674",
+      "relative_links": [
+        {
+          "line": 752,
+          "target": "audit/batches/007-qos-reliability-fixes-2026-11-05.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 746,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 754,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 756,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 1543,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 1720,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 1829,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 1831,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 1832,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 1910,
+          "kind": "confirmacao_SIM"
+        },
+        {
+          "line": 1944,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 1987,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 2022,
+          "kind": "doctor_autocura"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/I18N_CATALOG_SUMMARY.md",
+      "category": "referencia",
+      "bytes": 1175,
+      "lines": 21,
+      "sha256": "6c35856f2927902252ef734c1c2e6364b3e5b13d4f423723ee5669518e67b266",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/I18N_TRANSLATION_GUIDE.md",
+      "category": "referencia",
+      "bytes": 10695,
+      "lines": 149,
+      "sha256": "68bd8abe6927ec2634773349e44805be90eeb0f44c648d05f9674c3af216e469",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 16,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 20,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 96,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 102,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 144,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/INSTALL.md",
+      "category": "referencia",
+      "bytes": 13216,
+      "lines": 252,
+      "sha256": "89ad7de50ec8e1f6ea31a0b65f301665aabc2a0a5dbcc128eb106c743e131d4b",
+      "relative_links": [
+        {
+          "line": 79,
+          "target": "RELEASES.md",
+          "exists": true
+        },
+        {
+          "line": 80,
+          "target": "PUBLISHING.md",
+          "exists": true
+        },
+        {
+          "line": 92,
+          "target": "PUBLISHING.md",
+          "exists": true
+        },
+        {
+          "line": 251,
+          "target": "LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/LATEST_CHANGELOG.md",
+      "category": "historico",
+      "bytes": 1676,
+      "lines": 11,
+      "sha256": "6c6ec83ab209e13a1ec70c2307e8ad545311856394492cef9c9d25f375a8e5a6",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md",
+      "category": "referencia",
+      "bytes": 17133,
+      "lines": 188,
+      "sha256": "b9d035b3ae9916bf512fdd802912148e905cc73520bfe55661acba49dba70dd5",
+      "relative_links": [
+        {
+          "line": 146,
+          "target": "../root/usr/lib/ark/modules/speedify.sh",
+          "exists": true
+        },
+        {
+          "line": 147,
+          "target": "../root/usr/lib/ark/modules/adblock.sh",
+          "exists": true
+        },
+        {
+          "line": 148,
+          "target": "../root/usr/lib/ark/modules/ezsetup.sh",
+          "exists": true
+        },
+        {
+          "line": 149,
+          "target": "../root/usr/sbin/equipe-dashboard-control",
+          "exists": true
+        },
+        {
+          "line": 155,
+          "target": "../src/modules/speedify.js",
+          "exists": true
+        },
+        {
+          "line": 156,
+          "target": "../src/modules/adblock.js",
+          "exists": true
+        },
+        {
+          "line": 162,
+          "target": "audit/batches/021-docs-runtime-doctor-audit.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 21,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/MAC_UTM_TEST_ENVIRONMENT.md",
+      "category": "referencia",
+      "bytes": 2563,
+      "lines": 36,
+      "sha256": "462191cb216031520deb1e12bd0bcc123c4d64247967fc9683bd22dd2da462e2",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/MIGRACAO_TP_LINK_XZ005_G6_2026_10_29.md",
+      "category": "referencia",
+      "bytes": 2942,
+      "lines": 24,
+      "sha256": "1a37129be27a7de70ef64b90a9db700e6f432404f853b4e9e1f01c1bca186f08",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/MODULES_AND_HARDWARE_PROFILES.md",
+      "category": "referencia",
+      "bytes": 12013,
+      "lines": 154,
+      "sha256": "6ebe1bcadf4a756d32f46d2431a0909eb429d1fd2d47490698019100f9df5b2c",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 41,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 109,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/NETWORK_ENGINEERING_FIXES_AND_TEST_CHECKLIST.md",
+      "category": "referencia",
+      "bytes": 10084,
+      "lines": 69,
+      "sha256": "696a166d93212d809fe21ef64d64b2170650b01c8f58d57bb37ec6c04c279c46",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 20,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 22,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/OTIMIZACAO_MULTICORE_T083.md",
+      "category": "referencia",
+      "bytes": 10621,
+      "lines": 95,
+      "sha256": "02e75392531023d469fe5f30dd4a2b4202df9cb16e4ff0dc2d6578053a6b7803",
+      "relative_links": [
+        {
+          "line": 67,
+          "target": "audit/evidence/w6x_t083_deploy_2026_11_02.json",
+          "exists": true
+        },
+        {
+          "line": 95,
+          "target": "REGISTRO_SESSAO_WIFI_MULTICORE_2026_11_02.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 3,
+          "kind": "confirmacao_SIM"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/PACKAGE_PROFILES.md",
+      "category": "referencia",
+      "bytes": 11059,
+      "lines": 164,
+      "sha256": "7f3135da5a9fffd9bbbc4b22b6216c4fc2e4e987523bed764fdced674aede89e",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/PUBLISHING.md",
+      "category": "referencia",
+      "bytes": 6371,
+      "lines": 165,
+      "sha256": "b307e1d6f54fdf44b8b2ad312e97154ff5242265c8749f2bc0ad9a230ad4fa76",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 16,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 37,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/README.md",
+      "category": "referencia",
+      "bytes": 11325,
+      "lines": 85,
+      "sha256": "7cd5f97c324ea5a0f0ac42243d337f1c7f9f0946166ea0b39de8c61b4a2aec07",
+      "relative_links": [
+        {
+          "line": 3,
+          "target": "../VERSION",
+          "exists": true
+        },
+        {
+          "line": 7,
+          "target": "INSTALL.md",
+          "exists": true
+        },
+        {
+          "line": 7,
+          "target": "PACKAGE_PROFILES.md",
+          "exists": true
+        },
+        {
+          "line": 7,
+          "target": "LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md",
+          "exists": true
+        },
+        {
+          "line": 8,
+          "target": "USAGE_AND_TROUBLESHOOTING.md",
+          "exists": true
+        },
+        {
+          "line": 9,
+          "target": "network-diagnostics.md",
+          "exists": true
+        },
+        {
+          "line": 9,
+          "target": "DOCTOR_SAFETY_MODEL.md",
+          "exists": true
+        },
+        {
+          "line": 9,
+          "target": "CUDY_WR3000_TFTP_RECOVERY.md",
+          "exists": true
+        },
+        {
+          "line": 10,
+          "target": "ARCHITECTURE.md",
+          "exists": true
+        },
+        {
+          "line": 10,
+          "target": "CODE_MAP.md",
+          "exists": true
+        },
+        {
+          "line": 10,
+          "target": "FEATURE_AUDIT_AND_REBOOT.md",
+          "exists": true
+        },
+        {
+          "line": 10,
+          "target": "audit/STATUS.md",
+          "exists": true
+        },
+        {
+          "line": 12,
+          "target": "audit/batches/021-docs-runtime-doctor-audit.md",
+          "exists": true
+        },
+        {
+          "line": 20,
+          "target": "../AGENTS.md",
+          "exists": true
+        },
+        {
+          "line": 23,
+          "target": "CODE_MAP.md",
+          "exists": true
+        },
+        {
+          "line": 24,
+          "target": "audit/README.md",
+          "exists": true
+        },
+        {
+          "line": 24,
+          "target": "audit/STATUS.md",
+          "exists": true
+        },
+        {
+          "line": 25,
+          "target": "audit/DECISIONS.md",
+          "exists": true
+        },
+        {
+          "line": 25,
+          "target": "audit/INVENTORY.md",
+          "exists": true
+        },
+        {
+          "line": 26,
+          "target": "audit/PLAN.md",
+          "exists": true
+        },
+        {
+          "line": 26,
+          "target": "audit/CORRECTION_AND_VALIDATION.md",
+          "exists": true
+        },
+        {
+          "line": 26,
+          "target": "audit/DEFAULTS_AND_INSTALLATION.md",
+          "exists": true
+        },
+        {
+          "line": 26,
+          "target": "audit/POLICIES_AND_EXCEPTIONS.md",
+          "exists": true
+        },
+        {
+          "line": 26,
+          "target": "audit/VIRTUAL_LAB.md",
+          "exists": true
+        },
+        {
+          "line": 26,
+          "target": "audit/batches/",
+          "exists": true
+        },
+        {
+          "line": 34,
+          "target": "ARCHITECTURE.md",
+          "exists": true
+        },
+        {
+          "line": 35,
+          "target": "ARK_ROUTER_EXHAUSTIVE_COMMANDS_AND_SUBSYSTEMS_MANUAL.md",
+          "exists": true
+        },
+        {
+          "line": 36,
+          "target": "COMPATIBILITY_MATRIX.md",
+          "exists": true
+        },
+        {
+          "line": 37,
+          "target": "FEATURE_AUDIT_AND_REBOOT.md",
+          "exists": true
+        },
+        {
+          "line": 38,
+          "target": "ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md",
+          "exists": true
+        },
+        {
+          "line": 39,
+          "target": "ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md",
+          "exists": true
+        },
+        {
+          "line": 40,
+          "target": "NETWORK_ENGINEERING_FIXES_AND_TEST_CHECKLIST.md",
+          "exists": true
+        },
+        {
+          "line": 41,
+          "target": "network-diagnostics.md",
+          "exists": true
+        },
+        {
+          "line": 42,
+          "target": "WPAD_UPGRADE_AND_WIFI6_ROAMING.md",
+          "exists": true
+        },
+        {
+          "line": 43,
+          "target": "UI_DESIGN_SYSTEM_AND_QA.md",
+          "exists": true
+        },
+        {
+          "line": 43,
+          "target": "ark-ui-rules.md",
+          "exists": true
+        },
+        {
+          "line": 44,
+          "target": "I18N_TRANSLATION_GUIDE.md",
+          "exists": true
+        },
+        {
+          "line": 44,
+          "target": "I18N_CATALOG_SUMMARY.md",
+          "exists": true
+        },
+        {
+          "line": 45,
+          "target": "MODULES_AND_HARDWARE_PROFILES.md",
+          "exists": true
+        },
+        {
+          "line": 45,
+          "target": "hardware-budget.md",
+          "exists": true
+        },
+        {
+          "line": 46,
+          "target": "PACKAGE_PROFILES.md",
+          "exists": true
+        },
+        {
+          "line": 47,
+          "target": "SECURITY.md",
+          "exists": true
+        },
+        {
+          "line": 47,
+          "target": "security-rules.md",
+          "exists": true
+        },
+        {
+          "line": 48,
+          "target": "ADBLOCK_WHITELIST_CATALOG.md",
+          "exists": true
+        },
+        {
+          "line": 56,
+          "target": "INSTALL.md",
+          "exists": true
+        },
+        {
+          "line": 57,
+          "target": "LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md",
+          "exists": true
+        },
+        {
+          "line": 58,
+          "target": "ARK_ROUTER_PACKAGES_UPDATE_GUIDE.md",
+          "exists": true
+        },
+        {
+          "line": 59,
+          "target": "PUBLISHING.md",
+          "exists": true
+        },
+        {
+          "line": 59,
+          "target": "RELEASES.md",
+          "exists": true
+        },
+        {
+          "line": 60,
+          "target": "../CHANGELOG.md",
+          "exists": true
+        },
+        {
+          "line": 60,
+          "target": "LATEST_CHANGELOG.md",
+          "exists": true
+        },
+        {
+          "line": 60,
+          "target": "CHANGELOG-COMPLETO.md",
+          "exists": true
+        },
+        {
+          "line": 60,
+          "target": "ROADMAP.md",
+          "exists": true
+        },
+        {
+          "line": 61,
+          "target": "VIRTUALBOX_TEST_ENVIRONMENT.md",
+          "exists": true
+        },
+        {
+          "line": 61,
+          "target": "VIRTUAL_LAB.md",
+          "exists": true
+        },
+        {
+          "line": 61,
+          "target": "MAC_UTM_TEST_ENVIRONMENT.md",
+          "exists": true
+        },
+        {
+          "line": 62,
+          "target": "CUDY_WR3000_TFTP_RECOVERY.md",
+          "exists": true
+        },
+        {
+          "line": 62,
+          "target": "firmware-runbook.md",
+          "exists": true
+        },
+        {
+          "line": 72,
+          "target": "ANALISE_HARDWARE_WIFI_W6X_2026_11_05.md",
+          "exists": true
+        },
+        {
+          "line": 73,
+          "target": "ANALISE_MULTICORE_W6X_2026_11_02.md",
+          "exists": true
+        },
+        {
+          "line": 74,
+          "target": "ANALISE_WIFI_CELULARES_2026_11_02.md",
+          "exists": true
+        },
+        {
+          "line": 75,
+          "target": "REGISTRO_SESSAO_WIFI_MULTICORE_2026_11_02.md",
+          "exists": true
+        },
+        {
+          "line": 76,
+          "target": "OTIMIZACAO_MULTICORE_T083.md",
+          "exists": true
+        },
+        {
+          "line": 77,
+          "target": "DIAGNOSTICO_ONT_HUAWEI_2026_10_29.md",
+          "exists": true
+        },
+        {
+          "line": 78,
+          "target": "DIAGNOSTICO_W6X_MONITORADO_2026_10_29.md",
+          "exists": true
+        },
+        {
+          "line": 79,
+          "target": "DIAGNOSTICO_W6X_SONDAS_WAN_2026_10_29.md",
+          "exists": true
+        },
+        {
+          "line": 80,
+          "target": "MIGRACAO_TP_LINK_XZ005_G6_2026_10_29.md",
+          "exists": true
+        },
+        {
+          "line": 81,
+          "target": "TESTE_WAVEFORM_CABO_2026_10_29.md",
+          "exists": true
+        },
+        {
+          "line": 82,
+          "target": "ESTUDO_TCP_BBR_TFO_DNS_STALE_CACHE.md",
+          "exists": true
+        },
+        {
+          "line": 83,
+          "target": "ESTUDO_W6X_OPENWRT_25_12_5_LATENCIA.md",
+          "exists": true
+        },
+        {
+          "line": 84,
+          "target": "ESTUDO_WIFI_LATENCIA_BUFFERBLOAT.md",
+          "exists": true
+        },
+        {
+          "line": 85,
+          "target": "REVISAO_ESTUDOS_WIFI_ARK_2_1_6.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 41,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 62,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/REGISTRO_SESSAO_WIFI_MULTICORE_2026_11_02.md",
+      "category": "referencia",
+      "bytes": 14294,
+      "lines": 168,
+      "sha256": "089c75bd9fe0a335b0db3296d0e3b4c638f2af14492a63dd1873a1d4273404ea",
+      "relative_links": [
+        {
+          "line": 39,
+          "target": "ANALISE_WIFI_CELULARES_2026_11_02.md",
+          "exists": true
+        },
+        {
+          "line": 40,
+          "target": "ANALISE_MULTICORE_W6X_2026_11_02.md",
+          "exists": true
+        },
+        {
+          "line": 41,
+          "target": "OTIMIZACAO_MULTICORE_T083.md",
+          "exists": true
+        },
+        {
+          "line": 155,
+          "target": "OTIMIZACAO_MULTICORE_T083.md",
+          "exists": true
+        },
+        {
+          "line": 161,
+          "target": "audit/evidence/w6x_multicore_2026_11_02.json",
+          "exists": true
+        },
+        {
+          "line": 162,
+          "target": "audit/evidence/w6x_t083_deploy_2026_11_02.json",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 35,
+          "kind": "confirmacao_SIM"
+        },
+        {
+          "line": 103,
+          "kind": "confirmacao_SIM"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/RELEASES.md",
+      "category": "referencia",
+      "bytes": 3993,
+      "lines": 81,
+      "sha256": "9f40ef1702abb418d064abec45c4af3b3c69a4473e44bd78f0d8c5a88e32d2e9",
+      "relative_links": [
+        {
+          "line": 5,
+          "target": "PUBLISHING.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/REVISAO_ESTUDOS_WIFI_ARK_2_1_6.md",
+      "category": "referencia",
+      "bytes": 16481,
+      "lines": 166,
+      "sha256": "ce7f2731bd6ffbc59a3cb97866a54051bd034d34a3826b3e233dfaec8a0d4e30",
+      "relative_links": [
+        {
+          "line": 5,
+          "target": "DIAGNOSTICO_W6X_MONITORADO_2026_10_29.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 88,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 135,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 154,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/ROADMAP.md",
+      "category": "referencia",
+      "bytes": 1115,
+      "lines": 21,
+      "sha256": "49e631cfbbe6e3c9fd1679ec8d0683d8fcff4904c14bd0af69f625598afc517c",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/SECURITY.md",
+      "category": "referencia",
+      "bytes": 3346,
+      "lines": 33,
+      "sha256": "957dc06c1af9990ee3bcd3aeeb8bc710c333287d08a93119c3a2ccf4bcf6ba76",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/TESTE_WAVEFORM_CABO_2026_10_29.md",
+      "category": "referencia",
+      "bytes": 4256,
+      "lines": 55,
+      "sha256": "b3d8bb1f0fc5eddeb6ffe7dec20d84ca4d4142c6ac9f3d32129a02e6f3de3539",
+      "relative_links": [
+        {
+          "line": 3,
+          "target": "DIAGNOSTICO_W6X_MONITORADO_2026_10_29.md",
+          "exists": true
+        },
+        {
+          "line": 51,
+          "target": "screenshots/waveform-cabo-2026-10-29-rodada1.jpg",
+          "exists": true
+        },
+        {
+          "line": 52,
+          "target": "screenshots/waveform-cabo-2026-10-29-rodada2-detalhes.jpg",
+          "exists": true
+        },
+        {
+          "line": 53,
+          "target": "screenshots/waveform-cabo-2026-10-29-rodada2-resumo.jpg",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/UI_DESIGN_SYSTEM_AND_QA.md",
+      "category": "referencia",
+      "bytes": 10163,
+      "lines": 151,
+      "sha256": "6895ec1d2430cf12296d3563217b24fa11fec9e0e26c2bc3c97cf76a5e4beab1",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 14,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 113,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 114,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 146,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/USAGE_AND_TROUBLESHOOTING.md",
+      "category": "referencia",
+      "bytes": 3775,
+      "lines": 38,
+      "sha256": "1f1248e7aa7d82edfa8cbbe8d50843f2cc038f1897041bcefa2ba84029ddde89",
+      "relative_links": [
+        {
+          "line": 5,
+          "target": "INSTALL.md",
+          "exists": true
+        },
+        {
+          "line": 7,
+          "target": "audit/batches/021-docs-runtime-doctor-audit.md",
+          "exists": true
+        },
+        {
+          "line": 27,
+          "target": "DOCTOR_SAFETY_MODEL.md",
+          "exists": true
+        },
+        {
+          "line": 28,
+          "target": "CODE_MAP.md",
+          "exists": true
+        },
+        {
+          "line": 34,
+          "target": "CUDY_WR3000_TFTP_RECOVERY.md",
+          "exists": true
+        },
+        {
+          "line": 34,
+          "target": "firmware-runbook.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 32,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/VIRTUALBOX_TEST_ENVIRONMENT.md",
+      "category": "referencia",
+      "bytes": 11803,
+      "lines": 201,
+      "sha256": "fd250251f743d2d6f3c3956a27ff0fd14b3134c194850636945a14adedbe8df0",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 10,
+          "kind": "confirmacao_SIM"
+        },
+        {
+          "line": 99,
+          "kind": "caminho_de_maquina"
+        },
+        {
+          "line": 103,
+          "kind": "caminho_de_maquina"
+        },
+        {
+          "line": 107,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 144,
+          "kind": "caminho_de_maquina"
+        },
+        {
+          "line": 150,
+          "kind": "caminho_de_maquina"
+        },
+        {
+          "line": 151,
+          "kind": "caminho_de_maquina"
+        },
+        {
+          "line": 152,
+          "kind": "caminho_de_maquina"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/VIRTUAL_LAB.md",
+      "category": "referencia",
+      "bytes": 6325,
+      "lines": 120,
+      "sha256": "ddd139f3d35241d2915d7a21f5f9107dd5bb3b0aef4caba6ea4ed377be8913ae",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 9,
+          "kind": "confirmacao_SIM"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/WPAD_UPGRADE_AND_WIFI6_ROAMING.md",
+      "category": "referencia",
+      "bytes": 11003,
+      "lines": 152,
+      "sha256": "58c93dee778e67100629308f0e0b77cf35b48f7a94100b9c7108eda815aa024f",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 20,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 123,
+          "kind": "doctor_autocura"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/ark-ui-rules.md",
+      "category": "referencia",
+      "bytes": 2902,
+      "lines": 63,
+      "sha256": "d96d86bb88c617c5958148ce4f22746df257dca509e0d9c4ee81b58f1904e185",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 61,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/CORRECTION_AND_VALIDATION.md",
+      "category": "referencia",
+      "bytes": 5152,
+      "lines": 70,
+      "sha256": "40d5fc6c8ed1f0a2868fbe482a5acdf9adc05e91312e5942c10c5ac0dc8c7b34",
+      "relative_links": [
+        {
+          "line": 13,
+          "target": "DECISIONS.md",
+          "exists": true
+        },
+        {
+          "line": 40,
+          "target": "POLICIES_AND_EXCEPTIONS.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/DECISIONS.md",
+      "category": "referencia",
+      "bytes": 4951,
+      "lines": 49,
+      "sha256": "51ad1876f705be2e0ded3b548064b24d39a72ecb337eccb3bca30be3c2651be0",
+      "relative_links": [
+        {
+          "line": 49,
+          "target": "../DOCTOR_SAFETY_MODEL.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 8,
+          "kind": "confirmacao_SIM"
+        },
+        {
+          "line": 37,
+          "kind": "confirmacao_SIM"
+        },
+        {
+          "line": 47,
+          "kind": "doctor_autocura"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/DEFAULTS_AND_INSTALLATION.md",
+      "category": "referencia",
+      "bytes": 4194,
+      "lines": 48,
+      "sha256": "4bbd13f48d6fb577895c99cf7f6328ab891ec9ad4fb3ab4f83efce2c938f5379",
+      "relative_links": [
+        {
+          "line": 5,
+          "target": "../INSTALL.md",
+          "exists": true
+        },
+        {
+          "line": 5,
+          "target": "../LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md",
+          "exists": true
+        },
+        {
+          "line": 5,
+          "target": "../PACKAGE_PROFILES.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/INVENTORY.md",
+      "category": "referencia",
+      "bytes": 3415,
+      "lines": 66,
+      "sha256": "e49448b11b78dd550c7d67440a201e8d67f649ad68121ef1e9e86291c0871e7f",
+      "relative_links": [
+        {
+          "line": 5,
+          "target": "../../tests/feature_contracts.yaml",
+          "exists": true
+        },
+        {
+          "line": 5,
+          "target": "../FEATURE_AUDIT_AND_REBOOT.md",
+          "exists": true
+        },
+        {
+          "line": 41,
+          "target": "../../root/usr/sbin/equipe-dashboard-control",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/PLAN.md",
+      "category": "referencia",
+      "bytes": 2802,
+      "lines": 31,
+      "sha256": "f545a8661ff0c98119777e1fc2c2e70a06b05a639d64115a1649a8a84fa54b25",
+      "relative_links": [
+        {
+          "line": 27,
+          "target": "batches/TEMPLATE.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/POLICIES_AND_EXCEPTIONS.md",
+      "category": "referencia",
+      "bytes": 3852,
+      "lines": 52,
+      "sha256": "4c51863c89163e31302e2fdc3dde5081458cd8d1a8ea5d342a87219742331147",
+      "relative_links": [
+        {
+          "line": 20,
+          "target": "DECISIONS.md",
+          "exists": true
+        },
+        {
+          "line": 46,
+          "target": "../ADBLOCK_WHITELIST_CATALOG.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/README.md",
+      "category": "referencia",
+      "bytes": 3819,
+      "lines": 47,
+      "sha256": "819cb93f24ccabd231a6265054ae9528fc8b1e50d382d2c375e0898a8258c24c",
+      "relative_links": [
+        {
+          "line": 9,
+          "target": "STATUS.md",
+          "exists": true
+        },
+        {
+          "line": 9,
+          "target": "DECISIONS.md",
+          "exists": true
+        },
+        {
+          "line": 15,
+          "target": "PLAN.md",
+          "exists": true
+        },
+        {
+          "line": 16,
+          "target": "STATUS.md",
+          "exists": true
+        },
+        {
+          "line": 17,
+          "target": "DECISIONS.md",
+          "exists": true
+        },
+        {
+          "line": 18,
+          "target": "INVENTORY.md",
+          "exists": true
+        },
+        {
+          "line": 19,
+          "target": "DEFAULTS_AND_INSTALLATION.md",
+          "exists": true
+        },
+        {
+          "line": 20,
+          "target": "POLICIES_AND_EXCEPTIONS.md",
+          "exists": true
+        },
+        {
+          "line": 21,
+          "target": "CORRECTION_AND_VALIDATION.md",
+          "exists": true
+        },
+        {
+          "line": 22,
+          "target": "VIRTUAL_LAB.md",
+          "exists": true
+        },
+        {
+          "line": 23,
+          "target": "batches/TEMPLATE.md",
+          "exists": true
+        },
+        {
+          "line": 27,
+          "target": "../../tests/feature_contracts.yaml",
+          "exists": true
+        },
+        {
+          "line": 28,
+          "target": "../FEATURE_AUDIT_AND_REBOOT.md",
+          "exists": true
+        },
+        {
+          "line": 28,
+          "target": "batches/000-bootstrap.md",
+          "exists": true
+        },
+        {
+          "line": 29,
+          "target": "../../tests/verify_feature_contracts.py",
+          "exists": true
+        },
+        {
+          "line": 30,
+          "target": "../VIRTUAL_LAB.md",
+          "exists": true
+        },
+        {
+          "line": 30,
+          "target": "../VIRTUALBOX_TEST_ENVIRONMENT.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/STATUS.md",
+      "category": "referencia",
+      "bytes": 15184,
+      "lines": 66,
+      "sha256": "4f82ab7e2ff34c789edc32028e0bd8bef0a30ae74adcc1fd3b875087096e17ef",
+      "relative_links": [
+        {
+          "line": 5,
+          "target": "../REGISTRO_SESSAO_WIFI_MULTICORE_2026_11_02.md",
+          "exists": true
+        },
+        {
+          "line": 7,
+          "target": "../OTIMIZACAO_MULTICORE_T083.md",
+          "exists": true
+        },
+        {
+          "line": 9,
+          "target": "../ANALISE_MULTICORE_W6X_2026_11_02.md",
+          "exists": true
+        },
+        {
+          "line": 11,
+          "target": "../ANALISE_WIFI_CELULARES_2026_11_02.md",
+          "exists": true
+        },
+        {
+          "line": 13,
+          "target": "../REVISAO_ESTUDOS_WIFI_ARK_2_1_6.md",
+          "exists": true
+        },
+        {
+          "line": 16,
+          "target": "batches/008-qos-73-deployment.md",
+          "exists": true
+        },
+        {
+          "line": 17,
+          "target": "batches/007-qos-reliability-fixes-2026-11-05.md",
+          "exists": true
+        },
+        {
+          "line": 18,
+          "target": "batches/006-gaming-latency-solution-2026-11-05.md",
+          "exists": true
+        },
+        {
+          "line": 19,
+          "target": "batches/005-qos-review-2026-11-05.md",
+          "exists": true
+        },
+        {
+          "line": 22,
+          "target": "batches/000-bootstrap.md",
+          "exists": true
+        },
+        {
+          "line": 41,
+          "target": "batches/021-docs-runtime-doctor-audit.md",
+          "exists": true
+        },
+        {
+          "line": 46,
+          "target": "batches/009-autorate-guards-native.md",
+          "exists": true
+        },
+        {
+          "line": 48,
+          "target": "batches/011-shared-qos-resources.md",
+          "exists": true
+        },
+        {
+          "line": 50,
+          "target": "batches/012-qos-package-integration.md",
+          "exists": true
+        },
+        {
+          "line": 52,
+          "target": "batches/013-ctinfo-installed-native.md",
+          "exists": true
+        },
+        {
+          "line": 54,
+          "target": "batches/014-pubg-abc-tests.md",
+          "exists": true
+        },
+        {
+          "line": 56,
+          "target": "batches/015-wan-localization-and-tplink-status.md",
+          "exists": true
+        },
+        {
+          "line": 58,
+          "target": "batches/016-wan-ont-synchronous-isolation.md",
+          "exists": true
+        },
+        {
+          "line": 60,
+          "target": "batches/017-current-path-configuration-assessment.md",
+          "exists": true
+        },
+        {
+          "line": 62,
+          "target": "batches/018-deep-cake-hfsc-parameter-research.md",
+          "exists": true
+        },
+        {
+          "line": 64,
+          "target": "batches/019-native-decision-tests.md",
+          "exists": true
+        },
+        {
+          "line": 66,
+          "target": "batches/020-ingress-trust-boundary.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 7,
+          "kind": "confirmacao_SIM"
+        },
+        {
+          "line": 16,
+          "kind": "confirmacao_SIM"
+        },
+        {
+          "line": 35,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 36,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 64,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/VIRTUAL_LAB.md",
+      "category": "referencia",
+      "bytes": 3225,
+      "lines": 44,
+      "sha256": "1e5113ee4a1fef23d7e0c375a27e94d4701336d3d9a186eb049fc6db4807d948",
+      "relative_links": [
+        {
+          "line": 5,
+          "target": "../VIRTUAL_LAB.md",
+          "exists": true
+        },
+        {
+          "line": 6,
+          "target": "../VIRTUALBOX_TEST_ENVIRONMENT.md",
+          "exists": true
+        },
+        {
+          "line": 7,
+          "target": "../../tests/lab/setup_lab_vm.ps1",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 34,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/000-bootstrap.md",
+      "category": "historico",
+      "bytes": 5312,
+      "lines": 64,
+      "sha256": "c076ecc41dbcbac423691646d80224e0709268af4cd10508c896c5a8c79ca820",
+      "relative_links": [
+        {
+          "line": 23,
+          "target": "../../../tests/feature_contracts.yaml",
+          "exists": true
+        },
+        {
+          "line": 24,
+          "target": "../../../tests/verify_feature_contracts.py",
+          "exists": true
+        },
+        {
+          "line": 25,
+          "target": "../../../scripts/generate_feature_contracts.py",
+          "exists": true
+        },
+        {
+          "line": 26,
+          "target": "../../../scripts/generate_feature_audit_md.py",
+          "exists": true
+        },
+        {
+          "line": 27,
+          "target": "../../FEATURE_AUDIT_AND_REBOOT.md",
+          "exists": true
+        },
+        {
+          "line": 28,
+          "target": "../../../tests/run_local_tests.sh",
+          "exists": true
+        },
+        {
+          "line": 29,
+          "target": "../../../root/usr/sbin/equipe-dashboard-control",
+          "exists": true
+        },
+        {
+          "line": 30,
+          "target": "../../../tests/lab/test_interference_matrix.py",
+          "exists": true
+        },
+        {
+          "line": 31,
+          "target": "../../../tests/lab/test_persistence_reboot.sh",
+          "exists": true
+        },
+        {
+          "line": 64,
+          "target": "../PLAN.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/005-qos-review-2026-11-05.md",
+      "category": "historico",
+      "bytes": 29147,
+      "lines": 257,
+      "sha256": "05190e5546a1f9c46fe074e9abf342d558503585a5288dfc9b751dc995d9afa9",
+      "relative_links": [
+        {
+          "line": 158,
+          "target": "018-deep-cake-hfsc-parameter-research.md",
+          "exists": true
+        },
+        {
+          "line": 240,
+          "target": "../evidence/qos-2026-11-05/README.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/006-gaming-latency-solution-2026-11-05.md",
+      "category": "historico",
+      "bytes": 20196,
+      "lines": 175,
+      "sha256": "59b65b31ba348074706db6a3738530984510489a1cdf206f6676146ddb7dbc51",
+      "relative_links": [
+        {
+          "line": 3,
+          "target": "005-qos-review-2026-11-05.md",
+          "exists": true
+        },
+        {
+          "line": 15,
+          "target": "../evidence/qos-2026-11-05/analyze_monitor_logs.py",
+          "exists": true
+        },
+        {
+          "line": 15,
+          "target": "../evidence/qos-2026-11-05/monitor-analysis.json",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 43,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/007-qos-reliability-fixes-2026-11-05.md",
+      "category": "historico",
+      "bytes": 6102,
+      "lines": 40,
+      "sha256": "770cd1649702ae78fe7df0ec4624175a100126dca1376b3fdcef98b5bd3b1ca2",
+      "relative_links": [
+        {
+          "line": 3,
+          "target": "005-qos-review-2026-11-05.md",
+          "exists": true
+        },
+        {
+          "line": 3,
+          "target": "006-gaming-latency-solution-2026-11-05.md",
+          "exists": true
+        },
+        {
+          "line": 40,
+          "target": "../evidence/qos-2026-11-05/reliability-tests.json",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/008-qos-73-deployment.md",
+      "category": "historico",
+      "bytes": 10375,
+      "lines": 73,
+      "sha256": "5863c291411217ff56be086b3aa975ba330ab8ef9ff43fab5abf2b362917bc62",
+      "relative_links": [
+        {
+          "line": 32,
+          "target": "007-qos-reliability-fixes-2026-11-05.md",
+          "exists": true
+        },
+        {
+          "line": 73,
+          "target": "../evidence/qos-2026-11-05/deployment-result.json",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 5,
+          "kind": "confirmacao_SIM"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/009-autorate-guards-native.md",
+      "category": "historico",
+      "bytes": 4807,
+      "lines": 32,
+      "sha256": "9b26cb83cc1bdf0699b9d854bfc34c3336a411734ac9f1f0e1aa2d532ba1916b",
+      "relative_links": [
+        {
+          "line": 32,
+          "target": "013-ctinfo-installed-native.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/010-qos-adaptive-design.md",
+      "category": "historico",
+      "bytes": 7949,
+      "lines": 63,
+      "sha256": "4395edcef489e720b2e3b71b466e479675aefed9a868272a79f065f9be113534",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/011-shared-qos-resources.md",
+      "category": "historico",
+      "bytes": 6451,
+      "lines": 43,
+      "sha256": "477d1e5bd7b7b765b15c757d821bff58835036265d2e6cf263be422c0e57da7e",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/012-qos-package-integration.md",
+      "category": "historico",
+      "bytes": 8725,
+      "lines": 75,
+      "sha256": "68ea77b524ea4f45d59c1620322eb93fe2775f544c7f2375a2d10cef03579416",
+      "relative_links": [
+        {
+          "line": 75,
+          "target": "013-ctinfo-installed-native.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/013-ctinfo-installed-native.md",
+      "category": "historico",
+      "bytes": 4668,
+      "lines": 35,
+      "sha256": "7928687f3c424faca86717ce27f7976d8a9a924481681b0798d9e8d82ce466d4",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/014-pubg-abc-tests.md",
+      "category": "historico",
+      "bytes": 8820,
+      "lines": 84,
+      "sha256": "7ce9f6edc42364fd53b2812b04701a64be9c52e4a9449aa6a4ae42caf9353491",
+      "relative_links": [
+        {
+          "line": 65,
+          "target": "../../DIAGNOSTICO_W6X_SONDAS_WAN_2026_10_29.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/015-wan-localization-and-tplink-status.md",
+      "category": "historico",
+      "bytes": 9117,
+      "lines": 80,
+      "sha256": "ba0cb3fd659d246b55cd9db6088c879cc690ecbd1a0ab7c7fb42d871d3710df6",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/016-wan-ont-synchronous-isolation.md",
+      "category": "historico",
+      "bytes": 6961,
+      "lines": 53,
+      "sha256": "c7dc18ab7d2872d6b8987ebb47df9df2f65a6763a15f12cc21fa3d837d98034c",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 22,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/017-current-path-configuration-assessment.md",
+      "category": "historico",
+      "bytes": 4505,
+      "lines": 37,
+      "sha256": "f9583b1205e1af1716a94e75913ec09835a238bde04c1bc511968e83caa36959",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/018-deep-cake-hfsc-parameter-research.md",
+      "category": "historico",
+      "bytes": 16264,
+      "lines": 132,
+      "sha256": "afa43b3a911db7fd68a2fb23ce994a78632dbe7b9742c17c89d3dd07d0e17861",
+      "relative_links": [
+        {
+          "line": 5,
+          "target": "019-native-decision-tests.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/019-native-decision-tests.md",
+      "category": "historico",
+      "bytes": 8783,
+      "lines": 77,
+      "sha256": "9bf7eaacf9e61a5b1fd7a01d362f7cc41d6a0c5d6bab0f58a94dac06d9e5ce9d",
+      "relative_links": [
+        {
+          "line": 3,
+          "target": "018-deep-cake-hfsc-parameter-research.md",
+          "exists": true
+        },
+        {
+          "line": 75,
+          "target": "../evidence/qos-2026-11-05/decision-tests-result.json",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 11,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 30,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 45,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 73,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/020-ingress-trust-boundary.md",
+      "category": "historico",
+      "bytes": 10515,
+      "lines": 84,
+      "sha256": "2de896870519bf64e9f6642d6709ddbe6bdec840a2f38efc0aaef077dd4372db",
+      "relative_links": [
+        {
+          "line": 62,
+          "target": "../evidence/qos-2026-11-05/ingress-trust-result.json",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 66,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/021-docs-runtime-doctor-audit.md",
+      "category": "historico",
+      "bytes": 17508,
+      "lines": 106,
+      "sha256": "2aae86ae1c1b3c79ab16b9fd5425c22f9a29a315d7138d6d40b3cef7b8f74212",
+      "relative_links": [
+        {
+          "line": 9,
+          "target": "../evidence/runtime-2026-11-05/markdown-inventory.json",
+          "exists": true
+        },
+        {
+          "line": 38,
+          "target": "../../USAGE_AND_TROUBLESHOOTING.md",
+          "exists": true
+        },
+        {
+          "line": 38,
+          "target": "../../DOCTOR_SAFETY_MODEL.md",
+          "exists": true
+        },
+        {
+          "line": 63,
+          "target": "../../../root/usr/lib/ark/modules/doctor.sh",
+          "exists": true
+        },
+        {
+          "line": 63,
+          "target": "../../../root/usr/lib/ark/common.sh",
+          "exists": true
+        },
+        {
+          "line": 63,
+          "target": "../../../root/usr/lib/ark/modules/ezsetup.sh",
+          "exists": true
+        },
+        {
+          "line": 63,
+          "target": "../../../root/usr/share/rpcd/acl.d/luci-app-equipe-dashboard.json",
+          "exists": true
+        },
+        {
+          "line": 63,
+          "target": "../../../root/etc/init.d/ark-firewall-guard",
+          "exists": true
+        },
+        {
+          "line": 63,
+          "target": "../../../root/usr/sbin/ark-web-watchdog",
+          "exists": true
+        },
+        {
+          "line": 63,
+          "target": "../../CODE_MAP.md",
+          "exists": true
+        },
+        {
+          "line": 70,
+          "target": "../evidence/runtime-2026-11-05/dns-restore-reproduction.json",
+          "exists": true
+        },
+        {
+          "line": 86,
+          "target": "../../DOCTOR_SAFETY_MODEL.md",
+          "exists": true
+        },
+        {
+          "line": 90,
+          "target": "../evidence/runtime-2026-11-05/browser-fixture.json",
+          "exists": true
+        },
+        {
+          "line": 96,
+          "target": "../evidence/runtime-2026-11-05/validation.json",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 17,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 18,
+          "kind": "confirmacao_SIM"
+        },
+        {
+          "line": 23,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 29,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 30,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 31,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 80,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/batches/TEMPLATE.md",
+      "category": "historico",
+      "bytes": 1559,
+      "lines": 42,
+      "sha256": "1c4fb75a0155746f568ef19229943ced9c8707b81826551659780c68dc5949c3",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/evidence/qos-2026-11-05/README.md",
+      "category": "historico",
+      "bytes": 1987,
+      "lines": 26,
+      "sha256": "1cfd63b7ddf0ed2478575be327f8492f33775e256f0b99ba9e676c9bcd673c61",
+      "relative_links": [
+        {
+          "line": 3,
+          "target": "../../batches/005-qos-review-2026-11-05.md",
+          "exists": true
+        },
+        {
+          "line": 4,
+          "target": "test-summary.txt",
+          "exists": true
+        },
+        {
+          "line": 5,
+          "target": "reproductions.json",
+          "exists": true
+        },
+        {
+          "line": 6,
+          "target": "reproduce.py",
+          "exists": true
+        },
+        {
+          "line": 18,
+          "target": "../../batches/006-gaming-latency-solution-2026-11-05.md",
+          "exists": true
+        },
+        {
+          "line": 19,
+          "target": "analyze_monitor_logs.py",
+          "exists": true
+        },
+        {
+          "line": 20,
+          "target": "monitor-analysis.json",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/audit/evidence/runtime-2026-11-05/README.md",
+      "category": "historico",
+      "bytes": 1076,
+      "lines": 11,
+      "sha256": "b6db50e4d2fb9d3eeabd549262c3402fd006de6a9145027d0f985d535f9d08f8",
+      "relative_links": [
+        {
+          "line": 11,
+          "target": "../../batches/021-docs-runtime-doctor-audit.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/firmware-runbook.md",
+      "category": "referencia",
+      "bytes": 1825,
+      "lines": 44,
+      "sha256": "c2da3617163c1dcecea6784662b0dde1fcfceb5d384ddb96d52807537f7cd66a",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 11,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 12,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 16,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 18,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 32,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 33,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 40,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/hardware-budget.md",
+      "category": "referencia",
+      "bytes": 4365,
+      "lines": 58,
+      "sha256": "fb6c240f3a1542fe999b5c1a299bc63de3110ef0a78caca767a712cd4451736a",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 52,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/network-diagnostics.md",
+      "category": "referencia",
+      "bytes": 2918,
+      "lines": 32,
+      "sha256": "3b4f26c85e2ef8726b7c15f10bda31e35aa30778ffa8f0856f0d4749beb41fb7",
+      "relative_links": [
+        {
+          "line": 5,
+          "target": "COMPATIBILITY_MATRIX.md",
+          "exists": true
+        },
+        {
+          "line": 11,
+          "target": "DOCTOR_SAFETY_MODEL.md",
+          "exists": true
+        },
+        {
+          "line": 26,
+          "target": "DOCTOR_SAFETY_MODEL.md",
+          "exists": true
+        },
+        {
+          "line": 30,
+          "target": "audit/STATUS.md",
+          "exists": true
+        }
+      ],
+      "review_candidates": [
+        {
+          "line": 22,
+          "kind": "doctor_autocura"
+        }
+      ]
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/screenshots/README.md",
+      "category": "referencia",
+      "bytes": 851,
+      "lines": 29,
+      "sha256": "57fc4f9174d4d3cc2da012c725e0fda049543c46e24c16c1408cef49eeb9759c",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/docs/security-rules.md",
+      "category": "referencia",
+      "bytes": 1264,
+      "lines": 25,
+      "sha256": "eb344aef9f4805f4f67ba8082645ce60f4a6c044001b50cf54569d53a863229f",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "GitHub/luci-app-ark-router/scripts/adhoc/README.md",
+      "category": "referencia",
+      "bytes": 509,
+      "lines": 8,
+      "sha256": "ccc3fb8067973540a2e2c9eaeb7b45dbf72d96eba20f865733a5fe88b905bffe",
+      "relative_links": [],
+      "review_candidates": []
+    },
+    {
+      "path": "PLAYBOOK.md",
+      "category": "referencia",
+      "bytes": 45598,
+      "lines": 336,
+      "sha256": "8fc9b523da8d1d71770c169fa640e28e93249ae2801ecf1c069d351d990f69f8",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 12,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 13,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 34,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 48,
+          "kind": "caminho_de_maquina"
+        },
+        {
+          "line": 52,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 129,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 155,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 179,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 190,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 192,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 195,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 229,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 237,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 242,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 246,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 264,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 278,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 335,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "README-DA-PASTA.md",
+      "category": "referencia",
+      "bytes": 1117,
+      "lines": 14,
+      "sha256": "0394a2ea0e500457f3f79b9b0a818ff90517b2b2822e0688256d2db657626aed",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 7,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 12,
+          "kind": "comando_recuperacao"
+        }
+      ]
+    },
+    {
+      "path": "TASK.md",
+      "category": "referencia",
+      "bytes": 31424,
+      "lines": 60,
+      "sha256": "f721de5e5a562e8d798ff6d8387cf0f2bc82e1ab567bd947ba68dbc59560615f",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 30,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 39,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 39,
+          "kind": "confirmacao_SIM"
+        },
+        {
+          "line": 40,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 41,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 42,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 44,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 45,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 45,
+          "kind": "confirmacao_SIM"
+        },
+        {
+          "line": 46,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 48,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 50,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 50,
+          "kind": "confirmacao_SIM"
+        },
+        {
+          "line": 56,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 57,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 58,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "tasks/done/2026-10-historico-completo-ate-v1.5.9.md",
+      "category": "historico",
+      "bytes": 67157,
+      "lines": 463,
+      "sha256": "5fd31acca551ff2c057501b4edc13d35871259cb82d8494961fa65296aa1e8a1",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 14,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 15,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 29,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 61,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 80,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 93,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 114,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 119,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 126,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 133,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 137,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 159,
+          "kind": "confirmacao_SIM"
+        },
+        {
+          "line": 168,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 170,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 178,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 195,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 196,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 199,
+          "kind": "confirmacao_SIM"
+        },
+        {
+          "line": 203,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 211,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 218,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 239,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 240,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 241,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 266,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 267,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 275,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 280,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 286,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 296,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 324,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 352,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 353,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 355,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 362,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 367,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 382,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 397,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 415,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 432,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 433,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 444,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 445,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "tasks/done/2026-11-historico-v2.0.0-ate-v2.1.8.md",
+      "category": "historico",
+      "bytes": 32496,
+      "lines": 63,
+      "sha256": "16a2eda7a2a82af9a929810589a2e1599892ccfc88ed1527e7ebbda0e76ce48e",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 8,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 10,
+          "kind": "confirmacao_SIM"
+        },
+        {
+          "line": 13,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 14,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 14,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 24,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 25,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 26,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 30,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 30,
+          "kind": "doctor_autocura"
+        },
+        {
+          "line": 31,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 32,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 33,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 33,
+          "kind": "comando_recuperacao"
+        },
+        {
+          "line": 34,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 37,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 40,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 41,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 42,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 43,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 44,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 46,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 47,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 48,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 49,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 51,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 52,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 54,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 58,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 59,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 63,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "tasks/done/T-001-revisao-estrutural-documentacao.md",
+      "category": "historico",
+      "bytes": 2341,
+      "lines": 37,
+      "sha256": "bdf7b87a16ab575e01a95f720129969ae0eda242c683b88a16264f272ef8bf74",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 6,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 32,
+          "kind": "alegacao_absoluta"
+        }
+      ]
+    },
+    {
+      "path": "tasks/done/historical_kernel_and_features.md",
+      "category": "historico",
+      "bytes": 2345,
+      "lines": 44,
+      "sha256": "da42176fb87d9267002401710af828cd6a5cbd9168305e62b7adac5166c9ae2b",
+      "relative_links": [],
+      "review_candidates": [
+        {
+          "line": 3,
+          "kind": "alegacao_absoluta"
+        },
+        {
+          "line": 32,
+          "kind": "doctor_autocura"
+        }
+      ]
+    }
+  ]
+}

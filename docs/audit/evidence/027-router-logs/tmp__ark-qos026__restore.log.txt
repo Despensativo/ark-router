@@ -1,0 +1,4 @@
+SQM: Stopping SQM on pppoe-wan
+SQM: Starting SQM script: layer_cake.qos on pppoe-wan, in: 720000 Kbps, out: 700000 Kbps
+SQM: layer_cake.qos was started on pppoe-wan successfully
+sh: out of range

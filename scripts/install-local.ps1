@@ -26,8 +26,8 @@ if (-not (Test-Path -LiteralPath $Plink)) {
 if ([string]::IsNullOrWhiteSpace($Password)) {
     if (-not [string]::IsNullOrWhiteSpace($env:ARK_ROUTER_TEST_PASSWORD)) {
         $Password = $env:ARK_ROUTER_TEST_PASSWORD
-    } elseif (-not [string]::IsNullOrWhiteSpace($env:ARK_ROUTER_PASSWORD)) {
-        $Password = $env:ARK_ROUTER_PASSWORD
+    } elseif (-not [string]::IsNullOrWhiteSpace($env:ARK_ROUTER_TEST_PASSWORD)) {
+        $Password = $env:ARK_ROUTER_TEST_PASSWORD
     } else {
         throw "Pass -Password or define the ARK_ROUTER_TEST_PASSWORD environment variable for the router root user."
     }

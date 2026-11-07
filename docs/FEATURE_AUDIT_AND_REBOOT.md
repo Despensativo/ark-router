@@ -1,7 +1,8 @@
 # ARK Router — Auditoria Completa, Persistência Pós-Reboot e Contratos Funcionais
 
+> Este catálogo descreve contratos. Contagens e texto gerado não comprovam reboot, idempotência, RF ou aprovação operacional.
 > **Documento Vivo Oficial**: Atualizado obrigatoriamente a cada adição, alteração, remoção ou correção funcional.
-> Versão Ativa: `2.0.1` | Repositório Canônico: `GitHub/luci-app-ark-router` | Total de Funcionalidades: `74`
+> Versão declarada: `2.2.1` (alterações locais; evidências por lote) | Repositório Canônico: `GitHub/luci-app-ark-router` | Total de Funcionalidades: `74`
 
 ---
 
@@ -24,7 +25,7 @@ flowchart TD
         MOD_NET["network.sh (WAN/LAN/mwan3/PPPoE/IPv6)"]
         MOD_SQM["sqm.sh (CAKE/FQ-CoDel/IRQBalance)"]
         MOD_WIFI["wifi.sh (APs/DFS/Roaming/Mesh/WED)"]
-        MOD_DOC["doctor.sh (ARK Doctor Auto-Cura)"]
+        MOD_DOC["doctor.sh (diagnóstico e reparo manual)"]
         MOD_SYS["system.sh (LEDs/RAM/Storage/Fastpath)"]
         MOD_DEV["devices.sh (QoS/Leases/Reboot Lock)"]
         MOD_VPN["vpn.sh (WireGuard/ZeroTier)"]
@@ -698,11 +699,11 @@ flowchart TD
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
-### `ARK-FW-006` — Daemon de Auto-Recuperação e Guarda do Firewall (ark-firewall-guard)
+### `ARK-FW-006` — Guarda Observacional do Firewall (ark-firewall-guard)
 - **1. Identificador**: `ARK-FW-006`
-- **2. Nome**: Daemon de Auto-Recuperação e Guarda do Firewall (ark-firewall-guard)
-- **3. Objetivo**: Verificar no arranque do sistema se a tabela inet fw4 carregou corretamente. Em caso de quebra, isola arquivos conflitantes em /etc/nftables.d/quarantine e reinicia o serviço.
-- **4. Estado Atual**: `funcional`
+- **2. Nome**: Guarda Observacional do Firewall (ark-firewall-guard)
+- **3. Objetivo**: Observar firewall e processos no boot; preservar regras/processos e a rotina de tema preexistente.
+- **4. Estado Atual**: `implementado`; validação operacional VM/reboot pendente.
 - **5. Arquivos Responsáveis**: `root/etc/init.d/ark-firewall-guard`
 - **6. Comandos e Ações**: `ark-firewall-guard boot()`
 - **7. Endpoints RPC**: Nenhum
@@ -710,43 +711,47 @@ flowchart TD
 - **9. Dependências e Pacotes**: `firewall4 ou firewall3`
 - **10. Configurações UCI**: `luci`, `equipe_dashboard`
 - **11. Serviços e Daemons**: `ark-firewall-guard`, `firewall`, `dnsmasq`, `adguardhome`
-- **12. Dados Persistentes**: `/etc/nftables.d/quarantine/`
+- **12. Dados Persistentes**: `/etc/config/luci`, `/etc/config/equipe_dashboard` (tema).
 - **13. Dados Temporários em /tmp ou Memória**: Nenhum
 - **14. Comportamento no Boot**: Executado no START=22 logo após a subida do netifd e firewall.
-- **15. Recursos que Pode Alterar**: /etc/nftables.d/*.nft, luci.main.mediaurlbase
-- **16. Recursos que NÃO Pode Alterar**: arquivos de kernel
+- **15. Recursos que Pode Alterar**: `luci.main.mediaurlbase` e preferências de tema; não altera regras de firewall.
+- **16. Recursos que NÃO Pode Alterar**: Não coloca regras de terceiros em quarentena nem reinicia serviços de rede; rotina preexistente de tema continua alterando UCI LuCI.
 - **17. Relações e Dependências**: `ARK-FW-001`, `ARK-UI-002`
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
 - **21. Versão de Criação/Alteração**: `1.5.2`
-- **22. Testes Relacionados**: `tests/test_wan_matrix.py`
+- **22. Testes Relacionados**: `tests/test_wan_matrix.py`, `tests/test_doctor_safety.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
 ### `ARK-SQM-001` — Motor de Controle de Bufferbloat Smart Queue Management (CAKE)
 - **1. Identificador**: `ARK-SQM-001`
 - **2. Nome**: Motor de Controle de Bufferbloat Smart Queue Management (CAKE)
-- **3. Objetivo**: Eliminar latência sob carga (bufferbloat) usando algoritmo CAKE ou FQ-CoDel com cálculo de overhead de enquadramento (overhead=28).
+- **3. Objetivo**: Controlar filas sob carga com CAKE ou HFSC e FQ-CoDel, preservando propriedade das raízes, parâmetros de enquadramento e estado anterior do offload.
 - **4. Estado Atual**: `funcional`
-- **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/sqm.sh`, `src/modules/network.js`
-- **6. Comandos e Ações**: `sqm-toggle`, `sqm-save`, `sqm-save-v2`, `sqm-apply-upload-only`
+- **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/sqm.sh`, `root/usr/lib/ark/common.sh`, `root/usr/lib/ark/qos-resources.sh`, `root/usr/lib/ark/qos-ingress.sh`, `root/etc/init.d/ark-hardware-tune`, `root/usr/lib/sqm/ark_hfsc_fqcodel.qos`, `src/modules/network.js`
+- **6. Comandos e Ações**: `sqm-toggle`, `sqm-save`, `sqm-save-v2`, `sqm-apply-upload-only`, `sqm-engine-select`, `sqm-resource-plan`, `sqm-autorate-toggle`, `sqm-autorate-step`, `sqm-autorate-status`
 - **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control sqm-*`
 - **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
-- **9. Dependências e Pacotes**: `sqm-scripts`, `kmod-sched-cake`, `tc-full`
-- **10. Configurações UCI**: `sqm`
-- **11. Serviços e Daemons**: `sqm`
-- **12. Dados Persistentes**: `/etc/config/sqm`
+- **9. Dependências e Pacotes**: `sqm-scripts`, `kmod-ifb`, `kmod-sched-core`, `kmod-sched-cake`, `tc-full`, `kmod-sched-ctinfo` por padrão. `ARK_QOS_WITH_CTINFO=0` gera build reduzido sem dependência ctinfo; SQM funciona sem restauração DSCP bidirecional. Makefile é fonte das listas QoS para IPK/APK locais. `kmod-sched` fornece act_pedit/act_csum para limpar DSCP preservando ECN antes de ctinfo. Sem essas ações, ingress usa prioridade explícita Best Effort; sem ctinfo, o caminho sanitizado permanece CS0. Preferências TC 1–9 são do ARK; redirect 10 preservado.
+- **10. Configurações UCI**: `sqm`, `equipe_dashboard.settings.sqm_autorate`
+- **11. Serviços e Daemons**: `sqm`, `firewall`
+- **12. Dados Persistentes**: `/etc/config/sqm`, opção Autorate em `/etc/config/equipe_dashboard`, flags de offload em `/etc/config/firewall`
 - **13. Dados Temporários em /tmp ou Memória**: `/var/run/sqm/`
-- **14. Comportamento no Boot**: Serviço sqm inicializa filas CAKE na WAN logo após a interface obter IP.
-- **15. Recursos que Pode Alterar**: sqm.wan1, sqm.wan2
-- **16. Recursos que NÃO Pode Alterar**: firewall, dns
+- **14. Comportamento no Boot**: Serviço SQM inicializa o motor selecionado na WAN após a interface obter IP; persistência e reboot exigem validação operacional.
+- **15. Recursos que Pode Alterar**: equipe_dashboard.settings.sqm_autorate, sqm.wan1, sqm.wan2, sqm.ark_offload_snapshot e flags de flow offload do firewall
+- **16. Recursos que NÃO Pode Alterar**: regras de filtragem/roteamento alheias ao offload e DNS
 - **17. Relações e Dependências**: `ARK-SQM-002`, `ARK-SQM-003`, `ARK-HW-001`
-- **18. Limitações por Hardware**: Em roteadores single-core legados, limita velocidade a ~150-200 Mbps; em quad-core Filogic atinge 1 Gbps+.
-- **19. Limitações por Versão do OpenWrt**: Universal.
+- **18. Limitações por Hardware**: O teto de memória é compartilhado pelas direções e filhos CAKE-mq potenciais; não inclui toda a memória do kernel. CAKE próprio é sincronizado antes de restart; HFSC exige limites nas folhas, com fallback apenas para opções avançadas de ECN. Capacidade depende de CPU, driver, protocolo e carga; throughput e latência exigem medição no hardware.
+- **19. Limitações por Versão do OpenWrt**: Autorate exige habilitação e amostras explícitas inteiras (carga 0–100%, atraso 0–60000 ms); sem coletor autônomo. Desligar com estado runtime restaura taxas pelo SQM antes de remover o estado. Erros TC, HFSC e amostras por WAN/direção permanecem pendentes; não habilitar como solução de jogo.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
 - **21. Versão de Criação/Alteração**: `1.5.2`
-- **22. Testes Relacionados**: `tests/test_wan_matrix.py`
-- **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
+- **22. Testes Relacionados**: `tests/test_wan_matrix.py`, `tests/test_sqm_reliability.py`, `tests/test_qos_resources.py`, `tests/test_qos_ingress.py`, `tests/test_qos_package_deps.py`, `tests/test_qos_benchmark.py`
+- **23. Necessidade de Validação em Hardware Real**: `Sim para capacidade, drivers e offload; ciclo de vida também deve ser validado na VM`
+
+**Contrato de confiabilidade (05/11/2026, lote 007):** tune preserva raízes de interfaces SQM ativas e raízes CAKE/HFSC existentes; falhas obrigatórias de instalação HFSC e serviço chegam ao RPC. Troca de motor com falha restaura configuração anterior e tenta reconstruí-la, informando também falha de reconstrução. Snapshot persistente em `sqm.ark_offload_snapshot` guarda flags ausentes ou 0/1 e estado ECM antes da primeira escrita, sem substituir preferências explícitas. Repetir a sincronização não sobrescreve o snapshot; Multi-WAN adia restauração da aceleração. Persistência/reboot e tráfego são requisitos de aceite ainda não homologados na VM. Evidência e pendências em [lote 007](audit/batches/007-qos-reliability-fixes-2026-11-05.md).
+
+**Validação de ajustes no cliente (05/11/2026, lote 024):** [protocolo QoS](QOS_TEST_PROTOCOL.md) e `scripts/qos_benchmark.py` coletam CPU/filas/sondas sem alterar configuração ou serviços. `quick` usa networkQuality no Mac e não atribui nota A+. O coletor não persiste no roteador nem participa do boot; idempotência significa preservar dados anteriores em diretórios separados, encerrar apenas seus processos e não interferir no motor. Trocas manuais de motor exigem retorno preparado, hashes e verificação TC. Testes locais do coletor não homologam desempenho, persistência após reboot ou estabilidade da WAN.
 
 ### `ARK-SQM-002` — Auto-Cura e Resolução Dinâmica de Interface SQM (l3_device healing)
 - **1. Identificador**: `ARK-SQM-002`
@@ -1103,13 +1108,13 @@ flowchart TD
 - **2. Nome**: Detecção de Perfil de Hardware e Presets Inteligentes de LEDs
 - **3. Objetivo**: Detectar modelo da placa (/tmp/sysinfo/board_name) e configurar cores RGB, brilho e alertas visuais de status nos LEDs físicos.
 - **4. Estado Atual**: `funcional`
-- **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/system.sh`, `root/etc/uci-defaults/99-ark-router-leds`
+- **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/system.sh`, `root/etc/uci-defaults/99-ark-router-leds`, `root/etc/init.d/ark-rainbowd`, `root/etc/init.d/ark-port-ledd`
 - **6. Comandos e Ações**: `get-led-hardware-info`, `set-led-preset`, `set-led-rgb-color`, `get-led-status`, `cleanup-orphan-leds`
 - **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control set-led-*`, `/usr/sbin/equipe-dashboard-control get-led-*`
 - **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
 - **9. Dependências e Pacotes**: `kmod-leds-gpio ou kmod-ledtrig-netdev`
 - **10. Configurações UCI**: `system`
-- **11. Serviços e Daemons**: `led`
+- **11. Serviços e Daemons**: `led`, `ark-rainbowd`, `ark-port-ledd`
 - **12. Dados Persistentes**: `/etc/config/system`
 - **13. Dados Temporários em /tmp ou Memória**: `/sys/class/leds/`
 - **14. Comportamento no Boot**: 99-ark-router-leds configura preset inteligente (smart) no primeiro boot.
@@ -1120,7 +1125,7 @@ flowchart TD
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
 - **21. Versão de Criação/Alteração**: `1.5.2`
-- **22. Testes Relacionados**: `scripts/verify_led_ui.py`
+- **22. Testes Relacionados**: `scripts/verify_led_ui.py`, `tests/test_led_service_lifecycle.py`
 - **23. Necessidade de Validação em Hardware Real**: `Sim`
 
 ### `ARK-HW-003` — Hotplug Dinâmico de Link WAN e Alerta de LED de Internet
@@ -1523,11 +1528,11 @@ flowchart TD
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
-### `ARK-DIAG-001` — ARK Doctor — Diagnóstico de Integridade e Auto-Cura do Sistema
+### `ARK-DIAG-001` — ARK Doctor — Diagnóstico Observacional e Reparo Manual Legado
 - **1. Identificador**: `ARK-DIAG-001`
-- **2. Nome**: ARK Doctor — Diagnóstico de Integridade e Auto-Cura do Sistema
-- **3. Objetivo**: Auditar inconsistências de rede, alinhamento SQM, MTU Baby Jumbo, memória RAM, conflitos de Fastpath e auto-corrigir com o argumento --fix.
-- **4. Estado Atual**: `funcional`
+- **2. Nome**: ARK Doctor — Diagnóstico Observacional e Reparo Manual Legado
+- **3. Objetivo**: Diagnosticar em run/auto sem mutação operacional; --fix permanece manual e não transacional. Consulte DOCTOR_SAFETY_MODEL.md.
+- **4. Estado Atual**: `parcial`; validação operacional VM/reboot pendente.
 - **5. Arquivos Responsáveis**: `root/usr/sbin/ark-doctor`, `root/usr/lib/ark/modules/doctor.sh`, `src/modules/doctor_perf.js`
 - **6. Comandos e Ações**: `ark-doctor`, `ark-doctor --fix`, `audit-system`
 - **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control ark-doctor`, `/usr/sbin/equipe-dashboard-control audit-system`
@@ -1536,16 +1541,16 @@ flowchart TD
 - **10. Configurações UCI**: `network`, `sqm`, `firewall`
 - **11. Serviços e Daemons**: Nenhum
 - **12. Dados Persistentes**: `/etc/config/sqm`, `/etc/config/network`
-- **13. Dados Temporários em /tmp ou Memória**: Nenhum
-- **14. Comportamento no Boot**: Executado sob demanda ou em verificações pós-boot.
-- **15. Recursos que Pode Alterar**: sqm.@queue[].interface, network.@device[].mtu, firewall.@defaults[0].flow_offloading
-- **16. Recursos que NÃO Pode Alterar**: configurações de Wi-Fi, senhas
+- **13. Dados Temporários em /tmp ou Memória**: `/tmp/ark-doctor-last.json`, `/tmp/ark-doctor-auto.ts`, `/tmp/ark-doctor.lockdir`, `/var/log/ark-doctor.log` (confirmar RAM no firmware).
+- **14. Comportamento no Boot**: Cron/hotplugs observacionais; chave legada `doctor.auto_heal`; intervalo automático mínimo de 60s.
+- **15. Recursos que Pode Alterar**: cache/log/lock em run/auto; SQM, network, firewall, wireless, dhcp, mwan3, system e serviços no reparo manual legado.
+- **16. Recursos que NÃO Pode Alterar**: run/auto não alteram rede/serviços/UCI; --fix ainda altera rádio, DNS, rotas e serviços. Não modifica senhas nem remove firewall.user na auditoria fw4.
 - **17. Relações e Dependências**: `ARK-SQM-002`, `ARK-WAN-003`, `ARK-HW-001`
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
 - **21. Versão de Criação/Alteração**: `1.5.2`
-- **22. Testes Relacionados**: `tests/test_wan_matrix.py`
+- **22. Testes Relacionados**: `tests/test_wan_matrix.py`, `tests/test_doctor_safety.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
 ### `ARK-DIAG-002` — Testador de Desconexão e Resiliência em Alta Resolução (Probe Disconnect)
@@ -1748,11 +1753,11 @@ flowchart TD
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
-### `ARK-SYS-007` — Watchdog e Auto-Recuperação do Servidor Web e Interface LuCI
+### `ARK-SYS-007` — Sonda HTTP Local e Configuração Inicial do uhttpd
 - **1. Identificador**: `ARK-SYS-007`
-- **2. Nome**: Watchdog e Auto-Recuperação do Servidor Web e Interface LuCI
-- **3. Objetivo**: Monitorar a cada minuto a resposta do servidor HTTP (uhttpd/nginx). Caso detecte travamento, reinicia o serviço e repara soquetes ubus para assegurar 100% de disponibilidade.
-- **4. Estado Atual**: `funcional`
+- **2. Nome**: Sonda HTTP Local e Configuração Inicial do uhttpd
+- **3. Objetivo**: Sonda HTTP emite aviso sem restart, ACL ou WireGuard; uci-defaults de uhttpd permanece separado.
+- **4. Estado Atual**: `implementado`; validação operacional VM/reboot pendente.
 - **5. Arquivos Responsáveis**: `root/usr/sbin/ark-web-watchdog`, `root/etc/uci-defaults/99-ark-router-uhttpd`
 - **6. Comandos e Ações**: `ark-web-watchdog execution`
 - **7. Endpoints RPC**: `http://127.0.0.1/`
@@ -1764,13 +1769,13 @@ flowchart TD
 - **13. Dados Temporários em /tmp ou Memória**: `/var/run/ubus/ubus.sock`, `/var/run/ubus.sock`
 - **14. Comportamento no Boot**: 99-ark-router-uhttpd garante symlinks de socket corretos e ausência de CORS no boot.
 - **15. Recursos que Pode Alterar**: /var/run/ubus.sock, /etc/config/uhttpd
-- **16. Recursos que NÃO Pode Alterar**: regras de rede externas
+- **16. Recursos que NÃO Pode Alterar**: Watchdog não modifica rede ou processos. Configuração inicial de uhttpd/ubus continua sendo responsabilidade do uci-defaults.
 - **17. Relações e Dependências**: `ARK-UI-001`, `ARK-FW-004`
 - **18. Limitações por Hardware**: Nenhuma.
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
 - **21. Versão de Criação/Alteração**: `1.5.2`
-- **22. Testes Relacionados**: `tests/test_wan_matrix.py`
+- **22. Testes Relacionados**: `tests/test_wan_matrix.py`, `tests/test_doctor_safety.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
 ### `ARK-SYS-008` — NTP Inteligente, Fake RTC Preserver e Fallback HTTP Date
@@ -1910,86 +1915,86 @@ flowchart TD
 
 | Identificador | Nome da Funcionalidade | Classificação Pós-Reboot | Evidência e Validação |
 | :--- | :--- | :--- | :--- |
-| `ARK-UI-001` | Painel LuCI Overview e Telemetria em Tempo Real | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-UI-002` | Tema ARK LuCI Responsivo, Header e Visual Mobile-First | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-UI-003` | Seletor de Temas, Modo Escuro e Cores de Destaque | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-WAN-001` | Configuração da Porta WAN Física Primária | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-WAN-002` | Gerenciamento de Perfis PPPoE e Credenciais | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-WAN-003` | Otimização Baby Jumbo Frames (MTU 1508 / MRU 1500) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-WAN-004` | Conversão Dinâmica de Porta Auto-WAN (LAN secundária para WAN2) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-WAN-005` | Motor de Políticas de Roteamento Multi-WAN (mwan3) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-WAN-006` | Failover Dual-WAN de Sub-Segundo e Teste de Resiliência | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-WAN-007` | Balanceamento de Carga Dual-WAN (Sessões e Grupos de Dispositivos) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-WAN-008` | Acesso Isolado à Interface Web de ONUs/Modems em Bridge | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-WAN-009` | TCP Turbo — Otimização de Buffers e BBR/Cubic do Kernel | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-WAN-010` | Monitor de Latência e Alvos de Ping Dinâmicos | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-LAN-001` | Configuração da Sub-rede LAN e Servidor DHCP Central | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-LAN-002` | Bridges LAN, VLANs e Isolamento DSA/Switch | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-LAN-003` | Sanitização de Nomes de Host DHCP (RFC 1123 Hostname Enforcer) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-LAN-004` | Reserva de IPs Secundários e Leases Estáticos | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
+| `ARK-UI-001` | Painel LuCI Overview e Telemetria em Tempo Real | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-UI-002` | Tema ARK LuCI Responsivo, Header e Visual Mobile-First | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-UI-003` | Seletor de Temas, Modo Escuro e Cores de Destaque | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-WAN-001` | Configuração da Porta WAN Física Primária | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-WAN-002` | Gerenciamento de Perfis PPPoE e Credenciais | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-WAN-003` | Otimização Baby Jumbo Frames (MTU 1508 / MRU 1500) | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-WAN-004` | Conversão Dinâmica de Porta Auto-WAN (LAN secundária para WAN2) | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-WAN-005` | Motor de Políticas de Roteamento Multi-WAN (mwan3) | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-WAN-006` | Failover Dual-WAN de Sub-Segundo e Teste de Resiliência | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-WAN-007` | Balanceamento de Carga Dual-WAN (Sessões e Grupos de Dispositivos) | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-WAN-008` | Acesso Isolado à Interface Web de ONUs/Modems em Bridge | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-WAN-009` | TCP Turbo — Otimização de Buffers e BBR/Cubic do Kernel | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-WAN-010` | Monitor de Latência e Alvos de Ping Dinâmicos | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-LAN-001` | Configuração da Sub-rede LAN e Servidor DHCP Central | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-LAN-002` | Bridges LAN, VLANs e Isolamento DSA/Switch | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-LAN-003` | Sanitização de Nomes de Host DHCP (RFC 1123 Hostname Enforcer) | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-LAN-004` | Reserva de IPs Secundários e Leases Estáticos | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
 | `ARK-LAN-005` | Limpeza e Coleta de Lixo de Leases Estagnados (Flush Stale Leases) | `configuração persistente com estado temporário esperado` | Estado recriado dinamicamente em /tmp sem vazamento em flash |
-| `ARK-IPV6-001` | IPv6 Nativo Dual-Stack e Delegação de Prefixo | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-IPV6-002` | Modo IPv6 Relay / Híbrido | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-IPV6-003` | Desativação Completa do IPv6 (Modo IPv4 Estrito) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-FW-001` | Abstração Dual do Firewall (fw3/iptables vs fw4/nftables) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-FW-002` | Bloqueio e Controle Parental de Dispositivos por MAC | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-FW-003` | Redirecionamento de Host DMZ (Demilitarized Zone) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-FW-004` | Redirecionamento HTTPS (Porta 443) e Guarda de Acesso Web | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-FW-005` | Serviço UPnP / NAT-PMP IGD com Proteção Anti-Crash STUN | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-FW-006` | Daemon de Auto-Recuperação e Guarda do Firewall (ark-firewall-guard) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-SQM-001` | Motor de Controle de Bufferbloat Smart Queue Management (CAKE) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-SQM-002` | Auto-Cura e Resolução Dinâmica de Interface SQM (l3_device healing) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-SQM-003` | Sincronização Dinâmica de SQM com Múltiplas WANs (Dual-WAN SQM) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-SQM-004` | Afinidade de Núcleos de CPU IRQ Balance para SQM/CAKE | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-QOS-001` | Limites de Banda por Dispositivo e QoS da Rede de Convidados | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-WIFI-001` | Configuração Dual/Tri-Band de APs Wi-Fi e Ativação no Boot | `simulada / dependente de hardware real` | Validado via UCI mock; RF/ASIC físico exige teste em bancada |
-| `ARK-WIFI-002` | Seleção Inteligente de Canal, DFS e Salvaguarda UNII-3 (160/320 MHz) | `simulada / dependente de hardware real` | Validado via UCI mock; RF/ASIC físico exige teste em bancada |
-| `ARK-WIFI-003` | Otimização de Estabilidade 2.4 GHz para IoT e Casa Inteligente | `simulada / dependente de hardware real` | Validado via UCI mock; RF/ASIC físico exige teste em bancada |
-| `ARK-WIFI-004` | Roaming Rápido Transparente 802.11r / 802.11k / 802.11v | `simulada / dependente de hardware real` | Validado via UCI mock; RF/ASIC físico exige teste em bancada |
-| `ARK-WIFI-005` | Direcionamento de Banda e de Clientes (Band Steering usteer) | `simulada / dependente de hardware real` | Validado via UCI mock; RF/ASIC físico exige teste em bancada |
-| `ARK-WIFI-006` | Gestão de Recursos Wi-Fi 6, 6E e Wi-Fi 7 (802.11ax / 802.11be / MLO) | `simulada / dependente de hardware real` | Validado via UCI mock; RF/ASIC físico exige teste em bancada |
-| `ARK-WIFI-007` | Controlador EasyMesh 802.11s e Descoberta de Satélites | `simulada / dependente de hardware real` | Validado via UCI mock; RF/ASIC físico exige teste em bancada |
-| `ARK-WIFI-008` | Controle de Emparelhamento WPS (PBC e PIN) | `simulada / dependente de hardware real` | Validado via UCI mock; RF/ASIC físico exige teste em bancada |
-| `ARK-WIFI-009` | Aceleração Wireless Ethernet Dispatch (WED) | `simulada / dependente de hardware real` | Validado via UCI mock; RF/ASIC físico exige teste em bancada |
-| `ARK-HW-001` | Controle de Flow Offloading por Hardware (PPE / Fastpath) | `simulada / dependente de hardware real` | Validado via UCI mock; RF/ASIC físico exige teste em bancada |
-| `ARK-HW-002` | Detecção de Perfil de Hardware e Presets Inteligentes de LEDs | `simulada / dependente de hardware real` | Validado via UCI mock; RF/ASIC físico exige teste em bancada |
-| `ARK-HW-003` | Hotplug Dinâmico de Link WAN e Alerta de LED de Internet | `simulada / dependente de hardware real` | Validado via UCI mock; RF/ASIC físico exige teste em bancada |
+| `ARK-IPV6-001` | IPv6 Nativo Dual-Stack e Delegação de Prefixo | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-IPV6-002` | Modo IPv6 Relay / Híbrido | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-IPV6-003` | Desativação Completa do IPv6 (Modo IPv4 Estrito) | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-FW-001` | Abstração Dual do Firewall (fw3/iptables vs fw4/nftables) | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-FW-002` | Bloqueio e Controle Parental de Dispositivos por MAC | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-FW-003` | Redirecionamento de Host DMZ (Demilitarized Zone) | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-FW-004` | Redirecionamento HTTPS (Porta 443) e Guarda de Acesso Web | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-FW-005` | Serviço UPnP / NAT-PMP IGD com Proteção Anti-Crash STUN | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-FW-006` | Guarda Observacional do Firewall (ark-firewall-guard) | `validação operacional pendente` | Regressões sandbox no lote 021; sem VM/reboot nesta revisão |
+| `ARK-SQM-001` | Motor de Controle de Bufferbloat Smart Queue Management (CAKE) | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-SQM-002` | Auto-Cura e Resolução Dinâmica de Interface SQM (l3_device healing) | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-SQM-003` | Sincronização Dinâmica de SQM com Múltiplas WANs (Dual-WAN SQM) | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-SQM-004` | Afinidade de Núcleos de CPU IRQ Balance para SQM/CAKE | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-QOS-001` | Limites de Banda por Dispositivo e QoS da Rede de Convidados | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-WIFI-001` | Configuração Dual/Tri-Band de APs Wi-Fi e Ativação no Boot | `simulada / dependente de hardware real` | Contrato requer hardware; consultar evidência de mock e bancada por revisão |
+| `ARK-WIFI-002` | Seleção Inteligente de Canal, DFS e Salvaguarda UNII-3 (160/320 MHz) | `simulada / dependente de hardware real` | Contrato requer hardware; consultar evidência de mock e bancada por revisão |
+| `ARK-WIFI-003` | Otimização de Estabilidade 2.4 GHz para IoT e Casa Inteligente | `simulada / dependente de hardware real` | Contrato requer hardware; consultar evidência de mock e bancada por revisão |
+| `ARK-WIFI-004` | Roaming Rápido Transparente 802.11r / 802.11k / 802.11v | `simulada / dependente de hardware real` | Contrato requer hardware; consultar evidência de mock e bancada por revisão |
+| `ARK-WIFI-005` | Direcionamento de Banda e de Clientes (Band Steering usteer) | `simulada / dependente de hardware real` | Contrato requer hardware; consultar evidência de mock e bancada por revisão |
+| `ARK-WIFI-006` | Gestão de Recursos Wi-Fi 6, 6E e Wi-Fi 7 (802.11ax / 802.11be / MLO) | `simulada / dependente de hardware real` | Contrato requer hardware; consultar evidência de mock e bancada por revisão |
+| `ARK-WIFI-007` | Controlador EasyMesh 802.11s e Descoberta de Satélites | `simulada / dependente de hardware real` | Contrato requer hardware; consultar evidência de mock e bancada por revisão |
+| `ARK-WIFI-008` | Controle de Emparelhamento WPS (PBC e PIN) | `simulada / dependente de hardware real` | Contrato requer hardware; consultar evidência de mock e bancada por revisão |
+| `ARK-WIFI-009` | Aceleração Wireless Ethernet Dispatch (WED) | `simulada / dependente de hardware real` | Contrato requer hardware; consultar evidência de mock e bancada por revisão |
+| `ARK-HW-001` | Controle de Flow Offloading por Hardware (PPE / Fastpath) | `simulada / dependente de hardware real` | Contrato requer hardware; consultar evidência de mock e bancada por revisão |
+| `ARK-HW-002` | Detecção de Perfil de Hardware e Presets Inteligentes de LEDs | `simulada / dependente de hardware real` | Contrato requer hardware; consultar evidência de mock e bancada por revisão |
+| `ARK-HW-003` | Hotplug Dinâmico de Link WAN e Alerta de LED de Internet | `simulada / dependente de hardware real` | Contrato requer hardware; consultar evidência de mock e bancada por revisão |
 | `ARK-HW-004` | Purga Automática de Memória RAM e Despejo de Buffers (ram-purge) | `configuração persistente com estado temporário esperado` | Estado recriado dinamicamente em /tmp sem vazamento em flash |
 | `ARK-HW-005` | Limpeza e Recuperação de Espaço em Flash Storage | `configuração persistente com estado temporário esperado` | Estado recriado dinamicamente em /tmp sem vazamento em flash |
-| `ARK-STAR-001` | Telemetria Direta da Antena Starlink (gRPC / HTTP) | `simulada / dependente de hardware real` | Validado via UCI mock; RF/ASIC físico exige teste em bancada |
-| `ARK-STAR-002` | Buffer Circular de Telemetria Starlink de 25 Horas com Persistência Segura | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-STAR-003` | Acesso Público e Redirecionamento da Antena Starlink | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-STAR-004` | Notificação de Quedas e Relatórios de Telemetria por E-mail | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-VPN-001` | Servidor WireGuard Nativo e Geração de Chaves | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-VPN-002` | Gerenciamento de Peers WireGuard e Geração de QR Code | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-VPN-003` | Importação de Perfis de Cliente WireGuard e Status do Túnel | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
+| `ARK-STAR-001` | Telemetria Direta da Antena Starlink (gRPC / HTTP) | `simulada / dependente de hardware real` | Contrato requer hardware; consultar evidência de mock e bancada por revisão |
+| `ARK-STAR-002` | Buffer Circular de Telemetria Starlink de 25 Horas com Persistência Segura | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-STAR-003` | Acesso Público e Redirecionamento da Antena Starlink | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-STAR-004` | Notificação de Quedas e Relatórios de Telemetria por E-mail | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-VPN-001` | Servidor WireGuard Nativo e Geração de Chaves | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-VPN-002` | Gerenciamento de Peers WireGuard e Geração de QR Code | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-VPN-003` | Importação de Perfis de Cliente WireGuard e Status do Túnel | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
 | `ARK-VPN-004` | Hotplug de Re-sincronização WireGuard em Falha/Troca de WAN | `configuração persistente com estado temporário esperado` | Estado recriado dinamicamente em /tmp sem vazamento em flash |
-| `ARK-VPN-006` | Integração ZeroTier VPN com Descompactação em RAM para Baixa Flash | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-VPN-007` | Agregação de Links Speedify Multi-Path Bonding | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-BLOCK-001` | Motor Adblock Integrado e Bloqueio de Publicidade por DNS | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-BLOCK-002` | Sincronização Customizada de Listas Negras e Listas Brancas | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-HIST-001` | Histórico de Tráfego e Daemon de Amostragem nlbwmon | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-DIAG-001` | ARK Doctor — Diagnóstico de Integridade e Auto-Cura do Sistema | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
+| `ARK-VPN-006` | Integração ZeroTier VPN com Descompactação em RAM para Baixa Flash | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-VPN-007` | Agregação de Links Speedify Multi-Path Bonding | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-BLOCK-001` | Motor Adblock Integrado e Bloqueio de Publicidade por DNS | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-BLOCK-002` | Sincronização Customizada de Listas Negras e Listas Brancas | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-HIST-001` | Histórico de Tráfego e Daemon de Amostragem nlbwmon | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-DIAG-001` | ARK Doctor — Diagnóstico Observacional e Reparo Manual Legado | `validação operacional pendente` | Regressões sandbox no lote 021; sem VM/reboot nesta revisão |
 | `ARK-DIAG-002` | Testador de Desconexão e Resiliência em Alta Resolução (Probe Disconnect) | `configuração persistente com estado temporário esperado` | Estado recriado dinamicamente em /tmp sem vazamento em flash |
-| `ARK-DIAG-003` | Medidor de Velocidade Integrado da WAN (Speedtest) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-SYS-001` | Gerenciador de Nomes Amigáveis de Dispositivos (Aliases) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
+| `ARK-DIAG-003` | Medidor de Velocidade Integrado da WAN (Speedtest) | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-SYS-001` | Gerenciador de Nomes Amigáveis de Dispositivos (Aliases) | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
 | `ARK-SYS-002` | Reinicialização Segura em Duas Fases com Trava Visual | `configuração persistente com estado temporário esperado` | Estado recriado dinamicamente em /tmp sem vazamento em flash |
-| `ARK-SYS-003` | Assistente de Instalação e Configuração Rápida (EZ-Setup) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-SYS-004` | Gerenciador de Perfis de Pacote (Lite vs Full) e Ocultação Modular | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-SYS-005` | Mecanismo de Atualização OTA e Upgrade Manual (IPK / APK) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-SYS-006` | Customização de Idioma e Título do Sistema (Branding) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-SYS-007` | Watchdog e Auto-Recuperação do Servidor Web e Interface LuCI | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-SYS-008` | NTP Inteligente, Fake RTC Preserver e Fallback HTTP Date | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-WAN-011` | Blindagem Exclusiva NPTv6 (RFC 6296) vs NDP Relay e Sincronização ULA | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-PERF-006` | Seletor Inteligente de Cache DNS Adaptado por Hardware (RAM 0ms) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-WIFI-010` | Roaming Rápido 802.11k/v (BSS Transition), RNR 6 GHz e Calibração usteer | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
-| `ARK-WIFI-011` | Smart Wi-Fi Package Enhancer (Upgrade Atômico wpad-mbedtls e usteer) | `persistente e restaurada corretamente` | Configurações em /etc/config/ e serviços iniciados via procd |
+| `ARK-SYS-003` | Assistente de Instalação e Configuração Rápida (EZ-Setup) | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-SYS-004` | Gerenciador de Perfis de Pacote (Lite vs Full) e Ocultação Modular | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-SYS-005` | Mecanismo de Atualização OTA e Upgrade Manual (IPK / APK) | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-SYS-006` | Customização de Idioma e Título do Sistema (Branding) | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-SYS-007` | Sonda HTTP Local e Configuração Inicial do uhttpd | `validação operacional pendente` | Regressões sandbox no lote 021; sem VM/reboot nesta revisão |
+| `ARK-SYS-008` | NTP Inteligente, Fake RTC Preserver e Fallback HTTP Date | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-WAN-011` | Blindagem Exclusiva NPTv6 (RFC 6296) vs NDP Relay e Sincronização ULA | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-PERF-006` | Seletor Inteligente de Cache DNS Adaptado por Hardware (RAM 0ms) | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-WIFI-010` | Roaming Rápido 802.11k/v (BSS Transition), RNR 6 GHz e Calibração usteer | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
+| `ARK-WIFI-011` | Smart Wi-Fi Package Enhancer (Upgrade Atômico wpad-mbedtls e usteer) | `persistência declarada; reboot não comprovado aqui` | Exige evidência por revisão em docs/audit/STATUS.md |
 
 ---
 
 ## 4. Matriz de Idempotência
 
-A execução repetida dos comandos do ARK Router não duplica seções UCI, não adiciona regras repetidas de firewall e não gera processos órfãos:
+As linhas abaixo descrevem requisitos de idempotência. A evidência executada por revisão está nos lotes de auditoria; este catálogo não homologa todos os cenários.
 
 | Ação Auditada | Teste de Execução Repetida | Resultado de Idempotência |
 | :--- | :--- | :--- |
@@ -2007,18 +2012,18 @@ A execução repetida dos comandos do ARK Router não duplica seções UCI, não
 
 | Cenário | Subsistemas Envolvidos | Resultado do Teste | Salvaguarda Aplicada |
 | :---: | :--- | :---: | :--- |
-| **1** | Dual-WAN com SQM (CAKE) | **APROVADO** | SQM da WAN1 permanece íntegro ao reconfigurar WAN2 |
-| **2** | Dual-WAN com Failover mwan3 | **APROVADO** | Credenciais PPPoE e IPs estáticos não são apagados ao alternar políticas |
-| **3** | Failover com Políticas PBR (IoT/Alexa) | **APROVADO** | Regras de portas 8883/8886 e rotas Starlink preservadas |
-| **4** | Firewall com Bloqueio de Dispositivos | **APROVADO** | Bloqueio por MAC não interfere nas zonas gerais de encaminhamento LAN |
-| **5** | Wi-Fi com EasyMesh 802.11s | **APROVADO** | Criação de interface mesh não remove criptografia do AP principal |
-| **6** | Wi-Fi com Roaming 802.11r e usteer | **APROVADO** | Roaming rápido não anula parâmetros DTIM=2 da rede IoT 2.4 GHz |
-| **7** | VLAN com Bridges LAN | **APROVADO** | Criação de WAN2 secundária preserva estritamente a porta 1 (lan1) de gerência |
-| **8** | QoS com Limites por Dispositivo | **APROVADO** | `qos_equipe` não sobrescreve filas CAKE da WAN principal |
-| **9** | Starlink com Telemetria e Buffer 25h | **APROVADO** | Daemon Starlink não altera configurações de conexão PPPoE |
-| **10** | ARK Doctor (`--fix`) com Configs Customizadas | **APROVADO** | Auto-cura repara interfaces inconsistentes mas preserva DNS customizado |
-| **11** | Restauração de Backup com Serviços Ativos | **APROVADO** | `ez_backup` restaura arquivos sem deixar travas órfãs em `/var/lock/` |
-| **12** | Troca entre Perfis Lite e Full | **APROVADO** | Ocultação de módulos no LuCI não afeta roteamento ou topologia de rede |
+| **1** | Dual-WAN com SQM (CAKE) | **REQUISITO; CONSULTE EVIDÊNCIA DO LOTE** | SQM da WAN1 permanece íntegro ao reconfigurar WAN2 |
+| **2** | Dual-WAN com Failover mwan3 | **REQUISITO; CONSULTE EVIDÊNCIA DO LOTE** | Credenciais PPPoE e IPs estáticos não são apagados ao alternar políticas |
+| **3** | Failover com Políticas PBR (IoT/Alexa) | **REQUISITO; CONSULTE EVIDÊNCIA DO LOTE** | Regras de portas 8883/8886 e rotas Starlink preservadas |
+| **4** | Firewall com Bloqueio de Dispositivos | **REQUISITO; CONSULTE EVIDÊNCIA DO LOTE** | Bloqueio por MAC não interfere nas zonas gerais de encaminhamento LAN |
+| **5** | Wi-Fi com EasyMesh 802.11s | **REQUISITO; CONSULTE EVIDÊNCIA DO LOTE** | Criação de interface mesh não remove criptografia do AP principal |
+| **6** | Wi-Fi com Roaming 802.11r e usteer | **REQUISITO; CONSULTE EVIDÊNCIA DO LOTE** | Roaming rápido não anula parâmetros DTIM=2 da rede IoT 2.4 GHz |
+| **7** | VLAN com Bridges LAN | **REQUISITO; CONSULTE EVIDÊNCIA DO LOTE** | Criação de WAN2 secundária preserva estritamente a porta 1 (lan1) de gerência |
+| **8** | QoS com Limites por Dispositivo | **REQUISITO; CONSULTE EVIDÊNCIA DO LOTE** | `qos_equipe` não sobrescreve filas CAKE da WAN principal |
+| **9** | Starlink com Telemetria e Buffer 25h | **REQUISITO; CONSULTE EVIDÊNCIA DO LOTE** | Daemon Starlink não altera configurações de conexão PPPoE |
+| **10** | ARK Doctor (`--fix`) com Configs Customizadas | **REQUISITO; CONSULTE EVIDÊNCIA DO LOTE** | Auto-cura repara interfaces inconsistentes mas preserva DNS customizado |
+| **11** | Restauração de Backup com Serviços Ativos | **REQUISITO; CONSULTE EVIDÊNCIA DO LOTE** | `ez_backup` restaura arquivos sem deixar travas órfãs em `/var/lock/` |
+| **12** | Troca entre Perfis Lite e Full | **REQUISITO; CONSULTE EVIDÊNCIA DO LOTE** | Ocultação de módulos no LuCI não afeta roteamento ou topologia de rede |
 
 ---
 
@@ -2057,7 +2062,7 @@ A execução repetida dos comandos do ARK Router não duplica seções UCI, não
 | `19` | `ark-zerotier-ram` | Extração de dependências em RAM para roteadores de 16 MB Flash |
 | `19` | `mwan3` | Inicialização de regras e monitores de ping do Multi-WAN |
 | `20` | `network` (netifd) | Subida de interfaces físicas, bridges e obtenção de IPs |
-| `22` | `ark-firewall-guard` | Auto-recuperação do firewall (quarentena de nft inválido) |
+| `22` | `ark-firewall-guard` | Diagnóstico de firewall/processos, sem quarentena ou restart |
 | `50` | `uhttpd` | Servidor web do LuCI e soquetes ubus |
 | `60` | `dnsmasq` / `odhcpd` | Resolução DNS e entrega de endereços DHCP |
 | `95` | `ark-autowan` | Daemon de detecção de portas e conversão automática |

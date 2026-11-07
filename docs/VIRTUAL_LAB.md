@@ -6,7 +6,7 @@ O ambiente principal de desenvolvimento, testes e validação contínua do **ARK
 
 ### Regras Mandatórias:
 1. **Nunca instalar, publicar, atualizar ou executar alterações em roteadores físicos automaticamente.**
-2. **Qualquer implantação em equipamento real depende de solicitação e confirmação manual e explícita do usuário por confirmação escrevendo SIM.**
+2. **Qualquer implantação em equipamento real depende de solicitação explícita do usuário. O pedido direto de aplicar ou validar no equipamento já constitui autorização; não exigir a palavra SIM nem confirmação redundante.**
 3. **Simulação Extensiva no Ambiente Virtual**: O laboratório virtual deve reproduzir o maior número possível de cenários suportados:
    - uma, duas ou mais WANs;
    - balanceamento e failover;

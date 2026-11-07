@@ -1,0 +1,38 @@
+[
+  {
+    "engine": "hfsc",
+    "round": 1,
+    "download_mbps": 710,
+    "download_state": "speed-results-container succeeded",
+    "idle_ms": 5,
+    "loaded_ms": 5,
+    "upload_mbps": 600,
+    "upload_state": "extra-measurement-value-container succeeded",
+    "captured": 1793926651.473,
+    "grade": null
+  },
+  {
+    "engine": "hfsc",
+    "round": 2,
+    "download_mbps": 700,
+    "download_state": "speed-results-container succeeded",
+    "idle_ms": 5,
+    "loaded_ms": 6,
+    "upload_mbps": 590,
+    "upload_state": "extra-measurement-value-container succeeded",
+    "captured": 1793926776.598,
+    "grade": null
+  },
+  {
+    "engine": "hfsc",
+    "round": 3,
+    "download_mbps": 700,
+    "download_state": "speed-results-container succeeded",
+    "idle_ms": 5,
+    "loaded_ms": 6,
+    "upload_mbps": 590,
+    "upload_state": "extra-measurement-value-container succeeded",
+    "captured": 1793926841.299,
+    "grade": null
+  }
+]

@@ -101,8 +101,8 @@ def main():
     task_file = workspace_dir / "TASK.md"
     if task_file.exists():
         task_lines = len(task_file.read_text(encoding="utf-8").splitlines())
-        if task_lines > 150:
-            warnings.append(f"TASK.md possui {task_lines} linhas (limite recomendado <= 100 linhas). Considere arquivar tarefas em tasks/done/.")
+        if task_lines > 60:
+            warnings.append(f"TASK.md possui {task_lines} linhas (limite recomendado <= 60 linhas). Considere arquivar tarefas em tasks/done/.")
 
     # 6. Consistência de Hashes SHA-256 de Firmware (Firmware/sha256sums vs docs/firmware-runbook.md)
     sha_file = workspace_dir / "Firmware" / "sha256sums"
@@ -183,8 +183,12 @@ def main():
             print(f"  ❌ {e}")
         print("\nResultado: REPROVADO. Corrija as divergências documentais.")
         return 1
+
+    if strict and warnings:
+        print("\nResultado: REPROVADO em modo estrito por avisos pendentes.")
+        return 1
         
-    print("\nResultado: APROVADO! Todos os documentos, versões e limites estão em 100% de conformidade.")
+    print("\nResultado: APROVADO nas verificações automatizadas implementadas. Não substitui revisão semântica ou teste operacional.")
     print("=" * 60)
     return 0
 

@@ -1,0 +1,91 @@
+heading Your Results, Value: 1
+				14 text Your Results
+			15 heading BUFFERBLOAT GRADE, Value: 3
+				16 text BUFFERBLOAT GRADE
+			17 text A+ Your latency increased  moderately  under load. Read about
+			18 link Description: how to fix bufferbloat issues., Value: waveform.com/tools/bufferbloat?test-id=c06bd576-9baa-4042-950c-2380851c6902#section-fix-bufferbloat
+			19 heading LATENCY, Value: 3
+				20 text LATENCY
+			21 text Unloaded 273 ms Download Active +0 ms Upload Active +0 ms
+			22 heading YOUR CONNECTION, Value: 3
+				23 text YOUR CONNECTION
+			24 table
+				25 row
+					26 cell
+						27 text Under Ideal Conditions
+					28 cell
+						29 text Currently, Due To Bufferbloat
+				30 row
+					31 cell
+						32 text Web Browsing
+					33 cell
+						34 image Supported
+					35 cell
+						36 image Supported
+				37 row
+					38 cell
+						39 text Audio Calls
+					40 cell
+						41 image May be affected
+					42 cell
+						43 image May be affected
+				44 row
+					45 cell
+						46 text 4K Video Streaming
+					47 cell
+						48 image Supported
+					49 cell
+						50 image Supported
+				51 row
+					52 cell
+						53 text Video Conferencing
+					54 cell
+						55 image May be affected
+					56 cell
+						57 image May be affected
+				58 row
+					59 cell
+						60 text Low Latency Gaming
+					61 cell
+						62 image May be affected
+					63 cell
+						64 image May be affected
+			65 link Description: Read More, Value: waveform.com/tools/bufferbloat?test-id=c06bd576-9baa-4042-950c-2380851c6902#section-fix-bufferbloat
+			66 heading SPEED, Value: 3
+				67 text SPEED
+			68 text ↓ Download 630.7 Mbps ↑ Upload 156.1 Mbps LOW BUFFERBLOAT DETECTED
+			69 heading Your latency under load looks good. Your router is doing its job., Value: 3
+				70 text Your latency under load looks good. Your router is doing its job.
+			71 container
+				72 text If you ran this test because your internet feels unreliable, bufferbloat isn’t your problem. The more likely culprit is the connection itself, dropping out, or slowing down right when it matters.
+			73 text That’s a different fix, and it’s where Waveform Internet can help. Waveform Internet bonds multiple networks into one, so when one fails, you stay online.
+			74 heading Need More Reliable Internet?, Value: 4
+				75 text Need More Reliable Internet?
+			76 text This test measures latency under load, not reliability or speed. For dropouts, outages and dead spots, there’s Waveform Internet.
+			77 link Description: Learn More, Value: waveform.com/internet
+			78 image Waveform
+			79 image Internet
+			80 text Unloaded
+			81 text Min: 21.5 ms
+Median: 26.3 ms
+Max: 2069.8 ms
+Mean: 273 ms 25th %ile: 24.9 ms
+75th %ile: 29.5 ms
+95th %ile: 1110 ms
+Jitter: 382.1 ms ↓ Active
+			82 text Min: 20.9 ms
+Median: 26.8 ms
+Max: 176.2 ms
+Mean: 28 ms 25th %ile: 24 ms
+75th %ile: 29.4 ms
+95th %ile: 31.5 ms
+Jitter: 4.2 ms ↑ Active
+			83 text Min: 20 ms
+Median: 26 ms
+Max: 32.1 ms
+Mean: 25.9 ms 25th %ile: 23.7 ms
+75th %ile: 27.7 ms
+95th %ile: 30.4 ms
+Jitter: 2.2 ms Share  Your Results : https://www.waveform.com/tools/bufferbloat?test-id=c06bd576-9baa-4042-950c-2380851c6902
+			84 button Copy
+			85 button Test Again

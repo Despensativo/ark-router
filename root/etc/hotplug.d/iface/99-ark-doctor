@@ -1,5 +1,5 @@
 #!/bin/sh
-# Aciona o Ark Doctor (modo silencioso/auto-cura) quando uma interface sobe
+# Aciona o Ark Doctor (diagnostico silencioso) quando uma interface sobe
 # ou quando ocorrem reconfiguracoes de rede significativas.
 
 [ "$ACTION" = "ifup" ] || exit 0

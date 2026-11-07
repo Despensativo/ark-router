@@ -1,0 +1,20 @@
+{
+  "environment": "Chromium real; DOM/serviços LuCI e RPC simulados; sem VM",
+  "source_sha256": "036abce5fc6f0ddc1cc400192bd6f0efc5ce059d570361b80b6b3994c43dfb48",
+  "cases": [
+    {
+      "width": 360,
+      "console_errors": [],
+      "state_preserved": true,
+      "retry_enabled": true,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 1280,
+      "console_errors": [],
+      "state_preserved": true,
+      "retry_enabled": true,
+      "horizontal_overflow": false
+    }
+  ]
+}

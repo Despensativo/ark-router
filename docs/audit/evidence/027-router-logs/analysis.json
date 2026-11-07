@@ -1,0 +1,37 @@
+{
+  "pppoe-wan": {
+    "qdisc_kinds": [
+      "hfsc",
+      "fq_codel",
+      "fq_codel",
+      "fq_codel",
+      "ingress"
+    ],
+    "root_count": 1
+  },
+  "ifb4pppoe-wan": {
+    "qdisc_kinds": [
+      "hfsc",
+      "fq_codel",
+      "fq_codel",
+      "fq_codel"
+    ],
+    "root_count": 1
+  },
+  "ingress_preferences": [
+    2,
+    3,
+    4,
+    5,
+    10
+  ],
+  "system_log_lines": 3363,
+  "kernel_log_lines": 409,
+  "system_log_first": "Thu Nov  5 20:00:10 2026 kern.info kernel: [    0.000000] Booting Linux on physi",
+  "system_log_last": "Fri Nov  6 01:07:47 2026 authpriv.notice dropbear[17083]: Pubkey auth succeeded ",
+  "bss_status_7": 178,
+  "sqm_missing_filter_failures": 27,
+  "lan1_ups": 10,
+  "lan1_downs": 10,
+  "current_boot_panic_oom_watchdog_fault_matches": []
+}

@@ -182,8 +182,8 @@ def build_markdown():
     out.append("")
     out.append("| Camada | Mecanismo | Arquivos / Caches | Comportamento Exato |")
     out.append("| :--- | :--- | :--- | :--- |")
-    out.append("| **0. Coalescência Hotplug** | Non-blocking Early Exit | `ark-doctor.lockdir/pid`, `ark_mutation.lock/pid` | Chamadas `ark-doctor --auto` abortam em `0ms` no topo de `equipe-dashboard-control` se já houver auditoria ou mutação viva (`kill -0`), evitando fila serial de hotplugs. |")
-    out.append("| **1. Fast-Path (Sem Source)** | Resposta direta em RAM | `ark-fp-cache` (120s), `ark-stations-cache` (120s), `ark-perf-cache` (120s), `ark-hw-cache` (120s), `ark-mwan-cache` (3s), `ark-doctor-last.json` | Responde `device-fingerprints`, `device-stations`, `wifi-stations`, `system-perf-status`, `system-hardware-info`, `mwan-status-fast` e `doctor-status` **antes** de carregar `common.sh` (~10.000 linhas poupadas). |")
+    out.append("| **0. Coalescência Hotplug** | Non-blocking Early Exit | `ark-doctor.lockdir/pid`, `ark_mutation.lock/pid` | Chamadas `ark-doctor --auto` encerram sem espera no topo de `equipe-dashboard-control` se já houver auditoria ou mutação viva (`kill -0`), evitando fila serial de hotplugs. |")
+    out.append("| **1. Fast-Path (Sem Source)** | Resposta direta em RAM | `ark-fp-cache` (120s), `ark-stations-cache` (10s), `ark-perf-cache` (30s), `ark-hw-cache` (30s), `ark-mwan-cache` (3s), `ark-doctor-last.json` | Responde `device-fingerprints`, `device-stations`, `wifi-stations`, `system-perf-status`, `system-hardware-info`, `mwan-status-fast` e `doctor-status` **antes** de carregar `common.sh` (~10.000 linhas poupadas). |")
     out.append("| **2. Lock Global de Mutação** | `ark_acquire_mutation_lock` | `/tmp/ark_mutation.lock` (`pid`, `ts`, `cmd`) | Adquirido apenas quando `ark_is_readonly_action` retorna `1`. Leituras (`*-status`, `*-info`, etc.) e LEDs (`update-wan-led`, `update-led-alert`) passam livres sem bloqueio. |")
     out.append("| **3. Job Serializado** | `ark_serialized_job` | `root/usr/lib/ark/serialized-job.sh` | Garante execução única por recurso com reagendamento `.pending` automático se novo evento chegar durante a execução (código `75` para contendores). |")
     out.append("")
@@ -254,7 +254,7 @@ def build_markdown():
         ("Daemon", "root/usr/sbin/ark-autowan-daemon", "Monitoramento contínuo de portas físicas e conversão automática WAN/LAN"),
         ("Daemon", "root/usr/sbin/ark-port-ledd", "Sincronização em tempo real dos LEDs físicos de portas de rede"),
         ("Daemon", "root/usr/sbin/ark-rainbowd", "Motor de efeitos RGB e animações de LEDs (GPIO / I2C AW21018)"),
-        ("Daemon", "root/usr/sbin/ark-web-watchdog", "Watchdog de disponibilidade do servidor web uhttpd/rpcd"),
+        ("Daemon", "root/usr/sbin/ark-web-watchdog", "Sonda HTTP local observacional; não reinicia serviços"),
         ("Daemon", "root/usr/sbin/equipe-traffic-history", "Coletor leve de histórico de tráfego em `/tmp/equipe-traffic-history.csv`"),
         ("Daemon", "root/usr/sbin/starlink-telemetry-daemon", "Coletor gRPC de telemetria da antena Starlink"),
         ("Hotplug (`iface`)", "root/etc/hotplug.d/iface/05-ark-pppoe-babyjumbo", "Sondagem e ajuste automático de MTU 1508 (RFC 4638 Baby Jumbo) no PPPoE"),
@@ -262,12 +262,12 @@ def build_markdown():
         ("Hotplug (`iface`)", "root/etc/hotplug.d/iface/30-wireguard-wan", "Ressincronização de endpoint e MTU do WireGuard em transições WAN"),
         ("Hotplug (`iface`)", "root/etc/hotplug.d/iface/95-ark-cache-invalidate", "Invalidação de caches `/tmp/ark-*-cache.ts` e reload seguro de DoH"),
         ("Hotplug (`iface`)", "root/etc/hotplug.d/iface/98-ark-hardware-tune", "Reaplicação de sintonia de hardware em eventos `ifup` de interfaces físicas"),
-        ("Hotplug (`iface`)", "root/etc/hotplug.d/iface/99-ark-doctor", "Auditoria e autocura silenciosa (`ark-doctor --auto`) pós-conexão"),
+        ("Hotplug (`iface`)", "root/etc/hotplug.d/iface/99-ark-doctor", "Diagnóstico observacional (`ark-doctor --auto`) pós-conexão"),
         ("Hotplug (`iface`)", "root/etc/hotplug.d/iface/99-ark-led-wan", "Atualização dinâmica do LED de Internet/WAN em `ifup`/`ifdown`"),
         ("Hotplug (`net`)", "root/etc/hotplug.d/net/90-ark-rps-tune", "Atribuição multicore de máscaras RPS e limites GRO/GSO para interfaces recém-criadas"),
         ("Hotplug (`net`)", "root/etc/hotplug.d/net/95-ark-cache-invalidate", "Invalidação de caches em eventos físicos de link de rede"),
         ("Hotplug (`net`)", "root/etc/hotplug.d/net/98-ark-mlo-bridge", "Vinculação automática de interfaces MLD (Wi-Fi 7 MLO) à `br-lan`"),
-        ("Hotplug (`net`)", "root/etc/hotplug.d/net/99-ark-doctor", "Autocura `ark-doctor --auto` ao recriar interfaces de rádio Wi-Fi ou bridge"),
+        ("Hotplug (`net`)", "root/etc/hotplug.d/net/99-ark-doctor", "Diagnóstico sem reparos ao recriar interfaces de rádio Wi-Fi ou bridge"),
         ("Hotplug (`net`)", "root/etc/hotplug.d/net/99-ark-led-wan", "Atualização imediata de LED WAN em eventos de cabo físico (ignora interfaces virtuais/Wi-Fi)"),
         ("Hotplug (`firewall`)", "root/etc/hotplug.d/firewall/99-ark-doctor", "Revalidação de conflitos Flow Offloading vs SQM após reload do firewall"),
     ]

@@ -51,7 +51,7 @@ _ARK_JSON_TAB='	'
 json_escape() {
 	case "$1" in
 		*[\"\\$_ARK_JSON_CR$_ARK_JSON_LF$_ARK_JSON_TAB]*)
-			printf '%s' "$1" | awk 'BEGIN{ORS=""}{gsub(/\\/,"\\\\");gsub(/"/,"\\\"");gsub(/\r/,"\\r");gsub(/\t/,"\\t");if(NR>1)printf "\\n";printf "%s",$0}'
+			printf '%s' "$1" | awk 'BEGIN{ORS=""}{if(NR>1)printf "%s","\\n";len=length($0);for(i=1;i<=len;i++){c=substr($0,i,1);if(c=="\"")printf "%s","\\\"";else if(c=="\\")printf "%s","\\\\";else if(c=="\r")printf "%s","\\r";else if(c=="\t")printf "%s","\\t";else printf "%s",c}}'
 			;;
 		*)
 			printf '%s' "$1"
@@ -512,29 +512,23 @@ ark_calculate_rps_mask() {
 	}' 2>/dev/null || echo "f"
 }
 
+ark_sqm_owns_device() {
+	local wanted="$1" sec dev
+	[ -n "$wanted" ] || return 1
+	for sec in $(uci -q show sqm 2>/dev/null | sed -n 's/^sqm\.\([^.=]*\)=queue$/\1/p'); do
+		[ "$(uci -q get "sqm.$sec.enabled")" = "1" ] || continue
+		dev="$(uci -q get "sqm.$sec.interface")"
+		[ -n "$dev" ] || continue
+		if [ "$wanted" = "$dev" ] || [ "$wanted" = "ifb4$dev" ]; then
+			return 0
+		fi
+	done
+	return 1
+}
+
 ark_cake_memlimit() {
-	local mem_file="/proc/meminfo"
-	[ -n "${ARK_ROOT:-}" ] && [ -f "${ARK_ROOT}/proc/meminfo" ] && mem_file="${ARK_ROOT}/proc/meminfo"
-	local mem_kb="$(awk '/MemTotal:/ {print $2; exit}' "$mem_file" 2>/dev/null || echo 262144)"
-	if [ "$mem_kb" -gt 3670016 ] 2>/dev/null; then
-		# > 3.5 GB RAM (x86 Enterprise / 4GB+ SBCs)
-		printf '256M'
-	elif [ "$mem_kb" -gt 1835008 ] 2>/dev/null; then
-		# > 1.75 GB RAM (x86 2GB, Banana Pi BPI-R4)
-		printf '128M'
-	elif [ "$mem_kb" -gt 786432 ] 2>/dev/null; then
-		# > 768 MB RAM (Acer Predator Connect W6x, Filogic 830 MT7986 1GB RAM)
-		printf '64M'
-	elif [ "$mem_kb" -gt 393216 ] 2>/dev/null; then
-		# > 384 MB RAM (512 MB routers)
-		printf '32M'
-	elif [ "$mem_kb" -gt 196608 ] 2>/dev/null; then
-		# > 192 MB RAM (256 MB routers)
-		printf '16M'
-	else
-		# <= 192 MB RAM (128 MB routers)
-		printf '4M'
-	fi
+	. "${ARK_LIB_DIR}/qos-resources.sh" || return 1
+	ark_qos_cake_memlimit
 }
 
 
@@ -719,6 +713,32 @@ ark_sanitize_upnp_config() {
 		fi
 	fi
 	return 0
+}
+
+# Otimização universal de NAT Endpoint-Independent (Full-Cone):
+# - fw4 (OpenWrt moderno / nftables): assegura 'masquerade persistent' no template zone-masq.uc
+# - fw3 (OpenWrt legado / iptables): assegura 'option fullcone 1' na zona WAN para hardware compacto
+ark_optimize_nat_endpoint_independent() {
+	local root_prefix="${ARK_ROOT:-}"
+	local uci_cmd="uci -q ${root_prefix:+-c "$root_prefix/etc/config"}"
+
+	if is_fw4; then
+		local tpl="${root_prefix}/usr/share/firewall4/templates/zone-masq.uc"
+		if [ -f "$tpl" ] && ! grep -q "masquerade persistent" "$tpl"; then
+			sed -i 's/masquerade comment/masquerade persistent comment/' "$tpl"
+			[ -x "${root_prefix}/sbin/fw4" ] && "${root_prefix}/sbin/fw4" reload >/dev/null 2>&1 || true
+		fi
+	elif is_fw3; then
+		local z
+		z="$(firewall_wan_zone_section 2>/dev/null || echo '')"
+		if [ -n "$z" ]; then
+			if [ "$($uci_cmd get "firewall.$z.fullcone" 2>/dev/null)" != "1" ]; then
+				$uci_cmd set "firewall.$z.fullcone=1"
+				uci ${root_prefix:+-c "$root_prefix/etc/config"} commit firewall 2>/dev/null || true
+				[ -x "${root_prefix}/etc/init.d/firewall" ] && "${root_prefix}/etc/init.d/firewall" reload >/dev/null 2>&1 || true
+			fi
+		fi
+	fi
 }
 
 # Smart Split-CLAT: Sincroniza a tabela de roteamento 5200 (fwmark 0x1450)
@@ -1015,6 +1035,11 @@ ark_sanitize_wan6_config() {
 			$uci_cmd set "network.$sec.reqprefix=auto"
 			changed=1
 		fi
+		local norelease="$($uci_cmd get "network.$sec.norelease" || echo '')"
+		if [ "$norelease" != "1" ]; then
+			$uci_cmd set "network.$sec.norelease=1"
+			changed=1
+		fi
 	done
 
 	if [ "$changed" -eq 1 ]; then
@@ -1194,6 +1219,29 @@ ark_ipv6_prefix_hygiene() {
 				purged=1
 			fi
 		done
+
+		# 5b. Higieniza cache de prefixos SLAAC do odhcpd (/tmp/odhcpd-piodir)
+		if [ -d /tmp/odhcpd-piodir ]; then
+			local pio_file stale_pio=0 pio_pfx
+			for pio_file in /tmp/odhcpd-piodir/*; do
+				[ -f "$pio_file" ] || continue
+				for pio_pfx in $(grep -oE '"prefix":"[^"]+"' "$pio_file" 2>/dev/null | cut -d'"' -f4 | awk -F: '/^[23][0-9a-fA-F]*:/ {print tolower($1":"$2":"$3":"$4)}'); do
+					local pio_match=0
+					for a_p4 in $active_gua_pfxs; do
+						[ "$pio_pfx" = "$a_p4" ] && { pio_match=1; break; }
+					done
+					if [ "$pio_match" -eq 0 ]; then
+						stale_pio=1
+						break
+					fi
+				done
+				[ "$stale_pio" -eq 1 ] && break
+			done
+			if [ "$stale_pio" -eq 1 ]; then
+				rm -rf /tmp/odhcpd-piodir/* 2>/dev/null || true
+				purged=1
+			fi
+		fi
 	fi
 
 	local prev_pfxs="$(cat /tmp/ark-active-lan-v6pfx 2>/dev/null || true)"
@@ -1203,8 +1251,8 @@ ark_ipv6_prefix_hygiene() {
 	fi
 
 	if [ "$purged" -eq 1 ]; then
-		[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd reload >/dev/null 2>&1 || true
-		logger -t ark-ipv6-hygiene "Autolimpeza IPv6 executada na br-lan (prefixo ativo: ${active_gua_pfxs:-nenhum})."
+		[ -x /etc/init.d/odhcpd ] && /etc/init.d/odhcpd restart >/dev/null 2>&1 || true
+		logger -t ark-ipv6-hygiene "Autolimpeza IPv6 executada na br-lan e odhcpd-piodir (prefixo ativo: ${active_gua_pfxs:-nenhum})."
 	fi
 	return 0
 }
@@ -2195,6 +2243,10 @@ ark_sync_doh_proxy() {
 
 	if [ "$mode" = "disable" ] || ! ark_has_doh_proxy; then
 		if [ -f "$cfg_file" ]; then
+			while $uci_cmd delete "https-dns-proxy.@https-dns-proxy[0]" 2>/dev/null; do :; done
+			for s in $($uci_cmd show https-dns-proxy 2>/dev/null | sed -n 's/^https-dns-proxy\.\([^.=@]*\)=https-dns-proxy$/\1/p'); do
+				$uci_cmd delete "https-dns-proxy.$s" 2>/dev/null || true
+			done
 			$uci_cmd set https-dns-proxy.config=main 2>/dev/null || true
 			$uci_cmd set https-dns-proxy.config.dnsmasq_config_update='-' 2>/dev/null || true
 			$uci_cmd set https-dns-proxy.config.update_dnsmasq_config='-' 2>/dev/null || true
@@ -2205,9 +2257,13 @@ ark_sync_doh_proxy() {
 		$uci_cmd delete dhcp.@dnsmasq[0].doh_backup_server 2>/dev/null || true
 		$uci_cmd delete dhcp.@dnsmasq[0].doh_backup_noresolv 2>/dev/null || true
 		$uci_cmd delete dhcp.@dnsmasq[0].doh_server 2>/dev/null || true
+		$uci_cmd del_list dhcp.@dnsmasq[0].server='127.0.0.1#5053' 2>/dev/null || true
+		$uci_cmd del_list dhcp.@dnsmasq[0].server='127.0.0.1#5054' 2>/dev/null || true
 		uci ${root_prefix:+-c "$root_prefix/etc/config"} commit dhcp 2>/dev/null || true
 		if [ -z "$root_prefix" ] && [ -x /etc/init.d/https-dns-proxy ]; then
 			/etc/init.d/https-dns-proxy stop >/dev/null 2>&1 || true
+			/etc/init.d/https-dns-proxy disable >/dev/null 2>&1 || true
+			killall -9 https-dns-proxy >/dev/null 2>&1 || true
 		fi
 		return 1
 	fi
@@ -2344,8 +2400,11 @@ ark_is_readonly_action() {
 			shift
 			local _arg
 			for _arg in "$@"; do
+				case "$_arg" in --auto|auto) return 0 ;; esac
+			done
+			for _arg in "$@"; do
 				case "$_arg" in
-					--auto|auto|--fix|fix|fix-run|doctor-fix|fix=1) return 1 ;;
+					--fix|fix|fix-run|doctor-fix|fix=1) return 1 ;;
 				esac
 			done
 			return 0
@@ -2356,7 +2415,7 @@ ark_is_readonly_action() {
 		doctor-run|doctor-status|doctor-log|update-wan-led|update-led-alert|led-detect-topology|led-calibrate-curves)
 			return 0
 			;;
-		*-status|*-status-*|*-get|*-list|*-check|*-audit|*-info|*-discover|*-fingerprints|*-stations|*-processes|*-logs|*-log|*-telemetry|*-qr|features|fast-targets|speedtest-result|starlink-telemetry|autowan-can-convert|autowan-can-convert-wan|speedify-user)
+		sqm-resource-plan|*-status|*-status-*|*-get|*-list|*-check|*-audit|*-info|*-discover|*-fingerprints|*-stations|*-processes|*-logs|*-log|*-telemetry|*-qr|features|fast-targets|speedtest-result|starlink-telemetry|autowan-can-convert|autowan-can-convert-wan|speedify-user)
 			return 0
 			;;
 	esac
@@ -2368,6 +2427,32 @@ ark_is_readonly_action() {
 	return 1
 }
 
+# Aquisição não bloqueante. Um PID ausente/inválido nunca prova abandono.
+ark_try_lock_dir() {
+	local lock_path="$1" owner_pid current_pid
+	if ! mkdir "$lock_path" 2>/dev/null; then
+		owner_pid="$(cat "$lock_path/pid" 2>/dev/null)"
+		case "$owner_pid" in ''|0|*[!0-9]*) return 1 ;; esac
+		kill -0 "$owner_pid" 2>/dev/null && return 1
+		# Apenas um recuperador pode remover um lock cujo dono morreu.
+		mkdir "$lock_path/reap" 2>/dev/null || return 1
+		current_pid="$(cat "$lock_path/pid" 2>/dev/null)"
+		if [ "$current_pid" != "$owner_pid" ] || kill -0 "$current_pid" 2>/dev/null; then
+			rmdir "$lock_path/reap" 2>/dev/null || true
+			return 1
+		fi
+		rm -f "$lock_path/pid" "$lock_path/ts" "$lock_path/cmd"
+		rmdir "$lock_path/reap" 2>/dev/null || return 1
+		rmdir "$lock_path" 2>/dev/null || return 1
+		mkdir "$lock_path" 2>/dev/null || return 1
+	fi
+	if ! printf '%s\n' "$$" > "$lock_path/pid"; then
+		rmdir "$lock_path" 2>/dev/null || true
+		return 1
+	fi
+	return 0
+}
+
 ark_acquire_mutation_lock() {
 	local cmd_name="${1:-unknown}"
 	local lock_dir="${ARK_ROOT}/tmp/ark_mutation.lock"
@@ -2376,27 +2461,7 @@ ark_acquire_mutation_lock() {
 
 	mkdir -p "${ARK_ROOT}/tmp" 2>/dev/null || true
 
-	while ! mkdir "$lock_dir" 2>/dev/null; do
-		local owner_pid=""
-		local lock_ts=0
-		local now_ts
-		now_ts=$(date +%s 2>/dev/null || echo 0)
-
-		[ -f "$lock_dir/pid" ] && read -r owner_pid < "$lock_dir/pid" 2>/dev/null
-		[ -f "$lock_dir/ts" ] && read -r lock_ts < "$lock_dir/ts" 2>/dev/null
-
-		# Auto-heal ghost locks immediately if owner process exited, or if lock is older than 120s
-		if [ -n "$owner_pid" ] && ! kill -0 "$owner_pid" 2>/dev/null; then
-			rm -rf "$lock_dir" 2>/dev/null
-			continue
-		elif [ -z "$owner_pid" ] && [ "$wait_ticks" -ge 1 ]; then
-			rm -rf "$lock_dir" 2>/dev/null
-			continue
-		elif [ "$lock_ts" -gt 0 ] 2>/dev/null && [ $((now_ts - lock_ts)) -gt 120 ]; then
-			rm -rf "$lock_dir" 2>/dev/null
-			continue
-		fi
-
+	while ! ark_try_lock_dir "$lock_dir"; do
 		wait_ticks=$((wait_ticks + 1))
 		if [ "$wait_ticks" -ge "$max_wait_ticks" ]; then
 			echo "Outra alteração ainda está sendo aplicada no roteador. Aguarde concluir." >&2
@@ -2439,7 +2504,8 @@ ark_invalidate_caches() {
 
 ark_restore_mutation_trap() {
 	if [ "${_ark_has_mut_lock:-0}" = "1" ]; then
-		trap 'ark_release_mutation_lock' EXIT INT TERM HUP
+		trap 'ark_release_mutation_lock' EXIT
+		trap 'ark_release_mutation_lock; exit 130' INT TERM HUP
 	else
 		trap - EXIT INT TERM HUP
 	fi

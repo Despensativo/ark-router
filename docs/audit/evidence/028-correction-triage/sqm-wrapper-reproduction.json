@@ -1,0 +1,44 @@
+{
+  "environment": "local /bin/sh mock, not VM or hardware",
+  "source_sha256": "be458384025f1a6141952594c6efb676a0b40a89346ae9295b79d0bc0deed818",
+  "wrapper_sha256": "6e59bdec89b2767cc4d06f09069d7862f7fe17f86a7847235f1e2f2634e1e703",
+  "cases": [
+    {
+      "proposed": false,
+      "injected_guard_failure": false,
+      "returncode": 0,
+      "error_messages": 18,
+      "missing_delete_errors": 9,
+      "guard_failure_visible": false,
+      "silent_after": "0"
+    },
+    {
+      "proposed": false,
+      "injected_guard_failure": true,
+      "returncode": 1,
+      "error_messages": 20,
+      "missing_delete_errors": 9,
+      "guard_failure_visible": true,
+      "silent_after": "0"
+    },
+    {
+      "proposed": true,
+      "injected_guard_failure": false,
+      "returncode": 0,
+      "error_messages": 0,
+      "missing_delete_errors": 0,
+      "guard_failure_visible": false,
+      "silent_after": "0"
+    },
+    {
+      "proposed": true,
+      "injected_guard_failure": true,
+      "returncode": 1,
+      "error_messages": 2,
+      "missing_delete_errors": 0,
+      "guard_failure_visible": true,
+      "silent_after": "0"
+    }
+  ],
+  "all_assertions_passed": true
+}

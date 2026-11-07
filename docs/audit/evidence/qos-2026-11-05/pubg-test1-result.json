@@ -1,0 +1,58 @@
+{
+  "phase": 1,
+  "condition": "ExitLag enabled",
+  "start_local": "2026-11-05T13:13:37.148357-03:00",
+  "end_local": "2026-11-05T13:23:37.869123-03:00",
+  "duration_seconds": 600.72,
+  "pings": {
+    "ping-ipad-test1": {
+      "received": 300,
+      "avg_ms": 0.434,
+      "max_ms": 0.941
+    },
+    "ping-cloudflare-test1": {
+      "received": 292,
+      "avg_ms": 4.478,
+      "max_ms": 10.491
+    },
+    "ping-google-test1": {
+      "received": 291,
+      "avg_ms": 19.39,
+      "max_ms": 21.133
+    }
+  },
+  "qdisc": {
+    "UL": {
+      "samples": 299,
+      "drops_delta": 0,
+      "bytes_delta": 14979881,
+      "max_sampled_queue_packets": 0,
+      "max_sampled_tin_peak_delay_ms": 0.346,
+      "max_sampled_tin_avg_delay_ms": 0.034
+    },
+    "DL": {
+      "samples": 299,
+      "drops_delta": 0,
+      "bytes_delta": 67579153,
+      "max_sampled_queue_packets": 0,
+      "max_sampled_tin_peak_delay_ms": 7.592,
+      "max_sampled_tin_avg_delay_ms": 2.595
+    }
+  },
+  "cpu": {
+    "max_core_busy_pct": 14.71,
+    "max_core_softirq_pct": 5.1,
+    "mean_total_busy_pct": 2.61
+  },
+  "flow_count": 99,
+  "transport_headers_parsed": 78878,
+  "device_ipv4": "192.168.73.114",
+  "baseline_config_hashes_unchanged": true,
+  "in_game_ping": "not observed by user",
+  "capture_drop_statistics": "unavailable at capture shutdown",
+  "supplemental_wan_capture": "discarded: unsupported link-layer decoder",
+  "phase_2": "awaiting user to disable ExitLag and enable native game optimization",
+  "phase_3": "pending",
+  "active_match_confirmed": false,
+  "user_usage_report": "Game left open; user went away."
+}

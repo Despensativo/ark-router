@@ -1,0 +1,880 @@
+[
+  {
+    "time": 1793924844.393607,
+    "rtt_ms": 2006.488,
+    "timeout": false,
+    "labels": [],
+    "cpu_max_core_pct": 6.86,
+    "engines": [
+      "cake"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "cake"
+        ],
+        "max_sample_rate_mbps": 13.065,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": 20
+      },
+      "DL": {
+        "kinds": [
+          "cake"
+        ],
+        "max_sample_rate_mbps": 1.22,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": 91
+      }
+    }
+  },
+  {
+    "time": 1793924890.652652,
+    "rtt_ms": null,
+    "timeout": true,
+    "labels": [],
+    "cpu_max_core_pct": 9.43,
+    "engines": [
+      "cake"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "cake"
+        ],
+        "max_sample_rate_mbps": 0.19,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": 14
+      },
+      "DL": {
+        "kinds": [
+          "cake"
+        ],
+        "max_sample_rate_mbps": 0.069,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": 65
+      }
+    }
+  },
+  {
+    "time": 1793924936.8872042,
+    "rtt_ms": 2008.987,
+    "timeout": false,
+    "labels": [],
+    "cpu_max_core_pct": 6.73,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.239,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.193,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793925030.473567,
+    "rtt_ms": 2009.919,
+    "timeout": false,
+    "labels": [],
+    "cpu_max_core_pct": 7.55,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.255,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.064,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793925123.036696,
+    "rtt_ms": 2008.601,
+    "timeout": false,
+    "labels": [],
+    "cpu_max_core_pct": 5.71,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.168,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.109,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793925214.5632699,
+    "rtt_ms": null,
+    "timeout": true,
+    "labels": [],
+    "cpu_max_core_pct": 3.88,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.115,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.029,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793925247.765163,
+    "rtt_ms": null,
+    "timeout": true,
+    "labels": [],
+    "cpu_max_core_pct": 7.69,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.361,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.198,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793925308.082106,
+    "rtt_ms": 2008.281,
+    "timeout": false,
+    "labels": [],
+    "cpu_max_core_pct": 6.8,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.151,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.131,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793925400.593707,
+    "rtt_ms": null,
+    "timeout": true,
+    "labels": [
+      "HFSC-app-1"
+    ],
+    "cpu_max_core_pct": 7.62,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.185,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.089,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793925494.1036139,
+    "rtt_ms": 2007.583,
+    "timeout": false,
+    "labels": [
+      "HFSC-app-1"
+    ],
+    "cpu_max_core_pct": 7.69,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.126,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.357,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793925587.3963678,
+    "rtt_ms": 2006.686,
+    "timeout": false,
+    "labels": [
+      "HFSC-app-1"
+    ],
+    "cpu_max_core_pct": 5.83,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.052,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.029,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793925679.678779,
+    "rtt_ms": 2008.268,
+    "timeout": false,
+    "labels": [
+      "HFSC-app-2"
+    ],
+    "cpu_max_core_pct": 5.77,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 8.57,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 11.989,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793925692.7222831,
+    "rtt_ms": null,
+    "timeout": true,
+    "labels": [
+      "HFSC-app-2"
+    ],
+    "cpu_max_core_pct": 73.21,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 95.056,
+        "aqm_drop_counter_increases": 2,
+        "max_root_backlog_bytes": 600232,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 724.567,
+        "aqm_drop_counter_increases": 5011,
+        "max_root_backlog_bytes": 1353248,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793925772.9502609,
+    "rtt_ms": 2006.329,
+    "timeout": false,
+    "labels": [
+      "HFSC-app-3"
+    ],
+    "cpu_max_core_pct": 62.86,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 549.219,
+        "aqm_drop_counter_increases": 23,
+        "max_root_backlog_bytes": 18620,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 14.721,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793925866.241478,
+    "rtt_ms": 2006.936,
+    "timeout": false,
+    "labels": [
+      "HFSC-web-1"
+    ],
+    "cpu_max_core_pct": 26.26,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 219.323,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 347944,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 230.445,
+        "aqm_drop_counter_increases": 1,
+        "max_root_backlog_bytes": 2253688,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793925959.530057,
+    "rtt_ms": 2007.343,
+    "timeout": false,
+    "labels": [
+      "HFSC-web-1"
+    ],
+    "cpu_max_core_pct": 5.88,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.244,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.237,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793926051.839759,
+    "rtt_ms": 2006.999,
+    "timeout": false,
+    "labels": [
+      "HFSC-web-1"
+    ],
+    "cpu_max_core_pct": 9.43,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.172,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 1.062,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793926145.259878,
+    "rtt_ms": 2008.36,
+    "timeout": false,
+    "labels": [
+      "HFSC-web-3"
+    ],
+    "cpu_max_core_pct": 4.9,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.194,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.16,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793926237.820769,
+    "rtt_ms": 2007.074,
+    "timeout": false,
+    "labels": [
+      "HFSC-waveform-1"
+    ],
+    "cpu_max_core_pct": 7.69,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.487,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.391,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793926331.36169,
+    "rtt_ms": 2010.468,
+    "timeout": false,
+    "labels": [
+      "HFSC-waveform-1"
+    ],
+    "cpu_max_core_pct": 6.73,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 8.612,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 1.659,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793926423.845085,
+    "rtt_ms": 2004.114,
+    "timeout": false,
+    "labels": [
+      "HFSC-waveform-2"
+    ],
+    "cpu_max_core_pct": 43.69,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 414.631,
+        "aqm_drop_counter_increases": 6,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 6.262,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793926517.4025111,
+    "rtt_ms": 2006.716,
+    "timeout": false,
+    "labels": [
+      "HFSC-waveform-3"
+    ],
+    "cpu_max_core_pct": 63.21,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 238.5,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 116,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 97.73,
+        "aqm_drop_counter_increases": 100,
+        "max_root_backlog_bytes": 772348,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793926567.679498,
+    "rtt_ms": null,
+    "timeout": true,
+    "labels": [
+      "HFSC-waveform-3"
+    ],
+    "cpu_max_core_pct": 6.67,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 9.229,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.795,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793926609.8933492,
+    "rtt_ms": 2007.621,
+    "timeout": false,
+    "labels": [
+      "HFSC-fast-1"
+    ],
+    "cpu_max_core_pct": 8.57,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 9.656,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 1.384,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793926703.532589,
+    "rtt_ms": 2008.3,
+    "timeout": false,
+    "labels": [
+      "HFSC-fast-2"
+    ],
+    "cpu_max_core_pct": 5.77,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.099,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 0.5,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793926789.053837,
+    "rtt_ms": null,
+    "timeout": true,
+    "labels": [
+      "HFSC-fast-3"
+    ],
+    "cpu_max_core_pct": 78.18,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 28.724,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 719.989,
+        "aqm_drop_counter_increases": 92,
+        "max_root_backlog_bytes": 327444,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793926796.086306,
+    "rtt_ms": 2007.93,
+    "timeout": false,
+    "labels": [
+      "HFSC-fast-3"
+    ],
+    "cpu_max_core_pct": 82.88,
+    "engines": [
+      "hfsc"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 27.94,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 116,
+        "max_sample_cake_tin_delay_us": null
+      },
+      "DL": {
+        "kinds": [
+          "hfsc"
+        ],
+        "max_sample_rate_mbps": 712.908,
+        "aqm_drop_counter_increases": 23,
+        "max_root_backlog_bytes": 63860,
+        "max_sample_cake_tin_delay_us": null
+      }
+    }
+  },
+  {
+    "time": 1793926889.6544268,
+    "rtt_ms": 2009.978,
+    "timeout": false,
+    "labels": [],
+    "cpu_max_core_pct": 9.9,
+    "engines": [
+      "cake"
+    ],
+    "queues": {
+      "UL": {
+        "kinds": [
+          "cake"
+        ],
+        "max_sample_rate_mbps": 10.323,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": 32
+      },
+      "DL": {
+        "kinds": [
+          "cake"
+        ],
+        "max_sample_rate_mbps": 0.348,
+        "aqm_drop_counter_increases": 0,
+        "max_root_backlog_bytes": 0,
+        "max_sample_cake_tin_delay_us": 172
+      }
+    }
+  }
+]

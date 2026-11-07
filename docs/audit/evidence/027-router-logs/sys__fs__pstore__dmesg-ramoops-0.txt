@@ -1,0 +1,76 @@
+Oops#1 Part1
+<6>[154586.894785] br-lan: port 1(lan1) entered forwarding state
+<6>[154620.156458] br-lan: port 1(lan1) entered disabled state
+<6>[154620.156515] mt7530-mdio mdio-bus:1f lan1: Link is Down
+<6>[156386.064405] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off
+<6>[156386.064428] br-lan: port 1(lan1) entered blocking state
+<6>[156386.077738] br-lan: port 1(lan1) entered forwarding state
+<6>[156418.308891] br-lan: port 1(lan1) entered disabled state
+<6>[156418.308957] mt7530-mdio mdio-bus:1f lan1: Link is Down
+<6>[158187.336351] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off
+<6>[158187.336376] br-lan: port 1(lan1) entered blocking state
+<6>[158187.349683] br-lan: port 1(lan1) entered forwarding state
+<6>[158219.561377] br-lan: port 1(lan1) entered disabled state
+<6>[158219.561435] mt7530-mdio mdio-bus:1f lan1: Link is Down
+<6>[159988.589615] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off
+<6>[159988.589665] br-lan: port 1(lan1) entered blocking state
+<6>[159988.602985] br-lan: port 1(lan1) entered forwarding state
+<6>[160021.864476] br-lan: port 1(lan1) entered disabled state
+<6>[160021.864534] mt7530-mdio mdio-bus:1f lan1: Link is Down
+<6>[161789.852588] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off
+<6>[161789.852611] br-lan: port 1(lan1) entered blocking state
+<6>[161789.865924] br-lan: port 1(lan1) entered forwarding state
+<6>[161823.137336] br-lan: port 1(lan1) entered disabled state
+<6>[161823.137646] mt7530-mdio mdio-bus:1f lan1: Link is Down
+<3>[162989.565058] leds_ws2812b spi1.0: SPI transfer timed out
+<3>[162989.572047] spi_master spi1: failed to transfer one message from queue
+<3>[162989.579723] spi_master spi1: noqueue transfer failed
+<3>[162989.586490] leds rgb:status: Setting an LED's brightness failed (-110)
+<1>[162989.679260] Unable to handle kernel write to read-only memory at virtual address 00000000042eb91b
+<1>[162989.696246] Mem abort info:
+<1>[162989.705803]   ESR = 0x0000000096000045
+<1>[162989.709643]   EC = 0x25: DABT (current EL), IL = 32 bits
+<1>[162989.728174]   SET = 0, FnV = 0
+<1>[162989.731324]   EA = 0, S1PTW = 0
+<1>[162989.734545]   FSC = 0x05: level 1 translation fault
+<1>[162989.745355] Data abort info:
+<1>[162989.768722]   ISV = 0, ISS = 0x00000045, ISS2 = 0x00000000
+<1>[162989.774300]   CM = 0, WnR = 1, TnD = 0, TagAccess = 0
+<1>[162989.785995]   GCS = 0, Overlay = 0, DirtyBit = 0, Xs = 0
+<1>[162989.791395] user pgtable: 4k pages, 39-bit VAs, pgdp=0000000051912000
+<1>[162989.802409] [00000000042eb91b] pgd=080000004765e003, p4d=080000004765e003, pud=080000004765e003, pmd=0000000000000000
+<0>[162989.818136] Internal error: Oops: 0000000096000045 [#1] SMP
+<7>[162989.823809] Modules linked in: sch_teql sch_sfq sch_multiq sch_gred sch_fq sch_ets sch_codel em_text em_nbyte em_meta em_cmp act_skbmod act_simple act_pedit act_csum ts_kmp ts_fsm ts_bm act_ctinfo ksmbd xt_connlimit pppoe ppp_async nf_conncount xt_state xt_helper xt_conntrack xt_connmark xt_connbytes xt_CT wireguard pppox ppp_generic nft_redir nft_nat nft_masq nft_flow_offload nft_fib_inet nft_ct nft_chain_nat nf_nat nf_flow_table_inet nf_flow_table nf_conntrack_netlink nf_conntrack mt7915e(O) mt76_connac_lib(O) mt76(O) mac80211(O) libchacha20poly1305 ipt_REJECT chacha_neon cfg80211(O) xt_time xt_tcpudp xt_tcpmss xt_statistic xt_recent xt_multiport xt_mark xt_mac xt_limit xt_length xt_hl xt_ecn xt_dscp xt_comment xt_TCPMSS xt_LOG xt_HL xt_DSCP xt_CLASSIFY tcp_bbr slhc sch_cake poly1305_neon nft_reject_ipv6 nft_reject_ipv4 nft_reject_inet nft_reject nft_quota nft_numgen nft_log nft_limit nft_hash nft_fib_ipv6 nft_fib_ipv4 nft_fib nft_compat nf_tables nf_reject_ipv4 nf_log_syslog nf_defrag_ipv6 nf_defrag_ipv4
+<7>[162989.824008]  libcurve25519_generic libcrc32c libchacha iptable_mangle iptable_filter ipt_ECN ip_tables compat(O) act_police crypto_safexcel ntfs3 sch_tbf sch_ingress sch_htb sch_hfsc em_u32 cls_u32 cls_route cls_matchall cls_fw cls_flow cls_basic act_skbedit act_mirred act_gact xt_set ip_set_list_set ip_set_hash_netportnet ip_set_hash_netport ip_set_hash_netnet ip_set_hash_netiface ip_set_hash_net ip_set_hash_mac ip_set_hash_ipportnet ip_set_hash_ipportip ip_set_hash_ipport ip_set_hash_ipmark ip_set_hash_ipmac ip_set_hash_ip ip_set_bitmap_port ip_set_bitmap_ipmac ip_set_bitmap_ip ip_set nfnetlink ip6table_mangle ip6table_filter ip6_tables ip6t_REJECT x_tables nf_reject_ipv6 nls_ucs2_utils cifs_arc4 asn1_decoder ifb ip6_udp_tunnel udp_tunnel oid_registry tun netfs nls_utf8 sha512_arm64 sha1_ce sha1_generic seqiv md5 geniv des_generic libdes authencesn authenc uas usb_storage leds_ws2812b(O) leds_gpio xhci_plat_hcd xhci_pci xhci_mtk_hcd xhci_hcd gpio_button_hotplug(O) exfat usbcore usb_common [last unloaded: ksmbd]
+<3>[162989.975038] leds_ws2812b spi1.0: SPI transfer timed out
+<7>[162990.003078] CPU: 0 UID: 0 PID: 317 Comm: irq/118-1100b00 Tainted: G           O       6.12.112 #0
+<7>[162990.003088] Tainted: [O]=OOT_MODULE
+<7>[162990.003090] Hardware name: Acer Predator Connect W6x (Stock Layout) (DT)
+<7>[162990.003093] pstate: 80400005 (Nzcv daif +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+<7>[162990.003099] pc : 0xffffffc080630088
+<7>[162990.003102] lr : 0xffffffc080630050
+<7>[162990.003104] sp : ffffffc0816f3d80
+<7>[162990.003106] x29: ffffffc0816f3d80 x28: ffffffc08009ac60
+<3>[162990.008601] spi_master spi1: failed to transfer one message from queue
+<7>[162990.017344]  x27: ffffff800129a4e0
+<7>[162990.017348] x26: ffffffc08009a24c x25: ffffff8000a06c80 x24: ffffff8001419c80
+<7>[162990.017355] x23: 0000000000000000 x22: 0000000000000001 x21: ffffffc0831d3c80
+<7>[162990.017361] x20: ffffff800149d800 x19: ffffff800149dd80 x18: ffffff800c85be00
+<7>[162990.017368] x17: 0a08010100001b37
+<3>[162990.020932] spi_master spi1: noqueue transfer failed
+<7>[162990.027700]  x16: 000000000000000a x15: 00001d48d51e3f58
+<7>[162990.027705] x14: 0000000000000001 x13: 000000000000002a x12: 0000000000000001
+<7>[162990.027711] x11: ffffff803fdb6200 x10: 0000000000200b20 x9 : ffffff803fdb6200
+<7>[162990.027718] x8 : 0000074c22833fa2 x7 : 0000074c22a34ac2
+<3>[162990.034944] leds rgb:status: Setting an LED's brightness failed (-110)
+<7>[162990.038310]  x6 : ffffff800129a430
+<7>[162990.038313] x5 : 00000000000000ad x4 : ffffffc080ead014 x3 : 00000000042eb933
+<7>[162990.038319] x2 : 0000000000000000 x1 : 000000000000001b x0 : 00000000042eb91b
+<7>[162990.038325] Call trace:
+<7>[162990.038328]  0xffffffc080630088
+<7>[162990.038332]  0xffffffc08009a274
+<7>[162990.149176]  0xffffffc08009a500
+<7>[162990.152397]  0xffffffc080061afc
+<7>[162990.155613]  0xffffffc0800145a0
+<0>[162990.158834] Code: 91005084 8b020000 8b030003 b9400082 (b8004402) 
+<4>[162990.165001] ---[ end trace 0000000000000000 ]---

@@ -1,5 +1,5 @@
 metadata:
-  version: 2.0.1
+  version: 2.2.1
   schema_version: '1.0'
   total_features: 74
   canonical_repo: GitHub/luci-app-ark-router
@@ -1261,10 +1261,9 @@ features:
   - tests/test_wan_matrix.py
   real_hw_required: false
 - id: ARK-FW-006
-  name: Daemon de Auto-Recuperação e Guarda do Firewall (ark-firewall-guard)
-  purpose: Verificar no arranque do sistema se a tabela inet fw4 carregou corretamente. Em caso de quebra, isola arquivos
-    conflitantes em /etc/nftables.d/quarantine e reinicia o serviço.
-  state: funcional
+  name: Guarda Observacional do Firewall (ark-firewall-guard)
+  purpose: Observar firewall e processos no boot sem quarentena, kill ou restart de rede. Preservar a restauração de tema preexistente.
+  state: implementado
   files:
   - root/etc/init.d/ark-firewall-guard
   actions:
@@ -1286,14 +1285,16 @@ features:
   - dnsmasq
   - adguardhome
   persistent_data:
-  - /etc/nftables.d/quarantine/
+  - /etc/config/luci
+  - /etc/config/equipe_dashboard
   temp_data: []
   boot_behavior: Executado no START=22 logo após a subida do netifd e firewall.
   can_modify:
-  - /etc/nftables.d/*.nft
   - luci.main.mediaurlbase
   cannot_modify:
   - arquivos de kernel
+  - regras nftables de terceiros
+  - configuração de rede e processos de DNS
   relations:
   - ARK-FW-001
   - ARK-UI-002
@@ -1305,58 +1306,90 @@ features:
   version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
+  - tests/test_doctor_safety.py
   real_hw_required: false
 - id: ARK-SQM-001
   name: Motor de Controle de Bufferbloat Smart Queue Management (CAKE)
-  purpose: Eliminar latência sob carga (bufferbloat) usando algoritmo CAKE ou FQ-CoDel com cálculo de overhead de enquadramento
-    (overhead=28).
+  purpose: Controlar filas sob carga com CAKE ou HFSC e FQ-CoDel, preservando propriedade das raízes, parâmetros de enquadramento e estado anterior do offload.
   state: funcional
   files:
   - root/usr/lib/ark/modules/sqm.sh
+  - root/usr/lib/ark/common.sh
+  - root/usr/lib/ark/qos-resources.sh
+  - root/usr/lib/ark/qos-ingress.sh
+  - root/etc/init.d/ark-hardware-tune
+  - root/usr/lib/sqm/ark_hfsc_fqcodel.qos
   - src/modules/network.js
   actions:
   - sqm-toggle
   - sqm-save
   - sqm-save-v2
   - sqm-apply-upload-only
+  - sqm-engine-select
+  - sqm-resource-plan
+  - sqm-autorate-toggle
+  - sqm-autorate-step
+  - sqm-autorate-status
   rpc_endpoints:
   - /usr/sbin/equipe-dashboard-control sqm-*
   acls:
   - luci-app-equipe-dashboard
   dependencies:
   - sqm-scripts
+  - kmod-ifb
+  - kmod-sched-core
+  - kmod-sched (act_pedit e act_csum; fallback Best Effort se indisponiveis)
+  - kmod-sched-ctinfo (padrao; dispensavel somente em build explicito reduzido)
   - kmod-sched-cake
   - tc-full
   uci_configs:
   - package: sqm
     sections:
     - queue
+    - ark_offload_snapshot
+  - package: equipe_dashboard
+    sections:
+    - settings
   services:
   - sqm
+  - firewall
   persistent_data:
   - /etc/config/sqm
+  - /etc/config/equipe_dashboard
+  - /etc/config/firewall
   temp_data:
   - /var/run/sqm/
-  boot_behavior: Serviço sqm inicializa filas CAKE na WAN logo após a interface obter IP.
+  - /tmp/ark_autorate_*.state
+  boot_behavior: Serviço SQM inicializa o motor selecionado na WAN após a interface obter IP; persistência e reboot exigem validação operacional.
   can_modify:
+  - equipe_dashboard.settings.sqm_autorate
   - sqm.wan1
   - sqm.wan2
+  - sqm.ark_offload_snapshot
+  - firewall.@defaults[0].flow_offloading
+  - firewall.@defaults[0].flow_offloading_hw
   cannot_modify:
-  - firewall
+  - regras de filtragem e roteamento alheias ao offload
   - dns
   relations:
   - ARK-SQM-002
   - ARK-SQM-003
   - ARK-HW-001
-  hw_limitations: Em roteadores single-core legados, limita velocidade a ~150-200 Mbps; em quad-core Filogic atinge 1 Gbps+.
-  openwrt_limitations: Universal.
+  hw_limitations: Orçamento de memória compartilhado por direções ativas e filhos CAKE-mq potenciais; tetos não incluem todas as estruturas de kernel e não comprovam vazão. Capacidade depende de CPU, driver, protocolo e carga; vazão e latência exigem medição no hardware.
+  openwrt_limitations: Ingress limpa DSCP preservando ECN antes de ctinfo; sem pedit/csum usa prioridade Best Effort e sem ctinfo mantem CS0. Preferencias TC 1 a 9 pertencem ao ARK; redirect 10 preservado. Autorate exige habilitação e amostras explícitas inteiras; sem coletor autônomo. Ao desligar com estado runtime, restaura taxas pelo serviço SQM antes de remover o estado.
   profiles:
   - lite
   - full
   version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
-  real_hw_required: false
+  - tests/test_doctor_safety.py
+  - tests/test_sqm_reliability.py
+  - tests/test_qos_resources.py
+  - tests/test_qos_ingress.py
+  - tests/test_qos_benchmark.py
+  - tests/test_qos_package_deps.py
+  real_hw_required: true
 - id: ARK-SQM-002
   name: Auto-Cura e Resolução Dinâmica de Interface SQM (l3_device healing)
   purpose: Detectar automaticamente se a interface real da fila é dispositivo físico (eth1) ou virtual (pppoe-wan/pppoe-wan2)
@@ -1978,6 +2011,8 @@ features:
   files:
   - root/usr/lib/ark/modules/system.sh
   - root/etc/uci-defaults/99-ark-router-leds
+  - root/etc/init.d/ark-rainbowd
+  - root/etc/init.d/ark-port-ledd
   actions:
   - get-led-hardware-info
   - set-led-preset
@@ -1997,6 +2032,8 @@ features:
     - led
   services:
   - led
+  - ark-rainbowd
+  - ark-port-ledd
   persistent_data:
   - /etc/config/system
   temp_data:
@@ -2016,6 +2053,7 @@ features:
   version: 1.5.2
   tests:
   - scripts/verify_led_ui.py
+  - tests/test_led_service_lifecycle.py
   real_hw_required: true
 - id: ARK-HW-003
   name: Hotplug Dinâmico de Link WAN e Alerta de LED de Internet
@@ -2735,16 +2773,19 @@ features:
   - tests/test_wan_matrix.py
   real_hw_required: false
 - id: ARK-DIAG-001
-  name: ARK Doctor — Diagnóstico de Integridade e Auto-Cura do Sistema
-  purpose: Auditar inconsistências de rede, alinhamento SQM, MTU Baby Jumbo, memória RAM, conflitos de Fastpath e auto-corrigir
-    com o argumento --fix.
-  state: funcional
+  name: ARK Doctor — Diagnóstico Observacional e Reparo Manual Legado
+  purpose: Observar rede e recursos sem mutação operacional em run/auto. Reparo manual --fix ainda não transacional; riscos documentados em docs/DOCTOR_SAFETY_MODEL.md.
+  state: parcial
   files:
   - root/usr/sbin/ark-doctor
   - root/usr/lib/ark/modules/doctor.sh
   - src/modules/doctor_perf.js
   actions:
   - ark-doctor
+  - ark-doctor --auto
+  - doctor-run
+  - doctor-status
+  - doctor-log
   - ark-doctor --fix
   - audit-system
   rpc_endpoints:
@@ -2769,20 +2810,26 @@ features:
   persistent_data:
   - /etc/config/sqm
   - /etc/config/network
-  temp_data: []
-  boot_behavior: Executado sob demanda ou em verificações pós-boot.
+  temp_data:
+  - /tmp/ark-doctor-last.json
+  - /tmp/ark-doctor-auto.ts
+  - /tmp/ark-doctor.lockdir
+  - /var/log/ark-doctor.log
+  boot_behavior: Cron e hotplugs observacionais; auto_heal controla agendamento. Intervalo mínimo automático de 60s; nenhuma autocura de rede.
   can_modify:
   - sqm.@queue[].interface
   - network.@device[].mtu
   - firewall.@defaults[0].flow_offloading
+  - wireless, dhcp, mwan3, system e serviços somente no reparador manual legado
   cannot_modify:
-  - configurações de Wi-Fi
+  - rede, serviços ou UCI em modo run/auto
   - senhas
+  - firewall.user e regras de terceiros na auditoria fw4
   relations:
   - ARK-SQM-002
   - ARK-WAN-003
   - ARK-HW-001
-  hw_limitations: Nenhuma.
+  hw_limitations: Rádio/offload exigem hardware; observabilidade e reparos não equivalem a homologação.
   openwrt_limitations: Universal.
   profiles:
   - lite
@@ -2790,6 +2837,8 @@ features:
   version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
+  - tests/test_doctor_safety.py
+  - tests/test_firewall_engine.py
   real_hw_required: false
 - id: ARK-DIAG-002
   name: Testador de Desconexão e Resiliência em Alta Resolução (Probe Disconnect)
@@ -3148,10 +3197,9 @@ features:
   - tests/test_wan_matrix.py
   real_hw_required: false
 - id: ARK-SYS-007
-  name: Watchdog e Auto-Recuperação do Servidor Web e Interface LuCI
-  purpose: Monitorar a cada minuto a resposta do servidor HTTP (uhttpd/nginx). Caso detecte travamento, reinicia o serviço
-    e repara soquetes ubus para assegurar 100% de disponibilidade.
-  state: funcional
+  name: Sonda HTTP Local e Configuração Inicial do uhttpd
+  purpose: Sondar HTTP local quando invocado e emitir aviso sem restart, alteração de ACL ou WireGuard. O uci-defaults separado configura uhttpd/ubus na instalação.
+  state: implementado
   files:
   - root/usr/sbin/ark-web-watchdog
   - root/etc/uci-defaults/99-ark-router-uhttpd
@@ -3191,6 +3239,7 @@ features:
   version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
+  - tests/test_doctor_safety.py
   real_hw_required: false
 - id: ARK-SYS-008
   name: NTP Inteligente, Fake RTC Preserver e Fallback HTTP Date

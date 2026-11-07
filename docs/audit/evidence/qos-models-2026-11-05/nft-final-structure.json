@@ -1,0 +1,37 @@
+{
+  "object_counts": {
+    "metainfo": 1,
+    "table": 1,
+    "chain": 64,
+    "rule": 211
+  },
+  "ark_chains": [
+    {
+      "family": "inet",
+      "table": "fw4",
+      "name": "ark_dscp_prerouting",
+      "rules": 44
+    },
+    {
+      "family": "inet",
+      "table": "fw4",
+      "name": "ark_dscp_output",
+      "rules": 16
+    },
+    {
+      "family": "inet",
+      "table": "fw4",
+      "name": "ark_gaming_ports",
+      "rules": 6
+    },
+    {
+      "family": "inet",
+      "table": "fw4",
+      "name": "ark_gaming_forward",
+      "rules": 1
+    }
+  ],
+  "flowtable_present": false,
+  "fw4_present": true,
+  "scope": "Inspe\u00e7\u00e3o final; n\u00e3o existe dump estrutural anterior para provar equival\u00eancia sem\u00e2ntica."
+}

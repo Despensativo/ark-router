@@ -14,7 +14,7 @@ opts.binary_location = r'C:\Program Files\Google\Chrome\Application\chrome.exe'
 d = webdriver.Chrome(options=opts)
 d.set_window_size(1400, 1100)
 target_url = os.environ.get("ARK_ROUTER_URL", "https://192.168.73.1/cgi-bin/luci/admin/status/overview")
-password = os.environ.get("ARK_ROUTER_TEST_PASSWORD") or os.environ.get("ARK_ROUTER_PASSWORD")
+password = os.environ.get("ARK_ROUTER_TEST_PASSWORD") or os.environ.get("ARK_ROUTER_TEST_PASSWORD")
 
 d.get(target_url)
 time.sleep(2)

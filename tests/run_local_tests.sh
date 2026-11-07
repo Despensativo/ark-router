@@ -69,17 +69,26 @@ printf "${GREEN}✓ Código JavaScript e sincronia do bundle válidos!${NC}\n\n"
 # 3. Execução da Matriz de Testes Unitários e Integração (Python)
 printf "${YELLOW}[3/5] Executando matriz de testes de WAN, SQM, MTU, ARK Doctor e Cenários Lite vs Full...${NC}\n"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_wan_matrix.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_sqm_reliability.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_qos_resources.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_qos_ingress.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_qos_benchmark.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_led_service_lifecycle.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_qos_package_deps.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_multicore_optimization.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_doctor_safety.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_firewall_engine.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_lite_vs_full_scenarios.py"
 printf "${GREEN}✓ Todos os testes unitários e de cenários passaram com sucesso!${NC}\n\n"
 
 # 4. Auditoria de Contratos Funcionais, Preservação de Estado, Documentação e i18n
 printf "${YELLOW}[4/5] Verificando contratos, documentação, preservação de estado e i18n...${NC}\n"
 "$PYTHON_CMD" "$SCRIPT_DIR/verify_feature_contracts.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_audit_documentation.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/lab/test_interference_matrix.py"
 "$PYTHON_CMD" "$REPO_DIR/scripts/audit_state_preservation.py" --strict
-"$PYTHON_CMD" "$REPO_DIR/scripts/audit_i18n.py"
-"$PYTHON_CMD" "$REPO_DIR/scripts/audit_docs.py"
+"$PYTHON_CMD" "$REPO_DIR/scripts/audit_i18n.py" --strict
+"$PYTHON_CMD" "$REPO_DIR/scripts/audit_docs.py" --strict
 "$PYTHON_CMD" "$REPO_DIR/scripts/generate_code_map.py" --check
 printf "${GREEN}✓ Contratos funcionais, documentação viva, CODE_MAP, i18n e preservação aprovados!${NC}\n\n"
 
@@ -91,5 +100,5 @@ printf "${GREEN}✓ Assets minificados e validados com sucesso!${NC}\n\n"
 
 printf "${GREEN}============================================================${NC}\n"
 printf "${GREEN}  PARABÉNS: 100%% DOS TESTES LOCAIS PASSARAM COM SUCESSO!     ${NC}\n"
-printf "${GREEN}  O código está seguro e pronto para compilação/deploy.      ${NC}\n"
+printf "${GREEN}  Validação operacional na VM e no hardware é separada.     ${NC}\n"
 printf "${GREEN}============================================================${NC}\n"

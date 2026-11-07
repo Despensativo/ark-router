@@ -1,0 +1,286 @@
+{
+  "method": {
+    "cpu_total": "média dos quatro núcleos por amostra; 100% representa todos os núcleos ocupados",
+    "cpu_average": "ponderada pelo intervalo monotônico, somente intervalos de até 3 s com tráfego TC >=100 Mb/s em pelo menos uma direção",
+    "cpu_peaks": "picos amostrados a aproximadamente 1 s, dentro das janelas completas",
+    "ram": "MemAvailable mínimo na janela; ocupado estimado = MemTotal - MemAvailable, roteador inteiro, sem atribuição exclusiva ao QoS",
+    "memtotal_kib": 1010036,
+    "memtotal_source": "consulta somente leitura posterior com mesmo boot_id da coleta",
+    "original_boot_id": "948e10dd-199e-476a-8b17-d427a12ac250",
+    "limits": [
+      "Ferramentas/servidores atingiram vazões diferentes; as médias não são comparação com carga oferecida idêntica.",
+      "Janela nativa mudou de geometria; tempo de renderização é fator de confusão.",
+      "Waveform CAKE 2 tem janela monitorada parcial, sem fase ociosa.",
+      "Análise por limiar de tráfego definida posteriormente; não constitui novo teste físico."
+    ]
+  },
+  "all_five_tools": [
+    {
+      "engine": "CAKE",
+      "windows": 15,
+      "active_samples": 459,
+      "active_seconds": 474.7,
+      "mean_total_cpu_active_pct": 30.88,
+      "peak_total_cpu_window_pct": 72.9,
+      "peak_single_core_pct": 100.0,
+      "minimum_available_mib": 665.67,
+      "maximum_occupied_estimate_mib": 320.69,
+      "maximum_occupied_estimate_pct": 32.51,
+      "per_run": [
+        {
+          "label": "CAKE-waveform-1",
+          "peak_single_core_pct": 85.59,
+          "minimum_available_mib": 680.38
+        },
+        {
+          "label": "CAKE-waveform-2-partial-window",
+          "peak_single_core_pct": 73.83,
+          "minimum_available_mib": 685.73
+        },
+        {
+          "label": "CAKE-bufferspeed-web-1",
+          "peak_single_core_pct": 70.19,
+          "minimum_available_mib": 691.17
+        },
+        {
+          "label": "CAKE-bufferspeed-web-2",
+          "peak_single_core_pct": 69.31,
+          "minimum_available_mib": 699.14
+        },
+        {
+          "label": "CAKE-bufferspeed-web-3",
+          "peak_single_core_pct": 64.15,
+          "minimum_available_mib": 694.77
+        },
+        {
+          "label": "CAKE-bufferspeed-app-1",
+          "peak_single_core_pct": 100.0,
+          "minimum_available_mib": 665.67
+        },
+        {
+          "label": "CAKE-bufferspeed-app-2",
+          "peak_single_core_pct": 88.35,
+          "minimum_available_mib": 682.73
+        },
+        {
+          "label": "CAKE-bufferspeed-app-3",
+          "peak_single_core_pct": 91.09,
+          "minimum_available_mib": 700.89
+        },
+        {
+          "label": "CAKE-waveform-3",
+          "peak_single_core_pct": 77.98,
+          "minimum_available_mib": 703.14
+        },
+        {
+          "label": "CAKE-fast-1",
+          "peak_single_core_pct": 82.3,
+          "minimum_available_mib": 714.71
+        },
+        {
+          "label": "CAKE-fast-2",
+          "peak_single_core_pct": 80.91,
+          "minimum_available_mib": 707.57
+        },
+        {
+          "label": "CAKE-fast-3",
+          "peak_single_core_pct": 74.29,
+          "minimum_available_mib": 714.29
+        },
+        {
+          "label": "CAKE-cloudflare-1",
+          "peak_single_core_pct": 45.71,
+          "minimum_available_mib": 707.43
+        },
+        {
+          "label": "CAKE-cloudflare-2",
+          "peak_single_core_pct": 39.0,
+          "minimum_available_mib": 700.12
+        },
+        {
+          "label": "CAKE-cloudflare-3",
+          "peak_single_core_pct": 55.86,
+          "minimum_available_mib": 711.12
+        }
+      ]
+    },
+    {
+      "engine": "HFSC",
+      "windows": 15,
+      "active_samples": 469,
+      "active_seconds": 487.1,
+      "mean_total_cpu_active_pct": 32.93,
+      "peak_total_cpu_window_pct": 66.87,
+      "peak_single_core_pct": 100.0,
+      "minimum_available_mib": 695.6,
+      "maximum_occupied_estimate_mib": 290.76,
+      "maximum_occupied_estimate_pct": 29.48,
+      "per_run": [
+        {
+          "label": "HFSC-waveform-1",
+          "peak_single_core_pct": 66.97,
+          "minimum_available_mib": 699.66
+        },
+        {
+          "label": "HFSC-waveform-2",
+          "peak_single_core_pct": 84.76,
+          "minimum_available_mib": 706.07
+        },
+        {
+          "label": "HFSC-waveform-3",
+          "peak_single_core_pct": 68.87,
+          "minimum_available_mib": 702.27
+        },
+        {
+          "label": "HFSC-bufferspeed-web-1",
+          "peak_single_core_pct": 66.96,
+          "minimum_available_mib": 695.6
+        },
+        {
+          "label": "HFSC-bufferspeed-web-2",
+          "peak_single_core_pct": 70.41,
+          "minimum_available_mib": 710.91
+        },
+        {
+          "label": "HFSC-bufferspeed-web-3",
+          "peak_single_core_pct": 68.52,
+          "minimum_available_mib": 705.47
+        },
+        {
+          "label": "HFSC-bufferspeed-app-1",
+          "peak_single_core_pct": 100.0,
+          "minimum_available_mib": 696.86
+        },
+        {
+          "label": "HFSC-bufferspeed-app-2",
+          "peak_single_core_pct": 86.27,
+          "minimum_available_mib": 710.84
+        },
+        {
+          "label": "HFSC-bufferspeed-app-3",
+          "peak_single_core_pct": 90.0,
+          "minimum_available_mib": 706.45
+        },
+        {
+          "label": "HFSC-fast-1",
+          "peak_single_core_pct": 86.79,
+          "minimum_available_mib": 704.57
+        },
+        {
+          "label": "HFSC-fast-2",
+          "peak_single_core_pct": 81.65,
+          "minimum_available_mib": 704.59
+        },
+        {
+          "label": "HFSC-fast-3-recheck",
+          "peak_single_core_pct": 87.85,
+          "minimum_available_mib": 709.17
+        },
+        {
+          "label": "HFSC-cloudflare-1-recheck",
+          "peak_single_core_pct": 68.47,
+          "minimum_available_mib": 710.39
+        },
+        {
+          "label": "HFSC-cloudflare-2-retry",
+          "peak_single_core_pct": 47.06,
+          "minimum_available_mib": 703.79
+        },
+        {
+          "label": "HFSC-cloudflare-3",
+          "peak_single_core_pct": 44.66,
+          "minimum_available_mib": 708.11
+        }
+      ]
+    }
+  ],
+  "native_app_only": [
+    {
+      "engine": "CAKE",
+      "windows": 3,
+      "active_samples": 98,
+      "active_seconds": 102.4,
+      "mean_total_cpu_active_pct": 46.32,
+      "peak_total_cpu_window_pct": 72.9,
+      "peak_single_core_pct": 100.0,
+      "minimum_available_mib": 665.67,
+      "maximum_occupied_estimate_mib": 320.69,
+      "maximum_occupied_estimate_pct": 32.51,
+      "per_run": [
+        {
+          "label": "CAKE-bufferspeed-app-1",
+          "peak_single_core_pct": 100.0,
+          "minimum_available_mib": 665.67
+        },
+        {
+          "label": "CAKE-bufferspeed-app-2",
+          "peak_single_core_pct": 88.35,
+          "minimum_available_mib": 682.73
+        },
+        {
+          "label": "CAKE-bufferspeed-app-3",
+          "peak_single_core_pct": 91.09,
+          "minimum_available_mib": 700.89
+        }
+      ]
+    },
+    {
+      "engine": "HFSC",
+      "windows": 3,
+      "active_samples": 104,
+      "active_seconds": 109.1,
+      "mean_total_cpu_active_pct": 46.4,
+      "peak_total_cpu_window_pct": 66.87,
+      "peak_single_core_pct": 100.0,
+      "minimum_available_mib": 696.86,
+      "maximum_occupied_estimate_mib": 289.51,
+      "maximum_occupied_estimate_pct": 29.35,
+      "per_run": [
+        {
+          "label": "HFSC-bufferspeed-app-1",
+          "peak_single_core_pct": 100.0,
+          "minimum_available_mib": 696.86
+        },
+        {
+          "label": "HFSC-bufferspeed-app-2",
+          "peak_single_core_pct": 86.27,
+          "minimum_available_mib": 710.84
+        },
+        {
+          "label": "HFSC-bufferspeed-app-3",
+          "peak_single_core_pct": 90.0,
+          "minimum_available_mib": 706.45
+        }
+      ]
+    },
+    {
+      "engine": "CAKE650V",
+      "windows": 3,
+      "active_samples": 103,
+      "active_seconds": 107.5,
+      "mean_total_cpu_active_pct": 43.82,
+      "peak_total_cpu_window_pct": 69.6,
+      "peak_single_core_pct": 100.0,
+      "minimum_available_mib": 690.25,
+      "maximum_occupied_estimate_mib": 296.12,
+      "maximum_occupied_estimate_pct": 30.02,
+      "per_run": [
+        {
+          "label": "CAKE650V-bufferspeed-app-1",
+          "peak_single_core_pct": 83.5,
+          "minimum_available_mib": 691.64
+        },
+        {
+          "label": "CAKE650V-bufferspeed-app-2",
+          "peak_single_core_pct": 100.0,
+          "minimum_available_mib": 698.13
+        },
+        {
+          "label": "CAKE650V-bufferspeed-app-3",
+          "peak_single_core_pct": 86.14,
+          "minimum_available_mib": 690.25
+        }
+      ]
+    }
+  ]
+}

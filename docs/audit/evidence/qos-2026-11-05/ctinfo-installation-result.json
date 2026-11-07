@@ -1,0 +1,46 @@
+{
+  "target": "192.168.73.1",
+  "kernel": "6.12.112",
+  "package": "kmod-sched-ctinfo-6.12.112-r1",
+  "installed": true,
+  "module_loaded": true,
+  "autoload_configured": true,
+  "module_sha256": "3387bbc474d8b1c75ea79b90a2b60b740a4d6a96a16d1e1d0e276ac88ee2dced",
+  "installation_command": "apk add kmod-sched-ctinfo",
+  "allow_untrusted_used": false,
+  "apk_exit_code": 1,
+  "apk_residual_error_unresolved": true,
+  "native_ipv4_ipv6_actions_tested": true,
+  "production_filters_active": true,
+  "production_counters_ipv4_then_ipv6": [
+    {
+      "dscp_set": 22251,
+      "dscp_error": 0,
+      "cpmark_set": 0
+    },
+    {
+      "dscp_set": 50,
+      "dscp_error": 0,
+      "cpmark_set": 0
+    }
+  ],
+  "capacity_measured": false,
+  "root_qdiscs_rates_configs_unchanged_on_activation": true,
+  "reboot_tested": false,
+  "game_tested": false,
+  "resource_plan": {
+    "cpu_cores": 4,
+    "memory_total_kib": 1010036,
+    "qos_total_ceiling_kib": 131072,
+    "shaper_units": 2,
+    "per_instance_ceiling_bytes": 67108864,
+    "cake_memlimit": "64M",
+    "hfsc_rt_bytes": 16777216,
+    "hfsc_be_bytes": 33554432,
+    "hfsc_bulk_bytes": 16777216,
+    "capacity_measured": false,
+    "ctinfo_module_present": true,
+    "cake_mq_candidate_present": false,
+    "capabilities_validated": false
+  }
+}

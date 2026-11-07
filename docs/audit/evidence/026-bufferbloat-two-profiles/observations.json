@@ -1,0 +1,38 @@
+{
+  "unmarked_app": {
+    "measured_display_time": "2026-11-05 23:50 -03:00",
+    "grade": "C",
+    "download_mbps": 620.2,
+    "upload_mbps": 439.5,
+    "idle_ms": 20,
+    "upload_ms": 111,
+    "origin": "unknown; user says did not start",
+    "potentially_affected": [
+      "HFSC-fast-3",
+      "HFSC-cloudflare-1"
+    ],
+    "excluded_from_isolated_comparison": true
+  },
+  "cloudflare_start_failure": {
+    "label": "HFSC-cloudflare-2",
+    "state": "Start disabled; no completed measurement; retry retained"
+  },
+  "controller_failure": {
+    "scope": "temporary harness only",
+    "cause": "nounset while sourcing library that expects ARK_LIB_DIR",
+    "uci_download_kbps": 650000,
+    "tc_download_kbps": 720000,
+    "loads_during_mismatch": 0,
+    "resolution": "environment initialized; library loaded without nounset; TC verified before any load"
+  },
+  "gso_confound": {
+    "labels": [
+      "CAKE650-bufferspeed-app-1",
+      "CAKE650-bufferspeed-app-2",
+      "CAKE650-bufferspeed-app-3"
+    ],
+    "egress_split_gso": true,
+    "initial_egress_split_gso": false,
+    "action": "preserved as exploratory; repeated with matching options, labels CAKE650V"
+  }
+}

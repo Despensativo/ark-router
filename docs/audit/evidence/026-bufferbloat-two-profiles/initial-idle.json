@@ -1,0 +1,80 @@
+{
+  "duration_seconds": 184.78305578231812,
+  "cpu_max_core_pct": 13.0,
+  "qdiscs": {
+    "UL": {
+      "kinds": [
+        "cake"
+      ],
+      "max_sample_rate_mbps": 14.219,
+      "aqm_drop_counter_increases": 0,
+      "max_root_backlog_bytes": 0,
+      "max_sample_cake_tin_delay_us": 1213
+    },
+    "DL": {
+      "kinds": [
+        "cake"
+      ],
+      "max_sample_rate_mbps": 27.393,
+      "aqm_drop_counter_increases": 0,
+      "max_root_backlog_bytes": 82048,
+      "max_sample_cake_tin_delay_us": 2154
+    }
+  },
+  "probes": {
+    "gateway": {
+      "responses": 184,
+      "failed_tcp_attempts": 0,
+      "internal_sequence_holes": 0,
+      "p50_ms": 0.583,
+      "p95_ms": 0.827,
+      "max_ms": 1.218,
+      "gaps": []
+    },
+    "external2": {
+      "responses": 180,
+      "failed_tcp_attempts": 0,
+      "internal_sequence_holes": 4,
+      "p50_ms": 14.79,
+      "p95_ms": 15.363,
+      "max_ms": 15.777,
+      "gaps": [
+        {
+          "after_epoch": 1793929587.9071848,
+          "missing": 2
+        },
+        {
+          "after_epoch": 1793929681.2271402,
+          "missing": 2
+        }
+      ]
+    },
+    "tcp-external": {
+      "responses": 182,
+      "failed_tcp_attempts": 0,
+      "internal_sequence_holes": 0,
+      "p50_ms": 5.389,
+      "p95_ms": 5.956,
+      "max_ms": 2006.977,
+      "gaps": []
+    },
+    "external": {
+      "responses": 180,
+      "failed_tcp_attempts": 0,
+      "internal_sequence_holes": 4,
+      "p50_ms": 4.951,
+      "p95_ms": 5.515,
+      "max_ms": 7.89,
+      "gaps": [
+        {
+          "after_epoch": 1793929587.896905,
+          "missing": 2
+        },
+        {
+          "after_epoch": 1793929681.2217338,
+          "missing": 2
+        }
+      ]
+    }
+  }
+}

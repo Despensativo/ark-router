@@ -1,0 +1,410 @@
+{
+  "metadata": {
+    "start_utc": "2026-11-05T17:13:06.818358+00:00",
+    "duration_seconds": 360,
+    "qos_changes": false,
+    "raw_pcap_saved": false,
+    "payload_saved": false,
+    "targets": {
+      "172.26.1.157": "peer",
+      "1.1.1.1": "cloudflare",
+      "8.8.8.8": "google"
+    },
+    "capture_points": {
+      "ethernet": "eth1 / Ethernet PPPoE",
+      "ppp": "pppoe-wan / Linux cooked v1"
+    },
+    "end_utc": "2026-11-05T17:19:09.111649+00:00",
+    "actual_duration_seconds": 362.29,
+    "errors": []
+  },
+  "owned_router_probe_ids": {
+    "peer": 9358,
+    "cloudflare": 9360,
+    "google": 9359
+  },
+  "captures": {
+    "ethernet": {
+      "targets": {
+        "peer": {
+          "requests": 360,
+          "replies": 352,
+          "missing_reply_sequences": [
+            40,
+            41,
+            133,
+            134,
+            226,
+            227,
+            319,
+            320
+          ],
+          "mean_paired_rtt_ms": 2.17,
+          "max_paired_rtt_ms": 20.177,
+          "outgoing_dscp": [
+            0
+          ],
+          "reply_dscp": [
+            0
+          ]
+        },
+        "cloudflare": {
+          "requests": 360,
+          "replies": 352,
+          "missing_reply_sequences": [
+            40,
+            41,
+            133,
+            134,
+            226,
+            227,
+            319,
+            320
+          ],
+          "mean_paired_rtt_ms": 4.182,
+          "max_paired_rtt_ms": 5.431,
+          "outgoing_dscp": [
+            0
+          ],
+          "reply_dscp": [
+            34
+          ]
+        },
+        "google": {
+          "requests": 360,
+          "replies": 352,
+          "missing_reply_sequences": [
+            40,
+            41,
+            133,
+            134,
+            226,
+            227,
+            319,
+            320
+          ],
+          "mean_paired_rtt_ms": 19.213,
+          "max_paired_rtt_ms": 19.793,
+          "outgoing_dscp": [
+            0
+          ],
+          "reply_dscp": [
+            0
+          ]
+        }
+      },
+      "excluded_unowned_packets": 2354,
+      "capture_kernel_drops": 0
+    },
+    "ppp": {
+      "targets": {
+        "peer": {
+          "requests": 360,
+          "replies": 352,
+          "missing_reply_sequences": [
+            40,
+            41,
+            133,
+            134,
+            226,
+            227,
+            319,
+            320
+          ],
+          "mean_paired_rtt_ms": 2.183,
+          "max_paired_rtt_ms": 20.196,
+          "outgoing_dscp": [
+            0
+          ],
+          "reply_dscp": [
+            0
+          ]
+        },
+        "cloudflare": {
+          "requests": 360,
+          "replies": 352,
+          "missing_reply_sequences": [
+            40,
+            41,
+            133,
+            134,
+            226,
+            227,
+            319,
+            320
+          ],
+          "mean_paired_rtt_ms": 4.193,
+          "max_paired_rtt_ms": 5.437,
+          "outgoing_dscp": [
+            0
+          ],
+          "reply_dscp": [
+            34
+          ]
+        },
+        "google": {
+          "requests": 360,
+          "replies": 352,
+          "missing_reply_sequences": [
+            40,
+            41,
+            133,
+            134,
+            226,
+            227,
+            319,
+            320
+          ],
+          "mean_paired_rtt_ms": 19.223,
+          "max_paired_rtt_ms": 19.818,
+          "outgoing_dscp": [
+            0
+          ],
+          "reply_dscp": [
+            0
+          ]
+        }
+      },
+      "excluded_unowned_packets": 2351,
+      "capture_kernel_drops": 0
+    }
+  },
+  "probe_logs": {
+    "router-peer": {
+      "responses": 352,
+      "mean_rtt_ms": 2.39,
+      "max_rtt_ms": 20.482,
+      "summary": [
+        "360 packets transmitted, 352 packets received, 2% packet loss"
+      ],
+      "missing_sequences_inside_observed_range": [
+        40,
+        41,
+        133,
+        134,
+        226,
+        227,
+        319,
+        320
+      ],
+      "observed_max_sequence": 359,
+      "transmitted_count_available": true,
+      "transmitted": 360
+    },
+    "router-cloudflare": {
+      "responses": 352,
+      "mean_rtt_ms": 4.355,
+      "max_rtt_ms": 5.574,
+      "summary": [
+        "360 packets transmitted, 352 packets received, 2% packet loss"
+      ],
+      "missing_sequences_inside_observed_range": [
+        40,
+        41,
+        133,
+        134,
+        226,
+        227,
+        319,
+        320
+      ],
+      "observed_max_sequence": 359,
+      "transmitted_count_available": true,
+      "transmitted": 360
+    },
+    "router-google": {
+      "responses": 352,
+      "mean_rtt_ms": 19.389,
+      "max_rtt_ms": 20.219,
+      "summary": [
+        "360 packets transmitted, 352 packets received, 2% packet loss"
+      ],
+      "missing_sequences_inside_observed_range": [
+        40,
+        41,
+        133,
+        134,
+        226,
+        227,
+        319,
+        320
+      ],
+      "observed_max_sequence": 359,
+      "transmitted_count_available": true,
+      "transmitted": 360
+    },
+    "mac-gateway": {
+      "responses": 718,
+      "mean_rtt_ms": 0.895,
+      "max_rtt_ms": 4.747,
+      "summary": [],
+      "missing_sequences_inside_observed_range": [],
+      "observed_max_sequence": 717,
+      "transmitted_count_available": false,
+      "transmitted": null
+    },
+    "mac-ipad": {
+      "responses": 360,
+      "mean_rtt_ms": 0.825,
+      "max_rtt_ms": 1.353,
+      "summary": [
+        "360 packets transmitted, 360 packets received, 0.0% packet loss"
+      ],
+      "missing_sequences_inside_observed_range": [],
+      "observed_max_sequence": 359,
+      "transmitted_count_available": true,
+      "transmitted": 360
+    },
+    "mac-cloudflare": {
+      "responses": 351,
+      "mean_rtt_ms": 5.081,
+      "max_rtt_ms": 6.513,
+      "summary": [],
+      "missing_sequences_inside_observed_range": [
+        40,
+        41,
+        133,
+        134,
+        226,
+        227,
+        318,
+        319,
+        320
+      ],
+      "observed_max_sequence": 359,
+      "transmitted_count_available": false,
+      "transmitted": null
+    }
+  },
+  "cross_capture_presence_discrepancies": [],
+  "synchronous_missing_reply_events": [
+    {
+      "sequences": [
+        40,
+        41
+      ],
+      "first_missing_request_utc": "2026-11-05T17:13:47.469298+00:00",
+      "last_missing_request_utc": "2026-11-05T17:13:48.469458+00:00"
+    },
+    {
+      "sequences": [
+        133,
+        134
+      ],
+      "first_missing_request_utc": "2026-11-05T17:15:20.483168+00:00",
+      "last_missing_request_utc": "2026-11-05T17:15:21.483306+00:00"
+    },
+    {
+      "sequences": [
+        226,
+        227
+      ],
+      "first_missing_request_utc": "2026-11-05T17:16:53.497980+00:00",
+      "last_missing_request_utc": "2026-11-05T17:16:54.498154+00:00"
+    },
+    {
+      "sequences": [
+        319,
+        320
+      ],
+      "first_missing_request_utc": "2026-11-05T17:18:26.511617+00:00",
+      "last_missing_request_utc": "2026-11-05T17:18:27.511761+00:00"
+    }
+  ],
+  "qdisc": {
+    "UL": {
+      "samples": 179,
+      "drop_delta": 0,
+      "max_sampled_tin_peak_delay_ms": 4.355,
+      "handles": [
+        "804b:"
+      ]
+    },
+    "DL": {
+      "samples": 179,
+      "drop_delta": 0,
+      "max_sampled_tin_peak_delay_ms": 7.09,
+      "handles": [
+        "804c:"
+      ]
+    }
+  },
+  "cpu_max_core_busy_pct": 18.54,
+  "link_counter_deltas": {
+    "eth1.rx_packets": 109244,
+    "eth1.tx_packets": 46371,
+    "eth1.rx_errors": 0,
+    "eth1.tx_errors": 0,
+    "eth1.rx_dropped": 0,
+    "eth1.tx_dropped": 0,
+    "eth1.rx_missed_errors": 0,
+    "eth1.tx_carrier_errors": 0,
+    "pppoe-wan.rx_packets": 49012,
+    "pppoe-wan.tx_packets": 46356,
+    "pppoe-wan.rx_errors": 0,
+    "pppoe-wan.tx_errors": 0,
+    "pppoe-wan.rx_dropped": 0,
+    "pppoe-wan.tx_dropped": 0,
+    "pppoe-wan.rx_missed_errors": 0,
+    "pppoe-wan.tx_carrier_errors": 0
+  },
+  "carrier_first_last": {
+    "carrier": [
+      1,
+      1
+    ],
+    "carrier_changes": [
+      1,
+      1
+    ],
+    "carrier_up_count": [
+      1,
+      1
+    ],
+    "carrier_down_count": [
+      0,
+      0
+    ]
+  },
+  "configuration_hashes_unchanged": true,
+  "optical_snapshots": [
+    {
+      "timing": "first UI reading, timestamp not recorded",
+      "pon": "GPON",
+      "state": "Registered (O5)",
+      "down_fec": "Off",
+      "temperature_c": 69.02,
+      "rx_dbm": -22.51,
+      "tx_dbm": 2.47,
+      "bias_ma": 14.0,
+      "supply_displayed_value": 3.19,
+      "supply_displayed_unit": "mV"
+    },
+    {
+      "timestamp_utc": "2026-11-05T18:00:24.345Z",
+      "pon": "GPON",
+      "state": "Registered (O5)",
+      "down_fec": "Off",
+      "temperature_c": 68.56,
+      "rx_dbm": -22.44,
+      "tx_dbm": 2.41,
+      "bias_ma": 14.0,
+      "supply_displayed_value": 3.18,
+      "supply_displayed_unit": "mV"
+    }
+  ],
+  "ont": {
+    "model": "TP-Link XZ005-G6",
+    "management_ipv4": "192.168.1.1",
+    "access": "existing-password web superadmin, no credential creation or change",
+    "ssh_22": "no banner/connection confirmed during bounded probes",
+    "configuration_changes": false
+  },
+  "scope_limits": [
+    "Captures are at kernel observation points, not on-wire proof.",
+    "Missing replies can include loss, delay, filtering, or device nonresponse; no general Internet loss percentage.",
+    "No optical snapshot synchronized with the missing-reply events.",
+    "Other diagnostic/background ICMP packets were excluded by identifier.",
+    "No raw packet stream, application payload, credentials, serial numbers or GPON authentication values saved."
+  ]
+}

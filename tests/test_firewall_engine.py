@@ -47,17 +47,17 @@ class TestFirewallEngine(unittest.TestCase):
         self.assertEqual(fw_checks[0].get("status"), "WARN")
         self.assertIn("/etc/firewall.user", fw_checks[0].get("message", ""))
 
-        # 2. Execucao com --fix deve isolar o arquivo e reportar FIXED
+        # 2. --fix não pode apagar regras cujo proprietário não foi identificado.
         res_fix = self.sb.run_control("ark-doctor", "--fix", "--json")
         self.assertEqual(res_fix.returncode, 0)
         data_fix = json.loads(res_fix.stdout)
         fw_checks_fix = [c for c in data_fix["checks"] if "Firewall" in c.get("name", "")]
-        self.assertEqual(fw_checks_fix[0].get("status"), "FIXED")
+        self.assertEqual(fw_checks_fix[0].get("status"), "WARN")
 
-        # 3. O arquivo /etc/firewall.user original deve estar limpo (vazio ou sem iptables)
+        # 3. A configuração original permanece disponível para revisão/migração.
         with open(fw_user, "r") as f:
             content = f.read()
-        self.assertNotIn("iptables", content)
+        self.assertIn("iptables", content)
 
     def test_03_clean_ipv6_firewall_no_ip6tables_leak_on_fw4(self):
         """Valida se sync-ipv6-firewall e clean_ipv6_selective_firewall nao poluem o kernel com regras ip6tables"""
@@ -120,12 +120,12 @@ class TestFirewallEngine(unittest.TestCase):
         res_check = self.sb.run_sh(cmd)
         self.assertEqual(res_check.returncode, 0, "UPnP invertido deveria retornar 0 (necessita reparo)")
 
-        # 3. Execucao de auto-fix deve reportar FIXED
+        # 3. Migração de pacote depende do fluxo de instalação, não da auditoria.
         res_fix = self.sb.run_control("ark-doctor", "--fix", "--json")
         self.assertEqual(res_fix.returncode, 0)
         data_fix = json.loads(res_fix.stdout)
         fw_checks_fix = [c for c in data_fix["checks"] if "Firewall" in c.get("name", "")]
-        self.assertEqual(fw_checks_fix[0].get("status"), "FIXED")
+        self.assertEqual(fw_checks_fix[0].get("status"), "WARN")
 
     def test_07_upnp_settings_save_and_leases_lifecycle(self):
         """Valida upnp-save, upnp-status, upnp-delete-lease e upnp-clear-leases no backend"""

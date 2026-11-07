@@ -2,7 +2,7 @@
 
 All state-changing dashboard actions call `/usr/sbin/equipe-dashboard-control`. The helper validates action names and arguments before invoking UCI, service scripts or a package manager.
 
-Installing ARK Router only adds the package files and LuCI menu entry. It does not automatically change WAN, LAN, Wi-Fi, firewall, DHCP, SQM or Multi-WAN configuration.
+Installation also executes package hooks and uci-defaults. These can change configuration and services; review the installation matrix and test upgrades on a VM before applying them to hardware. Installing the package must not be treated as a passive copy.
 
 Important properties:
 
@@ -22,7 +22,9 @@ Important properties:
 - The standalone uninstaller removes only ARK Router files by default and preserves optional packages and saved preferences unless `PURGE=1` is explicitly set.
 - HTTPS redirection accepts only `0` or `1`, verifies the HTTPS listener and certificate files before enabling, and requires UI confirmation.
 - When a local CA is prepared by the administrator, the dashboard exposes only its public certificate for download. The uHTTPd private key is never returned by the dashboard or included in the source package.
-- No static or default credentials are baked into scripts or the source tree. Automation, test, and verification scripts require credentials to be supplied explicitly via ephemeral environment variables (`ARK_ROUTER_TEST_PASSWORD` / `ARK_ROUTER_PASSWORD`) and will abort immediately if missing.
+- No static or default credentials are baked into scripts or the source tree. Automation, test, and verification scripts require credentials to be supplied explicitly via ephemeral environment variables (`ARK_ROUTER_TEST_PASSWORD`) and will abort immediately if missing.
+
+The complete controller and nlbwmon-action require the ACL write group. A read-only session cannot execute these general-purpose mutation entrypoints; native read endpoints remain separately permitted. This is a static ACL restriction, pending native rpcd validation.
 
 The package has administrative LuCI privileges and should be installed only from a trusted build or signed repository.
 

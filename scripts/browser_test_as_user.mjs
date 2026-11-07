@@ -2,14 +2,19 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 
-const CHROME_PATH = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+const CHROME_PATH = process.env.ARK_CHROME_PATH || [
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome'
+].find(candidate => fs.existsSync(candidate));
+if (!CHROME_PATH) throw new Error('Defina ARK_CHROME_PATH para o navegador de testes.');
 const PORT = 9333;
-const ROUTER_URL = process.env.ARK_ROUTER_URL || "http://192.168.1.1/cgi-bin/luci/admin/equipe-dashboard";
+const ROUTER_URL = process.env.ARK_ROUTER_URL || "http://127.0.0.1:8080/cgi-bin/luci/admin/equipe-dashboard";
 const USER = process.env.ARK_ROUTER_USER || "root";
-const PASS = process.env.ARK_ROUTER_PASSWORD;
+const PASS = process.env.ARK_ROUTER_TEST_PASSWORD;
 
 if (!PASS) {
-  console.error("Set ARK_ROUTER_PASSWORD before running this browser test.");
+  console.error("Set ARK_ROUTER_TEST_PASSWORD before running this browser test.");
   process.exit(2);
 }
 

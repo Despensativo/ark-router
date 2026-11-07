@@ -8,7 +8,7 @@ from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.common.by import By
 
 ROUTER_URL = os.environ.get("ARK_ROUTER_URL", "https://192.168.73.1/cgi-bin/luci/")
-PASSWORD = os.environ.get("ARK_ROUTER_TEST_PASSWORD") or os.environ.get("ARK_ROUTER_PASSWORD")
+PASSWORD = os.environ.get("ARK_ROUTER_TEST_PASSWORD") or os.environ.get("ARK_ROUTER_TEST_PASSWORD")
 SCREENSHOT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs", "qa_screenshots")
 os.makedirs(SCREENSHOT_DIR, exist_ok=True)
 

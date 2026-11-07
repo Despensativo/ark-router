@@ -58,7 +58,7 @@ def generate_doc():
     lines.append("        MOD_NET[\"network.sh (WAN/LAN/mwan3/PPPoE/IPv6)\"]")
     lines.append("        MOD_SQM[\"sqm.sh (CAKE/FQ-CoDel/IRQBalance)\"]")
     lines.append("        MOD_WIFI[\"wifi.sh (APs/DFS/Roaming/Mesh/WED)\"]")
-    lines.append("        MOD_DOC[\"doctor.sh (ARK Doctor Auto-Cura)\"]")
+    lines.append("        MOD_DOC[\"doctor.sh (diagnóstico e reparo manual)\"]")
     lines.append("        MOD_SYS[\"system.sh (LEDs/RAM/Storage/Fastpath)\"]")
     lines.append("        MOD_DEV[\"devices.sh (QoS/Leases/Reboot Lock)\"]")
     lines.append("        MOD_VPN[\"vpn.sh (WireGuard/ZeroTier)\"]")
@@ -118,15 +118,8 @@ def generate_doc():
     lines.append("| Identificador | Nome da Funcionalidade | Classificação Pós-Reboot | Evidência e Validação |")
     lines.append("| :--- | :--- | :--- | :--- |")
     for feat in features:
-        if feat['real_hw_required']:
-            c_type = "simulada / dependente de hardware real"
-            evid = "Validado via UCI mock; RF/ASIC físico exige teste em bancada"
-        elif feat['temp_data'] and not feat['persistent_data']:
-            c_type = "configuração persistente com estado temporário esperado"
-            evid = "Estado recriado dinamicamente em /tmp sem vazamento em flash"
-        else:
-            c_type = "persistente e restaurada corretamente"
-            evid = "Configurações em /etc/config/ e serviços iniciados via procd"
+        c_type = "validação operacional pendente"
+        evid = "Contrato declarado; consultar evidência por revisão em docs/audit/STATUS.md"
         lines.append(f"| `{feat['id']}` | {feat['name']} | `{c_type}` | {evid} |")
 
     lines.append("")
@@ -134,7 +127,7 @@ def generate_doc():
     lines.append("")
     lines.append("## 4. Matriz de Idempotência")
     lines.append("")
-    lines.append("A execução repetida dos comandos do ARK Router não duplica seções UCI, não adiciona regras repetidas de firewall e não gera processos órfãos:")
+    lines.append("Cenários de idempotência a validar por revisão; os resultados descritos são requisitos, não evidência produzida pelo gerador:")
     lines.append("")
     lines.append("| Ação Auditada | Teste de Execução Repetida | Resultado de Idempotência |")
     lines.append("| :--- | :--- | :--- |")
@@ -153,18 +146,18 @@ def generate_doc():
     lines.append("")
     lines.append("| Cenário | Subsistemas Envolvidos | Resultado do Teste | Salvaguarda Aplicada |")
     lines.append("| :---: | :--- | :---: | :--- |")
-    lines.append("| **1** | Dual-WAN com SQM (CAKE) | **APROVADO** | SQM da WAN1 permanece íntegro ao reconfigurar WAN2 |")
-    lines.append("| **2** | Dual-WAN com Failover mwan3 | **APROVADO** | Credenciais PPPoE e IPs estáticos não são apagados ao alternar políticas |")
-    lines.append("| **3** | Failover com Políticas PBR (IoT/Alexa) | **APROVADO** | Regras de portas 8883/8886 e rotas Starlink preservadas |")
-    lines.append("| **4** | Firewall com Bloqueio de Dispositivos | **APROVADO** | Bloqueio por MAC não interfere nas zonas gerais de encaminhamento LAN |")
-    lines.append("| **5** | Wi-Fi com EasyMesh 802.11s | **APROVADO** | Criação de interface mesh não remove criptografia do AP principal |")
-    lines.append("| **6** | Wi-Fi com Roaming 802.11r e usteer | **APROVADO** | Roaming rápido não anula parâmetros DTIM=2 da rede IoT 2.4 GHz |")
-    lines.append("| **7** | VLAN com Bridges LAN | **APROVADO** | Criação de WAN2 secundária preserva estritamente a porta 1 (lan1) de gerência |")
-    lines.append("| **8** | QoS com Limites por Dispositivo | **APROVADO** | `qos_equipe` não sobrescreve filas CAKE da WAN principal |")
-    lines.append("| **9** | Starlink com Telemetria e Buffer 25h | **APROVADO** | Daemon Starlink não altera configurações de conexão PPPoE |")
-    lines.append("| **10** | ARK Doctor (`--fix`) com Configs Customizadas | **APROVADO** | Auto-cura repara interfaces inconsistentes mas preserva DNS customizado |")
-    lines.append("| **11** | Restauração de Backup com Serviços Ativos | **APROVADO** | `ez_backup` restaura arquivos sem deixar travas órfãs em `/var/lock/` |")
-    lines.append("| **12** | Troca entre Perfis Lite e Full | **APROVADO** | Ocultação de módulos no LuCI não afeta roteamento ou topologia de rede |")
+    lines.append("| **1** | Dual-WAN com SQM (CAKE) | **VALIDAÇÃO PENDENTE** | SQM da WAN1 permanece íntegro ao reconfigurar WAN2 |")
+    lines.append("| **2** | Dual-WAN com Failover mwan3 | **VALIDAÇÃO PENDENTE** | Credenciais PPPoE e IPs estáticos não são apagados ao alternar políticas |")
+    lines.append("| **3** | Failover com Políticas PBR (IoT/Alexa) | **VALIDAÇÃO PENDENTE** | Regras de portas 8883/8886 e rotas Starlink preservadas |")
+    lines.append("| **4** | Firewall com Bloqueio de Dispositivos | **VALIDAÇÃO PENDENTE** | Bloqueio por MAC não interfere nas zonas gerais de encaminhamento LAN |")
+    lines.append("| **5** | Wi-Fi com EasyMesh 802.11s | **VALIDAÇÃO PENDENTE** | Criação de interface mesh não remove criptografia do AP principal |")
+    lines.append("| **6** | Wi-Fi com Roaming 802.11r e usteer | **VALIDAÇÃO PENDENTE** | Roaming rápido não anula parâmetros DTIM=2 da rede IoT 2.4 GHz |")
+    lines.append("| **7** | VLAN com Bridges LAN | **VALIDAÇÃO PENDENTE** | Criação de WAN2 secundária preserva estritamente a porta 1 (lan1) de gerência |")
+    lines.append("| **8** | QoS com Limites por Dispositivo | **VALIDAÇÃO PENDENTE** | `qos_equipe` não sobrescreve filas CAKE da WAN principal |")
+    lines.append("| **9** | Starlink com Telemetria e Buffer 25h | **VALIDAÇÃO PENDENTE** | Daemon Starlink não altera configurações de conexão PPPoE |")
+    lines.append("| **10** | ARK Doctor (`--fix`) com Configs Customizadas | **VALIDAÇÃO PENDENTE** | Auto-cura repara interfaces inconsistentes mas preserva DNS customizado |")
+    lines.append("| **11** | Restauração de Backup com Serviços Ativos | **VALIDAÇÃO PENDENTE** | `ez_backup` restaura arquivos sem deixar travas órfãs em `/var/lock/` |")
+    lines.append("| **12** | Troca entre Perfis Lite e Full | **VALIDAÇÃO PENDENTE** | Ocultação de módulos no LuCI não afeta roteamento ou topologia de rede |")
 
     lines.append("")
     lines.append("---")
@@ -205,7 +198,7 @@ def generate_doc():
     lines.append("| `19` | `ark-zerotier-ram` | Extração de dependências em RAM para roteadores de 16 MB Flash |")
     lines.append("| `19` | `mwan3` | Inicialização de regras e monitores de ping do Multi-WAN |")
     lines.append("| `20` | `network` (netifd) | Subida de interfaces físicas, bridges e obtenção de IPs |")
-    lines.append("| `22` | `ark-firewall-guard` | Auto-recuperação do firewall (quarentena de nft inválido) |")
+    lines.append("| `22` | `ark-firewall-guard` | Diagnóstico de firewall/processos, sem quarentena ou restart |")
     lines.append("| `50` | `uhttpd` | Servidor web do LuCI e soquetes ubus |")
     lines.append("| `60` | `dnsmasq` / `odhcpd` | Resolução DNS e entrega de endereços DHCP |")
     lines.append("| `95` | `ark-autowan` | Daemon de detecção de portas e conversão automática |")
@@ -247,17 +240,12 @@ def generate_doc():
     lines.append("")
     lines.append("| Categoria de Status | Quantidade de Funcionalidades | Percentual |")
     lines.append("| :--- | :---: | :---: |")
-    approved_count = total_count - 3
-    simulated_count = 3
-    lines.append(f"| **Aprovadas e Funcionais no Lab Virtual** | **{approved_count}** | **{approved_count/total_count*100:.1f}%** |")
-    lines.append("| **Corrigidas durante a Auditoria e Aprovadas** | **2** | **2,9%** |")
-    lines.append(f"| **Simuladas (Aguardando Validação em Hardware Real)** | **{simulated_count}** (`ARK-WIFI-006`, `ARK-WIFI-009`, `ARK-HW-001`) | **{simulated_count/total_count*100:.1f}%** |")
-    lines.append("| **Falhas Não Resolvidas** | **0** | **0,0%** |")
-    lines.append(f"| **Total Auditado** | **{total_count}** | **100,0%** |")
+    from collections import Counter
+    for state, count in sorted(Counter(f['state'] for f in features).items()):
+        lines.append(f"| Estado declarado `{state}` | {count} | {count/total_count*100:.1f}% |")
     lines.append("")
-    lines.append("> [!IMPORTANT]")
-    lines.append("> A aprovação no laboratório virtual não autoriza automaticamente deploy em roteador físico.")
-    lines.append("> Qualquer intervenção em hardware real depende de confirmação manual explícita do usuário escrevendo **SIM**.")
+    lines.append("> Estados de contrato não são resultados de testes. Nenhuma aprovação de VM, hardware ou reboot é inferida pelo gerador.")
+    lines.append("> Implantação física depende de solicitação explícita dentro do escopo; aprovação virtual não a autoriza.")
 
     content = "\n".join(lines) + "\n"
     with open(MD_FILE, "w", encoding="utf-8") as f:
@@ -266,4 +254,7 @@ def generate_doc():
     print(f"[OK] Gerada documentação viva em {MD_FILE} ({len(lines)} linhas)")
 
 if __name__ == "__main__":
+    if os.path.exists(MD_FILE) and "--force" not in sys.argv:
+        print("Catálogo curado existente. Use --force somente para regeneração revisada; evidências não são geradas automaticamente.")
+        sys.exit(2)
     generate_doc()

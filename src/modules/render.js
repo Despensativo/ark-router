@@ -144,7 +144,10 @@ const renderMethods = {
 			const kickerText = isExtra ? ('REDE ADICIONAL' + (cfg.network === 'guest' ? ' (ISOLADA)' : '')) : ('REDE WI‑FI' + (cfg.split ? ' (SEPARADA)' : ''));
 			const titleElements = [
 				E('span',{class:'ex-kicker'},[kickerText]),
-				E('h3',{id:'ex-'+kind+'-ssid'},[ssid])
+				E('h3',{id:'ex-'+kind+'-ssid'},[
+					ssid,
+					(cfg.hidden === '1') ? E('span', { class: 'ex-wifi-hidden-badge', style: 'margin-left: 8px; font-size: 11px; padding: 2px 7px; background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.25); border-radius: 6px; font-weight: 700; vertical-align: middle;' }, [_t('Oculta')]) : ''
+				])
 			];
 			let bandSubtitle = '';
 			const is2gOff = cfg.disabled2 === '1';
@@ -1078,10 +1081,12 @@ const renderMethods = {
 									]),
 									E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' }, [
 										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.14); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.30);' }, ['👥 Isolamento Justo por IP']),
-										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.10); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.22);' }, ['📊 4 Filas DiffServ'])
+										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.10); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.22);' }, ['📊 4 Filas DiffServ']),
+										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.10); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.22);' }, ['👨‍👩‍👧‍👦 Ideal Residências'])
 									]),
 									E('div', { style: 'font-size: 12px; line-height: 1.45; color: #e2e8f0;' }, [
-										'Divide a internet igualmente entre cada aparelho da casa (dual-srchost / dual-dsthost), impedindo que um único download puxe toda a banda.'
+										'Divide a internet cirurgicamente por aparelho da casa (dual-srchost / dual-dsthost), impedindo que um streaming 4K ou download puxe toda a banda. ',
+										E('strong', { style: 'color: #34d399;' }, ['Recomendado para casas com muitos usuários e dezenas de aparelhos em conexões de até ~700–800 Mbps.'])
 									])
 								]),
 								E('div', {
@@ -1102,10 +1107,106 @@ const renderMethods = {
 									]),
 									E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' }, [
 										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.16); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.32);' }, ['🎮 Curva Gamer < 1 ms']),
-										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.10); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.22);' }, ['⚡ Gigabit (-40% CPU)'])
+										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.10); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.22);' }, ['⚡ -40% CPU']),
+										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: rgba(245, 158, 11, 0.20); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.40);' }, ['🔥 Essencial ≥ 800M / 1 Gbps'])
 									]),
 									E('div', { style: 'font-size: 12px; line-height: 1.45; color: #e2e8f0;' }, [
-										'Reserva via exclusiva em Tempo Real (< 1 ms) para Jogos, VoIP e Ping, e libera máxima velocidade Gigabit com FQ-CoDel Turbo e menor uso de CPU.'
+										'Reserva canal em Tempo Real (< 1 ms) para Jogos, VoIP e Ping com zero descarte, e usa FQ-CoDel Turbo (quantum 1514). ',
+										E('strong', { style: 'color: #fbbf24;' }, ['Essencial a partir de 800 Mbps, 1 Gbps ou Multi-Gigabit']),
+										', onde o CAKE satura a CPU em 100% e causa gargalo de processamento no roteador.'
+									])
+								])
+							]),
+							E('div', {
+								style: 'margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: rgba(0, 0, 0, 0.28); border-left: 3px solid #38bdf8; font-size: 11.5px; line-height: 1.5; color: #cbd5e1;'
+							}, [
+								E('div', { style: 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 6px;' }, [
+									E('strong', { style: 'color: #f8fafc; font-size: 12px;' }, ['💡 Guia de Engenharia: Quando escolher cada motor?']),
+									E('span', { style: 'color: #fbbf24; font-weight: 700; font-size: 11px;' }, ['⚡ A partir de 800 Mbps / 1 Gbps: Use HFSC Turbo'])
+								]),
+								E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px;' }, [
+									E('div', {}, [
+										E('strong', { style: 'color: #34d399;' }, ['🛡️ CAKE (Layer Cake): ']),
+										'Melhor para ', E('strong', {}, ['casas com muitos usuários']), '. Divide a banda igualmente por aparelho (IP), impedindo que um único download de TV ou celular abafe os demais. Ideal em conexões de até ~700–800 Mbps.'
+									]),
+									E('div', {}, [
+										E('strong', { style: 'color: #38bdf8;' }, ['🚀 HFSC + FQ-CoDel Turbo: ']),
+										'Melhor para ', E('strong', {}, ['Jogos (< 1 ms), chamadas e velocidade pura']), '. Economiza ~40% de CPU. ',
+										E('strong', { style: 'color: #fbbf24;' }, ['Essencial a partir de 800 Mbps a 1 Gbps+']),
+										', onde o cálculo do CAKE satura os núcleos do roteador em 100% e limita a velocidade da sua fibra.'
+									])
+								])
+							]),
+							E('details', {
+								class: 'ex-qos-matrix-details',
+								style: 'margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: rgba(15, 23, 42, 0.45); border: 1px solid rgba(148, 163, 184, 0.22); font-size: 12px; line-height: 1.45;'
+							}, [
+								E('summary', { style: 'cursor: pointer; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; user-select: none;' }, [
+									E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
+										E('strong', { style: 'font-size: 13.5px; color: #f8fafc;' }, ['📊 ' + _t('Matriz de Classificação por Aplicação (L7 / DSCP)')]),
+										E('span', {
+											style: 'font-size: 10.5px; font-weight: 700; color: #34d399; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.16); border: 1px solid rgba(16, 185, 129, 0.35);'
+										}, ['4 Filas DiffServ & HFSC RT'])
+									]),
+									E('span', { class: 'ex-pill online', style: 'font-size: 11px;' }, [_t('Ativo em Hardware (fw4 / nftables)')])
+								]),
+								E('div', { style: 'margin-top: 10px; display: flex; flex-direction: column; gap: 10px;' }, [
+									E('p', { class: 'ex-muted', style: 'margin: 0; font-size: 12px; line-height: 1.4;' }, [
+										_t('Os pacotes são classificados nativamente pelo kernel nftables em microssegundos com persistência Conntrack (0% overhead de CPU). O motor de QoS ativo (CAKE ou HFSC Turbo) despacha cada aplicação para sua respectiva fila:')
+									]),
+									E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;' }, [
+										E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25);' }, [
+											E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+												E('strong', { style: 'color: #f87171; font-size: 12.5px;' }, ['🔴 ' + _t('Fila 1: Latência Zero / Voice (< 1 ms)')]),
+												E('span', { style: 'font-size: 10px; font-weight: 700; color: #fca5a5; padding: 1px 6px; border-radius: 4px; background: rgba(239, 68, 68, 0.2);' }, ['CS6 / CS5 / CS4 / EF'])
+											]),
+											E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+												E('strong', { style: 'color: #fca5a5;' }, [_t('Destino: ')]), _t('CAKE Voice Tin • HFSC Classe 1:10 (Real-Time)'), E('br'),
+												E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+													'🎮 80+ Jogos (CS2, Valorant, LoL, Dota, CoD, Fortnite), Consoles (PS5/Xbox/Switch), Discord RTC, VoIP (SIP/RTP), ICMP Ping, DNS (53/853), Handshakes TCP e L4S ECT(1).'
+												])
+											])
+										]),
+										E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25);' }, [
+											E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+												E('strong', { style: 'color: #fbbf24; font-size: 12.5px;' }, ['🟡 ' + _t('Fila 2: Interativo / Videoconferência')]),
+												E('span', { style: 'font-size: 10px; font-weight: 700; color: #fde68a; padding: 1px 6px; border-radius: 4px; background: rgba(245, 158, 11, 0.2);' }, ['AF41 / CS5'])
+											]),
+											E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+												E('strong', { style: 'color: #fde68a;' }, [_t('Destino: ')]), _t('CAKE Video Tin • HFSC Classe 1:20 (Turbo)'), E('br'),
+												E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+													'👥 Zoom, Microsoft Teams, Google Meet, Webex, WhatsApp Voz & Vídeo, STUN/TURN e tráfego interativo WebRTC.'
+												])
+											])
+										]),
+										E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25);' }, [
+											E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+												E('strong', { style: 'color: #34d399; font-size: 12.5px;' }, ['🟢 ' + _t('Fila 3: Navegação Geral & Streaming')]),
+												E('span', { style: 'font-size: 10px; font-weight: 700; color: #a7f3d0; padding: 1px 6px; border-radius: 4px; background: rgba(16, 185, 129, 0.2);' }, ['CS0 (Padrão)'])
+											]),
+											E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+												E('strong', { style: 'color: #a7f3d0;' }, [_t('Destino: ')]), _t('CAKE Best Effort • HFSC Classe 1:20 (Geral)'), E('br'),
+												E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+													'🌐 Navegação Web (HTTP/HTTPS/QUIC), Redes Sociais (Instagram, TikTok, X), Streaming de Vídeo (YouTube, Netflix, Prime Video, Twitch).'
+												])
+											])
+										]),
+										E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25);' }, [
+											E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+												E('strong', { style: 'color: #60a5fa; font-size: 12.5px;' }, ['🔵 ' + _t('Fila 4: Fila de Fundo (Bulk / Scavenger)')]),
+												E('span', { style: 'font-size: 10px; font-weight: 700; color: #bfdbfe; padding: 1px 6px; border-radius: 4px; background: rgba(59, 130, 246, 0.2);' }, ['CS1 (Scavenger)'])
+											]),
+											E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+												E('strong', { style: 'color: #bfdbfe;' }, [_t('Destino: ')]), _t('CAKE Bulk Tin • HFSC Classe 1:30 (Elástico)'), E('br'),
+												E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+													'📥 BitTorrent, qBittorrent, Transmission, downloads pesados em segundo plano. Cede 100% da banda instantaneamente quando qualquer outra fila solicita tráfego.'
+												])
+											])
+										])
+									]),
+									E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0, 0, 0, 0.25); border-left: 3px solid #38bdf8; font-size: 11.5px; color: #94a3b8;' }, [
+										E('strong', { style: 'color: #38bdf8;' }, ['💡 Fast-Path Conntrack: ']),
+										'Uma vez classificado o primeiro pacote da conexão, o kernel memoriza a prioridade no conntrack mark (0x80 | DSCP). Pacotes Gigabit subsequentes fluem direto sem reavaliar as tabelas, mantendo taxa de linha total.'
 									])
 								])
 							])

@@ -1,0 +1,56 @@
+{
+  "before": [
+    "FAIL: test_none_linklayer_is_respected (__main__.HfscInstallation.test_none_linklayer_is_respected)",
+    "FAIL: test_required_root_class_leaf_and_redirect_failures_propagate (__main__.HfscInstallation.test_required_root_class_leaf_and_redirect_failures_propagate) (pattern='root handle', entry='tree')",
+    "FAIL: test_required_root_class_leaf_and_redirect_failures_propagate (__main__.HfscInstallation.test_required_root_class_leaf_and_redirect_failures_propagate) (pattern='classid 1:1 ', entry='tree')",
+    "FAIL: test_required_root_class_leaf_and_redirect_failures_propagate (__main__.HfscInstallation.test_required_root_class_leaf_and_redirect_failures_propagate) (pattern='classid 1:10 ', entry='tree')",
+    "FAIL: test_required_root_class_leaf_and_redirect_failures_propagate (__main__.HfscInstallation.test_required_root_class_leaf_and_redirect_failures_propagate) (pattern='handle 110:', entry='tree')",
+    "FAIL: test_required_root_class_leaf_and_redirect_failures_propagate (__main__.HfscInstallation.test_required_root_class_leaf_and_redirect_failures_propagate) (pattern='handle 120:', entry='tree')",
+    "FAIL: test_required_root_class_leaf_and_redirect_failures_propagate (__main__.HfscInstallation.test_required_root_class_leaf_and_redirect_failures_propagate) (pattern='handle 130:', entry='tree')",
+    "FAIL: test_required_root_class_leaf_and_redirect_failures_propagate (__main__.HfscInstallation.test_required_root_class_leaf_and_redirect_failures_propagate) (pattern='root handle', entry='egress')",
+    "FAIL: test_required_root_class_leaf_and_redirect_failures_propagate (__main__.HfscInstallation.test_required_root_class_leaf_and_redirect_failures_propagate) (pattern='root handle', entry='ingress')",
+    "FAIL: test_absent_options_restored_as_absent (__main__.SqmReliability.test_absent_options_restored_as_absent)",
+    "FAIL: test_failed_engine_switch_reports_error_and_restores_engine (__main__.SqmReliability.test_failed_engine_switch_reports_error_and_restores_engine)",
+    "FAIL: test_no_snapshot_does_not_invent_previous_offload (__main__.SqmReliability.test_no_snapshot_does_not_invent_previous_offload)",
+    "FAIL: test_offload_roundtrip_is_persistent_and_idempotent (__main__.SqmReliability.test_offload_roundtrip_is_persistent_and_idempotent) (sw='0', hw='0')",
+    "FAIL: test_offload_roundtrip_is_persistent_and_idempotent (__main__.SqmReliability.test_offload_roundtrip_is_persistent_and_idempotent) (sw='1', hw='1')",
+    "FAIL: test_tune_preserves_existing_hfsc_and_allows_unmanaged_fqcodel (__main__.SqmReliability.test_tune_preserves_existing_hfsc_and_allows_unmanaged_fqcodel)",
+    "FAIL: test_tune_preserves_sqm_device_even_before_qdisc_exists (__main__.SqmReliability.test_tune_preserves_sqm_device_even_before_qdisc_exists)",
+    "FAIL: test_user_disable_during_sqm_overrides_saved_enabled (__main__.SqmReliability.test_user_disable_during_sqm_overrides_saved_enabled)",
+    "FAIL: test_user_disabled_offload_remains_disabled (__main__.SqmReliability.test_user_disabled_offload_remains_disabled)",
+    "Ran 11 tests in 1.932s",
+    "FAILED (failures=18)"
+  ],
+  "after": [
+    "Ran 18 tests in 2.357s",
+    "OK"
+  ],
+  "local_runner": [
+    "Ran 35 tests in 18.166s",
+    "OK",
+    "Ran 18 tests in 2.255s",
+    "OK",
+    "Ran 11 tests in 0.474s",
+    "OK",
+    "Ran 4 tests in 0.303s",
+    "OK",
+    "Ran 13 tests in 5.040s",
+    "OK",
+    "\u001b[1;32m  PARABÉNS: 100% DOS TESTES LOCAIS PASSARAM COM SUCESSO!     \u001b[0m"
+  ],
+  "hardware_remaining": [
+    "FAIL: test_09_sqm_cake_mq_and_auto_dscp_promotion (__main__.TestHardwareTune.test_09_sqm_cake_mq_and_auto_dscp_promotion)",
+    "FAIL: test_10_autorate_probing_recovery_and_l4s_ctinfo (__main__.TestHardwareTune.test_10_autorate_probing_recovery_and_l4s_ctinfo)",
+    "FAIL: test_12_intelligent_wan_mtu_and_hfsc_gro_cs1_guards (__main__.TestHardwareTune.test_12_intelligent_wan_mtu_and_hfsc_gro_cs1_guards)",
+    "Ran 12 tests in 2.275s",
+    "FAILED (failures=3)"
+  ],
+  "source_sha256": {
+    "root/usr/lib/ark/common.sh": "d405fa3e5a0ba0d9e20229d4dd661a7faed098cc1856ee24a565712276624551",
+    "root/etc/init.d/ark-hardware-tune": "322899417ea7170e6e1a4515c70dca6a57ccb7b2976cd4fe9a7cf8c51078ca19",
+    "root/usr/lib/ark/modules/sqm.sh": "2c8cb835596146f9e0f910c1e4cb8a7bbbd551446a81c83fdc58e35a3c82fbbc",
+    "root/usr/lib/sqm/ark_hfsc_fqcodel.qos": "d9e77d40b59375452c7f67cbfc2a013a6b9e935a94066899d388c2301e1a13b3",
+    "tests/test_sqm_reliability.py": "c6c8602e7c5a7234f98c7a55e5a08621cc0dc63c8cb06419bfe312ebddc214f3"
+  },
+  "environment": "macOS sandbox; no Linux datapath, VM, physical deployment or reboot validation"
+}

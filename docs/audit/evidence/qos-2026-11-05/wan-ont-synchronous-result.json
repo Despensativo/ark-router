@@ -1,0 +1,418 @@
+{
+  "metadata": {
+    "start_utc": "2026-11-05T18:20:40.086403+00:00",
+    "duration_seconds": 360,
+    "qos_changes": false,
+    "raw_pcap_saved": false,
+    "payload_saved": false,
+    "targets": {
+      "172.26.1.157": "peer",
+      "1.1.1.1": "cloudflare",
+      "8.8.8.8": "google",
+      "192.168.1.1": "ont"
+    },
+    "capture_points": {
+      "ethernet": "eth1 / Ethernet PPPoE",
+      "ppp": "pppoe-wan / Linux cooked v1"
+    },
+    "end_utc": "2026-11-05T18:26:42.353495+00:00",
+    "actual_duration_seconds": 362.27,
+    "errors": []
+  },
+  "owned_router_probe_ids": {
+    "ont": 17586,
+    "peer": 17587,
+    "cloudflare": 17582,
+    "google": 17584
+  },
+  "captures": {
+    "ethernet": {
+      "targets": {
+        "cloudflare": {
+          "requests": 360,
+          "replies": 352,
+          "missing_reply_sequences": [
+            79,
+            80,
+            172,
+            173,
+            265,
+            266,
+            358,
+            359
+          ],
+          "rtt_mean_ms": 4.162,
+          "rtt_max_ms": 6.468,
+          "dscp_requests": [
+            0
+          ]
+        },
+        "google": {
+          "requests": 360,
+          "replies": 352,
+          "missing_reply_sequences": [
+            79,
+            80,
+            172,
+            173,
+            265,
+            266,
+            358,
+            359
+          ],
+          "rtt_mean_ms": 19.297,
+          "rtt_max_ms": 19.907,
+          "dscp_requests": [
+            0
+          ]
+        },
+        "peer": {
+          "requests": 360,
+          "replies": 352,
+          "missing_reply_sequences": [
+            79,
+            80,
+            172,
+            173,
+            265,
+            266,
+            358,
+            359
+          ],
+          "rtt_mean_ms": 2.291,
+          "rtt_max_ms": 31.454,
+          "dscp_requests": [
+            0
+          ]
+        }
+      },
+      "excluded_unowned_packets": 2355,
+      "capture_kernel_drops": 0
+    },
+    "ppp": {
+      "targets": {
+        "cloudflare": {
+          "requests": 360,
+          "replies": 352,
+          "missing_reply_sequences": [
+            79,
+            80,
+            172,
+            173,
+            265,
+            266,
+            358,
+            359
+          ],
+          "rtt_mean_ms": 4.177,
+          "rtt_max_ms": 6.491,
+          "dscp_requests": [
+            0
+          ]
+        },
+        "google": {
+          "requests": 360,
+          "replies": 352,
+          "missing_reply_sequences": [
+            79,
+            80,
+            172,
+            173,
+            265,
+            266,
+            358,
+            359
+          ],
+          "rtt_mean_ms": 19.305,
+          "rtt_max_ms": 19.91,
+          "dscp_requests": [
+            0
+          ]
+        },
+        "peer": {
+          "requests": 360,
+          "replies": 352,
+          "missing_reply_sequences": [
+            79,
+            80,
+            172,
+            173,
+            265,
+            266,
+            358,
+            359
+          ],
+          "rtt_mean_ms": 2.298,
+          "rtt_max_ms": 31.466,
+          "dscp_requests": [
+            0
+          ]
+        }
+      },
+      "excluded_unowned_packets": 2355,
+      "capture_kernel_drops": 0
+    },
+    "ontether": {
+      "targets": {
+        "ont": {
+          "requests": 291,
+          "replies": 291,
+          "missing_reply_sequences": [],
+          "rtt_mean_ms": 0.37,
+          "rtt_max_ms": 3.396,
+          "dscp_requests": [
+            48
+          ]
+        }
+      },
+      "excluded_unowned_packets": 0,
+      "capture_kernel_drops": 0
+    }
+  },
+  "probe_logs": {
+    "router-ont": {
+      "responses": 360,
+      "rtt_mean_ms": 0.474,
+      "rtt_max_ms": 3.76,
+      "summary": [
+        "360 packets transmitted, 360 packets received, 0% packet loss"
+      ]
+    },
+    "router-peer": {
+      "responses": 352,
+      "rtt_mean_ms": 2.462,
+      "rtt_max_ms": 31.634,
+      "summary": [
+        "360 packets transmitted, 352 packets received, 2% packet loss"
+      ]
+    },
+    "router-cloudflare": {
+      "responses": 352,
+      "rtt_mean_ms": 4.398,
+      "rtt_max_ms": 7.001,
+      "summary": [
+        "360 packets transmitted, 352 packets received, 2% packet loss"
+      ]
+    },
+    "router-google": {
+      "responses": 352,
+      "rtt_mean_ms": 19.495,
+      "rtt_max_ms": 20.15,
+      "summary": [
+        "360 packets transmitted, 352 packets received, 2% packet loss"
+      ]
+    },
+    "mac-gateway": {
+      "responses": 718,
+      "rtt_mean_ms": 0.741,
+      "rtt_max_ms": 1.323,
+      "summary": []
+    },
+    "mac-cloudflare": {
+      "responses": 352,
+      "rtt_mean_ms": 5.142,
+      "rtt_max_ms": 31.959,
+      "summary": []
+    }
+  },
+  "synchronous_missing_reply_events": [
+    {
+      "peer_sequences": [
+        79,
+        80
+      ],
+      "first_missing_request_utc": "2026-11-05T18:21:59.757199+00:00",
+      "last_missing_request_utc": "2026-11-05T18:22:00.757257+00:00",
+      "ont_request_window_margin_seconds": 0.5,
+      "ont_packets_near_window": [
+        {
+          "seq": 79,
+          "reply_seen": true,
+          "rtt_ms": 0.337
+        },
+        {
+          "seq": 80,
+          "reply_seen": true,
+          "rtt_ms": 0.39
+        }
+      ]
+    },
+    {
+      "peer_sequences": [
+        172,
+        173
+      ],
+      "first_missing_request_utc": "2026-11-05T18:23:32.766901+00:00",
+      "last_missing_request_utc": "2026-11-05T18:23:33.767053+00:00",
+      "ont_request_window_margin_seconds": 0.5,
+      "ont_packets_near_window": [
+        {
+          "seq": 172,
+          "reply_seen": true,
+          "rtt_ms": 0.362
+        },
+        {
+          "seq": 173,
+          "reply_seen": true,
+          "rtt_ms": 0.357
+        }
+      ]
+    },
+    {
+      "peer_sequences": [
+        265,
+        266
+      ],
+      "first_missing_request_utc": "2026-11-05T18:25:05.776241+00:00",
+      "last_missing_request_utc": "2026-11-05T18:25:06.776322+00:00",
+      "ont_request_window_margin_seconds": 0.5,
+      "ont_packets_near_window": [
+        {
+          "seq": 265,
+          "reply_seen": true,
+          "rtt_ms": 0.337
+        },
+        {
+          "seq": 266,
+          "reply_seen": true,
+          "rtt_ms": 0.356
+        }
+      ]
+    },
+    {
+      "peer_sequences": [
+        358,
+        359
+      ],
+      "first_missing_request_utc": "2026-11-05T18:26:38.784451+00:00",
+      "last_missing_request_utc": "2026-11-05T18:26:39.784600+00:00",
+      "ont_request_window_margin_seconds": 0.5,
+      "ont_packets_near_window": [
+        {
+          "seq": 358,
+          "reply_seen": true,
+          "rtt_ms": 0.312
+        }
+      ]
+    }
+  ],
+  "cross_capture_presence_discrepancies": [],
+  "qdisc": {
+    "UL": {
+      "samples": 179,
+      "drop_delta": 0,
+      "max_sampled_tin_peak_delay_ms": 1.714,
+      "handles": [
+        "804b:"
+      ]
+    },
+    "DL": {
+      "samples": 179,
+      "drop_delta": 0,
+      "max_sampled_tin_peak_delay_ms": 0.39,
+      "handles": [
+        "804c:"
+      ]
+    }
+  },
+  "cpu_max_core_busy_pct": 31.53,
+  "link_counter_deltas": {
+    "eth1.rx_packets": 41629,
+    "eth1.tx_packets": 69712,
+    "eth1.rx_errors": 0,
+    "eth1.tx_errors": 0,
+    "eth1.rx_dropped": 0,
+    "eth1.tx_dropped": 0,
+    "eth1.rx_missed_errors": 0,
+    "eth1.tx_carrier_errors": 0,
+    "pppoe-wan.rx_packets": 25329,
+    "pppoe-wan.tx_packets": 69317,
+    "pppoe-wan.rx_errors": 0,
+    "pppoe-wan.tx_errors": 0,
+    "pppoe-wan.rx_dropped": 0,
+    "pppoe-wan.tx_dropped": 0,
+    "pppoe-wan.rx_missed_errors": 0,
+    "pppoe-wan.tx_carrier_errors": 0
+  },
+  "carrier_first_last": {
+    "carrier": [
+      1,
+      1
+    ],
+    "carrier_changes": [
+      1,
+      1
+    ],
+    "carrier_up_count": [
+      1,
+      1
+    ],
+    "carrier_down_count": [
+      0,
+      0
+    ]
+  },
+  "scope_limits": [
+    "ONT packet capture starts after the main capture; probe log covers the full main interval.",
+    "Combined Ethernet BPF did not observe ONT ICMP; a dedicated direct-IP capture supplies ONT header evidence.",
+    "Kernel Ethernet capture is not on-wire proof.",
+    "ONT management response does not prove its PPPoE bridge or optical path remains operational.",
+    "Missing ICMP responses are not a general packet-loss rate or in-game latency measurement.",
+    "ONT management ICMP uses DSCP48; external probes DSCP0, with different forwarding and queue paths.",
+    "The final missing-reply event reaches the end of the main capture; its recovery is not measured.",
+    "A running kernel without the consulted ftrace paths prevents that proposed trace, not all possible kernel diagnostics."
+  ],
+  "lcp": {
+    "combined_records": 17,
+    "direction_capture_records": 10,
+    "direction_capture_first_utc": "2026-11-05T18:26:00.331816+00:00",
+    "direction_capture_last_utc": "2026-11-05T18:27:30.395487+00:00",
+    "router_echo_requests_without_matching_observed_reply": [
+      {
+        "timestamp_utc": "2026-11-05T18:26:39.359106+00:00",
+        "identifier": 196
+      },
+      {
+        "timestamp_utc": "2026-11-05T18:26:40.360258+00:00",
+        "identifier": 197
+      }
+    ],
+    "code_counts": {
+      "9": 10,
+      "10": 7
+    },
+    "capture_kernel_drops": {
+      "lcp": 0,
+      "lcp-direction": 0
+    },
+    "limits": [
+      "No baseline proving that peer answers router-originated LCP Echo-Request during healthy periods.",
+      "No direction preserved by the first LCP collector.",
+      "LCP headers only; no magic numbers, authentication payload or raw PCAP saved."
+    ],
+    "reference": "https://www.rfc-editor.org/rfc/rfc1661.html#section-5.8"
+  },
+  "configuration_hashes_unchanged": true,
+  "driver": {
+    "name": "mtk_soc_eth",
+    "version": "6.12.112",
+    "eth1_link_mbps": 2500,
+    "duplex": "full",
+    "software_flow_offload": 0,
+    "hardware_flow_offload": 0,
+    "ppe_bound_entries": [
+      0,
+      0
+    ],
+    "rx_checksum_errors_before_after": [
+      1655,
+      1655
+    ],
+    "other_observed_error_counters_zero": true,
+    "kernel_log_wan_link_down_count": 0,
+    "kernel_log_wan_link_up_count": 1,
+    "kernel_log_watchdog_count": 0,
+    "kernel_log_tx_timeout_count": 0,
+    "ppp_log_reconnect_events_observed": 0
+  }
+}

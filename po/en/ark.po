@@ -15064,3 +15064,18 @@ msgstr "🩺 Check / Repair (FSCK)"
 
 msgid "🪟 Windows (Explorador de Arquivos):"
 msgstr "🪟 Windows (File Explorer):"
+
+msgid "Oculta"
+msgstr "Hidden"
+
+msgid "Ocultar nome da rede"
+msgstr "Hide network name"
+
+msgid "Ocultar nome da rede (SSID Oculto)"
+msgstr "Hide network name (Hidden SSID)"
+
+msgid "Ocultar nome da rede Wi‑Fi (SSID Oculto)"
+msgstr "Hide Wi‑Fi network name (Hidden SSID)"
+
+msgid "Visível"
+msgstr "Visible"

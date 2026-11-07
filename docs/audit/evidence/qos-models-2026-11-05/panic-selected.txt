@@ -1,0 +1,12 @@
+<3>[162989.565058] leds_ws2812b spi1.0: SPI transfer timed out
+<3>[162989.572047] spi_master spi1: failed to transfer one message from queue
+<3>[162989.586490] leds rgb:status: Setting an LED's brightness failed (-110)
+<1>[162989.679260] Unable to handle kernel write to read-only memory at virtual address 00000000042eb91b
+<0>[162989.818136] Internal error: Oops: 0000000096000045 [#1] SMP
+<3>[162989.975038] leds_ws2812b spi1.0: SPI transfer timed out
+<7>[162990.003078] CPU: 0 UID: 0 PID: 317 Comm: irq/118-1100b00 Tainted: G           O       6.12.112 #0
+<7>[162990.003099] pc : 0xffffffc080630088
+<7>[162990.003102] lr : 0xffffffc080630050
+<3>[162990.008601] spi_master spi1: failed to transfer one message from queue
+<3>[162990.034944] leds rgb:status: Setting an LED's brightness failed (-110)
+<0>[162990.193043] Kernel panic - not syncing: Oops: Fatal exception

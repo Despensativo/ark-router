@@ -149,7 +149,7 @@ ark_is_readonly_action asu-check-toggle 1 && echo "ro5=0" || echo "ro5=1"
         self.assertEqual(res.returncode, 0, res.stderr)
         self.assertIn('ro1=0', res.stdout)
         self.assertIn('ro2=1', res.stdout)
-        self.assertIn('ro3=1', res.stdout)
+        self.assertIn('ro3=0', res.stdout)
         self.assertIn('ro4=0', res.stdout)
         self.assertIn('ro5=1', res.stdout)
 

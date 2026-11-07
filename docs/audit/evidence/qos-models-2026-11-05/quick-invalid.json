@@ -1,0 +1,45 @@
+{
+  "tool": "networkQuality",
+  "grade": null,
+  "scope": "INVALIDADO: n\u00e3o repetir no W6x at\u00e9 diagn\u00f3stico do kernel",
+  "runs": [
+    {
+      "label": "CAKE-quick-1",
+      "returncode": 0,
+      "metrics": {
+        "base_rtt": 19.02932357788086,
+        "dl_bytes_transferred": 917015530,
+        "dl_phase_duration": 29.69372797012329,
+        "dl_throughput": 602971200,
+        "error_code": -1001,
+        "responsiveness": 929.3350219726562,
+        "ul_bytes_transferred": 669122558,
+        "ul_phase_duration": 29.69372797012329,
+        "ul_throughput": 452304576
+      },
+      "elapsed_seconds": 29.874,
+      "measurement_valid": false,
+      "invalid_reason": "networkQuality_error_-1001"
+    },
+    {
+      "label": "CAKE-quick-2",
+      "returncode": 0,
+      "metrics": {
+        "error_code": -1001
+      },
+      "elapsed_seconds": 16.036,
+      "measurement_valid": false,
+      "invalid_reason": "networkQuality_error_-1001"
+    },
+    {
+      "label": "CAKE-quick-3",
+      "returncode": 0,
+      "metrics": {
+        "error_code": -1001
+      },
+      "elapsed_seconds": 16.036,
+      "measurement_valid": false,
+      "invalid_reason": "networkQuality_error_-1001"
+    }
+  ]
+}

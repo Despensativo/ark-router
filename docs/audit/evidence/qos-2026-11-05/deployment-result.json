@@ -1,0 +1,62 @@
+{
+  "status": "applied_cake_verified_watchdog_committed",
+  "target": "192.168.73.1",
+  "motor": "cake",
+  "download_kbps": 720000,
+  "upload_kbps": 620000,
+  "offload_sw": 0,
+  "offload_hw": 0,
+  "native_hfsc": "passed_on_temporary_ifb_no_traffic",
+  "native_uci": "passed_with_isolated_config_production_unchanged",
+  "mac_to_router_ping": {
+    "sent": 10,
+    "received": 10,
+    "loss_percent": 0,
+    "avg_ms": 0.775,
+    "max_ms": 1.095
+  },
+  "router_to_1_1_1_1_ping": {
+    "sent": 10,
+    "received": 10,
+    "loss_percent": 0,
+    "avg_ms": 4.886,
+    "max_ms": 8.866
+  },
+  "backup_sha256": "6092fb1d17fc797d08588e11342b6eb0a89bdf849eebd8e6af536264cbc18cfa",
+  "manifest": [
+    {
+      "path": "/usr/lib/ark/common.sh",
+      "remote_sha256": "f9dcbd906c70a7f20075296d0b8ea97f592750263c9960f89369079a243c4db5",
+      "candidate_sha256": "d405fa3e5a0ba0d9e20229d4dd661a7faed098cc1856ee24a565712276624551",
+      "same": false,
+      "diff_lines": 23
+    },
+    {
+      "path": "/usr/lib/ark/modules/sqm.sh",
+      "remote_sha256": "799cd3833953f8601a8a8ccd53739ac77edc19551eae9061c3810d2451331c42",
+      "candidate_sha256": "2c8cb835596146f9e0f910c1e4cb8a7bbbd551446a81c83fdc58e35a3c82fbbc",
+      "same": false,
+      "diff_lines": 455
+    },
+    {
+      "path": "/etc/init.d/ark-hardware-tune",
+      "remote_sha256": "b6641c16783313134d8a4eabfff98c4a30bdbef12db261bd89b00a2e4e03e40e",
+      "candidate_sha256": "322899417ea7170e6e1a4515c70dca6a57ccb7b2976cd4fe9a7cf8c51078ca19",
+      "same": false,
+      "diff_lines": 65
+    },
+    {
+      "path": "/usr/lib/sqm/ark_hfsc_fqcodel.qos",
+      "remote_sha256": "a57189e870f13a16218e7b8e1c524b123b2d1efc18747895716cf4c75ba9dfb1",
+      "candidate_sha256": "85a823b1b7edc1dcc82d4a4cf8b5a5fc39ba98e29b937539a90279cf13cc47b5",
+      "same": false,
+      "diff_lines": 155
+    }
+  ],
+  "limitations": [
+    "No game session during validation",
+    "No throughput/load or reboot validation",
+    "VirtualBox exception explicitly authorized",
+    "One nonfatal shell out-of-range warning during activation; not reproduced in subsequent promotion/verification"
+  ]
+}

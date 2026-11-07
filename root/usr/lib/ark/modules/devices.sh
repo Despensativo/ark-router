@@ -210,6 +210,10 @@ device_get_stations_raw() {
 			local cur_sig=""
 			local cur_rx=""
 			local cur_tx=""
+			local cur_tx_bitrate=""
+			local cur_rx_bitrate=""
+			local cur_exp_thr=""
+			local cur_mld_mac=""
 
 			IFS='
 '
@@ -231,8 +235,71 @@ device_get_stations_raw() {
 									[ -z "$dev_ip" ] && dev_ip="—"
 									[ -z "$dev_name" ] || [ "$dev_name" = "*" ] && dev_name="Dispositivo Wi-Fi"
 
+									local cur_gen="legacy"
+									local cur_gen_label="Wi-Fi Legado"
+									local cur_width="20 MHz"
+									local cur_qam=""
+									local cur_mlo=0
+									[ -n "$cur_mld_mac" ] && cur_mlo=1
+
+									case "$cur_tx_bitrate" in
+										*EHT-MCS*)
+											cur_gen="wifi7"
+											cur_gen_label="Wi-Fi 7"
+											case "$cur_tx_bitrate" in
+												*EHT-MCS\ 1[45]*) cur_qam="4096-QAM (4K)" ;;
+												*EHT-MCS\ 1[23]*) cur_qam="1024-QAM (1K)" ;;
+												*EHT-MCS\ 1[01]*) cur_qam="1024-QAM (1K)" ;;
+												*EHT-MCS\ [89]*)  cur_qam="256-QAM" ;;
+												*EHT-MCS\ [67]*)  cur_qam="64-QAM" ;;
+												*EHT-MCS\ [345]*) cur_qam="16-QAM" ;;
+												*EHT-MCS\ [012]*) cur_qam="BPSK/QPSK" ;;
+											esac
+											;;
+										*HE-MCS*)
+											cur_gen="wifi6"
+											cur_gen_label="Wi-Fi 6"
+											case "$cur_tx_bitrate" in
+												*HE-MCS\ 1[01]*) cur_qam="1024-QAM (1K)" ;;
+												*HE-MCS\ [89]*)  cur_qam="256-QAM" ;;
+												*HE-MCS\ [67]*)  cur_qam="64-QAM" ;;
+												*HE-MCS\ [345]*) cur_qam="16-QAM" ;;
+												*HE-MCS\ [012]*) cur_qam="BPSK/QPSK" ;;
+											esac
+											;;
+										*VHT-MCS*)
+											cur_gen="wifi5"
+											cur_gen_label="Wi-Fi 5"
+											case "$cur_tx_bitrate" in
+												*VHT-MCS\ [89]*) cur_qam="256-QAM" ;;
+												*VHT-MCS\ [67]*) cur_qam="64-QAM" ;;
+												*VHT-MCS\ [345]*) cur_qam="16-QAM" ;;
+												*VHT-MCS\ [012]*) cur_qam="BPSK/QPSK" ;;
+											esac
+											;;
+										*MCS*)
+											cur_gen="wifi4"
+											cur_gen_label="Wi-Fi 4"
+											cur_qam="64-QAM"
+											;;
+									esac
+
+									case "$cur_tx_bitrate" in
+										*320MHz*) cur_width="320 MHz" ;;
+										*160MHz*) cur_width="160 MHz" ;;
+										*80MHz*)  cur_width="80 MHz" ;;
+										*40MHz*)  cur_width="40 MHz" ;;
+										*20MHz*)  cur_width="20 MHz" ;;
+									esac
+
+									local cur_rate
+									cur_rate="$(printf '%s' "$cur_tx_bitrate" | awk '{print $1}')"
+									case "$cur_rate" in
+										''|*[!0-9.]*) cur_rate="0" ;;
+									esac
+
 									[ "$first_stat" = 1 ] && first_stat=0 || stations_json="${stations_json},"
-									stations_json="${stations_json}{\"mac\":\"$cur_mac\",\"ip\":\"$dev_ip\",\"name\":\"$dev_name\",\"ifname\":\"$wif\",\"ssid\":\"$if_ssid\",\"band\":\"$if_band\",\"band_label\":\"$if_band_label\",\"signal\":${cur_sig:-"-55"},\"is_guest\":$(bool $((is_guest == 1))),\"rx_bytes\":${cur_rx:-0},\"tx_bytes\":${cur_tx:-0}}"
+									stations_json="${stations_json}{\"mac\":\"$cur_mac\",\"ip\":\"$dev_ip\",\"name\":\"$dev_name\",\"ifname\":\"$wif\",\"ssid\":\"$if_ssid\",\"band\":\"$if_band\",\"band_label\":\"$if_band_label\",\"signal\":${cur_sig:-"-55"},\"is_guest\":$(bool $((is_guest == 1))),\"rx_bytes\":${cur_rx:-0},\"tx_bytes\":${cur_tx:-0},\"tx_rate\":\"$cur_rate\",\"generation\":\"$cur_gen\",\"generation_label\":\"$cur_gen_label\",\"width\":\"$cur_width\",\"qam\":\"$cur_qam\",\"mlo\":$(bool $((cur_mlo == 1))),\"raw_rate\":\"$cur_tx_bitrate\"}"
 									if [ "$is_guest" = 1 ]; then
 										guest_count=$((guest_count + 1))
 									else
@@ -245,6 +312,10 @@ device_get_stations_raw() {
 						cur_sig=""
 						cur_rx=""
 						cur_tx=""
+						cur_tx_bitrate=""
+						cur_rx_bitrate=""
+						cur_exp_thr=""
+						cur_mld_mac=""
 						;;
 					*signal:*)
 						cur_sig="$(printf '%s' "$line" | grep -oE '[-][0-9]+' | head -n1 || echo "-55")"
@@ -254,6 +325,18 @@ device_get_stations_raw() {
 						;;
 					*tx\ bytes:*)
 						cur_tx="$(printf '%s' "$line" | grep -oE '[0-9]+' | head -n1 || echo 0)"
+						;;
+					*tx\ bitrate:*)
+						cur_tx_bitrate="$(printf '%s' "$line" | sed 's/^[[:space:]]*tx bitrate:[[:space:]]*//')"
+						;;
+					*rx\ bitrate:*)
+						cur_rx_bitrate="$(printf '%s' "$line" | sed 's/^[[:space:]]*rx bitrate:[[:space:]]*//')"
+						;;
+					*expected\ throughput:*)
+						cur_exp_thr="$(printf '%s' "$line" | sed 's/^[[:space:]]*expected throughput:[[:space:]]*//')"
+						;;
+					*MLD\ MAC:*|*MLD\ with\ links:*)
+						cur_mld_mac="$(printf '%s' "$line" | awk '{print $NF}')"
 						;;
 				esac
 			done
@@ -274,8 +357,71 @@ device_get_stations_raw() {
 						[ -z "$dev_ip" ] && dev_ip="—"
 						[ -z "$dev_name" ] || [ "$dev_name" = "*" ] && dev_name="Dispositivo Wi-Fi"
 
+						local cur_gen="legacy"
+						local cur_gen_label="Wi-Fi Legado"
+						local cur_width="20 MHz"
+						local cur_qam=""
+						local cur_mlo=0
+						[ -n "$cur_mld_mac" ] && cur_mlo=1
+
+						case "$cur_tx_bitrate" in
+							*EHT-MCS*)
+								cur_gen="wifi7"
+								cur_gen_label="Wi-Fi 7"
+								case "$cur_tx_bitrate" in
+									*EHT-MCS\ 1[45]*) cur_qam="4096-QAM (4K)" ;;
+									*EHT-MCS\ 1[23]*) cur_qam="1024-QAM (1K)" ;;
+									*EHT-MCS\ 1[01]*) cur_qam="1024-QAM (1K)" ;;
+									*EHT-MCS\ [89]*)  cur_qam="256-QAM" ;;
+									*EHT-MCS\ [67]*)  cur_qam="64-QAM" ;;
+									*EHT-MCS\ [345]*) cur_qam="16-QAM" ;;
+									*EHT-MCS\ [012]*) cur_qam="BPSK/QPSK" ;;
+								esac
+								;;
+							*HE-MCS*)
+								cur_gen="wifi6"
+								cur_gen_label="Wi-Fi 6"
+								case "$cur_tx_bitrate" in
+									*HE-MCS\ 1[01]*) cur_qam="1024-QAM (1K)" ;;
+									*HE-MCS\ [89]*)  cur_qam="256-QAM" ;;
+									*HE-MCS\ [67]*)  cur_qam="64-QAM" ;;
+									*HE-MCS\ [345]*) cur_qam="16-QAM" ;;
+									*HE-MCS\ [012]*) cur_qam="BPSK/QPSK" ;;
+								esac
+								;;
+							*VHT-MCS*)
+								cur_gen="wifi5"
+								cur_gen_label="Wi-Fi 5"
+								case "$cur_tx_bitrate" in
+									*VHT-MCS\ [89]*) cur_qam="256-QAM" ;;
+									*VHT-MCS\ [67]*) cur_qam="64-QAM" ;;
+									*VHT-MCS\ [345]*) cur_qam="16-QAM" ;;
+									*VHT-MCS\ [012]*) cur_qam="BPSK/QPSK" ;;
+								esac
+								;;
+							*MCS*)
+								cur_gen="wifi4"
+								cur_gen_label="Wi-Fi 4"
+								cur_qam="64-QAM"
+								;;
+						esac
+
+						case "$cur_tx_bitrate" in
+							*320MHz*) cur_width="320 MHz" ;;
+							*160MHz*) cur_width="160 MHz" ;;
+							*80MHz*)  cur_width="80 MHz" ;;
+							*40MHz*)  cur_width="40 MHz" ;;
+							*20MHz*)  cur_width="20 MHz" ;;
+						esac
+
+						local cur_rate
+						cur_rate="$(printf '%s' "$cur_tx_bitrate" | awk '{print $1}')"
+						case "$cur_rate" in
+							''|*[!0-9.]*) cur_rate="0" ;;
+						esac
+
 						[ "$first_stat" = 1 ] && first_stat=0 || stations_json="${stations_json},"
-						stations_json="${stations_json}{\"mac\":\"$cur_mac\",\"ip\":\"$dev_ip\",\"name\":\"$dev_name\",\"ifname\":\"$wif\",\"ssid\":\"$if_ssid\",\"band\":\"$if_band\",\"band_label\":\"$if_band_label\",\"signal\":${cur_sig:-"-55"},\"is_guest\":$(bool $((is_guest == 1))),\"rx_bytes\":${cur_rx:-0},\"tx_bytes\":${cur_tx:-0}}"
+						stations_json="${stations_json}{\"mac\":\"$cur_mac\",\"ip\":\"$dev_ip\",\"name\":\"$dev_name\",\"ifname\":\"$wif\",\"ssid\":\"$if_ssid\",\"band\":\"$if_band\",\"band_label\":\"$if_band_label\",\"signal\":${cur_sig:-"-55"},\"is_guest\":$(bool $((is_guest == 1))),\"rx_bytes\":${cur_rx:-0},\"tx_bytes\":${cur_tx:-0},\"tx_rate\":\"$cur_rate\",\"generation\":\"$cur_gen\",\"generation_label\":\"$cur_gen_label\",\"width\":\"$cur_width\",\"qam\":\"$cur_qam\",\"mlo\":$(bool $((cur_mlo == 1))),\"raw_rate\":\"$cur_tx_bitrate\"}"
 						if [ "$is_guest" = 1 ]; then
 							guest_count=$((guest_count + 1))
 						else

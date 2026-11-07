@@ -32,7 +32,7 @@ def check_js_errors():
 try:
     print("--- 1. Conectando ao roteador LuCI ---")
     dashboard_url = os.environ.get("ARK_ROUTER_URL", "http://localhost:8080/cgi-bin/luci/admin/equipe-dashboard")
-    password = os.environ.get("ARK_ROUTER_TEST_PASSWORD") or os.environ.get("ARK_ROUTER_PASSWORD")
+    password = os.environ.get("ARK_ROUTER_TEST_PASSWORD") or os.environ.get("ARK_ROUTER_TEST_PASSWORD")
     driver.get(dashboard_url)
     time.sleep(2)
 

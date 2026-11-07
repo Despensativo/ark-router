@@ -10,7 +10,7 @@ if ! grep -q "/usr/sbin/ark-doctor --auto" "$cron_file"; then
 	/etc/init.d/cron restart 2>/dev/null || true
 fi
 
-# Garante que a variavel auto_heal exista e esteja ativa por padrao no uci
+# Chave legada auto_heal controla diagnostico agendado, sem autocura.
 if ! uci -q get equipe_dashboard.doctor >/dev/null; then
 	uci set equipe_dashboard.doctor=doctor
 	uci set equipe_dashboard.doctor.auto_heal='1'
@@ -20,15 +20,6 @@ elif [ -z "$(uci -q get equipe_dashboard.doctor.auto_heal)" ]; then
 	uci commit equipe_dashboard
 fi
 
-# Instala hook idempotente no /sbin/reload_config para acionar Ark Doctor em qualquer Save & Apply do LuCI
-if [ -f /sbin/reload_config ] && ! grep -q "ark-doctor --auto" /sbin/reload_config; then
-	cat << 'EOF' >> /sbin/reload_config
-
-# ARK Router: Trigger Ark Doctor auto-heal whenever UCI configurations change via LuCI
-if [ -n "$c" ] && [ -x /usr/sbin/ark-doctor ]; then
-	(sleep 2; /usr/sbin/ark-doctor --auto) >/dev/null 2>&1 &
-fi
-EOF
-fi
-
+# Nao editar /sbin/reload_config, que pertence ao OpenWrt.
+# Cron e hotplugs ARK fornecem o diagnostico automatico; --auto e observacional.
 exit 0

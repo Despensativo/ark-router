@@ -159,7 +159,7 @@ Instalar e remover pacotes com binários pré-compilados pesados (como Speedify 
 
 ## 4. Matriz de Cenários Validados
 
-Todos os fluxos foram exaustivamente validados tanto no laboratório virtual isolado (VirtualBox x86_64) quanto no hardware físico de referência (Acer Predator W6x aarch64):
+A tabela abaixo preserva relatos anteriores. Sem hashes, comandos e evidências vinculadas por cenário, ela não comprova validação da revisão atual. A auditoria de 05/11/2026 encontrou restauração DNS não exata; veja o [lote 021](audit/batches/021-docs-runtime-doctor-audit.md). Reexecute em VM antes de promover alterações.
 
 | Cenário Testado | Ambiente | Ação Executada | Resultado Verificado |
 | --- | --- | --- | --- |

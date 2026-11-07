@@ -4,6 +4,9 @@
 
 # ARK Router
 
+> Local safety revision (2026-11-05): automatic Doctor runs are observational; manual repairs remain partial and require context review. [Doctor](docs/DOCTOR_SAFETY_MODEL.md).
+
+
 <p align="center">
   <a href="https://openwrt.org/"><img src="https://img.shields.io/badge/OpenWrt-19.07%20to%2025.x-00B5E2?logo=openwrt&logoColor=white" alt="OpenWrt"></a>
   <a href="https://github.com/Despensativo/ark-router/releases/tag/v2.2.1"><img src="https://img.shields.io/badge/release-v2.2.1-blue.svg" alt="Release v2.2.1"></a>

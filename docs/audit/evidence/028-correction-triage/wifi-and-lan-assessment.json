@@ -1,0 +1,153 @@
+{
+  "nodes": [
+    {
+      "node": "hostapd.phy0-ap0",
+      "ssid_group": "group-1",
+      "freq": 2437,
+      "n_assoc": 19,
+      "noise": -90,
+      "load": 44,
+      "roam_events": {
+        "source": 0,
+        "target": 0
+      },
+      "neighbors": [
+        {
+          "known_local": true,
+          "same_ssid": true,
+          "freq": 5745
+        }
+      ],
+      "clients": 19,
+      "btm_capable": 1,
+      "status7_cached": 1,
+      "kick_count_sum": 0,
+      "signal_min": -83,
+      "weak_without_btm": 1
+    },
+    {
+      "node": "hostapd.phy1-ap0",
+      "ssid_group": "group-1",
+      "freq": 5745,
+      "n_assoc": 8,
+      "noise": -92,
+      "load": 4,
+      "roam_events": {
+        "source": 0,
+        "target": 0
+      },
+      "neighbors": [
+        {
+          "known_local": true,
+          "same_ssid": true,
+          "freq": 2437
+        }
+      ],
+      "clients": 8,
+      "btm_capable": 6,
+      "status7_cached": 0,
+      "kick_count_sum": 0,
+      "signal_min": -71,
+      "weak_without_btm": 0
+    },
+    {
+      "node": "hostapd.phy1-ap2",
+      "ssid_group": "group-2",
+      "freq": 5745,
+      "n_assoc": 0,
+      "noise": -92,
+      "load": 4,
+      "roam_events": {
+        "source": 0,
+        "target": 0
+      },
+      "neighbors": [],
+      "clients": 0,
+      "btm_capable": 0,
+      "status7_cached": 0,
+      "kick_count_sum": 0,
+      "signal_min": null,
+      "weak_without_btm": 0
+    }
+  ],
+  "effective_config": {
+    "syslog": true,
+    "debug_level": 2,
+    "ipv6": false,
+    "local_mode": true,
+    "sta_block_timeout": 30000,
+    "local_sta_timeout": 120000,
+    "local_sta_update": 1000,
+    "max_neighbor_reports": 8,
+    "max_retry_band": 5,
+    "seen_policy_timeout": 30000,
+    "measurement_report_timeout": 120000,
+    "load_balancing_threshold": 3,
+    "band_steering_threshold": 5,
+    "remote_update_interval": 1000,
+    "remote_node_timeout": 10,
+    "assoc_steering": false,
+    "min_connect_snr": 0,
+    "min_snr": 0,
+    "min_snr_kick_delay": 5000,
+    "steer_reject_timeout": 60000,
+    "roam_process_timeout": 5000,
+    "roam_scan_snr": -74,
+    "roam_scan_tries": 3,
+    "roam_scan_timeout": 0,
+    "roam_scan_interval": 10000,
+    "roam_trigger_snr": -78,
+    "roam_trigger_interval": 60000,
+    "roam_kick_delay": 60000,
+    "signal_diff_threshold": 8,
+    "initial_connect_delay": 0,
+    "load_kick_enabled": false,
+    "load_kick_threshold": 75,
+    "load_kick_delay": 10000,
+    "load_kick_min_clients": 10,
+    "load_kick_reason_code": 5,
+    "band_steering_interval": 120000,
+    "band_steering_min_snr": -70,
+    "link_measurement_interval": 0
+  },
+  "wireless_selected_options": [
+    {
+      "section": "section-1",
+      "disabled": "0"
+    },
+    {
+      "section": "section-2",
+      "encryption": "sae-mixed",
+      "disabled": "0",
+      "bss_transition": "1"
+    },
+    {
+      "section": "section-3",
+      "disabled": "0"
+    },
+    {
+      "section": "section-4",
+      "encryption": "sae-mixed",
+      "disabled": "0",
+      "rrm_neighbor_report": "1",
+      "bss_transition": "1"
+    },
+    {
+      "section": "section-5",
+      "encryption": "psk2",
+      "disabled": "0",
+      "rrm_neighbor_report": "1",
+      "bss_transition": "1",
+      "ieee80211r": "1",
+      "ft_psk_generate_local": "1"
+    },
+    {
+      "section": "section-6",
+      "encryption": "psk2",
+      "disabled": "0",
+      "rrm_neighbor_report": "1",
+      "bss_transition": "1"
+    }
+  ],
+  "user_lan1_information": "Provavelmente PC gamer com Wake-on-LAN configurado a 100 Mb/s; estado acordado/suspenso não confirmado."
+}

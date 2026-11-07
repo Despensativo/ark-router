@@ -144,7 +144,30 @@ const systemMethods = {
 		if(force !== false) args.push('force');
 		return fs.exec('/usr/sbin/equipe-dashboard-control',args,20000).then(L.bind(function(r){
 			if(r.code)throw new Error(r.stderr||'Falha ao verificar atualização');
-			let info={}; try{info=JSON.parse(r.stdout||'{}');}catch(e){throw new Error('Resposta de atualização inválida');}
+			let info={};
+			try{
+				info=JSON.parse(r.stdout||'{}');
+			}catch(e){
+				const raw = String(r.stdout || '');
+				const mLatest = raw.match(/"latest"\s*:\s*"([^"]+)"/);
+				const mAvail = raw.match(/"available"\s*:\s*(true|false)/);
+				const mUrl = raw.match(/"url"\s*:\s*"([^"]+)"/);
+				const mAsset = raw.match(/"asset"\s*:\s*"([^"]+)"/);
+				if (mLatest) {
+					info = {
+						current: (this.capabilities && this.capabilities.update && this.capabilities.update.current) || (typeof window !== 'undefined' && window.ARK_VERSION) || '',
+						latest: mLatest[1],
+						available: mAvail ? mAvail[1] === 'true' : false,
+						url: mUrl ? mUrl[1] : '',
+						asset: mAsset ? mAsset[1] : '',
+						changelog: '',
+						error: '',
+						space_ok: true
+					};
+				} else {
+					throw new Error('Resposta de atualização inválida');
+				}
+			}
 			try{
 				localStorage.setItem('ark_last_update_check_time',String(Date.now()));
 				localStorage.setItem('ark_last_update_check_data',JSON.stringify(info));
@@ -464,7 +487,21 @@ const systemMethods = {
 			fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-check']).then(function(r){
 				if(r.code)return;
 				let info={};
-				try{info=JSON.parse(r.stdout||'{}');}catch(e){return;}
+				try{
+					info=JSON.parse(r.stdout||'{}');
+				}catch(e){
+					const raw = String(r.stdout || '');
+					const mLatest = raw.match(/"latest"\s*:\s*"([^"]+)"/);
+					const mAvail = raw.match(/"available"\s*:\s*(true|false)/);
+					if (mLatest) {
+						info = {
+							latest: mLatest[1],
+							available: mAvail ? mAvail[1] === 'true' : false
+						};
+					} else {
+						return;
+					}
+				}
 				localStorage.setItem('ark_last_update_check_time',String(Date.now()));
 				localStorage.setItem('ark_last_update_check_data',JSON.stringify(info));
 				if(info&&info.available&&(!curVer || info.latest !== curVer)){

@@ -4,6 +4,9 @@
 
 # ARK Router
 
+> Revisão local de segurança (05/11/2026): Doctor automático é observacional; reparos manuais continuam parciais e exigem revisão do contexto. [Doctor](docs/DOCTOR_SAFETY_MODEL.md).
+
+
 <p align="center">
   <a href="https://openwrt.org/"><img src="https://img.shields.io/badge/OpenWrt-19.07%20a%2025.x-00B5E2?logo=openwrt&logoColor=white" alt="OpenWrt"></a>
   <a href="https://github.com/Despensativo/ark-router/releases/tag/v2.2.1"><img src="https://img.shields.io/badge/release-v2.2.1-blue.svg" alt="Release v2.2.1"></a>

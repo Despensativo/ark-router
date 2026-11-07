@@ -27,7 +27,7 @@ if (typeof dom !== 'undefined' && dom) {
 	}
 }
 
-const ARK_BUILD_VERSION = '2.2.0';
+const ARK_BUILD_VERSION = '2.2.1';
 if (typeof window !== 'undefined') {
 	window.ARK_BUILD_VERSION = ARK_BUILD_VERSION;
 	window.ARK_VERSION = ARK_BUILD_VERSION;
@@ -63,7 +63,7 @@ if (typeof document !== 'undefined') {
 			}
 
 			var _assetRev = (typeof window !== 'undefined' && window.ARK_ASSET_REV) ? window.ARK_ASSET_REV : ARK_BUILD_VERSION;
-			var _cssHref = (typeof L !== 'undefined' && L.resource ? L.resource('view/equipe-dashboard/overview_v2.css') : '/luci-static/resources/view/equipe-dashboard/overview_v2.css') + '?v=' + _assetRev;
+			var _cssHref = (typeof L !== 'undefined' && L.resource ? L.resource('view/equipe-dashboard/overview.css') : '/luci-static/resources/view/equipe-dashboard/overview.css') + '?v=' + _assetRev;
 			var _linkEl = null;
 			if (typeof E === 'function') {
 				_linkEl = E('link', { 'rel': 'stylesheet', 'type': 'text/css', 'href': _cssHref });
@@ -471,22 +471,29 @@ function classifyArkMutation(cmd, args) {
 	}
 	const act = String((args && args[0]) || '');
 	const sub = String((args && args[1]) || '');
+	if (act === 'audit-system' || act === 'ark-doctor') {
+		const isFix = Array.isArray(args) && args.slice(1).some(function(a) {
+			return /^(--auto|auto|--fix|fix|fix-run|doctor-fix|fix=1)$/.test(String(a || ''));
+		});
+		if (!isFix) return { readOnly: true };
+		return { readOnly: false, estSec: 12, ttlMs: 40000, cooldownMs: 2800, label: 'Executando operação de sistema (~10–15s)…' };
+	}
 	if (
 		!act ||
-		/(-status|-status-.*|-get|-list|-check|-check-.*|-audit|-info|-discover|-fingerprints|-stations|-processes|-logs|-log|-telemetry|-qr)$/.test(act) ||
-		/^(features|fast-targets|audit-system|ark-doctor|card-state-save|starlink-telemetry|autowan-can-convert-wan|speedify-user)$/.test(act) ||
-		/^speedtest-/.test(act) ||
+		/(-status|-status-.*|-get|-list|-check|-audit|-info|-discover|-fingerprints|-stations|-processes|-logs|-log|-telemetry|-qr)$/.test(act) ||
+		/^(features|fast-targets|doctor-run|card-state-save|starlink-telemetry|autowan-can-convert|autowan-can-convert-wan|speedify-user|led-detect-topology|led-calibrate-curves|update-wan-led|update-led-alert)$/.test(act) ||
+		/^speedtest-(status|result|start|stop)$/.test(act) ||
 		/^(status|get|list|check|scan|discover|audit|info)$/.test(sub)
 	) {
 		return { readOnly: true };
 	}
-	if (/^(doctor-fix|adblock-install|adblock-uninstall|feature-install|feature-remove|self-update-apply|manual-update-apply|ez-setup-|transmission-install|speedify|reboot-|safe-storage-reboot)/.test(act)) {
+	if (/^(doctor-fix|fix-run|adblock-install|adblock-uninstall|feature-install|feature-remove|self-update-apply|manual-update-apply|ez-setup-|transmission-install|speedify|reboot-|safe-storage-reboot)/.test(act)) {
 		return { readOnly: false, estSec: 12, ttlMs: 40000, cooldownMs: 2800, label: 'Executando operação de sistema (~10–15s)…' };
 	}
 	if (/^(wifi|channels|country|wan-|lan-|mwan|autowan-|system-network-mode-|pppoe-|ipv6-|sync-ipv6-firewall|system-hardware-tune)/.test(act) && !/^wifi-(iot-optimize|dfs-optimize|toggle|wps|roaming|txpower)/.test(act)) {
 		return { readOnly: false, estSec: 6, ttlMs: 24000, cooldownMs: 2200, label: 'Sincronizando rádio / interfaces de rede (~5–8s)…' };
 	}
-	if (/^(sqm-|irqbalance-|dns-turbo|adblock|zram-|dmz|upnp-|network-capacity|profile|zerotier|wireguard|ntp-|time-|clock-|wifi-)/.test(act)) {
+	if (/^(sqm-|speedtest-apply|asu-check-toggle|irqbalance-|dns-turbo|adblock|zram-|dmz|upnp-|network-capacity|profile|zerotier|wireguard|ntp-|time-|clock-|wifi-)/.test(act)) {
 		return { readOnly: false, estSec: 4, ttlMs: 18000, cooldownMs: 1800, label: 'Aplicando regras e reiniciando serviço (~3–5s)…' };
 	}
 	return { readOnly: false, estSec: 2, ttlMs: 12000, cooldownMs: 1200, label: 'Aplicando configuração (~1–2s)…' };
@@ -569,15 +576,64 @@ function ensureArkTxBanner(profile) {
 
 function installArkTransactionCoordinator() {
 	if (typeof window === 'undefined') return;
+	const stInit = window._arkTxState;
+	if (stInit && typeof stInit.modalSeq !== 'number') {
+		stInit.modalSeq = 0;
+		stInit.modalOpen = false;
+		stInit.staleModalCallbackDepth = 0;
+	}
+	const uiObj = (typeof ui !== 'undefined' && ui) || (window.L && window.L.ui) || window.ui;
+	if (uiObj && typeof uiObj.showModal === 'function' && !uiObj._arkModalSeqWrapped) {
+		uiObj._arkModalSeqWrapped = true;
+		const origShowModal = uiObj.showModal;
+		const origHideModal = uiObj.hideModal;
+		uiObj.showModal = function() {
+			const st = window._arkTxState;
+			if (st && st.staleModalCallbackDepth > 0) {
+				return null;
+			}
+			if (st) {
+				st.modalOpen = true;
+				st.modalSeq = (st.modalSeq || 0) + 1;
+			}
+			return origShowModal.apply(this, arguments);
+		};
+		if (typeof origHideModal === 'function') {
+			uiObj.hideModal = function() {
+				const st = window._arkTxState;
+				if (st) {
+					st.modalOpen = false;
+					st.modalSeq = (st.modalSeq || 0) + 1;
+					st.staleModalCallbackDepth = 0;
+				}
+				return origHideModal.apply(this, arguments);
+			};
+		}
+	}
 	if (typeof fs !== 'undefined' && fs && typeof fs.exec === 'function' && !fs._arkTxWrapped) {
 		const origExec = fs.exec;
 		fs._arkTxWrapped = true;
 		fs.exec = function(cmd, args) {
 			const profile = classifyArkMutation(cmd, args);
-			if (profile.readOnly) {
-				return origExec.apply(this, arguments);
-			}
 			const st = window._arkTxState;
+			if (profile.readOnly) {
+				const hasContains = typeof document !== 'undefined' && document.body && document.body.classList && typeof document.body.classList.contains === 'function';
+				const bodyHasModal = hasContains && document.body.classList.contains('modal-overlay-active');
+				const startModalOpen = !!((st && st.modalOpen) || bodyHasModal);
+				const startModalSeq = (st && st.modalSeq) || 0;
+				return origExec.apply(this, arguments).then(function(res) {
+					const nowBodyModal = hasContains ? document.body.classList.contains('modal-overlay-active') : !!(st && st.modalOpen);
+					if (startModalOpen && st && (!nowBodyModal || !st.modalOpen || st.modalSeq !== startModalSeq)) {
+						st.staleModalCallbackDepth = (st.staleModalCallbackDepth || 0) + 1;
+						if (typeof window !== 'undefined' && window.setTimeout) {
+							window.setTimeout(function() {
+								st.staleModalCallbackDepth = Math.max(0, (st.staleModalCallbackDepth || 1) - 1);
+							}, 0);
+						}
+					}
+					return res;
+				});
+			}
 			const now = Date.now();
 			if (isMutationLocked() && (now - st.startedAt > 120)) {
 				if (now - (st.lastBusyToastAt || 0) > 1500 && typeof ui !== 'undefined' && ui.addNotification) {
@@ -702,6 +758,11 @@ function reloadAfterExpectedDisconnect(e, message, delay) {
 function closeModal(ev) {
 	if (ev && ev.preventDefault) ev.preventDefault();
 	if (ev && ev.stopPropagation) ev.stopPropagation();
+	if (typeof window !== 'undefined' && window._arkTxState) {
+		window._arkTxState.modalOpen = false;
+		window._arkTxState.modalSeq = (window._arkTxState.modalSeq || 0) + 1;
+		window._arkTxState.staleModalCallbackDepth = 0;
+	}
 	try { ui.hideModal(); } catch (e) {}
 	document.body.classList.remove('modal-open');
 	document.body.classList.remove('modal-overlay-active');
@@ -1295,6 +1356,7 @@ function wifiConfig(config) {
 		out.ssid=out.ssid2||out.ssid5||out.ssid6||out.ssid||'';
 		out.split=!!(out.ssid2&&out.ssid5&&out.ssid2!==out.ssid5);
 		out.network=(a&&a.network)||(b&&b.network)||(c&&c.network)||'lan';
+		out.hidden = ((a && a.hidden === '1') || (b && b.hidden === '1') || (c && c.hidden === '1')) ? '1' : '0';
 		out.has2g=!!(a&&a.ssid);
 		out.has5g=!!(b&&b.ssid);
 		out.has6g=!!(c&&c.ssid);
@@ -1857,8 +1919,14 @@ function withButtonFeedback(button, actionFn, options) {
 // /src/modules/lifecycle.js - ARK Router LuCI View Module
 const lifecycleMethods = {
 	board: {}, countries: [], capabilities: {features:{}}, previous: {}, trafficPrevious: {}, trafficAt: 0, currentData: null, recommendedChannels: null, speedResults: {}, refreshTimer: null, clockTimer: null, dashboardRoot: null, deviceSortKey: 'total', deviceSortDir: 'desc', starlinkTelemetryTimer: null, starlinkTelemetryStopTimer: null, starlinkTelemetryActive: false, starlinkTelemetryWan: null, starlinkWanOrder: [], starlinkResults: {},
-	fetchCapabilities: function(){
+	fetchCapabilities: function(forceRefresh){
 		const expectedVer = (typeof window !== 'undefined' && window.ARK_VERSION) ? window.ARK_VERSION : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : '');
+		if (forceRefresh) {
+			if (typeof window !== 'undefined') delete window._arkCapabilities;
+			if (typeof sessionStorage !== 'undefined') {
+				try { sessionStorage.removeItem('ark_caps'); } catch(e) {}
+			}
+		}
 		if (typeof window !== 'undefined' && window._arkCapabilities && window._arkCapabilities.features) {
 			const memVer = (window._arkCapabilities.update && window._arkCapabilities.update.current) || '';
 			if (!expectedVer || !memVer || memVer === expectedVer) {
@@ -1961,7 +2029,7 @@ const lifecycleMethods = {
 			ui.addNotification(null, E('p', {}, [message]), type || 'info');
 		}
 		return Promise.all([
-			this.fetchCapabilities(),
+			this.fetchCapabilities(true),
 			this.fetchData(false)
 		]).then(L.bind(function(res) {
 			const caps = res[0], data = res[1];
@@ -1996,13 +2064,16 @@ const lifecycleMethods = {
 			E('button', {class: 'btn cbi-button cbi-button-neutral', 'click': closeModal}, ['Cancelar']), ' ',
 			E('button', {class: 'btn cbi-button ' + (isGamer ? 'cbi-button-negative' : 'cbi-button-positive'), 'click': L.bind(function(){
 				const shouldTurnOnSqm = isGamer && !qosActive && autoEnableSqm.checked;
-				const actions = [fs.exec('/usr/sbin/equipe-dashboard-control', ['profile', targetMode])];
-				if (shouldTurnOnSqm) {
-					actions.push(fs.exec('/usr/sbin/equipe-dashboard-control', ['sqm-toggle', '1']));
-				}
-				return Promise.all(actions).then(L.bind(function(r){
-					const res = r[0] || {};
+				return fs.exec('/usr/sbin/equipe-dashboard-control', ['profile', targetMode]).then(L.bind(function(res){
+					res = res || {};
 					if(res.code) throw new Error(res.stderr || 'Falha ao alterar perfil operacional');
+					if (!shouldTurnOnSqm) return res;
+					return fs.exec('/usr/sbin/equipe-dashboard-control', ['sqm-toggle', '1']).then(function(res2){
+						res2 = res2 || {};
+						if(res2.code) throw new Error(res2.stderr || 'Falha ao ativar SQM / CAKE');
+						return res2;
+					});
+				}, this)).then(L.bind(function(){
 					ui.hideModal();
 					const msg = isGamer ? (shouldTurnOnSqm ? 'Modo Gamer e SQM / CAKE ativados com sucesso!' : 'Modo Gamer ativado com sucesso!') : 'Modo Padrão restaurado.';
 					this.triggerImmediateRefresh(msg, 'info');
@@ -5655,10 +5726,12 @@ const networkMethods = {
 				]),
 				E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' }, [
 					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.14); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.30);' }, ['👥 Isolamento Justo por IP']),
-					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.10); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.22);' }, ['📊 4 Filas DiffServ'])
+					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.10); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.22);' }, ['📊 4 Filas DiffServ']),
+					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.10); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.22);' }, ['👨‍👩‍👧‍👦 Ideal Residências'])
 				]),
 				E('div', { style: 'font-size: 12px; line-height: 1.45; color: #e2e8f0;' }, [
-					'Divide a internet igualmente entre cada aparelho da casa (dual-srchost / dual-dsthost), impedindo que um único download puxe toda a banda.'
+					'Divide a internet cirurgicamente por aparelho da casa (dual-srchost / dual-dsthost), impedindo que um streaming 4K ou download puxe toda a banda. ',
+					E('strong', { style: 'color: #34d399;' }, ['Recomendado para casas com muitos usuários e dezenas de aparelhos em conexões de até ~700–800 Mbps.'])
 				])
 			]);
 			const modalBtnHfsc = E('div', {
@@ -5676,10 +5749,13 @@ const networkMethods = {
 				]),
 				E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' }, [
 					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.16); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.32);' }, ['🎮 Curva Gamer < 1 ms']),
-					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.10); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.22);' }, ['⚡ Gigabit (-40% CPU)'])
+					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.10); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.22);' }, ['⚡ -40% CPU']),
+					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: rgba(245, 158, 11, 0.20); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.40);' }, ['🔥 Essencial ≥ 800M / 1 Gbps'])
 				]),
 				E('div', { style: 'font-size: 12px; line-height: 1.45; color: #e2e8f0;' }, [
-					'Reserva via exclusiva em Tempo Real (< 1 ms) para Jogos, VoIP e Ping, e libera máxima velocidade Gigabit com FQ-CoDel Turbo e menor uso de CPU.'
+					'Reserva canal em Tempo Real (< 1 ms) para Jogos, VoIP e Ping com zero descarte, e usa FQ-CoDel Turbo (quantum 1514). ',
+					E('strong', { style: 'color: #fbbf24;' }, ['Essencial a partir de 800 Mbps, 1 Gbps ou Multi-Gigabit']),
+					', onde o CAKE satura a CPU em 100% e causa gargalo de processamento no roteador.'
 				])
 			]);
 			const updateModalEngineButtons = function() {
@@ -5708,6 +5784,27 @@ const networkMethods = {
 			};
 			updateModalEngineButtons();
 
+			const engineComparisonGuide = E('div', {
+				style: 'margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: rgba(0, 0, 0, 0.28); border-left: 3px solid #38bdf8; font-size: 11.5px; line-height: 1.5; color: #cbd5e1;'
+			}, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 6px;' }, [
+					E('strong', { style: 'color: #f8fafc; font-size: 12px;' }, ['💡 Guia de Engenharia: Quando escolher cada motor?']),
+					E('span', { style: 'color: #fbbf24; font-weight: 700; font-size: 11px;' }, ['⚡ A partir de 800 Mbps / 1 Gbps: Use HFSC Turbo'])
+				]),
+				E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px;' }, [
+					E('div', {}, [
+						E('strong', { style: 'color: #34d399;' }, ['🛡️ CAKE (Layer Cake): ']),
+						'Melhor para ', E('strong', {}, ['casas com muitos usuários']), '. Divide a banda igualmente por aparelho (IP), impedindo que um único download de TV ou celular abafe os demais. Ideal em conexões de até ~700–800 Mbps.'
+					]),
+					E('div', {}, [
+						E('strong', { style: 'color: #38bdf8;' }, ['🚀 HFSC + FQ-CoDel Turbo: ']),
+						'Melhor para ', E('strong', {}, ['Jogos (< 1 ms), chamadas e velocidade pura']), '. Economiza ~40% de CPU. ',
+						E('strong', { style: 'color: #fbbf24;' }, ['Essencial a partir de 800 Mbps a 1 Gbps+']),
+						', onde o cálculo do CAKE satura os núcleos do roteador em 100% e limita a velocidade da sua fibra.'
+					])
+				])
+			]);
+
 			const modalEngineBanner = E('div', {
 				style: 'margin-bottom: 14px; padding: 14px 16px; border-radius: 12px; background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(148, 163, 184, 0.18);'
 			}, [
@@ -5718,7 +5815,8 @@ const networkMethods = {
 				E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;' }, [
 					modalBtnCake,
 					modalBtnHfsc
-				])
+				]),
+				engineComparisonGuide
 			]);
 
 			const modalGamingPortsInput = E('input', {
@@ -5757,6 +5855,80 @@ const networkMethods = {
 				])
 			]);
 
+			const dscpMatrixBanner = E('details', {
+				class: 'ex-qos-matrix-details',
+				style: 'margin-bottom: 14px; padding: 12px 14px; border-radius: 12px; background: rgba(15, 23, 42, 0.45); border: 1px solid rgba(148, 163, 184, 0.22); font-size: 12px; line-height: 1.45;'
+			}, [
+				E('summary', { style: 'cursor: pointer; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; user-select: none;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
+						E('strong', { style: 'font-size: 13.5px; color: #f8fafc;' }, ['📊 ' + _t('Matriz de Classificação por Aplicação (L7 / DSCP)')]),
+						E('span', {
+							style: 'font-size: 10.5px; font-weight: 700; color: #34d399; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.16); border: 1px solid rgba(16, 185, 129, 0.35);'
+						}, ['4 Filas DiffServ & HFSC RT'])
+					]),
+					E('span', { class: 'ex-pill online', style: 'font-size: 11px;' }, [_t('Ativo em Hardware (fw4 / nftables)')])
+				]),
+				E('div', { style: 'margin-top: 10px; display: flex; flex-direction: column; gap: 10px;' }, [
+					E('p', { class: 'ex-muted', style: 'margin: 0; font-size: 12px; line-height: 1.4;' }, [
+						_t('Os pacotes são classificados nativamente pelo kernel nftables em microssegundos com persistência Conntrack (0% overhead de CPU). O motor de QoS ativo (CAKE ou HFSC Turbo) despacha cada aplicação para sua respectiva fila:')
+					]),
+					E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;' }, [
+						E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25);' }, [
+							E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+								E('strong', { style: 'color: #f87171; font-size: 12.5px;' }, ['🔴 ' + _t('Fila 1: Latência Zero / Voice (< 1 ms)')]),
+								E('span', { style: 'font-size: 10px; font-weight: 700; color: #fca5a5; padding: 1px 6px; border-radius: 4px; background: rgba(239, 68, 68, 0.2);' }, ['CS6 / CS5 / CS4 / EF'])
+							]),
+							E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+								E('strong', { style: 'color: #fca5a5;' }, [_t('Destino: ')]), _t('CAKE Voice Tin • HFSC Classe 1:10 (Real-Time)'), E('br'),
+								E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+									'🎮 80+ Jogos (CS2, Valorant, LoL, Dota, CoD, Fortnite), Consoles (PS5/Xbox/Switch), Discord RTC, VoIP (SIP/RTP), ICMP Ping, DNS (53/853), Handshakes TCP e L4S ECT(1).'
+								])
+							])
+						]),
+						E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25);' }, [
+							E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+								E('strong', { style: 'color: #fbbf24; font-size: 12.5px;' }, ['🟡 ' + _t('Fila 2: Interativo / Videoconferência')]),
+								E('span', { style: 'font-size: 10px; font-weight: 700; color: #fde68a; padding: 1px 6px; border-radius: 4px; background: rgba(245, 158, 11, 0.2);' }, ['AF41 / CS5'])
+							]),
+							E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+								E('strong', { style: 'color: #fde68a;' }, [_t('Destino: ')]), _t('CAKE Video Tin • HFSC Classe 1:20 (Turbo)'), E('br'),
+								E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+									'👥 Zoom, Microsoft Teams, Google Meet, Webex, WhatsApp Voz & Vídeo, STUN/TURN e tráfego interativo WebRTC.'
+								])
+							])
+						]),
+						E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25);' }, [
+							E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+								E('strong', { style: 'color: #34d399; font-size: 12.5px;' }, ['🟢 ' + _t('Fila 3: Navegação Geral & Streaming')]),
+								E('span', { style: 'font-size: 10px; font-weight: 700; color: #a7f3d0; padding: 1px 6px; border-radius: 4px; background: rgba(16, 185, 129, 0.2);' }, ['CS0 (Padrão)'])
+							]),
+							E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+								E('strong', { style: 'color: #a7f3d0;' }, [_t('Destino: ')]), _t('CAKE Best Effort • HFSC Classe 1:20 (Geral)'), E('br'),
+								E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+									'🌐 Navegação Web (HTTP/HTTPS/QUIC), Redes Sociais (Instagram, TikTok, X), Streaming de Vídeo (YouTube, Netflix, Prime Video, Twitch).'
+								])
+							])
+						]),
+						E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25);' }, [
+							E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+								E('strong', { style: 'color: #60a5fa; font-size: 12.5px;' }, ['🔵 ' + _t('Fila 4: Fila de Fundo (Bulk / Scavenger)')]),
+								E('span', { style: 'font-size: 10px; font-weight: 700; color: #bfdbfe; padding: 1px 6px; border-radius: 4px; background: rgba(59, 130, 246, 0.2);' }, ['CS1 (Scavenger)'])
+							]),
+							E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+								E('strong', { style: 'color: #bfdbfe;' }, [_t('Destino: ')]), _t('CAKE Bulk Tin • HFSC Classe 1:30 (Elástico)'), E('br'),
+								E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+									'📥 BitTorrent, qBittorrent, Transmission, downloads pesados em segundo plano. Cede 100% da banda instantaneamente quando qualquer outra fila solicita tráfego.'
+								])
+							])
+						])
+					]),
+					E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0, 0, 0, 0.25); border-left: 3px solid #38bdf8; font-size: 11.5px; color: #94a3b8;' }, [
+						E('strong', { style: 'color: #38bdf8;' }, ['💡 Fast-Path Conntrack: ']),
+						'Uma vez classificado o primeiro pacote da conexão, o kernel memoriza a prioridade no conntrack mark (0x80 | DSCP). Pacotes Gigabit subsequentes fluem direto sem reavaliar as tabelas, mantendo taxa de linha total.'
+					])
+				])
+			]);
+
 			ui.showModal('Editar SQM / CAKE',[
 				E('div',{style:'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;'},[
 					E('p',{class:'ex-muted',style:'margin:0;'},[_t('Defina os limites em Mbps. Exemplo: 1,2 Gbps = 1200 Mbps. Use 0 ou deixe em branco quando não quiser limitar aquela direção (ilimitado).')]),
@@ -5769,6 +5941,7 @@ const networkMethods = {
 				modalEngineBanner,
 				waveformAplusBanner,
 				gamingPortsBanner,
+				dscpMatrixBanner,
 				speedtestBanner,
 				flowOffloadNotice,
 				mipsNotice,
@@ -8080,7 +8253,9 @@ const networkModalsMethods = {
 		const CLASSIC_PORTS = '51413,6881:6999';
 		const clients = (this.currentData && this.currentData.clients) || [];
 
-		let activePorts = currentPorts || WIDE_PORTS;
+		let activePorts = (typeof currentPorts === 'string' && currentPorts.trim())
+			? currentPorts.trim()
+			: (Array.isArray(currentPorts) && currentPorts.length ? currentPorts.join(',') : WIDE_PORTS);
 		let initialPreset = 'custom';
 		if (activePorts === WIDE_PORTS || (activePorts.indexOf('1024') >= 0 && activePorts.indexOf('65535') >= 0)) {
 			initialPreset = 'wide';
@@ -8088,7 +8263,7 @@ const networkModalsMethods = {
 			initialPreset = 'classic';
 		}
 
-		let activeIp = (currentIp && currentIp !== '0.0.0.0' && currentIp !== '0.0.0.0/0') ? currentIp : '0.0.0.0';
+		let activeIp = (typeof currentIp === 'string' && currentIp && currentIp !== '0.0.0.0' && currentIp !== '0.0.0.0/0') ? currentIp : '0.0.0.0';
 
 		const customInput = E('input', {
 			type: 'text',
@@ -8467,6 +8642,11 @@ const wifiMethods = {
 		const passRow1 = E('label', { class: 'ex-device-config-block' }, [ E('strong', {}, ['Senha']), password ]);
 		const passRow2 = E('label', { class: 'ex-device-config-block' }, [ E('strong', {}, ['Confirmar senha']), passwordConfirm ]);
 		const showRow = E('label', { class: 'ex-show-password' }, [ show, E('span', {}, ['Mostrar senha digitada']) ]);
+		const hiddenAddInput = E('input', { type: 'checkbox' });
+		const hiddenAddRow = E('label', { class: 'ex-show-password', style: 'margin-top: 6px;' }, [
+			hiddenAddInput,
+			E('span', {}, [_t('Ocultar nome da rede Wi‑Fi (SSID Oculto)')])
+		]);
 
 		const encAlert = E('div', { class: 'alert-message', style: 'margin-top: 6px; font-size: 11.5px; display: none;' });
 		const updateEncVisibility = function() {
@@ -8514,6 +8694,7 @@ const wifiMethods = {
 			passRow1,
 			passRow2,
 			showRow,
+			hiddenAddRow,
 			E('p', { class: 'alert-message warning' }, ['Ao salvar, o Wi‑Fi reiniciará para criar os novos pontos de acesso sem fio.']),
 			E('div', { class: 'right' }, [
 				E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': closeModal }, ['Cancelar']),
@@ -8528,7 +8709,7 @@ const wifiMethods = {
 					}
 					btn.disabled = true;
 					btn.textContent = 'Criando rede Wi‑Fi…';
-					return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-add', name, (enc === 'none' ? '' : pass), netSelect.value, bandSelect.value, enc]).then(function(r) {
+					return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-add', name, (enc === 'none' ? '' : pass), netSelect.value, bandSelect.value, enc, (hiddenAddInput.checked ? '1' : '0')]).then(function(r) {
 						if (r.code) throw new Error(r.stderr || 'Falha ao criar rede Wi-Fi');
 						ui.hideModal();
 						reloadSoon('Nova rede Wi-Fi criada. Reiniciando o rádio…', 1500);
@@ -9146,6 +9327,37 @@ const wifiMethods = {
 		rows.push(passRow1);
 		rows.push(passRow2);
 		rows.push(showRow);
+
+		const hiddenInput = E('input', { type: 'checkbox' });
+		hiddenInput.checked = String(current.hidden || '0') === '1';
+
+		const hiddenRow = E('div', { class: 'ex-device-config-block', style: 'padding: 10px 12px; border-radius: 8px; background: rgba(127,127,127,.06); border: 1px solid rgba(127,127,127,.12); margin-top: 10px;' }, [
+			E('div', { class: 'ex-device-config-heading' }, [
+				E('div', { style: 'display: flex; flex-direction: column; gap: 2px;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 6px;' }, [
+						E('strong', {}, [_t('Ocultar nome da rede (SSID Oculto)')]),
+						hiddenInput.checked ? E('span', { class: 'ex-wifi-hidden-tag', style: 'font-size: 11px; padding: 1px 6px; background: rgba(239,68,68,0.15); color: #f87171; border-radius: 4px; font-weight: 700;' }, [_t('Oculta')]) : ''
+					]),
+					E('small', { class: 'ex-muted', style: 'font-size: 11.5px; line-height: 1.3;' }, [
+						_t('Não transmite o nome do Wi‑Fi publicamente. Aparelhos já conectados continuam funcionando normalmente. Lâmpadas e tomadas inteligentes (IoT) podem falhar ao reconectar após falta de luz se a rede estiver oculta.')
+					])
+				]),
+				E('div', { class: 'ex-device-switch-control', style: 'flex: 0 0 auto;' }, [
+					E('strong', { class: 'ex-device-switch-state' }, [hiddenInput.checked ? _t('Oculta') : _t('Visível')]),
+					E('label', { class: 'ex-switch', 'aria-label': _t('Ocultar nome da rede') }, [
+						hiddenInput,
+						E('span', { class: 'ex-switch-slider' })
+					])
+				])
+			])
+		]);
+		hiddenInput.addEventListener('change', function() {
+			const st = hiddenRow.querySelector('.ex-device-switch-state');
+			if (st) st.textContent = hiddenInput.checked ? _t('Oculta') : _t('Visível');
+			const tag = hiddenRow.querySelector('.ex-wifi-hidden-tag');
+			if (tag) tag.style.display = hiddenInput.checked ? 'inline' : 'none';
+		});
+		rows.push(hiddenRow);
 		if(current.kind === 'extra' || String(kind).indexOf('extra_') === 0 || (kind !== 'main' && kind !== 'guest')){
 			const deleteBox = E('div', { class: 'ex-device-config-block', style: 'border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.05);padding:12px;margin-top:14px;border-radius:12px;' });
 			const deleteConfirmBox = E('div', { style: 'display:none;margin-top:10px;padding:12px;border-radius:10px;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.35);' });
@@ -9231,7 +9443,7 @@ const wifiMethods = {
 			}
 			btn.disabled = true;
 			btn.textContent = 'Salvando Wi‑Fi…';
-			const args=['wifi-settings',kind,'split='+(isSplit?'1':'0'),'ssid='+name,'ssid2='+(isSplit?name2:name),'ssid5='+(isSplit?name5:name),'encryption='+enc,'split_enc='+(isSplitEnc?'1':'0'),'encryption2='+(isSplitEnc?enc2:enc),'encryption5='+(isSplitEnc?enc5:enc),'enabled='+(isGuest?(enabled.checked?'1':'0'):'keep'),'enable_2g='+(b2?'1':'0'),'enable_5g='+(b5?'1':'0')];
+			const args=['wifi-settings',kind,'split='+(isSplit?'1':'0'),'ssid='+name,'ssid2='+(isSplit?name2:name),'ssid5='+(isSplit?name5:name),'encryption='+enc,'split_enc='+(isSplitEnc?'1':'0'),'encryption2='+(isSplitEnc?enc2:enc),'encryption5='+(isSplitEnc?enc5:enc),'enabled='+(isGuest?(enabled.checked?'1':'0'):'keep'),'hidden='+(hiddenInput.checked?'1':'0'),'enable_2g='+(b2?'1':'0'),'enable_5g='+(b5?'1':'0')];
 			if (has6g) {
 				args.push('enable_6g=' + (b6 ? '1' : '0'));
 				args.push('ssid6=' + (isSplit ? name6 : name));
@@ -11982,7 +12194,7 @@ const vpnMethods = {
 							if(res.code) throw new Error(res.stderr || 'Falha ao alterar estado da conexão');
 							ui.hideModal();
 							ui.addNotification(null, E('p', {}, [targetState === '1' ? 'Cliente ativado. Tentando conectar…' : 'Cliente pausado.']), 'info');
-							self.fetchCapabilities().then(function(c){
+							self.fetchCapabilities(true).then(function(c){
 								self.capabilities = c;
 								if(self.dashboardRoot && self.currentData) self.update(self.currentData);
 							});
@@ -12189,7 +12401,7 @@ const vpnMethods = {
 						if(saveRes.code) throw new Error(saveRes.stderr || 'Falha ao importar cliente WireGuard');
 						ui.hideModal();
 						ui.addNotification(null, E('p', {}, ['Cliente WireGuard importado e conectado com sucesso!']), 'info');
-						self.fetchCapabilities().then(function(c){
+						self.fetchCapabilities(true).then(function(c){
 							self.capabilities = c;
 							if(self.dashboardRoot && self.currentData) self.update(self.currentData);
 						});
@@ -13397,7 +13609,7 @@ const speedifyMethods = {
 		if(row) row.classList.toggle('is-active', desired);
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['speedify-bypass-service',title,desired?'on':'off']).then(L.bind(function(r){
 			if(r.code)throw new Error(r.stderr||'Falha ao alterar o Bypass');
-			return this.fetchCapabilities().then(L.bind(function(c){
+			return this.fetchCapabilities(true).then(L.bind(function(c){
 				this.capabilities=c;
 				const data=(c.features&&c.features.speedify_bypass)||{}, item=(data.services||[]).find(function(s){return String(s.title||'')===title;}), actual=item?!!item.enabled:desired;
 				input.checked=actual;
@@ -15063,7 +15275,7 @@ const systemMethods = {
 		ui.showModal('INSTALAÇÃO DO CERTIFICADO',[E('p',{class:'alert-message warning'},['Instale apenas em aparelhos administrativos nos quais você confia. Nunca é necessário instalar a chave privada.']),E('ol',{class:'ex-cert-steps'},[E('li',{},['Windows: abra o arquivo e instale-o em Autoridades de Certificação Raiz Confiáveis.']),E('li',{},['Android: em Segurança, procure Instalar certificado de CA e selecione o arquivo.']),E('li',{},['iPhone/iPad: instale o perfil baixado e depois habilite confiança total nos Ajustes de Certificados.']),E('li',{},['Depois da instalação, feche e abra novamente o navegador e acesse novamente o endereço HTTPS do roteador.'])]),fingerprint?E('p',{class:'ex-cert-fingerprint'},[E('span',{},['Impressão digital SHA-256']),E('code',{},[fingerprint])]):'',E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])]);
 	},
 	setFeatureHidden: function(key,hidden){
-		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-hide',key,hidden?'1':'0']).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar a preferência');return this.fetchCapabilities().then(function(c){this.capabilities=c;window.location.reload();}.bind(this));},this)).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]));});
+		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-hide',key,hidden?'1':'0']).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar a preferência');return this.fetchCapabilities(true).then(function(c){this.capabilities=c;window.location.reload();}.bind(this));},this)).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]));});
 	},
 	loadFeatureInstallLog: function(key){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-install-log',key]).then(function(r){return String(r.stdout||'').trim();}).catch(function(){return '';});
@@ -15127,7 +15339,30 @@ const systemMethods = {
 		if(force !== false) args.push('force');
 		return fs.exec('/usr/sbin/equipe-dashboard-control',args,20000).then(L.bind(function(r){
 			if(r.code)throw new Error(r.stderr||'Falha ao verificar atualização');
-			let info={}; try{info=JSON.parse(r.stdout||'{}');}catch(e){throw new Error('Resposta de atualização inválida');}
+			let info={};
+			try{
+				info=JSON.parse(r.stdout||'{}');
+			}catch(e){
+				const raw = String(r.stdout || '');
+				const mLatest = raw.match(/"latest"\s*:\s*"([^"]+)"/);
+				const mAvail = raw.match(/"available"\s*:\s*(true|false)/);
+				const mUrl = raw.match(/"url"\s*:\s*"([^"]+)"/);
+				const mAsset = raw.match(/"asset"\s*:\s*"([^"]+)"/);
+				if (mLatest) {
+					info = {
+						current: (this.capabilities && this.capabilities.update && this.capabilities.update.current) || (typeof window !== 'undefined' && window.ARK_VERSION) || '',
+						latest: mLatest[1],
+						available: mAvail ? mAvail[1] === 'true' : false,
+						url: mUrl ? mUrl[1] : '',
+						asset: mAsset ? mAsset[1] : '',
+						changelog: '',
+						error: '',
+						space_ok: true
+					};
+				} else {
+					throw new Error('Resposta de atualização inválida');
+				}
+			}
 			try{
 				localStorage.setItem('ark_last_update_check_time',String(Date.now()));
 				localStorage.setItem('ark_last_update_check_data',JSON.stringify(info));
@@ -15447,7 +15682,21 @@ const systemMethods = {
 			fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-check']).then(function(r){
 				if(r.code)return;
 				let info={};
-				try{info=JSON.parse(r.stdout||'{}');}catch(e){return;}
+				try{
+					info=JSON.parse(r.stdout||'{}');
+				}catch(e){
+					const raw = String(r.stdout || '');
+					const mLatest = raw.match(/"latest"\s*:\s*"([^"]+)"/);
+					const mAvail = raw.match(/"available"\s*:\s*(true|false)/);
+					if (mLatest) {
+						info = {
+							latest: mLatest[1],
+							available: mAvail ? mAvail[1] === 'true' : false
+						};
+					} else {
+						return;
+					}
+				}
 				localStorage.setItem('ark_last_update_check_time',String(Date.now()));
 				localStorage.setItem('ark_last_update_check_data',JSON.stringify(info));
 				if(info&&info.available&&(!curVer || info.latest !== curVer)){
@@ -22183,7 +22432,10 @@ const renderMethods = {
 			const kickerText = isExtra ? ('REDE ADICIONAL' + (cfg.network === 'guest' ? ' (ISOLADA)' : '')) : ('REDE WI‑FI' + (cfg.split ? ' (SEPARADA)' : ''));
 			const titleElements = [
 				E('span',{class:'ex-kicker'},[kickerText]),
-				E('h3',{id:'ex-'+kind+'-ssid'},[ssid])
+				E('h3',{id:'ex-'+kind+'-ssid'},[
+					ssid,
+					(cfg.hidden === '1') ? E('span', { class: 'ex-wifi-hidden-badge', style: 'margin-left: 8px; font-size: 11px; padding: 2px 7px; background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.25); border-radius: 6px; font-weight: 700; vertical-align: middle;' }, [_t('Oculta')]) : ''
+				])
 			];
 			let bandSubtitle = '';
 			const is2gOff = cfg.disabled2 === '1';
@@ -23117,10 +23369,12 @@ const renderMethods = {
 									]),
 									E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' }, [
 										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.14); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.30);' }, ['👥 Isolamento Justo por IP']),
-										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.10); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.22);' }, ['📊 4 Filas DiffServ'])
+										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.10); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.22);' }, ['📊 4 Filas DiffServ']),
+										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.10); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.22);' }, ['👨‍👩‍👧‍👦 Ideal Residências'])
 									]),
 									E('div', { style: 'font-size: 12px; line-height: 1.45; color: #e2e8f0;' }, [
-										'Divide a internet igualmente entre cada aparelho da casa (dual-srchost / dual-dsthost), impedindo que um único download puxe toda a banda.'
+										'Divide a internet cirurgicamente por aparelho da casa (dual-srchost / dual-dsthost), impedindo que um streaming 4K ou download puxe toda a banda. ',
+										E('strong', { style: 'color: #34d399;' }, ['Recomendado para casas com muitos usuários e dezenas de aparelhos em conexões de até ~700–800 Mbps.'])
 									])
 								]),
 								E('div', {
@@ -23141,10 +23395,106 @@ const renderMethods = {
 									]),
 									E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' }, [
 										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.16); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.32);' }, ['🎮 Curva Gamer < 1 ms']),
-										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.10); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.22);' }, ['⚡ Gigabit (-40% CPU)'])
+										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.10); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.22);' }, ['⚡ -40% CPU']),
+										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: rgba(245, 158, 11, 0.20); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.40);' }, ['🔥 Essencial ≥ 800M / 1 Gbps'])
 									]),
 									E('div', { style: 'font-size: 12px; line-height: 1.45; color: #e2e8f0;' }, [
-										'Reserva via exclusiva em Tempo Real (< 1 ms) para Jogos, VoIP e Ping, e libera máxima velocidade Gigabit com FQ-CoDel Turbo e menor uso de CPU.'
+										'Reserva canal em Tempo Real (< 1 ms) para Jogos, VoIP e Ping com zero descarte, e usa FQ-CoDel Turbo (quantum 1514). ',
+										E('strong', { style: 'color: #fbbf24;' }, ['Essencial a partir de 800 Mbps, 1 Gbps ou Multi-Gigabit']),
+										', onde o CAKE satura a CPU em 100% e causa gargalo de processamento no roteador.'
+									])
+								])
+							]),
+							E('div', {
+								style: 'margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: rgba(0, 0, 0, 0.28); border-left: 3px solid #38bdf8; font-size: 11.5px; line-height: 1.5; color: #cbd5e1;'
+							}, [
+								E('div', { style: 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 6px;' }, [
+									E('strong', { style: 'color: #f8fafc; font-size: 12px;' }, ['💡 Guia de Engenharia: Quando escolher cada motor?']),
+									E('span', { style: 'color: #fbbf24; font-weight: 700; font-size: 11px;' }, ['⚡ A partir de 800 Mbps / 1 Gbps: Use HFSC Turbo'])
+								]),
+								E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px;' }, [
+									E('div', {}, [
+										E('strong', { style: 'color: #34d399;' }, ['🛡️ CAKE (Layer Cake): ']),
+										'Melhor para ', E('strong', {}, ['casas com muitos usuários']), '. Divide a banda igualmente por aparelho (IP), impedindo que um único download de TV ou celular abafe os demais. Ideal em conexões de até ~700–800 Mbps.'
+									]),
+									E('div', {}, [
+										E('strong', { style: 'color: #38bdf8;' }, ['🚀 HFSC + FQ-CoDel Turbo: ']),
+										'Melhor para ', E('strong', {}, ['Jogos (< 1 ms), chamadas e velocidade pura']), '. Economiza ~40% de CPU. ',
+										E('strong', { style: 'color: #fbbf24;' }, ['Essencial a partir de 800 Mbps a 1 Gbps+']),
+										', onde o cálculo do CAKE satura os núcleos do roteador em 100% e limita a velocidade da sua fibra.'
+									])
+								])
+							]),
+							E('details', {
+								class: 'ex-qos-matrix-details',
+								style: 'margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: rgba(15, 23, 42, 0.45); border: 1px solid rgba(148, 163, 184, 0.22); font-size: 12px; line-height: 1.45;'
+							}, [
+								E('summary', { style: 'cursor: pointer; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; user-select: none;' }, [
+									E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
+										E('strong', { style: 'font-size: 13.5px; color: #f8fafc;' }, ['📊 ' + _t('Matriz de Classificação por Aplicação (L7 / DSCP)')]),
+										E('span', {
+											style: 'font-size: 10.5px; font-weight: 700; color: #34d399; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.16); border: 1px solid rgba(16, 185, 129, 0.35);'
+										}, ['4 Filas DiffServ & HFSC RT'])
+									]),
+									E('span', { class: 'ex-pill online', style: 'font-size: 11px;' }, [_t('Ativo em Hardware (fw4 / nftables)')])
+								]),
+								E('div', { style: 'margin-top: 10px; display: flex; flex-direction: column; gap: 10px;' }, [
+									E('p', { class: 'ex-muted', style: 'margin: 0; font-size: 12px; line-height: 1.4;' }, [
+										_t('Os pacotes são classificados nativamente pelo kernel nftables em microssegundos com persistência Conntrack (0% overhead de CPU). O motor de QoS ativo (CAKE ou HFSC Turbo) despacha cada aplicação para sua respectiva fila:')
+									]),
+									E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;' }, [
+										E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25);' }, [
+											E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+												E('strong', { style: 'color: #f87171; font-size: 12.5px;' }, ['🔴 ' + _t('Fila 1: Latência Zero / Voice (< 1 ms)')]),
+												E('span', { style: 'font-size: 10px; font-weight: 700; color: #fca5a5; padding: 1px 6px; border-radius: 4px; background: rgba(239, 68, 68, 0.2);' }, ['CS6 / CS5 / CS4 / EF'])
+											]),
+											E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+												E('strong', { style: 'color: #fca5a5;' }, [_t('Destino: ')]), _t('CAKE Voice Tin • HFSC Classe 1:10 (Real-Time)'), E('br'),
+												E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+													'🎮 80+ Jogos (CS2, Valorant, LoL, Dota, CoD, Fortnite), Consoles (PS5/Xbox/Switch), Discord RTC, VoIP (SIP/RTP), ICMP Ping, DNS (53/853), Handshakes TCP e L4S ECT(1).'
+												])
+											])
+										]),
+										E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25);' }, [
+											E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+												E('strong', { style: 'color: #fbbf24; font-size: 12.5px;' }, ['🟡 ' + _t('Fila 2: Interativo / Videoconferência')]),
+												E('span', { style: 'font-size: 10px; font-weight: 700; color: #fde68a; padding: 1px 6px; border-radius: 4px; background: rgba(245, 158, 11, 0.2);' }, ['AF41 / CS5'])
+											]),
+											E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+												E('strong', { style: 'color: #fde68a;' }, [_t('Destino: ')]), _t('CAKE Video Tin • HFSC Classe 1:20 (Turbo)'), E('br'),
+												E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+													'👥 Zoom, Microsoft Teams, Google Meet, Webex, WhatsApp Voz & Vídeo, STUN/TURN e tráfego interativo WebRTC.'
+												])
+											])
+										]),
+										E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25);' }, [
+											E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+												E('strong', { style: 'color: #34d399; font-size: 12.5px;' }, ['🟢 ' + _t('Fila 3: Navegação Geral & Streaming')]),
+												E('span', { style: 'font-size: 10px; font-weight: 700; color: #a7f3d0; padding: 1px 6px; border-radius: 4px; background: rgba(16, 185, 129, 0.2);' }, ['CS0 (Padrão)'])
+											]),
+											E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+												E('strong', { style: 'color: #a7f3d0;' }, [_t('Destino: ')]), _t('CAKE Best Effort • HFSC Classe 1:20 (Geral)'), E('br'),
+												E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+													'🌐 Navegação Web (HTTP/HTTPS/QUIC), Redes Sociais (Instagram, TikTok, X), Streaming de Vídeo (YouTube, Netflix, Prime Video, Twitch).'
+												])
+											])
+										]),
+										E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25);' }, [
+											E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+												E('strong', { style: 'color: #60a5fa; font-size: 12.5px;' }, ['🔵 ' + _t('Fila 4: Fila de Fundo (Bulk / Scavenger)')]),
+												E('span', { style: 'font-size: 10px; font-weight: 700; color: #bfdbfe; padding: 1px 6px; border-radius: 4px; background: rgba(59, 130, 246, 0.2);' }, ['CS1 (Scavenger)'])
+											]),
+											E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+												E('strong', { style: 'color: #bfdbfe;' }, [_t('Destino: ')]), _t('CAKE Bulk Tin • HFSC Classe 1:30 (Elástico)'), E('br'),
+												E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+													'📥 BitTorrent, qBittorrent, Transmission, downloads pesados em segundo plano. Cede 100% da banda instantaneamente quando qualquer outra fila solicita tráfego.'
+												])
+											])
+										])
+									]),
+									E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0, 0, 0, 0.25); border-left: 3px solid #38bdf8; font-size: 11.5px; color: #94a3b8;' }, [
+										E('strong', { style: 'color: #38bdf8;' }, ['💡 Fast-Path Conntrack: ']),
+										'Uma vez classificado o primeiro pacote da conexão, o kernel memoriza a prioridade no conntrack mark (0x80 | DSCP). Pacotes Gigabit subsequentes fluem direto sem reavaliar as tabelas, mantendo taxa de linha total.'
 									])
 								])
 							])

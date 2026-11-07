@@ -566,6 +566,7 @@ function wifiConfig(config) {
 		out.ssid=out.ssid2||out.ssid5||out.ssid6||out.ssid||'';
 		out.split=!!(out.ssid2&&out.ssid5&&out.ssid2!==out.ssid5);
 		out.network=(a&&a.network)||(b&&b.network)||(c&&c.network)||'lan';
+		out.hidden = ((a && a.hidden === '1') || (b && b.hidden === '1') || (c && c.hidden === '1')) ? '1' : '0';
 		out.has2g=!!(a&&a.ssid);
 		out.has5g=!!(b&&b.ssid);
 		out.has6g=!!(c&&c.ssid);

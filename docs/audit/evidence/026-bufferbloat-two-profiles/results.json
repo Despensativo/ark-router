@@ -1,0 +1,990 @@
+[
+  {
+    "label": "CAKE-waveform-1",
+    "tool": "Waveform",
+    "engine": "CAKE",
+    "grade": "A+",
+    "download_mbps": 630.7,
+    "upload_mbps": 156.1,
+    "latency_ms": {
+      "idle": 273.0,
+      "added_download": 0.0,
+      "added_upload": 0.0
+    },
+    "phase_statistics": {
+      "idle": {
+        "min_ms": 21.5,
+        "median_ms": 26.3,
+        "max_ms": 2069.8,
+        "mean_ms": 273.0,
+        "p25_ms": 24.9,
+        "p75_ms": 29.5,
+        "p95_ms": 1110.0,
+        "jitter_ms": 382.1
+      },
+      "download": {
+        "min_ms": 20.9,
+        "median_ms": 26.8,
+        "max_ms": 176.2,
+        "mean_ms": 28.0,
+        "p25_ms": 24.0,
+        "p75_ms": 29.4,
+        "p95_ms": 31.5,
+        "jitter_ms": 4.2
+      },
+      "upload": {
+        "min_ms": 20.0,
+        "median_ms": 26.0,
+        "max_ms": 32.1,
+        "mean_ms": 25.9,
+        "p25_ms": 23.7,
+        "p75_ms": 27.7,
+        "p95_ms": 30.4,
+        "jitter_ms": 2.2
+      }
+    },
+    "url": "https://www.waveform.com/tools/bufferbloat?test-id=c06bd576-9baa-4042-950c-2380851c6902",
+    "limitations": [
+      "CSV indisponível na interface observada; estatísticas visíveis preservadas.",
+      "Repouso inflado: 273 ms; nota não aprova estabilidade externa."
+    ],
+    "validity": "recorded"
+  },
+  {
+    "label": "CAKE-waveform-2",
+    "tool": "Waveform",
+    "engine": "CAKE",
+    "grade": "A+",
+    "download_mbps": 633.6,
+    "upload_mbps": 253.4,
+    "latency_ms": {
+      "idle": 25.0,
+      "added_download": 3.0,
+      "added_upload": 1.0
+    },
+    "phase_statistics": {
+      "idle": {
+        "min_ms": 20.8,
+        "median_ms": 25.7,
+        "max_ms": 31.7,
+        "mean_ms": 25.2,
+        "p25_ms": 23.8,
+        "p75_ms": 26.2,
+        "p95_ms": 28.1,
+        "jitter_ms": 1.6
+      },
+      "download": {
+        "min_ms": 20.2,
+        "median_ms": 25.7,
+        "max_ms": 228.6,
+        "mean_ms": 27.9,
+        "p25_ms": 23.4,
+        "p75_ms": 28.5,
+        "p95_ms": 30.7,
+        "jitter_ms": 4.9
+      },
+      "upload": {
+        "min_ms": 20.4,
+        "median_ms": 25.9,
+        "max_ms": 140.7,
+        "mean_ms": 26.4,
+        "p25_ms": 24.0,
+        "p75_ms": 27.8,
+        "p95_ms": 30.2,
+        "jitter_ms": 2.8
+      }
+    },
+    "url": "https://www.waveform.com/tools/bufferbloat?test-id=76e5ddfe-b17a-42a9-86b8-f221e7df31be",
+    "limitations": [
+      "CSV indisponível na interface observada; estatísticas visíveis preservadas."
+    ],
+    "validity": "recorded",
+    "monitor_window": "partial; starts after idle phase"
+  },
+  {
+    "label": "CAKE-waveform-3",
+    "tool": "Waveform",
+    "engine": "CAKE",
+    "grade": "A+",
+    "download_mbps": 547.9,
+    "upload_mbps": 281.1,
+    "latency_ms": {
+      "idle": 26.0,
+      "added_download": 0.0,
+      "added_upload": 0.0
+    },
+    "phase_statistics": {
+      "idle": {
+        "min_ms": 21.2,
+        "median_ms": 26.1,
+        "max_ms": 59.8,
+        "mean_ms": 26.3,
+        "p25_ms": 24.8,
+        "p75_ms": 27.0,
+        "p95_ms": 29.8,
+        "jitter_ms": 2.0
+      },
+      "download": {
+        "min_ms": -19.8,
+        "median_ms": 26.4,
+        "max_ms": 43.2,
+        "mean_ms": 26.0,
+        "p25_ms": 23.9,
+        "p75_ms": 28.7,
+        "p95_ms": 31.0,
+        "jitter_ms": 3.2
+      },
+      "upload": {
+        "min_ms": 20.0,
+        "median_ms": 26.1,
+        "max_ms": 33.7,
+        "mean_ms": 26.0,
+        "p25_ms": 23.5,
+        "p75_ms": 28.4,
+        "p95_ms": 30.7,
+        "jitter_ms": 2.6
+      }
+    },
+    "url": "https://www.waveform.com/tools/bufferbloat?test-id=84ca6ba2-c30c-44b9-bc63-4d05c57edfae",
+    "limitations": [
+      "CSV indisponível na interface observada; estatísticas visíveis preservadas."
+    ],
+    "validity": "recorded"
+  },
+  {
+    "label": "CAKE-bufferspeed-web-1",
+    "tool": "BufferSpeed web",
+    "engine": "CAKE",
+    "grade": "A+",
+    "download_mbps": 580.0,
+    "upload_mbps": 156.0,
+    "latency_ms": {
+      "idle": 20.0,
+      "download": 18.0,
+      "upload": 20.0,
+      "combined": 19.0,
+      "worst_5_percent": 22.0
+    },
+    "packet_loss_pct": 0.0,
+    "validity": "recorded"
+  },
+  {
+    "label": "CAKE-bufferspeed-web-2",
+    "tool": "BufferSpeed web",
+    "engine": "CAKE",
+    "grade": "A+",
+    "download_mbps": 573.0,
+    "upload_mbps": 172.0,
+    "latency_ms": {
+      "idle": 19.0,
+      "download": 19.0,
+      "upload": 19.0,
+      "combined": 19.0,
+      "worst_5_percent": 21.0
+    },
+    "packet_loss_pct": 0.0,
+    "validity": "recorded"
+  },
+  {
+    "label": "CAKE-bufferspeed-web-3",
+    "tool": "BufferSpeed web",
+    "engine": "CAKE",
+    "grade": "A+",
+    "download_mbps": 574.0,
+    "upload_mbps": 164.0,
+    "latency_ms": {
+      "idle": 19.0,
+      "download": 19.0,
+      "upload": 19.0,
+      "combined": 19.0,
+      "worst_5_percent": 21.0
+    },
+    "packet_loss_pct": 0.0,
+    "validity": "recorded"
+  },
+  {
+    "label": "CAKE-bufferspeed-app-1",
+    "tool": "BufferSpeed app 0.2.8 (27)",
+    "engine": "CAKE",
+    "grade": "A+",
+    "download_mbps": 598.3,
+    "upload_mbps": 532.6,
+    "latency_ms": {
+      "idle": 19.0,
+      "download": 20.0,
+      "upload": 20.0,
+      "combined": 23.0
+    },
+    "jitter_ms": 0.0,
+    "packet_loss_pct": 0.0,
+    "flows": 16,
+    "validity": "recorded"
+  },
+  {
+    "label": "CAKE-bufferspeed-app-2",
+    "tool": "BufferSpeed app 0.2.8 (27)",
+    "engine": "CAKE",
+    "grade": "B",
+    "download_mbps": 628.4,
+    "upload_mbps": 490.7,
+    "latency_ms": {
+      "idle": 20.0,
+      "download": 19.0,
+      "upload": 19.0,
+      "combined": 56.0
+    },
+    "jitter_ms": 0.0,
+    "packet_loss_pct": 0.0,
+    "flows": 16,
+    "validity": "recorded"
+  },
+  {
+    "label": "CAKE-bufferspeed-app-3",
+    "tool": "BufferSpeed app 0.2.8 (27)",
+    "engine": "CAKE",
+    "grade": "C",
+    "download_mbps": 627.9,
+    "upload_mbps": 292.8,
+    "latency_ms": {
+      "idle": 20.0,
+      "download": 20.0,
+      "upload": 102.0,
+      "combined": 35.0
+    },
+    "jitter_ms": 1.0,
+    "packet_loss_pct": 0.0,
+    "flows": 16,
+    "validity": "recorded"
+  },
+  {
+    "label": "HFSC-waveform-1",
+    "tool": "Waveform",
+    "engine": "HFSC",
+    "grade": "A+",
+    "download_mbps": 579.8,
+    "upload_mbps": 250.7,
+    "latency_ms": {
+      "idle": 25.0,
+      "added_download": 1.0,
+      "added_upload": 1.0
+    },
+    "phase_statistics": {
+      "idle": {
+        "min_ms": 20.9,
+        "median_ms": 25.6,
+        "max_ms": 32.1,
+        "mean_ms": 25.4,
+        "p25_ms": 23.8,
+        "p75_ms": 26.6,
+        "p95_ms": 29.8,
+        "jitter_ms": 1.7
+      },
+      "download": {
+        "min_ms": 20.5,
+        "median_ms": 25.9,
+        "max_ms": 55.3,
+        "mean_ms": 26.4,
+        "p25_ms": 23.9,
+        "p75_ms": 28.2,
+        "p95_ms": 31.9,
+        "jitter_ms": 2.9
+      },
+      "upload": {
+        "min_ms": 19.7,
+        "median_ms": 25.9,
+        "max_ms": 80.9,
+        "mean_ms": 26.1,
+        "p25_ms": 23.5,
+        "p75_ms": 27.8,
+        "p95_ms": 30.6,
+        "jitter_ms": 2.8
+      }
+    },
+    "url": "https://www.waveform.com/tools/bufferbloat?test-id=1a76f55f-88f9-475b-abe4-40c4d731dbe6",
+    "limitations": [
+      "CSV indisponível na interface observada; estatísticas visíveis preservadas."
+    ],
+    "validity": "recorded"
+  },
+  {
+    "label": "HFSC-waveform-2",
+    "tool": "Waveform",
+    "engine": "HFSC",
+    "grade": "A+",
+    "download_mbps": 650.4,
+    "upload_mbps": 195.0,
+    "latency_ms": {
+      "idle": 25.0,
+      "added_download": 1.0,
+      "added_upload": 1.0
+    },
+    "phase_statistics": {
+      "idle": {
+        "min_ms": 20.6,
+        "median_ms": 25.5,
+        "max_ms": 32.1,
+        "mean_ms": 25.1,
+        "p25_ms": 23.2,
+        "p75_ms": 26.3,
+        "p95_ms": 29.1,
+        "jitter_ms": 1.9
+      },
+      "download": {
+        "min_ms": 20.6,
+        "median_ms": 25.5,
+        "max_ms": 54.1,
+        "mean_ms": 25.8,
+        "p25_ms": 23.6,
+        "p75_ms": 27.7,
+        "p95_ms": 30.5,
+        "jitter_ms": 2.5
+      },
+      "upload": {
+        "min_ms": 20.0,
+        "median_ms": 25.7,
+        "max_ms": 53.7,
+        "mean_ms": 25.8,
+        "p25_ms": 23.3,
+        "p75_ms": 27.9,
+        "p95_ms": 29.8,
+        "jitter_ms": 2.6
+      }
+    },
+    "url": "https://www.waveform.com/tools/bufferbloat?test-id=36a8d931-f9c1-477e-a2b8-7eef3e09f8bb",
+    "limitations": [
+      "CSV indisponível na interface observada; estatísticas visíveis preservadas."
+    ],
+    "validity": "recorded"
+  },
+  {
+    "label": "HFSC-waveform-3",
+    "tool": "Waveform",
+    "engine": "HFSC",
+    "grade": "A+",
+    "download_mbps": 645.4,
+    "upload_mbps": 259.7,
+    "latency_ms": {
+      "idle": 25.0,
+      "added_download": 1.0,
+      "added_upload": 0.0
+    },
+    "phase_statistics": {
+      "idle": {
+        "min_ms": 20.5,
+        "median_ms": 25.5,
+        "max_ms": 31.1,
+        "mean_ms": 25.4,
+        "p25_ms": 23.5,
+        "p75_ms": 26.8,
+        "p95_ms": 29.8,
+        "jitter_ms": 1.9
+      },
+      "download": {
+        "min_ms": 20.7,
+        "median_ms": 26.0,
+        "max_ms": 171.6,
+        "mean_ms": 26.8,
+        "p25_ms": 23.6,
+        "p75_ms": 28.6,
+        "p95_ms": 30.4,
+        "jitter_ms": 3.2
+      },
+      "upload": {
+        "min_ms": 20.0,
+        "median_ms": 25.7,
+        "max_ms": 31.9,
+        "mean_ms": 25.6,
+        "p25_ms": 23.5,
+        "p75_ms": 28.0,
+        "p95_ms": 29.9,
+        "jitter_ms": 2.4
+      }
+    },
+    "url": "https://www.waveform.com/tools/bufferbloat?test-id=763c1135-254d-43ec-b242-64b3509bb8ae",
+    "limitations": [
+      "CSV indisponível na interface observada; estatísticas visíveis preservadas."
+    ],
+    "validity": "recorded"
+  },
+  {
+    "label": "HFSC-bufferspeed-web-1",
+    "tool": "BufferSpeed web",
+    "engine": "HFSC",
+    "grade": "A+",
+    "download_mbps": 576.0,
+    "upload_mbps": 270.0,
+    "latency_ms": {
+      "idle": 19.0,
+      "download": 19.0,
+      "upload": 19.0,
+      "combined": 19.0,
+      "worst_5_percent": 20.0
+    },
+    "packet_loss_pct": 0.0,
+    "validity": "recorded"
+  },
+  {
+    "label": "HFSC-bufferspeed-web-2",
+    "tool": "BufferSpeed web",
+    "engine": "HFSC",
+    "grade": "A",
+    "download_mbps": 252.0,
+    "upload_mbps": 141.0,
+    "latency_ms": {
+      "idle": 19.0,
+      "download": 19.0,
+      "upload": 18.0,
+      "combined": 26.0,
+      "worst_5_percent": 22.0
+    },
+    "packet_loss_pct": 0.0,
+    "validity": "recorded"
+  },
+  {
+    "label": "HFSC-bufferspeed-web-3",
+    "tool": "BufferSpeed web",
+    "engine": "HFSC",
+    "grade": "A+",
+    "download_mbps": 516.0,
+    "upload_mbps": 159.0,
+    "latency_ms": {
+      "idle": 19.0,
+      "download": 19.0,
+      "upload": 19.0,
+      "combined": 19.0,
+      "worst_5_percent": 23.0
+    },
+    "packet_loss_pct": 0.0,
+    "validity": "recorded"
+  },
+  {
+    "label": "HFSC-bufferspeed-app-1",
+    "tool": "BufferSpeed app 0.2.8 (27)",
+    "engine": "HFSC",
+    "grade": "A",
+    "download_mbps": 685.8,
+    "upload_mbps": 574.0,
+    "latency_ms": {
+      "idle": 20.0,
+      "download": 6.0,
+      "upload": 19.0,
+      "combined": 24.0
+    },
+    "jitter_ms": 0.0,
+    "packet_loss_pct": 0.0,
+    "flows": 16,
+    "validity": "recorded",
+    "limitations": [
+      "UI/AX mostra DL 6 ms contra repouso 20 ms; nota A preservada sem reinterpretar algoritmo."
+    ]
+  },
+  {
+    "label": "HFSC-bufferspeed-app-2",
+    "tool": "BufferSpeed app 0.2.8 (27)",
+    "engine": "HFSC",
+    "grade": "A",
+    "download_mbps": 690.1,
+    "upload_mbps": 552.6,
+    "latency_ms": {
+      "idle": 19.0,
+      "download": 20.0,
+      "upload": 23.0,
+      "combined": 32.0
+    },
+    "jitter_ms": 0.0,
+    "packet_loss_pct": 0.0,
+    "flows": 16,
+    "validity": "recorded"
+  },
+  {
+    "label": "HFSC-bufferspeed-app-3",
+    "tool": "BufferSpeed app 0.2.8 (27)",
+    "engine": "HFSC",
+    "grade": "A",
+    "download_mbps": 685.4,
+    "upload_mbps": 526.6,
+    "latency_ms": {
+      "idle": 20.0,
+      "download": 22.0,
+      "upload": 20.0,
+      "combined": 30.0
+    },
+    "jitter_ms": 0.0,
+    "packet_loss_pct": 0.0,
+    "flows": 16,
+    "validity": "recorded"
+  },
+  {
+    "label": "CAKE650-bufferspeed-app-1",
+    "tool": "BufferSpeed app 0.2.8 (27)",
+    "engine": "CAKE650",
+    "grade": "A+",
+    "download_mbps": 570.0,
+    "upload_mbps": 402.8,
+    "latency_ms": {
+      "idle": 20.0,
+      "download": 27.0,
+      "upload": 20.0,
+      "combined": 27.0
+    },
+    "jitter_ms": 0.0,
+    "packet_loss_pct": 0.0,
+    "flows": 16,
+    "validity": "exploratory; egress split_gso differs from initial"
+  },
+  {
+    "label": "CAKE650-bufferspeed-app-2",
+    "tool": "BufferSpeed app 0.2.8 (27)",
+    "engine": "CAKE650",
+    "grade": "A",
+    "download_mbps": 567.1,
+    "upload_mbps": 454.3,
+    "latency_ms": {
+      "idle": 19.0,
+      "download": 23.0,
+      "upload": 20.0,
+      "combined": 29.0
+    },
+    "jitter_ms": 0.0,
+    "packet_loss_pct": 0.0,
+    "flows": 16,
+    "validity": "exploratory; egress split_gso differs from initial"
+  },
+  {
+    "label": "CAKE650-bufferspeed-app-3",
+    "tool": "BufferSpeed app 0.2.8 (27)",
+    "engine": "CAKE650",
+    "grade": "A",
+    "download_mbps": 567.4,
+    "upload_mbps": 530.8,
+    "latency_ms": {
+      "idle": 19.0,
+      "download": 20.0,
+      "upload": 28.0,
+      "combined": 29.0
+    },
+    "jitter_ms": 0.0,
+    "packet_loss_pct": 0.0,
+    "flows": 16,
+    "validity": "exploratory; egress split_gso differs from initial"
+  },
+  {
+    "label": "CAKE650V-bufferspeed-app-1",
+    "tool": "BufferSpeed app 0.2.8 (27)",
+    "engine": "CAKE650V",
+    "grade": "A",
+    "download_mbps": 565.4,
+    "upload_mbps": 580.0,
+    "latency_ms": {
+      "idle": 20.0,
+      "download": 21.0,
+      "upload": 23.0,
+      "combined": 26.0
+    },
+    "jitter_ms": 0.0,
+    "packet_loss_pct": 0.0,
+    "flows": 16,
+    "validity": "recorded"
+  },
+  {
+    "label": "CAKE650V-bufferspeed-app-2",
+    "tool": "BufferSpeed app 0.2.8 (27)",
+    "engine": "CAKE650V",
+    "grade": "A+",
+    "download_mbps": 577.3,
+    "upload_mbps": 457.1,
+    "latency_ms": {
+      "idle": 19.0,
+      "download": 20.0,
+      "upload": 19.0,
+      "combined": 25.0
+    },
+    "jitter_ms": 0.0,
+    "packet_loss_pct": 0.0,
+    "flows": 16,
+    "validity": "recorded"
+  },
+  {
+    "label": "CAKE650V-bufferspeed-app-3",
+    "tool": "BufferSpeed app 0.2.8 (27)",
+    "engine": "CAKE650V",
+    "grade": "A",
+    "download_mbps": 567.0,
+    "upload_mbps": 562.7,
+    "latency_ms": {
+      "idle": 19.0,
+      "download": 20.0,
+      "upload": 23.0,
+      "combined": 31.0
+    },
+    "jitter_ms": 1.0,
+    "packet_loss_pct": 0.0,
+    "flows": 16,
+    "validity": "recorded"
+  },
+  {
+    "label": "CAKE-fast-2",
+    "tool": "FAST",
+    "engine": "CAKE",
+    "grade": null,
+    "download_mbps": 680.0,
+    "upload_mbps": 640.0,
+    "latency_ms": {
+      "idle": 5.0,
+      "loaded": 5.0
+    },
+    "validity": "recorded"
+  },
+  {
+    "label": "CAKE-fast-3",
+    "tool": "FAST",
+    "engine": "CAKE",
+    "grade": null,
+    "download_mbps": 700.0,
+    "upload_mbps": 660.0,
+    "latency_ms": {
+      "idle": 6.0,
+      "loaded": 5.0
+    },
+    "validity": "recorded"
+  },
+  {
+    "label": "HFSC-fast-1",
+    "tool": "FAST",
+    "engine": "HFSC",
+    "grade": null,
+    "download_mbps": 630.0,
+    "upload_mbps": 670.0,
+    "latency_ms": {
+      "idle": 6.0,
+      "loaded": 6.0
+    },
+    "validity": "recorded"
+  },
+  {
+    "label": "HFSC-fast-2",
+    "tool": "FAST",
+    "engine": "HFSC",
+    "grade": null,
+    "download_mbps": 730.0,
+    "upload_mbps": 660.0,
+    "latency_ms": {
+      "idle": 6.0,
+      "loaded": 6.0
+    },
+    "validity": "recorded"
+  },
+  {
+    "label": "HFSC-fast-3-recheck",
+    "tool": "FAST",
+    "engine": "HFSC",
+    "grade": null,
+    "download_mbps": 740.0,
+    "upload_mbps": 650.0,
+    "latency_ms": {
+      "idle": 5.0,
+      "loaded": 5.0
+    },
+    "validity": "recorded"
+  },
+  {
+    "label": "HFSC-fast-3",
+    "tool": "FAST",
+    "engine": "HFSC",
+    "grade": null,
+    "download_mbps": 720.0,
+    "upload_mbps": 430.0,
+    "latency_ms": {
+      "idle": 6.0,
+      "loaded": 6.0
+    },
+    "validity": "potential_concurrent_app_load"
+  },
+  {
+    "label": "CAKE-fast-1",
+    "tool": "FAST",
+    "engine": "CAKE",
+    "grade": null,
+    "download_mbps": 680,
+    "upload_mbps": 640,
+    "latency_ms": {
+      "idle": 5,
+      "loaded": 6
+    },
+    "evidence": "AX e captura",
+    "validity": "recorded"
+  },
+  {
+    "label": "CAKE-cloudflare-1",
+    "tool": "Cloudflare",
+    "engine": "CAKE",
+    "grade": null,
+    "download_mbps": 601.0,
+    "upload_mbps": 115.0,
+    "packet_loss_pct": 0.0,
+    "phase_statistics": {
+      "Unloaded latency": {
+        "count": 42,
+        "min_ms": 8.8,
+        "max_ms": 18.5,
+        "mean_ms": 12.1,
+        "median_ms": 11.7,
+        "p25_ms": 10.6,
+        "p75_ms": 12.8
+      },
+      "Latency during download": {
+        "count": 57,
+        "min_ms": 4.58,
+        "max_ms": 3140.0,
+        "mean_ms": 65.0,
+        "median_ms": 10.3,
+        "p25_ms": 8.8,
+        "p75_ms": 11.2
+      },
+      "Latency during upload": {
+        "count": 100,
+        "min_ms": 2.9,
+        "max_ms": 44.1,
+        "mean_ms": 8.48,
+        "median_ms": 7.2,
+        "p25_ms": 6.2,
+        "p75_ms": 9.05
+      }
+    },
+    "validity": "recorded"
+  },
+  {
+    "label": "CAKE-cloudflare-2",
+    "tool": "Cloudflare",
+    "engine": "CAKE",
+    "grade": null,
+    "download_mbps": 597.0,
+    "upload_mbps": 123.0,
+    "packet_loss_pct": 0.0,
+    "phase_statistics": {
+      "Unloaded latency": {
+        "count": 42,
+        "min_ms": 8.2,
+        "max_ms": 16.9,
+        "mean_ms": 11.9,
+        "median_ms": 11.4,
+        "p25_ms": 10.2,
+        "p75_ms": 13.3
+      },
+      "Latency during download": {
+        "count": 60,
+        "min_ms": 4.1,
+        "max_ms": 12.6,
+        "mean_ms": 7.61,
+        "median_ms": 7.43,
+        "p25_ms": 6.5,
+        "p75_ms": 8.32
+      },
+      "Latency during upload": {
+        "count": 100,
+        "min_ms": 1.75,
+        "max_ms": 16.0,
+        "mean_ms": 5.81,
+        "median_ms": 5.35,
+        "p25_ms": 4.13,
+        "p75_ms": 6.96
+      }
+    },
+    "validity": "recorded"
+  },
+  {
+    "label": "CAKE-cloudflare-3",
+    "tool": "Cloudflare",
+    "engine": "CAKE",
+    "grade": null,
+    "download_mbps": 603.0,
+    "upload_mbps": 111.0,
+    "packet_loss_pct": 0.0,
+    "phase_statistics": {
+      "Unloaded latency": {
+        "count": 41,
+        "min_ms": 8.2,
+        "max_ms": 27.5,
+        "mean_ms": 12.0,
+        "median_ms": 11.0,
+        "p25_ms": 10.3,
+        "p75_ms": 12.4
+      },
+      "Latency during download": {
+        "count": 54,
+        "min_ms": 8.4,
+        "max_ms": 32.3,
+        "mean_ms": 11.3,
+        "median_ms": 10.3,
+        "p25_ms": 9.4,
+        "p75_ms": 11.3
+      },
+      "Latency during upload": {
+        "count": 74,
+        "min_ms": 4.95,
+        "max_ms": 40.6,
+        "mean_ms": 8.46,
+        "median_ms": 7.69,
+        "p25_ms": 6.16,
+        "p75_ms": 9.23
+      }
+    },
+    "validity": "recorded"
+  },
+  {
+    "label": "HFSC-cloudflare-1-recheck",
+    "tool": "Cloudflare",
+    "engine": "HFSC",
+    "grade": null,
+    "download_mbps": 673.0,
+    "upload_mbps": 114.0,
+    "packet_loss_pct": 0.0,
+    "phase_statistics": {
+      "Unloaded latency": {
+        "count": 41,
+        "min_ms": 8.9,
+        "max_ms": 14.9,
+        "mean_ms": 10.8,
+        "median_ms": 10.3,
+        "p25_ms": 9.9,
+        "p75_ms": 11.9
+      },
+      "Latency during download": {
+        "count": 54,
+        "min_ms": 8.9,
+        "max_ms": 14.1,
+        "mean_ms": 10.5,
+        "median_ms": 10.5,
+        "p25_ms": 9.55,
+        "p75_ms": 11.2
+      },
+      "Latency during upload": {
+        "count": 78,
+        "min_ms": 4.25,
+        "max_ms": 12.6,
+        "mean_ms": 7.34,
+        "median_ms": 6.68,
+        "p25_ms": 5.6,
+        "p75_ms": 8.89
+      }
+    },
+    "validity": "recorded"
+  },
+  {
+    "label": "HFSC-cloudflare-1",
+    "tool": "Cloudflare",
+    "engine": "HFSC",
+    "grade": null,
+    "download_mbps": 624.0,
+    "upload_mbps": 98.0,
+    "packet_loss_pct": 0.0,
+    "phase_statistics": {
+      "Unloaded latency": {
+        "count": 40,
+        "min_ms": 8.6,
+        "max_ms": 51.7,
+        "mean_ms": 11.8,
+        "median_ms": 10.5,
+        "p25_ms": 9.7,
+        "p75_ms": 11.5
+      },
+      "Latency during download": {
+        "count": 33,
+        "min_ms": 8.0,
+        "max_ms": 13.1,
+        "mean_ms": 10.5,
+        "median_ms": 10.4,
+        "p25_ms": 9.9,
+        "p75_ms": 11.4
+      },
+      "Latency during upload": {
+        "count": 65,
+        "min_ms": 4.5,
+        "max_ms": 1520.0,
+        "mean_ms": 32.6,
+        "median_ms": 9.8,
+        "p25_ms": 8.6,
+        "p75_ms": 10.6
+      }
+    },
+    "validity": "potential_concurrent_app_load"
+  },
+  {
+    "label": "HFSC-cloudflare-2-retry",
+    "tool": "Cloudflare",
+    "engine": "HFSC",
+    "grade": null,
+    "download_mbps": 644.0,
+    "upload_mbps": 98.5,
+    "packet_loss_pct": 0.0,
+    "phase_statistics": {
+      "Unloaded latency": {
+        "count": 41,
+        "min_ms": 9.6,
+        "max_ms": 39.2,
+        "mean_ms": 18.0,
+        "median_ms": 14.7,
+        "p25_ms": 13.1,
+        "p75_ms": 20.0
+      },
+      "Latency during download": {
+        "count": 56,
+        "min_ms": 3.83,
+        "max_ms": 29.3,
+        "mean_ms": 8.91,
+        "median_ms": 7.94,
+        "p25_ms": 6.25,
+        "p75_ms": 11.0
+      },
+      "Latency during upload": {
+        "count": 95,
+        "min_ms": 1.18,
+        "max_ms": 2520.0,
+        "mean_ms": 34.7,
+        "median_ms": 8.8,
+        "p25_ms": 4.93,
+        "p75_ms": 10.9
+      }
+    },
+    "validity": "recorded"
+  },
+  {
+    "label": "HFSC-cloudflare-3",
+    "tool": "Cloudflare",
+    "engine": "HFSC",
+    "grade": null,
+    "download_mbps": 656.0,
+    "upload_mbps": 134.0,
+    "packet_loss_pct": 0.0,
+    "phase_statistics": {
+      "Unloaded latency": {
+        "count": 41,
+        "min_ms": 8.0,
+        "max_ms": 3170.0,
+        "mean_ms": 87.2,
+        "median_ms": 10.1,
+        "p25_ms": 9.7,
+        "p75_ms": 10.9
+      },
+      "Latency during download": {
+        "count": 54,
+        "min_ms": 4.68,
+        "max_ms": 13.3,
+        "mean_ms": 7.9,
+        "median_ms": 7.54,
+        "p25_ms": 5.9,
+        "p75_ms": 9.78
+      },
+      "Latency during upload": {
+        "count": 77,
+        "min_ms": 1.28,
+        "max_ms": 11.4,
+        "mean_ms": 5.09,
+        "median_ms": 5.07,
+        "p25_ms": 3.98,
+        "p75_ms": 6.07
+      }
+    },
+    "validity": "recorded"
+  }
+]

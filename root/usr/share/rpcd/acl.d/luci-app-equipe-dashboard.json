@@ -4,8 +4,6 @@
 		"read": {
 			"file": {
 				"/bin/ping": [ "exec" ],
-				"/usr/sbin/equipe-dashboard-control": [ "exec" ],
-				"/usr/libexec/nlbwmon-action": [ "exec" ],
 				"/tmp/equipe-traffic-history.csv": [ "read" ],
 				"/tmp/equipe-wan-daily.csv": [ "read" ],
 				"/tmp/ark-doctor-last.json": [ "read" ],
@@ -29,7 +27,8 @@
 		},
 		"write": {
 			"file": {
-				"/usr/sbin/equipe-dashboard-control": [ "exec" ]
+				"/usr/sbin/equipe-dashboard-control": [ "exec" ],
+				"/usr/libexec/nlbwmon-action": [ "exec" ]
 			},
 			"ubus": {
 				"file": [ "exec" ],

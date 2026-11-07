@@ -1,0 +1,32 @@
+{
+  "target": "192.168.73.1",
+  "applied": true,
+  "after_sha256": {
+    "/usr/lib/ark/qos-resources.sh": "689f7b719c234ba7d06f987b1a2342d21a1789988314db56fe9743c99231da76",
+    "/usr/lib/ark/common.sh": "29d8e7369b0abe74be88aa519b24f436ff5108e9f3178d4b2777d04116e1e5b7",
+    "/usr/lib/ark/modules/sqm.sh": "bf59c37efcbb1fe7b3a89686dd586e36fb2e67ed20a18844a529a009a06cd1d6",
+    "/usr/lib/sqm/ark_hfsc_fqcodel.qos": "b170991681b0abd0454e9531a8dcf9f2daf627e808a3c0f1a23018ab32fb0341"
+  },
+  "backup_sha256": "267d348c746c443b7895f14df7d731895f2e9e12937197becd3c46a260926123",
+  "local_resource_tests": 15,
+  "local_reliability_tests": 28,
+  "native": {
+    "uci_persisted": true,
+    "wan_scenario": "two_wans_simulated",
+    "cake_memlimit_mib": 32,
+    "hfsc_leaf_mib": [
+      8,
+      16,
+      8
+    ],
+    "tc_kernel": "6.12.112",
+    "interface": "disposable_ifb"
+  },
+  "production": {
+    "restart": false,
+    "qdiscs_and_uci_unchanged": true
+  },
+  "capacity_calibration": false,
+  "game_test": false,
+  "reboot_test": false
+}

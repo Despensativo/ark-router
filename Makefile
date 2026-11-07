@@ -2,11 +2,23 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ark-router
 PKG_VERSION:=2.2.1
-PKG_RELEASE:=1
+PKG_RELEASE:=4
 PKG_MAINTAINER:=ARK Router contributors
 PKG_LICENSE:=MIT
 
 include $(INCLUDE_DIR)/package.mk
+
+# Canonical QoS dependency lists; local packagers read these same declarations.
+ARK_QOS_BASE_DEPENDS:=+tc-full +sqm-scripts +kmod-ifb +kmod-sched-core +kmod-sched-cake +kmod-sched
+ARK_QOS_CTINFO_DEPENDS:=+kmod-sched-ctinfo
+# Explicit reduced-feature build for targets without a trusted matching ctinfo package.
+ARK_QOS_WITH_CTINFO?=1
+ifneq ($(ARK_QOS_WITH_CTINFO),0)
+  ifneq ($(ARK_QOS_WITH_CTINFO),1)
+    $(error ARK_QOS_WITH_CTINFO must be 0 or 1)
+  endif
+endif
+ARK_QOS_DEPENDS:=$(ARK_QOS_BASE_DEPENDS) $(if $(filter 1,$(ARK_QOS_WITH_CTINFO)),$(ARK_QOS_CTINFO_DEPENDS))
 
 define Package/luci-app-ark-router
   SECTION:=luci
@@ -14,7 +26,7 @@ define Package/luci-app-ark-router
   SUBMENU:=3. Applications
   TITLE:=ARK Router Lite operational dashboard
   PKGARCH:=all
-  DEPENDS:=+luci-base +rpcd +nlbwmon +luci-app-nlbwmon +tc-full +kmod-sched-act-police +irqbalance +luci-app-package-manager +luci-app-attendedsysupgrade +attendedsysupgrade-common +owut +luci-app-sqm +kmod-ifb +kmod-sched-cake +luci-app-mwan3 +luci-app-upnp +miniupnpd-nftables +kmod-tun +iwinfo +curl +luci-i18n-mwan3-pt-br +luci-i18n-nlbwmon-pt-br +luci-i18n-sqm-pt-br +luci-i18n-upnp-pt-br
+  DEPENDS:=+luci-base +rpcd +nlbwmon +luci-app-nlbwmon +kmod-sched-act-police +irqbalance +luci-app-package-manager +luci-app-attendedsysupgrade +attendedsysupgrade-common +owut +luci-app-sqm +luci-app-mwan3 +luci-app-upnp +miniupnpd-nftables +kmod-tun +iwinfo +curl +luci-i18n-mwan3-pt-br +luci-i18n-nlbwmon-pt-br +luci-i18n-sqm-pt-br +luci-i18n-upnp-pt-br $(ARK_QOS_DEPENDS)
 endef
 
 define Package/luci-app-ark-router/description
@@ -33,7 +45,7 @@ define Package/luci-app-ark-router-full
   SUBMENU:=3. Applications
   TITLE:=ARK Router Full operational dashboard
   PKGARCH:=all
-  DEPENDS:=+luci-base +rpcd +nlbwmon +luci-app-nlbwmon +tc-full +kmod-sched-act-police +irqbalance +luci-app-sqm +kmod-ifb +kmod-sched-cake +luci-app-mwan3 +luci-app-upnp +miniupnpd-nftables +zerotier +speedtest-go +kmod-tun +iwinfo +luci-app-package-manager +luci-app-attendedsysupgrade +attendedsysupgrade-common +owut +curl +luci-i18n-mwan3-pt-br +luci-i18n-nlbwmon-pt-br +luci-i18n-sqm-pt-br +luci-i18n-upnp-pt-br
+  DEPENDS:=+luci-base +rpcd +nlbwmon +luci-app-nlbwmon +kmod-sched-act-police +irqbalance +luci-app-sqm +luci-app-mwan3 +luci-app-upnp +miniupnpd-nftables +zerotier +speedtest-go +kmod-tun +iwinfo +luci-app-package-manager +luci-app-attendedsysupgrade +attendedsysupgrade-common +owut +curl +luci-i18n-mwan3-pt-br +luci-i18n-nlbwmon-pt-br +luci-i18n-sqm-pt-br +luci-i18n-upnp-pt-br $(ARK_QOS_DEPENDS)
 endef
 
 define Package/luci-app-ark-router-full/description

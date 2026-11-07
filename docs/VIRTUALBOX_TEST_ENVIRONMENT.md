@@ -7,7 +7,7 @@ O ambiente principal de desenvolvimento, depuração e validação do **ARK Rout
 ### Regras Obrigatórias de Ambiente e Implantação
 
 1. **Nunca instalar, publicar, atualizar ou executar alterações em roteadores físicos automaticamente.**
-2. **Qualquer implantação em equipamento real depende de solicitação e confirmação manual e explícita do usuário por confirmação escrevendo SIM.**
+2. **Qualquer implantação em equipamento real depende de solicitação explícita do usuário. O pedido direto de aplicar ou validar no equipamento já constitui autorização; não exigir a palavra SIM nem confirmação redundante.**
 3. **O ambiente virtual deve reproduzir o maior número possível de cenários suportados pelo ARK Router, incluindo:**
    - duas ou mais interfaces WAN;
    - balanceamento, failover e perda de conectividade;
@@ -35,7 +35,7 @@ O ambiente principal de desenvolvimento, depuração e validação do **ARK Rout
    - limitações da emulação;
    - procedimentos de restauração e rollback.
 8. **A preparação, atualização e documentação do laboratório virtual fazem parte obrigatória** do processo de desenvolvimento e dos deploys de teste.
-9. **A aprovação no ambiente virtual não autoriza automaticamente implantação física.** O teste em roteador real constitui uma etapa separada e somente pode ocorrer após autorização explícita do usuário por confirmação escrevendo **SIM**.
+9. **A aprovação no ambiente virtual não autoriza automaticamente implantação física.** O teste em roteador real constitui uma etapa separada e ocorre mediante solicitação explícita do usuário, sem exigir palavra-chave ou confirmação redundante.
 
 ---
 
@@ -198,4 +198,4 @@ Cada execução de teste no ambiente virtual deve ser documentada utilizando a s
 > **TRAVA DE SEGURANÇA MANDATÓRIA**
 > A aprovação no laboratório virtual **NÃO** concede autorização implícita para tocar em hardware físico.
 > 
-> A implantação em qualquer roteador real (ex: Cudy WR3000 em `192.168.1.1` ou Predator W6x em `192.168.73.1`) está **CONDICIONADA** à apresentação do relatório de testes do ambiente virtual e **exclusivamente mediante confirmação expressa do usuário digitando "SIM"**.
+> A implantação em qualquer roteador real (ex: Cudy WR3000 em `192.168.1.1` ou Predator W6x em `192.168.73.1`) está **CONDICIONADA** à apresentação do relatório de testes do ambiente virtual e **mediante solicitação explícita do usuário; o pedido direto de implantação já é autorização, sem palavra-chave ou confirmação redundante**.

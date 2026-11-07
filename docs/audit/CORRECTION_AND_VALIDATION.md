@@ -65,6 +65,6 @@ Informe limites de mocks e testes físicos pendentes. Alteração posterior no a
 
 ## Evolução dos contratos
 
-O verificador atual confere parte da estrutura. No lote 001, formalize esquema, tipos, enums, IDs únicos, relações válidas e referências a testes; adicione casos negativos. Separe resultado executado de ciclo de vida e nível de validação. Migre sem renumerar IDs nem descartar conteúdo existente.
+O verificador atual confere parte da estrutura. O lote 001 já formalizou esquema, tipos, enums, IDs únicos, relações válidas, referências a testes e casos negativos; mantenha essas verificações. Separe resultado executado de ciclo de vida e nível de validação. Migre sem renumerar IDs nem descartar conteúdo existente.
 
 A descoberta de todas as ações dinâmicas exige revisão; nenhum scanner simples deve anunciar cobertura completa sem evidência.

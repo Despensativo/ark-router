@@ -1,0 +1,485 @@
+{
+  "date": "2026-11-05",
+  "target": {
+    "target": "192.168.73.1",
+    "model": "Acer Predator Connect W6x (Stock Layout)",
+    "openwrt": "25.12.6",
+    "kernel": "6.12.112"
+  },
+  "local_revision": "a5ab48c2 + prior QoS changes + audit 021 (uncommitted)",
+  "local_validated_source_hash_count": 20,
+  "applied_files": {
+    "/usr/lib/ark/common.sh": {
+      "before": "29d8e7369b0abe74be88aa519b24f436ff5108e9f3178d4b2777d04116e1e5b7",
+      "candidate": "fec5f7c881dff4663e1c1ff41b24b345ed6909abb597b1f27e83b11724266c16",
+      "different": true
+    },
+    "/usr/lib/ark/modules/doctor.sh": {
+      "before": "15b0f14b0013516ec400c0c4a92dd79242ed15a34e7f5cfc71a68f26d6a2ae18",
+      "candidate": "04167570dc782686f9c98714ee11104b3eda40577c40409c3092df9097ae2a0f",
+      "different": true
+    },
+    "/usr/lib/ark/modules/ezsetup.sh": {
+      "before": "883f3261cde3fef930a134edc53dad52b619b9c0dd79fafb39e9dff88a0cc420",
+      "candidate": "1c9dd911f2c3347b0695d28768fdf1ab54bb7a38db9861e23c118d3575d50542",
+      "different": true
+    },
+    "/usr/sbin/equipe-dashboard-control": {
+      "before": "9005e4b6b659ba38cb76a28cab4857cfa2fb7fd2c8e4ad89c9867a0bfa0a4c2c",
+      "candidate": "39772176fa0c43ad8651f9446b222c7e23b57ddc89791beee3be92ebffc4d9d4",
+      "different": true
+    },
+    "/usr/sbin/ark-web-watchdog": {
+      "before": "73bbcf3b73617b5c982ae33b46ddccb2f0b1e72629d1b062d53cfc479e265853",
+      "candidate": "fcc071142eabead84c8ad457a7df62567f366fffb163ec202d1742e712a6e0ff",
+      "different": true
+    },
+    "/etc/init.d/ark-firewall-guard": {
+      "before": "fd33ae477dc0b64a46894e10b411afce5b5e9db5b21d56055a10a7c50ced7682",
+      "candidate": "4f8ddc1a194d82879e167ad7ad3cf4b775409ebd629204844d4e51b9d5e8f9ee",
+      "different": true
+    },
+    "/etc/hotplug.d/iface/99-ark-doctor": {
+      "before": "4751f48c6f12c5d2fc03c27bd17c23d419fad0c8b6d8290481b4e8ef63928547",
+      "candidate": "096ca9904f90a16c33d2d4b067e22fe98ed89046dc4356ac0673a9e7439133ae",
+      "different": true
+    },
+    "/etc/hotplug.d/net/99-ark-doctor": {
+      "before": "bd1b761c08144738472cb845f247ad80bc324ede62afa6379e81fc27a9f20c61",
+      "candidate": "e08b19ed2447bd90553c35616f8c52211dd73fb8df529d2367e505fc7429bfad",
+      "different": true
+    },
+    "/etc/hotplug.d/firewall/99-ark-doctor": {
+      "before": "3ddcf16202e2e521fe86370f276b4eaf9e909f52fef7d20d2e32ec9abdbec2eb",
+      "candidate": "a72ef4be4846fc75f030a4ba4595812ac57ae367a5d537b732e5380e6cea99aa",
+      "different": true
+    },
+    "/usr/share/rpcd/acl.d/luci-app-equipe-dashboard.json": {
+      "before": "834aefb21e3ee31d53b2d5bc4baa5cb9f6f7b0e29341393b90501181b94e71d0",
+      "candidate": "6315356a86984725a3258769bb72e0b6ce96f769aaaf0b34629b79c3164b6a08",
+      "different": true
+    }
+  },
+  "applied": true,
+  "persistent_code_backup_verified": true,
+  "remote_free_kib_before": "/dev/ubi0_2 47140\ntmpfs 499692",
+  "runtime_bytes": 350837,
+  "doctor": {
+    "status": "OK",
+    "errors": 0,
+    "warnings": 0,
+    "fixes_applied": 0,
+    "timestamp": 1793917400,
+    "busy": null,
+    "checks": [
+      {
+        "name": "Memoria RAM",
+        "status": "OK"
+      },
+      {
+        "name": "Coerencia de ZRAM",
+        "status": "OK"
+      },
+      {
+        "name": "Espaco Flash (/overlay)",
+        "status": "OK"
+      },
+      {
+        "name": "Saude do Storage (/overlay)",
+        "status": "OK"
+      },
+      {
+        "name": "OOM Killer (Kernel)",
+        "status": "OK"
+      },
+      {
+        "name": "SQM wan",
+        "status": "OK"
+      },
+      {
+        "name": "SQM Overhead wan",
+        "status": "OK"
+      },
+      {
+        "name": "MTU Baby Jumbo (wan)",
+        "status": "OK"
+      },
+      {
+        "name": "Aceleracao de Rede",
+        "status": "OK"
+      },
+      {
+        "name": "Hardware Offload em Silicio",
+        "status": "OK"
+      },
+      {
+        "name": "Tabela de Clientes",
+        "status": "OK"
+      },
+      {
+        "name": "Protecao Multicast (IGMP Snooping)",
+        "status": "OK"
+      },
+      {
+        "name": "Interfaces Mesh Orfas",
+        "status": "OK"
+      },
+      {
+        "name": "Pureza do Firewall (fw4 Puro)",
+        "status": "OK"
+      },
+      {
+        "name": "Blindagem WAN6 e DHCPv6",
+        "status": "OK"
+      },
+      {
+        "name": "Depreciação IPv6 (RFC 9096)",
+        "status": "OK"
+      },
+      {
+        "name": "Compatibilidade SLAAC Apple",
+        "status": "OK"
+      },
+      {
+        "name": "Isolamento de Sub-rede WAN/LAN",
+        "status": "OK"
+      },
+      {
+        "name": "Unicidade de MAC WAN/LAN",
+        "status": "OK"
+      },
+      {
+        "name": "Coerência IPv6 (Dashboard vs LAN)",
+        "status": "OK"
+      },
+      {
+        "name": "Integridade do Multi-WAN (mwan3)",
+        "status": "OK"
+      },
+      {
+        "name": "Blindagem de Radios Wi-Fi",
+        "status": "OK"
+      },
+      {
+        "name": "Coerencia Criptografica Wi-Fi",
+        "status": "OK"
+      },
+      {
+        "name": "Compatibilidade WPA3 e Roaming",
+        "status": "OK"
+      },
+      {
+        "name": "Band Steering (usteer)",
+        "status": "OK"
+      },
+      {
+        "name": "Estabilidade Wi-Fi Mobile & IoT",
+        "status": "OK"
+      },
+      {
+        "name": "Sincronizacao de Horario (NTP)",
+        "status": "OK"
+      },
+      {
+        "name": "Tabela NAT (Conntrack)",
+        "status": "OK"
+      },
+      {
+        "name": "Governanca de CPU (IRQ Balance)",
+        "status": "OK"
+      },
+      {
+        "name": "Travessia CGNAT UPnP (STUN)",
+        "status": "OK"
+      },
+      {
+        "name": "Transporte Criptografado Dual-DoH",
+        "status": "OK"
+      },
+      {
+        "name": "Transporte TCP & Low-Bufferbloat",
+        "status": "OK"
+      }
+    ],
+    "exit_code": 0,
+    "stderr_nonempty": false
+  },
+  "native_checks": {
+    "target": "192.168.73.1",
+    "checks": {
+      "read_endpoint_extra_fix": {
+        "status": "OK",
+        "errors": 0,
+        "warnings": 0,
+        "fixes_applied": 0,
+        "timestamp": 1793917568,
+        "busy": null,
+        "check_count": 32
+      },
+      "after_read_endpoint": {
+        "uci_hashes": true,
+        "uci_pending_hash": true,
+        "nft_stateless_hash": true,
+        "routes4_hash": true,
+        "rules4_hash": true,
+        "rules6_hash": true,
+        "qdiscs": true,
+        "interfaces_hash": true,
+        "service_pids": true
+      },
+      "auto_burst": {
+        "audit_executed": true,
+        "repeated_calls": 5,
+        "cache_unchanged": true,
+        "timestamp_unchanged": true
+      },
+      "after_auto": {
+        "uci_hashes": true,
+        "uci_pending_hash": true,
+        "nft_stateless_hash": true,
+        "routes4_hash": true,
+        "rules4_hash": true,
+        "rules6_hash": true,
+        "qdiscs": true,
+        "interfaces_hash": true,
+        "service_pids": true
+      },
+      "invalid_toggles": [
+        {
+          "args": "sqm invalid",
+          "exit_code": 2
+        },
+        {
+          "args": "unknown_runtime022 0",
+          "exit_code": 2
+        }
+      ],
+      "after_invalid_toggles": {
+        "uci_hashes": true,
+        "uci_pending_hash": true,
+        "nft_stateless_hash": true,
+        "routes4_hash": true,
+        "rules4_hash": true,
+        "rules6_hash": true,
+        "qdiscs": true,
+        "interfaces_hash": true,
+        "service_pids": true
+      },
+      "after_watchdog_guard": {
+        "uci_hashes": true,
+        "uci_pending_hash": true,
+        "nft_stateless_hash": true,
+        "routes4_hash": true,
+        "rules4_hash": true,
+        "rules6_hash": true,
+        "qdiscs": true,
+        "interfaces_hash": true,
+        "service_pids": true
+      }
+    },
+    "connectivity_router_to_internet": {
+      "exit_code": 0,
+      "summary": [
+        "20 packets transmitted, 20 packets received, 0% packet loss",
+        "round-trip min/avg/max = 4.313/4.515/4.933 ms"
+      ]
+    },
+    "connectivity_mac_to_router": {
+      "exit_code": 0,
+      "summary": [
+        "20 packets transmitted, 20 packets received, 0.0% packet loss",
+        "round-trip min/avg/max/stddev = 0.243/0.595/0.914/0.155 ms"
+      ]
+    }
+  },
+  "locks": {
+    "environment": "Native BusyBox ash on W6x; locks isolated in /tmp",
+    "cases": [
+      "live_old_owner_preserved",
+      "missing_pid_preserved",
+      "dead_owner_recovered",
+      "foreign_owner_preserved",
+      "explicit_busy_result",
+      "signal_exits_130",
+      "signal_releases_owned_lock",
+      "no_execution_after_signal"
+    ],
+    "passed": true
+  },
+  "sqm_isolated": {
+    "target": "192.168.73.1",
+    "environment": "Installed feature-toggle; native ash, UCI and kernel TC; injected SQM service/offload adapters; isolated IFBs",
+    "exit_code": 0,
+    "cases": [
+      "stop_failure_preserves_uci_and_owned_qdisc",
+      "successful_disable_removes_owned_qdisc",
+      "repeated_disable_succeeds",
+      "foreign_ingress_and_ifb_remain_active"
+    ],
+    "stderr_nonempty": false
+  },
+  "browser_and_rpc": {
+    "target": "192.168.73.1",
+    "session_method": "Ephemeral rpcd sessions created through authenticated root SSH; no persistent login changes",
+    "acl": {
+      "read": {
+        "controller_exec_granted": false,
+        "actual_file_exec_ubus_code": 6
+      },
+      "write": {
+        "controller_exec_granted": true,
+        "actual_file_exec_ubus_code": 0
+      }
+    },
+    "browser": [
+      {
+        "width": 1280,
+        "diagnostic_rpc_http_status": 200,
+        "diagnostic_response": [
+          {
+            "ubus_code": 0,
+            "process_code": 0,
+            "status": "OK",
+            "fixes_applied": 0,
+            "check_count": 32
+          }
+        ],
+        "check_cards": 32,
+        "errors": [],
+        "geometry": {
+          "viewport": 1280,
+          "document_width": 1280,
+          "modal_bounds": {
+            "x": 200,
+            "y": 27,
+            "width": 880,
+            "height": 792
+          },
+          "scroll_containers": [
+            {
+              "tag": "DIV",
+              "overflowY": "auto",
+              "clientHeight": 790,
+              "scrollHeight": 794
+            },
+            {
+              "tag": "DIV",
+              "overflowY": "auto",
+              "clientHeight": 900,
+              "scrollHeight": 900
+            },
+            {
+              "tag": "BODY",
+              "overflowY": "hidden",
+              "clientHeight": 1714,
+              "scrollHeight": 1714
+            },
+            {
+              "tag": "HTML",
+              "overflowY": "auto",
+              "clientHeight": 900,
+              "scrollHeight": 1714
+            }
+          ]
+        }
+      },
+      {
+        "width": 390,
+        "diagnostic_rpc_http_status": 200,
+        "diagnostic_response": [
+          {
+            "ubus_code": 0,
+            "process_code": 0,
+            "status": "OK",
+            "fixes_applied": 0,
+            "check_count": 32
+          }
+        ],
+        "check_cards": 32,
+        "errors": [],
+        "geometry": {
+          "viewport": 390,
+          "document_width": 390,
+          "modal_bounds": {
+            "x": 6,
+            "y": 18,
+            "width": 378,
+            "height": 973.5
+          },
+          "scroll_containers": [
+            {
+              "tag": "DIV",
+              "overflowY": "auto",
+              "clientHeight": 972,
+              "scrollHeight": 972
+            },
+            {
+              "tag": "DIV",
+              "overflowY": "auto",
+              "clientHeight": 900,
+              "scrollHeight": 1056
+            },
+            {
+              "tag": "BODY",
+              "overflowY": "hidden",
+              "clientHeight": 3286,
+              "scrollHeight": 3286
+            },
+            {
+              "tag": "HTML",
+              "overflowY": "auto",
+              "clientHeight": 900,
+              "scrollHeight": 3286
+            }
+          ]
+        }
+      }
+    ],
+    "ephemeral_sessions_destroyed": true
+  },
+  "final": {
+    "preserved": {
+      "uci_hashes": true,
+      "uci_pending_hash": true,
+      "nft_stateless_hash": true,
+      "routes4_hash": true,
+      "rules4_hash": true,
+      "rules6_hash": true,
+      "qdiscs": true,
+      "interfaces_hash": true,
+      "service_pids": true
+    },
+    "installed_files": {
+      "/usr/lib/ark/common.sh": "fec5f7c881dff4663e1c1ff41b24b345ed6909abb597b1f27e83b11724266c16",
+      "/usr/lib/ark/modules/doctor.sh": "04167570dc782686f9c98714ee11104b3eda40577c40409c3092df9097ae2a0f",
+      "/usr/lib/ark/modules/ezsetup.sh": "1c9dd911f2c3347b0695d28768fdf1ab54bb7a38db9861e23c118d3575d50542",
+      "/usr/sbin/equipe-dashboard-control": "39772176fa0c43ad8651f9446b222c7e23b57ddc89791beee3be92ebffc4d9d4",
+      "/usr/sbin/ark-web-watchdog": "fcc071142eabead84c8ad457a7df62567f366fffb163ec202d1742e712a6e0ff",
+      "/etc/init.d/ark-firewall-guard": "4f8ddc1a194d82879e167ad7ad3cf4b775409ebd629204844d4e51b9d5e8f9ee",
+      "/etc/hotplug.d/iface/99-ark-doctor": "096ca9904f90a16c33d2d4b067e22fe98ed89046dc4356ac0673a9e7439133ae",
+      "/etc/hotplug.d/net/99-ark-doctor": "e08b19ed2447bd90553c35616f8c52211dd73fb8df529d2367e505fc7429bfad",
+      "/etc/hotplug.d/firewall/99-ark-doctor": "a72ef4be4846fc75f030a4ba4595812ac57ae367a5d537b732e5380e6cea99aa",
+      "/usr/share/rpcd/acl.d/luci-app-equipe-dashboard.json": "6315356a86984725a3258769bb72e0b6ce96f769aaaf0b34629b79c3164b6a08"
+    },
+    "all_preserved": true,
+    "reboot_observed": false,
+    "cleanup": {
+      "temporary_ifbs_absent": true,
+      "test_directories_removed": true,
+      "rollback_disarmed": true,
+      "production_locks_absent": true
+    }
+  },
+  "limitations": [
+    "VirtualBox unavailable",
+    "No reboot or package installation test",
+    "No fw3 hardware test",
+    "No production SQM off/on cycle; isolated native TC/UCI with injected service",
+    "Manual bulk fix and DNS exact restoration remain open",
+    "Short connectivity sample; no performance improvement claim"
+  ],
+  "artifacts_sha256": {
+    "doctor-native-1280.png": "fd27158042e30c90daf9923e4829e52f85023c1ddc468faa1ff9d37c125ba269",
+    "doctor-native-390.png": "ba56412a3cba21dcd09424fc789d03247f48d5fa43e1ad9bd8155fe8b48a6d25"
+  }
+}

@@ -467,6 +467,7 @@ enable_ipv6_dual_stack() {
 	uci -q set network.wan6.ifname='@wan'
 	uci -q set network.wan6.reqprefix='auto'
 	uci -q set network.wan6.reqaddress='try'
+	uci -q set network.wan6.norelease='1'
 
 	ula="$(uci -q get network.globals.ula_prefix)"
 	if [ -z "$ula" ]; then

@@ -1,0 +1,21 @@
+{
+  "recorded_utc": "2026-11-06T01:12:43.384217+00:00",
+  "full_runner_command": "bash tests/run_local_tests.sh",
+  "full_runner_exit_code": 0,
+  "full_runner_log_sha256": "5883f9067d3ae97b4bb9e3110e58298afc8e390d402b87925abcaebc2c334623",
+  "collector_unit_tests": 12,
+  "collector_unit_exit_code": 0,
+  "collector_unit_log_sha256": "a06558b569591731b86d3a3fecd5547b937d95ae9091ed9ce66cef3c5541f702",
+  "python": "3.15.2",
+  "physical_tests": {
+    "new_app_browser_runs": 18,
+    "cake_bufferspeed_app": 3,
+    "cake_bufferspeed_web": 3,
+    "hfsc_bufferspeed_app": 3,
+    "hfsc_bufferspeed_web": 3,
+    "hfsc_waveform": 3,
+    "hfsc_fast": 3,
+    "networkquality_valid_runs": 0
+  },
+  "scope": "Hardware W6x para cargas; mocks locais para falhas do coletor; sem VM, novo firmware ou alteração de frontend."
+}

@@ -1,0 +1,150 @@
+{
+  "target": "192.168.73.1",
+  "applied_runtime": true,
+  "installed_sha256": {
+    "/usr/lib/ark/qos-resources.sh": "b038dad8ba74e527d70591ebf3fddb6174840b970325e8dde31cc60f23419787",
+    "/usr/lib/ark/common.sh": "29d8e7369b0abe74be88aa519b24f436ff5108e9f3178d4b2777d04116e1e5b7",
+    "/usr/lib/ark/modules/sqm.sh": "d306fe97b16a53aeb83280651213b30499eadaadf4e3d316e7509e11e5990642",
+    "/usr/lib/sqm/ark_hfsc_fqcodel.qos": "68c40b7781f74af0ff8a0ce5c80110421af55cfba1e5b90c39920f94d7ef2c96"
+  },
+  "backup_sha256": "f1d131da7e01c30b5e4a485b0f2cd648fc9a8cb882db6ed4126de55a694a153d",
+  "local_tests": {
+    "package_dependencies": 7,
+    "resources": 20,
+    "reliability": 28,
+    "full_runner": true
+  },
+  "packages": [
+    {
+      "format": "ipk",
+      "mode": "standard",
+      "profile": "lite",
+      "sha256": "763ef2cac4061f87724059dbedb3477719e800545ca318954c467b638a3ac3bf",
+      "size_bytes": 922297,
+      "qos_dependencies": [
+        "kmod-ifb",
+        "kmod-sched-cake",
+        "kmod-sched-core",
+        "kmod-sched-ctinfo",
+        "sqm-scripts",
+        "tc-full"
+      ],
+      "payload_verified": true
+    },
+    {
+      "format": "ipk",
+      "mode": "standard",
+      "profile": "full",
+      "sha256": "c92b1d02ab91e18a38765ad8ec7bc823842ad9d6ca0b66e57a2510ae3a17b00a",
+      "size_bytes": 1649486,
+      "qos_dependencies": [
+        "kmod-ifb",
+        "kmod-sched-cake",
+        "kmod-sched-core",
+        "kmod-sched-ctinfo",
+        "sqm-scripts",
+        "tc-full"
+      ],
+      "payload_verified": true
+    },
+    {
+      "format": "apk",
+      "mode": "standard",
+      "profile": "lite",
+      "sha256": "a21c246c461f96cdefc65cd27022fbaee071fce0c61b2c7cf2c441eafb2919a4",
+      "size_bytes": 920261,
+      "qos_dependencies": [
+        "kmod-ifb",
+        "kmod-sched-cake",
+        "kmod-sched-core",
+        "kmod-sched-ctinfo",
+        "sqm-scripts",
+        "tc-full"
+      ],
+      "payload_verified": true
+    },
+    {
+      "format": "apk",
+      "mode": "standard",
+      "profile": "full",
+      "sha256": "1ae0592bbcbb5e26c13954ec96a507afb8833577d8f67f369bddd2330d79bab5",
+      "size_bytes": 1650725,
+      "qos_dependencies": [
+        "kmod-ifb",
+        "kmod-sched-cake",
+        "kmod-sched-core",
+        "kmod-sched-ctinfo",
+        "sqm-scripts",
+        "tc-full"
+      ],
+      "payload_verified": true
+    },
+    {
+      "format": "ipk",
+      "mode": "reduced",
+      "profile": "lite",
+      "sha256": "c88a1660fe61065246e109ad91c6fa95be257468a108dcea901ffee196fe4c0e",
+      "size_bytes": 922273,
+      "qos_dependencies": [
+        "kmod-ifb",
+        "kmod-sched-cake",
+        "kmod-sched-core",
+        "sqm-scripts",
+        "tc-full"
+      ],
+      "payload_verified": true
+    },
+    {
+      "format": "ipk",
+      "mode": "reduced",
+      "profile": "full",
+      "sha256": "c6e01e04cb37efff23d5e3c606b3e308e214e629d74d7657e414178b9ff3562f",
+      "size_bytes": 1649464,
+      "qos_dependencies": [
+        "kmod-ifb",
+        "kmod-sched-cake",
+        "kmod-sched-core",
+        "sqm-scripts",
+        "tc-full"
+      ],
+      "payload_verified": true
+    },
+    {
+      "format": "apk",
+      "mode": "reduced",
+      "profile": "lite",
+      "sha256": "0f107481e7b092bd1be0c41cc1ed28edbaa4fe77fe4491404abd0aa59e62e4f7",
+      "size_bytes": 920232,
+      "qos_dependencies": [
+        "kmod-ifb",
+        "kmod-sched-cake",
+        "kmod-sched-core",
+        "sqm-scripts",
+        "tc-full"
+      ],
+      "payload_verified": true
+    },
+    {
+      "format": "apk",
+      "mode": "reduced",
+      "profile": "full",
+      "sha256": "67cdd269896e96e4fd57ed00635bd6e4ea47b5837552ca31e463fecfb9daaa01",
+      "size_bytes": 1650718,
+      "qos_dependencies": [
+        "kmod-ifb",
+        "kmod-sched-cake",
+        "kmod-sched-core",
+        "sqm-scripts",
+        "tc-full"
+      ],
+      "payload_verified": true
+    }
+  ],
+  "native_missing_ctinfo_fallback": true,
+  "production_uci_and_qdiscs_unchanged": true,
+  "kernel_package_installed": false,
+  "ctinfo_package_verification": "UNTRUSTED signature",
+  "positive_ctinfo_test": "mock_only",
+  "wsl_execution": false,
+  "reboot_test": false
+}

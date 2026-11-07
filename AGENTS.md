@@ -5,6 +5,7 @@
 - Ao iniciar ou retomar uma auditoria, leia `docs/audit/README.md` e `docs/audit/STATUS.md`; abra somente as decisões, contratos e fontes relevantes ao lote.
 - Toda mudança funcional deve atualizar os contratos existentes, a documentação afetada e os testes de persistência, idempotência e interferência. Registre o fechamento em `docs/audit/STATUS.md`.
 - Antes de corrigir, leia a função, seus chamadores e subchamadas relevantes. Não altere padrões do produto sem decisão explícita.
+- Em ajustes de QoS, siga [o protocolo de testes](docs/QOS_TEST_PROTOCOL.md): monitoramento simultâneo, triagem rápida no cliente e três rodadas por ferramenta, incluindo BufferSpeed no navegador e no aplicativo quando disponível. A+ em todas as rodadas é meta de aceite, não garantia; preserve falhas e investigue o gargalo antes de ajustar novamente.
 - Resultados devem identificar o código/pacote testado. Texto gerado ou estado `funcional` no catálogo não comprova reboot, segurança nem aprovação de release.
 - Testes operacionais primeiro no VirtualBox, com alvo e snapshot verificados. Não reinicie o hospedeiro. Deploy físico, commit, push e publicação requerem autorização explícita; aprovação virtual não os autoriza.
 
@@ -38,7 +39,7 @@
 7. **Auditoria Contínua, Contratos e Documentação Viva Obrigatória**:
    - Toda adição, alteração ou remoção funcional deve atualizar `docs/FEATURE_AUDIT_AND_REBOOT.md` e `tests/feature_contracts.yaml`, incluindo persistência após reboot, idempotência, propriedade das configurações e testes de interferência entre módulos.
    - Testes devem ser executados primeiro no VirtualBox.
-   - Deploy físico ocorre somente após autorização e confirmação manual explícita escrevendo **SIM**.
+   - Deploy físico ocorre após solicitação explícita do usuário; o próprio pedido de aplicação já autoriza a operação, sem palavra-chave ou confirmação redundante.
    - Nenhuma aprovação virtual autoriza automaticamente publicação em roteador real.
 8. **Regra de Ouro de Internacionalização (i18n Triplo: PT-BR / EN / ES) & Pre-Release Gate**:
    - **Desenvolvimento Token-Efficient**: Durante a fase de criação, prototipagem e refatoração de código/telas em `src/modules/`, o desenvolvimento é conduzido **100% em Português do Brasil (PT-BR)** nativo (idioma padrão do projeto). É terminantemente proibido gastar tokens traduzindo componentes intermediários ou experimentais que ainda podem ser alterados ou descartados.
@@ -68,6 +69,9 @@
     - **Proibição de `overflow: visible !important` em Abas Ativas**: Seletores como `[data-tab-active="true"]` jamais podem aplicar `overflow: visible !important`, pois sobrepõem e neutralizam o scroll horizontal de contêineres e tabelas internas (`.cbi-tblsection`). Contêineres de tabela em abas devem implementar regra de alta especificidade com `overflow-x: auto !important; -webkit-overflow-scrolling: touch !important;`.
     - **Encapsulamento Dinâmico de Tabelas Órfãs no LuCI JS (`ark-theme.js`)**: Tabelas injetadas diretamente sob `#view` sem wrapper (ex: `#wifi_assoclist_table`) devem ser detectadas em `applyPageTransforms()` e envolvidas em cartões `.ark-assoclist-card` com subtítulo, contador dinâmico e aviso visual tátil (`.ark-table-swipe-hint`).
     - **Barra Inferior de Ações Mobile (`.cbi-page-actions`)**: Em telas móveis (<= 854px), o botão principal ("Salvar e Aplicar") deve ocupar 100% da largura na linha superior (altura mínima 44px), e os botões secundários ("Salvar" / "Descartar") devem dividir a linha inferior em 50%/50% (altura mínima 42px). Detalhes canônicos em `.agents/skills/ark-theme-ui/SKILL.md`.
+13. **Garantia Obrigatória de SFTP no Ambiente de Desenvolvimento (`openssh-sftp-server`)**:
+    - Em qualquer fluxo de desenvolvimento, testes, diagnóstico ou configuração em ambiente de homologação (máquina virtual VirtualBox ou roteador físico em sessão autorizada), verificar obrigatoriamente se o pacote `openssh-sftp-server` (e o binário `/usr/lib/sftp-server` ou `/usr/libexec/sftp-server`) está instalado e funcional.
+    - Se ausente, instalar imediatamente durante a fase de desenvolvimento (`apk add openssh-sftp-server` em ambientes com `apk`, ou `opkg update && opkg install openssh-sftp-server` em ambientes com `opkg`), garantindo que o subsistema SFTP do Dropbear esteja sempre ativo para transferência rápida de arquivos, inspeção e edição remota via SFTP/WinSCP/VS Code.
 
 ---
 
@@ -77,7 +81,7 @@ O ambiente principal de desenvolvimento e validação do ARK Router deve ser uma
 
 ### Regras Obrigatórias de Ambiente e Deploy:
 1. **Nunca instalar, publicar, atualizar ou executar alterações em roteadores físicos automaticamente.**
-2. **Qualquer implantação em equipamento real depende de solicitação e confirmação manual e explícita do usuário por confirmação escrevendo SIM.**
+2. **Qualquer implantação em equipamento real depende de solicitação explícita do usuário. O pedido direto de aplicar ou validar no equipamento já constitui autorização; não exigir a palavra SIM nem confirmação redundante.**
 3. **O ambiente virtual deve reproduzir o maior número possível de cenários suportados pelo ARK Router, incluindo:**
    - duas ou mais interfaces WAN;
    - balanceamento, failover e perda de conectividade;
@@ -105,7 +109,7 @@ O ambiente principal de desenvolvimento e validação do ARK Router deve ser uma
    - limitações da emulação;
    - procedimentos de restauração e rollback.
 8. **A preparação, atualização e documentação do laboratório virtual fazem parte obrigatória** do processo de desenvolvimento e dos deploys de teste.
-9. **A aprovação no ambiente virtual não autoriza automaticamente implantação física.** O teste em roteador real constitui uma etapa separada e somente pode ocorrer após autorização explícita do usuário por confirmação escrevendo **SIM**.
+9. **A aprovação no ambiente virtual não autoriza automaticamente implantação física.** O teste em roteador real constitui uma etapa separada e ocorre mediante solicitação explícita do usuário, sem exigir palavra-chave ou confirmação redundante.
 
 ---
 
@@ -175,3 +179,15 @@ O ambiente principal de desenvolvimento e validação do ARK Router deve ser uma
 10. `openwrt-storage-failsafe`: Mapa de partições MTD, proteção de calibração de rádio (ART) e telnet failsafe.
 11. `openwrt-wifi-mesh`: Roaming rápido 802.11r/k/v, calibração de limiares do usteer e mesh 802.11s.
 12. `js-performance-optimization`: Arquitetura modular em `src/modules/`, DOM diffing cirúrgico, prevenção de memory leaks, `AbortController` e batching RPC no LuCI.
+
+## 9. Protocolo Obrigatório de Transparência de Raciocínio (Anti-Trabalho Silencioso)
+- **É TERMINANTEMENTE PROIBIDO** disparar ferramentas de modelos (`consultar_modelo`, `comparar_modelos`, `call_mcp_tool`) no vácuo sem antes emitir uma mensagem de texto visível no chat para o usuário.
+- O agente DEVE SEMPRE enviar primeiro um parágrafo claro informando:
+  1. Qual modelo especialista está sendo consultado (ex: `gpt-6.1-terra-max`, `gemini-4-argon-high`, `gpt-6-astra-high`);
+  2. O que exatamente está sendo solicitado;
+  3. O tempo estimado de resposta (ex: "Processando análise profunda, aguarde de 1 a 3 minutos").
+- Nunca deixe a tela cair diretamente no card cinza `consultar_modelo · Working` sem explicação prévia.
+
+## Exceção operacional QoS — 05/11/2026
+
+O usuário autorizou prosseguir alterando e validando diretamente o W6x 192.168.73.1 nesta investigação de QoS, dispensando a precedência da VM nesta sessão. Manter identificação do alvo, backup, mudanças incrementais e retorno; não estende autorização a outros equipamentos, commit, push ou publicação.

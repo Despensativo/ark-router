@@ -1,0 +1,49 @@
+{
+  "pppoe-wan": {
+    "kind": "cake",
+    "options": {
+      "bandwidth": 87500000,
+      "diffserv": "diffserv4",
+      "flowmode": "dual-srchost",
+      "nat": true,
+      "wash": true,
+      "ingress": false,
+      "ack-filter": "disabled",
+      "split_gso": false,
+      "rtt": 100000,
+      "raw": false,
+      "atm": "noatm",
+      "overhead": 44,
+      "mpu": 64,
+      "memlimit": 67108864,
+      "fwmark": "0"
+    },
+    "differences_from_initial": {}
+  },
+  "ifb4pppoe-wan": {
+    "kind": "cake",
+    "options": {
+      "bandwidth": 81250000,
+      "diffserv": "diffserv4",
+      "flowmode": "dual-dsthost",
+      "nat": true,
+      "wash": true,
+      "ingress": true,
+      "ack-filter": "disabled",
+      "split_gso": false,
+      "rtt": 100000,
+      "raw": false,
+      "atm": "noatm",
+      "overhead": 44,
+      "mpu": 64,
+      "memlimit": 67108864,
+      "fwmark": "0"
+    },
+    "differences_from_initial": {
+      "bandwidth": {
+        "before": 90000000,
+        "after": 81250000
+      }
+    }
+  }
+}

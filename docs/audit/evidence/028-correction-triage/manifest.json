@@ -1,0 +1,45 @@
+{
+  "files": [
+    {
+      "name": "closing-state.json",
+      "bytes": 665,
+      "sha256": "59ed46e0bc5760da69847e9ccecff119bfae8d394e3ec0fe45a3855090164365"
+    },
+    {
+      "name": "kernel-symbols-assessment.json",
+      "bytes": 635,
+      "sha256": "e50340dbeff383780091cf480e59eb1bec5b3934265838a5113453c05d313a6e"
+    },
+    {
+      "name": "local-validation.json",
+      "bytes": 494,
+      "sha256": "8b5126b0ec1ef534f3e7c3400ba83220906c39446de056e4b5534c521990ad6f"
+    },
+    {
+      "name": "mac-assessment.json",
+      "bytes": 1706,
+      "sha256": "97911a948debef120854dfac71ada35fa11328ccbbe7853d737030cded60fc7d"
+    },
+    {
+      "name": "reproduce-sqm-wrapper.py",
+      "bytes": 3686,
+      "sha256": "081cfbe7ed5b58b47982578f19b3f5bc90617a3ce840799a1d5233c1f5fed3c9"
+    },
+    {
+      "name": "sqm-wrapper-reference.sh",
+      "bytes": 1353,
+      "sha256": "6e59bdec89b2767cc4d06f09069d7862f7fe17f86a7847235f1e2f2634e1e703"
+    },
+    {
+      "name": "sqm-wrapper-reproduction.json",
+      "bytes": 1183,
+      "sha256": "addc935d28f9d908de3513a19acc404c91fdf1f362553fdd07a96ff00fcacce7"
+    },
+    {
+      "name": "wifi-and-lan-assessment.json",
+      "bytes": 3601,
+      "sha256": "5a14d5c53ce30dd87120568fc871fc9aaccf3161884b5a914561471b6c959cf9"
+    }
+  ],
+  "report_sha256": "cbaee8dd7c73c724628d91ea055123cb9aa2ceb3744b90153f0f82b0e6f523ea"
+}

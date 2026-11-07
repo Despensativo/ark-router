@@ -1,0 +1,25 @@
+{
+  "engine": "cake",
+  "board_match": true,
+  "boot_id_unchanged_since_postpanic_comparison": true,
+  "configs_unchanged_since_postpanic_comparison": true,
+  "changed_configs_since_initial_prepanic": [
+    "/etc/config/wireless"
+  ],
+  "nft_unchanged_since_postpanic_comparison": false,
+  "qdisc_options_match_postpanic_cake": true,
+  "sqm_hash_matches_original": true,
+  "rps_matches_initial": false,
+  "link_tuning_matches_initial": false,
+  "changed_link_tuning": [
+    "phy1-ap1",
+    "phy1-ap2"
+  ],
+  "rps_original_interfaces_match": true,
+  "rps_matches_hfsc_pretests": true,
+  "added_rps_interfaces": [
+    "/sys/class/net/phy1-ap1/queues/rx-0/rps_cpus",
+    "/sys/class/net/phy1-ap2/queues/rx-0/rps_cpus"
+  ],
+  "original_interfaces_link_tuning_match": true
+}

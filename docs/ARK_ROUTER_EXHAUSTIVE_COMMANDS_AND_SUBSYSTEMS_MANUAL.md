@@ -1,5 +1,6 @@
 # ARK Router — Exhaustive Commands, Subsystems & Engineering Reference Manual
 
+> Revisão local 05/11/2026: as descrições históricas de autocura não se aplicam a `--auto`. Consulte [DOCTOR_SAFETY_MODEL](DOCTOR_SAFETY_MODEL.md) para comportamento atual e riscos do reparador manual. Alegações de desempenho exigem evidência por cenário.
 > **Document Type**: Authoritative Technical Manual & Architecture Reference  
 > **Target Version**: ARK Router `1.5.17` (OpenWrt `19.07` through `25.x`+)  
 > **Author**: Google DeepMind Agentic Coding Pair / ARK Router Core Team  
@@ -413,7 +414,7 @@ Smart home devices (ESP8266, ESP32, Tuya, Tasmota, smart plugs) and smartphones 
 
 ---
 
-## 9. ARK Doctor: Autonomous Self-Healing Diagnostic Engine
+## 9. ARK Doctor: Observational Audit and Legacy Manual Repair
 
 Managed by `/usr/lib/ark/modules/doctor.sh`, `/etc/init.d/ark-firewall-guard`, and `/usr/sbin/ark-doctor`.
 
@@ -740,7 +741,10 @@ To maximize free space on 16 MB flash routers, ARK Router allows selective purgi
 
 ## 15. Living Inventory: 74 ARK Feature Contracts Cross-Reference
 
-Every feature in ARK Router is governed by an automated functional contract verified across virtual and physical targets.
+The 74 entries declare functional contracts. Automated schema checks do not demonstrate successful operation on virtual or physical targets; consult revision-specific evidence in docs/audit/STATUS.md.
+
+> A tabela mistura comandos CLI, scripts instalados e símbolos internos. Endpoints reais do controlador estão na matriz JS → RPC → Shell do [CODE_MAP](CODE_MAP.md). `wifi_qca_apply_roaming_tuning()` e `speedtest_download_fallback_mbps()` são funções internas; a entrada pública correspondente é `wifi-roaming-toggle` e `speedtest-start`.
+
 
 ```
 +----------------------------------------------------------------------------------------------------+
@@ -773,7 +777,7 @@ Every feature in ARK Router is governed by an automated functional contract veri
 | ARK-FW-003    | DMZ (Demilitarized Zone) Forwarding Host            | dmz-set                      |
 | ARK-FW-004    | HTTPS Redirection & Web Administration Port Guard   | https-redirect               |
 | ARK-FW-005    | UPnP / NAT-PMP IGD with Anycast STUN Anti-Crash     | upnp-toggle                  |
-| ARK-FW-006    | Autonomous Firewall Guard Daemon                    | ark-firewall-guard           |
+| ARK-FW-006    | Observational Firewall Guard                    | ark-firewall-guard           |
 | ARK-SQM-001   | CAKE Smart Queue Management Bufferbloat Engine      | sqm-save-v2                  |
 | ARK-SQM-002   | Dynamic SQM Interface Auto-Healing (l3_device)      | doctor-fix                   |
 | ARK-SQM-003   | Multi-WAN Synchronized SQM Queues                   | sqm-save-v2                  |
@@ -788,7 +792,7 @@ Every feature in ARK Router is governed by an automated functional contract veri
 | ARK-WIFI-007  | EasyMesh 802.11s Mesh Controller & Satellite Sync   | wifi-mesh-satellite-apply    |
 | ARK-WIFI-008  | WPS Pairing Control (Push Button & PIN)              | wifi-wps-pbc                 |
 | ARK-WIFI-009  | Wireless Ethernet Dispatch (WED) Silicon Offload    | wifi-wed-toggle              |
-| ARK-WIFI-010  | Fast Roaming 802.11k/v, RNR 6 GHz & Calibration     | wifi-qca-apply-roaming-tuning|
+| ARK-WIFI-010  | Fast Roaming 802.11k/v, RNR 6 GHz & Calibration     | wifi-roaming-toggle|
 | ARK-WIFI-011  | Smart Wi-Fi Package Enhancer (Atomic wpad Upgrade)   | wifi-enhancer-upgrade        |
 | ARK-HW-001    | Hardware Packet Processing Engine (PPE / Fastpath)   | flow_offloading_hw           |
 | ARK-HW-002    | Hardware Topology Profiler & LED Preset Engine       | set-led-preset               |
@@ -808,16 +812,16 @@ Every feature in ARK Router is governed by an automated functional contract veri
 | ARK-BLOCK-001  | Integrated DNS Adblock & Cloudflare Family DNS       | adblock-enable               |
 | ARK-BLOCK-002  | Custom DNS Whitelist & Blacklist Synchronization     | adblock-blacklist-sync       |
 | ARK-HIST-001   | Traffic History Daemon & nlbwmon Sampling Database   | equipe-traffic-history       |
-| ARK-DIAG-001   | ARK Doctor: Autonomous Self-Healing Diagnostic Engine| doctor-fix                   |
+| ARK-DIAG-001   | ARK Doctor: Observational Audit and Legacy Manual Repair| doctor-fix                   |
 | ARK-DIAG-002   | High-Resolution Sub-Second Disconnect Probe Tester   | ark-probe-disconnect         |
-| ARK-DIAG-003   | Multi-Stream WAN Speedtest Engine (Fast.com/CF)      | speedtest-download-fallback  |
+| ARK-DIAG-003   | Multi-Stream WAN Speedtest Engine (Fast.com/CF)      | speedtest-start  |
 | ARK-SYS-001    | Friendly Device Naming & DHCP Aliases Engine         | rename                       |
 | ARK-SYS-002    | Two-Phase Token-Locked Safe Reboot Architecture      | reboot-confirm               |
 | ARK-SYS-003    | Fast Setup Wizard (EZ-Setup Multi-Step Automation)   | ez-setup-apply               |
 | ARK-SYS-004    | Modular Package Profile Manager (Lite vs Full)       | profile <name>               |
 | ARK-SYS-005    | OTA Upgrade Engine & Manual Local IPK/APK Installer  | manual-update-start          |
 | ARK-SYS-006    | System Branding, Title & Tri-Lingual i18n Switcher   | language / title             |
-| ARK-SYS-007    | Nginx & uhttpd Web Server Auto-Recovery Watchdog     | ark-web-watchdog             |
+| ARK-SYS-007    | Local HTTP Availability Probe     | ark-web-watchdog             |
 | ARK-SYS-008    | Intelligent NTP, Fake RTC Preserver & Date Fallback  | ark-clock-preserver          |
 | ARK-PERF-006   | Hardware-Adapted Zero-Latency DNS Cache Sizing       | 99-ark-router-dhcp-sanitize  |
 +----------------------------------------------------------------------------------------------------+

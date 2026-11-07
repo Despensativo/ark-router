@@ -1,0 +1,1826 @@
+{
+  "system-logread": {
+    "command_exit": 0,
+    "bytes_read": 574837,
+    "lines": 3363,
+    "first_line": "Thu Nov  5 20:00:10 2026 kern.info kernel: [    0.000000] Booting Linux on physical CPU 0x0000000000 [0x410fd034]",
+    "last_line": "Fri Nov  6 01:07:47 2026 authpriv.notice dropbear[17083]: Pubkey auth succeeded for [USUARIO] with ssh-rsa key [FINGERPRINT] from [IP-25]:58422",
+    "severity": {
+      "info": 1680,
+      "notice": 1645,
+      "debug": 9,
+      "warn": 17,
+      "err": 12
+    },
+    "process_counts": {
+      "kernel": 409,
+      "procd": 10,
+      "dnsmasq": 70,
+      "dnsmasq-tftp": 3,
+      "dropbear": 593,
+      "https-dns-proxy": 11,
+      "wpa_supplicant": 7,
+      "hostapd": 1167,
+      "netifd": 116,
+      "ark-hardware-tune": 80,
+      "mwan3-hotplug": 8,
+      "ucitrack": 10,
+      "firewall": 8,
+      "upnp": 1,
+      "usteer": 17,
+      "nlbwmon": 8,
+      "miniupnpd": 9,
+      "dnsmasq-dhcp": 695,
+      "ksmbd": 2,
+      "aria2": 1,
+      "pppd": 28,
+      "SQM": 89,
+      "ark-babyjumbo": 1,
+      "ark-ipv6-hygiene": 1,
+      "ark-wireguard": 2,
+      "SQM-ARK": 6,
+      "dispatcher.uc": 2
+    },
+    "keyword_candidates": [
+      {
+        "line": 98,
+        "text": "Thu Nov  5 20:00:10 2026 kern.info kernel: [    0.012499] pstore: Using crash dump compression: deflate"
+      },
+      {
+        "line": 150,
+        "text": "Thu Nov  5 20:00:10 2026 kern.info kernel: [    1.292595] mtk-wdt 1001c000.watchdog: Watchdog enabled (timeout=31 sec, nowayout=0)"
+      },
+      {
+        "line": 159,
+        "text": "Thu Nov  5 20:00:10 2026 kern.info kernel: [    1.418366] mt7530-mdio mdio-bus:1f: Link is Up - 2.5Gbps/Full - flow control rx/tx"
+      },
+      {
+        "line": 193,
+        "text": "Thu Nov  5 20:00:10 2026 user.info kernel: [    2.157877] init: - watchdog -"
+      },
+      {
+        "line": 216,
+        "text": "Thu Nov  5 20:00:10 2026 kern.info kernel: [    3.103082] mtk_soc_eth 15100000.ethernet eth0: Link is Up - 2.5Gbps/Full - flow control rx/tx"
+      },
+      {
+        "line": 260,
+        "text": "Thu Nov  5 20:00:10 2026 user.info kernel: [    8.307047] procd: - watchdog -"
+      },
+      {
+        "line": 261,
+        "text": "Thu Nov  5 20:00:10 2026 user.info kernel: [    8.848028] procd: - watchdog -"
+      },
+      {
+        "line": 330,
+        "text": "Thu Nov  5 20:00:11 2026 kern.info kernel: [   20.258001] mtk_soc_eth 15100000.ethernet eth0: Link is Down"
+      },
+      {
+        "line": 332,
+        "text": "Thu Nov  5 20:00:11 2026 kern.info kernel: [   20.283830] mtk_soc_eth 15100000.ethernet eth0: Link is Up - 2.5Gbps/Full - flow control rx/tx"
+      },
+      {
+        "line": 370,
+        "text": "Thu Nov  5 20:00:12 2026 daemon.notice netifd: Network device 'eth0' link is up"
+      },
+      {
+        "line": 371,
+        "text": "Thu Nov  5 20:00:12 2026 daemon.notice netifd: Network device 'lo' link is up"
+      },
+      {
+        "line": 396,
+        "text": "Thu Nov  5 20:00:12 2026 daemon.notice netifd: Network device 'phy0-ap0' link is up"
+      },
+      {
+        "line": 397,
+        "text": "Thu Nov  5 20:00:13 2026 daemon.notice netifd: bridge 'br-lan' link is up"
+      },
+      {
+        "line": 437,
+        "text": "Thu Nov  5 20:00:14 2026 daemon.notice netifd: Network device 'phy1-ap0' link is up"
+      },
+      {
+        "line": 451,
+        "text": "Thu Nov  5 20:00:14 2026 daemon.err miniupnpd[7335]: Performing STUN failed. EXITING"
+      },
+      {
+        "line": 452,
+        "text": "Thu Nov  5 20:00:14 2026 daemon.notice netifd: Network device 'phy1-ap1' link is up"
+      },
+      {
+        "line": 467,
+        "text": "Thu Nov  5 20:00:14 2026 daemon.notice netifd: Network device 'phy1-ap2' link is up"
+      },
+      {
+        "line": 477,
+        "text": "Thu Nov  5 20:00:15 2026 kern.info kernel: [   23.455562] mt7530-mdio mdio-bus:1f lan2: Link is Up - 1Gbps/Full - flow control off"
+      },
+      {
+        "line": 479,
+        "text": "Thu Nov  5 20:00:15 2026 daemon.notice netifd: Network device 'lan2' link is up"
+      },
+      {
+        "line": 484,
+        "text": "Thu Nov  5 20:00:15 2026 kern.info kernel: [   23.601842] mt7530-mdio mdio-bus:1f lan2: Link is Down"
+      },
+      {
+        "line": 486,
+        "text": "Thu Nov  5 20:00:15 2026 daemon.notice netifd: Network device 'lan2' link is down"
+      },
+      {
+        "line": 511,
+        "text": "Thu Nov  5 20:00:15 2026 daemon.notice hostapd: phy0-ap0: STA [MAC-6] IEEE 802.11: did not acknowledge authentication response"
+      },
+      {
+        "line": 588,
+        "text": "Thu Nov  5 20:00:18 2026 kern.info kernel: [   26.574891] mt7530-mdio mdio-bus:1f lan2: Link is Up - 1Gbps/Full - flow control off"
+      },
+      {
+        "line": 591,
+        "text": "Thu Nov  5 20:00:18 2026 daemon.notice netifd: Network device 'lan2' link is up"
+      },
+      {
+        "line": 592,
+        "text": "Thu Nov  5 20:00:18 2026 daemon.notice netifd: Network device 'eth1' link is up"
+      },
+      {
+        "line": 597,
+        "text": "Thu Nov  5 20:00:18 2026 kern.info kernel: [   26.728497] mtk_soc_eth 15100000.ethernet eth1: Link is Up - 2.5Gbps/Full - flow control off"
+      },
+      {
+        "line": 624,
+        "text": "Thu Nov  5 20:00:19 2026 kern.info kernel: [   27.694938] mt7530-mdio mdio-bus:1f lan3: Link is Up - 1Gbps/Full - flow control off"
+      },
+      {
+        "line": 626,
+        "text": "Thu Nov  5 20:00:19 2026 daemon.notice netifd: Network device 'lan3' link is up"
+      },
+      {
+        "line": 781,
+        "text": "Thu Nov  5 20:00:53 2026 daemon.warn pppd[11783]: Timeout waiting for PADO packets"
+      },
+      {
+        "line": 782,
+        "text": "Thu Nov  5 20:00:53 2026 daemon.notice netifd: wan (11783): Timeout waiting for PADO packets"
+      },
+      {
+        "line": 827,
+        "text": "Thu Nov  5 20:01:29 2026 daemon.warn pppd[16599]: Timeout waiting for PADO packets"
+      },
+      {
+        "line": 828,
+        "text": "Thu Nov  5 20:01:29 2026 daemon.notice netifd: wan (16599): Timeout waiting for PADO packets"
+      },
+      {
+        "line": 847,
+        "text": "Thu Nov  5 20:01:29 2026 daemon.info pppd[17816]: CHAP authentication succeeded"
+      },
+      {
+        "line": 848,
+        "text": "Thu Nov  5 20:01:29 2026 daemon.notice pppd[17816]: CHAP authentication succeeded"
+      },
+      {
+        "line": 850,
+        "text": "Thu Nov  5 20:01:29 2026 daemon.notice netifd: wan (17816): CHAP authentication succeeded"
+      },
+      {
+        "line": 851,
+        "text": "Thu Nov  5 20:01:29 2026 daemon.notice netifd: wan (17816): CHAP authentication succeeded"
+      },
+      {
+        "line": 868,
+        "text": "Thu Nov  5 20:01:29 2026 daemon.notice netifd: Network device 'pppoe-wan' link is up"
+      },
+      {
+        "line": 870,
+        "text": "Thu Nov  5 20:01:29 2026 daemon.notice netifd: Network alifor [USUARIO] link is up"
+      },
+      {
+        "line": 948,
+        "text": "Thu Nov  5 20:01:39 2026 daemon.notice netifd: Network device 'wgclient' link is up"
+      },
+      {
+        "line": 969,
+        "text": "Thu Nov  5 20:57:35 2026 daemon.info hostapd: phy0-ap0: STA [MAC-11] IEEE 802.11: deauthenticated due to inactivity (timer DEAUTH/REMOVE)"
+      },
+      {
+        "line": 977,
+        "text": "Thu Nov  5 20:57:51 2026 authpriv.info dropbear[29010]: Exit (root) from <[IP-25]:51192>: Disconnect received"
+      },
+      {
+        "line": 980,
+        "text": "Thu Nov  5 20:58:21 2026 authpriv.info dropbear[29509]: Exit (root) from <[IP-25]:51364>: Disconnect received"
+      },
+      {
+        "line": 1021,
+        "text": "Thu Nov  5 21:04:16 2026 authpriv.info dropbear[4028]: Exit (root) from <[IP-25]:52899>: Disconnect received"
+      },
+      {
+        "line": 1022,
+        "text": "Thu Nov  5 21:04:32 2026 kern.info kernel: [  592.331013] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 1025,
+        "text": "Thu Nov  5 21:04:32 2026 daemon.notice netifd: Network device 'lan1' link is up"
+      },
+      {
+        "line": 1037,
+        "text": "Thu Nov  5 21:05:05 2026 kern.info kernel: [  625.606080] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 1038,
+        "text": "Thu Nov  5 21:05:05 2026 daemon.notice netifd: Network device 'lan1' link is down"
+      },
+      {
+        "line": 1047,
+        "text": "Thu Nov  5 21:07:22 2026 authpriv.info dropbear[7115]: Exit (root) from <[IP-25]:53667>: Disconnect received"
+      },
+      {
+        "line": 1062,
+        "text": "Thu Nov  5 21:09:55 2026 authpriv.info dropbear[9764]: Exit (root) from <[IP-25]:54327>: Disconnect received"
+      },
+      {
+        "line": 1083,
+        "text": "Thu Nov  5 21:12:40 2026 authpriv.info dropbear[12823]: Exit (root) from <[IP-25]:54988>: Disconnect received"
+      },
+      {
+        "line": 1086,
+        "text": "Thu Nov  5 21:12:41 2026 authpriv.info dropbear[12825]: Exit (root) from <[IP-25]:54989>: Disconnect received"
+      },
+      {
+        "line": 1089,
+        "text": "Thu Nov  5 21:12:41 2026 authpriv.info dropbear[12827]: Exit (root) from <[IP-25]:54991>: Disconnect received"
+      },
+      {
+        "line": 1104,
+        "text": "Thu Nov  5 21:15:00 2026 authpriv.info dropbear[15062]: Exit (root) from <[IP-25]:55542>: Disconnect received"
+      },
+      {
+        "line": 1169,
+        "text": "Thu Nov  5 21:24:34 2026 authpriv.info dropbear[24590]: Exit (root) from <[IP-25]:58339>: Disconnect received"
+      },
+      {
+        "line": 1172,
+        "text": "Thu Nov  5 21:24:34 2026 authpriv.info dropbear[24592]: Exit (root) from <[IP-25]:58340>: Disconnect received"
+      },
+      {
+        "line": 1175,
+        "text": "Thu Nov  5 21:24:35 2026 authpriv.info dropbear[24594]: Exit (root) from <[IP-25]:58341>: Disconnect received"
+      },
+      {
+        "line": 1178,
+        "text": "Thu Nov  5 21:24:35 2026 authpriv.info dropbear[24596]: Exit (root) from <[IP-25]:58342>: Disconnect received"
+      },
+      {
+        "line": 1181,
+        "text": "Thu Nov  5 21:24:35 2026 authpriv.info dropbear[24598]: Exit (root) from <[IP-25]:58344>: Disconnect received"
+      },
+      {
+        "line": 1184,
+        "text": "Thu Nov  5 21:24:35 2026 authpriv.info dropbear[24600]: Exit (root) from <[IP-25]:58345>: Disconnect received"
+      },
+      {
+        "line": 1217,
+        "text": "Thu Nov  5 21:26:10 2026 authpriv.info dropbear[26184]: Exit (root) from <[IP-25]:58722>: Disconnect received"
+      },
+      {
+        "line": 1220,
+        "text": "Thu Nov  5 21:26:10 2026 authpriv.info dropbear[26186]: Exit (root) from <[IP-25]:58723>: Disconnect received"
+      },
+      {
+        "line": 1223,
+        "text": "Thu Nov  5 21:26:10 2026 authpriv.info dropbear[26188]: Exit (root) from <[IP-25]:58725>: Disconnect received"
+      },
+      {
+        "line": 1226,
+        "text": "Thu Nov  5 21:26:10 2026 authpriv.info dropbear[26190]: Exit (root) from <[IP-25]:58726>: Disconnect received"
+      },
+      {
+        "line": 1229,
+        "text": "Thu Nov  5 21:26:11 2026 authpriv.info dropbear[26192]: Exit (root) from <[IP-25]:58728>: Disconnect received"
+      },
+      {
+        "line": 1232,
+        "text": "Thu Nov  5 21:26:11 2026 authpriv.info dropbear[26194]: Exit (root) from <[IP-25]:58729>: Disconnect received"
+      },
+      {
+        "line": 1235,
+        "text": "Thu Nov  5 21:26:11 2026 authpriv.info dropbear[26200]: Exit (root) from <[IP-25]:58731>: Disconnect received"
+      },
+      {
+        "line": 1244,
+        "text": "Thu Nov  5 21:27:19 2026 authpriv.info dropbear[27493]: Exit (root) from <[IP-25]:58960>: Disconnect received"
+      },
+      {
+        "line": 1247,
+        "text": "Thu Nov  5 21:27:19 2026 authpriv.info dropbear[27521]: Exit (root) from <[IP-25]:58962>: Disconnect received"
+      },
+      {
+        "line": 1250,
+        "text": "Thu Nov  5 21:27:19 2026 authpriv.info dropbear[27528]: Exit (root) from <[IP-25]:58963>: Disconnect received"
+      },
+      {
+        "line": 1253,
+        "text": "Thu Nov  5 21:27:20 2026 authpriv.info dropbear[27530]: Exit (root) from <[IP-25]:58965>: Disconnect received"
+      },
+      {
+        "line": 1256,
+        "text": "Thu Nov  5 21:27:20 2026 authpriv.info dropbear[27532]: Exit (root) from <[IP-25]:58966>: Disconnect received"
+      },
+      {
+        "line": 1259,
+        "text": "Thu Nov  5 21:27:20 2026 authpriv.info dropbear[27534]: Exit (root) from <[IP-25]:58967>: Disconnect received"
+      },
+      {
+        "line": 1262,
+        "text": "Thu Nov  5 21:27:20 2026 authpriv.info dropbear[27536]: Exit (root) from <[IP-25]:58968>: Disconnect received"
+      },
+      {
+        "line": 1265,
+        "text": "Thu Nov  5 21:27:20 2026 authpriv.info dropbear[27538]: Exit (root) from <[IP-25]:58969>: Disconnect received"
+      },
+      {
+        "line": 1268,
+        "text": "Thu Nov  5 21:27:20 2026 authpriv.info dropbear[27540]: Exit (root) from <[IP-25]:58972>: Disconnect received"
+      },
+      {
+        "line": 1271,
+        "text": "Thu Nov  5 21:27:20 2026 authpriv.info dropbear[27546]: Exit (root) from <[IP-25]:58973>: Disconnect received"
+      },
+      {
+        "line": 1291,
+        "text": "Thu Nov  5 21:28:50 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 1"
+      },
+      {
+        "line": 1292,
+        "text": "Thu Nov  5 21:28:50 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 1293,
+        "text": "Thu Nov  5 21:28:50 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 2"
+      },
+      {
+        "line": 1294,
+        "text": "Thu Nov  5 21:28:50 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 1295,
+        "text": "Thu Nov  5 21:28:50 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 3"
+      },
+      {
+        "line": 1296,
+        "text": "Thu Nov  5 21:28:50 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 1297,
+        "text": "Thu Nov  5 21:28:50 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 4"
+      },
+      {
+        "line": 1298,
+        "text": "Thu Nov  5 21:28:50 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 1299,
+        "text": "Thu Nov  5 21:28:50 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 5"
+      },
+      {
+        "line": 1300,
+        "text": "Thu Nov  5 21:28:50 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 1301,
+        "text": "Thu Nov  5 21:28:50 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 6"
+      },
+      {
+        "line": 1302,
+        "text": "Thu Nov  5 21:28:50 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 1303,
+        "text": "Thu Nov  5 21:28:50 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 7"
+      },
+      {
+        "line": 1304,
+        "text": "Thu Nov  5 21:28:50 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 1305,
+        "text": "Thu Nov  5 21:28:50 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 8"
+      },
+      {
+        "line": 1306,
+        "text": "Thu Nov  5 21:28:50 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 1307,
+        "text": "Thu Nov  5 21:28:50 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 9"
+      },
+      {
+        "line": 1308,
+        "text": "Thu Nov  5 21:28:50 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 1310,
+        "text": "Thu Nov  5 21:28:51 2026 authpriv.info dropbear[29555]: Exit (root) from <[IP-25]:59337>: Disconnect received"
+      },
+      {
+        "line": 1343,
+        "text": "Thu Nov  5 21:34:33 2026 kern.info kernel: [ 2393.597340] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 1346,
+        "text": "Thu Nov  5 21:34:33 2026 daemon.notice netifd: Network device 'lan1' link is up"
+      },
+      {
+        "line": 1358,
+        "text": "Thu Nov  5 21:35:09 2026 kern.info kernel: [ 2428.952020] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 1359,
+        "text": "Thu Nov  5 21:35:09 2026 daemon.notice netifd: Network device 'lan1' link is down"
+      },
+      {
+        "line": 1362,
+        "text": "Thu Nov  5 21:35:15 2026 authpriv.info dropbear[10637]: Exit (root) from <[IP-25]:60860>: Disconnect received"
+      },
+      {
+        "line": 1365,
+        "text": "Thu Nov  5 21:35:15 2026 authpriv.info dropbear[10639]: Exit (root) from <[IP-25]:60862>: Disconnect received"
+      },
+      {
+        "line": 1368,
+        "text": "Thu Nov  5 21:35:16 2026 authpriv.info dropbear[10642]: Exit (root) from <[IP-25]:60863>: Disconnect received"
+      },
+      {
+        "line": 1371,
+        "text": "Thu Nov  5 21:35:16 2026 authpriv.info dropbear[10644]: Exit (root) from <[IP-25]:60864>: Disconnect received"
+      },
+      {
+        "line": 1374,
+        "text": "Thu Nov  5 21:35:16 2026 authpriv.info dropbear[10646]: Exit (root) from <[IP-25]:60865>: Disconnect received"
+      },
+      {
+        "line": 1377,
+        "text": "Thu Nov  5 21:35:16 2026 authpriv.info dropbear[10648]: Exit (root) from <[IP-25]:60867>: Disconnect received"
+      },
+      {
+        "line": 1380,
+        "text": "Thu Nov  5 21:35:16 2026 authpriv.info dropbear[10650]: Exit (root) from <[IP-25]:60868>: Disconnect received"
+      },
+      {
+        "line": 1451,
+        "text": "Thu Nov  5 21:47:07 2026 authpriv.info dropbear[27511]: Exit (root) from <[IP-25]:63983>: Disconnect received"
+      },
+      {
+        "line": 1526,
+        "text": "Thu Nov  5 21:53:39 2026 authpriv.info dropbear[4391]: Exit (root) from <[IP-25]:65468>: Disconnect received"
+      },
+      {
+        "line": 1605,
+        "text": "Thu Nov  5 22:00:16 2026 kern.info kernel: [ 3935.914656] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 1608,
+        "text": "Thu Nov  5 22:00:16 2026 daemon.notice netifd: Network device 'lan1' link is up"
+      },
+      {
+        "line": 1620,
+        "text": "Thu Nov  5 22:00:47 2026 daemon.notice netifd: Network device 'lan1' link is down"
+      },
+      {
+        "line": 1622,
+        "text": "Thu Nov  5 22:00:47 2026 kern.info kernel: [ 3967.100419] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 1631,
+        "text": "Thu Nov  5 22:00:58 2026 authpriv.info dropbear[15711]: Exit (root) from <[IP-25]:50752>: Disconnect received"
+      },
+      {
+        "line": 1636,
+        "text": "Thu Nov  5 22:01:26 2026 authpriv.info dropbear[20652]: Exit (root) from <[IP-25]:50859>: Disconnect received"
+      },
+      {
+        "line": 1639,
+        "text": "Thu Nov  5 22:01:27 2026 authpriv.info dropbear[20663]: Exit (root) from <[IP-25]:50860>: Disconnect received"
+      },
+      {
+        "line": 1642,
+        "text": "Thu Nov  5 22:01:27 2026 authpriv.info dropbear[20665]: Exit (root) from <[IP-25]:50861>: Disconnect received"
+      },
+      {
+        "line": 1645,
+        "text": "Thu Nov  5 22:01:27 2026 authpriv.info dropbear[20667]: Exit (root) from <[IP-25]:50862>: Disconnect received"
+      },
+      {
+        "line": 1648,
+        "text": "Thu Nov  5 22:01:27 2026 authpriv.info dropbear[20676]: Exit (root) from <[IP-25]:50863>: Disconnect received"
+      },
+      {
+        "line": 1651,
+        "text": "Thu Nov  5 22:01:27 2026 authpriv.info dropbear[20678]: Exit (root) from <[IP-25]:50864>: Disconnect received"
+      },
+      {
+        "line": 1654,
+        "text": "Thu Nov  5 22:01:27 2026 authpriv.info dropbear[20684]: Exit (root) from <[IP-25]:50866>: Disconnect received"
+      },
+      {
+        "line": 1657,
+        "text": "Thu Nov  5 22:01:27 2026 authpriv.info dropbear[20687]: Exit (root) from <[IP-25]:50868>: Disconnect received"
+      },
+      {
+        "line": 1666,
+        "text": "Thu Nov  5 22:02:05 2026 authpriv.info dropbear[21526]: Exit (root) from <[IP-25]:50993>: Disconnect received"
+      },
+      {
+        "line": 1677,
+        "text": "Thu Nov  5 22:03:01 2026 authpriv.info dropbear[22829]: Exit (root) from <[IP-25]:51186>: Disconnect received"
+      },
+      {
+        "line": 1678,
+        "text": "Thu Nov  5 22:03:01 2026 authpriv.info dropbear[27549]: Exit (root) from <[IP-25]:58979>: Disconnect received"
+      },
+      {
+        "line": 1681,
+        "text": "Thu Nov  5 22:03:01 2026 authpriv.info dropbear[22840]: Exit (root) from <[IP-25]:51187>: Disconnect received"
+      },
+      {
+        "line": 1684,
+        "text": "Thu Nov  5 22:03:01 2026 authpriv.info dropbear[22842]: Exit (root) from <[IP-25]:51188>: Disconnect received"
+      },
+      {
+        "line": 1687,
+        "text": "Thu Nov  5 22:03:01 2026 authpriv.info dropbear[22844]: Exit (root) from <[IP-25]:51190>: Disconnect received"
+      },
+      {
+        "line": 1690,
+        "text": "Thu Nov  5 22:03:01 2026 authpriv.info dropbear[22846]: Exit (root) from <[IP-25]:51191>: Disconnect received"
+      },
+      {
+        "line": 1693,
+        "text": "Thu Nov  5 22:03:01 2026 authpriv.info dropbear[22848]: Exit (root) from <[IP-25]:51192>: Disconnect received"
+      },
+      {
+        "line": 1696,
+        "text": "Thu Nov  5 22:03:01 2026 authpriv.info dropbear[22850]: Exit (root) from <[IP-25]:51194>: Disconnect received"
+      },
+      {
+        "line": 1699,
+        "text": "Thu Nov  5 22:03:01 2026 authpriv.info dropbear[22856]: Exit (root) from <[IP-25]:51195>: Disconnect received"
+      },
+      {
+        "line": 1702,
+        "text": "Thu Nov  5 22:03:36 2026 authpriv.info dropbear[23447]: Exit (root) from <[IP-25]:51275>: Disconnect received"
+      },
+      {
+        "line": 1705,
+        "text": "Thu Nov  5 22:03:36 2026 authpriv.info dropbear[23451]: Exit (root) from <[IP-25]:51276>: Disconnect received"
+      },
+      {
+        "line": 1714,
+        "text": "Thu Nov  5 22:05:01 2026 kern.info kernel: [ 4220.862544] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 1717,
+        "text": "Thu Nov  5 22:05:01 2026 daemon.notice netifd: Network device 'lan1' link is up"
+      },
+      {
+        "line": 1729,
+        "text": "Thu Nov  5 22:05:33 2026 kern.info kernel: [ 4253.097647] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 1730,
+        "text": "Thu Nov  5 22:05:33 2026 daemon.notice netifd: Network device 'lan1' link is down"
+      },
+      {
+        "line": 1739,
+        "text": "Thu Nov  5 22:07:21 2026 authpriv.info dropbear[27099]: Exit (root) from <[IP-25]:51814>: Disconnect received"
+      },
+      {
+        "line": 1742,
+        "text": "Thu Nov  5 22:07:21 2026 authpriv.info dropbear[27117]: Exit (root) from <[IP-25]:51815>: Disconnect received"
+      },
+      {
+        "line": 1751,
+        "text": "Thu Nov  5 22:07:49 2026 authpriv.info dropbear[27613]: Exit (root) from <[IP-25]:51879>: Disconnect received"
+      },
+      {
+        "line": 1754,
+        "text": "Thu Nov  5 22:07:49 2026 authpriv.info dropbear[27631]: Exit (root) from <[IP-25]:51880>: Disconnect received"
+      },
+      {
+        "line": 1769,
+        "text": "Thu Nov  5 22:11:10 2026 authpriv.info dropbear[31054]: Exit (root) from <[IP-25]:52427>: Disconnect received"
+      },
+      {
+        "line": 1804,
+        "text": "Thu Nov  5 22:16:36 2026 authpriv.info dropbear[4120]: Exit (root) from <[IP-25]:53432>: Disconnect received"
+      },
+      {
+        "line": 1805,
+        "text": "Thu Nov  5 22:16:36 2026 authpriv.info dropbear[4121]: Exit (root) from <[IP-25]:53431>: Disconnect received"
+      },
+      {
+        "line": 1808,
+        "text": "Thu Nov  5 22:16:36 2026 authpriv.info dropbear[4134]: Exit (root) from <[IP-25]:53433>: Disconnect received"
+      },
+      {
+        "line": 1813,
+        "text": "Thu Nov  5 22:17:02 2026 authpriv.info dropbear[4641]: Exit (root) from <[IP-25]:53490>: Disconnect received"
+      },
+      {
+        "line": 1814,
+        "text": "Thu Nov  5 22:17:02 2026 authpriv.info dropbear[4642]: Exit (root) from <[IP-25]:53491>: Disconnect received"
+      },
+      {
+        "line": 1830,
+        "text": "Thu Nov  5 22:18:26 2026 authpriv.info dropbear[8249]: Exit (root) from <[IP-25]:53702>: Disconnect received"
+      },
+      {
+        "line": 1831,
+        "text": "Thu Nov  5 22:18:26 2026 authpriv.info dropbear[8243]: Exit (root) from <[IP-25]:53701>: Disconnect received"
+      },
+      {
+        "line": 1834,
+        "text": "Thu Nov  5 22:18:26 2026 authpriv.info dropbear[8366]: Exit (root) from <[IP-25]:53703>: Disconnect received"
+      },
+      {
+        "line": 1837,
+        "text": "Thu Nov  5 22:18:27 2026 authpriv.info dropbear[8484]: Exit (root) from <[IP-25]:53704>: Disconnect received"
+      },
+      {
+        "line": 1845,
+        "text": "Thu Nov  5 22:18:43 2026 authpriv.info dropbear[9199]: Exit (root) from <[IP-25]:53741>: Disconnect received"
+      },
+      {
+        "line": 1848,
+        "text": "Thu Nov  5 22:18:43 2026 authpriv.info dropbear[9201]: Exit (root) from <[IP-25]:53742>: Disconnect received"
+      },
+      {
+        "line": 1851,
+        "text": "Thu Nov  5 22:18:43 2026 authpriv.info dropbear[9285]: Exit (root) from <[IP-25]:53743>: Disconnect received"
+      },
+      {
+        "line": 1854,
+        "text": "Thu Nov  5 22:18:43 2026 authpriv.info dropbear[9287]: Exit (root) from <[IP-25]:53744>: Disconnect received"
+      },
+      {
+        "line": 1857,
+        "text": "Thu Nov  5 22:18:43 2026 authpriv.info dropbear[9289]: Exit (root) from <[IP-25]:53745>: Disconnect received"
+      },
+      {
+        "line": 1860,
+        "text": "Thu Nov  5 22:18:43 2026 authpriv.info dropbear[9291]: Exit (root) from <[IP-25]:53747>: Disconnect received"
+      },
+      {
+        "line": 1863,
+        "text": "Thu Nov  5 22:18:44 2026 authpriv.info dropbear[9297]: Exit (root) from <[IP-25]:53748>: Disconnect received"
+      },
+      {
+        "line": 1893,
+        "text": "Thu Nov  5 22:19:13 2026 authpriv.info dropbear[16617]: Exit (root) from <[IP-25]:53854>: Disconnect received"
+      },
+      {
+        "line": 1898,
+        "text": "Thu Nov  5 22:19:22 2026 authpriv.info dropbear[16846]: Exit (root) from <[IP-25]:53885>: Disconnect received"
+      },
+      {
+        "line": 1911,
+        "text": "Thu Nov  5 22:20:42 2026 authpriv.info dropbear[18724]: Exit (root) from <[IP-25]:54152>: Disconnect received"
+      },
+      {
+        "line": 1916,
+        "text": "Thu Nov  5 22:20:57 2026 authpriv.info dropbear[19075]: Exit (root) from <[IP-25]:54198>: Disconnect received"
+      },
+      {
+        "line": 1927,
+        "text": "Thu Nov  5 22:21:18 2026 authpriv.info dropbear[19756]: Exit (root) from <[IP-25]:54270>: Disconnect received"
+      },
+      {
+        "line": 1930,
+        "text": "Thu Nov  5 22:21:30 2026 authpriv.info dropbear[20002]: Exit (root) from <[IP-25]:54308>: Disconnect received"
+      },
+      {
+        "line": 1933,
+        "text": "Thu Nov  5 22:21:53 2026 authpriv.info dropbear[20577]: Exit (root) from <[IP-25]:54404>: Disconnect received"
+      },
+      {
+        "line": 1937,
+        "text": "Thu Nov  5 22:22:18 2026 authpriv.info dropbear[21198]: Exit (root) from <[IP-25]:54495>: Disconnect received"
+      },
+      {
+        "line": 1939,
+        "text": "Thu Nov  5 22:22:18 2026 authpriv.info dropbear[21204]: Exit (root) from <[IP-25]:54496>: Disconnect received"
+      },
+      {
+        "line": 1948,
+        "text": "Thu Nov  5 22:22:36 2026 authpriv.info dropbear[21586]: Exit (root) from <[IP-25]:54558>: Disconnect received"
+      },
+      {
+        "line": 1951,
+        "text": "Thu Nov  5 22:22:36 2026 authpriv.info dropbear[21588]: Exit (root) from <[IP-25]:54559>: Disconnect received"
+      },
+      {
+        "line": 1954,
+        "text": "Thu Nov  5 22:23:03 2026 authpriv.info dropbear[22269]: Exit (root) from <[IP-25]:54651>: Disconnect received"
+      },
+      {
+        "line": 1975,
+        "text": "Thu Nov  5 22:25:50 2026 authpriv.info dropbear[26354]: Exit (root) from <[IP-25]:55215>: Disconnect received"
+      },
+      {
+        "line": 1978,
+        "text": "Thu Nov  5 22:25:59 2026 authpriv.info dropbear[26495]: Exit (root) from <[IP-25]:55251>: Disconnect received"
+      },
+      {
+        "line": 1991,
+        "text": "Thu Nov  5 22:26:21 2026 authpriv.info dropbear[27080]: Exit (root) from <[IP-25]:55321>: Disconnect received"
+      },
+      {
+        "line": 1994,
+        "text": "Thu Nov  5 22:26:22 2026 authpriv.info dropbear[27082]: Exit (root) from <[IP-25]:55322>: Disconnect received"
+      },
+      {
+        "line": 1997,
+        "text": "Thu Nov  5 22:26:38 2026 authpriv.info dropbear[27464]: Exit (root) from <[IP-25]:55373>: Disconnect received"
+      },
+      {
+        "line": 2000,
+        "text": "Thu Nov  5 22:26:51 2026 authpriv.info dropbear[27870]: Exit (root) from <[IP-25]:55419>: Disconnect received"
+      },
+      {
+        "line": 2003,
+        "text": "Thu Nov  5 22:26:51 2026 authpriv.info dropbear[27872]: Exit (root) from <[IP-25]:55420>: Disconnect received"
+      },
+      {
+        "line": 2006,
+        "text": "Thu Nov  5 22:26:52 2026 authpriv.info dropbear[27897]: Exit (root) from <[IP-25]:55421>: Disconnect received"
+      },
+      {
+        "line": 2009,
+        "text": "Thu Nov  5 22:26:52 2026 authpriv.info dropbear[27899]: Exit (root) from <[IP-25]:55422>: Disconnect received"
+      },
+      {
+        "line": 2012,
+        "text": "Thu Nov  5 22:26:52 2026 authpriv.info dropbear[27961]: Exit (root) from <[IP-25]:55424>: Disconnect received"
+      },
+      {
+        "line": 2023,
+        "text": "Thu Nov  5 22:28:27 2026 authpriv.info dropbear[30161]: Exit (root) from <[IP-25]:55745>: Disconnect received"
+      },
+      {
+        "line": 2024,
+        "text": "Thu Nov  5 22:28:27 2026 authpriv.info dropbear[9300]: Exit (root) from <[IP-25]:53751>: Disconnect received"
+      },
+      {
+        "line": 2027,
+        "text": "Thu Nov  5 22:28:28 2026 authpriv.info dropbear[30196]: Exit (root) from <[IP-25]:55746>: Disconnect received"
+      },
+      {
+        "line": 2030,
+        "text": "Thu Nov  5 22:28:28 2026 authpriv.info dropbear[30198]: Exit (root) from <[IP-25]:55747>: Disconnect received"
+      },
+      {
+        "line": 2033,
+        "text": "Thu Nov  5 22:28:28 2026 authpriv.info dropbear[30200]: Exit (root) from <[IP-25]:55748>: Disconnect received"
+      },
+      {
+        "line": 2036,
+        "text": "Thu Nov  5 22:28:28 2026 authpriv.info dropbear[30202]: Exit (root) from <[IP-25]:55749>: Disconnect received"
+      },
+      {
+        "line": 2039,
+        "text": "Thu Nov  5 22:28:28 2026 authpriv.info dropbear[30204]: Exit (root) from <[IP-25]:55750>: Disconnect received"
+      },
+      {
+        "line": 2042,
+        "text": "Thu Nov  5 22:28:28 2026 authpriv.info dropbear[30206]: Exit (root) from <[IP-25]:55751>: Disconnect received"
+      },
+      {
+        "line": 2045,
+        "text": "Thu Nov  5 22:28:28 2026 authpriv.info dropbear[30212]: Exit (root) from <[IP-25]:55753>: Disconnect received"
+      },
+      {
+        "line": 2054,
+        "text": "Thu Nov  5 22:29:08 2026 authpriv.info dropbear[30798]: Exit (root) from <[IP-25]:55849>: Disconnect received"
+      },
+      {
+        "line": 2067,
+        "text": "Thu Nov  5 22:30:35 2026 authpriv.info dropbear[32293]: Exit (root) from <[IP-25]:56040>: Disconnect received"
+      },
+      {
+        "line": 2076,
+        "text": "Thu Nov  5 22:31:18 2026 authpriv.info dropbear[506]: Exit (root) from <[IP-25]:56137>: Disconnect received"
+      },
+      {
+        "line": 2086,
+        "text": "Thu Nov  5 22:32:17 2026 authpriv.info dropbear[1728]: Exit (root) from <[IP-25]:56279>: Disconnect received"
+      },
+      {
+        "line": 2094,
+        "text": "Thu Nov  5 22:32:23 2026 authpriv.info dropbear[1819]: Exit (root) from <[IP-25]:56293>: Disconnect received"
+      },
+      {
+        "line": 2113,
+        "text": "Thu Nov  5 22:35:02 2026 kern.info kernel: [ 6022.125792] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 2116,
+        "text": "Thu Nov  5 22:35:02 2026 daemon.notice netifd: Network device 'lan1' link is up"
+      },
+      {
+        "line": 2122,
+        "text": "Thu Nov  5 22:35:35 2026 kern.info kernel: [ 6055.400918] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 2123,
+        "text": "Thu Nov  5 22:35:35 2026 daemon.notice netifd: Network device 'lan1' link is down"
+      },
+      {
+        "line": 2138,
+        "text": "Thu Nov  5 22:37:12 2026 authpriv.info dropbear[6755]: Exit (root) from <[IP-25]:56938>: Disconnect received"
+      },
+      {
+        "line": 2151,
+        "text": "Thu Nov  5 22:39:03 2026 authpriv.info dropbear[8585]: Exit (root) from <[IP-25]:57194>: Disconnect received"
+      },
+      {
+        "line": 2154,
+        "text": "Thu Nov  5 22:39:10 2026 authpriv.info dropbear[8682]: Exit (root) from <[IP-25]:57210>: Disconnect received"
+      },
+      {
+        "line": 2191,
+        "text": "Thu Nov  5 22:41:21 2026 authpriv.info dropbear[10840]: Exit (root) from <[IP-25]:57557>: Disconnect received"
+      },
+      {
+        "line": 2224,
+        "text": "Thu Nov  5 22:45:57 2026 authpriv.info dropbear[15722]: Exit (root) from <[IP-25]:58411>: Disconnect received"
+      },
+      {
+        "line": 2227,
+        "text": "Thu Nov  5 22:46:18 2026 authpriv.info dropbear[16076]: Exit (root) from <[IP-25]:58477>: Disconnect received"
+      },
+      {
+        "line": 2230,
+        "text": "Thu Nov  5 22:46:18 2026 authpriv.info dropbear[16078]: Exit (root) from <[IP-25]:58478>: Disconnect received"
+      },
+      {
+        "line": 2233,
+        "text": "Thu Nov  5 22:46:18 2026 authpriv.info dropbear[16080]: Exit (root) from <[IP-25]:58480>: Disconnect received"
+      },
+      {
+        "line": 2236,
+        "text": "Thu Nov  5 22:46:18 2026 authpriv.info dropbear[16082]: Exit (root) from <[IP-25]:58481>: Disconnect received"
+      },
+      {
+        "line": 2239,
+        "text": "Thu Nov  5 22:46:18 2026 authpriv.info dropbear[16084]: Exit (root) from <[IP-25]:58482>: Disconnect received"
+      },
+      {
+        "line": 2242,
+        "text": "Thu Nov  5 22:46:18 2026 authpriv.info dropbear[16086]: Exit (root) from <[IP-25]:58483>: Disconnect received"
+      },
+      {
+        "line": 2245,
+        "text": "Thu Nov  5 22:46:18 2026 authpriv.info dropbear[16092]: Exit (root) from <[IP-25]:58486>: Disconnect received"
+      },
+      {
+        "line": 2268,
+        "text": "Thu Nov  5 22:47:21 2026 authpriv.info dropbear[17605]: Exit (root) from <[IP-25]:58889>: Disconnect received"
+      },
+      {
+        "line": 2281,
+        "text": "Thu Nov  5 22:48:55 2026 authpriv.info dropbear[19758]: Exit (root) from <[IP-25]:59267>: Disconnect received"
+      },
+      {
+        "line": 2284,
+        "text": "Thu Nov  5 22:48:55 2026 authpriv.info dropbear[19768]: Exit (root) from <[IP-25]:59268>: Disconnect received"
+      },
+      {
+        "line": 2287,
+        "text": "Thu Nov  5 22:48:55 2026 authpriv.info dropbear[19771]: Exit (root) from <[IP-25]:59270>: Disconnect received"
+      },
+      {
+        "line": 2290,
+        "text": "Thu Nov  5 22:48:56 2026 authpriv.info dropbear[19781]: Exit (root) from <[IP-25]:59271>: Disconnect received"
+      },
+      {
+        "line": 2293,
+        "text": "Thu Nov  5 22:48:56 2026 authpriv.info dropbear[19783]: Exit (root) from <[IP-25]:59272>: Disconnect received"
+      },
+      {
+        "line": 2296,
+        "text": "Thu Nov  5 22:48:56 2026 authpriv.info dropbear[19785]: Exit (root) from <[IP-25]:59274>: Disconnect received"
+      },
+      {
+        "line": 2299,
+        "text": "Thu Nov  5 22:48:56 2026 authpriv.info dropbear[19787]: Exit (root) from <[IP-25]:59275>: Disconnect received"
+      },
+      {
+        "line": 2302,
+        "text": "Thu Nov  5 22:48:56 2026 authpriv.info dropbear[19789]: Exit (root) from <[IP-25]:59277>: Disconnect received"
+      },
+      {
+        "line": 2413,
+        "text": "Thu Nov  5 23:05:03 2026 kern.info kernel: [ 7823.388004] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 2416,
+        "text": "Thu Nov  5 23:05:03 2026 daemon.notice netifd: Network device 'lan1' link is up"
+      },
+      {
+        "line": 2428,
+        "text": "Thu Nov  5 23:05:36 2026 kern.info kernel: [ 7855.623958] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 2429,
+        "text": "Thu Nov  5 23:05:36 2026 daemon.notice netifd: Network device 'lan1' link is down"
+      },
+      {
+        "line": 2516,
+        "text": "Thu Nov  5 23:18:27 2026 authpriv.info dropbear[30093]: Exit (root) from <[IP-25]:50366>: Disconnect received"
+      },
+      {
+        "line": 2536,
+        "text": "Thu Nov  5 23:19:33 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 1"
+      },
+      {
+        "line": 2537,
+        "text": "Thu Nov  5 23:19:33 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 2538,
+        "text": "Thu Nov  5 23:19:33 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 2"
+      },
+      {
+        "line": 2539,
+        "text": "Thu Nov  5 23:19:33 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 2540,
+        "text": "Thu Nov  5 23:19:33 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 3"
+      },
+      {
+        "line": 2541,
+        "text": "Thu Nov  5 23:19:33 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 2542,
+        "text": "Thu Nov  5 23:19:33 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 4"
+      },
+      {
+        "line": 2543,
+        "text": "Thu Nov  5 23:19:33 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 2544,
+        "text": "Thu Nov  5 23:19:33 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 5"
+      },
+      {
+        "line": 2545,
+        "text": "Thu Nov  5 23:19:33 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 2546,
+        "text": "Thu Nov  5 23:19:33 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 6"
+      },
+      {
+        "line": 2547,
+        "text": "Thu Nov  5 23:19:33 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 2548,
+        "text": "Thu Nov  5 23:19:33 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 7"
+      },
+      {
+        "line": 2549,
+        "text": "Thu Nov  5 23:19:33 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 2550,
+        "text": "Thu Nov  5 23:19:33 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 8"
+      },
+      {
+        "line": 2551,
+        "text": "Thu Nov  5 23:19:33 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 2552,
+        "text": "Thu Nov  5 23:19:33 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 9"
+      },
+      {
+        "line": 2553,
+        "text": "Thu Nov  5 23:19:33 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 2555,
+        "text": "Thu Nov  5 23:19:35 2026 authpriv.info dropbear[31529]: Exit (root) from <[IP-25]:50658>: Disconnect received"
+      },
+      {
+        "line": 2559,
+        "text": "Thu Nov  5 23:19:50 2026 authpriv.info dropbear[2840]: Exit (root) from <[IP-25]:50730>: Disconnect received"
+      },
+      {
+        "line": 2603,
+        "text": "Thu Nov  5 23:25:40 2026 authpriv.info dropbear[12699]: Exit (root) from <[IP-25]:52156>: Disconnect received"
+      },
+      {
+        "line": 2688,
+        "text": "Thu Nov  5 23:35:06 2026 kern.info kernel: [ 9625.694875] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 2691,
+        "text": "Thu Nov  5 23:35:06 2026 daemon.notice netifd: Network device 'lan1' link is up"
+      },
+      {
+        "line": 2696,
+        "text": "Thu Nov  5 23:35:38 2026 daemon.notice netifd: Network device 'lan1' link is down"
+      },
+      {
+        "line": 2698,
+        "text": "Thu Nov  5 23:35:38 2026 kern.info kernel: [ 9657.938961] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 2735,
+        "text": "Thu Nov  5 23:39:59 2026 daemon.info hostapd: phy1-ap0: STA [MAC-31] IEEE 802.11: deauthenticated due to inactivity (timer DEAUTH/REMOVE)"
+      },
+      {
+        "line": 2825,
+        "text": "Thu Nov  5 23:52:35 2026 daemon.info hostapd: phy1-ap0: STA [MAC-19] IEEE 802.11: deauthenticated due to inactivity (timer DEAUTH/REMOVE)"
+      },
+      {
+        "line": 2843,
+        "text": "Fri Nov  6 00:01:14 2026 authpriv.info dropbear[3271]: Exit (root) from <[IP-25]:60977>: Disconnect received"
+      },
+      {
+        "line": 2846,
+        "text": "Fri Nov  6 00:01:14 2026 authpriv.info dropbear[3273]: Exit (root) from <[IP-25]:60980>: Disconnect received"
+      },
+      {
+        "line": 2849,
+        "text": "Fri Nov  6 00:01:25 2026 authpriv.info dropbear[3624]: Exit (root) from <[IP-25]:61021>: Disconnect received"
+      },
+      {
+        "line": 2852,
+        "text": "Fri Nov  6 00:01:35 2026 authpriv.info dropbear[3867]: Exit (root) from <[IP-25]:61063>: Disconnect received"
+      },
+      {
+        "line": 2855,
+        "text": "Fri Nov  6 00:01:35 2026 authpriv.info dropbear[3869]: Exit (root) from <[IP-25]:61064>: Disconnect received"
+      },
+      {
+        "line": 2864,
+        "text": "Fri Nov  6 00:05:08 2026 kern.info kernel: [11427.996508] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 2867,
+        "text": "Fri Nov  6 00:05:08 2026 daemon.notice netifd: Network device 'lan1' link is up"
+      },
+      {
+        "line": 2872,
+        "text": "Fri Nov  6 00:05:40 2026 daemon.notice netifd: Network device 'lan1' link is down"
+      },
+      {
+        "line": 2874,
+        "text": "Fri Nov  6 00:05:40 2026 kern.info kernel: [11460.230885] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 2885,
+        "text": "Fri Nov  6 00:06:00 2026 authpriv.info dropbear[9953]: Exit (root) from <[IP-25]:62096>: Disconnect received"
+      },
+      {
+        "line": 2892,
+        "text": "Fri Nov  6 00:06:24 2026 authpriv.info dropbear[14829]: Exit (root) from <[IP-25]:62196>: Disconnect received"
+      },
+      {
+        "line": 2895,
+        "text": "Fri Nov  6 00:06:34 2026 authpriv.info dropbear[15092]: Exit (root) from <[IP-25]:62229>: Disconnect received"
+      },
+      {
+        "line": 2899,
+        "text": "Fri Nov  6 00:07:08 2026 authpriv.info dropbear[15930]: Exit (root) from <[IP-25]:62342>: Disconnect received"
+      },
+      {
+        "line": 2908,
+        "text": "Fri Nov  6 00:07:09 2026 authpriv.info dropbear[15932]: Exit (root) from <[IP-25]:62343>: Disconnect received"
+      },
+      {
+        "line": 2912,
+        "text": "Fri Nov  6 00:07:22 2026 authpriv.info dropbear[17964]: Exit (root) from <[IP-25]:62398>: Disconnect received"
+      },
+      {
+        "line": 2934,
+        "text": "Fri Nov  6 00:12:22 2026 authpriv.info dropbear[27637]: Exit (root) from <[IP-25]:63642>: Disconnect received"
+      },
+      {
+        "line": 2970,
+        "text": "Fri Nov  6 00:15:16 2026 daemon.info hostapd: phy0-ap0: STA [MAC-31] IEEE 802.11: deauthenticated due to inactivity (timer DEAUTH/REMOVE)"
+      },
+      {
+        "line": 2979,
+        "text": "Fri Nov  6 00:15:34 2026 authpriv.info dropbear[32045]: Exit (root) from <[IP-25]:64554>: Disconnect received"
+      },
+      {
+        "line": 2983,
+        "text": "Fri Nov  6 00:15:46 2026 authpriv.info dropbear[1558]: Exit (root) from <[IP-25]:64603>: Disconnect received"
+      },
+      {
+        "line": 2990,
+        "text": "Fri Nov  6 00:16:55 2026 authpriv.info dropbear[5693]: Exit (root) from <[IP-25]:64843>: Disconnect received"
+      },
+      {
+        "line": 2993,
+        "text": "Fri Nov  6 00:16:55 2026 authpriv.info dropbear[5695]: Exit (root) from <[IP-25]:64845>: Disconnect received"
+      },
+      {
+        "line": 3002,
+        "text": "Fri Nov  6 00:16:57 2026 authpriv.info dropbear[5718]: Exit (root) from <[IP-25]:64847>: Disconnect received"
+      },
+      {
+        "line": 3006,
+        "text": "Fri Nov  6 00:17:15 2026 authpriv.info dropbear[10317]: Exit (root) from <[IP-25]:64918>: Disconnect received"
+      },
+      {
+        "line": 3009,
+        "text": "Fri Nov  6 00:17:15 2026 authpriv.info dropbear[10374]: Exit (root) from <[IP-25]:64919>: Disconnect received"
+      },
+      {
+        "line": 3054,
+        "text": "Fri Nov  6 00:25:09 2026 daemon.info hostapd: phy1-ap0: STA [MAC-34] IEEE 802.11: deauthenticated due to inactivity (timer DEAUTH/REMOVE)"
+      },
+      {
+        "line": 3088,
+        "text": "Fri Nov  6 00:30:36 2026 daemon.info hostapd: phy0-ap0: STA [MAC-34] IEEE 802.11: deauthenticated due to inactivity (timer DEAUTH/REMOVE)"
+      },
+      {
+        "line": 3098,
+        "text": "Fri Nov  6 00:30:59 2026 authpriv.info dropbear[30145]: Exit (root) from <[IP-25]:52137>: Disconnect received"
+      },
+      {
+        "line": 3104,
+        "text": "Fri Nov  6 00:31:22 2026 authpriv.info dropbear[2490]: Exit (root) from <[IP-25]:52240>: Disconnect received"
+      },
+      {
+        "line": 3106,
+        "text": "Fri Nov  6 00:31:22 2026 authpriv.info dropbear[2491]: Exit (root) from <[IP-25]:52241>: Disconnect received"
+      },
+      {
+        "line": 3107,
+        "text": "Fri Nov  6 00:31:22 2026 authpriv.info dropbear[16095]: Exit (root) from <[IP-25]:58489>: Disconnect received"
+      },
+      {
+        "line": 3110,
+        "text": "Fri Nov  6 00:31:22 2026 authpriv.info dropbear[2514]: Exit (root) from <[IP-25]:52245>: Disconnect received"
+      },
+      {
+        "line": 3113,
+        "text": "Fri Nov  6 00:31:23 2026 authpriv.info dropbear[2516]: Exit (root) from <[IP-25]:52246>: Disconnect received"
+      },
+      {
+        "line": 3116,
+        "text": "Fri Nov  6 00:31:23 2026 authpriv.info dropbear[2518]: Exit (root) from <[IP-25]:52247>: Disconnect received"
+      },
+      {
+        "line": 3119,
+        "text": "Fri Nov  6 00:31:23 2026 authpriv.info dropbear[2520]: Exit (root) from <[IP-25]:52249>: Disconnect received"
+      },
+      {
+        "line": 3122,
+        "text": "Fri Nov  6 00:31:23 2026 authpriv.info dropbear[2522]: Exit (root) from <[IP-25]:52251>: Disconnect received"
+      },
+      {
+        "line": 3125,
+        "text": "Fri Nov  6 00:31:23 2026 authpriv.info dropbear[2526]: Exit (root) from <[IP-25]:52253>: Disconnect received"
+      },
+      {
+        "line": 3128,
+        "text": "Fri Nov  6 00:31:23 2026 authpriv.info dropbear[2532]: Exit (root) from <[IP-25]:52254>: Disconnect received"
+      },
+      {
+        "line": 3136,
+        "text": "Fri Nov  6 00:33:40 2026 authpriv.info dropbear[5014]: Exit (root) from <[IP-25]:52652>: Disconnect received"
+      },
+      {
+        "line": 3144,
+        "text": "Fri Nov  6 00:35:10 2026 kern.info kernel: [13230.305669] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 3147,
+        "text": "Fri Nov  6 00:35:10 2026 daemon.notice netifd: Network device 'lan1' link is up"
+      },
+      {
+        "line": 3159,
+        "text": "Fri Nov  6 00:35:43 2026 kern.info kernel: [13263.571239] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 3160,
+        "text": "Fri Nov  6 00:35:44 2026 daemon.notice netifd: Network device 'lan1' link is down"
+      },
+      {
+        "line": 3170,
+        "text": "Fri Nov  6 00:38:27 2026 authpriv.info dropbear[9899]: Exit (root) from <[IP-25]:53585>: Disconnect received"
+      },
+      {
+        "line": 3175,
+        "text": "Fri Nov  6 00:41:14 2026 authpriv.info dropbear[12638]: Exit (root) from <[IP-25]:53971>: Disconnect received"
+      },
+      {
+        "line": 3199,
+        "text": "Fri Nov  6 00:45:05 2026 daemon.info hostapd: phy1-ap0: STA [MAC-34] IEEE 802.11: deauthenticated due to inactivity (timer DEAUTH/REMOVE)"
+      },
+      {
+        "line": 3249,
+        "text": "Fri Nov  6 01:03:00 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 1"
+      },
+      {
+        "line": 3250,
+        "text": "Fri Nov  6 01:03:00 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 3251,
+        "text": "Fri Nov  6 01:03:00 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 2"
+      },
+      {
+        "line": 3252,
+        "text": "Fri Nov  6 01:03:00 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 3253,
+        "text": "Fri Nov  6 01:03:00 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 3"
+      },
+      {
+        "line": 3254,
+        "text": "Fri Nov  6 01:03:00 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 3255,
+        "text": "Fri Nov  6 01:03:00 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 4"
+      },
+      {
+        "line": 3256,
+        "text": "Fri Nov  6 01:03:00 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 3257,
+        "text": "Fri Nov  6 01:03:00 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 5"
+      },
+      {
+        "line": 3258,
+        "text": "Fri Nov  6 01:03:00 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 3259,
+        "text": "Fri Nov  6 01:03:00 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 6"
+      },
+      {
+        "line": 3260,
+        "text": "Fri Nov  6 01:03:00 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 3261,
+        "text": "Fri Nov  6 01:03:00 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 7"
+      },
+      {
+        "line": 3262,
+        "text": "Fri Nov  6 01:03:00 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 3263,
+        "text": "Fri Nov  6 01:03:00 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 8"
+      },
+      {
+        "line": 3264,
+        "text": "Fri Nov  6 01:03:00 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 3265,
+        "text": "Fri Nov  6 01:03:00 2026 user.notice SQM: ERROR: cmd_wrapper: tc: FAILURE (2): /sbin/tc filter del dev pppoe-wan parent ffff: pref 9"
+      },
+      {
+        "line": 3266,
+        "text": "Fri Nov  6 01:03:00 2026 user.notice SQM: ERROR: cmd_wrapper: tc: LAST ERROR: Error: Cannot find specified filter chain. We have an error talking to the kernel"
+      },
+      {
+        "line": 3283,
+        "text": "Fri Nov  6 01:05:13 2026 kern.info kernel: [15032.608452] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 3286,
+        "text": "Fri Nov  6 01:05:13 2026 daemon.notice netifd: Network device 'lan1' link is up"
+      },
+      {
+        "line": 3292,
+        "text": "Fri Nov  6 01:05:45 2026 daemon.notice netifd: Network device 'lan1' link is down"
+      },
+      {
+        "line": 3294,
+        "text": "Fri Nov  6 01:05:45 2026 kern.info kernel: [15064.842741] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 3306,
+        "text": "Fri Nov  6 01:05:52 2026 authpriv.info dropbear[29428]: Exit (root) from <[IP-25]:58047>: Disconnect received"
+      },
+      {
+        "line": 3307,
+        "text": "Fri Nov  6 01:06:20 2026 daemon.info hostapd: phy0-ap0: STA [MAC-34] IEEE 802.11: deauthenticated due to inactivity (timer DEAUTH/REMOVE)"
+      },
+      {
+        "line": 3310,
+        "text": "Fri Nov  6 01:06:22 2026 authpriv.info dropbear[2341]: Exit (root) from <[IP-25]:58138>: Disconnect received"
+      },
+      {
+        "line": 3315,
+        "text": "Fri Nov  6 01:07:01 2026 authpriv.info dropbear[9482]: Exit (root) from <[IP-25]:58238>: Disconnect received"
+      },
+      {
+        "line": 3318,
+        "text": "Fri Nov  6 01:07:01 2026 authpriv.info dropbear[9509]: Exit (root) from <[IP-25]:58239>: Disconnect received"
+      },
+      {
+        "line": 3321,
+        "text": "Fri Nov  6 01:07:01 2026 authpriv.info dropbear[9511]: Exit (root) from <[IP-25]:58240>: Disconnect received"
+      },
+      {
+        "line": 3324,
+        "text": "Fri Nov  6 01:07:02 2026 authpriv.info dropbear[9513]: Exit (root) from <[IP-25]:58241>: Disconnect received"
+      },
+      {
+        "line": 3327,
+        "text": "Fri Nov  6 01:07:02 2026 authpriv.info dropbear[9541]: Exit (root) from <[IP-25]:58242>: Disconnect received"
+      },
+      {
+        "line": 3330,
+        "text": "Fri Nov  6 01:07:02 2026 authpriv.info dropbear[9600]: Exit (root) from <[IP-25]:58244>: Disconnect received"
+      },
+      {
+        "line": 3333,
+        "text": "Fri Nov  6 01:07:02 2026 authpriv.info dropbear[9602]: Exit (root) from <[IP-25]:58246>: Disconnect received"
+      },
+      {
+        "line": 3336,
+        "text": "Fri Nov  6 01:07:02 2026 authpriv.info dropbear[9604]: Exit (root) from <[IP-25]:58247>: Disconnect received"
+      },
+      {
+        "line": 3339,
+        "text": "Fri Nov  6 01:07:02 2026 authpriv.info dropbear[9606]: Exit (root) from <[IP-25]:58249>: Disconnect received"
+      },
+      {
+        "line": 3342,
+        "text": "Fri Nov  6 01:07:02 2026 authpriv.info dropbear[9608]: Exit (root) from <[IP-25]:58250>: Disconnect received"
+      },
+      {
+        "line": 3345,
+        "text": "Fri Nov  6 01:07:02 2026 authpriv.info dropbear[9610]: Exit (root) from <[IP-25]:58258>: Disconnect received"
+      },
+      {
+        "line": 3348,
+        "text": "Fri Nov  6 01:07:02 2026 authpriv.info dropbear[9612]: Exit (root) from <[IP-25]:58262>: Disconnect received"
+      },
+      {
+        "line": 3351,
+        "text": "Fri Nov  6 01:07:03 2026 authpriv.info dropbear[9614]: Exit (root) from <[IP-25]:58265>: Disconnect received"
+      },
+      {
+        "line": 3354,
+        "text": "Fri Nov  6 01:07:03 2026 authpriv.info dropbear[9616]: Exit (root) from <[IP-25]:58267>: Disconnect received"
+      },
+      {
+        "line": 3357,
+        "text": "Fri Nov  6 01:07:03 2026 authpriv.info dropbear[9618]: Exit (root) from <[IP-25]:58269>: Disconnect received"
+      },
+      {
+        "line": 3360,
+        "text": "Fri Nov  6 01:07:14 2026 authpriv.info dropbear[11431]: Exit (root) from <[IP-25]:58297>: Disconnect received"
+      }
+    ]
+  },
+  "kernel-dmesg": {
+    "command_exit": 0,
+    "bytes_read": 28525,
+    "lines": 409,
+    "first_line": "[    0.000000] Booting Linux on physical CPU 0x0000000000 [0x410fd034]",
+    "last_line": "[15064.842741] mt7530-mdio mdio-bus:1f lan1: Link is Down",
+    "severity": {},
+    "process_counts": {},
+    "keyword_candidates": [
+      {
+        "line": 98,
+        "text": "[    0.012499] pstore: Using crash dump compression: deflate"
+      },
+      {
+        "line": 150,
+        "text": "[    1.292595] mtk-wdt 1001c000.watchdog: Watchdog enabled (timeout=31 sec, nowayout=0)"
+      },
+      {
+        "line": 159,
+        "text": "[    1.418366] mt7530-mdio mdio-bus:1f: Link is Up - 2.5Gbps/Full - flow control rx/tx"
+      },
+      {
+        "line": 193,
+        "text": "[    2.157877] init: - watchdog -"
+      },
+      {
+        "line": 216,
+        "text": "[    3.103082] mtk_soc_eth 15100000.ethernet eth0: Link is Up - 2.5Gbps/Full - flow control rx/tx"
+      },
+      {
+        "line": 260,
+        "text": "[    8.307047] procd: - watchdog -"
+      },
+      {
+        "line": 261,
+        "text": "[    8.848028] procd: - watchdog -"
+      },
+      {
+        "line": 294,
+        "text": "[   20.258001] mtk_soc_eth 15100000.ethernet eth0: Link is Down"
+      },
+      {
+        "line": 296,
+        "text": "[   20.283830] mtk_soc_eth 15100000.ethernet eth0: Link is Up - 2.5Gbps/Full - flow control rx/tx"
+      },
+      {
+        "line": 348,
+        "text": "[   23.455562] mt7530-mdio mdio-bus:1f lan2: Link is Up - 1Gbps/Full - flow control off"
+      },
+      {
+        "line": 351,
+        "text": "[   23.601842] mt7530-mdio mdio-bus:1f lan2: Link is Down"
+      },
+      {
+        "line": 353,
+        "text": "[   26.574891] mt7530-mdio mdio-bus:1f lan2: Link is Up - 1Gbps/Full - flow control off"
+      },
+      {
+        "line": 356,
+        "text": "[   26.728497] mtk_soc_eth 15100000.ethernet eth1: Link is Up - 2.5Gbps/Full - flow control off"
+      },
+      {
+        "line": 357,
+        "text": "[   27.694938] mt7530-mdio mdio-bus:1f lan3: Link is Up - 1Gbps/Full - flow control off"
+      },
+      {
+        "line": 360,
+        "text": "[  592.331013] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 364,
+        "text": "[  625.606080] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 365,
+        "text": "[ 2393.597340] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 369,
+        "text": "[ 2428.952020] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 370,
+        "text": "[ 3935.914656] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 374,
+        "text": "[ 3967.100419] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 375,
+        "text": "[ 4220.862544] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 379,
+        "text": "[ 4253.097647] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 380,
+        "text": "[ 6022.125792] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 384,
+        "text": "[ 6055.400918] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 385,
+        "text": "[ 7823.388004] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 389,
+        "text": "[ 7855.623958] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 390,
+        "text": "[ 9625.694875] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 394,
+        "text": "[ 9657.938961] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 395,
+        "text": "[11427.996508] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 399,
+        "text": "[11460.230885] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 400,
+        "text": "[13230.305669] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 404,
+        "text": "[13263.571239] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 405,
+        "text": "[15032.608452] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 409,
+        "text": "[15064.842741] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      }
+    ]
+  },
+  "sys__fs__pstore__dmesg-ramoops-0": {
+    "command_exit": 0,
+    "bytes_read": 6800,
+    "lines": 76,
+    "first_line": "Oops#1 Part1",
+    "last_line": "<4>[162990.165001] ---[ end trace 0000000000000000 ]---",
+    "severity": {},
+    "process_counts": {},
+    "keyword_candidates": [
+      {
+        "line": 1,
+        "text": "Oops#1 Part1"
+      },
+      {
+        "line": 4,
+        "text": "<6>[154620.156515] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 5,
+        "text": "<6>[156386.064405] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 9,
+        "text": "<6>[156418.308957] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 10,
+        "text": "<6>[158187.336351] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 14,
+        "text": "<6>[158219.561435] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 15,
+        "text": "<6>[159988.589615] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 19,
+        "text": "<6>[160021.864534] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 20,
+        "text": "<6>[161789.852588] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 24,
+        "text": "<6>[161823.137646] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 25,
+        "text": "<3>[162989.565058] leds_ws2812b spi1.0: SPI transfer timed out"
+      },
+      {
+        "line": 26,
+        "text": "<3>[162989.572047] spi_master spi1: failed to transfer one message from queue"
+      },
+      {
+        "line": 27,
+        "text": "<3>[162989.579723] spi_master spi1: noqueue transfer failed"
+      },
+      {
+        "line": 28,
+        "text": "<3>[162989.586490] leds rgb:status: Setting an LED's brightness failed (-110)"
+      },
+      {
+        "line": 42,
+        "text": "<0>[162989.818136] Internal error: Oops: 0000000096000045 [#1] SMP"
+      },
+      {
+        "line": 45,
+        "text": "<3>[162989.975038] leds_ws2812b spi1.0: SPI transfer timed out"
+      },
+      {
+        "line": 54,
+        "text": "<3>[162990.008601] spi_master spi1: failed to transfer one message from queue"
+      },
+      {
+        "line": 60,
+        "text": "<3>[162990.020932] spi_master spi1: noqueue transfer failed"
+      },
+      {
+        "line": 65,
+        "text": "<3>[162990.034944] leds rgb:status: Setting an LED's brightness failed (-110)"
+      }
+    ]
+  },
+  "sys__fs__pstore__dmesg-ramoops-1": {
+    "command_exit": 0,
+    "bytes_read": 6782,
+    "lines": 77,
+    "first_line": "Panic#2 Part1",
+    "last_line": "<0>[162990.211903] Memory Limit: none",
+    "severity": {},
+    "process_counts": {},
+    "keyword_candidates": [
+      {
+        "line": 1,
+        "text": "Panic#2 Part1"
+      },
+      {
+        "line": 4,
+        "text": "<6>[156418.308957] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 5,
+        "text": "<6>[158187.336351] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 9,
+        "text": "<6>[158219.561435] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 10,
+        "text": "<6>[159988.589615] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 14,
+        "text": "<6>[160021.864534] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 15,
+        "text": "<6>[161789.852588] mt7530-mdio mdio-bus:1f lan1: Link is Up - 100Mbps/Full - flow control off"
+      },
+      {
+        "line": 19,
+        "text": "<6>[161823.137646] mt7530-mdio mdio-bus:1f lan1: Link is Down"
+      },
+      {
+        "line": 20,
+        "text": "<3>[162989.565058] leds_ws2812b spi1.0: SPI transfer timed out"
+      },
+      {
+        "line": 21,
+        "text": "<3>[162989.572047] spi_master spi1: failed to transfer one message from queue"
+      },
+      {
+        "line": 22,
+        "text": "<3>[162989.579723] spi_master spi1: noqueue transfer failed"
+      },
+      {
+        "line": 23,
+        "text": "<3>[162989.586490] leds rgb:status: Setting an LED's brightness failed (-110)"
+      },
+      {
+        "line": 37,
+        "text": "<0>[162989.818136] Internal error: Oops: 0000000096000045 [#1] SMP"
+      },
+      {
+        "line": 40,
+        "text": "<3>[162989.975038] leds_ws2812b spi1.0: SPI transfer timed out"
+      },
+      {
+        "line": 49,
+        "text": "<3>[162990.008601] spi_master spi1: failed to transfer one message from queue"
+      },
+      {
+        "line": 55,
+        "text": "<3>[162990.020932] spi_master spi1: noqueue transfer failed"
+      },
+      {
+        "line": 60,
+        "text": "<3>[162990.034944] leds rgb:status: Setting an LED's brightness failed (-110)"
+      },
+      {
+        "line": 72,
+        "text": "<3>[162990.187558] pstore: backend (ramoops) writing error (-28)"
+      },
+      {
+        "line": 73,
+        "text": "<0>[162990.193043] Kernel panic - not syncing: Oops: Fatal exception"
+      }
+    ]
+  },
+  "tmp__log__ark-doctor.log": {
+    "command_exit": 0,
+    "bytes_read": 1304,
+    "lines": 14,
+    "first_line": "[2026-11-05 20:00:17] Ark Doctor Audit: STATUS=WARN (Erros=0, Avisos=1, Reparos=0, AutoFix=0)",
+    "last_line": "  [OK] Nenhum alerta nas verificacoes executadas; nao equivale a homologacao operacional.",
+    "severity": {},
+    "process_counts": {},
+    "keyword_candidates": []
+  },
+  "tmp__ark-qos026__restore.log": {
+    "command_exit": 0,
+    "bytes_read": 195,
+    "lines": 4,
+    "first_line": "SQM: Stopping SQM on pppoe-wan",
+    "last_line": "sh: out of range",
+    "severity": {},
+    "process_counts": {},
+    "keyword_candidates": []
+  },
+  "tmp__ark-qos026__tune.log": {
+    "command_exit": 0,
+    "bytes_read": 195,
+    "lines": 4,
+    "first_line": "SQM: Stopping SQM on pppoe-wan",
+    "last_line": "sh: out of range",
+    "severity": {},
+    "process_counts": {},
+    "keyword_candidates": []
+  },
+  "tmp__ark-qos026__switch.log": {
+    "command_exit": 0,
+    "bytes_read": 3,
+    "lines": 1,
+    "first_line": "ok",
+    "last_line": "ok",
+    "severity": {},
+    "process_counts": {},
+    "keyword_candidates": []
+  },
+  "tmp__ark-qos026__watchdog.log": {
+    "command_exit": 0,
+    "bytes_read": 0,
+    "lines": 0,
+    "first_line": null,
+    "last_line": null,
+    "severity": {},
+    "process_counts": {},
+    "keyword_candidates": []
+  },
+  "tmp__ark-led025__watchdog.log": {
+    "command_exit": 0,
+    "bytes_read": 0,
+    "lines": 0,
+    "first_line": null,
+    "last_line": null,
+    "severity": {},
+    "process_counts": {},
+    "keyword_candidates": []
+  },
+  "tmp__ark-guest-tc-upload.log": {
+    "command_exit": 0,
+    "bytes_read": 0,
+    "lines": 0,
+    "first_line": null,
+    "last_line": null,
+    "severity": {},
+    "process_counts": {},
+    "keyword_candidates": []
+  },
+  "tmp__ark-guest-tc-download.log": {
+    "command_exit": 0,
+    "bytes_read": 0,
+    "lines": 0,
+    "first_line": null,
+    "last_line": null,
+    "severity": {},
+    "process_counts": {},
+    "keyword_candidates": []
+  },
+  "tmp__ark-qos024__restore.log": {
+    "command_exit": 0,
+    "bytes_read": 212,
+    "lines": 5,
+    "first_line": "SQM: Stopping SQM on pppoe-wan",
+    "last_line": "sh: out of range",
+    "severity": {},
+    "process_counts": {},
+    "keyword_candidates": []
+  },
+  "tmp__ark-qos024__switch.log": {
+    "command_exit": 0,
+    "bytes_read": 3,
+    "lines": 1,
+    "first_line": "ok",
+    "last_line": "ok",
+    "severity": {},
+    "process_counts": {},
+    "keyword_candidates": []
+  },
+  "tmp__ark-qos024__watchdog.log": {
+    "command_exit": 0,
+    "bytes_read": 0,
+    "lines": 0,
+    "first_line": null,
+    "last_line": null,
+    "severity": {},
+    "process_counts": {},
+    "keyword_candidates": []
+  }
+}

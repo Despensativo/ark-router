@@ -5,10 +5,10 @@ import paramiko
 
 ROUTER_IP = os.environ.get('ARK_ROUTER_IP', '192.168.1.1')
 USERNAME = os.environ.get('ARK_ROUTER_USER', 'root')
-PASSWORD = os.environ.get('ARK_ROUTER_PASSWORD')
+PASSWORD = os.environ.get('ARK_ROUTER_TEST_PASSWORD')
 
 if not PASSWORD:
-    print("Set ARK_ROUTER_PASSWORD before running this router test.", file=sys.stderr)
+    print("Set ARK_ROUTER_TEST_PASSWORD before running this router test.", file=sys.stderr)
     sys.exit(2)
 
 ssh = paramiko.SSHClient()

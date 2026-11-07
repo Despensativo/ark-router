@@ -310,10 +310,11 @@ config dnsmasq
         wan6_fix_checks = [c for c in report_fix.get("checks", []) if "Blindagem WAN6" in c.get("name", "")]
         self.assertEqual(wan6_fix_checks[0].get("status"), "FIXED")
 
-        # 4. Verifica se a interface foi sanitizada para @wan, reqaddress=try, reqprefix=auto
+        # 4. Verifica se a interface foi sanitizada para @wan, reqaddress=try, reqprefix=auto e norelease=1
         self.assertEqual(self.sb.uci_get("network.wan6.device"), "@wan")
         self.assertEqual(self.sb.uci_get("network.wan6.reqaddress"), "try")
         self.assertEqual(self.sb.uci_get("network.wan6.reqprefix"), "auto")
+        self.assertEqual(self.sb.uci_get("network.wan6.norelease"), "1")
 
         # 5. Nova auditoria sem fix -> deve reportar OK
         res_ok = self.sb.run_control("ark-doctor", "--json")
@@ -903,7 +904,8 @@ config wifi-iface 'default_radio1'
         self.assertEqual(self.sb.uci_get("wireless.default_radio0.disassoc_low_ack"), "0")
         self.assertEqual(self.sb.uci_get("wireless.default_radio0.skip_inactivity_poll"), "0")
         self.assertEqual(self.sb.uci_get("wireless.default_radio0.max_inactivity"), "86400")
-        self.assertEqual(self.sb.uci_get("wireless.default_radio0.multicast_to_unicast"), "1")
+        self.assertEqual(self.sb.uci_get("wireless.default_radio0.multicast_to_unicast"), "0")
+        self.assertEqual(self.sb.uci_get("wireless.default_radio0.dtim_period"), "1")
         self.assertEqual(self.sb.uci_get("wireless.default_radio1.wpa_group_rekey"), "0")
         self.assertEqual(self.sb.uci_get("wireless.default_radio1.disassoc_low_ack"), "0")
         self.assertEqual(self.sb.uci_get("wireless.default_radio1.skip_inactivity_poll"), "0")
@@ -1064,6 +1066,9 @@ exit 0
 
     def test_32_qsdk_sqm_no_split_gso_and_ecm_coordination_and_464xlat_doctor(self):
         """[T7-1/4] Valida isolamento estrito QSDK de no-split-gso + qca-nss-ecm e higienizacao 464xlat no Ark Doctor"""
+        # Restauração de ECM exige cenário sem Multi-WAN ativo; a restrição
+        # de duas WANs é coberta separadamente em test_sqm_reliability.py.
+        self.sb.uci_set("mwan3.wan2.enabled=0")
         # 1. Em OpenWrt padrao (sem QSDK ECM), no-split-gso NAO deve ser adicionado
         self.sb.run_sh("uci -q delete sqm.wan1.eqdisc_opts && uci commit sqm")
         res_std = self.sb.run_control("sqm-save-v2", "wan=wan1|wan|pppoe-wan|1|300000|150000|ethernet|44")
@@ -1168,7 +1173,7 @@ exit 0
         """
         Valida o Coordenador Transacional (Anti-Concorrência e Auto-Cura de Ghost Lock):
         1. Ações somente-leitura (dns-turbo-status, adblock-status) rodam livres sem lock residual.
-        2. Um ghost lock simulado (PID inexistente 999999 ou timestamp expirado) é auto-removido
+        2. Um ghost lock simulado (PID inexistente 999999) é auto-removido
            instantaneamente na próxima mutação sem travar o roteador.
         3. O cache /tmp/ark_dashboard_cache.json é invalidado ao final de cada mutação.
         """
@@ -1303,6 +1308,83 @@ exit 0
         self.assertIsNone(self.sb.uci_get("firewall.ark_clat_p2p_udp"))
         self.assertIsNone(self.sb.uci_get("firewall.ark_clat_p2p_low"))
         self.assertIsNone(self.sb.uci_get("firewall.ark_clat_p2p_out"))
+
+    def test_36_iot_zombie_hygiene_and_safelist(self):
+        """Valida deteccao e purga de nos zumbis IoT em 2.4 GHz com safelist para celulares/tablets/PCs."""
+        mock_dump_path = os.path.join(self.sb.temp_dir, "tmp", "mock_iw_station_dump")
+        dhcp_leases_path = os.path.join(self.sb.temp_dir, "tmp", "dhcp.leases")
+
+        # 1. Sem nos zumbis -> doctor-run DEVE reportar OK
+        if os.path.exists(mock_dump_path):
+            os.remove(mock_dump_path)
+        res_ok = self.sb.run_control("doctor-run")
+        self.assertEqual(res_ok.returncode, 0)
+        data_ok = json.loads(res_ok.stdout)
+        chk_ok = next((c for c in data_ok.get("checks", []) if "Higiene de Ar Wi-Fi" in c.get("name", "")), None)
+        self.assertIsNotNone(chk_ok)
+        self.assertEqual(chk_ok.get("status"), "OK")
+
+        # 2. No zumbi Smart Home inativo ha 15 min com 1200 falhas de transmissao
+        with open(mock_dump_path, "w") as f:
+            f.write("""Station 20:f1:b2:0a:76:e6 (on mock-2g)
+\tinactive time:\t900000 ms
+\trx bytes:\t1000
+\ttx bytes:\t50000
+\ttx packets:\t1500
+\ttx failed:\t1200
+\ttx retries:\t1100
+\tsignal:\t-82 dBm
+""")
+
+        # 3. Executa doctor-run -> DEVE detectar (WARN)
+        res_warn = self.sb.run_control("doctor-run")
+        self.assertEqual(res_warn.returncode, 0)
+        data_warn = json.loads(res_warn.stdout)
+        chk_warn = next((c for c in data_warn.get("checks", []) if "Higiene de Ar Wi-Fi" in c.get("name", "")), None)
+        self.assertIsNotNone(chk_warn)
+        self.assertEqual(chk_warn.get("status"), "WARN")
+        self.assertIn("20:f1:b2:0a:76:e6", chk_warn.get("message", ""))
+
+        # 4. Se o no for um celular Samsung Galaxy na safelist do DHCP leases -> NUNCA deve ser flagrado
+        with open(dhcp_leases_path, "w") as f:
+            f.write("1793996000 20:f1:b2:0a:76:e6 192.168.73.105 Galaxy-S23-Ultra 01:20:f1:b2:0a:76:e6\n")
+
+        res_safe = self.sb.run_control("doctor-run")
+        self.assertEqual(res_safe.returncode, 0)
+        data_safe = json.loads(res_safe.stdout)
+        chk_safe = next((c for c in data_safe.get("checks", []) if "Higiene de Ar Wi-Fi" in c.get("name", "")), None)
+        self.assertEqual(chk_safe.get("status"), "OK")
+
+        # 5. Se for dispositivo Smart Home (ex: Tuya/Sonoff) -> doctor-fix DEVE purgar (FIXED)
+        with open(dhcp_leases_path, "w") as f:
+            f.write("1793996000 20:f1:b2:0a:76:e6 192.168.73.199 LUZ-QUARTO 01:20:f1:b2:0a:76:e6\n")
+
+        res_fix = self.sb.run_control("doctor-fix")
+        self.assertEqual(res_fix.returncode, 0)
+        data_fix = json.loads(res_fix.stdout)
+        chk_fix = next((c for c in data_fix.get("checks", []) if "Higiene de Ar Wi-Fi" in c.get("name", "")), None)
+        self.assertIsNotNone(chk_fix)
+        self.assertEqual(chk_fix.get("status"), "FIXED")
+        self.assertIn("20:f1:b2:0a:76:e6", chk_fix.get("message", ""))
+
+    def test_37_pppoe_stability_and_ipv6_norelease(self):
+        """Valida se a configuracao de PPPoE inclui keepalive 5 10 + lcp-echo-adaptive + holdoff 5, e se IPv6 dual-stack inclui norelease=1"""
+        # 1. Aplica conexao PPPoE na WAN via wan-save
+        res_ppp = self.sb.run_control("wan-save", "iface=wan", "proto=pppoe", "username=cliente_fibra", "password=senha123")
+        self.assertEqual(res_ppp.returncode, 0, f"Falha ao aplicar PPPoE: {res_ppp.stderr}")
+        self.assertEqual(self.sb.uci_get("network.wan.proto"), "pppoe")
+        self.assertEqual(self.sb.uci_get("network.wan.username"), "cliente_fibra")
+        self.assertEqual(self.sb.uci_get("network.wan.keepalive"), "5 10")
+        pppd_opts = self.sb.uci_get("network.wan.pppd_options")
+        self.assertIn("lcp-echo-adaptive", pppd_opts)
+        self.assertIn("holdoff 5", pppd_opts)
+
+        # 2. Ativa Dual-Stack IPv6 e verifica norelease=1
+        res_v6 = self.sb.run_control("ipv6-mode-set", "dual_stack")
+        self.assertEqual(res_v6.returncode, 0, f"Falha ao ativar Dual-Stack IPv6: {res_v6.stderr}")
+        self.assertEqual(self.sb.uci_get("network.wan6.proto"), "dhcpv6")
+        self.assertEqual(self.sb.uci_get("network.wan6.norelease"), "1")
+        self.assertEqual(self.sb.uci_get("network.wan6.reqprefix"), "auto")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -280,27 +280,39 @@ const devicesMethods = {
 			return b;
 		};
 
+		const devStationsList = (data.deviceStations && data.deviceStations.stations) || [];
+		const devStationsWired = (data.deviceStations && data.deviceStations.wired) || [];
+		const devStationsMap = {};
+		devStationsList.forEach(function(s) {
+			if (s && s.mac) devStationsMap[String(s.mac).toUpperCase()] = s;
+		});
+
 		const deviceWifiInfo = function(mac, ip) {
 			const a = main[mac] || guest[mac];
 			const isGuest = !!guest[mac] || (guestPrefix && String(ip || '').indexOf(guestPrefix) === 0);
-			if (a) {
-				const is5G = (a.band === '5g') || (a.bandLabel === '5 GHz') ||
-					(a.ifname && (a.ifname.indexOf('phy1') >= 0 || a.ifname.indexOf('radio1') >= 0 || a.ifname.indexOf('5g') >= 0 || a.ifname.indexOf('wlan1') >= 0)) ||
-					(a.rx && (a.rx.mhz >= 80 || a.rx.vht)) || (a.tx && (a.tx.mhz >= 80 || a.tx.vht));
-				const is6G = (a.band === '6g') || (a.bandLabel === '6 GHz') ||
-					(a.rx && a.rx.mhz === 320) || (a.tx && a.tx.mhz === 320);
+			const st = devStationsMap[mac] || {};
+			if (a || st.mac) {
+				const is6G = (st.band === '6g') || (a && ((a.band === '6g') || (a.bandLabel === '6 GHz') || (a.rx && a.rx.mhz === 320) || (a.tx && a.tx.mhz === 320)));
+				const is5G = !is6G && ((st.band === '5g') || (a && ((a.band === '5g') || (a.bandLabel === '5 GHz') || (a.ifname && (a.ifname.indexOf('phy1') >= 0 || a.ifname.indexOf('radio1') >= 0 || a.ifname.indexOf('5g') >= 0 || a.ifname.indexOf('wlan1') >= 0)) || (a.rx && (a.rx.mhz >= 80 || a.rx.vht)) || (a.tx && (a.tx.mhz >= 80 || a.tx.vht)))));
 				const band = is6G ? '6g' : (is5G ? '5g' : '2g');
 				const bandLabel = is6G ? '6 GHz' : (is5G ? '5 GHz' : '2,4 GHz');
-				const defaultMainSsid = is5G ? (wifiNames.main.ssid5 || wifiNames.main.ssid || 'CASA_ARK_5G') : (wifiNames.main.ssid2 || wifiNames.main.ssid || 'CASA_ARK');
-				const ssid = a.ssid || (isGuest ? guestName : defaultMainSsid);
+				const defaultMainSsid = is6G ? (wifiNames.main.ssid6 || wifiNames.main.ssid || 'CASA_ARK_6G') : (is5G ? (wifiNames.main.ssid5 || wifiNames.main.ssid || 'CASA_ARK_5G') : (wifiNames.main.ssid2 || wifiNames.main.ssid || 'CASA_ARK'));
+				const ssid = (st.ssid) || (a && a.ssid) || (isGuest ? guestName : defaultMainSsid);
 				return {
 					isWifi: true,
 					ssid: ssid,
 					band: band,
 					bandLabel: bandLabel,
-					signal: a.signal,
+					signal: (st.signal != null) ? st.signal : (a ? a.signal : null),
 					isGuest: isGuest,
-					network: ssid
+					network: ssid,
+					generation: st.generation || (is6G ? 'wifi7' : (is5G ? 'wifi6' : 'wifi4')),
+					generationLabel: st.generation_label || (is6G ? 'Wi-Fi 7' : (is5G ? 'Wi-Fi 6' : 'Wi-Fi 4')),
+					width: st.width || (is6G ? '320 MHz' : (is5G ? '160 MHz' : '20 MHz')),
+					qam: st.qam || '',
+					mlo: !!st.mlo,
+					txRate: st.tx_rate || '',
+					rawRate: st.raw_rate || ''
 				};
 			}
 			const wiredNet = isGuest ? (guestName + ' / Cabo') : 'Cabo / LAN';
@@ -311,7 +323,14 @@ const devicesMethods = {
 				bandLabel: '',
 				signal: null,
 				isGuest: isGuest,
-				network: wiredNet
+				network: wiredNet,
+				generation: '',
+				generationLabel: '',
+				width: '',
+				qam: '',
+				mlo: false,
+				txRate: '',
+				rawRate: ''
 			};
 		};
 		const renderNetworkCell = function(d) {
@@ -322,22 +341,69 @@ const devicesMethods = {
 				]);
 			}
 			if (d.isWifi) {
+				const is6G = (d.band === '6g');
 				const is5G = (d.band === '5g');
-				const bandText = d.bandLabel || (is5G ? '5 GHz' : '2,4 GHz');
-				const badgeStyle = is5G
-					? 'background:rgba(59,130,246,0.18);color:#60a5fa;border:1px solid rgba(59,130,246,0.35);'
-					: 'background:rgba(245,158,11,0.18);color:#f59e0b;border:1px solid rgba(245,158,11,0.35);';
+				const bandText = d.bandLabel || (is6G ? '6 GHz' : (is5G ? '5 GHz' : '2,4 GHz'));
+				const badgeStyle = is6G
+					? 'background:rgba(168,85,247,0.18);color:#c084fc;border:1px solid rgba(168,85,247,0.35);'
+					: (is5G
+						? 'background:rgba(59,130,246,0.18);color:#60a5fa;border:1px solid rgba(59,130,246,0.35);'
+						: 'background:rgba(245,158,11,0.18);color:#f59e0b;border:1px solid rgba(245,158,11,0.35);');
 				const wifiDisplayName = isSecondaryRouter ? ((d.ssid || 'Wi-Fi') + ' (Neste Ponto)') : (d.ssid || d.network || 'Wi-Fi');
 				const children = [
 					E('strong', { style: 'font-weight:600;color:var(--ex-text);' }, [wifiDisplayName]),
 					E('span', {
-						class: 'ex-device-badge ' + (is5G ? 'badge-wifi-50' : 'badge-wifi-24'),
+						class: 'ex-device-badge ' + (is6G ? 'badge-wifi-60' : (is5G ? 'badge-wifi-50' : 'badge-wifi-24')),
 						style: badgeStyle + 'font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;'
 					}, [bandText])
 				];
+
+				// Geração Wi-Fi (Wi-Fi 7 / Wi-Fi 6 / Wi-Fi 5 / Wi-Fi 4)
+				if (d.generation === 'wifi7') {
+					children.push(E('span', {
+						class: 'ex-device-badge badge-wifi7',
+						style: 'background:rgba(192,132,252,0.22);color:#e879f9;border:1px solid rgba(192,132,252,0.5);font-weight:800;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;',
+						title: 'Conectado via Wi-Fi 7 (802.11be)'
+					}, ['Wi-Fi 7']));
+				} else if (d.generation === 'wifi6') {
+					children.push(E('span', {
+						class: 'ex-device-badge badge-wifi6',
+						style: 'background:rgba(16,185,129,0.18);color:#34d399;border:1px solid rgba(16,185,129,0.35);font-weight:750;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;',
+						title: 'Conectado via Wi-Fi 6 (802.11ax)'
+					}, ['Wi-Fi 6']));
+				} else if (d.generation === 'wifi5') {
+					children.push(E('span', {
+						class: 'ex-device-badge badge-wifi5',
+						style: 'background:rgba(59,130,246,0.18);color:#60a5fa;border:1px solid rgba(59,130,246,0.35);font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;',
+						title: 'Conectado via Wi-Fi 5 (802.11ac)'
+					}, ['Wi-Fi 5']));
+				}
+
+				// Badge MLO (Multi-Link Operation)
+				if (d.mlo) {
+					children.push(E('span', {
+						class: 'ex-device-badge badge-mlo',
+						style: 'background:rgba(6,182,212,0.22);color:#22d3ee;border:1px solid rgba(6,182,212,0.45);font-weight:800;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;',
+						title: 'Multi-Link Operation (MLO) ativo: agregando múltiplos rádios simultaneamente'
+					}, ['MLO ⚡']));
+				}
+
 				if (d.signal != null) {
 					children.push(E('span', { class: 'ex-muted', style: 'font-size:0.75rem;font-variant-numeric:tabular-nums;white-space:nowrap;' }, ['• ' + d.signal + ' dBm']));
 				}
+
+				// Detalhe de Taxa, Largura e QAM (ex: 2401 Mbps • 160 MHz • 1024-QAM)
+				if (d.txRate && Number(d.txRate) > 1.0) {
+					let rateDetail = d.txRate + ' Mbps';
+					if (d.width) rateDetail += ' • ' + d.width;
+					if (d.qam) rateDetail += ' • ' + d.qam;
+					children.push(E('span', {
+						class: 'ex-muted',
+						style: 'font-size:0.72rem;color:#94a3b8;font-variant-numeric:tabular-nums;white-space:nowrap;background:rgba(255,255,255,0.04);padding:1px 5px;border-radius:4px;',
+						title: d.rawRate || rateDetail
+					}, [rateDetail]));
+				}
+
 				return E('div', { class: 'ex-net-info', style: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;' }, children);
 			} else {
 				const wiredLabel = isSecondaryRouter ? 'Rede Mesh / Roteador Mestre' : (d.network || 'Cabo / LAN');
@@ -409,6 +475,13 @@ const devicesMethods = {
 				isWifi: w.isWifi,
 				guest: w.isGuest,
 				signal: w.signal,
+				generation: w.generation,
+				generationLabel: w.generationLabel,
+				width: w.width,
+				qam: w.qam,
+				mlo: w.mlo,
+				txRate: w.txRate,
+				rawRate: w.rawRate,
 				rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
 			});
 		});
@@ -431,6 +504,13 @@ const devicesMethods = {
 				isWifi: true,
 				guest: w.isGuest,
 				signal: w.signal,
+				generation: w.generation,
+				generationLabel: w.generationLabel,
+				width: w.width,
+				qam: w.qam,
+				mlo: w.mlo,
+				txRate: w.txRate,
+				rawRate: w.rawRate,
 				rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
 			});
 		});
@@ -461,12 +541,18 @@ const devicesMethods = {
 				isWifi: w.isWifi,
 				guest: isGuest,
 				signal: w.signal,
+				generation: w.generation,
+				generationLabel: w.generationLabel,
+				width: w.width,
+				qam: w.qam,
+				mlo: w.mlo,
+				txRate: w.txRate,
+				rawRate: w.rawRate,
 				rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
 			});
 		});
 
 		// Include active wired devices discovered via deviceStations telemetry
-		const devStationsWired = (data.deviceStations && data.deviceStations.wired) || [];
 		devStationsWired.forEach(function(d) {
 			const uMac = String(d.mac || '').toUpperCase();
 			if (!uMac || seen[uMac]) return;
@@ -486,6 +572,13 @@ const devicesMethods = {
 				isWifi: false,
 				guest: false,
 				signal: null,
+				generation: '',
+				generationLabel: '',
+				width: '',
+				qam: '',
+				mlo: false,
+				txRate: '',
+				rawRate: '',
 				rate: rates[uMac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
 			});
 		});
@@ -523,6 +616,13 @@ const devicesMethods = {
 						isWifi: w.isWifi,
 						guest: isGuest,
 						signal: w.signal,
+						generation: w.generation,
+						generationLabel: w.generationLabel,
+						width: w.width,
+						qam: w.qam,
+						mlo: w.mlo,
+						txRate: w.txRate,
+						rawRate: w.rawRate,
 						rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
 					});
 				}
@@ -1011,6 +1111,70 @@ const devicesMethods = {
 			const isSecondary = !!device.isSecondary;
 			const isIot = !!device.isIot;
 			const sections = [];
+
+			if (device.isWifi) {
+				const is6G = (device.band === '6g');
+				const is5G = (device.band === '5g');
+				const genTitle = device.generation === 'wifi7'
+					? '🚀 Wi-Fi 7 (802.11be — Próxima Geração)'
+					: (device.generation === 'wifi6'
+						? '⚡ Wi-Fi 6 (802.11ax — Alta Eficiência)'
+						: (device.generation === 'wifi5'
+							? '📶 Wi-Fi 5 (802.11ac)'
+							: '📶 Wi-Fi 4 (802.11n)'));
+				const genColor = device.generation === 'wifi7'
+					? '#c084fc'
+					: (device.generation === 'wifi6'
+						? '#34d399'
+						: (device.generation === 'wifi5' ? '#60a5fa' : '#f59e0b'));
+
+				const wifiItems = [];
+				wifiItems.push(E('div', {}, [
+					E('small', { class: 'ex-muted', style: 'display:block;font-size:11px;' }, ['Frequência / Canal']),
+					E('strong', { style: 'font-size:12.5px;color:#f8fafc;' }, [device.bandLabel || (is6G ? '6 GHz' : (is5G ? '5 GHz' : '2,4 GHz'))])
+				]));
+				if (device.signal != null) {
+					wifiItems.push(E('div', {}, [
+						E('small', { class: 'ex-muted', style: 'display:block;font-size:11px;' }, ['Sinal RSSI']),
+						E('strong', { style: 'font-size:12.5px;color:#f8fafc;' }, [device.signal + ' dBm'])
+					]));
+				}
+				if (device.txRate && Number(device.txRate) > 0) {
+					wifiItems.push(E('div', {}, [
+						E('small', { class: 'ex-muted', style: 'display:block;font-size:11px;' }, ['Velocidade PHY']),
+						E('strong', { style: 'font-size:12.5px;color:#38bdf8;' }, [device.txRate + ' Mbps'])
+					]));
+				}
+				if (device.width) {
+					wifiItems.push(E('div', {}, [
+						E('small', { class: 'ex-muted', style: 'display:block;font-size:11px;' }, ['Largura']),
+						E('strong', { style: 'font-size:12.5px;color:#f8fafc;' }, [device.width])
+					]));
+				}
+				if (device.qam) {
+					wifiItems.push(E('div', {}, [
+						E('small', { class: 'ex-muted', style: 'display:block;font-size:11px;' }, ['Modulação']),
+						E('strong', { style: 'font-size:12.5px;color:#a78bfa;' }, [device.qam])
+					]));
+				}
+				if (device.mlo) {
+					wifiItems.push(E('div', {}, [
+						E('small', { class: 'ex-muted', style: 'display:block;font-size:11px;' }, ['Operação Multi-Link']),
+						E('strong', { style: 'font-size:12.5px;color:#22d3ee;' }, ['⚡ MLO Ativo'])
+					]));
+				}
+
+				sections.push(E('div', {
+					class: 'alert-message',
+					style: 'margin-bottom: 12px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 12px;'
+				}, [
+					E('div', { style: 'display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:6px;' }, [
+						E('strong', { style: 'color:' + genColor + ';font-size:13px;' }, [genTitle]),
+						device.mlo ? E('span', { style: 'background:rgba(6,182,212,0.2);color:#22d3ee;font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px;border:1px solid rgba(6,182,212,0.4);' }, ['MLO ⚡']) : ''
+					]),
+					E('div', { style: 'display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:8px;' }, wifiItems)
+				]));
+			}
 			if (isSecondary) {
 				sections.push(E('div', {
 					class: 'alert-message info',

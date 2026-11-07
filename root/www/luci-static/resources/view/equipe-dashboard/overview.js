@@ -1356,6 +1356,7 @@ function wifiConfig(config) {
 		out.ssid=out.ssid2||out.ssid5||out.ssid6||out.ssid||'';
 		out.split=!!(out.ssid2&&out.ssid5&&out.ssid2!==out.ssid5);
 		out.network=(a&&a.network)||(b&&b.network)||(c&&c.network)||'lan';
+		out.hidden = ((a && a.hidden === '1') || (b && b.hidden === '1') || (c && c.hidden === '1')) ? '1' : '0';
 		out.has2g=!!(a&&a.ssid);
 		out.has5g=!!(b&&b.ssid);
 		out.has6g=!!(c&&c.ssid);
@@ -3214,27 +3215,39 @@ const devicesMethods = {
 			return b;
 		};
 
+		const devStationsList = (data.deviceStations && data.deviceStations.stations) || [];
+		const devStationsWired = (data.deviceStations && data.deviceStations.wired) || [];
+		const devStationsMap = {};
+		devStationsList.forEach(function(s) {
+			if (s && s.mac) devStationsMap[String(s.mac).toUpperCase()] = s;
+		});
+
 		const deviceWifiInfo = function(mac, ip) {
 			const a = main[mac] || guest[mac];
 			const isGuest = !!guest[mac] || (guestPrefix && String(ip || '').indexOf(guestPrefix) === 0);
-			if (a) {
-				const is5G = (a.band === '5g') || (a.bandLabel === '5 GHz') ||
-					(a.ifname && (a.ifname.indexOf('phy1') >= 0 || a.ifname.indexOf('radio1') >= 0 || a.ifname.indexOf('5g') >= 0 || a.ifname.indexOf('wlan1') >= 0)) ||
-					(a.rx && (a.rx.mhz >= 80 || a.rx.vht)) || (a.tx && (a.tx.mhz >= 80 || a.tx.vht));
-				const is6G = (a.band === '6g') || (a.bandLabel === '6 GHz') ||
-					(a.rx && a.rx.mhz === 320) || (a.tx && a.tx.mhz === 320);
+			const st = devStationsMap[mac] || {};
+			if (a || st.mac) {
+				const is6G = (st.band === '6g') || (a && ((a.band === '6g') || (a.bandLabel === '6 GHz') || (a.rx && a.rx.mhz === 320) || (a.tx && a.tx.mhz === 320)));
+				const is5G = !is6G && ((st.band === '5g') || (a && ((a.band === '5g') || (a.bandLabel === '5 GHz') || (a.ifname && (a.ifname.indexOf('phy1') >= 0 || a.ifname.indexOf('radio1') >= 0 || a.ifname.indexOf('5g') >= 0 || a.ifname.indexOf('wlan1') >= 0)) || (a.rx && (a.rx.mhz >= 80 || a.rx.vht)) || (a.tx && (a.tx.mhz >= 80 || a.tx.vht)))));
 				const band = is6G ? '6g' : (is5G ? '5g' : '2g');
 				const bandLabel = is6G ? '6 GHz' : (is5G ? '5 GHz' : '2,4 GHz');
-				const defaultMainSsid = is5G ? (wifiNames.main.ssid5 || wifiNames.main.ssid || 'CASA_ARK_5G') : (wifiNames.main.ssid2 || wifiNames.main.ssid || 'CASA_ARK');
-				const ssid = a.ssid || (isGuest ? guestName : defaultMainSsid);
+				const defaultMainSsid = is6G ? (wifiNames.main.ssid6 || wifiNames.main.ssid || 'CASA_ARK_6G') : (is5G ? (wifiNames.main.ssid5 || wifiNames.main.ssid || 'CASA_ARK_5G') : (wifiNames.main.ssid2 || wifiNames.main.ssid || 'CASA_ARK'));
+				const ssid = (st.ssid) || (a && a.ssid) || (isGuest ? guestName : defaultMainSsid);
 				return {
 					isWifi: true,
 					ssid: ssid,
 					band: band,
 					bandLabel: bandLabel,
-					signal: a.signal,
+					signal: (st.signal != null) ? st.signal : (a ? a.signal : null),
 					isGuest: isGuest,
-					network: ssid
+					network: ssid,
+					generation: st.generation || (is6G ? 'wifi7' : (is5G ? 'wifi6' : 'wifi4')),
+					generationLabel: st.generation_label || (is6G ? 'Wi-Fi 7' : (is5G ? 'Wi-Fi 6' : 'Wi-Fi 4')),
+					width: st.width || (is6G ? '320 MHz' : (is5G ? '160 MHz' : '20 MHz')),
+					qam: st.qam || '',
+					mlo: !!st.mlo,
+					txRate: st.tx_rate || '',
+					rawRate: st.raw_rate || ''
 				};
 			}
 			const wiredNet = isGuest ? (guestName + ' / Cabo') : 'Cabo / LAN';
@@ -3245,7 +3258,14 @@ const devicesMethods = {
 				bandLabel: '',
 				signal: null,
 				isGuest: isGuest,
-				network: wiredNet
+				network: wiredNet,
+				generation: '',
+				generationLabel: '',
+				width: '',
+				qam: '',
+				mlo: false,
+				txRate: '',
+				rawRate: ''
 			};
 		};
 		const renderNetworkCell = function(d) {
@@ -3256,22 +3276,69 @@ const devicesMethods = {
 				]);
 			}
 			if (d.isWifi) {
+				const is6G = (d.band === '6g');
 				const is5G = (d.band === '5g');
-				const bandText = d.bandLabel || (is5G ? '5 GHz' : '2,4 GHz');
-				const badgeStyle = is5G
-					? 'background:rgba(59,130,246,0.18);color:#60a5fa;border:1px solid rgba(59,130,246,0.35);'
-					: 'background:rgba(245,158,11,0.18);color:#f59e0b;border:1px solid rgba(245,158,11,0.35);';
+				const bandText = d.bandLabel || (is6G ? '6 GHz' : (is5G ? '5 GHz' : '2,4 GHz'));
+				const badgeStyle = is6G
+					? 'background:rgba(168,85,247,0.18);color:#c084fc;border:1px solid rgba(168,85,247,0.35);'
+					: (is5G
+						? 'background:rgba(59,130,246,0.18);color:#60a5fa;border:1px solid rgba(59,130,246,0.35);'
+						: 'background:rgba(245,158,11,0.18);color:#f59e0b;border:1px solid rgba(245,158,11,0.35);');
 				const wifiDisplayName = isSecondaryRouter ? ((d.ssid || 'Wi-Fi') + ' (Neste Ponto)') : (d.ssid || d.network || 'Wi-Fi');
 				const children = [
 					E('strong', { style: 'font-weight:600;color:var(--ex-text);' }, [wifiDisplayName]),
 					E('span', {
-						class: 'ex-device-badge ' + (is5G ? 'badge-wifi-50' : 'badge-wifi-24'),
+						class: 'ex-device-badge ' + (is6G ? 'badge-wifi-60' : (is5G ? 'badge-wifi-50' : 'badge-wifi-24')),
 						style: badgeStyle + 'font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;'
 					}, [bandText])
 				];
+
+				// Geração Wi-Fi (Wi-Fi 7 / Wi-Fi 6 / Wi-Fi 5 / Wi-Fi 4)
+				if (d.generation === 'wifi7') {
+					children.push(E('span', {
+						class: 'ex-device-badge badge-wifi7',
+						style: 'background:rgba(192,132,252,0.22);color:#e879f9;border:1px solid rgba(192,132,252,0.5);font-weight:800;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;',
+						title: 'Conectado via Wi-Fi 7 (802.11be)'
+					}, ['Wi-Fi 7']));
+				} else if (d.generation === 'wifi6') {
+					children.push(E('span', {
+						class: 'ex-device-badge badge-wifi6',
+						style: 'background:rgba(16,185,129,0.18);color:#34d399;border:1px solid rgba(16,185,129,0.35);font-weight:750;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;',
+						title: 'Conectado via Wi-Fi 6 (802.11ax)'
+					}, ['Wi-Fi 6']));
+				} else if (d.generation === 'wifi5') {
+					children.push(E('span', {
+						class: 'ex-device-badge badge-wifi5',
+						style: 'background:rgba(59,130,246,0.18);color:#60a5fa;border:1px solid rgba(59,130,246,0.35);font-weight:700;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;',
+						title: 'Conectado via Wi-Fi 5 (802.11ac)'
+					}, ['Wi-Fi 5']));
+				}
+
+				// Badge MLO (Multi-Link Operation)
+				if (d.mlo) {
+					children.push(E('span', {
+						class: 'ex-device-badge badge-mlo',
+						style: 'background:rgba(6,182,212,0.22);color:#22d3ee;border:1px solid rgba(6,182,212,0.45);font-weight:800;font-size:0.68rem;padding:2px 6px;border-radius:6px;white-space:nowrap;',
+						title: 'Multi-Link Operation (MLO) ativo: agregando múltiplos rádios simultaneamente'
+					}, ['MLO ⚡']));
+				}
+
 				if (d.signal != null) {
 					children.push(E('span', { class: 'ex-muted', style: 'font-size:0.75rem;font-variant-numeric:tabular-nums;white-space:nowrap;' }, ['• ' + d.signal + ' dBm']));
 				}
+
+				// Detalhe de Taxa, Largura e QAM (ex: 2401 Mbps • 160 MHz • 1024-QAM)
+				if (d.txRate && Number(d.txRate) > 1.0) {
+					let rateDetail = d.txRate + ' Mbps';
+					if (d.width) rateDetail += ' • ' + d.width;
+					if (d.qam) rateDetail += ' • ' + d.qam;
+					children.push(E('span', {
+						class: 'ex-muted',
+						style: 'font-size:0.72rem;color:#94a3b8;font-variant-numeric:tabular-nums;white-space:nowrap;background:rgba(255,255,255,0.04);padding:1px 5px;border-radius:4px;',
+						title: d.rawRate || rateDetail
+					}, [rateDetail]));
+				}
+
 				return E('div', { class: 'ex-net-info', style: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;' }, children);
 			} else {
 				const wiredLabel = isSecondaryRouter ? 'Rede Mesh / Roteador Mestre' : (d.network || 'Cabo / LAN');
@@ -3343,6 +3410,13 @@ const devicesMethods = {
 				isWifi: w.isWifi,
 				guest: w.isGuest,
 				signal: w.signal,
+				generation: w.generation,
+				generationLabel: w.generationLabel,
+				width: w.width,
+				qam: w.qam,
+				mlo: w.mlo,
+				txRate: w.txRate,
+				rawRate: w.rawRate,
 				rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
 			});
 		});
@@ -3365,6 +3439,13 @@ const devicesMethods = {
 				isWifi: true,
 				guest: w.isGuest,
 				signal: w.signal,
+				generation: w.generation,
+				generationLabel: w.generationLabel,
+				width: w.width,
+				qam: w.qam,
+				mlo: w.mlo,
+				txRate: w.txRate,
+				rawRate: w.rawRate,
 				rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
 			});
 		});
@@ -3395,12 +3476,18 @@ const devicesMethods = {
 				isWifi: w.isWifi,
 				guest: isGuest,
 				signal: w.signal,
+				generation: w.generation,
+				generationLabel: w.generationLabel,
+				width: w.width,
+				qam: w.qam,
+				mlo: w.mlo,
+				txRate: w.txRate,
+				rawRate: w.rawRate,
 				rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
 			});
 		});
 
 		// Include active wired devices discovered via deviceStations telemetry
-		const devStationsWired = (data.deviceStations && data.deviceStations.wired) || [];
 		devStationsWired.forEach(function(d) {
 			const uMac = String(d.mac || '').toUpperCase();
 			if (!uMac || seen[uMac]) return;
@@ -3420,6 +3507,13 @@ const devicesMethods = {
 				isWifi: false,
 				guest: false,
 				signal: null,
+				generation: '',
+				generationLabel: '',
+				width: '',
+				qam: '',
+				mlo: false,
+				txRate: '',
+				rawRate: '',
 				rate: rates[uMac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
 			});
 		});
@@ -3457,6 +3551,13 @@ const devicesMethods = {
 						isWifi: w.isWifi,
 						guest: isGuest,
 						signal: w.signal,
+						generation: w.generation,
+						generationLabel: w.generationLabel,
+						width: w.width,
+						qam: w.qam,
+						mlo: w.mlo,
+						txRate: w.txRate,
+						rawRate: w.rawRate,
 						rate: rates[mac] || { rx: 0, tx: 0, totalRx: 0, totalTx: 0 }
 					});
 				}
@@ -3945,6 +4046,70 @@ const devicesMethods = {
 			const isSecondary = !!device.isSecondary;
 			const isIot = !!device.isIot;
 			const sections = [];
+
+			if (device.isWifi) {
+				const is6G = (device.band === '6g');
+				const is5G = (device.band === '5g');
+				const genTitle = device.generation === 'wifi7'
+					? '🚀 Wi-Fi 7 (802.11be — Próxima Geração)'
+					: (device.generation === 'wifi6'
+						? '⚡ Wi-Fi 6 (802.11ax — Alta Eficiência)'
+						: (device.generation === 'wifi5'
+							? '📶 Wi-Fi 5 (802.11ac)'
+							: '📶 Wi-Fi 4 (802.11n)'));
+				const genColor = device.generation === 'wifi7'
+					? '#c084fc'
+					: (device.generation === 'wifi6'
+						? '#34d399'
+						: (device.generation === 'wifi5' ? '#60a5fa' : '#f59e0b'));
+
+				const wifiItems = [];
+				wifiItems.push(E('div', {}, [
+					E('small', { class: 'ex-muted', style: 'display:block;font-size:11px;' }, ['Frequência / Canal']),
+					E('strong', { style: 'font-size:12.5px;color:#f8fafc;' }, [device.bandLabel || (is6G ? '6 GHz' : (is5G ? '5 GHz' : '2,4 GHz'))])
+				]));
+				if (device.signal != null) {
+					wifiItems.push(E('div', {}, [
+						E('small', { class: 'ex-muted', style: 'display:block;font-size:11px;' }, ['Sinal RSSI']),
+						E('strong', { style: 'font-size:12.5px;color:#f8fafc;' }, [device.signal + ' dBm'])
+					]));
+				}
+				if (device.txRate && Number(device.txRate) > 0) {
+					wifiItems.push(E('div', {}, [
+						E('small', { class: 'ex-muted', style: 'display:block;font-size:11px;' }, ['Velocidade PHY']),
+						E('strong', { style: 'font-size:12.5px;color:#38bdf8;' }, [device.txRate + ' Mbps'])
+					]));
+				}
+				if (device.width) {
+					wifiItems.push(E('div', {}, [
+						E('small', { class: 'ex-muted', style: 'display:block;font-size:11px;' }, ['Largura']),
+						E('strong', { style: 'font-size:12.5px;color:#f8fafc;' }, [device.width])
+					]));
+				}
+				if (device.qam) {
+					wifiItems.push(E('div', {}, [
+						E('small', { class: 'ex-muted', style: 'display:block;font-size:11px;' }, ['Modulação']),
+						E('strong', { style: 'font-size:12.5px;color:#a78bfa;' }, [device.qam])
+					]));
+				}
+				if (device.mlo) {
+					wifiItems.push(E('div', {}, [
+						E('small', { class: 'ex-muted', style: 'display:block;font-size:11px;' }, ['Operação Multi-Link']),
+						E('strong', { style: 'font-size:12.5px;color:#22d3ee;' }, ['⚡ MLO Ativo'])
+					]));
+				}
+
+				sections.push(E('div', {
+					class: 'alert-message',
+					style: 'margin-bottom: 12px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 12px;'
+				}, [
+					E('div', { style: 'display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:6px;' }, [
+						E('strong', { style: 'color:' + genColor + ';font-size:13px;' }, [genTitle]),
+						device.mlo ? E('span', { style: 'background:rgba(6,182,212,0.2);color:#22d3ee;font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px;border:1px solid rgba(6,182,212,0.4);' }, ['MLO ⚡']) : ''
+					]),
+					E('div', { style: 'display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:8px;' }, wifiItems)
+				]));
+			}
 			if (isSecondary) {
 				sections.push(E('div', {
 					class: 'alert-message info',
@@ -5725,10 +5890,12 @@ const networkMethods = {
 				]),
 				E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' }, [
 					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.14); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.30);' }, ['👥 Isolamento Justo por IP']),
-					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.10); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.22);' }, ['📊 4 Filas DiffServ'])
+					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.10); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.22);' }, ['📊 4 Filas DiffServ']),
+					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.10); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.22);' }, ['👨‍👩‍👧‍👦 Ideal Residências'])
 				]),
 				E('div', { style: 'font-size: 12px; line-height: 1.45; color: #e2e8f0;' }, [
-					'Divide a internet igualmente entre cada aparelho da casa (dual-srchost / dual-dsthost), impedindo que um único download puxe toda a banda.'
+					'Divide a internet cirurgicamente por aparelho da casa (dual-srchost / dual-dsthost), impedindo que um streaming 4K ou download puxe toda a banda. ',
+					E('strong', { style: 'color: #34d399;' }, ['Recomendado para casas com muitos usuários e dezenas de aparelhos em conexões de até ~700–800 Mbps.'])
 				])
 			]);
 			const modalBtnHfsc = E('div', {
@@ -5746,10 +5913,13 @@ const networkMethods = {
 				]),
 				E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' }, [
 					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.16); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.32);' }, ['🎮 Curva Gamer < 1 ms']),
-					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.10); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.22);' }, ['⚡ Gigabit (-40% CPU)'])
+					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.10); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.22);' }, ['⚡ -40% CPU']),
+					E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: rgba(245, 158, 11, 0.20); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.40);' }, ['🔥 Essencial ≥ 800M / 1 Gbps'])
 				]),
 				E('div', { style: 'font-size: 12px; line-height: 1.45; color: #e2e8f0;' }, [
-					'Reserva via exclusiva em Tempo Real (< 1 ms) para Jogos, VoIP e Ping, e libera máxima velocidade Gigabit com FQ-CoDel Turbo e menor uso de CPU.'
+					'Reserva canal em Tempo Real (< 1 ms) para Jogos, VoIP e Ping com zero descarte, e usa FQ-CoDel Turbo (quantum 1514). ',
+					E('strong', { style: 'color: #fbbf24;' }, ['Essencial a partir de 800 Mbps, 1 Gbps ou Multi-Gigabit']),
+					', onde o CAKE satura a CPU em 100% e causa gargalo de processamento no roteador.'
 				])
 			]);
 			const updateModalEngineButtons = function() {
@@ -5778,6 +5948,27 @@ const networkMethods = {
 			};
 			updateModalEngineButtons();
 
+			const engineComparisonGuide = E('div', {
+				style: 'margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: rgba(0, 0, 0, 0.28); border-left: 3px solid #38bdf8; font-size: 11.5px; line-height: 1.5; color: #cbd5e1;'
+			}, [
+				E('div', { style: 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 6px;' }, [
+					E('strong', { style: 'color: #f8fafc; font-size: 12px;' }, ['💡 Guia de Engenharia: Quando escolher cada motor?']),
+					E('span', { style: 'color: #fbbf24; font-weight: 700; font-size: 11px;' }, ['⚡ A partir de 800 Mbps / 1 Gbps: Use HFSC Turbo'])
+				]),
+				E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px;' }, [
+					E('div', {}, [
+						E('strong', { style: 'color: #34d399;' }, ['🛡️ CAKE (Layer Cake): ']),
+						'Melhor para ', E('strong', {}, ['casas com muitos usuários']), '. Divide a banda igualmente por aparelho (IP), impedindo que um único download de TV ou celular abafe os demais. Ideal em conexões de até ~700–800 Mbps.'
+					]),
+					E('div', {}, [
+						E('strong', { style: 'color: #38bdf8;' }, ['🚀 HFSC + FQ-CoDel Turbo: ']),
+						'Melhor para ', E('strong', {}, ['Jogos (< 1 ms), chamadas e velocidade pura']), '. Economiza ~40% de CPU. ',
+						E('strong', { style: 'color: #fbbf24;' }, ['Essencial a partir de 800 Mbps a 1 Gbps+']),
+						', onde o cálculo do CAKE satura os núcleos do roteador em 100% e limita a velocidade da sua fibra.'
+					])
+				])
+			]);
+
 			const modalEngineBanner = E('div', {
 				style: 'margin-bottom: 14px; padding: 14px 16px; border-radius: 12px; background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(148, 163, 184, 0.18);'
 			}, [
@@ -5788,7 +5979,8 @@ const networkMethods = {
 				E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;' }, [
 					modalBtnCake,
 					modalBtnHfsc
-				])
+				]),
+				engineComparisonGuide
 			]);
 
 			const modalGamingPortsInput = E('input', {
@@ -5827,6 +6019,80 @@ const networkMethods = {
 				])
 			]);
 
+			const dscpMatrixBanner = E('details', {
+				class: 'ex-qos-matrix-details',
+				style: 'margin-bottom: 14px; padding: 12px 14px; border-radius: 12px; background: rgba(15, 23, 42, 0.45); border: 1px solid rgba(148, 163, 184, 0.22); font-size: 12px; line-height: 1.45;'
+			}, [
+				E('summary', { style: 'cursor: pointer; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; user-select: none;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
+						E('strong', { style: 'font-size: 13.5px; color: #f8fafc;' }, ['📊 ' + _t('Matriz de Classificação por Aplicação (L7 / DSCP)')]),
+						E('span', {
+							style: 'font-size: 10.5px; font-weight: 700; color: #34d399; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.16); border: 1px solid rgba(16, 185, 129, 0.35);'
+						}, ['4 Filas DiffServ & HFSC RT'])
+					]),
+					E('span', { class: 'ex-pill online', style: 'font-size: 11px;' }, [_t('Ativo em Hardware (fw4 / nftables)')])
+				]),
+				E('div', { style: 'margin-top: 10px; display: flex; flex-direction: column; gap: 10px;' }, [
+					E('p', { class: 'ex-muted', style: 'margin: 0; font-size: 12px; line-height: 1.4;' }, [
+						_t('Os pacotes são classificados nativamente pelo kernel nftables em microssegundos com persistência Conntrack (0% overhead de CPU). O motor de QoS ativo (CAKE ou HFSC Turbo) despacha cada aplicação para sua respectiva fila:')
+					]),
+					E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;' }, [
+						E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25);' }, [
+							E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+								E('strong', { style: 'color: #f87171; font-size: 12.5px;' }, ['🔴 ' + _t('Fila 1: Latência Zero / Voice (< 1 ms)')]),
+								E('span', { style: 'font-size: 10px; font-weight: 700; color: #fca5a5; padding: 1px 6px; border-radius: 4px; background: rgba(239, 68, 68, 0.2);' }, ['CS6 / CS5 / CS4 / EF'])
+							]),
+							E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+								E('strong', { style: 'color: #fca5a5;' }, [_t('Destino: ')]), _t('CAKE Voice Tin • HFSC Classe 1:10 (Real-Time)'), E('br'),
+								E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+									'🎮 80+ Jogos (CS2, Valorant, LoL, Dota, CoD, Fortnite), Consoles (PS5/Xbox/Switch), Discord RTC, VoIP (SIP/RTP), ICMP Ping, DNS (53/853), Handshakes TCP e L4S ECT(1).'
+								])
+							])
+						]),
+						E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25);' }, [
+							E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+								E('strong', { style: 'color: #fbbf24; font-size: 12.5px;' }, ['🟡 ' + _t('Fila 2: Interativo / Videoconferência')]),
+								E('span', { style: 'font-size: 10px; font-weight: 700; color: #fde68a; padding: 1px 6px; border-radius: 4px; background: rgba(245, 158, 11, 0.2);' }, ['AF41 / CS5'])
+							]),
+							E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+								E('strong', { style: 'color: #fde68a;' }, [_t('Destino: ')]), _t('CAKE Video Tin • HFSC Classe 1:20 (Turbo)'), E('br'),
+								E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+									'👥 Zoom, Microsoft Teams, Google Meet, Webex, WhatsApp Voz & Vídeo, STUN/TURN e tráfego interativo WebRTC.'
+								])
+							])
+						]),
+						E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25);' }, [
+							E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+								E('strong', { style: 'color: #34d399; font-size: 12.5px;' }, ['🟢 ' + _t('Fila 3: Navegação Geral & Streaming')]),
+								E('span', { style: 'font-size: 10px; font-weight: 700; color: #a7f3d0; padding: 1px 6px; border-radius: 4px; background: rgba(16, 185, 129, 0.2);' }, ['CS0 (Padrão)'])
+							]),
+							E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+								E('strong', { style: 'color: #a7f3d0;' }, [_t('Destino: ')]), _t('CAKE Best Effort • HFSC Classe 1:20 (Geral)'), E('br'),
+								E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+									'🌐 Navegação Web (HTTP/HTTPS/QUIC), Redes Sociais (Instagram, TikTok, X), Streaming de Vídeo (YouTube, Netflix, Prime Video, Twitch).'
+								])
+							])
+						]),
+						E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25);' }, [
+							E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+								E('strong', { style: 'color: #60a5fa; font-size: 12.5px;' }, ['🔵 ' + _t('Fila 4: Fila de Fundo (Bulk / Scavenger)')]),
+								E('span', { style: 'font-size: 10px; font-weight: 700; color: #bfdbfe; padding: 1px 6px; border-radius: 4px; background: rgba(59, 130, 246, 0.2);' }, ['CS1 (Scavenger)'])
+							]),
+							E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+								E('strong', { style: 'color: #bfdbfe;' }, [_t('Destino: ')]), _t('CAKE Bulk Tin • HFSC Classe 1:30 (Elástico)'), E('br'),
+								E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+									'📥 BitTorrent, qBittorrent, Transmission, downloads pesados em segundo plano. Cede 100% da banda instantaneamente quando qualquer outra fila solicita tráfego.'
+								])
+							])
+						])
+					]),
+					E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0, 0, 0, 0.25); border-left: 3px solid #38bdf8; font-size: 11.5px; color: #94a3b8;' }, [
+						E('strong', { style: 'color: #38bdf8;' }, ['💡 Fast-Path Conntrack: ']),
+						'Uma vez classificado o primeiro pacote da conexão, o kernel memoriza a prioridade no conntrack mark (0x80 | DSCP). Pacotes Gigabit subsequentes fluem direto sem reavaliar as tabelas, mantendo taxa de linha total.'
+					])
+				])
+			]);
+
 			ui.showModal('Editar SQM / CAKE',[
 				E('div',{style:'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;'},[
 					E('p',{class:'ex-muted',style:'margin:0;'},[_t('Defina os limites em Mbps. Exemplo: 1,2 Gbps = 1200 Mbps. Use 0 ou deixe em branco quando não quiser limitar aquela direção (ilimitado).')]),
@@ -5839,6 +6105,7 @@ const networkMethods = {
 				modalEngineBanner,
 				waveformAplusBanner,
 				gamingPortsBanner,
+				dscpMatrixBanner,
 				speedtestBanner,
 				flowOffloadNotice,
 				mipsNotice,
@@ -8473,8 +8740,15 @@ const wifiMethods = {
 		if (s2.channel && Number(s2.channel) >= 36 && (!s5.channel || Number(s5.channel) <= 14)) {
 			const tmp = s2; s2 = s5; s5 = tmp;
 		}
-		const r2 = w.r2g || w.r0 || {}, r5 = w.r5g || w.r1 || {};
-		return { two: currentChannelValue(r2.channel, s2), five: currentChannelValue(r5.channel, s5), auto2: String(r2.channel||'auto')==='auto', auto5: String(r5.channel||'auto')==='auto' };
+		const r2 = w.r2g || w.r0 || {}, r5 = w.r5g || w.r1 || {}, r6 = w.r6g || w.r2 || {};
+		return {
+			two: currentChannelValue(r2.channel, s2),
+			five: currentChannelValue(r5.channel, s5),
+			six: currentChannelValue(r6.channel, null) || (r6.channel || 'auto'),
+			auto2: String(r2.channel||'auto')==='auto',
+			auto5: String(r5.channel||'auto')==='auto',
+			auto6: String(r6.channel||'auto')==='auto'
+		};
 	},
 
 	changeWifiPassword: function(kind, ssid) {
@@ -8539,6 +8813,11 @@ const wifiMethods = {
 		const passRow1 = E('label', { class: 'ex-device-config-block' }, [ E('strong', {}, ['Senha']), password ]);
 		const passRow2 = E('label', { class: 'ex-device-config-block' }, [ E('strong', {}, ['Confirmar senha']), passwordConfirm ]);
 		const showRow = E('label', { class: 'ex-show-password' }, [ show, E('span', {}, ['Mostrar senha digitada']) ]);
+		const hiddenAddInput = E('input', { type: 'checkbox' });
+		const hiddenAddRow = E('label', { class: 'ex-show-password', style: 'margin-top: 6px;' }, [
+			hiddenAddInput,
+			E('span', {}, [_t('Ocultar nome da rede Wi‑Fi (SSID Oculto)')])
+		]);
 
 		const encAlert = E('div', { class: 'alert-message', style: 'margin-top: 6px; font-size: 11.5px; display: none;' });
 		const updateEncVisibility = function() {
@@ -8586,6 +8865,7 @@ const wifiMethods = {
 			passRow1,
 			passRow2,
 			showRow,
+			hiddenAddRow,
 			E('p', { class: 'alert-message warning' }, ['Ao salvar, o Wi‑Fi reiniciará para criar os novos pontos de acesso sem fio.']),
 			E('div', { class: 'right' }, [
 				E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': closeModal }, ['Cancelar']),
@@ -8600,7 +8880,7 @@ const wifiMethods = {
 					}
 					btn.disabled = true;
 					btn.textContent = 'Criando rede Wi‑Fi…';
-					return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-add', name, (enc === 'none' ? '' : pass), netSelect.value, bandSelect.value, enc]).then(function(r) {
+					return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-add', name, (enc === 'none' ? '' : pass), netSelect.value, bandSelect.value, enc, (hiddenAddInput.checked ? '1' : '0')]).then(function(r) {
 						if (r.code) throw new Error(r.stderr || 'Falha ao criar rede Wi-Fi');
 						ui.hideModal();
 						reloadSoon('Nova rede Wi-Fi criada. Reiniciando o rádio…', 1500);
@@ -9218,6 +9498,37 @@ const wifiMethods = {
 		rows.push(passRow1);
 		rows.push(passRow2);
 		rows.push(showRow);
+
+		const hiddenInput = E('input', { type: 'checkbox' });
+		hiddenInput.checked = String(current.hidden || '0') === '1';
+
+		const hiddenRow = E('div', { class: 'ex-device-config-block', style: 'padding: 10px 12px; border-radius: 8px; background: rgba(127,127,127,.06); border: 1px solid rgba(127,127,127,.12); margin-top: 10px;' }, [
+			E('div', { class: 'ex-device-config-heading' }, [
+				E('div', { style: 'display: flex; flex-direction: column; gap: 2px;' }, [
+					E('div', { style: 'display: flex; align-items: center; gap: 6px;' }, [
+						E('strong', {}, [_t('Ocultar nome da rede (SSID Oculto)')]),
+						hiddenInput.checked ? E('span', { class: 'ex-wifi-hidden-tag', style: 'font-size: 11px; padding: 1px 6px; background: rgba(239,68,68,0.15); color: #f87171; border-radius: 4px; font-weight: 700;' }, [_t('Oculta')]) : ''
+					]),
+					E('small', { class: 'ex-muted', style: 'font-size: 11.5px; line-height: 1.3;' }, [
+						_t('Não transmite o nome do Wi‑Fi publicamente. Aparelhos já conectados continuam funcionando normalmente. Lâmpadas e tomadas inteligentes (IoT) podem falhar ao reconectar após falta de luz se a rede estiver oculta.')
+					])
+				]),
+				E('div', { class: 'ex-device-switch-control', style: 'flex: 0 0 auto;' }, [
+					E('strong', { class: 'ex-device-switch-state' }, [hiddenInput.checked ? _t('Oculta') : _t('Visível')]),
+					E('label', { class: 'ex-switch', 'aria-label': _t('Ocultar nome da rede') }, [
+						hiddenInput,
+						E('span', { class: 'ex-switch-slider' })
+					])
+				])
+			])
+		]);
+		hiddenInput.addEventListener('change', function() {
+			const st = hiddenRow.querySelector('.ex-device-switch-state');
+			if (st) st.textContent = hiddenInput.checked ? _t('Oculta') : _t('Visível');
+			const tag = hiddenRow.querySelector('.ex-wifi-hidden-tag');
+			if (tag) tag.style.display = hiddenInput.checked ? 'inline' : 'none';
+		});
+		rows.push(hiddenRow);
 		if(current.kind === 'extra' || String(kind).indexOf('extra_') === 0 || (kind !== 'main' && kind !== 'guest')){
 			const deleteBox = E('div', { class: 'ex-device-config-block', style: 'border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.05);padding:12px;margin-top:14px;border-radius:12px;' });
 			const deleteConfirmBox = E('div', { style: 'display:none;margin-top:10px;padding:12px;border-radius:10px;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.35);' });
@@ -9303,7 +9614,7 @@ const wifiMethods = {
 			}
 			btn.disabled = true;
 			btn.textContent = 'Salvando Wi‑Fi…';
-			const args=['wifi-settings',kind,'split='+(isSplit?'1':'0'),'ssid='+name,'ssid2='+(isSplit?name2:name),'ssid5='+(isSplit?name5:name),'encryption='+enc,'split_enc='+(isSplitEnc?'1':'0'),'encryption2='+(isSplitEnc?enc2:enc),'encryption5='+(isSplitEnc?enc5:enc),'enabled='+(isGuest?(enabled.checked?'1':'0'):'keep'),'enable_2g='+(b2?'1':'0'),'enable_5g='+(b5?'1':'0')];
+			const args=['wifi-settings',kind,'split='+(isSplit?'1':'0'),'ssid='+name,'ssid2='+(isSplit?name2:name),'ssid5='+(isSplit?name5:name),'encryption='+enc,'split_enc='+(isSplitEnc?'1':'0'),'encryption2='+(isSplitEnc?enc2:enc),'encryption5='+(isSplitEnc?enc5:enc),'enabled='+(isGuest?(enabled.checked?'1':'0'):'keep'),'hidden='+(hiddenInput.checked?'1':'0'),'enable_2g='+(b2?'1':'0'),'enable_5g='+(b5?'1':'0')];
 			if (has6g) {
 				args.push('enable_6g=' + (b6 ? '1' : '0'));
 				args.push('ssid6=' + (isSplit ? name6 : name));
@@ -9495,15 +9806,63 @@ const wifiMethods = {
 		]) : '';
 
 		const has6gHw = !!(wConf.has6g || (this.capabilities && this.capabilities.hardware && (this.capabilities.hardware.wifi_6g_supported || (this.capabilities.hardware.wifi && this.capabilities.hardware.wifi_6g))));
-		const ch6Block = has6gHw ? E('div', { class: 'ex-device-config-block' }, [
-			E('strong', {}, ['Canal 6 GHz (Wi-Fi 6E / Wi-Fi 7 — PSC Automático)']),
-			E('div', { class: 'alert-message info', style: 'margin-top: 6px; font-size: 11.5px; line-height: 1.45;' }, [
-				E('div', { style: 'width: 100%;' }, [
-					E('strong', {}, ['🔒 Canal PSC 37 (6135 MHz — Anatel UNII-5): ']),
-					'A banda de 6 GHz opera ancorada automaticamente em canais PSC (Preferred Scanning Channels) com RNR + quadros FILS Discovery a cada 20 ms, garantindo descoberta instantânea em iPhones, Samsung Galaxy S23/S24/S25 e notebooks sem varredura lenta.'
+		let ch6Select = null;
+		let ch6Note = null;
+		let ch6Block = '';
+		if (has6gHw) {
+			ch6Select = E('select', { class: 'cbi-input-select', style: 'width:100%' }, [
+				E('option', { value: 'auto' }, ['Automático Inteligente (Canal PSC 37 — Âncora 320/160 MHz)']),
+				E('optgroup', { label: 'Canais PSC — Anatel UNII-5 (5925–6425 MHz — Padrão Brasil / Sem Radar)' }, [
+					E('option', { value: '37' }, ['Canal 37 (6135 MHz — Padrão Ouro / Centro 1º Bloco 320 MHz / PSC)']),
+					E('option', { value: '5' }, ['Canal 5 (5975 MHz — PSC / UNII-5)']),
+					E('option', { value: '21' }, ['Canal 21 (6055 MHz — PSC / UNII-5)']),
+					E('option', { value: '53' }, ['Canal 53 (6215 MHz — PSC / UNII-5)']),
+					E('option', { value: '69' }, ['Canal 69 (6295 MHz — PSC / UNII-5)']),
+					E('option', { value: '85' }, ['Canal 85 (6375 MHz — PSC / UNII-5)'])
+				]),
+				E('optgroup', { label: 'Canais PSC — UNII-6 / UNII-7 / UNII-8 (Internacional / FCC)' }, [
+					E('option', { value: '101' }, ['Canal 101 (6455 MHz — PSC / UNII-6)']),
+					E('option', { value: '117' }, ['Canal 117 (6535 MHz — PSC / UNII-7)']),
+					E('option', { value: '133' }, ['Canal 133 (6615 MHz — PSC / UNII-7)']),
+					E('option', { value: '149' }, ['Canal 149 (6695 MHz — PSC / UNII-7)']),
+					E('option', { value: '165' }, ['Canal 165 (6775 MHz — PSC / UNII-7)']),
+					E('option', { value: '181' }, ['Canal 181 (6855 MHz — PSC / UNII-7)']),
+					E('option', { value: '197' }, ['Canal 197 (6935 MHz — PSC / UNII-8)']),
+					E('option', { value: '213' }, ['Canal 213 (7015 MHz — PSC / UNII-8)']),
+					E('option', { value: '229' }, ['Canal 229 (7095 MHz — PSC / UNII-8)'])
 				])
-			])
-		]) : '';
+			]);
+			ch6Select.value = cur.six || 'auto';
+
+			ch6Note = E('div', { class: 'alert-message info', style: 'margin-top: 6px; font-size: 11.5px; display: none;' });
+			const updateCh6Note = function() {
+				const v = ch6Select.value;
+				if (v === '37' || v === 'auto') {
+					ch6Note.className = 'alert-message success';
+					ch6Note.textContent = '✅ Canal PSC 37 (Padrão Ouro): Centro exato do 1º bloco de 320 MHz (320-1) e 160 MHz na faixa UNII-5 Anatel. Dispositivos Apple (iPhone 15 Pro/16/16 Pro, Macs M-series) e Android descobrem a rede imediatamente através de quadros FILS Discovery (20 ms) e RNR nos 2,4/5 GHz.';
+					ch6Note.style.display = 'block';
+				} else if ([5, 21, 53, 69, 85].indexOf(Number(v)) >= 0) {
+					ch6Note.className = 'alert-message success';
+					ch6Note.textContent = '✅ Canal PSC Homologado (Anatel UNII-5): Canal de varredura preferencial com transmissão periódica de Reduced Neighbor Report (RNR) nas outras frequências para rápida associação sem consumo de bateria.';
+					ch6Note.style.display = 'block';
+				} else {
+					ch6Note.className = 'alert-message info';
+					ch6Note.textContent = 'ℹ️ Faixas UNII-6 a UNII-8 (Canais 97–233): Disponíveis em regulamentações internacionais (FCC). Se os seus aparelhos foram homologados fora do Brasil ou suportam espectro estendido, funcionarão normalmente.';
+					ch6Note.style.display = 'block';
+				}
+			};
+			ch6Select.addEventListener('change', updateCh6Note);
+			updateCh6Note();
+
+			ch6Block = E('label', { class: 'ex-device-config-block' }, [
+				E('strong', {}, ['Canal 6 GHz (Wi-Fi 6E / Wi-Fi 7)']),
+				ch6Select,
+				ch6Note,
+				E('small', { class: 'ex-muted' }, [
+					'A banda de 6 GHz opera com canais PSC (Preferred Scanning Channels) a cada 80 MHz para descoberta instantânea sem varredura lenta. WPA3-SAE obrigatório.'
+				])
+			]);
+		}
 
 		const rows = [
 			E('label', { class: 'ex-device-config-block' }, [
@@ -9511,7 +9870,7 @@ const wifiMethods = {
 				ch2Select,
 				ch2Note,
 				ecoWifiTip,
-				E('small', { class: 'ex-muted' }, ['Canais 1, 6 e 11 são os únicos sem sobreposição no 2,4 GHz. Dica: use 20 MHz (HT20) para total estabilidade de automação residencial e IoT.'])
+				E('small', { class: 'ex-muted' }, ['Canais 1, 6 e 11 são os únicos sem sobreposição no 2,4 GHz. O ARK aplica supressão anti-11b e BSS Coloring para estabilidade de IoT e celulares.'])
 			]),
 			E('label', { class: 'ex-device-config-block' }, [
 				E('strong', {}, ['Canal 5 GHz']),
@@ -9519,28 +9878,34 @@ const wifiMethods = {
 				ch5Note,
 				macbookAwdlTip,
 				E('small', { class: 'ex-muted' }, [ch5HelpText])
-			]),
-			ch6Block,
-			E('p', { class: 'alert-message warning' }, ['Ao aplicar, os rádios Wi‑Fi reiniciarão no novo canal selecionado.']),
-			E('div', { class: 'right' }, [
-				E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': closeModal }, ['Cancelar']),
-				' ',
-				E('button', { class: 'btn cbi-button cbi-button-positive', 'click': L.bind(function(ev) {
-					const btn = ev.currentTarget;
-					btn.disabled = true;
-					btn.textContent = 'Aplicando canais…';
-					return fs.exec('/usr/sbin/equipe-dashboard-control', ['channels', 'set', ch2Select.value, ch5Select.value]).then(function(r) {
-						if (r.code) throw new Error(r.stderr || 'Falha ao aplicar os canais');
-						ui.hideModal();
-						reloadSoon('Novos canais Wi-Fi aplicados. Recarregando…', 1500);
-					}).catch(function(e) {
-						btn.disabled = false;
-						btn.textContent = 'Aplicar canais';
-						ui.addNotification(null, E('p', {}, [String(e && e.message || e)]), 'danger');
-					});
-				}, this) }, ['Aplicar canais'])
 			])
 		];
+		if (has6gHw && ch6Block) {
+			rows.push(ch6Block);
+		}
+		rows.push(E('p', { class: 'alert-message warning' }, ['Ao aplicar, os rádios Wi‑Fi reiniciarão no novo canal selecionado.']));
+		rows.push(E('div', { class: 'right' }, [
+			E('button', { class: 'btn cbi-button cbi-button-neutral', 'click': closeModal }, ['Cancelar']),
+			' ',
+			E('button', { class: 'btn cbi-button cbi-button-positive', 'click': L.bind(function(ev) {
+				const btn = ev.currentTarget;
+				btn.disabled = true;
+				btn.textContent = 'Aplicando canais…';
+				const cmdArgs = ['channels', 'set', ch2Select.value, ch5Select.value];
+				if (has6gHw && ch6Select) {
+					cmdArgs.push(ch6Select.value);
+				}
+				return fs.exec('/usr/sbin/equipe-dashboard-control', cmdArgs).then(function(r) {
+					if (r.code) throw new Error(r.stderr || 'Falha ao aplicar os canais');
+					ui.hideModal();
+					reloadSoon('Novos canais Wi-Fi aplicados. Recarregando…', 1500);
+				}).catch(function(e) {
+					btn.disabled = false;
+					btn.textContent = 'Aplicar canais';
+					ui.addNotification(null, E('p', {}, [String(e && e.message || e)]), 'danger');
+				});
+			}, this) }, ['Aplicar canais'])
+		]));
 		ui.showModal('Escolher canais Wi‑Fi manualmente', rows);
 	},
 	analyzeChannels: function(button) {
@@ -15199,7 +15564,30 @@ const systemMethods = {
 		if(force !== false) args.push('force');
 		return fs.exec('/usr/sbin/equipe-dashboard-control',args,20000).then(L.bind(function(r){
 			if(r.code)throw new Error(r.stderr||'Falha ao verificar atualização');
-			let info={}; try{info=JSON.parse(r.stdout||'{}');}catch(e){throw new Error('Resposta de atualização inválida');}
+			let info={};
+			try{
+				info=JSON.parse(r.stdout||'{}');
+			}catch(e){
+				const raw = String(r.stdout || '');
+				const mLatest = raw.match(/"latest"\s*:\s*"([^"]+)"/);
+				const mAvail = raw.match(/"available"\s*:\s*(true|false)/);
+				const mUrl = raw.match(/"url"\s*:\s*"([^"]+)"/);
+				const mAsset = raw.match(/"asset"\s*:\s*"([^"]+)"/);
+				if (mLatest) {
+					info = {
+						current: (this.capabilities && this.capabilities.update && this.capabilities.update.current) || (typeof window !== 'undefined' && window.ARK_VERSION) || '',
+						latest: mLatest[1],
+						available: mAvail ? mAvail[1] === 'true' : false,
+						url: mUrl ? mUrl[1] : '',
+						asset: mAsset ? mAsset[1] : '',
+						changelog: '',
+						error: '',
+						space_ok: true
+					};
+				} else {
+					throw new Error('Resposta de atualização inválida');
+				}
+			}
 			try{
 				localStorage.setItem('ark_last_update_check_time',String(Date.now()));
 				localStorage.setItem('ark_last_update_check_data',JSON.stringify(info));
@@ -15519,7 +15907,21 @@ const systemMethods = {
 			fs.exec('/usr/sbin/equipe-dashboard-control',['self-update-check']).then(function(r){
 				if(r.code)return;
 				let info={};
-				try{info=JSON.parse(r.stdout||'{}');}catch(e){return;}
+				try{
+					info=JSON.parse(r.stdout||'{}');
+				}catch(e){
+					const raw = String(r.stdout || '');
+					const mLatest = raw.match(/"latest"\s*:\s*"([^"]+)"/);
+					const mAvail = raw.match(/"available"\s*:\s*(true|false)/);
+					if (mLatest) {
+						info = {
+							latest: mLatest[1],
+							available: mAvail ? mAvail[1] === 'true' : false
+						};
+					} else {
+						return;
+					}
+				}
 				localStorage.setItem('ark_last_update_check_time',String(Date.now()));
 				localStorage.setItem('ark_last_update_check_data',JSON.stringify(info));
 				if(info&&info.available&&(!curVer || info.latest !== curVer)){
@@ -22255,7 +22657,10 @@ const renderMethods = {
 			const kickerText = isExtra ? ('REDE ADICIONAL' + (cfg.network === 'guest' ? ' (ISOLADA)' : '')) : ('REDE WI‑FI' + (cfg.split ? ' (SEPARADA)' : ''));
 			const titleElements = [
 				E('span',{class:'ex-kicker'},[kickerText]),
-				E('h3',{id:'ex-'+kind+'-ssid'},[ssid])
+				E('h3',{id:'ex-'+kind+'-ssid'},[
+					ssid,
+					(cfg.hidden === '1') ? E('span', { class: 'ex-wifi-hidden-badge', style: 'margin-left: 8px; font-size: 11px; padding: 2px 7px; background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.25); border-radius: 6px; font-weight: 700; vertical-align: middle;' }, [_t('Oculta')]) : ''
+				])
 			];
 			let bandSubtitle = '';
 			const is2gOff = cfg.disabled2 === '1';
@@ -23189,10 +23594,12 @@ const renderMethods = {
 									]),
 									E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' }, [
 										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.14); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.30);' }, ['👥 Isolamento Justo por IP']),
-										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.10); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.22);' }, ['📊 4 Filas DiffServ'])
+										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.10); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.22);' }, ['📊 4 Filas DiffServ']),
+										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.10); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.22);' }, ['👨‍👩‍👧‍👦 Ideal Residências'])
 									]),
 									E('div', { style: 'font-size: 12px; line-height: 1.45; color: #e2e8f0;' }, [
-										'Divide a internet igualmente entre cada aparelho da casa (dual-srchost / dual-dsthost), impedindo que um único download puxe toda a banda.'
+										'Divide a internet cirurgicamente por aparelho da casa (dual-srchost / dual-dsthost), impedindo que um streaming 4K ou download puxe toda a banda. ',
+										E('strong', { style: 'color: #34d399;' }, ['Recomendado para casas com muitos usuários e dezenas de aparelhos em conexões de até ~700–800 Mbps.'])
 									])
 								]),
 								E('div', {
@@ -23213,10 +23620,106 @@ const renderMethods = {
 									]),
 									E('div', { style: 'display: flex; flex-wrap: wrap; gap: 6px;' }, [
 										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.16); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.32);' }, ['🎮 Curva Gamer < 1 ms']),
-										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.10); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.22);' }, ['⚡ Gigabit (-40% CPU)'])
+										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(56, 189, 248, 0.10); color: #bae6fd; border: 1px solid rgba(56, 189, 248, 0.22);' }, ['⚡ -40% CPU']),
+										E('span', { style: 'white-space: nowrap; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: rgba(245, 158, 11, 0.20); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.40);' }, ['🔥 Essencial ≥ 800M / 1 Gbps'])
 									]),
 									E('div', { style: 'font-size: 12px; line-height: 1.45; color: #e2e8f0;' }, [
-										'Reserva via exclusiva em Tempo Real (< 1 ms) para Jogos, VoIP e Ping, e libera máxima velocidade Gigabit com FQ-CoDel Turbo e menor uso de CPU.'
+										'Reserva canal em Tempo Real (< 1 ms) para Jogos, VoIP e Ping com zero descarte, e usa FQ-CoDel Turbo (quantum 1514). ',
+										E('strong', { style: 'color: #fbbf24;' }, ['Essencial a partir de 800 Mbps, 1 Gbps ou Multi-Gigabit']),
+										', onde o CAKE satura a CPU em 100% e causa gargalo de processamento no roteador.'
+									])
+								])
+							]),
+							E('div', {
+								style: 'margin-top: 12px; padding: 10px 14px; border-radius: 10px; background: rgba(0, 0, 0, 0.28); border-left: 3px solid #38bdf8; font-size: 11.5px; line-height: 1.5; color: #cbd5e1;'
+							}, [
+								E('div', { style: 'display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 6px;' }, [
+									E('strong', { style: 'color: #f8fafc; font-size: 12px;' }, ['💡 Guia de Engenharia: Quando escolher cada motor?']),
+									E('span', { style: 'color: #fbbf24; font-weight: 700; font-size: 11px;' }, ['⚡ A partir de 800 Mbps / 1 Gbps: Use HFSC Turbo'])
+								]),
+								E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px;' }, [
+									E('div', {}, [
+										E('strong', { style: 'color: #34d399;' }, ['🛡️ CAKE (Layer Cake): ']),
+										'Melhor para ', E('strong', {}, ['casas com muitos usuários']), '. Divide a banda igualmente por aparelho (IP), impedindo que um único download de TV ou celular abafe os demais. Ideal em conexões de até ~700–800 Mbps.'
+									]),
+									E('div', {}, [
+										E('strong', { style: 'color: #38bdf8;' }, ['🚀 HFSC + FQ-CoDel Turbo: ']),
+										'Melhor para ', E('strong', {}, ['Jogos (< 1 ms), chamadas e velocidade pura']), '. Economiza ~40% de CPU. ',
+										E('strong', { style: 'color: #fbbf24;' }, ['Essencial a partir de 800 Mbps a 1 Gbps+']),
+										', onde o cálculo do CAKE satura os núcleos do roteador em 100% e limita a velocidade da sua fibra.'
+									])
+								])
+							]),
+							E('details', {
+								class: 'ex-qos-matrix-details',
+								style: 'margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: rgba(15, 23, 42, 0.45); border: 1px solid rgba(148, 163, 184, 0.22); font-size: 12px; line-height: 1.45;'
+							}, [
+								E('summary', { style: 'cursor: pointer; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; user-select: none;' }, [
+									E('div', { style: 'display: flex; align-items: center; gap: 8px;' }, [
+										E('strong', { style: 'font-size: 13.5px; color: #f8fafc;' }, ['📊 ' + _t('Matriz de Classificação por Aplicação (L7 / DSCP)')]),
+										E('span', {
+											style: 'font-size: 10.5px; font-weight: 700; color: #34d399; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.16); border: 1px solid rgba(16, 185, 129, 0.35);'
+										}, ['4 Filas DiffServ & HFSC RT'])
+									]),
+									E('span', { class: 'ex-pill online', style: 'font-size: 11px;' }, [_t('Ativo em Hardware (fw4 / nftables)')])
+								]),
+								E('div', { style: 'margin-top: 10px; display: flex; flex-direction: column; gap: 10px;' }, [
+									E('p', { class: 'ex-muted', style: 'margin: 0; font-size: 12px; line-height: 1.4;' }, [
+										_t('Os pacotes são classificados nativamente pelo kernel nftables em microssegundos com persistência Conntrack (0% overhead de CPU). O motor de QoS ativo (CAKE ou HFSC Turbo) despacha cada aplicação para sua respectiva fila:')
+									]),
+									E('div', { style: 'display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;' }, [
+										E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25);' }, [
+											E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+												E('strong', { style: 'color: #f87171; font-size: 12.5px;' }, ['🔴 ' + _t('Fila 1: Latência Zero / Voice (< 1 ms)')]),
+												E('span', { style: 'font-size: 10px; font-weight: 700; color: #fca5a5; padding: 1px 6px; border-radius: 4px; background: rgba(239, 68, 68, 0.2);' }, ['CS6 / CS5 / CS4 / EF'])
+											]),
+											E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+												E('strong', { style: 'color: #fca5a5;' }, [_t('Destino: ')]), _t('CAKE Voice Tin • HFSC Classe 1:10 (Real-Time)'), E('br'),
+												E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+													'🎮 80+ Jogos (CS2, Valorant, LoL, Dota, CoD, Fortnite), Consoles (PS5/Xbox/Switch), Discord RTC, VoIP (SIP/RTP), ICMP Ping, DNS (53/853), Handshakes TCP e L4S ECT(1).'
+												])
+											])
+										]),
+										E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25);' }, [
+											E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+												E('strong', { style: 'color: #fbbf24; font-size: 12.5px;' }, ['🟡 ' + _t('Fila 2: Interativo / Videoconferência')]),
+												E('span', { style: 'font-size: 10px; font-weight: 700; color: #fde68a; padding: 1px 6px; border-radius: 4px; background: rgba(245, 158, 11, 0.2);' }, ['AF41 / CS5'])
+											]),
+											E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+												E('strong', { style: 'color: #fde68a;' }, [_t('Destino: ')]), _t('CAKE Video Tin • HFSC Classe 1:20 (Turbo)'), E('br'),
+												E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+													'👥 Zoom, Microsoft Teams, Google Meet, Webex, WhatsApp Voz & Vídeo, STUN/TURN e tráfego interativo WebRTC.'
+												])
+											])
+										]),
+										E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25);' }, [
+											E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+												E('strong', { style: 'color: #34d399; font-size: 12.5px;' }, ['🟢 ' + _t('Fila 3: Navegação Geral & Streaming')]),
+												E('span', { style: 'font-size: 10px; font-weight: 700; color: #a7f3d0; padding: 1px 6px; border-radius: 4px; background: rgba(16, 185, 129, 0.2);' }, ['CS0 (Padrão)'])
+											]),
+											E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+												E('strong', { style: 'color: #a7f3d0;' }, [_t('Destino: ')]), _t('CAKE Best Effort • HFSC Classe 1:20 (Geral)'), E('br'),
+												E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+													'🌐 Navegação Web (HTTP/HTTPS/QUIC), Redes Sociais (Instagram, TikTok, X), Streaming de Vídeo (YouTube, Netflix, Prime Video, Twitch).'
+												])
+											])
+										]),
+										E('div', { style: 'padding: 10px 12px; border-radius: 10px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25);' }, [
+											E('div', { style: 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;' }, [
+												E('strong', { style: 'color: #60a5fa; font-size: 12.5px;' }, ['🔵 ' + _t('Fila 4: Fila de Fundo (Bulk / Scavenger)')]),
+												E('span', { style: 'font-size: 10px; font-weight: 700; color: #bfdbfe; padding: 1px 6px; border-radius: 4px; background: rgba(59, 130, 246, 0.2);' }, ['CS1 (Scavenger)'])
+											]),
+											E('div', { style: 'font-size: 11.5px; color: #e2e8f0; line-height: 1.4;' }, [
+												E('strong', { style: 'color: #bfdbfe;' }, [_t('Destino: ')]), _t('CAKE Bulk Tin • HFSC Classe 1:30 (Elástico)'), E('br'),
+												E('span', { class: 'ex-muted', style: 'font-size: 11px;' }, [
+													'📥 BitTorrent, qBittorrent, Transmission, downloads pesados em segundo plano. Cede 100% da banda instantaneamente quando qualquer outra fila solicita tráfego.'
+												])
+											])
+										])
+									]),
+									E('div', { style: 'padding: 8px 10px; border-radius: 8px; background: rgba(0, 0, 0, 0.25); border-left: 3px solid #38bdf8; font-size: 11.5px; color: #94a3b8;' }, [
+										E('strong', { style: 'color: #38bdf8;' }, ['💡 Fast-Path Conntrack: ']),
+										'Uma vez classificado o primeiro pacote da conexão, o kernel memoriza a prioridade no conntrack mark (0x80 | DSCP). Pacotes Gigabit subsequentes fluem direto sem reavaliar as tabelas, mantendo taxa de linha total.'
 									])
 								])
 							])

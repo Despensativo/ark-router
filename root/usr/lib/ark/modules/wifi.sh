@@ -566,7 +566,7 @@ handle_wifi() {
 				allow_toggle=1
 				;;
 		esac
-		ssid=''; ssid2=''; ssid5=''; ssid6=''; password=''; enabled='keep'; split='0'; split_enc='0'; guest_download=''; guest_upload=''; encryption=''; encryption2=''; encryption5=''; encryption6=''
+		ssid=''; ssid2=''; ssid5=''; ssid6=''; password=''; enabled='keep'; hidden='keep'; split='0'; split_enc='0'; guest_download=''; guest_upload=''; encryption=''; encryption2=''; encryption5=''; encryption6=''
 		enable_2g='keep'; enable_5g='keep'; enable_6g='keep'
 		shift 2
 		for pair in "$@"; do
@@ -583,6 +583,7 @@ handle_wifi() {
 				encryption6) case "$value" in psk2|sae-mixed|sae|none) encryption6="$value" ;; esac ;;
 				split_enc) case "$value" in 0|1) split_enc="$value" ;; esac ;;
 				enabled) case "$value" in 0|1|keep) enabled="$value" ;; *) echo 'Estado da rede invalido' >&2; exit 2 ;; esac ;;
+				hidden) case "$value" in 0|1|keep) hidden="$value" ;; *) echo 'Estado do SSID oculto invalido' >&2; exit 2 ;; esac ;;
 				enable_2g) case "$value" in 0|1|keep) enable_2g="$value" ;; *) echo 'Estado 2,4 GHz invalido' >&2; exit 2 ;; esac ;;
 				enable_5g) case "$value" in 0|1|keep) enable_5g="$value" ;; *) echo 'Estado 5 GHz invalido' >&2; exit 2 ;; esac ;;
 				enable_6g) case "$value" in 0|1|keep) enable_6g="$value" ;; *) echo 'Estado 6 GHz invalido' >&2; exit 2 ;; esac ;;
@@ -753,6 +754,11 @@ handle_wifi() {
 					[ "$enabled" = 1 ] && uci -q set "wireless.$section.disabled=0" || uci -q set "wireless.$section.disabled=1"
 				fi
 			fi
+			if [ "$hidden" = 1 ]; then
+				uci -q set "wireless.$section.hidden=1"
+			elif [ "$hidden" = 0 ]; then
+				uci -q delete "wireless.$section.hidden"
+			fi
 		done
 		uci commit wireless
 		uci commit network 2>/dev/null || true
@@ -773,12 +779,13 @@ handle_wifi() {
 		echo 'ok'
 		;;
 	wifi-add)
-		new_ssid="$2"; new_password="$3"; target_network="${4:-lan}"; band_mode="${5:-both}"; new_encryption="${6:-sae-mixed}"
+		new_ssid="$2"; new_password="$3"; target_network="${4:-lan}"; band_mode="${5:-both}"; new_encryption="${6:-sae-mixed}"; new_hidden="${7:-0}"
 		valid_ssid "$new_ssid" || { echo 'O nome da rede deve ter entre 1 e 32 caracteres' >&2; exit 2; }
 		[ "$new_encryption" = none ] || [ -z "$new_password" ] || valid_wifi_password "$new_password" || { echo 'A senha deve ter entre 8 e 63 caracteres' >&2; exit 2; }
 		case "$target_network" in lan|guest) ;; *) target_network='lan' ;; esac
 		case "$band_mode" in both|2g|5g|6g) ;; *) band_mode='both' ;; esac
 		case "$new_encryption" in psk2|sae-mixed|sae|none) ;; *) new_encryption='sae-mixed' ;; esac
+		case "$new_hidden" in 0|1) ;; *) new_hidden='0' ;; esac
 		if opkg list-installed 2>/dev/null | grep -q "^wpad-basic -" && { [ "$new_encryption" = "sae" ] || [ "$new_encryption" = "sae-mixed" ]; }; then
 			new_encryption="psk2"
 		fi
@@ -806,6 +813,7 @@ handle_wifi() {
 				[ -n "$new_password" ] && uci -q set "wireless.$sec.key=$new_password"
 			fi
 			[ "$target_network" = guest ] && uci -q set "wireless.$sec.isolate=1"
+			[ "$new_hidden" = 1 ] && uci -q set "wireless.$sec.hidden=1"
 			uci -q set "wireless.$sec.disabled=0"
 		fi
 		if [ "$band_mode" = both ] || [ "$band_mode" = 5g ]; then
@@ -824,6 +832,7 @@ handle_wifi() {
 					[ -n "$new_password" ] && uci -q set "wireless.$sec.key=$new_password"
 				fi
 				[ "$target_network" = guest ] && uci -q set "wireless.$sec.isolate=1"
+				[ "$new_hidden" = 1 ] && uci -q set "wireless.$sec.hidden=1"
 				uci -q set "wireless.$sec.disabled=0"
 			fi
 		fi
@@ -845,6 +854,7 @@ handle_wifi() {
 					uci -q set "wireless.$sec.encryption=sae"
 					uci -q set "wireless.$sec.ieee80211w=2"
 					[ -n "$new_password" ] && uci -q set "wireless.$sec.key=$new_password"
+					[ "$new_hidden" = 1 ] && uci -q set "wireless.$sec.hidden=1"
 					uci -q set "wireless.$sec.disabled=0"
 				fi
 				[ "$target_network" = guest ] && uci -q set "wireless.$sec.isolate=1"
@@ -877,6 +887,7 @@ handle_wifi() {
 			fixed|set)
 				channel2="$3"
 				channel5="$4"
+				channel6="$5"
 				if [ "$channel2" = auto ]; then
 					uci -q set "wireless.$radio2.channel=auto"
 					uci -q delete "wireless.$radio2.channels"
@@ -930,6 +941,15 @@ handle_wifi() {
 						esac
 					fi
 				fi
+				if [ -n "$radio6" ] && [ -n "$channel6" ]; then
+					if [ "$channel6" = auto ]; then
+						uci -q set "wireless.$radio6.channel=37"
+						uci -q delete "wireless.$radio6.channels"
+					else
+						uci -q set "wireless.$radio6.channel=$channel6"
+						uci -q delete "wireless.$radio6.channels"
+					fi
+				fi
 				;;
 			auto)
 				# 2.4 GHz: Auto Inteligente limitado estritamente a 1, 6 e 11 (sem sobreposicao espectral)
@@ -976,8 +996,26 @@ handle_wifi() {
 		(
 			sleep 2
 			wifi reload >/dev/null 2>&1 || true
-			# Watchdog de recuperacao automatica: se algum radio ficar em Canal 0 / AP-DISABLED
-			sleep 5
+			# Watchdog resiliente a DFS / CAC (Channel Availability Check):
+			# Canais DFS ou 160 MHz exigem escuta regulatoria de radar por 60s (cac_time=60s).
+			# Polling inteligente a cada 3s por ate 75s. Sai imediatamente assim que os radios subirem.
+			max_wait=75
+			waited=0
+			is_dfs_waiting=0
+			while [ "$waited" -lt "$max_wait" ]; do
+				sleep 3
+				waited=$((waited + 3))
+				if logread 2>/dev/null | tail -n 30 | grep -q "DFS-CAC-START"; then
+					is_dfs_waiting=1
+				fi
+				if ! iwinfo 2>/dev/null | grep -q "Channel: 0 (unknown GHz)"; then
+					is_dfs_waiting=0
+					break
+				fi
+				if [ "$waited" -ge 15 ] && [ "$is_dfs_waiting" -eq 0 ]; then
+					break
+				fi
+			done
 			if iwinfo 2>/dev/null | grep -q "Channel: 0 (unknown GHz)"; then
 				logger -t equipe-dashboard-control "ALERTA: Interface Wi-Fi desabilitada detectada apos troca de canal. Aplicando correcao segura..."
 				for r in "$radio2" "$radio5"; do
@@ -1035,13 +1073,14 @@ handle_wifi() {
 		fi
 		[ "$changed5" = 1 ] && uci set "wireless.$radio5.htmode=$ht5"
 
-		# Se a largura de 5 GHz for colocada em 160 MHz, garantir que o canal seja compativel (canais < 132)
+		# Se a largura de 5 GHz for colocada em 160 MHz, garantir que o canal seja compativel (< 132 e nao auto)
+		# No OpenWrt mt76/mac80211, channel=auto com 160 MHz falha no ACS (Automatic Channel Selection)
 		if [ "$width5" = 160 ]; then
 			cur_ch5="$(uci -q get "wireless.$radio5.channel" || echo auto)"
-			if [ "$cur_ch5" != auto ] && [ "$cur_ch5" -ge 132 ] 2>/dev/null; then
+			if [ "$cur_ch5" = auto ] || ([ "$cur_ch5" -ge 132 ] 2>/dev/null); then
 				uci -q set "wireless.$radio5.channel=36"
 				changed5=1
-				logger -t equipe-dashboard-control "Aviso: canal $cur_ch5 incompativel com ${width5} MHz; comutado para canal 36."
+				logger -t equipe-dashboard-control "Aviso: canal $cur_ch5 incompativel com 160 MHz (requer canal base não-DFS); fixado no canal 36."
 			fi
 		fi
 		if [ -n "$radio6" ] && [ -n "$width6" ]; then
@@ -1087,7 +1126,26 @@ handle_wifi() {
 				logger -t equipe-dashboard-control "Reiniciando os radios Wi-Fi..."
 				wifi reload >/dev/null 2>&1 || true
 			fi
-			sleep 5
+			# Watchdog resiliente a DFS / CAC (Channel Availability Check):
+			# Canais DFS ou 160 MHz exigem escuta regulatoria de radar por 60s (cac_time=60s).
+			# Polling inteligente a cada 3s por ate 75s. Sai imediatamente assim que os radios subirem.
+			max_wait=75
+			waited=0
+			is_dfs_waiting=0
+			while [ "$waited" -lt "$max_wait" ]; do
+				sleep 3
+				waited=$((waited + 3))
+				if logread 2>/dev/null | tail -n 30 | grep -q "DFS-CAC-START"; then
+					is_dfs_waiting=1
+				fi
+				if ! iwinfo 2>/dev/null | grep -q "Channel: 0 (unknown GHz)"; then
+					is_dfs_waiting=0
+					break
+				fi
+				if [ "$waited" -ge 15 ] && [ "$is_dfs_waiting" -eq 0 ]; then
+					break
+				fi
+			done
 			if iwinfo 2>/dev/null | grep -q "Channel: 0 (unknown GHz)"; then
 				logger -t equipe-dashboard-control "ALERTA: Interface Wi-Fi desabilitada detectada apos troca de largura. Revertendo 5 GHz para HE80..."
 				uci -q set "wireless.$radio5.htmode=HE80"
@@ -1192,16 +1250,16 @@ handle_wifi() {
 			uci -q set "wireless.$radio2.legacy_rates=0"
 			uci -q delete "wireless.$radio2.beacon_rate"
 			uci -q delete "wireless.$radio2.basic_rate"
-			# Aplica protecao anti-desconexao disassoc_low_ack=0, dtim_period=2, multicast_to_unicast e sono blindado em todas as interfaces AP 2.4G
+			# Aplica protecao anti-desconexao disassoc_low_ack=0, dtim_period=1, multicast_to_unicast=0 e sono blindado em todas as interfaces AP 2.4G
 			for iface in $(uci -q show wireless | grep -E "\.device=['\"]?$radio2['\"]?" | cut -d. -f2); do
 				mode="$(uci -q get wireless.$iface.mode || echo ap)"
 				if [ "$mode" = "ap" ]; then
 					uci -q set "wireless.$iface.disassoc_low_ack=0"
-					uci -q set "wireless.$iface.dtim_period=2"
+					uci -q set "wireless.$iface.dtim_period=1"
 					uci -q set "wireless.$iface.wpa_group_rekey=0"
 					uci -q set "wireless.$iface.skip_inactivity_poll=0"
 					uci -q set "wireless.$iface.max_inactivity=86400"
-					uci -q set "wireless.$iface.multicast_to_unicast=1"
+					uci -q set "wireless.$iface.multicast_to_unicast=0"
 				fi
 			done
 			uci commit wireless

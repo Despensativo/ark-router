@@ -1,0 +1,29 @@
+{
+  "head": "a5ab48c2",
+  "version": "2.2.1",
+  "preexisting_worktree_changes": true,
+  "runtime_sha256": {
+    "/usr/lib/ark/modules/sqm.sh": "5c9f17f8284cd9279d09461832bfdbcdf407fdb51ab1e2b780b2e5c6328b2cf6",
+    "/usr/lib/ark/qos-ingress.sh": "55a722afbd12fb097a9eb7d0a4707a29a4a0c56c29f503f2c3f984cbe2ff2d5f",
+    "/usr/lib/ark/qos-resources.sh": "b038dad8ba74e527d70591ebf3fddb6174840b970325e8dde31cc60f23419787",
+    "/usr/lib/sqm/ark_hfsc_fqcodel.qos": "eee59223060b5d66a98b4e01bb2fce564d871c60eef12ab7fa90acfe7fb6e8af",
+    "/etc/nftables.d/15-ark-dscp-priority.nft": "1bf98eddf8d7931c3bfed5c907aced0df5d745e04ecc7314c8d3f962a86ad6b2"
+  },
+  "local_sha256": {
+    "/usr/lib/ark/modules/sqm.sh": "5c9f17f8284cd9279d09461832bfdbcdf407fdb51ab1e2b780b2e5c6328b2cf6",
+    "/usr/lib/ark/qos-ingress.sh": "55a722afbd12fb097a9eb7d0a4707a29a4a0c56c29f503f2c3f984cbe2ff2d5f",
+    "/usr/lib/ark/qos-resources.sh": "b038dad8ba74e527d70591ebf3fddb6174840b970325e8dde31cc60f23419787",
+    "/usr/lib/sqm/ark_hfsc_fqcodel.qos": "eee59223060b5d66a98b4e01bb2fce564d871c60eef12ab7fa90acfe7fb6e8af",
+    "/etc/nftables.d/15-ark-dscp-priority.nft": "1bf98eddf8d7931c3bfed5c907aced0df5d745e04ecc7314c8d3f962a86ad6b2"
+  },
+  "runtime_matches_local": true,
+  "client_interface": "en6",
+  "client_link_mbps": 1000,
+  "router": "W6x 192.168.73.1",
+  "initial_rates_kbps": [
+    720000,
+    700000
+  ],
+  "framing": "ethernet overhead44 mpu64",
+  "quick_networkQuality": "suspenso conforme protocolo, panic anterior"
+}

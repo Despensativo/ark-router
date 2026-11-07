@@ -6,7 +6,7 @@ const CHROME_PATH = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
 const PORT = 9333;
 const ROUTER_URL = process.env.ARK_ROUTER_URL || "http://192.168.73.1/cgi-bin/luci/admin/equipe-dashboard";
 const USER = process.env.ARK_ROUTER_USER || "root";
-const PASS = process.env.ARK_ROUTER_TEST_PASSWORD || process.env.ARK_ROUTER_PASSWORD;
+const PASS = process.env.ARK_ROUTER_TEST_PASSWORD || process.env.ARK_ROUTER_TEST_PASSWORD;
 
 if (!PASS) {
   console.error("Defina a variável ARK_ROUTER_TEST_PASSWORD para executar este teste.");

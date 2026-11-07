@@ -14,9 +14,8 @@ start_service() {
 	procd_close_instance
 }
 
-stop_service() {
-	killall ark-port-ledd 2>/dev/null || true
-	pkill -f "/usr/sbin/ark-port-ledd" 2>/dev/null || true
+service_stopped() {
+	# rc.common/procd_kill encerra a instância antes desta limpeza.
 	rm -f /var/run/ark-port-ledd.pid
 	if [ -d "/sys/class/leds/aw21018_led" ]; then
 		local node="/sys/class/leds/aw21018_led/led"

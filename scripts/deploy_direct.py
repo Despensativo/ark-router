@@ -14,10 +14,10 @@ except Exception:
 ROUTER_IP = os.environ.get('ARK_ROUTER_IP', '192.168.1.1')
 ROUTER_PORT = int(os.environ.get('ARK_ROUTER_PORT', '22'))
 USERNAME = os.environ.get('ARK_ROUTER_USER', 'root')
-PASSWORD = os.environ.get('ARK_ROUTER_PASSWORD') or os.environ.get('ARK_ROUTER_TEST_PASSWORD') or ''
+PASSWORD = os.environ.get('ARK_ROUTER_TEST_PASSWORD') or os.environ.get('ARK_ROUTER_TEST_PASSWORD') or ''
 
 if not PASSWORD:
-    print("Set ARK_ROUTER_PASSWORD or ARK_ROUTER_TEST_PASSWORD before running direct deploy.", file=sys.stderr)
+    print("Set ARK_ROUTER_TEST_PASSWORD or ARK_ROUTER_TEST_PASSWORD before running direct deploy.", file=sys.stderr)
     sys.exit(2)
 
 repo_dir = os.environ.get('ARK_ROUTER_REPO_DIR', os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))

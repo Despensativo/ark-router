@@ -23,7 +23,7 @@ work_dir="$(mktemp -d)"
 pkg_root="$work_dir/root"
 post_install="$work_dir/post-install"
 sign_key="${ARK_APK_SIGN_KEY:-$SDK_LINK/private-key.pem}"
-out_dir="$SRC_DIR/dist/sdk"
+out_dir="${ARK_PACKAGE_OUTPUT_DIR:-$SRC_DIR/dist/sdk}"
 
 cleanup() {
 	rm -rf "$work_dir"
@@ -112,6 +112,7 @@ EOF
 build_variant() {
 	pkg_name="$1"
 	depends="$2"
+	depends="$(python3 "$SRC_DIR/scripts/qos_package_deps.py" --format apk --base "$depends")"
 	description="$3"
 	out_file="$out_dir/${pkg_name}-${pkg_version}.apk"
 	# The persistent Starlink client is a Full-only payload. Lite keeps the

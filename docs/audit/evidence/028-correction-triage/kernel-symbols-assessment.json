@@ -1,0 +1,17 @@
+{
+  "archive_member_count": 1331,
+  "vmlinux_size": 68772720,
+  "current_build_ids": [
+    "504b59d4f9c210f83fa59b2a9ac9929dfaa33382"
+  ],
+  "official_build_ids": [
+    "4bbf7b0fee902042b4e976b3f5478e484c5308f4"
+  ],
+  "build_id_match": false,
+  "symbols": [],
+  "source_url": "https://downloads.openwrt.org/releases/25.12.6/targets/mediatek/filogic/kernel-debug.tar.zst",
+  "sha256_verified": "6b2f7543c7f231dc95829d386049dc86c1dfbf21b58e4a9d10a5a054efd4706d",
+  "source_version_buildinfo": "r33311-981c978eff",
+  "symbolization_performed": false,
+  "reason": "Build IDs differ; exact symbols for the crash build remain necessary."
+}

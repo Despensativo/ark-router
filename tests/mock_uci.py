@@ -322,9 +322,13 @@ def main():
             sec_name = parts[1]
             opt_name = parts[2]
             sec = uf.find_section(sec_name)
-            if sec and opt_name in sec.options and isinstance(sec.options[opt_name], list):
-                if val in sec.options[opt_name]:
-                    sec.options[opt_name].remove(val)
+            if sec and opt_name in sec.options:
+                if isinstance(sec.options[opt_name], list):
+                    if val in sec.options[opt_name]:
+                        sec.options[opt_name].remove(val)
+                        uf.save()
+                elif sec.options[opt_name] == val:
+                    del sec.options[opt_name]
                     uf.save()
             sys.exit(0)
         sys.exit(1)

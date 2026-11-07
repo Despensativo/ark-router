@@ -1,0 +1,2965 @@
+[
+  {
+    "label": "CAKE BufferSpeed app",
+    "limitations": [
+      "TCP recusado pelo destino; não representa perda WAN.",
+      "Taxas do protótipo com epoch inteiro não usadas como máximo preciso."
+    ],
+    "summary": {
+      "start": 1793921842.0,
+      "end": 1793922263.0,
+      "duration_seconds": 421.0,
+      "windows": [
+        {
+          "label": "CAKE-app-1",
+          "start": 1793921868.1403651,
+          "end": 1793921981.725031,
+          "probes": {
+            "gateway": {
+              "responses": 113,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.65,
+              "p95_ms": 1.962,
+              "max_ms": 9.712,
+              "gaps": []
+            },
+            "external": {
+              "responses": 108,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 5,
+              "p50_ms": 5.205,
+              "p95_ms": 17.826,
+              "max_ms": 28.839,
+              "gaps": [
+                {
+                  "after_epoch": 1793921877.695036,
+                  "missing": 3
+                },
+                {
+                  "after_epoch": 1793921970.973334,
+                  "missing": 2
+                }
+              ]
+            },
+            "tcp-external": {
+              "responses": 0,
+              "failed_tcp_attempts": 113,
+              "internal_sequence_holes": 0,
+              "p50_ms": null,
+              "p95_ms": null,
+              "max_ms": null,
+              "gaps": []
+            },
+            "external2": {
+              "responses": 109,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 4,
+              "p50_ms": 14.92,
+              "p95_ms": 23.322,
+              "max_ms": 31.384,
+              "gaps": [
+                {
+                  "after_epoch": 1793921877.6839838,
+                  "missing": 2
+                },
+                {
+                  "after_epoch": 1793921970.982977,
+                  "missing": 2
+                }
+              ]
+            }
+          },
+          "cpu_max_core_pct": 100.0,
+          "telemetry_samples": 110,
+          "core_samples_at_least_95pct": 8,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 1,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 428,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 688416,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "cake"
+              ],
+              "max_sample_rate_mbps": 572.129,
+              "aqm_drop_counter_increases": 21,
+              "max_root_backlog_bytes": 370156,
+              "max_sample_cake_tin_delay_us": 11370
+            },
+            "DL": {
+              "kinds": [
+                "cake"
+              ],
+              "max_sample_rate_mbps": 749.984,
+              "aqm_drop_counter_increases": 6151,
+              "max_root_backlog_bytes": 6597624,
+              "max_sample_cake_tin_delay_us": 117568
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "CAKE-app-2",
+          "start": 1793921981.7673962,
+          "end": 1793922110.935504,
+          "probes": {
+            "gateway": {
+              "responses": 129,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.669,
+              "p95_ms": 1.069,
+              "max_ms": 3.997,
+              "gaps": []
+            },
+            "external": {
+              "responses": 127,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 4.916,
+              "p95_ms": 6.96,
+              "max_ms": 29.394,
+              "gaps": [
+                {
+                  "after_epoch": 1793922064.206835,
+                  "missing": 2
+                }
+              ]
+            },
+            "tcp-external": {
+              "responses": 0,
+              "failed_tcp_attempts": 129,
+              "internal_sequence_holes": 0,
+              "p50_ms": null,
+              "p95_ms": null,
+              "max_ms": null,
+              "gaps": []
+            },
+            "external2": {
+              "responses": 127,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 14.941,
+              "p95_ms": 15.731,
+              "max_ms": 17.708,
+              "gaps": [
+                {
+                  "after_epoch": 1793922064.2136378,
+                  "missing": 2
+                }
+              ]
+            }
+          },
+          "cpu_max_core_pct": 90.72,
+          "telemetry_samples": 126,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 2,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 452,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 675640,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "cake"
+              ],
+              "max_sample_rate_mbps": 582.31,
+              "aqm_drop_counter_increases": 105,
+              "max_root_backlog_bytes": 3646778,
+              "max_sample_cake_tin_delay_us": 65102
+            },
+            "DL": {
+              "kinds": [
+                "cake"
+              ],
+              "max_sample_rate_mbps": 725.882,
+              "aqm_drop_counter_increases": 10604,
+              "max_root_backlog_bytes": 6029172,
+              "max_sample_cake_tin_delay_us": 136505
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "CAKE-app-3",
+          "start": 1793922110.979944,
+          "end": 1793922264.515115,
+          "probes": {
+            "gateway": {
+              "responses": 153,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.648,
+              "p95_ms": 0.925,
+              "max_ms": 1.961,
+              "gaps": []
+            },
+            "external": {
+              "responses": 149,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 4,
+              "p50_ms": 4.951,
+              "p95_ms": 5.514,
+              "max_ms": 7.562,
+              "gaps": [
+                {
+                  "after_epoch": 1793922157.483391,
+                  "missing": 2
+                },
+                {
+                  "after_epoch": 1793922249.78367,
+                  "missing": 2
+                }
+              ]
+            },
+            "tcp-external": {
+              "responses": 0,
+              "failed_tcp_attempts": 153,
+              "internal_sequence_holes": 0,
+              "p50_ms": null,
+              "p95_ms": null,
+              "max_ms": null,
+              "gaps": []
+            },
+            "external2": {
+              "responses": 149,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 4,
+              "p50_ms": 14.876,
+              "p95_ms": 15.403,
+              "max_ms": 15.876,
+              "gaps": [
+                {
+                  "after_epoch": 1793922157.493372,
+                  "missing": 2
+                },
+                {
+                  "after_epoch": 1793922249.791656,
+                  "missing": 2
+                }
+              ]
+            }
+          },
+          "cpu_max_core_pct": 86.67,
+          "telemetry_samples": 150,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 419,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 679628,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "cake"
+              ],
+              "max_sample_rate_mbps": 600.525,
+              "aqm_drop_counter_increases": 112,
+              "max_root_backlog_bytes": 1206720,
+              "max_sample_cake_tin_delay_us": 44976
+            },
+            "DL": {
+              "kinds": [
+                "cake"
+              ],
+              "max_sample_rate_mbps": 717.752,
+              "aqm_drop_counter_increases": 8958,
+              "max_root_backlog_bytes": 5463704,
+              "max_sample_cake_tin_delay_us": 128665
+            }
+          },
+          "tc_parse_errors": 0
+        }
+      ],
+      "all": {
+        "probes": {
+          "gateway": {
+            "responses": 420,
+            "failed_tcp_attempts": 0,
+            "internal_sequence_holes": 0,
+            "p50_ms": 0.658,
+            "p95_ms": 1.113,
+            "max_ms": 9.712,
+            "gaps": []
+          },
+          "external": {
+            "responses": 409,
+            "failed_tcp_attempts": 0,
+            "internal_sequence_holes": 11,
+            "p50_ms": 4.999,
+            "p95_ms": 9.564,
+            "max_ms": 29.394,
+            "gaps": [
+              {
+                "after_epoch": 1793921877.695036,
+                "missing": 3
+              },
+              {
+                "after_epoch": 1793921970.973334,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793922064.206835,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793922157.483391,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793922249.78367,
+                "missing": 2
+              }
+            ]
+          },
+          "tcp-external": {
+            "responses": 0,
+            "failed_tcp_attempts": 420,
+            "internal_sequence_holes": 0,
+            "p50_ms": null,
+            "p95_ms": null,
+            "max_ms": null,
+            "gaps": []
+          },
+          "external2": {
+            "responses": 410,
+            "failed_tcp_attempts": 0,
+            "internal_sequence_holes": 10,
+            "p50_ms": 14.909,
+            "p95_ms": 15.876,
+            "max_ms": 31.384,
+            "gaps": [
+              {
+                "after_epoch": 1793921877.6839838,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793921970.982977,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793922064.2136378,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793922157.493372,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793922249.791656,
+                "missing": 2
+              }
+            ]
+          }
+        },
+        "cpu_max_core_pct": 100.0,
+        "telemetry_samples": 412,
+        "core_samples_at_least_95pct": 8,
+        "softnet_dropped_delta": 0,
+        "softnet_squeezed_delta": 3,
+        "physical_counter_deltas": {
+          "eth0": {
+            "rx_errors": 0,
+            "tx_errors": 0,
+            "rx_dropped": 0,
+            "tx_dropped": 0,
+            "carrier_changes": 0
+          },
+          "eth1": {
+            "rx_errors": 0,
+            "tx_errors": 0,
+            "rx_dropped": 1305,
+            "tx_dropped": 0,
+            "carrier_changes": 0
+          }
+        },
+        "minimum_memory_available_kib": 675640,
+        "qdiscs": {
+          "UL": {
+            "kinds": [
+              "cake"
+            ],
+            "max_sample_rate_mbps": 600.525,
+            "aqm_drop_counter_increases": 238,
+            "max_root_backlog_bytes": 3646778,
+            "max_sample_cake_tin_delay_us": 65102
+          },
+          "DL": {
+            "kinds": [
+              "cake"
+            ],
+            "max_sample_rate_mbps": 749.984,
+            "aqm_drop_counter_increases": 25713,
+            "max_root_backlog_bytes": 6597624,
+            "max_sample_cake_tin_delay_us": 136505
+          }
+        },
+        "tc_parse_errors": 0
+      },
+      "unfinished_labels": [],
+      "limits": [
+        "Sondas ICMP não representam ping de jogo; TCP mede conexão, não HTTP completo.",
+        "CPU e filas são amostras, não máximos instantâneos.",
+        "Drops AQM não equivalem à perda externa; lacunas excluem bordas sem resposta.",
+        "networkQuality não fornece nota A+; aceite exige resultados reais dos sites/app."
+      ],
+      "preservation": {
+        "finished": 1793922264.662184,
+        "errors": [],
+        "config_hashes_unchanged": true,
+        "nft_stateless_unchanged": true,
+        "qdisc_options_and_handles_unchanged": true
+      }
+    }
+  },
+  {
+    "label": "CAKE BufferSpeed web",
+    "limitations": [
+      "TCP com DNS/fallback por amostra: não usado como RTT IPv4 isolado."
+    ],
+    "summary": {
+      "start": 1793922273.0,
+      "end": 1793922670.0,
+      "duration_seconds": 397.0,
+      "windows": [
+        {
+          "label": "CAKE-web-1",
+          "start": 1793922335.3320022,
+          "end": 1793922451.131464,
+          "probes": {
+            "gateway": {
+              "responses": 115,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.71,
+              "p95_ms": 0.989,
+              "max_ms": 1.469,
+              "gaps": []
+            },
+            "external": {
+              "responses": 113,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 5.134,
+              "p95_ms": 5.861,
+              "max_ms": 26.438,
+              "gaps": [
+                {
+                  "after_epoch": 1793922434.4853818,
+                  "missing": 2
+                }
+              ]
+            },
+            "external2": {
+              "responses": 113,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 14.997,
+              "p95_ms": 15.512,
+              "max_ms": 16.369,
+              "gaps": [
+                {
+                  "after_epoch": 1793922434.495187,
+                  "missing": 2
+                }
+              ]
+            },
+            "tcp-external": {
+              "responses": 113,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 23.789,
+              "p95_ms": 32.433,
+              "max_ms": 3026.22,
+              "gaps": []
+            }
+          },
+          "cpu_max_core_pct": 73.33,
+          "telemetry_samples": 114,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 40,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 693044,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "cake"
+              ],
+              "max_sample_rate_mbps": 390.882,
+              "aqm_drop_counter_increases": 31,
+              "max_root_backlog_bytes": 1452584,
+              "max_sample_cake_tin_delay_us": 24569
+            },
+            "DL": {
+              "kinds": [
+                "cake"
+              ],
+              "max_sample_rate_mbps": 690.336,
+              "aqm_drop_counter_increases": 8967,
+              "max_root_backlog_bytes": 1951080,
+              "max_sample_cake_tin_delay_us": 78614
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "CAKE-web-2",
+          "start": 1793922451.193248,
+          "end": 1793922600.171479,
+          "probes": {
+            "gateway": {
+              "responses": 149,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.666,
+              "p95_ms": 0.984,
+              "max_ms": 3.744,
+              "gaps": []
+            },
+            "external": {
+              "responses": 147,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 5.058,
+              "p95_ms": 5.603,
+              "max_ms": 12.971,
+              "gaps": [
+                {
+                  "after_epoch": 1793922526.7659662,
+                  "missing": 2
+                }
+              ]
+            },
+            "external2": {
+              "responses": 147,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 14.962,
+              "p95_ms": 15.456,
+              "max_ms": 18.733,
+              "gaps": [
+                {
+                  "after_epoch": 1793922526.778555,
+                  "missing": 2
+                }
+              ]
+            },
+            "tcp-external": {
+              "responses": 147,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 23.71,
+              "p95_ms": 32.77,
+              "max_ms": 2025.822,
+              "gaps": []
+            }
+          },
+          "cpu_max_core_pct": 79.81,
+          "telemetry_samples": 145,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 79,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 687464,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "cake"
+              ],
+              "max_sample_rate_mbps": 303.117,
+              "aqm_drop_counter_increases": 7,
+              "max_root_backlog_bytes": 225748,
+              "max_sample_cake_tin_delay_us": 13670
+            },
+            "DL": {
+              "kinds": [
+                "cake"
+              ],
+              "max_sample_rate_mbps": 692.85,
+              "aqm_drop_counter_increases": 6431,
+              "max_root_backlog_bytes": 3114468,
+              "max_sample_cake_tin_delay_us": 45549
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "CAKE-web-3",
+          "start": 1793922600.2163079,
+          "end": 1793922670.685322,
+          "probes": {
+            "gateway": {
+              "responses": 70,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.715,
+              "p95_ms": 1.682,
+              "max_ms": 3.554,
+              "gaps": []
+            },
+            "external": {
+              "responses": 68,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 5.162,
+              "p95_ms": 8.625,
+              "max_ms": 16.801,
+              "gaps": [
+                {
+                  "after_epoch": 1793922620.216322,
+                  "missing": 2
+                }
+              ]
+            },
+            "external2": {
+              "responses": 68,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 14.951,
+              "p95_ms": 18.322,
+              "max_ms": 21.808,
+              "gaps": [
+                {
+                  "after_epoch": 1793922620.231654,
+                  "missing": 2
+                }
+              ]
+            },
+            "tcp-external": {
+              "responses": 70,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 23.242,
+              "p95_ms": 33.071,
+              "max_ms": 1586.857,
+              "gaps": []
+            }
+          },
+          "cpu_max_core_pct": 88.0,
+          "telemetry_samples": 68,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 144,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 694980,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "cake"
+              ],
+              "max_sample_rate_mbps": 544.767,
+              "aqm_drop_counter_increases": 35,
+              "max_root_backlog_bytes": 647520,
+              "max_sample_cake_tin_delay_us": 20907
+            },
+            "DL": {
+              "kinds": [
+                "cake"
+              ],
+              "max_sample_rate_mbps": 692.398,
+              "aqm_drop_counter_increases": 2783,
+              "max_root_backlog_bytes": 1759124,
+              "max_sample_cake_tin_delay_us": 35784
+            }
+          },
+          "tc_parse_errors": 0
+        }
+      ],
+      "all": {
+        "probes": {
+          "gateway": {
+            "responses": 396,
+            "failed_tcp_attempts": 0,
+            "internal_sequence_holes": 0,
+            "p50_ms": 0.682,
+            "p95_ms": 1.041,
+            "max_ms": 6.781,
+            "gaps": []
+          },
+          "external": {
+            "responses": 390,
+            "failed_tcp_attempts": 0,
+            "internal_sequence_holes": 6,
+            "p50_ms": 5.086,
+            "p95_ms": 5.903,
+            "max_ms": 26.438,
+            "gaps": [
+              {
+                "after_epoch": 1793922434.4853818,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793922526.7659662,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793922620.216322,
+                "missing": 2
+              }
+            ]
+          },
+          "external2": {
+            "responses": 390,
+            "failed_tcp_attempts": 0,
+            "internal_sequence_holes": 6,
+            "p50_ms": 14.966,
+            "p95_ms": 15.594,
+            "max_ms": 21.808,
+            "gaps": [
+              {
+                "after_epoch": 1793922434.495187,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793922526.778555,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793922620.231654,
+                "missing": 2
+              }
+            ]
+          },
+          "tcp-external": {
+            "responses": 392,
+            "failed_tcp_attempts": 0,
+            "internal_sequence_holes": 0,
+            "p50_ms": 23.527,
+            "p95_ms": 33.071,
+            "max_ms": 3026.22,
+            "gaps": []
+          }
+        },
+        "cpu_max_core_pct": 88.0,
+        "telemetry_samples": 389,
+        "core_samples_at_least_95pct": 0,
+        "softnet_dropped_delta": 0,
+        "softnet_squeezed_delta": 0,
+        "physical_counter_deltas": {
+          "eth0": {
+            "rx_errors": 0,
+            "tx_errors": 0,
+            "rx_dropped": 0,
+            "tx_dropped": 0,
+            "carrier_changes": 0
+          },
+          "eth1": {
+            "rx_errors": 0,
+            "tx_errors": 0,
+            "rx_dropped": 275,
+            "tx_dropped": 0,
+            "carrier_changes": 0
+          }
+        },
+        "minimum_memory_available_kib": 687464,
+        "qdiscs": {
+          "UL": {
+            "kinds": [
+              "cake"
+            ],
+            "max_sample_rate_mbps": 544.767,
+            "aqm_drop_counter_increases": 73,
+            "max_root_backlog_bytes": 1452584,
+            "max_sample_cake_tin_delay_us": 24569
+          },
+          "DL": {
+            "kinds": [
+              "cake"
+            ],
+            "max_sample_rate_mbps": 692.85,
+            "aqm_drop_counter_increases": 18181,
+            "max_root_backlog_bytes": 3114468,
+            "max_sample_cake_tin_delay_us": 78614
+          }
+        },
+        "tc_parse_errors": 0
+      },
+      "unfinished_labels": [],
+      "limits": [
+        "Sondas ICMP não representam ping de jogo; TCP mede conexão, não HTTP completo.",
+        "CPU e filas são amostras, não máximos instantâneos.",
+        "Drops AQM não equivalem à perda externa; lacunas excluem bordas sem resposta.",
+        "networkQuality não fornece nota A+; aceite exige resultados reais dos sites/app."
+      ],
+      "preservation": {
+        "finished": 1793922670.841345,
+        "errors": [],
+        "config_hashes_unchanged": true,
+        "nft_stateless_unchanged": true,
+        "qdisc_options_and_handles_unchanged": true
+      }
+    }
+  },
+  {
+    "label": "CAKE networkQuality: INVALIDADO",
+    "limitations": [
+      "Kernel panic/reboot; telemetria acabou antes do encerramento do protótipo.",
+      "Três tentativas inválidas: error_code=-1001; não contam como três medições válidas."
+    ],
+    "summary": {
+      "start": 1793922672.0,
+      "end": 1793922871.0,
+      "duration_seconds": 199.0,
+      "windows": [
+        {
+          "label": "CAKE-idle-control",
+          "start": 1793922672.475947,
+          "end": 1793922859.020195,
+          "probes": {
+            "gateway": {
+              "responses": 186,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.665,
+              "p95_ms": 1.084,
+              "max_ms": 7.191,
+              "gaps": []
+            },
+            "external": {
+              "responses": 182,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 4,
+              "p50_ms": 5.138,
+              "p95_ms": 5.718,
+              "max_ms": 16.16,
+              "gaps": [
+                {
+                  "after_epoch": 1793922712.7070222,
+                  "missing": 2
+                },
+                {
+                  "after_epoch": 1793922806.1860638,
+                  "missing": 2
+                }
+              ]
+            },
+            "tcp-external": {
+              "responses": 181,
+              "failed_tcp_attempts": 1,
+              "internal_sequence_holes": 1,
+              "p50_ms": 5.546,
+              "p95_ms": 6.25,
+              "max_ms": 2008.734,
+              "gaps": [
+                {
+                  "after_epoch": 1793922780.077101,
+                  "missing": 1
+                }
+              ]
+            },
+            "external2": {
+              "responses": 182,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 4,
+              "p50_ms": 14.973,
+              "p95_ms": 15.543,
+              "max_ms": 21.426,
+              "gaps": [
+                {
+                  "after_epoch": 1793922712.716645,
+                  "missing": 2
+                },
+                {
+                  "after_epoch": 1793922806.194155,
+                  "missing": 2
+                }
+              ]
+            }
+          },
+          "cpu_max_core_pct": 14.02,
+          "telemetry_samples": 183,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 37,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 700312,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "cake"
+              ],
+              "max_sample_rate_mbps": 18.562,
+              "aqm_drop_counter_increases": 0,
+              "max_root_backlog_bytes": 0,
+              "max_sample_cake_tin_delay_us": 748
+            },
+            "DL": {
+              "kinds": [
+                "cake"
+              ],
+              "max_sample_rate_mbps": 13.635,
+              "aqm_drop_counter_increases": 0,
+              "max_root_backlog_bytes": 0,
+              "max_sample_cake_tin_delay_us": 241
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "CAKE-quick-1",
+          "start": 1793922859.073856,
+          "end": 1793922888.946605,
+          "probes": {
+            "gateway": {
+              "responses": 13,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 2.868,
+              "p95_ms": 6.987,
+              "max_ms": 6.987,
+              "gaps": []
+            },
+            "external": {
+              "responses": 13,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 8.135,
+              "p95_ms": 37.014,
+              "max_ms": 37.014,
+              "gaps": []
+            },
+            "tcp-external": {
+              "responses": 12,
+              "failed_tcp_attempts": 6,
+              "internal_sequence_holes": 0,
+              "p50_ms": 8.209,
+              "p95_ms": 18.248,
+              "max_ms": 18.248,
+              "gaps": []
+            },
+            "external2": {
+              "responses": 13,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 16.806,
+              "p95_ms": 30.411,
+              "max_ms": 30.411,
+              "gaps": []
+            }
+          },
+          "cpu_max_core_pct": 97.09,
+          "telemetry_samples": 12,
+          "core_samples_at_least_95pct": 1,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 31,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 693960,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "cake"
+              ],
+              "max_sample_rate_mbps": 551.273,
+              "aqm_drop_counter_increases": 17,
+              "max_root_backlog_bytes": 716863,
+              "max_sample_cake_tin_delay_us": 15347
+            },
+            "DL": {
+              "kinds": [
+                "cake"
+              ],
+              "max_sample_rate_mbps": 702.673,
+              "aqm_drop_counter_increases": 6660,
+              "max_root_backlog_bytes": 2998036,
+              "max_sample_cake_tin_delay_us": 53745
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "CAKE-quick-2",
+          "start": 1793922898.963604,
+          "end": 1793922914.999748,
+          "probes": {
+            "gateway": {
+              "responses": 7,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 1.019,
+              "p95_ms": 1.943,
+              "max_ms": 1.943,
+              "gaps": []
+            },
+            "external": {
+              "responses": 0,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": null,
+              "p95_ms": null,
+              "max_ms": null,
+              "gaps": []
+            },
+            "tcp-external": {
+              "responses": 0,
+              "failed_tcp_attempts": 5,
+              "internal_sequence_holes": 0,
+              "p50_ms": null,
+              "p95_ms": null,
+              "max_ms": null,
+              "gaps": []
+            },
+            "external2": {
+              "responses": 0,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": null,
+              "p95_ms": null,
+              "max_ms": null,
+              "gaps": []
+            }
+          },
+          "cpu_max_core_pct": null,
+          "telemetry_samples": 0,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {},
+          "minimum_memory_available_kib": null,
+          "qdiscs": {
+            "UL": {
+              "kinds": [],
+              "max_sample_rate_mbps": null,
+              "aqm_drop_counter_increases": 0,
+              "max_root_backlog_bytes": null,
+              "max_sample_cake_tin_delay_us": null
+            },
+            "DL": {
+              "kinds": [],
+              "max_sample_rate_mbps": null,
+              "aqm_drop_counter_increases": 0,
+              "max_root_backlog_bytes": null,
+              "max_sample_cake_tin_delay_us": null
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "CAKE-quick-3",
+          "start": 1793922925.009911,
+          "end": 1793922941.0456278,
+          "probes": {
+            "gateway": {
+              "responses": 16,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.891,
+              "p95_ms": 1.333,
+              "max_ms": 1.333,
+              "gaps": []
+            },
+            "external": {
+              "responses": 0,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": null,
+              "p95_ms": null,
+              "max_ms": null,
+              "gaps": []
+            },
+            "tcp-external": {
+              "responses": 0,
+              "failed_tcp_attempts": 6,
+              "internal_sequence_holes": 0,
+              "p50_ms": null,
+              "p95_ms": null,
+              "max_ms": null,
+              "gaps": []
+            },
+            "external2": {
+              "responses": 0,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": null,
+              "p95_ms": null,
+              "max_ms": null,
+              "gaps": []
+            }
+          },
+          "cpu_max_core_pct": null,
+          "telemetry_samples": 0,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {},
+          "minimum_memory_available_kib": null,
+          "qdiscs": {
+            "UL": {
+              "kinds": [],
+              "max_sample_rate_mbps": null,
+              "aqm_drop_counter_increases": 0,
+              "max_root_backlog_bytes": null,
+              "max_sample_cake_tin_delay_us": null
+            },
+            "DL": {
+              "kinds": [],
+              "max_sample_rate_mbps": null,
+              "aqm_drop_counter_increases": 0,
+              "max_root_backlog_bytes": null,
+              "max_sample_cake_tin_delay_us": null
+            }
+          },
+          "tc_parse_errors": 0
+        }
+      ],
+      "all": {
+        "probes": {
+          "gateway": {
+            "responses": 198,
+            "failed_tcp_attempts": 0,
+            "internal_sequence_holes": 0,
+            "p50_ms": 0.669,
+            "p95_ms": 1.387,
+            "max_ms": 7.191,
+            "gaps": []
+          },
+          "external": {
+            "responses": 194,
+            "failed_tcp_attempts": 0,
+            "internal_sequence_holes": 4,
+            "p50_ms": 5.16,
+            "p95_ms": 7.552,
+            "max_ms": 26.937,
+            "gaps": [
+              {
+                "after_epoch": 1793922712.7070222,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793922806.1860638,
+                "missing": 2
+              }
+            ]
+          },
+          "tcp-external": {
+            "responses": 193,
+            "failed_tcp_attempts": 1,
+            "internal_sequence_holes": 1,
+            "p50_ms": 5.559,
+            "p95_ms": 6.761,
+            "max_ms": 2008.734,
+            "gaps": [
+              {
+                "after_epoch": 1793922780.077101,
+                "missing": 1
+              }
+            ]
+          },
+          "external2": {
+            "responses": 194,
+            "failed_tcp_attempts": 0,
+            "internal_sequence_holes": 4,
+            "p50_ms": 14.996,
+            "p95_ms": 16.051,
+            "max_ms": 30.411,
+            "gaps": [
+              {
+                "after_epoch": 1793922712.716645,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793922806.194155,
+                "missing": 2
+              }
+            ]
+          }
+        },
+        "cpu_max_core_pct": 97.09,
+        "telemetry_samples": 196,
+        "core_samples_at_least_95pct": 1,
+        "softnet_dropped_delta": 0,
+        "softnet_squeezed_delta": 0,
+        "physical_counter_deltas": {
+          "eth0": {
+            "rx_errors": 0,
+            "tx_errors": 0,
+            "rx_dropped": 0,
+            "tx_dropped": 0,
+            "carrier_changes": 0
+          },
+          "eth1": {
+            "rx_errors": 0,
+            "tx_errors": 0,
+            "rx_dropped": 68,
+            "tx_dropped": 0,
+            "carrier_changes": 0
+          }
+        },
+        "minimum_memory_available_kib": 693960,
+        "qdiscs": {
+          "UL": {
+            "kinds": [
+              "cake"
+            ],
+            "max_sample_rate_mbps": 551.273,
+            "aqm_drop_counter_increases": 17,
+            "max_root_backlog_bytes": 716863,
+            "max_sample_cake_tin_delay_us": 15347
+          },
+          "DL": {
+            "kinds": [
+              "cake"
+            ],
+            "max_sample_rate_mbps": 702.673,
+            "aqm_drop_counter_increases": 6661,
+            "max_root_backlog_bytes": 2998036,
+            "max_sample_cake_tin_delay_us": 53745
+          }
+        },
+        "tc_parse_errors": 0
+      },
+      "unfinished_labels": [],
+      "limits": [
+        "Sondas ICMP não representam ping de jogo; TCP mede conexão, não HTTP completo.",
+        "CPU e filas são amostras, não máximos instantâneos.",
+        "Drops AQM não equivalem à perda externa; lacunas excluem bordas sem resposta.",
+        "networkQuality não fornece nota A+; aceite exige resultados reais dos sites/app."
+      ],
+      "preservation": {
+        "finished": 1793924770.587435,
+        "errors": [],
+        "config_hashes_unchanged": false,
+        "nft_stateless_unchanged": false,
+        "qdisc_options_and_handles_unchanged": false
+      }
+    }
+  },
+  {
+    "label": "Comparação HFSC e restauração CAKE",
+    "limitations": [
+      "IPv4 TCP resolvido uma vez.",
+      "13 janelas: 12 testes HFSC e restauração; inclui controle ocioso e transições."
+    ],
+    "summary": {
+      "start": 1793924841.0,
+      "end": 1793926979.0,
+      "duration_seconds": 2138.0,
+      "windows": [
+        {
+          "label": "HFSC-app-1",
+          "start": 1793925316.5301518,
+          "end": 1793925674.448087,
+          "probes": {
+            "external": {
+              "responses": 350,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 7,
+              "p50_ms": 5.129,
+              "p95_ms": 5.648,
+              "max_ms": 9.805,
+              "gaps": [
+                {
+                  "after_epoch": 1793925403.220177,
+                  "missing": 2
+                },
+                {
+                  "after_epoch": 1793925496.708883,
+                  "missing": 3
+                },
+                {
+                  "after_epoch": 1793925588.969706,
+                  "missing": 2
+                }
+              ]
+            },
+            "gateway": {
+              "responses": 357,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.65,
+              "p95_ms": 0.942,
+              "max_ms": 5.327,
+              "gaps": []
+            },
+            "tcp-external": {
+              "responses": 351,
+              "failed_tcp_attempts": 1,
+              "internal_sequence_holes": 1,
+              "p50_ms": 5.547,
+              "p95_ms": 6.199,
+              "max_ms": 2007.583,
+              "gaps": [
+                {
+                  "after_epoch": 1793925403.597041,
+                  "missing": 1
+                }
+              ]
+            },
+            "external2": {
+              "responses": 350,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 7,
+              "p50_ms": 14.967,
+              "p95_ms": 15.495,
+              "max_ms": 19.197,
+              "gaps": [
+                {
+                  "after_epoch": 1793925403.2348511,
+                  "missing": 2
+                },
+                {
+                  "after_epoch": 1793925496.728559,
+                  "missing": 3
+                },
+                {
+                  "after_epoch": 1793925588.981932,
+                  "missing": 2
+                }
+              ]
+            }
+          },
+          "cpu_max_core_pct": 82.57,
+          "telemetry_samples": 351,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 172,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 720028,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 584.034,
+              "aqm_drop_counter_increases": 197,
+              "max_root_backlog_bytes": 305384,
+              "max_sample_cake_tin_delay_us": null
+            },
+            "DL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 741.402,
+              "aqm_drop_counter_increases": 10633,
+              "max_root_backlog_bytes": 3534848,
+              "max_sample_cake_tin_delay_us": null
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "HFSC-app-2",
+          "start": 1793925674.49675,
+          "end": 1793925745.8352818,
+          "probes": {
+            "external": {
+              "responses": 69,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 5.069,
+              "p95_ms": 5.849,
+              "max_ms": 14.271,
+              "gaps": [
+                {
+                  "after_epoch": 1793925682.22068,
+                  "missing": 2
+                }
+              ]
+            },
+            "gateway": {
+              "responses": 71,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.699,
+              "p95_ms": 1.014,
+              "max_ms": 7.902,
+              "gaps": []
+            },
+            "tcp-external": {
+              "responses": 67,
+              "failed_tcp_attempts": 1,
+              "internal_sequence_holes": 1,
+              "p50_ms": 5.38,
+              "p95_ms": 6.752,
+              "max_ms": 2008.268,
+              "gaps": [
+                {
+                  "after_epoch": 1793925695.725173,
+                  "missing": 1
+                }
+              ]
+            },
+            "external2": {
+              "responses": 69,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 14.88,
+              "p95_ms": 15.695,
+              "max_ms": 25.041,
+              "gaps": [
+                {
+                  "after_epoch": 1793925682.223362,
+                  "missing": 2
+                }
+              ]
+            }
+          },
+          "cpu_max_core_pct": 80.2,
+          "telemetry_samples": 68,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 198,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 727332,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 595.302,
+              "aqm_drop_counter_increases": 197,
+              "max_root_backlog_bytes": 600232,
+              "max_sample_cake_tin_delay_us": null
+            },
+            "DL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 725.595,
+              "aqm_drop_counter_increases": 10582,
+              "max_root_backlog_bytes": 3196992,
+              "max_sample_cake_tin_delay_us": null
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "HFSC-app-3",
+          "start": 1793925745.886444,
+          "end": 1793925825.005905,
+          "probes": {
+            "external": {
+              "responses": 77,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 5.018,
+              "p95_ms": 5.618,
+              "max_ms": 8.699,
+              "gaps": [
+                {
+                  "after_epoch": 1793925775.483078,
+                  "missing": 2
+                }
+              ]
+            },
+            "gateway": {
+              "responses": 79,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.635,
+              "p95_ms": 1.039,
+              "max_ms": 4.647,
+              "gaps": []
+            },
+            "tcp-external": {
+              "responses": 77,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 5.466,
+              "p95_ms": 6.326,
+              "max_ms": 2006.329,
+              "gaps": []
+            },
+            "external2": {
+              "responses": 77,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 14.856,
+              "p95_ms": 15.575,
+              "max_ms": 19.147,
+              "gaps": [
+                {
+                  "after_epoch": 1793925775.4937868,
+                  "missing": 2
+                }
+              ]
+            }
+          },
+          "cpu_max_core_pct": 73.33,
+          "telemetry_samples": 78,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 168,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 725016,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 549.219,
+              "aqm_drop_counter_increases": 298,
+              "max_root_backlog_bytes": 1230884,
+              "max_sample_cake_tin_delay_us": null
+            },
+            "DL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 731.55,
+              "aqm_drop_counter_increases": 11026,
+              "max_root_backlog_bytes": 3523296,
+              "max_sample_cake_tin_delay_us": null
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "HFSC-web-1",
+          "start": 1793925825.049956,
+          "end": 1793926063.2046459,
+          "probes": {
+            "external": {
+              "responses": 231,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 6,
+              "p50_ms": 5.098,
+              "p95_ms": 5.726,
+              "max_ms": 12.622,
+              "gaps": [
+                {
+                  "after_epoch": 1793925867.780865,
+                  "missing": 2
+                },
+                {
+                  "after_epoch": 1793925961.077424,
+                  "missing": 2
+                },
+                {
+                  "after_epoch": 1793926054.324934,
+                  "missing": 2
+                }
+              ]
+            },
+            "gateway": {
+              "responses": 237,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.67,
+              "p95_ms": 1.049,
+              "max_ms": 6.566,
+              "gaps": []
+            },
+            "tcp-external": {
+              "responses": 235,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 5.626,
+              "p95_ms": 6.641,
+              "max_ms": 2007.343,
+              "gaps": []
+            },
+            "external2": {
+              "responses": 231,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 6,
+              "p50_ms": 15.001,
+              "p95_ms": 15.58,
+              "max_ms": 19.116,
+              "gaps": [
+                {
+                  "after_epoch": 1793925867.7791638,
+                  "missing": 2
+                },
+                {
+                  "after_epoch": 1793925961.0900428,
+                  "missing": 2
+                },
+                {
+                  "after_epoch": 1793926054.3339899,
+                  "missing": 2
+                }
+              ]
+            }
+          },
+          "cpu_max_core_pct": 93.4,
+          "telemetry_samples": 233,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 93,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 723736,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 219.323,
+              "aqm_drop_counter_increases": 0,
+              "max_root_backlog_bytes": 347944,
+              "max_sample_cake_tin_delay_us": null
+            },
+            "DL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 724.946,
+              "aqm_drop_counter_increases": 40,
+              "max_root_backlog_bytes": 4234496,
+              "max_sample_cake_tin_delay_us": null
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "HFSC-web-2",
+          "start": 1793926063.253481,
+          "end": 1793926136.2937548,
+          "probes": {
+            "external": {
+              "responses": 73,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 5.08,
+              "p95_ms": 12.71,
+              "max_ms": 16.348,
+              "gaps": []
+            },
+            "gateway": {
+              "responses": 73,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.691,
+              "p95_ms": 7.532,
+              "max_ms": 12.536,
+              "gaps": []
+            },
+            "tcp-external": {
+              "responses": 73,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 5.5,
+              "p95_ms": 14.808,
+              "max_ms": 94.054,
+              "gaps": []
+            },
+            "external2": {
+              "responses": 73,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 14.926,
+              "p95_ms": 23.15,
+              "max_ms": 25.554,
+              "gaps": []
+            }
+          },
+          "cpu_max_core_pct": 76.7,
+          "telemetry_samples": 71,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 22,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 725196,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 209.776,
+              "aqm_drop_counter_increases": 4,
+              "max_root_backlog_bytes": 630304,
+              "max_sample_cake_tin_delay_us": null
+            },
+            "DL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 726.953,
+              "aqm_drop_counter_increases": 374,
+              "max_root_backlog_bytes": 2501980,
+              "max_sample_cake_tin_delay_us": null
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "HFSC-web-3",
+          "start": 1793926136.414956,
+          "end": 1793926229.2012181,
+          "probes": {
+            "external": {
+              "responses": 90,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 3,
+              "p50_ms": 5.155,
+              "p95_ms": 6.446,
+              "max_ms": 10.42,
+              "gaps": [
+                {
+                  "after_epoch": 1793926147.658203,
+                  "missing": 3
+                }
+              ]
+            },
+            "gateway": {
+              "responses": 93,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.733,
+              "p95_ms": 1.592,
+              "max_ms": 5.204,
+              "gaps": []
+            },
+            "tcp-external": {
+              "responses": 91,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 5.584,
+              "p95_ms": 8.898,
+              "max_ms": 2008.36,
+              "gaps": []
+            },
+            "external2": {
+              "responses": 91,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 15.003,
+              "p95_ms": 16.078,
+              "max_ms": 47.474,
+              "gaps": [
+                {
+                  "after_epoch": 1793926146.668137,
+                  "missing": 2
+                }
+              ]
+            }
+          },
+          "cpu_max_core_pct": 74.0,
+          "telemetry_samples": 91,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 31,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 722072,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 368.374,
+              "aqm_drop_counter_increases": 51,
+              "max_root_backlog_bytes": 485804,
+              "max_sample_cake_tin_delay_us": null
+            },
+            "DL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 726.487,
+              "aqm_drop_counter_increases": 8738,
+              "max_root_backlog_bytes": 1681604,
+              "max_sample_cake_tin_delay_us": null
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "HFSC-waveform-1",
+          "start": 1793926229.2457018,
+          "end": 1793926361.6515782,
+          "probes": {
+            "external": {
+              "responses": 127,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 4,
+              "p50_ms": 5.085,
+              "p95_ms": 5.79,
+              "max_ms": 49.835,
+              "gaps": [
+                {
+                  "after_epoch": 1793926240.190597,
+                  "missing": 2
+                },
+                {
+                  "after_epoch": 1793926332.6788638,
+                  "missing": 2
+                }
+              ]
+            },
+            "gateway": {
+              "responses": 131,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.651,
+              "p95_ms": 1.041,
+              "max_ms": 2.206,
+              "gaps": []
+            },
+            "tcp-external": {
+              "responses": 130,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 5.454,
+              "p95_ms": 6.269,
+              "max_ms": 2010.468,
+              "gaps": []
+            },
+            "external2": {
+              "responses": 127,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 4,
+              "p50_ms": 14.944,
+              "p95_ms": 15.512,
+              "max_ms": 16.025,
+              "gaps": [
+                {
+                  "after_epoch": 1793926240.20339,
+                  "missing": 2
+                },
+                {
+                  "after_epoch": 1793926332.694175,
+                  "missing": 2
+                }
+              ]
+            }
+          },
+          "cpu_max_core_pct": 73.64,
+          "telemetry_samples": 129,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 38,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 718336,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 316.923,
+              "aqm_drop_counter_increases": 35,
+              "max_root_backlog_bytes": 139196,
+              "max_sample_cake_tin_delay_us": null
+            },
+            "DL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 735.741,
+              "aqm_drop_counter_increases": 13280,
+              "max_root_backlog_bytes": 2690576,
+              "max_sample_cake_tin_delay_us": null
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "HFSC-waveform-2",
+          "start": 1793926361.692422,
+          "end": 1793926474.910833,
+          "probes": {
+            "external": {
+              "responses": 111,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 4.942,
+              "p95_ms": 5.559,
+              "max_ms": 8.702,
+              "gaps": [
+                {
+                  "after_epoch": 1793926426.1220212,
+                  "missing": 2
+                }
+              ]
+            },
+            "gateway": {
+              "responses": 113,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.59,
+              "p95_ms": 0.927,
+              "max_ms": 8.833,
+              "gaps": []
+            },
+            "tcp-external": {
+              "responses": 111,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 5.461,
+              "p95_ms": 6.623,
+              "max_ms": 2004.114,
+              "gaps": []
+            },
+            "external2": {
+              "responses": 111,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 14.877,
+              "p95_ms": 15.401,
+              "max_ms": 17.121,
+              "gaps": [
+                {
+                  "after_epoch": 1793926426.1323361,
+                  "missing": 2
+                }
+              ]
+            }
+          },
+          "cpu_max_core_pct": 70.37,
+          "telemetry_samples": 110,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 31,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 720848,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 429.211,
+              "aqm_drop_counter_increases": 54,
+              "max_root_backlog_bytes": 468512,
+              "max_sample_cake_tin_delay_us": null
+            },
+            "DL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 727.763,
+              "aqm_drop_counter_increases": 15267,
+              "max_root_backlog_bytes": 2080300,
+              "max_sample_cake_tin_delay_us": null
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "HFSC-waveform-3",
+          "start": 1793926474.957356,
+          "end": 1793926580.6817222,
+          "probes": {
+            "external": {
+              "responses": 103,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 4.932,
+              "p95_ms": 5.345,
+              "max_ms": 5.596,
+              "gaps": [
+                {
+                  "after_epoch": 1793926519.508152,
+                  "missing": 2
+                }
+              ]
+            },
+            "gateway": {
+              "responses": 105,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.635,
+              "p95_ms": 1.001,
+              "max_ms": 1.271,
+              "gaps": []
+            },
+            "tcp-external": {
+              "responses": 101,
+              "failed_tcp_attempts": 1,
+              "internal_sequence_holes": 1,
+              "p50_ms": 5.393,
+              "p95_ms": 7.058,
+              "max_ms": 2006.716,
+              "gaps": [
+                {
+                  "after_epoch": 1793926570.683871,
+                  "missing": 1
+                }
+              ]
+            },
+            "external2": {
+              "responses": 103,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 14.787,
+              "p95_ms": 15.431,
+              "max_ms": 17.133,
+              "gaps": [
+                {
+                  "after_epoch": 1793926519.5042539,
+                  "missing": 2
+                }
+              ]
+            }
+          },
+          "cpu_max_core_pct": 71.15,
+          "telemetry_samples": 103,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 65,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 720056,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 267.041,
+              "aqm_drop_counter_increases": 5,
+              "max_root_backlog_bytes": 577080,
+              "max_sample_cake_tin_delay_us": null
+            },
+            "DL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 732.004,
+              "aqm_drop_counter_increases": 15573,
+              "max_root_backlog_bytes": 2416532,
+              "max_sample_cake_tin_delay_us": null
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "HFSC-fast-1",
+          "start": 1793926580.723667,
+          "end": 1793926659.691212,
+          "probes": {
+            "external": {
+              "responses": 77,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 5.085,
+              "p95_ms": 5.779,
+              "max_ms": 6.469,
+              "gaps": [
+                {
+                  "after_epoch": 1793926612.0466938,
+                  "missing": 2
+                }
+              ]
+            },
+            "gateway": {
+              "responses": 79,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.671,
+              "p95_ms": 1.047,
+              "max_ms": 2.032,
+              "gaps": []
+            },
+            "tcp-external": {
+              "responses": 78,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 5.527,
+              "p95_ms": 6.304,
+              "max_ms": 2007.621,
+              "gaps": []
+            },
+            "external2": {
+              "responses": 77,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 14.903,
+              "p95_ms": 15.318,
+              "max_ms": 18.458,
+              "gaps": [
+                {
+                  "after_epoch": 1793926612.0603788,
+                  "missing": 2
+                }
+              ]
+            }
+          },
+          "cpu_max_core_pct": 72.9,
+          "telemetry_samples": 77,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 16,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 721920,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 621.116,
+              "aqm_drop_counter_increases": 302,
+              "max_root_backlog_bytes": 448264,
+              "max_sample_cake_tin_delay_us": null
+            },
+            "DL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 720.97,
+              "aqm_drop_counter_increases": 139,
+              "max_root_backlog_bytes": 829740,
+              "max_sample_cake_tin_delay_us": null
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "HFSC-fast-2",
+          "start": 1793926659.741194,
+          "end": 1793926783.62959,
+          "probes": {
+            "external": {
+              "responses": 121,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 5.09,
+              "p95_ms": 5.655,
+              "max_ms": 7.15,
+              "gaps": [
+                {
+                  "after_epoch": 1793926705.486775,
+                  "missing": 2
+                }
+              ]
+            },
+            "gateway": {
+              "responses": 123,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.665,
+              "p95_ms": 0.989,
+              "max_ms": 1.621,
+              "gaps": []
+            },
+            "tcp-external": {
+              "responses": 122,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 5.504,
+              "p95_ms": 6.363,
+              "max_ms": 2008.3,
+              "gaps": []
+            },
+            "external2": {
+              "responses": 121,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 14.98,
+              "p95_ms": 15.524,
+              "max_ms": 15.928,
+              "gaps": [
+                {
+                  "after_epoch": 1793926705.4996731,
+                  "missing": 2
+                }
+              ]
+            }
+          },
+          "cpu_max_core_pct": 77.14,
+          "telemetry_samples": 122,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 35,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 732712,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 618.619,
+              "aqm_drop_counter_increases": 324,
+              "max_root_backlog_bytes": 2390824,
+              "max_sample_cake_tin_delay_us": null
+            },
+            "DL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 735.214,
+              "aqm_drop_counter_increases": 163,
+              "max_root_backlog_bytes": 226604,
+              "max_sample_cake_tin_delay_us": null
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "HFSC-fast-3",
+          "start": 1793926783.671487,
+          "end": 1793926855.686696,
+          "probes": {
+            "external": {
+              "responses": 70,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 5.224,
+              "p95_ms": 5.932,
+              "max_ms": 6.838,
+              "gaps": [
+                {
+                  "after_epoch": 1793926797.994553,
+                  "missing": 2
+                }
+              ]
+            },
+            "gateway": {
+              "responses": 72,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.726,
+              "p95_ms": 1.097,
+              "max_ms": 1.831,
+              "gaps": []
+            },
+            "tcp-external": {
+              "responses": 68,
+              "failed_tcp_attempts": 1,
+              "internal_sequence_holes": 1,
+              "p50_ms": 5.6,
+              "p95_ms": 6.282,
+              "max_ms": 2007.93,
+              "gaps": [
+                {
+                  "after_epoch": 1793926792.058832,
+                  "missing": 1
+                }
+              ]
+            },
+            "external2": {
+              "responses": 70,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 2,
+              "p50_ms": 15.141,
+              "p95_ms": 15.686,
+              "max_ms": 15.771,
+              "gaps": [
+                {
+                  "after_epoch": 1793926798.0094879,
+                  "missing": 2
+                }
+              ]
+            }
+          },
+          "cpu_max_core_pct": 82.88,
+          "telemetry_samples": 70,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 24,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 726688,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 611.289,
+              "aqm_drop_counter_increases": 91,
+              "max_root_backlog_bytes": 268876,
+              "max_sample_cake_tin_delay_us": null
+            },
+            "DL": {
+              "kinds": [
+                "hfsc"
+              ],
+              "max_sample_rate_mbps": 719.989,
+              "aqm_drop_counter_increases": 134,
+              "max_root_backlog_bytes": 327444,
+              "max_sample_cake_tin_delay_us": null
+            }
+          },
+          "tc_parse_errors": 0
+        },
+        {
+          "label": "restore-original-cake",
+          "start": 1793926855.728172,
+          "end": 1793926886.7838311,
+          "probes": {
+            "external": {
+              "responses": 31,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 5.085,
+              "p95_ms": 6.05,
+              "max_ms": 6.054,
+              "gaps": []
+            },
+            "gateway": {
+              "responses": 31,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 0.64,
+              "p95_ms": 1.29,
+              "max_ms": 1.35,
+              "gaps": []
+            },
+            "tcp-external": {
+              "responses": 31,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 5.625,
+              "p95_ms": 6.849,
+              "max_ms": 7.131,
+              "gaps": []
+            },
+            "external2": {
+              "responses": 31,
+              "failed_tcp_attempts": 0,
+              "internal_sequence_holes": 0,
+              "p50_ms": 14.982,
+              "p95_ms": 15.804,
+              "max_ms": 19.623,
+              "gaps": []
+            }
+          },
+          "cpu_max_core_pct": 62.86,
+          "telemetry_samples": 30,
+          "core_samples_at_least_95pct": 0,
+          "softnet_dropped_delta": 0,
+          "softnet_squeezed_delta": 0,
+          "physical_counter_deltas": {
+            "eth0": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 0,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            },
+            "eth1": {
+              "rx_errors": 0,
+              "tx_errors": 0,
+              "rx_dropped": 6,
+              "tx_dropped": 0,
+              "carrier_changes": 0
+            }
+          },
+          "minimum_memory_available_kib": 715508,
+          "qdiscs": {
+            "UL": {
+              "kinds": [
+                "cake",
+                "noqueue"
+              ],
+              "max_sample_rate_mbps": 8.799,
+              "aqm_drop_counter_increases": 0,
+              "max_root_backlog_bytes": 0,
+              "max_sample_cake_tin_delay_us": 22
+            },
+            "DL": {
+              "kinds": [
+                "cake"
+              ],
+              "max_sample_rate_mbps": 1.627,
+              "aqm_drop_counter_increases": 0,
+              "max_root_backlog_bytes": 0,
+              "max_sample_cake_tin_delay_us": 86
+            }
+          },
+          "tc_parse_errors": 1
+        }
+      ],
+      "all": {
+        "probes": {
+          "external": {
+            "responses": 2081,
+            "failed_tcp_attempts": 0,
+            "internal_sequence_holes": 48,
+            "p50_ms": 5.069,
+            "p95_ms": 5.687,
+            "max_ms": 49.835,
+            "gaps": [
+              {
+                "after_epoch": 1793924846.4132748,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793924938.88843,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925032.290902,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925124.8034072,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925217.233981,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925309.742804,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925403.220177,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925496.708883,
+                "missing": 3
+              },
+              {
+                "after_epoch": 1793925588.969706,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925682.22068,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925775.483078,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925867.780865,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925961.077424,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926054.324934,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926147.658203,
+                "missing": 3
+              },
+              {
+                "after_epoch": 1793926240.190597,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926332.6788638,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926426.1220212,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926519.508152,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926612.0466938,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926705.486775,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926797.994553,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926891.433513,
+                "missing": 2
+              }
+            ]
+          },
+          "gateway": {
+            "responses": 2129,
+            "failed_tcp_attempts": 0,
+            "internal_sequence_holes": 0,
+            "p50_ms": 0.648,
+            "p95_ms": 1.021,
+            "max_ms": 12.536,
+            "gaps": []
+          },
+          "tcp-external": {
+            "responses": 2085,
+            "failed_tcp_attempts": 7,
+            "internal_sequence_holes": 7,
+            "p50_ms": 5.524,
+            "p95_ms": 6.394,
+            "max_ms": 2010.468,
+            "gaps": [
+              {
+                "after_epoch": 1793924893.655472,
+                "missing": 1
+              },
+              {
+                "after_epoch": 1793925217.5667431,
+                "missing": 1
+              },
+              {
+                "after_epoch": 1793925250.7683682,
+                "missing": 1
+              },
+              {
+                "after_epoch": 1793925403.597041,
+                "missing": 1
+              },
+              {
+                "after_epoch": 1793925695.725173,
+                "missing": 1
+              },
+              {
+                "after_epoch": 1793926570.683871,
+                "missing": 1
+              },
+              {
+                "after_epoch": 1793926792.058832,
+                "missing": 1
+              }
+            ]
+          },
+          "external2": {
+            "responses": 2082,
+            "failed_tcp_attempts": 0,
+            "internal_sequence_holes": 47,
+            "p50_ms": 14.947,
+            "p95_ms": 15.518,
+            "max_ms": 47.474,
+            "gaps": [
+              {
+                "after_epoch": 1793924846.4230132,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793924938.896091,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925032.298976,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925124.811959,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925217.245579,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925309.749454,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925403.2348511,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925496.728559,
+                "missing": 3
+              },
+              {
+                "after_epoch": 1793925588.981932,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925682.223362,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925775.4937868,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925867.7791638,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793925961.0900428,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926054.3339899,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926146.668137,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926240.20339,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926332.694175,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926426.1323361,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926519.5042539,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926612.0603788,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926705.4996731,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926798.0094879,
+                "missing": 2
+              },
+              {
+                "after_epoch": 1793926891.432841,
+                "missing": 2
+              }
+            ]
+          }
+        },
+        "cpu_max_core_pct": 93.4,
+        "telemetry_samples": 2092,
+        "core_samples_at_least_95pct": 0,
+        "softnet_dropped_delta": 0,
+        "softnet_squeezed_delta": 0,
+        "physical_counter_deltas": {
+          "eth0": {
+            "rx_errors": 0,
+            "tx_errors": 0,
+            "rx_dropped": 0,
+            "tx_dropped": 0,
+            "carrier_changes": 0
+          },
+          "eth1": {
+            "rx_errors": 0,
+            "tx_errors": 0,
+            "rx_dropped": 1014,
+            "tx_dropped": 0,
+            "carrier_changes": 0
+          }
+        },
+        "minimum_memory_available_kib": 706368,
+        "qdiscs": {
+          "UL": {
+            "kinds": [
+              "cake",
+              "hfsc",
+              "noqueue"
+            ],
+            "max_sample_rate_mbps": 621.116,
+            "aqm_drop_counter_increases": 1558,
+            "max_root_backlog_bytes": 2390824,
+            "max_sample_cake_tin_delay_us": 38
+          },
+          "DL": {
+            "kinds": [
+              "cake",
+              "hfsc"
+            ],
+            "max_sample_rate_mbps": 741.402,
+            "aqm_drop_counter_increases": 85949,
+            "max_root_backlog_bytes": 4234496,
+            "max_sample_cake_tin_delay_us": 172
+          }
+        },
+        "tc_parse_errors": 2
+      },
+      "unfinished_labels": [],
+      "limits": [
+        "Sondas ICMP não representam ping de jogo; TCP mede conexão, não HTTP completo.",
+        "CPU e filas são amostras, não máximos instantâneos.",
+        "Drops AQM não equivalem à perda externa; lacunas excluem bordas sem resposta.",
+        "networkQuality não fornece nota A+; aceite exige resultados reais dos sites/app."
+      ],
+      "preservation": {
+        "finished": 1793926981.053888,
+        "errors": [],
+        "config_hashes_unchanged": true,
+        "nft_stateless_unchanged": false,
+        "boot_id_unchanged": true,
+        "qdisc_options_and_handles_unchanged": false
+      }
+    }
+  }
+]

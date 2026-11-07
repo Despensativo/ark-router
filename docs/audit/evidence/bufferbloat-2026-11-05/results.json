@@ -1,0 +1,841 @@
+{
+  "environment": "Real websites in Codex in-app browser; Mac Ethernet en6 1000baseT via W6x 192.168.73.1",
+  "configuration": "CAKE download 720 Mb/s, upload 620 Mb/s; unchanged throughout",
+  "runs": [
+    {
+      "site": "Waveform",
+      "round": 1,
+      "start": 1793919594.876,
+      "end": 1793919716.379,
+      "url": "https://www.waveform.com/tools/bufferbloat?test-id=34e3433a-f11d-4443-b8fa-03eaa1ad834b",
+      "grade": "A+",
+      "download_mbps": 628.87,
+      "upload_mbps": 212.036,
+      "idle_mean_ms": 27.24,
+      "download_added_mean_ms": 1.39,
+      "upload_added_mean_ms": 0.0,
+      "idle_max_ms": 34.3,
+      "download_max_ms": 184.0,
+      "upload_max_ms": 38.4,
+      "download_p95_ms": 34.84,
+      "upload_p95_ms": 32.92,
+      "supplementary_probes": {
+        "gateway": {
+          "responses": 121,
+          "internal_sequence_holes": 0,
+          "median_ms": 0.53,
+          "p95_ms": 0.845,
+          "max_ms": 1.33
+        },
+        "internet": {
+          "responses": 119,
+          "internal_sequence_holes": 2,
+          "median_ms": 4.847,
+          "p95_ms": 5.275,
+          "max_ms": 5.42
+        }
+      },
+      "max_single_core_busy_pct": 80.9,
+      "qdisc_telemetry": {
+        "UL": {
+          "max_2s_rate_mbps": 325.7,
+          "drop_counter_increase": 1,
+          "max_sample_backlog_bytes": 550960
+        },
+        "DL": {
+          "max_2s_rate_mbps": 707.3,
+          "drop_counter_increase": 257,
+          "max_sample_backlog_bytes": 2565828
+        }
+      }
+    },
+    {
+      "site": "Cloudflare",
+      "round": 1,
+      "start": 1793919808.687,
+      "end": 1793919922.23,
+      "url": "https://speed.cloudflare.com/",
+      "download_mbps": 609.0,
+      "upload_mbps": 119.0,
+      "packet_loss_pct": 0.0,
+      "idle_mean_ms": 12.8,
+      "idle_median_ms": 11.2,
+      "idle_max_ms": 25.8,
+      "download_mean_ms": 52.3,
+      "download_median_ms": 9.95,
+      "download_max_ms": 2570.0,
+      "upload_mean_ms": 11.7,
+      "upload_median_ms": 10.0,
+      "upload_max_ms": 28.0,
+      "download_added_mean_ms": 39.5,
+      "upload_added_mean_ms": -1.1,
+      "supplementary_probes": {
+        "gateway": {
+          "responses": 113,
+          "internal_sequence_holes": 0,
+          "median_ms": 0.606,
+          "p95_ms": 0.893,
+          "max_ms": 1.08
+        },
+        "internet": {
+          "responses": 111,
+          "internal_sequence_holes": 2,
+          "median_ms": 4.958,
+          "p95_ms": 5.597,
+          "max_ms": 63.401
+        }
+      },
+      "max_single_core_busy_pct": 30.2,
+      "qdisc_telemetry": {
+        "UL": {
+          "max_2s_rate_mbps": 141.5,
+          "drop_counter_increase": 2,
+          "max_sample_backlog_bytes": 0
+        },
+        "DL": {
+          "max_2s_rate_mbps": 431.9,
+          "drop_counter_increase": 28,
+          "max_sample_backlog_bytes": 641840
+        }
+      }
+    },
+    {
+      "site": "FAST.com",
+      "round": 1,
+      "start": 1793920038.67,
+      "end": 1793920138.787,
+      "url": "https://fast.com/pt/#",
+      "download_mbps": 670,
+      "upload_mbps": 550,
+      "idle_display_ms": 5.0,
+      "loaded_display_ms": 5.0,
+      "added_display_ms": 0.0,
+      "supplementary_probes": {
+        "gateway": {
+          "responses": 100,
+          "internal_sequence_holes": 0,
+          "median_ms": 0.617,
+          "p95_ms": 0.854,
+          "max_ms": 1.349
+        },
+        "internet": {
+          "responses": 98,
+          "internal_sequence_holes": 2,
+          "median_ms": 4.896,
+          "p95_ms": 5.51,
+          "max_ms": 6.991
+        }
+      },
+      "max_single_core_busy_pct": 72.6,
+      "qdisc_telemetry": {
+        "UL": {
+          "max_2s_rate_mbps": 598.0,
+          "drop_counter_increase": 81,
+          "max_sample_backlog_bytes": 613212
+        },
+        "DL": {
+          "max_2s_rate_mbps": 708.3,
+          "drop_counter_increase": 65,
+          "max_sample_backlog_bytes": 805680
+        }
+      }
+    },
+    {
+      "site": "Waveform",
+      "round": 2,
+      "start": 1793920147.661,
+      "end": 1793920252.049,
+      "url": "https://www.waveform.com/tools/bufferbloat?test-id=6ae1872a-0f3a-4c6b-810b-1dda3cf3acb9",
+      "grade": "C",
+      "download_mbps": 590.598,
+      "upload_mbps": 177.078,
+      "idle_mean_ms": 25.66,
+      "download_added_mean_ms": 1.01,
+      "upload_added_mean_ms": 67.99,
+      "idle_max_ms": 32.9,
+      "download_max_ms": 35.1,
+      "upload_max_ms": 2064.7,
+      "download_p95_ms": 31.81,
+      "upload_p95_ms": 33.56,
+      "supplementary_probes": {
+        "gateway": {
+          "responses": 105,
+          "internal_sequence_holes": 0,
+          "median_ms": 0.578,
+          "p95_ms": 0.838,
+          "max_ms": 2.205
+        },
+        "internet": {
+          "responses": 103,
+          "internal_sequence_holes": 2,
+          "median_ms": 4.811,
+          "p95_ms": 5.497,
+          "max_ms": 8.965
+        }
+      },
+      "max_single_core_busy_pct": 71.5,
+      "qdisc_telemetry": {
+        "UL": {
+          "max_2s_rate_mbps": 368.4,
+          "drop_counter_increase": 33,
+          "max_sample_backlog_bytes": 1446646
+        },
+        "DL": {
+          "max_2s_rate_mbps": 690.0,
+          "drop_counter_increase": 20931,
+          "max_sample_backlog_bytes": 2095090
+        }
+      }
+    },
+    {
+      "site": "Cloudflare",
+      "round": 2,
+      "start": 1793920277.73,
+      "end": 1793920394.666,
+      "url": "https://speed.cloudflare.com/",
+      "download_mbps": 610.0,
+      "upload_mbps": 82.3,
+      "packet_loss_pct": 0.1,
+      "idle_mean_ms": 10.8,
+      "idle_median_ms": 10.7,
+      "idle_max_ms": 15.4,
+      "download_mean_ms": 12.1,
+      "download_median_ms": 11.5,
+      "download_max_ms": 30.1,
+      "upload_mean_ms": 11.1,
+      "upload_median_ms": 10.7,
+      "upload_max_ms": 23.6,
+      "download_added_mean_ms": 1.3,
+      "upload_added_mean_ms": 0.3,
+      "supplementary_probes": {
+        "gateway": {
+          "responses": 117,
+          "internal_sequence_holes": 0,
+          "median_ms": 0.585,
+          "p95_ms": 0.826,
+          "max_ms": 1.144
+        },
+        "internet": {
+          "responses": 115,
+          "internal_sequence_holes": 2,
+          "median_ms": 4.987,
+          "p95_ms": 5.482,
+          "max_ms": 13.42
+        }
+      },
+      "max_single_core_busy_pct": 27.0,
+      "qdisc_telemetry": {
+        "UL": {
+          "max_2s_rate_mbps": 113.0,
+          "drop_counter_increase": 1,
+          "max_sample_backlog_bytes": 0
+        },
+        "DL": {
+          "max_2s_rate_mbps": 379.6,
+          "drop_counter_increase": 21,
+          "max_sample_backlog_bytes": 424694
+        }
+      }
+    },
+    {
+      "site": "FAST.com",
+      "round": 2,
+      "start": 1793920394.966,
+      "end": 1793920528.938,
+      "url": "https://fast.com/pt/#",
+      "download_mbps": 670,
+      "upload_mbps": 550,
+      "idle_display_ms": 5.0,
+      "loaded_display_ms": 5.0,
+      "added_display_ms": 0.0,
+      "supplementary_probes": {
+        "gateway": {
+          "responses": 134,
+          "internal_sequence_holes": 0,
+          "median_ms": 0.614,
+          "p95_ms": 0.86,
+          "max_ms": 3.937
+        },
+        "internet": {
+          "responses": 132,
+          "internal_sequence_holes": 2,
+          "median_ms": 4.939,
+          "p95_ms": 5.484,
+          "max_ms": 10.309
+        }
+      },
+      "max_single_core_busy_pct": 66.8,
+      "qdisc_telemetry": {
+        "UL": {
+          "max_2s_rate_mbps": 595.5,
+          "drop_counter_increase": 174,
+          "max_sample_backlog_bytes": 2003756
+        },
+        "DL": {
+          "max_2s_rate_mbps": 707.3,
+          "drop_counter_increase": 86,
+          "max_sample_backlog_bytes": 659464
+        }
+      }
+    },
+    {
+      "site": "Waveform",
+      "round": 3,
+      "start": 1793920541.18,
+      "end": 1793920666.66,
+      "url": "https://www.waveform.com/tools/bufferbloat?test-id=b520545c-0a83-45c5-a09d-253bf3f0df0e",
+      "grade": "A",
+      "download_mbps": 512.736,
+      "upload_mbps": 121.706,
+      "idle_mean_ms": 26.69,
+      "download_added_mean_ms": 11.91,
+      "upload_added_mean_ms": 0.0,
+      "idle_max_ms": 32.9,
+      "download_max_ms": 548.7,
+      "upload_max_ms": 49.7,
+      "download_p95_ms": 36.21,
+      "upload_p95_ms": 31.11,
+      "supplementary_probes": {
+        "gateway": {
+          "responses": 125,
+          "internal_sequence_holes": 0,
+          "median_ms": 0.558,
+          "p95_ms": 0.832,
+          "max_ms": 0.989
+        },
+        "internet": {
+          "responses": 123,
+          "internal_sequence_holes": 2,
+          "median_ms": 4.9,
+          "p95_ms": 5.461,
+          "max_ms": 20.596
+        }
+      },
+      "max_single_core_busy_pct": 51.5,
+      "qdisc_telemetry": {
+        "UL": {
+          "max_2s_rate_mbps": 280.2,
+          "drop_counter_increase": 6,
+          "max_sample_backlog_bytes": 59640
+        },
+        "DL": {
+          "max_2s_rate_mbps": 685.2,
+          "drop_counter_increase": 8965,
+          "max_sample_backlog_bytes": 1439880
+        }
+      }
+    },
+    {
+      "site": "Cloudflare",
+      "round": 3,
+      "start": 1793920695.141,
+      "end": 1793920814.883,
+      "url": "https://speed.cloudflare.com/",
+      "download_mbps": 540.0,
+      "upload_mbps": 75.3,
+      "packet_loss_pct": 0.0,
+      "idle_mean_ms": 11.4,
+      "idle_median_ms": 11.2,
+      "idle_max_ms": 17.5,
+      "download_mean_ms": 52.9,
+      "download_median_ms": 10.1,
+      "download_max_ms": 2520.0,
+      "upload_mean_ms": 10.1,
+      "upload_median_ms": 7.93,
+      "upload_max_ms": 59.3,
+      "download_added_mean_ms": 41.5,
+      "upload_added_mean_ms": -1.3,
+      "supplementary_probes": {
+        "gateway": {
+          "responses": 120,
+          "internal_sequence_holes": 0,
+          "median_ms": 0.631,
+          "p95_ms": 0.944,
+          "max_ms": 1.536
+        },
+        "internet": {
+          "responses": 118,
+          "internal_sequence_holes": 2,
+          "median_ms": 5.045,
+          "p95_ms": 5.745,
+          "max_ms": 65.427
+        }
+      },
+      "max_single_core_busy_pct": 24.3,
+      "qdisc_telemetry": {
+        "UL": {
+          "max_2s_rate_mbps": 92.6,
+          "drop_counter_increase": 3,
+          "max_sample_backlog_bytes": 0
+        },
+        "DL": {
+          "max_2s_rate_mbps": 325.2,
+          "drop_counter_increase": 14,
+          "max_sample_backlog_bytes": 577249
+        }
+      }
+    },
+    {
+      "site": "FAST.com",
+      "round": 3,
+      "start": 1793920815.169,
+      "end": 1793920895.092,
+      "url": "https://fast.com/pt/#",
+      "download_mbps": 700,
+      "upload_mbps": 560,
+      "idle_display_ms": 5.0,
+      "loaded_display_ms": 5.0,
+      "added_display_ms": 0.0,
+      "supplementary_probes": {
+        "gateway": {
+          "responses": 80,
+          "internal_sequence_holes": 0,
+          "median_ms": 0.514,
+          "p95_ms": 0.889,
+          "max_ms": 4.328
+        },
+        "internet": {
+          "responses": 78,
+          "internal_sequence_holes": 2,
+          "median_ms": 4.881,
+          "p95_ms": 8.065,
+          "max_ms": 13.503
+        }
+      },
+      "max_single_core_busy_pct": 70.1,
+      "qdisc_telemetry": {
+        "UL": {
+          "max_2s_rate_mbps": 611.3,
+          "drop_counter_increase": 190,
+          "max_sample_backlog_bytes": 3633020
+        },
+        "DL": {
+          "max_2s_rate_mbps": 713.0,
+          "drop_counter_increase": 90,
+          "max_sample_backlog_bytes": 516232
+        }
+      }
+    }
+  ],
+  "notes": [
+    "Waveform means from downloaded CSV; maxima from rendered UI details",
+    "Cloudflare headline latency is median; mean deltas below are computed from displayed detailed means",
+    "FAST supplies one loaded-latency number; no separate download/upload latency reported",
+    "Supplementary telemetry windows span button start to result capture, including idle time; not exact per-direction phases",
+    "Ping sequence holes are not the sites packet-loss metric; initial/final missing probes are excluded",
+    "No isolated control of other clients; these are current live-network observations, not proof of causal improvement"
+  ],
+  "monitor_window": {
+    "start": 1793919579,
+    "end": 1793920935,
+    "duration_minutes": 22.6
+  },
+  "all_supplementary_probes": {
+    "gateway": {
+      "responses": 1351,
+      "internal_sequence_holes": 0,
+      "median_ms": 0.588,
+      "p95_ms": 0.87,
+      "max_ms": 4.577
+    },
+    "internet": {
+      "responses": 1325,
+      "internal_sequence_holes": 26,
+      "median_ms": 4.935,
+      "p95_ms": 5.522,
+      "max_ms": 65.427
+    }
+  },
+  "internet_sequence_gaps": {
+    "events": [
+      {
+        "time_first_response_after_gap": 1793919649.613701,
+        "missing": 2,
+        "active_test": "Waveform 1",
+        "nearby_max_2s_rate_mbps": {
+          "UL": 325.677,
+          "DL": 2.297
+        }
+      },
+      {
+        "time_first_response_after_gap": 1793919742.96334,
+        "missing": 2,
+        "active_test": null,
+        "nearby_max_2s_rate_mbps": {
+          "UL": 0.651,
+          "DL": 0.081
+        }
+      },
+      {
+        "time_first_response_after_gap": 1793919836.409056,
+        "missing": 2,
+        "active_test": "Cloudflare 1",
+        "nearby_max_2s_rate_mbps": {
+          "UL": 127.671,
+          "DL": 85.937
+        }
+      },
+      {
+        "time_first_response_after_gap": 1793919928.9318469,
+        "missing": 2,
+        "active_test": null,
+        "nearby_max_2s_rate_mbps": {
+          "UL": 0.448,
+          "DL": 0.112
+        }
+      },
+      {
+        "time_first_response_after_gap": 1793920022.309807,
+        "missing": 2,
+        "active_test": null,
+        "nearby_max_2s_rate_mbps": {
+          "UL": 4.671,
+          "DL": 1.069
+        }
+      },
+      {
+        "time_first_response_after_gap": 1793920114.622753,
+        "missing": 2,
+        "active_test": "FAST.com 1",
+        "nearby_max_2s_rate_mbps": {
+          "UL": 7.847,
+          "DL": 1.227
+        }
+      },
+      {
+        "time_first_response_after_gap": 1793920206.870664,
+        "missing": 2,
+        "active_test": "Waveform 2",
+        "nearby_max_2s_rate_mbps": {
+          "UL": 198.521,
+          "DL": 2.056
+        }
+      },
+      {
+        "time_first_response_after_gap": 1793920300.163973,
+        "missing": 2,
+        "active_test": "Cloudflare 2",
+        "nearby_max_2s_rate_mbps": {
+          "UL": 17.903,
+          "DL": 84.699
+        }
+      },
+      {
+        "time_first_response_after_gap": 1793920483.742532,
+        "missing": 2,
+        "active_test": "FAST.com 2",
+        "nearby_max_2s_rate_mbps": {
+          "UL": 2.384,
+          "DL": 0.066
+        }
+      },
+      {
+        "time_first_response_after_gap": 1793920577.039596,
+        "missing": 2,
+        "active_test": "Waveform 3",
+        "nearby_max_2s_rate_mbps": {
+          "UL": 17.616,
+          "DL": 476.854
+        }
+      },
+      {
+        "time_first_response_after_gap": 1793920670.2829912,
+        "missing": 2,
+        "active_test": null,
+        "nearby_max_2s_rate_mbps": {
+          "UL": 7.404,
+          "DL": 0.371
+        }
+      },
+      {
+        "time_first_response_after_gap": 1793920762.5874171,
+        "missing": 2,
+        "active_test": "Cloudflare 3",
+        "nearby_max_2s_rate_mbps": {
+          "UL": 2.126,
+          "DL": 181.538
+        }
+      },
+      {
+        "time_first_response_after_gap": 1793920855.886775,
+        "missing": 2,
+        "active_test": "FAST.com 3",
+        "nearby_max_2s_rate_mbps": {
+          "UL": 0.919,
+          "DL": 0.189
+        }
+      }
+    ],
+    "interval_median_seconds": 93.295,
+    "interval_range_seconds": [
+      92.248,
+      183.579
+    ]
+  },
+  "state_preservation": {
+    "config_hashes_unchanged": true,
+    "nft_stateless_unchanged": true,
+    "qdisc_options_and_handles_unchanged": true,
+    "qdisc_after": {
+      "pppoe-wan": {
+        "kind": "cake",
+        "handle": "8059:",
+        "root": true,
+        "refcnt": 2,
+        "options": {
+          "bandwidth": 77500000,
+          "diffserv": "diffserv4",
+          "flowmode": "dual-srchost",
+          "nat": true,
+          "wash": true,
+          "ingress": false,
+          "ack-filter": "disabled",
+          "split_gso": false,
+          "rtt": 100000,
+          "raw": false,
+          "atm": "noatm",
+          "overhead": 44,
+          "mpu": 64,
+          "memlimit": 67108864,
+          "fwmark": "0"
+        },
+        "bytes": 12119701224,
+        "packets": 15059296,
+        "drops": 831,
+        "overlimits": 3385594,
+        "requeues": 0,
+        "backlog": 0,
+        "qlen": 0,
+        "memory_used": 17396480,
+        "memory_limit": 67108864,
+        "capacity_estimate": 77500000,
+        "min_network_size": 31,
+        "max_network_size": 1492,
+        "min_adj_size": 75,
+        "max_adj_size": 1536,
+        "active_queues": 0,
+        "avg_hdr_offset": 0,
+        "tins": [
+          {
+            "threshold_rate": 4843750,
+            "sent_bytes": 0,
+            "backlog_bytes": 0,
+            "target_us": 5000,
+            "interval_us": 100000,
+            "peak_delay_us": 0,
+            "avg_delay_us": 0,
+            "base_delay_us": 0,
+            "sent_packets": 0,
+            "way_indirect_hits": 0,
+            "way_misses": 0,
+            "way_collisions": 0,
+            "drops": 0,
+            "ecn_mark": 0,
+            "ack_drops": 0,
+            "sparse_flows": 0,
+            "bulk_flows": 0,
+            "unresponsive_flows": 0,
+            "max_pkt_len": 0,
+            "flow_quantum": 1182
+          },
+          {
+            "threshold_rate": 77500000,
+            "sent_bytes": 11757858167,
+            "backlog_bytes": 0,
+            "target_us": 5000,
+            "interval_us": 100000,
+            "peak_delay_us": 50,
+            "avg_delay_us": 7,
+            "base_delay_us": 2,
+            "sent_packets": 8694199,
+            "way_indirect_hits": 69189,
+            "way_misses": 12550,
+            "way_collisions": 0,
+            "drops": 831,
+            "ecn_mark": 39,
+            "ack_drops": 0,
+            "sparse_flows": 1,
+            "bulk_flows": 1,
+            "unresponsive_flows": 0,
+            "max_pkt_len": 9063,
+            "flow_quantum": 1514
+          },
+          {
+            "threshold_rate": 38750000,
+            "sent_bytes": 731294,
+            "backlog_bytes": 0,
+            "target_us": 5000,
+            "interval_us": 100000,
+            "peak_delay_us": 57,
+            "avg_delay_us": 12,
+            "base_delay_us": 3,
+            "sent_packets": 4533,
+            "way_indirect_hits": 0,
+            "way_misses": 222,
+            "way_collisions": 0,
+            "drops": 0,
+            "ecn_mark": 0,
+            "ack_drops": 0,
+            "sparse_flows": 1,
+            "bulk_flows": 0,
+            "unresponsive_flows": 0,
+            "max_pkt_len": 1888,
+            "flow_quantum": 1514
+          },
+          {
+            "threshold_rate": 19375000,
+            "sent_bytes": 365179196,
+            "backlog_bytes": 0,
+            "target_us": 5000,
+            "interval_us": 100000,
+            "peak_delay_us": 21,
+            "avg_delay_us": 4,
+            "base_delay_us": 2,
+            "sent_packets": 421357,
+            "way_indirect_hits": 61717,
+            "way_misses": 15919,
+            "way_collisions": 0,
+            "drops": 0,
+            "ecn_mark": 0,
+            "ack_drops": 0,
+            "sparse_flows": 2,
+            "bulk_flows": 0,
+            "unresponsive_flows": 0,
+            "max_pkt_len": 16320,
+            "flow_quantum": 1514
+          }
+        ]
+      },
+      "ifb4pppoe-wan": {
+        "kind": "cake",
+        "handle": "805a:",
+        "root": true,
+        "refcnt": 2,
+        "options": {
+          "bandwidth": 90000000,
+          "diffserv": "diffserv4",
+          "flowmode": "dual-dsthost",
+          "nat": true,
+          "wash": true,
+          "ingress": true,
+          "ack-filter": "disabled",
+          "split_gso": false,
+          "rtt": 100000,
+          "raw": false,
+          "atm": "noatm",
+          "overhead": 44,
+          "mpu": 64,
+          "memlimit": 67108864,
+          "fwmark": "0"
+        },
+        "bytes": 24647218524,
+        "packets": 20429989,
+        "drops": 95431,
+        "overlimits": 7905968,
+        "requeues": 0,
+        "backlog": 0,
+        "qlen": 0,
+        "memory_used": 23061504,
+        "memory_limit": 67108864,
+        "capacity_estimate": 90000000,
+        "min_network_size": 30,
+        "max_network_size": 1492,
+        "min_adj_size": 74,
+        "max_adj_size": 1536,
+        "active_queues": 0,
+        "avg_hdr_offset": 0,
+        "tins": [
+          {
+            "threshold_rate": 5625000,
+            "sent_bytes": 0,
+            "backlog_bytes": 0,
+            "target_us": 5000,
+            "interval_us": 100000,
+            "peak_delay_us": 0,
+            "avg_delay_us": 0,
+            "base_delay_us": 0,
+            "sent_packets": 0,
+            "way_indirect_hits": 0,
+            "way_misses": 0,
+            "way_collisions": 0,
+            "drops": 0,
+            "ecn_mark": 0,
+            "ack_drops": 0,
+            "sparse_flows": 0,
+            "bulk_flows": 0,
+            "unresponsive_flows": 0,
+            "max_pkt_len": 0,
+            "flow_quantum": 1373
+          },
+          {
+            "threshold_rate": 90000000,
+            "sent_bytes": 24521287558,
+            "backlog_bytes": 0,
+            "target_us": 5000,
+            "interval_us": 100000,
+            "peak_delay_us": 35,
+            "avg_delay_us": 7,
+            "base_delay_us": 2,
+            "sent_packets": 6951250,
+            "way_indirect_hits": 80583,
+            "way_misses": 15227,
+            "way_collisions": 0,
+            "drops": 95431,
+            "ecn_mark": 69170,
+            "ack_drops": 0,
+            "sparse_flows": 2,
+            "bulk_flows": 0,
+            "unresponsive_flows": 0,
+            "max_pkt_len": 8664,
+            "flow_quantum": 1514
+          },
+          {
+            "threshold_rate": 45000000,
+            "sent_bytes": 548720,
+            "backlog_bytes": 0,
+            "target_us": 5000,
+            "interval_us": 100000,
+            "peak_delay_us": 12,
+            "avg_delay_us": 3,
+            "base_delay_us": 1,
+            "sent_packets": 2421,
+            "way_indirect_hits": 0,
+            "way_misses": 182,
+            "way_collisions": 0,
+            "drops": 0,
+            "ecn_mark": 0,
+            "ack_drops": 0,
+            "sparse_flows": 2,
+            "bulk_flows": 0,
+            "unresponsive_flows": 0,
+            "max_pkt_len": 1784,
+            "flow_quantum": 1514
+          },
+          {
+            "threshold_rate": 22500000,
+            "sent_bytes": 577926075,
+            "backlog_bytes": 0,
+            "target_us": 5000,
+            "interval_us": 100000,
+            "peak_delay_us": 48,
+            "avg_delay_us": 5,
+            "base_delay_us": 2,
+            "sent_packets": 508773,
+            "way_indirect_hits": 10593,
+            "way_misses": 4948,
+            "way_collisions": 0,
+            "drops": 0,
+            "ecn_mark": 0,
+            "ack_drops": 0,
+            "sparse_flows": 1,
+            "bulk_flows": 0,
+            "unresponsive_flows": 0,
+            "max_pkt_len": 9216,
+            "flow_quantum": 1514
+          }
+        ]
+      }
+    },
+    "stopped_at_utc": "2026-11-05T23:22:16.783958+00:00"
+  }
+}

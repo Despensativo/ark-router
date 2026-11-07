@@ -1,0 +1,87 @@
+{
+  "effective": [
+    {
+      "device": "eth1",
+      "locally_administered": false,
+      "addr_assign_type": 3,
+      "uci_interface_override_matches_active": true
+    },
+    {
+      "device": "br-lan",
+      "override_count": 0,
+      "override_matches_active": false,
+      "locally_administered": false,
+      "addr_assign_type": 3
+    }
+  ],
+  "dsa_ports_equal_bridge": true,
+  "bridge_equals_eth0": false,
+  "dt_mac_properties": [
+    {
+      "gmac": 0,
+      "property": "mac-address",
+      "present": false,
+      "bytes": 0,
+      "equals_active": null
+    },
+    {
+      "gmac": 0,
+      "property": "local-mac-address",
+      "present": false,
+      "bytes": 0,
+      "equals_active": null
+    },
+    {
+      "gmac": 0,
+      "property": "nvmem-cells",
+      "present": false,
+      "bytes": 0,
+      "equals_active": null
+    },
+    {
+      "gmac": 0,
+      "property": "nvmem-cell-names",
+      "present": false,
+      "bytes": 0,
+      "equals_active": null
+    },
+    {
+      "gmac": 1,
+      "property": "mac-address",
+      "present": false,
+      "bytes": 0,
+      "equals_active": null
+    },
+    {
+      "gmac": 1,
+      "property": "local-mac-address",
+      "present": false,
+      "bytes": 0,
+      "equals_active": null
+    },
+    {
+      "gmac": 1,
+      "property": "nvmem-cells",
+      "present": false,
+      "bytes": 0,
+      "equals_active": null
+    },
+    {
+      "gmac": 1,
+      "property": "nvmem-cell-names",
+      "present": false,
+      "bytes": 0,
+      "equals_active": null
+    }
+  ],
+  "board_mac_matches": {
+    "lan": {
+      "declared": true,
+      "matches_active": true
+    },
+    "wan": {
+      "declared": true,
+      "matches_active": false
+    }
+  }
+}

@@ -1,0 +1,576 @@
+{
+  "date": "2026-11-05",
+  "created_utc": "2026-11-05T18:49:16.239068+00:00",
+  "scope": "CAKE and HFSC/FQ-CoDel profiles only",
+  "router_configuration_changes": false,
+  "physical_readonly_runtime": {
+    "pppoe-wan": {
+      "link": {
+        "mtu": 1492,
+        "txqlen": 128,
+        "num_tx_queues": 1,
+        "num_rx_queues": 1,
+        "gso_max_size": 8192,
+        "gso_max_segs": 65535,
+        "gro_max_size": 8192,
+        "gso_ipv4_max_size": 8192,
+        "gro_ipv4_max_size": 8192
+      },
+      "cake": {
+        "kind": "cake",
+        "handle": "804b:",
+        "drops": 330,
+        "overlimits": 3755198,
+        "backlog": 0,
+        "memory_used": 21836288,
+        "memory_limit": 67108864,
+        "capacity_estimate": 77500000,
+        "options": {
+          "bandwidth": 77500000,
+          "diffserv": "diffserv4",
+          "flowmode": "dual-srchost",
+          "nat": true,
+          "wash": true,
+          "ingress": false,
+          "ack-filter": "disabled",
+          "split_gso": false,
+          "rtt": 100000,
+          "raw": false,
+          "atm": "noatm",
+          "overhead": 44,
+          "mpu": 64,
+          "memlimit": 67108864,
+          "fwmark": "0"
+        }
+      },
+      "tins": [
+        {
+          "threshold_rate": 4843750,
+          "sent_packets": 0,
+          "ecn_mark": 0,
+          "ack_drops": 0,
+          "max_pkt_len": 0,
+          "peak_delay_us": 0,
+          "flow_quantum": 1182,
+          "sparse_flows": 0,
+          "bulk_flows": 0
+        },
+        {
+          "threshold_rate": 77500000,
+          "sent_packets": 9178174,
+          "ecn_mark": 388,
+          "ack_drops": 0,
+          "max_pkt_len": 8672,
+          "peak_delay_us": 8,
+          "flow_quantum": 1514,
+          "sparse_flows": 1,
+          "bulk_flows": 1
+        },
+        {
+          "threshold_rate": 38750000,
+          "sent_packets": 1451,
+          "ecn_mark": 0,
+          "ack_drops": 0,
+          "max_pkt_len": 188,
+          "peak_delay_us": 40,
+          "flow_quantum": 1514,
+          "sparse_flows": 1,
+          "bulk_flows": 0
+        },
+        {
+          "threshold_rate": 19375000,
+          "sent_packets": 1052501,
+          "ecn_mark": 0,
+          "ack_drops": 0,
+          "max_pkt_len": 9216,
+          "peak_delay_us": 36,
+          "flow_quantum": 1514,
+          "sparse_flows": 1,
+          "bulk_flows": 1
+        }
+      ]
+    },
+    "ifb4pppoe-wan": {
+      "link": {
+        "mtu": 1500,
+        "txqlen": 1000,
+        "num_tx_queues": 1,
+        "num_rx_queues": 1,
+        "gso_max_size": 8192,
+        "gso_max_segs": 65535,
+        "gro_max_size": 8192,
+        "gso_ipv4_max_size": 8192,
+        "gro_ipv4_max_size": 8192
+      },
+      "cake": {
+        "kind": "cake",
+        "handle": "804c:",
+        "drops": 50533,
+        "overlimits": 6909470,
+        "backlog": 0,
+        "memory_used": 22379776,
+        "memory_limit": 67108864,
+        "capacity_estimate": 90000000,
+        "options": {
+          "bandwidth": 90000000,
+          "diffserv": "diffserv4",
+          "flowmode": "dual-dsthost",
+          "nat": true,
+          "wash": true,
+          "ingress": true,
+          "ack-filter": "disabled",
+          "split_gso": false,
+          "rtt": 100000,
+          "raw": false,
+          "atm": "noatm",
+          "overhead": 44,
+          "mpu": 64,
+          "memlimit": 67108864,
+          "fwmark": "0"
+        }
+      },
+      "tins": [
+        {
+          "threshold_rate": 5625000,
+          "sent_packets": 0,
+          "ecn_mark": 0,
+          "ack_drops": 0,
+          "max_pkt_len": 0,
+          "peak_delay_us": 0,
+          "flow_quantum": 1373,
+          "sparse_flows": 0,
+          "bulk_flows": 0
+        },
+        {
+          "threshold_rate": 90000000,
+          "sent_packets": 7721775,
+          "ecn_mark": 48925,
+          "ack_drops": 0,
+          "max_pkt_len": 15116,
+          "peak_delay_us": 1272,
+          "flow_quantum": 1514,
+          "sparse_flows": 3,
+          "bulk_flows": 1
+        },
+        {
+          "threshold_rate": 45000000,
+          "sent_packets": 7,
+          "ecn_mark": 0,
+          "ack_drops": 0,
+          "max_pkt_len": 210,
+          "peak_delay_us": 8,
+          "flow_quantum": 1514,
+          "sparse_flows": 1,
+          "bulk_flows": 0
+        },
+        {
+          "threshold_rate": 22500000,
+          "sent_packets": 1273620,
+          "ecn_mark": 0,
+          "ack_drops": 0,
+          "max_pkt_len": 9216,
+          "peak_delay_us": 91,
+          "flow_quantum": 1514,
+          "sparse_flows": 1,
+          "bulk_flows": 1
+        }
+      ]
+    },
+    "eth1": {
+      "link": {
+        "mtu": 1508,
+        "txqlen": 1000,
+        "num_tx_queues": 16,
+        "num_rx_queues": 1,
+        "gso_max_size": 8192,
+        "gso_max_segs": 65535,
+        "gro_max_size": 8192,
+        "gso_ipv4_max_size": 8192,
+        "gro_ipv4_max_size": 8192
+      },
+      "segmentation_features": [
+        "tcp-segmentation-offload: on",
+        "generic-segmentation-offload: on",
+        "generic-receive-offload: on",
+        "rx-gro-list: off",
+        "rx-udp-gro-forwarding: on"
+      ]
+    },
+    "file_hashes": {
+      "root/usr/lib/ark/modules/sqm.sh": {
+        "local_sha256": "d306fe97b16a53aeb83280651213b30499eadaadf4e3d316e7509e11e5990642",
+        "remote_sha256": "d306fe97b16a53aeb83280651213b30499eadaadf4e3d316e7509e11e5990642",
+        "matches": true
+      },
+      "root/usr/lib/sqm/ark_hfsc_fqcodel.qos": {
+        "local_sha256": "68c40b7781f74af0ff8a0ce5c80110421af55cfba1e5b90c39920f94d7ef2c96",
+        "remote_sha256": "68c40b7781f74af0ff8a0ce5c80110421af55cfba1e5b90c39920f94d7ef2c96",
+        "matches": true
+      },
+      "root/usr/lib/ark/qos-resources.sh": {
+        "local_sha256": "b038dad8ba74e527d70591ebf3fddb6174840b970325e8dde31cc60f23419787",
+        "remote_sha256": "b038dad8ba74e527d70591ebf3fddb6174840b970325e8dde31cc60f23419787",
+        "matches": true
+      },
+      "root/etc/nftables.d/15-ark-dscp-priority.nft": {
+        "local_sha256": "4ac4f7d158f2a8a2d30f629f56c7dd37b9ad7e50456197788c572e8e023c3741",
+        "remote_sha256": "4ac4f7d158f2a8a2d30f629f56c7dd37b9ad7e50456197788c572e8e023c3741",
+        "matches": true
+      }
+    }
+  },
+  "physical_ethernet_queues": {
+    "qdisc_counts": {
+      "mq": 1,
+      "fq_codel": 16
+    },
+    "fq_codel_distinct_options": [
+      {
+        "drop_batch": 64,
+        "ecn": true,
+        "flows": 1024,
+        "interval": 499999,
+        "limit": 10240,
+        "memory_limit": 67108864,
+        "quantum": 1514,
+        "target": 49999
+      }
+    ],
+    "bql": {
+      "limit_min": {
+        "524288": 16
+      },
+      "limit_max": {
+        "1879048192": 16
+      },
+      "limit": {
+        "524288": 16
+      }
+    }
+  },
+  "hfsc_static_derivation": {
+    "method": "Static arithmetic from matching local/deployed script; not TC runtime or performance test",
+    "rows": [
+      {
+        "rate_kbit": 1000,
+        "rt_m2_kbit": 450,
+        "rt_m1_kbit": 900,
+        "rt_actual_slope_pct": 45.0,
+        "rt_curve_break_ms": 1,
+        "be_ls_kbit": 700,
+        "bulk_ls_kbit": 100,
+        "rt_target_ms": 1.5,
+        "rt_interval_ms": 30,
+        "be_target_ms": 5,
+        "be_interval_ms": 100,
+        "rt_quantum_bytes": 300,
+        "be_quantum_bytes": 300,
+        "ip1500_serialization_ms": 12.0
+      },
+      {
+        "rate_kbit": 5000,
+        "rt_m2_kbit": 2000,
+        "rt_m1_kbit": 4000,
+        "rt_actual_slope_pct": 40.0,
+        "rt_curve_break_ms": 1,
+        "be_ls_kbit": 3500,
+        "bulk_ls_kbit": 500,
+        "rt_target_ms": 1.5,
+        "rt_interval_ms": 30,
+        "be_target_ms": 5,
+        "be_interval_ms": 100,
+        "rt_quantum_bytes": 300,
+        "be_quantum_bytes": 300,
+        "ip1500_serialization_ms": 2.4
+      },
+      {
+        "rate_kbit": 10000,
+        "rt_m2_kbit": 2000,
+        "rt_m1_kbit": 4000,
+        "rt_actual_slope_pct": 20.0,
+        "rt_curve_break_ms": 1,
+        "be_ls_kbit": 7000,
+        "bulk_ls_kbit": 1000,
+        "rt_target_ms": 1.5,
+        "rt_interval_ms": 30,
+        "be_target_ms": 5,
+        "be_interval_ms": 100,
+        "rt_quantum_bytes": 300,
+        "be_quantum_bytes": 300,
+        "ip1500_serialization_ms": 1.2
+      },
+      {
+        "rate_kbit": 100000,
+        "rt_m2_kbit": 20000,
+        "rt_m1_kbit": 40000,
+        "rt_actual_slope_pct": 20.0,
+        "rt_curve_break_ms": 1,
+        "be_ls_kbit": 70000,
+        "bulk_ls_kbit": 10000,
+        "rt_target_ms": 1.5,
+        "rt_interval_ms": 30,
+        "be_target_ms": 2.5,
+        "be_interval_ms": 40,
+        "rt_quantum_bytes": 500,
+        "be_quantum_bytes": 1514,
+        "ip1500_serialization_ms": 0.12
+      },
+      {
+        "rate_kbit": 620000,
+        "rt_m2_kbit": 124000,
+        "rt_m1_kbit": 248000,
+        "rt_actual_slope_pct": 20.0,
+        "rt_curve_break_ms": 1,
+        "be_ls_kbit": 434000,
+        "bulk_ls_kbit": 62000,
+        "rt_target_ms": 1.5,
+        "rt_interval_ms": 30,
+        "be_target_ms": 2.5,
+        "be_interval_ms": 40,
+        "rt_quantum_bytes": 500,
+        "be_quantum_bytes": 1514,
+        "ip1500_serialization_ms": 0.01935483870967742
+      },
+      {
+        "rate_kbit": 720000,
+        "rt_m2_kbit": 144000,
+        "rt_m1_kbit": 288000,
+        "rt_actual_slope_pct": 20.0,
+        "rt_curve_break_ms": 1,
+        "be_ls_kbit": 504000,
+        "bulk_ls_kbit": 72000,
+        "rt_target_ms": 1.5,
+        "rt_interval_ms": 30,
+        "be_target_ms": 2.5,
+        "be_interval_ms": 40,
+        "rt_quantum_bytes": 500,
+        "be_quantum_bytes": 1514,
+        "ip1500_serialization_ms": 0.016666666666666666
+      }
+    ]
+  },
+  "sources": [
+    {
+      "name": "tc-cake",
+      "url": "https://raw.githubusercontent.com/iproute2/iproute2/main/man/man8/tc-cake.8",
+      "final_url": "https://raw.githubusercontent.com/iproute2/iproute2/main/man/man8/tc-cake.8",
+      "ok": true,
+      "bytes": 24823,
+      "lines": 838,
+      "sha256": "7fffcd07eb7b0ff9ec5bd8e11e291bdcc0d9631df7a49a178aadc55ff7ef9aaa",
+      "local_file": "tc-cake.txt"
+    },
+    {
+      "name": "tc-hfsc",
+      "url": "https://raw.githubusercontent.com/iproute2/iproute2/main/man/man8/tc-hfsc.8",
+      "final_url": "https://raw.githubusercontent.com/iproute2/iproute2/main/man/man8/tc-hfsc.8",
+      "ok": true,
+      "bytes": 2102,
+      "lines": 61,
+      "sha256": "0e9646e829219d64e196d5c6649a90a44969d1569f426dcc5cd8ce3d0929296f",
+      "local_file": "tc-hfsc.txt"
+    },
+    {
+      "name": "tc-hfsc-theory",
+      "url": "https://raw.githubusercontent.com/iproute2/iproute2/main/man/man7/tc-hfsc.7",
+      "final_url": "https://raw.githubusercontent.com/iproute2/iproute2/main/man/man7/tc-hfsc.7",
+      "ok": true,
+      "bytes": 25277,
+      "lines": 563,
+      "sha256": "974d7b5d79d1fb974e2eeed51891315cef939086433db2f660c832a6abe9f797",
+      "local_file": "tc-hfsc-theory.txt"
+    },
+    {
+      "name": "tc-fq-codel",
+      "url": "https://raw.githubusercontent.com/iproute2/iproute2/main/man/man8/tc-fq_codel.8",
+      "final_url": "https://raw.githubusercontent.com/iproute2/iproute2/main/man/man8/tc-fq_codel.8",
+      "ok": true,
+      "bytes": 4340,
+      "lines": 143,
+      "sha256": "297205847e84351c792380a8b1ac33878371a6d609f01859416bc849ebca125f",
+      "local_file": "tc-fq-codel.txt"
+    },
+    {
+      "name": "tc-ctinfo",
+      "url": "https://raw.githubusercontent.com/iproute2/iproute2/main/man/man8/tc-ctinfo.8",
+      "final_url": "https://raw.githubusercontent.com/iproute2/iproute2/main/man/man8/tc-ctinfo.8",
+      "ok": true,
+      "bytes": 6020,
+      "lines": 171,
+      "sha256": "53f74607fc1f4c6fffa3a130169bb16fc055642ec74145e2d393af232299e7b0",
+      "local_file": "tc-ctinfo.txt"
+    },
+    {
+      "name": "sqm-layer",
+      "url": "https://raw.githubusercontent.com/tohojo/sqm-scripts/master/src/layer_cake.qos",
+      "final_url": "https://raw.githubusercontent.com/tohojo/sqm-scripts/master/src/layer_cake.qos",
+      "ok": true,
+      "bytes": 1726,
+      "lines": 57,
+      "sha256": "c41dbf536140d7201163e9bb055edb01671967a95ef3e61e517614727dbc5a10",
+      "local_file": "sqm-layer.txt"
+    },
+    {
+      "name": "sqm-functions",
+      "url": "https://raw.githubusercontent.com/tohojo/sqm-scripts/master/src/functions.sh",
+      "final_url": "https://raw.githubusercontent.com/tohojo/sqm-scripts/master/src/functions.sh",
+      "ok": true,
+      "bytes": 28888,
+      "lines": 908,
+      "sha256": "4814bb0109120c6c9583de23a96c98dcc8d4caf6f73986441bb6a85f75b8ce85",
+      "local_file": "sqm-functions.txt"
+    },
+    {
+      "name": "kernel-cake612",
+      "url": "https://raw.githubusercontent.com/torvalds/linux/v6.12/net/sched/sch_cake.c",
+      "final_url": "https://raw.githubusercontent.com/torvalds/linux/v6.12/net/sched/sch_cake.c",
+      "ok": true,
+      "bytes": 81145,
+      "lines": 3124,
+      "sha256": "c24b5647474dbe41c4a0b5e95bbef82dcff72470cfc014b3cf941eb6997394b8",
+      "local_file": "kernel-cake612.txt"
+    },
+    {
+      "name": "kernel-hfsc612",
+      "url": "https://raw.githubusercontent.com/torvalds/linux/v6.12/net/sched/sch_hfsc.c",
+      "final_url": "https://raw.githubusercontent.com/torvalds/linux/v6.12/net/sched/sch_hfsc.c",
+      "ok": true,
+      "bytes": 40826,
+      "lines": 1698,
+      "sha256": "fbb84a4fee620a4a4753d8c90d3c290d6ac5a485d13e629349f28a4db090e028",
+      "local_file": "kernel-hfsc612.txt"
+    },
+    {
+      "name": "kernel-flowtable",
+      "url": "https://docs.kernel.org/networking/nf_flowtable.html",
+      "final_url": "https://docs.kernel.org/networking/nf_flowtable.html",
+      "ok": true,
+      "bytes": 22671,
+      "lines": 232,
+      "sha256": "1d0997b10897ccb3446438e58f68d1acc000129b52c667f3481553cdd7b2417e",
+      "local_file": "kernel-flowtable.txt"
+    },
+    {
+      "name": "rfc-fqcodel",
+      "url": "https://www.rfc-editor.org/rfc/rfc8290.txt",
+      "final_url": "https://www.rfc-editor.org/rfc/rfc8290.txt",
+      "ok": true,
+      "bytes": 57767,
+      "lines": 1428,
+      "sha256": "2cff1a6148764d2b9dd5af8939261dce1e723fb8f6b3af64e96774b51a02a3aa",
+      "local_file": "rfc-fqcodel.txt"
+    },
+    {
+      "name": "rfc-l4s",
+      "url": "https://www.rfc-editor.org/rfc/rfc9332.txt",
+      "final_url": "https://www.rfc-editor.org/rfc/rfc9332.txt",
+      "ok": true,
+      "bytes": 153706,
+      "lines": 2977,
+      "sha256": "4412ad8d1196845ecd432b7f6559dc4b8a2e7be06d617203e7977f52dc1290d0",
+      "local_file": "rfc-l4s.txt"
+    },
+    {
+      "name": "rfc-pppoe1500",
+      "url": "https://www.rfc-editor.org/rfc/rfc4638.txt",
+      "final_url": "https://www.rfc-editor.org/rfc/rfc4638.txt",
+      "ok": true,
+      "bytes": 18984,
+      "lines": 516,
+      "sha256": "5ca9276c2ed513d821fb2b650894ce8a24e39b4c2e00bfd0d1d52037bf369141",
+      "local_file": "rfc-pppoe1500.txt"
+    },
+    {
+      "name": "cake-paper",
+      "url": "https://arxiv.org/abs/1804.07617",
+      "ok": true,
+      "bytes": 43821,
+      "sha256": "66b00a974b5a7c98d93f41b130d56154835b0355dfe5cd6811d724a26dafe86a",
+      "local_file": "cake-paper.txt"
+    },
+    {
+      "name": "rfc-codel",
+      "url": "https://www.rfc-editor.org/rfc/rfc8289.txt",
+      "ok": true,
+      "bytes": 63404,
+      "sha256": "22ed146dd28dc113130747014397121447fde30640b9d16542f51755351dddac",
+      "local_file": "rfc-codel.txt"
+    },
+    {
+      "name": "tc-stab",
+      "url": "https://raw.githubusercontent.com/iproute2/iproute2/main/man/man8/tc-stab.8",
+      "ok": true,
+      "bytes": 6575,
+      "sha256": "c90e5bef86c0220ec7a6944108efad03f1d50bad56d27a59c66e2e16e0d706a6",
+      "local_file": "tc-stab.txt"
+    },
+    {
+      "name": "kernel-fqcodel612",
+      "url": "https://raw.githubusercontent.com/torvalds/linux/v6.12/net/sched/sch_fq_codel.c",
+      "ok": true,
+      "bytes": 20155,
+      "sha256": "4939dfb448816d84e4988766c3e05aec00bc409a14e3d3f1dde18ab28a5714d5",
+      "local_file": "kernel-fqcodel612.txt"
+    },
+    {
+      "name": "kernel-fq612",
+      "url": "https://raw.githubusercontent.com/torvalds/linux/v6.12/net/sched/sch_fq.c",
+      "ok": true,
+      "bytes": 33607,
+      "sha256": "c01d213a92430e28705e6e7bf4584eb7c905b63f086211f2aeba0465d880908f",
+      "local_file": "kernel-fq612.txt"
+    },
+    {
+      "name": "rfc9330",
+      "url": "https://www.rfc-editor.org/rfc/rfc9330.txt",
+      "ok": true,
+      "sha256": "31ebe0cc2b4042bd081b95dd26c8829b4d28607cc6cd74284817872a1f4e19d7",
+      "local_file": "rfc9330.txt"
+    },
+    {
+      "name": "rfc9331",
+      "url": "https://www.rfc-editor.org/rfc/rfc9331.txt",
+      "ok": true,
+      "sha256": "92de982f553f523996f86999b6598fcfc399abad1cb9d93cb769db149d9ac5c4",
+      "local_file": "rfc9331.txt"
+    },
+    {
+      "name": "cake-original-paper",
+      "url": "https://arxiv.org/pdf/1804.07617",
+      "ok": true,
+      "sha256": "78091c86ca2de2155d0e29c2691e287fbf0e8d1eb570c4d55a5d3acc8bf90852",
+      "local_file": "cake-original-paper.pdf"
+    },
+    {
+      "name": "cake-mq-paper",
+      "url": "https://schmiste.github.io/netdev25.pdf",
+      "ok": true,
+      "sha256": "5777735dd46af7e55dcbadda5ce1aa20a9b87296b244db6cfb090a7a1c91500c",
+      "local_file": "cake-mq-paper.pdf"
+    },
+    {
+      "name": "sqm-defaults",
+      "url": "https://raw.githubusercontent.com/tohojo/sqm-scripts/master/src/defaults.sh",
+      "ok": true,
+      "sha256": "d7a540700a349ef33b3b121cb5f6ef367dbec5e5c08c336975f4b1354cb39103",
+      "local_file": "sqm-defaults.txt"
+    },
+    {
+      "name": "iproute-q-cake",
+      "url": "https://raw.githubusercontent.com/iproute2/iproute2/main/tc/q_cake.c",
+      "ok": true,
+      "sha256": "4ef56697ffd9a85c72b7c6758c53c57fc5973257ac5656635648758f247ce1bf",
+      "local_file": "iproute-q-cake.txt"
+    }
+  ],
+  "evidence_limits": [
+    "HFSC inactive; its generated settings are static derivation, not a measured comparison.",
+    "tc JSON bandwidth and threshold rates are bytes/second, converted by multiplying by eight.",
+    "CAKE memory_used is buffer_max_used in reference Linux6.12: a high-water statistic, not present allocation.",
+    "Counters and max_pkt_len are cumulative per qdisc lifetime, not deltas in a matched benchmark.",
+    "Source kernel Linux6.12 is a reference, not proof of byte-identical vendor kernel.",
+    "Current manuals may expose capabilities absent in the installed kernel/modules.",
+    "16 physical FQ-CoDel memory ceilings do not mean 1 GiB is reserved or currently occupied.",
+    "No benchmark proves the recommendations increase throughput or cure the periodic pauses."
+  ]
+}

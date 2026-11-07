@@ -1,0 +1,12 @@
+[
+  {
+    "file": "dmesg-ramoops-0",
+    "sha256": "5d9f87ff5142bf473e5f3be4f08aacfe8e908c1b69435575f84008aa9e35dea7",
+    "unchanged_at_end": true
+  },
+  {
+    "file": "dmesg-ramoops-1",
+    "sha256": "b5463c379fa2ac064ca69eab4c69f99fa6e5c686a52a206539ac6d5bbf8af710",
+    "unchanged_at_end": true
+  }
+]
