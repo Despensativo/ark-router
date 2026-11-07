@@ -963,7 +963,9 @@ b64_decode_str() {
 		ucode -e 'print(b64dec(ARGV[0]))' -- "$clean_b64"
 	elif command -v lua >/dev/null 2>&1; then
 		printf '%s' "$clean_b64" | lua -e 'local nx=require("nixio"); local s=io.read("*all"); io.write((nx and nx.bin and nx.bin.b64decode and nx.bin.b64decode(s)) or "")' 2>/dev/null
-	elif command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1; then
+	elif command -v python3 >/dev/null 2>&1; then
+		python3 -c "import sys, base64; sys.stdout.write(base64.b64decode(sys.argv[1]).decode('utf-8', errors='replace'))" "$clean_b64"
+	elif command -v python >/dev/null 2>&1; then
 		python -c "import sys, base64; sys.stdout.write(base64.b64decode(sys.argv[1]).decode('utf-8', errors='replace'))" "$clean_b64"
 	elif command -v base64 >/dev/null 2>&1; then
 		printf '%s' "$clean_b64" | base64 -d 2>/dev/null || printf '%s' "$clean_b64" | base64 -D 2>/dev/null
@@ -980,7 +982,9 @@ b64_encode_file() {
 		ucode -e 'let fs = require("fs"); let c = fs.readfile(ARGV[0]); if (c) print(b64enc(c));' -- "$file"
 	elif command -v lua >/dev/null 2>&1; then
 		cat "$file" 2>/dev/null | lua -e 'local nx=require("nixio"); local s=io.read("*all"); io.write((nx and nx.bin and nx.bin.b64encode and nx.bin.b64encode(s)) or "")' 2>/dev/null
-	elif command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1; then
+	elif command -v python3 >/dev/null 2>&1; then
+		python3 -c "import sys, base64; sys.stdout.write(base64.b64encode(open(sys.argv[1], 'rb').read()).decode('ascii'))" "$file"
+	elif command -v python >/dev/null 2>&1; then
 		python -c "import sys, base64; sys.stdout.write(base64.b64encode(open(sys.argv[1], 'rb').read()).decode('ascii'))" "$file"
 	elif command -v base64 >/dev/null 2>&1; then
 		base64 "$file" 2>/dev/null | tr -d '\r\n'
@@ -990,6 +994,7 @@ b64_encode_file() {
 wireguard_client_import() {
 	local b64 tmp_conf privkey pubkey preshared_key endpoint keepalive mtu opt_mtu ep_host ep_port s a
 	local d sec allowed_count aip z
+	local awg_jc awg_jmin awg_jmax awg_s1 awg_s2 awg_h1 awg_h2 awg_h3 awg_h4 is_awg proto_client
 	b64="$1"
 	[ -n "$b64" ] || b64="$(cat)"
 	[ -n "$b64" ] || { echo 'Conteudo da configuracao vazio' >&2; exit 2; }
@@ -1023,6 +1028,29 @@ wireguard_client_import() {
 			;;
 	esac
 
+	# Extração de Parâmetros de Ofuscação Anti-DPI AmneziaWG
+	awg_jc="$(get_val 'Jc')"
+	awg_jmin="$(get_val 'Jmin')"
+	awg_jmax="$(get_val 'Jmax')"
+	awg_s1="$(get_val 'S1')"
+	awg_s2="$(get_val 'S2')"
+	awg_h1="$(get_val 'H1')"
+	awg_h2="$(get_val 'H2')"
+	awg_h3="$(get_val 'H3')"
+	awg_h4="$(get_val 'H4')"
+
+	is_awg=0
+	if [ -n "$awg_jc" ] || [ -n "$awg_h1" ] || [ -n "$awg_s1" ]; then
+		is_awg=1
+	fi
+
+	proto_client="wireguard"
+	if [ "$is_awg" -eq 1 ]; then
+		if [ -f /lib/netifd/proto/amneziawg.sh ] || [ -x /usr/bin/awg ]; then
+			proto_client="amneziawg"
+		fi
+	fi
+
 	[ -n "$privkey" ] || { rm -f "$tmp_conf" 2>/dev/null; echo 'Chave Privada (PrivateKey) nao encontrada no .conf' >&2; exit 2; }
 	[ -n "$pubkey" ] || { rm -f "$tmp_conf" 2>/dev/null; echo 'Chave Publica do Servidor (PublicKey) nao encontrada no .conf' >&2; exit 2; }
 	[ -n "$endpoint" ] || { rm -f "$tmp_conf" 2>/dev/null; echo 'Endpoint do Servidor nao encontrado no .conf' >&2; exit 2; }
@@ -1044,16 +1072,29 @@ wireguard_client_import() {
 
 	# Cleanup old wgclient
 	uci -q delete network.wgclient
-	for s in $(uci -q show network | grep '=wireguard_wgclient$' | cut -d. -f2 | cut -d= -f1); do
+	for s in $(uci -q show network | grep -E '=wireguard_wgclient$|=amneziawg_wgclient$' | cut -d. -f2 | cut -d= -f1); do
 		uci -q delete "network.$s"
 	done
 
 	uci -q set network.wgclient=interface
-	uci -q set network.wgclient.proto='wireguard'
+	uci -q set network.wgclient.proto="$proto_client"
 	uci -q set network.wgclient.private_key="$privkey"
 	uci -q set network.wgclient.listen_port='51821'
 	uci -q set network.wgclient.auto='1'
 	uci -q set network.wgclient.mtu="$mtu"
+
+	# Salva parâmetros Anti-DPI AmneziaWG se fornecidos
+	if [ "$is_awg" -eq 1 ]; then
+		[ -n "$awg_jc" ] && uci -q set network.wgclient.awg_jc="$awg_jc"
+		[ -n "$awg_jmin" ] && uci -q set network.wgclient.awg_jmin="$awg_jmin"
+		[ -n "$awg_jmax" ] && uci -q set network.wgclient.awg_jmax="$awg_jmax"
+		[ -n "$awg_s1" ] && uci -q set network.wgclient.awg_s1="$awg_s1"
+		[ -n "$awg_s2" ] && uci -q set network.wgclient.awg_s2="$awg_s2"
+		[ -n "$awg_h1" ] && uci -q set network.wgclient.awg_h1="$awg_h1"
+		[ -n "$awg_h2" ] && uci -q set network.wgclient.awg_h2="$awg_h2"
+		[ -n "$awg_h3" ] && uci -q set network.wgclient.awg_h3="$awg_h3"
+		[ -n "$awg_h4" ] && uci -q set network.wgclient.awg_h4="$awg_h4"
+	fi
 
 	for a in $(get_all_vals 'Address'); do
 		uci -q add_list network.wgclient.addresses="$a"
@@ -1063,7 +1104,11 @@ wireguard_client_import() {
 		uci -q add_list network.wgclient.dns="$d"
 	done
 
-	sec="$(uci -q add network wireguard_wgclient)"
+	if [ "$proto_client" = "amneziawg" ]; then
+		sec="$(uci -q add network amneziawg_wgclient)"
+	else
+		sec="$(uci -q add network wireguard_wgclient)"
+	fi
 	uci -q set "network.$sec.public_key=$pubkey"
 	[ -n "$preshared_key" ] && uci -q set "network.$sec.preshared_key=$preshared_key"
 	uci -q set "network.$sec.endpoint_host=$ep_host"
@@ -1107,22 +1152,39 @@ wireguard_client_import() {
 
 wireguard_client_status_json() {
 	local installed_wg configured active autostart client_ip ep_host ep_port pubkey endpoint hs rx tx
-	local live_ep dump online now diff conf_b64
-	installed_wg=false; ([ -x /usr/bin/wg ] || [ -f /lib/netifd/proto/wireguard.sh ]) && installed_wg=true
-	configured=false; [ "$(uci -q get network.wgclient.proto)" = "wireguard" ] && configured=true
+	local live_ep dump online now diff conf_b64 cur_proto is_awg wg_tool
+	local awg_jc awg_jmin awg_jmax awg_s1 awg_s2 awg_h1 awg_h2 awg_h3 awg_h4
+	installed_wg=false; ([ -x /usr/bin/wg ] || [ -x /usr/bin/awg ] || [ -f /lib/netifd/proto/wireguard.sh ] || [ -f /lib/netifd/proto/amneziawg.sh ]) && installed_wg=true
+	cur_proto="$(uci -q get network.wgclient.proto 2>/dev/null || echo wireguard)"
+	configured=false; ([ "$cur_proto" = "wireguard" ] || [ "$cur_proto" = "amneziawg" ]) && configured=true
 	active=false; [ -d /sys/class/net/wgclient ] && active=true
 	autostart=false; [ "$(uci -q get network.wgclient.auto)" != "0" ] && autostart=true
 
+	is_awg=false
+	[ "$cur_proto" = "amneziawg" ] && is_awg=true
+	awg_jc="$(uci -q get network.wgclient.awg_jc 2>/dev/null || true)"
+	awg_jmin="$(uci -q get network.wgclient.awg_jmin 2>/dev/null || true)"
+	awg_jmax="$(uci -q get network.wgclient.awg_jmax 2>/dev/null || true)"
+	awg_s1="$(uci -q get network.wgclient.awg_s1 2>/dev/null || true)"
+	awg_s2="$(uci -q get network.wgclient.awg_s2 2>/dev/null || true)"
+	awg_h1="$(uci -q get network.wgclient.awg_h1 2>/dev/null || true)"
+	awg_h2="$(uci -q get network.wgclient.awg_h2 2>/dev/null || true)"
+	awg_h3="$(uci -q get network.wgclient.awg_h3 2>/dev/null || true)"
+	awg_h4="$(uci -q get network.wgclient.awg_h4 2>/dev/null || true)"
+	[ -n "$awg_jc" ] || [ -n "$awg_h1" ] && is_awg=true
+
 	client_ip="$(uci -q get network.wgclient.addresses 2>/dev/null || true)"
-	ep_host="$(uci -q get network.@wireguard_wgclient[0].endpoint_host 2>/dev/null || true)"
-	ep_port="$(uci -q get network.@wireguard_wgclient[0].endpoint_port 2>/dev/null || printf '51820')"
-	pubkey="$(uci -q get network.@wireguard_wgclient[0].public_key 2>/dev/null || true)"
+	ep_host="$(uci -q get network.@wireguard_wgclient[0].endpoint_host 2>/dev/null || uci -q get network.@amneziawg_wgclient[0].endpoint_host 2>/dev/null || true)"
+	ep_port="$(uci -q get network.@wireguard_wgclient[0].endpoint_port 2>/dev/null || uci -q get network.@amneziawg_wgclient[0].endpoint_port 2>/dev/null || printf '51820')"
+	pubkey="$(uci -q get network.@wireguard_wgclient[0].public_key 2>/dev/null || uci -q get network.@amneziawg_wgclient[0].public_key 2>/dev/null || true)"
 	endpoint="${ep_host}:${ep_port}"
 	[ -z "$ep_host" ] && endpoint=""
 
 	hs=0; rx=0; tx=0; live_ep=""
-	if $active && command -v wg >/dev/null 2>&1; then
-		dump="$(wg show wgclient dump 2>/dev/null | tail -n +2 | head -n 1 || true)"
+	wg_tool="wg"
+	[ -x /usr/bin/awg ] && wg_tool="awg"
+	if $active && command -v "$wg_tool" >/dev/null 2>&1; then
+		dump="$("$wg_tool" show wgclient dump 2>/dev/null | tail -n +2 | head -n 1 || true)"
 		if [ -n "$dump" ]; then
 			live_ep="$(echo "$dump" | awk '{print $3}')"
 			hs="$(echo "$dump" | awk '{print $5}')"
@@ -1148,8 +1210,9 @@ wireguard_client_status_json() {
 		conf_b64="$(b64_encode_file /etc/wireguard/wgclient.conf)"
 	fi
 
-	printf '{"installed":%s,"configured":%s,"active":%s,"autostart":%s,"online":%s,"endpoint":"%s","public_key":"%s","client_ip":"%s","latest_handshake":%d,"rx_bytes":%s,"tx_bytes":%s,"conf_b64":"%s"}\n' \
-		"$installed_wg" "$configured" "$active" "$autostart" "$online" "$(json_escape "$endpoint")" "$(json_escape "$pubkey")" "$(json_escape "$client_ip")" "$hs" "$rx" "$tx" "$conf_b64"
+	printf '{"installed":%s,"configured":%s,"active":%s,"autostart":%s,"online":%s,"endpoint":"%s","public_key":"%s","client_ip":"%s","latest_handshake":%d,"rx_bytes":%s,"tx_bytes":%s,"conf_b64":"%s","proto":"%s","is_amneziawg":%s,"awg_jc":"%s","awg_jmin":"%s","awg_jmax":"%s","awg_s1":"%s","awg_s2":"%s","awg_h1":"%s","awg_h2":"%s","awg_h3":"%s","awg_h4":"%s"}\n' \
+		"$installed_wg" "$configured" "$active" "$autostart" "$online" "$(json_escape "$endpoint")" "$(json_escape "$pubkey")" "$(json_escape "$client_ip")" "$hs" "$rx" "$tx" "$conf_b64" \
+		"$cur_proto" "$is_awg" "$(json_escape "$awg_jc")" "$(json_escape "$awg_jmin")" "$(json_escape "$awg_jmax")" "$(json_escape "$awg_s1")" "$(json_escape "$awg_s2")" "$(json_escape "$awg_h1")" "$(json_escape "$awg_h2")" "$(json_escape "$awg_h3")" "$(json_escape "$awg_h4")"
 }
 
 wireguard_client_toggle() {

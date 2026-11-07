@@ -1,3 +1,21 @@
+## 2.2.1-r5
+
+- **🛡️ Protocolo AmneziaWG (Anti-DPI WireGuard) & Wi-Fi 7 MLO (Multi-Link Operation) com EHT Puncturing (07/11/2026)**:
+  - **Manipulador de Protocolo Netifd AmneziaWG (`root/lib/netifd/proto/amneziawg.sh`)**:
+    - Suporte canônico nativo ao protocolo `proto 'amneziawg'` no OpenWrt com estratégia dual-tier resiliente (`kmod-amneziawg` em kernel space ➔ `amneziawg-go` em user space ➔ fallback `wireguard`).
+    - Integração dos 9 parâmetros avançados de ofuscação e camuflagem anti-DPI: `Jc` (junk packets), `Jmin`/`Jmax` (faixa de bytes aleatórios de ruído), `S1`/`S2` (tamanhos de handshake inicial e resposta), e `H1..H4` (assinaturas de cabeçalho de transporte personalizadas).
+  - **Importação Transparente & Telemetria RPC de VPN (`vpn.sh`, `vpn.js`, `ezsetup.sh`)**:
+    - Parser de arquivos `.conf` no backend `vpn.sh` com decodificação resiliente e identificação atômica de campos de ofuscação AmneziaWG (`is_amneziawg`).
+    - Interface LuCI com detecção automática no upload do arquivo, exibição do banner de segurança `🛡️ AmneziaWG Anti-DPI` e card de telemetria em tempo real com indicador `Bypassing DPI`.
+    - Guia técnico aprofundado de engenharia em `docs/AMNEZIAWG_FEASIBILITY_AND_COMPILATION_GUIDE.md` cobrindo compatibilidade com kernels 6.1, 6.6 e 6.12 e contorno de vermagic.
+  - **Wi-Fi 7: Multi-Link Operation (MLO) & Preamble Puncturing (`wifi.sh`, `wifi.js`, `render.js`)**:
+    - Gestão declarativa de enlaces MLD em `/etc/config/wireless` (`config wifi-mld 'mld0'`), com negociação T2LM (`eht_t2lmnegosupport '1'`) e criptografia obrigatória WPA3-SAE (`encryption 'sae'`).
+    - Habilitação automática de `eht_puncturing '1'` ao operar em Wi-Fi 7, garantindo imunidade a quedas de largura de banda de 160/320 MHz diante de interferências parciais de 20 MHz.
+    - Toggle e telemetria de MLO adicionados à interface móvel e desktop LuCI.
+  - **Validação Local & Testes Automatizados**:
+    - Novo teste canônico `tests/test_amneziawg_and_mlo.py` validado e incorporado ao `run_local_tests.sh` (37/37 testes aprovados).
+    - Pacotes locais gerados e testados: `luci-app-ark-router-full-2.2.1-r5.apk` e `.ipk`.
+
 ## 2.2.1-r4
 
 - **🚀 Calibração Definitiva de Bufferbloat A+, NAT Full-Cone / Endpoint-Independent & Tuning Gaming (07/11/2026)**:

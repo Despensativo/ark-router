@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ark-router
 PKG_VERSION:=2.2.1
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 PKG_MAINTAINER:=ARK Router contributors
 PKG_LICENSE:=MIT
 

@@ -1772,6 +1772,23 @@ const renderMethods = {
 								E('span', { class: 'ex-switch-slider' })
 							])
 						]),
+						(isWifi7 ? E('div', { class: 'ex-channel-mode-control', style: 'margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08);' }, [
+							E('div', {}, [
+								E('strong', { style: 'color: #22d3ee;' }, ['⚡ Multi-Link Operation (MLO — STR / EMLSR)']),
+								E('small', { id: 'ex-wifi-mlo-summary', class: 'ex-muted' }, [
+									'Agregação multi-banda simultânea (5 GHz + 6 GHz) para throughput de pico e comutação instantânea anti-lag.'
+								])
+							]),
+							E('label', { class: 'ex-switch' }, [
+								E('input', {
+									id: 'ex-wifi-mlo-toggle',
+									type: 'checkbox',
+									'aria-label': 'Ativar Multi-Link Operation (MLO)',
+									change: L.bind(function(ev){ self.toggleWifiMlo(ev.currentTarget); }, self)
+								}),
+								E('span', { class: 'ex-switch-slider' })
+							])
+						]) : ''),
 						E('div', { class: 'ex-grid ex-grid-2', style: 'margin-top: 14px; gap: 10px;' }, [
 							E('div', { style: 'background: rgba(255,255,255,0.03); padding: 10px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.06);' }, [
 								E('strong', { style: 'font-size: 12.5px; display: block; margin-bottom: 2px;' }, ['🎨 BSS Coloring & Spatial Reuse (OBSS PD)']),

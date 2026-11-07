@@ -479,7 +479,9 @@ const vpnMethods = {
 
 				if(status.online){
 					statusTitle = 'CONECTADO E OPERACIONAL';
-					statusDesc = 'Túnel ativo com handshake recente. O tráfego do roteador está protegido via WireGuard.';
+					statusDesc = status.is_amneziawg
+						? 'Túnel ativo com handshake recente e ofuscação Anti-DPI (AmneziaWG). O tráfego está camuflado contra bloqueios, censura e inspeção profunda.'
+						: 'Túnel ativo com handshake recente. O tráfego do roteador está protegido via WireGuard.';
 					badgeColor = '#22c55e';
 					badgeBg = 'rgba(34, 197, 94, 0.12)';
 					dot = '🟢';
@@ -543,6 +545,18 @@ const vpnMethods = {
 						E('strong', {style:'font-size:0.9rem;'}, ['↓ ' + rxMb + ' MB  ↑ ' + txMb + ' MB'])
 					])
 				]);
+
+				if(status.is_amneziawg){
+					metricsGrid.appendChild(E('div', {style:'grid-column: 1 / -1; background:rgba(168,85,247,0.1); border:1px solid rgba(168,85,247,0.3); padding:10px 14px; border-radius:8px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;'}, [
+						E('div', {}, [
+							E('strong', {style:'color:#c084fc; font-size:0.85rem; display:block;'}, ['🛡️ OFUSCAÇÃO ANTI-DPI AMNEZIAWG ATIVA']),
+							E('span', {style:'font-size:0.75rem; opacity:0.85;'}, [
+								'Junk: ' + (status.awg_jc || '—') + ' pacotes (' + (status.awg_jmin || '?') + '–' + (status.awg_jmax || '?') + 'B) • Magic Handshake: H1=' + (status.awg_h1 || '—') + ' H2=' + (status.awg_h2 || '—')
+							])
+						]),
+						E('span', {style:'background:#a855f7; color:#fff; font-size:0.7rem; font-weight:800; padding:2px 8px; border-radius:4px; text-transform:uppercase; letter-spacing:0.5px;'}, ['Bypassing DPI'])
+					]));
+				}
 
 				const pubKeySection = status.public_key ? E('div', {style:'margin-bottom:16px;'}, [
 					E('span', {style:'font-size:0.75rem; font-weight:600; opacity:0.7; display:block; margin-bottom:4px;'}, ['CHAVE PÚBLICA DO SERVIDOR']),
@@ -664,7 +678,10 @@ const vpnMethods = {
 			]);
 
 			function parseConf(text){
-				const res = { ip: '', endpoint: '', allowed_ips: '', dns: '', has_privkey: false, has_pubkey: false };
+				const res = {
+					ip: '', endpoint: '', allowed_ips: '', dns: '', has_privkey: false, has_pubkey: false,
+					jc: '', jmin: '', jmax: '', s1: '', s2: '', h1: '', h2: '', h3: '', h4: '', is_amneziawg: false
+				};
 				const lines = (text || '').split('\n');
 				for(let i = 0; i < lines.length; i++){
 					const line = lines[i].trim();
@@ -679,6 +696,15 @@ const vpnMethods = {
 					else if(key === 'endpoint') res.endpoint = val;
 					else if(key === 'allowedips') res.allowed_ips = val;
 					else if(key === 'dns') res.dns = val;
+					else if(key === 'jc') { res.jc = val; res.is_amneziawg = true; }
+					else if(key === 'jmin') { res.jmin = val; res.is_amneziawg = true; }
+					else if(key === 'jmax') { res.jmax = val; res.is_amneziawg = true; }
+					else if(key === 's1') { res.s1 = val; res.is_amneziawg = true; }
+					else if(key === 's2') { res.s2 = val; res.is_amneziawg = true; }
+					else if(key === 'h1') { res.h1 = val; res.is_amneziawg = true; }
+					else if(key === 'h2') { res.h2 = val; res.is_amneziawg = true; }
+					else if(key === 'h3') { res.h3 = val; res.is_amneziawg = true; }
+					else if(key === 'h4') { res.h4 = val; res.is_amneziawg = true; }
 				}
 				return res;
 			}
@@ -720,6 +746,14 @@ const vpnMethods = {
 						E('strong', {}, [p.dns])
 					]));
 				}
+				if(p.is_amneziawg){
+					items.push(E('div', {style:'min-width:0; grid-column: 1 / -1; background:rgba(168,85,247,0.1); padding:8px 12px; border-radius:6px; border:1px solid rgba(168,85,247,0.3);'}, [
+						E('span', {style:'font-weight:700; color:#c084fc; font-size:0.75rem; display:block; margin-bottom:2px;'}, ['🛡️ OFUSCAÇÃO ANTI-DPI (AMNEZIAWG) DETECTADA']),
+						E('span', {style:'font-size:0.78rem; opacity:0.9;'}, [
+							'Junk Packets: Jc=' + (p.jc||'-') + ' (' + (p.jmin||'-') + '–' + (p.jmax||'-') + 'B) • Handshake Headers: H1=' + (p.h1||'-') + ', H2=' + (p.h2||'-') + ', H3=' + (p.h3||'-') + ', H4=' + (p.h4||'-')
+						])
+					]));
+				}
 
 				const checks = [];
 				checks.push(E('span', {style:'font-size:0.75rem; color:' + (p.has_privkey ? '#22c55e' : '#ef4444') + '; font-weight:600;'}, [
@@ -731,6 +765,11 @@ const vpnMethods = {
 				checks.push(E('span', {style:'font-size:0.75rem; color:' + (p.endpoint ? '#22c55e' : '#ef4444') + '; font-weight:600;'}, [
 					p.endpoint ? '✓ Endpoint Servidor' : '✗ Falta Endpoint'
 				]));
+				if(p.is_amneziawg){
+					checks.push(E('span', {style:'font-size:0.75rem; color:#c084fc; font-weight:700; background:rgba(168,85,247,0.15); padding:2px 8px; border-radius:4px; border:1px solid rgba(168,85,247,0.3);'}, [
+						'🛡️ AmneziaWG Ativo'
+					]));
+				}
 
 				previewContainer.appendChild(E('div', {style:'display:flex; gap:12px; margin-bottom:8px; flex-wrap:wrap;'}, checks));
 				if(items.length > 0){

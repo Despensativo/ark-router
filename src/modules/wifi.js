@@ -1980,6 +1980,29 @@ const wifiMethods = {
 		}, this));
 	},
 
+	toggleWifiMlo: function(chk) {
+		const desired = chk.checked;
+		chk.disabled = true;
+		const summary = document.getElementById('ex-wifi-mlo-summary');
+		if (summary) summary.textContent = 'Aplicando Multi-Link Operation (MLO)…';
+		return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-mlo-toggle', desired ? '1' : '0'])
+		.then(L.bind(function(r) {
+			chk.disabled = false;
+			if (r.code) throw new Error(r.stderr || 'Falha ao alterar Multi-Link Operation (MLO)');
+			if (summary) {
+				summary.textContent = desired
+					? 'Ativo • Agregação multi-banda simultânea (STR / EMLSR) em 5 GHz e 6 GHz.'
+					: 'Desativado • Rádios 5 GHz e 6 GHz operando como pontos de acesso individuais.';
+			}
+			ui.addNotification(null, E('p', {}, [desired ? 'Multi-Link Operation (MLO) ativado com sucesso!' : 'MLO desativado.']), 'info');
+		}, this))
+		.catch(L.bind(function(e) {
+			chk.disabled = false;
+			chk.checked = !desired;
+			ui.addNotification(null, E('p', {}, [String(e && e.message || e)]), 'danger');
+		}, this));
+	},
+
 	confirmMultiRouterAction: function(title, messageHtml, onConfirm, onCancel) {
 		let countdown = 3;
 		const confirmBtn = E('button', {

@@ -465,6 +465,70 @@ wifi_enhancer_run_upgrade() {
 	return 0
 }
 
+wifi_mlo_status() {
+	local sup_mlo=0 en_mlo=0 mlo_ssid="" mlo_mode="ap" mlo_enc="sae" s
+	local iw_cache="/tmp/ark-iw-info.cache"
+	[ -s "$iw_cache" ] || iw list 2>/dev/null > "$iw_cache" || true
+
+	if grep -qE 'EHT Capabilities|EHT-PHY|EHT Iftypes' "$iw_cache" 2>/dev/null || \
+	   grep -q '"mlo":true' /usr/share/wifi-features-* 2>/dev/null || \
+	   grep -qE '=wifi-mld$' /etc/config/wireless 2>/dev/null; then
+		sup_mlo=1
+	fi
+
+	for s in $(uci -q show wireless | grep -E "=wifi-mld$" | cut -d. -f2 | cut -d= -f1); do
+		if [ "$(uci -q get "wireless.$s.disabled")" != "1" ]; then
+			en_mlo=1
+			mlo_ssid="$(uci -q get "wireless.$s.ssid" || true)"
+			mlo_mode="$(uci -q get "wireless.$s.mode" || echo ap)"
+			mlo_enc="$(uci -q get "wireless.$s.encryption" || echo sae)"
+			break
+		fi
+	done
+
+	printf '{"supported":%s,"enabled":%s,"ssid":"%s","mode":"%s","encryption":"%s"}\n' \
+		"$([ "$sup_mlo" = 1 ] && echo true || echo false)" \
+		"$([ "$en_mlo" = 1 ] && echo true || echo false)" \
+		"$(json_escape "$mlo_ssid")" \
+		"$(json_escape "$mlo_mode")" \
+		"$(json_escape "$mlo_enc")"
+}
+
+wifi_mlo_toggle() {
+	local target mld_sec iface mode
+	target="${1:-1}"
+	mld_sec="mld0"
+
+	if [ "$target" = "1" ] || [ "$target" = "on" ] || [ "$target" = "enable" ]; then
+		if [ "$(uci -q get wireless.$mld_sec)" != "wifi-mld" ]; then
+			uci -q set wireless.$mld_sec=wifi-mld
+			uci -q set wireless.$mld_sec.mode='ap'
+			uci -q set wireless.$mld_sec.encryption='sae'
+			uci -q set wireless.$mld_sec.eht_t2lmnegosupport='1'
+			uci -q set wireless.$mld_sec.ssid="ARK_MLO_$(uci -q get system.@system[0].hostname 2>/dev/null || echo 7)"
+		fi
+		uci -q set wireless.$mld_sec.disabled='0'
+		for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
+			mode="$(uci -q get wireless.$iface.mode || echo ap)"
+			[ "$mode" = "ap" ] || continue
+			if [ "$(uci -q get wireless.$iface.isolate)" != "1" ]; then
+				uci -q set wireless.$iface.mld="$mld_sec"
+			fi
+		done
+		uci commit wireless
+		(sleep 1; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
+		echo 'enabled'
+	else
+		uci -q set wireless.$mld_sec.disabled='1'
+		for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
+			[ "$(uci -q get wireless.$iface.mld)" = "$mld_sec" ] && uci -q delete wireless.$iface.mld
+		done
+		uci commit wireless
+		(sleep 1; wifi reload; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
+		echo 'disabled'
+	fi
+}
+
 handle_wifi() {
 	case "$1" in
 	wifi)
@@ -2323,6 +2387,9 @@ EOF
 				uci -q set "wireless.$r.he_su_beamformee=1"
 				uci -q set "wireless.$r.he_mu_beamformer=0"
 				uci -q set "wireless.$r.mu_beamformer=0"
+				if [ "$sup_be" = 1 ]; then
+					uci -q set "wireless.$r.eht_puncturing=1"
+				fi
 			done
 			for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
 				mode="$(uci -q get wireless.$iface.mode || echo ap)"
@@ -2399,6 +2466,12 @@ EOF
 	wifi-enhancer-upgrade)
 		(wifi_enhancer_run_upgrade) >/dev/null 2>&1 &
 		echo 'started'
+		;;
+	wifi-mlo-status)
+		wifi_mlo_status
+		;;
+	wifi-mlo-toggle)
+		wifi_mlo_toggle "$2"
 		;;
 	esac
 }

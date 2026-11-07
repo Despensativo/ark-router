@@ -78,6 +78,7 @@ printf "${YELLOW}[3/5] Executando matriz de testes de WAN, SQM, MTU, ARK Doctor 
 "$PYTHON_CMD" "$SCRIPT_DIR/test_multicore_optimization.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_doctor_safety.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_firewall_engine.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_amneziawg_and_mlo.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_lite_vs_full_scenarios.py"
 printf "${GREEN}✓ Todos os testes unitários e de cenários passaram com sucesso!${NC}\n\n"
 

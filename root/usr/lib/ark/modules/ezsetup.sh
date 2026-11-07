@@ -1253,16 +1253,19 @@ feature_json() {
 		custom_endpoint="$(uci -q get equipe_dashboard.wireguard.endpoint 2>/dev/null || true)"
 		endpoint="${custom_endpoint:-$wan_ip}"
 
-		client_configured=false; [ "$(uci -q get network.wgclient.proto)" = "wireguard" ] && client_configured=true
+		client_configured=false; ([ "$(uci -q get network.wgclient.proto)" = "wireguard" ] || [ "$(uci -q get network.wgclient.proto)" = "amneziawg" ]) && client_configured=true
 		client_active=false; [ -d /sys/class/net/wgclient ] && client_active=true
-		client_endpoint="$(uci -q get network.@wireguard_wgclient[0].endpoint_host 2>/dev/null || true)"
+		client_endpoint="$(uci -q get network.@wireguard_wgclient[0].endpoint_host 2>/dev/null || uci -q get network.@amneziawg_wgclient[0].endpoint_host 2>/dev/null || true)"
 		client_online=false
-		if [ "$client_active" = true ] && command -v wg >/dev/null 2>&1; then
-			client_hs="$(wg show wgclient latest-handshakes 2>/dev/null | awk '{print $2}' || true)"
-			if [ -n "$client_hs" ] && [ "$client_hs" -gt 0 ]; then
-				now_c="$(date +%s)"
-				diff_c=$((now_c - client_hs))
-				[ "$diff_c" -le 180 ] && client_online=true
+		if [ "$client_active" = true ]; then
+			wg_bin="wg"; [ -x /usr/bin/awg ] && wg_bin="awg"
+			if command -v "$wg_bin" >/dev/null 2>&1; then
+				client_hs="$("$wg_bin" show wgclient latest-handshakes 2>/dev/null | awk '{print $2}' || true)"
+				if [ -n "$client_hs" ] && [ "$client_hs" -gt 0 ]; then
+					now_c="$(date +%s)"
+					diff_c=$((now_c - client_hs))
+					[ "$diff_c" -le 180 ] && client_online=true
+				fi
 			fi
 		fi
 
