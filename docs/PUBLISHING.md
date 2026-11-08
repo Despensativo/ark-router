@@ -1,5 +1,9 @@
 # Publishing ARK Router on GitHub
 
+> [!IMPORTANT]
+> **LOCAL-FIRST PACKAGING MANDATORY (Zero Cloud Bottleneck)**:
+> In accordance with Universal Rule 12 (`AGENTS.md`), packages (`.ipk` and `.apk`) must be generated **locally** using the macOS/WSL scripts. The GitHub Actions cloud workflow (`build-packages.yml`) is slow and is maintained strictly as an optional manual fallback (`workflow_dispatch`). Pre-built artifacts are uploaded directly to the Release via `gh release create` or the GitHub Web UI.
+
 This document describes the recommended public release flow for ARK Router.
 
 ARK Router is an OpenWrt/LuCI package. It is not an ISO image and it is not an Android APK. On newer OpenWrt builds, `.apk` means the OpenWrt package format used by the router package manager.

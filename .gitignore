@@ -24,4 +24,8 @@ root/etc/wireguard/
 ._*
 *.exp
 *.log
+.env
+.env.*
+*.env
+
 

@@ -2083,7 +2083,7 @@ handle_ezsetup() {
 				apk del speedtest-go >/dev/null 2>&1 || true
 			fi
 			rm -rf /tmp/ark-speedtest /tmp/ark-speedtest-download
-			[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme
+			[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme >/dev/null 2>&1 || true
 			[ -f /etc/uci-defaults/99-ark-router-dhcp-sanitize ] && /bin/sh /etc/uci-defaults/99-ark-router-dhcp-sanitize >/dev/null 2>&1 || true
 			rm -f /tmp/luci-indexcache /tmp/ark-*.cache /tmp/ark-*-cache.json /tmp/ark-*-cache.ts 2>/dev/null || true
 			rm -rf /tmp/luci-modulecache/* 2>/dev/null || true
@@ -2126,7 +2126,7 @@ handle_ezsetup() {
 				apk del speedtest-go >/dev/null 2>&1 || true
 			fi
 			rm -rf /tmp/ark-speedtest /tmp/ark-speedtest-download
-			[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme
+			[ -x /etc/uci-defaults/99-ark-router-theme ] && /etc/uci-defaults/99-ark-router-theme >/dev/null 2>&1 || true
 			[ -f /etc/uci-defaults/99-ark-router-dhcp-sanitize ] && /bin/sh /etc/uci-defaults/99-ark-router-dhcp-sanitize >/dev/null 2>&1 || true
 			rm -f /tmp/luci-indexcache /tmp/ark-*.cache /tmp/ark-*-cache.json /tmp/ark-*-cache.ts 2>/dev/null || true
 			rm -rf /tmp/luci-modulecache/* 2>/dev/null || true

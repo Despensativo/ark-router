@@ -535,6 +535,17 @@
 		align-items: center !important;
 		justify-content: center !important;
 	}
+	/* Botao principal (Salvar e Aplicar / Positivo) ocupa 100% no topo */
+	.cbi-page-actions .cbi-button-apply,
+	.cbi-page-actions input[type="submit"].cbi-button-apply,
+	.cbi-page-actions .cbi-button-positive,
+	.cbi-page-actions form.inline:first-child,
+	.actions .cbi-button-apply,
+	.actions .cbi-button-positive {
+		flex: 1 1 100% !important;
+		min-height: 44px !important;
+		order: -1 !important;
+	}
 
 	/* Routing & Generic CBI Table Sections Mobile */
 	.cbi-tblsection table {

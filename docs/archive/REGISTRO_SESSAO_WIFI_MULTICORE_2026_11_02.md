@@ -158,8 +158,8 @@ Limite conhecido: SIGKILL pode deixar comandos filhos vivos e uma trava órfã. 
 
 ## 10. Evidências e ponto de retomada
 
-- [Métricas multicore iniciais](audit/evidence/w6x_multicore_2026_11_02.json).
-- [Métricas de aplicação/testes T-083](audit/evidence/w6x_t083_deploy_2026_11_02.json).
+- [Métricas multicore iniciais](../audit/evidence/w6x_multicore_2026_11_02.json).
+- [Métricas de aplicação/testes T-083](../audit/evidence/w6x_t083_deploy_2026_11_02.json).
 - `tests/test_multicore_optimization.py`: testes novos.
 - `tests/feature_contracts.yaml`, `docs/FEATURE_AUDIT_AND_REBOOT.md`, `docs/audit/STATUS.md` e `TASK.md`: acompanhamento atualizado.
 

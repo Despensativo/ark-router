@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(**/.secrets/**)",
+      "Edit(**/.secrets/**)",
+      "Write(**/.secrets/**)",
+      "Bash(sudo *)",
+      "Bash(chmod 777 *)",
+      "Bash(chmod -R 777 *)",
+      "Bash(chown *)",
+      "Bash(git push *--force*)",
+      "Bash(rm -rf /Volumes/*)",
+      "Bash(rm -rf /*)",
+      "Bash(*mtd*write*mtd14*)",
+      "Bash(*mtd*write*mtd15*)",
+      "Bash(* > /dev/mtd*)",
+      "Bash(ssh*192.168.*sysupgrade*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": ".claude/hooks.json",
+    "Stop": ".claude/hooks.json"
+  }
+}

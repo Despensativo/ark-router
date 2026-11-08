@@ -457,7 +457,8 @@ const renderMethods = {
 		activeWans.forEach(function(w) {
 			mwanModeButtons.push(modeButton(w.domId, 'Só ' + w.label));
 		});
-		const speedifySection=this.speedifyCard(data), starlinkSection=this._starlinkPanel;
+		const speedifySection = this.speedifyCard(data);
+		const starlinkSection = (typeof this.starlinkCard === 'function') ? this.starlinkCard(data) : (this._starlinkPanel || '');
 		const allWifiCards = [
 			wifiCard('main','Acesso principal',w.main),
 			wifiCard('guest','Visitantes com upload limitado',w.guest)
@@ -1279,7 +1280,7 @@ const renderMethods = {
 										}, ['Auto CS4 + Conntrack 0xa0'])
 									]),
 									E('small', { class: 'ex-muted', style: 'display: block; margin-top: 3px; line-height: 1.4;' }, [
-										'Prioriza automaticamente pacotes UDP/TCP de 80+ jogos competitivos, Consoles (PS5/Xbox/Switch) e Cloud Gaming na fila < 1 ms (Upload e Download), mantém sessões NAT UDP estáveis e calibra o BQL físico da placa de rede. Lembra sua escolha e limpa 100% das regras ao desligar.'
+										'Ativa o Relay Dinâmico UDP de portas altas, Fast-Return Open NAT no Firewall, aceleração RPS Multi-Core e calibra o BQL físico da placa de rede. Portas de jogos competitivos padrão permanecem ativas na matriz do sistema. Lembra sua escolha ao desligar.'
 									])
 								]),
 								E('div', { class: 'ex-device-switch-control' }, [

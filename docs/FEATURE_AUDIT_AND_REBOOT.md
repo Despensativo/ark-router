@@ -233,7 +233,7 @@ flowchart TD
 - **6. Comandos e Ações**: `mwan`, `mwan3-toggle`, `mwan3-ensure`
 - **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control mwan`, `/usr/sbin/equipe-dashboard-control mwan3-ensure`
 - **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
-- **9. Dependências e Pacotes**: `mwan3`, `iptables ou nftables`, `ip-full`
+- **9. Dependências e Pacotes**: `mwan3`, `nftables (fw4) ou iptables (fw3 legado)`, `ip-full`
 - **10. Configurações UCI**: `mwan3`, `equipe_dashboard`
 - **11. Serviços e Daemons**: `mwan3`
 - **12. Dados Persistentes**: `/etc/config/mwan3`, `/etc/config/equipe_dashboard`
@@ -243,7 +243,7 @@ flowchart TD
 - **16. Recursos que NÃO Pode Alterar**: tabelas de roteamento do sistema não relacionadas
 - **17. Relações e Dependências**: `ARK-WAN-006`, `ARK-WAN-007`, `ARK-SQM-003`
 - **18. Limitações por Hardware**: Nenhuma.
-- **19. Limitações por Versão do OpenWrt**: Requer suporte do mwan3 para o backend de firewall ativo (iptables ou nftables).
+- **19. Limitações por Versão do OpenWrt**: Requer suporte do mwan3 para o backend de firewall ativo (nftables em fw4 ou iptables em fw3 legado).
 - **20. Disponibilidade nos Perfis**: `full`
 - **21. Versão de Criação/Alteração**: `1.5.2`
 - **22. Testes Relacionados**: `tests/test_wan_matrix.py`
@@ -583,7 +583,7 @@ flowchart TD
 - **6. Comandos e Ações**: `firewall reload`, `sync-ipv6-firewall`
 - **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control sync-ipv6-firewall`
 - **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
-- **9. Dependências e Pacotes**: `firewall3 ou firewall4`, `iptables ou nftables`
+- **9. Dependências e Pacotes**: `firewall3 ou firewall4`, `nftables (fw4) ou iptables (fw3 legado)`
 - **10. Configurações UCI**: `firewall`
 - **11. Serviços e Daemons**: `firewall`, `ark-firewall-guard`
 - **12. Dados Persistentes**: `/etc/config/firewall`
@@ -837,7 +837,7 @@ flowchart TD
 - **6. Comandos e Ações**: `device-limits-list`, `device-limits-apply`
 - **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control device-limits-*`
 - **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
-- **9. Dependências e Pacotes**: `tc-full ou iptables/nftables`, `kmod-sched-core`
+- **9. Dependências e Pacotes**: `tc-full ou nftables (fw4) / iptables (fw3)`, `kmod-sched-core`
 - **10. Configurações UCI**: `qos_equipe`
 - **11. Serviços e Daemons**: Nenhum
 - **12. Dados Persistentes**: `/etc/config/qos_equipe`

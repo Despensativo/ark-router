@@ -55,7 +55,7 @@ def assemble_bundle(src_base_dir=None, is_v2=False):
     base_dir = src_base_dir if src_base_dir else SRC_DIR
     
     version_file = os.path.join(REPO_DIR, "root", "usr", "share", "ark-router", "VERSION")
-    version_val = "1.5.6"
+    version_val = "2.2.1"
     if os.path.isfile(version_file):
         with open(version_file, "r", encoding="utf-8") as vf:
             version_val = vf.read().strip()
@@ -184,7 +184,7 @@ def main():
     args = parser.parse_args()
 
     version_file = os.path.join(REPO_DIR, "root", "usr", "share", "ark-router", "VERSION")
-    version_val = "1.5.6"
+    version_val = "2.2.1"
     if os.path.isfile(version_file):
         with open(version_file, "r", encoding="utf-8") as vf:
             version_val = vf.read().strip()

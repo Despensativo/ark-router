@@ -1,6 +1,6 @@
 # ARK Router — Mapa Mestre de Documentação Técnica e Navegação (`.md`)
 
-> **Versão Homologada**: [`2.2.1`](../VERSION) | **Status**: Ativo & Validado  
+> **Versão Homologada**: [`2.2.4`](../VERSION) | **Status**: Ativo & Validado  
 > **Finalidade**: Catálogo mestre e índice de navegação de alta eficiência de toda a documentação técnica do ARK Router. Organizado em **5 Camadas Estritas** para garantir que desenvolvedores e agentes de IA encontrem imediatamente as fontes de verdade canônicas sem queimar contexto com relatórios históricos ou estudos datados.
 
 ---
@@ -13,7 +13,7 @@ Para iniciar qualquer tarefa de desenvolvimento ou manutenção sem perder tempo
    *(Contratos vivos, matriz dos 23 recursos, comandos rápidos de 1 linha, mapa de onde mexer no código e regras inegociáveis).*
 2. **Mapa Determinístico de Código (Fast-Path & Linhas)**: 👉 **[`docs/CODE_MAP.md`](CODE_MAP.md)**  
    *(Indexa `StartLine`–`EndLine` de todas as funções `.sh`, métodos `.js` e rotas RPC; nunca leia módulos inteiros).*
-3. **Quadro Operacional Atual**: 👉 [`TASK.md`](../../TASK.md) *(<= 60 linhas)* e [`docs/audit/STATUS.md`](audit/STATUS.md).
+3. **Quadro Operacional Atual**: 👉 [`TASK.md`](../../../TASK.md) *(<= 60 linhas)* e [`docs/audit/STATUS.md`](audit/STATUS.md).
 
 ---
 
@@ -80,18 +80,18 @@ Para iniciar qualquer tarefa de desenvolvimento ou manutenção sem perder tempo
 
 | Arquivo Datado | Contexto Histórico / Escopo Original da Investigação |
 | :--- | :--- |
-| [`docs/ANALISE_HARDWARE_WIFI_W6X_2026_11_05.md`](ANALISE_HARDWARE_WIFI_W6X_2026_11_05.md) | Diagnóstico pontual de hardware e Wi-Fi do W6x em 05/11/2026. |
-| [`docs/ANALISE_MULTICORE_W6X_2026_11_02.md`](ANALISE_MULTICORE_W6X_2026_11_02.md) | Auditoria somente-leitura de distribuição CPU/IRQ/NAPI/RPS no Acer W6x (`T-081`). |
-| [`docs/ANALISE_WIFI_CELULARES_2026_11_02.md`](ANALISE_WIFI_CELULARES_2026_11_02.md) | Investigação de limites de vazão Wi-Fi em smartphones no W6x (`T-080`). |
-| [`docs/REGISTRO_SESSAO_WIFI_MULTICORE_2026_11_02.md`](REGISTRO_SESSAO_WIFI_MULTICORE_2026_11_02.md) | Consolidação de testes de sessão Wi-Fi e multicore pós-`T-083` (`T-084`). |
-| [`docs/OTIMIZACAO_MULTICORE_T083.md`](OTIMIZACAO_MULTICORE_T083.md) | Registro da serialização de jobs (`serialized-job.sh`) e cache quente (`T-083`). |
-| [`docs/DIAGNOSTICO_ONT_HUAWEI_2026_10_29.md`](DIAGNOSTICO_ONT_HUAWEI_2026_10_29.md) | Telemetria óptica GPON da ONT Huawei EG8145X6-10 (`T-075`/`T-076`). |
-| [`docs/DIAGNOSTICO_W6X_MONITORADO_2026_10_29.md`](DIAGNOSTICO_W6X_MONITORADO_2026_10_29.md) | Correlação de amostras de CPU/CAKE, ICMP e UDP sob carga (`T-072`). |
-| [`docs/DIAGNOSTICO_W6X_SONDAS_WAN_2026_10_29.md`](DIAGNOSTICO_W6X_SONDAS_WAN_2026_10_29.md) | Captura ICMP WAN e análise de eventos ociosos (`T-073`/`T-074`). |
-| [`docs/MIGRACAO_TP_LINK_XZ005_G6_2026_10_29.md`](MIGRACAO_TP_LINK_XZ005_G6_2026_10_29.md) | Notas de preparação para ponte óptica TP-Link XZ005-G6 2.5GbE (`T-077`). |
-| [`docs/MANUAL_ACESSO_E_COMANDOS_ONT_TPLINK_XZ005_G6.md`](MANUAL_ACESSO_E_COMANDOS_ONT_TPLINK_XZ005_G6.md) | Manual técnico de acesso Telnet, CLI e Data Model HTTP (/cgi?9) da ONT TP-Link XZ005-G6. |
-| [`docs/TESTE_WAVEFORM_CABO_2026_10_29.md`](TESTE_WAVEFORM_CABO_2026_10_29.md) | Medições comparativas de Bufferbloat Waveform via cabo Ethernet (`T-071`). |
-| [`docs/ESTUDO_TCP_BBR_TFO_DNS_STALE_CACHE.md`](ESTUDO_TCP_BBR_TFO_DNS_STALE_CACHE.md) | Fundamentação RFC/Kernel de TCP BBR, TFO, `tcp_notsent_lowat` e DNS Stale Cache (`T-066`). |
-| [`docs/ESTUDO_W6X_OPENWRT_25_12_5_LATENCIA.md`](ESTUDO_W6X_OPENWRT_25_12_5_LATENCIA.md) | Recorte de latência e WED no Filogic 830 / OpenWrt 25.12.5 (`T-064`). |
-| [`docs/ESTUDO_WIFI_LATENCIA_BUFFERBLOAT.md`](ESTUDO_WIFI_LATENCIA_BUFFERBLOAT.md) | Estudo de AQL, airtime fairness e bufferbloat Wi-Fi (`T-064`). |
-| [`docs/REVISAO_ESTUDOS_WIFI_ARK_2_1_6.md`](REVISAO_ESTUDOS_WIFI_ARK_2_1_6.md) | Revisão consolidada dos parâmetros Wi-Fi após a release `v2.1.6` (`T-070`). |
+| [`docs/archive/ANALISE_HARDWARE_WIFI_W6X_2026_11_05.md`](archive/ANALISE_HARDWARE_WIFI_W6X_2026_11_05.md) | Diagnóstico pontual de hardware e Wi-Fi do W6x em 05/11/2026. |
+| [`docs/archive/ANALISE_MULTICORE_W6X_2026_11_02.md`](archive/ANALISE_MULTICORE_W6X_2026_11_02.md) | Auditoria somente-leitura de distribuição CPU/IRQ/NAPI/RPS no Acer W6x (`T-081`). |
+| [`docs/archive/ANALISE_WIFI_CELULARES_2026_11_02.md`](archive/ANALISE_WIFI_CELULARES_2026_11_02.md) | Investigação de limites de vazão Wi-Fi em smartphones no W6x (`T-080`). |
+| [`docs/archive/REGISTRO_SESSAO_WIFI_MULTICORE_2026_11_02.md`](archive/REGISTRO_SESSAO_WIFI_MULTICORE_2026_11_02.md) | Consolidação de testes de sessão Wi-Fi e multicore pós-`T-083` (`T-084`). |
+| [`docs/archive/OTIMIZACAO_MULTICORE_T083.md`](archive/OTIMIZACAO_MULTICORE_T083.md) | Registro da serialização de jobs (`serialized-job.sh`) e cache quente (`T-083`). |
+| [`docs/archive/DIAGNOSTICO_ONT_HUAWEI_2026_10_29.md`](archive/DIAGNOSTICO_ONT_HUAWEI_2026_10_29.md) | Telemetria óptica GPON da ONT Huawei EG8145X6-10 (`T-075`/`T-076`). |
+| [`docs/archive/DIAGNOSTICO_W6X_MONITORADO_2026_10_29.md`](archive/DIAGNOSTICO_W6X_MONITORADO_2026_10_29.md) | Correlação de amostras de CPU/CAKE, ICMP e UDP sob carga (`T-072`). |
+| [`docs/archive/DIAGNOSTICO_W6X_SONDAS_WAN_2026_10_29.md`](archive/DIAGNOSTICO_W6X_SONDAS_WAN_2026_10_29.md) | Captura ICMP WAN e análise de eventos ociosos (`T-073`/`T-074`). |
+| [`docs/archive/MIGRACAO_TP_LINK_XZ005_G6_2026_10_29.md`](archive/MIGRACAO_TP_LINK_XZ005_G6_2026_10_29.md) | Notas de preparação para ponte óptica TP-Link XZ005-G6 2.5GbE (`T-077`). |
+| [`docs/archive/MANUAL_ACESSO_E_COMANDOS_ONT_TPLINK_XZ005_G6.md`](archive/MANUAL_ACESSO_E_COMANDOS_ONT_TPLINK_XZ005_G6.md) | Manual técnico de acesso Telnet, CLI e Data Model HTTP (/cgi?9) da ONT TP-Link XZ005-G6. |
+| [`docs/archive/TESTE_WAVEFORM_CABO_2026_10_29.md`](archive/TESTE_WAVEFORM_CABO_2026_10_29.md) | Medições comparativas de Bufferbloat Waveform via cabo Ethernet (`T-071`). |
+| [`docs/archive/ESTUDO_TCP_BBR_TFO_DNS_STALE_CACHE.md`](archive/ESTUDO_TCP_BBR_TFO_DNS_STALE_CACHE.md) | Fundamentação RFC/Kernel de TCP BBR, TFO, `tcp_notsent_lowat` e DNS Stale Cache (`T-066`). |
+| [`docs/archive/ESTUDO_W6X_OPENWRT_25_12_5_LATENCIA.md`](archive/ESTUDO_W6X_OPENWRT_25_12_5_LATENCIA.md) | Recorte de latência e WED no Filogic 830 / OpenWrt 25.12.5 (`T-064`). |
+| [`docs/archive/ESTUDO_WIFI_LATENCIA_BUFFERBLOAT.md`](archive/ESTUDO_WIFI_LATENCIA_BUFFERBLOAT.md) | Estudo de AQL, airtime fairness e bufferbloat Wi-Fi (`T-064`). |
+| [`docs/archive/REVISAO_ESTUDOS_WIFI_ARK_2_1_6.md`](archive/REVISAO_ESTUDOS_WIFI_ARK_2_1_6.md) | Revisão consolidada dos parâmetros Wi-Fi após a release `v2.1.6` (`T-070`). |

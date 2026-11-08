@@ -91,7 +91,10 @@ class QosResources(unittest.TestCase):
 
     def test_repeated_reads_do_not_change_configuration(self):
         before = self.sb.uci_get('sqm.wan1.upload')
-        self.assertEqual(self.call('ark_cake_memlimit'), self.call('ark_cake_memlimit'))
+        val1 = self.call('ark_cake_memlimit')
+        val2 = self.call('ark_cake_memlimit')
+        self.assertEqual(val1, val2)
+        self.assertTrue(len(val1) > 0, "ark_cake_memlimit should return a non-empty limit string")
         self.assertEqual(self.sb.uci_get('sqm.wan1.upload'), before)
 
     def test_memory_plan_reports_policy_not_measured_capacity(self):
@@ -151,7 +154,8 @@ class QosResources(unittest.TestCase):
         self.assertEqual(self.sb.uci_get('sqm.wan1.eqdisc_opts'), 'memlimit 3M')
 
     def test_resource_report_is_read_only(self):
-        self.call('ark_is_readonly_action sqm-resource-plan')
+        r = self.sb.run_sh('. "$ARK_LIB_DIR/common.sh"; ark_is_readonly_action sqm-resource-plan')
+        self.assertEqual(r.returncode, 0, f"sqm-resource-plan should be recognized as read-only: {r.stderr}")
 
     def ctinfo(self, present=False, reject_ipv6=False, small=False):
         if present:

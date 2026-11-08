@@ -4,7 +4,7 @@ Inspeção em 02/11/2026, aproximadamente 13:53–14:02 (America/Sao_Paulo).
 Alvo: W6x 192.168.73.1, OpenWrt 25.12.6/kernel 6.12.112, ARK 2.1.8.
 Checkout: `89fda1c0`. Tarefa `T-081`. Diagnóstico exclusivamente em leitura.
 
-[Métricas derivadas da coleta, sem credenciais ou identificadores de clientes](audit/evidence/w6x_multicore_2026_11_02.json).
+[Métricas derivadas da coleta, sem credenciais ou identificadores de clientes](../audit/evidence/w6x_multicore_2026_11_02.json).
 
 ## Resultado principal
 

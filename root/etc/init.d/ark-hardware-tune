@@ -459,9 +459,9 @@ ark_hardware_tune_apply() {
 					ethtool -K "$iface" rx-udp-gro-forwarding on 2>/dev/null || true
 					ip link set dev "$iface" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
 					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \
-					tc qdisc replace dev "$iface" root fq_codel memory_limit 16Mb limit 10240 target 5ms quantum 15140 noecn 2>/dev/null || true
+					tc qdisc replace dev "$iface" root fq_codel memory_limit 16Mb limit 10240 target 5ms quantum 1514 ecn 2>/dev/null || true
 					for subq in 1 2 3 4 5 6 7 8 9 a b c d e f 10; do
-						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit 16Mb limit 10240 target 5ms quantum 15140 noecn 2>/dev/null || true
+						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit 16Mb limit 10240 target 5ms quantum 1514 ecn 2>/dev/null || true
 					done
 					;;
 			esac
@@ -552,9 +552,9 @@ ark_hardware_tune_apply() {
 					ethtool -K "$iface" rx-udp-gro-forwarding on 2>/dev/null || true
 					ip link set dev "$iface" txqueuelen 1000 gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
 					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \
-					tc qdisc replace dev "$iface" root fq_codel memory_limit 64Mb limit 10240 target 5ms quantum 15140 noecn 2>/dev/null || true
+					tc qdisc replace dev "$iface" root fq_codel memory_limit 64Mb limit 10240 target 5ms quantum 1514 ecn 2>/dev/null || true
 					for subq in 1 2 3 4 5 6 7 8 9 a b c d e f 10; do
-						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit 64Mb limit 10240 target 5ms quantum 15140 noecn 2>/dev/null || true
+						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit 64Mb limit 10240 target 5ms quantum 1514 ecn 2>/dev/null || true
 					done
 					;;
 			esac
@@ -643,9 +643,9 @@ ark_hardware_tune_apply() {
 					ethtool -K "$iface" rx-udp-gro-forwarding on 2>/dev/null || true
 					ip link set dev "$iface" txqueuelen "$txq" gro_max_size 16384 gro_ipv4_max_size 16384 2>/dev/null || true
 					tc qdisc replace dev "$iface" root handle 1: mq 2>/dev/null || \
-					tc qdisc replace dev "$iface" root fq_codel memory_limit "$qdisc_mem" limit "$qdisc_limit" target 5ms quantum 15140 noecn 2>/dev/null || true
+					tc qdisc replace dev "$iface" root fq_codel memory_limit "$qdisc_mem" limit "$qdisc_limit" target 5ms quantum 1514 ecn 2>/dev/null || true
 					for subq in 1 2 3 4 5 6 7 8 9 a b c d e f 10 11 12 13 14 15 16 17 18 19 1a 1b 1c 1d 1e 1f 20; do
-						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit "$qdisc_mem" limit "$qdisc_limit" target 5ms quantum 15140 noecn 2>/dev/null || true
+						tc qdisc replace dev "$iface" parent 1:${subq} fq_codel memory_limit "$qdisc_mem" limit "$qdisc_limit" target 5ms quantum 1514 ecn 2>/dev/null || true
 					done
 					;;
 			esac

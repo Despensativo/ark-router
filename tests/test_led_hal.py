@@ -334,6 +334,7 @@ class TestLedHal(unittest.TestCase):
             self.assertEqual(mi, "0 229 255", f"Ordem multi_index (RGB) incorreta: {mi}")
 
         # 4. Executa ciclo único do daemon ark-rainbowd no nó rgb:status
+        self.sb.uci_set("system.led_status.effect=rainbow")
         env = os.environ.copy()
         env["ARK_ROOT"] = self.sb.temp_dir
         env["ARK_TEST_SINGLE_PASS"] = "1"

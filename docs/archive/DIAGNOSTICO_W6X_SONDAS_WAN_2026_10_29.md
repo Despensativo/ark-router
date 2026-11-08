@@ -108,11 +108,11 @@ A tentativa anterior sem funcionamento ainda não tem causa identificada. Para i
 
 A comparação com a TP-Link só será conclusiva depois de acesso funcional e repetição das mesmas sondas. Uma porta de 2,5 GbE pode remover um limite Ethernet acima de 1 Gb/s, mas não explica nem resolve por si só os eventos ociosos de aproximadamente dois segundos. A prioridade continua sendo obter telemetria da Huawei e isolar a falha WAN observada.
 
-- [Comparação Mac/roteador](measurements/w6x-2026-10-29-comparacao/).
-- [Captura durante carga, que encerrou antes da falha](measurements/w6x-2026-10-29-captura-com-carga/).
-- [Captura e sondas ociosas que cobriram a falha](measurements/w6x-2026-10-29-captura-ocioso/).
+- [Comparação Mac/roteador](../measurements/w6x-2026-10-29-comparacao/).
+- [Captura durante carga, que encerrou antes da falha](../measurements/w6x-2026-10-29-captura-com-carga/).
+- [Captura e sondas ociosas que cobriram a falha](../measurements/w6x-2026-10-29-captura-ocioso/).
 
-![Última rodada Waveform; os eventos seguintes ocorreram fora de sua medição](screenshots/waveform-w6x-sondas-wan-2026-10-29.jpg)
+![Última rodada Waveform; os eventos seguintes ocorreram fora de sua medição](../screenshots/waveform-w6x-sondas-wan-2026-10-29.jpg)
 
 Diagnóstico de localização, sem atribuição definitiva de causa-raiz e sem mudança funcional. Uma futura alteração deve seguir o laboratório e a confirmação física exigidos pelo workspace.
 

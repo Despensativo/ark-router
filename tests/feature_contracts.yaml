@@ -1,5 +1,5 @@
 metadata:
-  version: 2.2.1
+  version: 2.2.4
   schema_version: '1.0'
   total_features: 74
   canonical_repo: GitHub/luci-app-ark-router
@@ -415,7 +415,7 @@ features:
   - luci-app-equipe-dashboard
   dependencies:
   - mwan3
-  - iptables ou nftables
+  - nftables (fw4) ou iptables (fw3 legado)
   - ip-full
   uci_configs:
   - package: mwan3
@@ -446,7 +446,7 @@ features:
   - ARK-WAN-007
   - ARK-SQM-003
   hw_limitations: Nenhuma.
-  openwrt_limitations: Requer suporte do mwan3 para o backend de firewall ativo (iptables ou nftables).
+  openwrt_limitations: Requer suporte do mwan3 para o backend de firewall ativo (nftables em fw4 ou iptables em fw3 legado).
   profiles:
   - full
   version: 1.5.2
@@ -1071,7 +1071,7 @@ features:
   - luci-app-equipe-dashboard
   dependencies:
   - firewall3 ou firewall4
-  - iptables ou nftables
+  - nftables (fw4) ou iptables (fw3 legado)
   uci_configs:
   - package: firewall
     sections:
@@ -1548,7 +1548,7 @@ features:
   acls:
   - luci-app-equipe-dashboard
   dependencies:
-  - tc-full ou iptables/nftables
+  - tc-full ou nftables (fw4) / iptables (fw3)
   - kmod-sched-core
   uci_configs:
   - package: qos_equipe

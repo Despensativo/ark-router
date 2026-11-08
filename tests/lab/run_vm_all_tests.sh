@@ -173,6 +173,9 @@ echo "============================================================"
 echo " PARTE 2: TESTE DE MUTAÇÃO REAL DE DNS LOCAL VS NUVEM"
 echo "============================================================"
 
+# Garante rota padrao para o gateway virtual do QEMU/UTM (192.168.1.2) se necessario
+ip route add default via 192.168.1.2 dev br-lan 2>/dev/null || ip route add default via 192.168.1.2 2>/dev/null || true
+
 # Garante baseline com dnsmasq rodando
 /etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 

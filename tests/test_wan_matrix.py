@@ -1265,7 +1265,7 @@ exit 0
         self.assertEqual(res_wol_wake.returncode, 0, f"Falha em wol-wake: {res_wol_wake.stderr}")
         self.assertEqual(json.loads(res_wol_wake.stdout).get("status"), "ok")
 
-    def test_34_ipv6_clat_smart_p2p_bypass(self):
+    def test_26_ipv6_clat_smart_p2p_bypass(self):
         """
         Valida o Smart Split-CLAT no modo ipv6_clat (Cloudflare Anycast IPv6 Gateway):
         1. Cria network.ark_clat6 com metric=5 e wan com metric=20.

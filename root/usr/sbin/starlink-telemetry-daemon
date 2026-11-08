@@ -154,6 +154,12 @@ check_startup_backlog() {
 
 flush_ram_to_flash() {
 	local cur_hour="$1"
+	local free_overlay_kb
+	free_overlay_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2 {print $4}')"
+	if [ -n "$free_overlay_kb" ] && [ "$free_overlay_kb" -le 1024 ] 2>/dev/null; then
+		log "AVISO: Menos de 1MB livre na flash (/overlay). Gravacao de historico em disco suspensa para evitar esgotamento."
+		return 0
+	fi
 	mkdir -p "$FLASH_DIR"
 
 	for csv in "$RAM_DIR"/active_*.csv; do

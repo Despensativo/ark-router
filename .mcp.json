@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "gcli2api": {
+      "description": "Local MCP bridge proxy to GCLI2API providing multi-tier model routing and deep reasoning analysis.",
+      "command": "/Users/user/.antigravity-tools-env/bin/python3",
+      "args": [
+        "/Users/user/Documents/gcli2api/mcp_bridge/server.py"
+      ],
+      "env": {
+        "API_BASE_URL": "http://127.0.0.1:7861"
+      }
+    }
+  }
+}

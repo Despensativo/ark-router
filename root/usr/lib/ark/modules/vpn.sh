@@ -1270,7 +1270,7 @@ wireguard_client_delete() {
 
 
 handle_vpn() {
-	action="$1"
+	local action="$1"
 	[ -n "$action" ] || { echo "Uso: $0 <comando> [args...]" >&2; exit 1; }
 	case "$action" in
 	zerotier-status)

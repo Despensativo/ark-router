@@ -65,6 +65,7 @@ check_node_syntax "$REPO_DIR/root/www/luci-static/resources/view/equipe-dashboar
 check_node_syntax "$REPO_DIR/root/www/luci-static/ark/ark-theme.js"
 "$PYTHON_CMD" "$REPO_DIR/scripts/build_frontend_bundle.py" --check
 "$NODE_CMD" "$SCRIPT_DIR/test_ui_capability_sync.cjs"
+"$NODE_CMD" "$SCRIPT_DIR/test_card_accordions.mjs"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_feature_remove_failures.py"
 printf "${GREEN}✓ Código JavaScript e sincronia do bundle válidos!${NC}\n\n"
 
@@ -75,12 +76,20 @@ printf "${YELLOW}[3/5] Executando matriz de testes de WAN, SQM, MTU, ARK Doctor 
 "$PYTHON_CMD" "$SCRIPT_DIR/test_qos_resources.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_qos_ingress.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_qos_benchmark.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_led_hal.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_led_service_lifecycle.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_hardware_tune.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_satellite_shield.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_wifi_hostapd_safety.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_device_stations.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_asu_toggle.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_multiwan_speedtest_prompt.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_qos_package_deps.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_multicore_optimization.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_doctor_safety.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_firewall_engine.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_amneziawg_and_mlo.py"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_loop_prevention.py"
 "$PYTHON_CMD" "$SCRIPT_DIR/test_lite_vs_full_scenarios.py"
 printf "${GREEN}✓ Todos os testes unitários e de cenários passaram com sucesso!${NC}\n\n"
 

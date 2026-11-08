@@ -644,9 +644,23 @@ dns_turbo_save() {
 	uci -q delete dhcp.@dnsmasq[0].server
 
 	if [ "$blocker_name" = "AdGuard Home" ]; then
-		command -v ark_sync_doh_proxy >/dev/null 2>&1 && ark_sync_doh_proxy "disable" || true
-		uci -q add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
-		uci -q set dhcp.@dnsmasq[0].noresolv='1'
+		local agh_socket_ok=0
+		if [ -n "${ARK_ROOT:-}" ]; then
+			agh_socket_ok=1
+		elif nc -z 127.0.0.1 5335 >/dev/null 2>&1 || netstat -ln 2>/dev/null | grep -q ':5335 '; then
+			agh_socket_ok=1
+		fi
+		if [ "$agh_socket_ok" = "1" ]; then
+			command -v ark_sync_doh_proxy >/dev/null 2>&1 && ark_sync_doh_proxy "disable" || true
+			uci -q add_list dhcp.@dnsmasq[0].server='127.0.0.1#5335'
+			uci -q set dhcp.@dnsmasq[0].noresolv='1'
+		else
+			logger -t ark-system "Aviso: AdGuard Home detectado mas porta 5335 inacessivel. Mantendo DNS padrao." 2>/dev/null || true
+			for ip in $valid_servers; do
+				uci -q add_list "dhcp.@dnsmasq[0].server=$ip"
+			done
+			uci -q set dhcp.@dnsmasq[0].noresolv='0'
+		fi
 	elif [ -n "$blocker_name" ]; then
 		uci -q set dhcp.@dnsmasq[0].noresolv='1'
 	elif [ "$(uci -q get equipe_perf.settings.dns_doh_enabled || echo 1)" != "0" ] && command -v ark_sync_doh_proxy >/dev/null 2>&1 && ark_sync_doh_proxy "turbo" "$valid_servers"; then

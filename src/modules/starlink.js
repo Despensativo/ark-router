@@ -1,5 +1,121 @@
 // /src/modules/starlink.js - ARK Router LuCI View Module
 const starlinkMethods = {
+	starlinkCard: function(data){
+		const f = (data.features && data.features.speedify) || {};
+		const detectionData = data.detectionData || {};
+		const adapters = Array.isArray(f.adapters) ? f.adapters : [];
+		const starlinkAdapters = adapters.filter(function(a){
+			return /starlink|spacex/i.test([a.isp, a.ispType, a.description, a.name, a.connectedNetworkName].join(' '));
+		});
+		const allNetworkInterfaces = ((detectionData.interfaces && detectionData.interfaces.interface) || []),
+			wanCandidates = allNetworkInterfaces.filter(function(i){
+				const routes = Array.isArray(i.route) ? i.route : [],
+					hasDefault = routes.some(function(r){ return r && (r.target === '0.0.0.0' || Number(r.mask) === 0); }),
+					name = String(i.interface || '');
+				return !!i.up && hasDefault && Array.isArray(i['ipv4-address']) && i['ipv4-address'].length > 0 && !/^(lan|loopback|guest|wg|zerotier)/i.test(name);
+			}).map(function(i){
+				const name = String(i.interface || ''),
+					address = String(i['ipv4-address'][0].address || ''),
+					gateway = wanGateway(i),
+					dns = (i['dns-server'] || i.dns_server || []),
+					ipParts = address.split('.').map(Number),
+					cgnatIp = ipParts.length === 4 && ipParts[0] === 100 && ipParts[1] >= 64 && ipParts[1] <= 127,
+					starlinkGateway = String(gateway) === '100.64.0.1',
+					starlinkDns = Array.isArray(dns) && dns.some(function(server){ return /^198\.54\.100\./.test(String(server)); }),
+					device = String(i.l3_device || i.device || ''),
+					confirmed = starlinkDns || (cgnatIp && starlinkGateway);
+				return { name: name, label: name.toUpperCase(), address: address, gateway: gateway, dns: dns, device: device, likely: confirmed, strong: confirmed };
+			});
+		let starlinkWans = wanCandidates.filter(function(w){
+			if (w.likely) return true;
+			return starlinkAdapters.some(function(a){
+				const haystack = [a.adapterID, a.name, a.description, a.connectedNetworkName].join(' ').toLowerCase();
+				return haystack.indexOf(w.name.toLowerCase()) >= 0 || (w.device && haystack.indexOf(w.device.toLowerCase()) >= 0);
+			});
+		});
+		if (!starlinkWans.length && starlinkAdapters.length) starlinkWans = wanCandidates.slice(0, Math.max(1, starlinkAdapters.length));
+		const starlinkDetected = starlinkWans.length > 0,
+			starlinkProblem = starlinkAdapters.length > 0 && !starlinkAdapters.some(function(a){ return !a.offline && String(a.state || '').toLowerCase() === 'connected'; });
+		this.starlinkWanOrder = starlinkWans.map(function(w){ return w.name; });
+		const starlinkPublic = (this.capabilities.features && this.capabilities.features.starlink_public) || {},
+			starlinkPublicInput = E('input', { type: 'checkbox', 'aria-label': 'Permitir visualização Starlink sem login', 'change': L.bind(function(ev){ this.toggleStarlinkPublic(ev.currentTarget); }, this) });
+		starlinkPublicInput.checked = !!starlinkPublic.enabled;
+		const activeStarlinkWan = (starlinkPublic.active_wan) || (starlinkWans[0] && starlinkWans[0].name) || 'wan';
+		const starlinkWanCards = starlinkWans.map(L.bind(function(w, index){
+			const wanId = portDomId(w.name),
+				saved = this.starlinkResults[w.name],
+				resultClass = saved ? (saved.aligned ? 'online' : 'offline') : 'standby',
+				resultLabel = saved ? (saved.aligned ? 'ALINHADA' : 'AJUSTAR') : (w.strong ? 'DETECTADA' : 'PROVÁVEL');
+			const isActiveRoute = (w.name === activeStarlinkWan);
+			let panel = null;
+			const actions = [
+				E('button', { class: 'ex-mini-button', 'click': L.bind(this.readStarlinkTelemetry, this, w.name) }, ['Consultar esta antena']),
+				E('button', { id: 'ex-starlink-live-' + wanId, class: 'ex-mini-button', 'click': L.bind(function(){ this.starlinkTelemetryActive && this.starlinkTelemetryWan === w.name ? this.stopStarlinkAlignment() : this.startStarlinkAlignment(w.name); }, this) }, ['Ajuste ao vivo (1 s)']),
+				E('button', { class: 'ex-mini-button', 'click': L.bind(this.finishStarlinkAndNext, this, w.name) }, ['Finalizar e ir para próxima'])
+			];
+			if (!isActiveRoute) {
+				actions.push(E('button', {
+					class: 'ex-mini-button',
+					style: 'border-color: rgba(56, 189, 248, 0.45); color: #38bdf8;',
+					click: L.bind(function(){
+						fs.exec('/usr/sbin/equipe-dashboard-control', ['starlink-active-wan-set', w.name]).then(L.bind(function(r){
+							if (r.code) throw new Error(r.stderr || 'Falha ao ativar rota');
+							this.triggerImmediateRefresh('Rota 192.168.100.1 e App Starlink apontados para ' + w.label + '!', 'info');
+						}, this)).catch(function(e){
+							ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+						});
+					}, this)
+				}, ['🎯 Definir como Antena Ativa']));
+			}
+			panel = E('details', { id: 'ex-starlink-wan-' + wanId, class: 'ex-starlink-wan', 'toggle': L.bind(function(){ this.activateStarlinkPanel(w.name, panel); }, this) }, [
+				E('summary', {}, [
+					E('span', {}, [
+						E('strong', {}, ['Starlink ' + (index + 1) + ' • ' + w.label]),
+						isActiveRoute ? E('span', { class: 'ex-perf-badge badge-green', style: 'margin-left: 8px;' }, ['🎯 ROTA ATIVA (192.168.100.1)']) : '',
+						E('small', { class: 'ex-muted' }, ['IP ' + w.address + ' • gateway ' + w.gateway + ' • interface ' + (w.device || '—')])
+					]),
+					E('span', { id: 'ex-starlink-result-' + wanId, class: 'ex-pill ' + resultClass }, [resultLabel])
+				]),
+				E('div', { class: 'ex-starlink-wan-body' }, [
+					E('div', { class: 'ex-starlink-telemetry-actions' }, actions),
+					E('small', { id: 'ex-starlink-telemetry-' + wanId, class: 'ex-muted ex-starlink-telemetry-copy' }, [isActiveRoute ? ('Esta antena é a rota ativa para o App Starlink e 192.168.100.1.') : ('Leitura isolada pela ' + w.label + ' • clique em "Definir como Antena Ativa" para usar no App oficial.')]),
+					E('div', { id: 'ex-starlink-orientation-' + wanId, class: 'ex-starlink-orientation' }, ['Os mostradores aparecerão após consultar esta antena.'])
+				])
+			]);
+			return panel;
+		}, this));
+		const starlinkAlwaysShow = !!(this.capabilities.features && (this.capabilities.features.starlink_always_show === 1 || this.capabilities.features.starlink_always_show === true || this.capabilities.features.starlink_always_show === '1')) || (localStorage.getItem('ark_starlink_always_show') === '1');
+		const showStarlinkPanel = starlinkDetected || starlinkAlwaysShow;
+		const luci = !!(f && f.luci);
+		const starlinkPanel = E('details', { id: 'ex-starlink-global-panel', class: 'ex-starlink-panel ' + (starlinkProblem ? 'problem' : (starlinkDetected ? 'detected' : 'idle')), style: showStarlinkPanel ? '' : 'display:none;' }, [
+			E('summary', {}, [
+				E('span', { class: 'ex-starlink-summary-main' }, [
+					E('span', { class: 'ex-starlink-icon' }, ['◉']),
+					E('span', {}, [E('strong', {}, ['Starlink']), E('small', { class: 'ex-muted' }, [starlinkDetected ? (starlinkWans.length + ' entrada' + (starlinkWans.length === 1 ? '' : 's') + ' Starlink detectada' + (starlinkWans.length === 1 ? '' : 's') + ' • ajuste sequencial') : (starlinkAlwaysShow ? 'Exibição forçada via configuração • Nenhuma antena física conectada' : 'Nenhuma entrada Starlink detectada')])])
+				]),
+				E('span', { class: 'ex-pill ' + (starlinkProblem ? 'offline' : (starlinkDetected ? 'online' : 'standby')) }, [starlinkProblem ? 'SEM CONEXÃO' : (starlinkDetected ? 'DETECTADA' : 'AGUARDANDO')])
+			]),
+			E('div', { class: 'ex-starlink-body' }, [
+				starlinkWans.length >= 2 ? E('div', { class: 'ex-starlink-multi-warning' }, [
+					E('strong', {}, ['Duas ou mais Starlink detectadas']),
+					E('span', {}, ['Se possível, instale as antenas afastadas e aponte-as para lados diferentes. Não é uma disputa direta por satélite, mas essa separação reduz obstruções compartilhadas e possível interferência, melhorando a diversidade dos enlaces.'])
+				]) : '',
+				starlinkDetected ? E('div', { class: 'ex-starlink-list ex-starlink-wan-list' }, starlinkWanCards) : E('p', { class: 'ex-muted' }, [starlinkAlwaysShow ? 'Painel exibido conforme configuração de preferência. Quando uma WAN Starlink for conectada, os mostradores de alinhamento 3D aparecerão aqui automaticamente.' : 'Quando uma WAN compatível for detectada, o ARK criará um card independente para consultar e alinhar cada antena.']),
+				E('div', { class: 'ex-starlink-public' }, [
+					E('div', {}, [E('strong', {}, ['Visualização sem login']), E('small', { class: 'ex-muted' }, ['Libera apenas telemetria e alinhamento em /starlink/ para dispositivos da LAN. Não permite alterar nenhuma configuração.']), E('a', { id: 'ex-starlink-public-link', class: 'ex-text-link', href: '/starlink/', target: '_blank', rel: 'noopener noreferrer', hidden: !starlinkPublic.enabled }, ['Abrir painel somente leitura →'])]),
+					E('div', { class: 'ex-device-switch-control' }, [E('strong', { id: 'ex-starlink-public-state', class: 'ex-device-switch-state' }, [starlinkPublic.enabled ? 'LIGADO' : 'DESLIGADO']), E('label', { class: 'ex-switch' }, [starlinkPublicInput, E('span', { class: 'ex-switch-slider' })])])
+				]),
+				E('div', { class: 'ex-starlink-note' }, [
+					E('strong', {}, ['Central de Antenas Starlink (Alinhamento 3D)']),
+					E('small', { class: 'ex-muted' }, ['Uma antena é consultada por vez através de uma rota temporária exclusiva para 192.168.100.1. Internet, mwan3 e Speedify permanecem inalterados.']),
+					luci && f.active ? E('a', { class: 'ex-text-link', href: L.url('admin/speedify'), target: '_blank', rel: 'noopener noreferrer' }, ['Abrir Central Starlink / Speedify →']) : (luci ? E('small', { class: 'ex-muted' }, ['Ligue o BONDING REAL para iniciar a Central Starlink oficial.']) : '')
+				]),
+				this.renderStarlinkTelemetrySection()
+			])
+		]);
+		this._starlinkPanel = starlinkPanel;
+		return starlinkPanel;
+	},
 	activateStarlinkPanel: function(wanName,panel){
 		if(!panel||!panel.open)return;document.querySelectorAll('.ex-starlink-wan').forEach(function(other){if(other!==panel)other.open=false;});if(this.starlinkTelemetryActive&&this.starlinkTelemetryWan!==wanName)this.stopStarlinkAlignment();
 	},

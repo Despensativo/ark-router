@@ -162,7 +162,7 @@ Use **ARK Router → Recursos → ZeroTier remoto** when remote administration i
 3. Authorize the router node in ZeroTier Central.
 4. Add a managed route for your router LAN subnet in ZeroTier Central.
 
-WireGuard is also available for point-to-point and site-to-site VPN tunnels. Note that Tailscale was removed in v1.5.9 due to high binary footprint on flash-constrained devices.
+WireGuard is also available for point-to-point and site-to-site VPN tunnels; ZeroTier and WireGuard are the official remote access solutions.
 
 OpenWrt `luci-i18n-*` language packages are optional. ARK Router ships an English fallback and uses its own selected runtime language, so the dashboard does not depend on LuCI translation packages. On space-constrained routers, keeping only the selected ARK language plus English is the recommended model; original LuCI module pages may remain in English when their `luci-i18n-*` packages are not installed.
 

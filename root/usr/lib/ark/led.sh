@@ -217,6 +217,9 @@ ark_led_start_rainbow() {
 	[ -n "$speed" ] && uci -q set "system.led_status.speed=$speed"
 	uci commit system 2>/dev/null || true
 
+	[ -z "${ARK_TEST_SINGLE_PASS:-}" ] || return 0
+	[ -z "${ARK_ROOT:-}" ] || return 0
+
 	if [ -x /etc/init.d/ark-rainbowd ]; then
 		/etc/init.d/ark-rainbowd enable >/dev/null 2>&1 || true
 		/etc/init.d/ark-rainbowd stop >/dev/null 2>&1 || true
@@ -228,6 +231,7 @@ ark_led_start_rainbow() {
 }
 
 ark_led_stop_rainbow() {
+	[ -z "${ARK_ROOT:-}" ] || return 0
 	if [ -x /etc/init.d/ark-rainbowd ]; then
 		/etc/init.d/ark-rainbowd stop >/dev/null 2>&1 || true
 	fi

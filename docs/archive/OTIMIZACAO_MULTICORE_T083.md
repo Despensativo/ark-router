@@ -64,7 +64,7 @@ Janelas passivas de 30 s: cgroup RPCd+filhos passou de 9,662357 s de CPU (32,21%
 
 ### Carga final e integridade
 
-[Evidência resumida em JSON](audit/evidence/w6x_t083_deploy_2026_11_02.json).
+[Evidência resumida em JSON](../audit/evidence/w6x_t083_deploy_2026_11_02.json).
 
 Durante o teste solicitado no iPhone, duas janelas de aproximadamente 10 s mostraram 537,95/518,18 Mb/s de entrada PPPoE e 559,55/539,50 Mb/s de TX no AP 5 GHz. Outra janela mostrou 546,32 Mb/s de saída PPPoE e 551,53 Mb/s de RX no AP. São taxas agregadas por interface/camada, não a leitura final do Fast no telefone. O maior uso médio por núcleo foi 62,7% nessas janelas; não exclui picos menores que 10 s.
 

@@ -2,7 +2,7 @@
 
 **Data:** 03 de Novembro de 2026  
 **Dispositivo de Homologação ao Vivo:** Acer Predator Connect W6x (`MediaTek Filogic 830 / MT7986A`, 4 Cores @ 2.0 GHz, 1 GB RAM, OpenWrt `25.12.6`, Fibra Simétrica PPPoE `xpon_bridge` `1492B`)  
-**Versão do Ecossistema:** `luci-app-ark-router v2.1.8-r1`
+**Versão do Ecossistema:** `luci-app-ark-router v2.2.1` (introduzido em `v2.1.8-r1`, ativo e canônico em `v2.2.1`)
 
 ---
 

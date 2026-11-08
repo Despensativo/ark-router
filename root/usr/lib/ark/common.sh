@@ -5,7 +5,7 @@
 [ -z "${_ARK_COMMON_SH_LOADED:-}" ] || return 0
 _ARK_COMMON_SH_LOADED=1
 
-ARK_ROUTER_VERSION="2.2.1"
+ARK_ROUTER_VERSION="2.2.4"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 ARK_ROOT="${ARK_ROOT:-}"
 
@@ -427,10 +427,12 @@ ark_release_lock() {
 }
 
 ez_backup() {
-	local stamp file stage _cfg_dir cfg
-	stamp="$(date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)"
-	file="/tmp/ark-router-ezsetup-backup-$stamp.tar.gz"
-	stage="/tmp/ark-router-ezsetup-backup-$stamp"
+	local stamp file stage _cfg_dir cfg _tmp_base
+	stamp="$(date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)-$$"
+	_tmp_base="${ARK_ROOT}/tmp"
+	[ -d "$_tmp_base" ] || _tmp_base="/tmp"
+	file="$_tmp_base/ark-router-ezsetup-backup-$stamp.tar.gz"
+	stage="$_tmp_base/ark-router-ezsetup-backup-$stamp"
 	rm -rf "$stage"
 	mkdir -p "$stage/etc/config" "$stage/metadata" || return 1
 	_cfg_dir="${ARK_ROOT}/etc/config"
@@ -449,35 +451,49 @@ ez_backup() {
 	} > "$stage/metadata/README.txt"
 	tar -czf "$file" -C "$stage" . || return 1
 	rm -rf "$stage"
-	ls -1t /tmp/ark-router-ezsetup-backup-*.tar.gz 2>/dev/null | tail -n +4 | xargs rm -f 2>/dev/null || true
-	ls -1t /tmp/ark-profile-backup-*.tar.gz 2>/dev/null | tail -n +4 | xargs rm -f 2>/dev/null || true
+	ls -1t "$_tmp_base"/ark-router-ezsetup-backup-*.tar.gz 2>/dev/null | tail -n +4 | xargs rm -f 2>/dev/null || true
+	ls -1t "$_tmp_base"/ark-profile-backup-*.tar.gz 2>/dev/null | tail -n +4 | xargs rm -f 2>/dev/null || true
 	command -v ez_set >/dev/null 2>&1 && ez_set backup "$file"
 	printf '%s' "$file"
 }
 
 detect_dns_blocker() {
-	if pgrep -x 'AdGuardHome' >/dev/null 2>&1 || pgrep -x 'adguardhome' >/dev/null 2>&1; then
-		echo "AdGuard Home"
-		return 0
+	local _adb_en _agh_en
+	_adb_en="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adblock_enabled || echo 1)"
+	_agh_en="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adguard_enabled || echo 1)"
+	if [ "$_adb_en" != "0" ] && [ "$_agh_en" != "0" ]; then
+		if [ -n "${ARK_ROOT:-}" ]; then
+			if pgrep -x 'AdGuardHome' >/dev/null 2>&1 || pgrep -x 'adguardhome' >/dev/null 2>&1; then
+				echo "AdGuard Home"
+				return 0
+			fi
+		elif (pgrep -x 'AdGuardHome' >/dev/null 2>&1 || pgrep -x 'adguardhome' >/dev/null 2>&1 || { [ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome status 2>/dev/null | grep -v 'not running' | grep -q 'running'; }); then
+			if nc -z 127.0.0.1 5335 >/dev/null 2>&1 || netstat -ln 2>/dev/null | grep -q ':5335 '; then
+				echo "AdGuard Home"
+				return 0
+			fi
+		fi
 	fi
-	if [ "$(uci -q get equipe_perf.settings.adblock_cloud || printf 0)" = 1 ]; then
-		local cur_dns="$(uci -q get dhcp.@dnsmasq[0].server 2>/dev/null || true)"
+	if [ "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adblock_cloud || printf 0)" = 1 ]; then
+		local cur_dns="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get dhcp.@dnsmasq[0].server 2>/dev/null || true)"
 		case " $cur_dns " in
 			*" 127.0.0.1#5053"*|*" 127.0.0.1#5054"*|*" 1.1.1.2 "*|*" 1.0.0.2 "*|*" 1.1.1.3 "*|*" 1.0.0.3 "*|*" 94.140.14."* |*" 94.140.15."* |*" 208.67.222.123 "*|*" 208.67.220.123 "*|*" 185.228.168."* |*" 185.228.169."* |*" 9.9.9.9 "*|*" 149.112.112.112 "*|*" 76.76.2."* |*" 76.76.10."* |*" 45.90.28."* |*" 45.90.30."* )
 				echo "Bloqueador em Nuvem"
 				return 0
 				;;
 			*)
-				if [ -n "${ARK_ROOT:-}" ] || [ -z "$cur_dns" ] || [ -n "$(uci -q get equipe_perf.settings.adblock_cloud_provider 2>/dev/null || true)" ]; then
+				if [ -n "${ARK_ROOT:-}" ] || [ -z "$cur_dns" ] || [ -n "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adblock_cloud_provider 2>/dev/null || true)" ]; then
 					echo "Bloqueador em Nuvem"
 					return 0
 				fi
 				;;
 		esac
 	fi
-	if [ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome status 2>/dev/null | grep -v 'not running' | grep -q 'running'; then
-		echo "AdGuard Home"
-		return 0
+	if [ "$_adb_en" != "0" ] && [ "$_agh_en" != "0" ] && [ -n "${ARK_ROOT:-}" ]; then
+		if [ -x /etc/init.d/adguardhome ] && /etc/init.d/adguardhome status 2>/dev/null | grep -v 'not running' | grep -q 'running'; then
+			echo "AdGuard Home"
+			return 0
+		fi
 	fi
 	if [ -f /etc/init.d/adblock-fast ] && /etc/init.d/adblock-fast status 2>/dev/null | grep -v 'not running' | grep -q 'running'; then
 		echo "Adblock Fast"
@@ -1695,9 +1711,11 @@ ez_get() { uci -q get "equipe_dashboard.setup.$1" 2>/dev/null || printf '%s' "$2
 ez_set() { uci -q set equipe_dashboard.setup=ezsetup; uci -q set "equipe_dashboard.setup.$1=$2"; }
 
 cleanup_backup() {
-	local stamp file
-	stamp="$(date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)"
-	file="/tmp/ark-router-before-cleanup-$stamp.tar.gz"
+	local stamp file _tmp_base
+	stamp="$(date +%Y%m%d-%H%M%S 2>/dev/null || echo unknown)-$$"
+	_tmp_base="${ARK_ROOT}/tmp"
+	[ -d "$_tmp_base" ] || _tmp_base="/tmp"
+	file="$_tmp_base/ark-router-before-cleanup-$stamp.tar.gz"
 	if command -v sysupgrade >/dev/null 2>&1; then sysupgrade -b "$file" >/dev/null 2>&1 || return 1
 	else ez_backup >/dev/null || return 1; file="$(ez_get backup '')"
 	fi

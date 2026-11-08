@@ -276,6 +276,7 @@ mwan_status_fast() {
 }
 
 handle_network() {
+	local iface mode device proto username password ipaddr netmask gateway dns macaddr modem_ip metric ipv6 delegate key value pair
 	case "$1" in
 	mwan-status-fast|mwan-status)
 		mwan_status_fast

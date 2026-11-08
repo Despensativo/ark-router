@@ -37,6 +37,11 @@ wan_interfaces() {
 }
 
 flush_to_persist() {
+	local free_overlay_kb
+	free_overlay_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2 {print $4}')"
+	if [ -n "$free_overlay_kb" ] && [ "$free_overlay_kb" -le 1024 ] 2>/dev/null; then
+		return 0
+	fi
 	[ -s "$history" ] && cp "$history" "$persist" 2>/dev/null || true
 	[ -s "$wan_daily" ] && cp "$wan_daily" "$wan_daily_persist" 2>/dev/null || true
 }
@@ -145,13 +150,11 @@ rpcd_stuck_cycles=0
 check_rpcd_health() {
 	local rpcd_count
 	rpcd_count="$(pgrep -c rpcd 2>/dev/null || echo 1)"
-	if [ "$rpcd_count" -ge 3 ]; then
+	if [ "$rpcd_count" -ge 4 ]; then
 		rpcd_stuck_cycles=$((rpcd_stuck_cycles + 1))
-		if [ "$rpcd_stuck_cycles" -ge 6 ]; then
-			logger -t ark-watchdog "Detectados $rpcd_count processos rpcd acumulados por mais de 30s. Auto-recuperando servicos web..."
-			killall -9 rpcd uhttpd 2>/dev/null || true
-			/etc/init.d/rpcd start >/dev/null 2>&1 || true
-			/etc/init.d/uhttpd start >/dev/null 2>&1 || true
+		if [ "$rpcd_stuck_cycles" -ge 12 ]; then
+			logger -t ark-watchdog "AVISO: $rpcd_count processos rpcd acumulados por mais de 60s. Solicitando reload suave do rpcd..."
+			[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload >/dev/null 2>&1 || true
 			rpcd_stuck_cycles=0
 		fi
 	else

@@ -1,0 +1,41 @@
+{
+  "version": "1.0",
+  "description": "PreToolUse and Stop security guardrails for ARK Router AI agent operations",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|Delete",
+        "description": "Block direct modification of secret configurations, git internal metadata and permanent backup snapshots",
+        "denyPatterns": [
+          "**/.secrets/**",
+          "**/.git/**",
+          "**/.env*",
+          "Offline/**",
+          "Backups/**"
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "description": "Block destructive host operations, privilege escalation and unauthorized physical router flashing",
+        "denyPatterns": [
+          "git push *--force*",
+          "rm -rf /Volumes/*",
+          "rm -rf /*",
+          "sudo *",
+          "chmod 777 *",
+          "chmod -R 777 *",
+          "*mtd write *mtd14*",
+          "*mtd write *mtd15*",
+          "* > /dev/mtd*",
+          "ssh *sysupgrade*"
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "description": "Audit session changes for leaked credentials, unstaged secrets or trailing test artifacts",
+        "command": "python3 scripts/audit_shell_scripts.py"
+      }
+    ]
+  }
+}

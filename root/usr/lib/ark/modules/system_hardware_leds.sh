@@ -541,7 +541,7 @@ apply_aw21018_leds() {
 }
 
 set_led_rgb_color() {
-	local wan_dev clean_color r_hex g_hex b_hex p hw_byte0 hw_byte1 hw_byte2 r_led
+	local wan_dev clean_color r_hex g_hex b_hex p hw_byte0 hw_byte1 hw_byte2 r_led r_val g_val b_val hex_display clean_hex
 	local raw_color="${1:-#00FF00}"
 	local chosen_effect="${2:-}"
 	local chosen_speed="${3:-}"
@@ -1410,9 +1410,10 @@ EOF
 		fi
 	fi
 
-	sysctl -p "${sysctl_dir}/99-ark-hardware-tune.conf" >/dev/null 2>&1 || true
-	[ -f "${sysctl_dir}/99-ark-memory.conf" ] && sysctl -p "${sysctl_dir}/99-ark-memory.conf" >/dev/null 2>&1 || true
 	[ -f "${sysctl_dir}/99-ark-conntrack.conf" ] && sysctl -p "${sysctl_dir}/99-ark-conntrack.conf" >/dev/null 2>&1 || true
+	[ -f "${sysctl_dir}/99-ark-memory.conf" ] && sysctl -p "${sysctl_dir}/99-ark-memory.conf" >/dev/null 2>&1 || true
+	sysctl -p "${sysctl_dir}/99-ark-hardware-tune.conf" >/dev/null 2>&1 || true
+	[ -w /sys/module/nf_conntrack/parameters/hashsize ] && echo $((ct_max / 4)) > /sys/module/nf_conntrack/parameters/hashsize 2>/dev/null || true
 
 	# --- 6. Dimensionamento de Cache do DNSmasq (preserva cachesize superior em sistemas >= 256MB RAM) ---
 	if [ -f /etc/config/dhcp ] || [ -n "${ARK_ROOT}" -a -f "${ARK_ROOT}/etc/config/dhcp" ] || [ -n "${UCI_CONFIG_DIR}" -a -f "${UCI_CONFIG_DIR}/dhcp" ]; then

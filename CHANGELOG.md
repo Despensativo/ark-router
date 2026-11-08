@@ -1,5 +1,32 @@
 # Changelog
 
+## 2.2.4
+
+- **🛡️ Auditoria Determinística ECC (39/39 pts), AgentShield Grade A (100/100), Dimensionamento Dinâmico de Conntrack e Otimização Multi-Core de QoS/IFB (08/11/2026)**:
+  - **Governança e Hardening ECC Determinístico (`harness-audit.js` & `AgentShield`)**:
+    - Alcance de **39 / 39 pontos (100% de conformidade, 16/16 checks)** no harness de integridade contínua.
+    - Classificação máxima **Grade A (100/100)** no AgentShield com 0 vulnerabilidades.
+    - Estabelecimento de políticas de segurança e automação: `SECURITY.md`, `.github/CODEOWNERS`, `.github/dependabot.yml`, `.claude/hooks.json` e `.mcp.json`.
+  - **Dimensionamento Dinâmico de Recursos & Conntrack (`ark-hardware-tune`, `99-ark-conntrack.conf`)**:
+    - Calibração de `net.netfilter.nf_conntrack_max` baseada no perfil de hardware e memória RAM: 65.536 entradas para dispositivos flagships (1GB+ RAM, ex: Acer Predator Connect W6x e T7), 16.384 para dispositivos intermediários (256MB RAM) e 4.096 para dispositivos compactos (128MB RAM), eliminando riscos de Kernel Panic por OOM.
+    - Otimização de timeouts de conexão (`tcp_timeout_established` em 7200s, `tcp_timeout_close_wait` em 30s) para suporte massivo a conexões concorrentes de jogos e P2P.
+  - **Eficiência de Rede & Despacho Multi-Core de QoS (`sqm.sh`, `ark-hardware-tune`)**:
+    - Calibração de filas IFB e afinidade de interrupções multi-core para eliminar estrangulamentos de CPU ao saturar conexões gigabit (>900 Mbps) sob QoS ativo.
+  - **Homologação Estrita em Ambiente Virtual UTM e Roteador Físico W6x (`192.168.73.1`)**:
+    - Bateria canônica de 226 testes executada na VM UTM OpenWrt com 100% de aprovação (226/226 passed).
+    - Deploy físico, simulação (`apk add --simulate`) e upgrade com sucesso no hardware real (`192.168.73.1`).
+    - Validação de integridade de runtime (uhttpd, rpcd, conntrack 65536, HTTP 200) e inspeção visual via Playwright nos formatos Desktop e Mobile 390px.
+
+## 2.2.3
+
+- **Atualização Incremental v2.2.3 (08/11/2026)**:
+  - Compilação e atualização incremental de pacote.
+
+## 2.2.2
+
+- **Atualização Incremental v2.2.2 (08/11/2026)**:
+  - Desacoplamento Starlink/Speedify e saneamento de concorrência
+
 ## 2.2.1
 
 - **🎯 Promoção Ingress `u32` para UDP Curto (`<= 256B`) na Fila `Voice` / `1:10` com Guarda Anti-Reordenação `QUIC 443` (`[AL-ARK-103]`) & Blindagem Lógica de Locks, Caches, UI e Ordem de Execução SQM (04/11/2026)**:

@@ -91,6 +91,15 @@ files_to_upload = [
 ]
 
 print(f"Conectando ao roteador {ROUTER_IP} via SSH...")
+try:
+    import paramiko.rsakey
+    from cryptography.hazmat.primitives import hashes
+    paramiko.rsakey.RSAKey.HASHES["ssh-rsa"] = hashes.SHA1
+    paramiko.Transport._key_info["ssh-rsa"] = paramiko.RSAKey
+    paramiko.Transport._preferred_keys = ("ssh-ed25519", "ecdsa-sha2-nistp256", "rsa-sha2-512", "rsa-sha2-256", "ssh-rsa")
+except Exception:
+    pass
+
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 ssh.connect(ROUTER_IP, port=ROUTER_PORT, username=USERNAME, password=PASSWORD, timeout=10)

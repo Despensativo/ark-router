@@ -33,7 +33,7 @@ Esses dados substituem a incerteza documental sobre versão e direção de 700M/
 - Waveform foi iniciado durante a coleta. Fases de carga do relatório do roteador foram inferidas de taxas >100 Mb/s e predominância por direção; suas fronteiras são aproximadas.
 - O teste não isolou os demais clientes/processos; taxas e contadores do roteador são agregados. A coleta também tem pequeno custo de CPU/tráfego.
 
-Dados finitos preservados em [measurements/w6x-2026-10-29-monitorado](measurements/w6x-2026-10-29-monitorado/): `router.log`, `udp.jsonl`, `icmp.log`, `meta.json` e `parsed.json`. Os percentis calculados para sondas usam a amostra ordenada; não são a definição interna do Waveform.
+Dados finitos preservados em [measurements/w6x-2026-10-29-monitorado](../measurements/w6x-2026-10-29-monitorado/): `router.log`, `udp.jsonl`, `icmp.log`, `meta.json` e `parsed.json`. Os percentis calculados para sondas usam a amostra ordenada; não são a definição interna do Waveform.
 
 ## 3. Resultado Waveform
 
@@ -98,6 +98,6 @@ Os dez timeouts de cada destino ICMP externo se concentraram na mesma janela, n�
 4. **Investigar processamento do download em ensaio próprio:** comparar distribuição e custos de CPU/filas, com referência estável. Mudanças de IRQ/RPS/taxa exigem teste isolado, preservação de estado e fluxo de laboratório/autorizações do projeto.
 5. Não confundir o evento ocioso com os 134 ms internos da fila durante download: ocorreram em momentos e condições diferentes.
 
-![Resumo da rodada](screenshots/waveform-cabo-2026-10-29-monitorado.jpg)
+![Resumo da rodada](../screenshots/waveform-cabo-2026-10-29-monitorado.jpg)
 
 Este diagnóstico mede o estado atual; não altera parâmetros nem declara encontrada a causa-raiz definitiva. A leitura física não substitui teste virtual de futuras mudanças.

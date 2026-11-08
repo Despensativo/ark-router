@@ -132,7 +132,7 @@ ark_promote_cake_mq() {
 					[ -w "$ifb_q" ] && echo 3 > "$ifb_q" 2>/dev/null || true
 				done
 			fi
-			for ifb_q in /sys/class/net/pppoe*/queues/rx-*/rps_cpus; do
+			for ifb_q in /sys/class/net/pppoe*/queues/rx-*/rps_cpus /sys/class/net/ifb*/queues/rx-*/rps_cpus; do
 				[ -w "$ifb_q" ] && echo "$rps_mask" > "$ifb_q" 2>/dev/null || true
 			done
 			pppoe_phys="$(uci -q get network.wan.device || uci -q get network.wan.ifname || uci -q get network.wan1.device || echo '')"
@@ -1266,6 +1266,8 @@ ark_sqm_select_engine() {
 }
 
 handle_sqm() {
+	local wan_count submitted_sections waveform_aplus_override sqm_engine_override gaming_ports_override key value pair
+	local section network_section device enabled download upload linklayer overhead eqdisc_opts iqdisc_opts target_sqm_dev
 	case "$1" in
 	sqm-toggle)
 		case "$2" in 0|1) ;; *) echo 'Estado SQM invalido' >&2; exit 2 ;; esac

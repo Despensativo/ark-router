@@ -123,7 +123,10 @@ python3 scripts/audit_state_preservation.py --strict
 # 6. Bateria completa de testes locais (5 estágios: Shell, JS, Testes WAN/QoS/Doctor, Contratos, Minificação)
 bash tests/run_local_tests.sh
 
-# 7. Validação em laboratório virtual isolado (QEMU / VirtualBox)
+# 7. Validação em laboratório virtual isolado (UTM/QEMU no macOS / VirtualBox no Windows)
+# No macOS (100% CLI nativo com proteção -snapshot):
+./scripts/mac_vm.sh test
+# No Windows (VirtualBox):
 python3 tests/lab/test_vm_matrix_validation.py
 ```
 
@@ -139,8 +142,8 @@ python3 tests/lab/test_vm_matrix_validation.py
 | **Desenvolvedor Backend (Shell/RPC)** | [`docs/CODE_MAP.md`](CODE_MAP.md) (buscar linhas da função)<br/>[`docs/ARCHITECTURE.md`](ARCHITECTURE.md)<br/>[`docs/ARK_ROUTER_EXHAUSTIVE_COMMANDS_AND_SUBSYSTEMS_MANUAL.md`](ARK_ROUTER_EXHAUSTIVE_COMMANDS_AND_SUBSYSTEMS_MANUAL.md) | Não ler `overview.js`, lotes em `docs/audit/batches/` ou arquivos históricos de 10/2026. |
 | **Desenvolvedor Frontend (LuCI JS/CSS)** | [`docs/UI_DESIGN_SYSTEM_AND_QA.md`](UI_DESIGN_SYSTEM_AND_QA.md)<br/>[`docs/ark-ui-rules.md`](ark-ui-rules.md)<br/>`src/core/` ou `src/modules/` específico | Não ler arquivos `.sh`, `overview.js` na íntegra ou enciclopédias de QoS. |
 | **Engenheiro de QoS & Bufferbloat** | [`docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md`](ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md)<br/>[`docs/TRATADO_DEFINITIVO_QOS_AQM_LINUX_OPENWRT.md`](TRATADO_DEFINITIVO_QOS_AQM_LINUX_OPENWRT.md)<br/>[`docs/QOS_TEST_PROTOCOL.md`](QOS_TEST_PROTOCOL.md) | Não ler módulos de Wi-Fi, templates LuCI ou relatórios de lotes antigos. |
-| **Engenheiro de Redes, IPv6 & Wi-Fi** | [`docs/WPAD_UPGRADE_AND_WIFI6_ROAMING.md`](WPAD_UPGRADE_AND_WIFI6_ROAMING.md)<br/>[`docs/COMPATIBILITY_MATRIX.md`](COMPATIBILITY_MATRIX.md)<br/>[`PLAYBOOK.md`](../../PLAYBOOK.md) (Seções 3, 4, 10 e 17) | Não ler código do frontend LuCI nem manuais de ONT não relacionados à tarefa. |
-| **QA, Testes & Homologação em VM** | [`docs/VIRTUALBOX_TEST_ENVIRONMENT.md`](VIRTUALBOX_TEST_ENVIRONMENT.md)<br/>[`docs/VIRTUAL_LAB.md`](VIRTUAL_LAB.md)<br/>[`docs/LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md`](LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md) | Não ler arquivos de changelog completo ou estudos teóricos de BBR/TFO. |
+| **Engenheiro de Redes, IPv6 & Wi-Fi** | [`docs/WPAD_UPGRADE_AND_WIFI6_ROAMING.md`](WPAD_UPGRADE_AND_WIFI6_ROAMING.md)<br/>[`docs/COMPATIBILITY_MATRIX.md`](COMPATIBILITY_MATRIX.md)<br/>[`PLAYBOOK.md`](../../../PLAYBOOK.md) (Seções 3, 4, 10 e 17) | Não ler código do frontend LuCI nem manuais de ONT não relacionados à tarefa. |
+| **QA, Testes & Homologação em VM** | [`docs/MAC_UTM_TEST_ENVIRONMENT.md`](MAC_UTM_TEST_ENVIRONMENT.md) (macOS)<br/>[`docs/VIRTUALBOX_TEST_ENVIRONMENT.md`](VIRTUALBOX_TEST_ENVIRONMENT.md) (Windows)<br/>[`docs/LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md`](LIFECYCLE_INSTALL_AND_UNINSTALL_GUIDE.md) | Não ler arquivos de changelog completo ou estudos teóricos de BBR/TFO. |
 
 ---
 

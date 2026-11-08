@@ -317,12 +317,25 @@ function troubleshootingData()
 	luci.http.write("\n")
 	luci.http.write(dash)
 	luci.http.write("\n")
-	for i=1,250 do
-		local output = ut.trim(sys.exec(string.format("ip route list table %d", i)))
-		if output ~= "" then
-			luci.http.write(string.format("Table %s: ", i))
-			luci.http.write(output)
-			luci.http.write("\n")
+	local all_routes = ut.trim(sys.exec("ip route show table all 2>/dev/null"))
+	if all_routes ~= "" then
+		local tables = {}
+		for line in all_routes:gmatch("[^\r\n]+") do
+			local tbl = line:match("table%s+(%d+)")
+			if tbl then
+				local tnum = tonumber(tbl)
+				if tnum and tnum >= 1 and tnum <= 250 then
+					tables[tnum] = tables[tnum] or {}
+					table.insert(tables[tnum], line)
+				end
+			end
+		end
+		for i = 1, 250 do
+			if tables[i] and #tables[i] > 0 then
+				luci.http.write(string.format("Table %s: ", i))
+				luci.http.write(table.concat(tables[i], "\n"))
+				luci.http.write("\n")
+			end
 		end
 	end
 

@@ -48,8 +48,8 @@ Durante parte da primeira rodada, `ping -n -c 120 -i 0.5 192.168.73.1` registrou
 
 ## Capturas
 
-- [Detalhes da rodada 1](screenshots/waveform-cabo-2026-10-29-rodada1.jpg).
-- [Detalhes da rodada 2](screenshots/waveform-cabo-2026-10-29-rodada2-detalhes.jpg).
-- [Resumo da rodada 2](screenshots/waveform-cabo-2026-10-29-rodada2-resumo.jpg).
+- [Detalhes da rodada 1](../screenshots/waveform-cabo-2026-10-29-rodada1.jpg).
+- [Detalhes da rodada 2](../screenshots/waveform-cabo-2026-10-29-rodada2-detalhes.jpg).
+- [Resumo da rodada 2](../screenshots/waveform-cabo-2026-10-29-rodada2-resumo.jpg).
 
 Nenhuma mudança de configuração, deploy, teste de VM ou homologação de Wi-Fi foi realizada.

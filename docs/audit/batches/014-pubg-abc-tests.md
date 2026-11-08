@@ -62,7 +62,7 @@ Exemplos de recepção interrompida, horários de Brasília:
 | 3 | 13:50:32.296–13:50:34.412 | 2116.0 ms | 46 |
 | 3 | 13:52:05.303–13:52:07.366 | 2063.3 ms | 42 |
 
-Uma pausa no fluxo capturado não é, sozinha, perda comprovada: a aplicação pode parar de receber/enviar dados, trocar conexão ou servidor. Também não se mede RTT de UDP criptografado pelo intervalo entre pacotes. Entretanto, a repetição com duas sondas externas independentes do processo PUBG torna relevante investigar o caminho comum. O [diagnóstico de 29/10](../../DIAGNOSTICO_W6X_SONDAS_WAN_2026_10_29.md) já registrava pausas e hipótese de intervalo próximo de 93 s, antes da instalação atual de ctinfo; isso orienta a investigação, sem estabelecer causa ou excluir o roteador.
+Uma pausa no fluxo capturado não é, sozinha, perda comprovada: a aplicação pode parar de receber/enviar dados, trocar conexão ou servidor. Também não se mede RTT de UDP criptografado pelo intervalo entre pacotes. Entretanto, a repetição com duas sondas externas independentes do processo PUBG torna relevante investigar o caminho comum. O [diagnóstico de 29/10](../../archive/DIAGNOSTICO_W6X_SONDAS_WAN_2026_10_29.md) já registrava pausas e hipótese de intervalo próximo de 93 s, antes da instalação atual de ctinfo; isso orienta a investigação, sem estabelecer causa ou excluir o roteador.
 
 ## Captura e contadores de interface
 

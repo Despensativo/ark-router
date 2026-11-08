@@ -58,10 +58,10 @@ Após corrigir ou explicar a margem óptica, repetir os mesmos ensaios ociosos e
 
 ## Evidências
 
-- [Avisos ópticos e eventos Ethernet selecionados](measurements/huawei-optical-2026-10-29.json).
+- [Avisos ópticos e eventos Ethernet selecionados](../measurements/huawei-optical-2026-10-29.json).
 - [Diagnóstico WAN anterior](DIAGNOSTICO_W6X_SONDAS_WAN_2026_10_29.md).
 
-![Recepção óptica abaixo da referência exibida pela Huawei](screenshots/huawei-eg8145x6-optical-2026-10-29.jpg)
+![Recepção óptica abaixo da referência exibida pela Huawei](../screenshots/huawei-eg8145x6-optical-2026-10-29.jpg)
 
 ## Atualização após troca manual do cabo óptico
 
@@ -69,9 +69,9 @@ Ainda em 29/10/2026, o usuário informou ter trocado o cabo da fibra e solicitou
 
 A melhora está associada temporalmente à substituição/reconexão feita pelo usuário. Não distingue defeito do cabo anterior, sujeira/contato de conector, curvatura ou efeito de reassentamento. O histórico de 106 avisos descreve a situação anterior; não deve ser apresentado como medição atual após a troca.
 
-Sondas ICMP ociosas após a troca registradas em [diretório próprio](measurements/w6x-fibra-trocada-2026-10-29/). O resultado dessas sondas deve ser separado do ganho óptico e não valida bufferbloat sob carga ou estabilidade de longo prazo.
+Sondas ICMP ociosas após a troca registradas em [diretório próprio](../measurements/w6x-fibra-trocada-2026-10-29/). O resultado dessas sondas deve ser separado do ganho óptico e não valida bufferbloat sob carga ou estabilidade de longo prazo.
 
-![RX após a troca manual do cabo óptico](screenshots/huawei-fibra-trocada-2026-10-29.jpg)
+![RX após a troca manual do cabo óptico](../screenshots/huawei-fibra-trocada-2026-10-29.jpg)
 
 ### Resultado das sondas após a troca
 

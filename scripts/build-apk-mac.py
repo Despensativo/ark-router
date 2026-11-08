@@ -195,23 +195,29 @@ def main():
         print(f"ERRO: {VERSION_FILE} não encontrado.", file=sys.stderr)
         sys.exit(1)
 
-    with open(VERSION_FILE, "r", encoding="utf-8") as f:
-        version = f.read().strip()
+    # 0. Auto-increment SemVer patch version (ex: 2.2.1 -> 2.2.2 -> 2.2.3) unless --no-bump is passed
+    should_bump = "--no-bump" not in sys.argv and os.environ.get("ARK_NO_BUMP") != "1"
+    note = None
+    for i, arg in enumerate(sys.argv):
+        if arg in ("--note", "-m") and i + 1 < len(sys.argv):
+            note = sys.argv[i + 1]
+            break
 
-    pkg_release = "1"
-    makefile_path = os.path.join(REPO_DIR, "Makefile")
-    if os.path.isfile(makefile_path):
-        import re
-        with open(makefile_path, "r", encoding="utf-8") as f:
-            m = re.search(r"PKG_RELEASE\s*:=\s*([0-9]+)", f.read())
-            if m:
-                pkg_release = m.group(1).strip()
+    if should_bump:
+        from bump_version import bump_and_sync
+        version, old_version, updated = bump_and_sync(note)
+        print("=" * 60)
+        print(f"ARK ROUTER: AUTO-INCREMENTO DE VERSÃO SemVer: v{old_version} -> v{version}")
+        print("=" * 60)
+    else:
+        with open(VERSION_FILE, "r", encoding="utf-8") as f:
+            version = f.read().strip()
+
+    # Versão SemVer pura sem dependência obrigatória de sufixo -r
+    pkg_version = version
     if os.environ.get("ARK_PKG_RELEASE"):
-        pkg_release = os.environ.get("ARK_PKG_RELEASE")
-    if len(sys.argv) > 1 and sys.argv[1].isdigit():
-        pkg_release = sys.argv[1]
+        pkg_version = f"{version}-r{os.environ.get('ARK_PKG_RELEASE')}"
 
-    pkg_version = f"{version}-r{pkg_release}"
     out_dir = os.environ.get("ARK_PACKAGE_OUTPUT_DIR", os.path.join(REPO_DIR, "dist", "sdk"))
     os.makedirs(out_dir, exist_ok=True)
 
@@ -223,18 +229,24 @@ def main():
     lite_desc = "ARK Router Lite dashboard for OpenWrt (Mac Native Build)"
     lite_file = build_apk_variant("luci-app-ark-router", pkg_version, LITE_DEPENDS, lite_desc, is_full=False)
 
+    def _safe_copy(src, dst):
+        if os.path.abspath(src) != os.path.abspath(dst):
+            shutil.copyfile(src, dst)
+
     # Create Lite aliases
-    shutil.copyfile(lite_file, os.path.join(out_dir, f"luci-app-ark-router-lite-{pkg_version}.apk"))
-    shutil.copyfile(lite_file, os.path.join(out_dir, f"luci-app-ark-router-{pkg_version}-mac.apk"))
-    shutil.copyfile(lite_file, os.path.join(out_dir, "luci-app-ark-router-lite.apk"))
-    shutil.copyfile(lite_file, os.path.join(out_dir, "luci-app-ark-router.apk"))
+    _safe_copy(lite_file, os.path.join(out_dir, f"luci-app-ark-router-lite-{pkg_version}.apk"))
+    _safe_copy(lite_file, os.path.join(out_dir, f"luci-app-ark-router-{pkg_version}-mac.apk"))
+    _safe_copy(lite_file, os.path.join(out_dir, f"luci-app-ark-router-{pkg_version}-r1.apk"))
+    _safe_copy(lite_file, os.path.join(out_dir, "luci-app-ark-router-lite.apk"))
+    _safe_copy(lite_file, os.path.join(out_dir, "luci-app-ark-router.apk"))
 
     # 2. Build Full APK
     full_desc = "ARK Router Full dashboard for OpenWrt (Mac Native Build)"
     full_file = build_apk_variant("luci-app-ark-router-full", pkg_version, FULL_DEPENDS, full_desc, is_full=True)
 
     # Create Full aliases
-    shutil.copyfile(full_file, os.path.join(out_dir, "luci-app-ark-router-full.apk"))
+    _safe_copy(full_file, os.path.join(out_dir, f"luci-app-ark-router-full-{pkg_version}-r1.apk"))
+    _safe_copy(full_file, os.path.join(out_dir, "luci-app-ark-router-full.apk"))
 
     print("=" * 60)
     print("Todos os pacotes APK foram construídos com sucesso:")
