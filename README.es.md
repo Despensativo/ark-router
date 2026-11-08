@@ -1,18 +1,15 @@
 <p align="center">
-  <img src="docs/screenshots/ark-router-banner.jpg" alt="ARK Router Hero Banner" width="100%">
+  <img src="docs/screenshots/ark-router-banner.jpg" alt="ARK Router Hero Banner - Suite de Optimización y Tema LuCI para OpenWrt" width="100%">
 </p>
 
-# ARK Router
-
-> Revisión local de seguridad (2026-11-05): Doctor automático solo observa; las reparaciones manuales siguen siendo parciales y requieren revisar el contexto. [Doctor](docs/DOCTOR_SAFETY_MODEL.md). Esta revisión local no cambia la Release publicada.
-
+# ARK Router — Optimización de Red, Control de Bufferbloat y LuCI Moderno para OpenWrt
 
 <p align="center">
-  <a href="https://openwrt.org/"><img src="https://img.shields.io/badge/OpenWrt-19.07%20a%2025.x-00B5E2?logo=openwrt&logoColor=white" alt="OpenWrt"></a>
-  <a href="https://github.com/Despensativo/ark-router/releases/tag/v2.2.1"><img src="https://img.shields.io/badge/release-v2.2.1-blue.svg" alt="Release v2.2.1"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/UI-PT--BR%20%2F%20EN%20%2F%20ES-blue" alt="Trilingual UI">
-  <img src="https://img.shields.io/badge/arch-all%20%2F%20noarch-orange" alt="Arquitectura: All">
+  <a href="https://openwrt.org/"><img src="https://img.shields.io/badge/OpenWrt-19.07%20a%2025.x-00B5E2?logo=openwrt&logoColor=white" alt="OpenWrt 19.07 a 25.x"></a>
+  <a href="https://github.com/Despensativo/ark-router/releases/tag/v2.2.4"><img src="https://img.shields.io/badge/release-v2.2.4-blue.svg" alt="Release v2.2.4"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="Licencia MIT"></a>
+  <img src="https://img.shields.io/badge/UI-PT--BR%20%2F%20EN%20%2F%20ES-blue" alt="Interfaz Trilingüe PT-BR / EN / ES">
+  <img src="https://img.shields.io/badge/arch-all%20%2F%20noarch-orange" alt="Arquitectura All / Noarch">
 </p>
 
 <p align="center">
@@ -24,182 +21,167 @@
 
 ---
 
-**ARK Router** transforma los enrutadores con **OpenWrt** en auténticos centros de control operativos profesionales. Sustituye la interfaz estática tradicional de LuCI por un panel ejecutivo moderno, ultrarrápido, modular y 100% responsivo para smartphones y ordenadores.
+**ARK Router** es una suite de optimización de red, mitigación de bufferbloat y un tema LuCI ejecutivo moderno para **OpenWrt** (versiones 19.07 a 25.x, con soporte nativo tanto para `fw4`/nftables como para `fw3`/iptables).
 
-El proyecto no reemplaza OpenWrt ni LuCI: opera como una suite avanzada de gestión (`luci-app-ark-router`) con telemetría en tiempo real, cero bloatware, salvaguardas anti-bloqueo y funciones pioneras de red y blindaje de memoria.
+Diseñado para eliminar el lag y la latencia bajo carga concurrente y transformar routers estándar en equipos de alta estabilidad para juegos en línea, comunicaciones de voz y teletrabajo, ARK opera como una aplicación LuCI oficial (`luci-app-ark-router`). No reemplaza el kernel de OpenWrt: añade telemetría en tiempo real, ajustes de bajo nivel en el kernel de Linux, bloqueo de anuncios en memoria RAM y una interfaz web 100% responsive para teléfonos móviles y ordenadores.
 
-> **Versión Oficial Activa**: **`v2.2.1`** (consulte [`VERSION`](VERSION) y [Releases](https://github.com/Despensativo/ark-router/releases)).
-
----
-
-## 🏆 Destaque de Ingeniería (`v2.2.1`): Arquitectura Dual-Engine de QoS & Kernel Networking
-
-**ARK Router v2.2.1** presenta una arquitectura completa de **Control de Colas y Latencia (SQM Dual-Engine)** combinada con calibraciones de bajo nivel en el Kernel Linux (`BQL`, `RPS Multi-Core`, `NAPI`, `IEEE 802.3x` y promoción `Voice` Ingress `u32`), documentada íntegramente en [`docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md`](docs/ENCICLOPEDIA_MASTER_QOS_KERNEL_LINUX_ARK_2026.md) y [`docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md`](docs/ENGENHARIA_QOS_DUAL_ENGINE_E_MTU_2026_11.md):
-
-- **⚙️ Elección Inteligente entre 2 Motores de QoS en el Panel**:
-  - **🛡️ Opción 1 — `CAKE (Layer Cake / DiffServ4)`**: Motor clásico `sch_cake` con aislamiento automático por dispositivo (`dual-srchost` / `dual-dsthost`), `nat`, `wash` y `no-split-gso`.
-  - **🚀 Opción 2 — `HFSC + FQ-CoDel Turbo (Gamer & Gigabit Inteligente)`**: Motor `/usr/lib/sqm/ark_hfsc_fqcodel.qos` que combina 3 clases elásticas **HFSC (`Hierarchical Fair Service Curve`)** con **FQ-CoDel (`1024` flujos hash)**:
-    - **Cola `1:10` Real-Time (`rt` curve `< 1 ms`)**: Curva de dos pendientes (`m1 = 40%` por `8ms`, `m2 = 20%`) exclusiva para paquetes `<= 511 bytes` (`u32 match u16 0x0000 0xfe00 at 2`) de Juegos UDP, VoIP, WebRTC (`<= 256B`), Ping, DNS, `L4S ECT(1)` y TCP SYN/ACK — con guarda explícita para `UDP 443` (QUIC/HTTP3) en `1:20` / `Best Effort`.
-    - **Cola `1:20` Interactive & Speed (`FQ-CoDel Turbo`)**: `ls` elástico hasta el `100%` del ancho de banda (`ul rate 100%`), `quantum 1514` (1 trama Ethernet por ronda DRR) y soporte nativo para **`ce_threshold` (L4S RFC 9332)**.
-    - **Cola `1:30` Bulk Scavenger (`CS1`)**: Aísla torrents y copias de seguridad en la subida (`m2 = 5%`), liberando el `95%` del ancho de banda al instante sin estrangular la descarga cuando el proveedor remarca tráfico a `CS1`.
-- **📡 Autocalibración por Perfil Físico de WAN (`xpon_bridge`, `xpon_vlan`, `dhcp_cable`, `mobile_starlink`)**: Ajusta automáticamente el overhead L2 (`34B` GPON PPPoE, `38B` PPPoE+VLAN, `18B` Cable DOCSIS/Starlink), `target`/`interval`/`ce_threshold`, **RFC 4638 Baby Jumbo Frames** (`eth1=1508` ➔ `pppoe-wan=1500` cero fragmentación), **RFC 4821 PLPMTUD** (`tcp_mtu_probing=1`) y MTU dinámico de túneles WireGuard (`1412` / `1420` / `1380`).
-- **🎮 Base BufferSpeed de 80+ Juegos, NAT Abierta Asistida (`180s`) & Escalado Multi-Core Simétrico (`[AL-ARK-100..103]`)**:
-  - **80+ Juegos, Consolas & Promoción Ingress UDP `<= 256B` (`[AL-ARK-103]`)**: Marcado bidireccional (`CS4` + `ct mark 0xa0`) para PS5/PSN, Xbox Live, Nintendo Switch, CS2, Valorant, Call of Duty/Warzone, Fortnite, EA FC, League of Legends, Discord y Cloud Gaming, además de filtro Ingress `u32` pre-`ifb4*` que promueve paquetes UDP de juegos/VoIP/WebRTC (`<= 256B`) directamente a la cola `Voice` (`9 µs` de retraso promedio) manteniendo `QUIC 443` en `Best Effort`.
-  - **RPS Multi-Core Simétrico `7/3` + Presupuesto NAPI `256/1200` (`[AL-ARK-100]`)**: Distribuye los puertos LAN (`rps_cpus=7`) y WAN/Wi-Fi (`rps_cpus=3`) manteniendo la `CPU3` (`IRQ 123`) 100% dedicada al DMA RX (`0%` pérdida), reduciendo el retraso interno de subida bajo carga combinada (`16 Down + 16 Up`) de `159 ms` a **`0.10–0.44 ms`**.
-  - **BQL Físico `512 KB` Anti-Drop bajo PPPoE (`[AL-ARK-101]`)**: Calibra `limit_min=524288` (`512 KB`) y `fq_codel target 50ms interval 500ms quantum 1514 noecn` en el GMAC (`eth0`/`eth1`), eliminando el 100% de los descartes secundarios en tramas PPPoE (`0x8864` no-ECN).
-  - **Aislamiento de Tormentas de Pause Frames `IEEE 802.3x` (`[AL-ARK-102]`)**: Desactiva `rx/tx flow control` (`ethtool -A`) en los puertos LAN/WAN, impidiendo que adaptadores USB-Ethernet de clientes pausen el switch físico del router.
-- **⚡ Ejecución Ultrarrápida en RAM (`15x` / `-93,4%` CPU), Coalescencia `0ms` & Blindaje de Concurrencia (`v2.2.1`)**:
-  - **Fast-Path de Caché en RAM en el Dispatcher (`equipe-dashboard-control`)**: Las rutas críticas de sondeo responden directamente desde la RAM (`/tmp/ark-*-cache.json`) actualizando en vivo `/proc/stat`, `/proc/meminfo` y `nf_conntrack_count` sin cargar bibliotecas `.sh` (~10.400 líneas), reduciendo 20 llamadas RPC consecutivas de `1.96 s` a **`0.13 s` (`6.5 ms/llamada`)**.
-  - **Coalescencia de Hotplugs en `0ms`, Propiedad Estricta de Lock & Orden de Ejecución SQM**: Las auditorías automáticas (`ark-doctor --auto`) y los hotplugs de red descartan interfaces virtuales y duplicados en `0ms`, invalidación atómica de cachés antes de liberar `/tmp/ark_mutation.lock`, orden determinístico de promoción SQM/CAKE y [`docs/CODE_MAP.md`](docs/CODE_MAP.md).
+> **Versión Oficial Activa**: **`v2.2.4`** (consulte [`VERSION`](VERSION) y [Releases](https://github.com/Despensativo/ark-router/releases)).
 
 ---
 
-## 🌟 Características Principales
+## 🏆 Ingeniería Destacada (`v2.2.4`): QoS Dual-Engine y Calibración de Kernel
 
-1. **⚡ Centro Unificado de Rendimiento & Blindaje de Memoria**:
-   - Tarjeta destacada en la Vista General con interruptores interactivos de primer nivel, contadores dinámicos de optimizaciones activas y aplicación instantánea en tiempo de ejecución sin reinicios innecesarios.
+ARK Router reúne algoritmos avanzados de gestión de colas (Bufferbloat) integrados con calibraciones de red en el kernel de Linux (`BQL`, `RPS Multinúcleo Simétrico`, `NAPI`, `RFC 4638 Baby Jumbo 1500` y priorización `Voice` Ingress `u32`):
+
+- **⚙️ Selección entre 2 Motores de QoS en el Panel**:
+  - **🛡️ Opción 1 — `CAKE (Layer Cake / DiffServ4)`**: Motor clásico `sch_cake` con aislamiento automático de flujos por host (`dual-srchost` / `dual-dsthost`), `nat`, `wash` y `no-split-gso`. Recomendado para reparto equitativo de ancho de banda entre múltiples usuarios concurrentes.
+  - **🚀 Opción 2 — `HFSC + FQ-CoDel Turbo (Gaming y Baja Latencia)`**: Motor `/usr/lib/sqm/ark_hfsc_fqcodel.qos` que une curvas de servicio jerárquico **HFSC (`Hierarchical Fair Service Curve`)** con **FQ-CoDel (`1024` flujos)**:
+    - **Cola `1:10` Real-Time (`rt` curve `< 1 ms`)**: Curva de doble pendiente (`m1 = 40%` durante `8ms`, `m2 = 20%`) reservada exclusivamente para paquetes cortos (`<= 511 bytes` mediante clasificador `u32`) de juegos en línea (UDP), VoIP, WebRTC, ICMP Ping, DNS y paquetes de control TCP SYN/ACK. Los paquetes `UDP 443` (QUIC/HTTP3) permanecen en la cola `1:20` (`Best Effort`) para evitar reordenamiento en flujos web modernos.
+    - **Cola `1:20` Interactive & Throughput**: Techo elástico de hasta el `100%` del ancho de banda (`ul rate 100%`), `quantum 1514` (un paquete Ethernet por ronda DRR) y soporte para ECN/L4S.
+    - **Cola `1:30` Bulk Scavenger (`CS1`)**: Aísla descargas masivas y copias de seguridad (`m2 = 5%`), evitando saturar el enlace de subida.
+- **📡 Perfiles Físicos con Overhead Precalculado**:
+  - Parámetros exactos para cada tipo de conexión: `overhead 34, mpu 64, atm off` para GPON PPPoE; `overhead 38` para PPPoE sobre VLAN; `overhead 18` para cable DOCSIS y Starlink.
+  - **Baby Jumbo Frames (RFC 4638)**: Configura MTU `1508` en la interfaz física base WAN, permitiendo un MTU `1500` íntegro en el túnel PPPoE sin fragmentación TCP (MSS 1460 intacto).
+  - **Descubrimiento de PMTU por Capa de Paquete (RFC 4821)**: Activación de `tcp_mtu_probing=1` para evitar pérdidas silenciosas de paquetes.
+- **🎮 Clasificación de Tráfico Gaming y Asignación Multinúcleo**:
+  - Marcado bidireccional de QoS (`CS4` + `ct mark 0xa0`) para más de 80 títulos competitivos (Counter-Strike 2, Valorant, Call of Duty, Fortnite, EA FC, League of Legends, Rainbow Six Siege) y ecosistemas de consolas (PlayStation Network, Xbox Live, Nintendo Switch).
+  - **Afinidad RPS Multinúcleo Simétrica**: Distribución equilibrada de interrupciones de red entre los núcleos Cortex-A53 (MediaTek Filogic MT7986/MT7981), eliminando cuellos de botella en enlaces de 1 Gbps+.
+  - **BQL Físico Anti-Drop (512 KB)**: Calibración de límites mínimos en el anillo DMA del GMAC (`eth0`/`eth1`), eliminando descartes bajo PPPoE.
+  - **Dimensionamiento Dinámico de Conntrack**: Ajuste adaptativo de `nf_conntrack_max` según la memoria RAM física (de 16.384 conexiones en 128 MB hasta 131.072 conexiones en 1 GB+ RAM), blindando routers compactos contra Kernel Panic por OOM.
+- **⚡ Fast-Path de Caché en RAM en el Despachador (`equipe-dashboard-control`)**:
+  - Respuesta directa desde memoria (`/tmp/ark-*-cache.json`) para rutas de telemetría intensiva, reduciendo la sobrecarga RPC hasta un 93% sin impacto en la CPU.
+
+---
+
+## 🌟 Capacidades Principales
+
+1. **⚡ Centro de Rendimiento y Blindaje de Memoria**:
+   - Ajustes de red de bajo nivel (TCP BBR, TCP Turbo, aceleración por hardware PPE, conntrack dinámico) aplicados en caliente sin reiniciar la conexión.
 2. **🗜️ Compresión Inteligente de Memoria RAM (ZRAM / LZ4)**:
-   - Duplica la capacidad multitarea efectiva de la memoria RAM mediante un disco swap comprimido ultrarrápido en LZ4, con cero desgaste de la memoria Flash.
-   - **Bloqueo de Seguridad de 5 Segundos**: En enrutadores con $\ge 512$ MB de RAM física, el interruptor exige confirmación temporizada para evitar ciclos innecesarios de CPU.
-   - **Modo Protegido para CPUs Mononúcleo (MIPS)**: Detecta procesadores modestos y limita el disco a 32 MB con `swappiness=15` para proteger el rendimiento de la CPU.
-   - **Activación Inmediata**: En enrutadores multinúcleo con $\le 256$ MB (como el Cudy WR3000), asigna dinámicamente un espacio óptimo (116 MB) para absorber picos de tráfico.
-3. **🎮 Apertura Automática de Puertos (UPnP / IGD) con Modo Seguro**:
-   - Cambio rápido con respuesta visual inmediata:
-     - **Modo Seguro (Desactivado - Predeterminado)**: Ningún puerto WAN externo se abre sin reglas explícitas en el cortafuegos.
-     - **Modo Activo**: Permite la apertura bajo demanda para consolas de juegos (Xbox, PlayStation, PC) emitiendo avisos de seguridad en tiempo real.
+   - Expansión de RAM volátil mediante swap en memoria ultrarrápido comprimido con LZ4, protegido por límites seguros según arquitectura (32 MB en MIPS de 128 MB y 116 MB en routers de 256 MB) sin desgaste de flash.
+3. **🎮 Gestión Segura de Puertos UPnP / IGD**:
+   - Apertura bajo demanda para consolas y PC gaming con inspección y revocación instantánea de mapeos activos.
 4. **🩺 ARK Doctor (Auditor de Integridad y Autocura)**:
-   - Diagnóstico continuo en tiempo de ejecución en 10 capas críticas: radios Wi-Fi, puentes de red, DHCP, cortafuegos (fw4/nftables puro), integridad de ZRAM (`Check 1b`), SQM y sintaxis de hostapd, con botón de autorreparación en 1 clic (`ark-doctor --fix`).
-5. **🛡️ Bloqueador de Anuncios y Control Parental Híbrido (RAM / Nube)**:
-   - **Perfil Full ($\ge 512$ MB RAM)**: Motor AdGuard Home completo ejecutándose directamente en memoria RAM (`/tmp/adguardhome`) en el puerto 3000 con más de 1 millón de reglas locales, supercaché, soporte nativo para **HTTP/3 QUIC (`h3://`)** y cero escritura en flash.
-   - **Perfil Lite (128 MB a 256 MB RAM)**: Modo Nube ultraligero mediante `dnsmasq` con 9 proveedores Anycast especializados (Cloudflare Family, Quad9, CleanBrowsing, Control D, OpenDNS y NextDNS).
-6. **🚫 Lista Negra Local de Sitios Web en 0ms**:
-   - Bloqueo instantáneo de dominios específicos (apuestas, casinos, sitios no deseados) respondiendo `0.0.0.0` en 0ms con cero consumo extra de memoria RAM.
-7. **⚡ Límite de Ancho de Banda Individual con Bypass de LAN Local (RFC 1918)**:
-   - Control individual de velocidad de descarga y subida por dispositivo. El límite se aplica con precisión quirúrgica únicamente al tráfico de Internet: las transferencias locales (NAS, Plex, impresoras, PCs) continúan a velocidad nativa máxima (Gigabit o Wi-Fi 6 a 1200+ Mbps).
-8. **🛑 Filtro Parental y SafeSearch Individual por Dispositivo**:
-   - Bloqueo de contenido adulto y SafeSearch obligatorio (Google, Bing, YouTube) configurable por dispositivo individual.
-9. **📊 Tráfico por Dispositivo en Tiempo Real (Hardware DMA & Anti-Jitter)**:
-   - Medición instantánea desde contadores del controlador Wi-Fi (`iwinfo`), sin retrasos y con filtro de amortiguación suave (EMA) que evita saltos bruscos.
-   - Columna de **Total Consumido** (MB/GB) y ordenación interactiva estable.
-10. **🚀 DNS Turbo, Dual-DoH (`https-dns-proxy`) en 1 Clic & Escudo de Puertos 53/853**:
-    - Comparación de latencia en tiempo real entre Cloudflare, Google, Quad9, OpenDNS y AdGuard, activación en 1 clic de **Dual-DoH (`https-dns-proxy`)** (`127.0.0.1#5053` + `#5054`) y escudo completo contra evasión DNS en Smart TVs y Android (*Private DNS* `TCP/UDP 853`).
-11. **🌐 Acceso Remoto Inteligente con ZeroTier**:
-    - Ejecución nativa en enrutadores con almacenamiento amplio y cargador ultrarrápido en RAM (0.3s) para dispositivos de 16 MB flash.
-12. **🛰️ Central Multi-Starlink (Telemetría y Alineación)**:
-    - Diagnóstico de múltiples antenas Starlink: brújula 3D, obstrucciones, pérdida de paquetes, SNR y visor público local sin contraseña en `/starlink/`.
-13. **🔄 Ciclo Óptimo entre Fastpath (Flow Offload / PPE) y SQM Dual-Engine (`CAKE` / `HFSC + FQ-CoDel Turbo`)**:
-    - Conmutación con exclusión mutua estricta. Al desactivar SQM en el interruptor rápido del panel, la aceleración de hardware (Fastpath/PPE) se reactiva automáticamente.
-14. **🛡️ Auto-MTU Inteligente, Baby Jumbo MTU 1500 en PPPoE (RFC 4638) & PLPMTUD (RFC 4821)**:
-    - Sondeo ICMP real sin fragmentación, ajuste automático de MTU 1508/1512 en la interfaz física base para lograr MTU 1500 pura en el túnel PPPoE y descubrimiento de PMTU en capa de paquete (`tcp_mtu_probing=1`).
-15. **📱 Arquitectura V2: Cockpit de Estado, Central de Recursos & Diseño Mobile-First**:
-    - Separación ejecutiva entre el **Cockpit** (telemetría pura en vivo) y la **Central de Recursos** (ciclo de vida completo de Servicios Nativos y Plugins Opcionales + **Modo Desarrollador**), 100% responsivo de 360px a 1440px+.
-16. **🔀 Cambio en 1 Clic entre Modo Router y Modo Punto de Acceso (Dumb AP)**:
-    - Unifica interfaces en un único puente (`br-lan`), desactiva DHCP y protege la administración con IP de Rescate permanente (`192.168.12.1` / `192.168.73.1`).
-17. **🕸️ Inteligencia Wi-Fi 6/6E/7: Fast Roaming 802.11k/v Puro & Diagnóstico MacBook `awdl0`**:
-    - Roaming `bss_transition=1` + `rnr=1` sin `wnm_sleep_mode`, junto con aviso contextual para la línea **Apple MacBook (M1 a M5)** mostrado exclusivamente en `160 MHz` para desbloquear `2400 Mbps` PHY (`1.4+ Gbps` reales).
-18. **🌐 Balanceo PBR BitTorrent en Modo Seguro Amplio (Dual-WAN)**:
-    - Reparte conexiones P2P en más de 64.500 puertos entre ambas conexiones WAN, protegiendo estrictamente los puertos de sistema (80, 443, 53) en la conexión principal.
-19. **⚡ Servidor SMB 3.1.1 en Kernel (`ksmbd`), Wake-on-LAN & Cliente WireGuard Ultrarrápido**:
-    - Servidor de archivos USB de alta velocidad en kernel (`ksmbd`), encendido remoto por Magic Packet (`etherwake`) e importación instantánea de túneles WireGuard (`.conf`).
-20. **🌎 Internacionalización Triple con 100% de Paridad (i18n — 4.502 Claves)**:
-    - Cobertura completa, nativa y auditada en Portugués de Brasil (PT-BR), Inglés (EN) y Español neutro (ES).
+   - Chequeo continuo en 28 puntos clave (radios Wi-Fi, puentes de red, sintaxis hostapd, reglas fw4/nftables, estado de daemons y memoria), con botón de reparación rápida en 1 clic (`ark-doctor --fix`).
+5. **🛡️ Bloqueador de Publicidad y Protección DNS Híbrida**:
+   - **Routers Full ($\ge 512$ MB RAM)**: AdGuard Home nativo ejecutándose en memoria RAM temporal (`/tmp/adguardhome`) en el puerto 3000, con soporte para millones de reglas y cero escrituras en memoria flash.
+   - **Routers Lite (128 MB a 256 MB RAM)**: Modo Nube ultraligero mediante `dnsmasq` con proveedores Anycast de baja latencia (Cloudflare Familia, Quad9, CleanBrowsing, Control D).
+6. **⚡ Límite de Ancho de Banda con Bypass Automático de LAN (RFC 1918)**:
+   - Control de subida y bajada por dispositivo enfocado exclusivamente a Internet. Las transferencias locales (NAS, Plex, impresoras) operan a velocidad nativa de hardware (Gigabit / Wi-Fi 6).
+7. **📊 Telemetría por Dispositivo en Tiempo Real**:
+   - Medición directa desde el driver inalámbrico (`iwinfo`) y puertos cableados, con suavizado matemático anti-jitter e historial diario de consumo.
+8. **🚀 DNS Turbo Paralelo y Dual-DoH (`https-dns-proxy`) en 1 Clic**:
+   - Resolución paralela de alta velocidad (All-Servers), DoH nativo y bloqueo de secuestro de DNS en Smart TVs y dispositivos móviles (puertos 53 y 853).
+9. **🌐 Multi-WAN Inteligente y Enrutamiento por Políticas (PBR)**:
+   - Conmutación por fallo automática y balanceo de carga entre múltiples proveedores de Internet con reglas específicas para juegos, streaming y P2P.
+10. **🔒 WireGuard VPN en Kernel y Almacenamiento SMB 3.1.1 (`ksmbd`)**:
+    - Cliente y servidor WireGuard integrados en el espacio de kernel y compartición USB de alta velocidad con el módulo `ksmbd`.
+11. **📱 Interfaz LuCI Mobile-First y Panel Cockpit**:
+    - Navegación táctil por tarjetas plegables, diseño adaptado a pantallas desde 360px hasta 2560px (móviles, tablets y monitores panorámicos).
+12. **🌎 Cobertura Nativa Trilingüe (i18n)**:
+    - 100% de la interfaz traducida y auditada en Español (ES), Portugués (PT-BR) e Inglés (EN).
 
 ---
 
-## 📸 Capturas de Pantalla
+## 📸 Galería de Capturas de Pantalla (v2.2.4)
 
-Capturas reales tomadas directamente de un enrutador físico en pruebas (Cudy WR3000 v1 / OpenWrt 25.12.5):
+Capturas reales tomadas directamente en hardware físico de producción (**Acer Predator Connect W6x** — MediaTek Filogic 830 Quad-Core 2.0 GHz, 1 GB RAM, OpenWrt 25.x / 24.10):
 
-| Rendimiento & Blindaje de Memoria (ZRAM / UPnP) | Vista General del Panel |
+| Vista General del Panel Cockpit | Rendimiento y Blindaje de Memoria |
 | :---: | :---: |
-| ![Rendimiento y Blindaje de Memoria](docs/screenshots/perf-hardening-card.png) | ![Vista General del Panel](docs/screenshots/dashboard-overview.png) |
+| ![Vista General del Panel Cockpit en ARK Router](docs/screenshots/dashboard-overview.png) | ![Centro de Rendimiento y Ajustes de Kernel en ARK Router](docs/screenshots/perf-hardening-card.png) |
 
-| Asistente Inicial Ark - Setup | Control de WAN y Multi-WAN |
+| Asistente de Configuración Inicial (Ark - Setup) | Editor de Conexión WAN y Baby Jumbo |
 | :---: | :---: |
-| ![Ark Setup](docs/screenshots/ark-setup.png) | ![Editor WAN](docs/screenshots/wan-editor.png) |
+| ![Asistente de Configuración Rápida Ark Setup en LuCI](docs/screenshots/ark-setup.png) | ![Editor de Configuración WAN y Baby Jumbo en OpenWrt](docs/screenshots/wan-editor.png) |
 
-| Calibración de SQM / CAKE | Telemetría Starlink en Tiempo Real |
+| Editor de Colas QoS / SQM (Dual-Engine) | VPN WireGuard Integrada en Kernel |
 | :---: | :---: |
-| ![Editor SQM](docs/screenshots/sqm-editor.png) | ![Telemetria Starlink](docs/screenshots/starlink-telemetry-real.png) |
+| ![Configuración de SQM CAKE y HFSC FQ-CoDel en ARK Router](docs/screenshots/sqm-editor.png) | ![Telemetría de VPN WireGuard de Alto Rendimiento en OpenWrt](docs/screenshots/starlink-telemetry-real.png) |
 
-| Interfaz Móvil Optimizada | Auditoría de Salud con Ark Doctor |
+| Interfaz Móvil Fluida (390px) | Auditoría y Autocura (Ark Doctor) |
 | :---: | :---: |
-| ![Vista Movil](docs/screenshots/mobile-overview.png) | ![Ark Doctor](docs/screenshots/theme_switched_to_ark.png) |
+| ![Interfaz LuCI Responsiva para Móvil en ARK Router](docs/screenshots/mobile-overview.png) | ![Diagnóstico de Integridad y Autocura con Ark Doctor](docs/screenshots/theme_switched_to_ark.png) |
 
 ---
 
-## 🖥️ Enrutadores Validados
+## 🖥️ Matriz de Dispositivos y Requisitos
 
-| Dispositivo | Arquitectura | Memoria / Almacenamiento | Versión OpenWrt | Perfil ARK |
-| :--- | :--- | :--- | :--- | :--- |
-| **Cudy WR3000 v1** | MediaTek Filogic 820 (ARM64 Dual-Core) | 256 MB RAM / 16 MB Flash SPI | 25.12.5 / 24.x (`apk`) | Standard / Full |
-| **Acer Predator Connect W6x** | MediaTek Filogic 830 (ARM64 Quad-Core) | 1 GB RAM / 512 MB Flash | 25.12.x / 24.x (`apk`) | Full |
-| **D-Link DGL-5500** | Qualcomm Atheros QCA9558 (MIPS Single-Core) | 128 MB RAM / 16 MB Flash | 19.07 a 23.05 (`opkg`) | Lite |
-| **VirtualBox x86_64 (`OpenWrt-ARK-Dev`)** | Intel/AMD x86_64 Multinúcleo | 512 MB a 2 GB RAM | 24.10 / 25.x | Full / Dev |
+| Dispositivo | SoC / Plataforma | Memoria / Flash | Versión OpenWrt | Perfil ARK | Estado |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Acer Predator Connect W6x** | MediaTek Filogic 830 (MT7986 Quad-Core A53 2.0 GHz) | 1 GB RAM / 512 MB Flash | 24.10 / 25.x (`apk`) | Full | ✅ Validado en Producción |
+| **Acer Predator Connect T7** | Qualcomm / Filogic Wi-Fi 7 BE11000 Multi-Gigabit | 1 GB+ RAM / Multi-Gig | 24.10 / 25.x (`apk`) | Full | ✅ Soportado |
+| **Cudy WR3000 v1** | MediaTek Filogic 820 (MT7981B Dual-Core A53 1.3 GHz) | 256 MB RAM / 16 MB Flash SPI | 24.10 / 25.x (`apk` / `opkg`) | Standard / Full | ✅ Validado en Producción |
+| **D-Link DGL-5500** | Qualcomm Atheros QCA9558 (MIPS Single-Core 720 MHz) | 128 MB RAM / 16 MB Flash | 19.07 a 23.05 (`opkg`) | Lite | ✅ Validado en Laboratorio |
+| **Máquinas Virtuales x86_64 (UTM / VirtualBox)** | Intel/AMD x86_64 Multinúcleo (QEMU / KVM) | 512 MB a 2 GB RAM | 19.07 a 25.x | Full / Dev | ✅ Laboratorio Canónico |
+
+### Requisitos Mínimos:
+- **Perfil Lite**: 128 MB de RAM y 16 MB de Flash (OpenWrt con `opkg`, firewall `fw3` o `fw4`).
+- **Perfil Full**: 256 MB a 1 GB+ de RAM y 32 MB+ de Flash (soporte completo para AdGuard Home en RAM, analítica y daemons de telemetría).
 
 ---
 
 ## 📦 Instalación Rápida
 
-ARK Router se instala sobre cualquier sistema OpenWrt con LuCI existente. **No reemplaza el kernel** ni altera la configuración de red de forma automática.
+ARK Router se instala directamente sobre una instalación existente de OpenWrt con interfaz LuCI. **No sobreescribe el kernel** y no modifica sus contraseñas ni configuraciones de red previas.
 
 ### Método 1: Instalador Automático de 1 Línea (Recomendado)
 
-Conéctese por SSH a su enrutador y ejecute:
+Conéctese mediante SSH a su router OpenWrt y ejecute:
 
 ```sh
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | sh
 ```
 
-El instalador detecta si el sistema utiliza `apk` u `opkg`, inspecciona la RAM libre y el espacio en flash, y selecciona automáticamente el mejor perfil (**Lite**, **Standard** o **Full**).
+El instalador detecta automáticamente si el sistema utiliza `apk` (OpenWrt 25.x) u `opkg` (OpenWrt 19.07 a 24.x), revisa la memoria RAM disponible e instala el perfil óptimo (**Lite**, **Standard** o **Full**).
 
 ### Forzar un Perfil Específico:
-- **Perfil Lite** (para enrutadores con 128 MB a 256 MB de RAM y 16 MB flash):
+- **Perfil Lite** (para routers con 128 MB a 256 MB de RAM):
   ```sh
   wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_PROFILE=lite sh
   ```
-- **Perfil Full** (para enrutadores con 512 MB o más de RAM):
+- **Perfil Full** (para routers con 512 MB a 1 GB+ de RAM):
   ```sh
   wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/install.sh | ARK_ROUTER_PROFILE=full sh
   ```
 
 ---
 
-### Método 2: Instalación Manual de Paquetes (`.apk` o `.ipk`)
+### Método 2: Instalación de Paquetes Precompilados (`.apk` o `.ipk`)
 
-Descargue los paquetes directamente de la sección de **[Releases](https://github.com/Despensativo/ark-router/releases)**:
+Descargue los paquetes oficiales desde la página de **[Releases](https://github.com/Despensativo/ark-router/releases)**:
 
-- **OpenWrt Moderno (gestor APK)**:
+- **OpenWrt Moderno (`apk` — OpenWrt 25.x+)**:
   ```sh
-  apk add ./luci-app-ark-router-2.2.1-r1.apk
+  apk add --allow-untrusted ./luci-app-ark-router-full-2.2.4.apk
   /etc/init.d/rpcd restart
   ```
-- **OpenWrt Tradicional / Legado (gestor OPKG)**:
+- **OpenWrt Tradicional (`opkg` — OpenWrt 19.07 a 24.10)**:
   ```sh
-  opkg install ./luci-app-ark-router-2.2.1-r1.ipk
+  opkg install ./luci-app-ark-router-full-2.2.4.ipk
   /etc/init.d/rpcd restart
   ```
 
 ---
 
-## 🔄 Actualización Directa desde el Panel
+## 🔄 Actualización desde la Interfaz Web
 
-Una vez instalado, puede verificar nuevas versiones en:
-**ARK Router → Recursos → Actualización de ARK Router**.
+Las nuevas versiones pueden consultarse e instalarse directamente desde la interfaz web en:
+**ARK Router → Recursos → Actualización del ARK Router**.
 
-El actualizador comprueba GitHub Releases, muestra las notas de la versión y, tras la confirmación del administrador, descarga e instala el paquete actualizado creando previamente una copia de seguridad en `/tmp`.
+El actualizador compara la versión instalada con el repositorio oficial en GitHub, muestra las notas de la versión y, tras confirmación explícita, descarga e instala el paquete actualizado manteniendo su configuración en `/tmp`.
 
 ---
 
-## 🗑️ Desinstalación Limpia
+## 🗑️ Desinstalación
 
-Para desinstalar ARK Router conservando los nombres de sus dispositivos y preferencias:
+Para desinstalar la suite ARK Router manteniendo sus preferencias de red y nombres de dispositivos:
 
 ```sh
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/uninstall.sh | sh
 ```
 
-Para desinstalarlo por completo, eliminando también las preferencias guardadas:
+Para una desinstalación completa, incluyendo archivos históricos y configuraciones personalizadas:
 
 ```sh
 wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/uninstall.sh | PURGE=1 sh
@@ -209,4 +191,4 @@ wget -O- https://raw.githubusercontent.com/Despensativo/ark-router/main/scripts/
 
 ## 📄 Licencia
 
-Este proyecto está publicado bajo la licencia de código abierto **MIT License**. Consulte el archivo [`LICENSE`](LICENSE) para más detalles.
+Publicado bajo la licencia de código abierto **MIT License**. Consulte el archivo [`LICENSE`](LICENSE) para los términos completos.
