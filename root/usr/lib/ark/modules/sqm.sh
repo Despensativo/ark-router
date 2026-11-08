@@ -173,7 +173,7 @@ ark_promote_cake_mq() {
 		fi
 		qdisc="$(uci -q get "sqm.$sec.qdisc" || echo cake)"
 		[ "$qdisc" = "cake" ] || [ "$qdisc" = "cake_mq" ] || continue
-		if [ -z "${ARK_ROOT:-}" ]; then
+		if [ -z "${ARK_ROOT:-}" ] && command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
 			tc qdisc change dev "$iface" root cake no-split-gso 2>/dev/null || true
 			tc qdisc change dev "ifb4${iface}" root cake no-split-gso 2>/dev/null || true
 		fi
@@ -534,19 +534,44 @@ ark_sqm_ack_filter_opt() {
 
 ark_sqm_ingress_rtt_opt() {
 	local net_sec="${1:-wan}"
+	local down_kbps="${2:-0}"
 	case "$net_sec" in wan1) net_sec="wan" ;; esac
+	if ! printf '%s' "$down_kbps" | grep -Eq '^[0-9]+$' || [ "$down_kbps" -eq 0 ]; then
+		down_kbps="$(uci -q get "sqm.$net_sec.download" || uci -q get "sqm.wan1.download" || echo 0)"
+	fi
+	local preset="$(uci -q get "equipe_dashboard.wan_profiles.$net_sec" || uci -q get "equipe_dashboard.${net_sec}.preset" || uci -q get "equipe_dashboard.wan_profiles.wan" || echo '')"
 	if [ "$(uci -q get "equipe_dashboard.main.starlink_mode")" = "1" ] || \
 	   [ "$(uci -q get "equipe_dashboard.settings.starlink_mode")" = "1" ] || \
-	   [ "$(uci -q get "equipe_dashboard.${net_sec}.preset")" = "starlink" ] || \
+	   [ "$preset" = "starlink" ] || [ "$preset" = "mobile_starlink" ] || \
 	   [ "$(uci -q get "starlink_telemetry.main.enabled")" = "1" ]; then
 		printf 'rtt 150ms'
+	elif [ "$down_kbps" -gt 500000 ] 2>/dev/null; then
+		# Gigabit / Ultra-High Speed Fiber (FTTH GPON/XGS-PON): COBALT 20ms RTT target (1ms) evita retencao de buffer
+		printf 'rtt 20ms'
 	else
 		printf 'rtt 100ms'
 	fi
 }
 
 ark_sqm_ingress_mode_opt() {
-	printf 'ingress'
+	local down_kbps="${1:-0}"
+	local net_sec="${2:-wan}"
+	case "$net_sec" in wan1) net_sec="wan" ;; esac
+	if ! printf '%s' "$down_kbps" | grep -Eq '^[0-9]+$'; then
+		local tmp_sec="$down_kbps"
+		case "$tmp_sec" in wan1) tmp_sec="wan" ;; esac
+		down_kbps="$(uci -q get "sqm.$tmp_sec.download" || uci -q get "sqm.wan1.download" || echo 0)"
+	elif [ "$down_kbps" -eq 0 ]; then
+		down_kbps="$(uci -q get "sqm.$net_sec.download" || uci -q get "sqm.wan1.download" || echo 0)"
+	fi
+	# Em links Ultra-High Speed (> 500 Mbps), o algoritmo ingress do CAKE sobre-estima o tempo virtual
+	# de transmissao e induz esgotamento de janela de congestionamento / RTO TCP nos servidores remotos.
+	# Omitir a flag ingress no IFB restaura a vazao gigabit plena com baixissima latencia.
+	if [ "$down_kbps" -gt 500000 ] 2>/dev/null; then
+		printf ''
+	else
+		printf 'ingress'
+	fi
 }
 
 ensure_sqm_section() {
@@ -556,7 +581,7 @@ ensure_sqm_section() {
 	down_k="$(uci -q get "sqm.$section.download" || echo 0)"
 	up_k="$(uci -q get "sqm.$section.upload" || echo 0)"
 	ack_opt="$(ark_sqm_ack_filter_opt "$down_k" "$up_k")"
-	irtt_opt="$(ark_sqm_ingress_rtt_opt "$section")"
+	irtt_opt="$(ark_sqm_ingress_rtt_opt "$section" "$down_k")"
 	imode_opt="$(ark_sqm_ingress_mode_opt "$down_k" "$section")"
 	uci -q get "sqm.$section" >/dev/null 2>&1 || uci -q set "sqm.$section=queue"
 	uci -q set "sqm.$section.interface=$device"
@@ -614,32 +639,71 @@ ensure_sqm_section() {
 		fi
 		[ "$eq_changed" = "1" ] && uci -q set "sqm.$section.eqdisc_opts=$cur_eq"
 	fi
+	local gso_opt="split-gso"
 	if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
+		gso_opt="no-split-gso"
 		if ! printf '%s' "$cur_eq" | grep -qw 'no-split-gso'; then
 			cur_eq="$cur_eq no-split-gso"
+			uci -q set "sqm.$section.eqdisc_opts=$cur_eq"
+		fi
+	else
+		if printf '%s' "$cur_eq" | grep -qw 'no-split-gso'; then
+			cur_eq="$(printf '%s' "$cur_eq" | sed -E 's/(^| )no-split-gso( |$)/ /g' | tr -s ' ' | sed 's/^ //; s/ $//')"
 			uci -q set "sqm.$section.eqdisc_opts=$cur_eq"
 		fi
 	fi
 	local cur_iq="$(uci -q get "sqm.$section.iqdisc_opts")"
 	if [ -z "$cur_iq" ]; then
-		cur_iq="$(printf 'diffserv4 nat dual-dsthost wash no-split-gso %s %s memlimit %s' "$imode_opt" "$irtt_opt" "$mlim" | tr -s ' ')"
+		if [ "$down_k" -gt 500000 ] 2>/dev/null; then
+			cur_iq="$(printf 'besteffort flows wash %s %s %s memlimit %s' "$gso_opt" "$imode_opt" "$irtt_opt" "$mlim" | tr -s ' ')"
+		else
+			cur_iq="$(printf 'diffserv4 nat dual-dsthost wash %s %s %s memlimit %s' "$gso_opt" "$imode_opt" "$irtt_opt" "$mlim" | tr -s ' ')"
+		fi
 		uci -q set "sqm.$section.iqdisc_opts=$cur_iq"
 	elif [ "$(uci -q get "sqm.$section.squash_ingress" || echo 1)" = "1" ]; then
 		local iq_changed=0
-		if printf '%s' "$cur_iq" | grep -qw 'besteffort'; then
-			cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bbesteffort\b/diffserv4/g')"
-			iq_changed=1
+		if [ "$down_k" -gt 500000 ] 2>/dev/null; then
+			if printf '%s' "$cur_iq" | grep -qw 'diffserv4'; then
+				cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bdiffserv4\b/besteffort/g')"
+				iq_changed=1
+			fi
+			if printf '%s' "$cur_iq" | grep -qw 'dual-dsthost'; then
+				cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bdual-dsthost\b/flows/g')"
+				iq_changed=1
+			fi
+			if printf '%s' "$cur_iq" | grep -qw 'nat'; then
+				cur_iq="$(printf '%s' "$cur_iq" | sed -E 's/(^| )nat( |$)/ /g' | tr -s ' ' | sed 's/^ //; s/ $//')"
+				iq_changed=1
+			fi
+		else
+			if printf '%s' "$cur_iq" | grep -qw 'besteffort'; then
+				cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bbesteffort\b/diffserv4/g')"
+				iq_changed=1
+			fi
 		fi
 		if ! printf '%s' "$cur_iq" | grep -qw 'wash'; then
 			cur_iq="$cur_iq wash"
 			iq_changed=1
 		fi
-		if ! printf '%s' "$cur_iq" | grep -qw 'no-split-gso'; then
-			cur_iq="$cur_iq no-split-gso"
-			iq_changed=1
+		if [ "$gso_opt" = "split-gso" ]; then
+			if printf '%s' "$cur_iq" | grep -qw 'no-split-gso'; then
+				cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bno-split-gso\b/split-gso/g')"
+				iq_changed=1
+			elif ! printf '%s' "$cur_iq" | grep -qw 'split-gso'; then
+				cur_iq="$cur_iq split-gso"
+				iq_changed=1
+			fi
+		else
+			if printf '%s' "$cur_iq" | grep -qw 'split-gso'; then
+				cur_iq="$(printf '%s' "$cur_iq" | sed -E 's/(^| )split-gso( |$)/ /g' | tr -s ' ' | sed 's/^ //; s/ $//')"
+			fi
+			if ! printf '%s' "$cur_iq" | grep -qw 'no-split-gso'; then
+				cur_iq="$cur_iq no-split-gso"
+				iq_changed=1
+			fi
 		fi
-		if printf '%s' "$cur_iq" | grep -q 'rtt 50ms'; then
-			cur_iq="$(printf '%s' "$cur_iq" | sed "s/rtt 50ms/$irtt_opt/g")"
+		if printf '%s' "$cur_iq" | grep -qE '\brtt [0-9]+ms\b'; then
+			cur_iq="$(printf '%s' "$cur_iq" | sed -E "s/rtt [0-9]+ms/$irtt_opt/g")"
 			iq_changed=1
 		elif ! printf '%s' "$cur_iq" | grep -qE '\b(rtt|regional|metro|lan|datacentre)\b'; then
 			cur_iq="$cur_iq $irtt_opt"
@@ -659,7 +723,7 @@ ensure_sqm_section() {
 			cur_iq="$(printf '%s' "$cur_iq" | sed "s/memlimit [0-9][0-9]*[kKmMgGbB]*/memlimit $mlim/g")"
 			iq_changed=1
 		fi
-		[ "$iq_changed" = "1" ] && uci -q set "sqm.$section.iqdisc_opts=$cur_iq"
+		[ "$iq_changed" = "1" ] && uci -q set "sqm.$section.iqdisc_opts=$(printf '%s' "$cur_iq" | tr -s ' ' | sed 's/^ //; s/ $//')"
 	fi
 	if [ -z "$(uci -q get "sqm.$section.linklayer")" ]; then
 		uci -q set "sqm.$section.linklayer=ethernet"
@@ -1275,21 +1339,35 @@ handle_sqm() {
 				uci -q set "sqm.$sqm_section.tcMPU=64"
 				uci -q set "sqm.$sqm_section.mpu=64"
 				uci -q set "sqm.$sqm_section.linklayer_adaptation_mechanism=default"
-				wan_proto="$(uci -q get "network.$network_section.proto")"
-				case "$wan_proto:$wan_device" in
-					pppoe:*|*:pppoe*) uci -q set "sqm.$sqm_section.overhead=44" ;;
-					*) uci -q set "sqm.$sqm_section.overhead=18" ;;
-				esac
 				down_aplus="$(uci -q get "sqm.$sqm_section.download" || echo 0)"
 				up_aplus="$(uci -q get "sqm.$sqm_section.upload" || echo 0)"
+				wan_proto="$(uci -q get "network.$network_section.proto")"
+				case "$wan_proto:$wan_device" in
+					pppoe:*|*:pppoe*)
+						if [ "$down_aplus" -gt 500000 ] 2>/dev/null; then
+							uci -q set "sqm.$sqm_section.overhead=34"
+						else
+							uci -q set "sqm.$sqm_section.overhead=44"
+						fi
+						;;
+					*) uci -q set "sqm.$sqm_section.overhead=18" ;;
+				esac
 				ack_aplus="$(ark_sqm_ack_filter_opt "$down_aplus" "$up_aplus")"
-				irtt_aplus="$(ark_sqm_ingress_rtt_opt "$network_section")"
+				irtt_aplus="$(ark_sqm_ingress_rtt_opt "$network_section" "$down_aplus")"
 				imode_aplus="$(ark_sqm_ingress_mode_opt "$down_aplus" "$network_section")"
-				eq_aplus="diffserv4 nat dual-srchost $ack_aplus wash memlimit $mlim_aplus"
+				local gso_opt="split-gso"
 				if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
+					gso_opt="no-split-gso"
+				fi
+				eq_aplus="diffserv4 nat dual-srchost $ack_aplus wash memlimit $mlim_aplus"
+				if [ "$gso_opt" = "no-split-gso" ]; then
 					eq_aplus="$eq_aplus no-split-gso"
 				fi
-				iq_aplus="$(printf 'diffserv4 nat dual-dsthost wash no-split-gso %s %s memlimit %s' "$imode_aplus" "$irtt_aplus" "$mlim_aplus" | tr -s ' ')"
+				if [ "$down_aplus" -gt 500000 ] 2>/dev/null; then
+					iq_aplus="$(printf 'besteffort flows wash %s %s %s memlimit %s' "$gso_opt" "$imode_aplus" "$irtt_aplus" "$mlim_aplus" | tr -s ' ')"
+				else
+					iq_aplus="$(printf 'diffserv4 nat dual-dsthost wash %s %s %s memlimit %s' "$gso_opt" "$imode_aplus" "$irtt_aplus" "$mlim_aplus" | tr -s ' ')"
+				fi
 				uci -q set "sqm.$sqm_section.eqdisc_opts=$eq_aplus"
 				uci -q set "sqm.$sqm_section.iqdisc_opts=$iq_aplus"
 			fi
@@ -1434,8 +1512,12 @@ handle_sqm() {
 					ensure_sqm_section "$section" "$device"
 					uci -q set "sqm.$section.enabled=$enabled"
 					local ack_save="$(ark_sqm_ack_filter_opt "$download" "$upload")"
-					local irtt_save="$(ark_sqm_ingress_rtt_opt "${net_name:-$section}")"
+					local irtt_save="$(ark_sqm_ingress_rtt_opt "${net_name:-$section}" "$download")"
 					local imode_save="$(ark_sqm_ingress_mode_opt "$download" "${net_name:-$section}")"
+					local gso_opt="split-gso"
+					if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
+						gso_opt="no-split-gso"
+					fi
 					if [ -n "$waveform_aplus_override" ]; then
 						uci -q set "sqm.$section.waveform_aplus=$waveform_aplus_override"
 					fi
@@ -1460,14 +1542,24 @@ handle_sqm() {
 						uci -q set "sqm.$section.linklayer_adaptation_mechanism=default"
 						local wan_proto="$(uci -q get "network.$net_name.proto")"
 						case "$wan_proto:$device" in
-							pppoe:*|*:pppoe*) uci -q set "sqm.$section.overhead=44" ;;
+							pppoe:*|*:pppoe*)
+								if [ "$download" -gt 500000 ] 2>/dev/null; then
+									uci -q set "sqm.$section.overhead=34"
+								else
+									uci -q set "sqm.$section.overhead=44"
+								fi
+								;;
 							*) uci -q set "sqm.$section.overhead=18" ;;
 						esac
 						eqdisc_opts="diffserv4 nat dual-srchost $ack_save wash memlimit $mlim_save"
-						if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
+						if [ "$gso_opt" = "no-split-gso" ]; then
 							eqdisc_opts="$eqdisc_opts no-split-gso"
 						fi
-						iqdisc_opts="$(printf 'diffserv4 nat dual-dsthost wash no-split-gso %s %s memlimit %s' "$imode_save" "$irtt_save" "$mlim_save" | tr -s ' ')"
+						if [ "$download" -gt 500000 ] 2>/dev/null; then
+							iqdisc_opts="$(printf 'besteffort flows wash %s %s %s memlimit %s' "$gso_opt" "$imode_save" "$irtt_save" "$mlim_save" | tr -s ' ')"
+						else
+							iqdisc_opts="$(printf 'diffserv4 nat dual-dsthost wash %s %s %s memlimit %s' "$gso_opt" "$imode_save" "$irtt_save" "$mlim_save" | tr -s ' ')"
+						fi
 						uci -q set "sqm.$section.eqdisc_opts=$eqdisc_opts"
 						uci -q set "sqm.$section.iqdisc_opts=$iqdisc_opts"
 					else
@@ -1508,19 +1600,39 @@ handle_sqm() {
 								else
 									eqdisc_opts="$eqdisc_opts memlimit $mlim_save"
 								fi
-								if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
+								if [ "$gso_opt" = "no-split-gso" ]; then
 									printf '%s' "$eqdisc_opts" | grep -qw 'no-split-gso' || eqdisc_opts="$eqdisc_opts no-split-gso"
+								else
+									eqdisc_opts="$(printf '%s' "$eqdisc_opts" | sed -E 's/(^| )no-split-gso( |$)/ /g' | tr -s ' ' | sed 's/^ //; s/ $//')"
 								fi
 								uci -q set "sqm.$section.eqdisc_opts=$eqdisc_opts"
 							fi
 							if [ -n "$iqdisc_opts" ]; then
-								if [ "$(uci -q get "sqm.$section.squash_ingress" || echo 1)" = "1" ] && printf '%s' "$iqdisc_opts" | grep -qw 'besteffort'; then
+								if [ "$download" -gt 500000 ] 2>/dev/null; then
+									if printf '%s' "$iqdisc_opts" | grep -qw 'diffserv4'; then
+										iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed 's/\bdiffserv4\b/besteffort/g')"
+									fi
+									if printf '%s' "$iqdisc_opts" | grep -qw 'dual-dsthost'; then
+										iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed 's/\bdual-dsthost\b/flows/g')"
+									fi
+									if printf '%s' "$iqdisc_opts" | grep -qw 'nat'; then
+										iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed -E 's/(^| )nat( |$)/ /g' | tr -s ' ' | sed 's/^ //; s/ $//')"
+									fi
+								elif [ "$(uci -q get "sqm.$section.squash_ingress" || echo 1)" = "1" ] && printf '%s' "$iqdisc_opts" | grep -qw 'besteffort'; then
 									iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed 's/\bbesteffort\b/diffserv4/g')"
 								fi
 								printf '%s' "$iqdisc_opts" | grep -qw 'wash' || iqdisc_opts="$iqdisc_opts wash"
-								printf '%s' "$iqdisc_opts" | grep -qw 'no-split-gso' || iqdisc_opts="$iqdisc_opts no-split-gso"
-								if printf '%s' "$iqdisc_opts" | grep -q 'rtt 50ms'; then
-									iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed "s/rtt 50ms/$irtt_save/g")"
+								if [ "$gso_opt" = "split-gso" ]; then
+									if printf '%s' "$iqdisc_opts" | grep -qw 'no-split-gso'; then
+										iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed 's/\bno-split-gso\b/split-gso/g')"
+									elif ! printf '%s' "$iqdisc_opts" | grep -qw 'split-gso'; then
+										iqdisc_opts="$iqdisc_opts split-gso"
+									fi
+								else
+									printf '%s' "$iqdisc_opts" | grep -qw 'no-split-gso' || iqdisc_opts="$iqdisc_opts no-split-gso"
+								fi
+								if printf '%s' "$iqdisc_opts" | grep -qE '\brtt [0-9]+ms\b'; then
+									iqdisc_opts="$(printf '%s' "$iqdisc_opts" | sed -E "s/rtt [0-9]+ms/$irtt_save/g")"
 								elif ! printf '%s' "$iqdisc_opts" | grep -qE '\b(rtt|regional|metro|lan|datacentre)\b'; then
 									iqdisc_opts="$iqdisc_opts $irtt_save"
 								fi
@@ -1534,7 +1646,7 @@ handle_sqm() {
 								else
 									iqdisc_opts="$iqdisc_opts memlimit $mlim_save"
 								fi
-								uci -q set "sqm.$section.iqdisc_opts=$iqdisc_opts"
+								uci -q set "sqm.$section.iqdisc_opts=$(printf '%s' "$iqdisc_opts" | tr -s ' ' | sed 's/^ //; s/ $//')"
 							fi
 						fi
 					fi

@@ -319,8 +319,8 @@ ark_feature_toggle_internal() {
 			fi
 			;;
 		sqm)
-			[ -x "${ARK_ROOT}/etc/init.d/sqm" ] || { echo 'Servico SQM indisponivel' >&2; return 3; }
 			if [ "$desired" = "1" ]; then
+				[ -x "${ARK_ROOT}/etc/init.d/sqm" ] || { echo 'Servico SQM indisponivel' >&2; return 3; }
 				for s in $(uci -q show sqm 2>/dev/null | awk -F'[.=]' '$3=="queue"{print $2}'); do
 					uci -q set "sqm.${s}.enabled=1" || return 1
 				done
@@ -330,15 +330,17 @@ ark_feature_toggle_internal() {
 				sync_sqm_flow_offload || return 1
 				ark_promote_cake_mq || return 1
 			else
-				"${ARK_ROOT}/etc/init.d/sqm" stop >/dev/null 2>&1 || return 1
-				"${ARK_ROOT}/etc/init.d/sqm" disable >/dev/null 2>&1 || return 1
+				if [ -x "${ARK_ROOT}/etc/init.d/sqm" ]; then
+					"${ARK_ROOT}/etc/init.d/sqm" stop >/dev/null 2>&1 || return 1
+					"${ARK_ROOT}/etc/init.d/sqm" disable >/dev/null 2>&1 || return 1
+				fi
 				for s in $(uci -q show sqm 2>/dev/null | awk -F'[.=]' '$3=="queue"{print $2}'); do
 					uci -q set "sqm.${s}.enabled=0" || return 1
 				done
-				uci commit sqm || return 1
+				uci commit sqm 2>/dev/null || true
 				# O servico SQM remove seus recursos. Nunca varrer todos os
 				# ingress/qdiscs/IFBs: podem pertencer a VPN, QoS ou terceiros.
-				sync_sqm_flow_offload || return 1
+				sync_sqm_flow_offload 2>/dev/null || true
 			fi
 			uci -q set equipe_dashboard.sqm=feature || return 1
 			uci -q set "equipe_dashboard.sqm.enabled=$desired" || return 1
@@ -440,27 +442,34 @@ ark_feature_remove_internal() {
 	esac
 
 	# 1. Desativacao cautelosa e limpeza completa de rotas, filas e regras antes de desinstalar
-	ark_feature_toggle_internal "$key" 0
+	ark_feature_toggle_internal "$key" 0 || return $?
 
 	# 2. Remocao segura dos pacotes folha (nunca remove dependencias do sistema base)
 	if [ -z "${ARK_ROOT}" ]; then
 		if command -v apk >/dev/null 2>&1; then
 			for pkg in $pkgs; do
-				apk info -e "$pkg" >/dev/null 2>&1 && apk del "$pkg" >/dev/null 2>&1 || true
+				if apk info -e "$pkg" >/dev/null 2>&1; then
+					apk del "$pkg" >/dev/null 2>&1 || return 1
+				fi
 			done
 		elif command -v opkg >/dev/null 2>&1; then
 			for pkg in $pkgs; do
-				opkg status "$pkg" 2>/dev/null | grep -q '^Status:.* installed' && opkg remove "$pkg" >/dev/null 2>&1 || true
+				if opkg status "$pkg" 2>/dev/null | grep -q '^Status:.* installed'; then
+					opkg remove "$pkg" >/dev/null 2>&1 || return 1
+				fi
 			done
+		else
+			echo 'Gerenciador de pacotes indisponivel para remocao' >&2
+			return 3
 		fi
 	fi
 
 	# 3. Persiste que o usuario removeu intencionalmente (sobrevive a updates do ARK Router)
-	uci -q set "equipe_dashboard.${key}=feature"
-	uci -q set "equipe_dashboard.${key}.user_removed=1"
-	uci -q set "equipe_dashboard.${key}.user_disabled=1"
-	uci -q set "equipe_dashboard.${key}.enabled=0"
-	uci commit equipe_dashboard 2>/dev/null || true
+	uci -q set "equipe_dashboard.${key}=feature" || return 1
+	uci -q set "equipe_dashboard.${key}.user_removed=1" || return 1
+	uci -q set "equipe_dashboard.${key}.user_disabled=1" || return 1
+	uci -q set "equipe_dashboard.${key}.enabled=0" || return 1
+	uci commit equipe_dashboard 2>/dev/null || return 1
 	rm -f "${ARK_ROOT}/tmp/ark-features.cache" /tmp/ark-features.cache 2>/dev/null || true
 	return 0
 }
@@ -808,7 +817,7 @@ apply_operation_profile() {
 	local mlim="64M"
 	command -v ark_cake_memlimit >/dev/null 2>&1 && mlim="$(ark_cake_memlimit)"
 	cake_opts="diffserv4 nat dual-srchost wash no-ack-filter memlimit $mlim"
-	cake_iq_opts="diffserv4 nat dual-dsthost wash no-split-gso rtt 100ms memlimit $mlim"
+	cake_iq_opts="diffserv4 nat dual-dsthost wash split-gso rtt 100ms memlimit $mlim"
 
 	uci -q set equipe_dashboard.main=settings
 	uci -q set "equipe_dashboard.main.operation_profile=$mode"

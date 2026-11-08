@@ -513,8 +513,8 @@ function installArkTransactionCoordinator() {
 	}
 }
 
-function reloadSoon(message, delay) {
-	ui.addNotification(null, E('p', {}, [ message || 'Aplicado. Sincronizando o painel…' ]));
+function reloadSoon(message, delay, uncertain, structural) {
+	ui.addNotification(null, E('p', {}, [ 'Sincronizando o painel com o roteador…' ]), 'info');
 	const st = (typeof window !== 'undefined' && window._arkTxState) || null;
 	const waitMs = delay || 800;
 	if (st) {
@@ -523,26 +523,36 @@ function reloadSoon(message, delay) {
 		ensureArkTxBanner({ estSec: Math.max(2, Math.ceil(waitMs / 1000) + 1), label: 'Sincronizando painel com o roteador…' });
 	}
 	window.setTimeout(function() {
+		if (structural) {
+			try { sessionStorage.removeItem('ark_caps'); } catch(e) {}
+			forceReleaseMutationLock('structural_reload');
+			window.location.reload();
+			return;
+		}
 		// Se a instância ativa do painel suportar Hot State Refresh, sincroniza sem piscar a tela nem cair em ERR_CONNECTION_REFUSED
 		if (typeof window !== 'undefined' && window._arkViewInstance && typeof window._arkViewInstance.triggerImmediateRefresh === 'function') {
 			let attempts = 0;
 			const tryHotSync = function() {
 				attempts++;
-				Promise.resolve(window._arkViewInstance.triggerImmediateRefresh(null, 'info', true))
-					.then(function() {
+				Promise.resolve(window._arkViewInstance.triggerImmediateRefresh(null, 'info', true, true))
+					.then(function(synced) {
+						if (synced !== true) throw new Error('Estado ainda não confirmado');
 						forceReleaseMutationLock('hot_sync_ok');
+						ui.addNotification(null, E('p', {}, [uncertain ? 'Painel sincronizado. Confira o estado antes de repetir a ação.' : (message || 'Painel atualizado com sucesso.')]), 'info');
 					})
 					.catch(function() {
 						if (attempts < 5) {
 							window.setTimeout(tryHotSync, 800);
 						} else {
 							forceReleaseMutationLock('hot_sync_fallback');
+							ui.addNotification(null, E('p', {}, ['Não foi possível confirmar o estado no roteador. Verifique a conexão antes de repetir a ação.']), 'warning');
 						}
 					});
 			};
 			tryHotSync();
 			return;
 		}
+		try { sessionStorage.removeItem('ark_caps'); } catch(e) {}
 		forceReleaseMutationLock('hard_reload');
 		window.location.reload();
 	}, waitMs);
@@ -551,7 +561,7 @@ function isExpectedApplyDisconnect(e) { return /xhr|timeout|timed out|network|fa
 function reloadAfterExpectedDisconnect(e, message, delay) {
 	if (!isExpectedApplyDisconnect(e)) return false;
 	try { ui.hideModal(); } catch (err) {}
-	reloadSoon(message || 'Comando enviado. O painel pode ter perdido a resposta enquanto o roteador reinicia serviços…', delay || 1500);
+	reloadSoon(null, delay || 1500, true);
 	return true;
 }
 function closeModal(ev) {

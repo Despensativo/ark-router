@@ -351,6 +351,71 @@ class TestHardwareTune(unittest.TestCase):
         self.assertEqual(self.sb.uci_get("dhcp.lan.ra_mtu"), "1500")
         self.assertEqual(self.sb.uci_get("network.wgclient.mtu"), "1420")
 
+    def test_12_intelligent_cake_auto_tuning_gigabit_vs_broadband(self):
+        """Valida calibração inteligente de CAKE por perfil e taxa de link (Gigabit/Fibra > 500M vs Banda Larga <= 500M)"""
+        self.sb.uci_set("network.wan.proto=pppoe")
+        self.sb.uci_set("network.wan.device=eth1")
+
+        # 1. Perfil Gigabit / FTTH Ultra-Rápido (800 Mbps download / 700 Mbps upload)
+        res_gigabit = self.sb.run_control(
+            "sqm-save-v2",
+            "wan=wan1|wan|pppoe-wan|1|800000|700000|ethernet|34",
+            "waveform_aplus=1"
+        )
+        self.assertEqual(res_gigabit.returncode, 0, f"Falha em sqm-save-v2 gigabit: {res_gigabit.stderr}")
+        iq_gigabit = self.sb.uci_get("sqm.wan1.iqdisc_opts") or ""
+        eq_gigabit = self.sb.uci_get("sqm.wan1.eqdisc_opts") or ""
+
+        # Ingress Gigabit: besteffort + flows + rtt 20ms + split-gso + sem ingress/nat (elimina gargalo mono-core e RTO)
+        self.assertIn("besteffort", iq_gigabit, "Gigabit ingress deve usar besteffort para evitar loop multi-tin no softirq")
+        self.assertIn("flows", iq_gigabit, "Gigabit ingress deve usar flows em vez de dual-dsthost")
+        self.assertIn("split-gso", iq_gigabit, "Gigabit ingress deve usar split-gso para evitar drops atomicos de 64KB")
+        self.assertNotIn("no-split-gso", iq_gigabit)
+        self.assertIn("rtt 20ms", iq_gigabit, "Gigabit FTTH deve usar rtt 20ms calibrado para latencia ultra-baixa de fibra")
+        self.assertNotIn("ingress", iq_gigabit, "Gigabit ingress nao deve ter flag ingress para nao sobre-estimar virtual-time")
+        self.assertNotIn("nat", iq_gigabit, "Gigabit ingress nao deve fazer busca reversa conntrack nat no IFB")
+
+        # Egress Gigabit: diffserv4 + dual-srchost + split-gso
+        self.assertIn("diffserv4", eq_gigabit)
+        self.assertIn("dual-srchost", eq_gigabit)
+        self.assertNotIn("no-split-gso", eq_gigabit)
+
+        # Overhead Gigabit PPPoE calibrado para 34 (cobertura L1/L2 FTTH precisa sem penalizar pacotes pequenos)
+        self.assertEqual(self.sb.uci_get("sqm.wan1.overhead"), "34")
+
+        # 2. Perfil Banda Larga Convencional (300 Mbps download / 150 Mbps upload)
+        res_broadband = self.sb.run_control(
+            "sqm-save-v2",
+            "wan=wan1|wan|pppoe-wan|1|300000|150000|ethernet|44",
+            "waveform_aplus=1"
+        )
+        self.assertEqual(res_broadband.returncode, 0, f"Falha em sqm-save-v2 broadband: {res_broadband.stderr}")
+        iq_broadband = self.sb.uci_get("sqm.wan1.iqdisc_opts") or ""
+        eq_broadband = self.sb.uci_get("sqm.wan1.eqdisc_opts") or ""
+
+        # Ingress Banda Larga: diffserv4 + dual-dsthost + nat + ingress + rtt 100ms
+        self.assertIn("diffserv4", iq_broadband)
+        self.assertIn("dual-dsthost", iq_broadband)
+        self.assertIn("nat", iq_broadband)
+        self.assertIn("ingress", iq_broadband)
+        self.assertIn("rtt 100ms", iq_broadband)
+        self.assertIn("split-gso", iq_broadband)
+        self.assertNotIn("no-split-gso", iq_broadband)
+        self.assertEqual(self.sb.uci_get("sqm.wan1.overhead"), "44")
+
+        # 3. Auditoria Ark Doctor em perfil Gigabit deve acusar OK sem falsos alarmes
+        self.sb.run_control(
+            "sqm-save-v2",
+            "wan=wan1|wan|pppoe-wan|1|800000|700000|ethernet|34",
+            "waveform_aplus=1"
+        )
+        res_doc = self.sb.run_control("ark-doctor", "--json")
+        self.assertEqual(res_doc.returncode, 0)
+        report = json.loads(res_doc.stdout)
+        sqm_checks = [c for c in report.get("checks", []) if "SQM" in c.get("name", "")]
+        for c in sqm_checks:
+            self.assertNotEqual(c.get("status"), "FAIL", f"Ark Doctor acusou FAIL inesperado em configuracao otimizada: {c}")
+
 
 if __name__ == "__main__":
     unittest.main()

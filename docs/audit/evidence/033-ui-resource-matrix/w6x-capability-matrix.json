@@ -1,0 +1,306 @@
+{
+  "observed_utc": "2026-11-07T21:45:12.514807+00:00",
+  "target": "Acer Predator Connect W6x 192.168.73.1",
+  "source_meta_sha256": "829d19251dce8bbb1d140c853eb1ba257dff9147f2ddd7325e58e7229ee83bd8",
+  "rows": [
+    {
+      "key": "sqm",
+      "can_toggle": true,
+      "can_remove": true,
+      "core": false,
+      "state": {
+        "installed": true,
+        "active": false,
+        "hidden": false,
+        "user_disabled": true,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "mwan3",
+      "can_toggle": true,
+      "can_remove": true,
+      "core": false,
+      "state": {
+        "installed": true,
+        "active": false,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "nlbwmon",
+      "can_toggle": true,
+      "can_remove": true,
+      "core": false,
+      "state": {
+        "installed": true,
+        "active": true,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "upnp",
+      "can_toggle": true,
+      "can_remove": true,
+      "core": false,
+      "state": {
+        "installed": true,
+        "active": true,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "adblock",
+      "can_toggle": true,
+      "can_remove": true,
+      "core": false,
+      "state": {
+        "installed": true,
+        "active": false,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "wireguard",
+      "can_toggle": true,
+      "can_remove": true,
+      "core": false,
+      "state": {
+        "installed": true,
+        "active": true,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "zerotier",
+      "can_toggle": true,
+      "can_remove": true,
+      "core": false,
+      "state": {
+        "installed": false,
+        "active": false,
+        "hidden": false,
+        "user_disabled": true,
+        "user_removed": true
+      }
+    },
+    {
+      "key": "speedify",
+      "can_toggle": true,
+      "can_remove": true,
+      "core": false,
+      "state": {
+        "installed": false,
+        "active": false,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "ksmbd",
+      "can_toggle": true,
+      "can_remove": true,
+      "core": false,
+      "state": {
+        "installed": true,
+        "active": false,
+        "hidden": false,
+        "user_disabled": true,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "wol",
+      "can_toggle": true,
+      "can_remove": true,
+      "core": false,
+      "state": {
+        "installed": true,
+        "active": true,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "usteer",
+      "can_toggle": true,
+      "can_remove": true,
+      "core": false,
+      "state": {
+        "installed": true,
+        "active": true,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "irqbalance",
+      "can_toggle": true,
+      "can_remove": true,
+      "core": false,
+      "state": {
+        "installed": true,
+        "active": false,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "zram",
+      "can_toggle": true,
+      "can_remove": true,
+      "core": false,
+      "state": {
+        "installed": false,
+        "active": false,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "htop",
+      "can_toggle": false,
+      "can_remove": true,
+      "core": false,
+      "state": {
+        "installed": true,
+        "active": true,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "hardware_tune",
+      "can_toggle": true,
+      "can_remove": false,
+      "core": false,
+      "state": {
+        "installed": true,
+        "active": true,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "firewall_guard",
+      "can_toggle": true,
+      "can_remove": false,
+      "core": false,
+      "state": {
+        "installed": true,
+        "active": true,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "autowan",
+      "can_toggle": true,
+      "can_remove": false,
+      "core": false,
+      "state": {
+        "installed": true,
+        "active": false,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "history",
+      "can_toggle": true,
+      "can_remove": false,
+      "core": false,
+      "state": {
+        "installed": true,
+        "active": true,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "clock_preserver",
+      "can_toggle": true,
+      "can_remove": false,
+      "core": false,
+      "state": {
+        "installed": true,
+        "active": true,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "safe_shutdown",
+      "can_toggle": true,
+      "can_remove": false,
+      "core": false,
+      "state": {
+        "installed": true,
+        "active": true,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "wifi",
+      "can_toggle": false,
+      "can_remove": false,
+      "core": true,
+      "state": {
+        "installed": true,
+        "active": true,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "temperature",
+      "can_toggle": false,
+      "can_remove": false,
+      "core": true,
+      "state": {
+        "installed": true,
+        "active": true,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    },
+    {
+      "key": "custom_qos",
+      "can_toggle": false,
+      "can_remove": false,
+      "core": true,
+      "state": {
+        "installed": true,
+        "active": true,
+        "hidden": false,
+        "user_disabled": false,
+        "user_removed": false
+      }
+    }
+  ]
+}

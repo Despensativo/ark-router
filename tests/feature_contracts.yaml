@@ -13,12 +13,21 @@ features:
   - src/core/rpc.js
   - src/modules/render.js
   - src/modules/lifecycle.js
+  - src/core/formatters.js
+  - src/modules/system.js
+  - src/modules/storage_wol.js
+  - src/modules/adblock.js
+  - src/modules/speedify.js
   - root/www/luci-static/resources/view/equipe-dashboard/overview.js
   - root/usr/sbin/equipe-dashboard-control
   - root/usr/lib/ark/modules/devices.sh
   actions:
   - overview.js render()
   - rpc.js poll()
+  - features
+  - feature-toggle
+  - feature-hide
+  - feature-remove
   rpc_endpoints:
   - network.interface/dump
   - network.device/status
@@ -45,7 +54,7 @@ features:
   temp_data:
   - /tmp/luci-indexcache
   - /tmp/luci-modulecache/
-  boot_behavior: Carregado sob demanda via navegador na porta 80/443; polling ubus a cada 3 a 5 segundos.
+  boot_behavior: Carregado sob demanda via navegador na porta 80/443; polling ubus a cada 3 a 5 segundos. Cache de capacidades revalidado e aplicado ao DOM; mudanças estruturais recarregam a página com cache invalidado.
   can_modify:
   - DOM LuCI
   - configurações cosméticas equipe_dashboard.main
@@ -66,6 +75,9 @@ features:
   tests:
   - tests/test_multicore_optimization.py
   - tests/test_wan_matrix.py
+  - tests/test_ui_capability_sync.cjs
+  - tests/test_feature_remove_failures.py
+  - tests/capture_feature_toggle_fixture.py
   - scripts/verify_dom_progressive.mjs
   real_hw_required: false
 - id: ARK-UI-002
@@ -2647,6 +2659,7 @@ features:
   - adblock-disable
   - adblock-toggle
   - adblock-configure
+  - feature-toggle adblock
   rpc_endpoints:
   - /usr/sbin/equipe-dashboard-control adblock-*
   acls:
@@ -2658,11 +2671,15 @@ features:
   - package: adblock
     sections:
     - global
+  - package: equipe_dashboard
+    sections:
+    - adblock
   services:
   - adblock
   - dnsmasq
   persistent_data:
   - /etc/config/adblock
+  - /etc/config/equipe_dashboard
   temp_data:
   - /tmp/adblock.blocklist
   - /tmp/adblock.pid
@@ -2682,6 +2699,7 @@ features:
   version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
+  - tests/capture_feature_toggle_fixture.py
   real_hw_required: false
 - id: ARK-BLOCK-002
   name: Sincronização Customizada de Listas Negras e Listas Brancas

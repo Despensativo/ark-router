@@ -775,8 +775,8 @@ const storageWolMethods = {
 		const f = this.feature('wol') || {};
 		const installed = !!f.installed;
 
-		const pillEl = E('span', { id: 'ex-wol-pill', class: 'ex-pill ' + (installed ? 'online' : 'standby') }, [
-			installed ? 'PRONTO (ETHERWAKE)' : 'OPCIONAL'
+		const pillEl = E('span', { id: 'ex-wol-pill', class: 'ex-pill ' + (installed && f.active ? 'online' : 'standby') }, [
+			installed ? (f.active ? 'PRONTO (ETHERWAKE)' : 'PAUSADO') : 'OPCIONAL'
 		]);
 		const titleActions = E('div', { class: 'ex-card-title-actions' }, [pillEl]);
 		const cardTitle = E('div', { class: 'ex-card-title' }, [
@@ -867,8 +867,9 @@ const storageWolMethods = {
 
 			const pill = document.getElementById('ex-wol-pill');
 			if (pill) {
-				pill.className = 'ex-pill ' + (st.installed ? 'online' : 'standby');
-				pill.textContent = st.installed ? 'PRONTO (ETHERWAKE)' : 'OPCIONAL';
+				const active = !!(self.feature('wol') || {}).active;
+				pill.className = 'ex-pill ' + (st.installed && active ? 'online' : 'standby');
+				pill.textContent = st.installed ? (active ? 'PRONTO (ETHERWAKE)' : 'PAUSADO') : 'OPCIONAL';
 			}
 			const eng = document.getElementById('ex-wol-engine-state');
 			if (eng) {

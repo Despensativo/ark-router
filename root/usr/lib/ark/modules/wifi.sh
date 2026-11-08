@@ -303,7 +303,7 @@ wifi_qca_apply_roaming_tuning() {
 		uci -q set "wireless.$iface.disassoc_low_ack=0"
 		uci -q set "wireless.$iface.wpa_group_rekey=0"
 		uci -q set "wireless.$iface.skip_inactivity_poll=0"
-		uci -q set "wireless.$iface.max_inactivity=86400"
+		uci -q set "wireless.$iface.max_inactivity=600"
 		uci -q delete "wireless.$iface.ieee80211r" 2>/dev/null || true
 		uci -q delete "wireless.$iface.ft_over_ds" 2>/dev/null || true
 		uci -q delete "wireless.$iface.ft_psk_generate_local" 2>/dev/null || true
@@ -1322,7 +1322,7 @@ handle_wifi() {
 					uci -q set "wireless.$iface.dtim_period=1"
 					uci -q set "wireless.$iface.wpa_group_rekey=0"
 					uci -q set "wireless.$iface.skip_inactivity_poll=0"
-					uci -q set "wireless.$iface.max_inactivity=86400"
+					uci -q set "wireless.$iface.max_inactivity=600"
 					uci -q set "wireless.$iface.multicast_to_unicast=0"
 				fi
 			done
@@ -1543,7 +1543,7 @@ EOF
 				uci -q set "wireless.$iface.disassoc_low_ack=0"
 				uci -q set "wireless.$iface.wpa_group_rekey=0"
 				uci -q set "wireless.$iface.skip_inactivity_poll=0"
-				uci -q set "wireless.$iface.max_inactivity=86400"
+				uci -q set "wireless.$iface.max_inactivity=600"
 
 				if ark_hostapd_has_wnm; then
 					uci -q set "wireless.$iface.ieee80211v=1"
@@ -1714,7 +1714,7 @@ EOF
 					uci -q set "wireless.$iface.disassoc_low_ack=0"
 					uci -q set "wireless.$iface.wpa_group_rekey=0"
 					uci -q set "wireless.$iface.skip_inactivity_poll=0"
-					uci -q set "wireless.$iface.max_inactivity=86400"
+					uci -q set "wireless.$iface.max_inactivity=600"
 					uci -q delete "wireless.$iface.wnm_sleep_mode" 2>/dev/null || true
 					if [ "$(uci -q get wireless.$iface.network || echo lan)" = "lan" ]; then
 						uci -q set "wireless.$iface.ieee80211k=1"
@@ -2403,7 +2403,7 @@ EOF
 				uci -q set "wireless.$iface.disassoc_low_ack=0"
 				uci -q set "wireless.$iface.wpa_group_rekey=0"
 				uci -q set "wireless.$iface.skip_inactivity_poll=0"
-				uci -q set "wireless.$iface.max_inactivity=86400"
+				uci -q set "wireless.$iface.max_inactivity=600"
 			done
 			uci -q set equipe_dashboard.wifi.wifi6_accel=1
 			uci commit equipe_dashboard 2>/dev/null || true

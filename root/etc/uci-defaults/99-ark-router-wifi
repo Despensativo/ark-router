@@ -184,7 +184,7 @@ for iface in $(uci -q show wireless | grep -E "=wifi-iface$" | cut -d. -f2 | cut
 		uci -q set "wireless.$iface.disassoc_low_ack=0"
 		uci -q set "wireless.$iface.wpa_group_rekey=0"
 		uci -q set "wireless.$iface.skip_inactivity_poll=0"
-		uci -q set "wireless.$iface.max_inactivity=86400"
+		uci -q set "wireless.$iface.max_inactivity=600"
 		uci -q delete "wireless.$iface.wnm_sleep_mode" 2>/dev/null || true
 		changed=1
 	fi

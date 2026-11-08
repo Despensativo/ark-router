@@ -14,7 +14,7 @@ adblock_status_json() {
 	local mem_total_kb overlay_free_kb mem_total_mb recommended_cache_mb local_installed local_active overlay_free_mb supported_profile cloud_active active mode rules_count
 	local cache_size_mb parental_enabled protection_enabled safesearch_enabled cloud_cache web_port raw_bytes raw_port lan_ip web_url stat_queries stat_blocked
 	local stat_blocked_pct stat_avg_ms stat_running stats_raw agh_auth_arg stored_pass stat_time zt_access zt_web_url zt_dev zt_ip cloud_provider
-	local custom_blacklist custom_whitelist nextdns_id doh_installed doh_active
+	local custom_blacklist custom_whitelist nextdns_id doh_installed doh_active user_disabled user_removed feature_hidden
 	mem_total_kb="$(awk '/MemTotal:/ {print $2; exit}' /proc/meminfo 2>/dev/null || echo 0)"
 	overlay_free_kb="$(df -k /overlay 2>/dev/null | awk 'NR==2{print $4}')"
 	[ -n "$overlay_free_kb" ] || overlay_free_kb="$(df -k / 2>/dev/null | awk 'NR==2{print $4}')"
@@ -209,8 +209,12 @@ except Exception:
 		fi
 	fi
 
-	printf '{"installed":%s,"active":%s,"installable":%s,"reason":"%s","mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s","mem_total_mb":%d,"overlay_free_mb":%d,"overlay_free_kb":%d,"cache_size_mb":%d,"recommended_cache_mb":%d,"parental_enabled":%s,"protection_enabled":%s,"safesearch_enabled":%s,"cloud_cache":%s,"web_port":%d,"zerotier_access":%s,"zt_web_url":"%s","custom_blacklist":"%s","custom_whitelist":"%s","nextdns_id":"%s","dns_intercept":%s,"doh_installed":%s,"doh_active":%s,"stat_queries":%d,"stat_blocked":%d,"stat_blocked_pct":%d,"stat_avg_ms":"%s","stat_running":%s}\n' \
-		"$local_installed" "$active" "$adblock_installable" "$(json_escape "$adblock_reason")" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url" "$mem_total_mb" "$overlay_free_mb" "$overlay_free_kb" "$cache_size_mb" "$recommended_cache_mb" "$parental_enabled" "$protection_enabled" "$safesearch_enabled" "$cloud_cache" "$web_port" "$zt_access" "$zt_web_url" "$(json_escape "$custom_blacklist")" "$(json_escape "$custom_whitelist")" "$(json_escape "$nextdns_id")" "$dns_intercept" "$doh_installed" "$doh_active" "$stat_queries" "$stat_blocked" "$stat_blocked_pct" "$stat_avg_ms" "$stat_running"
+	user_disabled=false; user_removed=false; feature_hidden=false
+	[ "$(uci -q get equipe_dashboard.adblock.user_disabled 2>/dev/null)" = 1 ] && user_disabled=true
+	[ "$(uci -q get equipe_dashboard.adblock.user_removed 2>/dev/null)" = 1 ] && user_removed=true
+	[ "$(uci -q get equipe_dashboard.adblock.hidden 2>/dev/null)" = 1 ] && feature_hidden=true
+	printf '{"installed":%s,"active":%s,"hidden":%s,"user_disabled":%s,"user_removed":%s,"installable":%s,"reason":"%s","mode":"%s","supported_profile":"%s","local_installed":%s,"local_active":%s,"cloud_active":%s,"cloud_provider":"%s","rules_count":%s,"web_url":"%s","mem_total_mb":%d,"overlay_free_mb":%d,"overlay_free_kb":%d,"cache_size_mb":%d,"recommended_cache_mb":%d,"parental_enabled":%s,"protection_enabled":%s,"safesearch_enabled":%s,"cloud_cache":%s,"web_port":%d,"zerotier_access":%s,"zt_web_url":"%s","custom_blacklist":"%s","custom_whitelist":"%s","nextdns_id":"%s","dns_intercept":%s,"doh_installed":%s,"doh_active":%s,"stat_queries":%d,"stat_blocked":%d,"stat_blocked_pct":%d,"stat_avg_ms":"%s","stat_running":%s}\n' \
+		"$local_installed" "$active" "$feature_hidden" "$user_disabled" "$user_removed" "$adblock_installable" "$(json_escape "$adblock_reason")" "$mode" "$supported_profile" "$local_installed" "$local_active" "$cloud_active" "$cloud_provider" "$rules_count" "$web_url" "$mem_total_mb" "$overlay_free_mb" "$overlay_free_kb" "$cache_size_mb" "$recommended_cache_mb" "$parental_enabled" "$protection_enabled" "$safesearch_enabled" "$cloud_cache" "$web_port" "$zt_access" "$zt_web_url" "$(json_escape "$custom_blacklist")" "$(json_escape "$custom_whitelist")" "$(json_escape "$nextdns_id")" "$dns_intercept" "$doh_installed" "$doh_active" "$stat_queries" "$stat_blocked" "$stat_blocked_pct" "$stat_avg_ms" "$stat_running"
 }
 
 adblock_apply_rules() {
@@ -974,6 +978,14 @@ adblock_configure() {
 	exit 2
 }
 
+adblock_mark_enabled() {
+	uci -q set equipe_dashboard.adblock=feature || return 1
+	uci -q set equipe_dashboard.adblock.enabled=1 || return 1
+	uci -q set equipe_dashboard.adblock.user_disabled=0 || return 1
+	uci -q set equipe_dashboard.adblock.user_removed=0 || return 1
+	uci commit equipe_dashboard || return 1
+}
+
 adblock_enable() {
 	local chosen_mode provider cache_mb protection parental safesearch cloud_cache web_port zt_access custom_blacklist nextdns_id custom_whitelist
 	local dns_intercept mem_total_kb overlay_free_kb cur_servers clean_cur s clean_s cur_allservers cur_noresolv cur_dhcp_fallback agh_ready _i
@@ -1170,6 +1182,7 @@ EOF
 		adblock_configure local "$cache_mb" "$protection" "$parental" "$safesearch" "$provider" "$cloud_cache" "$web_port" "$zt_access" "$custom_blacklist" "$nextdns_id" "$custom_whitelist" "$dns_intercept" >/dev/null 2>&1 || true
 
 		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+		adblock_mark_enabled || return 1
 		echo ok
 		return 0
 	fi
@@ -1197,7 +1210,8 @@ EOF
 	fi
 	uci commit dhcp
 
-	adblock_configure cloud "$cache_mb" "$protection" "$parental" "$safesearch" "$provider" "$cloud_cache" "$web_port" "$zt_access" "$custom_blacklist" "$nextdns_id" "$custom_whitelist" "$dns_intercept"
+	adblock_configure cloud "$cache_mb" "$protection" "$parental" "$safesearch" "$provider" "$cloud_cache" "$web_port" "$zt_access" "$custom_blacklist" "$nextdns_id" "$custom_whitelist" "$dns_intercept" || return 1
+	adblock_mark_enabled || return 1
 	return 0
 }
 

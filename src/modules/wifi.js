@@ -275,7 +275,7 @@ const wifiMethods = {
 					return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-add', name, (enc === 'none' ? '' : pass), netSelect.value, bandSelect.value, enc, (hiddenAddInput.checked ? '1' : '0')]).then(function(r) {
 						if (r.code) throw new Error(r.stderr || 'Falha ao criar rede Wi-Fi');
 						ui.hideModal();
-						reloadSoon('Nova rede Wi-Fi criada. Reiniciando o rádio…', 1500);
+						reloadSoon('Nova rede Wi-Fi criada. Reiniciando o rádio…', 1500, false, true);
 					}).catch(function(e) {
 						btn.disabled = false;
 						btn.textContent = 'Criar Rede Wi-Fi';
@@ -948,7 +948,7 @@ const wifiMethods = {
 				return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-delete', targetId]).then(L.bind(function(r) {
 					if (r.code) throw new Error(r.stderr || 'Falha ao excluir rede Wi-Fi');
 					ui.hideModal();
-					reloadSoon('Rede Wi‑Fi excluída com sucesso. Recarregando…', 1200);
+					reloadSoon('Rede Wi‑Fi excluída com sucesso. Recarregando…', 1200, false, true);
 				}, this)).catch(function(e) {
 					btn.disabled = false;
 					btnDeleteCancel.disabled = false;
@@ -1017,7 +1017,7 @@ const wifiMethods = {
 				const gDown=mbpsToKbps(guestDownInput.value)||'0', gUp=mbpsToKbps(guestUpInput.value)||'0';
 				args.push('guest_download='+gDown, 'guest_upload='+gUp);
 			}
-			return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar Wi‑Fi');ui.hideModal();reloadSoon('Configuração do Wi‑Fi salva. Recarregando após reiniciar o rádio…',1500);}).catch(function(e){btn.disabled = false; btn.textContent = 'Salvar Wi‑Fi'; const msg=String(e&&e.message||e||'');if(reloadAfterExpectedDisconnect(msg,'Wi‑Fi reiniciando. Se a alteração foi aplicada, reconecte na rede nova e recarregue o painel…',2000))return;ui.addNotification(null,E('p',{},[msg]),'danger');});
+			return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar Wi‑Fi');ui.hideModal();reloadSoon('Configuração do Wi‑Fi salva. Recarregando após reiniciar o rádio…',1500,false,true);}).catch(function(e){btn.disabled = false; btn.textContent = 'Salvar Wi‑Fi'; const msg=String(e&&e.message||e||'');if(reloadAfterExpectedDisconnect(msg,'Wi‑Fi reiniciando. Se a alteração foi aplicada, reconecte na rede nova e recarregue o painel…',2000))return;ui.addNotification(null,E('p',{},[msg]),'danger');});
 		},this)},['Salvar Wi‑Fi'])]));
 		ui.showModal((isGuest?'Editar rede visitante':'Editar rede principal'),rows);
 		if (window.innerWidth > 854 && !(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) ssid.focus();

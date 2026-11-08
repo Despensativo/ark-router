@@ -54,8 +54,8 @@ flowchart TD
 - **2. Nome**: Painel LuCI Overview e Telemetria em Tempo Real
 - **3. Objetivo**: Apresentar visualização unificada de interfaces WAN/LAN, Wi-Fi, clientes conectados, métricas de tráfego e diagnósticos em Vanilla JS com atualização assíncrona ubus.
 - **4. Estado Atual**: `funcional`
-- **5. Arquivos Responsáveis**: `src/core/rpc.js`, `src/modules/render.js`, `src/modules/lifecycle.js`, `root/www/luci-static/resources/view/equipe-dashboard/overview.js`
-- **6. Comandos e Ações**: `overview.js render()`, `rpc.js poll()`
+- **5. Arquivos Responsáveis**: `src/core/rpc.js`, `src/core/formatters.js`, `src/modules/render.js`, `src/modules/lifecycle.js`, `src/modules/system.js`, `src/modules/storage_wol.js`, `src/modules/adblock.js`, `src/modules/speedify.js`, `root/www/luci-static/resources/view/equipe-dashboard/overview.js`
+- **6. Comandos e Ações**: `overview.js render()`, `rpc.js poll()`, `features`, `feature-toggle`, `feature-hide`, `feature-remove`
 - **7. Endpoints RPC**: `network.interface/dump`, `network.device/status`, `system/info`, `system/board`, `luci-rpc/getDHCPLeases`, `iwinfo/assoclist`
 - **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
 - **9. Dependências e Pacotes**: `luci-mod-admin-full`, `rpcd`, `rpcd-mod-luci`
@@ -63,7 +63,7 @@ flowchart TD
 - **11. Serviços e Daemons**: `uhttpd`, `rpcd`
 - **12. Dados Persistentes**: `/etc/config/equipe_dashboard`
 - **13. Dados Temporários em /tmp ou Memória**: `/tmp/luci-indexcache`, `/tmp/luci-modulecache/`
-- **14. Comportamento no Boot**: Carregado sob demanda via navegador na porta 80/443; polling ubus a cada 3 a 5 segundos.
+- **14. Comportamento no Boot**: Carregado sob demanda via navegador na porta 80/443; polling ubus a cada 3 a 5 segundos. Capacidades em cache de sessão são revalidadas em segundo plano e reconciliadas no DOM; alternâncias só anunciam sucesso após leitura do estado esperado. Ao voltar à aba, capacidades são revalidadas com intervalo mínimo de 5 segundos. Mudanças estruturais de Wi-Fi/WAN/tema exigem recarga com cache invalidado.
 - **15. Recursos que Pode Alterar**: DOM LuCI, configurações cosméticas equipe_dashboard.main
 - **16. Recursos que NÃO Pode Alterar**: regras de firewall arbitrárias, arquivos fora de /etc/config/equipe_dashboard
 - **17. Relações e Dependências**: `ARK-UI-002`, `ARK-UI-003`, `ARK-HIST-001`, `ARK-DIAG-001`
@@ -71,7 +71,7 @@ flowchart TD
 - **19. Limitações por Versão do OpenWrt**: Dual OpenWrt 19.07 a 25.x (LuCI client-side JavaScript view L.view.extend).
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
 - **21. Versão de Criação/Alteração**: `1.5.2`
-- **22. Testes Relacionados**: `tests/test_wan_matrix.py`, `scripts/verify_dom_progressive.mjs`
+- **22. Testes Relacionados**: `tests/test_wan_matrix.py`, `tests/test_ui_capability_sync.cjs`, `tests/test_feature_remove_failures.py`, `tests/capture_feature_toggle_fixture.py`, `scripts/verify_dom_progressive.mjs`; [lote 032](audit/batches/032-ui-refresh-w6x-live.md) validou WoL e navegação no W6x real. Reboot, idempotência e interferência dos demais recursos dependem da matriz de VM.
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
 ### `ARK-UI-002` — Tema ARK LuCI Responsivo, Header e Visual Mobile-First
@@ -1459,13 +1459,13 @@ flowchart TD
 - **3. Objetivo**: Bloquear domínios maliciosos, anúncios e rastreadores diretamente na resolução DNS sem perda de velocidade na navegação.
 - **4. Estado Atual**: `funcional`
 - **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/adblock.sh`, `src/modules/adblock.js`
-- **6. Comandos e Ações**: `adblock-status`, `adblock-enable`, `adblock-disable`, `adblock-toggle`, `adblock-configure`
+- **6. Comandos e Ações**: `adblock-status`, `adblock-enable`, `adblock-disable`, `adblock-toggle`, `adblock-configure`, `feature-toggle adblock` (chave do cartão)
 - **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control adblock-*`
 - **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
 - **9. Dependências e Pacotes**: `adblock ou adguardhome`, `dnsmasq`
-- **10. Configurações UCI**: `adblock`
+- **10. Configurações UCI**: `adblock`, `equipe_dashboard.adblock` (preferência de ativação/pausa e visibilidade)
 - **11. Serviços e Daemons**: `adblock`, `dnsmasq`
-- **12. Dados Persistentes**: `/etc/config/adblock`
+- **12. Dados Persistentes**: `/etc/config/adblock`, `/etc/config/equipe_dashboard`
 - **13. Dados Temporários em /tmp ou Memória**: `/tmp/adblock.blocklist`, `/tmp/adblock.pid`
 - **14. Comportamento no Boot**: Lista de bloqueio compilada em RAM no boot.
 - **15. Recursos que Pode Alterar**: adblock.*, dhcp.@dnsmasq[0].addnhosts
@@ -1475,7 +1475,7 @@ flowchart TD
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `full`
 - **21. Versão de Criação/Alteração**: `1.5.2`
-- **22. Testes Relacionados**: `tests/test_wan_matrix.py`
+- **22. Testes Relacionados**: `tests/test_wan_matrix.py`, `tests/capture_feature_toggle_fixture.py`; o cartão reconsulta `features.adblock`, reconstrói o estado visual e só anuncia sucesso após confirmar `active`/`user_disabled`.
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
 ### `ARK-BLOCK-002` — Sincronização Customizada de Listas Negras e Listas Brancas

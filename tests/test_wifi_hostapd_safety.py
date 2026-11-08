@@ -16,6 +16,11 @@ class TestWifiHostapdSafety(unittest.TestCase):
         cls.wifi_sh = os.path.join(cls.repo_dir, "root", "usr", "lib", "ark", "modules", "wifi.sh")
         cls.doctor_sh = os.path.join(cls.repo_dir, "root", "usr", "lib", "ark", "modules", "doctor.sh")
 
+    def setUp(self):
+        self.repo_dir = getattr(self.__class__, "repo_dir", os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+        self.wifi_sh = getattr(self.__class__, "wifi_sh", os.path.join(self.repo_dir, "root", "usr", "lib", "ark", "modules", "wifi.sh"))
+        self.doctor_sh = getattr(self.__class__, "doctor_sh", os.path.join(self.repo_dir, "root", "usr", "lib", "ark", "modules", "doctor.sh"))
+
     def test_01_no_forbidden_hostapd_set_directives(self):
         """Verifies that bss_transition and wnm_sleep_mode are never set unconditionally in wifi.sh (must be guarded by ark_hostapd_has_wnm or QCA QSDK)."""
         import re

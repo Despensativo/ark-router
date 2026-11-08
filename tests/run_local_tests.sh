@@ -64,6 +64,8 @@ done
 check_node_syntax "$REPO_DIR/root/www/luci-static/resources/view/equipe-dashboard/overview.js"
 check_node_syntax "$REPO_DIR/root/www/luci-static/ark/ark-theme.js"
 "$PYTHON_CMD" "$REPO_DIR/scripts/build_frontend_bundle.py" --check
+"$NODE_CMD" "$SCRIPT_DIR/test_ui_capability_sync.cjs"
+"$PYTHON_CMD" "$SCRIPT_DIR/test_feature_remove_failures.py"
 printf "${GREEN}✓ Código JavaScript e sincronia do bundle válidos!${NC}\n\n"
 
 # 3. Execução da Matriz de Testes Unitários e Integração (Python)

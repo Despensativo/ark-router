@@ -351,7 +351,7 @@ const renderMethods = {
 							fs.exec('/usr/sbin/equipe-dashboard-control', ['autowan-wan-to-lan', '0']).then(function(r) {
 								if (r && r.code) throw new Error(r.stderr || 'Falha ao restaurar WAN1');
 								ui.hideModal();
-								reloadSoon('Porta WAN física restaurada como WAN1 com todas as configurações mantidas! Recarregando…', 1500);
+								reloadSoon('Porta WAN física restaurada como WAN1 com todas as configurações mantidas! Recarregando…', 1500, false, true);
 							}).catch(function(e) {
 								if (btn) { btn.disabled = false; btn.textContent = 'Restaurar como WAN1'; }
 								if (reloadAfterExpectedDisconnect(e, 'Restaurando porta WAN1… Recarregando painel…', 3500)) return;
@@ -2143,6 +2143,20 @@ const renderMethods = {
 				if(!document.hidden && this.refreshPaused){
 					this.refreshPaused = false;
 					this.scheduleAdaptiveRefresh(0);
+				}
+				if (!document.hidden && !Object.keys(this._featureMutationPending || {}).length) {
+					const now = Date.now();
+					if (!this._lastVisibilityCapabilityCheck || now - this._lastVisibilityCapabilityCheck > 5000) {
+						this._lastVisibilityCapabilityCheck = now;
+						const request = this.fetchCapabilities(true);
+						const generation = this._capabilityGeneration;
+						request.then(L.bind(function(caps) {
+							if (this._capabilityGeneration !== generation || Object.keys(this._featureMutationPending || {}).length) return;
+							this.capabilities = caps;
+							if (this.currentData) this.update(this.currentData);
+							if (typeof this.refreshFeatureCenterRows === 'function') this.refreshFeatureCenterRows();
+						}, this)).catch(function() {});
+					}
 				}
 			}, this));
 		}

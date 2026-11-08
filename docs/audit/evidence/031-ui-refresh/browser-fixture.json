@@ -1,0 +1,80 @@
+{
+  "environment": "Chromium real; DOM/serviços LuCI e RPC simulados; sem VM",
+  "source_sha256": "b75aa5ce1038fae5bb37b1291576d1825e7e17eca818b3e04957bbd32aa1e9c2",
+  "cases": [
+    {
+      "width": 360,
+      "console_errors": [],
+      "scenario": "rpc_failure",
+      "state_preserved": true,
+      "retry_enabled": true,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 360,
+      "scenario": "confirmed_success",
+      "console_errors": [],
+      "modal_reopened": true,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 360,
+      "scenario": "unconfirmed_read",
+      "console_errors": [],
+      "false_success": false,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 390,
+      "console_errors": [],
+      "scenario": "rpc_failure",
+      "state_preserved": true,
+      "retry_enabled": true,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 390,
+      "scenario": "confirmed_success",
+      "console_errors": [],
+      "modal_reopened": true,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 390,
+      "scenario": "unconfirmed_read",
+      "console_errors": [],
+      "false_success": false,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 1280,
+      "console_errors": [],
+      "scenario": "rpc_failure",
+      "state_preserved": true,
+      "retry_enabled": true,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 1280,
+      "scenario": "confirmed_success",
+      "console_errors": [],
+      "modal_reopened": true,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 1280,
+      "scenario": "unconfirmed_read",
+      "console_errors": [],
+      "false_success": false,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 390,
+      "scenario": "row_reconciliation",
+      "console_errors": [],
+      "unchanged": true,
+      "changedOnlyOne": true,
+      "focusPreserved": true
+    }
+  ]
+}

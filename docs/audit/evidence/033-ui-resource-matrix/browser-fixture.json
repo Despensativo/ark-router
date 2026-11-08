@@ -1,0 +1,87 @@
+{
+  "environment": "Chromium real; DOM/serviços LuCI e RPC simulados; sem VM",
+  "source_sha256": "dddd4392eaac6191b22ba898b4b05cddff1de5c032c54f001dbd37cf131573d7",
+  "cases": [
+    {
+      "width": 360,
+      "console_errors": [],
+      "scenario": "rpc_failure",
+      "state_preserved": true,
+      "retry_enabled": true,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 360,
+      "scenario": "confirmed_success",
+      "console_errors": [],
+      "modal_reopened": true,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 360,
+      "scenario": "unconfirmed_read",
+      "console_errors": [],
+      "false_success": false,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 390,
+      "console_errors": [],
+      "scenario": "rpc_failure",
+      "state_preserved": true,
+      "retry_enabled": true,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 390,
+      "scenario": "confirmed_success",
+      "console_errors": [],
+      "modal_reopened": true,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 390,
+      "scenario": "unconfirmed_read",
+      "console_errors": [],
+      "false_success": false,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 1280,
+      "console_errors": [],
+      "scenario": "rpc_failure",
+      "state_preserved": true,
+      "retry_enabled": true,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 1280,
+      "scenario": "confirmed_success",
+      "console_errors": [],
+      "modal_reopened": true,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 1280,
+      "scenario": "unconfirmed_read",
+      "console_errors": [],
+      "false_success": false,
+      "horizontal_overflow": false
+    },
+    {
+      "width": 390,
+      "scenario": "row_reconciliation",
+      "console_errors": [],
+      "unchanged": true,
+      "changedOnlyOne": true,
+      "focusPreserved": true
+    },
+    {
+      "width": 390,
+      "scenario": "adblock_card_synced",
+      "console_errors": [],
+      "no_reload": true,
+      "state_confirmed": true
+    }
+  ]
+}

@@ -80,7 +80,7 @@ const systemMethods = {
 		ui.showModal('INSTALAÇÃO DO CERTIFICADO',[E('p',{class:'alert-message warning'},['Instale apenas em aparelhos administrativos nos quais você confia. Nunca é necessário instalar a chave privada.']),E('ol',{class:'ex-cert-steps'},[E('li',{},['Windows: abra o arquivo e instale-o em Autoridades de Certificação Raiz Confiáveis.']),E('li',{},['Android: em Segurança, procure Instalar certificado de CA e selecione o arquivo.']),E('li',{},['iPhone/iPad: instale o perfil baixado e depois habilite confiança total nos Ajustes de Certificados.']),E('li',{},['Depois da instalação, feche e abra novamente o navegador e acesse novamente o endereço HTTPS do roteador.'])]),fingerprint?E('p',{class:'ex-cert-fingerprint'},[E('span',{},['Impressão digital SHA-256']),E('code',{},[fingerprint])]):'',E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])]);
 	},
 	setFeatureHidden: function(key,hidden){
-		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-hide',key,hidden?'1':'0']).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar a preferência');return this.fetchCapabilities(true).then(function(c){this.capabilities=c;window.location.reload();}.bind(this));},this)).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]));});
+		return this.runFeatureMutation(key, ['feature-hide', key, hidden ? '1' : '0'], { hidden: hidden }, hidden ? 'Sugestão oculta.' : 'Sugestão visível.', false);
 	},
 	loadFeatureInstallLog: function(key){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-install-log',key]).then(function(r){return String(r.stdout||'').trim();}).catch(function(){return '';});
@@ -742,6 +742,7 @@ const systemMethods = {
 			const state=String(r.stdout||'').trim();
 			if(state==='done'){
 				ui.addNotification(null,E('p',{},[key==='speedtest'?'Medidor pronto na memória. Recarregando o painel…':'Recurso instalado com sucesso. Recarregando o painel…']));
+				try { sessionStorage.removeItem('ark_caps'); } catch(e) {}
 				window.setTimeout(function(){window.location.reload();},1200);
 				return;
 			}
@@ -973,6 +974,7 @@ const systemMethods = {
 					ui.hideModal();
 					if(state==='installed'){
 						ui.addNotification(null,E('p',{},[key==='speedtest'?'Medidor já estava pronto na memória.':(key==='speedify'?'Speedify já estava disponível.':(key==='usteer'?'Assistente usteer ativado com sucesso.':'Esse recurso já estava disponível e foi ativado.'))]));
+						try { sessionStorage.removeItem('ark_caps'); } catch(e) {}
 						window.setTimeout(function(){window.location.reload();},900);
 						return;
 					}
@@ -1003,7 +1005,7 @@ const systemMethods = {
 					return fs.exec('/usr/sbin/equipe-dashboard-control',['theme',key]).then(function(r){
 						if(r.code)throw new Error(r.stderr||'Falha ao selecionar o tema');
 						ui.hideModal();
-						reloadSoon('Tema '+name+' ativado. Recarregando…',400);
+						reloadSoon('Tema '+name+' ativado. Recarregando…',400,false,true);
 					}).catch(function(e){
 						if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
 						ui.addNotification(null,E('p',{},[e.message]),'danger');
@@ -2452,7 +2454,7 @@ const systemMethods = {
 			const finalCmdArgs = isAp ? cmdArgs : ['system-network-mode-set', 'router', dhcpRestoreChoice];
 			fs.exec('/usr/sbin/equipe-dashboard-control', finalCmdArgs)
 			.then(function(r) {
-				reloadSoon(loadingMsg, 1500);
+				reloadSoon(loadingMsg, 1500, false, true);
 			}).catch(function(e) {
 				if (reloadAfterExpectedDisconnect(e, loadingMsg, 4500)) return;
 				ui.addNotification(null, E('p', {}, [e.message]), 'danger');
@@ -2731,12 +2733,12 @@ const systemMethods = {
 			])
 		]);
 
-		const isSat = isSatelliteOrAp(this.currentData || (this.capabilities && this.capabilities));
 		const self = this;
 
 		const buildFeatureRow = function(key) {
 			const meta = FEATURE_META[key], f = self.feature(key) || {};
 			if (!meta) return null;
+			const isSat = isSatelliteOrAp(self.currentData || (self.capabilities && self.capabilities));
 			const isShieldedOnSat = isSat && (key === 'sqm' || key === 'mwan3' || key === 'speedify' || key === 'upnp' || key === 'adblock' || key === 'nlbwmon');
 			const isNativeHw = key === 'irqbalance' && (!!f.native_hw || (!f.installable && f.reason && (f.reason.indexOf('nativamente') !== -1 || f.reason.indexOf('Desnecessário') !== -1)));
 			let state = f.installed ? (f.temporary ? 'Pronto na memória' : (f.active ? 'Instalado e ativo' : (f.user_disabled ? 'Desativado pelo usuário' : 'Instalado (Em espera)'))) : (f.user_removed ? 'Removido pelo usuário' : (f.installable ? 'Não instalado' : 'Não disponível'));
@@ -2856,7 +2858,7 @@ const systemMethods = {
 				reasonEl = E('small', { class: 'ex-feature-reason', style: 'color:#ef4444;font-weight:600;display:block;margin-top:4px;' }, ['⚠️ ' + f.reason]);
 			}
 			const cautionEl = meta.cautionNote ? E('small', { class: 'ex-feature-caution-note', style: 'display:block;margin-top:4px;font-size:11.5px;color:#94a3b8;line-height:1.4;' }, ['🛡️ Ajuste seguro: ' + meta.cautionNote]) : '';
-			return E('div', { class: 'ex-feature-row', 'data-feature-key': key }, [
+			const row = E('div', { class: 'ex-feature-row', 'data-feature-key': key }, [
 				E('div', { class: 'ex-feature-copy' }, [
 					E('div', { class: 'ex-feature-name-row' }, [
 						E('strong', {}, [meta.name]),
@@ -2872,6 +2874,8 @@ const systemMethods = {
 					E('div', { class: 'ex-feature-actions' }, actions)
 				])
 			]);
+			row._arkFeatureSignature = JSON.stringify([f.installed, f.active, f.hidden, f.installable, f.temporary, f.user_disabled, f.user_removed, f.reason, f.native_hw, f.zram_size_mb, isSat]);
+			return row;
 		};
 
 		const nativeKeys = Object.keys(FEATURE_META).filter(function(k) { return !!FEATURE_META[k].nativeDaemon; });
@@ -2987,6 +2991,7 @@ const systemMethods = {
 				},this)},[_t('📜 Ver Logs')])
 			])
 		]);
+		this._featureCenterRowBuilder = buildFeatureRow;
 		const starlinkAlwaysShowModalVal = !!(this.capabilities.features && (this.capabilities.features.starlink_always_show === 1 || this.capabilities.features.starlink_always_show === true || this.capabilities.features.starlink_always_show === '1')) || (localStorage.getItem('ark_starlink_always_show') === '1');
 		const starlinkAlwaysShowModalInput = E('input', {
 			id: 'ex-starlink-always-show-modal-input',
@@ -3061,6 +3066,31 @@ const systemMethods = {
 			E('div', { class: 'ex-feature-list' }, pluginRows),
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])
 		]);
+	},
+	refreshFeatureCenterRows: function() {
+		const wolPill = document.getElementById('ex-wol-pill');
+		if (wolPill) {
+			const wol = this.feature('wol');
+			wolPill.className = 'ex-pill ' + (wol.installed && wol.active ? 'online' : 'standby');
+			wolPill.textContent = wol.installed ? (wol.active ? 'PRONTO (ETHERWAKE)' : 'PAUSADO') : 'OPCIONAL';
+		}
+		const build = this._featureCenterRowBuilder;
+		if (typeof build !== 'function') return;
+		const rows = document.querySelectorAll('.ex-feature-list .ex-feature-row[data-feature-key]');
+		rows.forEach(function(row) {
+			const fresh = build(row.getAttribute('data-feature-key'));
+			if (!fresh || fresh._arkFeatureSignature === row._arkFeatureSignature) return;
+			const buttons = Array.prototype.slice.call(row.querySelectorAll('button'));
+			const focusedButton = buttons.indexOf(document.activeElement);
+			const list = row.closest('.ex-feature-list');
+			const previousScroll = list ? list.scrollTop : 0;
+			row.replaceWith(fresh);
+			if (list) list.scrollTop = previousScroll;
+			if (focusedButton >= 0) {
+				const replacement = fresh.querySelectorAll('button')[focusedButton];
+				if (replacement) replacement.focus({ preventScroll: true });
+			}
+		});
 	},
 	isDevMode: function() {
 		if (this.capabilities && (this.capabilities.dev_mode === true || this.capabilities.dev_mode === 1 || this.capabilities.dev_mode === '1')) return true;
@@ -3142,22 +3172,68 @@ const systemMethods = {
 			ui.addNotification(null, E('p', {}, [e.message]), 'danger');
 		});
 	},
+	confirmFeatureChange: function(key, expected, message, reopenCenter) {
+		const self = this;
+		const verify = function(attempt) {
+			return self.triggerImmediateRefresh(null, 'info', false, true).then(function(synced) {
+				const actual = self.feature(key);
+				const confirmed = synced === true && Object.keys(expected).every(function(field) { return actual[field] === expected[field]; });
+				if (confirmed) {
+					self.refreshChangedFeatureCard(key);
+					if (reopenCenter) {
+						self.showFeatureCenter();
+						window.setTimeout(function() {
+							const row = document.querySelector('.ex-feature-row[data-feature-key="' + key + '"]');
+							if (row) row.scrollIntoView({ block: 'center' });
+						}, 60);
+					}
+					ui.addNotification(null, E('p', {}, [message]), 'info');
+					return true;
+				}
+				if (attempt < 3) return new Promise(function(resolve) { window.setTimeout(resolve, 800); }).then(function() { return verify(attempt + 1); });
+				ui.addNotification(null, E('p', {}, ['A alteração foi enviada, mas o estado de ' + key + ' ainda não foi confirmado. Confira o recurso antes de repetir a ação.']), 'warning');
+				return false;
+			});
+		};
+		return verify(1);
+	},
+	refreshChangedFeatureCard: function(key) {
+		if (key !== 'adblock' && key !== 'speedify') return;
+		const oldCard = document.getElementById(key === 'adblock' ? 'ex-adblock-section' : 'ex-speedify-section');
+		if (!oldCard) return;
+		const newCard = key === 'adblock' ? this.adblockCard() : this.speedifyCard(this.currentData);
+		newCard.id = oldCard.id;
+		newCard.setAttribute('data-ark-panels', oldCard.getAttribute('data-ark-panels') || key + ' all');
+		newCard.setAttribute('data-ark-feature', key);
+		if (oldCard.classList.contains('ark-v2-panel-hidden')) newCard.classList.add('ark-v2-panel-hidden');
+		oldCard.replaceWith(newCard);
+		if (oldCard.classList.contains('is-expanded') && newCard.classList.contains('is-collapsed')) {
+			const expandButton = newCard.querySelector('.ex-accordion-toggle-btn');
+			if (expandButton) expandButton.click();
+		}
+	},
+	runFeatureMutation: function(key, args, expected, message, reopenCenter) {
+		const pending = this._featureMutationPending || (this._featureMutationPending = {});
+		if (pending[key]) return Promise.resolve(false);
+		pending[key] = true;
+		return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(L.bind(function(r) {
+			if (r.code) throw new Error(r.stderr || 'Falha ao alterar recurso');
+			if (reopenCenter) ui.hideModal();
+			return this.confirmFeatureChange(key, expected, message, reopenCenter);
+		}, this)).catch(function(e) {
+			if (reloadAfterExpectedDisconnect(e, null, 3500)) return false;
+			ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+			return false;
+		}).then(function(result) {
+			delete pending[key];
+			return result;
+		});
+	},
 	toggleFeatureState: function(key, desired) {
 		const self = this;
 		const meta = FEATURE_META[key] || { name: key };
-		const f = this.feature(key) || {};
 		if (desired) {
-			return fs.exec('/usr/sbin/equipe-dashboard-control', ['feature-toggle', key, '1']).then(function(r) {
-				if (r.code) throw new Error(r.stderr || 'Falha ao ativar recurso');
-				f.active = true;
-				f.user_disabled = false;
-				f.user_removed = false;
-				ui.addNotification(null, E('p', {}, ['✅ ' + meta.name + ' ativado e sincronizado com sucesso! Recarregando…']), 'info');
-				window.setTimeout(function() { window.location.reload(); }, 650);
-			}).catch(function(e) {
-				if (reloadAfterExpectedDisconnect(e, 'Comando enviado. Recarregando painel…', 3500)) return;
-				ui.addNotification(null, E('p', {}, [e.message]), 'danger');
-			});
+			return this.runFeatureMutation(key, ['feature-toggle', key, '1'], { active: true, user_disabled: false }, '✅ ' + meta.name + ' ativado e sincronizado.', false);
 		}
 		ui.showModal('⏸️ Desativar ' + meta.name + ' com Segurança', [
 			E('p', {}, ['Deseja desativar ', E('strong', {}, [meta.name]), '?']),
@@ -3176,17 +3252,8 @@ const systemMethods = {
 					'click': function(ev) {
 						const btn = ev && ev.currentTarget;
 						if (btn) { btn.disabled = true; btn.textContent = 'Desativando…'; }
-						return fs.exec('/usr/sbin/equipe-dashboard-control', ['feature-toggle', key, '0']).then(function(r) {
-							if (r.code) throw new Error(r.stderr || 'Falha ao desativar recurso');
-							ui.hideModal();
-							f.active = false;
-							f.user_disabled = true;
-							ui.addNotification(null, E('p', {}, ['⏸️ ' + meta.name + ' desativado com segurança e preferência salva. Recarregando…']), 'info');
-							window.setTimeout(function() { window.location.reload(); }, 650);
-						}).catch(function(e) {
-							if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Confirmar Desativação Segura'; }
-							if (reloadAfterExpectedDisconnect(e, 'Comando enviado. Recarregando painel…', 3500)) return;
-							ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+						return self.runFeatureMutation(key, ['feature-toggle', key, '0'], { active: false, user_disabled: true }, '⏸️ ' + meta.name + ' desativado com segurança e preferência salva.', true).then(function(confirmed) {
+							if (!confirmed && btn && btn.isConnected) { btn.disabled = false; btn.textContent = 'Confirmar Desativação Segura'; }
 						});
 					}
 				}, ['Confirmar Desativação Segura'])
@@ -3214,19 +3281,8 @@ const systemMethods = {
 					'click': function(ev) {
 						const btn = ev && ev.currentTarget;
 						if (btn) { btn.disabled = true; btn.textContent = 'Removendo pacote…'; }
-						return fs.exec('/usr/sbin/equipe-dashboard-control', ['feature-remove', key]).then(function(r) {
-							if (r.code) throw new Error(r.stderr || 'Falha ao remover pacote');
-							ui.hideModal();
-							f.installed = false;
-							f.active = false;
-							f.user_removed = true;
-							f.user_disabled = true;
-							ui.addNotification(null, E('p', {}, ['🗑️ ' + meta.name + ' removido com segurança e limpeza concluída. Recarregando…']), 'info');
-							window.setTimeout(function() { window.location.reload(); }, 650);
-						}).catch(function(e) {
-							if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Confirmar Remoção Completa'; }
-							if (reloadAfterExpectedDisconnect(e, 'Comando enviado. Recarregando painel…', 3500)) return;
-							ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+						return self.runFeatureMutation(key, ['feature-remove', key], { installed: false, active: false, user_removed: true }, '🗑️ ' + meta.name + ' removido com segurança e limpeza concluída.', true).then(function(confirmed) {
+							if (!confirmed && btn && btn.isConnected) { btn.disabled = false; btn.textContent = 'Confirmar Remoção Completa'; }
 						});
 					}
 				}, ['Confirmar Remoção Completa'])

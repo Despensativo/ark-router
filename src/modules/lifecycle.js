@@ -2,6 +2,9 @@
 const lifecycleMethods = {
 	board: {}, countries: [], capabilities: {features:{}}, previous: {}, trafficPrevious: {}, trafficAt: 0, currentData: null, recommendedChannels: null, speedResults: {}, refreshTimer: null, clockTimer: null, dashboardRoot: null, deviceSortKey: 'total', deviceSortDir: 'desc', starlinkTelemetryTimer: null, starlinkTelemetryStopTimer: null, starlinkTelemetryActive: false, starlinkTelemetryWan: null, starlinkWanOrder: [], starlinkResults: {},
 	fetchCapabilities: function(forceRefresh){
+		const self = this;
+		if (forceRefresh) this._capabilityGeneration = (this._capabilityGeneration || 0) + 1;
+		const requestGeneration = this._capabilityGeneration || 0;
 		const expectedVer = (typeof window !== 'undefined' && window.ARK_VERSION) ? window.ARK_VERSION : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : '');
 		if (forceRefresh) {
 			if (typeof window !== 'undefined') delete window._arkCapabilities;
@@ -27,12 +30,20 @@ const lifecycleMethods = {
 					const lang = cached.language || 'pt-br';
 					dashboardLanguage = lang;
 					if (typeof window !== 'undefined') window.dashboardLanguage = lang;
+					const cacheEpoch = (typeof window !== 'undefined' && window._arkTxState && window._arkTxState.epoch) || 0;
 					fs.exec('/usr/sbin/equipe-dashboard-control', ['features']).then(function(r) {
 						try {
 							const c = JSON.parse((r && r.stdout) || '{}');
-							if (c && c.features) {
+							const currentEpoch = (typeof window !== 'undefined' && window._arkTxState && window._arkTxState.epoch) || 0;
+							if (r && !r.code && c && c.features && Object.keys(c.features).length > 0 && currentEpoch === cacheEpoch && (self._capabilityGeneration || 0) === requestGeneration && !Object.keys(self._featureMutationPending || {}).length) {
 								sessionStorage.setItem('ark_caps', JSON.stringify(c));
 								if (typeof window !== 'undefined') window._arkCapabilities = c;
+								self.capabilities = c;
+								if (self.dashboardRoot && self.currentData) {
+									self.applyAppearance();
+									self.update(self.currentData);
+									if (typeof self.refreshFeatureCenterRows === 'function') self.refreshFeatureCenterRows();
+								}
 							}
 						} catch(e) {}
 					}).catch(function(){});
@@ -43,9 +54,10 @@ const lifecycleMethods = {
 				}
 			} catch(e) {}
 		}
-		return safe(fs.exec('/usr/sbin/equipe-dashboard-control',['features']),{}, 15000).then(function(r){
+		return safe(fs.exec('/usr/sbin/equipe-dashboard-control',['features']),null, 15000).then(function(r){
 			try{
-				const c=JSON.parse((r&&r.stdout)||'{}');
+				if (forceRefresh && (self._capabilityGeneration || 0) !== requestGeneration) throw new Error('Leitura de recursos substituída por uma mais recente');
+				const c=JSON.parse((r&&!r.code&&r.stdout)||'{}');
 				if(c && c.features && Object.keys(c.features).length > 0){
 					if(typeof window!=='undefined'){
 						window._arkCapabilities=c;
@@ -68,8 +80,10 @@ const lifecycleMethods = {
 					}
 					return window._arkCapabilities;
 				}
+				if (forceRefresh) throw new Error('Não foi possível confirmar o estado dos recursos');
 				return c;
 			}catch(e){
+				if (forceRefresh) throw e;
 				if(typeof window!=='undefined' && window._arkCapabilities && window._arkCapabilities.features){
 					return window._arkCapabilities;
 				}
@@ -103,24 +117,26 @@ const lifecycleMethods = {
 		document.documentElement.setAttribute('data-ex-appearance',mode);
 		document.documentElement.setAttribute('data-ex-profile','standard');
 	},
-	triggerImmediateRefresh: function(message, type, hideModal) {
+	triggerImmediateRefresh: function(message, type, hideModal, silentFailure) {
 		if (hideModal !== false) {
 			try { ui.hideModal(); } catch(e){}
 		}
-		if (message) {
-			ui.addNotification(null, E('p', {}, [message]), type || 'info');
-		}
-		return Promise.all([
-			this.fetchCapabilities(true),
-			this.fetchData(false)
-		]).then(L.bind(function(res) {
-			const caps = res[0], data = res[1];
+		return this.fetchCapabilities(true).then(L.bind(function(caps) {
+			this.capabilities = caps;
+			return this.fetchData(false).then(function(data) { return { caps: caps, data: data }; });
+		}, this)).then(L.bind(function(res) {
+			const caps = res.caps, data = res.data;
 			this.capabilities = caps;
 			if (typeof window !== 'undefined') window._arkCapabilities = caps;
 			this.applyAppearance();
 			this.update(data);
+			if (typeof this.refreshFeatureCenterRows === 'function') this.refreshFeatureCenterRows();
+			if (message) ui.addNotification(null, E('p', {}, [message]), type || 'info');
+			return true;
 		}, this)).catch(function(err) {
 			console.warn('[ARK] Erro no hot-refresh dinâmico:', err);
+			if (!silentFailure) ui.addNotification(null, E('p', {}, ['O estado visual ainda não foi confirmado. Verifique a conexão antes de repetir a ação.']), 'warning');
+			return false;
 		});
 	},
 	switchProfile: function(targetMode){

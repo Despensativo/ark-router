@@ -1095,6 +1095,9 @@ handle_speedify() {
 	speedify)
 		speedify_cli_action "$2"
 		;;
+	speedify-connect|speedify-disconnect)
+		speedify_cli_action "${action#speedify-}"
+		;;
 
 	*)
 		echo "Acao Speedify desconhecida: $action" >&2

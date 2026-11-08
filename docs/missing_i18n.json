@@ -1,0 +1,458 @@
+{
+  "description": "ARK Router - Lote de Traduções Pendentes para Pré-Release",
+  "pending_count": 54,
+  "strings": {
+    "A alteração foi enviada, mas o estado de": {
+      "en": "The change was sent, but the state of ",
+      "es": "El cambio fue enviado, pero el estado de ",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/system.js"
+      ]
+    },
+    "A banda de 6 GHz opera com canais PSC (Preferred Scanning Channels) a cada 80 MHz para descoberta instantânea sem varredura lenta. WPA3-SAE obrigatório.": {
+      "en": "The 6 GHz band operates with PSC (Preferred Scanning Channels) every 80 MHz for instant discovery without slow scanning. WPA3-SAE required.",
+      "es": "La banda de 6 GHz opera con canales PSC (Preferred Scanning Channels) cada 80 MHz para descubrimiento instantáneo sin escaneo lento. WPA3-SAE obligatorio.",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "Agregação multi-banda simultânea (5 GHz + 6 GHz) para throughput de pico e comutação instantânea anti-lag.": {
+      "en": "Simultaneous multi-band aggregation (5 GHz + 6 GHz) for peak throughput and instant anti-lag switching.",
+      "es": "Agregación multibanda simultánea (5 GHz + 6 GHz) para rendimiento pico y conmutación instantánea anti-lag.",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/render.js"
+      ]
+    },
+    "Ativar Multi-Link Operation (MLO)": {
+      "en": "Enable Multi-Link Operation (MLO)",
+      "es": "Activar Multi-Link Operation (MLO)",
+      "category": "aria_label",
+      "files": [
+        "src/modules/render.js"
+      ]
+    },
+    "Ativo em Hardware (fw4 / nftables)": {
+      "en": "Active in Hardware (fw4 / nftables)",
+      "es": "Activo en Hardware (fw4 / nftables)",
+      "category": "translation_call",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "Automático Inteligente (Canal PSC 37 — Âncora 320/160 MHz)": {
+      "en": "Smart Auto (PSC Channel 37 — 320/160 MHz Anchor)",
+      "es": "Automático Inteligente (Canal PSC 37 — Ancla 320/160 MHz)",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "CAKE Best Effort • HFSC Classe 1:20 (Geral)": {
+      "en": "CAKE Best Effort • HFSC Class 1:20 (General)",
+      "es": "CAKE Best Effort • HFSC Clase 1:20 (General)",
+      "category": "translation_call",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "CAKE Bulk Tin • HFSC Classe 1:30 (Elástico)": {
+      "en": "CAKE Bulk Tin • HFSC Class 1:30 (Elastic)",
+      "es": "CAKE Bulk Tin • HFSC Clase 1:30 (Elástico)",
+      "category": "translation_call",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "CAKE Video Tin • HFSC Classe 1:20 (Turbo)": {
+      "en": "CAKE Video Tin • HFSC Class 1:20 (Turbo)",
+      "es": "CAKE Video Tin • HFSC Clase 1:20 (Turbo)",
+      "category": "translation_call",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "CAKE Voice Tin • HFSC Classe 1:10 (Real-Time)": {
+      "en": "CAKE Voice Tin • HFSC Class 1:10 (Real-Time)",
+      "es": "CAKE Voice Tin • HFSC Clase 1:10 (Real-Time)",
+      "category": "translation_call",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "CS0 (Padrão)": {
+      "en": "CS0 (Default)",
+      "es": "CS0 (Predeterminado)",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "Canais 1, 6 e 11 são os únicos sem sobreposição no 2,4 GHz. O ARK aplica supressão anti-11b e BSS Coloring para estabilidade de IoT e celulares.": {
+      "en": "Channels 1, 6, and 11 are the only non-overlapping channels in 2.4 GHz. ARK applies anti-11b suppression and BSS Coloring for IoT and mobile stability.",
+      "es": "Los canales 1, 6 y 11 son los únicos sin superposición en 2,4 GHz. ARK aplica supresión anti-11b y BSS Coloring para estabilidad de IoT y móviles.",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "Canal 101 (6455 MHz — PSC / UNII-6)": {
+      "en": "Channel 101 (6455 MHz — PSC / UNII-6)",
+      "es": "Canal 101 (6455 MHz — PSC / UNII-6)",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "Canal 117 (6535 MHz — PSC / UNII-7)": {
+      "en": "Channel 117 (6535 MHz — PSC / UNII-7)",
+      "es": "Canal 117 (6535 MHz — PSC / UNII-7)",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "Canal 133 (6615 MHz — PSC / UNII-7)": {
+      "en": "Channel 133 (6615 MHz — PSC / UNII-7)",
+      "es": "Canal 133 (6615 MHz — PSC / UNII-7)",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "Canal 149 (6695 MHz — PSC / UNII-7)": {
+      "en": "Channel 149 (6695 MHz — PSC / UNII-7)",
+      "es": "Canal 149 (6695 MHz — PSC / UNII-7)",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "Canal 165 (6775 MHz — PSC / UNII-7)": {
+      "en": "Channel 165 (6775 MHz — PSC / UNII-7)",
+      "es": "Canal 165 (6775 MHz — PSC / UNII-7)",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "Canal 181 (6855 MHz — PSC / UNII-7)": {
+      "en": "Channel 181 (6855 MHz — PSC / UNII-7)",
+      "es": "Canal 181 (6855 MHz — PSC / UNII-7)",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "Canal 197 (6935 MHz — PSC / UNII-8)": {
+      "en": "Channel 197 (6935 MHz — PSC / UNII-8)",
+      "es": "Canal 197 (6935 MHz — PSC / UNII-8)",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "Canal 21 (6055 MHz — PSC / UNII-5)": {
+      "en": "Channel 21 (6055 MHz — PSC / UNII-5)",
+      "es": "Canal 21 (6055 MHz — PSC / UNII-5)",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "Canal 213 (7015 MHz — PSC / UNII-8)": {
+      "en": "Channel 213 (7015 MHz — PSC / UNII-8)",
+      "es": "Canal 213 (7015 MHz — PSC / UNII-8)",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "Canal 229 (7095 MHz — PSC / UNII-8)": {
+      "en": "Channel 229 (7095 MHz — PSC / UNII-8)",
+      "es": "Canal 229 (7095 MHz — PSC / UNII-8)",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "Canal 37 (6135 MHz — Padrão Ouro / Centro 1º Bloco 320 MHz / PSC)": {
+      "en": "Channel 37 (6135 MHz — Gold Standard / Center 1st 320 MHz Block / PSC)",
+      "es": "Canal 37 (6135 MHz — Estándar de Oro / Centro 1er Bloque 320 MHz / PSC)",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "Canal 5 (5975 MHz — PSC / UNII-5)": {
+      "en": "Channel 5 (5975 MHz — PSC / UNII-5)",
+      "es": "Canal 5 (5975 MHz — PSC / UNII-5)",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "Canal 53 (6215 MHz — PSC / UNII-5)": {
+      "en": "Channel 53 (6215 MHz — PSC / UNII-5)",
+      "es": "Canal 53 (6215 MHz — PSC / UNII-5)",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "Canal 6 GHz (Wi-Fi 6E / Wi-Fi 7)": {
+      "en": "6 GHz Channel (Wi-Fi 6E / Wi-Fi 7)",
+      "es": "Canal 6 GHz (Wi-Fi 6E / Wi-Fi 7)",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "Canal 69 (6295 MHz — PSC / UNII-5)": {
+      "en": "Channel 69 (6295 MHz — PSC / UNII-5)",
+      "es": "Canal 69 (6295 MHz — PSC / UNII-5)",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "Canal 85 (6375 MHz — PSC / UNII-5)": {
+      "en": "Channel 85 (6375 MHz — PSC / UNII-5)",
+      "es": "Canal 85 (6375 MHz — PSC / UNII-5)",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/wifi.js"
+      ]
+    },
+    "Destino:": {
+      "en": "Destination:",
+      "es": "Destino:",
+      "category": "translation_call",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "Fila 1: Latência Zero / Voice (< 1 ms)": {
+      "en": "Queue 1: Zero Latency / Voice (< 1 ms)",
+      "es": "Cola 1: Latencia Cero / Voice (< 1 ms)",
+      "category": "translation_call",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "Fila 2: Interativo / Videoconferência": {
+      "en": "Queue 2: Interactive / Videoconferencing",
+      "es": "Cola 2: Interactivo / Videoconferencia",
+      "category": "translation_call",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "Fila 3: Navegação Geral & Streaming": {
+      "en": "Queue 3: General Browsing & Streaming",
+      "es": "Cola 3: Navegación General y Streaming",
+      "category": "translation_call",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "Fila 4: Fila de Fundo (Bulk / Scavenger)": {
+      "en": "Queue 4: Background Queue (Bulk / Scavenger)",
+      "es": "Cola 4: Cola de Fondo (Bulk / Scavenger)",
+      "category": "translation_call",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "Frequência / Canal": {
+      "en": "Frequency / Channel",
+      "es": "Frecuencia / Canal",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/devices.js"
+      ]
+    },
+    "Jogos (< 1 ms), chamadas e velocidade pura": {
+      "en": "Gaming (< 1 ms), calls, and pure speed",
+      "es": "Juegos (< 1 ms), llamadas y velocidad pura",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "Matriz de Classificação por Aplicação (L7 / DSCP)": {
+      "en": "Application Classification Matrix (L7 / DSCP)",
+      "es": "Matriz de Clasificación por Aplicación (L7 / DSCP)",
+      "category": "translation_call",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "Modulação": {
+      "en": "Modulation",
+      "es": "Modulación",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/devices.js"
+      ]
+    },
+    "Multi-Link Operation (MLO) ativo: agregando múltiplos rádios simultaneamente": {
+      "en": "Multi-Link Operation (MLO) active: aggregating multiple radios simultaneously",
+      "es": "Multi-Link Operation (MLO) activo: agregando múltiples radios simultáneamente",
+      "category": "title_attr",
+      "files": [
+        "src/modules/devices.js"
+      ]
+    },
+    "Não foi possível confirmar o estado no roteador. Verifique a conexão antes de repetir a ação.": {
+      "en": "Could not confirm state on the router. Check the connection before retrying.",
+      "es": "No se pudo confirmar el estado en el router. Verifique la conexión antes de reintentar.",
+      "category": "dom_with_props",
+      "files": [
+        "src/core/formatters.js"
+      ]
+    },
+    "O estado visual ainda não foi confirmado. Verifique a conexão antes de repetir a ação.": {
+      "en": "Visual state is not yet confirmed. Check the connection before retrying.",
+      "es": "El estado visual aún no ha sido confirmado. Verifique la conexión antes de reintentar.",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/lifecycle.js"
+      ]
+    },
+    "Operação Multi-Link": {
+      "en": "Multi-Link Operation",
+      "es": "Operación Multi-Link",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/devices.js"
+      ]
+    },
+    "Recomendado para casas com muitos usuários e dezenas de aparelhos em conexões de até ~700–800 Mbps.": {
+      "en": "Recommended for multi-user homes with dozens of devices on connections up to ~700–800 Mbps.",
+      "es": "Recomendado para hogares con muchos usuarios y decenas de dispositivos en conexiones de hasta ~700–800 Mbps.",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "Reserva canal em Tempo Real (< 1 ms) para Jogos, VoIP e Ping com zero descarte, e usa FQ-CoDel Turbo (quantum 1514).": {
+      "en": "Reserves Real-Time channel (< 1 ms) for Gaming, VoIP, and Ping with zero drop, and uses FQ-CoDel Turbo (quantum 1514).",
+      "es": "Reserva canal en Tiempo Real (< 1 ms) para Juegos, VoIP y Ping con cero descarte, y usa FQ-CoDel Turbo (quantum 1514).",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "Sincronizando o painel com o roteador…": {
+      "en": "Syncing dashboard with router…",
+      "es": "Sincronizando el panel con el router…",
+      "category": "dom_with_props",
+      "files": [
+        "src/core/formatters.js"
+      ]
+    },
+    "Velocidade PHY": {
+      "en": "PHY Speed",
+      "es": "Velocidad PHY",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/devices.js"
+      ]
+    },
+    "casas com muitos usuários": {
+      "en": "multi-user homes",
+      "es": "hogares con muchos usuarios",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "⚡ MLO Ativo": {
+      "en": "⚡ MLO Active",
+      "es": "⚡ MLO Activo",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/devices.js"
+      ]
+    },
+    "🌐 Navegação Web (HTTP/HTTPS/QUIC), Redes Sociais (Instagram, TikTok, X), Streaming de Vídeo (YouTube, Netflix, Prime Video, Twitch).": {
+      "en": "🌐 Web Browsing (HTTP/HTTPS/QUIC), Social Media (Instagram, TikTok, X), Video Streaming (YouTube, Netflix, Prime Video, Twitch).",
+      "es": "🌐 Navegación Web (HTTP/HTTPS/QUIC), Redes Sociales (Instagram, TikTok, X), Streaming de Video (YouTube, Netflix, Prime Video, Twitch).",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "👥 Zoom, Microsoft Teams, Google Meet, Webex, WhatsApp Voz & Vídeo, STUN/TURN e tráfego interativo WebRTC.": {
+      "en": "👥 Zoom, Microsoft Teams, Google Meet, Webex, WhatsApp Voice & Video, STUN/TURN, and interactive WebRTC traffic.",
+      "es": "👥 Zoom, Microsoft Teams, Google Meet, Webex, WhatsApp Voz y Video, STUN/TURN y tráfico interactivo WebRTC.",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "👨‍👩‍👧‍👦 Ideal Residências": {
+      "en": "👨‍👩‍👧‍👦 Ideal for Homes",
+      "es": "👨‍👩‍👧‍👦 Ideal Residencias",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "📥 BitTorrent, qBittorrent, Transmission, downloads pesados em segundo plano. Cede 100% da banda instantaneamente quando qualquer outra fila solicita tráfego.": {
+      "en": "📥 BitTorrent, qBittorrent, Transmission, heavy background downloads. Yields 100% of bandwidth instantly when any other queue requests traffic.",
+      "es": "📥 BitTorrent, qBittorrent, Transmission, descargas pesadas en segundo plano. Cede el 100% del ancho de banda instantáneamente cuando cualquier otra cola solicita tráfico.",
+      "category": "dom_array_text",
+      "files": [
+        "src/modules/network.js",
+        "src/modules/render.js"
+      ]
+    },
+    "🛡️ AmneziaWG Ativo": {
+      "en": "🛡️ AmneziaWG Active",
+      "es": "🛡️ AmneziaWG Activo",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/vpn.js"
+      ]
+    },
+    "🛡️ OFUSCAÇÃO ANTI-DPI (AMNEZIAWG) DETECTADA": {
+      "en": "🛡️ ANTI-DPI OBFUSCATION (AMNEZIAWG) DETECTED",
+      "es": "🛡️ OFUSCACIÓN ANTI-DPI (AMNEZIAWG) DETECTADA",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/vpn.js"
+      ]
+    },
+    "🛡️ OFUSCAÇÃO ANTI-DPI AMNEZIAWG ATIVA": {
+      "en": "🛡️ AMNEZIAWG ANTI-DPI OBFUSCATION ACTIVE",
+      "es": "🛡️ OFUSCACIÓN ANTI-DPI AMNEZIAWG ACTIVA",
+      "category": "dom_with_props",
+      "files": [
+        "src/modules/vpn.js"
+      ]
+    }
+  }
+}

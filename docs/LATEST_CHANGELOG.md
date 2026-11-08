@@ -1,3 +1,18 @@
+## 2.2.1-r6
+
+- **⚡ Sincronização Dinâmica de UI sem Recarga, Matriz dos 23 Recursos & Validação Destrutiva em VM (07/11/2026)**:
+  - **Sincronização de Estado LuCI sem Recarga de Página (`src/core/formatters.js`, `src/modules/lifecycle.js`, `adblock.js`, `storage_wol.js`)**:
+    - Reconciliação atômica de capacidades (`features` RPC) e DOM: alternância, pausa e remoção confirmam o estado esperado antes de atualizar badges e switches sem necessitar de recarga completa da interface.
+    - Manutenção de foco e rolagem suave na linha modificada da Central de Desempenho.
+  - **Matriz Canônica de 23 Recursos do Sistema & AdBlock JSON**:
+    - Padronização dos 5 campos de estado (`installed`, `active`, `user_removed`, `user_disabled`, `mode`) em todos os 23 recursos do sistema (`19 alternáveis`, `14 removíveis`).
+    - AdBlock estruturado para alternar dinamicamente entre Local (:5335), NextDNS, AdGuard DNS e Turbo (`allservers=1`).
+  - **Desinstalação Destrutiva Real & Rollback Homologados em VM Isolada (Lote 034)**:
+    - 226/226 asserções aprovadas em ambiente volátil QEMU OpenWrt: remoção real dos 14 pacotes, expurgo de arquivos e status opkg, gravação de `user_removed=1` no UCI e rollback automático com restauração de snapshot em caso de erro.
+    - Idempotência de desligamento de SQM sem daemon (`ezsetup.sh`) e roteamento de ações CLI em `speedify.sh`.
+  - **Organização da Documentação Técnica em 5 Camadas**:
+    - Criação de `docs/DEVELOPMENT_GUIDE.md` e reorganização de `docs/README.md` em 5 camadas estritas para economia de contexto.
+
 ## 2.2.1-r5
 
 - **🛡️ Protocolo AmneziaWG (Anti-DPI WireGuard) & Wi-Fi 7 MLO (Multi-Link Operation) com EHT Puncturing (07/11/2026)**:

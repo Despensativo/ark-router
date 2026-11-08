@@ -1,0 +1,30 @@
+{
+  "date": "2026-11-07",
+  "environment": "Acer Predator Connect W6x; LuCI real em Chromium/IAB via CDP",
+  "target": "192.168.73.1",
+  "installed_bundle_sha256": "cdc0dee44646390c752d0b670a17c31fb3c17d8dfc6cf1d5d0531dcefae4395d",
+  "previous_bundle_sha256": "780e3e61df2981c9af3e30bcc4f230840d147810878d25b0fcccff0db14bfddc",
+  "browser": {
+    "viewport_widths_checked": [360, 390, 1280],
+    "document_horizontal_overflow": false,
+    "modal_horizontal_overflow": false,
+    "wol_action_button_height_px": [40, 40, 40],
+    "console_error_count": 0,
+    "page_reload_during_wol_toggle": false,
+    "wol_row_visible_after_pause_at_390px": true,
+    "navigation_checked": ["Recursos", "WoL", "Central WoL", "Voltar"]
+  },
+  "wol_final": {
+    "installed": true,
+    "active": true,
+    "user_disabled": false,
+    "user_removed": false,
+    "uci_enabled": "1"
+  },
+  "router_final": {
+    "uhttpd": "running",
+    "sftp_server": "present",
+    "overlay_free_kib": 45712
+  },
+  "scope_limit": "Resultados em hardware apenas para WoL e navegação observada; demais recursos não alterados no roteador."
+}

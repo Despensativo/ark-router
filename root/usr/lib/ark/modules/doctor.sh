@@ -222,7 +222,7 @@ ark_doctor_audit() {
 
 				if [ "$proto" = "pppoe" ]; then
 					exp_ov="44"
-					exp_mpu="84"
+					exp_mpu="64"
 					ov_reason="Fibra GPON/PPPoE (cobertura total L1/L2 anti-bufferbloat)"
 				elif [ "$proto" = "dhcp" ] || [ "$proto" = "static" ]; then
 					exp_ov="18"
@@ -233,7 +233,7 @@ ark_doctor_audit() {
 				if [ -n "$exp_ov" ]; then
 					ov_mismatch=0
 					if [ "$proto" = "pppoe" ]; then
-						if [ "$cur_ov" != "44" ] || [ "$cur_ll" != "ethernet" ] || { [ "$cur_mpu" != "64" ] && [ "$cur_mpu" != "84" ]; }; then
+						if { [ "$cur_ov" != "44" ] && [ "$cur_ov" != "34" ] && [ "$cur_ov" != "28" ]; } || [ "$cur_ll" != "ethernet" ] || { [ "$cur_mpu" != "64" ] && [ "$cur_mpu" != "84" ]; }; then
 							ov_mismatch=1
 						fi
 					elif [ "$proto" = "dhcp" ] || [ "$proto" = "static" ]; then
@@ -272,21 +272,77 @@ ark_doctor_audit() {
 				local exp_ack="no-ack-filter"
 				command -v ark_sqm_ack_filter_opt >/dev/null 2>&1 && exp_ack="$(ark_sqm_ack_filter_opt "$down_doc" "$up_doc")"
 				local exp_irtt="rtt 100ms"
-				command -v ark_sqm_ingress_rtt_opt >/dev/null 2>&1 && exp_irtt="$(ark_sqm_ingress_rtt_opt "$wan")"
+				command -v ark_sqm_ingress_rtt_opt >/dev/null 2>&1 && exp_irtt="$(ark_sqm_ingress_rtt_opt "$wan" "$down_doc")"
 				local exp_imode=""
 				command -v ark_sqm_ingress_mode_opt >/dev/null 2>&1 && exp_imode="$(ark_sqm_ingress_mode_opt "$down_doc" "$wan")"
+				local exp_gso="split-gso"
+				command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm && exp_gso="no-split-gso"
+				local exp_itin="diffserv4"
+				local exp_ihost="dual-dsthost"
+				if [ "$down_doc" -gt 500000 ] 2>/dev/null; then
+					exp_itin="besteffort"
+					exp_ihost="flows"
+				fi
 				cur_iq="$(uci -q get "sqm.$sqm_sec.iqdisc_opts")"
 				cur_eq="$(uci -q get "sqm.$sqm_sec.eqdisc_opts")"
-				if [ "$(uci -q get "sqm.$sqm_sec.squash_ingress" || echo 1)" = "1" ] && { printf '%s' "$cur_iq" | grep -qw 'besteffort' || printf '%s' "$cur_iq" | grep -q 'rtt 50ms' || ! printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)' || { [ -z "$exp_imode" ] && printf '%s' "$cur_iq" | grep -qw 'ingress'; } || { [ -n "$exp_imode" ] && ! printf '%s' "$cur_iq" | grep -qw 'ingress'; } || printf '%s' "$cur_eq" | grep -qw 'rtt 50ms' || ! printf '%s' "$cur_eq" | grep -qw "$exp_ack" || ! printf '%s' "$cur_iq" | grep -q "memlimit $exp_mlim" || ! printf '%s' "$cur_eq" | grep -q "memlimit $exp_mlim"; }; then
+				local iq_mismatch=0
+				if [ "$(uci -q get "sqm.$sqm_sec.squash_ingress" || echo 1)" = "1" ]; then
+					if [ "$exp_itin" = "besteffort" ] && ! printf '%s' "$cur_iq" | grep -qw 'besteffort'; then
+						iq_mismatch=1
+					elif [ "$exp_itin" = "diffserv4" ] && printf '%s' "$cur_iq" | grep -qw 'besteffort'; then
+						iq_mismatch=1
+					fi
+					if ! printf '%s' "$cur_iq" | grep -q "$exp_irtt"; then
+						iq_mismatch=1
+					fi
+					if [ -z "$exp_imode" ] && printf '%s' "$cur_iq" | grep -qw 'ingress'; then
+						iq_mismatch=1
+					elif [ -n "$exp_imode" ] && ! printf '%s' "$cur_iq" | grep -qw 'ingress'; then
+						iq_mismatch=1
+					fi
+					if [ "$exp_gso" = "split-gso" ] && printf '%s' "$cur_iq" | grep -qw 'no-split-gso'; then
+						iq_mismatch=1
+					elif [ "$exp_gso" = "no-split-gso" ] && ! printf '%s' "$cur_iq" | grep -qw 'no-split-gso'; then
+						iq_mismatch=1
+					fi
+					if ! printf '%s' "$cur_iq" | grep -q "memlimit $exp_mlim"; then
+						iq_mismatch=1
+					fi
+				fi
+				local eq_mismatch=0
+				if printf '%s' "$cur_eq" | grep -qw 'rtt 50ms' || ! printf '%s' "$cur_eq" | grep -qw "$exp_ack" || ! printf '%s' "$cur_eq" | grep -q "memlimit $exp_mlim"; then
+					eq_mismatch=1
+				fi
+				if [ "$exp_gso" = "split-gso" ] && printf '%s' "$cur_eq" | grep -qw 'no-split-gso'; then
+					eq_mismatch=1
+				elif [ "$exp_gso" = "no-split-gso" ] && ! printf '%s' "$cur_eq" | grep -qw 'no-split-gso'; then
+					eq_mismatch=1
+				fi
+				if [ "$iq_mismatch" = 1 ] || [ "$eq_mismatch" = 1 ]; then
 					if [ "$auto_fix" = 1 ]; then
 						uci -q set "sqm.$sqm_sec.qdisc_advanced=1"
 						uci -q set "sqm.$sqm_sec.qdisc_really_really_advanced=1"
-						[ -n "$cur_iq" ] || cur_iq="diffserv4 nat dual-dsthost wash no-split-gso"
-						cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bbesteffort\b/diffserv4/g')"
+						if [ "$exp_itin" = "besteffort" ]; then
+							[ -n "$cur_iq" ] || cur_iq="besteffort flows wash split-gso"
+							cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bdiffserv4\b/besteffort/g; s/\bdual-dsthost\b/flows/g')"
+							cur_iq="$(printf '%s' "$cur_iq" | sed -E 's/(^| )nat( |$)/ /g' | tr -s ' ' | sed 's/^ //; s/ $//')"
+						else
+							[ -n "$cur_iq" ] || cur_iq="diffserv4 nat dual-dsthost wash split-gso"
+							cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bbesteffort\b/diffserv4/g; s/\bflows\b/dual-dsthost/g')"
+							printf '%s' "$cur_iq" | grep -qw 'nat' || cur_iq="$cur_iq nat"
+						fi
 						printf '%s' "$cur_iq" | grep -qw 'wash' || cur_iq="$cur_iq wash"
-						printf '%s' "$cur_iq" | grep -qw 'no-split-gso' || cur_iq="$cur_iq no-split-gso"
-						if printf '%s' "$cur_iq" | grep -q 'rtt 50ms'; then
-							cur_iq="$(printf '%s' "$cur_iq" | sed "s/rtt 50ms/$exp_irtt/g")"
+						if [ "$exp_gso" = "split-gso" ]; then
+							if printf '%s' "$cur_iq" | grep -qw 'no-split-gso'; then
+								cur_iq="$(printf '%s' "$cur_iq" | sed 's/\bno-split-gso\b/split-gso/g')"
+							elif ! printf '%s' "$cur_iq" | grep -qw 'split-gso'; then
+								cur_iq="$cur_iq split-gso"
+							fi
+						else
+							printf '%s' "$cur_iq" | grep -qw 'no-split-gso' || cur_iq="$cur_iq no-split-gso"
+						fi
+						if printf '%s' "$cur_iq" | grep -qE '\brtt [0-9]+ms\b'; then
+							cur_iq="$(printf '%s' "$cur_iq" | sed -E "s/rtt [0-9]+ms/$exp_irtt/g")"
 						elif ! printf '%s' "$cur_iq" | grep -qE '(^| )(rtt|regional|metro|lan|datacentre)( |$)'; then
 							cur_iq="$cur_iq $exp_irtt"
 						fi
@@ -300,7 +356,7 @@ ark_doctor_audit() {
 						else
 							cur_iq="$cur_iq memlimit $exp_mlim"
 						fi
-						uci -q set "sqm.$sqm_sec.iqdisc_opts=$cur_iq"
+						uci -q set "sqm.$sqm_sec.iqdisc_opts=$(printf '%s' "$cur_iq" | tr -s ' ' | sed 's/^ //; s/ $//')"
 
 						[ -n "$cur_eq" ] || cur_eq="diffserv4 nat dual-srchost wash $exp_ack"
 						printf '%s' "$cur_eq" | grep -qw 'wash' || cur_eq="$cur_eq wash"
@@ -316,10 +372,12 @@ ark_doctor_audit() {
 						else
 							cur_eq="$cur_eq memlimit $exp_mlim"
 						fi
-						if command -v ark_has_qsdk_ecm >/dev/null 2>&1 && ark_has_qsdk_ecm; then
+						if [ "$exp_gso" = "split-gso" ]; then
+							cur_eq="$(printf '%s' "$cur_eq" | sed -E 's/(^| )no-split-gso( |$)/ /g' | tr -s ' ' | sed 's/^ //; s/ $//')"
+						else
 							printf '%s' "$cur_eq" | grep -qw 'no-split-gso' || cur_eq="$cur_eq no-split-gso"
 						fi
-						uci -q set "sqm.$sqm_sec.eqdisc_opts=$cur_eq"
+						uci -q set "sqm.$sqm_sec.eqdisc_opts=$(printf '%s' "$cur_eq" | tr -s ' ' | sed 's/^ //; s/ $//')"
 
 						uci commit sqm
 						[ -z "${ARK_ROOT:-}" ] && [ -x /etc/init.d/sqm ] && /etc/init.d/sqm restart >/dev/null 2>&1 || true
@@ -1830,10 +1888,10 @@ ark_doctor_audit() {
 			fi
 
 			local cur_inactivity="$($uci_cmd get "wireless.$chk_iface.max_inactivity" 2>/dev/null || echo '')"
-			if [ "$cur_inactivity" != "86400" ]; then
+			if [ -z "$cur_inactivity" ] || [ "$cur_inactivity" -lt 300 ] 2>/dev/null; then
 				inactivity_short=$((inactivity_short + 1))
 				if [ "$auto_fix" = 1 ]; then
-					$uci_cmd set "wireless.$chk_iface.max_inactivity=86400"
+					$uci_cmd set "wireless.$chk_iface.max_inactivity=600"
 					wifi_needs_reload=1
 				fi
 			fi
@@ -1932,7 +1990,7 @@ ark_doctor_audit() {
 			if [ "$auto_fix" = 1 ]; then
 				$uci_cmd commit wireless 2>/dev/null || true
 				fixes_applied=$((fixes_applied + 1))
-				add_check "Estabilidade Wi-Fi Mobile & IoT" "FIXED" "Parâmetros blindados: wpa_group_rekey=0 (fim das quedas cíclicas), sono blindado por hardware (skip_inactivity_poll=0, max_inactivity=86400), disassoc_low_ack=0, multicast_to_unicast calibrado (0 em 2.4G / 1 em 5G), dtim_period=1 em 2.4G, legacy_rates=0 e he_twt_required=0 seguro."
+				add_check "Estabilidade Wi-Fi Mobile & IoT" "FIXED" "Parâmetros blindados: wpa_group_rekey=0 (fim das quedas cíclicas), sono blindado por hardware (skip_inactivity_poll=0, max_inactivity=600), disassoc_low_ack=0, multicast_to_unicast calibrado (0 em 2.4G / 1 em 5G), dtim_period=1 em 2.4G, legacy_rates=0 e he_twt_required=0 seguro."
 			else
 				add_check "Estabilidade Wi-Fi Mobile & IoT" "WARN" "Configuração vulnerável a quedas no Galaxy S24 e IoT em repouso:${mobile_iot_details}."
 			fi

@@ -29,16 +29,14 @@ const adblockMethods = {
 				const input = ev.currentTarget;
 				const desired = !!input.checked;
 				input.disabled = true;
-				fs.exec('/usr/sbin/equipe-dashboard-control', ['adblock-toggle', desired ? '1' : '0']).then(function(r) {
-					if (r.code) throw new Error(r.stderr || 'Falha ao alterar bloqueador');
-					ui.addNotification(null, E('p', {}, [desired ? 'Bloqueador ativado. Recarregando painel…' : 'Bloqueador desativado e DNS Turbo restaurado. Recarregando painel…']));
-					window.setTimeout(function(){
-						window.location.reload();
-					}, 1400);
-				}).catch(function(e) {
-					input.checked = !desired;
-					input.disabled = false;
-					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+				self.runFeatureMutation('adblock', ['feature-toggle', 'adblock', desired ? '1' : '0'],
+					{ active: desired, user_disabled: !desired },
+					desired ? 'Bloqueador ativado e painel sincronizado.' : 'Bloqueador desativado, DNS restaurado e painel sincronizado.', false
+				).then(function(confirmed) {
+					if (!confirmed && input.isConnected) {
+						input.checked = !desired;
+						input.disabled = false;
+					}
 				});
 			}
 		});
@@ -832,7 +830,8 @@ const adblockMethods = {
 						fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 							if (r.code) throw new Error(r.stderr || 'Falha ao configurar bloqueador');
 							closeModal();
-							self.triggerImmediateRefresh(active ? 'Configurações do bloqueador salvas com sucesso!' : 'Bloqueador de anúncios ativado com sucesso!', 'info');
+							self.confirmFeatureChange('adblock', { active: true, mode: mode },
+								active ? 'Configurações do bloqueador salvas e painel sincronizado!' : 'Bloqueador de anúncios ativado e painel sincronizado!', false);
 						}).catch(function(e) {
 							b.disabled = false;
 							b.textContent = active ? 'Salvar Alterações' : 'Confirmar e Ativar';

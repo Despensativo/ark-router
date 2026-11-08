@@ -1755,7 +1755,7 @@ const networkMethods = {
 						return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 							if (r.code) throw new Error(r.stderr || 'Falha ao salvar WAN');
 							ui.hideModal();
-							reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…', 1500);
+							reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…', 1500, false, true);
 						}).catch(function(e) {
 							if (btn) {
 								btn.removeAttribute('disabled');

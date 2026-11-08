@@ -714,8 +714,8 @@ function installArkTransactionCoordinator() {
 	}
 }
 
-function reloadSoon(message, delay) {
-	ui.addNotification(null, E('p', {}, [ message || 'Aplicado. Sincronizando o painel…' ]));
+function reloadSoon(message, delay, uncertain, structural) {
+	ui.addNotification(null, E('p', {}, [ 'Sincronizando o painel com o roteador…' ]), 'info');
 	const st = (typeof window !== 'undefined' && window._arkTxState) || null;
 	const waitMs = delay || 800;
 	if (st) {
@@ -724,26 +724,36 @@ function reloadSoon(message, delay) {
 		ensureArkTxBanner({ estSec: Math.max(2, Math.ceil(waitMs / 1000) + 1), label: 'Sincronizando painel com o roteador…' });
 	}
 	window.setTimeout(function() {
+		if (structural) {
+			try { sessionStorage.removeItem('ark_caps'); } catch(e) {}
+			forceReleaseMutationLock('structural_reload');
+			window.location.reload();
+			return;
+		}
 		// Se a instância ativa do painel suportar Hot State Refresh, sincroniza sem piscar a tela nem cair em ERR_CONNECTION_REFUSED
 		if (typeof window !== 'undefined' && window._arkViewInstance && typeof window._arkViewInstance.triggerImmediateRefresh === 'function') {
 			let attempts = 0;
 			const tryHotSync = function() {
 				attempts++;
-				Promise.resolve(window._arkViewInstance.triggerImmediateRefresh(null, 'info', true))
-					.then(function() {
+				Promise.resolve(window._arkViewInstance.triggerImmediateRefresh(null, 'info', true, true))
+					.then(function(synced) {
+						if (synced !== true) throw new Error('Estado ainda não confirmado');
 						forceReleaseMutationLock('hot_sync_ok');
+						ui.addNotification(null, E('p', {}, [uncertain ? 'Painel sincronizado. Confira o estado antes de repetir a ação.' : (message || 'Painel atualizado com sucesso.')]), 'info');
 					})
 					.catch(function() {
 						if (attempts < 5) {
 							window.setTimeout(tryHotSync, 800);
 						} else {
 							forceReleaseMutationLock('hot_sync_fallback');
+							ui.addNotification(null, E('p', {}, ['Não foi possível confirmar o estado no roteador. Verifique a conexão antes de repetir a ação.']), 'warning');
 						}
 					});
 			};
 			tryHotSync();
 			return;
 		}
+		try { sessionStorage.removeItem('ark_caps'); } catch(e) {}
 		forceReleaseMutationLock('hard_reload');
 		window.location.reload();
 	}, waitMs);
@@ -752,7 +762,7 @@ function isExpectedApplyDisconnect(e) { return /xhr|timeout|timed out|network|fa
 function reloadAfterExpectedDisconnect(e, message, delay) {
 	if (!isExpectedApplyDisconnect(e)) return false;
 	try { ui.hideModal(); } catch (err) {}
-	reloadSoon(message || 'Comando enviado. O painel pode ter perdido a resposta enquanto o roteador reinicia serviços…', delay || 1500);
+	reloadSoon(null, delay || 1500, true);
 	return true;
 }
 function closeModal(ev) {
@@ -1920,6 +1930,9 @@ function withButtonFeedback(button, actionFn, options) {
 const lifecycleMethods = {
 	board: {}, countries: [], capabilities: {features:{}}, previous: {}, trafficPrevious: {}, trafficAt: 0, currentData: null, recommendedChannels: null, speedResults: {}, refreshTimer: null, clockTimer: null, dashboardRoot: null, deviceSortKey: 'total', deviceSortDir: 'desc', starlinkTelemetryTimer: null, starlinkTelemetryStopTimer: null, starlinkTelemetryActive: false, starlinkTelemetryWan: null, starlinkWanOrder: [], starlinkResults: {},
 	fetchCapabilities: function(forceRefresh){
+		const self = this;
+		if (forceRefresh) this._capabilityGeneration = (this._capabilityGeneration || 0) + 1;
+		const requestGeneration = this._capabilityGeneration || 0;
 		const expectedVer = (typeof window !== 'undefined' && window.ARK_VERSION) ? window.ARK_VERSION : (typeof ARK_BUILD_VERSION !== 'undefined' ? ARK_BUILD_VERSION : '');
 		if (forceRefresh) {
 			if (typeof window !== 'undefined') delete window._arkCapabilities;
@@ -1945,12 +1958,20 @@ const lifecycleMethods = {
 					const lang = cached.language || 'pt-br';
 					dashboardLanguage = lang;
 					if (typeof window !== 'undefined') window.dashboardLanguage = lang;
+					const cacheEpoch = (typeof window !== 'undefined' && window._arkTxState && window._arkTxState.epoch) || 0;
 					fs.exec('/usr/sbin/equipe-dashboard-control', ['features']).then(function(r) {
 						try {
 							const c = JSON.parse((r && r.stdout) || '{}');
-							if (c && c.features) {
+							const currentEpoch = (typeof window !== 'undefined' && window._arkTxState && window._arkTxState.epoch) || 0;
+							if (r && !r.code && c && c.features && Object.keys(c.features).length > 0 && currentEpoch === cacheEpoch && (self._capabilityGeneration || 0) === requestGeneration && !Object.keys(self._featureMutationPending || {}).length) {
 								sessionStorage.setItem('ark_caps', JSON.stringify(c));
 								if (typeof window !== 'undefined') window._arkCapabilities = c;
+								self.capabilities = c;
+								if (self.dashboardRoot && self.currentData) {
+									self.applyAppearance();
+									self.update(self.currentData);
+									if (typeof self.refreshFeatureCenterRows === 'function') self.refreshFeatureCenterRows();
+								}
 							}
 						} catch(e) {}
 					}).catch(function(){});
@@ -1961,9 +1982,10 @@ const lifecycleMethods = {
 				}
 			} catch(e) {}
 		}
-		return safe(fs.exec('/usr/sbin/equipe-dashboard-control',['features']),{}, 15000).then(function(r){
+		return safe(fs.exec('/usr/sbin/equipe-dashboard-control',['features']),null, 15000).then(function(r){
 			try{
-				const c=JSON.parse((r&&r.stdout)||'{}');
+				if (forceRefresh && (self._capabilityGeneration || 0) !== requestGeneration) throw new Error('Leitura de recursos substituída por uma mais recente');
+				const c=JSON.parse((r&&!r.code&&r.stdout)||'{}');
 				if(c && c.features && Object.keys(c.features).length > 0){
 					if(typeof window!=='undefined'){
 						window._arkCapabilities=c;
@@ -1986,8 +2008,10 @@ const lifecycleMethods = {
 					}
 					return window._arkCapabilities;
 				}
+				if (forceRefresh) throw new Error('Não foi possível confirmar o estado dos recursos');
 				return c;
 			}catch(e){
+				if (forceRefresh) throw e;
 				if(typeof window!=='undefined' && window._arkCapabilities && window._arkCapabilities.features){
 					return window._arkCapabilities;
 				}
@@ -2021,24 +2045,26 @@ const lifecycleMethods = {
 		document.documentElement.setAttribute('data-ex-appearance',mode);
 		document.documentElement.setAttribute('data-ex-profile','standard');
 	},
-	triggerImmediateRefresh: function(message, type, hideModal) {
+	triggerImmediateRefresh: function(message, type, hideModal, silentFailure) {
 		if (hideModal !== false) {
 			try { ui.hideModal(); } catch(e){}
 		}
-		if (message) {
-			ui.addNotification(null, E('p', {}, [message]), type || 'info');
-		}
-		return Promise.all([
-			this.fetchCapabilities(true),
-			this.fetchData(false)
-		]).then(L.bind(function(res) {
-			const caps = res[0], data = res[1];
+		return this.fetchCapabilities(true).then(L.bind(function(caps) {
+			this.capabilities = caps;
+			return this.fetchData(false).then(function(data) { return { caps: caps, data: data }; });
+		}, this)).then(L.bind(function(res) {
+			const caps = res.caps, data = res.data;
 			this.capabilities = caps;
 			if (typeof window !== 'undefined') window._arkCapabilities = caps;
 			this.applyAppearance();
 			this.update(data);
+			if (typeof this.refreshFeatureCenterRows === 'function') this.refreshFeatureCenterRows();
+			if (message) ui.addNotification(null, E('p', {}, [message]), type || 'info');
+			return true;
 		}, this)).catch(function(err) {
 			console.warn('[ARK] Erro no hot-refresh dinâmico:', err);
+			if (!silentFailure) ui.addNotification(null, E('p', {}, ['O estado visual ainda não foi confirmado. Verifique a conexão antes de repetir a ação.']), 'warning');
+			return false;
 		});
 	},
 	switchProfile: function(targetMode){
@@ -6610,7 +6636,7 @@ const networkMethods = {
 						return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 							if (r.code) throw new Error(r.stderr || 'Falha ao salvar WAN');
 							ui.hideModal();
-							reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…', 1500);
+							reloadSoon('Configuração de internet salva. Recarregando após estabilizar a rede…', 1500, false, true);
 						}).catch(function(e) {
 							if (btn) {
 								btn.removeAttribute('disabled');
@@ -8883,7 +8909,7 @@ const wifiMethods = {
 					return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-add', name, (enc === 'none' ? '' : pass), netSelect.value, bandSelect.value, enc, (hiddenAddInput.checked ? '1' : '0')]).then(function(r) {
 						if (r.code) throw new Error(r.stderr || 'Falha ao criar rede Wi-Fi');
 						ui.hideModal();
-						reloadSoon('Nova rede Wi-Fi criada. Reiniciando o rádio…', 1500);
+						reloadSoon('Nova rede Wi-Fi criada. Reiniciando o rádio…', 1500, false, true);
 					}).catch(function(e) {
 						btn.disabled = false;
 						btn.textContent = 'Criar Rede Wi-Fi';
@@ -9556,7 +9582,7 @@ const wifiMethods = {
 				return fs.exec('/usr/sbin/equipe-dashboard-control', ['wifi-delete', targetId]).then(L.bind(function(r) {
 					if (r.code) throw new Error(r.stderr || 'Falha ao excluir rede Wi-Fi');
 					ui.hideModal();
-					reloadSoon('Rede Wi‑Fi excluída com sucesso. Recarregando…', 1200);
+					reloadSoon('Rede Wi‑Fi excluída com sucesso. Recarregando…', 1200, false, true);
 				}, this)).catch(function(e) {
 					btn.disabled = false;
 					btnDeleteCancel.disabled = false;
@@ -9625,7 +9651,7 @@ const wifiMethods = {
 				const gDown=mbpsToKbps(guestDownInput.value)||'0', gUp=mbpsToKbps(guestUpInput.value)||'0';
 				args.push('guest_download='+gDown, 'guest_upload='+gUp);
 			}
-			return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar Wi‑Fi');ui.hideModal();reloadSoon('Configuração do Wi‑Fi salva. Recarregando após reiniciar o rádio…',1500);}).catch(function(e){btn.disabled = false; btn.textContent = 'Salvar Wi‑Fi'; const msg=String(e&&e.message||e||'');if(reloadAfterExpectedDisconnect(msg,'Wi‑Fi reiniciando. Se a alteração foi aplicada, reconecte na rede nova e recarregue o painel…',2000))return;ui.addNotification(null,E('p',{},[msg]),'danger');});
+			return fs.exec('/usr/sbin/equipe-dashboard-control',args).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar Wi‑Fi');ui.hideModal();reloadSoon('Configuração do Wi‑Fi salva. Recarregando após reiniciar o rádio…',1500,false,true);}).catch(function(e){btn.disabled = false; btn.textContent = 'Salvar Wi‑Fi'; const msg=String(e&&e.message||e||'');if(reloadAfterExpectedDisconnect(msg,'Wi‑Fi reiniciando. Se a alteração foi aplicada, reconecte na rede nova e recarregue o painel…',2000))return;ui.addNotification(null,E('p',{},[msg]),'danger');});
 		},this)},['Salvar Wi‑Fi'])]));
 		ui.showModal((isGuest?'Editar rede visitante':'Editar rede principal'),rows);
 		if (window.innerWidth > 854 && !(window.matchMedia && window.matchMedia('(pointer: coarse)').matches)) ssid.focus();
@@ -12925,16 +12951,14 @@ const adblockMethods = {
 				const input = ev.currentTarget;
 				const desired = !!input.checked;
 				input.disabled = true;
-				fs.exec('/usr/sbin/equipe-dashboard-control', ['adblock-toggle', desired ? '1' : '0']).then(function(r) {
-					if (r.code) throw new Error(r.stderr || 'Falha ao alterar bloqueador');
-					ui.addNotification(null, E('p', {}, [desired ? 'Bloqueador ativado. Recarregando painel…' : 'Bloqueador desativado e DNS Turbo restaurado. Recarregando painel…']));
-					window.setTimeout(function(){
-						window.location.reload();
-					}, 1400);
-				}).catch(function(e) {
-					input.checked = !desired;
-					input.disabled = false;
-					ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+				self.runFeatureMutation('adblock', ['feature-toggle', 'adblock', desired ? '1' : '0'],
+					{ active: desired, user_disabled: !desired },
+					desired ? 'Bloqueador ativado e painel sincronizado.' : 'Bloqueador desativado, DNS restaurado e painel sincronizado.', false
+				).then(function(confirmed) {
+					if (!confirmed && input.isConnected) {
+						input.checked = !desired;
+						input.disabled = false;
+					}
 				});
 			}
 		});
@@ -13728,7 +13752,8 @@ const adblockMethods = {
 						fs.exec('/usr/sbin/equipe-dashboard-control', args).then(function(r) {
 							if (r.code) throw new Error(r.stderr || 'Falha ao configurar bloqueador');
 							closeModal();
-							self.triggerImmediateRefresh(active ? 'Configurações do bloqueador salvas com sucesso!' : 'Bloqueador de anúncios ativado com sucesso!', 'info');
+							self.confirmFeatureChange('adblock', { active: true, mode: mode },
+								active ? 'Configurações do bloqueador salvas e painel sincronizado!' : 'Bloqueador de anúncios ativado e painel sincronizado!', false);
 						}).catch(function(e) {
 							b.disabled = false;
 							b.textContent = active ? 'Salvar Alterações' : 'Confirmar e Ativar';
@@ -13752,7 +13777,7 @@ const speedifyMethods = {
 			E('p',{class:'ex-muted'},['Métrica é prioridade de rota: número menor vence. WAN1 fica 10 e WAN2 fica 20, então a WAN1 continua preferida pelo OpenWrt enquanto a WAN2 fica pronta para failover/Speedify.']),
 			E('p',{class:'alert-message warning'},['A rede pode pausar por alguns segundos. Isso não instala nem conecta o Speedify.']),
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Cancelar']),' ',E('button',{class:'btn cbi-button cbi-button-positive','click':L.bind(function(){
-				return fs.exec('/usr/sbin/equipe-dashboard-control',['speedify-prepare']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao preparar WANs');ui.hideModal();reloadSoon('WANs preparadas para Speedify. Recarregando…',1800);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});
+				return fs.exec('/usr/sbin/equipe-dashboard-control',['speedify-prepare']).then(function(r){if(r.code)throw new Error(r.stderr||'Falha ao preparar WANs');ui.hideModal();reloadSoon('WANs preparadas para Speedify. Recarregando…',1800,false,true);}).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]),'danger');});
 			},this)},['Preparar WANs'])])
 		]);
 	},
@@ -13872,6 +13897,7 @@ const speedifyMethods = {
 		input.disabled=true;
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['speedify-power',desired]).then(function(r){
 			if(r.code)throw new Error(r.stderr||'Falha ao alterar Speedify');
+			try { sessionStorage.removeItem('ark_caps'); } catch(e) {}
 			ui.addNotification(null,E('p',{},[desired==='1'?'BONDING REAL ativado. Recarregando painel…':'BONDING REAL desligado; rotas restauradas e daemon encerrado. Recarregando painel…']));
 			window.setTimeout(function(){
 				window.location.reload();
@@ -15562,7 +15588,7 @@ const systemMethods = {
 		ui.showModal('INSTALAÇÃO DO CERTIFICADO',[E('p',{class:'alert-message warning'},['Instale apenas em aparelhos administrativos nos quais você confia. Nunca é necessário instalar a chave privada.']),E('ol',{class:'ex-cert-steps'},[E('li',{},['Windows: abra o arquivo e instale-o em Autoridades de Certificação Raiz Confiáveis.']),E('li',{},['Android: em Segurança, procure Instalar certificado de CA e selecione o arquivo.']),E('li',{},['iPhone/iPad: instale o perfil baixado e depois habilite confiança total nos Ajustes de Certificados.']),E('li',{},['Depois da instalação, feche e abra novamente o navegador e acesse novamente o endereço HTTPS do roteador.'])]),fingerprint?E('p',{class:'ex-cert-fingerprint'},[E('span',{},['Impressão digital SHA-256']),E('code',{},[fingerprint])]):'',E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])]);
 	},
 	setFeatureHidden: function(key,hidden){
-		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-hide',key,hidden?'1':'0']).then(L.bind(function(r){if(r.code)throw new Error(r.stderr||'Falha ao salvar a preferência');return this.fetchCapabilities(true).then(function(c){this.capabilities=c;window.location.reload();}.bind(this));},this)).catch(function(e){if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;ui.addNotification(null,E('p',{},[e.message]));});
+		return this.runFeatureMutation(key, ['feature-hide', key, hidden ? '1' : '0'], { hidden: hidden }, hidden ? 'Sugestão oculta.' : 'Sugestão visível.', false);
 	},
 	loadFeatureInstallLog: function(key){
 		return fs.exec('/usr/sbin/equipe-dashboard-control',['feature-install-log',key]).then(function(r){return String(r.stdout||'').trim();}).catch(function(){return '';});
@@ -16224,6 +16250,7 @@ const systemMethods = {
 			const state=String(r.stdout||'').trim();
 			if(state==='done'){
 				ui.addNotification(null,E('p',{},[key==='speedtest'?'Medidor pronto na memória. Recarregando o painel…':'Recurso instalado com sucesso. Recarregando o painel…']));
+				try { sessionStorage.removeItem('ark_caps'); } catch(e) {}
 				window.setTimeout(function(){window.location.reload();},1200);
 				return;
 			}
@@ -16455,6 +16482,7 @@ const systemMethods = {
 					ui.hideModal();
 					if(state==='installed'){
 						ui.addNotification(null,E('p',{},[key==='speedtest'?'Medidor já estava pronto na memória.':(key==='speedify'?'Speedify já estava disponível.':(key==='usteer'?'Assistente usteer ativado com sucesso.':'Esse recurso já estava disponível e foi ativado.'))]));
+						try { sessionStorage.removeItem('ark_caps'); } catch(e) {}
 						window.setTimeout(function(){window.location.reload();},900);
 						return;
 					}
@@ -16485,7 +16513,7 @@ const systemMethods = {
 					return fs.exec('/usr/sbin/equipe-dashboard-control',['theme',key]).then(function(r){
 						if(r.code)throw new Error(r.stderr||'Falha ao selecionar o tema');
 						ui.hideModal();
-						reloadSoon('Tema '+name+' ativado. Recarregando…',400);
+						reloadSoon('Tema '+name+' ativado. Recarregando…',400,false,true);
 					}).catch(function(e){
 						if(reloadAfterExpectedDisconnect(e,'Comando enviado. O painel perdeu a resposta enquanto o roteador reinicia serviços. Recarregando…',4200))return;
 						ui.addNotification(null,E('p',{},[e.message]),'danger');
@@ -17934,7 +17962,7 @@ const systemMethods = {
 			const finalCmdArgs = isAp ? cmdArgs : ['system-network-mode-set', 'router', dhcpRestoreChoice];
 			fs.exec('/usr/sbin/equipe-dashboard-control', finalCmdArgs)
 			.then(function(r) {
-				reloadSoon(loadingMsg, 1500);
+				reloadSoon(loadingMsg, 1500, false, true);
 			}).catch(function(e) {
 				if (reloadAfterExpectedDisconnect(e, loadingMsg, 4500)) return;
 				ui.addNotification(null, E('p', {}, [e.message]), 'danger');
@@ -18213,12 +18241,12 @@ const systemMethods = {
 			])
 		]);
 
-		const isSat = isSatelliteOrAp(this.currentData || (this.capabilities && this.capabilities));
 		const self = this;
 
 		const buildFeatureRow = function(key) {
 			const meta = FEATURE_META[key], f = self.feature(key) || {};
 			if (!meta) return null;
+			const isSat = isSatelliteOrAp(self.currentData || (self.capabilities && self.capabilities));
 			const isShieldedOnSat = isSat && (key === 'sqm' || key === 'mwan3' || key === 'speedify' || key === 'upnp' || key === 'adblock' || key === 'nlbwmon');
 			const isNativeHw = key === 'irqbalance' && (!!f.native_hw || (!f.installable && f.reason && (f.reason.indexOf('nativamente') !== -1 || f.reason.indexOf('Desnecessário') !== -1)));
 			let state = f.installed ? (f.temporary ? 'Pronto na memória' : (f.active ? 'Instalado e ativo' : (f.user_disabled ? 'Desativado pelo usuário' : 'Instalado (Em espera)'))) : (f.user_removed ? 'Removido pelo usuário' : (f.installable ? 'Não instalado' : 'Não disponível'));
@@ -18338,7 +18366,7 @@ const systemMethods = {
 				reasonEl = E('small', { class: 'ex-feature-reason', style: 'color:#ef4444;font-weight:600;display:block;margin-top:4px;' }, ['⚠️ ' + f.reason]);
 			}
 			const cautionEl = meta.cautionNote ? E('small', { class: 'ex-feature-caution-note', style: 'display:block;margin-top:4px;font-size:11.5px;color:#94a3b8;line-height:1.4;' }, ['🛡️ Ajuste seguro: ' + meta.cautionNote]) : '';
-			return E('div', { class: 'ex-feature-row', 'data-feature-key': key }, [
+			const row = E('div', { class: 'ex-feature-row', 'data-feature-key': key }, [
 				E('div', { class: 'ex-feature-copy' }, [
 					E('div', { class: 'ex-feature-name-row' }, [
 						E('strong', {}, [meta.name]),
@@ -18354,6 +18382,8 @@ const systemMethods = {
 					E('div', { class: 'ex-feature-actions' }, actions)
 				])
 			]);
+			row._arkFeatureSignature = JSON.stringify([f.installed, f.active, f.hidden, f.installable, f.temporary, f.user_disabled, f.user_removed, f.reason, f.native_hw, f.zram_size_mb, isSat]);
+			return row;
 		};
 
 		const nativeKeys = Object.keys(FEATURE_META).filter(function(k) { return !!FEATURE_META[k].nativeDaemon; });
@@ -18469,6 +18499,7 @@ const systemMethods = {
 				},this)},[_t('📜 Ver Logs')])
 			])
 		]);
+		this._featureCenterRowBuilder = buildFeatureRow;
 		const starlinkAlwaysShowModalVal = !!(this.capabilities.features && (this.capabilities.features.starlink_always_show === 1 || this.capabilities.features.starlink_always_show === true || this.capabilities.features.starlink_always_show === '1')) || (localStorage.getItem('ark_starlink_always_show') === '1');
 		const starlinkAlwaysShowModalInput = E('input', {
 			id: 'ex-starlink-always-show-modal-input',
@@ -18543,6 +18574,31 @@ const systemMethods = {
 			E('div', { class: 'ex-feature-list' }, pluginRows),
 			E('div',{class:'right'},[E('button',{class:'btn cbi-button cbi-button-neutral','click':closeModal},['Fechar'])])
 		]);
+	},
+	refreshFeatureCenterRows: function() {
+		const wolPill = document.getElementById('ex-wol-pill');
+		if (wolPill) {
+			const wol = this.feature('wol');
+			wolPill.className = 'ex-pill ' + (wol.installed && wol.active ? 'online' : 'standby');
+			wolPill.textContent = wol.installed ? (wol.active ? 'PRONTO (ETHERWAKE)' : 'PAUSADO') : 'OPCIONAL';
+		}
+		const build = this._featureCenterRowBuilder;
+		if (typeof build !== 'function') return;
+		const rows = document.querySelectorAll('.ex-feature-list .ex-feature-row[data-feature-key]');
+		rows.forEach(function(row) {
+			const fresh = build(row.getAttribute('data-feature-key'));
+			if (!fresh || fresh._arkFeatureSignature === row._arkFeatureSignature) return;
+			const buttons = Array.prototype.slice.call(row.querySelectorAll('button'));
+			const focusedButton = buttons.indexOf(document.activeElement);
+			const list = row.closest('.ex-feature-list');
+			const previousScroll = list ? list.scrollTop : 0;
+			row.replaceWith(fresh);
+			if (list) list.scrollTop = previousScroll;
+			if (focusedButton >= 0) {
+				const replacement = fresh.querySelectorAll('button')[focusedButton];
+				if (replacement) replacement.focus({ preventScroll: true });
+			}
+		});
 	},
 	isDevMode: function() {
 		if (this.capabilities && (this.capabilities.dev_mode === true || this.capabilities.dev_mode === 1 || this.capabilities.dev_mode === '1')) return true;
@@ -18624,22 +18680,68 @@ const systemMethods = {
 			ui.addNotification(null, E('p', {}, [e.message]), 'danger');
 		});
 	},
+	confirmFeatureChange: function(key, expected, message, reopenCenter) {
+		const self = this;
+		const verify = function(attempt) {
+			return self.triggerImmediateRefresh(null, 'info', false, true).then(function(synced) {
+				const actual = self.feature(key);
+				const confirmed = synced === true && Object.keys(expected).every(function(field) { return actual[field] === expected[field]; });
+				if (confirmed) {
+					self.refreshChangedFeatureCard(key);
+					if (reopenCenter) {
+						self.showFeatureCenter();
+						window.setTimeout(function() {
+							const row = document.querySelector('.ex-feature-row[data-feature-key="' + key + '"]');
+							if (row) row.scrollIntoView({ block: 'center' });
+						}, 60);
+					}
+					ui.addNotification(null, E('p', {}, [message]), 'info');
+					return true;
+				}
+				if (attempt < 3) return new Promise(function(resolve) { window.setTimeout(resolve, 800); }).then(function() { return verify(attempt + 1); });
+				ui.addNotification(null, E('p', {}, ['A alteração foi enviada, mas o estado de ' + key + ' ainda não foi confirmado. Confira o recurso antes de repetir a ação.']), 'warning');
+				return false;
+			});
+		};
+		return verify(1);
+	},
+	refreshChangedFeatureCard: function(key) {
+		if (key !== 'adblock' && key !== 'speedify') return;
+		const oldCard = document.getElementById(key === 'adblock' ? 'ex-adblock-section' : 'ex-speedify-section');
+		if (!oldCard) return;
+		const newCard = key === 'adblock' ? this.adblockCard() : this.speedifyCard(this.currentData);
+		newCard.id = oldCard.id;
+		newCard.setAttribute('data-ark-panels', oldCard.getAttribute('data-ark-panels') || key + ' all');
+		newCard.setAttribute('data-ark-feature', key);
+		if (oldCard.classList.contains('ark-v2-panel-hidden')) newCard.classList.add('ark-v2-panel-hidden');
+		oldCard.replaceWith(newCard);
+		if (oldCard.classList.contains('is-expanded') && newCard.classList.contains('is-collapsed')) {
+			const expandButton = newCard.querySelector('.ex-accordion-toggle-btn');
+			if (expandButton) expandButton.click();
+		}
+	},
+	runFeatureMutation: function(key, args, expected, message, reopenCenter) {
+		const pending = this._featureMutationPending || (this._featureMutationPending = {});
+		if (pending[key]) return Promise.resolve(false);
+		pending[key] = true;
+		return fs.exec('/usr/sbin/equipe-dashboard-control', args).then(L.bind(function(r) {
+			if (r.code) throw new Error(r.stderr || 'Falha ao alterar recurso');
+			if (reopenCenter) ui.hideModal();
+			return this.confirmFeatureChange(key, expected, message, reopenCenter);
+		}, this)).catch(function(e) {
+			if (reloadAfterExpectedDisconnect(e, null, 3500)) return false;
+			ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+			return false;
+		}).then(function(result) {
+			delete pending[key];
+			return result;
+		});
+	},
 	toggleFeatureState: function(key, desired) {
 		const self = this;
 		const meta = FEATURE_META[key] || { name: key };
-		const f = this.feature(key) || {};
 		if (desired) {
-			return fs.exec('/usr/sbin/equipe-dashboard-control', ['feature-toggle', key, '1']).then(function(r) {
-				if (r.code) throw new Error(r.stderr || 'Falha ao ativar recurso');
-				f.active = true;
-				f.user_disabled = false;
-				f.user_removed = false;
-				ui.addNotification(null, E('p', {}, ['✅ ' + meta.name + ' ativado e sincronizado com sucesso! Recarregando…']), 'info');
-				window.setTimeout(function() { window.location.reload(); }, 650);
-			}).catch(function(e) {
-				if (reloadAfterExpectedDisconnect(e, 'Comando enviado. Recarregando painel…', 3500)) return;
-				ui.addNotification(null, E('p', {}, [e.message]), 'danger');
-			});
+			return this.runFeatureMutation(key, ['feature-toggle', key, '1'], { active: true, user_disabled: false }, '✅ ' + meta.name + ' ativado e sincronizado.', false);
 		}
 		ui.showModal('⏸️ Desativar ' + meta.name + ' com Segurança', [
 			E('p', {}, ['Deseja desativar ', E('strong', {}, [meta.name]), '?']),
@@ -18658,17 +18760,8 @@ const systemMethods = {
 					'click': function(ev) {
 						const btn = ev && ev.currentTarget;
 						if (btn) { btn.disabled = true; btn.textContent = 'Desativando…'; }
-						return fs.exec('/usr/sbin/equipe-dashboard-control', ['feature-toggle', key, '0']).then(function(r) {
-							if (r.code) throw new Error(r.stderr || 'Falha ao desativar recurso');
-							ui.hideModal();
-							f.active = false;
-							f.user_disabled = true;
-							ui.addNotification(null, E('p', {}, ['⏸️ ' + meta.name + ' desativado com segurança e preferência salva. Recarregando…']), 'info');
-							window.setTimeout(function() { window.location.reload(); }, 650);
-						}).catch(function(e) {
-							if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Confirmar Desativação Segura'; }
-							if (reloadAfterExpectedDisconnect(e, 'Comando enviado. Recarregando painel…', 3500)) return;
-							ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+						return self.runFeatureMutation(key, ['feature-toggle', key, '0'], { active: false, user_disabled: true }, '⏸️ ' + meta.name + ' desativado com segurança e preferência salva.', true).then(function(confirmed) {
+							if (!confirmed && btn && btn.isConnected) { btn.disabled = false; btn.textContent = 'Confirmar Desativação Segura'; }
 						});
 					}
 				}, ['Confirmar Desativação Segura'])
@@ -18696,19 +18789,8 @@ const systemMethods = {
 					'click': function(ev) {
 						const btn = ev && ev.currentTarget;
 						if (btn) { btn.disabled = true; btn.textContent = 'Removendo pacote…'; }
-						return fs.exec('/usr/sbin/equipe-dashboard-control', ['feature-remove', key]).then(function(r) {
-							if (r.code) throw new Error(r.stderr || 'Falha ao remover pacote');
-							ui.hideModal();
-							f.installed = false;
-							f.active = false;
-							f.user_removed = true;
-							f.user_disabled = true;
-							ui.addNotification(null, E('p', {}, ['🗑️ ' + meta.name + ' removido com segurança e limpeza concluída. Recarregando…']), 'info');
-							window.setTimeout(function() { window.location.reload(); }, 650);
-						}).catch(function(e) {
-							if (btn) { btn.removeAttribute('disabled'); btn.disabled = false; btn.textContent = 'Confirmar Remoção Completa'; }
-							if (reloadAfterExpectedDisconnect(e, 'Comando enviado. Recarregando painel…', 3500)) return;
-							ui.addNotification(null, E('p', {}, [e.message]), 'danger');
+						return self.runFeatureMutation(key, ['feature-remove', key], { installed: false, active: false, user_removed: true }, '🗑️ ' + meta.name + ' removido com segurança e limpeza concluída.', true).then(function(confirmed) {
+							if (!confirmed && btn && btn.isConnected) { btn.disabled = false; btn.textContent = 'Confirmar Remoção Completa'; }
 						});
 					}
 				}, ['Confirmar Remoção Completa'])
@@ -22191,8 +22273,8 @@ const storageWolMethods = {
 		const f = this.feature('wol') || {};
 		const installed = !!f.installed;
 
-		const pillEl = E('span', { id: 'ex-wol-pill', class: 'ex-pill ' + (installed ? 'online' : 'standby') }, [
-			installed ? 'PRONTO (ETHERWAKE)' : 'OPCIONAL'
+		const pillEl = E('span', { id: 'ex-wol-pill', class: 'ex-pill ' + (installed && f.active ? 'online' : 'standby') }, [
+			installed ? (f.active ? 'PRONTO (ETHERWAKE)' : 'PAUSADO') : 'OPCIONAL'
 		]);
 		const titleActions = E('div', { class: 'ex-card-title-actions' }, [pillEl]);
 		const cardTitle = E('div', { class: 'ex-card-title' }, [
@@ -22283,8 +22365,9 @@ const storageWolMethods = {
 
 			const pill = document.getElementById('ex-wol-pill');
 			if (pill) {
-				pill.className = 'ex-pill ' + (st.installed ? 'online' : 'standby');
-				pill.textContent = st.installed ? 'PRONTO (ETHERWAKE)' : 'OPCIONAL';
+				const active = !!(self.feature('wol') || {}).active;
+				pill.className = 'ex-pill ' + (st.installed && active ? 'online' : 'standby');
+				pill.textContent = st.installed ? (active ? 'PRONTO (ETHERWAKE)' : 'PAUSADO') : 'OPCIONAL';
 			}
 			const eng = document.getElementById('ex-wol-engine-state');
 			if (eng) {
@@ -22926,7 +23009,7 @@ const renderMethods = {
 							fs.exec('/usr/sbin/equipe-dashboard-control', ['autowan-wan-to-lan', '0']).then(function(r) {
 								if (r && r.code) throw new Error(r.stderr || 'Falha ao restaurar WAN1');
 								ui.hideModal();
-								reloadSoon('Porta WAN física restaurada como WAN1 com todas as configurações mantidas! Recarregando…', 1500);
+								reloadSoon('Porta WAN física restaurada como WAN1 com todas as configurações mantidas! Recarregando…', 1500, false, true);
 							}).catch(function(e) {
 								if (btn) { btn.disabled = false; btn.textContent = 'Restaurar como WAN1'; }
 								if (reloadAfterExpectedDisconnect(e, 'Restaurando porta WAN1… Recarregando painel…', 3500)) return;
@@ -24718,6 +24801,20 @@ const renderMethods = {
 				if(!document.hidden && this.refreshPaused){
 					this.refreshPaused = false;
 					this.scheduleAdaptiveRefresh(0);
+				}
+				if (!document.hidden && !Object.keys(this._featureMutationPending || {}).length) {
+					const now = Date.now();
+					if (!this._lastVisibilityCapabilityCheck || now - this._lastVisibilityCapabilityCheck > 5000) {
+						this._lastVisibilityCapabilityCheck = now;
+						const request = this.fetchCapabilities(true);
+						const generation = this._capabilityGeneration;
+						request.then(L.bind(function(caps) {
+							if (this._capabilityGeneration !== generation || Object.keys(this._featureMutationPending || {}).length) return;
+							this.capabilities = caps;
+							if (this.currentData) this.update(this.currentData);
+							if (typeof this.refreshFeatureCenterRows === 'function') this.refreshFeatureCenterRows();
+						}, this)).catch(function() {});
+					}
 				}
 			}, this));
 		}

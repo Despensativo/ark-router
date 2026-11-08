@@ -15079,3 +15079,165 @@ msgstr "Hide Wi‑Fi network name (Hidden SSID)"
 
 msgid "Visível"
 msgstr "Visible"
+msgid "A alteração foi enviada, mas o estado de"
+msgstr "The change was sent, but the state of "
+
+msgid "A banda de 6 GHz opera com canais PSC (Preferred Scanning Channels) a cada 80 MHz para descoberta instantânea sem varredura lenta. WPA3-SAE obrigatório."
+msgstr "The 6 GHz band operates with PSC (Preferred Scanning Channels) every 80 MHz for instant discovery without slow scanning. WPA3-SAE required."
+
+msgid "Agregação multi-banda simultânea (5 GHz + 6 GHz) para throughput de pico e comutação instantânea anti-lag."
+msgstr "Simultaneous multi-band aggregation (5 GHz + 6 GHz) for peak throughput and instant anti-lag switching."
+
+msgid "Ativar Multi-Link Operation (MLO)"
+msgstr "Enable Multi-Link Operation (MLO)"
+
+msgid "Ativo em Hardware (fw4 / nftables)"
+msgstr "Active in Hardware (fw4 / nftables)"
+
+msgid "Automático Inteligente (Canal PSC 37 — Âncora 320/160 MHz)"
+msgstr "Smart Auto (PSC Channel 37 — 320/160 MHz Anchor)"
+
+msgid "CAKE Best Effort • HFSC Classe 1:20 (Geral)"
+msgstr "CAKE Best Effort • HFSC Class 1:20 (General)"
+
+msgid "CAKE Bulk Tin • HFSC Classe 1:30 (Elástico)"
+msgstr "CAKE Bulk Tin • HFSC Class 1:30 (Elastic)"
+
+msgid "CAKE Video Tin • HFSC Classe 1:20 (Turbo)"
+msgstr "CAKE Video Tin • HFSC Class 1:20 (Turbo)"
+
+msgid "CAKE Voice Tin • HFSC Classe 1:10 (Real-Time)"
+msgstr "CAKE Voice Tin • HFSC Class 1:10 (Real-Time)"
+
+msgid "CS0 (Padrão)"
+msgstr "CS0 (Default)"
+
+msgid "Canais 1, 6 e 11 são os únicos sem sobreposição no 2,4 GHz. O ARK aplica supressão anti-11b e BSS Coloring para estabilidade de IoT e celulares."
+msgstr "Channels 1, 6, and 11 are the only non-overlapping channels in 2.4 GHz. ARK applies anti-11b suppression and BSS Coloring for IoT and mobile stability."
+
+msgid "Canal 101 (6455 MHz — PSC / UNII-6)"
+msgstr "Channel 101 (6455 MHz — PSC / UNII-6)"
+
+msgid "Canal 117 (6535 MHz — PSC / UNII-7)"
+msgstr "Channel 117 (6535 MHz — PSC / UNII-7)"
+
+msgid "Canal 133 (6615 MHz — PSC / UNII-7)"
+msgstr "Channel 133 (6615 MHz — PSC / UNII-7)"
+
+msgid "Canal 149 (6695 MHz — PSC / UNII-7)"
+msgstr "Channel 149 (6695 MHz — PSC / UNII-7)"
+
+msgid "Canal 165 (6775 MHz — PSC / UNII-7)"
+msgstr "Channel 165 (6775 MHz — PSC / UNII-7)"
+
+msgid "Canal 181 (6855 MHz — PSC / UNII-7)"
+msgstr "Channel 181 (6855 MHz — PSC / UNII-7)"
+
+msgid "Canal 197 (6935 MHz — PSC / UNII-8)"
+msgstr "Channel 197 (6935 MHz — PSC / UNII-8)"
+
+msgid "Canal 21 (6055 MHz — PSC / UNII-5)"
+msgstr "Channel 21 (6055 MHz — PSC / UNII-5)"
+
+msgid "Canal 213 (7015 MHz — PSC / UNII-8)"
+msgstr "Channel 213 (7015 MHz — PSC / UNII-8)"
+
+msgid "Canal 229 (7095 MHz — PSC / UNII-8)"
+msgstr "Channel 229 (7095 MHz — PSC / UNII-8)"
+
+msgid "Canal 37 (6135 MHz — Padrão Ouro / Centro 1º Bloco 320 MHz / PSC)"
+msgstr "Channel 37 (6135 MHz — Gold Standard / Center 1st 320 MHz Block / PSC)"
+
+msgid "Canal 5 (5975 MHz — PSC / UNII-5)"
+msgstr "Channel 5 (5975 MHz — PSC / UNII-5)"
+
+msgid "Canal 53 (6215 MHz — PSC / UNII-5)"
+msgstr "Channel 53 (6215 MHz — PSC / UNII-5)"
+
+msgid "Canal 6 GHz (Wi-Fi 6E / Wi-Fi 7)"
+msgstr "6 GHz Channel (Wi-Fi 6E / Wi-Fi 7)"
+
+msgid "Canal 69 (6295 MHz — PSC / UNII-5)"
+msgstr "Channel 69 (6295 MHz — PSC / UNII-5)"
+
+msgid "Canal 85 (6375 MHz — PSC / UNII-5)"
+msgstr "Channel 85 (6375 MHz — PSC / UNII-5)"
+
+msgid "Destino:"
+msgstr "Destination:"
+
+msgid "Fila 1: Latência Zero / Voice (< 1 ms)"
+msgstr "Queue 1: Zero Latency / Voice (< 1 ms)"
+
+msgid "Fila 2: Interativo / Videoconferência"
+msgstr "Queue 2: Interactive / Videoconferencing"
+
+msgid "Fila 3: Navegação Geral & Streaming"
+msgstr "Queue 3: General Browsing & Streaming"
+
+msgid "Fila 4: Fila de Fundo (Bulk / Scavenger)"
+msgstr "Queue 4: Background Queue (Bulk / Scavenger)"
+
+msgid "Frequência / Canal"
+msgstr "Frequency / Channel"
+
+msgid "Jogos (< 1 ms), chamadas e velocidade pura"
+msgstr "Gaming (< 1 ms), calls, and pure speed"
+
+msgid "Matriz de Classificação por Aplicação (L7 / DSCP)"
+msgstr "Application Classification Matrix (L7 / DSCP)"
+
+msgid "Modulação"
+msgstr "Modulation"
+
+msgid "Multi-Link Operation (MLO) ativo: agregando múltiplos rádios simultaneamente"
+msgstr "Multi-Link Operation (MLO) active: aggregating multiple radios simultaneously"
+
+msgid "Não foi possível confirmar o estado no roteador. Verifique a conexão antes de repetir a ação."
+msgstr "Could not confirm state on the router. Check the connection before retrying."
+
+msgid "O estado visual ainda não foi confirmado. Verifique a conexão antes de repetir a ação."
+msgstr "Visual state is not yet confirmed. Check the connection before retrying."
+
+msgid "Operação Multi-Link"
+msgstr "Multi-Link Operation"
+
+msgid "Recomendado para casas com muitos usuários e dezenas de aparelhos em conexões de até ~700–800 Mbps."
+msgstr "Recommended for multi-user homes with dozens of devices on connections up to ~700–800 Mbps."
+
+msgid "Reserva canal em Tempo Real (< 1 ms) para Jogos, VoIP e Ping com zero descarte, e usa FQ-CoDel Turbo (quantum 1514)."
+msgstr "Reserves Real-Time channel (< 1 ms) for Gaming, VoIP, and Ping with zero drop, and uses FQ-CoDel Turbo (quantum 1514)."
+
+msgid "Sincronizando o painel com o roteador…"
+msgstr "Syncing dashboard with router…"
+
+msgid "Velocidade PHY"
+msgstr "PHY Speed"
+
+msgid "casas com muitos usuários"
+msgstr "multi-user homes"
+
+msgid "⚡ MLO Ativo"
+msgstr "⚡ MLO Active"
+
+msgid "🌐 Navegação Web (HTTP/HTTPS/QUIC), Redes Sociais (Instagram, TikTok, X), Streaming de Vídeo (YouTube, Netflix, Prime Video, Twitch)."
+msgstr "🌐 Web Browsing (HTTP/HTTPS/QUIC), Social Media (Instagram, TikTok, X), Video Streaming (YouTube, Netflix, Prime Video, Twitch)."
+
+msgid "👥 Zoom, Microsoft Teams, Google Meet, Webex, WhatsApp Voz & Vídeo, STUN/TURN e tráfego interativo WebRTC."
+msgstr "👥 Zoom, Microsoft Teams, Google Meet, Webex, WhatsApp Voice & Video, STUN/TURN, and interactive WebRTC traffic."
+
+msgid "👨‍👩‍👧‍👦 Ideal Residências"
+msgstr "👨‍👩‍👧‍👦 Ideal for Homes"
+
+msgid "📥 BitTorrent, qBittorrent, Transmission, downloads pesados em segundo plano. Cede 100% da banda instantaneamente quando qualquer outra fila solicita tráfego."
+msgstr "📥 BitTorrent, qBittorrent, Transmission, heavy background downloads. Yields 100% of bandwidth instantly when any other queue requests traffic."
+
+msgid "🛡️ AmneziaWG Ativo"
+msgstr "🛡️ AmneziaWG Active"
+
+msgid "🛡️ OFUSCAÇÃO ANTI-DPI (AMNEZIAWG) DETECTADA"
+msgstr "🛡️ ANTI-DPI OBFUSCATION (AMNEZIAWG) DETECTED"
+
+msgid "🛡️ OFUSCAÇÃO ANTI-DPI AMNEZIAWG ATIVA"
+msgstr "🛡️ AMNEZIAWG ANTI-DPI OBFUSCATION ACTIVE"
+

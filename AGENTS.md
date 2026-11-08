@@ -149,6 +149,8 @@ O ambiente principal de desenvolvimento e validação do ARK Router deve ser uma
 ---
 
 ## 7. Documentação Especializada sob Demanda (Consulte apenas quando necessário)
+- **Guia Canônico de Desenvolvimento ("O Que Funciona & Como Agir")**: `docs/DEVELOPMENT_GUIDE.md`
+- **Catálogo Mestre de Documentação Técnica (Navegação em 5 Camadas)**: `docs/README.md`
 - **Mapa Determinístico de Código, Funções, Métodos e Rotas RPC (`StartLine`–`EndLine`)**: `docs/CODE_MAP.md` (gerado por `scripts/generate_code_map.py`)
 - **Auditoria de Funcionalidades, Reboot e Contratos**: `docs/FEATURE_AUDIT_AND_REBOOT.md`
 - **Laboratório Virtual Oficial e Topologias**: `docs/VIRTUAL_LAB.md` e `docs/VIRTUALBOX_TEST_ENVIRONMENT.md`
