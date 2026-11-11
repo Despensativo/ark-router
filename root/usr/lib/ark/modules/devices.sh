@@ -1089,8 +1089,8 @@ satellite_sync_master_leases_if_needed() {
 	local net_mode="$(uci -q get equipe_dashboard.main.network_mode || true)"
 	local dhcp_off="$(uci -q get dhcp.lan.ignore || true)"
 
-	# Only in secondary / AP mode
-	if [ "$role" != "secondary" ] && [ "$role" != "satellite" ] && [ "$net_mode" != "ap" ] && [ "$dhcp_off" != "1" ]; then
+	# Only in secondary / AP / HUB mode
+	if [ "$role" != "secondary" ] && [ "$role" != "satellite" ] && [ "$role" != "hub" ] && [ "$net_mode" != "ap" ] && [ "$net_mode" != "hub" ] && [ "$dhcp_off" != "1" ]; then
 		return 0
 	fi
 

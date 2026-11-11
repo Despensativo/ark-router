@@ -200,8 +200,8 @@ const lifecycleMethods = {
 	},
 	fetchData: function(isInitial) {
 		const self = this;
-		const isApMode = (this.capabilities && this.capabilities.network_mode === 'ap') ||
-			(typeof window !== 'undefined' && window._arkCapabilities && window._arkCapabilities.network_mode === 'ap') ||
+		const isApMode = (this.capabilities && (this.capabilities.network_mode === 'ap' || this.capabilities.network_mode === 'hub')) ||
+			(typeof window !== 'undefined' && window._arkCapabilities && (window._arkCapabilities.network_mode === 'ap' || window._arkCapabilities.network_mode === 'hub')) ||
 			(this.currentData && this.currentData.networkConfig && this.currentData.networkConfig.lan && this.currentData.networkConfig.lan.proto === 'dhcp');
 		const activeWansList = (this.currentData && (this.currentData.activeWans || getActiveWanList(this.currentData))) || null;
 		const activeWansCount = activeWansList ? activeWansList.length : 2;
@@ -663,10 +663,12 @@ const lifecycleMethods = {
 				);
 			}
 		}
-		const isApLan = isSatelliteOrAp(data) || lanStatus.network_mode === 'ap';
+		const isApLan = isSatelliteOrAp(data) || lanStatus.network_mode === 'ap' || lanStatus.network_mode === 'hub';
 		let dhcpDisplay = '—';
 		if (isApLan) {
-			dhcpDisplay = 'Desativado (Modo Ponto de Acesso)';
+			dhcpDisplay = (isHubMode(data) || lanStatus.network_mode === 'hub')
+				? 'Desativado (Modo HUB / Switch)'
+				: 'Desativado (Modo Ponto de Acesso)';
 		} else if (lanStatus.dhcp_enabled === false || lanStatus.dhcp_disabled === true) {
 			dhcpDisplay = 'Desativado (IP Fixo)';
 		} else if (lanStatus.dhcp_start && lanStatus.dhcp_end) {

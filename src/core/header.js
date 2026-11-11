@@ -27,7 +27,7 @@ if (typeof dom !== 'undefined' && dom) {
 	}
 }
 
-const ARK_BUILD_VERSION = '2.2.4';
+const ARK_BUILD_VERSION = '2.2.5';
 if (typeof window !== 'undefined') {
 	window.ARK_BUILD_VERSION = ARK_BUILD_VERSION;
 	window.ARK_VERSION = ARK_BUILD_VERSION;

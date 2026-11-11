@@ -59,5 +59,54 @@ class TestSatelliteShield(unittest.TestCase):
         sqm_enabled = self.sb.uci_get("sqm.wan1.enabled")
         self.assertEqual(sqm_enabled, "0", "Doctor nao desativou o SQM residual no Satelite")
 
+    def test_04_hub_mode_activation_and_wifi_policy(self):
+        """Verifica se system-network-mode-set hub aplica otimizacoes L2 puras, resgate e politica de Wi-Fi"""
+        self.sb.uci_set("wireless.radio0=wifi-device")
+        self.sb.uci_set("wireless.radio0.disabled=0")
+        self.sb.uci_set("wireless.default_radio0=wifi-iface")
+        self.sb.uci_set("wireless.default_radio0.device=radio0")
+        self.sb.uci_set("wireless.default_radio0.disabled=0")
+
+        res = self.sb.run_control(
+            "system-network-mode-set", "hub", "static",
+            "192.168.73.2", "255.255.255.0", "192.168.73.1", "1.1.1.1", "off"
+        )
+        self.assertEqual(res.returncode, 0, f"Falha ao ativar modo HUB: {res.stderr}")
+        self.assertIn("hub_enabled", res.stdout)
+
+        # Valida estado salvo no UCI
+        self.assertEqual(self.sb.uci_get("equipe_dashboard.main.network_mode"), "hub")
+        self.assertEqual(self.sb.uci_get("equipe_dashboard.general.role"), "hub")
+        self.assertEqual(self.sb.uci_get("dhcp.lan.ignore"), "1")
+        self.assertEqual(self.sb.uci_get("network.lan.igmp_snooping"), "1")
+        self.assertEqual(self.sb.uci_get("network.lan.stp"), "0")
+        self.assertEqual(self.sb.uci_get("network.lan.forward_delay"), "0")
+        self.assertEqual(self.sb.uci_get("network.lan.ipaddr"), "192.168.73.2")
+        self.assertEqual(self.sb.uci_get("network.lan.gateway"), "192.168.73.1")
+        self.assertTrue(bool(self.sb.uci_get("network.rescue.ipaddr")), "Interface de resgate deve estar configurada")
+
+        # Valida que radios Wi-Fi foram desligados conforme politica 'off'
+        get_res = self.sb.run_control("system-network-mode-get")
+        self.assertEqual(get_res.returncode, 0)
+        state = json.loads(get_res.stdout.strip())
+        self.assertEqual(state["mode"], "hub")
+        self.assertEqual(state["role"], "hub")
+        self.assertFalse(state["wifi_enabled"], "Wi-Fi deveria estar desligado quando wifi_policy='off'")
+
+        # Valida reativacao do Wi-Fi no modo HUB (wifi_policy='on')
+        res_on = self.sb.run_control("system-network-mode-set", "hub", "dhcp", "on")
+        self.assertEqual(res_on.returncode, 0)
+        get_res_on = self.sb.run_control("system-network-mode-get")
+        state_on = json.loads(get_res_on.stdout.strip())
+        self.assertEqual(state_on["mode"], "hub")
+        self.assertTrue(state_on["wifi_enabled"], "Wi-Fi deveria estar ativo quando wifi_policy='on'")
+
+        # Valida retorno ao modo Roteador Principal
+        res_router = self.sb.run_control("system-network-mode-set", "router", "1")
+        self.assertEqual(res_router.returncode, 0)
+        self.assertIn("router_enabled", res_router.stdout)
+        self.assertEqual(self.sb.uci_get("equipe_dashboard.main.network_mode"), "router")
+        self.assertEqual(self.sb.uci_get("equipe_dashboard.general.role"), "master")
+
 if __name__ == "__main__":
     unittest.main()

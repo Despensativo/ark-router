@@ -117,7 +117,9 @@ const renderMethods = {
 				}
 			}
 		}
-		const isApMode=(this.capabilities&&this.capabilities.network_mode)==='ap';
+		const netModeCap=(this.capabilities&&this.capabilities.network_mode)||'';
+		const isHub=(netModeCap==='hub')||isHubMode(data);
+		const isApMode=(netModeCap==='ap')||isHub;
 		const hw = (data && data.hardwareInfo) || (this.capabilities && this.capabilities.hardware) || {};
 		const capHw = (this.capabilities && this.capabilities.hardware) || {};
 		const silicon = hw.silicon || capHw.silicon || {};
@@ -127,8 +129,8 @@ const renderMethods = {
 		const isWifi6PlusSupported = !!(hw.wifi_ax_supported || capHw.wifi_ax_supported || (hw.wifi && hw.wifi.wifi_ax) || hw.wifi_be_supported || capHw.wifi_be_supported || (hw.wifi && hw.wifi.wifi_be));
 		const isWifi7 = !!(hw.wifi_be_supported || capHw.wifi_be_supported || (hw.wifi && hw.wifi.wifi_be) || silClass === 'qualcomm_ipq');
 		const has6gBand = !!(hw.wifi_6g_supported || capHw.wifi_6g_supported || (hw.wifi && hw.wifi.wifi_6g) || w.has6g);
-		const heroEyebrow=isApMode?_t('📡 ROTEADOR SECUNDÁRIO • PONTO ADICIONAL & SWITCH'):_t('CENTRAL DE OPERAÇÕES');
-		const opModeButton=E('button',{class:'ex-hero-feature-button ex-hero-opmode-btn',style:isApMode?'border-color:#3b82f6;color:#60a5fa;font-weight:700;':'font-weight:650;','click':L.bind(this.showNetworkModeModal,this)},[isApMode?'📡 Roteador Secundário / AP':'🌐 Modo Roteador']);
+		const heroEyebrow=isHub?_t('🔀 MODO HUB • SWITCH GIGABIT & PONTE L2'):(isApMode?_t('📡 ROTEADOR SECUNDÁRIO • PONTO ADICIONAL & SWITCH'):_t('CENTRAL DE OPERAÇÕES'));
+		const opModeButton=E('button',{class:'ex-hero-feature-button ex-hero-opmode-btn',style:isHub?'border-color:#10b981;color:#34d399;font-weight:700;':(isApMode?'border-color:#3b82f6;color:#60a5fa;font-weight:700;':'font-weight:650;'),'click':L.bind(this.showNetworkModeModal,this)},[isHub?'🔀 Modo HUB / Switch':(isApMode?'📡 Roteador Secundário / AP':'🌐 Modo Roteador')]);
 		const langBadge = dashboardLanguage === 'en' ? '🌐 🇺🇸 EN' : (dashboardLanguage === 'es' ? '🌐 🇪🇸 ES' : '🌐 🇧🇷 PT');
 		const languageButton = E('button', {
 			class: 'ex-hero-feature-button ex-hero-lang-btn',
@@ -868,13 +870,15 @@ const renderMethods = {
 			starlinkSection || '',
 			isSatelliteOrAp(data) ? E('div', {
 				class: 'alert-message info',
-				style: 'margin-bottom: 14px; display: flex; align-items: center; gap: 12px; border-left: 4px solid var(--ex-primary);'
+				style: 'margin-bottom: 14px; display: flex; align-items: center; gap: 12px; border-left: 4px solid ' + (isHub ? '#10b981' : 'var(--ex-primary)') + ';'
 			}, [
-				E('span', { style: 'font-size: 22px;' }, ['🛡️']),
+				E('span', { style: 'font-size: 22px;' }, [isHub ? '🔀' : '🛡️']),
 				E('div', {}, [
-					E('strong', { style: 'display: block; font-size: 13.5px; margin-bottom: 2px;' }, [_t('Modo Ponto de Acesso (AP)')]),
+					E('strong', { style: 'display: block; font-size: 13.5px; margin-bottom: 2px;' }, [isHub ? _t('Modo HUB (Switch Gigabit L2 & Wi-Fi Livre)') : _t('Modo Ponto de Acesso (AP)')]),
 					E('span', { class: 'ex-muted', style: 'font-size: 12px; line-height: 1.4;' }, [
-						_t('Este nó opera como extensor em ponte transparente. O tráfego de saída, Multi-WAN e controle de Bufferbloat (SQM) são centralizados no Roteador Mestre.')
+						isHub
+							? _t('Este aparelho opera como HUB / Switch Gigabit L2 puro otimizado, com todas as portas unidas em ponte e Wi-Fi opcional sob seu controle.')
+							: _t('Este nó opera como extensor em ponte transparente. O tráfego de saída, Multi-WAN e controle de Bufferbloat (SQM) são centralizados no Roteador Mestre.')
 					])
 				])
 			]) : '',

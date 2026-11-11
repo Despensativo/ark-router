@@ -123,35 +123,57 @@ function wan2IsLan(data) {
 	const cfg=(values((data||{}).networkConfig).wan2)||{}, i=iface((data||{}).interfaces,'wan2');
 	return !i.up&&(cfg.proto==='none'||!cfg.proto||!cfg.device);
 }
+function isHubMode(data) {
+	const globalCaps = (typeof window !== 'undefined' && (window.EQUIPE_CAPABILITIES || window._arkCapabilities)) || null;
+	if (!data && globalCaps) {
+		return globalCaps.role === 'hub' || globalCaps.network_mode === 'hub';
+	}
+	if (!data) return false;
+	const dashboardCfg = values((data || {}).equipeDashboardConfig || (data || {}).dashboardConfig);
+	const generalRole = (dashboardCfg.general && dashboardCfg.general.role) || (dashboardCfg.mesh && dashboardCfg.mesh.role) || (dashboardCfg.main && dashboardCfg.main.role) || '';
+	if (generalRole === 'hub') return true;
+	const dashNetMode = (dashboardCfg.main && dashboardCfg.main.network_mode) || (dashboardCfg.general && dashboardCfg.general.network_mode) || '';
+	if (dashNetMode === 'hub') return true;
+	const netCfg = values((data || {}).networkConfig);
+	if (netCfg && netCfg.general && netCfg.general.network_mode === 'hub') return true;
+	let lanStatus = (data || {}).lanStatus;
+	if (lanStatus && typeof lanStatus.stdout === 'string') {
+		try { lanStatus = JSON.parse(lanStatus.stdout); } catch(e) {}
+	}
+	if (lanStatus && (lanStatus.mode === 'hub' || lanStatus.network_mode === 'hub')) return true;
+	if (globalCaps && (globalCaps.role === 'hub' || globalCaps.network_mode === 'hub')) return true;
+	return false;
+}
+
 function isSatelliteOrAp(data) {
 	const globalCaps = (typeof window !== 'undefined' && (window.EQUIPE_CAPABILITIES || window._arkCapabilities)) || null;
 	if (!data && globalCaps) {
 		if (globalCaps.role === 'master' || globalCaps.role === 'primary' || globalCaps.role === 'gateway' || globalCaps.network_mode === 'router') return false;
-		if (globalCaps.role === 'secondary' || globalCaps.role === 'satellite' || globalCaps.network_mode === 'ap') return true;
+		if (globalCaps.role === 'secondary' || globalCaps.role === 'satellite' || globalCaps.role === 'hub' || globalCaps.network_mode === 'ap' || globalCaps.network_mode === 'hub') return true;
 	}
 	if (!data) return false;
 	const dashboardCfg = values((data || {}).equipeDashboardConfig || (data || {}).dashboardConfig);
 	const generalRole = (dashboardCfg.general && dashboardCfg.general.role) || (dashboardCfg.mesh && dashboardCfg.mesh.role) || (dashboardCfg.main && dashboardCfg.main.role) || '';
 	if (generalRole === 'master' || generalRole === 'primary' || generalRole === 'gateway') return false;
-	if (generalRole === 'secondary' || generalRole === 'satellite' || generalRole === 'ap') return true;
+	if (generalRole === 'secondary' || generalRole === 'satellite' || generalRole === 'ap' || generalRole === 'hub') return true;
 	const dashNetMode = (dashboardCfg.main && dashboardCfg.main.network_mode) || (dashboardCfg.general && dashboardCfg.general.network_mode) || '';
 	if (dashNetMode === 'router') return false;
-	if (dashNetMode === 'ap') return true;
+	if (dashNetMode === 'ap' || dashNetMode === 'hub') return true;
 	const netCfg = values((data || {}).networkConfig);
 	if (netCfg && netCfg.general && netCfg.general.network_mode === 'router') return false;
-	if (netCfg && netCfg.general && netCfg.general.network_mode === 'ap') return true;
+	if (netCfg && netCfg.general && (netCfg.general.network_mode === 'ap' || netCfg.general.network_mode === 'hub')) return true;
 	let lanStatus = (data || {}).lanStatus;
 	if (lanStatus && typeof lanStatus.stdout === 'string') {
 		try { lanStatus = JSON.parse(lanStatus.stdout); } catch(e) {}
 	}
-	if (lanStatus && (lanStatus.dhcp_disabled || lanStatus.mode === 'ap') && lanStatus.gateway) return true;
+	if (lanStatus && (lanStatus.dhcp_disabled || lanStatus.mode === 'ap' || lanStatus.mode === 'hub') && lanStatus.gateway) return true;
 	const dhcpCfg = values((data || {}).dhcpLeasesConfig || (data || {}).dhcp);
 	const dhcpLanIgnore = dhcpCfg && dhcpCfg.lan && String(dhcpCfg.lan.ignore) === '1';
 	const lanGw = netCfg && netCfg.lan && netCfg.lan.gateway;
 	if (dhcpLanIgnore && lanGw) return true;
 	if (globalCaps) {
 		if (globalCaps.role === 'master' || globalCaps.role === 'primary' || globalCaps.role === 'gateway' || globalCaps.network_mode === 'router') return false;
-		if (globalCaps.role === 'secondary' || globalCaps.role === 'satellite' || globalCaps.role === 'ap' || globalCaps.network_mode === 'ap') return true;
+		if (globalCaps.role === 'secondary' || globalCaps.role === 'satellite' || globalCaps.role === 'ap' || globalCaps.role === 'hub' || globalCaps.network_mode === 'ap' || globalCaps.network_mode === 'hub') return true;
 	}
 	return false;
 }

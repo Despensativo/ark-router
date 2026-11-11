@@ -460,7 +460,8 @@ const networkModalsMethods = {
 		let dhcpTouched=false;
 		let dns1Touched=false;
 
-		const isApMode = isSatelliteOrAp(this.currentData) || state.network_mode === 'ap';
+		const isApMode = isSatelliteOrAp(this.currentData) || state.network_mode === 'ap' || state.network_mode === 'hub';
+		const isHub = isHubMode(this.currentData) || state.network_mode === 'hub';
 		const initialDhcpEnabled = !isApMode && (state.dhcp_enabled !== false);
 
 		const dhcpInput = E('input', { type: 'checkbox', class: 'cbi-input-checkbox', checked: initialDhcpEnabled ? '' : null });
@@ -474,7 +475,9 @@ const networkModalsMethods = {
 		const dhcpControl = E('div', { class: 'ex-device-switch-control' }, [dhcpStateText, dhcpSwitch]);
 
 		const dhcpNotice = isApMode ? E('p', { class: 'alert-message notice', style: 'margin-top: 10px;' }, [
-			'Modo Roteador Secundário / Ponto Adicional ativo: o servidor DHCP local está desativado para evitar conflitos de IP na rede. Toda a distribuição de IPs é coordenada exclusivamente pelo roteador principal.'
+			isHub
+				? 'Modo HUB / Switch ativo: o servidor DHCP local está desativado para comutação L2 pura e evitar conflitos de IP. Toda a distribuição de IPs é coordenada pelo roteador principal.'
+				: 'Modo Roteador Secundário / Ponto Adicional ativo: o servidor DHCP local está desativado para evitar conflitos de IP na rede. Toda a distribuição de IPs é coordenada exclusivamente pelo roteador principal.'
 		]) : null;
 
 		const dhcpWarning = E('p', { class: 'alert-message warning', style: 'margin-top: 10px; display: ' + (initialDhcpEnabled || isApMode ? 'none' : 'block') + ';' }, [

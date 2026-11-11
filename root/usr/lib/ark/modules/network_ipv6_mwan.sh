@@ -155,7 +155,9 @@ system_network_mode_get() {
 	local dhcp_disabled="$(uci -q get dhcp.lan.ignore || echo '0')"
 
 	if [ -z "$mode" ]; then
-		if [ "$role" = "secondary" ] || [ "$role" = "satellite" ]; then
+		if [ "$role" = "hub" ]; then
+			mode="hub"
+		elif [ "$role" = "secondary" ] || [ "$role" = "satellite" ]; then
 			mode="ap"
 		elif [ "$dhcp_disabled" = "1" ] && [ -n "$lan_gw" ]; then
 			mode="ap"
@@ -181,12 +183,24 @@ system_network_mode_get() {
 	fi
 	local master_ip="$(uci -q get equipe_dashboard.general.master_ip || echo "$lan_gw")"
 
-	printf '{"mode":"%s","role":"%s","backhaul":"%s","mesh_id":"%s","master_ip":"%s","lan_proto":"%s","lan_ip":"%s","current_ip":"%s","netmask":"%s","gateway":"%s","current_gw":"%s","dns":"%s","rescue_ip":"%s","dhcp_disabled":%s,"dhcp_enabled":%s}\n' \
-		"$mode" "$role" "$backhaul" "$cur_mesh_id" "$master_ip" "$lan_proto" "$lan_ip" "$current_ip" "$lan_mask" "$lan_gw" "$current_gw" "$lan_dns" "$rescue_ip" "$([ "$dhcp_disabled" = "1" ] && echo true || echo false)" "$([ "$dhcp_disabled" = "1" ] && echo false || echo true)"
+	local wifi_enabled=0 w_sec w_dis r_dev r_dis
+	for w_sec in $(uci -q show wireless 2>/dev/null | sed -n 's/^wireless\.\([a-zA-Z0-9_]*\)=wifi-iface$/\1/p'); do
+		[ "$w_sec" = "extra_mesh_r1" ] && continue
+		w_dis="$(uci -q get "wireless.$w_sec.disabled" || echo '0')"
+		r_dev="$(uci -q get "wireless.$w_sec.device" || echo '')"
+		r_dis="$( [ -n "$r_dev" ] && uci -q get "wireless.$r_dev.disabled" || echo '0' )"
+		if [ "$w_dis" != "1" ] && [ "$r_dis" != "1" ]; then
+			wifi_enabled=1
+			break
+		fi
+	done
+
+	printf '{"mode":"%s","role":"%s","backhaul":"%s","mesh_id":"%s","master_ip":"%s","lan_proto":"%s","lan_ip":"%s","current_ip":"%s","netmask":"%s","gateway":"%s","current_gw":"%s","dns":"%s","rescue_ip":"%s","dhcp_disabled":%s,"dhcp_enabled":%s,"wifi_enabled":%s}\n' \
+		"$mode" "$role" "$backhaul" "$cur_mesh_id" "$master_ip" "$lan_proto" "$lan_ip" "$current_ip" "$lan_mask" "$lan_gw" "$current_gw" "$lan_dns" "$rescue_ip" "$([ "$dhcp_disabled" = "1" ] && echo true || echo false)" "$([ "$dhcp_disabled" = "1" ] && echo false || echo true)" "$([ "$wifi_enabled" = "1" ] && echo true || echo false)"
 }
 
 system_network_mode_set() {
-	local z v1_ports has_5 item new_v1
+	local z v1_ports has_5 item new_v1 hub_wifi_policy w_sec br_sec
 	local target_mode="$1"
 	local ap_ip_proto="${2:-dhcp}"
 	local ap_ip="${3:-}"
@@ -194,6 +208,11 @@ system_network_mode_set() {
 	local ap_gw="${5:-}"
 	local ap_dns="${6:-}"
 	local router_dhcp_enabled="${2:-1}"
+	if [ "$ap_ip_proto" = "dhcp" ]; then
+		hub_wifi_policy="${3:-keep}"
+	else
+		hub_wifi_policy="${7:-keep}"
+	fi
 
 	local default_rescue_ip="192.168.12.1"
 	if [ -f /tmp/sysinfo/board_name ] && grep -qi "predator" /tmp/sysinfo/board_name 2>/dev/null; then
@@ -204,8 +223,8 @@ system_network_mode_set() {
 	local saved_rescue="$(uci -q get network.rescue.ipaddr || echo "")"
 	[ -n "$saved_rescue" ] && default_rescue_ip="$saved_rescue"
 
-	if [ "$target_mode" = "ap" ]; then
-		# Evita colisao caso o IP estatico do AP seja igual ao IP de resgate na mesma bridge
+	if [ "$target_mode" = "ap" ] || [ "$target_mode" = "hub" ]; then
+		# Evita colisao caso o IP estatico do AP/HUB seja igual ao IP de resgate na mesma bridge
 		if [ "$ap_ip_proto" = "static" ] && [ -n "$ap_ip" ] && [ "$ap_ip" = "$default_rescue_ip" ]; then
 			if [ "$default_rescue_ip" != "192.168.12.1" ]; then
 				default_rescue_ip="192.168.12.1"
@@ -279,14 +298,64 @@ system_network_mode_set() {
 		[ -z "$(uci -q get network.wan_modem)" ] || uci -q set network.wan_modem.auto='0'
 		[ -z "$(uci -q get network.wan_mgmt)" ] || uci -q set network.wan_mgmt.auto='0'
 
-		# 6. Desativa servicos irrelevantes em modo AP (Multi-WAN, Auto-WAN)
+		# 6. Desativa servicos irrelevantes em modo AP/HUB (Multi-WAN, Auto-WAN)
 		/etc/init.d/mwan3 stop >/dev/null 2>&1 || true
 		/etc/init.d/mwan3 disable >/dev/null 2>&1 || true
 		pkill -f ark-autowan-daemon 2>/dev/null || true
 		uci -q set network.autowan.enabled='0'
 
+		# 6.1 Otimizacoes exclusivas do Modo HUB (Switch Gigabit L2 Puro & Wi-Fi sob demanda)
+		if [ "$target_mode" = "hub" ]; then
+			uci -q set network.lan.igmp_snooping='1'
+			uci -q set network.lan.stp='0'
+			uci -q set network.lan.forward_delay='0'
+			for br_sec in $(uci -q show network 2>/dev/null | grep -E "=device$" | cut -d. -f2 | cut -d= -f1); do
+				if [ "$(uci -q get "network.$br_sec.name")" = "br-lan" ]; then
+					uci -q set "network.$br_sec.igmp_snooping=1"
+					uci -q set "network.$br_sec.stp=0"
+					uci -q set "network.$br_sec.forward_delay=0"
+				fi
+			done
+			/etc/init.d/sqm stop >/dev/null 2>&1 || true
+			/etc/init.d/sqm disable >/dev/null 2>&1 || true
+			/etc/init.d/miniupnpd stop >/dev/null 2>&1 || true
+			/etc/init.d/miniupnpd disable >/dev/null 2>&1 || true
+			/etc/init.d/nlbwmon stop >/dev/null 2>&1 || true
+			/etc/init.d/nlbwmon disable >/dev/null 2>&1 || true
+			/etc/init.d/odhcpd stop >/dev/null 2>&1 || true
+			/etc/init.d/odhcpd disable >/dev/null 2>&1 || true
+			/etc/init.d/equipe-traffic-history stop >/dev/null 2>&1 || true
+			pkill -f "/usr/sbin/equipe-traffic-history" 2>/dev/null || true
+			sysctl -w net.bridge.bridge-nf-call-iptables=0 >/dev/null 2>&1 || true
+			sysctl -w net.bridge.bridge-nf-call-ip6tables=0 >/dev/null 2>&1 || true
+			sysctl -w net.bridge.bridge-nf-call-arptables=0 >/dev/null 2>&1 || true
+
+			if [ "$hub_wifi_policy" = "off" ] || [ "$hub_wifi_policy" = "on" ]; then
+				local target_dis="0"
+				[ "$hub_wifi_policy" = "off" ] && target_dis="1"
+				for w_sec in $(uci -q show wireless 2>/dev/null | sed -n 's/^wireless\.\([a-zA-Z0-9_]*\)=wifi-device$/\1/p'); do
+					uci -q set "wireless.$w_sec.disabled=$target_dis"
+				done
+				for w_sec in $(uci -q show wireless 2>/dev/null | sed -n 's/^wireless\.\([a-zA-Z0-9_]*\)=wifi-iface$/\1/p'); do
+					[ "$w_sec" = "extra_mesh_r1" ] && continue
+					uci -q set "wireless.$w_sec.disabled=$target_dis"
+				done
+				uci commit wireless 2>/dev/null || true
+				[ -z "${ARK_ROOT:-}" ] && (wifi reload >/dev/null 2>&1 || true) &
+			fi
+
+			uci -q set equipe_dashboard.main.network_mode='hub'
+			uci -q set equipe_dashboard.general=general
+			uci -q set equipe_dashboard.general.role='hub'
+			[ -n "$ap_gw" ] && uci -q set equipe_dashboard.general.master_ip="$ap_gw"
+		else
+			uci -q set equipe_dashboard.main.network_mode='ap'
+			if [ "$(uci -q get equipe_dashboard.general.role)" = "hub" ]; then
+				uci -q set equipe_dashboard.general.role='secondary'
+			fi
+		fi
+
 		# 7. Salva modo
-		uci -q set equipe_dashboard.main.network_mode='ap'
 		uci commit network
 		uci commit dhcp
 		uci commit firewall
@@ -296,8 +365,13 @@ system_network_mode_set() {
 		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
 		/etc/init.d/network reload >/dev/null 2>&1 || true
 		/etc/init.d/firewall reload >/dev/null 2>&1 || true
+		[ -z "${ARK_ROOT:-}" ] && (sleep 1; /usr/sbin/equipe-dashboard-control system-hardware-auto-tune >/dev/null 2>&1; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
 
-		echo "ap_enabled"
+		if [ "$target_mode" = "hub" ]; then
+			echo "hub_enabled"
+		else
+			echo "ap_enabled"
+		fi
 	else
 		# Volta para Modo Roteador / Gateway Principal
 		# 1. Restaura porta WAN física
@@ -351,6 +425,9 @@ system_network_mode_set() {
 
 		# 6. Salva modo
 		uci -q set equipe_dashboard.main.network_mode='router'
+		if [ "$(uci -q get equipe_dashboard.general.role)" = "hub" ] || [ "$(uci -q get equipe_dashboard.general.role)" = "secondary" ] || [ "$(uci -q get equipe_dashboard.general.role)" = "satellite" ]; then
+			uci -q set equipe_dashboard.general.role='master'
+		fi
 		uci commit network
 		uci commit dhcp
 		uci commit firewall
@@ -358,6 +435,9 @@ system_network_mode_set() {
 		rm -f /tmp/ark-features.cache 2>/dev/null || true
 
 		/etc/init.d/dnsmasq restart >/dev/null 2>&1 || true
+		/etc/init.d/odhcpd enable >/dev/null 2>&1 || true
+		/etc/init.d/odhcpd start >/dev/null 2>&1 || true
+		/etc/init.d/equipe-traffic-history start >/dev/null 2>&1 || true
 		/etc/init.d/network reload >/dev/null 2>&1 || true
 		/etc/init.d/firewall reload >/dev/null 2>&1 || true
 		(sleep 1; ifup wan >/dev/null 2>&1; ark_invalidate_caches) </dev/null >/dev/null 2>&1 &
@@ -1062,7 +1142,7 @@ set_ipv6_mode() {
 			disable_ipv6_full
 			clean_ipv6_selective_firewall
 			clean_nptv6_firewall
-			if [ "$(uci -q get equipe_dashboard.main.network_mode)" != "ap" ]; then
+			if ! ark_is_satellite_or_ap; then
 				local prev_v6="$(uci -q get equipe_dashboard.ipv6.mode || true)"
 				[ "$prev_v6" = "ipv6_only" ] && uci -q delete dhcp.lan.ignore && uci commit dhcp
 			fi

@@ -2137,22 +2137,21 @@ const systemMethods = {
 			let diag = {};
 			try { diag = JSON.parse(res.stdout || '{}'); } catch(e) {}
 			const currentRole = diag.role || '';
-			const isCurrentlyAp = (diag.mode === 'ap' || currentRole === 'secondary' || currentRole === 'satellite' || (diag.dhcp_disabled && diag.gateway));
-			const currentMode = isCurrentlyAp ? 'ap' : 'router';
+			const isCurrentlyHub = (diag.mode === 'hub' || currentRole === 'hub');
+			const isCurrentlyAp = !isCurrentlyHub && (diag.mode === 'ap' || currentRole === 'secondary' || currentRole === 'satellite' || (diag.dhcp_disabled && diag.gateway));
+			const isBridgeMode = isCurrentlyAp || isCurrentlyHub;
+			const currentMode = isCurrentlyHub ? 'hub' : (isCurrentlyAp ? 'ap' : 'router');
 
 			const modeRouterRadio = E('input', { type: 'radio', name: 'ark_net_mode', value: 'router', id: 'ark-opmode-router' });
 			const modeApRadio = E('input', { type: 'radio', name: 'ark_net_mode', value: 'ap', id: 'ark-opmode-ap' });
-			if (isCurrentlyAp) {
-				modeApRadio.checked = true;
-				modeRouterRadio.checked = false;
-			} else {
-				modeRouterRadio.checked = true;
-				modeApRadio.checked = false;
-			}
+			const modeHubRadio = E('input', { type: 'radio', name: 'ark_net_mode', value: 'hub', id: 'ark-opmode-hub' });
+			modeRouterRadio.checked = (currentMode === 'router');
+			modeApRadio.checked = (currentMode === 'ap');
+			modeHubRadio.checked = (currentMode === 'hub');
 
 			const apIpDhcpRadio = E('input', { type: 'radio', name: 'ark_ap_ip_type', value: 'dhcp', id: 'ark-ap-ip-dhcp' });
 			const apIpStaticRadio = E('input', { type: 'radio', name: 'ark_ap_ip_type', value: 'static', id: 'ark-ap-ip-static' });
-			if (diag.lan_proto === 'static' || isCurrentlyAp) {
+			if (diag.lan_proto === 'static' || isBridgeMode) {
 				apIpStaticRadio.checked = true;
 				apIpDhcpRadio.checked = false;
 			} else {
@@ -2160,9 +2159,13 @@ const systemMethods = {
 				apIpStaticRadio.checked = false;
 			}
 
+			const hubWifiKeepRadio = E('input', { type: 'radio', name: 'ark_hub_wifi_policy', value: 'keep', id: 'ark-hub-wifi-keep', checked: true });
+			const hubWifiOffRadio = E('input', { type: 'radio', name: 'ark_hub_wifi_policy', value: 'off', id: 'ark-hub-wifi-off' });
+			const hubWifiOnRadio = E('input', { type: 'radio', name: 'ark_hub_wifi_policy', value: 'on', id: 'ark-hub-wifi-on' });
+
 			let suggestedGw = diag.gateway || diag.current_gw || '';
 			let suggestedApIp = '';
-			if (isCurrentlyAp && diag.lan_proto === 'static' && diag.lan_ip) {
+			if (isBridgeMode && diag.lan_proto === 'static' && diag.lan_ip) {
 				suggestedApIp = diag.lan_ip;
 			} else if (suggestedGw && /^(\d{1,3}\.){3}\d{1,3}$/.test(suggestedGw)) {
 				const parts = suggestedGw.split('.');
@@ -2176,42 +2179,78 @@ const systemMethods = {
 			}
 			const suggestedDns = diag.dns || suggestedGw || '1.1.1.1 8.8.8.8';
 
-			const staticIpInput = E('input', { type: 'text', class: 'cbi-input-text', placeholder: 'Ex.: ' + suggestedApIp, value: (isCurrentlyAp && diag.lan_proto === 'static' ? diag.lan_ip : suggestedApIp) });
-			const staticMaskInput = E('input', { type: 'text', class: 'cbi-input-text', placeholder: '255.255.255.0', value: diag.netmask || '255.255.255.0' });
-			const staticGwInput = E('input', { type: 'text', class: 'cbi-input-text', placeholder: 'Ex.: ' + (suggestedGw || '192.168.73.1'), value: suggestedGw });
-			const staticDnsInput = E('input', { type: 'text', class: 'cbi-input-text', placeholder: 'Ex.: 1.1.1.1 8.8.8.8', value: suggestedDns });
+			const staticIpInput = E('input', { type: 'text', class: 'cbi-input-text', style: 'width:100%; box-sizing:border-box;', placeholder: 'Ex.: ' + suggestedApIp, value: (isBridgeMode && diag.lan_proto === 'static' ? diag.lan_ip : suggestedApIp) });
+			const staticMaskInput = E('input', { type: 'text', class: 'cbi-input-text', style: 'width:100%; box-sizing:border-box;', placeholder: '255.255.255.0', value: diag.netmask || '255.255.255.0' });
+			const staticGwInput = E('input', { type: 'text', class: 'cbi-input-text', style: 'width:100%; box-sizing:border-box;', placeholder: 'Ex.: ' + (suggestedGw || '192.168.73.1'), value: suggestedGw });
+			const staticDnsInput = E('input', { type: 'text', class: 'cbi-input-text', style: 'width:100%; box-sizing:border-box;', placeholder: 'Ex.: 1.1.1.1 8.8.8.8', value: suggestedDns });
 
 			const staticFieldsBox = E('div', { id: 'ark-ap-static-fields', style: 'display:' + (apIpStaticRadio.checked ? 'grid' : 'none') + '; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;' }, [
 				E('div', {}, [
-					E('label', { style: 'display:block; font-size:12px; font-weight:600; margin-bottom:3px; color:#e2e8f0;' }, ['1. IP deste Aparelho (Secundário/AP):']),
+					E('label', { style: 'display:block; font-size:12px; font-weight:600; margin-bottom:3px; color:#e2e8f0;' }, ['1. IP deste Aparelho (Secundário / HUB):']),
 					staticIpInput,
-					E('small', { class: 'ex-muted', style: 'font-size:11px;' }, ['O IP que este roteador terá na rede local do mestre.'])
+					E('small', { class: 'ex-muted', style: 'display:block; margin-top:3px; font-size:11px;' }, ['O IP que este roteador terá na rede local do mestre.'])
 				]),
 				E('div', {}, [
 					E('label', { style: 'display:block; font-size:12px; font-weight:600; margin-bottom:3px; color:#e2e8f0;' }, ['2. Máscara de sub-rede:']),
 					staticMaskInput,
-					E('small', { class: 'ex-muted', style: 'font-size:11px;' }, ['Geralmente 255.255.255.0 para redes residenciais.'])
+					E('small', { class: 'ex-muted', style: 'display:block; margin-top:3px; font-size:11px;' }, ['Geralmente 255.255.255.0 para redes residenciais.'])
 				]),
 				E('div', {}, [
 					E('label', { style: 'display:block; font-size:12px; font-weight:600; margin-bottom:3px; color:#e2e8f0;' }, ['3. Gateway (IP do Roteador Mestre):']),
 					staticGwInput,
-					E('small', { class: 'ex-muted', style: 'font-size:11px;' }, ['O endereço do roteador principal onde a internet chega.'])
+					E('small', { class: 'ex-muted', style: 'display:block; margin-top:3px; font-size:11px;' }, ['O endereço do roteador principal onde a internet chega.'])
 				]),
 				E('div', {}, [
 					E('label', { style: 'display:block; font-size:12px; font-weight:600; margin-bottom:3px; color:#e2e8f0;' }, ['4. Servidor(es) DNS:']),
 					staticDnsInput,
-					E('small', { class: 'ex-muted', style: 'font-size:11px;' }, ['Para este roteador sincronizar horário e checar atualizações.'])
+					E('small', { class: 'ex-muted', style: 'display:block; margin-top:3px; font-size:11px;' }, ['Para este roteador sincronizar horário e checar atualizações.'])
 				])
 			]);
 
 			apIpDhcpRadio.addEventListener('change', function() { staticFieldsBox.style.display = 'none'; });
 			apIpStaticRadio.addEventListener('change', function() { staticFieldsBox.style.display = 'grid'; });
 
+			const hubWifiBox = E('div', {
+				id: 'ark-hub-wifi-box',
+				style: 'display:' + (isCurrentlyHub ? 'block' : 'none') + '; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.08);'
+			}, [
+				E('strong', { style: 'display:block; font-size:13px; margin-bottom:8px; color:#34d399;' }, ['📶 Comportamento do Wi-Fi no Modo HUB']),
+				E('div', { style: 'display:flex; flex-direction:column; gap:8px;' }, [
+					E('label', { style: 'display:flex; align-items:flex-start; gap:8px; cursor:pointer;' }, [
+						hubWifiKeepRadio,
+						E('div', {}, [
+							E('span', { style: 'font-weight:600; font-size:13px;' }, ['Manter Wi-Fi como está (Controle livre nas Configurações de Wi-Fi)']),
+							E('small', { class: 'ex-muted', style: 'display:block;' }, ['Preserva o estado atual das suas redes Wi-Fi. Você pode ligar, desligar ou trocar senha quando quiser direto na aba Wi-Fi, sem precisar clonar o Mestre.'])
+						])
+					]),
+					E('label', { style: 'display:flex; align-items:flex-start; gap:8px; cursor:pointer;' }, [
+						hubWifiOffRadio,
+						E('div', {}, [
+							E('span', { style: 'font-weight:600; font-size:13px; color:#38bdf8;' }, ['Desligar rádios Wi-Fi agora (Modo Switch Cabeado Puro / Frio)']),
+							E('small', { class: 'ex-muted', style: 'display:block;' }, ['Desativa a transmissão sem fio para zero consumo de RF e menor aquecimento. Se precisar de Wi-Fi no futuro, basta ligar o interruptor na aba Wi-Fi.'])
+						])
+					]),
+					E('label', { style: 'display:flex; align-items:flex-start; gap:8px; cursor:pointer;' }, [
+						hubWifiOnRadio,
+						E('div', {}, [
+							E('span', { style: 'font-weight:600; font-size:13px; color:#10b981;' }, ['Ativar rádios Wi-Fi agora (HUB Gigabit + Ponto Wi-Fi Independente)']),
+							E('small', { class: 'ex-muted', style: 'display:block;' }, ['Garante que os rádios Wi-Fi estejam ligados em ponte transparente com todas as portas Ethernet.'])
+						])
+					])
+				])
+			]);
+
+			const optionsBoxTitle = E('strong', {
+				id: 'ark-bridge-options-title',
+				style: 'display:block; font-size:13px; margin-bottom:8px; color:#60a5fa;'
+			}, [isCurrentlyHub ? '⚙️ Configuração de IP no Modo HUB / Switch' : '⚙️ Configuração de IP no Modo Ponto de Acesso']);
+
 			const apOptionsBox = E('div', {
 				id: 'ark-ap-options-box',
-				style: 'display:' + (isCurrentlyAp ? 'block' : 'none') + '; margin-top: 14px; padding: 14px; background: rgba(0,0,0,0.25); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);'
+				style: 'display:' + (isBridgeMode ? 'block' : 'none') + '; margin-top: 14px; padding: 14px; background: rgba(0,0,0,0.25); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);'
 			}, [
-				E('strong', { style: 'display:block; font-size:13px; margin-bottom:8px; color:#60a5fa;' }, ['⚙️ Configuração de IP no Modo Ponto de Acesso']),
+				hubWifiBox,
+				optionsBoxTitle,
 				E('div', { style: 'display:flex; flex-direction:column; gap:8px;' }, [
 					E('label', { style: 'display:flex; align-items:center; gap:8px; cursor:pointer;' }, [
 						apIpDhcpRadio,
@@ -2230,23 +2269,25 @@ const systemMethods = {
 				]),
 				staticFieldsBox,
 				E('div', { class: 'alert-message info', style: 'margin-top: 12px; margin-bottom: 0; font-size: 12px; line-height: 1.5;' }, [
-					E('strong', { style: 'display:block; margin-bottom:4px;' }, ['🛡️ Salvaguarda Anti-Lockout (IP de Resgate Permanente):']),
-					'Mesmo operando como Ponto de Acesso na rede do Mestre, o ARK Router manterá o ',
-					E('strong', {}, ['IP de Resgate fixo (' + (diag.rescue_ip || '192.168.12.1') + ')']),
-					' ativo no switch. Se você desconectar do mestre e plugar o PC direto nele com IP manual, sempre conseguirá abrir este painel!'
+					E('div', {}, [
+						E('strong', { style: 'display:block; margin-bottom:4px;' }, ['🛡️ Salvaguarda Anti-Lockout (IP de Resgate Permanente):']),
+						'Mesmo operando na rede do Mestre, o ARK Router manterá o ',
+						E('strong', {}, ['IP de Resgate fixo (' + (diag.rescue_ip || '192.168.12.1') + ')']),
+						' ativo no switch. Se você desconectar do mestre e plugar o PC direto nele com IP manual, sempre conseguirá abrir este painel!'
+					])
 				])
 			]);
 
 			const cardRouter = E('label', {
 				id: 'ark-card-mode-router',
 				class: 'ex-opmode-card',
-				style: 'display:flex; gap:12px; align-items:flex-start; padding:14px; background:' + (!isCurrentlyAp ? 'rgba(56, 189, 248, 0.08)' : 'rgba(255,255,255,0.03)') + '; border:1px solid ' + (!isCurrentlyAp ? 'rgba(56, 189, 248, 0.45)' : 'rgba(255,255,255,0.1)') + '; border-radius:8px; cursor:pointer;'
+				style: 'display:flex; gap:12px; align-items:flex-start; padding:14px; background:' + (currentMode === 'router' ? 'rgba(56, 189, 248, 0.08)' : 'rgba(255,255,255,0.03)') + '; border:1px solid ' + (currentMode === 'router' ? 'rgba(56, 189, 248, 0.45)' : 'rgba(255,255,255,0.1)') + '; border-radius:8px; cursor:pointer;'
 			}, [
 				modeRouterRadio,
 				E('div', { style: 'flex:1;' }, [
 					E('div', { style: 'display:flex; justify-content:space-between; align-items:center;' }, [
 						E('strong', { style: 'font-size:14px;' }, ['🌐 Modo Roteador Principal (Gateway)']),
-						(!isCurrentlyAp ? E('span', { class: 'ex-pill online', style: 'font-size:11px;' }, ['ATIVO']) : '')
+						(currentMode === 'router' ? E('span', { class: 'ex-pill online', style: 'font-size:11px;' }, ['ATIVO']) : '')
 					]),
 					E('small', { class: 'ex-muted', style: 'display:block; margin-top:4px; line-height:1.4;' }, [
 						'O ARK Router atua como o mestre da rede conectado direto ao modem ou fibra. Gerencia distribuição de IPs (DHCP), firewall, NAT, Wi-Fi, SQM CAKE e Multi-WAN.'
@@ -2257,18 +2298,18 @@ const systemMethods = {
 			const cardAp = E('label', {
 				id: 'ark-card-mode-ap',
 				class: 'ex-opmode-card',
-				style: 'display:flex; gap:12px; align-items:flex-start; padding:14px; background:' + (isCurrentlyAp ? 'rgba(56, 189, 248, 0.08)' : 'rgba(255,255,255,0.03)') + '; border:1px solid ' + (isCurrentlyAp ? 'rgba(56, 189, 248, 0.45)' : 'rgba(255,255,255,0.1)') + '; border-radius:8px; cursor:pointer;'
+				style: 'display:flex; gap:12px; align-items:flex-start; padding:14px; background:' + (currentMode === 'ap' ? 'rgba(56, 189, 248, 0.08)' : 'rgba(255,255,255,0.03)') + '; border:1px solid ' + (currentMode === 'ap' ? 'rgba(56, 189, 248, 0.45)' : 'rgba(255,255,255,0.1)') + '; border-radius:8px; cursor:pointer;'
 			}, [
 				modeApRadio,
 				E('div', { style: 'flex:1;' }, [
 					E('div', { style: 'display:flex; justify-content:space-between; align-items:center;' }, [
-						E('strong', { style: 'font-size:14px; color:' + (isCurrentlyAp ? '#38bdf8' : '#fff') + ';' }, ['📡 Roteador Secundário / Ponto Adicional (Extensor de Wi-Fi)']),
-						(isCurrentlyAp ? E('span', { class: 'ex-pill online', style: 'font-size:11px;' }, ['ATIVO']) : '')
+						E('strong', { style: 'font-size:14px; color:' + (currentMode === 'ap' ? '#38bdf8' : '#fff') + ';' }, ['📡 Roteador Secundário / Ponto Adicional (Extensor de Wi-Fi)']),
+						(currentMode === 'ap' ? E('span', { class: 'ex-pill online', style: 'font-size:11px;' }, ['ATIVO']) : '')
 					]),
 					E('small', { class: 'ex-muted', style: 'display:block; margin-top:4px; line-height:1.4;' }, [
 						'Ideal para expandir a rede do Roteador Principal via cabo ou sem fio. Desativa o servidor DHCP, firewall e NAT deste aparelho, transformando todas as portas e o Wi-Fi em uma extensão transparente da sua rede.'
 					]),
-					isCurrentlyAp ? E('div', {
+					currentMode === 'ap' ? E('div', {
 						style: 'margin-top: 10px; padding: 8px 12px; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.25); font-size: 11.5px; display: grid; gap: 4px;'
 					}, [
 						E('div', {}, [
@@ -2302,20 +2343,68 @@ const systemMethods = {
 				])
 			]);
 
-			modeRouterRadio.addEventListener('change', function() {
-				apOptionsBox.style.display = 'none';
-				cardRouter.style.background = 'rgba(56, 189, 248, 0.08)';
-				cardRouter.style.borderColor = 'rgba(56, 189, 248, 0.45)';
-				cardAp.style.background = 'rgba(255,255,255,0.03)';
-				cardAp.style.borderColor = 'rgba(255,255,255,0.1)';
-			});
-			modeApRadio.addEventListener('change', function() {
-				apOptionsBox.style.display = 'block';
-				cardAp.style.background = 'rgba(56, 189, 248, 0.08)';
-				cardAp.style.borderColor = 'rgba(56, 189, 248, 0.45)';
-				cardRouter.style.background = 'rgba(255,255,255,0.03)';
-				cardRouter.style.borderColor = 'rgba(255,255,255,0.1)';
-			});
+			const cardHub = E('label', {
+				id: 'ark-card-mode-hub',
+				class: 'ex-opmode-card',
+				style: 'display:flex; gap:12px; align-items:flex-start; padding:14px; background:' + (currentMode === 'hub' ? 'rgba(16, 185, 129, 0.09)' : 'rgba(255,255,255,0.03)') + '; border:1px solid ' + (currentMode === 'hub' ? 'rgba(16, 185, 129, 0.5)' : 'rgba(255,255,255,0.1)') + '; border-radius:8px; cursor:pointer;'
+			}, [
+				modeHubRadio,
+				E('div', { style: 'flex:1;' }, [
+					E('div', { style: 'display:flex; justify-content:space-between; align-items:center;' }, [
+						E('strong', { style: 'font-size:14px; color:' + (currentMode === 'hub' ? '#34d399' : '#fff') + ';' }, ['🔀 Modo HUB (Switch Gigabit L2 & Wi-Fi Sob Demanda)']),
+						(currentMode === 'hub' ? E('span', { class: 'ex-pill online', style: 'font-size:11px;' }, ['ATIVO']) : '')
+					]),
+					E('small', { class: 'ex-muted', style: 'display:block; margin-top:4px; line-height:1.4;' }, [
+						'Otimiza o aparelho para atuar como um HUB / Switch Gigabit puro de ultra-baixa latência (IGMP Snooping, Zero L3 Overhead, todas as portas unidas sem NAT/DHCP). Diferente do Extensor, você decide livremente se deixa o Wi-Fi desligado ou ativo pelas Configurações de Wi-Fi.'
+					]),
+					currentMode === 'hub' ? E('div', {
+						style: 'margin-top: 10px; padding: 8px 12px; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 11.5px; display: grid; gap: 4px;'
+					}, [
+						E('div', {}, [
+							E('span', { class: 'ex-muted' }, ['Arquitetura Ativa: ']),
+							E('strong', { style: 'color: #34d399;' }, ['🔀 Switch Gigabit L2 Puro (IGMP Snooping + Zero L3 Filter)'])
+						]),
+						E('div', {}, [
+							E('span', { class: 'ex-muted' }, ['IP deste Aparelho: ']),
+							E('code', { style: 'color: #f8fafc; font-weight: 700;' }, [diag.current_ip || diag.lan_ip || '192.168.73.2']),
+							E('span', { class: 'ex-muted', style: 'margin-left: 10px;' }, ['Roteador Mestre: ']),
+							E('code', { style: 'color: #34d399;' }, [diag.gateway || diag.current_gw || '192.168.73.1'])
+						]),
+						E('div', {}, [
+							E('span', { class: 'ex-muted' }, ['Rádios Wi-Fi: ']),
+							E('span', { style: 'color: ' + (diag.wifi_enabled !== false ? '#38bdf8' : '#94a3b8') + '; font-weight: 600;' }, [
+								diag.wifi_enabled !== false ? '📶 Ativos (Controlados livremente na aba Wi-Fi)' : '🔇 Desligados (Operando 100% via Cabo Ethernet)'
+							])
+						]),
+						E('div', {}, [
+							E('span', { class: 'ex-muted' }, ['Estado DHCP / NAT: ']),
+							E('span', { style: 'color: #22c55e; font-weight: 600;' }, ['Desativado (Comutação Direta L2)'])
+						])
+					]) : ''
+				])
+			]);
+
+			const syncModeCards = function() {
+				const sel = modeHubRadio.checked ? 'hub' : (modeApRadio.checked ? 'ap' : 'router');
+				apOptionsBox.style.display = (sel === 'ap' || sel === 'hub') ? 'block' : 'none';
+				hubWifiBox.style.display = (sel === 'hub') ? 'block' : 'none';
+				optionsBoxTitle.textContent = (sel === 'hub')
+					? '⚙️ Configuração de IP no Modo HUB / Switch'
+					: '⚙️ Configuração de IP no Modo Ponto de Acesso';
+
+				cardRouter.style.background = (sel === 'router') ? 'rgba(56, 189, 248, 0.08)' : 'rgba(255,255,255,0.03)';
+				cardRouter.style.borderColor = (sel === 'router') ? 'rgba(56, 189, 248, 0.45)' : 'rgba(255,255,255,0.1)';
+
+				cardAp.style.background = (sel === 'ap') ? 'rgba(56, 189, 248, 0.08)' : 'rgba(255,255,255,0.03)';
+				cardAp.style.borderColor = (sel === 'ap') ? 'rgba(56, 189, 248, 0.45)' : 'rgba(255,255,255,0.1)';
+
+				cardHub.style.background = (sel === 'hub') ? 'rgba(16, 185, 129, 0.09)' : 'rgba(255,255,255,0.03)';
+				cardHub.style.borderColor = (sel === 'hub') ? 'rgba(16, 185, 129, 0.5)' : 'rgba(255,255,255,0.1)';
+			};
+
+			modeRouterRadio.addEventListener('change', syncModeCards);
+			modeApRadio.addEventListener('change', syncModeCards);
+			modeHubRadio.addEventListener('change', syncModeCards);
 
 			const modalBody = [
 				E('p', { class: 'ex-muted', style: 'margin-top:0; font-size:13px;' }, [
@@ -2323,7 +2412,8 @@ const systemMethods = {
 				]),
 				E('div', { style: 'display:flex; flex-direction:column; gap:12px; margin: 16px 0;' }, [
 					cardRouter,
-					cardAp
+					cardAp,
+					cardHub
 				]),
 				apOptionsBox,
 				E('div', { style: 'display:flex; justify-content:flex-end; gap:10px; margin-top:18px;' }, [
@@ -2335,14 +2425,15 @@ const systemMethods = {
 						class: 'btn cbi-button cbi-button-positive',
 						style: 'font-weight:bold;',
 						'click': L.bind(function(ev) {
-							const selectedMode = modeApRadio.checked ? 'ap' : 'router';
-							if (selectedMode === currentMode) {
+							const selectedMode = modeHubRadio.checked ? 'hub' : (modeApRadio.checked ? 'ap' : 'router');
+							const wifiPolicy = hubWifiOffRadio.checked ? 'off' : (hubWifiOnRadio.checked ? 'on' : 'keep');
+							if (selectedMode === 'router' && currentMode === 'router') {
 								ui.hideModal();
 								return;
 							}
 
 							const cmdArgs = ['system-network-mode-set', selectedMode];
-							if (selectedMode === 'ap') {
+							if (selectedMode === 'ap' || selectedMode === 'hub') {
 								if (apIpStaticRadio.checked) {
 									const ip = String(staticIpInput.value || '').trim();
 									const mask = String(staticMaskInput.value || '').trim() || '255.255.255.0';
@@ -2356,11 +2447,16 @@ const systemMethods = {
 								} else {
 									cmdArgs.push('dhcp');
 								}
+								if (selectedMode === 'hub') {
+									cmdArgs.push(wifiPolicy);
+								}
 							}
 
-							const loadingMsg = selectedMode === 'ap'
-								? 'Convertendo para Ponto de Acesso e Switch. O roteador reiniciará a rede. IP de resgate: ' + (diag.rescue_ip || diag.lan_ip || '192.168.12.1')
-								: 'Restaurando Modo Roteador Principal. O servidor DHCP e a porta WAN padrão foram reativados…';
+							const loadingMsg = selectedMode === 'hub'
+								? 'Ativando Modo HUB (Switch Gigabit L2 Otimizado). IP de resgate: ' + (diag.rescue_ip || diag.lan_ip || '192.168.12.1')
+								: (selectedMode === 'ap'
+									? 'Convertendo para Ponto de Acesso e Switch. O roteador reiniciará a rede. IP de resgate: ' + (diag.rescue_ip || diag.lan_ip || '192.168.12.1')
+									: 'Restaurando Modo Roteador Principal. O servidor DHCP e a porta WAN padrão foram reativados…');
 
 							this.showNetworkModeConfirmation(selectedMode, cmdArgs, diag, loadingMsg);
 						}, this)
@@ -2374,10 +2470,17 @@ const systemMethods = {
 		});
 	},
 	showNetworkModeConfirmation: function(selectedMode, cmdArgs, diag, loadingMsg) {
+		const isHub = (selectedMode === 'hub');
 		const isAp = (selectedMode === 'ap');
+		const isBridge = isAp || isHub;
 		const rescueIp = diag.rescue_ip || diag.lan_ip || '192.168.12.1';
 
-		const warningItems = isAp ? [
+		const warningItems = isHub ? [
+			E('li', { style: 'color: #34d399; font-weight: bold;' }, ['OTIMIZAÇÃO DE SWITCH L2 PURO: Todas as portas Ethernet (inclusive a WAN física) serão unidas com IGMP Snooping ativo, STP Zero-Delay e sem filtragem L3/NAT.']),
+			E('li', { style: 'color: #f59e0b; font-weight: bold;' }, ['O servidor DHCP local e serviços L3 (Multi-WAN, SQM, UPnP) serão DESATIVADOS para liberar 100% de CPU e RAM.']),
+			E('li', {}, ['WI-FI LIVRE SOB SEU CONTROLE: Você pode manter o Wi-Fi desligado ou ligá-lo/desligá-lo a qualquer momento diretamente nas Configurações de Wi-Fi da tela principal.']),
+			E('li', { style: 'color: #3b82f6; font-weight: bold;' }, ['SALVAGUARDA ANTI-LOCKOUT: O IP de Resgate (' + rescueIp + ') permanecerá sempre ativo no switch.'])
+		] : (isAp ? [
 			E('li', { style: 'color: #f59e0b; font-weight: bold;' }, ['O servidor DHCP deste roteador será DESLIGADO. Os aparelhos passarão a receber IP diretamente do roteador mestre.']),
 			E('li', {}, ['Todas as portas Ethernet (inclusive a porta WAN) e o Wi-Fi se tornarão um único switch local transparente.']),
 			E('li', {}, ['Você deve conectar um cabo de rede vindo do roteador principal em qualquer porta deste roteador para distribuir internet.']),
@@ -2386,10 +2489,10 @@ const systemMethods = {
 			E('li', { style: 'color: #10b981; font-weight: bold;' }, ['O servidor DHCP local deste roteador será REATIVADO na rede local.']),
 			E('li', {}, ['A porta WAN física voltará a operar como entrada de internet dedicada e o firewall com NAT será restabelecido.']),
 			E('li', {}, ['O endereço IP do roteador será restaurado para o padrão (' + rescueIp + ').'])
-		];
+		]);
 
 		const finalButton = E('button', {
-			class: 'btn cbi-button ' + (isAp ? 'cbi-button-negative' : 'cbi-button-positive'),
+			class: 'btn cbi-button ' + (isBridge ? 'cbi-button-negative' : 'cbi-button-positive'),
 			style: 'font-weight: bold;',
 			disabled: true
 		}, ['Aguarde 3 s']);
@@ -2405,13 +2508,15 @@ const systemMethods = {
 			window.clearInterval(timer);
 			finalButton.removeAttribute('disabled');
 			finalButton.disabled = false;
-			finalButton.textContent = isAp ? '⚠️ Confirmar e Ativar Modo Ponto de Acesso' : 'Confirmar e Restaurar Modo Roteador';
+			finalButton.textContent = isHub
+				? '🔀 Confirmar e Ativar Modo HUB'
+				: (isAp ? '⚠️ Confirmar e Ativar Modo Ponto de Acesso' : 'Confirmar e Restaurar Modo Roteador');
 		}, 100);
 
 		let dhcpRestoreChoice = '1';
 		let dhcpChoiceBox = null;
 
-		if (!isAp) {
+		if (!isBridge) {
 			const radioDhcpOn = E('input', { type: 'radio', name: 'ark_restore_dhcp', value: '1', checked: true });
 			const radioDhcpOff = E('input', { type: 'radio', name: 'ark_restore_dhcp', value: '0' });
 			radioDhcpOn.addEventListener('change', function() { if (radioDhcpOn.checked) dhcpRestoreChoice = '1'; });
@@ -2451,7 +2556,7 @@ const systemMethods = {
 			finalButton.textContent = 'Aplicando alteração de modo…';
 
 			ui.hideModal();
-			const finalCmdArgs = isAp ? cmdArgs : ['system-network-mode-set', 'router', dhcpRestoreChoice];
+			const finalCmdArgs = isBridge ? cmdArgs : ['system-network-mode-set', 'router', dhcpRestoreChoice];
 			fs.exec('/usr/sbin/equipe-dashboard-control', finalCmdArgs)
 			.then(function(r) {
 				reloadSoon(loadingMsg, 1500, false, true);
@@ -2462,9 +2567,11 @@ const systemMethods = {
 		}, this), true);
 
 		const modalContent = [
-			E('div', { class: 'alert-message ' + (isAp ? 'warning' : 'info'), style: 'margin-bottom: 14px; font-size: 13px; line-height: 1.55;' }, [
+			E('div', { class: 'alert-message ' + (isBridge ? 'warning' : 'info'), style: 'margin-bottom: 14px; font-size: 13px; line-height: 1.55;' }, [
 				E('strong', { style: 'display:block; margin-bottom:8px; font-size:14px;' }, [
-					isAp ? 'Atenção aos efeitos da conversão em Ponto de Acesso (Dumb AP):' : 'Restaurar modo padrão de roteador mestre:'
+					isHub
+						? 'Confirme os efeitos da ativação do Modo HUB (Switch Gigabit L2):'
+						: (isAp ? 'Atenção aos efeitos da conversão em Ponto de Acesso (Dumb AP):' : 'Restaurar modo padrão de roteador mestre:')
 				]),
 				E('ul', { style: 'margin: 0; padding-left: 18px;' }, warningItems)
 			])
@@ -2475,7 +2582,7 @@ const systemMethods = {
 			finalButton
 		]));
 
-		ui.showModal(isAp ? '⚠️ Confirmação Final: Modo Ponto de Acesso & Switch' : 'Confirmação Final: Restaurar Modo Roteador Principal', modalContent);
+		ui.showModal(isHub ? '🔀 Confirmação Final: Modo HUB & Switch Gigabit' : (isAp ? '⚠️ Confirmação Final: Modo Ponto de Acesso & Switch' : 'Confirmação Final: Restaurar Modo Roteador Principal'), modalContent);
 	},
 	showHardwareModal: function() {
 		const hwInfo = (this.currentData && this.currentData.hardwareInfo) || {};

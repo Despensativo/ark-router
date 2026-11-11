@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.5
+
+- **Atualização Incremental v2.2.5 (11/11/2026)**:
+  - Modo HUB: Switch Gigabit L2 puro e Wi-Fi sob demanda
+
 ## 2.2.4
 
 - **🛡️ Auditoria Determinística ECC (39/39 pts), AgentShield Grade A (100/100), Dimensionamento Dinâmico de Conntrack e Otimização Multi-Core de QoS/IFB (08/11/2026)**:

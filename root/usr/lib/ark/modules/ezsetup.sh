@@ -1819,7 +1819,9 @@ handle_ezsetup() {
 		dhcp_ignore="$(uci -q get dhcp.lan.ignore || echo '0')"
 		lan_gw="$(uci -q get network.lan.gateway || echo '')"
 		if [ -z "$network_mode" ]; then
-			if [ "$cur_role" = "secondary" ] || [ "$cur_role" = "satellite" ]; then
+			if [ "$cur_role" = "hub" ]; then
+				network_mode="hub"
+			elif [ "$cur_role" = "secondary" ] || [ "$cur_role" = "satellite" ]; then
 				network_mode="ap"
 			elif [ "$dhcp_ignore" = "1" ] && [ -n "$lan_gw" ]; then
 				network_mode="ap"

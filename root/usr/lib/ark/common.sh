@@ -5,7 +5,7 @@
 [ -z "${_ARK_COMMON_SH_LOADED:-}" ] || return 0
 _ARK_COMMON_SH_LOADED=1
 
-ARK_ROUTER_VERSION="2.2.4"
+ARK_ROUTER_VERSION="2.2.5"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 ARK_ROOT="${ARK_ROOT:-}"
 
@@ -219,16 +219,24 @@ ark_has_native_hw_queues() {
 	return 1
 }
 
+ark_is_hub_mode() {
+	local role="$(uci -q get equipe_dashboard.general.role || uci -q get equipe_dashboard.mesh.role || true)"
+	[ "$role" = "hub" ] && return 0
+	local net_mode="$(uci -q get equipe_dashboard.main.network_mode || uci -q get equipe_dashboard.general.network_mode || true)"
+	[ "$net_mode" = "hub" ] && return 0
+	return 1
+}
+
 ark_is_satellite_or_ap() {
 	local role="$(uci -q get equipe_dashboard.general.role || uci -q get equipe_dashboard.mesh.role || true)"
 	case "$role" in
 		master|primary|gateway) return 1 ;;
-		secondary|satellite) return 0 ;;
+		secondary|satellite|hub) return 0 ;;
 	esac
 	local net_mode="$(uci -q get equipe_dashboard.main.network_mode || uci -q get equipe_dashboard.general.network_mode || true)"
 	case "$net_mode" in
 		router) return 1 ;;
-		ap) return 0 ;;
+		ap|hub) return 0 ;;
 	esac
 	local dhcp_ignore="$(uci -q get dhcp.lan.ignore || echo 0)"
 	local lan_gw="$(uci -q get network.lan.gateway || true)"

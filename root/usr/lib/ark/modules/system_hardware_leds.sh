@@ -1173,7 +1173,9 @@ system_hardware_auto_tune() {
 	[ "$nlbwmon_active" = 1 ] && services_detected="${services_detected}nlbwmon,"
 	[ "$storage_active" = 1 ] && services_detected="${services_detected}storage,"
 	[ "$heavy_daemon_active" = 1 ] && services_detected="${services_detected}heavy_daemons,"
-	if ark_is_satellite_or_ap; then
+	if ark_is_hub_mode 2>/dev/null; then
+		services_detected="${services_detected}hub_mode,"
+	elif ark_is_satellite_or_ap; then
 		services_detected="${services_detected}ap_mode,"
 	fi
 	services_detected="${services_detected%,}"
@@ -1192,7 +1194,12 @@ system_hardware_auto_tune() {
 
 	# --- 3. Flow Offloading ---
 	local flow_user_disabled="$(uci -q get equipe_perf.settings.flow_offload_user_disabled 2>/dev/null || echo 0)"
-	if ark_is_satellite_or_ap; then
+	if ark_is_hub_mode 2>/dev/null; then
+		uci -q set firewall.@defaults[0].flow_offloading=0
+		uci -q set firewall.@defaults[0].flow_offloading_hw=0
+		offload_reason="Comutação L2 Pura (Modo HUB • Switch Gigabit dispensa Flowtable L3)"
+		silicon_tuning_profile="Modo HUB • Switch Gigabit L2 Puro"
+	elif ark_is_satellite_or_ap; then
 		uci -q set firewall.@defaults[0].flow_offloading=0
 		uci -q set firewall.@defaults[0].flow_offloading_hw=0
 		offload_reason="Comutação L2 Pura (Modo Ponte / AP dispensa Flowtable L3)"
