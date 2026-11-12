@@ -1550,7 +1550,7 @@ flowchart TD
 - **19. Limitações por Versão do OpenWrt**: Universal.
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
 - **21. Versão de Criação/Alteração**: `1.5.2`
-- **22. Testes Relacionados**: `tests/test_wan_matrix.py`, `tests/test_doctor_safety.py`
+- **22. Testes Relacionados**: `tests/test_wan_matrix.py`, `tests/test_doctor_safety.py`, `tests/test_post_upgrade_safeguards.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
 ### `ARK-DIAG-002` — Testador de Desconexão e Resiliência em Alta Resolução (Probe Disconnect)
@@ -1709,8 +1709,8 @@ flowchart TD
 - **3. Objetivo**: Verificar novas versões no GitHub Releases, baixar pacotes compilados (IPK para opkg ou APK para apk) e aplicar atualizações com preservação de configurações.
 - **4. Estado Atual**: `funcional`
 - **5. Arquivos Responsáveis**: `root/usr/lib/ark/modules/ezsetup.sh`
-- **6. Comandos e Ações**: `self-update-check`, `self-update-status`, `self-update-start`, `manual-update-start`
-- **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control self-update-*`, `/usr/sbin/equipe-dashboard-control manual-update-*`
+- **6. Comandos e Ações**: `self-update-check`, `self-update-status`, `self-update-start`, `manual-update-start`, `post-upgrade-hygiene`
+- **7. Endpoints RPC**: `/usr/sbin/equipe-dashboard-control self-update-*`, `/usr/sbin/equipe-dashboard-control manual-update-*`, `/usr/sbin/equipe-dashboard-control post-upgrade-hygiene`
 - **8. ACLs Necessárias**: `luci-app-equipe-dashboard`
 - **9. Dependências e Pacotes**: `opkg ou apk`, `curl ou wget`, `tar`
 - **10. Configurações UCI**: Nenhuma
@@ -1725,7 +1725,7 @@ flowchart TD
 - **19. Limitações por Versão do OpenWrt**: Suporta tanto opkg (legado) quanto apk (OpenWrt 25.x moderno).
 - **20. Disponibilidade nos Perfis**: `lite`, `full`
 - **21. Versão de Criação/Alteração**: `1.5.2`
-- **22. Testes Relacionados**: `tests/test_wan_matrix.py`
+- **22. Testes Relacionados**: `tests/test_wan_matrix.py`, `tests/test_post_upgrade_safeguards.py`
 - **23. Necessidade de Validação em Hardware Real**: `Não (validável integralmente no laboratório virtual)`
 
 ### `ARK-SYS-006` — Customização de Idioma e Título do Sistema (Branding)

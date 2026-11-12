@@ -157,7 +157,7 @@ case "$action" in
 		. "${ARK_LIB_DIR}/modules/system.sh"
 		handle_system "$@"
 		;;
-	ez-setup-*|features|feature-*|self-update-*|manual-update-*|cleanup-*|theme|language|title|profile|appearance|card-state-*)
+	ez-setup-*|features|feature-*|self-update-*|manual-update-*|cleanup-*|theme|language|title|profile|appearance|card-state-*|post-upgrade-hygiene)
 		. "${ARK_LIB_DIR}/modules/ezsetup.sh"
 		handle_ezsetup "$@"
 		;;

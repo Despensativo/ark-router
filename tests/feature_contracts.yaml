@@ -1,5 +1,5 @@
 metadata:
-  version: 2.2.5
+  version: 2.2.7
   schema_version: '1.0'
   total_features: 74
   canonical_repo: GitHub/luci-app-ark-router
@@ -2857,6 +2857,7 @@ features:
   - tests/test_wan_matrix.py
   - tests/test_doctor_safety.py
   - tests/test_firewall_engine.py
+  - tests/test_post_upgrade_safeguards.py
   real_hw_required: false
 - id: ARK-DIAG-002
   name: Testador de Desconexão e Resiliência em Alta Resolução (Probe Disconnect)
@@ -3132,9 +3133,11 @@ features:
   - self-update-status
   - self-update-start
   - manual-update-start
+  - post-upgrade-hygiene
   rpc_endpoints:
   - /usr/sbin/equipe-dashboard-control self-update-*
   - /usr/sbin/equipe-dashboard-control manual-update-*
+  - /usr/sbin/equipe-dashboard-control post-upgrade-hygiene
   acls:
   - luci-app-equipe-dashboard
   dependencies:
@@ -3165,6 +3168,7 @@ features:
   version: 1.5.2
   tests:
   - tests/test_wan_matrix.py
+  - tests/test_post_upgrade_safeguards.py
   real_hw_required: false
 - id: ARK-SYS-006
   name: Customização de Idioma e Título do Sistema (Branding)

@@ -11,7 +11,7 @@
 
 ## 1. Escopo e Identificação
 - **Repositório**: Canônico oficial do ARK Router (OpenWrt LuCI Application & Theme).
-- **Versão Ativa**: `2.2.4` (declarada em `VERSION` e `Makefile:PKG_VERSION:=2.2.4`).
+- **Versão Ativa**: `2.2.5` (declarada em `VERSION` e `Makefile:PKG_VERSION:=2.2.5`).
 - **Arquitetura Alvo**: Dual OpenWrt — Legado (19.07 a 21.02, `opkg`, `iptables`/`fw3`) e Moderno (22.03 a 25.x, `opkg`/`apk`, `nftables`/`fw4`). Detalhes em `docs/COMPATIBILITY_MATRIX.md`.
 - **Hardware Suportado**: De 128 MB RAM / 16 MB SPI Flash (DGL-5500) até 256 MB a 1 GB+ RAM (Cudy WR3000, Predator W6x, Filogic).
 
@@ -167,30 +167,3 @@ O ambiente principal de desenvolvimento e validação do ARK Router é a infraes
 - **Publicação, Build de APKs e GitHub Releases**: `docs/PUBLISHING.md`
 - **Histórico Cumulativo de Alterações**: `CHANGELOG.md` (consulta sob demanda; não carregar no contexto inicial).
 
----
-
-## 8. Skills Especializadas do Projeto (.agents/skills/)
-1. `posix-shell`: Shell BusyBox ash puro, UCI atômico, compatibilidade sem bashismos.
-2. `security-auditor`: Injeção de comandos, tokens efêmeros em `/tmp`, auditoria de ACLs ubus.
-3. `systematic-debugging`: Diagnóstico de causa-raiz, troubleshooting de boot, dmesg, logread e ubus.
-4. `ark-theme-ui`: Padrões de DOM LuCI, touch targets de 40px, modal decoupling e scroll lock no `.main-right`.
-5. `openwrt-luci-modern`: Views client-side JavaScript (`L.view.extend`), templates `ucode` (`*.ut`), menus JSON e RPC.
-6. `openwrt-network-firewall`: Firewall dual (fw3/iptables vs fw4/nftables), zonas e prevenção de lockout.
-7. `openwrt-hardware-offloading`: Aceleração MediaTek Filogic PPE/WED vs Atheros flow offload e testes sob carga.
-8. `openwrt-imagebuilder`: Geometria de flash (16 MB SPI-NOR vs NAND/eMMC 128 MB+) e compilação de imagens.
-9. `openwrt-sqm-bufferbloat`: CAKE, cake-mq multi-core, FQ-CoDel, framing overhead e medição empírica.
-10. `openwrt-storage-failsafe`: Mapa de partições MTD, proteção de calibração de rádio (ART) e telnet failsafe.
-11. `openwrt-wifi-mesh`: Roaming rápido 802.11r/k/v, calibração de limiares do usteer e mesh 802.11s.
-12. `js-performance-optimization`: Arquitetura modular em `src/modules/`, DOM diffing cirúrgico, prevenção de memory leaks, `AbortController` e batching RPC no LuCI.
-
-## 9. Protocolo Obrigatório de Transparência de Raciocínio (Anti-Trabalho Silencioso)
-- **É TERMINANTEMENTE PROIBIDO** disparar ferramentas de modelos (`consultar_modelo`, `comparar_modelos`, `call_mcp_tool`) no vácuo sem antes emitir uma mensagem de texto visível no chat para o usuário.
-- O agente DEVE SEMPRE enviar primeiro um parágrafo claro informando:
-  1. Qual modelo especialista está sendo consultado (ex: `gpt-6.1-terra-max`, `gemini-4-argon-high`, `gpt-6-astra-high`);
-  2. O que exatamente está sendo solicitado;
-  3. O tempo estimado de resposta (ex: "Processando análise profunda, aguarde de 1 a 3 minutos").
-- Nunca deixe a tela cair diretamente no card cinza `consultar_modelo · Working` sem explicação prévia.
-
-## Exceção operacional QoS — 05/11/2026
-
-O usuário autorizou prosseguir alterando e validando diretamente o W6x 192.168.73.1 nesta investigação de QoS, dispensando a precedência da VM nesta sessão. Manter identificação do alvo, backup, mudanças incrementais e retorno; não estende autorização a outros equipamentos, commit, push ou publicação.

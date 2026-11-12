@@ -1,6 +1,6 @@
 # ARK Router — Mapa Mestre de Documentação Técnica e Navegação (`.md`)
 
-> **Versão Homologada**: [`2.2.5`](../VERSION) | **Status**: Ativo & Validado  
+> **Versão Homologada**: [`2.2.7`](../VERSION) | **Status**: Ativo & Validado  
 > **Finalidade**: Catálogo mestre e índice de navegação de alta eficiência de toda a documentação técnica do ARK Router. Organizado em **5 Camadas Estritas** para garantir que desenvolvedores e agentes de IA encontrem imediatamente as fontes de verdade canônicas sem queimar contexto com relatórios históricos ou estudos datados.
 
 ---

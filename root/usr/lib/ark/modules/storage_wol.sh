@@ -409,6 +409,14 @@ handle_storage_wol() {
 	local cmd="$1"
 	shift
 	case "$cmd" in
+		ksmbd-toggle)
+			local desired="$1"
+			if [ "$desired" = "1" ]; then
+				handle_storage_wol ksmbd-control start
+			else
+				handle_storage_wol ksmbd-control disable
+			fi
+			;;
 		ksmbd-status)
 			ksmbd_status_json
 			;;
@@ -441,6 +449,7 @@ handle_storage_wol() {
 						/etc/init.d/ksmbd stop >/dev/null 2>&1 || true
 						/etc/init.d/ksmbd disable >/dev/null 2>&1 || true
 					fi
+					[ -z "${ARK_ROOT}" ] && { killall ksmbd.mountd 2>/dev/null || true; }
 					;;
 				keepalive_on)
 					mkdir -p "${ARK_ROOT}/etc/crontabs" 2>/dev/null || true

@@ -673,6 +673,7 @@ ark_hardware_tune_apply() {
 	if [ -f /usr/lib/ark/common.sh ]; then
 		. /usr/lib/ark/common.sh 2>/dev/null || true
 		command -v ark_ipv6_prefix_hygiene >/dev/null 2>&1 && ark_ipv6_prefix_hygiene 2>/dev/null || true
+		command -v ark_post_upgrade_hygiene >/dev/null 2>&1 && ark_post_upgrade_hygiene "fix" 2>/dev/null || true
 	fi
 
 	# Calibração e Proteção de Iluminação HAL (ex: AW21018 no Acer Predator T7)

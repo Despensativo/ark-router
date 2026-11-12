@@ -5,7 +5,7 @@
 [ -z "${_ARK_COMMON_SH_LOADED:-}" ] || return 0
 _ARK_COMMON_SH_LOADED=1
 
-ARK_ROUTER_VERSION="2.2.5"
+ARK_ROUTER_VERSION="2.2.7"
 ARK_UPDATE_REPO_DEFAULT="Despensativo/ark-router"
 ARK_ROOT="${ARK_ROOT:-}"
 
@@ -367,17 +367,326 @@ running() {
 		usteer) pidof usteerd >/dev/null 2>&1 ;;
 		irqbalance) pidof irqbalance >/dev/null 2>&1 ;;
 		nlbwmon) pidof nlbwmon >/dev/null 2>&1 ;;
-		ksmbd|ksmbd-server) pidof ksmbd.mountd >/dev/null 2>&1 || pgrep -f ksmbd >/dev/null 2>&1 || { [ -x "${ARK_ROOT}/etc/init.d/ksmbd" ] && "${ARK_ROOT}/etc/init.d/ksmbd" status 2>/dev/null | grep -E -qi 'running|active'; } || { [ -x /etc/init.d/ksmbd ] && /etc/init.d/ksmbd status 2>/dev/null | grep -E -qi 'running|active'; } ;;
+		ksmbd|ksmbd-server) pidof ksmbd.mountd >/dev/null 2>&1 || pgrep -f ksmbd >/dev/null 2>&1 || { [ -x "${ARK_ROOT}/etc/init.d/ksmbd" ] && "${ARK_ROOT}/etc/init.d/ksmbd" status 2>/dev/null | grep -E -qi '(^|[[:space:]])(running|active)($|[[:space:]])'; } || { [ -x /etc/init.d/ksmbd ] && /etc/init.d/ksmbd status 2>/dev/null | grep -E -qi '(^|[[:space:]])(running|active)($|[[:space:]])'; } ;;
 		wol|etherwake) installed wol ;;
 		*)
 			pidof "$1" >/dev/null 2>&1 || pgrep -x "$1" >/dev/null 2>&1 || {
 				[ -x "/etc/init.d/$1" ] && {
-					"/etc/init.d/$1" status 2>/dev/null | grep -E -qi 'running|active' || \
-					"/etc/init.d/$1" enabled >/dev/null 2>&1
+					"/etc/init.d/$1" status 2>/dev/null | grep -E -qi '(^|[[:space:]])(running|active)($|[[:space:]])'
 				}
 			}
 			;;
 	esac
+}
+
+ark_is_init_enabled() {
+	local svc="$1"
+	[ -n "$svc" ] || return 1
+	if [ -n "${ARK_ROOT:-}" ]; then
+		ls -1 "${ARK_ROOT}/etc/rc.d"/S*${svc}* >/dev/null 2>&1 && return 0
+		return 1
+	fi
+	ls -1 /etc/rc.d/S*${svc}* >/dev/null 2>&1 && return 0
+	[ -x "/etc/init.d/${svc}" ] && "/etc/init.d/${svc}" enabled >/dev/null 2>&1 && return 0
+	return 1
+}
+
+ark_feature_policy_drifted() {
+	local key="$1"
+	local u_dis u_rem
+	u_dis="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get "equipe_dashboard.${key}.user_disabled" 2>/dev/null || echo 0)"
+	u_rem="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get "equipe_dashboard.${key}.user_removed" 2>/dev/null || echo 0)"
+	if [ "$u_dis" != "1" ] && [ "$u_rem" != "1" ]; then
+		return 1
+	fi
+
+	case "$key" in
+		sqm)
+			if uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} show sqm 2>/dev/null | grep -q "\.enabled='1'"; then
+				return 0
+			fi
+			ark_is_init_enabled sqm && return 0
+			;;
+		mwan3)
+			if running mwan3 || [ -f "${ARK_ROOT}/state/mwan3_running" ]; then
+				return 0
+			fi
+			ark_is_init_enabled mwan3 && return 0
+			;;
+		nlbwmon)
+			running nlbwmon && return 0
+			ark_is_init_enabled nlbwmon && return 0
+			;;
+		upnp)
+			if [ "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get upnpd.config.enabled 2>/dev/null || echo 0)" = "1" ]; then
+				return 0
+			fi
+			running upnp && return 0
+			ark_is_init_enabled miniupnpd && return 0
+			;;
+		adblock)
+			if pgrep -f 'AdGuardHome' >/dev/null 2>&1 || pgrep -x 'adguardhome' >/dev/null 2>&1; then
+				return 0
+			fi
+			if [ "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adblock_enabled 2>/dev/null || echo 0)" = "1" ] || \
+			   [ "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adguard_enabled 2>/dev/null || echo 0)" = "1" ]; then
+				return 0
+			fi
+			ark_is_init_enabled adguardhome && return 0
+			ark_is_init_enabled adblock && return 0
+			;;
+		wireguard)
+			if [ -d "${ARK_ROOT}/sys/class/net/wg0" ] || [ -d /sys/class/net/wg0 ]; then
+				return 0
+			fi
+			if [ "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get network.wg0.disabled 2>/dev/null || echo 0)" = "0" ] && \
+			   uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get network.wg0 >/dev/null 2>&1; then
+				return 0
+			fi
+			;;
+		zerotier)
+			running zerotier && return 0
+			if [ "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get zerotier.global.enabled 2>/dev/null || echo 0)" = "1" ]; then
+				return 0
+			fi
+			ark_is_init_enabled zerotier && return 0
+			;;
+		speedify)
+			running speedify && return 0
+			ark_is_init_enabled ark-speedify && return 0
+			;;
+		usteer)
+			running usteer && return 0
+			if [ "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_dashboard.wifi.usteer_enabled 2>/dev/null || echo 0)" = "1" ]; then
+				return 0
+			fi
+			ark_is_init_enabled usteer && return 0
+			;;
+		irqbalance)
+			running irqbalance && return 0
+			ark_is_init_enabled irqbalance && return 0
+			;;
+		zram)
+			if grep -q zram /proc/swaps 2>/dev/null || grep -q zram "${ARK_ROOT}/proc/swaps" 2>/dev/null; then
+				return 0
+			fi
+			ark_is_init_enabled zram && return 0
+			;;
+		ksmbd)
+			running ksmbd && return 0
+			ark_is_init_enabled ksmbd && return 0
+			;;
+		hardware_tune)
+			ark_is_init_enabled ark-hardware-tune && return 0
+			;;
+		firewall_guard)
+			ark_is_init_enabled ark-firewall-guard && return 0
+			;;
+		history)
+			running history && return 0
+			ark_is_init_enabled equipe-traffic-history && return 0
+			;;
+		autowan)
+			ark_is_init_enabled ark-autowan && return 0
+			;;
+		clock_preserver)
+			ark_is_init_enabled ark-clock-preserver && return 0
+			;;
+		safe_shutdown)
+			ark_is_init_enabled ark-safe-shutdown && return 0
+			;;
+	esac
+	return 1
+}
+
+ark_get_drifted_features() {
+	local key drifted=""
+	for key in hardware_tune firewall_guard history autowan clock_preserver safe_shutdown sqm mwan3 nlbwmon upnp adblock wireguard zerotier speedify usteer irqbalance zram ksmbd wol htop; do
+		if ark_feature_policy_drifted "$key"; then
+			if [ -z "$drifted" ]; then
+				drifted="$key"
+			else
+				drifted="${drifted}, $key"
+			fi
+		fi
+	done
+	printf '%s' "$drifted"
+}
+
+ark_ensure_adguardhome_circuit_breaker() {
+	local adg_init="${ARK_ROOT}/etc/init.d/adguardhome"
+	[ -f "$adg_init" ] || [ -f /etc/init.d/adguardhome ] || return 0
+	[ -f "$adg_init" ] || adg_init="/etc/init.d/adguardhome"
+	if ! grep -q 'ARK Router Circuit Breaker' "$adg_init" 2>/dev/null; then
+		awk '
+			/^start_service\(\) \{/ {
+				print $0
+				print "\t# ARK Router Circuit Breaker: Nunca iniciar se AdGuard/Adblock estiver desativado"
+				print "\tif [ \"$(uci -q get equipe_perf.settings.adblock_enabled)\" = \"0\" ] || [ \"$(uci -q get equipe_perf.settings.adguard_enabled)\" = \"0\" ]; then"
+				print "\t\treturn 0"
+				print "\tfi"
+				next
+			}
+			/^boot\(\) \{/ {
+				print $0
+				print "\t# ARK Router Circuit Breaker"
+				print "\tif [ \"$(uci -q get equipe_perf.settings.adblock_enabled)\" = \"0\" ] || [ \"$(uci -q get equipe_perf.settings.adguard_enabled)\" = \"0\" ]; then"
+				print "\t\treturn 0"
+				print "\tfi"
+				next
+			}
+			{ print }
+		' "$adg_init" > "${adg_init}.tmp" && mv -f "${adg_init}.tmp" "$adg_init"
+		chmod 755 "$adg_init" 2>/dev/null || true
+		return 0
+	fi
+	return 0
+}
+
+ark_check_post_upgrade_drift() {
+	local _out_var="$1"
+	local _drift=""
+	local _drifted_svcs="$(ark_get_drifted_features)"
+	if [ -n "$_drifted_svcs" ]; then
+		_drift="serviço(s) desativado(s) reativado(s): ${_drifted_svcs}"
+	fi
+
+	local has_lua=0
+	([ -x "${ARK_ROOT}/usr/bin/lua" ] || [ -x /usr/bin/lua ]) && has_lua=1
+	local orphan_lua=0
+	([ -f "${ARK_ROOT}/usr/lib/lua/luci/controller/mwan3.lua" ] || [ -f /usr/lib/lua/luci/controller/mwan3.lua ]) && orphan_lua=1
+	if [ "$has_lua" = "0" ] && [ "$orphan_lua" = "1" ]; then
+		if [ -z "$_drift" ]; then
+			_drift="controller Lua órfão em sistema ucode (mwan3.lua)"
+		else
+			_drift="${_drift}; controller Lua órfão (mwan3.lua)"
+		fi
+	fi
+
+	local adg_init="${ARK_ROOT}/etc/init.d/adguardhome"
+	[ -f "$adg_init" ] || adg_init="/etc/init.d/adguardhome"
+	if [ -f "$adg_init" ] && ! grep -q 'ARK Router Circuit Breaker' "$adg_init" 2>/dev/null; then
+		if [ -z "$_drift" ]; then
+			_drift="Circuit Breaker ausente em /etc/init.d/adguardhome"
+		else
+			_drift="${_drift}; Circuit Breaker ausente no AdGuard"
+		fi
+	fi
+
+	local ark_theme="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get luci.themes.ARK 2>/dev/null || echo '')"
+	if [ -f "${ARK_ROOT}/etc/config/luci" -o -f /etc/config/luci ] && [ "$ark_theme" != "/luci-static/ark" ]; then
+		if [ -z "$_drift" ]; then
+			_drift="registro do tema ARK ausente em /etc/config/luci"
+		else
+			_drift="${_drift}; registro do tema ARK ausente"
+		fi
+	fi
+
+	local rf res_files=""
+	for rf in "${ARK_ROOT}/etc/config/luci.apk-new" "${ARK_ROOT}/etc/config/luci-opkg" \
+	          "${ARK_ROOT}/etc/config/uhttpd.apk-new" "${ARK_ROOT}/etc/config/uhttpd-opkg" \
+	          "${ARK_ROOT}/etc/init.d/adguardhome.apk-new" "${ARK_ROOT}/etc/init.d/adguardhome-opkg"; do
+		if [ -f "$rf" ]; then
+			res_files="${res_files} $(basename "$rf")"
+		fi
+	done
+	if [ -n "$res_files" ]; then
+		if [ -z "$_drift" ]; then
+			_drift="resíduo de pacotes:${res_files}"
+		else
+			_drift="${_drift}; resíduo:${res_files}"
+		fi
+	fi
+
+	if [ -n "$_out_var" ]; then
+		eval "$_out_var=\"\$_drift\""
+	fi
+	[ -z "$_drift" ]
+}
+
+ark_post_upgrade_hygiene() {
+	local mode="${1:-fix}"
+	if [ "$mode" = "check" ]; then
+		local dummy=""
+		ark_check_post_upgrade_drift dummy
+		return $?
+	fi
+
+	# 1. Realinha políticas salvas pelo usuário que sofreram drift pós-upgrade
+	local _d_feat
+	for _d_feat in $(ark_get_drifted_features | tr ',' ' '); do
+		[ -n "$_d_feat" ] || continue
+		if [ -x "${ARK_ROOT}/usr/sbin/equipe-dashboard-control" ]; then
+			"${ARK_ROOT}/usr/sbin/equipe-dashboard-control" feature-toggle "$_d_feat" 0 >/dev/null 2>&1 || true
+		elif [ -x /usr/sbin/equipe-dashboard-control ]; then
+			/usr/sbin/equipe-dashboard-control feature-toggle "$_d_feat" 0 >/dev/null 2>&1 || true
+		fi
+		if [ -x "${ARK_ROOT}/etc/init.d/$_d_feat" ]; then
+			"${ARK_ROOT}/etc/init.d/$_d_feat" stop >/dev/null 2>&1 || true
+			"${ARK_ROOT}/etc/init.d/$_d_feat" disable >/dev/null 2>&1 || true
+		elif [ -x "/etc/init.d/$_d_feat" ]; then
+			"/etc/init.d/$_d_feat" stop >/dev/null 2>&1 || true
+			"/etc/init.d/$_d_feat" disable >/dev/null 2>&1 || true
+		fi
+		rm -f "${ARK_ROOT}/etc/rc.d"/*"$_d_feat"* /etc/rc.d/*"$_d_feat"* 2>/dev/null || true
+	done
+
+	# 2. Saneia controllers Lua órfãos em sistemas ucode puro (OpenWrt 25.x)
+	local has_lua=0
+	([ -x "${ARK_ROOT}/usr/bin/lua" ] || [ -x /usr/bin/lua ]) && has_lua=1
+	if [ "$has_lua" = "0" ]; then
+		local mwan3_lua="${ARK_ROOT}/usr/lib/lua/luci/controller/mwan3.lua"
+		[ -f "$mwan3_lua" ] || mwan3_lua="/usr/lib/lua/luci/controller/mwan3.lua"
+		if [ -f "$mwan3_lua" ]; then
+			rm -f "$mwan3_lua" 2>/dev/null || true
+			rm -f "${ARK_ROOT}/tmp/luci-indexcache" /tmp/luci-indexcache 2>/dev/null || true
+			rm -rf "${ARK_ROOT}/tmp/luci-modulecache" /tmp/luci-modulecache 2>/dev/null || true
+		fi
+	fi
+
+	# 3. Restaura Circuit Breaker no init script do AdGuard Home se sobrescrito
+	ark_ensure_adguardhome_circuit_breaker
+	local adb_en="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adblock_enabled || echo 1)"
+	local agh_en="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get equipe_perf.settings.adguard_enabled || echo 1)"
+	if [ "$adb_en" = "0" ] || [ "$agh_en" = "0" ]; then
+		if [ -x "${ARK_ROOT}/etc/init.d/adguardhome" ]; then
+			"${ARK_ROOT}/etc/init.d/adguardhome" stop >/dev/null 2>&1 || true
+			"${ARK_ROOT}/etc/init.d/adguardhome" disable >/dev/null 2>&1 || true
+		elif [ -x /etc/init.d/adguardhome ]; then
+			/etc/init.d/adguardhome stop >/dev/null 2>&1 || true
+			/etc/init.d/adguardhome disable >/dev/null 2>&1 || true
+		fi
+		rm -f "${ARK_ROOT}/etc/rc.d"/*adguardhome* /etc/rc.d/*adguardhome* 2>/dev/null || true
+	fi
+
+	# 4. Assegura registro do tema ARK em /etc/config/luci
+	if [ -f "${ARK_ROOT}/etc/config/luci" -o -f /etc/config/luci ]; then
+		local cur_th="$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get luci.themes.ARK 2>/dev/null || echo '')"
+		if [ "$cur_th" != "/luci-static/ark" ]; then
+			uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} set luci.themes.ARK='/luci-static/ark'
+			uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} commit luci 2>/dev/null || true
+		fi
+	fi
+
+	# 5. Higienização segura de resíduos pós-upgrade (.apk-new / -opkg) APENAS para configurações ARK verificadas
+	local rf
+	for rf in "${ARK_ROOT}/etc/config/luci.apk-new" "${ARK_ROOT}/etc/config/luci-opkg"; do
+		if [ -f "$rf" ] && [ -f "${ARK_ROOT}/etc/config/luci" ]; then
+			rm -f "$rf" 2>/dev/null || true
+		fi
+	done
+	for rf in "${ARK_ROOT}/etc/config/uhttpd.apk-new" "${ARK_ROOT}/etc/config/uhttpd-opkg"; do
+		if [ -f "$rf" ] && [ -f "${ARK_ROOT}/etc/config/uhttpd" ]; then
+			rm -f "$rf" 2>/dev/null || true
+		fi
+	done
+	for rf in "${ARK_ROOT}/etc/init.d/adguardhome.apk-new" "${ARK_ROOT}/etc/init.d/adguardhome-opkg"; do
+		if [ -f "$rf" ] && [ -f "${ARK_ROOT}/etc/init.d/adguardhome" ] && grep -q 'ARK Router Circuit Breaker' "${ARK_ROOT}/etc/init.d/adguardhome" 2>/dev/null; then
+			rm -f "$rf" 2>/dev/null || true
+		fi
+	done
+
+	return 0
 }
 
 # Version and identity helpers

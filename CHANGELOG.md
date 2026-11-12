@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.7
+
+- **Atualização Incremental v2.2.7 (12/11/2026)**:
+  - Salvaguarda inteligente pós-upgrade: autocura contra drift de serviços reativados indevidamente no `apk`/`opkg upgrade`, remoção de controllers Lua órfãos em OpenWrt 25.x (ucode puro), preservação automática do Circuit Breaker do AdGuardHome e saneamento seletivo de arquivos `.apk-new`/`-opkg`.
+  - Check #26 do ARK Doctor ("Higiene Pós-Upgrade e Pacotes") com diagnóstico preciso via regex de limites de palavras e hook de boot no `ark-hardware-tune`.
+
 ## 2.2.5
 
 - **Atualização Incremental v2.2.5 (11/11/2026)**:

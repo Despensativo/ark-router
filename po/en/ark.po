@@ -15241,3 +15241,57 @@ msgstr "🛡️ ANTI-DPI OBFUSCATION (AMNEZIAWG) DETECTED"
 msgid "🛡️ OFUSCAÇÃO ANTI-DPI AMNEZIAWG ATIVA"
 msgstr "🛡️ AMNEZIAWG ANTI-DPI OBFUSCATION ACTIVE"
 
+
+msgid "1. IP deste Aparelho (Secundário / HUB):"
+msgstr "1. IP of this Device (Secondary / HUB):"
+
+msgid "Arquitetura Ativa:"
+msgstr "Active Architecture:"
+
+msgid "Ativar rádios Wi-Fi agora (HUB Gigabit + Ponto Wi-Fi Independente)"
+msgstr "Enable Wi-Fi radios now (Gigabit HUB + Independent Wi-Fi Access Point)"
+
+msgid "Desativa a transmissão sem fio para zero consumo de RF e menor aquecimento. Se precisar de Wi-Fi no futuro, basta ligar o interruptor na aba Wi-Fi."
+msgstr "Disables wireless transmission for zero RF power consumption and lower heat. If Wi-Fi is needed in the future, simply turn on the switch in the Wi-Fi tab."
+
+msgid "Desativado (Comutação Direta L2)"
+msgstr "Disabled (Direct L2 Switching)"
+
+msgid "Desligar rádios Wi-Fi agora (Modo Switch Cabeado Puro / Frio)"
+msgstr "Turn off Wi-Fi radios now (Pure Wired Switch Mode / Cool)"
+
+msgid "Este aparelho opera como HUB / Switch Gigabit L2 puro otimizado, com todas as portas unidas em ponte e Wi-Fi opcional sob seu controle."
+msgstr "This device operates as an optimized pure L2 Gigabit HUB / Switch, with all ports bridged and optional Wi-Fi under your control."
+
+msgid "Garante que os rádios Wi-Fi estejam ligados em ponte transparente com todas as portas Ethernet."
+msgstr "Ensures Wi-Fi radios are transparently bridged with all Ethernet ports."
+
+msgid "Manter Wi-Fi como está (Controle livre nas Configurações de Wi-Fi)"
+msgstr "Keep Wi-Fi as is (Free control in Wi-Fi Settings)"
+
+msgid "Modo HUB (Switch Gigabit L2 & Wi-Fi Livre)"
+msgstr "HUB Mode (Gigabit L2 Switch & Free Wi-Fi)"
+
+msgid "O servidor DHCP local e serviços L3 (Multi-WAN, SQM, UPnP) serão DESATIVADOS para liberar 100% de CPU e RAM."
+msgstr "Local DHCP server and L3 services (Multi-WAN, SQM, UPnP) will be DISABLED to free up 100% of CPU and RAM."
+
+msgid "OTIMIZAÇÃO DE SWITCH L2 PURO: Todas as portas Ethernet (inclusive a WAN física) serão unidas com IGMP Snooping ativo, STP Zero-Delay e sem filtragem L3/NAT."
+msgstr "PURE L2 SWITCH OPTIMIZATION: All Ethernet ports (including physical WAN) will be bridged with active IGMP Snooping, Zero-Delay STP, and no L3/NAT filtering."
+
+msgid "Preserva o estado atual das suas redes Wi-Fi. Você pode ligar, desligar ou trocar senha quando quiser direto na aba Wi-Fi, sem precisar clonar o Mestre."
+msgstr "Preserves the current state of your Wi-Fi networks. You can enable, disable, or change passwords anytime directly in the Wi-Fi tab, without cloning Master."
+
+msgid "Rádios Wi-Fi:"
+msgstr "Wi-Fi Radios:"
+
+msgid "WI-FI LIVRE SOB SEU CONTROLE: Você pode manter o Wi-Fi desligado ou ligá-lo/desligá-lo a qualquer momento diretamente nas Configurações de Wi-Fi da tela principal."
+msgstr "FREE WI-FI UNDER YOUR CONTROL: You can keep Wi-Fi disabled or turn it on/off at any time directly in the Wi-Fi Settings on the main screen."
+
+msgid "📶 Comportamento do Wi-Fi no Modo HUB"
+msgstr "📶 Wi-Fi Behavior in HUB Mode"
+
+msgid "🔀 MODO HUB • SWITCH GIGABIT & PONTE L2"
+msgstr "🔀 HUB MODE • GIGABIT SWITCH & L2 BRIDGE"
+
+msgid "🔀 Modo HUB (Switch Gigabit L2 & Wi-Fi Sob Demanda)"
+msgstr "🔀 HUB Mode (Gigabit L2 Switch & On-Demand Wi-Fi)"

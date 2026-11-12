@@ -2328,12 +2328,17 @@ EOF
 		fi
 	fi
 
-	# 26. Integridade do Túnel Dual-DoH (https-dns-proxy -> dnsmasq) e limpeza de controllers Lua órfãos
-	if [ -z "${ARK_ROOT}" ] && [ ! -x /usr/bin/lua ] && [ -f /usr/lib/lua/luci/controller/mwan3.lua ]; then
+	# 26. Higiene Pós-Upgrade e Integridade de Pacotes (OpenWrt apk/opkg)
+	local _drift_info=""
+	if ark_check_post_upgrade_drift _drift_info; then
+		add_check "Higiene Pós-Upgrade e Pacotes" "OK" "Políticas de serviços preservadas, integridade LuCI mantida e zero resíduos pós-upgrade."
+	else
 		if [ "$auto_fix" = 1 ]; then
-			rm -f /usr/lib/lua/luci/controller/mwan3.lua 2>/dev/null || true
+			ark_post_upgrade_hygiene "fix" >/dev/null 2>&1 || true
 			fixes_applied=$((fixes_applied + 1))
-			add_check "Higiene uhttpd (ucode)" "FIXED" "Controller Lua orfao (mwan3.lua) removido em sistema ucode puro."
+			add_check "Higiene Pós-Upgrade e Pacotes" "FIXED" "Políticas de serviços, Circuit Breaker e controladores LuCI restabelecidos sem resíduos de pacotes."
+		else
+			add_check "Higiene Pós-Upgrade e Pacotes" "WARN" "Divergência pós-upgrade detectada (${_drift_info}). Execute com --fix ou reinicie o roteador para auto-reparo."
 		fi
 	fi
 

@@ -355,6 +355,7 @@ ark_feature_toggle_internal() {
 			else
 				[ -x "${ARK_ROOT}/etc/init.d/mwan3" ] && { "${ARK_ROOT}/etc/init.d/mwan3" stop >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/mwan3" disable >/dev/null 2>&1 || true; }
 				rm -f "${ARK_ROOT}/state/mwan3_running" 2>/dev/null || true
+				rm -f "${ARK_ROOT}/etc/rc.d"/*mwan3* /etc/rc.d/*mwan3* 2>/dev/null || true
 				ip rule show 2>/dev/null | awk -F: '$1+0 >= 2000 && $1+0 <= 2255 {print $1}' | while read -r pref; do
 					[ -n "$pref" ] && ip rule del pref "$pref" 2>/dev/null || true
 				done
@@ -365,6 +366,7 @@ ark_feature_toggle_internal() {
 				[ -x "${ARK_ROOT}/etc/init.d/nlbwmon" ] && { "${ARK_ROOT}/etc/init.d/nlbwmon" enable >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/nlbwmon" restart >/dev/null 2>&1 || true; }
 			else
 				[ -x "${ARK_ROOT}/etc/init.d/nlbwmon" ] && { "${ARK_ROOT}/etc/init.d/nlbwmon" stop >/dev/null 2>&1 || true; "${ARK_ROOT}/etc/init.d/nlbwmon" disable >/dev/null 2>&1 || true; }
+				rm -f "${ARK_ROOT}/etc/rc.d"/*nlbwmon* /etc/rc.d/*nlbwmon* 2>/dev/null || true
 			fi
 			;;
 		upnp)
@@ -477,7 +479,11 @@ ark_feature_remove_internal() {
 ark_enforce_saved_feature_policies() {
 	local key
 	for key in hardware_tune firewall_guard history autowan clock_preserver safe_shutdown sqm mwan3 nlbwmon upnp adblock wireguard zerotier speedify usteer irqbalance zram ksmbd wol htop; do
-		if [ "$(uci -q get "equipe_dashboard.${key}.user_disabled" 2>/dev/null)" = "1" ] || [ "$(uci -q get "equipe_dashboard.${key}.user_removed" 2>/dev/null)" = "1" ]; then
+		if [ "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get "equipe_dashboard.${key}.user_disabled" 2>/dev/null)" = "1" ] || \
+		   [ "$(uci -q ${ARK_ROOT:+-c "$ARK_ROOT/etc/config"} get "equipe_dashboard.${key}.user_removed" 2>/dev/null)" = "1" ]; then
+			if command -v ark_feature_policy_drifted >/dev/null 2>&1; then
+				ark_feature_policy_drifted "$key" || continue
+			fi
 			ark_feature_toggle_internal "$key" 0 >/dev/null 2>&1 || true
 		fi
 	done
@@ -2249,6 +2255,10 @@ handle_ezsetup() {
 		;;
 	feature-enforce-policies)
 		ark_enforce_saved_feature_policies
+		echo ok
+		;;
+	post-upgrade-hygiene)
+		ark_post_upgrade_hygiene "${2:-fix}"
 		echo ok
 		;;
 	feature-install)
